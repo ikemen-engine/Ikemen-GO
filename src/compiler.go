@@ -170,7 +170,7 @@ func newCompiler() *Compiler {
 }
 
 var triggerMap = map[string]int{
-	//redirections
+	// redirections
 	"player":    0,
 	"parent":    0,
 	"root":      0,
@@ -180,8 +180,8 @@ var triggerMap = map[string]int{
 	"enemy":     0,
 	"enemynear": 0,
 	"playerid":  0,
-	"p2":        0,
-	//vanilla triggers
+	"p2":        0,	
+	// mugen triggers
 	"abs":               1,
 	"acos":              1,
 	"ailevel":           1,
@@ -244,6 +244,8 @@ var triggerMap = map[string]int{
 	"ln":                1,
 	"log":               1,
 	"lose":              1,
+	"loseko":            1,
+	"losetime":          1,
 	"matchno":           1,
 	"matchover":         1,
 	"movecontact":       1,
@@ -311,7 +313,11 @@ var triggerMap = map[string]int{
 	"var":               1,
 	"vel":               1,
 	"win":               1,
-	//new triggers
+	"winko":             1,
+	"wintime":           1,
+	"winperfect":        1,
+	// expanded triggers
+	"ailevelf":         1,
 	"animelemlength":   1,
 	"animlength":       1,
 	"attack":           1,
@@ -324,11 +330,14 @@ var triggerMap = map[string]int{
 	"dizzy":            1,
 	"dizzypoints":      1,
 	"dizzypointsmax":   1,
+	"drawpalno":        1,
 	"fighttime":        1,
 	"firstattack":      1,
+	"float":            1,
 	"framespercount":   1,
 	"gamemode":         1,
 	"getplayerid":      1,
+	"groundangle":      1,
 	"guardbreak":       1,
 	"guardpoints":      1,
 	"guardpointsmax":   1,
@@ -339,7 +348,9 @@ var triggerMap = map[string]int{
 	"localscale":       1,
 	"majorversion":     1,
 	"map":              1,
+	"max":              1,
 	"memberno":         1,
+	"min":              1,
 	"movecountered":    1,
 	"p5name":           1,
 	"p6name":           1,
@@ -350,10 +361,12 @@ var triggerMap = map[string]int{
 	"playerno":         1,
 	"prevanim":         1,
 	"ratiolevel":       1,
+	"randomrange":      1,
 	"receivedhits":     1,
 	"receiveddamage":   1,
 	"redlife":          1,
 	"reversaldefattr":  1,
+	"round":            1,
 	"roundtype":        1,
 	"score":            1,
 	"scoretotal":       1,
@@ -369,6 +382,8 @@ var triggerMap = map[string]int{
 	"timeelapsed":      1,
 	"timeremaining":    1,
 	"timetotal":        1,
+	"winhyper":         1,
+	"winspecial":       1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -2466,7 +2481,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.min(&bv1, bv2)
 			bv = bv1
 		}
-	case "rand":
+	case "randomrange", "rand": // rand is deprecated, kept for backward compatibility
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
 		}
@@ -2490,7 +2505,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.appendValue(bv1)
 		out.append(be2...)
 		out.appendValue(bv2)
-		out.append(OC_ex_, OC_ex_rand)
+		out.append(OC_ex_, OC_ex_randomrange)
 	case "round":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -2791,10 +2806,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_teamsize)
 	case "timeelapsed":
 		out.append(OC_ex_, OC_ex_timeelapsed)
-	case "timeremaining":
+	case "timeremaining", "timeleft": // timeleft is deprecated, kept for backward compatibility
 		out.append(OC_ex_, OC_ex_timeremaining)
-	case "timeleft":
-		out.append(OC_ex_, OC_ex_timeremaining) // Only here for backwards compatibility purposes, going to be deprecated once Add004 updates.
 	case "timetotal":
 		out.append(OC_ex_, OC_ex_timetotal)
 	case "drawpalno":

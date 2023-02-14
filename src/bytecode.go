@@ -486,7 +486,7 @@ const (
 	OC_ex_pausetime
 	OC_ex_physics
 	OC_ex_playerno
-	OC_ex_rand
+	OC_ex_randomrange
 	OC_ex_ratiolevel
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
@@ -1969,7 +1969,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i++
 	case OC_ex_playerno:
 		sys.bcStack.PushI(int32(c.playerNo) + 1)
-	case OC_ex_rand:
+	case OC_ex_randomrange:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
 	case OC_ex_ratiolevel:

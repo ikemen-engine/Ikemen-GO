@@ -3482,10 +3482,7 @@ func triggerFunctions(l *lua.LState) {
 			BytecodeInt(int32(numArg(l, 1)))).ToI()))
 		return 1
 	})
-	//luaRegister(l, "random", func(*lua.LState) int {
-	//	l.Push(lua.LNumber(Rand(0, 999)))
-	//	return 1
-	//})
+	//random (dedicated functionality already exists in Lua)
 	luaRegister(l, "reversaldefattr", func(*lua.LState) int {
 		attr, str := sys.debugWC.hitdef.reversal_attr, ""
 		if sys.debugWC.ss.moveType == MT_A {
@@ -3998,6 +3995,7 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.playerNo + 1))
 		return 1
 	})
+	//randomrange (dedicated functionality already exists in Lua)
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.ocd().ratioLevel))
 		return 1

@@ -95,7 +95,7 @@ if parent,alive = 0 || parent,dizzy = 0 || parent,ctrl || parent,standby {
 
 # Set Explod parameters
 if time = 0 {
-	map(birdType) := rand(0, 5); # Bird type. Currently has no effect on gameplay
+	map(birdType) := randomRange(0, 5); # Bird type. Currently has no effect on gameplay
 	map(birdRadius) := parent,const(size.ground.back) + parent,const(size.ground.front); # Circling effect radius
 	fVar(12) := parent,const(size.head.pos.y) - const240p(20); # Pos Y
 	fVar(11) := fVar(12); # Pos Y tracking
@@ -341,7 +341,7 @@ if time > 0 {
 		if (command = "x" || command = "y" || command = "z" || command = "a" || command = "b" || command = "c") {
 			mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3} # Directions should also reduce time, but single directional inputs currently aren't common inputs
 		}
-	} else if max(4, aiLevel) >= rand(1, 12) { # 33% - 66,67% chance, depending on aiLevel
+	} else if max(4, aiLevel) >= randomRange(1, 12) { # 33% - 66,67% chance, depending on aiLevel
 		mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
 	}
 }

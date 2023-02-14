@@ -28,7 +28,7 @@ for i = 0; numPartner; 1 {
 # TODO: Balance default AI switch scaling.
 [Function fTagAISwitch(nextPartnerId, previousPartnerId) partnerId]
 let partnerId = 0;
-if const(TagCommandAIChance) >= rand(1, 100) {
+if const(TagCommandAIChance) >= randomRange(1, 100) {
 	if command = "TagShiftFwd" {
 		let partnerId = $nextPartnerId;
 	} else if command = "TagShiftBack" {

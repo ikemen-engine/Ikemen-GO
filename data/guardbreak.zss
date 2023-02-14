@@ -30,14 +30,14 @@ if time = 0 {
 
 if time < 13 {
 	explod{
-		anim: GO const(FxGuardBreakSpark) + rand(0, 2);
+		anim: GO const(FxGuardBreakSpark) + randomRange(0, 2);
 		postype: p1;
 		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
 		sprpriority: 6;
 		ownpal: 1;
 		random: floor(const(size.height) / 8 * const(size.xscale)), floor(const(size.height) * const(size.yscale));
-		scale: rand(0, 8) * 0.03 + 0.25, rand(0, 8) * 0.03 + 0.25;
-		vel: -(rand(0, 17) + 5) * 0.36, (rand(0, 18) - 8) * 0.36;
+		scale: randomRange(0, 8) * 0.03 + 0.25, randomRange(0, 8) * 0.03 + 0.25;
+		vel: -(randomRange(0, 17) + 5) * 0.36, (randomRange(0, 18) - 8) * 0.36;
 		accel: 0.038, 0;
 		facing: ifElse(random < 500, 1, -1);
 		vfacing: ifElse(random < 500, 1, -1);
