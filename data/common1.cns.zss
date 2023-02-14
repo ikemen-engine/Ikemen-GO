@@ -1,19 +1,22 @@
 # Zantei State Script
 # Syntax highlighter for Notepad++: https://github.com/ikemen-engine/zss_npp
 #-------------------------------------------------------------------------------
-# 文字コードは utf-8
-# && と || は短絡評価
-# ignoreHitPause{} で囲んだ部分はヒットポーズ中でも実行される
-# ignoreHitPause{} を含んでいる if も実行される
-# explod は ignoreHitPause を任意に指定できる
-# ignoreHitPause persistent(2) if 1 {} ブロックの特性を複数指定 if は最後に
-# VarSet, VarAdd は使えない代わりに := による代入を含む式を書ける
-# 代入式は末尾に ; をつける
-# それとは別に let 変数名 = トリガー式; でローカル変数に代入できる
-# $変数名 で トリガー式内で使えるが、 := での代入はできない
-# 変数名は [a-z_][0-9a-z_]* 、 _ への代入は捨てられる
-# ローカル変数は引数、返り値を含め 256 個まで
-# 関数は定義済みのものしか呼べないので、再帰はできない
+# ZSS code needs to use UTF-8 character encoding system.
+# && and || are short-circuit evaluations.
+# The part enclosed in ignoreHitPause{} will be executed even during hit pause.
+# Ifs prefixed with ignoreHitPause will also be executed.
+# explod state controller allows arbitrary specification of ignoreHitPause.
+# ignoreHitPause and/or persistent(x) followed by if block affects nested ifs.
+# varSet and varAdd assignments should be replaced with :=, followed by value.
+# The assignment expression must be followed by a ; sign.
+# Local variables can be assigned with 'let variable name = trigger expression;'
+# Local variables calls via $variableName can be used in the trigger expression.
+# Local variable assignment with := is not possible in the trigger expression.
+# Local variable names are [a-z_][0-9a-z_]* and assignment to _ is discarded.
+# Local variables are up to 256, including arguments and return values.
+# Functions can only call predefined functions, so recursion is not possible.
+# In case of repeated function names, the first loaded one overrides others.
+# for/while loops (with break and continue) and switch statements are supported.
 
 #-------------------------------------------------------------------------------
 # Stand

@@ -3738,12 +3738,12 @@ func (c *Compiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 		}
 		if len(mapParam) > 0 {
 			if assign {
-				if err := c.kakkohiraku(&mapParam); err != nil {
+				if err := c.checkOpeningBracket(&mapParam); err != nil {
 					return err
 				}
 				mapName = c.token
 				c.token = c.tokenizer(&mapParam)
-				if err := c.kakkotojiru(); err != nil {
+				if err := c.checkClosingBracket(); err != nil {
 					return err
 				}
 				c.token = c.tokenizer(&mapParam)
