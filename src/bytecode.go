@@ -213,6 +213,7 @@ const (
 	OC_enemynear
 	OC_playerid
 	OC_p2
+	OC_stateowner
 	OC_rdreset
 	OC_const_
 	OC_st_
@@ -992,6 +993,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_p2:
 			if c = c.p2(); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_stateowner:
+			if c = sys.chars[c.ss.sb.playerNo][0]; c != nil {
 				i += 4
 				continue
 			}

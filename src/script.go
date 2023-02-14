@@ -2670,6 +2670,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(ret))
 		return 1
 	})
+	luaRegister(l, "stateowner", func(*lua.LState) int {
+		ret := false
+		if c := sys.chars[sys.debugWC.ss.sb.playerNo][0]; c != nil {
+			sys.debugWC, ret = c, true
+		}
+		l.Push(lua.LBool(ret))
+		return 1
+	})
 	// vanilla triggers
 	luaRegister(l, "ailevel", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.aiLevel()))
@@ -4159,16 +4167,16 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.curFrame.Number))
 		return 1
 	})
-	luaRegister(l, "stateowner", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.ss.sb.playerNo + 1))
-		return 1
-	})
 	luaRegister(l, "stateownerid", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.chars[sys.debugWC.ss.sb.playerNo][0].id))
 		return 1
 	})
 	luaRegister(l, "stateownername", func(*lua.LState) int {
 		l.Push(lua.LString(sys.chars[sys.debugWC.ss.sb.playerNo][0].name))
+		return 1
+	})
+	luaRegister(l, "stateownerplayerno", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.ss.sb.playerNo + 1))
 		return 1
 	})
 	luaRegister(l, "tickcount", func(*lua.LState) int {

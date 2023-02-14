@@ -171,16 +171,17 @@ func newCompiler() *Compiler {
 
 var triggerMap = map[string]int{
 	// redirections
-	"player":    0,
-	"parent":    0,
-	"root":      0,
-	"helper":    0,
-	"target":    0,
-	"partner":   0,
-	"enemy":     0,
-	"enemynear": 0,
-	"playerid":  0,
-	"p2":        0,	
+	"player":     0,
+	"parent":     0,
+	"root":       0,
+	"helper":     0,
+	"target":     0,
+	"partner":    0,
+	"enemy":      0,
+	"enemynear":  0,
+	"playerid":   0,
+	"p2":         0,	
+	"stateowner": 0,
 	// mugen triggers
 	"abs":               1,
 	"acos":              1,
@@ -1159,7 +1160,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "":
 		return bvNone(), Error("Nothing assigned")
 	case "root", "player", "parent", "helper", "target", "partner",
-		"enemy", "enemynear", "playerid", "p2":
+		"enemy", "enemynear", "playerid", "p2", "stateowner":
 		switch c.token {
 		case "parent":
 			opc = OC_parent
@@ -1169,6 +1170,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			c.token = c.tokenizer(in)
 		case "p2":
 			opc = OC_p2
+			c.token = c.tokenizer(in)
+		case "stateowner":
+			opc = OC_stateowner
 			c.token = c.tokenizer(in)
 		default:
 			switch c.token {
