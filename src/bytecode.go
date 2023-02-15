@@ -1165,11 +1165,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushB(false)
 			} else {
 				pno := c.playerNo
-				if oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 {
-					pno = sys.workingState.playerNo
-				}
 				cmd, ok := c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-				sys.bcStack.PushB(ok && c.command(pno, cmd))
+				ok = ok && c.command(pno, cmd)
+				if !ok && oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 && pno != sys.workingState.playerNo {
+					pno = sys.workingState.playerNo
+					cmd, ok = c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
+					ok = ok && c.command(pno, cmd)
+				}
+				sys.bcStack.PushB(ok)
 			}
 			i += 4
 		case OC_ctrl:
@@ -2949,6 +2952,7 @@ const (
 	helper_immortal
 	helper_kovelocity
 	helper_preserve
+	helper_standby
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -3054,6 +3058,12 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_preserve:
 			if exp[0].evalB(c) {
 				h.preserve = sys.round
+			}
+		case helper_standby:
+			if exp[0].evalB(c) {
+				h.setSCF(SCF_standby)
+			} else {
+				h.unsetSCF(SCF_standby)
 			}
 		}
 		return true

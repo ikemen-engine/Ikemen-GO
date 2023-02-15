@@ -6191,11 +6191,26 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].actionRun()
+		if cl.runOrder[i].ss.moveType != MT_A && cl.runOrder[i].ss.moveType != MT_I {
+			cl.runOrder[i].actionRun()
+		}
 	}
 	// Finish performing character actions
+	// Process priority based on movetype: A > I > H (or anything else)
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].actionFinish()
+		if cl.runOrder[i].ss.moveType == MT_A {
+			cl.runOrder[i].actionFinish()
+		}
+	}
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].ss.moveType == MT_I {
+			cl.runOrder[i].actionFinish()
+		}
+	}
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].ss.moveType != MT_A && cl.runOrder[i].ss.moveType != MT_I {
+			cl.runOrder[i].actionFinish()
+		}
 	}
 	// Update chars
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
