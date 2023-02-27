@@ -1,4 +1,4 @@
-name: commit
+name: Go
 
 on:
   push:
@@ -94,8 +94,8 @@ jobs:
         fail_on_unmatched_files: true
         generate_release_notes: true
         update_tag: true
-        body: |
-          Nightly build
+        #body: |
+        #  Nightly build
       env:
         GITHUB_TOKEN: ${{ secrets.IKEMEN_TOKEN }}
       
@@ -109,7 +109,7 @@ jobs:
         fail_on_unmatched_files: true
         generate_release_notes: true
         update_tag: true
-        body: |
-          Nightly build
+        #body: |
+        #  Nightly build
       env:
         GITHUB_TOKEN: ${{ secrets.IKEMEN_TOKEN }}
