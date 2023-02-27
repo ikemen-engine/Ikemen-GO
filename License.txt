@@ -16,6 +16,9 @@ Copyright (c) 2022 Eiton
 Copyright (c) 2022 Sam Hocevar
 Copyright (c) 2022 GaryCXJk
 Copyright (c) 2022 Lazin3ss
+Copyright (c) 2022 potsmugen
+Copyright (c) 2023 BwdYeti
+Copyright (c) 2023 fantasma
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
