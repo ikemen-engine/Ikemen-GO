@@ -1,6 +1,6 @@
 module github.com/ikemen-engine/Ikemen-GO
 
-go 1.18
+go 1.20.1
 
 require (
 	github.com/faiface/beep v1.1.0
