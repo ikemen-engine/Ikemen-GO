@@ -153,18 +153,31 @@ jobs:
 
       - name: Update dev release
         if: "${{ github.event.inputs.tag == '' }}"
-        #uses: softprops/action-gh-release@v1
-        uses: iTrooz/action-gh-release@test
+        uses: ncipollo/release-action@v1
         with:
-          files: ./${{ steps.artifacts.outputs.artifact }}
-          tag_name: nightly
-          fail_on_unmatched_files: true
-          generate_release_notes: true
-          update_tag: true
+          token: ${{ secrets.IKEMEN_TOKEN }}
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          artifacts: "${{ steps.artifacts.outputs.artifact }}"
           body: |
             The nightly release, or more precisely, the latest development version, is generated after each commit and always represents the most up-to-date iteration of the source code. It features the newest development version of the engine and screenpack files, making it ready for testing straightaway. Using it can eliminate the need to compile the source code for the latest, cutting-edge updates. However, as a consequence, it may sometimes contain regressions that were not yet discovered and/or outpace the documentation that corresponds to stable releases with version numbers like v x.x.x.
-        env:
-          GITHUB_TOKEN: ${{ secrets.IKEMEN_TOKEN }}
+          discussionCategory: ""
+          draft: false
+          generateReleaseNotes: false
+          makeLatest: false
+          name: nightly
+          omitBody: false
+          omitBodyDuringUpdate: false
+          omitDraftDuringUpdate: true
+          omitName: false
+          omitNameDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          prerelease: true
+          removeArtifacts: false
+          replacesArtifacts: true
+          skipIfReleaseExists: false
+          tag: nightly
+          updateOnlyUnreleased: false
 
       - name: Create Release
         if: "${{ github.event.inputs.tag != '' }}"
@@ -179,7 +192,7 @@ jobs:
           discussionCategory: ""
           draft: false
           generateReleaseNotes: false
-          makeLatest: false
+          makeLatest: true
           name: ${{ needs.tag.outputs.latestTag }}
           omitBody: false
           omitBodyDuringUpdate: false
