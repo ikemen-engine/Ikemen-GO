@@ -1,0 +1,195 @@
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag for the new release. Leave empty to only update nightly build. 
+        type: string
+        required: false
+        default: ''
+      prerelease:
+        description: Select to flag the new release as a pre-release.
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  checks: write
+  contents: write
+
+name: releases
+jobs:
+  tag:
+    name: prepare tag
+    runs-on: ubuntu-latest
+    outputs:
+      previousTag: ${{ steps.previousTag.outputs.tag }}
+      latestTag: ${{ steps.latestTag.outputs.new_tag }}
+      changelog: ${{ steps.changelog.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get previous tag
+        id: previousTag
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        with:
+          semver_only: true
+
+      - name: Bump version and push tag
+        if: "${{ github.event.inputs.tag != '' }}"
+        id: latestTag
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: false
+          default_prerelease_bump: false
+          custom_tag: ${{ github.event.inputs.tag }}
+          create_annotated_tag: false
+          tag_prefix: ""
+          # <keyword>:<release_type>:<changelog_section>
+          # custom_release_rules: build:patch,chore:patch,docs:patch,feat:patch:Features,fix:patch:Bug Fixes,other:patch,perf:patch,refactor:patch,style:patch,test:patch
+          # ${{ steps.latestTag.outputs.changelog }}
+
+      - name: Update CHANGELOG
+        if: "${{ github.event.inputs.tag != '' }}"
+        id: changelog
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          fromTag: ${{ steps.latestTag.outputs.new_tag }}
+          toTag: ${{ steps.previousTag.outputs.tag }}
+          # tag: ${{ github.ref_name }}
+          writeToFile: false
+          excludeTypes: build,chore,docs,other,perf,refactor,style,test
+          includeInvalidCommits: false
+
+  build:
+    name: prepare release
+    needs: tag
+    strategy:
+      matrix:
+        cfg:
+          - runner_os: windows
+            os: windows-2022
+            goos: windows
+            goarch: amd64
+            bin: Ikemen_GO.exe
+            #cc: x86_64-w64-mingw32-gcc
+            #ccx: x86_64-w64-mingw32-g++
+          - runner_os: linux
+            os: ubuntu-22.04
+            goos: linux
+            goarch: amd64
+            bin: Ikemen_GO_Linux
+          - runner_os: macos
+            os: macos-11
+            goos: darwin
+            goarch: amd64
+            bin: Ikemen_GO_MacOS
+    runs-on: ${{ matrix.cfg.os }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Golang with cache
+        uses: magnetikonline/action-golang-cache@v3
+        with:
+          go-version: ~1.20
+          #go-version-file: go.mod
+          #cache-key-suffix: -ikemen
+
+      - name: Install dependencies
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev libgtk-3-dev
+          fi
+        shell: bash
+
+      - name: Build
+        run: |
+          go env -w GO111MODULE=on
+          go mod download
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            go build -v -ldflags "-H windowsgui" -o ./${{ matrix.cfg.bin }} ./src
+          else
+            go build -v -o ./${{ matrix.cfg.bin }} ./src
+          fi
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.cfg.goos }}
+          GOARCH: ${{ matrix.cfg.goarch }}
+          #CC: ${{ matrix.cfg.cc }}
+          #CCX: ${{ matrix.cfg.cxx }}
+
+      - name: Prepare artifacts
+        id: artifacts
+        run: |
+          echo "Preparing files for deployment"
+          mkdir deploy
+          cp ${{ matrix.cfg.bin }} deploy/
+          git clone https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack.git
+          cp -r data external font Ikemen_GO-Elecbyte-Screenpack/chars Ikemen_GO-Elecbyte-Screenpack/data Ikemen_GO-Elecbyte-Screenpack/font Ikemen_GO-Elecbyte-Screenpack/stages deploy/
+          cp License.txt deploy/
+          cp Ikemen_GO-Elecbyte-Screenpack/LICENCE.txt deploy/ScreenpackLicense.txt
+          echo "Zipping deploy directory"
+          cd deploy
+          if [ "${{ github.event.inputs.tag }}" == "" ]; then
+            ARTIFACT_NAME=Ikemen_GO-dev-${{ matrix.cfg.runner_os }}.zip         
+            echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          else
+            ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.latestTag }}-${{ matrix.cfg.runner_os }}.zip
+            echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+            echo "${{ needs.tag.outputs.latestTag }}" > external/script/version
+          fi
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            "/c/Program Files/7-Zip/7z.exe" a ../$ARTIFACT_NAME *
+          else
+            cp ../build/Ikemen_GO.command .
+            zip -r ../$ARTIFACT_NAME *
+          fi
+          echo "Successfully prepared assets for deployment"
+        shell: bash
+
+      - name: Update dev release
+        if: "${{ github.event.inputs.tag == '' }}"
+        #uses: softprops/action-gh-release@v1
+        uses: iTrooz/action-gh-release@test
+        with:
+          files: ./${{ steps.artifacts.outputs.artifact }}
+          tag_name: nightly
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          update_tag: true
+          body: |
+            The nightly release, or more precisely, the latest development version, is generated after each commit and always represents the most up-to-date iteration of the source code. It features the newest development version of the engine and screenpack files, making it ready for testing straightaway. Using it can eliminate the need to compile the source code for the latest, cutting-edge updates. However, as a consequence, it may sometimes contain regressions that were not yet discovered and/or outpace the documentation that corresponds to stable releases with version numbers like v x.x.x.
+        env:
+          GITHUB_TOKEN: ${{ secrets.IKEMEN_TOKEN }}
+
+      - name: Create Release
+        if: "${{ github.event.inputs.tag != '' }}"
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.IKEMEN_TOKEN }}
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          artifacts: "${{ steps.artifacts.outputs.artifact }}"
+          body: |
+            ${{ needs.tag.outputs.changelog }}
+          discussionCategory: ""
+          draft: false
+          generateReleaseNotes: false
+          makeLatest: false
+          name: ${{ needs.tag.outputs.latestTag }}
+          omitBody: false
+          omitBodyDuringUpdate: false
+          omitDraftDuringUpdate: true
+          omitName: false
+          omitNameDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          prerelease: ${{ github.event.inputs.prerelease }}
+          removeArtifacts: false
+          replacesArtifacts: true
+          skipIfReleaseExists: false
+          tag: ${{ needs.tag.outputs.latestTag }}
+          updateOnlyUnreleased: false

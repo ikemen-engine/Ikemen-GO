@@ -1,0 +1,30 @@
+on:
+  pull_request:
+    branches:
+      - master
+      - main
+    types:
+      - opened
+      - edited
+      - reopened
+      - synchronize
+name: conventional-release-labels
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: bcoe/conventional-release-labels@v1
+        with:
+          token: '${{ secrets.GITHUB_TOKEN }}'
+          type_labels: >-
+            {"build": "PR: build",
+            "fix": "PR: chore",
+            "breaking": "PR: breaking",
+            "docs": "PR: docs",
+            "feat": "PR: feat",
+            "fix": "PR: fix",
+            "other": "PR: other",
+            "perf": "PR: perf",
+            "refactor": "PR: refactor",
+            "style": "PR: style",
+            "test": "PR: test"}

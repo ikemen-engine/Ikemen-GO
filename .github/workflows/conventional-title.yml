@@ -1,0 +1,36 @@
+on:
+  pull_request:
+    branches: [ master, main ]
+    types: [ opened, edited, reopened, synchronize ]
+
+name: conventional-title
+jobs:
+  conventional-title:
+    name: PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: morrisoncole/pr-lint-action@v1.7.0
+        with:
+          repo-token: "${{ secrets.GITHUB_TOKEN }}"
+          #title-regex: "^\\bbuild|chore|docs|feat|fix|other|perf|refactor|style|test\\b\\(?[^\\)]*\\)?: .+$"
+          title-regex: "^(\\bbuild|chore|docs|feat|fix|other|perf|refactor|style|test\\b\\(?[^\\)]*\\)?: .+|v?[0-9]+\\.[0-9]+\\.[0-9]+)"
+          on-failed-regex-fail-action: true
+          on-failed-regex-create-review: true
+          on-failed-regex-request-changes: false
+          on-failed-regex-comment: |
+            Don't worry, if you can't fix the problem with the PR title, a person who takes care of things will handle it.
+            
+            We use [Conventional Commits](https://www.conventionalcommits.org/) specification for adding human and machine readable meaning to commit messages.
+            The expected PR title formatting is: `<type>(<scope>): <description>`
+            where `(<scope>)` declaration is optional and `<type>` must be one of the following: 
+            - build: Changes that affect the build system, external dependencies, CI configuration
+            - docs: Documentation only changes
+            - feat: A new feature
+            - fix: A bug fix
+            - other: Changes that don't belong to other categories
+            - perf: A code change that improves performance
+            - refactor: A code change that neither fixes a bug nor adds a feature
+            - style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
+            - test: Adding missing tests or correcting existing tests
+          on-succeeded-regex-dismiss-review-comment: |
+            PR title matches our git commit title formatting guidelines. All good!
