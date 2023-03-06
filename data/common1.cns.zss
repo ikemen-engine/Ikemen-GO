@@ -28,8 +28,7 @@ if cond(anim = 5, animTime = 0, anim != 0) {
 if time = 0 {
 	velSet{y: 0}
 }
-if time = 4 || abs(vel x) < ifElse(majorVersion = 1,
-	const(movement.stand.friction.threshold), 2) {
+if time = 4 || abs(vel x) < const(movement.stand.friction.threshold) {
 	velSet{x: 0}
 }
 if !alive {
@@ -175,7 +174,7 @@ if time = 0 {
 } else if time = 3 {
 	ctrlSet{value: 1}
 }
-if majorVersion = 1 && abs(vel x) < const(movement.stand.friction.threshold) {
+if abs(vel x) < const(movement.stand.friction.threshold) {
 	velSet{x: 0}
 }
 if animTime = 0 {
@@ -209,18 +208,14 @@ if vel y > 0 && pos y >= 0 {
 # Hop backwards (land)
 [StateDef 106; type: S; physics: S; ctrl: 0; anim: 47;]
 
-if majorVersion = 1 && abs(vel x) < const(movement.stand.friction.threshold) {
+if abs(vel x) < const(movement.stand.friction.threshold) {
 	velSet{x: 0}
 }
 if time = 0 {
 	velSet{y: 0}
 	posSet{y: 0}
 } else if time = 2 {
-	if majorVersion = 1 {
-		makeDust{pos: 0, 0; spacing: 1}
-	} else {
-		makeDust{pos: -5, -2; spacing: 1}
-	}
+	makeDust{pos: 0, 0; spacing: 1}
 } else if time = 7 {
 	changeState{value: 0; ctrl: 1}
 }
@@ -573,7 +568,7 @@ if anim = 5000 || anim = 5010 {
 # Air get-hit (knocked away)
 [StateDef 5030; type: A; movetype: H; physics: N; ctrl: 0;]
 
-if majorVersion = 1 && anim != [5000, 5199] && selfAnimExist(5030) {
+if anim != [5000, 5199] && selfAnimExist(5030) {
 	changeAnim{value: 5030}
 }
 if time = 0 {
@@ -657,8 +652,7 @@ if alive && canRecover && command = "recovery" {
 		changeState{value: 5210}
 	}
 }
-if vel y > 0 && pos y >= cond(anim = [5051, 5059] || anim = [5061, 5069], 0,
-	ifElse(majorVersion = 1, const(movement.air.gethit.groundlevel), 25)) {
+if vel y > 0 && pos y >= cond(anim = [5051, 5059] || anim = [5061, 5069], 0, const(movement.air.gethit.groundlevel)) {
 	changeState{value: 5100}
 }
 
@@ -836,7 +830,7 @@ if time = 0 {
 	sysVar(0) := 0;
 }
 velMul{x: .85}
-if majorVersion = 1 && abs(vel x) < const(movement.down.friction.threshold) {
+if abs(vel x) < const(movement.down.friction.threshold) {
 	velSet{x: 0}
 }
 if time = 0 {
@@ -948,13 +942,9 @@ if time = 0 {
 	}
 } else {
 	if time = 4 {
-		if majorVersion = 1 {
-			velMul{
-				x: const(velocity.air.gethit.airrecover.mul.x);
-				y: const(velocity.air.gethit.airrecover.mul.y);
-			}
-		} else {
-			velMul{x: .8; y: .8}
+		velMul{
+			x: const(velocity.air.gethit.airrecover.mul.x);
+			y: const(velocity.air.gethit.airrecover.mul.y);
 		}
 		velAdd{
 			x: const(velocity.air.gethit.airrecover.add.x);
