@@ -1,0 +1,24 @@
+changelog:
+  exclude:
+    labels:
+      - 'PR: build'
+      - 'PR: chore'
+      - 'PR: docs'
+      - 'PR: other'
+      - 'PR: perf'
+      - 'PR: refactor'
+      - 'PR: style'
+      - 'PR: test'
+  categories:
+    - title: Breaking Changes 🛠
+      labels:
+        - 'PR: breaking'
+    - title: New Features 🎉
+      labels:
+        - 'PR: feat'
+    - title: Bug Fixes 🔧
+      labels:
+        - 'PR: fix'
+    #- title: Other Changes
+    #  labels:
+    #    - "*"
