@@ -263,7 +263,7 @@ func (c *Compiler) changeStateSub(is IniSection,
 		return err
 	}
 	if err := c.stateParam(is, "anim", func(data string) error {
-		prefix := c.getDataPrefix(&data, false) 
+		prefix := c.getDataPrefix(&data, false)
 		return c.scAdd(sc, changeState_anim, data, VT_Int, 1,
 			sc.beToExp(BytecodeExp(prefix))...)
 	}); err != nil {
