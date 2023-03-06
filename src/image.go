@@ -9,7 +9,6 @@ import (
 	"io"
 	"math"
 	"os"
-	"runtime"
 	"unsafe"
 )
 
@@ -1025,22 +1024,7 @@ func newSff() (s *Sff) {
 	return
 }
 
-// A simple SFF cache storing shallow copies
-type SffCacheEntry struct {
-	sffData  Sff
-	refCount int
-}
-
-var SffCache = map[string]*SffCacheEntry{}
-
 func loadSff(filename string, char bool) (*Sff, error) {
-	// If this SFF is already in the cache, just return a copy
-	if cached, ok := SffCache[filename]; ok {
-		cached.refCount++
-		s := cached.sffData
-		return &s, nil
-	}
-
 	s := newSff()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -1169,17 +1153,6 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			shofs += 28
 		}
 	}
-
-	// Store a copy of this SFF in the cache
-	SffCache[filename] = &SffCacheEntry{*s, 1}
-	runtime.SetFinalizer(s, func(s *Sff) {
-		cached := SffCache[filename]
-		cached.refCount--
-		if cached.refCount == 0 {
-			delete(SffCache, filename)
-		}
-	})
-
 	return s, nil
 }
 func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff, []int32, error) {
