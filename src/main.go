@@ -14,6 +14,9 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+var Version = "development"
+var BuildTime = ""
+
 func init() {
 	runtime.LockOSThread()
 }

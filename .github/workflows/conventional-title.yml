@@ -1,7 +1,9 @@
 on:
-  pull_request:
+  pull_request_target:
     branches: [ master, main ]
     types: [ opened, edited, reopened, synchronize ]
+
+permissions: write-all
 
 name: conventional-title
 jobs:

@@ -3,9 +3,7 @@ on:
   pull_request_target:
     branches: [ master, main ]
 
-permissions:
-  checks: write
-  contents: write
+permissions: write-all
 
 name: lint-code-style
 jobs:
@@ -24,6 +22,7 @@ jobs:
       - name: Run linters
         uses: wearerequired/lint-action@v2
         with:
+          github_token: "${{ secrets.IKEMEN_TOKEN }}"
           gofmt: true
           continue_on_error: false
           auto_fix: true

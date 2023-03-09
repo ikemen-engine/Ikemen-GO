@@ -1,5 +1,5 @@
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - master
       - main
@@ -8,6 +8,9 @@ on:
       - edited
       - reopened
       - synchronize
+
+permissions: write-all
+
 name: conventional-release-labels
 jobs:
   label:

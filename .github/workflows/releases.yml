@@ -4,15 +4,30 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag for the new release. Leave empty to only update nightly build. 
+        description: 'Tag for the new release. Use semantic versioning e.g. v1.0.0. Leave empty to only update the nightly build.'
         type: string
         required: false
         default: ''
       prerelease:
-        description: Select to flag the new release as a pre-release.
+        description: 'Set as a pre-release. (unused by the nightly build)'
         type: boolean
         required: false
         default: false
+      makeLatest:
+        description: 'Set as the latest release. (unused by the nightly build)'
+        type: boolean
+        required: false
+        default: true
+      draft:
+        description: 'Set as a draft release. (unused by the nightly build)'
+        type: boolean
+        required: false
+        default: false
+      discussionCategory:
+        description: 'When provided this will generate a discussion of the specified category, e.g. Announcements. (unused by the nightly build)'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   checks: write
@@ -24,6 +39,8 @@ jobs:
     name: prepare tag
     runs-on: ubuntu-latest
     outputs:
+      version: ${{ env.version }}
+      buildTime: ${{ env.buildTime }}
       previousTag: ${{ steps.previousTag.outputs.tag }}
       latestTag: ${{ steps.latestTag.outputs.new_tag }}
       changelog: ${{ steps.changelog.outputs.changes }}
@@ -51,6 +68,16 @@ jobs:
           # custom_release_rules: build:patch,chore:patch,docs:patch,feat:patch:Features,fix:patch:Bug Fixes,other:patch,perf:patch,refactor:patch,style:patch,test:patch
           # ${{ steps.latestTag.outputs.changelog }}
 
+      - name: Set version
+        run: |
+          if [ "${{ github.event.inputs.tag }}" != "" ]; then
+            echo "version=${{ steps.latestTag.outputs.new_tag }}" >> $GITHUB_ENV
+          else
+            echo "version=nightly" >> $GITHUB_ENV
+          fi
+          echo "buildTime=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
+        shell: bash
+
       - name: Update CHANGELOG
         if: "${{ github.event.inputs.tag != '' }}"
         id: changelog
@@ -77,16 +104,23 @@ jobs:
             bin: Ikemen_GO.exe
             #cc: x86_64-w64-mingw32-gcc
             #ccx: x86_64-w64-mingw32-g++
+            glibc: ''
           - runner_os: linux
-            os: ubuntu-22.04
+            os: ubuntu-20.04 # ubuntu-22.04 / ubuntu-18.04 (deprecated)
             goos: linux
             goarch: amd64
             bin: Ikemen_GO_Linux
+            #cc: gcc
+            #ccx: g++
+            glibc: '2.13'
           - runner_os: macos
-            os: macos-11
+            os: macos-10.15 # (deprecated) / macos-11
             goos: darwin
             goarch: amd64
             bin: Ikemen_GO_MacOS
+            #cc: o64-clang
+            #ccx: o64-clang++
+            glibc: ''
     runs-on: ${{ matrix.cfg.os }}
     steps:
       - uses: actions/checkout@v3
@@ -105,14 +139,58 @@ jobs:
           fi
         shell: bash
 
+      - name: Make syso
+        if: "${{ matrix.cfg.runner_os == 'windows' }}"
+        run: >
+          echo '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+          <assemblyIdentity
+              version="${{ needs.tag.outputs.version }}"
+              processorArchitecture="amd64"
+              name="controls"
+              type="win32"
+          />
+          <dependency>
+          <dependentAssembly>
+          <assemblyIdentity
+              type="win32"
+              name="Suehiro.Mugen.Ikemen_GO"
+              version="${{ needs.tag.outputs.version }}"
+              processorArchitecture="amd64"
+              language="golang"
+          />
+          </dependentAssembly>
+          </dependency>
+          </assembly>' > ./windres/Ikemen_GO.exe.manifest
+        shell: bash
+
       - name: Build
         run: |
+          if [ "${{ matrix.cfg.glibc }}" != "" ]; then
+            wget https://raw.githubusercontent.com/wheybags/glibc_version_header/master/version_headers/x64/force_link_glibc_${{ matrix.cfg.glibc }}.h -O $PWD/force_link_glibc.h
+            CGO_CFLAGS="$CGO_CFLAGS -include $PWD/force_link_glibc.h"
+            CGO_CXXFLAGS="$CGO_CXXFLAGS -include $PWD/force_link_glibc.h"
+          fi
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            CGO_CFLAGS="$CGO_CFLAGS -mmacosx-version-min=10.13"
+            CGO_CXXFLAGS="$CGO_CXXFLAGS -mmacosx-version-min=10.13"
+            CGO_LDFLAGS="$CGO_LDFLAGS -mmacosx-version-min=10.13"
+            CC="o64-clang"
+            CCX="o64-clang++"
+          fi
+          echo "CGO_CFLAGS: $CGO_CFLAGS"
+          echo "CGO_CXXFLAGS: $CGO_CXXFLAGS"
+          echo "CGO_LDFLAGS: $CGO_LDFLAGS"
           go env -w GO111MODULE=on
           go mod download
           if [ "$RUNNER_OS" == "Windows" ]; then
-            go build -v -ldflags "-H windowsgui" -o ./${{ matrix.cfg.bin }} ./src
+            cd windres
+            windres -o ../src/ikemen_go.syso Ikemen_GO.rc
+            cd ..
+            go build -v -ldflags "-X 'main.Version=${{ needs.tag.outputs.version }}' -X 'main.BuildTime=${{ needs.tag.outputs.buildTime }}' -H windowsgui" -o ./${{ matrix.cfg.bin }} ./src
           else
-            go build -v -o ./${{ matrix.cfg.bin }} ./src
+            go build -v -ldflags "-X 'main.Version=${{ needs.tag.outputs.version }}' -X 'main.BuildTime=${{ needs.tag.outputs.buildTime }}'" -o ./${{ matrix.cfg.bin }} ./src
+            chmod +x ${{ matrix.cfg.bin }}
           fi
         shell: bash
         env:
@@ -121,7 +199,6 @@ jobs:
           GOARCH: ${{ matrix.cfg.goarch }}
           #CC: ${{ matrix.cfg.cc }}
           #CCX: ${{ matrix.cfg.cxx }}
-
       - name: Prepare artifacts
         id: artifacts
         run: |
@@ -189,10 +266,10 @@ jobs:
           artifacts: "${{ steps.artifacts.outputs.artifact }}"
           body: |
             ${{ needs.tag.outputs.changelog }}
-          discussionCategory: ""
-          draft: false
+          discussionCategory: ${{ github.event.inputs.discussionCategory }}
+          draft: ${{ github.event.inputs.draft }}
           generateReleaseNotes: false
-          makeLatest: true
+          makeLatest: ${{ github.event.inputs.makeLatest }}
           name: ${{ needs.tag.outputs.latestTag }}
           omitBody: false
           omitBodyDuringUpdate: false
