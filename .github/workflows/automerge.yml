@@ -1,5 +1,5 @@
 on:
-  pull_request:
+  pull_request_target:
     types:
       - labeled
       - unlabeled
@@ -17,9 +17,7 @@ on:
       - completed
   status: {}
 
-permissions:
-  checks: write
-  contents: write
+permissions: write-all
 
 name: automerge
 jobs:
