@@ -31,5 +31,6 @@ func init() {
 	os.Stderr = os.NewFile(uintptr(herr), "/dev/stderr")
 	log.SetOutput(os.Stderr)
 	log.Println("Ikemen, GO!")
+	log.Println(Version, BuildTime)
 	runtime.LockOSThread()
 }
