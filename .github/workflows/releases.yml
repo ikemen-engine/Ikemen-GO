@@ -9,22 +9,22 @@ on:
         required: false
         default: ''
       prerelease:
-        description: 'Set as a pre-release. (unused by the nightly build)'
+        description: 'Set as a pre-release.'
         type: boolean
         required: false
         default: false
       makeLatest:
-        description: 'Set as the latest release. (unused by the nightly build)'
+        description: 'Set as the latest release.'
         type: boolean
         required: false
         default: true
       draft:
-        description: 'Set as a draft release. (unused by the nightly build)'
+        description: 'Set as a draft release.'
         type: boolean
         required: false
         default: false
       discussionCategory:
-        description: 'When provided this will generate a discussion of the specified category, e.g. Announcements. (unused by the nightly build)'
+        description: 'When provided this will generate a discussion of the specified category, e.g. Announcements.'
         type: string
         required: false
         default: ''
@@ -41,55 +41,25 @@ jobs:
     outputs:
       version: ${{ env.version }}
       buildTime: ${{ env.buildTime }}
-      previousTag: ${{ steps.previousTag.outputs.tag }}
-      latestTag: ${{ steps.latestTag.outputs.new_tag }}
-      changelog: ${{ steps.changelog.outputs.changes }}
+      #previousTag: ${{ steps.previousTag.outputs.tag }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Get previous tag
-        id: previousTag
-        uses: actions-ecosystem/action-get-latest-tag@v1
-        with:
-          semver_only: true
-
-      - name: Bump version and push tag
-        if: "${{ github.event.inputs.tag != '' }}"
-        id: latestTag
-        uses: mathieudutour/github-tag-action@v6.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          default_bump: false
-          default_prerelease_bump: false
-          custom_tag: ${{ github.event.inputs.tag }}
-          create_annotated_tag: false
-          tag_prefix: ""
-          # <keyword>:<release_type>:<changelog_section>
-          # custom_release_rules: build:patch,chore:patch,docs:patch,feat:patch:Features,fix:patch:Bug Fixes,other:patch,perf:patch,refactor:patch,style:patch,test:patch
-          # ${{ steps.latestTag.outputs.changelog }}
+      #- name: Get previous tag
+      #  id: previousTag
+      #  uses: actions-ecosystem/action-get-latest-tag@v1
+      #  with:
+      #    semver_only: true
 
       - name: Set version
         run: |
           if [ "${{ github.event.inputs.tag }}" != "" ]; then
-            echo "version=${{ steps.latestTag.outputs.new_tag }}" >> $GITHUB_ENV
+            echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
           else
             echo "version=nightly" >> $GITHUB_ENV
           fi
           echo "buildTime=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
         shell: bash
-
-      - name: Update CHANGELOG
-        if: "${{ github.event.inputs.tag != '' }}"
-        id: changelog
-        uses: requarks/changelog-action@v1
-        with:
-          token: ${{ github.token }}
-          fromTag: ${{ steps.latestTag.outputs.new_tag }}
-          toTag: ${{ steps.previousTag.outputs.tag }}
-          # tag: ${{ github.ref_name }}
-          writeToFile: false
-          excludeTypes: build,chore,docs,other,perf,refactor,style,test
-          includeInvalidCommits: false
 
   build:
     name: prepare release
@@ -102,25 +72,22 @@ jobs:
             goos: windows
             goarch: amd64
             bin: Ikemen_GO.exe
-            #cc: x86_64-w64-mingw32-gcc
-            #ccx: x86_64-w64-mingw32-g++
             glibc: ''
+            target: ''
           - runner_os: linux
             os: ubuntu-20.04 # ubuntu-22.04 / ubuntu-18.04 (deprecated)
             goos: linux
             goarch: amd64
             bin: Ikemen_GO_Linux
-            #cc: gcc
-            #ccx: g++
             glibc: '2.13'
+            target: ''
           - runner_os: macos
             os: macos-10.15 # (deprecated) / macos-11
             goos: darwin
             goarch: amd64
             bin: Ikemen_GO_MacOS
-            #cc: o64-clang
-            #ccx: o64-clang++
             glibc: ''
+            target: '10.7'
     runs-on: ${{ matrix.cfg.os }}
     steps:
       - uses: actions/checkout@v3
@@ -139,66 +106,39 @@ jobs:
           fi
         shell: bash
 
-      - name: Make syso
-        if: "${{ matrix.cfg.runner_os == 'windows' }}"
-        run: >
-          echo '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-          <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-          <assemblyIdentity
-              version="${{ needs.tag.outputs.version }}"
-              processorArchitecture="amd64"
-              name="controls"
-              type="win32"
-          />
-          <dependency>
-          <dependentAssembly>
-          <assemblyIdentity
-              type="win32"
-              name="Suehiro.Mugen.Ikemen_GO"
-              version="${{ needs.tag.outputs.version }}"
-              processorArchitecture="amd64"
-              language="golang"
-          />
-          </dependentAssembly>
-          </dependency>
-          </assembly>' > ./windres/Ikemen_GO.exe.manifest
-        shell: bash
-
       - name: Build
         run: |
+          ldflags="-X 'main.Version=${{ needs.tag.outputs.version }}' -X 'main.BuildTime=${{ needs.tag.outputs.buildTime }}'"
+          export GOOS="${{ matrix.cfg.goos }}"
+          export GOARCH="${{ matrix.cfg.goarch }}"
+          export CGO_ENABLED=1
           if [ "${{ matrix.cfg.glibc }}" != "" ]; then
             wget https://raw.githubusercontent.com/wheybags/glibc_version_header/master/version_headers/x64/force_link_glibc_${{ matrix.cfg.glibc }}.h -O $PWD/force_link_glibc.h
-            CGO_CFLAGS="$CGO_CFLAGS -include $PWD/force_link_glibc.h"
-            CGO_CXXFLAGS="$CGO_CXXFLAGS -include $PWD/force_link_glibc.h"
+            export CGO_CFLAGS="$CGO_CFLAGS -include $PWD/force_link_glibc.h"
+            export CGO_CXXFLAGS="$CGO_CXXFLAGS -include $PWD/force_link_glibc.h"
           fi
           if [ "$RUNNER_OS" == "macOS" ]; then
-            CGO_CFLAGS="$CGO_CFLAGS -mmacosx-version-min=10.13"
-            CGO_CXXFLAGS="$CGO_CXXFLAGS -mmacosx-version-min=10.13"
-            CGO_LDFLAGS="$CGO_LDFLAGS -mmacosx-version-min=10.13"
-            CC="o64-clang"
-            CCX="o64-clang++"
-          fi
-          echo "CGO_CFLAGS: $CGO_CFLAGS"
-          echo "CGO_CXXFLAGS: $CGO_CXXFLAGS"
-          echo "CGO_LDFLAGS: $CGO_LDFLAGS"
-          go env -w GO111MODULE=on
-          go mod download
-          if [ "$RUNNER_OS" == "Windows" ]; then
+            export CGO_LDFLAGS="$CGO_LDFLAGS -mmacosx-version-min=${{ matrix.cfg.target }}"
+            export CGO_CFLAGS="$CGO_CFLAGS -mmacosx-version-min=${{ matrix.cfg.target }}"
+            export CGO_CXXFLAGS="$CGO_CXXFLAGS -mmacosx-version-min=${{ matrix.cfg.target }}"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            ldflags="$ldflags -H windowsgui"
             cd windres
             windres -o ../src/ikemen_go.syso Ikemen_GO.rc
             cd ..
-            go build -v -ldflags "-X 'main.Version=${{ needs.tag.outputs.version }}' -X 'main.BuildTime=${{ needs.tag.outputs.buildTime }}' -H windowsgui" -o ./${{ matrix.cfg.bin }} ./src
-          else
-            go build -v -ldflags "-X 'main.Version=${{ needs.tag.outputs.version }}' -X 'main.BuildTime=${{ needs.tag.outputs.buildTime }}'" -o ./${{ matrix.cfg.bin }} ./src
+          fi
+          echo "ldflags: $ldflags"
+          echo "CGO_LDFLAGS: $CGO_LDFLAGS"
+          echo "CGO_CFLAGS: $CGO_CFLAGS"
+          echo "CGO_CXXFLAGS: $CGO_CXXFLAGS"
+          go env -w GO111MODULE=on
+          go mod download
+          go build -v -ldflags "$ldflags" -o ./${{ matrix.cfg.bin }} ./src
+          if [ "$RUNNER_OS" != "Windows" ]; then
             chmod +x ${{ matrix.cfg.bin }}
           fi
         shell: bash
-        env:
-          CGO_ENABLED: 1
-          GOOS: ${{ matrix.cfg.goos }}
-          GOARCH: ${{ matrix.cfg.goarch }}
-          #CC: ${{ matrix.cfg.cc }}
-          #CCX: ${{ matrix.cfg.cxx }}
+
       - name: Prepare artifacts
         id: artifacts
         run: |
@@ -214,10 +154,11 @@ jobs:
           if [ "${{ github.event.inputs.tag }}" == "" ]; then
             ARTIFACT_NAME=Ikemen_GO-dev-${{ matrix.cfg.runner_os }}.zip         
             echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+            echo "${{ needs.tag.outputs.buildTime }}" > external/script/version
           else
-            ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.latestTag }}-${{ matrix.cfg.runner_os }}.zip
+            ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.version }}-${{ matrix.cfg.runner_os }}.zip
             echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
-            echo "${{ needs.tag.outputs.latestTag }}" > external/script/version
+            echo "${{ needs.tag.outputs.version }}" > external/script/version
           fi
           if [ "$RUNNER_OS" == "Windows" ]; then
             "/c/Program Files/7-Zip/7z.exe" a ../$ARTIFACT_NAME *
@@ -264,13 +205,13 @@ jobs:
           allowUpdates: true
           artifactErrorsFailBuild: true
           artifacts: "${{ steps.artifacts.outputs.artifact }}"
-          body: |
-            ${{ needs.tag.outputs.changelog }}
+          # body: |
+          #   ${{ needs.tag.outputs.changelog }}
           discussionCategory: ${{ github.event.inputs.discussionCategory }}
           draft: ${{ github.event.inputs.draft }}
-          generateReleaseNotes: false
+          generateReleaseNotes: true
           makeLatest: ${{ github.event.inputs.makeLatest }}
-          name: ${{ needs.tag.outputs.latestTag }}
+          name: ${{ needs.tag.outputs.version }}
           omitBody: false
           omitBodyDuringUpdate: false
           omitDraftDuringUpdate: true
@@ -281,5 +222,5 @@ jobs:
           removeArtifacts: false
           replacesArtifacts: true
           skipIfReleaseExists: false
-          tag: ${{ needs.tag.outputs.latestTag }}
+          tag: ${{ needs.tag.outputs.version }}
           updateOnlyUnreleased: false
