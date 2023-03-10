@@ -37,6 +37,7 @@ name: releases
 jobs:
   tag:
     name: prepare tag
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     outputs:
       version: ${{ env.version }}
@@ -63,6 +64,7 @@ jobs:
 
   build:
     name: prepare release
+    if: ${{ github.actor != 'dependabot[bot]' }}
     needs: tag
     strategy:
       matrix:

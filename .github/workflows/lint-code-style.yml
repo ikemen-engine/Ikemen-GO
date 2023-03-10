@@ -9,6 +9,7 @@ name: lint-code-style
 jobs:
   lint-code-style:
     name: style linters
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out Git repository
