@@ -5436,7 +5436,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, []string{def, "", sys.motifDir, "data/"},
 				sys.cgi[pn].ikemenver[0] == 0 &&
-				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+					sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 				return nil, err
 			}
 		}
@@ -5445,7 +5445,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	if len(cmd) > 0 {
 		if err := c.stateCompile(states, cmd, []string{def, "", sys.motifDir, "data/"},
 			sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
@@ -5453,7 +5453,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motifDir, "data/"},
 			sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
