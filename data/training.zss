@@ -9,7 +9,7 @@
 #===============================================================================
 # Functions
 #===============================================================================
-[Function fTrainingRecovery(pn)]
+[Function TrainingRecovery(pn)]
 if player($pn),ctrl = 0 {
 	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectid: player($pn),id}
 } else if player($pn),map(_iksys_trainingDummyCounter) >= 60 {
@@ -40,10 +40,10 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	}
 	# Life and Power recovery
 	for i = 1; player(1),numPartner + 1; 1 {
-		call fTrainingRecovery($i * 2 - 1);
+		call TrainingRecovery($i * 2 - 1);
 	}
 	for i = 1; player(2),numPartner + 1; 1 {
-		call fTrainingRecovery($i * 2);
+		call TrainingRecovery($i * 2);
 	}
 	# Dummy Control: Cooperative
 	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {

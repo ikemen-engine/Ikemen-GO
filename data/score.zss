@@ -7,12 +7,6 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 	# do nothing, global code disabled locally or executed by stage
 } else if roundState = 0 {
 	map(_iksys_scoreTimeVitalFlag) := 0;
-	map(_iksys_scoreConsecutiveWinsFlag) := 0;
-	map(_iksys_scoreReceivedDamage) := 0;
-	map(_iksys_scoreComboCount) := 0;
-	map(_iksys_scoreFirstAttackFlag) := 0;
-	map(_iksys_scoreMoveCounteredFlag) := 0;
-	map(_iksys_scoreWinFlag) := 0;
 } else if roundState = 4 && !isHelper {
 	# score: time vital bonus
 	if win && map(_iksys_scoreTimeVitalFlag) = 0 && alive {
@@ -49,108 +43,103 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 			map(_iksys_scoreTimeVitalFlag) := 1;
 		}
 	}
-	# score: consecutive wins bonus
-	if playerNo = teamSide {
-		if win && matchOver && consecutiveWins > 0 && (roundNo > 1 || matchNo > 1) && map(_iksys_scoreConsecutiveWinsFlag) = 0 && !isHomeTeam && enemy,aiLevel > 0 {
-			scoreAdd{value: 30000 + (consecutiveWins - 1) * 10000}
-			map(_iksys_scoreConsecutiveWinsFlag) := 1;
-		}
-	}
-} else ignoreHitPause if roundState > 0 {
-	# score: damage bonus
-	if receivedDamage != map(_iksys_scoreReceivedDamage) {
-		if receivedDamage > 0 && getHitVar(score) = 0 && getHitVar(playerNo) != 0 && playerId(getHitVar(id)),teamSide != teamSide {
-			let dmgMul = 0;
-			switch getHitVar(attr) {
-			# normal attacks
-			case [const(AttrStandingHyperAttack), const(AttrAerialHyperAttack)]:
-				let dmgMul = 10;
-			case [const(AttrStandingSpecialAttack), const(AttrAerialSpecialAttack)]:
-				let dmgMul = 9;
-			case [const(AttrStandingNormalAttack), const(AttrAerialNormalAttack)]:
-				let dmgMul = 8;
-			# throws
-			case [const(AttrStandingHyperThrow), const(AttrAerialHyperThrow)]:
-				let dmgMul = 10;
-			case [const(AttrStandingSpecialThrow), const(AttrAerialSpecialThrow)]:
-				let dmgMul = 9;
-			case [const(AttrStandingNormalThrow), const(AttrAerialNormalThrow)]:
-				let dmgMul = 8;
-			# projectiles
-			case [const(AttrStandingHyperProjectile), const(AttrAerialHyperProjectile)]:
-				let dmgMul = 10;
-			case [const(AttrStandingSpecialProjectile), const(AttrAerialSpecialProjectile)]:
-				let dmgMul = 9;
-			case [const(AttrStandingNormalProjectile), const(AttrAerialNormalProjectile)]:
-				let dmgMul = 8;
-			}
-			if $dmgMul > 0 {
-				scoreAdd{value: round((receivedDamage - map(_iksys_scoreReceivedDamage)) * $dmgMul, -2); redirectid: getHitVar(id)}
-			}
-		}
-		map(_iksys_scoreReceivedDamage) := receivedDamage;
-	}
+} else ignoreHitPause if roundState >= 2 {
 	# score: first attack bonus
-	if firstAttack && map(_iksys_scoreFirstAttackFlag) = 0 {
+	let ret = call FirstAttack();
+	if $ret {
 		scoreAdd{value: 1500}
-		map(_iksys_scoreFirstAttackFlag) := 1;
 	}
 	# score: counter bonus
-	if moveCountered = 1 && map(_iksys_scoreMoveCounteredFlag) = 0 {
+	let ret = call CounterHit();
+	if $ret {
 		scoreAdd{value: 100}
-		map(_iksys_scoreMoveCounteredFlag) := 1;
-	} else if moveCountered = 0 && map(_iksys_scoreMoveCounteredFlag) = 1 {
-		map(_iksys_scoreMoveCounteredFlag) := 0;
 	}
+	# score: damage bonus
+	let ret = call ReceivedDamage();
+	if $ret && getHitVar(score) = 0 {
+		let dmgMul = 0;
+		switch getHitVar(attr) {
+		# normal attacks
+		case [const(AttrStandingHyperAttack), const(AttrAerialHyperAttack)]:
+			let dmgMul = 10;
+		case [const(AttrStandingSpecialAttack), const(AttrAerialSpecialAttack)]:
+			let dmgMul = 9;
+		case [const(AttrStandingNormalAttack), const(AttrAerialNormalAttack)]:
+			let dmgMul = 8;
+		# throws
+		case [const(AttrStandingHyperThrow), const(AttrAerialHyperThrow)]:
+			let dmgMul = 10;
+		case [const(AttrStandingSpecialThrow), const(AttrAerialSpecialThrow)]:
+			let dmgMul = 9;
+		case [const(AttrStandingNormalThrow), const(AttrAerialNormalThrow)]:
+			let dmgMul = 8;
+		# projectiles
+		case [const(AttrStandingHyperProjectile), const(AttrAerialHyperProjectile)]:
+			let dmgMul = 10;
+		case [const(AttrStandingSpecialProjectile), const(AttrAerialSpecialProjectile)]:
+			let dmgMul = 9;
+		case [const(AttrStandingNormalProjectile), const(AttrAerialNormalProjectile)]:
+			let dmgMul = 8;
+		}
+		if $dmgMul > 0 {
+			scoreAdd{value: round($ret * $dmgMul, -2); redirectid: getHitVar(id)}
+		}
+	}	
 	# code executed only by P1 and P2
 	if playerNo = teamSide && !isHelper {
-		# score: combo bonus
-		if comboCount != map(_iksys_scoreComboCount) {
-			if comboCount = 0 && map(_iksys_scoreComboCount) >= 2 {
-				switch map(_iksys_scoreComboCount) {
-				case 2:
-					scoreAdd{value: 300}
-				case 3:
-					scoreAdd{value: 500}
-				case 4:
-					scoreAdd{value: 1000}
-				case 5:
-					scoreAdd{value: 1200}
-				case 6:
-					scoreAdd{value: 1500}
-				case 7:
-					scoreAdd{value: 2000}
-				case 8:
-					scoreAdd{value: 2300}
-				case 9:
-					scoreAdd{value: 2600}
-				case 10:
-					scoreAdd{value: 3000}
-				case 11:
-					scoreAdd{value: 3300}
-				case 12:
-					scoreAdd{value: 3600}
-				case 13:
-					scoreAdd{value: 4000}
-				case 14:
-					scoreAdd{value: 4500}
-				default:
-					scoreAdd{value: min(10000, 5000 + (map(_iksys_scoreComboCount) - 15) * 1000)}
-				}
-			}
-			map(_iksys_scoreComboCount) := comboCount;
-		}
-		# score: win type bonus
-		if win && map(_iksys_scoreWinFlag) = 0 {
-			if winPerfect {
-				scoreAdd{value: 15000}
-			}
-			if winHyper {
-				scoreAdd{value: 10000}
-			} else if winSpecial {
+		# score: combo count bonus
+		let ret = call ComboCount();
+		if $ret {
+			switch $ret {
+			case 2:
+				scoreAdd{value: 300}
+			case 3:
+				scoreAdd{value: 500}
+			case 4:
+				scoreAdd{value: 1000}
+			case 5:
+				scoreAdd{value: 1200}
+			case 6:
+				scoreAdd{value: 1500}
+			case 7:
+				scoreAdd{value: 2000}
+			case 8:
+				scoreAdd{value: 2300}
+			case 9:
+				scoreAdd{value: 2600}
+			case 10:
 				scoreAdd{value: 3000}
+			case 11:
+				scoreAdd{value: 3300}
+			case 12:
+				scoreAdd{value: 3600}
+			case 13:
+				scoreAdd{value: 4000}
+			case 14:
+				scoreAdd{value: 4500}
+			default:
+				scoreAdd{value: min(10000, 5000 + ($ret - 15) * 1000)}
 			}
-			map(_iksys_scoreWinFlag) := 1;
+		}
+		# score: win perfect bonus
+		let ret = call WinPerfect();
+		if $ret {
+			scoreAdd{value: 15000}
+		}
+		# score: win hyper bonus
+		let ret = call WinHyper();
+		if $ret {
+			scoreAdd{value: 10000}
+		}
+		# score: win special bonus
+		let ret = call WinSpecial();
+		if $ret {
+			scoreAdd{value: 3000}
+		}
+		# score: win streak bonus
+		let ret = call WinStreak();
+		if $ret {
+			scoreAdd{value: 30000 + ($ret - 1) * 10000}
 		}
 	}
 }

@@ -18,6 +18,7 @@
     "loop()"
   ],
   "CommonStates": [
+    "data/functions.zss",
     "data/action.zss",
     "data/dizzy.zss",
     "data/guardbreak.zss",

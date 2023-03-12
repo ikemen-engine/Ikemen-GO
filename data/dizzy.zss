@@ -3,7 +3,7 @@
 # Functions
 #===============================================================================
 # Dizzy Bird Helper
-[Function fDizzyBirdHelper()]
+[Function DizzyBirdHelper()]
 if !numHelper(const(StateDizzyBirdsHelper)) {
 	# Background
 	explod{
@@ -29,7 +29,7 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 }
 
 # Dizzy Bird Explod Creation [from Helper]
-[Function fDizzyBirdExplodCreation(arg)]
+[Function DizzyBirdExplodCreation(arg)]
 if !numExplod($arg) {
 	explod{
 		id: $arg;
@@ -43,7 +43,7 @@ if !numExplod($arg) {
 }
 
 # Dizzy Bird Explod Update [from Helper]
-[Function fDizzyBirdExplodUpdate(arg)]
+[Function DizzyBirdExplodUpdate(arg)]
 if numExplod($arg) {
 	let circleTime = ((gameTime % 90) + 22.5 * $arg) / 45.0 * pi;
 	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
@@ -63,7 +63,7 @@ if numExplod($arg) {
 }
 
 # Dizzy Hit Ground Explod (direct copy from common1)
-[Function fDizzyHitGroundExplod(vely)]
+[Function DizzyHitGroundExplod(vely)]
 explod{
 	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
 	postype: p1;
@@ -119,10 +119,10 @@ if map(birdState) <= 0 {
 	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.10;
 
 	# Create dizzy bird explods
-	call fDizzyBirdExplodCreation(0);
-	call fDizzyBirdExplodCreation(1);
-	call fDizzyBirdExplodCreation(2);
-	call fDizzyBirdExplodCreation(3);
+	call DizzyBirdExplodCreation(0);
+	call DizzyBirdExplodCreation(1);
+	call DizzyBirdExplodCreation(2);
+	call DizzyBirdExplodCreation(3);
 
 	# Play sound again as soon as it stops
 	# Volume goes down as character recovers from dizzy
@@ -138,10 +138,10 @@ if map(birdState) <= 0 {
 
 # Update dizzy bird explods
 # Replaces creating new explods every frame
-call fDizzyBirdExplodUpdate(0);
-call fDizzyBirdExplodUpdate(1);
-call fDizzyBirdExplodUpdate(2);
-call fDizzyBirdExplodUpdate(3);
+call DizzyBirdExplodUpdate(0);
+call DizzyBirdExplodUpdate(1);
+call DizzyBirdExplodUpdate(2);
+call DizzyBirdExplodUpdate(3);
 
 #===============================================================================
 # StateDizzyFallDown_standCrouch
@@ -168,7 +168,7 @@ if anim = [const(AnimStandOrAirHitHigh_hard), const(AnimStandOrAirHitLow_hard)] 
 	stateTypeSet{statetype: C}
 }
 if (anim = const(AnimCrouchHit_hard) && animTime = 0) || time > 26 {
-	call fDizzyHitGroundExplod(0);
+	call DizzyHitGroundExplod(0);
 	selfState{value: const(StateDizzyLyingDown)}
 }
 
@@ -230,7 +230,7 @@ if anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall) + 
 	velSet{y: 0}
 	posFreeze{}
 	persistent(0) if getHitVar(fall.yVel) {
-		call fDizzyHitGroundExplod(floor(vel y));
+		call DizzyHitGroundExplod(floor(vel y));
 	}
 }
 
@@ -252,7 +252,7 @@ persistent(0) if anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9]
 # Hit ground from bounce
 if anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9] {
 	if vel y > 0 && pos y >= const(movement.down.bounce.groundlevel) {
-		call fDizzyHitGroundExplod(floor(vel y));
+		call DizzyHitGroundExplod(floor(vel y));
 		selfState{value: const(StateDizzyLyingDown)}
 	}
 }
@@ -398,7 +398,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Start dizzy behavior
 	if dizzy {
 		# Create dizzy effects
-		call fDizzyBirdHelper();
+		call DizzyBirdHelper();
 
 		# Become invulnerable until moving into Dizzy states for the first time
 		if stateNo != const(StateDizzy) && !map(_iksys_dizzyLimit) {
