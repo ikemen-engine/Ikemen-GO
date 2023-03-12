@@ -21,7 +21,7 @@ const (
 
 type BlendEquation int
 
-const  (
+const (
 	BlendAdd = BlendEquation(iota)
 	BlendReverseSubtract
 )
@@ -97,8 +97,8 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float3
 	//     /       |       \       `.
 	//    o--------o--------o- - - - o
 	//   p1         p2
-	topdist := (x3 - x4) * (1 + float32(tl.sx) / width)
-	botdist := (x2 - x1) * (1 + float32(tl.sx) / width)
+	topdist := (x3 - x4) * (1 + float32(tl.sx)/width)
+	botdist := (x2 - x1) * (1 + float32(tl.sx)/width)
 	if AbsF(topdist) >= 0.01 {
 		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
@@ -109,11 +109,11 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float3
 	xmax := float32(sys.scrrect[2])
 	left, right := int32(0), int32(1)
 	if topdist >= 0.01 {
-		left = 1 - int32(math.Ceil(float64(MaxF(x3 / topdist, x2 / botdist))))
-		right = int32(math.Ceil(float64(MaxF((xmax - x4) / topdist, (xmax - x1) / botdist))))
+		left = 1 - int32(math.Ceil(float64(MaxF(x3/topdist, x2/botdist))))
+		right = int32(math.Ceil(float64(MaxF((xmax-x4)/topdist, (xmax-x1)/botdist))))
 	} else if topdist <= -0.01 {
-		left = 1 - int32(math.Ceil(float64(MaxF((xmax - x3) / -topdist, (xmax - x2) / -botdist))))
-		right = int32(math.Ceil(float64(MaxF(x4 / -topdist, x1 / -botdist))))
+		left = 1 - int32(math.Ceil(float64(MaxF((xmax-x3)/-topdist, (xmax-x2)/-botdist))))
+		right = int32(math.Ceil(float64(MaxF(x4/-topdist, x1/-botdist))))
 	}
 
 	if tl.x != 1 {
@@ -123,8 +123,8 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float3
 
 	// Draw all quads in one loop
 	for n := left; n < right; n++ {
-		x1d, x2d := x1 + float32(n) * botdist, x2 + float32(n) * botdist
-		x3d, x4d := x3 + float32(n) * topdist, x4 + float32(n) * topdist
+		x1d, x2d := x1+float32(n)*botdist, x2+float32(n)*botdist
+		x3d, x4d := x3+float32(n)*topdist, x4+float32(n)*topdist
 		drawQuads(modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 	}
 }
@@ -276,8 +276,8 @@ func RenderSprite(rp RenderParams) {
 	rmInitSub(&rp)
 
 	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
-	tint := [4]float32{float32(rp.tint&0xff)/255, float32(rp.tint>>8&0xff)/255,
-		float32(rp.tint>>16&0xff)/255, float32(rp.tint>>24&0xff)/255}
+	tint := [4]float32{float32(rp.tint&0xff) / 255, float32(rp.tint>>8&0xff) / 255,
+		float32(rp.tint>>16&0xff) / 255, float32(rp.tint>>24&0xff) / 255}
 
 	if rp.pfx != nil {
 		neg, grayscale, padd, pmul = rp.pfx.getFcPalFx(rp.trans == -2)
@@ -334,16 +334,16 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		render(BlendReverseSubtract, BlendOne, BlendOne, 1)
 	case trans <= 0:
 	case trans < 255:
-		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans) / 255)
+		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans)/255)
 	case trans < 512:
 		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
-			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, 1 - float32(dst)/255)
+			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, 1-float32(dst)/255)
 		}
 		if src > 0 {
-			render(BlendAdd, blendSourceFactor, BlendOne, float32(src) / 255)
+			render(BlendAdd, blendSourceFactor, BlendOne, float32(src)/255)
 		}
 	}
 }

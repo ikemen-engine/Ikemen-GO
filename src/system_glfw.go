@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"image"
 
-	glfw "github.com/fyne-io/glfw-js"
 	gl "github.com/fyne-io/gl-js"
+	glfw "github.com/fyne-io/glfw-js"
 )
 
 type Window struct {

@@ -180,7 +180,7 @@ var triggerMap = map[string]int{
 	"enemy":      0,
 	"enemynear":  0,
 	"playerid":   0,
-	"p2":         0,	
+	"p2":         0,
 	"stateowner": 0,
 	// mugen triggers
 	"abs":               1,
@@ -3487,6 +3487,7 @@ func (c *Compiler) stateParam(is IniSection, name string,
 	}
 	return nil
 }
+
 // Returns FX prefix from a data string, removes prefix from the data
 func (c *Compiler) getDataPrefix(data *string, ffxDefault bool) (prefix string) {
 	if len(*data) > 1 {
@@ -4332,7 +4333,7 @@ func (c *Compiler) readSentenceLine(line *string) (s string, assign bool,
 		case ':', ';', '{', '}':
 			if (*line)[i] == ':' && len(*line) > i+1 && (*line)[i+1] == '=' {
 				assign = true
-				offset = i+1
+				offset = i + 1
 				continue
 			}
 			c.token = (*line)[i : i+1]
@@ -4480,6 +4481,7 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 	v := Atoi(t)
 	return v, err
 }
+
 // Sets attributes to a StateBlock, like IgnoreHitPause, Persistent
 func (c *Compiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateBytecode,
 	inheritIhp, nestedInLoop bool) error {
@@ -4644,24 +4646,24 @@ func (c *Compiler) switchBlock(line *string, bl *StateBlock,
 	readNextCase = func(def *StateBlock) (*StateBlock, error) {
 		expr := ""
 		switch c.token {
-			case "case":
-			case "default":
-				if def != nil {
-					return nil, Error("Default already defined")
-				}
-				c.scan(line)
-				expr = "1"
-				def = newStateBlock()
-				if err := compileCaseBlock(def, &expr); err != nil {
-					return nil, err
-				}
-				// See if default is the last case defined in this switch statement,
-				// return default block if that's the case
-				if c.token == "}" {
-					return def, nil
-				}
-			default:
-				return nil, Error("Expected case or default")
+		case "case":
+		case "default":
+			if def != nil {
+				return nil, Error("Default already defined")
+			}
+			c.scan(line)
+			expr = "1"
+			def = newStateBlock()
+			if err := compileCaseBlock(def, &expr); err != nil {
+				return nil, err
+			}
+			// See if default is the last case defined in this switch statement,
+			// return default block if that's the case
+			if c.token == "}" {
+				return def, nil
+			}
+		default:
+			return nil, Error("Expected case or default")
 		}
 		// We loop through all possible expressions in this case, separated by ;
 		// Creating an equality/or expression string in the process
@@ -4695,7 +4697,7 @@ func (c *Compiler) switchBlock(line *string, bl *StateBlock,
 			if def != nil {
 				sbl.elseBlock = def
 			}
-		// If not, we have another case to check
+			// If not, we have another case to check
 		} else if sbl.elseBlock, err = readNextCase(def); err != nil {
 			return nil, err
 		}
@@ -4964,10 +4966,10 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 		case "break", "continue":
 			if bl.nestedInLoop {
 				switch c.token {
-					case "break":
-						*ctrls = append(*ctrls, LoopBreak{})
-					case "continue":
-						*ctrls = append(*ctrls, LoopContinue{})
+				case "break":
+					*ctrls = append(*ctrls, LoopBreak{})
+				case "continue":
+					*ctrls = append(*ctrls, LoopContinue{})
 				}
 				c.scan(line)
 				if err := c.needToken(";"); err != nil {
@@ -5434,7 +5436,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, []string{def, "", sys.motifDir, "data/"},
 				sys.cgi[pn].ikemenver[0] == 0 &&
-				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+					sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 				return nil, err
 			}
 		}
@@ -5443,7 +5445,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	if len(cmd) > 0 {
 		if err := c.stateCompile(states, cmd, []string{def, "", sys.motifDir, "data/"},
 			sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
@@ -5451,7 +5453,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motifDir, "data/"},
 			sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}

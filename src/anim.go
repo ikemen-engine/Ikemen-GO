@@ -969,7 +969,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		if sys.stage.sdw.yscale > 0 {
 			xshear = -xshear
 		}
-		xshearoff := -sys.stage.sdw.xshear*(float32(s.anim.spr.Size[1])*sys.stage.localscl-s.pos[1])
+		xshearoff := -sys.stage.sdw.xshear * (float32(s.anim.spr.Size[1])*sys.stage.localscl - s.pos[1])
 		if s.window[0] != 0 || s.window[1] != 0 || s.window[2] != 0 || s.window[3] != 0 {
 			w := s.window
 			w[1], w[3] = -w[1], -w[3]

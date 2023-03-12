@@ -9,6 +9,7 @@ import (
 )
 
 // Main entry point for C programs
+//
 //export GoMain
 func GoMain() {
 	main()

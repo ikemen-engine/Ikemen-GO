@@ -261,7 +261,7 @@ func FileExist(filename string) string {
 	return ""
 }
 
-//SearchFile returns full path to specified file
+// SearchFile returns full path to specified file
 func SearchFile(file string, dirs []string) string {
 	file = strings.Replace(file, "\\", "/", -1)
 	for _, v := range dirs {
@@ -736,7 +736,7 @@ func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
 	is.ReadBool(pre+"invertall", &al.palfx.invertall)
 	var n float32
 	if is.ReadF32(pre+"color", &n) {
-		al.palfx.color = n/256
+		al.palfx.color = n / 256
 	}
 }
 

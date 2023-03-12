@@ -43,15 +43,15 @@ static kinc_g4_shader_t *load_shader(const char *filename, kinc_g4_shader_type_t
 */
 import "C"
 
-var BlendEquationLUT = map[BlendEquation]C.kinc_g4_blending_operation_t {
-	BlendAdd: C.KINC_G4_BLENDOP_ADD,
+var BlendEquationLUT = map[BlendEquation]C.kinc_g4_blending_operation_t{
+	BlendAdd:             C.KINC_G4_BLENDOP_ADD,
 	BlendReverseSubtract: C.KINC_G4_BLENDOP_REVERSE_SUBTRACT,
 }
 
-var BlendFunctionLUT = map[BlendFunc]C.kinc_g4_blending_factor_t {
-	BlendOne: C.KINC_G4_BLEND_ONE,
-	BlendZero: C.KINC_G4_BLEND_ZERO,
-	BlendSrcAlpha: C.KINC_G4_BLEND_SOURCE_ALPHA,
+var BlendFunctionLUT = map[BlendFunc]C.kinc_g4_blending_factor_t{
+	BlendOne:              C.KINC_G4_BLEND_ONE,
+	BlendZero:             C.KINC_G4_BLEND_ZERO,
+	BlendSrcAlpha:         C.KINC_G4_BLEND_SOURCE_ALPHA,
 	BlendOneMinusSrcAlpha: C.KINC_G4_BLEND_INV_SOURCE_ALPHA,
 }
 
@@ -66,8 +66,8 @@ type Texture struct {
 	handle *C.kinc_g4_texture_t
 }
 
-var TextureFormatLUT = map[int32]C.kinc_image_format_t {
-	8: C.KINC_IMAGE_FORMAT_GREY8,
+var TextureFormatLUT = map[int32]C.kinc_image_format_t{
+	8:  C.KINC_IMAGE_FORMAT_GREY8,
 	24: C.KINC_IMAGE_FORMAT_RGB24,
 	32: C.KINC_IMAGE_FORMAT_RGBA32,
 }
@@ -77,9 +77,9 @@ func newTexture(width, height, depth int32, filter bool) (t *Texture) {
 	t = &Texture{width, height, depth, filter, handle}
 
 	C.kinc_g4_texture_init(t.handle,
-		 C.int(width), C.int(height), TextureFormatLUT[depth])
+		C.int(width), C.int(height), TextureFormatLUT[depth])
 
-	runtime.SetFinalizer(t, func (t *Texture) {
+	runtime.SetFinalizer(t, func(t *Texture) {
 		sys.mainThreadTask <- func() {
 			C.kinc_g4_texture_destroy(t.handle)
 			C.free(unsafe.Pointer(t.handle))
@@ -94,8 +94,8 @@ func (t *Texture) SetData(data []byte) {
 	stride := C.kinc_g4_texture_stride(t.handle)
 	rowBytes := t.width * (t.depth / 8)
 	for j := int32(0); j < t.height; j++ {
-		src := unsafe.Pointer(&data[j * rowBytes])
-		dst := unsafe.Add(unsafe.Pointer(pixels), uintptr(j) * uintptr(stride))
+		src := unsafe.Pointer(&data[j*rowBytes])
+		dst := unsafe.Add(unsafe.Pointer(pixels), uintptr(j)*uintptr(stride))
 		C.memcpy(dst, src, C.size_t(rowBytes))
 	}
 	C.kinc_g4_texture_unlock(t.handle)
@@ -109,15 +109,15 @@ func (t *Texture) IsValid() bool {
 // Pipeline
 
 type PipelineParams struct {
-	eq BlendEquation
+	eq  BlendEquation
 	src BlendFunc
 	dst BlendFunc
 }
 
 type Pipeline struct {
 	kp *C.kinc_g4_pipeline_t
-	u map[string]C.kinc_g4_constant_location_t
-	t map[string]C.kinc_g4_texture_unit_t
+	u  map[string]C.kinc_g4_constant_location_t
+	t  map[string]C.kinc_g4_texture_unit_t
 }
 
 func (p *Pipeline) RegisterTextures(names ...string) {
@@ -140,14 +140,14 @@ func (p *Pipeline) RegisterUniforms(names ...string) {
 // Renderer
 
 type Renderer struct {
-	layout *C.kinc_g4_vertex_structure_t
-	indexBuffer *C.kinc_g4_index_buffer_t
+	layout       *C.kinc_g4_vertex_structure_t
+	indexBuffer  *C.kinc_g4_index_buffer_t
 	vertexBuffer *C.kinc_g4_vertex_buffer_t
 	// All pipelines use the same shaders
-	vertexShader *C.kinc_g4_shader_t
+	vertexShader   *C.kinc_g4_shader_t
 	fragmentShader *C.kinc_g4_shader_t
 	// The rendering pipelines
-	pipelineCache map[PipelineParams]*Pipeline
+	pipelineCache   map[PipelineParams]*Pipeline
 	currentPipeline *Pipeline
 }
 
@@ -194,8 +194,8 @@ func (r *Renderer) EndFrame() {
 	C.kinc_g4_end(0)
 }
 
-func (r *Renderer) SetPipeline (eq BlendEquation, src, dst BlendFunc) {
-	params := PipelineParams{ eq, src, dst }
+func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
+	params := PipelineParams{eq, src, dst}
 	p, ok := r.pipelineCache[params]
 	if !ok {
 		// Parameters are unknown, compile a pipeline on-the-fly and cache it
@@ -218,7 +218,7 @@ func (r *Renderer) SetPipeline (eq BlendEquation, src, dst BlendFunc) {
 
 		C.kinc_g4_pipeline_compile(kp)
 
-		p = &Pipeline{ kp: kp }
+		p = &Pipeline{kp: kp}
 		p.u = make(map[string]C.kinc_g4_constant_location_t)
 		p.t = make(map[string]C.kinc_g4_texture_unit_t)
 		p.RegisterUniforms("modelview", "projection", "x1x2x4x3",
@@ -234,7 +234,7 @@ func (r *Renderer) SetPipeline (eq BlendEquation, src, dst BlendFunc) {
 func (r *Renderer) ReleasePipeline() {
 }
 
-func (r *Renderer) ReadPixels(data[]uint8, width, height int) {
+func (r *Renderer) ReadPixels(data []uint8, width, height int) {
 	sys.errLog.Printf("STUB: ReadPixels()")
 }
 
@@ -243,7 +243,7 @@ func (r *Renderer) Scissor(x, y, width, height int32) {
 }
 
 func (r *Renderer) DisableScissor() {
-	C.kinc_g4_disable_scissor();
+	C.kinc_g4_disable_scissor()
 }
 
 func (r *Renderer) SetUniformI(name string, val int) {
@@ -254,10 +254,14 @@ func (r *Renderer) SetUniformI(name string, val int) {
 func (r *Renderer) SetUniformF(name string, val ...float32) {
 	loc := r.currentPipeline.u[name]
 	switch len(val) {
-	case 1: C.kinc_g4_set_float(loc, C.float(val[0]))
-	case 2: C.kinc_g4_set_float2(loc, C.float(val[0]), C.float(val[1]))
-	case 3: C.kinc_g4_set_float3(loc, C.float(val[0]), C.float(val[1]), C.float(val[2]))
-	case 4: C.kinc_g4_set_float4(loc, C.float(val[0]), C.float(val[1]), C.float(val[2]), C.float(val[3]))
+	case 1:
+		C.kinc_g4_set_float(loc, C.float(val[0]))
+	case 2:
+		C.kinc_g4_set_float2(loc, C.float(val[0]), C.float(val[1]))
+	case 3:
+		C.kinc_g4_set_float3(loc, C.float(val[0]), C.float(val[1]), C.float(val[2]))
+	case 4:
+		C.kinc_g4_set_float4(loc, C.float(val[0]), C.float(val[1]), C.float(val[2]), C.float(val[3]))
 	}
 }
 
@@ -274,22 +278,22 @@ func (r *Renderer) SetUniformMatrix(name string, val []float32) {
 func (r *Renderer) SetTexture(name string, t *Texture) {
 	unit := r.currentPipeline.t[name]
 	C.kinc_g4_set_texture(unit, t.handle)
-	C.kinc_g4_set_texture_addressing(unit, C.KINC_G4_TEXTURE_DIRECTION_U, C.KINC_G4_TEXTURE_ADDRESSING_CLAMP);
-	C.kinc_g4_set_texture_addressing(unit, C.KINC_G4_TEXTURE_DIRECTION_V, C.KINC_G4_TEXTURE_ADDRESSING_CLAMP);
+	C.kinc_g4_set_texture_addressing(unit, C.KINC_G4_TEXTURE_DIRECTION_U, C.KINC_G4_TEXTURE_ADDRESSING_CLAMP)
+	C.kinc_g4_set_texture_addressing(unit, C.KINC_G4_TEXTURE_DIRECTION_V, C.KINC_G4_TEXTURE_ADDRESSING_CLAMP)
 	if t.filter {
-		C.kinc_g4_set_texture_minification_filter(unit, C.KINC_G4_TEXTURE_FILTER_LINEAR);
-		C.kinc_g4_set_texture_magnification_filter(unit, C.KINC_G4_TEXTURE_FILTER_LINEAR);
+		C.kinc_g4_set_texture_minification_filter(unit, C.KINC_G4_TEXTURE_FILTER_LINEAR)
+		C.kinc_g4_set_texture_magnification_filter(unit, C.KINC_G4_TEXTURE_FILTER_LINEAR)
 	} else {
-		C.kinc_g4_set_texture_minification_filter(unit, C.KINC_G4_TEXTURE_FILTER_POINT);
-		C.kinc_g4_set_texture_magnification_filter(unit, C.KINC_G4_TEXTURE_FILTER_POINT);
+		C.kinc_g4_set_texture_minification_filter(unit, C.KINC_G4_TEXTURE_FILTER_POINT)
+		C.kinc_g4_set_texture_magnification_filter(unit, C.KINC_G4_TEXTURE_FILTER_POINT)
 	}
-	C.kinc_g4_set_texture_mipmap_filter(unit, C.KINC_G4_MIPMAP_FILTER_NONE);
+	C.kinc_g4_set_texture_mipmap_filter(unit, C.KINC_G4_MIPMAP_FILTER_NONE)
 }
 
 func (r *Renderer) SetVertexData(values ...float32) {
 	data := C.kinc_g4_vertex_buffer_lock_all(r.vertexBuffer)
 	for i := 0; i < len(values); i++ {
-		dst := unsafe.Add(unsafe.Pointer(data), uintptr(i * 4))
+		dst := unsafe.Add(unsafe.Pointer(data), uintptr(i*4))
 		*(*float32)(dst) = values[i]
 	}
 	C.kinc_g4_vertex_buffer_unlock_all(r.vertexBuffer)

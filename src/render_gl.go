@@ -12,21 +12,21 @@ import (
 	"golang.org/x/mobile/exp/f32"
 )
 
-var InternalFormatLUT = map[int32]gl.Enum {
-	8: gl.LUMINANCE,
+var InternalFormatLUT = map[int32]gl.Enum{
+	8:  gl.LUMINANCE,
 	24: gl.RGB,
 	32: gl.RGBA,
 }
 
-var BlendEquationLUT = map[BlendEquation]gl.Enum {
-	BlendAdd: gl.FUNC_ADD,
+var BlendEquationLUT = map[BlendEquation]gl.Enum{
+	BlendAdd:             gl.FUNC_ADD,
 	BlendReverseSubtract: gl.FUNC_REVERSE_SUBTRACT,
 }
 
-var BlendFunctionLUT = map[BlendFunc]gl.Enum {
-	BlendOne: gl.ONE,
-	BlendZero: gl.ZERO,
-	BlendSrcAlpha: gl.SRC_ALPHA,
+var BlendFunctionLUT = map[BlendFunc]gl.Enum{
+	BlendOne:              gl.ONE,
+	BlendZero:             gl.ZERO,
+	BlendSrcAlpha:         gl.SRC_ALPHA,
 	BlendOneMinusSrcAlpha: gl.ONE_MINUS_SRC_ALPHA,
 }
 
@@ -119,7 +119,7 @@ type Texture struct {
 // Generate a new texture name
 func newTexture(width, height, depth int32, filter bool) (t *Texture) {
 	t = &Texture{width, height, depth, filter, gl.CreateTexture()}
-	runtime.SetFinalizer(t, func (t *Texture) {
+	runtime.SetFinalizer(t, func(t *Texture) {
 		sys.mainThreadTask <- func() {
 			gl.DeleteTexture(t.handle)
 		}
@@ -154,15 +154,15 @@ func (t *Texture) IsValid() bool {
 // Renderer
 
 type Renderer struct {
-	fbo           gl.Framebuffer
-	fbo_texture   gl.Texture
+	fbo         gl.Framebuffer
+	fbo_texture gl.Texture
 	// Normal rendering
-	rbo_depth     gl.Renderbuffer
+	rbo_depth gl.Renderbuffer
 	// MSAA rendering
 	fbo_f         gl.Framebuffer
 	fbo_f_texture *Texture
 	// Post-processing shaders
-	postVertBuffer gl.Buffer
+	postVertBuffer   gl.Buffer
 	postShaderSelect []*ShaderProgram
 	// Shader and vertex data for primitive rendering
 	spriteShader *ShaderProgram
@@ -320,7 +320,7 @@ func (r *Renderer) EndFrame() {
 	gl.DisableVertexAttribArray(postShader.aVert)
 }
 
-func (r *Renderer) SetPipeline (eq BlendEquation, src, dst BlendFunc) {
+func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
 	gl.UseProgram(r.spriteShader.program)
 
 	gl.BlendEquation(BlendEquationLUT[eq])
@@ -342,7 +342,7 @@ func (r *Renderer) ReleasePipeline() {
 	gl.Disable(gl.BLEND)
 }
 
-func (r *Renderer) ReadPixels(data[]uint8, width, height int) {
+func (r *Renderer) ReadPixels(data []uint8, width, height int) {
 	r.EndFrame()
 	gl.ReadPixels(data, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
 	r.BeginFrame(false)
@@ -350,7 +350,7 @@ func (r *Renderer) ReadPixels(data[]uint8, width, height int) {
 
 func (r *Renderer) Scissor(x, y, width, height int32) {
 	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(x, sys.scrrect[3] - (y + height), width, height)
+	gl.Scissor(x, sys.scrrect[3]-(y+height), width, height)
 }
 
 func (r *Renderer) DisableScissor() {
@@ -365,19 +365,26 @@ func (r *Renderer) SetUniformI(name string, val int) {
 func (r *Renderer) SetUniformF(name string, values ...float32) {
 	loc := r.spriteShader.u[name]
 	switch len(values) {
-	case 1: gl.Uniform1f(loc, values[0])
-	case 2: gl.Uniform2f(loc, values[0], values[1])
-	case 3: gl.Uniform3f(loc, values[0], values[1], values[2])
-	case 4: gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
+	case 1:
+		gl.Uniform1f(loc, values[0])
+	case 2:
+		gl.Uniform2f(loc, values[0], values[1])
+	case 3:
+		gl.Uniform3f(loc, values[0], values[1], values[2])
+	case 4:
+		gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
 	}
 }
 
 func (r *Renderer) SetUniformFv(name string, values []float32) {
 	loc := r.spriteShader.u[name]
 	switch len(values) {
-	case 2: gl.Uniform2fv(loc, values)
-	case 3: gl.Uniform3fv(loc, values)
-	case 4: gl.Uniform4fv(loc, values)
+	case 2:
+		gl.Uniform2fv(loc, values)
+	case 3:
+		gl.Uniform3fv(loc, values)
+	case 4:
+		gl.Uniform4fv(loc, values)
 	}
 }
 

@@ -2957,9 +2957,9 @@ func (mo *LifeBarMode) draw(layerno int16, f []*Fnt) {
 }
 
 type Lifebar struct {
-	at        AnimationTable
-	sff       *Sff
-	snd       *Snd
+	at         AnimationTable
+	sff        *Sff
+	snd        *Snd
 	fnt        [10]*Fnt
 	ref        [2]int
 	order      [2][]int

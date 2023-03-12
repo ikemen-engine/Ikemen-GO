@@ -58,12 +58,12 @@ func (w *Window) SetSwapInterval(interval int) {
 }
 
 func (w *Window) GetSize() (int, int) {
-        return w.width, w.height
+	return w.width, w.height
 }
 
 func (w *Window) GetClipboardString() (string, error) {
 	// TODO
-        return "", nil
+	return "", nil
 }
 
 func (w *Window) toggleFullscreen() {
