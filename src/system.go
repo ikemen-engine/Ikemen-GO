@@ -278,9 +278,9 @@ type System struct {
 	//FLAC_FrameWait          int
 
 	// Common Files
-	commonAir    string
-	commonCmd    string
-	commonConst  string
+	commonAir    []string
+	commonCmd    []string
+	commonConst  []string
 	commonFx     []string
 	commonLua    []string
 	commonStates []string

@@ -370,6 +370,21 @@ func HasExtension(file, ext string) bool {
 	return match
 }
 
+func sliceContains(s []string, str string, lower bool) bool {
+	if lower {
+		strings.ToLower(str)
+	}
+	for _, v := range s {
+		if lower {
+			strings.ToLower(v)
+		}
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
 func sliceInsertInt(array []int, value int, index int) []int {
 	return append(array[:index], append([]int{value}, array[index:]...)...)
 }
