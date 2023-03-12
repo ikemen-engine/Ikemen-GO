@@ -3,64 +3,87 @@
 #===============================================================================
 [StateDef -4]
 
-if !const(Default.Enable.Action) || teamSide = 0 {
+if !const(Default.Enable.Action) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by stage
-} else if isHelper {
-	# Parry
-	ignoreHitPause if helperName = "Parry Detection" && moveHit = 1 {
-		lifebarAction{spr: const(MsgParry), 0}
-	}
 } else if roundState = 0 {
 	map(_iksys_actionFirstAttackFlag) := 0;
 	map(_iksys_actionMoveCounteredFlag) := 0;
 	map(_iksys_actionCanRecoverFlag) := 0;
-	map(_iksys_actionMoveReversedFlag) := 0;
+	map(_iksys_actionReversalFlag) := 0;
+	map(_iksys_actionParryFlag) := 0;
+	map(_iksys_actionJustDefendFlag) := 0;
+	map(_iksys_actionJustDefendTimer) := 0;
 	map(_iksys_actionDangerFlag) := 0;
 	map(_iksys_actionDizzyFlag) := 0;
 	map(_iksys_actionGuardBreak) := 0;
 	map(_iksys_actionDownFlag) := 0;
 	map(_iksys_actionComboCount) := 0;
 	map(_iksys_actionWinFlag) := 0;
-} else if roundState >= 2 {
+} else ignoreHitPause if roundState >= 2 {
 	# First Attack
 	if firstAttack && map(_iksys_actionFirstAttackFlag) = 0 {
-		lifebarAction{spr: const(MsgFirstAttack), 0}
+		lifebarAction{spr: const(MsgFirstAttack), 0; top: 1}
 		map(_iksys_actionFirstAttackFlag) := 1;
 	}
 	# Counter Hit
 	if moveCountered = 1 && map(_iksys_actionMoveCounteredFlag) = 0 {
-		lifebarAction{spr: const(MsgCounterHit), 0}
+		lifebarAction{spr: const(MsgCounterHit), 0; top: 1}
 		map(_iksys_actionMoveCounteredFlag) := 1;
 	} else if moveCountered = 0 && map(_iksys_actionMoveCounteredFlag) = 1 {
 		map(_iksys_actionMoveCounteredFlag) := 0;
 	}
 	# Technical
-	if canRecover && stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)] && map(_iksys_actionCanRecoverFlag) = 0 {
-		lifebarAction{spr: const(MsgTechnical), 0}
+	if stateNo = [const(StateAirGetHit_fallRecoveryOnGround), const(StateAirGetHit_fallRecoveryInAir)] && map(_iksys_actionCanRecoverFlag) = 0 {
+		lifebarAction{spr: const(MsgTechnical), 0; top: 1}
 		map(_iksys_actionCanRecoverFlag) := 1;
-	} else if !canRecover && map(_iksys_actionCanRecoverFlag) = 1 {
+	} else if stateNo != [const(StateAirGetHit_fallRecoveryOnGround), const(StateAirGetHit_fallRecoveryInAir)] {
 		map(_iksys_actionCanRecoverFlag) := 0;
 	}
 	# Reversal
-	if moveReversed = 1 && map(_iksys_actionMoveReversedFlag) = 0 {
-		lifebarAction{spr: const(MsgReversal), 0; redirectid: enemy,id}
-		map(_iksys_actionMoveReversedFlag) := 1;
-	} else if moveReversed = 0 && map(_iksys_actionMoveReversedFlag) = 1 {
-		map(_iksys_actionMoveReversedFlag) := 0;
+	map(_iksys_actionReversalFrame2) := map(_iksys_actionReversalFrame1);
+	map(_iksys_actionReversalFrame1) := map(_iksys_actionReversalFrame0);
+	map(_iksys_actionReversalFrame0) := ifelse(moveType = H || stateNo = const(StateDownedGetHit_gettingUp), 2, ifelse(moveType != H && stateNo = [1000, 4999], 1, 0));
+	if map(_iksys_actionReversalFlag) = 0 {
+		if map(_iksys_actionReversalFrame2) = 2 && (map(_iksys_actionReversalFrame1) = 1 || map(_iksys_actionReversalFrame0) = 1) {
+			lifebarAction{spr: const(MsgReversal), 0; top: 1}
+			map(_iksys_actionReversalFlag) := 1;
+			}
+	} else if map(_iksys_actionReversalFrame1) != 1 && map(_iksys_actionReversalFrame0) != 1 {
+			map(_iksys_actionReversalFlag) := 0;
+	}
+	# Parry
+	if moveReversed = 1 && map(_iksys_actionParryFlag) = 0 {
+		if !inCustomState && numEnemy {
+			lifebarAction{spr: const(MsgParry), 0; top: 1; redirectId: enemy,id}
+			map(_iksys_actionParryFlag) := 1;
+		}
+	} else if moveReversed = 0 {
+		map(_iksys_actionParryFlag) := 0;
 	}
 	# Hit Overridden (Parry)
 	#if hitOverridden {
 		#lifebarAction{spr: const(MsgParry), 0}
 	#}
+	# Just Defended
+	if (command = "holdback" || stateNo = [const(StateStandGuardHit_shaking), const(StateAirGuardHit_knockedAway)]) && map(_iksys_actionJustDefendFlag) = 0 {
+		if stateNo = [const(StateStandGuardHit_shaking), const(StateAirGuardHit_knockedAway)] && map(_iksys_actionJustDefendTimer) < 3 {
+			lifebarAction{spr: const(MsgJustDefend), 0; top: 1}
+			map(_iksys_actionJustDefendFlag) := 1;
+		}
+		map(_iksys_actionJustDefendTimer) := (map(_iksys_actionJustDefendTimer) + 1);
+	} else if stateNo != [const(StateGuard_start), const(StateAirGuardHit_knockedAway)] {
+				map(_iksys_actionJustDefendFlag) := 0;
+				map(_iksys_actionJustDefendTimer) := 0;
+	}
 	# Danger
 	if life > 0 && float(life) / lifeMax <= 0.3 && map(_iksys_actionDangerFlag) = 0 {
-		lifebarAction{spr: const(MsgDanger), 0; timeMul: 2}
+		lifebarAction{spr: const(MsgDanger), 0; timeMul: 2; top: 1}
 		map(_iksys_actionDangerFlag) := 1;
 	}
 	# Dizzy
 	if dizzy {
 		if map(_iksys_actionDizzyFlag) = 0 {
-			lifebarAction{spr: const(MsgDizzy), 0; timeMul: 2}
+			lifebarAction{spr: const(MsgDizzy), 0; timeMul: 2; top: 1}
 			map(_iksys_actionDizzyFlag) := 1;
 		}
 	} else if map(_iksys_actionDizzyFlag) = 1 {
@@ -69,7 +92,7 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 	# Guard Break
 	if guardBreak {
 		if map(_iksys_actionGuardBreak) = 0 {
-			lifebarAction{spr: const(MsgGuardBreak), 0; timeMul: 2}
+			lifebarAction{spr: const(MsgGuardBreak), 0; timeMul: 2; top: 1}
 			map(_iksys_actionGuardBreak) := 1;
 		}
 	} else if map(_iksys_actionGuardBreak) = 1 {
@@ -77,26 +100,26 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 	}
 	# Partner Down
 	if numPartner > 0 && !alive && map(_iksys_actionDownFlag) = 0 {
-		lifebarAction{spr: const(MsgPartnerDown), 0; timeMul: 2}
+		lifebarAction{spr: const(MsgPartnerDown), 0; timeMul: 2; top: 1}
 		map(_iksys_actionDownFlag) := 1;
 	}
-	# code executed only by P1 and P2
+	# Code executed only by P1 and P2
 	if playerNo = teamSide {
 		# Combo
 		if comboCount != map(_iksys_actionComboCount) {
 			if comboCount < map(_iksys_actionComboCount) {
 				if map(_iksys_actionComboCount) >= 25 {
-					lifebarAction{spr: const(MsgCombo25), 0} # gdlk combo (mugen)
+					lifebarAction{spr: const(MsgCombo25), 0; top: 1} # gdlk combo (mugen)
 				} else if map(_iksys_actionComboCount) >= 20 {
-					lifebarAction{spr: const(MsgCombo20), 0} # amazing combo (marvelous)
+					lifebarAction{spr: const(MsgCombo20), 0; top: 1} # amazing combo (marvelous)
 				} else if map(_iksys_actionComboCount) >= 15 {
-					lifebarAction{spr: const(MsgCombo15), 0} # great combo (fantastic)
+					lifebarAction{spr: const(MsgCombo15), 0; top: 1} # great combo (fantastic)
 				} else if map(_iksys_actionComboCount) >= 10 {
-					lifebarAction{spr: const(MsgCombo10), 0} # sweet combo (beautiful)
+					lifebarAction{spr: const(MsgCombo10), 0; top: 1} # sweet combo (beautiful)
 				} else if map(_iksys_actionComboCount) >= 5 {
-					lifebarAction{spr: const(MsgCombo5), 0} # good combo (great)
+					lifebarAction{spr: const(MsgCombo5), 0; top: 1} # good combo (great)
 				} else if map(_iksys_actionComboCount) >= 3 {
-					lifebarAction{spr: const(MsgCombo3), 0} # nice combo (good)
+					lifebarAction{spr: const(MsgCombo3), 0; top: 1} # nice combo (good)
 				}
 			}
 			map(_iksys_actionComboCount) := comboCount;
@@ -104,12 +127,12 @@ if !const(Default.Enable.Action) || teamSide = 0 {
 		# Win
 		if win && map(_iksys_actionWinFlag) = 0 {
 			if winPerfect {
-				lifebarAction{spr: const(MsgWinPerfect), 0; timeMul: 3}
+				lifebarAction{spr: const(MsgWinPerfect), 0; timeMul: 3; top: 1}
 			}
 			if winHyper {
-				lifebarAction{spr: const(MsgWinHyper), 0; timeMul: 3}
+				lifebarAction{spr: const(MsgWinHyper), 0; timeMul: 3; top: 1}
 			} else if winSpecial {
-				lifebarAction{spr: const(MsgWinSpecial), 0; timeMul: 3}
+				lifebarAction{spr: const(MsgWinSpecial), 0; timeMul: 3; top: 1}
 			}
 			map(_iksys_actionWinFlag) := 1;
 		}
