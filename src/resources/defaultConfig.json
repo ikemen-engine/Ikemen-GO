@@ -10,9 +10,15 @@
   "BarStun": false,
   "Borderless": false,
   "ComboExtraFrameWindow": 0,
-  "CommonAir": "data/common.air",
-  "CommonCmd": "data/common.cmd",
-  "CommonConst": "data/common.const",
+  "CommonAir": [
+    "data/common.air"
+  ],
+  "CommonCmd": [
+    "data/common.cmd"
+  ],
+  "CommonConst": [
+    "data/common.const"
+  ],
   "CommonFx": [],
   "CommonLua": [
     "loop()"
