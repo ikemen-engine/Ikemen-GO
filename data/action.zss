@@ -65,7 +65,7 @@ if !const(Default.Enable.Action) || isHelper || teamSide = 0 {
 		#lifebarAction{spr: const(MsgParry), 0}
 	#}
 	# Just Defended
-	if (command = "holdback" || stateNo = [const(StateStandGuardHit_shaking), const(StateAirGuardHit_knockedAway)]) && map(_iksys_actionJustDefendFlag) = 0 {
+	if (command = "holdback" || stateNo = [const(StateGuard_start), const(StateAirGuardHit_knockedAway)]) && map(_iksys_actionJustDefendFlag) = 0 {
 		if stateNo = [const(StateStandGuardHit_shaking), const(StateAirGuardHit_knockedAway)] && map(_iksys_actionJustDefendTimer) < 3 {
 			lifebarAction{spr: const(MsgJustDefend), 0; top: 1}
 			map(_iksys_actionJustDefendFlag) := 1;
