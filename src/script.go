@@ -3952,13 +3952,6 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
 		case "roundfreeze":
 			l.Push(lua.LBool(sys.sf(GSF_roundfreeze)))
-		// SystemCharFlag
-		case "over":
-			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))
-		case "koroundmiddle":
-			l.Push(lua.LBool(sys.debugWC.scf(SCF_ko_round_middle)))
-		case "disabled":
-			l.Push(lua.LBool(sys.debugWC.scf(SCF_disabled)))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -4067,6 +4060,33 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "standby", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.scf(SCF_standby)))
+		return 1
+	})
+	luaRegister(l, "systemflag", func(*lua.LState) int {
+		switch strArg(l, 1) {
+		case "ko":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_ko)))
+		case "ctrl":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_ctrl)))
+		case "standby":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_standby)))
+		case "guard":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_guard)))
+		case "airjump":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_airjump)))
+		case "over":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))
+		case "koroundmiddle":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_ko_round_middle)))
+		case "dizzy":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_dizzy)))
+		case "guardbreak":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_guardbreak)))
+		case "disabled":
+			l.Push(lua.LBool(sys.debugWC.scf(SCF_disabled)))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	luaRegister(l, "teamleader", func(*lua.LState) int {

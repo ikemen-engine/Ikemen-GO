@@ -380,6 +380,7 @@ var triggerMap = map[string]int{
 	"stagefrontedge":   1,
 	"stagetime":        1,
 	"standby":          1,
+	"systemflag":       1,
 	"teamleader":       1,
 	"teamsize":         1,
 	"timeelapsed":      1,
@@ -2813,6 +2814,39 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_stagetime)
 	case "standby":
 		out.append(OC_ex_, OC_ex_standby)
+	case "systemflag":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "ko":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_ko))
+		case "ctrl":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_ctrl))
+		case "standby":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_standby))
+		case "guard":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_guard))
+		case "airjump":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_airjump))
+		case "over":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_over))
+		case "koroundmiddle":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_ko_round_middle))
+		case "dizzy":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_dizzy))
+		case "guardbreak":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_guardbreak))
+		case "disabled":
+			out.appendI32Op(OC_ex_systemflag, int32(SCF_disabled))
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
 	case "teamleader":
 		out.append(OC_ex_, OC_ex_teamleader)
 	case "teamsize":
