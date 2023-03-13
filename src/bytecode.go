@@ -516,6 +516,7 @@ const (
 	OC_ex_bgmlength
 	OC_ex_bgmposition
 	OC_ex_systemflag
+	OC_ex_keyctrl
 )
 const (
 	NumVar     = 60
@@ -2057,6 +2058,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_systemflag:
 		sys.bcStack.PushB(c.scf(SystemCharFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
 		*i += 4
+	case OC_ex_keyctrl:
+		sys.bcStack.PushB(c.keyctrl[0] && c.cmd != nil)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

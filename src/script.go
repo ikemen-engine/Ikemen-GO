@@ -3961,6 +3961,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.isHost()))
 		return 1
 	})
+	luaRegister(l, "keyctrl", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil))
+		return 1
+	})
 	luaRegister(l, "localscale", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.localscl))
 		return 1
