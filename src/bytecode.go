@@ -1902,8 +1902,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_attack:
 		sys.bcStack.PushF(c.attackMul * 100)
 	case OC_ex_buffer:
-		sys.bcStack.PushI(c.cmd[c.playerNo].Buffer.reflect(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]))
-		*i += 4
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[c.playerNo].Buffer.Reflect(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]))
+			*i += 4
+		} else {
+			sys.bcStack.PushI(0)
+		}
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:

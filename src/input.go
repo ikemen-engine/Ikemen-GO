@@ -266,7 +266,7 @@ func NewCommandBuffer() (c *CommandBuffer) {
 	c.Reset()
 	return
 }
-func (__ *CommandBuffer) reflect(field string) int32 {
+func (__ *CommandBuffer) Reflect(field string) int32 {
     val := reflect.ValueOf(__).Elem().FieldByName(field)
     if val.IsValid() {
         return int32(val.Int())
