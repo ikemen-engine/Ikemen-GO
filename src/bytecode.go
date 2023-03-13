@@ -8217,6 +8217,39 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type systemFlagSet StateControllerBase
+
+const (
+	systemFlagSet_flag byte = iota
+	systemFlagSet_value
+	systemFlagSet_redirectid
+)
+
+func (sc systemFlagSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	var flag SystemCharFlag
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case systemFlagSet_flag:
+			flag = SystemCharFlag(exp[0].evalI(c))
+		case systemFlagSet_value:
+			if exp[0].evalB(c) {
+				crun.setSCF(flag)
+			} else {
+				crun.unsetSCF(flag)
+			}
+		case systemFlagSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType

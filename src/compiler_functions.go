@@ -4538,6 +4538,57 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 	})
 	return *ret, err
 }
+func (c *Compiler) systemFlagSet(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*systemFlagSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			systemFlagSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		f := false
+		if err := c.stateParam(is, "flag", func(data string) error {
+			f = true
+			if len(data) == 0 {
+				return Error("Value not specified")
+			}
+			switch strings.ToLower(data) {
+			case "ko":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_ko)))
+			case "ctrl":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_ctrl)))
+			case "standby":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_standby)))
+			case "guard":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_guard)))
+			case "airjump":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_airjump)))
+			case "over":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_over)))
+			case "koroundmiddle":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_ko_round_middle)))
+			case "dizzy":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_dizzy)))
+			case "guardbreak":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_guardbreak)))
+			case "disabled":
+				sc.add(systemFlagSet_flag, sc.iToExp(int32(SCF_disabled)))
+			default:
+				return Error("Invalid value: " + data)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if !f {
+			return Error("flag parameter not specified")
+		}
+		if err := c.paramValue(is, sc, "value",
+			systemFlagSet_value, VT_Bool, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 
 // It's just a Null... Has no effect whatsoever.
 func (c *Compiler) null(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
