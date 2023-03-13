@@ -3778,6 +3778,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.attackMul * 100))
 		return 1
 	})
+	luaRegister(l, "buffer", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.cmd[sys.debugWC.playerNo].Buffer.reflect((strArg(l, 1)))))
+		return 1
+	})
 	luaRegister(l, "combocount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.comboCount()))
 		return 1

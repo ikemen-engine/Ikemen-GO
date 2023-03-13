@@ -322,6 +322,7 @@ var triggerMap = map[string]int{
 	"animelemlength":   1,
 	"animlength":       1,
 	"attack":           1,
+	"buffer":           1,
 	"bgmlength":        1,
 	"bgmposition":      1,
 	"combocount":       1,
@@ -785,17 +786,14 @@ func (c *Compiler) checkOpeningBracket(in *string) error {
 	return nil
 }
 
-/*
-TODO: Case sensitive maps
-
-	func (c *Compiler) checkOpeningBracketCS(in *string) error {
-		if c.tokenizerCS(in) != "(" {
-			return Error("Missing '(' after " + c.token)
-		}
-		c.token = c.tokenizerCS(in)
-		return nil
+func (c *Compiler) checkOpeningBracketCS(in *string) error {
+	if c.tokenizerCS(in) != "(" {
+		return Error("Missing '(' after " + c.token)
 	}
-*/
+	c.token = c.tokenizerCS(in)
+	return nil
+}
+
 func (c *Compiler) checkClosingBracket() error {
 	c.reverseOrder = true
 	if c.token != ")" {
@@ -2548,6 +2546,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_animlength)
 	case "attack":
 		out.append(OC_ex_, OC_ex_attack)
+	case "buffer":
+		if err := c.checkOpeningBracketCS(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		out.appendI32Op(OC_ex_buffer, int32(sys.stringPool[c.playerNo].Add(c.token)))
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}	
 	case "combocount":
 		out.append(OC_ex_, OC_ex_combocount)
 	case "consecutivewins":

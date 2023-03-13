@@ -455,6 +455,7 @@ const (
 	OC_ex_animelemlength
 	OC_ex_animlength
 	OC_ex_attack
+	OC_ex_buffer
 	OC_ex_combocount
 	OC_ex_consecutivewins
 	OC_ex_defence
@@ -1900,6 +1901,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.anim.totaltime)
 	case OC_ex_attack:
 		sys.bcStack.PushF(c.attackMul * 100)
+	case OC_ex_buffer:
+		sys.bcStack.PushI(c.cmd[c.playerNo].Buffer.reflect(sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]))
+		*i += 4
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:

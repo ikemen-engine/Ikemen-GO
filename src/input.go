@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"net"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -264,6 +265,13 @@ func NewCommandBuffer() (c *CommandBuffer) {
 	c = &CommandBuffer{}
 	c.Reset()
 	return
+}
+func (__ *CommandBuffer) reflect(field string) int32 {
+    val := reflect.ValueOf(__).Elem().FieldByName(field)
+    if val.IsValid() {
+        return int32(val.Int())
+    }
+    return 0
 }
 func (__ *CommandBuffer) Reset() {
 	*__ = CommandBuffer{B: -1, D: -1, F: -1, U: -1,
