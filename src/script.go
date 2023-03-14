@@ -3786,6 +3786,10 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "ctrlover", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.ctrlOver()))
+		return 1
+	})
 	luaRegister(l, "combocount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.comboCount()))
 		return 1

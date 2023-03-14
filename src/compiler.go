@@ -325,6 +325,7 @@ var triggerMap = map[string]int{
 	"buffer":           1,
 	"bgmlength":        1,
 	"bgmposition":      1,
+	"ctrlover":         1,
 	"combocount":       1,
 	"consecutivewins":  1,
 	"jugglepoints":     1,
@@ -2559,7 +2560,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
-		}	
+		}
+	case "ctrlover":
+		out.append(OC_ex_, OC_ex_ctrlover)
 	case "combocount":
 		out.append(OC_ex_, OC_ex_combocount)
 	case "consecutivewins":
