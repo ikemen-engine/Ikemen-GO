@@ -4025,6 +4025,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.redLife))
 		return 1
 	})
+	luaRegister(l, "roundend", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.roundEnd()))
+		return 1
+	})
 	luaRegister(l, "roundtype", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.roundType()))
 		return 1

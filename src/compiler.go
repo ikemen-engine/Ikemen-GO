@@ -371,6 +371,7 @@ var triggerMap = map[string]int{
 	"redlife":          1,
 	"reversaldefattr":  1,
 	"round":            1,
+	"roundend":         1,
 	"roundtype":        1,
 	"score":            1,
 	"scoretotal":       1,
@@ -2784,6 +2785,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_receivedhits)
 	case "redlife":
 		out.append(OC_ex_, OC_ex_redlife)
+	case "roundend":
+		out.append(OC_ex_, OC_ex_roundend)
 	case "roundtype":
 		out.append(OC_ex_, OC_ex_roundtype)
 	case "score":
