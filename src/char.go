@@ -5117,12 +5117,12 @@ func (c *Char) bind() {
 				c.setBindTime(0)
 				return
 			}
-			//if !math.IsNaN(float64(c.bindPos[0])) {
-			//c.setXV(c.facing * bt.facing * bt.vel[0])
-			//}
-			//if !math.IsNaN(float64(c.bindPos[1])) {
-			//c.setYV(bt.vel[1])
-			//}
+			if !math.IsNaN(float64(c.bindPos[0])) {
+			c.setXV(c.facing * bt.facing * bt.vel[0])
+			}
+			if !math.IsNaN(float64(c.bindPos[1])) {
+			c.setYV(bt.vel[1])
+			}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
 			f := bt.facing
@@ -5549,6 +5549,20 @@ func (c *Char) actionRun() {
 		c.minus = 0
 		c.ss.sb.run(c)
 	}
+	if !c.hitPause() {
+		if !c.sf(CSF_frontwidth) {
+			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
+		}
+		if !c.sf(CSF_backwidth) {
+			c.width[1] = c.defBW() * ((320 / c.localcoord) / c.localscl)
+		}
+		if !c.sf(CSF_frontedge) {
+			c.edge[0] = 0
+		}
+		if !c.sf(CSF_backedge) {
+			c.edge[1] = 0
+		}
+	}
 	if !c.pauseBool {
 		if !c.hitPause() {
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
@@ -5556,6 +5570,16 @@ func (c *Char) actionRun() {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1, "")
 			}
+			for {
+				c.posUpdate()
+				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
+					c.ss.no == 105 {
+					break
+				}
+				c.changeState(52, -1, -1, "")
+			}
+			c.setFacing(c.p1facing)
+			c.p1facing = 0
 			if c.ss.no != 5120 || c.ss.time != 0 {
 				c.ss.time++
 			}
@@ -5600,16 +5624,12 @@ func (c *Char) actionRun() {
 			c.gi().pctime++
 		}
 		c.gi().projidcount = 0
-		// Set vel on binded targets
+	}
+	c.xScreenBound()
+	if !c.pauseBool {
 		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && t.bindTime > 0 && !t.sf(CSF_destroy) &&
-				t.bindToId == c.id {
-				if !math.IsNaN(float64(t.bindPos[0])) {
-					t.setXV(t.facing * c.facing * c.vel[0])
-				}
-				if !math.IsNaN(float64(t.bindPos[1])) {
-					t.setYV(c.vel[1])
-				}
+			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
+				t.bind()
 			}
 		}
 	}
@@ -5623,20 +5643,6 @@ func (c *Char) actionFinish() {
 	}
 	// Hack: temporal change to minus == 0 to avoid frame locks
 	c.minus = 0
-	if !c.hitPause() {
-		if !c.sf(CSF_frontwidth) {
-			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
-		}
-		if !c.sf(CSF_backwidth) {
-			c.width[1] = c.defBW() * ((320 / c.localcoord) / c.localscl)
-		}
-		if !c.sf(CSF_frontedge) {
-			c.edge[0] = 0
-		}
-		if !c.sf(CSF_backedge) {
-			c.edge[1] = 0
-		}
-	}
 	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
@@ -5645,28 +5651,9 @@ func (c *Char) actionFinish() {
 			if c.ss.no == 5120 && c.ss.time == 0 {
 				c.ss.time++
 			}
-			for {
-				c.posUpdate()
-				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
-					c.ss.no == 105 {
-					break
-				}
-				c.changeState(52, -1, -1, "")
-				c.ss.time++
-			}
-			c.setFacing(c.p1facing)
-			c.p1facing = 0
 		}
 		if c.palfx != nil && c.ownpal {
 			c.palfx.step()
-		}
-	}
-	c.xScreenBound()
-	if !c.pauseBool {
-		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
-				t.bind()
-			}
 		}
 	}
 	c.minus = 1
@@ -6194,21 +6181,8 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 		cl.runOrder[i].actionRun()
 	}
 	// Finish performing character actions
-	// Process priority based on movetype: A > I > H (or anything else)
 	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].actionFinish()
-		}
-	}
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType == MT_I {
-			cl.runOrder[i].actionFinish()
-		}
-	}
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType != MT_A && cl.runOrder[i].ss.moveType != MT_I {
-			cl.runOrder[i].actionFinish()
-		}
+		cl.runOrder[i].actionFinish()
 	}
 	// Update chars
 	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
