@@ -132,24 +132,27 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 	vmin, vmax float32, pause bool) (sclMul float32) {
 	tension := MaxF(0, c.halfWidth/c.Scale-float32(c.tension)*c.localscl)
 	tmp, vx := (leftest+rightest)/2, vmin+vmax
-	if vx == 0 || (vx < 0) == (tmp < 0) {
-		vel := float32(3)
-		if sys.intro > sys.lifebar.ro.ctrl_time+1 {
-			vel = c.halfWidth
-		} else if pause {
-			vel = 2
-		}
-		if tmp < 0 {
-			vx -= vel
-		} else {
-			vx += vel
-		}
+	// Set base horizontal vel
+	vel := float32(3)
+	if sys.intro > sys.lifebar.ro.ctrl_time+1 {
+		vel = c.halfWidth
+	} else if pause {
+		vel = 2
 	}
+	vel *= 2
+	// Apply base vel to average vel
+	if tmp < 0 {
+		vx -= vel
+	} else {
+		vx += vel
+	}
+	// Interpolate horizontal vel through GameSpeed/Turbo
 	if sys.debugPaused() {
 		vx = 0
 	} else {
 		vx *= MinF(1, sys.turbo)
 	}
+	// Make sure chars will stay behind tension limits if one of them isn't in a corner
 	if vx < 0 {
 		tmp = MaxF(leftest+tension, tmp)
 		if vx < tmp {
