@@ -1,0 +1,104 @@
+[Function InGuardState() ret]
+let ret = 0;
+if (stateNo = 120 || stateNo = [130, 132] || stateNo = 140 || stateNo = [150, 155]) {
+	let ret = 1;
+}
+
+[StateDef -5]
+
+let inGuardState = call InGuardState();
+
+systemFlagSet{flag: guard; value: 0}
+if !(systemFlag(ko) || ctrlOver) &&
+	((systemFlag(ctrl) || stateNo = 52) &&
+		moveType = I || $inGuardState = 1) &&
+	(buffer(B) > 0 || isAsserted(autoguard)) &&
+	(stateType = S && !isAsserted(nostandguard) ||
+		stateType = C && !isAsserted(nocrouchguard) ||
+		stateType = A && !isAsserted(noairguard)) {
+	systemFlagSet{flag: guard; value: 1}
+}
+
+if pauseTime = 0 {
+	if stateType = A {
+		if buffer(U) < 0 {
+			systemFlagSet{flag: airjump; value: 1}
+		} else {
+			map(airJumpCount) := 0;
+			systemFlagSet{flag: airjump; value: 0}
+		}
+	}
+	if ctrl && (keyCtrl || !isHelper) {
+		if !isAsserted(nohardcodedkeys) {
+			if !isAsserted(nojump) && !roundEnd && stateType = S && buffer(U) > 0 {
+				if stateNo != 40 {
+					changeState{value: 40; continue: 1}
+				}
+			} else if !isAsserted(noairjump) && stateType = A && systemFlag(airjump) &&
+				pos Y <= const(movement.airjump.height) &&
+				map(airJumpCount) < const(movement.airjump.num) &&
+				buffer(U) > 0 {
+				if stateNo != 45 || time > 0 {
+					mapAdd{map: "airJumpCount"; value: 1}
+					systemFlagSet{flag: airjump; value: 0}
+					changeState{value: 45; continue: 1}
+				}
+			} else {
+				if !isAsserted(nocrouch) && stateType = S && buffer(D) > 0 {
+					if stateNo != 10 {
+						if stateNo != 100 {
+							velSet{x: 0}
+						}
+						changeState{value: 10; continue: 1}
+					}
+				} else if !isAsserted(nostand) && stateType = C && buffer(D) < 0 {
+					if stateNo != 12 {
+						changeState{value: 12; continue: 1}
+					}
+				} else if !isAsserted(nowalk) && stateType = S &&
+					(buffer(F) > 0 || !(inGuardDist && systemFlag(guard)) &&
+						buffer(B) > 0) {
+					if stateNo != 20 {
+						changeState{value: 20; continue: 1}
+					}
+				} else if !isAsserted(nobrake) && stateNo = 20 &&
+					buffer(B) < 0 && buffer(F) < 0 {
+					changeState{value: 0; continue: 1}
+				}
+				if inGuardDist && systemFlag(guard) && buffer(B) > 0 &&
+					$inGuardState = 0 {
+					changeState{value: 120; continue: 1}
+				}
+			}
+		}
+	} else {
+		switch stateNo {
+		case 11:
+			if !isAsserted(nostand) {
+				changeState{value: 12; continue: 1}
+			}
+		case 20:
+			if !isAsserted(nobrake) && buffer(U) < 0 && buffer(D) < 0 &&
+				buffer(B) < 0 && buffer(F) < 0 {
+				changeState{value: 0; continue: 1}
+			}
+		}
+	}
+	if hitPauseTime = 0 {
+		if !isAsserted(noautoturn) && stateNo = 52 {
+			turn{}
+		}
+		if !roundEnd {
+			if alive && life > 0 {
+				systemFlagSet{flag: over; value: 0}
+				systemFlagSet{flag: koroundmiddle; value: 0}
+			}
+			if stateNo = 5150 || systemFlag(over) {
+				systemFlagSet{flag: koroundmiddle; value: 1}
+			}
+		}
+		if stateNo = 5150 && life <= 0 {
+			systemFlagSet{flag: over; value: 1}
+		}
+	}
+}

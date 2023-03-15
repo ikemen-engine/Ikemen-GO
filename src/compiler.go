@@ -5495,6 +5495,10 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 			return nil, err
 		}
 	}
+	// Compile common0
+	if err := c.stateCompile(states, "common0.zss", def, false, constants); err != nil {
+		return nil, err
+	}
 	// Compile common states from config
 	for _, s := range sys.commonStates {
 		if err := c.stateCompile(states, s, def, false, constants); err != nil {

@@ -5385,98 +5385,104 @@ func (c *Char) actionPrepare() {
 		}
 	}
 	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
-	c.unsetSCF(SCF_guard)
-	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
-		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
-			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
-		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
-		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
-			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
-			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
-		c.setSCF(SCF_guard)
+	// Commented out code has been unhardcoded to StateDef -5 in common0.zss
+	c.minus = -5
+	if sb, ok := c.gi().states[-5]; ok {
+		sb.run(c)
 	}
+	c.minus = 2
+	// c.unsetSCF(SCF_guard)
+	// if !(c.scf(SCF_ko) || c.ctrlOver()) &&
+	// 	((c.scf(SCF_ctrl) || c.ss.no == 52) &&
+	// 		c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
+	// 	(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
+	// 	(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
+	// 		c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
+	// 		c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
+	// 	c.setSCF(SCF_guard)
+	// }
 	if !c.pauseBool {
-		if c.keyctrl[0] && c.cmd != nil {
-			if c.ss.stateType == ST_A {
-				if c.cmd[0].Buffer.U < 0 {
-					c.setSCF(SCF_airjump)
-				}
-			} else {
-				c.airJumpCount = 0
-				c.unsetSCF(SCF_airjump)
-			}
-			if c.ctrl() && (c.key >= 0 || c.helperIndex == 0) {
-				if !c.sf(CSF_nohardcodedkeys) {
-					if !c.sf(CSF_nojump) && !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
-						if c.ss.no != 40 {
-							c.changeState(40, -1, -1, "")
-						}
-					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
-						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
-						c.airJumpCount < c.gi().movement.airjump.num &&
-						c.cmd[0].Buffer.U > 0 {
-						if c.ss.no != 45 || c.ss.time > 0 {
-							c.airJumpCount++
-							c.unsetSCF(SCF_airjump)
-							c.changeState(45, -1, -1, "")
-						}
-					} else {
-						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
-							if c.ss.no != 10 {
-								if c.ss.no != 100 {
-									c.vel[0] = 0
-								}
-								c.changeState(10, -1, -1, "")
-							}
-						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
-							if c.ss.no != 12 {
-								c.changeState(12, -1, -1, "")
-							}
-						} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
-							(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
-								c.cmd[0].Buffer.B > 0) {
-							if c.ss.no != 20 {
-								c.changeState(20, -1, -1, "")
-							}
-						} else if !c.sf(CSF_nobrake) && c.ss.no == 20 &&
-							c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-							c.changeState(0, -1, -1, "")
-						}
-						if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
-							!c.inGuardState() {
-							c.changeState(120, -1, -1, "")
-						}
-					}
-				}
-			} else {
-				switch c.ss.no {
-				case 11:
-					if !c.sf(CSF_nostand) {
-						c.changeState(12, -1, -1, "")
-					}
-				case 20:
-					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
-						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-						c.changeState(0, -1, -1, "")
-					}
-				}
-			}
-		}
+		// if c.keyctrl[0] && c.cmd != nil {
+		// 	if c.ss.stateType == ST_A {
+		// 		if c.cmd[0].Buffer.U < 0 {
+		// 			c.setSCF(SCF_airjump)
+		// 		}
+		// 	} else {
+		// 		c.airJumpCount = 0
+		// 		c.unsetSCF(SCF_airjump)
+		// 	}
+		// 	if c.ctrl() && (c.key >= 0 || c.helperIndex == 0) {
+		// 		if !c.sf(CSF_nohardcodedkeys) {
+		// 			if !c.sf(CSF_nojump) && !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
+		// 				if c.ss.no != 40 {
+		// 					c.changeState(40, -1, -1, "")
+		// 				}
+		// 			} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
+		// 				c.pos[1] <= float32(c.gi().movement.airjump.height) &&
+		// 				c.airJumpCount < c.gi().movement.airjump.num &&
+		// 				c.cmd[0].Buffer.U > 0 {
+		// 				if c.ss.no != 45 || c.ss.time > 0 {
+		// 					c.airJumpCount++
+		// 					c.unsetSCF(SCF_airjump)
+		// 					c.changeState(45, -1, -1, "")
+		// 				}
+		// 			} else {
+		// 				if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
+		// 					if c.ss.no != 10 {
+		// 						if c.ss.no != 100 {
+		// 							c.vel[0] = 0
+		// 						}
+		// 						c.changeState(10, -1, -1, "")
+		// 					}
+		// 				} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
+		// 					if c.ss.no != 12 {
+		// 						c.changeState(12, -1, -1, "")
+		// 					}
+		// 				} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
+		// 					(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
+		// 						c.cmd[0].Buffer.B > 0) {
+		// 					if c.ss.no != 20 {
+		// 						c.changeState(20, -1, -1, "")
+		// 					}
+		// 				} else if !c.sf(CSF_nobrake) && c.ss.no == 20 &&
+		// 					c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+		// 					c.changeState(0, -1, -1, "")
+		// 				}
+		// 				if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
+		// 					!c.inGuardState() {
+		// 					c.changeState(120, -1, -1, "")
+		// 				}
+		// 			}
+		// 		}
+		// 	} else {
+		// 		switch c.ss.no {
+		// 		case 11:
+		// 			if !c.sf(CSF_nostand) {
+		// 				c.changeState(12, -1, -1, "")
+		// 			}
+		// 		case 20:
+		// 			if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
+		// 				c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+		// 				c.changeState(0, -1, -1, "")
+		// 			}
+		// 		}
+		// 	}
+		// }
 		if !c.hitPause() {
-			if !c.sf(CSF_noautoturn) && c.ss.no == 52 {
-				c.turn()
-			}
-			if !sys.roundEnd() {
-				if c.alive() && c.life > 0 {
-					c.unsetSCF(SCF_over | SCF_ko_round_middle)
-				}
-				if c.ss.no == 5150 || c.scf(SCF_over) {
-					c.setSCF(SCF_ko_round_middle)
-				}
-			}
-			if c.ss.no == 5150 && c.life <= 0 {
-				c.setSCF(SCF_over)
-			}
+			// if !c.sf(CSF_noautoturn) && c.ss.no == 52 {
+			// 	c.turn()
+			// }
+			// if !sys.roundEnd() {
+			// 	if c.alive() && c.life > 0 {
+			// 		c.unsetSCF(SCF_over | SCF_ko_round_middle)
+			// 	}
+			// 	if c.ss.no == 5150 || c.scf(SCF_over) {
+			// 		c.setSCF(SCF_ko_round_middle)
+			// 	}
+			// }
+			// if c.ss.no == 5150 && c.life <= 0 {
+			// 	c.setSCF(SCF_over)
+			// }
 			c.specialFlag = 0
 			c.inputFlag = 0
 			c.setSF(CSF_stagebound)

@@ -1,7 +1,7 @@
 package main
 
 import (
-	_ "embed" // Support for go:embed resources
+	"embed" // Support for go:embed resources
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -48,20 +48,33 @@ func closeLog(f *os.File) {
 	f.Close()
 }
 
+//go:embed resources/*
+var resources embed.FS
+
+var resourcesMap = map[string][2]string{
+	"stats": {"resources/stats.json", "save/stats.json"},
+	"common0": {"resources/common0.zss", "data/common0.zss"},
+}
+
 func main() {
-	// Make save directories, if they don't exist
+	// Make directories, if they don't exist
+	os.Mkdir("data", os.ModeSticky|0755)
 	os.Mkdir("save", os.ModeSticky|0755)
 	os.Mkdir("save/replays", os.ModeSticky|0755)
 
 	processCommandLine()
 
-	// Try reading stats
-	if _, err := ioutil.ReadFile("save/stats.json"); err != nil {
-		// If there was an error reading, write an empty json file
-		f, err := os.Create("save/stats.json")
-		chk(err)
-		f.Write([]byte("{}"))
-		chk(f.Close())
+	// Try reading assets
+	for _, v := range resourcesMap {
+		if _, err := ioutil.ReadFile(v[1]); err != nil {
+			// If there was an error reading, copy the file from resources
+			f, err := os.Create(v[1])
+			chk(err)
+			tmp, err := resources.ReadFile(v[0])
+			chk(err)
+			f.Write(tmp)
+			chk(f.Close())
+		}
 	}
 
 	// Setup config values, and get a reference to the config object for the main script and window size
