@@ -5118,10 +5118,10 @@ func (c *Char) bind() {
 				return
 			}
 			if !math.IsNaN(float64(c.bindPos[0])) {
-			c.setXV(c.facing * bt.facing * bt.vel[0])
+				c.setXV(c.facing * bt.facing * bt.vel[0])
 			}
 			if !math.IsNaN(float64(c.bindPos[1])) {
-			c.setYV(bt.vel[1])
+				c.setYV(bt.vel[1])
 			}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
