@@ -6191,9 +6191,7 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 		}
 	}
 	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType != MT_A && cl.runOrder[i].ss.moveType != MT_I {
-			cl.runOrder[i].actionRun()
-		}
+		cl.runOrder[i].actionRun()
 	}
 	// Finish performing character actions
 	// Process priority based on movetype: A > I > H (or anything else)
