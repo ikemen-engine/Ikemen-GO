@@ -6282,10 +6282,6 @@ func (sc remapPal) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				src[1] = exp[1].evalI(c)
 			}
-			if src[0] == -1 {
-				src[0] = 1
-				src[1] = 1
-			}
 		case remapPal_dest:
 			dst := [...]int32{exp[0].evalI(c), -1}
 			if len(exp) > 1 {
