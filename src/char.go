@@ -3492,6 +3492,9 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	h.vel = [3]float32{}
 	if h.ownpal {
 		h.palfx = newPalFX()
+		if c.getPalfx().remap == nil {
+			c.palfx.remap = c.gi().sff.palList.GetPalMap()
+		}
 		tmp := c.getPalfx().remap
 		h.palfx.remap = make([]int, len(tmp))
 		copy(h.palfx.remap, tmp)
@@ -4669,6 +4672,14 @@ func (c *Char) hitFallSet(f int32, xv, yv float32) {
 	}
 }
 func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
+	if dst[0] == -1 {
+		pfx.remap = nil
+		return
+	}
+	if src[0] == -1 {
+		c.forceRemapPal(pfx, dst)
+		return
+	}
 	if src[0] < 0 || src[1] < 0 || dst[0] < 0 || dst[1] < 0 {
 		return
 	}
