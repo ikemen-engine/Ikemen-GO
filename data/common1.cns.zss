@@ -276,6 +276,7 @@ if command != "holdback" || !inGuardDist {
 # GUARD (start)
 [StateDef 120; type: U; physics: U;]
 
+call HiToLoAndLoToHi();
 if time = 0 {
 	changeAnim{value: 120 + (stateType = C) + (stateType = A) * 2}
 	if stateType = S {
@@ -286,7 +287,6 @@ if time = 0 {
 		stateTypeSet{physics: A}
 	}
 }
-call HiToLoAndLoToHi();
 if animTime = 0 {
 	changeState{value: 130 + (stateType = C) + (stateType = A) * 2}
 }
@@ -339,6 +339,7 @@ call StopGuarding();
 # Guard (end)
 [StateDef 140; type: U; physics: U; ctrl: 1;]
 
+call HiToLoAndLoToHi();
 if time = 0 {
 	changeAnim{value: 140 + (stateType = C) + (stateType = A) * 2}
 	if stateType = S {
@@ -349,7 +350,6 @@ if time = 0 {
 		stateTypeSet{physics: A}
 	}
 }
-call HiToLoAndLoToHi();
 
 #-------------------------------------------------------------------------------
 [Function GuardShaking(anim)]
