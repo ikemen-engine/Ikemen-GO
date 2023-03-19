@@ -111,8 +111,8 @@ func IsFinite(f float32) bool {
 	return math.Abs(float64(f)) <= math.MaxFloat64
 }
 func IsNumeric(s string) bool {
-    _, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
-    return err == nil
+	_, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	return err == nil
 }
 func Atoi(str string) int32 {
 	var n int64
