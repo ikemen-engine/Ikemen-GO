@@ -94,30 +94,19 @@ func ReadAnimFrame(line string) *AnimFrame {
 	case len(a) > 0 && a[0] == 'a':
 		af.SrcAlpha, af.DstAlpha = 255, 255
 	}
-	if len(ary) < 8 {
+	if len(ary) < 8 || (len(ary) == 8 && !IsNumeric(ary[7])) {
 		return af
 	}
 	af.Ex = make([][]float32, 3)
-	var f float32
-	if f = float32(Atof(ary[7])); f == 0 {
-		f = 1
-	}
-	af.Ex[2] = append(af.Ex[2], f) // X-Scale
-	if len(ary) < 9 {
+	af.Ex[2] = append(af.Ex[2], float32(Atof(ary[7]))) // X-Scale
+	if len(ary) < 9 || (len(ary) == 9 && !IsNumeric(ary[8])) {
 		return af
 	}
-	if f = float32(Atof(ary[8])); f == 0 {
-		f = 1
-	}
-	af.Ex[2] = append(af.Ex[2], f) // Y-Scale
-	if len(ary) < 10 {
+	af.Ex[2] = append(af.Ex[2], float32(Atof(ary[8]))) // Y-Scale
+	if len(ary) < 10 || !IsNumeric(ary[9]) {
 		return af
 	}
-	f = float32(Atof(ary[9]))
-	af.Ex[2] = append(af.Ex[2], f) // Angle
-	if len(ary) < 11 {
-		return af
-	}
+	af.Ex[2] = append(af.Ex[2], float32(Atof(ary[9]))) // Angle
 	return af
 }
 func (af *AnimFrame) Clsn1() []float32 {
