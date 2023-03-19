@@ -398,7 +398,7 @@ local function f_parse(path)
 			end
 			--text
 			if layer.text ~= '' then
-				layer.text_data = text:create({
+				layer.text_data = text.create({
 					font =   layer.font[1],
 					bank =   layer.font[2],
 					align =  layer.font[3],

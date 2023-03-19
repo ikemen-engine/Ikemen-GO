@@ -384,278 +384,8 @@ end
 main.font = {}
 main.font_def = {}
 
--- Lua Hook System
--- Allows hooking additional code into existing functions, from within external
--- modules, without having to worry as much about your code being removed by
--- engine update.
--- * hook.run(list, ...): Runs all the functions within a certain list.
---   It won't do anything if the list doesn't exist or is empty. ... is any
---   number of arguments, which will be passed to every function in the list.
--- * hook.add(list, name, function): Adds a function to a hook list with a name.
---   It will replace anything in the list with the same name.
--- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
--- Currently there are only few hooks available by default:
--- * loop: global.lua 'loop' function start (called by CommonLua)
--- * loop#[gamemode]: global.lua 'loop' function, limited to the gamemode
--- * main.f_commandLine: main.lua 'f_commandLine' function (before loading)
--- * main.f_default: main.lua 'f_default' function
--- * main.t_itemname: main.lua table entries (modes configuration)
--- * main.menu.loop: main.lua menu loop function (each submenu loop start)
--- * menu.menu.loop: menu.lua menu loop function (each submenu loop start)
--- * options.menu.loop: options.lua menu loop function (each submenu loop start)
--- * motif.setBaseTitleInfo: motif.lua default game mode items assignment
--- * motif.setBaseOptionInfo: motif.lua default option items assignment
--- * motif.setBaseMenuInfo: motif.lua default pause menu items assignment
--- * motif.setBaseTrainingInfo: motif.lua default training menu items assignment
--- * launchFight: start.lua 'launchFight' function (right before match starts)
--- * start.f_selectScreen: start.lua 'f_selectScreen' function (pre layerno=1)
--- * start.f_selectVersus: start.lua 'f_selectVersus' function (pre layerno=1)
--- * start.f_result: start.lua 'f_result' function (pre layerno=1)
--- * start.f_victory: start.lua 'f_victory' function (pre layerno=1)
--- * start.f_continue: start.lua 'f_continue' function (pre layerno=1)
--- * start.f_hiscore: start.lua 'f_hiscore' function (pre layerno=1)
--- * start.f_challenger: start.lua 'f_challenger' function (pre layerno=1)
--- More entry points may be added in future - let us know if your external
--- module needs to hook code in place where it's not allowed yet.
-
-hook = {
-	lists = {}
-}
-function hook.add(list, name, func)
-	if hook.lists[list] == nil then
-		hook.lists[list] = {}
-	end
-	hook.lists[list][name] = func
-end
-function hook.run(list, ...)
-	if hook.lists[list] then
-		for i, k in pairs(hook.lists[list]) do
-			k(...)
-		end
-	end
-end
-function hook.stop(list, name)
-	hook.lists[list][name] = nil
-end
-
-text = {}
-color = {}
-rect = {}
---create text
-function text:create(t)
-	local t = t or {}
-	t.font = t.font or -1
-	t.bank = t.bank or 0
-	t.align = t.align or 0
-	t.text = t.text or ''
-	t.x = t.x or 0
-	t.y = t.y or 0
-	t.scaleX = t.scaleX or 1
-	t.scaleY = t.scaleY or 1
-	t.r = t.r or 255
-	t.g = t.g or 255
-	t.b = t.b or 255
-	t.height = t.height or -1
-	if t.window == nil then t.window = {} end
-	t.window[1] = t.window[1] or 0
-	t.window[2] = t.window[2] or 0
-	t.window[3] = t.window[3] or motif.info.localcoord[1]
-	t.window[4] = t.window[4] or motif.info.localcoord[2]
-	t.defsc = t.defsc or false
-	t.ti = textImgNew()
-	setmetatable(t, self)
-	self.__index = self
-	if t.font ~= -1 then
-		if main.font[t.font .. t.height] == nil then
-			--main.f_loadingRefresh(main.txt_loading)
-			main.font[t.font .. t.height] = fontNew(t.font, t.height)
-			main.f_loadingRefresh(main.txt_loading)
-		end
-		if main.font_def[t.font .. t.height] == nil then
-			main.font_def[t.font .. t.height] = fontGetDef(main.font[t.font .. t.height])
-		end
-		textImgSetFont(t.ti, main.font[t.font .. t.height])
-	end
-	textImgSetBank(t.ti, t.bank)
-	textImgSetAlign(t.ti, t.align)
-	textImgSetText(t.ti, t.text)
-	textImgSetColor(t.ti, t.r, t.g, t.b)
-	if t.defsc then main.f_disableLuaScale() end
-	textImgSetPos(t.ti, t.x + main.f_alignOffset(t.align), t.y)
-	textImgSetScale(t.ti, t.scaleX, t.scaleY)
-	textImgSetWindow(t.ti, t.window[1], t.window[2], t.window[3] - t.window[1], t.window[4] - t.window[2])
-	if t.defsc then main.f_setLuaScale() end
-	return t
-end
-
-text.new = text.create
-
---align text
-function text:setAlign(align)
-	if align:lower() == "left" then
-		self.align = -1
-	elseif align:lower() == "center" or align:lower() == "middle" then
-		self.align = 0
-	elseif align:lower() == "right" then
-		self.align = 1
-	end
-	textImgSetAlign(self.ti,self.align)
-	return self
-end
-
---update text
-function text:update(t)
-	if type(t) == "table" then
-		local ok = false
-		local fontChange = false
-		for k, v in pairs(t) do
-			if self[k] ~= v then
-				if k == 'font' or k == 'height' then
-					fontChange = true
-				end
-				self[k] = v
-				ok = true
-			end
-		end
-		if not ok then return end
-		if fontChange and self.font ~= -1 then
-			if main.font[self.font .. self.height] == nil then
-				main.font[self.font .. self.height] = fontNew(self.font, self.height)
-			end
-			if main.font_def[self.font .. self.height] == nil then
-				main.font_def[self.font .. self.height] = fontGetDef(main.font[self.font .. self.height])
-			end
-			textImgSetFont(self.ti, main.font[self.font .. self.height])
-		end
-		textImgSetBank(self.ti, self.bank)
-		textImgSetAlign(self.ti, self.align)
-		textImgSetText(self.ti, self.text)
-		textImgSetColor(self.ti, self.r, self.g, self.b)
-		if self.defsc then main.f_disableLuaScale() end
-		textImgSetPos(self.ti, self.x + main.f_alignOffset(self.align), self.y)
-		textImgSetScale(self.ti, self.scaleX, self.scaleY)
-		textImgSetWindow(self.ti, self.window[1], self.window[2], self.window[3] - self.window[1], self.window[4] - self.window[2])
-		if self.defsc then main.f_setLuaScale() end
-	else
-		self.text = t
-		textImgSetText(self.ti, self.text)
-	end
-
-	return self
-end
-
---draw text
-function text:draw()
-	if self.font == -1 then return end
-	textImgDraw(self.ti)
-	return self
-end
-
---create color
-function color:new(r, g, b, src, dst)
-	local n = {r = r or 255, g = g or 255, b = b or 255, src = src or 255, dst = dst or 0}
-	setmetatable(n, self)
-	self.__index = self
-	return n
-end
-
---adds rgb (color + color)
-function color.__add(a, b)
-	local r = math.max(0, math.min(a.r + b.r, 255))
-	local g = math.max(0, math.min(a.g + b.g, 255))
-	local b = math.max(0, math.min(a.b + b.b, 255))
-	return color:new(r, g, b, a.src, a.dst)
-end
-
---substracts rgb (color - color)
-function color.__sub(a, b)
-	local r = math.max(0, math.min(a.r - b.r, 255))
-	local g = math.max(0, math.min(a.g - b.g, 255))
-	local b = math.max(0, math.min(a.b - b.b, 255))
-	return color:new(r, g, b, a.src, a.dst)
-end
-
---multiply blend (color * color)
-function color.__mul(a, b)
-	local r = (a.r / 255) * (b.r / 255) * 255
-	local g = (a.g / 255) * (b.g / 255) * 255
-	local b = (a.b / 255) * (b.b / 255) * 255
-	return color:new(r, g, b, a.src, a.dst)
-end
-
---compares r, g, b, src, and dst (color == color)
-function color.__eq(a, b)
-	if a.r == b.r and a.g == b.g and a.b == b.b and a.src == b.src and a.dst == b.dst then
-		return true
-	else
-		return false
-	end
-end
-
---create color from hex value
-function color:fromHex(h)
-	h = tostring(h)
-	if h:sub(0, 1) =="#" then h = h:sub(2, -1) end
-	if h:sub(0, 2) =="0x" then h = h:sub(3, -1) end
-	local r = tonumber(h:sub(1, 2), 16)
-	local g = tonumber(h:sub(3, 4), 16)
-	local b = tonumber(h:sub(5, 6), 16)
-	local src = tonumber(h:sub(7, 8), 16) or 255
-	local dst = tonumber(h:sub(9, 10), 16) or 0
-	return color:new(r, g, b, src, dst)
-end
-
---create string of color converted to hex
-function color:toHex(lua)
-	local r = string.format("%x", self.r)
-	local g = string.format("%x", self.g)
-	local b = string.format("%x", self.b)
-	local src = string.format("%x", self.src)
-	local dst = string.format("%x", self.dst)
-	local hex = tostring((r:len() < 2 and "0") .. r .. (g:len() < 2 and "0") .. g .. (b:len() < 2 and "0") .. b ..(src:len() < 2 and "0") .. src .. (dst:len() < 2 and "0") .. dst)
-	return hex
-end
-
---returns r, g, b, src, dst
-function color:unpack()
-	return tonumber(self.r), tonumber(self.g), tonumber(self.b), tonumber(self.src), tonumber(self.dst)
-end
-
---create rect
-function rect:create(t)
-	local t = t or {}
-	t.x1 = t.x1 or 0
-	t.y1 = t.y1 or 0
-	t.x2 = t.x2 or 0
-	t.y2 = t.y2 or 0
-	t.color = t.color or color:new(t.r, t.g, t.b, t.src, t.dst)
-	t.r, t.g, t.b, t.src, t.dst = t.color:unpack()
-	t.defsc = t.defsc or false
-	setmetatable(t, self)
-	self.__index = self
-	return t
-end
-
-rect.new = rect.create
-
---modify rect
-function rect:update(t)
-	for i, k in pairs(t) do
-		self[i] = k
-	end
-	if t.r or t.g or t.b or t.src or t.dst then
-		self.color = color:new(t.r or self.r, t.g or self.g, t.b or self.b, t.src or self.src, t.dst or self.dst)
-	end
-	return self
-end
-
---draw rect
-function rect:draw()
-	if self.defsc then main.f_disableLuaScale() end
-	fillRect(self.x1, self.y1, self.x2, self.y2, self.r, self.g, self.b, self.src, self.dst)
-	if self.defsc then main.f_setLuaScale() end
-	return self
-end
+--Moved hook, rect, text, and color into separate file
+require 'external.script.lua-tools.init'
 
 --create textImg based on usual motif parameters
 function main.f_createTextImg(t, prefix, mod)
@@ -663,7 +393,7 @@ function main.f_createTextImg(t, prefix, mod)
 	if t[prefix .. '_font'] == nil then t[prefix .. '_font'] = {} end
 	if t[prefix .. '_offset'] == nil then t[prefix .. '_offset'] = {} end
 	if t[prefix .. '_scale'] == nil then t[prefix .. '_scale'] = {} end
-	return text:create({
+	return text.create({
 		font =   t[prefix .. '_font'][1],
 		bank =   t[prefix .. '_font'][2],
 		align =  t[prefix .. '_font'][3],
@@ -687,7 +417,7 @@ function main.f_createOverlay(t, prefix, mod)
 	if t[prefix .. '_window'] == nil then t[prefix .. '_window'] = {} end
 	if t[prefix .. '_col'] == nil then t[prefix .. '_col'] = {} end
 	if t[prefix .. '_alpha'] == nil then t[prefix .. '_alpha'] = {} end
-	return rect:create({
+	return rect.create({
 		x1 =    t[prefix .. '_window'][1],
 		y1 =    t[prefix .. '_window'][2],
 		x2 =    t[prefix .. '_window'][3] - t[prefix .. '_window'][1] + 1,
@@ -2545,7 +2275,7 @@ main.t_itemname = {
 			if address:match('^[0-9%.]+$') then
 				sndPlay(motif.files.snd_data, motif[main.group].cursor_done_snd[1], motif[main.group].cursor_done_snd[2])
 				config.IP[name] = address
-				table.insert(t, #t, {data = text:create({}), itemname = 'ip_' .. name, displayname = name})
+				table.insert(t, #t, {data = text.create({}), itemname = 'ip_' .. name, displayname = name})
 				main.f_fileWrite(main.flags['-config'], json.encode(config, {indent = 2}))
 			else
 				sndPlay(motif.files.snd_data, motif[main.group].cancel_snd[1], motif[main.group].cancel_snd[2])
@@ -3249,7 +2979,7 @@ function main.f_start()
 					main.menu.submenu[c].loop = main.f_createMenu(main.menu.submenu[c], false, false, true, c == 'serverjoin')
 					if not suffix:match(c .. '_') then
 						table.insert(main.menu.items, {
-							data = text:create({window = t_menuWindow}),
+							data = text.create({window = t_menuWindow}),
 							itemname = c,
 							displayname = motif[main.group]['menu_itemname_' .. suffix],
 							paramname = 'menu_itemname_' .. suffix,
@@ -3264,7 +2994,7 @@ function main.f_start()
 					t_pos.submenu[c] = {title = main.f_itemnameUpper(motif[main.group]['menu_itemname_' .. suffix], motif[main.group].menu_title_uppercase == 1), submenu = {}, items = {}}
 					t_pos.submenu[c].loop = main.f_createMenu(t_pos.submenu[c], false, false, true, c == 'serverjoin')
 					table.insert(t_pos.items, {
-						data = text:create({window = t_menuWindow}),
+						data = text.create({window = t_menuWindow}),
 						itemname = c,
 						displayname = motif[main.group]['menu_itemname_' .. suffix],
 						paramname = 'menu_itemname_' .. suffix,
@@ -3283,7 +3013,7 @@ function main.f_start()
 					local name = start.f_getCharData(main.t_bonusChars[k]).name
 					local itemname = 'bonus_' .. name:gsub('%s+', '_')
 					table.insert(t_pos.items, {
-						data = text:create({window = t_menuWindow}),
+						data = text.create({window = t_menuWindow}),
 						itemname = itemname,
 						displayname = main.f_itemnameUpper(name, bonusUpper),
 						paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
@@ -3298,7 +3028,7 @@ function main.f_start()
 				for k, v in ipairs(main.t_selStoryMode) do
 					local itemname = v.name:gsub('%s+', '_')
 					table.insert(t_pos.items, {
-						data = text:create({window = t_menuWindow}),
+						data = text.create({window = t_menuWindow}),
 						itemname = itemname,
 						displayname = v.displayname,
 						paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
@@ -3313,7 +3043,7 @@ function main.f_start()
 				for k, v in pairs(config.IP) do
 					local itemname = 'ip_' .. k
 					table.insert(t_pos.items, {
-						data = text:create({window = t_menuWindow}),
+						data = text.create({window = t_menuWindow}),
 						itemname = itemname,
 						displayname = k,
 						--paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
@@ -3340,11 +3070,11 @@ function main.f_replay()
 			path = path:gsub('\\', '/')
 			ext = ext:lower()
 			if ext == 'replay' then
-				table.insert(t, {data = text:create({window = t_menuWindowReplay}), itemname = path .. filename .. '.' .. ext, displayname = filename})
+				table.insert(t, {data = text.create({window = t_menuWindowReplay}), itemname = path .. filename .. '.' .. ext, displayname = filename})
 			end
 		end)
 	end
-	table.insert(t, {data = text:create({window = t_menuWindowReplay}), itemname = 'back', displayname = motif.replay_info.menu_itemname_back})
+	table.insert(t, {data = text.create({window = t_menuWindowReplay}), itemname = 'back', displayname = motif.replay_info.menu_itemname_back})
 	main.f_bgReset(motif.replaybgdef.bg)
 	main.f_fadeReset('fadein', motif.replay_info)
 	if motif.music.replay_bgm ~= '' then
@@ -3817,8 +3547,8 @@ function main.f_frameChange()
 end
 
 --common menu draw
-local rect_boxcursor = rect:create({})
-local rect_boxbg = rect:create({})
+local rect_boxcursor = rect.create({})
+local rect_boxbg = rect.create({})
 function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, section, bgdef, title, defsc, footer_txt, skipClear)
 	--draw clearcolor
 	if not skipClear then
