@@ -3894,6 +3894,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
 	ifierrset(&hd.fall.envshake_ampl, -4)
+	ifnanset(&hd.fall.envshake_phase, 0)
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
