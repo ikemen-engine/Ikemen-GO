@@ -4185,10 +4185,18 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redl
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			t.lifeAdd(-dmg, true, true)
 			if redlife {
-				t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+				if t.ghv.attr&int32(AT_AH) != 0 {
+					t.redLifeAdd(dmg*float64(c.gi().constants["super.lifetoredlifemul"]), true)
+				} else {
+					t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+				}
 			}
 			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
-				t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
+				if t.ghv.attr&int32(AT_AH) != 0 {
+					t.dizzyPointsAdd(dmg*float64(c.gi().constants["super.lifetodizzypointsmul"]), true)
+				} else {
+					t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
+				}
 			}
 		}
 	}
