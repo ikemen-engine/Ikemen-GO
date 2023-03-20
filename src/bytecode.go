@@ -1799,7 +1799,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_const720p:
 		*sys.bcStack.Top() = c.constp(1280, sys.bcStack.Top().ToF())
 	case OC_ex_gethitvar_animtype:
-		sys.bcStack.PushI(int32(c.gethitAnimtype()))
+		sys.bcStack.PushI(int32(c.ghv.animtype))
 	case OC_ex_gethitvar_air_animtype:
 		sys.bcStack.PushI(int32(c.ghv.airanimtype))
 	case OC_ex_gethitvar_ground_animtype:
