@@ -695,6 +695,7 @@ type GetHitVar struct {
 	//hit2           [2]int32
 	attr           int32
 	_type          HitType
+	animtype       Reaction
 	airanimtype    Reaction
 	groundanimtype Reaction
 	airtype        HitType
@@ -6382,6 +6383,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
+				ghv.animtype = getter.gethitAnimtype()
 				ghv.id = hd.attackerID
 				//ghv.redlife = hd.hitredlife
 				if !math.IsNaN(float64(hd.score[0])) {
