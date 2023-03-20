@@ -2827,6 +2827,7 @@ const (
 func (sc destroySelf) Run(c *Char, _ []int32) bool {
 	crun := c
 	rec, rem := false, false
+	self := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case destroySelf_recursive:
@@ -2835,6 +2836,7 @@ func (sc destroySelf) Run(c *Char, _ []int32) bool {
 			rem = exp[0].evalB(c)
 		case destroySelf_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				self = rid.id == c.id
 				crun = rid
 			} else {
 				return false
@@ -2842,7 +2844,7 @@ func (sc destroySelf) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return crun.destroySelf(rec, rem)
+	return crun.destroySelf(rec, rem) && self
 }
 
 type changeAnim StateControllerBase
@@ -3982,17 +3984,19 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 }
 func (sc afterImage) Run(c *Char, _ []int32) bool {
 	crun := c
-	crun.aimg.clear()
-	crun.aimg.time = 1
+	doOce := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == afterImage_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				crun.aimg.clear()
-				crun.aimg.time = 1
 			} else {
 				return false
 			}
+		}
+		if !doOce {
+			crun.aimg.clear()
+			crun.aimg.time = 1
+			doOce = true
 		}
 		sc.runSub(c, &crun.aimg, id, exp)
 		return true
