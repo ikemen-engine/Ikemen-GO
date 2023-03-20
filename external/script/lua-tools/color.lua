@@ -7,7 +7,6 @@ This update recreates most of the system, reducing the amount of unused
 values and expanding on possible uses.
 
 Changes from v1:
-* Colors now range from 0.0 to 1.0 instead of 0 to 255.
 * Color objects use a shared metatable with default values, decreasing 
   memory usage.
 
@@ -19,21 +18,26 @@ Color objects support various operations:
 Constructors:
 * color.new(r, g, b, src, dst): Color
 Creates a new color object. All arguments are optional, all defaulting to
-1 except for dst, which defaults to 0.
+255 except for dst, which defaults to 0.
 * color.fromHex(hex): Color
 Creates a new color object from a hex string.
 All sections are optional, but previous ones are required to add latter ones.
 Ex. #RRGGBB works, #RG works, but #SSDD does not work.
+* color.fromHSL(h, s, l, src, dst): Color
+Creates a new color object from HSL color.
+H is a number from 0 to 360, while s and l are from 0 to 100.
 
 * Color:toHex(): string
 Returns a string containing the color converted to hex (RRGGBBSSDD).
+* Color:toHSL(): h,s,l,src,dst
+Returns HSL, src and dst color values separately.
 * Color:unpack(): r,g,b,src,dst
 Returns every value from the color separately, for use in things like arguments.
 
 ]]
 
 color = {
-    mColor = {r = 1, g = 1, b = 1, src = 1, dst = 0}
+    mColor = {r = 255, g = 255, b = 255, src = 255, dst = 0}
 }
 color.mColor.__index = color.mColor
 
@@ -94,4 +98,56 @@ function color.fromHex(h)
 	local src = tonumber(h:sub(7, 8), 16) or 255
 	local dst = tonumber(h:sub(9, 10), 16) or 0
 	return color.new(r, g, b, src, dst)
+end
+
+local function h2r(p, q, t)
+	if t < 0 then t=t+1 end
+	if t > 1 then t=t-1 end
+	if t < 1/6 then return p+(q-p)*6*t end
+	if t < 1/2 then return q end
+	if t < 2/3 then return p+(q-p)*(2/3-t)*6 end
+	return p
+end
+function color.fromHSL(h,s,l, src, dst)
+	local hue, sat, lum = h/360, s/100, l/100
+	local r,g,b
+
+	if sat == 0 then
+		r,g,b = lum,lum,lum
+	else
+		local q = lum < 0.5 and lum*(1+s) or lum+s-lum*s
+		local p = 2*lum-q
+
+		r = h2r(p,q,h + 1/3)
+		g = h2r(p,q,h)
+		b = h2r(p,q,h - 1/3)
+	end
+
+	return color.new(r * 255,g * 255,b * 255,src,dst)
+end
+
+function color.mColor:toHSL()
+	local r,g,b = self.r/255, self.g/255, self.b/255
+	local min, max = math.min(self.r, self.g, self.b), math.max(self.r, self.g, self.b)
+	local h,s,l
+
+	l = (max + min) / 2
+
+	if max == min then return 0, 0, l*100, self.src, self.dst end
+
+	
+	local d = max - min
+	s = l > .5 and d/(2-max-min) or d/(max+min)
+
+	if max == r then
+		h = (g - b) / d
+		if g < b then h = h + 6 end
+	elseif max == g then
+		h = (b - r) / d + 2
+	else
+		h = (r - g) / d + 4
+	end
+	h = h / 6
+
+	return h * 360, s * 100, l * 100, src, dst
 end
