@@ -115,12 +115,12 @@ function color.fromHSL(h,s,l, src, dst)
 	if sat == 0 then
 		r,g,b = lum,lum,lum
 	else
-		local q = lum < 0.5 and lum*(1+s) or lum+s-lum*s
+		local q = lum < 0.5 and lum*(1+sat) or lum+sat-lum*sat
 		local p = 2*lum-q
 
-		r = h2r(p,q,h + 1/3)
-		g = h2r(p,q,h)
-		b = h2r(p,q,h - 1/3)
+		r = h2r(p,q,hue + 1/3)
+		g = h2r(p,q,hue)
+		b = h2r(p,q,hue - 1/3)
 	end
 
 	return color.new(r * 255,g * 255,b * 255,src,dst)

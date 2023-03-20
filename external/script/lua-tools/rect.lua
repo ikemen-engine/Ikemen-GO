@@ -64,6 +64,9 @@ function rect.mRect:update(t)
     if t.h or t.height then
         self.y2 = t.h or ot.height
     end
+    if t.color then
+        self.r, self.g, self.b, self.src, self.dst = t.color:unpack()
+    end
 	if t.r or t.g or t.b or t.src or t.dst then
 		self.color = color.new(t.r or self.r, t.g or self.g, t.b or self.b, t.src or self.src, t.dst or self.dst)
 	end
