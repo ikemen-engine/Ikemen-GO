@@ -7,6 +7,7 @@ This update recreates most of the system, reducing the amount of unused
 values and expanding on possible uses.
 
 Changes from v1:
+! Creating a new rect is done with rect.new instead of rect:new
 * Rect objects use a shared metatable with default values, decreasing 
   memory usage.
 * Support for w(idth) and h(eight) as alternatives to x2 and y2.

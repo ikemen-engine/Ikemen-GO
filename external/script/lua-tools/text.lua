@@ -7,6 +7,7 @@ This update recreates most of the system, reducing the amount of unused
 values and expanding on possible uses.
 
 Changes from v1:
+! Creating a color is done with text.new or text.create instead of text:new or text:create
 * Text objects use a shared metatable with default values, decreasing 
   memory usage.
 

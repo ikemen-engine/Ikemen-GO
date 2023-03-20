@@ -7,6 +7,7 @@ This update recreates most of the system, reducing the amount of unused
 values and expanding on possible uses.
 
 Changes from v1:
+! Creating a color is done with color.new instead of color:new
 * Color objects use a shared metatable with default values, decreasing 
   memory usage.
 
