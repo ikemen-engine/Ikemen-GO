@@ -2052,14 +2052,21 @@ func (c *Char) load(def string) error {
 	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
 
-	str, err = LoadText(sys.commonConst)
-	if err != nil {
-		return err
-	}
-	lines, i = SplitAndTrim(str, "\n"), 0
-	is, _, _ := ReadIniSection(lines, &i)
-	for key, value := range is {
-		gi.constants[key] = float32(Atof(value))
+	for _, s := range sys.commonConst {
+		if err := LoadFile(&s, []string{def, sys.motifDir, sys.lifebar.def, "", "data/"}, func(filename string) error {
+			str, err = LoadText(filename)
+			if err != nil {
+				return err
+			}
+			lines, i = SplitAndTrim(str, "\n"), 0
+			is, _, _ := ReadIniSection(lines, &i)
+			for key, value := range is {
+				gi.constants[key] = float32(Atof(value))
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
 	}
 
 	// Init constants
@@ -2349,23 +2356,33 @@ func (c *Char) load(def string) error {
 	} else {
 		gi.sff = newSff()
 	}
+	str = ""
 	if len(anim) > 0 {
 		if LoadFile(&anim, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-			str, err := LoadText(filename)
+			var err error
+			str, err = LoadText(filename)
 			if err != nil {
 				return err
 			}
-			str = str + sys.commonAir
-			lines, i := SplitAndTrim(str, "\n"), 0
-			gi.anim = ReadAnimationTable(gi.sff, lines, &i)
 			return nil
 		}); err != nil {
 			return err
 		}
-	} else {
-		lines, i := SplitAndTrim(sys.commonAir, "\n"), 0
-		gi.anim = ReadAnimationTable(gi.sff, lines, &i)
 	}
+	for _, s := range sys.commonAir {
+		if err := LoadFile(&s, []string{def, sys.motifDir, sys.lifebar.def, "", "data/"}, func(filename string) error {
+			txt, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+			str += txt
+			return nil
+		}); err != nil {
+			return err
+		}
+	}
+	lines, i = SplitAndTrim(str, "\n"), 0
+	gi.anim = ReadAnimationTable(gi.sff, lines, &i)
 	if len(sound) > 0 {
 		if LoadFile(&sound, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			var err error

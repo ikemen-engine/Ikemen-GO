@@ -187,9 +187,9 @@ type configSettings struct {
 	BarStun                    bool
 	Borderless                 bool
 	ComboExtraFrameWindow      int32
-	CommonAir                  string
-	CommonCmd                  string
-	CommonConst                string
+	CommonAir                  []string
+	CommonCmd                  []string
+	CommonConst                []string
 	CommonFx                   []string
 	CommonLua                  []string
 	CommonStates               []string
@@ -336,12 +336,8 @@ func setupConfig() configSettings {
 	sys.cam.ZoomMin = tmp.ForceStageZoomout
 	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
 	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
-	if air, err := ioutil.ReadFile(tmp.CommonAir); err == nil {
-		sys.commonAir = "\n" + string(air)
-	}
-	if cmd, err := ioutil.ReadFile(tmp.CommonCmd); err == nil {
-		sys.commonCmd = "\n" + string(cmd)
-	}
+	sys.commonAir = tmp.CommonAir
+	sys.commonCmd = tmp.CommonCmd
 	sys.commonConst = tmp.CommonConst
 	sys.commonFx = tmp.CommonFx
 	sys.commonLua = tmp.CommonLua

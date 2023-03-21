@@ -3959,12 +3959,12 @@ func cnsStringArray(arg string) ([]string, error) {
 
 // Compile a state file
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
-	filename, def string, negoverride bool, constants map[string]float32) error {
+	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
 	var str string
 	zss := HasExtension(filename, ".zss")
 	fnz := filename
 	// Load state file
-	if err := LoadFile(&filename, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+	if err := LoadFile(&filename, dirs, func(filename string) error {
 		var err error
 		// If this is a zss file
 		if zss {
@@ -3982,7 +3982,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	}); err != nil {
 		// If filename doesn't exist, see if a zss file exists
 		fnz += ".zss"
-		if err := LoadFile(&fnz, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+		if err := LoadFile(&fnz, dirs, func(filename string) error {
 			b, err := ioutil.ReadFile(filename)
 			if err != nil {
 				return err
@@ -5316,21 +5316,32 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	}
 
 	// Load the command file
+	str = ""
 	if len(cmd) > 0 {
 		if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
-			str, err := LoadText(filename)
+			var err error
+			str, err = LoadText(filename)
 			if err != nil {
 				return err
 			}
-			str = str + sys.commonCmd
-			lines, i = SplitAndTrim(str, "\n"), 0
 			return nil
 		}); err != nil {
 			return nil, err
 		}
-	} else {
-		lines, i = SplitAndTrim(sys.commonCmd, "\n"), 0
 	}
+	for _, s := range sys.commonCmd {
+		if err := LoadFile(&s, []string{def, sys.motifDir, sys.lifebar.def, "", "data/"}, func(filename string) error {
+			txt, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+			str += txt
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
+	lines, i = SplitAndTrim(str, "\n"), 0
 
 	// Initialize command list data
 	if sys.chars[pn][0].cmd == nil {
@@ -5432,29 +5443,33 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
-			if err := c.stateCompile(states, s, def, sys.cgi[pn].ikemenver[0] == 0 &&
-				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+			if err := c.stateCompile(states, s, []string{def, "", sys.motifDir, "data/"},
+				sys.cgi[pn].ikemenver[0] == 0 &&
+					sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 				return nil, err
 			}
 		}
 	}
 	// Compile states in command file
 	if len(cmd) > 0 {
-		if err := c.stateCompile(states, cmd, def, sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+		if err := c.stateCompile(states, cmd, []string{def, "", sys.motifDir, "data/"},
+			sys.cgi[pn].ikemenver[0] == 0 &&
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
-	// Compile states in common state file
+	// Compile states in stcommon state file
 	if len(stcommon) > 0 {
-		if err := c.stateCompile(states, stcommon, def, sys.cgi[pn].ikemenver[0] == 0 &&
-			sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motifDir, "data/"},
+			sys.cgi[pn].ikemenver[0] == 0 &&
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
-	// Compile common states from config
+	// Compile common states
 	for _, s := range sys.commonStates {
-		if err := c.stateCompile(states, s, def, false, constants); err != nil {
+		if err := c.stateCompile(states, s, []string{def, sys.motifDir, sys.lifebar.def, "", "data/"},
+			false, constants); err != nil {
 			return nil, err
 		}
 	}

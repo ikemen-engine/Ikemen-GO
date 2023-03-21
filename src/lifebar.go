@@ -66,8 +66,8 @@ func newFightFx() *FightFx {
 	return &FightFx{fsff: &Sff{}, fx_scale: 1.0}
 }
 
-func loadFightFx(deffile string) error {
-	str, err := LoadText(deffile)
+func loadFightFx(def string) error {
+	str, err := LoadText(def)
 	if err != nil {
 		return err
 	}
@@ -90,15 +90,15 @@ func loadFightFx(deffile string) error {
 				}
 				prefix = strings.ToLower(prefix)
 				if prefix == "f" || prefix == "s" {
-					return Error(fmt.Sprintf("%v preffix is reserved for the system and cannot be used", strings.ToUpper(prefix)))
+					return Error(fmt.Sprintf("%v prefix is reserved for the system and cannot be used", strings.ToUpper(prefix)))
 				}
 				is.ReadF32("fx.scale", &ffx.fx_scale)
 			}
 		case "files":
-			// Read files section to find sff, air and snd files
+			// Read files section
 			if files {
 				files = false
-				if is.LoadFile("sff", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("sff", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						s, err := loadSff(filename, false)
 						if err != nil {
@@ -109,7 +109,7 @@ func loadFightFx(deffile string) error {
 					}); err != nil {
 					return err
 				}
-				if is.LoadFile("air", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("air", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						str, err := LoadText(filename)
 						if err != nil {
@@ -121,7 +121,7 @@ func loadFightFx(deffile string) error {
 					}); err != nil {
 					return err
 				}
-				if is.LoadFile("snd", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("snd", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						ffx.fsnd, err = LoadSnd(filename)
 						return err
@@ -2989,12 +2989,12 @@ type Lifebar struct {
 	hidebars   bool
 	fnt_scale  float32
 	fx_limit   int
-	deffile    string
+	def        string
 	textsprite []*TextSprite
 }
 
-func loadLifebar(deffile string) (*Lifebar, error) {
-	str, err := LoadText(deffile)
+func loadLifebar(def string) (*Lifebar, error) {
+	str, err := LoadText(def)
 	if err != nil {
 		return nil, err
 	}
@@ -3066,7 +3066,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 		case "files":
 			if filesflg {
 				filesflg = false
-				if is.LoadFile("sff", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("sff", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						s, err := loadSff(filename, false)
 						if err != nil {
@@ -3077,7 +3077,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("snd", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("snd", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						s, err := LoadSnd(filename)
 						if err != nil {
@@ -3088,7 +3088,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("fightfx.sff", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("fightfx.sff", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						s, err := loadSff(filename, false)
 						if err != nil {
@@ -3099,7 +3099,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("fightfx.air", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("fightfx.air", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						str, err := LoadText(filename)
 						if err != nil {
@@ -3111,15 +3111,51 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("common.snd", []string{deffile, sys.motifDir, "", "data/"},
+				if is.LoadFile("common.snd", []string{def, sys.motifDir, "", "data/"},
 					func(filename string) error {
 						ffx.fsnd, err = LoadSnd(filename)
 						return err
 					}); err != nil {
 					return nil, err
 				}
+				if is.LoadFile("common.air", []string{def, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						if !sliceContains(sys.commonAir, filename, true) {
+							sys.commonAir = append(sys.commonAir, filename)
+						}
+						return err
+					}); err != nil {
+					return nil, err
+				}
+				if is.LoadFile("common.cmd", []string{def, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						if !sliceContains(sys.commonCmd, filename, true) {
+							sys.commonCmd = append(sys.commonCmd, filename)
+						}
+						return err
+					}); err != nil {
+					return nil, err
+				}
+				if is.LoadFile("common.const", []string{def, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						if !sliceContains(sys.commonConst, filename, true) {
+							sys.commonConst = append(sys.commonConst, filename)
+						}
+						return err
+					}); err != nil {
+					return nil, err
+				}
+				if is.LoadFile("common.states", []string{def, sys.motifDir, "", "data/"},
+					func(filename string) error {
+						if !sliceContains(sys.commonStates, filename, true) {
+							sys.commonStates = append(sys.commonStates, filename)
+						}
+						return err
+					}); err != nil {
+					return nil, err
+				}
 				for i := 1; i <= l.fx_limit; i++ {
-					if err := is.LoadFile(fmt.Sprintf("fx%v", i), []string{deffile, sys.motifDir, "", "data/"},
+					if err := is.LoadFile(fmt.Sprintf("fx%v", i), []string{def, sys.motifDir, "", "data/"},
 						func(filename string) error {
 							if err := loadFightFx(filename); err != nil {
 								return err
@@ -3131,7 +3167,7 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 				}
 				for i := range l.fnt {
 					/*if*/
-					is.LoadFile(fmt.Sprintf("font%v", i), []string{deffile, sys.motifDir, "", "data/", "font/"},
+					is.LoadFile(fmt.Sprintf("font%v", i), []string{def, sys.motifDir, "", "data/", "font/"},
 						func(filename string) error {
 							var height int32 = -1
 							if len(is[fmt.Sprintf("font%v.height", i)]) > 0 {
@@ -3596,11 +3632,11 @@ func loadLifebar(deffile string) (*Lifebar, error) {
 			}
 		}
 	}
-	l.deffile = deffile
+	l.def = def
 	return l, nil
 }
 func (l *Lifebar) reloadLifebar() error {
-	lb, err := loadLifebar(l.deffile)
+	lb, err := loadLifebar(l.def)
 	if err != nil {
 		return err
 	}
