@@ -1744,7 +1744,6 @@ type LifeBarRound struct {
 	shutter_col        uint32
 	callfight_time     int32
 	introState         [2]bool
-	firstAttack        [2]bool
 }
 
 func newLifeBarRound(snd *Snd) *LifeBarRound {
@@ -2351,7 +2350,6 @@ func (ro *LifeBarRound) reset() {
 		ro.wint[i].reset()
 	}
 	ro.introState = [2]bool{}
-	ro.firstAttack = [2]bool{}
 }
 func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 	ob := sys.brightness
