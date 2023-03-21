@@ -228,6 +228,11 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	}
 	map(_iksys_tagSwitchCooldown) := 0;
 } else if map(_iksys_tagActive) = 1 {
+	# fix characters escaping state 5030
+	if !alive {
+		ctrlSet{value: 0}
+		assertSpecial{flag: noailevel}
+	}
 	# fix erratic camera during intros
 	if roundState = 1 && playerNo != teamLeader {
 		screenBound{value: 0; movecamera: 0, 0}

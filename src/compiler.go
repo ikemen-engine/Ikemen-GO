@@ -2602,95 +2602,101 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_)
 		switch c.token {
 		case "nostandguard":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nostandguard))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nostandguard))
 		case "nocrouchguard":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nocrouchguard))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nocrouchguard))
 		case "noairguard":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noairguard))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noairguard))
 		case "noshadow":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noshadow))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noshadow))
 		case "invisible":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_invisible))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_invisible))
 		case "unguardable":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_unguardable))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_unguardable))
 		case "nojugglecheck":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nojugglecheck))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nojugglecheck))
 		case "noautoturn":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noautoturn))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noautoturn))
 		case "nowalk":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nowalk))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nowalk))
 		case "nobrake":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nobrake))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nobrake))
 		case "nocrouch":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nocrouch))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nocrouch))
 		case "nostand":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nostand))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nostand))
 		case "nojump":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nojump))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nojump))
 		case "noairjump":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noairjump))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noairjump))
 		case "nohardcodedkeys":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nohardcodedkeys))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nohardcodedkeys))
 		case "nogetupfromliedown":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nogetupfromliedown))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nogetupfromliedown))
 		case "nofastrecoverfromliedown":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nofastrecoverfromliedown))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nofastrecoverfromliedown))
 		case "nofallcount":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nofallcount))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nofallcount))
 		case "nofalldefenceup":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nofalldefenceup))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nofalldefenceup))
 		case "noturntarget":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noturntarget))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noturntarget))
 		case "noinput":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noinput))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noinput))
 		case "nopowerbardisplay":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nopowerbardisplay))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nopowerbardisplay))
 		case "autoguard":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_autoguard))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_autoguard))
 		case "animfreeze":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_animfreeze))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_animfreeze))
 		case "postroundinput":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_postroundinput))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_postroundinput))
 		case "nohitdamage":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nohitdamage))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nohitdamage))
 		case "noguarddamage":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noguarddamage))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noguarddamage))
 		case "nodizzypointsdamage":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nodizzypointsdamage))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nodizzypointsdamage))
 		case "noguardpointsdamage":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noguardpointsdamage))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noguardpointsdamage))
 		case "noredlifedamage":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_noredlifedamage))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noredlifedamage))
 		case "nomakedust":
-			out.appendI32Op(OC_ex_isassertedchar, int32(CSF_nomakedust))
-		case "intro":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
-		case "roundnotover":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotover))
-		case "nomusic":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nomusic))
-		case "nobardisplay":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobardisplay))
-		case "nobg":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobg))
-		case "nofg":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofg))
-		case "globalnoshadow":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoshadow))
-		case "timerfreeze":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_timerfreeze))
-		case "nokosnd":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokosnd))
-		case "nokoslow":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokoslow))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nomakedust))
 		case "noko":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_noko))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noko))
+		case "noguardko":
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noguardko))
 		case "nokovelocity":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokovelocity))
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nokovelocity))
+		case "noailevel":
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noailevel))
+		case "intro":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_intro))
+		case "roundnotover":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_roundnotover))
+		case "nomusic":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nomusic))
+		case "nobardisplay":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nobardisplay))
+		case "nobg":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nobg))
+		case "nofg":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nofg))
+		case "globalnoshadow":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_globalnoshadow))
+		case "timerfreeze":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_timerfreeze))
+		case "nokosnd":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nokosnd))
+		case "nokoslow":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nokoslow))
+		case "globalnoko":
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_noko))
 		case "roundnotskip":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_roundnotskip))
 		case "roundfreeze":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundfreeze))
+			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_roundfreeze))
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

@@ -60,6 +60,10 @@ const (
 	CSF_noguardpointsdamage
 	CSF_noredlifedamage
 	CSF_nomakedust
+	CSF_noko
+	CSF_noguardko
+	CSF_nokovelocity
+	CSF_noailevel
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -83,7 +87,8 @@ const (
 		CSF_noturntarget | CSF_noinput | CSF_nopowerbardisplay | CSF_autoguard |
 		CSF_animfreeze | CSF_postroundinput | CSF_nohitdamage |
 		CSF_noguarddamage | CSF_nodizzypointsdamage | CSF_noguardpointsdamage |
-		CSF_noredlifedamage | CSF_nomakedust
+		CSF_noredlifedamage | CSF_nomakedust | CSF_noko | CSF_noguardko |
+		CSF_nokovelocity | CSF_noailevel
 )
 
 type GlobalSpecialFlag uint32
@@ -100,7 +105,6 @@ const (
 	GSF_nokosnd
 	GSF_nokoslow
 	GSF_noko
-	GSF_nokovelocity
 	GSF_roundnotskip
 	GSF_roundfreeze
 	GSF_assertspecialpause GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
@@ -5931,7 +5935,8 @@ func (c *Char) tick() {
 			} else {
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
-		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko)) {
+		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko) ||
+			!c.sf(CSF_noko) || !c.sf(CSF_noguardko)) {
 			switch c.ss.stateType {
 			case ST_S:
 				c.selfState(150, -1, -1, 0, "")
@@ -5979,7 +5984,8 @@ func (c *Char) tick() {
 		}
 		if !c.stchtmp {
 			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&
-				c.ss.moveType != MT_H && !sys.sf(GSF_noko) {
+				c.ss.moveType != MT_H && !sys.sf(GSF_noko) && !c.sf(CSF_noko) &&
+				(!c.ghv.guarded || !c.sf(CSF_noguardko)) {
 				c.ghv.fallf = true
 				c.selfState(5030, -1, -1, -1, "")
 				c.ss.time = 1
@@ -5989,7 +5995,7 @@ func (c *Char) tick() {
 		}
 	}
 	if !c.hitPause() {
-		if c.life <= 0 && !sys.sf(GSF_noko) {
+		if c.life <= 0 && !sys.sf(GSF_noko) && !c.sf(CSF_noko) && (!c.ghv.guarded || !c.sf(CSF_noguardko)) {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
 				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
@@ -6584,7 +6590,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					// if getter.ghv.fall.animtype < RA_Back {
 					// getter.ghv.fall.animtype = RA_Back
 					// }
-					if getter.kovelocity && !sys.sf(GSF_nokovelocity) {
+					if getter.kovelocity && !getter.sf(CSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
 								getter.ghv.xvel += getter.gi().velocity.air.gethit.ko.add[0]

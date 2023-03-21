@@ -78,6 +78,7 @@ const (
 	OC_localvar
 	OC_int8
 	OC_int
+	OC_int64
 	OC_float
 	OC_pop
 	OC_dup
@@ -562,6 +563,12 @@ func (bv BytecodeValue) ToI() int32 {
 	}
 	return int32(bv.v)
 }
+func (bv BytecodeValue) ToI64() int64 {
+	if bv.IsSF() {
+		return 0
+	}
+	return int64(bv.v)
+}
 func (bv BytecodeValue) ToB() bool {
 	if bv.IsSF() || bv.v == 0 {
 		return false
@@ -576,6 +583,9 @@ func (bv *BytecodeValue) SetF(f float32) {
 	}
 }
 func (bv *BytecodeValue) SetI(i int32) {
+	*bv = BytecodeValue{VT_Int, float64(i)}
+}
+func (bv *BytecodeValue) SetI64(i int64) {
 	*bv = BytecodeValue{VT_Int, float64(i)}
 }
 func (bv *BytecodeValue) SetB(b bool) {
@@ -595,6 +605,9 @@ func BytecodeFloat(f float32) BytecodeValue {
 func BytecodeInt(i int32) BytecodeValue {
 	return BytecodeValue{VT_Int, float64(i)}
 }
+func BytecodeInt64(i int64) BytecodeValue {
+	return BytecodeValue{VT_Int, float64(i)}
+}
 func BytecodeBool(b bool) BytecodeValue {
 	return BytecodeValue{VT_Bool, float64(Btoi(b))}
 }
@@ -604,6 +617,7 @@ type BytecodeStack []BytecodeValue
 func (bs *BytecodeStack) Clear()                { *bs = (*bs)[:0] }
 func (bs *BytecodeStack) Push(bv BytecodeValue) { *bs = append(*bs, bv) }
 func (bs *BytecodeStack) PushI(i int32)         { bs.Push(BytecodeInt(i)) }
+func (bs *BytecodeStack) PushI64(i int64)        { bs.Push(BytecodeInt64(i)) }
 func (bs *BytecodeStack) PushF(f float32)       { bs.Push(BytecodeFloat(f)) }
 func (bs *BytecodeStack) PushB(b bool)          { bs.Push(BytecodeBool(b)) }
 func (bs BytecodeStack) Top() *BytecodeValue {
@@ -653,10 +667,14 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 	case VT_Int:
 		if bv.v >= -128 && bv.v <= 127 {
 			be.append(OC_int8, OpCode(bv.v))
-		} else {
+		} else if bv.v >= math.MinInt32 && bv.v <= math.MaxInt32 {
 			be.append(OC_int)
 			i := int32(bv.v)
 			be.append((*(*[4]OpCode)(unsafe.Pointer(&i)))[:]...)
+		} else {
+			be.append(OC_int64)
+			i := int64(bv.v)
+			be.append((*(*[8]OpCode)(unsafe.Pointer(&i)))[:]...)
 		}
 	case VT_Bool:
 		if bv.v != 0 {
@@ -674,6 +692,10 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 func (be *BytecodeExp) appendI32Op(op OpCode, addr int32) {
 	be.append(op)
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
+}
+func (be *BytecodeExp) appendI64Op(op OpCode, addr int64) {
+	be.append(op)
+	be.append((*(*[8]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
 func (BytecodeExp) neg(v *BytecodeValue) {
 	if v.t == VT_Float {
@@ -1022,6 +1044,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_int:
 			sys.bcStack.PushI(*(*int32)(unsafe.Pointer(&be[i])))
 			i += 4
+		case OC_int64:
+			sys.bcStack.PushI64(*(*int64)(unsafe.Pointer(&be[i])))
+			i += 8
 		case OC_float:
 			arr := make([]byte, 4)
 			arr[0] = byte(be[i])
@@ -1131,7 +1156,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_swap:
 			sys.bcStack.Swap()
 		case OC_ailevel:
-			sys.bcStack.PushI(int32(c.aiLevel()))
+			if !c.sf(CSF_noailevel) {
+				sys.bcStack.PushI(int32(c.aiLevel()))
+			} else {
+				sys.bcStack.PushI(0)
+			}
 		case OC_alive:
 			sys.bcStack.PushB(c.alive())
 		case OC_anim:
@@ -1889,7 +1918,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_guardpower:
 		sys.bcStack.PushI(c.ghv.guardpower)
 	case OC_ex_ailevelf:
-		sys.bcStack.PushF(c.aiLevel())
+		if !c.sf(CSF_noailevel) {
+			sys.bcStack.PushF(c.aiLevel())
+		} else {
+			sys.bcStack.PushI(0)
+		}
 	case OC_ex_animelemlength:
 		if f := c.anim.CurrentFrame(); f != nil {
 			sys.bcStack.PushI(f.Time)
@@ -2055,6 +2088,9 @@ func (be BytecodeExp) evalF(c *Char) float32 {
 }
 func (be BytecodeExp) evalI(c *Char) int32 {
 	return be.run(c).ToI()
+}
+func (be BytecodeExp) evalI64(c *Char) int64 {
+	return be.run(c).ToI64()
 }
 func (be BytecodeExp) evalB(c *Char) bool {
 	return be.run(c).ToB()
@@ -2303,17 +2339,14 @@ func newStateControllerBase() *StateControllerBase {
 func (StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
 	return be
 }
-
-/*
-	func (StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
-		for _, v := range f {
-			var be BytecodeExp
-			be.appendValue(BytecodeFloat(v))
-			exp = append(exp, be)
-		}
-		return
+func (StateControllerBase) fToExp(f ...float32) (exp []BytecodeExp) {
+	for _, v := range f {
+		var be BytecodeExp
+		be.appendValue(BytecodeFloat(v))
+		exp = append(exp, be)
 	}
-*/
+	return
+}
 func (StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 	for _, v := range i {
 		var be BytecodeExp
@@ -2322,8 +2355,14 @@ func (StateControllerBase) iToExp(i ...int32) (exp []BytecodeExp) {
 	}
 	return
 }
-
-// Converts a bool to a []BytecodeExp
+func (StateControllerBase) i64ToExp(i ...int64) (exp []BytecodeExp) {
+	for _, v := range i {
+		var be BytecodeExp
+		be.appendValue(BytecodeInt64(v))
+		exp = append(exp, be)
+	}
+	return
+}
 func (StateControllerBase) bToExp(i bool) (exp []BytecodeExp) {
 	var be BytecodeExp
 	be.appendValue(BytecodeBool(i))
@@ -2491,6 +2530,7 @@ type assertSpecial StateControllerBase
 const (
 	assertSpecial_flag byte = iota
 	assertSpecial_flag_g
+	assertSpecial_noko
 	assertSpecial_redirectid
 )
 
@@ -2499,9 +2539,15 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case assertSpecial_flag:
-			crun.setSF(CharSpecialFlag(exp[0].evalI(c)))
+			crun.setSF(CharSpecialFlag(exp[0].evalI64(c)))
 		case assertSpecial_flag_g:
-			sys.setSF(GlobalSpecialFlag(exp[0].evalI(c)))
+			sys.setSF(GlobalSpecialFlag(exp[0].evalI64(c)))
+		case assertSpecial_noko:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				crun.setSF(CharSpecialFlag(CSF_noko))
+			} else {
+				sys.setSF(GlobalSpecialFlag(GSF_noko))
+			}
 		case assertSpecial_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
