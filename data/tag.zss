@@ -3,7 +3,7 @@
 # Functions
 #===============================================================================
 # Returns tagged in char id
-[Function fTagGetPartnerId(add) partnerId]
+[Function TagGetPartnerId(add) partnerId]
 let rootId = getPlayerId(teamSide);
 let partnerCnt = 0;
 let partnerId = id + $add;
@@ -26,7 +26,7 @@ if $partnerCnt >= numPartner {
 
 # Decides if AI switch should happen, returns tagged in char id (function can be overridden locally)
 # TODO: Balance default AI switch scaling.
-[Function fTagAISwitch(nextPartnerId, previousPartnerId) partnerId]
+[Function TagAISwitch(nextPartnerId, previousPartnerId) partnerId]
 let partnerId = 0;
 if const(TagCommandAIChance) >= randomRange(1, 100) {
 	if command = "TagShiftFwd" {
@@ -37,7 +37,7 @@ if const(TagCommandAIChance) >= randomRange(1, 100) {
 }
 
 # tagIn Switch explod
-[Function fTagSwitchExplod()]
+[Function TagSwitchExplod()]
 let anim = const(FxTagSwitchAI);
 if aiLevel = 0 {
 	if gameMode = "versuscoop" {
@@ -93,7 +93,7 @@ if time = 0 {
 	# change active player assignment
 	map(_iksys_tagLastId) := player(teamLeader),id;
 	tagIn{leader: playerNo}
-	call fTagSwitchExplod();
+	call TagSwitchExplod();
 } else {
 	mapAdd{map: "_iksys_tagSwitchDist"; value: -vel x}
 }
@@ -181,7 +181,7 @@ if time = 0 {
 	if roundState = 2 {
 		map(_iksys_tagLastId) := player(teamLeader),id;
 		tagIn{leader: playerNo}
-		call fTagSwitchExplod();
+		call TagSwitchExplod();
 	}
 	velSet{x: const240p(4); y: -const240p(8.75)}
 } else {
@@ -264,12 +264,12 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 				{
 					# get partner id in case of tag command
 					let partnerId = 0;
-					let nextPartnerId = call fTagGetPartnerId(1);
-					let previousPartnerId = call fTagGetPartnerId(-1);
+					let nextPartnerId = call TagGetPartnerId(1);
+					let previousPartnerId = call TagGetPartnerId(-1);
 					if aiLevel > 0 {
 						# id is remembered by AI player, switch will happen at first frame that meets switch conditions
 						if map(_iksys_tagPartnerId) = 0 {
-							let partnerId = call fTagAISwitch($nextPartnerId, $previousPartnerId);
+							let partnerId = call TagAISwitch($nextPartnerId, $previousPartnerId);
 							map(_iksys_tagPartnerId) := $partnerId;
 						}
 						let partnerId = map(_iksys_tagPartnerId);
@@ -314,7 +314,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	{
 		map(_iksys_tagActive) := 0;
 		# bring next team member
-		let partnerId = call fTagGetPartnerId(1);
+		let partnerId = call TagGetPartnerId(1);
 		if $partnerId > 0 {
 			mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectid: $partnerId}
 			lifebarAction{spr: const(MsgPartnerChange), 0; top: 1}
