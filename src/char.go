@@ -5183,6 +5183,9 @@ func (c *Char) bind() {
 	}
 }
 func (c *Char) xScreenBound() {
+	if sys.cam.View == Free_View || sys.cam.View == Follow_View && c != sys.cam.FollowChar {
+		return
+	}
 	x := c.pos[0]
 	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
@@ -5836,26 +5839,28 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 	}
-	min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
-	if c.facing > 0 {
-		min, max = -max, -min
-	}
-	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
-		c.drawPos[0] = ClampF(c.drawPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
-	}
-	if c.sf(CSF_movecamera_x) && !c.scf(SCF_standby) {
-		*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, *leftest))
-		*rightest = MinF(sys.xmax, MaxF(c.drawPos[0]*c.localscl-max*c.localscl, *rightest))
-		if c.acttmp > 0 && !c.sf(CSF_posfreeze) &&
-			(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
-			*cvmin = MinF(*cvmin, c.vel[0]*c.localscl*c.facing)
-			*cvmax = MaxF(*cvmax, c.vel[0]*c.localscl*c.facing)
+	if sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar {
+		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		if c.facing > 0 {
+			min, max = -max, -min
 		}
-	}
-	if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
-		*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-		*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
-		sys.cam.Pos[1] = 0 + sys.cam.CameraZoomYBound
+		if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
+			c.drawPos[0] = ClampF(c.drawPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
+		}
+		if c.sf(CSF_movecamera_x) && !c.scf(SCF_standby) {
+			*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, *leftest))
+			*rightest = MinF(sys.xmax, MaxF(c.drawPos[0]*c.localscl-max*c.localscl, *rightest))
+			if c.acttmp > 0 && !c.sf(CSF_posfreeze) &&
+				(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
+				*cvmin = MinF(*cvmin, c.vel[0]*c.localscl*c.facing)
+				*cvmax = MaxF(*cvmax, c.vel[0]*c.localscl*c.facing)
+			}
+		}
+		if c.sf(CSF_movecamera_y) && !c.scf(SCF_standby) {
+			*highest = MinF(c.drawPos[1]*c.localscl, *highest)
+			*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
+			sys.cam.Pos[1] = 0 + sys.cam.CameraZoomYBound
+		}
 	}
 }
 func (c *Char) tick() {

@@ -838,6 +838,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("verticalfollow", &s.stageCamera.verticalfollow)
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
 		sec[0].ReadI32("tension", &s.stageCamera.tension)
+		sec[0].ReadF32("tensionvel", &s.stageCamera.tensionvel)
 		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
 		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
@@ -852,6 +853,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadF32("zoomout", &s.stageCamera.zoomout)
 		} else {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
+		}
+		anchor, _, _ := sec[0].getText("zoomanchor")
+		if strings.ToLower(anchor) == "bottom" {
+			s.stageCamera.zoomanchor = true
 		}
 		if sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) {
 			s.stageCamera.ytensionenable = true

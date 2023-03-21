@@ -8268,6 +8268,38 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type cameraCtrl StateControllerBase
+
+const (
+	cameraCtrl_view byte = iota
+	cameraCtrl_pos
+	cameraCtrl_followid
+)
+
+func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
+	//crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case cameraCtrl_view:
+			sys.cam.View = CameraView(exp[0].evalI(c))
+			if sys.cam.View == Follow_View {
+				sys.cam.FollowChar = c
+			}
+		case cameraCtrl_pos:
+			sys.cam.Pos[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				sys.cam.Pos[1] = exp[1].evalF(c)
+			}
+		case cameraCtrl_followid:
+			if cid := sys.playerID(exp[0].evalI(c)); cid != nil {
+				sys.cam.FollowChar = cid
+			}
+		}
+		return true
+	})
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType

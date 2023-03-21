@@ -4557,6 +4557,39 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 	return *ret, err
 }
 
+func (c *Compiler) cameraCtrl(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*cameraCtrl)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "followid",
+			cameraCtrl_followid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "view", func(data string) error {
+			if len(data) == 0 {
+				return nil
+			}
+			switch strings.ToLower(data) {
+			case "fighting":
+				sc.add(cameraCtrl_view, sc.iToExp(int32(Fighting_View)))
+			case "follow":
+				sc.add(cameraCtrl_view, sc.iToExp(int32(Follow_View)))
+			case "free":
+				sc.add(cameraCtrl_view, sc.iToExp(int32(Free_View)))
+			default:
+				return Error("Invalid value: " + data)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pos",
+			cameraCtrl_pos, VT_Float, 2, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 // It's just a Null... Has no effect whatsoever.
 func (c *Compiler) null(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	return nullStateController, nil
