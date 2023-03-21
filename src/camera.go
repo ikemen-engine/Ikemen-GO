@@ -37,8 +37,17 @@ func newStageCamera() *stageCamera {
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false}
 }
 
+type CameraView int
+
+const (
+	Fighting_View CameraView = iota
+	Follow_View
+	Free_View
+)
+
 type Camera struct {
 	stageCamera
+	View                            CameraView
 	ZoomEnable, ZoomActive          bool
 	ZoomDelayEnable                 bool
 	ZoomMin, ZoomMax, ZoomSpeed     float32
@@ -52,10 +61,11 @@ type Camera struct {
 	screenZoff                      float32
 	halfWidth                       float32
 	CameraZoomYBound                float32
+	FollowChar                      *Char
 }
 
 func newCamera() *Camera {
-	return &Camera{ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
+	return &Camera{View: Fighting_View, ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
 }
 func (c *Camera) Init() {
 	c.ZoomEnable = c.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1)
@@ -136,88 +146,99 @@ func (c *Camera) ResetZoomdelay() {
 }
 func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 	vmin, vmax float32, pause bool) (sclMul float32) {
-	tension := MaxF(0, c.halfWidth/c.Scale-float32(c.tension)*c.localscl)
-	tmp, vx := (leftest+rightest)/2, vmin+vmax
-	// Set base horizontal vel
-	vel := float32(3)
-	if sys.intro > sys.lifebar.ro.ctrl_time+1 {
-		vel = c.halfWidth
-	} else if pause {
-		vel = 2
-	}
-	vel *= 2 * c.tensionvel
-	// Apply base vel to average vel
-	if tmp < 0 {
-		vx -= vel
-	} else {
-		vx += vel
-	}
-	// Interpolate horizontal vel through GameSpeed/Turbo
-	if sys.debugPaused() {
-		vx = 0
-	} else {
-		vx *= MinF(1, sys.turbo)
-	}
-	// Make sure chars will stay behind tension limits if one of them isn't in a corner
-	if vx < 0 {
-		tmp = MaxF(leftest+tension, tmp)
-		if vx < tmp {
-			vx = MinF(0, tmp)
+	switch c.View {
+	case Fighting_View:
+		tension := MaxF(0, c.halfWidth/c.Scale-float32(c.tension)*c.localscl)
+		tmp, vx := (leftest+rightest)/2, vmin+vmax
+		// Set base horizontal vel
+		vel := float32(3)
+		if sys.intro > sys.lifebar.ro.ctrl_time+1 {
+			vel = c.halfWidth
+		} else if pause {
+			vel = 2
 		}
-	} else {
-		tmp = MinF(rightest-tension, tmp)
-		if vx > tmp {
-			vx = MaxF(0, tmp)
+		vel *= 2 * c.tensionvel
+		// Apply base vel to average vel
+		if tmp < 0 {
+			vx -= vel
+		} else {
+			vx += vel
 		}
-	}
-	*x += vx
-	ftension, vfollow, ftensionlow := float32(c.floortension)*c.localscl-c.drawOffsetY, c.verticalfollow, -c.drawOffsetY
-	if c.ytensionenable {
-		heightValue := (240 / (float32(sys.gameWidth) / float32(c.localcoord[0])))
-		ftension = (heightValue/c.Scale - float32(c.tensionhigh) - float32(c.drawOffsetY) - (heightValue - float32(c.zoffset))) * c.localscl
-		vfollow = 1
-	}
-	if ftension < 0 {
-		ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
+		// Interpolate horizontal vel through GameSpeed/Turbo
+		if sys.debugPaused() {
+			vx = 0
+		} else {
+			vx *= MinF(1, sys.turbo)
+		}
+		// Make sure chars will stay behind tension limits if one of them isn't in a corner
+		if vx < 0 {
+			tmp = MaxF(leftest+tension, tmp)
+			if vx < tmp {
+				vx = MinF(0, tmp)
+			}
+		} else {
+			tmp = MinF(rightest-tension, tmp)
+			if vx > tmp {
+				vx = MaxF(0, tmp)
+			}
+		}
+		*x += vx
+		ftension, vfollow, ftensionlow := float32(c.floortension)*c.localscl-c.drawOffsetY, c.verticalfollow, -c.drawOffsetY
+		if c.ytensionenable {
+			heightValue := (240 / (float32(sys.gameWidth) / float32(c.localcoord[0])))
+			ftension = (heightValue/c.Scale - float32(c.tensionhigh) - float32(c.drawOffsetY) - (heightValue - float32(c.zoffset))) * c.localscl
+			vfollow = 1
+		}
 		if ftension < 0 {
-			ftension = 0
+			ftension += 240*2 - float32(c.localcoord[1])*c.localscl - 240*c.Scale
+			if ftension < 0 {
+				ftension = 0
+			}
 		}
-	}
-	if highest < -ftension {
-		*y = (highest + ftension + MaxF(0, lowest+ftensionlow)) * Pow(vfollow,
-			MinF(1, 1/Pow(c.Scale, 4)))
-	} else if lowest > -ftensionlow {
-		*y = (lowest + ftensionlow) * Pow(vfollow,
-			MinF(1, 1/Pow(c.Scale, 4)))
-	} else {
-		*y = c.Pos[1] - c.CameraZoomYBound
-	}
-	tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
-		float32(sys.gameWidth-320)
-	if tmp < 0 {
-		tmp = 0
-	}
-	tmp = MaxF(220/c.Scale, float32(math.Sqrt(float64(Pow(tmp, 2)+
-		Pow(lowest+float32(c.tensionlow)*c.localscl+67-highest, 2)))))
-	sclMul = tmp * c.Scale / MaxF(c.Scale, (400-80*MaxF(1, c.Scale))*
-		Pow(2, c.ZoomSpeed-2))
-	if sclMul >= 3/Pow(2, c.ZoomSpeed) {
-		sclMul = MaxF(3.0/4, 67.0/64-sclMul*Pow(2, c.ZoomSpeed-6))
-	} else {
-		sclMul = MinF(4.0/3, Pow((Pow(2, c.ZoomSpeed)+3)/Pow(2, c.ZoomSpeed)-
-			sclMul, 64))
-	}
-	// Zoom delay
-	if c.ZoomDelayEnable && sclMul > 1 {
-		sclMul = (sclMul-1)*Pow(c.zoomdelay, 8) + 1
-		if tmp*sclMul > sys.xmax-sys.xmin {
-			sclMul = (sys.xmax - sys.xmin) / tmp
+		if highest < -ftension {
+			*y = (highest + ftension + MaxF(0, lowest+ftensionlow)) * Pow(vfollow,
+				MinF(1, 1/Pow(c.Scale, 4)))
+		} else if lowest > -ftensionlow {
+			*y = (lowest + ftensionlow) * Pow(vfollow,
+				MinF(1, 1/Pow(c.Scale, 4)))
+		} else {
+			*y = c.Pos[1] - c.CameraZoomYBound
 		}
-		if sys.tickNextFrame() {
-			c.zoomdelay = MinF(1, c.zoomdelay+1.0/32)
+		tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
+			float32(sys.gameWidth-320)
+		if tmp < 0 {
+			tmp = 0
 		}
-	} else {
-		c.zoomdelay = 0
+		tmp = MaxF(220/c.Scale, float32(math.Sqrt(float64(Pow(tmp, 2)+
+			Pow(lowest+float32(c.tensionlow)*c.localscl+67-highest, 2)))))
+		sclMul = tmp * c.Scale / MaxF(c.Scale, (400-80*MaxF(1, c.Scale))*
+			Pow(2, c.ZoomSpeed-2))
+		if sclMul >= 3/Pow(2, c.ZoomSpeed) {
+			sclMul = MaxF(3.0/4, 67.0/64-sclMul*Pow(2, c.ZoomSpeed-6))
+		} else {
+			sclMul = MinF(4.0/3, Pow((Pow(2, c.ZoomSpeed)+3)/Pow(2, c.ZoomSpeed)-
+				sclMul, 64))
+		}
+		// Zoom delay
+		if c.ZoomDelayEnable && sclMul > 1 {
+			sclMul = (sclMul-1)*Pow(c.zoomdelay, 8) + 1
+			if tmp*sclMul > sys.xmax-sys.xmin {
+				sclMul = (sys.xmax - sys.xmin) / tmp
+			}
+			if sys.tickNextFrame() {
+				c.zoomdelay = MinF(1, c.zoomdelay+1.0/32)
+			}
+		} else {
+			c.zoomdelay = 0
+		}
+	case Follow_View:
+		*x = c.FollowChar.pos[0]
+		*y = c.FollowChar.pos[1] * Pow(c.verticalfollow, MinF(1, 1/Pow(c.Scale, 4)))
+		sclMul = 1
+	case Free_View:
+		*x = c.Pos[0]
+		*y = c.Pos[1]
+		sclMul = 1
 	}
 	return
 }

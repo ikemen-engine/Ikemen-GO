@@ -165,6 +165,7 @@ func newCompiler() *Compiler {
 		"targetscoreadd":       c.targetScoreAdd,
 		"text":                 c.text,
 		"modifystagevar":       c.modifyStageVar,
+		"camera":               c.cameraCtrl,
 	}
 	return c
 }
