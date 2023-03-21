@@ -1776,6 +1776,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_fall_envshake_ampl)
 			case "fall.envshake.phase":
 				out.append(OC_ex_gethitvar_fall_envshake_phase)
+			case "fall.envshake.mul":
+				out.append(OC_ex_gethitvar_fall_envshake_mul)
 			case "attr":
 				out.append(OC_ex_gethitvar_attr)
 			case "dizzypoints":
