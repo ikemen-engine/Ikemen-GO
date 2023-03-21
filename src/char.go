@@ -500,6 +500,7 @@ type Fall struct {
 	envshake_freq  float32
 	envshake_ampl  int32
 	envshake_phase float32
+	envshake_mul   float32
 }
 
 func (f *Fall) clear() {
@@ -509,7 +510,8 @@ func (f *Fall) clear() {
 func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
 		yvelocity: float32(math.NaN()), recover: true, recovertime: 4, kill: true,
-		envshake_freq: 60, envshake_ampl: IErr, envshake_phase: float32(math.NaN())}
+		envshake_freq: 60, envshake_ampl: IErr, envshake_phase: float32(math.NaN()),
+		envshake_mul: 1.0}
 }
 func (f *Fall) xvel() float32 {
 	if math.IsNaN(float64(f.xvelocity)) {
@@ -595,6 +597,7 @@ type HitDef struct {
 	envshake_freq              float32
 	envshake_ampl              int32
 	envshake_phase             float32
+	envshake_mul               float32
 	mindist                    [2]float32
 	maxdist                    [2]float32
 	snap                       [2]float32
@@ -663,6 +666,7 @@ func (hd *HitDef) clear() {
 		envshake_freq:  60,
 		envshake_ampl:  -4,
 		envshake_phase: float32(math.NaN()),
+		envshake_mul:   1.0,
 		mindist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
@@ -6826,8 +6830,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.envshake_time > 0 {
 				sys.envShake.time = hd.envshake_time
 				sys.envShake.freq = hd.envshake_freq * float32(math.Pi) / 180
-				sys.envShake.ampl = int32(float32(hd.envshake_ampl) * c.localscl)
+				sys.envShake.ampl = float32(int32(float32(hd.envshake_ampl) * c.localscl))
 				sys.envShake.phase = hd.envshake_phase
+				sys.envShake.mul = hd.envshake_mul
 				sys.envShake.setDefPhase()
 			}
 			//getter.getcombodmg += hd.hitdamage

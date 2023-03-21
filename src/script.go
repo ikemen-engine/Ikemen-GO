@@ -3114,6 +3114,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.fall.envshake_ampl)
 		case "fall.envshake.phase":
 			ln = lua.LNumber(c.ghv.fall.envshake_phase)
+		case "fall.envshake.mul":
+			ln = lua.LNumber(c.ghv.fall.envshake_mul)
 		case "attr":
 			ln = lua.LNumber(c.ghv.attr)
 		case "dizzypoints":
