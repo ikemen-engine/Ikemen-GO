@@ -617,7 +617,7 @@ type BytecodeStack []BytecodeValue
 func (bs *BytecodeStack) Clear()                { *bs = (*bs)[:0] }
 func (bs *BytecodeStack) Push(bv BytecodeValue) { *bs = append(*bs, bv) }
 func (bs *BytecodeStack) PushI(i int32)         { bs.Push(BytecodeInt(i)) }
-func (bs *BytecodeStack) PushI64(i int64)        { bs.Push(BytecodeInt64(i)) }
+func (bs *BytecodeStack) PushI64(i int64)       { bs.Push(BytecodeInt64(i)) }
 func (bs *BytecodeStack) PushF(f float32)       { bs.Push(BytecodeFloat(f)) }
 func (bs *BytecodeStack) PushB(b bool)          { bs.Push(BytecodeBool(b)) }
 func (bs BytecodeStack) Top() *BytecodeValue {
