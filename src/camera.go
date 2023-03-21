@@ -13,6 +13,7 @@ type stageCamera struct {
 	tensionhigh    int32
 	tensionlow     int32
 	tension        int32
+	tensionvel     float32
 	overdrawhigh   int32 //TODO: not implemented
 	overdrawlow    int32
 	cuthigh        int32
@@ -30,7 +31,7 @@ type stageCamera struct {
 }
 
 func newStageCamera() *stageCamera {
-	return &stageCamera{verticalfollow: 0.2, tension: 50,
+	return &stageCamera{verticalfollow: 0.2, tensionvel: 1, tension: 50,
 		cuthigh: math.MinInt32, cutlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false}
@@ -144,7 +145,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 	} else if pause {
 		vel = 2
 	}
-	vel *= 2
+	vel *= 2 * c.tensionvel
 	// Apply base vel to average vel
 	if tmp < 0 {
 		vx -= vel
