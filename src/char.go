@@ -1663,19 +1663,15 @@ type CharSystemVar struct {
 	velOff           float32
 	width, edge      [2]float32
 	attackMul        float32
-	// Defense parameters
-	superDefenseMul float32
-	fallDefenseMul  float32
-	customDefense   float32
-	finalDefense    float64
-	defenseMulDelay bool
-
-	counterHit   bool
-	firstAttack  bool
-	comboDmg     int32
-	fakeComboDmg int32
-
-	fakeCombo bool
+	superDefenseMul  float32
+	fallDefenseMul   float32
+	customDefense    float32
+	finalDefense     float64
+	defenseMulDelay  bool
+	counterHit       bool
+	comboDmg         int32
+	fakeComboDmg     int32
+	fakeCombo        bool
 }
 
 type Char struct {
@@ -5933,9 +5929,6 @@ func (c *Char) tick() {
 				if c.recoverTime > 0 {
 					c.recoverTime--
 				}
-				if c.ghv.yvel != 0 {
-					c.pos[1] += 15 / c.localscl
-				}
 			} else {
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
@@ -6688,16 +6681,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
 				}
-				if !sys.lifebar.ro.firstAttack[0] && !sys.lifebar.ro.firstAttack[1] &&
-					ghvset && getter.hoIdx < 0 && c.teamside != -1 {
-					ts := c.teamside
-					pn := c.playerNo
-					if c.counterHit && Rand(0, 1) == 1 {
-						ts = getter.teamside
-						pn = getter.playerNo
-					}
-					sys.lifebar.ro.firstAttack[ts] = true
-					sys.chars[pn][0].firstAttack = true
+				if sys.firstAttack[2] == 0 && sys.firstAttack[c.teamside] == 0 && ghvset &&
+					getter.hoIdx < 0 && c.teamside != -1 {
+					sys.firstAttack[c.teamside] = c.id
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])

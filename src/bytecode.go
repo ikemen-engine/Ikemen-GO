@@ -1953,7 +1953,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_fighttime:
 		sys.bcStack.PushI(sys.gameTime)
 	case OC_ex_firstattack:
-		sys.bcStack.PushB(c.firstAttack)
+		sys.bcStack.PushB(sys.firstAttack[c.teamside] == c.id)
 	case OC_ex_framespercount:
 		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_float:

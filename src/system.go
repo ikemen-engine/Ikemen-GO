@@ -338,6 +338,7 @@ type System struct {
 	matchData         *lua.LTable
 	consecutiveWins   [2]int32
 	consecutiveRounds bool
+	firstAttack       [3]int32
 	teamLeader        [2]int
 	gameSpeed         float32
 	maxPowerMode      bool
@@ -768,6 +769,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 func (s *System) nextRound() {
 	s.resetGblEffect()
 	s.lifebar.reset()
+	s.firstAttack = [3]int32{}
 	s.finish = FT_NotYet
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_N, WT_N}
@@ -1060,6 +1062,9 @@ func (s *System) action() {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
 	s.lifebar.step()
+	if s.firstAttack[0] != 0 || s.firstAttack[1] != 0 {
+		s.firstAttack[2] = 1
+	}
 
 	// Action camera
 	leftest -= x
@@ -1948,9 +1953,7 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
 					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
-					tmp.RawSetString("firstAttack", lua.LBool(p[0].firstAttack))
 					tbl_roundNo.RawSetInt(p[0].playerNo+1, tmp)
-					p[0].firstAttack = false
 				}
 			}
 			s.matchData.RawSetInt(int(s.round-1), tbl_roundNo)
