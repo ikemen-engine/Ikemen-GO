@@ -851,6 +851,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 		} else {
 			s.stageCamera.zoomout = sys.cam.ZoomMin
 		}
+		anchor, _, _ := sec[0].getText("zoomanchor")
+		if strings.ToLower(anchor) == "bottom" {
+			s.stageCamera.zoomanchor = true
+		}
 		if sec[0].ReadI32("tensionlow", &s.stageCamera.tensionlow) {
 			s.stageCamera.ytensionenable = true
 			sec[0].ReadI32("tensionhigh", &s.stageCamera.tensionhigh)

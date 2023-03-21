@@ -26,6 +26,7 @@ type stageCamera struct {
 	zoomin         float32
 	zoomout        float32
 	ytensionenable bool
+	zoomanchor     bool
 }
 
 func newStageCamera() *stageCamera {
@@ -112,7 +113,11 @@ func (c *Camera) YBound(scl, y float32) float32 {
 		return 0
 	} else {
 		tmp := MaxF(0, 240-c.screenZoff)
-		c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
+		c.CameraZoomYBound = 0
+		if !c.zoomanchor {
+			// Expand lower bound like MUGEN 1.1
+			c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
+		}
 		bound := ClampF(y,
 			MinF(tmp*(1/scl-1), c.boundH-c.CameraZoomYBound-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
 			c.boundLo)
