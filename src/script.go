@@ -2680,7 +2680,11 @@ func triggerFunctions(l *lua.LState) {
 	})
 	// vanilla triggers
 	luaRegister(l, "ailevel", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.aiLevel()))
+		if !sys.debugWC.sf(CSF_noailevel) {
+			l.Push(lua.LNumber(sys.debugWC.aiLevel()))
+		} else {
+			l.Push(lua.LNumber(0))
+		}
 		return 1
 	})
 	luaRegister(l, "alive", func(*lua.LState) int {
@@ -3915,6 +3919,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_noredlifedamage)))
 		case "nomakedust":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nomakedust)))
+		case "noko":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noko)))
+		case "noguardko":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguardko)))
+		case "nokovelocity":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nokovelocity)))
+		case "noailevel":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_noailevel)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
@@ -3936,10 +3948,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.sf(GSF_nokosnd)))
 		case "nokoslow":
 			l.Push(lua.LBool(sys.sf(GSF_nokoslow)))
-		case "noko":
+		case "globalnoko":
 			l.Push(lua.LBool(sys.sf(GSF_noko)))
-		case "nokovelocity":
-			l.Push(lua.LBool(sys.sf(GSF_nokovelocity)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
 		case "roundfreeze":

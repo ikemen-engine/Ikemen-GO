@@ -72,95 +72,101 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 		foo := func(data string) error {
 			switch strings.ToLower(data) {
 			case "nostandguard":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nostandguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nostandguard)))
 			case "nocrouchguard":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nocrouchguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nocrouchguard)))
 			case "noairguard":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noairguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noairguard)))
 			case "noshadow":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noshadow)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noshadow)))
 			case "invisible":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_invisible)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_invisible)))
 			case "unguardable":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_unguardable)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_unguardable)))
 			case "nojugglecheck":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nojugglecheck)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nojugglecheck)))
 			case "noautoturn":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noautoturn)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noautoturn)))
 			case "nowalk":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nowalk)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nowalk)))
 			case "nobrake":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nobrake)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nobrake)))
 			case "nocrouch":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nocrouch)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nocrouch)))
 			case "nostand":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nostand)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nostand)))
 			case "nojump":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nojump)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nojump)))
 			case "noairjump":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noairjump)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noairjump)))
 			case "nohardcodedkeys":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nohardcodedkeys)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nohardcodedkeys)))
 			case "nogetupfromliedown":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nogetupfromliedown)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nogetupfromliedown)))
 			case "nofastrecoverfromliedown":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nofastrecoverfromliedown)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nofastrecoverfromliedown)))
 			case "nofallcount":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nofallcount)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nofallcount)))
 			case "nofalldefenceup":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nofalldefenceup)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nofalldefenceup)))
 			case "noturntarget":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noturntarget)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noturntarget)))
 			case "noinput":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noinput)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noinput)))
 			case "nopowerbardisplay":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nopowerbardisplay)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nopowerbardisplay)))
 			case "autoguard":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_autoguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_autoguard)))
 			case "animfreeze":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_animfreeze)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_animfreeze)))
 			case "postroundinput":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_postroundinput)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_postroundinput)))
 			case "nohitdamage":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nohitdamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nohitdamage)))
 			case "noguarddamage":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noguarddamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noguarddamage)))
 			case "nodizzypointsdamage":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nodizzypointsdamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nodizzypointsdamage)))
 			case "noguardpointsdamage":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noguardpointsdamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noguardpointsdamage)))
 			case "noredlifedamage":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_noredlifedamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noredlifedamage)))
 			case "nomakedust":
-				sc.add(assertSpecial_flag, sc.iToExp(int32(CSF_nomakedust)))
-			case "intro":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_intro)))
-			case "roundnotover":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotover)))
-			case "nomusic":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nomusic)))
-			case "nobardisplay":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nobardisplay)))
-			case "nobg":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nobg)))
-			case "nofg":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nofg)))
-			case "globalnoshadow":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_globalnoshadow)))
-			case "timerfreeze":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_timerfreeze)))
-			case "nokosnd":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokosnd)))
-			case "nokoslow":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokoslow)))
-			case "noko":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_noko)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nomakedust)))
+			case "noguardko":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noguardko)))
 			case "nokovelocity":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_nokovelocity)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nokovelocity)))
+			case "noailevel":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noailevel)))
+			case "intro":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_intro)))
+			case "roundnotover":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotover)))
+			case "nomusic":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nomusic)))
+			case "nobardisplay":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nobardisplay)))
+			case "nobg":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nobg)))
+			case "nofg":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nofg)))
+			case "globalnoshadow":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoshadow)))
+			case "timerfreeze":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_timerfreeze)))
+			case "nokosnd":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokosnd)))
+			case "nokoslow":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokoslow)))
+			case "globalnoko":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_noko)))
 			case "roundnotskip":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundnotskip)))
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotskip)))
 			case "roundfreeze":
-				sc.add(assertSpecial_flag_g, sc.iToExp(int32(GSF_roundfreeze)))
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundfreeze)))
+			case "noko":
+				sc.add(assertSpecial_noko, sc.i64ToExp(0))
 			default:
 				return Error("Invalid value: " + data)
 			}
