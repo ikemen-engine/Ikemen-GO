@@ -5956,7 +5956,7 @@ func (c *Char) tick() {
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko) ||
-			!c.sf(CSF_noko) || !c.sf(CSF_noguardko)) {
+			c.sf(CSF_noko) || c.sf(CSF_noguardko)) {
 			switch c.ss.stateType {
 			case ST_S:
 				c.selfState(150, -1, -1, 0, "")
