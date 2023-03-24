@@ -3772,7 +3772,9 @@ func (l *Lifebar) step() {
 			i-- // -1 as the slice just got shorter
 		} else {
 			l.textsprite[i].Draw()
-			l.textsprite[i].removetime--
+			if sys.tickNextFrame() {
+				l.textsprite[i].removetime--
+			}
 		}
 	}
 }
