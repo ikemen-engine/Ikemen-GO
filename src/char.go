@@ -5767,9 +5767,6 @@ func (c *Char) update(cvmin, cvmax,
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
 			}
-			if c.ghv.hitshaketime > 0 {
-				c.ghv.hitshaketime--
-			}
 			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
 				c.ghv.hittime--
 			}
@@ -5780,6 +5777,9 @@ func (c *Char) update(cvmin, cvmax,
 					c.fakeCombo = false
 					c.fakeReceivedHits = 0
 					c.fakeComboDmg = 0
+				}
+				if c.ghv.hitshaketime > 0 {
+					c.ghv.hitshaketime--
 				}
 				if c.ghv.fallf {
 					c.fallTime++
@@ -5794,6 +5794,7 @@ func (c *Char) update(cvmin, cvmax,
 				}
 				c.superDefenseMul = 1
 				c.fallDefenseMul = 1
+				c.ghv.hitshaketime = 0
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
 				c.ghv.hitid = c.ghv.hitid >> 31
