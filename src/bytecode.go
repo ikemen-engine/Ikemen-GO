@@ -1175,13 +1175,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_animtime:
 			sys.bcStack.PushI(c.animTime())
 		case OC_backedge:
-			sys.bcStack.PushF(c.backEdge())
+			sys.bcStack.PushF(c.backEdge() * (c.localscl / oc.localscl))
 		case OC_backedgebodydist:
-			sys.bcStack.PushI(int32(c.backEdgeBodyDist()))
+			sys.bcStack.PushI(int32(c.backEdgeBodyDist() * (c.localscl / oc.localscl)))
 		case OC_backedgedist:
-			sys.bcStack.PushI(int32(c.backEdgeDist()))
+			sys.bcStack.PushI(int32(c.backEdgeDist() * (c.localscl / oc.localscl)))
 		case OC_bottomedge:
-			sys.bcStack.PushF(c.bottomEdge())
+			sys.bcStack.PushF(c.bottomEdge() * (c.localscl / oc.localscl))
 		case OC_camerapos_x:
 			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
@@ -1210,11 +1210,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_facing:
 			sys.bcStack.PushI(int32(c.facing))
 		case OC_frontedge:
-			sys.bcStack.PushF(c.frontEdge())
+			sys.bcStack.PushF(c.frontEdge() * (c.localscl / oc.localscl))
 		case OC_frontedgebodydist:
-			sys.bcStack.PushI(int32(c.frontEdgeBodyDist()))
+			sys.bcStack.PushI(int32(c.frontEdgeBodyDist() * (c.localscl / oc.localscl)))
 		case OC_frontedgedist:
-			sys.bcStack.PushI(int32(c.frontEdgeDist()))
+			sys.bcStack.PushI(int32(c.frontEdgeDist() * (c.localscl / oc.localscl)))
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
 			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
@@ -1265,7 +1265,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_ishelper:
 			*sys.bcStack.Top() = c.isHelper(*sys.bcStack.Top())
 		case OC_leftedge:
-			sys.bcStack.PushF(c.leftEdge())
+			sys.bcStack.PushF(c.leftEdge() * (c.localscl / oc.localscl))
 		case OC_life:
 			sys.bcStack.PushI(c.life)
 		case OC_lifemax:
@@ -1332,7 +1332,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_random:
 			sys.bcStack.PushI(Rand(0, 999))
 		case OC_rightedge:
-			sys.bcStack.PushF(c.rightEdge())
+			sys.bcStack.PushF(c.rightEdge() * (c.localscl / oc.localscl))
 		case OC_roundstate:
 			sys.bcStack.PushI(c.roundState())
 		case OC_screenheight:
@@ -1362,7 +1362,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_time:
 			sys.bcStack.PushI(c.time())
 		case OC_topedge:
-			sys.bcStack.PushF(c.topEdge())
+			sys.bcStack.PushF(c.topEdge() * (c.localscl / oc.localscl))
 		case OC_uniqhitcount:
 			sys.bcStack.PushI(c.uniqHitCount)
 		case OC_vel_x:
@@ -2041,9 +2041,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_sprpriority:
 		sys.bcStack.PushI(c.sprPriority)
 	case OC_ex_stagebackedge:
-		sys.bcStack.PushF(c.stageBackEdge())
+		sys.bcStack.PushF(c.stageBackEdge() * (c.localscl / oc.localscl))
 	case OC_ex_stagefrontedge:
-		sys.bcStack.PushF(c.stageFrontEdge())
+		sys.bcStack.PushF(c.stageFrontEdge() * (c.localscl / oc.localscl))
 	case OC_ex_stagetime:
 		sys.bcStack.PushI(sys.stage.stageTime)
 	case OC_ex_standby:
