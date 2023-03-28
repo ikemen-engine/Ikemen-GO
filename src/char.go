@@ -6705,7 +6705,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					c.counterHit = true
 				}
 				if sys.firstAttack[2] == 0 && sys.firstAttack[c.teamside] == 0 && ghvset &&
-					getter.hoIdx < 0 && c.teamside != -1 {
+					getter.hoIdx < 0 && && getter.helperIndex == 0 && c.teamside != -1 {
 					sys.firstAttack[c.teamside] = c.id
 				}
 				if !math.IsNaN(float64(hd.score[0])) {
