@@ -3,9 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"flag"
 	"fmt"
+	"io"
+	"log"
 	"math"
+	"time"
 	"os"
+	
+	
 
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/effects"
@@ -14,6 +20,8 @@ import (
 	"github.com/faiface/beep/speaker"
 	"github.com/faiface/beep/vorbis"
 	"github.com/faiface/beep/wav"
+	
+	"github.com/sinsu/go-melthysynth"
 )
 
 const (
@@ -140,6 +148,7 @@ func (b *bgmLooper) Err() error {
 // ------------------------------------------------------------------
 // Bgm
 
+
 type Bgm struct {
 	filename     string
 	bgmVolume    int
@@ -172,6 +181,38 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	if filename == "" {
 		return
 	}
+	
+// Load the SoundFont.
+   sf2, _ := os.Open("soundfont.filename")
+   soundFont, _ := meltysynth.NewSoundFont(sf2)
+   sf2.Close()
+   
+// Create the synthesizer.
+   settings := meltysynth.NewSynthesizerSettings(48000)
+   synthesizer, _ := meltysynth.NewSynthesizer(soundFont, settings)
+
+// Load the MIDI file.
+    if HasExtension(bgm.filename, ".mid") {
+		bgm.streamer, format, err = meltysynth(f)
+		bgm.format = "mid"
+	} 
+    mid, _ := os.Open(bgm.filename)
+    midiFile, _ := meltysynth.NewMidiFile(mid)
+    mid.Close()
+
+// Create the MIDI sequencer.
+    sequencer := meltysynth.NewMidiFileSequencer(synthesizer)
+    sequencer.Play(midiFile, true)
+	
+// The output buffer.
+   length := int(float64(settings.SampleRate) * float64(midiFile.GetLength()) / float64(time.Second))
+   left := make([]float32, length)
+   right := make([]float32, length)
+
+// Render the waveform.
+   sequencer.Render(left, right)
+
+
 
 	f, err := os.Open(bgm.filename)
 	if err != nil {
