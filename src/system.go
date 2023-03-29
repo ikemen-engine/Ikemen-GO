@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/faiface/beep"
-	"github.com/faiface/beep/speaker"
+	"github.com/samhocevar/beep"
+	"github.com/samhocevar/beep/speaker"
 	lua "github.com/yuin/gopher-lua"
 )
 
