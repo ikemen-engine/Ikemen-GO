@@ -10,7 +10,7 @@ if not exist go.mod (
 	go mod init github.com/ikemen-engine/Ikemen-GO/src
 )
 
-go get -v -u github.com/faiface/beep
+go get -v -u github.com/samhocevar/beep
 go get -v -u github.com/flopp/go-findfont
 go get -v -u github.com/go-gl/gl/v2.1/gl
 go get -v -u github.com/go-gl/glfw/v3.3/glfw
