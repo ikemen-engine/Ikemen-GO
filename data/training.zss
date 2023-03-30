@@ -47,9 +47,24 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	}
 	# Dummy Control: Cooperative
 	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {
-		# Guard mode: Auto
-		if map(_iksys_trainingGuardMode) = 1 {
+		# Guard mode: Random
+		if map(_iksys_trainingGuardMode) = 3 {
+			if random < 500 {
+				assertSpecial{flag: autoGuard}
+			}
+		# Guard mode: All
+		} else if map(_iksys_trainingGuardMode) = 2 {
 			assertSpecial{flag: autoGuard}
+		# Guard mode: Auto
+		} else if map(_iksys_trainingGuardMode) = 1 {
+			if moveType = H || stateNo = const(StateDownedGetHit_gettingUp) {
+				map(_iksys_trainingAutoGuardTimer) := 15;
+			} else {
+				map(_iksys_trainingAutoGuardTimer) := (map(_iksys_trainingAutoGuardTimer) - 1);
+			}
+			if map(_iksys_trainingAutoGuardTimer) > 0 {
+				assertSpecial{flag: autoGuard}
+			}
 		}
 		# Distance
 		let dir = 0;
