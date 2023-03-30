@@ -2854,6 +2854,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 	}
 	if tagSCF == 1 {
 		crun.setSCF(SCF_standby)
+		sys.charList.p2enemyDelete(crun)
 	}
 	if partnerNo != -1 && crun.partnerV2(partnerNo) != nil {
 		partner := crun.partnerV2(partnerNo)
@@ -2861,6 +2862,7 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		if partnerStateNo >= 0 {
 			partner.changeState(partnerStateNo, -1, -1, "")
 		}
+		sys.charList.p2enemyDelete(partner)
 	}
 	return false
 }
