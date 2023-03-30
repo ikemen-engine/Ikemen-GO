@@ -1719,7 +1719,7 @@ type Char struct {
 	targets         []int32
 	targetsOfHitdef []int32
 	enemynear       [2][]*Char
-	p2enemy         []*Char
+	//p2enemy         []*Char
 	pos             [3]float32
 	drawPos         [3]float32
 	oldPos          [3]float32
@@ -1911,7 +1911,7 @@ func (c *Char) clear2() {
 	}
 	c.aimg.timegap = -1
 	c.enemyNearClear()
-	c.p2enemy = c.p2enemy[:0]
+	//c.p2enemy = c.p2enemy[:0]
 	c.targets = c.targets[:0]
 	c.cpucmd = -1
 }
@@ -6021,14 +6021,14 @@ func (c *Char) tick() {
 				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
 			}
 			c.setSCF(SCF_ko)
-			for _, cl := range sys.charList.runOrder {
-				for i, p2cl := range cl.p2enemy {
-					if p2cl == c {
-						cl.p2enemy = cl.p2enemy[:i+copy(cl.p2enemy[i:], cl.p2enemy[i+1:])]
-						break
-					}
-				}
-			}
+			//for _, cl := range sys.charList.runOrder {
+			//	for i, p2cl := range cl.p2enemy {
+			//		if p2cl == c {
+			//			cl.p2enemy = cl.p2enemy[:i+copy(cl.p2enemy[i:], cl.p2enemy[i+1:])]
+			//			break
+			//		}
+			//	}
+			//}
 		}
 		if c.ss.moveType != MT_H {
 			c.recoverTime = c.gi().data.liedown.time
@@ -7232,11 +7232,12 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, ignoreDefeatedEnemy, log boo
 	if int(n) < len(*cache) {
 		return (*cache)[n]
 	}
-	if p2 {
-		cache = &c.p2enemy
-	} else {
-		*cache = (*cache)[:0]
-	}
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1109
+	//if p2 {
+	//	cache = &c.p2enemy
+	//} else {
+	*cache = (*cache)[:0]
+	//}
 	var add func(*Char, int, float32)
 	add = func(e *Char, idx int, adddist float32) {
 		for i := idx; i <= int(n); i++ {
