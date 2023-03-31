@@ -66,7 +66,7 @@ if moveReversed = 1 && (map(_iksys_parryFlag) = 0 || map(_iksys_parryFlag) = Gam
 # Just Defend
 [Function JustDefend() ret]
 let ret = 0;
-if (command = "holdback" || stateNo = [const(StateGuard_start), const(StateAirGuardHit_knockedAway)])
+if (command = "holdback" || map(_iksys_trainingGuardMode) || stateNo = [const(StateGuard_start), const(StateAirGuardHit_knockedAway)])
 	&& (map(_iksys_justDefendFlag) = 0 || map(_iksys_justDefendFlag) = GameTime) {
 	if stateNo = [const(StateStandGuardHit_shaking), const(StateAirGuardHit_knockedAway)] && map(_iksys_justDefendTimer) < 3 {
 		let ret = 1;

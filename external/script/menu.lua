@@ -25,6 +25,8 @@ menu.t_valuename = {
 	guardmode = {
 		{itemname = 'none', displayname = motif.training_info.menu_valuename_guardmode_none},
 		{itemname = 'auto', displayname = motif.training_info.menu_valuename_guardmode_auto},
+		{itemname = 'all', displayname = motif.training_info.menu_valuename_guardmode_all},
+		{itemname = 'random', displayname = motif.training_info.menu_valuename_guardmode_random},
 	},
 	dummymode = {
 		{itemname = 'stand', displayname = motif.training_info.menu_valuename_dummymode_stand},
