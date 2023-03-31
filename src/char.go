@@ -5147,6 +5147,18 @@ func (c *Char) setBindToId(to *Char) {
 }
 func (c *Char) bind() {
 	if c.bindTime == 0 {
+		if bt := sys.playerID(c.bindToId); bt != nil {
+			if bt.hasTarget(c.id) {
+				if bt.sf(CSF_destroy) {
+					sys.appendToConsole(c.warn() + fmt.Sprintf("6SelfState 5050, helper destroyed: %v", bt.name))
+					if c.ss.moveType == MT_H {
+						c.selfState(5050, -1, -1, -1, "")
+					}
+					c.setBindTime(0)
+					return
+				}
+			}
+		}
 		if c.bindToId > 0 {
 			c.setBindTime(0)
 		}
@@ -5154,14 +5166,6 @@ func (c *Char) bind() {
 	}
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
-			if bt.sf(CSF_destroy) {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
-				if c.ss.moveType == MT_H {
-					c.selfState(5050, -1, -1, -1, "")
-				}
-				c.setBindTime(0)
-				return
-			}
 			if !math.IsNaN(float64(c.bindPos[0])) {
 				c.setXV(c.facing * bt.facing * bt.vel[0])
 			}
