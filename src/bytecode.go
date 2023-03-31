@@ -3660,6 +3660,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	eid := int32(-1)
 	var expls []*Explod
 	rp := [...]int32{-1, 0}
+	remap := false
 	eachExpl := func(f func(e *Explod)) {
 		for _, e := range expls {
 			f(e)
@@ -3679,6 +3680,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
+			remap = true
 		case explod_id:
 			eid = exp[0].evalI(c)
 		default:
@@ -3688,7 +3690,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					return false
 				}
 				eachExpl(func(e *Explod) {
-					if e.ownpal {
+					if e.ownpal && remap {
 						crun.remapPal(e.palfx, [...]int32{1, 1}, rp)
 					}
 				})
