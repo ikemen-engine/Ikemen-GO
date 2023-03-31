@@ -3381,6 +3381,9 @@ func (c *Char) destroy() {
 		c.fakeComboDmg = 0
 		c.fakeReceivedHits = 0
 		c.fakeCombo = false
+		if c.player {
+			sys.charList.p2enemyDelete(c)
+		}
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				if t.bindToId == c.id {
@@ -6021,14 +6024,7 @@ func (c *Char) tick() {
 				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
 			}
 			c.setSCF(SCF_ko)
-			for _, cl := range sys.charList.runOrder {
-				for i, p2cl := range cl.p2enemy {
-					if p2cl == c {
-						cl.p2enemy = cl.p2enemy[:i+copy(cl.p2enemy[i:], cl.p2enemy[i+1:])]
-						break
-					}
-				}
-			}
+			sys.charList.p2enemyDelete(c)
 		}
 		if c.ss.moveType != MT_H {
 			c.recoverTime = c.gi().data.liedown.time
@@ -7220,6 +7216,16 @@ func (cl *CharList) get(id int32) *Char {
 		return nil
 	}
 	return cl.idMap[id]
+}
+func (cl *CharList) p2enemyDelete(c *Char) {
+	for _, e := range cl.runOrder {
+		for i, p2cl := range e.p2enemy {
+			if p2cl == c {
+				e.p2enemy = e.p2enemy[:i+copy(e.p2enemy[i:], e.p2enemy[i+1:])]
+				break
+			}
+		}
+	}
 }
 func (cl *CharList) enemyNear(c *Char, n int32, p2, ignoreDefeatedEnemy, log bool) *Char {
 	if n < 0 {
