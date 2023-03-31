@@ -5774,9 +5774,6 @@ func (c *Char) update(cvmin, cvmax,
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
 			}
-			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
-				c.ghv.hittime--
-			}
 			if c.ss.moveType == MT_H {
 				if c.ghv.guarded {
 					c.receivedHits = 0
@@ -5821,7 +5818,10 @@ func (c *Char) update(cvmin, cvmax,
 				c.ghv.playerNo = -1
 				c.ghv.score = 0
 			}
-			if (c.ss.moveType == MT_H || c.ss.no == 52) && c.pos[1] == 0 &&
+			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
+				c.ghv.hittime--
+			}
+			if ((c.ss.moveType == MT_H && (c.ss.stateType == ST_S || c.ss.stateType == ST_C)) || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 && !c.sf(CSF_nomakedust) {
 				c.makeDust(0, 0)
 			}
