@@ -3911,6 +3911,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 				}
 				e.id = 0
 			}
+			e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
 		}
 		switch id {
 		case gameMakeAnim_pos:
@@ -3935,7 +3936,6 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 	if e == nil {
 		return false
 	}
-	e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
 	e.offset[0] -= float32(crun.size.draw.offset[0])
 	e.offset[1] -= float32(crun.size.draw.offset[1])
 	e.setPos(crun)

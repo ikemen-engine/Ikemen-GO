@@ -1091,7 +1091,7 @@
 
 	; Ikemen features
 	; --------------------------------------------------------------------------
-	; Enables character sounds during continue screen.
+	; If set to 0, stops all player sounds and prevents new ones from starting.
 	sounds.enabled = 1
 	; Enables legacy (Mugen) bare bones continue screen functionality.
 	legacymode.enabled = 1
@@ -1196,7 +1196,7 @@
 
 	; Ikemen features
 	; --------------------------------------------------------------------------
-	; Enables character sounds during victory screen.
+	; If set to 0, stops all player sounds and prevents new ones from starting.
 	sounds.enabled = 0
 	; Enables victory screen for CPU-controlled team side.
 	cpu.enabled = 1
