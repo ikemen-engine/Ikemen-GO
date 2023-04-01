@@ -153,16 +153,10 @@ persistent(0) if vel y > const240p(-2) && selfAnimExist(anim + 3) && anim = [41,
 }
 
 #-------------------------------------------------------------------------------
-# Jump Down
+# Jump Down (empty state for compatibility)
 [StateDef 51; type: A; physics: A;]
 
-if time = 0 {
-	sysVar(1) := 0;
-	changeAnim{value: cond(vel x = 0, 41, ifElse(vel x > 0, 42, 43))}
-}
-persistent(0) if vel y > const240p(-2) && selfAnimExist(anim + 3) && anim = [41, 43] {
-	changeAnim{value: anim + 3}
-}
+null{}
 
 #-------------------------------------------------------------------------------
 # Jump Land
