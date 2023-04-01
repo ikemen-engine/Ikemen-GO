@@ -1476,14 +1476,18 @@ local motif =
 		menu_valuename_ailevel_6 = "6", --Ikemen feature
 		menu_valuename_ailevel_7 = "7", --Ikemen feature
 		menu_valuename_ailevel_8 = "8", --Ikemen feature
-		menu_valuename_guardmode_none = "None", --Ikemen feature
-		menu_valuename_guardmode_auto = "Auto", --Ikemen feature
-		menu_valuename_guardmode_all = "All", --Ikemen feature
-		menu_valuename_guardmode_random = "Random", --Ikemen feature
 		menu_valuename_dummymode_stand = "Stand", --Ikemen feature
 		menu_valuename_dummymode_crouch = "Crouch", --Ikemen feature
 		menu_valuename_dummymode_jump = "Jump", --Ikemen feature
 		menu_valuename_dummymode_wjump = "W Jump", --Ikemen feature
+		menu_valuename_guardmode_none = "None", --Ikemen feature
+		menu_valuename_guardmode_auto = "Auto", --Ikemen feature
+		menu_valuename_guardmode_all = "All", --Ikemen feature
+		menu_valuename_guardmode_random = "Random", --Ikemen feature
+		menu_valuename_fallrecovery_none = "None", --Ikemen feature
+		menu_valuename_fallrecovery_ground = "Ground", --Ikemen feature
+		menu_valuename_fallrecovery_air = "Air", --Ikemen feature
+		menu_valuename_fallrecovery_random = "Random", --Ikemen feature
 		menu_valuename_distance_any = "Any", --Ikemen feature
 		menu_valuename_distance_close = "Close", --Ikemen feature
 		menu_valuename_distance_medium = "Medium", --Ikemen feature
@@ -1500,8 +1504,9 @@ local motif =
 		menu_valuename_buttonjam_w = "W", --Ikemen feature
 		--menu_itemname_dummycontrol = "Dummy Control", --Ikemen feature
 		--menu_itemname_ailevel = "AI Level", --Ikemen feature
-		--menu_itemname_guardmode = "Guard Mode", --Ikemen feature
 		--menu_itemname_dummymode = "Dummy Mode", --Ikemen feature
+		--menu_itemname_guardmode = "Guard Mode", --Ikemen feature
+		--menu_itemname_fallrecovery = "Fall Recovery", --Ikemen feature
 		--menu_itemname_distance = "Distance", --Ikemen feature
 		--menu_itemname_buttonjam = "Button Jam", --Ikemen feature
 	},
@@ -2214,8 +2219,9 @@ function motif.setBaseTrainingInfo()
 	motif.training_info.menu_itemname_menutraining = "Training Menu"
 	motif.training_info.menu_itemname_menutraining_dummycontrol = "Dummy Control"
 	motif.training_info.menu_itemname_menutraining_ailevel = "AI Level"
-	motif.training_info.menu_itemname_menutraining_guardmode = "Guard Mode"
 	motif.training_info.menu_itemname_menutraining_dummymode = "Dummy Mode"
+	motif.training_info.menu_itemname_menutraining_guardmode = "Guard Mode"
+	motif.training_info.menu_itemname_menutraining_fallrecovery = "Fall Recovery"
 	motif.training_info.menu_itemname_menutraining_distance = "Distance"
 	motif.training_info.menu_itemname_menutraining_buttonjam = "Button Jam"
 	motif.training_info.menu_itemname_menutraining_back = "Back"
@@ -2238,8 +2244,9 @@ function motif.setBaseTrainingInfo()
 		"menutraining",
 		"menutraining_dummycontrol",
 		"menutraining_ailevel",
-		"menutraining_guardmode",
 		"menutraining_dummymode",
+		"menutraining_guardmode",
+		"menutraining_fallrecovery",
 		"menutraining_distance",
 		"menutraining_buttonjam",
 		"menutraining_back",
