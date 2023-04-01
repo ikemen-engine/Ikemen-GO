@@ -66,6 +66,33 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 				assertSpecial{flag: autoGuard}
 			}
 		}
+		# Fall Recovery
+		if map(_iksys_trainingFallRecovery) {
+			if moveType = H && stateType = A && hitFall && stateNo != [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)] {
+				if (map(_iksys_trainingFallRecovery) = 1 && pos y >= const(movement.air.gethit.groundrecover.ground.threshold)) # Ground recovery
+				|| (map(_iksys_trainingFallRecovery) = 2 && pos y < const(movement.air.gethit.groundrecover.ground.threshold)) # Air recovery
+				|| (map(_iksys_trainingFallRecovery) = 3 && random < 100) { # Random recovery
+					if time % 2 {
+						assertInput{flag: x; flag2: y; flag3: z} # Ideally one would specifically force the character's "recovery" command
+					} else {
+						assertInput{flag: a; flag2: b; flag3: c}
+					}
+					# Random direction
+					if map(_iksys_trainingFallRecovery) = 3 {
+						if random < 333 {
+							assertInput{flag: L}
+						} else if random < 500 {
+							assertInput{flag: R}
+						}
+						if random < 333 {
+							assertInput{flag: U}
+						} else if random < 500 {
+							assertInput{flag: D}
+						}
+					}
+				}
+			}
+		}
 		# Distance
 		let dir = 0;
 		if map(_iksys_trainingDistance) != 0 {
