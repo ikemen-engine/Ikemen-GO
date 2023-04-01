@@ -22,17 +22,23 @@ menu.t_valuename = {
 		{itemname = '7', displayname = motif.training_info.menu_valuename_ailevel_7},
 		{itemname = '8', displayname = motif.training_info.menu_valuename_ailevel_8},
 	},
+	dummymode = {
+		{itemname = 'stand', displayname = motif.training_info.menu_valuename_dummymode_stand},
+		{itemname = 'crouch', displayname = motif.training_info.menu_valuename_dummymode_crouch},
+		{itemname = 'jump', displayname = motif.training_info.menu_valuename_dummymode_jump},
+		{itemname = 'wjump', displayname = motif.training_info.menu_valuename_dummymode_wjump},
+	},
 	guardmode = {
 		{itemname = 'none', displayname = motif.training_info.menu_valuename_guardmode_none},
 		{itemname = 'auto', displayname = motif.training_info.menu_valuename_guardmode_auto},
 		{itemname = 'all', displayname = motif.training_info.menu_valuename_guardmode_all},
 		{itemname = 'random', displayname = motif.training_info.menu_valuename_guardmode_random},
 	},
-	dummymode = {
-		{itemname = 'stand', displayname = motif.training_info.menu_valuename_dummymode_stand},
-		{itemname = 'crouch', displayname = motif.training_info.menu_valuename_dummymode_crouch},
-		{itemname = 'jump', displayname = motif.training_info.menu_valuename_dummymode_jump},
-		{itemname = 'wjump', displayname = motif.training_info.menu_valuename_dummymode_wjump},
+	fallrecovery = {
+		{itemname = 'none', displayname = motif.training_info.menu_valuename_fallrecovery_none},
+		{itemname = 'ground', displayname = motif.training_info.menu_valuename_fallrecovery_ground},
+		{itemname = 'air', displayname = motif.training_info.menu_valuename_fallrecovery_air},
+		{itemname = 'random', displayname = motif.training_info.menu_valuename_fallrecovery_random},
 	},
 	distance = {
 		{itemname = 'any', displayname = motif.training_info.menu_valuename_distance_any},
@@ -128,6 +134,13 @@ menu.t_itemname = {
 		end
 		return true
 	end,
+	--Dummy Mode
+	['dummymode'] = function(t, item, cursorPosY, moveTxt, section)
+		if menu.f_valueChanged(t.items[item], motif[section]) then
+			charMapSet(2, '_iksys_trainingDummyMode', menu.dummymode - 1)
+		end
+		return true
+	end,
 	--Guard Mode
 	['guardmode'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
@@ -135,10 +148,10 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Dummy Mode
-	['dummymode'] = function(t, item, cursorPosY, moveTxt, section)
+	--Fall Recovery
+	['fallrecovery'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
-			charMapSet(2, '_iksys_trainingDummyMode', menu.dummymode - 1)
+			charMapSet(2, '_iksys_trainingFallRecovery', menu.fallrecovery - 1)
 		end
 		return true
 	end,
@@ -303,11 +316,14 @@ menu.t_vardisplay = {
 	['ailevel'] = function()
 		return menu.t_valuename.ailevel[menu.ailevel or config.Difficulty].displayname
 	end,
+	['dummymode'] = function()
+		return menu.t_valuename.dummymode[menu.dummymode or 1].displayname
+	end,
 	['guardmode'] = function()
 		return menu.t_valuename.guardmode[menu.guardmode or 1].displayname
 	end,
-	['dummymode'] = function()
-		return menu.t_valuename.dummymode[menu.dummymode or 1].displayname
+	['fallrecovery'] = function()
+		return menu.t_valuename.fallrecovery[menu.fallrecovery or 1].displayname
 	end,
 	['distance'] = function()
 		return menu.t_valuename.distance[menu.distance or 1].displayname
@@ -456,8 +472,9 @@ function menu.f_trainingReset()
 	player(2)
 	setAILevel(0)
 	charMapSet(2, '_iksys_trainingDummyControl', 0)
-	charMapSet(2, '_iksys_trainingGuardMode', 0)
 	charMapSet(2, '_iksys_trainingDummyMode', 0)
+	charMapSet(2, '_iksys_trainingGuardMode', 0)
+	charMapSet(2, '_iksys_trainingFallRecovery', 0)
 	charMapSet(2, '_iksys_trainingDistance', 0)
 	charMapSet(2, '_iksys_trainingButtonJam', 0)
 end
