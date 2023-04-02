@@ -3051,7 +3051,7 @@ func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	id := pid.ToI()
-	if id > 0 && id != c.gi().pcid || c.gi().pctype != PC_Cancel {
+	if (id > 0 && id != c.gi().pcid) || c.gi().pctype != PC_Cancel || c.helperIndex > 0 {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
@@ -3061,7 +3061,7 @@ func (c *Char) projContactTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	id := pid.ToI()
-	if id > 0 && id != c.gi().pcid {
+	if (id > 0 && id != c.gi().pcid) || c.helperIndex > 0 {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
@@ -3071,7 +3071,7 @@ func (c *Char) projGuardedTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	id := pid.ToI()
-	if id > 0 && id != c.gi().pcid || c.gi().pctype != PC_Guarded {
+	if (id > 0 && id != c.gi().pcid) || c.gi().pctype != PC_Guarded || c.helperIndex > 0 {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
@@ -3081,7 +3081,7 @@ func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	id := pid.ToI()
-	if id > 0 && id != c.gi().pcid || c.gi().pctype != PC_Hit {
+	if (id > 0 && id != c.gi().pcid) || c.gi().pctype != PC_Hit || c.helperIndex > 0 {
 		return BytecodeInt(-1)
 	}
 	return BytecodeInt(c.gi().pctime)
