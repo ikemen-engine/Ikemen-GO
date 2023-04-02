@@ -10,7 +10,7 @@ author = "Steve Matteson"
 ; This is a truetype font.
 Type = truetype
 ; Size of font: width, height.  Only height is used for truetype fonts.
-Size = 0,12
+Size = 0,24
 ; Spacing between font glyphs.  Only height is used for truetype fonts.
 Spacing = 1,4
 ; Drawing offset: x, y.

@@ -38,7 +38,7 @@
   "DebugClsnDarken": true,
   "DebugConsoleRows": 15,
   "DebugFont": "font/debug.def",
-  "DebugFontScale": 1,
+  "DebugFontScale": 0.5,
   "DebugKeys": true,
   "DebugMode": true,
   "Difficulty": 5,
