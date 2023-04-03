@@ -4661,7 +4661,7 @@ func (c *Char) angleSet(a float32) {
 	c.angle = a
 }
 func (c *Char) ctrlOver() bool {
-	return sys.time == 0 ||
+	return !c.alive() || sys.time == 0 ||
 		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) over() bool {
@@ -5442,7 +5442,7 @@ func (c *Char) actionPrepare() {
 	}
 	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	c.unsetSCF(SCF_guard)
-	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
+	if !c.ctrlOver() &&
 		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
 			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
