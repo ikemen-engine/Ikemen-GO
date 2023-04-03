@@ -1921,6 +1921,20 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 	end
 	--draw layerno = 0 backgrounds
 	bgDraw(motif[bgdef].bg, false)
+	--draw menu box
+	if motif.option_info.menu_boxbg_visible == 1 then
+		for i = 1, 2 do
+			rect_boxbg:update({
+				x1 = t_pos[i][1] + motif.option_info.keymenu_boxcursor_coords[1],
+				y1 = t_pos[i][2] + motif.option_info.keymenu_boxcursor_coords[2],
+				x2 = motif.option_info.keymenu_boxcursor_coords[3] - motif.option_info.keymenu_boxcursor_coords[1] + 1,
+				y2 = motif.option_info.keymenu_boxcursor_coords[4] - motif.option_info.keymenu_boxcursor_coords[2] + 1 + (#t - 1) * motif.option_info.keymenu_item_spacing[2],
+			})
+			rect_boxbg:draw()
+		end
+	end
+	--draw title
+	options.txt_title:draw()
 	--draw player num
 	for i = 1, 2 do
 		txt_keyController[i]:update({
@@ -1940,20 +1954,6 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 		})
 		txt_keyController[i]:draw()
 	end
-	--draw menu box
-	if motif.option_info.menu_boxbg_visible == 1 then
-		for i = 1, 2 do
-			rect_boxbg:update({
-				x1 = t_pos[i][1] + motif.option_info.keymenu_boxcursor_coords[1],
-				y1 = t_pos[i][2] + motif.option_info.keymenu_boxcursor_coords[2],
-				x2 = motif.option_info.keymenu_boxcursor_coords[3] - motif.option_info.keymenu_boxcursor_coords[1] + 1,
-				y2 = motif.option_info.keymenu_boxcursor_coords[4] - motif.option_info.keymenu_boxcursor_coords[2] + 1 + (#t - 1) * motif.option_info.keymenu_item_spacing[2],
-			})
-			rect_boxbg:draw()
-		end
-	end
-	--draw title
-	options.txt_title:draw()
 	--draw menu items
 	for i = 1, #t do
 		for j = 1, 2 do
