@@ -3277,9 +3277,13 @@ func (c *Char) turn() {
 		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
-				c.changeAnim(5, "")
+				if c.animNo != 5 {
+					c.changeAnim(5, "")
+				}
 			case ST_C:
-				c.changeAnim(6, "")
+				if c.animNo != 6 {
+					c.changeAnim(6, "")
+				}
 			}
 			c.setFacing(-c.facing)
 		}
