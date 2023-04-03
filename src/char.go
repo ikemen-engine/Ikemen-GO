@@ -2834,7 +2834,7 @@ func (c *Char) constp(coordinate, value float32) BytecodeValue {
 	return BytecodeFloat(c.stCgi().localcoord[0] / coordinate * value)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && !c.ctrlOver() && !c.scf(SCF_standby) &&
+	return c.scf(SCF_ctrl) && c.roundState() != 4 && !c.scf(SCF_standby) &&
 		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbreak)
 }
 func (c *Char) drawgame() bool {
@@ -3273,13 +3273,17 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 
 // Furimuki = Turn around
 func (c *Char) turn() {
-	if (c.scf(SCF_ctrl) || c.roundState() == 3) && c.helperIndex == 0 {
+	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
 		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
-				c.changeAnim(5, "")
+				if c.animNo != 5 {
+					c.changeAnim(5, "")
+				}
 			case ST_C:
-				c.changeAnim(6, "")
+				if c.animNo != 6 {
+					c.changeAnim(6, "")
+				}
 			}
 			c.setFacing(-c.facing)
 		}
@@ -4657,7 +4661,7 @@ func (c *Char) angleSet(a float32) {
 	c.angle = a
 }
 func (c *Char) ctrlOver() bool {
-	return sys.time == 0 ||
+	return !c.alive() || sys.time == 0 ||
 		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
 }
 func (c *Char) over() bool {
@@ -5438,7 +5442,7 @@ func (c *Char) actionPrepare() {
 	}
 	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	c.unsetSCF(SCF_guard)
-	if !(c.scf(SCF_ko) || c.ctrlOver()) &&
+	if !c.ctrlOver() &&
 		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
 			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
@@ -5457,7 +5461,7 @@ func (c *Char) actionPrepare() {
 				c.airJumpCount = 0
 				c.unsetSCF(SCF_airjump)
 			}
-			if c.ctrl() && (c.key >= 0 || c.helperIndex == 0) {
+			if c.ctrl() && !c.ctrlOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.sf(CSF_nohardcodedkeys) {
 					if !c.sf(CSF_nojump) && !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
 						if c.ss.no != 40 {
