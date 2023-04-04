@@ -3469,6 +3469,19 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.prevAnimNo))
 		return 1
 	})
+	luaRegister(l, "prevmovetype", func(*lua.LState) int {
+		var s string
+		switch sys.debugWC.ss.prevMoveType {
+		case MT_I:
+			s = "I"
+		case MT_A:
+			s = "A"
+		case MT_H:
+			s = "H"
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
 	luaRegister(l, "prevstateno", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.ss.prevno))
 		return 1
