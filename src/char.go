@@ -5537,11 +5537,11 @@ func (c *Char) actionPrepare() {
 			c.inputFlag = 0
 			c.setSF(CSF_stagebound)
 			if c.player {
-				if c.alive() || !c.scf(SCF_over) || !c.scf(SCF_ko_round_middle) {
+				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {
 					c.setSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)
-					if (c.alive() || !c.scf(SCF_over)) && c.roundState() > 0 {
-						c.setSF(CSF_playerpush)
-					}
+				}
+				if c.roundState() > 0 && (c.alive() || c.numPartner() == 0) {
+					c.setSF(CSF_playerpush)
 				}
 			}
 			c.angleScale = [...]float32{1, 1}
