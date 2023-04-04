@@ -43,7 +43,7 @@ ignoreHitPause{
 	if map(_iksys_reversalLastCall) != gameTime {
 		map(_iksys_reversalFrame2) := map(_iksys_reversalFrame1);
 		map(_iksys_reversalFrame1) := map(_iksys_reversalFrame0);
-		if moveType = H || stateNo = const(StateDownedGetHit_gettingUp) {
+		if (moveType = H && !hitOverridden) || stateNo = const(StateDownedGetHit_gettingUp) {
 			map(_iksys_reversalFrame0) := 2;
 		} else if moveType != H && stateNo = [1000, 4999] {
 			map(_iksys_reversalFrame0) := 1;
