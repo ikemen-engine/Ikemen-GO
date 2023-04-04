@@ -1598,6 +1598,7 @@ func (cgi *CharGlobalInfo) clearPCTime() {
 type StateState struct {
 	stateType       StateType
 	moveType        MoveType
+	prevMoveType    MoveType
 	physics         StateType
 	ps              []int32
 	wakegawakaranai [MaxSimul*2 + MaxAttachedChar][]bool
@@ -1607,6 +1608,7 @@ type StateState struct {
 }
 
 func (ss *StateState) clear() {
+	ss.prevMoveType = ss.moveType
 	ss.stateType, ss.moveType, ss.physics = ST_S, MT_I, ST_N
 	ss.ps = nil
 	for i, v := range ss.wakegawakaranai {
@@ -3330,6 +3332,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
+		c.ss.sb.prevMoveType = c.ss.sb.moveType
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
 	c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
@@ -5933,7 +5936,7 @@ func (c *Char) tick() {
 		}
 	}
 	if c.sf(CSF_gethit) {
-		c.ss.moveType = MT_H
+		c.ss.prevMoveType, c.ss.moveType = c.ss.moveType, MT_H
 		if c.hitPauseTime > 0 {
 			c.ss.clearWw()
 		}

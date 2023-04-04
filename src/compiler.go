@@ -362,6 +362,7 @@ var triggerMap = map[string]int{
 	"physics":          1,
 	"playerno":         1,
 	"prevanim":         1,
+	"prevmovetype":     1,
 	"ratiolevel":       1,
 	"randomrange":      1,
 	"receivedhits":     1,
@@ -1898,7 +1899,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_movehit)
 	case "movereversed":
 		out.append(OC_movereversed)
-	case "movetype", "p2movetype":
+	case "movetype", "p2movetype", "prevmovetype":
 		trname := c.token
 		if err := eqne2(func(not bool) error {
 			if len(c.token) == 0 {
@@ -1915,10 +1916,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			default:
 				return Error("Invalid value: " + c.token)
 			}
-			if trname == "p2movetype" {
-				out.appendI32Op(OC_p2, 2+Btoi(not))
+			if trname == "prevmovetype" {
+				out.append(OC_ex_, OC_ex_prevmovetype, OpCode(mt>>15))
+			} else {
+				if trname == "p2movetype" {
+					out.appendI32Op(OC_p2, 2+Btoi(not))
+				}
+				out.append(OC_movetype, OpCode(mt>>15))
 			}
-			out.append(OC_movetype, OpCode(mt>>15))
 			if not {
 				out.append(OC_blnot)
 			}

@@ -513,6 +513,7 @@ const (
 	OC_ex_vel_z
 	OC_ex_jugglepoints
 	OC_ex_prevanim
+	OC_ex_prevmovetype
 	OC_ex_reversaldefattr
 	OC_ex_bgmlength
 	OC_ex_bgmposition
@@ -2066,6 +2067,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.juggle)
 	case OC_ex_prevanim:
 		sys.bcStack.PushI(c.prevAnimNo)
+	case OC_ex_prevmovetype:
+		sys.bcStack.PushB(c.ss.prevMoveType == MoveType(be[*i])<<15)
+		*i++
 	case OC_ex_reversaldefattr:
 		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
 		*i += 4
@@ -5772,6 +5776,7 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 		case stateTypeSet_statetype:
 			crun.ss.stateType = StateType(exp[0].evalI(c))
 		case stateTypeSet_movetype:
+			crun.ss.prevMoveType = crun.ss.moveType
 			crun.ss.moveType = MoveType(exp[0].evalI(c))
 		case stateTypeSet_physics:
 			crun.ss.physics = StateType(exp[0].evalI(c))
@@ -8306,24 +8311,26 @@ func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
 
 // StateDef data struct
 type StateBytecode struct {
-	stateType StateType
-	moveType  MoveType
-	physics   StateType
-	playerNo  int
-	stateDef  stateDef
-	block     StateBlock
-	ctrlsps   []int32
-	numVars   int32
+	stateType    StateType
+	moveType     MoveType
+	prevMoveType MoveType
+	physics      StateType
+	playerNo     int
+	stateDef     stateDef
+	block        StateBlock
+	ctrlsps      []int32
+	numVars      int32
 }
 
 // StateDef bytecode creation function
 func newStateBytecode(pn int) *StateBytecode {
 	sb := &StateBytecode{
-		stateType: ST_S,
-		moveType:  MT_I,
-		physics:   ST_N,
-		playerNo:  pn,
-		block:     *newStateBlock(),
+		stateType:    ST_S,
+		prevMoveType: MT_I,
+		moveType:     MT_I,
+		physics:      ST_N,
+		playerNo:     pn,
+		block:        *newStateBlock(),
 	}
 	return sb
 }
@@ -8332,6 +8339,7 @@ func (sb *StateBytecode) init(c *Char) {
 		c.ss.stateType = sb.stateType
 	}
 	if sb.moveType != MT_U {
+		c.ss.prevMoveType = c.ss.moveType
 		c.ss.moveType = sb.moveType
 	}
 	if sb.physics != ST_U {
