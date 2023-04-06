@@ -244,8 +244,10 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
-github.com/samhocevar/beep v1.1.1-0.20230329173724-81a811327e2e h1:BuJK6JcCy7jfUct/S99JlZo+s5fzDbE7qUAYobiFkhU=
-github.com/samhocevar/beep v1.1.1-0.20230329173724-81a811327e2e/go.mod h1:tI9pC5qotIRg1dbd0nzIoqDqvCJzcFR3B+LYGWbAbsw=
+github.com/samhocevar/beep v1.1.1-0.20230406132407-3fba40ddabcc h1:qzHZd81TyTOXwRqdZdST8iKPIXFQyQjDbHciRfNjviE=
+github.com/samhocevar/beep v1.1.1-0.20230406132407-3fba40ddabcc/go.mod h1:6zWOOlj/GguL3srDS81ntVnyZEIJCGj88moFsQh7a/g=
+github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16 h1:slzh3BWJ6FyMM8gkDzDwHz+gjU4+82ldB6oPyYi82Ho=
+github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16/go.mod h1:J+GU4sgu3oAPHCceoTIXNKzFHSybNhF/LyFkWZlqhvE=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/shurcooL/go v0.0.0-20200502201357-93f07166e636/go.mod h1:TDJrrUr11Vxrven61rcy3hJMUqaf/CLWYhHNPmT14Lk=
 github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749/go.mod h1:ZY1cvUeJuFPAdZ/B6v7RHavJWZn2YPVFQ1OSXhCGOkg=

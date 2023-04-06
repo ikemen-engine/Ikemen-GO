@@ -9,7 +9,7 @@ require (
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6
 	github.com/go-gl/mathgl v1.0.0
 	github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23
-	github.com/samhocevar/beep v1.1.1-0.20230329173724-81a811327e2e
+	github.com/samhocevar/beep v1.1.1-0.20230406132407-3fba40ddabcc
 	github.com/sqweek/dialog v0.0.0-20220809060634-e981b270ebbf
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64
 	golang.org/x/mobile v0.0.0-20221110043201-43a038452099
@@ -25,6 +25,7 @@ require (
 	github.com/jfreymuth/oggvorbis v1.0.2 // indirect
 	github.com/jfreymuth/vorbis v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/image v0.5.0 // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
