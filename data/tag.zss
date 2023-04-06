@@ -101,7 +101,7 @@ if time = 0 {
 # continue until reaching place where the switch was initiated, but stop in front of enemy
 if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist X < const240p(30)) {
 	velSet{x: 0; y: 0}
-	changeState{value: const(StateStand); ctrl: 1}
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 #===============================================================================
@@ -123,7 +123,7 @@ if time = 0 {
 velSet{x: min(ifElse(const(velocity.run.fwd.x) != 0, const(velocity.run.fwd.x), const(velocity.walk.fwd.x) * 2), const240p(const(TagInVelX))); y: 0}
 
 if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) {
-	changeState{value: const(StateTagWaitingOutside)}
+	selfState{value: const(StateTagWaitingOutside)}
 }
 
 #===============================================================================
@@ -188,7 +188,7 @@ if time = 0 {
 	gravity{}
 	if vel y >= 0 && pos y > 0 {
 		velSet{x: 0; y: 0}
-		changeState{value: const(StateTagLanding)}
+		selfState{value: const(StateTagLanding)}
 	}
 }
 
@@ -206,13 +206,13 @@ if time = 0 {
 }
 
 if animTime >= 0 {
-	changeState{value: const(StateStand); ctrl: 1}
+	selfState{value: const(StateStand); ctrl: 1}
 }
 
 #===============================================================================
-# Global states (executed when in self's state)
+# Global states
 #===============================================================================
-[StateDef -3]
+[StateDef -2]
 
 if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	# do nothing, global code disabled locally or executed by helper/stage
