@@ -195,6 +195,7 @@ type CharData struct {
 	attack      int32
 	defence     int32
 	fall        struct {
+		defence_up int32
 		defence_mul float32
 	}
 	liedown struct {
@@ -221,6 +222,7 @@ func (cd *CharData) init() {
 	cd.guardpoints = 1000
 	cd.attack = 100
 	cd.defence = 100
+	cd.fall.defence_up = 50
 	cd.fall.defence_mul = 1.5
 	cd.liedown.time = 60
 	cd.airjuggle = 15
@@ -2164,10 +2166,9 @@ func (c *Char) load(def string) error {
 						c.guardPointsMax = gi.data.guardpoints
 						is.ReadI32("attack", &gi.data.attack)
 						is.ReadI32("defence", &gi.data.defence)
+						is.ReadI32("fall.defence_up", &gi.data.fall.defence_up)
+						gi.data.fall.defence_mul = (float32(gi.data.fall.defence_up) + 100) / 100
 						var i32 int32
-						if is.ReadI32("fall.defence_up", &i32) {
-							gi.data.fall.defence_mul = (float32(i32) + 100) / 100
-						}
 						if is.ReadI32("liedown.time", &i32) {
 							gi.data.liedown.time = Max(1, i32)
 						}
