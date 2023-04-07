@@ -1461,6 +1461,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_data_attack)
 		case "data.defence":
 			out.append(OC_const_data_defence)
+		case "data.fall.defence_up":
+			out.append(OC_const_data_fall_defence_up)
 		case "data.fall.defence_mul":
 			out.append(OC_const_data_fall_defence_mul)
 		case "data.liedown.time":
