@@ -5798,32 +5798,35 @@ func (c *Char) update(cvmin, cvmax,
 				// So to explain because this is did confuse the future to me.
 				// Here we set up the extra frames the combo is gonna have.
 				// Once the combo becomes non-valid and becomes false this start to count down.
+				// This timer is related to the frame where a character has already recovered from a combo, but is still not allowed to act.
 				c.comboExtraFrameWindow = sys.comboExtraFrameWindow
 			} else {
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
-				c.superDefenseMul = 1
-				c.fallDefenseMul = 1
-				c.ghv.hitshaketime = 0
-				c.ghv.fallf = false
-				c.ghv.fallcount = 0
-				c.ghv.hitid = c.ghv.hitid >> 31
-				// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
-				if c.comboExtraFrameWindow <= 0 && !c.scf(SCF_dizzy) {
-					c.fakeReceivedHits = 0
-					c.fakeComboDmg = 0
-					c.fakeCombo = false
-				} else {
-					c.fakeCombo = true
-					c.comboExtraFrameWindow--
+				if !c.scf(SCF_dizzy) {
+					c.superDefenseMul = 1
+					c.fallDefenseMul = 1
+					c.ghv.hitshaketime = 0
+					c.ghv.fallf = false
+					c.ghv.fallcount = 0
+					c.ghv.hitid = c.ghv.hitid >> 31
+					// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
+					if c.comboExtraFrameWindow <= 0 {
+						c.fakeReceivedHits = 0
+						c.fakeComboDmg = 0
+						c.fakeCombo = false
+					} else {
+						c.fakeCombo = true
+						c.comboExtraFrameWindow--
+					}
+					c.receivedHits = 0
+					c.comboDmg = 0
+					c.ghv.attr = 0
+					c.ghv.id = 0
+					c.ghv.playerNo = -1
+					c.ghv.score = 0
 				}
-				c.receivedHits = 0
-				c.comboDmg = 0
-				c.ghv.attr = 0
-				c.ghv.id = 0
-				c.ghv.playerNo = -1
-				c.ghv.score = 0
 			}
 			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
 				c.ghv.hittime--
