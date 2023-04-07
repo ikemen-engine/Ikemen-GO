@@ -5798,8 +5798,9 @@ func (c *Char) update(cvmin, cvmax,
 				// So to explain because this is did confuse the future to me.
 				// Here we set up the extra frames the combo is gonna have.
 				// Once the combo becomes non-valid and becomes false this start to count down.
+				// This timer is related to the frame where a character has already recovered from a combo, but is still not allowed to act.
 				c.comboExtraFrameWindow = sys.comboExtraFrameWindow
-			} else {
+			} else if !c.scf(SCF_dizzy) {
 				if c.hittmp > 0 {
 					c.hittmp = 0
 				}
