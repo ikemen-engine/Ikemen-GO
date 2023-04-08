@@ -227,6 +227,7 @@ const (
 	OC_const_data_dizzypoints
 	OC_const_data_attack
 	OC_const_data_defence
+	OC_const_data_fall_defence_up
 	OC_const_data_fall_defence_mul
 	OC_const_data_liedown_time
 	OC_const_data_airjuggle
@@ -1440,6 +1441,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().data.attack)
 	case OC_const_data_defence:
 		sys.bcStack.PushI(c.gi().data.defence)
+	case OC_const_data_fall_defence_up:
+		sys.bcStack.PushI(c.gi().data.fall.defence_up)
 	case OC_const_data_fall_defence_mul:
 		sys.bcStack.PushF(1.0 / c.gi().data.fall.defence_mul)
 	case OC_const_data_liedown_time:
