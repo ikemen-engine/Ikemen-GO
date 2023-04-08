@@ -186,7 +186,7 @@ if time = 0 {
 	velSet{x: const240p(4); y: -const240p(8.75)}
 } else {
 	gravity{}
-	if vel y >= 0 && pos y > 0 {
+	if vel y > 0 && pos y >= 0 {
 		velSet{x: 0; y: 0}
 		selfState{value: const(StateTagLanding)}
 	}
