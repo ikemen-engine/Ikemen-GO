@@ -1358,8 +1358,8 @@ func (p *Projectile) update(playerNo int) {
 				} else if p.cancelanim != p.anim || p.cancelanim_ffx != p.anim_ffx {
 					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_ffx, true)
 				}
-			} else if p.pos[0] < sys.xmin/p.localscl-float32(p.edgebound) ||
-				p.pos[0] > sys.xmax/p.localscl+float32(p.edgebound) ||
+			} else if p.pos[0] < (sys.xmin - sys.screenleft) / p.localscl - float32(p.edgebound) ||
+				p.pos[0] > (sys.xmax + sys.screenright) / p.localscl + float32(p.edgebound) ||
 				p.velocity[0]*p.facing < 0 &&
 					p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
 				p.velocity[0]*p.facing > 0 &&
@@ -4016,11 +4016,13 @@ func (c *Char) gethitAnimtype() Reaction {
 		return c.ghv.fall.animtype
 	} else if c.ss.stateType == ST_A {
 		return c.ghv.airanimtype
+	} else {
+		if c.ghv.groundanimtype >= RA_Back && c.ghv.yvel == 0 {
+			return RA_Hard
+		} else {
+			return c.ghv.groundanimtype
+		}
 	}
-	if c.ghv.groundanimtype == RA_Back {
-		return RA_Hard
-	}
-	return c.ghv.groundanimtype
 }
 func (c *Char) isBound() bool {
 	return c.ghv.idMatch(c.bindToId)
@@ -6418,9 +6420,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				} else {
 					ghv._type = ghv.groundtype
 				}
-				ghv.airanimtype = hd.air_animtype
-				ghv.groundanimtype = hd.animtype
-				ghv.animtype = getter.gethitAnimtype()
 				ghv.id = hd.attackerID
 				//ghv.redlife = hd.hitredlife
 				if !math.IsNaN(float64(hd.score[0])) {
@@ -6501,6 +6500,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					ghv.fallcount = fc
 					ghv.fallf = ghv.fallf || fall
 				}
+				ghv.airanimtype = hd.air_animtype
+				ghv.groundanimtype = hd.animtype
+				ghv.animtype = getter.gethitAnimtype() // This must be placed after ghv.yvel
 				byPos := c.pos
 				if proj {
 					for i, p := range pos {
