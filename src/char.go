@@ -195,7 +195,7 @@ type CharData struct {
 	attack      int32
 	defence     int32
 	fall        struct {
-		defence_up int32
+		defence_up  int32
 		defence_mul float32
 	}
 	liedown struct {
