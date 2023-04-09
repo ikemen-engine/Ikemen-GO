@@ -4703,16 +4703,14 @@ func (c *Char) hitFallVel() {
 	}
 }
 func (c *Char) hitFallSet(f int32, xv, yv float32) {
-	if c.ss.moveType == MT_H {
-		if f >= 0 {
-			c.ghv.fallf = f != 0
-		}
-		if !math.IsNaN(float64(xv)) {
-			c.ghv.fall.xvelocity = xv
-		}
-		if !math.IsNaN(float64(yv)) {
-			c.ghv.fall.yvelocity = yv
-		}
+	if f >= 0 {
+		c.ghv.fallf = f != 0
+	}
+	if !math.IsNaN(float64(xv)) {
+		c.ghv.fall.xvelocity = xv
+	}
+	if !math.IsNaN(float64(yv)) {
+		c.ghv.fall.yvelocity = yv
 	}
 }
 func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
