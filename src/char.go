@@ -1358,8 +1358,8 @@ func (p *Projectile) update(playerNo int) {
 				} else if p.cancelanim != p.anim || p.cancelanim_ffx != p.anim_ffx {
 					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_ffx, true)
 				}
-			} else if p.pos[0] < (sys.xmin - sys.screenleft) / p.localscl - float32(p.edgebound) ||
-				p.pos[0] > (sys.xmax + sys.screenright) / p.localscl + float32(p.edgebound) ||
+			} else if p.pos[0] < (sys.xmin-sys.screenleft)/p.localscl-float32(p.edgebound) ||
+				p.pos[0] > (sys.xmax+sys.screenright)/p.localscl+float32(p.edgebound) ||
 				p.velocity[0]*p.facing < 0 &&
 					p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
 				p.velocity[0]*p.facing > 0 &&
