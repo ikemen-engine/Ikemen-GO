@@ -1989,8 +1989,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_indialogue:
 		sys.bcStack.PushB(sys.dialogueFlg)
 	case OC_ex_isassertedchar:
-		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
-		*i += 4
+		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
+		*i += 8
 	case OC_ex_isassertedglobal:
 		sys.bcStack.PushB(sys.sf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
 		*i += 4
@@ -2551,7 +2551,7 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 		case assertSpecial_flag:
 			crun.setSF(CharSpecialFlag(exp[0].evalI64(c)))
 		case assertSpecial_flag_g:
-			sys.setSF(GlobalSpecialFlag(exp[0].evalI64(c)))
+			sys.setSF(GlobalSpecialFlag(exp[0].evalI(c)))
 		case assertSpecial_noko:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				crun.setSF(CharSpecialFlag(CSF_noko))

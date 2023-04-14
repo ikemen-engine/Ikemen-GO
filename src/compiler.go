@@ -2682,31 +2682,31 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "noailevel":
 			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noailevel))
 		case "intro":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_intro))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
 		case "roundnotover":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_roundnotover))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotover))
 		case "nomusic":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nomusic))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nomusic))
 		case "nobardisplay":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nobardisplay))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobardisplay))
 		case "nobg":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nobg))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobg))
 		case "nofg":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nofg))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofg))
 		case "globalnoshadow":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_globalnoshadow))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoshadow))
 		case "timerfreeze":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_timerfreeze))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_timerfreeze))
 		case "nokosnd":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nokosnd))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokosnd))
 		case "nokoslow":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_nokoslow))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokoslow))
 		case "globalnoko":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_noko))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_noko))
 		case "roundnotskip":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_roundnotskip))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
 		case "roundfreeze":
-			out.appendI64Op(OC_ex_isassertedglobal, int64(GSF_roundfreeze))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundfreeze))
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
