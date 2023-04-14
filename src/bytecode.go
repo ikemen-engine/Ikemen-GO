@@ -1989,11 +1989,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_indialogue:
 		sys.bcStack.PushB(sys.dialogueFlg)
 	case OC_ex_isassertedchar:
-		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
-		*i += 4
+		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
+		*i += 8
 	case OC_ex_isassertedglobal:
-		sys.bcStack.PushB(sys.sf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
-		*i += 4
+		sys.bcStack.PushB(sys.sf(GlobalSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
+		*i += 8
 	case OC_ex_ishost:
 		sys.bcStack.PushB(c.isHost())
 	case OC_ex_localscale:
