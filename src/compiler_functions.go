@@ -139,6 +139,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nokovelocity)))
 			case "noailevel":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noailevel)))
+			case "nointroreset":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nointroreset)))
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_intro)))
 			case "roundnotover":

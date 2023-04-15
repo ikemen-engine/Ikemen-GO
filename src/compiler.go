@@ -2681,6 +2681,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nokovelocity))
 		case "noailevel":
 			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_noailevel))
+		case "nointroreset":
+			out.appendI64Op(OC_ex_isassertedchar, int64(CSF_nointroreset))
 		case "intro":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
 		case "roundnotover":
