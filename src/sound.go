@@ -177,6 +177,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 
 	f, err := os.Open(bgm.filename)
 	if err != nil {
+		sys.bgm = *newBgm()
 		sys.errLog.Printf("Failed to open bgm: %v", err)
 		return
 	}
