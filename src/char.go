@@ -64,6 +64,7 @@ const (
 	CSF_noguardko
 	CSF_nokovelocity
 	CSF_noailevel
+	CSF_nointroreset
 	CSF_screenbound
 	CSF_movecamera_x
 	CSF_movecamera_y
@@ -5945,7 +5946,7 @@ func (c *Char) tick() {
 			c.ss.clearWw()
 		}
 		c.hitPauseTime = 0
-		c.targetDrop(-1, false)
+		//c.targetDrop(-1, false) // #1148
 		if c.hoIdx >= 0 && c.ho[c.hoIdx].forceair {
 			c.ss.stateType = ST_A
 		}

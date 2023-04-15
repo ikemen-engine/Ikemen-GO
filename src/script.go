@@ -3944,6 +3944,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_nokovelocity)))
 		case "noailevel":
 			l.Push(lua.LBool(sys.debugWC.sf(CSF_noailevel)))
+		case "nointroreset":
+			l.Push(lua.LBool(sys.debugWC.sf(CSF_nointroreset)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.sf(GSF_intro)))
