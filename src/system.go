@@ -1186,9 +1186,8 @@ func (s *System) action() {
 					if len(p) > 0 {
 						p[0].unsetSCF(SCF_over)
 						if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
-							if p[0].ss.no == 0 {
-								p[0].setCtrl(true)
-							} else if !p[0].sf(CSF_nointroreset) {
+							p[0].setCtrl(true)
+							if p[0].ss.no != 0 && !p[0].sf(CSF_nointroreset) {
 								p[0].selfState(0, -1, -1, 1, "")
 							}
 						}
