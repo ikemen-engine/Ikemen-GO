@@ -1088,6 +1088,7 @@ func (s *System) action() {
 					for i, p := range s.chars {
 						if len(p) > 0 {
 							s.playerClear(i, false)
+							p[0].posReset()
 							p[0].selfState(0, -1, -1, 0, "")
 						}
 					}
