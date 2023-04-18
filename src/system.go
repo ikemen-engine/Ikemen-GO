@@ -1088,6 +1088,7 @@ func (s *System) action() {
 					for i, p := range s.chars {
 						if len(p) > 0 {
 							s.playerClear(i, false)
+							p[0].posReset()
 							p[0].selfState(0, -1, -1, 0, "")
 						}
 					}
@@ -1171,7 +1172,6 @@ func (s *System) action() {
 				s.intro = s.lifebar.ro.ctrl_time + 1
 			}
 		} else if s.intro > 0 {
-			s.intro--
 			if s.intro == s.lifebar.ro.ctrl_time {
 				for _, p := range s.chars {
 					if len(p) > 0 {
@@ -1181,6 +1181,7 @@ func (s *System) action() {
 					}
 				}
 			}
+			s.intro--
 			if s.intro == 0 {
 				for _, p := range s.chars {
 					if len(p) > 0 {

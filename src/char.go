@@ -6223,19 +6223,36 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 		cl.runOrder[i].actionPrepare()
 	}
 	// Run character state controllers
-	// Process priority based on movetype: A > I > H (or anything else)
+	// Process priority based on movetype and player type
+	// Run actions for attacking players and helpers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
 			cl.runOrder[i].actionRun()
 		}
 	}
+	// Run actions for idle players
 	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType == MT_I {
+		if cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
 			cl.runOrder[i].actionRun()
 		}
 	}
+	// Run actions for remaining players
 	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].actionRun()
+		if cl.runOrder[i].helperIndex == 0 {
+			cl.runOrder[i].actionRun()
+		}
+	}
+	// Run actions for idle helpers
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
+			cl.runOrder[i].actionRun()
+		}
+	}
+	// Run actions for remaining helpers
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].helperIndex != 0 {
+			cl.runOrder[i].actionRun()
+		}
 	}
 	// Finish performing character actions
 	for i := 0; i < len(cl.runOrder); i++ {
