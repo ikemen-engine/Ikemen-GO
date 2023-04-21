@@ -7997,6 +7997,7 @@ const (
 	text_layerno
 	text_params
 	text_font
+	text_localcoord
 	text_bank
 	text_align
 	text_text
@@ -8009,10 +8010,9 @@ const (
 func (sc text) Run(c *Char, _ []int32) bool {
 	crun := c
 	params := []interface{}{}
-	var lclscround float32 = 1.0
 	ts := NewTextSprite()
-	var sn int = -1
-	var fflg bool
+	ts.SetLocalcoord(float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	var xscl, yscl float32 = 1, 1
 	var fnt int = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -8029,23 +8029,43 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case text_text:
-			sn = int(exp[0].evalI(c))
+			sn := int(exp[0].evalI(c))
+			spl := sys.stringPool[sys.workingState.playerNo].List
+			if sn >= 0 && sn < len(spl) {
+				ts.text = OldSprintf(spl[sn], params...)
+			}
 		case text_font:
 			fnt = int(exp[1].evalI(c))
-			fflg = exp[0].evalB(c)
+			fflg := exp[0].evalB(c)
+			fntList := crun.gi().fnt
+			if fflg {
+				fntList = sys.lifebar.fnt
+			}
+			if fnt >= 0 && fnt < len(fntList) && fntList[fnt] != nil {
+				ts.fnt = fntList[fnt]
+				if fflg {
+					ts.SetLocalcoord(float32(sys.lifebarLocalcoord[0]), float32(sys.lifebarLocalcoord[1]))
+				} else {
+					ts.SetLocalcoord(crun.stCgi().localcoord[0], crun.stCgi().localcoord[1])
+				}
+			} else {
+				fnt = -1
+			}
+		case text_localcoord:
+			ts.SetLocalcoord(exp[0].evalF(c), exp[1].evalF(c))
 		case text_bank:
 			ts.bank = exp[0].evalI(c)
 		case text_align:
 			ts.align = exp[0].evalI(c)
 		case text_pos:
-			ts.x = exp[0].evalF(c) * lclscround
+			ts.x = exp[0].evalF(c) / ts.localScale + float32(ts.offsetX)
 			if len(exp) > 1 {
-				ts.y = exp[1].evalF(c) * lclscround
+				ts.y = exp[1].evalF(c) / ts.localScale
 			}
 		case text_scale:
-			ts.xscl = exp[0].evalF(c)
+			xscl = exp[0].evalF(c)
 			if len(exp) > 1 {
-				ts.yscl = exp[1].evalF(c)
+				yscl = exp[1].evalF(c)
 			}
 		case text_color:
 			var r, g, b int32 = exp[0].evalI(c), 255, 255
@@ -8059,29 +8079,21 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				lclscround = c.localscl / crun.localscl
 			} else {
 				return false
 			}
 		}
 		return true
 	})
-	// text assignment
-	spl := sys.stringPool[sys.workingState.playerNo].List
-	if sn >= 0 && sn < len(spl) {
-		ts.text = OldSprintf(spl[sn], params...)
-	} else {
-		ts.text = OldSprintf("%v", params...)
-	}
-	// font assignment
-	fntList := crun.gi().fnt
-	if fflg {
-		fntList = sys.lifebar.fnt
-	}
-	if fnt >= 0 && fnt < len(fntList) && fntList[fnt] != nil {
-		ts.fnt = fntList[fnt]
-	} else {
+	ts.xscl = xscl / ts.localScale
+	ts.yscl = yscl / ts.localScale
+	if fnt == -1 {
 		ts.fnt = sys.debugFont.fnt
+		ts.xscl *= sys.debugFont.xscl
+		ts.yscl *= sys.debugFont.yscl
+	}
+	if ts.text == "" {
+		ts.text = OldSprintf("%v", params...)
 	}
 	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
 	return false

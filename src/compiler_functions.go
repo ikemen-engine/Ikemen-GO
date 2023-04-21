@@ -4337,6 +4337,10 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 		}); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "localcoord",
+			text_localcoord, VT_Float, 2, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "bank",
 			text_bank, VT_Int, 1, false); err != nil {
 			return err

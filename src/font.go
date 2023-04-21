@@ -548,6 +548,8 @@ type TextSprite struct {
 	frgba            [4]float32 //ttf fonts
 	removetime       int32      //text sctrl
 	layerno          int16      //text sctrl
+	localScale       float32    //text sctrl
+	offsetX          int32      //text sctrl
 }
 
 func NewTextSprite() *TextSprite {
@@ -561,9 +563,20 @@ func NewTextSprite() *TextSprite {
 		frgba:      [...]float32{1.0, 1.0, 1.0, 1.0},
 		removetime: 1,
 		layerno:    1,
+		localScale: 1,
+		offsetX:    0,
 	}
 	ts.palfx.setColor(255, 255, 255)
 	return ts
+}
+
+func (ts *TextSprite) SetLocalcoord(lx, ly float32) {
+	v := lx
+	if lx*3 > ly*4 {
+		v = ly * 4 / 3
+	}
+	ts.localScale = float32(v / 320)
+	ts.offsetX = -int32(math.Floor(float64(lx) / (float64(v) / 320) - 320) / 2)
 }
 
 func (ts *TextSprite) SetWindow(x, y, w, h float32) {
