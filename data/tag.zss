@@ -183,7 +183,11 @@ if time = 0 {
 		tagIn{leader: playerNo}
 		call TagSwitchExplod();
 	}
-	velSet{x: const240p(4); y: -const240p(8.75)}
+	if roundState = 2 {
+		velSet{x: const240p(4); y: -const240p(8.75)}
+	} else {
+		velSet{x: const240p(8.0 - 0.75 * (playerno - teamside)); y: -const240p(8.75)}
+	}
 } else {
 	gravity{}
 	if vel y > 0 && pos y >= 0 {
