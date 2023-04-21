@@ -576,7 +576,7 @@ func (ts *TextSprite) SetLocalcoord(lx, ly float32) {
 		v = ly * 4 / 3
 	}
 	ts.localScale = float32(v / 320)
-	ts.offsetX = -int32(math.Floor(float64(lx) / (float64(v) / 320) - 320) / 2)
+	ts.offsetX = -int32(math.Floor(float64(lx)/(float64(v)/320)-320) / 2)
 }
 
 func (ts *TextSprite) SetWindow(x, y, w, h float32) {

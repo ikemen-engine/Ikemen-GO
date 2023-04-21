@@ -8058,7 +8058,7 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		case text_align:
 			ts.align = exp[0].evalI(c)
 		case text_pos:
-			ts.x = exp[0].evalF(c) / ts.localScale + float32(ts.offsetX)
+			ts.x = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
 			if len(exp) > 1 {
 				ts.y = exp[1].evalF(c) / ts.localScale
 			}
