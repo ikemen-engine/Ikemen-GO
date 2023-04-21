@@ -8046,7 +8046,7 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				if fflg {
 					ts.SetLocalcoord(float32(sys.lifebarLocalcoord[0]), float32(sys.lifebarLocalcoord[1]))
 				} else {
-					ts.SetLocalcoord(crun.stCgi().localcoord[0], crun.stCgi().localcoord[1])
+					//ts.SetLocalcoord(crun.stCgi().localcoord[0], crun.stCgi().localcoord[1])
 				}
 			} else {
 				fnt = -1
