@@ -498,7 +498,7 @@ func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
 		s.sfx.p = p * ls
 	}
 }
-func (s *SoundChannel) SetPrioirty(priority int32) {
+func (s *SoundChannel) SetPriority(priority int32) {
 	if s.ctrl != nil {
 		s.sfx.priority = priority
 	}
