@@ -3262,7 +3262,7 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
 		}
 		if chNo >= 0 && priority != 0 {
-			ch.SetPrioirty(priority)
+			ch.SetPriority(priority)
 		}
 		//} else {
 		//	if f {
@@ -7085,6 +7085,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.ghv.clear()
 									getter.ghv.attr = c.hitdef.attr
 									getter.ghv.hitid = c.hitdef.id
+									getter.ghv.playerNo = c.playerNo
+									getter.ghv.id = c.id
 									getter.ghv.fall = c.hitdef.fall
 									getter.fallTime = 0
 									getter.ghv.fall.xvelocity = c.hitdef.fall.xvelocity * (c.localscl / getter.localscl)
