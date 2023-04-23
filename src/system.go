@@ -1333,9 +1333,9 @@ func (s *System) action() {
 			}
 			// Check if player skipped win pose time
 			if s.tickFrame() && s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
-			//	s.intro = Min(s.intro, -(s.lifebar.ro.over_hittime +
-			//		s.lifebar.ro.over_waittime + s.lifebar.ro.over_time -
-			//		s.lifebar.ro.start_waittime))
+				//	s.intro = Min(s.intro, -(s.lifebar.ro.over_hittime +
+				//		s.lifebar.ro.over_waittime + s.lifebar.ro.over_time -
+				//		s.lifebar.ro.start_waittime))
 				s.intro = Min(s.intro, -(s.lifebar.ro.over_time - s.lifebar.ro.start_waittime))
 				s.winskipped = true
 			}
@@ -1397,7 +1397,7 @@ func (s *System) action() {
 				}
 				s.waitdown--
 			}
-			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_time - s.lifebar.ro.fadeout_time - 1) {
+			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time-1) {
 				s.intro--
 			}
 		} else if s.intro < 0 {
