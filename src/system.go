@@ -1348,7 +1348,7 @@ func (s *System) action() {
 					if s.waitdown > 0 {
 						for _, p := range s.chars {
 							if len(p) > 0 && !p[0].over() {
-								s.intro = rs4t+1
+								s.intro = rs4t + 1
 							}
 						}
 					}
