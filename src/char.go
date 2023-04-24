@@ -1769,6 +1769,7 @@ type Char struct {
 	activeHitScale        map[int32][3]*HitScale
 	inputFlag             InputBits
 	pauseBool             bool
+	downHitOffset         float32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -5577,6 +5578,10 @@ func (c *Char) actionPrepare() {
 			c.offset = [2]float32{}
 		}
 	}
+	if c.downHitOffset != 0 {
+		c.pos[1] += c.downHitOffset
+		c.downHitOffset = 0
+	}
 }
 func (c *Char) actionRun() {
 	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
@@ -5968,6 +5973,9 @@ func (c *Char) tick() {
 		} else if c.ss.stateType == ST_L {
 			if c.pos[1] == 0 {
 				c.changeStateEx(5080, pn, -1, 0, "")
+				if c.ghv.yvel != 0 {
+					c.downHitOffset = 15 / c.localscl // This value could be unhardcoded
+				}
 				if c.recoverTime > 0 {
 					c.recoverTime--
 				}
