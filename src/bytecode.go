@@ -6710,15 +6710,17 @@ const (
 
 func (sc offset) Run(c *Char, _ []int32) bool {
 	crun := c
+	var lclscround float32 = 1.0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case offset_x:
-			crun.offset[0] = exp[0].evalF(c) * crun.localscl
+			crun.offset[0] = exp[0].evalF(c) * lclscround
 		case offset_y:
-			crun.offset[1] = exp[0].evalF(c) * crun.localscl
+			crun.offset[1] = exp[0].evalF(c) * lclscround
 		case offset_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
+				lclscround = c.localscl / crun.localscl
 			} else {
 				return false
 			}

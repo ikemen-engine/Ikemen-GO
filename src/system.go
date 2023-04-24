@@ -1328,6 +1328,9 @@ func (s *System) action() {
 					}
 				}
 			}
+			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time-1) {
+				s.intro--
+			}
 			if s.intro == -s.lifebar.ro.over_hittime && s.finish != FT_NotYet {
 				inclWinCount()
 			}
@@ -1341,11 +1344,11 @@ func (s *System) action() {
 			}
 			rs4t := -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime)
 			if s.winskipped || s.intro >= rs4t-s.lifebar.ro.over_wintime {
-				if s.intro == rs4t-1 {
+				if s.intro == rs4t {
 					if s.waitdown > 0 {
 						for _, p := range s.chars {
 							if len(p) > 0 && !p[0].over() {
-								s.intro = rs4t
+								s.intro = rs4t+1
 							}
 						}
 					}
@@ -1396,9 +1399,6 @@ func (s *System) action() {
 					s.waitdown = 0
 				}
 				s.waitdown--
-			}
-			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time-1) {
-				s.intro--
 			}
 		} else if s.intro < 0 {
 			s.intro = 0

@@ -2839,7 +2839,7 @@ func (c *Char) constp(coordinate, value float32) BytecodeValue {
 	return BytecodeFloat(c.stCgi().localcoord[0] / coordinate * value)
 }
 func (c *Char) ctrl() bool {
-	return c.scf(SCF_ctrl) && c.roundState() != 4 && !c.scf(SCF_standby) &&
+	return c.scf(SCF_ctrl) && !c.scf(SCF_standby) &&
 		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbreak)
 }
 func (c *Char) drawgame() bool {
@@ -5294,10 +5294,10 @@ func (c *Char) exitTarget(explremove bool) {
 	c.ghv.hitBy = c.ghv.hitBy[:0]
 }
 func (c *Char) offsetX() float32 {
-	return float32(c.size.draw.offset[0])*c.facing + c.offset[0]/c.localscl
+	return float32(c.size.draw.offset[0])*c.facing + c.offset[0]
 }
 func (c *Char) offsetY() float32 {
-	return float32(c.size.draw.offset[1]) + c.offset[1]/c.localscl
+	return float32(c.size.draw.offset[1]) + c.offset[1]
 }
 func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	if p.ani == nil || c.curFrame == nil || c.scf(SCF_standby) || c.scf(SCF_disabled) {
@@ -5974,7 +5974,7 @@ func (c *Char) tick() {
 			if c.pos[1] == 0 {
 				c.changeStateEx(5080, pn, -1, 0, "")
 				if c.ghv.yvel != 0 {
-					c.downHitOffset = 15 / c.localscl // This value could be unhardcoded
+					c.downHitOffset = 15 * (c.gi().localcoord[0] / 320) // This value could be unhardcoded
 				}
 				if c.recoverTime > 0 {
 					c.recoverTime--
