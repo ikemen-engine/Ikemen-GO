@@ -89,7 +89,7 @@ const (
 		CSF_animfreeze | CSF_postroundinput | CSF_nohitdamage |
 		CSF_noguarddamage | CSF_nodizzypointsdamage | CSF_noguardpointsdamage |
 		CSF_noredlifedamage | CSF_nomakedust | CSF_noko | CSF_noguardko |
-		CSF_nokovelocity | CSF_noailevel
+		CSF_nokovelocity | CSF_noailevel | CSF_nointroreset
 )
 
 type GlobalSpecialFlag uint32
@@ -5578,6 +5578,7 @@ func (c *Char) actionPrepare() {
 			c.offset = [2]float32{}
 		}
 	}
+	c.dropTargets()
 	if c.downHitOffset != 0 {
 		c.pos[1] += c.downHitOffset
 		c.downHitOffset = 0
@@ -5610,7 +5611,6 @@ func (c *Char) actionRun() {
 				sb.run(c)
 			}
 		}
-		c.dropTargets()
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
@@ -5912,7 +5912,7 @@ func (c *Char) tick() {
 			}
 		} else {
 			if !c.pause() {
-				c.setBindTime(c.bindTime - 1)
+				c.bindTime -= 1
 			}
 		}
 	}
@@ -7089,8 +7089,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.mctime = -1
 									getter.hitdefContact = true
 
-									fall := getter.ghv.fallf
+									fall, by := getter.ghv.fallf, getter.ghv.hitBy
+
 									getter.ghv.clear()
+									getter.ghv.hitBy = by
 									getter.ghv.attr = c.hitdef.attr
 									getter.ghv.hitid = c.hitdef.id
 									getter.ghv.playerNo = c.playerNo
