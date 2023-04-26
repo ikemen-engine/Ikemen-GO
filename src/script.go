@@ -2687,6 +2687,10 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "airjumpcount", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.airJumpCount))
+		return 1
+	})
 	luaRegister(l, "alive", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.alive()))
 		return 1
