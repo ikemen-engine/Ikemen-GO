@@ -1770,6 +1770,7 @@ type Char struct {
 	inputFlag             InputBits
 	pauseBool             bool
 	downHitOffset         float32
+	koEchoTime            int32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -5448,10 +5449,13 @@ func (c *Char) actionPrepare() {
 	}
 	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	c.unsetSCF(SCF_guard)
+	if sys.autoguard[c.playerNo] {
+		c.setSF(CSF_autoguard)
+	}
 	if !c.ctrlOver() &&
 		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
 			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
-		(sys.autoguard[c.playerNo] || c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
+		(c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
 		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
 			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
 			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
@@ -5900,6 +5904,17 @@ func (c *Char) update(cvmin, cvmax,
 			sys.cam.Pos[1] = 0 + sys.cam.CameraZoomYBound
 		}
 	}
+	if c.koEchoTime > 0 {
+		if !c.scf(SCF_ko) || sys.sf(GSF_nokosnd) {
+			c.koEchoTime = 0
+		} else {
+			if c.koEchoTime == 60 || c.koEchoTime == 120 {
+				vo := int32(100 * (240 - (c.koEchoTime + 60)) / 240)
+				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
+			}
+			c.koEchoTime++
+		}
+	}
 }
 func (c *Char) tick() {
 	if c.acttmp > 0 && !c.sf(CSF_animfreeze) && c.anim != nil {
@@ -6046,6 +6061,9 @@ func (c *Char) tick() {
 			if !sys.sf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
 				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
+				if c.gi().data.ko.echo != 0 {
+					c.koEchoTime = 1
+				}
 			}
 			c.setSCF(SCF_ko)
 			sys.charList.p2enemyDelete(c)
@@ -6307,7 +6325,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		guard := (proj || !c.sf(CSF_unguardable)) && getter.scf(SCF_guard) &&
 			(!getter.sf(CSF_gethit) || getter.ghv.guarded)
-		if guard && sys.autoguard[getter.playerNo] &&
+		if guard && getter.sf(CSF_autoguard) &&
 			getter.acttmp > 0 && !getter.sf(CSF_gethit) &&
 			(getter.ss.stateType == ST_S || getter.ss.stateType == ST_C) &&
 			int32(getter.ss.stateType)&hd.guardflag == 0 {
