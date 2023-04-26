@@ -518,6 +518,7 @@ const (
 	OC_ex_reversaldefattr
 	OC_ex_bgmlength
 	OC_ex_bgmposition
+	OC_ex_airjumpcount
 )
 const (
 	NumVar     = 60
@@ -2088,6 +2089,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
 		}
+	case OC_ex_airjumpcount:
+		sys.bcStack.PushI(c.airJumpCount)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

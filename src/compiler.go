@@ -320,6 +320,7 @@ var triggerMap = map[string]int{
 	"winperfect":        1,
 	// expanded triggers
 	"ailevelf":         1,
+	"airjumpcount":     1,
 	"animelemlength":   1,
 	"animlength":       1,
 	"attack":           1,
@@ -2552,6 +2553,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ailevelf":
 		out.append(OC_ex_, OC_ex_ailevelf)
+	case "airjumpcount":
+		out.append(OC_ex_, OC_ex_airjumpcount)
 	case "animelemlength":
 		out.append(OC_ex_, OC_ex_animelemlength)
 	case "animlength":
