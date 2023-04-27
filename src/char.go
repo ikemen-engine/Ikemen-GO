@@ -4671,7 +4671,8 @@ func (c *Char) angleSet(a float32) {
 }
 func (c *Char) ctrlOver() bool {
 	return !c.alive() || sys.time == 0 ||
-		sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime)
+		(sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime) &&
+		sys.intro > -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime+sys.lifebar.ro.over_wintime))
 }
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || (c.ctrlOver() && (c.scf(SCF_ctrl) || c.ss.no == 5150) &&
@@ -5473,7 +5474,7 @@ func (c *Char) actionPrepare() {
 			}
 			if c.ctrl() && !c.ctrlOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.sf(CSF_nohardcodedkeys) {
-					if !c.sf(CSF_nojump) && !sys.roundEnd() && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
+					if !c.sf(CSF_nojump) && (!sys.roundEnd() || c.sf(CSF_postroundinput)) && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
 						if c.ss.no != 40 {
 							c.changeState(40, -1, -1, "")
 						}
@@ -6091,7 +6092,7 @@ func (c *Char) cueDraw() {
 			for _, h := range c.hitby {
 				if h.time != 0 {
 					hb = true
-					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0
+					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0 || c.gi().unhittable > 0
 				}
 			}
 			if mtk {
