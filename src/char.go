@@ -4672,7 +4672,7 @@ func (c *Char) angleSet(a float32) {
 func (c *Char) ctrlOver() bool {
 	return !c.alive() || sys.time == 0 ||
 		(sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime) &&
-		sys.intro > -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime+sys.lifebar.ro.over_wintime))
+			sys.intro > -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime+sys.lifebar.ro.over_wintime))
 }
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || (c.ctrlOver() && (c.scf(SCF_ctrl) || c.ss.no == 5150) &&
