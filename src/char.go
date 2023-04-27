@@ -2381,7 +2381,7 @@ func (c *Char) load(def string) error {
 			if err != nil {
 				return err
 			}
-			str += txt
+			str += "\n" + txt
 			return nil
 		}); err != nil {
 			return err

@@ -5347,7 +5347,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 			if err != nil {
 				return err
 			}
-			str += txt
+			str += "\n" + txt
 			return nil
 		}); err != nil {
 			return nil, err
