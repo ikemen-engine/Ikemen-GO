@@ -147,20 +147,12 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 			# Dummy mode: Crouch
 			if map(_iksys_trainingDummyMode) = 1 {
 				assertInput{flag: D}
-			}
 			# Dummy mode: Jump
-			if map(_iksys_trainingDummyMode) = [2, 3] {
-				if stateType = S && moveType = I {
-					assertInput{flag: U}
-				}
-			}
+			} else if map(_iksys_trainingDummyMode) = 2 {
+				assertInput{flag: U}
 			# Dummy mode: W Jump
-			if map(_iksys_trainingDummyMode) = 3 {
-				if airJumpCount < const(movement.airjump.num) {
-					if stateType = A && moveType = I && vel y > 0 {
-						assertInput{flag: U}
-					}
-				}
+			} else if map(_iksys_trainingDummyMode) = 3 && vel y >= 0 {
+				assertInput{flag: U}
 			}
 			# Button jam
 			if map(_iksys_trainingDummyMode) > 0 && stateNo = const(StateStand) {
