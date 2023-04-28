@@ -902,22 +902,23 @@ func (s *System) commandUpdate() {
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			r := p[0]
-			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) ||
-				(r.aiLevel() > 0 && !r.alive()) {
-				for j := range r.cmd {
-					r.cmd[j].BufReset()
-				}
-				continue
-			}
 			act := true
 			if s.super > 0 {
 				act = r.superMovetime != 0
 			} else if s.pause > 0 && r.pauseMovetime == 0 {
 				act = false
 			}
+			// Having this here makes B and F inputs reverse the same instant the character turns
 			if act && !r.sf(CSF_noautoturn) &&
-				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20) {
+				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20 || r.ss.no == 52) {
 				r.turn()
+			}
+			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) ||
+				(r.aiLevel() > 0 && !r.alive()) {
+				for j := range r.cmd {
+					r.cmd[j].BufReset()
+				}
+				continue
 			}
 			for _, c := range p {
 				if (c.helperIndex == 0 ||
