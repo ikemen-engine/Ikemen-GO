@@ -5530,9 +5530,6 @@ func (c *Char) actionPrepare() {
 			}
 		}
 		if !c.hitPause() {
-			if !c.sf(CSF_noautoturn) && c.ss.no == 52 {
-				c.turn()
-			}
 			if !sys.roundEnd() {
 				if c.alive() && c.life > 0 {
 					c.unsetSCF(SCF_over | SCF_ko_round_middle)
