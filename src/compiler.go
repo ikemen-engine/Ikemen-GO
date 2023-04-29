@@ -4496,6 +4496,9 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 		}
 		return int32(v), err
 	}
+	if t == "+" && len(*line) == 2 && (*line)[0] == '1' {
+		return int32(-10), err
+	}
 	if t == "-" && len(*line) > 0 && (*line)[0] >= '0' && (*line)[0] <= '9' {
 		t += c.scan(line)
 	}
