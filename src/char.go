@@ -18,7 +18,6 @@ const (
 	SCF_ctrl
 	SCF_standby
 	SCF_guard
-	SCF_airjump
 	SCF_over
 	SCF_ko_round_middle
 	SCF_dizzy
@@ -4672,7 +4671,8 @@ func (c *Char) angleSet(a float32) {
 func (c *Char) ctrlOver() bool {
 	return !c.alive() || sys.time == 0 ||
 		(sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime) &&
-			sys.intro > -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime+sys.lifebar.ro.over_wintime))
+		sys.intro > -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime+sys.lifebar.ro.over_wintime)) ||
+		sys.intro <= -sys.lifebar.ro.over_time
 }
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || (c.ctrlOver() && (c.scf(SCF_ctrl) || c.ss.no == 5150) &&
@@ -5464,27 +5464,17 @@ func (c *Char) actionPrepare() {
 	}
 	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
-			if c.ss.stateType == ST_A {
-				if c.cmd[0].Buffer.U < 0 {
-					c.setSCF(SCF_airjump)
-				}
-			} else {
-				c.airJumpCount = 0
-				c.unsetSCF(SCF_airjump)
-			}
 			if c.ctrl() && !c.ctrlOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.sf(CSF_nohardcodedkeys) {
 					if !c.sf(CSF_nojump) && (!sys.roundEnd() || c.sf(CSF_postroundinput)) && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
 						if c.ss.no != 40 {
 							c.changeState(40, -1, -1, "")
 						}
-					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.scf(SCF_airjump) &&
+					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.cmd[0].Buffer.Ub == 1 &&
 						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
-						c.airJumpCount < c.gi().movement.airjump.num &&
-						c.cmd[0].Buffer.U > 0 {
+						c.airJumpCount < c.gi().movement.airjump.num {
 						if c.ss.no != 45 || c.ss.time > 0 {
 							c.airJumpCount++
-							c.unsetSCF(SCF_airjump)
 							c.changeState(45, -1, -1, "")
 						}
 					} else {
@@ -5528,6 +5518,9 @@ func (c *Char) actionPrepare() {
 					}
 				}
 			}
+		}
+		if c.ss.stateType != ST_A {
+			c.airJumpCount = 0
 		}
 		if !c.hitPause() {
 			if !sys.roundEnd() {
@@ -5617,6 +5610,9 @@ func (c *Char) actionRun() {
 		c.minus = 0
 		c.ss.sb.run(c)
 	}
+	if sb, ok := c.gi().states[-10]; ok { // still minus 0
+		sb.run(c)
+	}
 	if !c.hitPause() {
 		if !c.sf(CSF_frontwidth) {
 			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
@@ -5633,6 +5629,9 @@ func (c *Char) actionRun() {
 	}
 	if !c.pauseBool {
 		if !c.hitPause() {
+			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
+				c.changeState(5120, -1, -1, "")
+			}
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
 				c.ss.time >= c.anim.totaltime) {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
@@ -5648,9 +5647,7 @@ func (c *Char) actionRun() {
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
-			if c.ss.no != 5120 || c.ss.time != 0 {
-				c.ss.time++
-			}
+			c.ss.time++
 			if c.mctime > 0 {
 				c.mctime++
 			}
@@ -5709,17 +5706,7 @@ func (c *Char) actionFinish() {
 	if (c.minus < 1) || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
-	// Hack: temporal change to minus == 0 to avoid frame locks
-	c.minus = 0
 	if !c.pauseBool {
-		if !c.hitPause() {
-			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.sf(CSF_nogetupfromliedown) {
-				c.changeState(5120, -1, -1, "")
-			}
-			if c.ss.no == 5120 && c.ss.time == 0 {
-				c.ss.time++
-			}
-		}
 		if c.palfx != nil && c.ownpal {
 			c.palfx.step()
 		}
