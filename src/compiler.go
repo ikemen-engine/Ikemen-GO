@@ -3894,15 +3894,10 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			stateDef_facep2, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		b = false
 		if err := c.stateParam(is, "juggle", func(data string) error {
-			b = true
 			return c.scAdd(sc, stateDef_juggle, data, VT_Int, 1)
 		}); err != nil {
 			return err
-		}
-		if !b {
-			sc.add(stateDef_juggle, sc.iToExp(0))
 		}
 		if err := c.paramValue(is, sc, "velset",
 			stateDef_velset, VT_Float, 3, false); err != nil {
@@ -4497,6 +4492,7 @@ func (c *Compiler) scanStateDef(line *string, constants map[string]float32) (int
 		return int32(v), err
 	}
 	if t == "+" && len(*line) == 2 && (*line)[0] == '1' {
+		c.scan(line)
 		return int32(-10), err
 	}
 	if t == "-" && len(*line) > 0 && (*line)[0] >= '0' && (*line)[0] <= '9' {
@@ -5172,7 +5168,11 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 			}
 			c.scan(&line)
 			if existInThisFile[c.stateNo] {
-				return errmes(Error(fmt.Sprintf("State %v overloaded", c.stateNo)))
+				if c.stateNo == -10 {
+					return errmes(Error(fmt.Sprintf("State +1 overloaded")))
+				} else {
+					return errmes(Error(fmt.Sprintf("State %v overloaded", c.stateNo)))
+				}
 			}
 			existInThisFile[c.stateNo] = true
 			is := NewIniSection()

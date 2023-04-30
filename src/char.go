@@ -5941,7 +5941,6 @@ func (c *Char) tick() {
 	if c.mctime < 0 {
 		c.mctime = 1
 		if c.mctype == MC_Hit {
-			c.juggle = 0
 			c.hitCount += c.hitdef.numhits
 		}
 	}
@@ -6871,6 +6870,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				} else {
 					*jug -= c.juggle
 				}
+				c.juggle = 0
 			}
 			if hd.palfx.time > 0 && getter.palfx != nil {
 				getter.palfx.clear2(true)
