@@ -2587,6 +2587,9 @@ const (
 )
 
 func (sc playSnd) Run(c *Char, _ []int32) bool {
+	if sys.noSoundFlg {
+		return false
+	}
 	crun := c
 	f, lw, lp := "", false, false
 	var g, n, ch, vo, pri int32 = -1, 0, -1, 100, 0
