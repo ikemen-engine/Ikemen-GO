@@ -328,7 +328,6 @@ var triggerMap = map[string]int{
 	"bgmposition":      1,
 	"combocount":       1,
 	"consecutivewins":  1,
-	"jugglepoints":     1,
 	"defence":          1,
 	"dizzy":            1,
 	"dizzypoints":      1,
@@ -2565,8 +2564,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_combocount)
 	case "consecutivewins":
 		out.append(OC_ex_, OC_ex_consecutivewins)
-	case "jugglepoints":
-		out.append(OC_ex_, OC_ex_jugglepoints)
 	case "defence":
 		out.append(OC_ex_, OC_ex_defence)
 	case "dizzy":
