@@ -4145,7 +4145,9 @@ const (
 	hitDef_fall_recover
 	hitDef_fall_recovertime
 	hitDef_sparkno
+	hitDef_sparkangle
 	hitDef_guard_sparkno
+	hitDef_guard_sparkangle
 	hitDef_sparkxy
 	hitDef_down_hittime
 	hitDef_p1facing
@@ -4310,9 +4312,13 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	case hitDef_sparkno:
 		hd.sparkno_ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		hd.sparkno = exp[1].evalI(c)
+	case hitDef_sparkangle:
+		hd.sparkangle = exp[0].evalF(c)
 	case hitDef_guard_sparkno:
 		hd.guard_sparkno_ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		hd.guard_sparkno = exp[1].evalI(c)
+	case hitDef_guard_sparkangle:
+		hd.guard_sparkangle = exp[0].evalF(c)
 	case hitDef_sparkxy:
 		hd.sparkxy[0] = exp[0].evalF(c)
 		if len(exp) > 1 {

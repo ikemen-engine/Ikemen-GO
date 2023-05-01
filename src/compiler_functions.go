@@ -1362,9 +1362,17 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "sparkangle",
+		hitDef_sparkangle, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, "guard.sparkno", func(data string) error {
 		return sprk(hitDef_guard_sparkno, data)
 	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "guard.sparkangle",
+		hitDef_guard_sparkangle, VT_Float, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "sparkxy",
