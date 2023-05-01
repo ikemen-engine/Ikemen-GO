@@ -541,8 +541,10 @@ type HitDef struct {
 	guard_shaketime            int32
 	sparkno                    int32
 	sparkno_ffx                string
+	sparkangle                 float32
 	guard_sparkno              int32
 	guard_sparkno_ffx          string
+	guard_sparkangle           float32
 	sparkxy                    [2]float32
 	hitsound                   [2]int32
 	hitsound_channel           int32
@@ -629,8 +631,10 @@ func (hd *HitDef) clear() {
 		bothhittype:        AT_Hit,
 		sparkno:            -1,
 		sparkno_ffx:        "f",
+		sparkangle:         0,
 		guard_sparkno:      -1,
 		guard_sparkno_ffx:  "f",
+		guard_sparkangle:   0,
 		hitsound:           [...]int32{-1, 0},
 		hitsound_channel:   -1,
 		hitsound_ffx:       "f",
@@ -6687,7 +6691,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		}
-		hitspark := func(p1, p2 *Char, animNo int32, ffx string) {
+		hitspark := func(p1, p2 *Char, animNo int32, ffx string, sparkangle float32) {
 			off := pos
 			if !proj {
 				off[0] = p2.pos[0]*p2.localscl - p1.pos[0]*p1.localscl
@@ -6725,15 +6729,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					e.anim.start_scale[1] *= c.localscl
 				}
 				e.setPos(p1)
+				e.rot.angle = sparkangle
 				c.insertExplod(i)
 			}
 		}
 		if Abs(hitType) == 1 {
 			if hd.sparkno >= 0 {
 				if hd.reversal_attr > 0 {
-					hitspark(getter, c, hd.sparkno, hd.sparkno_ffx)
+					hitspark(getter, c, hd.sparkno, hd.sparkno_ffx, hd.sparkangle)
 				} else {
-					hitspark(c, getter, hd.sparkno, hd.sparkno_ffx)
+					hitspark(c, getter, hd.sparkno, hd.sparkno_ffx, hd.sparkangle)
 				}
 			}
 			if hd.hitsound[0] >= 0 {
@@ -6773,9 +6778,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		} else {
 			if hd.guard_sparkno >= 0 {
 				if hd.reversal_attr > 0 {
-					hitspark(getter, c, hd.guard_sparkno, hd.guard_sparkno_ffx)
+					hitspark(getter, c, hd.guard_sparkno, hd.guard_sparkno_ffx, hd.guard_sparkangle)
 				} else {
-					hitspark(c, getter, hd.guard_sparkno, hd.guard_sparkno_ffx)
+					hitspark(c, getter, hd.guard_sparkno, hd.guard_sparkno_ffx, hd.guard_sparkangle)
 				}
 			}
 			if hd.guardsound[0] >= 0 {

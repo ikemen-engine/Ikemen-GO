@@ -389,9 +389,10 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	}
 
 	# Set dizzy flag
-	if dizzyPoints = 0 {
-		if !dizzy && moveType = H && !inCustomState &&
-			(getHitVar(attr) != [const(AttrStandingHyperAttack), const(AttrAerialHyperProjectile)] || getHitVar(dizzyPoints) < 0) {
+	if !dizzy && dizzyPoints = 0 {
+		if time = 0 && getHitVar(dizzyPoints) >= 0 {
+			dizzyPointsSet{value: 1} # Similar to using kill = 0 in LifeAdd
+		} else if moveType = H && !inCustomState {
 			dizzySet{value: 1}
 		}
 	}
