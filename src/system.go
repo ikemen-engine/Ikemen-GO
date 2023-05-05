@@ -913,8 +913,12 @@ func (s *System) commandUpdate() {
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20 || r.ss.no == 52) {
 				r.turn()
 			}
-			if (r.ctrlOver() && !r.sf(CSF_postroundinput)) || r.sf(CSF_noinput) ||
-				(r.aiLevel() > 0 && !r.alive()) {
+			if !r.sf(CSF_postroundinput) &&
+				s.intro <= -(s.lifebar.ro.over_hittime+s.lifebar.ro.over_waittime) &&
+				s.intro > -(s.lifebar.ro.over_hittime+s.lifebar.ro.over_waittime+s.lifebar.ro.over_wintime) {
+				r.setSF(CSF_noinput)
+			}
+			if r.inputOver() || r.sf(CSF_noinput) || (r.aiLevel() > 0 && !r.alive()) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
 				}
@@ -1345,11 +1349,19 @@ func (s *System) action() {
 			}
 			rs4t := -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime)
 			if s.winskipped || s.intro >= rs4t-s.lifebar.ro.over_wintime {
-				if s.intro == rs4t {
-					if s.waitdown > 0 {
+				if s.waitdown > 0 {
+					if s.intro == rs4t - 1 {
 						for _, p := range s.chars {
-							if len(p) > 0 && !p[0].over() {
-								s.intro = rs4t + 1
+							if len(p) > 0 {
+								// Disable ctrl (once) and set "ctrl wait" flag
+								if p[0].scf(SCF_ctrl) && !p[0].scf(SCF_ctrlwait) && p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L {
+									p[0].setCtrl(false)
+									p[0].setSCF(SCF_ctrlwait)
+								}
+								// Freeze timer if any character is not ready to proceed yet
+								if !p[0].scf(SCF_ctrlwait) && !p[0].scf(SCF_over) {
+									s.intro = rs4t
+								}
 							}
 						}
 					}
@@ -1387,12 +1399,13 @@ func (s *System) action() {
 							}
 							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() && p[0].animNo != 5 {
 								p[0].setSCF(SCF_over)
+								p[0].unsetSCF(SCF_ctrlwait)
 								if p[0].win() {
-									p[0].selfState(180, -1, -1, 1, "")
+									p[0].selfState(180, -1, -1, -1, "")
 								} else if p[0].lose() {
-									p[0].selfState(170, -1, -1, 1, "")
+									p[0].selfState(170, -1, -1, -1, "")
 								} else {
-									p[0].selfState(175, -1, -1, 1, "")
+									p[0].selfState(175, -1, -1, -1, "")
 								}
 							}
 						}
