@@ -1350,7 +1350,7 @@ func (s *System) action() {
 			rs4t := -(s.lifebar.ro.over_hittime + s.lifebar.ro.over_waittime)
 			if s.winskipped || s.intro >= rs4t-s.lifebar.ro.over_wintime {
 				if s.waitdown > 0 {
-					if s.intro == rs4t - 1 {
+					if s.intro == rs4t-1 {
 						for _, p := range s.chars {
 							if len(p) > 0 {
 								// Disable ctrl (once) and set "ctrl wait" flag
