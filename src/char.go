@@ -18,6 +18,7 @@ const (
 	SCF_ctrl
 	SCF_standby
 	SCF_guard
+	SCF_ctrlwait
 	SCF_over
 	SCF_ko_round_middle
 	SCF_dizzy
@@ -4672,15 +4673,11 @@ func (c *Char) hitPause() bool {
 func (c *Char) angleSet(a float32) {
 	c.angle = a
 }
-func (c *Char) ctrlOver() bool {
-	return !c.alive() || sys.time == 0 ||
-		(sys.intro <= -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime) &&
-			sys.intro > -(sys.lifebar.ro.over_hittime+sys.lifebar.ro.over_waittime+sys.lifebar.ro.over_wintime)) ||
-		sys.intro <= -sys.lifebar.ro.over_time
+func (c *Char) inputOver() bool {
+	return !c.alive() || sys.time == 0 || sys.intro <= -sys.lifebar.ro.over_time
 }
 func (c *Char) over() bool {
-	return c.scf(SCF_over) || (c.ctrlOver() && (c.scf(SCF_ctrl) || c.ss.no == 5150) &&
-		c.ss.stateType != ST_A && c.ss.physics != ST_A)
+	return c.scf(SCF_over) || c.ss.no == 5150
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
@@ -5454,10 +5451,71 @@ func (c *Char) actionPrepare() {
 	}
 	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	if !c.pauseBool {
+		// Perform basic actions
+		if c.keyctrl[0] && c.cmd != nil {
+			if c.ctrl() && !c.inputOver() && (c.key >= 0 || c.helperIndex == 0) {
+				if !c.sf(CSF_nohardcodedkeys) {
+					// TODO disable jumps right after KO instead of after over.hittime
+					if !c.sf(CSF_nojump) && (!sys.roundEnd() || c.sf(CSF_postroundinput)) && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
+						if c.ss.no != 40 {
+							c.changeState(40, -1, -1, "")
+						}
+					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.cmd[0].Buffer.Ub == 1 &&
+						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
+						c.airJumpCount < c.gi().movement.airjump.num {
+						if c.ss.no != 45 || c.ss.time > 0 {
+							c.airJumpCount++
+							c.changeState(45, -1, -1, "")
+						}
+					} else {
+						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
+							if c.ss.no != 10 {
+								if c.ss.no != 100 {
+									c.vel[0] = 0
+								}
+								c.changeState(10, -1, -1, "")
+							}
+						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
+							if c.ss.no != 12 {
+								c.changeState(12, -1, -1, "")
+							}
+						} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
+							(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
+								c.cmd[0].Buffer.B > 0) {
+							if c.ss.no != 20 {
+								c.changeState(20, -1, -1, "")
+							}
+						} else if !c.sf(CSF_nobrake) && c.ss.no == 20 &&
+							c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+							c.changeState(0, -1, -1, "")
+						}
+						if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
+							!c.inGuardState() {
+							c.changeState(120, -1, -1, "")
+						}
+					}
+				}
+			} else {
+				switch c.ss.no {
+				case 11:
+					if !c.sf(CSF_nostand) {
+						c.changeState(12, -1, -1, "")
+					}
+				case 20:
+					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
+						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+						c.changeState(0, -1, -1, "")
+					}
+				}
+			}
+		}
+		if c.ss.stateType != ST_A {
+			c.airJumpCount = 0
+		}
 		if !c.hitPause() {
 			if !sys.roundEnd() {
 				if c.alive() && c.life > 0 {
-					c.unsetSCF(SCF_over | SCF_ko_round_middle)
+					c.unsetSCF(SCF_over | SCF_ctrlwait | SCF_ko_round_middle)
 				}
 				if c.ss.no == 5150 || c.scf(SCF_over) {
 					c.setSCF(SCF_ko_round_middle)
@@ -5541,13 +5599,12 @@ func (c *Char) actionRun() {
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
-	}
-	if !c.pauseBool {
+		// Guarding instructions
 		c.unsetSCF(SCF_guard)
 		if sys.autoguard[c.playerNo] {
 			c.setSF(CSF_autoguard)
 		}
-		if !c.ctrlOver() &&
+		if !c.inputOver() &&
 			((c.scf(SCF_ctrl) || c.ss.no == 52) &&
 				c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 			(c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
@@ -5556,64 +5613,9 @@ func (c *Char) actionRun() {
 				c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
 			c.setSCF(SCF_guard)
 		}
-		if c.keyctrl[0] && c.cmd != nil {
-			if c.ctrl() && !c.ctrlOver() && (c.key >= 0 || c.helperIndex == 0) {
-				if !c.sf(CSF_nohardcodedkeys) {
-					if !c.sf(CSF_nojump) && (!sys.roundEnd() || c.sf(CSF_postroundinput)) && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
-						if c.ss.no != 40 {
-							c.changeState(40, -1, -1, "")
-						}
-					} else if !c.sf(CSF_noairjump) && c.ss.stateType == ST_A && c.cmd[0].Buffer.Ub == 1 &&
-						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
-						c.airJumpCount < c.gi().movement.airjump.num {
-						if c.ss.no != 45 || c.ss.time > 0 {
-							c.airJumpCount++
-							c.changeState(45, -1, -1, "")
-						}
-					} else {
-						if !c.sf(CSF_nocrouch) && c.ss.stateType == ST_S && c.cmd[0].Buffer.D > 0 {
-							if c.ss.no != 10 {
-								if c.ss.no != 100 {
-									c.vel[0] = 0
-								}
-								c.changeState(10, -1, -1, "")
-							}
-						} else if !c.sf(CSF_nostand) && c.ss.stateType == ST_C && c.cmd[0].Buffer.D < 0 {
-							if c.ss.no != 12 {
-								c.changeState(12, -1, -1, "")
-							}
-						} else if !c.sf(CSF_nowalk) && c.ss.stateType == ST_S &&
-							(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
-								c.cmd[0].Buffer.B > 0) {
-							if c.ss.no != 20 {
-								c.changeState(20, -1, -1, "")
-							}
-						} else if !c.sf(CSF_nobrake) && c.ss.no == 20 &&
-							c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-							c.changeState(0, -1, -1, "")
-						}
-						if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
-							!c.inGuardState() {
-							c.changeState(120, -1, -1, "")
-						}
-					}
-				}
-			} else {
-				switch c.ss.no {
-				case 11:
-					if !c.sf(CSF_nostand) {
-						c.changeState(12, -1, -1, "")
-					}
-				case 20:
-					if !c.sf(CSF_nobrake) && c.cmd[0].Buffer.U < 0 && c.cmd[0].Buffer.D < 0 &&
-						c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
-						c.changeState(0, -1, -1, "")
-					}
-				}
-			}
-		}
-		if c.ss.stateType != ST_A {
-			c.airJumpCount = 0
+		if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
+			!c.inGuardState() {
+			c.changeState(120, -1, -1, "")
 		}
 	}
 	if sb, ok := c.gi().states[-10]; ok { // still minus 0
@@ -6599,7 +6601,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				} else if getter.bindToId == c.id {
 					getter.setBindTime(0)
 				}
-				// This compensates for characters being able to act one frame sooner in Ikemen than in Mugen
+				// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
 				if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 					ghv.hittime += 1
 					ghv.ctrltime += 1
@@ -6998,8 +7000,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					continue
 				}
 				if !(getter.stchtmp && (getter.sf(CSF_gethit) || getter.acttmp > 0)) &&
-					(c.sf(CSF_nojugglecheck) || getter.ghv.getJuggle(c.id,
-						c.gi().data.airjuggle) >= p.hitdef.air_juggle) && (!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
+					(c.sf(CSF_nojugglecheck) || !c.hasTarget(getter.id) ||
+						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
+					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 					p.timemiss <= 0 && (p.hitpause <= 0 || p.hitpause > 0 && p.hitdef.hitonce <= 0) &&
 					getter.hittable(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
@@ -7079,7 +7082,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
-					(getter.hittmp < 2 || c.sf(CSF_nojugglecheck) ||
+					(getter.hittmp < 2 || c.sf(CSF_nojugglecheck) || !c.hasTarget(getter.id) ||
 						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
 					getter.hittable(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
 						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
