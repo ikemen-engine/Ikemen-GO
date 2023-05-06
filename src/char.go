@@ -677,6 +677,7 @@ func (hd *HitDef) clear() {
 		mindist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		maxdist:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		snap:           [...]float32{float32(math.NaN()), float32(math.NaN())},
+		hitonce:        -1,
 		kill:           true,
 		guard_kill:     true,
 		playerNo:       -1,
@@ -3908,8 +3909,12 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.attr&^int32(ST_MASK) == 0 {
 		hd.attr = 0
 	}
-	if hd.hitonce < 0 || hd.attr&int32(AT_AT) != 0 {
-		hd.hitonce = 1
+	if hd.hitonce < 0 {
+		if hd.attr&int32(AT_AT) != 0 {
+			hd.hitonce = 1
+		} else {
+			hd.hitonce = 0
+		}
 	}
 	ifnanset := func(dst *float32, src float32) {
 		if math.IsNaN(float64(*dst)) {
