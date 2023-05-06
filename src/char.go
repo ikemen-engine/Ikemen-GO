@@ -7000,8 +7000,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					continue
 				}
 				if !(getter.stchtmp && (getter.sf(CSF_gethit) || getter.acttmp > 0)) &&
-					(c.sf(CSF_nojugglecheck) || getter.ghv.getJuggle(c.id,
-						c.gi().data.airjuggle) >= p.hitdef.air_juggle) && (!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
+					(c.sf(CSF_nojugglecheck) || !c.hasTarget(getter.id) ||
+						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
+					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 					p.timemiss <= 0 && (p.hitpause <= 0 || p.hitpause > 0 && p.hitdef.hitonce <= 0) &&
 					getter.hittable(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
@@ -7081,7 +7082,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
-					(getter.hittmp < 2 || c.sf(CSF_nojugglecheck) ||
+					(getter.hittmp < 2 || c.sf(CSF_nojugglecheck) || !c.hasTarget(getter.id) ||
 						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
 					getter.hittable(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
 						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
