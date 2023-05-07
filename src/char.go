@@ -5618,9 +5618,15 @@ func (c *Char) actionRun() {
 				c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
 			c.setSCF(SCF_guard)
 		}
-		if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
-			!c.inGuardState() {
-			c.changeState(120, -1, -1, "")
+		if c.keyctrl[0] && c.cmd != nil {
+			if c.ctrl() && !c.inputOver() && (c.key >= 0 || c.helperIndex == 0) {
+				if !c.sf(CSF_nohardcodedkeys) {
+					if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
+						!c.inGuardState() {
+						c.changeState(120, -1, -1, "")
+					}
+				}
+			}
 		}
 	}
 	if sb, ok := c.gi().states[-10]; ok { // still minus 0
