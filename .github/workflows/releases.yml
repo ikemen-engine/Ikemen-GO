@@ -84,7 +84,7 @@ jobs:
             glibc: '2.13'
             target: ''
           - runner_os: macos
-            os: macos-10.15 # (deprecated) / macos-11
+            os: macos-11 # macos-10.15 (deprecated)
             goos: darwin
             goarch: amd64
             bin: Ikemen_GO_MacOS
