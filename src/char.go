@@ -1033,24 +1033,24 @@ func (e *Explod) setPos(c *Char) {
 		e.offset[0] *= c.facing
 		e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0])
 		e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1])
-		if e.bindtime == 0 {
-			e.bindtime = 1
-		}
+		//if e.bindtime == 0 {
+		//	e.bindtime = 1
+		//}
 	}
 	lPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
 		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		if e.bindtime == 0 {
-			e.bindtime = 1
-		}
+		//if e.bindtime == 0 {
+		//	e.bindtime = 1
+		//}
 	}
 	rPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl +
 			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
 		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		if e.bindtime == 0 {
-			e.bindtime = 1
-		}
+		//if e.bindtime == 0 {
+		//	e.bindtime = 1
+		//}
 	}
 	if e.space == Space_stage && e.bindId >= -1 {
 		e.postype = PT_N
@@ -1093,9 +1093,9 @@ func (e *Explod) setPos(c *Char) {
 			e.facing = float32(e.relativef)
 			e.setX(e.offset[0])
 			e.setY(e.offset[1])
-			if e.bindtime == 0 {
-				e.bindtime = 1
-			}
+			//if e.bindtime == 0 {
+			//	e.bindtime = 1
+			//}
 		}
 	} else {
 		switch e.space {
@@ -1153,7 +1153,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
 		screen = true
 	}
-	if e.bindtime != 0 {
+	if e.bindtime != 0 || (e.time == 0 && e.bindtime == 0) {
 		if e.space == Space_screen {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
@@ -1170,7 +1170,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			} else {
 				e.pos[0] += float32(sys.gameWidth) / e.localscl / 2
 			}
-		} else {
+		} else if e.bindtime != 0 {
 			if c := sys.playerID(e.bindId); c != nil {
 				e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0]
 				e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1]
@@ -1230,9 +1230,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
-		if e.bindtime > 0 {
-			e.bindtime--
-		}
+
 		//if screen && e.bindtime == 0 {
 		//	if e.space <= Space_none {
 		//		switch e.postype {
@@ -1251,16 +1249,23 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		//		}
 		//	}
 		//}
+
+		if e.bindtime > 0 {
+			e.bindtime--
+		}
 		if act {
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
 			if e.bindtime == 0 {
 				e.oldPos = e.pos
-				e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
-				e.newPos[1] = e.pos[1] + e.velocity[1]
-				for i := range e.velocity {
-					e.velocity[i] += e.accel[i]
+				e.newPos = e.pos
+				if e.time > 0 {
+					e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
+					e.newPos[1] = e.pos[1] + e.velocity[1]
+					for i := range e.velocity {
+						e.velocity[i] += e.accel[i]
+					}
 				}
 			}
 			e.anim.Action()
