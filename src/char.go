@@ -209,7 +209,7 @@ type CharData struct {
 	}
 	hitsound_channel   int32
 	guardsound_channel int32
-	ko struct {
+	ko                 struct {
 		echo int32
 	}
 	volume            int32
@@ -1157,7 +1157,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
 		screen = true
 	}
-	if  e.time == 0 || e.bindtime != 0 {
+	if e.time == 0 || e.bindtime != 0 {
 		if e.space == Space_screen {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
