@@ -233,6 +233,8 @@ const (
 	OC_const_data_airjuggle
 	OC_const_data_sparkno
 	OC_const_data_guard_sparkno
+	OC_const_data_hitsound_channel
+	OC_const_data_guardsound_channel
 	OC_const_data_ko_echo
 	OC_const_data_intpersistindex
 	OC_const_data_floatpersistindex
@@ -1453,6 +1455,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.gi().data.sparkno)
 	case OC_const_data_guard_sparkno:
 		sys.bcStack.PushI(c.gi().data.guard.sparkno)
+	case OC_const_data_hitsound_channel:
+		sys.bcStack.PushI(c.gi().data.hitsound_channel)
+	case OC_const_data_guardsound_channel:
+		sys.bcStack.PushI(c.gi().data.guardsound_channel)
 	case OC_const_data_ko_echo:
 		sys.bcStack.PushI(c.gi().data.ko.echo)
 	case OC_const_data_intpersistindex:
@@ -4481,6 +4487,8 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 	crun.hitdef.playerNo = sys.workingState.playerNo
 	crun.hitdef.sparkno = c.gi().data.sparkno
 	crun.hitdef.guard_sparkno = c.gi().data.guard.sparkno
+	crun.hitdef.hitsound_channel = c.gi().data.hitsound_channel
+	crun.hitdef.guardsound_channel = c.gi().data.guardsound_channel
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == hitDef_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
