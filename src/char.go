@@ -207,6 +207,8 @@ type CharData struct {
 	guard     struct {
 		sparkno int32
 	}
+	hitsound_channel   int32
+	guardsound_channel int32
 	ko struct {
 		echo int32
 	}
@@ -229,6 +231,8 @@ func (cd *CharData) init() {
 	cd.airjuggle = 15
 	cd.sparkno = 2
 	cd.guard.sparkno = 40
+	cd.hitsound_channel = -1
+	cd.guardsound_channel = -1
 	cd.ko.echo = 0
 	cd.volume = 256
 	cd.intpersistindex = NumVar
@@ -1153,7 +1157,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
 		screen = true
 	}
-	if e.bindtime != 0 || (e.time == 0 && e.bindtime == 0) {
+	if  e.time == 0 || e.bindtime != 0 {
 		if e.space == Space_screen {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
@@ -2188,6 +2192,8 @@ func (c *Char) load(def string) error {
 						is.ReadI32("airjuggle", &gi.data.airjuggle)
 						is.ReadI32("sparkno", &gi.data.sparkno)
 						is.ReadI32("guard.sparkno", &gi.data.guard.sparkno)
+						is.ReadI32("hitsound.channel", &gi.data.hitsound_channel)
+						is.ReadI32("guardsound.channel", &gi.data.guardsound_channel)
 						is.ReadI32("ko.echo", &gi.data.ko.echo)
 						if is.ReadI32("volume", &i32) {
 							gi.data.volume = i32/2 + 256
@@ -5534,7 +5540,10 @@ func (c *Char) actionPrepare() {
 			if c.ss.no == 5150 && c.life <= 0 {
 				c.setSCF(SCF_over)
 			}
+			// The following flags are only reset later in the code
+			flagtemp := (c.specialFlag&CSF_nostandguard | c.specialFlag&CSF_nocrouchguard | c.specialFlag&CSF_noairguard)
 			c.specialFlag = 0
+			c.setSF(flagtemp)
 			c.inputFlag = 0
 			c.setSF(CSF_stagebound)
 			if c.player {
@@ -5568,7 +5577,10 @@ func (c *Char) actionPrepare() {
 		}
 		c.unsetSF(CSF_noautoturn)
 		if c.gi().ver[0] == 1 {
+			// The following flags are only reset later in the code
+			flagtemp := (c.specialFlag&CSF_nostandguard | c.specialFlag&CSF_nocrouchguard | c.specialFlag&CSF_noairguard)
 			c.unsetSF(CSF_assertspecial | CSF_angledraw)
+			c.setSF(flagtemp)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 		}
@@ -5633,6 +5645,7 @@ func (c *Char) actionRun() {
 				}
 			}
 		}
+		c.unsetSF(CSF_nostandguard | CSF_nocrouchguard | CSF_noairguard)
 	}
 	if sb, ok := c.gi().states[-10]; ok { // still minus 0
 		sb.run(c)

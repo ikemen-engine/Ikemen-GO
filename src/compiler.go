@@ -1473,6 +1473,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_data_sparkno)
 		case "data.guard.sparkno":
 			out.append(OC_const_data_guard_sparkno)
+		case "data.hitsound.channel":
+			out.append(OC_const_data_hitsound_channel)
+		case "data.guardsound.channel":
+			out.append(OC_const_data_guardsound_channel)
 		case "data.ko.echo":
 			out.append(OC_const_data_ko_echo)
 		case "data.intpersistindex":

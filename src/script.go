@@ -2801,6 +2801,10 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.gi().data.sparkno)
 		case "data.guard.sparkno":
 			ln = lua.LNumber(c.gi().data.guard.sparkno)
+		case "data.hitsound.channel":
+			ln = lua.LNumber(c.gi().data.hitsound_channel)
+		case "data.guardsound.channel":
+			ln = lua.LNumber(c.gi().data.guardsound_channel)
 		case "data.ko.echo":
 			ln = lua.LNumber(c.gi().data.ko.echo)
 		case "data.intpersistindex":
