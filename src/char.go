@@ -5621,20 +5621,22 @@ func (c *Char) actionRun() {
 		c.stateChange2()
 		c.minus = 0
 		c.ss.sb.run(c)
-		// Guarding instructions
-		c.unsetSCF(SCF_guard)
-		if sys.autoguard[c.playerNo] {
-			c.setSF(CSF_autoguard)
-		}
-		if !c.inputOver() &&
-			((c.scf(SCF_ctrl) || c.ss.no == 52) &&
-				c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
-			(c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
-			(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
-				c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
-				c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
-			c.setSCF(SCF_guard)
-		}
+	}
+	// Guarding instructions
+	c.unsetSCF(SCF_guard)
+	if sys.autoguard[c.playerNo] {
+		c.setSF(CSF_autoguard)
+	}
+	if !c.inputOver() &&
+		((c.scf(SCF_ctrl) || c.ss.no == 52) &&
+			c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
+		(c.cmd[0].Buffer.B > 0 || c.sf(CSF_autoguard)) &&
+		(c.ss.stateType == ST_S && !c.sf(CSF_nostandguard) ||
+			c.ss.stateType == ST_C && !c.sf(CSF_nocrouchguard) ||
+			c.ss.stateType == ST_A && !c.sf(CSF_noairguard)) {
+		c.setSCF(SCF_guard)
+	}
+	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ctrl() && !c.inputOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.sf(CSF_nohardcodedkeys) {
@@ -5645,8 +5647,8 @@ func (c *Char) actionRun() {
 				}
 			}
 		}
-		c.unsetSF(CSF_nostandguard | CSF_nocrouchguard | CSF_noairguard)
 	}
+	c.unsetSF(CSF_nostandguard | CSF_nocrouchguard | CSF_noairguard)
 	if sb, ok := c.gi().states[-10]; ok { // still minus 0
 		sb.run(c)
 	}
