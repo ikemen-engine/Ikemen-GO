@@ -33,12 +33,12 @@ addHotkey('F2', true, false, false, false, true, 'kill(1,1);kill(3,1);kill(5,1);
 addHotkey('F2', false, false, true, false, true, 'kill(2,1);kill(4,1);kill(6,1);kill(8,1);debugFlag(1)')
 addHotkey('F3', false, false, false, false, true, 'powMax(1);powMax(2);debugFlag(1);debugFlag(2)')
 addHotkey('F3', true, false, true, false, true, 'toggleMaxPowerMode();debugFlag(1);debugFlag(2)')
-addHotkey('F4', false, false, false, false, true, 'roundReset()')
-addHotkey('F4', false, false, true, false, true, 'reload()')
+addHotkey('F4', false, false, false, false, true, 'roundReset();closeMenu()')
+addHotkey('F4', false, false, true, false, true, 'reload();closeMenu()')
 addHotkey('F5', false, false, false, false, true, 'setTime(0);debugFlag(1);debugFlag(2)')
 addHotkey('SPACE', false, false, false, false, true, 'full(1);full(2);full(3);full(4);full(5);full(6);full(7);full(8);setTime(getRoundTime());debugFlag(1);debugFlag(2);clearConsole()')
 addHotkey('i', true, false, false, true, true, 'stand(1);stand(2);stand(3);stand(4);stand(5);stand(6);stand(7);stand(8)')
-addHotkey('PAUSE', false, false, false, true, false, 'togglePause()')
+addHotkey('PAUSE', false, false, false, true, false, 'togglePause();closeMenu()')
 addHotkey('PAUSE', true, false, false, true, false, 'step()')
 addHotkey('SCROLLLOCK', false, false, false, true, false, 'step()')
 
@@ -112,6 +112,10 @@ function debugFlag(side)
 	if start ~= nil and start.t_savedData.debugFlag ~= nil then
 		start.t_savedData.debugflag[side] = true
 	end
+end
+
+function closeMenu()
+	main.pauseMenu = false
 end
 
 --;===========================================================
