@@ -11,7 +11,7 @@
 # Functions
 #===============================================================================
 [Function TrainingRecovery(pn)]
-if player($pn),ctrl = 0 {
+if player($pn),ctrl = 0 && player($pn),stateNo >= player($pn),const(StateRunForward) {
 	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectid: player($pn),id}
 } else if player($pn),map(_iksys_trainingDummyCounter) >= 60 {
 	lifeSet{value: player($pn),lifeMax; redirectid: player($pn),id}

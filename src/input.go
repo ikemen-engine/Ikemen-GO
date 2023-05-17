@@ -119,7 +119,8 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 			key == KeyEscape && (mk&ModCtrlAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			if sys.netInput == nil && (sys.fileInput == nil || !v.DebugKey) &&
-				(!sys.paused || sys.step || v.Pause) && (sys.allowDebugKeys || !v.DebugKey) {
+				//(!sys.paused || sys.step || v.Pause) &&
+				(sys.allowDebugKeys || !v.DebugKey) {
 				v.Activate = v.Activate || k.Test(key, mk)
 			}
 		}
