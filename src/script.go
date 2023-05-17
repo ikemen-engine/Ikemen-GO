@@ -3148,6 +3148,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.hitpower)
 		case "guardpower":
 			ln = lua.LNumber(c.ghv.guardpower)
+		case "kill":
+			ln = lua.LNumber(Btoi(c.ghv.kill))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
