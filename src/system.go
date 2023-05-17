@@ -2038,6 +2038,7 @@ func (s *System) fight() (reload bool) {
 
 		// F4 pressed to restart round
 		if s.roundResetFlg && !s.postMatchFlg {
+			sys.paused = false
 			reset()
 		}
 		// Shift+F4 pressed to restart match

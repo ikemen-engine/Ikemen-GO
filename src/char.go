@@ -751,6 +751,7 @@ type GetHitVar struct {
 	hitredlife     int32
 	guardredlife   int32
 	fatal          bool
+	kill           bool
 }
 
 func (ghv *GetHitVar) clear() {
@@ -4256,6 +4257,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redl
 					t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
 				}
 			}
+			t.ghv.kill = kill
 		}
 	}
 }
@@ -4405,6 +4407,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 			c.fakeComboDmg -= int32(add)
 		}
 		c.lifeSet(c.life + int32(add))
+		c.ghv.kill = kill
 	}
 }
 func (c *Char) lifeSet(life int32) {
@@ -5595,23 +5598,27 @@ func (c *Char) actionRun() {
 	if c.minus != 2 || c.sf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+	// Run state -4
 	c.minus = -4
 	if sb, ok := c.gi().states[-4]; ok {
 		sb.run(c)
 	}
 	if !c.pauseBool {
+		// Run state -3
 		c.minus = -3
 		if c.ss.sb.playerNo == c.playerNo && (c.player || c.keyctrl[2]) {
 			if sb, ok := c.gi().states[-3]; ok {
 				sb.run(c)
 			}
 		}
+		// Run state -2
 		c.minus = -2
 		if c.player || c.keyctrl[1] {
 			if sb, ok := c.gi().states[-2]; ok {
 				sb.run(c)
 			}
 		}
+		// Run state -1
 		c.minus = -1
 		if c.ss.sb.playerNo == c.playerNo && (c.player || c.keyctrl[0]) {
 			if sb, ok := c.gi().states[-1]; ok {
@@ -5619,6 +5626,7 @@ func (c *Char) actionRun() {
 			}
 		}
 		c.stateChange2()
+		// Run current state
 		c.minus = 0
 		c.ss.sb.run(c)
 	}
@@ -5649,6 +5657,7 @@ func (c *Char) actionRun() {
 		}
 	}
 	c.unsetSF(CSF_nostandguard | CSF_nocrouchguard | CSF_noairguard)
+	// Run state +1
 	if sb, ok := c.gi().states[-10]; ok { // still minus 0
 		sb.run(c)
 	}
@@ -6657,12 +6666,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.stchtmp = false
 			}
 			getter.setSF(CSF_gethit)
-			live, kill := getter.life > 0, hd.kill
+			live := getter.life > 0
+			getter.ghv.kill = hd.kill
 			if hitType == 2 {
-				kill = hd.guard_kill
+				getter.ghv.kill = hd.guard_kill
 			}
 			getter.ghv.damage += getter.computeDamage(
-				float64(absdamage)*float64(hits), kill, false, attackMul, c, true)
+				float64(absdamage)*float64(hits), getter.ghv.kill, false, attackMul, c, true)
 			getter.ghv.hitdamage += getter.computeDamage(
 				float64(hitdamage)*float64(hits), true, false, attackMul, c, false)
 			getter.ghv.guarddamage += getter.computeDamage(
@@ -6686,7 +6696,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, true)
 			}
 			if ghvset && getter.ghv.damage >= getter.life {
-				if kill || !live {
+				if getter.ghv.kill || !live {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
 					// if getter.ghv.fall.animtype < RA_Back {

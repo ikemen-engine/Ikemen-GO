@@ -456,6 +456,7 @@ const (
 	OC_ex_gethitvar_guarddamage
 	OC_ex_gethitvar_hitpower
 	OC_ex_gethitvar_guardpower
+	OC_ex_gethitvar_kill
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animlength
@@ -1930,6 +1931,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.hitpower)
 	case OC_ex_gethitvar_guardpower:
 		sys.bcStack.PushI(c.ghv.guardpower)
+	case OC_ex_gethitvar_kill:
+		sys.bcStack.PushB(c.ghv.kill)
 	case OC_ex_ailevelf:
 		if !c.sf(CSF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
