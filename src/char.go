@@ -1038,6 +1038,7 @@ func (e *Explod) setPos(c *Char) {
 		e.offset[0] *= c.facing
 		e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0])
 		e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1])
+		// This seems to have been a temporary fix. Mugen doesn't do this
 		//if e.bindtime == 0 {
 		//	e.bindtime = 1
 		//}
@@ -1045,17 +1046,17 @@ func (e *Explod) setPos(c *Char) {
 	lPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
 		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		//if e.bindtime == 0 {
-		//	e.bindtime = 1
-		//}
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
 	}
 	rPos := func() {
 		e.setX(sys.cam.ScreenPos[0]/e.localscl +
 			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
 		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		//if e.bindtime == 0 {
-		//	e.bindtime = 1
-		//}
+		if e.bindtime == 0 {
+			e.bindtime = 1
+		}
 	}
 	if e.space == Space_stage && e.bindId >= -1 {
 		e.postype = PT_N
@@ -1072,6 +1073,7 @@ func (e *Explod) setPos(c *Char) {
 		case PT_F, PT_B:
 			e.facing = c.facing * float32(e.relativef)
 			// front と back はバインドの都合で left か right になおす
+			// "Due to binding constraints, adjust the front and back to either left or right."
 			if c.facing > 0 && e.postype == PT_F || c.facing < 0 && e.postype == PT_B {
 				if e.postype == PT_B {
 					e.offset[0] *= -1
@@ -1080,9 +1082,12 @@ func (e *Explod) setPos(c *Char) {
 				rPos()
 			} else {
 				// explod の postype = front はキャラの向きで pos が反転しない
+				// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
 				//if e.postype == PT_F && c.gi().ver[0] != 1 {
 				// 旧バージョンだと front は キャラの向きが facing に反映されない
 				// 1.1でも反映されてない模様
+				// "In the previous version, "front" does not reflect the character's orientation in facing."
+				// "It appears that it is still not reflected even in version 1.1."
 				e.facing = float32(e.relativef)
 				//}
 				e.postype = PT_L
