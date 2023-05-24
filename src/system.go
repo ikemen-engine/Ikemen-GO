@@ -913,9 +913,7 @@ func (s *System) commandUpdate() {
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20 || r.ss.no == 52) {
 				r.turn()
 			}
-			if !r.sf(CSF_postroundinput) &&
-				s.intro <= -(s.lifebar.ro.over_waittime) &&
-				s.intro > -(s.lifebar.ro.over_waittime+s.lifebar.ro.over_wintime) {
+			if !r.sf(CSF_postroundinput) && r.scf(SCF_inputwait) {
 				r.setSF(CSF_noinput)
 			}
 			if r.inputOver() || r.sf(CSF_noinput) || (r.aiLevel() > 0 && !r.alive()) {
@@ -1189,28 +1187,39 @@ func (s *System) action() {
 				inclWinCount()
 			}
 			// Check if player skipped win pose time
-			if s.tickFrame() && s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
+			if s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
 				//	s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime +
 				//		s.lifebar.ro.over_time - s.lifebar.ro.start_waittime))
 				s.intro = Min(s.intro, -(s.lifebar.ro.over_time - s.lifebar.ro.start_waittime))
 				s.winskipped = true
 			}
 			rs4t := -s.lifebar.ro.over_waittime
-			if s.winskipped || s.intro >= rs4t-s.lifebar.ro.over_wintime {
+			if s.winskipped || !s.roundWinTime() {
 				if s.waitdown > 0 {
 					if s.intro == rs4t-1 {
 						for _, p := range s.chars {
 							if len(p) > 0 {
-								// Disable ctrl (once) and set "ctrl wait" flag
-								if p[0].scf(SCF_ctrl) && !p[0].scf(SCF_ctrlwait) && p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L {
-									p[0].setCtrl(false)
-									p[0].setSCF(SCF_ctrlwait)
+								// Set inputwait flag to stop inputs until win pose time
+								if !p[0].scf(SCF_inputwait) {
+									p[0].setSCF(SCF_inputwait)
+								}
+								// Check if this character is ready to procced to roundstate 4
+								if p[0].scf(SCF_over) || (p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I &&
+									p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L) {
+									continue
 								}
 								// Freeze timer if any character is not ready to proceed yet
-								if !p[0].scf(SCF_ctrlwait) && !p[0].scf(SCF_over) {
-									s.intro = rs4t
-								}
+								s.intro = rs4t+1
+								break
 							}
+						}
+					}
+				}
+				// Disable ctrl (once) at the first frame of roundstate 4
+				if s.intro == rs4t-1 {
+					for _, p := range s.chars {
+						if len(p) > 0 {
+							p[0].setCtrl(false)
 						}
 					}
 				}
@@ -1247,7 +1256,7 @@ func (s *System) action() {
 							}
 							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() && p[0].animNo != 5 {
 								p[0].setSCF(SCF_over)
-								p[0].unsetSCF(SCF_ctrlwait)
+								p[0].unsetSCF(SCF_inputwait)
 								if p[0].win() {
 									p[0].selfState(180, -1, -1, -1, "")
 								} else if p[0].lose() {
@@ -1322,7 +1331,7 @@ func (s *System) action() {
 		s.firstAttack[2] = 1
 	}
 
-	// Action camera
+	// Run camera
 	leftest -= x
 	rightest -= x
 	var newx, newy float32 = x, y

@@ -18,7 +18,7 @@ const (
 	SCF_ctrl
 	SCF_standby
 	SCF_guard
-	SCF_ctrlwait
+	SCF_inputwait
 	SCF_over
 	SCF_ko_round_middle
 	SCF_dizzy
@@ -5538,7 +5538,7 @@ func (c *Char) actionPrepare() {
 		if !c.hitPause() {
 			if !sys.roundEnd() {
 				if c.alive() && c.life > 0 {
-					c.unsetSCF(SCF_over | SCF_ctrlwait | SCF_ko_round_middle)
+					c.unsetSCF(SCF_over | SCF_ko_round_middle)
 				}
 				if c.ss.no == 5150 || c.scf(SCF_over) {
 					c.setSCF(SCF_ko_round_middle)
