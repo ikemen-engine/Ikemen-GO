@@ -1015,7 +1015,7 @@ func (s *System) action() {
 			lowest = (y - s.cam.CameraZoomYBound)
 		}
 	}
-	
+
 	// Run lifebar
 	if s.lifebar.ro.act() {
 		if s.intro > s.lifebar.ro.ctrl_time {
@@ -1209,7 +1209,7 @@ func (s *System) action() {
 									continue
 								}
 								// Freeze timer if any character is not ready to proceed yet
-								s.intro = rs4t+1
+								s.intro = rs4t + 1
 								break
 							}
 						}
@@ -1275,7 +1275,7 @@ func (s *System) action() {
 			s.intro = 0
 		}
 	}
-	
+
 	// Run tick frame
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
