@@ -1068,6 +1068,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.cam.CameraZoomYBound = 0
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
+				sys.paused = false
 				return 2
 			}
 		}
