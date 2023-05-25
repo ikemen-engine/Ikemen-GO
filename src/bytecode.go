@@ -8310,7 +8310,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 	})
 	sys.stage.reload = true // Stage will have to be reloaded if it's re-selected
 	sys.cam.stageCamera = s.stageCamera
-	sys.cam.Init()
+	sys.cam.Reset()
 	return false
 }
 

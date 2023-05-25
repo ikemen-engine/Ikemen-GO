@@ -6801,8 +6801,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
 				}
-				if sys.firstAttack[2] == 0 && sys.firstAttack[c.teamside] == 0 && ghvset &&
-					getter.hoIdx < 0 && getter.helperIndex == 0 && c.teamside != -1 {
+				if c.teamside != -1 && sys.firstAttack[2] == 0 && sys.firstAttack[c.teamside] == 0 && ghvset &&
+					getter.hoIdx < 0 && getter.helperIndex == 0 {
 					sys.firstAttack[c.teamside] = c.id
 				}
 				if !math.IsNaN(float64(hd.score[0])) {

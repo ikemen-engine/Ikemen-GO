@@ -1209,7 +1209,7 @@ func (s *System) action() {
 									continue
 								}
 								// Freeze timer if any character is not ready to proceed yet
-								s.intro = rs4t + 1
+								s.intro = rs4t
 								break
 							}
 						}
