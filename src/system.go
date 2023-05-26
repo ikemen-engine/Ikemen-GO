@@ -644,8 +644,7 @@ func (s *System) roundWinTime() bool {
 	return s.intro < -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_wintime)
 }
 func (s *System) roundOver() bool {
-	return s.intro < -(s.lifebar.ro.over_time)
-	// return s.intro < -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time)
+	return s.intro < -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time)
 }
 func (s *System) sf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
@@ -1180,7 +1179,7 @@ func (s *System) action() {
 					}
 				}
 			}
-			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time-1) {
+			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_waittime+s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time-1) {
 				s.intro--
 			}
 			if s.intro == -s.lifebar.ro.over_hittime && s.finish != FT_NotYet {
@@ -1188,9 +1187,7 @@ func (s *System) action() {
 			}
 			// Check if player skipped win pose time
 			if s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
-				//	s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime +
-				//		s.lifebar.ro.over_time - s.lifebar.ro.start_waittime))
-				s.intro = Min(s.intro, -(s.lifebar.ro.over_time - s.lifebar.ro.start_waittime))
+				s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime+s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time))
 				s.winskipped = true
 			}
 			rs4t := -s.lifebar.ro.over_waittime
@@ -1537,8 +1534,7 @@ func (s *System) drawTop() {
 	fade := func(rect [4]int32, color uint32, alpha int32) {
 		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
-	// fadeout := sys.intro + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
-	fadeout := sys.intro + sys.lifebar.ro.over_time
+	fadeout := sys.intro + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
 	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
 		for _, p := range sys.chars {
 			if len(p) > 0 {
