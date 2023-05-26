@@ -1187,7 +1187,7 @@ func (s *System) action() {
 			}
 			// Check if player skipped win pose time
 			if s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
-				s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime+s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time))
+				s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time - s.lifebar.ro.fadeout_time))
 				s.winskipped = true
 			}
 			rs4t := -s.lifebar.ro.over_waittime
