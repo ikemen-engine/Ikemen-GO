@@ -3748,7 +3748,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.postype = pt
 					e.setPos(c)
-					e.relativef = 1 // In Mugen ModifyExplod updates facing by default
+					e.relativef = 1 // In Mugen facing is updated by default
 				})
 			case explod_space:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
