@@ -1966,7 +1966,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_fighttime:
 		sys.bcStack.PushI(sys.gameTime)
 	case OC_ex_firstattack:
-		sys.bcStack.PushB(sys.firstAttack[c.teamside] == c.id)
+		sys.bcStack.PushB(sys.firstAttack[c.teamside] == c.playerNo)
 	case OC_ex_framespercount:
 		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_float:
@@ -3748,6 +3748,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.postype = pt
 					e.setPos(c)
+					e.relativef = 1 // In Mugen ModifyExplod updates facing by default
 				})
 			case explod_space:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
@@ -4508,6 +4509,8 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	//winmugenでHitdefのattrが投げ属性で自分側pausetimeが1以上の時、毎フレーム実行されなくなる
+	//"In Winmugen, when the attr of Hitdef is set to 'Throw' and the pausetime
+	// on the attacker's side is greater than 1, it no longer executes every frame."
 	if crun.hitdef.attr&int32(AT_AT) != 0 && crun.moveContact() == 1 &&
 		c.gi().ver[0] != 1 && crun.hitdef.pausetime > 0 {
 		crun.hitdef.attr = 0
