@@ -521,6 +521,7 @@ const (
 	OC_ex_bgmlength
 	OC_ex_bgmposition
 	OC_ex_airjumpcount
+	OC_ex_envshake
 )
 const (
 	NumVar     = 60
@@ -2097,6 +2098,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_airjumpcount:
 		sys.bcStack.PushI(c.airJumpCount)
+	case OC_ex_envshake:
+		sys.bcStack.PushF(float32(math.Abs(float64(sys.envShake.ampl / oc.localscl))))
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

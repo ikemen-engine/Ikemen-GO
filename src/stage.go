@@ -46,6 +46,8 @@ func (es *EnvShake) next() {
 		es.time--
 		es.phase += es.freq
 		es.ampl *= es.mul
+	} else {
+		es.ampl = 0
 	}
 }
 func (es *EnvShake) getOffset() float32 {
