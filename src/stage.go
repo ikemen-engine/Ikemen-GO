@@ -47,7 +47,7 @@ func (es *EnvShake) next() {
 		es.phase += es.freq
 		if es.phase > math.Pi*2 {
 			es.ampl *= es.mul
-			es.phase -= math.Pi*2
+			es.phase -= math.Pi * 2
 		}
 	} else {
 		es.ampl = 0
