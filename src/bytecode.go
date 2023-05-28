@@ -521,7 +521,9 @@ const (
 	OC_ex_bgmlength
 	OC_ex_bgmposition
 	OC_ex_airjumpcount
-	OC_ex_envshake
+	OC_ex_envshakevar_time
+	OC_ex_envshakevar_freq
+	OC_ex_envshakevar_ampl
 )
 const (
 	NumVar     = 60
@@ -2098,7 +2100,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_airjumpcount:
 		sys.bcStack.PushI(c.airJumpCount)
-	case OC_ex_envshake:
+	case OC_ex_envshakevar_time:
+		sys.bcStack.PushI(sys.envShake.time)
+	case OC_ex_envshakevar_freq:
+		sys.bcStack.PushF(sys.envShake.freq/float32(math.Pi)*180)
+	case OC_ex_envshakevar_ampl:
 		sys.bcStack.PushF(float32(math.Abs(float64(sys.envShake.ampl / oc.localscl))))
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])

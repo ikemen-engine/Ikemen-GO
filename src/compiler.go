@@ -333,7 +333,7 @@ var triggerMap = map[string]int{
 	"dizzypoints":      1,
 	"dizzypointsmax":   1,
 	"drawpalno":        1,
-	"envshake":         1,
+	"envshakevar":      1,
 	"fighttime":        1,
 	"firstattack":      1,
 	"float":            1,
@@ -2579,8 +2579,25 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_dizzypoints)
 	case "dizzypointsmax":
 		out.append(OC_ex_, OC_ex_dizzypointsmax)
-	case "envshake":
-		out.append(OC_ex_, OC_ex_envshake)
+	case "envshakevar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "time":
+			out.append(OC_ex_envshakevar_time)
+		case "freq":
+			out.append(OC_ex_envshakevar_freq)
+		case "ampl":
+			out.append(OC_ex_envshakevar_ampl)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
 	case "fighttime":
 		out.append(OC_ex_, OC_ex_fighttime)
 	case "firstattack":

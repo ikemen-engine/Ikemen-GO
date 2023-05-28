@@ -3011,8 +3011,19 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.drawgame()))
 		return 1
 	})
-	luaRegister(l, "envshake", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.envShake.ampl))
+	luaRegister(l, "envshakevar", func(*lua.LState) int {
+		var ln lua.LNumber
+		switch strArg(l, 1) {
+		case "time":
+			ln = lua.LNumber(sys.envShake.time)
+		case "freq":
+			ln = lua.LNumber(sys.envShake.freq/float32(math.Pi)*180)
+		case "ampl":
+			ln = lua.LNumber(sys.envShake.ampl)
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
+		l.Push(ln)
 		return 1
 	})
 	luaRegister(l, "facing", func(*lua.LState) int {
