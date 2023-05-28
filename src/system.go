@@ -338,7 +338,7 @@ type System struct {
 	matchData         *lua.LTable
 	consecutiveWins   [2]int32
 	consecutiveRounds bool
-	firstAttack       [3]int32
+	firstAttack       [3]int
 	teamLeader        [2]int
 	gameSpeed         float32
 	maxPowerMode      bool
@@ -768,7 +768,7 @@ func (s *System) playerClear(pn int, destroy bool) {
 func (s *System) nextRound() {
 	s.resetGblEffect()
 	s.lifebar.reset()
-	s.firstAttack = [3]int32{}
+	s.firstAttack = [3]int{-1, -1, 0}
 	s.finish = FT_NotYet
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_N, WT_N}
@@ -1187,7 +1187,7 @@ func (s *System) action() {
 			}
 			// Check if player skipped win pose time
 			if s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
-				s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time - s.lifebar.ro.fadeout_time))
+				s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime+s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time))
 				s.winskipped = true
 			}
 			rs4t := -s.lifebar.ro.over_waittime
@@ -1324,7 +1324,9 @@ func (s *System) action() {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
 	s.lifebar.step()
-	if s.firstAttack[0] != 0 || s.firstAttack[1] != 0 {
+
+	// Set global First Attack flag if either team got it
+	if s.firstAttack[0] >= 0 || s.firstAttack[1] >= 0 {
 		s.firstAttack[2] = 1
 	}
 

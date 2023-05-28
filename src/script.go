@@ -3011,6 +3011,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.drawgame()))
 		return 1
 	})
+	luaRegister(l, "envshake", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.envShake.ampl))
+		return 1
+	})
 	luaRegister(l, "facing", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.facing))
 		return 1
@@ -3839,7 +3843,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "firstattack", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.firstAttack[sys.debugWC.teamside] == sys.debugWC.id))
+		l.Push(lua.LBool(sys.firstAttack[sys.debugWC.teamside] == sys.debugWC.playerNo))
 		return 1
 	})
 	luaRegister(l, "framespercount", func(l *lua.LState) int {

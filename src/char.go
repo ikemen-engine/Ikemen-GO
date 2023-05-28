@@ -5794,6 +5794,12 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 		if c.ss.moveType == MT_H {
+			// Set opposing team's First Attack flag
+			if c.teamside != -1 && sys.firstAttack[1-c.teamside] < 0 && sys.firstAttack[2] == 0 {
+				if c.ghv.guarded == false && c.ghv.playerNo >= 0 {
+					sys.firstAttack[1-c.teamside] = c.ghv.playerNo
+				}
+			}
 			if sys.super <= 0 && sys.pause <= 0 {
 				c.superMovetime, c.pauseMovetime = 0, 0
 			}
@@ -6801,10 +6807,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
 				}
-				if c.teamside != -1 && sys.firstAttack[2] == 0 && sys.firstAttack[c.teamside] == 0 && ghvset &&
-					getter.hoIdx < 0 && getter.helperIndex == 0 {
-					sys.firstAttack[c.teamside] = c.id
-				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
 				}
@@ -7210,7 +7212,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
-
 			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) && !c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
 				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
 				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
