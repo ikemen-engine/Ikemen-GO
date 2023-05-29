@@ -2103,7 +2103,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_envshakevar_time:
 		sys.bcStack.PushI(sys.envShake.time)
 	case OC_ex_envshakevar_freq:
-		sys.bcStack.PushF(sys.envShake.freq/float32(math.Pi)*180)
+		sys.bcStack.PushF(sys.envShake.freq / float32(math.Pi) * 180)
 	case OC_ex_envshakevar_ampl:
 		sys.bcStack.PushF(float32(math.Abs(float64(sys.envShake.ampl / oc.localscl))))
 	default:

@@ -3017,7 +3017,7 @@ func triggerFunctions(l *lua.LState) {
 		case "time":
 			ln = lua.LNumber(sys.envShake.time)
 		case "freq":
-			ln = lua.LNumber(sys.envShake.freq/float32(math.Pi)*180)
+			ln = lua.LNumber(sys.envShake.freq / float32(math.Pi) * 180)
 		case "ampl":
 			ln = lua.LNumber(sys.envShake.ampl)
 		default:
