@@ -1043,7 +1043,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
-			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4			
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_rdreset:
 			// NOP
 		case OC_run:
