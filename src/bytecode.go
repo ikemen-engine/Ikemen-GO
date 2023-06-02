@@ -213,6 +213,7 @@ const (
 	OC_enemy
 	OC_enemynear
 	OC_playerid
+	OC_helperindex
 	OC_p2
 	OC_stateowner
 	OC_rdreset
@@ -1036,6 +1037,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_helperindex:
+			if c = c.helperByIndex(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4			
 		case OC_rdreset:
 			// NOP
 		case OC_run:
