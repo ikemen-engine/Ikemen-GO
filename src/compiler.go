@@ -183,6 +183,7 @@ var triggerMap = map[string]int{
 	"playerid":   0,
 	"p2":         0,
 	"stateowner": 0,
+	"helperindex":   0,		
 	// mugen triggers
 	"abs":               1,
 	"acos":              1,
@@ -1163,7 +1164,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "":
 		return bvNone(), Error("Nothing assigned")
 	case "root", "player", "parent", "helper", "target", "partner",
-		"enemy", "enemynear", "playerid", "p2", "stateowner":
+		"enemy", "enemynear", "playerid", "p2", "stateowner", "helperindex":
 		switch c.token {
 		case "parent":
 			opc = OC_parent
@@ -1193,7 +1194,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_enemynear
 			case "playerid":
 				opc = OC_playerid
-			}
+			case "helperindex":
+				opc = OC_helperindex
+			}			
 			c.token = c.tokenizer(in)
 			if c.token == "(" {
 				c.token = c.tokenizer(in)

@@ -2688,6 +2688,15 @@ func (c *Char) helper(id int32) *Char {
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper: %v", id))
 	return nil
 }
+func (c *Char) helperByIndex(id int32) *Char {
+	for j, h := range sys.chars[c.playerNo][1:] {
+		if !h.sf(CSF_destroy) && ( id <= 0 || (id-1) == int32(j) ) {
+			return h
+		}
+	}
+	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper with index: %v", id))
+	return nil
+}
 func (c *Char) target(id int32) *Char {
 	for _, tid := range c.targets {
 		if t := sys.playerID(tid); t != nil && (id < 0 || id == t.ghv.hitid) {
