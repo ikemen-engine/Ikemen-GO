@@ -6718,9 +6718,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if getter.ghv.kill || !live {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
-					// if getter.ghv.fall.animtype < RA_Back {
-					// getter.ghv.fall.animtype = RA_Back
-					// }
+					getter.ghv.animtype = getter.gethitAnimtype() // Update to fall anim type
 					if getter.kovelocity && !getter.sf(CSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {
