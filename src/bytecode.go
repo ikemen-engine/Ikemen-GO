@@ -3491,6 +3491,7 @@ const (
 	explod_under
 	explod_shadow
 	explod_removeongethit
+	explod_removeonchangestate
 	explod_trans
 	explod_anim
 	explod_angle
@@ -3635,6 +3636,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_removeongethit:
 			e.removeongethit = exp[0].evalB(c)
+		case explod_removeonchangestate:
+			e.removeonchangestate = exp[0].evalB(c)
 		case explod_trans:
 			e.alpha[0] = exp[0].evalI(c)
 			e.alpha[1] = exp[1].evalI(c)
@@ -3854,6 +3857,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_removeongethit:
 				t := exp[0].evalB(c)
 				eachExpl(func(e *Explod) { e.removeongethit = t })
+			case explod_removeonchangestate:
+				t := exp[0].evalB(c)
+				eachExpl(func(e *Explod) { e.removeonchangestate = t })
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
 				if len(exp) >= 3 {
