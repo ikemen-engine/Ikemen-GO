@@ -937,6 +937,32 @@ func (c *Compiler) palFXSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.stateParam(is, prefix+"sinmul", func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 4)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 3 {
+			return Error(prefix + "sinmul - not enough arguments")
+		}
+		sc.add(palFX_sinmul, bes)
+		return nil
+	}); err != nil {
+		return err
+	}	
+	if err := c.stateParam(is, prefix+"sincolor", func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 2)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 2 {
+			return Error(prefix + "sincolor - not enough arguments")
+		}
+		sc.add(palFX_sincolor, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, prefix+"invertall",
 		palFX_invertall, VT_Bool, 1, false); err != nil {
 		return err
@@ -4073,6 +4099,14 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyBGCtrl_sinadd, VT_Int, 4, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "sinmul",
+			modifyBGCtrl_sinmul, VT_Int, 4, false); err != nil {
+			return err
+		}	
+		if err := c.paramValue(is, sc, "sincolor",
+			modifyBGCtrl_sincolor, VT_Int, 2, false); err != nil {
+			return err
+		}				
 		if err := c.paramValue(is, sc, "invertall",
 			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
 			return err
