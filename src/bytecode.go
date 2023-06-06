@@ -1043,7 +1043,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
-			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4			
 		case OC_rdreset:
 			// NOP
 		case OC_run:
@@ -3375,6 +3375,8 @@ const (
 	palFX_add
 	palFX_mul
 	palFX_sinadd
+	palFX_sinmul	
+	palFX_sincolor
 	palFX_invertall
 	palFX_last = iota - 1
 	palFX_redirectid
@@ -3408,6 +3410,30 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		pfd.sinadd[0] = exp[0].evalI(c) * side
 		pfd.sinadd[1] = exp[1].evalI(c) * side
 		pfd.sinadd[2] = exp[2].evalI(c) * side
+	case palFX_sinmul:
+		var side int32 = 1
+		if len(exp) > 3 {
+			if exp[3].evalI(c) < 0 {
+				pfd.cycletimeMul = -exp[3].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletimeMul = exp[3].evalI(c)
+			}
+		}
+		pfd.sinmul[0] = exp[0].evalI(c) * side
+		pfd.sinmul[1] = exp[1].evalI(c) * side
+		pfd.sinmul[2] = exp[2].evalI(c) * side	
+	case palFX_sincolor:
+		var side int32 = 1
+		if len(exp) > 1 {
+			if exp[1].evalI(c) < 0 {
+				pfd.cycletimeColor = -exp[1].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletimeColor = exp[1].evalI(c)
+			}
+		}
+		pfd.sincolor = (exp[0].evalI(c) / 256)  * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	default:
@@ -7722,6 +7748,8 @@ const (
 	modifyBGCtrl_add
 	modifyBGCtrl_mul
 	modifyBGCtrl_sinadd
+	modifyBGCtrl_sinmul
+	modifyBGCtrl_sincolor
 	modifyBGCtrl_invertall
 	modifyBGCtrl_color
 	modifyBGCtrl_redirectid
@@ -7733,7 +7761,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
 	src, dst := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
-	add, mul, sinadd := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}
+	add, mul, sinadd, sinmul, sincolor := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [2]int32{IErr, IErr}
 	invall, color := IErr, float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -7796,6 +7824,22 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 					}
 				}
 			}
+		case modifyBGCtrl_sinmul:
+			sinmul[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				sinmul[1] = exp[1].evalI(c)
+				if len(exp) > 2 {
+					sinmul[2] = exp[2].evalI(c)
+					if len(exp) > 3 {
+						sinmul[3] = exp[3].evalI(c)
+					}
+				}
+			}
+		case modifyBGCtrl_sincolor:
+			sincolor[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				sincolor[1] = exp[1].evalI(c)
+			}						
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_color:
@@ -7809,7 +7853,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, invall, color)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, invall, color)
 	return false
 }
 
