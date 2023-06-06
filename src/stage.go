@@ -452,6 +452,8 @@ type bgCtrl struct {
 	add          [3]int32
 	mul          [3]int32
 	sinadd       [4]int32
+	sinmul       [4]int32
+	sincolor     [2]int32
 	invall       bool
 	color        float32
 	positionlink bool
@@ -483,6 +485,8 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		bgc.add = [3]int32{0, 0, 0}
 		bgc.mul = [3]int32{256, 256, 256}
 		bgc.sinadd = [4]int32{0, 0, 0, 0}
+		bgc.sinmul = [4]int32{0, 0, 0, 0}
+		bgc.sincolor = [2]int32{0, 0}
 		bgc.invall = false
 		bgc.color = 1
 	case "posset":
@@ -526,6 +530,18 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 				for i := 0; i < 4; i++ {
 					bgc.sinadd[i] = -bgc.sinadd[i]
 				}
+			}
+		}
+		if is.readI32ForStage("sinmul", &bgc.sinmul[0], &bgc.sinmul[1], &bgc.sinmul[2], &bgc.sinmul[3]) {
+			if bgc.sinmul[3] < 0 {
+				for i := 0; i < 4; i++ {
+					bgc.sinmul[i] = -bgc.sinmul[i]
+				}
+			}
+		}
+		if is.readI32ForStage("sincolor", &bgc.sincolor[0], &bgc.sincolor[1]) {
+			if bgc.sincolor[1] < 0 {
+				bgc.sincolor[0] = -bgc.sincolor[0]
 			}
 		}
 		var tmp int32
@@ -1090,6 +1106,12 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.sinadd[1] = bgc.sinadd[1]
 			bgc.bg[i].palfx.sinadd[2] = bgc.sinadd[2]
 			bgc.bg[i].palfx.cycletime = bgc.sinadd[3]
+			bgc.bg[i].palfx.sinmul[0] = bgc.sinmul[0]
+			bgc.bg[i].palfx.sinmul[1] = bgc.sinmul[1]
+			bgc.bg[i].palfx.sinmul[2] = bgc.sinmul[2]
+			bgc.bg[i].palfx.cycletimeMul = bgc.sinmul[3]
+			bgc.bg[i].palfx.sincolor = bgc.sincolor[0] / 256
+			bgc.bg[i].palfx.cycletimeColor = bgc.sincolor[1]
 			bgc.bg[i].palfx.invertall = bgc.invall
 			bgc.bg[i].palfx.color = bgc.color
 		}
@@ -1320,7 +1342,7 @@ func (s *Stage) reset() {
 }
 
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
-	add, mul [3]int32, sinadd [4]int32, invall int32, color float32) {
+	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, invall int32, color float32) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
 			if t[0] != IErr {
@@ -1358,17 +1380,43 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					side = -1
 				}
 			}
-			for j := 0; j < 3; j++ {
-				if add[j] != IErr {
-					s.bgc[i].add[j] = add[j]
+			var side2 int32 = 1
+			if sinmul[3] != IErr {
+				if sinmul[3] < 0 {
+					sinmul[3] = -sinmul[3]
+					side2 = -1
 				}
-				if mul[j] != IErr {
-					s.bgc[i].mul[j] = mul[j]
+			}
+			var side3 int32 = 1
+			if sincolor[1] != IErr {
+				if sincolor[1] < 0 {
+					sincolor[1] = -sincolor[1]
+					side3 = -1
+				}
+			}
+			for j := 0; j < 4; j++ {
+				if j < 3 {
+					if add[j] != IErr {
+						s.bgc[i].add[j] = add[j]
+					}
+					if mul[j] != IErr {
+						s.bgc[i].mul[j] = mul[j]
+					}
+
 				}
 				if sinadd[j] != IErr {
 					s.bgc[i].sinadd[j] = sinadd[j] * side
 				}
+				if sinmul[j] != IErr {
+					s.bgc[i].sinmul[j] = sinmul[j] * side2
+				}
+				if j < 2 {
+					if sincolor[0] != IErr {
+						s.bgc[i].sincolor[j] = sincolor[j] * side3
+					}
+				}
 			}
+
 			if invall != IErr {
 				s.bgc[i].invall = invall != 0
 			}

@@ -265,6 +265,40 @@ func systemScriptInit(l *lua.LState) {
 						a.palfx.sinadd[2] = s[2]
 						a.palfx.cycletime = s[3]
 					}
+				case "sinmul":
+					var s [4]int32
+					switch v := value.(type) {
+					case *lua.LTable:
+						v.ForEach(func(key2, value2 lua.LValue) {
+							s[int(lua.LVAsNumber(key2))-1] = int32(lua.LVAsNumber(value2))
+						})
+					}
+					if s[3] < 0 {
+						a.palfx.sinmul[0] = -s[0]
+						a.palfx.sinmul[1] = -s[1]
+						a.palfx.sinmul[2] = -s[2]
+						a.palfx.cycletimeMul = -s[3]
+					} else {
+						a.palfx.sinmul[0] = s[0]
+						a.palfx.sinmul[1] = s[1]
+						a.palfx.sinmul[2] = s[2]
+						a.palfx.cycletimeMul = s[3]
+					}
+				case "sincolor":
+					var s [2]int32
+					switch v := value.(type) {
+					case *lua.LTable:
+						v.ForEach(func(key2, value2 lua.LValue) {
+							s[int(lua.LVAsNumber(key2))-1] = int32(lua.LVAsNumber(value2))
+						})
+					}
+					if s[1] < 0 {
+						a.palfx.sincolor = (-s[0] / 256)
+						a.palfx.cycletimeColor = -s[1]
+					} else {
+						a.palfx.sincolor = (s[0] / 256)
+						a.palfx.cycletimeColor = s[1]
+					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
 				case "color":
