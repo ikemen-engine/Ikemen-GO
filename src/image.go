@@ -24,25 +24,25 @@ const (
 )
 
 type PalFXDef struct {
-	time      int32
-	color     float32
-	add       [3]int32
-	mul       [3]int32
-	sinadd    [3]int32
-	sinmul    [3]int32	
-	sincolor    int32	
-	cycletime int32
-	cycletimeMul int32	
-	cycletimeColor int32		
-	invertall bool
+	time           int32
+	color          float32
+	add            [3]int32
+	mul            [3]int32
+	sinadd         [3]int32
+	sinmul         [3]int32
+	sincolor       int32
+	cycletime      int32
+	cycletimeMul   int32
+	cycletimeColor int32
+	invertall      bool
 }
 type PalFX struct {
 	PalFXDef
 	remap      []int
 	negType    bool
 	sintime    int32
-	sintime2    int32	
-	sintime3    int32
+	sintime2   int32
+	sintime3   int32
 	enable     bool
 	eNegType   bool
 	eInvertall bool
@@ -57,7 +57,7 @@ func (pf *PalFX) clear2(nt bool) {
 	pf.negType = nt
 	pf.sintime = 0
 	pf.sintime2 = 0
-	pf.sintime3 = 0	
+	pf.sintime3 = 0
 }
 func (pf *PalFX) clear() {
 	pf.clear2(false)
@@ -184,9 +184,9 @@ func (pf *PalFX) sinColor(color *float32) {
 			st += math.Pi / 2
 		}
 		sin := math.Sin(st / float64(pf.cycletimeColor))
-		
+
 		(*color) += float32(sin * float64(pf.sincolor))
-	
+
 	}
 }
 func (pf *PalFX) step() {
@@ -198,18 +198,18 @@ func (pf *PalFX) step() {
 		pf.eInvertall = pf.invertall
 		pf.eNegType = pf.negType
 		pf.sinAdd(&pf.eAdd)
-		pf.sinMul(&pf.eMul)		
-		pf.sinColor(&pf.eColor)	
+		pf.sinMul(&pf.eMul)
+		pf.sinColor(&pf.eColor)
 		if sys.tickFrame() {
 			if pf.cycletime > 0 {
 				pf.sintime = (pf.sintime + 1) % pf.cycletime
 			}
 			if pf.cycletimeMul > 0 {
 				pf.sintime2 = (pf.sintime2 + 1) % pf.cycletimeMul
-			}	
+			}
 			if pf.cycletimeColor > 0 {
 				pf.sintime3 = (pf.sintime3 + 1) % pf.cycletimeColor
-			}			
+			}
 			if pf.time > 0 {
 				pf.time--
 			}

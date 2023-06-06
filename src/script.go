@@ -293,12 +293,12 @@ func systemScriptInit(l *lua.LState) {
 						})
 					}
 					if s[1] < 0 {
-						a.palfx.sincolor = (-s[0]/256)
+						a.palfx.sincolor = (-s[0] / 256)
 						a.palfx.cycletimeColor = -s[1]
 					} else {
-						a.palfx.sincolor = (s[0]/256)
+						a.palfx.sincolor = (s[0] / 256)
 						a.palfx.cycletimeColor = s[1]
-					}											
+					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
 				case "color":

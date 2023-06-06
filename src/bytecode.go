@@ -1043,7 +1043,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
-			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4			
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_rdreset:
 			// NOP
 		case OC_run:
@@ -3375,7 +3375,7 @@ const (
 	palFX_add
 	palFX_mul
 	palFX_sinadd
-	palFX_sinmul	
+	palFX_sinmul
 	palFX_sincolor
 	palFX_invertall
 	palFX_last = iota - 1
@@ -3422,7 +3422,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		}
 		pfd.sinmul[0] = exp[0].evalI(c) * side
 		pfd.sinmul[1] = exp[1].evalI(c) * side
-		pfd.sinmul[2] = exp[2].evalI(c) * side	
+		pfd.sinmul[2] = exp[2].evalI(c) * side
 	case palFX_sincolor:
 		var side int32 = 1
 		if len(exp) > 1 {
@@ -3433,7 +3433,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 				pfd.cycletimeColor = exp[1].evalI(c)
 			}
 		}
-		pfd.sincolor = (exp[0].evalI(c) / 256)  * side
+		pfd.sincolor = (exp[0].evalI(c) / 256) * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
 	default:
@@ -7839,7 +7839,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			sincolor[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
 				sincolor[1] = exp[1].evalI(c)
-			}						
+			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_color:

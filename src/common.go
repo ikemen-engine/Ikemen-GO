@@ -751,13 +751,13 @@ func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
 			al.palfx.cycletimeMul = s[3]
 		}
 	}
-	var s2 [2]int32	
+	var s2 [2]int32
 	if is.ReadI32(pre+"sincolor", &s2[0], &s2[1]) {
 		if s2[1] < 0 {
-			al.palfx.sincolor = (-s2[0]/256)
+			al.palfx.sincolor = (-s2[0] / 256)
 			al.palfx.cycletimeColor = -s2[1]
 		} else {
-			al.palfx.sincolor = (s2[0]/256)
+			al.palfx.sincolor = (s2[0] / 256)
 			al.palfx.cycletimeColor = s2[1]
 		}
 	}
