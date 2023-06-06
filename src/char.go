@@ -4621,14 +4621,12 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 	}
 }
 func (c *Char) hitVelSetX() {
-	if c.ss.moveType == MT_H {
-		c.setXV(c.ghv.xvel)
-	}
+	// Movetype H is not required in Mugen
+	c.setXV(c.ghv.xvel)
 }
 func (c *Char) hitVelSetY() {
-	if c.ss.moveType == MT_H {
-		c.setYV(c.ghv.yvel)
-	}
+	// Movetype H is not required in Mugen
+	c.setYV(c.ghv.yvel)
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
 	if !actually || c.stCgi().ver[0] != 1 {
