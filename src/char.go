@@ -981,43 +981,43 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
 }
 
 type Explod struct {
-	id             int32
-	bindtime       int32
-	scale          [2]float32
-	time           int32
+	id                  int32
+	bindtime            int32
+	scale               [2]float32
+	time                int32
 	removeongethit      bool
 	removeonchangestate bool
-	removetime     int32
-	velocity       [2]float32
-	accel          [2]float32
-	sprpriority    int32
-	postype        PosType
-	space          Space
-	offset         [2]float32
-	relativef      int32
-	pos            [2]float32
-	facing         float32
-	vfacing        float32
-	shadow         [3]int32
-	supermovetime  int32
-	pausemovetime  int32
-	anim           *Animation
-	ontop          bool
-	under          bool
-	alpha          [2]int32
-	ownpal         bool
-	playerId       int32
-	bindId         int32
-	ignorehitpause bool
-	rot            Rotation
-	projection     Projection
-	fLength        float32
-	oldPos         [2]float32
-	newPos         [2]float32
-	palfx          *PalFX
-	palfxdef       PalFXDef
-	window         [4]float32
-	localscl       float32
+	removetime          int32
+	velocity            [2]float32
+	accel               [2]float32
+	sprpriority         int32
+	postype             PosType
+	space               Space
+	offset              [2]float32
+	relativef           int32
+	pos                 [2]float32
+	facing              float32
+	vfacing             float32
+	shadow              [3]int32
+	supermovetime       int32
+	pausemovetime       int32
+	anim                *Animation
+	ontop               bool
+	under               bool
+	alpha               [2]int32
+	ownpal              bool
+	playerId            int32
+	bindId              int32
+	ignorehitpause      bool
+	rot                 Rotation
+	projection          Projection
+	fLength             float32
+	oldPos              [2]float32
+	newPos              [2]float32
+	palfx               *PalFX
+	palfxdef            PalFXDef
+	window              [4]float32
+	localscl            float32
 }
 
 func (e *Explod) clear() {
@@ -3396,7 +3396,7 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	// Remove relevant explods
 	for i := range sys.explods[c.playerNo] {
 		e := sys.explods[c.playerNo]
-		if  e[i].playerId == c.id && e[i].removeonchangestate {
+		if e[i].playerId == c.id && e[i].removeonchangestate {
 			e[i].id = IErr
 			e[i].anim = nil
 		}
