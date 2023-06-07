@@ -985,7 +985,8 @@ type Explod struct {
 	bindtime       int32
 	scale          [2]float32
 	time           int32
-	removeongethit bool
+	removeongethit      bool
+	removeonchangestate bool
 	removetime     int32
 	velocity       [2]float32
 	accel          [2]float32
@@ -1137,6 +1138,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if !e.ignorehitpause || e.removeongethit {
 		c = sys.playerID(e.playerId)
 	}
+	// Remove on get hit
 	if sys.tickNextFrame() &&
 		c != nil && e.removeongethit && c.sf(CSF_gethit) {
 		e.id, e.anim = IErr, nil
@@ -3391,6 +3393,14 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
 	}
+	// Remove relevant explods
+	for i := range sys.explods[c.playerNo] {
+		e := sys.explods[c.playerNo]
+		if  e[i].playerId == c.id && e[i].removeonchangestate {
+			e[i].id = IErr
+			e[i].anim = nil
+		}
+	}
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < 2500 {
 			c.stateChange2()
@@ -4611,14 +4621,12 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 	}
 }
 func (c *Char) hitVelSetX() {
-	if c.ss.moveType == MT_H {
-		c.setXV(c.ghv.xvel)
-	}
+	// Movetype H is not required in Mugen
+	c.setXV(c.ghv.xvel)
 }
 func (c *Char) hitVelSetY() {
-	if c.ss.moveType == MT_H {
-		c.setYV(c.ghv.yvel)
-	}
+	// Movetype H is not required in Mugen
+	c.setYV(c.ghv.yvel)
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
 	if !actually || c.stCgi().ver[0] != 1 {
@@ -6718,9 +6726,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if getter.ghv.kill || !live {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
-					// if getter.ghv.fall.animtype < RA_Back {
-					// getter.ghv.fall.animtype = RA_Back
-					// }
+					getter.ghv.animtype = getter.gethitAnimtype() // Update to fall anim type
 					if getter.kovelocity && !getter.sf(CSF_nokovelocity) {
 						if getter.ss.stateType == ST_A {
 							if getter.ghv.xvel < 0 {

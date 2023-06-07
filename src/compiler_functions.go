@@ -685,6 +685,10 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_removeongethit, VT_Bool, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "removeonchangestate",
+		explod_removeonchangestate, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramTrans(is, sc, "", explod_trans, false); err != nil {
 		return err
 	}
