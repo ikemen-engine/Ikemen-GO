@@ -755,7 +755,7 @@ type GetHitVar struct {
 }
 
 func (ghv *GetHitVar) clear() {
-	*ghv = GetHitVar{_type: -1, hittime: -1, yaccel: float32(math.NaN()),
+	*ghv = GetHitVar{hittime: -1, yaccel: float32(math.NaN()),
 		xoff: ghv.xoff, yoff: ghv.yoff, hitid: -1, playerNo: -1}
 	ghv.fall.clear()
 }
@@ -5300,7 +5300,9 @@ func (c *Char) dropTargets() {
 				if t.ss.moveType != MT_H && !t.stchtmp {
 					c.targets[i] = c.targets[len(c.targets)-1]
 					c.targets = c.targets[:len(c.targets)-1]
-					t.ghv.hitid = -1
+					if t.ghv._type != 0 { // GitHub #1268
+						t.ghv.hitid = -1
+					}
 				} else {
 					i++
 				}
@@ -6024,7 +6026,7 @@ func (c *Char) tick() {
 			c.ss.clearWw()
 		}
 		c.hitPauseTime = 0
-		//c.targetDrop(-1, false) // #1148
+		//c.targetDrop(-1, false) // GitHub #1148
 		if c.hoIdx >= 0 && c.ho[c.hoIdx].forceair {
 			c.ss.stateType = ST_A
 		}
@@ -6451,6 +6453,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.sf(CSF_gethit)
+		// Variables that are set even if type is "None"
 		if ghvset {
 			if !proj {
 				c.sprPriority = hd.p1sprpriority
@@ -6459,6 +6462,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			getter.ghv.hitid = hd.id
 			getter.ghv.playerNo = hd.playerNo
 			getter.ghv.id = hd.attackerID
+			getter.ghv.groundtype = hd.ground_type
+			getter.ghv.airtype = hd.air_type
+			if getter.ss.stateType == ST_A {
+				getter.ghv._type = getter.ghv.airtype
+			} else {
+				getter.ghv._type = getter.ghv.groundtype
+			}
 		}
 		if Abs(hitType) == 1 {
 			if hd.pausetime > 0 {
