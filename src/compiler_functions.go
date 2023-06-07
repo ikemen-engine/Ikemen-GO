@@ -722,12 +722,12 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "elem",
-			explod_elem, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "animelem",
+			explod_animelem, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "elemlooped",
-			explod_elemlooped, VT_Bool, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "animelemlooped",
+			explod_animelemlooped, VT_Bool, 1, false); err != nil {
 			return err
 		}		
 		if err := c.paramValue(is, sc, "angle",
@@ -770,12 +770,12 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 		}); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "elem",
-			explod_elem, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "animelem",
+			explod_animelem, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "elemlooped",
-			explod_elemlooped, VT_Bool, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "animelemlooped",
+			explod_animelemlooped, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "angle",
