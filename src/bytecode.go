@@ -3688,7 +3688,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_animelemlooped:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				e.animelemlooped = exp[0].evalB(c)
-			}			
+			}
 		case explod_angle:
 			e.rot.angle = exp[0].evalF(c)
 		case explod_yangle:
