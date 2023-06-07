@@ -3520,6 +3520,8 @@ const (
 	explod_removeonchangestate
 	explod_trans
 	explod_anim
+	explod_elem
+	explod_elemlooped	
 	explod_angle
 	explod_yangle
 	explod_xangle
@@ -3679,6 +3681,14 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
+		case explod_elem:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				e.elem = exp[0].evalI(c)
+			}
+		case explod_elemlooped:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				e.elemlooped = exp[0].evalB(c)
+			}			
 		case explod_angle:
 			e.rot.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3903,6 +3913,20 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					anim := crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 					eachExpl(func(e *Explod) { e.anim = anim })
 				}
+		case explod_elem:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				elem := exp[0].evalI(c)
+				eachExpl(func(e *Explod) {
+					e.elem = elem
+					e.anim.Action()
+					e.setElem()
+				})
+			}
+		case explod_elemlooped:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				elemlooped := exp[0].evalB(c)
+				eachExpl(func(e *Explod) { e.elemlooped = elemlooped })
+			}				
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.rot.angle = a })

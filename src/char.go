@@ -1002,6 +1002,8 @@ type Explod struct {
 	supermovetime       int32
 	pausemovetime       int32
 	anim                *Animation
+	elem                int32
+	elemlooped          bool	
 	ontop               bool
 	under               bool
 	alpha               [2]int32
@@ -1123,6 +1125,11 @@ func (e *Explod) setPos(c *Char) {
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
 }
+func (e *Explod) setElem() {
+	if e.anim != nil && e.elem >= 1 {
+		e.anim.SetAnimElem(Clamp(e.elem, 1, int32(len(e.anim.frames))))
+	}
+}
 func (e *Explod) update(oldVer bool, playerNo int) {
 	if e.anim == nil {
 		e.id = IErr
@@ -1166,6 +1173,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		screen = true
 	}
 	if e.time == 0 || e.bindtime != 0 {
+		e.setElem()
 		if e.space == Space_screen {
 			e.pos[0] = e.offset[0]
 			e.pos[1] = e.offset[1]
@@ -1280,7 +1288,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 					}
 				}
 			}
-			e.anim.Action()
+			if e.elemlooped {
+				e.setElem()
+			} else {
+				e.anim.Action()
+			}
 			e.time++
 		} else {
 			e.setX(e.pos[0])
