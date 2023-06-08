@@ -722,6 +722,14 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 		}); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "animelem",
+			explod_animelem, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "animelemlooped",
+			explod_animelemlooped, VT_Bool, 1, false); err != nil {
+			return err
+		}		
 		if err := c.paramValue(is, sc, "angle",
 			explod_angle, VT_Float, 1, false); err != nil {
 			return err
@@ -760,6 +768,14 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
 				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "animelem",
+			explod_animelem, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "animelemlooped",
+			explod_animelemlooped, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "angle",
