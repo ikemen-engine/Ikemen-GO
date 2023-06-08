@@ -3111,8 +3111,6 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(0)
 		case "yveladd":
 			ln = lua.LNumber(0)
-		case "type":
-			ln = lua.LNumber(0)
 		case "zoff":
 			ln = lua.LNumber(0)
 		case "fall.envshake.dir":
@@ -3125,6 +3123,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.groundanimtype)
 		case "fall.animtype":
 			ln = lua.LNumber(c.ghv.fall.animtype)
+		case "type":
+			ln = lua.LNumber(c.ghv._type)
 		case "airtype":
 			ln = lua.LNumber(c.ghv.airtype)
 		case "groundtype":

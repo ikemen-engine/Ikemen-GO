@@ -1711,8 +1711,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			bv.SetF(0)
 		case "yveladd":
 			bv.SetF(0)
-		case "type":
-			bv.SetI(0)
 		case "zoff":
 			bv.SetF(0)
 		case "fall.envshake.dir":
@@ -1728,6 +1726,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_ground_animtype)
 			case "fall.animtype":
 				out.append(OC_ex_gethitvar_fall_animtype)
+			case "type":
+				out.append(OC_ex_gethitvar_type)
 			case "airtype":
 				out.append(OC_ex_gethitvar_airtype)
 			case "groundtype":
