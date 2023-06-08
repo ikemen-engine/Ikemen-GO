@@ -1003,7 +1003,7 @@ type Explod struct {
 	pausemovetime       int32
 	anim                *Animation
 	animelem            int32
-	animelemlooped      bool	
+	animelemlooped      bool
 	ontop               bool
 	under               bool
 	alpha               [2]int32
