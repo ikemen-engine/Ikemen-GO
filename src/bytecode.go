@@ -3523,6 +3523,8 @@ const (
 	explod_removeonchangestate
 	explod_trans
 	explod_anim
+	explod_animelem
+	explod_animelemlooped
 	explod_angle
 	explod_yangle
 	explod_xangle
@@ -3682,6 +3684,14 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
+		case explod_animelem:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				e.animelem = exp[0].evalI(c)
+			}
+		case explod_animelemlooped:
+			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+				e.animelemlooped = exp[0].evalB(c)
+			}
 		case explod_angle:
 			e.rot.angle = exp[0].evalF(c)
 		case explod_yangle:
@@ -3905,6 +3915,20 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					anim := crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 					eachExpl(func(e *Explod) { e.anim = anim })
+				}
+			case explod_animelem:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					animelem := exp[0].evalI(c)
+					eachExpl(func(e *Explod) {
+						e.animelem = animelem
+						e.anim.Action()
+						e.setAnimElem()
+					})
+				}
+			case explod_animelemlooped:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					animelemlooped := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { e.animelemlooped = animelemlooped })
 				}
 			case explod_angle:
 				a := exp[0].evalF(c)
