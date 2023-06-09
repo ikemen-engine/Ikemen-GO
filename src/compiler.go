@@ -353,6 +353,12 @@ var triggerMap = map[string]int{
 	"majorversion":     1,
 	"map":              1,
 	"max":              1,
+	"clamp":       		1,
+	"sign":       		1,
+	"atan2":       		1,
+	"rad":       		1,
+	"deg":       		1,
+	"lerp":       		1,	
 	"memberno":         1,
 	"min":              1,
 	"movecountered":    1,
@@ -389,6 +395,11 @@ var triggerMap = map[string]int{
 	"timetotal":        1,
 	"winhyper":         1,
 	"winspecial":       1,
+	"angle":       		1,
+	"scale":       		1,
+	"offset":       	1,
+	"alphas":       	1,
+	"alphad":       	1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -2560,6 +2571,129 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.round(&bv1, bv2)
 			bv = bv1
 		}
+	case "clamp":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv3, err = c.expBoolOr(&be3, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone(){
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(bv1)
+			out.append(be2...)
+			out.appendValue(bv2)
+			out.append(be3...)
+			out.appendValue(bv3)
+			out.append(OC_ex_, OC_ex_clamp)
+		} else {
+			out.clamp(&bv1,bv2, bv3)
+			bv = bv1
+		}
+	case "atan2":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		if bv1.IsNone() || bv2.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(bv1)
+			out.append(be2...)
+			out.appendValue(bv2)		
+			out.append(OC_ex_, OC_ex_atan2)
+		} else {
+			out.atan2(&bv1,bv2)
+			bv = bv1
+		}
+	case "sign":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_sign)
+	case "rad":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_rad)
+	case "deg":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_deg)
+	case "lerp":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv3, err = c.expBoolOr(&be3, in); err != nil {
+			return bvNone(), err
+		}
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone(){
+			if rd {
+				out.append(OC_rdreset)
+			}
+			out.append(be1...)
+			out.appendValue(bv1)
+			out.append(be2...)
+			out.appendValue(bv2)
+			out.append(be3...)
+			out.appendValue(bv3)
+			out.append(OC_ex_, OC_ex_lerp)
+		} else {
+			out.lerp(&bv1,bv2, bv3)
+			bv = bv1
+		}		
 	case "ailevelf":
 		out.append(OC_ex_, OC_ex_ailevelf)
 	case "airjumpcount":
@@ -2863,6 +2997,39 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_timetotal)
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
+
+	case "angle":
+		out.append(OC_angle)
+	case "scale":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_scale_x)
+		case "y":
+			out.append(OC_scale_y)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+	case "offset":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_offset_x)
+		case "y":
+			out.append(OC_offset_y)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}		
+	case "alpha":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "source":
+			out.append(OC_alpha_s)
+		case "dest":
+			out.append(OC_alpha_d)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.previousOperator) > 0 {

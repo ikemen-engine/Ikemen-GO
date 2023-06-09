@@ -216,6 +216,13 @@ const (
 	OC_helperindex
 	OC_p2
 	OC_stateowner
+	OC_angle
+	OC_scale_x
+	OC_scale_y
+	OC_offset_x
+	OC_offset_y
+	OC_alpha_s
+	OC_alpha_d	
 	OC_rdreset
 	OC_const_
 	OC_st_
@@ -490,6 +497,12 @@ const (
 	OC_ex_maparray
 	OC_ex_max
 	OC_ex_min
+	OC_ex_clamp
+	OC_ex_sign
+	OC_ex_atan2
+	OC_ex_rad
+	OC_ex_deg
+	OC_ex_lerp		
 	OC_ex_memberno
 	OC_ex_movecountered
 	OC_ex_pausetime
@@ -919,6 +932,42 @@ func (BytecodeExp) min(v1 *BytecodeValue, v2 BytecodeValue) {
 	} else {
 		v1.SetF(float32(v2.v))
 	}
+}
+func (BytecodeExp) clamp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
+	if v1.v <= v2.v {
+		v1.SetF(float32(v2.v))
+	} else if v1.v >= v3.v {
+		v1.SetF(float32(v3.v))
+	} else {
+		v1.SetF(float32(v1.v))		
+	}
+}
+func (BytecodeExp) atan2(v1 *BytecodeValue, v2 BytecodeValue) {
+	v1.SetF(float32(math.Atan2(v1.v,v2.v)))
+}
+func (BytecodeExp) sign(v1 *BytecodeValue) {
+	if v1.v < 0 {
+		v1.SetI(int32(-1))
+	} else if v1.v > 0 {
+		v1.SetI(int32(1))
+	} else {
+		v1.SetI(int32(0))	
+	}
+}
+func (BytecodeExp) rad(v1 *BytecodeValue) {
+	v1.SetF(float32(v1.v*math.Pi/180))
+}
+func (BytecodeExp) deg(v1 *BytecodeValue) {
+	v1.SetF(float32(v1.v*180/math.Pi))
+}
+func (BytecodeExp) lerp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
+	amount := v3.v
+	if v3.v <= 0 {
+		amount = 0
+	} else if v3.v >= 1 {
+		amount = 0
+	}
+	v1.SetF(float32(v1.v+(v2.v-v1.v)*amount))
 }
 func (BytecodeExp) random(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(RandI(int32(v1.v), int32(v2.v)))
@@ -1403,7 +1452,21 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_localvar:
 			sys.bcStack.Push(sys.bcVar[uint8(be[i])])
 			i++
-		}
+		case OC_angle:
+			sys.bcStack.PushF(c.angleTrg)
+		case OC_scale_x:			
+			sys.bcStack.PushF(c.angleScaleTrg[0])
+		case OC_scale_y:
+			sys.bcStack.PushF(c.angleScaleTrg[1])			
+		case OC_offset_x:
+			sys.bcStack.PushF(c.offsetTrg[0])
+		case OC_offset_y:
+			sys.bcStack.PushF(c.offsetTrg[1])
+		case OC_alpha_s:
+			sys.bcStack.PushI(c.alphaTrg[0])
+		case OC_alpha_d:
+			sys.bcStack.PushI(c.alphaTrg[1])
+		}		
 		c = oc
 	}
 	return sys.bcStack.Pop()
@@ -2032,6 +2095,23 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_min:
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_clamp:
+		v3 := sys.bcStack.Pop()
+		v2 := sys.bcStack.Pop()
+		be.clamp(sys.bcStack.Top(), v2,v3)
+	case OC_ex_atan2:
+		v2 := sys.bcStack.Pop()
+		be.atan2(sys.bcStack.Top(),v2)
+	case OC_ex_sign:
+		be.sign(sys.bcStack.Top())
+	case OC_ex_rad:	
+		be.rad(sys.bcStack.Top())	
+	case OC_ex_deg:
+		be.deg(sys.bcStack.Top())
+	case OC_ex_lerp:
+		v3 := sys.bcStack.Pop()
+		v2 := sys.bcStack.Pop()
+		be.lerp(sys.bcStack.Top(), v2,v3)
 	case OC_ex_memberno:
 		sys.bcStack.PushI(int32(c.memberNo) + 1)
 	case OC_ex_movecountered:
@@ -5820,6 +5900,8 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 					crun.alpha[0] = 0
 				}
 			}
+			crun.alphaTrg[0] = crun.alpha[0]
+			crun.alphaTrg[1] = crun.alpha[1]
 		case trans_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5910,8 +5992,10 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			crun.angleSet(exp[0].evalF(c))
 		case angleDraw_scale:
 			crun.angleScale[0] *= exp[0].evalF(c)
+			crun.angleScaleTrg[0] = crun.angleScale[0]			
 			if len(exp) > 1 {
 				crun.angleScale[1] *= exp[1].evalF(c)
+				crun.angleScaleTrg[1] = crun.angleScale[1]					
 			}
 		case angleDraw_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -6814,8 +6898,10 @@ func (sc offset) Run(c *Char, _ []int32) bool {
 		switch id {
 		case offset_x:
 			crun.offset[0] = exp[0].evalF(c) * lclscround
+			crun.offsetTrg[0] = crun.offset[0]
 		case offset_y:
 			crun.offset[1] = exp[0].evalF(c) * lclscround
+			crun.offsetTrg[1] = crun.offset[1]
 		case offset_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6826,6 +6912,7 @@ func (sc offset) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.setSF(CSF_offset)	
 	return false
 }
 

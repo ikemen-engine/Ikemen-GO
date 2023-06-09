@@ -4305,4 +4305,32 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(winp))
 		return 1
 	})
+	luaRegister(l, "angle", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.angleTrg))
+		return 1
+	})	
+	luaRegister(l, "scaleX", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.angleScaleTrg[0]))
+		return 1
+	})
+	luaRegister(l, "scaleY", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.angleScaleTrg[1]))
+		return 1
+	})
+	luaRegister(l, "offsetX", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.offsetTrg[0]))
+		return 1
+	})
+	luaRegister(l, "offsetY", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.offsetTrg[1]))
+		return 1
+	})
+	luaRegister(l, "alphaSource", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.alphaTrg[0]))
+		return 1
+	})
+	luaRegister(l, "offsetDest", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.alphaTrg[1]))
+		return 1
+	})
 }
