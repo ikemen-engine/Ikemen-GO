@@ -398,8 +398,7 @@ var triggerMap = map[string]int{
 	"angle":       		1,
 	"scale":       		1,
 	"offset":       	1,
-	"alphas":       	1,
-	"alphad":       	1,
+	"alpha":       		1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
