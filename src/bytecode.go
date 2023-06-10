@@ -965,7 +965,7 @@ func (BytecodeExp) lerp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
 	if v3.v <= 0 {
 		amount = 0
 	} else if v3.v >= 1 {
-		amount = 0
+		amount = 1
 	}
 	v1.SetF(float32(v1.v+(v2.v-v1.v)*amount))
 }
