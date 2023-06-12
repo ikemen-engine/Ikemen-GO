@@ -2723,7 +2723,7 @@ func triggerFunctions(l *lua.LState) {
 		}
 		l.Push(lua.LBool(ret))
 		return 1
-	})
+	})	
 	// vanilla triggers
 	luaRegister(l, "ailevel", func(*lua.LState) int {
 		if !sys.debugWC.sf(CSF_noailevel) {
