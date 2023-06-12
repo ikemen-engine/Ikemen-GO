@@ -2713,17 +2713,6 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(ret))
 		return 1
 	})
-	luaRegister(l, "helperindex", func(*lua.LState) int {
-		ret, id := false, int32(0)
-		if l.GetTop() >= 1 {
-			id = int32(numArg(l, 1))
-		}
-		if c := sys.debugWC.helperByIndex(id); c != nil {
-			sys.debugWC, ret = c, true
-		}
-		l.Push(lua.LBool(ret))
-		return 1
-	})	
 	// vanilla triggers
 	luaRegister(l, "ailevel", func(*lua.LState) int {
 		if !sys.debugWC.sf(CSF_noailevel) {
