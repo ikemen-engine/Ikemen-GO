@@ -1218,6 +1218,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					return bvNone(), Error("Missing '(' after player")
 				case OC_playerid:
 					return bvNone(), Error("Missing '(' after playerid")
+				case OC_helperindex:
+					return bvNone(), Error("Missing '(' after helperindex")					
 				}
 			}
 			if rd {
