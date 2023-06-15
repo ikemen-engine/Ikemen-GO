@@ -172,18 +172,18 @@ func newCompiler() *Compiler {
 
 var triggerMap = map[string]int{
 	// redirections
-	"player":     0,
-	"parent":     0,
-	"root":       0,
-	"helper":     0,
-	"target":     0,
-	"partner":    0,
-	"enemy":      0,
-	"enemynear":  0,
-	"playerid":   0,
-	"p2":         0,
-	"stateowner": 0,
-	"helperindex":   0,		
+	"player":      0,
+	"parent":      0,
+	"root":        0,
+	"helper":      0,
+	"target":      0,
+	"partner":     0,
+	"enemy":       0,
+	"enemynear":   0,
+	"playerid":    0,
+	"p2":          0,
+	"stateowner":  0,
+	"helperindex": 0,
 	// mugen triggers
 	"abs":               1,
 	"acos":              1,
@@ -1196,7 +1196,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_playerid
 			case "helperindex":
 				opc = OC_helperindex
-			}			
+			}
 			c.token = c.tokenizer(in)
 			if c.token == "(" {
 				c.token = c.tokenizer(in)
@@ -1219,7 +1219,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				case OC_playerid:
 					return bvNone(), Error("Missing '(' after playerid")
 				case OC_helperindex:
-					return bvNone(), Error("Missing '(' after helperindex")					
+					return bvNone(), Error("Missing '(' after helperindex")
 				}
 			}
 			if rd {

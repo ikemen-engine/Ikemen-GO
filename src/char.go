@@ -2704,7 +2704,7 @@ func (c *Char) helper(id int32) *Char {
 }
 func (c *Char) helperByIndex(id int32) *Char {
 	for j, h := range sys.chars[c.playerNo][1:] {
-		if !h.sf(CSF_destroy) && ( (id-1) == int32(j) ) {
+		if !h.sf(CSF_destroy) && ((id - 1) == int32(j)) {
 			return h
 		}
 	}
