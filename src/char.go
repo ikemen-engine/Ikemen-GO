@@ -3997,15 +3997,8 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			hd.fall.animtype = RA_Back
 		}
 	}
-	// if hd.animtype == RA_Back {
-	// hd.animtype = RA_Hard
-	// }
 	if hd.air_type == HT_Unknown {
-		if hd.ground_type == HT_Trip {
-			hd.air_type = HT_High
-		} else {
-			hd.air_type = hd.ground_type
-		}
+		hd.air_type = hd.ground_type
 	}
 	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0))
 	if hd.attr&int32(ST_A) != 0 {
@@ -5837,7 +5830,7 @@ func (c *Char) update(cvmin, cvmax,
 			c.hittmp = int8(Btoi(c.ghv.fallf)) + 1
 			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) && c.ss.time == 1 {
 				if !c.sf(CSF_nofalldefenceup) {
-					c.fallDefenseMul = c.gi().data.fall.defence_mul
+					c.fallDefenseMul *= c.gi().data.fall.defence_mul
 				}
 				if !c.sf(CSF_nofallcount) {
 					c.ghv.fallcount++
@@ -5846,9 +5839,10 @@ func (c *Char) update(cvmin, cvmax,
 					if c.recoverTime > 0 {
 						c.recoverTime = int32(math.Floor(float64(c.recoverTime) / 2))
 					}
-					if c.ghv.fallcount > 3 || c.recoverTime <= 0 {
+					//if c.ghv.fallcount > 3 || c.recoverTime <= 0 {
+					if c.recoverTime <= 10 {
 						c.hitby[0].flag = ^int32(ST_SCA)
-						c.hitby[0].time = 360
+						c.hitby[0].time = 180 // Mugen uses infinite time here
 					}
 				}
 			}
@@ -6047,37 +6041,34 @@ func (c *Char) tick() {
 			pn = c.ghv.playerNo
 		}
 		if c.stchtmp {
-			switch c.ss.stateType {
-			case ST_S:
-				c.ss.prevno = 5000
-			case ST_C:
-				c.ss.prevno = 5010
-			case ST_A:
-				c.ss.prevno = 5020
-			case ST_L:
+			// For Mugen compatibility, PrevStateNo returns these if the character is hit into a custom state (see GitHub #765)
+			// This could be disabled if the state owner is an Ikemen character
+			if c.ss.stateType == ST_L && c.pos[1] == 0 {
 				c.ss.prevno = 5080
-			}
-		} else if c.ss.stateType == ST_L {
-			if c.pos[1] == 0 {
-				c.changeStateEx(5080, pn, -1, 0, "")
-				if c.ghv.yvel != 0 {
-					c.downHitOffset = 15 * (c.gi().localcoord[0] / 320) // This value could be unhardcoded
-				}
-				if c.recoverTime > 0 {
-					c.recoverTime--
-				}
+			} else if c.ghv._type == HT_Trip {
+				c.ss.prevno = 5070
+			} else if c.ss.stateType == ST_S {
+				c.ss.prevno = 5000
+			} else if c.ss.stateType == ST_C {
+				c.ss.prevno = 5010
 			} else {
-				c.changeStateEx(5020, pn, -1, 0, "")
+				c.ss.prevno = 5020
 			}
-		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko) ||
-			c.sf(CSF_noko) || c.sf(CSF_noguardko)) {
+		} else if c.ghv.guarded &&
+			(c.ghv.damage < c.life || sys.sf(GSF_noko) || c.sf(CSF_noko) || c.sf(CSF_noguardko)) {
 			switch c.ss.stateType {
+			// Guarding is not affected by P2getP1state
 			case ST_S:
 				c.selfState(150, -1, -1, 0, "")
 			case ST_C:
 				c.selfState(152, -1, -1, 0, "")
-			case ST_A:
+			default:
 				c.selfState(154, -1, -1, 0, "")
+			}
+		} else if c.ss.stateType == ST_L && c.pos[1] == 0 {
+			c.changeStateEx(5080, pn, -1, 0, "")
+			if c.ghv.yvel != 0 {
+				c.downHitOffset = 15 * (c.gi().localcoord[0] / 320) // This value could be unhardcoded
 			}
 		} else if c.ghv._type == HT_Trip {
 			c.changeStateEx(5070, pn, -1, 0, "")
@@ -6090,7 +6081,7 @@ func (c *Char) tick() {
 				c.changeStateEx(5000, pn, -1, 0, "")
 			case ST_C:
 				c.changeStateEx(5010, pn, -1, 0, "")
-			case ST_A:
+			default:
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		}

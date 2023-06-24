@@ -432,7 +432,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
 		# Fixed value. Characters with a longer dizzy bar take longer to recover
 		# This property could use a character constant as well instead
-		dizzyPointsAdd{value: 5}
+		dizzyPointsAdd{value: 5; absolute: 1}
 	}
 
 	# Reset dizzy limit
