@@ -175,7 +175,7 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	}
 	# Guard points recovery
 	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsCounter) = 0 {
-		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)}
+		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0); absolute: 1}
 		map(_iksys_guardPointsCounter) := 30;
 	}
 }
