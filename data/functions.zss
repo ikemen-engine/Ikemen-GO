@@ -27,11 +27,11 @@ ignoreHitPause{
 [Function Technical() ret]
 ignoreHitPause{
 	let ret = 0;
-	if stateNo = [const(StateAirGetHit_fallRecoveryOnGround), const(StateAirGetHit_fallRecoveryInAir)]
+	if (stateNo = const(StateAirGetHit_fallRecoveryOnGround) || stateNo = const(StateAirGetHit_fallRecoveryInAir))
 		&& (map(_iksys_technicalFlag) = 0 || map(_iksys_technicalFlag) = gameTime) {
 		let ret = 1;
 		map(_iksys_technicalFlag) := gameTime;
-	} else if stateNo != [const(StateAirGetHit_fallRecoveryOnGround), const(StateAirGetHit_fallRecoveryInAir)] {
+	} else if moveType = H && stateNo != const(StateAirGetHit_fallRecoveryOnGround) && stateNo != const(StateAirGetHit_fallRecoveryInAir) {
 		map(_iksys_technicalFlag) := 0;
 	}
 }
