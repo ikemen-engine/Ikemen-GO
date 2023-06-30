@@ -4719,7 +4719,12 @@ func (c *Char) angleSet(a float32) {
 	c.angle = a
 }
 func (c *Char) inputOver() bool {
-	return !c.alive() || sys.time == 0 || sys.intro <= -sys.lifebar.ro.over_time
+	if c.sf(CSF_postroundinput) {
+		return false
+	} else {
+		// KO'd characters are covered by the inputwait flag
+		return sys.time == 0 || sys.intro <= -sys.lifebar.ro.over_time || c.scf(SCF_inputwait)
+	}
 }
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || c.ss.no == 5150
@@ -5500,6 +5505,7 @@ func (c *Char) actionPrepare() {
 	if !c.pauseBool {
 		// Perform basic actions
 		if c.keyctrl[0] && c.cmd != nil {
+			// In Mugen, characters can perform basic actions even if they are KO
 			if c.ctrl() && !c.inputOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.sf(CSF_nohardcodedkeys) {
 					// TODO disable jumps right after KO instead of after over.hittime
@@ -5713,13 +5719,13 @@ func (c *Char) actionRun() {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1, "")
 			}
-			for {
-				c.posUpdate()
-				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
-					c.ss.no == 105 {
-					break
+			c.posUpdate()
+			// Land from aerial physics
+			// This was a loop before like Mugen, so setting state 52 to physics A caused a crash
+			if c.ss.physics == ST_A {
+				if c.vel[1] > 0 && (c.pos[1] - c.platformPosY) >= 0 && c.ss.no != 105 {
+					c.changeState(52, -1, -1, "")
 				}
-				c.changeState(52, -1, -1, "")
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
@@ -5835,6 +5841,8 @@ func (c *Char) update(cvmin, cvmax,
 				if !c.sf(CSF_nofallcount) {
 					c.ghv.fallcount++
 				}
+				// Mugen does not actually require the first condition here
+				// But that makes characters always invulnerable if their lie down time is <= 10
 				if c.ghv.fallcount > 1 && c.ss.no == 5100 {
 					if c.recoverTime > 0 {
 						c.recoverTime = int32(math.Floor(float64(c.recoverTime) / 2))
@@ -6112,7 +6120,8 @@ func (c *Char) tick() {
 				c.ss.moveType != MT_H && !sys.sf(GSF_noko) && !c.sf(CSF_noko) &&
 				(!c.ghv.guarded || !c.sf(CSF_noguardko)) {
 				c.ghv.fallf = true
-				c.selfState(5030, -1, -1, -1, "")
+				// Mugen sets control to 0 here
+				c.selfState(5030, -1, -1, 0, "")
 				c.ss.time = 1
 			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
 				c.selfState(5120, -1, -1, -1, "")
@@ -6553,6 +6562,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
 						ghv.xvel = hd.guard_velocity * (c.localscl / getter.localscl)
+						// Mugen does not accept a Y component for ground guard velocity
 						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
 					}
 					if !getter.sf(CSF_noguarddamage) {
@@ -6590,7 +6600,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 						ghv.fallf = hd.ground_fall
 						if ghv.fallf && ghv.yvel == 0 {
-							ghv.yvel = -0.001 * (c.localscl / getter.localscl) //新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
+							// 新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
+							// "I think it's better not to reproduce the situation where the value inside here
+							// becomes smaller when enlarging the window size in the new MUGEN."
+							ghv.yvel = -0.001 * (c.localscl / getter.localscl)
 						}
 						if ghv.yvel != 0 {
 							ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
@@ -6735,6 +6748,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.ghv.guardredlife += getter.computeDamage(
 					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, true)
 			}
+			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
 				if getter.ghv.kill || !live {
 					getter.ghv.fatal = true
@@ -6751,7 +6765,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.ghv.yvel = getter.gi().velocity.air.gethit.ko.ymin
 								}
 							}
-						} else {
+						} else if getter.ss.stateType != ST_L {
 							if getter.ghv.yvel == 0 {
 								getter.ghv.xvel *= getter.gi().velocity.ground.gethit.ko.xmul
 							}

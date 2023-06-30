@@ -367,17 +367,17 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else ignoreHitPause if roundState = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
-	map(_iksys_dizzyPointsCounter) := 0;
+	map(_iksys_dizzyPointsTimer) := 0;
 	map(_iksys_dizzyLimit) := 0;
 
 } else ignoreHitPause if alive {
-	# Upon hit, set cooldown counter
+	# Upon hit, set cooldown timer
 	# Cooldown time could be a character constant
 	if moveType = H || dizzy || stateNo = const(StateDownedGetHit_gettingUp) {
-		map(_iksys_dizzyPointsCounter) := 60;
-	# Otherwise decrease cooldown counter by 1 each frame
-	} else if map(_iksys_dizzyPointsCounter) > 0 {
-		mapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
+		map(_iksys_dizzyPointsTimer) := 60;
+	# Otherwise decrease cooldown timer by 1 each frame
+	} else if map(_iksys_dizzyPointsTimer) > 0 {
+		mapAdd{map: "_iksys_dizzyPointsTimer"; value: -1}
 	}
 
 	# Freeze dizzy points if character was already dizzied once in the combo
@@ -429,7 +429,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	}
 
 	# Dizzy points recovery after cooldown ends
-	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
+	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsTimer) = 0 {
 		# Fixed value. Characters with a longer dizzy bar take longer to recover
 		# This property could use a character constant as well instead
 		dizzyPointsAdd{value: 5; absolute: 1}
