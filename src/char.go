@@ -1053,6 +1053,7 @@ func (e *Explod) setBind(bId int32) {
 	}
 	e.bindId = bId
 }
+
 // Initial pos setting based on postype and space. This function probably needs a heavy refactor.
 func (e *Explod) setPos(c *Char) {
 	pPos := func(c *Char) {
@@ -1093,48 +1094,48 @@ func (e *Explod) setPos(c *Char) {
 		}
 	}
 	switch e.postype {
-		case PT_P1:
-			pPos(c)
-		case PT_P2:
-			if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
-				pPos(p2)
+	case PT_P1:
+		pPos(c)
+	case PT_P2:
+		if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
+			pPos(p2)
+		}
+	case PT_Front, PT_Back:
+		e.facing = c.facing * float32(e.relativef)
+		// front と back はバインドの都合で left か right になおす
+		// "Due to binding constraints, adjust the front and back to either left or right."
+		if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
+			if e.postype == PT_Back {
+				e.relativePos[0] *= -1
 			}
-		case PT_Front, PT_Back:
-			e.facing = c.facing * float32(e.relativef)
-			// front と back はバインドの都合で left か right になおす
-			// "Due to binding constraints, adjust the front and back to either left or right."
-			if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
-				if e.postype == PT_Back {
-					e.relativePos[0] *= -1
-				}
-				e.postype = PT_Right
-				rPos()
-			} else {
-				// explod の postype = front はキャラの向きで pos が反転しない
-				// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
-				//if e.postype == PT_Front && c.gi().ver[0] != 1 {
-				// 旧バージョンだと front は キャラの向きが facing に反映されない
-				// 1.1でも反映されてない模様
-				// "In the previous version, "front" does not reflect the character's orientation in facing."
-				// "It appears that it is still not reflected even in version 1.1."
-				e.facing = float32(e.relativef)
-				//}
-				e.postype = PT_Left
-				lPos()
-			}
-		case PT_Left:
-			e.facing = float32(e.relativef)
-			lPos()
-		case PT_Right:
-			e.facing = float32(e.relativef)
+			e.postype = PT_Right
 			rPos()
-		case PT_None:
+		} else {
+			// explod の postype = front はキャラの向きで pos が反転しない
+			// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
+			//if e.postype == PT_Front && c.gi().ver[0] != 1 {
+			// 旧バージョンだと front は キャラの向きが facing に反映されない
+			// 1.1でも反映されてない模様
+			// "In the previous version, "front" does not reflect the character's orientation in facing."
+			// "It appears that it is still not reflected even in version 1.1."
 			e.facing = float32(e.relativef)
-			e.offset[0] = e.relativePos[0]
-			e.offset[1] = e.relativePos[1]
-			if e.space == Space_screen {
-				 e.offset[0] -= float32(sys.gameWidth) / e.localscl / 2
-			}
+			//}
+			e.postype = PT_Left
+			lPos()
+		}
+	case PT_Left:
+		e.facing = float32(e.relativef)
+		lPos()
+	case PT_Right:
+		e.facing = float32(e.relativef)
+		rPos()
+	case PT_None:
+		e.facing = float32(e.relativef)
+		e.offset[0] = e.relativePos[0]
+		e.offset[1] = e.relativePos[1]
+		if e.space == Space_screen {
+			e.offset[0] -= float32(sys.gameWidth) / e.localscl / 2
+		}
 	}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
@@ -1245,7 +1246,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-	var epos = [2]float32{(e.pos[0]+e.offset[0]) * e.localscl, (e.pos[1]+e.offset[1]) * e.localscl}
+	var epos = [2]float32{(e.pos[0] + e.offset[0]) * e.localscl, (e.pos[1] + e.offset[1]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * e.facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * e.facing, e.window[3] * e.localscl * e.vfacing}
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
