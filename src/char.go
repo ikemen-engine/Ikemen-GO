@@ -118,11 +118,11 @@ type PosType int32
 const (
 	PT_P1 PosType = iota
 	PT_P2
-	PT_F
-	PT_B
-	PT_L
-	PT_R
-	PT_N
+	PT_Front
+	PT_Back
+	PT_Left
+	PT_Right
+	PT_None
 )
 
 type Space int32
@@ -982,22 +982,24 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
 
 type Explod struct {
 	id                  int32
-	bindtime            int32
-	scale               [2]float32
 	time                int32
+	postype             PosType
+	space               Space
+	bindId              int32
+	bindtime            int32
+	pos                 [2]float32
+	relativePos         [2]float32
+	offset              [2]float32
+	relativef           int32
+	facing              float32
+	vfacing             float32
+	scale               [2]float32
 	removeongethit      bool
 	removeonchangestate bool
 	removetime          int32
 	velocity            [2]float32
 	accel               [2]float32
 	sprpriority         int32
-	postype             PosType
-	space               Space
-	offset              [2]float32
-	relativef           int32
-	pos                 [2]float32
-	facing              float32
-	vfacing             float32
 	shadow              [3]int32
 	supermovetime       int32
 	pausemovetime       int32
@@ -1008,14 +1010,13 @@ type Explod struct {
 	under               bool
 	alpha               [2]int32
 	ownpal              bool
-	playerId            int32
-	bindId              int32
 	ignorehitpause      bool
 	rot                 Rotation
 	projection          Projection
 	fLength             float32
 	oldPos              [2]float32
 	newPos              [2]float32
+	playerId            int32
 	palfx               *PalFX
 	palfxdef            PalFXDef
 	window              [4]float32
@@ -1023,11 +1024,22 @@ type Explod struct {
 }
 
 func (e *Explod) clear() {
-	*e = Explod{id: IErr, scale: [...]float32{1, 1}, removetime: -2,
-		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1, localscl: 1, space: Space_none,
+	*e = Explod{id: IErr, bindtime: 1, scale: [...]float32{1, 1}, removetime: -2,
+		postype: PT_P1, space: Space_none, relativef: 1, facing: 1, vfacing: 1, localscl: 1,
 		projection: Projection_Orthographic,
 		window:     [4]float32{0, 0, 0, 0},
 		alpha:      [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
+}
+func (e *Explod) reset() {
+	e.offset[0], e.offset[1] = 0, 0
+	e.setX(e.offset[0])
+	e.setY(e.offset[1])
+	e.velocity[0], e.velocity[1] = 0, 0
+	e.accel[0], e.accel[1] = 0, 0
+	e.bindId = -2
+	if e.bindtime == 0 {
+		e.bindtime = 1
+	}
 }
 func (e *Explod) setX(x float32) {
 	e.pos[0], e.oldPos[0], e.newPos[0] = x, x, x
@@ -1035,91 +1047,94 @@ func (e *Explod) setX(x float32) {
 func (e *Explod) setY(y float32) {
 	e.pos[1], e.oldPos[1], e.newPos[1] = y, y, y
 }
+func (e *Explod) setBind(bId int32) {
+	if e.space == Space_screen && (e.postype == PT_P1 || e.postype == PT_P2) {
+		return
+	}
+	e.bindId = bId
+}
+// Initial pos setting based on postype and space. This function probably needs a heavy refactor.
 func (e *Explod) setPos(c *Char) {
 	pPos := func(c *Char) {
 		e.bindId, e.facing = c.id, c.facing*float32(e.relativef)
-		e.offset[0] *= c.facing
-		e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0])
-		e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1])
-		// This seems to have been a temporary fix. Mugen doesn't do this
-		//if e.bindtime == 0 {
-		//	e.bindtime = 1
-		//}
+		e.relativePos[0] *= c.facing
+		if e.space == Space_screen {
+			e.offset[0] = e.relativePos[0] + c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
+			e.offset[1] = e.relativePos[1] + sys.cam.GroundLevel()*e.localscl +
+				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
+		} else {
+			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.relativePos[0])
+			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.relativePos[1])
+		}
 	}
 	lPos := func() {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		if e.bindtime == 0 {
-			e.bindtime = 1
+		if e.space == Space_screen {
+			e.offset[0] = e.relativePos[0] - float32(sys.gameWidth)/e.localscl/2
+		} else {
+			e.offset[0] = e.relativePos[0]/sys.cam.Scale + sys.cam.ScreenPos[0]/e.localscl
 		}
+		e.offset[1] = e.relativePos[1]
 	}
 	rPos := func() {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl +
-			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		if e.bindtime == 0 {
-			e.bindtime = 1
+		if e.space == Space_screen {
+			e.offset[0] = e.relativePos[0] + float32(sys.gameWidth)/e.localscl/2
+		} else {
+			e.offset[0] = (e.relativePos[0]+float32(sys.gameWidth))/sys.cam.Scale + sys.cam.ScreenPos[0]/e.localscl
+		}
+		e.offset[1] = e.relativePos[1]
+	}
+	// Set space based on postype in case it's missing
+	if e.space == Space_none {
+		switch e.postype {
+		case PT_Front, PT_Back, PT_Left, PT_Right:
+			e.space = Space_screen
+		default:
+			e.space = Space_stage
 		}
 	}
-	if e.space == Space_stage && e.bindId >= -1 {
-		e.postype = PT_N
-	}
-	if e.space <= Space_none || (e.space == Space_stage && e.bindId < -1) ||
-		(e.space == Space_screen && e.postype <= PT_R) {
-		switch e.postype {
+	switch e.postype {
 		case PT_P1:
 			pPos(c)
 		case PT_P2:
 			if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
 				pPos(p2)
 			}
-		case PT_F, PT_B:
+		case PT_Front, PT_Back:
 			e.facing = c.facing * float32(e.relativef)
 			// front と back はバインドの都合で left か right になおす
 			// "Due to binding constraints, adjust the front and back to either left or right."
-			if c.facing > 0 && e.postype == PT_F || c.facing < 0 && e.postype == PT_B {
-				if e.postype == PT_B {
-					e.offset[0] *= -1
+			if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
+				if e.postype == PT_Back {
+					e.relativePos[0] *= -1
 				}
-				e.postype = PT_R
+				e.postype = PT_Right
 				rPos()
 			} else {
 				// explod の postype = front はキャラの向きで pos が反転しない
 				// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
-				//if e.postype == PT_F && c.gi().ver[0] != 1 {
+				//if e.postype == PT_Front && c.gi().ver[0] != 1 {
 				// 旧バージョンだと front は キャラの向きが facing に反映されない
 				// 1.1でも反映されてない模様
 				// "In the previous version, "front" does not reflect the character's orientation in facing."
 				// "It appears that it is still not reflected even in version 1.1."
 				e.facing = float32(e.relativef)
 				//}
-				e.postype = PT_L
+				e.postype = PT_Left
 				lPos()
 			}
-		case PT_L:
+		case PT_Left:
 			e.facing = float32(e.relativef)
 			lPos()
-		case PT_R:
+		case PT_Right:
 			e.facing = float32(e.relativef)
 			rPos()
-		case PT_N:
+		case PT_None:
 			e.facing = float32(e.relativef)
-			e.setX(e.offset[0])
-			e.setY(e.offset[1])
-			//if e.bindtime == 0 {
-			//	e.bindtime = 1
-			//}
-		}
-	} else {
-		switch e.space {
-		case Space_screen:
-			e.facing = float32(e.relativef)
-			lPos()
-		case Space_stage:
-			e.facing = float32(e.relativef)
-			e.setX(e.offset[0])
-			e.setY(e.offset[1])
-		}
+			e.offset[0] = e.relativePos[0]
+			e.offset[1] = e.relativePos[1]
+			if e.space == Space_screen {
+				 e.offset[0] -= float32(sys.gameWidth) / e.localscl / 2
+			}
 	}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
@@ -1168,37 +1183,24 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			return
 		}
 	}
-	screen := false
-	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
-		screen = true
-	}
 	if e.time == 0 || e.bindtime != 0 {
 		e.setAnimElem()
-		if e.space == Space_screen {
-			e.pos[0] = e.offset[0]
-			e.pos[1] = e.offset[1]
-			e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
-		} else if e.postype == PT_N && e.bindId < -1 {
-			e.pos[0] = e.offset[0]
-			e.pos[1] = e.offset[1]
-			e.bindtime = 0
-		} else if e.postype >= PT_L && e.postype != PT_N {
-			e.pos[0] = e.offset[0]
-			e.pos[1] = e.offset[1]
-			if e.postype == PT_L {
-				e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
-			} else {
-				e.pos[0] += float32(sys.gameWidth) / e.localscl / 2
+	}
+	if e.bindtime != 0 && (e.space == Space_stage ||
+		(e.space == Space_screen && e.postype <= PT_P2)) {
+		if c := sys.playerID(e.bindId); c != nil {
+			e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
+			e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
+			if e.space == Space_stage && e.postype <= PT_P2 {
+				e.pos[0] += e.relativePos[0]
+				e.pos[1] += e.relativePos[1]
 			}
-		} else if e.bindtime != 0 {
-			if c := sys.playerID(e.bindId); c != nil {
-				e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0]
-				e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1]
-			} else {
-				e.bindtime = 0
-				e.setX(e.pos[0])
-				e.setY(e.pos[1])
-			}
+		} else {
+			// Doesn't seem necessary to do this, since MUGEN 1.1 seems to carry bindtime even if
+			// you change bindId to something that doesn't point to any character
+			// e.bindtime = 0
+			// e.setX(e.pos[0])
+			// e.setY(e.pos[1])
 		}
 	} else {
 		for i := range e.pos {
@@ -1243,22 +1245,22 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-	var epos = [2]float32{e.pos[0] * e.localscl, e.pos[1] * e.localscl}
+	var epos = [2]float32{(e.pos[0]+e.offset[0]) * e.localscl, (e.pos[1]+e.offset[1]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * e.facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * e.facing, e.window[3] * e.localscl * e.vfacing}
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
-		screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength, ewin},
+		e.space == Space_screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 
-		//if screen && e.bindtime == 0 {
+		//if e.space == Space_screen && e.bindtime == 0 {
 		//	if e.space <= Space_none {
 		//		switch e.postype {
-		//		case PT_L:
+		//		case PT_Left:
 		//			for i := range e.pos {
 		//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
 		//			}
-		//		case PT_R:
+		//		case PT_Right:
 		//			e.pos[0] = sys.cam.ScreenPos[0] +
 		//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
 		//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
@@ -1277,16 +1279,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
-			if e.bindtime == 0 {
-				e.oldPos = e.pos
-				e.newPos = e.pos
-				if e.time > 0 {
-					e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
-					e.newPos[1] = e.pos[1] + e.velocity[1]
-					for i := range e.velocity {
-						e.velocity[i] += e.accel[i]
-					}
-				}
+			e.oldPos = e.pos
+			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
+			e.newPos[1] = e.pos[1] + e.velocity[1]
+			for i := range e.velocity {
+				e.velocity[i] += e.accel[i]
 			}
 			if e.animelemlooped {
 				e.setAnimElem()
@@ -3539,8 +3536,8 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 				*dstFacing *= p2.facing
 			}
 		}
-	case PT_F, PT_B:
-		if c.facing > 0 && pt == PT_F || c.facing < 0 && pt == PT_B {
+	case PT_Front, PT_Back:
+		if c.facing > 0 && pt == PT_Front || c.facing < 0 && pt == PT_Back {
 			p[0] = c.rightEdge() * (c.localscl / localscl)
 		} else {
 			p[0] = c.leftEdge() * (c.localscl / localscl)
@@ -3552,19 +3549,19 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		}
 		p[1] = pos[1]
 		*dstFacing *= c.facing
-	case PT_L:
+	case PT_Left:
 		p[0] = c.leftEdge()*(c.localscl/localscl) + pos[0]
 		p[1] = pos[1]
 		if isProj {
 			*dstFacing *= c.facing
 		}
-	case PT_R:
+	case PT_Right:
 		p[0] = c.rightEdge()*(c.localscl/localscl) + pos[0]
 		p[1] = pos[1]
 		if isProj {
 			*dstFacing *= c.facing
 		}
-	case PT_N:
+	case PT_None:
 		p = pos
 		if isProj {
 			*dstFacing *= c.facing
@@ -4738,7 +4735,7 @@ func (c *Char) makeDust(x, y float32) {
 		}
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
-		e.offset = [...]float32{x, y}
+		e.relativePos = [...]float32{x, y}
 		e.setPos(c)
 		c.insertExplod(i)
 	}
@@ -5265,12 +5262,12 @@ func (c *Char) bind() {
 		return
 	}
 }
+func (c *Char) trackableByCamera() bool {
+	return sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar
+}
 func (c *Char) xScreenBound() {
-	if sys.cam.View == Free_View || sys.cam.View == Follow_View && c != sys.cam.FollowChar {
-		return
-	}
 	x := c.pos[0]
-	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if c.trackableByCamera() && c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -5956,7 +5953,7 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 	}
-	if sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar {
+	if c.trackableByCamera() {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -6813,7 +6810,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
-				e.offset = off
+				e.relativePos = off
 				e.supermovetime = -1
 				e.pausemovetime = -1
 				e.localscl = 1
@@ -6987,7 +6984,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.setDefPhase()
 			}
 			//getter.getcombodmg += hd.hitdamage
-			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+			if hitType > 0 && !proj && getter.trackableByCamera() && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
@@ -7000,7 +6997,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		} else {
-			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+			if hitType > 0 && !proj && getter.trackableByCamera() && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
@@ -7296,10 +7293,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
 						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 					}
-					if getter.sf(CSF_screenbound) {
+					if getter.trackableByCamera() && getter.sf(CSF_screenbound) {
 						getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 					}
-					if c.sf(CSF_screenbound) {
+					if c.trackableByCamera() && c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 						if c.facing > 0 {
 							l, r = -r, -l

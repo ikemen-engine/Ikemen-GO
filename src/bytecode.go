@@ -3555,8 +3555,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 						return false
 					}
 					e.id = 0
+					// Mugenversion 1.1 chars default postype to "None"
 					if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
-						e.postype = PT_N
+						e.postype = PT_None
 					}
 				} else {
 					return false
@@ -3567,8 +3568,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 					return false
 				}
 				e.id = 0
+				// Mugenversion 1.1 chars default postype to "None"
 				if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
-					e.postype = PT_N
+					e.postype = PT_None
 				}
 			}
 		}
@@ -3595,21 +3597,23 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.vfacing = 1
 			}
 		case explod_pos:
-			e.offset[0] = exp[0].evalF(c) * lclscround
+			e.relativePos[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
-				e.offset[1] = exp[1].evalF(c) * lclscround
+				e.relativePos[1] = exp[1].evalF(c) * lclscround
 			}
 		case explod_random:
 			rndx := (exp[0].evalF(c) / 2) * lclscround
-			e.offset[0] += RandF(-rndx, rndx)
+			e.relativePos[0] += RandF(-rndx, rndx)
 			if len(exp) > 1 {
 				rndy := (exp[1].evalF(c) / 2) * lclscround
-				e.offset[1] += RandF(-rndy, rndy)
+				e.relativePos[1] += RandF(-rndy, rndy)
 			}
-		case explod_postype:
-			e.postype = PosType(exp[0].evalI(c))
 		case explod_space:
 			e.space = Space(exp[0].evalI(c))
+			e.reset()
+		case explod_postype:
+			e.postype = PosType(exp[0].evalI(c))
+			e.reset()
 		case explod_velocity:
 			e.velocity[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
@@ -3707,7 +3711,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if bId == -1 {
 				bId = crun.id
 			}
-			e.bindId = bId
+			e.setBind(bId)
 		case explod_projection:
 			e.projection = Projection(exp[0].evalI(c))
 		case explod_window:
@@ -3738,6 +3742,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	eid := int32(-1)
 	var expls []*Explod
 	rp := [...]int32{-1, 0}
+	sp := Space_none
 	remap := false
 	eachExpl := func(f func(e *Explod)) {
 		for _, e := range expls {
@@ -3788,32 +3793,38 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 			case explod_pos:
 				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.offset[0] = x })
+				eachExpl(func(e *Explod) { e.relativePos[0] = x })
 				if len(exp) > 1 {
 					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.offset[1] = y })
+					eachExpl(func(e *Explod) { e.relativePos[1] = y })
 				}
 			case explod_random:
 				rndx := (exp[0].evalF(c) / 2) * lclscround
 				rndx = RandF(-rndx, rndx)
-				eachExpl(func(e *Explod) { e.offset[0] += rndx })
+				eachExpl(func(e *Explod) { e.relativePos[0] += rndx })
 				if len(exp) > 1 {
 					rndy := (exp[1].evalF(c) / 2) * lclscround
 					rndy = RandF(-rndy, rndy)
-					eachExpl(func(e *Explod) { e.offset[1] += rndy })
+					eachExpl(func(e *Explod) { e.relativePos[1] += rndy })
+				}
+			case explod_space:
+				// Space handling in ModifyExplod has room for some optimization
+				sp = Space(exp[0].evalI(c))
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					eachExpl(func(e *Explod) { e.space = sp })
+					sp = Space_none
 				}
 			case explod_postype:
 				pt := PosType(exp[0].evalI(c))
 				eachExpl(func(e *Explod) {
+					if sp != Space_none {
+						e.space = sp
+					}
 					e.postype = pt
-					e.setPos(c)
-					e.relativef = 1 // In Mugen facing is updated by default
+					e.reset()
+					e.setPos(crun)
+					// e.relativef = 1 // In Mugen facing is updated by default
 				})
-			case explod_space:
-				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					sp := Space(exp[0].evalI(c))
-					eachExpl(func(e *Explod) { e.space = sp })
-				}
 			case explod_velocity:
 				x := exp[0].evalF(c) * lclscround
 				eachExpl(func(e *Explod) { e.velocity[0] = x })
@@ -3957,7 +3968,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if bId == -1 {
 					bId = crun.id
 				}
-				eachExpl(func(e *Explod) { e.bindId = bId })
+				eachExpl(func(e *Explod) { e.setBind(bId) })
 			default:
 				eachExpl(func(e *Explod) {
 					if e.ownpal {

@@ -3601,7 +3601,7 @@ func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 	}
 	return nil
 }
-func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
+func (c *Compiler) paramPostype(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "postype", func(data string) error {
 		if len(data) == 0 {
@@ -3615,15 +3615,15 @@ func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
 			case 'p':
 				pt = PT_P1
 			case 'f':
-				pt = PT_F
+				pt = PT_Front
 			case 'b':
-				pt = PT_B
+				pt = PT_Back
 			case 'l':
-				pt = PT_L
+				pt = PT_Left
 			case 'r':
-				pt = PT_R
+				pt = PT_Right
 			case 'n':
-				pt = PT_N
+				pt = PT_None
 			default:
 				return Error("Invalid value: " + data)
 			}
