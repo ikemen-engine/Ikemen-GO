@@ -5265,12 +5265,12 @@ func (c *Char) bind() {
 		return
 	}
 }
+func (c *Char) trackableByCamera() bool {
+	return sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar
+}
 func (c *Char) xScreenBound() {
-	if sys.cam.View == Free_View || sys.cam.View == Follow_View && c != sys.cam.FollowChar {
-		return
-	}
 	x := c.pos[0]
-	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if c.trackableByCamera() && c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -5956,7 +5956,7 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 	}
-	if sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar {
+	if c.trackableByCamera() {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -6987,7 +6987,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.setDefPhase()
 			}
 			//getter.getcombodmg += hd.hitdamage
-			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+			if hitType > 0 && !proj && getter.trackableByCamera() && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
@@ -7000,7 +7000,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		} else {
-			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+			if hitType > 0 && !proj && getter.trackableByCamera() && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
@@ -7296,10 +7296,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
 						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 					}
-					if getter.sf(CSF_screenbound) {
+					if getter.trackableByCamera() && getter.sf(CSF_screenbound) {
 						getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 					}
-					if c.sf(CSF_screenbound) {
+					if c.trackableByCamera() && c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 						if c.facing > 0 {
 							l, r = -r, -l
