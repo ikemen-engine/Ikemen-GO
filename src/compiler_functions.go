@@ -443,7 +443,7 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 		}); err != nil {
 			return err
 		}
-		if err := c.paramPostye(is, sc, helper_postype); err != nil {
+		if err := c.paramPostype(is, sc, helper_postype); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "ownpal",
@@ -600,10 +600,10 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_random, VT_Float, 2, false); err != nil {
 		return err
 	}
-	if err := c.paramPostye(is, sc, explod_postype); err != nil {
+	if err := c.paramSpace(is, sc, explod_space); err != nil {
 		return err
 	}
-	if err := c.paramSpace(is, sc, explod_space); err != nil {
+	if err := c.paramPostype(is, sc, explod_postype); err != nil {
 		return err
 	}
 	if err := c.paramProjection(is, sc, explod_projection); err != nil {
@@ -1678,7 +1678,7 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramPostye(is, sc, projectile_postype); err != nil {
+		if err := c.paramPostype(is, sc, projectile_postype); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "projid",
