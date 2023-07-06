@@ -12,13 +12,14 @@
 #===============================================================================
 [Function TrainingRecovery(pn)]
 if player($pn),ctrl = 0 && player($pn),stateNo >= player($pn),const(StateRunForward) {
-	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectid: player($pn),id}
-} else if player($pn),map(_iksys_trainingDummyCounter) >= 60 {
+	mapSet{map: "_iksys_trainingDummyTimer"; value: 0; redirectid: player($pn),id}
+} else if player($pn),map(_iksys_trainingDummyTimer) >= 60 {
 	lifeSet{value: player($pn),lifeMax; redirectid: player($pn),id}
 	powerSet{value: player($pn),powerMax; redirectid: player($pn),id}
-	mapSet{map: "_iksys_trainingDummyCounter"; value: 0; redirectid: player($pn),id}
+	redLifeSet{value: player($pn),lifeMax; redirectid: player($pn),id}
+	mapSet{map: "_iksys_trainingDummyTimer"; value: 0; redirectid: player($pn),id}
 } else {
-	mapAdd{map: "_iksys_trainingDummyCounter"; value: 1; redirectid: player($pn),id}
+	mapAdd{map: "_iksys_trainingDummyTimer"; value: 1; redirectid: player($pn),id}
 }
 
 #===============================================================================
@@ -30,13 +31,13 @@ if gameMode != "training" || isHelper || teamSide != 2 {
 	# Do nothing, not training more or statedef executed by helper or not P2
 } else if roundState = 0 {
 	# Round start reset
-	powerSet{value: powerMax}
 	powerSet{value: player(1),powerMax; redirectid: player(1),id}
-	map(_iksys_trainingDummyCounter) := 0;
+	powerSet{value: player(2),powerMax; redirectid: player(2),id}
+	map(_iksys_trainingDummyTimer) := 0;
 	map(_iksys_trainingDirection) := 0;
 	map(_iksys_trainingAirJumpNum) := 0;
 } else if roundState = 2 {
-	ignoreHitPause{
+	ignoreHitPause {
 		assertSpecial{flag: globalNoKo}
 	}
 	# Life and Power recovery

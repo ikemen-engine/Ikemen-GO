@@ -1,3 +1,7 @@
+; Common Constants
+; The constants defined in this file will be loaded by every character
+; Characters can override them by defining them in their own constants files
+
 [Constants]
 
 ; Negative state global code toggle
@@ -15,13 +19,13 @@ Input.PauseOnHitPause = 1           ; 1 makes inputs to be retained during hit p
 ; Rules
 Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when an attack successfully hits (overridden by getpower HitDef option)
 Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when an attack successfully hits (overridden by givepower HitDef option)
-Super.TargetDefenceMul = 1.5        ; multiplier for how much damage a super does when you combo into it (ignored if SuperPause p2defmul option is set)
-Default.LifeToGuardPointsMul = -1.5 ; multiplier for guard points the receiver gets when a normal/special attack is blocked (overridden by guardpoints HitDef option)
-Super.LifeToGuardPointsMul = -0.33  ; multiplier for guard points the receiver gets when a super attack is blocked (overridden by guardpoints HitDef option)
-Default.LifeToDizzyPointsMul = -1.8 ; multiplier for dizzy points the receiver gets when a normal/special attack successfully hits (overridden by dizzypoints HitDef option)
-Super.LifeToDizzyPointsMul = 0      ; multiplier for dizzy points the receiver gets when a super attack successfully hits (overridden by dizzypoints HitDef option)
-Default.LifeToRedLifeMul = 0.25     ; multiplier for red life the receiver gets when a normal/special attack successfully hits (overridden by redlife HitDef option)
-Super.LifeToRedLifeMul = 0.25       ; multiplier for red life the receiver gets when a super attack successfully hits (overridden by redlife HitDef option)
+Super.TargetDefenceMul = 1.5        ; multiplier for how much a SuperPause increases the opponent's defence during combos (ignored if SuperPause p2defmul option is set)
+Default.LifeToGuardPointsMul = 1.5  ; multiplier for guard points the receiver loses when a normal/special attack is blocked (overridden by guardpoints HitDef option)
+Super.LifeToGuardPointsMul = 0.33   ; multiplier for guard points the receiver loses when a super attack is blocked (overridden by guardpoints HitDef option)
+Default.LifeToDizzyPointsMul = 1.8  ; multiplier for dizzy points the receiver loses when a normal/special attack successfully hits (overridden by dizzypoints HitDef option)
+Super.LifeToDizzyPointsMul = 0      ; multiplier for dizzy points the receiver loses when a super attack successfully hits (overridden by dizzypoints HitDef option)
+Default.LifeToRedLifeMul = 0.75     ; multiplier for red life the receiver loses when a normal/special attack successfully hits (overridden by redlife HitDef option)
+Super.LifeToRedLifeMul = 0.75       ; multiplier for red life the receiver loses when a super attack successfully hits (overridden by redlife HitDef option)
 
 ; tag.zss options
 TagInTime = 20                 ; tag-in total switch time
