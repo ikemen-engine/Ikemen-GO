@@ -1908,7 +1908,7 @@ func (c *Char) copyParent(p *Char) {
 	}
 	c.dizzyPoints, c.dizzyPointsMax = p.dizzyPointsMax, p.dizzyPointsMax
 	c.guardPoints, c.guardPointsMax = p.guardPointsMax, p.guardPointsMax
-	c.redLife = 0
+	c.redLife = c.lifeMax
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
@@ -2081,12 +2081,12 @@ func (c *Char) load(def string) error {
 	gi.constants["default.attack.lifetopowermul"] = 0.7
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
 	gi.constants["super.targetdefencemul"] = 1.5
-	gi.constants["default.lifetoguardpointsmul"] = -1.5
+	gi.constants["default.lifetoguardpointsmul"] = 1.5
 	gi.constants["super.lifetoguardpointsmul"] = -0.33
-	gi.constants["default.lifetodizzypointsmul"] = -1.8
+	gi.constants["default.lifetodizzypointsmul"] = 1.8
 	gi.constants["super.lifetodizzypointsmul"] = 0
-	gi.constants["default.lifetoredlifemul"] = 0.25
-	gi.constants["super.lifetoredlifemul"] = 0.25
+	gi.constants["default.lifetoredlifemul"] = 0.75
+	gi.constants["super.lifetoredlifemul"] = 0.75
 	gi.constants["default.legacygamedistancespec"] = 0
 	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
@@ -4268,19 +4268,22 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redl
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
+			// Subtract life
 			t.lifeAdd(-dmg, true, true)
+			// Subtract red life
 			if redlife {
 				if t.ghv.attr&int32(AT_AH) != 0 {
-					t.redLifeAdd(dmg*float64(c.gi().constants["super.lifetoredlifemul"]), true)
+					t.redLifeAdd(-dmg*float64(c.gi().constants["super.lifetoredlifemul"]), true)
 				} else {
-					t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+					t.redLifeAdd(-dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
 				}
 			}
+			// Subtract dizzy points
 			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
 				if t.ghv.attr&int32(AT_AH) != 0 {
-					t.dizzyPointsAdd(dmg*float64(c.gi().constants["super.lifetodizzypointsmul"]), true)
+					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["super.lifetodizzypointsmul"]), true)
 				} else {
-					t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
+					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
 				}
 			}
 			t.ghv.kill = kill
@@ -4434,6 +4437,8 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		}
 		c.lifeSet(c.life + int32(add))
 		c.ghv.kill = kill
+		// Using LifeAdd currently does not touch the red life value
+		// This could be expanded in the future, as with TargetLifeAdd
 	}
 }
 func (c *Char) lifeSet(life int32) {
@@ -4532,7 +4537,7 @@ func (c *Char) redLifeSet(set int32) {
 	if c.life == 0 {
 		c.redLife = 0
 	} else if !sys.roundEnd() && sys.lifebar.redlifebar {
-		c.redLife = Clamp(set, 0, c.lifeMax-c.life)
+		c.redLife = Clamp(set, c.life, c.lifeMax)
 	}
 }
 func (c *Char) score() float32 {
@@ -5749,19 +5754,19 @@ func (c *Char) actionRun() {
 		c.ghv.guardpower = 0
 		if c.ghv.dizzypoints != 0 {
 			if c.ss.moveType == MT_H && !c.inGuardState() {
-				c.dizzyPointsAdd(float64(c.ghv.dizzypoints), true)
+				c.dizzyPointsAdd(-float64(c.ghv.dizzypoints), true)
 			}
 			c.ghv.dizzypoints = 0
 		}
 		if c.ghv.guardpoints != 0 {
 			if c.ss.moveType == MT_H && c.inGuardState() {
-				c.guardPointsAdd(float64(c.ghv.guardpoints), true)
+				c.guardPointsAdd(-float64(c.ghv.guardpoints), true)
 			}
 			c.ghv.guardpoints = 0
 		}
 		if c.ghv.redlife != 0 {
 			if c.ss.moveType == MT_H {
-				c.redLifeAdd(float64(c.ghv.redlife), true)
+				c.redLifeAdd(-float64(c.ghv.redlife), true)
 			}
 			c.ghv.redlife = 0
 		}

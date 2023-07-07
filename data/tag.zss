@@ -144,6 +144,11 @@ posSet{
 	y: player(teamLeader),pos y - player(teamLeader),screenPos y - const240p(160);
 }
 
+# Red Life regeneration
+if life < redLife && (time % const(TagRedLifeRegenFrames)) = 0 { # every 30 frames (0.5s) by default
+	lifeAdd{value: min(redLife - life, ceil(lifeMax * const(TagRedLifeRegenPercent))); absolute: 1} # 0.5% lifeMax by default
+}
+
 #===============================================================================
 # StateTagJumpingIn
 #===============================================================================
@@ -325,11 +330,5 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 			tagOut{}
 			tagIn{stateno: playerId($partnerId),const(StateTagJumpingIn); redirectid: $partnerId}
 		}
-	}
-	# Red Life regeneration
-	if standby && redLife > 0 && (time % const(TagRedLifeRegenFrames)) = 0 { # every 30 frames (0.5s) by default
-		let regenVal = min(redLife, ceil(lifeMax * const(TagRedLifeRegenPercent))); # 0.5% lifeMax by default
-		lifeAdd{value: $regenVal; absolute: 1}
-		redLifeAdd{value: -$regenVal; absolute: 1}
 	}
 }
