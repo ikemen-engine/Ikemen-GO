@@ -372,7 +372,6 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 } else ignoreHitPause if alive {
 	# Upon hit, set cooldown timer
-	# Cooldown time could be a character constant
 	if moveType = H || dizzy || stateNo = const(StateDownedGetHit_gettingUp) {
 		map(_iksys_dizzyPointsTimer) := 60;
 	# Otherwise decrease cooldown timer by 1 each frame
@@ -390,7 +389,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 	# Set dizzy flag
 	if !dizzy && dizzyPoints = 0 {
-		if time = 0 && getHitVar(dizzyPoints) >= 0 {
+		if getHitVar(damage) && getHitVar(dizzyPoints) <= 0 {
 			dizzyPointsSet{value: 1} # Similar to using kill = 0 in LifeAdd
 		} else if moveType = H && !inCustomState {
 			dizzySet{value: 1}
@@ -422,7 +421,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 		}
 
 		# Reset dizzy points and remove dizzy flag if the player is no longer being hit
-		if (moveType != H || map(_iksys_dizzyLimit)) && stateNo != const(StateDizzy) {
+		if moveType != H && stateNo != const(StateDizzy) {
 			dizzyPointsSet{value: dizzyPointsMax}
 			dizzySet{value: 0}
 		}
@@ -435,7 +434,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 		dizzyPointsAdd{value: 5; absolute: 1}
 	}
 
-	# Reset dizzy limit
+	# Reset dizzy limit once character can act again
 	if map(_iksys_dizzyLimit) {
 		if (ctrl && time > 0) || moveType = A {
 			map(_iksys_dizzyLimit) := 0;
