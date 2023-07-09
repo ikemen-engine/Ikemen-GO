@@ -990,7 +990,7 @@ type Explod struct {
 	pos                 [2]float32
 	relativePos         [2]float32
 	offset              [2]float32
-	relativef           int32
+	relativef           float32
 	facing              float32
 	vfacing             float32
 	scale               [2]float32
@@ -1020,6 +1020,7 @@ type Explod struct {
 	palfx               *PalFX
 	palfxdef            PalFXDef
 	window              [4]float32
+	lockSpriteFacing    bool
 	localscl            float32
 }
 
@@ -1031,9 +1032,11 @@ func (e *Explod) clear() {
 		alpha:      [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
 }
 func (e *Explod) reset() {
+	e.facing = 1
 	e.offset[0], e.offset[1] = 0, 0
 	e.setX(e.offset[0])
 	e.setY(e.offset[1])
+	e.relativePos[0], e.relativePos[1] = 0, 0
 	e.velocity[0], e.velocity[1] = 0, 0
 	e.accel[0], e.accel[1] = 0, 0
 	e.bindId = -2
@@ -1053,36 +1056,33 @@ func (e *Explod) setBind(bId int32) {
 	}
 	e.bindId = bId
 }
-
 // Initial pos setting based on postype and space. This function probably needs a heavy refactor.
 func (e *Explod) setPos(c *Char) {
 	pPos := func(c *Char) {
-		e.bindId, e.facing = c.id, c.facing*float32(e.relativef)
+		e.bindId, e.facing = c.id, c.facing
 		e.relativePos[0] *= c.facing
 		if e.space == Space_screen {
-			e.offset[0] = e.relativePos[0] + c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
-			e.offset[1] = e.relativePos[1] + sys.cam.GroundLevel()*e.localscl +
+			e.offset[0] = c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
+			e.offset[1] = sys.cam.GroundLevel()*e.localscl +
 				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
 		} else {
-			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.relativePos[0])
-			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.relativePos[1])
+			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl)
+			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl)
 		}
 	}
 	lPos := func() {
 		if e.space == Space_screen {
-			e.offset[0] = e.relativePos[0] - float32(sys.gameWidth)/e.localscl/2
+			e.offset[0] = -(float32(sys.gameWidth)/e.localscl/2)
 		} else {
-			e.offset[0] = e.relativePos[0]/sys.cam.Scale + sys.cam.ScreenPos[0]/e.localscl
+			e.offset[0] = sys.cam.ScreenPos[0]/e.localscl
 		}
-		e.offset[1] = e.relativePos[1]
 	}
 	rPos := func() {
 		if e.space == Space_screen {
-			e.offset[0] = e.relativePos[0] + float32(sys.gameWidth)/e.localscl/2
+			e.offset[0] = float32(sys.gameWidth)/e.localscl/2
 		} else {
-			e.offset[0] = (e.relativePos[0]+float32(sys.gameWidth))/sys.cam.Scale + sys.cam.ScreenPos[0]/e.localscl
+			e.offset[0] = sys.cam.ScreenPos[0]/e.localscl
 		}
-		e.offset[1] = e.relativePos[1]
 	}
 	// Set space based on postype in case it's missing
 	if e.space == Space_none {
@@ -1094,48 +1094,52 @@ func (e *Explod) setPos(c *Char) {
 		}
 	}
 	switch e.postype {
-	case PT_P1:
-		pPos(c)
-	case PT_P2:
-		if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
-			pPos(p2)
-		}
-	case PT_Front, PT_Back:
-		e.facing = c.facing * float32(e.relativef)
-		// front と back はバインドの都合で left か right になおす
-		// "Due to binding constraints, adjust the front and back to either left or right."
-		if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
-			if e.postype == PT_Back {
-				e.relativePos[0] *= -1
+		case PT_P1:
+			pPos(c)
+		case PT_P2:
+			if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
+				pPos(p2)
 			}
-			e.postype = PT_Right
-			rPos()
-		} else {
-			// explod の postype = front はキャラの向きで pos が反転しない
-			// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
-			//if e.postype == PT_Front && c.gi().ver[0] != 1 {
-			// 旧バージョンだと front は キャラの向きが facing に反映されない
-			// 1.1でも反映されてない模様
-			// "In the previous version, "front" does not reflect the character's orientation in facing."
-			// "It appears that it is still not reflected even in version 1.1."
-			e.facing = float32(e.relativef)
-			//}
-			e.postype = PT_Left
+		case PT_Front, PT_Back:
+			if e.postype == PT_Back {
+				e.facing = c.facing
+			}
+			// front と back はバインドの都合で left か right になおす
+			// "Due to binding constraints, adjust the front and back to either left or right."
+			if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
+				if e.postype == PT_Back {
+					e.relativePos[0] *= -1
+				}
+				e.postype = PT_Right
+				rPos()
+			} else {
+				// explod の postype = front はキャラの向きで pos が反転しない
+				// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
+				//if e.postype == PT_Front && c.gi().ver[0] != 1 {
+				// 旧バージョンだと front は キャラの向きが facing に反映されない
+				// 1.1でも反映されてない模様
+				// "In the previous version, "front" does not reflect the character's orientation in facing."
+				// "It appears that it is still not reflected even in version 1.1."
+				// e.facing = e.relativef
+				//}
+				e.postype = PT_Left
+				lPos()
+			}
+		case PT_Left:
 			lPos()
-		}
-	case PT_Left:
-		e.facing = float32(e.relativef)
-		lPos()
-	case PT_Right:
-		e.facing = float32(e.relativef)
-		rPos()
-	case PT_None:
-		e.facing = float32(e.relativef)
-		e.offset[0] = e.relativePos[0]
-		e.offset[1] = e.relativePos[1]
-		if e.space == Space_screen {
-			e.offset[0] -= float32(sys.gameWidth) / e.localscl / 2
-		}
+		case PT_Right:
+			rPos()
+		case PT_None:
+			if e.space == Space_screen {
+				 e.offset[0] = -(float32(sys.gameWidth) / e.localscl / 2)
+			}
+	}
+	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
+	// The engine will leave the sprite facing to that side indefinitely.
+	// Ikemen chars aren't affected by this.
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
+		e.facing*e.relativef < 0 {
+		e.lockSpriteFacing = true
 	}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
@@ -1192,10 +1196,6 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		if c := sys.playerID(e.bindId); c != nil {
 			e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
 			e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
-			if e.space == Space_stage && e.postype <= PT_P2 {
-				e.pos[0] += e.relativePos[0]
-				e.pos[1] += e.relativePos[1]
-			}
 		} else {
 			// Doesn't seem necessary to do this, since MUGEN 1.1 seems to carry bindtime even if
 			// you change bindId to something that doesn't point to any character
@@ -1208,6 +1208,19 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			e.pos[i] = e.newPos[i] -
 				(e.newPos[i]-e.oldPos[i])*(1-sys.tickInterpola())
 		}
+	}
+	off := e.relativePos
+	// Left and right pos types change relative position depending on stage camera zoom and game width
+	if e.space == Space_stage {
+		if e.postype == PT_Left {
+			off[0] = off[0] / sys.cam.Scale
+		} else if e.postype == PT_Right {
+			off[0] = (off[0]+float32(sys.gameWidth)) / sys.cam.Scale
+		}
+	}
+	var facing float32 = e.facing*e.relativef
+	if e.lockSpriteFacing {
+		facing = -1
 	}
 	if sys.tickFrame() && act {
 		e.anim.UpdateSprite()
@@ -1231,7 +1244,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		alp[0] = -1
 	}
 	rot := e.rot
-	if (e.facing < 0) != (e.vfacing < 0) {
+	if (e.facing*e.relativef < 0) != (e.vfacing < 0) {
 		rot.angle *= -1
 		rot.yangle *= -1
 	}
@@ -1246,11 +1259,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-	var epos = [2]float32{(e.pos[0] + e.offset[0]) * e.localscl, (e.pos[1] + e.offset[1]) * e.localscl}
-	var ewin = [4]float32{e.window[0] * e.localscl * e.facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * e.facing, e.window[3] * e.localscl * e.vfacing}
-	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
+	var epos = [2]float32{(e.pos[0]+e.offset[0]+off[0]) * e.localscl, (e.pos[1]+e.offset[1]+off[1]) * e.localscl}
+	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
+	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
-		e.space == Space_screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength, ewin},
+		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 
@@ -1281,7 +1294,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 				e.palfx.step()
 			}
 			e.oldPos = e.pos
-			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
+			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing
 			e.newPos[1] = e.pos[1] + e.velocity[1]
 			for i := range e.velocity {
 				e.velocity[i] += e.accel[i]
