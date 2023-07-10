@@ -600,23 +600,14 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_random, VT_Float, 2, false); err != nil {
 		return err
 	}
-	if err := c.paramSpace(is, sc, explod_space); err != nil {
-		return err
-	}
-	if err := c.paramPostype(is, sc, explod_postype); err != nil {
-		return err
-	}
-	if err := c.paramProjection(is, sc, explod_projection); err != nil {
-		return err
-	}
-	f := false
+	found := false
 	if err := c.stateParam(is, "vel", func(data string) error {
-		f = true
+		found = true
 		return c.scAdd(sc, explod_velocity, data, VT_Float, 2)
 	}); err != nil {
 		return err
 	}
-	if !f {
+	if !found {
 		if err := c.paramValue(is, sc, "velocity",
 			explod_velocity, VT_Float, 2, false); err != nil {
 			return err
@@ -624,6 +615,15 @@ func (c *Compiler) explodSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "accel",
 		explod_accel, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramSpace(is, sc, explod_space); err != nil {
+		return err
+	}
+	if err := c.paramPostype(is, sc, explod_postype); err != nil {
+		return err
+	}
+	if err := c.paramProjection(is, sc, explod_projection); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "scale",
