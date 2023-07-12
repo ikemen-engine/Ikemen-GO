@@ -3213,17 +3213,29 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 	_, ok := c.gi().states[stateno.ToI()]
 	return BytecodeBool(ok)
 }
-func (c *Char) stageFrontEdge() float32 {
-	if c.facing > 0 {
-		return sys.cam.XMax/c.localscl - c.pos[0]
-	}
-	return c.pos[0] - sys.cam.XMin/c.localscl
-}
-func (c *Char) stageBackEdge() float32 {
+func (c *Char) stageFrontEdgeDist() float32 {
+	side := float32(0)
 	if c.facing < 0 {
-		return sys.cam.XMax/c.localscl - c.pos[0]
+		side = sys.screenleft / c.localscl
+	} else {
+		side = sys.screenright / c.localscl
 	}
-	return c.pos[0] - sys.cam.XMin/c.localscl
+	if c.facing > 0 {
+		return sys.cam.XMax/c.localscl - side - c.pos[0]
+	}
+	return c.pos[0] - sys.cam.XMin/c.localscl - side
+}
+func (c *Char) stageBackEdgeDist() float32 {
+	side := float32(0)
+	if c.facing < 0 {
+		side = sys.screenleft / c.localscl
+	} else {
+		side = sys.screenright / c.localscl
+	}
+	if c.facing < 0 {
+		return sys.cam.XMax/c.localscl - side - c.pos[0]
+	}
+	return c.pos[0] - sys.cam.XMin/c.localscl - side
 }
 func (c *Char) teamLeader() int {
 	if c.teamside == -1 || sys.tmode[c.playerNo&1] == TM_Single || sys.tmode[c.playerNo&1] == TM_Turns {

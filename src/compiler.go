@@ -377,9 +377,9 @@ var triggerMap = map[string]int{
 	"scoretotal":       1,
 	"selfstatenoexist": 1,
 	"sprpriority":      1,
-	"stagebackedge":    1,
+	"stagebackedgedist":    1,
 	"stageconst":       1,
-	"stagefrontedge":   1,
+	"stagefrontedgedist":   1,
 	"stagetime":        1,
 	"standby":          1,
 	"teamleader":       1,
@@ -2833,8 +2833,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_selfstatenoexist)
 	case "sprpriority":
 		out.append(OC_ex_, OC_ex_sprpriority)
-	case "stagebackedge":
-		out.append(OC_ex_, OC_ex_stagebackedge)
+	case "stagebackedgedist", "stagebackedge": //Latter is deprecated
+		out.append(OC_ex_, OC_ex_stagebackedgedist)
 	case "stageconst":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -2847,8 +2847,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), Error("Missing ')' before " + c.token)
 		}
 		*in = (*in)[1:]
-	case "stagefrontedge":
-		out.append(OC_ex_, OC_ex_stagefrontedge)
+	case "stagefrontedgedist", "stagefrontedge": //Latter is deprecated
+		out.append(OC_ex_, OC_ex_stagefrontedgedist)
 	case "stagetime":
 		out.append(OC_ex_, OC_ex_stagetime)
 	case "standby":

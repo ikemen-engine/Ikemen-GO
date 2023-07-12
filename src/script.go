@@ -4141,16 +4141,16 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.sprPriority))
 		return 1
 	})
-	luaRegister(l, "stagebackedge", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.stageBackEdge()))
+	luaRegister(l, "stagebackedgedist", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.stageBackEdgeDist()))
 		return 1
 	})
 	luaRegister(l, "stageconst", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.stage.constants[strArg(l, 1)]))
 		return 1
 	})
-	luaRegister(l, "stagefrontedge", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.stageFrontEdge()))
+	luaRegister(l, "stagefrontedgedist", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.stageFrontEdgeDist()))
 		return 1
 	})
 	luaRegister(l, "stagetime", func(*lua.LState) int {
