@@ -3407,13 +3407,24 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ss.sb.prevMoveType = c.ss.sb.moveType
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
-	c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+	// Reset persistent counters for this state (Ikemen chars)
+	// This used to belong to (*StateBytecode).init(), but was moved outside there
+	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
+	// of a hitpause when attempting to change state during the hitpause.
+	// Ikemenver chars aren't affected by this.
+	if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+	}
 	c.stchtmp = true
 	return true
 }
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
+		// Reset persistent counters for this state (MUGEN chars)
+		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+		}
 		c.stchtmp = false
 		return true
 	}
