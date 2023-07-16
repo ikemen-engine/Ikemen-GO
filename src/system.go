@@ -1544,13 +1544,13 @@ func (s *System) drawTop() {
 	fade := func(rect [4]int32, color uint32, alpha int32) {
 		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
-	fadeout := sys.intro + sys.lifebar.ro.over_waittime + sys.lifebar.ro.over_time
-	if fadeout == s.fadeouttime-1 && len(sys.commonLua) > 0 && sys.matchOver() && !s.dialogueFlg {
-		for _, p := range sys.chars {
+	fadeout := s.intro + s.lifebar.ro.over_waittime + s.lifebar.ro.over_time
+	if fadeout == s.lifebar.ro.fadeout_time-1 && len(s.commonLua) > 0 && s.matchOver() && !s.dialogueFlg {
+		for _, p := range s.chars {
 			if len(p) > 0 {
 				if len(p[0].dialogue) > 0 {
-					sys.lifebar.ro.cur = 3
-					sys.dialogueFlg = true
+					s.lifebar.ro.cur = 3
+					s.dialogueFlg = true
 					break
 				}
 			}
@@ -1558,10 +1558,14 @@ func (s *System) drawTop() {
 	}
 	if s.fadeintime > 0 {
 		fade(s.scrrect, s.lifebar.ro.fadein_col, 256*s.fadeintime/s.lifebar.ro.fadein_time)
-		s.fadeintime--
-	} else if s.fadeouttime > 0 && fadeout < s.fadeouttime-1 && !s.dialogueFlg {
+		if s.tickFrame() {
+			s.fadeintime--
+		}
+	} else if s.fadeouttime > 0 && fadeout < s.lifebar.ro.fadeout_time-1 && !s.dialogueFlg {
 		fade(s.scrrect, s.lifebar.ro.fadeout_col, 256*(s.lifebar.ro.fadeout_time-s.fadeouttime)/s.lifebar.ro.fadeout_time)
-		s.fadeouttime--
+		if s.tickFrame() {
+			s.fadeouttime--
+		}
 	} else if s.clsnDraw && s.clsnDarken {
 		fade(s.scrrect, 0, 0)
 	}
