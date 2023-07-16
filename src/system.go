@@ -910,7 +910,7 @@ func (s *System) commandUpdate() {
 				act = false
 			}
 			// Having this here makes B and F inputs reverse the same instant the character turns
-			if act && !r.sf(CSF_noautoturn) &&
+			if act && !r.sf(CSF_noautoturn) && (r.scf(SCF_ctrl) || r.roundState() > 2) &&
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20 || r.ss.no == 52) {
 				r.turn()
 			}
