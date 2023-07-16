@@ -232,6 +232,7 @@ type System struct {
 	shuttertime             int32
 	fadeintime              int32
 	fadeouttime             int32
+	wintime                 int32
 	projs                   [MaxSimul*2 + MaxAttachedChar][]Projectile
 	explods                 [MaxSimul*2 + MaxAttachedChar][]Explod
 	explDrawlist            [MaxSimul*2 + MaxAttachedChar][]int
@@ -641,7 +642,7 @@ func (s *System) roundEnd() bool {
 	return s.intro < -s.lifebar.ro.over_hittime
 }
 func (s *System) roundWinTime() bool {
-	return s.intro < -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_wintime)
+	return s.wintime < 0
 }
 func (s *System) roundOver() bool {
 	return s.intro < -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time)
@@ -779,6 +780,7 @@ func (s *System) nextRound() {
 	s.shuttertime = 0
 	s.fadeintime = s.lifebar.ro.fadein_time
 	s.fadeouttime = s.lifebar.ro.fadeout_time
+	s.wintime = s.lifebar.ro.over_wintime
 	s.winskipped = false
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
 	s.time = s.roundTime
@@ -1176,19 +1178,18 @@ func (s *System) action() {
 					}
 				}
 			}
-			if !s.sf(GSF_roundnotover) || s.intro != -(s.lifebar.ro.over_waittime+s.lifebar.ro.over_time-s.lifebar.ro.fadeout_time-1) {
-				s.intro--
-			}
+			rs4t := -s.lifebar.ro.over_waittime
+			s.intro--
 			if s.intro == -s.lifebar.ro.over_hittime && s.finish != FT_NotYet {
 				inclWinCount()
 			}
 			// Check if player skipped win pose time
 			if s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
-				s.intro = Min(s.intro, -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time - s.lifebar.ro.fadeout_time))
+				s.intro = Min(s.intro, rs4t-2-s.lifebar.ro.over_time+s.lifebar.ro.fadeout_time)
 				s.winskipped = true
 			}
-			rs4t := -s.lifebar.ro.over_waittime
 			if s.winskipped || !s.roundWinTime() {
+				// Check if game can proceed into roundstate 4
 				if s.waitdown > 0 {
 					if s.intro == rs4t-1 {
 						for _, p := range s.chars {
@@ -1217,7 +1218,12 @@ func (s *System) action() {
 						}
 					}
 				}
-				if s.waitdown <= 0 || s.intro <= rs4t-s.lifebar.ro.over_wintime {
+				// Start running wintime counter only after getting into roundstate 4
+				if s.intro < rs4t && !s.roundWinTime() {
+					s.wintime--
+				}
+				// Set characters into win/lose poses, update win counters
+				if s.waitdown <= 0 || s.roundWinTime() {
 					if s.waitdown >= 0 {
 						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
 						if !w[0] || !w[1] ||
@@ -1264,6 +1270,11 @@ func (s *System) action() {
 					s.waitdown = 0
 				}
 				s.waitdown--
+			}
+			// If the game can't proceed to the fadeout screen, we turn back the counter 1 tick
+			if !s.winskipped && s.sf(GSF_roundnotover) &&
+				s.intro == rs4t-2-s.lifebar.ro.over_time+s.lifebar.ro.fadeout_time {
+				s.intro++
 			}
 		} else if s.intro < 0 {
 			s.intro = 0
