@@ -584,6 +584,12 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_id, VT_Int, 1, false); err != nil {
 		return err
 	}
+	// First, we see if postype parameter was declared, to see if 
+	// an ikemenver character will modify facing, pos, random, vel 
+	// or accel values without declaring postype.
+	if _, ok := is["postype"]; ok {
+		c.scAdd(sc, explod_postypeExists, "1", VT_Bool, 1)
+	}
 	if err := c.paramValue(is, sc, "facing",
 		explod_facing, VT_Int, 1, false); err != nil {
 		return err

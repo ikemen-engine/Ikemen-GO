@@ -3347,7 +3347,7 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 
 // Furimuki = Turn around
 func (c *Char) turn() {
-	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
+	if c.helperIndex == 0 {
 		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
@@ -3407,20 +3407,32 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ss.sb.prevMoveType = c.ss.sb.moveType
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
-	c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+	// Reset persistent counters for this state (Ikemen chars)
+	// This used to belong to (*StateBytecode).init(), but was moved outside there
+	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
+	// of a hitpause when attempting to change state during the hitpause.
+	// Ikemenver chars aren't affected by this.
+	if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+	}
 	c.stchtmp = true
 	return true
 }
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
+		// Reset persistent counters for this state (MUGEN chars)
+		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+		}
 		c.stchtmp = false
 		return true
 	}
 	return false
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
-	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
+	if c.minus <= 0 && c.scf(SCF_ctrl) && c.roundState() <= 2 &&
+		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.turn()
 	}
 	if anim >= 0 {

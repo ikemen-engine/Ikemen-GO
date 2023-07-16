@@ -1828,7 +1828,7 @@ func readLifeBarRound(is IniSection,
 		ro.over_wintime = Max(1, tmp)
 	}
 	if is.ReadI32("over.time", &tmp) {
-		ro.over_time = Max(ro.over_wintime+1, tmp)
+		ro.over_time = Max(1, tmp)
 	}
 	is.ReadI32("win.time", &ro.win_time)
 	ro.win_sndtime = ro.win_time
