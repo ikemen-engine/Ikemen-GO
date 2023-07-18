@@ -402,8 +402,9 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	zoomybound := sys.cam.CameraZoomYBound * float32(Btoi(isStage))
-	yScrollPos := ((pos[1] - (zoomybound / lclscl)) / stgscl[1]) * bg.delta[1] * bgscl
-	yScrollPos += ((zoomybound / lclscl) / stgscl[1]) * Pow(bg.zoomdelta[1], 1.4) / bgscl
+	// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
+	yScrollPos := ((pos[1] - (zoomybound / lclscl)) / stgscl[1]) * bg.delta[1] // * bgscl
+	yScrollPos += ((zoomybound / lclscl) / stgscl[1]) * Pow(bg.zoomdelta[1], 1.4) // / bgscl
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * (pos[1] - zoomybound) * bg.delta[1] * bgscl
 	ys := ((100-(pos[1]-zoomybound)*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
@@ -1280,11 +1281,17 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
 	scl2 := s.localscl * scl
-	if pos[1] <= float32(s.stageCamera.boundlow) && pos[1] < float32(s.stageCamera.boundhigh)-sys.cam.ExtraBoundH {
-		yofs += (pos[1]-float32(s.stageCamera.boundhigh))*scl2 +
-			sys.cam.ExtraBoundH*scl
-		pos[1] = float32(s.stageCamera.boundhigh) - sys.cam.ExtraBoundH/s.localscl
-	}
+	// This code makes the background scroll faster when surpassing boundhigh with the camera pushed down
+	// through floortension and boundlow. MUGEN 1.1 doesn't look like it does this, so it was commented.
+	// var extraBoundH float32
+	// if sys.cam.zoomout < 1 {
+		// extraBoundH = sys.cam.ExtraBoundH * ((1/scl)-1)/((1/sys.cam.zoomout)-1)
+	// }
+	// if pos[1] <= float32(s.stageCamera.boundlow) && pos[1] < float32(s.stageCamera.boundhigh)-extraBoundH {
+		// yofs += (pos[1]-float32(s.stageCamera.boundhigh))*scl2 +
+			// extraBoundH*scl
+		// pos[1] = float32(s.stageCamera.boundhigh) - extraBoundH/s.localscl
+	// }
 	if s.stageCamera.verticalfollow > 0 {
 		if yofs < 0 {
 			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
