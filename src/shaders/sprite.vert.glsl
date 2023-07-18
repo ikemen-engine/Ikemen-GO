@@ -1,11 +1,8 @@
-#version 400
-precision highp float;
-
 uniform mat4 modelview, projection;
 
-in vec2 position;
-in vec2 uv;
-out vec2 texcoord;
+attribute vec2 position;
+attribute vec2 uv;
+varying vec2 texcoord;
 
 void main(void) {
 	texcoord = uv;
