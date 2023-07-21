@@ -21,7 +21,7 @@ const (
 	audioOutLen          = 2048
 	audioFrequency       = 48000
 	audioPrecision       = 4
-	audioResampleQuality = 3
+	audioResampleQuality = 1
 	audioSoundFont       = "sound/soundfont.sf2" // default path for MIDI soundfont
 )
 
