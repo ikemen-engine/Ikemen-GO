@@ -21,7 +21,7 @@ const (
 	audioOutLen          = 2048
 	audioFrequency       = 48000
 	audioPrecision       = 4
-	audioResampleQuality = 3
+	audioResampleQuality = 1
 	audioSoundFont       = "sound/soundfont.sf2" // default path for MIDI soundfont
 )
 
@@ -238,12 +238,12 @@ func loadSoundFont(filename string) (*midi.SoundFont, error) {
 	return soundfont, nil
 }
 
-func (bgm *Bgm) SetPaused(paused bool) {
-	if bgm.ctrl == nil {
+func (bgm *Bgm) SetPaused(pause bool) {
+	if bgm.ctrl == nil || bgm.ctrl.Paused == pause {
 		return
 	}
 	speaker.Lock()
-	bgm.ctrl.Paused = paused
+	bgm.ctrl.Paused = pause
 	speaker.Unlock()
 }
 
