@@ -73,6 +73,7 @@ function kill(p, ...)
 		local n = ...
 		if not n then n = 0 end
 		setLife(n)
+		setRedLife(0)
 		playerid(oldid)
 	end
 end
