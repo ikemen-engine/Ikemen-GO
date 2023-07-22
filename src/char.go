@@ -6666,6 +6666,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					ghv.fallcount = fc
 					ghv.fallf = ghv.fallf || fall
+					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
+					if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+						ghv.hittime += 1
+					}
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
@@ -6734,11 +6738,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				} else if getter.bindToId == c.id {
 					getter.setBindTime(0)
-				}
-				// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
-				if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-					ghv.hittime += 1
-					ghv.ctrltime += 1
 				}
 			} else if hitType == 1 {
 				if !getter.sf(CSF_nohitdamage) {
