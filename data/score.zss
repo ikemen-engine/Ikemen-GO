@@ -45,9 +45,11 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 	}
 } else ignoreHitPause if roundState >= 2 {
 	# score: first attack bonus
-	let ret = call FirstAttack();
-	if $ret {
-		scoreAdd{value: 1500}
+	if !isHelper {
+		let ret = call FirstAttack();
+		if $ret {
+			scoreAdd{value: 1500}
+		}
 	}
 	# score: counter bonus
 	let ret = call CounterHit();
