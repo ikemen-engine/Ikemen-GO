@@ -1790,7 +1790,7 @@ type Char struct {
 	pushed                bool
 	hitdefContact         bool
 	atktmp                int8
-	hittmp                int8
+	hittmp                int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
 	acttmp                int8
 	minus                 int8
 	platformPosY          float32
@@ -5159,6 +5159,7 @@ func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
 		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)
 }
+
 func (c *Char) gravity() {
 	c.vel[1] += c.gi().movement.yaccel * ((320 / c.localcoord) / c.localscl)
 }
@@ -5471,7 +5472,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	if h.attr <= 0 || h.hitflag&int32(c.ss.stateType) == 0 ||
 		h.hitflag&int32(ST_F) == 0 && c.hittmp >= 2 ||
 		h.hitflag&int32(MT_MNS) != 0 && c.hittmp > 0 ||
-		h.hitflag&int32(MT_PLS) != 0 && c.hittmp <= 0 {
+		h.hitflag&int32(MT_PLS) != 0 && (c.hittmp <= 0 || c.inGuardState()) {
 		return false
 	}
 	//if h.chainid < 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/308
@@ -7163,6 +7164,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							}
 						}
 						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
+						//"In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1."
 						if p.hitdef.attr&int32(AT_AP) != 0 {
 							ap_projhit = true
 						}
