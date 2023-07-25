@@ -80,7 +80,9 @@ func compileShader(shaderType gl.Enum, src string) (shader gl.Shader) {
 	shader = gl.CreateShader(shaderType)
 	// Might be necessary for the WebGL build
 	if strings.Contains(gl.GetString(gl.VERSION), "ES") {
-		src = "#version 100\nprecision highp float;\n"
+		src = "#version 100\nprecision highp float;\n" + src
+	} else {
+		src = "#version 120\n" + src
 	}
 	gl.ShaderSource(shader, src)
 	gl.CompileShader(shader)
