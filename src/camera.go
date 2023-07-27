@@ -75,14 +75,14 @@ func (c *Camera) Reset() {
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
 	c.ExtraBoundH = ((1 - c.zoomout) * 100) * (1 / c.zoomout) * 2.1 * (float32(sys.gameHeight) / 240)
-	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY)
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) - c.ExtraBoundH
 	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl) //-c.drawOffsetY)
 	//if c.boundlow < 0 {
 	//	c.boundLo += float32(c.boundlow) * c.localscl
 	//}
 	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
 		c.boundR)
-	yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH-c.ExtraBoundH))
+	yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
 	c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, MaxF(xminscl, yminscl)))
 	c.screenZoff = float32(c.zoffset-c.localcoord[1])*c.localscl + 240 - c.drawOffsetY
 	if c.boundhigh > 0 {
@@ -126,10 +126,6 @@ func (c *Camera) YBound(scl, y float32) float32 {
 	if c.verticalfollow <= 0 {
 		return 0
 	} else {
-		var extraBoundH float32
-		if c.zoomout < 1 {
-			extraBoundH = c.ExtraBoundH * ((1 / scl) - 1) / ((1 / c.zoomout) - 1)
-		}
 		tmp := MaxF(0, 240-c.screenZoff)
 		c.CameraZoomYBound = 0
 		if !c.zoomanchor {
@@ -137,7 +133,7 @@ func (c *Camera) YBound(scl, y float32) float32 {
 			c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
 		}
 		bound := ClampF(y,
-			MinF(tmp*(1/scl-1), c.boundH-extraBoundH-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
+			MinF(tmp*(1/scl-1), c.boundH-c.CameraZoomYBound-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
 			c.boundLo)
 		return bound + c.CameraZoomYBound
 	}

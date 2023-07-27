@@ -403,8 +403,8 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 		bg.bga.offset[0]
 	zoomybound := sys.cam.CameraZoomYBound * float32(Btoi(isStage))
 	// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
-	yScrollPos := ((pos[1] - (zoomybound / lclscl)) / stgscl[1]) * bg.delta[1]    // * bgscl
-	yScrollPos += ((zoomybound / lclscl) / stgscl[1]) * Pow(bg.zoomdelta[1], 1.4) // / bgscl
+	yScrollPos := ((pos[1] - (zoomybound / lclscl)) / stgscl[1]) * bg.delta[1] // * bgscl
+	yScrollPos += ((zoomybound / lclscl) / stgscl[1]) * Pow(bg.zoomdelta[1], 1.4) / bgscl
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * (pos[1] - zoomybound) * bg.delta[1] * bgscl
 	ys := ((100-(pos[1]-zoomybound)*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
@@ -1320,7 +1320,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}
 	}
-	yofs3 := (s.stageCamera.drawOffsetY +
+	yofs3 := (float32(s.stageCamera.drawOffsetY)*bgscl +
 		float32(s.stageCamera.localcoord[1]-240)*s.localscl)
 	yofs4 := ((360*float32(s.stageCamera.localcoord[0]) +
 		160*float32(s.stageCamera.localcoord[1])) /
