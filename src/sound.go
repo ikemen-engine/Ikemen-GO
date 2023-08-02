@@ -384,6 +384,10 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 						return nil, err
 					}
 				} else {
+					// Sound is corrupted and can't be played, so we export a warning message to the console
+					if tmp == nil {
+						sys.appendToConsole(fmt.Sprintf("WARNING: %v sound %v,%v is corrupted and can't be played, so it was disabled", filename, num[0], num[1]))
+					}
 					s.table[num] = tmp
 					if max > 0 {
 						break
