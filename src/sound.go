@@ -285,6 +285,18 @@ func readSound(f *os.File, size uint32) (*Sound, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Check if the file can be fully played
+	var samples [512][2]float64
+	for {
+		sn, _ := s.Stream(samples[:])
+		if sn == 0 {
+			// If sound wasn't able to be fully played, we disable it to avoid engine freezing
+			if s.Position() < s.Len() {
+				return nil, nil
+			}
+			break;
+		}
+	}
 	return &Sound{wavData, fmt, s.Len()}, nil
 }
 
