@@ -294,7 +294,7 @@ func readSound(f *os.File, size uint32) (*Sound, error) {
 			if s.Position() < s.Len() {
 				return nil, nil
 			}
-			break;
+			break
 		}
 	}
 	return &Sound{wavData, fmt, s.Len()}, nil
