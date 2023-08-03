@@ -574,12 +574,6 @@ func (bv BytecodeValue) ToI() int32 {
 	}
 	return int32(bv.v)
 }
-func (bv BytecodeValue) ToI2() int32 {
-	if bv.IsSF() {
-		return -1
-	}
-	return int32(bv.v)
-}
 func (bv BytecodeValue) ToI64() int64 {
 	if bv.IsSF() {
 		return 0
@@ -2134,9 +2128,6 @@ func (be BytecodeExp) evalF(c *Char) float32 {
 func (be BytecodeExp) evalI(c *Char) int32 {
 	return be.run(c).ToI()
 }
-func (be BytecodeExp) evalI2(c *Char) int32 {
-	return be.run(c).ToI2()
-}
 func (be BytecodeExp) evalI64(c *Char) int64 {
 	return be.run(c).ToI64()
 }
@@ -3463,26 +3454,25 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 	}
 	pf := crun.palfx
 	if pf == nil {
-		pf = newPalFX()	
+		pf = newPalFX()
 	}
 	pf.clear2(true)
 	if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
 		pf.invertblend = -1
-	}			
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == palFX_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				pf = crun.palfx
 				if pf == nil {
-					pf = newPalFX()	
-								
+					pf = newPalFX()
 				}
-				pf.clear2(true)		
+				pf.clear2(true)
 			} else {
 				return false
 			}
-		}	
+		}
 		sc.runSub(c, &pf.PalFXDef, id, exp)
 		return true
 	})

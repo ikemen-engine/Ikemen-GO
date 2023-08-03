@@ -348,9 +348,10 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 	case trans < 255:
 		if invblend >= 2 && neg != nil{ *neg = false }			
 		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans)/255)
-	//No blend mode
+	//None
 	case trans < 512:
 		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
+	//AddAlpha 
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
