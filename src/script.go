@@ -301,6 +301,8 @@ func systemScriptInit(l *lua.LState) {
 					}
 				case "invertall":
 					a.palfx.invertall = lua.LVAsNumber(value) == 1
+				case "invertblend":
+					a.palfx.invertblend = int32(lua.LVAsNumber(value))			
 				case "color":
 					a.palfx.color = float32(lua.LVAsNumber(value)) / 256
 				default:

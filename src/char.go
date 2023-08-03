@@ -860,6 +860,7 @@ func (ai *AfterImage) clear() {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eColor = 1
 		ai.palfx[0].eInvertall = false
+		ai.palfx[0].eInvertblend = 0		
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
 		ai.palfx[0].eMul = [...]int32{120, 120, 220}
 	}
@@ -883,6 +884,11 @@ func (ai *AfterImage) setPalColor(color int32) {
 func (ai *AfterImage) setPalInvertall(invertall bool) {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eInvertall = invertall
+	}
+}
+func (ai *AfterImage) setPalInvertblend(invertblend int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eInvertblend = invertblend
 	}
 }
 func (ai *AfterImage) setPalBrightR(addr int32) {
@@ -920,6 +926,7 @@ func (ai *AfterImage) setupPalFX() {
 	for i := 1; i < len(ai.palfx); i++ {
 		ai.palfx[i].eColor = ai.palfx[i-1].eColor
 		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
+		ai.palfx[i].eInvertblend = ai.palfx[i-1].eInvertblend		
 		for j := range pb {
 			ai.palfx[i].eAdd[j] = ai.palfx[i-1].eAdd[j] + ai.add[j] + pb[j]
 			ai.palfx[i].eMul[j] = int32(float32(ai.palfx[i-1].eMul[j]) * ai.mul[j])
@@ -2716,7 +2723,7 @@ func (c *Char) helper(id int32) *Char {
 }
 func (c *Char) helperByIndex(id int32) *Char {
 	for j, h := range sys.chars[c.playerNo][1:] {
-		if !h.sf(CSF_destroy) && ((id - 1) == int32(j)) {
+		if ((id - 1) == int32(j)) {
 			return h
 		}
 	}

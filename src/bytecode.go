@@ -574,6 +574,12 @@ func (bv BytecodeValue) ToI() int32 {
 	}
 	return int32(bv.v)
 }
+func (bv BytecodeValue) ToI2() int32 {
+	if bv.IsSF() {
+		return -1
+	}
+	return int32(bv.v)
+}
 func (bv BytecodeValue) ToI64() int64 {
 	if bv.IsSF() {
 		return 0
@@ -2128,6 +2134,9 @@ func (be BytecodeExp) evalF(c *Char) float32 {
 func (be BytecodeExp) evalI(c *Char) int32 {
 	return be.run(c).ToI()
 }
+func (be BytecodeExp) evalI2(c *Char) int32 {
+	return be.run(c).ToI2()
+}
 func (be BytecodeExp) evalI64(c *Char) int64 {
 	return be.run(c).ToI64()
 }
@@ -3381,6 +3390,7 @@ const (
 	palFX_sinmul
 	palFX_sincolor
 	palFX_invertall
+	palFX_invertblend
 	palFX_last = iota - 1
 	palFX_redirectid
 )
@@ -3439,6 +3449,8 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		pfd.sincolor = (exp[0].evalI(c) / 256) * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
+	case palFX_invertblend:
+		pfd.invertblend = exp[0].evalI(c)
 	default:
 		return false
 	}
@@ -3451,22 +3463,26 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 	}
 	pf := crun.palfx
 	if pf == nil {
-		pf = newPalFX()
+		pf = newPalFX()	
 	}
 	pf.clear2(true)
+	if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
+		pf.invertblend = -1
+	}			
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == palFX_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				pf = crun.palfx
 				if pf == nil {
-					pf = newPalFX()
+					pf = newPalFX()	
+								
 				}
-				pf.clear2(true)
+				pf.clear2(true)		
 			} else {
 				return false
 			}
-		}
+		}	
 		sc.runSub(c, &pf.PalFXDef, id, exp)
 		return true
 	})
@@ -3477,6 +3493,7 @@ type allPalFX palFX
 
 func (sc allPalFX) Run(c *Char, _ []int32) bool {
 	sys.allPalFX.clear()
+	sys.allPalFX.invertblend = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.allPalFX.PalFXDef, id, exp)
 		return true
@@ -3488,6 +3505,7 @@ type bgPalFX palFX
 
 func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 	sys.bgPalFX.clear()
+	sys.bgPalFX.invertblend = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.bgPalFX.PalFXDef, id, exp)
 		return true
@@ -4085,6 +4103,7 @@ const (
 	afterImage_framegap
 	afterImage_palcolor
 	afterImage_palinvertall
+	afterImage_palinvertblend
 	afterImage_palbright
 	afterImage_palcontrast
 	afterImage_palpostbright
@@ -4123,6 +4142,8 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 		ai.setPalColor(exp[0].evalI(c))
 	case afterImage_palinvertall:
 		ai.setPalInvertall(exp[0].evalB(c))
+	case afterImage_palinvertblend:
+		ai.setPalInvertblend(exp[0].evalI(c))		
 	case afterImage_palbright:
 		ai.setPalBrightR(exp[0].evalI(c))
 		if len(exp) > 1 {
@@ -7820,6 +7841,7 @@ const (
 	modifyBGCtrl_sinmul
 	modifyBGCtrl_sincolor
 	modifyBGCtrl_invertall
+	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
 	modifyBGCtrl_redirectid
 )
@@ -7831,7 +7853,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	x, y := float32(math.NaN()), float32(math.NaN())
 	src, dst := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
 	add, mul, sinadd, sinmul, sincolor := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [2]int32{IErr, IErr}
-	invall, color := IErr, float32(math.NaN())
+	invall, invblend, color := IErr,IErr, float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case modifyBGCtrl_id:
@@ -7911,6 +7933,8 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
+		case modifyBGCtrl_invertblend:
+			invblend = exp[0].evalI(c)
 		case modifyBGCtrl_color:
 			color = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
@@ -7922,7 +7946,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, invall, color)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, invall, invblend, color)
 	return false
 }
 

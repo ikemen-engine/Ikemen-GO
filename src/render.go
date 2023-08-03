@@ -278,12 +278,14 @@ func RenderSprite(rp RenderParams) {
 	neg, grayscale, padd, pmul := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}
 	tint := [4]float32{float32(rp.tint&0xff) / 255, float32(rp.tint>>8&0xff) / 255,
 		float32(rp.tint>>16&0xff) / 255, float32(rp.tint>>24&0xff) / 255}
-
+	var invblend int32
+	invblend = 0
 	if rp.pfx != nil {
 		neg, grayscale, padd, pmul = rp.pfx.getFcPalFx(rp.trans == -2)
 		if rp.trans == -2 {
 			padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		}
+		invblend = int32(rp.pfx.eInvertblend)
 	}
 
 	proj := mgl.Ortho(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
@@ -317,33 +319,51 @@ func RenderSprite(rp RenderParams) {
 		rmTileSub(modelview, rp)
 
 		gfx.ReleasePipeline()
-	}, rp.trans, rp.paltex != nil)
+	}, rp.trans, rp.paltex != nil, invblend, &neg )
 
 	gfx.DisableScissor()
 }
 
-func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a float32), trans int32, correctAlpha bool) {
+func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a float32), trans int32, correctAlpha bool, invblend int32, neg *bool) {
 	blendSourceFactor := BlendSrcAlpha
 	if !correctAlpha {
 		blendSourceFactor = BlendOne
 	}
+	Blend := BlendAdd
+	BlendI := BlendReverseSubtract
+	if invblend >= 1 {
+		Blend = BlendReverseSubtract
+		BlendI = BlendAdd
+	}
 	switch {
-	case trans == -1:
-		render(BlendAdd, blendSourceFactor, BlendOne, 1)
+	//Add blend mode(255,255)
+	case trans == -1:	
+		if invblend >= 2 && neg != nil{ *neg = false }		
+		render(Blend, blendSourceFactor, BlendOne, 1)
+	//Sub blend mode	
 	case trans == -2:
-		render(BlendReverseSubtract, BlendOne, BlendOne, 1)
+		if invblend >= 2 && neg != nil{ *neg = false }			
+		render(BlendI, BlendOne, BlendOne, 1)
 	case trans <= 0:
 	case trans < 255:
+		if invblend >= 2 && neg != nil{ *neg = false }			
 		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans)/255)
+	//No blend mode
 	case trans < 512:
 		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
-			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, 1-float32(dst)/255)
+			render(Blend, BlendZero, BlendOneMinusSrcAlpha, 1-float32(dst)/255)
 		}
 		if src > 0 {
-			render(BlendAdd, blendSourceFactor, BlendOne, float32(src)/255)
+			if invblend >= 1 && dst >= 255 {
+				if invblend >= 2 { *neg = false }
+				Blend = BlendReverseSubtract  
+			} else {
+				Blend = BlendAdd
+			}
+			render(Blend, blendSourceFactor, BlendOne, float32(src)/255)
 		}
 	}
 }
@@ -373,5 +393,5 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gfx.SetUniformF("tint", r, g, b, a)
 		gfx.RenderQuad()
 		gfx.ReleasePipeline()
-	}, trans, true)
+	}, trans, true, 0, nil)
 }

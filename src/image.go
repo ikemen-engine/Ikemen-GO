@@ -35,20 +35,22 @@ type PalFXDef struct {
 	cycletimeMul   int32
 	cycletimeColor int32
 	invertall      bool
+	invertblend    int32	
 }
 type PalFX struct {
 	PalFXDef
-	remap      []int
-	negType    bool
-	sintime    int32
-	sintime2   int32
-	sintime3   int32
-	enable     bool
-	eNegType   bool
-	eInvertall bool
-	eAdd       [3]int32
-	eMul       [3]int32
-	eColor     float32
+	remap      		[]int
+	negType    		bool
+	sintime    		int32
+	sintime2   		int32
+	sintime3   		int32
+	enable     		bool
+	eNegType   		bool
+	eInvertall 		bool
+	eInvertblend 	int32	
+	eAdd       		[3]int32
+	eMul       		[3]int32
+	eColor     		float32
 }
 
 func newPalFX() *PalFX { return &PalFX{} }
@@ -58,6 +60,7 @@ func (pf *PalFX) clear2(nt bool) {
 	pf.sintime = 0
 	pf.sintime2 = 0
 	pf.sintime3 = 0
+	pf.invertblend = 0
 }
 func (pf *PalFX) clear() {
 	pf.clear2(false)
@@ -196,6 +199,11 @@ func (pf *PalFX) step() {
 		pf.eAdd = pf.add
 		pf.eColor = pf.color
 		pf.eInvertall = pf.invertall
+		if pf.invertblend == -1 && pf.eInvertall {
+			pf.eInvertblend = 2
+		} else {
+			pf.eInvertblend = pf.invertblend		
+		}
 		pf.eNegType = pf.negType
 		pf.sinAdd(&pf.eAdd)
 		pf.sinMul(&pf.eMul)
