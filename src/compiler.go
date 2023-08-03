@@ -4652,7 +4652,7 @@ func (c *Compiler) subBlock(line *string, root bool,
 		c.scan(line)
 		var err error
 		if bl.elseBlock, err = c.subBlock(line, root,
-			sbc, numVars, inheritIhp, nestedInLoop); err != nil {
+			sbc, numVars, inheritIhp || bl.ctrlsIgnorehitpause, nestedInLoop); err != nil {
 			return nil, err
 		}
 		if bl.elseBlock.ignorehitpause >= -1 {
