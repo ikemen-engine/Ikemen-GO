@@ -12,7 +12,7 @@
 #===============================================================================
 [Function TrainingRecovery(pn)]
 # Life recovery
-if player($pn),moveType = H {
+if player($pn),moveType = H || player($pn),dizzy {
 	mapSet{map: "_iksys_trainingLifeTimer"; value: 0; redirectid: player($pn),id}
 } else if player($pn),map(_iksys_trainingLifeTimer) >= 60 {
 	lifeSet{value: player($pn),lifeMax; redirectid: player($pn),id}
@@ -83,7 +83,7 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 					if (map(_iksys_trainingFallRecovery) = 1 && pos y >= const(movement.air.gethit.groundrecover.ground.threshold)) # Ground recovery
 					|| (map(_iksys_trainingFallRecovery) = 2 && pos y < const(movement.air.gethit.groundrecover.ground.threshold)) # Air recovery
 					|| (map(_iksys_trainingFallRecovery) = 3 && random < 100) { # Random recovery
-						if time % 2 {
+						if gametime % 2 {
 							assertInput{flag: x; flag2: y; flag3: z} # Ideally one would specifically force the character's "recovery" command
 						} else {
 							assertInput{flag: a; flag2: b; flag3: c}
