@@ -148,7 +148,7 @@ jobs:
           mkdir deploy
           cp ${{ matrix.cfg.bin }} deploy/
           git clone https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack.git
-          cp -r data external font Ikemen_GO-Elecbyte-Screenpack/chars Ikemen_GO-Elecbyte-Screenpack/data Ikemen_GO-Elecbyte-Screenpack/font Ikemen_GO-Elecbyte-Screenpack/stages deploy/
+          cp -r data external font Ikemen_GO-Elecbyte-Screenpack/chars Ikemen_GO-Elecbyte-Screenpack/data Ikemen_GO-Elecbyte-Screenpack/font Ikemen_GO-Elecbyte-Screenpack/sound Ikemen_GO-Elecbyte-Screenpack/stages deploy/
           cp License.txt deploy/
           cp Ikemen_GO-Elecbyte-Screenpack/LICENCE.txt deploy/ScreenpackLicense.txt
           echo "Zipping deploy directory"
