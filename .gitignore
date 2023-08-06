@@ -26,6 +26,7 @@ data/fight.snd
 data/fightfx.air
 data/fightfx.sff
 data/glyphs.sff
+data/gofx*
 data/kfm/*
 data/mugen1/*
 data/select.def
