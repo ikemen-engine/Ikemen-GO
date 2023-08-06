@@ -519,8 +519,8 @@ const (
 	OC_ex_scoretotal
 	OC_ex_selfstatenoexist
 	OC_ex_sprpriority
-	OC_ex_stagebackedge
-	OC_ex_stagefrontedge
+	OC_ex_stagebackedgedist
+	OC_ex_stagefrontedgedist
 	OC_ex_stagetime
 	OC_ex_standby
 	OC_ex_teamleader
@@ -2147,10 +2147,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.selfStatenoExist(*sys.bcStack.Top())
 	case OC_ex_sprpriority:
 		sys.bcStack.PushI(c.sprPriority)
-	case OC_ex_stagebackedge:
-		sys.bcStack.PushF(c.stageBackEdge() * (c.localscl / oc.localscl))
-	case OC_ex_stagefrontedge:
-		sys.bcStack.PushF(c.stageFrontEdge() * (c.localscl / oc.localscl))
+	case OC_ex_stagebackedgedist:
+		sys.bcStack.PushF(c.stageBackEdgeDist() * (c.localscl / oc.localscl))
+	case OC_ex_stagefrontedgedist:
+		sys.bcStack.PushF(c.stageFrontEdgeDist() * (c.localscl / oc.localscl))
 	case OC_ex_stagetime:
 		sys.bcStack.PushI(sys.stage.stageTime)
 	case OC_ex_standby:
@@ -3614,6 +3614,7 @@ const (
 	explod_bindid
 	explod_space
 	explod_window
+	explod_postypeExists
 	explod_redirectid
 )
 
@@ -3635,9 +3636,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 						return false
 					}
 					e.id = 0
-					if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
-						e.postype = PT_N
-					}
 				} else {
 					return false
 				}
@@ -3647,9 +3645,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 					return false
 				}
 				e.id = 0
-				if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
-					e.postype = PT_N
-				}
+			}
+			// Mugenversion 1.1 chars default postype to "None"
+			if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
+				e.postype = PT_None
 			}
 		}
 		switch id {
@@ -3675,21 +3674,21 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.vfacing = 1
 			}
 		case explod_pos:
-			e.offset[0] = exp[0].evalF(c) * lclscround
+			e.relativePos[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
-				e.offset[1] = exp[1].evalF(c) * lclscround
+				e.relativePos[1] = exp[1].evalF(c) * lclscround
 			}
 		case explod_random:
 			rndx := (exp[0].evalF(c) / 2) * lclscround
-			e.offset[0] += RandF(-rndx, rndx)
+			e.relativePos[0] += RandF(-rndx, rndx)
 			if len(exp) > 1 {
 				rndy := (exp[1].evalF(c) / 2) * lclscround
-				e.offset[1] += RandF(-rndy, rndy)
+				e.relativePos[1] += RandF(-rndy, rndy)
 			}
-		case explod_postype:
-			e.postype = PosType(exp[0].evalI(c))
 		case explod_space:
 			e.space = Space(exp[0].evalI(c))
+		case explod_postype:
+			e.postype = PosType(exp[0].evalI(c))
 		case explod_velocity:
 			e.velocity[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
@@ -3787,7 +3786,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if bId == -1 {
 				bId = crun.id
 			}
-			e.bindId = bId
+			e.setBind(bId)
 		case explod_projection:
 			e.projection = Projection(exp[0].evalI(c))
 		case explod_window:
@@ -3819,6 +3818,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	var expls []*Explod
 	rp := [...]int32{-1, 0}
 	remap := false
+	var f, vf float32 = 1, 1
+	sp, pos, vel, accel := Space_none, [2]float32{0, 0}, [2]float32{0, 0}, [2]float32{0, 0}
+	ptexists := false
 	eachExpl := func(f func(e *Explod)) {
 		for _, e := range expls {
 			f(e)
@@ -3841,6 +3843,8 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			remap = true
 		case explod_id:
 			eid = exp[0].evalI(c)
+		case explod_postypeExists:
+			ptexists = true
 		default:
 			if len(expls) == 0 {
 				expls = crun.getExplods(eid)
@@ -3856,58 +3860,90 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			switch id {
 			case explod_facing:
 				if exp[0].evalI(c) < 0 {
-					eachExpl(func(e *Explod) { e.relativef = -1 })
-				} else {
-					eachExpl(func(e *Explod) { e.relativef = 1 })
+					f = -1
+				}
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) {
+						e.relativef = f
+					})
 				}
 			case explod_vfacing:
 				if exp[0].evalI(c) < 0 {
-					eachExpl(func(e *Explod) { e.vfacing = -1 })
-				} else {
-					eachExpl(func(e *Explod) { e.vfacing = 1 })
+					vf = -1
+				}
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) {
+						e.vfacing = vf
+					})
 				}
 			case explod_pos:
-				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.offset[0] = x })
+				pos[0] = exp[0].evalF(c) * lclscround
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) { e.relativePos[0] = pos[0] })
+				}
 				if len(exp) > 1 {
-					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.offset[1] = y })
+					pos[1] = exp[1].evalF(c) * lclscround
+					if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+						eachExpl(func(e *Explod) { e.relativePos[1] = pos[1] })
+					}
 				}
 			case explod_random:
 				rndx := (exp[0].evalF(c) / 2) * lclscround
 				rndx = RandF(-rndx, rndx)
-				eachExpl(func(e *Explod) { e.offset[0] += rndx })
+				pos[0] += rndx
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) { e.relativePos[0] += rndx })
+				}
 				if len(exp) > 1 {
 					rndy := (exp[1].evalF(c) / 2) * lclscround
 					rndy = RandF(-rndy, rndy)
-					eachExpl(func(e *Explod) { e.offset[1] += rndy })
+					pos[1] += rndy
+					if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+						eachExpl(func(e *Explod) { e.relativePos[1] += rndy })
+					}
+				}
+			case explod_velocity:
+				vel[0] = exp[0].evalF(c) * lclscround
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) { e.velocity[0] = vel[0] })
+				}
+				if len(exp) > 1 {
+					vel[1] = exp[1].evalF(c) * lclscround
+					if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+						eachExpl(func(e *Explod) { e.velocity[1] = vel[1] })
+					}
+				}
+			case explod_accel:
+				accel[0] = exp[0].evalF(c) * lclscround
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) { e.accel[0] = accel[0] })
+				}
+				if len(exp) > 1 {
+					accel[1] = exp[1].evalF(c) * lclscround
+					if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+						eachExpl(func(e *Explod) { e.accel[1] = accel[1] })
+					}
+				}
+			case explod_space:
+				sp = Space(exp[0].evalI(c))
+				if (c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0) && !ptexists {
+					eachExpl(func(e *Explod) { e.space = sp })
 				}
 			case explod_postype:
 				pt := PosType(exp[0].evalI(c))
 				eachExpl(func(e *Explod) {
+					// Reset explod
+					e.reset()
+					// Set declared values
 					e.postype = pt
-					e.setPos(c)
-					e.relativef = 1 // In Mugen facing is updated by default
+					e.relativef, e.vfacing = f, vf
+					e.relativePos, e.velocity, e.accel = pos, vel, accel
+					if sp != Space_none {
+						e.space = sp
+					}
+					// Finish pos configuration
+					e.setPos(crun)
 				})
-			case explod_space:
-				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					sp := Space(exp[0].evalI(c))
-					eachExpl(func(e *Explod) { e.space = sp })
-				}
-			case explod_velocity:
-				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.velocity[0] = x })
-				if len(exp) > 1 {
-					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.velocity[1] = y })
-				}
-			case explod_accel:
-				x := exp[0].evalF(c) * lclscround
-				eachExpl(func(e *Explod) { e.accel[0] = x })
-				if len(exp) > 1 {
-					y := exp[1].evalF(c) * lclscround
-					eachExpl(func(e *Explod) { e.accel[1] = y })
-				}
 			case explod_scale:
 				x := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.scale[0] = x })
@@ -4037,7 +4073,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if bId == -1 {
 					bId = crun.id
 				}
-				eachExpl(func(e *Explod) { e.bindId = bId })
+				eachExpl(func(e *Explod) { e.setBind(bId) })
 			default:
 				eachExpl(func(e *Explod) {
 					if e.ownpal {
@@ -4091,16 +4127,16 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 		}
 		switch id {
 		case gameMakeAnim_pos:
-			e.offset[0] = exp[0].evalF(c) * lclscround
+			e.relativePos[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
-				e.offset[1] = exp[1].evalF(c) * lclscround
+				e.relativePos[1] = exp[1].evalF(c) * lclscround
 			}
 		case gameMakeAnim_random:
 			rndx := (exp[0].evalF(c) / 2) * lclscround
-			e.offset[0] += RandF(-rndx, rndx)
+			e.relativePos[0] += RandF(-rndx, rndx)
 			if len(exp) > 1 {
 				rndy := (exp[1].evalF(c) / 2) * lclscround
-				e.offset[1] += RandF(-rndy, rndy)
+				e.relativePos[1] += RandF(-rndy, rndy)
 			}
 		case gameMakeAnim_under:
 			e.ontop = !exp[0].evalB(c)
@@ -4112,8 +4148,8 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 	if e == nil {
 		return false
 	}
-	e.offset[0] -= float32(crun.size.draw.offset[0])
-	e.offset[1] -= float32(crun.size.draw.offset[1])
+	e.relativePos[0] -= float32(crun.size.draw.offset[0])
+	e.relativePos[1] -= float32(crun.size.draw.offset[1])
 	e.setPos(crun)
 	crun.insertExplod(i)
 	return false

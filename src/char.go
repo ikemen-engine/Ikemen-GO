@@ -119,11 +119,11 @@ type PosType int32
 const (
 	PT_P1 PosType = iota
 	PT_P2
-	PT_F
-	PT_B
-	PT_L
-	PT_R
-	PT_N
+	PT_Front
+	PT_Back
+	PT_Left
+	PT_Right
+	PT_None
 )
 
 type Space int32
@@ -983,22 +983,24 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
 
 type Explod struct {
 	id                  int32
-	bindtime            int32
-	scale               [2]float32
 	time                int32
+	postype             PosType
+	space               Space
+	bindId              int32
+	bindtime            int32
+	pos                 [2]float32
+	relativePos         [2]float32
+	offset              [2]float32
+	relativef           float32
+	facing              float32
+	vfacing             float32
+	scale               [2]float32
 	removeongethit      bool
 	removeonchangestate bool
 	removetime          int32
 	velocity            [2]float32
 	accel               [2]float32
 	sprpriority         int32
-	postype             PosType
-	space               Space
-	offset              [2]float32
-	relativef           int32
-	pos                 [2]float32
-	facing              float32
-	vfacing             float32
 	shadow              [3]int32
 	supermovetime       int32
 	pausemovetime       int32
@@ -1009,26 +1011,39 @@ type Explod struct {
 	under               bool
 	alpha               [2]int32
 	ownpal              bool
-	playerId            int32
-	bindId              int32
 	ignorehitpause      bool
 	rot                 Rotation
 	projection          Projection
 	fLength             float32
 	oldPos              [2]float32
 	newPos              [2]float32
+	playerId            int32
 	palfx               *PalFX
 	palfxdef            PalFXDef
 	window              [4]float32
+	lockSpriteFacing    bool
 	localscl            float32
 }
 
 func (e *Explod) clear() {
-	*e = Explod{id: IErr, scale: [...]float32{1, 1}, removetime: -2,
-		postype: PT_P1, relativef: 1, facing: 1, vfacing: 1, localscl: 1, space: Space_none,
+	*e = Explod{id: IErr, bindtime: 1, scale: [...]float32{1, 1}, removetime: -2,
+		postype: PT_P1, space: Space_none, relativef: 1, facing: 1, vfacing: 1, localscl: 1,
 		projection: Projection_Orthographic,
 		window:     [4]float32{0, 0, 0, 0},
 		alpha:      [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
+}
+func (e *Explod) reset() {
+	e.facing = 1
+	e.offset[0], e.offset[1] = 0, 0
+	e.setX(e.offset[0])
+	e.setY(e.offset[1])
+	e.relativePos[0], e.relativePos[1] = 0, 0
+	e.velocity[0], e.velocity[1] = 0, 0
+	e.accel[0], e.accel[1] = 0, 0
+	e.bindId = -2
+	if e.bindtime == 0 {
+		e.bindtime = 1
+	}
 }
 func (e *Explod) setX(x float32) {
 	e.pos[0], e.oldPos[0], e.newPos[0] = x, x, x
@@ -1036,91 +1051,97 @@ func (e *Explod) setX(x float32) {
 func (e *Explod) setY(y float32) {
 	e.pos[1], e.oldPos[1], e.newPos[1] = y, y, y
 }
+func (e *Explod) setBind(bId int32) {
+	if e.space == Space_screen && (e.postype == PT_P1 || e.postype == PT_P2) {
+		return
+	}
+	e.bindId = bId
+}
+
+// Initial pos setting based on postype and space. This function probably needs a heavy refactor.
 func (e *Explod) setPos(c *Char) {
 	pPos := func(c *Char) {
-		e.bindId, e.facing = c.id, c.facing*float32(e.relativef)
-		e.offset[0] *= c.facing
-		e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0])
-		e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1])
-		// This seems to have been a temporary fix. Mugen doesn't do this
-		//if e.bindtime == 0 {
-		//	e.bindtime = 1
-		//}
+		e.bindId, e.facing = c.id, c.facing
+		e.relativePos[0] *= c.facing
+		if e.space == Space_screen {
+			e.offset[0] = c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
+			e.offset[1] = sys.cam.GroundLevel()*e.localscl +
+				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
+		} else {
+			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl)
+			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl)
+		}
 	}
 	lPos := func() {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl + e.offset[0]/sys.cam.Scale)
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		if e.bindtime == 0 {
-			e.bindtime = 1
+		if e.space == Space_screen {
+			e.offset[0] = -(float32(sys.gameWidth) / e.localscl / 2)
+		} else {
+			e.offset[0] = sys.cam.ScreenPos[0] / e.localscl
 		}
 	}
 	rPos := func() {
-		e.setX(sys.cam.ScreenPos[0]/e.localscl +
-			(float32(sys.gameWidth)/e.localscl + e.offset[0]/sys.cam.Scale))
-		e.setY(sys.cam.ScreenPos[1]/e.localscl + e.offset[1]/sys.cam.Scale)
-		if e.bindtime == 0 {
-			e.bindtime = 1
+		if e.space == Space_screen {
+			e.offset[0] = float32(sys.gameWidth) / e.localscl / 2
+		} else {
+			e.offset[0] = sys.cam.ScreenPos[0] / e.localscl
 		}
 	}
-	if e.space == Space_stage && e.bindId >= -1 {
-		e.postype = PT_N
-	}
-	if e.space <= Space_none || (e.space == Space_stage && e.bindId < -1) ||
-		(e.space == Space_screen && e.postype <= PT_R) {
+	// Set space based on postype in case it's missing
+	if e.space == Space_none {
 		switch e.postype {
-		case PT_P1:
-			pPos(c)
-		case PT_P2:
-			if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
-				pPos(p2)
+		case PT_Front, PT_Back, PT_Left, PT_Right:
+			e.space = Space_screen
+		default:
+			e.space = Space_stage
+		}
+	}
+	switch e.postype {
+	case PT_P1:
+		pPos(c)
+	case PT_P2:
+		if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
+			pPos(p2)
+		}
+	case PT_Front, PT_Back:
+		if e.postype == PT_Back {
+			e.facing = c.facing
+		}
+		// front と back はバインドの都合で left か right になおす
+		// "Due to binding constraints, adjust the front and back to either left or right."
+		if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
+			if e.postype == PT_Back {
+				e.relativePos[0] *= -1
 			}
-		case PT_F, PT_B:
-			e.facing = c.facing * float32(e.relativef)
-			// front と back はバインドの都合で left か right になおす
-			// "Due to binding constraints, adjust the front and back to either left or right."
-			if c.facing > 0 && e.postype == PT_F || c.facing < 0 && e.postype == PT_B {
-				if e.postype == PT_B {
-					e.offset[0] *= -1
-				}
-				e.postype = PT_R
-				rPos()
-			} else {
-				// explod の postype = front はキャラの向きで pos が反転しない
-				// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
-				//if e.postype == PT_F && c.gi().ver[0] != 1 {
-				// 旧バージョンだと front は キャラの向きが facing に反映されない
-				// 1.1でも反映されてない模様
-				// "In the previous version, "front" does not reflect the character's orientation in facing."
-				// "It appears that it is still not reflected even in version 1.1."
-				e.facing = float32(e.relativef)
-				//}
-				e.postype = PT_L
-				lPos()
-			}
-		case PT_L:
-			e.facing = float32(e.relativef)
-			lPos()
-		case PT_R:
-			e.facing = float32(e.relativef)
+			e.postype = PT_Right
 			rPos()
-		case PT_N:
-			e.facing = float32(e.relativef)
-			e.setX(e.offset[0])
-			e.setY(e.offset[1])
-			//if e.bindtime == 0 {
-			//	e.bindtime = 1
+		} else {
+			// explod の postype = front はキャラの向きで pos が反転しない
+			// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
+			//if e.postype == PT_Front && c.gi().ver[0] != 1 {
+			// 旧バージョンだと front は キャラの向きが facing に反映されない
+			// 1.1でも反映されてない模様
+			// "In the previous version, "front" does not reflect the character's orientation in facing."
+			// "It appears that it is still not reflected even in version 1.1."
+			// e.facing = e.relativef
 			//}
-		}
-	} else {
-		switch e.space {
-		case Space_screen:
-			e.facing = float32(e.relativef)
+			e.postype = PT_Left
 			lPos()
-		case Space_stage:
-			e.facing = float32(e.relativef)
-			e.setX(e.offset[0])
-			e.setY(e.offset[1])
 		}
+	case PT_Left:
+		lPos()
+	case PT_Right:
+		rPos()
+	case PT_None:
+		if e.space == Space_screen {
+			e.offset[0] = -(float32(sys.gameWidth) / e.localscl / 2)
+		}
+	}
+	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
+	// The engine will leave the sprite facing to that side indefinitely.
+	// Ikemen chars aren't affected by this.
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
+		e.facing*e.relativef < 0 {
+		e.lockSpriteFacing = true
 	}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
@@ -1169,43 +1190,39 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			return
 		}
 	}
-	screen := false
-	if e.space == Space_screen || e.postype >= PT_L && e.postype != PT_N {
-		screen = true
-	}
 	if e.time == 0 || e.bindtime != 0 {
 		e.setAnimElem()
-		if e.space == Space_screen {
-			e.pos[0] = e.offset[0]
-			e.pos[1] = e.offset[1]
-			e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
-		} else if e.postype == PT_N && e.bindId < -1 {
-			e.pos[0] = e.offset[0]
-			e.pos[1] = e.offset[1]
-			e.bindtime = 0
-		} else if e.postype >= PT_L && e.postype != PT_N {
-			e.pos[0] = e.offset[0]
-			e.pos[1] = e.offset[1]
-			if e.postype == PT_L {
-				e.pos[0] -= float32(sys.gameWidth) / e.localscl / 2
-			} else {
-				e.pos[0] += float32(sys.gameWidth) / e.localscl / 2
-			}
-		} else if e.bindtime != 0 {
-			if c := sys.playerID(e.bindId); c != nil {
-				e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl + e.offset[0]
-				e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl + e.offset[1]
-			} else {
-				e.bindtime = 0
-				e.setX(e.pos[0])
-				e.setY(e.pos[1])
-			}
+	}
+	if e.bindtime != 0 && (e.space == Space_stage ||
+		(e.space == Space_screen && e.postype <= PT_P2)) {
+		if c := sys.playerID(e.bindId); c != nil {
+			e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
+			e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
+		} else {
+			// Doesn't seem necessary to do this, since MUGEN 1.1 seems to carry bindtime even if
+			// you change bindId to something that doesn't point to any character
+			// e.bindtime = 0
+			// e.setX(e.pos[0])
+			// e.setY(e.pos[1])
 		}
 	} else {
 		for i := range e.pos {
 			e.pos[i] = e.newPos[i] -
 				(e.newPos[i]-e.oldPos[i])*(1-sys.tickInterpola())
 		}
+	}
+	off := e.relativePos
+	// Left and right pos types change relative position depending on stage camera zoom and game width
+	if e.space == Space_stage {
+		if e.postype == PT_Left {
+			off[0] = off[0] / sys.cam.Scale
+		} else if e.postype == PT_Right {
+			off[0] = (off[0] + float32(sys.gameWidth)) / sys.cam.Scale
+		}
+	}
+	var facing float32 = e.facing * e.relativef
+	if e.lockSpriteFacing {
+		facing = -1
 	}
 	if sys.tickFrame() && act {
 		e.anim.UpdateSprite()
@@ -1229,7 +1246,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		alp[0] = -1
 	}
 	rot := e.rot
-	if (e.facing < 0) != (e.vfacing < 0) {
+	if (e.facing*e.relativef < 0) != (e.vfacing < 0) {
 		rot.angle *= -1
 		rot.yangle *= -1
 	}
@@ -1244,22 +1261,22 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-	var epos = [2]float32{e.pos[0] * e.localscl, e.pos[1] * e.localscl}
-	var ewin = [4]float32{e.window[0] * e.localscl * e.facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * e.facing, e.window[3] * e.localscl * e.vfacing}
-	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{e.facing * e.scale[0] * e.localscl,
+	var epos = [2]float32{(e.pos[0] + e.offset[0] + off[0]) * e.localscl, (e.pos[1] + e.offset[1] + off[1]) * e.localscl}
+	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
+	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{facing * e.scale[0] * e.localscl,
 		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
-		screen, playerNo == sys.superplayer, oldVer, e.facing, 1, int32(e.projection), fLength, ewin},
+		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 
-		//if screen && e.bindtime == 0 {
+		//if e.space == Space_screen && e.bindtime == 0 {
 		//	if e.space <= Space_none {
 		//		switch e.postype {
-		//		case PT_L:
+		//		case PT_Left:
 		//			for i := range e.pos {
 		//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
 		//			}
-		//		case PT_R:
+		//		case PT_Right:
 		//			e.pos[0] = sys.cam.ScreenPos[0] +
 		//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
 		//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
@@ -1278,16 +1295,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
-			if e.bindtime == 0 {
-				e.oldPos = e.pos
-				e.newPos = e.pos
-				if e.time > 0 {
-					e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing*float32(e.relativef)
-					e.newPos[1] = e.pos[1] + e.velocity[1]
-					for i := range e.velocity {
-						e.velocity[i] += e.accel[i]
-					}
-				}
+			e.oldPos = e.pos
+			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing
+			e.newPos[1] = e.pos[1] + e.velocity[1]
+			for i := range e.velocity {
+				e.velocity[i] += e.accel[i]
 			}
 			if e.animelemlooped {
 				e.setAnimElem()
@@ -1783,7 +1795,7 @@ type Char struct {
 	pushed                bool
 	hitdefContact         bool
 	atktmp                int8
-	hittmp                int8
+	hittmp                int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
 	acttmp                int8
 	minus                 int8
 	platformPosY          float32
@@ -1915,7 +1927,7 @@ func (c *Char) copyParent(p *Char) {
 	}
 	c.dizzyPoints, c.dizzyPointsMax = p.dizzyPointsMax, p.dizzyPointsMax
 	c.guardPoints, c.guardPointsMax = p.guardPointsMax, p.guardPointsMax
-	c.redLife = 0
+	c.redLife = c.lifeMax
 	c.clear2()
 }
 func (c *Char) addChild(ch *Char) {
@@ -2088,12 +2100,12 @@ func (c *Char) load(def string) error {
 	gi.constants["default.attack.lifetopowermul"] = 0.7
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
 	gi.constants["super.targetdefencemul"] = 1.5
-	gi.constants["default.lifetoguardpointsmul"] = -1.5
+	gi.constants["default.lifetoguardpointsmul"] = 1.5
 	gi.constants["super.lifetoguardpointsmul"] = -0.33
-	gi.constants["default.lifetodizzypointsmul"] = -1.8
+	gi.constants["default.lifetodizzypointsmul"] = 1.8
 	gi.constants["super.lifetodizzypointsmul"] = 0
-	gi.constants["default.lifetoredlifemul"] = 0.25
-	gi.constants["super.lifetoredlifemul"] = 0.25
+	gi.constants["default.lifetoredlifemul"] = 0.75
+	gi.constants["super.lifetoredlifemul"] = 0.75
 	gi.constants["default.legacygamedistancespec"] = 0
 	gi.constants["default.ignoredefeatedenemies"] = 1
 	gi.constants["input.pauseonhitpause"] = 1
@@ -3206,17 +3218,29 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 	_, ok := c.gi().states[stateno.ToI()]
 	return BytecodeBool(ok)
 }
-func (c *Char) stageFrontEdge() float32 {
-	if c.facing > 0 {
-		return sys.cam.XMax/c.localscl - c.pos[0]
-	}
-	return c.pos[0] - sys.cam.XMin/c.localscl
-}
-func (c *Char) stageBackEdge() float32 {
+func (c *Char) stageFrontEdgeDist() float32 {
+	side := float32(0)
 	if c.facing < 0 {
-		return sys.cam.XMax/c.localscl - c.pos[0]
+		side = sys.screenleft / c.localscl
+	} else {
+		side = sys.screenright / c.localscl
 	}
-	return c.pos[0] - sys.cam.XMin/c.localscl
+	if c.facing > 0 {
+		return sys.cam.XMax/c.localscl - side - c.pos[0]
+	}
+	return c.pos[0] - sys.cam.XMin/c.localscl - side
+}
+func (c *Char) stageBackEdgeDist() float32 {
+	side := float32(0)
+	if c.facing < 0 {
+		side = sys.screenleft / c.localscl
+	} else {
+		side = sys.screenright / c.localscl
+	}
+	if c.facing < 0 {
+		return sys.cam.XMax/c.localscl - side - c.pos[0]
+	}
+	return c.pos[0] - sys.cam.XMin/c.localscl - side
 }
 func (c *Char) teamLeader() int {
 	if c.teamside == -1 || sys.tmode[c.playerNo&1] == TM_Single || sys.tmode[c.playerNo&1] == TM_Turns {
@@ -3328,7 +3352,7 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 
 // Furimuki = Turn around
 func (c *Char) turn() {
-	if c.scf(SCF_ctrl) && c.helperIndex == 0 {
+	if c.helperIndex == 0 {
 		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.sf(CSF_noturntarget) {
 			switch c.ss.stateType {
 			case ST_S:
@@ -3388,20 +3412,32 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ss.sb.prevMoveType = c.ss.sb.moveType
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
-	c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+	// Reset persistent counters for this state (Ikemen chars)
+	// This used to belong to (*StateBytecode).init(), but was moved outside there
+	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
+	// of a hitpause when attempting to change state during the hitpause.
+	// Ikemenver chars aren't affected by this.
+	if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+	}
 	c.stchtmp = true
 	return true
 }
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
+		// Reset persistent counters for this state (MUGEN chars)
+		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
+		}
 		c.stchtmp = false
 		return true
 	}
 	return false
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
-	if c.minus <= 0 && (c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
+	if c.minus <= 0 && c.scf(SCF_ctrl) && c.roundState() <= 2 &&
+		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.turn()
 	}
 	if anim >= 0 {
@@ -3544,8 +3580,8 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 				*dstFacing *= p2.facing
 			}
 		}
-	case PT_F, PT_B:
-		if c.facing > 0 && pt == PT_F || c.facing < 0 && pt == PT_B {
+	case PT_Front, PT_Back:
+		if c.facing > 0 && pt == PT_Front || c.facing < 0 && pt == PT_Back {
 			p[0] = c.rightEdge() * (c.localscl / localscl)
 		} else {
 			p[0] = c.leftEdge() * (c.localscl / localscl)
@@ -3557,19 +3593,19 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		}
 		p[1] = pos[1]
 		*dstFacing *= c.facing
-	case PT_L:
+	case PT_Left:
 		p[0] = c.leftEdge()*(c.localscl/localscl) + pos[0]
 		p[1] = pos[1]
 		if isProj {
 			*dstFacing *= c.facing
 		}
-	case PT_R:
+	case PT_Right:
 		p[0] = c.rightEdge()*(c.localscl/localscl) + pos[0]
 		p[1] = pos[1]
 		if isProj {
 			*dstFacing *= c.facing
 		}
-	case PT_N:
+	case PT_None:
 		p = pos
 		if isProj {
 			*dstFacing *= c.facing
@@ -4002,15 +4038,8 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			hd.fall.animtype = RA_Back
 		}
 	}
-	// if hd.animtype == RA_Back {
-	// hd.animtype = RA_Hard
-	// }
 	if hd.air_type == HT_Unknown {
-		if hd.ground_type == HT_Trip {
-			hd.air_type = HT_High
-		} else {
-			hd.air_type = hd.ground_type
-		}
+		hd.air_type = hd.ground_type
 	}
 	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0))
 	if hd.attr&int32(ST_A) != 0 {
@@ -4282,19 +4311,22 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redl
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
+			// Subtract life
 			t.lifeAdd(-dmg, true, true)
+			// Subtract red life
 			if redlife {
 				if t.ghv.attr&int32(AT_AH) != 0 {
-					t.redLifeAdd(dmg*float64(c.gi().constants["super.lifetoredlifemul"]), true)
+					t.redLifeAdd(-dmg*float64(c.gi().constants["super.lifetoredlifemul"]), true)
 				} else {
-					t.redLifeAdd(dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+					t.redLifeAdd(-dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
 				}
 			}
+			// Subtract dizzy points
 			if dizzy && !t.scf(SCF_dizzy) && !c.sf(CSF_nodizzypointsdamage) {
 				if t.ghv.attr&int32(AT_AH) != 0 {
-					t.dizzyPointsAdd(dmg*float64(c.gi().constants["super.lifetodizzypointsmul"]), true)
+					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["super.lifetodizzypointsmul"]), true)
 				} else {
-					t.dizzyPointsAdd(dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
+					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
 				}
 			}
 			t.ghv.kill = kill
@@ -4448,6 +4480,8 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		}
 		c.lifeSet(c.life + int32(add))
 		c.ghv.kill = kill
+		// Using LifeAdd currently does not touch the red life value
+		// This could be expanded in the future, as with TargetLifeAdd
 	}
 }
 func (c *Char) lifeSet(life int32) {
@@ -4546,7 +4580,7 @@ func (c *Char) redLifeSet(set int32) {
 	if c.life == 0 {
 		c.redLife = 0
 	} else if !sys.roundEnd() && sys.lifebar.redlifebar {
-		c.redLife = Clamp(set, 0, c.lifeMax-c.life)
+		c.redLife = Clamp(set, c.life, c.lifeMax)
 	}
 }
 func (c *Char) score() float32 {
@@ -4732,7 +4766,12 @@ func (c *Char) angleSet(a float32) {
 	c.angleTrg = c.angle
 }
 func (c *Char) inputOver() bool {
-	return !c.alive() || sys.time == 0 || sys.intro <= -sys.lifebar.ro.over_time
+	if c.sf(CSF_postroundinput) {
+		return false
+	} else {
+		// KO'd characters are covered by the inputwait flag
+		return sys.time == 0 || sys.intro <= -sys.lifebar.ro.over_time || c.scf(SCF_inputwait)
+	}
 }
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || c.ss.no == 5150
@@ -4746,7 +4785,7 @@ func (c *Char) makeDust(x, y float32) {
 		}
 		e.sprpriority = math.MaxInt32
 		e.ownpal = true
-		e.offset = [...]float32{x, y}
+		e.relativePos = [...]float32{x, y}
 		e.setPos(c)
 		c.insertExplod(i)
 	}
@@ -5126,6 +5165,7 @@ func (c *Char) inGuardState() bool {
 	return c.ss.no == 120 || (c.ss.no >= 130 && c.ss.no <= 132) ||
 		c.ss.no == 140 || (c.ss.no >= 150 && c.ss.no <= 155)
 }
+
 func (c *Char) gravity() {
 	c.vel[1] += c.gi().movement.yaccel * ((320 / c.localcoord) / c.localscl)
 }
@@ -5273,12 +5313,12 @@ func (c *Char) bind() {
 		return
 	}
 }
+func (c *Char) trackableByCamera() bool {
+	return sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar
+}
 func (c *Char) xScreenBound() {
-	if sys.cam.View == Free_View || sys.cam.View == Follow_View && c != sys.cam.FollowChar {
-		return
-	}
 	x := c.pos[0]
-	if c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if c.trackableByCamera() && c.sf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -5438,7 +5478,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	if h.attr <= 0 || h.hitflag&int32(c.ss.stateType) == 0 ||
 		h.hitflag&int32(ST_F) == 0 && c.hittmp >= 2 ||
 		h.hitflag&int32(MT_MNS) != 0 && c.hittmp > 0 ||
-		h.hitflag&int32(MT_PLS) != 0 && c.hittmp <= 0 {
+		h.hitflag&int32(MT_PLS) != 0 && (c.hittmp <= 0 || c.inGuardState()) {
 		return false
 	}
 	//if h.chainid < 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/308
@@ -5513,6 +5553,7 @@ func (c *Char) actionPrepare() {
 	if !c.pauseBool {
 		// Perform basic actions
 		if c.keyctrl[0] && c.cmd != nil {
+			// In Mugen, characters can perform basic actions even if they are KO
 			if c.ctrl() && !c.inputOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.sf(CSF_nohardcodedkeys) {
 					// TODO disable jumps right after KO instead of after over.hittime
@@ -5726,13 +5767,13 @@ func (c *Char) actionRun() {
 				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
 					Btoi(c.ss.stateType == ST_A)*51, -1, -1, "")
 			}
-			for {
-				c.posUpdate()
-				if c.ss.physics != ST_A || c.vel[1] <= 0 || (c.pos[1]-c.platformPosY) < 0 ||
-					c.ss.no == 105 {
-					break
+			c.posUpdate()
+			// Land from aerial physics
+			// This was a loop before like Mugen, so setting state 52 to physics A caused a crash
+			if c.ss.physics == ST_A {
+				if c.vel[1] > 0 && (c.pos[1]-c.platformPosY) >= 0 && c.ss.no != 105 {
+					c.changeState(52, -1, -1, "")
 				}
-				c.changeState(52, -1, -1, "")
 			}
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
@@ -5758,19 +5799,19 @@ func (c *Char) actionRun() {
 		c.ghv.guardpower = 0
 		if c.ghv.dizzypoints != 0 {
 			if c.ss.moveType == MT_H && !c.inGuardState() {
-				c.dizzyPointsAdd(float64(c.ghv.dizzypoints), true)
+				c.dizzyPointsAdd(-float64(c.ghv.dizzypoints), true)
 			}
 			c.ghv.dizzypoints = 0
 		}
 		if c.ghv.guardpoints != 0 {
 			if c.ss.moveType == MT_H && c.inGuardState() {
-				c.guardPointsAdd(float64(c.ghv.guardpoints), true)
+				c.guardPointsAdd(-float64(c.ghv.guardpoints), true)
 			}
 			c.ghv.guardpoints = 0
 		}
 		if c.ghv.redlife != 0 {
 			if c.ss.moveType == MT_H {
-				c.redLifeAdd(float64(c.ghv.redlife), true)
+				c.redLifeAdd(-float64(c.ghv.redlife), true)
 			}
 			c.ghv.redlife = 0
 		}
@@ -5854,18 +5895,21 @@ func (c *Char) update(cvmin, cvmax,
 			c.hittmp = int8(Btoi(c.ghv.fallf)) + 1
 			if c.acttmp > 0 && (c.ss.no == 5100 || c.ss.no == 5070) && c.ss.time == 1 {
 				if !c.sf(CSF_nofalldefenceup) {
-					c.fallDefenseMul = c.gi().data.fall.defence_mul
+					c.fallDefenseMul *= c.gi().data.fall.defence_mul
 				}
 				if !c.sf(CSF_nofallcount) {
 					c.ghv.fallcount++
 				}
+				// Mugen does not actually require the first condition here
+				// But that makes characters always invulnerable if their lie down time is <= 10
 				if c.ghv.fallcount > 1 && c.ss.no == 5100 {
 					if c.recoverTime > 0 {
 						c.recoverTime = int32(math.Floor(float64(c.recoverTime) / 2))
 					}
-					if c.ghv.fallcount > 3 || c.recoverTime <= 0 {
+					//if c.ghv.fallcount > 3 || c.recoverTime <= 0 {
+					if c.recoverTime <= 10 {
 						c.hitby[0].flag = ^int32(ST_SCA)
-						c.hitby[0].time = 360
+						c.hitby[0].time = 180 // Mugen uses infinite time here
 					}
 				}
 			}
@@ -5971,7 +6015,7 @@ func (c *Char) update(cvmin, cvmax,
 			}
 		}
 	}
-	if sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar {
+	if c.trackableByCamera() {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -6064,37 +6108,34 @@ func (c *Char) tick() {
 			pn = c.ghv.playerNo
 		}
 		if c.stchtmp {
-			switch c.ss.stateType {
-			case ST_S:
-				c.ss.prevno = 5000
-			case ST_C:
-				c.ss.prevno = 5010
-			case ST_A:
-				c.ss.prevno = 5020
-			case ST_L:
+			// For Mugen compatibility, PrevStateNo returns these if the character is hit into a custom state (see GitHub #765)
+			// This could be disabled if the state owner is an Ikemen character
+			if c.ss.stateType == ST_L && c.pos[1] == 0 {
 				c.ss.prevno = 5080
-			}
-		} else if c.ss.stateType == ST_L {
-			if c.pos[1] == 0 {
-				c.changeStateEx(5080, pn, -1, 0, "")
-				if c.ghv.yvel != 0 {
-					c.downHitOffset = 15 * (c.gi().localcoord[0] / 320) // This value could be unhardcoded
-				}
-				if c.recoverTime > 0 {
-					c.recoverTime--
-				}
+			} else if c.ghv._type == HT_Trip {
+				c.ss.prevno = 5070
+			} else if c.ss.stateType == ST_S {
+				c.ss.prevno = 5000
+			} else if c.ss.stateType == ST_C {
+				c.ss.prevno = 5010
 			} else {
-				c.changeStateEx(5020, pn, -1, 0, "")
+				c.ss.prevno = 5020
 			}
-		} else if c.ghv.guarded && (c.ghv.damage < c.life || sys.sf(GSF_noko) ||
-			c.sf(CSF_noko) || c.sf(CSF_noguardko)) {
+		} else if c.ghv.guarded &&
+			(c.ghv.damage < c.life || sys.sf(GSF_noko) || c.sf(CSF_noko) || c.sf(CSF_noguardko)) {
 			switch c.ss.stateType {
+			// Guarding is not affected by P2getP1state
 			case ST_S:
 				c.selfState(150, -1, -1, 0, "")
 			case ST_C:
 				c.selfState(152, -1, -1, 0, "")
-			case ST_A:
+			default:
 				c.selfState(154, -1, -1, 0, "")
+			}
+		} else if c.ss.stateType == ST_L && c.pos[1] == 0 {
+			c.changeStateEx(5080, pn, -1, 0, "")
+			if c.ghv.yvel != 0 {
+				c.downHitOffset = 15 * (c.gi().localcoord[0] / 320) // This value could be unhardcoded
 			}
 		} else if c.ghv._type == HT_Trip {
 			c.changeStateEx(5070, pn, -1, 0, "")
@@ -6107,7 +6148,7 @@ func (c *Char) tick() {
 				c.changeStateEx(5000, pn, -1, 0, "")
 			case ST_C:
 				c.changeStateEx(5010, pn, -1, 0, "")
-			case ST_A:
+			default:
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		}
@@ -6138,7 +6179,8 @@ func (c *Char) tick() {
 				c.ss.moveType != MT_H && !sys.sf(GSF_noko) && !c.sf(CSF_noko) &&
 				(!c.ghv.guarded || !c.sf(CSF_noguardko)) {
 				c.ghv.fallf = true
-				c.selfState(5030, -1, -1, -1, "")
+				// Mugen sets control to 0 here
+				c.selfState(5030, -1, -1, 0, "")
 				c.ss.time = 1
 			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
 				c.selfState(5120, -1, -1, -1, "")
@@ -6579,6 +6621,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
 						ghv.xvel = hd.guard_velocity * (c.localscl / getter.localscl)
+						// Mugen does not accept a Y component for ground guard velocity
 						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
 					}
 					if !getter.sf(CSF_noguarddamage) {
@@ -6616,7 +6659,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 						ghv.fallf = hd.ground_fall
 						if ghv.fallf && ghv.yvel == 0 {
-							ghv.yvel = -0.001 * (c.localscl / getter.localscl) //新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
+							// 新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
+							// "I think it's better not to reproduce the situation where the value inside here
+							// becomes smaller when enlarging the window size in the new MUGEN."
+							ghv.yvel = -0.001 * (c.localscl / getter.localscl)
 						}
 						if ghv.yvel != 0 {
 							ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
@@ -6638,6 +6684,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 					ghv.fallcount = fc
 					ghv.fallf = ghv.fallf || fall
+					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
+					if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+						ghv.hittime += 1
+					}
 				}
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
@@ -6707,11 +6757,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				} else if getter.bindToId == c.id {
 					getter.setBindTime(0)
 				}
-				// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
-				if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-					ghv.hittime += 1
-					ghv.ctrltime += 1
-				}
 			} else if hitType == 1 {
 				if !getter.sf(CSF_nohitdamage) {
 					absdamage = hd.hitdamage
@@ -6761,6 +6806,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.ghv.guardredlife += getter.computeDamage(
 					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, true)
 			}
+			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
 				if getter.ghv.kill || !live {
 					getter.ghv.fatal = true
@@ -6777,7 +6823,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.ghv.yvel = getter.gi().velocity.air.gethit.ko.ymin
 								}
 							}
-						} else {
+						} else if getter.ss.stateType != ST_L {
 							if getter.ghv.yvel == 0 {
 								getter.ghv.xvel *= getter.gi().velocity.ground.gethit.ko.xmul
 							}
@@ -6825,7 +6871,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
-				e.offset = off
+				e.relativePos = off
 				e.supermovetime = -1
 				e.pausemovetime = -1
 				e.localscl = 1
@@ -6999,7 +7045,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.setDefPhase()
 			}
 			//getter.getcombodmg += hd.hitdamage
-			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+			if hitType > 0 && !proj && getter.trackableByCamera() && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
@@ -7012,7 +7058,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		} else {
-			if hitType > 0 && !proj && getter.sf(CSF_screenbound) &&
+			if hitType > 0 && !proj && getter.trackableByCamera() && getter.sf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
 				switch getter.ss.stateType {
@@ -7135,6 +7181,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							}
 						}
 						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
+						//"In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1."
 						if p.hitdef.attr&int32(AT_AP) != 0 {
 							ap_projhit = true
 						}
@@ -7308,10 +7355,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
 						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 					}
-					if getter.sf(CSF_screenbound) {
+					if getter.trackableByCamera() && getter.sf(CSF_screenbound) {
 						getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 					}
-					if c.sf(CSF_screenbound) {
+					if c.trackableByCamera() && c.sf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 						if c.facing > 0 {
 							l, r = -r, -l

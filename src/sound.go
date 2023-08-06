@@ -21,7 +21,7 @@ const (
 	audioOutLen          = 2048
 	audioFrequency       = 48000
 	audioPrecision       = 4
-	audioResampleQuality = 3
+	audioResampleQuality = 1
 	audioSoundFont       = "sound/soundfont.sf2" // default path for MIDI soundfont
 )
 
@@ -238,12 +238,12 @@ func loadSoundFont(filename string) (*midi.SoundFont, error) {
 	return soundfont, nil
 }
 
-func (bgm *Bgm) SetPaused(paused bool) {
-	if bgm.ctrl == nil {
+func (bgm *Bgm) SetPaused(pause bool) {
+	if bgm.ctrl == nil || bgm.ctrl.Paused == pause {
 		return
 	}
 	speaker.Lock()
-	bgm.ctrl.Paused = paused
+	bgm.ctrl.Paused = pause
 	speaker.Unlock()
 }
 
@@ -284,6 +284,18 @@ func readSound(f *os.File, size uint32) (*Sound, error) {
 	s, fmt, err := wav.Decode(bytes.NewReader(wavData))
 	if err != nil {
 		return nil, err
+	}
+	// Check if the file can be fully played
+	var samples [512][2]float64
+	for {
+		sn, _ := s.Stream(samples[:])
+		if sn == 0 {
+			// If sound wasn't able to be fully played, we disable it to avoid engine freezing
+			if s.Position() < s.Len() {
+				return nil, nil
+			}
+			break
+		}
 	}
 	return &Sound{wavData, fmt, s.Len()}, nil
 }
@@ -372,6 +384,10 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 						return nil, err
 					}
 				} else {
+					// Sound is corrupted and can't be played, so we export a warning message to the console
+					if tmp == nil {
+						sys.appendToConsole(fmt.Sprintf("WARNING: %v sound %v,%v is corrupted and can't be played, so it was disabled", filename, num[0], num[1]))
+					}
 					s.table[num] = tmp
 					if max > 0 {
 						break

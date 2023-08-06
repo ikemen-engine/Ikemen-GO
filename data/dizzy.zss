@@ -367,17 +367,16 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else ignoreHitPause if roundState = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
-	map(_iksys_dizzyPointsCounter) := 0;
+	map(_iksys_dizzyPointsTimer) := 0;
 	map(_iksys_dizzyLimit) := 0;
 
 } else ignoreHitPause if alive {
-	# Upon hit, set cooldown counter
-	# Cooldown time could be a character constant
+	# Upon hit, set cooldown timer
 	if moveType = H || dizzy || stateNo = const(StateDownedGetHit_gettingUp) {
-		map(_iksys_dizzyPointsCounter) := 60;
-	# Otherwise decrease cooldown counter by 1 each frame
-	} else if map(_iksys_dizzyPointsCounter) > 0 {
-		mapAdd{map: "_iksys_dizzyPointsCounter"; value: -1}
+		map(_iksys_dizzyPointsTimer) := 60;
+	# Otherwise decrease cooldown timer by 1 each frame
+	} else if map(_iksys_dizzyPointsTimer) > 0 {
+		mapAdd{map: "_iksys_dizzyPointsTimer"; value: -1}
 	}
 
 	# Freeze dizzy points if character was already dizzied once in the combo
@@ -390,7 +389,7 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 	# Set dizzy flag
 	if !dizzy && dizzyPoints = 0 {
-		if time = 0 && getHitVar(dizzyPoints) >= 0 {
+		if getHitVar(damage) && getHitVar(dizzyPoints) <= 0 {
 			dizzyPointsSet{value: 1} # Similar to using kill = 0 in LifeAdd
 		} else if moveType = H && !inCustomState {
 			dizzySet{value: 1}
@@ -422,20 +421,20 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 		}
 
 		# Reset dizzy points and remove dizzy flag if the player is no longer being hit
-		if (moveType != H || map(_iksys_dizzyLimit)) && stateNo != const(StateDizzy) {
+		if moveType != H && stateNo != const(StateDizzy) {
 			dizzyPointsSet{value: dizzyPointsMax}
 			dizzySet{value: 0}
 		}
 	}
 
 	# Dizzy points recovery after cooldown ends
-	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsCounter) = 0 {
+	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsTimer) = 0 {
 		# Fixed value. Characters with a longer dizzy bar take longer to recover
 		# This property could use a character constant as well instead
-		dizzyPointsAdd{value: 5}
+		dizzyPointsAdd{value: 5; absolute: 1}
 	}
 
-	# Reset dizzy limit
+	# Reset dizzy limit once character can act again
 	if map(_iksys_dizzyLimit) {
 		if (ctrl && time > 0) || moveType = A {
 			map(_iksys_dizzyLimit) := 0;

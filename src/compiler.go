@@ -320,85 +320,85 @@ var triggerMap = map[string]int{
 	"wintime":           1,
 	"winperfect":        1,
 	// expanded triggers
-	"ailevelf":         1,
-	"airjumpcount":     1,
-	"animelemlength":   1,
-	"animlength":       1,
-	"attack":           1,
-	"bgmlength":        1,
-	"bgmposition":      1,
-	"combocount":       1,
-	"consecutivewins":  1,
-	"defence":          1,
-	"dizzy":            1,
-	"dizzypoints":      1,
-	"dizzypointsmax":   1,
-	"drawpalno":        1,
-	"envshakevar":      1,
-	"fighttime":        1,
-	"firstattack":      1,
-	"float":            1,
-	"framespercount":   1,
-	"gamemode":         1,
-	"getplayerid":      1,
-	"groundangle":      1,
-	"guardbreak":       1,
-	"guardpoints":      1,
-	"guardpointsmax":   1,
-	"hitoverridden":    1,
-	"incustomstate":    1,
-	"indialogue":       1,
-	"isasserted":       1,
-	"localscale":       1,
-	"majorversion":     1,
-	"map":              1,
-	"max":              1,
-	"clamp":       		1,
-	"sign":       		1,
-	"atan2":       		1,
-	"rad":       		1,
-	"deg":       		1,
-	"lerp":       		1,	
-	"memberno":         1,
-	"min":              1,
-	"movecountered":    1,
-	"p5name":           1,
-	"p6name":           1,
-	"p7name":           1,
-	"p8name":           1,
-	"pausetime":        1,
-	"physics":          1,
-	"playerno":         1,
-	"prevanim":         1,
-	"prevmovetype":     1,
-	"ratiolevel":       1,
-	"randomrange":      1,
-	"receivedhits":     1,
-	"receiveddamage":   1,
-	"redlife":          1,
-	"reversaldefattr":  1,
-	"round":            1,
-	"roundtype":        1,
-	"score":            1,
-	"scoretotal":       1,
-	"selfstatenoexist": 1,
-	"sprpriority":      1,
-	"stagebackedge":    1,
-	"stageconst":       1,
-	"stagefrontedge":   1,
-	"stagetime":        1,
-	"standby":          1,
-	"teamleader":       1,
-	"teamsize":         1,
-	"timeelapsed":      1,
-	"timeremaining":    1,
-	"timetotal":        1,
-	"winhyper":         1,
-	"winspecial":       1,
-	"angle":       		1,
-	"scale":       		1,
-	"offset":       	1,
-	"alpha":       		1,
+	"ailevelf":           1,
+	"airjumpcount":       1,
+	"alpha":              1,
+  "angle":              1,
+  "animelemlength":     1,
+	"animlength":         1,
+	"atan2":              1,
+	"attack":             1,
+	"bgmlength":          1,
+	"bgmposition":        1,
+	"clamp":              1,
+	"combocount":         1,
+	"consecutivewins":    1,
+	"defence":            1,
+	"deg":                1,
+	"dizzy":              1,
+	"dizzypoints":        1,
+	"dizzypointsmax":     1,
+	"drawpalno":          1,
+	"envshakevar":        1,
+	"fighttime":          1,
+	"firstattack":        1,
+	"float":              1,
+	"framespercount":     1,
+	"gamemode":           1,
+	"getplayerid":        1,
+	"groundangle":        1,
+	"guardbreak":         1,
+	"guardpoints":        1,
+	"guardpointsmax":     1,
+	"hitoverridden":      1,
+	"incustomstate":      1,
+	"indialogue":         1,
+	"isasserted":         1,
+	"lerp":               1,
+	"localscale":         1,
+	"majorversion":       1,
+	"map":                1,
+	"max":                1,
+	"memberno":           1,
+	"min":                1,
+	"movecountered":      1,
+	"offset":             1,
+	"p5name":             1,
+	"p6name":             1,
+	"p7name":             1,
+	"p8name":             1,
+	"pausetime":          1,
+	"physics":            1,
+	"playerno":           1,
+	"prevanim":           1,
+	"prevmovetype":       1,
+	"rad":                1,
+	"ratiolevel":         1,
+	"randomrange":        1,
+	"receivedhits":       1,
+	"receiveddamage":     1,
+	"redlife":            1,
+	"reversaldefattr":    1,
+	"round":              1,
+	"roundtype":          1,
+	"scale":              1,
+	"score":              1,
+	"scoretotal":         1,
+	"selfstatenoexist":   1,
+	"sign":               1,
+	"sprpriority":        1,
+	"stagebackedgedist":  1,
+	"stageconst":         1,
+	"stagefrontedgedist": 1,
+	"stagetime":          1,
+	"standby":            1,
+	"teamleader":         1,
+	"teamsize":           1,
+	"timeelapsed":        1,
+	"timeremaining":      1,
+	"timetotal":          1,
+	"winhyper":           1,
+	"winspecial":         1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -1228,6 +1228,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					return bvNone(), Error("Missing '(' after player")
 				case OC_playerid:
 					return bvNone(), Error("Missing '(' after playerid")
+				case OC_helperindex:
+					return bvNone(), Error("Missing '(' after helperindex")
 				}
 			}
 			if rd {
@@ -2964,8 +2966,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_selfstatenoexist)
 	case "sprpriority":
 		out.append(OC_ex_, OC_ex_sprpriority)
-	case "stagebackedge":
-		out.append(OC_ex_, OC_ex_stagebackedge)
+	case "stagebackedgedist", "stagebackedge": //Latter is deprecated
+		out.append(OC_ex_, OC_ex_stagebackedgedist)
 	case "stageconst":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -2978,8 +2980,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), Error("Missing ')' before " + c.token)
 		}
 		*in = (*in)[1:]
-	case "stagefrontedge":
-		out.append(OC_ex_, OC_ex_stagefrontedge)
+	case "stagefrontedgedist", "stagefrontedge": //Latter is deprecated
+		out.append(OC_ex_, OC_ex_stagefrontedgedist)
 	case "stagetime":
 		out.append(OC_ex_, OC_ex_stagetime)
 	case "standby":
@@ -3765,7 +3767,7 @@ func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 	}
 	return nil
 }
-func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
+func (c *Compiler) paramPostype(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "postype", func(data string) error {
 		if len(data) == 0 {
@@ -3779,15 +3781,15 @@ func (c *Compiler) paramPostye(is IniSection, sc *StateControllerBase,
 			case 'p':
 				pt = PT_P1
 			case 'f':
-				pt = PT_F
+				pt = PT_Front
 			case 'b':
-				pt = PT_B
+				pt = PT_Back
 			case 'l':
-				pt = PT_L
+				pt = PT_Left
 			case 'r':
-				pt = PT_R
+				pt = PT_Right
 			case 'n':
-				pt = PT_N
+				pt = PT_None
 			default:
 				return Error("Invalid value: " + data)
 			}
@@ -4816,7 +4818,7 @@ func (c *Compiler) subBlock(line *string, root bool,
 		c.scan(line)
 		var err error
 		if bl.elseBlock, err = c.subBlock(line, root,
-			sbc, numVars, inheritIhp, nestedInLoop); err != nil {
+			sbc, numVars, inheritIhp || bl.ctrlsIgnorehitpause, nestedInLoop); err != nil {
 			return nil, err
 		}
 		if bl.elseBlock.ignorehitpause >= -1 {

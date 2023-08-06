@@ -57,6 +57,7 @@ type Camera struct {
 	Scale, MinScale                 float32
 	boundL, boundR, boundH, boundLo float32
 	ExtraBoundH                     float32
+	minYZoomDelta                   float32
 	zoff                            float32
 	screenZoff                      float32
 	halfWidth                       float32
@@ -68,6 +69,12 @@ func newCamera() *Camera {
 	return &Camera{View: Fighting_View, ZoomMin: 5.0 / 6, ZoomMax: 15.0 / 14, ZoomSpeed: 12}
 }
 func (c *Camera) Reset() {
+	c.minYZoomDelta = 1
+	for _, b := range sys.stage.bg {
+		if b.zoomdelta[1] < c.minYZoomDelta {
+			c.minYZoomDelta = b.zoomdelta[1]
+		}
+	}
 	c.ZoomEnable = c.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1)
 	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
 	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
@@ -75,9 +82,8 @@ func (c *Camera) Reset() {
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
 	c.ExtraBoundH = ((1 - c.zoomout) * 100) * (1 / c.zoomout) * 2.1 * (float32(sys.gameHeight) / 240)
-	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) - c.ExtraBoundH
-	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl-c.drawOffsetY)
-
+	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) - c.ExtraBoundH*c.minYZoomDelta
+	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl) //-c.drawOffsetY)
 	//if c.boundlow < 0 {
 	//	c.boundLo += float32(c.boundlow) * c.localscl
 	//}
@@ -127,6 +133,10 @@ func (c *Camera) YBound(scl, y float32) float32 {
 	if c.verticalfollow <= 0 {
 		return 0
 	} else {
+		var extraBoundH float32
+		if c.zoomout < 1 {
+			extraBoundH = (c.ExtraBoundH * (1 - c.minYZoomDelta) * ((1 / scl) - 1) / ((1 / c.zoomout) - 1))
+		}
 		tmp := MaxF(0, 240-c.screenZoff)
 		c.CameraZoomYBound = 0
 		if !c.zoomanchor {
@@ -134,7 +144,7 @@ func (c *Camera) YBound(scl, y float32) float32 {
 			c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
 		}
 		bound := ClampF(y,
-			MinF(tmp*(1/scl-1), c.boundH-c.CameraZoomYBound-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
+			MinF(tmp*(1/scl-1), c.boundH-c.CameraZoomYBound-extraBoundH-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
 			c.boundLo)
 		return bound + c.CameraZoomYBound
 	}

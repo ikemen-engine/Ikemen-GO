@@ -311,7 +311,7 @@ func readHealthBar(pre string, is IniSection,
 func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	var life float32 = float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
 	//redlife := (float32(sys.chars[ref][0].life) + float32(sys.chars[ref][0].redLife)) / float32(sys.chars[ref][0].lifeMax)
-	var redVal int32 = sys.chars[ref][0].redLife
+	var redVal int32 = sys.chars[ref][0].redLife - sys.chars[ref][0].life
 	var getHit bool = (sys.chars[ref][0].fakeReceivedHits != 0 || sys.chars[ref][0].ss.moveType == MT_H) && !sys.chars[ref][0].scf(SCF_over)
 
 	if hbr.toplife > life {
@@ -400,8 +400,8 @@ func (hb *HealthBar) bgDraw(layerno int16) {
 }
 func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	life := float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
-	redlife := (float32(sys.chars[ref][0].life) + float32(sys.chars[ref][0].redLife)) / float32(sys.chars[ref][0].lifeMax)
-	redval := sys.chars[ref][0].redLife
+	redlife := float32(sys.chars[ref][0].redLife) / float32(sys.chars[ref][0].lifeMax)
+	redval := sys.chars[ref][0].redLife - sys.chars[ref][0].life
 	var MidPos = (float32(sys.gameWidth-320) / 2)
 	width := func(life float32) (r [4]int32) {
 		r = sys.scrrect
@@ -1828,7 +1828,7 @@ func readLifeBarRound(is IniSection,
 		ro.over_wintime = Max(1, tmp)
 	}
 	if is.ReadI32("over.time", &tmp) {
-		ro.over_time = Max(ro.over_wintime+1, tmp)
+		ro.over_time = Max(1, tmp)
 	}
 	is.ReadI32("win.time", &ro.win_time)
 	ro.win_sndtime = ro.win_time

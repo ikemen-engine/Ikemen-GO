@@ -148,11 +148,13 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
 	guardPointsSet{value: guardPointsMax}
-	map(_iksys_guardPointsCounter) := 0;
+	map(_iksys_guardPointsTimer) := 0;
 } else if roundState = 2 && alive {
-	# Reset cooldown counter
+	# Manage cooldown timer
 	ignoreHitPause if moveType = H {
-		map(_iksys_guardPointsCounter) := 60;
+		map(_iksys_guardPointsTimer) := 60;
+	} else if map(_iksys_guardPointsTimer) > 0 {
+		mapAdd{map: "_iksys_guardPointsTimer"; value: -1}
 	}
 	# Upon block
 	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
@@ -160,13 +162,10 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 		if (gameTime % 5) = 0 && guardPoints <= min((0.5 * guardPointsMax), 333) {
 			palFx{time: 2; add: 200, 0, 0}
 		}
-		# Entering guard break state
-		ignoreHitPause if guardPoints = 0 && !guardBreak {
-			changeState{value: const(StateGuardBreakHit)}
+		# Enter guard break state
+		if !guardBreak && guardPoints = 0 {
+			selfState{value: const(StateGuardBreakHit)}
 		}
-	# Otherwise decrease cooldown counter by 1 each frame
-	} else if map(_iksys_guardPointsCounter) > 0 && getHitVar(isBound) = 0 && !standby {
-		mapAdd{map: "_iksys_guardPointsCounter"; value: -1}
 	}
 	# Reset guard points and remove guard break flag if player is no longer in one of guard break states
 	ignoreHitPause if guardBreak && stateNo != [const(StateGuardBreakHit), const(StateGuardBreakRecover)] {
@@ -174,8 +173,7 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 		guardBreakSet{value: 0}
 	}
 	# Guard points recovery
-	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsCounter) = 0 {
-		guardPointsAdd{value: round(float(guardPointsMax) / 25, 0)}
-		map(_iksys_guardPointsCounter) := 30;
+	ignoreHitPause if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsTimer) <= 0 {
+		guardPointsAdd{value: 2; absolute: 1}
 	}
 }
