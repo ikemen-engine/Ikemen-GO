@@ -2998,16 +2998,15 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_timetotal)
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
-
 	case "angle":
-		out.append(OC_angle)
+		out.append(OC_ex_, OC_ex_angle)
 	case "scale":
 		c.token = c.tokenizer(in)
 		switch c.token {
 		case "x":
-			out.append(OC_scale_x)
+			out.append(OC_ex_, OC_ex_scale_x)
 		case "y":
-			out.append(OC_scale_y)
+			out.append(OC_ex_, OC_ex_scale_y)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3015,9 +3014,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 		switch c.token {
 		case "x":
-			out.append(OC_offset_x)
+			out.append(OC_ex_, OC_ex_offset_x)
 		case "y":
-			out.append(OC_offset_y)
+			out.append(OC_ex_, OC_ex_offset_y)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}		
@@ -3025,9 +3024,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 		switch c.token {
 		case "source":
-			out.append(OC_alpha_s)
+			out.append(OC_ex_, OC_ex_alpha_s)
 		case "dest":
-			out.append(OC_alpha_d)
+			out.append(OC_ex_, OC_ex_alpha_d)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

@@ -216,13 +216,6 @@ const (
 	OC_helperindex
 	OC_p2
 	OC_stateowner
-	OC_angle
-	OC_scale_x
-	OC_scale_y
-	OC_offset_x
-	OC_offset_y
-	OC_alpha_s
-	OC_alpha_d	
 	OC_rdreset
 	OC_const_
 	OC_st_
@@ -539,6 +532,13 @@ const (
 	OC_ex_envshakevar_time
 	OC_ex_envshakevar_freq
 	OC_ex_envshakevar_ampl
+	OC_ex_angle
+	OC_ex_scale_x
+	OC_ex_scale_y
+	OC_ex_offset_x
+	OC_ex_offset_y
+	OC_ex_alpha_s
+	OC_ex_alpha_d
 )
 const (
 	NumVar     = 60
@@ -1452,20 +1452,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_localvar:
 			sys.bcStack.Push(sys.bcVar[uint8(be[i])])
 			i++
-		case OC_angle:
-			sys.bcStack.PushF(c.angleTrg)
-		case OC_scale_x:			
-			sys.bcStack.PushF(c.angleScaleTrg[0])
-		case OC_scale_y:
-			sys.bcStack.PushF(c.angleScaleTrg[1])			
-		case OC_offset_x:
-			sys.bcStack.PushF(c.offsetTrg[0])
-		case OC_offset_y:
-			sys.bcStack.PushF(c.offsetTrg[1])
-		case OC_alpha_s:
-			sys.bcStack.PushI(c.alphaTrg[0])
-		case OC_alpha_d:
-			sys.bcStack.PushI(c.alphaTrg[1])
 		}		
 		c = oc
 	}
@@ -2197,6 +2183,20 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.envShake.freq / float32(math.Pi) * 180)
 	case OC_ex_envshakevar_ampl:
 		sys.bcStack.PushF(float32(math.Abs(float64(sys.envShake.ampl / oc.localscl))))
+	case OC_ex_angle:
+		sys.bcStack.PushF(c.angleTrg)
+	case OC_ex_scale_x:			
+		sys.bcStack.PushF(c.angleScaleTrg[0])
+	case OC_ex_scale_y:
+		sys.bcStack.PushF(c.angleScaleTrg[1])			
+	case OC_ex_offset_x:
+		sys.bcStack.PushF(c.offsetTrg[0])
+	case OC_ex_offset_y:
+		sys.bcStack.PushF(c.offsetTrg[1])
+	case OC_ex_alpha_s:
+		sys.bcStack.PushI(c.alphaTrg[0])
+	case OC_ex_alpha_d:
+		sys.bcStack.PushI(c.alphaTrg[1])		
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
