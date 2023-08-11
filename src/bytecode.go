@@ -3483,11 +3483,12 @@ type allPalFX palFX
 
 func (sc allPalFX) Run(c *Char, _ []int32) bool {
 	sys.allPalFX.clear()
-	sys.allPalFX.invertblend = -1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.allPalFX.PalFXDef, id, exp)
+		//Forcing 1.1 kind behavior
+		sys.allPalFX.invertblend = Clamp(sys.allPalFX.invertblend,0,1)
 		return true
-	})
+	})	
 	return false
 }
 
@@ -3495,9 +3496,11 @@ type bgPalFX palFX
 
 func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 	sys.bgPalFX.clear()
-	sys.bgPalFX.invertblend = -1
+	//Forcing 1.1 behavior
+	sys.bgPalFX.invertblend = -2
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.bgPalFX.PalFXDef, id, exp)
+		sys.bgPalFX.invertblend = -2	
 		return true
 	})
 	return false
