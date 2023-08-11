@@ -127,7 +127,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	return sys.workpal
 }
 func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, grayscale float32,
-	add, mul [3]float32) {
+	add, mul [3]float32, invblend int32 ) {
 	p := pf.getSynFx()
 	if !p.enable {
 		neg = false
@@ -142,6 +142,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool) (neg bool, grayscale float32,
 	}
 	neg = p.eInvertall
 	grayscale = 1 - p.eColor
+	invblend = p.eInvertblend
 	if !p.eNegType {
 		transNeg = false
 	}
@@ -233,6 +234,16 @@ func (pf *PalFX) synthesize(pfx PalFX) {
 	}
 	pf.eColor *= pfx.eColor
 	pf.eInvertall = pf.eInvertall != pfx.eInvertall
+
+	if pfx.invertblend == 2 && pf.invertblend == -1 {
+		pf.eInvertblend = 2
+	} else if pfx.invertblend == 2 && pf.invertblend == 2  {
+		pf.eInvertblend = -1
+	} else if pfx.invertblend == 1 && pf.invertblend == 0  {
+		pf.eInvertblend = 1
+	} else if pfx.invertblend == 1 && pf.invertblend == 1  {
+		pf.eInvertblend = 0
+	}
 }
 
 func (pf *PalFX) setColor(r, g, b int32) {
