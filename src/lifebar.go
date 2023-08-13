@@ -116,7 +116,7 @@ func loadFightFx(def string) error {
 							return err
 						}
 						lines, i := SplitAndTrim(str, "\n"), 0
-						ffx.fat = ReadAnimationTable(ffx.fsff,&ffx.fsff.palList, lines, &i)
+						ffx.fat = ReadAnimationTable(ffx.fsff, &ffx.fsff.palList, lines, &i)
 						return nil
 					}); err != nil {
 					return err
@@ -3045,7 +3045,7 @@ func loadLifebar(def string) (*Lifebar, error) {
 		}
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
-	l.at = ReadAnimationTable(l.sff,&l.sff.palList, lines, &i)
+	l.at = ReadAnimationTable(l.sff, &l.sff.palList, lines, &i)
 	i = 0
 	filesflg := true
 	ffx := newFightFx()
@@ -3106,7 +3106,7 @@ func loadLifebar(def string) (*Lifebar, error) {
 							return err
 						}
 						lines, i := SplitAndTrim(str, "\n"), 0
-						ffx.fat = ReadAnimationTable(ffx.fsff,&ffx.fsff.palList, lines, &i)
+						ffx.fat = ReadAnimationTable(ffx.fsff, &ffx.fsff.palList, lines, &i)
 						return nil
 					}); err != nil {
 					return nil, err
