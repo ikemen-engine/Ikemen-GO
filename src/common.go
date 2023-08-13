@@ -678,7 +678,7 @@ type AnimLayout struct {
 }
 
 func newAnimLayout(sff *Sff, ln int16) *AnimLayout {
-	return &AnimLayout{anim: *newAnimation(sff), lay: *newLayout(ln), palfx: newPalFX()}
+	return &AnimLayout{anim: *newAnimation(sff, &sff.palList), lay: *newLayout(ln), palfx: newPalFX()}
 }
 func ReadAnimLayout(pre string, is IniSection,
 	sff *Sff, at AnimationTable, ln int16) *AnimLayout {

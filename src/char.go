@@ -938,9 +938,15 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		if sd.anim.spr != nil {
 			img.anim.spr = newSprite()
 			*img.anim.spr = *sd.anim.spr
-			sd.anim.sff.palList.SwapPalMap(&sd.fx.remap)
-			img.anim.spr.Pal = sd.anim.spr.GetPal(&sd.anim.sff.palList)
-			sd.anim.sff.palList.SwapPalMap(&sd.fx.remap)
+			if sd.anim.palettedata != nil {
+				sd.anim.palettedata.SwapPalMap(&sd.fx.remap)
+				img.anim.spr.Pal = sd.anim.spr.GetPal(sd.anim.palettedata)
+				sd.anim.palettedata.SwapPalMap(&sd.fx.remap)
+			} else {
+				sd.anim.sff.palList.SwapPalMap(&sd.fx.remap)
+				img.anim.spr.Pal = sd.anim.spr.GetPal(&sd.anim.sff.palList)
+				sd.anim.sff.palList.SwapPalMap(&sd.fx.remap)
+			}
 		}
 		img.pos = sd.pos
 		img.scl = sd.scl
@@ -1611,6 +1617,7 @@ type CharGlobalInfo struct {
 	authorLow        string
 	palkeymap        [MaxPalNo]int32
 	sff              *Sff
+	palettedata      *Palette
 	snd              *Snd
 	anim             AnimationTable
 	palno, drawpalno int32
@@ -2010,7 +2017,7 @@ func (c *Char) ocd() *OverrideCharData {
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
 	gi.def, gi.displayname, gi.lifebarname, gi.author = def, "", "", ""
-	gi.sff, gi.snd, gi.quotes = nil, nil, [MaxQuotes]string{}
+	gi.sff, gi.palettedata, gi.snd, gi.quotes = nil, nil, nil, [MaxQuotes]string{}
 	gi.anim = NewAnimationTable()
 	gi.fnt = [10]*Fnt{}
 	for i := range gi.palkeymap {
@@ -2410,6 +2417,14 @@ func (c *Char) load(def string) error {
 	} else {
 		gi.sff = newSff()
 	}
+	gi.palettedata = newPaldata()
+	gi.palettedata.palList = PaletteList{
+		palettes:   append([][]uint32{}, gi.sff.palList.palettes...),
+		paletteMap: append([]int{}, gi.sff.palList.paletteMap...),
+		PalTable:   gi.sff.palList.PalTable,
+		numcols:    gi.sff.palList.numcols,
+		PalTex:     append([]*Texture{}, gi.sff.palList.PalTex...),
+	}
 	str = ""
 	if len(anim) > 0 {
 		if LoadFile(&anim, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
@@ -2436,7 +2451,7 @@ func (c *Char) load(def string) error {
 		}
 	}
 	lines, i = SplitAndTrim(str, "\n"), 0
-	gi.anim = ReadAnimationTable(gi.sff, lines, &i)
+	gi.anim = ReadAnimationTable(gi.sff, &gi.palettedata.palList, lines, &i)
 	if len(sound) > 0 {
 		if LoadFile(&sound, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			var err error
@@ -2474,10 +2489,10 @@ func (c *Char) load(def string) error {
 func (c *Char) loadPalette() {
 	gi := c.gi()
 	if gi.sff.header.Ver0 == 1 {
-		gi.sff.palList.ResetRemap()
+		gi.palettedata.palList.ResetRemap()
 		tmp := 0
 		for i := 0; i < MaxPalNo; i++ {
-			pl := gi.sff.palList.Get(i)
+			pl := gi.palettedata.palList.Get(i)
 			var f *os.File
 			var err error
 			if LoadFile(&gi.pal[i], []string{gi.def, "", sys.motifDir, "data/"}, func(file string) error {
@@ -2494,29 +2509,28 @@ func (c *Char) loadPalette() {
 				chk(f.Close())
 				if err == nil {
 					if tmp == 0 && i > 0 {
-						copy(gi.sff.palList.Get(0), pl)
+						copy(gi.palettedata.palList.Get(0), pl)
 					}
 					gi.palExist[i] = true
-
 					//パレットテクスチャ生成
-					gi.sff.palList.PalTex[i] = PaletteToTexture(pl)
+					gi.palettedata.palList.PalTex[i] = PaletteToTexture(pl)
 					tmp = i + 1
 				}
 			}
 			if err != nil {
 				gi.palExist[i] = false
 				if i > 0 {
-					delete(gi.sff.palList.PalTable, [...]int16{1, int16(i + 1)})
+					delete(gi.palettedata.palList.PalTable, [...]int16{1, int16(i + 1)})
 				}
 			}
 		}
 		if tmp == 0 {
-			delete(gi.sff.palList.PalTable, [...]int16{1, 1})
+			delete(gi.palettedata.palList.PalTable, [...]int16{1, 1})
 		}
 	} else {
 		for i := 0; i < MaxPalNo; i++ {
 			_, gi.palExist[i] =
-				gi.sff.palList.PalTable[[...]int16{1, int16(i + 1)}]
+				gi.palettedata.palList.PalTable[[...]int16{1, int16(i + 1)}]
 		}
 	}
 	for i := range gi.palSelectable {
@@ -2615,16 +2629,17 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 		if alt {
 			c.animPN = playerNo
 			a.sff = sys.cgi[c.playerNo].sff
+			a.palettedata = &sys.cgi[c.playerNo].palettedata.palList
 			// Fix palette if anim doesn't belong to char and sff header version is 1.x
 		} else if c.playerNo != playerNo && c.anim.sff.header.Ver0 == 1 {
-			di := c.anim.sff.palList.PalTable[[...]int16{1, 1}]
+			di := c.anim.palettedata.PalTable[[...]int16{1, 1}]
 			spr := c.anim.sff.GetSprite(0, 0)
 			if spr != nil {
-				c.anim.sff.palList.Remap(spr.palidx, di)
+				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 			spr = c.anim.sff.GetSprite(9000, 0)
 			if spr != nil {
-				c.anim.sff.palList.Remap(spr.palidx, di)
+				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 		}
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
@@ -3617,7 +3632,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 	if h.ownpal {
 		h.palfx = newPalFX()
 		if c.getPalfx().remap == nil {
-			c.palfx.remap = c.gi().sff.palList.GetPalMap()
+			c.palfx.remap = c.gi().palettedata.palList.GetPalMap()
 		}
 		tmp := c.getPalfx().remap
 		h.palfx.remap = make([]int, len(tmp))
@@ -4821,35 +4836,35 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	if src[0] < 0 || src[1] < 0 || dst[0] < 0 || dst[1] < 0 {
 		return
 	}
-	si, ok := c.gi().sff.palList.PalTable[[...]int16{int16(src[0]),
+	si, ok := c.gi().palettedata.palList.PalTable[[...]int16{int16(src[0]),
 		int16(src[1])}]
 	if !ok || si < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("has no source palette for RemapPal: %v,%v", src[0], src[1]))
 		return
 	}
 	var di int
-	di, ok = c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
+	di, ok = c.gi().palettedata.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
 	if !ok || di < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("has no dest palette for RemapPal: %v,%v", dst[0], dst[1]))
 		return
 	}
 	if pfx.remap == nil {
-		pfx.remap = c.gi().sff.palList.GetPalMap()
+		pfx.remap = c.gi().palettedata.palList.GetPalMap()
 	}
-	if c.gi().sff.palList.SwapPalMap(&pfx.remap) {
-		c.gi().sff.palList.Remap(si, di)
+	if c.gi().palettedata.palList.SwapPalMap(&pfx.remap) {
+		c.gi().palettedata.palList.Remap(si, di)
 		if src[0] == 1 && src[1] == 1 && c.gi().sff.header.Ver0 == 1 {
 			spr := c.gi().sff.GetSprite(0, 0)
 			if spr != nil {
-				c.gi().sff.palList.Remap(spr.palidx, di)
+				c.gi().palettedata.palList.Remap(spr.palidx, di)
 			}
 			spr = c.gi().sff.GetSprite(9000, 0)
 			if spr != nil {
-				c.gi().sff.palList.Remap(spr.palidx, di)
+				c.gi().palettedata.palList.Remap(spr.palidx, di)
 			}
 		}
-		c.gi().sff.palList.SwapPalMap(&pfx.remap)
+		c.gi().palettedata.palList.SwapPalMap(&pfx.remap)
 	}
 	c.gi().remappedpal = [...]int32{dst[0], dst[1]}
 }
@@ -4857,13 +4872,13 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	if dst[0] < 0 || dst[1] < 0 {
 		return
 	}
-	di, ok := c.gi().sff.palList.PalTable[[...]int16{int16(dst[0]),
+	di, ok := c.gi().palettedata.palList.PalTable[[...]int16{int16(dst[0]),
 		int16(dst[1])}]
 	if !ok || di < 0 {
 		return
 	}
 	if pfx.remap == nil {
-		pfx.remap = c.gi().sff.palList.GetPalMap()
+		pfx.remap = c.gi().palettedata.palList.GetPalMap()
 	}
 	for i := range pfx.remap {
 		pfx.remap[i] = di

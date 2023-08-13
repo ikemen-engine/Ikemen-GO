@@ -86,7 +86,7 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 		sec[0].readF32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1])
 	}
 	s.sff = sff
-	s.at = ReadAnimationTable(s.sff, lines, &i)
+	s.at = ReadAnimationTable(s.sff, &s.sff.palList, lines, &i)
 	var bglink *backGround
 	for _, bgsec := range defmap[bgname] {
 		if len(s.bg) > 0 && s.bg[len(s.bg)-1].positionlink {
