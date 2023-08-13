@@ -844,7 +844,7 @@ func (s *System) nextRound() {
 				p[0].cmd[j].BufReset()
 			}
 			if s.roundsExisted[i&1] == 0 {
-				s.cgi[i].sff.palList.ResetRemap()
+				s.cgi[i].palettedata.palList.ResetRemap()
 				if s.cgi[i].sff.header.Ver0 == 1 {
 					p[0].remapPal(p[0].getPalfx(),
 						[...]int32{1, 1}, [...]int32{1, s.cgi[i].drawpalno})
@@ -2501,7 +2501,7 @@ func (s *Select) addChar(def string) {
 			return err
 		}
 		lines, i := SplitAndTrim(str, "\n"), 0
-		at := ReadAnimationTable(sff, lines, &i)
+		at := ReadAnimationTable(sff, &sff.palList, lines, &i)
 		for _, v := range s.charAnimPreload {
 			if anim := at.get(v); anim != nil {
 				sc.anims.addAnim(anim, v)
@@ -2629,7 +2629,7 @@ func (s *Select) AddStage(def string) error {
 		sff := newSff()
 		//preload animations
 		i = 0
-		at := ReadAnimationTable(sff, lines, &i)
+		at := ReadAnimationTable(sff, &sff.palList, lines, &i)
 		for _, v := range s.stageAnimPreload {
 			if anim := at.get(v); anim != nil {
 				ss.anims.addAnim(anim, v)
@@ -2766,6 +2766,7 @@ func (l *Loader) loadChar(pn int) int {
 			sys.cgi[pn].sff.sprites = nil
 		}
 		sys.cgi[pn].sff = nil
+		sys.cgi[pn].palettedata = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
 			p.guardPoints = sys.chars[pn][0].guardPoints
@@ -2833,6 +2834,7 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	} else {
 		p = newChar(pn, 0)
 		sys.cgi[pn].sff = nil
+		sys.cgi[pn].palettedata = nil
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
 			p.guardPoints = sys.chars[pn][0].guardPoints

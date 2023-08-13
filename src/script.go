@@ -550,10 +550,10 @@ func systemScriptInit(l *lua.LState) {
 					sprite := sys.cgi[pn-1].sff.getOwnPalSprite(group, int16(lua.LVAsNumber(value)))
 					if fspr := sprite; fspr != nil {
 						pfx := sys.chars[pn-1][0].getPalfx()
-						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
+						sys.cgi[pn-1].palettedata.palList.SwapPalMap(&pfx.remap)
 						fspr.Pal = nil
-						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].sff.palList)
-						sys.cgi[pn-1].sff.palList.SwapPalMap(&pfx.remap)
+						fspr.Pal = fspr.GetPal(&sys.cgi[pn-1].palettedata.palList)
+						sys.cgi[pn-1].palettedata.palList.SwapPalMap(&pfx.remap)
 						x := (float32(numArg(l, 3)) + sys.lifebarOffsetX) * sys.lifebarScale
 						y := float32(numArg(l, 4)) * sys.lifebarScale
 						scale := [...]float32{float32(numArg(l, 5)), float32(numArg(l, 6))}

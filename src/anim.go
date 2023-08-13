@@ -124,6 +124,7 @@ func (af *AnimFrame) Clsn2() []float32 {
 
 type Animation struct {
 	sff                *Sff
+	palettedata        *PaletteList
 	spr                *Sprite
 	frames             []AnimFrame
 	tile               Tiling
@@ -156,12 +157,13 @@ type Animation struct {
 	start_scale                [2]float32
 }
 
-func newAnimation(sff *Sff) *Animation {
-	return &Animation{sff: sff, mask: -1, srcAlpha: -1, newframe: true,
+func newAnimation(sff *Sff, pal *PaletteList) *Animation {
+	return &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
 		remap: make(RemapPreset), start_scale: [...]float32{1, 1}}
 }
-func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
-	a := newAnimation(sff)
+func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) *Animation {
+	a := newAnimation(sff, pal)
+
 	a.mask = 0
 	ols := int32(0)
 	var clsn1, clsn1d, clsn2, clsn2d []float32
@@ -291,7 +293,7 @@ func ReadAnimation(sff *Sff, lines []string, i *int) *Animation {
 	}
 	return a
 }
-func ReadAction(sff *Sff, lines []string, i *int) (no int32, a *Animation) {
+func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a *Animation) {
 	var name, subname string
 	for ; *i < len(lines); (*i)++ {
 		name, subname = SectionName(lines[*i])
@@ -310,7 +312,7 @@ func ReadAction(sff *Sff, lines []string, i *int) (no int32, a *Animation) {
 		return
 	}
 	(*i)++
-	return Atoi(subname[spi+1:]), ReadAnimation(sff, lines, i)
+	return Atoi(subname[spi+1:]), ReadAnimation(sff, pal, lines, i)
 }
 func (a *Animation) Reset() {
 	a.current, a.drawidx = 0, 0
@@ -626,13 +628,24 @@ func (a *Animation) alpha() int32 {
 	return trans
 }
 func (a *Animation) pal(pfx *PalFX, neg bool) (p []uint32, plt *Texture) {
-	if pfx != nil && len(pfx.remap) > 0 {
-		a.sff.palList.SwapPalMap(&pfx.remap)
-	}
-	p = a.spr.GetPal(&a.sff.palList)
-	plt = a.spr.GetPalTex(&a.sff.palList)
-	if pfx != nil && len(pfx.remap) > 0 {
-		a.sff.palList.SwapPalMap(&pfx.remap)
+	if a.palettedata != nil {
+		if pfx != nil && len(pfx.remap) > 0 {
+			a.palettedata.SwapPalMap(&pfx.remap)
+		}
+		p = a.spr.GetPal(a.palettedata)
+		plt = a.spr.GetPalTex(a.palettedata)
+		if pfx != nil && len(pfx.remap) > 0 {
+			a.palettedata.SwapPalMap(&pfx.remap)
+		}
+	} else {
+		if pfx != nil && len(pfx.remap) > 0 {
+			a.sff.palList.SwapPalMap(&pfx.remap)
+		}
+		p = a.spr.GetPal(&a.sff.palList)
+		plt = a.spr.GetPalTex(&a.sff.palList)
+		if pfx != nil && len(pfx.remap) > 0 {
+			a.sff.palList.SwapPalMap(&pfx.remap)
+		}
 	}
 	return
 }
@@ -742,7 +755,11 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		if color != 0 || alpha > 0 {
 			paltemp := a.spr.paltemp
 			if len(paltemp) == 0 {
-				paltemp = a.spr.GetPal(&a.sff.palList)
+				if a.palettedata != nil {
+					paltemp = a.spr.GetPal(a.palettedata)
+				} else {
+					paltemp = a.spr.GetPal(&a.sff.palList)
+				}
 			}
 			for i := range pal {
 				// Skip transparent colors
@@ -769,17 +786,17 @@ type AnimationTable map[int32]*Animation
 func NewAnimationTable() AnimationTable {
 	return AnimationTable(make(map[int32]*Animation))
 }
-func (at AnimationTable) readAction(sff *Sff,
+func (at AnimationTable) readAction(sff *Sff, pal *PaletteList,
 	lines []string, i *int) *Animation {
 	for *i < len(lines) {
-		no, a := ReadAction(sff, lines, i)
+		no, a := ReadAction(sff, pal, lines, i)
 		if a != nil {
 			if tmp := at[no]; tmp != nil {
 				return tmp
 			}
 			at[no] = a
 			for len(a.frames) == 0 && *i < len(lines) {
-				if a2 := at.readAction(sff, lines, i); a2 != nil {
+				if a2 := at.readAction(sff, pal, lines, i); a2 != nil {
 					*a = *a2
 					break
 				}
@@ -792,9 +809,9 @@ func (at AnimationTable) readAction(sff *Sff,
 	}
 	return nil
 }
-func ReadAnimationTable(sff *Sff, lines []string, i *int) AnimationTable {
+func ReadAnimationTable(sff *Sff, pal *PaletteList, lines []string, i *int) AnimationTable {
 	at := NewAnimationTable()
-	for at.readAction(sff, lines, i) != nil {
+	for at.readAction(sff, pal, lines, i) != nil {
 	}
 	return at
 }
@@ -1044,7 +1061,7 @@ type Anim struct {
 
 func NewAnim(sff *Sff, action string) *Anim {
 	lines, i := SplitAndTrim(action, "\n"), 0
-	a := &Anim{anim: ReadAnimation(sff, lines, &i),
+	a := &Anim{anim: ReadAnimation(sff, &sff.palList, lines, &i),
 		window: sys.scrrect, x: sys.luaSpriteOffsetX,
 		xscl: 1, yscl: 1, palfx: newPalFX()}
 	a.palfx.clear()
@@ -1120,7 +1137,7 @@ func (pa PreloadedAnims) addSprite(sff *Sff, grp, idx int16) {
 	if sff.GetSprite(grp, idx) == nil {
 		return
 	}
-	anim := newAnimation(sff)
+	anim := newAnimation(sff, &sff.palList)
 	anim.mask = 0
 	af := newAnimFrame()
 	af.Group, af.Number = grp, idx

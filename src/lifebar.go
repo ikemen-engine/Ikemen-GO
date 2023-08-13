@@ -116,7 +116,7 @@ func loadFightFx(def string) error {
 							return err
 						}
 						lines, i := SplitAndTrim(str, "\n"), 0
-						ffx.fat = ReadAnimationTable(ffx.fsff, lines, &i)
+						ffx.fat = ReadAnimationTable(ffx.fsff, &ffx.fsff.palList, lines, &i)
 						return nil
 					}); err != nil {
 					return err
@@ -1093,12 +1093,12 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 			pfx = sys.chars[ref][0].getPalfx()
 		}
 		if far.palshare {
-			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+			sys.cgi[ref].palettedata.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
 		}
 		far.face.Pal = nil
-		far.face.Pal = far.face.GetPal(&sys.cgi[ref].sff.palList)
+		far.face.Pal = far.face.GetPal(&sys.cgi[ref].palettedata.palList)
 		if far.palshare {
-			sys.cgi[ref].sff.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
+			sys.cgi[ref].palettedata.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
 		}
 		ob := sys.brightness
 		if ref == sys.superplayer {
@@ -3045,7 +3045,7 @@ func loadLifebar(def string) (*Lifebar, error) {
 		}
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
-	l.at = ReadAnimationTable(l.sff, lines, &i)
+	l.at = ReadAnimationTable(l.sff, &l.sff.palList, lines, &i)
 	i = 0
 	filesflg := true
 	ffx := newFightFx()
@@ -3106,7 +3106,7 @@ func loadLifebar(def string) (*Lifebar, error) {
 							return err
 						}
 						lines, i := SplitAndTrim(str, "\n"), 0
-						ffx.fat = ReadAnimationTable(ffx.fsff, lines, &i)
+						ffx.fat = ReadAnimationTable(ffx.fsff, &ffx.fsff.palList, lines, &i)
 						return nil
 					}); err != nil {
 					return nil, err

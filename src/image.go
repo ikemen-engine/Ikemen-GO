@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"runtime"
 	"unsafe"
 )
 
@@ -1054,6 +1055,9 @@ type Sff struct {
 	sprites map[[2]int16]*Sprite
 	palList PaletteList
 }
+type Palette struct {
+	palList PaletteList
+}
 
 func newSff() (s *Sff) {
 	s = &Sff{sprites: make(map[[2]int16]*Sprite)}
@@ -1063,8 +1067,30 @@ func newSff() (s *Sff) {
 	}
 	return
 }
+func newPaldata() (p *Palette) {
+	p = &Palette{}
+	p.palList.init()
+	for i := int16(1); i <= int16(MaxPalNo); i++ {
+		p.palList.PalTable[[...]int16{1, i}], _ = p.palList.NewPal()
+	}
+	return
+}
+
+// A simple SFF cache storing shallow copies
+type SffCacheEntry struct {
+	sffData  Sff
+	refCount int
+}
+
+var SffCache = map[string]*SffCacheEntry{}
 
 func loadSff(filename string, char bool) (*Sff, error) {
+	// If this SFF is already in the cache, just return a copy
+	if cached, ok := SffCache[filename]; ok {
+		cached.refCount++
+		s := cached.sffData
+		return &s, nil
+	}
 	s := newSff()
 	f, err := os.Open(filename)
 	if err != nil {
@@ -1193,6 +1219,14 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			shofs += 28
 		}
 	}
+	SffCache[filename] = &SffCacheEntry{*s, 1}
+	runtime.SetFinalizer(s, func(s *Sff) {
+		cached := SffCache[filename]
+		cached.refCount--
+		if cached.refCount == 0 {
+			delete(SffCache, filename)
+		}
+	})
 	return s, nil
 }
 func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff, []int32, error) {
