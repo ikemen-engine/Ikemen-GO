@@ -60,7 +60,6 @@ func (pf *PalFX) clear2(nt bool) {
 	pf.sintime = 0
 	pf.sintime2 = 0
 	pf.sintime3 = 0
-	pf.invertblend = 0
 }
 func (pf *PalFX) clear() {
 	pf.clear2(false)
@@ -200,7 +199,7 @@ func (pf *PalFX) step() {
 		pf.eAdd = pf.add
 		pf.eColor = pf.color
 		pf.eInvertall = pf.invertall
-		if pf.invertblend <= -1 && pf.eInvertall {
+		if pf.invertblend <= -2 && pf.eInvertall {
 			pf.eInvertblend = 3
 		} else {
 			pf.eInvertblend = pf.invertblend		
@@ -237,32 +236,36 @@ func (pf *PalFX) synthesize(pfx PalFX,blending bool) {
 
 	if pfx.invertall {
 		//Char blend inverse
-		if pfx.eInvertblend == 1 {
-			if blending && pf.invertblend > -2 { pf.eInvertall = pf.invertall }
+		if pfx.invertblend == 1 {
+			if blending && pf.invertblend > -3 { pf.eInvertall = pf.invertall }
 			switch {
 			case pf.invertblend == 0:
 				pf.eInvertblend = 1
 			case pf.invertblend == 1:
 				pf.eInvertblend = 0
-			case pf.invertblend == -1:
+			case pf.invertblend == -2:
 				if pf.eInvertall {
 					pf.eInvertall = false
-					pf.eInvertblend = -1
+					pf.eInvertblend = -2
 				} else {
 					pf.eInvertblend = 3
 				}
 			case pf.invertblend == 2:
 				pf.eInvertall = pf.invertall
 				pf.eInvertblend = -1
+			case pf.invertblend == -1:
+				pf.eInvertall = pf.invertall
+				pf.eInvertblend = 2				
 			}
 		}
+
 		//Bg blend inverse
-		if pf.invertblend == -2 {
+		if pf.invertblend == -3 {
 			if pf.eInvertall {
 				pf.eInvertblend = 3
 			} else {
 				pf.eInvertall = false
-				pf.eInvertblend = -2
+				pf.eInvertblend = -3
 			}
 		}
 	}

@@ -351,7 +351,7 @@ func (bg *backGround) reset() {
 	bg.bga.sintime = bg.startsint
 	bg.bga.sinlooptime = bg.startsinlt
 	bg.palfx.time = -1
-	bg.palfx.invertblend = -2
+	bg.palfx.invertblend = -3
 }
 func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool) {

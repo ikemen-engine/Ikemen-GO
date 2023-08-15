@@ -380,7 +380,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 			} else {
 				Blend = BlendAdd
 			}
-			if (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil {
+			if (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil && src < 255 {
 				//Summ of add components
 				gc := float32(math.Abs(float64(acolor[0]))+math.Abs(float64(acolor[1]))+math.Abs(float64(acolor[2])))
 				v3,ml,al := float32(MaxF((gc*255)-float32(dst),255))/255,(float32(src)/255), (float32(src+dst)/255)

@@ -860,7 +860,7 @@ func (ai *AfterImage) clear() {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eColor = 1
 		ai.palfx[0].eInvertall = false
-		ai.palfx[0].eInvertblend = 0		
+		ai.palfx[0].eInvertblend = 0	
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
 		ai.palfx[0].eMul = [...]int32{120, 120, 220}
 	}
@@ -888,7 +888,7 @@ func (ai *AfterImage) setPalInvertall(invertall bool) {
 }
 func (ai *AfterImage) setPalInvertblend(invertblend int32) {
 	if len(ai.palfx) > 0 {
-		ai.palfx[0].eInvertblend = invertblend
+		ai.palfx[0].invertblend = invertblend
 	}
 }
 func (ai *AfterImage) setPalBrightR(addr int32) {
@@ -923,10 +923,15 @@ func (ai *AfterImage) setPalContrastB(mulb int32) {
 }
 func (ai *AfterImage) setupPalFX() {
 	pb := ai.postbright
+	if ai.palfx[0].invertblend <= -2 && ai.palfx[0].eInvertall {
+		ai.palfx[0].eInvertblend = 3
+	} else {
+		ai.palfx[0].eInvertblend = ai.palfx[0].invertblend	 
+	}	
 	for i := 1; i < len(ai.palfx); i++ {
 		ai.palfx[i].eColor = ai.palfx[i-1].eColor
 		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
-		ai.palfx[i].eInvertblend = ai.palfx[i-1].eInvertblend		
+		ai.palfx[i].eInvertblend = ai.palfx[i-1].eInvertblend
 		for j := range pb {
 			ai.palfx[i].eAdd[j] = ai.palfx[i-1].eAdd[j] + ai.add[j] + pb[j]
 			ai.palfx[i].eMul[j] = int32(float32(ai.palfx[i-1].eMul[j]) * ai.mul[j])
@@ -3638,6 +3643,10 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 			h.mapArray[key] = value
 		}
 	}
+	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+	if h.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && h.stCgi().ikemenver[0] <= 0 {
+		h.palfx.invertblend = -2
+	}		
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
 	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
 	h.actionPrepare()
@@ -4752,6 +4761,10 @@ func (c *Char) getPalfx() *PalFX {
 		}
 	}
 	c.palfx = newPalFX()
+	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+	if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] <= 0 && c.palfx != nil {
+		c.palfx.PalFXDef.invertblend = -2
+	}	
 	return c.palfx
 }
 func (c *Char) getPalMap() []int {
