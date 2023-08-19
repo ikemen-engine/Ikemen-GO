@@ -1388,13 +1388,13 @@ func (s *Sff) GetSprite(g, n int16) *Sprite {
 	}
 	return s.sprites[[...]int16{g, n}]
 }
-func (s *Sff) getOwnPalSprite(g, n int16) *Sprite {
+func (s *Sff) getOwnPalSprite(g, n int16, pl *PaletteList) *Sprite {
 	sys.runMainThreadTask() // テクスチャを生成 / Generate texture
 	sp := s.GetSprite(g, n)
 	if sp == nil {
 		return nil
 	}
-	osp, pal := *sp, sp.GetPal(&s.palList)
+	osp, pal := *sp, sp.GetPal(pl)
 	osp.Pal = make([]uint32, len(pal))
 	copy(osp.Pal, pal)
 	return &osp

@@ -547,7 +547,7 @@ func systemScriptInit(l *lua.LState) {
 				if int(lua.LVAsNumber(key))%2 == 1 {
 					group = int16(lua.LVAsNumber(value))
 				} else {
-					sprite := sys.cgi[pn-1].sff.getOwnPalSprite(group, int16(lua.LVAsNumber(value)))
+					sprite := sys.cgi[pn-1].sff.getOwnPalSprite(group, int16(lua.LVAsNumber(value)), &sys.cgi[pn-1].palettedata.palList)
 					if fspr := sprite; fspr != nil {
 						pfx := sys.chars[pn-1][0].getPalfx()
 						sys.cgi[pn-1].palettedata.palList.SwapPalMap(&pfx.remap)

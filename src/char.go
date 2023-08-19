@@ -2421,9 +2421,15 @@ func (c *Char) load(def string) error {
 	gi.palettedata.palList = PaletteList{
 		palettes:   append([][]uint32{}, gi.sff.palList.palettes...),
 		paletteMap: append([]int{}, gi.sff.palList.paletteMap...),
-		PalTable:   gi.sff.palList.PalTable,
-		numcols:    gi.sff.palList.numcols,
+		PalTable:   make(map[[2]int16]int),
+		numcols:    make(map[[2]int16]int),
 		PalTex:     append([]*Texture{}, gi.sff.palList.PalTex...),
+	}
+	for key, value := range gi.sff.palList.PalTable {
+		gi.palettedata.palList.PalTable[key] = value
+	}
+	for key, value := range gi.sff.palList.numcols {
+		gi.palettedata.palList.numcols[key] = value
 	}
 	str = ""
 	if len(anim) > 0 {

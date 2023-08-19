@@ -323,7 +323,7 @@ func LoadFntSff(f *Fnt, fontfile string, filename string) {
 	//Load sprites
 	var pal_default []uint32
 	for k, sprite := range sff.sprites {
-		s := sff.getOwnPalSprite(sprite.Group, sprite.Number)
+		s := sff.getOwnPalSprite(sprite.Group, sprite.Number, &sff.palList)
 		if sprite.Group == 0 || f.BankType == "sprite" {
 			if f.images[int32(sprite.Group)] == nil {
 				f.images[int32(sprite.Group)] = make(map[rune]*FntCharImage)
