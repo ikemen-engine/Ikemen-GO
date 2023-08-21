@@ -1199,7 +1199,7 @@ func (s *System) action() {
 									p[0].setSCF(SCF_inputwait)
 								}
 								// Check if this character is ready to procced to roundstate 4
-								if p[0].scf(SCF_over) || (p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I &&
+								if p[0].scf(SCF_over) || p[0].ss.no == 5150 || (p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I &&
 									p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L) {
 									continue
 								}

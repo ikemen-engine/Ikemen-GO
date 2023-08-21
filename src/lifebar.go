@@ -1045,7 +1045,7 @@ func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
 	}
 	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
 		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
-		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number)
+		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number, &sys.cgi[ref].palettedata.palList)
 		far.old_spr = [...]int32{int32(group), int32(number)}
 		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
 	}
@@ -1096,7 +1096,12 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 			sys.cgi[ref].palettedata.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
 		}
 		far.face.Pal = nil
-		far.face.Pal = far.face.GetPal(&sys.cgi[ref].palettedata.palList)
+		if far.face.PalTex != nil {
+			far.face.PalTex = far.face.GetPalTex(&sys.cgi[ref].palettedata.palList)
+		} else {
+			far.face.Pal = nil
+			far.face.Pal = far.face.GetPal(&sys.cgi[ref].palettedata.palList)
+		}
 		if far.palshare {
 			sys.cgi[ref].palettedata.palList.SwapPalMap(&sys.chars[ref][0].getPalfx().remap)
 		}
