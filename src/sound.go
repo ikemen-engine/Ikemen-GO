@@ -433,6 +433,7 @@ type SoundEffect struct {
 	ls, p    float32
 	x        *float32
 	priority int32
+	channel  int32
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
@@ -484,7 +485,7 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 		loopCount = -1
 	}
 	looper := beep.Loop(loopCount, s.streamer)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(audioFrequency / freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
@@ -519,6 +520,11 @@ func (s *SoundChannel) SetPriority(priority int32) {
 		s.sfx.priority = priority
 	}
 }
+func (s *SoundChannel) SetChannel(channel int32) {
+	if s.ctrl != nil {
+		s.sfx.channel = channel
+	}
+}
 
 // ------------------------------------------------------------------
 // SoundChannels (collection of prioritised sound channels)
@@ -547,18 +553,16 @@ func (s *SoundChannels) count() int32 {
 	return int32(len(s.channels))
 }
 func (s *SoundChannels) New(ch int32, lowpriority bool, priority int32) *SoundChannel {
-	ch = Min(sys.wavChannels-1, ch)
-	if ch >= 0 {
-		if s.count() > ch && s.channels[ch].IsPlaying() {
-			if (lowpriority && priority <= s.channels[ch].sfx.priority) || priority < s.channels[ch].sfx.priority {
-				return nil
+	if ch >= 0 && ch < sys.wavChannels {
+		for i := s.count() - 1; i >= 0; i-- {
+			if s.channels[i].IsPlaying() && s.channels[i].sfx.channel == ch {
+				if (lowpriority && priority <= s.channels[i].sfx.priority) || priority < s.channels[i].sfx.priority {
+					return nil
+				}
+				s.channels[i].Stop()
+				return &s.channels[i]
 			}
 		}
-		if s.count() < ch+1 {
-			s.SetSize(ch + 1)
-		}
-		s.channels[ch].Stop()
-		return &s.channels[ch]
 	}
 	if s.count() < sys.wavChannels {
 		s.SetSize(sys.wavChannels)
@@ -580,7 +584,12 @@ func (s *SoundChannels) reserveChannel() *SoundChannel {
 }
 func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	if ch >= 0 && ch < s.count() {
-		return &s.channels[ch]
+		for i := range s.channels {
+			if s.channels[i].sfx != nil && s.channels[i].sfx.channel == ch {
+				return &s.channels[i]
+			}
+		}
+		//return &s.channels[ch]
 	}
 	return nil
 }

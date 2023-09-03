@@ -3352,8 +3352,11 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 		} else {
 			ch.SetVolume(float32(c.gi().data.volume * vol / 100))
 		}
-		if chNo >= 0 && priority != 0 {
-			ch.SetPriority(priority)
+		if chNo >= 0 {
+			ch.SetChannel(chNo)
+			if priority != 0 {
+				ch.SetPriority(priority)
+			}
 		}
 		//} else {
 		//	if f {
