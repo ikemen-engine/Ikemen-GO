@@ -5415,10 +5415,10 @@ func (c *Char) exitTarget(explremove bool) {
 	c.ghv.hitBy = c.ghv.hitBy[:0]
 }
 func (c *Char) offsetX() float32 {
-	return float32(c.size.draw.offset[0])*c.facing + c.offset[0]
+	return float32(c.size.draw.offset[0])*c.facing + c.offset[0]/c.localscl
 }
 func (c *Char) offsetY() float32 {
-	return float32(c.size.draw.offset[1]) + c.offset[1]
+	return float32(c.size.draw.offset[1]) + c.offset[1]/c.localscl
 }
 func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	if p.ani == nil || c.curFrame == nil || c.scf(SCF_standby) || c.scf(SCF_disabled) {
