@@ -2107,7 +2107,11 @@ func (s *System) fight() (reload bool) {
 			}
 			s.draw(dx, dy, dscl)
 		}
-		//Lua code executed before drawing fade, clsns and debug
+		// Render top elements such as fade effects
+		if !s.frameSkip {
+			s.drawTop()
+		}
+		// Lua code is executed after drawing the fade effects, so that the menus are on top of them
 		for _, str := range s.commonLua {
 			if err := s.luaLState.DoString(str); err != nil {
 				s.luaLState.RaiseError(err.Error())
@@ -2115,10 +2119,8 @@ func (s *System) fight() (reload bool) {
 		}
 		// Render debug elements
 		if !s.frameSkip {
-			s.drawTop()
 			s.drawDebug()
 		}
-
 		// Break if finished
 		if fin && (!s.postMatchFlg || len(sys.commonLua) == 0) {
 			break
