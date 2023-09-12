@@ -44,7 +44,7 @@ jobs:
       buildTime: ${{ env.buildTime }}
       #previousTag: ${{ steps.previousTag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       #- name: Get previous tag
       #  id: previousTag
@@ -92,7 +92,7 @@ jobs:
             target: '10.7'
     runs-on: ${{ matrix.cfg.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Golang with cache
         uses: magnetikonline/action-golang-cache@v4
