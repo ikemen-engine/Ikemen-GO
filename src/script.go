@@ -980,6 +980,9 @@ func systemScriptInit(l *lua.LState) {
 					// Match is restarting
 					for i, b := range sys.reloadCharSlot {
 						if b {
+							if s := sys.cgi[i].sff; s != nil {
+								removeSFFCache(s.filename)
+							}
 							sys.chars[i] = []*Char{}
 							b = false
 						}

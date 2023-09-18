@@ -1054,6 +1054,8 @@ type Sff struct {
 	header  SffHeader
 	sprites map[[2]int16]*Sprite
 	palList PaletteList
+	//This is the sffCache key
+	filename string
 }
 type Palette struct {
 	palList PaletteList
@@ -1084,6 +1086,11 @@ type SffCacheEntry struct {
 
 var SffCache = map[string]*SffCacheEntry{}
 
+func removeSFFCache(filename string) {
+	if _, ok := SffCache[filename]; ok {
+		delete(SffCache, filename)
+	}
+}
 func loadSff(filename string, char bool) (*Sff, error) {
 	// If this SFF is already in the cache, just return a copy
 	if cached, ok := SffCache[filename]; ok {
@@ -1092,6 +1099,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 		return &s, nil
 	}
 	s := newSff()
+	s.filename = filename
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -1221,10 +1229,11 @@ func loadSff(filename string, char bool) (*Sff, error) {
 	}
 	SffCache[filename] = &SffCacheEntry{*s, 1}
 	runtime.SetFinalizer(s, func(s *Sff) {
-		cached := SffCache[filename]
-		cached.refCount--
-		if cached.refCount == 0 {
-			delete(SffCache, filename)
+		if cached, ok := SffCache[filename]; ok {
+			cached.refCount--
+			if cached.refCount == 0 {
+				delete(SffCache, filename)
+			}
 		}
 	})
 	return s, nil
