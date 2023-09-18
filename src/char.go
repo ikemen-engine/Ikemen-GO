@@ -4481,7 +4481,11 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 		damage = float64(attacker.scaleHit(int32(damage), c.id, 0))
 		damage *= float64(atkmul) / c.finalDefense
 	}
-	damage = math.Ceil(damage)
+	// In Mugen, an extremely high defense or low attack still results in at least 1 damage
+	if damage > 0 && damage < 1 {
+		damage = 1
+	}
+	damage = math.Round(damage)
 	if bounds {
 		damage = float64(Clamp(int32(damage), c.life-c.lifeMax, Max(0, c.life-Btoi(!kill))))
 	}
@@ -4662,7 +4666,9 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 	}
 	dist := c.facing * c.distX(rd, oc)
 	if c.stCgi().ver[0] != 1 {
-		dist = float32(int32(dist)) //旧バージョンでは小数点切り捨て
+		// 旧バージョンでは小数点切り捨て
+		// "In the previous version, rounding down to the nearest whole number was performed."
+		dist = float32(int32(dist))
 	}
 	return BytecodeFloat(dist)
 }
