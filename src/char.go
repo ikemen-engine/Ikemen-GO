@@ -1438,8 +1438,11 @@ func (p *Projectile) update(playerNo int) {
 					p.velocity[0] *= -1
 				}
 				p.accel, p.velmul, p.anim = [2]float32{}, [...]float32{1, 1}, -1
-				if p.hits >= 0 {
-					p.hits = -1
+				// In Mugen, projectiles can hit even after their removetime expires
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					if p.hits >= 0 {
+						p.hits = -1
+					}
 				}
 			}
 		}
