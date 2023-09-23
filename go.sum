@@ -193,6 +193,10 @@ github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/icza/bitio v1.0.0/go.mod h1:0jGnlLAx8MKMr9VGnn/4YrvZiprkvBelsVIbA9Jjr9A=
 github.com/icza/mighty v0.0.0-20180919140131-cfd07d671de6/go.mod h1:xQig96I1VNBDIWGCdTt54nHt6EeI639SmHycLYL7FkA=
+github.com/ikemen-engine/beep v0.0.0-20230923080832-980aab9dbee7 h1:AkGr31Fk2yev0h7uKqyGWtlO17p48h/ivB+Ro03wRvA=
+github.com/ikemen-engine/beep v0.0.0-20230923080832-980aab9dbee7/go.mod h1:XKUV0wo5hZKhCM7QZEol3RIlgBh7ZI7lEdI+mzWx2qY=
+github.com/ikemen-engine/beep v1.1.1-0.20230406132407-3fba40ddabcc h1:qzHZd81TyTOXwRqdZdST8iKPIXFQyQjDbHciRfNjviE=
+github.com/ikemen-engine/beep v1.1.1-0.20230406132407-3fba40ddabcc/go.mod h1:6zWOOlj/GguL3srDS81ntVnyZEIJCGj88moFsQh7a/g=
 github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23 h1:qLKMExG3q4lNJabvxuJjvOYdaYz1t32Ee/N/6+fkE00=
 github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
@@ -244,8 +248,6 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
-github.com/samhocevar/beep v1.1.1-0.20230406132407-3fba40ddabcc h1:qzHZd81TyTOXwRqdZdST8iKPIXFQyQjDbHciRfNjviE=
-github.com/samhocevar/beep v1.1.1-0.20230406132407-3fba40ddabcc/go.mod h1:6zWOOlj/GguL3srDS81ntVnyZEIJCGj88moFsQh7a/g=
 github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16 h1:slzh3BWJ6FyMM8gkDzDwHz+gjU4+82ldB6oPyYi82Ho=
 github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16/go.mod h1:J+GU4sgu3oAPHCceoTIXNKzFHSybNhF/LyFkWZlqhvE=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
