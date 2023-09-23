@@ -4841,9 +4841,14 @@ func (c *Char) hitFallSet(f int32, xv, yv float32) {
 	}
 }
 func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
-	if dst[0] == -1 {
+	//Clear all remaps
+	if src[0] == -1 && dst[0] == -1 {
 		pfx.remap = nil
 		return
+	}
+	//Reset specified source
+	if dst[0] == -1 {
+		dst = src
 	}
 	if src[0] == -1 {
 		c.forceRemapPal(pfx, dst)
