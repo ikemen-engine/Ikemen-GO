@@ -5528,12 +5528,12 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	return true
 }
 func (c *Char) hittable(h *HitDef, e *Char, st StateType,
+	// Check which character should win in case attacks connect in the same frame
 	countercheck func(*HitDef) bool) bool {
 	if !c.attrCheck(h, e.id, st) {
 		return false
 	}
-	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L ||
-		c.hitdef.reversal_attr > 0) {
+	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0) {
 		switch {
 		case c.hitdef.reversal_attr > 0:
 			if h.reversal_attr > 0 {
@@ -5563,7 +5563,8 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 		default:
 			return true
 		}
-		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0
+		//return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0 // https://github.com/ikemen-engine/Ikemen-GO/issues/1410
+		return !countercheck(&c.hitdef)
 	}
 	return true
 }
