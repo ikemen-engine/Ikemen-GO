@@ -6858,7 +6858,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							}
 						}
 					}
-					if c.helperIndex == 0 { // In Mugen, helpers can receive a damage value above their remaining life
+					if getter.helperIndex == 0 { // In Mugen, helpers can receive a damage value above their remaining life
 						getter.ghv.damage = getter.life
 					}
 				} else {
