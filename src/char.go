@@ -4487,7 +4487,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 		damage = 1
 	}
 	damage = math.Round(damage)
-	if bounds {
+	if bounds && c.helperIndex == 0 { // In Mugen, helpers can receive a damage value above their remaining life
 		damage = float64(Clamp(int32(damage), c.life-c.lifeMax, Max(0, c.life-Btoi(!kill))))
 	}
 	return int32(damage)
@@ -6858,7 +6858,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							}
 						}
 					}
-					getter.ghv.damage = getter.life
+					if c.helperIndex == 0 { // In Mugen, helpers can receive a damage value above their remaining life
+						getter.ghv.damage = getter.life
+					}
 				} else {
 					getter.ghv.damage = getter.life - 1
 				}
