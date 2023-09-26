@@ -434,6 +434,7 @@ type SoundEffect struct {
 	x        *float32
 	priority int32
 	channel  int32
+	loop     int32
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
@@ -485,7 +486,7 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 		loopCount = -1
 	}
 	looper := beep.Loop(loopCount, s.streamer)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount)}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(audioFrequency / freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
@@ -631,7 +632,7 @@ func (s *SoundChannels) StopAll() {
 func (s *SoundChannels) Tick() {
 	for i := range s.channels {
 		if s.channels[i].IsPlaying() {
-			if s.channels[i].streamer.Position() >= s.channels[i].sound.length {
+			if s.channels[i].streamer.Position() >= s.channels[i].sound.length && s.channels[i].sfx.loop != -1 {
 				s.channels[i].sound = nil
 			}
 		}
