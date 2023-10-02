@@ -586,7 +586,7 @@ func (s *SoundChannels) reserveChannel() *SoundChannel {
 func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	if ch >= 0 && ch < s.count() {
 		for i := range s.channels {
-			if s.channels[i].sfx != nil && s.channels[i].sfx.channel == ch {
+			if s.channels[i].IsPlaying() && s.channels[i].sfx != nil && s.channels[i].sfx.channel == ch {
 				return &s.channels[i]
 			}
 		}
