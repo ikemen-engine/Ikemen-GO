@@ -1013,7 +1013,8 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		} else {
 			s.anim.srcAlpha, s.anim.dstAlpha = int16(s.alpha[0]), int16(s.alpha[1])
 		}
-		ref := sys.stage.reflection * s.shadowAlpha >> 8
+		//ref := sys.stage.reflection * s.shadowAlpha >> 8
+		ref := sys.stage.reflection
 		s.anim.srcAlpha = int16(float32(int32(s.anim.srcAlpha)*ref) / 255)
 		if s.anim.dstAlpha < 0 {
 			s.anim.dstAlpha = 128
