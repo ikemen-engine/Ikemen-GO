@@ -319,12 +319,12 @@ func RenderSprite(rp RenderParams) {
 		rmTileSub(modelview, rp)
 
 		gfx.ReleasePipeline()
-	}, rp.trans, rp.paltex != nil, invblend, &neg, &padd, &pmul )
+	}, rp.trans, rp.paltex != nil, invblend, &neg, &padd, &pmul, rp.paltex == nil )
 
 	gfx.DisableScissor()
 }
 
-func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a float32), trans int32, correctAlpha bool, invblend int32, neg *bool, acolor *[3]float32, mcolor *[3]float32 ) {
+func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a float32), trans int32, correctAlpha bool, invblend int32, neg *bool, acolor *[3]float32, mcolor *[3]float32, isrgba bool ) {
 	blendSourceFactor := BlendSrcAlpha
 	if !correctAlpha {
 		blendSourceFactor = BlendOne
@@ -355,6 +355,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 			//Summ of add components
 			gc := AbsF(acolor[0])+AbsF(acolor[1])+AbsF(acolor[2])
 			v3,al := MaxF((gc*255)-float32(dst+src),512)/128, (float32(src+dst)/255)
+			if isrgba { v3 = 1 }
 			rM,gM,bM := mcolor[0]*al,mcolor[1]*al,mcolor[2]*al
 			(*mcolor)[0], (*mcolor)[1], (*mcolor)[2] = rM, gM, bM
 			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, al)	
@@ -371,6 +372,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		if dst < 255 {
 			render(Blend, BlendZero, BlendOneMinusSrcAlpha, 1-float32(dst)/255)			
 		}
+
 		if src > 0 {
 			if invblend >= 1 && dst >= 255 {
 				if invblend >= 2 {
@@ -385,6 +387,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 				//Summ of add components
 				gc := AbsF(acolor[0])+AbsF(acolor[1])+AbsF(acolor[2])
 				v3,ml,al := MaxF((gc*255)-float32(dst+src),512)/128,(float32(src)/255), (float32(src+dst)/255)
+				if isrgba { v3 = 1 }
 				rM,gM,bM := mcolor[0]*ml,mcolor[1]*ml,mcolor[2]*ml
 				(*mcolor)[0], (*mcolor)[1], (*mcolor)[2] = rM, gM, bM 
 				render(Blend, blendSourceFactor, BlendOne,al*Pow(v3,3))
@@ -420,5 +423,5 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gfx.SetUniformF("tint", r, g, b, a)
 		gfx.RenderQuad()
 		gfx.ReleasePipeline()
-	}, trans, true, 0, nil, nil, nil )
+	}, trans, true, 0, nil, nil, nil, false )
 }
