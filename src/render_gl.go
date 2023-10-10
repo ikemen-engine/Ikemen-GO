@@ -344,8 +344,6 @@ func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
 }
 
 func (r *Renderer) ReleasePipeline() {
-	gl.BlendEquation(BlendEquationLUT[BlendAdd])
-	gl.BlendFunc(BlendFunctionLUT[BlendSrcAlpha], BlendFunctionLUT[BlendOne])
 	gl.DisableVertexAttribArray(r.spriteShader.aPos)
 	gl.DisableVertexAttribArray(r.spriteShader.aUv)
 	gl.Disable(gl.BLEND)
