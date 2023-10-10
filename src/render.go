@@ -282,7 +282,7 @@ func RenderSprite(rp RenderParams) {
 	if rp.pfx != nil {
 		blending := false
 		if rp.trans == -2 || rp.trans == -1 || (rp.trans&0xff > 0 && rp.trans>>10&0xff >= 255) { blending = true }
-		neg, grayscale, padd, pmul, invblend = rp.pfx.getFcPalFx(rp.trans == -2,blending)
+		neg, grayscale, padd, pmul, invblend = rp.pfx.getFcPalFx(false,blending)
 		//if rp.trans == -2 && invblend < 1 {
 			//padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		//}
@@ -353,12 +353,12 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		if (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil {
 			src, dst := trans&0xff, trans>>10&0xff
 			//Summ of add components
-			gc := float32(math.Abs(float64(acolor[0]))+math.Abs(float64(acolor[1]))+math.Abs(float64(acolor[2])))
-			v3,al := float32(MaxF((gc*255)-float32(dst),255))/128, (float32(src+dst)/255)
+			gc := AbsF(acolor[0])+AbsF(acolor[1])+AbsF(acolor[2])
+			v3,al := MaxF((gc*255)-float32(dst+src),512)/128, (float32(src+dst)/255)
 			rM,gM,bM := mcolor[0]*al,mcolor[1]*al,mcolor[2]*al
 			(*mcolor)[0], (*mcolor)[1], (*mcolor)[2] = rM, gM, bM
 			render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, al)	
-			render(Blend, blendSourceFactor, BlendOne, al*float32(math.Pow(float64(v3),4)))
+			render(Blend, blendSourceFactor, BlendOne, al*Pow(v3,4))
 		} else {
 			render(Blend, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans)/255)
 		}	
@@ -383,11 +383,11 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 			}
 			if (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil && src < 255 {
 				//Summ of add components
-				gc := float32(math.Abs(float64(acolor[0]))+math.Abs(float64(acolor[1]))+math.Abs(float64(acolor[2])))
-				v3,ml,al := float32(MaxF((gc*255)-float32(dst),255))/255,(float32(src)/255), (float32(src+dst)/255)
+				gc := AbsF(acolor[0])+AbsF(acolor[1])+AbsF(acolor[2])
+				v3,ml,al := MaxF((gc*255)-float32(dst+src),512)/128,(float32(src)/255), (float32(src+dst)/255)
 				rM,gM,bM := mcolor[0]*ml,mcolor[1]*ml,mcolor[2]*ml
 				(*mcolor)[0], (*mcolor)[1], (*mcolor)[2] = rM, gM, bM 
-				render(Blend, blendSourceFactor, BlendOne,al*float32(math.Pow(float64(v3),3)))
+				render(Blend, blendSourceFactor, BlendOne,al*Pow(v3,3))
 			} else {
 				render(Blend, blendSourceFactor, BlendOne, float32(src)/255)
 			}
