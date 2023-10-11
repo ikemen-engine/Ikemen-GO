@@ -457,7 +457,7 @@ type bgCtrl struct {
 	sinmul       [4]int32
 	sincolor     [2]int32
 	invall       bool
-	invblend     int32	
+	invblend     int32
 	color        float32
 	positionlink bool
 	idx          int
@@ -491,7 +491,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		bgc.sinmul = [4]int32{0, 0, 0, 0}
 		bgc.sincolor = [2]int32{0, 0}
 		bgc.invall = false
-		bgc.invblend = 0		
+		bgc.invblend = 0
 		bgc.color = 1
 	case "posset":
 		bgc._type = BT_PosSet
@@ -554,7 +554,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		}
 		if is.ReadI32("invertblend", &bgc.invblend) {
 			bgc.invblend = bgc.invblend
-		}		
+		}
 		if is.ReadF32("color", &bgc.color) {
 			bgc.color = bgc.color / 256
 		}
@@ -1120,7 +1120,7 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.sincolor = bgc.sincolor[0] / 256
 			bgc.bg[i].palfx.cycletimeColor = bgc.sincolor[1]
 			bgc.bg[i].palfx.invertall = bgc.invall
-			bgc.bg[i].palfx.invertblend = bgc.invblend			
+			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
 		}
 	case BT_PosSet:
@@ -1258,9 +1258,9 @@ func (s *Stage) action() {
 			// b.palfx.synthesize(sys.bgPalFX)
 			b.palfx.eAdd = sys.bgPalFX.eAdd
 			b.palfx.eMul = sys.bgPalFX.eMul
-			b.palfx.eColor = sys.bgPalFX.eColor		
+			b.palfx.eColor = sys.bgPalFX.eColor
 			b.palfx.eInvertall = sys.bgPalFX.eInvertall
-			b.palfx.eInvertblend = sys.bgPalFX.eInvertblend				
+			b.palfx.eInvertblend = sys.bgPalFX.eInvertblend
 			b.palfx.eNegType = sys.bgPalFX.eNegType
 		}
 		if b.active && !paused {
@@ -1436,7 +1436,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if invblend != IErr {
 				s.bgc[i].invblend = invblend
-			}			
+			}
 			if !math.IsNaN(float64(color)) {
 				s.bgc[i].color = color / 256
 			}

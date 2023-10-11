@@ -36,22 +36,22 @@ type PalFXDef struct {
 	cycletimeMul   int32
 	cycletimeColor int32
 	invertall      bool
-	invertblend    int32	
+	invertblend    int32
 }
 type PalFX struct {
 	PalFXDef
-	remap      		[]int
-	negType    		bool
-	sintime    		int32
-	sintime2   		int32
-	sintime3   		int32
-	enable     		bool
-	eNegType   		bool
-	eInvertall 		bool
-	eInvertblend 	int32	
-	eAdd       		[3]int32
-	eMul       		[3]int32
-	eColor     		float32
+	remap        []int
+	negType      bool
+	sintime      int32
+	sintime2     int32
+	sintime3     int32
+	enable       bool
+	eNegType     bool
+	eInvertall   bool
+	eInvertblend int32
+	eAdd         [3]int32
+	eMul         [3]int32
+	eColor       float32
 }
 
 func newPalFX() *PalFX { return &PalFX{} }
@@ -73,7 +73,7 @@ func (pf *PalFX) getSynFx(blending bool) *PalFX {
 		return pf
 	}
 	synth := *pf
-	synth.synthesize(sys.allPalFX,blending)
+	synth.synthesize(sys.allPalFX, blending)
 	return &synth
 }
 func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
@@ -127,7 +127,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	return sys.workpal
 }
 func (pf *PalFX) getFcPalFx(transNeg bool, blending bool) (neg bool, grayscale float32,
-	add, mul [3]float32, invblend int32 ) {
+	add, mul [3]float32, invblend int32) {
 	p := pf.getSynFx(blending)
 	if !p.enable {
 		neg = false
@@ -203,7 +203,7 @@ func (pf *PalFX) step() {
 		if pf.invertblend <= -2 && pf.eInvertall {
 			pf.eInvertblend = 3
 		} else {
-			pf.eInvertblend = pf.invertblend		
+			pf.eInvertblend = pf.invertblend
 		}
 		pf.eNegType = pf.negType
 		pf.sinAdd(&pf.eAdd)
@@ -225,7 +225,7 @@ func (pf *PalFX) step() {
 		}
 	}
 }
-func (pf *PalFX) synthesize(pfx PalFX,blending bool) {
+func (pf *PalFX) synthesize(pfx PalFX, blending bool) {
 	for i, m := range pfx.eMul {
 		pf.eMul[i] = pf.eMul[i] * m / 256
 	}
@@ -238,7 +238,9 @@ func (pf *PalFX) synthesize(pfx PalFX,blending bool) {
 	if pfx.invertall {
 		//Char blend inverse
 		if pfx.invertblend == 1 {
-			if blending && pf.invertblend > -3 { pf.eInvertall = pf.invertall }
+			if blending && pf.invertblend > -3 {
+				pf.eInvertall = pf.invertall
+			}
 			switch {
 			case pf.invertblend == 0:
 				pf.eInvertblend = 1
@@ -256,7 +258,7 @@ func (pf *PalFX) synthesize(pfx PalFX,blending bool) {
 				pf.eInvertblend = -1
 			case pf.invertblend == -1:
 				pf.eInvertall = pf.invertall
-				pf.eInvertblend = 2				
+				pf.eInvertblend = 2
 			}
 		}
 
