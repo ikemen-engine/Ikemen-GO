@@ -762,6 +762,7 @@ func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
 		}
 	}
 	is.ReadBool(pre+"invertall", &al.palfx.invertall)
+	is.ReadI32(pre+"invertblend", &al.palfx.invertblend)
 	var n float32
 	if is.ReadF32(pre+"color", &n) {
 		al.palfx.color = n / 256

@@ -3381,6 +3381,7 @@ const (
 	palFX_sinmul
 	palFX_sincolor
 	palFX_invertall
+	palFX_invertblend
 	palFX_last = iota - 1
 	palFX_redirectid
 )
@@ -3439,6 +3440,8 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		pfd.sincolor = (exp[0].evalI(c) / 256) * side
 	case palFX_invertall:
 		pfd.invertall = exp[0].evalB(c)
+	case palFX_invertblend:
+		pfd.invertblend = Clamp(exp[0].evalI(c),-1,2)
 	default:
 		return false
 	}
@@ -3467,6 +3470,10 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		}
+		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+		if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 {
+			pf.invertblend = -2
+		}
 		sc.runSub(c, &pf.PalFXDef, id, exp)
 		return true
 	})
@@ -3479,8 +3486,10 @@ func (sc allPalFX) Run(c *Char, _ []int32) bool {
 	sys.allPalFX.clear()
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.allPalFX.PalFXDef, id, exp)
+		//Forcing 1.1 kind behavior
+		sys.allPalFX.invertblend = Clamp(sys.allPalFX.invertblend,0,1)
 		return true
-	})
+	})	
 	return false
 }
 
@@ -3488,8 +3497,11 @@ type bgPalFX palFX
 
 func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 	sys.bgPalFX.clear()
+	//Forcing 1.1 behavior
+	sys.bgPalFX.invertblend = -2
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.bgPalFX.PalFXDef, id, exp)
+		sys.bgPalFX.invertblend = -3	
 		return true
 	})
 	return false
@@ -3712,7 +3724,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_window:
 			e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 		default:
-			palFX(sc).runSub(c, &e.palfxdef, id, exp)
+			if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 {
+				e.palfxdef.invertblend = -2
+			}
+			palFX(sc).runSub(c, &e.palfxdef, id, exp)		
 		}
 		return true
 	})
@@ -4085,6 +4100,7 @@ const (
 	afterImage_framegap
 	afterImage_palcolor
 	afterImage_palinvertall
+	afterImage_palinvertblend
 	afterImage_palbright
 	afterImage_palcontrast
 	afterImage_palpostbright
@@ -4123,6 +4139,8 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 		ai.setPalColor(exp[0].evalI(c))
 	case afterImage_palinvertall:
 		ai.setPalInvertall(exp[0].evalB(c))
+	case afterImage_palinvertblend:
+		ai.setPalInvertblend(exp[0].evalI(c))		
 	case afterImage_palbright:
 		ai.setPalBrightR(exp[0].evalI(c))
 		if len(exp) > 1 {
@@ -4180,6 +4198,10 @@ func (sc afterImage) Run(c *Char, _ []int32) bool {
 		}
 		if !doOce {
 			crun.aimg.clear()
+			//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+			if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 {
+				crun.aimg.palfx[0].invertblend = -2
+			}							
 			crun.aimg.time = 1
 			doOce = true
 		}
@@ -4616,6 +4638,10 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 			} else {
 				return false
 			}
+		}
+		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+		if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 {
+			crun.hitdef.palfx.invertblend = -2
 		}
 		sc.runSub(c, &crun.hitdef, id, exp)
 		return true
@@ -7818,6 +7844,7 @@ const (
 	modifyBGCtrl_sinmul
 	modifyBGCtrl_sincolor
 	modifyBGCtrl_invertall
+	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
 	modifyBGCtrl_redirectid
 )
@@ -7829,7 +7856,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	x, y := float32(math.NaN()), float32(math.NaN())
 	src, dst := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
 	add, mul, sinadd, sinmul, sincolor := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [2]int32{IErr, IErr}
-	invall, color := IErr, float32(math.NaN())
+	invall, invblend, color := IErr,IErr, float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case modifyBGCtrl_id:
@@ -7909,6 +7936,8 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
+		case modifyBGCtrl_invertblend:
+			invblend = exp[0].evalI(c)
 		case modifyBGCtrl_color:
 			color = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
@@ -7920,7 +7949,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, invall, color)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, invall, invblend, color)
 	return false
 }
 

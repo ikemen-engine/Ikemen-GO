@@ -993,6 +993,10 @@ func (c *Compiler) palFXSub(is IniSection,
 		palFX_invertall, VT_Bool, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, prefix+"invertblend",
+		palFX_invertblend, VT_Int, 1, false); err != nil {
+		return err
+	}		
 	return nil
 }
 func (c *Compiler) palFX(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
@@ -1049,6 +1053,10 @@ func (c *Compiler) afterImageSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, prefix+"palinvertall",
 		afterImage_palinvertall, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"palinvertblend",
+		afterImage_palinvertblend, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"palbright",
@@ -4137,6 +4145,10 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "invertblend",
+			modifyBGCtrl_invertblend, VT_Int, 1, false); err != nil {
+			return err
+		}		
 		if err := c.paramValue(is, sc, "color",
 			modifyBGCtrl_color, VT_Float, 1, false); err != nil {
 			return err
