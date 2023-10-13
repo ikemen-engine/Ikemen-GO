@@ -5720,6 +5720,10 @@ func (c *Char) actionPrepare() {
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 		}
+		//Trans reset during hitpause if ignorehitpause = 0 fix
+		if c.sf(CSF_trans) && c.hitPause() {
+			c.unsetSF(CSF_trans)
+		}
 	}
 	c.dropTargets()
 	if c.downHitOffset != 0 {
