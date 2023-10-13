@@ -2638,6 +2638,7 @@ func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
 func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
+	animNo = Max(0, animNo) // Avoid anim no. to get below 0, set it to 0 in that case (Like MUGEN 1.1)
 	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
