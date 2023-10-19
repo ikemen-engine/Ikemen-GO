@@ -1036,7 +1036,7 @@ func readLifeBarFace(pre string, is IniSection,
 }
 func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
 	group, number := int16(fa.face_spr[0]), int16(fa.face_spr[1])
-	if sys.chars[ref][0] != nil {
+	if sys.chars[ref][0] != nil && sys.chars[ref][0].anim != nil {
 		if mg, ok := sys.chars[ref][0].anim.remap[group]; ok {
 			if mn, ok := mg[number]; ok {
 				group, number = mn[0], mn[1]

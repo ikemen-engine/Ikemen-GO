@@ -2519,22 +2519,30 @@ func (s *Select) addChar(def string) {
 	if fp = FileExist(fp); len(fp) == 0 {
 		fp = sprite
 	}
-	LoadFile(&fp, []string{def, "", "data/"}, func(file string) error {
-		var selPal []int32
-		var err error
-		sc.sff, selPal, err = preloadSff(file, true, listSpr)
-		if err != nil {
-			panic(fmt.Errorf("failed to load %v: %v\nerror preloading %v", file, err, def))
-		}
+	if len(fp) > 0 {
+		LoadFile(&fp, []string{def, "", "data/"}, func(file string) error {
+			var selPal []int32
+			var err error
+			sc.sff, selPal, err = preloadSff(file, true, listSpr)
+			if err != nil {
+				panic(fmt.Errorf("failed to load %v: %v\nerror preloading %v", file, err, def))
+			}
+			sc.anims.updateSff(sc.sff)
+			for k := range s.charSpritePreload {
+				sc.anims.addSprite(sc.sff, k[0], k[1])
+			}
+			if len(sc.pal) == 0 {
+				sc.pal = selPal
+			}
+			return nil
+		})
+	} else {
+		sc.sff = newSff()
 		sc.anims.updateSff(sc.sff)
 		for k := range s.charSpritePreload {
 			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
-		if len(sc.pal) == 0 {
-			sc.pal = selPal
-		}
-		return nil
-	})
+	}
 	//read movelist
 	if len(movelist) > 0 {
 		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
