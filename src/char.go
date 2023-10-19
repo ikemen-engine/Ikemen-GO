@@ -2638,7 +2638,6 @@ func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
 func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
-	animNo = Max(0, animNo) // Avoid anim no. to get below 0, set it to 0 in that case (Like MUGEN 1.1)
 	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, true); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
@@ -3809,11 +3808,15 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.underexplDrawlist[en], true)
 }
 func (c *Char) getAnim(n int32, ffx string, log bool) (a *Animation) {
-	if n == -2 {
+	if n == -1 {
 		return &Animation{}
 	}
-	if n < 0 {
-		return nil
+	if n < -1 {
+		// MUGEN 1.1 exports a warning message when attempting to change anim to a negative value, then sets
+		// the character animation to "0". Ikemen GO uses "-1" as a no-sprite/invisible anim, so we make
+		// an exception here
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted change to negative anim (below -1)"))
+		n = 0
 	}
 	if ffx != "" && ffx != "s" {
 		if sys.ffx[ffx] != nil && sys.ffx[ffx].fat != nil {
