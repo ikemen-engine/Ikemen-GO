@@ -2487,7 +2487,7 @@ func (sc stateDef) Run(c *Char) {
 				}
 			}
 		case stateDef_anim:
-			c.changeAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
+			c.changeAnimEx(exp[1].evalI(c), c.playerNo, string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 		case stateDef_ctrl:
 			//in mugen fatal blow ignores statedef ctrl
 			if !c.ghv.fatal {
@@ -2961,7 +2961,7 @@ func (sc changeAnim) Run(c *Char, _ []int32) bool {
 			if r != -1 {
 				pn = r
 			}
-			crun.changeAnimEx(exp[1].evalI(c), pn, string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
+			crun.changeAnim(exp[1].evalI(c), pn, string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
 			if setelem {
 				crun.setAnimElem(elem)
 			}

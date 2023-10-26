@@ -2668,10 +2668,21 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 		}
 	}
 }
-func (c *Char) changeAnim(animNo int32, ffx string) {
-	c.changeAnimEx(animNo, c.playerNo, ffx, false)
+func (c *Char) changeAnim(animNo int32, playerNo int, ffx string) {
+	if animNo < 0 && animNo != -2 {
+		// MUGEN 1.1 exports a warning message when attempting to change anim to a negative value through ChangeAnim SCTRL,
+		// then sets the character animation to "0". Ikemen GO uses "-2" as a no-sprite/invisible anim, so we make
+		// an exception here
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted change to negative anim (different from -2)"))
+		animNo = 0
+	}
+	c.changeAnimEx(animNo, playerNo, ffx, false)
 }
 func (c *Char) changeAnim2(animNo int32, ffx string) {
+	if animNo < 0 && animNo != -2 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted change to negative anim (different from -2)"))
+		animNo = 0
+	}
 	c.changeAnimEx(animNo, c.ss.sb.playerNo, ffx, true)
 }
 func (c *Char) setAnimElem(e int32) {
@@ -3389,11 +3400,11 @@ func (c *Char) turn() {
 			switch c.ss.stateType {
 			case ST_S:
 				if c.animNo != 5 {
-					c.changeAnim(5, "")
+					c.changeAnimEx(5, c.playerNo, "", false)
 				}
 			case ST_C:
 				if c.animNo != 6 {
-					c.changeAnim(6, "")
+					c.changeAnimEx(6, c.playerNo, "", false)
 				}
 			}
 			c.setFacing(-c.facing)
@@ -3472,8 +3483,8 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.sf(CSF_noautoturn) {
 		c.turn()
 	}
-	if anim >= 0 {
-		c.changeAnim(anim, ffx)
+	if anim != -1 {
+		c.changeAnim(anim, c.playerNo, ffx)
 	}
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
@@ -3808,15 +3819,11 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.underexplDrawlist[en], true)
 }
 func (c *Char) getAnim(n int32, ffx string, log bool) (a *Animation) {
-	if n == -1 {
+	if n == -2 {
 		return &Animation{}
 	}
-	if n < -1 {
-		// MUGEN 1.1 exports a warning message when attempting to change anim to a negative value, then sets
-		// the character animation to "0". Ikemen GO uses "-1" as a no-sprite/invisible anim, so we make
-		// an exception here
-		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted change to negative anim (below -1)"))
-		n = 0
+	if n == -1 {
+		return nil
 	}
 	if ffx != "" && ffx != "s" {
 		if sys.ffx[ffx] != nil && sys.ffx[ffx].fat != nil {
