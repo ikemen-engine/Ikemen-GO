@@ -1089,7 +1089,7 @@ func systemScriptInit(l *lua.LState) {
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				if sys.playBgmFlg {
-					sys.bgm = *newBgm()
+					sys.bgm.Open("", 1, 100, 0, 0, 0)
 					sys.playBgmFlg = false
 				}
 				sys.clearAllSound()
