@@ -425,7 +425,7 @@ func systemScriptInit(l *lua.LState) {
 				if ffx {
 					preffix = "f"
 				}
-				c[0].changeAnim(an, preffix)
+				c[0].changeAnim(an, c[0].playerNo, preffix)
 				if l.GetTop() >= 3 {
 					c[0].setAnimElem(int32(numArg(l, 3)))
 				}
@@ -1089,7 +1089,7 @@ func systemScriptInit(l *lua.LState) {
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				if sys.playBgmFlg {
-					sys.bgm = *newBgm()
+					sys.bgm.Open("", 1, 100, 0, 0, 0)
 					sys.playBgmFlg = false
 				}
 				sys.clearAllSound()

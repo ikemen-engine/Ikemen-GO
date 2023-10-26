@@ -76,7 +76,7 @@ playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 #===============================================================================
 # StateDizzyBirdsHelper [helper]
 #===============================================================================
-[StateDef const(StateDizzyBirdsHelper); type: A; physics: N; anim: -1; velset: 0, 0; ctrl: 0;]
+[StateDef const(StateDizzyBirdsHelper); type: A; physics: N; anim: -2; velset: 0, 0; ctrl: 0;]
 
 # Destroy helper
 # 32 ticks after conditions are met so that it may fade out the effects
