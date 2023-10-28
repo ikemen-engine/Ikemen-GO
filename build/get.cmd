@@ -20,5 +20,8 @@ go get -v -u github.com/yuin/gopher-lua
 
 go get -v -u github.com/golang/freetype
 
+go get -v -u github.com/lukegb/dds
+go get -v -u github.com/qmuntal/gltf
+
 echo. 
 pause

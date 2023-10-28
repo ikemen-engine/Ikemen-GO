@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	_ "embed" // Support for go:embed resources
 	"encoding/binary"
 	"fmt"
@@ -29,6 +30,15 @@ var BlendFunctionLUT = map[BlendFunc]gl.Enum{
 	BlendZero:             gl.ZERO,
 	BlendSrcAlpha:         gl.SRC_ALPHA,
 	BlendOneMinusSrcAlpha: gl.ONE_MINUS_SRC_ALPHA,
+}
+
+var PrimitiveModeLUT = map[PrimitiveMode]gl.Enum{
+	LINES:          gl.LINES,
+	LINE_LOOP:      gl.LINE_LOOP,
+	LINE_STRIP:     gl.LINE_STRIP,
+	TRIANGLES:      gl.TRIANGLES,
+	TRIANGLE_STRIP: gl.TRIANGLE_STRIP,
+	TRIANGLE_FAN:   gl.TRIANGLE_FAN,
 }
 
 // ------------------------------------------------------------------
@@ -151,6 +161,18 @@ func (t *Texture) SetData(data []byte) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 }
+func (t *Texture) SetDataG(data []byte, mag, min, ws, wt int) {
+
+	format := InternalFormatLUT[Max(t.depth, 8)]
+
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, int(t.width), int(t.height), format, gl.UNSIGNED_BYTE, data)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, mag)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, min)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, ws)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wt)
+}
 
 // Return whether texture has a valid handle
 func (t *Texture) IsValid() bool {
@@ -174,6 +196,9 @@ type Renderer struct {
 	// Shader and vertex data for primitive rendering
 	spriteShader *ShaderProgram
 	vertexBuffer gl.Buffer
+	// Shader and index data for 3D model rendering
+	modelShader *ShaderProgram
+	indexBuffer gl.Buffer
 }
 
 //go:embed shaders/sprite.vert.glsl
@@ -181,6 +206,12 @@ var vertShader string
 
 //go:embed shaders/sprite.frag.glsl
 var fragShader string
+
+//go:embed shaders/model.vert.glsl
+var modelVertShader string
+
+//go:embed shaders/model.frag.glsl
+var modelFragShader string
 
 //go:embed shaders/ident.vert.glsl
 var identVertShader string
@@ -203,12 +234,18 @@ func (r *Renderer) Init() {
 	gl.BufferData(gl.ARRAY_BUFFER, postVertData, gl.STATIC_DRAW)
 
 	r.vertexBuffer = gl.CreateBuffer()
+	r.indexBuffer = gl.CreateBuffer()
 
 	// Sprite shader
 	r.spriteShader = newShaderProgram(vertShader, fragShader, "Main Shader")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez")
 	r.spriteShader.RegisterTextures("pal", "tex")
+
+	// 3D model shader
+	r.modelShader = newShaderProgram(modelVertShader, modelFragShader, "Model Shader")
+	r.modelShader.RegisterUniforms("modelview", "projection", "baseColorFactor", "add", "mult", "neg", "gray", "enableAlpha", "alphaThreshold")
+	r.modelShader.RegisterTextures("tex")
 
 	// Compile postprocessing shaders
 
@@ -349,6 +386,42 @@ func (r *Renderer) ReleasePipeline() {
 	gl.Disable(gl.BLEND)
 }
 
+func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided bool, offset1, offset2 int) {
+	gl.UseProgram(r.modelShader.program)
+
+	gl.Enable(gl.TEXTURE_2D)
+	gl.Enable(gl.BLEND)
+	gl.Enable(gl.DEPTH_TEST)
+	gl.DepthFunc(gl.LESS)
+	gl.DepthMask(depthMask)
+	if doubleSided {
+		gl.Enable(gl.CULL_FACE)
+		gl.CullFace(gl.BACK)
+	} else {
+		gl.Disable(gl.CULL_FACE)
+	}
+
+	gl.BlendEquation(BlendEquationLUT[eq])
+	gl.BlendFunc(BlendFunctionLUT[src], BlendFunctionLUT[dst])
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
+	gl.EnableVertexAttribArray(r.modelShader.aPos)
+	gl.EnableVertexAttribArray(r.modelShader.aUv)
+	gl.VertexAttribPointer(r.modelShader.aPos, 3, gl.FLOAT, false, 12, offset1)
+	gl.VertexAttribPointer(r.modelShader.aUv, 2, gl.FLOAT, false, 8, offset2)
+
+}
+func (r *Renderer) ReleaseModelPipeline() {
+	gl.DisableVertexAttribArray(r.modelShader.aPos)
+	gl.DisableVertexAttribArray(r.modelShader.aUv)
+	//gl.Disable(gl.TEXTURE_2D)
+	gl.DepthMask(true)
+	gl.Disable(gl.DEPTH_TEST)
+	gl.Disable(gl.CULL_FACE)
+	gl.Disable(gl.BLEND)
+}
+
 func (r *Renderer) ReadPixels(data []uint8, width, height int) {
 	r.EndFrame()
 	gl.ReadPixels(data, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE)
@@ -407,12 +480,63 @@ func (r *Renderer) SetTexture(name string, t *Texture) {
 	gl.Uniform1i(loc, unit)
 }
 
+func (r *Renderer) SetModelUniformI(name string, val int) {
+	loc := r.modelShader.u[name]
+	gl.Uniform1i(loc, val)
+}
+
+func (r *Renderer) SetModelUniformF(name string, values ...float32) {
+	loc := r.modelShader.u[name]
+	switch len(values) {
+	case 1:
+		gl.Uniform1f(loc, values[0])
+	case 2:
+		gl.Uniform2f(loc, values[0], values[1])
+	case 3:
+		gl.Uniform3f(loc, values[0], values[1], values[2])
+	case 4:
+		gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
+	}
+}
+func (r *Renderer) SetModelUniformFv(name string, values []float32) {
+	loc := r.modelShader.u[name]
+	switch len(values) {
+	case 2:
+		gl.Uniform2fv(loc, values)
+	case 3:
+		gl.Uniform3fv(loc, values)
+	case 4:
+		gl.Uniform4fv(loc, values)
+	}
+}
+func (r *Renderer) SetModelUniformMatrix(name string, value []float32) {
+	loc := r.modelShader.u[name]
+	gl.UniformMatrix4fv(loc, value)
+}
+
+func (r *Renderer) SetModelTexture(name string, t *Texture) {
+	loc, unit := r.modelShader.u[name], r.modelShader.t[name]
+	gl.ActiveTexture((gl.Enum(int(gl.TEXTURE0) + unit)))
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+	gl.Uniform1i(loc, unit)
+}
+
 func (r *Renderer) SetVertexData(values ...float32) {
 	data := f32.Bytes(binary.LittleEndian, values...)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW)
 }
+func (r *Renderer) SetIndexData(values ...uint32) {
+	data := new(bytes.Buffer)
+	binary.Write(data, binary.LittleEndian, values)
+
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, data.Bytes(), gl.STATIC_DRAW)
+}
 
 func (r *Renderer) RenderQuad() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
+}
+func (r *Renderer) RenderElements(mode PrimitiveMode, count, offset int) {
+	gl.DrawElements(PrimitiveModeLUT[mode], count, gl.UNSIGNED_INT, offset)
 }
