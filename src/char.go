@@ -4570,6 +4570,10 @@ func (c *Char) lifeSet(life int32) {
 	if c.teamside != c.ghv.playerNo&1 && c.teamside != -1 && c.ghv.playerNo < MaxSimul*2 { //attacker and receiver from opposite teams
 		sys.lastHitter[^c.playerNo&1] = c.ghv.playerNo
 	}
+	// Disable red life. Placing this here makes it never lag behind life
+	if !sys.lifebar.redlifebar {
+		c.redLife = c.life
+	}
 }
 func (c *Char) setPower(pow int32) {
 	if !sys.roundEnd() {
