@@ -1379,6 +1379,7 @@ type Projectile struct {
 	platformHeight  [2]float32
 	platformAngle   float32
 	platformFence   bool
+	remflag         bool
 }
 
 func newProjectile() *Projectile {
@@ -1413,7 +1414,7 @@ func (p *Projectile) paused(playerNo int) bool {
 }
 func (p *Projectile) update(playerNo int) {
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
-		rem := true
+		p.remflag = true
 		if p.anim >= 0 {
 			if p.hits < 0 && p.remove {
 				if p.hits == -1 {
@@ -1437,9 +1438,9 @@ func (p *Projectile) update(playerNo int) {
 					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 				}
 			} else {
-				rem = false
+				p.remflag = false
 			}
-			if rem {
+			if p.remflag {
 				if p.ani != nil {
 					p.ani.UpdateSprite()
 				}
@@ -1450,13 +1451,13 @@ func (p *Projectile) update(playerNo int) {
 					p.velocity[0] *= -1
 				}
 				p.accel, p.velmul, p.anim = [2]float32{}, [...]float32{1, 1}, -1
-				// In Mugen, projectiles can hit even after their removetime expires
+				// In Mugen, projectiles can hit even after their removetime expires - https://github.com/ikemen-engine/Ikemen-GO/issues/1362
 				//if p.hits >= 0 {
 				//	p.hits = -1
 				//}
 			}
 		}
-		if rem {
+		if p.remflag {
 			if p.ani != nil && (p.ani.totaltime <= 0 || p.ani.AnimTime() == 0) {
 				p.ani = nil
 			}
@@ -3101,7 +3102,7 @@ func (c *Char) numPartner() int32 {
 func (c *Char) numProj() int32 {
 	n := int32(0)
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id >= 0 && p.hits >= 0 {
+		if p.id >= 0 && !p.remflag {
 			n++
 		}
 	}
@@ -3116,7 +3117,7 @@ func (c *Char) numProjID(pid BytecodeValue) BytecodeValue {
 	}
 	var id, n int32 = Max(0, pid.ToI()), 0
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id == id && p.hits >= 0 {
+		if p.id == id && !p.remflag {
 			n++
 		}
 	}
@@ -4568,6 +4569,10 @@ func (c *Char) lifeSet(life int32) {
 	}
 	if c.teamside != c.ghv.playerNo&1 && c.teamside != -1 && c.ghv.playerNo < MaxSimul*2 { //attacker and receiver from opposite teams
 		sys.lastHitter[^c.playerNo&1] = c.ghv.playerNo
+	}
+	// Disable red life. Placing this here makes it never lag behind life
+	if !sys.lifebar.redlifebar {
+		c.redLife = c.life
 	}
 }
 func (c *Char) setPower(pow int32) {
