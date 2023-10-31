@@ -3681,7 +3681,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		}
 	}
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if h.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && h.stCgi().ikemenver[0] <= 0 {
+	if h.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && h.stCgi().ikemenver[0] <= 0 && h.stCgi().ikemenver[1] <= 0 {
 		h.palfx.invertblend = -2
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
@@ -4809,7 +4809,7 @@ func (c *Char) getPalfx() *PalFX {
 	}
 	c.palfx = newPalFX()
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] <= 0 && c.palfx != nil {
+	if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] <= 0 && c.stCgi().ikemenver[1] <= 0 && c.palfx != nil {
 		c.palfx.PalFXDef.invertblend = -2
 	}
 	return c.palfx
