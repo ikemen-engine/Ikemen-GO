@@ -1,9 +1,9 @@
 on:
   workflow_dispatch:
   push:
-    branches: [ master, main ]
+    branches: [ develop, release ]
   #pull_request_target:
-  #  branches: [ master, main ]
+  #  branches: [ develop, release ]
 
 permissions: write-all
 
