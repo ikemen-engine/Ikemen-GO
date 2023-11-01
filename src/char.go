@@ -72,6 +72,7 @@ const (
 	CSF_posfreeze
 	CSF_playerpush
 	CSF_angledraw
+	CSF_offset
 	CSF_destroy
 	CSF_frontedge
 	CSF_backedge
@@ -1724,8 +1725,11 @@ type CharSystemVar struct {
 	bindFacing       float32
 	hitPauseTime     int32
 	angle            float32
+	angleTrg		 float32
 	angleScale       [2]float32
+	angleScaleTrg    [2]float32
 	alpha            [2]int32
+	alphaTrg         [2]int32
 	recoverTime      int32
 	systemFlag       SystemCharFlag
 	specialFlag      CharSpecialFlag
@@ -1806,6 +1810,7 @@ type Char struct {
 	cpucmd                int32
 	attackDist            float32
 	offset                [2]float32
+	offsetTrg 		      [2]float32
 	stchtmp               bool
 	inguarddist           bool
 	pushed                bool
@@ -1963,7 +1968,7 @@ func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
-		angleScale: [...]float32{1, 1}, alpha: [...]int32{255, 0},
+		angleScale: [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
 		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
 		fallDefenseMul:  1,
@@ -4825,6 +4830,7 @@ func (c *Char) hitPause() bool {
 }
 func (c *Char) angleSet(a float32) {
 	c.angle = a
+	c.angleTrg = c.angle
 }
 func (c *Char) inputOver() bool {
 	if c.sf(CSF_postroundinput) {
@@ -5731,7 +5737,7 @@ func (c *Char) actionPrepare() {
 		if c.gi().ver[0] == 1 {
 			// The following flags are only reset later in the code
 			flagtemp := (c.specialFlag&CSF_nostandguard | c.specialFlag&CSF_nocrouchguard | c.specialFlag&CSF_noairguard)
-			c.unsetSF(CSF_assertspecial | CSF_angledraw)
+			c.unsetSF(CSF_assertspecial | CSF_angledraw | CSF_offset)
 			c.setSF(flagtemp)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
@@ -5924,6 +5930,17 @@ func (c *Char) update(cvmin, cvmax,
 			c.destroy()
 			return
 		}
+		if !c.sf(CSF_offset) {
+			c.offsetTrg = [2]float32{}
+		}
+		if !c.sf(CSF_angledraw) {
+			c.angleTrg = 0
+			c.angleScaleTrg = [...]float32{1, 1}
+		}
+		if !c.sf(CSF_trans) {
+			c.alphaTrg[0] = 255
+			c.alphaTrg[1] = 0			
+		}		
 		if !c.pause() && !c.isBound() {
 			c.bind()
 		}
