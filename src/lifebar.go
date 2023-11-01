@@ -227,9 +227,9 @@ func (bts *LbBgTextSnd) draw(layerno int16, f []*Fnt) {
 }
 
 // Reads multiple lifebar values e.g. multiple front elements
-func readMultipleValues(pre string, name string, is IniSection, sff *Sff, at AnimationTable) map[int32]*AnimLayout{
-	result := make(map[int32]*AnimLayout);
-	r, _ := regexp.Compile(pre + name +"[0-9]+\\.")
+func readMultipleValues(pre string, name string, is IniSection, sff *Sff, at AnimationTable) map[int32]*AnimLayout {
+	result := make(map[int32]*AnimLayout)
+	r, _ := regexp.Compile(pre + name + "[0-9]+\\.")
 	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
@@ -246,9 +246,9 @@ func readMultipleValues(pre string, name string, is IniSection, sff *Sff, at Ani
 }
 
 // Float version of readMultipleValues
-func readMultipleValuesF(pre string, name string, is IniSection, sff *Sff, at AnimationTable) map[float32]*AnimLayout{
-	result := make(map[float32]*AnimLayout);
-	r, _ := regexp.Compile(pre + name +"[0-9]+\\.")
+func readMultipleValuesF(pre string, name string, is IniSection, sff *Sff, at AnimationTable) map[float32]*AnimLayout {
+	result := make(map[float32]*AnimLayout)
+	r, _ := regexp.Compile(pre + name + "[0-9]+\\.")
 	for k := range is {
 		if r.MatchString(k) {
 			re := regexp.MustCompile("[0-9]+")
@@ -307,12 +307,12 @@ func readHealthBar(pre string, is IniSection,
 	hb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	hb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	hb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k, v := range readMultipleValuesF(pre, "front", is, sff, at){
+	for k, v := range readMultipleValuesF(pre, "front", is, sff, at) {
 		hb.front[k] = v
 	}
 	hb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	hb.red[0] = ReadAnimLayout(pre+"red.", is, sff, at, 0)
-	for k, v := range readMultipleValues(pre, "red", is, sff, at){
+	for k, v := range readMultipleValues(pre, "red", is, sff, at) {
 		hb.red[k] = v
 	}
 	hb.value = *readLbText(pre+"value.", is, "%d", 0, f, 0)
@@ -505,7 +505,7 @@ func newPowerBar() *PowerBar {
 	return &PowerBar{
 		level_snd:        [9][2]int32{{-1}, {-1}, {-1}},
 		front:            make(map[int32]*AnimLayout),
-		bg0:            make(map[int32]*AnimLayout),
+		bg0:              make(map[int32]*AnimLayout),
 		counter_rounding: 1000,
 		value_rounding:   1,
 	}
@@ -516,7 +516,7 @@ func readPowerBar(pre string, is IniSection,
 	is.ReadI32(pre+"pos", &pb.pos[0], &pb.pos[1])
 	is.ReadI32(pre+"range.x", &pb.range_x[0], &pb.range_x[1])
 	pb.bg0[0] = ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
-	for k,v := range readMultipleValues(pre, "bg0", is, sff, at){
+	for k, v := range readMultipleValues(pre, "bg0", is, sff, at) {
 		pb.bg0[k] = v
 	}
 	pb.bg1 = *ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
@@ -524,7 +524,7 @@ func readPowerBar(pre string, is IniSection,
 	pb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	pb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	pb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k,v := range readMultipleValues(pre, "front", is, sff, at){
+	for k, v := range readMultipleValues(pre, "front", is, sff, at) {
 		pb.front[k] = v
 	}
 	// Lifebar power counter.
@@ -729,7 +729,7 @@ func readGuardBar(pre string, is IniSection,
 	gb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	gb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	gb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k,v := range readMultipleValuesF(pre, "front", is, sff, at){
+	for k, v := range readMultipleValuesF(pre, "front", is, sff, at) {
 		gb.front[k] = v
 	}
 	gb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
@@ -869,7 +869,7 @@ func readStunBar(pre string, is IniSection,
 	sb.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	sb.mid = *ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	sb.front[0] = ReadAnimLayout(pre+"front.", is, sff, at, 0)
-	for k,v := range readMultipleValuesF(pre, "front", is, sff, at){
+	for k, v := range readMultipleValuesF(pre, "front", is, sff, at) {
 		sb.front[k] = v
 	}
 	sb.shift = *ReadAnimLayout(pre+"shift.", is, sff, at, 0)
@@ -1128,15 +1128,15 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		x := float32(fa.teammate_pos[0] + fa.teammate_spacing[0]*(i-1))
 		y := float32(fa.teammate_pos[1] + fa.teammate_spacing[1]*(i-1))
 		if fa.teammate_ko_hide == true {
-			x -= float32(fa.teammate_spacing[0]*fa.numko)
-			y -= float32(fa.teammate_spacing[1]*fa.numko)
+			x -= float32(fa.teammate_spacing[0] * fa.numko)
+			y -= float32(fa.teammate_spacing[1] * fa.numko)
 		}
 		for ; i >= 0; i-- {
 			if i != fa.numko {
 				if i < fa.numko && fa.teammate_ko_hide == true {
 					x -= float32(fa.teammate_spacing[0])
 					y -= float32(fa.teammate_spacing[1])
-					continue;
+					continue
 				}
 				fa.teammate_bg.Draw((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
 				fa.teammate_bg0.Draw((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)

@@ -1725,7 +1725,7 @@ type CharSystemVar struct {
 	bindFacing       float32
 	hitPauseTime     int32
 	angle            float32
-	angleTrg		 float32
+	angleTrg         float32
 	angleScale       [2]float32
 	angleScaleTrg    [2]float32
 	alpha            [2]int32
@@ -1810,7 +1810,7 @@ type Char struct {
 	cpucmd                int32
 	attackDist            float32
 	offset                [2]float32
-	offsetTrg 		      [2]float32
+	offsetTrg             [2]float32
 	stchtmp               bool
 	inguarddist           bool
 	pushed                bool
@@ -5939,8 +5939,8 @@ func (c *Char) update(cvmin, cvmax,
 		}
 		if !c.sf(CSF_trans) {
 			c.alphaTrg[0] = 255
-			c.alphaTrg[1] = 0			
-		}		
+			c.alphaTrg[1] = 0
+		}
 		if !c.pause() && !c.isBound() {
 			c.bind()
 		}

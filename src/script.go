@@ -3859,7 +3859,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 
 	// new triggers
-	//atan2 (dedicated functionality already exists in Lua)	
+	//atan2 (dedicated functionality already exists in Lua)
 	luaRegister(l, "angle", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.angleTrg))
 		return 1
@@ -3871,7 +3871,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "alphaDest", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.alphaTrg[1]))
 		return 1
-	})	
+	})
 	luaRegister(l, "animelemlength", func(*lua.LState) int {
 		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
 			l.Push(lua.LNumber(f.Time))
@@ -3889,11 +3889,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "clamp", func(*lua.LState) int {
-		v1, v2, v3, retv := float32(numArg(l,1)),float32(numArg(l,2)),float32(numArg(l,3)), float32(0)
+		v1, v2, v3, retv := float32(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3)), float32(0)
 		retv = MaxF(v2, MinF(v1, v3))
 		l.Push(lua.LNumber(retv))
 		return 1
-	})	
+	})
 	luaRegister(l, "combocount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.comboCount()))
 		return 1
@@ -3902,7 +3902,7 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.consecutiveWins[sys.debugWC.teamside]))
 		return 1
 	})
-	//deg (dedicated functionality already exists in Lua)	
+	//deg (dedicated functionality already exists in Lua)
 	luaRegister(l, "defence", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.finalDefense * 100))
 		return 1
@@ -4086,11 +4086,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "lerp", func(*lua.LState) int {
-		a,b,amount, retv := float32(numArg(l,1)),float32(numArg(l,2)),float32(numArg(l,3)), float32(0)
-		retv = float32(a + (b - a) * MaxF(0, MinF(amount, 1)))
+		a, b, amount, retv := float32(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3)), float32(0)
+		retv = float32(a + (b-a)*MaxF(0, MinF(amount, 1)))
 		l.Push(lua.LNumber(retv))
 		return 1
-	})	
+	})
 	luaRegister(l, "localscale", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.localscl))
 		return 1
@@ -4118,7 +4118,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "offsetY", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.offsetTrg[1]))
 		return 1
-	})	
+	})
 	luaRegister(l, "pausetime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.pauseTime()))
 		return 1
@@ -4143,7 +4143,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	//randomrange (dedicated functionality already exists in Lua)
-	//rad (dedicated functionality already exists in Lua)	
+	//rad (dedicated functionality already exists in Lua)
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.ocd().ratioLevel))
 		return 1
@@ -4173,9 +4173,9 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "sign", func(*lua.LState) int {
-		v, retv := float32(numArg(l,1)), int32(0)
+		v, retv := float32(numArg(l, 1)), int32(0)
 		if v < 0 {
-			v = -1	
+			v = -1
 		} else if v > 0 {
 			v = 1
 		} else {
@@ -4184,7 +4184,7 @@ func triggerFunctions(l *lua.LState) {
 		retv = int32(v)
 		l.Push(lua.LNumber(retv))
 		return 1
-	})	
+	})
 	luaRegister(l, "score", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.score()))
 		return 1
