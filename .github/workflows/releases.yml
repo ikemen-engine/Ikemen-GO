@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [ master, main ]
+    branches: [ develop ]
   workflow_dispatch:
     inputs:
       tag:
