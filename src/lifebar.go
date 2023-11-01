@@ -1002,6 +1002,7 @@ type LifeBarFace struct {
 	teammate_face     []*Sprite
 	teammate_face_lay Layout
 	teammate_scale    []float32
+	teammate_ko_hide  bool
 	numko             int32
 	old_spr, old_pal  [2]int32
 }
@@ -1039,6 +1040,7 @@ func readLifeBarFace(pre string, is IniSection,
 		sys.sel.charSpritePreload[[...]int16{int16(fa.teammate_face_spr[0]), int16(fa.teammate_face_spr[1])}] = true
 	}
 	fa.teammate_face_lay = *ReadLayout(pre+"teammate.face.", is, 0)
+	is.ReadBool(pre+"teammate.ko.hide", &fa.teammate_ko_hide)
 	return fa
 }
 func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
@@ -1125,8 +1127,17 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 		i := int32(len(far.teammate_face)) - 1
 		x := float32(fa.teammate_pos[0] + fa.teammate_spacing[0]*(i-1))
 		y := float32(fa.teammate_pos[1] + fa.teammate_spacing[1]*(i-1))
+		if fa.teammate_ko_hide == true {
+			x -= float32(fa.teammate_spacing[0]*fa.numko)
+			y -= float32(fa.teammate_spacing[1]*fa.numko)
+		}
 		for ; i >= 0; i-- {
 			if i != fa.numko {
+				if i < fa.numko && fa.teammate_ko_hide == true {
+					x -= float32(fa.teammate_spacing[0])
+					y -= float32(fa.teammate_spacing[1])
+					continue;
+				}
 				fa.teammate_bg.Draw((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
 				fa.teammate_bg0.Draw((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
 				fa.teammate_bg1.Draw((x + sys.lifebarOffsetX), y, layerno, sys.lifebarScale)
