@@ -306,8 +306,8 @@ func RenderSprite(rp RenderParams) {
 		} else {
 			gfx.SetTexture("pal", rp.paltex)
 			gfx.SetUniformI("isRgba", 0)
-			gfx.SetUniformI("mask", int(rp.mask))
 		}
+		gfx.SetUniformI("mask", int(rp.mask))
 		gfx.SetUniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
 		gfx.SetUniformI("isFlat", 0)
 

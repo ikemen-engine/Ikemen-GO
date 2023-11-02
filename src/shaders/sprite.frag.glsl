@@ -28,7 +28,10 @@ void main(void) {
 		vec3 final_add = add;
 		vec4 final_mul = vec4(mult, alpha);
 		if (isRgba) {
-			// RGBA sprites use premultiplied alpha for transparency
+			if (mask == -1) {
+				c.a = 1.0;
+			}			
+			// RGBA sprites use premultiplied alpha for transparency	
 			neg_base *= c.a;
 			final_add *= c.a;
 			final_mul.rgb *= alpha;
