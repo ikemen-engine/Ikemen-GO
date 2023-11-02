@@ -1005,6 +1005,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
 			zlink = i
 			s.stageCamera.zoffset += int32(b.start[1] * s.scale[1])
+			s.stageCamera.boundhigh -= int32(b.start[1] * s.scale[1])
 		}
 	}
 	ratio1 := float32(s.stageCamera.localcoord[0]) / float32(s.stageCamera.localcoord[1])
@@ -1266,8 +1267,14 @@ func (s *Stage) action() {
 		if b.active && !paused {
 			s.bg[i].bga.action()
 			if i > 0 && b.positionlink {
-				s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
-				s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
+				bgasinoffset0 := s.bg[link].bga.sinoffset[0]
+				bgasinoffset1 := s.bg[link].bga.sinoffset[1]
+				if s.hires {
+					bgasinoffset0 = bgasinoffset0 / 2
+					bgasinoffset1 = bgasinoffset1 / 2
+				}
+				s.bg[i].bga.offset[0] += bgasinoffset0
+				s.bg[i].bga.offset[1] += bgasinoffset1
 			} else {
 				link = i
 			}
@@ -1328,7 +1335,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}
 	}
-	yofs3 := (float32(s.stageCamera.drawOffsetY)*bgscl +
+	yofs3 := (float32(s.stageCamera.drawOffsetY) +
 		float32(s.stageCamera.localcoord[1]-240)*s.localscl)
 	yofs4 := ((360*float32(s.stageCamera.localcoord[0]) +
 		160*float32(s.stageCamera.localcoord[1])) /
