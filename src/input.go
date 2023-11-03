@@ -23,15 +23,15 @@ const (
 	CK_UB
 	CK_DF
 	CK_UF
-	CK_nB
-	CK_nD
-	CK_nF
-	CK_nU
-	CK_nDB
-	CK_nUB
-	CK_nDF
-	CK_nUF
-	CK_Bs
+	CK_rB // r stands for release (~)
+	CK_rD
+	CK_rF
+	CK_rU
+	CK_rDB
+	CK_rUB
+	CK_rDF
+	CK_rUF
+	CK_Bs // s stands for sign ($)
 	CK_Ds
 	CK_Fs
 	CK_Us
@@ -39,14 +39,14 @@ const (
 	CK_UBs
 	CK_DFs
 	CK_UFs
-	CK_nBs
-	CK_nDs
-	CK_nFs
-	CK_nUs
-	CK_nDBs
-	CK_nUBs
-	CK_nDFs
-	CK_nUFs
+	CK_rBs
+	CK_rDs
+	CK_rFs
+	CK_rUs
+	CK_rDBs
+	CK_rUBs
+	CK_rDFs
+	CK_rUFs
 	CK_a
 	CK_b
 	CK_c
@@ -57,17 +57,17 @@ const (
 	CK_d
 	CK_w
 	CK_m
-	CK_na
-	CK_nb
-	CK_nc
-	CK_nx
-	CK_ny
-	CK_nz
-	CK_ns
-	CK_nd
-	CK_nw
-	CK_nm
-	CK_Last = CK_nm
+	CK_ra
+	CK_rb
+	CK_rc
+	CK_rx
+	CK_ry
+	CK_rz
+	CK_rs
+	CK_rd
+	CK_rw
+	CK_rm
+	CK_Last = CK_rm
 )
 
 type NetState int
@@ -165,6 +165,7 @@ func JoystickState(joy, button int) bool {
 		var joyName = input.GetJoystickName(joy)
 
 		// Xbox360コントローラーのLRトリガー判定
+		// "Evaluate LR triggers on the Xbox 360 controller"
 		if (axis == 9 || axis == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360")) {
 			return val > sys.xinputTriggerSensitivity
 		}
@@ -215,6 +216,7 @@ const (
 	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M
 )
 
+// Get raw keyboard and joystick inputs and convert them to InputBits for netplay and replays
 func (ib *InputBits) SetInput(in int) {
 	if 0 <= in && in < len(sys.keyConfig) {
 		*ib = InputBits(Btoi(sys.keyConfig[in].U() || sys.joystickConfig[in].U()) |
@@ -233,8 +235,11 @@ func (ib *InputBits) SetInput(in int) {
 			Btoi(sys.keyConfig[in].m() || sys.joystickConfig[in].m())<<13)
 	}
 }
+
+// Get InputBits from file or netplay
 func (ib InputBits) GetInput(cb *CommandBuffer, facing int32) {
 	var B, F bool
+	// Convert L and R to B and F
 	if facing < 0 {
 		B, F = ib&IB_PR != 0, ib&IB_PL != 0
 	} else {
@@ -251,7 +256,7 @@ type CommandKeyRemap struct {
 
 func NewCommandKeyRemap() *CommandKeyRemap {
 	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m,
-		CK_na, CK_nb, CK_nc, CK_nx, CK_ny, CK_nz, CK_ns, CK_nd, CK_nw, CK_nm}
+		CK_ra, CK_rb, CK_rc, CK_rx, CK_ry, CK_rz, CK_rs, CK_rd, CK_rw, CK_rm}
 }
 
 type CommandBuffer struct {
@@ -266,11 +271,16 @@ func NewCommandBuffer() (c *CommandBuffer) {
 	c.Reset()
 	return
 }
+
 func (__ *CommandBuffer) Reset() {
 	*__ = CommandBuffer{B: -1, D: -1, F: -1, U: -1,
 		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, d: -1, w: -1, m: -1}
 }
+
+// Converts raw inputs for the input buffer
 func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m bool) {
+	// B and F are mutually exclusive
+	// D and U are mutually exclusive
 	if (B && !F) != (__.B > 0) {
 		__.Bb = 0
 		__.B *= -1
@@ -342,6 +352,7 @@ func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m bool) {
 	}
 	__.mb += int32(__.m)
 }
+
 func (__ *CommandBuffer) InputBits(ib InputBits, f int32) {
 	var B, F bool
 	if f < 0 {
@@ -353,6 +364,8 @@ func (__ *CommandBuffer) InputBits(ib InputBits, f int32) {
 		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0,
 		ib&IB_D != 0, ib&IB_W != 0, ib&IB_M != 0)
 }
+
+// Check buffer state of each key
 func (__ *CommandBuffer) State(ck CommandKey) int32 {
 	switch ck {
 	case CK_B:
@@ -407,61 +420,62 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return __.wb
 	case CK_m:
 		return __.mb
-	case CK_nB:
+	case CK_rB:
 		return -Min(-Max(__.Db, __.Ub), __.Bb)
-	case CK_nD:
+	case CK_rD:
 		return -Min(-Max(__.Bb, __.Fb), __.Db)
-	case CK_nF:
+	case CK_rF:
 		return -Min(-Max(__.Db, __.Ub), __.Fb)
-	case CK_nU:
+	case CK_rU:
 		return -Min(-Max(__.Bb, __.Fb), __.Ub)
-	case CK_nDB:
+	case CK_rDB:
 		return -Min(__.Db, __.Bb)
-	case CK_nUB:
+	case CK_rUB:
 		return -Min(__.Ub, __.Bb)
-	case CK_nDF:
+	case CK_rDF:
 		return -Min(__.Db, __.Fb)
-	case CK_nUF:
+	case CK_rUF:
 		return -Min(__.Ub, __.Fb)
-	case CK_nBs:
+	case CK_rBs:
 		return -__.Bb
-	case CK_nDs:
+	case CK_rDs:
 		return -__.Db
-	case CK_nFs:
+	case CK_rFs:
 		return -__.Fb
-	case CK_nUs:
+	case CK_rUs:
 		return -__.Ub
-	case CK_nDBs:
+	case CK_rDBs:
 		return -Min(__.Db, __.Bb)
-	case CK_nUBs:
+	case CK_rUBs:
 		return -Min(__.Ub, __.Bb)
-	case CK_nDFs:
+	case CK_rDFs:
 		return -Min(__.Db, __.Fb)
-	case CK_nUFs:
+	case CK_rUFs:
 		return -Min(__.Ub, __.Fb)
-	case CK_na:
+	case CK_ra:
 		return -__.ab
-	case CK_nb:
+	case CK_rb:
 		return -__.bb
-	case CK_nc:
+	case CK_rc:
 		return -__.cb
-	case CK_nx:
+	case CK_rx:
 		return -__.xb
-	case CK_ny:
+	case CK_ry:
 		return -__.yb
-	case CK_nz:
+	case CK_rz:
 		return -__.zb
-	case CK_ns:
+	case CK_rs:
 		return -__.sb
-	case CK_nd:
+	case CK_rd:
 		return -__.db
-	case CK_nw:
+	case CK_rw:
 		return -__.wb
-	case CK_nm:
+	case CK_rm:
 		return -__.mb
 	}
 	return 0
 }
+
 func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 	f := func(a, b, c int32) int32 {
 		switch {
@@ -496,6 +510,7 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		}
 		return Min(Abs(__.Ub), Abs(__.Bb), Abs(__.Fb))
 	//MUGENだと斜め入力に$を入れても意味がない
+	// "In MUGEN, adding '$' to diagonal inputs doesn't have any meaning."
 	//case CK_DBs:
 	//	if s := __.State(CK_DBs); s < 0 {
 	//		return s
@@ -516,28 +531,31 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 	//		return s
 	//	}
 	//	return Min(Abs(__.Ub), Abs(__.Fb))
-	case CK_nBs:
+	case CK_rBs:
 		return f(__.State(CK_B), __.State(CK_UB), __.State(CK_DB))
-	case CK_nDs:
+	case CK_rDs:
 		return f(__.State(CK_D), __.State(CK_DB), __.State(CK_DF))
-	case CK_nFs:
+	case CK_rFs:
 		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
-	case CK_nUs:
+	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
-		//case CK_nDBs:
-		//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
-		//case CK_nUBs:
-		//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
-		//case CK_nDFs:
-		//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
-		//case CK_nUFs:
-		//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
+	//case CK_rDBs:
+	//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
+	//case CK_rUBs:
+	//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
+	//case CK_rDFs:
+	//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
+	//case CK_rUFs:
+	//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
 	}
 	return __.State(ck)
 }
+
 func (__ *CommandBuffer) LastDirectionTime() int32 {
 	return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Fb), Abs(__.Ub))
 }
+
+// Time since any input was received. Used for ">" type commands
 func (__ *CommandBuffer) LastChangeTime() int32 {
 	return Min(__.LastDirectionTime(), Abs(__.ab), Abs(__.bb), Abs(__.cb),
 		Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb),
@@ -552,12 +570,14 @@ type NetBuffer struct {
 func (nb *NetBuffer) reset(time int32) {
 	nb.curT, nb.inpT, nb.senT = time, time, time
 }
+
 func (nb *NetBuffer) localUpdate(in int) {
 	if nb.inpT-nb.curT < 32 {
 		nb.buf[nb.inpT&31].SetInput(in)
 		nb.inpT++
 	}
 }
+
 func (nb *NetBuffer) input(cb *CommandBuffer, f int32) {
 	if nb.curT < nb.inpT {
 		nb.buf[nb.curT&31].GetInput(cb, f)
@@ -588,6 +608,7 @@ func NewNetInput() *NetInput {
 	ni.recvEnd <- true
 	return ni
 }
+
 func (ni *NetInput) Close() {
 	if ni.ln != nil {
 		ni.ln.Close()
@@ -608,6 +629,7 @@ func (ni *NetInput) Close() {
 	}
 	ni.conn = nil
 }
+
 func (ni *NetInput) GetHostGuestRemap() (host, guest int) {
 	host, guest = -1, -1
 	for i, c := range sys.com {
@@ -627,6 +649,7 @@ func (ni *NetInput) GetHostGuestRemap() (host, guest int) {
 	}
 	return
 }
+
 func (ni *NetInput) Accept(port string) error {
 	if ln, err := net.Listen("tcp", ":"+port); err != nil {
 		return err
@@ -644,6 +667,7 @@ func (ni *NetInput) Accept(port string) error {
 	}
 	return nil
 }
+
 func (ni *NetInput) Connect(server, port string) {
 	ni.host = false
 	ni.remIn, ni.locIn = ni.GetHostGuestRemap()
@@ -653,14 +677,17 @@ func (ni *NetInput) Connect(server, port string) {
 		}
 	}()
 }
+
 func (ni *NetInput) IsConnected() bool {
 	return ni != nil && ni.conn != nil
 }
+
 func (ni *NetInput) Input(cb *CommandBuffer, i int, facing int32) {
 	if i >= 0 && i < len(ni.buf) {
 		ni.buf[sys.inputRemap[i]].input(cb, facing)
 	}
 }
+
 func (ni *NetInput) AnyButton() bool {
 	for _, nb := range ni.buf {
 		if nb.buf[nb.curT&31]&IB_anybutton != 0 {
@@ -669,6 +696,7 @@ func (ni *NetInput) AnyButton() bool {
 	}
 	return false
 }
+
 func (ni *NetInput) Stop() {
 	if sys.esc {
 		ni.end()
@@ -682,12 +710,14 @@ func (ni *NetInput) Stop() {
 		ni.recvEnd <- true
 	}
 }
+
 func (ni *NetInput) end() {
 	if ni.st != NS_Error {
 		ni.st = NS_End
 	}
 	ni.Close()
 }
+
 func (ni *NetInput) readI32() (int32, error) {
 	b := [4]byte{}
 	if _, err := ni.conn.Read(b[:]); err != nil {
@@ -695,6 +725,7 @@ func (ni *NetInput) readI32() (int32, error) {
 	}
 	return int32(b[0]) | int32(b[1])<<8 | int32(b[2])<<16 | int32(b[3])<<24, nil
 }
+
 func (ni *NetInput) writeI32(i32 int32) error {
 	b := [...]byte{byte(i32), byte(i32 >> 8), byte(i32 >> 16), byte(i32 >> 24)}
 	if _, err := ni.conn.Write(b[:]); err != nil {
@@ -702,6 +733,7 @@ func (ni *NetInput) writeI32(i32 int32) error {
 	}
 	return nil
 }
+
 func (ni *NetInput) Synchronize() error {
 	if !ni.IsConnected() || ni.st == NS_Error {
 		return Error("Can not connect to the other player")
@@ -794,6 +826,7 @@ func (ni *NetInput) Synchronize() error {
 	ni.Update()
 	return nil
 }
+
 func (ni *NetInput) Update() bool {
 	if ni.st != NS_Stopped {
 		ni.stoppedcnt = 0
@@ -859,17 +892,20 @@ func OpenFileInput(filename string) *FileInput {
 	fi.f, _ = os.Open(filename)
 	return fi
 }
+
 func (fi *FileInput) Close() {
 	if fi.f != nil {
 		fi.f.Close()
 		fi.f = nil
 	}
 }
+
 func (fi *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
 	if i >= 0 && i < len(fi.ib) {
 		fi.ib[sys.inputRemap[i]].GetInput(cb, facing)
 	}
 }
+
 func (fi *FileInput) AnyButton() bool {
 	for _, b := range fi.ib {
 		if b&IB_anybutton != 0 {
@@ -878,6 +914,7 @@ func (fi *FileInput) AnyButton() bool {
 	}
 	return false
 }
+
 func (fi *FileInput) Synchronize() {
 	if fi.f != nil {
 		var seed int32
@@ -891,6 +928,7 @@ func (fi *FileInput) Synchronize() {
 		}
 	}
 }
+
 func (fi *FileInput) Update() bool {
 	if fi.f == nil {
 		sys.esc = true
@@ -911,6 +949,7 @@ type AiInput struct {
 }
 
 func (ai *AiInput) Update(level float32) {
+	// Disable AI button jamming
 	if sys.intro != 0 {
 		ai.dirt, ai.at, ai.bt, ai.ct = 0, 0, 0, 0
 		ai.xt, ai.yt, ai.zt, ai.st = 0, 0, 0, 0
@@ -930,6 +969,7 @@ func (ai *AiInput) Update(level float32) {
 		}
 		return false
 	}
+	// Pick a random direction to press
 	if dec(&ai.dirt) {
 		ai.dir = Rand(0, 7)
 	}
@@ -944,8 +984,10 @@ func (ai *AiInput) Update(level float32) {
 	dec(&ai.wt)
 	osu = 3600
 	dec(&ai.st)
-	//dec(&ai.mt)
+	//dec(&ai.mt) // We don't need the AI to jam the menu button
 }
+
+// 0 = U, 1 = UR, 2 = R, 3 = DR, 4 = D, 5 = DL, 6 = L, 7 = UL
 func (ai *AiInput) L() bool {
 	return ai.dirt != 0 && (ai.dir == 5 || ai.dir == 6 || ai.dir == 7)
 }
@@ -991,15 +1033,18 @@ func (ai *AiInput) m() bool {
 
 type cmdElem struct {
 	key                       []CommandKey
-	tametime                  int32
+	chargetime                int32
 	slash, greater, direction bool
 }
 
 func (ce *cmdElem) IsDirection() bool {
 	//ここで~は方向コマンドとして返さない
-	return !ce.slash && len(ce.key) == 1 && ce.key[0] < CK_nBs && (ce.key[0] < CK_nB || ce.key[0] > CK_nUF)
+	// "At this point, '~' is not returned as a directional command." (?)
+	return !ce.slash && len(ce.key) == 1 && ce.key[0] < CK_rBs && (ce.key[0] < CK_rB || ce.key[0] > CK_rUF)
 }
-func (ce *cmdElem) IsDToB(next cmdElem) bool {
+
+// Check if two command elements can be checked in the same frame
+func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 	if next.slash {
 		return false
 	}
@@ -1017,10 +1062,11 @@ func (ce *cmdElem) IsDToB(next cmdElem) bool {
 		return true
 	}
 	for i, k := range ce.key {
-		if k != next.key[i] && ((k < CK_nB || k > CK_nUF) &&
-			(k < CK_nBs || k > CK_nUFs) ||
-			(next.key[i] < CK_nB || next.key[i] > CK_nUF) &&
-				(next.key[i] < CK_nBs || next.key[i] > CK_nUFs)) {
+		// if "not release dir" and "not release dir sign"
+		if k != next.key[i] && ((k < CK_rB || k > CK_rUF) &&
+			(k < CK_rBs || k > CK_rUFs) ||
+			(next.key[i] < CK_rB || next.key[i] > CK_rUF) &&
+				(next.key[i] < CK_rBs || next.key[i] > CK_rUFs)) {
 			return true
 		}
 	}
@@ -1032,12 +1078,16 @@ type Command struct {
 	hold                [][]CommandKey
 	held                []bool
 	cmd                 []cmdElem
-	cmdi, tamei         int
-	time, cur           int32
+	cmdi, chargei       int
+	time, curtime       int32
 	buftime, curbuftime int32
 }
 
-func newCommand() *Command { return &Command{tamei: -1, time: 1, buftime: 1} }
+func newCommand() *Command {
+	return &Command{chargei: -1, time: 1, buftime: 1}
+}
+
+// This is used to first compile the commands
 func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 	c := newCommand()
 	c.name = name
@@ -1045,9 +1095,9 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 	for _, cestr := range cmd {
 		if len(c.cmd) > 0 && c.cmd[len(c.cmd)-1].slash {
 			c.hold = append(c.hold, c.cmd[len(c.cmd)-1].key)
-			c.cmd[len(c.cmd)-1] = cmdElem{tametime: 1}
+			c.cmd[len(c.cmd)-1] = cmdElem{chargetime: 1}
 		} else {
-			c.cmd = append(c.cmd, cmdElem{tametime: 1})
+			c.cmd = append(c.cmd, cmdElem{chargetime: 1})
 		}
 		ce := &c.cmd[len(c.cmd)-1]
 		cestr = strings.TrimSpace(cestr)
@@ -1084,7 +1134,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				n = n*10 + int32(r-'0')
 			}
 			if n > 0 {
-				ce.tametime = n
+				ce.chargetime = n
 			}
 		case '/':
 			ce.slash = true
@@ -1094,7 +1144,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 			switch getChar() {
 			case 'B':
 				if tilde {
-					ce.key = append(ce.key, CK_nB)
+					ce.key = append(ce.key, CK_rB)
 				} else {
 					ce.key = append(ce.key, CK_B)
 				}
@@ -1103,20 +1153,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				if len(cestr) > 1 && cestr[1] == 'B' {
 					nextChar()
 					if tilde {
-						ce.key = append(ce.key, CK_nDB)
+						ce.key = append(ce.key, CK_rDB)
 					} else {
 						ce.key = append(ce.key, CK_DB)
 					}
 				} else if len(cestr) > 1 && cestr[1] == 'F' {
 					nextChar()
 					if tilde {
-						ce.key = append(ce.key, CK_nDF)
+						ce.key = append(ce.key, CK_rDF)
 					} else {
 						ce.key = append(ce.key, CK_DF)
 					}
 				} else {
 					if tilde {
-						ce.key = append(ce.key, CK_nD)
+						ce.key = append(ce.key, CK_rD)
 					} else {
 						ce.key = append(ce.key, CK_D)
 					}
@@ -1124,7 +1174,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				tilde = false
 			case 'F':
 				if tilde {
-					ce.key = append(ce.key, CK_nF)
+					ce.key = append(ce.key, CK_rF)
 				} else {
 					ce.key = append(ce.key, CK_F)
 				}
@@ -1133,20 +1183,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				if len(cestr) > 1 && cestr[1] == 'B' {
 					nextChar()
 					if tilde {
-						ce.key = append(ce.key, CK_nUB)
+						ce.key = append(ce.key, CK_rUB)
 					} else {
 						ce.key = append(ce.key, CK_UB)
 					}
 				} else if len(cestr) > 1 && cestr[1] == 'F' {
 					nextChar()
 					if tilde {
-						ce.key = append(ce.key, CK_nUF)
+						ce.key = append(ce.key, CK_rUF)
 					} else {
 						ce.key = append(ce.key, CK_UF)
 					}
 				} else {
 					if tilde {
-						ce.key = append(ce.key, CK_nU)
+						ce.key = append(ce.key, CK_rU)
 					} else {
 						ce.key = append(ce.key, CK_U)
 					}
@@ -1226,7 +1276,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 				switch nextChar() {
 				case 'B':
 					if tilde {
-						ce.key = append(ce.key, CK_nBs)
+						ce.key = append(ce.key, CK_rBs)
 					} else {
 						ce.key = append(ce.key, CK_Bs)
 					}
@@ -1235,20 +1285,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					if len(cestr) > 1 && cestr[1] == 'B' {
 						nextChar()
 						if tilde {
-							ce.key = append(ce.key, CK_nDBs)
+							ce.key = append(ce.key, CK_rDBs)
 						} else {
 							ce.key = append(ce.key, CK_DBs)
 						}
 					} else if len(cestr) > 1 && cestr[1] == 'F' {
 						nextChar()
 						if tilde {
-							ce.key = append(ce.key, CK_nDFs)
+							ce.key = append(ce.key, CK_rDFs)
 						} else {
 							ce.key = append(ce.key, CK_DFs)
 						}
 					} else {
 						if tilde {
-							ce.key = append(ce.key, CK_nDs)
+							ce.key = append(ce.key, CK_rDs)
 						} else {
 							ce.key = append(ce.key, CK_Ds)
 						}
@@ -1256,7 +1306,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					tilde = false
 				case 'F':
 					if tilde {
-						ce.key = append(ce.key, CK_nFs)
+						ce.key = append(ce.key, CK_rFs)
 					} else {
 						ce.key = append(ce.key, CK_Fs)
 					}
@@ -1265,20 +1315,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					if len(cestr) > 1 && cestr[1] == 'B' {
 						nextChar()
 						if tilde {
-							ce.key = append(ce.key, CK_nUBs)
+							ce.key = append(ce.key, CK_rUBs)
 						} else {
 							ce.key = append(ce.key, CK_UBs)
 						}
 					} else if len(cestr) > 1 && cestr[1] == 'F' {
 						nextChar()
 						if tilde {
-							ce.key = append(ce.key, CK_nUFs)
+							ce.key = append(ce.key, CK_rUFs)
 						} else {
 							ce.key = append(ce.key, CK_UFs)
 						}
 					} else {
 						if tilde {
-							ce.key = append(ce.key, CK_nUs)
+							ce.key = append(ce.key, CK_rUs)
 						} else {
 							ce.key = append(ce.key, CK_Us)
 						}
@@ -1291,6 +1341,7 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 			case '~':
 				tilde = true
 			case '+':
+				// do nothing
 			default:
 				// error
 			}
@@ -1307,12 +1358,15 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 	c.held = make([]bool, len(c.hold))
 	return c, nil
 }
+
 func (c *Command) Clear() {
-	c.cmdi, c.tamei, c.cur, c.curbuftime = 0, -1, 0, 0
+	c.cmdi, c.chargei, c.curtime, c.curbuftime = 0, -1, 0, 0
 	for i := range c.held {
 		c.held[i] = false
 	}
 }
+
+// Check if inputs match each command
 func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]bool) bool {
 	anyHeld, notHeld := false, 0
 	if len(c.hold) > 0 && !ai {
@@ -1391,8 +1445,8 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		}
 		return true
 	}
-	if c.tamei != c.cmdi {
-		if c.cmd[c.cmdi].tametime > 1 {
+	if c.chargei != c.cmdi {
+		if c.cmd[c.cmdi].chargetime > 1 {
 			for _, k := range c.cmd[c.cmdi].key {
 				ks := cbuf.State(k)
 				if ks > 0 {
@@ -1400,20 +1454,20 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 				}
 				if func() bool {
 					if ai {
-						return Rand(0, c.cmd[c.cmdi].tametime) != 0
+						return Rand(0, c.cmd[c.cmdi].chargetime) != 0
 					}
-					return -ks < c.cmd[c.cmdi].tametime
+					return -ks < c.cmd[c.cmdi].chargetime
 				}() {
 					return anyHeld || c.cmdi > 0
 				}
 			}
-			c.tamei = c.cmdi
+			c.chargei = c.cmdi
 		} else if c.cmdi > 0 && len(c.cmd[c.cmdi-1].key) == 1 &&
 			len(c.cmd[c.cmdi].key) == 1 && c.cmd[c.cmdi-1].key[0] < CK_Bs &&
-			c.cmd[c.cmdi].key[0] < CK_nB && (c.cmd[c.cmdi-1].key[0]-
+			c.cmd[c.cmdi].key[0] < CK_rB && (c.cmd[c.cmdi-1].key[0]-
 			c.cmd[c.cmdi].key[0])&7 == 0 {
 			if cbuf.B < 0 && cbuf.D < 0 && cbuf.F < 0 && cbuf.U < 0 {
-				c.tamei = c.cmdi
+				c.chargei = c.cmdi
 			} else {
 				return fail()
 			}
@@ -1424,7 +1478,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		n := cbuf.State2(k)
 		if c.cmd[c.cmdi].slash {
 			foo = foo || n > 0
-		} else if n < 1 || 7 < n {
+		} else if n < 1 || n > 7 {
 			return fail()
 		} else {
 			foo = foo || n == 1
@@ -1434,11 +1488,13 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		return fail()
 	}
 	c.cmdi++
-	if c.cmdi < len(c.cmd) && c.cmd[c.cmdi-1].IsDToB(c.cmd[c.cmdi]) {
+	// Both inputs in a direction to button transition are checked in same the frame
+	if c.cmdi < len(c.cmd) && c.cmd[c.cmdi-1].IsDirToButton(c.cmd[c.cmdi]) {
 		return c.bufTest(cbuf, ai, holdTemp)
 	}
 	return true
 }
+
 func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	if !hitpause && c.curbuftime > 0 {
 		c.curbuftime--
@@ -1454,20 +1510,20 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	}()
 	var holdTemp *[CK_Last + 1]bool
 	if cbuf == nil || !c.bufTest(cbuf, ai, holdTemp) {
-		foo := c.tamei == 0 && c.cmdi == 0
+		foo := c.chargei == 0 && c.cmdi == 0
 		c.Clear()
 		if foo {
-			c.tamei = 0
+			c.chargei = 0
 		}
 		return
 	}
 	if c.cmdi == 1 && c.cmd[0].slash {
-		c.cur = 0
+		c.curtime = 0
 	} else {
-		c.cur++
+		c.curtime++
 	}
 	complete := c.cmdi == len(c.cmd)
-	if !complete && (ai || c.cur <= c.time) {
+	if !complete && (ai || c.curtime <= c.time) {
 		return
 	}
 	c.Clear()
@@ -1476,6 +1532,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	}
 }
 
+// Command List refers to the actual commands defined in the CMD file
 type CommandList struct {
 	Buffer            *CommandBuffer
 	Names             map[string]int
@@ -1488,6 +1545,8 @@ func NewCommandList(cb *CommandBuffer) *CommandList {
 	return &CommandList{Buffer: cb, Names: make(map[string]int),
 		DefaultTime: 15, DefaultBufferTime: 1}
 }
+
+// Read inputs in local play
 func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits) bool {
 	if cl.Buffer == nil {
 		return false
@@ -1527,6 +1586,7 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 			}
 		} else if i < len(sys.inputRemap) {
 			in := sys.inputRemap[i]
+			// Read keyboard inputs or input bits
 			if in < len(sys.keyConfig) {
 				joy := sys.keyConfig[in].Joy
 				if joy == -1 {
@@ -1546,6 +1606,7 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 					m = sys.keyConfig[in].m() || ib&IB_M != 0
 				}
 			}
+			// Read joystick inputs
 			if in < len(sys.joystickConfig) {
 				joyS := sys.joystickConfig[in].Joy
 				if joyS >= 0 {
@@ -1604,8 +1665,8 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 	}
 	return step
 }
-func (cl *CommandList) Step(facing int32, ai, hitpause bool,
-	buftime int32) {
+
+func (cl *CommandList) Step(facing int32, ai, hitpause bool, buftime int32) {
 	if cl.Buffer != nil {
 		for i := range cl.Commands {
 			for j := range cl.Commands[i] {
@@ -1614,6 +1675,7 @@ func (cl *CommandList) Step(facing int32, ai, hitpause bool,
 		}
 	}
 }
+
 func (cl *CommandList) BufReset() {
 	if cl.Buffer != nil {
 		cl.Buffer.Reset()
@@ -1624,6 +1686,7 @@ func (cl *CommandList) BufReset() {
 		}
 	}
 }
+
 func (cl *CommandList) Add(c Command) {
 	i, ok := cl.Names[c.name]
 	if !ok || i < 0 || i >= len(cl.Commands) {
@@ -1633,12 +1696,14 @@ func (cl *CommandList) Add(c Command) {
 	cl.Commands[i] = append(cl.Commands[i], c)
 	cl.Names[c.name] = i
 }
+
 func (cl *CommandList) At(i int) []Command {
 	if i < 0 || i >= len(cl.Commands) {
 		return nil
 	}
 	return cl.Commands[i]
 }
+
 func (cl *CommandList) Get(name string) []Command {
 	i, ok := cl.Names[name]
 	if !ok {
@@ -1646,6 +1711,7 @@ func (cl *CommandList) Get(name string) []Command {
 	}
 	return cl.At(i)
 }
+
 func (cl *CommandList) GetState(name string) bool {
 	for _, c := range cl.Get(name) {
 		if c.curbuftime > 0 {
@@ -1654,6 +1720,7 @@ func (cl *CommandList) GetState(name string) bool {
 	}
 	return false
 }
+
 func (cl *CommandList) CopyList(src CommandList) {
 	cl.Names = src.Names
 	cl.Commands = make([][]Command, len(src.Commands))
