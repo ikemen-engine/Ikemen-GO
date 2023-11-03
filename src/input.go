@@ -1048,25 +1048,28 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 	if next.slash {
 		return false
 	}
-	btn := true
-	for _, k := range ce.key {
-		if k < CK_a {
-			btn = false
-			break
+	// This logic seems more complex in Mugen because of variable input delay
+	for i, k := range ce.key {
+		// Not if both elements share keys
+		for _, n := range next.key {
+			if k == n {
+				return false
+			}
+		}
+		// Not if first element includes buttons
+		if k >= CK_a {
+			return false
+		}
+		// Yes if release direction then not release direction
+		if (k >= CK_rB && k <= CK_rUF || k >= CK_rBs && k <= CK_rUFs) {
+			if (next.key[i] < CK_rB || next.key[i] > CK_rUF) && (next.key[i] < CK_rBs || next.key[i] > CK_rUFs) {
+				return true
+			}
 		}
 	}
-	if btn {
-		return false
-	}
-	if len(ce.key) != len(next.key) {
-		return true
-	}
-	for i, k := range ce.key {
-		// if "not release dir" and "not release dir sign"
-		if k != next.key[i] && ((k < CK_rB || k > CK_rUF) &&
-			(k < CK_rBs || k > CK_rUFs) ||
-			(next.key[i] < CK_rB || next.key[i] > CK_rUF) &&
-				(next.key[i] < CK_rBs || next.key[i] > CK_rUFs)) {
+	// Yes if second element includes buttons
+	for _, k := range next.key {
+		if k >= CK_a {
 			return true
 		}
 	}
