@@ -495,7 +495,7 @@ const (
 	OC_ex_atan2
 	OC_ex_rad
 	OC_ex_deg
-	OC_ex_lerp	
+	OC_ex_lerp
 	OC_ex_memberno
 	OC_ex_movecountered
 	OC_ex_pausetime
@@ -538,7 +538,7 @@ const (
 	OC_ex_offset_x
 	OC_ex_offset_y
 	OC_ex_alpha_s
-	OC_ex_alpha_d	
+	OC_ex_alpha_d
 )
 const (
 	NumVar     = 60
@@ -946,11 +946,11 @@ func (BytecodeExp) clamp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) 
 	} else if v1.v >= v3.v {
 		v1.SetF(float32(v3.v))
 	} else {
-		v1.SetF(float32(v1.v))		
+		v1.SetF(float32(v1.v))
 	}
 }
 func (BytecodeExp) atan2(v1 *BytecodeValue, v2 BytecodeValue) {
-	v1.SetF(float32(math.Atan2(v1.v,v2.v)))
+	v1.SetF(float32(math.Atan2(v1.v, v2.v)))
 }
 func (BytecodeExp) sign(v1 *BytecodeValue) {
 	if v1.v < 0 {
@@ -958,14 +958,14 @@ func (BytecodeExp) sign(v1 *BytecodeValue) {
 	} else if v1.v > 0 {
 		v1.SetI(int32(1))
 	} else {
-		v1.SetI(int32(0))	
+		v1.SetI(int32(0))
 	}
 }
 func (BytecodeExp) rad(v1 *BytecodeValue) {
-	v1.SetF(float32(v1.v*math.Pi/180))
+	v1.SetF(float32(v1.v * math.Pi / 180))
 }
 func (BytecodeExp) deg(v1 *BytecodeValue) {
-	v1.SetF(float32(v1.v*180/math.Pi))
+	v1.SetF(float32(v1.v * 180 / math.Pi))
 }
 func (BytecodeExp) lerp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
 	amount := v3.v
@@ -974,7 +974,7 @@ func (BytecodeExp) lerp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
 	} else if v3.v >= 1 {
 		amount = 1
 	}
-	v1.SetF(float32(v1.v+(v2.v-v1.v)*amount))
+	v1.SetF(float32(v1.v + (v2.v-v1.v)*amount))
 }
 func (be BytecodeExp) run(c *Char) BytecodeValue {
 	oc := c
@@ -2084,20 +2084,20 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_clamp:
 		v3 := sys.bcStack.Pop()
 		v2 := sys.bcStack.Pop()
-		be.clamp(sys.bcStack.Top(), v2,v3)
+		be.clamp(sys.bcStack.Top(), v2, v3)
 	case OC_ex_atan2:
 		v2 := sys.bcStack.Pop()
-		be.atan2(sys.bcStack.Top(),v2)
+		be.atan2(sys.bcStack.Top(), v2)
 	case OC_ex_sign:
 		be.sign(sys.bcStack.Top())
-	case OC_ex_rad:	
-		be.rad(sys.bcStack.Top())	
+	case OC_ex_rad:
+		be.rad(sys.bcStack.Top())
 	case OC_ex_deg:
 		be.deg(sys.bcStack.Top())
 	case OC_ex_lerp:
 		v3 := sys.bcStack.Pop()
 		v2 := sys.bcStack.Pop()
-		be.lerp(sys.bcStack.Top(), v2,v3)
+		be.lerp(sys.bcStack.Top(), v2, v3)
 	case OC_ex_memberno:
 		sys.bcStack.PushI(int32(c.memberNo) + 1)
 	case OC_ex_movecountered:
@@ -2185,10 +2185,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(float32(math.Abs(float64(sys.envShake.ampl / oc.localscl))))
 	case OC_ex_angle:
 		sys.bcStack.PushF(c.angleTrg)
-	case OC_ex_scale_x:			
+	case OC_ex_scale_x:
 		sys.bcStack.PushF(c.angleScaleTrg[0])
 	case OC_ex_scale_y:
-		sys.bcStack.PushF(c.angleScaleTrg[1])			
+		sys.bcStack.PushF(c.angleScaleTrg[1])
 	case OC_ex_offset_x:
 		sys.bcStack.PushF(c.offsetTrg[0])
 	case OC_ex_offset_y:
@@ -2196,7 +2196,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_alpha_s:
 		sys.bcStack.PushI(c.alphaTrg[0])
 	case OC_ex_alpha_d:
-		sys.bcStack.PushI(c.alphaTrg[1])		
+		sys.bcStack.PushI(c.alphaTrg[1])
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -5963,7 +5963,7 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 				}
 			}
 			crun.alphaTrg[0] = crun.alpha[0]
-			crun.alphaTrg[1] = crun.alpha[1]			
+			crun.alphaTrg[1] = crun.alpha[1]
 		case trans_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

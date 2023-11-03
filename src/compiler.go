@@ -326,14 +326,14 @@ var triggerMap = map[string]int{
 	"animlength":         1,
 	"attack":             1,
 	"alpha":              1,
-  	"angle":              1,
-  	"atan2": 			  1,	
+	"angle":              1,
+	"atan2":              1,
 	"bgmlength":          1,
 	"bgmposition":        1,
 	"clamp":              1,
 	"combocount":         1,
 	"consecutivewins":    1,
-	"deg": 				  1,
+	"deg":                1,
 	"defence":            1,
 	"dizzy":              1,
 	"dizzypoints":        1,
@@ -354,7 +354,7 @@ var triggerMap = map[string]int{
 	"incustomstate":      1,
 	"indialogue":         1,
 	"isasserted":         1,
-	"lerp": 			  1,
+	"lerp":               1,
 	"localscale":         1,
 	"majorversion":       1,
 	"map":                1,
@@ -362,7 +362,7 @@ var triggerMap = map[string]int{
 	"memberno":           1,
 	"min":                1,
 	"movecountered":      1,
-	"offset": 			  1,
+	"offset":             1,
 	"p5name":             1,
 	"p6name":             1,
 	"p7name":             1,
@@ -372,7 +372,7 @@ var triggerMap = map[string]int{
 	"playerno":           1,
 	"prevanim":           1,
 	"prevmovetype":       1,
-	"rad": 				  1,
+	"rad":                1,
 	"ratiolevel":         1,
 	"randomrange":        1,
 	"receivedhits":       1,
@@ -381,8 +381,8 @@ var triggerMap = map[string]int{
 	"reversaldefattr":    1,
 	"round":              1,
 	"roundtype":          1,
-	"scale": 			  1,
-	"sign": 			  1,
+	"scale":              1,
+	"sign":               1,
 	"score":              1,
 	"scoretotal":         1,
 	"selfstatenoexist":   1,
@@ -2596,7 +2596,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
-		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone(){
+		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone() {
 			if rd {
 				out.append(OC_rdreset)
 			}
@@ -2608,7 +2608,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendValue(bv3)
 			out.append(OC_ex_, OC_ex_clamp)
 		} else {
-			out.clamp(&bv1,bv2, bv3)
+			out.clamp(&bv1, bv2, bv3)
 			bv = bv1
 		}
 	case "atan2":
@@ -2635,10 +2635,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(be1...)
 			out.appendValue(bv1)
 			out.append(be2...)
-			out.appendValue(bv2)		
+			out.appendValue(bv2)
 			out.append(OC_ex_, OC_ex_atan2)
 		} else {
-			out.atan2(&bv1,bv2)
+			out.atan2(&bv1, bv2)
 			bv = bv1
 		}
 	case "sign":
@@ -2680,7 +2680,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
-		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone(){
+		if bv1.IsNone() || bv2.IsNone() || bv3.IsNone() {
 			if rd {
 				out.append(OC_rdreset)
 			}
@@ -2692,9 +2692,9 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendValue(bv3)
 			out.append(OC_ex_, OC_ex_lerp)
 		} else {
-			out.lerp(&bv1,bv2, bv3)
+			out.lerp(&bv1, bv2, bv3)
 			bv = bv1
-		}		
+		}
 	case "ailevelf":
 		out.append(OC_ex_, OC_ex_ailevelf)
 	case "airjumpcount":
@@ -3019,7 +3019,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_, OC_ex_offset_y)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
-		}		
+		}
 	case "alpha":
 		c.token = c.tokenizer(in)
 		switch c.token {
@@ -3029,7 +3029,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_, OC_ex_alpha_d)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
-		}		
+		}
 	case "=", "!=", ">", ">=", "<", "<=", "&", "&&", "^", "^^", "|", "||",
 		"+", "*", "**", "/", "%":
 		if !sys.ignoreMostErrors || len(c.previousOperator) > 0 {
