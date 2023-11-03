@@ -555,7 +555,7 @@ func (__ *CommandBuffer) LastDirectionTime() int32 {
 	return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Fb), Abs(__.Ub))
 }
 
-// Time since any input was received. Used for ">" type commands
+// Time since last input was received. Used for ">" type commands
 func (__ *CommandBuffer) LastChangeTime() int32 {
 	return Min(__.LastDirectionTime(), Abs(__.ab), Abs(__.bb), Abs(__.cb),
 		Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb),
@@ -1031,10 +1031,11 @@ func (ai *AiInput) m() bool {
 	return ai.mt != 0
 }
 
+// cmdElem refers to each of the inputs required to complete a command
 type cmdElem struct {
 	key                       []CommandKey
 	chargetime                int32
-	slash, greater, direction bool
+	slash, greater            bool
 }
 
 func (ce *cmdElem) IsDirection() bool {
@@ -1049,6 +1050,12 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 		return false
 	}
 	// This logic seems more complex in Mugen because of variable input delay
+	for _, k := range next.key {
+		// Yes if second element includes buttons
+		if k >= CK_a {
+			return true
+		}
+	}
 	for i, k := range ce.key {
 		// Not if both elements share keys
 		for _, n := range next.key {
@@ -1067,15 +1074,10 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 			}
 		}
 	}
-	// Yes if second element includes buttons
-	for _, k := range next.key {
-		if k >= CK_a {
-			return true
-		}
-	}
 	return false
 }
 
+// Command refers to each individual command from the CMD file
 type Command struct {
 	name                string
 	hold                [][]CommandKey
@@ -1350,9 +1352,11 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 			}
 			nextChar()
 		}
-		if len(c.cmd) >= 2 && ce.IsDirection() &&
-			c.cmd[len(c.cmd)-2].IsDirection() {
-			ce.direction = true
+		// Two consecutive identical directions are considered ">"
+		if len(c.cmd) >= 2 && ce.IsDirection() && c.cmd[len(c.cmd)-2].IsDirection() {
+			if ce.key[0] == c.cmd[len(c.cmd)-2].key[0] {
+				ce.greater = true
+			}
 		}
 	}
 	if c.cmd[len(c.cmd)-1].slash {
@@ -1369,7 +1373,7 @@ func (c *Command) Clear() {
 	}
 }
 
-// Check if inputs match each command
+// Check if inputs match the command elements
 func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]bool) bool {
 	anyHeld, notHeld := false, 0
 	if len(c.hold) > 0 && !ai {
@@ -1431,15 +1435,9 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		if c.cmdi == 0 {
 			return anyHeld
 		}
-		if !ai && (c.cmd[c.cmdi].greater || c.cmd[c.cmdi].direction) {
-			var t int32
-			if c.cmd[c.cmdi].greater {
-				t = cbuf.LastChangeTime()
-			} else {
-				t = cbuf.LastDirectionTime()
-			}
+		if !ai && c.cmd[c.cmdi].greater {
 			for _, k := range c.cmd[c.cmdi-1].key {
-				if Abs(cbuf.State2(k)) == t {
+				if Abs(cbuf.State2(k)) == cbuf.LastChangeTime() {
 					return true
 				}
 			}
@@ -1532,10 +1530,11 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	c.Clear()
 	if complete {
 		c.curbuftime = c.buftime + buftime
+		// TODO: Completing a command should clear the other commands with the same name
 	}
 }
 
-// Command List refers to the actual commands defined in the CMD file
+// Command List refers to the entire set of commands
 type CommandList struct {
 	Buffer            *CommandBuffer
 	Names             map[string]int
