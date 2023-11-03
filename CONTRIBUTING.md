@@ -6,6 +6,7 @@ As a contributor, here are the guidelines we would like you to follow:
  - [Question or Problem?](#question)
  - [Issues and Bugs](#issue)
  - [Feature Requests](#feature)
+ - [Branching Strategy](#branching-strategy)
  - [Submission Guidelines](#submit)
  - [PR Message Guidelines](#pr)
  - [Commit Message Guidelines](#commit)
@@ -32,9 +33,15 @@ If you would like to *implement* a new feature, please consider the size of the 
 
 * **Small Features** can be crafted and directly [submitted as a Pull Request](#submit-pr).
 
+## <a name="branching-strategy"></a> Branching Strategy
+
+Our project utilizes a specific branching strategy to ensure a well-organized and stable codebase. Here's an outline of how our branches are structured:
+
+- `master`: Represents the most stable version of the code. It's updated only when a new stable release is ready, after merging and tagging the `release` branch with a version number.
+- `develop`: The active development branch where all feature branches are created and merged back into. This branch contains features that will be part of the next release cycle.
+- `release`: Created off the `develop` branch when we're ready for a new release cycle. It's reserved for preparing the release and will only receive bug fixes.
 
 ## <a name="submit"></a> Submission Guidelines
-
 
 ### <a name="submit-issue"></a> Submitting an Issue
 
@@ -50,118 +57,70 @@ Unfortunately, we cannot investigate or fix bugs without a minimal reproduction.
 
 To file a new issue, you can select from our [new issue templates][templates] and fill out the issue template.
 
-
 ### <a name="submit-pr"></a> Submitting a Pull Request (PR)
 
-Before you submit your Pull Request (PR) consider the following guidelines:
+Before you submit your Pull Request (PR), please follow these guidelines:
 
-1. Search [GitHub][pulls] for an open or closed PR that relates to your submission.
+1. Check [GitHub][pulls] for existing PRs that may be similar to your submission.
+2. Ensure there's an issue that describes your fix or the feature you're adding. Design discussions should happen before starting your work.
+3. [Fork][fork] the Ikemen GO repository.
+4. In your fork, create a new git branch from the appropriate base branch.
+- **For features and fixes in the next release cycle**: Branch off from `develop` and merge your changes back into it. These will be included in the next release cycle.
+   ```shell
+   git checkout -b my-branch-name develop
+   ```
+- **For fixes in the current release cycle**: Direct your fixes to the `release` branch, which is strictly for regression fixes and preparations for the current release.
+   ```shell
+   git checkout -b my-branch-name release
+   ```
+- **For stable release updates**: The `master` branch is read-only and updated by github maintainers exclusively for deploying new stable releases.
+   ```shell
+   git checkout -b my-branch-name master
+   ```
 
-2. Be sure that an issue describes the problem you're fixing, or documents the design for the feature you'd like to add.
-   Discussing the design upfront helps to ensure that we're ready to accept your work.
+5. Make your changes and commit them:
+   
+   ```shell
+   git commit --all
+   ```
 
-3. [Fork][fork] the Ikemen GO repo.
+6. Push your branch to GitHub:
+   
+   ```shell
+   git push origin my-branch-name
+   ```
 
-4. In your forked repository, make your changes in a new git branch:
+7. Submit a PR to the correct base branch on `Ikemen GO` (either `develop` or `release`).
 
-     ```shell
-     git checkout -b my-fix-branch-name master
-     ```
+#### Reviewing a Pull Request
 
-5. Create your patch.
+All PRs are subject to review by the Ikemen GO team, which retains the right to decline any contributions.
 
-6. Commit your PR changes.
+#### Addressing Review Feedback
 
-     ```shell
-     git commit --all
-     ```
-    Note: the optional commit `-a` command line option will automatically "add" and "rm" edited files.
+If changes are requested:
 
-7. Push your branch to GitHub:
+1. Make the required updates.
+2. Commit the changes and push them to update your PR.
 
-    ```shell
-    git push origin my-fix-branch
-    ```
+##### Updating the Commit Message
 
-8. In GitHub, send a pull request to `Ikemen GO:master`.
+To update the commit message of the last commit:
 
+1. Check out your branch and amend the commit message.
+2. Force push to your repository to update the PR.
 
-### Reviewing a Pull Request
+#### After Your Pull Request Is Merged
 
-The Ikemen GO team reserves the right not to accept pull requests.
+Once merged, you can delete your branch:
 
+1. Delete the remote branch on GitHub.
+2. Update your local `master` with the latest from the upstream repository.
+3. Delete your local branch.
 
-#### Addressing review feedback
+Remember to work from the `develop` branch for features and the `release` branch for bug fixes. The `master` branch is now for stable releases only.
 
-If we ask for changes via code reviews then:
-
-1. Make the required updates to the code.
-
-2. Create a fixup commit and push to your GitHub repository (this will update your Pull Request):
-
-    ```shell
-    git commit --all --fixup HEAD
-    git push
-    ```
-
-That's it! Thank you for your contribution!
-
-
-##### Updating the commit message
-
-In order to update the commit message of the last commit on your branch:
-
-1. Check out your branch:
-
-    ```shell
-    git checkout my-fix-branch-name
-    ```
-
-2. Amend the last commit and modify the commit message:
-
-    ```shell
-    git commit --amend
-    ```
-
-3. Push to your GitHub repository:
-
-    ```shell
-    git push --force-with-lease
-    ```
-
-> NOTE:<br />
-> If you need to update the commit message of an earlier commit, you can use `git rebase` in interactive mode.
-> See the [git docs][git] for more details.
-
-
-#### After your pull request is merged
-
-After your pull request is merged, you can safely delete your branch and pull the changes from the master (upstream) repository:
-
-* Delete the remote branch on GitHub either through the GitHub web UI or your local shell as follows:
-
-    ```shell
-    git push origin --delete my-fix-branch-name
-    ```
-
-* Check out the master branch:
-
-    ```shell
-    git checkout master -f
-    ```
-
-* Delete the local branch:
-
-    ```shell
-    git branch -D my-fix-branch-name
-    ```
-
-* Update your local `master` with the latest upstream version:
-
-    ```shell
-    git pull --ff upstream master
-    ```
-
+Remember to base your work on the `develop` branch when contributing new features for the upcoming release cycle, and the release branch for urgent bug fixes targeting the current release. The master branch serves as the archive for stable releases only and is updated strictly with finalized releases.
 
 ## <a name="pr"></a> PR Message Format
 
