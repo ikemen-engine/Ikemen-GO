@@ -3566,6 +3566,21 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.ss.prevno))
 		return 1
 	})
+	luaRegister(l, "prevstatetype", func(*lua.LState) int {
+		var s string
+		switch sys.debugWC.ss.prevStateType {
+		case ST_S:
+			s = "S"
+		case ST_C:
+			s = "C"
+		case ST_A:
+			s = "A"
+		case ST_L:
+			s = "L"
+		}
+		l.Push(lua.LString(s))
+		return 1
+	})
 	luaRegister(l, "projcanceltime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.projCancelTime(
 			BytecodeInt(int32(numArg(l, 1)))).ToI()))

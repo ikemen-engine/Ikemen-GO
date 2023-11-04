@@ -527,6 +527,7 @@ const (
 	OC_ex_vel_z
 	OC_ex_prevanim
 	OC_ex_prevmovetype
+	OC_ex_prevstatetype
 	OC_ex_reversaldefattr
 	OC_ex_bgmlength
 	OC_ex_bgmposition
@@ -2165,6 +2166,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.prevAnimNo)
 	case OC_ex_prevmovetype:
 		sys.bcStack.PushB(c.ss.prevMoveType == MoveType(be[*i])<<15)
+		*i++
+	case OC_ex_prevstatetype:
+		sys.bcStack.PushB(c.ss.prevStateType == StateType(be[*i]))
 		*i++
 	case OC_ex_reversaldefattr:
 		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
@@ -6026,10 +6030,9 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case stateTypeSet_statetype:
-			crun.ss.stateType = StateType(exp[0].evalI(c))
+			crun.ss.changeStateType(StateType(exp[0].evalI(c)))
 		case stateTypeSet_movetype:
-			crun.ss.prevMoveType = crun.ss.moveType
-			crun.ss.moveType = MoveType(exp[0].evalI(c))
+			crun.ss.changeMoveType(MoveType(exp[0].evalI(c)))
 		case stateTypeSet_physics:
 			crun.ss.physics = StateType(exp[0].evalI(c))
 		case stateTypeSet_redirectid:
@@ -8602,7 +8605,6 @@ func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
 type StateBytecode struct {
 	stateType    StateType
 	moveType     MoveType
-	prevMoveType MoveType
 	physics      StateType
 	playerNo     int
 	stateDef     stateDef
@@ -8615,7 +8617,6 @@ type StateBytecode struct {
 func newStateBytecode(pn int) *StateBytecode {
 	sb := &StateBytecode{
 		stateType:    ST_S,
-		prevMoveType: MT_I,
 		moveType:     MT_I,
 		physics:      ST_N,
 		playerNo:     pn,
@@ -8625,11 +8626,10 @@ func newStateBytecode(pn int) *StateBytecode {
 }
 func (sb *StateBytecode) init(c *Char) {
 	if sb.stateType != ST_U {
-		c.ss.stateType = sb.stateType
+		c.ss.changeStateType(sb.stateType)
 	}
 	if sb.moveType != MT_U {
-		c.ss.prevMoveType = c.ss.moveType
-		c.ss.moveType = sb.moveType
+		c.ss.changeMoveType(sb.moveType)
 	}
 	if sb.physics != ST_U {
 		c.ss.physics = sb.physics
