@@ -354,6 +354,7 @@ var triggerMap = map[string]int{
 	"incustomstate":      1,
 	"indialogue":         1,
 	"isasserted":         1,
+	"lastplayerid":       1,
 	"lerp":               1,
 	"localscale":         1,
 	"majorversion":       1,
@@ -2884,6 +2885,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ishost":
 		out.append(OC_ex_, OC_ex_ishost)
+	case "lastplayerid":
+		out.append(OC_ex_, OC_ex_lastplayerid)
 	case "localscale":
 		out.append(OC_ex_, OC_ex_localscale)
 	case "majorversion":

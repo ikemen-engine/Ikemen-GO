@@ -496,6 +496,7 @@ const (
 	OC_ex_atan2
 	OC_ex_rad
 	OC_ex_deg
+	OC_ex_lastplayerid
 	OC_ex_lerp
 	OC_ex_memberno
 	OC_ex_movecountered
@@ -2097,6 +2098,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		be.rad(sys.bcStack.Top())
 	case OC_ex_deg:
 		be.deg(sys.bcStack.Top())
+	case OC_ex_lastplayerid:
+		sys.bcStack.PushI(sys.nextCharId - 1)
 	case OC_ex_lerp:
 		v3 := sys.bcStack.Pop()
 		v2 := sys.bcStack.Pop()

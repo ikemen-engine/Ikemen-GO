@@ -4087,6 +4087,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.isHost()))
 		return 1
 	})
+	luaRegister(l, "lastplayerid", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.nextCharId - 1))
+		return 1
+	})
 	luaRegister(l, "lerp", func(*lua.LState) int {
 		a, b, amount, retv := float32(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3)), float32(0)
 		retv = float32(a + (b-a)*MaxF(0, MinF(amount, 1)))
