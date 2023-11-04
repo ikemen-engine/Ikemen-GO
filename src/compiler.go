@@ -1826,6 +1826,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_guardpower)
 			case "kill":
 				out.append(OC_ex_gethitvar_kill)
+			case "priority":
+				out.append(OC_ex_gethitvar_priority)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}

@@ -753,6 +753,7 @@ type GetHitVar struct {
 	guardredlife   int32
 	fatal          bool
 	kill           bool
+	priority       int32
 }
 
 func (ghv *GetHitVar) clear() {
@@ -6769,6 +6770,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
 				ghv.animtype = getter.gethitAnimtype() // This must be placed after ghv.yvel
+				ghv.priority = hd.priority
 				byPos := c.pos
 				if proj {
 					for i, p := range pos {
