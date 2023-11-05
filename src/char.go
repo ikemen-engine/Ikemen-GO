@@ -753,6 +753,7 @@ type GetHitVar struct {
 	guardredlife   int32
 	fatal          bool
 	kill           bool
+	priority       int32
 }
 
 func (ghv *GetHitVar) clear() {
@@ -1668,6 +1669,7 @@ func (cgi *CharGlobalInfo) clearPCTime() {
 // StateState contains the state variables like stateNo, prevStateNo, time, stateType, moveType, and physics of the current state.
 type StateState struct {
 	stateType       StateType
+	prevStateType   StateType
 	moveType        MoveType
 	prevMoveType    MoveType
 	physics         StateType
@@ -1678,9 +1680,20 @@ type StateState struct {
 	sb              StateBytecode
 }
 
-func (ss *StateState) clear() {
+func (ss *StateState) changeStateType(t StateType) {
+	ss.prevStateType = ss.stateType
+	ss.stateType = t
+}
+
+func (ss *StateState) changeMoveType(t MoveType) {
 	ss.prevMoveType = ss.moveType
-	ss.stateType, ss.moveType, ss.physics = ST_S, MT_I, ST_N
+	ss.moveType = t
+}
+
+func (ss *StateState) clear() {
+	ss.changeStateType(ST_S)
+	ss.changeMoveType(MT_I)
+	ss.physics = ST_N
 	ss.ps = nil
 	for i, v := range ss.wakegawakaranai {
 		if len(v) < int(sys.cgi[i].wakewakaLength) {
@@ -3458,7 +3471,6 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
-		c.ss.sb.prevMoveType = c.ss.sb.moveType
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
 	// Reset persistent counters for this state (Ikemen chars)
@@ -6171,14 +6183,14 @@ func (c *Char) tick() {
 		}
 	}
 	if c.sf(CSF_gethit) {
-		c.ss.prevMoveType, c.ss.moveType = c.ss.moveType, MT_H
+		c.ss.moveType = MT_H // Note that this change to MoveType breaks PrevMoveType
 		if c.hitPauseTime > 0 {
 			c.ss.clearWw()
 		}
 		c.hitPauseTime = 0
 		//c.targetDrop(-1, false) // GitHub #1148
 		if c.hoIdx >= 0 && c.ho[c.hoIdx].forceair {
-			c.ss.stateType = ST_A
+			c.ss.changeStateType(ST_A)
 		}
 		pn := c.playerNo
 		if c.ghv.p2getp1state && !c.ghv.guarded {
@@ -6218,7 +6230,7 @@ func (c *Char) tick() {
 			c.changeStateEx(5070, pn, -1, 0, "")
 		} else {
 			if c.ghv.forcestand && c.ss.stateType == ST_C {
-				c.ss.stateType = ST_S
+				c.ss.changeStateType(ST_S)
 			}
 			switch c.ss.stateType {
 			case ST_S:
@@ -6538,10 +6550,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			(getter.ss.stateType == ST_S || getter.ss.stateType == ST_C) &&
 			int32(getter.ss.stateType)&hd.guardflag == 0 {
 			if int32(ST_S)&hd.guardflag != 0 && !getter.sf(CSF_nostandguard) {
-				getter.ss.stateType = ST_S
+				getter.ss.changeStateType(ST_S)
 			} else if int32(ST_C)&hd.guardflag != 0 &&
 				!getter.sf(CSF_nocrouchguard) {
-				getter.ss.stateType = ST_C
+				getter.ss.changeStateType(ST_C)
 			}
 		}
 		hitType = 1
@@ -6769,6 +6781,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
 				ghv.animtype = getter.gethitAnimtype() // This must be placed after ghv.yvel
+				ghv.priority = hd.priority
 				byPos := c.pos
 				if proj {
 					for i, p := range pos {

@@ -3216,6 +3216,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.guardpower)
 		case "kill":
 			ln = lua.LNumber(Btoi(c.ghv.kill))
+		case "priority":
+			ln = lua.LNumber(c.ghv.priority)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -3562,6 +3564,21 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "prevstateno", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.ss.prevno))
+		return 1
+	})
+	luaRegister(l, "prevstatetype", func(*lua.LState) int {
+		var s string
+		switch sys.debugWC.ss.prevStateType {
+		case ST_S:
+			s = "S"
+		case ST_C:
+			s = "C"
+		case ST_A:
+			s = "A"
+		case ST_L:
+			s = "L"
+		}
+		l.Push(lua.LString(s))
 		return 1
 	})
 	luaRegister(l, "projcanceltime", func(*lua.LState) int {
@@ -4083,6 +4100,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "ishost", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.isHost()))
+		return 1
+	})
+	luaRegister(l, "lastplayerid", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.nextCharId - 1))
 		return 1
 	})
 	luaRegister(l, "lerp", func(*lua.LState) int {

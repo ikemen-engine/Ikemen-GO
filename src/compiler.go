@@ -354,6 +354,7 @@ var triggerMap = map[string]int{
 	"incustomstate":      1,
 	"indialogue":         1,
 	"isasserted":         1,
+	"lastplayerid":       1,
 	"lerp":               1,
 	"localscale":         1,
 	"majorversion":       1,
@@ -372,6 +373,7 @@ var triggerMap = map[string]int{
 	"playerno":           1,
 	"prevanim":           1,
 	"prevmovetype":       1,
+	"prevstatetype":      1,
 	"rad":                1,
 	"ratiolevel":         1,
 	"randomrange":        1,
@@ -1826,6 +1828,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_guardpower)
 			case "kill":
 				out.append(OC_ex_gethitvar_kill)
+			case "priority":
+				out.append(OC_ex_gethitvar_priority)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -2097,7 +2101,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_p2, 1)
 		}
 		out.append(OC_stateno)
-	case "statetype", "p2statetype":
+	case "statetype", "p2statetype", "prevstatetype":
 		trname := c.token
 		if err := eqne2(func(not bool) error {
 			if len(c.token) == 0 {
@@ -2116,10 +2120,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			default:
 				return Error("Invalid value: " + c.token)
 			}
-			if trname == "p2statetype" {
-				out.appendI32Op(OC_p2, 2+Btoi(not))
+			if trname == "prevstatetype" {
+				out.append(OC_ex_, OC_ex_prevstatetype, OpCode(st))
+			} else {
+				if trname == "p2statetype" {
+					out.appendI32Op(OC_p2, 2+Btoi(not))
+				}
+				out.append(OC_statetype, OpCode(st))
 			}
-			out.append(OC_statetype, OpCode(st))
 			if not {
 				out.append(OC_blnot)
 			}
@@ -2882,6 +2890,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ishost":
 		out.append(OC_ex_, OC_ex_ishost)
+	case "lastplayerid":
+		out.append(OC_ex_, OC_ex_lastplayerid)
 	case "localscale":
 		out.append(OC_ex_, OC_ex_localscale)
 	case "majorversion":
