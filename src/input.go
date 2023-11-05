@@ -539,14 +539,14 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
-	//case CK_rDBs:
-	//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
-	//case CK_rUBs:
-	//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
-	//case CK_rDFs:
-	//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
-	//case CK_rUFs:
-	//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
+		//case CK_rDBs:
+		//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
+		//case CK_rUBs:
+		//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
+		//case CK_rDFs:
+		//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
+		//case CK_rUFs:
+		//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
 	}
 	return __.State(ck)
 }
@@ -1033,9 +1033,9 @@ func (ai *AiInput) m() bool {
 
 // cmdElem refers to each of the inputs required to complete a command
 type cmdElem struct {
-	key                       []CommandKey
-	chargetime                int32
-	slash, greater            bool
+	key            []CommandKey
+	chargetime     int32
+	slash, greater bool
 }
 
 func (ce *cmdElem) IsDirection() bool {
@@ -1068,7 +1068,7 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 			return false
 		}
 		// Yes if release direction then not release direction
-		if (k >= CK_rB && k <= CK_rUF || k >= CK_rBs && k <= CK_rUFs) {
+		if k >= CK_rB && k <= CK_rUF || k >= CK_rBs && k <= CK_rUFs {
 			if (next.key[i] < CK_rB || next.key[i] > CK_rUF) && (next.key[i] < CK_rBs || next.key[i] > CK_rUFs) {
 				return true
 			}
