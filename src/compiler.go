@@ -5574,25 +5574,25 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 				rm := func(name string, k, nk *CommandKey) {
 					switch strings.ToLower(is[name]) {
 					case "x":
-						*k, *nk = CK_x, CK_nx
+						*k, *nk = CK_x, CK_rx
 					case "y":
-						*k, *nk = CK_y, CK_ny
+						*k, *nk = CK_y, CK_ry
 					case "z":
-						*k, *nk = CK_z, CK_nz
+						*k, *nk = CK_z, CK_rz
 					case "a":
-						*k, *nk = CK_a, CK_na
+						*k, *nk = CK_a, CK_ra
 					case "b":
-						*k, *nk = CK_b, CK_nb
+						*k, *nk = CK_b, CK_rb
 					case "c":
-						*k, *nk = CK_c, CK_nc
+						*k, *nk = CK_c, CK_rc
 					case "s":
-						*k, *nk = CK_s, CK_ns
+						*k, *nk = CK_s, CK_rs
 					case "d":
-						*k, *nk = CK_d, CK_nd
+						*k, *nk = CK_d, CK_rd
 					case "w":
-						*k, *nk = CK_w, CK_nw
+						*k, *nk = CK_w, CK_rw
 					case "m":
-						*k, *nk = CK_m, CK_nm
+						*k, *nk = CK_m, CK_rm
 					}
 				}
 				rm("x", &ckr.x, &ckr.nx)
