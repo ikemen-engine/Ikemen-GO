@@ -8603,24 +8603,24 @@ func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
 
 // StateDef data struct
 type StateBytecode struct {
-	stateType    StateType
-	moveType     MoveType
-	physics      StateType
-	playerNo     int
-	stateDef     stateDef
-	block        StateBlock
-	ctrlsps      []int32
-	numVars      int32
+	stateType StateType
+	moveType  MoveType
+	physics   StateType
+	playerNo  int
+	stateDef  stateDef
+	block     StateBlock
+	ctrlsps   []int32
+	numVars   int32
 }
 
 // StateDef bytecode creation function
 func newStateBytecode(pn int) *StateBytecode {
 	sb := &StateBytecode{
-		stateType:    ST_S,
-		moveType:     MT_I,
-		physics:      ST_N,
-		playerNo:     pn,
-		block:        *newStateBlock(),
+		stateType: ST_S,
+		moveType:  MT_I,
+		physics:   ST_N,
+		playerNo:  pn,
+		block:     *newStateBlock(),
 	}
 	return sb
 }
