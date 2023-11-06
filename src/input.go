@@ -1050,27 +1050,35 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 		return false
 	}
 	// This logic seems more complex in Mugen because of variable input delay
-	for _, k := range next.key {
-		// Yes if second element includes buttons
+	// Not if first element includes button press or release
+	for _, k := range ce.key {
 		if k >= CK_a {
-			return true
+			return false
 		}
 	}
-	for i, k := range ce.key {
-		// Not if both elements share keys
+	// Not if both elements share keys
+	for _, k := range ce.key {
 		for _, n := range next.key {
 			if k == n {
 				return false
 			}
 		}
-		// Not if first element includes buttons
-		if k >= CK_a {
-			return false
-		}
-		// Yes if release direction then not release direction
-		if (k >= CK_rB && k <= CK_rUF || k >= CK_rBs && k <= CK_rUFs) {
-			if (next.key[i] < CK_rB || next.key[i] > CK_rUF) && (next.key[i] < CK_rBs || next.key[i] > CK_rUFs) {
+	}
+	// Yes if second element includes a button press
+	for _, _ = range ce.key {
+		for _, n := range next.key {
+			if n >= CK_a && n < CK_ra {
 				return true
+			}
+		}
+	}
+	// Yes if release direction then not release direction (includes buttons)
+	for _, k := range ce.key {
+		if k >= CK_rB && k <= CK_rUF || k >= CK_rBs && k <= CK_rUFs {
+			for _, n := range next.key {
+				if (n < CK_rB || n > CK_rUF) && (n < CK_rBs || n > CK_rUFs) {
+					return true
+				}
 			}
 		}
 	}
@@ -1086,6 +1094,7 @@ type Command struct {
 	cmdi, chargei       int
 	time, curtime       int32
 	buftime, curbuftime int32
+	completeflag        bool
 }
 
 func newCommand() *Command {
@@ -1523,15 +1532,11 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	} else {
 		c.curtime++
 	}
-	complete := c.cmdi == len(c.cmd)
-	if !complete && (ai || c.curtime <= c.time) {
+	c.completeflag = (c.cmdi == len(c.cmd))
+	if !c.completeflag && (ai || c.curtime <= c.time) {
 		return
 	}
 	c.Clear()
-	if complete {
-		c.curbuftime = c.buftime + buftime
-		// TODO: Completing a command should clear the other commands with the same name
-	}
 }
 
 // Command List refers to the entire set of commands
@@ -1668,11 +1673,33 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 	return step
 }
 
+func (cl *CommandList) ClearName(name string) {
+	for i := range cl.Commands {
+		for j := range cl.Commands[i] {
+			if cl.Commands[i][j].name == name {
+				cl.Commands[i][j].Clear()
+			}
+		}
+	}
+}
+
 func (cl *CommandList) Step(facing int32, ai, hitpause bool, buftime int32) {
 	if cl.Buffer != nil {
 		for i := range cl.Commands {
 			for j := range cl.Commands[i] {
 				cl.Commands[i][j].Step(cl.Buffer, ai, hitpause, buftime)
+			}
+		}
+		for i := range cl.Commands {
+			for j := range cl.Commands[i] {
+				// If a command is completed, other commands with the same name should be reset
+				// This loop must be run separately from the previous one
+				if cl.Commands[i][j].completeflag {
+					cl.ClearName(cl.Commands[i][j].name)
+					cl.Commands[i][j].completeflag = false
+					// Set buffer time after clearing the other commands
+					cl.Commands[i][j].curbuftime = cl.Commands[i][j].buftime + buftime
+				}
 			}
 		}
 	}
