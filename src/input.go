@@ -1086,6 +1086,7 @@ type Command struct {
 	cmdi, chargei       int
 	time, curtime       int32
 	buftime, curbuftime int32
+	completeflag        bool
 }
 
 func newCommand() *Command {
@@ -1523,14 +1524,13 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	} else {
 		c.curtime++
 	}
-	complete := c.cmdi == len(c.cmd)
-	if !complete && (ai || c.curtime <= c.time) {
+	c.completeflag = (c.cmdi == len(c.cmd))
+	if !c.completeflag && (ai || c.curtime <= c.time) {
 		return
 	}
 	c.Clear()
-	if complete {
+	if c.completeflag {
 		c.curbuftime = c.buftime + buftime
-		// TODO: Completing a command should clear the other commands with the same name
 	}
 }
 
@@ -1668,10 +1668,25 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 	return step
 }
 
+func (cl *CommandList) ClearName(name string) {
+	for i := range cl.Commands {
+		for j := range cl.Commands[i] {
+			if cl.Commands[i][j].name == name {
+				cl.Commands[i][j].Clear()
+			}
+		}
+	}
+}
+
 func (cl *CommandList) Step(facing int32, ai, hitpause bool, buftime int32) {
 	if cl.Buffer != nil {
 		for i := range cl.Commands {
 			for j := range cl.Commands[i] {
+				// If a command is completed, other commands with the same name should be reset
+				if cl.Commands[i][j].completeflag {
+					cl.ClearName(cl.Commands[i][j].name)
+					cl.Commands[i][j].completeflag = false
+				}
 				cl.Commands[i][j].Step(cl.Buffer, ai, hitpause, buftime)
 			}
 		}
