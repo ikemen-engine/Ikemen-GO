@@ -56,6 +56,8 @@
   "GameWidth": 640,
   "GameHeight": 480,
   "GameFramerate": 60,
+  "InputButtonAssist": true,
+  "InputSOCDResolution": 1,
   "IP": {},
   "LifeMul": 100,
   "ListenPort": "7500",

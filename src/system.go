@@ -292,7 +292,10 @@ type System struct {
 	fullscreenWidth       int32
 	fullscreenHeight      int32
 
+	// Input variables
 	controllerStickSensitivity float32
+	inputButtonAssist          bool
+	inputSOCDresolution        int32
 	xinputTriggerSensitivity   float32
 
 	// Localcoord sceenpack
