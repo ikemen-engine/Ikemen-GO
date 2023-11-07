@@ -222,7 +222,7 @@ func (ib *InputBits) KeysToBits(in int) {
 		var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
 		// Check controllers
 		U = sys.keyConfig[in].U() || sys.joystickConfig[in].U()
-		D =	sys.keyConfig[in].D() || sys.joystickConfig[in].D()
+		D = sys.keyConfig[in].D() || sys.joystickConfig[in].D()
 		L = sys.keyConfig[in].L() || sys.joystickConfig[in].L()
 		R = sys.keyConfig[in].R() || sys.joystickConfig[in].R()
 		a = sys.keyConfig[in].a() || sys.joystickConfig[in].a()
@@ -236,7 +236,7 @@ func (ib *InputBits) KeysToBits(in int) {
 		w = sys.keyConfig[in].w() || sys.joystickConfig[in].w()
 		m = sys.keyConfig[in].m() || sys.joystickConfig[in].m()
 		// Convert to bits
-		*ib = InputBits(Btoi(U) | Btoi(D)<<1 | Btoi(L)<<2 |	Btoi(R)<<3 |
+		*ib = InputBits(Btoi(U) | Btoi(D)<<1 | Btoi(L)<<2 | Btoi(R)<<3 |
 			Btoi(a)<<4 | Btoi(b)<<5 | Btoi(c)<<6 |
 			Btoi(x)<<7 | Btoi(y)<<8 | Btoi(z)<<9 |
 			Btoi(s)<<10 | Btoi(d)<<11 | Btoi(w)<<12 | Btoi(m)<<13)
@@ -365,7 +365,7 @@ func (cl *CommandBuffer) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool
 					// else disable B
 					cl.SocdAllow[2] = false
 					cl.SocdAllow[3] = true
-					}
+				}
 			// Type 2 - Absolute priority (offense over defense)
 			case 2:
 				cl.SocdAllow[2] = false
@@ -776,14 +776,14 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
-	//case CK_rDBs:
-	//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
-	//case CK_rUBs:
-	//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
-	//case CK_rDFs:
-	//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
-	//case CK_rUFs:
-	//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
+		//case CK_rDBs:
+		//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
+		//case CK_rUBs:
+		//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
+		//case CK_rDFs:
+		//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
+		//case CK_rUFs:
+		//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
 	}
 	return __.State(ck)
 }
@@ -1283,10 +1283,10 @@ func (ai *AiInput) m() bool {
 
 // cmdElem refers to each of the inputs required to complete a command
 type cmdElem struct {
-	key                       []CommandKey
-	chargetime                int32
-	slash                     bool
-	greater                   bool
+	key        []CommandKey
+	chargetime int32
+	slash      bool
+	greater    bool
 }
 
 func (ce *cmdElem) IsDirection() bool {
@@ -1316,7 +1316,7 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 		}
 	}
 	// Yes if second element includes a button press
-	for _, _ = range ce.key {
+	for range ce.key {
 		for _, n := range next.key {
 			if n >= CK_a && n < CK_ra {
 				return true
@@ -1797,7 +1797,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	c.Clear(false)
 	if c.completeflag {
 		// Update buffer only if it's lower. Mugen doesn't do this but it seems like the right thing to do
-		c.curbuftime = Max(c.buftime, c.buftime + buftime)
+		c.curbuftime = Max(c.buftime, c.buftime+buftime)
 	}
 }
 
