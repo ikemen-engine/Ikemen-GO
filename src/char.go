@@ -78,6 +78,8 @@ const (
 	CSF_backedge
 	CSF_frontwidth
 	CSF_backwidth
+	CSF_topheight
+	CSF_bottomheight
 	CSF_trans
 	CSF_gethit
 	CSF_assertspecial CharSpecialFlag = CSF_nostandguard | CSF_nocrouchguard |
@@ -1750,7 +1752,9 @@ type CharSystemVar struct {
 	receivedHits     int32
 	fakeReceivedHits int32
 	velOff           float32
-	width, edge      [2]float32
+	width            [2]float32
+	edge             [2]float32
+	heightnew        [2]float32
 	attackMul        float32
 	superDefenseMul  float32
 	fallDefenseMul   float32
@@ -1983,6 +1987,7 @@ func (c *Char) clear2() {
 	c.CharSystemVar = CharSystemVar{bindToId: -1,
 		angleScale: [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
+		heightnew:       [...]float32{c.height(), 0},
 		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
 		fallDefenseMul:  1,
 		superDefenseMul: 1,
@@ -4169,6 +4174,17 @@ func (c *Char) setBWidth(bw float32) {
 	c.width[1] = c.defBW()*((320/c.localcoord)/c.localscl) + bw
 	c.setSF(CSF_backwidth)
 }
+
+func (c *Char) setTHeight(th float32) {
+	c.heightnew[0] = c.height() * ((320 / c.localcoord) / c.localscl) + th
+	c.setSF(CSF_topheight)
+}
+
+func (c *Char) setBHeight(bh float32) {
+	c.heightnew[1] = bh
+	c.setSF(CSF_bottomheight)
+}
+
 func (c *Char) gethitAnimtype() Reaction {
 	if c.ghv.fallf {
 		return c.ghv.fall.animtype
@@ -5845,6 +5861,12 @@ func (c *Char) actionRun() {
 		if !c.sf(CSF_backedge) {
 			c.edge[1] = 0
 		}
+		if !c.sf(CSF_topheight) {
+			c.heightnew[0] = c.height() * ((320 / c.localcoord) / c.localscl)
+		}
+		if !c.sf(CSF_bottomheight) {
+			c.heightnew[1] = 0
+		}
 	}
 	if !c.pauseBool {
 		if !c.hitPause() {
@@ -6322,8 +6344,9 @@ func (c *Char) cueDraw() {
 				sys.drawc2.Add(clsn, x, y, xs, ys)
 			}
 		}
+		// Pushbox
 		if c.sf(CSF_playerpush) {
-			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height() * (320 / c.localcoord), c.width[0] * c.localscl, 0},
+			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.heightnew[0] * (320 / c.localcoord), c.width[0] * c.localscl, c.heightnew[1]},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
 		//debug clsnText
@@ -7405,15 +7428,19 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
-			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) && !c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
-				c.sf(CSF_playerpush) && (getter.ss.stateType == ST_A ||
-				getter.pos[1]*getter.localscl-c.pos[1]*c.localscl < getter.height()*c.localscl) &&
-				(c.ss.stateType == ST_A || c.pos[1]*c.localscl-getter.pos[1]*getter.localscl < c.height()*(320/c.localcoord)) &&
+			// Pushbox vertical size and coordinates
+			ctop := (c.pos[1] - c.heightnew[0]) * c.localscl
+			cbot := (c.pos[1] + c.heightnew[1]) * c.localscl
+			gtop := (getter.pos[1] - getter.heightnew[0]) * getter.localscl
+			gbot := (getter.pos[1] + getter.heightnew[1]) * getter.localscl
+			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) &&
+				!c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
+				c.sf(CSF_playerpush) && (cbot > gtop && ctop < gbot) && // Pushbox vertical overlap
 				// Z axis check
 				!(c.size.z.enable && getter.size.z.enable &&
 					((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
 						(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
-				// Normal collsion check
+				// Normal collision check
 				cl, cr := -c.width[0]*c.localscl, c.width[1]*c.localscl
 				if c.facing > 0 {
 					cl, cr = -cr, -cl
