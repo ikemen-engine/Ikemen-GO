@@ -8601,6 +8601,36 @@ func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type height StateControllerBase
+
+const (
+	height_value byte = iota
+	height_redirectid
+)
+
+func (sc height) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lclscround float32 = 1.0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case height_value:
+			crun.setTHeight(exp[0].evalF(c) * lclscround)
+			if len(exp) > 1 {
+				crun.setBHeight(exp[1].evalF(c) * lclscround)
+			}
+		case height_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				lclscround = (320 / c.localcoord) / (320 / crun.localcoord)
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType
