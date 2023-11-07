@@ -4176,7 +4176,7 @@ func (c *Char) setBWidth(bw float32) {
 }
 
 func (c *Char) setTHeight(th float32) {
-	c.heightnew[0] = c.height() * ((320 / c.localcoord) / c.localscl) + th
+	c.heightnew[0] = c.height()*((320/c.localcoord)/c.localscl) + th
 	c.setSF(CSF_topheight)
 }
 
