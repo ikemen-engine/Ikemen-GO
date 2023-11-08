@@ -7480,8 +7480,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				gxmin += sys.xmin / getter.localscl
 				gxmax += sys.xmax / getter.localscl
 
-				if gl < cr && cl < gr &&
-					getter.clsnCheck(c, false, false) {
+				// If both chars are Ikemen, only the pushbox is checked
+				push := true
+				if (c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0) || (getter.stCgi().ikemenver[0] == 0 && getter.stCgi().ikemenver[1] == 0) {
+					push = getter.clsnCheck(c, false, false)
+				}
+
+				if gl < cr && cl < gr && push {
 					getter.pushed, c.pushed = true, true
 					tmp := getter.distX(c, getter)
 					if tmp == 0 {
