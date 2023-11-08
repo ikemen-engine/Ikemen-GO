@@ -320,27 +320,35 @@ func (cl *CommandBuffer) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool
 	} else {
 		// Check first direction held between U and D
 		if U || D {
+			if !U {
+				cl.SocdFirst[0] = false
+			}
+			if !D {
+				cl.SocdFirst[1] = false
+			}
 			if !cl.SocdFirst[0] && !cl.SocdFirst[1] {
 				if D {
-					cl.SocdFirst[0] = false
 					cl.SocdFirst[1] = true
 				} else {
 					cl.SocdFirst[0] = true
-					cl.SocdFirst[1] = false
 				}
 			}
 		} else {
 			cl.SocdFirst[0] = false
 			cl.SocdFirst[1] = false
 		}
-		// Check first direction held between B and F
+		// Check first direction held between U and D
 		if B || F {
+			if !B {
+				cl.SocdFirst[2] = false
+			}
+			if !F {
+				cl.SocdFirst[3] = false
+			}
 			if !cl.SocdFirst[2] && !cl.SocdFirst[3] {
 				if B {
 					cl.SocdFirst[2] = true
-					cl.SocdFirst[3] = false
 				} else {
-					cl.SocdFirst[2] = false
 					cl.SocdFirst[3] = true
 				}
 			}
@@ -382,7 +390,7 @@ func (cl *CommandBuffer) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool
 					cl.SocdAllow[3] = false
 				}
 			// Type 4 - Deny either direction (neutral)
-			case 4:
+			default:
 				cl.SocdAllow[2] = false
 				cl.SocdAllow[3] = false
 			}
@@ -424,7 +432,7 @@ func (cl *CommandBuffer) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool
 					cl.SocdAllow[1] = true
 				}
 			// Type 4 - Deny either direction (neutral)
-			case 4:
+			default:
 				cl.SocdAllow[0] = false
 				cl.SocdAllow[1] = false
 			}
@@ -1797,7 +1805,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	c.Clear(false)
 	if c.completeflag {
 		// Update buffer only if it's lower. Mugen doesn't do this but it seems like the right thing to do
-		c.curbuftime = Max(c.buftime, c.buftime+buftime)
+		c.curbuftime = Max(c.curbuftime, c.buftime+buftime)
 	}
 }
 
