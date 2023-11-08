@@ -4177,11 +4177,13 @@ func (c *Char) setBWidth(bw float32) {
 
 func (c *Char) setTHeight(th float32) {
 	c.heightnew[0] = c.height()*((320/c.localcoord)/c.localscl) + th
+	ClampF(c.heightnew[1], c.heightnew[0], c.heightnew[1])
 	c.setSF(CSF_topheight)
 }
 
 func (c *Char) setBHeight(bh float32) {
 	c.heightnew[1] = bh
+	ClampF(c.heightnew[0], c.heightnew[1], c.heightnew[0])
 	c.setSF(CSF_bottomheight)
 }
 
@@ -4726,6 +4728,19 @@ func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	}
 	return dist + oppw - c.facing*c.width[0]
 }
+func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
+	ctop := (c.pos[1] - c.heightnew[0]) * c.localscl
+	cbot := (c.pos[1] + c.heightnew[1]) * c.localscl
+	otop := (opp.pos[1] - opp.heightnew[0]) * opp.localscl
+	obot := (opp.pos[1] + opp.heightnew[1]) * opp.localscl
+	if cbot < otop {
+		return (otop - cbot) / oc.localscl
+	} else if ctop > obot {
+		return (obot - ctop) / oc.localscl
+	} else {
+		return 0
+	}
+}
 func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeSF()
@@ -4757,9 +4772,18 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 	} else {
 		dist := c.facing * c.bodyDistX(p2, oc)
 		if c.stCgi().ver[0] != 1 {
-			dist = float32(int32(dist)) //旧バージョンでは小数点切り捨て
+			dist = float32(int32(dist)) //旧バージョンでは小数点切り捨て / "In the old version, decimal truncation was used."
 		}
 		return BytecodeFloat(dist)
+	}
+}
+func (c *Char) p2BodyDistY(oc *Char) BytecodeValue {
+	if p2 := c.p2(); p2 == nil {
+		return BytecodeSF()
+	} else if oc.stCgi().ikemenver[0] <= 0 && oc.stCgi().ikemenver[1] <= 0 {
+		return c.rdDistY(c.p2(), oc) // In Mugen, P2BodyDist Y simply does the same as P2Dist Y
+	} else {
+		return BytecodeFloat(c.bodyDistY(p2, oc))
 	}
 }
 func (c *Char) hitVelSetX() {
@@ -6346,7 +6370,7 @@ func (c *Char) cueDraw() {
 		}
 		// Pushbox
 		if c.sf(CSF_playerpush) {
-			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.heightnew[0] * (320 / c.localcoord), c.width[0] * c.localscl, c.heightnew[1]},
+			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.heightnew[0] * c.localscl, c.width[0] * c.localscl, c.heightnew[1] * c.localscl},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
 		//debug clsnText

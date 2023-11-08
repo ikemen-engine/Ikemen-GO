@@ -2353,7 +2353,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "x":
 			out.append(OC_ex_, OC_ex_p2bodydist_x)
 		case "y":
-			out.append(OC_ex_, OC_ex_p2dist_y)
+			out.append(OC_ex_, OC_ex_p2bodydist_y)
 		case "z":
 			bv = BytecodeFloat(0)
 		default:

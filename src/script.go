@@ -3447,7 +3447,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "p2bodydistY", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.rdDistY(sys.debugWC.p2(), sys.debugWC).ToI()))
+		l.Push(lua.LNumber(sys.debugWC.p2BodyDistY(sys.debugWC).ToI()))
 		return 1
 	})
 	luaRegister(l, "p2distX", func(*lua.LState) int {
