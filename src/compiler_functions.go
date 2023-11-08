@@ -475,7 +475,19 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			return err
 		}
 		if err := c.paramValue(is, sc, "size.height",
-			helper_size_height, VT_Int, 1, false); err != nil {
+			helper_size_height_stand, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "size.height.crouch",
+			helper_size_height_crouch, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "size.height.air",
+			helper_size_height_air, VT_Int, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "size.height.down",
+			helper_size_height_down, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "size.proj.doscale",

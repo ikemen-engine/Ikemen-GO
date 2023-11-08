@@ -2875,7 +2875,15 @@ func triggerFunctions(l *lua.LState) {
 		case "size.air.front":
 			ln = lua.LNumber(c.size.air.front)
 		case "size.height":
-			ln = lua.LNumber(c.size.height)
+			ln = lua.LNumber(c.size.height.stand)
+		case "size.height.crouch":
+			ln = lua.LNumber(c.size.height.crouch)
+		case "size.height.air.top":
+			ln = lua.LNumber(c.size.height.air[0])
+		case "size.height.air.bottom":
+			ln = lua.LNumber(c.size.height.air[1])
+		case "size.height.down":
+			ln = lua.LNumber(c.size.height.down)
 		case "size.attack.dist":
 			ln = lua.LNumber(c.size.attack.dist)
 		case "size.attack.z.width.back":
@@ -2904,6 +2912,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.z.width)
 		case "size.z.enable":
 			ln = lua.LNumber(Btoi(c.size.z.enable))
+		case "size.classicpushbox":
+			ln = lua.LNumber(c.size.classicpushbox)
 		case "velocity.walk.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.walk.fwd)
 		case "velocity.walk.back.x":
