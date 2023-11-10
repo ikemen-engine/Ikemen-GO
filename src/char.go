@@ -1380,7 +1380,7 @@ type Projectile struct {
 	supermovetime   int32
 	pausemovetime   int32
 	ani             *Animation
-	timemiss        int32
+	curmisstime     int32
 	hitpause        int32
 	oldPos          [2]float32
 	newPos          [2]float32
@@ -1427,6 +1427,11 @@ func (p *Projectile) paused(playerNo int) bool {
 	return false
 }
 func (p *Projectile) update(playerNo int) {
+	// Interpolate position
+	ti := sys.tickInterpola()
+	for i, np := range p.newPos {
+		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
+	}
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		p.remflag = true
 		if p.anim >= 0 {
@@ -1480,29 +1485,6 @@ func (p *Projectile) update(playerNo int) {
 			}
 		}
 	}
-	if p.paused(playerNo) || p.hitpause != 0 {
-		return
-	}
-	if sys.tickFrame() {
-		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing,
-			p.pos[1] + p.velocity[1]}
-	}
-	ti := sys.tickInterpola()
-	for i, np := range p.newPos {
-		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
-	}
-	if sys.tickNextFrame() {
-		p.oldPos = p.pos
-		for i := range p.velocity {
-			p.velocity[i] += p.accel[i]
-			p.velocity[i] *= p.velmul[i]
-		}
-		if p.velocity[0] < 0 && p.anim != -1 {
-			p.facing *= -1
-			p.velocity[0] *= -1
-			p.accel[0] *= -1
-		}
-	}
 }
 func (p *Projectile) clsn(playerNo int) {
 	if p.ani == nil || len(p.ani.frames) == 0 {
@@ -1550,21 +1532,39 @@ func (p *Projectile) clsn(playerNo int) {
 	}
 }
 func (p *Projectile) tick(playerNo int) {
-	if p.timemiss < 0 {
-		p.timemiss = ^p.timemiss
+	if p.paused(playerNo) || p.hitpause != 0 {
+		p.setPos(p.pos)
+	} else {
+		p.oldPos = p.pos
+		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
+		p.pos = p.newPos
+		for i := range p.velocity {
+			p.velocity[i] += p.accel[i]
+			p.velocity[i] *= p.velmul[i]
+		}
+		if p.velocity[0] < 0 && p.anim != -1 {
+			p.facing *= -1
+			p.velocity[0] *= -1
+			p.accel[0] *= -1
+		}
+	}
+
+	if p.curmisstime < 0 {
+		p.curmisstime = ^p.curmisstime
 		if p.hits >= 0 {
-			if p.timemiss <= 0 && p.hitpause == 0 {
+			if p.curmisstime <= 0 && p.hitpause == 0 {
 				p.hits = -1
 			} else {
 				p.hits--
 				if p.hits <= 0 {
+					p.remflag = true
 					p.hits = -1
 				}
 			}
 		}
 		p.hitdef.air_juggle = 0
 	}
-	if p.hits < 0 {
+	if p.hits <= 0 {
 		p.hitpause = 0
 	}
 	if !p.paused(playerNo) {
@@ -1572,9 +1572,17 @@ func (p *Projectile) tick(playerNo int) {
 			if p.removetime > 0 {
 				p.removetime--
 			}
-			if p.timemiss > 0 {
-				p.timemiss--
+			if p.curmisstime > 0 {
+				p.curmisstime--
 			}
+			if p.supermovetime > 0 {
+				p.supermovetime--
+			}
+			if p.pausemovetime > 0 {
+				p.pausemovetime--
+			}
+		} else {
+			p.hitpause--
 		}
 	}
 }
@@ -1597,16 +1605,6 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	if sys.tickNextFrame() && (notpause || !p.paused(playerNo)) {
 		if p.ani != nil && notpause {
 			p.ani.Action()
-		}
-		if p.hitpause > 0 {
-			p.hitpause--
-		} else {
-			if p.supermovetime > 0 {
-				p.supermovetime--
-			}
-			if p.pausemovetime > 0 {
-				p.pausemovetime--
-			}
 		}
 	}
 	if p.ani != nil {
@@ -4059,9 +4057,6 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if c.size.proj.doscale != 0 {
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
-	}
-	if p.misstime == 0 {
-		p.misstime = 1
 	}
 	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
@@ -7331,7 +7326,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					(c.sf(CSF_nojugglecheck) || !c.hasTarget(getter.id) ||
 						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
 					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
-					p.timemiss <= 0 && (p.hitpause <= 0 || p.hitpause > 0 && p.hitdef.hitonce <= 0) &&
+					p.curmisstime <= 0 && p.hitpause <= 0 && p.hitdef.hitonce >= 0 &&
 					getter.hittable(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
 					if getter.sf(CSF_gethit) {
@@ -7348,7 +7343,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						}
 						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
 							p.pos[1] - c.pos[1]*(c.localscl/p.localscl)}, p.facing, p.parentAttackmul, hits); ht != 0 {
-							p.timemiss = ^Max(0, p.misstime)
+							p.curmisstime = ^Max(0, p.misstime)
 							if Abs(ht) == 1 {
 								sys.cgi[i].pctype = PC_Hit
 								sys.cgi[i].pctime = 0
