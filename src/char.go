@@ -254,10 +254,10 @@ type CharSize struct {
 		front float32
 	}
 	height struct {
-		stand float32
+		stand  float32
 		crouch float32
-		air [2]float32
-		down float32
+		air    [2]float32
+		down   float32
 	}
 	attack struct {
 		dist float32
@@ -299,7 +299,7 @@ func (cs *CharSize) init() {
 	cs.height.stand = 60
 	cs.height.crouch = cs.height.stand * 2 / 3
 	cs.height.air = [...]float32{cs.height.stand * 4 / 3, -cs.height.stand / 3}
-	cs.height.down = cs.height.stand / 3 
+	cs.height.down = cs.height.stand / 3
 	cs.attack.dist = 160
 	cs.proj.attack.dist = 90
 	cs.proj.doscale = 0
@@ -1762,7 +1762,7 @@ type CharSystemVar struct {
 	velOff           float32
 	width            [2]float32
 	edge             [2]float32
-	height        [2]float32
+	height           [2]float32
 	attackMul        float32
 	superDefenseMul  float32
 	fallDefenseMul   float32
