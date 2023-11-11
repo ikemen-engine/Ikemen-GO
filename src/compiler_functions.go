@@ -1400,6 +1400,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_forcestand, VT_Bool, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "forcecrouch",
+		hitDef_forcecrouch, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "forcenofall",
 		hitDef_forcenofall, VT_Bool, 1, false); err != nil {
 		return err

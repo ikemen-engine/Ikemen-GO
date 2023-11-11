@@ -600,6 +600,7 @@ type HitDef struct {
 	p2stateno                  int32
 	p2getp1state               bool
 	forcestand                 int32
+	forcecrouch                int32
 	ground_fall                bool
 	air_fall                   bool
 	down_velocity              [2]float32
@@ -678,6 +679,7 @@ func (hd *HitDef) clear() {
 		p1stateno:      -1,
 		p2stateno:      -1,
 		forcestand:     IErr,
+		forcecrouch:    IErr,
 		guard_dist:     IErr,
 		down_velocity:  [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:        -1,
@@ -752,6 +754,7 @@ type GetHitVar struct {
 	guarded        bool
 	p2getp1state   bool
 	forcestand     bool
+	forcecrouch    bool
 	id             int32
 	dizzypoints    int32
 	guardpoints    int32
@@ -3516,6 +3519,14 @@ func (c *Char) stateChange2() bool {
 		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 		}
+		// Remove flagged explods
+		for i := range sys.explods[c.playerNo] {
+			e := sys.explods[c.playerNo]
+			if e[i].playerId == c.id && e[i].removeonchangestate {
+				e[i].id = IErr
+				e[i].anim = nil
+			}
+		}
 		c.stchtmp = false
 		return true
 	}
@@ -3531,14 +3542,6 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	}
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
-	}
-	// Remove relevant explods
-	for i := range sys.explods[c.playerNo] {
-		e := sys.explods[c.playerNo]
-		if e[i].playerId == c.id && e[i].removeonchangestate {
-			e[i].id = IErr
-			e[i].anim = nil
-		}
 	}
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < 2500 {
@@ -4129,6 +4132,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		hd.air_type = hd.ground_type
 	}
 	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0))
+	ifierrset(&hd.forcecrouch, Btoi(hd.ground_velocity[1] != 0))
 	if hd.attr&int32(ST_A) != 0 {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {
@@ -6314,6 +6318,8 @@ func (c *Char) tick() {
 		} else {
 			if c.ghv.forcestand && c.ss.stateType == ST_C {
 				c.ss.changeStateType(ST_S)
+			} else if c.ghv.forcecrouch && c.ss.stateType == ST_S {
+				c.ss.changeStateType(ST_C)
 			}
 			switch c.ss.stateType {
 			case ST_S:
@@ -6759,6 +6765,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.playerNo = hd.playerNo
 				ghv.p2getp1state = hd.p2getp1state
 				ghv.forcestand = hd.forcestand != 0
+				ghv.forcecrouch = hd.forcecrouch != 0
 				ghv.fall = hd.fall
 				getter.fallTime = 0
 				ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)

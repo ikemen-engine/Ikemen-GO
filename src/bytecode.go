@@ -4402,6 +4402,7 @@ const (
 	hitDef_p1sprpriority
 	hitDef_p2sprpriority
 	hitDef_forcestand
+	hitDef_forcecrouch
 	hitDef_forcenofall
 	hitDef_fall_damage
 	hitDef_fall_xvelocity
@@ -4561,6 +4562,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.p2sprpriority = exp[0].evalI(c)
 	case hitDef_forcestand:
 		hd.forcestand = Btoi(exp[0].evalB(c))
+	case hitDef_forcecrouch:
+		hd.forcecrouch = Btoi(exp[0].evalB(c))
 	case hitDef_forcenofall:
 		hd.forcenofall = exp[0].evalB(c)
 	case hitDef_fall_damage:
