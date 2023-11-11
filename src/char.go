@@ -6392,10 +6392,12 @@ func (c *Char) cueDraw() {
 	if sys.clsnDraw && c.curFrame != nil {
 		x, y := c.pos[0]*c.localscl+c.offsetX()*c.localscl, c.pos[1]*c.localscl+c.offsetY()*c.localscl
 		xs, ys := c.facing*c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord), c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)
+		// Draw Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
 			sys.drawc1.Add(clsn, x, y, xs, ys)
 		}
 		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
+			// Check invincibility to decide box colors
 			hb, mtk := false, false
 			for _, h := range c.hitby {
 				if h.time != 0 {
@@ -6403,24 +6405,28 @@ func (c *Char) cueDraw() {
 					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0 || c.gi().unhittable > 0
 				}
 			}
+			// Draw fully invincible Clsn2
 			if mtk {
 				sys.drawc2mtk.Add(clsn, x, y, xs, ys)
+			// Draw partially invincible Clsn2
 			} else if hb {
 				sys.drawc2sp.Add(clsn, x, y, xs, ys)
+			// Draw regular Clsn2
 			} else {
 				sys.drawc2.Add(clsn, x, y, xs, ys)
 			}
 		}
-		// Pushbox
+		// Draw pushbox (width * height)
 		if c.sf(CSF_playerpush) {
 			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height[0] * c.localscl, c.width[0] * c.localscl, c.height[1] * c.localscl},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
+		// Draw crosshair
+		sys.drawch.Add([]float32{-1, -1, 1, 1}, c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		//debug clsnText
-		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1)
-		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.defTHeight()*c.localscl + 240 - float32(sys.gameHeight)
-		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
-		y += -c.defTHeight()*(320/c.localcoord) + float32(sys.gameHeight-240)
+		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1) + float32(sys.gameWidth)/2
+		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel()
+		y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {

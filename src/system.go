@@ -248,6 +248,7 @@ type System struct {
 	drawc2sp                ClsnRect
 	drawc2mtk               ClsnRect
 	drawwh                  ClsnRect
+	drawch                  ClsnRect
 	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
 	accel                   float32
 	clsnSpr                 Sprite
@@ -1007,6 +1008,7 @@ func (s *System) action() {
 	s.drawc2sp = s.drawc2sp[:0]
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawwh = s.drawwh[:0]
+	s.drawch = s.drawch[:0]
 	s.clsnText = nil
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	var cvmin, cvmax, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
@@ -1589,8 +1591,10 @@ func (s *System) drawTop() {
 		s.drawc2sp.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xff002000
 		s.drawc2mtk.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0xff404040
+		s.clsnSpr.Pal[0] = 0xff303030
 		s.drawwh.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xffffffff
+		s.drawch.draw(0x3feff)
 	}
 }
 func (s *System) drawDebug() {
