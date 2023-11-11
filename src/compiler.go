@@ -1514,8 +1514,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_air_back)
 		case "size.air.front":
 			out.append(OC_const_size_air_front)
-		case "size.height":
-			out.append(OC_const_size_height)
+		case "size.height", "size.height.stand": // Latter is also accepted for consistency's sake
+			out.append(OC_const_size_height_stand)
+		case "size.height.crouch":
+			out.append(OC_const_size_height_crouch)
+		case "size.height.air.top":
+			out.append(OC_const_size_height_air_top)
+		case "size.height.air.bottom":
+			out.append(OC_const_size_height_air_bottom)
+		case "size.height.down":
+			out.append(OC_const_size_height_down)
 		case "size.attack.dist":
 			out.append(OC_const_size_attack_dist)
 		case "size.attack.z.width.back":
@@ -1544,6 +1552,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_z_width)
 		case "size.z.enable":
 			out.append(OC_const_size_z_enable)
+		case "size.classicpushbox":
+			out.append(OC_const_size_classicpushbox)
 		case "velocity.walk.fwd.x":
 			out.append(OC_const_velocity_walk_fwd_x)
 		case "velocity.walk.back.x":
@@ -2353,7 +2363,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "x":
 			out.append(OC_ex_, OC_ex_p2bodydist_x)
 		case "y":
-			out.append(OC_ex_, OC_ex_p2dist_y)
+			out.append(OC_ex_, OC_ex_p2bodydist_y)
 		case "z":
 			bv = BytecodeFloat(0)
 		default:
