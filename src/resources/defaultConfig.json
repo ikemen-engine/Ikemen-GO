@@ -57,7 +57,7 @@
   "GameHeight": 480,
   "GameFramerate": 60,
   "InputButtonAssist": true,
-  "InputSOCDResolution": 1,
+  "InputSOCDResolution": 2,
   "IP": {},
   "LifeMul": 100,
   "ListenPort": "7500",
