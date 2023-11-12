@@ -613,7 +613,7 @@ func (pb *PowerBar) reset() {
 func (pb *PowerBar) bgDraw(layerno int16, ref int) {
 	pbval := sys.chars[ref][0].getPower()
 	var fv int32
-	for k := range pb.front {
+	for k := range pb.bg0 {
 		if k > fv && pbval >= k {
 			fv = k
 		}
