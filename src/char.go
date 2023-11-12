@@ -829,11 +829,12 @@ type HitOverride struct {
 	stateno  int32
 	time     int32
 	forceair bool
+	keepState bool
 	playerNo int
 }
 
 func (ho *HitOverride) clear() {
-	*ho = HitOverride{stateno: -1, playerNo: -1}
+	*ho = HitOverride{stateno: -1, keepState: false, playerNo: -1}
 }
 
 type aimgImage struct {
@@ -1817,6 +1818,7 @@ type Char struct {
 	hitby           [2]HitBy
 	ho              [8]HitOverride
 	hoIdx           int
+	hoKeepState     bool
 	mctype          MoveContact
 	mctime          int32
 	children        []*Char
@@ -5808,11 +5810,13 @@ func (c *Char) actionPrepare() {
 			c.angleScale = [...]float32{1, 1}
 			c.attackDist = float32(c.size.attack.dist)
 			c.offset = [2]float32{}
+			// HitBy timers
 			for i, hb := range c.hitby {
 				if hb.time > 0 {
 					c.hitby[i].time--
 				}
 			}
+			// HitOverride timers
 			for i, ho := range c.ho {
 				if ho.time > 0 {
 					c.ho[i].time--
@@ -5877,6 +5881,7 @@ func (c *Char) actionRun() {
 				sb.run(c)
 			}
 		}
+		// Change into buffered state
 		c.stateChange2()
 		// Run current state
 		c.minus = 0
@@ -5964,7 +5969,8 @@ func (c *Char) actionRun() {
 			}
 		}
 		if c.ghv.damage != 0 {
-			if c.ss.moveType == MT_H {
+			// HitOverride KeepState flag still allows damage to get through
+			if c.ss.moveType == MT_H || c.hoKeepState {
 				c.lifeAdd(-float64(c.ghv.damage), true, true)
 			}
 			c.ghv.damage = 0
@@ -6099,6 +6105,7 @@ func (c *Char) update(cvmin, cvmax,
 		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
 			c.hitdef.reversal_attr > 0) && !c.hitPause()))
 		c.hoIdx = -1
+		c.hoKeepState = false
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
@@ -6126,9 +6133,15 @@ func (c *Char) update(cvmin, cvmax,
 					c.hittmp = 0
 				}
 				if !c.scf(SCF_dizzy) {
+					// HitOverride KeepState preserves some GetHitVars for 1 frame so they can be accessed by the char
+					if !c.hoKeepState {
+						c.ghv.hitshaketime = 0
+						c.ghv.attr = 0
+						c.ghv.id = 0
+						c.ghv.playerNo = -1
+					}
 					c.superDefenseMul = 1
 					c.fallDefenseMul = 1
-					c.ghv.hitshaketime = 0
 					c.ghv.fallf = false
 					c.ghv.fallcount = 0
 					c.ghv.hitid = c.ghv.hitid >> 31
@@ -6143,9 +6156,6 @@ func (c *Char) update(cvmin, cvmax,
 					}
 					c.receivedHits = 0
 					c.comboDmg = 0
-					c.ghv.attr = 0
-					c.ghv.id = 0
-					c.ghv.playerNo = -1
 					c.ghv.score = 0
 				}
 			}
@@ -6269,7 +6279,7 @@ func (c *Char) tick() {
 			c.hitCount += c.hitdef.numhits
 		}
 	}
-	if c.sf(CSF_gethit) {
+	if c.sf(CSF_gethit) && !c.hoKeepState {
 		c.ss.moveType = MT_H // Note that this change to MoveType breaks PrevMoveType
 		if c.hitPauseTime > 0 {
 			c.ss.clearWw()
@@ -6330,6 +6340,7 @@ func (c *Char) tick() {
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		}
+		// Change to HitOverride state
 		if c.hoIdx >= 0 {
 			c.stateChange1(c.ho[c.hoIdx].stateno, c.ho[c.hoIdx].playerNo)
 		}
@@ -6341,6 +6352,7 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
+		// Fast recovery from lie down
 		if c.recoverTime > 0 && (c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
 			c.ss.sb.playerNo == c.playerNo && !c.sf(CSF_nofastrecoverfromliedown) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
@@ -6666,6 +6678,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			hitType *= -1
 		}
 		p2s := false
+		// Check HitOverride
 		if !getter.stchtmp || !getter.sf(CSF_gethit) {
 			_break := false
 			for i, ho := range getter.ho {
@@ -6690,6 +6703,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					_break = true
 					break
 				}
+				if ho.keepState {
+					getter.hoKeepState = true
+					getter.hoIdx = i
+					_break = true
+					break
+				}
 			}
 			if !_break {
 				if Abs(hitType) == 1 && hd.p2stateno >= 0 {
@@ -6709,7 +6728,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.sf(CSF_gethit)
-		// Variables that are set even if type is "None"
+		// Variables that are set even if Hitdef type is "None"
 		if ghvset {
 			if !proj {
 				c.sprPriority = hd.p1sprpriority
