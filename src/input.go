@@ -276,15 +276,15 @@ func NewCommandKeyRemap() *CommandKeyRemap {
 }
 
 type InputReader struct {
-	SocdAllow                              [4]bool
-	SocdFirst                              [4]bool
-	ButtonAssist                           bool
-	ButtonAssistBuffer                     [9]bool
+	SocdAllow          [4]bool
+	SocdFirst          [4]bool
+	ButtonAssist       bool
+	ButtonAssistBuffer [9]bool
 }
 
 func NewInputReader() *InputReader {
 	return &InputReader{
-        SocdAllow:          [4]bool{},
+		SocdAllow:          [4]bool{},
 		SocdFirst:          [4]bool{},
 		ButtonAssist:       false,
 		ButtonAssistBuffer: [9]bool{},
@@ -519,18 +519,18 @@ type CommandBuffer struct {
 }
 
 func NewCommandBuffer() (c *CommandBuffer) {
-    ir := NewInputReader()
-    c = &CommandBuffer{InputReader: ir}
-    c.Reset()
-    return c
+	ir := NewInputReader()
+	c = &CommandBuffer{InputReader: ir}
+	c.Reset()
+	return c
 }
 
 func (c *CommandBuffer) Reset() {
-    *c = CommandBuffer{
-        B: -1, D: -1, F: -1, U: -1,
-        a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, d: -1, w: -1, m: -1,
-        InputReader: NewInputReader(),
-    }
+	*c = CommandBuffer{
+		B: -1, D: -1, F: -1, U: -1,
+		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, d: -1, w: -1, m: -1,
+		InputReader: NewInputReader(),
+	}
 }
 
 // Update command buffer according to received inputs
@@ -783,14 +783,14 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
-	//case CK_rDBs:
-	//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
-	//case CK_rUBs:
-	//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
-	//case CK_rDFs:
-	//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
-	//case CK_rUFs:
-	//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
+		//case CK_rDBs:
+		//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
+		//case CK_rUBs:
+		//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
+		//case CK_rDFs:
+		//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
+		//case CK_rUFs:
+		//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
 	}
 	return __.State(ck)
 }
@@ -814,8 +814,8 @@ type NetBuffer struct {
 }
 
 func (nb *NetBuffer) reset(time int32) {
-    nb.curT, nb.inpT, nb.senT = time, time, time
-    nb.InputReader = NewInputReader()
+	nb.curT, nb.inpT, nb.senT = time, time, time
+	nb.InputReader = NewInputReader()
 }
 
 // Check local inputs

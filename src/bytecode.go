@@ -8713,7 +8713,7 @@ func (sc modifyChar) Run(c *Char, _ []int32) bool {
 		case modifyChar_teamside:
 			ts = int(exp[0].evalI(c))
 			if ts >= 0 && ts <= 2 {
-				ts -= 1	// Internally the teamside goes from -1 to 1
+				ts -= 1 // Internally the teamside goes from -1 to 1
 				crun.teamside = ts
 			}
 		case modifyChar_redirectid:

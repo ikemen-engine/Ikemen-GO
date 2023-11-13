@@ -825,12 +825,12 @@ type HitBy struct {
 	flag, time int32
 }
 type HitOverride struct {
-	attr     int32
-	stateno  int32
-	time     int32
-	forceair bool
+	attr      int32
+	stateno   int32
+	time      int32
+	forceair  bool
 	keepState bool
-	playerNo int
+	playerNo  int
 }
 
 func (ho *HitOverride) clear() {
@@ -6420,10 +6420,10 @@ func (c *Char) cueDraw() {
 			// Draw fully invincible Clsn2
 			if mtk {
 				sys.drawc2mtk.Add(clsn, x, y, xs, ys)
-			// Draw partially invincible Clsn2
+				// Draw partially invincible Clsn2
 			} else if hb {
 				sys.drawc2sp.Add(clsn, x, y, xs, ys)
-			// Draw regular Clsn2
+				// Draw regular Clsn2
 			} else {
 				sys.drawc2.Add(clsn, x, y, xs, ys)
 			}
