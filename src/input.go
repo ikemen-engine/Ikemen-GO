@@ -216,34 +216,25 @@ const (
 	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M
 )
 
-// Save local inputs as input bits
-func (ib *InputBits) KeysToBits(in int) {
-	if 0 <= in && in < len(sys.keyConfig) {
-		var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
-		// Check controllers
-		U = sys.keyConfig[in].U() || sys.joystickConfig[in].U()
-		D = sys.keyConfig[in].D() || sys.joystickConfig[in].D()
-		L = sys.keyConfig[in].L() || sys.joystickConfig[in].L()
-		R = sys.keyConfig[in].R() || sys.joystickConfig[in].R()
-		a = sys.keyConfig[in].a() || sys.joystickConfig[in].a()
-		b = sys.keyConfig[in].b() || sys.joystickConfig[in].b()
-		c = sys.keyConfig[in].c() || sys.joystickConfig[in].c()
-		x = sys.keyConfig[in].x() || sys.joystickConfig[in].x()
-		y = sys.keyConfig[in].y() || sys.joystickConfig[in].y()
-		z = sys.keyConfig[in].z() || sys.joystickConfig[in].z()
-		s = sys.keyConfig[in].s() || sys.joystickConfig[in].s()
-		d = sys.keyConfig[in].d() || sys.joystickConfig[in].d()
-		w = sys.keyConfig[in].w() || sys.joystickConfig[in].w()
-		m = sys.keyConfig[in].m() || sys.joystickConfig[in].m()
-		// Convert to bits
-		*ib = InputBits(Btoi(U) | Btoi(D)<<1 | Btoi(L)<<2 | Btoi(R)<<3 |
-			Btoi(a)<<4 | Btoi(b)<<5 | Btoi(c)<<6 |
-			Btoi(x)<<7 | Btoi(y)<<8 | Btoi(z)<<9 |
-			Btoi(s)<<10 | Btoi(d)<<11 | Btoi(w)<<12 | Btoi(m)<<13)
-	}
+// Save local inputs as input bits to send or record
+func (ib *InputBits) KeysToBits(U, D, L, R, a, b, c, x, y, z, s, d, w, m bool) {
+	*ib = InputBits(Btoi(U) |
+		Btoi(D)<<1 |
+		Btoi(L)<<2 |
+		Btoi(R)<<3 |
+		Btoi(a)<<4 |
+		Btoi(b)<<5 |
+		Btoi(c)<<6 |
+		Btoi(x)<<7 |
+		Btoi(y)<<8 |
+		Btoi(z)<<9 |
+		Btoi(s)<<10 |
+		Btoi(d)<<11 |
+		Btoi(w)<<12 |
+		Btoi(m)<<13)
 }
 
-// Convert input bits back into keys
+// Convert received input bits back into keys
 func (ib InputBits) BitsToKeys(cb *CommandBuffer, facing int32) {
 	var U, D, B, F, a, b, c, x, y, z, s, d, w, m bool
 	// Convert bits to logical symbols
@@ -284,202 +275,24 @@ func NewCommandKeyRemap() *CommandKeyRemap {
 		CK_ra, CK_rb, CK_rc, CK_rx, CK_ry, CK_rz, CK_rs, CK_rd, CK_rw, CK_rm}
 }
 
-type CommandBuffer struct {
-	Bb, Db, Fb, Ub                         int32
-	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
-	B, D, F, U                             int8
-	a, b, c, x, y, z, s, d, w, m           int8
+type InputReader struct {
 	SocdAllow                              [4]bool
 	SocdFirst                              [4]bool
 	ButtonAssist                           bool
 	ButtonAssistBuffer                     [9]bool
 }
 
-func NewCommandBuffer() (c *CommandBuffer) {
-	c = &CommandBuffer{}
-	c.Reset()
-	return
-}
-
-func (__ *CommandBuffer) Reset() {
-	*__ = CommandBuffer{B: -1, D: -1, F: -1, U: -1,
-		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, d: -1, w: -1, m: -1}
-}
-
-// Resolve Simultaneous Opposing Cardinal Directions
-// Currently limited to local play
-func (cl *CommandBuffer) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) {
-	// Absolute priority SOCD resolution is enforced during netplay
-	if sys.netInput != nil || sys.fileInput != nil {
-		if U && D {
-			D = false
-		}
-		if B && F {
-			B = false
-		}
-	} else {
-		// Check first direction held between U and D
-		if U || D {
-			if !U {
-				cl.SocdFirst[0] = false
-			}
-			if !D {
-				cl.SocdFirst[1] = false
-			}
-			if !cl.SocdFirst[0] && !cl.SocdFirst[1] {
-				if D {
-					cl.SocdFirst[1] = true
-				} else {
-					cl.SocdFirst[0] = true
-				}
-			}
-		} else {
-			cl.SocdFirst[0] = false
-			cl.SocdFirst[1] = false
-		}
-		// Check first direction held between U and D
-		if B || F {
-			if !B {
-				cl.SocdFirst[2] = false
-			}
-			if !F {
-				cl.SocdFirst[3] = false
-			}
-			if !cl.SocdFirst[2] && !cl.SocdFirst[3] {
-				if B {
-					cl.SocdFirst[2] = true
-				} else {
-					cl.SocdFirst[3] = true
-				}
-			}
-		} else {
-			cl.SocdFirst[2] = false
-			cl.SocdFirst[3] = false
-		}
-		// SOCD for back and forward
-		if B && F {
-			switch sys.inputSOCDresolution {
-			// Type 0 - Allow both directions (no resolution)
-			case 0:
-				cl.SocdAllow[2] = true
-				cl.SocdAllow[3] = true
-			// Type 1 - Last direction priority
-			case 1:
-				// if F was held before B, disable F
-				if cl.SocdFirst[3] {
-					cl.SocdAllow[2] = true
-					cl.SocdAllow[3] = false
-				} else {
-					// else disable B
-					cl.SocdAllow[2] = false
-					cl.SocdAllow[3] = true
-				}
-			// Type 2 - Absolute priority (offense over defense)
-			case 2:
-				cl.SocdAllow[2] = false
-				cl.SocdAllow[3] = true
-			// Type 3 - First direction priority
-			case 3:
-				// if F was held before B, disable B
-				if cl.SocdFirst[3] {
-					cl.SocdAllow[2] = false
-					cl.SocdAllow[3] = true
-				} else {
-					// else disable F
-					cl.SocdAllow[2] = true
-					cl.SocdAllow[3] = false
-				}
-			// Type 4 - Deny either direction (neutral)
-			default:
-				cl.SocdAllow[2] = false
-				cl.SocdAllow[3] = false
-			}
-		} else {
-			cl.SocdAllow[2] = true
-			cl.SocdAllow[3] = true
-		}
-		// SOCD for down and up
-		if D && U {
-			switch sys.inputSOCDresolution {
-			// Type 0 - Allow both directions (no resolution)
-			case 0:
-				cl.SocdAllow[0] = true
-				cl.SocdAllow[1] = true
-			// Type 1 - Last direction priority
-			case 1:
-				// if U was held before D, disable U
-				if cl.SocdFirst[0] {
-					cl.SocdAllow[0] = false
-					cl.SocdAllow[1] = true
-				} else {
-					// else disable D
-					cl.SocdAllow[0] = true
-					cl.SocdAllow[1] = false
-				}
-			// Type 2 - Absolute priority (offense over defense)
-			case 2:
-				cl.SocdAllow[0] = true
-				cl.SocdAllow[1] = false
-			// Type 3 - First direction priority
-			case 3:
-				// if U was held before D, disable D
-				if cl.SocdFirst[0] {
-					cl.SocdAllow[0] = true
-					cl.SocdAllow[1] = false
-				} else {
-					// else disable U
-					cl.SocdAllow[0] = false
-					cl.SocdAllow[1] = true
-				}
-			// Type 4 - Deny either direction (neutral)
-			default:
-				cl.SocdAllow[0] = false
-				cl.SocdAllow[1] = false
-			}
-		} else {
-			cl.SocdAllow[1] = true
-			cl.SocdAllow[0] = true
-		}
-		// Apply rules
-		U = U && cl.SocdAllow[0]
-		D = D && cl.SocdAllow[1]
-		B = B && cl.SocdAllow[2]
-		F = F && cl.SocdAllow[3]
+func NewInputReader() *InputReader {
+	return &InputReader{
+        SocdAllow:          [4]bool{},
+		SocdFirst:          [4]bool{},
+		ButtonAssist:       false,
+		ButtonAssistBuffer: [9]bool{},
 	}
-	return U, D, B, F
 }
 
-// Add extra frame of leniency when checking button presses
-// Currently limited to local play
-// TODO: Figure out how to implement this in the netplay buffer
-func (cl *CommandBuffer) ButtonAssistCheck(a, b, c, x, y, z, s, d, w bool) (bool, bool, bool, bool, bool, bool, bool, bool, bool) {
-	// Set buttons to buffered state
-	a = cl.ButtonAssistBuffer[0] || a
-	b = cl.ButtonAssistBuffer[1] || b
-	c = cl.ButtonAssistBuffer[2] || c
-	x = cl.ButtonAssistBuffer[3] || x
-	y = cl.ButtonAssistBuffer[4] || y
-	z = cl.ButtonAssistBuffer[5] || z
-	s = cl.ButtonAssistBuffer[6] || s
-	d = cl.ButtonAssistBuffer[7] || d
-	w = cl.ButtonAssistBuffer[8] || w
-	cl.ButtonAssistBuffer = [9]bool{}
-	// Reenable assist when no buttons are being held
-	if !a && !b && !c && !x && !y && !z && !s && !d && !w {
-		cl.ButtonAssist = true
-	}
-	// Disable then buffer buttons if assist is enabled
-	if cl.ButtonAssist == true {
-		if a || b || c || x || y || z || s || d || w {
-			cl.ButtonAssist = false
-			cl.ButtonAssistBuffer = [9]bool{a, b, c, x, y, z, s, d, w}
-			a, b, c, x, y, z, s, d, w = false, false, false, false, false, false, false, false, false
-		}
-	}
-	return a, b, c, x, y, z, s, d, w
-}
-
-func (cl *CommandBuffer) LocalInput(in int) (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) {
+// Reads controllers and converts inputs to letters for later processing
+func (ir *InputReader) LocalInput(in int) (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) {
 	var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
 	if in < len(sys.keyConfig) {
 		joy := sys.keyConfig[in].Joy
@@ -520,9 +333,207 @@ func (cl *CommandBuffer) LocalInput(in int) (bool, bool, bool, bool, bool, bool,
 			m = sys.joystickConfig[in].m() || m
 		}
 	}
+	// Button assist is checked locally so the sent inputs are already processed
+	if sys.inputButtonAssist {
+		a, b, c, x, y, z, s, d, w = ir.ButtonAssistCheck(a, b, c, x, y, z, s, d, w)
+	}
 	return U, D, L, R, a, b, c, x, y, z, s, d, w, m
 }
 
+// Resolve Simultaneous Opposing Cardinal Directions
+func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) {
+	// Absolute priority SOCD resolution is enforced during netplay
+	if sys.netInput != nil || sys.fileInput != nil {
+		if U && D {
+			D = false
+		}
+		if B && F {
+			B = false
+		}
+	} else {
+		// Check first direction held between U and D
+		if U || D {
+			if !U {
+				ir.SocdFirst[0] = false
+			}
+			if !D {
+				ir.SocdFirst[1] = false
+			}
+			if !ir.SocdFirst[0] && !ir.SocdFirst[1] {
+				if D {
+					ir.SocdFirst[1] = true
+				} else {
+					ir.SocdFirst[0] = true
+				}
+			}
+		} else {
+			ir.SocdFirst[0] = false
+			ir.SocdFirst[1] = false
+		}
+		// Check first direction held between U and D
+		if B || F {
+			if !B {
+				ir.SocdFirst[2] = false
+			}
+			if !F {
+				ir.SocdFirst[3] = false
+			}
+			if !ir.SocdFirst[2] && !ir.SocdFirst[3] {
+				if B {
+					ir.SocdFirst[2] = true
+				} else {
+					ir.SocdFirst[3] = true
+				}
+			}
+		} else {
+			ir.SocdFirst[2] = false
+			ir.SocdFirst[3] = false
+		}
+		// SOCD for back and forward
+		if B && F {
+			switch sys.inputSOCDresolution {
+			// Type 0 - Allow both directions (no resolution)
+			case 0:
+				ir.SocdAllow[2] = true
+				ir.SocdAllow[3] = true
+			// Type 1 - Last direction priority
+			case 1:
+				// if F was held before B, disable F
+				if ir.SocdFirst[3] {
+					ir.SocdAllow[2] = true
+					ir.SocdAllow[3] = false
+				} else {
+					// else disable B
+					ir.SocdAllow[2] = false
+					ir.SocdAllow[3] = true
+				}
+			// Type 2 - Absolute priority (offense over defense)
+			case 2:
+				ir.SocdAllow[2] = false
+				ir.SocdAllow[3] = true
+			// Type 3 - First direction priority
+			case 3:
+				// if F was held before B, disable B
+				if ir.SocdFirst[3] {
+					ir.SocdAllow[2] = false
+					ir.SocdAllow[3] = true
+				} else {
+					// else disable F
+					ir.SocdAllow[2] = true
+					ir.SocdAllow[3] = false
+				}
+			// Type 4 - Deny either direction (neutral)
+			default:
+				ir.SocdAllow[2] = false
+				ir.SocdAllow[3] = false
+			}
+		} else {
+			ir.SocdAllow[2] = true
+			ir.SocdAllow[3] = true
+		}
+		// SOCD for down and up
+		if D && U {
+			switch sys.inputSOCDresolution {
+			// Type 0 - Allow both directions (no resolution)
+			case 0:
+				ir.SocdAllow[0] = true
+				ir.SocdAllow[1] = true
+			// Type 1 - Last direction priority
+			case 1:
+				// if U was held before D, disable U
+				if ir.SocdFirst[0] {
+					ir.SocdAllow[0] = false
+					ir.SocdAllow[1] = true
+				} else {
+					// else disable D
+					ir.SocdAllow[0] = true
+					ir.SocdAllow[1] = false
+				}
+			// Type 2 - Absolute priority (offense over defense)
+			case 2:
+				ir.SocdAllow[0] = true
+				ir.SocdAllow[1] = false
+			// Type 3 - First direction priority
+			case 3:
+				// if U was held before D, disable D
+				if ir.SocdFirst[0] {
+					ir.SocdAllow[0] = true
+					ir.SocdAllow[1] = false
+				} else {
+					// else disable U
+					ir.SocdAllow[0] = false
+					ir.SocdAllow[1] = true
+				}
+			// Type 4 - Deny either direction (neutral)
+			default:
+				ir.SocdAllow[0] = false
+				ir.SocdAllow[1] = false
+			}
+		} else {
+			ir.SocdAllow[1] = true
+			ir.SocdAllow[0] = true
+		}
+		// Apply rules
+		U = U && ir.SocdAllow[0]
+		D = D && ir.SocdAllow[1]
+		B = B && ir.SocdAllow[2]
+		F = F && ir.SocdAllow[3]
+	}
+	return U, D, B, F
+}
+
+// Add extra frame of leniency when checking button presses
+func (ir *InputReader) ButtonAssistCheck(a, b, c, x, y, z, s, d, w bool) (bool, bool, bool, bool, bool, bool, bool, bool, bool) {
+	// Set buttons to buffered state
+	a = ir.ButtonAssistBuffer[0] || a
+	b = ir.ButtonAssistBuffer[1] || b
+	c = ir.ButtonAssistBuffer[2] || c
+	x = ir.ButtonAssistBuffer[3] || x
+	y = ir.ButtonAssistBuffer[4] || y
+	z = ir.ButtonAssistBuffer[5] || z
+	s = ir.ButtonAssistBuffer[6] || s
+	d = ir.ButtonAssistBuffer[7] || d
+	w = ir.ButtonAssistBuffer[8] || w
+	ir.ButtonAssistBuffer = [9]bool{}
+	// Reenable assist when no buttons are being held
+	if !a && !b && !c && !x && !y && !z && !s && !d && !w {
+		ir.ButtonAssist = true
+	}
+	// Disable then buffer buttons if assist is enabled
+	if ir.ButtonAssist == true {
+		if a || b || c || x || y || z || s || d || w {
+			ir.ButtonAssist = false
+			ir.ButtonAssistBuffer = [9]bool{a, b, c, x, y, z, s, d, w}
+			a, b, c, x, y, z, s, d, w = false, false, false, false, false, false, false, false, false
+		}
+	}
+	return a, b, c, x, y, z, s, d, w
+}
+
+type CommandBuffer struct {
+	Bb, Db, Fb, Ub                         int32
+	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
+	B, D, F, U                             int8
+	a, b, c, x, y, z, s, d, w, m           int8
+	InputReader                            *InputReader
+}
+
+func NewCommandBuffer() (c *CommandBuffer) {
+    ir := NewInputReader()
+    c = &CommandBuffer{InputReader: ir}
+    c.Reset()
+    return c
+}
+
+func (c *CommandBuffer) Reset() {
+    *c = CommandBuffer{
+        B: -1, D: -1, F: -1, U: -1,
+        a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, d: -1, w: -1, m: -1,
+        InputReader: NewInputReader(),
+    }
+}
+
+// Update command buffer according to received inputs
 func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m bool) {
 	// SOCD resolution is now handled beforehand, so that it may be easier to port to netplay later
 	if B != (__.B > 0) {
@@ -595,19 +606,6 @@ func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m bool) {
 		__.m *= -1
 	}
 	__.mb += int32(__.m)
-}
-
-func (__ *CommandBuffer) InputBits(ib InputBits, facing int32) {
-	var B, F bool
-	// Convert L and R to B and F
-	if facing < 0 {
-		B, F = ib&IB_PR != 0, ib&IB_PL != 0
-	} else {
-		B, F = ib&IB_PL != 0, ib&IB_PR != 0
-	}
-	__.Input(B, ib&IB_PD != 0, F, ib&IB_PU != 0, ib&IB_A != 0, ib&IB_B != 0,
-		ib&IB_C != 0, ib&IB_X != 0, ib&IB_Y != 0, ib&IB_Z != 0, ib&IB_S != 0,
-		ib&IB_D != 0, ib&IB_W != 0, ib&IB_M != 0)
 }
 
 // Check buffer state of each key
@@ -721,6 +719,7 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 	return 0
 }
 
+// Check buffer state of each key
 func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 	f := func(a, b, c int32) int32 {
 		switch {
@@ -784,18 +783,19 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
-		//case CK_rDBs:
-		//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
-		//case CK_rUBs:
-		//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
-		//case CK_rDFs:
-		//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
-		//case CK_rUFs:
-		//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
+	//case CK_rDBs:
+	//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
+	//case CK_rUBs:
+	//	return f(__.State(CK_UB), __.State(CK_U), __.State(CK_B))
+	//case CK_rDFs:
+	//	return f(__.State(CK_DF), __.State(CK_D), __.State(CK_F))
+	//case CK_rUFs:
+	//	return f(__.State(CK_UF), __.State(CK_U), __.State(CK_F))
 	}
 	return __.State(ck)
 }
 
+// Time since last directional input was received
 func (__ *CommandBuffer) LastDirectionTime() int32 {
 	return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Fb), Abs(__.Ub))
 }
@@ -810,19 +810,23 @@ func (__ *CommandBuffer) LastChangeTime() int32 {
 type NetBuffer struct {
 	buf              [32]InputBits
 	curT, inpT, senT int32
+	InputReader      *InputReader
 }
 
 func (nb *NetBuffer) reset(time int32) {
-	nb.curT, nb.inpT, nb.senT = time, time, time
+    nb.curT, nb.inpT, nb.senT = time, time, time
+    nb.InputReader = NewInputReader()
 }
 
+// Check local inputs
 func (nb *NetBuffer) localUpdate(in int) {
 	if nb.inpT-nb.curT < 32 {
-		nb.buf[nb.inpT&31].KeysToBits(in)
+		nb.buf[nb.inpT&31].KeysToBits(nb.InputReader.LocalInput(in))
 		nb.inpT++
 	}
 }
 
+// Convert bits to keys
 func (nb *NetBuffer) input(cb *CommandBuffer, facing int32) {
 	if nb.curT < nb.inpT {
 		nb.buf[nb.curT&31].BitsToKeys(cb, facing)
@@ -1145,6 +1149,7 @@ func (fi *FileInput) Close() {
 	}
 }
 
+// Convert bits to keys
 func (fi *FileInput) Input(cb *CommandBuffer, i int, facing int32) {
 	if i >= 0 && i < len(fi.ib) {
 		fi.ib[sys.inputRemap[i]].BitsToKeys(cb, facing)
@@ -1809,7 +1814,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	}
 }
 
-// Command List refers to the entire set of commands
+// Command List refers to the entire set of a character's commands
 type CommandList struct {
 	Buffer            *CommandBuffer
 	Names             map[string]int
@@ -1863,7 +1868,7 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 				m = sys.aiInput[i].m() || ib&IB_M != 0
 			}
 		} else if i < len(sys.inputRemap) {
-			U, D, L, R, a, b, c, x, y, z, s, d, w, m = cl.Buffer.LocalInput(sys.inputRemap[i])
+			U, D, L, R, a, b, c, x, y, z, s, d, w, m = cl.Buffer.InputReader.LocalInput(sys.inputRemap[i])
 		}
 		var B, F bool
 		if facing < 0 {
@@ -1871,10 +1876,9 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 		} else {
 			B, F = L, R
 		}
-		U, D, B, F = cl.Buffer.SocdResolution(U, D, B, F)
-		if sys.netInput == nil && sys.fileInput == nil {
-			a, b, c, x, y, z, s, d, w = cl.Buffer.ButtonAssistCheck(a, b, c, x, y, z, s, d, w)
-		}
+		// Resolve SOCD conflicts
+		U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+		// Send inputs to buffer
 		cl.Buffer.Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m)
 		// TODO: Reorder all instances of B, F like input bits (U, D, L, R)
 	}
