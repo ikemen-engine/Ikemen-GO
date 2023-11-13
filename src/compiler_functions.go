@@ -4711,6 +4711,37 @@ func (c *Compiler) height(is IniSection, sc *StateControllerBase, _ int8) (State
 	return *ret, err
 }
 
+func (c *Compiler) modifyChar(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyChar)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyChar_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "lifemax",
+			modifyChar_lifemax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "powermax",
+			modifyChar_powermax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "dizzypointsmax",
+			modifyChar_dizzypointsmax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "guardpointsmax",
+			modifyChar_guardpointsmax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "teamside",
+			modifyChar_teamside, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 // It's just a Null... Has no effect whatsoever.
 func (c *Compiler) null(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	return nullStateController, nil

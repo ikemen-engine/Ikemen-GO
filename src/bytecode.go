@@ -8669,6 +8669,65 @@ func (sc height) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type modifyChar StateControllerBase
+
+const (
+	modifyChar_lifemax byte = iota
+	modifyChar_powermax
+	modifyChar_dizzypointsmax
+	modifyChar_guardpointsmax
+	modifyChar_teamside
+	modifyChar_redirectid
+)
+
+func (sc modifyChar) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lm, pm, dp, gp int32
+	var ts int
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyChar_lifemax:
+			lm = exp[0].evalI(c)
+			if lm < 1 {
+				lm = 1
+			}
+			crun.lifeMax = lm
+		case modifyChar_powermax:
+			pm = exp[0].evalI(c)
+			if pm < 0 {
+				pm = 0
+			}
+			crun.powerMax = pm
+		case modifyChar_dizzypointsmax:
+			dp = exp[0].evalI(c)
+			if dp < 0 {
+				dp = 0
+			}
+			crun.dizzyPointsMax = dp
+		case modifyChar_guardpointsmax:
+			gp = exp[0].evalI(c)
+			if gp < 0 {
+				gp = 0
+			}
+			crun.guardPointsMax = gp
+		case modifyChar_teamside:
+			ts = int(exp[0].evalI(c))
+			if ts >= 0 && ts <= 2 {
+				ts -= 1	// Internally the teamside goes from -1 to 1
+				crun.teamside = ts
+			}
+		case modifyChar_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType
