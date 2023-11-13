@@ -600,6 +600,7 @@ type HitDef struct {
 	p2stateno                  int32
 	p2getp1state               bool
 	forcestand                 int32
+	forcecrouch                int32
 	ground_fall                bool
 	air_fall                   bool
 	down_velocity              [2]float32
@@ -678,6 +679,7 @@ func (hd *HitDef) clear() {
 		p1stateno:      -1,
 		p2stateno:      -1,
 		forcestand:     IErr,
+		forcecrouch:    IErr,
 		guard_dist:     IErr,
 		down_velocity:  [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:        -1,
@@ -752,6 +754,7 @@ type GetHitVar struct {
 	guarded        bool
 	p2getp1state   bool
 	forcestand     bool
+	forcecrouch    bool
 	id             int32
 	dizzypoints    int32
 	guardpoints    int32
@@ -826,11 +829,12 @@ type HitOverride struct {
 	stateno  int32
 	time     int32
 	forceair bool
+	keepState bool
 	playerNo int
 }
 
 func (ho *HitOverride) clear() {
-	*ho = HitOverride{stateno: -1, playerNo: -1}
+	*ho = HitOverride{stateno: -1, keepState: false, playerNo: -1}
 }
 
 type aimgImage struct {
@@ -1814,6 +1818,7 @@ type Char struct {
 	hitby           [2]HitBy
 	ho              [8]HitOverride
 	hoIdx           int
+	hoKeepState     bool
 	mctype          MoveContact
 	mctime          int32
 	children        []*Char
@@ -3516,6 +3521,14 @@ func (c *Char) stateChange2() bool {
 		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 		}
+		// Remove flagged explods
+		for i := range sys.explods[c.playerNo] {
+			e := sys.explods[c.playerNo]
+			if e[i].playerId == c.id && e[i].removeonchangestate {
+				e[i].id = IErr
+				e[i].anim = nil
+			}
+		}
 		c.stchtmp = false
 		return true
 	}
@@ -3531,14 +3544,6 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	}
 	if ctrl >= 0 {
 		c.setCtrl(ctrl != 0)
-	}
-	// Remove relevant explods
-	for i := range sys.explods[c.playerNo] {
-		e := sys.explods[c.playerNo]
-		if e[i].playerId == c.id && e[i].removeonchangestate {
-			e[i].id = IErr
-			e[i].anim = nil
-		}
 	}
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < 2500 {
@@ -4129,6 +4134,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		hd.air_type = hd.ground_type
 	}
 	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0))
+	ifierrset(&hd.forcecrouch, Btoi(hd.ground_velocity[1] != 0))
 	if hd.attr&int32(ST_A) != 0 {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {
@@ -5804,11 +5810,13 @@ func (c *Char) actionPrepare() {
 			c.angleScale = [...]float32{1, 1}
 			c.attackDist = float32(c.size.attack.dist)
 			c.offset = [2]float32{}
+			// HitBy timers
 			for i, hb := range c.hitby {
 				if hb.time > 0 {
 					c.hitby[i].time--
 				}
 			}
+			// HitOverride timers
 			for i, ho := range c.ho {
 				if ho.time > 0 {
 					c.ho[i].time--
@@ -5873,6 +5881,7 @@ func (c *Char) actionRun() {
 				sb.run(c)
 			}
 		}
+		// Change into buffered state
 		c.stateChange2()
 		// Run current state
 		c.minus = 0
@@ -5960,7 +5969,8 @@ func (c *Char) actionRun() {
 			}
 		}
 		if c.ghv.damage != 0 {
-			if c.ss.moveType == MT_H {
+			// HitOverride KeepState flag still allows damage to get through
+			if c.ss.moveType == MT_H || c.hoKeepState {
 				c.lifeAdd(-float64(c.ghv.damage), true, true)
 			}
 			c.ghv.damage = 0
@@ -6095,6 +6105,7 @@ func (c *Char) update(cvmin, cvmax,
 		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
 			c.hitdef.reversal_attr > 0) && !c.hitPause()))
 		c.hoIdx = -1
+		c.hoKeepState = false
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
@@ -6122,9 +6133,15 @@ func (c *Char) update(cvmin, cvmax,
 					c.hittmp = 0
 				}
 				if !c.scf(SCF_dizzy) {
+					// HitOverride KeepState preserves some GetHitVars for 1 frame so they can be accessed by the char
+					if !c.hoKeepState {
+						c.ghv.hitshaketime = 0
+						c.ghv.attr = 0
+						c.ghv.id = 0
+						c.ghv.playerNo = -1
+					}
 					c.superDefenseMul = 1
 					c.fallDefenseMul = 1
-					c.ghv.hitshaketime = 0
 					c.ghv.fallf = false
 					c.ghv.fallcount = 0
 					c.ghv.hitid = c.ghv.hitid >> 31
@@ -6139,9 +6156,6 @@ func (c *Char) update(cvmin, cvmax,
 					}
 					c.receivedHits = 0
 					c.comboDmg = 0
-					c.ghv.attr = 0
-					c.ghv.id = 0
-					c.ghv.playerNo = -1
 					c.ghv.score = 0
 				}
 			}
@@ -6265,7 +6279,7 @@ func (c *Char) tick() {
 			c.hitCount += c.hitdef.numhits
 		}
 	}
-	if c.sf(CSF_gethit) {
+	if c.sf(CSF_gethit) && !c.hoKeepState {
 		c.ss.moveType = MT_H // Note that this change to MoveType breaks PrevMoveType
 		if c.hitPauseTime > 0 {
 			c.ss.clearWw()
@@ -6314,6 +6328,8 @@ func (c *Char) tick() {
 		} else {
 			if c.ghv.forcestand && c.ss.stateType == ST_C {
 				c.ss.changeStateType(ST_S)
+			} else if c.ghv.forcecrouch && c.ss.stateType == ST_S {
+				c.ss.changeStateType(ST_C)
 			}
 			switch c.ss.stateType {
 			case ST_S:
@@ -6324,6 +6340,7 @@ func (c *Char) tick() {
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
 		}
+		// Change to HitOverride state
 		if c.hoIdx >= 0 {
 			c.stateChange1(c.ho[c.hoIdx].stateno, c.ho[c.hoIdx].playerNo)
 		}
@@ -6335,6 +6352,7 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
+		// Fast recovery from lie down
 		if c.recoverTime > 0 && (c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
 			c.ss.sb.playerNo == c.playerNo && !c.sf(CSF_nofastrecoverfromliedown) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
@@ -6386,10 +6404,12 @@ func (c *Char) cueDraw() {
 	if sys.clsnDraw && c.curFrame != nil {
 		x, y := c.pos[0]*c.localscl+c.offsetX()*c.localscl, c.pos[1]*c.localscl+c.offsetY()*c.localscl
 		xs, ys := c.facing*c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord), c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)
+		// Draw Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
 			sys.drawc1.Add(clsn, x, y, xs, ys)
 		}
 		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
+			// Check invincibility to decide box colors
 			hb, mtk := false, false
 			for _, h := range c.hitby {
 				if h.time != 0 {
@@ -6397,24 +6417,28 @@ func (c *Char) cueDraw() {
 					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0 || c.gi().unhittable > 0
 				}
 			}
+			// Draw fully invincible Clsn2
 			if mtk {
 				sys.drawc2mtk.Add(clsn, x, y, xs, ys)
+			// Draw partially invincible Clsn2
 			} else if hb {
 				sys.drawc2sp.Add(clsn, x, y, xs, ys)
+			// Draw regular Clsn2
 			} else {
 				sys.drawc2.Add(clsn, x, y, xs, ys)
 			}
 		}
-		// Pushbox
+		// Draw pushbox (width * height)
 		if c.sf(CSF_playerpush) {
 			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height[0] * c.localscl, c.width[0] * c.localscl, c.height[1] * c.localscl},
 				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		}
+		// Draw crosshair
+		sys.drawch.Add([]float32{-1, -1, 1, 1}, c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		//debug clsnText
-		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1)
-		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel() + c.defTHeight()*c.localscl + 240 - float32(sys.gameHeight)
-		x += -c.width[1]*c.localscl + float32(sys.gameWidth)/2 + c.width[0]*c.localscl/2
-		y += -c.defTHeight()*(320/c.localcoord) + float32(sys.gameHeight-240)
+		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1) + float32(sys.gameWidth)/2
+		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel()
+		y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
@@ -6654,6 +6678,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			hitType *= -1
 		}
 		p2s := false
+		// Check HitOverride
 		if !getter.stchtmp || !getter.sf(CSF_gethit) {
 			_break := false
 			for i, ho := range getter.ho {
@@ -6678,6 +6703,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					_break = true
 					break
 				}
+				if ho.keepState {
+					getter.hoKeepState = true
+					getter.hoIdx = i
+					_break = true
+					break
+				}
 			}
 			if !_break {
 				if Abs(hitType) == 1 && hd.p2stateno >= 0 {
@@ -6697,7 +6728,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.sf(CSF_gethit)
-		// Variables that are set even if type is "None"
+		// Variables that are set even if Hitdef type is "None"
 		if ghvset {
 			if !proj {
 				c.sprPriority = hd.p1sprpriority
@@ -6759,6 +6790,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.playerNo = hd.playerNo
 				ghv.p2getp1state = hd.p2getp1state
 				ghv.forcestand = hd.forcestand != 0
+				ghv.forcecrouch = hd.forcecrouch != 0
 				ghv.fall = hd.fall
 				getter.fallTime = 0
 				ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)
@@ -7496,7 +7528,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			gbot := (getter.pos[1] + getter.height[1]) * getter.localscl
 			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) &&
 				!c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
-				c.sf(CSF_playerpush) && (cbot > gtop && ctop < gbot) && // Pushbox vertical overlap
+				c.sf(CSF_playerpush) && (cbot >= gtop && ctop <= gbot) && // Pushbox vertical overlap
 				// Z axis check
 				!(c.size.z.enable && getter.size.z.enable &&
 					((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||

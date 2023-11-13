@@ -1400,6 +1400,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_forcestand, VT_Bool, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "forcecrouch",
+		hitDef_forcecrouch, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "forcenofall",
 		hitDef_forcenofall, VT_Bool, 1, false); err != nil {
 		return err
@@ -2578,6 +2582,10 @@ func (c *Compiler) hitOverride(is IniSection, sc *StateControllerBase, _ int8) (
 		}
 		if err := c.paramValue(is, sc, "forceair",
 			hitOverride_forceair, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "keepstate",
+			hitOverride_keepstate, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil
@@ -4696,6 +4704,37 @@ func (c *Compiler) height(is IniSection, sc *StateControllerBase, _ int8) (State
 		}
 		if err := c.paramValue(is, sc, "value",
 			height_value, VT_Float, 2, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) modifyChar(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyChar)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyChar_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "lifemax",
+			modifyChar_lifemax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "powermax",
+			modifyChar_powermax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "dizzypointsmax",
+			modifyChar_dizzypointsmax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "guardpointsmax",
+			modifyChar_guardpointsmax, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "teamside",
+			modifyChar_teamside, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return nil

@@ -4402,6 +4402,7 @@ const (
 	hitDef_p1sprpriority
 	hitDef_p2sprpriority
 	hitDef_forcestand
+	hitDef_forcecrouch
 	hitDef_forcenofall
 	hitDef_fall_damage
 	hitDef_fall_xvelocity
@@ -4561,6 +4562,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.p2sprpriority = exp[0].evalI(c)
 	case hitDef_forcestand:
 		hd.forcestand = Btoi(exp[0].evalB(c))
+	case hitDef_forcecrouch:
+		hd.forcecrouch = Btoi(exp[0].evalB(c))
 	case hitDef_forcenofall:
 		hd.forcenofall = exp[0].evalB(c)
 	case hitDef_fall_damage:
@@ -5809,6 +5812,7 @@ const (
 	hitOverride_stateno
 	hitOverride_time
 	hitOverride_forceair
+	hitOverride_keepstate
 	hitOverride_redirectid
 )
 
@@ -5816,6 +5820,7 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 	crun := c
 	var a, s, st, t int32 = 0, 0, -1, 1
 	f := false
+	ks := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitOverride_attr:
@@ -5834,6 +5839,10 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 			}
 		case hitOverride_forceair:
 			f = exp[0].evalB(c)
+		case hitOverride_keepstate:
+			if st == -1 { // StateNo disables KeepState
+				ks = exp[0].evalB(c)
+			}
 		case hitOverride_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5843,12 +5852,11 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if st < 0 {
+	if st < 0 && !ks {
 		t = 0
 	}
 	pn := crun.playerNo
-	crun.ho[s] = HitOverride{attr: a, stateno: st, time: t, forceair: f,
-		playerNo: pn}
+	crun.ho[s] = HitOverride{attr: a, stateno: st, time: t, forceair: f, keepState: ks, playerNo: pn}
 	return false
 }
 
@@ -8652,6 +8660,65 @@ func (sc height) Run(c *Char, _ []int32) bool {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 				lclscround = (320 / c.localcoord) / (320 / crun.localcoord)
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type modifyChar StateControllerBase
+
+const (
+	modifyChar_lifemax byte = iota
+	modifyChar_powermax
+	modifyChar_dizzypointsmax
+	modifyChar_guardpointsmax
+	modifyChar_teamside
+	modifyChar_redirectid
+)
+
+func (sc modifyChar) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lm, pm, dp, gp int32
+	var ts int
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyChar_lifemax:
+			lm = exp[0].evalI(c)
+			if lm < 1 {
+				lm = 1
+			}
+			crun.lifeMax = lm
+		case modifyChar_powermax:
+			pm = exp[0].evalI(c)
+			if pm < 0 {
+				pm = 0
+			}
+			crun.powerMax = pm
+		case modifyChar_dizzypointsmax:
+			dp = exp[0].evalI(c)
+			if dp < 0 {
+				dp = 0
+			}
+			crun.dizzyPointsMax = dp
+		case modifyChar_guardpointsmax:
+			gp = exp[0].evalI(c)
+			if gp < 0 {
+				gp = 0
+			}
+			crun.guardPointsMax = gp
+		case modifyChar_teamside:
+			ts = int(exp[0].evalI(c))
+			if ts >= 0 && ts <= 2 {
+				ts -= 1	// Internally the teamside goes from -1 to 1
+				crun.teamside = ts
+			}
+		case modifyChar_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
 			} else {
 				return false
 			}

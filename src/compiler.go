@@ -167,6 +167,7 @@ func newCompiler() *Compiler {
 		"modifystagevar":       c.modifyStageVar,
 		"camera":               c.cameraCtrl,
 		"height":               c.height,
+		"modifychar":           c.modifyChar,
 	}
 	return c
 }
