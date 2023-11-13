@@ -7528,7 +7528,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			gbot := (getter.pos[1] + getter.height[1]) * getter.localscl
 			if getter.teamside != c.teamside && getter.sf(CSF_playerpush) &&
 				!c.scf(SCF_standby) && !getter.scf(SCF_standby) &&
-				c.sf(CSF_playerpush) && (cbot > gtop && ctop < gbot) && // Pushbox vertical overlap
+				c.sf(CSF_playerpush) && (cbot >= gtop && ctop <= gbot) && // Pushbox vertical overlap
 				// Z axis check
 				!(c.size.z.enable && getter.size.z.enable &&
 					((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
