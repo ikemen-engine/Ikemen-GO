@@ -4112,6 +4112,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.isHost()))
 		return 1
 	})
+	luaRegister(l, "jugglepoints", func(*lua.LState) int {
+		id := int32(-1)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		l.Push(lua.LNumber(sys.debugWC.jugglePoints(BytecodeInt(id)).ToI()))
+		return 1
+	})
 	luaRegister(l, "lastplayerid", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.nextCharId - 1))
 		return 1

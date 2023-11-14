@@ -493,6 +493,7 @@ const (
 	OC_ex_isassertedchar
 	OC_ex_isassertedglobal
 	OC_ex_ishost
+	OC_ex_jugglepoints
 	OC_ex_localscale
 	OC_ex_maparray
 	OC_ex_max
@@ -2091,6 +2092,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i += 4
 	case OC_ex_ishost:
 		sys.bcStack.PushB(c.isHost())
+	case OC_ex_jugglepoints:
+		*sys.bcStack.Top() = c.jugglePoints(*sys.bcStack.Top())
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:
