@@ -15,7 +15,6 @@ import (
 
 	_ "github.com/lukegb/dds"
 
-	gl "github.com/fyne-io/gl-js"
 	mgl "github.com/go-gl/mathgl/mgl32"
 	"github.com/qmuntal/gltf"
 	"github.com/qmuntal/gltf/modeler"
@@ -1701,13 +1700,13 @@ func loadglTFStage(filepath string) (*Model, error) {
 	mdl.textures = make([]*GLTFTexture, 0, len(doc.Textures))
 	for _, t := range doc.Textures {
 		s := doc.Samplers[*t.Sampler]
-		mag, _ := map[gltf.MagFilter]int{
+		mag, _ := map[gltf.MagFilter]int32{
 			gltf.MagUndefined: 9729,
 			gltf.MagNearest:   9728,
 			gltf.MagLinear:    9729,
 		}[s.MagFilter]
 		//TODO: handle mipmip
-		min, _ := map[gltf.MinFilter]int{
+		min, _ := map[gltf.MinFilter]int32{
 			gltf.MinUndefined:            9729,
 			gltf.MinNearest:              9728,
 			gltf.MinLinear:               9729,
@@ -1720,12 +1719,12 @@ func loadglTFStage(filepath string) (*Model, error) {
 			//gltf.MinNearestMipMapLinear:  9986,
 			//gltf.MinLinearMipMapLinear:   9987,
 		}[s.MinFilter]
-		wrapS, _ := map[gltf.WrappingMode]int{
+		wrapS, _ := map[gltf.WrappingMode]int32{
 			gltf.WrapClampToEdge:    33071,
 			gltf.WrapMirroredRepeat: 33648,
 			gltf.WrapRepeat:         10497,
 		}[s.WrapS]
-		wrapT, _ := map[gltf.WrappingMode]int{
+		wrapT, _ := map[gltf.WrappingMode]int32{
 			gltf.WrapClampToEdge:    33071,
 			gltf.WrapMirroredRepeat: 33648,
 			gltf.WrapRepeat:         10497,
@@ -1911,7 +1910,8 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 	neg, grayscale, padd, pmul, invblend := mdl.pfx.getFcPalFx(false, n.trans == TransAdd || n.trans == TransReverseSubtract)
 
 	blendEq := BlendAdd
-	var src, dst BlendFunc
+	src := BlendOne
+	dst := BlendOneMinusSrcAlpha
 	switch n.trans {
 	case TransAdd:
 		if invblend == 3 {
@@ -1947,11 +1947,14 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		color := mdl.materials[*p.materialIndex].baseColorFactor
 		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices))
 
-		if index := mat.textureIndex; index != nil {
-			gfx.SetModelTexture("tex", mdl.textures[*index].tex)
-		}
 		gfx.SetModelUniformMatrix("projection", proj[:])
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
+		if index := mat.textureIndex; index != nil {
+			gfx.SetModelTexture("tex", mdl.textures[*index].tex)
+			gfx.SetModelUniformI("textured", 1)
+		} else {
+			gfx.SetModelUniformI("textured", 0)
+		}
 		gfx.SetModelUniformFv("add", padd[:])
 		gfx.SetModelUniformFv("mult", []float32{pmul[0] * float32(sys.brightness) / 256, pmul[1] * float32(sys.brightness) / 256, pmul[2] * float32(sys.brightness) / 256})
 		gfx.SetModelUniformI("neg", int(Btoi(neg)))
@@ -1960,12 +1963,9 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		gfx.SetModelUniformF("alphaThreshold", mat.alphaCutoff)
 		gfx.SetModelUniformFv("baseColorFactor", color[:])
 		gfx.RenderElements(p.mode, int(p.numIndices), int(p.elementBufferOffset))
+
 		gfx.ReleaseModelPipeline()
 
-		err := gl.GetError()
-		if err != 0 {
-			panic(err)
-		}
 	}
 }
 func (s *Stage) drawModel(pos [2]float32, scl float32) {

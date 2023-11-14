@@ -2,6 +2,7 @@ uniform sampler2D tex;
 uniform vec4 baseColorFactor;
 uniform vec3 add, mult;
 uniform float gray;
+uniform bool textured;
 uniform bool neg;
 uniform bool enableAlpha;
 uniform float alphaThreshold;
@@ -9,8 +10,12 @@ uniform float alphaThreshold;
 varying vec2 texcoord;
 
 void main(void) {
-	gl_FragColor = texture2D(tex, texcoord);
-	gl_FragColor *= baseColorFactor;
+	if(textured){
+		gl_FragColor = texture2D(tex, texcoord) * baseColorFactor;
+	} else {
+		gl_FragColor = baseColorFactor;
+	}
+	
 	if(!enableAlpha){
 		if(gl_FragColor.a < alphaThreshold){
 			discard;
