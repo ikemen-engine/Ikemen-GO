@@ -1415,7 +1415,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 		}
 	}
 	if !top {
-		s.drawModel(pos, scl)
+		s.drawModel(pos, yofs, scl)
 	}
 }
 func (s *Stage) reset() {
@@ -1432,6 +1432,9 @@ func (s *Stage) reset() {
 		s.bgct.add(&s.bgc[i])
 	}
 	s.stageTime = 0
+	if s.model != nil {
+		s.model.reset()
+	}
 }
 
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
@@ -1939,6 +1942,9 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 	}
 	m := mdl.meshes[*n.meshIndex]
 	for _, p := range m.primitives {
+		if p.materialIndex == nil {
+			continue
+		}
 		mat := mdl.materials[*p.materialIndex]
 		if ((mat.alphaMode != AlphaModeBlend && n.trans == TransNone) && drawBlended) ||
 			((mat.alphaMode == AlphaModeBlend || n.trans != TransNone) && !drawBlended) {
@@ -1968,7 +1974,7 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 
 	}
 }
-func (s *Stage) drawModel(pos [2]float32, scl float32) {
+func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	const pi = 3.1415926535898
 	if s.model == nil || len(s.model.scenes) == 0 {
 		return
@@ -1979,7 +1985,7 @@ func (s *Stage) drawModel(pos [2]float32, scl float32) {
 	var near float32 = 0.1
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
 
-	offset := []float32{(pos[0]*-posMul + s.model.offset[0]) / scl, (pos[1]*posMul + s.model.offset[1]) / scl, s.model.offset[2] / scl}
+	offset := []float32{(pos[0]*-posMul + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl)*posMul + s.model.offset[1]) / scl, s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000)
@@ -2004,7 +2010,7 @@ func (s *Stage) drawModel(pos [2]float32, scl float32) {
 func (model *Model) step() {
 	for _, anim := range model.animations {
 		anim.time += sys.turbo / 60
-		for anim.time > anim.duration {
+		for anim.time > anim.duration && anim.duration > 0 {
 			anim.time -= anim.duration
 		}
 		for _, channel := range anim.channels {
@@ -2070,5 +2076,11 @@ func (model *Model) step() {
 				}
 			}
 		}
+	}
+}
+
+func (model *Model) reset() {
+	for _, anim := range model.animations {
+		anim.time = 0
 	}
 }
