@@ -207,7 +207,7 @@ func (r *Renderer) Init() {
 	// Sprite shader
 	r.spriteShader = newShaderProgram(vertShader, fragShader, "Main Shader")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
-		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez")
+		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Compile postprocessing shaders

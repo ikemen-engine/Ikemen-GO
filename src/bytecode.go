@@ -3503,8 +3503,10 @@ const (
 	palFX_sinadd
 	palFX_sinmul
 	palFX_sincolor
+	palFX_sinhue
 	palFX_invertall
 	palFX_invertblend
+	palFX_hue
 	palFX_last = iota - 1
 	palFX_redirectid
 )
@@ -3516,6 +3518,8 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		pfd.time = exp[0].evalI(c)
 	case palFX_color:
 		pfd.color = exp[0].evalF(c) / 256
+	case palFX_hue:
+		pfd.hue = exp[0].evalF(c) / 256
 	case palFX_add:
 		pfd.add[0] = exp[0].evalI(c)
 		pfd.add[1] = exp[1].evalI(c)
@@ -3523,15 +3527,15 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 	case palFX_mul:
 		pfd.mul[0] = exp[0].evalI(c)
 		pfd.mul[1] = exp[1].evalI(c)
-		pfd.mul[2] = exp[2].evalI(c)
+		pfd.mul[2] = exp[2].evalI(c)		
 	case palFX_sinadd:
 		var side int32 = 1
 		if len(exp) > 3 {
 			if exp[3].evalI(c) < 0 {
-				pfd.cycletime = -exp[3].evalI(c)
+				pfd.cycletime[0] = -exp[3].evalI(c)
 				side = -1
 			} else {
-				pfd.cycletime = exp[3].evalI(c)
+				pfd.cycletime[0] = exp[3].evalI(c)
 			}
 		}
 		pfd.sinadd[0] = exp[0].evalI(c) * side
@@ -3541,10 +3545,10 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		var side int32 = 1
 		if len(exp) > 3 {
 			if exp[3].evalI(c) < 0 {
-				pfd.cycletimeMul = -exp[3].evalI(c)
+				pfd.cycletime[1] = -exp[3].evalI(c)
 				side = -1
 			} else {
-				pfd.cycletimeMul = exp[3].evalI(c)
+				pfd.cycletime[1] = exp[3].evalI(c)
 			}
 		}
 		pfd.sinmul[0] = exp[0].evalI(c) * side
@@ -3554,15 +3558,26 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 		var side int32 = 1
 		if len(exp) > 1 {
 			if exp[1].evalI(c) < 0 {
-				pfd.cycletimeColor = -exp[1].evalI(c)
+				pfd.cycletime[2] = -exp[1].evalI(c)
 				side = -1
 			} else {
-				pfd.cycletimeColor = exp[1].evalI(c)
+				pfd.cycletime[2] = exp[1].evalI(c)
 			}
 		}
-		pfd.sincolor = (exp[0].evalI(c) / 256) * side
+		pfd.sincolor = exp[0].evalI(c) * side
+	case palFX_sinhue:
+		var side int32 = 1
+		if len(exp) > 1 {
+			if exp[1].evalI(c) < 0 {
+				pfd.cycletime[3] = -exp[1].evalI(c)
+				side = -1
+			} else {
+				pfd.cycletime[3] = exp[1].evalI(c)
+			}
+		}
+		pfd.sinhue = exp[0].evalI(c) * side		
 	case palFX_invertall:
-		pfd.invertall = exp[0].evalB(c)
+		pfd.invertall = exp[0].evalB(c)		
 	case palFX_invertblend:
 		pfd.invertblend = Clamp(exp[0].evalI(c), -1, 2)
 	default:
@@ -4222,6 +4237,7 @@ const (
 	afterImage_timegap
 	afterImage_framegap
 	afterImage_palcolor
+	afterImage_palhue
 	afterImage_palinvertall
 	afterImage_palinvertblend
 	afterImage_palbright
@@ -4260,6 +4276,8 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 		ai.framegap = exp[0].evalI(c)
 	case afterImage_palcolor:
 		ai.setPalColor(exp[0].evalI(c))
+	case afterImage_palhue:
+		ai.setPalHueShift(exp[0].evalI(c))		
 	case afterImage_palinvertall:
 		ai.setPalInvertall(exp[0].evalB(c))
 	case afterImage_palinvertblend:
@@ -7979,9 +7997,11 @@ const (
 	modifyBGCtrl_sinadd
 	modifyBGCtrl_sinmul
 	modifyBGCtrl_sincolor
+	modifyBGCtrl_sinhue	
 	modifyBGCtrl_invertall
 	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
+	modifyBGCtrl_hue
 	modifyBGCtrl_redirectid
 )
 
@@ -7991,8 +8011,8 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
 	src, dst := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
-	add, mul, sinadd, sinmul, sincolor := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [2]int32{IErr, IErr}
-	invall, invblend, color := IErr, IErr, float32(math.NaN())
+	add, mul, sinadd, sinmul, sincolor, sinhue := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
+	invall, invblend, color, hue := IErr, IErr, float32(math.NaN()), float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case modifyBGCtrl_id:
@@ -8070,12 +8090,19 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				sincolor[1] = exp[1].evalI(c)
 			}
+		case modifyBGCtrl_sinhue:
+			sinhue[0] = exp[0].evalI(c)
+			if len(exp) > 1 {
+				sinhue[1] = exp[1].evalI(c)
+			}			
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_invertblend:
 			invblend = exp[0].evalI(c)
 		case modifyBGCtrl_color:
 			color = exp[0].evalF(c)
+		case modifyBGCtrl_hue:
+			hue = exp[0].evalF(c)		
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid
@@ -8085,7 +8112,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, invall, invblend, color)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, invall, invblend, color, hue)
 	return false
 }
 

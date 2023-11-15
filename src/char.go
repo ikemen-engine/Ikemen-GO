@@ -706,7 +706,7 @@ func (hd *HitDef) clear() {
 		guardredlife:   IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())},
 	}
-	hd.palfx.mul, hd.palfx.color = [...]int32{255, 255, 255}, 1
+	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
 }
 
@@ -877,6 +877,7 @@ func (ai *AfterImage) clear() {
 	ai.length = 20
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eColor = 1
+		ai.palfx[0].eHue = 0
 		ai.palfx[0].eInvertall = false
 		ai.palfx[0].eInvertblend = 0
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
@@ -897,6 +898,11 @@ func (ai *AfterImage) clear() {
 func (ai *AfterImage) setPalColor(color int32) {
 	if len(ai.palfx) > 0 {
 		ai.palfx[0].eColor = float32(Clamp(color, 0, 256)) / 256
+	}
+}
+func (ai *AfterImage) setPalHueShift(huesh int32) {
+	if len(ai.palfx) > 0 {
+		ai.palfx[0].eHue = (float32(Clamp(huesh, -256, 256)) / 256)
 	}
 }
 func (ai *AfterImage) setPalInvertall(invertall bool) {
@@ -948,6 +954,7 @@ func (ai *AfterImage) setupPalFX() {
 	}
 	for i := 1; i < len(ai.palfx); i++ {
 		ai.palfx[i].eColor = ai.palfx[i-1].eColor
+		ai.palfx[i].eHue = ai.palfx[i-1].eHue
 		ai.palfx[i].eInvertall = ai.palfx[i-1].eInvertall
 		ai.palfx[i].eInvertblend = ai.palfx[i-1].eInvertblend
 		for j := range pb {
@@ -3755,7 +3762,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
-		expl.id, expl.playerId, expl.palfx, expl.palfxdef = -1, c.id, c.getPalfx(), PalFXDef{color: 1, mul: [...]int32{256, 256, 256}}
+		expl.id, expl.playerId, expl.palfx, expl.palfxdef = -1, c.id, c.getPalfx(), PalFXDef{color: 1, hue: 0, mul: [...]int32{256, 256, 256}}
 		if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 			expl.projection = Projection_Perspective
 		} else {

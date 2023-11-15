@@ -275,7 +275,7 @@ func RenderSprite(rp RenderParams) {
 
 	rmInitSub(&rp)
 
-	neg, grayscale, padd, pmul, invblend := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, int32(0)
+	neg, grayscale, padd, pmul, invblend, hue := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, int32(0), float32(0)
 	tint := [4]float32{float32(rp.tint&0xff) / 255, float32(rp.tint>>8&0xff) / 255,
 		float32(rp.tint>>16&0xff) / 255, float32(rp.tint>>24&0xff) / 255}
 
@@ -284,7 +284,7 @@ func RenderSprite(rp RenderParams) {
 		if rp.trans == -2 || rp.trans == -1 || (rp.trans&0xff > 0 && rp.trans>>10&0xff >= 255) {
 			blending = true
 		}
-		neg, grayscale, padd, pmul, invblend = rp.pfx.getFcPalFx(false, blending)
+		neg, grayscale, padd, pmul, invblend, hue = rp.pfx.getFcPalFx(false, blending)
 		//if rp.trans == -2 && invblend < 1 {
 		//padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		//}
@@ -313,6 +313,7 @@ func RenderSprite(rp RenderParams) {
 
 		gfx.SetUniformI("neg", int(Btoi(neg)))
 		gfx.SetUniformF("gray", grayscale)
+		gfx.SetUniformF("hue", hue)		
 		gfx.SetUniformFv("add", padd[:])
 		gfx.SetUniformFv("mult", pmul[:])
 		gfx.SetUniformFv("tint", tint[:])
