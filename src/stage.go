@@ -1137,7 +1137,6 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
 			bgc.bg[i].palfx.hue = bgc.hue
-			bgc.bg[i].palfx.cycletime[3] = bgc.sinhue[1]
 		}
 	case BT_PosSet:
 		for i := range bgc.bg {

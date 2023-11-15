@@ -32,11 +32,11 @@ type PalFXDef struct {
 	sinadd         [3]int32
 	sinmul         [3]int32
 	sincolor       int32
-	sinhue    int32
+	sinhue    	   int32
 	cycletime      [4]int32
 	invertall      bool
 	invertblend    int32
-	hue       float32
+	hue       	   float32
 }
 type PalFX struct {
 	PalFXDef
@@ -50,7 +50,7 @@ type PalFX struct {
 	eAdd         [3]int32
 	eMul         [3]int32
 	eColor       float32
-	eHue    float32	
+	eHue    	 float32	
 }
 
 func newPalFX() *PalFX { return &PalFX{} }
