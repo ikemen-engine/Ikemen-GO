@@ -3052,6 +3052,23 @@ func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 func (c *Char) isHost() bool {
 	return sys.netInput != nil && sys.netInput.host
 }
+func (c *Char) jugglePoints(hid BytecodeValue) BytecodeValue {
+	if hid.IsSF() {
+		return BytecodeSF()
+	}
+	tid := hid.ToI()
+	max := c.gi().data.airjuggle
+	jp := max // If no target is found it returns the char's maximum juggle points
+	for _, ct := range c.targets {
+		if ct >= 0 {
+			t := sys.playerID(ct)
+			if t != nil && t.id == tid {
+				jp = t.ghv.getJuggle(c.id, max)
+			}
+		}
+	}
+	return BytecodeInt(jp)
+}
 func (c *Char) leftEdge() float32 {
 	return sys.cam.ScreenPos[0] / c.localscl
 }
@@ -4133,8 +4150,8 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.air_type == HT_Unknown {
 		hd.air_type = hd.ground_type
 	}
-	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0))
-	ifierrset(&hd.forcecrouch, Btoi(hd.ground_velocity[1] != 0))
+	ifierrset(&hd.forcestand, Btoi(hd.ground_velocity[1] != 0)) // Having a Y velocity causes ForceStand
+	ifierrset(&hd.forcecrouch, 0)
 	if hd.attr&int32(ST_A) != 0 {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {

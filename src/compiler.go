@@ -2902,6 +2902,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "ishost":
 		out.append(OC_ex_, OC_ex_ishost)
+	case "jugglepoints":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_jugglepoints)
 	case "lastplayerid":
 		out.append(OC_ex_, OC_ex_lastplayerid)
 	case "localscale":
