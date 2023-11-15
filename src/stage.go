@@ -456,9 +456,11 @@ type bgCtrl struct {
 	sinadd       [4]int32
 	sinmul       [4]int32
 	sincolor     [2]int32
+	sinhue  	 [2]int32
 	invall       bool
 	invblend     int32
 	color        float32
+	hue     	 float32
 	positionlink bool
 	idx          int
 	sctrlid      int32
@@ -490,9 +492,11 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		bgc.sinadd = [4]int32{0, 0, 0, 0}
 		bgc.sinmul = [4]int32{0, 0, 0, 0}
 		bgc.sincolor = [2]int32{0, 0}
+		bgc.sinhue = [2]int32{0, 0}		
 		bgc.invall = false
 		bgc.invblend = 0
 		bgc.color = 1
+		bgc.hue = 0
 	case "posset":
 		bgc._type = BT_PosSet
 		xy = true
@@ -548,6 +552,11 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 				bgc.sincolor[0] = -bgc.sincolor[0]
 			}
 		}
+		if is.readI32ForStage("sinhue", &bgc.sinhue[0], &bgc.sinhue[1]) {
+			if bgc.sinhue[1] < 0 {
+				bgc.sinhue[0] = -bgc.sinhue[0]
+			}
+		}		
 		var tmp int32
 		if is.ReadI32("invertall", &tmp) {
 			bgc.invall = tmp != 0
@@ -558,6 +567,9 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		if is.ReadF32("color", &bgc.color) {
 			bgc.color = bgc.color / 256
 		}
+		if is.ReadF32("hue", &bgc.hue) {
+			bgc.hue = bgc.hue / 256
+		}		
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
@@ -1112,16 +1124,20 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.sinadd[0] = bgc.sinadd[0]
 			bgc.bg[i].palfx.sinadd[1] = bgc.sinadd[1]
 			bgc.bg[i].palfx.sinadd[2] = bgc.sinadd[2]
-			bgc.bg[i].palfx.cycletime = bgc.sinadd[3]
+			bgc.bg[i].palfx.cycletime[0] = bgc.sinadd[3]
 			bgc.bg[i].palfx.sinmul[0] = bgc.sinmul[0]
 			bgc.bg[i].palfx.sinmul[1] = bgc.sinmul[1]
 			bgc.bg[i].palfx.sinmul[2] = bgc.sinmul[2]
-			bgc.bg[i].palfx.cycletimeMul = bgc.sinmul[3]
-			bgc.bg[i].palfx.sincolor = bgc.sincolor[0] / 256
-			bgc.bg[i].palfx.cycletimeColor = bgc.sincolor[1]
+			bgc.bg[i].palfx.cycletime[1] = bgc.sinmul[3]
+			bgc.bg[i].palfx.sincolor = bgc.sincolor[0]
+			bgc.bg[i].palfx.cycletime[2] = bgc.sincolor[1]
+			bgc.bg[i].palfx.sinhue = bgc.sinhue[0]
+			bgc.bg[i].palfx.cycletime[3] = bgc.sinhue[1]			
 			bgc.bg[i].palfx.invertall = bgc.invall
 			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
+			bgc.bg[i].palfx.hue = bgc.hue
+			bgc.bg[i].palfx.cycletime[3] = bgc.sinhue[1]
 		}
 	case BT_PosSet:
 		for i := range bgc.bg {
@@ -1259,6 +1275,7 @@ func (s *Stage) action() {
 			b.palfx.eAdd = sys.bgPalFX.eAdd
 			b.palfx.eMul = sys.bgPalFX.eMul
 			b.palfx.eColor = sys.bgPalFX.eColor
+			b.palfx.eHue = sys.bgPalFX.eHue
 			b.palfx.eInvertall = sys.bgPalFX.eInvertall
 			b.palfx.eInvertblend = sys.bgPalFX.eInvertblend
 			b.palfx.eNegType = sys.bgPalFX.eNegType
@@ -1357,7 +1374,7 @@ func (s *Stage) reset() {
 }
 
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
-	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, invall int32, invblend int32, color float32) {
+	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, invall int32, invblend int32, color float32, hue float32) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
 			if t[0] != IErr {
@@ -1409,6 +1426,13 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					side3 = -1
 				}
 			}
+			var side4 int32 = 1
+			if sinhue[1] != IErr {
+				if sinhue[1] < 0 {
+					sinhue[1] = -sinhue[1]
+					side4 = -1
+				}
+			}		
 			for j := 0; j < 4; j++ {
 				if j < 3 {
 					if add[j] != IErr {
@@ -1429,6 +1453,9 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					if sincolor[0] != IErr {
 						s.bgc[i].sincolor[j] = sincolor[j] * side3
 					}
+					if sinhue[0] != IErr {
+						s.bgc[i].sinhue[j] = sinhue[j] * side4
+					}					
 				}
 			}
 			if invall != IErr {
@@ -1440,6 +1467,9 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			if !math.IsNaN(float64(color)) {
 				s.bgc[i].color = color / 256
 			}
+			if !math.IsNaN(float64(hue)) {
+				s.bgc[i].hue = hue / 256
+			}			
 			s.reload = true
 		}
 	}

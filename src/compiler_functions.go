@@ -924,6 +924,10 @@ func (c *Compiler) palFXSub(is IniSection,
 		palFX_color, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, prefix+"hue",
+		palFX_hue, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.stateParam(is, prefix+"add", func(data string) error {
 		bes, err := c.exprs(data, VT_Int, 3)
 		if err != nil {
@@ -985,6 +989,19 @@ func (c *Compiler) palFXSub(is IniSection,
 			return Error(prefix + "sincolor - not enough arguments")
 		}
 		sc.add(palFX_sincolor, bes)
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, prefix+"sinhue", func(data string) error {
+		bes, err := c.exprs(data, VT_Int, 2)
+		if err != nil {
+			return err
+		}
+		if len(bes) < 2 {
+			return Error(prefix + "sinhue - not enough arguments")
+		}
+		sc.add(palFX_sinhue, bes)
 		return nil
 	}); err != nil {
 		return err
@@ -1051,6 +1068,10 @@ func (c *Compiler) afterImageSub(is IniSection,
 		afterImage_palcolor, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, prefix+"palhue",
+		afterImage_palhue, VT_Int, 1, false); err != nil {
+		return err
+	}	
 	if err := c.paramValue(is, sc, prefix+"palinvertall",
 		afterImage_palinvertall, VT_Bool, 1, false); err != nil {
 		return err
@@ -4141,6 +4162,10 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyBGCtrl_sincolor, VT_Int, 2, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "sinhue",
+			modifyBGCtrl_sinhue, VT_Int, 2, false); err != nil {
+			return err
+		}		
 		if err := c.paramValue(is, sc, "invertall",
 			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
 			return err
@@ -4153,6 +4178,10 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyBGCtrl_color, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "hue",
+			modifyBGCtrl_hue, VT_Float, 1, false); err != nil {
+			return err
+		}		
 		return nil
 	})
 	return *ret, err
