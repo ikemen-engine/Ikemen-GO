@@ -3527,7 +3527,7 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 	case palFX_mul:
 		pfd.mul[0] = exp[0].evalI(c)
 		pfd.mul[1] = exp[1].evalI(c)
-		pfd.mul[2] = exp[2].evalI(c)		
+		pfd.mul[2] = exp[2].evalI(c)
 	case palFX_sinadd:
 		var side int32 = 1
 		if len(exp) > 3 {
@@ -3575,9 +3575,9 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 				pfd.cycletime[3] = exp[1].evalI(c)
 			}
 		}
-		pfd.sinhue = exp[0].evalI(c) * side		
+		pfd.sinhue = exp[0].evalI(c) * side
 	case palFX_invertall:
-		pfd.invertall = exp[0].evalB(c)		
+		pfd.invertall = exp[0].evalB(c)
 	case palFX_invertblend:
 		pfd.invertblend = Clamp(exp[0].evalI(c), -1, 2)
 	default:
@@ -4277,7 +4277,7 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 	case afterImage_palcolor:
 		ai.setPalColor(exp[0].evalI(c))
 	case afterImage_palhue:
-		ai.setPalHueShift(exp[0].evalI(c))		
+		ai.setPalHueShift(exp[0].evalI(c))
 	case afterImage_palinvertall:
 		ai.setPalInvertall(exp[0].evalB(c))
 	case afterImage_palinvertblend:
@@ -7997,7 +7997,7 @@ const (
 	modifyBGCtrl_sinadd
 	modifyBGCtrl_sinmul
 	modifyBGCtrl_sincolor
-	modifyBGCtrl_sinhue	
+	modifyBGCtrl_sinhue
 	modifyBGCtrl_invertall
 	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
@@ -8094,7 +8094,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			sinhue[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
 				sinhue[1] = exp[1].evalI(c)
-			}			
+			}
 		case modifyBGCtrl_invertall:
 			invall = exp[0].evalI(c)
 		case modifyBGCtrl_invertblend:
@@ -8102,7 +8102,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 		case modifyBGCtrl_color:
 			color = exp[0].evalF(c)
 		case modifyBGCtrl_hue:
-			hue = exp[0].evalF(c)		
+			hue = exp[0].evalF(c)
 		case modifyBGCtrl_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid

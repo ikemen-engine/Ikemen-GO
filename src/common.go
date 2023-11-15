@@ -778,7 +778,7 @@ func (al *AnimLayout) ReadAnimPalfx(pre string, is IniSection) {
 	}
 	if is.ReadF32(pre+"hue", &n) {
 		al.palfx.hue = n / 256
-	}	
+	}
 }
 
 type AnimTextSnd struct {

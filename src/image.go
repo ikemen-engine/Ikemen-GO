@@ -25,18 +25,18 @@ const (
 )
 
 type PalFXDef struct {
-	time           int32
-	color          float32
-	add            [3]int32
-	mul            [3]int32
-	sinadd         [3]int32
-	sinmul         [3]int32
-	sincolor       int32
-	sinhue    	   int32
-	cycletime      [4]int32
-	invertall      bool
-	invertblend    int32
-	hue       	   float32
+	time        int32
+	color       float32
+	add         [3]int32
+	mul         [3]int32
+	sinadd      [3]int32
+	sinmul      [3]int32
+	sincolor    int32
+	sinhue      int32
+	cycletime   [4]int32
+	invertall   bool
+	invertblend int32
+	hue         float32
 }
 type PalFX struct {
 	PalFXDef
@@ -50,7 +50,7 @@ type PalFX struct {
 	eAdd         [3]int32
 	eMul         [3]int32
 	eColor       float32
-	eHue    	 float32	
+	eHue         float32
 }
 
 func newPalFX() *PalFX { return &PalFX{} }
@@ -142,7 +142,7 @@ func (pf *PalFX) getFcPalFx(transNeg bool, blending bool) (neg bool, grayscale f
 	neg = p.eInvertall
 	grayscale = 1 - p.eColor
 	invblend = p.eInvertblend
-	hue = -(p.eHue*180.0) * (math.Pi / 180.0)
+	hue = -(p.eHue * 180.0) * (math.Pi / 180.0)
 	if !p.eNegType {
 		transNeg = false
 	}
@@ -189,7 +189,7 @@ func (pf *PalFX) sinColor(color *float32) {
 		}
 		sin := math.Sin(st / float64(pf.cycletime[2]))
 
-		(*color) += float32(sin * (float64(pf.sincolor)/256.0))
+		(*color) += float32(sin * (float64(pf.sincolor) / 256.0))
 
 	}
 }
@@ -201,7 +201,7 @@ func (pf *PalFX) sinHueshift(color *float32) {
 		}
 		sin := math.Sin(st / float64(pf.cycletime[3]))
 
-		(*color) += float32(sin * (float64(pf.sinhue)/256.0))
+		(*color) += float32(sin * (float64(pf.sinhue) / 256.0))
 
 	}
 }
@@ -222,13 +222,13 @@ func (pf *PalFX) step() {
 		pf.sinAdd(&pf.eAdd)
 		pf.sinMul(&pf.eMul)
 		pf.sinColor(&pf.eColor)
-		pf.sinHueshift(&pf.eHue)		
+		pf.sinHueshift(&pf.eHue)
 		if sys.tickFrame() {
 			for i := 0; i < 4; i++ {
 				if pf.cycletime[i] > 0 {
 					pf.sintime[i] = (pf.sintime[i] + 1) % pf.cycletime[i]
 				}
-			}		
+			}
 			if pf.time > 0 {
 				pf.time--
 			}
@@ -293,7 +293,7 @@ func (pf *PalFX) setColor(r, g, b int32) {
 
 	pf.enable = true
 	pf.eColor = 1
-	pf.eHue = 0	
+	pf.eHue = 0
 	pf.eMul = [...]int32{
 		256 * rNormalized >> 8,
 		256 * gNormalized >> 8,

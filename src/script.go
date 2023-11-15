@@ -321,7 +321,7 @@ func systemScriptInit(l *lua.LState) {
 				case "color":
 					a.palfx.color = float32(lua.LVAsNumber(value)) / 256
 				case "hue":
-					a.palfx.hue = float32(lua.LVAsNumber(value)) / 256					
+					a.palfx.hue = float32(lua.LVAsNumber(value)) / 256
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}

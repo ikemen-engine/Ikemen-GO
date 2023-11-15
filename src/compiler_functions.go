@@ -1083,7 +1083,7 @@ func (c *Compiler) afterImageSub(is IniSection,
 	if err := c.paramValue(is, sc, prefix+"palhue",
 		afterImage_palhue, VT_Int, 1, false); err != nil {
 		return err
-	}	
+	}
 	if err := c.paramValue(is, sc, prefix+"palinvertall",
 		afterImage_palinvertall, VT_Bool, 1, false); err != nil {
 		return err
@@ -4185,7 +4185,7 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 		if err := c.paramValue(is, sc, "sinhue",
 			modifyBGCtrl_sinhue, VT_Int, 2, false); err != nil {
 			return err
-		}		
+		}
 		if err := c.paramValue(is, sc, "invertall",
 			modifyBGCtrl_invertall, VT_Int, 1, false); err != nil {
 			return err
@@ -4201,7 +4201,7 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 		if err := c.paramValue(is, sc, "hue",
 			modifyBGCtrl_hue, VT_Float, 1, false); err != nil {
 			return err
-		}		
+		}
 		return nil
 	})
 	return *ret, err

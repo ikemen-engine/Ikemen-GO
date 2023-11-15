@@ -313,7 +313,7 @@ func RenderSprite(rp RenderParams) {
 
 		gfx.SetUniformI("neg", int(Btoi(neg)))
 		gfx.SetUniformF("gray", grayscale)
-		gfx.SetUniformF("hue", hue)		
+		gfx.SetUniformF("hue", hue)
 		gfx.SetUniformFv("add", padd[:])
 		gfx.SetUniformFv("mult", pmul[:])
 		gfx.SetUniformFv("tint", tint[:])

@@ -456,11 +456,11 @@ type bgCtrl struct {
 	sinadd       [4]int32
 	sinmul       [4]int32
 	sincolor     [2]int32
-	sinhue  	 [2]int32
+	sinhue       [2]int32
 	invall       bool
 	invblend     int32
 	color        float32
-	hue     	 float32
+	hue          float32
 	positionlink bool
 	idx          int
 	sctrlid      int32
@@ -492,7 +492,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		bgc.sinadd = [4]int32{0, 0, 0, 0}
 		bgc.sinmul = [4]int32{0, 0, 0, 0}
 		bgc.sincolor = [2]int32{0, 0}
-		bgc.sinhue = [2]int32{0, 0}		
+		bgc.sinhue = [2]int32{0, 0}
 		bgc.invall = false
 		bgc.invblend = 0
 		bgc.color = 1
@@ -556,7 +556,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 			if bgc.sinhue[1] < 0 {
 				bgc.sinhue[0] = -bgc.sinhue[0]
 			}
-		}		
+		}
 		var tmp int32
 		if is.ReadI32("invertall", &tmp) {
 			bgc.invall = tmp != 0
@@ -569,7 +569,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) {
 		}
 		if is.ReadF32("hue", &bgc.hue) {
 			bgc.hue = bgc.hue / 256
-		}		
+		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
@@ -1133,7 +1133,7 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.sincolor = bgc.sincolor[0]
 			bgc.bg[i].palfx.cycletime[2] = bgc.sincolor[1]
 			bgc.bg[i].palfx.sinhue = bgc.sinhue[0]
-			bgc.bg[i].palfx.cycletime[3] = bgc.sinhue[1]			
+			bgc.bg[i].palfx.cycletime[3] = bgc.sinhue[1]
 			bgc.bg[i].palfx.invertall = bgc.invall
 			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
@@ -1438,7 +1438,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					sinhue[1] = -sinhue[1]
 					side4 = -1
 				}
-			}		
+			}
 			for j := 0; j < 4; j++ {
 				if j < 3 {
 					if add[j] != IErr {
@@ -1461,7 +1461,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 					}
 					if sinhue[0] != IErr {
 						s.bgc[i].sinhue[j] = sinhue[j] * side4
-					}					
+					}
 				}
 			}
 			if invall != IErr {
@@ -1475,7 +1475,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if !math.IsNaN(float64(hue)) {
 				s.bgc[i].hue = hue / 256
-			}			
+			}
 			s.reload = true
 		}
 	}
