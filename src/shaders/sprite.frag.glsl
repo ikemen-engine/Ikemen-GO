@@ -50,7 +50,9 @@ void main(void) {
 				c = texture2D(pal, vec2(c.r*0.9966, 0.5));
 			}
 		}
-		c.rgb = hue_shift(c.rgb,hue);
+		if (hue != 0) {
+			c.rgb = hue_shift(c.rgb,hue);			
+		}
 		if (neg) c.rgb = neg_base - c.rgb;
 		c.rgb = mix(c.rgb, vec3((c.r + c.g + c.b) / 3.0), gray) + final_add;
 		c *= final_mul;
