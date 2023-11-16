@@ -468,6 +468,18 @@ const (
 	OC_ex_gethitvar_priority
 	OC_ex_ailevelf
 	OC_ex_animelemlength
+	OC_ex_animframe_alphadest
+	OC_ex_animframe_angle
+	OC_ex_animframe_alphasource
+	OC_ex_animframe_group
+	OC_ex_animframe_hflip
+	OC_ex_animframe_image
+	OC_ex_animframe_time
+	OC_ex_animframe_vflip
+	OC_ex_animframe_xoffset
+	OC_ex_animframe_xscale
+	OC_ex_animframe_yoffset
+	OC_ex_animframe_yscale
 	OC_ex_animlength
 	OC_ex_attack
 	OC_ex_combocount
@@ -2031,6 +2043,84 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushI(f.Time)
 		} else {
 			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_alphadest:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(f.DstAlpha))
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_angle:
+		if f := c.anim.CurrentFrame(); f != nil {
+			if len(f.Ex) > 2 && len(f.Ex[2]) > 2 { // Anim.go code could be refactored so these are easier to read
+				sys.bcStack.PushF(f.Ex[2][2])
+			} else {
+				sys.bcStack.PushF(0)
+			}
+		}
+	case OC_ex_animframe_alphasource:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(f.SrcAlpha))
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_group:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(f.Group))
+		} else {
+			sys.bcStack.PushI(-1)
+		}
+	case OC_ex_animframe_hflip:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushB(f.H < 0)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_image:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(f.Number))
+		} else {
+			sys.bcStack.PushI(-1)
+		}
+	case OC_ex_animframe_time: // Same as AnimElemLength
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(f.Time)
+		} else {
+			sys.bcStack.PushI(-1)
+		}
+	case OC_ex_animframe_vflip:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushB(f.V < 0)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_xoffset:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(-f.X))
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_xscale:
+		if f := c.anim.CurrentFrame(); f != nil {
+			if len(f.Ex) > 2 {
+				sys.bcStack.PushF(f.Ex[2][0])
+			} else {
+				sys.bcStack.PushF(0)
+			}
+		}
+	case OC_ex_animframe_yoffset:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(-f.Y))
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_yscale:
+		if f := c.anim.CurrentFrame(); f != nil {
+			if len(f.Ex) > 2 && len(f.Ex[2]) > 1 {
+				sys.bcStack.PushF(f.Ex[2][1])
+			} else {
+				sys.bcStack.PushF(0)
+			}
 		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
