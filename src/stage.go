@@ -2036,16 +2036,13 @@ func (model *Model) step() {
 						node.scale[1] = sampler.output[prevIndex*3+1]*(1-rate) + sampler.output[(prevIndex+1)*3+1]*rate
 						node.scale[2] = sampler.output[prevIndex*3+2]*(1-rate) + sampler.output[(prevIndex+1)*3+2]*rate
 					case TRSRotation:
-						q := mgl.QuatSlerp(
-							mgl.Quat{
-								sampler.output[prevIndex*4+3],
-								mgl.Vec3{sampler.output[prevIndex*4], sampler.output[prevIndex*4+1], sampler.output[prevIndex*4+2]},
-							}, mgl.Quat{
-								sampler.output[(prevIndex+1)*4+3],
-								mgl.Vec3{sampler.output[(prevIndex+1)*4], sampler.output[(prevIndex+1)*4+1], sampler.output[(prevIndex+1)*4+2]},
-							},
-							rate,
-						)
+						q1 := mgl.Quat{sampler.output[prevIndex*4+3], mgl.Vec3{sampler.output[prevIndex*4], sampler.output[prevIndex*4+1], sampler.output[prevIndex*4+2]}}
+						q2 := mgl.Quat{sampler.output[(prevIndex+1)*4+3], mgl.Vec3{sampler.output[(prevIndex+1)*4], sampler.output[(prevIndex+1)*4+1], sampler.output[(prevIndex+1)*4+2]}}
+						dotProduct := q1.Dot(q2)
+						if dotProduct < 0 {
+							q1 = q1.Inverse()
+						}
+						q := mgl.QuatSlerp(q1, q2, rate)
 						node.rotation[0] = q.X()
 						node.rotation[1] = q.Y()
 						node.rotation[2] = q.Z()
