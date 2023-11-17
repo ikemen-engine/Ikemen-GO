@@ -4596,12 +4596,8 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 		damage = float64(attacker.scaleHit(int32(damage), c.id, 0))
 		damage *= float64(atkmul) / c.finalDefense
 	}
-	// In Mugen, an extremely high defense or low attack still results in at least 1 damage
-	if damage > 0 && damage < 1 {
-		damage = 1
-	}
 	damage = math.Round(damage)
-	if bounds && c.helperIndex == 0 { // In Mugen, helpers can receive a damage value above their remaining life
+	if bounds {
 		damage = float64(Clamp(int32(damage), c.life-c.lifeMax, Max(0, c.life-Btoi(!kill))))
 	}
 	return int32(damage)
@@ -4612,6 +4608,10 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 			add /= c.finalDefense
 		}
 		add = float64(Clamp(int32(add), Btoi(!kill && c.life > 0)-c.life, c.lifeMax-c.life))
+		// In Mugen, an extremely high defense or low attack still results in at least 1 damage
+		if add < 0 && add > -1 {
+			add = -1
+		}
 		if add < 0 {
 			c.comboDmg -= int32(add)
 			c.fakeComboDmg -= int32(add)
@@ -4624,6 +4624,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 }
 func (c *Char) lifeSet(life int32) {
 	if c.life = Clamp(life, 0, c.lifeMax); c.life == 0 {
+		// Check win type
 		if c.player && c.teamside != -1 {
 			if c.alive() && c.helperIndex == 0 {
 				if c.ss.moveType != MT_H {
@@ -6409,7 +6410,9 @@ func (c *Char) tick() {
 		}
 	}
 	if !c.hitPause() {
+		// Set KO flag
 		if c.life <= 0 && !sys.gsf(GSF_noko) && !c.asf(ASF_noko) && (!c.ghv.guarded || !c.asf(ASF_noguardko)) {
+			// KO sound
 			if !sys.gsf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
 				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
@@ -7019,8 +7022,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hitType == 2 {
 				getter.ghv.kill = hd.guard_kill
 			}
+			// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed remaining life
+			bnd := true
+			for _, ho := range getter.ho {
+				if ho.time != 0 {
+					bnd = false
+					break
+				}
+			}
 			getter.ghv.damage += getter.computeDamage(
-				float64(absdamage)*float64(hits), getter.ghv.kill, false, attackMul, c, true)
+				float64(absdamage)*float64(hits), getter.ghv.kill, false, attackMul, c, bnd)
 			getter.ghv.hitdamage += getter.computeDamage(
 				float64(hitdamage)*float64(hits), true, false, attackMul, c, false)
 			getter.ghv.guarddamage += getter.computeDamage(
@@ -7037,11 +7048,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			if !c.asf(ASF_noredlifedamage) {
 				getter.ghv.redlife += getter.computeDamage(
-					float64(absredlife)*float64(hits), false, false, attackMul, c, true)
+					float64(absredlife)*float64(hits), false, false, attackMul, c, bnd)
 				getter.ghv.hitredlife += getter.computeDamage(
-					float64(hd.hitredlife)*float64(hits), false, false, attackMul, c, true)
+					float64(hd.hitredlife)*float64(hits), false, false, attackMul, c, bnd)
 				getter.ghv.guardredlife += getter.computeDamage(
-					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, true)
+					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, bnd)
 			}
 			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
@@ -7074,9 +7085,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								}
 							}
 						}
-					}
-					if getter.helperIndex == 0 { // In Mugen, helpers can receive a damage value above their remaining life
-						getter.ghv.damage = getter.life
 					}
 				} else {
 					getter.ghv.damage = getter.life - 1
@@ -7596,17 +7604,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						}
 					}
 					if tmp > 0 {
-						if !getter.asf(ASF_immovable) {
+						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
 							getter.pos[0] -= ((gr - cl) * 0.5) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) {
+						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
 							c.pos[0] += ((gr - cl) * 0.5) / c.localscl
 						}
 					} else {
-						if !getter.asf(ASF_immovable) {
+						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
 							getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) {
+						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
 							c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
 						}
 					}

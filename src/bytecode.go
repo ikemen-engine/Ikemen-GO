@@ -5685,7 +5685,12 @@ func (sc lifeAdd) Run(c *Char, _ []int32) bool {
 		case lifeAdd_kill:
 			k = exp[0].evalB(c)
 		case lifeAdd_value:
-			crun.lifeAdd(float64(exp[0].evalI(c)), k, a)
+			v := exp[0].evalI(c)
+			// Mugen forces absolute parameter when healing characters
+			if v > 0 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+				a = true
+			}
+			crun.lifeAdd(float64(v), k, a)
 		case lifeAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8368,6 +8373,11 @@ func (sc targetRedLifeAdd) Run(c *Char, _ []int32) bool {
 		case targetRedLifeAdd_value:
 			if len(tar) == 0 {
 				return false
+			}
+			v := exp[0].evalI(c)
+			// Mugen forces absolute parameter when healing characters
+			if v > 0 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+				a = true
 			}
 			crun.targetRedLifeAdd(tar, exp[0].evalI(c), a)
 		case targetRedLifeAdd_redirectid:
