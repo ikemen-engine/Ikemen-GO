@@ -294,13 +294,14 @@ func NewInputReader() *InputReader {
 // Reads controllers and converts inputs to letters for later processing
 func (ir *InputReader) LocalInput(in int) (bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool) {
 	var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
+	// Keyboard
 	if in < len(sys.keyConfig) {
 		joy := sys.keyConfig[in].Joy
 		if joy == -1 {
-			L = sys.keyConfig[in].L()
-			R = sys.keyConfig[in].R()
 			U = sys.keyConfig[in].U()
 			D = sys.keyConfig[in].D()
+			L = sys.keyConfig[in].L()
+			R = sys.keyConfig[in].R()
 			a = sys.keyConfig[in].a()
 			b = sys.keyConfig[in].b()
 			c = sys.keyConfig[in].c()
@@ -313,14 +314,14 @@ func (ir *InputReader) LocalInput(in int) (bool, bool, bool, bool, bool, bool, b
 			m = sys.keyConfig[in].m()
 		}
 	}
+	// Joystick
 	if in < len(sys.joystickConfig) {
 		joyS := sys.joystickConfig[in].Joy
 		if joyS >= 0 {
-			// Joystick and keyboard are allowed at same time
+			U = sys.joystickConfig[in].U() || U // Does not override keyboard
+			D = sys.joystickConfig[in].D() || D
 			L = sys.joystickConfig[in].L() || L
 			R = sys.joystickConfig[in].R() || R
-			U = sys.joystickConfig[in].U() || U
-			D = sys.joystickConfig[in].D() || D
 			a = sys.joystickConfig[in].a() || a
 			b = sys.joystickConfig[in].b() || b
 			c = sys.joystickConfig[in].c() || c
@@ -1878,6 +1879,24 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 		}
 		// Resolve SOCD conflicts
 		U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+		// AssertInput Flags (no assists, can override SOCD)
+		// Does not currently work over netplay because flags are stored at the character level rather than system level
+		if ib > 0 {
+			U = ib&IB_PU != 0 || U
+			D = ib&IB_PD != 0 || D
+			L = ib&IB_PL != 0 || L
+			R = ib&IB_PR != 0 || R
+			a = ib&IB_A != 0 || a
+			b = ib&IB_B != 0 || b
+			c = ib&IB_C != 0 || c
+			x = ib&IB_X != 0 || x
+			y = ib&IB_Y != 0 || y
+			z = ib&IB_Z != 0 || z
+			s = ib&IB_S != 0 || s
+			d = ib&IB_D != 0 || d
+			w = ib&IB_W != 0 || w
+			m = ib&IB_M != 0 || m
+		}
 		// Send inputs to buffer
 		cl.Buffer.Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m)
 		// TODO: Reorder all instances of B, F like input bits (U, D, L, R)
