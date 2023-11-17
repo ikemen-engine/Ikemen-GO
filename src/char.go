@@ -49,7 +49,7 @@ const (
 	CSF_trans
 )
 
-// Flags set by AssertSpecial. They are reset every frame
+// Flags set by AssertSpecial. They are reset together every frame
 type AssertSpecialFlag uint64
 
 const (
@@ -89,6 +89,7 @@ const (
 	ASF_nokovelocity
 	ASF_noailevel
 	ASF_nointroreset
+	ASF_immovable
 )
 
 type GlobalSpecialFlag uint32
@@ -107,7 +108,7 @@ const (
 	GSF_noko
 	GSF_roundnotskip
 	GSF_roundfreeze
-	GSF_assertspecialpause GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
+	GSF_assertspecial GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
 		GSF_nobardisplay | GSF_nobg | GSF_nofg | GSF_globalnoshadow |
 		GSF_roundnotskip
 )
@@ -7596,16 +7597,24 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						}
 					}
 					if tmp > 0 {
-						getter.pos[0] -= ((gr - cl) * 0.5) / getter.localscl
-						c.pos[0] += ((gr - cl) * 0.5) / c.localscl
+						if !getter.asf(ASF_immovable) {
+							getter.pos[0] -= ((gr - cl) * 0.5) / getter.localscl
+						}
+						if !c.asf(ASF_immovable) {
+							c.pos[0] += ((gr - cl) * 0.5) / c.localscl
+						}
 					} else {
-						getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
-						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
+						if !getter.asf(ASF_immovable) {
+							getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
+						}
+						if !c.asf(ASF_immovable) {
+							c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
+						}
 					}
-					if getter.trackableByCamera() && getter.sf(CSF_screenbound) {
+					if getter.trackableByCamera() && getter.csf(CSF_screenbound) {
 						getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 					}
-					if c.trackableByCamera() && c.sf(CSF_screenbound) {
+					if c.trackableByCamera() && c.csf(CSF_screenbound) {
 						l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 						if c.facing > 0 {
 							l, r = -r, -l

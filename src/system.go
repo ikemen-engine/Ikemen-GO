@@ -1325,7 +1325,7 @@ func (s *System) action() {
 		if s.super <= 0 && s.pause <= 0 {
 			s.specialFlag = 0
 		} else {
-			s.unsetGSF(GSF_assertspecialpause)
+			s.unsetGSF(GSF_assertspecial)
 		}
 		if s.superanim != nil {
 			s.superanim.Action()

@@ -4188,6 +4188,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_noailevel)))
 		case "nointroreset":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nointroreset)))
+		case "immovable":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))
