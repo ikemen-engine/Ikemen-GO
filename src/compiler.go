@@ -2721,6 +2721,43 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_airjumpcount)
 	case "animelemlength":
 		out.append(OC_ex_, OC_ex_animelemlength)
+	case "animframe":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "alphadest":
+			out.append(OC_ex_animframe_alphadest)
+		case "angle":
+			out.append(OC_ex_animframe_angle)
+		case "alphasource":
+			out.append(OC_ex_animframe_alphasource)
+		case "group":
+			out.append(OC_ex_animframe_group)
+		case "hflip":
+			out.append(OC_ex_animframe_hflip)
+		case "image":
+			out.append(OC_ex_animframe_image)
+		case "time":
+			out.append(OC_ex_animframe_time)
+		case "vflip":
+			out.append(OC_ex_animframe_vflip)
+		case "xoffset":
+			out.append(OC_ex_animframe_xoffset)
+		case "xscale":
+			out.append(OC_ex_animframe_xscale)
+		case "yoffset":
+			out.append(OC_ex_animframe_yoffset)
+		case "yscale":
+			out.append(OC_ex_animframe_yscale)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
 	case "animlength":
 		out.append(OC_ex_, OC_ex_animlength)
 	case "attack":
