@@ -5780,13 +5780,12 @@ func (c *Char) actionPrepare() {
 								c.changeState(12, -1, -1, "")
 							}
 						} else if !c.asf(ASF_nowalk) && c.ss.stateType == ST_S &&
-							(c.cmd[0].Buffer.F > 0 || !(c.inguarddist && c.scf(SCF_guard)) &&
-								c.cmd[0].Buffer.B > 0) {
+							(c.cmd[0].Buffer.F > 0 != (!(c.inguarddist && c.scf(SCF_guard)) && c.cmd[0].Buffer.B > 0)) {
 							if c.ss.no != 20 {
 								c.changeState(20, -1, -1, "")
 							}
 						} else if !c.asf(ASF_nobrake) && c.ss.no == 20 &&
-							c.cmd[0].Buffer.B < 0 && c.cmd[0].Buffer.F < 0 {
+							(c.cmd[0].Buffer.B > 0) == (c.cmd[0].Buffer.F > 0) {
 							c.changeState(0, -1, -1, "")
 						}
 						if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
