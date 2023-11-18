@@ -957,8 +957,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			}
 		}
 		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
-		//s.stageCamera.zoffset = int32((float32(sys.scrrect[3])/2 - s.model.offset[1]/float32(math.Tan(float64(s.stageCamera.fov)/2))*-s.model.offset[2]*s.localscl*sys.heightScale/(float32(sys.scrrect[3])/2)) / s.localscl / sys.heightScale)
-		s.stageCamera.zoffset = int32(float32(sys.scrrect[3])/2 - s.model.offset[1]/posMul)
+		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul)
 		if str, ok := sec[0]["scale"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.scale) {
@@ -1998,7 +1997,7 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 
 	var near float32 = 0.1
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
-	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) * sys.heightScale / s.localscl / sys.heightScale / scl
+	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) / s.localscl / scl
 
 	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
