@@ -2756,6 +2756,16 @@ func (l *Loader) loadChar(pn int) int {
 	tnow := time.Now()
 	defer func() {
 		sys.loadTime(tnow, tstr, false, true)
+		// Mugen compatibility mode indicator
+		if sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[0] == 0 {
+			if sys.cgi[pn].ver[0] == 1 && sys.cgi[pn].ikemenver[0] == 1 {
+				sys.appendToConsole("Using Mugen 1.1 compatibility mode.")
+			} else if sys.cgi[pn].ver[0] == 1 && sys.cgi[pn].ikemenver[0] == 0 {
+				sys.appendToConsole("Using Mugen 1.0 compatibility mode.")
+			} else if sys.cgi[pn].ver[0] != 1 {
+				sys.appendToConsole("Using WinMugen compatibility mode.")
+			}
+		}
 	}()
 	var cdef string
 	var cdefOWnumber int

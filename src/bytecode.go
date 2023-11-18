@@ -2187,7 +2187,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:
-		sys.bcStack.PushI(int32(c.gi().ver[0]))
+		sys.bcStack.PushB(c.gi().ver[0] == 1)
 	case OC_ex_maparray:
 		sys.bcStack.PushF(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4

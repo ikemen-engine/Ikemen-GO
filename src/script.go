@@ -4256,7 +4256,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "majorversion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.gi().ver[0]))
+		l.Push(lua.LBool(sys.debugWC.gi().ver[0] == 1))
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
