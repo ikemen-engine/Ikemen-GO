@@ -2078,7 +2078,7 @@ func (ro *LifeBarRound) callFight() {
 	ro.timerActive = true
 }
 func (ro *LifeBarRound) act() bool {
-	if (sys.paused && !sys.step) || sys.sf(GSF_roundfreeze) {
+	if (sys.paused && !sys.step) || sys.gsf(GSF_roundfreeze) {
 		return false
 	}
 	if sys.intro > ro.ctrl_time {
@@ -3901,7 +3901,7 @@ func (l *Lifebar) draw(layerno int16) {
 		return
 	}
 	if sys.statusDraw && l.active {
-		if !sys.sf(GSF_nobardisplay) && l.bars {
+		if !sys.gsf(GSF_nobardisplay) && l.bars {
 			//HealthBar
 			for ti := range sys.tmode {
 				for i := range l.order[ti] {
@@ -3916,7 +3916,7 @@ func (l *Lifebar) draw(layerno int16) {
 			//PowerBar
 			for ti, tm := range sys.tmode {
 				for i := range l.order[ti] {
-					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
+					if !sys.chars[i*2+ti][0].asf(ASF_nopowerbardisplay) {
 						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
 							if i == 0 {
 								l.pb[l.ref[ti]][i*2+ti].bgDraw(layerno, i*2+ti)
@@ -3929,7 +3929,7 @@ func (l *Lifebar) draw(layerno int16) {
 			}
 			for ti, tm := range sys.tmode {
 				for i, v := range l.order[ti] {
-					if !sys.chars[i*2+ti][0].sf(CSF_nopowerbardisplay) {
+					if !sys.chars[i*2+ti][0].asf(ASF_nopowerbardisplay) {
 						if sys.powerShare[ti] && (tm == TM_Simul || tm == TM_Tag) {
 							if i == 0 {
 								l.pb[l.ref[ti]][i*2+ti].draw(layerno, i*2+ti, l.pb[l.ref[ti]][i*2+ti], l.fnt[:])

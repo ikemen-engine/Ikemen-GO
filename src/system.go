@@ -651,13 +651,13 @@ func (s *System) roundWinTime() bool {
 func (s *System) roundOver() bool {
 	return s.intro < -(s.lifebar.ro.over_waittime + s.lifebar.ro.over_time)
 }
-func (s *System) sf(gsf GlobalSpecialFlag) bool {
+func (s *System) gsf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
 }
-func (s *System) setSF(gsf GlobalSpecialFlag) {
+func (s *System) setGSF(gsf GlobalSpecialFlag) {
 	s.specialFlag |= gsf
 }
-func (s *System) unsetSF(gsf GlobalSpecialFlag) {
+func (s *System) unsetGSF(gsf GlobalSpecialFlag) {
 	s.specialFlag &^= gsf
 }
 func (s *System) appendToConsole(str string) {
@@ -914,11 +914,11 @@ func (s *System) commandUpdate() {
 				act = false
 			}
 			// Having this here makes B and F inputs reverse the same instant the character turns
-			if act && !r.sf(CSF_noautoturn) && (r.scf(SCF_ctrl) || r.roundState() > 2) &&
+			if act && !r.asf(ASF_noautoturn) && (r.scf(SCF_ctrl) || r.roundState() > 2) &&
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20 || r.ss.no == 52) {
 				r.turn()
 			}
-			if r.inputOver() || r.sf(CSF_noinput) {
+			if r.inputOver() || r.asf(ASF_noinput) {
 				for j := range r.cmd {
 					r.cmd[j].BufReset()
 				}
@@ -1023,14 +1023,14 @@ func (s *System) action() {
 	if s.lifebar.ro.act() {
 		if s.intro > s.lifebar.ro.ctrl_time {
 			s.intro--
-			if s.sf(GSF_intro) && s.intro <= s.lifebar.ro.ctrl_time {
+			if s.gsf(GSF_intro) && s.intro <= s.lifebar.ro.ctrl_time {
 				s.intro = s.lifebar.ro.ctrl_time + 1
 			}
 		} else if s.intro > 0 {
 			if s.intro == s.lifebar.ro.ctrl_time {
 				for _, p := range s.chars {
 					if len(p) > 0 {
-						if !p[0].sf(CSF_nointroreset) {
+						if !p[0].asf(ASF_nointroreset) {
 							p[0].posReset()
 						}
 					}
@@ -1043,7 +1043,7 @@ func (s *System) action() {
 						p[0].unsetSCF(SCF_over)
 						if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
 							p[0].setCtrl(true)
-							if p[0].ss.no != 0 && !p[0].sf(CSF_nointroreset) {
+							if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) {
 								p[0].selfState(0, -1, -1, 1, "")
 							}
 						}
@@ -1051,7 +1051,7 @@ func (s *System) action() {
 				}
 			}
 		}
-		if s.intro == 0 && s.time > 0 && !s.sf(GSF_timerfreeze) &&
+		if s.intro == 0 && s.time > 0 && !s.gsf(GSF_timerfreeze) &&
 			(s.super <= 0 || !s.superpausebg) && (s.pause <= 0 || !s.pausebg) {
 			s.time--
 		}
@@ -1189,7 +1189,7 @@ func (s *System) action() {
 				inclWinCount()
 			}
 			// Check if player skipped win pose time
-			if s.roundWinTime() && (s.anyButton() && !s.sf(GSF_roundnotskip)) {
+			if s.roundWinTime() && (s.anyButton() && !s.gsf(GSF_roundnotskip)) {
 				s.intro = Min(s.intro, rs4t-2-s.lifebar.ro.over_time+s.lifebar.ro.fadeout_time)
 				s.winskipped = true
 			}
@@ -1277,7 +1277,7 @@ func (s *System) action() {
 				s.waitdown--
 			}
 			// If the game can't proceed to the fadeout screen, we turn back the counter 1 tick
-			if !s.winskipped && s.sf(GSF_roundnotover) &&
+			if !s.winskipped && s.gsf(GSF_roundnotover) &&
 				s.intro == rs4t-2-s.lifebar.ro.over_time+s.lifebar.ro.fadeout_time {
 				s.intro++
 			}
@@ -1325,14 +1325,14 @@ func (s *System) action() {
 		if s.super <= 0 && s.pause <= 0 {
 			s.specialFlag = 0
 		} else {
-			s.unsetSF(GSF_assertspecialpause)
+			s.unsetGSF(GSF_assertspecial)
 		}
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
 		s.charList.action(x, &cvmin, &cvmax,
 			&highest, &lowest, &leftest, &rightest)
-		s.nomusic = s.sf(GSF_nomusic) && !sys.postMatchFlg
+		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
@@ -1356,7 +1356,7 @@ func (s *System) action() {
 	if s.tickNextFrame() {
 		if s.lifebar.ro.cur < 1 && !s.introSkipped {
 			if s.shuttertime > 0 ||
-				s.anyButton() && !s.sf(GSF_roundnotskip) && s.intro > s.lifebar.ro.ctrl_time {
+				s.anyButton() && !s.gsf(GSF_roundnotskip) && s.intro > s.lifebar.ro.ctrl_time {
 				s.shuttertime++
 				if s.shuttertime == s.lifebar.ro.shutter_time {
 					s.fadeintime = 0
@@ -1446,7 +1446,7 @@ func (s *System) action() {
 		spd := s.gameSpeed * s.accel
 		if s.postMatchFlg {
 			spd = 1
-		} else if !s.sf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
+		} else if !s.gsf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed
 			if s.slowtime < s.lifebar.ro.slow_fadetime {
 				spd += (float32(1) - s.lifebar.ro.slow_speed) * float32(s.lifebar.ro.slow_fadetime-s.slowtime) / float32(s.lifebar.ro.slow_fadetime)
@@ -1469,7 +1469,7 @@ func (s *System) draw(x, y, scl float32) {
 	//}
 	if s.envcol_time == 0 {
 		c := uint32(0)
-		if s.sf(GSF_nobg) {
+		if s.gsf(GSF_nobg) {
 			if s.allPalFX.enable {
 				var rgb [3]int32
 				if s.allPalFX.eInvertall {
@@ -1491,7 +1491,7 @@ func (s *System) draw(x, y, scl float32) {
 			s.stage.draw(false, bgx, bgy, scl)
 		}
 		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
-		if !s.sf(GSF_globalnoshadow) {
+		if !s.gsf(GSF_globalnoshadow) {
 			if s.stage.reflection > 0 {
 				s.shadows.drawReflection(x, y, scl*s.cam.BaseScale())
 			}
@@ -1537,7 +1537,7 @@ func (s *System) draw(x, y, scl float32) {
 	}
 	if s.envcol_time == 0 || s.envcol_under {
 		s.sprites.draw(x, y, scl*s.cam.BaseScale())
-		if s.envcol_time == 0 && !s.sf(GSF_nofg) {
+		if s.envcol_time == 0 && !s.gsf(GSF_nofg) {
 			s.stage.draw(true, bgx, bgy, scl)
 		}
 	}
@@ -1668,7 +1668,7 @@ func (s *System) drawDebug() {
 					Protect: true}) == nil {
 					s, ok := s.luaLState.Get(-1).(lua.LString)
 					if ok && len(s) > 0 {
-						if i == 1 && (sys.debugWC == nil || sys.debugWC.sf(CSF_destroy)) {
+						if i == 1 && (sys.debugWC == nil || sys.debugWC.csf(CSF_destroy)) {
 							put(&x, &y, string(s)+" disabled")
 							break
 						}
@@ -2756,6 +2756,16 @@ func (l *Loader) loadChar(pn int) int {
 	tnow := time.Now()
 	defer func() {
 		sys.loadTime(tnow, tstr, false, true)
+		// Mugen compatibility mode indicator
+		if sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[0] == 0 {
+			if sys.cgi[pn].ver[0] == 1 && sys.cgi[pn].ikemenver[0] == 1 {
+				sys.appendToConsole("Using Mugen 1.1 compatibility mode.")
+			} else if sys.cgi[pn].ver[0] == 1 && sys.cgi[pn].ikemenver[0] == 0 {
+				sys.appendToConsole("Using Mugen 1.0 compatibility mode.")
+			} else if sys.cgi[pn].ver[0] != 1 {
+				sys.appendToConsole("Using WinMugen compatibility mode.")
+			}
+		}
 	}()
 	var cdef string
 	var cdefOWnumber int

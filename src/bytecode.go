@@ -1245,7 +1245,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_swap:
 			sys.bcStack.Swap()
 		case OC_ailevel:
-			if !c.sf(CSF_noailevel) {
+			if !c.asf(ASF_noailevel) {
 				sys.bcStack.PushI(int32(c.aiLevel()))
 			} else {
 				sys.bcStack.PushI(0)
@@ -2033,7 +2033,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_priority:
 		sys.bcStack.PushI(c.ghv.priority)
 	case OC_ex_ailevelf:
-		if !c.sf(CSF_noailevel) {
+		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
 		} else {
 			sys.bcStack.PushI(0)
@@ -2175,10 +2175,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_indialogue:
 		sys.bcStack.PushB(sys.dialogueFlg)
 	case OC_ex_isassertedchar:
-		sys.bcStack.PushB(c.sf(CharSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
+		sys.bcStack.PushB(c.csf(CharSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
 		*i += 8
 	case OC_ex_isassertedglobal:
-		sys.bcStack.PushB(sys.sf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
+		sys.bcStack.PushB(sys.gsf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
 		*i += 4
 	case OC_ex_ishost:
 		sys.bcStack.PushB(c.isHost())
@@ -2187,7 +2187,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:
-		sys.bcStack.PushI(int32(c.gi().ver[0]))
+		sys.bcStack.PushB(c.gi().ver[0] == 1)
 	case OC_ex_maparray:
 		sys.bcStack.PushF(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
@@ -2779,14 +2779,14 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case assertSpecial_flag:
-			crun.setSF(CharSpecialFlag(exp[0].evalI64(c)))
+			crun.setASF(AssertSpecialFlag(exp[0].evalI64(c)))
 		case assertSpecial_flag_g:
-			sys.setSF(GlobalSpecialFlag(exp[0].evalI(c)))
+			sys.setGSF(GlobalSpecialFlag(exp[0].evalI(c)))
 		case assertSpecial_noko:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-				crun.setSF(CharSpecialFlag(CSF_noko))
+				crun.setASF(AssertSpecialFlag(ASF_noko))
 			} else {
-				sys.setSF(GlobalSpecialFlag(GSF_noko))
+				sys.setGSF(GlobalSpecialFlag(GSF_noko))
 			}
 		case assertSpecial_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -5685,7 +5685,12 @@ func (sc lifeAdd) Run(c *Char, _ []int32) bool {
 		case lifeAdd_kill:
 			k = exp[0].evalB(c)
 		case lifeAdd_value:
-			crun.lifeAdd(float64(exp[0].evalI(c)), k, a)
+			v := exp[0].evalI(c)
+			// Mugen forces absolute parameter when healing characters
+			if v > 0 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+				a = true
+			}
+			crun.lifeAdd(float64(v), k, a)
 		case lifeAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5820,30 +5825,30 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 		switch id {
 		case screenBound_value:
 			if exp[0].evalB(c) {
-				crun.setSF(CSF_screenbound)
+				crun.setCSF(CSF_screenbound)
 			} else {
-				crun.unsetSF(CSF_screenbound)
+				crun.unsetCSF(CSF_screenbound)
 			}
 		case screenBound_movecamera:
 			if exp[0].evalB(c) {
-				crun.setSF(CSF_movecamera_x)
+				crun.setCSF(CSF_movecamera_x)
 			} else {
-				crun.unsetSF(CSF_movecamera_x)
+				crun.unsetCSF(CSF_movecamera_x)
 			}
 			if len(exp) > 1 {
 				if exp[1].evalB(c) {
-					crun.setSF(CSF_movecamera_y)
+					crun.setCSF(CSF_movecamera_y)
 				} else {
-					crun.unsetSF(CSF_movecamera_y)
+					crun.unsetCSF(CSF_movecamera_y)
 				}
 			} else {
-				crun.unsetSF(CSF_movecamera_y)
+				crun.unsetCSF(CSF_movecamera_y)
 			}
 		case screenBound_stagebound:
 			if exp[0].evalB(c) {
-				crun.setSF(CSF_stagebound)
+				crun.setCSF(CSF_stagebound)
 			} else {
-				crun.unsetSF(CSF_stagebound)
+				crun.unsetCSF(CSF_stagebound)
 			}
 		case screenBound_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -5870,7 +5875,7 @@ func (sc posFreeze) Run(c *Char, _ []int32) bool {
 		switch id {
 		case posFreeze_value:
 			if exp[0].evalB(c) {
-				crun.setSF(CSF_posfreeze)
+				crun.setCSF(CSF_posfreeze)
 			}
 		case posFreeze_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -6132,7 +6137,7 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.setSF(CSF_trans)
+	crun.setCSF(CSF_trans)
 	return false
 }
 
@@ -6149,9 +6154,9 @@ func (sc playerPush) Run(c *Char, _ []int32) bool {
 		switch id {
 		case playerPush_value:
 			if exp[0].evalB(c) {
-				crun.setSF(CSF_playerpush)
+				crun.setCSF(CSF_playerpush)
 			} else {
-				crun.unsetSF(CSF_playerpush)
+				crun.unsetCSF(CSF_playerpush)
 			}
 		case playerPush_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -6226,7 +6231,7 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.setSF(CSF_angledraw)
+	crun.setCSF(CSF_angledraw)
 	return false
 }
 
@@ -8368,6 +8373,11 @@ func (sc targetRedLifeAdd) Run(c *Char, _ []int32) bool {
 		case targetRedLifeAdd_value:
 			if len(tar) == 0 {
 				return false
+			}
+			v := exp[0].evalI(c)
+			// Mugen forces absolute parameter when healing characters
+			if v > 0 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+				a = true
 			}
 			crun.targetRedLifeAdd(tar, exp[0].evalI(c), a)
 		case targetRedLifeAdd_redirectid:

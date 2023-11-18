@@ -72,75 +72,77 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 		foo := func(data string) error {
 			switch strings.ToLower(data) {
 			case "nostandguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nostandguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nostandguard)))
 			case "nocrouchguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nocrouchguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nocrouchguard)))
 			case "noairguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noairguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noairguard)))
 			case "noshadow":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noshadow)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noshadow)))
 			case "invisible":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_invisible)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_invisible)))
 			case "unguardable":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_unguardable)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_unguardable)))
 			case "nojugglecheck":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nojugglecheck)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nojugglecheck)))
 			case "noautoturn":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noautoturn)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noautoturn)))
 			case "nowalk":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nowalk)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nowalk)))
 			case "nobrake":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nobrake)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nobrake)))
 			case "nocrouch":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nocrouch)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nocrouch)))
 			case "nostand":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nostand)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nostand)))
 			case "nojump":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nojump)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nojump)))
 			case "noairjump":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noairjump)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noairjump)))
 			case "nohardcodedkeys":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nohardcodedkeys)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nohardcodedkeys)))
 			case "nogetupfromliedown":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nogetupfromliedown)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nogetupfromliedown)))
 			case "nofastrecoverfromliedown":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nofastrecoverfromliedown)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nofastrecoverfromliedown)))
 			case "nofallcount":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nofallcount)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nofallcount)))
 			case "nofalldefenceup":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nofalldefenceup)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nofalldefenceup)))
 			case "noturntarget":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noturntarget)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noturntarget)))
 			case "noinput":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noinput)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noinput)))
 			case "nopowerbardisplay":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nopowerbardisplay)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nopowerbardisplay)))
 			case "autoguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_autoguard)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_autoguard)))
 			case "animfreeze":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_animfreeze)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animfreeze)))
 			case "postroundinput":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_postroundinput)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_postroundinput)))
 			case "nohitdamage":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nohitdamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nohitdamage)))
 			case "noguarddamage":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noguarddamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noguarddamage)))
 			case "nodizzypointsdamage":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nodizzypointsdamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nodizzypointsdamage)))
 			case "noguardpointsdamage":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noguardpointsdamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noguardpointsdamage)))
 			case "noredlifedamage":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noredlifedamage)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noredlifedamage)))
 			case "nomakedust":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nomakedust)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nomakedust)))
 			case "noguardko":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noguardko)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noguardko)))
 			case "nokovelocity":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nokovelocity)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nokovelocity)))
 			case "noailevel":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_noailevel)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noailevel)))
 			case "nointroreset":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(CSF_nointroreset)))
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nointroreset)))
+			case "immovable":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_immovable)))
 			case "intro":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_intro)))
 			case "roundnotover":

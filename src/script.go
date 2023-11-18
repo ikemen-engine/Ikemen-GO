@@ -1631,14 +1631,14 @@ func systemScriptInit(l *lua.LState) {
 			}
 			for j := range sys.chars[pn-1][0].cmd {
 				sys.chars[pn-1][0].cmd[j].BufReset()
-				sys.chars[pn-1][0].setSF(CSF_nohardcodedkeys)
+				sys.chars[pn-1][0].setASF(ASF_nohardcodedkeys)
 			}
 		} else {
 			for _, p := range sys.chars {
 				if len(p) > 0 {
 					for j := range p[0].cmd {
 						p[0].cmd[j].BufReset()
-						p[0].setSF(CSF_nohardcodedkeys)
+						p[0].setASF(ASF_nohardcodedkeys)
 					}
 				}
 			}
@@ -2497,7 +2497,7 @@ func systemScriptInit(l *lua.LState) {
 					hn = 0
 					break
 				}
-				if sys.chars[pn][hn] != nil && !sys.chars[pn][hn].sf(CSF_destroy) {
+				if sys.chars[pn][hn] != nil && !sys.chars[pn][hn].csf(CSF_destroy) {
 					break
 				}
 			}
@@ -2748,7 +2748,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	// vanilla triggers
 	luaRegister(l, "ailevel", func(*lua.LState) int {
-		if !sys.debugWC.sf(CSF_noailevel) {
+		if !sys.debugWC.asf(ASF_noailevel) {
 			l.Push(lua.LNumber(sys.debugWC.aiLevel()))
 		} else {
 			l.Push(lua.LNumber(0))
@@ -4117,104 +4117,106 @@ func triggerFunctions(l *lua.LState) {
 		switch strArg(l, 1) {
 		// CharSpecialFlag
 		case "nostandguard":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostandguard)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nostandguard)))
 		case "nocrouchguard":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nocrouchguard)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nocrouchguard)))
 		case "noairguard":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noairguard)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noairguard)))
 		case "noshadow":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noshadow)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noshadow)))
 		case "invisible":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_invisible)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_invisible)))
 		case "unguardable":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_unguardable)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_unguardable)))
 		case "nojugglecheck":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nojugglecheck)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nojugglecheck)))
 		case "noautoturn":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noautoturn)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noautoturn)))
 		case "nowalk":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nowalk)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nowalk)))
 		case "nobrake":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nobrake)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nobrake)))
 		case "nocrouch":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nocrouch)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nocrouch)))
 		case "nostand":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nostand)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nostand)))
 		case "nojump":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nojump)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nojump)))
 		case "noairjump":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noairjump)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noairjump)))
 		case "nohardcodedkeys":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nohardcodedkeys)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nohardcodedkeys)))
 		case "nogetupfromliedown":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nogetupfromliedown)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nogetupfromliedown)))
 		case "nofastrecoverfromliedown":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofastrecoverfromliedown)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nofastrecoverfromliedown)))
 		case "nofallcount":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofallcount)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nofallcount)))
 		case "nofalldefenceup":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nofalldefenceup)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nofalldefenceup)))
 		case "noturntarget":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noturntarget)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noturntarget)))
 		case "noinput":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noinput)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noinput)))
 		case "nopowerbardisplay":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nopowerbardisplay)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nopowerbardisplay)))
 		case "autoguard":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_autoguard)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_autoguard)))
 		case "animfreeze":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_animfreeze)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_animfreeze)))
 		case "postroundinput":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_postroundinput)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_postroundinput)))
 		case "nohitdamage":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nohitdamage)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nohitdamage)))
 		case "noguarddamage":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguarddamage)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noguarddamage)))
 		case "nodizzypointsdamage":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nodizzypointsdamage)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nodizzypointsdamage)))
 		case "noguardpointsdamage":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguardpointsdamage)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noguardpointsdamage)))
 		case "noredlifedamage":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noredlifedamage)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noredlifedamage)))
 		case "nomakedust":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nomakedust)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nomakedust)))
 		case "noko":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noko)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noko)))
 		case "noguardko":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noguardko)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noguardko)))
 		case "nokovelocity":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nokovelocity)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nokovelocity)))
 		case "noailevel":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_noailevel)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noailevel)))
 		case "nointroreset":
-			l.Push(lua.LBool(sys.debugWC.sf(CSF_nointroreset)))
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nointroreset)))
+		case "immovable":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
 		// GlobalSpecialFlag
 		case "intro":
-			l.Push(lua.LBool(sys.sf(GSF_intro)))
+			l.Push(lua.LBool(sys.gsf(GSF_intro)))
 		case "roundnotover":
-			l.Push(lua.LBool(sys.sf(GSF_roundnotover)))
+			l.Push(lua.LBool(sys.gsf(GSF_roundnotover)))
 		case "nomusic":
-			l.Push(lua.LBool(sys.sf(GSF_nomusic)))
+			l.Push(lua.LBool(sys.gsf(GSF_nomusic)))
 		case "nobardisplay":
-			l.Push(lua.LBool(sys.sf(GSF_nobardisplay)))
+			l.Push(lua.LBool(sys.gsf(GSF_nobardisplay)))
 		case "nobg":
-			l.Push(lua.LBool(sys.sf(GSF_nobg)))
+			l.Push(lua.LBool(sys.gsf(GSF_nobg)))
 		case "nofg":
-			l.Push(lua.LBool(sys.sf(GSF_nofg)))
+			l.Push(lua.LBool(sys.gsf(GSF_nofg)))
 		case "globalnoshadow":
-			l.Push(lua.LBool(sys.sf(GSF_globalnoshadow)))
+			l.Push(lua.LBool(sys.gsf(GSF_globalnoshadow)))
 		case "timerfreeze":
-			l.Push(lua.LBool(sys.sf(GSF_timerfreeze)))
+			l.Push(lua.LBool(sys.gsf(GSF_timerfreeze)))
 		case "nokosnd":
-			l.Push(lua.LBool(sys.sf(GSF_nokosnd)))
+			l.Push(lua.LBool(sys.gsf(GSF_nokosnd)))
 		case "nokoslow":
-			l.Push(lua.LBool(sys.sf(GSF_nokoslow)))
+			l.Push(lua.LBool(sys.gsf(GSF_nokoslow)))
 		case "globalnoko":
-			l.Push(lua.LBool(sys.sf(GSF_noko)))
+			l.Push(lua.LBool(sys.gsf(GSF_noko)))
 		case "roundnotskip":
-			l.Push(lua.LBool(sys.sf(GSF_roundnotskip)))
+			l.Push(lua.LBool(sys.gsf(GSF_roundnotskip)))
 		case "roundfreeze":
-			l.Push(lua.LBool(sys.sf(GSF_roundfreeze)))
+			l.Push(lua.LBool(sys.gsf(GSF_roundfreeze)))
 		// SystemCharFlag
 		case "over":
 			l.Push(lua.LBool(sys.debugWC.scf(SCF_over)))
@@ -4254,7 +4256,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "majorversion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.gi().ver[0]))
+		l.Push(lua.LBool(sys.debugWC.gi().ver[0] == 1))
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
