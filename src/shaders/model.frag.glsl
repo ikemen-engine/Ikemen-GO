@@ -8,6 +8,7 @@ uniform bool enableAlpha;
 uniform float alphaThreshold;
 
 varying vec2 texcoord;
+varying vec4 vColor;
 
 void main(void) {
 	if(textured){
@@ -15,7 +16,7 @@ void main(void) {
 	} else {
 		gl_FragColor = baseColorFactor;
 	}
-	
+	gl_FragColor *= vColor;
 	if(!enableAlpha){
 		if(gl_FragColor.a < alphaThreshold){
 			discard;

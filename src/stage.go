@@ -943,7 +943,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
-	if sec := defmap["model"]; len(sec) > 0 {
+	if sec := defmap["model"]; len(sec) > 0 && s.model != nil {
 		if str, ok := sec[0]["offset"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.offset) {
@@ -956,6 +956,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
+		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
+		//s.stageCamera.zoffset = int32((float32(sys.scrrect[3])/2 - s.model.offset[1]/float32(math.Tan(float64(s.stageCamera.fov)/2))*-s.model.offset[2]*s.localscl*sys.heightScale/(float32(sys.scrrect[3])/2)) / s.localscl / sys.heightScale)
+		s.stageCamera.zoffset = int32(float32(sys.scrrect[3])/2 - s.model.offset[1]/posMul)
 		if str, ok := sec[0]["scale"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.scale) {
@@ -1823,6 +1826,18 @@ func loadglTFStage(filepath string) (*Model, error) {
 				mdl.elementBuffer = append(mdl.elementBuffer, p)
 			}
 			primitive.numIndices = uint32(len(indices))
+			if idx, ok := p.Attributes[gltf.COLOR_0]; ok {
+				var colorBuffer [][4]uint8
+				colors, _ := modeler.ReadColor(doc, doc.Accessors[idx], colorBuffer)
+				for _, color := range colors {
+					mdl.vertexBuffer = append(mdl.vertexBuffer, float32(color[0])/255.0, float32(color[1])/255.0, float32(color[2])/255.0, float32(color[3])/255.0)
+				}
+			} else {
+				for i := 0; i < int(primitive.numVertices); i++ {
+					mdl.vertexBuffer = append(mdl.vertexBuffer, 1, 1, 1, 1)
+				}
+			}
+
 			if p.Material != nil {
 				primitive.materialIndex = new(uint32)
 				*primitive.materialIndex = *p.Material
@@ -1951,7 +1966,7 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 			return
 		}
 		color := mdl.materials[*p.materialIndex].baseColorFactor
-		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices))
+		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
 
 		gfx.SetModelUniformMatrix("projection", proj[:])
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
@@ -1975,17 +1990,17 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 	}
 }
 func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
-	const pi = 3.1415926535898
 	if s.model == nil || len(s.model.scenes) == 0 {
 		return
 	}
 
-	drawFOV := s.stageCamera.fov * pi / 180
+	drawFOV := s.stageCamera.fov * math.Pi / 180
 
 	var near float32 = 0.1
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
+	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) * sys.heightScale / s.localscl / sys.heightScale / scl
 
-	offset := []float32{(pos[0]*-posMul + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl)*posMul + s.model.offset[1]) / scl, s.model.offset[2] / scl}
+	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000)

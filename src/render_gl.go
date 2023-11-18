@@ -54,8 +54,9 @@ type ShaderProgram struct {
 	// Program
 	program uint32
 	// Attribute locations (sprite shaders)
-	aPos int32
-	aUv  int32
+	aPos   int32
+	aUv    int32
+	aColor int32
 	// Attribute locations (postprocess shaders)
 	aVert int32
 	// Uniforms
@@ -72,6 +73,7 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 	s = &ShaderProgram{program: prog}
 	s.aPos = gl.GetAttribLocation(s.program, glStr("position"))
 	s.aUv = gl.GetAttribLocation(s.program, glStr("uv"))
+	s.aColor = gl.GetAttribLocation(s.program, glStr("vertColor"))
 	s.aVert = gl.GetAttribLocation(s.program, glStr("VertCoord"))
 
 	s.u = make(map[string]int32)
@@ -432,7 +434,7 @@ func (r *Renderer) ReleasePipeline() {
 	gl.Disable(gl.BLEND)
 }
 
-func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided bool, offset1, offset2 int) {
+func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided bool, offset1, offset2, offset3 int) {
 	gl.UseProgram(r.modelShader.program)
 
 	gl.Enable(gl.TEXTURE_2D)
@@ -454,13 +456,15 @@ func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthM
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
 	gl.EnableVertexAttribArray(uint32(r.modelShader.aPos))
 	gl.EnableVertexAttribArray(uint32(r.modelShader.aUv))
-	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aPos), 3, gl.FLOAT, false, 12, uintptr(offset1))
-	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aUv), 2, gl.FLOAT, false, 8, uintptr(offset2))
-
+	gl.EnableVertexAttribArray(uint32(r.modelShader.aColor))
+	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aPos), 3, gl.FLOAT, false, 0, uintptr(offset1))
+	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aUv), 2, gl.FLOAT, false, 0, uintptr(offset2))
+	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aColor), 4, gl.FLOAT, false, 0, uintptr(offset3))
 }
 func (r *Renderer) ReleaseModelPipeline() {
 	gl.DisableVertexAttribArray(uint32(r.modelShader.aPos))
 	gl.DisableVertexAttribArray(uint32(r.modelShader.aUv))
+	gl.DisableVertexAttribArray(uint32(r.modelShader.aColor))
 	//gl.Disable(gl.TEXTURE_2D)
 	gl.DepthMask(true)
 	gl.Disable(gl.DEPTH_TEST)
