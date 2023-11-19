@@ -1156,7 +1156,7 @@ func (e *Explod) setPos(c *Char) {
 		} else {
 			// explod の postype = front はキャラの向きで pos が反転しない
 			// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
-			//if e.postype == PT_Front && c.gi().ver[0] != 1 {
+			//if e.postype == PT_Front && c.gi().mugenver[0] != 1 {
 			// 旧バージョンだと front は キャラの向きが facing に反映されない
 			// 1.1でも反映されてない模様
 			// "In the previous version, "front" does not reflect the character's orientation in facing."
@@ -1619,7 +1619,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
-			sys.cgi[playerNo].ver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
+			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false)
 		sys.sprites.add(sd,
 			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
@@ -1658,7 +1658,7 @@ type CharGlobalInfo struct {
 	pal              [MaxPalNo]string
 	palExist         [MaxPalNo]bool
 	palSelectable    [MaxPalNo]bool
-	ver              [2]uint16
+	mugenver         [2]uint16
 	data             CharData
 	velocity         CharVelocity
 	movement         CharMovement
@@ -2908,7 +2908,7 @@ func (c *Char) p2() *Char {
 	return p2
 }
 func (c *Char) aiLevel() float32 {
-	if c.helperIndex != 0 && c.gi().ver[0] == 1 {
+	if c.helperIndex != 0 && c.gi().mugenver[0] == 1 {
 		return 0
 	}
 	return sys.com[c.playerNo]
@@ -3216,7 +3216,7 @@ func (c *Char) numTarget(hid BytecodeValue) BytecodeValue {
 	return BytecodeInt(n)
 }
 func (c *Char) palno() int32 {
-	if c.helperIndex != 0 && c.gi().ver[0] != 1 {
+	if c.helperIndex != 0 && c.gi().mugenver[0] != 1 {
 		return 1
 	}
 	return c.gi().palno
@@ -3447,7 +3447,7 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 	if ch := crun.soundChannels.New(chNo, lowpriority, priority); ch != nil {
 		ch.Play(s, loop, freqmul)
 		vol = Clamp(vol, -25600, 25600)
-		//if c.gi().ver[0] == 1 {
+		//if c.gi().mugenver[0] == 1 {
 		if ffx != "" {
 			ch.SetVolume(float32(vol * 64 / 25))
 		} else {
@@ -3759,7 +3759,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		}
 	}
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if h.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && h.stCgi().ikemenver[0] <= 0 && h.stCgi().ikemenver[1] <= 0 {
+	if h.stCgi().mugenver[0] == 1 && h.stCgi().mugenver[1] == 1 && h.stCgi().ikemenver[0] <= 0 && h.stCgi().ikemenver[1] <= 0 {
 		h.palfx.invertblend = -2
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
@@ -3770,7 +3770,7 @@ func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
 		expl.id, expl.playerId, expl.palfx, expl.palfxdef = -1, c.id, c.getPalfx(), PalFXDef{color: 1, hue: 0, mul: [...]int32{256, 256, 256}}
-		if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 1 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 			expl.projection = Projection_Perspective
 		} else {
 			expl.projection = Projection_Orthographic
@@ -4816,7 +4816,7 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 	}
 	dist := c.facing * c.distX(rd, oc)
 	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-		if c.stCgi().ver[0] != 1 {
+		if c.stCgi().mugenver[0] != 1 {
 			// 旧バージョンでは小数点切り捨て
 			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
 			dist = float32(int32(dist))
@@ -4830,7 +4830,7 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 	}
 	dist := c.distY(rd, oc)
 	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-		if c.stCgi().ver[0] != 1 {
+		if c.stCgi().mugenver[0] != 1 {
 			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
 			dist = float32(int32(dist))
 		}
@@ -4842,7 +4842,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 		return BytecodeSF()
 	} else {
 		dist := c.facing * c.bodyDistX(p2, oc)
-		if c.stCgi().ver[0] != 1 {
+		if c.stCgi().mugenver[0] != 1 {
 			dist = float32(int32(dist)) //旧バージョンでは小数点切り捨て / "In the old version, decimal truncation was used."
 		}
 		return BytecodeFloat(dist)
@@ -4866,7 +4866,7 @@ func (c *Char) hitVelSetY() {
 	c.setYV(c.ghv.yvel)
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
-	if !actually || c.stCgi().ver[0] != 1 {
+	if !actually || c.stCgi().mugenver[0] != 1 {
 		switch c.ss.stateType {
 		case ST_A:
 			return base + 1
@@ -4960,7 +4960,7 @@ func (c *Char) getPalfx() *PalFX {
 	}
 	c.palfx = newPalFX()
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 1 && c.stCgi().ikemenver[0] <= 0 && c.stCgi().ikemenver[1] <= 0 && c.palfx != nil {
+	if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 1 && c.stCgi().ikemenver[0] <= 0 && c.stCgi().ikemenver[1] <= 0 && c.palfx != nil {
 		c.palfx.PalFXDef.invertblend = -2
 	}
 	return c.palfx
@@ -5882,7 +5882,7 @@ func (c *Char) actionPrepare() {
 			}
 		}
 		c.unsetASF(ASF_noautoturn)
-		if c.gi().ver[0] == 1 {
+		if c.gi().mugenver[0] == 1 {
 			// The following flags are only reset later in the code
 			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
 			c.unsetCSF(CSF_angledraw | CSF_offset)
@@ -6517,7 +6517,7 @@ func (c *Char) cueDraw() {
 		sdf := func() *SprData {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
-				c.playerNo == sys.superplayer, c.gi().ver[0] != 1, c.facing, c.localscl / (320 / c.localcoord), 0, 0, [4]float32{0, 0, 0, 0}}
+				c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing, c.localscl / (320 / c.localcoord), 0, 0, [4]float32{0, 0, 0, 0}}
 			if !c.csf(CSF_trans) {
 				sd.alpha[0] = -1
 			}
@@ -6527,7 +6527,7 @@ func (c *Char) cueDraw() {
 		//	c.aimg.recAfterImg(sdf(), c.hitPause())
 		//}
 
-		//if c.gi().ver[0] != 1 && c.csf(CSF_angledraw) && !c.csf(CSF_trans) {
+		//if c.gi().mugenver[0] != 1 && c.csf(CSF_angledraw) && !c.csf(CSF_trans) {
 		//	c.setCSF(CSF_trans)
 		//	c.alpha = [...]int32{255, 0}
 		//}
@@ -7269,7 +7269,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		var xmi, xma float32
 		xmi += sys.xmin + 2
 		xma += sys.xmax - 2
-		if c.stCgi().ver[0] != 1 {
+		if c.stCgi().mugenver[0] != 1 {
 			xmi += 2
 			xma -= 2
 		}
@@ -7550,13 +7550,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									}
 									if !getter.csf(CSF_gethit) {
 										getter.hitPauseTime = Max(1, c.hitdef.shaketime+
-											Btoi(c.gi().ver[0] == 1))
+											Btoi(c.gi().mugenver[0] == 1))
 									}
 								}
 								if !c.csf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
 									getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
 									c.hitPauseTime = Max(1, c.hitdef.pausetime+
-										Btoi(c.gi().ver[0] == 1))
+										Btoi(c.gi().mugenver[0] == 1))
 								}
 								c.uniqHitCount++
 							} else {
@@ -7565,7 +7565,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								}
 								if !c.csf(CSF_gethit) {
 									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime+
-										Btoi(c.gi().ver[0] == 1))
+										Btoi(c.gi().mugenver[0] == 1))
 								}
 							}
 							if c.hitdef.hitonce > 0 {

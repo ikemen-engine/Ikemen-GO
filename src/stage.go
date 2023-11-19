@@ -724,7 +724,7 @@ type Stage struct {
 	stageTime       int32
 	constants       map[string]float32
 	p1p3dist        float32
-	ver             [2]uint16
+	mugenver        [2]uint16
 	reload          bool
 	stageprops      StageProps
 }
@@ -777,21 +777,21 @@ func loadStage(def string, main bool) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
-		s.ver = [2]uint16{}
+		s.mugenver = [2]uint16{}
 		if str, ok := sec[0]["mugenversion"]; ok {
 			for k, v := range SplitAndTrim(str, ".") {
-				if k >= len(s.ver) {
+				if k >= len(s.mugenver) {
 					break
 				}
 				if v, err := strconv.ParseUint(v, 10, 16); err == nil {
-					s.ver[k] = uint16(v)
+					s.mugenver[k] = uint16(v)
 				} else {
 					break
 				}
 			}
 		}
 		// If the MUGEN version is lower than 1.0, use camera pixel rounding (floor)
-		if s.ver[0] == 0 {
+		if s.mugenver[0] != 1 {
 			s.stageprops.roundpos = true
 		}
 		if sec[0].LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
@@ -838,7 +838,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
 	}
 	if sec := defmap["scaling"]; len(sec) > 0 {
-		if s.ver[0] == 0 { //mugen 1.0+ removed support for topscale
+		if s.mugenver[0] != 1 { //mugen 1.0+ removed support for topscale
 			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
 		}
 	}
@@ -935,7 +935,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		var r, g, b int32
 		// mugen 1.1 removed support for color
-		if (s.ver[0] != 1 || s.ver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
+		if (s.mugenver[0] != 1 || s.mugenver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
 			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
