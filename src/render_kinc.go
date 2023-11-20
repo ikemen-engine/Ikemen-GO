@@ -304,3 +304,6 @@ func (r *Renderer) RenderQuad() {
 	C.kinc_g4_set_index_buffer(r.indexBuffer)
 	C.kinc_g4_draw_indexed_vertices()
 }
+
+func (r *Renderer) RenderElements(mode PrimitiveMode, count, offset int) {
+}
