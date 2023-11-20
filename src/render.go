@@ -441,11 +441,3 @@ func FillRect(rect [4]int32, color uint32, trans int32) {
 		gfx.ReleasePipeline()
 	}, trans, true, 0, nil, nil, nil, false)
 }
-
-//3D Model Rendering
-func RenderScene() {
-
-}
-func RenderPrimitive(eq BlendEquation, src, dst BlendFunc, depthMask bool, mode PrimitiveMode, offset1, offset2, count int) {
-
-}
