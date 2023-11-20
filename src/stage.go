@@ -1710,19 +1710,14 @@ func loadglTFStage(filepath string) (*Model, error) {
 			gltf.MagNearest:   9728,
 			gltf.MagLinear:    9729,
 		}[s.MagFilter]
-		//TODO: handle mipmip
 		min, _ := map[gltf.MinFilter]int32{
 			gltf.MinUndefined:            9729,
 			gltf.MinNearest:              9728,
 			gltf.MinLinear:               9729,
-			gltf.MinNearestMipMapNearest: 9728,
-			gltf.MinLinearMipMapNearest:  9729,
-			gltf.MinNearestMipMapLinear:  9728,
-			gltf.MinLinearMipMapLinear:   9729,
-			//gltf.MinNearestMipMapNearest: 9984,
-			//gltf.MinLinearMipMapNearest:  9985,
-			//gltf.MinNearestMipMapLinear:  9986,
-			//gltf.MinLinearMipMapLinear:   9987,
+			gltf.MinNearestMipMapNearest: 9984,
+			gltf.MinLinearMipMapNearest:  9985,
+			gltf.MinNearestMipMapLinear:  9986,
+			gltf.MinLinearMipMapLinear:   9987,
 		}[s.MinFilter]
 		wrapS, _ := map[gltf.WrappingMode]int32{
 			gltf.WrapClampToEdge:    33071,
@@ -1826,10 +1821,67 @@ func loadglTFStage(filepath string) (*Model, error) {
 			}
 			primitive.numIndices = uint32(len(indices))
 			if idx, ok := p.Attributes[gltf.COLOR_0]; ok {
-				var colorBuffer [][4]uint8
-				colors, _ := modeler.ReadColor(doc, doc.Accessors[idx], colorBuffer)
-				for _, color := range colors {
-					mdl.vertexBuffer = append(mdl.vertexBuffer, float32(color[0])/255.0, float32(color[1])/255.0, float32(color[2])/255.0, float32(color[3])/255.0)
+				switch doc.Accessors[idx].ComponentType {
+				case gltf.ComponentUbyte:
+					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
+						var vecBuffer [][3]uint8
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][3]uint8) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)
+						}
+					} else {
+						var vecBuffer [][4]uint8
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][4]uint8) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)
+						}
+					}
+				case gltf.ComponentUshort:
+					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
+						var vecBuffer [][3]uint16
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][3]uint16) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)
+						}
+					} else {
+						var vecBuffer [][4]uint16
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][4]uint16) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)
+						}
+					}
+				case gltf.ComponentFloat:
+					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
+						var vecBuffer [][3]float32
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][3]float32) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, vec[0], vec[1], vec[2], 1)
+						}
+					} else {
+						var vecBuffer [][4]float32
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][4]float32) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, vec[0], vec[1], vec[2], vec[3])
+						}
+					}
 				}
 			} else {
 				for i := 0; i < int(primitive.numVertices); i++ {
