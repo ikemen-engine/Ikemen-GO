@@ -7163,7 +7163,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					}
 				}
 			}
-			if ghvset || getter.csf(CSF_gethit) {
+			if (ghvset || getter.csf(CSF_gethit)) && getter.hoIdx < 0 {
 				getter.receivedHits += hd.numhits * hits
 				getter.fakeReceivedHits += hd.numhits * hits
 				if c.teamside != -1 {
