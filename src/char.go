@@ -4681,7 +4681,7 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 				if AbsF(c.bindFacing) == 2 {
 					f = c.bindFacing / 2
 				}
-				cpos = bt.pos[0] * bt.localscl + f * (c.bindPos[0] + c.bindPosAdd[0]) * c.localscl
+				cpos = bt.pos[0]*bt.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])*c.localscl
 			}
 		}
 	}
@@ -4694,7 +4694,7 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
-				cpos = bt.pos[1] * bt.localscl + (c.bindPos[1] + c.bindPosAdd[1]) * c.localscl
+				cpos = bt.pos[1]*bt.localscl + (c.bindPos[1]+c.bindPosAdd[1])*c.localscl
 			}
 		}
 	}
