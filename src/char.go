@@ -4758,17 +4758,34 @@ func (c *Char) consecutiveWins() int32 {
 	return sys.consecutiveWins[c.teamside]
 }
 func (c *Char) distX(opp *Char, oc *Char) float32 {
-	currentPosX := c.pos[0] * c.localscl
-	if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-		if bt := sys.playerID(c.bindToId); bt != nil {
-			f := bt.facing
-			if AbsF(c.bindFacing) == 2 {
-				f = c.bindFacing / 2
+	cpos := c.pos[0] * c.localscl
+	opos := opp.pos[0] * opp.localscl
+	// Update distance while bound. Mugen chars only
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
+			if bt := sys.playerID(c.bindToId); bt != nil {
+				f := bt.facing
+				if AbsF(c.bindFacing) == 2 {
+					f = c.bindFacing / 2
+				}
+				cpos = bt.pos[0]*bt.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])*c.localscl
 			}
-			currentPosX = bt.pos[0]*bt.localscl/c.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])
 		}
 	}
-	return (opp.pos[0]*opp.localscl - currentPosX) / oc.localscl
+	return (opos - cpos) / oc.localscl
+}
+func (c *Char) distY(opp *Char, oc *Char) float32 {
+	cpos := c.pos[1] * c.localscl
+	opos := opp.pos[1] * opp.localscl
+	// Update distance while bound. Mugen chars only
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
+			if bt := sys.playerID(c.bindToId); bt != nil {
+				cpos = bt.pos[1]*bt.localscl + (c.bindPos[1]+c.bindPosAdd[1])*c.localscl
+			}
+		}
+	}
+	return (opos - cpos) / oc.localscl
 }
 func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	dist := c.distX(opp, oc)
@@ -4798,10 +4815,12 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeSF()
 	}
 	dist := c.facing * c.distX(rd, oc)
-	if c.stCgi().ver[0] != 1 {
-		// 旧バージョンでは小数点切り捨て
-		// "In the previous version, rounding down to the nearest whole number was performed."
-		dist = float32(int32(dist))
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.stCgi().ver[0] != 1 {
+			// 旧バージョンでは小数点切り捨て
+			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
+			dist = float32(int32(dist))
+		}
 	}
 	return BytecodeFloat(dist)
 }
@@ -4809,13 +4828,13 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeSF()
 	}
-	currentPosY := c.pos[1] * c.localscl
-	if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-		if bt := sys.playerID(c.bindToId); bt != nil {
-			currentPosY = bt.pos[1]*bt.localscl/c.localscl + (c.bindPos[1] + c.bindPosAdd[1])
+	dist := c.distY(rd, oc)
+	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.stCgi().ver[0] != 1 {
+			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
+			dist = float32(int32(dist))
 		}
 	}
-	dist := (rd.pos[1]*rd.localscl - currentPosY) / oc.localscl
 	return BytecodeFloat(dist)
 }
 func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
