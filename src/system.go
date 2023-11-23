@@ -929,7 +929,7 @@ func (s *System) commandUpdate() {
 					c.helperIndex > 0 && &c.cmd[0] != &r.cmd[0]) &&
 					c.cmd[0].Input(c.key, int32(c.facing), sys.com[i], c.inputFlag) {
 					hp := c.hitPause() && c.gi().constants["input.pauseonhitpause"] != 0
-					buftime := Btoi(hp && c.gi().ver[0] != 1)
+					buftime := Btoi(hp && c.gi().mugenver[0] != 1)
 					if s.super > 0 {
 						if !act && s.super <= s.superendcmdbuftime {
 							hp = true
@@ -1408,7 +1408,7 @@ func (s *System) action() {
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
 			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, Rotation{}, [2]float32{},
-			false, true, s.cgi[s.superplayer].ver[0] != 1, 1, 1, 0, 0, [4]float32{0, 0, 0, 0}}, 0, 0, 0, 0)
+			false, true, s.cgi[s.superplayer].mugenver[0] != 1, 1, 1, 0, 0, [4]float32{0, 0, 0, 0}}, 0, 0, 0, 0)
 		if s.superanim.loopend {
 			s.superanim = nil
 		}
@@ -1416,7 +1416,7 @@ func (s *System) action() {
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
-				s.projs[i][j].cueDraw(s.cgi[i].ver[0] != 1, i)
+				s.projs[i][j].cueDraw(s.cgi[i].mugenver[0] != 1, i)
 			}
 		}
 	}
@@ -1425,7 +1425,7 @@ func (s *System) action() {
 		for i, el := range *edl {
 			for j := len(el) - 1; j >= 0; j-- {
 				if el[j] >= 0 {
-					s.explods[i][el[j]].update(s.cgi[i].ver[0] != 1, i)
+					s.explods[i][el[j]].update(s.cgi[i].mugenver[0] != 1, i)
 					if s.explods[i][el[j]].id == IErr {
 						if drop {
 							el = append(el[:j], el[j+1:]...)
@@ -2757,13 +2757,15 @@ func (l *Loader) loadChar(pn int) int {
 	defer func() {
 		sys.loadTime(tnow, tstr, false, true)
 		// Mugen compatibility mode indicator
-		if sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[0] == 0 {
-			if sys.cgi[pn].ver[0] == 1 && sys.cgi[pn].ikemenver[0] == 1 {
+		if sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0 {
+			if sys.cgi[pn].mugenver[0] == 1 && sys.cgi[pn].mugenver[1] == 1 {
 				sys.appendToConsole("Using Mugen 1.1 compatibility mode.")
-			} else if sys.cgi[pn].ver[0] == 1 && sys.cgi[pn].ikemenver[0] == 0 {
+			} else if sys.cgi[pn].mugenver[0] == 1 && sys.cgi[pn].mugenver[1] == 0 {
 				sys.appendToConsole("Using Mugen 1.0 compatibility mode.")
-			} else if sys.cgi[pn].ver[0] != 1 {
+			} else if sys.cgi[pn].mugenver[0] != 1 {
 				sys.appendToConsole("Using WinMugen compatibility mode.")
+			} else {
+				sys.appendToConsole("Character with unknown engine version.")
 			}
 		}
 	}()

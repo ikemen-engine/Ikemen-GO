@@ -701,7 +701,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 		case "h", "a":
 			flg |= int32(AT_HA | AT_HT | AT_HP)
 		default:
-			if sys.ignoreMostErrors && sys.cgi[c.playerNo].ver[0] == 1 {
+			if sys.ignoreMostErrors && sys.cgi[c.playerNo].mugenver[0] == 1 {
 				//if hitdef {
 				//	flg = hitdefflg
 				//}
@@ -1861,7 +1861,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			return nil
 		}
-		// if sys.cgi[c.playerNo].ver[0] == 1 {
+		// if sys.cgi[c.playerNo].mugenver[0] == 1 {
 		// if err := eqne(hda); err != nil {
 		// return bvNone(), err
 		// }
@@ -3970,7 +3970,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 		}
 		var exp []BytecodeExp
 		b := false
-		if !afterImage || sys.cgi[c.playerNo].ver[0] == 1 {
+		if !afterImage || sys.cgi[c.playerNo].mugenver[0] == 1 {
 			if err := c.stateParam(is, prefix+"alpha", func(data string) error {
 				b = true
 				bes, err := c.exprs(data, VT_Int, 2)
@@ -4001,7 +4001,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 				}
 				if len(bes) > 1 {
 					exp[1] = bes[1]
-					if tt != TT_alpha && tt != TT_add1 && !(tt == TT_add && sys.cgi[c.playerNo].ver[0] == 1) {
+					if tt != TT_alpha && tt != TT_add1 && !(tt == TT_add && sys.cgi[c.playerNo].mugenver[0] == 1) {
 						exp[1].append(OC_pop)
 					}
 				}
@@ -4011,7 +4011,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 						exp[1].appendValue(BytecodeInt(255))
 					}
 				case TT_add:
-					if sys.cgi[c.playerNo].ver[0] == 1 {
+					if sys.cgi[c.playerNo].mugenver[0] == 1 {
 						if len(bes) <= 1 {
 							exp[1].appendValue(BytecodeInt(255))
 						}
@@ -5549,14 +5549,14 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 				info = false
 				var ok bool
 				var str string
-				sys.cgi[pn].ver = [2]uint16{}
+				sys.cgi[pn].mugenver = [2]uint16{}
 				if str, ok = is["mugenversion"]; ok {
 					for i, s := range SplitAndTrim(str, ".") {
-						if i >= len(sys.cgi[pn].ver) {
+						if i >= len(sys.cgi[pn].mugenver) {
 							break
 						}
 						if v, err := strconv.ParseUint(s, 10, 16); err == nil {
-							sys.cgi[pn].ver[i] = uint16(v)
+							sys.cgi[pn].mugenver[i] = uint16(v)
 						} else {
 							break
 						}
@@ -5574,6 +5574,11 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 							break
 						}
 					}
+				}
+				// Ikemen characters adopt Mugen 1.1 version as a safeguard
+				if sys.cgi[pn].ikemenver[0] != 0 || sys.cgi[pn].ikemenver[1] != 0 {
+					sys.cgi[pn].mugenver[0] = 1
+					sys.cgi[pn].mugenver[1] = 1
 				}
 			}
 		case "files":

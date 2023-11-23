@@ -769,7 +769,7 @@ func (BytecodeExp) pow(v1 *BytecodeValue, v2 BytecodeValue, pn int) {
 		var i, bit, tmp int32 = 1, 0, i1
 		for ; bit <= hb; bit++ {
 			var shift uint
-			if bit == hb || sys.cgi[pn].ver[0] == 1 {
+			if bit == hb || sys.cgi[pn].mugenver[0] == 1 {
 				shift = uint(bit)
 			} else {
 				shift = uint((hb - 1) - bit)
@@ -1305,7 +1305,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.frontEdgeDist() * (c.localscl / oc.localscl)))
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
-			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
+			if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 0 &&
 				c.gi().constants["default.legacygamedistancespec"] == 1 {
 				sys.bcStack.PushF(c.screenHeight())
 			} else {
@@ -1323,7 +1323,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(sys.gameTime + pfTime)
 		case OC_gamewidth:
 			// Optional exception preventing GameWidth from being affected by stage zoom.
-			if c.stCgi().ver[0] == 1 && c.stCgi().ver[1] == 0 &&
+			if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 0 &&
 				c.gi().constants["default.legacygamedistancespec"] == 1 {
 				sys.bcStack.PushF(c.screenWidth())
 			} else {
@@ -2187,7 +2187,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:
-		sys.bcStack.PushB(c.gi().ver[0] == 1)
+		sys.bcStack.PushB(c.gi().mugenver[0] == 1)
 	case OC_ex_maparray:
 		sys.bcStack.PushF(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
@@ -3699,7 +3699,7 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 			}
 		}
 		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-		if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
+		if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
 			pf.invertblend = -2
 		}
 		sc.runSub(c, &pf.PalFXDef, id, exp)
@@ -3807,7 +3807,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.id = 0
 			}
 			// Mugenversion 1.1 chars default postype to "None"
-			if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 {
+			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 {
 				e.postype = PT_None
 			}
 		}
@@ -3952,7 +3952,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_window:
 			e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 		default:
-			if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
+			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
 				e.palfxdef.invertblend = -2
 			}
 			palFX(sc).runSub(c, &e.palfxdef, id, exp)
@@ -4430,7 +4430,7 @@ func (sc afterImage) Run(c *Char, _ []int32) bool {
 		if !doOce {
 			crun.aimg.clear()
 			//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-			if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
+			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
 				crun.aimg.palfx[0].invertblend = -2
 			}
 			crun.aimg.time = 1
@@ -4874,7 +4874,7 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 			}
 		}
 		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-		if crun.stCgi().ver[0] == 1 && crun.stCgi().ver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
+		if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
 			crun.hitdef.palfx.invertblend = -2
 		}
 		sc.runSub(c, &crun.hitdef, id, exp)
@@ -4884,7 +4884,7 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 	//"In Winmugen, when the attr of Hitdef is set to 'Throw' and the pausetime
 	// on the attacker's side is greater than 1, it no longer executes every frame."
 	if crun.hitdef.attr&int32(AT_AT) != 0 && crun.moveContact() == 1 &&
-		c.gi().ver[0] != 1 && crun.hitdef.pausetime > 0 {
+		c.gi().mugenver[0] != 1 && crun.hitdef.pausetime > 0 {
 		crun.hitdef.attr = 0
 		return false
 	}
@@ -5194,10 +5194,11 @@ const (
 
 func (sc sprPriority) Run(c *Char, _ []int32) bool {
 	crun := c
+	v := int32(0) // Mugen uses 0 if no value is set at all
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case sprPriority_value:
-			crun.setSprPriority(exp[0].evalI(c))
+			v = exp[0].evalI(c)
 		case sprPriority_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5207,6 +5208,7 @@ func (sc sprPriority) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.setSprPriority(v)
 	return false
 }
 
@@ -6244,10 +6246,11 @@ const (
 
 func (sc angleSet) Run(c *Char, _ []int32) bool {
 	crun := c
+	v := float32(0) // Mugen uses 0 if no value is set at all
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case angleSet_value:
-			crun.angleSet(exp[0].evalF(c))
+			v = exp[0].evalF(c)
 		case angleSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6257,6 +6260,7 @@ func (sc angleSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.angleSet(v)
 	return false
 }
 
@@ -6294,10 +6298,11 @@ const (
 
 func (sc angleMul) Run(c *Char, _ []int32) bool {
 	crun := c
+	v := float32(0) // Mugen uses 0 if no value is set at all
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case angleMul_value:
-			crun.angleSet(crun.angle * exp[0].evalF(c))
+			v = exp[0].evalF(c)
 		case angleMul_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6307,6 +6312,7 @@ func (sc angleMul) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.angleSet(crun.angle * v)
 	return false
 }
 
@@ -8688,7 +8694,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_playerinfo_rightbound:
 			s.rightbound = exp[0].evalF(c)
 		case modifyStageVar_scaling_topscale:
-			if s.ver[0] == 0 { //mugen 1.0+ removed support for topscale
+			if s.mugenver[0] != 1 { //mugen 1.0+ removed support for topscale
 				s.stageCamera.ztopscale = exp[0].evalF(c)
 			}
 		case modifyStageVar_bound_screenleft:
@@ -8707,7 +8713,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.sdw.intensity = Clamp(exp[0].evalI(c), 0, 255)
 		case modifyStageVar_shadow_color:
 			// mugen 1.1 removed support for color
-			if (s.ver[0] != 1 || s.ver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) {
+			if (s.mugenver[0] != 1 || s.mugenver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) {
 				r := Clamp(exp[0].evalI(c), 0, 255)
 				g := Clamp(exp[1].evalI(c), 0, 255)
 				b := Clamp(exp[2].evalI(c), 0, 255)
