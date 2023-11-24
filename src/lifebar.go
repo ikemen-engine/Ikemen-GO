@@ -3744,7 +3744,7 @@ func (l *Lifebar) step() {
 		}
 	}
 	for i := range l.co {
-		l.co[i].step(cb[i], cd[i], cp[i], dz[i])// Combo, combo damage, combo damage percentage, dizzy
+		l.co[i].step(cb[i], cd[i], cp[i], dz[i]) // Combo, combo damage, combo damage percentage, dizzy
 	}
 	//LifeBarAction
 	for i := range l.ac {

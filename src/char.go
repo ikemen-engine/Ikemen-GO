@@ -1744,41 +1744,41 @@ const (
 )
 
 type CharSystemVar struct {
-	airJumpCount     int32
-	assertFlag       AssertSpecialFlag
-	hitCount         int32
-	uniqHitCount     int32
-	pauseMovetime    int32
-	superMovetime    int32
-	bindTime         int32
-	bindToId         int32
-	bindPos          [2]float32
-	bindPosAdd       [2]float32
-	bindFacing       float32
-	hitPauseTime     int32
-	angle            float32
-	angleTrg         float32
-	angleScale       [2]float32
-	angleScaleTrg    [2]float32
-	alpha            [2]int32
-	alphaTrg         [2]int32
-	recoverTime      int32
-	systemFlag       SystemCharFlag
-	specialFlag      CharSpecialFlag
-	sprPriority      int32
-	receivedHits     int32
-	velOff           float32
-	width            [2]float32
-	edge             [2]float32
-	height           [2]float32
-	attackMul        float32
-	superDefenseMul  float32
-	fallDefenseMul   float32
-	customDefense    float32
-	finalDefense     float64
-	defenseMulDelay  bool
-	counterHit       bool
-	comboDmg         int32
+	airJumpCount    int32
+	assertFlag      AssertSpecialFlag
+	hitCount        int32
+	uniqHitCount    int32
+	pauseMovetime   int32
+	superMovetime   int32
+	bindTime        int32
+	bindToId        int32
+	bindPos         [2]float32
+	bindPosAdd      [2]float32
+	bindFacing      float32
+	hitPauseTime    int32
+	angle           float32
+	angleTrg        float32
+	angleScale      [2]float32
+	angleScaleTrg   [2]float32
+	alpha           [2]int32
+	alphaTrg        [2]int32
+	recoverTime     int32
+	systemFlag      SystemCharFlag
+	specialFlag     CharSpecialFlag
+	sprPriority     int32
+	receivedHits    int32
+	velOff          float32
+	width           [2]float32
+	edge            [2]float32
+	height          [2]float32
+	attackMul       float32
+	superDefenseMul float32
+	fallDefenseMul  float32
+	customDefense   float32
+	finalDefense    float64
+	defenseMulDelay bool
+	counterHit      bool
+	comboDmg        int32
 }
 
 type Char struct {
@@ -1836,44 +1836,44 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
-	aimg                  AfterImage
-	soundChannels         SoundChannels
-	p1facing              float32
-	cpucmd                int32
-	attackDist            float32
-	offset                [2]float32
-	offsetTrg             [2]float32
-	stchtmp               bool
-	inguarddist           bool
-	pushed                bool
-	hitdefContact         bool
-	atktmp                int8
-	hittmp                int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
-	acttmp                int8
-	minus                 int8
-	platformPosY          float32
-	groundAngle           float32
-	ownpal                bool
-	winquote              int32
-	memberNo              int
-	selectNo              int
-	inheritJuggle         int32
-	inheritChannels       int32
-	mapArray              map[string]float32
-	mapDefault            map[string]float32
-	remapSpr              RemapPreset
-	clipboardText         []string
-	dialogue              []string
-	immortal              bool
-	kovelocity            bool
-	preserve              int32
-	defaultHitScale       [3]*HitScale
-	nextHitScale          map[int32][3]*HitScale
-	activeHitScale        map[int32][3]*HitScale
-	inputFlag             InputBits
-	pauseBool             bool
-	downHitOffset         float32
-	koEchoTime            int32
+	aimg            AfterImage
+	soundChannels   SoundChannels
+	p1facing        float32
+	cpucmd          int32
+	attackDist      float32
+	offset          [2]float32
+	offsetTrg       [2]float32
+	stchtmp         bool
+	inguarddist     bool
+	pushed          bool
+	hitdefContact   bool
+	atktmp          int8
+	hittmp          int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
+	acttmp          int8
+	minus           int8
+	platformPosY    float32
+	groundAngle     float32
+	ownpal          bool
+	winquote        int32
+	memberNo        int
+	selectNo        int
+	inheritJuggle   int32
+	inheritChannels int32
+	mapArray        map[string]float32
+	mapDefault      map[string]float32
+	remapSpr        RemapPreset
+	clipboardText   []string
+	dialogue        []string
+	immortal        bool
+	kovelocity      bool
+	preserve        int32
+	defaultHitScale [3]*HitScale
+	nextHitScale    map[int32][3]*HitScale
+	activeHitScale  map[int32][3]*HitScale
+	inputFlag       InputBits
+	pauseBool       bool
+	downHitOffset   float32
+	koEchoTime      int32
 }
 
 func newChar(n int, idx int32) (c *Char) {
