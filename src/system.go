@@ -74,7 +74,6 @@ var sys = System{
 	errLog:                log.New(NewLogWriter(), "", log.LstdFlags),
 	keyInput:              KeyUnknown,
 	wavChannels:           256,
-	comboExtraFrameWindow: 1,
 	fontShaderVer:         120,
 	//FLAC_FrameWait:          -1,
 	luaSpriteScale:       1,
@@ -166,7 +165,6 @@ type System struct {
 	workingState            *StateBytecode
 	specialFlag             GlobalSpecialFlag
 	afterImageMax           int32
-	comboExtraFrameWindow   int32
 	envShake                EnvShake
 	pause                   int32
 	pausetime               int32
@@ -972,6 +970,9 @@ func (s *System) charUpdate(cvmin, cvmax,
 			}
 		}
 	}
+	// Update lifebars before hit detection
+	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
+	s.lifebar.step()
 	if s.tickNextFrame() {
 		for i, pr := range s.projs {
 			for j, p := range pr {
@@ -1336,7 +1337,6 @@ func (s *System) action() {
 	} else {
 		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
 	}
-	s.lifebar.step()
 
 	// Set global First Attack flag if either team got it
 	if s.firstAttack[0] >= 0 || s.firstAttack[1] >= 0 {

@@ -186,7 +186,6 @@ type configSettings struct {
 	BarRedLife                 bool
 	BarStun                    bool
 	Borderless                 bool
-	ComboExtraFrameWindow      int32
 	CommonAir                  []string
 	CommonCmd                  []string
 	CommonConst                []string
@@ -337,7 +336,6 @@ func setupConfig() configSettings {
 	sys.cam.ZoomMax = tmp.ForceStageZoomin
 	sys.cam.ZoomMin = tmp.ForceStageZoomout
 	sys.cam.ZoomSpeed = 12 - tmp.ZoomSpeed
-	sys.comboExtraFrameWindow = tmp.ComboExtraFrameWindow
 	sys.commonAir = tmp.CommonAir
 	sys.commonCmd = tmp.CommonCmd
 	sys.commonConst = tmp.CommonConst

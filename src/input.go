@@ -1884,8 +1884,13 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 		if ib > 0 {
 			U = ib&IB_PU != 0 || U
 			D = ib&IB_PD != 0 || D
-			L = ib&IB_PL != 0 || L
-			R = ib&IB_PR != 0 || R
+			if facing > 0 {
+				B = ib&IB_PL != 0 || B
+				F = ib&IB_PR != 0 || F
+			} else {
+				B = ib&IB_PR != 0 || B
+				F = ib&IB_PL != 0 || F
+			}
 			a = ib&IB_A != 0 || a
 			b = ib&IB_B != 0 || b
 			c = ib&IB_C != 0 || c

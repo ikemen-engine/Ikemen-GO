@@ -1767,7 +1767,6 @@ type CharSystemVar struct {
 	specialFlag      CharSpecialFlag
 	sprPriority      int32
 	receivedHits     int32
-	fakeReceivedHits int32
 	velOff           float32
 	width            [2]float32
 	edge             [2]float32
@@ -1780,8 +1779,6 @@ type CharSystemVar struct {
 	defenseMulDelay  bool
 	counterHit       bool
 	comboDmg         int32
-	fakeComboDmg     int32
-	fakeCombo        bool
 }
 
 type Char struct {
@@ -1860,7 +1857,6 @@ type Char struct {
 	winquote              int32
 	memberNo              int
 	selectNo              int
-	comboExtraFrameWindow int32
 	inheritJuggle         int32
 	inheritChannels       int32
 	mapArray              map[string]float32
@@ -3604,9 +3600,6 @@ func (c *Char) destroy() {
 		c.exitTarget(true)
 		c.receivedHits = 0
 		c.comboDmg = 0
-		c.fakeComboDmg = 0
-		c.fakeReceivedHits = 0
-		c.fakeCombo = false
 		if c.player {
 			sys.charList.p2enemyDelete(c)
 		}
@@ -4032,10 +4025,8 @@ func (c *Char) hitAdd(h int32) {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				t.receivedHits += h
-				t.fakeReceivedHits += h
 				if c.teamside != -1 {
 					sys.lifebar.co[c.teamside].combo += h
-					sys.lifebar.co[c.teamside].fakeCombo += h
 				}
 			}
 		}
@@ -4046,10 +4037,6 @@ func (c *Char) hitAdd(h int32) {
 				if p[0].receivedHits != 0 || p[0].ss.moveType == MT_H {
 					p[0].receivedHits += h
 					sys.lifebar.co[c.teamside].combo += h
-				}
-				if p[0].fakeReceivedHits != 0 || p[0].ss.moveType == MT_H {
-					p[0].fakeReceivedHits += h
-					sys.lifebar.co[c.teamside].fakeCombo += h
 				}
 			}
 		}
@@ -4614,7 +4601,6 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		}
 		if add < 0 {
 			c.comboDmg -= int32(add)
-			c.fakeComboDmg -= int32(add)
 		}
 		c.lifeSet(c.life + int32(add))
 		c.ghv.kill = kill
@@ -6165,9 +6151,6 @@ func (c *Char) update(cvmin, cvmax,
 				if c.ghv.guarded {
 					c.receivedHits = 0
 					c.comboDmg = 0
-					c.fakeCombo = false
-					c.fakeReceivedHits = 0
-					c.fakeComboDmg = 0
 				}
 				if c.ghv.hitshaketime > 0 {
 					c.ghv.hitshaketime--
@@ -6175,10 +6158,6 @@ func (c *Char) update(cvmin, cvmax,
 				if c.ghv.fallf {
 					c.fallTime++
 				}
-				// So to explain because this is did confuse the future to me.
-				// Here we set up the extra frames the combo is gonna have.
-				// Once the combo becomes non-valid and becomes false this start to count down.
-				c.comboExtraFrameWindow = sys.comboExtraFrameWindow
 			} else {
 				if c.hittmp > 0 {
 					c.hittmp = 0
@@ -6196,18 +6175,22 @@ func (c *Char) update(cvmin, cvmax,
 					c.ghv.fallf = false
 					c.ghv.fallcount = 0
 					c.ghv.hitid = c.ghv.hitid >> 31
-					// Mugen has a combo delay in lifebar were is active for 1 frame more than it should.
-					if c.comboExtraFrameWindow <= 0 {
-						c.fakeReceivedHits = 0
-						c.fakeComboDmg = 0
-						c.fakeCombo = false
-					} else {
-						c.fakeCombo = true
-						c.comboExtraFrameWindow--
-					}
 					c.receivedHits = 0
 					c.comboDmg = 0
 					c.ghv.score = 0
+					// In Mugen, when returning to idle, characters cannot act until the next frame
+					// To account for this, combos in Mugen linger one frame longer than they normally would in a fighting game
+					// Ikemen's "fake combo" code used to replicate this behavior
+					// After guarding was adjusted so that chars could guard when returning to idle, the fake combo code became obsolete
+					// https://github.com/ikemen-engine/Ikemen-GO/issues/597
+					//if c.comboExtraFrameWindow <= 0 {
+					//	c.fakeReceivedHits = 0
+					//	c.fakeComboDmg = 0
+					//	c.fakeCombo = false
+					//} else {
+					//	c.fakeCombo = true
+					//	c.comboExtraFrameWindow--
+					//}
 				}
 			}
 			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
@@ -7184,10 +7167,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			if (ghvset || getter.csf(CSF_gethit)) && getter.hoIdx < 0 {
 				getter.receivedHits += hd.numhits * hits
-				getter.fakeReceivedHits += hd.numhits * hits
 				if c.teamside != -1 {
 					sys.lifebar.co[c.teamside].combo += hd.numhits * hits
-					sys.lifebar.co[c.teamside].fakeCombo += hd.numhits * hits
 				}
 			}
 		} else {
@@ -7310,7 +7291,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.mul = hd.envshake_mul
 				sys.envShake.setDefPhase()
 			}
-			//getter.getcombodmg += hd.hitdamage
 			if hitType > 0 && !proj && getter.trackableByCamera() && getter.csf(CSF_screenbound) &&
 				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
 					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
