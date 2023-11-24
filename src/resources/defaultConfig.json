@@ -9,7 +9,6 @@
   "BarRedLife": true,
   "BarStun": false,
   "Borderless": false,
-  "ComboExtraFrameWindow": 0,
   "CommonAir": [
     "data/common.air"
   ],
