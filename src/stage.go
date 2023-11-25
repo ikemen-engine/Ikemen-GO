@@ -1,11 +1,23 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
+	"image"
+	"image/draw"
+	_ "image/jpeg"
 	"math"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
+
+	_ "github.com/lukegb/dds"
+
+	mgl "github.com/go-gl/mathgl/mgl32"
+	"github.com/qmuntal/gltf"
+	"github.com/qmuntal/gltf/modeler"
 )
 
 type StageProps struct {
@@ -727,6 +739,7 @@ type Stage struct {
 	mugenver        [2]uint16
 	reload          bool
 	stageprops      StageProps
+	model           *Model
 }
 
 func newStage(def string) *Stage {
@@ -884,6 +897,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
+		sec[0].ReadF32("fov", &s.stageCamera.fov)
 		if sys.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
 		} else {
@@ -923,9 +937,51 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}); err != nil {
 			return nil, err
 		}
+		if err = sec[0].LoadFile("model", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+			model, err := loadglTFStage(filename)
+			if err != nil {
+				return err
+			}
+			s.model = &Model{}
+			*s.model = *model
+			s.model.pfx = newPalFX()
+			s.model.pfx.clear()
+			s.model.pfx.time = -1
+			return nil
+		}); err != nil {
+			return nil, err
+		}
 		sec[0].ReadBool("debugbg", &s.debugbg)
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
+	}
+	if sec := defmap["model"]; len(sec) > 0 && s.model != nil {
+		if str, ok := sec[0]["offset"]; ok {
+			for k, v := range SplitAndTrim(str, ",") {
+				if k >= len(s.model.offset) {
+					break
+				}
+				if v, err := strconv.ParseFloat(v, 32); err == nil {
+					s.model.offset[k] = float32(v)
+				} else {
+					break
+				}
+			}
+		}
+		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
+		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul)
+		if str, ok := sec[0]["scale"]; ok {
+			for k, v := range SplitAndTrim(str, ",") {
+				if k >= len(s.model.scale) {
+					break
+				}
+				if v, err := strconv.ParseFloat(v, 32); err == nil {
+					s.model.scale[k] = float32(v)
+				} else {
+					break
+				}
+			}
+		}
 	}
 	reflect := true
 	if sec := defmap["shadow"]; len(sec) > 0 {
@@ -1257,6 +1313,9 @@ func (s *Stage) action() {
 		s.stageTime++
 		s.bgct.step(s)
 		s.bga.action()
+		if s.model != nil {
+			s.model.step()
+		}
 	}
 	for i, b := range s.bg {
 		b.palfx.step()
@@ -1299,6 +1358,18 @@ func (s *Stage) action() {
 				s.bga.offset[1] += b.bga.offset[1]
 			}
 			s.bg[i].anim.Action()
+		}
+	}
+	if s.model != nil {
+		s.model.pfx.step()
+		if sys.bgPalFX.enable {
+			s.model.pfx.eAdd = sys.bgPalFX.eAdd
+			s.model.pfx.eMul = sys.bgPalFX.eMul
+			s.model.pfx.eColor = sys.bgPalFX.eColor
+			s.model.pfx.eHue = sys.bgPalFX.eHue
+			s.model.pfx.eInvertall = sys.bgPalFX.eInvertall
+			s.model.pfx.eInvertblend = sys.bgPalFX.eInvertblend
+			s.model.pfx.eNegType = sys.bgPalFX.eNegType
 		}
 	}
 }
@@ -1362,6 +1433,9 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 				yofs+yofs3*Pow(Pow(scl, b.zoomdelta[1]), yofs4)-s.stageCamera.drawOffsetY*(1-b.delta[1]*bgscl), true)
 		}
 	}
+	if !top {
+		s.drawModel(pos, yofs, scl)
+	}
 }
 func (s *Stage) reset() {
 	s.sff.palList.ResetRemap()
@@ -1377,6 +1451,9 @@ func (s *Stage) reset() {
 		s.bgct.add(&s.bgc[i])
 	}
 	s.stageTime = 0
+	if s.model != nil {
+		s.model.reset()
+	}
 }
 
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
@@ -1478,5 +1555,657 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			s.reload = true
 		}
+	}
+}
+
+//3D Stage Related
+//TODO: Refactor and move this to a new file?
+type Model struct {
+	scenes              []*Scene
+	nodes               []*Node
+	meshes              []*Mesh
+	textures            []*GLTFTexture
+	materials           []*Material
+	vertexBuffer        []float32
+	elementBuffer       []uint32
+	offset              [3]float32
+	rotation            [3]float32
+	scale               [3]float32
+	pfx                 *PalFX
+	animationTimeStamps map[uint32][]float32
+	animations          []*GLTFAnimation
+}
+type Scene struct {
+	nodes []uint32
+	name  string
+}
+type GLTFAnimationType byte
+
+const (
+	TRSTranslation = iota
+	TRSScale
+	TRSRotation
+)
+
+type GLTFAnimationInterpolation byte
+
+const (
+	InterpolationLinear = iota
+	InterpolationStep
+	InterpolationCubicSpline
+)
+
+type GLTFAnimation struct {
+	duration float32
+	time     float32
+	channels []*GLTFAnimationChannel
+	samplers []*GLTFAnimationSampler
+}
+type GLTFAnimationChannel struct {
+	path         GLTFAnimationType
+	nodeIndex    uint32
+	samplerIndex uint32
+}
+type GLTFAnimationSampler struct {
+	inputIndex    uint32
+	output        []float32
+	interpolation GLTFAnimationInterpolation
+}
+type GLTFTexture struct {
+	tex *Texture
+}
+
+type AlphaMode byte
+
+const (
+	AlphaModeOpaque = iota
+	AlphaModeMask
+	AlphaModeBlend
+)
+
+type Material struct {
+	name            string
+	alphaMode       AlphaMode
+	alphaCutoff     float32
+	textureIndex    *uint32
+	baseColorFactor [4]float32
+	doubleSided     bool
+}
+type Trans byte
+
+const (
+	TransNone = iota
+	TransAdd
+	TransReverseSubtract
+)
+
+type Node struct {
+	meshIndex     *uint32
+	transition    [3]float32
+	rotation      [4]float32
+	scale         [3]float32
+	childrenIndex []uint32
+	trans         Trans
+}
+type Mesh struct {
+	name       string
+	primitives []*Primitive
+}
+type PrimitiveMode byte
+
+const (
+	POINTS = iota
+	LINES
+	LINE_LOOP
+	LINE_STRIP
+	TRIANGLES
+	TRIANGLE_STRIP
+	TRIANGLE_FAN
+)
+
+type Primitive struct {
+	numVertices         uint32
+	numIndices          uint32
+	vertexBufferOffset  uint32
+	elementBufferOffset uint32
+	materialIndex       *uint32
+	mode                PrimitiveMode
+}
+
+var gltfPrimitiveModeMap = map[gltf.PrimitiveMode]PrimitiveMode{
+	gltf.PrimitivePoints:        POINTS,
+	gltf.PrimitiveLines:         LINES,
+	gltf.PrimitiveLineLoop:      LINE_LOOP,
+	gltf.PrimitiveLineStrip:     LINE_STRIP,
+	gltf.PrimitiveTriangles:     TRIANGLES,
+	gltf.PrimitiveTriangleStrip: TRIANGLE_STRIP,
+	gltf.PrimitiveTriangleFan:   TRIANGLE_FAN,
+}
+
+func loadglTFStage(filepath string) (*Model, error) {
+	mdl := &Model{offset: [3]float32{0, 0, 0}, rotation: [3]float32{0, 0, 0}, scale: [3]float32{1, 1, 1}}
+	doc, err := gltf.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	var images = make([]image.Image, 0, len(doc.Images))
+	for _, img := range doc.Images {
+		var buffer *bytes.Buffer
+		if len(img.URI) > 0 {
+			if strings.HasPrefix(img.URI, "data:") {
+				if strings.HasPrefix(img.URI, "data:image/png;base64,") {
+					decodedData, err := base64.StdEncoding.DecodeString(img.URI[22:])
+					if err != nil {
+						return nil, err
+					}
+					buffer = bytes.NewBuffer(decodedData)
+				} else {
+					decodedData, err := base64.StdEncoding.DecodeString(img.URI[23:])
+					if err != nil {
+						return nil, err
+					}
+					buffer = bytes.NewBuffer(decodedData)
+				}
+			} else {
+				if err := LoadFile(&img.URI, []string{filepath, "", sys.motifDir, "data/"}, func(filename string) error {
+					data, err := os.ReadFile(filename)
+					if err != nil {
+						return err
+					}
+					buffer = bytes.NewBuffer(data)
+					return nil
+				}); err != nil {
+					return nil, err
+				}
+
+			}
+		} else {
+			source, err := modeler.ReadBufferView(doc, doc.BufferViews[*img.BufferView])
+			if err != nil {
+				return nil, err
+			}
+			buffer = bytes.NewBuffer(source)
+		}
+		res, _, err := image.Decode(buffer)
+		if err != nil {
+			return nil, err
+		}
+		images = append(images, res)
+	}
+	mdl.textures = make([]*GLTFTexture, 0, len(doc.Textures))
+	for _, t := range doc.Textures {
+		s := doc.Samplers[*t.Sampler]
+		mag, _ := map[gltf.MagFilter]int32{
+			gltf.MagUndefined: 9729,
+			gltf.MagNearest:   9728,
+			gltf.MagLinear:    9729,
+		}[s.MagFilter]
+		min, _ := map[gltf.MinFilter]int32{
+			gltf.MinUndefined:            9729,
+			gltf.MinNearest:              9728,
+			gltf.MinLinear:               9729,
+			gltf.MinNearestMipMapNearest: 9984,
+			gltf.MinLinearMipMapNearest:  9985,
+			gltf.MinNearestMipMapLinear:  9986,
+			gltf.MinLinearMipMapLinear:   9987,
+		}[s.MinFilter]
+		wrapS, _ := map[gltf.WrappingMode]int32{
+			gltf.WrapClampToEdge:    33071,
+			gltf.WrapMirroredRepeat: 33648,
+			gltf.WrapRepeat:         10497,
+		}[s.WrapS]
+		wrapT, _ := map[gltf.WrappingMode]int32{
+			gltf.WrapClampToEdge:    33071,
+			gltf.WrapMirroredRepeat: 33648,
+			gltf.WrapRepeat:         10497,
+		}[s.WrapT]
+
+		img := images[*t.Source]
+		rgba := image.NewRGBA(img.Bounds())
+		draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
+		texture := &GLTFTexture{}
+		sys.mainThreadTask <- func() {
+			texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
+			texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+		}
+		mdl.textures = append(mdl.textures, texture)
+	}
+	mdl.materials = make([]*Material, 0, len(doc.Materials))
+	for _, m := range doc.Materials {
+		material := &Material{}
+		if m.PBRMetallicRoughness.BaseColorTexture != nil {
+			material.textureIndex = new(uint32)
+			*material.textureIndex = m.PBRMetallicRoughness.BaseColorTexture.Index
+		}
+		material.baseColorFactor = *m.PBRMetallicRoughness.BaseColorFactor
+		material.name = m.Name
+		material.alphaMode, _ = map[gltf.AlphaMode]AlphaMode{
+			gltf.AlphaOpaque: AlphaModeOpaque,
+			gltf.AlphaMask:   AlphaModeMask,
+			gltf.AlphaBlend:  AlphaModeBlend,
+		}[m.AlphaMode]
+		if material.alphaMode == AlphaModeMask {
+			material.alphaCutoff = m.AlphaCutoffOrDefault()
+		} else {
+			material.alphaCutoff = 0
+		}
+
+		material.doubleSided = m.DoubleSided
+		mdl.materials = append(mdl.materials, material)
+	}
+	mdl.nodes = make([]*Node, 0, len(doc.Nodes))
+	for _, n := range doc.Nodes {
+		var node = &Node{}
+		mdl.nodes = append(mdl.nodes, node)
+		node.rotation = n.Rotation
+		node.transition = n.Translation
+		node.scale = n.Scale
+		node.childrenIndex = n.Children
+		if n.Mesh != nil {
+			node.meshIndex = new(uint32)
+			*node.meshIndex = *n.Mesh
+		}
+		if n.Extras != nil {
+			v, ok := n.Extras.(map[string]interface{})
+			if ok {
+				switch v["trans"] {
+				case "ADD":
+					node.trans = TransAdd
+				case "SUB":
+					node.trans = TransReverseSubtract
+				case "NONE":
+					node.trans = TransNone
+				}
+			}
+		}
+	}
+	mdl.meshes = make([]*Mesh, 0, len(doc.Meshes))
+	for _, m := range doc.Meshes {
+		var mesh = &Mesh{}
+		mesh.name = m.Name
+		for _, p := range m.Primitives {
+			var primitive = &Primitive{}
+			primitive.vertexBufferOffset = uint32(4 * len(mdl.vertexBuffer))
+			primitive.elementBufferOffset = uint32(4 * len(mdl.elementBuffer))
+			var posBuffer [][3]float32
+			positions, err := modeler.ReadPosition(doc, doc.Accessors[p.Attributes[gltf.POSITION]], posBuffer)
+			if err != nil {
+				return nil, err
+			}
+			for _, pos := range positions {
+				mdl.vertexBuffer = append(mdl.vertexBuffer, pos[0], pos[1], pos[2])
+			}
+			primitive.numVertices = uint32(len(positions))
+			var uvBuffer [][2]float32
+			texCoords, err := modeler.ReadTextureCoord(doc, doc.Accessors[p.Attributes[gltf.TEXCOORD_0]], uvBuffer)
+			for _, tex := range texCoords {
+				mdl.vertexBuffer = append(mdl.vertexBuffer, tex[0], tex[1])
+			}
+			var indexBuffer []uint32
+			indices, err := modeler.ReadIndices(doc, doc.Accessors[*p.Indices], indexBuffer)
+			if err != nil {
+				return nil, err
+			}
+			for _, p := range indices {
+				mdl.elementBuffer = append(mdl.elementBuffer, p)
+			}
+			primitive.numIndices = uint32(len(indices))
+			if idx, ok := p.Attributes[gltf.COLOR_0]; ok {
+				switch doc.Accessors[idx].ComponentType {
+				case gltf.ComponentUbyte:
+					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
+						var vecBuffer [][3]uint8
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][3]uint8) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)
+						}
+					} else {
+						var vecBuffer [][4]uint8
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][4]uint8) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)
+						}
+					}
+				case gltf.ComponentUshort:
+					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
+						var vecBuffer [][3]uint16
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][3]uint16) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)
+						}
+					} else {
+						var vecBuffer [][4]uint16
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][4]uint16) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)
+						}
+					}
+				case gltf.ComponentFloat:
+					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
+						var vecBuffer [][3]float32
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][3]float32) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, vec[0], vec[1], vec[2], 1)
+						}
+					} else {
+						var vecBuffer [][4]float32
+						vecs, err := modeler.ReadAccessor(doc, doc.Accessors[idx], vecBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, vec := range vecs.([][4]float32) {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, vec[0], vec[1], vec[2], vec[3])
+						}
+					}
+				}
+			} else {
+				for i := 0; i < int(primitive.numVertices); i++ {
+					mdl.vertexBuffer = append(mdl.vertexBuffer, 1, 1, 1, 1)
+				}
+			}
+
+			if p.Material != nil {
+				primitive.materialIndex = new(uint32)
+				*primitive.materialIndex = *p.Material
+			}
+			primitive.mode = gltfPrimitiveModeMap[p.Mode]
+			mesh.primitives = append(mesh.primitives, primitive)
+		}
+		mdl.meshes = append(mdl.meshes, mesh)
+	}
+	mdl.animationTimeStamps = map[uint32][]float32{}
+	for _, a := range doc.Animations {
+		anim := &GLTFAnimation{}
+		mdl.animations = append(mdl.animations, anim)
+		anim.duration = 0
+		for _, c := range a.Channels {
+			channel := &GLTFAnimationChannel{}
+			anim.channels = append(anim.channels, channel)
+			channel.nodeIndex = *c.Target.Node
+			channel.samplerIndex = *c.Sampler
+			switch c.Target.Path {
+			case gltf.TRSTranslation:
+				channel.path = TRSTranslation
+			case gltf.TRSScale:
+				channel.path = TRSScale
+			case gltf.TRSRotation:
+				channel.path = TRSRotation
+			}
+		}
+		for _, s := range a.Samplers {
+			sampler := &GLTFAnimationSampler{}
+			anim.samplers = append(anim.samplers, sampler)
+			if _, ok := mdl.animationTimeStamps[s.Input]; !ok {
+				var timeBuffer []float32
+				times, err := modeler.ReadAccessor(doc, doc.Accessors[s.Input], timeBuffer)
+				if err != nil {
+					return nil, err
+				}
+				mdl.animationTimeStamps[s.Input] = make([]float32, 0, len(times.([]float32)))
+				for _, t := range times.([]float32) {
+					mdl.animationTimeStamps[s.Input] = append(mdl.animationTimeStamps[s.Input], t)
+				}
+			}
+			sampler.inputIndex = s.Input
+			if anim.duration < mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1] {
+				anim.duration = mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1]
+			}
+			switch doc.Accessors[s.Output].Type {
+			case gltf.AccessorVec3:
+				var vecBuffer [][3]float32
+				vecs, err := modeler.ReadAccessor(doc, doc.Accessors[s.Output], vecBuffer)
+				if err != nil {
+					return nil, err
+				}
+				for _, vec := range vecs.([][3]float32) {
+					sampler.output = append(sampler.output, vec[0], vec[1], vec[2])
+				}
+			case gltf.AccessorVec4:
+				var vecBuffer [][4]float32
+				vecs, err := modeler.ReadAccessor(doc, doc.Accessors[s.Output], vecBuffer)
+				if err != nil {
+					return nil, err
+				}
+				for _, vec := range vecs.([][4]float32) {
+					sampler.output = append(sampler.output, vec[0], vec[1], vec[2], vec[3])
+				}
+			}
+		}
+	}
+	for _, s := range doc.Scenes {
+		var scene = &Scene{}
+		scene.name = s.Name
+		scene.nodes = s.Nodes
+		mdl.scenes = append(mdl.scenes, scene)
+	}
+	return mdl, nil
+}
+func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
+	modelview = modelview.Mul4(mgl.Translate3D(n.transition[0], n.transition[1], n.transition[2]))
+	modelview = modelview.Mul4(mgl.Quat{W: n.rotation[3], V: mgl.Vec3{n.rotation[0], n.rotation[1], n.rotation[2]}}.Mat4())
+	modelview = modelview.Mul4(mgl.Scale3D(n.scale[0], n.scale[1], n.scale[2]))
+	for _, index := range n.childrenIndex {
+		drawNode(mdl, mdl.nodes[index], proj, modelview, drawBlended)
+	}
+	if n.meshIndex == nil {
+		return
+	}
+
+	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, n.trans == TransAdd || n.trans == TransReverseSubtract)
+
+	blendEq := BlendAdd
+	src := BlendOne
+	dst := BlendOneMinusSrcAlpha
+	switch n.trans {
+	case TransAdd:
+		if invblend == 3 {
+			src = BlendOne
+			dst = BlendOne
+			blendEq = BlendReverseSubtract
+			neg = false
+		} else {
+			src = BlendOne
+			dst = BlendOne
+		}
+	case TransReverseSubtract:
+		if invblend == 3 {
+			src = BlendOne
+			dst = BlendOne
+			neg = false
+		} else {
+			src = BlendOne
+			dst = BlendOne
+			blendEq = BlendReverseSubtract
+		}
+	default:
+		src = BlendOne
+		dst = BlendOneMinusSrcAlpha
+	}
+	m := mdl.meshes[*n.meshIndex]
+	for _, p := range m.primitives {
+		if p.materialIndex == nil {
+			continue
+		}
+		mat := mdl.materials[*p.materialIndex]
+		if ((mat.alphaMode != AlphaModeBlend && n.trans == TransNone) && drawBlended) ||
+			((mat.alphaMode == AlphaModeBlend || n.trans != TransNone) && !drawBlended) {
+			return
+		}
+		color := mdl.materials[*p.materialIndex].baseColorFactor
+		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
+
+		gfx.SetModelUniformMatrix("projection", proj[:])
+		gfx.SetModelUniformMatrix("modelview", modelview[:])
+		if index := mat.textureIndex; index != nil {
+			gfx.SetModelTexture("tex", mdl.textures[*index].tex)
+			gfx.SetModelUniformI("textured", 1)
+		} else {
+			gfx.SetModelUniformI("textured", 0)
+		}
+		gfx.SetModelUniformFv("add", padd[:])
+		gfx.SetModelUniformFv("mult", []float32{pmul[0] * float32(sys.brightness) / 256, pmul[1] * float32(sys.brightness) / 256, pmul[2] * float32(sys.brightness) / 256})
+		gfx.SetModelUniformI("neg", int(Btoi(neg)))
+		gfx.SetModelUniformF("hue", hue)
+		gfx.SetModelUniformF("gray", grayscale)
+		gfx.SetModelUniformI("enableAlpha", int(Btoi(mat.alphaMode == AlphaModeBlend)))
+		gfx.SetModelUniformF("alphaThreshold", mat.alphaCutoff)
+		gfx.SetModelUniformFv("baseColorFactor", color[:])
+		gfx.RenderElements(p.mode, int(p.numIndices), int(p.elementBufferOffset))
+
+		gfx.ReleaseModelPipeline()
+
+	}
+}
+func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
+	if s.model == nil || len(s.model.scenes) == 0 {
+		return
+	}
+
+	drawFOV := s.stageCamera.fov * math.Pi / 180
+
+	var near float32 = 0.1
+	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
+	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) / s.localscl / scl
+
+	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
+	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
+	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
+	proj := mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000)
+	modelview := mgl.Ident4()
+	modelview = modelview.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
+	modelview = modelview.Mul4(mgl.HomogRotate3DX(rotation[0]))
+	modelview = modelview.Mul4(mgl.HomogRotate3DY(rotation[1]))
+	modelview = modelview.Mul4(mgl.HomogRotate3DZ(rotation[2]))
+	modelview = modelview.Mul4(mgl.Scale3D(scale[0], scale[1], scale[2]))
+	scene := s.model.scenes[0]
+	gfx.SetVertexData(s.model.vertexBuffer...)
+	gfx.SetIndexData(s.model.elementBuffer...)
+
+	for _, index := range scene.nodes {
+		drawNode(s.model, s.model.nodes[index], proj, modelview, false)
+	}
+	for _, index := range scene.nodes {
+		drawNode(s.model, s.model.nodes[index], proj, modelview, true)
+	}
+}
+
+func (model *Model) step() {
+	for _, anim := range model.animations {
+		anim.time += sys.turbo / 60
+		for anim.time > anim.duration && anim.duration > 0 {
+			anim.time -= anim.duration
+		}
+		for _, channel := range anim.channels {
+			node := model.nodes[channel.nodeIndex]
+			sampler := anim.samplers[channel.samplerIndex]
+			prevIndex := 0
+			for i, t := range model.animationTimeStamps[sampler.inputIndex] {
+				if anim.time < t {
+					prevIndex = i - 1
+					break
+				}
+			}
+			if prevIndex != -1 && sampler.interpolation != InterpolationStep && prevIndex+1 < len(model.animationTimeStamps[sampler.inputIndex]) {
+				if sampler.interpolation == InterpolationLinear {
+					rate := (anim.time - model.animationTimeStamps[sampler.inputIndex][prevIndex]) / (model.animationTimeStamps[sampler.inputIndex][prevIndex+1] - model.animationTimeStamps[sampler.inputIndex][prevIndex])
+					switch channel.path {
+					case TRSTranslation:
+						node.transition[0] = sampler.output[prevIndex*3]*(1-rate) + sampler.output[(prevIndex+1)*3]*rate
+						node.transition[1] = sampler.output[prevIndex*3+1]*(1-rate) + sampler.output[(prevIndex+1)*3+1]*rate
+						node.transition[2] = sampler.output[prevIndex*3+2]*(1-rate) + sampler.output[(prevIndex+1)*3+2]*rate
+					case TRSScale:
+						node.scale[0] = sampler.output[prevIndex*3]*(1-rate) + sampler.output[(prevIndex+1)*3]*rate
+						node.scale[1] = sampler.output[prevIndex*3+1]*(1-rate) + sampler.output[(prevIndex+1)*3+1]*rate
+						node.scale[2] = sampler.output[prevIndex*3+2]*(1-rate) + sampler.output[(prevIndex+1)*3+2]*rate
+					case TRSRotation:
+						q1 := mgl.Quat{sampler.output[prevIndex*4+3], mgl.Vec3{sampler.output[prevIndex*4], sampler.output[prevIndex*4+1], sampler.output[prevIndex*4+2]}}
+						q2 := mgl.Quat{sampler.output[(prevIndex+1)*4+3], mgl.Vec3{sampler.output[(prevIndex+1)*4], sampler.output[(prevIndex+1)*4+1], sampler.output[(prevIndex+1)*4+2]}}
+						dotProduct := q1.Dot(q2)
+						if dotProduct < 0 {
+							q1 = q1.Inverse()
+						}
+						q := mgl.QuatSlerp(q1, q2, rate)
+						node.rotation[0] = q.X()
+						node.rotation[1] = q.Y()
+						node.rotation[2] = q.Z()
+						node.rotation[3] = q.W
+					}
+				} else {
+					delta := (model.animationTimeStamps[sampler.inputIndex][prevIndex+1] - model.animationTimeStamps[sampler.inputIndex][prevIndex])
+					rate := (anim.time - model.animationTimeStamps[sampler.inputIndex][prevIndex]) / delta
+					rateSquare := rate * rate
+					rateCube := rateSquare * rate
+
+					switch channel.path {
+					case TRSTranslation:
+						node.transition[0] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9]
+						node.transition[1] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+3+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+3+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+3+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+3]
+						node.transition[2] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+6+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+6+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+6+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+6]
+					case TRSScale:
+						node.scale[0] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9]
+						node.scale[1] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+3+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+3+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+3+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+3]
+						node.scale[2] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+6+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+6+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+6+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+6]
+					case TRSRotation:
+						q1 := mgl.Quat{sampler.output[prevIndex*4+3], mgl.Vec3{sampler.output[prevIndex*4], sampler.output[prevIndex*4+1], sampler.output[prevIndex*4+2]}}
+						q2 := mgl.Quat{sampler.output[(prevIndex+1)*4+3], mgl.Vec3{sampler.output[(prevIndex+1)*4], sampler.output[(prevIndex+1)*4+1], sampler.output[(prevIndex+1)*4+2]}}
+						dotProduct := q1.Dot(q2)
+						if dotProduct < 0 {
+							q1 = q1.Inverse()
+						}
+						q := mgl.Quat{(2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*12+9+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*12+9+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*12+9+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*12+9],
+							mgl.Vec3{
+								(2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*12+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*12+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*12+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*12],
+								(2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*12+3+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*12+3+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*12+3+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*12+3],
+								(2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*12+6+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*12+6+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*12+6+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*12+6],
+							}}.Normalize()
+						node.rotation[0] = q.X()
+						node.rotation[1] = q.Y()
+						node.rotation[2] = q.Z()
+						node.rotation[3] = q.W
+					}
+				}
+
+			} else {
+				if prevIndex == -1 {
+					prevIndex = 0
+				}
+				switch channel.path {
+				case TRSTranslation:
+					node.transition[0] = sampler.output[prevIndex*3]
+					node.transition[1] = sampler.output[prevIndex*3+1]
+					node.transition[2] = sampler.output[prevIndex*3+2]
+				case TRSScale:
+					node.scale[0] = sampler.output[prevIndex*3]
+					node.scale[1] = sampler.output[prevIndex*3+1]
+					node.scale[2] = sampler.output[prevIndex*3+2]
+				case TRSRotation:
+					node.rotation[0] = sampler.output[prevIndex*4]
+					node.rotation[1] = sampler.output[prevIndex*4+1]
+					node.rotation[2] = sampler.output[prevIndex*4+2]
+					node.rotation[3] = sampler.output[prevIndex*4+3]
+				}
+			}
+		}
+	}
+}
+
+func (model *Model) reset() {
+	for _, anim := range model.animations {
+		anim.time = 0
 	}
 }

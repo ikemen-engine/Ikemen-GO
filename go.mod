@@ -24,7 +24,9 @@ require (
 	github.com/hajimehoshi/oto v0.7.1 // indirect
 	github.com/jfreymuth/oggvorbis v1.0.2 // indirect
 	github.com/jfreymuth/vorbis v1.0.1 // indirect
+	github.com/lukegb/dds v0.0.0-20190402175749-8b7170e64003 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/qmuntal/gltf v0.24.2 // indirect
 	github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16 // indirect
 	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 // indirect
 	golang.org/x/image v0.10.0 // indirect
