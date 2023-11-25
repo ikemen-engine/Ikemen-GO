@@ -1558,8 +1558,8 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 	}
 }
 
-//3D Stage Related
-//TODO: Refactor and move this to a new file?
+// 3D Stage Related
+// TODO: Refactor and move this to a new file?
 type Model struct {
 	scenes              []*Scene
 	nodes               []*Node
