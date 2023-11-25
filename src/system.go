@@ -189,6 +189,7 @@ type System struct {
 	stageList               map[int32]*Stage
 	stageLoop               bool
 	stageLoopNo             int
+	wireframeDraw           bool
 	helperMax               int32
 	nextCharId              int32
 	wincnt                  wincntMap
