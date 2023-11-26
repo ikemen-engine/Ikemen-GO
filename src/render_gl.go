@@ -254,8 +254,8 @@ var identFragShader string
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func (r *Renderer) Init() {
-	sys.errLog.Printf("Using OpenGL %v (%v)",
-		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
+	chk(gl.Init())
+	sys.errLog.Printf("Using OpenGL %v (%v)", gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
 	r.postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
 
