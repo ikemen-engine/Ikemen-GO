@@ -519,6 +519,7 @@ const (
 	OC_ex_lerp
 	OC_ex_memberno
 	OC_ex_movecountered
+	OC_ex_mugenversion
 	OC_ex_pausetime
 	OC_ex_physics
 	OC_ex_playerno
@@ -2220,6 +2221,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.memberNo) + 1)
 	case OC_ex_movecountered:
 		sys.bcStack.PushI(c.moveCountered())
+	case OC_ex_mugenversion:
+		sys.bcStack.PushF(c.mugenVersion())
 	case OC_ex_pausetime:
 		sys.bcStack.PushI(c.pauseTime())
 	case OC_ex_physics:
@@ -7277,6 +7280,37 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 		return true
 	})*/
 	//TODO: not implemented
+	return false
+}
+
+type assertCommand StateControllerBase
+
+const (
+	assertCommand_name byte = iota
+	assertCommand_buffertime
+	assertCommand_redirectid
+)
+
+func (sc assertCommand) Run(c *Char, _ []int32) bool {
+	crun := c
+	n := ""
+	bt := int32(1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case assertCommand_name:
+			n = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+		case assertCommand_buffertime:
+			bt = exp[0].evalI(c)
+		case assertCommand_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	crun.assertCommand(n, bt)
 	return false
 }
 

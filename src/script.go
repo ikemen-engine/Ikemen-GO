@@ -4278,6 +4278,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.moveCountered()))
 		return 1
 	})
+	luaRegister(l, "mugenversion", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.mugenVersion()))
+		return 1
+	})
 	luaRegister(l, "offsetX", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.offsetTrg[0]))
 		return 1

@@ -130,6 +130,7 @@ func newCompiler() *Compiler {
 		"zoom":                 c.zoom,
 		"forcefeedback":        c.forceFeedback,
 		"null":                 c.null,
+		"assertcommand":        c.assertCommand,
 		"assertinput":          c.assertInput,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
@@ -365,6 +366,7 @@ var triggerMap = map[string]int{
 	"memberno":           1,
 	"min":                1,
 	"movecountered":      1,
+	"mugenversion":       1,
 	"offset":             1,
 	"p5name":             1,
 	"p6name":             1,
@@ -2984,6 +2986,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_memberno)
 	case "movecountered":
 		out.append(OC_ex_, OC_ex_movecountered)
+	case "mugenversion":
+		out.append(OC_ex_, OC_ex_mugenversion)
 	case "pausetime":
 		out.append(OC_ex_, OC_ex_pausetime)
 	case "physics":
