@@ -1909,6 +1909,20 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 	return step
 }
 
+// Assert commands with a given name for a given time
+func (cl *CommandList) Assert(name string, time int32) bool {
+	has := false
+	for i := range cl.Commands {
+		for j := range cl.Commands[i] {
+			if cl.Commands[i][j].name == name {
+				cl.Commands[i][j].curbuftime = time
+				has = true
+			}
+		}
+	}
+	return has
+}
+
 // Reset commands with a given name
 func (cl *CommandList) ClearName(name string) {
 	for i := range cl.Commands {

@@ -2994,6 +2994,11 @@ func (c *Char) commandByName(name string) bool {
 	i, ok := c.cmd[c.playerNo].Names[name]
 	return ok && c.command(c.playerNo, i)
 }
+func (c *Char) assertCommand(name string, time int32) {
+	if !c.cmd[c.playerNo].Assert(name, time) {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to assert an invalid command"))
+	}
+}
 func (c *Char) constp(coordinate, value float32) BytecodeValue {
 	return BytecodeFloat(c.stCgi().localcoord[0] / coordinate * value)
 }
@@ -3123,6 +3128,19 @@ func (c *Char) moveReversed() int32 {
 		return Abs(c.mctime)
 	}
 	return 0
+}
+func (c *Char) mugenVersion() float32 {
+	if c.stCgi().ikemenver[0] != 0 || c.stCgi().ikemenver[1] != 0 {
+		return 1.1
+	} else if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 1 {
+		return 1.1
+	} else if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 0 {
+		return 1.0
+	} else if c.stCgi().mugenver[0] != 1 {
+		return 0.5 // Arbitrary value
+	} else {
+		return 0
+	}
 }
 func (c *Char) numEnemy() int32 {
 	var n int32

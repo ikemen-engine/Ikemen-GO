@@ -80,13 +80,30 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 		if map(_iksys_trainingFallRecovery) {
 			if stateNo != [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)] {
 				if moveType = H && stateType = A && hitFall && !getHitVar(isbound) && (pos y || vel y) {
-					if (map(_iksys_trainingFallRecovery) = 1 && pos y >= const(movement.air.gethit.groundrecover.ground.threshold)) # Ground recovery
-					|| (map(_iksys_trainingFallRecovery) = 2 && pos y < const(movement.air.gethit.groundrecover.ground.threshold)) # Air recovery
-					|| (map(_iksys_trainingFallRecovery) = 3 && random < 100) { # Random recovery
-						if gametime % 2 {
-							assertInput{flag: x; flag2: y; flag3: z} # Ideally one would specifically force the character's "recovery" command
+					# Ground recovery. Attempt only if common1 conditions are met
+					if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.ground.threshold) {
+						if map(_iksys_trainingFallRecovery) = 1 { 
+							let rcv = 1;
+						}
+					# Air recovery. Attempt only if conditions for ground recovery are not met
+					} else if map(_iksys_trainingFallRecovery) = 2 {
+						let rcv = 1;
+					}
+					# Random recovery. Attempt regardless of conditions
+					if map(_iksys_trainingFallRecovery) = 3 && random < 100 {
+						let rcv = 1;
+					}
+					if $rcv {
+						# WinMugen characters assert inputs because asserting commands directly may trigger their AI activation codes
+						if mugenVersion < 1.0 {
+							if gametime % 2 {
+								assertInput{flag: x; flag2: y; flag3: z}
+							} else {
+								assertInput{flag: a; flag2: b; flag3: c}
+							}
 						} else {
-							assertInput{flag: a; flag2: b; flag3: c}
+							assertCommand{name: "recovery"; buffertime: 2}
+							# Buffered 2 frames because asserting a command instead of inputting it has 1 frame of lag in custom fall recovery systems
 						}
 						# Random direction
 						if map(_iksys_trainingFallRecovery) = 3 {
