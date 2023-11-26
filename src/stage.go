@@ -2091,7 +2091,7 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
-	proj := mgl.Translate3D(0,s.model.yshift,0)
+	proj := mgl.Translate3D(0, s.model.yshift, 0)
 	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000))
 	modelview := mgl.Ident4()
 	modelview = modelview.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
