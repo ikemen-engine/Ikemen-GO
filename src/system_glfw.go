@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"image"
 
-	gl "github.com/fyne-io/gl-js"
-	glfw "github.com/fyne-io/glfw-js"
+	glfw "github.com/go-gl/glfw/v3.3/glfw"
 )
 
 type Window struct {
@@ -23,7 +22,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var monitor *glfw.Monitor
 
 	// Initialize OpenGL
-	chk(glfw.Init(gl.ContextWatcher))
+	chk(glfw.Init())
 
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
@@ -96,7 +95,7 @@ func (w *Window) GetSize() (int, int) {
 	return w.Window.GetSize()
 }
 
-func (w *Window) GetClipboardString() (string, error) {
+func (w *Window) GetClipboardString() string {
 	return w.Window.GetClipboardString()
 }
 

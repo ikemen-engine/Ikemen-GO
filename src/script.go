@@ -1442,7 +1442,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != KeyUnknown {
 			if sys.keyInput == KeyInsert {
-				s, _ = sys.window.GetClipboardString()
+				s = sys.window.GetClipboardString()
 			} else {
 				s = sys.keyString
 			}
