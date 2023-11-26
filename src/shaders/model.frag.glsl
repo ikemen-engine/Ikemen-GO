@@ -25,7 +25,7 @@ void main(void) {
 	} else {
 		gl_FragColor = baseColorFactor;
 	}
-	gl_FragColor *= vColor;
+	gl_FragColor *= vec4(pow(vColor.r, 1.0/2.2), pow(vColor.g, 1.0/2.2), pow(vColor.b, 1.0/2.2), vColor.a);
 	if(!enableAlpha){
 		if(gl_FragColor.a < alphaThreshold){
 			discard;
