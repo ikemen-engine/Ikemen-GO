@@ -2059,7 +2059,7 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		}
 		mode := p.mode
 		if sys.wireframeDraw {
-		    mode = 1 // Set mesh render mode to "lines"
+			mode = 1 // Set mesh render mode to "lines"
 		}
 		gfx.SetModelUniformFv("add", padd[:])
 		gfx.SetModelUniformFv("mult", []float32{pmul[0] * float32(sys.brightness) / 256, pmul[1] * float32(sys.brightness) / 256, pmul[2] * float32(sys.brightness) / 256})
