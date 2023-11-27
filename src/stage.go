@@ -956,6 +956,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
 	if sec := defmap["model"]; len(sec) > 0 && s.model != nil {
+		sec[0].ReadF32("yshift", &s.model.yshift)
 		if str, ok := sec[0]["offset"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.offset) {
@@ -1571,6 +1572,7 @@ type Model struct {
 	offset              [3]float32
 	rotation            [3]float32
 	scale               [3]float32
+	yshift              float32
 	pfx                 *PalFX
 	animationTimeStamps map[uint32][]float32
 	animations          []*GLTFAnimation
@@ -2057,6 +2059,10 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		} else {
 			gfx.SetModelUniformI("textured", 0)
 		}
+		mode := p.mode
+		if sys.wireframeDraw {
+			mode = 1 // Set mesh render mode to "lines"
+		}
 		gfx.SetModelUniformFv("add", padd[:])
 		gfx.SetModelUniformFv("mult", []float32{pmul[0] * float32(sys.brightness) / 256, pmul[1] * float32(sys.brightness) / 256, pmul[2] * float32(sys.brightness) / 256})
 		gfx.SetModelUniformI("neg", int(Btoi(neg)))
@@ -2065,7 +2071,7 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		gfx.SetModelUniformI("enableAlpha", int(Btoi(mat.alphaMode == AlphaModeBlend)))
 		gfx.SetModelUniformF("alphaThreshold", mat.alphaCutoff)
 		gfx.SetModelUniformFv("baseColorFactor", color[:])
-		gfx.RenderElements(p.mode, int(p.numIndices), int(p.elementBufferOffset))
+		gfx.RenderElements(mode, int(p.numIndices), int(p.elementBufferOffset))
 
 		gfx.ReleaseModelPipeline()
 
@@ -2085,7 +2091,8 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
-	proj := mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000)
+	proj := mgl.Translate3D(0, s.model.yshift, 0)
+	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000))
 	modelview := mgl.Ident4()
 	modelview = modelview.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
 	modelview = modelview.Mul4(mgl.HomogRotate3DX(rotation[0]))

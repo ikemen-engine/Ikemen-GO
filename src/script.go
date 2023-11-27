@@ -2520,6 +2520,13 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "toggleWireframeDraw", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
+		sys.wireframeDraw = !sys.wireframeDraw
+		return 0
+	})
 	luaRegister(l, "toggleDialogueBars", func(*lua.LState) int {
 		if l.GetTop() >= 1 {
 			sys.dialogueBarsFlg = boolArg(l, 1)
@@ -4269,6 +4276,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "movecountered", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.moveCountered()))
+		return 1
+	})
+	luaRegister(l, "mugenversion", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.mugenVersion()))
 		return 1
 	})
 	luaRegister(l, "offsetX", func(*lua.LState) int {

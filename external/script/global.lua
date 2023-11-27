@@ -5,6 +5,7 @@
 addHotkey('c', true, false, false, true, false, 'toggleClsnDraw()')
 addHotkey('d', true, false, false, true, false, 'toggleDebugDraw()')
 addHotkey('d', false, false, true, true, false, 'toggleDebugDraw(true)')
+addHotkey('w', true, false, false, true, false, 'toggleWireframeDraw()')
 addHotkey('s', true, false, false, true, true, 'changeSpeed()')
 addHotkey('KP_PLUS', true, false, false, true, true, 'changeSpeed(1)')
 addHotkey('KP_MINUS', true, false, false, true, true, 'changeSpeed(-1)')
