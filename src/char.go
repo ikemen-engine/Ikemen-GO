@@ -7710,7 +7710,7 @@ func (cl *CharList) p2enemyDelete(c *Char) {
 	for _, e := range cl.runOrder {
 		for i, p2cl := range e.p2enemy {
 			if p2cl == c {
-				e.p2enemy = e.p2enemy[:i+copy(e.p2enemy[i:], e.p2enemy[i+1:])]
+				e.p2enemy = e.p2enemy[:i]
 				break
 			}
 		}
