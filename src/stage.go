@@ -898,6 +898,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		sec[0].ReadF32("fov", &s.stageCamera.fov)
+		sec[0].ReadF32("yshift", &s.stageCamera.yshift)
+		sec[0].ReadF32("near", &s.stageCamera.near)
+		sec[0].ReadF32("far", &s.stageCamera.far)
 		if sys.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
 		} else {
@@ -956,7 +959,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
 	if sec := defmap["model"]; len(sec) > 0 && s.model != nil {
-		sec[0].ReadF32("yshift", &s.model.yshift)
 		if str, ok := sec[0]["offset"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.offset) {
@@ -970,7 +972,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			}
 		}
 		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
-		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul)
+		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul - s.stageCamera.yshift*float32(sys.scrrect[3]/2)/s.localscl/sys.heightScale)
 		if str, ok := sec[0]["scale"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.scale) {
@@ -1572,7 +1574,6 @@ type Model struct {
 	offset              [3]float32
 	rotation            [3]float32
 	scale               [3]float32
-	yshift              float32
 	pfx                 *PalFX
 	animationTimeStamps map[uint32][]float32
 	animations          []*GLTFAnimation
@@ -2084,15 +2085,14 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 
 	drawFOV := s.stageCamera.fov * math.Pi / 180
 
-	var near float32 = 0.1
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
 	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) / s.localscl / scl
 
 	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
-	proj := mgl.Translate3D(0, s.model.yshift, 0)
-	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000))
+	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
+	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.stageCamera.near, s.stageCamera.far))
 	modelview := mgl.Ident4()
 	modelview = modelview.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
 	modelview = modelview.Mul4(mgl.HomogRotate3DX(rotation[0]))
