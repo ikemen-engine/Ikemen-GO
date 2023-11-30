@@ -4768,6 +4768,24 @@ func (c *Compiler) modifyChar(is IniSection, sc *StateControllerBase, _ int8) (S
 			modifyChar_teamside, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.stateParam(is, "displayname", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(modifyChar_displayname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "lifebarname", func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(modifyChar_lifebarname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

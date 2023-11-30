@@ -8847,6 +8847,8 @@ const (
 	modifyChar_dizzypointsmax
 	modifyChar_guardpointsmax
 	modifyChar_teamside
+	modifyChar_displayname
+	modifyChar_lifebarname
 	modifyChar_redirectid
 )
 
@@ -8888,6 +8890,12 @@ func (sc modifyChar) Run(c *Char, _ []int32) bool {
 				ts -= 1 // Internally the teamside goes from -1 to 1
 				crun.teamside = ts
 			}
+		case modifyChar_displayname:
+			dn := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			sys.cgi[crun.playerNo].displayname = dn
+		case modifyChar_lifebarname:
+			ln := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			sys.cgi[crun.playerNo].lifebarname = ln
 		case modifyChar_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
