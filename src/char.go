@@ -282,7 +282,7 @@ type CharSize struct {
 		width  float32
 		enable bool
 	}
-	classicpushbox int32
+	ignoreclsn2push int32
 }
 
 func (cs *CharSize) init() {
@@ -307,7 +307,7 @@ func (cs *CharSize) init() {
 	cs.z.width = 3
 	cs.z.enable = false
 	cs.attack.z.width = [...]float32{4, 4}
-	cs.classicpushbox = 0
+	cs.ignoreclsn2push = 0
 }
 
 type CharVelocity struct {
@@ -2334,7 +2334,7 @@ func (c *Char) load(def string) error {
 						}
 						is.ReadF32("attack.z.width",
 							&c.size.attack.z.width[0], &c.size.attack.z.width[1])
-						is.ReadI32("classicpushbox", &c.size.classicpushbox)
+						is.ReadI32("ignoreclsn2push", &c.size.ignoreclsn2push)
 					}
 				case "velocity":
 					if velocity {
@@ -2995,7 +2995,15 @@ func (c *Char) commandByName(name string) bool {
 	return ok && c.command(c.playerNo, i)
 }
 func (c *Char) assertCommand(name string, time int32) {
-	if !c.cmd[c.playerNo].Assert(name, time) {
+	ok := false
+	// Assert commands normally
+	ok = c.cmd[c.playerNo].Assert(name, time)
+	// Assert state owner commands during custom states
+	// These might be better as mutually exclusive, but with the way the Command trigger works right now this is safer
+	if c.playerNo != sys.workingState.playerNo {
+		ok = ok || c.cmd[sys.workingState.playerNo].Assert(name, time)
+	}
+	if !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to assert an invalid command"))
 	}
 }
@@ -4893,7 +4901,7 @@ func (c *Char) defBW() float32 {
 	return float32(c.size.ground.back)
 }
 func (c *Char) defTHeight() float32 {
-	if c.stCgi().ikemenver[0] <= 0 && c.stCgi().ikemenver[1] <= 99 { // Change starting from Ikemen 0.100
+	if c.stCgi().ikemenver[0] < 1 { // Change introduced in Ikemen 1.0
 		return float32(c.size.height.stand)
 	} else {
 		if c.ss.stateType == ST_L {
@@ -4908,7 +4916,7 @@ func (c *Char) defTHeight() float32 {
 	}
 }
 func (c *Char) defBHeight() float32 {
-	if c.stCgi().ikemenver[0] <= 0 && c.stCgi().ikemenver[1] <= 99 { // Change starting from Ikemen 0.100
+	if c.stCgi().ikemenver[0] < 1 { // Change introduced in Ikemen 1.0
 		return 0
 	} else {
 		if c.ss.stateType == ST_A {
@@ -7606,7 +7614,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				gxmax += sys.xmax / getter.localscl
 
 				push := true
-				if c.size.classicpushbox == 0 { // This constant disables checking Clsn2 for player push
+				if c.size.ignoreclsn2push == 0 { // This constant disables checking Clsn2 for player push
 					push = getter.clsnCheck(c, false, false)
 				}
 
