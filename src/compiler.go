@@ -1555,8 +1555,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_z_width)
 		case "size.z.enable":
 			out.append(OC_const_size_z_enable)
-		case "size.classicpushbox":
-			out.append(OC_const_size_classicpushbox)
+		case "size.ignoreclsn2push":
+			out.append(OC_const_size_ignoreclsn2push)
 		case "velocity.walk.fwd.x":
 			out.append(OC_const_velocity_walk_fwd_x)
 		case "velocity.walk.back.x":

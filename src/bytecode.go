@@ -264,7 +264,7 @@ const (
 	OC_const_size_draw_offset_y
 	OC_const_size_z_width
 	OC_const_size_z_enable
-	OC_const_size_classicpushbox
+	OC_const_size_ignoreclsn2push
 	OC_const_velocity_walk_fwd_x
 	OC_const_velocity_walk_back_x
 	OC_const_velocity_walk_up_x
@@ -1600,8 +1600,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.z.width * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_z_enable:
 		sys.bcStack.PushB(c.size.z.enable)
-	case OC_const_size_classicpushbox:
-		sys.bcStack.PushI(c.size.classicpushbox)
+	case OC_const_size_ignoreclsn2push:
+		sys.bcStack.PushI(c.size.ignoreclsn2push)
 	case OC_const_velocity_walk_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_back_x:
@@ -8852,36 +8852,38 @@ const (
 
 func (sc modifyChar) Run(c *Char, _ []int32) bool {
 	crun := c
-	var lm, pm, dp, gp int32
-	var ts int
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case modifyChar_lifemax:
-			lm = exp[0].evalI(c)
+			lm := exp[0].evalI(c)
 			if lm < 1 {
 				lm = 1
 			}
 			crun.lifeMax = lm
+			crun.life = Clamp(crun.life, 0, crun.lifeMax)
 		case modifyChar_powermax:
-			pm = exp[0].evalI(c)
+			pm := exp[0].evalI(c)
 			if pm < 0 {
 				pm = 0
 			}
 			crun.powerMax = pm
+			crun.power = Clamp(crun.power, 0, crun.powerMax)
 		case modifyChar_dizzypointsmax:
-			dp = exp[0].evalI(c)
+			dp := exp[0].evalI(c)
 			if dp < 0 {
 				dp = 0
 			}
 			crun.dizzyPointsMax = dp
+			crun.dizzyPoints = Clamp(crun.dizzyPoints, 0, crun.dizzyPointsMax)
 		case modifyChar_guardpointsmax:
-			gp = exp[0].evalI(c)
+			gp := exp[0].evalI(c)
 			if gp < 0 {
 				gp = 0
 			}
 			crun.guardPointsMax = gp
+			crun.guardPoints = Clamp(crun.guardPoints, 0, crun.guardPointsMax)
 		case modifyChar_teamside:
-			ts = int(exp[0].evalI(c))
+			ts := int(exp[0].evalI(c))
 			if ts >= 0 && ts <= 2 {
 				ts -= 1 // Internally the teamside goes from -1 to 1
 				crun.teamside = ts

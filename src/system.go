@@ -1718,19 +1718,27 @@ func (s *System) fight() (reload bool) {
 	}()
 	var oldStageVars Stage
 	oldStageVars.copyStageVars(s.stage)
-	var life, pow, gpow, spow, rlife [len(s.chars)]int32
+	var life, lifeMax, power, powerMax [len(s.chars)]int32
+	var guardPoints, guardPointsMax, dizzyPoints, dizzyPointsMax, redLife [len(s.chars)]int32
+	var teamside [len(s.chars)]int
 	var ivar [len(s.chars)][]int32
 	var fvar [len(s.chars)][]float32
 	var dialogue [len(s.chars)][]string
 	var mapArray [len(s.chars)]map[string]float32
 	var remapSpr [len(s.chars)]RemapPreset
 	// Anonymous function to assign initial character values
+	// ModifyChar parameters should ideally also be reset here
 	copyVar := func(pn int) {
 		life[pn] = s.chars[pn][0].life
-		pow[pn] = s.chars[pn][0].power
-		gpow[pn] = s.chars[pn][0].guardPoints
-		spow[pn] = s.chars[pn][0].dizzyPoints
-		rlife[pn] = s.chars[pn][0].redLife
+		lifeMax[pn] = s.chars[pn][0].lifeMax
+		power[pn] = s.chars[pn][0].power
+		powerMax[pn] = s.chars[pn][0].powerMax
+		guardPoints[pn] = s.chars[pn][0].guardPoints
+		guardPointsMax[pn] = s.chars[pn][0].guardPointsMax
+		dizzyPoints[pn] = s.chars[pn][0].dizzyPoints
+		dizzyPointsMax[pn] = s.chars[pn][0].dizzyPointsMax
+		redLife[pn] = s.chars[pn][0].redLife
+		teamside[pn] = s.chars[pn][0].teamside
 		if len(ivar[pn]) < len(s.chars[pn][0].ivar) {
 			ivar[pn] = make([]int32, len(s.chars[pn][0].ivar))
 		}
@@ -1931,10 +1939,15 @@ func (s *System) fight() (reload bool) {
 		for i, p := range s.chars {
 			if len(p) > 0 {
 				p[0].life = life[i]
-				p[0].power = pow[i]
-				p[0].guardPoints = gpow[i]
-				p[0].dizzyPoints = spow[i]
-				p[0].redLife = rlife[i]
+				p[0].lifeMax = lifeMax[i]
+				p[0].power = power[i]
+				p[0].powerMax = powerMax[i]
+				p[0].guardPoints = guardPoints[i]
+				p[0].guardPointsMax = guardPointsMax[i]
+				p[0].dizzyPoints = dizzyPoints[i]
+				p[0].dizzyPointsMax = dizzyPointsMax[i]
+				p[0].redLife = redLife[i]
+				p[0].teamside = teamside[i]
 				copy(p[0].ivar[:], ivar[i])
 				copy(p[0].fvar[:], fvar[i])
 				copy(p[0].dialogue[:], dialogue[i])
