@@ -3734,7 +3734,7 @@ func (l *Lifebar) step() {
 			if c.alive() || !c.scf(SCF_over) {
 				if c.receivedHits > cb[^i&1] {
 					cb[^i&1] = Clamp(cb[^i&1], c.receivedHits, 999)
-					cd[^i&1] = Max(c.comboDmg, cd[^i&1])
+					cd[^i&1] = Max(c.receivedDmg, cd[^i&1])
 					cp[^i&1] = float32(cd[^i&1]) / float32(c.lifeMax) * 100
 				}
 				if c.receivedHits > 0 && !dz[^i&1] && c.scf(SCF_dizzy) {

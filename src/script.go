@@ -4324,7 +4324,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "receiveddamage", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.comboDmg))
+		l.Push(lua.LNumber(sys.debugWC.receivedDmg))
 		return 1
 	})
 	luaRegister(l, "redlife", func(*lua.LState) int {
