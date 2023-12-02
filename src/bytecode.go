@@ -2176,7 +2176,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_indialogue:
 		sys.bcStack.PushB(sys.dialogueFlg)
 	case OC_ex_isassertedchar:
-		sys.bcStack.PushB(c.csf(CharSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
+		sys.bcStack.PushB(c.asf(AssertSpecialFlag((*(*int64)(unsafe.Pointer(&be[*i]))))))
 		*i += 8
 	case OC_ex_isassertedglobal:
 		sys.bcStack.PushB(sys.gsf(GlobalSpecialFlag((*(*int32)(unsafe.Pointer(&be[*i]))))))
@@ -2236,7 +2236,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_ratiolevel:
 		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:
-		sys.bcStack.PushI(c.comboDmg)
+		sys.bcStack.PushI(c.receivedDmg)
 	case OC_ex_receivedhits:
 		sys.bcStack.PushI(c.receivedHits)
 	case OC_ex_redlife:

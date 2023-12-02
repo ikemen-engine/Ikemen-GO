@@ -1766,6 +1766,7 @@ type CharSystemVar struct {
 	systemFlag      SystemCharFlag
 	specialFlag     CharSpecialFlag
 	sprPriority     int32
+	receivedDmg     int32
 	receivedHits    int32
 	velOff          float32
 	width           [2]float32
@@ -1778,7 +1779,6 @@ type CharSystemVar struct {
 	finalDefense    float64
 	defenseMulDelay bool
 	counterHit      bool
-	comboDmg        int32
 }
 
 type Char struct {
@@ -3624,8 +3624,8 @@ func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
 		c.exitTarget(true)
+		c.receivedDmg = 0
 		c.receivedHits = 0
-		c.comboDmg = 0
 		if c.player {
 			sys.charList.p2enemyDelete(c)
 		}
@@ -4626,7 +4626,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 			add = -1
 		}
 		if add < 0 {
-			c.comboDmg -= int32(add)
+			c.receivedDmg -= int32(add)
 		}
 		c.lifeSet(c.life + int32(add))
 		c.ghv.kill = kill
@@ -6060,6 +6060,58 @@ func (c *Char) actionRun() {
 			}
 			c.ghv.redlife = 0
 		}
+		// The following block used to be in char.update()
+		// That however caused a breaking difference with Mugen when checking these variables between different players
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1540
+		if c.ss.moveType == MT_H {
+			if c.ghv.guarded {
+				c.receivedDmg = 0
+				c.receivedHits = 0
+			}
+			if c.ghv.hitshaketime > 0 {
+				c.ghv.hitshaketime--
+			}
+			if c.ghv.fallf {
+				c.fallTime++
+			}
+		} else {
+			if c.hittmp > 0 {
+				c.hittmp = 0
+			}
+			if !c.scf(SCF_dizzy) {
+				// HitOverride KeepState preserves some GetHitVars for 1 frame so they can be accessed by the char
+				if !c.hoKeepState {
+					c.ghv.hitshaketime = 0
+					c.ghv.attr = 0
+					c.ghv.id = 0
+					c.ghv.playerNo = -1
+				}
+				c.superDefenseMul = 1
+				c.fallDefenseMul = 1
+				c.ghv.fallf = false
+				c.ghv.fallcount = 0
+				c.ghv.hitid = c.ghv.hitid >> 31
+				c.receivedDmg = 0
+				c.receivedHits = 0
+				c.ghv.score = 0
+				// In Mugen, when returning to idle, characters cannot act until the next frame
+				// To account for this, combos in Mugen linger one frame longer than they normally would in a fighting game
+				// Ikemen's "fake combo" code used to replicate this behavior
+				// After guarding was adjusted so that chars could guard when returning to idle, the fake combo code became obsolete
+				// https://github.com/ikemen-engine/Ikemen-GO/issues/597
+				//if c.comboExtraFrameWindow <= 0 {
+				//	c.fakeReceivedHits = 0
+				//	c.fakeComboDmg = 0
+				//	c.fakeCombo = false
+				//} else {
+				//	c.fakeCombo = true
+				//	c.comboExtraFrameWindow--
+				//}
+			}
+		}
+		if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
+			c.ghv.hittime--
+		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
@@ -6172,55 +6224,6 @@ func (c *Char) update(cvmin, cvmax,
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
-			}
-			if c.ss.moveType == MT_H {
-				if c.ghv.guarded {
-					c.receivedHits = 0
-					c.comboDmg = 0
-				}
-				if c.ghv.hitshaketime > 0 {
-					c.ghv.hitshaketime--
-				}
-				if c.ghv.fallf {
-					c.fallTime++
-				}
-			} else {
-				if c.hittmp > 0 {
-					c.hittmp = 0
-				}
-				if !c.scf(SCF_dizzy) {
-					// HitOverride KeepState preserves some GetHitVars for 1 frame so they can be accessed by the char
-					if !c.hoKeepState {
-						c.ghv.hitshaketime = 0
-						c.ghv.attr = 0
-						c.ghv.id = 0
-						c.ghv.playerNo = -1
-					}
-					c.superDefenseMul = 1
-					c.fallDefenseMul = 1
-					c.ghv.fallf = false
-					c.ghv.fallcount = 0
-					c.ghv.hitid = c.ghv.hitid >> 31
-					c.receivedHits = 0
-					c.comboDmg = 0
-					c.ghv.score = 0
-					// In Mugen, when returning to idle, characters cannot act until the next frame
-					// To account for this, combos in Mugen linger one frame longer than they normally would in a fighting game
-					// Ikemen's "fake combo" code used to replicate this behavior
-					// After guarding was adjusted so that chars could guard when returning to idle, the fake combo code became obsolete
-					// https://github.com/ikemen-engine/Ikemen-GO/issues/597
-					//if c.comboExtraFrameWindow <= 0 {
-					//	c.fakeReceivedHits = 0
-					//	c.fakeComboDmg = 0
-					//	c.fakeCombo = false
-					//} else {
-					//	c.fakeCombo = true
-					//	c.comboExtraFrameWindow--
-					//}
-				}
-			}
-			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
-				c.ghv.hittime--
 			}
 			if ((c.ss.moveType == MT_H && (c.ss.stateType == ST_S || c.ss.stateType == ST_C)) || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 && !c.asf(ASF_nomakedust) {
