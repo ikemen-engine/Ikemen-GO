@@ -1045,13 +1045,14 @@ type Explod struct {
 	pausemovetime       int32
 	anim                *Animation
 	animelem            int32
-	animelemlooped      bool
+	animfreeze      	bool
 	ontop               bool
 	under               bool
 	alpha               [2]int32
 	ownpal              bool
 	ignorehitpause      bool
 	rot                 Rotation
+	anglerot            [3]float32
 	projection          Projection
 	fLength             float32
 	oldPos              [2]float32
@@ -1062,6 +1063,20 @@ type Explod struct {
 	window              [4]float32
 	lockSpriteFacing    bool
 	localscl            float32
+	blendmode			int32
+ 	start_animelem 		int32
+	start_scale 		[2]float32
+ 	start_rot 			[3]float32
+	start_alpha 		[2]int32
+	start_fLength 		float32
+	interpolate  		bool	
+	interpolate_time   	[2]int32
+	interpolate_animelem [2]int32			
+	interpolate_scale   [4]float32
+	interpolate_alpha   [5]int32
+	interpolate_pos     [4]float32
+	interpolate_angle   [6]float32
+	interpolate_fLength [2]float32	
 }
 
 func (e *Explod) clear() {
@@ -1069,6 +1084,7 @@ func (e *Explod) clear() {
 		postype: PT_P1, space: Space_none, relativef: 1, facing: 1, vfacing: 1, localscl: 1,
 		projection: Projection_Orthographic,
 		window:     [4]float32{0, 0, 0, 0},
+		animelem:   1, blendmode: 0,	
 		alpha:      [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
 }
 func (e *Explod) reset() {
@@ -1229,9 +1245,6 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			return
 		}
 	}
-	if e.time == 0 || e.bindtime != 0 {
-		e.setAnimElem()
-	}
 	if e.bindtime != 0 && (e.space == Space_stage ||
 		(e.space == Space_screen && e.postype <= PT_P2)) {
 		if c := sys.playerID(e.bindId); c != nil {
@@ -1281,29 +1294,35 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		pfx.remap = nil
 	}
 	alp := e.alpha
+	anglerot := e.anglerot
+	fLength := e.fLength
+	scale := e.scale
+	if e.interpolate {
+		e.Interpolate(&scale,&alp,&anglerot,&fLength)	
+	}
 	if alp[0] < 0 {
 		alp[0] = -1
 	}
-	rot := e.rot
 	if (e.facing*e.relativef < 0) != (e.vfacing < 0) {
-		rot.angle *= -1
-		rot.yangle *= -1
+		anglerot[0] *= -1
+		anglerot[2] *= -1
 	}
-
 	sdwalp := 255 - alp[1]
 	if sdwalp < 0 {
 		sdwalp = 256
 	}
-
-	fLength := e.fLength
 	if fLength <= 0 {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-	var epos = [2]float32{(e.pos[0] + e.offset[0] + off[0]) * e.localscl, (e.pos[1] + e.offset[1] + off[1]) * e.localscl}
+	rot := e.rot
+	rot.angle = anglerot[0]
+	rot.xangle = anglerot[1]
+	rot.yangle = anglerot[2]		
+	var epos = [2]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * e.localscl, (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
-	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{facing * e.scale[0] * e.localscl,
-		e.vfacing * e.scale[1] * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
+	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{(facing * scale[0]) * e.localscl,
+		(e.vfacing * scale[1]) * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
@@ -1340,7 +1359,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			for i := range e.velocity {
 				e.velocity[i] += e.accel[i]
 			}
-			if e.animelemlooped {
+			eleminterpolate := e.interpolate && e.interpolate_time[1] > 0 && e.interpolate_animelem[1] >= 0
+			if e.animfreeze || eleminterpolate {
 				e.setAnimElem()
 			} else {
 				e.anim.Action()
@@ -1350,6 +1370,101 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			e.setX(e.pos[0])
 			e.setY(e.pos[1])
 		}
+	}
+}
+
+func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32) {
+	if sys.tickNextFrame() {
+
+		if e.interpolate_time[1] > 0 {
+			e.interpolate_time[1]--
+		}
+		t := float32(e.interpolate_time[1])/float32(e.interpolate_time[0])
+		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1],e.start_fLength,t)
+		if e.interpolate_animelem[1] >= 0 {
+			elem := Ceil(Lerp(float32(e.interpolate_animelem[0]-1),float32(e.interpolate_animelem[1]),1-t))
+
+			if e.interpolate_animelem[0] > e.interpolate_animelem[1] {
+				elem = Ceil(Lerp(float32(e.interpolate_animelem[1]-1),float32(e.interpolate_animelem[0]),t))		
+			}
+			e.animelem = Clamp(elem,Min(e.interpolate_animelem[0],e.interpolate_animelem[1]),Max(e.interpolate_animelem[0],e.interpolate_animelem[1]))
+			//e.setAnimElem()
+		}		
+		for i := 0; i < 3; i++ {
+			if i < 2 {
+				e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+2],0,t)
+				e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2],e.start_scale[i],t)//-e.start_scale[i]
+				if e.blendmode == 1 {
+					e.interpolate_alpha[i] = Clamp(int32(Lerp(float32(e.interpolate_alpha[i+2]),float32(e.start_alpha[i]),t)),0,255)
+				}
+			}
+			e.interpolate_angle[i] = Lerp(e.interpolate_angle[i+3],e.start_rot[i],t)
+		}
+	}
+	for i := 0; i < 3; i++ {
+		if i < 2 {
+			(*scale)[i] = e.interpolate_scale[i]*e.scale[i]
+			if e.blendmode == 1 {
+				(*alpha)[i] = int32(float32(e.interpolate_alpha[i])*( float32(e.alpha[i])/255 ) )					
+			}
+		}
+		(*anglerot)[i] = e.interpolate_angle[i]+e.anglerot[i]
+	}
+	*fLength = e.interpolate_fLength[0]+e.fLength
+}
+
+func (e *Explod) setStartParams(pfd *PalFXDef) {
+	e.start_animelem = e.animelem
+	e.start_fLength = e.fLength
+	for i := 0; i < 3; i++ {
+		if i < 2 {
+			e.start_scale[i] = e.scale[i]
+			e.start_alpha[i] = e.alpha[i]	
+		}
+		e.start_rot[i] = e.anglerot[i]
+	}		
+	if e.interpolate {
+		e.fLength = 0
+		for i := 0; i < 3; i++ {
+			if e.ownpal { 
+				pfd.mul[i] = 256
+				pfd.add[i] = 0	
+			}
+			if i < 2 {
+				e.scale[i] = 1
+				if e.blendmode == 1 { e.alpha[i] = 255 }
+			}
+			e.anglerot[i] = 0
+		}
+		if e.ownpal { 
+			pfd.color = 1
+			pfd.hue = 0	
+		}
+	}
+}
+
+func (e *Explod) resetInterpolation(pfd *PalFXDef) {
+	for i := 0; i < 3; i++ {
+		for j := 0; j < 2; j++ {
+			v := (i+(j*3))
+			pfd.iadd[v] = pfd.add[i]
+			pfd.imul[v] = pfd.mul[i]
+			e.interpolate_angle[v] = e.anglerot[i]		
+			if i < 2 {
+				v = (i+(j*2))
+				e.interpolate_pos[v] = 0
+				e.interpolate_scale[v] = e.scale[i]
+				e.interpolate_alpha[v] = e.alpha[i]	
+				if j == 0 {
+					pfd.icolor[i] = pfd.color
+					pfd.ihue[i] = pfd.hue
+				}
+			}					
+		}	
+	}
+	for i := 0; i < 2; i++ {
+		e.interpolate_animelem[i] = -1
+		e.interpolate_fLength[i] = e.fLength
 	}
 }
 
