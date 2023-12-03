@@ -1736,42 +1736,48 @@ func loadglTFStage(filepath string) (*Model, error) {
 		images = append(images, res)
 	}
 	mdl.textures = make([]*GLTFTexture, 0, len(doc.Textures))
+	textureMap := map[[2]uint32]*GLTFTexture{}
 	for _, t := range doc.Textures {
-		s := doc.Samplers[*t.Sampler]
-		mag, _ := map[gltf.MagFilter]int32{
-			gltf.MagUndefined: 9729,
-			gltf.MagNearest:   9728,
-			gltf.MagLinear:    9729,
-		}[s.MagFilter]
-		min, _ := map[gltf.MinFilter]int32{
-			gltf.MinUndefined:            9729,
-			gltf.MinNearest:              9728,
-			gltf.MinLinear:               9729,
-			gltf.MinNearestMipMapNearest: 9984,
-			gltf.MinLinearMipMapNearest:  9985,
-			gltf.MinNearestMipMapLinear:  9986,
-			gltf.MinLinearMipMapLinear:   9987,
-		}[s.MinFilter]
-		wrapS, _ := map[gltf.WrappingMode]int32{
-			gltf.WrapClampToEdge:    33071,
-			gltf.WrapMirroredRepeat: 33648,
-			gltf.WrapRepeat:         10497,
-		}[s.WrapS]
-		wrapT, _ := map[gltf.WrappingMode]int32{
-			gltf.WrapClampToEdge:    33071,
-			gltf.WrapMirroredRepeat: 33648,
-			gltf.WrapRepeat:         10497,
-		}[s.WrapT]
+		if texture, ok := textureMap[[2]uint32{*t.Source, *t.Sampler}]; ok {
+			mdl.textures = append(mdl.textures, texture)
+		} else {
+			texture := &GLTFTexture{}
+			s := doc.Samplers[*t.Sampler]
+			mag, _ := map[gltf.MagFilter]int32{
+				gltf.MagUndefined: 9729,
+				gltf.MagNearest:   9728,
+				gltf.MagLinear:    9729,
+			}[s.MagFilter]
+			min, _ := map[gltf.MinFilter]int32{
+				gltf.MinUndefined:            9729,
+				gltf.MinNearest:              9728,
+				gltf.MinLinear:               9729,
+				gltf.MinNearestMipMapNearest: 9984,
+				gltf.MinLinearMipMapNearest:  9985,
+				gltf.MinNearestMipMapLinear:  9986,
+				gltf.MinLinearMipMapLinear:   9987,
+			}[s.MinFilter]
+			wrapS, _ := map[gltf.WrappingMode]int32{
+				gltf.WrapClampToEdge:    33071,
+				gltf.WrapMirroredRepeat: 33648,
+				gltf.WrapRepeat:         10497,
+			}[s.WrapS]
+			wrapT, _ := map[gltf.WrappingMode]int32{
+				gltf.WrapClampToEdge:    33071,
+				gltf.WrapMirroredRepeat: 33648,
+				gltf.WrapRepeat:         10497,
+			}[s.WrapT]
 
-		img := images[*t.Source]
-		rgba := image.NewRGBA(img.Bounds())
-		draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
-		texture := &GLTFTexture{}
-		sys.mainThreadTask <- func() {
-			texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
-			texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+			img := images[*t.Source]
+			rgba := image.NewRGBA(img.Bounds())
+			draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
+			sys.mainThreadTask <- func() {
+				texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
+				texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+			}
+			textureMap[[2]uint32{*t.Source, *t.Sampler}] = texture
+			mdl.textures = append(mdl.textures, texture)
 		}
-		mdl.textures = append(mdl.textures, texture)
 	}
 	mdl.materials = make([]*Material, 0, len(doc.Materials))
 	for _, m := range doc.Materials {
