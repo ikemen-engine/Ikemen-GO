@@ -1970,6 +1970,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 					mdl.animationTimeStamps[s.Input] = append(mdl.animationTimeStamps[s.Input], t)
 				}
 			}
+			sampler.interpolation = GLTFAnimationInterpolation(s.Interpolation)
 			sampler.inputIndex = s.Input
 			if anim.duration < mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1] {
 				anim.duration = mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1]
@@ -2122,6 +2123,12 @@ func (model *Model) step() {
 		anim.time += sys.turbo / 60
 		for anim.time > anim.duration && anim.duration > 0 {
 			anim.time -= anim.duration
+		}
+		time := 60 * float64(anim.time)
+		if math.Abs(time-math.Floor(time)) < 0.001 {
+			anim.time = float32(math.Floor(time) / 60)
+		} else if math.Abs(float64(anim.time)-math.Ceil(float64(anim.time))) < 0.001 {
+			anim.time = float32(math.Ceil(time) / 60)
 		}
 		for _, channel := range anim.channels {
 			node := model.nodes[channel.nodeIndex]
