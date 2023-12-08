@@ -3789,6 +3789,7 @@ const (
 	explod_interpolate_pfx_add
 	explod_interpolate_pfx_color
 	explod_interpolate_pfx_hue
+	explod_interpolation	
 	explod_redirectid
 )
 
@@ -3925,29 +3926,26 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_trans:
 			e.alpha[0] = exp[0].evalI(c)
 			e.alpha[1] = exp[1].evalI(c)
+			sa, da := e.alpha[0],e.alpha[1]
+
 			if len(exp) >= 3 {
 				e.alpha[0] = Clamp(e.alpha[0], 0, 255)
 				e.alpha[1] = Clamp(e.alpha[1], 0, 255)
 				//if len(exp) >= 4 {
 				//	e.alpha[1] = ^e.alpha[1]
 				//} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
-				if e.alpha[0] == 1 && e.alpha[1] == 255 {
-					//e.alpha[0] = 0
-				}
-			}
-			sa, da := e.alpha[0],e.alpha[1]
-			//None
-			if sa == 255 && da == 0 {
-				e.blendmode = 0
-			//Add
-			} else if (sa <= 255 && sa > 1) && (da <= 255 && da > 0) {
-				e.blendmode = 1
-			//Sub
-			} else if sa == 1 && da == 255  {
-				e.blendmode = 2
 
-			} else {
-				e.blendmode = -1
+				//Add
+				e.blendmode = 1
+				//Sub
+				if sa == 1 && da == 255  {
+					e.blendmode = 2
+				} else if sa == -1 && da == 0 {
+					e.blendmode = 0
+				}
+				if e.alpha[0] == 1 && e.alpha[1] == 255 {
+					e.alpha[0] = 0
+				}
 			}
 		case explod_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
@@ -4019,12 +4017,15 @@ func (sc explod) setInterpolation(c *Char, e *Explod,
 		if e.interpolate_time[0] > 0 {
 			e.resetInterpolation(pfd)
 			e.interpolate = true
-			pfd.itime = e.interpolate_time[0]
-			pfd.interpolate = true			
+			if e.ownpal {
+				pfd.interpolate = true	
+				pfd.itime = e.interpolate_time[0]				
+			}
 		}
 	case explod_interpolate_animelem:
 		e.interpolate_animelem[1] = exp[0].evalI(c)
 		e.interpolate_animelem[0] = e.animelem
+		e.interpolate_animelem[2] = e.interpolate_animelem[1]
 	case explod_interpolate_pos:
 		e.interpolate_pos[2] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -4071,10 +4072,6 @@ func (sc explod) setInterpolation(c *Char, e *Explod,
 	case explod_interpolate_pfx_hue:
 		pfd.ihue[0] = exp[0].evalF(c) / 256
 	default:
-		//if e.interpolate {
-			//e.resetInterpolation(pfd)
-		//}
-
 	}
 	return true
 }
@@ -4287,30 +4284,30 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.removeonchangestate = t })
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
+				blendmode := 0
 				if len(exp) >= 3 {
 					s, d = Clamp(s, 0, 255), Clamp(d, 0, 255)
 					//if len(exp) >= 4 {
 					//	d = ^d
 					//} else if s == 1 && d == 255 {
+
+					//Add
+					blendmode = 1
+					//Sub
+					if s == 1 && d == 255  {
+						blendmode = 2
+					} else if s == -1 && d == 0 {
+						blendmode = 0
+					}
+
 					if s == 1 && d == 255 {
 						s = 0
 					}
+
 				}
 				eachExpl(func(e *Explod) { 
-					e.alpha = [...]int32{s, d} 
-					//None
-					if s == 255 && d == 0 {
-						e.blendmode = 0
-					//Add
-					} else if (s <= 255 && s > 1) && (d <= 255 && d > 0) {
-						e.blendmode = 1
-					//Sub
-					} else if s == 1 && d == 255  {
-						e.blendmode = 2
-
-					} else {
-						e.blendmode = -1
-					}				
+					e.alpha = [...]int32{s, d}
+					e.blendmode = int32(blendmode)			
 				})
 			case explod_anim:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
@@ -4360,6 +4357,23 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					bId = crun.id
 				}
 				eachExpl(func(e *Explod) { e.setBind(bId) })
+			case explod_interpolation:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					interpolation := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { 
+						if e.interpolate != interpolation {
+							e.interpolate_animelem[0] = e.start_animelem
+							e.interpolate_animelem[1] = e.interpolate_animelem[2]							
+							if e.ownpal {
+								pfd := e.palfx
+								pfd.interpolate = interpolation
+								pfd.itime = e.interpolate_time[0]	
+							}					
+							e.interpolate_time[1] = e.interpolate_time[0]
+							e.interpolate = interpolation
+						}
+					})
+				}				
 			default:
 				eachExpl(func(e *Explod) {
 					if e.ownpal {

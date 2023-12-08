@@ -1071,7 +1071,7 @@ type Explod struct {
 	start_fLength 		float32
 	interpolate  		bool	
 	interpolate_time   	[2]int32
-	interpolate_animelem [2]int32			
+	interpolate_animelem [3]int32			
 	interpolate_scale   [4]float32
 	interpolate_alpha   [5]int32
 	interpolate_pos     [4]float32
@@ -1298,7 +1298,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	fLength := e.fLength
 	scale := e.scale
 	if e.interpolate {
-		e.Interpolate(&scale,&alp,&anglerot,&fLength)	
+		e.Interpolate(act,&scale,&alp,&anglerot,&fLength)	
 	}
 	if alp[0] < 0 {
 		alp[0] = -1
@@ -1373,9 +1373,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 }
 
-func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32) {
-	if sys.tickNextFrame() {
-
+func (e *Explod) Interpolate(act bool,scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32) {
+	if sys.tickNextFrame() && act {
 		if e.interpolate_time[1] > 0 {
 			e.interpolate_time[1]--
 		}
@@ -1388,7 +1387,6 @@ func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]fl
 				elem = Ceil(Lerp(float32(e.interpolate_animelem[1]-1),float32(e.interpolate_animelem[0]),t))		
 			}
 			e.animelem = Clamp(elem,Min(e.interpolate_animelem[0],e.interpolate_animelem[1]),Max(e.interpolate_animelem[0],e.interpolate_animelem[1]))
-			//e.setAnimElem()
 		}		
 		for i := 0; i < 3; i++ {
 			if i < 2 {
@@ -1447,15 +1445,17 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 	for i := 0; i < 3; i++ {
 		for j := 0; j < 2; j++ {
 			v := (i+(j*3))
-			pfd.iadd[v] = pfd.add[i]
-			pfd.imul[v] = pfd.mul[i]
+			if e.ownpal {
+				pfd.iadd[v] = pfd.add[i]
+				pfd.imul[v] = pfd.mul[i]
+			}
 			e.interpolate_angle[v] = e.anglerot[i]		
 			if i < 2 {
 				v = (i+(j*2))
 				e.interpolate_pos[v] = 0
 				e.interpolate_scale[v] = e.scale[i]
 				e.interpolate_alpha[v] = e.alpha[i]	
-				if j == 0 {
+				if j == 0 && e.ownpal {
 					pfd.icolor[i] = pfd.color
 					pfd.ihue[i] = pfd.hue
 				}
