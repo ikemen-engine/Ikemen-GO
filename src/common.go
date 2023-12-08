@@ -109,7 +109,7 @@ func Pow(x, y float32) float32 {
 }
 func Lerp(x, y, a float32) float32 {
 	//return float32(x + (y - x) * ClampF(a, 0, 1))
-	return float32((1 - a) * x + a * y)
+	return float32((1-a)*x + a*y)
 }
 func Ceil(x float32) int32 {
 	return int32(math.Ceil(float64(x)))

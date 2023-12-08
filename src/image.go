@@ -38,11 +38,11 @@ type PalFXDef struct {
 	invertblend int32
 	hue         float32
 	interpolate bool
-	iadd 		[6]int32
-	imul 		[6]int32
-	icolor 		[2]float32
-	ihue 		[2]float32
-	itime 		int32	
+	iadd        [6]int32
+	imul        [6]int32
+	icolor      [2]float32
+	ihue        [2]float32
+	itime       int32
 }
 type PalFX struct {
 	PalFXDef
@@ -58,16 +58,16 @@ type PalFX struct {
 	eColor       float32
 	eHue         float32
 	eInterpolate bool
-	eiAdd 		 [3]int32
-	eiMul 		 [3]int32
-	eiColor 	 float32
-	eiHue 		 float32
-	eiTime 		 int32	
+	eiAdd        [3]int32
+	eiMul        [3]int32
+	eiColor      float32
+	eiHue        float32
+	eiTime       int32
 }
 
 func newPalFX() *PalFX { return &PalFX{} }
 func (pf *PalFX) clear2(nt bool) {
-	pf.PalFXDef = PalFXDef{color: 1, icolor: [...]float32{1,1}, mul: [...]int32{256, 256, 256}, imul: [...]int32{256, 256, 256, 256, 256, 256}}
+	pf.PalFXDef = PalFXDef{color: 1, icolor: [...]float32{1, 1}, mul: [...]int32{256, 256, 256}, imul: [...]int32{256, 256, 256, 256, 256, 256}}
 	pf.negType = nt
 	for i := 0; i < len(pf.sintime); i++ {
 		pf.sintime[i] = 0
@@ -219,25 +219,25 @@ func (pf *PalFX) sinHueshift(color *float32) {
 }
 func (pf *PalFX) interpolationUpdate() {
 	if pf.eiTime < pf.itime {
-		pf.eiTime++		
+		pf.eiTime++
 	}
-	t := float32(pf.eiTime)/float32(pf.itime)
+	t := float32(pf.eiTime) / float32(pf.itime)
 	for i := 0; i < 3; i++ {
-		pf.eiMul[i] = int32(Lerp(float32(pf.imul[i+3]),float32(pf.imul[i]),t))
-		pf.eMul[i] = int32(float32(pf.eiMul[i])*float32(pf.mul[i])/256 )
-		pf.eiAdd[i] = int32(Lerp(float32(pf.iadd[i+3]),float32(pf.iadd[i]),t))
-		pf.eAdd[i] = pf.eiAdd[i]+pf.add[i]
+		pf.eiMul[i] = int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
+		pf.eMul[i] = int32(float32(pf.eiMul[i]) * float32(pf.mul[i]) / 256)
+		pf.eiAdd[i] = int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t))
+		pf.eAdd[i] = pf.eiAdd[i] + pf.add[i]
 	}
-	pf.eiColor = Lerp(pf.icolor[1],pf.icolor[0],t)
-	pf.eColor = pf.eiColor*pf.color
-	pf.eiHue = Lerp(pf.ihue[1],pf.ihue[0],t)
-	pf.eHue = pf.eiHue+pf.hue
+	pf.eiColor = Lerp(pf.icolor[1], pf.icolor[0], t)
+	pf.eColor = pf.eiColor * pf.color
+	pf.eiHue = Lerp(pf.ihue[1], pf.ihue[0], t)
+	pf.eHue = pf.eiHue + pf.hue
 }
 func (pf *PalFX) step() {
 	pf.enable = pf.time != 0
 	if pf.enable {
-	pf.eInterpolate = pf.interpolate
-		if pf.eInterpolate { 
+		pf.eInterpolate = pf.interpolate
+		if pf.eInterpolate {
 			pf.interpolationUpdate()
 		} else {
 			pf.eMul = pf.mul

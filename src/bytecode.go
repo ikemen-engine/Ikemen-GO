@@ -3779,7 +3779,7 @@ const (
 	explod_window
 	explod_postypeExists
 	explod_interpolate_time
-	explod_interpolate_animelem	
+	explod_interpolate_animelem
 	explod_interpolate_pos
 	explod_interpolate_scale
 	explod_interpolate_angle
@@ -3789,7 +3789,7 @@ const (
 	explod_interpolate_pfx_add
 	explod_interpolate_pfx_color
 	explod_interpolate_pfx_hue
-	explod_interpolation	
+	explod_interpolation
 	explod_redirectid
 )
 
@@ -3926,7 +3926,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_trans:
 			e.alpha[0] = exp[0].evalI(c)
 			e.alpha[1] = exp[1].evalI(c)
-			sa, da := e.alpha[0],e.alpha[1]
+			sa, da := e.alpha[0], e.alpha[1]
 
 			if len(exp) >= 3 {
 				e.alpha[0] = Clamp(e.alpha[0], 0, 255)
@@ -3938,7 +3938,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				//Add
 				e.blendmode = 1
 				//Sub
-				if sa == 1 && da == 255  {
+				if sa == 1 && da == 255 {
 					e.blendmode = 2
 				} else if sa == -1 && da == 0 {
 					e.blendmode = 0
@@ -3985,7 +3985,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.palfxdef.invertblend = -2
 			}
 			palFX(sc).runSub(c, &e.palfxdef, id, exp)
-			
+
 			if crun.stCgi().ikemenver[0] > 0 || crun.stCgi().ikemenver[1] > 0 {
 				explod(sc).setInterpolation(c, e, id, exp, &e.palfxdef)
 			}
@@ -4008,18 +4008,20 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 }
 
 func (sc explod) setInterpolation(c *Char, e *Explod,
-	id byte, exp []BytecodeExp,  pfd *PalFXDef) bool {
+	id byte, exp []BytecodeExp, pfd *PalFXDef) bool {
 	switch id {
 	case explod_interpolate_time:
 		e.interpolate_time[0] = exp[0].evalI(c)
-		if e.interpolate_time[0] < 0 { e.interpolate_time[0] = e.removetime }
+		if e.interpolate_time[0] < 0 {
+			e.interpolate_time[0] = e.removetime
+		}
 		e.interpolate_time[1] = e.interpolate_time[0]
 		if e.interpolate_time[0] > 0 {
 			e.resetInterpolation(pfd)
 			e.interpolate = true
 			if e.ownpal {
-				pfd.interpolate = true	
-				pfd.itime = e.interpolate_time[0]				
+				pfd.interpolate = true
+				pfd.itime = e.interpolate_time[0]
 			}
 		}
 	case explod_interpolate_animelem:
@@ -4294,7 +4296,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					//Add
 					blendmode = 1
 					//Sub
-					if s == 1 && d == 255  {
+					if s == 1 && d == 255 {
 						blendmode = 2
 					} else if s == -1 && d == 0 {
 						blendmode = 0
@@ -4305,9 +4307,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 
 				}
-				eachExpl(func(e *Explod) { 
+				eachExpl(func(e *Explod) {
 					e.alpha = [...]int32{s, d}
-					e.blendmode = int32(blendmode)			
+					e.blendmode = int32(blendmode)
 				})
 			case explod_anim:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
@@ -4360,20 +4362,20 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_interpolation:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					interpolation := exp[0].evalB(c)
-					eachExpl(func(e *Explod) { 
+					eachExpl(func(e *Explod) {
 						if e.interpolate != interpolation {
 							e.interpolate_animelem[0] = e.start_animelem
-							e.interpolate_animelem[1] = e.interpolate_animelem[2]							
+							e.interpolate_animelem[1] = e.interpolate_animelem[2]
 							if e.ownpal {
 								pfd := e.palfx
 								pfd.interpolate = interpolation
-								pfd.itime = e.interpolate_time[0]	
-							}					
+								pfd.itime = e.interpolate_time[0]
+							}
 							e.interpolate_time[1] = e.interpolate_time[0]
 							e.interpolate = interpolation
 						}
 					})
-				}				
+				}
 			default:
 				eachExpl(func(e *Explod) {
 					if e.ownpal {

@@ -730,7 +730,7 @@ func (c *Compiler) explodInterpolate(is IniSection,
 	if err := c.paramValue(is, sc, "interpolation.animelem",
 		explod_interpolate_animelem, VT_Int, 1, false); err != nil {
 		return err
-	}		
+	}
 	if err := c.paramValue(is, sc, "interpolation.scale",
 		explod_interpolate_scale, VT_Float, 2, false); err != nil {
 		return err
@@ -766,7 +766,7 @@ func (c *Compiler) explodInterpolate(is IniSection,
 	if err := c.paramValue(is, sc, "interpolation.palfx.hue",
 		explod_interpolate_pfx_hue, VT_Float, 1, false); err != nil {
 		return err
-	}				
+	}
 	return nil
 }
 func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
@@ -816,7 +816,7 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 		}
 		if err := c.explodInterpolate(is, sc); err != nil {
 			return err
-		}		
+		}
 		if ihp == 0 {
 			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}
@@ -868,7 +868,7 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 		if err := c.paramValue(is, sc, "interpolation",
 			explod_interpolation, VT_Bool, 1, false); err != nil {
 			return err
-		}		
+		}
 		if ihp == 0 {
 			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}
