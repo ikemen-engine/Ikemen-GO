@@ -721,6 +721,54 @@ func (c *Compiler) explodSub(is IniSection,
 	}
 	return nil
 }
+func (c *Compiler) explodInterpolate(is IniSection,
+	sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "interpolation.time",
+		explod_interpolate_time, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.animelem",
+		explod_interpolate_animelem, VT_Int, 1, false); err != nil {
+		return err
+	}		
+	if err := c.paramValue(is, sc, "interpolation.scale",
+		explod_interpolate_scale, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.angle",
+		explod_interpolate_angle, VT_Float, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.alpha",
+		explod_interpolate_alpha, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.offset",
+		explod_interpolate_pos, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.focallength",
+		explod_interpolate_focallength, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.palfx.mul",
+		explod_interpolate_pfx_mul, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.palfx.add",
+		explod_interpolate_pfx_add, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.palfx.color",
+		explod_interpolate_pfx_color, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.palfx.hue",
+		explod_interpolate_pfx_hue, VT_Float, 1, false); err != nil {
+		return err
+	}				
+	return nil
+}
 func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 	ihp int8) (StateController, error) {
 	ret, err := (*explod)(sc), c.stateSec(is, func() error {
@@ -746,8 +794,8 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 			explod_animelem, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "animelemlooped",
-			explod_animelemlooped, VT_Bool, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "animfreeze",
+			explod_animfreeze, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "angle",
@@ -766,6 +814,9 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 			explod_focallength, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.explodInterpolate(is, sc); err != nil {
+			return err
+		}		
 		if ihp == 0 {
 			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}
@@ -794,8 +845,8 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 			explod_animelem, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "animelemlooped",
-			explod_animelemlooped, VT_Bool, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "animfreeze",
+			explod_animfreeze, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "angle",
@@ -814,6 +865,10 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 			explod_focallength, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "interpolation",
+			explod_interpolation, VT_Bool, 1, false); err != nil {
+			return err
+		}		
 		if ihp == 0 {
 			sc.add(explod_ignorehitpause, sc.iToExp(0))
 		}

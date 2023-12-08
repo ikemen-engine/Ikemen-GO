@@ -397,13 +397,10 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 			} else {
 				Blend = BlendAdd
 			}
-			if (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil && src < 255 {
+			if !isrgba && (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil && src < 255 {
 				//Summ of add components
 				gc := AbsF(acolor[0]) + AbsF(acolor[1]) + AbsF(acolor[2])
 				v3, ml, al := MaxF((gc*255)-float32(dst+src), 512)/128, (float32(src) / 255), (float32(src+dst) / 255)
-				if isrgba {
-					v3 = 1
-				}
 				rM, gM, bM := mcolor[0]*ml, mcolor[1]*ml, mcolor[2]*ml
 				(*mcolor)[0], (*mcolor)[1], (*mcolor)[2] = rM, gM, bM
 				render(Blend, blendSourceFactor, BlendOne, al*Pow(v3, 3))

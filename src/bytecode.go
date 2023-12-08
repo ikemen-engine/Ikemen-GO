@@ -3767,7 +3767,7 @@ const (
 	explod_trans
 	explod_anim
 	explod_animelem
-	explod_animelemlooped
+	explod_animfreeze
 	explod_angle
 	explod_yangle
 	explod_xangle
@@ -3778,6 +3778,18 @@ const (
 	explod_space
 	explod_window
 	explod_postypeExists
+	explod_interpolate_time
+	explod_interpolate_animelem	
+	explod_interpolate_pos
+	explod_interpolate_scale
+	explod_interpolate_angle
+	explod_interpolate_alpha
+	explod_interpolate_focallength
+	explod_interpolate_pfx_mul
+	explod_interpolate_pfx_add
+	explod_interpolate_pfx_color
+	explod_interpolate_pfx_hue
+	explod_interpolation	
 	explod_redirectid
 )
 
@@ -3914,12 +3926,23 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_trans:
 			e.alpha[0] = exp[0].evalI(c)
 			e.alpha[1] = exp[1].evalI(c)
+			sa, da := e.alpha[0],e.alpha[1]
+
 			if len(exp) >= 3 {
 				e.alpha[0] = Clamp(e.alpha[0], 0, 255)
 				e.alpha[1] = Clamp(e.alpha[1], 0, 255)
 				//if len(exp) >= 4 {
 				//	e.alpha[1] = ^e.alpha[1]
 				//} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
+
+				//Add
+				e.blendmode = 1
+				//Sub
+				if sa == 1 && da == 255  {
+					e.blendmode = 2
+				} else if sa == -1 && da == 0 {
+					e.blendmode = 0
+				}
 				if e.alpha[0] == 1 && e.alpha[1] == 255 {
 					e.alpha[0] = 0
 				}
@@ -3928,18 +3951,21 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 		case explod_animelem:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-				e.animelem = exp[0].evalI(c)
+				animelem := exp[0].evalI(c)
+				e.animelem = animelem
+				e.anim.Action()
+				e.setAnimElem()
 			}
-		case explod_animelemlooped:
+		case explod_animfreeze:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-				e.animelemlooped = exp[0].evalB(c)
+				e.animfreeze = exp[0].evalB(c)
 			}
 		case explod_angle:
-			e.rot.angle = exp[0].evalF(c)
+			e.anglerot[0] = exp[0].evalF(c)
 		case explod_yangle:
-			e.rot.yangle = exp[0].evalF(c)
+			e.anglerot[2] = exp[0].evalF(c)
 		case explod_xangle:
-			e.rot.xangle = exp[0].evalF(c)
+			e.anglerot[1] = exp[0].evalF(c)
 		case explod_focallength:
 			e.fLength = exp[0].evalF(c)
 		case explod_ignorehitpause:
@@ -3959,6 +3985,11 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.palfxdef.invertblend = -2
 			}
 			palFX(sc).runSub(c, &e.palfxdef, id, exp)
+			
+			if crun.stCgi().ikemenver[0] > 0 || crun.stCgi().ikemenver[1] > 0 {
+				explod(sc).setInterpolation(c, e, id, exp, &e.palfxdef)
+			}
+
 		}
 		return true
 	})
@@ -3970,9 +4001,79 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	} else {
 		e.localscl = crun.localscl
 	}
+	e.setStartParams(&e.palfxdef)
 	e.setPos(crun)
 	crun.insertExplodEx(i, rp)
 	return false
+}
+
+func (sc explod) setInterpolation(c *Char, e *Explod,
+	id byte, exp []BytecodeExp,  pfd *PalFXDef) bool {
+	switch id {
+	case explod_interpolate_time:
+		e.interpolate_time[0] = exp[0].evalI(c)
+		if e.interpolate_time[0] < 0 { e.interpolate_time[0] = e.removetime }
+		e.interpolate_time[1] = e.interpolate_time[0]
+		if e.interpolate_time[0] > 0 {
+			e.resetInterpolation(pfd)
+			e.interpolate = true
+			if e.ownpal {
+				pfd.interpolate = true	
+				pfd.itime = e.interpolate_time[0]				
+			}
+		}
+	case explod_interpolate_animelem:
+		e.interpolate_animelem[1] = exp[0].evalI(c)
+		e.interpolate_animelem[0] = e.animelem
+		e.interpolate_animelem[2] = e.interpolate_animelem[1]
+	case explod_interpolate_pos:
+		e.interpolate_pos[2] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			e.interpolate_pos[3] = exp[1].evalF(c)
+		}
+	case explod_interpolate_scale:
+		e.interpolate_scale[2] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			e.interpolate_scale[3] = exp[1].evalF(c)
+		}
+	case explod_interpolate_alpha:
+		e.interpolate_alpha[2] = exp[0].evalI(c)
+		e.interpolate_alpha[3] = exp[1].evalI(c)
+		e.interpolate_alpha[2] = Clamp(e.interpolate_alpha[2], 0, 255)
+		e.interpolate_alpha[3] = Clamp(e.interpolate_alpha[3], 0, 255)
+	case explod_interpolate_angle:
+		e.interpolate_angle[3] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			e.interpolate_angle[4] = exp[1].evalF(c)
+		}
+		if len(exp) > 2 {
+			e.interpolate_angle[5] = exp[2].evalF(c)
+		}
+	case explod_interpolate_focallength:
+		e.interpolate_fLength[1] = exp[0].evalF(c)
+	case explod_interpolate_pfx_mul:
+		pfd.imul[0] = exp[0].evalI(c)
+		if len(exp) > 1 {
+			pfd.imul[1] = exp[1].evalI(c)
+		}
+		if len(exp) > 2 {
+			pfd.imul[2] = exp[2].evalI(c)
+		}
+	case explod_interpolate_pfx_add:
+		pfd.iadd[0] = exp[0].evalI(c)
+		if len(exp) > 1 {
+			pfd.iadd[1] = exp[1].evalI(c)
+		}
+		if len(exp) > 2 {
+			pfd.iadd[2] = exp[2].evalI(c)
+		}
+	case explod_interpolate_pfx_color:
+		pfd.icolor[0] = exp[0].evalF(c) / 256
+	case explod_interpolate_pfx_hue:
+		pfd.ihue[0] = exp[0].evalF(c) / 256
+	default:
+	}
+	return true
 }
 
 type modifyExplod explod
@@ -4183,16 +4284,31 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) { e.removeonchangestate = t })
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
+				blendmode := 0
 				if len(exp) >= 3 {
 					s, d = Clamp(s, 0, 255), Clamp(d, 0, 255)
 					//if len(exp) >= 4 {
 					//	d = ^d
 					//} else if s == 1 && d == 255 {
+
+					//Add
+					blendmode = 1
+					//Sub
+					if s == 1 && d == 255  {
+						blendmode = 2
+					} else if s == -1 && d == 0 {
+						blendmode = 0
+					}
+
 					if s == 1 && d == 255 {
 						s = 0
 					}
+
 				}
-				eachExpl(func(e *Explod) { e.alpha = [...]int32{s, d} })
+				eachExpl(func(e *Explod) { 
+					e.alpha = [...]int32{s, d}
+					e.blendmode = int32(blendmode)			
+				})
 			case explod_anim:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					anim := crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
@@ -4202,25 +4318,26 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 					animelem := exp[0].evalI(c)
 					eachExpl(func(e *Explod) {
+						e.interpolate_animelem[1] = -1
 						e.animelem = animelem
 						e.anim.Action()
 						e.setAnimElem()
 					})
 				}
-			case explod_animelemlooped:
+			case explod_animfreeze:
 				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
-					animelemlooped := exp[0].evalB(c)
-					eachExpl(func(e *Explod) { e.animelemlooped = animelemlooped })
+					animfreeze := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { e.animfreeze = animfreeze })
 				}
 			case explod_angle:
 				a := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.rot.angle = a })
+				eachExpl(func(e *Explod) { e.anglerot[0] = a })
 			case explod_yangle:
 				ya := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.rot.yangle = ya })
+				eachExpl(func(e *Explod) { e.anglerot[2] = ya })
 			case explod_xangle:
 				xa := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.rot.xangle = xa })
+				eachExpl(func(e *Explod) { e.anglerot[1] = xa })
 			case explod_projection:
 				eachExpl(func(e *Explod) { e.projection = Projection(exp[0].evalI(c)) })
 			case explod_focallength:
@@ -4240,6 +4357,23 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					bId = crun.id
 				}
 				eachExpl(func(e *Explod) { e.setBind(bId) })
+			case explod_interpolation:
+				if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+					interpolation := exp[0].evalB(c)
+					eachExpl(func(e *Explod) { 
+						if e.interpolate != interpolation {
+							e.interpolate_animelem[0] = e.start_animelem
+							e.interpolate_animelem[1] = e.interpolate_animelem[2]							
+							if e.ownpal {
+								pfd := e.palfx
+								pfd.interpolate = interpolation
+								pfd.itime = e.interpolate_time[0]	
+							}					
+							e.interpolate_time[1] = e.interpolate_time[0]
+							e.interpolate = interpolation
+						}
+					})
+				}				
 			default:
 				eachExpl(func(e *Explod) {
 					if e.ownpal {
