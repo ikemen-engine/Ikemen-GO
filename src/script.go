@@ -2936,8 +2936,6 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.z.width)
 		case "size.z.enable":
 			ln = lua.LNumber(Btoi(c.size.z.enable))
-		case "size.ignoreclsn2push":
-			ln = lua.LNumber(c.size.ignoreclsn2push)
 		case "velocity.walk.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.walk.fwd)
 		case "velocity.walk.back.x":
@@ -4195,6 +4193,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_noailevel)))
 		case "nointroreset":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nointroreset)))
+		case "ignoreclsn2push":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_ignoreclsn2push)))
 		case "immovable":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
 		// GlobalSpecialFlag

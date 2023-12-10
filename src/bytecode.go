@@ -264,7 +264,6 @@ const (
 	OC_const_size_draw_offset_y
 	OC_const_size_z_width
 	OC_const_size_z_enable
-	OC_const_size_ignoreclsn2push
 	OC_const_velocity_walk_fwd_x
 	OC_const_velocity_walk_back_x
 	OC_const_velocity_walk_up_x
@@ -1600,8 +1599,6 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.z.width * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_z_enable:
 		sys.bcStack.PushB(c.size.z.enable)
-	case OC_const_size_ignoreclsn2push:
-		sys.bcStack.PushI(c.size.ignoreclsn2push)
 	case OC_const_velocity_walk_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_back_x:

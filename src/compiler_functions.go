@@ -141,6 +141,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noailevel)))
 			case "nointroreset":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nointroreset)))
+			case "ignoreclsn2push":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_ignoreclsn2push)))
 			case "immovable":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_immovable)))
 			case "intro":

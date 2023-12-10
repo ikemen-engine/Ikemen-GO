@@ -90,6 +90,7 @@ const (
 	ASF_noailevel
 	ASF_nointroreset
 	ASF_immovable
+	ASF_ignoreclsn2push
 )
 
 type GlobalSpecialFlag uint32
@@ -282,7 +283,6 @@ type CharSize struct {
 		width  float32
 		enable bool
 	}
-	ignoreclsn2push int32
 }
 
 func (cs *CharSize) init() {
@@ -307,7 +307,6 @@ func (cs *CharSize) init() {
 	cs.z.width = 3
 	cs.z.enable = false
 	cs.attack.z.width = [...]float32{4, 4}
-	cs.ignoreclsn2push = 0
 }
 
 type CharVelocity struct {
@@ -2451,7 +2450,6 @@ func (c *Char) load(def string) error {
 						}
 						is.ReadF32("attack.z.width",
 							&c.size.attack.z.width[0], &c.size.attack.z.width[1])
-						is.ReadI32("ignoreclsn2push", &c.size.ignoreclsn2push)
 					}
 				case "velocity":
 					if velocity {
@@ -3113,12 +3111,9 @@ func (c *Char) commandByName(name string) bool {
 }
 func (c *Char) assertCommand(name string, time int32) {
 	ok := false
-	// Assert commands normally
-	ok = c.cmd[c.playerNo].Assert(name, time)
-	// Assert state owner commands during custom states
-	// These might be better as mutually exclusive, but with the way the Command trigger works right now this is safer
-	if c.playerNo != sys.workingState.playerNo {
-		ok = ok || c.cmd[sys.workingState.playerNo].Assert(name, time)
+	// Assert the command in every command list
+	for i := range c.cmd {
+		ok = ok || c.cmd[i].Assert(name, time)
 	}
 	if !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to assert an invalid command"))
@@ -4299,7 +4294,11 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.attr&int32(ST_A) != 0 {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {
-		ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity*1.3)
+		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity*1.3)
+		} else {
+			ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
+		}
 	}
 	ifnanset(&hd.air_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
@@ -5519,9 +5518,30 @@ func (c *Char) gravity() {
 
 // Updates pos based on multiple factors
 func (c *Char) posUpdate() {
+	// In WinMugen, the threshold for corner push to happen is 4 pixels from the corner
+	// In Mugen 1.0 and 1.1 this threshold is bugged, varying with game resolution
+	// In Ikemen, this threshold is obsolete
 	var velOff float32
-	if sys.super == 0 {
-		velOff = c.velOff
+	friction := float32(0.7)
+	if c.velOff != 0 && sys.super == 0 {
+		for _, p := range sys.chars {
+			if len(p) > 0 && p[0].ss.moveType == MT_H && p[0].ghv.id == c.id {
+				npos := (p[0].pos[0] + p[0].vel[0] * p[0].facing) * p[0].localscl
+				if p[0].trackableByCamera() && p[0].csf(CSF_screenbound) &&	(npos <= sys.xmin || npos >= sys.xmax) {
+					velOff = c.velOff
+				}
+				// In Ikemen the cornerpush friction is defined by the target instead
+				if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+					friction = 0.7
+				} else {
+					if p[0].ss.stateType == ST_C || p[0].ss.stateType == ST_L {
+						friction = p[0].gi().movement.crouch.friction
+					} else {
+						friction = p[0].gi().movement.stand.friction
+					}
+				}
+			}
+		}
 	}
 	nobind := [...]bool{c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])),
 		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[1]))}
@@ -5557,7 +5577,7 @@ func (c *Char) posUpdate() {
 		}
 	}
 	if sys.super == 0 {
-		c.velOff *= 0.7
+		c.velOff *= friction	
 		if AbsF(c.velOff) < 1 {
 			c.velOff = 0
 		}
@@ -6847,8 +6867,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		}
 		hitType = 1
+		// We only switch to guard behavior if the enemy can survive guarding the attack
 		if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
-			hitType = 2
+			if getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul, c, false) < getter.life ||
+				sys.gsf(GSF_noko) || getter.asf(ASF_noko) || getter.asf(ASF_noguardko) {
+				hitType = 2
+			}
 		}
 		if hd.reversal_attr > 0 {
 			hitType *= -1
@@ -7392,14 +7416,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		c.addTarget(getter.id)
 		getter.ghv.addId(c.id, c.gi().data.airjuggle)
-		//xmi, xma := gxmin+2, gxmax-2
-		var xmi, xma float32
-		xmi += sys.xmin + 2
-		xma += sys.xmax - 2
-		if c.stCgi().mugenver[0] != 1 {
-			xmi += 2
-			xma -= 2
-		}
 		if Abs(hitType) == 1 {
 			if !proj && (hd.p1getp2facing != 0 || hd.p1facing < 0) &&
 				c.facing != byf {
@@ -7437,9 +7453,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				sys.envShake.mul = hd.envshake_mul
 				sys.envShake.setDefPhase()
 			}
-			if hitType > 0 && !proj && getter.trackableByCamera() && getter.csf(CSF_screenbound) &&
-				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
-					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
+			// Set corner push
+			// In Mugen it is only set if the enemy is already in the corner before the hit
+			// In Ikemen it is set regardless, with corner distance being checked later
+			if hitType > 0 && !proj {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
 					c.velOff = hd.ground_cornerpush_veloff * c.facing
@@ -7450,9 +7467,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 			}
 		} else {
-			if hitType > 0 && !proj && getter.trackableByCamera() && getter.csf(CSF_screenbound) &&
-				(c.facing < 0 && getter.pos[0]*getter.localscl <= xmi ||
-					c.facing > 0 && getter.pos[0]*getter.localscl >= xma) {
+			if hitType > 0 && !proj {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
 					c.velOff = hd.guard_cornerpush_veloff * c.facing
@@ -7639,6 +7654,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							if Abs(ht) == 1 {
 								if mvh {
 									c.mctype = MC_Hit
+									c.mctime = -1
 								}
 								if c.hitdef.reversal_attr > 0 {
 									getter.hitdef.hitflag = 0
@@ -7688,6 +7704,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							} else {
 								if mvh {
 									c.mctype = MC_Guarded
+									c.mctime = -1
 								}
 								if !c.csf(CSF_gethit) {
 									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime+
@@ -7696,9 +7713,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							}
 							if c.hitdef.hitonce > 0 {
 								c.hitdef.hitonce = -1
-							}
-							if mvh {
-								c.mctime = -1
 							}
 							c.hitdefContact = true
 						}
@@ -7734,7 +7748,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				gxmax += sys.xmax / getter.localscl
 
 				push := true
-				if c.size.ignoreclsn2push == 0 { // This constant disables checking Clsn2 for player push
+				if !c.asf(ASF_ignoreclsn2push) {
 					push = getter.clsnCheck(c, false, false)
 				}
 
