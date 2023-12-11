@@ -5526,8 +5526,8 @@ func (c *Char) posUpdate() {
 	if c.velOff != 0 && sys.super == 0 {
 		for _, p := range sys.chars {
 			if len(p) > 0 && p[0].ss.moveType == MT_H && p[0].ghv.id == c.id {
-				npos := (p[0].pos[0] + p[0].vel[0] * p[0].facing) * p[0].localscl
-				if p[0].trackableByCamera() && p[0].csf(CSF_screenbound) &&	(npos <= sys.xmin || npos >= sys.xmax) {
+				npos := (p[0].pos[0] + p[0].vel[0]*p[0].facing) * p[0].localscl
+				if p[0].trackableByCamera() && p[0].csf(CSF_screenbound) && (npos <= sys.xmin || npos >= sys.xmax) {
 					velOff = c.velOff
 				}
 				// In Ikemen the cornerpush friction is defined by the target instead
@@ -5577,7 +5577,7 @@ func (c *Char) posUpdate() {
 		}
 	}
 	if sys.super == 0 {
-		c.velOff *= friction	
+		c.velOff *= friction
 		if AbsF(c.velOff) < 1 {
 			c.velOff = 0
 		}
