@@ -1672,6 +1672,7 @@ type Primitive struct {
 	vertexBufferOffset  uint32
 	elementBufferOffset uint32
 	materialIndex       *uint32
+	useVertexColor      bool
 	mode                PrimitiveMode
 }
 
@@ -1860,6 +1861,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 			}
 			primitive.numIndices = uint32(len(indices))
 			if idx, ok := p.Attributes[gltf.COLOR_0]; ok {
+				primitive.useVertexColor = true
 				switch doc.Accessors[idx].ComponentType {
 				case gltf.ComponentUbyte:
 					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
@@ -1923,9 +1925,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 					}
 				}
 			} else {
-				for i := 0; i < int(primitive.numVertices); i++ {
-					mdl.vertexBuffer = append(mdl.vertexBuffer, 1, 1, 1, 1)
-				}
+				primitive.useVertexColor = false
 			}
 
 			if p.Material != nil {
@@ -2057,7 +2057,11 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 			return
 		}
 		color := mdl.materials[*p.materialIndex].baseColorFactor
-		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
+		if p.useVertexColor {
+			gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
+		} else {
+			gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), -1)
+		}
 
 		gfx.SetModelUniformMatrix("projection", proj[:])
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
@@ -2121,7 +2125,7 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 func (model *Model) step() {
 	for _, anim := range model.animations {
 		anim.time += sys.turbo / 60
-		for anim.time > anim.duration && anim.duration > 0 {
+		for anim.time >= anim.duration && anim.duration > 0 {
 			anim.time -= anim.duration
 		}
 		time := 60 * float64(anim.time)
@@ -2129,6 +2133,9 @@ func (model *Model) step() {
 			anim.time = float32(math.Floor(time) / 60)
 		} else if math.Abs(float64(anim.time)-math.Ceil(float64(anim.time))) < 0.001 {
 			anim.time = float32(math.Ceil(time) / 60)
+		}
+		for anim.time >= anim.duration && anim.duration > 0 {
+			anim.time = anim.duration
 		}
 		for _, channel := range anim.channels {
 			node := model.nodes[channel.nodeIndex]
