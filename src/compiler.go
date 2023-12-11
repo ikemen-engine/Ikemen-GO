@@ -1555,8 +1555,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_z_width)
 		case "size.z.enable":
 			out.append(OC_const_size_z_enable)
-		case "size.ignoreclsn2push":
-			out.append(OC_const_size_ignoreclsn2push)
 		case "velocity.walk.fwd.x":
 			out.append(OC_const_velocity_walk_fwd_x)
 		case "velocity.walk.back.x":
@@ -2906,6 +2904,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noailevel))
 		case "nointroreset":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nointroreset))
+		case "ignoreclsn2push":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_ignoreclsn2push))
 		case "immovable":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_immovable))
 		case "intro":
