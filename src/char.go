@@ -7909,7 +7909,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, ignoreDefeatedEnemy, log boo
 
 func (c *Char) numClsn1() int32 {
 	if c.curFrame != nil {
-		return int32(len(c.curFrame.Clsn1()))
+		return int32(len(c.curFrame.Clsn1())/4)
 	} else {
 		return 0;
 	}
@@ -7917,7 +7917,7 @@ func (c *Char) numClsn1() int32 {
 
 func (c *Char) numClsn2() int32 {
 	if c.curFrame != nil {
-		return int32(len(c.curFrame.Clsn2()))
+		return int32(len(c.curFrame.Clsn2())/4)
 	} else {
 		return 0;
 	}
