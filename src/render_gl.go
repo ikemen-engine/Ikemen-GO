@@ -254,8 +254,8 @@ var identFragShader string
 // Render initialization.
 // Creates the default shaders, the framebuffer and enables MSAA.
 func (r *Renderer) Init() {
-	sys.errLog.Printf("Using OpenGL %v (%v)",
-		gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
+	chk(gl.Init())
+	sys.errLog.Printf("Using OpenGL %v (%v)", gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
 	r.postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
 
@@ -457,10 +457,15 @@ func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthM
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
 	gl.EnableVertexAttribArray(uint32(r.modelShader.aPos))
 	gl.EnableVertexAttribArray(uint32(r.modelShader.aUv))
-	gl.EnableVertexAttribArray(uint32(r.modelShader.aColor))
 	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aPos), 3, gl.FLOAT, false, 0, uintptr(offset1))
 	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aUv), 2, gl.FLOAT, false, 0, uintptr(offset2))
-	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aColor), 4, gl.FLOAT, false, 0, uintptr(offset3))
+	if offset3 > 0 {
+		gl.EnableVertexAttribArray(uint32(r.modelShader.aColor))
+		gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aColor), 4, gl.FLOAT, false, 0, uintptr(offset3))
+	} else {
+		gl.VertexAttrib4f(uint32(r.modelShader.aColor), 1, 1, 1, 1)
+	}
+
 }
 func (r *Renderer) ReleaseModelPipeline() {
 	gl.DisableVertexAttribArray(uint32(r.modelShader.aPos))

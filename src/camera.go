@@ -29,13 +29,16 @@ type stageCamera struct {
 	ytensionenable bool
 	zoomanchor     bool
 	fov            float32
+	yshift         float32
+	far            float32
+	near           float32
 }
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tensionvel: 1, tension: 50,
 		cuthigh: math.MinInt32, cutlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false, fov: 40}
+		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false, fov: 40, yshift: 0, far: 10000, near: 0.1}
 }
 
 type CameraView int

@@ -130,6 +130,7 @@ func newCompiler() *Compiler {
 		"zoom":                 c.zoom,
 		"forcefeedback":        c.forceFeedback,
 		"null":                 c.null,
+		"assertcommand":        c.assertCommand,
 		"assertinput":          c.assertInput,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
@@ -365,6 +366,7 @@ var triggerMap = map[string]int{
 	"memberno":           1,
 	"min":                1,
 	"movecountered":      1,
+	"mugenversion":       1,
 	"offset":             1,
 	"p5name":             1,
 	"p6name":             1,
@@ -1554,8 +1556,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_z_width)
 		case "size.z.enable":
 			out.append(OC_const_size_z_enable)
-		case "size.classicpushbox":
-			out.append(OC_const_size_classicpushbox)
 		case "velocity.walk.fwd.x":
 			out.append(OC_const_velocity_walk_fwd_x)
 		case "velocity.walk.back.x":
@@ -2909,6 +2909,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noailevel))
 		case "nointroreset":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nointroreset))
+		case "ignoreclsn2push":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_ignoreclsn2push))
 		case "immovable":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_immovable))
 		case "intro":
@@ -2989,6 +2991,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_memberno)
 	case "movecountered":
 		out.append(OC_ex_, OC_ex_movecountered)
+	case "mugenversion":
+		out.append(OC_ex_, OC_ex_mugenversion)
 	case "pausetime":
 		out.append(OC_ex_, OC_ex_pausetime)
 	case "physics":

@@ -1442,7 +1442,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != KeyUnknown {
 			if sys.keyInput == KeyInsert {
-				s, _ = sys.window.GetClipboardString()
+				s = sys.window.GetClipboardString()
 			} else {
 				s = sys.keyString
 			}
@@ -2520,6 +2520,13 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "toggleWireframeDraw", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
+		sys.wireframeDraw = !sys.wireframeDraw
+		return 0
+	})
 	luaRegister(l, "toggleDialogueBars", func(*lua.LState) int {
 		if l.GetTop() >= 1 {
 			sys.dialogueBarsFlg = boolArg(l, 1)
@@ -2929,8 +2936,6 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.z.width)
 		case "size.z.enable":
 			ln = lua.LNumber(Btoi(c.size.z.enable))
-		case "size.classicpushbox":
-			ln = lua.LNumber(c.size.classicpushbox)
 		case "velocity.walk.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.walk.fwd)
 		case "velocity.walk.back.x":
@@ -4188,6 +4193,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_noailevel)))
 		case "nointroreset":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nointroreset)))
+		case "ignoreclsn2push":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_ignoreclsn2push)))
 		case "immovable":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
 		// GlobalSpecialFlag
@@ -4271,6 +4278,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.moveCountered()))
 		return 1
 	})
+	luaRegister(l, "mugenversion", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.mugenVersion()))
+		return 1
+	})
 	luaRegister(l, "offsetX", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.offsetTrg[0]))
 		return 1
@@ -4313,7 +4324,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "receiveddamage", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.comboDmg))
+		l.Push(lua.LNumber(sys.debugWC.receivedDmg))
 		return 1
 	})
 	luaRegister(l, "redlife", func(*lua.LState) int {

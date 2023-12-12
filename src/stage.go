@@ -898,6 +898,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		sec[0].ReadF32("fov", &s.stageCamera.fov)
+		sec[0].ReadF32("yshift", &s.stageCamera.yshift)
+		sec[0].ReadF32("near", &s.stageCamera.near)
+		sec[0].ReadF32("far", &s.stageCamera.far)
 		if sys.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
 		} else {
@@ -969,7 +972,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			}
 		}
 		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
-		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul)
+		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul - s.stageCamera.yshift*float32(sys.scrrect[3]/2)/s.localscl/sys.heightScale)
 		if str, ok := sec[0]["scale"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.scale) {
@@ -1669,6 +1672,7 @@ type Primitive struct {
 	vertexBufferOffset  uint32
 	elementBufferOffset uint32
 	materialIndex       *uint32
+	useVertexColor      bool
 	mode                PrimitiveMode
 }
 
@@ -1733,42 +1737,48 @@ func loadglTFStage(filepath string) (*Model, error) {
 		images = append(images, res)
 	}
 	mdl.textures = make([]*GLTFTexture, 0, len(doc.Textures))
+	textureMap := map[[2]uint32]*GLTFTexture{}
 	for _, t := range doc.Textures {
-		s := doc.Samplers[*t.Sampler]
-		mag, _ := map[gltf.MagFilter]int32{
-			gltf.MagUndefined: 9729,
-			gltf.MagNearest:   9728,
-			gltf.MagLinear:    9729,
-		}[s.MagFilter]
-		min, _ := map[gltf.MinFilter]int32{
-			gltf.MinUndefined:            9729,
-			gltf.MinNearest:              9728,
-			gltf.MinLinear:               9729,
-			gltf.MinNearestMipMapNearest: 9984,
-			gltf.MinLinearMipMapNearest:  9985,
-			gltf.MinNearestMipMapLinear:  9986,
-			gltf.MinLinearMipMapLinear:   9987,
-		}[s.MinFilter]
-		wrapS, _ := map[gltf.WrappingMode]int32{
-			gltf.WrapClampToEdge:    33071,
-			gltf.WrapMirroredRepeat: 33648,
-			gltf.WrapRepeat:         10497,
-		}[s.WrapS]
-		wrapT, _ := map[gltf.WrappingMode]int32{
-			gltf.WrapClampToEdge:    33071,
-			gltf.WrapMirroredRepeat: 33648,
-			gltf.WrapRepeat:         10497,
-		}[s.WrapT]
+		if texture, ok := textureMap[[2]uint32{*t.Source, *t.Sampler}]; ok {
+			mdl.textures = append(mdl.textures, texture)
+		} else {
+			texture := &GLTFTexture{}
+			s := doc.Samplers[*t.Sampler]
+			mag, _ := map[gltf.MagFilter]int32{
+				gltf.MagUndefined: 9729,
+				gltf.MagNearest:   9728,
+				gltf.MagLinear:    9729,
+			}[s.MagFilter]
+			min, _ := map[gltf.MinFilter]int32{
+				gltf.MinUndefined:            9729,
+				gltf.MinNearest:              9728,
+				gltf.MinLinear:               9729,
+				gltf.MinNearestMipMapNearest: 9984,
+				gltf.MinLinearMipMapNearest:  9985,
+				gltf.MinNearestMipMapLinear:  9986,
+				gltf.MinLinearMipMapLinear:   9987,
+			}[s.MinFilter]
+			wrapS, _ := map[gltf.WrappingMode]int32{
+				gltf.WrapClampToEdge:    33071,
+				gltf.WrapMirroredRepeat: 33648,
+				gltf.WrapRepeat:         10497,
+			}[s.WrapS]
+			wrapT, _ := map[gltf.WrappingMode]int32{
+				gltf.WrapClampToEdge:    33071,
+				gltf.WrapMirroredRepeat: 33648,
+				gltf.WrapRepeat:         10497,
+			}[s.WrapT]
 
-		img := images[*t.Source]
-		rgba := image.NewRGBA(img.Bounds())
-		draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
-		texture := &GLTFTexture{}
-		sys.mainThreadTask <- func() {
-			texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
-			texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+			img := images[*t.Source]
+			rgba := image.NewRGBA(img.Bounds())
+			draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
+			sys.mainThreadTask <- func() {
+				texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
+				texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+			}
+			textureMap[[2]uint32{*t.Source, *t.Sampler}] = texture
+			mdl.textures = append(mdl.textures, texture)
 		}
-		mdl.textures = append(mdl.textures, texture)
 	}
 	mdl.materials = make([]*Material, 0, len(doc.Materials))
 	for _, m := range doc.Materials {
@@ -1851,6 +1861,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 			}
 			primitive.numIndices = uint32(len(indices))
 			if idx, ok := p.Attributes[gltf.COLOR_0]; ok {
+				primitive.useVertexColor = true
 				switch doc.Accessors[idx].ComponentType {
 				case gltf.ComponentUbyte:
 					if doc.Accessors[idx].Type == gltf.AccessorVec3 {
@@ -1914,9 +1925,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 					}
 				}
 			} else {
-				for i := 0; i < int(primitive.numVertices); i++ {
-					mdl.vertexBuffer = append(mdl.vertexBuffer, 1, 1, 1, 1)
-				}
+				primitive.useVertexColor = false
 			}
 
 			if p.Material != nil {
@@ -1961,6 +1970,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 					mdl.animationTimeStamps[s.Input] = append(mdl.animationTimeStamps[s.Input], t)
 				}
 			}
+			sampler.interpolation = GLTFAnimationInterpolation(s.Interpolation)
 			sampler.inputIndex = s.Input
 			if anim.duration < mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1] {
 				anim.duration = mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1]
@@ -2047,7 +2057,11 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 			return
 		}
 		color := mdl.materials[*p.materialIndex].baseColorFactor
-		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
+		if p.useVertexColor {
+			gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
+		} else {
+			gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), -1)
+		}
 
 		gfx.SetModelUniformMatrix("projection", proj[:])
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
@@ -2057,6 +2071,10 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		} else {
 			gfx.SetModelUniformI("textured", 0)
 		}
+		mode := p.mode
+		if sys.wireframeDraw {
+			mode = 1 // Set mesh render mode to "lines"
+		}
 		gfx.SetModelUniformFv("add", padd[:])
 		gfx.SetModelUniformFv("mult", []float32{pmul[0] * float32(sys.brightness) / 256, pmul[1] * float32(sys.brightness) / 256, pmul[2] * float32(sys.brightness) / 256})
 		gfx.SetModelUniformI("neg", int(Btoi(neg)))
@@ -2065,7 +2083,7 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		gfx.SetModelUniformI("enableAlpha", int(Btoi(mat.alphaMode == AlphaModeBlend)))
 		gfx.SetModelUniformF("alphaThreshold", mat.alphaCutoff)
 		gfx.SetModelUniformFv("baseColorFactor", color[:])
-		gfx.RenderElements(p.mode, int(p.numIndices), int(p.elementBufferOffset))
+		gfx.RenderElements(mode, int(p.numIndices), int(p.elementBufferOffset))
 
 		gfx.ReleaseModelPipeline()
 
@@ -2078,14 +2096,14 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 
 	drawFOV := s.stageCamera.fov * math.Pi / 180
 
-	var near float32 = 0.1
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
 	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) / s.localscl / scl
 
 	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
-	proj := mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), near, 10000)
+	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
+	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.stageCamera.near, s.stageCamera.far))
 	modelview := mgl.Ident4()
 	modelview = modelview.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
 	modelview = modelview.Mul4(mgl.HomogRotate3DX(rotation[0]))
@@ -2107,8 +2125,17 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 func (model *Model) step() {
 	for _, anim := range model.animations {
 		anim.time += sys.turbo / 60
-		for anim.time > anim.duration && anim.duration > 0 {
+		for anim.time >= anim.duration && anim.duration > 0 {
 			anim.time -= anim.duration
+		}
+		time := 60 * float64(anim.time)
+		if math.Abs(time-math.Floor(time)) < 0.001 {
+			anim.time = float32(math.Floor(time) / 60)
+		} else if math.Abs(float64(anim.time)-math.Ceil(float64(anim.time))) < 0.001 {
+			anim.time = float32(math.Ceil(time) / 60)
+		}
+		for anim.time >= anim.duration && anim.duration > 0 {
+			anim.time = anim.duration
 		}
 		for _, channel := range anim.channels {
 			node := model.nodes[channel.nodeIndex]

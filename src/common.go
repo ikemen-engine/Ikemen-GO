@@ -107,6 +107,16 @@ func AbsF(f float32) float32 {
 func Pow(x, y float32) float32 {
 	return float32(math.Pow(float64(x), float64(y)))
 }
+func Lerp(x, y, a float32) float32 {
+	//return float32(x + (y - x) * ClampF(a, 0, 1))
+	return float32((1-a)*x + a*y)
+}
+func Ceil(x float32) int32 {
+	return int32(math.Ceil(float64(x)))
+}
+func Floor(x float32) int32 {
+	return int32(math.Floor(float64(x)))
+}
 func IsFinite(f float32) bool {
 	return math.Abs(float64(f)) <= math.MaxFloat64
 }
