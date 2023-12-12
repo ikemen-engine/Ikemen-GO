@@ -403,6 +403,7 @@ var triggerMap = map[string]int{
 	"timetotal":          1,
 	"winhyper":           1,
 	"winspecial":         1,
+	"numclsn1":           1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -2295,6 +2296,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_winperfect)
 	case "winspecial":
 		out.append(OC_ex_, OC_ex_winspecial)
+	case "numclsn1":
+		out.append(OC_ex_, OC_ex_numclsn1)
+	case "numclsn2":
+		out.append(OC_ex_, OC_ex_numclsn2)
 	case "winhyper":
 		out.append(OC_ex_, OC_ex_winhyper)
 	case "animelem":
