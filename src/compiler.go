@@ -406,6 +406,7 @@ var triggerMap = map[string]int{
 	"winhyper":           1,
 	"winspecial":         1,
 	"numclsn1":           1,
+	"numclsn2":           1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
