@@ -400,8 +400,6 @@ const (
 	OC_ex_wintime
 	OC_ex_winperfect
 	OC_ex_winspecial
-	OC_ex_numclsn1
-	OC_ex_numclsn2
 	OC_ex_winhyper
 	OC_ex_lose
 	OC_ex_loseko
@@ -481,6 +479,8 @@ const (
 	OC_ex_animframe_xscale
 	OC_ex_animframe_yoffset
 	OC_ex_animframe_yscale
+	OC_ex_animframe_numclsn1
+	OC_ex_animframe_numclsn2
 	OC_ex_animlength
 	OC_ex_attack
 	OC_ex_combocount
@@ -1906,10 +1906,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.winPerfect())
 	case OC_ex_winspecial:
 		sys.bcStack.PushB(c.winType(WT_S))
-	case OC_ex_numclsn1:
-		sys.bcStack.PushI(c.numClsn1())
-	case OC_ex_numclsn2:
-		sys.bcStack.PushI(c.numClsn2())
 	case OC_ex_winhyper:
 		sys.bcStack.PushB(c.winType(WT_H))
 	case OC_ex_lose:
@@ -2125,6 +2121,18 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			} else {
 				sys.bcStack.PushF(0)
 			}
+		}
+	case OC_ex_animframe_numclsn1:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(len(f.Clsn1())/4))
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_animframe_numclsn2:
+		if f := c.anim.CurrentFrame(); f != nil {
+			sys.bcStack.PushI(int32(len(f.Clsn2())/4))
+		} else {
+			sys.bcStack.PushI(0)
 		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)

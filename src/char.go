@@ -7907,22 +7907,6 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2, ignoreDefeatedEnemy, log boo
 	return (*cache)[n]
 }
 
-func (c *Char) numClsn1() int32 {
-	if c.curFrame != nil {
-		return int32(len(c.curFrame.Clsn1())/4)
-	} else {
-		return 0;
-	}
-}
-
-func (c *Char) numClsn2() int32 {
-	if c.curFrame != nil {
-		return int32(len(c.curFrame.Clsn2())/4)
-	} else {
-		return 0;
-	}
-}
-
 type Platform struct {
 	name string
 	id   int32
