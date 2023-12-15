@@ -4034,8 +4034,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "animframenumclsn1", func(*lua.LState) int {
 		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
 			l.Push(lua.LNumber(len(f.Clsn1())/4))
-		}
-		else {
+		} else {
 			l.Push(lua.LNumber(0))
 		}
 		return 1
@@ -4043,8 +4042,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "animframenumclsn2", func(*lua.LState) int {
 		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
 			l.Push(lua.LNumber(len(f.Clsn2())/4))
-		}
-		else {
+		} else {
 			l.Push(lua.LNumber(0))
 		}
 		return 1
