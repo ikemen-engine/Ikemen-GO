@@ -2124,13 +2124,13 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_animframe_numclsn1:
 		if f := c.anim.CurrentFrame(); f != nil {
-			sys.bcStack.PushI(int32(len(f.Clsn1())/4))
+			sys.bcStack.PushI(int32(len(f.Clsn1()) / 4))
 		} else {
 			sys.bcStack.PushI(0)
 		}
 	case OC_ex_animframe_numclsn2:
 		if f := c.anim.CurrentFrame(); f != nil {
-			sys.bcStack.PushI(int32(len(f.Clsn2())/4))
+			sys.bcStack.PushI(int32(len(f.Clsn2()) / 4))
 		} else {
 			sys.bcStack.PushI(0)
 		}
