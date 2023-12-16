@@ -2751,6 +2751,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_animframe_yoffset)
 		case "yscale":
 			out.append(OC_ex_animframe_yscale)
+		case "numclsn1":
+			out.append(OC_ex_animframe_numclsn1)
+		case "numclsn2":
+			out.append(OC_ex_animframe_numclsn2)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
