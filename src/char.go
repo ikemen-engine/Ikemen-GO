@@ -1990,6 +1990,8 @@ type Char struct {
 	pauseBool       bool
 	downHitOffset   float32
 	koEchoTime      int32
+	moveContactFrame bool
+	getHitFrame     bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -6253,6 +6255,8 @@ func (c *Char) actionRun() {
 			c.gi().pctime++
 		}
 		c.gi().projidcount = 0
+		c.moveContactFrame = false
+		c.getHitFrame = false
 	}
 	c.xScreenBound()
 	if !c.pauseBool {
@@ -7189,6 +7193,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.stchtmp = false
 			}
 			getter.setCSF(CSF_gethit)
+			getter.getHitFrame = true
 			live := getter.life > 0
 			getter.ghv.kill = hd.kill
 			if hitType == 2 {
@@ -7551,6 +7556,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					sys.cgi[i].pctime = 0
 					sys.cgi[i].pcid = p.id
 					getter.hitdefContact = true
+					getter.moveContactFrame = true
 					continue
 				}
 				if !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
@@ -7661,6 +7667,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
 									getter.hitdefContact = true
+									getter.moveContactFrame = true
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
@@ -7715,6 +7722,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								c.hitdef.hitonce = -1
 							}
 							c.hitdefContact = true
+							c.moveContactFrame = true
 						}
 					}
 				}

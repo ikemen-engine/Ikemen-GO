@@ -563,6 +563,8 @@ const (
 	OC_ex_offset_y
 	OC_ex_alpha_s
 	OC_ex_alpha_d
+	OC_ex_movecontactframe
+	OC_ex_gethitframe
 )
 const (
 	NumVar     = 60
@@ -2332,6 +2334,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.alphaTrg[0])
 	case OC_ex_alpha_d:
 		sys.bcStack.PushI(c.alphaTrg[1])
+	case OC_ex_movecontactframe:
+		sys.bcStack.PushB(c.moveContactFrame)
+	case OC_ex_gethitframe:
+		sys.bcStack.PushB(c.getHitFrame)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
