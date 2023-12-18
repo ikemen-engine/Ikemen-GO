@@ -1952,46 +1952,46 @@ type Char struct {
 	ivar            [NumVar + NumSysVar]int32
 	fvar            [NumFvar + NumSysFvar]float32
 	CharSystemVar
-	aimg            AfterImage
-	soundChannels   SoundChannels
-	p1facing        float32
-	cpucmd          int32
-	attackDist      float32
-	offset          [2]float32
-	offsetTrg       [2]float32
-	stchtmp         bool
-	inguarddist     bool
-	pushed          bool
-	hitdefContact   bool
-	atktmp          int8
-	hittmp          int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
-	acttmp          int8
-	minus           int8
-	platformPosY    float32
-	groundAngle     float32
-	ownpal          bool
-	winquote        int32
-	memberNo        int
-	selectNo        int
-	inheritJuggle   int32
-	inheritChannels int32
-	mapArray        map[string]float32
-	mapDefault      map[string]float32
-	remapSpr        RemapPreset
-	clipboardText   []string
-	dialogue        []string
-	immortal        bool
-	kovelocity      bool
-	preserve        int32
-	defaultHitScale [3]*HitScale
-	nextHitScale    map[int32][3]*HitScale
-	activeHitScale  map[int32][3]*HitScale
-	inputFlag       InputBits
-	pauseBool       bool
-	downHitOffset   float32
-	koEchoTime      int32
+	aimg             AfterImage
+	soundChannels    SoundChannels
+	p1facing         float32
+	cpucmd           int32
+	attackDist       float32
+	offset           [2]float32
+	offsetTrg        [2]float32
+	stchtmp          bool
+	inguarddist      bool
+	pushed           bool
+	hitdefContact    bool
+	atktmp           int8
+	hittmp           int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
+	acttmp           int8
+	minus            int8
+	platformPosY     float32
+	groundAngle      float32
+	ownpal           bool
+	winquote         int32
+	memberNo         int
+	selectNo         int
+	inheritJuggle    int32
+	inheritChannels  int32
+	mapArray         map[string]float32
+	mapDefault       map[string]float32
+	remapSpr         RemapPreset
+	clipboardText    []string
+	dialogue         []string
+	immortal         bool
+	kovelocity       bool
+	preserve         int32
+	defaultHitScale  [3]*HitScale
+	nextHitScale     map[int32][3]*HitScale
+	activeHitScale   map[int32][3]*HitScale
+	inputFlag        InputBits
+	pauseBool        bool
+	downHitOffset    float32
+	koEchoTime       int32
 	moveContactFrame bool
-	getHitFrame     bool
+	getHitFrame      bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
