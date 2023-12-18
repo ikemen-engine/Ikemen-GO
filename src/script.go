@@ -3140,6 +3140,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.gameWidth()))
 		return 1
 	})
+	luaRegister(l, "gethitframe", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.getHitFrame))
+		return 1
+	})
 	luaRegister(l, "gethitvar", func(*lua.LState) int {
 		c := sys.debugWC
 		var ln lua.LNumber
@@ -3381,6 +3385,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "movecontact", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.moveContact()))
+		return 1
+	})
+	luaRegister(l, "movecontactframe", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.moveContactFrame))
 		return 1
 	})
 	luaRegister(l, "moveguarded", func(*lua.LState) int {
