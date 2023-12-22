@@ -3758,7 +3758,8 @@ func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 type explod StateControllerBase
 
 const (
-	explod_ownpal byte = iota + palFX_last + 1
+	explod_anim byte = iota + palFX_last + 1
+	explod_ownpal
 	explod_remappal
 	explod_id
 	explod_facing
@@ -3782,7 +3783,6 @@ const (
 	explod_removeongethit
 	explod_removeonchangestate
 	explod_trans
-	explod_anim
 	explod_animelem
 	explod_animfreeze
 	explod_angle
@@ -3844,6 +3844,12 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		}
 		switch id {
+		case explod_anim:
+			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			if ffx != "" && ffx != "s" {
+				e.ownpal = true
+			}
+			e.anim = crun.getAnim(exp[1].evalI(c), ffx, false)
 		case explod_ownpal:
 			e.ownpal = exp[0].evalB(c)
 		case explod_remappal:
@@ -3964,8 +3970,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 					e.alpha[0] = 0
 				}
 			}
-		case explod_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 		case explod_animelem:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				animelem := exp[0].evalI(c)
@@ -6211,7 +6215,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_anim:
 			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			if sys.superanim = crun.getAnim(exp[1].evalI(c), ffx, false); sys.superanim != nil {
-				if ffx == "f" {
+				if ffx != "" && ffx != "s" {
 					sys.superpmap.remap = nil
 				} else {
 					sys.superpmap.remap = crun.getPalMap()
