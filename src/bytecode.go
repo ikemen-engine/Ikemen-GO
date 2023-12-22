@@ -3697,30 +3697,30 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 }
 func (sc palFX) Run(c *Char, _ []int32) bool {
 	crun := c
-	if !crun.ownpal {
-		return false
-	}
-	pf := crun.palfx
-	if pf == nil {
-		pf = newPalFX()
-	}
-	pf.clear2(true)
+	doOnce := false
+	pf := newPalFX()
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == palFX_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				pf = crun.palfx
-				if pf == nil {
-					pf = newPalFX()
-				}
-				pf.clear2(true)
 			} else {
 				return false
 			}
 		}
-		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-		if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
-			pf.invertblend = -2
+		if !doOnce {
+			if !crun.ownpal {
+				return false
+			}
+			pf = crun.palfx
+			if pf == nil {
+				pf = newPalFX()
+			}
+			pf.clear2(true)
+			//Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
+			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
+				pf.invertblend = -2
+			}
+			doOnce = true
 		}
 		sc.runSub(c, &pf.PalFXDef, id, exp)
 		return true
@@ -4574,7 +4574,7 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 }
 func (sc afterImage) Run(c *Char, _ []int32) bool {
 	crun := c
-	doOce := false
+	doOnce := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == afterImage_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -4583,14 +4583,14 @@ func (sc afterImage) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		}
-		if !doOce {
+		if !doOnce {
 			crun.aimg.clear()
 			//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
 			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
 				crun.aimg.palfx[0].invertblend = -2
 			}
 			crun.aimg.time = 1
-			doOce = true
+			doOnce = true
 		}
 		sc.runSub(c, &crun.aimg, id, exp)
 		return true
