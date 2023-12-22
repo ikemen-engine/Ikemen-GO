@@ -390,7 +390,7 @@ var triggerMap = map[string]int{
 	"round":              1,
 	"roundtype":          1,
 	"scale":              1,
-	"selfcommand"         1,
+	"selfcommand":        1,
 	"sign":               1,
 	"score":              1,
 	"scoretotal":         1,
