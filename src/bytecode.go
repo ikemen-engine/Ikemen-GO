@@ -565,6 +565,7 @@ const (
 	OC_ex_alpha_d
 	OC_ex_movecontactframe
 	OC_ex_gethitframe
+	OC_ex_selfcommand
 )
 const (
 	NumVar     = 60
@@ -1286,14 +1287,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			if c.cmd == nil {
 				sys.bcStack.PushB(false)
 			} else {
-				pno := c.playerNo
-				cmd, ok := c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-				ok = ok && c.command(pno, cmd)
-				if !ok && oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 && pno != sys.workingState.playerNo {
-					pno = sys.workingState.playerNo
-					cmd, ok = c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-					ok = ok && c.command(pno, cmd)
+				cmdName := sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]
+				pno := sys.workingState.playerNo
+				if cmdName == "recovery" || oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 {
+					// Command is checked by name, rather than by command list order (MUGEN 1.1)
+					pno = c.playerNo
 				}
+				cmd, ok := c.cmd[pno].Names[cmdName]
+				ok = ok && c.command(c.playerNo, cmd)
 				sys.bcStack.PushB(ok)
 			}
 			i += 4
@@ -2338,6 +2339,15 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.moveContactFrame)
 	case OC_ex_gethitframe:
 		sys.bcStack.PushB(c.getHitFrame)
+	case OC_ex_selfcommand:
+		if c.cmd == nil {
+			sys.bcStack.PushB(false)
+		} else {
+			cmd, ok := c.cmd[sys.workingState.playerNo].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]]
+			ok = ok && c.command(sys.workingState.playerNo, cmd)
+			sys.bcStack.PushB(ok)
+		}
+		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
