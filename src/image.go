@@ -76,9 +76,19 @@ func (pf *PalFX) clear2(nt bool) {
 func (pf *PalFX) clear() {
 	pf.clear2(false)
 }
-func (pf *PalFX) getSynFx(blending bool) *PalFX {
+func (pf *PalFX) getSynFx(blending int) *PalFX {
 	if pf == nil || !pf.enable {
-		return &sys.allPalFX
+		if blending == -2 {
+			if pf == nil {
+				pf = newPalFX()
+			}
+			pf.clear()
+			pf.enable = true
+			pf.eMul = pf.mul
+			pf.eAdd = pf.add
+		} else {
+			return &sys.allPalFX
+		}
 	}
 	if !sys.allPalFX.enable {
 		return pf
@@ -88,7 +98,7 @@ func (pf *PalFX) getSynFx(blending bool) *PalFX {
 	return &synth
 }
 func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
-	p := pf.getSynFx(false)
+	p := pf.getSynFx(0)
 	if !p.enable {
 		return pal
 	}
@@ -137,7 +147,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	}
 	return sys.workpal
 }
-func (pf *PalFX) getFcPalFx(transNeg bool, blending bool) (neg bool, grayscale float32,
+func (pf *PalFX) getFcPalFx(transNeg bool, blending int) (neg bool, grayscale float32,
 	add, mul [3]float32, invblend int32, hue float32) {
 	p := pf.getSynFx(blending)
 	if !p.enable {
@@ -268,13 +278,21 @@ func (pf *PalFX) step() {
 		}
 	}
 }
-func (pf *PalFX) synthesize(pfx PalFX, blending bool) {
+func (pf *PalFX) synthesize(pfx PalFX, blending int) {
+	if blending == -2 {
+		for i, a := range pfx.eAdd {
+			pf.eAdd[i] = Clamp(pf.eAdd[i]-Abs(a), 0, 255)
+			pf.eMul[i] = Clamp(pf.eMul[i]-a, 0, 255)
+		}
+	} else {
+		for i, a := range pfx.eAdd {
+			pf.eAdd[i] += a
+		}
+	}
 	for i, m := range pfx.eMul {
 		pf.eMul[i] = pf.eMul[i] * m / 256
 	}
-	for i, a := range pfx.eAdd {
-		pf.eAdd[i] += a
-	}
+
 	pf.eHue += pfx.eHue
 	pf.eColor *= pfx.eColor
 	pf.eInvertall = pf.eInvertall != pfx.eInvertall
@@ -282,7 +300,7 @@ func (pf *PalFX) synthesize(pfx PalFX, blending bool) {
 	if pfx.invertall {
 		//Char blend inverse
 		if pfx.invertblend == 1 {
-			if blending && pf.invertblend > -3 {
+			if blending != 0 && pf.invertblend > -3 {
 				pf.eInvertall = pf.invertall
 			}
 			switch {

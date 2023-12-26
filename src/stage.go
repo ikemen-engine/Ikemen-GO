@@ -2016,7 +2016,7 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		return
 	}
 
-	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, n.trans == TransAdd || n.trans == TransReverseSubtract)
+	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, -int(n.trans))
 
 	blendEq := BlendAdd
 	src := BlendOne

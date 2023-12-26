@@ -280,11 +280,11 @@ func RenderSprite(rp RenderParams) {
 		float32(rp.tint>>16&0xff) / 255, float32(rp.tint>>24&0xff) / 255}
 
 	if rp.pfx != nil {
-		blending := false
-		if rp.trans == -2 || rp.trans == -1 || (rp.trans&0xff > 0 && rp.trans>>10&0xff >= 255) {
-			blending = true
-		}
-		neg, grayscale, padd, pmul, invblend, hue = rp.pfx.getFcPalFx(false, blending)
+		blending := rp.trans
+		//if rp.trans == -2 || rp.trans == -1 || (rp.trans&0xff > 0 && rp.trans>>10&0xff >= 255) {
+		//	blending = true
+		//}
+		neg, grayscale, padd, pmul, invblend, hue = rp.pfx.getFcPalFx(false, int(blending))
 		//if rp.trans == -2 && invblend < 1 {
 		//padd[0], padd[1], padd[2] = -padd[0], -padd[1], -padd[2]
 		//}
