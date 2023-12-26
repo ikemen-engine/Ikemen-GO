@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"image"
 	"image/draw"
@@ -18,6 +20,7 @@ import (
 	mgl "github.com/go-gl/mathgl/mgl32"
 	"github.com/qmuntal/gltf"
 	"github.com/qmuntal/gltf/modeler"
+	"golang.org/x/mobile/exp/f32"
 )
 
 type StageProps struct {
@@ -1430,14 +1433,15 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	yofs4 := ((360*float32(s.stageCamera.localcoord[0]) +
 		160*float32(s.stageCamera.localcoord[1])) /
 		float32(s.stageCamera.localcoord[0])) / 480
+
+	if !top {
+		s.drawModel(pos, yofs, scl)
+	}
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
 			b.draw(pos, scl, bgscl, s.localscl, s.scale,
 				yofs+yofs3*Pow(Pow(scl, b.zoomdelta[1]), yofs4)-s.stageCamera.drawOffsetY*(1-b.delta[1]*bgscl), true)
 		}
-	}
-	if !top {
-		s.drawModel(pos, yofs, scl)
 	}
 }
 func (s *Stage) reset() {
@@ -1569,7 +1573,7 @@ type Model struct {
 	meshes              []*Mesh
 	textures            []*GLTFTexture
 	materials           []*Material
-	vertexBuffer        []float32
+	vertexBuffer        []byte
 	elementBuffer       []uint32
 	offset              [3]float32
 	rotation            [3]float32
@@ -1577,6 +1581,7 @@ type Model struct {
 	pfx                 *PalFX
 	animationTimeStamps map[uint32][]float32
 	animations          []*GLTFAnimation
+	skins               []*Skin
 }
 type Scene struct {
 	nodes []uint32
@@ -1643,12 +1648,23 @@ const (
 )
 
 type Node struct {
-	meshIndex     *uint32
-	transition    [3]float32
-	rotation      [4]float32
-	scale         [3]float32
-	childrenIndex []uint32
-	trans         Trans
+	meshIndex        *uint32
+	transition       [3]float32
+	rotation         [4]float32
+	scale            [3]float32
+	transformChanged bool
+	localTransform   mgl.Mat4
+	worldTransform   mgl.Mat4
+	childrenIndex    []uint32
+	trans            Trans
+	parentIndex      *int32
+	skin             *uint32
+}
+
+type Skin struct {
+	joints              []uint32
+	inverseBindMatrices []float32
+	texture             *GLTFTexture
 }
 type Mesh struct {
 	name       string
@@ -1672,7 +1688,10 @@ type Primitive struct {
 	vertexBufferOffset  uint32
 	elementBufferOffset uint32
 	materialIndex       *uint32
+	useUV               bool
 	useVertexColor      bool
+	useJoint0           bool
+	useJoint1           bool
 	mode                PrimitiveMode
 }
 
@@ -1810,6 +1829,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 		node.rotation = n.Rotation
 		node.transition = n.Translation
 		node.scale = n.Scale
+		node.skin = n.Skin
 		node.childrenIndex = n.Children
 		if n.Mesh != nil {
 			node.meshIndex = new(uint32)
@@ -1828,6 +1848,13 @@ func loadglTFStage(filepath string) (*Model, error) {
 				}
 			}
 		}
+		node.transformChanged = true
+	}
+	for i, n := range mdl.nodes {
+		for _, c := range n.childrenIndex {
+			p := int32(i)
+			mdl.nodes[c].parentIndex = &p
+		}
 	}
 	mdl.meshes = make([]*Mesh, 0, len(doc.Meshes))
 	for _, m := range doc.Meshes {
@@ -1835,7 +1862,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 		mesh.name = m.Name
 		for _, p := range m.Primitives {
 			var primitive = &Primitive{}
-			primitive.vertexBufferOffset = uint32(4 * len(mdl.vertexBuffer))
+			primitive.vertexBufferOffset = uint32(len(mdl.vertexBuffer))
 			primitive.elementBufferOffset = uint32(4 * len(mdl.elementBuffer))
 			var posBuffer [][3]float32
 			positions, err := modeler.ReadPosition(doc, doc.Accessors[p.Attributes[gltf.POSITION]], posBuffer)
@@ -1843,13 +1870,25 @@ func loadglTFStage(filepath string) (*Model, error) {
 				return nil, err
 			}
 			for _, pos := range positions {
-				mdl.vertexBuffer = append(mdl.vertexBuffer, pos[0], pos[1], pos[2])
+				mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, pos[:]...)...)
 			}
 			primitive.numVertices = uint32(len(positions))
-			var uvBuffer [][2]float32
-			texCoords, err := modeler.ReadTextureCoord(doc, doc.Accessors[p.Attributes[gltf.TEXCOORD_0]], uvBuffer)
-			for _, tex := range texCoords {
-				mdl.vertexBuffer = append(mdl.vertexBuffer, tex[0], tex[1])
+			if idx, ok := p.Attributes[gltf.TEXCOORD_0]; ok {
+				var uvBuffer [][2]float32
+				texCoords, err := modeler.ReadTextureCoord(doc, doc.Accessors[idx], uvBuffer)
+				if err != nil {
+					return nil, err
+				}
+				if len(texCoords) > 0 {
+					primitive.useUV = true
+					for _, tex := range texCoords {
+						mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, tex[:]...)...)
+					}
+				} else {
+					primitive.useUV = false
+				}
+			} else {
+				primitive.useUV = false
 			}
 			var indexBuffer []uint32
 			indices, err := modeler.ReadIndices(doc, doc.Accessors[*p.Indices], indexBuffer)
@@ -1871,7 +1910,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]uint8) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255)...)
 						}
 					} else {
 						var vecBuffer [][4]uint8
@@ -1880,7 +1919,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][4]uint8) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)...)
 						}
 					}
 				case gltf.ComponentUshort:
@@ -1891,7 +1930,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]uint16) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535)...)
 						}
 					} else {
 						var vecBuffer [][4]uint16
@@ -1900,7 +1939,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][4]uint16) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)...)
 						}
 					}
 				case gltf.ComponentFloat:
@@ -1911,7 +1950,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]float32) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, vec[0], vec[1], vec[2], 1)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
 						}
 					} else {
 						var vecBuffer [][4]float32
@@ -1920,14 +1959,70 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][4]float32) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, vec[0], vec[1], vec[2], vec[3])
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
 						}
 					}
 				}
 			} else {
 				primitive.useVertexColor = false
 			}
-
+			if idx, ok := p.Attributes[gltf.JOINTS_0]; ok {
+				primitive.useJoint0 = true
+				var jointBuffer [][4]uint16
+				joints, err := modeler.ReadJoints(doc, doc.Accessors[idx], jointBuffer)
+				if err != nil {
+					return nil, err
+				}
+				for _, joint := range joints {
+					var f [4]float32
+					for j, v := range joint {
+						f[j] = float32(v)
+					}
+					mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, f[:]...)...)
+				}
+				if idx, ok := p.Attributes[gltf.WEIGHTS_0]; ok {
+					var weightBuffer [][4]float32
+					weights, err := modeler.ReadWeights(doc, doc.Accessors[idx], weightBuffer)
+					if err != nil {
+						return nil, err
+					}
+					for _, weight := range weights {
+						mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, weight[:]...)...)
+					}
+				} else {
+					return nil, errors.New("Primitive attribute JOINTS_0 is specified but WEIGHTS_0 is not specified.")
+				}
+				if idx, ok := p.Attributes["JOINTS_1"]; ok {
+					primitive.useJoint1 = true
+					var jointBuffer [][4]uint16
+					joints, err := modeler.ReadJoints(doc, doc.Accessors[idx], jointBuffer)
+					if err != nil {
+						return nil, err
+					}
+					for _, joint := range joints {
+						var f [4]float32
+						for j, v := range joint {
+							f[j] = float32(v)
+						}
+						mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, f[:]...)...)
+					}
+					primitive.useJoint1 = false
+					if idx, ok := p.Attributes["WEIGHTS_1"]; primitive.useJoint1 && ok {
+						var weightBuffer [][4]float32
+						weights, err := modeler.ReadWeights(doc, doc.Accessors[idx], weightBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, weight := range weights {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, weight[:]...)...)
+						}
+					} else if primitive.useJoint1 {
+						return nil, errors.New("Primitive attribute JOINTS_1 is specified but WEIGHTS_1 is not specified.")
+					}
+				}
+			} else {
+				primitive.useJoint0 = false
+			}
 			if p.Material != nil {
 				primitive.materialIndex = new(uint32)
 				*primitive.materialIndex = *p.Material
@@ -1997,6 +2092,33 @@ func loadglTFStage(filepath string) (*Model, error) {
 			}
 		}
 	}
+	for _, s := range doc.Skins {
+		var skin = &Skin{}
+		for _, j := range s.Joints {
+			skin.joints = append(skin.joints, j)
+		}
+
+		if s.InverseBindMatrices != nil {
+			var matrixBuffer [][4][4]float32
+			matrices, err := modeler.ReadAccessor(doc, doc.Accessors[*s.InverseBindMatrices], matrixBuffer)
+			if err != nil {
+				return nil, err
+			}
+			for _, mat := range matrices.([][4][4]float32) {
+				skin.inverseBindMatrices = append(skin.inverseBindMatrices, mat[0][:]...)
+				skin.inverseBindMatrices = append(skin.inverseBindMatrices, mat[1][:]...)
+				skin.inverseBindMatrices = append(skin.inverseBindMatrices, mat[2][:]...)
+			}
+		}
+
+		skin.texture = &GLTFTexture{}
+		sys.mainThreadTask <- func() {
+			skin.texture.tex = newDataTexture(3, int32(len(skin.joints)))
+		}
+
+		mdl.skins = append(mdl.skins, skin)
+	}
+
 	for _, s := range doc.Scenes {
 		var scene = &Scene{}
 		scene.name = s.Name
@@ -2005,17 +2127,39 @@ func loadglTFStage(filepath string) (*Model, error) {
 	}
 	return mdl, nil
 }
-func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
-	modelview = modelview.Mul4(mgl.Translate3D(n.transition[0], n.transition[1], n.transition[2]))
-	modelview = modelview.Mul4(mgl.Quat{W: n.rotation[3], V: mgl.Vec3{n.rotation[0], n.rotation[1], n.rotation[2]}}.Mat4())
-	modelview = modelview.Mul4(mgl.Scale3D(n.scale[0], n.scale[1], n.scale[2]))
+func (n *Node) getLocalTransform() (mat mgl.Mat4) {
+	mat = mgl.Ident4()
+	if n.transformChanged {
+		mat = mgl.Translate3D(n.transition[0], n.transition[1], n.transition[2])
+		mat = mat.Mul4(mgl.Quat{W: n.rotation[3], V: mgl.Vec3{n.rotation[0], n.rotation[1], n.rotation[2]}}.Mat4())
+		mat = mat.Mul4(mgl.Scale3D(n.scale[0], n.scale[1], n.scale[2]))
+		n.localTransform = mat
+		n.transformChanged = false
+	} else {
+		mat = n.localTransform
+	}
+	return
+}
+func (n *Node) calculateWorldTransform(parentTransorm mgl.Mat4, nodes []*Node) {
+	mat := n.getLocalTransform()
+	n.worldTransform = parentTransorm.Mul4(mat)
 	for _, index := range n.childrenIndex {
-		drawNode(mdl, mdl.nodes[index], proj, modelview, drawBlended)
+		(*nodes[index]).calculateWorldTransform(n.worldTransform, nodes)
+	}
+	return
+}
+func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
+	//mat := n.getLocalTransform()
+	//model = model.Mul4(mat)
+	for _, index := range n.childrenIndex {
+		drawNode(mdl, mdl.nodes[index], proj, view, drawBlended)
 	}
 	if n.meshIndex == nil {
 		return
 	}
-
+	if n.skin != nil {
+		mdl.skins[*n.skin].calculateSkinMatrices(n.worldTransform.Inv(), mdl.nodes)
+	}
 	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, -int(n.trans))
 
 	blendEq := BlendAdd
@@ -2057,19 +2201,21 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 			return
 		}
 		color := mdl.materials[*p.materialIndex].baseColorFactor
-		if p.useVertexColor {
-			gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), int(p.vertexBufferOffset+20*p.numVertices))
-		} else {
-			gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, int(p.vertexBufferOffset), int(p.vertexBufferOffset+12*p.numVertices), -1)
-		}
+		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, p.useUV, p.useVertexColor, p.useJoint0, p.useJoint1, p.numVertices, p.vertexBufferOffset)
 
 		gfx.SetModelUniformMatrix("projection", proj[:])
+		modelview := view.Mul4(n.worldTransform)
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
 		if index := mat.textureIndex; index != nil {
 			gfx.SetModelTexture("tex", mdl.textures[*index].tex)
 			gfx.SetModelUniformI("textured", 1)
 		} else {
 			gfx.SetModelUniformI("textured", 0)
+		}
+
+		if n.skin != nil {
+			skin := mdl.skins[*n.skin]
+			gfx.SetModelTexture("jointMatrices", skin.texture.tex)
 		}
 		mode := p.mode
 		if sys.wireframeDraw {
@@ -2083,6 +2229,10 @@ func drawNode(mdl *Model, n *Node, proj, modelview mgl.Mat4, drawBlended bool) {
 		gfx.SetModelUniformI("enableAlpha", int(Btoi(mat.alphaMode == AlphaModeBlend)))
 		gfx.SetModelUniformF("alphaThreshold", mat.alphaCutoff)
 		gfx.SetModelUniformFv("baseColorFactor", color[:])
+		if n.skin != nil {
+			gfx.SetModelUniformI("numJoints", len(mdl.skins[*n.skin].joints))
+		}
+
 		gfx.RenderElements(mode, int(p.numIndices), int(p.elementBufferOffset))
 
 		gfx.ReleaseModelPipeline()
@@ -2104,21 +2254,24 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
 	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.stageCamera.near, s.stageCamera.far))
-	modelview := mgl.Ident4()
-	modelview = modelview.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
-	modelview = modelview.Mul4(mgl.HomogRotate3DX(rotation[0]))
-	modelview = modelview.Mul4(mgl.HomogRotate3DY(rotation[1]))
-	modelview = modelview.Mul4(mgl.HomogRotate3DZ(rotation[2]))
-	modelview = modelview.Mul4(mgl.Scale3D(scale[0], scale[1], scale[2]))
+	view := mgl.Ident4()
+	view = view.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
+	view = view.Mul4(mgl.HomogRotate3DX(rotation[0]))
+	view = view.Mul4(mgl.HomogRotate3DY(rotation[1]))
+	view = view.Mul4(mgl.HomogRotate3DZ(rotation[2]))
+	view = view.Mul4(mgl.Scale3D(scale[0], scale[1], scale[2]))
 	scene := s.model.scenes[0]
-	gfx.SetVertexData(s.model.vertexBuffer...)
+	gfx.SetByteVertexData(s.model.vertexBuffer)
 	gfx.SetIndexData(s.model.elementBuffer...)
 
 	for _, index := range scene.nodes {
-		drawNode(s.model, s.model.nodes[index], proj, modelview, false)
+		s.model.nodes[index].calculateWorldTransform(mgl.Ident4(), s.model.nodes)
 	}
 	for _, index := range scene.nodes {
-		drawNode(s.model, s.model.nodes[index], proj, modelview, true)
+		drawNode(s.model, s.model.nodes[index], proj, view, false)
+	}
+	for _, index := range scene.nodes {
+		drawNode(s.model, s.model.nodes[index], proj, view, true)
 	}
 }
 
@@ -2152,13 +2305,21 @@ func (model *Model) step() {
 					rate := (anim.time - model.animationTimeStamps[sampler.inputIndex][prevIndex]) / (model.animationTimeStamps[sampler.inputIndex][prevIndex+1] - model.animationTimeStamps[sampler.inputIndex][prevIndex])
 					switch channel.path {
 					case TRSTranslation:
-						node.transition[0] = sampler.output[prevIndex*3]*(1-rate) + sampler.output[(prevIndex+1)*3]*rate
-						node.transition[1] = sampler.output[prevIndex*3+1]*(1-rate) + sampler.output[(prevIndex+1)*3+1]*rate
-						node.transition[2] = sampler.output[prevIndex*3+2]*(1-rate) + sampler.output[(prevIndex+1)*3+2]*rate
+						for i := 0; i < 3; i++ {
+							newVal := sampler.output[prevIndex*3+i]*(1-rate) + sampler.output[(prevIndex+1)*3+i]*rate
+							if node.transition[i] != newVal {
+								node.transition[i] = newVal
+								node.transformChanged = true
+							}
+						}
 					case TRSScale:
-						node.scale[0] = sampler.output[prevIndex*3]*(1-rate) + sampler.output[(prevIndex+1)*3]*rate
-						node.scale[1] = sampler.output[prevIndex*3+1]*(1-rate) + sampler.output[(prevIndex+1)*3+1]*rate
-						node.scale[2] = sampler.output[prevIndex*3+2]*(1-rate) + sampler.output[(prevIndex+1)*3+2]*rate
+						for i := 0; i < 3; i++ {
+							newVal := sampler.output[prevIndex*3+i]*(1-rate) + sampler.output[(prevIndex+1)*3+i]*rate
+							if node.scale[i] != newVal {
+								node.scale[i] = newVal
+								node.transformChanged = true
+							}
+						}
 					case TRSRotation:
 						q1 := mgl.Quat{sampler.output[prevIndex*4+3], mgl.Vec3{sampler.output[prevIndex*4], sampler.output[prevIndex*4+1], sampler.output[prevIndex*4+2]}}
 						q2 := mgl.Quat{sampler.output[(prevIndex+1)*4+3], mgl.Vec3{sampler.output[(prevIndex+1)*4], sampler.output[(prevIndex+1)*4+1], sampler.output[(prevIndex+1)*4+2]}}
@@ -2167,10 +2328,14 @@ func (model *Model) step() {
 							q1 = q1.Inverse()
 						}
 						q := mgl.QuatSlerp(q1, q2, rate)
-						node.rotation[0] = q.X()
-						node.rotation[1] = q.Y()
-						node.rotation[2] = q.Z()
-						node.rotation[3] = q.W
+						if node.rotation[0] != q.X() || node.rotation[1] != q.Y() || node.rotation[2] != q.Z() || node.rotation[3] != q.W {
+							node.rotation[0] = q.X()
+							node.rotation[1] = q.Y()
+							node.rotation[2] = q.Z()
+							node.rotation[3] = q.W
+							node.transformChanged = true
+						}
+
 					}
 				} else {
 					delta := (model.animationTimeStamps[sampler.inputIndex][prevIndex+1] - model.animationTimeStamps[sampler.inputIndex][prevIndex])
@@ -2180,13 +2345,21 @@ func (model *Model) step() {
 
 					switch channel.path {
 					case TRSTranslation:
-						node.transition[0] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9]
-						node.transition[1] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+3+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+3+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+3+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+3]
-						node.transition[2] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+6+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+6+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+6+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+6]
+						for i := 0; i < 3; i++ {
+							newVal := (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+3*i+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+3*i+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+3*i+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+3*i]
+							if node.transition[i] != newVal {
+								node.transition[i] = newVal
+								node.transformChanged = true
+							}
+						}
 					case TRSScale:
-						node.scale[0] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9]
-						node.scale[1] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+3+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+3+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+3+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+3]
-						node.scale[2] = (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+6+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+6+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+6+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+6]
+						for i := 0; i < 3; i++ {
+							newVal := (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*9+3*i+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*9+3*i+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*9+3*i+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*9+3*i]
+							if node.scale[i] != newVal {
+								node.scale[i] = newVal
+								node.transformChanged = true
+							}
+						}
 					case TRSRotation:
 						q1 := mgl.Quat{sampler.output[prevIndex*4+3], mgl.Vec3{sampler.output[prevIndex*4], sampler.output[prevIndex*4+1], sampler.output[prevIndex*4+2]}}
 						q2 := mgl.Quat{sampler.output[(prevIndex+1)*4+3], mgl.Vec3{sampler.output[(prevIndex+1)*4], sampler.output[(prevIndex+1)*4+1], sampler.output[(prevIndex+1)*4+2]}}
@@ -2200,10 +2373,13 @@ func (model *Model) step() {
 								(2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*12+3+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*12+3+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*12+3+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*12+3],
 								(2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*12+6+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*12+6+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*12+6+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*12+6],
 							}}.Normalize()
-						node.rotation[0] = q.X()
-						node.rotation[1] = q.Y()
-						node.rotation[2] = q.Z()
-						node.rotation[3] = q.W
+						if node.rotation[0] != q.X() || node.rotation[1] != q.Y() || node.rotation[2] != q.Z() || node.rotation[3] != q.W {
+							node.rotation[0] = q.X()
+							node.rotation[1] = q.Y()
+							node.rotation[2] = q.Z()
+							node.rotation[3] = q.W
+							node.transformChanged = true
+						}
 					}
 				}
 
@@ -2213,24 +2389,48 @@ func (model *Model) step() {
 				}
 				switch channel.path {
 				case TRSTranslation:
-					node.transition[0] = sampler.output[prevIndex*3]
-					node.transition[1] = sampler.output[prevIndex*3+1]
-					node.transition[2] = sampler.output[prevIndex*3+2]
+					for i := 0; i < 3; i++ {
+						if node.transition[i] != sampler.output[prevIndex*3+i] {
+							node.transition[i] = sampler.output[prevIndex*3+i]
+							node.transformChanged = true
+						}
+					}
 				case TRSScale:
-					node.scale[0] = sampler.output[prevIndex*3]
-					node.scale[1] = sampler.output[prevIndex*3+1]
-					node.scale[2] = sampler.output[prevIndex*3+2]
+					for i := 0; i < 3; i++ {
+						if node.scale[i] != sampler.output[prevIndex*3+i] {
+							node.scale[i] = sampler.output[prevIndex*3+i]
+							node.transformChanged = true
+						}
+					}
 				case TRSRotation:
-					node.rotation[0] = sampler.output[prevIndex*4]
-					node.rotation[1] = sampler.output[prevIndex*4+1]
-					node.rotation[2] = sampler.output[prevIndex*4+2]
-					node.rotation[3] = sampler.output[prevIndex*4+3]
+					for i := 0; i < 4; i++ {
+						if node.rotation[i] != sampler.output[prevIndex*4+i] {
+							node.rotation[i] = sampler.output[prevIndex*4+i]
+							node.transformChanged = true
+						}
+					}
 				}
 			}
 		}
 	}
 }
-
+func (skin *Skin) calculateSkinMatrices(inverseGlobalTransform mgl.Mat4, nodes []*Node) {
+	matrices := make([]float32, len(skin.joints)*12)
+	for i, joint := range skin.joints {
+		n := nodes[joint]
+		reverseBindMatrix := skin.inverseBindMatrices[i*12 : (i+1)*12]
+		matrix := mgl.Ident4()
+		for j, v := range reverseBindMatrix {
+			matrix[j] = v
+		}
+		matrix = n.worldTransform.Mul4(matrix.Transpose())
+		matrix = inverseGlobalTransform.Mul4(matrix).Transpose()
+		for j := 0; j < 12; j++ {
+			matrices[i*12+j] = matrix[j]
+		}
+	}
+	skin.texture.tex.SetPixelData(matrices)
+}
 func (model *Model) reset() {
 	for _, anim := range model.animations {
 		anim.time = 0

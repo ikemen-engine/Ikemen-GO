@@ -53,12 +53,8 @@ func glStr(s string) *uint8 {
 type ShaderProgram struct {
 	// Program
 	program uint32
-	// Attribute locations (sprite shaders)
-	aPos   int32
-	aUv    int32
-	aColor int32
-	// Attribute locations (postprocess shaders)
-	aVert int32
+	// Attributes
+	a map[string]int32
 	// Uniforms
 	u map[string]int32
 	// Texture units
@@ -71,14 +67,15 @@ func newShaderProgram(vert, frag, id string) (s *ShaderProgram) {
 	prog := linkProgram(vertObj, fragObj)
 
 	s = &ShaderProgram{program: prog}
-	s.aPos = gl.GetAttribLocation(s.program, glStr("position"))
-	s.aUv = gl.GetAttribLocation(s.program, glStr("uv"))
-	s.aColor = gl.GetAttribLocation(s.program, glStr("vertColor"))
-	s.aVert = gl.GetAttribLocation(s.program, glStr("VertCoord"))
-
+	s.a = make(map[string]int32)
 	s.u = make(map[string]int32)
 	s.t = make(map[string]int)
 	return
+}
+func (s *ShaderProgram) RegisterAttributes(names ...string) {
+	for _, name := range names {
+		s.a[name] = gl.GetAttribLocation(s.program, glStr(name))
+	}
 }
 
 func (s *ShaderProgram) RegisterUniforms(names ...string) {
@@ -170,6 +167,25 @@ func newTexture(width, height, depth int32, filter bool) (t *Texture) {
 	return
 }
 
+func newDataTexture(width, height int32) (t *Texture) {
+	var h uint32
+	gl.ActiveTexture(gl.TEXTURE0)
+	gl.GenTextures(1, &h)
+	t = &Texture{width, height, 32, false, h}
+	runtime.SetFinalizer(t, func(t *Texture) {
+		sys.mainThreadTask <- func() {
+			gl.DeleteTextures(1, &t.handle)
+		}
+	})
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+	//gl.TexImage2D(gl.TEXTURE_2D, 0, 32, t.width, t.height, 0, 36, gl.FLOAT, unsafe.Pointer(&data[0]))
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+	return
+}
+
 // Bind a texture and upload texel data to it
 func (t *Texture) SetData(data []byte) {
 	var interp int32 = gl.NEAREST
@@ -204,6 +220,15 @@ func (t *Texture) SetDataG(data []byte, mag, min, ws, wt int32) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, min)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, ws)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, wt)
+}
+func (t *Texture) SetPixelData(data []float32) {
+
+	gl.BindTexture(gl.TEXTURE_2D, t.handle)
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F_ARB, t.width, t.height, 0, gl.RGBA, gl.FLOAT, unsafe.Pointer(&data[0]))
+	if err := gl.GetError(); err > 0 {
+		panic(err)
+	}
 }
 
 // Return whether texture has a valid handle
@@ -272,14 +297,16 @@ func (r *Renderer) Init() {
 
 	// Sprite shader
 	r.spriteShader = newShaderProgram(vertShader, fragShader, "Main Shader")
+	r.spriteShader.RegisterAttributes("position", "uv")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// 3D model shader
 	r.modelShader = newShaderProgram(modelVertShader, modelFragShader, "Model Shader")
-	r.modelShader.RegisterUniforms("modelview", "projection", "baseColorFactor", "add", "mult", "textured", "neg", "gray", "hue", "enableAlpha", "alphaThreshold")
-	r.modelShader.RegisterTextures("tex")
+	r.modelShader.RegisterAttributes("position", "uv", "vertColor", "joints_0", "joints_1", "weights_0", "weights_1")
+	r.modelShader.RegisterUniforms("modelview", "projection", "baseColorFactor", "add", "mult", "textured", "neg", "gray", "hue", "enableAlpha", "alphaThreshold", "numJoints")
+	r.modelShader.RegisterTextures("tex", "jointMatrices")
 
 	// Compile postprocessing shaders
 
@@ -288,6 +315,7 @@ func (r *Renderer) Init() {
 
 	// Ident shader (no postprocessing)
 	r.postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
+	r.postShaderSelect[0].RegisterAttributes("VertCoord")
 	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
 
 	// External Shaders
@@ -405,12 +433,14 @@ func (r *Renderer) EndFrame() {
 	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
-	gl.EnableVertexAttribArray(uint32(postShader.aVert))
-	gl.VertexAttribPointerWithOffset(uint32(postShader.aVert), 2, gl.FLOAT, false, 0, 0)
+
+	loc := r.modelShader.a["VertCoord"]
+	gl.EnableVertexAttribArray(uint32(loc))
+	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-	gl.DisableVertexAttribArray(uint32(postShader.aVert))
+	gl.DisableVertexAttribArray(uint32(loc))
 }
 
 func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
@@ -422,20 +452,23 @@ func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
 
 	// Must bind buffer before enabling attributes
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-
-	gl.EnableVertexAttribArray(uint32(r.spriteShader.aPos))
-	gl.VertexAttribPointerWithOffset(uint32(r.spriteShader.aPos), 2, gl.FLOAT, false, 16, 0)
-	gl.EnableVertexAttribArray(uint32(r.spriteShader.aUv))
-	gl.VertexAttribPointerWithOffset(uint32(r.spriteShader.aUv), 2, gl.FLOAT, false, 16, 8)
+	loc := r.spriteShader.a["position"]
+	gl.EnableVertexAttribArray(uint32(loc))
+	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 16, 0)
+	loc = r.spriteShader.a["uv"]
+	gl.EnableVertexAttribArray(uint32(loc))
+	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 16, 8)
 }
 
 func (r *Renderer) ReleasePipeline() {
-	gl.DisableVertexAttribArray(uint32(r.spriteShader.aPos))
-	gl.DisableVertexAttribArray(uint32(r.spriteShader.aUv))
+	loc := r.spriteShader.a["position"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.spriteShader.a["uv"]
+	gl.DisableVertexAttribArray(uint32(loc))
 	gl.Disable(gl.BLEND)
 }
 
-func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided bool, offset1, offset2, offset3 int) {
+func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided, useUV, useVertColor, useJoint0, useJoint1 bool, numVertices, vertAttrOffset uint32) {
 	gl.UseProgram(r.modelShader.program)
 
 	gl.Enable(gl.TEXTURE_2D)
@@ -455,22 +488,78 @@ func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthM
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
-	gl.EnableVertexAttribArray(uint32(r.modelShader.aPos))
-	gl.EnableVertexAttribArray(uint32(r.modelShader.aUv))
-	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aPos), 3, gl.FLOAT, false, 0, uintptr(offset1))
-	gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aUv), 2, gl.FLOAT, false, 0, uintptr(offset2))
-	if offset3 > 0 {
-		gl.EnableVertexAttribArray(uint32(r.modelShader.aColor))
-		gl.VertexAttribPointerWithOffset(uint32(r.modelShader.aColor), 4, gl.FLOAT, false, 0, uintptr(offset3))
+	loc := r.modelShader.a["position"]
+	gl.EnableVertexAttribArray(uint32(loc))
+	gl.VertexAttribPointerWithOffset(uint32(loc), 3, gl.FLOAT, false, 0, uintptr(vertAttrOffset))
+	offset := vertAttrOffset + 12*numVertices
+	if useUV {
+		loc = r.modelShader.a["uv"]
+		gl.EnableVertexAttribArray(uint32(loc))
+		gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, uintptr(offset))
+		offset += 8 * numVertices
 	} else {
-		gl.VertexAttrib4f(uint32(r.modelShader.aColor), 1, 1, 1, 1)
+		loc = r.modelShader.a["uv"]
+		gl.VertexAttrib2f(uint32(loc), 0, 0)
 	}
-
+	if useVertColor {
+		loc = r.modelShader.a["vertColor"]
+		gl.EnableVertexAttribArray(uint32(loc))
+		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
+		offset += 16 * numVertices
+	} else {
+		loc = r.modelShader.a["vertColor"]
+		gl.VertexAttrib4f(uint32(loc), 1, 1, 1, 1)
+	}
+	if useJoint0 {
+		loc = r.modelShader.a["joints_0"]
+		gl.EnableVertexAttribArray(uint32(loc))
+		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
+		offset += 16 * numVertices
+		loc = r.modelShader.a["weights_0"]
+		gl.EnableVertexAttribArray(uint32(loc))
+		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
+		offset += 16 * numVertices
+		if useJoint1 {
+			loc = r.modelShader.a["joints_1"]
+			gl.EnableVertexAttribArray(uint32(loc))
+			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
+			offset += 16 * numVertices
+			loc = r.modelShader.a["weights_1"]
+			gl.EnableVertexAttribArray(uint32(loc))
+			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
+			offset += 16 * numVertices
+		} else {
+			loc = r.modelShader.a["joints_1"]
+			gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
+			loc = r.modelShader.a["weights_1"]
+			gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
+		}
+	} else {
+		loc = r.modelShader.a["joints_0"]
+		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
+		loc = r.modelShader.a["weights_0"]
+		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
+		loc = r.modelShader.a["joints_1"]
+		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
+		loc = r.modelShader.a["weights_1"]
+		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
+	}
 }
 func (r *Renderer) ReleaseModelPipeline() {
-	gl.DisableVertexAttribArray(uint32(r.modelShader.aPos))
-	gl.DisableVertexAttribArray(uint32(r.modelShader.aUv))
-	gl.DisableVertexAttribArray(uint32(r.modelShader.aColor))
+	loc := r.modelShader.a["position"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["uv"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["vertColor"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["joints_0"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["weights_0"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["joints_1"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["weights_1"]
+	gl.DisableVertexAttribArray(uint32(loc))
 	//gl.Disable(gl.TEXTURE_2D)
 	gl.DepthMask(true)
 	gl.Disable(gl.DEPTH_TEST)
@@ -581,6 +670,10 @@ func (r *Renderer) SetVertexData(values ...float32) {
 	data := f32.Bytes(binary.LittleEndian, values...)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
+}
+func (r *Renderer) SetByteVertexData(values []byte) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, len(values), unsafe.Pointer(&values[0]), gl.STATIC_DRAW)
 }
 func (r *Renderer) SetIndexData(values ...uint32) {
 	data := new(bytes.Buffer)

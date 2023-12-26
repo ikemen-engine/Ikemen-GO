@@ -778,18 +778,18 @@ func (c *Compiler) explod(is IniSection, sc *StateControllerBase,
 			explod_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "ownpal",
-			explod_ownpal, VT_Bool, 1, false); err != nil {
-			return err
-		}
-		if err := c.explodSub(is, sc); err != nil {
-			return err
-		}
 		if err := c.stateParam(is, "anim", func(data string) error {
 			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, explod_anim, data, VT_Int, 1,
 				sc.beToExp(BytecodeExp(prefix))...)
 		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "ownpal",
+			explod_ownpal, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.explodSub(is, sc); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "animelem",

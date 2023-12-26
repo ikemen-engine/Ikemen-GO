@@ -565,6 +565,7 @@ const (
 	OC_ex_alpha_d
 	OC_ex_movecontactframe
 	OC_ex_gethitframe
+	OC_ex_selfcommand
 )
 const (
 	NumVar     = 60
@@ -1286,14 +1287,14 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			if c.cmd == nil {
 				sys.bcStack.PushB(false)
 			} else {
-				pno := c.playerNo
-				cmd, ok := c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-				ok = ok && c.command(pno, cmd)
-				if !ok && oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 && pno != sys.workingState.playerNo {
-					pno = sys.workingState.playerNo
-					cmd, ok = c.cmd[pno].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]]
-					ok = ok && c.command(pno, cmd)
+				cmdName := sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]
+				pno := sys.workingState.playerNo
+				if cmdName == "recovery" || oc.stCgi().ikemenver[0] > 0 || oc.stCgi().ikemenver[1] > 0 {
+					// Command is checked by name, rather than by command list order (MUGEN 1.1)
+					pno = c.playerNo
 				}
+				cmd, ok := c.cmd[pno].Names[cmdName]
+				ok = ok && c.command(c.playerNo, cmd)
 				sys.bcStack.PushB(ok)
 			}
 			i += 4
@@ -2338,6 +2339,15 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.moveContactFrame)
 	case OC_ex_gethitframe:
 		sys.bcStack.PushB(c.getHitFrame)
+	case OC_ex_selfcommand:
+		if c.cmd == nil {
+			sys.bcStack.PushB(false)
+		} else {
+			cmd, ok := c.cmd[sys.workingState.playerNo].Names[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]]
+			ok = ok && c.command(sys.workingState.playerNo, cmd)
+			sys.bcStack.PushB(ok)
+		}
+		*i += 4
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -3697,30 +3707,30 @@ func (sc palFX) runSub(c *Char, pfd *PalFXDef,
 }
 func (sc palFX) Run(c *Char, _ []int32) bool {
 	crun := c
-	if !crun.ownpal {
-		return false
-	}
-	pf := crun.palfx
-	if pf == nil {
-		pf = newPalFX()
-	}
-	pf.clear2(true)
+	doOnce := false
+	pf := newPalFX()
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == palFX_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				pf = crun.palfx
-				if pf == nil {
-					pf = newPalFX()
-				}
-				pf.clear2(true)
 			} else {
 				return false
 			}
 		}
-		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-		if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
-			pf.invertblend = -2
+		if !doOnce {
+			if !crun.ownpal {
+				return false
+			}
+			pf = crun.palfx
+			if pf == nil {
+				pf = newPalFX()
+			}
+			pf.clear2(true)
+			//Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
+			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
+				pf.invertblend = -2
+			}
+			doOnce = true
 		}
 		sc.runSub(c, &pf.PalFXDef, id, exp)
 		return true
@@ -3758,7 +3768,8 @@ func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 type explod StateControllerBase
 
 const (
-	explod_ownpal byte = iota + palFX_last + 1
+	explod_anim byte = iota + palFX_last + 1
+	explod_ownpal
 	explod_remappal
 	explod_id
 	explod_facing
@@ -3782,7 +3793,6 @@ const (
 	explod_removeongethit
 	explod_removeonchangestate
 	explod_trans
-	explod_anim
 	explod_animelem
 	explod_animfreeze
 	explod_angle
@@ -3844,6 +3854,12 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		}
 		switch id {
+		case explod_anim:
+			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			if ffx != "" && ffx != "s" {
+				e.ownpal = true
+			}
+			e.anim = crun.getAnim(exp[1].evalI(c), ffx, false)
 		case explod_ownpal:
 			e.ownpal = exp[0].evalB(c)
 		case explod_remappal:
@@ -3964,8 +3980,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 					e.alpha[0] = 0
 				}
 			}
-		case explod_anim:
-			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 		case explod_animelem:
 			if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
 				animelem := exp[0].evalI(c)
@@ -4574,7 +4588,7 @@ func (sc afterImage) runSub(c *Char, ai *AfterImage,
 }
 func (sc afterImage) Run(c *Char, _ []int32) bool {
 	crun := c
-	doOce := false
+	doOnce := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if id == afterImage_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -4583,14 +4597,14 @@ func (sc afterImage) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		}
-		if !doOce {
+		if !doOnce {
 			crun.aimg.clear()
 			//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
 			if crun.stCgi().mugenver[0] == 1 && crun.stCgi().mugenver[1] == 1 && crun.stCgi().ikemenver[0] <= 0 && crun.stCgi().ikemenver[1] <= 0 {
 				crun.aimg.palfx[0].invertblend = -2
 			}
 			crun.aimg.time = 1
-			doOce = true
+			doOnce = true
 		}
 		sc.runSub(c, &crun.aimg, id, exp)
 		return true
@@ -6211,7 +6225,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_anim:
 			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			if sys.superanim = crun.getAnim(exp[1].evalI(c), ffx, false); sys.superanim != nil {
-				if ffx == "f" {
+				if ffx != "" && ffx != "s" {
 					sys.superpmap.remap = nil
 				} else {
 					sys.superpmap.remap = crun.getPalMap()
