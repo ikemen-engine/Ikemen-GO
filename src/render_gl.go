@@ -226,9 +226,6 @@ func (t *Texture) SetPixelData(data []float32) {
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F_ARB, t.width, t.height, 0, gl.RGBA, gl.FLOAT, unsafe.Pointer(&data[0]))
-	if err := gl.GetError(); err > 0 {
-		panic(err)
-	}
 }
 
 // Return whether texture has a valid handle
@@ -304,8 +301,8 @@ func (r *Renderer) Init() {
 
 	// 3D model shader
 	r.modelShader = newShaderProgram(modelVertShader, modelFragShader, "Model Shader")
-	r.modelShader.RegisterAttributes("position", "uv", "vertColor", "joints_0", "joints_1", "weights_0", "weights_1")
-	r.modelShader.RegisterUniforms("modelview", "projection", "baseColorFactor", "add", "mult", "textured", "neg", "gray", "hue", "enableAlpha", "alphaThreshold", "numJoints")
+	r.modelShader.RegisterAttributes("position", "uv", "vertColor", "joints_0", "joints_1", "weights_0", "weights_1", "morphTargets_0")
+	r.modelShader.RegisterUniforms("modelview", "projection", "baseColorFactor", "add", "mult", "textured", "neg", "gray", "hue", "enableAlpha", "alphaThreshold", "numJoints", "morphTargetWeight", "positionTargetCount", "uvTargetCount")
 	r.modelShader.RegisterTextures("tex", "jointMatrices")
 
 	// Compile postprocessing shaders
@@ -560,11 +557,33 @@ func (r *Renderer) ReleaseModelPipeline() {
 	gl.DisableVertexAttribArray(uint32(loc))
 	loc = r.modelShader.a["weights_1"]
 	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.modelShader.a["morphTargets"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	gl.DisableVertexAttribArray(uint32(loc + 1))
+	gl.DisableVertexAttribArray(uint32(loc + 2))
+	gl.DisableVertexAttribArray(uint32(loc + 3))
+	gl.DisableVertexAttribArray(uint32(loc + 4))
+	gl.DisableVertexAttribArray(uint32(loc + 5))
+	gl.DisableVertexAttribArray(uint32(loc + 6))
+	gl.DisableVertexAttribArray(uint32(loc + 7))
 	//gl.Disable(gl.TEXTURE_2D)
 	gl.DepthMask(true)
 	gl.Disable(gl.DEPTH_TEST)
 	gl.Disable(gl.CULL_FACE)
 	gl.Disable(gl.BLEND)
+}
+func (r *Renderer) SetModelMorphTarget(offsets [8]uint32, weights [8]float32, positionTargetCount, uvTargetCount int) {
+	r.SetModelUniformFv("morphTargetWeight", weights[:])
+	r.SetModelUniformI("positionTargetCount", int(positionTargetCount))
+	r.SetModelUniformI("uvTargetCount", int(uvTargetCount))
+	for i, offset := range offsets {
+		if offset != 0 {
+			loc := r.modelShader.a["morphTargets_0"] + int32(i)
+			gl.EnableVertexAttribArray(uint32(loc))
+			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
+		}
+	}
+
 }
 
 func (r *Renderer) ReadPixels(data []uint8, width, height int) {
@@ -652,6 +671,8 @@ func (r *Renderer) SetModelUniformFv(name string, values []float32) {
 		gl.Uniform3fv(loc, 1, &values[0])
 	case 4:
 		gl.Uniform4fv(loc, 1, &values[0])
+	case 8:
+		gl.Uniform4fv(loc, 2, &values[0])
 	}
 }
 func (r *Renderer) SetModelUniformMatrix(name string, value []float32) {
