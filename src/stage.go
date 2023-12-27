@@ -2160,7 +2160,7 @@ func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
 	if n.skin != nil {
 		mdl.skins[*n.skin].calculateSkinMatrices(n.worldTransform.Inv(), mdl.nodes)
 	}
-	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, n.trans == TransAdd || n.trans == TransReverseSubtract)
+	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, -int(n.trans))
 
 	blendEq := BlendAdd
 	src := BlendOne
