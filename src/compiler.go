@@ -2893,6 +2893,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nopowerbardisplay))
 		case "autoguard":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_autoguard))
+		case "animatehitpause":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_animatehitpause))
 		case "animfreeze":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_animfreeze))
 		case "postroundinput":

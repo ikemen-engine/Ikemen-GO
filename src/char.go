@@ -91,6 +91,7 @@ const (
 	ASF_nointroreset
 	ASF_immovable
 	ASF_ignoreclsn2push
+	ASF_animatehitpause
 )
 
 type GlobalSpecialFlag uint32
@@ -3115,7 +3116,7 @@ func (c *Char) assertCommand(name string, time int32) {
 	ok := false
 	// Assert the command in every command list
 	for i := range c.cmd {
-		ok = ok || c.cmd[i].Assert(name, time)
+		ok = c.cmd[i].Assert(name, time) || ok
 	}
 	if !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to assert an invalid command"))
@@ -4753,7 +4754,8 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	}
 }
 func (c *Char) lifeSet(life int32) {
-	if c.life = Clamp(life, 0, c.lifeMax); c.life == 0 {
+	c.life = Clamp(life, 0, c.lifeMax)
+	if c.life == 0 {
 		// Check win type
 		if c.player && c.teamside != -1 {
 			if c.alive() && c.helperIndex == 0 {
@@ -5994,11 +5996,10 @@ func (c *Char) actionPrepare() {
 			if c.ss.no == 5150 && c.life <= 0 {
 				c.setSCF(SCF_over)
 			}
-			// The following flags are only reset later in the code
-			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
 			c.specialFlag = 0
-			c.assertFlag = 0
-			c.setASF(flagtemp)
+			// The following AssertSpecial flags are only reset later in the code
+			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
+			c.assertFlag = flagtemp
 			c.inputFlag = 0
 			c.setCSF(CSF_stagebound)
 			if c.player {
@@ -6033,11 +6034,13 @@ func (c *Char) actionPrepare() {
 			}
 		}
 		c.unsetASF(ASF_noautoturn)
-		if c.gi().mugenver[0] == 1 {
-			// The following flags are only reset later in the code
-			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
+		c.unsetASF(ASF_animatehitpause)
+		// In WinMugen these flags persist during hitpause
+		if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 || c.gi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset)
-			c.setASF(flagtemp)
+			// The following AssertSpecial flags are only reset later in the code
+			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
+			c.assertFlag = flagtemp
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 		}
@@ -6441,8 +6444,10 @@ func (c *Char) update(cvmin, cvmax,
 	}
 }
 func (c *Char) tick() {
-	if c.acttmp > 0 && !c.asf(ASF_animfreeze) && c.anim != nil {
-		c.anim.Action()
+	if c.acttmp > 0 || (!c.pauseBool && c.hitPause() && c.asf(ASF_animatehitpause)) {
+		if c.anim != nil && !c.asf(ASF_animfreeze) {
+			c.anim.Action()
+		}
 	}
 	if c.bindTime > 0 {
 		if c.isBound() {
@@ -7194,10 +7199,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			getter.setCSF(CSF_gethit)
 			getter.getHitFrame = true
-			live := getter.life > 0
-			getter.ghv.kill = hd.kill
-			if hitType == 2 {
-				getter.ghv.kill = hd.guard_kill
+			// If any hit in the current frame will KO the enemy, the others will not prevent it
+			if getter.ghv.damage >= getter.life {
+				getter.ghv.kill = true
+			} else {
+				getter.ghv.kill = hd.kill
+				if hitType == 2 {
+					getter.ghv.kill = hd.guard_kill
+				}
 			}
 			// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed remaining life
 			bnd := true
@@ -7233,7 +7242,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
-				if getter.ghv.kill || !live {
+				if getter.ghv.kill || !getter.alive() {
 					getter.ghv.fatal = true
 					getter.ghv.fallf = true
 					getter.ghv.animtype = getter.gethitAnimtype() // Update to fall anim type

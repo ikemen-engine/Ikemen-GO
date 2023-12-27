@@ -4191,6 +4191,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nopowerbardisplay)))
 		case "autoguard":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_autoguard)))
+		case "animatehitpause":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_animatehitpause)))
 		case "animfreeze":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_animfreeze)))
 		case "postroundinput":
