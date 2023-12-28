@@ -1593,6 +1593,7 @@ const (
 	TRSTranslation = iota
 	TRSScale
 	TRSRotation
+	MorphTargetWeight
 )
 
 type GLTFAnimationInterpolation byte
@@ -1648,17 +1649,18 @@ const (
 )
 
 type Node struct {
-	meshIndex        *uint32
-	transition       [3]float32
-	rotation         [4]float32
-	scale            [3]float32
-	transformChanged bool
-	localTransform   mgl.Mat4
-	worldTransform   mgl.Mat4
-	childrenIndex    []uint32
-	trans            Trans
-	parentIndex      *int32
-	skin             *uint32
+	meshIndex          *uint32
+	transition         [3]float32
+	rotation           [4]float32
+	scale              [3]float32
+	transformChanged   bool
+	localTransform     mgl.Mat4
+	worldTransform     mgl.Mat4
+	childrenIndex      []uint32
+	trans              Trans
+	parentIndex        *int32
+	skin               *uint32
+	morphTargetWeights []float32
 }
 
 type Skin struct {
@@ -1667,8 +1669,9 @@ type Skin struct {
 	texture             *GLTFTexture
 }
 type Mesh struct {
-	name       string
-	primitives []*Primitive
+	name               string
+	morphTargetWeights []float32
+	primitives         []*Primitive
 }
 type PrimitiveMode byte
 
@@ -1682,6 +1685,11 @@ const (
 	TRIANGLE_FAN
 )
 
+type MorphTarget struct {
+	positionOffset *uint32
+	uvOffset       *uint32
+	colorOffset    *uint32
+}
 type Primitive struct {
 	numVertices         uint32
 	numIndices          uint32
@@ -1693,6 +1701,7 @@ type Primitive struct {
 	useJoint0           bool
 	useJoint1           bool
 	mode                PrimitiveMode
+	morphTargets        []*MorphTarget
 }
 
 var gltfPrimitiveModeMap = map[gltf.PrimitiveMode]PrimitiveMode{
@@ -1756,48 +1765,70 @@ func loadglTFStage(filepath string) (*Model, error) {
 		images = append(images, res)
 	}
 	mdl.textures = make([]*GLTFTexture, 0, len(doc.Textures))
-	textureMap := map[[2]uint32]*GLTFTexture{}
+	textureMap := map[[2]int32]*GLTFTexture{}
 	for _, t := range doc.Textures {
-		if texture, ok := textureMap[[2]uint32{*t.Source, *t.Sampler}]; ok {
-			mdl.textures = append(mdl.textures, texture)
-		} else {
-			texture := &GLTFTexture{}
-			s := doc.Samplers[*t.Sampler]
-			mag, _ := map[gltf.MagFilter]int32{
-				gltf.MagUndefined: 9729,
-				gltf.MagNearest:   9728,
-				gltf.MagLinear:    9729,
-			}[s.MagFilter]
-			min, _ := map[gltf.MinFilter]int32{
-				gltf.MinUndefined:            9729,
-				gltf.MinNearest:              9728,
-				gltf.MinLinear:               9729,
-				gltf.MinNearestMipMapNearest: 9984,
-				gltf.MinLinearMipMapNearest:  9985,
-				gltf.MinNearestMipMapLinear:  9986,
-				gltf.MinLinearMipMapLinear:   9987,
-			}[s.MinFilter]
-			wrapS, _ := map[gltf.WrappingMode]int32{
-				gltf.WrapClampToEdge:    33071,
-				gltf.WrapMirroredRepeat: 33648,
-				gltf.WrapRepeat:         10497,
-			}[s.WrapS]
-			wrapT, _ := map[gltf.WrappingMode]int32{
-				gltf.WrapClampToEdge:    33071,
-				gltf.WrapMirroredRepeat: 33648,
-				gltf.WrapRepeat:         10497,
-			}[s.WrapT]
+		if t.Sampler != nil {
+			if texture, ok := textureMap[[2]int32{int32(*t.Source), int32(*t.Sampler)}]; ok {
+				mdl.textures = append(mdl.textures, texture)
+			} else {
+				texture := &GLTFTexture{}
+				s := doc.Samplers[*t.Sampler]
+				mag, _ := map[gltf.MagFilter]int32{
+					gltf.MagUndefined: 9729,
+					gltf.MagNearest:   9728,
+					gltf.MagLinear:    9729,
+				}[s.MagFilter]
+				min, _ := map[gltf.MinFilter]int32{
+					gltf.MinUndefined:            9729,
+					gltf.MinNearest:              9728,
+					gltf.MinLinear:               9729,
+					gltf.MinNearestMipMapNearest: 9984,
+					gltf.MinLinearMipMapNearest:  9985,
+					gltf.MinNearestMipMapLinear:  9986,
+					gltf.MinLinearMipMapLinear:   9987,
+				}[s.MinFilter]
+				wrapS, _ := map[gltf.WrappingMode]int32{
+					gltf.WrapClampToEdge:    33071,
+					gltf.WrapMirroredRepeat: 33648,
+					gltf.WrapRepeat:         10497,
+				}[s.WrapS]
+				wrapT, _ := map[gltf.WrappingMode]int32{
+					gltf.WrapClampToEdge:    33071,
+					gltf.WrapMirroredRepeat: 33648,
+					gltf.WrapRepeat:         10497,
+				}[s.WrapT]
 
-			img := images[*t.Source]
-			rgba := image.NewRGBA(img.Bounds())
-			draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
-			sys.mainThreadTask <- func() {
-				texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
-				texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+				img := images[*t.Source]
+				rgba := image.NewRGBA(img.Bounds())
+				draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
+				sys.mainThreadTask <- func() {
+					texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
+					texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
+				}
+				textureMap[[2]int32{int32(*t.Source), int32(*t.Sampler)}] = texture
+				mdl.textures = append(mdl.textures, texture)
 			}
-			textureMap[[2]uint32{*t.Source, *t.Sampler}] = texture
-			mdl.textures = append(mdl.textures, texture)
+		} else {
+			if texture, ok := textureMap[[2]int32{int32(*t.Source), -1}]; ok {
+				mdl.textures = append(mdl.textures, texture)
+			} else {
+				texture := &GLTFTexture{}
+				mag := 9728
+				min := 9728
+				wrapS := 10497
+				wrapT := 10497
+				img := images[*t.Source]
+				rgba := image.NewRGBA(img.Bounds())
+				draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
+				sys.mainThreadTask <- func() {
+					texture.tex = newTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
+					texture.tex.SetDataG(rgba.Pix, int32(mag), int32(min), int32(wrapS), int32(wrapT))
+				}
+				textureMap[[2]int32{int32(*t.Source), -1}] = texture
+				mdl.textures = append(mdl.textures, texture)
+			}
 		}
+
 	}
 	mdl.materials = make([]*Material, 0, len(doc.Materials))
 	for _, m := range doc.Materials {
@@ -1822,44 +1853,11 @@ func loadglTFStage(filepath string) (*Model, error) {
 		material.doubleSided = m.DoubleSided
 		mdl.materials = append(mdl.materials, material)
 	}
-	mdl.nodes = make([]*Node, 0, len(doc.Nodes))
-	for _, n := range doc.Nodes {
-		var node = &Node{}
-		mdl.nodes = append(mdl.nodes, node)
-		node.rotation = n.Rotation
-		node.transition = n.Translation
-		node.scale = n.Scale
-		node.skin = n.Skin
-		node.childrenIndex = n.Children
-		if n.Mesh != nil {
-			node.meshIndex = new(uint32)
-			*node.meshIndex = *n.Mesh
-		}
-		if n.Extras != nil {
-			v, ok := n.Extras.(map[string]interface{})
-			if ok {
-				switch v["trans"] {
-				case "ADD":
-					node.trans = TransAdd
-				case "SUB":
-					node.trans = TransReverseSubtract
-				case "NONE":
-					node.trans = TransNone
-				}
-			}
-		}
-		node.transformChanged = true
-	}
-	for i, n := range mdl.nodes {
-		for _, c := range n.childrenIndex {
-			p := int32(i)
-			mdl.nodes[c].parentIndex = &p
-		}
-	}
 	mdl.meshes = make([]*Mesh, 0, len(doc.Meshes))
 	for _, m := range doc.Meshes {
 		var mesh = &Mesh{}
 		mesh.name = m.Name
+		mesh.morphTargetWeights = m.Weights
 		for _, p := range m.Primitives {
 			var primitive = &Primitive{}
 			primitive.vertexBufferOffset = uint32(len(mdl.vertexBuffer))
@@ -1910,7 +1908,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]uint8) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255)...)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)...)
 						}
 					} else {
 						var vecBuffer [][4]uint8
@@ -1930,7 +1928,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]uint16) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535)...)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)...)
 						}
 					} else {
 						var vecBuffer [][4]uint16
@@ -1950,7 +1948,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]float32) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[0], vec[1], vec[2], 1)...)
 						}
 					} else {
 						var vecBuffer [][4]float32
@@ -2023,6 +2021,104 @@ func loadglTFStage(filepath string) (*Model, error) {
 			} else {
 				primitive.useJoint0 = false
 			}
+			for _, t := range p.Targets {
+				if len(mesh.morphTargetWeights) == 0 {
+					mesh.morphTargetWeights = make([]float32, len(p.Targets))
+				}
+				target := &MorphTarget{}
+				for attr, accessor := range t {
+					switch attr {
+					case "POSITION":
+						o := uint32(len(mdl.vertexBuffer))
+						target.positionOffset = &o
+						var posBuffer [][3]float32
+						positions, err := modeler.ReadPosition(doc, doc.Accessors[accessor], posBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, pos := range positions {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, pos[0], pos[1], pos[2], 0)...)
+						}
+					case "TEXCOORD_0":
+						o := uint32(len(mdl.vertexBuffer))
+						target.uvOffset = &o
+						var uvBuffer [][2]float32
+						texCoords, err := modeler.ReadTextureCoord(doc, doc.Accessors[accessor], uvBuffer)
+						if err != nil {
+							return nil, err
+						}
+						for _, uv := range texCoords {
+							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, uv[0], uv[1], 0, 0)...)
+						}
+					case "COLOR_0":
+						o := uint32(len(mdl.vertexBuffer))
+						target.colorOffset = &o
+						switch doc.Accessors[accessor].ComponentType {
+						case gltf.ComponentUbyte:
+							if doc.Accessors[accessor].Type == gltf.AccessorVec3 {
+								var vecBuffer [][3]uint8
+								vecs, err := modeler.ReadAccessor(doc, doc.Accessors[accessor], vecBuffer)
+								if err != nil {
+									return nil, err
+								}
+								for _, vec := range vecs.([][3]uint8) {
+									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)...)
+								}
+							} else {
+								var vecBuffer [][4]uint8
+								vecs, err := modeler.ReadAccessor(doc, doc.Accessors[accessor], vecBuffer)
+								if err != nil {
+									return nil, err
+								}
+								for _, vec := range vecs.([][4]uint8) {
+									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)...)
+								}
+							}
+						case gltf.ComponentUshort:
+							if doc.Accessors[accessor].Type == gltf.AccessorVec3 {
+								var vecBuffer [][3]uint16
+								vecs, err := modeler.ReadAccessor(doc, doc.Accessors[accessor], vecBuffer)
+								if err != nil {
+									return nil, err
+								}
+								for _, vec := range vecs.([][3]uint16) {
+									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)...)
+								}
+							} else {
+								var vecBuffer [][4]uint16
+								vecs, err := modeler.ReadAccessor(doc, doc.Accessors[accessor], vecBuffer)
+								if err != nil {
+									return nil, err
+								}
+								for _, vec := range vecs.([][4]uint16) {
+									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)...)
+								}
+							}
+						case gltf.ComponentFloat:
+							if doc.Accessors[accessor].Type == gltf.AccessorVec3 {
+								var vecBuffer [][3]float32
+								vecs, err := modeler.ReadAccessor(doc, doc.Accessors[accessor], vecBuffer)
+								if err != nil {
+									return nil, err
+								}
+								for _, vec := range vecs.([][3]float32) {
+									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[0], vec[1], vec[2], 1)...)
+								}
+							} else {
+								var vecBuffer [][4]float32
+								vecs, err := modeler.ReadAccessor(doc, doc.Accessors[accessor], vecBuffer)
+								if err != nil {
+									return nil, err
+								}
+								for _, vec := range vecs.([][4]float32) {
+									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
+								}
+							}
+						}
+					}
+				}
+				primitive.morphTargets = append(primitive.morphTargets, target)
+			}
 			if p.Material != nil {
 				primitive.materialIndex = new(uint32)
 				*primitive.materialIndex = *p.Material
@@ -2032,6 +2128,44 @@ func loadglTFStage(filepath string) (*Model, error) {
 		}
 		mdl.meshes = append(mdl.meshes, mesh)
 	}
+	mdl.nodes = make([]*Node, 0, len(doc.Nodes))
+	for _, n := range doc.Nodes {
+		var node = &Node{}
+		mdl.nodes = append(mdl.nodes, node)
+		node.rotation = n.Rotation
+		node.transition = n.Translation
+		node.scale = n.Scale
+		node.skin = n.Skin
+		node.childrenIndex = n.Children
+		node.morphTargetWeights = n.Weights
+		if n.Mesh != nil {
+			node.meshIndex = new(uint32)
+			*node.meshIndex = *n.Mesh
+			if len(node.morphTargetWeights) == 0 {
+				node.morphTargetWeights = mdl.meshes[*node.meshIndex].morphTargetWeights
+			}
+		}
+		if n.Extras != nil {
+			v, ok := n.Extras.(map[string]interface{})
+			if ok {
+				switch v["trans"] {
+				case "ADD":
+					node.trans = TransAdd
+				case "SUB":
+					node.trans = TransReverseSubtract
+				case "NONE":
+					node.trans = TransNone
+				}
+			}
+		}
+		node.transformChanged = true
+	}
+	for i, n := range mdl.nodes {
+		for _, c := range n.childrenIndex {
+			p := int32(i)
+			mdl.nodes[c].parentIndex = &p
+		}
+	}
 	mdl.animationTimeStamps = map[uint32][]float32{}
 	for _, a := range doc.Animations {
 		anim := &GLTFAnimation{}
@@ -2039,7 +2173,6 @@ func loadglTFStage(filepath string) (*Model, error) {
 		anim.duration = 0
 		for _, c := range a.Channels {
 			channel := &GLTFAnimationChannel{}
-			anim.channels = append(anim.channels, channel)
 			channel.nodeIndex = *c.Target.Node
 			channel.samplerIndex = *c.Sampler
 			switch c.Target.Path {
@@ -2049,7 +2182,12 @@ func loadglTFStage(filepath string) (*Model, error) {
 				channel.path = TRSScale
 			case gltf.TRSRotation:
 				channel.path = TRSRotation
+			case gltf.TRSWeights:
+				channel.path = MorphTargetWeight
+			default:
+				continue
 			}
+			anim.channels = append(anim.channels, channel)
 		}
 		for _, s := range a.Samplers {
 			sampler := &GLTFAnimationSampler{}
@@ -2071,12 +2209,23 @@ func loadglTFStage(filepath string) (*Model, error) {
 				anim.duration = mdl.animationTimeStamps[s.Input][len(mdl.animationTimeStamps[s.Input])-1]
 			}
 			switch doc.Accessors[s.Output].Type {
+			case gltf.AccessorScalar:
+				var vecBuffer []float32
+				vecs, err := modeler.ReadAccessor(doc, doc.Accessors[s.Output], vecBuffer)
+				if err != nil {
+					return nil, err
+				}
+				sampler.output = make([]float32, 0, len(vecs.([]float32)))
+				for _, val := range vecs.([]float32) {
+					sampler.output = append(sampler.output, val)
+				}
 			case gltf.AccessorVec3:
 				var vecBuffer [][3]float32
 				vecs, err := modeler.ReadAccessor(doc, doc.Accessors[s.Output], vecBuffer)
 				if err != nil {
 					return nil, err
 				}
+				sampler.output = make([]float32, 0, len(vecs.([][3]float32))*3)
 				for _, vec := range vecs.([][3]float32) {
 					sampler.output = append(sampler.output, vec[0], vec[1], vec[2])
 				}
@@ -2086,6 +2235,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 				if err != nil {
 					return nil, err
 				}
+				sampler.output = make([]float32, 0, len(vecs.([][4]float32))*4)
 				for _, vec := range vecs.([][4]float32) {
 					sampler.output = append(sampler.output, vec[0], vec[1], vec[2], vec[3])
 				}
@@ -2160,6 +2310,21 @@ func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
 	if n.skin != nil {
 		mdl.skins[*n.skin].calculateSkinMatrices(n.worldTransform.Inv(), mdl.nodes)
 	}
+	var morphTargetWeights []struct {
+		index  uint32
+		weight float32
+	}
+	if len(n.morphTargetWeights) > 0 {
+		for idx, w := range n.morphTargetWeights {
+			if w != 0 {
+				morphTargetWeights = append(morphTargetWeights, struct {
+					index  uint32
+					weight float32
+				}{uint32(idx), w})
+			}
+		}
+	}
+
 	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(false, -int(n.trans))
 
 	blendEq := BlendAdd
@@ -2217,6 +2382,41 @@ func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
 			skin := mdl.skins[*n.skin]
 			gfx.SetModelTexture("jointMatrices", skin.texture.tex)
 		}
+		if len(morphTargetWeights) > 0 && len(p.morphTargets) >= len(morphTargetWeights) {
+			var targetOffsets [8]uint32
+			var targetWeights [8]float32
+			targetCount := 0
+			for _, t := range morphTargetWeights {
+				morphTarget := p.morphTargets[t.index]
+				if morphTarget.positionOffset != nil {
+					targetOffsets[targetCount] = *morphTarget.positionOffset
+					targetWeights[targetCount] = t.weight
+					targetCount += 1
+				}
+			}
+			positionTargetCount := targetCount
+			for _, t := range morphTargetWeights {
+				morphTarget := p.morphTargets[t.index]
+				if morphTarget.uvOffset != nil {
+					targetOffsets[targetCount] = *morphTarget.uvOffset
+					targetWeights[targetCount] = t.weight
+					targetCount += 1
+				}
+			}
+			uvTargetCount := targetCount - positionTargetCount
+			for _, t := range morphTargetWeights {
+				morphTarget := p.morphTargets[t.index]
+				if morphTarget.colorOffset != nil {
+					targetOffsets[targetCount] = *morphTarget.colorOffset
+					targetWeights[targetCount] = t.weight
+					targetCount += 1
+				}
+			}
+			gfx.SetModelMorphTarget(targetOffsets, targetWeights, positionTargetCount, uvTargetCount)
+		} else {
+			gfx.SetModelUniformFv("morphTargetWeight", make([]float32, 8))
+		}
+
 		mode := p.mode
 		if sys.wireframeDraw {
 			mode = 1 // Set mesh render mode to "lines"
@@ -2287,7 +2487,7 @@ func (model *Model) step() {
 		} else if math.Abs(float64(anim.time)-math.Ceil(float64(anim.time))) < 0.001 {
 			anim.time = float32(math.Ceil(time) / 60)
 		}
-		for anim.time >= anim.duration && anim.duration > 0 {
+		if anim.time >= anim.duration && anim.duration > 0 {
 			anim.time = anim.duration
 		}
 		for _, channel := range anim.channels {
@@ -2335,7 +2535,11 @@ func (model *Model) step() {
 							node.rotation[3] = q.W
 							node.transformChanged = true
 						}
-
+					case MorphTargetWeight:
+						for i := 0; i < len(node.morphTargetWeights); i++ {
+							newVal := sampler.output[prevIndex*len(node.morphTargetWeights)+i]*(1-rate) + sampler.output[(prevIndex+1)*len(node.morphTargetWeights)+i]*rate
+							node.morphTargetWeights[i] = newVal
+						}
 					}
 				} else {
 					delta := (model.animationTimeStamps[sampler.inputIndex][prevIndex+1] - model.animationTimeStamps[sampler.inputIndex][prevIndex])
@@ -2380,6 +2584,11 @@ func (model *Model) step() {
 							node.rotation[3] = q.W
 							node.transformChanged = true
 						}
+					case MorphTargetWeight:
+						for i := 0; i < len(node.morphTargetWeights); i++ {
+							newVal := (2*rateCube-3*rateSquare+1)*sampler.output[prevIndex*3*len(node.morphTargetWeights)+3*i+1] + delta*(rateCube-2*rateSquare+rate)*sampler.output[prevIndex*3*len(node.morphTargetWeights)+3*i+2] + (-2*rateCube+3*rateSquare)*sampler.output[(prevIndex+1)*3*len(node.morphTargetWeights)+3*i+1] + delta*(rateCube-rateSquare)*sampler.output[(prevIndex+1)*3*len(node.morphTargetWeights)+3*i]
+							node.morphTargetWeights[i] = newVal
+						}
 					}
 				}
 
@@ -2408,6 +2617,11 @@ func (model *Model) step() {
 							node.rotation[i] = sampler.output[prevIndex*4+i]
 							node.transformChanged = true
 						}
+					}
+				case MorphTargetWeight:
+					for i := 0; i < len(node.morphTargetWeights); i++ {
+						newVal := sampler.output[prevIndex*len(node.morphTargetWeights)+i]
+						node.morphTargetWeights[i] = newVal
 					}
 				}
 			}
