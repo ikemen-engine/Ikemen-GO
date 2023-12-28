@@ -117,6 +117,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nopowerbardisplay)))
 			case "autoguard":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_autoguard)))
+			case "animatehitpause":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
 			case "animfreeze":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animfreeze)))
 			case "postroundinput":

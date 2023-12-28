@@ -1885,8 +1885,10 @@ func (s *System) fight() (reload bool) {
 				/* If round 1 or a new character in turns mode, initialize values */
 				if p[0].ocd().life != -1 {
 					p[0].life = Clamp(p[0].ocd().life, 0, p[0].lifeMax)
+					p[0].redLife = p[0].life
 				} else {
 					p[0].life = p[0].lifeMax
+					p[0].redLife = p[0].lifeMax
 				}
 				if s.round == 1 {
 					if s.maxPowerMode {
@@ -1920,7 +1922,6 @@ func (s *System) fight() (reload bool) {
 			} else {
 				p[0].dizzyPoints = p[0].dizzyPointsMax
 			}
-			p[0].redLife = p[0].lifeMax
 			copyVar(i)
 		}
 	}
