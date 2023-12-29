@@ -78,7 +78,7 @@ func (pf *PalFX) clear() {
 }
 func (pf *PalFX) getSynFx(blending int) *PalFX {
 	if pf == nil || !pf.enable {
-		if blending == -2 {
+		if blending == -2 && sys.allPalFX.enable {
 			if pf == nil {
 				pf = newPalFX()
 			}
@@ -86,6 +86,8 @@ func (pf *PalFX) getSynFx(blending int) *PalFX {
 			pf.enable = true
 			pf.eMul = pf.mul
 			pf.eAdd = pf.add
+			pf.eColor = pf.color
+			pf.eHue = pf.hue
 		} else {
 			return &sys.allPalFX
 		}
