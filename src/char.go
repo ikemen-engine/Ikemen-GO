@@ -1877,6 +1877,7 @@ type CharSystemVar struct {
 	angleTrg        float32
 	angleScale      [2]float32
 	angleScaleTrg   [2]float32
+	angleRescaleClsn bool
 	alpha           [2]int32
 	alphaTrg        [2]int32
 	recoverTime     int32
@@ -2826,8 +2827,11 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 		}
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
-			sys.chars[c.animPN][0].size.yscale}
+		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
+		if c.angleRescaleClsn {
+			c.clsnScale[0] *= c.angleScale[0]
+			c.clsnScale[1] *= c.angleScale[1]
+		}
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
 		}
@@ -4202,7 +4206,7 @@ func (c *Char) newProj() *Projectile {
 	return nil
 }
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
-	op bool, rpg, rpn int32) {
+	op bool, rpg, rpn int32, rc bool) {
 	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
 	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
@@ -4222,12 +4226,16 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
 	}
+	if rc {
+		p.clsnScale = p.scale
+	} else {
+		p.clsnScale = c.clsnScale
+	}
 	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
 		p.hitdef.nochainid = [...]int32{-1, -1}
 	}
 	p.removefacing = c.facing
-	p.clsnScale = c.clsnScale
 	if p.velocity[0] < 0 {
 		p.facing *= -1
 		p.velocity[0] *= -1
@@ -6035,6 +6043,10 @@ func (c *Char) actionPrepare() {
 		}
 		c.unsetASF(ASF_noautoturn)
 		c.unsetASF(ASF_animatehitpause)
+		// Reset hitbox scale
+		// This used to be only in changeAnimEx(), but because it can now be dynamically changed it was also placed here
+		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
+		c.angleRescaleClsn = false
 		// In WinMugen these flags persist during hitpause
 		if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 || c.gi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset)

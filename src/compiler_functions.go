@@ -1866,6 +1866,10 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			projectile_projangle, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "projrescaleclsn",
+			projectile_projrescaleclsn, VT_Bool, 1, false); err != nil {
+			return err
+		}
 
 		// hitdef部分
 		if err := c.hitDefSub(is, sc); err != nil {
@@ -2888,6 +2892,10 @@ func (c *Compiler) angleDraw(is IniSection, sc *StateControllerBase, _ int8) (St
 		}
 		if err := c.paramValue(is, sc, "scale",
 			angleDraw_scale, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "rescaleclsn",
+			angleDraw_rescaleClsn, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil
