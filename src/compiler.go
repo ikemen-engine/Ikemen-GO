@@ -230,6 +230,7 @@ var triggerMap = map[string]int{
 	"gametime":          1,
 	"gamewidth":         1,
 	"gethitvar":         1,
+	"guardcount":        1,
 	"helpername":        1,
 	"hitcount":          1,
 	"hitdefattr":        1,
@@ -1769,6 +1770,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_groundtype)
 			case "damage":
 				out.append(OC_ex_gethitvar_damage)
+			case "guardcount":
+				out.append(OC_ex_gethitvar_guardcount)
 			case "hitcount":
 				out.append(OC_ex_gethitvar_hitcount)
 			case "fallcount":
@@ -1859,6 +1862,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
+	case "guardcount":
+		out.append(OC_ex_, OC_ex_guardcount)
 	case "hitcount":
 		out.append(OC_hitcount)
 	case "hitdefattr":

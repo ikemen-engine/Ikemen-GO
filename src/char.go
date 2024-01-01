@@ -734,6 +734,7 @@ type GetHitVar struct {
 	groundtype     HitType
 	damage         int32
 	hitcount       int32
+	guardcount     int32
 	fallcount      int32
 	hitshaketime   int32
 	hittime        int32
@@ -1864,6 +1865,7 @@ type CharSystemVar struct {
 	airJumpCount    int32
 	assertFlag      AssertSpecialFlag
 	hitCount        int32
+	guardCount      int32
 	uniqHitCount    int32
 	pauseMovetime   int32
 	superMovetime   int32
@@ -2788,7 +2790,9 @@ func (c *Char) loadPalette() {
 	gi.remappedpal = [...]int32{1, gi.palno}
 }
 func (c *Char) clearHitCount() {
-	c.hitCount, c.uniqHitCount = 0, 0
+	c.hitCount = 0
+	c.uniqHitCount = 0
+	c.guardCount = 0
 }
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
@@ -6245,6 +6249,8 @@ func (c *Char) actionRun() {
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
 				c.ghv.hitid = c.ghv.hitid >> 31
+				// HitCount doesn't reset here, like Mugen, but there's no apparent reason to keep that behavior with GuardCount
+				c.ghv.guardcount = 0
 				c.receivedDmg = 0
 				c.receivedHits = 0
 				c.ghv.score = 0
@@ -6498,6 +6504,8 @@ func (c *Char) tick() {
 		c.mctime = 1
 		if c.mctype == MC_Hit {
 			c.hitCount += c.hitdef.numhits
+		} else if c.mctype == MC_Guarded {
+			c.guardCount += c.hitdef.numhits
 		}
 	}
 	if c.csf(CSF_gethit) && !c.hoKeepState {
@@ -7008,7 +7016,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv := &getter.ghv
 				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) &&
 					!ghv.guarded
-				fall, hc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.fallcount, ghv.hitBy, ghv.damage
+				// Save existing hit information
+				fall, hc, gc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy, ghv.damage
 				ghv.clear()
 				ghv.hitBy = by
 				ghv.damage = dmg
@@ -7061,6 +7070,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						absredlife = hd.guardredlife
 					}
 					ghv.hitcount = hc
+					ghv.guardcount = gc + 1
 				} else {
 					ghv.hitshaketime = Max(0, hd.shaketime)
 					ghv.slidetime = hd.ground_slidetime
@@ -7114,6 +7124,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						ghv.hitcount = 1
 					}
+					ghv.guardcount = gc
 					ghv.fallcount = fc
 					ghv.fallf = ghv.fallf || fall
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen

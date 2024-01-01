@@ -465,6 +465,7 @@ const (
 	OC_ex_gethitvar_guardpower
 	OC_ex_gethitvar_kill
 	OC_ex_gethitvar_priority
+	OC_ex_gethitvar_guardcount
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -566,6 +567,7 @@ const (
 	OC_ex_movecontactframe
 	OC_ex_gethitframe
 	OC_ex_selfcommand
+	OC_ex_guardcount
 )
 const (
 	NumVar     = 60
@@ -1953,6 +1955,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.ghv.groundtype))
 	case OC_ex_gethitvar_damage:
 		sys.bcStack.PushI(c.ghv.damage)
+
+	case OC_ex_gethitvar_guardcount:
+		sys.bcStack.PushI(c.ghv.guardcount)
 	case OC_ex_gethitvar_hitcount:
 		sys.bcStack.PushI(c.ghv.hitcount)
 	case OC_ex_gethitvar_fallcount:
@@ -2348,6 +2353,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushB(ok)
 		}
 		*i += 4
+	case OC_ex_guardcount:
+		sys.bcStack.PushI(c.guardCount)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
