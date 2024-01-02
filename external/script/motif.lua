@@ -92,6 +92,11 @@ local motif =
 		hiscore_bgm_loop = 1, --Ikemen feature
 		hiscore_bgm_loopstart = 0, --Ikemen feature
 		hiscore_bgm_loopend = 0, --Ikemen feature
+		connecting_bgm = '', --Ikemen feature
+		connecting_bgm_volume = 100, --Ikemen feature
+		connecting_bgm_loop = 1, --Ikemen feature
+		connecting_bgm_loopstart = 0, --Ikemen feature
+		connecting_bgm_loopend = 0, --Ikemen feature
 	},
 	title_info =
 	{

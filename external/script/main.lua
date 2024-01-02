@@ -3210,6 +3210,14 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					end
 				end
 			end
+			-- Only do this if network music is defined (don't break existing screenpacks)
+			if motif.music.connecting_bgm ~= '' then
+				if f == 'serverjoin' then
+					main.f_playBGM(false, motif.music.connecting_bgm, motif.music.connecting_bgm_loop, motif.music.connecting_bgm_volume, motif.music.connecting_bgm_loopstart, motif.music.connecting_bgm_loopend)
+				elseif f =='exit' then
+					main.f_playBGM(false, motif.music.title_bgm, motif.music.title_bgm_loop, motif.music.title_bgm_volume, motif.music.title_bgm_loopstart, motif.music.title_bgm_loopend)
+				end
+			end
 		end
 	end
 end
