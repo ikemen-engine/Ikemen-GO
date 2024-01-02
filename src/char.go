@@ -1862,43 +1862,43 @@ const (
 )
 
 type CharSystemVar struct {
-	airJumpCount    int32
-	assertFlag      AssertSpecialFlag
-	hitCount        int32
-	guardCount      int32
-	uniqHitCount    int32
-	pauseMovetime   int32
-	superMovetime   int32
-	bindTime        int32
-	bindToId        int32
-	bindPos         [2]float32
-	bindPosAdd      [2]float32
-	bindFacing      float32
-	hitPauseTime    int32
-	angle           float32
-	angleTrg        float32
-	angleScale      [2]float32
-	angleScaleTrg   [2]float32
+	airJumpCount     int32
+	assertFlag       AssertSpecialFlag
+	hitCount         int32
+	guardCount       int32
+	uniqHitCount     int32
+	pauseMovetime    int32
+	superMovetime    int32
+	bindTime         int32
+	bindToId         int32
+	bindPos          [2]float32
+	bindPosAdd       [2]float32
+	bindFacing       float32
+	hitPauseTime     int32
+	angle            float32
+	angleTrg         float32
+	angleScale       [2]float32
+	angleScaleTrg    [2]float32
 	angleRescaleClsn bool
-	alpha           [2]int32
-	alphaTrg        [2]int32
-	recoverTime     int32
-	systemFlag      SystemCharFlag
-	specialFlag     CharSpecialFlag
-	sprPriority     int32
-	receivedDmg     int32
-	receivedHits    int32
-	velOff          float32
-	width           [2]float32
-	edge            [2]float32
-	height          [2]float32
-	attackMul       float32
-	superDefenseMul float32
-	fallDefenseMul  float32
-	customDefense   float32
-	finalDefense    float64
-	defenseMulDelay bool
-	counterHit      bool
+	alpha            [2]int32
+	alphaTrg         [2]int32
+	recoverTime      int32
+	systemFlag       SystemCharFlag
+	specialFlag      CharSpecialFlag
+	sprPriority      int32
+	receivedDmg      int32
+	receivedHits     int32
+	velOff           float32
+	width            [2]float32
+	edge             [2]float32
+	height           [2]float32
+	attackMul        float32
+	superDefenseMul  float32
+	fallDefenseMul   float32
+	customDefense    float32
+	finalDefense     float64
+	defenseMulDelay  bool
+	counterHit       bool
 }
 
 type Char struct {
