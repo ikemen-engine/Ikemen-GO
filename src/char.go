@@ -7591,9 +7591,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.moveContactFrame = true
 					continue
 				}
+				// Projectile juggle check
+				// Projectiles always check juggle points even if the enemy is not already a target
 				if !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
-					(c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) ||
-						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
+					(c.asf(ASF_nojugglecheck) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
 					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 					p.curmisstime <= 0 && p.hitpause <= 0 && p.hitdef.hitonce >= 0 &&
 					getter.hittable(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
