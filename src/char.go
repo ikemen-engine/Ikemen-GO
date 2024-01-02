@@ -259,14 +259,20 @@ type CharSize struct {
 		down   float32
 	}
 	attack struct {
-		dist float32
+		dist struct {
+			front float32
+			back  float32
+		}
 		z    struct {
 			width [2]float32
 		}
 	}
 	proj struct {
 		attack struct {
-			dist float32
+			dist struct {
+				front float32
+				back  float32
+			}
 		}
 		doscale int32
 	}
@@ -298,8 +304,10 @@ func (cs *CharSize) init() {
 	cs.height.crouch = cs.height.stand * 2 / 3
 	cs.height.air = [...]float32{cs.height.stand * 4 / 3, -cs.height.stand / 3}
 	cs.height.down = cs.height.stand / 3
-	cs.attack.dist = 160
-	cs.proj.attack.dist = 90
+	cs.attack.dist.front = 160
+	cs.attack.dist.back = 0
+	cs.proj.attack.dist.front = 90
+	cs.proj.attack.dist.back = 0
 	cs.proj.doscale = 0
 	cs.head.pos = [...]float32{-5, -90}
 	cs.mid.pos = [...]float32{-5, -60}
@@ -576,7 +584,7 @@ type HitDef struct {
 	air_hittime                int32
 	guard_ctrltime             int32
 	airguard_ctrltime          int32
-	guard_dist                 int32
+	guard_dist                 [2]int32
 	yaccel                     float32
 	ground_velocity            [2]float32
 	guard_velocity             float32
@@ -677,7 +685,7 @@ func (hd *HitDef) clear() {
 		p2stateno:      -1,
 		forcestand:     IErr,
 		forcecrouch:    IErr,
-		guard_dist:     IErr,
+		guard_dist:     [...]int32{-1, -1},
 		down_velocity:  [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:        -1,
 		nochainid:      [...]int32{-1, -1},
@@ -1960,7 +1968,7 @@ type Char struct {
 	soundChannels    SoundChannels
 	p1facing         float32
 	cpucmd           int32
-	attackDist       float32
+	attackDist       [2]float32
 	offset           [2]float32
 	offsetTrg        [2]float32
 	stchtmp          bool
@@ -2316,8 +2324,10 @@ func (c *Char) load(def string) error {
 	c.size.height.air[0] = c.size.height.air[0] / originLs
 	c.size.height.air[1] = c.size.height.air[1] / originLs
 	c.size.height.down = c.size.height.down / originLs
-	c.size.attack.dist = c.size.attack.dist / originLs
-	c.size.proj.attack.dist = c.size.proj.attack.dist / originLs
+	c.size.attack.dist.front = c.size.attack.dist.front / originLs
+	c.size.attack.dist.back = c.size.attack.dist.back / originLs
+	c.size.proj.attack.dist.front = c.size.proj.attack.dist.front / originLs
+	c.size.proj.attack.dist.back = c.size.proj.attack.dist.back / originLs
 	c.size.head.pos[0] = c.size.head.pos[0] / originLs
 	c.size.head.pos[1] = c.size.head.pos[1] / originLs
 	c.size.mid.pos[0] = c.size.mid.pos[0] / originLs
@@ -2440,8 +2450,10 @@ func (c *Char) load(def string) error {
 						is.ReadF32("height.crouch", &c.size.height.crouch)
 						is.ReadF32("height.air", &c.size.height.air[0], &c.size.height.air[1])
 						is.ReadF32("height.down", &c.size.height.down)
-						is.ReadF32("attack.dist", &c.size.attack.dist)
-						is.ReadF32("proj.attack.dist", &c.size.proj.attack.dist)
+						is.ReadF32("attack.dist", &c.size.attack.dist.front)
+						is.ReadF32("attack.dist.back", &c.size.attack.dist.back)
+						is.ReadF32("proj.attack.dist", &c.size.proj.attack.dist.front)
+						is.ReadF32("proj.attack.dist.back", &c.size.proj.attack.dist.back)
 						is.ReadI32("proj.doscale", &c.size.proj.doscale)
 						is.ReadF32("head.pos", &c.size.head.pos[0], &c.size.head.pos[1])
 						is.ReadF32("mid.pos", &c.size.mid.pos[0], &c.size.mid.pos[1])
@@ -6023,7 +6035,8 @@ func (c *Char) actionPrepare() {
 				}
 			}
 			c.angleScale = [...]float32{1, 1}
-			c.attackDist = float32(c.size.attack.dist)
+			c.attackDist[0] = float32(c.size.attack.dist.front)
+			c.attackDist[1] = float32(c.size.attack.dist.back)
 			c.offset = [2]float32{}
 			// HitBy timers
 			for i, hb := range c.hitby {
@@ -7538,8 +7551,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					continue
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
+				// Default guard distance
 				if !p.platform &&
-					p.hitdef.guard_dist < 0 && dist >= 0 && dist <= float32(c.size.proj.attack.dist)*c.localscl {
+					p.hitdef.guard_dist[0] < 0 &&
+					dist <= float32(c.size.proj.attack.dist.front)*c.localscl &&
+					dist >= -float32(c.size.proj.attack.dist.back)*c.localscl {
 					getter.inguarddist = true
 				}
 				if p.platform {
@@ -7591,9 +7607,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					getter.moveContactFrame = true
 					continue
 				}
-				// Projectile juggle check
-				// Projectiles always check juggle points even if the enemy is not already a target
 				if !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
+					// Projectiles always check juggle points even if the enemy is not already a target
 					(c.asf(ASF_nojugglecheck) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
 					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 					p.curmisstime <= 0 && p.hitpause <= 0 && p.hitdef.hitonce >= 0 &&
@@ -7602,8 +7617,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallf)) + 1
 					}
-					if dist := -getter.distX(c, getter) * c.facing; dist >= 0 &&
-						dist <= float32(p.hitdef.guard_dist) {
+					// Guard distance
+					dist := -getter.distX(c, getter) * c.facing
+					if dist <= float32(p.hitdef.guard_dist[0]) && dist >= -float32(p.hitdef.guard_dist[1]) {
 						getter.inguarddist = true
 					}
 					if getter.projClsnCheck(p, true) {
@@ -7652,8 +7668,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				((getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0) && c.hitdef.teamside >= 0) ||
 				((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
 				dist := -getter.distX(c, getter) * c.facing
-				if c.ss.moveType == MT_A && dist >= 0 && c.hitdef.guard_dist < 0 &&
-					dist <= c.attackDist*(c.localscl/getter.localscl) {
+				// Default guard distance
+				if c.ss.moveType == MT_A && c.hitdef.guard_dist[0] < 0 &&
+					dist <= c.attackDist[0]*(c.localscl/getter.localscl) &&
+					dist >= -c.attackDist[1]*(c.localscl/getter.localscl) {
 					getter.inguarddist = true
 				}
 				if c.helperIndex != 0 {
@@ -7683,8 +7701,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							c.attrCheck(h, getter.id, getter.ss.stateType) &&
 							c.hitCheck(getter)
 					}) {
-					if c.ss.moveType == MT_A && dist >= 0 &&
-						dist <= float32(c.hitdef.guard_dist) {
+					// Guard distance
+					if c.ss.moveType == MT_A &&
+						dist <= float32(c.hitdef.guard_dist[0]) &&
+						dist >= -float32(c.hitdef.guard_dist[1]) {
 						getter.inguarddist = true
 					}
 					if getter.hitCheck(c) {
