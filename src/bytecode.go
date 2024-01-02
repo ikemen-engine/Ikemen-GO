@@ -465,6 +465,7 @@ const (
 	OC_ex_gethitvar_guardpower
 	OC_ex_gethitvar_kill
 	OC_ex_gethitvar_priority
+	OC_ex_gethitvar_guardcount
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -566,6 +567,7 @@ const (
 	OC_ex_movecontactframe
 	OC_ex_gethitframe
 	OC_ex_selfcommand
+	OC_ex_guardcount
 )
 const (
 	NumVar     = 60
@@ -1953,6 +1955,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.ghv.groundtype))
 	case OC_ex_gethitvar_damage:
 		sys.bcStack.PushI(c.ghv.damage)
+
+	case OC_ex_gethitvar_guardcount:
+		sys.bcStack.PushI(c.ghv.guardcount)
 	case OC_ex_gethitvar_hitcount:
 		sys.bcStack.PushI(c.ghv.hitcount)
 	case OC_ex_gethitvar_fallcount:
@@ -2348,6 +2353,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushB(ok)
 		}
 		*i += 4
+	case OC_ex_guardcount:
+		sys.bcStack.PushI(c.guardCount)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -5114,6 +5121,7 @@ const (
 	projectile_accel
 	projectile_projscale
 	projectile_projangle
+	projectile_projrescaleclsn
 	projectile_offset
 	projectile_projsprpriority
 	projectile_projstagebound
@@ -5139,6 +5147,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	pt := PT_P1
 	var x, y float32 = 0, 0
 	op := false
+	rc := false
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
@@ -5259,6 +5268,8 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
+		case projectile_projrescaleclsn:
+			rc = exp[0].evalB(c)
 		// case projectile_platform:
 		// 	p.platform = exp[0].evalB(c)
 		// case projectile_platformwidth:
@@ -5305,7 +5316,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	} else {
 		p.localscl = crun.localscl
 	}
-	crun.projInit(p, pt, x, y, op, rp[0], rp[1])
+	crun.projInit(p, pt, x, y, op, rp[0], rp[1], rc)
 	return false
 }
 
@@ -6378,6 +6389,7 @@ type angleDraw StateControllerBase
 const (
 	angleDraw_value byte = iota
 	angleDraw_scale
+	angleDraw_rescaleClsn
 	angleDraw_redirectid
 )
 
@@ -6393,6 +6405,12 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				crun.angleScale[1] *= exp[1].evalF(c)
 				crun.angleScaleTrg[1] = crun.angleScale[1]
+			}
+		case angleDraw_rescaleClsn:
+			if exp[0].evalB(c) {
+				crun.clsnScale[0] *= crun.angleScale[0]
+				crun.clsnScale[1] *= crun.angleScale[1]
+				crun.angleRescaleClsn = true
 			}
 		case angleDraw_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {

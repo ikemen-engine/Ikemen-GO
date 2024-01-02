@@ -734,6 +734,7 @@ type GetHitVar struct {
 	groundtype     HitType
 	damage         int32
 	hitcount       int32
+	guardcount     int32
 	fallcount      int32
 	hitshaketime   int32
 	hittime        int32
@@ -1864,6 +1865,7 @@ type CharSystemVar struct {
 	airJumpCount    int32
 	assertFlag      AssertSpecialFlag
 	hitCount        int32
+	guardCount      int32
 	uniqHitCount    int32
 	pauseMovetime   int32
 	superMovetime   int32
@@ -1877,6 +1879,7 @@ type CharSystemVar struct {
 	angleTrg        float32
 	angleScale      [2]float32
 	angleScaleTrg   [2]float32
+	angleRescaleClsn bool
 	alpha           [2]int32
 	alphaTrg        [2]int32
 	recoverTime     int32
@@ -2787,7 +2790,9 @@ func (c *Char) loadPalette() {
 	gi.remappedpal = [...]int32{1, gi.palno}
 }
 func (c *Char) clearHitCount() {
-	c.hitCount, c.uniqHitCount = 0, 0
+	c.hitCount = 0
+	c.uniqHitCount = 0
+	c.guardCount = 0
 }
 func (c *Char) clearMoveHit() {
 	c.mctime = 0
@@ -2826,8 +2831,11 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 		}
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale,
-			sys.chars[c.animPN][0].size.yscale}
+		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
+		if c.angleRescaleClsn {
+			c.clsnScale[0] *= c.angleScale[0]
+			c.clsnScale[1] *= c.angleScale[1]
+		}
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
 		}
@@ -4202,7 +4210,7 @@ func (c *Char) newProj() *Projectile {
 	return nil
 }
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
-	op bool, rpg, rpn int32) {
+	op bool, rpg, rpn int32, rc bool) {
 	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
 	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
@@ -4222,12 +4230,16 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
 	}
+	if rc {
+		p.clsnScale = p.scale
+	} else {
+		p.clsnScale = c.clsnScale
+	}
 	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
 		p.hitdef.nochainid = [...]int32{-1, -1}
 	}
 	p.removefacing = c.facing
-	p.clsnScale = c.clsnScale
 	if p.velocity[0] < 0 {
 		p.facing *= -1
 		p.velocity[0] *= -1
@@ -6035,6 +6047,10 @@ func (c *Char) actionPrepare() {
 		}
 		c.unsetASF(ASF_noautoturn)
 		c.unsetASF(ASF_animatehitpause)
+		// Reset hitbox scale
+		// This used to be only in changeAnimEx(), but because it can now be dynamically changed it was also placed here
+		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
+		c.angleRescaleClsn = false
 		// In WinMugen these flags persist during hitpause
 		if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 || c.gi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset)
@@ -6233,6 +6249,8 @@ func (c *Char) actionRun() {
 				c.ghv.fallf = false
 				c.ghv.fallcount = 0
 				c.ghv.hitid = c.ghv.hitid >> 31
+				// HitCount doesn't reset here, like Mugen, but there's no apparent reason to keep that behavior with GuardCount
+				c.ghv.guardcount = 0
 				c.receivedDmg = 0
 				c.receivedHits = 0
 				c.ghv.score = 0
@@ -6486,6 +6504,8 @@ func (c *Char) tick() {
 		c.mctime = 1
 		if c.mctype == MC_Hit {
 			c.hitCount += c.hitdef.numhits
+		} else if c.mctype == MC_Guarded {
+			c.guardCount += c.hitdef.numhits
 		}
 	}
 	if c.csf(CSF_gethit) && !c.hoKeepState {
@@ -6996,7 +7016,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv := &getter.ghv
 				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) &&
 					!ghv.guarded
-				fall, hc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.fallcount, ghv.hitBy, ghv.damage
+				// Save existing hit information
+				fall, hc, gc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy, ghv.damage
 				ghv.clear()
 				ghv.hitBy = by
 				ghv.damage = dmg
@@ -7049,6 +7070,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						absredlife = hd.guardredlife
 					}
 					ghv.hitcount = hc
+					ghv.guardcount = gc + 1
 				} else {
 					ghv.hitshaketime = Max(0, hd.shaketime)
 					ghv.slidetime = hd.ground_slidetime
@@ -7102,6 +7124,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					} else {
 						ghv.hitcount = 1
 					}
+					ghv.guardcount = gc
 					ghv.fallcount = fc
 					ghv.fallf = ghv.fallf || fall
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen

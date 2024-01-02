@@ -3172,6 +3172,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.groundtype)
 		case "damage":
 			ln = lua.LNumber(c.ghv.damage)
+		case "guardcount":
+			ln = lua.LNumber(c.ghv.guardcount)
 		case "hitcount":
 			ln = lua.LNumber(c.ghv.hitcount)
 		case "fallcount":
@@ -3258,6 +3260,10 @@ func triggerFunctions(l *lua.LState) {
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
 		l.Push(ln)
+		return 1
+	})
+	luaRegister(l, "guardcount", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.guardCount))
 		return 1
 	})
 	luaRegister(l, "hitcount", func(*lua.LState) int {
