@@ -397,11 +397,13 @@ func (r *Renderer) Init() {
 func (r *Renderer) Close() {
 }
 
-func (r *Renderer) BeginFrame(clear bool) {
+func (r *Renderer) BeginFrame(clearColor bool) {
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
-	if clear {
+	if clearColor {
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	} else {
+		gl.Clear(gl.DEPTH_BUFFER_BIT)
 	}
 }
 
