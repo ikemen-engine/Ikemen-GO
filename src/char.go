@@ -263,7 +263,7 @@ type CharSize struct {
 			front float32
 			back  float32
 		}
-		z    struct {
+		z struct {
 			width [2]float32
 		}
 	}
