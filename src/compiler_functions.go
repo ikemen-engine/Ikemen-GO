@@ -1605,6 +1605,10 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_guard_dist, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "guard.dist.back",
+		hitDef_guard_dist_back, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "pausetime",
 		hitDef_pausetime, VT_Int, 2, false); err != nil {
 		return err
@@ -3079,6 +3083,10 @@ func (c *Compiler) attackDist(is IniSection, sc *StateControllerBase, _ int8) (S
 		}
 		if err := c.paramValue(is, sc, "value",
 			attackDist_value, VT_Float, 1, true); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "back",
+			attackDist_back, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil

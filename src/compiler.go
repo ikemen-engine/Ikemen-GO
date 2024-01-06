@@ -1535,14 +1535,18 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_height_air_bottom)
 		case "size.height.down":
 			out.append(OC_const_size_height_down)
-		case "size.attack.dist":
-			out.append(OC_const_size_attack_dist)
+		case "size.attack.dist", "size.attack.dist.front":
+			out.append(OC_const_size_attack_dist_front)
+		case "size.attack.dist.back":
+			out.append(OC_const_size_attack_dist_back)
 		case "size.attack.z.width.back":
 			out.append(OC_const_size_attack_z_width_back)
 		case "size.attack.z.width.front":
 			out.append(OC_const_size_attack_z_width_front)
-		case "size.proj.attack.dist":
-			out.append(OC_const_size_proj_attack_dist)
+		case "size.proj.attack.dist", "size.proj.attack.dist.front":
+			out.append(OC_const_size_proj_attack_dist_front)
+		case "size.proj.attack.dist.back":
+			out.append(OC_const_size_proj_attack_dist_back)
 		case "size.proj.doscale":
 			out.append(OC_const_size_proj_doscale)
 		case "size.head.pos.x":

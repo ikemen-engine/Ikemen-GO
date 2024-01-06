@@ -250,10 +250,12 @@ const (
 	OC_const_size_height_air_top
 	OC_const_size_height_air_bottom
 	OC_const_size_height_down
-	OC_const_size_attack_dist
+	OC_const_size_attack_dist_front
+	OC_const_size_attack_dist_back
 	OC_const_size_attack_z_width_back
 	OC_const_size_attack_z_width_front
-	OC_const_size_proj_attack_dist
+	OC_const_size_proj_attack_dist_front
+	OC_const_size_proj_attack_dist_back
 	OC_const_size_proj_doscale
 	OC_const_size_head_pos_x
 	OC_const_size_head_pos_y
@@ -1578,14 +1580,18 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.height.air[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_height_down:
 		sys.bcStack.PushF(c.size.height.down * ((320 / c.localcoord) / oc.localscl))
-	case OC_const_size_attack_dist:
-		sys.bcStack.PushF(c.size.attack.dist * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_attack_dist_front:
+		sys.bcStack.PushF(c.size.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_attack_dist_back:
+		sys.bcStack.PushF(c.size.attack.dist.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_back:
 		sys.bcStack.PushF(c.size.attack.z.width[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_front:
 		sys.bcStack.PushF(c.size.attack.z.width[0] * ((320 / c.localcoord) / oc.localscl))
-	case OC_const_size_proj_attack_dist:
-		sys.bcStack.PushF(c.size.proj.attack.dist * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_proj_attack_dist_front:
+		sys.bcStack.PushF(c.size.proj.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_proj_attack_dist_back:
+		sys.bcStack.PushF(c.size.proj.attack.dist.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_doscale:
 		sys.bcStack.PushI(c.size.proj.doscale)
 	case OC_const_size_head_pos_x:
@@ -4719,6 +4725,7 @@ const (
 	hitDef_ground_hittime
 	hitDef_guard_hittime
 	hitDef_guard_dist
+	hitDef_guard_dist_back
 	hitDef_pausetime
 	hitDef_guard_pausetime
 	hitDef_air_velocity
@@ -4938,7 +4945,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	case hitDef_guard_hittime:
 		hd.guard_hittime = exp[0].evalI(c)
 	case hitDef_guard_dist:
-		hd.guard_dist = exp[0].evalI(c)
+		hd.guard_dist[0] = exp[0].evalI(c)
+	case hitDef_guard_dist_back:
+		hd.guard_dist[1] = exp[0].evalI(c)
 	case hitDef_pausetime:
 		hd.pausetime = exp[0].evalI(c)
 		hd.guard_pausetime = hd.pausetime
@@ -6672,6 +6681,7 @@ type attackDist StateControllerBase
 
 const (
 	attackDist_value byte = iota
+	attackDist_back
 	attackDist_redirectid
 )
 
@@ -6681,7 +6691,9 @@ func (sc attackDist) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case attackDist_value:
-			crun.attackDist = exp[0].evalF(c) * lclscround
+			crun.attackDist[0] = exp[0].evalF(c) * lclscround
+		case attackDist_back:
+			crun.attackDist[1] = exp[0].evalF(c) * lclscround
 		case attackDist_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

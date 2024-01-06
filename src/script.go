@@ -2898,7 +2898,7 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.air.back)
 		case "size.air.front":
 			ln = lua.LNumber(c.size.air.front)
-		case "size.height":
+		case "size.height", "size.height.stand":
 			ln = lua.LNumber(c.size.height.stand)
 		case "size.height.crouch":
 			ln = lua.LNumber(c.size.height.crouch)
@@ -2908,14 +2908,18 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.height.air[1])
 		case "size.height.down":
 			ln = lua.LNumber(c.size.height.down)
-		case "size.attack.dist":
-			ln = lua.LNumber(c.size.attack.dist)
+		case "size.attack.dist", "size.attack.dist.front":
+			ln = lua.LNumber(c.size.attack.dist.front)
+		case "size.attack.dist.back":
+			ln = lua.LNumber(c.size.attack.dist.back)
 		case "size.attack.z.width.back":
 			ln = lua.LNumber(c.size.attack.z.width[1])
 		case "size.attack.z.width.front":
 			ln = lua.LNumber(c.size.attack.z.width[0])
-		case "size.proj.attack.dist":
-			ln = lua.LNumber(c.size.proj.attack.dist)
+		case "size.proj.attack.dist", "size.proj.attack.dist.front":
+			ln = lua.LNumber(c.size.proj.attack.dist.front)
+		case "size.proj.attack.dist.back":
+			ln = lua.LNumber(c.size.proj.attack.dist.back)
 		case "size.proj.doscale":
 			ln = lua.LNumber(c.size.proj.doscale)
 		case "size.head.pos.x":
