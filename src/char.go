@@ -1528,6 +1528,7 @@ type Projectile struct {
 	platformAngle   float32
 	platformFence   bool
 	remflag         bool
+	freezeflag      bool
 }
 
 func newProjectile() *Projectile {
@@ -1561,11 +1562,6 @@ func (p *Projectile) paused(playerNo int) bool {
 	return false
 }
 func (p *Projectile) update(playerNo int) {
-	// Interpolate position
-	ti := sys.tickInterpola()
-	for i, np := range p.newPos {
-		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
-	}
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		p.remflag = true
 		if p.anim >= 0 {
@@ -1619,6 +1615,30 @@ func (p *Projectile) update(playerNo int) {
 			}
 		}
 	}
+	if p.paused(playerNo) || p.hitpause > 0 || p.freezeflag {
+		p.setPos(p.pos)
+	} else {
+		if sys.tickFrame() {
+			p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
+		}
+		ti := sys.tickInterpola()
+		for i, np := range p.newPos {
+			p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
+		}
+		if sys.tickNextFrame() {
+			p.oldPos = p.pos
+			p.pos = p.newPos
+			for i := range p.velocity {
+				p.velocity[i] += p.accel[i]
+				p.velocity[i] *= p.velmul[i]
+			}
+			if p.velocity[0] < 0 && p.anim != -1 {
+				p.facing *= -1
+				p.velocity[0] *= -1
+				p.accel[0] *= -1
+			}
+		}
+	}
 }
 func (p *Projectile) clsn(playerNo int) {
 	if p.ani == nil || len(p.ani.frames) == 0 {
@@ -1666,23 +1686,6 @@ func (p *Projectile) clsn(playerNo int) {
 	}
 }
 func (p *Projectile) tick(playerNo int) {
-	if p.paused(playerNo) || p.hitpause != 0 {
-		p.setPos(p.pos)
-	} else {
-		p.oldPos = p.pos
-		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
-		p.pos = p.newPos
-		for i := range p.velocity {
-			p.velocity[i] += p.accel[i]
-			p.velocity[i] *= p.velmul[i]
-		}
-		if p.velocity[0] < 0 && p.anim != -1 {
-			p.facing *= -1
-			p.velocity[0] *= -1
-			p.accel[0] *= -1
-		}
-	}
-
 	if p.curmisstime < 0 {
 		p.curmisstime = ^p.curmisstime
 		if p.hits >= 0 {
@@ -1715,8 +1718,11 @@ func (p *Projectile) tick(playerNo int) {
 			if p.pausemovetime > 0 {
 				p.pausemovetime--
 			}
+			p.freezeflag = false
 		} else {
 			p.hitpause--
+			// This flag makes projectiles halt in place between multiple hits
+			p.freezeflag = true
 		}
 	}
 }
@@ -3335,7 +3341,7 @@ func (c *Char) numPartner() int32 {
 func (c *Char) numProj() int32 {
 	n := int32(0)
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id >= 0 && !p.remflag {
+		if p.id >= 0 && p.hits >= 0 && !p.remflag {
 			n++
 		}
 	}
@@ -3350,7 +3356,7 @@ func (c *Char) numProjID(pid BytecodeValue) BytecodeValue {
 	}
 	var id, n int32 = Max(0, pid.ToI()), 0
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id == id && !p.remflag {
+		if p.id == id && p.hits >= 0 && !p.remflag {
 			n++
 		}
 	}
