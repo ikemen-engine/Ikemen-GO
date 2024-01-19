@@ -768,6 +768,7 @@ type GetHitVar struct {
 	score          float32
 	hitdamage      int32
 	guarddamage    int32
+	power          int32
 	hitpower       int32
 	guardpower     int32
 	hitredlife     int32
@@ -6217,6 +6218,7 @@ func (c *Char) actionRun() {
 		}
 		c.ghv.hitdamage = 0
 		c.ghv.guarddamage = 0
+		c.ghv.power = 0
 		c.ghv.hitpower = 0
 		c.ghv.guardpower = 0
 		if c.ghv.dizzypoints != 0 {
@@ -7020,6 +7022,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				byf *= -1
 			}
 		}
+		// HitDef connects
 		if hitType > 0 {
 			if hitType == 1 {
 				if ch := getter.soundChannels.Get(0); ch != nil {
@@ -7036,10 +7039,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) &&
 					!ghv.guarded
 				// Save existing hit information
-				fall, hc, gc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy, ghv.damage
+				dmg, hdmg, gdmg := ghv.damage, ghv.hitdamage, ghv.guarddamage
+				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
+				fall, hc, gc, fc, by := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
 				ghv.clear()
 				ghv.hitBy = by
 				ghv.damage = dmg
+				ghv.hitdamage = hdmg
+				ghv.guarddamage = gdmg
+				ghv.power = pwr
+				ghv.hitpower = hpwr
+				ghv.guardpower = gpwr
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
@@ -7378,6 +7388,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
+					getter.ghv.power += hd.hitgivepower
 				}
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
@@ -7414,6 +7425,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
+					getter.ghv.power += hd.guardgivepower
 				}
 			}
 		}
@@ -7713,6 +7725,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						dist >= -float32(c.hitdef.guard_dist[1]) {
 						getter.inguarddist = true
 					}
+					// ReversalDef connects
 					if getter.hitCheck(c) {
 						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
@@ -7766,6 +7779,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.hitPauseTime = Max(1, c.hitdef.pausetime+
 										Btoi(c.gi().mugenver[0] == 1))
 								}
+								c.powerAdd(c.hitdef.hitgetpower)
 								c.uniqHitCount++
 							} else {
 								if mvh {

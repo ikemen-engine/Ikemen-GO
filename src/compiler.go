@@ -1850,6 +1850,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_hitdamage)
 			case "guarddamage":
 				out.append(OC_ex_gethitvar_guarddamage)
+			case "power":
+				out.append(OC_ex_gethitvar_power)
 			case "hitpower":
 				out.append(OC_ex_gethitvar_hitpower)
 			case "guardpower":

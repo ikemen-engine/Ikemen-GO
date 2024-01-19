@@ -463,6 +463,7 @@ const (
 	OC_ex_gethitvar_score
 	OC_ex_gethitvar_hitdamage
 	OC_ex_gethitvar_guarddamage
+	OC_ex_gethitvar_power
 	OC_ex_gethitvar_hitpower
 	OC_ex_gethitvar_guardpower
 	OC_ex_gethitvar_kill
@@ -2038,6 +2039,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.hitdamage)
 	case OC_ex_gethitvar_guarddamage:
 		sys.bcStack.PushI(c.ghv.guarddamage)
+	case OC_ex_gethitvar_power:
+		sys.bcStack.PushI(c.ghv.power)
 	case OC_ex_gethitvar_hitpower:
 		sys.bcStack.PushI(c.ghv.hitpower)
 	case OC_ex_gethitvar_guardpower:
