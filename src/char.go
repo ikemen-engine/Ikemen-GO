@@ -6394,8 +6394,8 @@ func (c *Char) update(cvmin, cvmax,
 				}
 			}
 		}
-		if c.acttmp > 0 && c.ss.moveType != MT_H || c.roundState() == 2 &&
-			c.scf(SCF_ko) && c.scf(SCF_over) {
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1592
+		if c.acttmp > 0 && c.ss.moveType != MT_H || c.ss.no == 5150 {
 			c.exitTarget(true)
 		}
 		c.platformPosY = 0
@@ -6747,9 +6747,6 @@ func (c *Char) cueDraw() {
 		}
 	}
 	if sys.tickNextFrame() {
-		if c.roundState() == 4 {
-			c.exitTarget(false)
-		}
 		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
 			c.superDefenseMul *= sys.superp2defmul
 		}
