@@ -392,11 +392,11 @@ function menu.f_start()
 						end
 						if not suffix:match(c .. '_') then
 							table.insert(menu[v.id].items, {
-								data = text:create({window = t_menuWindow}),
+								data = text.create({window = t_menuWindow}),
 								itemname = c,
 								displayname = motif[v.section]['menu_itemname_' .. suffix],
 								paramname = 'menu_itemname_' .. suffix,
-								vardata = text:create({window = t_menuWindow}),
+								vardata = text.create({window = t_menuWindow}),
 								vardisplay = menu.f_vardisplay(c),
 								selected = false,
 							})
@@ -418,11 +418,11 @@ function menu.f_start()
 							t_pos.submenu[c].loop = menu.f_createMenu(t_pos.submenu[c], v.section, v.bgdef, menu[v.txt_title], false)
 						end
 						table.insert(t_pos.items, {
-							data = text:create({window = t_menuWindow}),
+							data = text.create({window = t_menuWindow}),
 							itemname = c,
 							displayname = motif[v.section]['menu_itemname_' .. suffix],
 							paramname = 'menu_itemname_' .. suffix,
-							vardata = text:create({window = t_menuWindow}),
+							vardata = text.create({window = t_menuWindow}),
 							vardisplay = menu.f_vardisplay(c),
 							selected = false,
 						})
@@ -539,7 +539,7 @@ local function f_commandlistData(t, str, align, col)
 		if not m2:match('^#[A-Za-z0-9]+$') and not m2:match('^/$') and not m2:match('^#$') then
 			table.insert(t_insert, {glyph = true, text = m2, align = align, col = col})
 		elseif m2:match('^#[A-Za-z0-9]+$') then
-			col = color:fromHex(m2)
+			col = color.fromHex(m2)
 		elseif m2:match('^/$') then
 			col = {}
 		end

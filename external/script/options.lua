@@ -1535,11 +1535,11 @@ function options.f_start()
 				for k = #options.t_shaders, 1, -1 do
 					local itemname = options.t_shaders[k].path .. options.t_shaders[k].filename
 					table.insert(t_pos.items, 1, {
-						data = text:create({window = t_menuWindow}),
+						data = text.create({window = t_menuWindow}),
 						itemname = itemname,
 						displayname = options.t_shaders[k].filename,
 						paramname = 'menu_itemname_' .. suffix:gsub('back$', itemname),
-						vardata = text:create({window = t_menuWindow}),
+						vardata = text.create({window = t_menuWindow}),
 						vardisplay = options.f_vardisplay(c),
 						selected = false,
 					})
@@ -1556,11 +1556,11 @@ function options.f_start()
 					options.menu.submenu[c].loop = options.f_createMenu(options.menu.submenu[c], false)
 					if not suffix:match(c .. '_') then
 						table.insert(options.menu.items, {
-							data = text:create({window = t_menuWindow}),
+							data = text.create({window = t_menuWindow}),
 							itemname = c,
 							displayname = motif.option_info['menu_itemname_' .. suffix],
 							paramname = 'menu_itemname_' .. suffix,
-							vardata = text:create({window = t_menuWindow}),
+							vardata = text.create({window = t_menuWindow}),
 							vardisplay = options.f_vardisplay(c),
 							selected = false,
 						})
@@ -1574,11 +1574,11 @@ function options.f_start()
 					t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info['menu_itemname_' .. suffix], motif.option_info.menu_title_uppercase == 1), submenu = {}, items = {}}
 					t_pos.submenu[c].loop = options.f_createMenu(t_pos.submenu[c], false)
 					table.insert(t_pos.items, {
-						data = text:create({window = t_menuWindow}),
+						data = text.create({window = t_menuWindow}),
 						itemname = c,
 						displayname = motif.option_info['menu_itemname_' .. suffix],
 						paramname = 'menu_itemname_' .. suffix,
-						vardata = text:create({window = t_menuWindow}),
+						vardata = text.create({window = t_menuWindow}),
 						vardisplay = options.f_vardisplay(c),
 						selected = false,
 					})
@@ -1600,7 +1600,7 @@ end
 --; KEY SETTINGS
 --;===========================================================
 local function f_keyCfgText()
-	return {text:create({}), text:create({})}
+	return {text.create({}), text.create({})}
 end
 local t_keyCfg = {
 	{data = f_keyCfgText(), itemname = 'empty', displayname = ''},
@@ -1623,7 +1623,7 @@ local t_keyCfg = {
 }
 t_keyCfg = main.f_tableClean(t_keyCfg, main.f_tableExists(main.t_sort.option_info).keymenu)
 
-local rect_boxbg = rect:create({
+local rect_boxbg = rect.create({
 	r =     motif.option_info.menu_boxbg_col[1],
 	g =     motif.option_info.menu_boxbg_col[2],
 	b =     motif.option_info.menu_boxbg_col[3],
@@ -1631,7 +1631,7 @@ local rect_boxbg = rect:create({
 	dst =   motif.option_info.menu_boxbg_alpha[2],
 	defsc = motif.defaultOptions,
 })
-local rect_boxcursor = rect:create({
+local rect_boxcursor = rect.create({
 	r =     motif.option_info.menu_boxcursor_col[1],
 	g =     motif.option_info.menu_boxcursor_col[2],
 	b =     motif.option_info.menu_boxcursor_col[3],

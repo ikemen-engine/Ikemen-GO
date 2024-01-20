@@ -1952,11 +1952,11 @@ function start.f_selectScreen()
 		-- start with all default teammode entires
 		local str = 'teammenu_itemname_' .. gamemode() .. '_'
 		local t = {
-			{data = text:create({}), itemname = 'single', displayname = (motif.select_info[str .. 'single'] or motif.select_info.teammenu_itemname_single), mode = 0, insert = true},
-			{data = text:create({}), itemname = 'simul', displayname = (motif.select_info[str .. 'simul'] or motif.select_info.teammenu_itemname_simul), mode = 1, insert = true},
-			{data = text:create({}), itemname = 'turns', displayname = (motif.select_info[str .. 'turns'] or motif.select_info.teammenu_itemname_turns), mode = 2, insert = true},
-			{data = text:create({}), itemname = 'tag', displayname = (motif.select_info[str .. 'tag'] or motif.select_info.teammenu_itemname_tag), mode = 3, insert = true},
-			{data = text:create({}), itemname = 'ratio', displayname = (motif.select_info[str .. 'ratio'] or motif.select_info.teammenu_itemname_ratio), mode = 2, insert = true},
+			{data = text.create({}), itemname = 'single', displayname = (motif.select_info[str .. 'single'] or motif.select_info.teammenu_itemname_single), mode = 0, insert = true},
+			{data = text.create({}), itemname = 'simul', displayname = (motif.select_info[str .. 'simul'] or motif.select_info.teammenu_itemname_simul), mode = 1, insert = true},
+			{data = text.create({}), itemname = 'turns', displayname = (motif.select_info[str .. 'turns'] or motif.select_info.teammenu_itemname_turns), mode = 2, insert = true},
+			{data = text.create({}), itemname = 'tag', displayname = (motif.select_info[str .. 'tag'] or motif.select_info.teammenu_itemname_tag), mode = 3, insert = true},
+			{data = text.create({}), itemname = 'ratio', displayname = (motif.select_info[str .. 'ratio'] or motif.select_info.teammenu_itemname_ratio), mode = 2, insert = true},
 		}
 		local activeNum = #t
 		-- keep team mode allowed by game mode declaration, but only if it hasn't been disabled by screenpack parameter
@@ -3401,8 +3401,8 @@ end
 --;===========================================================
 local txt_credits = main.f_createTextImg(motif.continue_screen, 'credits')
 local txt_continue = main.f_createTextImg(motif.continue_screen, 'continue', {x = motif.continue_screen.pos[1], y = motif.continue_screen.pos[2]})
-local txt_yes = text:create({})
-local txt_no = text:create({})
+local txt_yes = text.create({})
+local txt_no = text.create({})
 local overlay_continue = main.f_createOverlay(motif.continue_screen, 'overlay')
 
 start.t_continueCounts = {}
@@ -4209,7 +4209,7 @@ function start.f_dialogueParse()
 								b = motif.dialogue_info['p' .. i .. '_text_font'][6],
 							}
 						else
-							t.colors[i][length] = color:fromHex(m2)
+							t.colors[i][length] = color.fromHex(m2)
 						end
 					end
 				--side
