@@ -3252,6 +3252,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.hitdamage)
 		case "guarddamage":
 			ln = lua.LNumber(c.ghv.guarddamage)
+		case "power":
+			ln = lua.LNumber(c.ghv.power)
 		case "hitpower":
 			ln = lua.LNumber(c.ghv.hitpower)
 		case "guardpower":

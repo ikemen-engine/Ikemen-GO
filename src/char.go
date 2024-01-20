@@ -768,6 +768,7 @@ type GetHitVar struct {
 	score          float32
 	hitdamage      int32
 	guarddamage    int32
+	power          int32
 	hitpower       int32
 	guardpower     int32
 	hitredlife     int32
@@ -1528,6 +1529,7 @@ type Projectile struct {
 	platformAngle   float32
 	platformFence   bool
 	remflag         bool
+	freezeflag      bool
 }
 
 func newProjectile() *Projectile {
@@ -1561,11 +1563,6 @@ func (p *Projectile) paused(playerNo int) bool {
 	return false
 }
 func (p *Projectile) update(playerNo int) {
-	// Interpolate position
-	ti := sys.tickInterpola()
-	for i, np := range p.newPos {
-		p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
-	}
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		p.remflag = true
 		if p.anim >= 0 {
@@ -1619,6 +1616,30 @@ func (p *Projectile) update(playerNo int) {
 			}
 		}
 	}
+	if p.paused(playerNo) || p.hitpause > 0 || p.freezeflag {
+		p.setPos(p.pos)
+	} else {
+		if sys.tickFrame() {
+			p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
+		}
+		ti := sys.tickInterpola()
+		for i, np := range p.newPos {
+			p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
+		}
+		if sys.tickNextFrame() {
+			p.oldPos = p.pos
+			p.pos = p.newPos
+			for i := range p.velocity {
+				p.velocity[i] += p.accel[i]
+				p.velocity[i] *= p.velmul[i]
+			}
+			if p.velocity[0] < 0 && p.anim != -1 {
+				p.facing *= -1
+				p.velocity[0] *= -1
+				p.accel[0] *= -1
+			}
+		}
+	}
 }
 func (p *Projectile) clsn(playerNo int) {
 	if p.ani == nil || len(p.ani.frames) == 0 {
@@ -1666,23 +1687,6 @@ func (p *Projectile) clsn(playerNo int) {
 	}
 }
 func (p *Projectile) tick(playerNo int) {
-	if p.paused(playerNo) || p.hitpause != 0 {
-		p.setPos(p.pos)
-	} else {
-		p.oldPos = p.pos
-		p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
-		p.pos = p.newPos
-		for i := range p.velocity {
-			p.velocity[i] += p.accel[i]
-			p.velocity[i] *= p.velmul[i]
-		}
-		if p.velocity[0] < 0 && p.anim != -1 {
-			p.facing *= -1
-			p.velocity[0] *= -1
-			p.accel[0] *= -1
-		}
-	}
-
 	if p.curmisstime < 0 {
 		p.curmisstime = ^p.curmisstime
 		if p.hits >= 0 {
@@ -1715,8 +1719,11 @@ func (p *Projectile) tick(playerNo int) {
 			if p.pausemovetime > 0 {
 				p.pausemovetime--
 			}
+			p.freezeflag = false
 		} else {
 			p.hitpause--
+			// This flag makes projectiles halt in place between multiple hits
+			p.freezeflag = true
 		}
 	}
 }
@@ -3335,7 +3342,7 @@ func (c *Char) numPartner() int32 {
 func (c *Char) numProj() int32 {
 	n := int32(0)
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id >= 0 && !p.remflag {
+		if p.id >= 0 && p.hits >= 0 && !p.remflag {
 			n++
 		}
 	}
@@ -3350,7 +3357,7 @@ func (c *Char) numProjID(pid BytecodeValue) BytecodeValue {
 	}
 	var id, n int32 = Max(0, pid.ToI()), 0
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id == id && !p.remflag {
+		if p.id == id && p.hits >= 0 && !p.remflag {
 			n++
 		}
 	}
@@ -6211,6 +6218,7 @@ func (c *Char) actionRun() {
 		}
 		c.ghv.hitdamage = 0
 		c.ghv.guarddamage = 0
+		c.ghv.power = 0
 		c.ghv.hitpower = 0
 		c.ghv.guardpower = 0
 		if c.ghv.dizzypoints != 0 {
@@ -6386,8 +6394,8 @@ func (c *Char) update(cvmin, cvmax,
 				}
 			}
 		}
-		if c.acttmp > 0 && c.ss.moveType != MT_H || c.roundState() == 2 &&
-			c.scf(SCF_ko) && c.scf(SCF_over) {
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1592
+		if c.acttmp > 0 && c.ss.moveType != MT_H || c.ss.no == 5150 {
 			c.exitTarget(true)
 		}
 		c.platformPosY = 0
@@ -6739,9 +6747,6 @@ func (c *Char) cueDraw() {
 		}
 	}
 	if sys.tickNextFrame() {
-		if c.roundState() == 4 {
-			c.exitTarget(false)
-		}
 		if sys.supertime < 0 && c.teamside != sys.superplayer&1 {
 			c.superDefenseMul *= sys.superp2defmul
 		}
@@ -7014,6 +7019,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				byf *= -1
 			}
 		}
+		// HitDef connects
 		if hitType > 0 {
 			if hitType == 1 {
 				if ch := getter.soundChannels.Get(0); ch != nil {
@@ -7030,10 +7036,17 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) &&
 					!ghv.guarded
 				// Save existing hit information
-				fall, hc, gc, fc, by, dmg := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy, ghv.damage
+				dmg, hdmg, gdmg := ghv.damage, ghv.hitdamage, ghv.guarddamage
+				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
+				fall, hc, gc, fc, by := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
 				ghv.clear()
 				ghv.hitBy = by
 				ghv.damage = dmg
+				ghv.hitdamage = hdmg
+				ghv.guarddamage = gdmg
+				ghv.power = pwr
+				ghv.hitpower = hpwr
+				ghv.guardpower = gpwr
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
@@ -7372,6 +7385,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.hitgetpower)
 				if getter.player {
 					getter.powerAdd(hd.hitgivepower)
+					getter.ghv.power += hd.hitgivepower
 				}
 				if getter.ss.moveType == MT_A {
 					c.counterHit = true
@@ -7408,6 +7422,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.powerAdd(hd.guardgetpower)
 				if getter.player {
 					getter.powerAdd(hd.guardgivepower)
+					getter.ghv.power += hd.guardgivepower
 				}
 			}
 		}
@@ -7707,6 +7722,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						dist >= -float32(c.hitdef.guard_dist[1]) {
 						getter.inguarddist = true
 					}
+					// ReversalDef connects
 					if getter.hitCheck(c) {
 						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
@@ -7760,6 +7776,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.hitPauseTime = Max(1, c.hitdef.pausetime+
 										Btoi(c.gi().mugenver[0] == 1))
 								}
+								c.powerAdd(c.hitdef.hitgetpower)
 								c.uniqHitCount++
 							} else {
 								if mvh {
