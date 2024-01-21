@@ -1618,6 +1618,7 @@ func (p *Projectile) update(playerNo int) {
 	}
 	if p.paused(playerNo) || p.hitpause > 0 || p.freezeflag {
 		p.setPos(p.pos)
+		// There's a minor issue here where a projectile will lag behind one frame relative to Mugen if created during a pause
 	} else {
 		if sys.tickFrame() {
 			p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
@@ -1823,6 +1824,7 @@ type StateState struct {
 	prevStateType   StateType
 	moveType        MoveType
 	prevMoveType    MoveType
+	storeMoveType   bool
 	physics         StateType
 	ps              []int32
 	wakegawakaranai [MaxSimul*2 + MaxAttachedChar][]bool
@@ -6536,7 +6538,9 @@ func (c *Char) tick() {
 		}
 	}
 	if c.csf(CSF_gethit) && !c.hoKeepState {
-		c.ss.moveType = MT_H // Note that this change to MoveType breaks PrevMoveType
+		c.ss.changeMoveType(MT_H)
+		// This flag prevents the previous move type from being changed twice
+		c.ss.storeMoveType = true
 		if c.hitPauseTime > 0 {
 			c.ss.clearWw()
 		}

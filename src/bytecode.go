@@ -9136,11 +9136,15 @@ func (sb *StateBytecode) init(c *Char) {
 		c.ss.changeStateType(sb.stateType)
 	}
 	if sb.moveType != MT_U {
-		c.ss.changeMoveType(sb.moveType)
+		if !c.ss.storeMoveType {
+			c.ss.prevMoveType = c.ss.moveType
+		}
+		c.ss.moveType = sb.moveType
 	}
 	if sb.physics != ST_U {
 		c.ss.physics = sb.physics
 	}
+	c.ss.storeMoveType = false
 	sys.workingState = sb
 	sb.stateDef.Run(c)
 }
