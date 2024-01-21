@@ -2827,7 +2827,7 @@ func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
 func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
-	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, true); a != nil {
+	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, false); a != nil {
 		c.anim = a
 		c.anim.remap = c.remapSpr
 		c.animPN = c.playerNo
@@ -3586,7 +3586,7 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 	if s == nil {
 		if log {
 			if ffx != "" {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("%v sound %v,%v doesn't exist", strings.ToUpper(ffx), g, n))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("sound %v %v,%v doesn't exist", strings.ToUpper(ffx), g, n))
 			} else {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("sound %v,%v doesn't exist", g, n))
 			}
@@ -4058,7 +4058,7 @@ func (c *Char) enemyExplodsRemove(en int) {
 	remove(&sys.topexplDrawlist[en], false)
 	remove(&sys.underexplDrawlist[en], true)
 }
-func (c *Char) getAnim(n int32, ffx string, log bool) (a *Animation) {
+func (c *Char) getAnim(n int32, ffx string, fx bool) (a *Animation) {
 	if n == -2 {
 		return &Animation{}
 	}
@@ -4073,9 +4073,15 @@ func (c *Char) getAnim(n int32, ffx string, log bool) (a *Animation) {
 		a = c.gi().anim.get(n)
 	}
 	if a == nil {
-		if log {
+		if fx {
 			if ffx != "" && ffx != "s" {
-				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid %v action %v", strings.ToUpper(ffx), n))
+				sys.appendToConsole(c.warn() + fmt.Sprintf("called invalid action %v %v", strings.ToUpper(ffx), n))
+			} else {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("called invalid action %v", n))
+			}
+		} else {
+			if ffx != "" && ffx != "s" {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid action %v %v", strings.ToUpper(ffx), n))
 			} else {
 				sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid action %v", n))
 			}
@@ -5154,7 +5160,7 @@ func (c *Char) over() bool {
 }
 func (c *Char) makeDust(x, y float32) {
 	if e, i := c.newExplod(); e != nil {
-		e.anim = c.getAnim(120, "f", false)
+		e.anim = c.getAnim(120, "f", true)
 		if e.anim != nil {
 			e.anim.start_scale[0] *= c.localscl
 			e.anim.start_scale[1] *= c.localscl
@@ -7349,7 +7355,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				off[1] += p1.hitdef.sparkxy[1] * c.localscl
 			}
 			if e, i := c.newExplod(); e != nil {
-				e.anim = c.getAnim(animNo, ffx, false)
+				e.anim = c.getAnim(animNo, ffx, true)
 				e.ontop = true
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
