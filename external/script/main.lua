@@ -415,6 +415,7 @@ main.font_def = {}
 -- * start.f_continue: start.lua 'f_continue' function (pre layerno=1)
 -- * start.f_hiscore: start.lua 'f_hiscore' function (pre layerno=1)
 -- * start.f_challenger: start.lua 'f_challenger' function (pre layerno=1)
+-- * start.f_selectReset: start.lua 'f_selectReset' function (before returning)
 -- More entry points may be added in future - let us know if your external
 -- module needs to hook code in place where it's not allowed yet.
 

@@ -1599,6 +1599,7 @@ function start.f_selectReset(hardReset)
 	end
 	t_recordText = start.f_getRecordText()
 	menu.movelistChar = 1
+	hook.run("start.f_selectReset")
 end
 
 function start.f_selectChallenger()
