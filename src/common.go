@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -241,7 +240,7 @@ func I32ToU16(i32 int32) uint16 {
 	return uint16(i32)
 }
 func LoadText(filename string) (string, error) {
-	bytes, err := ioutil.ReadFile(filename)
+	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}
