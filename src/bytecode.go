@@ -340,6 +340,7 @@ const (
 	OC_const_p7name
 	OC_const_p8name
 	OC_const_authorname
+	OC_const_displayname
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
@@ -1749,6 +1750,11 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_displayname:
+		sys.bcStack.PushB(c.gi().displaynameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
 	case OC_const_name:
 		sys.bcStack.PushB(c.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1962,7 +1968,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.ghv.groundtype))
 	case OC_ex_gethitvar_damage:
 		sys.bcStack.PushI(c.ghv.damage)
-
 	case OC_ex_gethitvar_guardcount:
 		sys.bcStack.PushI(c.ghv.guardcount)
 	case OC_ex_gethitvar_hitcount:

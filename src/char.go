@@ -1778,11 +1778,12 @@ const (
 
 type CharGlobalInfo struct {
 	def              string
-	displayname      string
-	lifebarname      string
-	author           string
 	nameLow          string
+	displayname      string
+	displaynameLow   string
+	author           string
 	authorLow        string
+	lifebarname      string
 	palkeymap        [MaxPalNo]int32
 	sff              *Sff
 	palettedata      *Palette
@@ -2241,8 +2242,9 @@ func (c *Char) load(def string) error {
 					gi.lifebarname = gi.displayname
 				}
 				gi.author, _, _ = is.getText("author")
-				gi.authorLow = strings.ToLower(gi.author)
 				gi.nameLow = strings.ToLower(c.name)
+				gi.displaynameLow = strings.ToLower(gi.displayname)
+				gi.authorLow = strings.ToLower(gi.author)
 				if is.ReadF32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
 					gi.portraitscale = 320 / gi.localcoord[0]
 					c.localcoord = gi.localcoord[0] / (float32(sys.gameWidth) / 320)
