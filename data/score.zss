@@ -46,18 +46,18 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 } else ignoreHitPause if roundState >= 2 {
 	# score: first attack bonus
 	if !isHelper {
-		let ret = call FirstAttack();
+		let ret = call IkSys_FirstAttack();
 		if $ret {
 			scoreAdd{value: 1500}
 		}
 	}
 	# score: counter bonus
-	let ret = call CounterHit();
+	let ret = call IkSys_CounterHit();
 	if $ret {
 		scoreAdd{value: 100}
 	}
 	# score: damage bonus
-	let ret = call ReceivedDamage();
+	let ret = call IkSys_ReceivedDamage();
 	if $ret && getHitVar(score) = 0 {
 		let dmgMul = 0;
 		switch getHitVar(attr) {
@@ -90,7 +90,7 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 	# code executed only by P1 and P2
 	if playerNo = teamSide && !isHelper {
 		# score: combo count bonus
-		let ret = call ComboCount();
+		let ret = call IkSys_ComboCount();
 		if $ret {
 			switch $ret {
 			case 2:
@@ -124,22 +124,22 @@ if !const(Default.Enable.Score) || teamSide = 0 {
 			}
 		}
 		# score: win perfect bonus
-		let ret = call WinPerfect();
+		let ret = call IkSys_WinPerfect();
 		if $ret {
 			scoreAdd{value: 15000}
 		}
 		# score: win hyper bonus
-		let ret = call WinHyper();
+		let ret = call IkSys_WinHyper();
 		if $ret {
 			scoreAdd{value: 10000}
 		}
 		# score: win special bonus
-		let ret = call WinSpecial();
+		let ret = call IkSys_WinSpecial();
 		if $ret {
 			scoreAdd{value: 3000}
 		}
 		# score: win streak bonus
-		let ret = call WinStreak();
+		let ret = call IkSys_WinStreak();
 		if $ret {
 			scoreAdd{value: 30000 + ($ret - 1) * 10000}
 		}
