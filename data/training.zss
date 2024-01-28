@@ -158,26 +158,34 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 			if map(_iksys_trainingDirection) = 1 && command != "holdback" {
 				if facing = 1 {
 					assertInput{flag: R}
-					for i = 1; numhelper; 1 {
-						assertInput{flag: R; redirectID: helperindex($i), ID}
+					if numHelper {
+						for i = 1; numHelper; 1 {
+							assertInput{flag: R; redirectID: helperIndex($i), ID}
+						}
 					}
 				} else {
 					assertInput{flag: L}
-					for i = 1; numhelper; 1 {
-						assertInput{flag: L; redirectID: helperindex($i), ID}
+					if numHelper {
+						for i = 1; numHelper; 1 {
+							assertInput{flag: L; redirectID: helperIndex($i), ID}
+						}
 					}
 				}
 			# if dummy should move backward and player is not trying to move dummy forward
 			} else if map(_iksys_trainingDirection) = -1 && command != "holdfwd" {
 				if facing = 1 {
 					assertInput{flag: L}
-					for i = 1; numhelper; 1 {
-						assertInput{flag: L; redirectID: helperindex($i), ID}
+					if numHelper {
+						for i = 1; numHelper; 1 {
+							assertInput{flag: L; redirectID: helperIndex($i), ID}
+						}
 					}
 				} else {
 					assertInput{flag: R}
-					for i = 1; numhelper; 1 {
-						assertInput{flag: R; redirectID: helperindex($i), ID}
+					if numHelper {
+						for i = 1; numHelper; 1 {
+							assertInput{flag: R; redirectID: helperIndex($i), ID}
+						}
 					}
 				}
 			}
@@ -187,21 +195,27 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 			# Crouch
 			case 1:
 				assertInput{flag: D}
-				for i = 1; numhelper; 1 {
-					assertInput{flag: D; redirectID: helperindex($i), ID}
+				if numHelper {
+					for i = 1; numHelper; 1 {
+						assertInput{flag: D; redirectID: helperIndex($i), ID}
+					}
 				}
 			# Jump
 			case 2:
 				assertInput{flag: U}
-				for i = 1; numhelper; 1 {
-					assertInput{flag: U; redirectID: helperindex($i), ID}
+				if numHelper {
+					for i = 1; numHelper; 1 {
+						assertInput{flag: U; redirectID: helperIndex($i), ID}
+					}
 				}
 			# W Jump
 			case 3:
 				if vel y >= 0 {
 					assertInput{flag: U}
-					for i = 1; numhelper; 1 {
-						assertInput{flag: U; redirectID: helperindex($i), ID}
+					if numHelper {
+						for i = 1; numHelper; 1 {
+							assertInput{flag: U; redirectID: helperIndex($i), ID}
+						}
 					}
 				}
 			default:
@@ -216,48 +230,66 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 					switch map(_iksys_trainingButtonJam) {
 					case 1:
 						assertInput{flag: a}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: a; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: a; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 2:
 						assertInput{flag: b}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: b; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: b; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 3:
 						assertInput{flag: c}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: c; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: c; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 4:
 						assertInput{flag: x}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: x; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: x; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 5:
 						assertInput{flag: y}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: y; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: y; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 6:
 						assertInput{flag: z}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: z; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: z; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 7:
 						assertInput{flag: s}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: s; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: s; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 8:
 						assertInput{flag: d}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: d; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: d; redirectID: helperIndex($i), ID}
+							}
 						}
 					case 9:
 						assertInput{flag: w}
-						for i = 1; numhelper; 1 {
-							assertInput{flag: w; redirectID: helperindex($i), ID}
+						if numHelper {
+							for i = 1; numHelper; 1 {
+								assertInput{flag: w; redirectID: helperIndex($i), ID}
+							}
 						}
 					default:
 						map(_iksys_trainingButtonJamDelay) := 0;
