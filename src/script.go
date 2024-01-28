@@ -3266,6 +3266,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(Btoi(c.ghv.kill))
 		case "priority":
 			ln = lua.LNumber(c.ghv.priority)
+		case "facing":
+			ln = lua.LNumber(c.ghv.facing)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

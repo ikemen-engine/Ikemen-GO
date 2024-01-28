@@ -776,6 +776,7 @@ type GetHitVar struct {
 	fatal          bool
 	kill           bool
 	priority       int32
+	facing         int32
 }
 
 func (ghv *GetHitVar) clear() {
@@ -7506,6 +7507,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if getter.p1facing == getter.facing {
 				getter.p1facing = 0
 			}
+			getter.ghv.facing = hd.p2facing
 			if hd.p1stateno >= 0 && c.stateChange1(hd.p1stateno, hd.playerNo) {
 				c.setCtrl(false)
 			}

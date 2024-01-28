@@ -471,6 +471,7 @@ const (
 	OC_ex_gethitvar_kill
 	OC_ex_gethitvar_priority
 	OC_ex_gethitvar_guardcount
+	OC_ex_gethitvar_facing
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -2057,6 +2058,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ghv.kill)
 	case OC_ex_gethitvar_priority:
 		sys.bcStack.PushI(c.ghv.priority)
+	case OC_ex_gethitvar_facing:
+		sys.bcStack.PushI(c.ghv.facing)
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
