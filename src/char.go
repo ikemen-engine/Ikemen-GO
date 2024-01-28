@@ -301,9 +301,9 @@ func (cs *CharSize) init() {
 	cs.air.back = 12
 	cs.air.front = 12
 	cs.height.stand = 60
-	cs.height.crouch = cs.height.stand * 2 / 3
-	cs.height.air = [...]float32{cs.height.stand * 4 / 3, -cs.height.stand / 3}
-	cs.height.down = cs.height.stand / 3
+	cs.height.crouch = 60
+	cs.height.air = [...]float32{60, 0}
+	cs.height.down = 60
 	cs.attack.dist.front = 160
 	cs.attack.dist.back = 0
 	cs.proj.attack.dist.front = 90
@@ -5063,29 +5063,21 @@ func (c *Char) defBW() float32 {
 	return float32(c.size.ground.back)
 }
 func (c *Char) defTHeight() float32 {
-	if c.stCgi().ikemenver[0] < 1 { // Change introduced in Ikemen 1.0
-		return float32(c.size.height.stand)
+	if c.ss.stateType == ST_L {
+		return float32(c.size.height.down)
+	} else if c.ss.stateType == ST_A {
+		return float32(c.size.height.air[0])
+	} else if c.ss.stateType == ST_C {
+		return float32(c.size.height.crouch)
 	} else {
-		if c.ss.stateType == ST_L {
-			return float32(c.size.height.down)
-		} else if c.ss.stateType == ST_A {
-			return float32(c.size.height.air[0])
-		} else if c.ss.stateType == ST_C {
-			return float32(c.size.height.crouch)
-		} else {
-			return float32(c.size.height.stand)
-		}
+		return float32(c.size.height.stand)
 	}
 }
 func (c *Char) defBHeight() float32 {
-	if c.stCgi().ikemenver[0] < 1 { // Change introduced in Ikemen 1.0
-		return 0
+	if c.ss.stateType == ST_A {
+		return float32(c.size.height.air[1])
 	} else {
-		if c.ss.stateType == ST_A {
-			return float32(c.size.height.air[1])
-		} else {
-			return 0
-		}
+		return 0
 	}
 }
 func (c *Char) setPauseTime(pausetime, movetime int32) {
