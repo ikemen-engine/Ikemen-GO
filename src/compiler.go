@@ -215,6 +215,7 @@ var triggerMap = map[string]int{
 	"const240p":         1,
 	"const480p":         1,
 	"const720p":         1,
+	"const1080p":        1,
 	"cos":               1,
 	"ctrl":              1,
 	"displayname":       1,
@@ -1723,6 +1724,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_ex_, OC_ex_const720p)
+	case "const1080p":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_const1080p)
 	case "ctrl":
 		out.append(OC_ctrl)
 	case "displayname":
