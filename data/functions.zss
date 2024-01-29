@@ -2,7 +2,7 @@
 # Functions
 #===============================================================================
 # FirstAttack
-[Function FirstAttack() ret]
+[Function IkSys_FirstAttack() ret]
 ignoreHitPause{
 	let ret = 0;
 	if firstAttack && (map(_iksys_firstAttackFlag) = 0 || map(_iksys_firstAttackFlag) = gameTime) {
@@ -12,7 +12,7 @@ ignoreHitPause{
 }
 
 # CounterHit
-[Function CounterHit() ret]
+[Function IkSys_CounterHit() ret]
 ignoreHitPause{
 	let ret = 0;
 	if moveCountered = 1 && (map(_iksys_counterHitFlag) = 0 || map(_iksys_counterHitFlag) = gameTime) {
@@ -24,7 +24,7 @@ ignoreHitPause{
 }
 
 # Technical
-[Function Technical() ret]
+[Function IkSys_Technical() ret]
 ignoreHitPause{
 	let ret = 0;
 	if (stateNo = const(StateAirGetHit_fallRecoveryOnGround) || stateNo = const(StateAirGetHit_fallRecoveryInAir))
@@ -37,7 +37,7 @@ ignoreHitPause{
 }
 
 # Reversal
-[Function Reversal() ret]
+[Function IkSys_Reversal() ret]
 ignoreHitPause{
 	let ret = 0;
 	if map(_iksys_reversalLastCall) != gameTime {
@@ -63,7 +63,7 @@ ignoreHitPause{
 }
 
 # Parry
-[Function Parry() ret]
+[Function IkSys_Parry() ret]
 ignoreHitPause{
 	let ret = 0;
 	if moveReversed = 1 && (map(_iksys_parryFlag) = 0 || map(_iksys_parryFlag) = gameTime) {
@@ -77,7 +77,7 @@ ignoreHitPause{
 }
 
 # Just Defend
-[Function JustDefend() ret]
+[Function IkSys_JustDefend() ret]
 ignoreHitPause{
 	let ret = 0;
 	if (command = "holdback" || map(_iksys_trainingGuardMode) || stateNo = [const(StateGuard_start), const(StateAirGuardHit_knockedAway)])
@@ -96,10 +96,10 @@ ignoreHitPause{
 }
 
 # Danger
-[Function Danger() ret]
+[Function IkSys_Danger() ret]
 ignoreHitPause{
 	let ret = 0;
-	if life > 0 && float(life) / lifeMax <= 0.3
+	if life > 0 && float(life) / lifeMax <= 0.25
 		&& (map(_iksys_dangerFlag) = 0 || map(_iksys_dangerFlag) = gameTime) {
 		let ret = 1;
 		map(_iksys_dangerFlag) := gameTime;
@@ -107,7 +107,7 @@ ignoreHitPause{
 }
 
 # Dizzy
-[Function Dizzy() ret]
+[Function IkSys_Dizzy() ret]
 ignoreHitPause{
 	let ret = 0;
 	if dizzy {
@@ -121,7 +121,7 @@ ignoreHitPause{
 }
 
 # Guard Break
-[Function GuardBreak() ret]
+[Function IkSys_GuardBreak() ret]
 ignoreHitPause{
 	let ret = 0;
 	if guardBreak {
@@ -135,7 +135,7 @@ ignoreHitPause{
 }
 
 # Partner Down
-[Function PartnerDown() ret]
+[Function IkSys_PartnerDown() ret]
 ignoreHitPause{
 	let ret = 0;
 	if numPartner > 0 && !alive
@@ -146,7 +146,7 @@ ignoreHitPause{
 }
 
 # Win Perfect
-[Function WinPerfect() ret]
+[Function IkSys_WinPerfect() ret]
 ignoreHitPause{
 	let ret = 0;
 	if winPerfect && (map(_iksys_winFlag) = 0 || map(_iksys_winFlag) = gameTime) {
@@ -156,7 +156,7 @@ ignoreHitPause{
 }
 
 # Win Special
-[Function WinSpecial() ret]
+[Function IkSys_WinSpecial() ret]
 ignoreHitPause{
 	let ret = 0;
 	if winSpecial && (map(_iksys_winFlag) = 0 || map(_iksys_winFlag) = gameTime) {
@@ -166,7 +166,7 @@ ignoreHitPause{
 }
 
 # Win Hyper
-[Function WinHyper() ret]
+[Function IkSys_WinHyper() ret]
 ignoreHitPause{
 	let ret = 0;
 	if winHyper && (map(_iksys_winFlag) = 0 || map(_iksys_winFlag) = gameTime) {
@@ -176,7 +176,7 @@ ignoreHitPause{
 }
 
 # Win Streak
-[Function WinStreak() ret]
+[Function IkSys_WinStreak() ret]
 ignoreHitPause{
 	let ret = 0;
 	if roundState = 4 && win && matchOver && consecutiveWins > 0 && (roundNo > 1 || matchNo > 1)
@@ -188,7 +188,7 @@ ignoreHitPause{
 }
 
 # Combo Count
-[Function ComboCount() ret]
+[Function IkSys_ComboCount() ret]
 ignoreHitPause{
 	let ret = 0;
 	if comboCount != map(_iksys_comboCountCurr) {
@@ -204,7 +204,7 @@ ignoreHitPause{
 }
 
 # Received Damage
-[Function ReceivedDamage() ret]
+[Function IkSys_ReceivedDamage() ret]
 ignoreHitPause{
 	let ret = 0;
 	if receivedDamage != map(_iksys_receivedDamageCurr) {
@@ -250,20 +250,20 @@ if teamSide = 0 {
 	map(_iksys_receivedDamageCurr) := 0;
 	map(_iksys_receivedDamageRet) := 0;
 } else ignoreHitPause if roundState >= 2 {
-	call FirstAttack();
-	call CounterHit();
-	call Technical();
-	call Reversal();
-	call Parry();
-	call JustDefend();
-	call Danger();
-	call Dizzy();
-	call GuardBreak();
-	call PartnerDown();
-	call WinPerfect();
-	call WinSpecial();
-	call WinHyper();
-	call WinStreak();
-	call ComboCount();
-	call ReceivedDamage();
+	call IkSys_FirstAttack();
+	call IkSys_CounterHit();
+	call IkSys_Technical();
+	call IkSys_Reversal();
+	call IkSys_Parry();
+	call IkSys_JustDefend();
+	call IkSys_Danger();
+	call IkSys_Dizzy();
+	call IkSys_GuardBreak();
+	call IkSys_PartnerDown();
+	call IkSys_WinPerfect();
+	call IkSys_WinSpecial();
+	call IkSys_WinHyper();
+	call IkSys_WinStreak();
+	call IkSys_ComboCount();
+	call IkSys_ReceivedDamage();
 }

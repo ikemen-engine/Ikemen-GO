@@ -340,6 +340,7 @@ const (
 	OC_const_p7name
 	OC_const_p8name
 	OC_const_authorname
+	OC_const_displayname
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
 	OC_const_stagevar_info_name
@@ -418,6 +419,7 @@ const (
 	OC_ex_const240p
 	OC_ex_const480p
 	OC_ex_const720p
+	OC_ex_const1080p
 	OC_ex_gethitvar_animtype
 	OC_ex_gethitvar_air_animtype
 	OC_ex_gethitvar_ground_animtype
@@ -469,6 +471,7 @@ const (
 	OC_ex_gethitvar_kill
 	OC_ex_gethitvar_priority
 	OC_ex_gethitvar_guardcount
+	OC_ex_gethitvar_facing
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -1749,6 +1752,11 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_displayname:
+		sys.bcStack.PushB(c.gi().displaynameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
+				unsafe.Pointer(&be[*i]))])
+		*i += 4
 	case OC_const_name:
 		sys.bcStack.PushB(c.gi().nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -1946,6 +1954,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.constp(640, sys.bcStack.Top().ToF())
 	case OC_ex_const720p:
 		*sys.bcStack.Top() = c.constp(1280, sys.bcStack.Top().ToF())
+	case OC_ex_const1080p:
+		*sys.bcStack.Top() = c.constp(1920, sys.bcStack.Top().ToF())
 	case OC_ex_gethitvar_animtype:
 		sys.bcStack.PushI(int32(c.ghv.animtype))
 	case OC_ex_gethitvar_air_animtype:
@@ -1962,7 +1972,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.ghv.groundtype))
 	case OC_ex_gethitvar_damage:
 		sys.bcStack.PushI(c.ghv.damage)
-
 	case OC_ex_gethitvar_guardcount:
 		sys.bcStack.PushI(c.ghv.guardcount)
 	case OC_ex_gethitvar_hitcount:
@@ -2049,6 +2058,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ghv.kill)
 	case OC_ex_gethitvar_priority:
 		sys.bcStack.PushI(c.ghv.priority)
+	case OC_ex_gethitvar_facing:
+		sys.bcStack.PushI(c.ghv.facing)
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
