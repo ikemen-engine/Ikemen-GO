@@ -2459,6 +2459,10 @@ func (c *Char) load(def string) error {
 						is.ReadF32("air.front", &c.size.air.front)
 						is.ReadF32("height", &c.size.height.stand)
 						is.ReadF32("height.stand", &c.size.height.stand)
+						// New height constants default to old height constant
+						c.size.height.crouch = c.size.height.stand
+						c.size.height.air[0] = c.size.height.stand
+						c.size.height.down = c.size.height.stand
 						is.ReadF32("height.crouch", &c.size.height.crouch)
 						is.ReadF32("height.air", &c.size.height.air[0], &c.size.height.air[1])
 						is.ReadF32("height.down", &c.size.height.down)
