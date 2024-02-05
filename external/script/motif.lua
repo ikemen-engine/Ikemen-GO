@@ -2011,6 +2011,7 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuvideo_resolution_1280x720 = "1280x720   (16:9 HD)"
 	motif.option_info.menu_itemname_menuvideo_resolution_1600x900 = "1600x900   (16:9 HD+)"
 	motif.option_info.menu_itemname_menuvideo_resolution_1920x1080 = "1920x1080  (16:9 FHD)"
+	motif.option_info.menu_itemname_menuvideo_resolution_2560x1440 = "2560x1440  (16:9 QHD)"
 	motif.option_info.menu_itemname_menuvideo_resolution_empty = ""
 	motif.option_info.menu_itemname_menuvideo_resolution_customres = "Custom"
 	motif.option_info.menu_itemname_menuvideo_resolution_back = "Back"
@@ -2133,6 +2134,7 @@ function motif.setBaseOptionInfo()
 		"menuvideo_resolution_1280x720",
 		"menuvideo_resolution_1600x900",
 		"menuvideo_resolution_1920x1080",
+		"menuvideo_resolution_2560x1440",
 		"menuvideo_resolution_empty",
 		"menuvideo_resolution_customres",
 		"menuvideo_resolution_back",
