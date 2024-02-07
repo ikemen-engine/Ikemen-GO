@@ -2049,18 +2049,18 @@ func readLifeBarRound(is IniSection,
 	is.ReadI32("fadein.time", &ro.fadein_time)
 	var col [3]int32
 	if is.ReadI32("fadein.col", &col[0], &col[1], &col[2]) {
-		ro.fadein_col = uint32(col[0]&0xff | col[1]&0xff<<8 | col[2]&0xff<<16)
+		ro.fadein_col = uint32(col[0]&0xff<<16 | col[1]&0xff<<8 | col[2]&0xff)
 	}
 	is.ReadI32("fadeout.time", &ro.fadeout_time)
 	ro.over_time = Max(ro.fadeout_time, ro.over_time)
 	col = [...]int32{0, 0, 0}
 	if is.ReadI32("fadeout.col", &col[0], &col[1], &col[2]) {
-		ro.fadeout_col = uint32(col[0]&0xff | col[1]&0xff<<8 | col[2]&0xff<<16)
+		ro.fadeout_col = uint32(col[0]&0xff<<16 | col[1]&0xff<<8 | col[2]&0xff)
 	}
 	is.ReadI32("shutter.time", &ro.shutter_time)
 	col = [...]int32{0, 0, 0}
 	if is.ReadI32("shutter.col", &col[0], &col[1], &col[2]) {
-		ro.shutter_col = uint32(col[0]&0xff | col[1]&0xff<<8 | col[2]&0xff<<16)
+		ro.shutter_col = uint32(col[0]&0xff<<16 | col[1]&0xff<<8 | col[2]&0xff)
 	}
 	is.ReadI32("callfight.time", &ro.callfight_time)
 	return ro
