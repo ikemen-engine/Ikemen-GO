@@ -65,7 +65,6 @@ type Camera struct {
 	zoff                            float32
 	screenZoff                      float32
 	halfWidth                       float32
-	CameraZoomYBound                float32
 	FollowChar                      *Char
 }
 
@@ -142,22 +141,21 @@ func (c *Camera) YBound(scl, y float32) float32 {
 			extraBoundH = (c.ExtraBoundH * (1 - c.minYZoomDelta) * ((1 / scl) - 1) / ((1 / c.zoomout) - 1))
 		}
 		tmp := MaxF(0, 240-c.screenZoff)
-		c.CameraZoomYBound = 0
-		if !c.zoomanchor {
-			// Expand lower bound like MUGEN 1.1
-			c.CameraZoomYBound = ((tmp / (scl)) - tmp) - c.drawOffsetY*(1-scl)*1.21
-		}
 		bound := ClampF(y,
-			MinF(tmp*(1/scl-1), c.boundH-c.CameraZoomYBound-extraBoundH-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
+			MinF(tmp*(1/scl-1), c.boundH-extraBoundH-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
 			c.boundLo)
-		return bound + c.CameraZoomYBound
+		return bound
 	}
 }
 func (c *Camera) BaseScale() float32 {
 	return c.ztopscale
 }
 func (c *Camera) GroundLevel() float32 {
-	return c.zoff
+	//return c.zoff
+	if sys.stage.stageCamera.zoomanchor {
+		return (float32(sys.gameHeight) - (float32(sys.gameHeight)-float32(c.zoffset)*float32(sys.gameHeight)/float32(c.localcoord[1]))*c.Scale)
+	}
+	return float32(c.zoffset) / float32(c.localcoord[1]) * float32(sys.gameHeight)
 }
 func (c *Camera) ResetZoomdelay() {
 	c.zoomdelay = 0
@@ -220,7 +218,7 @@ func (c *Camera) action(x, y *float32, leftest, rightest, lowest, highest,
 			*y = (lowest + ftensionlow) * Pow(vfollow,
 				MinF(1, 1/Pow(c.Scale, 4)))
 		} else {
-			*y = c.Pos[1] - c.CameraZoomYBound
+			*y = c.Pos[1]
 		}
 		tmp = (rightest + sys.screenright) - (leftest - sys.screenleft) -
 			float32(sys.gameWidth-320)

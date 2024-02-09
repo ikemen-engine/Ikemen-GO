@@ -6474,7 +6474,7 @@ func (c *Char) update(cvmin, cvmax,
 		if c.csf(CSF_movecamera_y) && !c.scf(SCF_standby) {
 			*highest = MinF(c.drawPos[1]*c.localscl, *highest)
 			*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
-			sys.cam.Pos[1] = 0 + sys.cam.CameraZoomYBound
+			sys.cam.Pos[1] = 0
 		}
 	}
 	if c.koEchoTime > 0 {
