@@ -1017,7 +1017,7 @@ func (s *System) action() {
 	leftest, rightest = x, x
 	if s.cam.ytensionenable {
 		if y < 0 {
-			lowest = (y - s.cam.CameraZoomYBound)
+			lowest = y
 		}
 	}
 

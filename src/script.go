@@ -1121,7 +1121,6 @@ func systemScriptInit(l *lua.LState) {
 				sys.postMatchFlg = false
 				sys.preFightTime += sys.gameTime
 				sys.gameTime = 0
-				sys.cam.CameraZoomYBound = 0
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				sys.paused = false

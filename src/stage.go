@@ -407,8 +407,6 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if bg.zoomscaledelta[1] != math.MaxFloat32 {
 		ys3 = ((scl + (1-scl)*(1-bg.zoomscaledelta[1])) / scly)
 	}
-	scly *= lclscl
-	sclx *= lscl[0]
 	// This handles the flooring of the camera position in MUGEN versions earlier than 1.0.
 	if bg.roundpos {
 		for i := 0; i < 2; i++ {
@@ -417,17 +415,25 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
-	zoomybound := sys.cam.CameraZoomYBound * float32(Btoi(isStage))
 	// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
-	yScrollPos := ((pos[1] - (zoomybound / lclscl)) / stgscl[1]) * bg.delta[1] // * bgscl
-	yScrollPos += ((zoomybound / lclscl) / stgscl[1]) * Pow(bg.zoomdelta[1], 1.4) / bgscl
+	yScrollPos := (pos[1] / stgscl[1]) * bg.delta[1] // * bgscl
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
-	ys2 := bg.scaledelta[1] * (pos[1] - zoomybound) * bg.delta[1] * bgscl
-	ys := ((100-(pos[1]-zoomybound)*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
+	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
+	ys := ((100-(pos[1])*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
 	x *= bgscl
-	y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/scly-240)/stgscl[1]
-	scly *= stgscl[1]
+	if isStage {
+		if sys.cam.zoomanchor {
+			y = y*bgscl + ((float32(sys.gameHeight)/lclscl*float32(sys.gameHeight)/float32(sys.cam.localcoord[1])-shakeY/lclscl)/scly-float32(sys.gameHeight))/stgscl[1]
+		} else {
+			y = y*bgscl + ((float32(sys.cam.zoffset)/lclscl*float32(sys.gameHeight)/float32(sys.cam.localcoord[1])-shakeY/lclscl)/scly-float32(sys.cam.zoffset))/stgscl[1]
+		}
+	} else {
+		y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/lclscl/scly-240)/stgscl[1]
+	}
+
+	sclx *= lscl[0]
+	scly *= lclscl * stgscl[1]
 	rect := bg.startrect
 	var wscl [2]float32
 	for i := range wscl {
@@ -974,8 +980,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
-		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
-		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul - s.stageCamera.yshift*float32(sys.scrrect[3]/2)/s.localscl/sys.heightScale)
+		posMul := float32(math.Tan(float64(s.stageCamera.fov*math.Pi/180)/2)) * -s.model.offset[2] / (float32(s.stageCamera.localcoord[1]) / 2)
+		s.stageCamera.zoffset = int32(float32(s.stageCamera.localcoord[1])/2 - s.model.offset[1]/posMul - s.stageCamera.yshift*float32(sys.scrrect[3]/2)/float32(sys.gameHeight)*float32(s.stageCamera.localcoord[1])/sys.heightScale)
 		if str, ok := sec[0]["scale"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.scale) {
@@ -1400,7 +1406,7 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	// extraBoundH*scl
 	// pos[1] = float32(s.stageCamera.boundhigh) - extraBoundH/s.localscl
 	// }
-	if s.stageCamera.verticalfollow > 0 {
+	if yofs != 0 && s.stageCamera.verticalfollow > 0 {
 		if yofs < 0 {
 			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
 			if scl > 1 {
@@ -1428,19 +1434,12 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}
 	}
-	yofs3 := (float32(s.stageCamera.drawOffsetY) +
-		float32(s.stageCamera.localcoord[1]-240)*s.localscl)
-	yofs4 := ((360*float32(s.stageCamera.localcoord[0]) +
-		160*float32(s.stageCamera.localcoord[1])) /
-		float32(s.stageCamera.localcoord[0])) / 480
-
 	if !top {
 		s.drawModel(pos, yofs, scl)
 	}
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
-			b.draw(pos, scl, bgscl, s.localscl, s.scale,
-				yofs+yofs3*Pow(Pow(scl, b.zoomdelta[1]), yofs4)-s.stageCamera.drawOffsetY*(1-b.delta[1]*bgscl), true)
+			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs, true)
 		}
 	}
 }
@@ -2446,10 +2445,16 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 
 	drawFOV := s.stageCamera.fov * math.Pi / 180
 
-	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] * s.localscl * sys.heightScale / (float32(sys.scrrect[3]) / 2)
-	var syo float32 = -(float32(sys.gameHeight) / 2) * (1 - scl) / s.localscl / scl
+	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] / (float32(sys.scrrect[3]) / 2)
 
-	offset := []float32{(pos[0]*-posMul*(scl) + s.model.offset[0]) / scl, ((pos[1]+yofs/s.localscl/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
+	var syo float32
+
+	if !s.stageCamera.zoomanchor {
+		syo = -(float32(s.stageCamera.zoffset) - float32(s.stageCamera.localcoord[1])/2) * (1 - scl) / scl * float32(sys.gameHeight) / float32(s.stageCamera.localcoord[1])
+	} else {
+		syo = -(float32(sys.gameHeight) / 2) * (1 - scl) / scl
+	}
+	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), ((pos[1]*s.localscl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
