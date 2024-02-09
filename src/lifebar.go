@@ -475,7 +475,7 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 			layerno, text, f[hb.value.font[0]], hb.value.font[1], hb.value.font[2], hb.value.palfx, hb.value.frgba)
 	}
 	hb.top.Draw(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), layerno, sys.lifebarScale)
-	if life < float32(hb.warn_range[0])/100 && life > float32(hb.warn_range[1])/100 {
+	if life <= float32(hb.warn_range[0])/100 && life >= float32(hb.warn_range[1])/100 {
 		hb.warn.Draw(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1]), layerno, sys.lifebarScale)
 	}
 }
@@ -795,20 +795,20 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	if !sys.lifebar.guardbar {
 		return
 	}
-	power := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
+	points := float32(sys.chars[ref][0].guardPoints) / float32(sys.chars[ref][0].guardPointsMax)
 	var MidPos = (float32(sys.gameWidth-320) / 2)
-	width := func(power float32) (r [4]int32) {
+	width := func(points float32) (r [4]int32) {
 		r = sys.scrrect
 		if gb.range_x[0] < gb.range_x[1] {
 			r[0] = int32((((float32(gb.pos[0]+gb.range_x[0])+sys.lifebarOffsetX)*sys.lifebarScale)+MidPos)*sys.widthScale + 0.5)
-			r[2] = int32((float32(gb.range_x[1]-gb.range_x[0]+1)*sys.lifebarScale)*power*sys.widthScale + 0.5)
+			r[2] = int32((float32(gb.range_x[1]-gb.range_x[0]+1)*sys.lifebarScale)*points*sys.widthScale + 0.5)
 		} else {
-			r[2] = int32(((float32(gb.range_x[0]-gb.range_x[1]+1)*sys.lifebarScale)*power-(sys.lifebarOffsetX*sys.lifebarScale))*sys.widthScale + 0.5)
+			r[2] = int32(((float32(gb.range_x[0]-gb.range_x[1]+1)*sys.lifebarScale)*points-(sys.lifebarOffsetX*sys.lifebarScale))*sys.widthScale + 0.5)
 			r[0] = int32(((float32(gb.pos[0]+gb.range_x[0]+1)*sys.lifebarScale)+MidPos)*sys.widthScale+0.5) - r[2]
 		}
 		return
 	}
-	pr, mr := width(power), width(gbr.midpower)
+	pr, mr := width(points), width(gbr.midpower)
 	if gb.range_x[0] < gb.range_x[1] {
 		mr[0] += pr[2]
 	}
@@ -817,7 +817,7 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 		layerno, &gb.mid.anim, gb.mid.palfx)
 	var mv float32
 	for k := range gb.front {
-		if k > mv && power >= k/100 {
+		if k > mv && points >= k/100 {
 			mv = k
 		}
 	}
@@ -827,11 +827,11 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 		layerno, &gb.shift.anim, gb.shift.palfx)
 	if gb.value.font[0] >= 0 && int(gb.value.font[0]) < len(f) && f[gb.value.font[0]] != nil {
 		text := strings.Replace(gb.value.text, "%d", fmt.Sprintf("%v", sys.chars[ref][0].guardPoints), 1)
-		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
+		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(points)*100)), 1)
 		gb.value.lay.DrawText(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), sys.lifebarScale,
 			layerno, text, f[gb.value.font[0]], gb.value.font[1], gb.value.font[2], gb.value.palfx, gb.value.frgba)
 	}
-	if power < float32(gb.warn_range[0])/100 && power > float32(gb.warn_range[1])/100 {
+	if points <= float32(gb.warn_range[0])/100 && points >= float32(gb.warn_range[1])/100 {
 		gb.warn.Draw(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
 	}
 	gb.top.Draw(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1]), layerno, sys.lifebarScale)
@@ -882,14 +882,14 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	if !sys.lifebar.stunbar {
 		return
 	}
-	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
-	sb.shift.anim.srcAlpha = int16(255 * power)
-	sb.shift.anim.dstAlpha = int16(255 * (1 - power))
+	points := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
+	sb.shift.anim.srcAlpha = int16(255 * points)
+	sb.shift.anim.dstAlpha = int16(255 * (1 - points))
 	sbr.midpower -= 1.0 / 144
-	if power < sbr.midpowerMin {
-		sbr.midpowerMin += (power - sbr.midpowerMin) * (1 / (12 - (power-sbr.midpowerMin)*144))
+	if points < sbr.midpowerMin {
+		sbr.midpowerMin += (points - sbr.midpowerMin) * (1 / (12 - (points-sbr.midpowerMin)*144))
 	} else {
-		sbr.midpowerMin = power
+		sbr.midpowerMin = points
 	}
 	if sbr.midpower < sbr.midpowerMin {
 		sbr.midpower = sbr.midpowerMin
@@ -901,7 +901,7 @@ func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	sb.mid.Action()
 	var mv float32
 	for k := range sb.front {
-		if k > mv && (1-power) >= k/100 {
+		if k > mv && (1-points) >= k/100 {
 			mv = k
 		}
 	}
@@ -935,20 +935,20 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	if !sys.lifebar.stunbar {
 		return
 	}
-	power := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
+	points := 1 - float32(sys.chars[ref][0].dizzyPoints)/float32(sys.chars[ref][0].dizzyPointsMax)
 	var MidPos = (float32(sys.gameWidth-320) / 2)
-	width := func(power float32) (r [4]int32) {
+	width := func(points float32) (r [4]int32) {
 		r = sys.scrrect
 		if sb.range_x[0] < sb.range_x[1] {
 			r[0] = int32((((float32(sb.pos[0]+sb.range_x[0])+sys.lifebarOffsetX)*sys.lifebarScale)+MidPos)*sys.widthScale + 0.5)
-			r[2] = int32((float32(sb.range_x[1]-sb.range_x[0]+1)*sys.lifebarScale)*power*sys.widthScale + 0.5)
+			r[2] = int32((float32(sb.range_x[1]-sb.range_x[0]+1)*sys.lifebarScale)*points*sys.widthScale + 0.5)
 		} else {
-			r[2] = int32(((float32(sb.range_x[0]-sb.range_x[1]+1)*sys.lifebarScale)*power-(sys.lifebarOffsetX*sys.lifebarScale))*sys.widthScale + 0.5)
+			r[2] = int32(((float32(sb.range_x[0]-sb.range_x[1]+1)*sys.lifebarScale)*points-(sys.lifebarOffsetX*sys.lifebarScale))*sys.widthScale + 0.5)
 			r[0] = int32(((float32(sb.pos[0]+sb.range_x[0]+1)*sys.lifebarScale)+MidPos)*sys.widthScale+0.5) - r[2]
 		}
 		return
 	}
-	pr, mr := width(power), width(sbr.midpower)
+	pr, mr := width(points), width(sbr.midpower)
 	if sb.range_x[0] < sb.range_x[1] {
 		mr[0] += pr[2]
 	}
@@ -957,7 +957,7 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 		layerno, &sb.mid.anim, sb.mid.palfx)
 	var mv float32
 	for k := range sb.front {
-		if k > mv && (1-power) >= k/100 {
+		if k > mv && (1-points) >= k/100 {
 			mv = k
 		}
 	}
@@ -967,11 +967,11 @@ func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 		layerno, &sb.shift.anim, sb.shift.palfx)
 	if sb.value.font[0] >= 0 && int(sb.value.font[0]) < len(f) && f[sb.value.font[0]] != nil {
 		text := strings.Replace(sb.value.text, "%d", fmt.Sprintf("%v", sys.chars[ref][0].dizzyPoints), 1)
-		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(power)*100)), 1)
+		text = strings.Replace(text, "%p", fmt.Sprintf("%v", math.Round(float64(points)*100)), 1)
 		sb.value.lay.DrawText(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), sys.lifebarScale,
 			layerno, text, f[sb.value.font[0]], sb.value.font[1], sb.value.font[2], sb.value.palfx, sb.value.frgba)
 	}
-	if power > float32(sb.warn_range[0])/100 && power < float32(sb.warn_range[1])/100 {
+	if points >= float32(sb.warn_range[0])/100 && points <= float32(sb.warn_range[1])/100 {
 		sb.warn.Draw(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
 	}
 	sb.top.Draw(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1]), layerno, sys.lifebarScale)
@@ -2049,18 +2049,18 @@ func readLifeBarRound(is IniSection,
 	is.ReadI32("fadein.time", &ro.fadein_time)
 	var col [3]int32
 	if is.ReadI32("fadein.col", &col[0], &col[1], &col[2]) {
-		ro.fadein_col = uint32(col[0]&0xff | col[1]&0xff<<8 | col[2]&0xff<<16)
+		ro.fadein_col = uint32(col[0]&0xff<<16 | col[1]&0xff<<8 | col[2]&0xff)
 	}
 	is.ReadI32("fadeout.time", &ro.fadeout_time)
 	ro.over_time = Max(ro.fadeout_time, ro.over_time)
 	col = [...]int32{0, 0, 0}
 	if is.ReadI32("fadeout.col", &col[0], &col[1], &col[2]) {
-		ro.fadeout_col = uint32(col[0]&0xff | col[1]&0xff<<8 | col[2]&0xff<<16)
+		ro.fadeout_col = uint32(col[0]&0xff<<16 | col[1]&0xff<<8 | col[2]&0xff)
 	}
 	is.ReadI32("shutter.time", &ro.shutter_time)
 	col = [...]int32{0, 0, 0}
 	if is.ReadI32("shutter.col", &col[0], &col[1], &col[2]) {
-		ro.shutter_col = uint32(col[0]&0xff | col[1]&0xff<<8 | col[2]&0xff<<16)
+		ro.shutter_col = uint32(col[0]&0xff<<16 | col[1]&0xff<<8 | col[2]&0xff)
 	}
 	is.ReadI32("callfight.time", &ro.callfight_time)
 	return ro
