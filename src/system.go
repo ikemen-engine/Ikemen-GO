@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -402,14 +401,14 @@ func (s *System) init(w, h int32) *lua.LState {
 			s.externalShaderNames[i] = splitDir[len(splitDir)-1]
 
 			// Load vert shaders.
-			content, err := ioutil.ReadFile(shaderLocation + ".vert")
+			content, err := os.ReadFile(shaderLocation + ".vert")
 			if err != nil {
 				chk(err)
 			}
 			s.externalShaders[0][i] = string(content) + "\x00"
 
 			// Load frag shaders.
-			content, err = ioutil.ReadFile(shaderLocation + ".frag")
+			content, err = os.ReadFile(shaderLocation + ".frag")
 			if err != nil {
 				chk(err)
 			}
@@ -2168,7 +2167,7 @@ type wincntMap map[string][]int32
 
 func (wm *wincntMap) init() {
 	if sys.autolevel {
-		b, err := ioutil.ReadFile(sys.wincntFileName)
+		b, err := os.ReadFile(sys.wincntFileName)
 		if err != nil {
 			return
 		}
