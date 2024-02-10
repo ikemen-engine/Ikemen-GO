@@ -251,8 +251,9 @@ type Renderer struct {
 	spriteShader *ShaderProgram
 	vertexBuffer uint32
 	// Shader and index data for 3D model rendering
-	modelShader *ShaderProgram
-	indexBuffer uint32
+	modelShader       *ShaderProgram
+	stageVertexBuffer uint32
+	stageIndexBuffer  uint32
 }
 
 //go:embed shaders/sprite.vert.glsl
@@ -290,7 +291,8 @@ func (r *Renderer) Init() {
 	gl.BufferData(gl.ARRAY_BUFFER, len(postVertData), unsafe.Pointer(&postVertData[0]), gl.STATIC_DRAW)
 
 	gl.GenBuffers(1, &r.vertexBuffer)
-	gl.GenBuffers(1, &r.indexBuffer)
+	gl.GenBuffers(1, &r.stageVertexBuffer)
+	gl.GenBuffers(1, &r.stageIndexBuffer)
 
 	// Sprite shader
 	r.spriteShader = newShaderProgram(vertShader, fragShader, "Main Shader")
@@ -485,8 +487,8 @@ func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthM
 	gl.BlendEquation(BlendEquationLUT[eq])
 	gl.BlendFunc(BlendFunctionLUT[src], BlendFunctionLUT[dst])
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.stageVertexBuffer)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.stageIndexBuffer)
 	loc := r.modelShader.a["position"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 3, gl.FLOAT, false, 0, uintptr(vertAttrOffset))
@@ -694,16 +696,15 @@ func (r *Renderer) SetVertexData(values ...float32) {
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
 }
-func (r *Renderer) SetByteVertexData(values []byte) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+func (r *Renderer) SetStageVertexData(values []byte) {
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.stageVertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(values), unsafe.Pointer(&values[0]), gl.STATIC_DRAW)
 }
-func (r *Renderer) SetIndexData(values ...uint32) {
+func (r *Renderer) SetStageIndexData(values ...uint32) {
 	data := new(bytes.Buffer)
 	binary.Write(data, binary.LittleEndian, values)
 
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.indexBuffer)
-	//gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, data.Bytes(), gl.STATIC_DRAW)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.stageIndexBuffer)
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(values)*4, unsafe.Pointer(&data.Bytes()[0]), gl.STATIC_DRAW)
 }
 

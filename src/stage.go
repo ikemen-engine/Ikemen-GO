@@ -1572,8 +1572,6 @@ type Model struct {
 	meshes              []*Mesh
 	textures            []*GLTFTexture
 	materials           []*Material
-	vertexBuffer        []byte
-	elementBuffer       []uint32
 	offset              [3]float32
 	rotation            [3]float32
 	scale               [3]float32
@@ -1852,6 +1850,8 @@ func loadglTFStage(filepath string) (*Model, error) {
 		material.doubleSided = m.DoubleSided
 		mdl.materials = append(mdl.materials, material)
 	}
+	var vertexBuffer []byte
+	var elementBuffer []uint32
 	mdl.meshes = make([]*Mesh, 0, len(doc.Meshes))
 	for _, m := range doc.Meshes {
 		var mesh = &Mesh{}
@@ -1859,15 +1859,15 @@ func loadglTFStage(filepath string) (*Model, error) {
 		mesh.morphTargetWeights = m.Weights
 		for _, p := range m.Primitives {
 			var primitive = &Primitive{}
-			primitive.vertexBufferOffset = uint32(len(mdl.vertexBuffer))
-			primitive.elementBufferOffset = uint32(4 * len(mdl.elementBuffer))
+			primitive.vertexBufferOffset = uint32(len(vertexBuffer))
+			primitive.elementBufferOffset = uint32(4 * len(elementBuffer))
 			var posBuffer [][3]float32
 			positions, err := modeler.ReadPosition(doc, doc.Accessors[p.Attributes[gltf.POSITION]], posBuffer)
 			if err != nil {
 				return nil, err
 			}
 			for _, pos := range positions {
-				mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, pos[:]...)...)
+				vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, pos[:]...)...)
 			}
 			primitive.numVertices = uint32(len(positions))
 			if idx, ok := p.Attributes[gltf.TEXCOORD_0]; ok {
@@ -1879,7 +1879,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 				if len(texCoords) > 0 {
 					primitive.useUV = true
 					for _, tex := range texCoords {
-						mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, tex[:]...)...)
+						vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, tex[:]...)...)
 					}
 				} else {
 					primitive.useUV = false
@@ -1893,7 +1893,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 				return nil, err
 			}
 			for _, p := range indices {
-				mdl.elementBuffer = append(mdl.elementBuffer, p)
+				elementBuffer = append(elementBuffer, p)
 			}
 			primitive.numIndices = uint32(len(indices))
 			if idx, ok := p.Attributes[gltf.COLOR_0]; ok {
@@ -1907,7 +1907,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]uint8) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)...)
 						}
 					} else {
 						var vecBuffer [][4]uint8
@@ -1916,7 +1916,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][4]uint8) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)...)
 						}
 					}
 				case gltf.ComponentUshort:
@@ -1927,7 +1927,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]uint16) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)...)
 						}
 					} else {
 						var vecBuffer [][4]uint16
@@ -1936,7 +1936,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][4]uint16) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)...)
 						}
 					}
 				case gltf.ComponentFloat:
@@ -1947,7 +1947,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][3]float32) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[0], vec[1], vec[2], 1)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, vec[0], vec[1], vec[2], 1)...)
 						}
 					} else {
 						var vecBuffer [][4]float32
@@ -1956,7 +1956,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, vec := range vecs.([][4]float32) {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
 						}
 					}
 				}
@@ -1975,7 +1975,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 					for j, v := range joint {
 						f[j] = float32(v)
 					}
-					mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, f[:]...)...)
+					vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, f[:]...)...)
 				}
 				if idx, ok := p.Attributes[gltf.WEIGHTS_0]; ok {
 					var weightBuffer [][4]float32
@@ -1984,7 +1984,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 						return nil, err
 					}
 					for _, weight := range weights {
-						mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, weight[:]...)...)
+						vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, weight[:]...)...)
 					}
 				} else {
 					return nil, errors.New("Primitive attribute JOINTS_0 is specified but WEIGHTS_0 is not specified.")
@@ -2001,7 +2001,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 						for j, v := range joint {
 							f[j] = float32(v)
 						}
-						mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, f[:]...)...)
+						vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, f[:]...)...)
 					}
 					primitive.useJoint1 = false
 					if idx, ok := p.Attributes["WEIGHTS_1"]; primitive.useJoint1 && ok {
@@ -2011,7 +2011,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, weight := range weights {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, weight[:]...)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, weight[:]...)...)
 						}
 					} else if primitive.useJoint1 {
 						return nil, errors.New("Primitive attribute JOINTS_1 is specified but WEIGHTS_1 is not specified.")
@@ -2028,7 +2028,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 				for attr, accessor := range t {
 					switch attr {
 					case "POSITION":
-						o := uint32(len(mdl.vertexBuffer))
+						o := uint32(len(vertexBuffer))
 						target.positionOffset = &o
 						var posBuffer [][3]float32
 						positions, err := modeler.ReadPosition(doc, doc.Accessors[accessor], posBuffer)
@@ -2036,10 +2036,10 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, pos := range positions {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, pos[0], pos[1], pos[2], 0)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, pos[0], pos[1], pos[2], 0)...)
 						}
 					case "TEXCOORD_0":
-						o := uint32(len(mdl.vertexBuffer))
+						o := uint32(len(vertexBuffer))
 						target.uvOffset = &o
 						var uvBuffer [][2]float32
 						texCoords, err := modeler.ReadTextureCoord(doc, doc.Accessors[accessor], uvBuffer)
@@ -2047,10 +2047,10 @@ func loadglTFStage(filepath string) (*Model, error) {
 							return nil, err
 						}
 						for _, uv := range texCoords {
-							mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, uv[0], uv[1], 0, 0)...)
+							vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, uv[0], uv[1], 0, 0)...)
 						}
 					case "COLOR_0":
-						o := uint32(len(mdl.vertexBuffer))
+						o := uint32(len(vertexBuffer))
 						target.colorOffset = &o
 						switch doc.Accessors[accessor].ComponentType {
 						case gltf.ComponentUbyte:
@@ -2061,7 +2061,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 									return nil, err
 								}
 								for _, vec := range vecs.([][3]uint8) {
-									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)...)
+									vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, 1)...)
 								}
 							} else {
 								var vecBuffer [][4]uint8
@@ -2070,7 +2070,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 									return nil, err
 								}
 								for _, vec := range vecs.([][4]uint8) {
-									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)...)
+									vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/255, float32(vec[1])/255, float32(vec[2])/255, float32(vec[3])/255)...)
 								}
 							}
 						case gltf.ComponentUshort:
@@ -2081,7 +2081,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 									return nil, err
 								}
 								for _, vec := range vecs.([][3]uint16) {
-									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)...)
+									vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, 1)...)
 								}
 							} else {
 								var vecBuffer [][4]uint16
@@ -2090,7 +2090,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 									return nil, err
 								}
 								for _, vec := range vecs.([][4]uint16) {
-									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)...)
+									vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, float32(vec[0])/65535, float32(vec[1])/65535, float32(vec[2])/65535, float32(vec[3])/65535)...)
 								}
 							}
 						case gltf.ComponentFloat:
@@ -2101,7 +2101,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 									return nil, err
 								}
 								for _, vec := range vecs.([][3]float32) {
-									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[0], vec[1], vec[2], 1)...)
+									vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, vec[0], vec[1], vec[2], 1)...)
 								}
 							} else {
 								var vecBuffer [][4]float32
@@ -2110,7 +2110,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 									return nil, err
 								}
 								for _, vec := range vecs.([][4]float32) {
-									mdl.vertexBuffer = append(mdl.vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
+									vertexBuffer = append(vertexBuffer, f32.Bytes(binary.LittleEndian, vec[:]...)...)
 								}
 							}
 						}
@@ -2126,6 +2126,11 @@ func loadglTFStage(filepath string) (*Model, error) {
 			mesh.primitives = append(mesh.primitives, primitive)
 		}
 		mdl.meshes = append(mdl.meshes, mesh)
+	}
+
+	sys.mainThreadTask <- func() {
+		gfx.SetStageVertexData(vertexBuffer)
+		gfx.SetStageIndexData(elementBuffer...)
 	}
 	mdl.nodes = make([]*Node, 0, len(doc.Nodes))
 	for _, n := range doc.Nodes {
@@ -2466,8 +2471,6 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	view = view.Mul4(mgl.HomogRotate3DZ(rotation[2]))
 	view = view.Mul4(mgl.Scale3D(scale[0], scale[1], scale[2]))
 	scene := s.model.scenes[0]
-	gfx.SetByteVertexData(s.model.vertexBuffer)
-	gfx.SetIndexData(s.model.elementBuffer...)
 
 	for _, index := range scene.nodes {
 		s.model.nodes[index].calculateWorldTransform(mgl.Ident4(), s.model.nodes)
