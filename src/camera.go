@@ -86,7 +86,7 @@ func (c *Camera) Reset() {
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
 	c.ExtraBoundH = ((1 - c.zoomout) * 100) * (1 / c.zoomout) * 2.1 * (float32(sys.gameHeight) / 240)
 	c.boundH = MinF(0, float32(c.boundhigh-c.localcoord[1])*c.localscl+float32(sys.gameHeight)-c.drawOffsetY) - c.ExtraBoundH*c.minYZoomDelta
-	c.boundLo = MaxF(0, float32(c.boundlow)*c.localscl) //-c.drawOffsetY)
+	c.boundLo = float32(c.boundlow) * c.localscl
 	//if c.boundlow < 0 {
 	//	c.boundLo += float32(c.boundlow) * c.localscl
 	//}
@@ -134,7 +134,7 @@ func (c *Camera) XBound(scl, x float32) float32 {
 }
 func (c *Camera) YBound(scl, y float32) float32 {
 	if c.verticalfollow <= 0 {
-		return 0
+		return MaxF(0, c.boundLo*scl)
 	} else {
 		var extraBoundH float32
 		if c.zoomout < 1 {
@@ -143,7 +143,7 @@ func (c *Camera) YBound(scl, y float32) float32 {
 		tmp := MaxF(0, 240-c.screenZoff)
 		bound := ClampF(y,
 			MinF(tmp*(1/scl-1), c.boundH-extraBoundH-240+MaxF(float32(sys.gameHeight)/scl, tmp+c.screenZoff/scl)),
-			c.boundLo)
+			c.boundLo*scl)
 		return bound
 	}
 }

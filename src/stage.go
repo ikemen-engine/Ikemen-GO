@@ -416,7 +416,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
-	yScrollPos := (pos[1] / stgscl[1]) * bg.delta[1] // * bgscl
+	yScrollPos := (pos[1] / scl / stgscl[1]) * bg.delta[1] // * bgscl
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	ys := ((100-(pos[1])*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
@@ -2459,7 +2459,7 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	} else {
 		syo = -(float32(sys.gameHeight) / 2) * (1 - scl) / scl
 	}
-	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), ((pos[1]*s.localscl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
+	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), ((pos[1]/scl*s.localscl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
