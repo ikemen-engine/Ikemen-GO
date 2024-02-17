@@ -1286,7 +1286,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_camerapos_x:
 			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
-			sys.bcStack.PushF(sys.cam.Pos[1] / oc.localscl)
+			sys.bcStack.PushF((sys.cam.Pos[1] + sys.cam.aspectCorrection + sys.cam.zoomAnchorCorrection) / oc.localscl)
 		case OC_camerazoom:
 			sys.bcStack.PushF(sys.cam.Scale)
 		case OC_canrecover:

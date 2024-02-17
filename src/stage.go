@@ -416,18 +416,21 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
 		bg.bga.offset[0]
 	// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
-	yScrollPos := (pos[1] / stgscl[1]) * bg.delta[1] // * bgscl
+	yScrollPos := (pos[1] / scl / stgscl[1]) * bg.delta[1] // * bgscl
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
 	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl
 	ys := ((100-(pos[1])*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
 	x *= bgscl
 	if isStage {
-		if sys.cam.zoomanchor {
-			y = y*bgscl + ((float32(sys.gameHeight)/lclscl*float32(sys.gameHeight)/float32(sys.cam.localcoord[1])-shakeY/lclscl)/scly-float32(sys.gameHeight))/stgscl[1]
-		} else {
-			y = y*bgscl + ((float32(sys.cam.zoffset)/lclscl*float32(sys.gameHeight)/float32(sys.cam.localcoord[1])-shakeY/lclscl)/scly-float32(sys.cam.zoffset))/stgscl[1]
-		}
+		zoff := float32(sys.cam.zoffset) * lclscl
+		//if sys.cam.zoomanchor {
+		//	y = y*bgscl + ((float32(sys.gameHeight)/lclscl*float32(sys.gameHeight)/float32(sys.cam.localcoord[1])-shakeY/lclscl)/scly-float32(sys.gameHeight))/stgscl[1]
+		//} else {
+		y = y*bgscl + ((zoff-shakeY)/scly-zoff)/lclscl/stgscl[1]
+		//}
+		y -= sys.cam.aspectCorrection / (scly * lclscl * stgscl[1])
+		y -= sys.cam.zoomAnchorCorrection / (scly * lclscl * stgscl[1])
 	} else {
 		y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/lclscl/scly-240)/stgscl[1]
 	}
@@ -903,7 +906,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("tensionvel", &s.stageCamera.tensionvel)
 		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
-		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh) //TODO: not implemented
+		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh)
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)
 		sec[0].ReadF32("startzoom", &s.stageCamera.startzoom)
 		sec[0].ReadF32("fov", &s.stageCamera.fov)
@@ -2453,13 +2456,9 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] / (float32(sys.scrrect[3]) / 2)
 
 	var syo float32
-
-	if !s.stageCamera.zoomanchor {
-		syo = -(float32(s.stageCamera.zoffset) - float32(s.stageCamera.localcoord[1])/2) * (1 - scl) / scl * float32(sys.gameHeight) / float32(s.stageCamera.localcoord[1])
-	} else {
-		syo = -(float32(sys.gameHeight) / 2) * (1 - scl) / scl
-	}
-	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), ((pos[1]*s.localscl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
+	aspectCorrection := (float32(sys.cam.zoffset)*float32(sys.gameHeight)/float32(sys.cam.localcoord[1]) - (float32(sys.cam.zoffset)*s.localscl - sys.cam.aspectCorrection))
+	syo = -(float32(s.stageCamera.zoffset) - float32(sys.cam.localcoord[1])/2) * (1 - scl) / scl * float32(sys.gameHeight) / float32(s.stageCamera.localcoord[1])
+	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), (((pos[1]*s.localscl+sys.cam.zoomAnchorCorrection+aspectCorrection)/scl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
