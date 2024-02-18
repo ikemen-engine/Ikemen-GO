@@ -992,7 +992,7 @@ func (s *System) charUpdate(cvmin, cvmax,
 		s.charList.tick()
 	}
 }
-func (s *System) posReset() { // unused after nointroreset update
+func (s *System) posReset() {
 	for _, p := range s.chars {
 		if len(p) > 0 {
 			p[0].posReset()
@@ -1041,11 +1041,13 @@ func (s *System) action() {
 			if s.intro == 0 {
 				for _, p := range s.chars {
 					if len(p) > 0 {
-						p[0].unsetSCF(SCF_over)
-						if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
-							p[0].setCtrl(true)
-							if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) {
-								p[0].selfState(0, -1, -1, 1, "")
+						if p[0].alive() {
+							p[0].unsetSCF(SCF_over)
+							if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
+								p[0].setCtrl(true)
+								if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) {
+									p[0].selfState(0, -1, -1, 1, "")
+								}
 							}
 						}
 					}
