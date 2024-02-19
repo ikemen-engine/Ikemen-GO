@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -4279,7 +4278,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		var err error
 		// If this is a zss file
 		if zss {
-			b, err := os.ReadFile(filename)
+			b, err := ikemenFs.ReadFile(filename)
 			if err != nil {
 				return err
 			}
@@ -4294,7 +4293,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		// If filename doesn't exist, see if a zss file exists
 		fnz += ".zss"
 		if err := LoadFile(&fnz, dirs, func(filename string) error {
-			b, err := os.ReadFile(filename)
+			b, err := ikemenFs.ReadFile(filename)
 			if err != nil {
 				return err
 			}

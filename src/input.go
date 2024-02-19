@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/binary"
 	"net"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/ikemen-engine/Ikemen-GO/src/filesystem"
 )
 
 var ModAlt = NewModifierKey(false, true, false)
@@ -846,7 +847,7 @@ type NetInput struct {
 	time         int32
 	stoppedcnt   int32
 	delay        int32
-	rep          *os.File
+	rep          filesystem.IFile
 	host         bool
 	preFightTime int32
 }
@@ -1132,14 +1133,14 @@ func (ni *NetInput) Update() bool {
 }
 
 type FileInput struct {
-	f      *os.File
+	f      filesystem.IFile
 	ib     [MaxSimul*2 + MaxAttachedChar]InputBits
 	pfTime int32
 }
 
 func OpenFileInput(filename string) *FileInput {
 	fi := &FileInput{}
-	fi.f, _ = os.Open(filename)
+	fi.f, _ = ikemenFs.Open(filename)
 	return fi
 }
 

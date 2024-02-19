@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -240,7 +239,7 @@ func I32ToU16(i32 int32) uint16 {
 	return uint16(i32)
 }
 func LoadText(filename string) (string, error) {
-	bytes, err := os.ReadFile(filename)
+	bytes, err := ikemenFs.ReadFile(filename)
 	if err != nil {
 		return "", err
 	}
@@ -252,7 +251,7 @@ func LoadText(filename string) (string, error) {
 }
 
 func FileExist(filename string) string {
-	if info, err := os.Stat(filename); !os.IsNotExist(err) {
+	if info, err := ikemenFs.Stat(filename); !ikemenFs.IsNotExist(err) {
 		if info == nil || info.IsDir() {
 			return ""
 		}

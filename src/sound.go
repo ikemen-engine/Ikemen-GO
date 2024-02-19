@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"os"
 
+	"github.com/ikemen-engine/Ikemen-GO/src/filesystem"
 	"github.com/ikemen-engine/beep"
 	"github.com/ikemen-engine/beep/effects"
 
@@ -175,7 +175,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 		return
 	}
 
-	f, err := os.Open(bgm.filename)
+	f, err := ikemenFs.Open(bgm.filename)
 	if err != nil {
 		sys.bgm = *newBgm()
 		sys.errLog.Printf("Failed to open bgm: %v", err)
@@ -226,7 +226,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 }
 
 func loadSoundFont(filename string) (*midi.SoundFont, error) {
-	f, err := os.Open(filename)
+	f, err := ikemenFs.Open(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ type Sound struct {
 	length  int
 }
 
-func readSound(f *os.File, size uint32) (*Sound, error) {
+func readSound(f filesystem.IFile, size uint32) (*Sound, error) {
 	if size < 128 {
 		return nil, fmt.Errorf("wav size is too small")
 	}
@@ -326,7 +326,7 @@ func LoadSnd(filename string) (*Snd, error) {
 // If max > 0, the function returns immediately when a matching entry is found. It also gives up after "max" non-matching entries.
 func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) (*Snd, error) {
 	s := newSnd()
-	f, err := os.Open(filename)
+	f, err := ikemenFs.Open(filename)
 	if err != nil {
 		return nil, err
 	}

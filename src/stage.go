@@ -10,7 +10,6 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	"math"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -1740,7 +1739,7 @@ func loadglTFStage(filepath string) (*Model, error) {
 				}
 			} else {
 				if err := LoadFile(&img.URI, []string{filepath, "", sys.motifDir, "data/"}, func(filename string) error {
-					data, err := os.ReadFile(filename)
+					data, err := ikemenFs.ReadFile(filename)
 					if err != nil {
 						return err
 					}

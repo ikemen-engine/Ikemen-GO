@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"os"
 	"strings"
+
+	"github.com/ikemen-engine/Ikemen-GO/src/filesystem"
 )
 
 const MaxPalNo = 12
@@ -2708,10 +2709,10 @@ func (c *Char) loadPalette() {
 		tmp := 0
 		for i := 0; i < MaxPalNo; i++ {
 			pl := gi.palettedata.palList.Get(i)
-			var f *os.File
+			var f filesystem.IFile
 			var err error
 			if LoadFile(&gi.pal[i], []string{gi.def, "", sys.motifDir, "data/"}, func(file string) error {
-				f, err = os.Open(file)
+				f, err = ikemenFs.Open(file)
 				return err
 			}) == nil {
 				for i := 255; i >= 0; i-- {

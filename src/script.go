@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ikemen-engine/Ikemen-GO/src/filesystem"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -1347,7 +1346,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getDirectoryFiles", func(*lua.LState) int {
 		dir := l.NewTable()
-		filepath.Walk(strArg(l, 1), func(path string, info os.FileInfo, err error) error {
+		ikemenFs.Walk(strArg(l, 1), func(path string, info filesystem.IFileInfo, err error) error {
 			dir.Append(lua.LString(path))
 			return nil
 		})
@@ -1704,7 +1703,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "replayRecord", func(*lua.LState) int {
 		if sys.netInput != nil {
-			sys.netInput.rep, _ = os.Create(strArg(l, 1))
+			sys.netInput.rep, _ = ikemenFs.Create(strArg(l, 1))
 		}
 		return 0
 	})
