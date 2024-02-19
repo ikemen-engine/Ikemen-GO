@@ -268,7 +268,7 @@ func FileExist(filename string) string {
 			pattern += string(r)
 		}
 	}
-	if m, _ := filepath.Glob(pattern); len(m) > 0 {
+	if m, _ := ikemenFs.Glob(pattern); len(m) > 0 {
 		return m[0]
 	}
 	return ""
