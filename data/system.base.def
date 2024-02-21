@@ -1457,17 +1457,6 @@
 	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255, -1
 	menu.item.value.active.scale = 1.0, 1.0
 
-	menu.item.value.conflict.offset = 150, 0
-	menu.item.value.conflict.font = "f-6x9.def", 0, -1, 247, 0, 0, -1
-	menu.item.value.conflict.scale = 1.0, 1.0
-
-	menu.item.info.offset = 150, 0
-	menu.item.info.font = "f-6x9.def", 0, -1, 247, 247, 0, -1
-	menu.item.info.scale = 1.0, 1.0
-	menu.item.info.active.offset = 150, 0
-	menu.item.info.active.font = "f-6x9.def", 0, -1, 247, 247, 0, -1
-	menu.item.info.active.scale = 1.0, 1.0
-
 	menu.item.spacing = 0, 14
 	menu.window.margins.y = 0, 0
 	menu.window.visibleitems = 13
