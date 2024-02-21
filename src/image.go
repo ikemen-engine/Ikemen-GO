@@ -659,7 +659,7 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	//s.PalTex = src.PalTex
 }
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
-	if s.Pal != nil || s.coldepth > 8 {
+	if len(s.Pal) > 0 || s.coldepth > 8 {
 		return s.Pal
 	}
 	return pl.Get(int(s.palidx)) //pl.palettes[pl.paletteMap[int(s.palidx)]]
