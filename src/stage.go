@@ -1088,7 +1088,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 		if s.zoffsetlink >= 0 && zlink < 0 && b.id == s.zoffsetlink {
 			zlink = i
 			s.stageCamera.zoffset += int32(b.start[1] * s.scale[1])
-			s.stageCamera.boundhigh -= int32(b.start[1] * s.scale[1])
 		}
 	}
 	ratio1 := float32(s.stageCamera.localcoord[0]) / float32(s.stageCamera.localcoord[1])
@@ -1392,9 +1391,6 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 	bgscl := float32(1)
 	if s.hires {
 		bgscl = 0.5
-	}
-	if s.stageCamera.boundhigh > 0 {
-		y += float32(s.stageCamera.boundhigh)
 	}
 	yofs, pos := sys.envShake.getOffset(), [...]float32{x, y}
 	scl2 := s.localscl * scl
