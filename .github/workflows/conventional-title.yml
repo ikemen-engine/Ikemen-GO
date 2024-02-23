@@ -12,7 +12,7 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: morrisoncole/pr-lint-action@v1.7.0
+      - uses: morrisoncole/pr-lint-action@v1.7.1
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           title-regex: "^(\\bbuild|chore|docs|feat|fix|other|perf|refactor|style|test\\b\\(?[^\\)]*\\)?: .+|v?[0-9]+\\.[0-9]+\\.[0-9]+|Revert .+)"
