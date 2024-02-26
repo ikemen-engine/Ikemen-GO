@@ -161,7 +161,7 @@ type ClsnRect [][4]float32
 
 func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
 	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
-	y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel()
+	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 	xs *= sys.cam.Scale
 	ys *= sys.cam.Scale
 	for i := 0; i+3 < len(clsn); i += 4 {
@@ -6700,7 +6700,7 @@ func (c *Char) cueDraw() {
 		sys.drawch.Add([]float32{-1, -1, 1, 1}, c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
 		//debug clsnText
 		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1) + float32(sys.gameWidth)/2
-		y = (y-sys.cam.Pos[1])*sys.cam.Scale + sys.cam.GroundLevel()
+		y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 		y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
 		for _, tid := range c.targets {
