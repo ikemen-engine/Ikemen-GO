@@ -410,9 +410,6 @@ func (cv *CharVelocity) init() {
 	cv.air.gethit.airrecover.fwd = 0.0
 	cv.air.gethit.airrecover.up = -2.0
 	cv.air.gethit.airrecover.down = 1.5
-	cv.airjump.neu = [...]float32{0, -8.1}
-	cv.airjump.back = -2.55
-	cv.airjump.fwd = 2.5
 	cv.air.gethit.ko.add = [...]float32{-2, -2}
 	cv.air.gethit.ko.ymin = -3
 	cv.ground.gethit.ko.xmul = 0.66
@@ -464,8 +461,6 @@ type CharMovement struct {
 
 func (cm *CharMovement) init() {
 	*cm = CharMovement{}
-	cm.airjump.num = 0
-	cm.airjump.height = 35
 	cm.yaccel = 0.44
 	cm.stand.friction = 0.85
 	cm.stand.friction_threshold = 2.0
@@ -2503,6 +2498,14 @@ func (c *Char) load(def string) error {
 							&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
 						is.ReadF32("jump.back", &gi.velocity.jump.back)
 						is.ReadF32("jump.fwd", &gi.velocity.jump.fwd)
+						// Running and air jumps default to regular jump velocities
+						c.gi().velocity.runjump.back[0] = c.gi().velocity.jump.back
+						c.gi().velocity.runjump.back[1] = c.gi().velocity.jump.neu[1]
+						c.gi().velocity.runjump.fwd[0] = c.gi().velocity.jump.fwd
+						c.gi().velocity.runjump.fwd[1] = c.gi().velocity.jump.neu[1]
+						c.gi().velocity.airjump.neu = c.gi().velocity.jump.neu
+						c.gi().velocity.airjump.back = c.gi().velocity.jump.back
+						c.gi().velocity.airjump.fwd = c.gi().velocity.jump.fwd
 						is.ReadF32("jump.up.x", &gi.velocity.jump.up.x)
 						is.ReadF32("jump.down.x", &gi.velocity.jump.down.x)
 						is.ReadF32("runjump.back",
@@ -5670,7 +5673,7 @@ func (c *Char) bind() {
 		if bt := sys.playerID(c.bindToId); bt != nil {
 			if bt.hasTarget(c.id) {
 				if bt.csf(CSF_destroy) {
-					sys.appendToConsole(c.warn() + fmt.Sprintf("6SelfState 5050, helper destroyed: %v", bt.name))
+					sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
 					if c.ss.moveType == MT_H {
 						c.selfState(5050, -1, -1, -1, "")
 					}
@@ -5972,7 +5975,7 @@ func (c *Char) actionPrepare() {
 							c.changeState(40, -1, -1, "")
 						}
 					} else if !c.asf(ASF_noairjump) && c.ss.stateType == ST_A && c.cmd[0].Buffer.Ub == 1 &&
-						c.pos[1] <= float32(c.gi().movement.airjump.height) &&
+						c.pos[1] <= -float32(c.gi().movement.airjump.height) &&
 						c.airJumpCount < c.gi().movement.airjump.num {
 						if c.ss.no != 45 || c.ss.time > 0 {
 							c.airJumpCount++
