@@ -772,6 +772,11 @@ type GetHitVar struct {
 	kill           bool
 	priority       int32
 	facing         int32
+	ground_velocity   [2]float32
+	air_velocity      [2]float32
+	down_velocity     [2]float32
+	guard_velocity    float32
+	airguard_velocity [2]float32
 }
 
 func (ghv *GetHitVar) clear() {
@@ -7172,6 +7177,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						ghv.hittime += 1
 					}
 				}
+				// Save velocities regardless of statetype
+				ghv.ground_velocity[0] = hd.ground_velocity[0] * (c.localscl / getter.localscl)
+				ghv.ground_velocity[1] = hd.ground_velocity[1] * (c.localscl / getter.localscl)
+				ghv.air_velocity[0] = hd.air_velocity[0] * (c.localscl / getter.localscl)
+				ghv.air_velocity[1] = hd.air_velocity[1] * (c.localscl / getter.localscl)
+				ghv.down_velocity[0] = hd.down_velocity[0] * (c.localscl / getter.localscl)
+				ghv.down_velocity[1] = hd.down_velocity[1] * (c.localscl / getter.localscl)
+				ghv.guard_velocity = hd.guard_velocity * (c.localscl / getter.localscl)
+				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
+				ghv.airguard_velocity[1] = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
 				ghv.animtype = getter.gethitAnimtype() // This must be placed after ghv.yvel
