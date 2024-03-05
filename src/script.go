@@ -3267,6 +3267,24 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.priority)
 		case "facing":
 			ln = lua.LNumber(c.ghv.facing)
+		case "ground.velocity.x":
+			ln = lua.LNumber(c.ghv.ground_velocity[0])
+		case "ground.velocity.y":
+			ln = lua.LNumber(c.ghv.ground_velocity[1])
+		case "air.velocity.x":
+			ln = lua.LNumber(c.ghv.air_velocity[0])
+		case "air.velocity.y":
+			ln = lua.LNumber(c.ghv.air_velocity[1])
+		case "down.velocity.x":
+			ln = lua.LNumber(c.ghv.down_velocity[0])
+		case "down.velocity.y":
+			ln = lua.LNumber(c.ghv.down_velocity[1])
+		case "guard.velocity.x":
+			ln = lua.LNumber(c.ghv.guard_velocity)
+		case "airguard.velocity.x":
+			ln = lua.LNumber(c.ghv.airguard_velocity[0])
+		case "airguard.velocity.y":
+			ln = lua.LNumber(c.ghv.airguard_velocity[1])
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

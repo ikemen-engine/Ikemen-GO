@@ -1873,6 +1873,24 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_priority)
 			case "facing":
 				out.append(OC_ex_gethitvar_facing)
+			case "ground.velocity.x":
+				out.append(OC_ex_gethitvar_ground_velocity_x)
+			case "ground.velocity.y":
+				out.append(OC_ex_gethitvar_ground_velocity_y)
+			case "air.velocity.x":
+				out.append(OC_ex_gethitvar_air_velocity_x)
+			case "air.velocity.y":
+				out.append(OC_ex_gethitvar_air_velocity_y)
+			case "down.velocity.x":
+				out.append(OC_ex_gethitvar_down_velocity_x)
+			case "down.velocity.y":
+				out.append(OC_ex_gethitvar_down_velocity_y)
+			case "guard.velocity.x":
+				out.append(OC_ex_gethitvar_guard_velocity_x)
+			case "airguard.velocity.x":
+				out.append(OC_ex_gethitvar_airguard_velocity_x)
+			case "airguard.velocity.y":
+				out.append(OC_ex_gethitvar_airguard_velocity_y)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}

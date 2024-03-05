@@ -472,6 +472,15 @@ const (
 	OC_ex_gethitvar_priority
 	OC_ex_gethitvar_guardcount
 	OC_ex_gethitvar_facing
+	OC_ex_gethitvar_ground_velocity_x
+	OC_ex_gethitvar_ground_velocity_y
+	OC_ex_gethitvar_air_velocity_x
+	OC_ex_gethitvar_air_velocity_y
+	OC_ex_gethitvar_down_velocity_x
+	OC_ex_gethitvar_down_velocity_y
+	OC_ex_gethitvar_guard_velocity_x
+	OC_ex_gethitvar_airguard_velocity_x
+	OC_ex_gethitvar_airguard_velocity_y
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -2060,6 +2069,24 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.priority)
 	case OC_ex_gethitvar_facing:
 		sys.bcStack.PushI(c.ghv.facing)
+	case OC_ex_gethitvar_ground_velocity_x:
+		sys.bcStack.PushF(c.ghv.ground_velocity[0] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_ground_velocity_y:
+		sys.bcStack.PushF(c.ghv.ground_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_air_velocity_x:
+		sys.bcStack.PushF(c.ghv.air_velocity[0] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_air_velocity_y:
+		sys.bcStack.PushF(c.ghv.air_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_down_velocity_x:
+		sys.bcStack.PushF(c.ghv.down_velocity[0] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_down_velocity_y:
+		sys.bcStack.PushF(c.ghv.down_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_guard_velocity_x:
+		sys.bcStack.PushF(c.ghv.guard_velocity * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_airguard_velocity_x:
+		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_airguard_velocity_y:
+		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
