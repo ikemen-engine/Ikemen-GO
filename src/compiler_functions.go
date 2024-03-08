@@ -429,10 +429,13 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
-			switch strings.ToLower(data)[0] {
-			case 'n':
-			case 'p':
+			switch strings.ToLower(data) {
+			case "normal":
+				// Default, valid value
+			case "player":
 				sc.add(helper_helpertype, sc.iToExp(1))
+			case "projectile":
+				// Valid but unused in Mugen. Same as normal type
 			default:
 				return Error("Invalid value: " + data)
 			}
