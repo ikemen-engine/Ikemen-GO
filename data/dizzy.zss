@@ -363,14 +363,13 @@ if !dizzy || time > 300 {
 #===============================================================================
 [StateDef -2]
 
-ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
+if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
-} else ignoreHitPause if roundState = 0 {
+} else if roundState = 0 {
 	dizzyPointsSet{value: dizzyPointsMax}
 	map(_iksys_dizzyPointsTimer) := 0;
 	map(_iksys_dizzyLimit) := 0;
-
-} else ignoreHitPause if alive {
+} else if alive {
 	# Upon hit, set cooldown timer
 	if moveType = H || dizzy || stateNo = const(StateDownedGetHit_gettingUp) {
 		map(_iksys_dizzyPointsTimer) := 60;
@@ -440,5 +439,12 @@ ignoreHitPause if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 		if (ctrl && time > 0) || moveType = A {
 			map(_iksys_dizzyLimit) := 0;
 		}
+	}
+
+# Reset status if char is KO
+} else {
+	dizzySet{value: 0}
+	if dizzyPoints < 1 {
+		dizzyPointsSet{value: 1}
 	}
 }
