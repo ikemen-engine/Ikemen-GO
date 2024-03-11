@@ -184,6 +184,7 @@ var triggerMap = map[string]int{
 	"enemy":       0,
 	"enemynear":   0,
 	"playerid":    0,
+	"playerindex": 0,
 	"p2":          0,
 	"stateowner":  0,
 	"helperindex": 0,
@@ -357,6 +358,7 @@ var triggerMap = map[string]int{
 	"guardbreak":         1,
 	"guardpoints":        1,
 	"guardpointsmax":     1,
+	"helperindexexist":   1,
 	"hitoverridden":      1,
 	"incustomstate":      1,
 	"indialogue":         1,
@@ -372,6 +374,7 @@ var triggerMap = map[string]int{
 	"movecontactframe":   1,
 	"movecountered":      1,
 	"mugenversion":       1,
+	"numplayer":          1,
 	"offset":             1,
 	"p5name":             1,
 	"p6name":             1,
@@ -380,6 +383,8 @@ var triggerMap = map[string]int{
 	"pausetime":          1,
 	"physics":            1,
 	"playerno":           1,
+	"playercount":        1,
+	"playerindexexist":   1,		
 	"prevanim":           1,
 	"prevmovetype":       1,
 	"prevstatetype":      1,
@@ -1186,7 +1191,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "":
 		return bvNone(), Error("Nothing assigned")
 	case "root", "player", "parent", "helper", "target", "partner",
-		"enemy", "enemynear", "playerid", "p2", "stateowner", "helperindex":
+		"enemy", "enemynear", "playerid", "playerindex", "p2", "stateowner", "helperindex":
 		switch c.token {
 		case "parent":
 			opc = OC_parent
@@ -1216,6 +1221,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_enemynear
 			case "playerid":
 				opc = OC_playerid
+			case "playerindex":
+				opc = OC_playerindex			
 			case "helperindex":
 				opc = OC_helperindex
 			}
@@ -1240,6 +1247,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					return bvNone(), Error("Missing '(' after player")
 				case OC_playerid:
 					return bvNone(), Error("Missing '(' after playerid")
+				case OC_playerindex:
+					return bvNone(), Error("Missing '(' after playerindex")					
 				case OC_helperindex:
 					return bvNone(), Error("Missing '(' after helperindex")
 				}
@@ -1901,6 +1910,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "guardcount":
 		out.append(OC_ex_, OC_ex_guardcount)
+	case "helperindexexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_,OC_ex_helperindexexist)		
 	case "hitcount":
 		out.append(OC_hitcount)
 	case "hitdefattr":
@@ -3047,6 +3061,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_movecountered)
 	case "mugenversion":
 		out.append(OC_ex_, OC_ex_mugenversion)
+	case "numplayer":
+		out.append(OC_ex_, OC_ex_numplayer)			
 	case "pausetime":
 		out.append(OC_ex_, OC_ex_pausetime)
 	case "physics":
@@ -3073,7 +3089,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 	case "playerno":
-		out.append(OC_ex_, OC_ex_playerno)
+		out.append(OC_ex_, OC_ex_playerno)	
 	case "ratiolevel":
 		out.append(OC_ex_, OC_ex_ratiolevel)
 	case "receiveddamage":
@@ -3125,6 +3141,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_timeremaining)
 	case "timetotal":
 		out.append(OC_ex_, OC_ex_timetotal)
+	case "playercount":
+		out.append(OC_ex_, OC_ex_playercount)
+	case "playerindexexist":
+		if _, err := c.oneArg(out, in, rd, true); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_, OC_ex_playerindexexist)	
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
 	case "angle":

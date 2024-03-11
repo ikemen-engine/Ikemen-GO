@@ -2977,14 +2977,27 @@ func (c *Char) helper(id int32) *Char {
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper: %v", id))
 	return nil
 }
-func (c *Char) helperByIndex(id int32) *Char {
+func (c *Char) gethelperByIndex(id int32) *Char {
+	index := int32(id - 1)
+	if index < 0 { return sys.chars[c.playerNo][0] }
 	for j, h := range sys.chars[c.playerNo][1:] {
-		if (id - 1) == int32(j) {
+		if index == int32(j) {
 			return h
 		}
 	}
+	return nil
+}
+func (c *Char) helperByIndex(id int32) *Char {
+	h := c.gethelperByIndex(id)
+	if h != nil { return h }
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper with index: %v", id))
 	return nil
+}
+func (c *Char) helperByIndexExist( id BytecodeValue) BytecodeValue {
+	if id.IsSF() {
+		return BytecodeSF()
+	}
+	return BytecodeBool(c.gethelperByIndex(id.ToI()) != nil)
 }
 func (c *Char) target(id int32) *Char {
 	for _, tid := range c.targets {
@@ -3321,6 +3334,16 @@ func (c *Char) numEnemy() int32 {
 	}
 	for i := ^c.playerNo & 1; i < int(sys.numSimul[^c.playerNo&1]*2); i += 2 {
 		if len(sys.chars[i]) > 0 && !sys.chars[i][0].scf(SCF_standby) && !sys.chars[i][0].scf(SCF_disabled) {
+			n += 1
+		}
+	}
+	return n
+}
+func (c *Char) numPlayer() int32 {
+	n := int32(0)
+	for i := 0; i < len(sys.chars)-1; i++ {
+		//&& !sys.chars[i][0].scf(SCF_standby)
+		if len(sys.chars[i]) > 0 && !sys.chars[i][0].scf(SCF_disabled) {
 			n += 1
 		}
 	}
@@ -7955,6 +7978,14 @@ func (cl *CharList) get(id int32) *Char {
 		return nil
 	}
 	return cl.idMap[id]
+}
+func (cl *CharList) getIndex(id int32) *Char {
+	for j, p := range cl.runOrder {
+		if (id - 1) == int32(j) {
+			return p
+		}
+	}
+	return nil
 }
 func (cl *CharList) p2enemyDelete(c *Char) {
 	for _, e := range cl.runOrder {

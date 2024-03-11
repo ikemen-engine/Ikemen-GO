@@ -213,6 +213,7 @@ const (
 	OC_enemy
 	OC_enemynear
 	OC_playerid
+	OC_playerindex	
 	OC_helperindex
 	OC_p2
 	OC_stateowner
@@ -516,6 +517,7 @@ const (
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
 	OC_ex_helpername
+	OC_ex_helperindexexist	
 	OC_ex_hitoverridden
 	OC_ex_incustomstate
 	OC_ex_indialogue
@@ -527,6 +529,7 @@ const (
 	OC_ex_maparray
 	OC_ex_max
 	OC_ex_min
+	OC_ex_numplayer
 	OC_ex_clamp
 	OC_ex_sign
 	OC_ex_atan2
@@ -540,6 +543,7 @@ const (
 	OC_ex_pausetime
 	OC_ex_physics
 	OC_ex_playerno
+	OC_ex_playerindexexist	
 	OC_ex_randomrange
 	OC_ex_ratiolevel
 	OC_ex_receiveddamage
@@ -560,6 +564,7 @@ const (
 	OC_ex_timeelapsed
 	OC_ex_timeremaining
 	OC_ex_timetotal
+	OC_ex_playercount	
 	OC_ex_pos_z
 	OC_ex_vel_z
 	OC_ex_prevanim
@@ -1112,6 +1117,13 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_playerid:
 			if c = sys.playerID(sys.bcStack.Pop().ToI()); c != nil {
+				i += 4
+				continue
+			}
+			sys.bcStack.Push(BytecodeSF())
+			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
+		case OC_playerindex:
+			if c = sys.playerIndex(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
@@ -2235,6 +2247,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_ex_helperindexexist:
+		*sys.bcStack.Top() = c.helperByIndexExist(*sys.bcStack.Top())
 	case OC_ex_hitoverridden:
 		sys.bcStack.PushB(c.hoIdx >= 0)
 	case OC_ex_incustomstate:
@@ -2264,6 +2278,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_min:
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_numplayer:
+		sys.bcStack.PushI(c.numPlayer())	
 	case OC_ex_clamp:
 		v3 := sys.bcStack.Pop()
 		v2 := sys.bcStack.Pop()
@@ -2296,6 +2312,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i++
 	case OC_ex_playerno:
 		sys.bcStack.PushI(int32(c.playerNo) + 1)
+	case OC_ex_playerindexexist:
+		*sys.bcStack.Top() = sys.playerIndexExist(*sys.bcStack.Top())			
 	case OC_ex_randomrange:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
@@ -2338,6 +2356,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(timeRemaining())
 	case OC_ex_timetotal:
 		sys.bcStack.PushI(timeTotal())
+	case OC_ex_playercount:
+		sys.bcStack.PushI(sys.playercount())
 	case OC_ex_pos_z:
 		sys.bcStack.PushF(c.pos[2] * (c.localscl / oc.localscl))
 	case OC_ex_vel_z:

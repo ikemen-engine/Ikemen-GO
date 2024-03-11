@@ -625,6 +625,9 @@ func (s *System) anyButton() bool {
 func (s *System) playerID(id int32) *Char {
 	return s.charList.get(id)
 }
+func (s *System) playerIndex(id int32) *Char {
+	return s.charList.getIndex(id)
+}
 func (s *System) matchOver() bool {
 	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
 }
@@ -633,6 +636,15 @@ func (s *System) playerIDExist(id BytecodeValue) BytecodeValue {
 		return BytecodeSF()
 	}
 	return BytecodeBool(s.playerID(id.ToI()) != nil)
+}
+func (s *System) playerIndexExist(id BytecodeValue) BytecodeValue {
+	if id.IsSF() {
+		return BytecodeSF()
+	}
+	return BytecodeBool(s.playerIndex(id.ToI()) != nil)
+}
+func (s *System) playercount() int32 {
+	return int32(len(s.charList.runOrder))
 }
 func (s *System) screenHeight() float32 {
 	return 240
