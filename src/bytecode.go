@@ -9202,7 +9202,7 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_fall_damage:
 			crun.ghv.fall.damage = exp[0].evalI(c)
 		case getHitVarSet_fall_envshake_ampl:
-			crun.ghv.fall.envshake_ampl = exp[0].evalI(c) * lclscround
+			crun.ghv.fall.envshake_ampl = int32(exp[0].evalF(c) * lclscround)
 		case getHitVarSet_fall_envshake_freq:
 			crun.ghv.fall.envshake_freq = exp[0].evalF(c)
 		case getHitVarSet_fall_envshake_mul:
