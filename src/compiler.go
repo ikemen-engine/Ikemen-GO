@@ -385,7 +385,7 @@ var triggerMap = map[string]int{
 	"physics":            1,
 	"playerno":           1,
 	"playercount":        1,
-	"playerindexexist":   1,		
+	"playerindexexist":   1,
 	"prevanim":           1,
 	"prevmovetype":       1,
 	"prevstatetype":      1,
@@ -1223,7 +1223,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			case "playerid":
 				opc = OC_playerid
 			case "playerindex":
-				opc = OC_playerindex			
+				opc = OC_playerindex
 			case "helperindex":
 				opc = OC_helperindex
 			}
@@ -1249,7 +1249,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				case OC_playerid:
 					return bvNone(), Error("Missing '(' after playerid")
 				case OC_playerindex:
-					return bvNone(), Error("Missing '(' after playerindex")					
+					return bvNone(), Error("Missing '(' after playerindex")
 				case OC_helperindex:
 					return bvNone(), Error("Missing '(' after helperindex")
 				}
@@ -1915,7 +1915,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
-		out.append(OC_ex_,OC_ex_helperindexexist)		
+		out.append(OC_ex_, OC_ex_helperindexexist)
 	case "hitcount":
 		out.append(OC_hitcount)
 	case "hitdefattr":
@@ -3063,7 +3063,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "mugenversion":
 		out.append(OC_ex_, OC_ex_mugenversion)
 	case "numplayer":
-		out.append(OC_ex_, OC_ex_numplayer)			
+		out.append(OC_ex_, OC_ex_numplayer)
 	case "pausetime":
 		out.append(OC_ex_, OC_ex_pausetime)
 	case "physics":
@@ -3090,7 +3090,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 	case "playerno":
-		out.append(OC_ex_, OC_ex_playerno)	
+		out.append(OC_ex_, OC_ex_playerno)
 	case "ratiolevel":
 		out.append(OC_ex_, OC_ex_ratiolevel)
 	case "receiveddamage":
@@ -3148,7 +3148,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
 		}
-		out.append(OC_ex_, OC_ex_playerindexexist)	
+		out.append(OC_ex_, OC_ex_playerindexexist)
 	case "drawpalno":
 		out.append(OC_ex_, OC_ex_drawpalno)
 	case "angle":

@@ -213,7 +213,7 @@ const (
 	OC_enemy
 	OC_enemynear
 	OC_playerid
-	OC_playerindex	
+	OC_playerindex
 	OC_helperindex
 	OC_p2
 	OC_stateowner
@@ -517,7 +517,7 @@ const (
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
 	OC_ex_helpername
-	OC_ex_helperindexexist	
+	OC_ex_helperindexexist
 	OC_ex_hitoverridden
 	OC_ex_incustomstate
 	OC_ex_indialogue
@@ -543,7 +543,7 @@ const (
 	OC_ex_pausetime
 	OC_ex_physics
 	OC_ex_playerno
-	OC_ex_playerindexexist	
+	OC_ex_playerindexexist
 	OC_ex_randomrange
 	OC_ex_ratiolevel
 	OC_ex_receiveddamage
@@ -564,7 +564,7 @@ const (
 	OC_ex_timeelapsed
 	OC_ex_timeremaining
 	OC_ex_timetotal
-	OC_ex_playercount	
+	OC_ex_playercount
 	OC_ex_pos_z
 	OC_ex_vel_z
 	OC_ex_prevanim
@@ -2279,7 +2279,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
 	case OC_ex_numplayer:
-		sys.bcStack.PushI(c.numPlayer())	
+		sys.bcStack.PushI(c.numPlayer())
 	case OC_ex_clamp:
 		v3 := sys.bcStack.Pop()
 		v2 := sys.bcStack.Pop()
@@ -2313,7 +2313,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_playerno:
 		sys.bcStack.PushI(int32(c.playerNo) + 1)
 	case OC_ex_playerindexexist:
-		*sys.bcStack.Top() = sys.playerIndexExist(*sys.bcStack.Top())			
+		*sys.bcStack.Top() = sys.playerIndexExist(*sys.bcStack.Top())
 	case OC_ex_randomrange:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)

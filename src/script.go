@@ -4167,9 +4167,9 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "helperindexexist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.helperByIndexExist(
-	BytecodeInt(int32(numArg(l, 1)))).ToB()))
+			BytecodeInt(int32(numArg(l, 1)))).ToB()))
 		return 1
-	})	
+	})
 	luaRegister(l, "hitoverridden", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.hoIdx >= 0))
 		return 1
@@ -4351,7 +4351,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "numplayer", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.numPlayer()))
 		return 1
-	})	
+	})
 	luaRegister(l, "offsetX", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.offsetTrg[0]))
 		return 1
@@ -4390,7 +4390,7 @@ func triggerFunctions(l *lua.LState) {
 		}
 		l.Push(lua.LBool(ret))
 		return 1
-	})	
+	})
 	luaRegister(l, "playerindexexist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.playerIndexExist(
 			BytecodeInt(int32(numArg(l, 1)))).ToB()))
@@ -4399,7 +4399,7 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "playercount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.playercount()))
 		return 1
-	})	
+	})
 	//randomrange (dedicated functionality already exists in Lua)
 	//rad (dedicated functionality already exists in Lua)
 	luaRegister(l, "ratiolevel", func(*lua.LState) int {

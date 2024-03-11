@@ -2979,7 +2979,9 @@ func (c *Char) helper(id int32) *Char {
 }
 func (c *Char) gethelperByIndex(id int32) *Char {
 	index := int32(id - 1)
-	if index < 0 { return sys.chars[c.playerNo][0] }
+	if index < 0 {
+		return sys.chars[c.playerNo][0]
+	}
 	for j, h := range sys.chars[c.playerNo][1:] {
 		if index == int32(j) {
 			return h
@@ -2989,11 +2991,13 @@ func (c *Char) gethelperByIndex(id int32) *Char {
 }
 func (c *Char) helperByIndex(id int32) *Char {
 	h := c.gethelperByIndex(id)
-	if h != nil { return h }
+	if h != nil {
+		return h
+	}
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper with index: %v", id))
 	return nil
 }
-func (c *Char) helperByIndexExist( id BytecodeValue) BytecodeValue {
+func (c *Char) helperByIndexExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
 		return BytecodeSF()
 	}
