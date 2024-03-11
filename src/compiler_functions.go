@@ -429,10 +429,13 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
-			switch strings.ToLower(data)[0] {
-			case 'n':
-			case 'p':
+			switch strings.ToLower(data) {
+			case "normal":
+				// Default, valid value
+			case "player":
 				sc.add(helper_helpertype, sc.iToExp(1))
+			case "projectile":
+				// Valid but unused in Mugen. Same as normal type
 			default:
 				return Error("Invalid value: " + data)
 			}
@@ -4883,6 +4886,133 @@ func (c *Compiler) assertCommand(is IniSection, sc *StateControllerBase, _ int8)
 		}
 		if err := c.paramValue(is, sc, "buffertime",
 			assertCommand_buffertime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*getHitVarSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			getHitVarSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "airtype",
+			getHitVarSet_airtype, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "animtype",
+			getHitVarSet_animtype, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "attr",
+			getHitVarSet_attr, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "chainid",
+			getHitVarSet_chainid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "ctrltime",
+			getHitVarSet_ctrltime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall",
+			getHitVarSet_fall, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.damage",
+			getHitVarSet_fall_damage, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.envshake.ampl",
+			getHitVarSet_fall_envshake_ampl, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.envshake.freq",
+			getHitVarSet_fall_envshake_freq, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.envshake.mul",
+			getHitVarSet_fall_envshake_mul, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.envshake.phase",
+			getHitVarSet_fall_envshake_phase, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.envshake.time",
+			getHitVarSet_fall_envshake_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.kill",
+			getHitVarSet_fall_kill, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.recover",
+			getHitVarSet_fall_recover, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.recovertime",
+			getHitVarSet_fall_recovertime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.xvel",
+			getHitVarSet_fall_xvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fall.yvel",
+			getHitVarSet_fall_yvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "fallcount",
+			getHitVarSet_fallcount, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "groundtype",
+			getHitVarSet_groundtype, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "guarded",
+			getHitVarSet_guarded, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "hitshaketime",
+			getHitVarSet_hitshaketime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "hittime",
+			getHitVarSet_hittime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			getHitVarSet_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "playerno",
+			getHitVarSet_playerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "recovertime",
+			getHitVarSet_recovertime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "slidetime",
+			getHitVarSet_slidetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "xvel",
+			getHitVarSet_xvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "yaccel",
+			getHitVarSet_yaccel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "yvel",
+			getHitVarSet_yvel, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil

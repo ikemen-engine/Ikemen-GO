@@ -169,6 +169,7 @@ func newCompiler() *Compiler {
 		"camera":               c.cameraCtrl,
 		"height":               c.height,
 		"modifychar":           c.modifyChar,
+		"gethitvarset":         c.getHitVarSet,
 	}
 	return c
 }

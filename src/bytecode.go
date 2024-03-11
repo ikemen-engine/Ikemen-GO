@@ -9146,6 +9146,118 @@ func (sc modifyChar) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type getHitVarSet StateControllerBase
+
+const (
+	getHitVarSet_airtype byte = iota
+	getHitVarSet_animtype
+	getHitVarSet_attr
+	getHitVarSet_chainid
+	getHitVarSet_ctrltime
+	getHitVarSet_fall
+	getHitVarSet_fall_damage
+	getHitVarSet_fall_envshake_ampl
+	getHitVarSet_fall_envshake_freq
+	getHitVarSet_fall_envshake_mul
+	getHitVarSet_fall_envshake_phase
+	getHitVarSet_fall_envshake_time
+	getHitVarSet_fall_kill
+	getHitVarSet_fall_recover
+	getHitVarSet_fall_recovertime
+	getHitVarSet_fall_xvel
+	getHitVarSet_fall_yvel
+	getHitVarSet_fallcount
+	getHitVarSet_ground_animtype
+	getHitVarSet_groundtype
+	getHitVarSet_guarded
+	getHitVarSet_hitshaketime
+	getHitVarSet_hittime
+	getHitVarSet_id
+	getHitVarSet_playerno
+	getHitVarSet_recovertime
+	getHitVarSet_slidetime
+	getHitVarSet_xvel
+	getHitVarSet_yaccel
+	getHitVarSet_yvel
+	getHitVarSet_redirectid
+)
+
+func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
+	crun := c
+	var lclscround float32 = 1.0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case getHitVarSet_airtype:
+			crun.ghv.airtype = HitType(exp[0].evalI(c))
+		case getHitVarSet_animtype:
+			crun.ghv.animtype = Reaction(exp[0].evalI(c))
+		case getHitVarSet_attr:
+			crun.ghv.attr = exp[0].evalI(c)
+		case getHitVarSet_chainid:
+			crun.ghv.hitid = exp[0].evalI(c)
+		case getHitVarSet_ctrltime:
+			crun.ghv.ctrltime = exp[0].evalI(c)
+		case getHitVarSet_fall:
+			crun.ghv.fallf = exp[0].evalB(c)
+		case getHitVarSet_fall_damage:
+			crun.ghv.fall.damage = exp[0].evalI(c)
+		case getHitVarSet_fall_envshake_ampl:
+			crun.ghv.fall.envshake_ampl = exp[0].evalI(c)*lclscround
+		case getHitVarSet_fall_envshake_freq:
+			crun.ghv.fall.envshake_freq = exp[0].evalF(c)
+		case getHitVarSet_fall_envshake_mul:
+			crun.ghv.fall.envshake_mul = exp[0].evalF(c)
+		case getHitVarSet_fall_envshake_phase:
+			crun.ghv.fall.envshake_phase = exp[0].evalF(c)
+		case getHitVarSet_fall_envshake_time:
+			crun.ghv.fall.envshake_time = exp[0].evalI(c)
+		case getHitVarSet_fall_kill:
+			crun.ghv.fall.kill = exp[0].evalB(c)
+		case getHitVarSet_fall_recover:
+			crun.ghv.fall.recover = exp[0].evalB(c)
+		case getHitVarSet_fall_recovertime:
+			crun.ghv.fall.recovertime = exp[0].evalI(c)
+		case getHitVarSet_fall_xvel:
+			crun.ghv.fall.xvelocity = exp[0].evalF(c)*lclscround
+		case getHitVarSet_fall_yvel:
+			crun.ghv.fall.yvelocity = exp[0].evalF(c)*lclscround
+		case getHitVarSet_fallcount:
+			crun.ghv.fallcount = exp[0].evalI(c)
+		case getHitVarSet_groundtype:
+			crun.ghv.groundtype = HitType(exp[0].evalI(c))
+		case getHitVarSet_guarded:
+			crun.ghv.guarded = exp[0].evalB(c)
+		case getHitVarSet_hittime:
+			crun.ghv.hittime = exp[0].evalI(c)
+		case getHitVarSet_hitshaketime:
+			crun.ghv.hitshaketime = exp[0].evalI(c)
+		case getHitVarSet_id:
+			crun.ghv.id = exp[0].evalI(c)
+		case getHitVarSet_playerno:
+			crun.ghv.playerNo = int(exp[0].evalI(c))
+		case getHitVarSet_recovertime:
+			crun.recoverTime = exp[0].evalI(c)
+		case getHitVarSet_slidetime:
+			crun.ghv.slidetime = exp[0].evalI(c)
+		case getHitVarSet_xvel:
+			crun.ghv.xvel = exp[0].evalF(c)*lclscround
+		case getHitVarSet_yaccel:
+			crun.ghv.yaccel = exp[0].evalF(c)*lclscround
+		case getHitVarSet_yvel:
+			crun.ghv.yvel = exp[0].evalF(c)*lclscround
+		case getHitVarSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				lclscround = c.localscl / crun.localscl
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType

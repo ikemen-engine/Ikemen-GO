@@ -7762,6 +7762,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.mctime = -1
 								}
 								if c.hitdef.reversal_attr > 0 {
+									c.powerAdd(c.hitdef.hitgetpower)
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
@@ -7806,7 +7807,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.hitPauseTime = Max(1, c.hitdef.pausetime+
 										Btoi(c.gi().mugenver[0] == 1))
 								}
-								c.powerAdd(c.hitdef.hitgetpower)
 								c.uniqHitCount++
 							} else {
 								if mvh {
