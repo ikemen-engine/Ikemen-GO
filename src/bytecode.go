@@ -9202,7 +9202,7 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_fall_damage:
 			crun.ghv.fall.damage = exp[0].evalI(c)
 		case getHitVarSet_fall_envshake_ampl:
-			crun.ghv.fall.envshake_ampl = exp[0].evalI(c)*lclscround
+			crun.ghv.fall.envshake_ampl = exp[0].evalI(c) * lclscround
 		case getHitVarSet_fall_envshake_freq:
 			crun.ghv.fall.envshake_freq = exp[0].evalF(c)
 		case getHitVarSet_fall_envshake_mul:
@@ -9218,9 +9218,9 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_fall_recovertime:
 			crun.ghv.fall.recovertime = exp[0].evalI(c)
 		case getHitVarSet_fall_xvel:
-			crun.ghv.fall.xvelocity = exp[0].evalF(c)*lclscround
+			crun.ghv.fall.xvelocity = exp[0].evalF(c) * lclscround
 		case getHitVarSet_fall_yvel:
-			crun.ghv.fall.yvelocity = exp[0].evalF(c)*lclscround
+			crun.ghv.fall.yvelocity = exp[0].evalF(c) * lclscround
 		case getHitVarSet_fallcount:
 			crun.ghv.fallcount = exp[0].evalI(c)
 		case getHitVarSet_groundtype:
@@ -9240,11 +9240,11 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_slidetime:
 			crun.ghv.slidetime = exp[0].evalI(c)
 		case getHitVarSet_xvel:
-			crun.ghv.xvel = exp[0].evalF(c)*lclscround
+			crun.ghv.xvel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_yaccel:
-			crun.ghv.yaccel = exp[0].evalF(c)*lclscround
+			crun.ghv.yaccel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_yvel:
-			crun.ghv.yvel = exp[0].evalF(c)*lclscround
+			crun.ghv.yvel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
