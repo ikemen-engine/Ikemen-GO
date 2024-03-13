@@ -112,7 +112,7 @@ func processCommandLine() {
 		sys.cmdFlags = make(map[string]string)
 		key := ""
 		player := 1
-		r1, _ := regexp.Compile("^-[h%?]")
+		r1, _ := regexp.Compile("^-[h%?]$")
 		r2, _ := regexp.Compile("^-")
 		// Loop through arguments
 		for _, a := range os.Args[1:] {
@@ -124,6 +124,8 @@ func processCommandLine() {
 -r <path>               Loads motif <path>. eg. -r motifdir or -r motifdir/system.def
 -lifebar <path>         Loads lifebar <path>. eg. -lifebar data/fight.def
 -storyboard <path>      Loads storyboard <path>. eg. -storyboard chars/kfm/intro.def
+-width <num>            Overrides game window width
+-height <num>           Overrides game window height
 
 Quick VS Options:
 -p<n> <playername>      Loads player n, eg. -p3 kfm
@@ -320,6 +322,16 @@ func setupConfig() configSettings {
 	// Save config file, indent with two spaces to match calls to json.encode() in the Lua code
 	cfg, _ := json.MarshalIndent(tmp, "", "  ")
 	chk(os.WriteFile(cfgPath, cfg, 0644))
+
+	// If given width/height arguments, override config's width/height here
+	if _, wok := sys.cmdFlags["-width"]; wok {
+		var w, _ = strconv.ParseInt(sys.cmdFlags["-width"], 10, 32)
+		tmp.GameWidth = int32(w)
+	}
+	if _, hok := sys.cmdFlags["-height"]; hok {
+		var h, _ = strconv.ParseInt(sys.cmdFlags["-height"], 10, 32)
+		tmp.GameHeight = int32(h)
+	}
 
 	// Set each config property to the system object
 	sys.afterImageMax = tmp.MaxAfterImage
