@@ -242,6 +242,7 @@ var triggerMap = map[string]int{
 	"hitover":           1,
 	"hitpausetime":      1,
 	"hitshakeover":      1,
+	"hitvar":            1,
 	"hitvel":            1,
 	"id":                1,
 	"ifelse":            1,
@@ -353,7 +354,6 @@ var triggerMap = map[string]int{
 	"float":              1,
 	"framespercount":     1,
 	"gamemode":           1,
-	"gethitframe":        1,
 	"getplayerid":        1,
 	"groundangle":        1,
 	"guardbreak":         1,
@@ -372,7 +372,6 @@ var triggerMap = map[string]int{
 	"max":                1,
 	"memberno":           1,
 	"min":                1,
-	"movecontactframe":   1,
 	"movecountered":      1,
 	"mugenversion":       1,
 	"numplayer":          1,
@@ -1761,8 +1760,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_gametime)
 	case "gamewidth":
 		out.append(OC_gamewidth)
-	case "gethitframe":
-		out.append(OC_ex_, OC_ex_gethitframe)
 	case "gethitvar":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -1901,6 +1898,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_airguard_velocity_x)
 			case "airguard.velocity.y":
 				out.append(OC_ex_gethitvar_airguard_velocity_y)
+			case "contact":
+				out.append(OC_ex_gethitvar_contact)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -1999,8 +1998,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_matchover)
 	case "movecontact":
 		out.append(OC_movecontact)
-	case "movecontactframe":
-		out.append(OC_ex_, OC_ex_movecontactframe)
 	case "moveguarded":
 		out.append(OC_moveguarded)
 	case "movehit":
@@ -2894,6 +2891,29 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
+	case "movehitvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "contact":
+			out.append(OC_ex_movehitvar_contact)
+		case "id":
+			out.append(OC_ex_movehitvar_id)
+		case "playerno":
+			out.append(OC_ex_movehitvar_playerno)
+		case "sparkx":
+			out.append(OC_ex_movehitvar_spark_x)
+		case "sparky":
+			out.append(OC_ex_movehitvar_spark_y)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
 	case "indialogue":

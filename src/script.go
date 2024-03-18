@@ -3147,10 +3147,6 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.gameWidth()))
 		return 1
 	})
-	luaRegister(l, "gethitframe", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.getHitFrame))
-		return 1
-	})
 	luaRegister(l, "gethitvar", func(*lua.LState) int {
 		c := sys.debugWC
 		var ln lua.LNumber
@@ -3285,6 +3281,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.airguard_velocity[0])
 		case "airguard.velocity.y":
 			ln = lua.LNumber(c.ghv.airguard_velocity[1])
+		case "contact":
+			ln = lua.LNumber(Btoi(c.ghv.contact))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -3422,16 +3420,32 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.moveContact()))
 		return 1
 	})
-	luaRegister(l, "movecontactframe", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.moveContactFrame))
-		return 1
-	})
 	luaRegister(l, "moveguarded", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.moveGuarded()))
 		return 1
 	})
 	luaRegister(l, "movehit", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.moveHit()))
+		return 1
+	})
+	luaRegister(l, "movehitvar", func(*lua.LState) int {
+		c := sys.debugWC
+		var ln lua.LNumber
+		switch strArg(l, 1) {
+		case "contact":
+			ln = lua.LNumber(Btoi(c.mhv.contact))
+		case "id":
+			ln = lua.LNumber(c.mhv.id)
+		case "playerno":
+			ln = lua.LNumber(c.mhv.playerNo)
+		case "sparkx":
+			ln = lua.LNumber(c.mhv.sparkxy[0])
+		case "sparky":
+			ln = lua.LNumber(c.mhv.sparkxy[1])
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
+		l.Push(ln)
 		return 1
 	})
 	luaRegister(l, "movetype", func(*lua.LState) int {
