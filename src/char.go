@@ -6444,8 +6444,9 @@ func (c *Char) update(cvmin, cvmax,
 		}
 		c.platformPosY = 0
 		c.groundAngle = 0
-		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
-			c.hitdef.reversal_attr > 0) && !c.hitPause()))
+		// Hit detection should happen even during hitpause
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1660
+		c.atktmp = int8(Btoi(c.ss.moveType != MT_I || c.hitdef.reversal_attr > 0))
 		c.hoIdx = -1
 		c.hoKeepState = false
 		if c.acttmp > 0 {
