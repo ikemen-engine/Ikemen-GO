@@ -960,9 +960,8 @@ func (s *System) commandUpdate() {
 		}
 	}
 }
-func (s *System) charUpdate(cvl, cvr,
-	highest, lowest, leftest, rightest *float32) {
-	s.charList.update(cvl, cvr, highest, lowest, leftest, rightest)
+func (s *System) charUpdate() {
+	s.charList.update()
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1012,13 +1011,7 @@ func (s *System) action() {
 	s.drawch = s.drawch[:0]
 	s.clsnText = nil
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
-	var cvr, cvl, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
-	leftest, rightest = x, x
-	if s.cam.ytensionenable {
-		if y < 0 {
-			lowest = y
-		}
-	}
+	s.cam.ResetTracking()
 
 	// Run lifebar
 	if s.lifebar.ro.act() {
@@ -1333,11 +1326,10 @@ func (s *System) action() {
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(x, &cvr, &cvl,
-			&highest, &lowest, &leftest, &rightest)
+		s.charList.action(x)
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
-		s.charUpdate(&cvl, &cvr, &highest, &lowest, &leftest, &rightest)
+		s.charUpdate()
 	}
 
 	// Set global First Attack flag if either team got it
@@ -1346,7 +1338,7 @@ func (s *System) action() {
 	}
 
 	// Run camera
-	x, y, scl = s.cam.action(x, y, scl, leftest, rightest, lowest, highest, cvr, cvl, s.super > 0 || s.pause > 0)
+	x, y, scl = s.cam.action(x, y, scl, s.super > 0 || s.pause > 0)
 
 	//introSkip := false
 	if s.tickNextFrame() {

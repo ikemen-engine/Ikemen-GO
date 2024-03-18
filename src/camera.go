@@ -1,5 +1,7 @@
 package main
 
+import "math"
+
 type stageCamera struct {
 	startx               int32
 	boundleft            int32
@@ -24,7 +26,10 @@ type stageCamera struct {
 	zoomin               float32
 	zoomout              float32
 	ytensionenable       bool
+	autocenter           bool
 	zoomanchor           bool
+	zoomInDelay          float32
+	zoomInDelayTime      float32
 	fov                  float32
 	yshift               float32
 	far                  float32
@@ -32,13 +37,19 @@ type stageCamera struct {
 	aspectCorrection     float32
 	zoomAnchorCorrection float32
 	yWithoutBound        float32
+	highest              float32
+	lowest               float32
+	leftest              float32
+	rightest             float32
+	leftestVel           float32
+	rightestVel          float32
 }
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tensionvel: 1, tension: 50,
 		cuthigh: 0, cutlow: 0,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false, fov: 40, yshift: 0, far: 10000, near: 0.1}
+		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false, fov: 40, yshift: 0, far: 10000, near: 0.1, zoomInDelay: 0}
 }
 
 type CameraView int
@@ -96,6 +107,7 @@ func (c *Camera) Reset() {
 	c.boundH = float32(c.boundhigh) * c.localscl
 	c.boundLo = float32(Max(c.boundhigh, c.boundlow)) * c.localscl
 	c.boundlow = Max(c.boundhigh, c.boundlow)
+	c.zoomInDelayTime = c.zoomInDelay
 
 	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
 		c.boundR)
@@ -106,6 +118,14 @@ func (c *Camera) Reset() {
 func (c *Camera) Init() {
 	c.Reset()
 	c.View = Fighting_View
+}
+func (c *Camera) ResetTracking() {
+	c.leftest = c.Pos[0]
+	c.rightest = c.Pos[0]
+	c.highest = math.MaxFloat32
+	c.lowest = -math.MaxFloat32
+	c.leftestVel = 0
+	c.rightestVel = 0
 }
 func (c *Camera) Update(scl, x, y float32) {
 	c.Scale = c.BaseScale() * scl
@@ -147,12 +167,11 @@ func (c *Camera) GroundLevel() float32 {
 func (c *Camera) ResetZoomdelay() {
 	c.zoomdelay = 0
 }
-func (c *Camera) action(x, y, scale float32, leftest, rightest, lowest, highest,
-	vr, vl float32, pause bool) (newX, newY, newScale float32) {
+func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale float32) {
 	newX = x
 	newY = y
 	newScale = scale
-	if !sys.debugPaused() {
+	if !sys.debugPaused() && c.highest != math.MaxFloat32 && c.lowest != -math.MaxFloat32 {
 		switch c.View {
 		case Fighting_View:
 			tension := MaxF(0, float32(c.tension)*c.localscl)
@@ -160,55 +179,69 @@ func (c *Camera) action(x, y, scale float32, leftest, rightest, lowest, highest,
 			targetLeft, targetRight := oldLeft, oldRight
 			maxRight := float32(c.boundright)*c.localscl + c.halfWidth/c.zoomout
 			minLeft := float32(c.boundleft)*c.localscl - c.halfWidth/c.zoomout
-			if leftest < oldLeft+tension {
-				targetLeft = MaxF(leftest-tension, minLeft)
-				targetRight = MaxF(oldRight-(oldLeft-targetLeft), MinF(rightest+tension, maxRight))
-			} else if rightest > oldRight-tension {
-				targetRight = MinF(rightest+tension, maxRight)
-				targetLeft = MinF(oldLeft-(oldRight-targetRight), MaxF(leftest-tension, minLeft))
+			if c.autocenter {
+				targetLeft = MinF(MaxF((c.leftest+c.rightest)/2-c.halfWidth/scale, minLeft), maxRight-2*c.halfWidth/scale)
+				targetRight = targetLeft + 2*c.halfWidth/scale
+			}
+
+			if c.leftest < targetLeft+tension {
+				diff := targetLeft - MaxF(c.leftest-tension, minLeft)
+				targetLeft = MaxF(c.leftest-tension, minLeft)
+				targetRight = MaxF(oldRight-diff, MinF(c.rightest+tension, maxRight))
+			} else if c.rightest > targetRight-tension {
+				diff := targetRight - MinF(c.rightest+tension, maxRight)
+				targetRight = MinF(c.rightest+tension, maxRight)
+				targetLeft = MinF(oldLeft-diff, MaxF(c.leftest-tension, minLeft))
 			}
 			if c.halfWidth*2/(targetRight-targetLeft) < c.zoomout {
 				x := (targetRight + targetLeft) / 2
 				targetLeft = x - c.halfWidth/c.zoomout
 				targetRight = x + c.halfWidth/c.zoomout
-				if leftest-targetLeft < float32(sys.stage.screenleft)*c.localscl {
-					diff := float32(sys.stage.screenleft)*c.localscl - (leftest - targetLeft)
+				if c.leftest-targetLeft < float32(sys.stage.screenleft)*c.localscl {
+					diff := float32(sys.stage.screenleft)*c.localscl - (c.leftest - targetLeft)
 					targetLeft -= diff
 					targetRight -= diff
-				} else if targetRight-rightest < float32(sys.stage.screenright)*c.localscl {
-					diff := float32(sys.stage.screenright)*c.localscl - (targetRight - rightest)
+				} else if targetRight-c.rightest < float32(sys.stage.screenright)*c.localscl {
+					diff := float32(sys.stage.screenright)*c.localscl - (targetRight - c.rightest)
 					targetLeft += diff
 					targetRight += diff
 				}
 			}
-			tmpScale := c.zoomin
+			maxScale := c.zoomin
 			if c.ytensionenable {
-				tmpScale = MinF(MaxF(float32(sys.gameHeight)/((lowest+float32(c.tensionlow)*c.localscl)-(highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), c.zoomin)
+				maxScale = MinF(MaxF(float32(sys.gameHeight)/((c.lowest+float32(c.tensionlow)*c.localscl)-(c.highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), maxScale)
 			}
-			if c.halfWidth*2/(targetRight-targetLeft) < tmpScale {
-				diffLeft := MaxF(leftest-tension-targetLeft, 0)
-				if diffLeft < 0 {
-					diffLeft = 0
+			if c.halfWidth*2/(targetRight-targetLeft) < maxScale {
+				if c.zoomInDelayTime > 0 {
+					c.zoomInDelayTime -= 1
+				} else {
+					diffLeft := MaxF(c.leftest-tension-targetLeft, 0)
+					if diffLeft < 0 {
+						diffLeft = 0
+					}
+					diffRight := MinF(c.rightest+tension-targetRight, 0)
+					if diffRight > 0 {
+						diffRight = 0
+					}
+					if c.halfWidth*2/((targetRight+diffRight)-(targetLeft+diffLeft)) > maxScale {
+						tmp, tmp2 := diffLeft/(diffLeft-diffRight)*((targetRight+diffRight)-(targetLeft+diffLeft)-c.halfWidth*2/maxScale), diffRight/(diffLeft-diffRight)*((targetRight+diffRight)-(targetLeft+diffLeft)-c.halfWidth*2/maxScale)
+						diffLeft += tmp
+						diffRight += tmp2
+					}
+					targetLeft += diffLeft
+					targetRight += diffRight
 				}
-				diffRight := MinF(rightest+tension-targetRight, 0)
-				if diffRight > 0 {
-					diffRight = 0
-				}
-				if c.halfWidth*2/((targetRight+diffRight)-(targetLeft+diffLeft)) > tmpScale {
-					tmp, tmp2 := diffLeft/(diffLeft-diffRight)*((targetRight+diffRight)-(targetLeft+diffLeft)-c.halfWidth*2/tmpScale), diffRight/(diffLeft-diffRight)*((targetRight+diffRight)-(targetLeft+diffLeft)-c.halfWidth*2/tmpScale)
-					diffLeft += tmp
-					diffRight += tmp2
-				}
-				targetLeft += diffLeft
-				targetRight += diffRight
+			} else {
+				c.zoomInDelayTime = c.zoomInDelay
 			}
+
 			targetX := (targetLeft + targetRight) / 2
 			targetScale := c.halfWidth * 2 / (targetRight - targetLeft)
 
 			if !c.ytensionenable {
 				newY = c.yWithoutBound
 				//old*0.85+target* 0.15 if diff > 1
-				targetY := (highest + float32(c.floortension)*c.localscl) * c.verticalfollow
+				targetY := (c.highest + float32(c.floortension)*c.localscl) * c.verticalfollow
 				for i := 0; i < 3; i++ {
 					newY = newY*.85 + targetY*.15
 					if AbsF(targetY-newY) < 1 {
@@ -218,13 +251,13 @@ func (c *Camera) action(x, y, scale float32, leftest, rightest, lowest, highest,
 				}
 				c.yWithoutBound = newY
 			} else {
-				targetScale = MinF(MinF(MaxF(float32(sys.gameHeight)/((lowest+float32(c.tensionlow)*c.localscl)-(highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), c.zoomin), targetScale)
+				targetScale = MinF(MinF(MaxF(float32(sys.gameHeight)/((c.lowest+float32(c.tensionlow)*c.localscl)-(c.highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), c.zoomin), targetScale)
 				targetX = MinF(MaxF(targetX, float32(c.boundleft)*c.localscl-c.halfWidth*(1/c.zoomout-1/targetScale)), float32(c.boundright)*c.localscl+c.halfWidth*(1/c.zoomout-1/targetScale))
 				targetLeft = targetX - c.halfWidth/targetScale
 				targetRight = targetX + c.halfWidth/targetScale
 
 				newY = c.yWithoutBound
-				targetY := c.GroundLevel()/targetScale + (highest - float32(c.tensionhigh)*c.localscl)
+				targetY := c.GroundLevel()/targetScale + (c.highest - float32(c.tensionhigh)*c.localscl)
 				for i := 0; i < 3; i++ {
 					newY = newY*.85 + targetY*.15
 					if AbsF(targetY-newY) < 1 {
@@ -249,10 +282,10 @@ func (c *Camera) action(x, y, scale float32, leftest, rightest, lowest, highest,
 				} else {
 					newLeft -= 0.1 * sys.turbo * c.tensionvel
 				}
-				if newLeft-oldLeft > 0 && newLeft-oldLeft < vr {
-					newLeft = MinF(oldLeft+vr, targetLeft)
-				} else if newLeft-oldLeft < 0 && newLeft-oldLeft > vl {
-					newLeft = MaxF(oldLeft+vl, targetLeft)
+				if newLeft-oldLeft > 0 && newLeft-oldLeft < c.rightestVel {
+					newLeft = MinF(oldLeft+c.rightestVel, targetLeft)
+				} else if newLeft-oldLeft < 0 && newLeft-oldLeft > c.leftestVel {
+					newLeft = MaxF(oldLeft+c.leftestVel, targetLeft)
 				}
 
 				if AbsF(diffRight) <= 0.1*sys.turbo*c.tensionvel {
@@ -262,10 +295,10 @@ func (c *Camera) action(x, y, scale float32, leftest, rightest, lowest, highest,
 				} else {
 					newRight -= 0.1 * sys.turbo * c.tensionvel
 				}
-				if newRight-oldRight > 0 && newRight-oldRight < vr {
-					newRight = MinF(oldRight+vr, targetRight)
-				} else if newRight-oldRight < 0 && newRight-oldRight > vl {
-					newRight = MaxF(oldRight+vl, targetRight)
+				if newRight-oldRight > 0 && newRight-oldRight < c.rightestVel {
+					newRight = MinF(oldRight+c.rightestVel, targetRight)
+				} else if newRight-oldRight < 0 && newRight-oldRight > c.leftestVel {
+					newRight = MaxF(oldRight+c.leftestVel, targetRight)
 				}
 
 				newX = (newLeft + newRight) / 2
