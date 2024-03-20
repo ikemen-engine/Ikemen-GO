@@ -1578,6 +1578,8 @@ type Model struct {
 	animationTimeStamps map[uint32][]float32
 	animations          []*GLTFAnimation
 	skins               []*Skin
+	vertexBuffer        []byte
+	elementBuffer       []uint32
 }
 type Scene struct {
 	nodes []uint32
@@ -2126,11 +2128,9 @@ func loadglTFStage(filepath string) (*Model, error) {
 		}
 		mdl.meshes = append(mdl.meshes, mesh)
 	}
+	mdl.vertexBuffer = vertexBuffer
+	mdl.elementBuffer = elementBuffer
 
-	sys.mainThreadTask <- func() {
-		gfx.SetStageVertexData(vertexBuffer)
-		gfx.SetStageIndexData(elementBuffer...)
-	}
 	mdl.nodes = make([]*Node, 0, len(doc.Nodes))
 	for _, n := range doc.Nodes {
 		var node = &Node{}

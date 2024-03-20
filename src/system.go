@@ -834,6 +834,12 @@ func (s *System) nextRound() {
 		if s.round > 1 && !s.roundResetFlg {
 			swap = true
 		}
+		if s.stage.model != nil {
+			sys.mainThreadTask <- func() {
+				gfx.SetStageVertexData(s.stage.model.vertexBuffer)
+				gfx.SetStageIndexData(s.stage.model.elementBuffer...)
+			}
+		}
 	}
 	s.cam.stageCamera = s.stage.stageCamera
 	s.cam.Init()
