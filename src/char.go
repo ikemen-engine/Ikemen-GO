@@ -4147,7 +4147,7 @@ func (c *Char) posReset() {
 		c.setZ(0)
 	} else {
 		c.facing = 1 - 2*float32(c.playerNo&1)
-		c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
+		c.setX((float32(sys.stage.p[c.playerNo&1].startx)*
 			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*sys.stage.p1p3dist) / c.localscl)
 		c.setY(float32(sys.stage.p[c.playerNo&1].starty) * sys.stage.localscl / c.localscl)
 		c.setZ(float32(sys.stage.p[c.playerNo&1].startz))
@@ -5735,7 +5735,7 @@ func (c *Char) trackableByCamera() bool {
 }
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
-	if c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if !sys.cam.roundstart && c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -6346,26 +6346,26 @@ func (c *Char) track() {
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
-		if c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+		if !sys.cam.roundstart && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
 			c.drawPos[0] = ClampF(c.drawPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
 		}
 		if c.csf(CSF_movecamera_x) && !c.scf(SCF_standby) {
 			if c.drawPos[0]*c.localscl-min*c.localscl < sys.cam.leftest {
-				sys.cam.leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, sys.cam.leftest))
+				sys.cam.leftest = MinF(c.drawPos[0]*c.localscl-min*c.localscl, sys.cam.leftest)
 				if c.acttmp > 0 && !c.csf(CSF_posfreeze) &&
 					(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
-					sys.cam.leftestVel = c.vel[0] * c.localscl * c.facing
+					sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
 				} else {
-					sys.cam.leftestVel = 0
+					sys.cam.leftestvel = 0
 				}
 			}
 			if c.drawPos[0]*c.localscl-max*c.localscl > sys.cam.rightest {
-				sys.cam.rightest = MinF(sys.xmax, MaxF(c.drawPos[0]*c.localscl-max*c.localscl, sys.cam.rightest))
+				sys.cam.rightest = MaxF(c.drawPos[0]*c.localscl-max*c.localscl, sys.cam.rightest)
 				if c.acttmp > 0 && !c.csf(CSF_posfreeze) &&
 					(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
-					sys.cam.rightestVel = c.vel[0] * c.localscl * c.facing
+					sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
 				} else {
-					sys.cam.rightestVel = 0
+					sys.cam.rightestvel = 0
 				}
 			}
 		}

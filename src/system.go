@@ -831,7 +831,6 @@ func (s *System) nextRound() {
 		s.stage.reset()
 	}
 	s.cam.ResetZoomdelay()
-	s.cam.Update(1, 0, 0)
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			s.nextCharId = Max(s.nextCharId, p[0].id+1)
@@ -1957,7 +1956,6 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
-		s.cam.Update(s.cam.startzoom, 0, 0)
 	}
 	reset()
 

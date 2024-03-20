@@ -129,7 +129,6 @@ type backGround struct {
 	id                 int32
 	start              [2]float32
 	xofs               float32
-	camstartx          float32
 	delta              [2]float32
 	width              [2]int32
 	xscale             [2]float32
@@ -164,9 +163,8 @@ func newBackGround(sff *Sff) *backGround {
 		startrect: [...]int32{-32768, -32768, 65535, 65535}}
 }
 func readBackGround(is IniSection, link *backGround,
-	sff *Sff, at AnimationTable, camstartx float32, sProps StageProps) *backGround {
+	sff *Sff, at AnimationTable, sProps StageProps) *backGround {
 	bg := newBackGround(sff)
-	bg.camstartx = camstartx
 	typ := is["type"]
 	if len(typ) == 0 {
 		return bg
@@ -413,7 +411,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 			pos[i] = float32(math.Floor(float64(pos[i])))
 		}
 	}
-	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0]+bg.camstartx)*bg.delta[0] +
+	x := bg.start[0] + bg.xofs - (pos[0]/stgscl[0])*bg.delta[0] +
 		bg.bga.offset[0]
 	// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
 	yScrollPos := (pos[1] / scl / stgscl[1]) * bg.delta[1] // * bgscl
@@ -425,8 +423,8 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if isStage {
 		zoff := float32(sys.cam.zoffset) * lclscl
 		y = y*bgscl + ((zoff-shakeY)/scly-zoff)/lclscl/stgscl[1]
-		y -= sys.cam.aspectCorrection / (scly * lclscl * stgscl[1])
-		y -= sys.cam.zoomAnchorCorrection / (scly * lclscl * stgscl[1])
+		y -= sys.cam.aspectcorrection / (scly * lclscl * stgscl[1])
+		y -= sys.cam.zoomanchorcorrection / (scly * lclscl * stgscl[1])
 	} else {
 		y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/lclscl/scly-240)/stgscl[1]
 	}
@@ -444,7 +442,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 				bgscl * lscl[i]
 		}
 	}
-	startrect0 := (float32(rect[0]) - (pos[0]+bg.camstartx)*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0]
+	startrect0 := (float32(rect[0]) - (pos[0])*bg.windowdelta[0] + (float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0]
 	if !isStage && wscl[0] == 1 {
 		startrect0 += float32(sys.gameWidth-320) / 2 * sys.widthScale
 	}
@@ -891,7 +889,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 	s.stageCamera.localscl = s.localscl
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
-		//sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
+		sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
 		sec[0].ReadI32("boundleft", &s.stageCamera.boundleft)
 		sec[0].ReadI32("boundright", &s.stageCamera.boundright)
 		sec[0].ReadI32("boundhigh", &s.stageCamera.boundhigh)
@@ -910,7 +908,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("near", &s.stageCamera.near)
 		sec[0].ReadF32("far", &s.stageCamera.far)
 		sec[0].ReadBool("autocenter", &s.stageCamera.autocenter)
-		sec[0].ReadF32("zoomindelay", &s.stageCamera.zoomInDelay)
+		sec[0].ReadF32("zoomindelay", &s.stageCamera.zoomindelay)
 		if sys.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
 		} else {
@@ -1027,7 +1025,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, float32(s.stageCamera.startx), s.stageprops))
+			s.sff, s.at, s.stageprops))
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
@@ -2424,9 +2422,9 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] / (float32(sys.scrrect[3]) / 2)
 
 	var syo float32
-	aspectCorrection := (float32(sys.cam.zoffset)*float32(sys.gameHeight)/float32(sys.cam.localcoord[1]) - (float32(sys.cam.zoffset)*s.localscl - sys.cam.aspectCorrection))
+	aspectCorrection := (float32(sys.cam.zoffset)*float32(sys.gameHeight)/float32(sys.cam.localcoord[1]) - (float32(sys.cam.zoffset)*s.localscl - sys.cam.aspectcorrection))
 	syo = -(float32(s.stageCamera.zoffset) - float32(sys.cam.localcoord[1])/2) * (1 - scl) / scl * float32(sys.gameHeight) / float32(s.stageCamera.localcoord[1])
-	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), (((pos[1]*s.localscl+sys.cam.zoomAnchorCorrection+aspectCorrection)/scl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
+	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), (((pos[1]*s.localscl+sys.cam.zoomanchorcorrection+aspectCorrection)/scl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
 	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
 	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
 	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
