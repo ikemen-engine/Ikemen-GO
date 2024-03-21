@@ -482,6 +482,7 @@ const (
 	OC_ex_gethitvar_guard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_y
+	OC_ex_gethitvar_contact
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -516,9 +517,15 @@ const (
 	OC_ex_guardbreak
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
-	OC_ex_helpername
+	OC_ex_helperid
 	OC_ex_helperindexexist
+	OC_ex_helpername
 	OC_ex_hitoverridden
+	OC_ex_movehitvar_contact
+	OC_ex_movehitvar_id
+	OC_ex_movehitvar_playerno
+	OC_ex_movehitvar_spark_x
+	OC_ex_movehitvar_spark_y
 	OC_ex_incustomstate
 	OC_ex_indialogue
 	OC_ex_isassertedchar
@@ -584,8 +591,6 @@ const (
 	OC_ex_offset_y
 	OC_ex_alpha_s
 	OC_ex_alpha_d
-	OC_ex_movecontactframe
-	OC_ex_gethitframe
 	OC_ex_selfcommand
 	OC_ex_guardcount
 )
@@ -2099,6 +2104,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_y:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_contact:
+		sys.bcStack.PushB(c.ghv.contact)
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
@@ -2242,6 +2249,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardPoints)
 	case OC_ex_guardpointsmax:
 		sys.bcStack.PushI(c.guardPointsMax)
+	case OC_ex_helperid:
+		sys.bcStack.PushI(c.helperId)
+		*i += 4
 	case OC_ex_helpername:
 		sys.bcStack.PushB(c.helperIndex != 0 && strings.ToLower(c.name) ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
@@ -2407,10 +2417,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.alphaTrg[0])
 	case OC_ex_alpha_d:
 		sys.bcStack.PushI(c.alphaTrg[1])
-	case OC_ex_movecontactframe:
-		sys.bcStack.PushB(c.moveContactFrame)
-	case OC_ex_gethitframe:
-		sys.bcStack.PushB(c.getHitFrame)
 	case OC_ex_selfcommand:
 		if c.cmd == nil {
 			sys.bcStack.PushB(false)
@@ -2422,6 +2428,17 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i += 4
 	case OC_ex_guardcount:
 		sys.bcStack.PushI(c.guardCount)
+	case OC_ex_movehitvar_contact:
+		sys.bcStack.PushB(c.mhv.contact)
+	case OC_ex_movehitvar_id:
+		sys.bcStack.PushI(c.mhv.id)
+	case OC_ex_movehitvar_playerno:
+		sys.bcStack.PushI(int32(c.mhv.playerNo))
+	case OC_ex_movehitvar_spark_x:
+		sys.bcStack.PushF(c.mhv.sparkxy[0] * (c.localscl / oc.localscl))
+	case OC_ex_movehitvar_spark_y:
+		sys.bcStack.PushF(c.mhv.sparkxy[1] * (c.localscl / oc.localscl))
+
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()

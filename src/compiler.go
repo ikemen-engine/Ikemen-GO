@@ -217,7 +217,6 @@ var triggerMap = map[string]int{
 	"const240p":         1,
 	"const480p":         1,
 	"const720p":         1,
-	"const1080p":        1,
 	"cos":               1,
 	"ctrl":              1,
 	"displayname":       1,
@@ -234,8 +233,6 @@ var triggerMap = map[string]int{
 	"gametime":          1,
 	"gamewidth":         1,
 	"gethitvar":         1,
-	"guardcount":        1,
-	"helpername":        1,
 	"hitcount":          1,
 	"hitdefattr":        1,
 	"hitfall":           1,
@@ -248,7 +245,6 @@ var triggerMap = map[string]int{
 	"inguarddist":       1,
 	"ishelper":          1,
 	"ishometeam":        1,
-	"ishost":            1,
 	"leftedge":          1,
 	"life":              1,
 	"lifemax":           1,
@@ -341,6 +337,7 @@ var triggerMap = map[string]int{
 	"clamp":              1,
 	"combocount":         1,
 	"consecutivewins":    1,
+	"const1080p":         1,
 	"deg":                1,
 	"defence":            1,
 	"dizzy":              1,
@@ -353,17 +350,20 @@ var triggerMap = map[string]int{
 	"float":              1,
 	"framespercount":     1,
 	"gamemode":           1,
-	"gethitframe":        1,
 	"getplayerid":        1,
 	"groundangle":        1,
 	"guardbreak":         1,
+	"guardcount":         1,
 	"guardpoints":        1,
 	"guardpointsmax":     1,
+	"helperid":           1,
 	"helperindexexist":   1,
+	"helpername":         1,
 	"hitoverridden":      1,
 	"incustomstate":      1,
 	"indialogue":         1,
 	"isasserted":         1,
+	"ishost":             1,
 	"lastplayerid":       1,
 	"lerp":               1,
 	"localscale":         1,
@@ -372,8 +372,8 @@ var triggerMap = map[string]int{
 	"max":                1,
 	"memberno":           1,
 	"min":                1,
-	"movecontactframe":   1,
 	"movecountered":      1,
+	"movehitvar":         1,
 	"mugenversion":       1,
 	"numplayer":          1,
 	"offset":             1,
@@ -1761,8 +1761,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_gametime)
 	case "gamewidth":
 		out.append(OC_gamewidth)
-	case "gethitframe":
-		out.append(OC_ex_, OC_ex_gethitframe)
 	case "gethitvar":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -1901,6 +1899,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_airguard_velocity_x)
 			case "airguard.velocity.y":
 				out.append(OC_ex_gethitvar_airguard_velocity_y)
+			case "contact":
+				out.append(OC_ex_gethitvar_contact)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -1999,8 +1999,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_matchover)
 	case "movecontact":
 		out.append(OC_movecontact)
-	case "movecontactframe":
-		out.append(OC_ex_, OC_ex_movecontactframe)
 	case "moveguarded":
 		out.append(OC_moveguarded)
 	case "movehit":
@@ -2888,12 +2886,37 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_guardpoints)
 	case "guardpointsmax":
 		out.append(OC_ex_, OC_ex_guardpointsmax)
+	case "helperid":
+		out.append(OC_ex_, OC_ex_helperid)
 	case "helpername":
 		if err := nameSubEx(OC_ex_helpername); err != nil {
 			return bvNone(), err
 		}
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
+	case "movehitvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "contact":
+			out.append(OC_ex_movehitvar_contact)
+		case "id":
+			out.append(OC_ex_movehitvar_id)
+		case "playerno":
+			out.append(OC_ex_movehitvar_playerno)
+		case "sparkx":
+			out.append(OC_ex_movehitvar_spark_x)
+		case "sparky":
+			out.append(OC_ex_movehitvar_spark_y)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
 	case "indialogue":

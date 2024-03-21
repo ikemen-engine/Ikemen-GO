@@ -777,6 +777,7 @@ type GetHitVar struct {
 	down_velocity     [2]float32
 	guard_velocity    float32
 	airguard_velocity [2]float32
+	contact           bool
 }
 
 func (ghv *GetHitVar) clear() {
@@ -843,6 +844,17 @@ type HitOverride struct {
 
 func (ho *HitOverride) clear() {
 	*ho = HitOverride{stateno: -1, keepState: false, playerNo: -1}
+}
+
+type MoveHitVar struct {
+	contact  bool
+	id       int32
+	playerNo int
+	sparkxy  [2]float32
+}
+
+func (mhv *MoveHitVar) clear() {
+	*mhv = MoveHitVar{}
 }
 
 type aimgImage struct {
@@ -1956,6 +1968,7 @@ type Char struct {
 	clsnScale       [2]float32
 	hitdef          HitDef
 	ghv             GetHitVar
+	mhv             MoveHitVar
 	hitby           [2]HitBy
 	ho              [8]HitOverride
 	hoIdx           int
@@ -2013,8 +2026,6 @@ type Char struct {
 	pauseBool        bool
 	downHitOffset    float32
 	koEchoTime       int32
-	moveContactFrame bool
-	getHitFrame      bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -2062,6 +2073,7 @@ func (c *Char) clearState() {
 	c.ghv.fall.yvelocity /= c.localscl
 	c.ghv.clearOff()
 	c.hitby = [2]HitBy{}
+	c.mhv.clear()
 	for i := range c.ho {
 		c.ho[i].clear()
 	}
@@ -3968,6 +3980,11 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		h.palfx.invertblend = -2
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
+	// Helper ID must be positive
+	if h.helperId < 0 {
+		sys.appendToConsole(h.warn() + fmt.Sprintf("has negative Helper ID"))
+		h.helperId = 0
+	}
 	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
 	h.actionPrepare()
 }
@@ -6337,12 +6354,12 @@ func (c *Char) actionRun() {
 				c.ghv.hittime--
 			}
 		}
+		c.ghv.contact = false
+		c.mhv.contact = false
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
 		c.gi().projidcount = 0
-		c.moveContactFrame = false
-		c.getHitFrame = false
 	}
 	c.xScreenBound()
 	if !c.pauseBool {
@@ -6444,8 +6461,9 @@ func (c *Char) update(cvmin, cvmax,
 		}
 		c.platformPosY = 0
 		c.groundAngle = 0
-		c.atktmp = int8(Btoi((c.ss.moveType != MT_I ||
-			c.hitdef.reversal_attr > 0) && !c.hitPause()))
+		// Hit detection should happen even during hitpause
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1660
+		c.atktmp = int8(Btoi(c.ss.moveType != MT_I || c.hitdef.reversal_attr > 0))
 		c.hoIdx = -1
 		c.hoKeepState = false
 		if c.acttmp > 0 {
@@ -7303,7 +7321,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.stchtmp = false
 			}
 			getter.setCSF(CSF_gethit)
-			getter.getHitFrame = true
+			getter.ghv.contact = true
 			// If any hit in the current frame will KO the enemy, the others will not prevent it
 			if getter.ghv.damage >= getter.life {
 				getter.ghv.kill = true
@@ -7404,6 +7422,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if c.id != p1.id {
 				off[1] += p1.hitdef.sparkxy[1] * c.localscl
 			}
+			// Save hitspark position
+			c.mhv.sparkxy = off
 			if e, i := c.newExplod(); e != nil {
 				e.anim = c.getAnim(animNo, ffx, true)
 				e.ontop = true
@@ -7537,6 +7557,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		c.addTarget(getter.id)
 		getter.ghv.addId(c.id, c.gi().data.airjuggle)
+		c.mhv.id = getter.id
+		c.mhv.playerNo = getter.playerNo
 		if Abs(hitType) == 1 {
 			if !proj && (hd.p1getp2facing != 0 || hd.p1facing < 0) &&
 				c.facing != byf {
@@ -7676,7 +7698,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					sys.cgi[i].pctime = 0
 					sys.cgi[i].pcid = p.id
 					getter.hitdefContact = true
-					getter.moveContactFrame = true
+					getter.mhv.contact = true
 					continue
 				}
 				if !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
@@ -7794,7 +7816,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
 									getter.hitdefContact = true
-									getter.moveContactFrame = true
+									getter.mhv.contact = true
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
@@ -7849,7 +7871,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								c.hitdef.hitonce = -1
 							}
 							c.hitdefContact = true
-							c.moveContactFrame = true
+							c.mhv.contact = true
 						}
 					}
 				}
