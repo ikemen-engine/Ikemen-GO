@@ -3980,6 +3980,11 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		h.palfx.invertblend = -2
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
+	// Helper ID must be positive
+	if h.helperId < 0 {
+		sys.appendToConsole(h.warn() + fmt.Sprintf("has negative Helper ID"))
+		h.helperId = 0
+	}
 	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
 	h.actionPrepare()
 }

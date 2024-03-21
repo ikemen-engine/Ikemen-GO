@@ -517,8 +517,9 @@ const (
 	OC_ex_guardbreak
 	OC_ex_guardpoints
 	OC_ex_guardpointsmax
-	OC_ex_helpername
+	OC_ex_helperid
 	OC_ex_helperindexexist
+	OC_ex_helpername
 	OC_ex_hitoverridden
 	OC_ex_movehitvar_contact
 	OC_ex_movehitvar_id
@@ -2248,6 +2249,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardPoints)
 	case OC_ex_guardpointsmax:
 		sys.bcStack.PushI(c.guardPointsMax)
+	case OC_ex_helperid:
+		sys.bcStack.PushI(c.helperId)
+		*i += 4
 	case OC_ex_helpername:
 		sys.bcStack.PushB(c.helperIndex != 0 && strings.ToLower(c.name) ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(

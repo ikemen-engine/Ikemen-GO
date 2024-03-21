@@ -3293,6 +3293,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.guardCount))
 		return 1
 	})
+	luaRegister(l, "helperid", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.helperId))
+		return 1
+	})
 	luaRegister(l, "hitcount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.hitCount))
 		return 1
