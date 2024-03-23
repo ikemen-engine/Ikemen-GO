@@ -4191,7 +4191,7 @@ func (c *Char) posReset() {
 		c.setZ(0)
 	} else {
 		c.facing = 1 - 2*float32(c.playerNo&1)
-		c.setX((float32(sys.stage.p[c.playerNo&1].startx-sys.cam.startx)*
+		c.setX((float32(sys.stage.p[c.playerNo&1].startx)*
 			sys.stage.localscl - c.facing*float32(c.playerNo>>1)*sys.stage.p1p3dist) / c.localscl)
 		c.setY(float32(sys.stage.p[c.playerNo&1].starty) * sys.stage.localscl / c.localscl)
 		c.setZ(float32(sys.stage.p[c.playerNo&1].startz))
@@ -5779,7 +5779,7 @@ func (c *Char) trackableByCamera() bool {
 }
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
-	if c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if !sys.cam.roundstart && c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
 		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -6384,8 +6384,43 @@ func (c *Char) actionFinish() {
 	}
 	c.minus = 1
 }
-func (c *Char) update(cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
+func (c *Char) track() {
+	if c.trackableByCamera() {
+		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		if c.facing > 0 {
+			min, max = -max, -min
+		}
+		if !sys.cam.roundstart && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+			c.drawPos[0] = ClampF(c.drawPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
+		}
+		if c.csf(CSF_movecamera_x) && !c.scf(SCF_standby) {
+			if c.drawPos[0]*c.localscl-min*c.localscl < sys.cam.leftest {
+				sys.cam.leftest = MinF(c.drawPos[0]*c.localscl-min*c.localscl, sys.cam.leftest)
+				if c.acttmp > 0 && !c.csf(CSF_posfreeze) &&
+					(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
+					sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
+				} else {
+					sys.cam.leftestvel = 0
+				}
+			}
+			if c.drawPos[0]*c.localscl-max*c.localscl > sys.cam.rightest {
+				sys.cam.rightest = MaxF(c.drawPos[0]*c.localscl-max*c.localscl, sys.cam.rightest)
+				if c.acttmp > 0 && !c.csf(CSF_posfreeze) &&
+					(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
+					sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
+				} else {
+					sys.cam.rightestvel = 0
+				}
+			}
+		}
+		if c.csf(CSF_movecamera_y) && !c.scf(SCF_standby) {
+			sys.cam.highest = MinF(c.drawPos[1]*c.localscl, sys.cam.highest)
+			sys.cam.lowest = MaxF(c.drawPos[1]*c.localscl, sys.cam.lowest)
+			sys.cam.Pos[1] = 0
+		}
+	}
+}
+func (c *Char) update() {
 	if c.scf(SCF_disabled) {
 		return
 	}
@@ -6507,29 +6542,6 @@ func (c *Char) update(cvmin, cvmax,
 			for i := 0; i < 3; i++ {
 				c.drawPos[i] = c.pos[i] - (c.pos[i]-c.oldPos[i])*(1-spd)
 			}
-		}
-	}
-	if c.trackableByCamera() {
-		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
-		if c.facing > 0 {
-			min, max = -max, -min
-		}
-		if c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
-			c.drawPos[0] = ClampF(c.drawPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
-		}
-		if c.csf(CSF_movecamera_x) && !c.scf(SCF_standby) {
-			*leftest = MaxF(sys.xmin, MinF(c.drawPos[0]*c.localscl-min*c.localscl, *leftest))
-			*rightest = MinF(sys.xmax, MaxF(c.drawPos[0]*c.localscl-max*c.localscl, *rightest))
-			if c.acttmp > 0 && !c.csf(CSF_posfreeze) &&
-				(c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0]))) {
-				*cvmin = MinF(*cvmin, c.vel[0]*c.localscl*c.facing)
-				*cvmax = MaxF(*cvmax, c.vel[0]*c.localscl*c.facing)
-			}
-		}
-		if c.csf(CSF_movecamera_y) && !c.scf(SCF_standby) {
-			*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-			*lowest = MaxF(c.drawPos[1]*c.localscl, *lowest)
-			sys.cam.Pos[1] = 0
 		}
 	}
 	if c.koEchoTime > 0 {
@@ -6882,8 +6894,7 @@ func (cl *CharList) delete(dc *Char) {
 		}
 	}
 }
-func (cl *CharList) action(x float32, cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
+func (cl *CharList) action(x float32) {
 	sys.commandUpdate()
 	// Prepare characters before performing their actions
 	for i := 0; i < len(cl.runOrder); i++ {
@@ -6926,24 +6937,23 @@ func (cl *CharList) action(x float32, cvmin, cvmax,
 		cl.runOrder[i].actionFinish()
 	}
 	// Update chars
-	sys.charUpdate(cvmin, cvmax, highest, lowest, leftest, rightest)
+	sys.charUpdate()
 }
-func (cl *CharList) update(cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
+func (cl *CharList) xScreenBound() {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
 	for _, c := range ro {
-		c.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+		c.xScreenBound()
 	}
-	if !sys.cam.ytensionenable {
-		*highest = *lowest
-		for _, c := range ro {
-			if c.csf(CSF_movecamera_y) && !c.scf(SCF_standby) {
-				*highest = MinF(c.drawPos[1]*c.localscl, *highest)
-			}
-		}
-		*lowest = *highest
+}
+func (cl *CharList) update() {
+	ro := make([]*Char, len(cl.runOrder))
+	copy(ro, cl.runOrder)
+	for _, c := range ro {
+		c.update()
+		c.track()
 	}
+
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {
 	var gxmin, gxmax float32

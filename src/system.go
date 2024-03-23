@@ -849,7 +849,6 @@ func (s *System) nextRound() {
 		s.stage.reset()
 	}
 	s.cam.ResetZoomdelay()
-	s.cam.Update(1, 0, 0)
 	for i, p := range s.chars {
 		if len(p) > 0 {
 			s.nextCharId = Max(s.nextCharId, p[0].id+1)
@@ -978,9 +977,8 @@ func (s *System) commandUpdate() {
 		}
 	}
 }
-func (s *System) charUpdate(cvmin, cvmax,
-	highest, lowest, leftest, rightest *float32) {
-	s.charList.update(cvmin, cvmax, highest, lowest, leftest, rightest)
+func (s *System) charUpdate() {
+	s.charList.update()
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1030,13 +1028,7 @@ func (s *System) action() {
 	s.drawch = s.drawch[:0]
 	s.clsnText = nil
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
-	var cvmin, cvmax, highest, lowest, leftest, rightest float32 = 0, 0, 0, 0, 0, 0
-	leftest, rightest = x, x
-	if s.cam.ytensionenable {
-		if y < 0 {
-			lowest = y
-		}
-	}
+	s.cam.ResetTracking()
 
 	// Run lifebar
 	if s.lifebar.ro.act() {
@@ -1351,11 +1343,10 @@ func (s *System) action() {
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(x, &cvmin, &cvmax,
-			&highest, &lowest, &leftest, &rightest)
+		s.charList.action(x)
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
-		s.charUpdate(&cvmin, &cvmax, &highest, &lowest, &leftest, &rightest)
+		s.charUpdate()
 	}
 
 	// Set global First Attack flag if either team got it
@@ -1364,15 +1355,9 @@ func (s *System) action() {
 	}
 
 	// Run camera
-	leftest -= x
-	rightest -= x
-	var newx, newy float32 = x, y
-	var sclMul float32
-	sclMul = s.cam.action(&newx, &newy, leftest, rightest, lowest, highest,
-		cvmin, cvmax, s.super > 0 || s.pause > 0)
+	x, y, scl = s.cam.action(x, y, scl, s.super > 0 || s.pause > 0)
 
-	// Update camera
-	introSkip := false
+	//introSkip := false
 	if s.tickNextFrame() {
 		if s.lifebar.ro.cur < 1 && !s.introSkipped {
 			if s.shuttertime > 0 ||
@@ -1389,15 +1374,17 @@ func (s *System) action() {
 							p[0].selfState(0, -1, -1, 0, "")
 						}
 					}
-					ox := newx
-					newx = 0
-					leftest = MaxF(float32(Min(s.stage.p[0].startx,
-						s.stage.p[1].startx))*s.stage.localscl,
-						-(float32(s.gameWidth)/2)/s.cam.BaseScale()+s.screenleft) - ox
-					rightest = MinF(float32(Max(s.stage.p[0].startx,
-						s.stage.p[1].startx))*s.stage.localscl,
-						(float32(s.gameWidth)/2)/s.cam.BaseScale()-s.screenright) - ox
-					introSkip = true
+					/*
+						ox := newx
+						newx = 0
+						leftest = MaxF(float32(Min(s.stage.p[0].startx,
+							s.stage.p[1].startx))*s.stage.localscl,
+							-(float32(s.gameWidth)/2)/s.cam.BaseScale()+s.screenleft) - ox
+						rightest = MinF(float32(Max(s.stage.p[0].startx,
+							s.stage.p[1].startx))*s.stage.localscl,
+							(float32(s.gameWidth)/2)/s.cam.BaseScale()-s.screenright) - ox
+						//introSkip = true
+					*/
 					s.introSkipped = true
 				}
 			}
@@ -1407,23 +1394,19 @@ func (s *System) action() {
 			}
 		}
 	}
-	if introSkip {
-		sclMul = 1 / scl
-	}
-	leftest = (leftest - s.screenleft) * s.cam.BaseScale()
-	rightest = (rightest + s.screenright) * s.cam.BaseScale()
-	scl = s.cam.ScaleBound(scl, sclMul)
-	tmp := (float32(s.gameWidth) / 2) / scl
-	if AbsF((leftest+rightest)-(newx-x)*2) >= tmp/2 {
-		tmp = MaxF(0, MinF(tmp, MaxF((newx-x)-leftest, rightest-(newx-x))))
-	}
-	x = s.cam.XBound(scl, MinF(x+leftest+tmp, MaxF(x+rightest-tmp, newx)))
 	if !s.cam.ZoomEnable {
 		// Pos X の誤差が出ないように精度を落とす
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 	}
-	y = s.cam.YBound(scl, newy)
 	s.cam.Update(scl, x, y)
+	s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
+	s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
+		float32(s.gameWidth)/s.cam.Scale - s.screenright
+	if s.xmin > s.xmax {
+		s.xmin = (s.xmin + s.xmax) / 2
+		s.xmax = s.xmin
+	}
+	s.charList.xScreenBound()
 
 	if s.superanim != nil {
 		s.topSprites.add(&SprData{s.superanim, &s.superpmap, s.superpos,
@@ -1991,7 +1974,6 @@ func (s *System) fight() (reload bool) {
 		s.nextRound()
 		s.roundResetFlg, s.introSkipped = false, false
 		s.reloadFlg, s.reloadStageFlg, s.reloadLifebarFlg = false, false, false
-		s.cam.Update(s.cam.startzoom, 0, 0)
 	}
 	reset()
 

@@ -93,7 +93,7 @@ func loadBGDef(sff *Sff, def string, bgname string) (*BGDef, error) {
 			bglink = s.bg[len(s.bg)-1]
 		}
 		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, 0, s.stageprops))
+			s.sff, s.at, s.stageprops))
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
