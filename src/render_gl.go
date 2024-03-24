@@ -469,7 +469,7 @@ func (r *Renderer) ReleasePipeline() {
 	gl.Disable(gl.BLEND)
 }
 
-func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided, useUV, useVertColor, useJoint0, useJoint1 bool, numVertices, vertAttrOffset uint32) {
+func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthMask, doubleSided, invertFrontFace, useUV, useVertColor, useJoint0, useJoint1 bool, numVertices, vertAttrOffset uint32) {
 	gl.UseProgram(r.modelShader.program)
 
 	gl.Enable(gl.TEXTURE_2D)
@@ -477,6 +477,11 @@ func (r *Renderer) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, depthM
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
 	gl.DepthMask(depthMask)
+	if invertFrontFace {
+		gl.FrontFace(gl.CW)
+	} else {
+		gl.FrontFace(gl.CCW)
+	}
 	if !doubleSided {
 		gl.Enable(gl.CULL_FACE)
 		gl.CullFace(gl.BACK)
