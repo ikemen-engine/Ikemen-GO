@@ -2339,10 +2339,10 @@ func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
 			return
 		}
 		color := mdl.materials[*p.materialIndex].baseColorFactor
-		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, p.useUV, p.useVertexColor, p.useJoint0, p.useJoint1, p.numVertices, p.vertexBufferOffset)
+		modelview := view.Mul4(n.worldTransform)
+		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, modelview.Det() < 0, p.useUV, p.useVertexColor, p.useJoint0, p.useJoint1, p.numVertices, p.vertexBufferOffset)
 
 		gfx.SetModelUniformMatrix("projection", proj[:])
-		modelview := view.Mul4(n.worldTransform)
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
 		if index := mat.textureIndex; index != nil {
 			gfx.SetModelTexture("tex", mdl.textures[*index].tex)
