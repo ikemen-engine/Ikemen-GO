@@ -1626,6 +1626,8 @@ type Node struct {
 	worldTransform     mgl.Mat4
 	childrenIndex      []uint32
 	trans              Trans
+	zWrite             bool
+	zTest              bool
 	parentIndex        *int32
 	skin               *uint32
 	morphTargetWeights []float32
@@ -2118,6 +2120,9 @@ func loadglTFStage(filepath string) (*Model, error) {
 				node.morphTargetWeights = mdl.meshes[*node.meshIndex].morphTargetWeights
 			}
 		}
+		node.trans = TransNone
+		node.zTest = true
+		node.zWrite = true
 		if n.Extras != nil {
 			v, ok := n.Extras.(map[string]interface{})
 			if ok {
@@ -2129,7 +2134,14 @@ func loadglTFStage(filepath string) (*Model, error) {
 				case "NONE":
 					node.trans = TransNone
 				}
+				if v["disableZTest"] != nil && v["disableZTest"] != "0" && v["disableZTest"] != "false" {
+					node.zTest = false
+				}
+				if v["disableZWrite"] != nil && v["disableZWrite"] != "0" && v["disableZWrite"] != "false" {
+					node.zWrite = false
+				}
 			}
+
 		}
 		node.transformChanged = true
 	}
@@ -2340,7 +2352,7 @@ func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
 		}
 		color := mdl.materials[*p.materialIndex].baseColorFactor
 		modelview := view.Mul4(n.worldTransform)
-		gfx.SetModelPipeline(blendEq, src, dst, true, mdl.materials[*p.materialIndex].doubleSided, modelview.Det() < 0, p.useUV, p.useVertexColor, p.useJoint0, p.useJoint1, p.numVertices, p.vertexBufferOffset)
+		gfx.SetModelPipeline(blendEq, src, dst, n.zTest, n.zWrite, mdl.materials[*p.materialIndex].doubleSided, modelview.Det() < 0, p.useUV, p.useVertexColor, p.useJoint0, p.useJoint1, p.numVertices, p.vertexBufferOffset)
 
 		gfx.SetModelUniformMatrix("projection", proj[:])
 		gfx.SetModelUniformMatrix("modelview", modelview[:])
