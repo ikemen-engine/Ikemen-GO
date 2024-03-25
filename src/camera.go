@@ -203,11 +203,11 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					targetLeft = x - c.halfWidth/c.zoomout
 					targetRight = x + c.halfWidth/c.zoomout
 					if c.leftest-targetLeft < float32(sys.stage.screenleft)*c.localscl {
-						diff := float32(sys.stage.screenleft)*c.localscl - (c.leftest - targetLeft)
+						diff := MinF(float32(sys.stage.screenleft)*c.localscl-(c.leftest-targetLeft), targetLeft-minLeft)
 						targetLeft -= diff
 						targetRight -= diff
 					} else if targetRight-c.rightest < float32(sys.stage.screenright)*c.localscl {
-						diff := float32(sys.stage.screenright)*c.localscl - (targetRight - c.rightest)
+						diff := MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), maxRight-targetRight)
 						targetLeft += diff
 						targetRight += diff
 					}
