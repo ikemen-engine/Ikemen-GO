@@ -522,10 +522,13 @@ const (
 	OC_ex_helpername
 	OC_ex_hitoverridden
 	OC_ex_movehitvar_contact
+	OC_ex_movehitvar_cornerpush
 	OC_ex_movehitvar_id
+	OC_ex_movehitvar_overridden
 	OC_ex_movehitvar_playerno
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
+	OC_ex_movehitvar_uniqhit
 	OC_ex_incustomstate
 	OC_ex_indialogue
 	OC_ex_isassertedchar
@@ -2430,15 +2433,20 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardCount)
 	case OC_ex_movehitvar_contact:
 		sys.bcStack.PushB(c.mhv.contact)
+	case OC_ex_movehitvar_cornerpush:
+		sys.bcStack.PushF(c.mhv.cornerpush)
 	case OC_ex_movehitvar_id:
 		sys.bcStack.PushI(c.mhv.id)
+	case OC_ex_movehitvar_overridden:
+		sys.bcStack.PushB(c.mhv.overridden)
 	case OC_ex_movehitvar_playerno:
 		sys.bcStack.PushI(int32(c.mhv.playerNo))
 	case OC_ex_movehitvar_spark_x:
 		sys.bcStack.PushF(c.mhv.sparkxy[0] * (c.localscl / oc.localscl))
 	case OC_ex_movehitvar_spark_y:
 		sys.bcStack.PushF(c.mhv.sparkxy[1] * (c.localscl / oc.localscl))
-
+	case OC_ex_movehitvar_uniqhit:
+		sys.bcStack.PushI(c.mhv.uniqhit)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -6355,7 +6363,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				sys.superanim, sys.superpmap.remap = crun.getAnim(30, "f", true), nil
+				sys.superanim, sys.superpmap.remap = crun.getAnim(100, "f", true), nil
 				sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
 			} else {
 				return false
@@ -9277,7 +9285,7 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_slidetime:
 			crun.ghv.slidetime = exp[0].evalI(c)
 		case getHitVarSet_xvel:
-			crun.ghv.xvel = exp[0].evalF(c) * lclscround
+			crun.ghv.xvel = exp[0].evalF(c) * crun.facing * lclscround
 		case getHitVarSet_yaccel:
 			crun.ghv.yaccel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_yvel:

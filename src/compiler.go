@@ -2900,16 +2900,22 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		out.append(OC_ex_)
 		switch c.token {
+		case "cornerpush":
+			out.append(OC_ex_movehitvar_cornerpush)
 		case "contact":
 			out.append(OC_ex_movehitvar_contact)
 		case "id":
 			out.append(OC_ex_movehitvar_id)
+		case "overridden":
+			out.append(OC_ex_movehitvar_overridden)
 		case "playerno":
 			out.append(OC_ex_movehitvar_playerno)
 		case "sparkx":
 			out.append(OC_ex_movehitvar_spark_x)
 		case "sparky":
 			out.append(OC_ex_movehitvar_spark_y)
+		case "uniqhit":
+			out.append(OC_ex_movehitvar_uniqhit)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

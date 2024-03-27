@@ -848,9 +848,12 @@ func (ho *HitOverride) clear() {
 
 type MoveHitVar struct {
 	contact  bool
+	cornerpush float32
 	id       int32
+	overridden bool
 	playerNo int
 	sparkxy  [2]float32
+	uniqhit    int32
 }
 
 func (mhv *MoveHitVar) clear() {
@@ -1919,7 +1922,7 @@ type CharSystemVar struct {
 	sprPriority      int32
 	receivedDmg      int32
 	receivedHits     int32
-	velOff           float32
+	cornerVelOff     float32
 	width            [2]float32
 	edge             [2]float32
 	height           [2]float32
@@ -1999,10 +2002,10 @@ type Char struct {
 	inguarddist     bool
 	pushed          bool
 	hitdefContact   bool
-	atktmp          int8
+	atktmp          int8 // 1 hitdef active, 0 inactive, -1 other
 	hittmp          int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
-	acttmp          int8
-	minus           int8
+	acttmp          int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
+	minus           int8 // current negative state
 	platformPosY    float32
 	groundAngle     float32
 	ownpal          bool
@@ -4148,7 +4151,8 @@ func (c *Char) getAnim(n int32, ffx string, fx bool) (a *Animation) {
 			}
 		}
 		if !sys.ignoreMostErrors {
-			str := "存在しないアニメ: "
+			//str := "存在しないアニメ: "
+			str := "Invalid action: "
 			if ffx != "" && ffx != "s" {
 				str += strings.ToUpper(ffx) + ":"
 			} else {
@@ -5615,14 +5619,14 @@ func (c *Char) posUpdate() {
 	// In WinMugen, the threshold for corner push to happen is 4 pixels from the corner
 	// In Mugen 1.0 and 1.1 this threshold is bugged, varying with game resolution
 	// In Ikemen, this threshold is obsolete
-	var velOff float32
+	c.mhv.cornerpush = 0
 	friction := float32(0.7)
-	if c.velOff != 0 && sys.super == 0 {
+	if c.cornerVelOff != 0 && sys.super == 0 {
 		for _, p := range sys.chars {
 			if len(p) > 0 && p[0].ss.moveType == MT_H && p[0].ghv.id == c.id {
 				npos := (p[0].pos[0] + p[0].vel[0]*p[0].facing) * p[0].localscl
 				if p[0].trackableByCamera() && p[0].csf(CSF_screenbound) && (npos <= sys.xmin || npos >= sys.xmax) {
-					velOff = c.velOff
+					c.mhv.cornerpush = c.cornerVelOff
 				}
 				// In Ikemen the cornerpush friction is defined by the target instead
 				if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
@@ -5646,12 +5650,12 @@ func (c *Char) posUpdate() {
 	}
 	if c.csf(CSF_posfreeze) {
 		if nobind[0] {
-			c.setPosX(c.oldPos[0] + velOff)
+			c.setPosX(c.oldPos[0] + c.mhv.cornerpush)
 		}
 	} else {
 		// Controls speed
 		if nobind[0] {
-			c.setPosX(c.oldPos[0] + c.vel[0]*c.facing + velOff)
+			c.setPosX(c.oldPos[0] + c.vel[0]*c.facing + c.mhv.cornerpush)
 		}
 		if nobind[1] {
 			c.setPosY(c.oldPos[1] + c.vel[1])
@@ -5671,9 +5675,9 @@ func (c *Char) posUpdate() {
 		}
 	}
 	if sys.super == 0 {
-		c.velOff *= friction
-		if AbsF(c.velOff) < 1 {
-			c.velOff = 0
+		c.cornerVelOff *= friction
+		if AbsF(c.cornerVelOff) < 1 {
+			c.cornerVelOff = 0
 		}
 	}
 	c.bindPosAdd = [...]float32{0, 0}
@@ -6043,7 +6047,7 @@ func (c *Char) actionPrepare() {
 								c.changeState(12, -1, -1, "")
 							}
 						} else if !c.asf(ASF_nowalk) && c.ss.stateType == ST_S &&
-							(c.cmd[0].Buffer.F > 0 != (!(c.inguarddist && c.scf(SCF_guard)) && c.cmd[0].Buffer.B > 0)) {
+							(c.cmd[0].Buffer.F > 0 != ((!c.inguarddist || c.asf(ASF_nostandguard)) && c.cmd[0].Buffer.B > 0)) {
 							if c.ss.no != 20 {
 								c.changeState(20, -1, -1, "")
 							}
@@ -6370,8 +6374,7 @@ func (c *Char) actionRun() {
 		}
 	}
 	c.minus = 1
-	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) -
-		int8(Btoi(c.hitPause()))
+	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) - int8(Btoi(c.hitPause()))
 }
 func (c *Char) actionFinish() {
 	if (c.minus < 1) || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
@@ -7007,7 +7010,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		p2s := false
 		// Check HitOverride
 		if !getter.stchtmp || !getter.csf(CSF_gethit) {
-			_break := false
+			c.mhv.overridden = false
 			for i, ho := range getter.ho {
 				if ho.time == 0 || ho.attr&hd.attr&^int32(ST_MASK) == 0 {
 					continue
@@ -7025,19 +7028,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					(hd.p2stateno >= 0 || hd.p1stateno >= 0) {
 					return 0
 				}
-				if ho.stateno >= 0 {
+				if ho.stateno >= 0 || ho.keepState {
+					if ho.keepState {
+						getter.hoKeepState = true
+					}
 					getter.hoIdx = i
-					_break = true
-					break
-				}
-				if ho.keepState {
-					getter.hoKeepState = true
-					getter.hoIdx = i
-					_break = true
+					c.mhv.overridden = true
 					break
 				}
 			}
-			if !_break {
+			if !c.mhv.overridden {
 				if Abs(hitType) == 1 && hd.p2stateno >= 0 {
 					pn := getter.playerNo
 					if hd.p2getp1state {
@@ -7053,6 +7053,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		if !proj {
 			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
+			c.mhv.uniqhit = int32(len(c.targetsOfHitdef))
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.csf(CSF_gethit)
 		// Variables that are set even if Hitdef type is "None"
@@ -7613,20 +7614,20 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hitType > 0 && !proj {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
-					c.velOff = hd.ground_cornerpush_veloff * c.facing
+					c.cornerVelOff = hd.ground_cornerpush_veloff * c.facing
 				case ST_A:
-					c.velOff = hd.air_cornerpush_veloff * c.facing
+					c.cornerVelOff = hd.air_cornerpush_veloff * c.facing
 				case ST_L:
-					c.velOff = hd.down_cornerpush_veloff * c.facing
+					c.cornerVelOff = hd.down_cornerpush_veloff * c.facing
 				}
 			}
 		} else {
 			if hitType > 0 && !proj {
 				switch getter.ss.stateType {
 				case ST_S, ST_C:
-					c.velOff = hd.guard_cornerpush_veloff * c.facing
+					c.cornerVelOff = hd.guard_cornerpush_veloff * c.facing
 				case ST_A:
-					c.velOff = hd.airguard_cornerpush_veloff * c.facing
+					c.cornerVelOff = hd.airguard_cornerpush_veloff * c.facing
 				}
 			}
 		}
