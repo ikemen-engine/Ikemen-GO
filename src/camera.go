@@ -45,6 +45,8 @@ type stageCamera struct {
 	leftestvel           float32
 	rightestvel          float32
 	roundstart           bool
+	maxRight             float32
+	minLeft              float32
 }
 
 func newStageCamera() *stageCamera {
@@ -114,6 +116,8 @@ func (c *Camera) Reset() {
 		c.boundR)
 	//yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
 	c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, xminscl))
+	c.maxRight = float32(c.boundright)*c.localscl + c.halfWidth/c.zoomout
+	c.minLeft = float32(c.boundleft)*c.localscl - c.halfWidth/c.zoomout
 }
 func (c *Camera) Init() {
 	c.Reset()
@@ -182,32 +186,30 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				tension := MaxF(0, float32(c.tension)*c.localscl)
 				oldLeft, oldRight := x-c.halfWidth/scale, x+c.halfWidth/scale
 				targetLeft, targetRight := oldLeft, oldRight
-				maxRight := float32(c.boundright)*c.localscl + c.halfWidth/c.zoomout
-				minLeft := float32(c.boundleft)*c.localscl - c.halfWidth/c.zoomout
 				if c.autocenter {
-					targetLeft = MinF(MaxF((c.leftest+c.rightest)/2-c.halfWidth/scale, minLeft), maxRight-2*c.halfWidth/scale)
+					targetLeft = MinF(MaxF((c.leftest+c.rightest)/2-c.halfWidth/scale, c.minLeft), c.maxRight-2*c.halfWidth/scale)
 					targetRight = targetLeft + 2*c.halfWidth/scale
 				}
 
 				if c.leftest < targetLeft+tension {
-					diff := targetLeft - MaxF(c.leftest-tension, minLeft)
-					targetLeft = MaxF(c.leftest-tension, minLeft)
-					targetRight = MaxF(oldRight-diff, MinF(c.rightest+tension, maxRight))
+					diff := targetLeft - MaxF(c.leftest-tension, c.minLeft)
+					targetLeft = MaxF(c.leftest-tension, c.minLeft)
+					targetRight = MaxF(oldRight-diff, MinF(c.rightest+tension, c.maxRight))
 				} else if c.rightest > targetRight-tension {
-					diff := targetRight - MinF(c.rightest+tension, maxRight)
-					targetRight = MinF(c.rightest+tension, maxRight)
-					targetLeft = MinF(oldLeft-diff, MaxF(c.leftest-tension, minLeft))
+					diff := targetRight - MinF(c.rightest+tension, c.maxRight)
+					targetRight = MinF(c.rightest+tension, c.maxRight)
+					targetLeft = MinF(oldLeft-diff, MaxF(c.leftest-tension, c.minLeft))
 				}
 				if c.halfWidth*2/(targetRight-targetLeft) < c.zoomout {
 					x := (targetRight + targetLeft) / 2
 					targetLeft = x - c.halfWidth/c.zoomout
 					targetRight = x + c.halfWidth/c.zoomout
 					if c.leftest-targetLeft < float32(sys.stage.screenleft)*c.localscl {
-						diff := MinF(float32(sys.stage.screenleft)*c.localscl-(c.leftest-targetLeft), targetLeft-minLeft)
+						diff := MinF(float32(sys.stage.screenleft)*c.localscl-(c.leftest-targetLeft), targetLeft-c.minLeft)
 						targetLeft -= diff
 						targetRight -= diff
 					} else if targetRight-c.rightest < float32(sys.stage.screenright)*c.localscl {
-						diff := MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), maxRight-targetRight)
+						diff := MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)
 						targetLeft += diff
 						targetRight += diff
 					}
