@@ -1308,6 +1308,12 @@ func (s *System) action() {
 			s.xmin = (s.xmin + s.xmax) / 2
 			s.xmax = s.xmin
 		}
+		if AbsF(s.cam.maxRight-s.xmax) < 0.0001 {
+			s.xmax = s.cam.maxRight
+		}
+		if AbsF(s.cam.minLeft-s.xmin) < 0.0001 {
+			s.xmin = s.cam.minLeft
+		}
 		s.allPalFX.step()
 		//s.bgPalFX.step()
 		s.envShake.next()
@@ -1405,6 +1411,12 @@ func (s *System) action() {
 	if s.xmin > s.xmax {
 		s.xmin = (s.xmin + s.xmax) / 2
 		s.xmax = s.xmin
+	}
+	if AbsF(s.cam.maxRight-s.xmax) < 0.0001 {
+		s.xmax = s.cam.maxRight
+	}
+	if AbsF(s.cam.minLeft-s.xmin) < 0.0001 {
+		s.xmin = s.cam.minLeft
 	}
 	s.charList.xScreenBound()
 
