@@ -5002,7 +5002,11 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 			}
 		}
 	}
-	return (opos - cpos) / oc.localscl
+	dist := (opos - cpos) / oc.localscl
+	if AbsF(dist) < 0.0001 {
+		dist = 0
+	}
+	return dist
 }
 func (c *Char) distY(opp *Char, oc *Char) float32 {
 	cpos := c.pos[1] * c.localscl
