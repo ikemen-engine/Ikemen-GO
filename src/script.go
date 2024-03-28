@@ -3438,14 +3438,20 @@ func triggerFunctions(l *lua.LState) {
 		switch strArg(l, 1) {
 		case "contact":
 			ln = lua.LNumber(Btoi(c.mhv.contact))
+		case "cornerpush":
+			ln = lua.LNumber(c.mhv.cornerpush)
 		case "id":
 			ln = lua.LNumber(c.mhv.id)
+		case "overridden":
+			ln = lua.LNumber(Btoi(c.mhv.overridden))
 		case "playerno":
 			ln = lua.LNumber(c.mhv.playerNo)
 		case "sparkx":
 			ln = lua.LNumber(c.mhv.sparkxy[0])
 		case "sparky":
 			ln = lua.LNumber(c.mhv.sparkxy[1])
+		case "uniqhit":
+			ln = lua.LNumber(c.mhv.uniqhit)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
