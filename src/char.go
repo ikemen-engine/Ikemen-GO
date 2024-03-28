@@ -847,12 +847,12 @@ func (ho *HitOverride) clear() {
 }
 
 type MoveHitVar struct {
-	contact  bool
+	contact    bool
 	cornerpush float32
-	id       int32
+	id         int32
 	overridden bool
-	playerNo int
-	sparkxy  [2]float32
+	playerNo   int
+	sparkxy    [2]float32
 	uniqhit    int32
 }
 
