@@ -204,6 +204,8 @@ github.com/ikemen-engine/beep v0.0.0-20230923080832-980aab9dbee7 h1:AkGr31Fk2yev
 github.com/ikemen-engine/beep v0.0.0-20230923080832-980aab9dbee7/go.mod h1:XKUV0wo5hZKhCM7QZEol3RIlgBh7ZI7lEdI+mzWx2qY=
 github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23 h1:qLKMExG3q4lNJabvxuJjvOYdaYz1t32Ee/N/6+fkE00=
 github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
+github.com/ikemen-engine/glfont v0.0.0-20240330150147-4c31e1f7aaf7 h1:ACKtf9510YpONj9bZ2D9XQsEOXvhe3abAS/2309ihM8=
+github.com/ikemen-engine/glfont v0.0.0-20240330150147-4c31e1f7aaf7/go.mod h1:7QcK+eKEO2FnoZx0L8YmI1hB+YxL3XzmFVuCbxI/BW4=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/jfreymuth/oggvorbis v1.0.2 h1:MjAb64MjsqlUBBOlyqyZvB7H7om58F6I9iP4skamaII=
 github.com/jfreymuth/oggvorbis v1.0.2/go.mod h1:hTCEBUJIOM8voBYPIa/TZima67oFAM1eB2Lzjq/nVK0=
