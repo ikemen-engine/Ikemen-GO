@@ -6,7 +6,7 @@ require (
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/mathgl v1.0.0
 	github.com/ikemen-engine/beep v0.0.0-20230923080832-980aab9dbee7
-	github.com/ikemen-engine/glfont v0.0.0-20230122001504-a74730561e23
+	github.com/ikemen-engine/glfont v0.0.0-20240330150147-4c31e1f7aaf7
 	github.com/sqweek/dialog v0.0.0-20220809060634-e981b270ebbf
 	github.com/yuin/gopher-lua v1.1.0
 	golang.org/x/mobile v0.0.0-20221110043201-43a038452099
