@@ -363,10 +363,12 @@ const (
 	OC_const_stagevar_scaling_topscale
 	OC_const_stagevar_bound_screenleft
 	OC_const_stagevar_bound_screenright
-	OC_const_stagevar_stageinfo_zoffset
-	OC_const_stagevar_stageinfo_zoffsetlink
+	OC_const_stagevar_stageinfo_localcoord_x
+	OC_const_stagevar_stageinfo_localcoord_y
 	OC_const_stagevar_stageinfo_xscale
 	OC_const_stagevar_stageinfo_yscale
+	OC_const_stagevar_stageinfo_zoffset
+	OC_const_stagevar_stageinfo_zoffsetlink
 	OC_const_stagevar_shadow_intensity
 	OC_const_stagevar_shadow_color_r
 	OC_const_stagevar_shadow_color_g
@@ -535,6 +537,8 @@ const (
 	OC_ex_isassertedglobal
 	OC_ex_ishost
 	OC_ex_jugglepoints
+	OC_ex_localcoord_x
+	OC_ex_localcoord_y
 	OC_ex_localscale
 	OC_ex_maparray
 	OC_ex_max
@@ -1887,14 +1891,18 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.stage.screenleft)
 	case OC_const_stagevar_bound_screenright:
 		sys.bcStack.PushI(sys.stage.screenright)
-	case OC_const_stagevar_stageinfo_zoffset:
-		sys.bcStack.PushI(sys.stage.stageCamera.zoffset)
-	case OC_const_stagevar_stageinfo_zoffsetlink:
-		sys.bcStack.PushI(sys.stage.zoffsetlink)
+	case OC_const_stagevar_stageinfo_localcoord_x:
+		sys.bcStack.PushI(sys.stage.stageCamera.localcoord[0])
+	case OC_const_stagevar_stageinfo_localcoord_y:
+		sys.bcStack.PushI(sys.stage.stageCamera.localcoord[1])
 	case OC_const_stagevar_stageinfo_xscale:
 		sys.bcStack.PushF(sys.stage.scale[0])
 	case OC_const_stagevar_stageinfo_yscale:
 		sys.bcStack.PushF(sys.stage.scale[1])
+	case OC_const_stagevar_stageinfo_zoffset:
+		sys.bcStack.PushI(sys.stage.stageCamera.zoffset)
+	case OC_const_stagevar_stageinfo_zoffsetlink:
+		sys.bcStack.PushI(sys.stage.zoffsetlink)
 	case OC_const_stagevar_shadow_intensity:
 		sys.bcStack.PushI(sys.stage.sdw.intensity)
 	case OC_const_stagevar_shadow_color_r:
@@ -2278,6 +2286,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.isHost())
 	case OC_ex_jugglepoints:
 		*sys.bcStack.Top() = c.jugglePoints(*sys.bcStack.Top())
+	case OC_ex_localcoord_x:
+		sys.bcStack.PushF(sys.cgi[c.playerNo].localcoord[0])
+	case OC_ex_localcoord_y:
+		sys.bcStack.PushF(sys.cgi[c.playerNo].localcoord[1])
 	case OC_ex_localscale:
 		sys.bcStack.PushF(c.localscl)
 	case OC_ex_majorversion:

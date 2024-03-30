@@ -85,7 +85,8 @@ if time = 0 {
 		turn{}
 	}
 	# set starting pos
-	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
+	posAdd{x: -backEdgeDist - const240p(90)}
+	posSet{y: 0}
 	# store distance to switch initiation position
 	map(_iksys_tagSwitchDist) := abs(pos x - player(teamLeader),pos x);
 	# set movement
@@ -99,7 +100,7 @@ if time = 0 {
 }
 
 # continue until reaching place where the switch was initiated, but stop in front of enemy
-if backEdgeBodyDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist X < const240p(30)) {
+if backEdgeDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist X < const240p(30)) {
 	velSet{x: 0; y: 0}
 	selfState{value: const(StateStand); ctrl: 1}
 }
@@ -167,12 +168,12 @@ if roundState = 3 {
 }
 
 # the character cannot be hit until he has fully entered the stage
-if backEdgeBodyDist <= 0 {
+if backEdgeDist <= 0 {
 	notHitBy{value: SCA; time: 2}
 }
 
 # regain control right after entering screen, in case of active player loss
-if !ctrl && backEdgeBodyDist >= 0 {
+if !ctrl && backEdgeDist >= 0 {
 	ctrlSet{value: 1}
 }
 
@@ -181,7 +182,8 @@ if time = 0 {
 		turn{}
 	}
 	# set starting pos
-	posSet{x: const240p(pos x * localScale - (backEdgeBodyDist * localScale + 90) * facing); y: 0}
+	posAdd{x: -backEdgeDist - const240p(90)}
+	posSet{y: 0}
 	# change active player assignment if the battle still goes on
 	if roundState = 2 {
 		map(_iksys_tagLastId) := player(teamLeader),id;

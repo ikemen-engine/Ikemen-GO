@@ -366,6 +366,7 @@ var triggerMap = map[string]int{
 	"ishost":             1,
 	"lastplayerid":       1,
 	"lerp":               1,
+	"localcoord":         1,
 	"localscale":         1,
 	"majorversion":       1,
 	"map":                1,
@@ -2269,6 +2270,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_bound_screenleft
 		case "bound.screenright":
 			opc = OC_const_stagevar_bound_screenright
+		case "stageinfo.localcoord.x":
+			opc = OC_const_stagevar_stageinfo_localcoord_x
+		case "stageinfo.localcoord.y":
+			opc = OC_const_stagevar_stageinfo_localcoord_y
 		case "stageinfo.zoffset":
 			opc = OC_const_stagevar_stageinfo_zoffset
 		case "stageinfo.zoffsetlink":
@@ -3053,6 +3058,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_jugglepoints)
 	case "lastplayerid":
 		out.append(OC_ex_, OC_ex_lastplayerid)
+	case "localcoord":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex_, OC_ex_localcoord_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_localcoord_y)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
 	case "localscale":
 		out.append(OC_ex_, OC_ex_localscale)
 	case "majorversion":
