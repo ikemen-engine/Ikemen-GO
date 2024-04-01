@@ -7455,7 +7455,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					e.anim.start_scale[1] *= c.localscl
 				}
 				e.setPos(p1)
-				e.rot.angle = sparkangle
+				e.anglerot[0] = sparkangle
 				c.insertExplod(i)
 			}
 		}
