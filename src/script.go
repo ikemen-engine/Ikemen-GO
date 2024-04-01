@@ -3855,14 +3855,18 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.screenleft))
 		case "bound.screenright":
 			l.Push(lua.LNumber(sys.stage.screenright))
-		case "stageinfo.zoffset":
-			l.Push(lua.LNumber(sys.stage.stageCamera.zoffset))
-		case "stageinfo.zoffsetlink":
-			l.Push(lua.LNumber(sys.stage.zoffsetlink))
+		case "stageinfo.localcoord.x":
+			l.Push(lua.LNumber(sys.stage.stageCamera.localcoord[0]))
+		case "stageinfo.localcoord.y":
+			l.Push(lua.LNumber(sys.stage.stageCamera.localcoord[1]))
 		case "stageinfo.xscale":
 			l.Push(lua.LNumber(sys.stage.scale[0]))
 		case "stageinfo.yscale":
 			l.Push(lua.LNumber(sys.stage.scale[1]))
+		case "stageinfo.zoffset":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoffset))
+		case "stageinfo.zoffsetlink":
+			l.Push(lua.LNumber(sys.stage.zoffsetlink))
 		case "shadow.intensity":
 			l.Push(lua.LNumber(sys.stage.sdw.intensity))
 		case "shadow.color.r":
