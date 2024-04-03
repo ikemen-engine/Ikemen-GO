@@ -882,7 +882,7 @@ func (s *System) nextRound() {
 			} else {
 				// Default to first anim in .AIR
 				var firstAnim int32
-				for k, _ := range p[0].gi().anim {
+				for k := range p[0].gi().anim {
 					firstAnim = k
 					break
 				}
