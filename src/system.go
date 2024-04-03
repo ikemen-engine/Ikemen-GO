@@ -875,7 +875,19 @@ func (s *System) nextRound() {
 	}
 	for _, p := range s.chars {
 		if len(p) > 0 {
-			p[0].selfState(5900, 0, -1, 0, "")
+			zeroDeclared := p[0].gi().anim[0] != nil
+
+			if zeroDeclared {
+				p[0].selfState(5900, 0, -1, 0, "")
+			} else {
+				// Default to first anim in .AIR
+				var firstAnim int32
+				for k, _ := range p[0].gi().anim {
+					firstAnim = k
+					break
+				}
+				p[0].selfState(5900, firstAnim, -1, 0, "")
+			}
 		}
 	}
 }
