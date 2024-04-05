@@ -958,6 +958,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 				return err
 			}
 			*s.sff = *sff
+			// SFF v2.01 was not available before Mugen 1.1, therefore we assume that's the minimum correct version for the stage
+			if s.sff.header.Ver0 == 2 && s.sff.header.Ver2 == 1 {
+				s.mugenver[0] = 1
+				s.mugenver[1] = 1
+			}
 			return nil
 		}); err != nil {
 			return nil, err
@@ -972,6 +977,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.model.pfx = newPalFX()
 			s.model.pfx.clear()
 			s.model.pfx.time = -1
+			// 3D models were not available before Ikemen 1.0, therefore we assume that's the minimum correct version for the stage
+			if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 {
+				s.ikemenver[0] = 1
+				s.ikemenver[1] = 0
+			}
 			return nil
 		}); err != nil {
 			return nil, err
@@ -1019,7 +1029,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
 		// Disable color parameter specifically in Mugen 1.1 stages
 		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 {
-			if (s.mugenver[0] == 1 && s.mugenver[1] == 1) || (s.sff.header.Ver0 == 2 && s.sff.header.Ver2 == 1) {
+			if s.mugenver[0] == 1 && s.mugenver[1] == 1 {
 				r, g, b = 0, 0, 0
 			}
 		}

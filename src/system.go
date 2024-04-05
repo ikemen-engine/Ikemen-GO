@@ -2943,6 +2943,23 @@ func (l *Loader) loadAttachedChar(pn int) int {
 
 func (l *Loader) loadStage() bool {
 	if sys.round == 1 {
+		var tstr string
+		tnow := time.Now()
+		defer func() {
+			sys.loadTime(tnow, tstr, false, true)
+			// Mugen compatibility mode indicator
+			if sys.stage.ikemenver[0] == 0 && sys.stage.ikemenver[1] == 0 {
+				if sys.stage.mugenver[0] == 1 && sys.stage.mugenver[1] == 1 {
+					sys.appendToConsole("Using Mugen 1.1 compatibility mode.")
+				} else if sys.stage.mugenver[0] == 1 && sys.stage.mugenver[1] == 0 {
+					sys.appendToConsole("Using Mugen 1.0 compatibility mode.")
+				} else if sys.stage.mugenver[0] != 1 {
+					sys.appendToConsole("Using WinMugen compatibility mode.")
+				} else {
+					sys.appendToConsole("Stage with unknown engine version.")
+				}
+			}
+		}()
 		var def string
 		if sys.sel.selectedStageNo == 0 {
 			randomstageno := Rand(0, int32(len(sys.sel.stagelist))-1)
@@ -2960,6 +2977,7 @@ func (l *Loader) loadStage() bool {
 		sys.stageLoop = false
 		sys.stageList[0], l.err = loadStage(def, true)
 		sys.stage = sys.stageList[0]
+		tstr = fmt.Sprintf("Stage loaded: %v", def)
 	}
 	return l.err == nil
 }
