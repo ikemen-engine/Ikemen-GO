@@ -746,6 +746,7 @@ type Stage struct {
 	reload          bool
 	stageprops      StageProps
 	model           *Model
+	ikemenver        [3]uint16
 }
 
 func newStage(def string) *Stage {
@@ -804,6 +805,19 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 				if v, err := strconv.ParseUint(v, 10, 16); err == nil {
 					s.mugenver[k] = uint16(v)
+				} else {
+					break
+				}
+			}
+		}
+		s.ikemenver = [3]uint16{}
+		if str, ok := sec[0]["ikemenversion"]; ok {
+			for k, v := range SplitAndTrim(str, ".") {
+				if k >= len(s.ikemenver) {
+					break
+				}
+				if v, err := strconv.ParseUint(v, 10, 16); err == nil {
+					s.ikemenver[k] = uint16(v)
 				} else {
 					break
 				}
@@ -1001,9 +1015,13 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.sdw.intensity = Clamp(tmp, 0, 255)
 		}
 		var r, g, b int32
-		// mugen 1.1 removed support for color
-		if (s.mugenver[0] != 1 || s.mugenver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) && sec[0].readI32ForStage("color", &r, &g, &b) {
-			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+		sec[0].readI32ForStage("color", &r, &g, &b)
+		r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+		// Disable color parameter specifically in Mugen 1.1 stages
+		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 {
+			if (s.mugenver[0] == 1 && s.mugenver[1] == 1) || (s.sff.header.Ver0 == 2 && s.sff.header.Ver2 == 1) {
+				r, g, b = 0, 0, 0
+			}
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
