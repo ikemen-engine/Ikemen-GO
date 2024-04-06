@@ -7112,13 +7112,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			var absredlife int32
 			if ghvset {
 				ghv := &getter.ghv
-				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) &&
-					!ghv.guarded
-				// Save existing hit information
+				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) && !ghv.guarded
+				// Save existing variables that should persist or stack
 				dmg, hdmg, gdmg := ghv.damage, ghv.hitdamage, ghv.guarddamage
 				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
+				dpnt, gpnt := ghv.dizzypoints, ghv.guardpoints
 				fall, hc, gc, fc, by := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
 				ghv.clear()
+				// Restore variables
 				ghv.hitBy = by
 				ghv.damage = dmg
 				ghv.hitdamage = hdmg
@@ -7126,6 +7127,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.power = pwr
 				ghv.hitpower = hpwr
 				ghv.guardpower = gpwr
+				ghv.dizzypoints = dpnt
+				ghv.guardpoints = gpnt
+				// Update variables
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
