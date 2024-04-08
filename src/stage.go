@@ -746,7 +746,7 @@ type Stage struct {
 	reload          bool
 	stageprops      StageProps
 	model           *Model
-	ikemenver        [3]uint16
+	ikemenver       [3]uint16
 }
 
 func newStage(def string) *Stage {
