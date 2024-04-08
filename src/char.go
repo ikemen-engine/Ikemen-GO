@@ -6026,8 +6026,8 @@ func (c *Char) actionPrepare() {
 			// In Mugen, characters can perform basic actions even if they are KO
 			if c.ctrl() && !c.inputOver() && (c.key >= 0 || c.helperIndex == 0) {
 				if !c.asf(ASF_nohardcodedkeys) {
-					// TODO disable jumps right after KO instead of after over.hittime
-					if !c.asf(ASF_nojump) && (!sys.roundEnd() || c.asf(ASF_postroundinput)) && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 {
+					if !c.asf(ASF_nojump) && c.ss.stateType == ST_S && c.cmd[0].Buffer.U > 0 &&
+						(!(sys.intro < 0 && sys.intro > -sys.lifebar.ro.over_waittime) || c.asf(ASF_postroundinput)) {
 						if c.ss.no != 40 {
 							c.changeState(40, -1, -1, "")
 						}
@@ -7112,13 +7112,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			var absredlife int32
 			if ghvset {
 				ghv := &getter.ghv
-				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) &&
-					!ghv.guarded
-				// Save existing hit information
+				cmb := (getter.ss.moveType == MT_H || getter.csf(CSF_gethit)) && !ghv.guarded
+				// Save existing variables that should persist or stack
 				dmg, hdmg, gdmg := ghv.damage, ghv.hitdamage, ghv.guarddamage
 				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
+				dpnt, gpnt := ghv.dizzypoints, ghv.guardpoints
 				fall, hc, gc, fc, by := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
 				ghv.clear()
+				// Restore variables
 				ghv.hitBy = by
 				ghv.damage = dmg
 				ghv.hitdamage = hdmg
@@ -7126,6 +7127,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.power = pwr
 				ghv.hitpower = hpwr
 				ghv.guardpower = gpwr
+				ghv.dizzypoints = dpnt
+				ghv.guardpoints = gpnt
+				// Update variables
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
