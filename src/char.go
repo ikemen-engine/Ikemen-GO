@@ -1220,7 +1220,7 @@ func (e *Explod) setPos(c *Char) {
 	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
 	// The engine will leave the sprite facing to that side indefinitely.
 	// Ikemen chars aren't affected by this.
-	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
 		e.facing*e.relativef < 0 {
 		e.lockSpriteFacing = true
 	}
@@ -2209,12 +2209,31 @@ func (c *Char) clearCachedData() {
 	c.activeHitScale = make(map[int32][3]*HitScale)
 	c.nextHitScale = make(map[int32][3]*HitScale)
 }
+
+// Return Char Global Info normally
 func (c *Char) gi() *CharGlobalInfo {
 	return &sys.cgi[c.playerNo]
 }
-func (c *Char) stCgi() *CharGlobalInfo {
+
+// Return Char Global Info from the state owner
+func (c *Char) stOgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
 }
+
+// Return Char Global Info according to working state
+// Essentially check it in the character itself during negative states and in the state owner otherwise
+// There was a bug in the default values of DefenceMulSet and Explod when a character threw another character with a different engine version
+// This showed that engine version should always be checked in the player that owns the code
+// So this function was added to replace stOgi() in version checks
+// Version checks should probably be refactored in the future, regardless
+func (c *Char) stWgi() *CharGlobalInfo {
+	if c.minus == 0 {
+		return &sys.cgi[c.ss.sb.playerNo]
+	} else {
+		return &sys.cgi[c.playerNo]
+	}
+}
+
 func (c *Char) ocd() *OverrideCharData {
 	if c.teamside == -1 {
 		return &sys.sel.ocd[2][c.memberNo]
@@ -3199,7 +3218,7 @@ func (c *Char) assertCommand(name string, time int32) {
 	}
 }
 func (c *Char) constp(coordinate, value float32) BytecodeValue {
-	return BytecodeFloat(c.stCgi().localcoord[0] / coordinate * value)
+	return BytecodeFloat(c.stOgi().localcoord[0] / coordinate * value)
 }
 func (c *Char) ctrl() bool {
 	return c.scf(SCF_ctrl) && !c.scf(SCF_standby) &&
@@ -3329,13 +3348,15 @@ func (c *Char) moveReversed() int32 {
 	return 0
 }
 func (c *Char) mugenVersion() float32 {
-	if c.stCgi().ikemenver[0] != 0 || c.stCgi().ikemenver[1] != 0 {
+	// Here the version is always checked directly in the character instead of the working state
+	// This is because in a custom state this trigger will be used to know the enemy's version rather than our own
+	if c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0 {
 		return 1.1
-	} else if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 1 {
+	} else if c.gi().mugenver[0] == 1 && c.gi().mugenver[1] == 1 {
 		return 1.1
-	} else if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 0 {
+	} else if c.gi().mugenver[0] == 1 && c.gi().mugenver[1] == 0 {
 		return 1.0
-	} else if c.stCgi().mugenver[0] != 1 {
+	} else if c.gi().mugenver[0] != 1 {
 		return 0.5 // Arbitrary value
 	} else {
 		return 0
@@ -3539,11 +3560,11 @@ func (c *Char) screenPosY() float32 {
 	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
 }
 func (c *Char) screenHeight() float32 {
-	return sys.screenHeight() / (320.0 / float32(c.stCgi().localcoord[0])) /
+	return sys.screenHeight() / (320.0 / float32(c.stOgi().localcoord[0])) /
 		((3.0 / 4.0) / (float32(sys.scrrect[3]) / float32(sys.scrrect[2])))
 }
 func (c *Char) screenWidth() float32 {
-	return c.stCgi().localcoord[0]
+	return c.stOgi().localcoord[0]
 }
 func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsSF() {
@@ -3762,7 +3783,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
 	// of a hitpause when attempting to change state during the hitpause.
 	// Ikemenver chars aren't affected by this.
-	if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 {
+	if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
 		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 	}
 	c.stchtmp = true
@@ -3772,7 +3793,7 @@ func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
 		// Reset persistent counters for this state (MUGEN chars)
-		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 		}
 		// Remove flagged explods
@@ -3979,7 +4000,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		}
 	}
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if h.stCgi().mugenver[0] == 1 && h.stCgi().mugenver[1] == 1 && h.stCgi().ikemenver[0] <= 0 && h.stCgi().ikemenver[1] <= 0 {
+	if h.stWgi().mugenver[0] == 1 && h.stWgi().mugenver[1] == 1 && h.stWgi().ikemenver[0] <= 0 && h.stWgi().ikemenver[1] <= 0 {
 		h.palfx.invertblend = -2
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
@@ -3995,7 +4016,7 @@ func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
 		expl.id, expl.playerId, expl.palfx, expl.palfxdef = -1, c.id, c.getPalfx(), PalFXDef{color: 1, hue: 0, mul: [...]int32{256, 256, 256}}
-		if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 1 && c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 			expl.projection = Projection_Perspective
 		} else {
 			expl.projection = Projection_Orthographic
@@ -4325,7 +4346,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	} else {
 		p.clsnScale = c.clsnScale
 	}
-	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
 		p.hitdef.nochainid = [...]int32{-1, -1}
 	}
@@ -4399,7 +4420,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.attr&int32(ST_A) != 0 {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {
-		if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity*1.3)
 		} else {
 			ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
@@ -4995,7 +5016,7 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 	cpos := c.pos[0] * c.localscl
 	opos := opp.pos[0] * opp.localscl
 	// Update distance while bound. Mugen chars only
-	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
 				f := bt.facing
@@ -5016,7 +5037,7 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	cpos := c.pos[1] * c.localscl
 	opos := opp.pos[1] * opp.localscl
 	// Update distance while bound. Mugen chars only
-	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
 				cpos = bt.pos[1]*bt.localscl + (c.bindPos[1]+c.bindPosAdd[1])*c.localscl
@@ -5053,8 +5074,8 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeSF()
 	}
 	dist := c.facing * c.distX(rd, oc)
-	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-		if c.stCgi().mugenver[0] != 1 {
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.stWgi().mugenver[0] != 1 {
 			// 旧バージョンでは小数点切り捨て
 			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
 			dist = float32(int32(dist))
@@ -5067,8 +5088,8 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeSF()
 	}
 	dist := c.distY(rd, oc)
-	if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
-		if c.stCgi().mugenver[0] != 1 {
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.stWgi().mugenver[0] != 1 {
 			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
 			dist = float32(int32(dist))
 		}
@@ -5080,7 +5101,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 		return BytecodeSF()
 	} else {
 		dist := c.facing * c.bodyDistX(p2, oc)
-		if c.stCgi().mugenver[0] != 1 {
+		if c.stWgi().mugenver[0] != 1 {
 			dist = float32(int32(dist)) //旧バージョンでは小数点切り捨て / "In the old version, decimal truncation was used."
 		}
 		return BytecodeFloat(dist)
@@ -5089,7 +5110,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 func (c *Char) p2BodyDistY(oc *Char) BytecodeValue {
 	if p2 := c.p2(); p2 == nil {
 		return BytecodeSF()
-	} else if oc.stCgi().ikemenver[0] <= 0 && oc.stCgi().ikemenver[1] <= 0 {
+	} else if oc.stWgi().ikemenver[0] <= 0 && oc.stWgi().ikemenver[1] <= 0 {
 		return c.rdDistY(c.p2(), oc) // In Mugen, P2BodyDist Y simply does the same as P2Dist Y
 	} else {
 		return BytecodeFloat(c.bodyDistY(p2, oc))
@@ -5104,7 +5125,7 @@ func (c *Char) hitVelSetY() {
 	c.setYV(c.ghv.yvel)
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
-	if !actually || c.stCgi().mugenver[0] != 1 {
+	if !actually || c.stWgi().mugenver[0] != 1 {
 		switch c.ss.stateType {
 		case ST_A:
 			return base + 1
@@ -5190,7 +5211,7 @@ func (c *Char) getPalfx() *PalFX {
 	}
 	c.palfx = newPalFX()
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if c.stCgi().mugenver[0] == 1 && c.stCgi().mugenver[1] == 1 && c.stCgi().ikemenver[0] <= 0 && c.stCgi().ikemenver[1] <= 0 && c.palfx != nil {
+	if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] <= 0 && c.stWgi().ikemenver[1] <= 0 && c.palfx != nil {
 		c.palfx.PalFXDef.invertblend = -2
 	}
 	return c.palfx
@@ -5633,7 +5654,7 @@ func (c *Char) posUpdate() {
 					c.mhv.cornerpush = c.cornerVelOff
 				}
 				// In Ikemen the cornerpush friction is defined by the target instead
-				if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+				if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 					friction = 0.7
 				} else {
 					if p[0].ss.stateType == ST_C || p[0].ss.stateType == ST_L {
@@ -6139,7 +6160,7 @@ func (c *Char) actionPrepare() {
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
 		c.angleRescaleClsn = false
 		// In WinMugen these flags persist during hitpause
-		if c.stCgi().ikemenver[0] > 0 || c.stCgi().ikemenver[1] > 0 || c.gi().mugenver[0] == 1 {
+		if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 || c.stWgi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset)
 			// The following AssertSpecial flags are only reset later in the code
 			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
@@ -6467,8 +6488,8 @@ func (c *Char) update() {
 		}
 		if c.ss.moveType == MT_H {
 			// Set opposing team's First Attack flag
-			if c.teamside != -1 && sys.firstAttack[1-c.teamside] < 0 && sys.firstAttack[2] == 0 {
-				if c.ghv.guarded == false && c.ghv.playerNo >= 0 {
+			if sys.firstAttack[2] == 0 && (c.teamside == 0 || c.teamside == 1) {
+				if sys.firstAttack[1-c.teamside] < 0 && c.ghv.playerNo >= 0 && c.ghv.guarded == false {
 					sys.firstAttack[1-c.teamside] = c.ghv.playerNo
 				}
 			}
@@ -7237,7 +7258,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					ghv.fallcount = fc
 					ghv.fallf = ghv.fallf || fall
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
-					if c.stCgi().ikemenver[0] == 0 && c.stCgi().ikemenver[1] == 0 {
+					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 						ghv.hittime += 1
 					}
 				}
