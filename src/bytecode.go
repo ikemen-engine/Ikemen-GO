@@ -4139,11 +4139,11 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	if e == nil {
 		return false
 	}
-	if c.minus == -2 || c.minus == -4 { //TODO: isn't this supposed to check crun instead of c?
-		e.localscl = (320 / crun.localcoord)
-	} else {
-		e.localscl = crun.localscl
-	}
+	// In this scenario the explod scale is constant in Mugen
+	//if c.minus == -2 || c.minus == -4 {
+	//	e.localscl = (320 / crun.localcoord)
+	//} else {
+	e.localscl = crun.localscl
 	e.setStartParams(&e.palfxdef)
 	e.setPos(crun)
 	crun.insertExplodEx(i, rp)
