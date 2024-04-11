@@ -484,7 +484,7 @@ const (
 	OC_ex_gethitvar_guard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_y
-	OC_ex_gethitvar_contact
+	OC_ex_gethitvar_frame
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -523,7 +523,7 @@ const (
 	OC_ex_helperindexexist
 	OC_ex_helpername
 	OC_ex_hitoverridden
-	OC_ex_movehitvar_contact
+	OC_ex_movehitvar_frame
 	OC_ex_movehitvar_cornerpush
 	OC_ex_movehitvar_id
 	OC_ex_movehitvar_overridden
@@ -2116,8 +2116,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_y:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_contact:
-		sys.bcStack.PushB(c.ghv.contact)
+	case OC_ex_gethitvar_frame:
+		sys.bcStack.PushB(c.ghv.frame)
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
@@ -2444,8 +2444,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i += 4
 	case OC_ex_guardcount:
 		sys.bcStack.PushI(c.guardCount)
-	case OC_ex_movehitvar_contact:
-		sys.bcStack.PushB(c.mhv.contact)
+	case OC_ex_movehitvar_frame:
+		sys.bcStack.PushB(c.mhv.frame)
 	case OC_ex_movehitvar_cornerpush:
 		sys.bcStack.PushF(c.mhv.cornerpush)
 	case OC_ex_movehitvar_id:

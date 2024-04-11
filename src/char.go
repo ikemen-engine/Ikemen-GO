@@ -777,7 +777,7 @@ type GetHitVar struct {
 	down_velocity     [2]float32
 	guard_velocity    float32
 	airguard_velocity [2]float32
-	contact           bool
+	frame             bool
 }
 
 func (ghv *GetHitVar) clear() {
@@ -847,8 +847,8 @@ func (ho *HitOverride) clear() {
 }
 
 type MoveHitVar struct {
-	contact    bool
 	cornerpush float32
+	frame      bool
 	id         int32
 	overridden bool
 	playerNo   int
@@ -6383,8 +6383,8 @@ func (c *Char) actionRun() {
 				c.ghv.hittime--
 			}
 		}
-		c.ghv.contact = false
-		c.mhv.contact = false
+		c.ghv.frame = false
+		c.mhv.frame = false
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
 			c.gi().pctime++
 		}
@@ -7361,7 +7361,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				getter.stchtmp = false
 			}
 			getter.setCSF(CSF_gethit)
-			getter.ghv.contact = true
+			getter.ghv.frame = true
 			// If any hit in the current frame will KO the enemy, the others will not prevent it
 			if getter.ghv.damage >= getter.life {
 				getter.ghv.kill = true
@@ -7745,7 +7745,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					sys.cgi[i].pctime = 0
 					sys.cgi[i].pcid = p.id
 					getter.hitdefContact = true
-					getter.mhv.contact = true
+					getter.mhv.frame = true
 					continue
 				}
 				if !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
@@ -7858,7 +7858,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
 									getter.hitdefContact = true
-									getter.mhv.contact = true
+									getter.mhv.frame = true
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
@@ -7913,7 +7913,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 								c.hitdef.hitonce = -1
 							}
 							c.hitdefContact = true
-							c.mhv.contact = true
+							c.mhv.frame = true
 						}
 					}
 				}
