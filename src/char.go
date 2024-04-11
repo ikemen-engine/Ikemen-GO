@@ -7685,12 +7685,19 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					continue
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
-				// Default guard distance
-				if !p.platform &&
-					p.hitdef.guard_dist[0] < 0 &&
-					dist <= float32(c.size.proj.attack.dist.front)*c.localscl &&
-					dist >= -float32(c.size.proj.attack.dist.back)*c.localscl {
-					getter.inguarddist = true
+				// Projectile guard distance
+				if !p.platform && p.hitdef.attr > 0 {// https://github.com/ikemen-engine/Ikemen-GO/issues/1445
+					if p.hitdef.guard_dist[0] < 0 {
+						if dist <= float32(c.size.proj.attack.dist.front)*c.localscl &&
+							dist >= -float32(c.size.proj.attack.dist.back)*c.localscl {
+							getter.inguarddist = true
+						}
+					} else {
+						if dist <= float32(p.hitdef.guard_dist[0]) &&
+							dist >= -float32(p.hitdef.guard_dist[1]) {
+							getter.inguarddist = true
+						}
+					}
 				}
 				if p.platform {
 					//Platformの足場上空判定
@@ -7750,11 +7757,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					orghittmp := getter.hittmp
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallf)) + 1
-					}
-					// Guard distance
-					dist := -getter.distX(c, getter) * c.facing
-					if dist <= float32(p.hitdef.guard_dist[0]) && dist >= -float32(p.hitdef.guard_dist[1]) {
-						getter.inguarddist = true
 					}
 					if getter.projClsnCheck(p, true) {
 						hits := p.hits
