@@ -327,8 +327,8 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl*newScale), float32(c.boundlow)*c.localscl*newScale)
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
-				newX = MinF(MaxF(newX, float32(c.boundleft)*c.localscl*newScale), float32(c.boundright)*c.localscl*newScale)
-				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl*newScale), float32(c.boundlow)*c.localscl*newScale)
+				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale, c.maxRight-c.halfWidth/newScale))
+				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl)
 			}
 
 		case Follow_View:
