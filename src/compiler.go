@@ -1900,8 +1900,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_airguard_velocity_x)
 			case "airguard.velocity.y":
 				out.append(OC_ex_gethitvar_airguard_velocity_y)
-			case "contact":
-				out.append(OC_ex_gethitvar_contact)
+			case "frame":
+				out.append(OC_ex_gethitvar_frame)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -2907,8 +2907,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		switch c.token {
 		case "cornerpush":
 			out.append(OC_ex_movehitvar_cornerpush)
-		case "contact":
-			out.append(OC_ex_movehitvar_contact)
+		case "frame":
+			out.append(OC_ex_movehitvar_frame)
 		case "id":
 			out.append(OC_ex_movehitvar_id)
 		case "overridden":
