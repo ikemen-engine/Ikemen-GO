@@ -56,10 +56,10 @@ func (wt *WinType) SetPerfect() {
 }
 
 type FightFx struct {
-	fat      AnimationTable
-	fsff     *Sff
-	fsnd     *Snd
-	fx_scale float32
+	fat        AnimationTable
+	fsff       *Sff
+	fsnd       *Snd
+	fx_scale   float32
 	localcoord [2]float32
 }
 

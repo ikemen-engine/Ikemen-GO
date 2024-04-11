@@ -7686,7 +7686,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
 				// Projectile guard distance
-				if !p.platform && p.hitdef.attr > 0 {// https://github.com/ikemen-engine/Ikemen-GO/issues/1445
+				if !p.platform && p.hitdef.attr > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1445
 					if p.hitdef.guard_dist[0] < 0 {
 						if dist <= float32(c.size.proj.attack.dist.front)*c.localscl &&
 							dist >= -float32(c.size.proj.attack.dist.back)*c.localscl {
