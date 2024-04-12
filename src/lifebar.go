@@ -56,14 +56,15 @@ func (wt *WinType) SetPerfect() {
 }
 
 type FightFx struct {
-	fat      AnimationTable
-	fsff     *Sff
-	fsnd     *Snd
-	fx_scale float32
+	fat        AnimationTable
+	fsff       *Sff
+	fsnd       *Snd
+	fx_scale   float32
+	localcoord [2]float32
 }
 
 func newFightFx() *FightFx {
-	return &FightFx{fsff: &Sff{}, fx_scale: 1.0}
+	return &FightFx{fsff: &Sff{}, fx_scale: 1.0, localcoord: [...]float32{320, 240}}
 }
 
 func loadFightFx(def string) error {
@@ -93,6 +94,14 @@ func loadFightFx(def string) error {
 					return Error(fmt.Sprintf("%v prefix is reserved for the system and cannot be used", strings.ToUpper(prefix)))
 				}
 				is.ReadF32("fx.scale", &ffx.fx_scale)
+				// Read localcoord
+				// Merely used for automatic fx.scale adjustment
+				// If localcoord is not available, we use the old method for scaling
+				if is.ReadF32("localcoord", &ffx.localcoord[0], &ffx.localcoord[1]) {
+					ffx.fx_scale *= float32(320 / ffx.localcoord[0])
+				} else {
+					ffx.fx_scale *= sys.lifebarScale
+				}
 			}
 		case "files":
 			// Read files section
@@ -133,8 +142,7 @@ func loadFightFx(def string) error {
 	}
 	// Set fx scale to anims
 	for _, a := range ffx.fat {
-		a.start_scale = [...]float32{sys.lifebarScale * ffx.fx_scale,
-			sys.lifebarScale * ffx.fx_scale}
+		a.start_scale = [...]float32{ffx.fx_scale, ffx.fx_scale}
 	}
 	if sys.ffx[prefix] == nil {
 		sys.ffxRegexp += "|^(" + prefix + ")"
