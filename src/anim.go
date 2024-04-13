@@ -155,11 +155,18 @@ type Animation struct {
 	interpolate_blend_dstalpha float32
 	remap                      RemapPreset
 	start_scale                [2]float32
+	opaquepalette			   bool
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
-	return &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
+	a := &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
 		remap: make(RemapPreset), start_scale: [...]float32{1, 1}}
+	if (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1)  {
+		a.opaquepalette = false
+	} else {
+		a.opaquepalette = true
+	}
+	return a
 }
 func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) *Animation {
 	a := newAnimation(sff, pal)
@@ -716,12 +723,17 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	if a.spr.coldepth <= 8 && paltex == nil {
 		paltex = a.spr.CachePalette(pal)
 	}
+	mask := int32(a.mask)
+	if !a.opaquepalette && a.spr.coldepth <= 8 && a.palettedata != nil && a.mask != -1 {
+		mask = -2
+		//if trans == -2 { mask = 0}
+	}
 	rp := RenderParams{
 		a.spr.Tex, paltex, a.spr.Size,
 		x * sys.widthScale,
 		y * sys.heightScale, a.tile, xs * sys.widthScale, xcs * xbs * h * sys.widthScale,
 		ys * sys.heightScale, 1, xcs * rxadd * sys.widthScale / sys.heightScale, rot,
-		0, trans, int32(a.mask), pfx, window, rcx, rcy, projectionMode, fLength * sys.heightScale,
+		0, trans, mask, pfx, window, rcx, rcy, projectionMode, fLength * sys.heightScale,
 		xs * posLocalscl * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * a.start_scale[0] * (1 / a.scale_x) * sys.widthScale,
 		ys * posLocalscl * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * a.start_scale[1] * (1 / a.scale_y) * sys.heightScale,
 	}
@@ -737,12 +749,16 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 
+	mask := int32(a.mask)
+	if !a.opaquepalette && a.spr.coldepth <= 8 && a.palettedata != nil && a.mask != -1  {
+		mask = -2
+	}
 	rp := RenderParams{
 		a.spr.Tex, nil, a.spr.Size,
 		AbsF(xscl*h) * float32(a.spr.Offset[0]) * sys.widthScale,
 		AbsF(yscl*v) * float32(a.spr.Offset[1]) * sys.heightScale, a.tile,
 		xscl * h * sys.widthScale, xscl * h * sys.widthScale,
-		yscl * v * sys.heightScale, vscl, rxadd, rot, color | 0xff000000, 0, int32(a.mask), nil, window,
+		yscl * v * sys.heightScale, vscl, rxadd, rot, color | 0xff000000, 0, mask, nil, window,
 		(x + float32(sys.gameWidth)/2) * sys.widthScale, y * sys.heightScale,
 		projectionMode, fLength,
 		xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x),
@@ -750,9 +766,29 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	}
 
 	// TODO: This is redundant now that rp.tint is used to colorise the shadow
-	if a.spr.coldepth <= 8 {
-		var pal [256]uint32
-		if color != 0 || alpha > 0 {
+	//if a.spr.coldepth <= 8 {
+	//	var pal [256]uint32
+	//	if color != 0 || alpha > 0 {
+	//		paltemp := a.spr.paltemp
+	//		if len(paltemp) == 0 {
+	//			if a.palettedata != nil {
+	//				paltemp = a.spr.GetPal(a.palettedata)
+	//			} else {
+	//				paltemp = a.spr.GetPal(&a.sff.palList)
+	//			}
+	//		}
+	//		for i := range pal {
+	//			// Skip transparent colors
+	//			if len(paltemp) > i && paltemp[i] != 0 {
+	//				pal[i] = color | 0xff000000
+	//			}
+	//		}
+	//	}
+	//	rp.paltex = PaletteToTexture(pal[:])
+	//}
+
+	if a.spr.coldepth <= 8 && (color != 0 || alpha > 0) {
+		if a.opaquepalette {
 			paltemp := a.spr.paltemp
 			if len(paltemp) == 0 {
 				if a.palettedata != nil {
@@ -761,14 +797,14 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 					paltemp = a.spr.GetPal(&a.sff.palList)
 				}
 			}
-			for i := range pal {
-				// Skip transparent colors
-				if len(paltemp) > i && paltemp[i] != 0 {
-					pal[i] = color | 0xff000000
-				}
+			rp.paltex = PaletteToTexture(paltemp[:])
+		} else {
+			trans := a.alpha()
+			pal, paltex := a.pal(pfx, trans == -2)
+			if paltex == nil {
+				rp.paltex = a.spr.CachePalette(pal)
 			}
 		}
-		rp.paltex = PaletteToTexture(pal[:])
 	}
 
 	if color != 0 {
@@ -995,13 +1031,13 @@ func (sl ShadowList) draw(x, y, scl float32) {
 				sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-y-
 					(s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
 				scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, xshear, s.rot,
-				&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
+				s.fx, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
 		} else {
 			s.anim.ShadowDraw(&sys.scrrect, sys.cam.Offset[0]-(x-s.pos[0]-xshearoff)*scl,
 				sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset()-y-
 					(s.pos[1]*sys.stage.sdw.yscale-s.offsetY)*scl,
 				scl*s.scl[0], scl*-s.scl[1], sys.stage.sdw.yscale, xshear, s.rot,
-				&sys.bgPalFX, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
+				s.fx, s.oldVer, uint32(color), intensity, s.facing, s.posLocalscl, s.projection, s.fLength)
 		}
 	}
 }

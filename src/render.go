@@ -356,7 +356,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		if invblend == 3 && neg != nil {
 			*neg = false
 		}
-		render(BlendI, BlendOne, BlendOne, 1)
+		render(BlendI, blendSourceFactor, BlendOne, 1)
 	case trans <= 0:
 	//Add1(128,128)
 	case trans < 255:
