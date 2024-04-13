@@ -1903,6 +1903,8 @@ type CharSystemVar struct {
 	uniqHitCount     int32
 	pauseMovetime    int32
 	superMovetime    int32
+	prevPauseMovetime int32
+	prevSuperMovetime int32
 	bindTime         int32
 	bindToId         int32
 	bindPos          [2]float32
@@ -3467,10 +3469,10 @@ func (c *Char) palno() int32 {
 }
 func (c *Char) pauseTime() int32 {
 	var p int32
-	if sys.super > 0 && c.superMovetime == 0 {
+	if sys.super > 0 && c.prevSuperMovetime == 0 {
 		p = sys.super
 	}
-	if sys.pause > 0 && c.pauseMovetime == 0 && p < sys.pause {
+	if sys.pause > 0 && c.prevPauseMovetime == 0 && p < sys.pause {
 		p = sys.pause
 	}
 	return p
@@ -3783,7 +3785,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
 	// of a hitpause when attempting to change state during the hitpause.
 	// Ikemenver chars aren't affected by this.
-	if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+	if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 	}
 	c.stchtmp = true
@@ -4000,7 +4002,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 		}
 	}
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if h.stWgi().mugenver[0] == 1 && h.stWgi().mugenver[1] == 1 && h.stWgi().ikemenver[0] <= 0 && h.stWgi().ikemenver[1] <= 0 {
+	if h.stWgi().mugenver[0] == 1 && h.stWgi().mugenver[1] == 1 && h.stWgi().ikemenver[0] == 0 && h.stWgi().ikemenver[1] == 0 {
 		h.palfx.invertblend = -2
 	}
 	h.changeStateEx(st, c.playerNo, 0, 1, "")
@@ -5110,7 +5112,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 func (c *Char) p2BodyDistY(oc *Char) BytecodeValue {
 	if p2 := c.p2(); p2 == nil {
 		return BytecodeSF()
-	} else if oc.stWgi().ikemenver[0] <= 0 && oc.stWgi().ikemenver[1] <= 0 {
+	} else if oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
 		return c.rdDistY(c.p2(), oc) // In Mugen, P2BodyDist Y simply does the same as P2Dist Y
 	} else {
 		return BytecodeFloat(c.bodyDistY(p2, oc))
@@ -5211,7 +5213,7 @@ func (c *Char) getPalfx() *PalFX {
 	}
 	c.palfx = newPalFX()
 	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] <= 0 && c.stWgi().ikemenver[1] <= 0 && c.palfx != nil {
+	if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.palfx != nil {
 		c.palfx.PalFXDef.invertblend = -2
 	}
 	return c.palfx
@@ -6041,6 +6043,9 @@ func (c *Char) actionPrepare() {
 		}
 	}
 	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
+	// Due to the nature of how pauses are processed, these are needed to fix an "off by 1" error in the PauseTime trigger
+	c.prevSuperMovetime = c.superMovetime
+	c.prevPauseMovetime = c.pauseMovetime
 	if !c.pauseBool {
 		// Perform basic actions
 		if c.keyctrl[0] && c.cmd != nil {
@@ -6160,7 +6165,7 @@ func (c *Char) actionPrepare() {
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
 		c.angleRescaleClsn = false
 		// In WinMugen these flags persist during hitpause
-		if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 || c.stWgi().mugenver[0] == 1 {
+		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset)
 			// The following AssertSpecial flags are only reset later in the code
 			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
