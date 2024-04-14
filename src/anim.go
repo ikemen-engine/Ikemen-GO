@@ -562,6 +562,11 @@ func (a *Animation) UpdateSprite() {
 	}
 }
 func (a *Animation) Action() {
+	if a.sff != nil && (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1)  {
+		a.opaquepalette = false
+	} else {
+		a.opaquepalette = true
+	}
 	if len(a.frames) == 0 {
 		a.loopend = true
 		return
