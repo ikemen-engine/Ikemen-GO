@@ -246,7 +246,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				}
 
 				targetX := (targetLeft + targetRight) / 2
-				targetScale := c.halfWidth * 2 / (targetRight - targetLeft)
+				targetScale := MinF(c.halfWidth*2/(targetRight-targetLeft), maxScale)
 
 				if !c.ytensionenable {
 					newY = c.ywithoutbound
@@ -323,7 +323,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newLeft, newRight = targetLeft, targetRight
 					newX = (newLeft + newRight) / 2
 				}
-				newScale = c.halfWidth * 2 / (newRight - newLeft)
+				newScale = MinF(c.halfWidth*2/(newRight-newLeft), maxScale)
 				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl*newScale), float32(c.boundlow)*c.localscl*newScale)
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
