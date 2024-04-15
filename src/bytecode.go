@@ -1331,7 +1331,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				cmdName := sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]
 				pno := sys.workingState.playerNo
 				// Engine version is checked in state owner rather than working state
-				if cmdName == "recovery" || oc.stOgi().ikemenver[0] > 0 || oc.stOgi().ikemenver[1] > 0 {
+				if cmdName == "recovery" || oc.stOgi().ikemenver[0] != 0 || oc.stOgi().ikemenver[1] != 0 {
 					// Command is checked by name, rather than by command list order (MUGEN 1.1)
 					pno = c.playerNo
 				}
@@ -2925,7 +2925,7 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 		case assertSpecial_flag_g:
 			sys.setGSF(GlobalSpecialFlag(exp[0].evalI(c)))
 		case assertSpecial_noko:
-			if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 				crun.setASF(AssertSpecialFlag(ASF_noko))
 			} else {
 				sys.setGSF(GlobalSpecialFlag(GSF_noko))
@@ -3839,7 +3839,7 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 			}
 			pf.clear2(true)
 			//Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
-			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] <= 0 && c.stWgi().ikemenver[1] <= 0 {
+			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 				pf.invertblend = -2
 			}
 			doOnce = true
@@ -4093,14 +4093,14 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case explod_animelem:
-			if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 				animelem := exp[0].evalI(c)
 				e.animelem = animelem
 				e.anim.Action()
 				e.setAnimElem()
 			}
 		case explod_animfreeze:
-			if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 				e.animfreeze = exp[0].evalB(c)
 			}
 		case explod_angle:
@@ -4124,12 +4124,12 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_window:
 			e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 		default:
-			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] <= 0 && c.stWgi().ikemenver[1] <= 0 {
+			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 				e.palfxdef.invertblend = -2
 			}
 			palFX(sc).runSub(c, &e.palfxdef, id, exp)
 
-			if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 				explod(sc).setInterpolation(c, e, id, exp, &e.palfxdef)
 			}
 
@@ -4274,7 +4274,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if exp[0].evalI(c) < 0 {
 					f = -1
 				}
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) {
 						e.relativef = f
 					})
@@ -4283,19 +4283,19 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if exp[0].evalI(c) < 0 {
 					vf = -1
 				}
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) {
 						e.vfacing = vf
 					})
 				}
 			case explod_pos:
 				pos[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) { e.relativePos[0] = pos[0] })
 				}
 				if len(exp) > 1 {
 					pos[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.relativePos[1] = pos[1] })
 					}
 				}
@@ -4303,42 +4303,42 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				rndx := (exp[0].evalF(c) / 2) * lclscround
 				rndx = RandF(-rndx, rndx)
 				pos[0] += rndx
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) { e.relativePos[0] += rndx })
 				}
 				if len(exp) > 1 {
 					rndy := (exp[1].evalF(c) / 2) * lclscround
 					rndy = RandF(-rndy, rndy)
 					pos[1] += rndy
-					if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.relativePos[1] += rndy })
 					}
 				}
 			case explod_velocity:
 				vel[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) { e.velocity[0] = vel[0] })
 				}
 				if len(exp) > 1 {
 					vel[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.velocity[1] = vel[1] })
 					}
 				}
 			case explod_accel:
 				accel[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) { e.accel[0] = accel[0] })
 				}
 				if len(exp) > 1 {
 					accel[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.accel[1] = accel[1] })
 					}
 				}
 			case explod_space:
 				sp = Space(exp[0].evalI(c))
-				if (c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0) && !ptexists {
+				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 					eachExpl(func(e *Explod) { e.space = sp })
 				}
 			case explod_postype:
@@ -4455,12 +4455,12 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.blendmode = int32(blendmode)
 				})
 			case explod_anim:
-				if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					anim := crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), true)
 					eachExpl(func(e *Explod) { e.anim = anim })
 				}
 			case explod_animelem:
-				if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					animelem := exp[0].evalI(c)
 					eachExpl(func(e *Explod) {
 						e.interpolate_animelem[1] = -1
@@ -4470,7 +4470,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					})
 				}
 			case explod_animfreeze:
-				if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					animfreeze := exp[0].evalB(c)
 					eachExpl(func(e *Explod) { e.animfreeze = animfreeze })
 				}
@@ -4492,7 +4492,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 				})
 			case explod_ignorehitpause:
-				if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					ihp := exp[0].evalB(c)
 					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
 				}
@@ -4503,7 +4503,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 				eachExpl(func(e *Explod) { e.setBind(bId) })
 			case explod_interpolation:
-				if c.stWgi().ikemenver[0] > 0 || c.stWgi().ikemenver[1] > 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					interpolation := exp[0].evalB(c)
 					eachExpl(func(e *Explod) {
 						if e.interpolate != interpolation {
@@ -4712,7 +4712,7 @@ func (sc afterImage) Run(c *Char, _ []int32) bool {
 		if !doOnce {
 			crun.aimg.clear()
 			//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] <= 0 && c.stWgi().ikemenver[1] <= 0 {
+			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 				crun.aimg.palfx[0].invertblend = -2
 			}
 			crun.aimg.time = 1
@@ -5159,7 +5159,7 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 			}
 		}
 		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-		if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] <= 0 && c.stWgi().ikemenver[1] <= 0 {
+		if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 			crun.hitdef.palfx.invertblend = -2
 		}
 		sc.runSub(c, &crun.hitdef, id, exp)
