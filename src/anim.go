@@ -155,13 +155,13 @@ type Animation struct {
 	interpolate_blend_dstalpha float32
 	remap                      RemapPreset
 	start_scale                [2]float32
-	opaquepalette			   bool
+	opaquepalette              bool
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
 	a := &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
 		remap: make(RemapPreset), start_scale: [...]float32{1, 1}}
-	if (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1)  {
+	if a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1 {
 		a.opaquepalette = false
 	} else {
 		a.opaquepalette = true
@@ -562,7 +562,7 @@ func (a *Animation) UpdateSprite() {
 	}
 }
 func (a *Animation) Action() {
-	if a.sff != nil && (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1)  {
+	if a.sff != nil && (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1) {
 		a.opaquepalette = false
 	} else {
 		a.opaquepalette = true
@@ -755,7 +755,7 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 
 	mask := int32(a.mask)
-	if !a.opaquepalette && a.spr.coldepth <= 8 && a.palettedata != nil && a.mask != -1  {
+	if !a.opaquepalette && a.spr.coldepth <= 8 && a.palettedata != nil && a.mask != -1 {
 		mask = -2
 	}
 	rp := RenderParams{
