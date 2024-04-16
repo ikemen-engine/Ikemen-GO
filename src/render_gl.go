@@ -11,6 +11,7 @@ import (
 	"unsafe"
 
 	gl "github.com/go-gl/gl/v2.1/gl"
+	glfw "github.com/go-gl/glfw/v3.3/glfw"
 	"golang.org/x/mobile/exp/f32"
 )
 
@@ -280,6 +281,9 @@ func (r *Renderer) Init() {
 	chk(gl.Init())
 	sys.errLog.Printf("Using OpenGL %v (%v)", gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
+	// Store current timestamp
+	sys.prevTimestamp = glfw.GetTime()
+
 	r.postShaderSelect = make([]*ShaderProgram, 1+len(sys.externalShaderList))
 
 	// Data buffers for rendering
@@ -400,6 +404,7 @@ func (r *Renderer) Close() {
 }
 
 func (r *Renderer) BeginFrame(clearColor bool) {
+	sys.absTickCountF++
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
 	if clearColor {

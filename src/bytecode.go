@@ -191,6 +191,7 @@ const (
 	OC_id
 	OC_playeridexist
 	OC_gametime
+	OC_gamefps
 	OC_numtarget
 	OC_numenemy
 	OC_numpartner
@@ -1350,6 +1351,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.frontEdgeBodyDist() * (c.localscl / oc.localscl)))
 		case OC_frontedgedist:
 			sys.bcStack.PushI(int32(c.frontEdgeDist() * (c.localscl / oc.localscl)))
+		case OC_gamefps:
+			sys.bcStack.PushF(sys.gameFPS)
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 0 &&
