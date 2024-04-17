@@ -81,6 +81,13 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 
 func (w *Window) SwapBuffers() {
 	w.Window.SwapBuffers()
+	// Retrieve GL timestamp now
+	glNow := glfw.GetTime()
+	if glNow-sys.prevTimestamp >= 1 {
+		sys.gameFPS = sys.absTickCountF / float32(glNow-sys.prevTimestamp)
+		sys.absTickCountF = 0
+		sys.prevTimestamp = glNow
+	}
 }
 
 func (w *Window) SetIcon(icon []image.Image) {

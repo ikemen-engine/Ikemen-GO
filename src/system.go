@@ -369,6 +369,11 @@ type System struct {
 	windowCentered    bool
 	loopBreak         bool
 	loopContinue      bool
+
+	// for avg. FPS calculations
+	gameFPS       float32
+	prevTimestamp float64
+	absTickCountF float32
 }
 
 // Initialize stuff, this is called after the config int at main.go
@@ -538,6 +543,7 @@ func (s *System) await(fps int) bool {
 		s.frameSkip = true
 	}
 	s.eventUpdate()
+
 	return !s.gameEnd
 }
 
@@ -927,7 +933,7 @@ func (s *System) addFrameTime(t float32) bool {
 	return true
 }
 func (s *System) resetFrameTime() {
-	s.tickCount, s.oldTickCount, s.tickCountF, s.lastTick = 0, -1, 0, 0
+	s.tickCount, s.oldTickCount, s.tickCountF, s.lastTick, s.absTickCountF = 0, -1, 0, 0, 0
 	s.nextAddTime, s.oldNextAddTime = 1, 1
 }
 func (s *System) commandUpdate() {

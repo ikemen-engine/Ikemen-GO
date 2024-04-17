@@ -349,6 +349,7 @@ var triggerMap = map[string]int{
 	"firstattack":        1,
 	"float":              1,
 	"framespercount":     1,
+	"gamefps":            1,
 	"gamemode":           1,
 	"getplayerid":        1,
 	"groundangle":        1,
@@ -1756,6 +1757,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_frontedgebodydist)
 	case "frontedgedist":
 		out.append(OC_frontedgedist)
+	case "gamefps":
+		out.append(OC_gamefps)
 	case "gameheight":
 		out.append(OC_gameheight)
 	case "gametime":
