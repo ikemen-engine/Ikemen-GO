@@ -238,8 +238,12 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 							diffLeft += tmp
 							diffRight += tmp2
 						}
-						targetLeft += diffLeft
-						targetRight += diffRight
+						if c.halfWidth*2/((targetRight+diffRight)-(targetLeft+diffLeft)) > scale {
+							targetLeft += diffLeft
+							targetRight += diffRight
+						} else {
+							c.zoomindelaytime = c.zoomindelay
+						}
 					}
 				} else {
 					c.zoomindelaytime = c.zoomindelay
