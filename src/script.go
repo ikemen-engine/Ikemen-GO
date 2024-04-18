@@ -3135,10 +3135,6 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.fvarGet(int32(numArg(l, 1))).ToF()))
 		return 1
 	})
-	luaRegister(l, "gamefps", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.gameFPS))
-		return 1
-	})
 	luaRegister(l, "gameheight", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.gameHeight()))
 		return 1
@@ -4171,6 +4167,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "framespercount", func(l *lua.LState) int {
 		l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
+		return 1
+	})
+	luaRegister(l, "gamefps", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.gameFPS))
 		return 1
 	})
 	luaRegister(l, "gamemode", func(*lua.LState) int {

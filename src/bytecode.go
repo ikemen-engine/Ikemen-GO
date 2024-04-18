@@ -191,7 +191,6 @@ const (
 	OC_id
 	OC_playeridexist
 	OC_gametime
-	OC_gamefps
 	OC_numtarget
 	OC_numenemy
 	OC_numpartner
@@ -601,6 +600,7 @@ const (
 	OC_ex_alpha_d
 	OC_ex_selfcommand
 	OC_ex_guardcount
+	OC_ex_gamefps
 )
 const (
 	NumVar     = 60
@@ -1351,8 +1351,6 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.frontEdgeBodyDist() * (c.localscl / oc.localscl)))
 		case OC_frontedgedist:
 			sys.bcStack.PushI(int32(c.frontEdgeDist() * (c.localscl / oc.localscl)))
-		case OC_gamefps:
-			sys.bcStack.PushF(sys.gameFPS)
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 0 &&
@@ -2249,6 +2247,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_float:
 		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
+	case OC_ex_gamefps:
+		sys.bcStack.PushF(sys.gameFPS)
 	case OC_ex_gamemode:
 		sys.bcStack.PushB(strings.ToLower(sys.gameMode) ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(

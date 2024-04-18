@@ -1757,8 +1757,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_frontedgebodydist)
 	case "frontedgedist":
 		out.append(OC_frontedgedist)
-	case "gamefps":
-		out.append(OC_gamefps)
 	case "gameheight":
 		out.append(OC_gameheight)
 	case "gametime":
@@ -2877,6 +2875,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_firstattack)
 	case "framespercount":
 		out.append(OC_ex_, OC_ex_framespercount)
+	case "gamefps":
+		out.append(OC_ex_, OC_ex_gamefps)
 	case "gamemode":
 		if err := nameSubEx(OC_ex_gamemode); err != nil {
 			return bvNone(), err
