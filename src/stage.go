@@ -823,8 +823,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 				}
 			}
 		}
-		// If the MUGEN version is lower than 1.0, use camera pixel rounding (floor)
-		if s.mugenver[0] != 1 {
+		// If the MUGEN version is lower than 1.0, default to camera pixel rounding (floor)
+		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 && s.mugenver[0] != 1 {
 			s.stageprops.roundpos = true
 		}
 		if sec[0].LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
@@ -1028,10 +1028,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].readI32ForStage("color", &r, &g, &b)
 		r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
 		// Disable color parameter specifically in Mugen 1.1 stages
-		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 {
-			if s.mugenver[0] == 1 && s.mugenver[1] == 1 {
-				r, g, b = 0, 0, 0
-			}
+		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 && s.mugenver[0] == 1 && s.mugenver[1] == 1 {
+			r, g, b = 0, 0, 0
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
