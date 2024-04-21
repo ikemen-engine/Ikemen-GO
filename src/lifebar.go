@@ -2980,6 +2980,10 @@ func (mo *LifeBarMode) draw(layerno int16, f []*Fnt) {
 }
 
 type Lifebar struct {
+	name       string
+	nameLow    string
+	author     string
+	authorLow  string
 	at         AnimationTable
 	sff        *Sff
 	snd        *Snd
@@ -3088,6 +3092,10 @@ func loadLifebar(def string) (*Lifebar, error) {
 			if is.ReadBool("doubleres", &b) {
 				l.fnt_scale = 0.5
 			}
+			l.name, _, _ = is.getText("name")
+			l.nameLow = strings.ToLower(l.name)
+			l.author, _, _ = is.getText("author")
+			l.authorLow = strings.ToLower(l.author)
 		case "files":
 			if filesflg {
 				filesflg = false

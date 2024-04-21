@@ -367,6 +367,7 @@ var triggerMap = map[string]int{
 	"ishost":             1,
 	"lastplayerid":       1,
 	"lerp":               1,
+	"lifebarvar":         1,
 	"localcoord":         1,
 	"localscale":         1,
 	"majorversion":       1,
@@ -2902,6 +2903,48 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
+	case "lifebarvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		lvname := c.token
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		isStr := false
+		switch lvname {
+		case "info.author":
+			opc = OC_ex_lifebarvar_info_author
+			isStr = true
+		case "info.name":
+			opc = OC_ex_lifebarvar_info_name
+			isStr = true
+		case "round.ctrl.time":
+			opc = OC_ex_lifebarvar_round_ctrl_time
+		case "round.over.hittime":
+			opc = OC_ex_lifebarvar_round_over_hittime
+		case "round.over.time":
+			opc = OC_ex_lifebarvar_round_over_time
+		case "round.over.waittime":
+			opc = OC_ex_lifebarvar_round_over_waittime
+		case "round.over.wintime":
+			opc = OC_ex_lifebarvar_round_over_wintime
+		case "round.slow.time":
+			opc = OC_ex_lifebarvar_round_slow_time
+		case "round.start.waittime":
+			opc = OC_ex_lifebarvar_round_start_waittime
+		default:
+			return bvNone(), Error("Invalid data: " + lvname)
+		}
+		if isStr {
+			if err := nameSubEx(opc); err != nil {
+				return bvNone(), err
+			}
+		} else {
+			out.append(OC_ex_)
+			out.append(opc)
+		}
 	case "movehitvar":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
