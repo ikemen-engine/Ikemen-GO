@@ -601,6 +601,15 @@ const (
 	OC_ex_selfcommand
 	OC_ex_guardcount
 	OC_ex_gamefps
+	OC_ex_lifebarvar_info_author
+	OC_ex_lifebarvar_info_name
+	OC_ex_lifebarvar_round_ctrl_time
+	OC_ex_lifebarvar_round_over_hittime
+	OC_ex_lifebarvar_round_over_time
+	OC_ex_lifebarvar_round_over_waittime
+	OC_ex_lifebarvar_round_over_wintime
+	OC_ex_lifebarvar_round_slow_time
+	OC_ex_lifebarvar_round_start_waittime
 )
 const (
 	NumVar     = 60
@@ -2290,6 +2299,28 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.isHost())
 	case OC_ex_jugglepoints:
 		*sys.bcStack.Top() = c.jugglePoints(*sys.bcStack.Top())
+	case OC_ex_lifebarvar_info_author:
+		sys.bcStack.PushB(sys.lifebar.authorLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_ex_lifebarvar_info_name:
+		sys.bcStack.PushB(sys.lifebar.nameLow ==
+			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
+		*i += 4
+	case OC_ex_lifebarvar_round_ctrl_time:
+		sys.bcStack.PushI(sys.lifebar.ro.ctrl_time)
+	case OC_ex_lifebarvar_round_over_hittime:
+		sys.bcStack.PushI(sys.lifebar.ro.over_hittime)
+	case OC_ex_lifebarvar_round_over_time:
+		sys.bcStack.PushI(sys.lifebar.ro.over_time)
+	case OC_ex_lifebarvar_round_over_waittime:
+		sys.bcStack.PushI(sys.lifebar.ro.over_waittime)
+	case OC_ex_lifebarvar_round_over_wintime:
+		sys.bcStack.PushI(sys.lifebar.ro.over_wintime)
+	case OC_ex_lifebarvar_round_slow_time:
+		sys.bcStack.PushI(sys.lifebar.ro.slow_time)
+	case OC_ex_lifebarvar_round_start_waittime:
+		sys.bcStack.PushI(sys.lifebar.ro.start_waittime)
 	case OC_ex_localcoord_x:
 		sys.bcStack.PushF(sys.cgi[c.playerNo].localcoord[0])
 	case OC_ex_localcoord_y:

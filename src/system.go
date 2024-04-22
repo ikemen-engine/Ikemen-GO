@@ -2977,13 +2977,14 @@ func (l *Loader) loadStage() bool {
 			def = sys.sel.sdefOverwrite
 		}
 		if sys.stage != nil && sys.stage.def == def && sys.stage.mainstage && !sys.stage.reload {
+			tstr = fmt.Sprintf("Cached stage loaded: %v", def)
 			return true
 		}
 		sys.stageList = make(map[int32]*Stage)
 		sys.stageLoop = false
 		sys.stageList[0], l.err = loadStage(def, true)
 		sys.stage = sys.stageList[0]
-		tstr = fmt.Sprintf("Stage loaded: %v", def)
+		tstr = fmt.Sprintf("New stage loaded: %v", def)
 	}
 	return l.err == nil
 }
