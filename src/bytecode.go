@@ -5987,7 +5987,7 @@ func (sc targetDrop) Run(c *Char, _ []int32) bool {
 	if len(tar) == 0 {
 		return false
 	}
-	crun.targetDrop(eid, ko)
+	crun.targetDrop(eid, -1, ko)
 	return false
 }
 
