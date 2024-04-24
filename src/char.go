@@ -3745,7 +3745,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	//if c.ss.sb.playerNo != c.playerNo && pn != c.ss.sb.playerNo {
 	//	c.enemyExplodsRemove(c.ss.sb.playerNo)
 	//}
-	// Update scale in the same frame
+	// If the new state uses a different localcoord, some values need to be updated in the same frame
 	if newLs := 320 / sys.chars[pn][0].localcoord; c.localscl != newLs {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
@@ -3770,6 +3770,9 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.edge[1] *= lsRatio
 		c.height[0] *= lsRatio
 		c.height[1] *= lsRatio
+
+		c.bindPos[0] *= lsRatio
+		c.bindPos[1] *= lsRatio
 
 		c.localscl = newLs
 	}
@@ -4805,8 +4808,24 @@ func (c *Char) targetVelAddY(tar []int32, y float32) {
 		}
 	}
 }
-func (c *Char) targetDrop(excludeid int32, keepone bool) {
+func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
 	var tg []int32
+	// Keep the player with this "player ID". Used with "HitOnce" attacks such as throws
+	if keepone && excludechar > 0 {
+		for _, tid := range c.targets {
+			if t := sys.playerID(tid); t != nil {
+				if t.id == excludechar {
+					tg = append(tg, tid)
+				} else {
+					t.gethitBindClear()
+					t.ghv.dropId(c.id)
+				}
+			}
+		}
+		c.targets = tg
+		return
+	}
+	// Keep the players with this "hit ID". Used with "TargetDrop" state controller
 	if excludeid < 0 {
 		tg = c.targets
 	} else {
@@ -4821,6 +4840,7 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 			}
 		}
 	}
+	// If more than one target still remains and "keepone" is true, pick one to keep at random
 	if (keepone || excludeid < 0) && len(tg) > 0 {
 		c.targets = nil
 		r := -1
@@ -7086,6 +7106,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			c.mhv.uniqhit = int32(len(c.targetsOfHitdef))
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.csf(CSF_gethit)
+		// This flag determines if juggle points will be subtracted further down
+		jchk := getter.ghv.fallf
 		// Variables that are set even if Hitdef type is "None"
 		if ghvset {
 			if !proj {
@@ -7574,7 +7596,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			return
 		}
 		if !proj && hd.hitonce > 0 {
-			c.targetDrop(-1, false)
+			// Drop all targets except the current one
+			c.targetDrop(-1, getter.id, true)
 		}
 		if c.helperIndex != 0 {
 			//update parent's or root's target list, add to the their juggle points
@@ -7621,7 +7644,9 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.p1stateno >= 0 && c.stateChange1(hd.p1stateno, hd.playerNo) {
 				c.setCtrl(false)
 			}
-			if getter.ghv.fallf && !c.asf(ASF_nojugglecheck) {
+			// Juggle points are subtracted if the target was falling either before or after the hit
+			jchk = jchk || getter.ghv.fallf
+			if jchk && !c.asf(ASF_nojugglecheck) {
 				jug := &getter.ghv.hitBy[len(getter.ghv.hitBy)-1][1]
 				if proj {
 					*jug -= hd.air_juggle
