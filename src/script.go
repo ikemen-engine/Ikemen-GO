@@ -4607,6 +4607,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.localcoord))
 		return 1
 	})
+	luaRegister(l, "localcoordX", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.cgi[sys.debugWC.playerNo].localcoord[0]))
+		return 1
+	})
+	luaRegister(l, "localcoordY", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.cgi[sys.debugWC.playerNo].localcoord[1]))
+		return 1
+	})
 	luaRegister(l, "matchtime", func(*lua.LState) int {
 		var ti int32
 		for _, v := range sys.timerRounds {
