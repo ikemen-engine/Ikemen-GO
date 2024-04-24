@@ -435,6 +435,7 @@ type SoundEffect struct {
 	priority int32
 	channel  int32
 	loop     int32
+	freqmul  float32
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
@@ -524,6 +525,19 @@ func (s *SoundChannel) SetPriority(priority int32) {
 func (s *SoundChannel) SetChannel(channel int32) {
 	if s.ctrl != nil {
 		s.sfx.channel = channel
+	}
+}
+func (s *SoundChannel) SetFreqMul(freqmul float32) {
+	if s.ctrl != nil {
+		ch := s.sfx.channel
+		srcRate := s.sound.format.SampleRate
+		dstRate := beep.SampleRate(audioFrequency / freqmul)
+		if resampler, ok := s.ctrl.Streamer.(*beep.Resampler); ok {
+			speaker.Lock()
+			resampler.SetRatio(float64(srcRate) / float64(dstRate))
+			s.SetChannel(ch)
+			speaker.Unlock()
+		}
 	}
 }
 

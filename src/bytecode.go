@@ -8575,6 +8575,103 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type modifySnd StateControllerBase
+
+const (
+	modifySnd_channel = iota
+	modifySnd_pan
+	modifySnd_abspan
+	modifySnd_volume
+	modifySnd_volumescale
+	modifySnd_freqmul
+	modifySnd_redirectid
+	modifySnd_priority
+)
+
+func (sc modifySnd) Run(c *Char, _ []int32) bool {
+	if sys.noSoundFlg {
+		return false
+	}
+	crun := c
+	snd := crun.soundChannels.Get(-1)
+	var ch, pri int32 = -1, 0
+	var vo, fr float32 = 100, 1.0
+	freqMulSet, volumeSet, prioritySet, panSet := false, false, false, false
+	var p float32 = 0
+	x := &c.pos[0]
+	ls := crun.localscl
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifySnd_channel:
+			ch = exp[0].evalI(c)
+		case modifySnd_pan:
+			p = exp[0].evalF(c)
+			panSet = true
+		case modifySnd_abspan:
+			x = nil
+			ls = 1
+			p = exp[0].evalF(c)
+			panSet = true
+		case modifySnd_volume:
+			vo = (vo + float32(exp[0].evalI(c))*(25.0/64.0)) * (64.0 / 25.0)
+			volumeSet = true
+		case modifySnd_volumescale:
+			vo = float32(crun.gi().data.volume * exp[0].evalI(c) / 100)
+			volumeSet = true
+		case modifySnd_freqmul:
+			fr = ClampF(exp[0].evalF(c), 0.01, 5)
+			freqMulSet = true
+		case modifySnd_priority:
+			pri = exp[0].evalI(c)
+			prioritySet = true
+		case modifySnd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				x = &crun.pos[0]
+				ls = crun.localscl
+				snd = crun.soundChannels.Get(ch)
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	// Grab the correct sound channel now
+	snd = crun.soundChannels.Get(ch)
+	if snd != nil && snd.sfx != nil {
+		// If we didn't set the values, default them to current values.
+		if !freqMulSet {
+			fr = snd.sfx.freqmul
+		}
+		if !volumeSet {
+			vo = snd.sfx.volume
+		}
+		if !prioritySet {
+			pri = snd.sfx.priority
+		}
+		if !panSet {
+			p = snd.sfx.p
+			ls = snd.sfx.ls
+			x = snd.sfx.x
+		}
+
+		// Now set the values if they're different
+		if snd.sfx.freqmul != fr {
+			snd.SetFreqMul(fr)
+		}
+		if pri != snd.sfx.priority {
+			snd.SetPriority(pri)
+		}
+		if p != snd.sfx.p || ls != snd.sfx.ls || x != snd.sfx.x {
+			snd.SetPan(p*crun.facing, ls, x)
+		}
+		if vo != snd.sfx.volume {
+			snd.SetVolume(vo)
+		}
+	}
+	return false
+}
+
 type playBgm StateControllerBase
 
 const (

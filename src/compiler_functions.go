@@ -4286,6 +4286,44 @@ func (c *Compiler) modifyBGCtrl(is IniSection, sc *StateControllerBase, _ int8) 
 	})
 	return *ret, err
 }
+func (c *Compiler) modifySnd(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifySnd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifySnd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "channel",
+			modifySnd_channel, VT_Int, 1, true); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pan",
+			modifySnd_pan, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "abspan",
+			modifySnd_abspan, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "volume",
+			modifySnd_volume, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "volumescale",
+			modifySnd_volumescale, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "freqmul",
+			modifySnd_freqmul, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "priority",
+			modifySnd_priority, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) printToConsole(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*printToConsole)(sc), c.stateSec(is, func() error {
 		return c.displayToClipboardSub(is, sc)
