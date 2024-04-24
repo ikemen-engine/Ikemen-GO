@@ -535,6 +535,7 @@ func (s *SoundChannel) SetFreqMul(freqmul float32) {
 		if resampler, ok := s.ctrl.Streamer.(*beep.Resampler); ok {
 			speaker.Lock()
 			resampler.SetRatio(float64(srcRate) / float64(dstRate))
+			s.sfx.freqmul = freqmul
 			s.SetChannel(ch)
 			speaker.Unlock()
 		}
