@@ -5072,11 +5072,11 @@ func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	dist := c.distX(opp, oc)
 	var oppw float32
 	if dist == 0 || (dist < 0) != (opp.facing < 0) {
-		oppw = opp.facing * opp.width[0] * ((320 / opp.localcoord) / oc.localscl)
+		oppw = opp.facing * opp.width[0] * (opp.localscl / oc.localscl)
 	} else {
-		oppw = -opp.facing * opp.width[1] * ((320 / opp.localcoord) / oc.localscl)
+		oppw = -opp.facing * opp.width[1] * (opp.localscl / oc.localscl)
 	}
-	return dist + oppw - c.facing*c.width[0]
+	return dist + oppw - c.facing * c.width[0] * (c.localscl / oc.localscl)
 }
 func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
 	ctop := (c.pos[1] - c.height[0]) * c.localscl
