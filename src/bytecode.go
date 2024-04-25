@@ -8637,36 +8637,47 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	// Grab the correct sound channel now
-	snd = crun.soundChannels.Get(ch)
-	if snd != nil && snd.sfx != nil {
-		// If we didn't set the values, default them to current values.
-		if !freqMulSet {
-			fr = snd.sfx.freqmul
-		}
-		if !volumeSet {
-			vo = snd.sfx.volume
-		}
-		if !prioritySet {
-			pri = snd.sfx.priority
-		}
-		if !panSet {
-			p = snd.sfx.p
-			ls = snd.sfx.ls
-			x = snd.sfx.x
+	channelCount := 1
+	if ch < 0 {
+		channelCount = len(crun.soundChannels.channels)
+	}
+	for i := channelCount - 1; i >= 0; i-- {
+		if ch < 0 {
+			snd = &crun.soundChannels.channels[i]
+		} else {
+			snd = crun.soundChannels.Get(ch)
 		}
 
-		// Now set the values if they're different
-		if snd.sfx.freqmul != fr {
-			snd.SetFreqMul(fr)
-		}
-		if pri != snd.sfx.priority {
-			snd.SetPriority(pri)
-		}
-		if p != snd.sfx.p || ls != snd.sfx.ls || x != snd.sfx.x {
-			snd.SetPan(p*crun.facing, ls, x)
-		}
-		if vo != snd.sfx.volume {
-			snd.SetVolume(vo)
+		if snd != nil && snd.sfx != nil {
+			// If we didn't set the values, default them to current values.
+			if !freqMulSet {
+				fr = snd.sfx.freqmul
+			}
+			if !volumeSet {
+				vo = snd.sfx.volume
+			}
+			if !prioritySet {
+				pri = snd.sfx.priority
+			}
+			if !panSet {
+				p = snd.sfx.p
+				ls = snd.sfx.ls
+				x = snd.sfx.x
+			}
+
+			// Now set the values if they're different
+			if snd.sfx.freqmul != fr {
+				snd.SetFreqMul(fr)
+			}
+			if pri != snd.sfx.priority {
+				snd.SetPriority(pri)
+			}
+			if p != snd.sfx.p || ls != snd.sfx.ls || x != snd.sfx.x {
+				snd.SetPan(p*crun.facing, ls, x)
+			}
+			if vo != snd.sfx.volume {
+				snd.SetVolume(vo)
+			}
 		}
 	}
 	return false

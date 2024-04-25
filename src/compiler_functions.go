@@ -4293,7 +4293,7 @@ func (c *Compiler) modifySnd(is IniSection, sc *StateControllerBase, _ int8) (St
 			return err
 		}
 		if err := c.paramValue(is, sc, "channel",
-			modifySnd_channel, VT_Int, 1, true); err != nil {
+			modifySnd_channel, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "pan",
