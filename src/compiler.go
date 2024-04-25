@@ -170,6 +170,7 @@ func newCompiler() *Compiler {
 		"height":               c.height,
 		"modifychar":           c.modifyChar,
 		"gethitvarset":         c.getHitVarSet,
+		"modifysnd":            c.modifySnd,
 	}
 	return c
 }

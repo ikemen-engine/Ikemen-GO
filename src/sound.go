@@ -435,6 +435,7 @@ type SoundEffect struct {
 	priority int32
 	channel  int32
 	loop     int32
+	freqmul  float32
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
@@ -486,9 +487,9 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 		loopCount = -1
 	}
 	looper := beep.Loop(loopCount, s.streamer)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount)}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul}
 	srcRate := s.sound.format.SampleRate
-	dstRate := beep.SampleRate(audioFrequency / freqmul)
+	dstRate := beep.SampleRate(audioFrequency / s.sfx.freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
 	sys.soundMixer.Add(s.ctrl)
@@ -524,6 +525,18 @@ func (s *SoundChannel) SetPriority(priority int32) {
 func (s *SoundChannel) SetChannel(channel int32) {
 	if s.ctrl != nil {
 		s.sfx.channel = channel
+	}
+}
+func (s *SoundChannel) SetFreqMul(freqmul float32) {
+	if s.ctrl != nil {
+		srcRate := s.sound.format.SampleRate
+		dstRate := beep.SampleRate(audioFrequency / freqmul)
+		if resampler, ok := s.ctrl.Streamer.(*beep.Resampler); ok {
+			speaker.Lock()
+			resampler.SetRatio(float64(srcRate) / float64(dstRate))
+			s.sfx.freqmul = freqmul
+			speaker.Unlock()
+		}
 	}
 }
 
