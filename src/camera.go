@@ -255,7 +255,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				if !c.ytensionenable {
 					newY = c.ywithoutbound
 					//old*0.85+target* 0.15 if diff > 1
-					targetY := (c.highest + float32(c.floortension)*c.localscl) * c.verticalfollow
+					targetY := (c.highest + float32(c.floortension)*c.localscl) * c.verticalfollow * scale
 					if !c.roundstart {
 						for i := 0; i < 3; i++ {
 							newY = newY*.85 + targetY*.15
