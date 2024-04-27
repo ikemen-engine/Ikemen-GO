@@ -1339,14 +1339,16 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				sys.bcStack.PushB(false)
 			} else {
 				cmdName := sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[i]))]
-				pno := sys.workingState.playerNo
-				// Engine version is checked in state owner rather than working state
-				if cmdName == "recovery" || oc.stOgi().ikemenver[0] != 0 || oc.stOgi().ikemenver[1] != 0 {
-					// Command is checked by name, rather than by command list order (MUGEN 1.1)
-					pno = c.playerNo
+				redir := c.playerNo
+				pno := c.playerNo
+				// For a Mugen character, the command position is checked in the redirecting char
+				// Recovery command is an exception in that its position is always checked in the final char
+				if cmdName != "recovery" && oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
+					redir = oc.ss.sb.playerNo
+					pno = c.ss.sb.playerNo
 				}
-				cmd, ok := c.cmd[pno].Names[cmdName]
-				ok = ok && c.command(c.playerNo, cmd)
+				cmdPos, ok := c.cmd[redir].Names[cmdName]
+				ok = ok && c.command(pno, cmdPos)
 				sys.bcStack.PushB(ok)
 			}
 			i += 4
