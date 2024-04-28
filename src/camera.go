@@ -201,13 +201,25 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					targetLeft = MinF(oldLeft-diff, MaxF(c.leftest-tension, c.minLeft))
 				}
 				if c.halfWidth*2/(targetRight-targetLeft) < c.zoomout {
-					x := (targetRight + targetLeft) / 2
-					targetLeft = x - c.halfWidth/c.zoomout
-					targetRight = x + c.halfWidth/c.zoomout
+					rLeft, rRight := MaxF(targetLeft+tension-c.leftest, 0), MaxF(c.rightest-(targetRight-tension), 0)
+					diff := 2 * ((targetRight-targetLeft)/2 - c.halfWidth/c.zoomout)
+					if rLeft > rRight {
+						diff2 := rLeft - rRight
+						targetRight -= MinF(diff2, diff)
+						diff -= MinF(diff2, diff)
+					} else if rRight > rLeft {
+						diff2 := rRight - rLeft
+						targetLeft += MinF(diff2, diff)
+						diff -= MinF(diff2, diff)
+					}
+					targetLeft += diff / 2
+					targetRight -= diff / 2
 					if c.leftest-targetLeft < float32(sys.stage.screenleft)*c.localscl {
 						diff := MinF(float32(sys.stage.screenleft)*c.localscl-(c.leftest-targetLeft), targetLeft-c.minLeft)
 						if targetRight-c.rightest < float32(sys.stage.screenright)*c.localscl {
-							diff = diff + (MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)-diff)/2
+							diff2 := MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)
+							//diff = diff + (MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)-diff)/2
+							diff = diff - diff2
 						}
 						targetLeft -= diff
 						targetRight -= diff
