@@ -6141,9 +6141,6 @@ func (c *Char) actionPrepare() {
 				c.setSCF(SCF_over)
 			}
 			c.specialFlag = 0
-			// The following AssertSpecial flags are only reset later in the code
-			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
-			c.assertFlag = flagtemp
 			c.inputFlag = 0
 			c.setCSF(CSF_stagebound)
 			if c.player {
@@ -6178,24 +6175,19 @@ func (c *Char) actionPrepare() {
 				c.pauseMovetime--
 			}
 		}
-		c.unsetASF(ASF_noautoturn)
+		// This flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
 		// Reset hitbox scale
 		// This used to be only in changeAnimEx(), but because it can now be dynamically changed it was also placed here
 		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
 		c.angleRescaleClsn = false
-		// In WinMugen these flags persist during hitpause
-		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
-			c.unsetCSF(CSF_angledraw | CSF_offset)
-			// The following AssertSpecial flags are only reset later in the code
-			flagtemp := (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
-			c.assertFlag = flagtemp
+		// In WinMugen all of these flags persisted during hitpause
+		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
+			c.unsetCSF(CSF_angledraw | CSF_offset | CSF_trans)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
-		}
-		//Trans reset during hitpause if ignorehitpause = 0 fix
-		if c.csf(CSF_trans) && c.hitPause() {
-			c.unsetCSF(CSF_trans)
+			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
+			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
 		}
 	}
 	c.dropTargets()
