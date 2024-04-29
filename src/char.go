@@ -3735,7 +3735,7 @@ func (c *Char) turn() {
 	}
 }
 func (c *Char) stateChange1(no int32, pn int) bool {
-	if sys.changeStateNest >= 2500 {
+	if sys.changeStateNest > 2500 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after 2500 loops): %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
 		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
 			c.name, c.ss.prevno, c.ss.no, no)
@@ -3777,7 +3777,13 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.localscl = newLs
 	}
 	var ok bool
-	if c.ss.sb, ok = sys.cgi[pn].states[no]; !ok {
+	// Check if user is trying to change to a negative state.
+	if no < 0 {
+		sys.appendToConsole(c.warn() + "attempted to change to negative state")
+		sys.errLog.Printf("Attempted to change to negative state: P%v:%v\n", pn+1, no)
+	}
+	// Always attempt to change to the state we set to.
+	if c.ss.sb, ok = sys.cgi[pn].states[c.ss.no]; !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
 		c.ss.sb = *newStateBytecode(pn)
