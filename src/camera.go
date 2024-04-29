@@ -180,6 +180,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 	newY = y
 	newScale = scale
 	if !sys.debugPaused() {
+		newY = y / scale
 		switch c.View {
 		case Fighting_View:
 			if c.highest != math.MaxFloat32 && c.lowest != -math.MaxFloat32 {
@@ -201,13 +202,25 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					targetLeft = MinF(oldLeft-diff, MaxF(c.leftest-tension, c.minLeft))
 				}
 				if c.halfWidth*2/(targetRight-targetLeft) < c.zoomout {
-					x := (targetRight + targetLeft) / 2
-					targetLeft = x - c.halfWidth/c.zoomout
-					targetRight = x + c.halfWidth/c.zoomout
+					rLeft, rRight := MaxF(targetLeft+tension-c.leftest, 0), MaxF(c.rightest-(targetRight-tension), 0)
+					diff := 2 * ((targetRight-targetLeft)/2 - c.halfWidth/c.zoomout)
+					if rLeft > rRight {
+						diff2 := rLeft - rRight
+						targetRight -= MinF(diff2, diff)
+						diff -= MinF(diff2, diff)
+					} else if rRight > rLeft {
+						diff2 := rRight - rLeft
+						targetLeft += MinF(diff2, diff)
+						diff -= MinF(diff2, diff)
+					}
+					targetLeft += diff / 2
+					targetRight -= diff / 2
 					if c.leftest-targetLeft < float32(sys.stage.screenleft)*c.localscl {
 						diff := MinF(float32(sys.stage.screenleft)*c.localscl-(c.leftest-targetLeft), targetLeft-c.minLeft)
 						if targetRight-c.rightest < float32(sys.stage.screenright)*c.localscl {
-							diff = diff + (MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)-diff)/2
+							diff2 := MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)
+							//diff = diff + (MinF(float32(sys.stage.screenright)*c.localscl-(targetRight-c.rightest), c.maxRight-targetRight)-diff)/2
+							diff = diff - diff2
 						}
 						targetLeft -= diff
 						targetRight -= diff
@@ -276,10 +289,14 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					targetY := c.GroundLevel()/targetScale + (c.highest - float32(c.tensionhigh)*c.localscl)
 					if !c.roundstart {
 						for i := 0; i < 3; i++ {
-							newY = newY*.85 + targetY*.15
-							if AbsF(targetY-newY) < 1 {
+							newY = (newY + targetY) * .5
+							if AbsF(targetY-newY) < 3.333 {
 								newY = targetY
 								break
+							} else if targetY-newY > 3.333 {
+								newY = newY + 3.333
+							} else {
+								newY = newY - 3.333
 							}
 						}
 					} else {
@@ -328,11 +345,11 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newX = (newLeft + newRight) / 2
 				}
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
-				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl*newScale), float32(c.boundlow)*c.localscl*newScale)
+				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
 				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale), c.maxRight-c.halfWidth/newScale)
-				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl)
+				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
 			}
 
 		case Follow_View:
