@@ -266,19 +266,29 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				targetScale := MinF(c.halfWidth*2/(targetRight-targetLeft), maxScale)
 
 				if !c.ytensionenable {
-					newY = c.ywithoutbound
-					//old*0.85+target* 0.15 if diff > 1
+					//newY = c.ywithoutbound
+					ywithoutbound := c.ywithoutbound
 					targetY := (c.highest + float32(c.floortension)*c.localscl) * c.verticalfollow
 					if !c.roundstart {
 						for i := 0; i < 3; i++ {
-							newY = newY*.85 + targetY*.15
-							if AbsF(targetY-newY) < 1 {
-								newY = targetY
-								break
+							ywithoutbound = ywithoutbound*.85 + targetY*.15
+							if AbsF(targetY-ywithoutbound)*sys.heightScale < 1 {
+								ywithoutbound = targetY
+							}
+							if AbsF(newY-ywithoutbound) < float32(sys.gameWidth)/320*5.5 {
+								newY = ywithoutbound
+							} else {
+								if newY > ywithoutbound {
+									newY -= float32(sys.gameWidth) / 320 * 0.5
+									newY -= (newY - ywithoutbound) * c.verticalfollow / 10
+								} else {
+									newY += float32(sys.gameWidth) / 320 * 0.5
+									newY += (newY - ywithoutbound) * c.verticalfollow / 10
+								}
 							}
 						}
 					}
-					c.ywithoutbound = newY
+					c.ywithoutbound = ywithoutbound
 				} else {
 					targetScale = MinF(MinF(MaxF(float32(sys.gameHeight)/((c.lowest+float32(c.tensionlow)*c.localscl)-(c.highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), c.zoomin), targetScale)
 					targetX = MinF(MaxF(targetX, float32(c.boundleft)*c.localscl-c.halfWidth*(1/c.zoomout-1/targetScale)), float32(c.boundright)*c.localscl+c.halfWidth*(1/c.zoomout-1/targetScale))
@@ -288,15 +298,16 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newY = c.ywithoutbound
 					targetY := c.GroundLevel()/targetScale + (c.highest - float32(c.tensionhigh)*c.localscl)
 					if !c.roundstart {
+						diff := float32(sys.gameWidth) / 320 * 2.5
 						for i := 0; i < 3; i++ {
 							newY = (newY + targetY) * .5
-							if AbsF(targetY-newY) < 3.333 {
+							if AbsF(targetY-newY) < diff {
 								newY = targetY
 								break
-							} else if targetY-newY > 3.333 {
-								newY = newY + 3.333
+							} else if targetY-newY > diff {
+								newY = newY + diff
 							} else {
-								newY = newY - 3.333
+								newY = newY - diff
 							}
 						}
 					} else {
@@ -308,16 +319,17 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 
 				newLeft, newRight := oldLeft, oldRight
 				if !c.roundstart {
+					diff := float32(sys.gameWidth) / 3200
 					for i := 0; i < 3; i++ {
 						newLeft, newRight = newLeft+(targetLeft-newLeft)*0.05*sys.turbo*c.tensionvel, newRight+(targetRight-newRight)*0.05*sys.turbo*c.tensionvel
 						diffLeft := targetLeft - newLeft
 						diffRight := targetRight - newRight
-						if AbsF(diffLeft) <= 0.1*sys.turbo {
+						if AbsF(diffLeft) <= diff*sys.turbo {
 							newLeft = targetLeft
 						} else if diffLeft > 0 {
-							newLeft += 0.1 * sys.turbo * c.tensionvel
+							newLeft += diff * sys.turbo * c.tensionvel
 						} else {
-							newLeft -= 0.1 * sys.turbo * c.tensionvel
+							newLeft -= diff * sys.turbo * c.tensionvel
 						}
 						if newLeft-oldLeft > 0 && newLeft-oldLeft < c.rightestvel {
 							newLeft = MinF(oldLeft+c.rightestvel, targetLeft)
@@ -325,12 +337,12 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 							newLeft = MaxF(oldLeft+c.leftestvel, targetLeft)
 						}
 
-						if AbsF(diffRight) <= 0.1*sys.turbo*c.tensionvel {
+						if AbsF(diffRight) <= diff*sys.turbo*c.tensionvel {
 							newRight = targetRight
 						} else if diffRight > 0 {
-							newRight += 0.1 * sys.turbo * c.tensionvel
+							newRight += diff * sys.turbo * c.tensionvel
 						} else {
-							newRight -= 0.1 * sys.turbo * c.tensionvel
+							newRight -= diff * sys.turbo * c.tensionvel
 						}
 						if newRight-oldRight > 0 && newRight-oldRight < c.rightestvel {
 							newRight = MinF(oldRight+c.rightestvel, targetRight)
