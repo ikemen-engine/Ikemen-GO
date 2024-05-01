@@ -1250,7 +1250,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	// Remove on get hit
 	if sys.tickNextFrame() &&
-		c != nil && e.removeongethit && c.csf(CSF_gethit) {
+		c != nil && e.removeongethit && c.csf(CSF_gethit) && !c.inGuardState() {
 		e.id, e.anim = IErr, nil
 		return
 	}
