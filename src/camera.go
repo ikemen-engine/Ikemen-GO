@@ -283,10 +283,13 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 									newY -= (newY - ywithoutbound) * c.verticalfollow / 10
 								} else {
 									newY += float32(sys.gameWidth) / 320 * 0.5
-									newY += (newY - ywithoutbound) * c.verticalfollow / 10
+									newY += (ywithoutbound - newY) * c.verticalfollow / 10
 								}
 							}
 						}
+					} else {
+						ywithoutbound = targetY
+						newY = ywithoutbound
 					}
 					c.ywithoutbound = ywithoutbound
 				} else {
@@ -314,7 +317,6 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 						newY = targetY
 					}
 					c.ywithoutbound = newY
-
 				}
 
 				newLeft, newRight := oldLeft, oldRight
