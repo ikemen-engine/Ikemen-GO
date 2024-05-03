@@ -702,7 +702,7 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 	}
 }
 func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32,
-	clsn2 []float32, scl2, pos2 [2]float32,	facing2 float32) bool {
+	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32) bool {
 	if scl1[0] < 0 {
 		facing1 *= -1
 		scl1[0] *= -1
