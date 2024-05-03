@@ -365,6 +365,7 @@ var triggerMap = map[string]int{
 	"hitoverridden":      1,
 	"incustomstate":      1,
 	"indialogue":         1,
+	"inputtime":          1,
 	"isasserted":         1,
 	"ishost":             1,
 	"lastplayerid":       1,
@@ -821,17 +822,14 @@ func (c *Compiler) checkOpeningBracket(in *string) error {
 	return nil
 }
 
-/*
-TODO: Case sensitive maps
-
-	func (c *Compiler) checkOpeningBracketCS(in *string) error {
-		if c.tokenizerCS(in) != "(" {
-			return Error("Missing '(' after " + c.token)
-		}
-		c.token = c.tokenizerCS(in)
-		return nil
+func (c *Compiler) checkOpeningBracketCS(in *string) error {
+	if c.tokenizerCS(in) != "(" {
+		return Error("Missing '(' after " + c.token)
 	}
-*/
+	c.token = c.tokenizerCS(in)
+	return nil
+}
+
 func (c *Compiler) checkClosingBracket() error {
 	c.reverseOrder = true
 	if c.token != ")" {
@@ -2875,13 +2873,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
 		}
-		lvname := c.token
+		fsvname := c.token
 		c.token = c.tokenizer(in)
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
 		isStr := false
-		switch lvname {
+		switch fsvname {
 		case "info.author":
 			opc = OC_ex_fightscreenvar_info_author
 			isStr = true
@@ -2903,7 +2901,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "round.start.waittime":
 			opc = OC_ex_fightscreenvar_round_start_waittime
 		default:
-			return bvNone(), Error("Invalid data: " + lvname)
+			return bvNone(), Error("Invalid data: " + fsvname)
 		}
 		if isStr {
 			if err := nameSubEx(opc); err != nil {
@@ -2946,6 +2944,47 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
+	case "inputtime":
+		if err := c.checkOpeningBracketCS(in); err != nil {
+			return bvNone(), err
+		}
+		key := c.token
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		switch key {
+		case "B":
+			out.append(OC_ex_, OC_ex_inputtime_B)
+		case "D":
+			out.append(OC_ex_, OC_ex_inputtime_D)
+		case "F":
+			out.append(OC_ex_, OC_ex_inputtime_F)
+		case "U":
+			out.append(OC_ex_, OC_ex_inputtime_U)
+		case "a":
+			out.append(OC_ex_, OC_ex_inputtime_a)
+		case "b":
+			out.append(OC_ex_, OC_ex_inputtime_b)
+		case "c":
+			out.append(OC_ex_, OC_ex_inputtime_c)
+		case "x":
+			out.append(OC_ex_, OC_ex_inputtime_x)
+		case "y":
+			out.append(OC_ex_, OC_ex_inputtime_y)
+		case "z":
+			out.append(OC_ex_, OC_ex_inputtime_z)
+		case "s":
+			out.append(OC_ex_, OC_ex_inputtime_s)
+		case "d":
+			out.append(OC_ex_, OC_ex_inputtime_d)
+		case "w":
+			out.append(OC_ex_, OC_ex_inputtime_w)
+		case "m":
+			out.append(OC_ex_, OC_ex_inputtime_m)
+		default:
+			return bvNone(), Error("Invalid data: " + key)
+		}
 	case "movehitvar":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err

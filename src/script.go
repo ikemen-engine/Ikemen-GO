@@ -4178,7 +4178,7 @@ func triggerFunctions(l *lua.LState) {
 		case "round.start.waittime":
 			l.Push(lua.LNumber(sys.lifebar.ro.start_waittime))
 		default:
-			l.Push(lua.LString(""))
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
 		return 1
 	})
@@ -4237,6 +4237,69 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "indialogue", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.dialogueFlg))
+		return 1
+	})
+	luaRegister(l, "inputtime", func(*lua.LState) int {
+		switch strArg(l, 1) {
+		case "B":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Bb))
+			}
+		case "D":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Db))
+			}
+		case "F":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Fb))
+			}
+		case "U":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Ub))
+			}
+		case "a":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.ab))
+			}
+		case "b":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.bb))
+			}
+		case "c":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.cb))
+			}
+		case "x":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.xb))
+			}
+		case "y":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.yb))
+			}
+		case "z":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.zb))
+			}
+		case "s":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.sb))
+			}
+		case "d":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.db))
+			}
+		case "w":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.wb))
+			}
+		case "m":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.mb))
+			}
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	luaRegister(l, "isasserted", func(*lua.LState) int {

@@ -523,6 +523,20 @@ const (
 	OC_ex_helperindexexist
 	OC_ex_helpername
 	OC_ex_hitoverridden
+	OC_ex_inputtime_B
+	OC_ex_inputtime_D
+	OC_ex_inputtime_F
+	OC_ex_inputtime_U
+	OC_ex_inputtime_a
+	OC_ex_inputtime_b
+	OC_ex_inputtime_c
+	OC_ex_inputtime_x
+	OC_ex_inputtime_y
+	OC_ex_inputtime_z
+	OC_ex_inputtime_s
+	OC_ex_inputtime_d
+	OC_ex_inputtime_w
+	OC_ex_inputtime_m
 	OC_ex_movehitvar_frame
 	OC_ex_movehitvar_cornerpush
 	OC_ex_movehitvar_id
@@ -2236,6 +2250,90 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.anim.totaltime)
 	case OC_ex_attack:
 		sys.bcStack.PushF(c.attackMul * 100)
+	case OC_ex_inputtime_B:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.Bb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_D:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.Db)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_F:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.Fb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_U:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.Ub)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_a:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.ab)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_b:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.bb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_c:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.cb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_x:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.xb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_y:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.yb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_z:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.zb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_s:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.sb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_d:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.db)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_w:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.wb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_m:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.mb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:

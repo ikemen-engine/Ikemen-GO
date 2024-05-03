@@ -1250,7 +1250,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	// Remove on get hit
 	if sys.tickNextFrame() &&
-		c != nil && e.removeongethit && c.csf(CSF_gethit) {
+		c != nil && e.removeongethit && c.csf(CSF_gethit) && !c.inGuardState() {
 		e.id, e.anim = IErr, nil
 		return
 	}
@@ -1687,7 +1687,7 @@ func (p *Projectile) clsn(playerNo int) {
 			}
 			clsn1 := pr.ani.CurrentFrame().Clsn2()
 			clsn2 := p.ani.CurrentFrame().Clsn2()
-			if sys.clsnHantei(clsn1, [...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
+			if sys.clsnOverlap(clsn1, [...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
 				[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing,
 				clsn2, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 				[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing) {
@@ -5934,7 +5934,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	} else {
 		clsn1, clsn2 = frm.Clsn2(), c.curFrame.Clsn1()
 	}
-	return sys.clsnHantei(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
+	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
 		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
@@ -5967,10 +5967,10 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 	} else {
 		clsn2 = c.curFrame.Clsn2()
 	}
-	return sys.clsnHantei(clsn1, [...]float32{sys.chars[atk.animPN][0].clsnScale[0] * (320 / sys.chars[atk.animPN][0].localcoord), sys.chars[atk.animPN][0].clsnScale[1] * (320 / sys.chars[atk.animPN][0].localcoord)},
+	return sys.clsnOverlap(clsn1, [...]float32{atk.clsnScale[0]*(320/sys.chars[atk.animPN][0].localcoord), atk.clsnScale[1]*(320/sys.chars[atk.animPN][0].localcoord)},
 		[...]float32{atk.pos[0]*atk.localscl + atk.offsetX()*atk.localscl,
-			atk.pos[1]*atk.localscl + atk.offsetY()*atk.localscl},
-		atk.facing, clsn2, [...]float32{sys.chars[c.animPN][0].clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), sys.chars[c.animPN][0].clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
+			atk.pos[1]*atk.localscl + atk.offsetY()*atk.localscl}, atk.facing, 
+		clsn2, [...]float32{c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord), c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
