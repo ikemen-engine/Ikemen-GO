@@ -13,6 +13,7 @@ type stageCamera struct {
 	floortension         int32
 	tensionhigh          int32
 	tensionlow           int32
+	lowestcap            bool
 	tension              int32
 	tensionvel           float32
 	overdrawhigh         int32 //TODO: not implemented
@@ -29,6 +30,7 @@ type stageCamera struct {
 	ytensionenable       bool
 	autocenter           bool
 	zoomanchor           bool
+	dynamicboundhigh     bool
 	zoomindelay          float32
 	zoomindelaytime      float32
 	fov                  float32
@@ -184,6 +186,9 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 		switch c.View {
 		case Fighting_View:
 			if c.highest != math.MaxFloat32 && c.lowest != -math.MaxFloat32 {
+				if c.lowestcap {
+					c.lowest = MaxF(c.lowest, float32(c.boundhigh)*c.localscl-(float32(sys.gameHeight)-c.GroundLevel()-float32(c.tensionlow))/c.zoomout)
+				}
 				tension := MaxF(0, float32(c.tension)*c.localscl)
 				oldLeft, oldRight := x-c.halfWidth/scale, x+c.halfWidth/scale
 				targetLeft, targetRight := oldLeft, oldRight
@@ -359,11 +364,23 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newX = (newLeft + newRight) / 2
 				}
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
-				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
+				if c.dynamicboundhigh {
+					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
+					boundHigh := topBound + c.GroundLevel()/newScale
+					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
+				} else {
+					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
+				}
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
 				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale), c.maxRight-c.halfWidth/newScale)
-				newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
+				if c.dynamicboundhigh {
+					topBound := float32(c.boundhigh)*c.localscl + float32(sys.gameHeight)*sys.heightScale/2/c.zoomout
+					boundHigh := topBound - float32(sys.gameHeight)*sys.heightScale/2/newScale
+					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
+				} else {
+					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
+				}
 			}
 
 		case Follow_View:
