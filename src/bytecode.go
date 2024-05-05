@@ -8680,6 +8680,68 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type modifyBgm StateControllerBase
+
+const (
+	modifyBgm_volume = iota
+	modifyBgm_loopstart
+	modifyBgm_loopend
+	modifyBgm_position
+	modifyBgm_freqmul
+	modifyBgm_redirectid
+)
+
+func (sc modifyBgm) Run(c *Char, _ []int32) bool {
+	var volumeSet, loopStartSet, loopEndSet, posSet, freqSet = false, false, false, false, false
+	var volume, loopstart, loopend, position int = 100, 0, 0, 0
+	var freqmul float32 = 1.0
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyBgm_volume:
+			volume = int(exp[0].evalI(c))
+			volumeSet = true
+		case modifyBgm_loopstart:
+			loopstart = int(exp[0].evalI(c))
+			loopStartSet = true
+		case modifyBgm_loopend:
+			loopend = int(exp[0].evalI(c))
+			loopEndSet = true
+		case modifyBgm_position:
+			position = int(exp[0].evalI(c))
+			posSet = true
+		case modifyBgm_freqmul:
+			freqmul = float32(exp[0].evalF(c))
+			freqSet = true
+		case modifyBgm_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	if sys.bgm.ctrl != nil {
+		// Set values that are different only
+		if volumeSet {
+			volumeScaled := int(float64(volume) / 100.0 * float64(sys.maxBgmVolume))
+			sys.bgm.bgmVolume = int(Min(int32(volumeScaled), int32(sys.maxBgmVolume)))
+			sys.bgm.UpdateVolume()
+		}
+		if posSet {
+			sys.bgm.Seek(position)
+		}
+		if (loopStartSet && sys.bgm.bgmLoopStart != loopstart) || (loopEndSet && sys.bgm.bgmLoopEnd != loopend) {
+			sys.bgm.SetLoopPoints(loopstart, loopend)
+		}
+		if freqSet && sys.bgm.freqmul != freqmul {
+			sys.bgm.SetFreqMul(freqmul)
+		}
+		return true
+	}
+	return false
+}
+
 type modifySnd StateControllerBase
 
 const (
@@ -8797,6 +8859,7 @@ const (
 	playBgm_loopstart
 	playBgm_loopend
 	playBgm_startposition
+	playBgm_freqmul
 	playBgm_redirectid
 )
 
@@ -8805,6 +8868,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	var b bool
 	var bgm string
 	var loop, volume, loopstart, loopend, startposition int = 1, 100, 0, 0, 0
+	var freqmul float32 = 1.0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case playBgm_bgm:
@@ -8826,6 +8890,8 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			loopend = int(exp[0].evalI(c))
 		case playBgm_startposition:
 			startposition = int(exp[0].evalI(c))
+		case playBgm_freqmul:
+			freqmul = exp[0].evalF(c)
 		case playBgm_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8836,7 +8902,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if b {
-		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition)
+		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition, freqmul)
 		sys.playBgmFlg = true
 	}
 	return false

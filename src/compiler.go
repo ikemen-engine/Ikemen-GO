@@ -171,6 +171,7 @@ func newCompiler() *Compiler {
 		"modifychar":           c.modifyChar,
 		"gethitvarset":         c.getHitVarSet,
 		"modifysnd":            c.modifySnd,
+		"modifybgm":            c.modifyBgm,
 	}
 	return c
 }

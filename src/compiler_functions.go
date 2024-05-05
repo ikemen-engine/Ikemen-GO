@@ -4328,6 +4328,36 @@ func (c *Compiler) modifySnd(is IniSection, sc *StateControllerBase, _ int8) (St
 	})
 	return *ret, err
 }
+func (c *Compiler) modifyBgm(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyBgm)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyBgm_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "volume",
+			modifyBgm_volume, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loopstart",
+			modifyBgm_loopstart, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loopend",
+			modifyBgm_loopend, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "freqmul",
+			modifyBgm_freqmul, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "position",
+			modifyBgm_position, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) printToConsole(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*printToConsole)(sc), c.stateSec(is, func() error {
 		return c.displayToClipboardSub(is, sc)
