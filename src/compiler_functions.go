@@ -283,6 +283,10 @@ func (c *Compiler) changeStateSub(is IniSection,
 	}); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "continue",
+		changeState_continue, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "readplayerid",
 		changeState_readplayerid, VT_Int, 1, false); err != nil {
 		return err

@@ -3151,6 +3151,7 @@ const (
 	changeState_value byte = iota
 	changeState_ctrl
 	changeState_anim
+	changeState_continue
 	changeState_readplayerid
 	changeState_redirectid
 )
@@ -3159,7 +3160,7 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 	crun := c
 	var v, a, ctrl int32 = -1, -1, -1
 	ffx := ""
-	changeState := true
+	stop := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -3171,16 +3172,18 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 			ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case changeState_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				changeState = rid.id == c.id
+				stop = false
 				crun = rid
 			} else {
 				return false
 			}
+		case changeState_continue:
+			stop = !exp[0].evalB(c)
 		}
 		return true
 	})
 	crun.changeState(v, a, ctrl, ffx)
-	return changeState
+	return stop
 }
 
 type selfState changeState
@@ -3189,7 +3192,7 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 	crun := c
 	var v, a, r, ctrl int32 = -1, -1, -1, -1
 	ffx := ""
-	changeState := true
+	stop := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case changeState_value:
@@ -3207,16 +3210,18 @@ func (sc selfState) Run(c *Char, _ []int32) bool {
 			}
 		case changeState_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				changeState = rid.id == c.id
+				stop = false
 				crun = rid
 			} else {
 				return false
 			}
+		case changeState_continue:
+			stop = !exp[0].evalB(c)
 		}
 		return true
 	})
 	crun.selfState(v, a, r, ctrl, ffx)
-	return changeState
+	return stop
 }
 
 type tagIn StateControllerBase
