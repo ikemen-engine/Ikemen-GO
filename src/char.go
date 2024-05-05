@@ -6844,7 +6844,7 @@ func (c *Char) cueDraw() {
 			sd := &SprData{c.anim, c.getPalfx(), pos,
 				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
 				c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing, sys.chars[c.animPN][0].localcoord / c.localcoord, 0, 0, [4]float32{0, 0, 0, 0}}
-				// https://github.com/ikemen-engine/Ikemen-GO/issues/1459
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/1459
 			if !c.csf(CSF_trans) {
 				sd.alpha[0] = -1
 			}
