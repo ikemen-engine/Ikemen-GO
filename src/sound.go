@@ -152,18 +152,21 @@ type Bgm struct {
 	ctrl         *beep.Ctrl
 	volctrl      *effects.Volume
 	format       string
+	freqmul      float32
+	sampleRate   beep.SampleRate
 }
 
 func newBgm() *Bgm {
 	return &Bgm{}
 }
 
-func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int) {
+func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32) {
 	bgm.filename = filename
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
 	bgm.bgmLoopStart = bgmLoopStart
 	bgm.bgmLoopEnd = bgmLoopEnd
+	bgm.freqmul = freqmul
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
 		speaker.Lock()
@@ -218,7 +221,9 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	//streamer := beep.Loop(loopCount, bgm.streamer)
 	streamer := BgmLooper(bgm.streamer, loopCount, bgm.bgmLoopStart, bgm.bgmLoopEnd)
 	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
-	resampler := beep.Resample(audioResampleQuality, format.SampleRate, audioFrequency, bgm.volctrl)
+	bgm.sampleRate = format.SampleRate
+	dstFreq := beep.SampleRate(audioFrequency / bgm.freqmul)
+	resampler := beep.Resample(audioResampleQuality, bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
 	bgm.UpdateVolume()
 	bgm.streamer.Seek(startPosition)
@@ -253,6 +258,7 @@ func (bgm *Bgm) UpdateVolume() {
 	}
 	// TODO: Throw a debug warning if this triggers
 	if bgm.bgmVolume > sys.maxBgmVolume {
+		sys.errLog.Printf("WARNING: BGM volume set beyond expected range (value: %v). Clamped to MaxBgmVolume", bgm.bgmVolume)
 		bgm.bgmVolume = sys.maxBgmVolume
 	}
 	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
@@ -260,6 +266,52 @@ func (bgm *Bgm) UpdateVolume() {
 	speaker.Lock()
 	bgm.volctrl.Volume = volume
 	bgm.volctrl.Silent = silent
+	speaker.Unlock()
+}
+
+func (bgm *Bgm) SetFreqMul(freqmul float32) {
+	if bgm.freqmul != freqmul {
+		if bgm.ctrl != nil {
+			srcRate := bgm.sampleRate
+			dstRate := beep.SampleRate(audioFrequency / freqmul)
+			if resampler, ok := bgm.ctrl.Streamer.(*beep.Resampler); ok {
+				speaker.Lock()
+				resampler.SetRatio(float64(srcRate) / float64(dstRate))
+				bgm.freqmul = freqmul
+				speaker.Unlock()
+			}
+		}
+	}
+}
+
+func (bgm *Bgm) SetLoopPoints(bgmLoopStart int, bgmLoopEnd int) {
+	// Set both at once, why not
+	if bgm.bgmLoopStart != bgmLoopStart && bgm.bgmLoopEnd != bgmLoopEnd {
+		speaker.Lock()
+		bgm.bgmLoopStart = bgmLoopStart
+		bgm.bgmLoopEnd = bgmLoopEnd
+		speaker.Unlock()
+		// Set one at a time
+	} else {
+		if bgm.bgmLoopStart != bgmLoopStart {
+			speaker.Lock()
+			bgm.bgmLoopStart = bgmLoopStart
+			speaker.Unlock()
+		} else if bgm.bgmLoopEnd != bgmLoopEnd {
+			speaker.Lock()
+			bgm.bgmLoopEnd = bgmLoopEnd
+			speaker.Unlock()
+		}
+	}
+}
+
+func (bgm *Bgm) Seek(positionSample int) {
+	speaker.Lock()
+	// Reset to 0 if out of range
+	if positionSample < 0 || positionSample > bgm.streamer.Len() {
+		positionSample = 0
+	}
+	bgm.streamer.Seek(positionSample)
 	speaker.Unlock()
 }
 
