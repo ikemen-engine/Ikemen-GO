@@ -30,7 +30,7 @@ type stageCamera struct {
 	ytensionenable       bool
 	autocenter           bool
 	zoomanchor           bool
-	dynamicboundhigh     bool
+	boundhighdelta       float32
 	zoomindelay          float32
 	zoomindelaytime      float32
 	fov                  float32
@@ -55,7 +55,9 @@ func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tensionvel: 1, tension: 50,
 		cuthigh: 0, cutlow: 0,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false, fov: 40, yshift: 0, far: 10000, near: 0.1, zoomindelay: 0}
+		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
+		fov: 40, yshift: 0, far: 10000, near: 0.1,
+		zoomindelay: 0, boundhighdelta: 1}
 }
 
 type CameraView int
@@ -364,9 +366,9 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newX = (newLeft + newRight) / 2
 				}
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
-				if c.dynamicboundhigh {
+				if c.boundhighdelta > 0 {
 					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := topBound + c.GroundLevel()/newScale
+					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighdelta
 					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
 				} else {
 					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
@@ -374,9 +376,9 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
 				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale), c.maxRight-c.halfWidth/newScale)
-				if c.dynamicboundhigh {
-					topBound := float32(c.boundhigh)*c.localscl + float32(sys.gameHeight)*sys.heightScale/2/c.zoomout
-					boundHigh := topBound - float32(sys.gameHeight)*sys.heightScale/2/newScale
+				if c.boundhighdelta > 0 {
+					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
+					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighdelta
 					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
 				} else {
 					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
