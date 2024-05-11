@@ -115,6 +115,7 @@ func (c *Camera) Reset() {
 	c.boundH = float32(c.boundhigh) * c.localscl
 	c.boundLo = float32(Max(c.boundhigh, c.boundlow)) * c.localscl
 	c.boundlow = Max(c.boundhigh, c.boundlow)
+	c.tensionvel = MaxF(MinF(c.tensionvel, 20), 0)
 
 	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
 		c.boundR)
