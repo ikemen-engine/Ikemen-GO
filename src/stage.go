@@ -1436,7 +1436,9 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 		}
 	}
 	if !top {
-		s.drawModel(pos, yofs, scl)
+		s.drawModel(pos, yofs, scl, 0)
+	} else {
+		s.drawModel(pos, yofs, scl, 1)
 	}
 	for _, b := range s.bg {
 		if b.visible && b.toplayer == top && b.anim.spr != nil {
@@ -2456,8 +2458,8 @@ func drawNode(mdl *Model, n *Node, proj, view mgl.Mat4, drawBlended bool) {
 
 	}
 }
-func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
-	if s.model == nil || len(s.model.scenes) == 0 {
+func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32, sceneNumber int) {
+	if s.model == nil || len(s.model.scenes) <= sceneNumber {
 		return
 	}
 
@@ -2479,7 +2481,7 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32) {
 	view = view.Mul4(mgl.HomogRotate3DY(rotation[1]))
 	view = view.Mul4(mgl.HomogRotate3DZ(rotation[2]))
 	view = view.Mul4(mgl.Scale3D(scale[0], scale[1], scale[2]))
-	scene := s.model.scenes[0]
+	scene := s.model.scenes[sceneNumber]
 
 	for _, index := range scene.nodes {
 		s.model.nodes[index].calculateWorldTransform(mgl.Ident4(), s.model.nodes)
