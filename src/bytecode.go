@@ -527,6 +527,8 @@ const (
 	OC_ex_inputtime_D
 	OC_ex_inputtime_F
 	OC_ex_inputtime_U
+	OC_ex_inputtime_L
+	OC_ex_inputtime_R
 	OC_ex_inputtime_a
 	OC_ex_inputtime_b
 	OC_ex_inputtime_c
@@ -2271,6 +2273,18 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_inputtime_U:
 		if c.keyctrl[0] && c.cmd != nil {
 			sys.bcStack.PushI(c.cmd[0].Buffer.Ub)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_L:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.Lb)
+		} else {
+			sys.bcStack.PushI(0)
+		}
+	case OC_ex_inputtime_R:
+		if c.keyctrl[0] && c.cmd != nil {
+			sys.bcStack.PushI(c.cmd[0].Buffer.Rb)
 		} else {
 			sys.bcStack.PushI(0)
 		}

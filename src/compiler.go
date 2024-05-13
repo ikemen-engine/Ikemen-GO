@@ -2963,6 +2963,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_, OC_ex_inputtime_F)
 		case "U":
 			out.append(OC_ex_, OC_ex_inputtime_U)
+		case "L":
+			out.append(OC_ex_, OC_ex_inputtime_L)
+		case "R":
+			out.append(OC_ex_, OC_ex_inputtime_R)
 		case "a":
 			out.append(OC_ex_, OC_ex_inputtime_a)
 		case "b":
