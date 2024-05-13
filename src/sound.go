@@ -10,6 +10,7 @@ import (
 	"github.com/ikemen-engine/beep"
 	"github.com/ikemen-engine/beep/effects"
 
+	"github.com/ikemen-engine/beep/flac"
 	"github.com/ikemen-engine/beep/midi"
 	"github.com/ikemen-engine/beep/mp3"
 	"github.com/ikemen-engine/beep/speaker"
@@ -194,10 +195,9 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	} else if HasExtension(bgm.filename, ".wav") {
 		bgm.streamer, format, err = wav.Decode(f)
 		bgm.format = "wav"
-		// TODO: Reactivate FLAC support. Check that seeking/looping works correctly.
-		//} else if HasExtension(bgm.filename, ".flac") {
-		//	bgm.streamer, format, err = flac.Decode(f)
-		//	bgm.format = "flac"
+	} else if HasExtension(bgm.filename, ".flac") {
+		bgm.streamer, format, err = flac.Decode(f)
+		bgm.format = "flac"
 	} else if HasExtension(bgm.filename, ".mid") || HasExtension(bgm.filename, ".midi") {
 		if soundfont, sferr := loadSoundFont(audioSoundFont); sferr != nil {
 			err = sferr
