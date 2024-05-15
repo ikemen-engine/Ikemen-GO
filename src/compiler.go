@@ -2254,14 +2254,24 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_tensionlow
 		case "camera.tension":
 			opc = OC_const_stagevar_camera_tension
+		case "camera.tensionvel":
+			opc = OC_const_stagevar_camera_tensionvel
+		case "camera.cuthigh":
+			opc = OC_const_stagevar_camera_cuthigh
+		case "camera.cutlow":
+			opc = OC_const_stagevar_camera_cutlow
 		case "camera.startzoom":
 			opc = OC_const_stagevar_camera_startzoom
 		case "camera.zoomout":
 			opc = OC_const_stagevar_camera_zoomout
 		case "camera.zoomin":
 			opc = OC_const_stagevar_camera_zoomin
+		case "camera.zoomindelay":
+			opc = OC_const_stagevar_camera_zoomindelay
 		case "camera.ytension.enable":
 			opc = OC_const_stagevar_camera_ytension_enable
+		case "camera.autocenter":
+			opc = OC_const_stagevar_camera_autocenter
 		case "playerinfo.leftbound":
 			opc = OC_const_stagevar_playerinfo_leftbound
 		case "playerinfo.rightbound":
