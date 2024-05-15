@@ -236,10 +236,12 @@ func (ib *InputBits) KeysToBits(U, D, L, R, a, b, c, x, y, z, s, d, w, m bool) {
 
 // Convert received input bits back into keys
 func (ib InputBits) BitsToKeys(cb *CommandBuffer, facing int32) {
-	var U, D, B, F, a, b, c, x, y, z, s, d, w, m bool
+	var U, D, B, F, L, R, a, b, c, x, y, z, s, d, w, m bool
 	// Convert bits to logical symbols
 	U = ib&IB_PU != 0
 	D = ib&IB_PD != 0
+	L = ib&IB_PL != 0
+	R = ib&IB_PR != 0
 	if facing < 0 {
 		B, F = ib&IB_PR != 0, ib&IB_PL != 0
 	} else {
@@ -262,8 +264,13 @@ func (ib InputBits) BitsToKeys(cb *CommandBuffer, facing int32) {
 	}
 	if B && F {
 		B = false
+		if facing < 0 {
+			R = false
+		} else {
+			L = false
+		}
 	}
-	cb.Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m)
+	cb.Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m)
 }
 
 type CommandKeyRemap struct {
@@ -371,7 +378,7 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 			ir.SocdFirst[0] = false
 			ir.SocdFirst[1] = false
 		}
-		// Check first direction held between U and D
+		// Check first direction held between B and F
 		if B || F {
 			if !B {
 				ir.SocdFirst[2] = false
@@ -512,9 +519,9 @@ func (ir *InputReader) ButtonAssistCheck(a, b, c, x, y, z, s, d, w bool) (bool, 
 }
 
 type CommandBuffer struct {
-	Bb, Db, Fb, Ub                         int32
+	Bb, Db, Fb, Ub, Lb, Rb                 int32
 	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
-	B, D, F, U                             int8
+	B, D, F, U, L, R                       int8
 	a, b, c, x, y, z, s, d, w, m           int8
 	InputReader                            *InputReader
 }
@@ -528,14 +535,14 @@ func NewCommandBuffer() (c *CommandBuffer) {
 
 func (c *CommandBuffer) Reset() {
 	*c = CommandBuffer{
-		B: -1, D: -1, F: -1, U: -1,
+		B: -1, D: -1, F: -1, U: -1, L: -1, R: -1,
 		a: -1, b: -1, c: -1, x: -1, y: -1, z: -1, s: -1, d: -1, w: -1, m: -1,
 		InputReader: NewInputReader(),
 	}
 }
 
 // Update command buffer according to received inputs
-func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m bool) {
+func (__ *CommandBuffer) Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m bool) {
 	// SOCD resolution is now handled beforehand, so that it may be easier to port to netplay later
 	if B != (__.B > 0) {
 		__.Bb = 0
@@ -557,6 +564,16 @@ func (__ *CommandBuffer) Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m bool) {
 		__.U *= -1
 	}
 	__.Ub += int32(__.U)
+	if L != (__.L > 0) {
+		__.Lb = 0
+		__.L *= -1
+	}
+	__.Lb += int32(__.L)
+	if R != (__.R > 0) {
+		__.Rb = 0
+		__.R *= -1
+	}
+	__.Rb += int32(__.R)
 	if a != (__.a > 0) {
 		__.ab = 0
 		__.a *= -1
@@ -1879,6 +1896,16 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 		}
 		// Resolve SOCD conflicts
 		U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+
+		// Resolve L/R SOCD conflicts based on the final B/F resolution
+		if L && R {
+			if facing < 0 {
+				R, L = B, F
+			} else {
+				L, R = B, F
+			}
+		}
+
 		// AssertInput Flags (no assists, can override SOCD)
 		// Does not currently work over netplay because flags are stored at the character level rather than system level
 		if ib > 0 {
@@ -1903,7 +1930,7 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 			m = ib&IB_M != 0 || m
 		}
 		// Send inputs to buffer
-		cl.Buffer.Input(B, D, F, U, a, b, c, x, y, z, s, d, w, m)
+		cl.Buffer.Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m)
 		// TODO: Reorder all instances of B, F like input bits (U, D, L, R)
 	}
 	return step

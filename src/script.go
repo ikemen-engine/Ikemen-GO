@@ -4285,6 +4285,14 @@ func triggerFunctions(l *lua.LState) {
 			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
 				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Ub))
 			}
+		case "L":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Lb))
+			}
+		case "R":
+			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
+				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.Rb))
+			}
 		case "a":
 			if sys.debugWC.keyctrl[0] && sys.debugWC.cmd != nil {
 				l.Push(lua.LNumber(sys.debugWC.cmd[0].Buffer.ab))
