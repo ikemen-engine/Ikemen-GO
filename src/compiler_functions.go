@@ -4727,8 +4727,8 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 			modifyStageVar_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "camera.ytension.enable",
-			modifyStageVar_camera_ytension_enable, VT_Bool, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "camera.autocenter",
+			modifyStageVar_camera_autocenter, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "camera.boundleft",
@@ -4767,6 +4767,18 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 			modifyStageVar_camera_tension, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "camera.tensionvel",
+			modifyStageVar_camera_tensionvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.cuthigh",
+			modifyStageVar_camera_cuthigh, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.cutlow",
+			modifyStageVar_camera_cutlow, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "camera.startzoom",
 			modifyStageVar_camera_startzoom, VT_Float, 1, false); err != nil {
 			return err
@@ -4777,6 +4789,18 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 		}
 		if err := c.paramValue(is, sc, "camera.zoomin",
 			modifyStageVar_camera_zoomin, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.zoomindelay",
+			modifyStageVar_camera_zoomindelay, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.ytension.enable",
+			modifyStageVar_camera_ytension_enable, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.autocenter",
+			modifyStageVar_camera_autocenter, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "playerinfo.leftbound",
