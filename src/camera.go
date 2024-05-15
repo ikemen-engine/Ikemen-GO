@@ -56,8 +56,9 @@ func newStageCamera() *stageCamera {
 		cuthigh: 0, cutlow: 0,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
+		tensionhigh: 0, tensionlow: 0,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
-		zoomindelay: 0, boundhighdelta: 1}
+		zoomindelay: 0, boundhighdelta: 0}
 }
 
 type CameraView int
@@ -116,7 +117,9 @@ func (c *Camera) Reset() {
 	c.boundLo = float32(Max(c.boundhigh, c.boundlow)) * c.localscl
 	c.boundlow = Max(c.boundhigh, c.boundlow)
 	c.tensionvel = MaxF(MinF(c.tensionvel, 20), 0)
-
+	if c.verticalfollow < 0 {
+		c.ytensionenable = true
+	}
 	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
 		c.boundR)
 	//yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
