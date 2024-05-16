@@ -756,7 +756,7 @@ func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: -1000,
 		rightbound: 1000, screenleft: 15, screenright: 15,
 		zoffsetlink: -1, autoturn: true, resetbg: true, localscl: 1,
-		scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
+		scale:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		bgmratiolife: 30, stageCamera: *newStageCamera(),
 		constants: make(map[string]float32), p1p3dist: 25, bgmvolume: 100}
 	s.sdw.intensity = 128
