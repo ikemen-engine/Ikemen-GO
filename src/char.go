@@ -3716,7 +3716,6 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 	}
 }
 
-// Furimuki = Turn around
 func (c *Char) turn() {
 	if c.helperIndex == 0 {
 		if e := sys.charList.enemyNear(c, 0, true, true, false); c.rdDistX(e, c).ToF() < 0 && !e.asf(ASF_noturntarget) {
@@ -3822,7 +3821,7 @@ func (c *Char) stateChange2() bool {
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	if c.minus <= 0 && c.scf(SCF_ctrl) && c.roundState() <= 2 &&
-		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.asf(ASF_noautoturn) {
+		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.asf(ASF_noautoturn) && sys.stage.autoturn {
 		c.turn()
 	}
 	if anim != -1 {

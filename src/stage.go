@@ -726,6 +726,7 @@ type Stage struct {
 	zoffsetlink      int32
 	reflection       int32
 	hires            bool
+	autoturn         bool
 	resetbg          bool
 	debugbg          bool
 	bgclearcolor     [3]int32
@@ -754,7 +755,8 @@ type Stage struct {
 func newStage(def string) *Stage {
 	s := &Stage{def: def, leftbound: -1000,
 		rightbound: 1000, screenleft: 15, screenright: 15,
-		zoffsetlink: -1, resetbg: true, localscl: 1, scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
+		zoffsetlink: -1, autoturn: true, resetbg: true, localscl: 1,
+		scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
 		bgmratiolife: 30, stageCamera: *newStageCamera(),
 		constants: make(map[string]float32), p1p3dist: 25, bgmvolume: 100}
 	s.sdw.intensity = 128
@@ -885,6 +887,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("zoffset", &s.stageCamera.zoffset)
 		sec[0].ReadI32("zoffsetlink", &s.zoffsetlink)
 		sec[0].ReadBool("hires", &s.hires)
+		sec[0].ReadBool("autoturn", &s.autoturn)
 		sec[0].ReadBool("resetbg", &s.resetbg)
 		sec[0].readI32ForStage("localcoord", &s.stageCamera.localcoord[0],
 			&s.stageCamera.localcoord[1])
