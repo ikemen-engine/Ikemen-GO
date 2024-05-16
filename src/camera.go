@@ -53,7 +53,7 @@ type stageCamera struct {
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tensionvel: 1, tension: 50,
-		cuthigh: 0, cutlow: 0,
+		cuthigh: 0, cutlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
 		tensionhigh: 0, tensionlow: 0,
@@ -97,6 +97,10 @@ func (c *Camera) Reset() {
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
 	c.aspectcorrection = 0
 	c.zoomanchorcorrection = 0
+	c.zoomin = MaxF(c.zoomin, c.zoomout)
+	if c.cutlow == math.MinInt32 {
+		c.cutlow = int32(float32(c.localcoord[1]-c.zoffset) - float32(c.localcoord[1])*0.05)
+	}
 	if float32(c.localcoord[1])*c.localscl-float32(sys.gameHeight) < 0 {
 		c.aspectcorrection = MinF(0, (float32(c.localcoord[1])*c.localscl-float32(sys.gameHeight))+MinF((float32(sys.gameHeight)-float32(c.localcoord[1])*c.localscl)/2, float32(c.overdrawlow)*c.localscl))
 	} else if float32(c.localcoord[1])*c.localscl-float32(sys.gameHeight) > 0 {
