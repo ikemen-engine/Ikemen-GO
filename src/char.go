@@ -6436,7 +6436,7 @@ func (c *Char) actionFinish() {
 }
 func (c *Char) track() {
 	if c.trackableByCamera() {
-		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		min, max := c.edge[0], -c.edge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
