@@ -5747,7 +5747,7 @@ func (c *Char) hasTarget(id int32) bool {
 	}
 	return false
 }
-func (c *Char) hasTargetOfHitdef(id int32) bool {
+func (c *Char) hitdefHasTarget(id int32) bool {
 	for _, tid := range c.targetsOfHitdef {
 		if tid == id {
 			return true
@@ -6014,14 +6014,15 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	//}
 	return true
 }
-func (c *Char) hittable(h *HitDef, e *Char, st StateType,
-	// Check which character should win in case attacks connect in the same frame
-	countercheck func(*HitDef) bool) bool {
+func (c *Char) hittable(h *HitDef, e *Char, st StateType, countercheck func(*HitDef) bool) bool {
 	if !c.attrCheck(h, e.id, st) {
 		return false
 	}
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0) {
+		// Check which character should win in case attacks connect in the same frame
 		switch {
+		case e.hitdefHasTarget(c.id): // If enemy Hitdef already hit this char, priority won't be checked again
+			return true
 		case c.hitdef.reversal_attr > 0:
 			if h.reversal_attr > 0 {
 				if countercheck(&c.hitdef) {
@@ -6050,7 +6051,7 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 		default:
 			return true
 		}
-		//return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0 // https://github.com/ikemen-engine/Ikemen-GO/issues/1410
+		//return !countercheck(&c.hitdef) || c.hitdefHasTarget(e.id) || c.hitdef.attr == 0 // https://github.com/ikemen-engine/Ikemen-GO/issues/1410
 		return !countercheck(&c.hitdef)
 	}
 	return true
@@ -7857,8 +7858,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						}
 					}
 				}
-				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
-					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
+				if c.hitdef.hitonce >= 0 && !c.hitdefHasTarget(getter.id) &&
+					(c.hitdef.reversal_attr <= 0 || !getter.hitdefHasTarget(c.id)) &&
 					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) ||
 						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
 					getter.hittable(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
