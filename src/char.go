@@ -6266,8 +6266,17 @@ func (c *Char) actionRun() {
 	}
 	c.unsetASF(ASF_nostandguard | ASF_nocrouchguard | ASF_noairguard)
 	// Run state +1
-	if sb, ok := c.gi().states[-10]; ok { // still minus 0
+	// Uses minus -4 because its properties are similar
+	c.minus = -4
+	if sb, ok := c.gi().states[-10]; ok {
 		sb.run(c)
+	}
+	// Set minus back to normal
+	c.minus = 0
+	// If State +1 changed the current state, run the next one as well
+	if !c.pauseBool && c.stchtmp {
+		c.stateChange2()
+		c.ss.sb.run(c)
 	}
 	if !c.hitPause() {
 		if !c.csf(CSF_frontwidth) {
