@@ -1273,8 +1273,10 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 		if bgc.v[0] == 0 {
 			bgc.v[1] = 0
 		}
-		a := float32(bgc.v[2]) / 360
-		st := int32((a - float32(int32(a))) * float32(bgc.v[1]))
+		// Unlike plain sin.x elements, in the SinX BGCtrl the last parameter is a time offset rather than a phase
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1790
+		ph := float32(bgc.v[2]) / float32(bgc.v[1])
+		st := int32((ph - float32(int32(ph))) * float32(bgc.v[1]))
 		if st < 0 {
 			st += Abs(bgc.v[1])
 		}
