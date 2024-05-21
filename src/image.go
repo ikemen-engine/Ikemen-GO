@@ -130,6 +130,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 		sub |= su << uint(i*8)
 	}
 	for i, c := range pal {
+		alpha := c & 0xff000000
 		if p.eInvertall {
 			c = ^c
 		}
@@ -145,7 +146,7 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 		tmp = (tmp|uint32(-Btoi(tmp&0xff0000 != 0)<<8))&0xffff |
 			(((c>>16&0xff)+uint32(a[2]))*uint32(m[2])>>8)<<16
 		sys.workpal[i] = tmp | uint32(-Btoi(tmp&0xff000000 != 0)<<16) |
-			0xff000000
+			alpha
 	}
 	return sys.workpal
 }
@@ -835,7 +836,11 @@ func (s *Sprite) read(f *os.File, sh *SffHeader, offset int64, datasize uint32,
 			if err := read(rgb[:]); err != nil {
 				return err
 			}
-			pal[i] = uint32(255)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+			var alpha byte = 255
+			if i == 0 {
+				alpha = 0
+			}
+			pal[i] = uint32(alpha)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 		}
 	}
 	s.SetPxl(s.RlePcxDecode(px))
@@ -1261,7 +1266,11 @@ func loadSff(filename string, char bool) (*Sff, error) {
 						return nil, err
 					}
 					if s.header.Ver2 == 0 {
-						rgba[3] = 255
+						if i == 0 {
+							rgba[3] = 0
+						} else {
+							rgba[3] = 255
+						}
 					}
 					pal[i] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 				}
@@ -1457,7 +1466,11 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 								return nil, nil, err
 							}
 							if h.Ver2 == 0 {
-								rgba[3] = 255
+								if i == 0 {
+									rgba[3] = 0
+								} else {
+									rgba[3] = 255
+								}
 							}
 							spriteList[i].Pal[j] = uint32(rgba[3])<<24 | uint32(rgba[2])<<16 | uint32(rgba[1])<<8 | uint32(rgba[0])
 						}

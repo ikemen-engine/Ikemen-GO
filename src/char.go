@@ -1401,9 +1401,6 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 
 func (e *Explod) Interpolate(act bool, scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32) {
 	if sys.tickNextFrame() && act {
-		if e.interpolate_time[1] > 0 {
-			e.interpolate_time[1]--
-		}
 		t := float32(e.interpolate_time[1]) / float32(e.interpolate_time[0])
 		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
 		if e.interpolate_animelem[1] >= 0 {
@@ -1423,6 +1420,9 @@ func (e *Explod) Interpolate(act bool, scale *[2]float32, alpha *[2]int32, angle
 				}
 			}
 			e.interpolate_angle[i] = Lerp(e.interpolate_angle[i+3], e.start_rot[i], t)
+		}
+		if e.interpolate_time[1] > 0 {
+			e.interpolate_time[1]--
 		}
 	}
 	for i := 0; i < 3; i++ {
@@ -2763,7 +2763,11 @@ func (c *Char) loadPalette() {
 					if _, err = io.ReadFull(f, rgb[:]); err != nil {
 						break
 					}
-					pl[i] = uint32(255)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+					var alpha byte = 255
+					if i == 0 {
+						alpha = 0
+					}
+					pl[i] = uint32(alpha)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 				}
 				chk(f.Close())
 				if err == nil {
