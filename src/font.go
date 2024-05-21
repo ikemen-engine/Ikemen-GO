@@ -124,7 +124,11 @@ func loadFntV1(filename string) (*Fnt, error) {
 		if err := read(rgb[:]); err != nil {
 			return nil, err
 		}
-		spr.Pal[i] = uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
+		var alpha byte = 255
+		if i == 0 {
+			alpha = 0
+		}
+		spr.Pal[i] = uint32(alpha)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 	}
 
 	px = spr.RlePcxDecode(px)

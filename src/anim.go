@@ -155,18 +155,11 @@ type Animation struct {
 	interpolate_blend_dstalpha float32
 	remap                      RemapPreset
 	start_scale                [2]float32
-	opaquepalette              bool
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
-	a := &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
+	return &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
 		remap: make(RemapPreset), start_scale: [...]float32{1, 1}}
-	if a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1 {
-		a.opaquepalette = false
-	} else {
-		a.opaquepalette = true
-	}
-	return a
 }
 func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) *Animation {
 	a := newAnimation(sff, pal)
@@ -562,11 +555,6 @@ func (a *Animation) UpdateSprite() {
 	}
 }
 func (a *Animation) Action() {
-	if a.sff != nil && (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1) {
-		a.opaquepalette = false
-	} else {
-		a.opaquepalette = true
-	}
 	if len(a.frames) == 0 {
 		a.loopend = true
 		return
@@ -729,10 +717,6 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		paltex = a.spr.CachePalette(pal)
 	}
 	mask := int32(a.mask)
-	if !a.opaquepalette && a.spr.coldepth <= 8 && a.palettedata != nil && a.mask != -1 {
-		mask = -2
-		//if trans == -2 { mask = 0}
-	}
 	rp := RenderParams{
 		a.spr.Tex, paltex, a.spr.Size,
 		x * sys.widthScale,
@@ -755,9 +739,6 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 
 	mask := int32(a.mask)
-	if !a.opaquepalette && a.spr.coldepth <= 8 && a.palettedata != nil && a.mask != -1 {
-		mask = -2
-	}
 	rp := RenderParams{
 		a.spr.Tex, nil, a.spr.Size,
 		AbsF(xscl*h) * float32(a.spr.Offset[0]) * sys.widthScale,
@@ -793,7 +774,13 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	//}
 
 	if a.spr.coldepth <= 8 && (color != 0 || alpha > 0) {
-		if a.opaquepalette {
+		if (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1)  {
+			trans := a.alpha()
+			pal, paltex := a.pal(pfx, trans == -2)
+			if paltex == nil {
+				rp.paltex = a.spr.CachePalette(pal)
+			}
+		} else {
 			paltemp := a.spr.paltemp
 			if len(paltemp) == 0 {
 				if a.palettedata != nil {
@@ -803,12 +790,6 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 				}
 			}
 			rp.paltex = PaletteToTexture(paltemp[:])
-		} else {
-			trans := a.alpha()
-			pal, paltex := a.pal(pfx, trans == -2)
-			if paltex == nil {
-				rp.paltex = a.spr.CachePalette(pal)
-			}
 		}
 	}
 
