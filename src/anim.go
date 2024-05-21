@@ -774,7 +774,7 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	//}
 
 	if a.spr.coldepth <= 8 && (color != 0 || alpha > 0) {
-		if (a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1)  {
+		if a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1 {
 			trans := a.alpha()
 			pal, paltex := a.pal(pfx, trans == -2)
 			if paltex == nil {

@@ -4527,7 +4527,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.bindtime = t
 					//Bindtime fix(update bindtime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
-						e.bindtime = e.time+t
+						e.bindtime = e.time + t
 					}
 					e.setX(e.pos[0])
 					e.setY(e.pos[1])
@@ -4538,7 +4538,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.removetime = t
 					//Removetime fix(update removetime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
-						e.removetime = e.time+t
+						e.removetime = e.time + t
 					}
 				})
 			case explod_supermove:
@@ -4553,7 +4553,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.supermovetime = t
 					//Supermovetime fix(update supermovetime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
-						e.supermovetime = e.time+t
+						e.supermovetime = e.time + t
 					}
 				})
 			case explod_pausemovetime:
@@ -4562,7 +4562,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.pausemovetime = t
 					//Pausemovetime fix(update pausemovetime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
-						e.pausemovetime = e.time+t
+						e.pausemovetime = e.time + t
 					}
 				})
 			case explod_sprpriority:
