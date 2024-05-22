@@ -4268,9 +4268,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 			palFX(sc).runSub(c, &e.palfxdef, id, exp)
 
-			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-				explod(sc).setInterpolation(c, e, id, exp, &e.palfxdef)
-			}
+			explod(sc).setInterpolation(c, e, id, exp, &e.palfxdef)
+
 
 		}
 		return true
