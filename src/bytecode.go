@@ -4285,7 +4285,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 
 			explod(sc).setInterpolation(c, e, id, exp, &e.palfxdef)
 
-
 		}
 		return true
 	})
