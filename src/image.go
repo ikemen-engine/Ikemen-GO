@@ -1466,7 +1466,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 								return nil, nil, err
 							}
 							if h.Ver2 == 0 {
-								if i == 0 {
+								if j == 0 {
 									rgba[3] = 0
 								} else {
 									rgba[3] = 255
