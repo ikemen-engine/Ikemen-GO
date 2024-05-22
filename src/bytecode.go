@@ -4620,20 +4620,16 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					eachExpl(func(e *Explod) { e.anim = anim })
 				}
 			case explod_animelem:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-					animelem := exp[0].evalI(c)
-					eachExpl(func(e *Explod) {
-						e.interpolate_animelem[1] = -1
-						e.animelem = animelem
-						e.anim.Action()
-						e.setAnimElem()
-					})
-				}
+				animelem := exp[0].evalI(c)
+				eachExpl(func(e *Explod) {
+					e.interpolate_animelem[1] = -1
+					e.animelem = animelem
+					e.anim.Action()
+					e.setAnimElem()
+				})
 			case explod_animfreeze:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-					animfreeze := exp[0].evalB(c)
-					eachExpl(func(e *Explod) { e.animfreeze = animfreeze })
-				}
+				animfreeze := exp[0].evalB(c)
+				eachExpl(func(e *Explod) { e.animfreeze = animfreeze })
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) { e.anglerot[0] = a })
