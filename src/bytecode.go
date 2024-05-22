@@ -4232,16 +4232,12 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				}
 			}
 		case explod_animelem:
-			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-				animelem := exp[0].evalI(c)
-				e.animelem = animelem
-				e.anim.Action()
-				e.setAnimElem()
-			}
+			animelem := exp[0].evalI(c)
+			e.animelem = animelem
+			e.anim.Action()
+			e.setAnimElem()
 		case explod_animfreeze:
-			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-				e.animfreeze = exp[0].evalB(c)
-			}
+			e.animfreeze = exp[0].evalB(c)
 		case explod_angle:
 			e.anglerot[0] = exp[0].evalF(c)
 		case explod_yangle:
