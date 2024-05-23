@@ -247,6 +247,7 @@ var triggerMap = map[string]int{
 	"inguarddist":       1,
 	"ishelper":          1,
 	"ishometeam":        1,
+	"index":             1,
 	"leftedge":          1,
 	"life":              1,
 	"lifemax":           1,
@@ -383,6 +384,7 @@ var triggerMap = map[string]int{
 	"mugenversion":       1,
 	"numplayer":          1,
 	"offset":             1,
+	"palfxvar":           1,
 	"p5name":             1,
 	"p6name":             1,
 	"p7name":             1,
@@ -1981,6 +1983,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ishelper)
 	case "ishometeam":
 		out.append(OC_ex_, OC_ex_ishometeam)
+	case "index":
+		out.append(OC_ex2_, OC_ex2_index)
+	case "runorder":
+		out.append(OC_ex2_, OC_ex2_runorder)
 	case "leftedge":
 		out.append(OC_leftedge)
 	case "life", "p2life":
@@ -2038,6 +2044,83 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 			return nil
 		}); err != nil {
+			return bvNone(), err
+		}
+	case "palfxvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex2_)
+		switch c.token {
+		case "time":
+			out.append(OC_ex2_palfxvar_time)
+		case "add.r":
+			out.append(OC_ex2_palfxvar_addr)
+		case "add.g":
+			out.append(OC_ex2_palfxvar_addg)
+		case "add.b":
+			out.append(OC_ex2_palfxvar_addb)
+		case "mul.r":
+			out.append(OC_ex2_palfxvar_mulr)
+		case "mul.g":
+			out.append(OC_ex2_palfxvar_mulg)
+		case "mul.b":
+			out.append(OC_ex2_palfxvar_mulb)
+		case "color":
+			out.append(OC_ex2_palfxvar_color)
+		case "hue":
+			out.append(OC_ex2_palfxvar_hue)
+		case "invertall":
+			out.append(OC_ex2_palfxvar_invertall)
+		case "invertblend":
+			out.append(OC_ex2_palfxvar_invertblend)
+		case "bg.time":
+			out.append(OC_ex2_palfxvar_bg_time)
+		case "bg.add.r":
+			out.append(OC_ex2_palfxvar_bg_addr)
+		case "bg.add.g":
+			out.append(OC_ex2_palfxvar_bg_addg)
+		case "bg.add.b":
+			out.append(OC_ex2_palfxvar_bg_addb)
+		case "bg.mul.r":
+			out.append(OC_ex2_palfxvar_bg_mulr)
+		case "bg.mul.g":
+			out.append(OC_ex2_palfxvar_bg_mulg)
+		case "bg.mul.b":
+			out.append(OC_ex2_palfxvar_bg_mulb)
+		case "bg.color":
+			out.append(OC_ex2_palfxvar_bg_color)
+		case "bg.hue":
+			out.append(OC_ex2_palfxvar_bg_hue)
+		case "bg.invertall":
+			out.append(OC_ex2_palfxvar_bg_invertall)
+		case "all.time":
+			out.append(OC_ex2_palfxvar_all_time)
+		case "all.add.r":
+			out.append(OC_ex2_palfxvar_all_addr)
+		case "all.add.g":
+			out.append(OC_ex2_palfxvar_all_addg)
+		case "all.add.b":
+			out.append(OC_ex2_palfxvar_all_addb)
+		case "all.mul.r":
+			out.append(OC_ex2_palfxvar_all_mulr)
+		case "all.mul.g":
+			out.append(OC_ex2_palfxvar_all_mulg)
+		case "all.mul.b":
+			out.append(OC_ex2_palfxvar_all_mulb)
+		case "all.color":
+			out.append(OC_ex2_palfxvar_all_color)
+		case "all.hue":
+			out.append(OC_ex2_palfxvar_all_hue)
+		case "all.invertall":
+			out.append(OC_ex2_palfxvar_all_invertall)
+		case "all.invertblend":
+			out.append(OC_ex2_palfxvar_all_invertblend)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
 	case "name", "p1name", "p2name", "p3name", "p4name", "p5name", "p6name", "p7name", "p8name":

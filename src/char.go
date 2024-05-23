@@ -1946,6 +1946,8 @@ type Char struct {
 	ss              StateState
 	key             int
 	id              int32
+	index           int32
+	runorder        int32
 	helperId        int32
 	helperIndex     int32
 	parentIndex     int32
@@ -2105,6 +2107,8 @@ func (c *Char) clear1() {
 	c.defenseMulDelay = false
 	c.key = -1
 	c.id = -1
+	c.index = -1
+	c.runorder = -1
 	c.helperId = 0
 	c.helperIndex = -1
 	c.parentIndex = IErr
@@ -3470,6 +3474,50 @@ func (c *Char) palno() int32 {
 		return 1
 	}
 	return c.gi().palno
+}
+func (c *Char) palfxvar(x int32) int32 {
+	n := int32(0)
+	if x >= 4 { n = 256 }
+	if c.palfx != nil && c.palfx.enable {
+		switch x {
+		case -2:
+			n = c.palfx.eInvertblend
+		case -1:
+			n = Btoi(c.palfx.eInvertall)
+		case 0:
+			n = c.palfx.time
+		case 1:
+			n = c.palfx.eAdd[0]
+		case 2:
+			n = c.palfx.eAdd[1]
+		case 3:
+			n = c.palfx.eAdd[2]
+		case 4:
+			n = c.palfx.eMul[0]
+		case 5:
+			n = c.palfx.eMul[1]
+		case 6:
+			n = c.palfx.eMul[2]
+		default:
+			n = 0
+		}
+	}
+	return n
+}
+func (c *Char) palfxvar2(x int32) float32 {
+	n := float32(1)
+	if x > 1 { n = 0 }
+	if c.palfx != nil && c.palfx.enable {
+		switch x {
+		case 1:
+			n = c.palfx.eColor
+		case 2:
+			n = c.palfx.eHue
+		default:
+			n = 0
+		}
+	}
+	return n*256
 }
 func (c *Char) pauseTime() int32 {
 	var p int32
@@ -6907,6 +6955,7 @@ func (cl *CharList) clear() {
 }
 func (cl *CharList) add(c *Char) {
 	// Append to run order
+	c.index = int32(len(cl.runOrder))+1
 	cl.runOrder = append(cl.runOrder, c)
 	// If any entries in the draw order are empty, use that one
 	i := 0
@@ -6927,6 +6976,7 @@ func (cl *CharList) replace(dc *Char, pn int, idx int32) bool {
 	// Replace run order
 	for i, c := range cl.runOrder {
 		if c.playerNo == pn && c.helperIndex == idx {
+			c.index = int32(i)+1
 			cl.runOrder[i] = dc
 			ok = true
 			break
@@ -6970,30 +7020,35 @@ func (cl *CharList) action(x float32) {
 	// Run actions for attacking players and helpers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].ss.moveType == MT_A {
+			cl.runOrder[i].runorder = 1
 			cl.runOrder[i].actionRun()
 		}
 	}
 	// Run actions for idle players
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
+			cl.runOrder[i].runorder = 2
 			cl.runOrder[i].actionRun()
 		}
 	}
 	// Run actions for remaining players
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].helperIndex == 0 {
+			cl.runOrder[i].runorder = 3
 			cl.runOrder[i].actionRun()
 		}
 	}
 	// Run actions for idle helpers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
+			cl.runOrder[i].runorder = 4
 			cl.runOrder[i].actionRun()
 		}
 	}
 	// Run actions for remaining helpers
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].helperIndex != 0 {
+			cl.runOrder[i].runorder = 5
 			cl.runOrder[i].actionRun()
 		}
 	}
