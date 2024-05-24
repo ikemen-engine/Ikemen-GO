@@ -221,6 +221,7 @@ const (
 	OC_const_
 	OC_st_
 	OC_ex_
+	OC_ex2_
 )
 const (
 	OC_const_data_life OpCode = iota
@@ -631,6 +632,42 @@ const (
 	OC_ex_fightscreenvar_round_over_wintime
 	OC_ex_fightscreenvar_round_slow_time
 	OC_ex_fightscreenvar_round_start_waittime
+)
+const (
+	OC_ex2_index OpCode = iota
+	OC_ex2_runorder
+	OC_ex2_palfxvar_time
+	OC_ex2_palfxvar_addr
+	OC_ex2_palfxvar_addg
+	OC_ex2_palfxvar_addb
+	OC_ex2_palfxvar_mulr
+	OC_ex2_palfxvar_mulg
+	OC_ex2_palfxvar_mulb
+	OC_ex2_palfxvar_color
+	OC_ex2_palfxvar_hue
+	OC_ex2_palfxvar_invertall
+	OC_ex2_palfxvar_invertblend
+	OC_ex2_palfxvar_bg_time
+	OC_ex2_palfxvar_bg_addr
+	OC_ex2_palfxvar_bg_addg
+	OC_ex2_palfxvar_bg_addb
+	OC_ex2_palfxvar_bg_mulr
+	OC_ex2_palfxvar_bg_mulg
+	OC_ex2_palfxvar_bg_mulb
+	OC_ex2_palfxvar_bg_color
+	OC_ex2_palfxvar_bg_hue
+	OC_ex2_palfxvar_bg_invertall
+	OC_ex2_palfxvar_all_time
+	OC_ex2_palfxvar_all_addr
+	OC_ex2_palfxvar_all_addg
+	OC_ex2_palfxvar_all_addb
+	OC_ex2_palfxvar_all_mulr
+	OC_ex2_palfxvar_all_mulg
+	OC_ex2_palfxvar_all_mulb
+	OC_ex2_palfxvar_all_color
+	OC_ex2_palfxvar_all_hue
+	OC_ex2_palfxvar_all_invertall
+	OC_ex2_palfxvar_all_invertblend
 )
 const (
 	NumVar     = 60
@@ -1543,6 +1580,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			be.run_const(c, &i, oc)
 		case OC_ex_:
 			be.run_ex(c, &i, oc)
+		case OC_ex2_:
+			be.run_ex2(c, &i, oc)
 		case OC_var:
 			*sys.bcStack.Top() = c.varGet(sys.bcStack.Top().ToI())
 		case OC_sysvar:
@@ -2613,6 +2652,82 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.mhv.sparkxy[1] * (c.localscl / oc.localscl))
 	case OC_ex_movehitvar_uniqhit:
 		sys.bcStack.PushI(c.mhv.uniqhit)
+	default:
+		sys.errLog.Printf("%v\n", be[*i-1])
+		c.panic()
+	}
+}
+func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
+	(*i)++
+	switch be[*i-1] {
+	case OC_ex2_index:
+		sys.bcStack.PushI(c.index)
+	case OC_ex2_runorder:
+		sys.bcStack.PushI(c.runorder)
+	case OC_ex2_palfxvar_time:
+		sys.bcStack.PushI(c.palfxvar(0))
+	case OC_ex2_palfxvar_addr:
+		sys.bcStack.PushI(c.palfxvar(1))
+	case OC_ex2_palfxvar_addg:
+		sys.bcStack.PushI(c.palfxvar(2))
+	case OC_ex2_palfxvar_addb:
+		sys.bcStack.PushI(c.palfxvar(3))
+	case OC_ex2_palfxvar_mulr:
+		sys.bcStack.PushI(c.palfxvar(4))
+	case OC_ex2_palfxvar_mulg:
+		sys.bcStack.PushI(c.palfxvar(5))
+	case OC_ex2_palfxvar_mulb:
+		sys.bcStack.PushI(c.palfxvar(6))
+	case OC_ex2_palfxvar_color:
+		sys.bcStack.PushF(c.palfxvar2(1))
+	case OC_ex2_palfxvar_hue:
+		sys.bcStack.PushF(c.palfxvar2(2))
+	case OC_ex2_palfxvar_invertall:
+		sys.bcStack.PushI(c.palfxvar(-1))
+	case OC_ex2_palfxvar_invertblend:
+		sys.bcStack.PushI(c.palfxvar(-2))
+	case OC_ex2_palfxvar_bg_time:
+		sys.bcStack.PushI(sys.palfxvar(0,1))
+	case OC_ex2_palfxvar_bg_addr:
+		sys.bcStack.PushI(sys.palfxvar(1,1))
+	case OC_ex2_palfxvar_bg_addg:
+		sys.bcStack.PushI(sys.palfxvar(2,1))
+	case OC_ex2_palfxvar_bg_addb:
+		sys.bcStack.PushI(sys.palfxvar(3,1))
+	case OC_ex2_palfxvar_bg_mulr:
+		sys.bcStack.PushI(sys.palfxvar(4,1))
+	case OC_ex2_palfxvar_bg_mulg:
+		sys.bcStack.PushI(sys.palfxvar(5,1))
+	case OC_ex2_palfxvar_bg_mulb:
+		sys.bcStack.PushI(sys.palfxvar(6,1))
+	case OC_ex2_palfxvar_bg_color:
+		sys.bcStack.PushF(sys.palfxvar2(1,1))
+	case OC_ex2_palfxvar_bg_hue:
+		sys.bcStack.PushF(sys.palfxvar2(2,1))
+	case OC_ex2_palfxvar_bg_invertall:
+		sys.bcStack.PushI(sys.palfxvar(-1,1))
+	case OC_ex2_palfxvar_all_time:
+		sys.bcStack.PushI(sys.palfxvar(0,2))
+	case OC_ex2_palfxvar_all_addr:
+		sys.bcStack.PushI(sys.palfxvar(1,2))
+	case OC_ex2_palfxvar_all_addg:
+		sys.bcStack.PushI(sys.palfxvar(2,2))
+	case OC_ex2_palfxvar_all_addb:
+		sys.bcStack.PushI(sys.palfxvar(3,2))
+	case OC_ex2_palfxvar_all_mulr:
+		sys.bcStack.PushI(sys.palfxvar(4,2))
+	case OC_ex2_palfxvar_all_mulg:
+		sys.bcStack.PushI(sys.palfxvar(5,2))
+	case OC_ex2_palfxvar_all_mulb:
+		sys.bcStack.PushI(sys.palfxvar(6,2))
+	case OC_ex2_palfxvar_all_color:
+		sys.bcStack.PushF(sys.palfxvar2(1,2))
+	case OC_ex2_palfxvar_all_hue:
+		sys.bcStack.PushF(sys.palfxvar2(2,2))
+	case OC_ex2_palfxvar_all_invertall:
+		sys.bcStack.PushI(sys.palfxvar(-1,2))
+	case OC_ex2_palfxvar_all_invertblend:
+		sys.bcStack.PushI(sys.palfxvar(-2,2))
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
