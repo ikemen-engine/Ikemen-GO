@@ -31,6 +31,7 @@ type stageCamera struct {
 	autocenter           bool
 	zoomanchor           bool
 	boundhighdelta       float32
+	verticalfollowdelta  float32
 	zoomindelay          float32
 	zoomindelaytime      float32
 	fov                  float32
@@ -58,7 +59,7 @@ func newStageCamera() *stageCamera {
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
 		tensionhigh: 0, tensionlow: 0,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
-		zoomindelay: 0, boundhighdelta: 0}
+		zoomindelay: 0, boundhighdelta: 0, verticalfollowdelta: 0}
 }
 
 type CameraView int
@@ -283,7 +284,8 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				if !c.ytensionenable {
 					//newY = c.ywithoutbound
 					ywithoutbound := c.ywithoutbound
-					targetY := (c.highest + float32(c.floortension)*c.localscl) * c.verticalfollow
+					verticalfollow := MaxF(c.verticalfollow, 0.0) + (targetScale-c.zoomout)*MaxF(c.verticalfollowdelta, 0.0)
+					targetY := (c.highest + float32(c.floortension)*c.localscl) * verticalfollow
 					if !c.roundstart {
 						for i := 0; i < 3; i++ {
 							ywithoutbound = ywithoutbound*.85 + targetY*.15
@@ -295,10 +297,10 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 							} else {
 								if newY > ywithoutbound {
 									newY -= float32(sys.gameWidth) / 320 * 0.5
-									newY -= (newY - ywithoutbound) * c.verticalfollow / 10
+									newY -= (newY - ywithoutbound) * verticalfollow / 10
 								} else {
 									newY += float32(sys.gameWidth) / 320 * 0.5
-									newY += (ywithoutbound - newY) * c.verticalfollow / 10
+									newY += (ywithoutbound - newY) * verticalfollow / 10
 								}
 							}
 						}

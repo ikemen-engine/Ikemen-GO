@@ -929,6 +929,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadBool("autocenter", &s.stageCamera.autocenter)
 		sec[0].ReadF32("zoomindelay", &s.stageCamera.zoomindelay)
 		sec[0].ReadF32("boundhighdelta", &s.stageCamera.boundhighdelta)
+		sec[0].ReadF32("verticalfollowdelta", &s.stageCamera.verticalfollowdelta)
 		sec[0].ReadBool("lowestcap", &s.stageCamera.lowestcap)
 		if sys.cam.ZoomMax == 0 {
 			sec[0].ReadF32("zoomin", &s.stageCamera.zoomin)
