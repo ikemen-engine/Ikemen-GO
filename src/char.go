@@ -1939,61 +1939,61 @@ type CharSystemVar struct {
 }
 
 type Char struct {
-	name            string
-	palfx           *PalFX
-	anim            *Animation
-	curFrame        *AnimFrame
-	cmd             []CommandList
-	ss              StateState
-	key             int
-	id              int32
-	helperId        int32
-	helperIndex     int32
-	parentIndex     int32
-	playerNo        int
-	teamside        int
-	keyctrl         [4]bool
-	player          bool
-	animPN          int
-	animNo          int32
-	prevAnimNo      int32
-	life            int32
-	lifeMax         int32
-	power           int32
-	powerMax        int32
-	dizzyPoints     int32
-	dizzyPointsMax  int32
-	guardPoints     int32
-	guardPointsMax  int32
-	redLife         int32
-	juggle          int32
-	fallTime        int32
-	localcoord      float32
-	localscl        float32
-	size            CharSize
-	clsnScale       [2]float32
-	hitdef          HitDef
-	ghv             GetHitVar
-	mhv             MoveHitVar
-	hitby           [2]HitBy
-	ho              [8]HitOverride
-	hoIdx           int
-	hoKeepState     bool
-	mctype          MoveContact
-	mctime          int32
-	children        []*Char
-	targets         []int32
-	hitdefTargets   []int32
+	name                string
+	palfx               *PalFX
+	anim                *Animation
+	curFrame            *AnimFrame
+	cmd                 []CommandList
+	ss                  StateState
+	key                 int
+	id                  int32
+	helperId            int32
+	helperIndex         int32
+	parentIndex         int32
+	playerNo            int
+	teamside            int
+	keyctrl             [4]bool
+	player              bool
+	animPN              int
+	animNo              int32
+	prevAnimNo          int32
+	life                int32
+	lifeMax             int32
+	power               int32
+	powerMax            int32
+	dizzyPoints         int32
+	dizzyPointsMax      int32
+	guardPoints         int32
+	guardPointsMax      int32
+	redLife             int32
+	juggle              int32
+	fallTime            int32
+	localcoord          float32
+	localscl            float32
+	size                CharSize
+	clsnScale           [2]float32
+	hitdef              HitDef
+	ghv                 GetHitVar
+	mhv                 MoveHitVar
+	hitby               [2]HitBy
+	ho                  [8]HitOverride
+	hoIdx               int
+	hoKeepState         bool
+	mctype              MoveContact
+	mctime              int32
+	children            []*Char
+	targets             []int32
+	hitdefTargets       []int32
 	hitdefTargetsBuffer []int32
-	enemynear       [2][]*Char
-	p2enemy         []*Char
-	pos             [3]float32
-	drawPos         [3]float32
-	oldPos          [3]float32
-	vel             [3]float32
-	facing          float32
-	ivar            [NumVar + NumSysVar]int32
-	fvar            [NumFvar + NumSysFvar]float32
+	enemynear           [2][]*Char
+	p2enemy             []*Char
+	pos                 [3]float32
+	drawPos             [3]float32
+	oldPos              [3]float32
+	vel                 [3]float32
+	facing              float32
+	ivar                [NumVar + NumSysVar]int32
+	fvar                [NumFvar + NumSysFvar]float32
 	CharSystemVar
 	aimg            AfterImage
 	soundChannels   SoundChannels
@@ -6020,6 +6020,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	//}
 	return true
 }
+
 // Check which character should win in case attacks connect in the same frame
 func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(*HitDef) bool) bool {
 	if !c.attrCheck(h, e.id, st) {
