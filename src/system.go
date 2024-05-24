@@ -652,9 +652,11 @@ func (s *System) playerIndexExist(id BytecodeValue) BytecodeValue {
 func (s *System) playercount() int32 {
 	return int32(len(s.charList.runOrder))
 }
-func (s *System) palfxvar(x int32,y int32) int32 {
+func (s *System) palfxvar(x int32, y int32) int32 {
 	n := int32(0)
-	if x >= 4 { n = 256 }
+	if x >= 4 {
+		n = 256
+	}
 	pfx := s.bgPalFX
 	if y == 2 {
 		pfx = s.allPalFX
@@ -685,9 +687,11 @@ func (s *System) palfxvar(x int32,y int32) int32 {
 	}
 	return n
 }
-func (s *System) palfxvar2(x int32,y int32) float32 {
+func (s *System) palfxvar2(x int32, y int32) float32 {
 	n := float32(1)
-	if x > 1 { n = 0 }
+	if x > 1 {
+		n = 0
+	}
 	pfx := s.bgPalFX
 	if y == 2 {
 		pfx = s.allPalFX
@@ -702,7 +706,7 @@ func (s *System) palfxvar2(x int32,y int32) float32 {
 			n = 0
 		}
 	}
-	return n*256
+	return n * 256
 }
 func (s *System) screenHeight() float32 {
 	return 240

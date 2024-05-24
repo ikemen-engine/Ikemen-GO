@@ -424,9 +424,9 @@ var triggerMap = map[string]int{
 	"winhyper":           1,
 	"winspecial":         1,
 	// expanded triggers 2
-	"index":              1,
-	"palfxvar":           1,
-	"runorder":           1,
+	"index":    1,
+	"palfxvar": 1,
+	"runorder": 1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {

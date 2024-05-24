@@ -3598,47 +3598,47 @@ func triggerFunctions(l *lua.LState) {
 		case "invertblend":
 			ln = lua.LNumber(sys.debugWC.palfxvar(-2))
 		case "bg.time":
-			ln = lua.LNumber(sys.palfxvar(0,1))
+			ln = lua.LNumber(sys.palfxvar(0, 1))
 		case "bg.add.r":
-			ln = lua.LNumber(sys.palfxvar(1,1))
+			ln = lua.LNumber(sys.palfxvar(1, 1))
 		case "bg.add.g":
-			ln = lua.LNumber(sys.palfxvar(2,1))
+			ln = lua.LNumber(sys.palfxvar(2, 1))
 		case "bg.add.b":
-			ln = lua.LNumber(sys.palfxvar(3,1))
+			ln = lua.LNumber(sys.palfxvar(3, 1))
 		case "bg.mul.r":
-			ln = lua.LNumber(sys.palfxvar(4,1))
+			ln = lua.LNumber(sys.palfxvar(4, 1))
 		case "bg.mul.g":
-			ln = lua.LNumber(sys.palfxvar(5,1))
+			ln = lua.LNumber(sys.palfxvar(5, 1))
 		case "bg.mul.b":
-			ln = lua.LNumber(sys.palfxvar(6,1))
+			ln = lua.LNumber(sys.palfxvar(6, 1))
 		case "bg.color":
-			ln = lua.LNumber(sys.palfxvar2(1,1))
+			ln = lua.LNumber(sys.palfxvar2(1, 1))
 		case "bg.hue":
-			ln = lua.LNumber(sys.palfxvar2(2,1))
+			ln = lua.LNumber(sys.palfxvar2(2, 1))
 		case "bg.invertall":
-			ln = lua.LNumber(sys.palfxvar(-1,1))
+			ln = lua.LNumber(sys.palfxvar(-1, 1))
 		case "all.time":
-			ln = lua.LNumber(sys.palfxvar(0,2))
+			ln = lua.LNumber(sys.palfxvar(0, 2))
 		case "all.add.r":
-			ln = lua.LNumber(sys.palfxvar(1,2))
+			ln = lua.LNumber(sys.palfxvar(1, 2))
 		case "all.add.g":
-			ln = lua.LNumber(sys.palfxvar(2,2))
+			ln = lua.LNumber(sys.palfxvar(2, 2))
 		case "all.add.b":
-			ln = lua.LNumber(sys.palfxvar(3,2))
+			ln = lua.LNumber(sys.palfxvar(3, 2))
 		case "all.mul.r":
-			ln = lua.LNumber(sys.palfxvar(4,2))
+			ln = lua.LNumber(sys.palfxvar(4, 2))
 		case "all.mul.g":
-			ln = lua.LNumber(sys.palfxvar(5,2))
+			ln = lua.LNumber(sys.palfxvar(5, 2))
 		case "all.mul.b":
-			ln = lua.LNumber(sys.palfxvar(6,2))
+			ln = lua.LNumber(sys.palfxvar(6, 2))
 		case "all.color":
-			ln = lua.LNumber(sys.palfxvar2(1,2))
+			ln = lua.LNumber(sys.palfxvar2(1, 2))
 		case "all.hue":
-			ln = lua.LNumber(sys.palfxvar2(2,2))
+			ln = lua.LNumber(sys.palfxvar2(2, 2))
 		case "all.invertall":
-			ln = lua.LNumber(sys.palfxvar(-1,2))
+			ln = lua.LNumber(sys.palfxvar(-1, 2))
 		case "all.invertblend":
-			ln = lua.LNumber(sys.palfxvar(-2,2))
+			ln = lua.LNumber(sys.palfxvar(-2, 2))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

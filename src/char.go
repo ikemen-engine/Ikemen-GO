@@ -3473,7 +3473,9 @@ func (c *Char) numTarget(hid BytecodeValue) BytecodeValue {
 }
 func (c *Char) palfxvar(x int32) int32 {
 	n := int32(0)
-	if x >= 4 { n = 256 }
+	if x >= 4 {
+		n = 256
+	}
 	if c.palfx != nil && c.palfx.enable {
 		switch x {
 		case -2:
@@ -3502,7 +3504,9 @@ func (c *Char) palfxvar(x int32) int32 {
 }
 func (c *Char) palfxvar2(x int32) float32 {
 	n := float32(1)
-	if x > 1 { n = 0 }
+	if x > 1 {
+		n = 0
+	}
 	if c.palfx != nil && c.palfx.enable {
 		switch x {
 		case 1:
@@ -3513,7 +3517,7 @@ func (c *Char) palfxvar2(x int32) float32 {
 			n = 0
 		}
 	}
-	return n*256
+	return n * 256
 }
 func (c *Char) palno() int32 {
 	if c.helperIndex != 0 && c.gi().mugenver[0] != 1 {
@@ -6962,7 +6966,7 @@ func (cl *CharList) clear() {
 }
 func (cl *CharList) add(c *Char) {
 	// Append to run order
-	c.index = int32(len(cl.runOrder))+1
+	c.index = int32(len(cl.runOrder)) + 1
 	cl.runOrder = append(cl.runOrder, c)
 	// If any entries in the draw order are empty, use that one
 	i := 0
@@ -6983,7 +6987,7 @@ func (cl *CharList) replace(dc *Char, pn int, idx int32) bool {
 	// Replace run order
 	for i, c := range cl.runOrder {
 		if c.playerNo == pn && c.helperIndex == idx {
-			c.index = int32(i)+1
+			c.index = int32(i) + 1
 			cl.runOrder[i] = dc
 			ok = true
 			break
