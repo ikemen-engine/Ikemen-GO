@@ -247,7 +247,6 @@ var triggerMap = map[string]int{
 	"inguarddist":       1,
 	"ishelper":          1,
 	"ishometeam":        1,
-	"index":             1,
 	"leftedge":          1,
 	"life":              1,
 	"lifemax":           1,
@@ -384,7 +383,6 @@ var triggerMap = map[string]int{
 	"mugenversion":       1,
 	"numplayer":          1,
 	"offset":             1,
-	"palfxvar":           1,
 	"p5name":             1,
 	"p6name":             1,
 	"p7name":             1,
@@ -425,6 +423,10 @@ var triggerMap = map[string]int{
 	"timetotal":          1,
 	"winhyper":           1,
 	"winspecial":         1,
+	// expanded triggers 2
+	"index":              1,
+	"palfxvar":           1,
+	"runorder":           1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
