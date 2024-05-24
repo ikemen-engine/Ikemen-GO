@@ -3416,6 +3416,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.teamside == sys.home))
 		return 1
 	})
+	luaRegister(l, "index", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.index))
+		return 1
+	})
 	luaRegister(l, "leftedge", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.leftEdge()))
 		return 1
@@ -3566,6 +3570,79 @@ func triggerFunctions(l *lua.LState) {
 			id = int32(numArg(l, 1))
 		}
 		l.Push(lua.LNumber(sys.debugWC.numTarget(BytecodeInt(id)).ToI()))
+		return 1
+	})
+	luaRegister(l, "palfxvar", func(*lua.LState) int {
+		var ln lua.LNumber
+		switch strArg(l, 1) {
+		case "time":
+			ln = lua.LNumber(sys.debugWC.palfxvar(0))
+		case "add.r":
+			ln = lua.LNumber(sys.debugWC.palfxvar(1))
+		case "add.g":
+			ln = lua.LNumber(sys.debugWC.palfxvar(2))
+		case "add.b":
+			ln = lua.LNumber(sys.debugWC.palfxvar(3))
+		case "mul.r":
+			ln = lua.LNumber(sys.debugWC.palfxvar(4))
+		case "mul.g":
+			ln = lua.LNumber(sys.debugWC.palfxvar(5))
+		case "mul.b":
+			ln = lua.LNumber(sys.debugWC.palfxvar(6))
+		case "color":
+			ln = lua.LNumber(sys.debugWC.palfxvar2(1))
+		case "hue":
+			ln = lua.LNumber(sys.debugWC.palfxvar2(2))
+		case "invertall":
+			ln = lua.LNumber(sys.debugWC.palfxvar(-1))
+		case "invertblend":
+			ln = lua.LNumber(sys.debugWC.palfxvar(-2))
+		case "bg.time":
+			ln = lua.LNumber(sys.palfxvar(0,1))
+		case "bg.add.r":
+			ln = lua.LNumber(sys.palfxvar(1,1))
+		case "bg.add.g":
+			ln = lua.LNumber(sys.palfxvar(2,1))
+		case "bg.add.b":
+			ln = lua.LNumber(sys.palfxvar(3,1))
+		case "bg.mul.r":
+			ln = lua.LNumber(sys.palfxvar(4,1))
+		case "bg.mul.g":
+			ln = lua.LNumber(sys.palfxvar(5,1))
+		case "bg.mul.b":
+			ln = lua.LNumber(sys.palfxvar(6,1))
+		case "bg.color":
+			ln = lua.LNumber(sys.palfxvar2(1,1))
+		case "bg.hue":
+			ln = lua.LNumber(sys.palfxvar2(2,1))
+		case "bg.invertall":
+			ln = lua.LNumber(sys.palfxvar(-1,1))
+		case "all.time":
+			ln = lua.LNumber(sys.palfxvar(0,2))
+		case "all.add.r":
+			ln = lua.LNumber(sys.palfxvar(1,2))
+		case "all.add.g":
+			ln = lua.LNumber(sys.palfxvar(2,2))
+		case "all.add.b":
+			ln = lua.LNumber(sys.palfxvar(3,2))
+		case "all.mul.r":
+			ln = lua.LNumber(sys.palfxvar(4,2))
+		case "all.mul.g":
+			ln = lua.LNumber(sys.palfxvar(5,2))
+		case "all.mul.b":
+			ln = lua.LNumber(sys.palfxvar(6,2))
+		case "all.color":
+			ln = lua.LNumber(sys.palfxvar2(1,2))
+		case "all.hue":
+			ln = lua.LNumber(sys.palfxvar2(2,2))
+		case "all.invertall":
+			ln = lua.LNumber(sys.palfxvar(-1,2))
+		case "all.invertblend":
+			ln = lua.LNumber(sys.palfxvar(-2,2))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
+		l.Push(ln)
 		return 1
 	})
 	//p1name and other variants can be checked via name
@@ -3729,6 +3806,10 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "projhittime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.projHitTime(
 			BytecodeInt(int32(numArg(l, 1)))).ToI()))
+		return 1
+	})
+	luaRegister(l, "runorder", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.runorder))
 		return 1
 	})
 	//random (dedicated functionality already exists in Lua)
