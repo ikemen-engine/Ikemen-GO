@@ -500,6 +500,7 @@ const (
 	HT_Unknown HitType = -1
 )
 
+// Aiuchi = trading hits
 type AiuchiType int32
 
 const (
@@ -1982,7 +1983,8 @@ type Char struct {
 	mctime          int32
 	children        []*Char
 	targets         []int32
-	targetsOfHitdef []int32
+	hitdefTargets   []int32
+	hitdefTargetsBuffer []int32
 	enemynear       [2][]*Char
 	p2enemy         []*Char
 	pos             [3]float32
@@ -4380,7 +4382,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 }
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !proj {
-		c.targetsOfHitdef = c.targetsOfHitdef[:0]
+		c.hitdefTargets = c.hitdefTargets[:0]
 	}
 	if hd.attr&^int32(ST_MASK) == 0 {
 		hd.attr = 0
@@ -5752,7 +5754,7 @@ func (c *Char) hasTarget(id int32) bool {
 	return false
 }
 func (c *Char) hasTargetOfHitdef(id int32) bool {
-	for _, tid := range c.targetsOfHitdef {
+	for _, tid := range c.hitdefTargets {
 		if tid == id {
 			return true
 		}
@@ -6018,9 +6020,8 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	//}
 	return true
 }
-func (c *Char) hittable(h *HitDef, e *Char, st StateType,
-	// Check which character should win in case attacks connect in the same frame
-	countercheck func(*HitDef) bool) bool {
+// Check which character should win in case attacks connect in the same frame
+func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(*HitDef) bool) bool {
 	if !c.attrCheck(h, e.id, st) {
 		return false
 	}
@@ -6054,8 +6055,7 @@ func (c *Char) hittable(h *HitDef, e *Char, st StateType,
 		default:
 			return true
 		}
-		//return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0 // https://github.com/ikemen-engine/Ikemen-GO/issues/1410
-		return !countercheck(&c.hitdef)
+		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0
 	}
 	return true
 }
@@ -6658,6 +6658,12 @@ func (c *Char) tick() {
 		c.hitdef.attr = c.hitdef.attr&^int32(ST_MASK) | int32(c.ss.stateType)
 		c.hitdef.lhit = false
 	}
+	// Get Hitdef targets from the buffer. Using a buffer mitigates processing order errors
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1798
+	if len(c.hitdefTargetsBuffer) > 0 {
+		c.hitdefTargets = append(c.hitdefTargets, c.hitdefTargetsBuffer...)
+		c.hitdefTargetsBuffer = c.hitdefTargetsBuffer[:0]
+	}
 	if c.mctime < 0 {
 		c.mctime = 1
 		if c.mctype == MC_Hit {
@@ -7114,8 +7120,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		}
 		if !proj {
-			c.targetsOfHitdef = append(c.targetsOfHitdef, getter.id)
-			c.mhv.uniqhit = int32(len(c.targetsOfHitdef))
+			c.hitdefTargetsBuffer = append(c.hitdefTargetsBuffer, getter.id)
+			c.mhv.uniqhit = int32(len(c.hitdefTargets))
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.csf(CSF_gethit)
 		// This flag determines if juggle points will be subtracted further down
@@ -7795,7 +7801,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					(c.asf(ASF_nojugglecheck) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
 					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 					p.curmisstime <= 0 && p.hitpause <= 0 && p.hitdef.hitonce >= 0 &&
-					getter.hittable(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
+					getter.loseHitTrade(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallf)) + 1
@@ -7872,9 +7878,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				}
 				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
-					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) ||
-						getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
-					getter.hittable(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
+					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
+					getter.loseHitTrade(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
 						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
 							c.attrCheck(h, getter.id, getter.ss.stateType) &&
 							c.hitCheck(getter)
@@ -7926,7 +7931,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									}
 									getter.ghv.fallf = getter.ghv.fallf || fall
 
-									getter.targetsOfHitdef = append(getter.targetsOfHitdef, c.id)
+									getter.hitdefTargetsBuffer = append(getter.hitdefTargetsBuffer, c.id)
 									if getter.hittmp == 0 {
 										getter.hittmp = -1
 									}

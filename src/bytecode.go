@@ -7423,8 +7423,8 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 	}
 	crun.bindPos[0] = x
 	crun.bindPos[1] = y
-	crun.setBindTime(time)
 	crun.setBindToId(p)
+	crun.setBindTime(time)
 	return false
 }
 
@@ -7467,8 +7467,8 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 	}
 	crun.bindPos[0] = x
 	crun.bindPos[1] = y
-	crun.setBindTime(time)
 	crun.setBindToId(r)
+	crun.setBindTime(time)
 	return false
 }
 
