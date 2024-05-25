@@ -631,7 +631,7 @@ type HitDef struct {
 	kill                       bool
 	guard_kill                 bool
 	forcenofall                bool
-	lhit                       bool
+	ltypehit                   bool
 	attackerID                 int32
 	dizzypoints                int32
 	guardpoints                int32
@@ -714,7 +714,7 @@ func (hd *HitDef) clear() {
 func (hd *HitDef) invalidate(stateType StateType) {
 	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
 	hd.reversal_attr |= -1 << 31
-	hd.lhit = false
+	hd.ltypehit = false
 }
 func (hd *HitDef) testAttr(attr int32) bool {
 	attr &= hd.attr
@@ -4451,11 +4451,13 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			hd.hitonce = 0
 		}
 	}
+	// Assign a value to a NaN field
 	ifnanset := func(dst *float32, src float32) {
 		if math.IsNaN(float64(*dst)) {
 			*dst = src
 		}
 	}
+	// Assign a value to an IErr field
 	ifierrset := func(dst *int32, src int32) bool {
 		if *dst == IErr {
 			*dst = src
@@ -6708,13 +6710,13 @@ func (c *Char) tick() {
 		}
 	}
 	if c.hitdefContact {
-		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
+		if c.hitdef.hitonce != 0 {
 			c.hitdef.invalidate(c.ss.stateType)
 		}
 		c.hitdefContact = false
-	} else if c.hitdef.lhit {
+	} else if c.hitdef.ltypehit {
 		c.hitdef.attr = c.hitdef.attr&^int32(ST_MASK) | int32(c.ss.stateType)
-		c.hitdef.lhit = false
+		c.hitdef.ltypehit = false
 	}
 	// Get Hitdef targets from the buffer. Using a buffer mitigates processing order errors
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1798
@@ -7097,7 +7099,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 	hit := func(c *Char, hd *HitDef, pos [2]float32,
 		projf, attackMul float32, hits int32) (hitType int32) {
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
-			c.hitdef.lhit = true
+			c.hitdef.ltypehit = true
 			return 0
 		}
 		if getter.stchtmp && getter.ss.sb.playerNo != hd.playerNo && func() bool {
@@ -7969,8 +7971,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
-									getter.hitdefContact = true
 									getter.mhv.frame = true
+									getter.hitdef.invalidate(c.ss.stateType) // Nullify hitdef. TODO: This isn't quite what happens in Mugen
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
@@ -8106,11 +8108,18 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 	}
 }
-func (cl *CharList) getHit() {
+func (cl *CharList) hitDetection() {
 
 	sortedOrder := []int{}
+	// Check ReversalDefs first
 	for i, c := range cl.runOrder {
-		if c.hitdef.attr > 0 {
+		if c.hitdef.reversal_attr > 0 {
+			sortedOrder = append(sortedOrder, i)
+		}
+	}
+	// Check Hitdefs second
+	for i, c := range cl.runOrder {
+		if c.hitdef.attr > 0 && c.hitdef.reversal_attr == 0 {
 			sortedOrder = append(sortedOrder, i)
 		}
 	}
@@ -8127,10 +8136,11 @@ func (cl *CharList) getHit() {
 	}
 	sortedOrder = append(sortedOrder, soNum...)
 
+	// Hit detection for players
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.clsn(cl.runOrder[sortedOrder[i]], false)
 	}
-
+	// Hit detection for projectiles
 	for _, c := range cl.runOrder {
 		cl.clsn(c, true)
 	}

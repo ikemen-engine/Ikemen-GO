@@ -1070,7 +1070,7 @@ func (s *System) charUpdate() {
 				}
 			}
 		}
-		s.charList.getHit()
+		s.charList.hitDetection()
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id != IErr {
