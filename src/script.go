@@ -4286,6 +4286,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.lifebar.ro.slow_time))
 		case "round.start.waittime":
 			l.Push(lua.LNumber(sys.lifebar.ro.start_waittime))
+		case "round.called":
+			l.Push(lua.LBool((!sys.lifebar.ro.introState[0]) && sys.lifebar.ro.wt[0] < 0))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

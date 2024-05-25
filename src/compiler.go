@@ -2996,6 +2996,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex_fightscreenvar_round_slow_time
 		case "round.start.waittime":
 			opc = OC_ex_fightscreenvar_round_start_waittime
+		case "round.called":
+			opc = OC_ex_fightscreenvar_round_called
 		default:
 			return bvNone(), Error("Invalid data: " + fsvname)
 		}

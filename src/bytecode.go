@@ -632,6 +632,7 @@ const (
 	OC_ex_fightscreenvar_round_over_wintime
 	OC_ex_fightscreenvar_round_slow_time
 	OC_ex_fightscreenvar_round_start_waittime
+	OC_ex_fightscreenvar_round_called
 )
 const (
 	OC_ex2_index OpCode = iota
@@ -2428,6 +2429,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.lifebar.ro.slow_time)
 	case OC_ex_fightscreenvar_round_start_waittime:
 		sys.bcStack.PushI(sys.lifebar.ro.start_waittime)
+	case OC_ex_fightscreenvar_round_called:
+		sys.bcStack.PushB((!sys.lifebar.ro.introState[0]) && sys.lifebar.ro.wt[0] < 0)
 	case OC_ex_fighttime:
 		sys.bcStack.PushI(sys.gameTime)
 	case OC_ex_firstattack:
