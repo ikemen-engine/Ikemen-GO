@@ -2944,6 +2944,11 @@ func (c *Char) setAnimElem(e int32) {
 	if c.anim != nil {
 		c.anim.SetAnimElem(e)
 		c.curFrame = c.anim.CurrentFrame()
+		if int(e) < 0 {
+			sys.appendToConsole(c.warn() + fmt.Sprintf("changed to negative animelem"))
+		} else if int(e) > len(c.anim.frames) {
+			sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid animelem %v within action %v", e, c.animNo))
+		}
 	}
 }
 func (c *Char) setCtrl(ctrl bool) {

@@ -398,18 +398,21 @@ func (a *Animation) drawFrame() *AnimFrame {
 }
 func (a *Animation) SetAnimElem(elem int32) {
 	a.current = Max(0, elem-1)
+	// If trying to set an element higher than the last one in the animation
 	if int(a.current) >= len(a.frames) {
-		if a.totaltime == -1 {
-			a.current = int32(len(a.frames)) - 1
-		} else {
-			a.current = a.loopstart +
-				(a.current-a.loopstart)%(int32(len(a.frames))-a.loopstart)
-		}
+		//if a.totaltime == -1 {
+		//	a.current = int32(len(a.frames)) - 1
+		//} else if int32(len(a.frames))-a.loopstart > 0 { // Prevent division by zero crash
+		//	a.current = a.loopstart +
+		//		(a.current-a.loopstart)%(int32(len(a.frames))-a.loopstart)
+		//}
+		// Mugen merely sets the element to 1
+		a.current = 0
 	}
 	a.drawidx, a.time, a.newframe = a.current, 0, true
 	a.UpdateSprite()
 	a.loopend = false
-	a.sumtime = 0 // AnimElemTime 内で使用
+	a.sumtime = 0 // AnimElemTime 内で使用 // "Used within AnimElemTime"
 	a.sumtime = -a.AnimElemTime(a.current + 1)
 }
 func (a *Animation) animSeek(elem int32) {
