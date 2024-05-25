@@ -30,8 +30,8 @@ type stageCamera struct {
 	ytensionenable       bool
 	autocenter           bool
 	zoomanchor           bool
-	boundhighdelta       float32
-	verticalfollowdelta  float32
+	boundhighzoomdelta      float32
+	verticalfollowzoomdelta float32
 	zoomindelay          float32
 	zoomindelaytime      float32
 	fov                  float32
@@ -59,7 +59,7 @@ func newStageCamera() *stageCamera {
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
 		tensionhigh: 0, tensionlow: 0,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
-		zoomindelay: 0, boundhighdelta: 0, verticalfollowdelta: 0}
+		zoomindelay: 0, boundhighzoomdelta: 0, verticalfollowzoomdelta: 0}
 }
 
 type CameraView int
@@ -284,7 +284,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				if !c.ytensionenable {
 					//newY = c.ywithoutbound
 					ywithoutbound := c.ywithoutbound
-					verticalfollow := MaxF(c.verticalfollow, 0.0) + (targetScale-c.zoomout)*MaxF(c.verticalfollowdelta, 0.0)
+					verticalfollow := MaxF(c.verticalfollow, 0.0) + (targetScale-c.zoomout)*MaxF(c.verticalfollowzoomdelta, 0.0)
 					targetY := (c.highest + float32(c.floortension)*c.localscl) * verticalfollow
 					if !c.roundstart {
 						for i := 0; i < 3; i++ {
@@ -376,9 +376,9 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newX = (newLeft + newRight) / 2
 				}
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
-				if c.boundhighdelta > 0 {
+				if c.boundhighzoomdelta > 0 {
 					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighdelta
+					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
 					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
 				} else {
 					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
@@ -386,9 +386,9 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
 				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale), c.maxRight-c.halfWidth/newScale)
-				if c.boundhighdelta > 0 {
+				if c.boundhighzoomdelta > 0 {
 					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighdelta
+					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
 					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
 				} else {
 					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
