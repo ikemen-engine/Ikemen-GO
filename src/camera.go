@@ -3,53 +3,53 @@ package main
 import "math"
 
 type stageCamera struct {
-	startx               int32
-	starty               int32
-	boundleft            int32
-	boundright           int32
-	boundhigh            int32
-	boundlow             int32
-	verticalfollow       float32
-	floortension         int32
-	tensionhigh          int32
-	tensionlow           int32
-	lowestcap            bool
-	tension              int32
-	tensionvel           float32
-	overdrawhigh         int32 //TODO: not implemented
-	overdrawlow          int32
-	cuthigh              int32
-	cutlow               int32
-	localcoord           [2]int32
-	localscl             float32
-	zoffset              int32
-	ztopscale            float32
-	startzoom            float32
-	zoomin               float32
-	zoomout              float32
-	ytensionenable       bool
-	autocenter           bool
-	zoomanchor           bool
+	startx                  int32
+	starty                  int32
+	boundleft               int32
+	boundright              int32
+	boundhigh               int32
+	boundlow                int32
+	verticalfollow          float32
+	floortension            int32
+	tensionhigh             int32
+	tensionlow              int32
+	lowestcap               bool
+	tension                 int32
+	tensionvel              float32
+	overdrawhigh            int32 //TODO: not implemented
+	overdrawlow             int32
+	cuthigh                 int32
+	cutlow                  int32
+	localcoord              [2]int32
+	localscl                float32
+	zoffset                 int32
+	ztopscale               float32
+	startzoom               float32
+	zoomin                  float32
+	zoomout                 float32
+	ytensionenable          bool
+	autocenter              bool
+	zoomanchor              bool
 	boundhighzoomdelta      float32
 	verticalfollowzoomdelta float32
-	zoomindelay          float32
-	zoomindelaytime      float32
-	fov                  float32
-	yshift               float32
-	far                  float32
-	near                 float32
-	aspectcorrection     float32
-	zoomanchorcorrection float32
-	ywithoutbound        float32
-	highest              float32
-	lowest               float32
-	leftest              float32
-	rightest             float32
-	leftestvel           float32
-	rightestvel          float32
-	roundstart           bool
-	maxRight             float32
-	minLeft              float32
+	zoomindelay             float32
+	zoomindelaytime         float32
+	fov                     float32
+	yshift                  float32
+	far                     float32
+	near                    float32
+	aspectcorrection        float32
+	zoomanchorcorrection    float32
+	ywithoutbound           float32
+	highest                 float32
+	lowest                  float32
+	leftest                 float32
+	rightest                float32
+	leftestvel              float32
+	rightestvel             float32
+	roundstart              bool
+	maxRight                float32
+	minLeft                 float32
 }
 
 func newStageCamera() *stageCamera {
