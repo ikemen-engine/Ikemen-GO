@@ -5210,14 +5210,16 @@ func (c *Char) hitVelSetY() {
 	c.setYV(c.ghv.yvel)
 }
 func (c *Char) getEdge(base float32, actually bool) float32 {
-	if !actually || c.stWgi().mugenver[0] != 1 {
-		switch c.ss.stateType {
-		case ST_A:
-			return base + 1
-		case ST_L:
-			return base + 2
+	/*
+		if !actually || c.stWgi().mugenver[0] != 1 {
+			switch c.ss.stateType {
+			case ST_A:
+				return base + 1
+			case ST_L:
+				return base + 2
+			}
 		}
-	}
+	*/
 	return base
 }
 func (c *Char) defFW() float32 {
