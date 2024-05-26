@@ -8883,7 +8883,6 @@ func (sc modifyBgm) Run(c *Char, _ []int32) bool {
 		if freqSet && sys.bgm.freqmul != freqmul {
 			sys.bgm.SetFreqMul(freqmul)
 		}
-		return true
 	}
 	return false
 }
