@@ -376,23 +376,11 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					newX = (newLeft + newRight) / 2
 				}
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
-				if c.boundhighzoomdelta > 0 {
-					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
-					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
-				} else {
-					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
-				}
+				newY = c.boundY(newY, newScale)
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
 				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale), c.maxRight-c.halfWidth/newScale)
-				if c.boundhighzoomdelta > 0 {
-					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
-					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
-				} else {
-					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
-				}
+				newY = c.boundY(newY, newScale)
 			}
 
 		case Follow_View:
@@ -408,4 +396,14 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 	}
 	c.roundstart = false
 	return
+}
+
+func (c *Camera) boundY(y float32, scale float32) float32 {
+	if c.boundhighzoomdelta > 0 {
+		topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
+		boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/scale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
+		return MinF(MaxF(y, boundHigh), float32(c.boundlow)*c.localscl) * scale
+	} else {
+		return MinF(MaxF(y, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * scale
+	}
 }
