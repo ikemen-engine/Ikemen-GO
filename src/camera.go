@@ -347,7 +347,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 						newLeft, newRight = newLeft+(targetLeft-newLeft)*0.05*sys.turbo*c.tensionvel, newRight+(targetRight-newRight)*0.05*sys.turbo*c.tensionvel
 						diffLeft := targetLeft - newLeft
 						diffRight := targetRight - newRight
-						if AbsF(diffLeft) <= diff*sys.turbo {
+						if AbsF(diffLeft) <= diff*sys.turbo*c.tensionvel {
 							newLeft = targetLeft
 						} else if diffLeft > 0 {
 							newLeft += diff * sys.turbo * c.tensionvel
