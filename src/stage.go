@@ -930,6 +930,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("zoomindelay", &s.stageCamera.zoomindelay)
 		sec[0].ReadF32("zoominspeed", &s.stageCamera.zoominspeed)
 		sec[0].ReadF32("zoomoutspeed", &s.stageCamera.zoomoutspeed)
+		sec[0].ReadF32("yscrollspeed", &s.stageCamera.yscrollspeed)
 		sec[0].ReadF32("boundhighzoomdelta", &s.stageCamera.boundhighzoomdelta)
 		sec[0].ReadF32("verticalfollowzoomdelta", &s.stageCamera.verticalfollowzoomdelta)
 		sec[0].ReadBool("lowestcap", &s.stageCamera.lowestcap)

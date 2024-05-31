@@ -36,6 +36,7 @@ type stageCamera struct {
 	zoomindelaytime         float32
 	zoominspeed             float32
 	zoomoutspeed            float32
+	yscrollspeed            float32
 	fov                     float32
 	yshift                  float32
 	far                     float32
@@ -61,7 +62,7 @@ func newStageCamera() *stageCamera {
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
 		tensionhigh: 0, tensionlow: 0,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
-		zoomindelay: 0, zoominspeed: 1, zoomoutspeed: 1,
+		zoomindelay: 0, zoominspeed: 1, zoomoutspeed: 1, yscrollspeed: 1,
 		boundhighzoomdelta: 0, verticalfollowzoomdelta: 0}
 }
 
@@ -378,6 +379,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
 				newLeft, newRight, newScale = c.reduceZoomSpeed(newLeft, newRight, newScale, oldLeft, oldRight, scale)
 				newX = (newLeft + newRight) / 2
+				newY = c.reduceYScrollSpeed(newY, y)
 				newY = c.boundY(newY, newScale)
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
@@ -472,6 +474,17 @@ func (c *Camera) hardLimit(left float32, right float32) (float32, float32, float
 	right = MinF(right, c.maxRight)
 	scale := MaxF(MinF(c.halfWidth*2/(right-left), c.zoomin), c.zoomout)
 	return left, right, scale
+}
+
+func (c *Camera) reduceYScrollSpeed(newY float32, oldY float32) float32 {
+	const minYDiff float32 = 5e-5
+
+	yDiff := newY - oldY
+	if AbsF(yDiff) < minYDiff || c.yscrollspeed < 0.0 || c.yscrollspeed >= 1.0 {
+		return newY
+	}
+
+	return oldY + yDiff*c.yscrollspeed
 }
 
 func (c *Camera) boundY(y float32, scale float32) float32 {
