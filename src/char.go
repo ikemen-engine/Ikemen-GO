@@ -1547,6 +1547,7 @@ type Projectile struct {
 	platformFence   bool
 	remflag         bool
 	freezeflag      bool
+	contactflag     bool
 }
 
 func newProjectile() *Projectile {
@@ -1580,6 +1581,7 @@ func (p *Projectile) paused(playerNo int) bool {
 	return false
 }
 func (p *Projectile) update(playerNo int) {
+	// Check projectile removal conditions
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
 		p.remflag = true
 		if p.anim >= 0 {
@@ -1591,16 +1593,14 @@ func (p *Projectile) update(playerNo int) {
 				} else if p.cancelanim != p.anim || p.cancelanim_ffx != p.anim_ffx {
 					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_ffx, true)
 				}
-			} else if p.pos[0] < (sys.xmin-sys.screenleft)/p.localscl-float32(p.edgebound) ||
+			} else if p.removetime == 0 ||
+				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) ||
+				p.pos[0] < (sys.xmin-sys.screenleft)/p.localscl-float32(p.edgebound) ||
 				p.pos[0] > (sys.xmax+sys.screenright)/p.localscl+float32(p.edgebound) ||
-				p.velocity[0]*p.facing < 0 &&
-					p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
-				p.velocity[0]*p.facing > 0 &&
-					p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
+				p.velocity[0]*p.facing < 0 && p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
+				p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
 				p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
-				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
-				p.removetime == 0 ||
-				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) {
+				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) {
 				if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
 					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 				}
@@ -1705,22 +1705,22 @@ func (p *Projectile) clsn(playerNo int) {
 	}
 }
 func (p *Projectile) tick(playerNo int) {
-	if p.curmisstime < 0 {
-		p.curmisstime = ^p.curmisstime
+	if p.contactflag {
+		p.contactflag = false
+		// Projectile hitpause should maybe be set in this place instead of using "(p.hitpause <= 0 || p.contactflag)" for hit checking
+		p.curmisstime = Max(0, p.misstime)
 		if p.hits >= 0 {
-			if p.curmisstime <= 0 && p.hitpause == 0 {
+			p.hits--
+			if p.hits <= 0 {
 				p.hits = -1
-			} else {
-				p.hits--
-				if p.hits <= 0 {
-					p.remflag = true
-					p.hits = -1
+				if p.remove {
+					p.remflag = true // Set flag immediately just in case
 				}
 			}
 		}
 		p.hitdef.air_juggle = 0
 	}
-	if p.hits <= 0 {
+	if p.remflag {
 		p.hitpause = 0
 	}
 	if !p.paused(playerNo) {
@@ -1740,8 +1740,7 @@ func (p *Projectile) tick(playerNo int) {
 			p.freezeflag = false
 		} else {
 			p.hitpause--
-			// This flag makes projectiles halt in place between multiple hits
-			p.freezeflag = true
+			p.freezeflag = true // This flag makes projectiles halt in place between multiple hits
 		}
 	}
 }
@@ -3437,9 +3436,13 @@ func (c *Char) numPartner() int32 {
 	return sys.numSimul[c.playerNo&1] - 1
 }
 func (c *Char) numProj() int32 {
+	// Helpers cannot own projectiles
+	if c.helperIndex != 0 {
+		return 0
+	}
 	n := int32(0)
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id >= 0 && p.hits >= 0 && !p.remflag {
+		if p.id >= 0 && !((p.hits < 0 && p.remove) || p.remflag) {
 			n++
 		}
 	}
@@ -3449,12 +3452,13 @@ func (c *Char) numProjID(pid BytecodeValue) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
 	}
+	// Helpers cannot own projectiles
 	if c.helperIndex != 0 {
 		return BytecodeInt(0)
 	}
 	var id, n int32 = Max(0, pid.ToI()), 0
 	for _, p := range sys.projs[c.playerNo] {
-		if p.id == id && p.hits >= 0 && !p.remflag {
+		if p.id == id && !((p.hits < 0 && p.remove) || p.remflag) {
 			n++
 		}
 	}
@@ -6861,8 +6865,12 @@ func (c *Char) cueDraw() {
 		return
 	}
 	if sys.clsnDraw && c.curFrame != nil {
-		x, y := c.pos[0]*c.localscl+c.offsetX()*c.localscl, c.pos[1]*c.localscl+c.offsetY()*c.localscl
-		xs, ys := c.facing*c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord), c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)
+		x := c.pos[0]*c.localscl
+		y := c.pos[1]*c.localscl
+		xoff := x + c.offsetX()*c.localscl
+		yoff := y + c.offsetY()*c.localscl
+		xs := c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord)*c.facing
+		ys := c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)
 		// Draw Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
 			sys.drawc1.Add(clsn, x, y, xs, ys)
@@ -6876,27 +6884,27 @@ func (c *Char) cueDraw() {
 					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0 || c.gi().unhittable > 0
 				}
 			}
-			// Draw fully invincible Clsn2
 			if mtk {
-				sys.drawc2mtk.Add(clsn, x, y, xs, ys)
-				// Draw partially invincible Clsn2
+				// Draw fully invincible Clsn2
+				sys.drawc2mtk.Add(clsn, xoff, yoff, xs, ys)
 			} else if hb {
-				sys.drawc2sp.Add(clsn, x, y, xs, ys)
-				// Draw regular Clsn2
+				// Draw partially invincible Clsn2
+				sys.drawc2sp.Add(clsn, xoff, yoff, xs, ys)
 			} else {
-				sys.drawc2.Add(clsn, x, y, xs, ys)
+				// Draw regular Clsn2
+				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
 			}
 		}
-		// Draw pushbox (width * height)
+		// Draw size box (width * height)
 		if c.csf(CSF_playerpush) {
 			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height[0] * c.localscl, c.width[0] * c.localscl, c.height[1] * c.localscl},
-				c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
+				x, y, c.facing, 1)
 		}
 		// Draw crosshair
-		sys.drawch.Add([]float32{-1, -1, 1, 1}, c.pos[0]*c.localscl, c.pos[1]*c.localscl, c.facing, 1)
-		//debug clsnText
+		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, c.facing, 1)
+		// Draw debug clsnText
 		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1) + float32(sys.gameWidth)/2
-		y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
+		y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel() + 1 // "1" is just for spacing
 		y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
 		for _, tid := range c.targets {
@@ -7093,7 +7101,6 @@ func (cl *CharList) update() {
 		c.update()
 		c.track()
 	}
-
 }
 func (cl *CharList) clsn(getter *Char, proj bool) {
 	var gxmin, gxmax float32
@@ -7869,7 +7876,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					// Projectiles always check juggle points even if the enemy is not already a target
 					(c.asf(ASF_nojugglecheck) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
 					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
-					p.curmisstime <= 0 && p.hitpause <= 0 && p.hitdef.hitonce >= 0 &&
+					(p.hitpause <= 0 || p.contactflag) && p.curmisstime <= 0 && p.hitdef.hitonce >= 0 &&
 					getter.loseHitTrade(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
 					orghittmp := getter.hittmp
 					if getter.csf(CSF_gethit) {
@@ -7882,18 +7889,16 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 						}
 						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
 							p.pos[1] - c.pos[1]*(c.localscl/p.localscl)}, p.facing, p.parentAttackmul, hits); ht != 0 {
-							p.curmisstime = ^Max(0, p.misstime)
+							p.contactflag = true
 							if Abs(ht) == 1 {
 								sys.cgi[i].pctype = PC_Hit
-								sys.cgi[i].pctime = 0
-								sys.cgi[i].pcid = p.id
-								p.hitpause = Max(0, p.hitdef.pausetime)
+								p.hitpause = Max(0, p.hitdef.pausetime - Btoi(c.gi().mugenver[0] == 0)) // Winmugen projectiles are 1 frame short on hitpauses
 							} else {
 								sys.cgi[i].pctype = PC_Guarded
-								sys.cgi[i].pctime = 0
-								sys.cgi[i].pcid = p.id
-								p.hitpause = Max(0, p.hitdef.guard_pausetime)
+								p.hitpause = Max(0, p.hitdef.guard_pausetime - Btoi(c.gi().mugenver[0] == 0))
 							}
+							sys.cgi[i].pctime = 0
+							sys.cgi[i].pcid = p.id
 						}
 						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
 						//"In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1."
@@ -8005,14 +8010,13 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 										getter.hittmp = -1
 									}
 									if !getter.csf(CSF_gethit) {
-										getter.hitPauseTime = Max(1, c.hitdef.shaketime+
-											Btoi(c.gi().mugenver[0] == 1))
+										getter.hitPauseTime = Max(1, c.hitdef.shaketime + Btoi(c.gi().mugenver[0] == 1))
 									}
 								}
 								if !c.csf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
 									getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
-									c.hitPauseTime = Max(1, c.hitdef.pausetime+
-										Btoi(c.gi().mugenver[0] == 1))
+									c.hitPauseTime = Max(1, c.hitdef.pausetime + Btoi(c.gi().mugenver[0] == 1))
+									// Attacker hitpauses were off by 1 frame in Winmugen. Mugen 1.0 fixed it by compensating
 								}
 								c.uniqHitCount++
 							} else {
@@ -8021,8 +8025,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.mctime = -1
 								}
 								if !c.csf(CSF_gethit) {
-									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime+
-										Btoi(c.gi().mugenver[0] == 1))
+									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime + Btoi(c.gi().mugenver[0] == 1))
 								}
 							}
 							if c.hitdef.hitonce > 0 {

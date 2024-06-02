@@ -2455,7 +2455,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardPointsMax)
 	case OC_ex_helperid:
 		sys.bcStack.PushI(c.helperId)
-		*i += 4
 	case OC_ex_helpername:
 		sys.bcStack.PushB(c.helperIndex != 0 && strings.ToLower(c.name) ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(

@@ -5861,7 +5861,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		is, name, _ := ReadIniSection(lines, &i)
 		switch name {
 		case "info":
-			// Read info section for the mugen/ikemen version of the character
+			// Read info section for the Mugen/Ikemen version of the character
 			if info {
 				info = false
 				var ok bool
@@ -5875,6 +5875,8 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 						if v, err := strconv.ParseUint(s, 10, 16); err == nil {
 							sys.cgi[pn].mugenver[i] = uint16(v)
 						} else {
+							sys.cgi[pn].mugenver[0] = 0
+							sys.cgi[pn].mugenver[1] = 0
 							break
 						}
 					}
