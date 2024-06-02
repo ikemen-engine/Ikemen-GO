@@ -3241,7 +3241,7 @@ func (c *Char) ctrl() bool {
 		!c.scf(SCF_dizzy) && !c.scf(SCF_guardbreak)
 }
 func (c *Char) drawgame() bool {
-	return c.roundState() >= 3 && sys.winTeam < 0
+	return sys.roundState() >= 3 && sys.winTeam < 0
 }
 func (c *Char) frontEdge() float32 {
 	if c.facing > 0 {
@@ -3596,22 +3596,6 @@ func (c *Char) roundsExisted() int32 {
 	}
 	return sys.roundsExisted[c.playerNo&1]
 }
-func (c *Char) roundState() int32 {
-	switch {
-	case sys.postMatchFlg:
-		return -1
-	case sys.intro > sys.lifebar.ro.ctrl_time+1:
-		return 0
-	case sys.lifebar.ro.cur == 0:
-		return 1
-	case sys.intro >= 0 || sys.finish == FT_NotYet:
-		return 2
-	case sys.intro < -sys.lifebar.ro.over_waittime:
-		return 4
-	default:
-		return 3
-	}
-}
 func (c *Char) roundType() int32 {
 	if sys.roundType[0] == RT_Final {
 		return 3
@@ -3887,7 +3871,7 @@ func (c *Char) stateChange2() bool {
 	return false
 }
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
-	if c.minus <= 0 && c.scf(SCF_ctrl) && c.roundState() <= 2 &&
+	if c.minus <= 0 && c.scf(SCF_ctrl) && sys.roundState() <= 2 &&
 		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && !c.asf(ASF_noautoturn) && sys.stage.autoturn {
 		c.turn()
 	}
@@ -4954,7 +4938,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	return int32(damage)
 }
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
-	if add != 0 && c.roundState() != 3 {
+	if add != 0 && sys.roundState() != 3 {
 		if !absolute {
 			add /= c.finalDefense
 		}
@@ -5037,7 +5021,7 @@ func (c *Char) powerSet(pow int32) {
 	}
 }
 func (c *Char) dizzyPointsAdd(add float64, absolute bool) {
-	if add != 0 && c.roundState() != 3 {
+	if add != 0 && sys.roundState() != 3 {
 		if !absolute {
 			add /= c.finalDefense
 		}
@@ -5050,7 +5034,7 @@ func (c *Char) dizzyPointsSet(set int32) {
 	}
 }
 func (c *Char) guardPointsAdd(add float64, absolute bool) {
-	if add != 0 && c.roundState() != 3 {
+	if add != 0 && sys.roundState() != 3 {
 		if !absolute {
 			add /= c.finalDefense
 		}
@@ -5063,7 +5047,7 @@ func (c *Char) guardPointsSet(set int32) {
 	}
 }
 func (c *Char) redLifeAdd(add float64, absolute bool) {
-	if add != 0 && c.roundState() != 3 {
+	if add != 0 && sys.roundState() != 3 {
 		if !absolute {
 			add /= c.finalDefense
 		}
@@ -6222,7 +6206,7 @@ func (c *Char) actionPrepare() {
 				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {
 					c.setCSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)
 				}
-				if c.roundState() > 0 && (c.alive() || c.numPartner() == 0) {
+				if sys.roundState() > 0 && (c.alive() || c.numPartner() == 0) {
 					c.setCSF(CSF_playerpush)
 				}
 			}

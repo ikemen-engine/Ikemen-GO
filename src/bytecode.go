@@ -1539,7 +1539,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_rightedge:
 			sys.bcStack.PushF(c.rightEdge() * (c.localscl / oc.localscl))
 		case OC_roundstate:
-			sys.bcStack.PushI(c.roundState())
+			sys.bcStack.PushI(sys.roundState())
 		case OC_screenheight:
 			sys.bcStack.PushF(c.screenHeight())
 		case OC_screenpos_x:

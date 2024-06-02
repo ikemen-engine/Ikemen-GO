@@ -717,6 +717,22 @@ func (s *System) screenWidth() float32 {
 func (s *System) roundEnd() bool {
 	return s.intro < -s.lifebar.ro.over_hittime
 }
+func (s *System) roundState() int32 {
+	switch {
+	case sys.postMatchFlg:
+		return -1
+	case sys.intro > sys.lifebar.ro.ctrl_time+1:
+		return 0
+	case sys.lifebar.ro.cur == 0:
+		return 1
+	case sys.intro >= 0 || sys.finish == FT_NotYet:
+		return 2
+	case sys.intro < -sys.lifebar.ro.over_waittime:
+		return 4
+	default:
+		return 3
+	}
+}
 func (s *System) roundWinTime() bool {
 	return s.wintime < 0
 }
@@ -1002,7 +1018,7 @@ func (s *System) commandUpdate() {
 				act = false
 			}
 			// Having this here makes B and F inputs reverse the same instant the character turns
-			if act && !r.asf(ASF_noautoturn) && (r.scf(SCF_ctrl) || r.roundState() > 2) &&
+			if act && !r.asf(ASF_noautoturn) && (r.scf(SCF_ctrl) || sys.roundState() > 2) &&
 				(r.ss.no == 0 || r.ss.no == 11 || r.ss.no == 20 || r.ss.no == 52) && s.stage.autoturn {
 				r.turn()
 			}
@@ -1036,7 +1052,7 @@ func (s *System) commandUpdate() {
 				cc := int32(-1)
 				// AI Scaling
 				// TODO: Balance AI Scaling
-				if r.roundState() == 2 && RandF32(0, sys.com[i]/2+32) > 32 {
+				if sys.roundState() == 2 && RandF32(0, sys.com[i]/2+32) > 32 {
 					cc = Rand(0, int32(len(r.cmd[r.ss.sb.playerNo].Commands))-1)
 				} else {
 					cc = -1
