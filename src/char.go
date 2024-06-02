@@ -6849,12 +6849,12 @@ func (c *Char) cueDraw() {
 		return
 	}
 	if sys.clsnDraw && c.curFrame != nil {
-		x := c.pos[0]*c.localscl
-		y := c.pos[1]*c.localscl
+		x := c.pos[0] * c.localscl
+		y := c.pos[1] * c.localscl
 		xoff := x + c.offsetX()*c.localscl
 		yoff := y + c.offsetY()*c.localscl
-		xs := c.clsnScale[0]*(320/sys.chars[c.animPN][0].localcoord)*c.facing
-		ys := c.clsnScale[1]*(320/sys.chars[c.animPN][0].localcoord)
+		xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
+		ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
 		// Draw Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
 			sys.drawc1.Add(clsn, x, y, xs, ys)
@@ -7876,10 +7876,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							p.contactflag = true
 							if Abs(ht) == 1 {
 								sys.cgi[i].pctype = PC_Hit
-								p.hitpause = Max(0, p.hitdef.pausetime - Btoi(c.gi().mugenver[0] == 0)) // Winmugen projectiles are 1 frame short on hitpauses
+								p.hitpause = Max(0, p.hitdef.pausetime-Btoi(c.gi().mugenver[0] == 0)) // Winmugen projectiles are 1 frame short on hitpauses
 							} else {
 								sys.cgi[i].pctype = PC_Guarded
-								p.hitpause = Max(0, p.hitdef.guard_pausetime - Btoi(c.gi().mugenver[0] == 0))
+								p.hitpause = Max(0, p.hitdef.guard_pausetime-Btoi(c.gi().mugenver[0] == 0))
 							}
 							sys.cgi[i].pctime = 0
 							sys.cgi[i].pcid = p.id
@@ -7994,12 +7994,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 										getter.hittmp = -1
 									}
 									if !getter.csf(CSF_gethit) {
-										getter.hitPauseTime = Max(1, c.hitdef.shaketime + Btoi(c.gi().mugenver[0] == 1))
+										getter.hitPauseTime = Max(1, c.hitdef.shaketime+Btoi(c.gi().mugenver[0] == 1))
 									}
 								}
 								if !c.csf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
 									getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
-									c.hitPauseTime = Max(1, c.hitdef.pausetime + Btoi(c.gi().mugenver[0] == 1))
+									c.hitPauseTime = Max(1, c.hitdef.pausetime+Btoi(c.gi().mugenver[0] == 1))
 									// Attacker hitpauses were off by 1 frame in Winmugen. Mugen 1.0 fixed it by compensating
 								}
 								c.uniqHitCount++
@@ -8009,7 +8009,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									c.mctime = -1
 								}
 								if !c.csf(CSF_gethit) {
-									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime + Btoi(c.gi().mugenver[0] == 1))
+									c.hitPauseTime = Max(1, c.hitdef.guard_pausetime+Btoi(c.gi().mugenver[0] == 1))
 								}
 							}
 							if c.hitdef.hitonce > 0 {
