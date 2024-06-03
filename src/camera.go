@@ -34,6 +34,9 @@ type stageCamera struct {
 	verticalfollowzoomdelta float32
 	zoomindelay             float32
 	zoomindelaytime         float32
+	zoominspeed             float32
+	zoomoutspeed            float32
+	yscrollspeed            float32
 	fov                     float32
 	yshift                  float32
 	far                     float32
@@ -59,7 +62,8 @@ func newStageCamera() *stageCamera {
 		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
 		tensionhigh: 0, tensionlow: 0,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
-		zoomindelay: 0, boundhighzoomdelta: 0, verticalfollowzoomdelta: 0}
+		zoomindelay: 0, zoominspeed: 1, zoomoutspeed: 1, yscrollspeed: 1,
+		boundhighzoomdelta: 0, verticalfollowzoomdelta: 0}
 }
 
 type CameraView int
@@ -343,7 +347,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 						newLeft, newRight = newLeft+(targetLeft-newLeft)*0.05*sys.turbo*c.tensionvel, newRight+(targetRight-newRight)*0.05*sys.turbo*c.tensionvel
 						diffLeft := targetLeft - newLeft
 						diffRight := targetRight - newRight
-						if AbsF(diffLeft) <= diff*sys.turbo {
+						if AbsF(diffLeft) <= diff*sys.turbo*c.tensionvel {
 							newLeft = targetLeft
 						} else if diffLeft > 0 {
 							newLeft += diff * sys.turbo * c.tensionvel
@@ -368,31 +372,19 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 						} else if newRight-oldRight < 0 && newRight-oldRight > c.leftestvel {
 							newRight = MaxF(oldRight+c.leftestvel, targetRight)
 						}
-
-						newX = (newLeft + newRight) / 2
 					}
 				} else {
 					newLeft, newRight = targetLeft, targetRight
-					newX = (newLeft + newRight) / 2
 				}
 				newScale = MinF(c.halfWidth*2/(newRight-newLeft), c.zoomin)
-				if c.boundhighzoomdelta > 0 {
-					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
-					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
-				} else {
-					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
-				}
+				newLeft, newRight, newScale = c.reduceZoomSpeed(newLeft, newRight, newScale, oldLeft, oldRight, scale)
+				newX = (newLeft + newRight) / 2
+				newY = c.reduceYScrollSpeed(newY, y)
+				newY = c.boundY(newY, newScale)
 			} else {
 				newScale = MinF(MaxF(newScale, c.zoomout), c.zoomin)
 				newX = MinF(MaxF(newX, c.minLeft+c.halfWidth/newScale), c.maxRight-c.halfWidth/newScale)
-				if c.boundhighzoomdelta > 0 {
-					topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-					boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/newScale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
-					newY = MinF(MaxF(newY, boundHigh), float32(c.boundlow)*c.localscl) * newScale
-				} else {
-					newY = MinF(MaxF(newY, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * newScale
-				}
+				newY = c.boundY(newY, newScale)
 			}
 
 		case Follow_View:
@@ -408,4 +400,99 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 	}
 	c.roundstart = false
 	return
+}
+
+func (c *Camera) reduceZoomSpeed(newLeft float32, newRight float32, newScale float32, oldLeft float32, oldRight float32, oldScale float32) (float32, float32, float32) {
+	const minBoundDiff float32 = 5e-5
+	const minScaleDiff float32 = 5e-4
+
+	var speedFactor float32
+	if newScale > oldScale {
+		speedFactor = c.zoominspeed
+	} else {
+		speedFactor = c.zoomoutspeed
+	}
+
+	if speedFactor < 0.0 || speedFactor >= 1.0 {
+		return newLeft, newRight, newScale
+	}
+
+	scaleDiff := newScale - oldScale
+	leftAbsDiff, rightAbsDiff := AbsF(newLeft-oldLeft), AbsF(newRight-oldRight)
+
+	if AbsF(scaleDiff) < minScaleDiff || (leftAbsDiff < minBoundDiff && rightAbsDiff < minBoundDiff) {
+		return newLeft, newRight, newScale
+	}
+
+	adjustedNewScale := oldScale + speedFactor*scaleDiff
+	scaleAdjustmentFactor := adjustedNewScale / newScale
+
+	width := newRight - newLeft
+	widthAdjustmentFactor := 1.0 / scaleAdjustmentFactor
+	widthAdjustmentDiff := width*widthAdjustmentFactor - width
+
+	totalAbsDiff := leftAbsDiff + rightAbsDiff
+	adjustedNewLeft := newLeft - widthAdjustmentDiff*leftAbsDiff/totalAbsDiff
+	adjustedNewRight := newRight + widthAdjustmentDiff*rightAbsDiff/totalAbsDiff
+
+	adjustedNewLeft, adjustedNewRight = c.keepScreenEdge(adjustedNewLeft, adjustedNewRight)
+	adjustedNewLeft, adjustedNewRight = c.keepStageEdge(adjustedNewLeft, adjustedNewRight)
+
+	return c.hardLimit(adjustedNewLeft, adjustedNewRight)
+}
+
+func (c *Camera) keepScreenEdge(left float32, right float32) (float32, float32) {
+	screenLeftest := c.leftest - float32(sys.stage.screenleft)*c.localscl
+	if left > screenLeftest {
+		right += screenLeftest - left
+		left = screenLeftest
+	}
+
+	screenRightest := c.rightest + float32(sys.stage.screenright)*c.localscl
+	if right < screenRightest {
+		left += screenRightest - right
+		right = screenRightest
+	}
+
+	return left, right
+}
+
+func (c *Camera) keepStageEdge(left float32, right float32) (float32, float32) {
+	if left < c.minLeft {
+		right += c.minLeft - left
+		left = c.minLeft
+	}
+	if right > c.maxRight {
+		left += c.maxRight - right
+		right = c.maxRight
+	}
+	return left, right
+}
+
+func (c *Camera) hardLimit(left float32, right float32) (float32, float32, float32) {
+	left = MaxF(left, c.minLeft)
+	right = MinF(right, c.maxRight)
+	scale := MaxF(MinF(c.halfWidth*2/(right-left), c.zoomin), c.zoomout)
+	return left, right, scale
+}
+
+func (c *Camera) reduceYScrollSpeed(newY float32, oldY float32) float32 {
+	const minYDiff float32 = 5e-5
+
+	yDiff := newY - oldY
+	if AbsF(yDiff) < minYDiff || c.yscrollspeed < 0.0 || c.yscrollspeed >= 1.0 {
+		return newY
+	}
+
+	return oldY + yDiff*c.yscrollspeed
+}
+
+func (c *Camera) boundY(y float32, scale float32) float32 {
+	if c.boundhighzoomdelta > 0 {
+		topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
+		boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/scale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
+		return MinF(MaxF(y, boundHigh), float32(c.boundlow)*c.localscl) * scale
+	} else {
+		return MinF(MaxF(y, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * scale
+	}
 }
