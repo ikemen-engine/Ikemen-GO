@@ -241,10 +241,13 @@ type System struct {
 	topSprites              DrawList
 	bottomSprites           DrawList
 	shadows                 ShadowList
-	drawc1                  ClsnRect
+	drawc1hit               ClsnRect
+	drawc1rev               ClsnRect
+	drawc1not               ClsnRect
 	drawc2                  ClsnRect
-	drawc2sp                ClsnRect
+	drawc2hb                ClsnRect
 	drawc2mtk               ClsnRect
+	drawc2grd               ClsnRect
 	drawwh                  ClsnRect
 	drawch                  ClsnRect
 	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
@@ -1109,10 +1112,13 @@ func (s *System) action() {
 	s.topSprites = s.topSprites[:0]
 	s.bottomSprites = s.bottomSprites[:0]
 	s.shadows = s.shadows[:0]
-	s.drawc1 = s.drawc1[:0]
+	s.drawc1hit = s.drawc1hit[:0]
+	s.drawc1rev = s.drawc1rev[:0]
+	s.drawc1not = s.drawc1not[:0]
 	s.drawc2 = s.drawc2[:0]
-	s.drawc2sp = s.drawc2sp[:0]
+	s.drawc2hb = s.drawc2hb[:0]
 	s.drawc2mtk = s.drawc2mtk[:0]
+	s.drawc2grd = s.drawc2grd[:0]
 	s.drawwh = s.drawwh[:0]
 	s.drawch = s.drawch[:0]
 	s.clsnText = nil
@@ -1688,13 +1694,19 @@ func (s *System) drawTop() {
 	s.brightness = s.brightnessOld
 	if s.clsnDraw {
 		s.clsnSpr.Pal[0] = 0xff0000ff
-		s.drawc1.draw(0x3feff)
+		s.drawc1hit.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xff0040c0
+		s.drawc1rev.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xff000080
+		s.drawc1not.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xffff0000
 		s.drawc2.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0xff00ff00
-		s.drawc2sp.draw(0x3feff)
-		s.clsnSpr.Pal[0] = 0xff002000
+		s.clsnSpr.Pal[0] = 0xff808000
+		s.drawc2hb.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xff004000
 		s.drawc2mtk.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xffc00040
+		s.drawc2grd.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xff303030
 		s.drawwh.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xffffffff
