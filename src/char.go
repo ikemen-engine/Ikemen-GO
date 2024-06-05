@@ -1757,10 +1757,10 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.facing * p.clsnScale[0] * p.localscl
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
-				sys.drawc1.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.drawc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
 			if clsn := frm.Clsn2(); len(clsn) > 0 {
-				sys.drawc2.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.drawc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
 		}
 	}
@@ -2011,7 +2011,7 @@ type Char struct {
 	inguarddist     bool
 	pushed          bool
 	hitdefContact   bool
-	atktmp          int8 // 1 hitdef active, 0 inactive, -1 other
+	atktmp          int8 // 1 hitdef can hit, 0 cannot hit, -1 other
 	hittmp          int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
 	acttmp          int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
 	minus           int8 // current negative state
@@ -6860,16 +6860,26 @@ func (c *Char) cueDraw() {
 		xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
 		ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
 		// Draw Clsn1
-		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
-			sys.drawc1.Add(clsn, x, y, xs, ys)
+		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 {
+			if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
+				sys.drawc1rev.Add(clsn, xoff, yoff, xs, ys)
+			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
+				sys.drawc1hit.Add(clsn, xoff, yoff, xs, ys)
+			} else {
+				sys.drawc1not.Add(clsn, xoff, yoff, xs, ys)
+			}
 		}
+		// Check invincibility to decide box colors
 		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
-			// Check invincibility to decide box colors
 			hb, mtk := false, false
-			for _, h := range c.hitby {
-				if h.time != 0 {
-					hb = true
-					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0 || c.gi().unhittable > 0
+			if c.gi().unhittable > 0 {
+				mtk = true
+			} else {
+				for _, h := range c.hitby {
+					if h.time != 0 {
+						hb = true
+						mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0
+					}
 				}
 			}
 			if mtk {
@@ -6877,7 +6887,10 @@ func (c *Char) cueDraw() {
 				sys.drawc2mtk.Add(clsn, xoff, yoff, xs, ys)
 			} else if hb {
 				// Draw partially invincible Clsn2
-				sys.drawc2sp.Add(clsn, xoff, yoff, xs, ys)
+				sys.drawc2hb.Add(clsn, xoff, yoff, xs, ys)
+			} else if c.inguarddist && c.scf(SCF_guard) {
+				// Draw guarding Clsn2
+				sys.drawc2grd.Add(clsn, xoff, yoff, xs, ys)
 			} else {
 				// Draw regular Clsn2
 				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
