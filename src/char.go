@@ -711,11 +711,15 @@ func (hd *HitDef) clear() {
 	hd.fall.setDefault()
 }
 
-func (hd *HitDef) invalidate(stateType StateType) {
+// When a Hitdef connects, its statetype attribute will be updated to the character's current type
+// Even if the Hitdef has multiple statetype attributes
+// TODO: This is an oddly specific Mugen thing that might not be needed in future Ikemen characters
+func (hd *HitDef) updateStateType(stateType StateType) {
 	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
 	hd.reversal_attr |= -1 << 31
 	hd.ltypehit = false
 }
+
 func (hd *HitDef) testAttr(attr int32) bool {
 	attr &= hd.attr
 	return attr&int32(ST_MASK) != 0 && attr&^int32(ST_MASK)&^(-1<<31) != 0
@@ -6070,9 +6074,9 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	return true
 }
 
-// Check which character should win in case attacks connect in the same frame
-func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, e.id, st) {
+// Check if the enemy's Hitdef should lose to the current one, if applicable
+func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func(*HitDef) bool) bool {
+	if !c.attrCheck(h, oc.id, st) {
 		return false
 	}
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0) {
@@ -6081,7 +6085,7 @@ func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(
 			if h.reversal_attr > 0 {
 				if countercheck(&c.hitdef) {
 					c.atktmp = -1
-					return e.atktmp < 0
+					return oc.atktmp < 0
 				}
 				return true
 			}
@@ -6096,7 +6100,7 @@ func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(
 				if (c.hitdef.p1stateno >= 0 || c.hitdef.attr&int32(AT_AT) != 0 &&
 					h.hitonce != 0) && countercheck(&c.hitdef) {
 					c.atktmp = -1
-					return e.atktmp < 0 || Rand(0, 1) == 1
+					return oc.atktmp < 0 || Rand(0, 1) == 1
 				}
 				return true
 			default:
@@ -6105,7 +6109,7 @@ func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(
 		default:
 			return true
 		}
-		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0
+		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(oc.id)
 	}
 	return true
 }
@@ -6700,8 +6704,8 @@ func (c *Char) tick() {
 		}
 	}
 	if c.hitdefContact {
-		if c.hitdef.hitonce != 0 {
-			c.hitdef.invalidate(c.ss.stateType)
+		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
+			c.hitdef.updateStateType(c.ss.stateType)
 		}
 		c.hitdefContact = false
 	} else if c.hitdef.ltypehit {
@@ -7962,8 +7966,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
+									getter.hitdefContact = true
 									getter.mhv.frame = true
-									getter.hitdef.invalidate(c.ss.stateType) // Nullify hitdef. TODO: This isn't quite what happens in Mugen
+									getter.hitdef.hitonce = -1 // Neutralize Hitdef
+									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame
+									// TODO: This 1 frame does not show up on debug due to Clsn display process order
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
