@@ -711,11 +711,15 @@ func (hd *HitDef) clear() {
 	hd.fall.setDefault()
 }
 
-func (hd *HitDef) invalidate(stateType StateType) {
+// When a Hitdef connects, its statetype attribute will be updated to the character's current type
+// Even if the Hitdef has multiple statetype attributes
+// TODO: This is an oddly specific Mugen thing that might not be needed in future Ikemen characters
+func (hd *HitDef) updateStateType(stateType StateType) {
 	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
 	hd.reversal_attr |= -1 << 31
 	hd.ltypehit = false
 }
+
 func (hd *HitDef) testAttr(attr int32) bool {
 	attr &= hd.attr
 	return attr&int32(ST_MASK) != 0 && attr&^int32(ST_MASK)&^(-1<<31) != 0
@@ -1753,10 +1757,10 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.facing * p.clsnScale[0] * p.localscl
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
-				sys.drawc1.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.drawc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
 			if clsn := frm.Clsn2(); len(clsn) > 0 {
-				sys.drawc2.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.drawc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
 		}
 	}
@@ -2007,7 +2011,7 @@ type Char struct {
 	inguarddist     bool
 	pushed          bool
 	hitdefContact   bool
-	atktmp          int8 // 1 hitdef active, 0 inactive, -1 other
+	atktmp          int8 // 1 hitdef can hit, 0 cannot hit, -1 other
 	hittmp          int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
 	acttmp          int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
 	minus           int8 // current negative state
@@ -6070,9 +6074,9 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	return true
 }
 
-// Check which character should win in case attacks connect in the same frame
-func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, e.id, st) {
+// Check if the enemy's Hitdef should lose to the current one, if applicable
+func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func(*HitDef) bool) bool {
+	if !c.attrCheck(h, oc.id, st) {
 		return false
 	}
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0) {
@@ -6081,7 +6085,7 @@ func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(
 			if h.reversal_attr > 0 {
 				if countercheck(&c.hitdef) {
 					c.atktmp = -1
-					return e.atktmp < 0
+					return oc.atktmp < 0
 				}
 				return true
 			}
@@ -6096,7 +6100,7 @@ func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(
 				if (c.hitdef.p1stateno >= 0 || c.hitdef.attr&int32(AT_AT) != 0 &&
 					h.hitonce != 0) && countercheck(&c.hitdef) {
 					c.atktmp = -1
-					return e.atktmp < 0 || Rand(0, 1) == 1
+					return oc.atktmp < 0 || Rand(0, 1) == 1
 				}
 				return true
 			default:
@@ -6105,7 +6109,7 @@ func (c *Char) loseHitTrade(h *HitDef, e *Char, st StateType, countercheck func(
 		default:
 			return true
 		}
-		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(e.id) || c.hitdef.attr == 0
+		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(oc.id)
 	}
 	return true
 }
@@ -6700,8 +6704,8 @@ func (c *Char) tick() {
 		}
 	}
 	if c.hitdefContact {
-		if c.hitdef.hitonce != 0 {
-			c.hitdef.invalidate(c.ss.stateType)
+		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
+			c.hitdef.updateStateType(c.ss.stateType)
 		}
 		c.hitdefContact = false
 	} else if c.hitdef.ltypehit {
@@ -6856,16 +6860,26 @@ func (c *Char) cueDraw() {
 		xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
 		ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
 		// Draw Clsn1
-		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 && c.atktmp != 0 {
-			sys.drawc1.Add(clsn, x, y, xs, ys)
+		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 {
+			if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
+				sys.drawc1rev.Add(clsn, xoff, yoff, xs, ys)
+			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
+				sys.drawc1hit.Add(clsn, xoff, yoff, xs, ys)
+			} else {
+				sys.drawc1not.Add(clsn, xoff, yoff, xs, ys)
+			}
 		}
+		// Check invincibility to decide box colors
 		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
-			// Check invincibility to decide box colors
 			hb, mtk := false, false
-			for _, h := range c.hitby {
-				if h.time != 0 {
-					hb = true
-					mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0 || c.gi().unhittable > 0
+			if c.gi().unhittable > 0 {
+				mtk = true
+			} else {
+				for _, h := range c.hitby {
+					if h.time != 0 {
+						hb = true
+						mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0
+					}
 				}
 			}
 			if mtk {
@@ -6873,7 +6887,10 @@ func (c *Char) cueDraw() {
 				sys.drawc2mtk.Add(clsn, xoff, yoff, xs, ys)
 			} else if hb {
 				// Draw partially invincible Clsn2
-				sys.drawc2sp.Add(clsn, xoff, yoff, xs, ys)
+				sys.drawc2hb.Add(clsn, xoff, yoff, xs, ys)
+			} else if c.inguarddist && c.scf(SCF_guard) {
+				// Draw guarding Clsn2
+				sys.drawc2grd.Add(clsn, xoff, yoff, xs, ys)
 			} else {
 				// Draw regular Clsn2
 				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
@@ -7962,8 +7979,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
 									getter.mctime = -1
+									getter.hitdefContact = true
 									getter.mhv.frame = true
-									getter.hitdef.invalidate(c.ss.stateType) // Nullify hitdef. TODO: This isn't quite what happens in Mugen
+									getter.hitdef.hitonce = -1 // Neutralize Hitdef
+									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame
+									// TODO: This 1 frame does not show up on debug due to Clsn display process order
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
