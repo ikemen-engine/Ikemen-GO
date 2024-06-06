@@ -152,6 +152,7 @@ const (
 	OC_powermax
 	OC_canrecover
 	OC_roundstate
+	OC_introstate
 	OC_ishelper
 	OC_numhelper
 	OC_numexplod
@@ -1540,6 +1541,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(c.rightEdge() * (c.localscl / oc.localscl))
 		case OC_roundstate:
 			sys.bcStack.PushI(sys.roundState())
+		case OC_introstate:
+			sys.bcStack.PushI(sys.introState())
 		case OC_screenheight:
 			sys.bcStack.PushF(c.screenHeight())
 		case OC_screenpos_x:

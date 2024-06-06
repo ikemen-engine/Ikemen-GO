@@ -301,6 +301,7 @@ var triggerMap = map[string]int{
 	"roundno":           1,
 	"roundsexisted":     1,
 	"roundstate":        1,
+	"introstate":        1,
 	"screenpos":         1,
 	"screenheight":      1,
 	"screenwidth":       1,
@@ -2243,6 +2244,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_roundsexisted)
 	case "roundstate":
 		out.append(OC_roundstate)
+	case "introstate":
+		out.append(OC_introstate)
 	case "screenheight":
 		out.append(OC_screenheight)
 	case "screenpos":
