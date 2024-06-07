@@ -2245,7 +2245,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	case "roundstate":
 		out.append(OC_roundstate)
 	case "introstate":
-		out.append(OC_introstate)
+		out.append(OC_ex2_, OC_ex2_introstate)
 	case "screenheight":
 		out.append(OC_screenheight)
 	case "screenpos":
