@@ -668,6 +668,8 @@ const (
 	OC_ex2_palfxvar_all_hue
 	OC_ex2_palfxvar_all_invertall
 	OC_ex2_palfxvar_all_invertblend
+	OC_ex2_bgmvolume
+	OC_ex2_maxbgmvolume
 )
 const (
 	NumVar     = 60
@@ -2727,6 +2729,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.palfxvar(-1, 2))
 	case OC_ex2_palfxvar_all_invertblend:
 		sys.bcStack.PushI(sys.palfxvar(-2, 2))
+	case OC_ex2_bgmvolume:
+		sys.bcStack.PushI(int32(sys.bgm.bgmVolume))
+	case OC_ex2_maxbgmvolume:
+		sys.bcStack.PushI(int32(sys.maxBgmVolume))
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -3223,6 +3229,9 @@ const (
 	playSnd_loop
 	playSnd_redirectid
 	playSnd_priority
+	playSnd_loopstart
+	playSnd_loopend
+	playSnd_startposition
 )
 
 func (sc playSnd) Run(c *Char, _ []int32) bool {
@@ -3232,6 +3241,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 	crun := c
 	f, lw, lp := "", false, false
 	var g, n, ch, vo, pri int32 = -1, 0, -1, 100, 0
+	var loopstart, loopend, startposition = 0, 0, 0
 	var p, fr float32 = 0, 1
 	x := &c.pos[0]
 	ls := c.localscl
@@ -3263,6 +3273,12 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			lp = exp[0].evalB(c)
 		case playSnd_priority:
 			pri = exp[0].evalI(c)
+		case playSnd_loopstart:
+			loopstart = int(exp[0].evalI64(c))
+		case playSnd_loopend:
+			loopend = int(exp[0].evalI64(c))
+		case playSnd_startposition:
+			startposition = int(exp[0].evalI64(c))
 		case playSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3274,7 +3290,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, true, pri)
+	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
 	return false
 }
 
@@ -6656,7 +6672,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			vo := int32(100)
 			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			crun.playSound(ffx, false, false, exp[1].evalI(c), n, -1,
-				vo, 0, 1, 1, nil, false, 0)
+				vo, 0, 1, 1, nil, false, 0, 0, 0, 0)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8846,13 +8862,13 @@ func (sc modifyBgm) Run(c *Char, _ []int32) bool {
 			volume = int(exp[0].evalI(c))
 			volumeSet = true
 		case modifyBgm_loopstart:
-			loopstart = int(exp[0].evalI(c))
+			loopstart = int(exp[0].evalI64(c))
 			loopStartSet = true
 		case modifyBgm_loopend:
-			loopend = int(exp[0].evalI(c))
+			loopend = int(exp[0].evalI64(c))
 			loopEndSet = true
 		case modifyBgm_position:
-			position = int(exp[0].evalI(c))
+			position = int(exp[0].evalI64(c))
 			posSet = true
 		case modifyBgm_freqmul:
 			freqmul = float32(exp[0].evalF(c))
@@ -8876,8 +8892,10 @@ func (sc modifyBgm) Run(c *Char, _ []int32) bool {
 		if posSet {
 			sys.bgm.Seek(position)
 		}
-		if (loopStartSet && sys.bgm.bgmLoopStart != loopstart) || (loopEndSet && sys.bgm.bgmLoopEnd != loopend) {
-			sys.bgm.SetLoopPoints(loopstart, loopend)
+		if sl, ok := sys.bgm.volctrl.Streamer.(*StreamLooper); ok {
+			if (loopStartSet && sl.loopstart != loopstart) || (loopEndSet && sl.loopend != loopend) {
+				sys.bgm.SetLoopPoints(loopstart, loopend)
+			}
 		}
 		if freqSet && sys.bgm.freqmul != freqmul {
 			sys.bgm.SetFreqMul(freqmul)
@@ -8897,6 +8915,9 @@ const (
 	modifySnd_freqmul
 	modifySnd_redirectid
 	modifySnd_priority
+	modifySnd_loopstart
+	modifySnd_loopend
+	modifySnd_position
 )
 
 func (sc modifySnd) Run(c *Char, _ []int32) bool {
@@ -8907,7 +8928,8 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 	snd := crun.soundChannels.Get(-1)
 	var ch, pri int32 = -1, 0
 	var vo, fr float32 = 100, 1.0
-	freqMulSet, volumeSet, prioritySet, panSet := false, false, false, false
+	freqMulSet, volumeSet, prioritySet, panSet, loopStartSet, loopEndSet, posSet := false, false, false, false, false, false, false
+	var loopstart, loopend, position int = 0, 0, 0
 	var p float32 = 0
 	x := &c.pos[0]
 	ls := crun.localscl
@@ -8935,6 +8957,15 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 		case modifySnd_priority:
 			pri = exp[0].evalI(c)
 			prioritySet = true
+		case modifySnd_loopstart:
+			loopstart = int(exp[0].evalI64(c))
+			loopStartSet = true
+		case modifySnd_loopend:
+			loopend = int(exp[0].evalI64(c))
+			loopEndSet = true
+		case modifySnd_position:
+			position = int(exp[0].evalI64(c))
+			posSet = true
 		case modifySnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8982,6 +9013,14 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 			}
 			if pri != snd.sfx.priority {
 				snd.SetPriority(pri)
+			}
+			if posSet {
+				snd.streamer.Seek(position)
+			}
+			if sl, ok := snd.sfx.streamer.(*StreamLooper); ok {
+				if (loopStartSet && sl.loopstart != loopstart) || (loopEndSet && sl.loopend != loopend) {
+					snd.SetLoopPoints(loopstart, loopend)
+				}
 			}
 			if p != snd.sfx.p || ls != snd.sfx.ls || x != snd.sfx.x {
 				snd.SetPan(p*crun.facing, ls, x)

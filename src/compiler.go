@@ -2934,6 +2934,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_animlength)
 	case "attack":
 		out.append(OC_ex_, OC_ex_attack)
+	case "bgmvolume":
+		out.append(OC_ex2_, OC_ex2_bgmvolume)
 	case "combocount":
 		out.append(OC_ex_, OC_ex_combocount)
 	case "consecutivewins":
@@ -3286,6 +3288,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
 		}
 		return bvNone(), nil
+	case "maxbgmvolume":
+		out.append(OC_ex2_, OC_ex2_maxbgmvolume)
 	case "memberno":
 		out.append(OC_ex_, OC_ex_memberno)
 	case "movecountered":

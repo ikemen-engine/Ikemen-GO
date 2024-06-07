@@ -497,6 +497,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		f, lw, lp := false, false, false
 		var g, n, ch, vo, priority int32 = -1, 0, -1, 100, 0
+		var loopstart, loopend, startposition int = 0, 0, 0
 		var p, fr float32 = 0, 1
 		x := &sys.chars[pn-1][0].pos[0]
 		ls := sys.chars[pn-1][0].localscl
@@ -530,11 +531,20 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 11 {
 			priority = int32(numArg(l, 11))
 		}
+		if l.GetTop() >= 12 {
+			loopstart = int(numArg(l, 12))
+		}
+		if l.GetTop() >= 13 {
+			loopend = int(numArg(l, 13))
+		}
+		if l.GetTop() >= 14 {
+			startposition = int(numArg(l, 14))
+		}
 		preffix := ""
 		if f {
 			preffix = "f"
 		}
-		sys.chars[pn-1][0].playSound(preffix, lw, lp, g, n, ch, vo, p, fr, ls, x, false, priority)
+		sys.chars[pn-1][0].playSound(preffix, lw, lp, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {
@@ -2373,7 +2383,17 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 5 {
 			pan = float32(numArg(l, 5))
 		}
-		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale, pan)
+		var loopstart, loopend, startposition int
+		if l.GetTop() >= 6 {
+			loopstart = int(numArg(l, 6))
+		}
+		if l.GetTop() >= 7 {
+			loopend = int(numArg(l, 7))
+		}
+		if l.GetTop() >= 8 {
+			startposition = int(numArg(l, 8))
+		}
+		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale, pan, loopstart, loopend, startposition)
 		return 0
 	})
 	luaRegister(l, "sndPlaying", func(*lua.LState) int {
@@ -2656,7 +2676,7 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, s)
 		}
-		sys.soundChannels.Play(s, 100, 0.0)
+		sys.soundChannels.Play(s, 100, 0.0, 0, 0, 0)
 		return 0
 	})
 }
@@ -2848,6 +2868,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(0))
 		} else {
 			l.Push(lua.LNumber(int32(sys.bgm.streamer.Position())))
+		}
+		return 1
+	})
+	luaRegister(l, "bgmvolume", func(*lua.LState) int {
+		if sys.bgm.streamer == nil {
+			l.Push(lua.LNumber(0))
+		} else {
+			l.Push(lua.LNumber(int32(sys.bgm.bgmVolume)))
 		}
 		return 1
 	})
@@ -3450,6 +3478,14 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "matchover", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.matchOver()))
+		return 1
+	})
+	luaRegister(l, "maxbgmvolume", func(*lua.LState) int {
+		if sys.bgm.streamer == nil {
+			l.Push(lua.LNumber(0))
+		} else {
+			l.Push(lua.LNumber(int32(sys.maxBgmVolume)))
+		}
 		return 1
 	})
 	luaRegister(l, "movecontact", func(*lua.LState) int {
