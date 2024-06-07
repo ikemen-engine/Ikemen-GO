@@ -5596,8 +5596,17 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 		default:
 			scf, ok := c.scmap[c.token]
 			//helperはステコンとリダイレクトの両方で使う名称なのでチェックする
-			if c.token == "helper" && ((*line)[0] == ',' || (*line)[0] == '(') {
-				ok = false
+			if c.token == "helper" {
+				//peek ahead to see if this is a redirect
+				c.scan(line)
+				if len(c.token) > 0 {
+					if c.token[0] == ',' || c.token[0] == '(' {
+						ok = false
+					}
+				}
+				//reset things to "undo" the peek ahead
+				*line = (c.token + (*line))
+				c.token = "helper"
 			}
 			if ok {
 				scname := c.token
