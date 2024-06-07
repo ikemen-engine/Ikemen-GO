@@ -736,6 +736,32 @@ func (s *System) roundState() int32 {
 		return 3
 	}
 }
+func (s *System) introState() int32 {
+	switch {
+	// Implements discussion #1172
+	case sys.intro > sys.lifebar.ro.ctrl_time+1:
+		// roundstate = 0
+		return 1
+	case sys.intro > sys.lifebar.ro.ctrl_time:
+		// characters are doing their intros
+		return 2 
+	case sys.lifebar.ro.cur == 1 && sys.intro > 0:
+		// fight!
+		return 4
+	case sys.lifebar.ro.cur == 0:
+		// dialogueFlg doesn't work here :(
+		for _, p := range sys.chars {
+			if len(p) > 0 && len(p[0].dialogue) > 0 {
+				return 2
+			}
+		}
+		// round <n>
+		return 3
+	default:
+		// players have gained ctrl, or not applicable
+		return 0
+	}
+}
 func (s *System) roundWinTime() bool {
 	return s.wintime < 0
 }

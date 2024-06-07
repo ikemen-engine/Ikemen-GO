@@ -668,6 +668,7 @@ const (
 	OC_ex2_palfxvar_all_hue
 	OC_ex2_palfxvar_all_invertall
 	OC_ex2_palfxvar_all_invertblend
+	OC_ex2_introstate
 )
 const (
 	NumVar     = 60
@@ -2727,6 +2728,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.palfxvar(-1, 2))
 	case OC_ex2_palfxvar_all_invertblend:
 		sys.bcStack.PushI(sys.palfxvar(-2, 2))
+	case OC_ex2_introstate:
+		sys.bcStack.PushI(sys.introState())
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
