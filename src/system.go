@@ -744,7 +744,7 @@ func (s *System) introState() int32 {
 		return 1
 	case sys.intro > sys.lifebar.ro.ctrl_time:
 		// characters are doing their intros
-		return 2 
+		return 2
 	case sys.lifebar.ro.cur == 1 && sys.intro > 0:
 		// fight!
 		return 4
