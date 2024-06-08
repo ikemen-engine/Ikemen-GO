@@ -20,6 +20,10 @@ Copyright (c) 2022 potsmugen
 Copyright (c) 2023 BwdYeti
 Copyright (c) 2023 fantasma
 Copyright (c) 2023 Wftk
+Copyright (c) 2024 wily-coyote
+Copyright (c) 2024 Jesuszilla
+Copyright (c) 2024 Kasasagi77
+Copyright (c) 2024 Jmorphman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
