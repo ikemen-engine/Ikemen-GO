@@ -84,25 +84,24 @@ func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
 }
 
 // ------------------------------------------------------------------
-// Bgm Loop Streamer
+// Loop Streamer
 
 // Based on Loop() from Beep package. It adds support for loop points.
-
-type bgmLooper struct {
+type StreamLooper struct {
 	s         beep.StreamSeeker
 	loopcount int
 	loopstart int
 	loopend   int
 }
 
-func BgmLooper(s beep.StreamSeeker, loopcount, loopstart, loopend int) beep.Streamer {
+func newStreamLooper(s beep.StreamSeeker, loopcount, loopstart, loopend int) beep.Streamer {
 	if loopstart < 0 || loopstart >= s.Len() {
 		loopstart = 0
 	}
 	if loopend <= loopstart {
 		loopend = s.Len()
 	}
-	return &bgmLooper{
+	return &StreamLooper{
 		s:         s,
 		loopcount: loopcount,
 		loopstart: loopstart,
@@ -110,7 +109,7 @@ func BgmLooper(s beep.StreamSeeker, loopcount, loopstart, loopend int) beep.Stre
 	}
 }
 
-func (b *bgmLooper) Stream(samples [][2]float64) (n int, ok bool) {
+func (b *StreamLooper) Stream(samples [][2]float64) (n int, ok bool) {
 	if b.loopcount == 0 || b.s.Err() != nil {
 		return 0, false
 	}
@@ -135,25 +134,36 @@ func (b *bgmLooper) Stream(samples [][2]float64) (n int, ok bool) {
 	return n, true
 }
 
-func (b *bgmLooper) Err() error {
+func (b *StreamLooper) Err() error {
 	return b.s.Err()
+}
+
+func (b *StreamLooper) Len() int {
+	return b.s.Len()
+}
+
+func (b *StreamLooper) Position() int {
+	return b.s.Position()
+}
+
+func (b *StreamLooper) Seek(p int) error {
+	return b.s.Seek(p)
 }
 
 // ------------------------------------------------------------------
 // Bgm
 
 type Bgm struct {
-	filename     string
-	bgmVolume    int
-	bgmLoopStart int
-	bgmLoopEnd   int
-	loop         int
-	streamer     beep.StreamSeekCloser
-	ctrl         *beep.Ctrl
-	volctrl      *effects.Volume
-	format       string
-	freqmul      float32
-	sampleRate   beep.SampleRate
+	filename   string
+	bgmVolume  int
+	loop       int
+	streamer   beep.StreamSeekCloser
+	ctrl       *beep.Ctrl
+	volctrl    *effects.Volume
+	format     string
+	freqmul    float32
+	sampleRate beep.SampleRate
+	startPos   int
 }
 
 func newBgm() *Bgm {
@@ -164,8 +174,6 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	bgm.filename = filename
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
-	bgm.bgmLoopStart = bgmLoopStart
-	bgm.bgmLoopEnd = bgmLoopEnd
 	bgm.freqmul = freqmul
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
@@ -218,8 +226,8 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	if loop > 0 {
 		loopCount = -1
 	}
-	//streamer := beep.Loop(loopCount, bgm.streamer)
-	streamer := BgmLooper(bgm.streamer, loopCount, bgm.bgmLoopStart, bgm.bgmLoopEnd)
+	bgm.startPos = startPosition
+	streamer := newStreamLooper(bgm.streamer, loopCount, bgmLoopStart, bgmLoopEnd)
 	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
 	bgm.sampleRate = format.SampleRate
 	dstFreq := beep.SampleRate(audioFrequency / bgm.freqmul)
@@ -286,21 +294,23 @@ func (bgm *Bgm) SetFreqMul(freqmul float32) {
 
 func (bgm *Bgm) SetLoopPoints(bgmLoopStart int, bgmLoopEnd int) {
 	// Set both at once, why not
-	if bgm.bgmLoopStart != bgmLoopStart && bgm.bgmLoopEnd != bgmLoopEnd {
-		speaker.Lock()
-		bgm.bgmLoopStart = bgmLoopStart
-		bgm.bgmLoopEnd = bgmLoopEnd
-		speaker.Unlock()
-		// Set one at a time
-	} else {
-		if bgm.bgmLoopStart != bgmLoopStart {
+	if sl, ok := bgm.volctrl.Streamer.(*StreamLooper); ok {
+		if sl.loopstart != bgmLoopStart && sl.loopend != bgmLoopEnd {
 			speaker.Lock()
-			bgm.bgmLoopStart = bgmLoopStart
+			sl.loopstart = bgmLoopStart
+			sl.loopend = bgmLoopEnd
 			speaker.Unlock()
-		} else if bgm.bgmLoopEnd != bgmLoopEnd {
-			speaker.Lock()
-			bgm.bgmLoopEnd = bgmLoopEnd
-			speaker.Unlock()
+			// Set one at a time
+		} else {
+			if sl.loopstart != bgmLoopStart {
+				speaker.Lock()
+				sl.loopstart = bgmLoopStart
+				speaker.Unlock()
+			} else if sl.loopend != bgmLoopEnd {
+				speaker.Lock()
+				sl.loopend = bgmLoopEnd
+				speaker.Unlock()
+			}
 		}
 	}
 }
@@ -454,9 +464,9 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 func (s *Snd) Get(gn [2]int32) *Sound {
 	return s.table[gn]
 }
-func (s *Snd) play(gn [2]int32, volumescale int32, pan float32) bool {
+func (s *Snd) play(gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int) bool {
 	sound := s.Get(gn)
-	return sys.soundChannels.Play(sound, volumescale, pan)
+	return sys.soundChannels.Play(sound, volumescale, pan, loopstart, loopend, startposition)
 }
 func (s *Snd) stop(gn [2]int32) {
 	sound := s.Get(gn)
@@ -528,7 +538,7 @@ type SoundChannel struct {
 	sound    *Sound
 }
 
-func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
+func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32, loopStart int, loopEnd int, startPosition int) {
 	if sound == nil {
 		return
 	}
@@ -538,12 +548,13 @@ func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32) {
 	if loop {
 		loopCount = -1
 	}
-	looper := beep.Loop(loopCount, s.streamer)
+	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
 	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(audioFrequency / s.sfx.freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
+	s.streamer.Seek(startPosition)
 	sys.soundMixer.Add(s.ctrl)
 }
 func (s *SoundChannel) IsPlaying() bool {
@@ -588,6 +599,28 @@ func (s *SoundChannel) SetFreqMul(freqmul float32) {
 				speaker.Lock()
 				resampler.SetRatio(float64(srcRate) / float64(dstRate))
 				s.sfx.freqmul = freqmul
+				speaker.Unlock()
+			}
+		}
+	}
+}
+func (s *SoundChannel) SetLoopPoints(loopstart, loopend int) {
+	// Set both at once, why not
+	if sl, ok := s.sfx.streamer.(*StreamLooper); ok {
+		if sl.loopstart != loopstart && sl.loopend != loopend {
+			speaker.Lock()
+			sl.loopstart = loopstart
+			sl.loopend = loopend
+			speaker.Unlock()
+			// Set one at a time
+		} else {
+			if sl.loopstart != loopstart {
+				speaker.Lock()
+				sl.loopstart = loopstart
+				speaker.Unlock()
+			} else if sl.loopend != loopend {
+				speaker.Lock()
+				sl.loopend = loopend
 				speaker.Unlock()
 			}
 		}
@@ -661,7 +694,7 @@ func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	}
 	return nil
 }
-func (s *SoundChannels) Play(sound *Sound, volumescale int32, pan float32) bool {
+func (s *SoundChannels) Play(sound *Sound, volumescale int32, pan float32, loopStart, loopEnd, startPosition int) bool {
 	if sound == nil {
 		return false
 	}
@@ -669,7 +702,7 @@ func (s *SoundChannels) Play(sound *Sound, volumescale int32, pan float32) bool 
 	if c == nil {
 		return false
 	}
-	c.Play(sound, false, 1.0)
+	c.Play(sound, false, 1.0, loopStart, loopEnd, startPosition)
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 0, nil)
 	return true

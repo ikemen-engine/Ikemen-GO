@@ -3706,7 +3706,7 @@ func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
 func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int32,
-	p, freqmul, ls float32, x *float32, log bool, priority int32) {
+	p, freqmul, ls float32, x *float32, log bool, priority int32, loopstart, loopend, startposition int) {
 	if g < 0 {
 		return
 	}
@@ -3746,7 +3746,7 @@ func (c *Char) playSound(ffx string, lowpriority, loop bool, g, n, chNo, vol int
 		crun = c.root()
 	}
 	if ch := crun.soundChannels.New(chNo, lowpriority, priority); ch != nil {
-		ch.Play(s, loop, freqmul)
+		ch.Play(s, loop, freqmul, loopstart, loopend, startposition)
 		vol = Clamp(vol, -25600, 25600)
 		//if c.gi().mugenver[0] == 1 {
 		if ffx != "" {
@@ -5663,7 +5663,7 @@ func (c *Char) appendLifebarAction(text string, snd, spr [2]int32, anim, time in
 		return
 	}
 	if snd[0] != -1 {
-		sys.lifebar.snd.play(snd, 100, 0)
+		sys.lifebar.snd.play(snd, 100, 0, 0, 0, 0)
 	}
 	index := 0
 	if !top {
@@ -6667,7 +6667,7 @@ func (c *Char) update() {
 		} else {
 			if c.koEchoTime == 60 || c.koEchoTime == 120 {
 				vo := int32(100 * (240 - (c.koEchoTime + 60)) / 240)
-				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
+				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0, 0, 0, 0)
 			}
 			c.koEchoTime++
 		}
@@ -6832,7 +6832,7 @@ func (c *Char) tick() {
 			// KO sound
 			if !sys.gsf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
-				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0)
+				c.playSound("", false, false, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0, 0, 0, 0)
 				if c.gi().data.ko.echo != 0 {
 					c.koEchoTime = 1
 				}
@@ -7617,7 +7617,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.hitsound[0] >= 0 {
 				vo := int32(100)
 				c.playSound(hd.hitsound_ffx, false, false, hd.hitsound[0], hd.hitsound[1],
-					hd.hitsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
+					hd.hitsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0, 0, 0, 0)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.hitgetpower)
@@ -7654,7 +7654,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.guardsound[0] >= 0 {
 				vo := int32(100)
 				c.playSound(hd.guardsound_ffx, false, false, hd.guardsound[0], hd.guardsound[1],
-					hd.guardsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0)
+					hd.guardsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0, 0, 0, 0)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.guardgetpower)
