@@ -3531,14 +3531,6 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.matchOver()))
 		return 1
 	})
-	luaRegister(l, "maxbgmvolume", func(*lua.LState) int {
-		if sys.bgm.streamer == nil {
-			l.Push(lua.LNumber(0))
-		} else {
-			l.Push(lua.LNumber(int32(sys.maxBgmVolume)))
-		}
-		return 1
-	})
 	luaRegister(l, "movecontact", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.moveContact()))
 		return 1
