@@ -3273,6 +3273,7 @@ const (
 	playSnd_loopstart
 	playSnd_loopend
 	playSnd_startposition
+	playSnd_loopcount
 )
 
 func (sc playSnd) Run(c *Char, _ []int32) bool {
@@ -3282,7 +3283,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 	crun := c
 	f, lw, lp := "", false, false
 	var g, n, ch, vo, pri int32 = -1, 0, -1, 100, 0
-	var loopstart, loopend, startposition = 0, 0, 0
+	var loopstart, loopend, startposition, lc = 0, 0, 0, 0
 	var p, fr float32 = 0, 1
 	x := &c.pos[0]
 	ls := c.localscl
@@ -3320,6 +3321,8 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			loopend = int(exp[0].evalI64(c))
 		case playSnd_startposition:
 			startposition = int(exp[0].evalI64(c))
+		case playSnd_loopcount:
+			lc = int(exp[0].evalI(c))
 		case playSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3331,7 +3334,18 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.playSound(f, lw, lp, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+
+	// Read the loop parameter if loopcount not specified
+	if lc == 0 {
+		if lp {
+			crun.playSound(f, lw, -1, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+		} else {
+			crun.playSound(f, lw, 0, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+		}
+		// Use the loopcount directly if it's been specified
+	} else {
+		crun.playSound(f, lw, lc, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+	}
 	return false
 }
 
@@ -6712,7 +6726,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			}
 			vo := int32(100)
 			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			crun.playSound(ffx, false, false, exp[1].evalI(c), n, -1,
+			crun.playSound(ffx, false, 0, exp[1].evalI(c), n, -1,
 				vo, 0, 1, 1, nil, false, 0, 0, 0, 0)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -8959,6 +8973,8 @@ const (
 	modifySnd_loopstart
 	modifySnd_loopend
 	modifySnd_position
+	modifySnd_loop
+	modifySnd_loopcount
 )
 
 func (sc modifySnd) Run(c *Char, _ []int32) bool {
@@ -8969,8 +8985,8 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 	snd := crun.soundChannels.Get(-1)
 	var ch, pri int32 = -1, 0
 	var vo, fr float32 = 100, 1.0
-	freqMulSet, volumeSet, prioritySet, panSet, loopStartSet, loopEndSet, posSet := false, false, false, false, false, false, false
-	var loopstart, loopend, position int = 0, 0, 0
+	freqMulSet, volumeSet, prioritySet, panSet, loopStartSet, loopEndSet, posSet, lcSet, loopSet := false, false, false, false, false, false, false, false, false
+	var loopstart, loopend, position, lc int = 0, 0, 0, 0
 	var p float32 = 0
 	x := &c.pos[0]
 	ls := crun.localscl
@@ -9007,6 +9023,18 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 		case modifySnd_position:
 			position = int(exp[0].evalI64(c))
 			posSet = true
+		case modifySnd_loop:
+			if lc == 0 {
+				if bool(exp[0].evalB(c)) {
+					lc = -1
+				} else {
+					lc = 0
+				}
+				loopSet = true
+			}
+		case modifySnd_loopcount:
+			lc = int(exp[0].evalI(c))
+			lcSet = true
 		case modifySnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -9057,6 +9085,11 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 			}
 			if posSet {
 				snd.streamer.Seek(position)
+			}
+			if lcSet || loopSet {
+				if sl, ok := snd.sfx.streamer.(*StreamLooper); ok {
+					sl.loopcount = lc
+				}
 			}
 			if sl, ok := snd.sfx.streamer.(*StreamLooper); ok {
 				if (loopStartSet && sl.loopstart != loopstart) || (loopEndSet && sl.loopend != loopend) {
