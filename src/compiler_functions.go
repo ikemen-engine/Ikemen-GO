@@ -270,6 +270,10 @@ func (c *Compiler) playSnd(is IniSection, sc *StateControllerBase, _ int8) (Stat
 			playSnd_startposition, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "loopcount",
+			playSnd_loopcount, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
@@ -4346,6 +4350,14 @@ func (c *Compiler) modifySnd(is IniSection, sc *StateControllerBase, _ int8) (St
 		}
 		if err := c.paramValue(is, sc, "position",
 			modifySnd_position, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loop",
+			modifySnd_loop, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loopcount",
+			modifySnd_loopcount, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return nil

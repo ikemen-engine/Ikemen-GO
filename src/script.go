@@ -497,7 +497,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		f, lw, lp := false, false, false
 		var g, n, ch, vo, priority int32 = -1, 0, -1, 100, 0
-		var loopstart, loopend, startposition int = 0, 0, 0
+		var loopstart, loopend, startposition, lc int = 0, 0, 0, 0
 		var p, fr float32 = 0, 1
 		x := &sys.chars[pn-1][0].pos[0]
 		ls := sys.chars[pn-1][0].localscl
@@ -540,11 +540,26 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 14 {
 			startposition = int(numArg(l, 14))
 		}
+		if l.GetTop() >= 15 {
+			lc = int(numArg(l, 15))
+		}
 		preffix := ""
 		if f {
 			preffix = "f"
 		}
-		sys.chars[pn-1][0].playSound(preffix, lw, lp, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+
+		// If the loopcount is 0, then read the loop parameter
+		if lc == 0 {
+			if lp {
+				sys.chars[pn-1][0].playSound(preffix, lw, -1, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+			} else {
+				sys.chars[pn-1][0].playSound(preffix, lw, 0, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+			}
+
+			// Otherwise, read the loopcount parameter directly
+		} else {
+			sys.chars[pn-1][0].playSound(preffix, lw, lc, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+		}
 		return 0
 	})
 	luaRegister(l, "charSndStop", func(l *lua.LState) int {

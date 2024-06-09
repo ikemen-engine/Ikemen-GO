@@ -538,15 +538,17 @@ type SoundChannel struct {
 	sound    *Sound
 }
 
-func (s *SoundChannel) Play(sound *Sound, loop bool, freqmul float32, loopStart int, loopEnd int, startPosition int) {
+func (s *SoundChannel) Play(sound *Sound, loop int, freqmul float32, loopStart, loopEnd, startPosition int) {
 	if sound == nil {
 		return
 	}
 	s.sound = sound
 	s.streamer = s.sound.GetStreamer()
 	loopCount := int(1)
-	if loop {
+	if loop < 0 {
 		loopCount = -1
+	} else {
+		loopCount = int(Max(int32(loop), 1))
 	}
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
 	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul}
@@ -702,7 +704,7 @@ func (s *SoundChannels) Play(sound *Sound, volumescale int32, pan float32, loopS
 	if c == nil {
 		return false
 	}
-	c.Play(sound, false, 1.0, loopStart, loopEnd, startPosition)
+	c.Play(sound, 0, 1.0, loopStart, loopEnd, startPosition)
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 0, nil)
 	return true
