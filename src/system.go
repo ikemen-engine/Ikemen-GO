@@ -248,6 +248,7 @@ type System struct {
 	drawc2hb                ClsnRect
 	drawc2mtk               ClsnRect
 	drawc2grd               ClsnRect
+	drawc2stb               ClsnRect
 	drawwh                  ClsnRect
 	drawch                  ClsnRect
 	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
@@ -1145,6 +1146,7 @@ func (s *System) action() {
 	s.drawc2hb = s.drawc2hb[:0]
 	s.drawc2mtk = s.drawc2mtk[:0]
 	s.drawc2grd = s.drawc2grd[:0]
+	s.drawc2stb = s.drawc2stb[:0]
 	s.drawwh = s.drawwh[:0]
 	s.drawch = s.drawch[:0]
 	s.clsnText = nil
@@ -1733,6 +1735,8 @@ func (s *System) drawTop() {
 		s.drawc2mtk.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xffc00040
 		s.drawc2grd.draw(0x3feff)
+		s.clsnSpr.Pal[0] = 0xff404040
+		s.drawc2stb.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xff303030
 		s.drawwh.draw(0x3feff)
 		s.clsnSpr.Pal[0] = 0xffffffff
