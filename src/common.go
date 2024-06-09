@@ -207,13 +207,13 @@ func Atof(str string) float64 {
 
 // Prevent overflow errors when converting float64 to int32
 func F64toI32(f float64) int32 {
-    if f >= float64(math.MaxInt32) {
-        return math.MaxInt32
-    }
-    if f <= float64(math.MinInt32) {
-        return math.MinInt32
-    }
-    return int32(f)
+	if f >= float64(math.MaxInt32) {
+		return math.MaxInt32
+	}
+	if f <= float64(math.MinInt32) {
+		return math.MinInt32
+	}
+	return int32(f)
 }
 
 func readDigit(d string) (int32, bool) {

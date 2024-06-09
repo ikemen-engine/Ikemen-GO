@@ -532,10 +532,10 @@ func (s *SoundEffect) Err() error {
 // SoundChannel
 
 type SoundChannel struct {
-	streamer beep.StreamSeeker
-	sfx      *SoundEffect
-	ctrl     *beep.Ctrl
-	sound    *Sound
+	streamer          beep.StreamSeeker
+	sfx               *SoundEffect
+	ctrl              *beep.Ctrl
+	sound             *Sound
 	stopOnGetHit      bool
 	stopOnChangeState bool
 }

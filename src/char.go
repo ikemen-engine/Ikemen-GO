@@ -4941,6 +4941,7 @@ func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
 		c.targets = tg
 	}
 }
+
 // Process raw damage into the value that will actually be used
 // Calculations are done in float64 for the sake of precision
 func (c *Char) computeDamage(damage float64, kill, absolute bool,
@@ -4975,6 +4976,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	int := F64toI32(math.Round(damage))
 	return int
 }
+
 // A lot of this logic seems the same as computeDamage. Maybe LifeAdd is supposed to use that function as well
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	if add == 0 {
