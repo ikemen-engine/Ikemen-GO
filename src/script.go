@@ -495,7 +495,7 @@ func systemScriptInit(l *lua.LState) {
 		if pn < 1 || pn > len(sys.chars) || len(sys.chars[pn-1]) == 0 {
 			l.RaiseError("\nPlayer not found: %v\n", pn)
 		}
-		f, lw, lp := false, false, false
+		f, lw, lp, stopgh, stopcs := false, false, false, false, false
 		var g, n, ch, vo, priority int32 = -1, 0, -1, 100, 0
 		var loopstart, loopend, startposition, lc int = 0, 0, 0, 0
 		var p, fr float32 = 0, 1
@@ -543,6 +543,12 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 15 {
 			lc = int(numArg(l, 15))
 		}
+		if l.GetTop() >= 15 { // StopOnGetHit
+			stopgh = boolArg(l, 16)
+		}
+		if l.GetTop() >= 16 { // StopOnChangeState
+			stopcs = boolArg(l, 17)
+		}
 		preffix := ""
 		if f {
 			preffix = "f"
@@ -551,14 +557,14 @@ func systemScriptInit(l *lua.LState) {
 		// If the loopcount is 0, then read the loop parameter
 		if lc == 0 {
 			if lp {
-				sys.chars[pn-1][0].playSound(preffix, lw, -1, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+				sys.chars[pn-1][0].playSound(preffix, lw, -1, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition, stopgh, stopcs)
 			} else {
-				sys.chars[pn-1][0].playSound(preffix, lw, 0, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+				sys.chars[pn-1][0].playSound(preffix, lw, 0, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition, stopgh, stopcs)
 			}
 
 			// Otherwise, read the loopcount parameter directly
 		} else {
-			sys.chars[pn-1][0].playSound(preffix, lw, lc, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition)
+			sys.chars[pn-1][0].playSound(preffix, lw, lc, g, n, ch, vo, p, fr, ls, x, false, priority, loopstart, loopend, startposition, stopgh, stopcs)
 		}
 		return 0
 	})

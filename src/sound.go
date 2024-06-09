@@ -536,6 +536,8 @@ type SoundChannel struct {
 	sfx      *SoundEffect
 	ctrl     *beep.Ctrl
 	sound    *Sound
+	stopOnGetHit      bool
+	stopOnChangeState bool
 }
 
 func (s *SoundChannel) Play(sound *Sound, loop int, freqmul float32, loopStart, loopEnd, startPosition int) {

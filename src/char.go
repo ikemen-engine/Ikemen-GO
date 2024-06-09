@@ -3706,7 +3706,7 @@ func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
 func (c *Char) playSound(ffx string, lowpriority bool, loopCount int, g, n, chNo, vol int32,
-	p, freqmul, ls float32, x *float32, log bool, priority int32, loopstart, loopend, startposition int) {
+	p, freqmul, ls float32, x *float32, log bool, priority int32, loopstart, loopend, startposition int, stopgh, stopcs bool) {
 	if g < 0 {
 		return
 	}
@@ -3767,6 +3767,8 @@ func (c *Char) playSound(ffx string, lowpriority bool, loopCount int, g, n, chNo
 		//		ch.SetVolume(float32(c.gi().data.volume + vol))
 		//	}
 		//}
+		ch.stopOnGetHit = stopgh
+		ch.stopOnChangeState = stopcs
 		ch.SetPan(p*c.facing, ls, x)
 	}
 }
@@ -3867,6 +3869,12 @@ func (c *Char) stateChange2() bool {
 			if e[i].playerId == c.id && e[i].removeonchangestate {
 				e[i].id = IErr
 				e[i].anim = nil
+			}
+		}
+		// Stop flagged sound channels
+		for _, ch := range c.soundChannels.channels {
+			if ch.stopOnChangeState {
+				ch.Stop()
 			}
 		}
 		c.stchtmp = false
@@ -4701,7 +4709,13 @@ func (c *Char) setFacing(f float32) {
 		if (c.facing < 0) != (f < 0) {
 			c.facing *= -1
 			c.vel[0] *= -1
+			// Flip gethitvars on x axis
 			c.ghv.xvel *= -1
+			c.ghv.ground_velocity[0] *= -1
+			c.ghv.air_velocity[0] *= -1
+			c.ghv.down_velocity[0] *= -1
+			c.ghv.guard_velocity *= -1
+			c.ghv.airguard_velocity[0] *= -1
 		}
 	}
 }
@@ -4766,6 +4780,7 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redlife bool) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
+			// We flip the sign of "add" so that it operates under the same logic as Hitdef damage
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			// Subtract life
 			t.lifeAdd(-dmg, true, true)
@@ -4926,41 +4941,70 @@ func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
 		c.targets = tg
 	}
 }
+// Process raw damage into the value that will actually be used
+// Calculations are done in float64 for the sake of precision
 func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	atkmul float32, attacker *Char, bounds bool) int32 {
+	// Skip further calculations
 	if damage == 0 || !absolute && atkmul == 0 {
 		return 0
 	}
+	// Apply attack and defense multipliers
 	if !absolute {
-		damage = float64(attacker.scaleHit(int32(damage), c.id, 0))
+		damage = float64(attacker.scaleHit(F64toI32(damage), c.id, 0))
 		damage *= float64(atkmul) / c.finalDefense
 	}
-	damage = math.Round(damage)
-	if bounds {
-		damage = float64(Clamp(int32(damage), c.life-c.lifeMax, Max(0, c.life-Btoi(!kill))))
+	// In Mugen, an extremely high defense or low attack still results in at least 1 damage. Not true when healing
+	if damage > 0 && damage < 1 {
+		damage = 1
 	}
-	return int32(damage)
+	// Normally damage cannot exceed the char's remaining life
+	if bounds && damage > float64(c.life) {
+		damage = float64(c.life)
+	}
+	// Limit damage if kill is false
+	// In Mugen, if a character attacks a char with 0 life and kill = 0, the attack will actually heal 1 point
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1200
+	if !kill && damage >= float64(c.life) {
+		// If a Mugen character attacks a char with 0 life and kill = 0, the attack will actually heal
+		if c.life > 0 || c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+			damage = float64(c.life - 1)
+		}
+	}
+	// Safely convert from float64 back to int32 after all calculations are done
+	int := F64toI32(math.Round(damage))
+	return int
 }
+// A lot of this logic seems the same as computeDamage. Maybe LifeAdd is supposed to use that function as well
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
-	if add != 0 && sys.roundState() != 3 {
-		if !absolute {
-			add /= c.finalDefense
-		}
-		add = float64(Clamp(int32(add), Btoi(!kill && c.life > 0)-c.life, c.lifeMax-c.life))
-		// In Mugen, an extremely high defense or low attack still results in at least 1 damage
-		if add < 0 && add > -1 {
-			add = -1
-		}
-		if add < 0 {
-			c.receivedDmg -= int32(add)
-		}
-		c.lifeSet(c.life + int32(add))
-		c.ghv.kill = kill
-		// Using LifeAdd currently does not touch the red life value
-		// This could be expanded in the future, as with TargetLifeAdd
+	if add == 0 {
+		return
 	}
+	if !absolute {
+		add /= c.finalDefense
+	}
+	// Limit value if kill is false
+	if !kill && add <= float64(-c.life) {
+		if c.life > 0 || c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 { // See computeDamage
+			add = float64(1 - c.life)
+		}
+	}
+	if add < 0 {
+		c.receivedDmg -= Max(c.life, F64toI32(add))
+	}
+	// Safely convert from float64 back to int32 after all calculations are done
+	int := F64toI32(float64(c.life) + math.Round(add))
+	c.lifeSet(int)
+	c.ghv.kill = kill
+	// Using LifeAdd currently does not touch the red life value
+	// This could be expanded in the future, as with TargetLifeAdd
 }
 func (c *Char) lifeSet(life int32) {
+	// Characters cannot damage each other during the lifebar's "over.hittime" period
+	// This prevents altering the result of a time over round
+	if c.alive() && sys.intro < 0 && sys.intro <= -sys.lifebar.ro.over_hittime && sys.intro >= -sys.lifebar.ro.over_waittime {
+		return
+	}
 	c.life = Clamp(life, 0, c.lifeMax)
 	if c.life == 0 {
 		// Check win type
@@ -5011,10 +5055,12 @@ func (c *Char) setPower(pow int32) {
 	}
 }
 func (c *Char) powerAdd(add int32) {
+	// Safely convert from float64 back to int32 after all calculations are done
+	int := F64toI32(float64(c.getPower()) + math.Round(float64(add)))
 	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
-		sys.chars[c.playerNo&1][0].setPower(c.getPower() + add)
+		sys.chars[c.playerNo&1][0].setPower(int)
 	} else {
-		sys.chars[c.playerNo][0].setPower(c.getPower() + add)
+		sys.chars[c.playerNo][0].setPower(int)
 	}
 }
 func (c *Char) powerSet(pow int32) {
@@ -5025,12 +5071,15 @@ func (c *Char) powerSet(pow int32) {
 	}
 }
 func (c *Char) dizzyPointsAdd(add float64, absolute bool) {
-	if add != 0 && sys.roundState() != 3 {
-		if !absolute {
-			add /= c.finalDefense
-		}
-		c.dizzyPointsSet(c.dizzyPoints + int32(add))
+	if add == 0 {
+		return
 	}
+	if !absolute {
+		add /= c.finalDefense
+	}
+	// Safely convert from float64 back to int32 after all calculations are done
+	int := F64toI32(float64(c.dizzyPoints) + math.Round(add))
+	c.dizzyPointsSet(int)
 }
 func (c *Char) dizzyPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.stunbar {
@@ -5038,12 +5087,15 @@ func (c *Char) dizzyPointsSet(set int32) {
 	}
 }
 func (c *Char) guardPointsAdd(add float64, absolute bool) {
-	if add != 0 && sys.roundState() != 3 {
-		if !absolute {
-			add /= c.finalDefense
-		}
-		c.guardPointsSet(c.guardPoints + int32(add))
+	if add == 0 {
+		return
 	}
+	if !absolute {
+		add /= c.finalDefense
+	}
+	// Safely convert from float64 back to int32 after all calculations are done
+	int := F64toI32(float64(c.guardPoints) + math.Round(add))
+	c.guardPointsSet(int)
 }
 func (c *Char) guardPointsSet(set int32) {
 	if !sys.roundEnd() && sys.lifebar.guardbar {
@@ -5051,11 +5103,13 @@ func (c *Char) guardPointsSet(set int32) {
 	}
 }
 func (c *Char) redLifeAdd(add float64, absolute bool) {
-	if add != 0 && sys.roundState() != 3 {
+	if add == 0 {
 		if !absolute {
 			add /= c.finalDefense
 		}
-		c.redLifeSet(c.redLife + int32(add))
+		// Safely convert from float64 back to int32 after all calculations are done
+		int := F64toI32(float64(c.redLife) + math.Round(add))
+		c.redLifeSet(int)
 	}
 }
 func (c *Char) redLifeSet(set int32) {
@@ -5564,9 +5618,9 @@ func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
 
 	// Calculate damage.
 	if hs.addType != 0 {
-		retDamage = int32(math.Round(float64(retDamage)*float64(ahs.mul))) + ahs.add
+		retDamage = F64toI32(math.Round(float64(retDamage)*float64(ahs.mul))) + ahs.add
 	} else {
-		retDamage = int32(math.Round(float64(retDamage+ahs.add) * float64(ahs.mul)))
+		retDamage = F64toI32(math.Round(float64(retDamage+ahs.add) * float64(ahs.mul)))
 	}
 
 	// Apply scale for the next hit.
@@ -5574,10 +5628,10 @@ func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
 
 	// Get Max/Min.
 	if hs.min != -math.MaxInt32 {
-		retDamage = Max(int32(math.Round(float64(hs.min)*float64(baseDamage))), retDamage)
+		retDamage = Max(F64toI32(math.Round(float64(hs.min)*float64(baseDamage))), retDamage)
 	}
 	if hs.max != math.MaxInt32 {
-		retDamage = Min(int32(math.Round(float64(hs.max)*float64(baseDamage))), retDamage)
+		retDamage = Min(F64toI32(math.Round(float64(hs.max)*float64(baseDamage))), retDamage)
 	}
 
 	// Convert the heal back to negative damage.
@@ -6667,7 +6721,7 @@ func (c *Char) update() {
 		} else {
 			if c.koEchoTime == 60 || c.koEchoTime == 120 {
 				vo := int32(100 * (240 - (c.koEchoTime + 60)) / 240)
-				c.playSound("", false, 0, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0, 0, 0, 0)
+				c.playSound("", false, 0, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0, 0, 0, 0, false, false)
 			}
 			c.koEchoTime++
 		}
@@ -6832,7 +6886,7 @@ func (c *Char) tick() {
 			// KO sound
 			if !sys.gsf(GSF_nokosnd) && c.alive() {
 				vo := int32(100)
-				c.playSound("", false, 0, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0, 0, 0, 0)
+				c.playSound("", false, 0, 11, 0, -1, vo, 0, 1, c.localscl, &c.pos[0], false, 0, 0, 0, 0, false, false)
 				if c.gi().data.ko.echo != 0 {
 					c.koEchoTime = 1
 				}
@@ -6861,7 +6915,9 @@ func (c *Char) cueDraw() {
 		ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
 		// Draw Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 {
-			if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
+			if c.scf(SCF_standby) {
+				// Draw nothing
+			} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
 				sys.drawc1rev.Add(clsn, xoff, yoff, xs, ys)
 			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
 				sys.drawc1hit.Add(clsn, xoff, yoff, xs, ys)
@@ -6882,7 +6938,9 @@ func (c *Char) cueDraw() {
 					}
 				}
 			}
-			if mtk {
+			if c.scf(SCF_standby) {
+				sys.drawc2stb.Add(clsn, xoff, yoff, xs, ys)
+			} else if mtk {
 				// Draw fully invincible Clsn2
 				sys.drawc2mtk.Add(clsn, xoff, yoff, xs, ys)
 			} else if hb {
@@ -7243,9 +7301,12 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		// HitDef connects
 		if hitType > 0 {
+			// Stop enemy's flagged sounds. In Mugen this only happens with channel 0
 			if hitType == 1 {
-				if ch := getter.soundChannels.Get(0); ch != nil {
-					ch.Stop()
+				for _, ch := range getter.soundChannels.channels {
+					if ch.stopOnGetHit {
+						ch.Stop()
+					}
 				}
 			}
 			if getter.bindToId == c.id {
@@ -7617,7 +7678,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.hitsound[0] >= 0 {
 				vo := int32(100)
 				c.playSound(hd.hitsound_ffx, false, 0, hd.hitsound[0], hd.hitsound[1],
-					hd.hitsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0, 0, 0, 0)
+					hd.hitsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0, 0, 0, 0, false, false)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.hitgetpower)
@@ -7654,7 +7715,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if hd.guardsound[0] >= 0 {
 				vo := int32(100)
 				c.playSound(hd.guardsound_ffx, false, 0, hd.guardsound[0], hd.guardsound[1],
-					hd.guardsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0, 0, 0, 0)
+					hd.guardsound_channel, vo, 0, 1, getter.localscl, &getter.pos[0], true, 0, 0, 0, 0, false, false)
 			}
 			if hitType > 0 {
 				c.powerAdd(hd.guardgetpower)

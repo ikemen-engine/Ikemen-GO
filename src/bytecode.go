@@ -2183,21 +2183,21 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_facing:
 		sys.bcStack.PushI(c.ghv.facing)
 	case OC_ex_gethitvar_ground_velocity_x:
-		sys.bcStack.PushF(c.ghv.ground_velocity[0] * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.ground_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_ground_velocity_y:
 		sys.bcStack.PushF(c.ghv.ground_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_x:
-		sys.bcStack.PushF(c.ghv.air_velocity[0] * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.air_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_y:
 		sys.bcStack.PushF(c.ghv.air_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_x:
-		sys.bcStack.PushF(c.ghv.down_velocity[0] * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.down_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_y:
 		sys.bcStack.PushF(c.ghv.down_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_guard_velocity_x:
-		sys.bcStack.PushF(c.ghv.guard_velocity * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.guard_velocity * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_x:
-		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_y:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_frame:
@@ -3274,6 +3274,8 @@ const (
 	playSnd_loopend
 	playSnd_startposition
 	playSnd_loopcount
+	playSnd_stopongethit
+	playSnd_stoponchangestate
 )
 
 func (sc playSnd) Run(c *Char, _ []int32) bool {
@@ -3281,7 +3283,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		return false
 	}
 	crun := c
-	f, lw, lp := "", false, false
+	f, lw, lp, stopgh, stopcs := "", false, false, false, false
 	var g, n, ch, vo, pri int32 = -1, 0, -1, 100, 0
 	var loopstart, loopend, startposition, lc = 0, 0, 0, 0
 	var p, fr float32 = 0, 1
@@ -3297,6 +3299,9 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			}
 		case playSnd_channel:
 			ch = exp[0].evalI(c)
+			if ch == 0 {
+				stopgh = true
+			}
 		case playSnd_lowpriority:
 			lw = exp[0].evalB(c)
 		case playSnd_pan:
@@ -3323,6 +3328,10 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 			startposition = int(exp[0].evalI64(c))
 		case playSnd_loopcount:
 			lc = int(exp[0].evalI(c))
+		case playSnd_stopongethit:
+			stopgh = exp[0].evalB(c)
+		case playSnd_stoponchangestate:
+			stopcs = exp[0].evalB(c)
 		case playSnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3334,17 +3343,16 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-
 	// Read the loop parameter if loopcount not specified
 	if lc == 0 {
 		if lp {
-			crun.playSound(f, lw, -1, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+			crun.playSound(f, lw, -1, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition, stopgh, stopcs)
 		} else {
-			crun.playSound(f, lw, 0, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+			crun.playSound(f, lw, 0, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition, stopgh, stopcs)
 		}
 		// Use the loopcount directly if it's been specified
 	} else {
-		crun.playSound(f, lw, lc, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition)
+		crun.playSound(f, lw, lc, g, n, ch, vo, p, fr, ls, x, true, pri, loopstart, loopend, startposition, stopgh, stopcs)
 	}
 	return false
 }
@@ -6727,7 +6735,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			vo := int32(100)
 			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			crun.playSound(ffx, false, 0, exp[1].evalI(c), n, -1,
-				vo, 0, 1, 1, nil, false, 0, 0, 0, 0)
+				vo, 0, 1, 1, nil, false, 0, 0, 0, 0, false, false)
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8975,6 +8983,8 @@ const (
 	modifySnd_position
 	modifySnd_loop
 	modifySnd_loopcount
+	modifySnd_stopongethit
+	modifySnd_stoponchangestate
 )
 
 func (sc modifySnd) Run(c *Char, _ []int32) bool {
@@ -8985,7 +8995,9 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 	snd := crun.soundChannels.Get(-1)
 	var ch, pri int32 = -1, 0
 	var vo, fr float32 = 100, 1.0
+	stopgh, stopcs := false, false
 	freqMulSet, volumeSet, prioritySet, panSet, loopStartSet, loopEndSet, posSet, lcSet, loopSet := false, false, false, false, false, false, false, false, false
+	stopghSet, stopcsSet := false, false
 	var loopstart, loopend, position, lc int = 0, 0, 0, 0
 	var p float32 = 0
 	x := &c.pos[0]
@@ -9035,6 +9047,10 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 		case modifySnd_loopcount:
 			lc = int(exp[0].evalI(c))
 			lcSet = true
+		case modifySnd_stopongethit:
+			stopgh = exp[0].evalB(c)
+		case modifySnd_stoponchangestate:
+			stopcs = exp[0].evalB(c)
 		case modifySnd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -9101,6 +9117,13 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 			}
 			if vo != snd.sfx.volume {
 				snd.SetVolume(vo)
+			}
+			// These flags can be updated regardless since there are no calculations involved
+			if stopghSet {
+				snd.stopOnGetHit = stopgh
+			}
+			if stopcsSet {
+				snd.stopOnChangeState = stopcs
 			}
 		}
 	}
