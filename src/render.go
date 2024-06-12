@@ -54,6 +54,7 @@ type RenderParams struct {
 	xts, xbs float32
 	ys, vs   float32
 	rxadd    float32
+	xas, yas float32
 	rot      Rotation
 	// Transparency, masking and palette effects
 	tint  uint32 // Sprite tint for shadows
@@ -89,18 +90,17 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 }
 
 // Render a quad with optional horizontal tiling
-func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float32,
-	tl Tiling, rcx float32) {
+func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, width float32, rp RenderParams) {
 	//            p3
 	//    p4 o-----o-----o- - -o
 	//      /      |      \     ` .
 	//     /       |       \       `.
 	//    o--------o--------o- - - - o
 	//   p1         p2
-	topdist := (x3 - x4) * (1 + float32(tl.sx)/width)
-	botdist := (x2 - x1) * (1 + float32(tl.sx)/width)
+	topdist := (x3 - x4) * (((float32(rp.tile.sx) + width) / rp.xas) / width)
+	botdist := (x2 - x1) * (((float32(rp.tile.sx) + width) / rp.xas) / width)
 	if AbsF(topdist) >= 0.01 {
-		db := (x4 - rcx) * (botdist - topdist) / AbsF(topdist)
+		db := (x4 - rp.rcx) * (botdist - topdist) / AbsF(topdist)
 		x1 += db
 		x2 += db
 	}
@@ -116,16 +116,24 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, width float3
 		right = int32(math.Ceil(float64(MaxF(x4/-topdist, x1/-botdist))))
 	}
 
-	if tl.x != 1 {
+	if rp.tile.x != 1 {
 		left = 0
-		right = Min(right, Max(tl.x, 1))
+		right = Min(right, Max(rp.tile.x, 1))
 	}
 
 	// Draw all quads in one loop
 	for n := left; n < right; n++ {
 		x1d, x2d := x1+float32(n)*botdist, x2+float32(n)*botdist
 		x3d, x4d := x3+float32(n)*topdist, x4+float32(n)*topdist
-		drawQuads(modelview, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+		mat := modelview
+		if !rp.rot.IsZero() {
+			mat = mat.Mul4(mgl.Translate3D(rp.rcx+float32(n)*botdist, rp.rcy+dy, 0))
+			//modelview = modelview.Mul4(mgl.Scale3D(1, rp.vs, 1))
+			mat = mat.Mul4(mgl.Rotate3DZ(rp.rot.angle * math.Pi / 180.0).Mat4())
+			mat = mat.Mul4(mgl.Translate3D(-(rp.rcx + float32(n)*botdist), -(rp.rcy + dy), 0))
+		}
+
+		drawQuads(mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
 	}
 }
 
@@ -140,15 +148,12 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 	//} else {
 	//	pers = AbsF(rp.xbs) / AbsF(rp.xts)
 	//}
-	if !rp.rot.IsZero() {
-		//	kaiten(&x1, &y1, float64(agl), rcx, rcy, vs)
-		//	kaiten(&x2, &y2, float64(agl), rcx, rcy, vs)
-		//	kaiten(&x3, &y3, float64(agl), rcx, rcy, vs)
-		//	kaiten(&x4, &y4, float64(agl), rcx, rcy, vs)
+	if !rp.rot.IsZero() && rp.tile.x == 0 && rp.tile.y == 0 {
+
 		if rp.vs != 1 {
 			y1 = rp.rcy + ((rp.y - rp.ys*float32(rp.size[1])) - rp.rcy)
 			y2 = y1
-			y3 = rp.rcy + (rp.y - rp.rcy)
+			y3 = rp.y
 			y4 = y3
 		}
 		if rp.projectionMode == 0 {
@@ -182,8 +187,10 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 	}
 	if rp.tile.y == 1 && rp.xbs != 0 {
 		x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d := x1, y1, x2, y2, x3, y3, x4, y4
+		n := 0
+		var xy []float32
 		for {
-			x1d, y1d = x4d, y4d+rp.ys*rp.vs*float32(rp.tile.sy)
+			x1d, y1d = x4d, y4d+rp.ys*rp.vs*((float32(rp.tile.sy)+float32(rp.size[1]))/rp.yas-float32(rp.size[1]))
 			x2d, y2d = x3d, y1d
 			x3d = x4d - rp.rxadd*rp.ys*float32(rp.size[1]) + (rp.xts/rp.xbs)*(x3d-x4d)
 			y3d = y2d + rp.ys*rp.vs*float32(rp.size[1])
@@ -192,24 +199,32 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 				break
 			}
 			y4d = y3d
-			if rp.ys*(float32(rp.size[1])+float32(rp.tile.sy)) < 0 {
+			if rp.ys*((float32(rp.tile.sy)+float32(rp.size[1]))/rp.yas) < 0 {
 				if y1d <= float32(-sys.scrrect[3]) && y4d <= float32(-sys.scrrect[3]) {
 					break
 				}
 			} else if y1d >= 0 && y4d >= 0 {
 				break
 			}
+			n += 1
+			xy = append(xy, x1d, x2d, x3d, x4d, y1d, y2d, y3d, y4d)
+		}
+		for {
+			if len(xy) == 0 {
+				break
+			}
+			x1d, x2d, x3d, x4d, y1d, y2d, y3d, y4d, xy = xy[len(xy)-8], xy[len(xy)-7], xy[len(xy)-6], xy[len(xy)-5], xy[len(xy)-4], xy[len(xy)-3], xy[len(xy)-2], xy[len(xy)-1], xy[:len(xy)-8]
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
-				rmTileHSub(modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d,
-					float32(rp.size[0]), rp.tile, rp.rcx)
+				rmTileHSub(modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, y1d-y1, float32(rp.size[0]), rp)
 			}
 		}
 	}
 	if rp.tile.y == 0 || rp.xts != 0 {
 		n := rp.tile.y
+		oy := y1
 		for {
-			if rp.ys*(float32(rp.size[1])+float32(rp.tile.sy)) > 0 {
+			if rp.ys*((float32(rp.tile.sy)+float32(rp.size[1]))/rp.yas) > 0 {
 				if y1 <= float32(-sys.scrrect[3]) && y4 <= float32(-sys.scrrect[3]) {
 					break
 				}
@@ -218,8 +233,8 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-				rmTileHSub(modelview, x1, y1, x2, y2, x3, y3, x4, y4,
-					float32(rp.size[0]), rp.tile, rp.rcx)
+				rmTileHSub(modelview, x1, y1, x2, y2, x3, y3, x4, y4, y1-oy,
+					float32(rp.size[0]), rp)
 			}
 			if rp.tile.y != 1 && n != 0 {
 				n--
@@ -227,7 +242,7 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 			if n == 0 {
 				break
 			}
-			x4, y4 = x1, y1-rp.ys*rp.vs*float32(rp.tile.sy)
+			x4, y4 = x1, y1-rp.ys*rp.vs*((float32(rp.tile.sy)+float32(rp.size[1]))/rp.yas-float32(rp.size[1]))
 			x3, y3 = x2, y4
 			x2 = x1 + rp.rxadd*rp.ys*float32(rp.size[1]) + (rp.xbs/rp.xts)*(x2-x1)
 			y2 = y3 - rp.ys*rp.vs*float32(rp.size[1])

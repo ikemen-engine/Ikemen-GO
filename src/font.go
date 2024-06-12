@@ -460,7 +460,7 @@ func (f *Fnt) drawChar(
 		spr.Tex, f.paltex, spr.Size,
 		-x * sys.widthScale, -y * sys.heightScale, notiling,
 		xscl * sys.widthScale, xscl * sys.widthScale,
-		yscl * sys.heightScale, 1, 0,
+		yscl * sys.heightScale, 1, 0, 1, 1,
 		Rotation{},
 		0, sys.brightness*255>>8 | 1<<9, 0,
 		nil, window, 0, 0,
