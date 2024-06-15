@@ -3875,6 +3875,7 @@ func (c *Char) stateChange2() bool {
 		for _, ch := range c.soundChannels.channels {
 			if ch.stopOnChangeState {
 				ch.Stop()
+				ch.stopOnChangeState = false
 			}
 		}
 		c.stchtmp = false
@@ -4992,7 +4993,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 		}
 	}
 	if add < 0 {
-		c.receivedDmg -= Max(c.life, F64toI32(add))
+		c.receivedDmg += Min(c.life, F64toI32(-add))
 	}
 	// Safely convert from float64 back to int32 after all calculations are done
 	int := F64toI32(float64(c.life) + math.Round(add))
@@ -5002,9 +5003,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	// This could be expanded in the future, as with TargetLifeAdd
 }
 func (c *Char) lifeSet(life int32) {
-	// Characters cannot damage each other during the lifebar's "over.hittime" period
-	// This prevents altering the result of a time over round
-	if c.alive() && sys.intro < 0 && sys.intro <= -sys.lifebar.ro.over_hittime && sys.intro >= -sys.lifebar.ro.over_waittime {
+	if c.alive() && sys.roundNoDamage() {
 		return
 	}
 	c.life = Clamp(life, 0, c.lifeMax)
@@ -5048,12 +5047,15 @@ func (c *Char) lifeSet(life int32) {
 	}
 }
 func (c *Char) setPower(pow int32) {
-	if !sys.roundEnd() {
-		if sys.maxPowerMode {
-			c.power = c.powerMax
-		} else {
-			c.power = Clamp(pow, 0, c.powerMax)
-		}
+	// In Mugen, power cannot be changed at all after the round ends
+	// TODO: This is probably too restrictive
+	if sys.intro < 0 {
+		return
+	}
+	if sys.maxPowerMode {
+		c.power = c.powerMax
+	} else {
+		c.power = Clamp(pow, 0, c.powerMax)
 	}
 }
 func (c *Char) powerAdd(add int32) {
@@ -5065,6 +5067,7 @@ func (c *Char) powerAdd(add int32) {
 		sys.chars[c.playerNo][0].setPower(int)
 	}
 }
+// This only for the PowerSet state controller
 func (c *Char) powerSet(pow int32) {
 	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
 		sys.chars[c.playerNo&1][0].setPower(pow)
@@ -5084,7 +5087,7 @@ func (c *Char) dizzyPointsAdd(add float64, absolute bool) {
 	c.dizzyPointsSet(int)
 }
 func (c *Char) dizzyPointsSet(set int32) {
-	if !sys.roundEnd() && sys.lifebar.stunbar {
+	if sys.lifebar.stunbar && !sys.roundNoDamage() {
 		c.dizzyPoints = Clamp(set, 0, c.dizzyPointsMax)
 	}
 }
@@ -5100,24 +5103,25 @@ func (c *Char) guardPointsAdd(add float64, absolute bool) {
 	c.guardPointsSet(int)
 }
 func (c *Char) guardPointsSet(set int32) {
-	if !sys.roundEnd() && sys.lifebar.guardbar {
+	if sys.lifebar.guardbar && !sys.roundNoDamage() {
 		c.guardPoints = Clamp(set, 0, c.guardPointsMax)
 	}
 }
 func (c *Char) redLifeAdd(add float64, absolute bool) {
 	if add == 0 {
-		if !absolute {
-			add /= c.finalDefense
-		}
-		// Safely convert from float64 back to int32 after all calculations are done
-		int := F64toI32(float64(c.redLife) + math.Round(add))
-		c.redLifeSet(int)
+		return
 	}
+	if !absolute {
+		add /= c.finalDefense
+	}
+	// Safely convert from float64 back to int32 after all calculations are done
+	int := F64toI32(float64(c.redLife) + math.Round(add))
+	c.redLifeSet(int)
 }
 func (c *Char) redLifeSet(set int32) {
-	if c.life == 0 {
+	if !c.alive() {
 		c.redLife = 0
-	} else if !sys.roundEnd() && sys.lifebar.redlifebar {
+	} else if sys.lifebar.redlifebar && !sys.roundNoDamage() {
 		c.redLife = Clamp(set, c.life, c.lifeMax)
 	}
 }
@@ -7308,6 +7312,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				for _, ch := range getter.soundChannels.channels {
 					if ch.stopOnGetHit {
 						ch.Stop()
+						ch.stopOnGetHit = false
 					}
 				}
 			}
