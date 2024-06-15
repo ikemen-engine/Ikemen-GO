@@ -5067,6 +5067,7 @@ func (c *Char) powerAdd(add int32) {
 		sys.chars[c.playerNo][0].setPower(int)
 	}
 }
+
 // This only for the PowerSet state controller
 func (c *Char) powerSet(pow int32) {
 	if sys.powerShare[c.playerNo&1] && c.teamside != -1 {
