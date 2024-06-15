@@ -721,6 +721,11 @@ func (s *System) screenWidth() float32 {
 func (s *System) roundEnd() bool {
 	return s.intro < -s.lifebar.ro.over_hittime
 }
+
+// Characters cannot hurt each other between lifebar timers over.hittime and over.waittime
+func (s *System) roundNoDamage() bool {
+	return sys.intro < 0 && sys.intro <= -sys.lifebar.ro.over_hittime && sys.intro >= -sys.lifebar.ro.over_waittime
+}
 func (s *System) roundState() int32 {
 	switch {
 	case sys.postMatchFlg:
