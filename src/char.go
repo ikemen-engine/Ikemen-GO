@@ -183,8 +183,8 @@ func (cr ClsnRect) draw(trans int32) {
 		params := RenderParams{
 			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
 			-c[0] * sys.widthScale, -c[1] * sys.heightScale, notiling,
-			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale, 1, 1,
-			1, 0, Rotation{}, 0, trans, -1, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
+			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale, 1, 0,
+			1, 1, Rotation{}, 0, trans, -1, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
 		}
 		RenderSprite(params)
 	}

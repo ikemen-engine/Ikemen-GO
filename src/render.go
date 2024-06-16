@@ -118,7 +118,7 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, width fl
 
 	if rp.tile.x != 1 {
 		left = 0
-		right = Min(right, Max(rp.tile.x, 1))
+		right = 1
 	}
 
 	// Draw all quads in one loop
