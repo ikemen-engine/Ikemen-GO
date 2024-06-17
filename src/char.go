@@ -4998,7 +4998,6 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	// Safely convert from float64 back to int32 after all calculations are done
 	int := F64toI32(float64(c.life) + math.Round(add))
 	c.lifeSet(int)
-	c.ghv.kill = kill
 	// Using LifeAdd currently does not touch the red life value
 	// This could be expanded in the future, as with TargetLifeAdd
 }
@@ -7187,8 +7186,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				c.stchtmp && c.ss.sb.playerNo != hd.playerNo) {
 			return 0
 		}
+		// Check if the enemy can guard this attack
 		guard := (proj || !c.asf(ASF_unguardable)) && getter.scf(SCF_guard) &&
 			(!getter.csf(CSF_gethit) || getter.ghv.guarded)
+		// Automatically choose which way to guard in case of auto guard
 		if guard && getter.asf(ASF_autoguard) &&
 			getter.acttmp > 0 && !getter.csf(CSF_gethit) &&
 			(getter.ss.stateType == ST_S || getter.ss.stateType == ST_C) &&
@@ -7201,12 +7202,19 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 		}
 		hitType = 1
-		// We only switch to guard behavior if the enemy can survive guarding the attack
+		getter.ghv.kill = hd.kill
+		// If enemy is guarding the correct way, "hitType" is set to "guard"
 		if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
-			if getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul, c, false) < getter.life ||
+			getter.ghv.kill = hd.guard_kill
+			// We only switch to guard behavior if the enemy can survive guarding the attack
+			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul, c, true) ||
 				sys.gsf(GSF_noko) || getter.asf(ASF_noko) || getter.asf(ASF_noguardko) {
-				hitType = 2
+					hitType = 2
 			}
+		}
+		// If any previous hit in the current frame will KO the enemy, the following ones will not prevent it
+		if getter.ghv.damage >= getter.life {
+			getter.ghv.kill = true
 		}
 		if hd.reversal_attr > 0 {
 			hitType *= -1
@@ -7330,6 +7338,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
 				dpnt, gpnt := ghv.dizzypoints, ghv.guardpoints
 				fall, hc, gc, fc, by := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
+				kill := ghv.kill
 				ghv.clear()
 				// Restore variables
 				ghv.hitBy = by
@@ -7341,6 +7350,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.guardpower = gpwr
 				ghv.dizzypoints = dpnt
 				ghv.guardpoints = gpnt
+				ghv.kill = kill
 				// Update variables
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
@@ -7364,14 +7374,14 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					ghv._type = ghv.groundtype
 				}
 				ghv.id = hd.attackerID
-				//ghv.redlife = hd.hitredlife
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
 				ghv.fatal = false
 				hitdamage = hd.hitdamage
 				guarddamage = hd.guarddamage
-				if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
+				// If attack is guarded
+				if hitType == 2 {
 					ghv.hitshaketime = Max(0, hd.guard_shaketime)
 					ghv.hittime = Max(0, c.scaleHit(hd.guard_hittime, getter.id, 1))
 					ghv.slidetime = hd.guard_slidetime
@@ -7553,15 +7563,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			}
 			getter.setCSF(CSF_gethit)
 			getter.ghv.frame = true
-			// If any hit in the current frame will KO the enemy, the others will not prevent it
-			if getter.ghv.damage >= getter.life {
-				getter.ghv.kill = true
-			} else {
-				getter.ghv.kill = hd.kill
-				if hitType == 2 {
-					getter.ghv.kill = hd.guard_kill
-				}
-			}
 			// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed remaining life
 			bnd := true
 			for _, ho := range getter.ho {
@@ -7580,19 +7581,19 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			getter.ghv.guardpower += hd.guardgivepower
 			if !c.asf(ASF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
 				getter.ghv.dizzypoints += getter.computeDamage(
-					float64(hd.dizzypoints)*float64(hits), false, false, attackMul, c, false)
+					float64(hd.dizzypoints)*float64(hits), true, false, attackMul, c, false)
 			}
 			if !c.asf(ASF_noguardpointsdamage) {
 				getter.ghv.guardpoints += getter.computeDamage(
-					float64(hd.guardpoints)*float64(hits), false, false, attackMul, c, false)
+					float64(hd.guardpoints)*float64(hits), true, false, attackMul, c, false)
 			}
 			if !c.asf(ASF_noredlifedamage) {
 				getter.ghv.redlife += getter.computeDamage(
-					float64(absredlife)*float64(hits), false, false, attackMul, c, bnd)
+					float64(absredlife)*float64(hits), true, false, attackMul, c, bnd)
 				getter.ghv.hitredlife += getter.computeDamage(
-					float64(hd.hitredlife)*float64(hits), false, false, attackMul, c, bnd)
+					float64(hd.hitredlife)*float64(hits), true, false, attackMul, c, bnd)
 				getter.ghv.guardredlife += getter.computeDamage(
-					float64(hd.guardredlife)*float64(hits), false, false, attackMul, c, bnd)
+					float64(hd.guardredlife)*float64(hits), true, false, attackMul, c, bnd)
 			}
 			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
