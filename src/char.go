@@ -7209,7 +7209,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			// We only switch to guard behavior if the enemy can survive guarding the attack
 			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul, c, true) ||
 				sys.gsf(GSF_noko) || getter.asf(ASF_noko) || getter.asf(ASF_noguardko) {
-					hitType = 2
+				hitType = 2
 			}
 		}
 		// If any previous hit in the current frame will KO the enemy, the following ones will not prevent it
