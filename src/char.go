@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -2381,10 +2382,12 @@ func (c *Char) load(def string) error {
 						currenttrial := "trial." + strconv.Itoa(ii+1)
 						switch name {
 						case "trialdef":
-							if steps, ok := is.getString(currenttrial + ".steps"); !ok {
+							if steps, ok := is[(currenttrial + ".steps")]; !ok {
+								fmt.Printf("About to break")
 								break
 							} else {
 								stepstemp, _ := strconv.ParseInt(steps, 10, 32)
+								fmt.Printf("we got the number of steps:" + steps)
 								gi.trialslist.trialnumsteps[ii] = int32(stepstemp)
 							}
 							if is[(currenttrial+".name")] != "" {
