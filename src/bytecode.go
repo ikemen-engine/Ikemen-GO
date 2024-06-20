@@ -6345,6 +6345,7 @@ func (sc lifeAdd) Run(c *Char, _ []int32) bool {
 				a = true
 			}
 			crun.lifeAdd(float64(v), k, a)
+			crun.ghv.kill = k // The kill GetHitVar must currently be set here because c.lifeAdd is also used internally
 		case lifeAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
