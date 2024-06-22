@@ -115,7 +115,7 @@ func (b *StreamLooper) Stream(samples [][2]float64) (n int, ok bool) {
 	}
 	for len(samples) > 0 {
 		sn, sok := b.s.Stream(samples)
-		if !sok || b.s.Position() >= b.loopend {
+		if !sok || (b.s.Position() >= b.loopend && b.loopend < b.s.Len()) {
 			if b.loopcount > 0 {
 				b.loopcount--
 			}
@@ -540,7 +540,7 @@ type SoundChannel struct {
 	stopOnChangeState bool
 }
 
-func (s *SoundChannel) Play(sound *Sound, loop int, freqmul float32, loopStart, loopEnd, startPosition int) {
+func (s *SoundChannel) Play(sound *Sound, loop int32, freqmul float32, loopStart, loopEnd, startPosition int) {
 	if sound == nil {
 		return
 	}
@@ -550,7 +550,7 @@ func (s *SoundChannel) Play(sound *Sound, loop int, freqmul float32, loopStart, 
 	if loop < 0 {
 		loopCount = -1
 	} else {
-		loopCount = int(Max(int32(loop), 1))
+		loopCount = int(Max(loop, 1))
 	}
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
 	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul}
