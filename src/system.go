@@ -340,8 +340,6 @@ type System struct {
 	roundType         [2]RoundType
 	timerStart        int32
 	timerRounds       []int32
-	timerFrozen       bool
-	timerVal          string
 	scoreStart        [2]float32
 	scoreRounds       [][2]float32
 	matchData         *lua.LTable
