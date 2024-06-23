@@ -3705,7 +3705,7 @@ func (c *Char) winPerfect() bool {
 func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
 }
-func (c *Char) playSound(ffx string, lowpriority bool, loopCount int, g, n, chNo, vol int32,
+func (c *Char) playSound(ffx string, lowpriority bool, loopCount int32, g, n, chNo, vol int32,
 	p, freqmul, ls float32, x *float32, log bool, priority int32, loopstart, loopend, startposition int, stopgh, stopcs bool) {
 	if g < 0 {
 		return
