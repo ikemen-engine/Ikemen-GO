@@ -897,6 +897,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(newUserData(l, fnt))
 		return 1
 	})
+	luaRegister(l, "freezeLifeBarTimer", func(*lua.LState) int {
+		sys.timerFrozen = boolArg(l, 1)
+		return 0
+	})
 	// Execute a match of gameplay
 	luaRegister(l, "game", func(l *lua.LState) int {
 		// Anonymous function to load characters and stages, and/or wait for them to finish loading
@@ -1521,6 +1525,10 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getStageNo", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.sel.selectedStageNo))
+		return 1
+	})
+	luaRegister(l, "getStopwatch", func(*lua.LState) int {
+		l.Push(lua.LString(sys.timerVal))
 		return 1
 	})
 	luaRegister(l, "getWaveData", func(*lua.LState) int {
