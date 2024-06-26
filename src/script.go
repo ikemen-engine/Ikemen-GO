@@ -3419,48 +3419,52 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "gettrialinfo", func(*lua.LState) int {
 		switch strArg(l, 1) {
-		case "trialspresent":
-			l.Push(lua.LBool(sys.cgi[0].trialslist.trialspresent))
+		case "trialsexist":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trialsexist))
 		case "numoftrials":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.numoftrials))
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.numoftrials))
 		case "currenttrial":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.currentTrial))
-		case "currenttrialname":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialname[int(numArg(l, 2))]))
-		case "currenttrialstepname":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.currenttrialStep))
-		case "currenttrialdummymode":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialdummymode[int(numArg(l, 2))]))
-		case "currenttrialguardmode":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialguardmode[int(numArg(l, 2))]))
-		case "currenttrialdummybuttonjam":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialdummybuttonjam[int(numArg(l, 2))]))
-		case "currenttrialnumofsteps":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialnumsteps[int(numArg(l, 2))]))
-		case "currenttrialtext":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialstepname[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialglyphs":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialglyphs[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialstateno":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialstateno[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialanimno":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialanimno[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialisthrow":
-			l.Push(lua.LBool(sys.cgi[0].trialslist.trialisthrow[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialisnohit":
-			l.Push(lua.LBool(sys.cgi[0].trialslist.trialisnohit[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialishelper":
-			l.Push(lua.LBool(sys.cgi[0].trialslist.trialishelper[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialiscounterhit":
-			l.Push(lua.LBool(sys.cgi[0].trialslist.trialiscounterhit[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialprojid":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialprojid[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialspecialbool":
-			l.Push(lua.LBool(sys.cgi[0].trialslist.trialspecialbool[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialspecialstr":
-			l.Push(lua.LString(sys.cgi[0].trialslist.trialspecialstr[int(numArg(l, 2))][int(numArg(l, 3))]))
-		case "currenttrialspecialval":
-			l.Push(lua.LNumber(sys.cgi[0].trialslist.trialspecialval[int(numArg(l, 2))][int(numArg(l, 3))]))
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.currentTrial))
+		case "currenttrialstep":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.currenttrialStep))
+		case "trialname":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].name))
+		case "trialdummymode":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].dummymode))
+		case "trialguardmode":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].guardmode))
+		case "trialdummybuttonjam":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].dummybuttonjam))
+		case "trialnumofsteps":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].numsteps))
+		case "trialstepname":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].name))
+		case "trialstepglyphs":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].glyphs))
+		case "trialstepstateno":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].stateno))
+		case "trialstepanimno":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].animno))
+		case "trialstepisthrow":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isthrow))
+		case "trialstepisnohit":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isnohit))
+		case "trialstepishelper":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].ishelper))
+		case "trialstephelperid":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].helperid))
+		case "trialstephelpername":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].helpername))
+		case "trialstepiscounterhit":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].iscounterhit))
+		case "trialstepprojid":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].projid))
+		case "trialstepspecialbool":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialbool))
+		case "trialstepspecialstr":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialstr))
+		case "trialstepspecialval":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialval))
 		}
 		return 1
 	})
