@@ -108,17 +108,18 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, width fl
 	// Compute left/right tiling bounds (or right/left when topdist < 0)
 	xmax := float32(sys.scrrect[2])
 	left, right := int32(0), int32(1)
-	if topdist >= 0.01 {
-		left = 1 - int32(math.Ceil(float64(MaxF(x3/topdist, x2/botdist))))
-		right = int32(math.Ceil(float64(MaxF((xmax-x4)/topdist, (xmax-x1)/botdist))))
-	} else if topdist <= -0.01 {
-		left = 1 - int32(math.Ceil(float64(MaxF((xmax-x3)/-topdist, (xmax-x2)/-botdist))))
-		right = int32(math.Ceil(float64(MaxF(x4/-topdist, x1/-botdist))))
-	}
-
-	if rp.tile.x != 1 {
-		left = 0
-		right = 1
+	if rp.tile.x != 0 {
+		if topdist >= 0.01 {
+			left = 1 - int32(math.Ceil(float64(MaxF(x3/topdist, x2/botdist))))
+			right = int32(math.Ceil(float64(MaxF((xmax-x4)/topdist, (xmax-x1)/botdist))))
+		} else if topdist <= -0.01 {
+			left = 1 - int32(math.Ceil(float64(MaxF((xmax-x3)/-topdist, (xmax-x2)/-botdist))))
+			right = int32(math.Ceil(float64(MaxF(x4/-topdist, x1/-botdist))))
+		}
+		if rp.tile.x != 1 {
+			left = 0
+			right = Min(right, Max(rp.tile.x, 1))
+		}
 	}
 
 	// Draw all quads in one loop
