@@ -4183,11 +4183,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "winspecial", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.winType(WT_S)))
+		l.Push(lua.LBool(sys.debugWC.winType(WT_Special)))
 		return 1
 	})
 	luaRegister(l, "winhyper", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.winType(WT_H)))
+		l.Push(lua.LBool(sys.debugWC.winType(WT_Hyper)))
 		return 1
 	})
 

@@ -783,6 +783,7 @@ type GetHitVar struct {
 	guard_velocity    float32
 	airguard_velocity [2]float32
 	frame             bool
+	cheeseKO          bool
 }
 
 func (ghv *GetHitVar) clear() {
@@ -1995,6 +1996,7 @@ type Char struct {
 	pos                 [3]float32
 	drawPos             [3]float32
 	oldPos              [3]float32
+	dustOldPos          float32
 	vel                 [3]float32
 	facing              float32
 	ivar                [NumVar + NumSysVar]int32
@@ -3700,7 +3702,7 @@ func (c *Char) winTime() bool {
 	return c.win() && sys.finish == FT_TO
 }
 func (c *Char) winPerfect() bool {
-	return c.win() && sys.winType[c.playerNo&1] >= WT_PN
+	return c.win() && sys.winType[c.playerNo&1] >= WT_PNormal
 }
 func (c *Char) winType(wt WinType) bool {
 	return c.win() && sys.winTrigger[c.playerNo&1] == wt
@@ -3872,10 +3874,10 @@ func (c *Char) stateChange2() bool {
 			}
 		}
 		// Stop flagged sound channels
-		for _, ch := range c.soundChannels.channels {
-			if ch.stopOnChangeState {
-				ch.Stop()
-				ch.stopOnChangeState = false
+		for i := range c.soundChannels.channels {
+			if c.soundChannels.channels[i].stopOnChangeState {
+				c.soundChannels.channels[i].Stop()
+				c.soundChannels.channels[i].stopOnChangeState = false
 			}
 		}
 		c.stchtmp = false
@@ -5020,16 +5022,16 @@ func (c *Char) lifeSet(life int32) {
 					sys.winType[^c.playerNo&1] = WT_Suicide
 				} else if c.ghv.playerNo >= 0 && c.playerNo&1 == c.ghv.playerNo&1 {
 					sys.winType[^c.playerNo&1] = WT_Teammate
-				} else if c.ghv.guarded {
-					sys.winType[^c.playerNo&1] = WT_C
+				} else if c.ghv.cheeseKO {
+					sys.winType[^c.playerNo&1] = WT_Cheese
 				} else if c.ghv.attr&int32(AT_AH) != 0 {
-					sys.winType[^c.playerNo&1] = WT_H
+					sys.winType[^c.playerNo&1] = WT_Hyper
 				} else if c.ghv.attr&int32(AT_AS) != 0 {
-					sys.winType[^c.playerNo&1] = WT_S
+					sys.winType[^c.playerNo&1] = WT_Special
 				} else if c.ghv.attr&int32(AT_AT) != 0 {
 					sys.winType[^c.playerNo&1] = WT_Throw
 				} else {
-					sys.winType[^c.playerNo&1] = WT_N
+					sys.winType[^c.playerNo&1] = WT_Normal
 				}
 			}
 		} else if c.immortal { //in mugen even non-player helpers can die
@@ -6683,7 +6685,7 @@ func (c *Char) update() {
 				c.setSCF(SCF_guard)
 			}
 			if ((c.ss.moveType == MT_H && (c.ss.stateType == ST_S || c.ss.stateType == ST_C)) || c.ss.no == 52) && c.pos[1] == 0 &&
-				AbsF(c.pos[0]-c.oldPos[0]) >= 1 && c.ss.time%3 == 0 && !c.asf(ASF_nomakedust) {
+				AbsF(c.pos[0]-c.dustOldPos) >= 1 && c.ss.time%3 == 0 && !c.asf(ASF_nomakedust) {
 				c.makeDust(0, 0)
 			}
 		}
@@ -7014,6 +7016,7 @@ func (c *Char) cueDraw() {
 		//}
 		sd := sdf()
 		c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause())
+		// Hitshake effect
 		if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
 			sd.pos[0] -= c.facing
 		}
@@ -7034,6 +7037,7 @@ func (c *Char) cueDraw() {
 		}
 		c.minus = 2
 		c.oldPos = c.pos
+		c.dustOldPos = c.pos[0]
 	}
 }
 
@@ -7210,6 +7214,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul, c, true) ||
 				sys.gsf(GSF_noko) || getter.asf(ASF_noko) || getter.asf(ASF_noguardko) {
 				hitType = 2
+			} else {
+				getter.ghv.cheeseKO = true // TODO: find a better name then expose this variable
 			}
 		}
 		// If any previous hit in the current frame will KO the enemy, the following ones will not prevent it
@@ -7318,10 +7324,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		if hitType > 0 {
 			// Stop enemy's flagged sounds. In Mugen this only happens with channel 0
 			if hitType == 1 {
-				for _, ch := range getter.soundChannels.channels {
-					if ch.stopOnGetHit {
-						ch.Stop()
-						ch.stopOnGetHit = false
+				for i := range getter.soundChannels.channels {
+					if getter.soundChannels.channels[i].stopOnGetHit {
+						getter.soundChannels.channels[i].Stop()
+						getter.soundChannels.channels[i].stopOnGetHit = false
 					}
 				}
 			}
@@ -7339,8 +7345,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				dpnt, gpnt := ghv.dizzypoints, ghv.guardpoints
 				fall, hc, gc, fc, by := ghv.fallf, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
 				kill := ghv.kill
+				cheese := ghv.cheeseKO
+				// Clear variables
 				ghv.clear()
-				// Restore variables
+				// Restore persistent variables
 				ghv.hitBy = by
 				ghv.damage = dmg
 				ghv.hitdamage = hdmg
@@ -7351,6 +7359,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				ghv.dizzypoints = dpnt
 				ghv.guardpoints = gpnt
 				ghv.kill = kill
+				ghv.cheeseKO = cheese
 				// Update variables
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
@@ -7382,10 +7391,10 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				guarddamage = hd.guarddamage
 				// If attack is guarded
 				if hitType == 2 {
+					ghv.guarded = true
 					ghv.hitshaketime = Max(0, hd.guard_shaketime)
 					ghv.hittime = Max(0, c.scaleHit(hd.guard_hittime, getter.id, 1))
 					ghv.slidetime = hd.guard_slidetime
-					ghv.guarded = true
 					if getter.ss.stateType == ST_A {
 						ghv.ctrltime = hd.airguard_ctrltime
 						ghv.xvel = hd.airguard_velocity[0] * (c.localscl / getter.localscl)

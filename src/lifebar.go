@@ -21,21 +21,21 @@ const (
 type WinType int32
 
 const (
-	WT_N WinType = iota
-	WT_S
-	WT_H
-	WT_C
-	WT_T
+	WT_Normal WinType = iota
+	WT_Special
+	WT_Hyper
+	WT_Cheese
+	WT_Time
 	WT_Throw
 	WT_Suicide
 	WT_Teammate
 	WT_Perfect
 	WT_NumTypes
-	WT_PN
-	WT_PS
-	WT_PH
-	WT_PC
-	WT_PT
+	WT_PNormal
+	WT_PSpecial
+	WT_PHyper
+	WT_PCheese
+	WT_PTime
 	WT_PThrow
 	WT_PSuicide
 	WT_PTeammate
@@ -50,8 +50,8 @@ const (
 )
 
 func (wt *WinType) SetPerfect() {
-	if *wt >= WT_N && *wt < WT_Perfect {
-		*wt += WT_PN - WT_N
+	if *wt >= WT_Normal && *wt < WT_Perfect {
+		*wt += WT_PNormal - WT_Normal
 	}
 }
 
@@ -1252,11 +1252,11 @@ func readLifeBarWinIcon(pre string, is IniSection,
 	wi.counter = *readLbText(pre+"counter.", is, "%i", 0, f, 0)
 	wi.bg0 = *ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
 	wi.top = *ReadAnimLayout(pre+"top.", is, sff, at, 0)
-	wi.icon[WT_N] = *ReadAnimLayout(pre+"n.", is, sff, at, 0)
-	wi.icon[WT_S] = *ReadAnimLayout(pre+"s.", is, sff, at, 0)
-	wi.icon[WT_H] = *ReadAnimLayout(pre+"h.", is, sff, at, 0)
-	wi.icon[WT_C] = *ReadAnimLayout(pre+"c.", is, sff, at, 0)
-	wi.icon[WT_T] = *ReadAnimLayout(pre+"t.", is, sff, at, 0)
+	wi.icon[WT_Normal] = *ReadAnimLayout(pre+"n.", is, sff, at, 0)
+	wi.icon[WT_Special] = *ReadAnimLayout(pre+"s.", is, sff, at, 0)
+	wi.icon[WT_Hyper] = *ReadAnimLayout(pre+"h.", is, sff, at, 0)
+	wi.icon[WT_Cheese] = *ReadAnimLayout(pre+"c.", is, sff, at, 0)
+	wi.icon[WT_Time] = *ReadAnimLayout(pre+"t.", is, sff, at, 0)
 	wi.icon[WT_Throw] = *ReadAnimLayout(pre+"throw.", is, sff, at, 0)
 	wi.icon[WT_Suicide] = *ReadAnimLayout(pre+"suicide.", is, sff, at, 0)
 	wi.icon[WT_Teammate] = *ReadAnimLayout(pre+"teammate.", is, sff, at, 0)
@@ -1265,11 +1265,11 @@ func readLifeBarWinIcon(pre string, is IniSection,
 }
 func (wi *LifeBarWinIcon) add(wt WinType) {
 	wi.wins = append(wi.wins, wt)
-	if wt >= WT_PN {
+	if wt >= WT_PNormal {
 		wi.addedP = &Animation{}
 		*wi.addedP = wi.icon[WT_Perfect].anim
 		wi.addedP.Reset()
-		wt -= WT_PN
+		wt -= WT_PNormal
 	}
 	wi.added = &Animation{}
 	*wi.added = wi.icon[wt].anim
@@ -1321,8 +1321,8 @@ func (wi *LifeBarWinIcon) draw(layerno int16, f []*Fnt, side int) {
 		i := 0
 		for ; i < wi.numWins; i++ {
 			wt, p := wi.wins[i], false
-			if wt >= WT_PN {
-				wt -= WT_PN
+			if wt >= WT_PNormal {
+				wt -= WT_PNormal
 				p = true
 			}
 			wi.icon[wt].Draw(float32(wi.pos[0]+wi.iconoffset[0]*int32(i))+sys.lifebarOffsetX,
@@ -1335,7 +1335,7 @@ func (wi *LifeBarWinIcon) draw(layerno int16, f []*Fnt, side int) {
 		if wi.added != nil {
 			wt, p := wi.wins[i], false
 			if wi.addedP != nil {
-				wt -= WT_PN
+				wt -= WT_PNormal
 				p = true
 			}
 			wi.icon[wt].lay.DrawAnim(&wi.icon[wt].lay.window,
@@ -2035,20 +2035,20 @@ func readLifeBarRound(is IniSection,
 	for i := range ro.drawn_bg {
 		ro.drawn_bg[i] = *ReadAnimLayout(fmt.Sprintf("draw.bg%v.", i), is, sff, at, 1)
 	}
-	ro.wint[WT_N] = readLbBgTextSnd("p1.n.", is, sff, at, 0, f)
-	ro.wint[WT_S] = readLbBgTextSnd("p1.s.", is, sff, at, 0, f)
-	ro.wint[WT_H] = readLbBgTextSnd("p1.h.", is, sff, at, 0, f)
-	ro.wint[WT_C] = readLbBgTextSnd("p1.c.", is, sff, at, 0, f)
-	ro.wint[WT_T] = readLbBgTextSnd("p1.t.", is, sff, at, 0, f)
+	ro.wint[WT_Normal] = readLbBgTextSnd("p1.n.", is, sff, at, 0, f)
+	ro.wint[WT_Special] = readLbBgTextSnd("p1.s.", is, sff, at, 0, f)
+	ro.wint[WT_Hyper] = readLbBgTextSnd("p1.h.", is, sff, at, 0, f)
+	ro.wint[WT_Cheese] = readLbBgTextSnd("p1.c.", is, sff, at, 0, f)
+	ro.wint[WT_Time] = readLbBgTextSnd("p1.t.", is, sff, at, 0, f)
 	ro.wint[WT_Throw] = readLbBgTextSnd("p1.throw.", is, sff, at, 0, f)
 	ro.wint[WT_Suicide] = readLbBgTextSnd("p1.suicide.", is, sff, at, 0, f)
 	ro.wint[WT_Teammate] = readLbBgTextSnd("p1.teammate.", is, sff, at, 0, f)
 	ro.wint[WT_Perfect] = readLbBgTextSnd("p1.perfect.", is, sff, at, 0, f)
-	ro.wint[WT_N+WT_NumTypes] = readLbBgTextSnd("p2.n.", is, sff, at, 0, f)
-	ro.wint[WT_S+WT_NumTypes] = readLbBgTextSnd("p2.s.", is, sff, at, 0, f)
-	ro.wint[WT_H+WT_NumTypes] = readLbBgTextSnd("p2.h.", is, sff, at, 0, f)
-	ro.wint[WT_C+WT_NumTypes] = readLbBgTextSnd("p2.c.", is, sff, at, 0, f)
-	ro.wint[WT_T+WT_NumTypes] = readLbBgTextSnd("p2.t.", is, sff, at, 0, f)
+	ro.wint[WT_Normal+WT_NumTypes] = readLbBgTextSnd("p2.n.", is, sff, at, 0, f)
+	ro.wint[WT_Special+WT_NumTypes] = readLbBgTextSnd("p2.s.", is, sff, at, 0, f)
+	ro.wint[WT_Hyper+WT_NumTypes] = readLbBgTextSnd("p2.h.", is, sff, at, 0, f)
+	ro.wint[WT_Cheese+WT_NumTypes] = readLbBgTextSnd("p2.c.", is, sff, at, 0, f)
+	ro.wint[WT_Time+WT_NumTypes] = readLbBgTextSnd("p2.t.", is, sff, at, 0, f)
 	ro.wint[WT_Throw+WT_NumTypes] = readLbBgTextSnd("p2.throw.", is, sff, at, 0, f)
 	ro.wint[WT_Suicide+WT_NumTypes] = readLbBgTextSnd("p2.suicide.", is, sff, at, 0, f)
 	ro.wint[WT_Teammate+WT_NumTypes] = readLbBgTextSnd("p2.teammate.", is, sff, at, 0, f)
