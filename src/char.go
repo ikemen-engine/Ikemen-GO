@@ -2365,13 +2365,12 @@ func (c *Char) load(def string) error {
 
 					for j < len(triallines) {
 						is, name, subname := ReadIniSection(triallines, &j)
-						currenttrial := "trial." + strconv.Itoa(gi.trialsdata.numoftrials+1)
 						if strings.Contains(name, "trialdef") {
 							trialdata := &trial{}
-							if subname != "" {
-								trialdata.name = subname
-							} else {
+							if subname == "" {
 								trialdata.name = "Trial " + strconv.Itoa(gi.trialsdata.numoftrials+1)
+							} else {
+								trialdata.name = subname
 							}
 							// Initialize defaults
 							trialdata.dummymode = "stand"
@@ -2379,84 +2378,78 @@ func (c *Char) load(def string) error {
 							trialdata.dummybuttonjam = "none"
 
 							// Look for default deltas
-							if is[(currenttrial+".dummymode")] != "" {
-								trialdata.dummymode = strings.ToLower(is[(currenttrial + ".dummymode")])
+							if is[("trial.dummymode")] != "" {
+								trialdata.dummymode = strings.ToLower(is[("trial.dummymode")])
 							}
-							if is[(currenttrial+".guardmode")] != "" {
-								trialdata.guardmode = strings.ToLower(is[(currenttrial + ".guardmode")])
+							if is[("trial.guardmode")] != "" {
+								trialdata.guardmode = strings.ToLower(is[("trial.guardmode")])
 							}
-							if is[(currenttrial+".dummybuttonjam")] != "" {
-								trialdata.dummybuttonjam = strings.ToLower(is[(currenttrial + ".dummybuttonjam")])
+							if is[("trial.dummybuttonjam")] != "" {
+								trialdata.dummybuttonjam = strings.ToLower(is[("trial.dummybuttonjam")])
 							}
 
 							var trialstepdata []*trialstep
 							i := 0
-							stop := false
 
-							for i = 0; !stop; i++ {
-								currenttrialstep := currenttrial + "." + strconv.Itoa(i+1)
+							for i = 0; is[("trialstep."+strconv.Itoa(i+1)+".stateno")] != ""; i++ {
+								currenttrialstep := "trialstep." + strconv.Itoa(i+1)
+								trialstep := &trialstep{}
 
+								trialstep.name = is[(currenttrialstep + ".name")]
+								trialstep.glyphs = is[(currenttrialstep + ".glyphs")]
+
+								// Initialize defaults
+								trialstep.animno = int32(math.NaN())
+								trialstep.isthrow = false
+								trialstep.isnohit = false
+								trialstep.ishelper = false
+								trialstep.helperid = int32(math.NaN())
+								trialstep.helpername = ""
+								trialstep.iscounterhit = false
+								trialstep.projid = int32(math.NaN())
+								trialstep.specialbool = false
+								trialstep.specialstr = ""
+								trialstep.specialval = int32(math.NaN())
+
+								// Look for default deltas
 								if is[(currenttrialstep+".stateno")] != "" {
-									trialstep := &trialstep{}
-
-									trialstep.name = is[(currenttrialstep + ".text")]
-									trialstep.glyphs = is[(currenttrialstep + ".glyphs")]
-
-									// Initialize defaults
-									trialstep.animno = int32(math.NaN())
-									trialstep.isthrow = false
-									trialstep.isnohit = false
-									trialstep.ishelper = false
-									trialstep.helperid = int32(math.NaN())
-									trialstep.helpername = ""
-									trialstep.iscounterhit = false
-									trialstep.projid = int32(math.NaN())
-									trialstep.specialbool = false
-									trialstep.specialstr = ""
-									trialstep.specialval = int32(math.NaN())
-
-									// Look for default deltas
-									if is[(currenttrialstep+".stateno")] != "" {
-										temp, _ := strconv.ParseInt(is[(currenttrialstep+".stateno")], 10, 32)
-										trialstep.stateno = int32(temp)
-									}
-									if is[(currenttrialstep+".anim")] != "" {
-										temp, _ := strconv.ParseInt(is[(currenttrialstep+".anim")], 10, 32)
-										trialstep.animno = int32(temp)
-									}
-									if is[(currenttrialstep+".isthrow")] != "" {
-										trialstep.isthrow, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isthrow")]))
-									}
-									if is[(currenttrialstep+".isnohit")] != "" {
-										trialstep.isnohit, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isnohit")]))
-									}
-									if is[(currenttrialstep+".iscounterhit")] != "" {
-										trialstep.iscounterhit, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".iscounterhit")]))
-									}
-									if is[(currenttrialstep+".ishelper")] != "" {
-										trialstep.ishelper, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".ishelper")]))
-									}
-									if is[(currenttrialstep+".projid")] != "" {
-										temp, _ := strconv.ParseInt(is[(currenttrialstep+".projid")], 10, 32)
-										trialstep.projid = int32(temp)
-									}
-									if is[(currenttrialstep+".specialbool")] != "" {
-										trialstep.specialbool, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".specialbool")]))
-									}
-									if is[(currenttrialstep+".specialstr")] != "" {
-										trialstep.specialstr = strings.ToLower(is[(currenttrialstep + ".specialstr")])
-									}
-									if is[(currenttrialstep+".specialval")] != "" {
-										temp, _ := strconv.ParseInt(is[(currenttrialstep+".specialval")], 10, 32)
-										trialstep.specialval = int32(temp)
-									}
-									trialstepdata = append(trialstepdata, trialstep)
-								} else {
-									stop = true
+									temp, _ := strconv.ParseInt(is[(currenttrialstep+".stateno")], 10, 32)
+									trialstep.stateno = int32(temp)
 								}
+								if is[(currenttrialstep+".anim")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialstep+".anim")], 10, 32)
+									trialstep.animno = int32(temp)
+								}
+								if is[(currenttrialstep+".isthrow")] != "" {
+									trialstep.isthrow, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isthrow")]))
+								}
+								if is[(currenttrialstep+".isnohit")] != "" {
+									trialstep.isnohit, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isnohit")]))
+								}
+								if is[(currenttrialstep+".iscounterhit")] != "" {
+									trialstep.iscounterhit, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".iscounterhit")]))
+								}
+								if is[(currenttrialstep+".ishelper")] != "" {
+									trialstep.ishelper, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".ishelper")]))
+								}
+								if is[(currenttrialstep+".projid")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialstep+".projid")], 10, 32)
+									trialstep.projid = int32(temp)
+								}
+								if is[(currenttrialstep+".specialbool")] != "" {
+									trialstep.specialbool, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".specialbool")]))
+								}
+								if is[(currenttrialstep+".specialstr")] != "" {
+									trialstep.specialstr = strings.ToLower(is[(currenttrialstep + ".specialstr")])
+								}
+								if is[(currenttrialstep+".specialval")] != "" {
+									temp, _ := strconv.ParseInt(is[(currenttrialstep+".specialval")], 10, 32)
+									trialstep.specialval = int32(temp)
+								}
+								trialstepdata = append(trialstepdata, trialstep)
 							}
 							trialdata.trialstep = trialstepdata
-							trialdata.numsteps = i - 1
+							trialdata.numsteps = i
 							gi.trialsdata.trial = append(gi.trialsdata.trial, trialdata)
 							gi.trialsdata.numoftrials++
 							gi.trialsdata.trialsexist = true
