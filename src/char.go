@@ -2363,6 +2363,7 @@ func (c *Char) load(def string) error {
 					gi.trialsdata.currenttrialStep = 0
 
 					j := 0
+					alltrialdata := []*trial{}
 
 					for j < len(triallines) {
 						is, name, subname := ReadIniSection(triallines, &j)
@@ -2462,10 +2463,11 @@ func (c *Char) load(def string) error {
 							}
 							trialdata.trialstep = trialstepdata
 							trialdata.numsteps = i
-							gi.trialsdata.trial = append(gi.trialsdata.trial, trialdata)
+							alltrialdata = append(alltrialdata, trialdata)
 							gi.trialsdata.numoftrials++
 							gi.trialsdata.trialsexist = true
 						}
+						gi.trialsdata.trial = alltrialdata
 					}
 				}
 			}
