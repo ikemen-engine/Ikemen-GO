@@ -3449,14 +3449,16 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isthrow))
 		case "trialstepisnohit":
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isnohit))
+		case "trialstepiscounterhit":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].iscounterhit))
 		case "trialstepishelper":
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].ishelper))
 		case "trialstephelperid":
 			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].helperid))
 		case "trialstephelpername":
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].helpername))
-		case "trialstepiscounterhit":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].iscounterhit))
+		case "trialstepisproj":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isproj))
 		case "trialstepprojid":
 			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].projid))
 		case "trialstepspecialbool":
