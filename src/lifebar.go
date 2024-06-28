@@ -1754,9 +1754,9 @@ type LifeBarRound struct {
 	win3, win4         [2]AnimTextSnd
 	win3_top, win4_top [2]AnimLayout
 	win3_bg, win4_bg   [2][32]AnimLayout
-	drawn              AnimTextSnd
-	drawn_top          AnimLayout
-	drawn_bg           [32]AnimLayout
+	drawgame           AnimTextSnd
+	drawgame_top       AnimLayout
+	drawgame_bg        [32]AnimLayout
 	cur                int32
 	wt, swt, dt        [4]int32
 	timerActive        bool
@@ -2030,10 +2030,10 @@ func readLifeBarRound(is IniSection,
 			ro.win4_bg[i] = ro.win2_bg[i]
 		}
 	}
-	ro.drawn = *ReadAnimTextSnd("draw.", is, sff, at, 1, f)
-	ro.drawn_top = *ReadAnimLayout("draw.top.", is, sff, at, 1)
-	for i := range ro.drawn_bg {
-		ro.drawn_bg[i] = *ReadAnimLayout(fmt.Sprintf("draw.bg%v.", i), is, sff, at, 1)
+	ro.drawgame = *ReadAnimTextSnd("draw.", is, sff, at, 1, f)
+	ro.drawgame_top = *ReadAnimLayout("draw.top.", is, sff, at, 1)
+	for i := range ro.drawgame_bg {
+		ro.drawgame_bg[i] = *ReadAnimLayout(fmt.Sprintf("draw.bg%v.", i), is, sff, at, 1)
 	}
 	ro.wint[WT_Normal] = readLbBgTextSnd("p1.n.", is, sff, at, 0, f)
 	ro.wint[WT_Special] = readLbBgTextSnd("p1.s.", is, sff, at, 0, f)
@@ -2083,13 +2083,13 @@ func (ro *LifeBarRound) act() bool {
 	if (sys.paused && !sys.step) || sys.gsf(GSF_roundfreeze) {
 		return false
 	}
-	if sys.intro > ro.ctrl_time {
+	if sys.intro > ro.ctrl_time { // Round ongoing
 		ro.cur, ro.wt[0], ro.swt[0], ro.dt[0] = 0, ro.round_time, ro.round_sndtime, 0
 		ro.wt[1] = ro.callfight_time
 	} else if (sys.intro >= 0 && !sys.tickNextFrame()) || sys.dialogueFlg {
 		return false
 	} else {
-		if !ro.introState[0] || !ro.introState[1] {
+		if !ro.introState[0] || !ro.introState[1] { // Round intro
 			if sys.round == 1 && sys.intro == ro.ctrl_time && len(sys.commonLua) > 0 {
 				for _, p := range sys.chars {
 					if len(p) > 0 && len(p[0].dialogue) > 0 {
@@ -2109,6 +2109,7 @@ func (ro *LifeBarRound) act() bool {
 				if sys.consecutiveRounds {
 					roundNum = sys.consecutiveWins[0] + 1
 				}
+				// Announcer round call
 				if ro.swt[0] == 0 {
 					if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
 						ro.snd.play(ro.round_final.snd, 100, 0, 0, 0, 0)
@@ -2184,7 +2185,7 @@ func (ro *LifeBarRound) act() bool {
 				ro.wt[1]--
 			}
 		}
-		if ro.cur == 2 && sys.intro < 0 && (sys.finish != FT_NotYet || sys.time == 0) {
+		if ro.cur == 2 && sys.intro < 0 && (sys.finish != FT_NotYet || sys.time == 0) { // Round over
 			if ro.timerActive {
 				if sys.gameTime-sys.timerCount[sys.round-1] > 0 {
 					sys.timerCount[sys.round-1] = sys.gameTime - sys.timerCount[sys.round-1]
@@ -2229,42 +2230,45 @@ func (ro *LifeBarRound) act() bool {
 					ro.to_bg[i].Action()
 				}
 			}
+			// Winner announcement
 			if sys.intro < -(ro.over_waittime /*+ ro.over_wintime*/) {
 				wt := sys.winTeam
 				if wt < 0 {
 					wt = 0
 				}
-				if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
-					ro.drawn_top.Action()
-					f(&ro.drawn, 3, 0)
-					for i := len(ro.drawn_bg) - 1; i >= 0; i-- {
-						ro.drawn_bg[i].Action()
+				if sys.finish == FT_TODraw {
+					ro.drawgame_top.Action()
+					f(&ro.drawgame, 3, 0)
+					for i := len(ro.drawgame_bg) - 1; i >= 0; i-- {
+						ro.drawgame_bg[i].Action()
 					}
-				} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
-					if sys.numSimul[sys.winTeam] == 2 {
-						ro.win2_top[wt].Action()
-						f(&ro.win2[wt], 3, 0)
-						for i := len(ro.win2_bg[wt]) - 1; i >= 0; i-- {
-							ro.win2_bg[wt][i].Action()
-						}
-					} else if sys.numSimul[sys.winTeam] == 3 {
-						ro.win3_top[wt].Action()
-						f(&ro.win3[wt], 3, 0)
-						for i := len(ro.win3_bg[wt]) - 1; i >= 0; i-- {
-							ro.win3_bg[wt][i].Action()
+				} else if sys.winTeam >= 0 { // Skip if draw game (double KO)
+					if sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag {
+						if sys.numSimul[sys.winTeam] == 2 {
+							ro.win2_top[wt].Action()
+							f(&ro.win2[wt], 3, 0)
+							for i := len(ro.win2_bg[wt]) - 1; i >= 0; i-- {
+								ro.win2_bg[wt][i].Action()
+							}
+						} else if sys.numSimul[sys.winTeam] == 3 {
+							ro.win3_top[wt].Action()
+							f(&ro.win3[wt], 3, 0)
+							for i := len(ro.win3_bg[wt]) - 1; i >= 0; i-- {
+								ro.win3_bg[wt][i].Action()
+							}
+						} else {
+							ro.win4_top[wt].Action()
+							f(&ro.win4[wt], 3, 0)
+							for i := len(ro.win4_bg[wt]) - 1; i >= 0; i-- {
+								ro.win4_bg[wt][i].Action()
+							}
 						}
 					} else {
-						ro.win4_top[wt].Action()
-						f(&ro.win4[wt], 3, 0)
-						for i := len(ro.win4_bg[wt]) - 1; i >= 0; i-- {
-							ro.win4_bg[wt][i].Action()
+						ro.win_top[wt].Action()
+						f(&ro.win[wt], 3, 0)
+						for i := len(ro.win_bg[wt]) - 1; i >= 0; i-- {
+							ro.win_bg[wt][i].Action()
 						}
-					}
-				} else {
-					ro.win_top[wt].Action()
-					f(&ro.win[wt], 3, 0)
-					for i := len(ro.win_bg[wt]) - 1; i >= 0; i-- {
-						ro.win_bg[wt][i].Action()
 					}
 				}
 			}
@@ -2366,10 +2370,10 @@ func (ro *LifeBarRound) reset() {
 			ro.win4_bg[i][j].Reset()
 		}
 	}
-	ro.drawn.Reset()
-	ro.drawn_top.Reset()
-	for i := range ro.drawn_bg {
-		ro.drawn_bg[i].Reset()
+	ro.drawgame.Reset()
+	ro.drawgame_top.Reset()
+	for i := range ro.drawgame_bg {
+		ro.drawgame_bg[i].Reset()
 	}
 	for i := range ro.wint {
 		ro.wint[i].reset()
@@ -2388,8 +2392,8 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 		if sys.consecutiveRounds {
 			roundNum = sys.consecutiveWins[0] + 1
 		}
-		if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && (ro.round_final.text.font[0] != -1 ||
-			len(ro.round_final.anim.anim.frames) > 0 || len(ro.round_final_bg[0].anim.frames) > 0) {
+		if !sys.consecutiveRounds && sys.roundType[0] == RT_Final &&
+			(ro.round_final.text.font[0] != -1 || len(ro.round_final.anim.anim.frames) > 0 || len(ro.round_final_bg[0].anim.frames) > 0) {
 			for i := range ro.round_final_bg {
 				ro.round_final_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			}
@@ -2445,61 +2449,64 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 				ro.to_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			}
 		}
+		// Winner announcement
 		if ro.wt[3] < 0 {
 			wt := sys.winTeam
 			if wt < 0 {
 				wt = 0
 			}
-			if /*sys.finish == FT_DKO ||*/ sys.finish == FT_TODraw {
-				for i := range ro.drawn_bg {
-					ro.drawn_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+			if sys.finish == FT_TODraw {
+				for i := range ro.drawgame_bg {
+					ro.drawgame_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 				}
-				ro.drawn.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
-				ro.drawn_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-			} else if sys.winTeam >= 0 && (sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag) {
-				var inter []interface{}
-				for i := sys.winTeam; i < len(sys.chars); i += 2 {
-					if len(sys.chars[i]) > 0 {
-						inter = append(inter, sys.cgi[i].displayname)
+				ro.drawgame.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+				ro.drawgame_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+			} else if sys.winTeam >= 0 { // Skip if draw game (double KO)
+				if sys.tmode[sys.winTeam] == TM_Simul || sys.tmode[sys.winTeam] == TM_Tag {
+					var inter []interface{}
+					for i := sys.winTeam; i < len(sys.chars); i += 2 {
+						if len(sys.chars[i]) > 0 {
+							inter = append(inter, sys.cgi[i].displayname)
+						}
 					}
+					if sys.numSimul[sys.winTeam] == 2 {
+						tmp := ro.win2[wt].text.text
+						for i := range ro.win2_bg[wt] {
+							ro.win2_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+						}
+						ro.win2[wt].text.text = OldSprintf(tmp, inter...)
+						ro.win2[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+						ro.win2[wt].text.text = tmp
+						ro.win2_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+					} else if sys.numSimul[sys.winTeam] == 3 {
+						tmp := ro.win3[wt].text.text
+						for i := range ro.win3_bg[wt] {
+							ro.win3_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+						}
+						ro.win3[wt].text.text = OldSprintf(tmp, inter...)
+						ro.win3[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+						ro.win3[wt].text.text = tmp
+						ro.win3_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+					} else {
+						tmp := ro.win4[wt].text.text
+						for i := range ro.win4_bg[wt] {
+							ro.win4_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+						}
+						ro.win4[wt].text.text = OldSprintf(tmp, inter...)
+						ro.win4[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+						ro.win4[wt].text.text = tmp
+						ro.win4_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+					}
+				} else if sys.winTeam >= 0 {
+					tmp := ro.win[wt].text.text
+					for i := range ro.win_bg[wt] {
+						ro.win_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+					}
+					ro.win[wt].text.text = OldSprintf(tmp, sys.cgi[sys.winTeam].displayname)
+					ro.win[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+					ro.win[wt].text.text = tmp
+					ro.win_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 				}
-				if sys.numSimul[sys.winTeam] == 2 {
-					tmp := ro.win2[wt].text.text
-					for i := range ro.win2_bg[wt] {
-						ro.win2_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-					}
-					ro.win2[wt].text.text = OldSprintf(tmp, inter...)
-					ro.win2[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
-					ro.win2[wt].text.text = tmp
-					ro.win2_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-				} else if sys.numSimul[sys.winTeam] == 3 {
-					tmp := ro.win3[wt].text.text
-					for i := range ro.win3_bg[wt] {
-						ro.win3_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-					}
-					ro.win3[wt].text.text = OldSprintf(tmp, inter...)
-					ro.win3[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
-					ro.win3[wt].text.text = tmp
-					ro.win3_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-				} else {
-					tmp := ro.win4[wt].text.text
-					for i := range ro.win4_bg[wt] {
-						ro.win4_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-					}
-					ro.win4[wt].text.text = OldSprintf(tmp, inter...)
-					ro.win4[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
-					ro.win4[wt].text.text = tmp
-					ro.win4_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-				}
-			} else if sys.winTeam >= 0 {
-				tmp := ro.win[wt].text.text
-				for i := range ro.win_bg[wt] {
-					ro.win_bg[wt][i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
-				}
-				ro.win[wt].text.text = OldSprintf(tmp, sys.cgi[sys.winTeam].displayname)
-				ro.win[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
-				ro.win[wt].text.text = tmp
-				ro.win_top[wt].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			}
 		}
 	}

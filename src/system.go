@@ -1281,9 +1281,11 @@ func (s *System) action() {
 			}
 			if s.intro >= -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
-					s.finish, s.winTeam = FT_DKO, -1
+					s.finish = FT_DKO
+					s.winTeam = -1
 				} else {
-					s.finish, s.winTeam = FT_KO, int(Btoi(ko[0]))
+					s.finish = FT_KO
+					s.winTeam = int(Btoi(ko[0]))
 				}
 			}
 			if ft != s.finish {
