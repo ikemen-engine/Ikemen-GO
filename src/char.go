@@ -2040,6 +2040,7 @@ type Char struct {
 	pauseBool       bool
 	downHitOffset   float32
 	koEchoTime      int32
+	groundLevel     float32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -6432,10 +6433,11 @@ func (c *Char) actionRun() {
 			// Land from aerial physics
 			// This was a loop before like Mugen, so setting state 52 to physics A caused a crash
 			if c.ss.physics == ST_A {
-				if c.vel[1] > 0 && (c.pos[1]-c.platformPosY) >= 0 && c.ss.no != 105 {
+				if c.vel[1] > 0 && (c.pos[1]-c.groundLevel-c.platformPosY) >= 0 && c.ss.no != 105 {
 					c.changeState(52, -1, -1, "")
 				}
 			}
+			c.groundLevel = 0 // Only after position is updated
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
 			c.ss.time++
