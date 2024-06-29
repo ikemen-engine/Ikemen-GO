@@ -1806,10 +1806,7 @@ type trialstep struct {
 	isnohit      bool
 	iscounterhit bool
 	ishelper     bool
-	helperid     int32
-	helpername   string
 	isproj       bool
-	projid       int32
 	specialbool  bool
 	specialstr   string
 	specialval   int32
@@ -2405,11 +2402,8 @@ func (c *Char) load(def string) error {
 								trialstep.isthrow = false
 								trialstep.isnohit = false
 								trialstep.ishelper = false
-								trialstep.helperid = -1
-								trialstep.helpername = ""
 								trialstep.iscounterhit = false
 								trialstep.isproj = false
-								trialstep.projid = -1
 								trialstep.specialbool = false
 								trialstep.specialstr = ""
 								trialstep.specialval = -1
@@ -2435,19 +2429,8 @@ func (c *Char) load(def string) error {
 								if is[(currenttrialstep+".ishelper")] != "" {
 									trialstep.ishelper, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".ishelper")]))
 								}
-								if is[(currenttrialstep+".helperid")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialstep+".helperid")], 10, 32)
-									trialstep.helperid = int32(temp)
-								}
-								if is[(currenttrialstep+".helpername")] != "" {
-									trialstep.helpername = strings.ToLower(is[(currenttrialstep + ".helpername")])
-								}
 								if is[(currenttrialstep+".isproj")] != "" {
 									trialstep.isproj, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isproj")]))
-								}
-								if is[(currenttrialstep+".projid")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialstep+".projid")], 10, 32)
-									trialstep.projid = int32(temp)
 								}
 								if is[(currenttrialstep+".specialbool")] != "" {
 									trialstep.specialbool, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".specialbool")]))
