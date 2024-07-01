@@ -77,14 +77,14 @@ jobs:
             glibc: ''
             target: ''
           - runner_os: linux
-            os: ubuntu-20.04 # ubuntu-22.04 / ubuntu-18.04 (deprecated)
+            os: ubuntu-20.04
             goos: linux
             goarch: amd64
             bin: Ikemen_GO_Linux
             glibc: '2.13'
             target: ''
           - runner_os: macos
-            os: macos-11 # macos-10.15 (deprecated)
+            os: macos-12
             goos: darwin
             goarch: amd64
             bin: Ikemen_GO_MacOS
