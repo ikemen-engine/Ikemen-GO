@@ -2047,9 +2047,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_winperfect:
 		sys.bcStack.PushB(c.winPerfect())
 	case OC_ex_winspecial:
-		sys.bcStack.PushB(c.winType(WT_S))
+		sys.bcStack.PushB(c.winType(WT_Special))
 	case OC_ex_winhyper:
-		sys.bcStack.PushB(c.winType(WT_H))
+		sys.bcStack.PushB(c.winType(WT_Hyper))
 	case OC_ex_lose:
 		sys.bcStack.PushB(c.lose())
 	case OC_ex_loseko:

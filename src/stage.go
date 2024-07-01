@@ -911,7 +911,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 	s.stageCamera.localscl = s.localscl
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
-		sec[0].ReadI32("starty", &s.stageCamera.starty) //does nothing in mugen
+		sec[0].ReadI32("starty", &s.stageCamera.starty)
 		sec[0].ReadI32("boundleft", &s.stageCamera.boundleft)
 		sec[0].ReadI32("boundright", &s.stageCamera.boundright)
 		sec[0].ReadI32("boundhigh", &s.stageCamera.boundhigh)

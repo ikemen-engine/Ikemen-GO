@@ -898,8 +898,8 @@ func (s *System) nextRound() {
 	s.firstAttack = [3]int{-1, -1, 0}
 	s.finish = FT_NotYet
 	s.winTeam = -1
-	s.winType = [...]WinType{WT_N, WT_N}
-	s.winTrigger = [...]WinType{WT_N, WT_N}
+	s.winType = [...]WinType{WT_Normal, WT_Normal}
+	s.winTrigger = [...]WinType{WT_Normal, WT_Normal}
 	s.lastHitter = [2]int{-1, -1}
 	s.waitdown = s.lifebar.ro.over_waittime + 900
 	s.slowtime = s.lifebar.ro.slow_time
@@ -1276,14 +1276,16 @@ func (s *System) action() {
 					s.winTeam = -1
 				}
 				if !(ko[0] || ko[1]) {
-					s.winType[0], s.winType[1] = WT_T, WT_T
+					s.winType[0], s.winType[1] = WT_Time, WT_Time
 				}
 			}
 			if s.intro >= -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
-					s.finish, s.winTeam = FT_DKO, -1
+					s.finish = FT_DKO
+					s.winTeam = -1
 				} else {
-					s.finish, s.winTeam = FT_KO, int(Btoi(ko[0]))
+					s.finish = FT_KO
+					s.winTeam = int(Btoi(ko[0]))
 				}
 			}
 			if ft != s.finish {
@@ -1293,10 +1295,10 @@ func (s *System) action() {
 							for _, tid := range h.targets {
 								if t := sys.playerID(tid); t != nil {
 									if t.ghv.attr&int32(AT_AH) != 0 {
-										s.winTrigger[i&1] = WT_H
+										s.winTrigger[i&1] = WT_Hyper
 									} else if t.ghv.attr&int32(AT_AS) != 0 &&
-										s.winTrigger[i&1] == WT_N {
-										s.winTrigger[i&1] = WT_S
+										s.winTrigger[i&1] == WT_Normal {
+										s.winTrigger[i&1] = WT_Special
 									}
 								}
 							}
@@ -2163,8 +2165,8 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
 					tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
 					tmp.RawSetString("winPerfect", lua.LBool(p[0].winPerfect()))
-					tmp.RawSetString("winSpecial", lua.LBool(p[0].winType(WT_S)))
-					tmp.RawSetString("winHyper", lua.LBool(p[0].winType(WT_H)))
+					tmp.RawSetString("winSpecial", lua.LBool(p[0].winType(WT_Special)))
+					tmp.RawSetString("winHyper", lua.LBool(p[0].winType(WT_Hyper)))
 					tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
 					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
