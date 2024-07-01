@@ -956,6 +956,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadI32("tensionhigh", &s.stageCamera.tensionhigh)
 		}
 	}
+    s.bgmfreqmul = 1 // fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
 	if sec := defmap["music"]; len(sec) > 0 {
 		s.bgmusic = sec[0]["bgmusic"]
 		sec[0].ReadI32("bgmvolume", &s.bgmvolume)
