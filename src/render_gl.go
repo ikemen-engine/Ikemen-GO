@@ -421,6 +421,8 @@ func (r *Renderer) EndFrame() {
 		gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], 0, 0, sys.scrrect[2], sys.scrrect[3], gl.COLOR_BUFFER_BIT, gl.LINEAR)
 	}
 
+	x, y, resizedWidth, resizedHeight := sys.window.GetScaledViewportSize()
+	gl.Viewport(x, y, resizedWidth, resizedHeight)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 
 	postShader := r.postShaderSelect[sys.postProcessingShader]
