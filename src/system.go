@@ -38,6 +38,7 @@ var sys = System{
 	scrrect:           [...]int32{0, 0, 320, 240},
 	gameWidth:         320,
 	gameHeight:        240,
+	keepAspect:        true,
 	widthScale:        1,
 	heightScale:       1,
 	brightness:        256,
@@ -106,6 +107,7 @@ type System struct {
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
 	widthScale, heightScale float32
+	keepAspect              bool
 	window                  *Window
 	gameEnd, frameSkip      bool
 	redrawWait              struct{ nextTime, lastDraw time.Time }

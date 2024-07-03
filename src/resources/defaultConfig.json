@@ -58,6 +58,7 @@
   "InputButtonAssist": true,
   "InputSOCDResolution": 2,
   "IP": {},
+  "KeepAspect": true,
   "LifeMul": 100,
   "ListenPort": "7500",
   "LoseSimul": true,
