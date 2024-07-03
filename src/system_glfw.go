@@ -117,15 +117,15 @@ func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
 		ratio = ratioHeight
 	}
 
-	if (sys.keepAspect) {
-		resizedWidth = int32(float32(sys.gameWidth)*ratio)
-		resizedHeight = int32(float32(sys.gameHeight)*ratio)
+	if sys.keepAspect {
+		resizedWidth = int32(float32(sys.gameWidth) * ratio)
+		resizedHeight = int32(float32(sys.gameHeight) * ratio)
 
 		// calculate offsets for the resized width to center it to the window
-		if (resizedWidth < int32(winWidth)) {
+		if resizedWidth < int32(winWidth) {
 			x = (int32(winWidth) - resizedWidth) / 2
 		}
-		if (resizedHeight < int32(winHeight)) {
+		if resizedHeight < int32(winHeight) {
 			y = (int32(winHeight) - resizedHeight) / 2
 		}
 	}
