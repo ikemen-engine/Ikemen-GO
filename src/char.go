@@ -1798,18 +1798,20 @@ const (
 )
 
 type trialstep struct {
+	microsteps   int
 	name         string
 	glyphs       string
-	stateno      int32
-	animno       int32
-	isthrow      bool
-	isnohit      bool
-	iscounterhit bool
-	ishelper     bool
-	isproj       bool
-	specialbool  bool
-	specialstr   string
-	specialval   int32
+	stateno      []int
+	animno       []int
+	numofhits    []int
+	isthrow      []bool
+	isnohit      []bool
+	iscounterhit []bool
+	ishelper     []bool
+	isproj       []bool
+	specialbool  []bool
+	specialstr   []string
+	specialval   []int
 }
 
 type trial struct {
@@ -2346,8 +2348,9 @@ func (c *Char) load(def string) error {
 					fnt[i][0] = is[fmt.Sprintf("font%v", i)]
 					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
 				}
+
 				trialslist = is["trials"]
-				if len(trialslist) > 0 {
+				if trialslist != "" {
 					var trials string
 					LoadFile(&trialslist, []string{def, "", sys.motifDir, "data/"}, func(file string) error {
 						trials, _ = LoadText(file)
@@ -2387,65 +2390,118 @@ func (c *Char) load(def string) error {
 								trialdata.dummybuttonjam = strings.ToLower(is[("trial.dummybuttonjam")])
 							}
 
-							var trialstepdata []*trialstep
-							i := 0
+							trialstepdata := []*trialstep{}
+							k := 0
 
-							for i = 0; is[("trialstep."+strconv.Itoa(i+1)+".stateno")] != ""; i++ {
-								currenttrialstep := "trialstep." + strconv.Itoa(i+1)
+							for k = 0; is[("trialstep."+strconv.Itoa(k+1)+".stateno")] != ""; k++ {
+								currenttrialstep := "trialstep." + strconv.Itoa(k+1)
 								trialstep := &trialstep{}
 
 								trialstep.name = is[(currenttrialstep + ".name")]
 								trialstep.glyphs = is[(currenttrialstep + ".glyphs")]
 
-								// Initialize defaults
-								trialstep.animno = -1
-								trialstep.isthrow = false
-								trialstep.isnohit = false
-								trialstep.ishelper = false
-								trialstep.iscounterhit = false
-								trialstep.isproj = false
-								trialstep.specialbool = false
-								trialstep.specialstr = ""
-								trialstep.specialval = -1
+								// Figure out how many "microsteps" there are within the one step
+								tempstateno := strings.Split(is[(currenttrialstep+".stateno")], ",")
+								trialstep.microsteps = len(tempstateno)
 
-								// Look for default deltas
-								if is[(currenttrialstep+".stateno")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialstep+".stateno")], 10, 32)
-									trialstep.stateno = int32(temp)
+								// Size all microstep slices
+								trialstep.stateno = make([]int, trialstep.microsteps)
+								trialstep.animno = make([]int, trialstep.microsteps)
+								trialstep.numofhits = make([]int, trialstep.microsteps)
+								trialstep.isthrow = make([]bool, trialstep.microsteps)
+								trialstep.isnohit = make([]bool, trialstep.microsteps)
+								trialstep.ishelper = make([]bool, trialstep.microsteps)
+								trialstep.iscounterhit = make([]bool, trialstep.microsteps)
+								trialstep.isproj = make([]bool, trialstep.microsteps)
+								trialstep.specialbool = make([]bool, trialstep.microsteps)
+								trialstep.specialstr = make([]string, trialstep.microsteps)
+								trialstep.specialval = make([]int, trialstep.microsteps)
+
+								for ii := 0; ii < trialstep.microsteps; ii++ {
+									// Initialize defaults
+									trialstep.animno[ii] = -1
+									trialstep.numofhits[ii] = 1
+									trialstep.isthrow[ii] = false
+									trialstep.isnohit[ii] = false
+									trialstep.ishelper[ii] = false
+									trialstep.iscounterhit[ii] = false
+									trialstep.isproj[ii] = false
+									trialstep.specialbool[ii] = false
+									trialstep.specialstr[ii] = ""
+									trialstep.specialval[ii] = -1
+
+									// Populate statenos
+									trialstep.stateno[ii], _ = strconv.Atoi(strings.TrimSpace(tempstateno[ii]))
 								}
+
 								if is[(currenttrialstep+".anim")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialstep+".anim")], 10, 32)
-									trialstep.animno = int32(temp)
+									tempanimno := strings.Split(is[(currenttrialstep+".animno")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										tempanimno[ii] = strings.TrimSpace(tempanimno[ii])
+										trialstep.animno[ii], _ = strconv.Atoi(is[(currenttrialstep + ".anim")])
+									}
+								}
+								if is[(currenttrialstep+".numofhits")] != "" {
+									tempnumofhits := strings.Split(is[(currenttrialstep+".numofhits")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										tempnumofhits[ii] = strings.TrimSpace(tempnumofhits[ii])
+										trialstep.numofhits[ii], _ = strconv.Atoi(is[(currenttrialstep + ".numofhits")])
+									}
 								}
 								if is[(currenttrialstep+".isthrow")] != "" {
-									trialstep.isthrow, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isthrow")]))
+									tempisthrow := strings.Split(is[(currenttrialstep+".isthrow")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.isthrow[ii], _ = strconv.ParseBool(strings.TrimSpace(tempisthrow[ii]))
+									}
 								}
 								if is[(currenttrialstep+".isnohit")] != "" {
-									trialstep.isnohit, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isnohit")]))
+									tempisnohit := strings.Split(is[(currenttrialstep+".isnohit")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.isnohit[ii], _ = strconv.ParseBool(strings.TrimSpace(tempisnohit[ii]))
+										trialstep.numofhits[ii] = 0
+									}
 								}
 								if is[(currenttrialstep+".iscounterhit")] != "" {
-									trialstep.iscounterhit, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".iscounterhit")]))
+									tempisch := strings.Split(is[(currenttrialstep+".iscounterhit")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.iscounterhit[ii], _ = strconv.ParseBool(strings.TrimSpace(tempisch[ii]))
+									}
 								}
 								if is[(currenttrialstep+".ishelper")] != "" {
-									trialstep.ishelper, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".ishelper")]))
+									tempishelper := strings.Split(is[(currenttrialstep+".ishelper")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.ishelper[ii], _ = strconv.ParseBool(strings.TrimSpace(tempishelper[ii]))
+									}
 								}
 								if is[(currenttrialstep+".isproj")] != "" {
-									trialstep.isproj, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".isproj")]))
+									tempisproj := strings.Split(is[(currenttrialstep+".isproj")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.isproj[ii], _ = strconv.ParseBool(strings.TrimSpace(tempisproj[ii]))
+									}
 								}
 								if is[(currenttrialstep+".specialbool")] != "" {
-									trialstep.specialbool, _ = strconv.ParseBool(strings.ToLower(is[(currenttrialstep + ".specialbool")]))
+									tempspecialbool := strings.Split(is[(currenttrialstep+".specialbool")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.specialbool[ii], _ = strconv.ParseBool(strings.TrimSpace(tempspecialbool[ii]))
+									}
 								}
 								if is[(currenttrialstep+".specialstr")] != "" {
-									trialstep.specialstr = strings.ToLower(is[(currenttrialstep + ".specialstr")])
+									tempspecialstr := strings.Split(is[(currenttrialstep+".specialstr")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.specialstr[ii] = strings.ToLower(strings.TrimSpace(tempspecialstr[ii]))
+									}
 								}
 								if is[(currenttrialstep+".specialval")] != "" {
-									temp, _ := strconv.ParseInt(is[(currenttrialstep+".specialval")], 10, 32)
-									trialstep.specialval = int32(temp)
+									tempspecialval := strings.Split(is[(currenttrialstep+".specialval")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										tempspecialval[ii] = strings.TrimSpace(tempspecialval[ii])
+										trialstep.specialval[ii], _ = strconv.Atoi(is[(currenttrialstep + ".specialval")])
+									}
 								}
 								trialstepdata = append(trialstepdata, trialstep)
 							}
 							trialdata.trialstep = trialstepdata
-							trialdata.numsteps = i
+							trialdata.numsteps = k
 							alltrialdata = append(alltrialdata, trialdata)
 							gi.trialsdata.numoftrials++
 							gi.trialsdata.trialsexist = true

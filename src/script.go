@@ -3441,26 +3441,30 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].name))
 		case "trialstepglyphs":
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].glyphs))
+		case "trialstepmicrosteps":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].microsteps))
 		case "trialstepstateno":
-			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].stateno))
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].stateno[int(numArg(l, 4))]))
 		case "trialstepanimno":
-			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].animno))
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].animno[int(numArg(l, 4))]))
+		case "trialstepnumofhits":
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].numofhits[int(numArg(l, 4))]))
 		case "trialstepisthrow":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isthrow))
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isthrow[int(numArg(l, 4))]))
 		case "trialstepisnohit":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isnohit))
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isnohit[int(numArg(l, 4))]))
 		case "trialstepiscounterhit":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].iscounterhit))
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].iscounterhit[int(numArg(l, 4))]))
 		case "trialstepishelper":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].ishelper))
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].ishelper[int(numArg(l, 4))]))
 		case "trialstepisproj":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isproj))
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isproj[int(numArg(l, 4))]))
 		case "trialstepspecialbool":
-			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialbool))
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialbool[int(numArg(l, 4))]))
 		case "trialstepspecialstr":
-			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialstr))
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialstr[int(numArg(l, 4))]))
 		case "trialstepspecialval":
-			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialval))
+			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].specialval[int(numArg(l, 4))]))
 		}
 		return 1
 	})
