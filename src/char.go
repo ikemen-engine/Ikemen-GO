@@ -2437,15 +2437,13 @@ func (c *Char) load(def string) error {
 								if is[(currenttrialstep+".anim")] != "" {
 									tempanimno := strings.Split(is[(currenttrialstep+".animno")], ",")
 									for ii := 0; ii < trialstep.microsteps; ii++ {
-										tempanimno[ii] = strings.TrimSpace(tempanimno[ii])
-										trialstep.animno[ii], _ = strconv.Atoi(is[(currenttrialstep + ".anim")])
+										trialstep.animno[ii], _ = strconv.Atoi(strings.TrimSpace(tempanimno[ii]))
 									}
 								}
 								if is[(currenttrialstep+".numofhits")] != "" {
 									tempnumofhits := strings.Split(is[(currenttrialstep+".numofhits")], ",")
 									for ii := 0; ii < trialstep.microsteps; ii++ {
-										tempnumofhits[ii] = strings.TrimSpace(tempnumofhits[ii])
-										trialstep.numofhits[ii], _ = strconv.Atoi(is[(currenttrialstep + ".numofhits")])
+										trialstep.numofhits[ii], _ = strconv.Atoi(strings.TrimSpace(tempnumofhits[ii]))
 									}
 								}
 								if is[(currenttrialstep+".isthrow")] != "" {
@@ -2494,8 +2492,7 @@ func (c *Char) load(def string) error {
 								if is[(currenttrialstep+".specialval")] != "" {
 									tempspecialval := strings.Split(is[(currenttrialstep+".specialval")], ",")
 									for ii := 0; ii < trialstep.microsteps; ii++ {
-										tempspecialval[ii] = strings.TrimSpace(tempspecialval[ii])
-										trialstep.specialval[ii], _ = strconv.Atoi(is[(currenttrialstep + ".specialval")])
+										trialstep.specialval[ii], _ = strconv.Atoi(strings.TrimSpace(tempspecialval[ii]))
 									}
 								}
 								trialstepdata = append(trialstepdata, trialstep)
