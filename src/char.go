@@ -1799,7 +1799,7 @@ const (
 
 type trialstep struct {
 	microsteps   int
-	name         string
+	text         string
 	glyphs       string
 	stateno      []int
 	animno       []int
@@ -2397,7 +2397,7 @@ func (c *Char) load(def string) error {
 								currenttrialstep := "trialstep." + strconv.Itoa(k+1)
 								trialstep := &trialstep{}
 
-								trialstep.name = is[(currenttrialstep + ".name")]
+								trialstep.text = is[(currenttrialstep + ".text")]
 								trialstep.glyphs = is[(currenttrialstep + ".glyphs")]
 
 								// Figure out how many "microsteps" there are within the one step
