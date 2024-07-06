@@ -238,6 +238,7 @@ type configSettings struct {
 	NumTag                     [2]int
 	NumTurns                   [2]int
 	PanningRange               float32
+	PauseMasterVolume          int
 	Players                    int
 	PngSpriteFilter            bool
 	PostProcessingShader       int32
@@ -312,6 +313,7 @@ func setupConfig() configSettings {
 		tmp.AudioSampleRate = 44100
 	}
 	tmp.Framerate = Clamp(tmp.Framerate, 1, 840)
+	tmp.PauseMasterVolume = int(Clamp(int32(tmp.PauseMasterVolume), 0, 100))
 	tmp.MaxBgmVolume = int(Clamp(int32(tmp.MaxBgmVolume), 100, 250))
 	tmp.NumSimul[0] = int(Clamp(int32(tmp.NumSimul[0]), 2, int32(MaxSimul)))
 	tmp.NumSimul[1] = int(Clamp(int32(tmp.NumSimul[1]), int32(tmp.NumSimul[0]), int32(MaxSimul)))
@@ -381,6 +383,7 @@ func setupConfig() configSettings {
 	sys.loseTag = tmp.LoseTag
 	sys.masterVolume = tmp.VolumeMaster
 	sys.multisampleAntialiasing = tmp.MSAA
+	sys.pauseMasterVolume = tmp.PauseMasterVolume
 	sys.panningRange = tmp.PanningRange
 	sys.playerProjectileMax = tmp.MaxPlayerProjectile
 	sys.postProcessingShader = tmp.PostProcessingShader
