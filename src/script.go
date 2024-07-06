@@ -3468,6 +3468,10 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "groundlevel", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.groundLevel))
+		return 1
+	})
 	luaRegister(l, "guardcount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.guardCount))
 		return 1
@@ -4234,11 +4238,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "winspecial", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.winType(WT_S)))
+		l.Push(lua.LBool(sys.debugWC.winType(WT_Special)))
 		return 1
 	})
 	luaRegister(l, "winhyper", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.winType(WT_H)))
+		l.Push(lua.LBool(sys.debugWC.winType(WT_Hyper)))
 		return 1
 	})
 

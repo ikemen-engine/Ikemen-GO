@@ -35,7 +35,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	_, forceWindowed := sys.cmdFlags["-windowed"]
 	fullscreen := s.fullscreen && !forceWindowed
 
-	glfw.WindowHint(glfw.Resizable, glfw.False)
+	glfw.WindowHint(glfw.Resizable, glfw.True)
 	glfw.WindowHint(glfw.ContextVersionMajor, 2)
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 
@@ -100,6 +100,37 @@ func (w *Window) SetSwapInterval(interval int) {
 
 func (w *Window) GetSize() (int, int) {
 	return w.Window.GetSize()
+}
+
+func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
+	// calculates a position and size for the viewport to fill the window while centered (see render_gl.go)
+	// returns x, y, width, height respectively
+	winWidth, winHeight := w.GetSize()
+	ratioWidth := float32(winWidth) / float32(sys.gameWidth)
+	ratioHeight := float32(winHeight) / float32(sys.gameHeight)
+	var ratio float32
+	var x, y, resizedWidth, resizedHeight int32 = 0, 0, int32(winWidth), int32(winHeight)
+
+	if ratioWidth < ratioHeight {
+		ratio = ratioWidth
+	} else {
+		ratio = ratioHeight
+	}
+
+	if sys.keepAspect {
+		resizedWidth = int32(float32(sys.gameWidth) * ratio)
+		resizedHeight = int32(float32(sys.gameHeight) * ratio)
+
+		// calculate offsets for the resized width to center it to the window
+		if resizedWidth < int32(winWidth) {
+			x = (int32(winWidth) - resizedWidth) / 2
+		}
+		if resizedHeight < int32(winHeight) {
+			y = (int32(winHeight) - resizedHeight) / 2
+		}
+	}
+
+	return x, y, resizedWidth, resizedHeight
 }
 
 func (w *Window) GetClipboardString() string {

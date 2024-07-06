@@ -58,6 +58,7 @@
   "InputButtonAssist": true,
   "InputSOCDResolution": 2,
   "IP": {},
+  "KeepAspect": true,
   "LifeMul": 100,
   "ListenPort": "7500",
   "LoseSimul": true,
@@ -84,6 +85,7 @@
     4
   ],
   "PanningRange": 30,
+  "PauseMasterVolume": 0,
   "Players": 4,
   "PngSpriteFilter": true,
   "PostProcessingShader": 0,

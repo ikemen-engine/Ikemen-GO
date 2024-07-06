@@ -38,6 +38,7 @@ var sys = System{
 	scrrect:           [...]int32{0, 0, 320, 240},
 	gameWidth:         320,
 	gameHeight:        240,
+	keepAspect:        true,
 	widthScale:        1,
 	heightScale:       1,
 	brightness:        256,
@@ -85,6 +86,7 @@ var sys = System{
 	pngFilter:            false,
 	clsnDarken:           true,
 	maxBgmVolume:         100,
+	pauseMasterVolume:    0,
 	stereoEffects:        true,
 	panningRange:         30,
 	windowCentered:       true,
@@ -106,6 +108,7 @@ type System struct {
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
 	widthScale, heightScale float32
+	keepAspect              bool
 	window                  *Window
 	gameEnd, frameSkip      bool
 	redrawWait              struct{ nextTime, lastDraw time.Time }
@@ -368,6 +371,7 @@ type System struct {
 	brightnessOld     int32
 	clsnDarken        bool
 	maxBgmVolume      int
+	pauseMasterVolume int
 	stereoEffects     bool
 	panningRange      float32
 	windowCentered    bool
@@ -580,7 +584,22 @@ func (s *System) tickSound() {
 		}
 	}
 
-	s.bgm.SetPaused(s.nomusic || s.paused)
+	// Always pause if noMusic flag set or pause master volume is 0.
+	s.bgm.SetPaused(s.nomusic || (s.paused && s.pauseMasterVolume < 5))
+
+	// Set BGM volume if paused
+	if s.paused && s.bgm.volRestore == 0 {
+		s.bgm.volRestore = s.bgm.bgmVolume
+		s.bgm.bgmVolume = int(s.pauseMasterVolume * s.bgm.bgmVolume / 100.0)
+		s.bgm.UpdateVolume()
+		s.softenAllSound()
+	} else if !s.paused && s.bgm.volRestore > 0 {
+		// Restore all volume
+		s.bgm.bgmVolume = s.bgm.volRestore
+		s.bgm.volRestore = 0
+		s.bgm.UpdateVolume()
+		s.restoreAllVolume()
+	}
 
 	//if s.FLAC_FrameWait >= 0 {
 	//	if s.FLAC_FrameWait == 0 {
@@ -819,19 +838,19 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 		scl2[0] *= -1
 	}
 	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
-		l1, r1 := clsn1[i1], clsn1[i1+2]+1
+		l1, r1 := clsn1[i1], clsn1[i1+2]
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
 		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
-			l2, r2 := clsn2[i2], clsn2[i2+2]+1
+			l2, r2 := clsn2[i2], clsn2[i2+2]
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			if l1*scl1[0]+pos1[0] < r2*scl2[0]+pos2[0] &&
-				l2*scl2[0]+pos2[0] < r1*scl1[0]+pos1[0] &&
-				clsn1[i1+1]*scl1[1]+pos1[1] < (clsn2[i2+3]+1)*scl2[1]+pos2[1] &&
-				clsn2[i2+1]*scl2[1]+pos2[1] < (clsn1[i1+3]+1)*scl1[1]+pos1[1] {
+			if l1*scl1[0]+pos1[0] <= r2*scl2[0]+pos2[0] && // Left Clsn1 <= Right Clsn2
+				l2*scl2[0]+pos2[0] <= r1*scl1[0]+pos1[0] && // Left Clsn2 <= Right Clsn1
+				clsn1[i1+1]*scl1[1]+pos1[1] <= (clsn2[i2+3])*scl2[1]+pos2[1] && // Top Clsn1 <= Bottom Clsn2
+				clsn2[i2+1]*scl2[1]+pos2[1] <= (clsn1[i1+3])*scl1[1]+pos1[1] { // Top Clsn2 <= Bottom Clsn1
 				return true
 			}
 		}
@@ -856,6 +875,29 @@ func (s *System) stopAllSound() {
 	for _, p := range s.chars {
 		for _, c := range p {
 			c.soundChannels.SetSize(0)
+		}
+	}
+}
+func (s *System) softenAllSound() {
+	for _, p := range s.chars {
+		for _, c := range p {
+			for i := 0; i < int(c.soundChannels.count()); i++ {
+				// Temporarily store the volume so it can be recalled later.
+				if c.soundChannels.channels[i].sfx != nil && c.soundChannels.channels[i].ctrl != nil {
+					c.soundChannels.volResume[i] = c.soundChannels.channels[i].sfx.volume
+					c.soundChannels.channels[i].SetVolume(float32(c.gi().data.volume * int32(s.pauseMasterVolume) / 100))
+				}
+			}
+		}
+	}
+}
+func (s *System) restoreAllVolume() {
+	for _, p := range s.chars {
+		for _, c := range p {
+			for i := 0; i < int(c.soundChannels.count()); i++ {
+				// Restore the volume we had.
+				c.soundChannels.channels[i].SetVolume(c.soundChannels.volResume[i])
+			}
 		}
 	}
 }
@@ -898,8 +940,8 @@ func (s *System) nextRound() {
 	s.firstAttack = [3]int{-1, -1, 0}
 	s.finish = FT_NotYet
 	s.winTeam = -1
-	s.winType = [...]WinType{WT_N, WT_N}
-	s.winTrigger = [...]WinType{WT_N, WT_N}
+	s.winType = [...]WinType{WT_Normal, WT_Normal}
+	s.winTrigger = [...]WinType{WT_Normal, WT_Normal}
 	s.lastHitter = [2]int{-1, -1}
 	s.waitdown = s.lifebar.ro.over_waittime + 900
 	s.slowtime = s.lifebar.ro.slow_time
@@ -1276,14 +1318,16 @@ func (s *System) action() {
 					s.winTeam = -1
 				}
 				if !(ko[0] || ko[1]) {
-					s.winType[0], s.winType[1] = WT_T, WT_T
+					s.winType[0], s.winType[1] = WT_Time, WT_Time
 				}
 			}
 			if s.intro >= -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
-					s.finish, s.winTeam = FT_DKO, -1
+					s.finish = FT_DKO
+					s.winTeam = -1
 				} else {
-					s.finish, s.winTeam = FT_KO, int(Btoi(ko[0]))
+					s.finish = FT_KO
+					s.winTeam = int(Btoi(ko[0]))
 				}
 			}
 			if ft != s.finish {
@@ -1293,10 +1337,10 @@ func (s *System) action() {
 							for _, tid := range h.targets {
 								if t := sys.playerID(tid); t != nil {
 									if t.ghv.attr&int32(AT_AH) != 0 {
-										s.winTrigger[i&1] = WT_H
+										s.winTrigger[i&1] = WT_Hyper
 									} else if t.ghv.attr&int32(AT_AS) != 0 &&
-										s.winTrigger[i&1] == WT_N {
-										s.winTrigger[i&1] = WT_S
+										s.winTrigger[i&1] == WT_Normal {
+										s.winTrigger[i&1] = WT_Special
 									}
 								}
 							}
@@ -2163,8 +2207,8 @@ func (s *System) fight() (reload bool) {
 					tmp.RawSetString("winKO", lua.LBool(p[0].winKO()))
 					tmp.RawSetString("winTime", lua.LBool(p[0].winTime()))
 					tmp.RawSetString("winPerfect", lua.LBool(p[0].winPerfect()))
-					tmp.RawSetString("winSpecial", lua.LBool(p[0].winType(WT_S)))
-					tmp.RawSetString("winHyper", lua.LBool(p[0].winType(WT_H)))
+					tmp.RawSetString("winSpecial", lua.LBool(p[0].winType(WT_Special)))
+					tmp.RawSetString("winHyper", lua.LBool(p[0].winType(WT_Hyper)))
 					tmp.RawSetString("drawgame", lua.LBool(p[0].drawgame()))
 					tmp.RawSetString("ko", lua.LBool(p[0].scf(SCF_ko)))
 					tmp.RawSetString("ko_round_middle", lua.LBool(p[0].scf(SCF_ko_round_middle)))
