@@ -86,6 +86,7 @@ var sys = System{
 	pngFilter:            false,
 	clsnDarken:           true,
 	maxBgmVolume:         100,
+	pauseMasterVolume:    0,
 	stereoEffects:        true,
 	panningRange:         30,
 	windowCentered:       true,
@@ -370,6 +371,7 @@ type System struct {
 	brightnessOld     int32
 	clsnDarken        bool
 	maxBgmVolume      int
+	pauseMasterVolume int
 	stereoEffects     bool
 	panningRange      float32
 	windowCentered    bool
@@ -582,7 +584,22 @@ func (s *System) tickSound() {
 		}
 	}
 
-	s.bgm.SetPaused(s.nomusic || s.paused)
+	// Always pause if noMusic flag set or pause master volume is 0.
+	s.bgm.SetPaused(s.nomusic || (s.paused && s.pauseMasterVolume < 5))
+
+	// Set BGM volume if paused
+	if s.paused && s.bgm.volRestore == 0 {
+		s.bgm.volRestore = s.bgm.bgmVolume
+		s.bgm.bgmVolume = int(s.pauseMasterVolume * s.bgm.bgmVolume / 100.0)
+		s.bgm.UpdateVolume()
+		s.softenAllSound()
+	} else if !s.paused && s.bgm.volRestore > 0 {
+		// Restore all volume
+		s.bgm.bgmVolume = s.bgm.volRestore
+		s.bgm.volRestore = 0
+		s.bgm.UpdateVolume()
+		s.restoreAllVolume()
+	}
 
 	//if s.FLAC_FrameWait >= 0 {
 	//	if s.FLAC_FrameWait == 0 {
@@ -858,6 +875,29 @@ func (s *System) stopAllSound() {
 	for _, p := range s.chars {
 		for _, c := range p {
 			c.soundChannels.SetSize(0)
+		}
+	}
+}
+func (s *System) softenAllSound() {
+	for _, p := range s.chars {
+		for _, c := range p {
+			for i := 0; i < int(c.soundChannels.count()); i++ {
+				// Temporarily store the volume so it can be recalled later.
+				if c.soundChannels.channels[i].sfx != nil && c.soundChannels.channels[i].ctrl != nil {
+					c.soundChannels.volResume[i] = c.soundChannels.channels[i].sfx.volume
+					c.soundChannels.channels[i].SetVolume(float32(c.gi().data.volume * int32(s.pauseMasterVolume) / 100))
+				}
+			}
+		}
+	}
+}
+func (s *System) restoreAllVolume() {
+	for _, p := range s.chars {
+		for _, c := range p {
+			for i := 0; i < int(c.soundChannels.count()); i++ {
+				// Restore the volume we had.
+				c.soundChannels.channels[i].SetVolume(c.soundChannels.volResume[i])
+			}
 		}
 	}
 }
