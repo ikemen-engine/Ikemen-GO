@@ -172,6 +172,7 @@ func newCompiler() *Compiler {
 		"gethitvarset":         c.getHitVarSet,
 		"modifysnd":            c.modifySnd,
 		"modifybgm":            c.modifyBgm,
+		"groundleveloffset":    c.groundLevelOffset,
 	}
 	return c
 }
@@ -1983,6 +1984,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
+	case "groundlevel":
+		out.append(OC_ex2_, OC_ex2_groundlevel)
 	case "guardcount":
 		out.append(OC_ex_, OC_ex_guardcount)
 	case "helperindexexist":

@@ -3417,6 +3417,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(ln)
 		return 1
 	})
+	luaRegister(l, "groundlevel", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.groundLevel))
+		return 1
+	})
 	luaRegister(l, "guardcount", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.guardCount))
 		return 1
