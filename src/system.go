@@ -819,19 +819,19 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 		scl2[0] *= -1
 	}
 	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
-		l1, r1 := clsn1[i1], clsn1[i1+2]+1
+		l1, r1 := clsn1[i1], clsn1[i1+2]
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
 		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
-			l2, r2 := clsn2[i2], clsn2[i2+2]+1
+			l2, r2 := clsn2[i2], clsn2[i2+2]
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			if l1*scl1[0]+pos1[0] < r2*scl2[0]+pos2[0] &&
-				l2*scl2[0]+pos2[0] < r1*scl1[0]+pos1[0] &&
-				clsn1[i1+1]*scl1[1]+pos1[1] < (clsn2[i2+3]+1)*scl2[1]+pos2[1] &&
-				clsn2[i2+1]*scl2[1]+pos2[1] < (clsn1[i1+3]+1)*scl1[1]+pos1[1] {
+			if l1*scl1[0]+pos1[0] <= r2*scl2[0]+pos2[0] && // Left Clsn1 <= Right Clsn2
+				l2*scl2[0]+pos2[0] <= r1*scl1[0]+pos1[0] && // Left Clsn2 <= Right Clsn1
+				clsn1[i1+1]*scl1[1]+pos1[1] <= (clsn2[i2+3])*scl2[1]+pos2[1] && // Top Clsn1 <= Bottom Clsn2
+				clsn2[i2+1]*scl2[1]+pos2[1] <= (clsn1[i1+3])*scl1[1]+pos1[1] { // Top Clsn2 <= Bottom Clsn1
 				return true
 			}
 		}
