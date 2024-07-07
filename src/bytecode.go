@@ -9949,6 +9949,61 @@ func (sc groundLevelOffset) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type targetAdd StateControllerBase
+
+const (
+	targetAdd_id byte = iota
+	targetAdd_redirectid
+)
+
+func (sc targetAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	var pid int32
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetAdd_id:
+			pid = exp[0].evalI(c)
+		case targetAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		// Check if ID exists
+		if pid > 0 {
+			done := false
+			for i := range sys.chars {
+				for j := range sys.chars[i] {
+					if sys.chars[i][j].id == pid {
+						// Add target to char's "target" list
+						// This function already prevents duplicating targets
+						crun.addTarget(pid)
+						// Add char to target's "hit by" list
+						// Keep juggle points if target already exists
+						jug := crun.gi().data.airjuggle
+						for _, v := range sys.chars[i][j].ghv.hitBy {
+							if v[0] == crun.id {
+								jug = v[1]
+							}
+						}
+						// Remove then readd char to the list with the new juggle points
+						sys.chars[i][j].ghv.dropId(crun.id)
+						sys.chars[i][j].ghv.hitBy = append(sys.chars[i][j].ghv.hitBy, [...]int32{crun.id, jug})
+						done = true
+						break
+					}
+				}
+				if done {
+					break
+				}
+			}
+		}
+		return true
+	})
+	return false
+}
+
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType

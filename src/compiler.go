@@ -173,6 +173,7 @@ func newCompiler() *Compiler {
 		"modifysnd":            c.modifySnd,
 		"modifybgm":            c.modifyBgm,
 		"groundleveloffset":    c.groundLevelOffset,
+		"targetadd":            c.targetAdd,
 	}
 	return c
 }

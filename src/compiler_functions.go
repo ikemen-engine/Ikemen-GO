@@ -5183,6 +5183,21 @@ func (c *Compiler) groundLevelOffset(is IniSection, sc *StateControllerBase, _ i
 	return *ret, err
 }
 
+func (c *Compiler) targetAdd(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*targetAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetAdd_id, VT_Int, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 // It's just a Null... Has no effect whatsoever.
 func (c *Compiler) null(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	return nullStateController, nil
