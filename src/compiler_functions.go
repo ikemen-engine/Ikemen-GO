@@ -5175,7 +5175,7 @@ func (c *Compiler) groundLevelOffset(is IniSection, sc *StateControllerBase, _ i
 			return err
 		}
 		if err := c.paramValue(is, sc, "value",
-			groundLevelOffset_value, VT_Float, 1, false); err != nil {
+			groundLevelOffset_value, VT_Float, 1, true); err != nil {
 			return err
 		}
 		return nil
