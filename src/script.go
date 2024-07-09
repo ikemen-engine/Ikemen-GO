@@ -4042,6 +4042,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.stageCamera.zoomout))
 		case "camera.zoomin":
 			l.Push(lua.LNumber(sys.stage.stageCamera.zoomin))
+		case "camera.zoomindelay":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoomindelay))
+		case "camera.zoominspeed":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoominspeed))
+		case "camera.zoomoutspeed":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoomoutspeed))
+		case "camera.yscrollspeed":
+			l.Push(lua.LNumber(sys.stage.stageCamera.yscrollspeed))
 		case "camera.ytension.enable":
 			l.Push(lua.LBool(sys.stage.stageCamera.ytensionenable))
 		case "playerinfo.leftbound":
