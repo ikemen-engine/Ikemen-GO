@@ -319,6 +319,7 @@ if !dizzy || time > 300 {
 #===============================================================================
 [StateDef const(StateDizzy); type: S; movetype: I; physics: S; anim: const(AnimDizzy); velset: 0, 0; ctrl: 0;]
 
+# This flag prevents the char from becoming dizzy more than once in the same combo
 map(_iksys_dizzyLimit) := 1;
 
 if time = 0 {
@@ -370,8 +371,8 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	map(_iksys_dizzyPointsTimer) := 0;
 	map(_iksys_dizzyLimit) := 0;
 } else if alive {
-	# Upon hit, set cooldown timer
-	if moveType = H || dizzy || stateNo = const(StateDownedGetHit_gettingUp) {
+	# Upon getting hit, set cooldown timer
+	if dizzy || moveType = H || stateNo = const(StateDownedGetHit_gettingUp) {
 		map(_iksys_dizzyPointsTimer) := 60;
 	# Otherwise decrease cooldown timer by 1 each frame
 	} else if map(_iksys_dizzyPointsTimer) > 0 {
@@ -387,11 +388,12 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	}
 
 	# Set dizzy flag
-	if !dizzy && dizzyPoints = 0 {
-		if getHitVar(damage) && getHitVar(dizzyPoints) <= 0 {
+	if !dizzy && dizzyPoints = 0 && !getHitVar(guarded) {
+		if getHitVar(frame) && getHitVar(dizzyPoints) <= 0 {
 			dizzyPointsSet{value: 1} # Similar to using kill = 0 in LifeAdd
 		} else if moveType = H && !inCustomState {
 			dizzySet{value: 1}
+			hitFallSet{value: 1}
 			getHitVarSet{fall.recover: 0}
 		}
 	}
@@ -436,7 +438,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 	# Reset dizzy limit once character can act again
 	if map(_iksys_dizzyLimit) {
-		if (ctrl && time > 0) || moveType = A {
+		if ctrl || moveType = A {
 			map(_iksys_dizzyLimit) := 0;
 		}
 	}
