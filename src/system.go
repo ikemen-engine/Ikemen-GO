@@ -119,7 +119,7 @@ type System struct {
 	turnsRecoveryRate       float32
 	debugFont               *TextSprite
 	debugDraw               bool
-	debugRef                [2]int
+	debugRef                [3]int // player number, helper index, player index
 	soundMixer              *beep.Mixer
 	bgm                     Bgm
 	soundChannels           *SoundChannels

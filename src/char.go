@@ -3796,8 +3796,7 @@ func (c *Char) turn() {
 func (c *Char) stateChange1(no int32, pn int) bool {
 	if sys.changeStateNest > 2500 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after 2500 loops): %v -> %v -> %v", c.ss.prevno, c.ss.no, no))
-		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n",
-			c.name, c.ss.prevno, c.ss.no, no)
+		sys.errLog.Printf("2500 loops: %v, %v -> %v -> %v\n", c.name, c.ss.prevno, c.ss.no, no)
 		return false
 	}
 	c.ss.no, c.ss.prevno, c.ss.time = Max(0, no), c.ss.no, 0
@@ -3836,15 +3835,26 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.localscl = newLs
 	}
 	var ok bool
-	// Check if user is trying to change to a negative state.
+	// Check if player is trying to change to a negative state.
 	if no < 0 {
 		sys.appendToConsole(c.warn() + "attempted to change to negative state")
-		sys.errLog.Printf("Attempted to change to negative state: P%v:%v\n", pn+1, no)
+		if !sys.ignoreMostErrors {
+			sys.errLog.Printf("Attempted to change to negative state: P%v:%v\n", pn+1, no)
+		}
+	}
+	// Check if player is trying to change to a state number that exceeds the limit
+	if no >= math.MaxInt32 {
+		sys.appendToConsole(c.warn() + "changed to out of bounds state number")
+		if !sys.ignoreMostErrors {
+			sys.errLog.Printf("Changed to out of bounds state number: P%v:%v\n", pn+1, no)
+		}
 	}
 	// Always attempt to change to the state we set to.
 	if c.ss.sb, ok = sys.cgi[pn].states[c.ss.no]; !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
-		sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
+		if !sys.ignoreMostErrors {
+			sys.errLog.Printf("Invalid state: P%v:%v\n", pn+1, no)
+		}
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
@@ -6142,10 +6152,13 @@ func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func
 	if !c.attrCheck(h, oc.id, st) {
 		return false
 	}
+	if c.hasTargetOfHitdef(oc.id) { // If enemy's Hitdef already hit the original char
+		return true
+	}
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0) {
 		switch {
 		case c.hitdef.reversal_attr > 0:
-			if h.reversal_attr > 0 {
+			if h.reversal_attr > 0 { // Reversaldef vs Reversaldef
 				if countercheck(&c.hitdef) {
 					c.atktmp = -1
 					return oc.atktmp < 0
@@ -6172,7 +6185,7 @@ func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func
 		default:
 			return true
 		}
-		return !countercheck(&c.hitdef) || c.hasTargetOfHitdef(oc.id)
+		return !countercheck(&c.hitdef)
 	}
 	return true
 }
@@ -7801,8 +7814,6 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 		}
 		c.addTarget(getter.id)
 		getter.ghv.addId(c.id, c.gi().data.airjuggle)
-		c.mhv.id = getter.id
-		c.mhv.playerNo = getter.playerNo
 		if Abs(hitType) == 1 {
 			if !proj && (hd.p1getp2facing != 0 || hd.p1facing < 0) &&
 				c.facing != byf {
@@ -7939,6 +7950,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 				if p.hits == 0 {
 					continue
 				}
+				// Cancel a projectile with hitflag P
 				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
@@ -7951,7 +7963,7 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 					sys.cgi[i].pctime = 0
 					sys.cgi[i].pcid = p.id
 					getter.hitdefContact = true
-					getter.mhv.frame = true
+					//getter.mhv.frame = true
 					continue
 				}
 				if !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
@@ -8062,9 +8074,11 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 									getter.mctime = -1
 									getter.hitdefContact = true
 									getter.mhv.frame = true
+									getter.mhv.id = c.id
+									getter.mhv.playerNo = c.playerNo
 									getter.hitdef.hitonce = -1 // Neutralize Hitdef
 									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame
-									// TODO: This 1 frame does not show up on debug due to Clsn display process order
+									// TODO: This 1 frame does not show up on debug (due to Clsn display process order?)
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
 
@@ -8118,6 +8132,8 @@ func (cl *CharList) clsn(getter *Char, proj bool) {
 							}
 							c.hitdefContact = true
 							c.mhv.frame = true
+							c.mhv.id = getter.id
+							c.mhv.playerNo = getter.playerNo
 						}
 					}
 				}

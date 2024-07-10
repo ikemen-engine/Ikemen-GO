@@ -4847,6 +4847,18 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 			modifyStageVar_camera_zoomindelay, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "camera.zoominspeed",
+			modifyStageVar_camera_zoominspeed, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.zoomoutspeed",
+			modifyStageVar_camera_zoomoutspeed, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.yscrollspeed",
+			modifyStageVar_camera_yscrollspeed, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "camera.ytension.enable",
 			modifyStageVar_camera_ytension_enable, VT_Bool, 1, false); err != nil {
 			return err
@@ -5175,7 +5187,22 @@ func (c *Compiler) groundLevelOffset(is IniSection, sc *StateControllerBase, _ i
 			return err
 		}
 		if err := c.paramValue(is, sc, "value",
-			groundLevelOffset_value, VT_Float, 1, false); err != nil {
+			groundLevelOffset_value, VT_Float, 1, true); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) targetAdd(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*targetAdd)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			targetAdd_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			targetAdd_id, VT_Int, 1, true); err != nil {
 			return err
 		}
 		return nil

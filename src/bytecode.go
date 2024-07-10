@@ -362,6 +362,9 @@ const (
 	OC_const_stagevar_camera_zoomout
 	OC_const_stagevar_camera_zoomin
 	OC_const_stagevar_camera_zoomindelay
+	OC_const_stagevar_camera_zoominspeed
+	OC_const_stagevar_camera_zoomoutspeed
+	OC_const_stagevar_camera_yscrollspeed
 	OC_const_stagevar_camera_ytension_enable
 	OC_const_stagevar_camera_autocenter
 	OC_const_stagevar_playerinfo_leftbound
@@ -1965,6 +1968,14 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.stage.stageCamera.zoomout)
 	case OC_const_stagevar_camera_zoomin:
 		sys.bcStack.PushF(sys.stage.stageCamera.zoomin)
+	case OC_const_stagevar_camera_zoomindelay:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoomindelay)
+	case OC_const_stagevar_camera_zoominspeed:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoominspeed)
+	case OC_const_stagevar_camera_zoomoutspeed:
+		sys.bcStack.PushF(sys.stage.stageCamera.zoomoutspeed)
+	case OC_const_stagevar_camera_yscrollspeed:
+		sys.bcStack.PushF(sys.stage.stageCamera.yscrollspeed)
 	case OC_const_stagevar_camera_ytension_enable:
 		sys.bcStack.PushB(sys.stage.stageCamera.ytensionenable)
 	case OC_const_stagevar_playerinfo_leftbound:
@@ -9564,6 +9575,9 @@ const (
 	modifyStageVar_camera_zoomout
 	modifyStageVar_camera_zoomin
 	modifyStageVar_camera_zoomindelay
+	modifyStageVar_camera_zoominspeed
+	modifyStageVar_camera_zoomoutspeed
+	modifyStageVar_camera_yscrollspeed
 	modifyStageVar_camera_ytension_enable
 	modifyStageVar_camera_autocenter
 	modifyStageVar_playerinfo_leftbound
@@ -9623,8 +9637,14 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.stageCamera.zoomin = exp[0].evalF(c)
 		case modifyStageVar_camera_zoomindelay:
 			s.stageCamera.zoomindelay = exp[0].evalF(c)
+		case modifyStageVar_camera_zoominspeed:
+			s.stageCamera.zoominspeed = exp[0].evalF(c)
+		case modifyStageVar_camera_zoomoutspeed:
+			s.stageCamera.zoomoutspeed = exp[0].evalF(c)
 		case modifyStageVar_camera_ytension_enable:
 			s.stageCamera.ytensionenable = exp[0].evalB(c)
+		case modifyStageVar_camera_yscrollspeed:
+			s.stageCamera.yscrollspeed = exp[0].evalF(c)
 		case modifyStageVar_playerinfo_leftbound:
 			s.leftbound = exp[0].evalF(c)
 		case modifyStageVar_playerinfo_rightbound:
@@ -9666,7 +9686,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.reflection = Clamp(exp[0].evalI(c), 0, 255)
 		case modifyStageVar_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				//crun = rid
+				//crun = rid - RedirectID is useless when modifying a stage
 			} else {
 				return false
 			}
@@ -9675,7 +9695,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 	})
 	sys.stage.reload = true // Stage will have to be reloaded if it's re-selected
 	sys.cam.stageCamera = s.stageCamera
-	sys.cam.Reset()
+	sys.cam.Reset() // TODO: Resetting the camera makes the zoom jitter
 	return false
 }
 
@@ -9942,6 +9962,61 @@ func (sc groundLevelOffset) Run(c *Char, _ []int32) bool {
 				lclscround = c.localscl / crun.localscl
 			} else {
 				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type targetAdd StateControllerBase
+
+const (
+	targetAdd_id byte = iota
+	targetAdd_redirectid
+)
+
+func (sc targetAdd) Run(c *Char, _ []int32) bool {
+	crun := c
+	var pid int32
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case targetAdd_id:
+			pid = exp[0].evalI(c)
+		case targetAdd_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		// Check if ID exists
+		if pid > 0 {
+			done := false
+			for i := range sys.chars {
+				for j := range sys.chars[i] {
+					if sys.chars[i][j].id == pid {
+						// Add target to char's "target" list
+						// This function already prevents duplicating targets
+						crun.addTarget(pid)
+						// Add char to target's "hit by" list
+						// Keep juggle points if target already exists
+						jug := crun.gi().data.airjuggle
+						for _, v := range sys.chars[i][j].ghv.hitBy {
+							if v[0] == crun.id {
+								jug = v[1]
+							}
+						}
+						// Remove then readd char to the list with the new juggle points
+						sys.chars[i][j].ghv.dropId(crun.id)
+						sys.chars[i][j].ghv.hitBy = append(sys.chars[i][j].ghv.hitBy, [...]int32{crun.id, jug})
+						done = true
+						break
+					}
+				}
+				if done {
+					break
+				}
 			}
 		}
 		return true
