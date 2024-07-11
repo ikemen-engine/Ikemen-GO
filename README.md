@@ -33,7 +33,7 @@ The image downloaded has all the required tools to compile Ikemen GO for all thr
 Install [Docker for your platform](https://www.docker.com/get-started).  
 For macOS, you can install Docker using Homebrew (`brew cask install docker`).
 
-Open a terminal, go to the Ikemen `build` directory folder and then run the script `build_docker.sh`. Look inside the script for details on how it works.
+Open a terminal, go to the Ikemen `build` directory folder and then run the script `sh docker_build.sh`. Look inside the script for details on how it works.
 
 ## Troubleshooting
 If you run into any issues with Ikemen Go, you can report it on our [issue tracker](https://github.com/ikemen-engine/Ikemen-GO/issues). It is recommend to read [this page](https://github.com/ikemen-engine/Ikemen-GO/blob/develop/CONTRIBUTING.md) before submitting a bug report.
