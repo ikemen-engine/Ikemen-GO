@@ -71,24 +71,50 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 		}
 		foo := func(data string) error {
 			switch strings.ToLower(data) {
-			case "nostandguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nostandguard)))
-			case "nocrouchguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nocrouchguard)))
-			case "noairguard":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noairguard)))
-			case "noshadow":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noshadow)))
+			// Mugen char flags
+			case "intro":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_intro)))
 			case "invisible":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_invisible)))
-			case "unguardable":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_unguardable)))
-			case "nojugglecheck":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nojugglecheck)))
+			case "noairguard":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noairguard)))
 			case "noautoturn":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noautoturn)))
+			case "nocrouchguard":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nocrouchguard)))
+			case "nojugglecheck":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nojugglecheck)))
+			case "noshadow":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noshadow)))
+			case "nostandguard":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nostandguard)))
 			case "nowalk":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nowalk)))
+			case "unguardable":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_unguardable)))
+			// Mugen global flags
+			case "globalnoshadow":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoshadow)))
+			case "nobardisplay":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nobardisplay)))
+			case "nobg":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nobg)))
+			case "nofg":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nofg)))
+			case "noko":
+				sc.add(assertSpecial_noko, sc.i64ToExp(0))
+			case "nokoslow":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokoslow)))
+			case "nokosnd":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokosnd)))
+			case "nomusic":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nomusic)))
+
+			case "roundnotover":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotover)))
+			case "timerfreeze":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_timerfreeze)))
+			// Ikemen char flags
 			case "nobrake":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nobrake)))
 			case "nocrouch":
@@ -117,8 +143,6 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nopowerbardisplay)))
 			case "autoguard":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_autoguard)))
-			case "animatehitpause":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
 			case "animfreeze":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animfreeze)))
 			case "postroundinput":
@@ -147,34 +171,17 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_ignoreclsn2push)))
 			case "immovable":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_immovable)))
-			case "intro":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_intro)))
-			case "roundnotover":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotover)))
-			case "nomusic":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nomusic)))
-			case "nobardisplay":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nobardisplay)))
-			case "nobg":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nobg)))
-			case "nofg":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nofg)))
-			case "globalnoshadow":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoshadow)))
-			case "timerfreeze":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_timerfreeze)))
-			case "nokosnd":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokosnd)))
-			case "nokoslow":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokoslow)))
+			case "animatehitpause":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
+			case "cornerpriority":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_cornerpriority)))
+			// Ikemen global flags
 			case "globalnoko":
-				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_noko)))
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoko)))
 			case "roundnotskip":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotskip)))
 			case "roundfreeze":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundfreeze)))
-			case "noko":
-				sc.add(assertSpecial_noko, sc.i64ToExp(0))
 			default:
 				return Error("Invalid value: " + data)
 			}
