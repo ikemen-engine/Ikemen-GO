@@ -173,6 +173,7 @@ func newCompiler() *Compiler {
 		"modifysnd":            c.modifySnd,
 		"modifybgm":            c.modifyBgm,
 		"groundleveloffset":    c.groundLevelOffset,
+		"targetadd":            c.targetAdd,
 	}
 	return c
 }
@@ -2425,6 +2426,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_zoomin
 		case "camera.zoomindelay":
 			opc = OC_const_stagevar_camera_zoomindelay
+		case "camera.zoominspeed":
+			opc = OC_const_stagevar_camera_zoominspeed
+		case "camera.zoomoutspeed":
+			opc = OC_const_stagevar_camera_zoomoutspeed
+		case "camera.yscrollspeed":
+			opc = OC_const_stagevar_camera_yscrollspeed
 		case "camera.ytension.enable":
 			opc = OC_const_stagevar_camera_ytension_enable
 		case "camera.autocenter":

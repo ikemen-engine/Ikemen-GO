@@ -119,7 +119,7 @@ type System struct {
 	turnsRecoveryRate       float32
 	debugFont               *TextSprite
 	debugDraw               bool
-	debugRef                [2]int
+	debugRef                [3]int // player number, helper index, player index
 	soundMixer              *beep.Mixer
 	bgm                     Bgm
 	soundChannels           *SoundChannels
@@ -585,7 +585,7 @@ func (s *System) tickSound() {
 	}
 
 	// Always pause if noMusic flag set or pause master volume is 0.
-	s.bgm.SetPaused(s.nomusic || (s.paused && s.pauseMasterVolume < 5))
+	s.bgm.SetPaused(s.nomusic || (s.paused && s.pauseMasterVolume == 0))
 
 	// Set BGM volume if paused
 	if s.paused && s.bgm.volRestore == 0 {
@@ -886,7 +886,24 @@ func (s *System) softenAllSound() {
 				if c.soundChannels.channels[i].sfx != nil && c.soundChannels.channels[i].ctrl != nil {
 					c.soundChannels.volResume[i] = c.soundChannels.channels[i].sfx.volume
 					c.soundChannels.channels[i].SetVolume(float32(c.gi().data.volume * int32(s.pauseMasterVolume) / 100))
+
+					// Pause if pause master volume is 0
+					if s.pauseMasterVolume == 0 {
+						c.soundChannels.channels[i].SetPaused(true)
+					}
 				}
+			}
+		}
+	}
+	for i := 0; i < int(s.soundChannels.count()); i++ {
+		// Temporarily store the volume so it can be recalled later.
+		if s.soundChannels.channels[i].sfx != nil && s.soundChannels.channels[i].ctrl != nil {
+			s.soundChannels.volResume[i] = s.soundChannels.channels[i].sfx.volume
+			s.soundChannels.channels[i].SetVolume(float32(s.pauseMasterVolume * 64 / 25))
+
+			// Pause if pause master volume is 0
+			if s.pauseMasterVolume == 0 {
+				s.soundChannels.channels[i].SetPaused(true)
 			}
 		}
 	}
@@ -896,7 +913,25 @@ func (s *System) restoreAllVolume() {
 		for _, c := range p {
 			for i := 0; i < int(c.soundChannels.count()); i++ {
 				// Restore the volume we had.
-				c.soundChannels.channels[i].SetVolume(c.soundChannels.volResume[i])
+				if c.soundChannels.channels[i].sfx != nil && c.soundChannels.channels[i].ctrl != nil {
+					c.soundChannels.channels[i].SetVolume(c.soundChannels.volResume[i])
+
+					// Unpause
+					if c.soundChannels.channels[i].ctrl.Paused {
+						c.soundChannels.channels[i].SetPaused(false)
+					}
+				}
+			}
+		}
+	}
+	for i := 0; i < int(s.soundChannels.count()); i++ {
+		// Restore the volume we had.
+		if s.soundChannels.channels[i].sfx != nil && s.soundChannels.channels[i].ctrl != nil {
+			s.soundChannels.channels[i].SetVolume(s.soundChannels.volResume[i])
+
+			// Unpause
+			if s.soundChannels.channels[i].ctrl.Paused {
+				s.soundChannels.channels[i].SetPaused(false)
 			}
 		}
 	}

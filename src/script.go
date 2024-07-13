@@ -921,7 +921,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 			winp := int32(0)
 			p := make([]*Char, len(sys.chars))
-			sys.debugRef = [2]int{}
+			sys.debugRef = [3]int{}
 			sys.roundsExisted = [2]int32{}
 			sys.matchWins = [2]int32{}
 
@@ -2556,35 +2556,17 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.debugDraw {
 			sys.debugDraw = true
 		} else {
-			pn := sys.debugRef[0]
-			hn := sys.debugRef[1]
-			for i := hn + 1; i <= len(sys.chars[pn]); i++ {
-				hn = i
-				if hn >= len(sys.chars[pn]) {
-					pn += 1
-					hn = 0
-					break
-				}
-				if sys.chars[pn][hn] != nil && !sys.chars[pn][hn].csf(CSF_destroy) {
-					break
-				}
-			}
-			ok := false
-			for pn < len(sys.chars) {
-				if len(sys.chars[pn]) > 0 {
-					ok = true
-					break
-				}
-				pn += 1
-
-			}
-			if !ok {
-				pn = 0
-				hn = 0
+			idx := sys.debugRef[2] + 1
+			if idx >= len(sys.charList.runOrder) {
+				sys.debugRef[0] = 0
+				sys.debugRef[1] = 0
+				sys.debugRef[2] = 0
 				sys.debugDraw = false
+			} else {
+				sys.debugRef[0] = sys.charList.runOrder[idx].playerNo
+				sys.debugRef[1] = int(sys.charList.runOrder[idx].helperIndex)
+				sys.debugRef[2] = idx
 			}
-			sys.debugRef[0] = pn
-			sys.debugRef[1] = hn
 		}
 		return 0
 	})
@@ -4111,6 +4093,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.stageCamera.zoomout))
 		case "camera.zoomin":
 			l.Push(lua.LNumber(sys.stage.stageCamera.zoomin))
+		case "camera.zoomindelay":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoomindelay))
+		case "camera.zoominspeed":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoominspeed))
+		case "camera.zoomoutspeed":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zoomoutspeed))
+		case "camera.yscrollspeed":
+			l.Push(lua.LNumber(sys.stage.stageCamera.yscrollspeed))
 		case "camera.ytension.enable":
 			l.Push(lua.LBool(sys.stage.stageCamera.ytensionenable))
 		case "playerinfo.leftbound":
