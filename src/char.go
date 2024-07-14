@@ -6301,6 +6301,7 @@ func (c *Char) actionPrepare() {
 			c.attackDist[1] = float32(c.size.attack.dist.back)
 			c.offset = [2]float32{}
 			// HitBy timers
+			// In Mugen this seems to happen at the end of each frame instead
 			for i, hb := range c.hitby {
 				if hb.time > 0 {
 					c.hitby[i].time--
@@ -6942,10 +6943,10 @@ func (c *Char) cueDraw() {
 		yoff := y + c.offsetY()*c.localscl
 		xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
 		ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
-		// Draw Clsn1
+		// Add Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 {
 			if c.scf(SCF_standby) {
-				// Draw nothing
+				// Add nothing
 			} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
 				sys.drawc1rev.Add(clsn, xoff, yoff, xs, ys)
 			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
@@ -6954,47 +6955,108 @@ func (c *Char) cueDraw() {
 				sys.drawc1not.Add(clsn, xoff, yoff, xs, ys)
 			}
 		}
+
 		// Check invincibility to decide box colors
+		flags := int32(ST_SCA) | int32(AT_ALL)
+		nhbtxt := ""
 		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
 			hb, mtk := false, false
 			if c.gi().unhittable > 0 {
 				mtk = true
 			} else {
 				for _, h := range c.hitby {
-					if h.time != 0 {
-						hb = true
-						mtk = mtk || h.flag&int32(ST_SCA) == 0 || h.flag&int32(AT_ALL) == 0
+					if h.time != 0 && h.flag != 0 {
+						flags &= h.flag // Add up all Hitby flags
 					}
+				}
+				if flags != int32(ST_SCA) | int32(AT_ALL) {
+					hb = true
+					mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
+				}
+			}
+			// Check individual invulnerability flags
+			if mtk {
+				nhbtxt = "Invincible"
+			} else if hb {
+				// Statetype
+				if flags&int32(ST_S) == 0 {
+					nhbtxt += "S"
+				}
+				if flags&int32(ST_C) == 0 {
+					nhbtxt += "C"
+				}
+				if flags&int32(ST_A) == 0 {
+					nhbtxt += "A"
+				}
+				nhbtxt += ","
+				// Attack
+				if flags&int32(AT_NA) == 0 {
+					nhbtxt += "N"
+				}
+				if flags&int32(AT_SA) == 0 {
+					nhbtxt += "S"
+				}
+				if flags&int32(AT_HA) == 0 {
+					nhbtxt += "H"
+				}
+				nhbtxt += ","
+				// Throw
+				if flags&int32(AT_NT) == 0 {
+					nhbtxt += "N"
+				}
+				if flags&int32(AT_ST) == 0 {
+					nhbtxt += "S"
+				}
+				if flags&int32(AT_HT) == 0 {
+					nhbtxt += "H"
+				}
+				nhbtxt += ","
+				// Projectile
+				if flags&int32(AT_NP) == 0 {
+					nhbtxt += "N"
+				}
+				if flags&int32(AT_SP) == 0 {
+					nhbtxt += "S"
+				}
+				if flags&int32(AT_HP) == 0 {
+					nhbtxt += "H"
 				}
 			}
 			if c.scf(SCF_standby) {
 				sys.drawc2stb.Add(clsn, xoff, yoff, xs, ys)
 			} else if mtk {
-				// Draw fully invincible Clsn2
+				// Add fully invincible Clsn2
 				sys.drawc2mtk.Add(clsn, xoff, yoff, xs, ys)
 			} else if hb {
-				// Draw partially invincible Clsn2
+				// Add partially invincible Clsn2
 				sys.drawc2hb.Add(clsn, xoff, yoff, xs, ys)
 			} else if c.inguarddist && c.scf(SCF_guard) {
-				// Draw guarding Clsn2
+				// Add guarding Clsn2
 				sys.drawc2grd.Add(clsn, xoff, yoff, xs, ys)
 			} else {
-				// Draw regular Clsn2
+				// Add regular Clsn2
 				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
 			}
 		}
-		// Draw size box (width * height)
+		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
 			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height[0] * c.localscl, c.width[0] * c.localscl, c.height[1] * c.localscl},
 				x, y, c.facing, 1)
 		}
-		// Draw crosshair
+		// Add crosshair
 		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, c.facing, 1)
-		// Draw debug clsnText
+		// Add debug clsnText
 		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1) + float32(sys.gameWidth)/2
 		y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel() + 1 // "1" is just for spacing
 		y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
+		// Name and ID
 		sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d", c.name, c.id), r: 255, g: 255, b: 255})
+		// NotHitBy
+		if nhbtxt != "" {
+			y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
+			sys.clsnText = append(sys.clsnText, ClsnText{x: x, y: y, text: fmt.Sprintf(nhbtxt), r: 191, g: 255, b: 255})
+		}
+		// Targets
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
@@ -7129,6 +7191,13 @@ func (cl *CharList) delete(dc *Char) {
 }
 func (cl *CharList) action(x float32) {
 	sys.commandUpdate()
+	// Decrease unhittable timers
+	// This used to be in tick(), but Clsn display suggests it happens sooner than that
+	for i := range sys.cgi {
+		if sys.cgi[i].unhittable > 0 {
+			sys.cgi[i].unhittable--
+		}
+	}
 	// Prepare characters before performing their actions
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionPrepare()
@@ -8007,6 +8076,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
 						//"In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1."
+						// This flag prevents two projectiles of the same player from hitting in the same frame
+						// TODO: Actually projectiles should give 1F of projectile invincibility to the getter instead. Timer persists during pauses
 						if p.hitdef.attr&int32(AT_AP) != 0 {
 							ap_projhit = true
 						}
@@ -8307,11 +8378,6 @@ func (cl *CharList) collisionDetection() {
 }
 func (cl *CharList) tick() {
 	sys.gameTime++
-	for i := range sys.cgi {
-		if sys.cgi[i].unhittable > 0 {
-			sys.cgi[i].unhittable--
-		}
-	}
 	for _, c := range cl.runOrder {
 		c.tick()
 	}
