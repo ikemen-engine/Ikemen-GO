@@ -3203,6 +3203,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		out.append(OC_ex_)
 		switch c.token {
+		// Mugen char flags
 		case "nostandguard":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nostandguard))
 		case "nocrouchguard":
@@ -3221,6 +3222,30 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noautoturn))
 		case "nowalk":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nowalk))
+		case "noko":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noko))
+		// Mugen global flags
+		case "globalnoshadow":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoshadow))
+		case "intro":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
+		case "roundnotover":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotover))
+		case "nobardisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobardisplay))
+		case "nobg":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobg))
+		case "nofg":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofg))
+		case "nokoslow":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokoslow))
+		case "nokosnd":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokosnd))
+		case "nomusic":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nomusic))
+		case "timerfreeze":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_timerfreeze))
+		// Ikemen char flags
 		case "nobrake":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nobrake))
 		case "nocrouch":
@@ -3267,8 +3292,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noredlifedamage))
 		case "nomakedust":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nomakedust))
-		case "noko":
-			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noko))
 		case "noguardko":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noguardko))
 		case "nokovelocity":
@@ -3281,28 +3304,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_ignoreclsn2push))
 		case "immovable":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_immovable))
-		case "intro":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_intro))
-		case "roundnotover":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotover))
-		case "nomusic":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nomusic))
-		case "nobardisplay":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobardisplay))
-		case "nobg":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nobg))
-		case "nofg":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofg))
-		case "globalnoshadow":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoshadow))
-		case "timerfreeze":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_timerfreeze))
-		case "nokosnd":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokosnd))
-		case "nokoslow":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokoslow))
+		case "cornerpriority":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_cornerpriority))
+		// Ikemen global flags
 		case "globalnoko":
-			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_noko))
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoko))
 		case "roundnotskip":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
 		case "roundfreeze":

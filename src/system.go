@@ -119,7 +119,7 @@ type System struct {
 	turnsRecoveryRate       float32
 	debugFont               *TextSprite
 	debugDraw               bool
-	debugRef                [3]int // player number, helper index, player index
+	debugRef                [2]int // player number, helper index
 	soundMixer              *beep.Mixer
 	bgm                     Bgm
 	soundChannels           *SoundChannels
@@ -1194,11 +1194,11 @@ func (s *System) charUpdate() {
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id >= 0 {
-					s.projs[i][j].clsn(i)
+					s.projs[i][j].tradeDetection(i)
 				}
 			}
 		}
-		s.charList.hitDetection()
+		s.charList.collisionDetection()
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id != IErr {
@@ -1469,7 +1469,7 @@ func (s *System) action() {
 					}
 					for _, p := range s.chars {
 						if len(p) > 0 {
-							//default life recovery, used only if externalized Lua implementaion is disabled
+							//default life recovery, used only if externalized Lua implementation is disabled
 							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p[0].win() &&
 								p[0].alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {

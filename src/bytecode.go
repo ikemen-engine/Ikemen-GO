@@ -3253,10 +3253,11 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 		case assertSpecial_flag_g:
 			sys.setGSF(GlobalSpecialFlag(exp[0].evalI(c)))
 		case assertSpecial_noko:
-			if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-				crun.setASF(AssertSpecialFlag(ASF_noko))
+			// NoKO affects all characters in Mugen, so legacy chars do so as well
+			if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+				sys.setGSF(GlobalSpecialFlag(GSF_globalnoko))
 			} else {
-				sys.setGSF(GlobalSpecialFlag(GSF_noko))
+				crun.setASF(AssertSpecialFlag(ASF_noko))
 			}
 		case assertSpecial_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
