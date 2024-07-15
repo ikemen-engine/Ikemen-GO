@@ -1669,6 +1669,7 @@ func (p *Projectile) update(playerNo int) {
 		}
 	}
 }
+
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo int) {
 	if p.ani == nil || len(p.ani.frames) == 0 {
