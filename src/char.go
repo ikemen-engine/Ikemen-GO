@@ -1073,6 +1073,7 @@ type Explod struct {
 	scale                [2]float32
 	removeongethit       bool
 	removeonchangestate  bool
+	statehaschanged      bool
 	removetime           int32
 	velocity             [2]float32
 	accel                [2]float32
@@ -1256,12 +1257,17 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		return
 	}
 	var c *Char
-	if !e.ignorehitpause || e.removeongethit {
+	if !e.ignorehitpause || e.removeongethit || e.removeonchangestate {
 		c = sys.playerID(e.playerId)
 	}
 	// Remove on get hit
-	if sys.tickNextFrame() &&
-		c != nil && e.removeongethit && c.csf(CSF_gethit) && !c.inGuardState() {
+	if sys.tickNextFrame() && e.removeongethit &&
+		c != nil && c.csf(CSF_gethit) && !c.inGuardState() {
+		e.id, e.anim = IErr, nil
+		return
+	}
+	// Remove on ChangeState
+	if sys.tickNextFrame() && e.removeonchangestate && e.statehaschanged {
 		e.id, e.anim = IErr, nil
 		return
 	}
@@ -2047,6 +2053,7 @@ type Char struct {
 	downHitOffset   float32
 	koEchoTime      int32
 	groundLevel     float32
+	clsnSize        []float32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -3882,12 +3889,10 @@ func (c *Char) stateChange2() bool {
 		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 		}
-		// Remove flagged explods
+		// Flag RemoveOnChangeState explods for removal
 		for i := range sys.explods[c.playerNo] {
-			e := sys.explods[c.playerNo]
-			if e[i].playerId == c.id && e[i].removeonchangestate {
-				e[i].id = IErr
-				e[i].anim = nil
+			if sys.explods[c.playerNo][i].playerId == c.id && sys.explods[c.playerNo][i].removeonchangestate {
+				sys.explods[c.playerNo][i].statehaschanged = true
 			}
 		}
 		// Stop flagged sound channels
@@ -6143,6 +6148,7 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	} else {
 		styp = int32(st)
 	}
+	// Compare attributes to invincibility from HitBy and NotHitBy
 	for _, hb := range c.hitby {
 		if hb.time != 0 &&
 			(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
@@ -6419,6 +6425,7 @@ func (c *Char) actionRun() {
 		c.stateChange2()
 		c.ss.sb.run(c)
 	}
+	// Reset char width and height values
 	if !c.hitPause() {
 		if !c.csf(CSF_frontwidth) {
 			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
@@ -6439,6 +6446,10 @@ func (c *Char) actionRun() {
 			c.height[1] = c.defBHeight() * ((320 / c.localcoord) / c.localscl)
 		}
 	}
+	// Update size box according to player width and height
+	// This box will replace width and height values in some other parts of the code
+	// TODO: Make this box hittable in hit detection with some new parameter(s)
+	c.clsnSize = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
 	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
@@ -6955,7 +6966,6 @@ func (c *Char) cueDraw() {
 				sys.drawc1not.Add(clsn, xoff, yoff, xs, ys)
 			}
 		}
-
 		// Check invincibility to decide box colors
 		flags := int32(ST_SCA) | int32(AT_ALL)
 		nhbtxt := ""
@@ -6966,60 +6976,12 @@ func (c *Char) cueDraw() {
 			} else {
 				for _, h := range c.hitby {
 					if h.time != 0 && h.flag != 0 {
-						flags &= h.flag // Add up all Hitby flags
+						flags &= h.flag // Combine all NotHitBy flags
 					}
 				}
 				if flags != int32(ST_SCA) | int32(AT_ALL) {
 					hb = true
 					mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
-				}
-			}
-			// Check individual invulnerability flags
-			if mtk {
-				nhbtxt = "Invincible"
-			} else if hb {
-				// Statetype
-				if flags&int32(ST_S) == 0 {
-					nhbtxt += "S"
-				}
-				if flags&int32(ST_C) == 0 {
-					nhbtxt += "C"
-				}
-				if flags&int32(ST_A) == 0 {
-					nhbtxt += "A"
-				}
-				nhbtxt += ","
-				// Attack
-				if flags&int32(AT_NA) == 0 {
-					nhbtxt += "N"
-				}
-				if flags&int32(AT_SA) == 0 {
-					nhbtxt += "S"
-				}
-				if flags&int32(AT_HA) == 0 {
-					nhbtxt += "H"
-				}
-				nhbtxt += ","
-				// Throw
-				if flags&int32(AT_NT) == 0 {
-					nhbtxt += "N"
-				}
-				if flags&int32(AT_ST) == 0 {
-					nhbtxt += "S"
-				}
-				if flags&int32(AT_HT) == 0 {
-					nhbtxt += "H"
-				}
-				nhbtxt += ","
-				// Projectile
-				if flags&int32(AT_NP) == 0 {
-					nhbtxt += "N"
-				}
-				if flags&int32(AT_SP) == 0 {
-					nhbtxt += "S"
-				}
-				if flags&int32(AT_HP) == 0 {
-					nhbtxt += "H"
 				}
 			}
 			if c.scf(SCF_standby) {
@@ -7037,11 +6999,76 @@ func (c *Char) cueDraw() {
 				// Add regular Clsn2
 				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
 			}
+			// Add invulnerability text
+			if mtk {
+				nhbtxt = "Invincible"
+			} else if hb {
+				// Statetype
+				if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
+					if flags&int32(ST_S) == 0 {
+						nhbtxt += "S"
+					}
+					if flags&int32(ST_C) == 0 {
+						nhbtxt += "C"
+					}
+					if flags&int32(ST_A) == 0 {
+						nhbtxt += "A"
+					}
+					nhbtxt += " Any"
+				}
+				// Attack
+				if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
+					if nhbtxt != "" {
+						nhbtxt += ", "
+					}
+					if flags&int32(AT_NA) == 0 {
+						nhbtxt += "N"
+					}
+					if flags&int32(AT_SA) == 0 {
+						nhbtxt += "S"
+					}
+					if flags&int32(AT_HA) == 0 {
+						nhbtxt += "H"
+					}
+					nhbtxt += " Atk"
+				}
+				// Throw
+				if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
+					if nhbtxt != "" {
+						nhbtxt += ", "
+					}
+					if flags&int32(AT_NT) == 0 {
+						nhbtxt += "N"
+					}
+					if flags&int32(AT_ST) == 0 {
+						nhbtxt += "S"
+					}
+					if flags&int32(AT_HT) == 0 {
+						nhbtxt += "H"
+					}
+					nhbtxt += " Thr"
+				}
+				// Projectile
+				if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
+					if nhbtxt != "" {
+						nhbtxt += ", "
+					}
+					if flags&int32(AT_NP) == 0 {
+						nhbtxt += "N"
+					}
+					if flags&int32(AT_SP) == 0 {
+						nhbtxt += "S"
+					}
+					if flags&int32(AT_HP) == 0 {
+						nhbtxt += "H"
+					}
+					nhbtxt += " Prj"
+				}
+			}
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.drawwh.Add([]float32{-c.width[1] * c.localscl, -c.height[0] * c.localscl, c.width[0] * c.localscl, c.height[1] * c.localscl},
-				x, y, c.facing, 1)
+			sys.drawwh.Add(c.clsnSize, x, y, xs, ys)
 		}
 		// Add crosshair
 		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, c.facing, 1)
@@ -7192,7 +7219,8 @@ func (cl *CharList) delete(dc *Char) {
 func (cl *CharList) action(x float32) {
 	sys.commandUpdate()
 	// Decrease unhittable timers
-	// This used to be in tick(), but Clsn display suggests it happens sooner than that
+	// In Mugen this timer won't decrease unless the char has a Clsn box (any type)
+	// This used to be in tick(), but Mugen Clsn display suggests it happens sooner than that
 	for i := range sys.cgi {
 		if sys.cgi[i].unhittable > 0 {
 			sys.cgi[i].unhittable--
@@ -8077,7 +8105,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
 						//"In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1."
 						// This flag prevents two projectiles of the same player from hitting in the same frame
-						// TODO: Actually projectiles should give 1F of projectile invincibility to the getter instead. Timer persists during pauses
+						// In Mugen, projectiles (sctrl) give 1F of projectile invincibility to the getter instead. Timer persists during (super)pause
 						if p.hitdef.attr&int32(AT_AP) != 0 {
 							ap_projhit = true
 						}
@@ -8158,7 +8186,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.mhv.id = c.id
 									getter.mhv.playerNo = c.playerNo
 									getter.hitdef.hitonce = -1 // Neutralize Hitdef
-									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame
+									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame (but not the attacker)
 									// TODO: This 1 frame does not show up on debug (due to Clsn display process order?)
 
 									fall, by := getter.ghv.fallf, getter.ghv.hitBy
@@ -8232,25 +8260,25 @@ func (cl *CharList) pushDetection(getter *Char) {
 			continue // Stop current iteration if char won't push
 		}
 		// Pushbox vertical size and coordinates
-		ctop := (c.pos[1] - c.height[0]) * c.localscl
-		cbot := (c.pos[1] + c.height[1]) * c.localscl
-		gtop := (getter.pos[1] - getter.height[0]) * getter.localscl
-		gbot := (getter.pos[1] + getter.height[1]) * getter.localscl
+		ctop := (c.pos[1] + c.clsnSize[1]) * c.localscl
+		cbot := (c.pos[1] + c.clsnSize[3]) * c.localscl
+		gtop := (getter.pos[1] + getter.clsnSize[1]) * getter.localscl
+		gbot := (getter.pos[1] + getter.clsnSize[3]) * getter.localscl
 		if cbot >= gtop && ctop <= gbot && // Pushbox vertical overlap
 			// Z axis check
 			!(c.size.z.enable && getter.size.z.enable &&
 				((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
 					(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
 			// Normal collision check
-			cl, cr := -c.width[0]*c.localscl, c.width[1]*c.localscl
-			if c.facing > 0 {
+			cl, cr := c.clsnSize[0]*c.localscl, c.clsnSize[2]*c.localscl
+			if c.facing < 0 {
 				cl, cr = -cr, -cl
 			}
 			cl += c.pos[0] * c.localscl
 			cr += c.pos[0] * c.localscl
 
-			gl, gr := -getter.width[0]*getter.localscl, getter.width[1]*getter.localscl
-			if getter.facing > 0 {
+			gl, gr := getter.clsnSize[0]*getter.localscl, getter.clsnSize[2]*getter.localscl
+			if getter.facing < 0 {
 				gl, gr = -gr, -gl
 			}
 			gl += getter.pos[0] * getter.localscl
@@ -8303,6 +8331,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 						tmp = -c.facing
 					}
 				}
+				// TODO: This 0.5 multiplier could be a character or system constant instead of being hardcoded
 				if tmp > 0 {
 					if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
 						getter.pos[0] -= ((gr - cl) * 0.5) / getter.localscl
