@@ -1835,7 +1835,6 @@ type CharGlobalInfo struct {
 	pctype           ProjContact
 	pctime, pcid     int32
 	projidcount      int
-	unhittable       int32
 	quotes           [MaxQuotes]string
 	portraitscale    float32
 	constants        map[string]float32
@@ -1922,6 +1921,7 @@ type CharSystemVar struct {
 	superMovetime     int32
 	prevPauseMovetime int32
 	prevSuperMovetime int32
+	unhittableTime    int32
 	bindTime          int32
 	bindToId          int32
 	bindPos           [2]float32
@@ -5367,7 +5367,7 @@ func (c *Char) setSuperPauseTime(pausetime, movetime int32, unhittable bool) {
 		c.superMovetime--
 	}
 	if unhittable {
-		c.gi().unhittable = pausetime + Btoi(pausetime > 0)
+		c.unhittableTime = pausetime + Btoi(pausetime > 0)
 	}
 }
 func (c *Char) getPalfx() *PalFX {
@@ -6120,7 +6120,7 @@ func (c *Char) hitCheck(e *Char) bool {
 	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
 }
 func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
-	if c.gi().unhittable > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid && h.nochainid[0] == -1 {
+	if c.unhittableTime > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid && h.nochainid[0] == -1 {
 		return false
 	}
 	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
@@ -6342,6 +6342,13 @@ func (c *Char) actionPrepare() {
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
 		}
 	}
+	// Decrease unhittable timer
+	// This used to be in tick(), but Mugen Clsn display suggests it happens sooner than that
+	// This used to be CharGlobalInfo, but that made root and helpers share the same timer
+	// In Mugen this timer won't decrease unless the char has a Clsn box (of any type)
+	if c.unhittableTime > 0 {
+		c.unhittableTime--
+	}
 	c.dropTargets()
 	if c.downHitOffset != 0 {
 		c.pos[1] += c.downHitOffset
@@ -6426,6 +6433,7 @@ func (c *Char) actionRun() {
 		c.ss.sb.run(c)
 	}
 	// Reset char width and height values
+	// TODO: Some of this code could probably be integrated with the new size box
 	if !c.hitPause() {
 		if !c.csf(CSF_frontwidth) {
 			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
@@ -6971,7 +6979,7 @@ func (c *Char) cueDraw() {
 		nhbtxt := ""
 		if clsn := c.curFrame.Clsn2(); len(clsn) > 0 {
 			hb, mtk := false, false
-			if c.gi().unhittable > 0 {
+			if c.unhittableTime > 0 {
 				mtk = true
 			} else {
 				for _, h := range c.hitby {
@@ -7218,14 +7226,6 @@ func (cl *CharList) delete(dc *Char) {
 }
 func (cl *CharList) action(x float32) {
 	sys.commandUpdate()
-	// Decrease unhittable timers
-	// In Mugen this timer won't decrease unless the char has a Clsn box (any type)
-	// This used to be in tick(), but Mugen Clsn display suggests it happens sooner than that
-	for i := range sys.cgi {
-		if sys.cgi[i].unhittable > 0 {
-			sys.cgi[i].unhittable--
-		}
-	}
 	// Prepare characters before performing their actions
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionPrepare()
@@ -8186,9 +8186,10 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.mhv.id = c.id
 									getter.mhv.playerNo = c.playerNo
 									getter.hitdef.hitonce = -1 // Neutralize Hitdef
-									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame (but not the attacker)
+									getter.unhittableTime = 1 // Reversaldef makes the target invincible for 1 frame (but not the attacker)
 
 									// In Mugen, ReversalDef does not clear the enemy's GetHitVars
+									// https://github.com/ikemen-engine/Ikemen-GO/issues/1891
 									// fall, by := getter.ghv.fallf, getter.ghv.hitBy
 									// getter.ghv.clear()
 									// getter.ghv.hitBy = by

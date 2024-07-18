@@ -1024,7 +1024,6 @@ func (s *System) nextRound() {
 				}
 			}
 			s.cgi[i].clearPCTime()
-			s.cgi[i].unhittable = 0
 		}
 	}
 	for _, p := range s.chars {
