@@ -6018,7 +6018,7 @@ func (c *Char) dropTargets() {
 				if t.ss.moveType != MT_H && !t.stchtmp {
 					c.targets[i] = c.targets[len(c.targets)-1]
 					c.targets = c.targets[:len(c.targets)-1]
-					if t.ghv._type != 0 { // GitHub #1268
+					if t.ghv._type != 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1268
 						t.ghv.hitid = -1
 					}
 				} else {
@@ -8187,31 +8187,30 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.mhv.playerNo = c.playerNo
 									getter.hitdef.hitonce = -1 // Neutralize Hitdef
 									getter.gi().unhittable = 1 // Reversaldef makes the target invincible for 1 frame (but not the attacker)
-									// TODO: This 1 frame does not show up on debug (due to Clsn display process order?)
 
-									fall, by := getter.ghv.fallf, getter.ghv.hitBy
+									// In Mugen, ReversalDef does not clear the enemy's GetHitVars
+									// fall, by := getter.ghv.fallf, getter.ghv.hitBy
+									// getter.ghv.clear()
+									// getter.ghv.hitBy = by
+									// getter.ghv.fall = c.hitdef.fall
 
-									getter.ghv.clear()
-									getter.ghv.hitBy = by
 									getter.ghv.attr = c.hitdef.attr
 									getter.ghv.hitid = c.hitdef.id
 									getter.ghv.playerNo = c.playerNo
 									getter.ghv.id = c.id
-									getter.ghv.fall = c.hitdef.fall
 									getter.fallTime = 0
 									getter.ghv.fall.xvelocity = c.hitdef.fall.xvelocity * (c.localscl / getter.localscl)
 									getter.ghv.fall.yvelocity = c.hitdef.fall.yvelocity * (c.localscl / getter.localscl)
+
 									if c.hitdef.forcenofall {
-										fall = false
+										getter.ghv.fallf = false
+									} else if !getter.ghv.fallf {
+										if getter.ss.stateType == ST_A {
+											getter.ghv.fallf = c.hitdef.air_fall
+										} else {
+											getter.ghv.fallf = c.hitdef.ground_fall
+										}
 									}
-									if getter.ss.stateType == ST_A {
-										getter.ghv.fallf = c.hitdef.air_fall
-									} else if getter.ss.stateType == ST_L {
-										getter.ghv.fallf = c.hitdef.ground_fall
-									} else {
-										getter.ghv.fallf = c.hitdef.ground_fall
-									}
-									getter.ghv.fallf = getter.ghv.fallf || fall
 
 									getter.hitdefTargetsBuffer = append(getter.hitdefTargetsBuffer, c.id)
 									if getter.hittmp == 0 {
