@@ -3324,7 +3324,7 @@ func triggerFunctions(l *lua.LState) {
 		case "isbound":
 			ln = lua.LNumber(Btoi(c.isBound()))
 		case "fall":
-			ln = lua.LNumber(Btoi(c.ghv.fallf))
+			ln = lua.LNumber(Btoi(c.ghv.fallflag))
 		case "fall.damage":
 			ln = lua.LNumber(c.ghv.fall.damage)
 		case "fall.xvel":
@@ -3465,7 +3465,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "hitfall", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.ghv.fallf))
+		l.Push(lua.LBool(sys.debugWC.ghv.fallflag))
 		return 1
 	})
 	luaRegister(l, "hitover", func(*lua.LState) int {
