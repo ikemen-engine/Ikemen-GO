@@ -1468,7 +1468,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushB(c.hitDefAttr(*(*int32)(unsafe.Pointer(&be[i]))))
 			i += 4
 		case OC_hitfall:
-			sys.bcStack.PushB(c.ghv.fallf)
+			sys.bcStack.PushB(c.ghv.fallflag)
 		case OC_hitover:
 			sys.bcStack.PushB(c.hitOver())
 		case OC_hitpausetime:
@@ -2139,7 +2139,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_isbound:
 		sys.bcStack.PushB(c.isBound())
 	case OC_ex_gethitvar_fall:
-		sys.bcStack.PushB(c.ghv.fallf)
+		sys.bcStack.PushB(c.ghv.fallflag)
 	case OC_ex_gethitvar_fall_damage:
 		sys.bcStack.PushI(c.ghv.fall.damage)
 	case OC_ex_gethitvar_fall_xvel:
@@ -9883,7 +9883,7 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_ctrltime:
 			crun.ghv.ctrltime = exp[0].evalI(c)
 		case getHitVarSet_fall:
-			crun.ghv.fallf = exp[0].evalB(c)
+			crun.ghv.fallflag = exp[0].evalB(c)
 		case getHitVarSet_fall_damage:
 			crun.ghv.fall.damage = exp[0].evalI(c)
 		case getHitVarSet_fall_envshake_ampl:
