@@ -6988,7 +6988,7 @@ func (c *Char) cueDraw() {
 						flags &= h.flag // Combine all NotHitBy flags
 					}
 				}
-				if flags != int32(ST_SCA) | int32(AT_ALL) {
+				if flags != int32(ST_SCA)|int32(AT_ALL) {
 					hb = true
 					mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
 				}
@@ -8192,7 +8192,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.mhv.id = c.id
 									getter.mhv.playerNo = c.playerNo
 									getter.hitdef.hitonce = -1 // Neutralize Hitdef
-									getter.unhittableTime = 1 // Reversaldef makes the target invincible for 1 frame (but not the attacker)
+									getter.unhittableTime = 1  // Reversaldef makes the target invincible for 1 frame (but not the attacker)
 
 									// In Mugen, ReversalDef does not clear the enemy's GetHitVars
 									// https://github.com/ikemen-engine/Ikemen-GO/issues/1891

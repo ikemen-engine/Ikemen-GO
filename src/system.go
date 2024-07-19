@@ -1917,12 +1917,12 @@ func (s *System) drawDebugText() {
 	// Draw Clsn text
 	// Unlike Mugen, this is drawn separately from the Clsn boxes themselves, making debug more flexible
 	//if s.clsnDraw {
-		for _, t := range s.clsnText {
-			s.debugFont.SetColor(t.r, t.g, t.b)
-			s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
-				s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba)
-		}
+	for _, t := range s.clsnText {
+		s.debugFont.SetColor(t.r, t.g, t.b)
+		s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
+			s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
+			s.debugFont.palfx, s.debugFont.frgba)
+	}
 	//}
 }
 
