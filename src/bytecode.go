@@ -3787,7 +3787,13 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		}
 		switch id {
 		case helper_helpertype:
-			h.player = exp[0].evalB(c)
+			ht := exp[0].evalI(c)
+			switch ht {
+			case 1:
+				h.player = true
+			case 2:
+				h.hprojectile = true
+			}
 		case helper_name:
 			h.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 		case helper_postype:

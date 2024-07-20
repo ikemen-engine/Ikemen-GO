@@ -1973,6 +1973,7 @@ type Char struct {
 	teamside            int
 	keyctrl             [4]bool
 	player              bool
+	hprojectile         bool
 	animPN              int
 	animNo              int32
 	prevAnimNo          int32
@@ -3842,6 +3843,11 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.edge[1] *= lsRatio
 		c.height[0] *= lsRatio
 		c.height[1] *= lsRatio
+
+		c.clsnSize[0] *= lsRatio
+		c.clsnSize[1] *= lsRatio
+		c.clsnSize[2] *= lsRatio
+		c.clsnSize[3] *= lsRatio
 
 		c.bindPos[0] *= lsRatio
 		c.bindPos[1] *= lsRatio
@@ -6071,12 +6077,22 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	if frm == nil {
 		return false
 	}
+
+	// Decide which box types should collide
 	var clsn1, clsn2 []float32
-	if gethit {
-		clsn1, clsn2 = frm.Clsn1(), c.curFrame.Clsn2()
+	if c.hprojectile { // Projectiles trade with their Clsn2 only
+		clsn1 = frm.Clsn2()
+		clsn2 = c.curFrame.Clsn2()
 	} else {
-		clsn1, clsn2 = frm.Clsn2(), c.curFrame.Clsn1()
+		if gethit {
+			clsn1 = frm.Clsn1()
+			clsn2 = c.curFrame.Clsn2()
+		} else {
+			clsn1 = frm.Clsn2()
+			clsn2 = c.curFrame.Clsn1() // Cancel projectile with hitflag P
+		}
 	}
+
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
 		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
@@ -6084,7 +6100,7 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 
-func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
+func (c *Char) clsnCheck(atk *Char, c1atk, reversal bool) bool {
 	// Nil anim & standby check.
 	if atk.curFrame == nil || c.curFrame == nil ||
 		c.scf(SCF_standby) || atk.scf(SCF_standby) ||
@@ -6099,17 +6115,24 @@ func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
 		return false
 	}
 
+	// Decide which box types should collide
 	var clsn1, clsn2 []float32
-	if c1atk {
-		clsn1 = atk.curFrame.Clsn1()
-	} else {
+	if c.hprojectile && atk.hprojectile { // Projectiles trade with their Clsn2 only
 		clsn1 = atk.curFrame.Clsn2()
-	}
-	if c1slf {
-		clsn2 = c.curFrame.Clsn1()
-	} else {
 		clsn2 = c.curFrame.Clsn2()
+	} else {
+		if c1atk {
+			clsn1 = atk.curFrame.Clsn1()
+		} else {
+			clsn1 = atk.curFrame.Clsn2() // For push checking
+		}
+		if reversal {
+			clsn2 = c.curFrame.Clsn1()
+		} else {
+			clsn2 = c.curFrame.Clsn2()
+		}
 	}
+
 	return sys.clsnOverlap(clsn1, [...]float32{atk.clsnScale[0] * (320 / sys.chars[atk.animPN][0].localcoord), atk.clsnScale[1] * (320 / sys.chars[atk.animPN][0].localcoord)},
 		[...]float32{atk.pos[0]*atk.localscl + atk.offsetX()*atk.localscl,
 			atk.pos[1]*atk.localscl + atk.offsetY()*atk.localscl}, atk.facing,
@@ -7077,10 +7100,10 @@ func (c *Char) cueDraw() {
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.drawwh.Add(c.clsnSize, x, y, xs, ys)
+			sys.drawwh.Add(c.clsnSize, x, y, c.facing * c.localscl, c.localscl)
 		}
 		// Add crosshair
-		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, c.facing, 1)
+		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1)
 	}
 	// Prepare information for debug text
 	if sys.debugDraw {
