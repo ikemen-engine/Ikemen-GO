@@ -5239,6 +5239,8 @@ const (
 	hitDef_guardpoints
 	hitDef_redlife
 	hitDef_score
+	hitDef_p2clsncheck
+	hitDef_p2clsnrequire
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
@@ -5514,6 +5516,20 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.score[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
 			hd.score[1] = exp[1].evalF(c)
+		}
+	case hitDef_p2clsncheck:
+		v := exp[0].evalI(c)
+		if v == 0 || v == 1 || v == 2 || v == 3 {
+			hd.p2clsncheck = v
+		} else {
+			hd.p2clsncheck = -1
+		}
+	case hitDef_p2clsnrequire:
+		v := exp[0].evalI(c)
+		if v == 1 || v == 2 || v == 3 {
+			hd.p2clsnrequire = v
+		} else {
+			hd.p2clsnrequire = 0
 		}
 	default:
 		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {

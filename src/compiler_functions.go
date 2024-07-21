@@ -1793,6 +1793,50 @@ func (c *Compiler) hitDefSub(is IniSection,
 		hitDef_score, VT_Float, 2, false); err != nil {
 		return err
 	}
+	if err := c.stateParam(is, "p2clsncheck", func(data string) error {
+		if len(data) == 0 {
+			return Error("Value not specified")
+		}
+		var box int32
+		switch strings.ToLower(data) {
+		case "none":
+			box = 0
+		case "clsn1":
+			box = 1
+		case "clsn2":
+			box = 2
+		case "size":
+			box = 3
+		default:
+			return Error("Invalid value: " + data)
+		}
+		sc.add(hitDef_p2clsncheck, sc.iToExp(box))
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "p2clsnrequire", func(data string) error {
+		if len(data) == 0 {
+			return Error("Value not specified")
+		}
+		var box int32
+		switch strings.ToLower(data) {
+		case "none":
+			box = 0
+		case "clsn1":
+			box = 1
+		case "clsn2":
+			box = 2
+		case "size":
+			box = 3
+		default:
+			return Error("Invalid value: " + data)
+		}
+		sc.add(hitDef_p2clsnrequire, sc.iToExp(box))
+		return nil
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 func (c *Compiler) hitDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
