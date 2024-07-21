@@ -3178,23 +3178,60 @@ type hitBy StateControllerBase
 const (
 	hitBy_value byte = iota
 	hitBy_value2
+	hitBy_value3
+	hitBy_value4
+	hitBy_value5
+	hitBy_value6
+	hitBy_value7
+	hitBy_value8
 	hitBy_time
+	hitBy_playerno
+	hitBy_playerid
+	hitBy_stack
 	hitBy_redirectid
 )
 
 func (sc hitBy) Run(c *Char, _ []int32) bool {
 	time := int32(1)
+	pno := int(-1)
+	pid := int32(-1)
+	st := false
 	crun := c
+	set := func(idx int, exp []BytecodeExp, time int32, pno int, pid int32, st bool) {
+		crun.hitby[idx].not = false
+		crun.hitby[idx].time = time
+		crun.hitby[idx].flag = exp[0].evalI(c)
+		crun.hitby[idx].playerno = pno - 1
+		crun.hitby[idx].playerid = pid
+		crun.hitby[idx].stack = st
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c)
+		case hitBy_playerno:
+			pno = int(exp[0].evalI(c))
+		case hitBy_playerid:
+			pid = exp[0].evalI(c)
+		case hitBy_stack:
+			st = exp[0].evalB(c)
+		// This redundancy is because all values can be set simultaneously in Mugen
 		case hitBy_value:
-			crun.hitby[0].time = time
-			crun.hitby[0].flag = exp[0].evalI(c)
+			set(0, exp, time, pno, pid, st)
 		case hitBy_value2:
-			crun.hitby[1].time = time
-			crun.hitby[1].flag = exp[0].evalI(c)
+			set(1, exp, time, pno, pid, st)
+		case hitBy_value3:
+			set(2, exp, time, pno, pid, st)
+		case hitBy_value4:
+			set(3, exp, time, pno, pid, st)
+		case hitBy_value5:
+			set(4, exp, time, pno, pid, st)
+		case hitBy_value6:
+			set(5, exp, time, pno, pid, st)
+		case hitBy_value7:
+			set(6, exp, time, pno, pid, st)
+		case hitBy_value8:
+			set(7, exp, time, pno, pid, st)
 		case hitBy_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -3211,18 +3248,43 @@ type notHitBy hitBy
 
 func (sc notHitBy) Run(c *Char, _ []int32) bool {
 	time := int32(1)
+	pno := int(-1)
+	pid := int32(-1)
+	st := false
 	crun := c
+	set := func(idx int, exp []BytecodeExp, time int32, pno int, pid int32, st bool) {
+		crun.hitby[idx].not = true
+		crun.hitby[idx].time = time
+		crun.hitby[idx].flag = ^exp[0].evalI(c) // Opposite
+		crun.hitby[idx].playerno = pno - 1
+		crun.hitby[idx].playerid = pid
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c)
+		case hitBy_playerno:
+			pno = int(exp[0].evalI(c))
+		case hitBy_playerid:
+			pid = exp[0].evalI(c)
+		case hitBy_stack:
+			st = exp[0].evalB(c)
 		case hitBy_value:
-			crun.hitby[0].time = time
-			crun.hitby[0].flag = ^exp[0].evalI(c)
+			set(0, exp, time, pno, pid, st)
 		case hitBy_value2:
-			crun.hitby[1].time = time
-			crun.hitby[1].flag = ^exp[0].evalI(c)
-
+			set(1, exp, time, pno, pid, st)
+		case hitBy_value3:
+			set(2, exp, time, pno, pid, st)
+		case hitBy_value4:
+			set(3, exp, time, pno, pid, st)
+		case hitBy_value5:
+			set(4, exp, time, pno, pid, st)
+		case hitBy_value6:
+			set(5, exp, time, pno, pid, st)
+		case hitBy_value7:
+			set(6, exp, time, pno, pid, st)
+		case hitBy_value8:
+			set(7, exp, time, pno, pid, st)
 		case hitBy_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -9995,7 +10057,7 @@ func (sc groundLevelOffset) Run(c *Char, _ []int32) bool {
 type targetAdd StateControllerBase
 
 const (
-	targetAdd_id byte = iota
+	targetAdd_playerid byte = iota
 	targetAdd_redirectid
 )
 
@@ -10004,7 +10066,7 @@ func (sc targetAdd) Run(c *Char, _ []int32) bool {
 	var pid int32
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case targetAdd_id:
+		case targetAdd_playerid:
 			pid = exp[0].evalI(c)
 		case targetAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {

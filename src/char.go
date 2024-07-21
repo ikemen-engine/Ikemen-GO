@@ -713,8 +713,8 @@ func (hd *HitDef) clear() {
 		hitredlife:     IErr,
 		guardredlife:   IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())},
-		p2clsncheck:      -1,
-		p2clsnrequire: -1,
+		p2clsncheck:    -1,
+		p2clsnrequire:  -1,
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -846,8 +846,14 @@ func (ghv *GetHitVar) addId(id, juggle int32) {
 }
 
 type HitBy struct {
-	flag, time int32
+	flag        int32
+	time        int32
+	not         bool
+	playerid    int32
+	playerno    int
+	stack       bool
 }
+
 type HitOverride struct {
 	attr      int32
 	stateno   int32
@@ -2001,7 +2007,7 @@ type Char struct {
 	hitdef              HitDef
 	ghv                 GetHitVar
 	mhv                 MoveHitVar
-	hitby               [2]HitBy
+	hitby               [8]HitBy
 	ho                  [8]HitOverride
 	hoIdx               int
 	hoKeepState         bool
@@ -2108,7 +2114,7 @@ func (c *Char) clearState() {
 	c.ghv.clear()
 	c.ghv.fall.yvelocity /= c.localscl
 	c.ghv.clearOff()
-	c.hitby = [2]HitBy{}
+	c.hitby = [8]HitBy{}
 	c.mhv.clear()
 	for i := range c.ho {
 		c.ho[i].clear()
@@ -6099,8 +6105,8 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 	}
 
 	// Required boxes not found
-	if p.hitdef.p2clsnrequire == 1 && getter.curFrame.Clsn1() == nil ||
-		p.hitdef.p2clsnrequire == 2 && getter.curFrame.Clsn2() == nil {
+	if p.hitdef.p2clsnrequire == 1 && c.curFrame.Clsn1() == nil ||
+		p.hitdef.p2clsnrequire == 2 && c.curFrame.Clsn2() == nil {
 		return false
 	}
 
@@ -6200,11 +6206,11 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
 }
 
-func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
+func (c *Char) attrCheck(h *HitDef, getter *Char, st StateType) bool {
 	if c.unhittableTime > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid && h.nochainid[0] == -1 {
 		return false
 	}
-	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
+	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == getter.id) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
 			if nci >= 0 && c.ghv.hitid == nci && c.ghv.id == h.attackerID {
 				return false
@@ -6229,20 +6235,51 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	} else {
 		styp = int32(st)
 	}
-	// Compare attributes to invincibility from HitBy and NotHitBy
+	// HitBy and NotHitBy checks
+	// Stack parameter makes the hit happen if any HitBy slot would allow it
+	hit := true
 	for _, hb := range c.hitby {
-		if hb.time != 0 &&
-			(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
-			return false
+		if hb.time != 0 {
+			// PlayerNo and Player ID
+			if hb.playerno >= 0 && hb.playerno != getter.playerNo ||
+				hb.playerid >= 0 && hb.playerid != getter.id {
+				if hb.not {
+					hit = true
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				} else {
+					hit = false
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				}
+			}
+			// Attributes
+			if hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0 {
+				hit = false
+				if hb.stack {
+					continue
+				} else {
+					break
+				}
+			}
+			if hb.stack {
+				hit = true
+				break
+			}
 		}
 	}
-	//}
-	return true
+	return hit
 }
 
 // Check if the enemy's Hitdef should lose to the current one, if applicable
 func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, oc.id, st) {
+	if !c.attrCheck(h, oc, st) {
 		return false
 	}
 	if c.hasTargetOfHitdef(oc.id) { // If enemy's Hitdef already hit the original char
@@ -7064,13 +7101,33 @@ func (c *Char) cueDraw() {
 				mtk = true
 			} else {
 				for _, h := range c.hitby {
-					if h.time != 0 && h.flag != 0 {
-						flags &= h.flag // Combine all NotHitBy flags
+					if h.time != 0 {
+						// If carrying invincibility from previous iterations
+						if h.stack && flags != int32(ST_SCA) | int32(AT_ALL) {
+							nhbtxt = "Stacked"
+							hb = true
+							mtk = false
+							break
+						}
+						// If player-specific invincibility
+						if h.playerno >= 0 {
+							nhbtxt = "Player-specific"
+							hb = true
+							mtk = false
+							break
+						}
+						// Combine all NotHitBy flags
+						if h.flag != 0 {
+							flags &= h.flag
+						}
 					}
 				}
-				if flags != int32(ST_SCA)|int32(AT_ALL) {
-					hb = true
-					mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
+				// If not stacked and not player-specific
+				if nhbtxt == "" {
+					if flags != int32(ST_SCA) | int32(AT_ALL) {
+						hb = true
+						mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
+					}
 				}
 			}
 			if c.scf(SCF_standby) {
@@ -7089,69 +7146,71 @@ func (c *Char) cueDraw() {
 				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
 			}
 			// Add invulnerability text
-			if mtk {
-				nhbtxt = "Invincible"
-			} else if hb {
-				// Statetype
-				if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
-					if flags&int32(ST_S) == 0 {
-						nhbtxt += "S"
+			if nhbtxt == "" {
+				if mtk {
+					nhbtxt = "Invincible"
+				} else if hb {
+					// Statetype
+					if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
+						if flags&int32(ST_S) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(ST_C) == 0 {
+							nhbtxt += "C"
+						}
+						if flags&int32(ST_A) == 0 {
+							nhbtxt += "A"
+						}
+						nhbtxt += " Any"
 					}
-					if flags&int32(ST_C) == 0 {
-						nhbtxt += "C"
+					// Attack
+					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
+						if nhbtxt != "" {
+							nhbtxt += ", "
+						}
+						if flags&int32(AT_NA) == 0 {
+							nhbtxt += "N"
+						}
+						if flags&int32(AT_SA) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(AT_HA) == 0 {
+							nhbtxt += "H"
+						}
+						nhbtxt += " Atk"
 					}
-					if flags&int32(ST_A) == 0 {
-						nhbtxt += "A"
+					// Throw
+					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
+						if nhbtxt != "" {
+							nhbtxt += ", "
+						}
+						if flags&int32(AT_NT) == 0 {
+							nhbtxt += "N"
+						}
+						if flags&int32(AT_ST) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(AT_HT) == 0 {
+							nhbtxt += "H"
+						}
+						nhbtxt += " Thr"
 					}
-					nhbtxt += " Any"
-				}
-				// Attack
-				if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
-					if nhbtxt != "" {
-						nhbtxt += ", "
+					// Projectile
+					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
+						if nhbtxt != "" {
+							nhbtxt += ", "
+						}
+						if flags&int32(AT_NP) == 0 {
+							nhbtxt += "N"
+						}
+						if flags&int32(AT_SP) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(AT_HP) == 0 {
+							nhbtxt += "H"
+						}
+						nhbtxt += " Prj"
 					}
-					if flags&int32(AT_NA) == 0 {
-						nhbtxt += "N"
-					}
-					if flags&int32(AT_SA) == 0 {
-						nhbtxt += "S"
-					}
-					if flags&int32(AT_HA) == 0 {
-						nhbtxt += "H"
-					}
-					nhbtxt += " Atk"
-				}
-				// Throw
-				if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
-					if nhbtxt != "" {
-						nhbtxt += ", "
-					}
-					if flags&int32(AT_NT) == 0 {
-						nhbtxt += "N"
-					}
-					if flags&int32(AT_ST) == 0 {
-						nhbtxt += "S"
-					}
-					if flags&int32(AT_HT) == 0 {
-						nhbtxt += "H"
-					}
-					nhbtxt += " Thr"
-				}
-				// Projectile
-				if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
-					if nhbtxt != "" {
-						nhbtxt += ", "
-					}
-					if flags&int32(AT_NP) == 0 {
-						nhbtxt += "N"
-					}
-					if flags&int32(AT_SP) == 0 {
-						nhbtxt += "S"
-					}
-					if flags&int32(AT_HP) == 0 {
-						nhbtxt += "H"
-					}
-					nhbtxt += " Prj"
 				}
 			}
 		}
@@ -8244,7 +8303,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
 					getter.loseHitTrade(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
 						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
-							c.attrCheck(h, getter.id, getter.ss.stateType) &&
+							c.attrCheck(h, getter, getter.ss.stateType) &&
 							c.clsnCheck(getter, 1, c.hitdef.p2clsncheck)
 					}) {
 					// Guard distance
