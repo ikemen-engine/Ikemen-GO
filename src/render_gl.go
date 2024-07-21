@@ -441,7 +441,7 @@ func (r *Renderer) EndFrame() {
 	loc := r.modelShader.a["VertCoord"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
-	gl.MemoryBarrier(gl.ALL_BARRIER_BITS)
+	gl.Finish()
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	gl.DisableVertexAttribArray(uint32(loc))
