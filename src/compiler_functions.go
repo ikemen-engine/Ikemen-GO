@@ -12,7 +12,8 @@ import (
 // This file contains the parsing code for the function in ZSS and CNS, also called State Controllers.
 
 func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
-	attr, two := int32(-1), false
+	attr := int32(-1)
+	vnum := int32(1)
 	var err error
 	if err = c.stateParam(is, "value", func(data string) error {
 		attr, err = c.attr(data, false)
@@ -22,7 +23,61 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 	}
 	if attr == -1 {
 		if err = c.stateParam(is, "value2", func(data string) error {
-			two = true
+			vnum = 2
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	if attr == -1 {
+		if err = c.stateParam(is, "value3", func(data string) error {
+			vnum = 3
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	if attr == -1 {
+		if err = c.stateParam(is, "value4", func(data string) error {
+			vnum = 4
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	if attr == -1 {
+		if err = c.stateParam(is, "value5", func(data string) error {
+			vnum = 5
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	if attr == -1 {
+		if err = c.stateParam(is, "value6", func(data string) error {
+			vnum = 6
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	if attr == -1 {
+		if err = c.stateParam(is, "value7", func(data string) error {
+			vnum = 7
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+	}
+	if attr == -1 {
+		if err = c.stateParam(is, "value8", func(data string) error {
+			vnum = 8
 			attr, err = c.attr(data, false)
 			return err
 		}); err != nil {
@@ -36,7 +91,31 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 		hitBy_time, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if two {
+	if err := c.paramValue(is, sc, "playerno",
+		hitBy_playerno, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "playerid",
+		hitBy_playerid, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "stack",
+		hitBy_stack, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if vnum == 8 {
+		sc.add(hitBy_value8, sc.iToExp(attr))
+	} else if vnum == 7 {
+		sc.add(hitBy_value7, sc.iToExp(attr))
+	} else if vnum == 6 {
+		sc.add(hitBy_value6, sc.iToExp(attr))
+	} else if vnum == 5 {
+		sc.add(hitBy_value5, sc.iToExp(attr))
+	} else if vnum == 4 {
+		sc.add(hitBy_value4, sc.iToExp(attr))
+	} else if vnum == 3 {
+		sc.add(hitBy_value3, sc.iToExp(attr))
+	} else if vnum == 2 {
 		sc.add(hitBy_value2, sc.iToExp(attr))
 	} else {
 		sc.add(hitBy_value, sc.iToExp(attr))
@@ -464,16 +543,18 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
+			var ht int32
 			switch strings.ToLower(data) {
 			case "normal":
-				// Default, valid value
+				ht = 0
 			case "player":
-				sc.add(helper_helpertype, sc.iToExp(1))
+				ht = 1
 			case "projectile":
-				// Valid but unused in Mugen. Same as normal type
+				ht = 2
 			default:
 				return Error("Invalid value: " + data)
 			}
+			sc.add(helper_helpertype, sc.iToExp(ht))
 			return nil
 		}); err != nil {
 			return err
@@ -1789,6 +1870,50 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "score",
 		hitDef_score, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "p2clsncheck", func(data string) error {
+		if len(data) == 0 {
+			return Error("Value not specified")
+		}
+		var box int32
+		switch strings.ToLower(data) {
+		case "none":
+			box = 0
+		case "clsn1":
+			box = 1
+		case "clsn2":
+			box = 2
+		case "size":
+			box = 3
+		default:
+			return Error("Invalid value: " + data)
+		}
+		sc.add(hitDef_p2clsncheck, sc.iToExp(box))
+		return nil
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "p2clsnrequire", func(data string) error {
+		if len(data) == 0 {
+			return Error("Value not specified")
+		}
+		var box int32
+		switch strings.ToLower(data) {
+		case "none":
+			box = 0
+		case "clsn1":
+			box = 1
+		case "clsn2":
+			box = 2
+		case "size":
+			box = 3
+		default:
+			return Error("Invalid value: " + data)
+		}
+		sc.add(hitDef_p2clsnrequire, sc.iToExp(box))
+		return nil
+	}); err != nil {
 		return err
 	}
 	return nil
@@ -5208,8 +5333,8 @@ func (c *Compiler) targetAdd(is IniSection, sc *StateControllerBase, _ int8) (St
 			targetAdd_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "id",
-			targetAdd_id, VT_Int, 1, true); err != nil {
+		if err := c.paramValue(is, sc, "playerid",
+			targetAdd_playerid, VT_Int, 1, true); err != nil {
 			return err
 		}
 		return nil

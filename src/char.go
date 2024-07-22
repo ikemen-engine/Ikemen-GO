@@ -643,6 +643,8 @@ type HitDef struct {
 	hitredlife                 int32
 	guardredlife               int32
 	score                      [2]float32
+	p2clsncheck                int32
+	p2clsnrequire              int32
 }
 
 func (hd *HitDef) clear() {
@@ -711,6 +713,8 @@ func (hd *HitDef) clear() {
 		hitredlife:     IErr,
 		guardredlife:   IErr,
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())},
+		p2clsncheck:    -1,
+		p2clsnrequire:  -1,
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -842,8 +846,14 @@ func (ghv *GetHitVar) addId(id, juggle int32) {
 }
 
 type HitBy struct {
-	flag, time int32
+	flag        int32
+	time        int32
+	not         bool
+	playerid    int32
+	playerno    int
+	stack       bool
 }
+
 type HitOverride struct {
 	attr      int32
 	stateno   int32
@@ -1706,17 +1716,19 @@ func (p *Projectile) tradeDetection(playerNo int) {
 			}
 			clsn1 := pr.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
 			clsn2 := p.ani.CurrentFrame().Clsn2()
-			if sys.clsnOverlap(clsn1, [...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
-				[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing,
-				clsn2, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-				[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing) {
+			if clsn1 != nil && clsn2 != nil {
+				if sys.clsnOverlap(clsn1, [...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
+					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing,
+					clsn2, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
+					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing) {
 
-				opp, pp := &sys.projs[i][j], p.priorityPoints
-				cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
-				cancel(&opp.priorityPoints, &opp.hits, pp)
+					opp, pp := &sys.projs[i][j], p.priorityPoints
+					cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
+					cancel(&opp.priorityPoints, &opp.hits, pp)
 
-				if p.hits < 0 {
-					break
+					if p.hits < 0 {
+						break
+					}
 				}
 			}
 		}
@@ -1973,6 +1985,7 @@ type Char struct {
 	teamside            int
 	keyctrl             [4]bool
 	player              bool
+	hprojectile         bool
 	animPN              int
 	animNo              int32
 	prevAnimNo          int32
@@ -1994,7 +2007,7 @@ type Char struct {
 	hitdef              HitDef
 	ghv                 GetHitVar
 	mhv                 MoveHitVar
-	hitby               [2]HitBy
+	hitby               [8]HitBy
 	ho                  [8]HitOverride
 	hoIdx               int
 	hoKeepState         bool
@@ -2054,7 +2067,7 @@ type Char struct {
 	downHitOffset   float32
 	koEchoTime      int32
 	groundLevel     float32
-	clsnSize        []float32
+	sizeBox        []float32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -2101,7 +2114,7 @@ func (c *Char) clearState() {
 	c.ghv.clear()
 	c.ghv.fall.yvelocity /= c.localscl
 	c.ghv.clearOff()
-	c.hitby = [2]HitBy{}
+	c.hitby = [8]HitBy{}
 	c.mhv.clear()
 	for i := range c.ho {
 		c.ho[i].clear()
@@ -3843,6 +3856,11 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.height[0] *= lsRatio
 		c.height[1] *= lsRatio
 
+		c.sizeBox[0] *= lsRatio
+		c.sizeBox[1] *= lsRatio
+		c.sizeBox[2] *= lsRatio
+		c.sizeBox[3] *= lsRatio
+
 		c.bindPos[0] *= lsRatio
 		c.bindPos[1] *= lsRatio
 
@@ -4565,6 +4583,13 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.teamside == -1 {
 		hd.teamside = c.teamside + 1
 	}
+	if hd.p2clsncheck == -1 {
+		if hd.reversal_attr != 0 {
+			hd.p2clsncheck = 1
+		} else {
+			hd.p2clsncheck = 2
+		}
+	}
 	hd.playerNo = c.ss.sb.playerNo
 	hd.attackerID = c.id
 }
@@ -5216,6 +5241,7 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	return (opos - cpos) / oc.localscl
 }
 func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
+	// In Mugen P2BodyDist X does not account for changes in Width like Ikemen does here
 	dist := c.distX(opp, oc)
 	var oppw float32
 	if dist == 0 || (dist < 0) != (opp.facing < 0) {
@@ -6063,7 +6089,8 @@ func (c *Char) offsetX() float32 {
 func (c *Char) offsetY() float32 {
 	return float32(c.size.draw.offset[1]) + c.offset[1]/c.localscl
 }
-func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
+
+func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 	if p.ani == nil || c.curFrame == nil || c.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return false
 	}
@@ -6071,12 +6098,49 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 	if frm == nil {
 		return false
 	}
-	var clsn1, clsn2 []float32
-	if gethit {
-		clsn1, clsn2 = frm.Clsn1(), c.curFrame.Clsn2()
-	} else {
-		clsn1, clsn2 = frm.Clsn2(), c.curFrame.Clsn1()
+
+	// Accepted box types
+	if cbox != 1 && cbox != 2 && cbox != 3 {
+		return false
 	}
+
+	// Required boxes not found
+	if p.hitdef.p2clsnrequire == 1 && c.curFrame.Clsn1() == nil ||
+		p.hitdef.p2clsnrequire == 2 && c.curFrame.Clsn2() == nil {
+		return false
+	}
+
+	// Decide which box types should collide
+	var clsn1, clsn2 []float32
+	if c.hprojectile { // Projectiles trade with their Clsn2 only
+		clsn1 = frm.Clsn2()
+		clsn2 = c.curFrame.Clsn2()
+	} else {
+		if pbox == 2 {
+			clsn1 = frm.Clsn2()
+		} else {
+			clsn1 = frm.Clsn1()
+		}
+		if cbox == 1 {
+			clsn2 = c.curFrame.Clsn1()
+			if clsn2 == nil && p.hitdef.p2clsnrequire == 1 {
+				return false
+			}
+		} else if cbox == 3 {
+			clsn2 = c.sizeBox
+			// Size box always exists
+		} else {
+			clsn2 = c.curFrame.Clsn2()
+			if clsn2 == nil && p.hitdef.p2clsnrequire == 2 {
+				return false
+			}
+		}
+	}
+
+	if clsn1 == nil || clsn2 == nil {
+		return false
+	}
+
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
 		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
@@ -6084,47 +6148,69 @@ func (c *Char) projClsnCheck(p *Projectile, gethit bool) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
 
-func (c *Char) clsnCheck(atk *Char, c1atk, c1slf bool) bool {
+func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 	// Nil anim & standby check.
-	if atk.curFrame == nil || c.curFrame == nil ||
-		c.scf(SCF_standby) || atk.scf(SCF_standby) ||
-		c.scf(SCF_disabled) && atk.scf(SCF_disabled) {
+	if c.curFrame == nil || getter.curFrame == nil ||
+		c.scf(SCF_standby) || getter.scf(SCF_standby) ||
+		c.scf(SCF_disabled) || getter.scf(SCF_disabled) {
+		return false
+	}
+
+	// Accepted box types
+	if gbox != 1 && gbox != 2 && gbox != 3 {
+		return false
+	}
+
+	// Required boxes not found
+	if c.hitdef.p2clsnrequire == 1 && getter.curFrame.Clsn1() == nil ||
+		c.hitdef.p2clsnrequire == 2 && getter.curFrame.Clsn2() == nil {
 		return false
 	}
 
 	// Z axis check.
-	if c.size.z.enable && atk.size.z.enable &&
-		((c.pos[2]-c.size.z.width)*c.localscl > (atk.pos[2]+atk.size.z.width)*atk.localscl ||
-			(c.pos[2]+c.size.z.width)*c.localscl < (atk.pos[2]-atk.size.z.width)*atk.localscl) {
+	if c.size.z.enable && getter.size.z.enable &&
+		((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
+			(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl) {
 		return false
 	}
 
+	// Decide which box types should collide
 	var clsn1, clsn2 []float32
-	if c1atk {
-		clsn1 = atk.curFrame.Clsn1()
+	if c.hprojectile && getter.hprojectile { // Projectiles trade with their Clsn2 only
+		clsn1 = c.curFrame.Clsn2()
+		clsn2 = getter.curFrame.Clsn2()
 	} else {
-		clsn1 = atk.curFrame.Clsn2()
+		if cbox == 2 {
+			clsn1 = c.curFrame.Clsn2() // For push checking
+		} else {
+			clsn1 = c.curFrame.Clsn1()
+		}
+		if gbox == 1 {
+			clsn2 = getter.curFrame.Clsn1()
+		} else if gbox == 3 {
+			clsn2 = getter.sizeBox
+		} else {
+			clsn2 = getter.curFrame.Clsn2()
+		}
 	}
-	if c1slf {
-		clsn2 = c.curFrame.Clsn1()
-	} else {
-		clsn2 = c.curFrame.Clsn2()
+
+	if clsn1 == nil || clsn2 == nil {
+		return false
 	}
-	return sys.clsnOverlap(clsn1, [...]float32{atk.clsnScale[0] * (320 / sys.chars[atk.animPN][0].localcoord), atk.clsnScale[1] * (320 / sys.chars[atk.animPN][0].localcoord)},
-		[...]float32{atk.pos[0]*atk.localscl + atk.offsetX()*atk.localscl,
-			atk.pos[1]*atk.localscl + atk.offsetY()*atk.localscl}, atk.facing,
-		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
+
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing,
+		clsn2, [...]float32{getter.clsnScale[0] * (320 / sys.chars[getter.animPN][0].localcoord), getter.clsnScale[1] * (320 / sys.chars[getter.animPN][0].localcoord)},
+		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
+			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
 }
-func (c *Char) hitCheck(e *Char) bool {
-	return c.clsnCheck(e, true, e.hitdef.reversal_attr > 0)
-}
-func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
+
+func (c *Char) attrCheck(h *HitDef, getter *Char, st StateType) bool {
 	if c.unhittableTime > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid && h.nochainid[0] == -1 {
 		return false
 	}
-	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == pid) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
+	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == getter.id) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
 		for _, nci := range h.nochainid {
 			if nci >= 0 && c.ghv.hitid == nci && c.ghv.id == h.attackerID {
 				return false
@@ -6149,20 +6235,51 @@ func (c *Char) attrCheck(h *HitDef, pid int32, st StateType) bool {
 	} else {
 		styp = int32(st)
 	}
-	// Compare attributes to invincibility from HitBy and NotHitBy
+	// HitBy and NotHitBy checks
+	// Stack parameter makes the hit happen if any HitBy slot would allow it
+	hit := true
 	for _, hb := range c.hitby {
-		if hb.time != 0 &&
-			(hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0) {
-			return false
+		if hb.time != 0 {
+			// PlayerNo and Player ID
+			if hb.playerno >= 0 && hb.playerno != getter.playerNo ||
+				hb.playerid >= 0 && hb.playerid != getter.id {
+				if hb.not {
+					hit = true
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				} else {
+					hit = false
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				}
+			}
+			// Attributes
+			if hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0 {
+				hit = false
+				if hb.stack {
+					continue
+				} else {
+					break
+				}
+			}
+			if hb.stack {
+				hit = true
+				break
+			}
 		}
 	}
-	//}
-	return true
+	return hit
 }
 
 // Check if the enemy's Hitdef should lose to the current one, if applicable
 func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, oc.id, st) {
+	if !c.attrCheck(h, oc, st) {
 		return false
 	}
 	if c.hasTargetOfHitdef(oc.id) { // If enemy's Hitdef already hit the original char
@@ -6458,7 +6575,7 @@ func (c *Char) actionRun() {
 	// Update size box according to player width and height
 	// This box will replace width and height values in some other parts of the code
 	// TODO: Make this box hittable in hit detection with some new parameter(s)
-	c.clsnSize = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
+	c.sizeBox = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
 	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
@@ -6984,13 +7101,33 @@ func (c *Char) cueDraw() {
 				mtk = true
 			} else {
 				for _, h := range c.hitby {
-					if h.time != 0 && h.flag != 0 {
-						flags &= h.flag // Combine all NotHitBy flags
+					if h.time != 0 {
+						// If carrying invincibility from previous iterations
+						if h.stack && flags != int32(ST_SCA) | int32(AT_ALL) {
+							nhbtxt = "Stacked"
+							hb = true
+							mtk = false
+							break
+						}
+						// If player-specific invincibility
+						if h.playerno >= 0 {
+							nhbtxt = "Player-specific"
+							hb = true
+							mtk = false
+							break
+						}
+						// Combine all NotHitBy flags
+						if h.flag != 0 {
+							flags &= h.flag
+						}
 					}
 				}
-				if flags != int32(ST_SCA)|int32(AT_ALL) {
-					hb = true
-					mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
+				// If not stacked and not player-specific
+				if nhbtxt == "" {
+					if flags != int32(ST_SCA) | int32(AT_ALL) {
+						hb = true
+						mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
+					}
 				}
 			}
 			if c.scf(SCF_standby) {
@@ -7009,78 +7146,80 @@ func (c *Char) cueDraw() {
 				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
 			}
 			// Add invulnerability text
-			if mtk {
-				nhbtxt = "Invincible"
-			} else if hb {
-				// Statetype
-				if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
-					if flags&int32(ST_S) == 0 {
-						nhbtxt += "S"
+			if nhbtxt == "" {
+				if mtk {
+					nhbtxt = "Invincible"
+				} else if hb {
+					// Statetype
+					if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
+						if flags&int32(ST_S) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(ST_C) == 0 {
+							nhbtxt += "C"
+						}
+						if flags&int32(ST_A) == 0 {
+							nhbtxt += "A"
+						}
+						nhbtxt += " Any"
 					}
-					if flags&int32(ST_C) == 0 {
-						nhbtxt += "C"
+					// Attack
+					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
+						if nhbtxt != "" {
+							nhbtxt += ", "
+						}
+						if flags&int32(AT_NA) == 0 {
+							nhbtxt += "N"
+						}
+						if flags&int32(AT_SA) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(AT_HA) == 0 {
+							nhbtxt += "H"
+						}
+						nhbtxt += " Atk"
 					}
-					if flags&int32(ST_A) == 0 {
-						nhbtxt += "A"
+					// Throw
+					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
+						if nhbtxt != "" {
+							nhbtxt += ", "
+						}
+						if flags&int32(AT_NT) == 0 {
+							nhbtxt += "N"
+						}
+						if flags&int32(AT_ST) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(AT_HT) == 0 {
+							nhbtxt += "H"
+						}
+						nhbtxt += " Thr"
 					}
-					nhbtxt += " Any"
-				}
-				// Attack
-				if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
-					if nhbtxt != "" {
-						nhbtxt += ", "
+					// Projectile
+					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
+						if nhbtxt != "" {
+							nhbtxt += ", "
+						}
+						if flags&int32(AT_NP) == 0 {
+							nhbtxt += "N"
+						}
+						if flags&int32(AT_SP) == 0 {
+							nhbtxt += "S"
+						}
+						if flags&int32(AT_HP) == 0 {
+							nhbtxt += "H"
+						}
+						nhbtxt += " Prj"
 					}
-					if flags&int32(AT_NA) == 0 {
-						nhbtxt += "N"
-					}
-					if flags&int32(AT_SA) == 0 {
-						nhbtxt += "S"
-					}
-					if flags&int32(AT_HA) == 0 {
-						nhbtxt += "H"
-					}
-					nhbtxt += " Atk"
-				}
-				// Throw
-				if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
-					if nhbtxt != "" {
-						nhbtxt += ", "
-					}
-					if flags&int32(AT_NT) == 0 {
-						nhbtxt += "N"
-					}
-					if flags&int32(AT_ST) == 0 {
-						nhbtxt += "S"
-					}
-					if flags&int32(AT_HT) == 0 {
-						nhbtxt += "H"
-					}
-					nhbtxt += " Thr"
-				}
-				// Projectile
-				if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
-					if nhbtxt != "" {
-						nhbtxt += ", "
-					}
-					if flags&int32(AT_NP) == 0 {
-						nhbtxt += "N"
-					}
-					if flags&int32(AT_SP) == 0 {
-						nhbtxt += "S"
-					}
-					if flags&int32(AT_HP) == 0 {
-						nhbtxt += "H"
-					}
-					nhbtxt += " Prj"
 				}
 			}
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.drawwh.Add(c.clsnSize, x, y, xs, ys)
+			sys.drawwh.Add(c.sizeBox, x, y, c.facing * c.localscl, c.localscl)
 		}
 		// Add crosshair
-		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, c.facing, 1)
+		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1)
 	}
 	// Prepare information for debug text
 	if sys.debugDraw {
@@ -8068,7 +8207,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
-					getter.projClsnCheck(p, false) {
+					getter.projClsnCheck(p, 1, 2) {
 					if getter.hitdef.p1stateno >= 0 && getter.stateChange1(getter.hitdef.p1stateno, getter.hitdef.playerNo) {
 						getter.setCtrl(false)
 					}
@@ -8090,7 +8229,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallflag)) + 1
 					}
-					if getter.projClsnCheck(p, true) {
+					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) {
 						hits := p.hits
 						if p.misstime > 0 {
 							hits = 1
@@ -8164,8 +8303,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
 					getter.loseHitTrade(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
 						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
-							c.attrCheck(h, getter.id, getter.ss.stateType) &&
-							c.hitCheck(getter)
+							c.attrCheck(h, getter, getter.ss.stateType) &&
+							c.clsnCheck(getter, 1, c.hitdef.p2clsncheck)
 					}) {
 					// Guard distance
 					if c.ss.moveType == MT_A &&
@@ -8174,7 +8313,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						getter.inguarddist = true
 					}
 					// ReversalDef connects
-					if getter.hitCheck(c) {
+					if c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
 						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
@@ -8266,24 +8405,24 @@ func (cl *CharList) pushDetection(getter *Char) {
 			continue // Stop current iteration if char won't push
 		}
 		// Pushbox vertical size and coordinates
-		ctop := (c.pos[1] + c.clsnSize[1]) * c.localscl
-		cbot := (c.pos[1] + c.clsnSize[3]) * c.localscl
-		gtop := (getter.pos[1] + getter.clsnSize[1]) * getter.localscl
-		gbot := (getter.pos[1] + getter.clsnSize[3]) * getter.localscl
+		ctop := (c.pos[1] + c.sizeBox[1]) * c.localscl
+		cbot := (c.pos[1] + c.sizeBox[3]) * c.localscl
+		gtop := (getter.pos[1] + getter.sizeBox[1]) * getter.localscl
+		gbot := (getter.pos[1] + getter.sizeBox[3]) * getter.localscl
 		if cbot >= gtop && ctop <= gbot && // Pushbox vertical overlap
 			// Z axis check
 			!(c.size.z.enable && getter.size.z.enable &&
 				((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
 					(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
 			// Normal collision check
-			cl, cr := c.clsnSize[0]*c.localscl, c.clsnSize[2]*c.localscl
+			cl, cr := c.sizeBox[0]*c.localscl, c.sizeBox[2]*c.localscl
 			if c.facing < 0 {
 				cl, cr = -cr, -cl
 			}
 			cl += c.pos[0] * c.localscl
 			cr += c.pos[0] * c.localscl
 
-			gl, gr := getter.clsnSize[0]*getter.localscl, getter.clsnSize[2]*getter.localscl
+			gl, gr := getter.sizeBox[0]*getter.localscl, getter.sizeBox[2]*getter.localscl
 			if getter.facing < 0 {
 				gl, gr = -gr, -gl
 			}
@@ -8300,7 +8439,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 			push := true
 			if !c.asf(ASF_ignoreclsn2push) {
-				push = getter.clsnCheck(c, false, false)
+				push = getter.clsnCheck(c, 2, 2)
 			}
 			// Push characters away from each other
 			if gl < cr && cl < gr && push {
