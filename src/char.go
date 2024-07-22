@@ -846,12 +846,12 @@ func (ghv *GetHitVar) addId(id, juggle int32) {
 }
 
 type HitBy struct {
-	flag        int32
-	time        int32
-	not         bool
-	playerid    int32
-	playerno    int
-	stack       bool
+	flag     int32
+	time     int32
+	not      bool
+	playerid int32
+	playerno int
+	stack    bool
 }
 
 type HitOverride struct {
@@ -2067,7 +2067,7 @@ type Char struct {
 	downHitOffset   float32
 	koEchoTime      int32
 	groundLevel     float32
-	sizeBox        []float32
+	sizeBox         []float32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -7103,7 +7103,7 @@ func (c *Char) cueDraw() {
 				for _, h := range c.hitby {
 					if h.time != 0 {
 						// If carrying invincibility from previous iterations
-						if h.stack && flags != int32(ST_SCA) | int32(AT_ALL) {
+						if h.stack && flags != int32(ST_SCA)|int32(AT_ALL) {
 							nhbtxt = "Stacked"
 							hb = true
 							mtk = false
@@ -7124,7 +7124,7 @@ func (c *Char) cueDraw() {
 				}
 				// If not stacked and not player-specific
 				if nhbtxt == "" {
-					if flags != int32(ST_SCA) | int32(AT_ALL) {
+					if flags != int32(ST_SCA)|int32(AT_ALL) {
 						hb = true
 						mtk = flags&int32(ST_SCA) == 0 || flags&int32(AT_ALL) == 0
 					}
@@ -7216,7 +7216,7 @@ func (c *Char) cueDraw() {
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.drawwh.Add(c.sizeBox, x, y, c.facing * c.localscl, c.localscl)
+			sys.drawwh.Add(c.sizeBox, x, y, c.facing*c.localscl, c.localscl)
 		}
 		// Add crosshair
 		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1)
