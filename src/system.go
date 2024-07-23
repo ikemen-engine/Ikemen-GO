@@ -119,7 +119,7 @@ type System struct {
 	turnsRecoveryRate       float32
 	debugFont               *TextSprite
 	debugDraw               bool
-	debugRef                [3]int // player number, helper index, player index
+	debugRef                [2]int // player number, helper index
 	soundMixer              *beep.Mixer
 	bgm                     Bgm
 	soundChannels           *SoundChannels
@@ -829,6 +829,9 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 }
 func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32,
 	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32) bool {
+	if clsn1 == nil || clsn2 == nil {
+		return false
+	}
 	if scl1[0] < 0 {
 		facing1 *= -1
 		scl1[0] *= -1
@@ -1059,7 +1062,6 @@ func (s *System) nextRound() {
 				}
 			}
 			s.cgi[i].clearPCTime()
-			s.cgi[i].unhittable = 0
 		}
 	}
 	for _, p := range s.chars {
@@ -1194,11 +1196,11 @@ func (s *System) charUpdate() {
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id >= 0 {
-					s.projs[i][j].clsn(i)
+					s.projs[i][j].tradeDetection(i)
 				}
 			}
 		}
-		s.charList.hitDetection()
+		s.charList.collisionDetection()
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id != IErr {
@@ -1469,7 +1471,7 @@ func (s *System) action() {
 					}
 					for _, p := range s.chars {
 						if len(p) > 0 {
-							//default life recovery, used only if externalized Lua implementaion is disabled
+							//default life recovery, used only if externalized Lua implementation is disabled
 							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p[0].win() &&
 								p[0].alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
@@ -1804,6 +1806,7 @@ func (s *System) drawTop() {
 		fade(rect, s.lifebar.ro.shutter_col, 255)
 	}
 	s.brightness = s.brightnessOld
+	// Draw Clsn boxes
 	if s.clsnDraw {
 		s.clsnSpr.Pal[0] = 0xff0000ff
 		s.drawc1hit.draw(0x3feff)
@@ -1827,7 +1830,7 @@ func (s *System) drawTop() {
 		s.drawch.draw(0x3feff)
 	}
 }
-func (s *System) drawDebug() {
+func (s *System) drawDebugText() {
 	put := func(x, y *float32, txt string) {
 		for txt != "" {
 			w, drawTxt := int32(0), ""
@@ -1848,7 +1851,7 @@ func (s *System) drawDebug() {
 		}
 	}
 	if s.debugDraw {
-		//Player Info
+		// Player Info on top of screen
 		x := (320-float32(s.gameWidth))/2 + 1
 		y := 240 - float32(s.gameHeight)
 		if s.statusLFunc != nil {
@@ -1867,13 +1870,15 @@ func (s *System) drawDebug() {
 				}
 			}
 		}
-		//Console
+		// Console
 		y = MaxF(y, 48+240-float32(s.gameHeight))
 		s.debugFont.SetColor(255, 255, 255)
 		for _, s := range s.consoleText {
 			put(&x, &y, s)
 		}
-		//Data
+		// Data
+		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
+			(float32(len(s.listLFunc))+float32(s.clipboardRows)) - 1*s.heightScale
 		pn := s.debugRef[0]
 		hn := s.debugRef[1]
 		if pn >= len(s.chars) || hn >= len(s.chars[pn]) {
@@ -1881,8 +1886,6 @@ func (s *System) drawDebug() {
 			s.debugRef[1] = 0
 		}
 		s.debugWC = s.chars[s.debugRef[0]][s.debugRef[1]]
-		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
-			(float32(len(s.listLFunc))+float32(s.clipboardRows)) - 1*s.heightScale
 		for i, f := range s.listLFunc {
 			if f != nil {
 				if i == 1 {
@@ -1908,21 +1911,22 @@ func (s *System) drawDebug() {
 				s.luaLState.SetTop(top)
 			}
 		}
-		//Clipboard
+		// Clipboard
 		s.debugFont.SetColor(255, 255, 255)
 		for _, s := range s.debugWC.clipboardText {
 			put(&x, &y, s)
 		}
 	}
-	//Clsn
-	if s.clsnDraw {
-		for _, t := range s.clsnText {
-			s.debugFont.SetColor(t.r, t.g, t.b)
-			s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
-				s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba)
-		}
+	// Draw Clsn text
+	// Unlike Mugen, this is drawn separately from the Clsn boxes themselves, making debug more flexible
+	//if s.clsnDraw {
+	for _, t := range s.clsnText {
+		s.debugFont.SetColor(t.r, t.g, t.b)
+		s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
+			s.debugFont.yscl/s.heightScale, 0, 0, &s.scrrect,
+			s.debugFont.palfx, s.debugFont.frgba)
 	}
+	//}
 }
 
 // Starts and runs gameplay
@@ -2368,8 +2372,8 @@ func (s *System) fight() (reload bool) {
 			}
 		}
 		// Render debug elements
-		if !s.frameSkip {
-			s.drawDebug()
+		if !s.frameSkip && s.debugDraw {
+			s.drawDebugText()
 		}
 		// Break if finished
 		if fin && (!s.postMatchFlg || len(sys.commonLua) == 0) {

@@ -189,7 +189,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 
 	f, err := os.Open(bgm.filename)
 	if err != nil {
-		sys.bgm = *newBgm()
+		// sys.bgm = *newBgm() // removing this gets pause step playsnd to work correctly 100% of the time
 		sys.errLog.Printf("Failed to open bgm: %v", err)
 		return
 	}

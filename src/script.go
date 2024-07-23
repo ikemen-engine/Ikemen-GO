@@ -921,7 +921,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 			winp := int32(0)
 			p := make([]*Char, len(sys.chars))
-			sys.debugRef = [3]int{}
+			sys.debugRef = [2]int{}
 			sys.roundsExisted = [2]int32{}
 			sys.matchWins = [2]int32{}
 
@@ -2556,16 +2556,22 @@ func systemScriptInit(l *lua.LState) {
 		if !sys.debugDraw {
 			sys.debugDraw = true
 		} else {
-			idx := sys.debugRef[2] + 1
-			if idx >= len(sys.charList.runOrder) {
+			idx := 0
+			// Find index of current debug player
+			for i := 0; i < len(sys.charList.runOrder); i++ {
+				ro := sys.charList.runOrder[i]
+				if ro.playerNo == sys.debugRef[0] && ro.helperIndex == int32(sys.debugRef[1]) {
+					idx = i + 1 // Then check the next one
+					break
+				}
+			}
+			if idx == 0 || idx >= len(sys.charList.runOrder) {
 				sys.debugRef[0] = 0
 				sys.debugRef[1] = 0
-				sys.debugRef[2] = 0
 				sys.debugDraw = false
 			} else {
 				sys.debugRef[0] = sys.charList.runOrder[idx].playerNo
 				sys.debugRef[1] = int(sys.charList.runOrder[idx].helperIndex)
-				sys.debugRef[2] = idx
 			}
 		}
 		return 0
@@ -3318,7 +3324,7 @@ func triggerFunctions(l *lua.LState) {
 		case "isbound":
 			ln = lua.LNumber(Btoi(c.isBound()))
 		case "fall":
-			ln = lua.LNumber(Btoi(c.ghv.fallf))
+			ln = lua.LNumber(Btoi(c.ghv.fallflag))
 		case "fall.damage":
 			ln = lua.LNumber(c.ghv.fall.damage)
 		case "fall.xvel":
@@ -3510,7 +3516,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "hitfall", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.ghv.fallf))
+		l.Push(lua.LBool(sys.debugWC.ghv.fallflag))
 		return 1
 	})
 	luaRegister(l, "hitover", func(*lua.LState) int {
@@ -4570,7 +4576,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "isasserted", func(*lua.LState) int {
 		switch strArg(l, 1) {
-		// CharSpecialFlag
+		// AssertSpecialFlag
 		case "nostandguard":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nostandguard)))
 		case "nocrouchguard":
@@ -4617,8 +4623,6 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nopowerbardisplay)))
 		case "autoguard":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_autoguard)))
-		case "animatehitpause":
-			l.Push(lua.LBool(sys.debugWC.asf(ASF_animatehitpause)))
 		case "animfreeze":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_animfreeze)))
 		case "postroundinput":
@@ -4649,6 +4653,10 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_ignoreclsn2push)))
 		case "immovable":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
+		case "animatehitpause":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_animatehitpause)))
+		case "cornerpriority":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_cornerpriority)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))
@@ -4671,7 +4679,7 @@ func triggerFunctions(l *lua.LState) {
 		case "nokoslow":
 			l.Push(lua.LBool(sys.gsf(GSF_nokoslow)))
 		case "globalnoko":
-			l.Push(lua.LBool(sys.gsf(GSF_noko)))
+			l.Push(lua.LBool(sys.gsf(GSF_globalnoko)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.gsf(GSF_roundnotskip)))
 		case "roundfreeze":

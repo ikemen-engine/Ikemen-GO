@@ -422,12 +422,8 @@ func (r *Renderer) EndFrame() {
 	}
 
 	x, y, resizedWidth, resizedHeight := sys.window.GetScaledViewportSize()
-	gl.Viewport(x, y, resizedWidth, resizedHeight)
-	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-
 	postShader := r.postShaderSelect[sys.postProcessingShader]
 
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 	gl.UseProgram(postShader.program)
 	gl.Disable(gl.BLEND)
 
@@ -445,10 +441,20 @@ func (r *Renderer) EndFrame() {
 	loc := r.modelShader.a["VertCoord"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
+	gl.Finish()
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-
 	gl.DisableVertexAttribArray(uint32(loc))
+
+	// resize viewport and scale finished frame to window
+	gl.Viewport(x, y, resizedWidth, resizedHeight)
+	if sys.multisampleAntialiasing {
+		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_f_texture.handle)
+	} else {
+		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_texture)
+	}
+	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+	gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], x, y, x+resizedWidth, y+resizedHeight, gl.COLOR_BUFFER_BIT, gl.LINEAR)
 }
 
 func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
