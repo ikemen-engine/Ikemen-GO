@@ -1377,7 +1377,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{(facing * scale[0]) * e.localscl,
 		(e.vfacing * scale[1]) * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
-		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
+		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 
 		//if e.space == Space_screen && e.bindtime == 0 {
@@ -6895,6 +6895,9 @@ func (c *Char) update() {
 	}
 }
 func (c *Char) tick() {
+	if c.scf(SCF_disabled) {
+		return
+	}
 	if c.acttmp > 0 || (!c.pauseBool && c.hitPause() && c.asf(ASF_animatehitpause)) {
 		if c.anim != nil && !c.asf(ASF_animfreeze) {
 			c.anim.Action()
@@ -7544,8 +7547,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			c.mhv.uniqhit = int32(len(c.hitdefTargets))
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.csf(CSF_gethit)
-		// This flag determines if juggle points will be subtracted further down
-		jchk := getter.ghv.fallflag
 		// Variables that are set even if Hitdef type is "None"
 		if ghvset {
 			if !proj {
@@ -8083,14 +8084,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				c.setCtrl(false)
 			}
 			// Juggle points are subtracted if the target was falling either before or after the hit
-			jchk = jchk || getter.ghv.fallflag
-			if jchk && !c.asf(ASF_nojugglecheck) {
-				jug := &getter.ghv.hitBy[len(getter.ghv.hitBy)-1][1]
-				if proj {
-					*jug -= hd.air_juggle
-				} else {
-					*jug -= c.juggle
+			if getter.ghv.fallflag {
+				if !c.asf(ASF_nojugglecheck) {
+					jug := &getter.ghv.hitBy[len(getter.ghv.hitBy)-1][1]
+					if proj {
+						*jug -= hd.air_juggle
+					} else {
+						*jug -= c.juggle
+					}
 				}
+				// Juggle cost is reset regardless of NoJuggleCheck
+				// https://github.com/ikemen-engine/Ikemen-GO/issues/1905
 				c.juggle = 0
 			}
 			if hd.palfx.time > 0 && getter.palfx != nil {
