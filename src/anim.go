@@ -678,15 +678,18 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	if rot.IsZero() {
 		if xs < 0 {
 			x *= -1
-			if old {
-				x += xs
-			}
+			// This was deliberately replicating a Mugen bug, but we don't need that
+			// TODO: Maybe we don't need all these "old" arguments in the functions anymore
+			//if old {
+			//	x += xs
+			//}
 		}
 		if ys < 0 {
 			y *= -1
-			if old {
-				y += ys
-			}
+			// This was deliberately replicating a Mugen bug, but we don't need that
+			//if old {
+			//	y += ys
+			//}
 		}
 		if a.tile.x == 1 {
 			tmp := xs * float32(a.tile.sx)
