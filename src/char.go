@@ -95,6 +95,8 @@ const (
 	ASF_ignoreclsn2push
 	ASF_animatehitpause
 	ASF_cornerpriority
+	ASF_drawontop
+	ASF_drawunder
 )
 
 type GlobalSpecialFlag uint32
@@ -7285,6 +7287,12 @@ func (c *Char) cueDraw() {
 		if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
 			sd.pos[0] -= c.facing
 		}
+		sprs := &sys.sprites
+		if c.asf(ASF_drawontop) {
+			sprs = &sys.topSprites
+		} else if c.asf(ASF_drawunder) {
+			sprs = &sys.bottomSprites
+		}
 		if !c.asf(ASF_invisible) {
 			var sc, sa int32 = -1, 255
 			if c.asf(ASF_noshadow) {
@@ -7293,7 +7301,7 @@ func (c *Char) cueDraw() {
 			if c.csf(CSF_trans) {
 				sa = 255 - c.alpha[1]
 			}
-			sys.sprites.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
+			sprs.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
 		}
 	}
 	if sys.tickNextFrame() {

@@ -188,7 +188,6 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokosnd)))
 			case "nomusic":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nomusic)))
-
 			case "roundnotover":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotover)))
 			case "timerfreeze":
@@ -254,6 +253,10 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
 			case "cornerpriority":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_cornerpriority)))
+			case "drawontop":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_drawontop)))
+			case "drawunder":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_drawunder)))
 			// Ikemen global flags
 			case "globalnoko":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoko)))
@@ -5167,14 +5170,19 @@ func (c *Compiler) assertCommand(is IniSection, sc *StateControllerBase, _ int8)
 			assertCommand_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		havename := false
 		if err := c.stateParam(is, "name", func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Not enclosed in \"")
 			}
 			sc.add(assertCommand_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			havename = true
 			return nil
 		}); err != nil {
 			return err
+		}
+		if !havename {
+			return Error("Command name not specified")
 		}
 		if err := c.paramValue(is, sc, "buffertime",
 			assertCommand_buffertime, VT_Int, 1, false); err != nil {
