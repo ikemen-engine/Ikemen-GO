@@ -367,6 +367,7 @@ const (
 	OC_const_stagevar_camera_yscrollspeed
 	OC_const_stagevar_camera_ytension_enable
 	OC_const_stagevar_camera_autocenter
+	OC_const_stagevar_camera_lowestcap
 	OC_const_stagevar_playerinfo_leftbound
 	OC_const_stagevar_playerinfo_rightbound
 	OC_const_stagevar_scaling_topscale
@@ -1944,6 +1945,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_const_stagevar_camera_autocenter:
+		sys.bcStack.PushB(sys.stage.stageCamera.autocenter)
 	case OC_const_stagevar_camera_boundleft:
 		sys.bcStack.PushI(sys.stage.stageCamera.boundleft)
 	case OC_const_stagevar_camera_boundright:
@@ -1952,18 +1955,20 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.stage.stageCamera.boundhigh)
 	case OC_const_stagevar_camera_boundlow:
 		sys.bcStack.PushI(sys.stage.stageCamera.boundlow)
-	case OC_const_stagevar_camera_verticalfollow:
-		sys.bcStack.PushF(sys.stage.stageCamera.verticalfollow)
 	case OC_const_stagevar_camera_floortension:
 		sys.bcStack.PushI(sys.stage.stageCamera.floortension)
+	case OC_const_stagevar_camera_lowestcap:
+		sys.bcStack.PushB(sys.stage.stageCamera.lowestcap)
+	case OC_const_stagevar_camera_tension:
+		sys.bcStack.PushI(sys.stage.stageCamera.tension)
 	case OC_const_stagevar_camera_tensionhigh:
 		sys.bcStack.PushI(sys.stage.stageCamera.tensionhigh)
 	case OC_const_stagevar_camera_tensionlow:
 		sys.bcStack.PushI(sys.stage.stageCamera.tensionlow)
-	case OC_const_stagevar_camera_tension:
-		sys.bcStack.PushI(sys.stage.stageCamera.tension)
 	case OC_const_stagevar_camera_startzoom:
 		sys.bcStack.PushF(sys.stage.stageCamera.startzoom)
+	case OC_const_stagevar_camera_verticalfollow:
+		sys.bcStack.PushF(sys.stage.stageCamera.verticalfollow)
 	case OC_const_stagevar_camera_zoomout:
 		sys.bcStack.PushF(sys.stage.stageCamera.zoomout)
 	case OC_const_stagevar_camera_zoomin:
@@ -9665,6 +9670,7 @@ const (
 	modifyStageVar_camera_yscrollspeed
 	modifyStageVar_camera_ytension_enable
 	modifyStageVar_camera_autocenter
+	modifyStageVar_camera_lowestcap
 	modifyStageVar_playerinfo_leftbound
 	modifyStageVar_playerinfo_rightbound
 	modifyStageVar_scaling_topscale
@@ -9702,6 +9708,8 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.stageCamera.verticalfollow = exp[0].evalF(c)
 		case modifyStageVar_camera_floortension:
 			s.stageCamera.floortension = exp[0].evalI(c)
+		case modifyStageVar_camera_lowestcap:
+			s.stageCamera.lowestcap = exp[0].evalB(c)
 		case modifyStageVar_camera_tensionhigh:
 			s.stageCamera.tensionhigh = exp[0].evalI(c)
 		case modifyStageVar_camera_tensionlow:

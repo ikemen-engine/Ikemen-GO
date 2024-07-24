@@ -19,34 +19,58 @@ const (
 	CK_D
 	CK_F
 	CK_U
+	CK_L
+	CK_R
 	CK_DB
 	CK_UB
 	CK_DF
 	CK_UF
-	CK_rB // r stands for release (~)
-	CK_rD
-	CK_rF
-	CK_rU
-	CK_rDB
-	CK_rUB
-	CK_rDF
-	CK_rUF
+	CK_DL
+	CK_UL
+	CK_DR
+	CK_UR
 	CK_Bs // s stands for sign ($)
 	CK_Ds
 	CK_Fs
 	CK_Us
+	CK_Ls
+	CK_Rs
 	CK_DBs
 	CK_UBs
 	CK_DFs
 	CK_UFs
+	CK_DLs
+	CK_ULs
+	CK_DRs
+	CK_URs
+	CK_rB // r stands for release (~)
+	CK_rD
+	CK_rF
+	CK_rU
+	CK_rL
+	CK_rR
+	CK_rDB
+	CK_rUB
+	CK_rDF
+	CK_rUF
+	CK_rDL
+	CK_rUL
+	CK_rDR
+	CK_rUR
 	CK_rBs
 	CK_rDs
 	CK_rFs
 	CK_rUs
+	CK_rLs
+	CK_rRs
 	CK_rDBs
 	CK_rUBs
 	CK_rDFs
 	CK_rUFs
+	CK_rDLs
+	CK_rULs
+	CK_rDRs
+	CK_rURs
 	CK_a
 	CK_b
 	CK_c
@@ -69,6 +93,22 @@ const (
 	CK_rm
 	CK_Last = CK_rm
 )
+
+func (ck CommandKey) IsDirectionPress() bool {
+	return ck >= CK_B && ck <= CK_URs
+}
+
+func (ck CommandKey) IsDirectionRelease() bool {
+	return ck >= CK_rB && ck <= CK_rURs
+}
+
+func (ck CommandKey) IsButtonPress() bool {
+	return ck >= CK_a && ck <= CK_m
+}
+
+func (ck CommandKey) IsButtonRelease() bool {
+	return ck >= CK_ra && ck <= CK_rm
+}
 
 type NetState int
 
@@ -325,23 +365,23 @@ func (ir *InputReader) LocalInput(in int) (bool, bool, bool, bool, bool, bool, b
 	if in < len(sys.joystickConfig) {
 		joyS := sys.joystickConfig[in].Joy
 		if joyS >= 0 {
-			U = sys.joystickConfig[in].U() || U // Does not override keyboard
-			D = sys.joystickConfig[in].D() || D
-			L = sys.joystickConfig[in].L() || L
-			R = sys.joystickConfig[in].R() || R
-			a = sys.joystickConfig[in].a() || a
-			b = sys.joystickConfig[in].b() || b
-			c = sys.joystickConfig[in].c() || c
-			x = sys.joystickConfig[in].x() || x
-			y = sys.joystickConfig[in].y() || y
-			z = sys.joystickConfig[in].z() || z
-			s = sys.joystickConfig[in].s() || s
-			d = sys.joystickConfig[in].d() || d
-			w = sys.joystickConfig[in].w() || w
-			m = sys.joystickConfig[in].m() || m
+			U = U || sys.joystickConfig[in].U() // Does not override keyboard
+			D = D || sys.joystickConfig[in].D()
+			L = L || sys.joystickConfig[in].L()
+			R = R || sys.joystickConfig[in].R()
+			a = a || sys.joystickConfig[in].a()
+			b = b || sys.joystickConfig[in].b()
+			c = c || sys.joystickConfig[in].c()
+			x = x || sys.joystickConfig[in].x()
+			y = y || sys.joystickConfig[in].y()
+			z = z || sys.joystickConfig[in].z()
+			s = s || sys.joystickConfig[in].s()
+			d = d || sys.joystickConfig[in].d()
+			w = w || sys.joystickConfig[in].w()
+			m = m || sys.joystickConfig[in].m()
 		}
 	}
-	// Button assist is checked locally so the sent inputs are already processed
+	// Button assist is checked locally so that the sent inputs are already processed
 	if sys.inputButtonAssist {
 		a, b, c, x, y, z, s, d, w = ir.ButtonAssistCheck(a, b, c, x, y, z, s, d, w)
 	}
@@ -349,6 +389,7 @@ func (ir *InputReader) LocalInput(in int) (bool, bool, bool, bool, bool, bool, b
 }
 
 // Resolve Simultaneous Opposing Cardinal Directions
+// Left and Right are solved in CommandList Input
 func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) {
 	// Absolute priority SOCD resolution is enforced during netplay
 	if sys.netInput != nil || sys.fileInput != nil {
@@ -637,6 +678,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return Min(-Max(__.Db, __.Ub), __.Fb)
 	case CK_U:
 		return Min(-Max(__.Bb, __.Fb), __.Ub)
+	case CK_L:
+		return Min(-Max(__.Db, __.Ub), __.Lb)
+	case CK_R:
+		return Min(-Max(__.Db, __.Ub), __.Rb)
 	case CK_DB:
 		return Min(__.Db, __.Bb)
 	case CK_UB:
@@ -645,6 +690,14 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return Min(__.Db, __.Fb)
 	case CK_UF:
 		return Min(__.Ub, __.Fb)
+	case CK_DL:
+		return Min(__.Db, __.Lb)
+	case CK_UL:
+		return Min(__.Ub, __.Lb)
+	case CK_DR:
+		return Min(__.Db, __.Rb)
+	case CK_UR:
+		return Min(__.Ub, __.Rb)
 	case CK_Bs:
 		return __.Bb
 	case CK_Ds:
@@ -653,6 +706,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return __.Fb
 	case CK_Us:
 		return __.Ub
+	case CK_Ls:
+		return __.Lb
+	case CK_Rs:
+		return __.Rb
 	case CK_DBs:
 		return Min(__.Db, __.Bb)
 	case CK_UBs:
@@ -661,6 +718,14 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return Min(__.Db, __.Fb)
 	case CK_UFs:
 		return Min(__.Ub, __.Fb)
+	case CK_DLs:
+		return Min(__.Db, __.Lb)
+	case CK_ULs:
+		return Min(__.Ub, __.Lb)
+	case CK_DRs:
+		return Min(__.Db, __.Rb)
+	case CK_URs:
+		return Min(__.Ub, __.Rb)
 	case CK_a:
 		return __.ab
 	case CK_b:
@@ -689,6 +754,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return -Min(-Max(__.Db, __.Ub), __.Fb)
 	case CK_rU:
 		return -Min(-Max(__.Bb, __.Fb), __.Ub)
+	case CK_rL:
+		return -Min(-Max(__.Db, __.Ub), __.Lb)
+	case CK_rR:
+		return -Min(-Max(__.Db, __.Ub), __.Rb)
 	case CK_rDB:
 		return -Min(__.Db, __.Bb)
 	case CK_rUB:
@@ -697,6 +766,14 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return -Min(__.Db, __.Fb)
 	case CK_rUF:
 		return -Min(__.Ub, __.Fb)
+	case CK_rDL:
+		return -Min(__.Db, __.Lb)
+	case CK_rUL:
+		return -Min(__.Ub, __.Lb)
+	case CK_rDR:
+		return -Min(__.Db, __.Rb)
+	case CK_rUR:
+		return -Min(__.Ub, __.Rb)
 	case CK_rBs:
 		return -__.Bb
 	case CK_rDs:
@@ -705,6 +782,10 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return -__.Fb
 	case CK_rUs:
 		return -__.Ub
+	case CK_rLs:
+		return -__.Lb
+	case CK_rRs:
+		return -__.Rb
 	case CK_rDBs:
 		return -Min(__.Db, __.Bb)
 	case CK_rUBs:
@@ -713,6 +794,14 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return -Min(__.Db, __.Fb)
 	case CK_rUFs:
 		return -Min(__.Ub, __.Fb)
+	case CK_rDLs:
+		return -Min(__.Db, __.Lb)
+	case CK_rULs:
+		return -Min(__.Ub, __.Lb)
+	case CK_rDRs:
+		return -Min(__.Db, __.Rb)
+	case CK_rURs:
+		return -Min(__.Ub, __.Rb)
 	case CK_ra:
 		return -__.ab
 	case CK_rb:
@@ -771,6 +860,16 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 			return __.Ub
 		}
 		return Min(Abs(__.Ub), Abs(__.Bb), Abs(__.Fb))
+	case CK_Ls:
+		if __.Lb < 0 {
+			return __.Lb
+		}
+		return Min(Abs(__.Lb), Abs(__.Db), Abs(__.Ub))
+	case CK_Rs:
+		if __.Rb < 0 {
+			return __.Rb
+		}
+		return Min(Abs(__.Rb), Abs(__.Db), Abs(__.Ub))
 	//MUGENだと斜め入力に$を入れても意味がない
 	// "In MUGEN, adding '$' to diagonal inputs doesn't have any meaning."
 	//case CK_DBs:
@@ -801,6 +900,10 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
+	case CK_rLs:
+		return f(__.State(CK_L), __.State(CK_UL), __.State(CK_DL))
+	case CK_rRs:
+		return f(__.State(CK_R), __.State(CK_DR), __.State(CK_UR))
 		//case CK_rDBs:
 		//	return f(__.State(CK_DB), __.State(CK_D), __.State(CK_B))
 		//case CK_rUBs:
@@ -815,7 +918,7 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 
 // Time since last directional input was received
 func (__ *CommandBuffer) LastDirectionTime() int32 {
-	return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Fb), Abs(__.Ub))
+	return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Fb), Abs(__.Ub), Abs(__.Lb), Abs(__.Rb))
 }
 
 // Time since last input was received. Used for ">" type commands
@@ -1216,21 +1319,22 @@ type AiInput struct {
 	dir, dirt, at, bt, ct, xt, yt, zt, st, dt, wt, mt int32
 }
 
+// AI button jamming
 func (ai *AiInput) Update(level float32) {
-	// Disable AI button jamming
+	// Not during intros and win poses
 	if sys.intro != 0 {
 		ai.dirt, ai.at, ai.bt, ai.ct = 0, 0, 0, 0
 		ai.xt, ai.yt, ai.zt, ai.st = 0, 0, 0, 0
 		ai.dt, ai.wt, ai.mt = 0, 0, 0
 		return
 	}
-	var osu, hanasu int32 = 15, 60
-	dec := func(t *int32) bool {
+	var chance, time int32 = 15, 60
+	jam := func(t *int32) bool {
 		(*t)--
 		if *t <= 0 {
 			// TODO: Balance AI Scaling
-			if Rand(1, osu) == 1 {
-				*t = Rand(1, hanasu)
+			if Rand(1, chance) == 1 {
+				*t = Rand(1, time)
 				return true
 			}
 			*t = 0
@@ -1238,79 +1342,38 @@ func (ai *AiInput) Update(level float32) {
 		return false
 	}
 	// Pick a random direction to press
-	if dec(&ai.dirt) {
+	if jam(&ai.dirt) {
 		ai.dir = Rand(0, 7)
 	}
-	osu, hanasu = int32((-11.25*level+165)*7), 30
-	dec(&ai.at)
-	dec(&ai.bt)
-	dec(&ai.ct)
-	dec(&ai.xt)
-	dec(&ai.yt)
-	dec(&ai.zt)
-	dec(&ai.dt)
-	dec(&ai.wt)
-	osu = 3600
-	dec(&ai.st)
-	//dec(&ai.mt) // We don't need the AI to jam the menu button
+	chance, time = int32((-11.25*level+165)*7), 30
+	jam(&ai.at)
+	jam(&ai.bt)
+	jam(&ai.ct)
+	jam(&ai.xt)
+	jam(&ai.yt)
+	jam(&ai.zt)
+	jam(&ai.dt)
+	jam(&ai.wt)
+	chance = 3600 // Start is jammed less often
+	jam(&ai.st)
+	//jam(&ai.mt) // We really don't need the AI to jam the menu button
 }
 
 // 0 = U, 1 = UR, 2 = R, 3 = DR, 4 = D, 5 = DL, 6 = L, 7 = UL
-func (ai *AiInput) L() bool {
-	return ai.dirt != 0 && (ai.dir == 5 || ai.dir == 6 || ai.dir == 7)
-}
-
-func (ai *AiInput) R() bool {
-	return ai.dirt != 0 && (ai.dir == 1 || ai.dir == 2 || ai.dir == 3)
-}
-
-func (ai *AiInput) U() bool {
-	return ai.dirt != 0 && (ai.dir == 7 || ai.dir == 0 || ai.dir == 1)
-}
-
-func (ai *AiInput) D() bool {
-	return ai.dirt != 0 && (ai.dir == 3 || ai.dir == 4 || ai.dir == 5)
-}
-
-func (ai *AiInput) a() bool {
-	return ai.at != 0
-}
-
-func (ai *AiInput) b() bool {
-	return ai.bt != 0
-}
-
-func (ai *AiInput) c() bool {
-	return ai.ct != 0
-}
-
-func (ai *AiInput) x() bool {
-	return ai.xt != 0
-}
-
-func (ai *AiInput) y() bool {
-	return ai.yt != 0
-}
-
-func (ai *AiInput) z() bool {
-	return ai.zt != 0
-}
-
-func (ai *AiInput) s() bool {
-	return ai.st != 0
-}
-
-func (ai *AiInput) d() bool {
-	return ai.dt != 0
-}
-
-func (ai *AiInput) w() bool {
-	return ai.wt != 0
-}
-
-func (ai *AiInput) m() bool {
-	return ai.mt != 0
-}
+func (ai *AiInput) U() bool { return ai.dirt != 0 && (ai.dir == 7 || ai.dir == 0 || ai.dir == 1) }
+func (ai *AiInput) D() bool { return ai.dirt != 0 && (ai.dir == 3 || ai.dir == 4 || ai.dir == 5) }
+func (ai *AiInput) L() bool { return ai.dirt != 0 && (ai.dir == 5 || ai.dir == 6 || ai.dir == 7) }
+func (ai *AiInput) R() bool { return ai.dirt != 0 && (ai.dir == 1 || ai.dir == 2 || ai.dir == 3) }
+func (ai *AiInput) a() bool { return ai.at != 0 }
+func (ai *AiInput) b() bool { return ai.bt != 0 }
+func (ai *AiInput) c() bool { return ai.ct != 0 }
+func (ai *AiInput) x() bool { return ai.xt != 0 }
+func (ai *AiInput) y() bool { return ai.yt != 0 }
+func (ai *AiInput) z() bool { return ai.zt != 0 }
+func (ai *AiInput) s() bool { return ai.st != 0 }
+func (ai *AiInput) d() bool { return ai.dt != 0 }
+func (ai *AiInput) w() bool { return ai.wt != 0 }
+func (ai *AiInput) m() bool { return ai.mt != 0 }
 
 // cmdElem refers to each of the inputs required to complete a command
 type cmdElem struct {
@@ -1320,10 +1383,11 @@ type cmdElem struct {
 	greater    bool
 }
 
+// Used to detect consecutive directions
 func (ce *cmdElem) IsDirection() bool {
 	//ここで~は方向コマンドとして返さない
-	// "At this point, '~' is not returned as a directional command." (?)
-	return !ce.slash && len(ce.key) == 1 && ce.key[0] < CK_rBs && (ce.key[0] < CK_rB || ce.key[0] > CK_rUF)
+	// Released directions are not taken into account here
+	return !ce.slash && len(ce.key) == 1 && ce.key[0].IsDirectionPress()
 }
 
 // Check if two command elements can be checked in the same frame
@@ -1334,7 +1398,7 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 	// This logic seems more complex in Mugen because of variable input delay
 	// Not if first element includes button press or release
 	for _, k := range ce.key {
-		if k >= CK_a {
+		if k.IsButtonPress() || k.IsButtonRelease() {
 			return false
 		}
 	}
@@ -1349,16 +1413,16 @@ func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
 	// Yes if second element includes a button press
 	for range ce.key {
 		for _, n := range next.key {
-			if n >= CK_a && n < CK_ra {
+			if n.IsButtonPress() {
 				return true
 			}
 		}
 	}
 	// Yes if release direction then not release direction (includes buttons)
 	for _, k := range ce.key {
-		if k >= CK_rB && k <= CK_rUF || k >= CK_rBs && k <= CK_rUFs {
+		if k.IsDirectionRelease() {
 			for _, n := range next.key {
-				if (n < CK_rB || n > CK_rUF) && (n < CK_rBs || n > CK_rUFs) {
+				if !n.IsDirectionRelease() {
 					return true
 				}
 			}
@@ -1460,6 +1524,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					} else {
 						ce.key = append(ce.key, CK_DF)
 					}
+				} else if len(cestr) > 1 && cestr[1] == 'L' {
+					nextChar()
+					if tilde {
+						ce.key = append(ce.key, CK_rDL)
+					} else {
+						ce.key = append(ce.key, CK_DL)
+					}
+				} else if len(cestr) > 1 && cestr[1] == 'R' {
+					nextChar()
+					if tilde {
+						ce.key = append(ce.key, CK_rDR)
+					} else {
+						ce.key = append(ce.key, CK_DR)
+					}
 				} else {
 					if tilde {
 						ce.key = append(ce.key, CK_rD)
@@ -1490,12 +1568,40 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 					} else {
 						ce.key = append(ce.key, CK_UF)
 					}
+				} else if len(cestr) > 1 && cestr[1] == 'L' {
+					nextChar()
+					if tilde {
+						ce.key = append(ce.key, CK_rUL)
+					} else {
+						ce.key = append(ce.key, CK_UL)
+					}
+				} else if len(cestr) > 1 && cestr[1] == 'R' {
+					nextChar()
+					if tilde {
+						ce.key = append(ce.key, CK_rUR)
+					} else {
+						ce.key = append(ce.key, CK_UR)
+					}
 				} else {
 					if tilde {
 						ce.key = append(ce.key, CK_rU)
 					} else {
 						ce.key = append(ce.key, CK_U)
 					}
+				}
+				tilde = false
+			case 'L':
+				if tilde {
+					ce.key = append(ce.key, CK_rL)
+				} else {
+					ce.key = append(ce.key, CK_L)
+				}
+				tilde = false
+			case 'R':
+				if tilde {
+					ce.key = append(ce.key, CK_rR)
+				} else {
+					ce.key = append(ce.key, CK_R)
 				}
 				tilde = false
 			case 'a':
@@ -1630,6 +1736,20 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 						}
 					}
 					tilde = false
+				case 'L':
+					if tilde {
+						ce.key = append(ce.key, CK_rLs)
+					} else {
+						ce.key = append(ce.key, CK_Ls)
+					}
+					tilde = false
+				case 'R':
+					if tilde {
+						ce.key = append(ce.key, CK_rRs)
+					} else {
+						ce.key = append(ce.key, CK_Rs)
+					}
+					tilde = false
 				default:
 					// error
 					continue
@@ -1710,15 +1830,15 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 				if len(c.cmd[c.cmdi-1].key) != 1 {
 					return false
 				}
-				if CK_a <= c.cmd[c.cmdi-1].key[0] && c.cmd[c.cmdi-1].key[0] <= CK_s {
+				if c.cmd[c.cmdi-1].key[0].IsButtonPress() {
 					ks := cbuf.State(c.cmd[c.cmdi-1].key[0])
-					if 0 < ks && ks <= cbuf.LastDirectionTime() {
+					if ks > 0 && ks <= cbuf.LastDirectionTime() {
 						return true
 					}
 				}
 			} else if len(c.cmd[c.cmdi-1].key) > 1 {
 				for _, k := range c.cmd[c.cmdi-1].key {
-					if CK_a <= k && k <= CK_s && cbuf.State(k) > 0 {
+					if k >= CK_a && k <= CK_s && cbuf.State(k) > 0 {
 						return false
 					}
 				}
@@ -1794,6 +1914,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 	return true
 }
 
+// Update an individual command
 func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	if !hitpause && c.curbuftime > 0 {
 		c.curbuftime--
@@ -1833,6 +1954,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 }
 
 // Command List refers to the entire set of a character's commands
+// Each player has multiple lists: one with its own commands, and a copy of each other player's lists
 type CommandList struct {
 	Buffer            *CommandBuffer
 	Names             map[string]int
@@ -1909,29 +2031,29 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 		// AssertInput Flags (no assists, can override SOCD)
 		// Does not currently work over netplay because flags are stored at the character level rather than system level
 		if ib > 0 {
-			U = ib&IB_PU != 0 || U
-			D = ib&IB_PD != 0 || D
+			U = U || ib&IB_PU != 0 // Does not override actual inputs
+			D = D || ib&IB_PD != 0
 			if facing > 0 {
-				B = ib&IB_PL != 0 || B
-				F = ib&IB_PR != 0 || F
+				B = B || ib&IB_PL != 0
+				F = F || ib&IB_PR != 0
 			} else {
-				B = ib&IB_PR != 0 || B
-				F = ib&IB_PL != 0 || F
+				B = B || ib&IB_PR != 0
+				F = F || ib&IB_PL != 0
 			}
-			a = ib&IB_A != 0 || a
-			b = ib&IB_B != 0 || b
-			c = ib&IB_C != 0 || c
-			x = ib&IB_X != 0 || x
-			y = ib&IB_Y != 0 || y
-			z = ib&IB_Z != 0 || z
-			s = ib&IB_S != 0 || s
-			d = ib&IB_D != 0 || d
-			w = ib&IB_W != 0 || w
-			m = ib&IB_M != 0 || m
+			a = a || ib&IB_A != 0
+			b = b || ib&IB_B != 0
+			c = c || ib&IB_C != 0
+			x = x || ib&IB_X != 0
+			y = y || ib&IB_Y != 0
+			z = z || ib&IB_Z != 0
+			s = s || ib&IB_S != 0
+			d = d || ib&IB_D != 0
+			w = w || ib&IB_W != 0
+			m = m || ib&IB_M != 0
 		}
 		// Send inputs to buffer
 		cl.Buffer.Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m)
-		// TODO: Reorder all instances of B, F like input bits (U, D, L, R)
+		// TODO: Maybe reorder all instances of B and F like input bits (U, D, L, R)
 	}
 	return step
 }
@@ -1961,6 +2083,7 @@ func (cl *CommandList) ClearName(name string) {
 	}
 }
 
+// Used when updating commands in each frame
 func (cl *CommandList) Step(facing int32, ai, hitpause bool, buftime int32) {
 	if cl.Buffer != nil {
 		for i := range cl.Commands {
@@ -1970,6 +2093,7 @@ func (cl *CommandList) Step(facing int32, ai, hitpause bool, buftime int32) {
 		}
 		// Find completed commands and reset all duplicate instances
 		// This loop must be run separately from the previous one
+		// TODO: This could be controlled by a command parameter that decides if its buffer should be shared with other commands of same name
 		for i := range cl.Commands {
 			for j := range cl.Commands[i] {
 				if cl.Commands[i][j].completeflag {
@@ -1992,6 +2116,7 @@ func (cl *CommandList) BufReset() {
 	}
 }
 
+// Used when compiling commands
 func (cl *CommandList) Add(c Command) {
 	i, ok := cl.Names[c.name]
 	if !ok || i < 0 || i >= len(cl.Commands) {
@@ -2002,6 +2127,7 @@ func (cl *CommandList) Add(c Command) {
 	cl.Names[c.name] = i
 }
 
+// Used for command trigger
 func (cl *CommandList) At(i int) []Command {
 	if i < 0 || i >= len(cl.Commands) {
 		return nil
@@ -2009,6 +2135,7 @@ func (cl *CommandList) At(i int) []Command {
 	return cl.Commands[i]
 }
 
+// Used in Lua scripts
 func (cl *CommandList) Get(name string) []Command {
 	i, ok := cl.Names[name]
 	if !ok {
@@ -2027,6 +2154,8 @@ func (cl *CommandList) GetState(name string) bool {
 	return false
 }
 
+// Copy command lists from other players
+// For cases where one player's inputs are compared to another's commands
 func (cl *CommandList) CopyList(src CommandList) {
 	cl.Names = src.Names
 	cl.Commands = make([][]Command, len(src.Commands))

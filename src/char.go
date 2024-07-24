@@ -95,6 +95,10 @@ const (
 	ASF_ignoreclsn2push
 	ASF_animatehitpause
 	ASF_cornerpriority
+	ASF_drawontop
+	ASF_drawunder
+	ASF_runfirst
+	ASF_runlast
 )
 
 type GlobalSpecialFlag uint32
@@ -1377,7 +1381,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{(facing * scale[0]) * e.localscl,
 		(e.vfacing * scale[1]) * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
-		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[0]&0xff, sdwalp, 0, 0)
+		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, 0, 0)
 	if sys.tickNextFrame() {
 
 		//if e.space == Space_screen && e.bindtime == 0 {
@@ -6457,7 +6461,8 @@ func (c *Char) actionPrepare() {
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
-			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
+			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
+				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
 		}
 	}
 	// Decrease unhittable timer
@@ -6895,6 +6900,9 @@ func (c *Char) update() {
 	}
 }
 func (c *Char) tick() {
+	if c.scf(SCF_disabled) {
+		return
+	}
 	if c.acttmp > 0 || (!c.pauseBool && c.hitPause() && c.asf(ASF_animatehitpause)) {
 		if c.anim != nil && !c.asf(ASF_animfreeze) {
 			c.anim.Action()
@@ -7282,6 +7290,12 @@ func (c *Char) cueDraw() {
 		if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
 			sd.pos[0] -= c.facing
 		}
+		sprs := &sys.sprites
+		if c.asf(ASF_drawontop) {
+			sprs = &sys.topSprites
+		} else if c.asf(ASF_drawunder) {
+			sprs = &sys.bottomSprites
+		}
 		if !c.asf(ASF_invisible) {
 			var sc, sa int32 = -1, 255
 			if c.asf(ASF_noshadow) {
@@ -7290,7 +7304,7 @@ func (c *Char) cueDraw() {
 			if c.csf(CSF_trans) {
 				sa = 255 - c.alpha[1]
 			}
-			sys.sprites.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
+			sprs.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
 		}
 	}
 	if sys.tickNextFrame() {
@@ -7314,8 +7328,9 @@ func (cl *CharList) clear() {
 }
 func (cl *CharList) add(c *Char) {
 	// Append to run order
-	c.index = int32(len(cl.runOrder)) + 1
 	cl.runOrder = append(cl.runOrder, c)
+	c.index = int32(len(cl.runOrder))
+	c.runorder = int32(len(cl.runOrder))
 	// If any entries in the draw order are empty, use that one
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
@@ -7374,47 +7389,88 @@ func (cl *CharList) action(x float32) {
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionPrepare()
 	}
-	// Run character state controllers
-	// Process priority based on movetype and player type
-	// Run actions for attacking players and helpers
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].runorder = 1
-			cl.runOrder[i].actionRun()
+
+    // Reset all run order values
+    for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].runorder = -1
+	}
+
+	// Sort all characters into a list based on their processing order
+	sortedOrder := []int{}
+
+    // Sort players with priority flag
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && cl.runOrder[i].asf(ASF_runfirst) {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for idle players
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
-			cl.runOrder[i].runorder = 2
-			cl.runOrder[i].actionRun()
+
+    // Sort attacking players and helpers
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].ss.moveType == MT_A {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for remaining players
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex == 0 {
-			cl.runOrder[i].runorder = 3
-			cl.runOrder[i].actionRun()
+
+    // Sort idle players
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for idle helpers
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
-			cl.runOrder[i].runorder = 4
-			cl.runOrder[i].actionRun()
+
+    // Sort remaining players
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex == 0 {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for remaining helpers
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex != 0 {
-			cl.runOrder[i].runorder = 5
-			cl.runOrder[i].actionRun()
+
+    // Sort idle helpers
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
+
+    // Sort remaining helpers
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex != 0 {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
+		}
+	}
+
+    // Sort anyone left
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
+		}
+	}
+
+    // Run actions for each character in the sorted list
+    for i := 0; i < len(sortedOrder); i++ {
+		if sortedOrder[i] <= len(cl.runOrder) {
+			cl.runOrder[sortedOrder[i]].actionRun()
+		}
+    }
+
 	// Finish performing character actions
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionFinish()
 	}
+
 	// Update chars
 	sys.charUpdate()
 }
@@ -7544,8 +7600,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			c.mhv.uniqhit = int32(len(c.hitdefTargets))
 		}
 		ghvset := !getter.stchtmp || p2s || !getter.csf(CSF_gethit)
-		// This flag determines if juggle points will be subtracted further down
-		jchk := getter.ghv.fallflag
 		// Variables that are set even if Hitdef type is "None"
 		if ghvset {
 			if !proj {
@@ -8083,14 +8137,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				c.setCtrl(false)
 			}
 			// Juggle points are subtracted if the target was falling either before or after the hit
-			jchk = jchk || getter.ghv.fallflag
-			if jchk && !c.asf(ASF_nojugglecheck) {
-				jug := &getter.ghv.hitBy[len(getter.ghv.hitBy)-1][1]
-				if proj {
-					*jug -= hd.air_juggle
-				} else {
-					*jug -= c.juggle
+			if getter.ghv.fallflag {
+				if !c.asf(ASF_nojugglecheck) {
+					jug := &getter.ghv.hitBy[len(getter.ghv.hitBy)-1][1]
+					if proj {
+						*jug -= hd.air_juggle
+					} else {
+						*jug -= c.juggle
+					}
 				}
+				// Juggle cost is reset regardless of NoJuggleCheck
+				// https://github.com/ikemen-engine/Ikemen-GO/issues/1905
 				c.juggle = 0
 			}
 			if hd.palfx.time > 0 && getter.palfx != nil {
