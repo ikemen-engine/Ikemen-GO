@@ -1223,8 +1223,8 @@ func (e *Explod) setPos(c *Char) {
 		} else {
 			// explod's postype = front does not cause pos to invert based on the character's facing
 			//if e.postype == PT_Front && c.gi().mugenver[0] != 1 {
-				// In older versions, front does not reflect the character's facing direction
-				// It seems that even in version 1.1, it is not reflected
+			// In older versions, front does not reflect the character's facing direction
+			// It seems that even in version 1.1, it is not reflected
 			//	e.facing = e.relativef
 			//}
 			e.postype = PT_Left
