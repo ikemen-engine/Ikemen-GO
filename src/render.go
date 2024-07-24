@@ -160,7 +160,7 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 		if rp.projectionMode == 0 {
 			modelview = modelview.Mul4(mgl.Translate3D(rp.rcx, rp.rcy, 0))
 		} else if rp.projectionMode == 1 {
-			//This is the inverse of the orthographic projection matrix
+			// This is the inverse of the orthographic projection matrix
 			matrix := mgl.Mat4{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
 			modelview = modelview.Mul4(mgl.Translate3D(0, -float32(sys.scrrect[3]), rp.fLength))
 			modelview = modelview.Mul4(matrix)
@@ -355,7 +355,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		BlendI = BlendAdd
 	}
 	switch {
-	//Add blend mode(255,255)
+	// Add blend mode(255,255)
 	case trans == -1:
 		if invblend >= 1 && acolor != nil {
 			(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
@@ -364,7 +364,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 			*neg = false
 		}
 		render(Blend, blendSourceFactor, BlendOne, 1)
-	//Sub blend mode
+	// Sub blend mode
 	case trans == -2:
 		if invblend >= 1 && acolor != nil {
 			(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
@@ -374,12 +374,12 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		}
 		render(BlendI, blendSourceFactor, BlendOne, 1)
 	case trans <= 0:
-	//Add1(128,128)
+	// Add1(128,128)
 	case trans < 255:
 		Blend = BlendAdd
 		if !isrgba && (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil {
 			src, dst := trans&0xff, trans>>10&0xff
-			//Summ of add components
+			// Summ of add components
 			gc := AbsF(acolor[0]) + AbsF(acolor[1]) + AbsF(acolor[2])
 			v3, al := MaxF((gc*255)-float32(dst+src), 512)/128, (float32(src+dst) / 255)
 			rM, gM, bM := mcolor[0]*al, mcolor[1]*al, mcolor[2]*al
@@ -389,10 +389,10 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 		} else {
 			render(Blend, blendSourceFactor, BlendOneMinusSrcAlpha, float32(trans)/255)
 		}
-	//None
+	// None
 	case trans < 512:
 		render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
-	//AddAlpha
+	// AddAlpha
 	default:
 		src, dst := trans&0xff, trans>>10&0xff
 		if dst < 255 {
@@ -414,7 +414,7 @@ func renderWithBlending(render func(eq BlendEquation, src, dst BlendFunc, a floa
 				Blend = BlendAdd
 			}
 			if !isrgba && (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil && src < 255 {
-				//Summ of add components
+				// Summ of add components
 				gc := AbsF(acolor[0]) + AbsF(acolor[1]) + AbsF(acolor[2])
 				v3, ml, al := MaxF((gc*255)-float32(dst+src), 512)/128, (float32(src) / 255), (float32(src+dst) / 255)
 				rM, gM, bM := mcolor[0]*ml, mcolor[1]*ml, mcolor[2]*ml

@@ -644,7 +644,7 @@ func (l *Layout) Read(pre string, is IniSection) {
 }
 func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32, window *[4]int32) {
 	if l.layerno == ln && s != nil {
-		//TODO: test "phantom pixel"
+		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale * sys.lifebarScale
 		}
@@ -662,7 +662,7 @@ func (l *Layout) DrawSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale
 func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 	a *Animation, palfx *PalFX) {
 	if l.layerno == ln {
-		//TODO: test "phantom pixel"
+		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale
 		}
@@ -678,7 +678,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl float32, ln int16,
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	text string, f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32) {
 	if l.layerno == ln {
-		//TODO: test "phantom pixel"
+		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale
 		}

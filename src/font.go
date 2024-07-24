@@ -64,16 +64,16 @@ func loadFntV1(filename string) (*Fnt, error) {
 
 	defer func() { chk(fp.Close()) }()
 
-	//Read header
+	// Read header
 	buf := make([]byte, 12)
 	n, err := fp.Read(buf)
 
-	//Error reading file
+	// Error reading file
 	if err != nil {
 		return nil, err
 	}
 
-	//Error is not a valid fnt file
+	// Error is not a valid fnt file
 	if string(buf[:n]) != "ElecbyteFnt\x00" {
 		return nil, Error("Unrecognized FNT file: " + string(buf[:n]))
 	}
@@ -324,7 +324,7 @@ func LoadFntSff(f *Fnt, fontfile string, filename string) {
 		panic(err)
 	}
 
-	//Load sprites
+	// Load sprites
 	var pal_default []uint32
 	for k, sprite := range sff.sprites {
 		s := sff.getOwnPalSprite(sprite.Group, sprite.Number, &sff.palList)
@@ -348,7 +348,7 @@ func LoadFntSff(f *Fnt, fontfile string, filename string) {
 		}
 	}
 
-	//Load palettes
+	// Load palettes
 	f.palettes = make([][256]uint32, sff.header.NumberOfPalettes)
 	f.coldepth = make([]byte, sff.header.NumberOfPalettes)
 	var idef int
@@ -497,7 +497,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 		bank = 0
 	}
 
-	//not existing characters treated as space
+	// not existing characters treated as space
 	for i, c := range txt {
 		if c != ' ' && f.images[bt][c] == nil {
 			//txt = strings.Replace(txt, string(c), " ", -1)
@@ -549,11 +549,11 @@ type TextSprite struct {
 	x, y, xscl, yscl float32
 	window           [4]int32
 	palfx            *PalFX
-	frgba            [4]float32 //ttf fonts
-	removetime       int32      //text sctrl
-	layerno          int16      //text sctrl
-	localScale       float32    //text sctrl
-	offsetX          int32      //text sctrl
+	frgba            [4]float32 // ttf fonts
+	removetime       int32      // text sctrl
+	layerno          int16      // text sctrl
+	localScale       float32    // text sctrl
+	offsetX          int32      // text sctrl
 }
 
 func NewTextSprite() *TextSprite {

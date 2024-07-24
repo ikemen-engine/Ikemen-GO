@@ -2045,7 +2045,7 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 			return err
 		}
 
-		// hitdef部分
+		// HitDef section
 		if err := c.hitDefSub(is, sc); err != nil {
 			return err
 		}

@@ -870,8 +870,7 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 			return __.Rb
 		}
 		return Min(Abs(__.Rb), Abs(__.Db), Abs(__.Ub))
-	//MUGENだと斜め入力に$を入れても意味がない
-	// "In MUGEN, adding '$' to diagonal inputs doesn't have any meaning."
+	// In MUGEN, adding '$' to diagonal inputs doesn't have any meaning.
 	//case CK_DBs:
 	//	if s := __.State(CK_DBs); s < 0 {
 	//		return s

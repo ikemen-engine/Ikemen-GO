@@ -878,7 +878,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
 	}
 	if sec := defmap["scaling"]; len(sec) > 0 {
-		if s.mugenver[0] != 1 { //mugen 1.0+ removed support for topscale
+		if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topscale
 			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
 		}
 	}
@@ -920,7 +920,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("floortension", &s.stageCamera.floortension)
 		sec[0].ReadI32("tension", &s.stageCamera.tension)
 		sec[0].ReadF32("tensionvel", &s.stageCamera.tensionvel)
-		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) //TODO: not implemented
+		sec[0].ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) // TODO: not implemented
 		sec[0].ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
 		sec[0].ReadI32("cuthigh", &s.stageCamera.cuthigh)
 		sec[0].ReadI32("cutlow", &s.stageCamera.cutlow)

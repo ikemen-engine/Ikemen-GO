@@ -1213,8 +1213,7 @@ func (e *Explod) setPos(c *Char) {
 		if e.postype == PT_Back {
 			e.facing = c.facing
 		}
-		// front と back はバインドの都合で left か right になおす
-		// "Due to binding constraints, adjust the front and back to either left or right."
+		// Due to binding constraints, adjust the front and back to either left or right.
 		if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
 			if e.postype == PT_Back {
 				e.relativePos[0] *= -1
@@ -1222,14 +1221,11 @@ func (e *Explod) setPos(c *Char) {
 			e.postype = PT_Right
 			rPos()
 		} else {
-			// explod の postype = front はキャラの向きで pos が反転しない
-			// "The postype "front" of "explod" does not invert the pos based on the character's orientation"
+			// explod's postype = front does not cause pos to invert based on the character's facing
 			//if e.postype == PT_Front && c.gi().mugenver[0] != 1 {
-			// 旧バージョンだと front は キャラの向きが facing に反映されない
-			// 1.1でも反映されてない模様
-			// "In the previous version, "front" does not reflect the character's orientation in facing."
-			// "It appears that it is still not reflected even in version 1.1."
-			// e.facing = e.relativef
+				// In older versions, front does not reflect the character's facing direction
+				// It seems that even in version 1.1, it is not reflected
+			//	e.facing = e.relativef
 			//}
 			e.postype = PT_Left
 			lPos()
@@ -2818,7 +2814,7 @@ func (c *Char) loadPalette() {
 						copy(gi.palettedata.palList.Get(0), pl)
 					}
 					gi.palExist[i] = true
-					//パレットテクスチャ生成
+					// Palette Texture Generation
 					gi.palettedata.palList.PalTex[i] = PaletteToTexture(pl)
 					tmp = i + 1
 				}
@@ -4120,7 +4116,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
 			h.mapArray[key] = value
 		}
 	}
-	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+	// Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
 	if h.stWgi().mugenver[0] == 1 && h.stWgi().mugenver[1] == 1 && h.stWgi().ikemenver[0] == 0 && h.stWgi().ikemenver[1] == 0 {
 		h.palfx.invertblend = -2
 	}
@@ -4293,7 +4289,6 @@ func (c *Char) getAnim(n int32, ffx string, fx bool) (a *Animation) {
 			}
 		}
 		if !sys.ignoreMostErrors {
-			//str := "存在しないアニメ: "
 			str := "Invalid action: "
 			if ffx != "" && ffx != "s" {
 				str += strings.ToUpper(ffx) + ":"
@@ -4412,7 +4407,7 @@ func (c *Char) hitAdd(h int32) {
 			}
 		}
 	} else if c.teamside != -1 {
-		//in mugen HitAdd increases combo count even without targets
+		// in mugen HitAdd increases combo count even without targets
 		for i, p := range sys.chars {
 			if len(p) > 0 && c.teamside == ^i&1 {
 				if p[0].receivedHits != 0 || p[0].ss.moveType == MT_H {
@@ -5086,12 +5081,12 @@ func (c *Char) lifeSet(life int32) {
 					sys.winType[^c.playerNo&1] = WT_Normal
 				}
 			}
-		} else if c.immortal { //in mugen even non-player helpers can die
+		} else if c.immortal { // in mugen even non-player helpers can die
 			c.life = 1
 		}
 		c.redLife = 0
 	}
-	if c.teamside != c.ghv.playerNo&1 && c.teamside != -1 && c.ghv.playerNo < MaxSimul*2 { //attacker and receiver from opposite teams
+	if c.teamside != c.ghv.playerNo&1 && c.teamside != -1 && c.ghv.playerNo < MaxSimul*2 { // attacker and receiver from opposite teams
 		sys.lastHitter[^c.playerNo&1] = c.ghv.playerNo
 	}
 	// Disable red life. Placing this here makes it never lag behind life
@@ -5275,8 +5270,7 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 	dist := c.facing * c.distX(rd, oc)
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.stWgi().mugenver[0] != 1 {
-			// 旧バージョンでは小数点切り捨て
-			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
+			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
 			dist = float32(int32(dist))
 		}
 	}
@@ -5289,7 +5283,7 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 	dist := c.distY(rd, oc)
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.stWgi().mugenver[0] != 1 {
-			// "Before Mugen 1.0, rounding down to the nearest whole number was performed."
+			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
 			dist = float32(int32(dist))
 		}
 	}
@@ -5301,7 +5295,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 	} else {
 		dist := c.facing * c.bodyDistX(p2, oc)
 		if c.stWgi().mugenver[0] != 1 {
-			dist = float32(int32(dist)) //旧バージョンでは小数点切り捨て / "In the old version, decimal truncation was used."
+			dist = float32(int32(dist)) // In the old version, decimal truncation was used
 		}
 		return BytecodeFloat(dist)
 	}
@@ -5411,7 +5405,7 @@ func (c *Char) getPalfx() *PalFX {
 		}
 	}
 	c.palfx = newPalFX()
-	//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+	// Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
 	if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.palfx != nil {
 		c.palfx.PalFXDef.invertblend = -2
 	}
@@ -5481,12 +5475,12 @@ func (c *Char) hitFallSet(f int32, xv, yv float32) {
 	}
 }
 func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
-	//Clear all remaps
+	// Clear all remaps
 	if src[0] == -1 && dst[0] == -1 {
 		pfx.remap = nil
 		return
 	}
-	//Reset specified source
+	// Reset specified source
 	if dst[0] == -1 {
 		dst = src
 	}
@@ -7760,9 +7754,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.ground_fall
 						if ghv.fallflag && ghv.yvel == 0 {
-							// 新MUGENだとウィンドウサイズを大きくするとここに入る数値が小さくなるが、再現しないほうがよいと思う。
-							// "I think it's better not to reproduce the situation where the value inside here
-							// becomes smaller when enlarging the window size in the new MUGEN."
+							// I think it's better not to reproduce the situation where the value inside here
+							// becomes smaller when enlarging the window size in the new MUGEN.
 							ghv.yvel = -0.001 * (c.localscl / getter.localscl)
 						}
 						if ghv.yvel != 0 {
@@ -8227,7 +8220,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 				}
 				if p.platform {
-					//Platformの足場上空判定
+					// Check if the character is above the platform's surface
 					if getter.pos[1]*getter.localscl-getter.vel[1]*getter.localscl <= (p.pos[1]+p.platformHeight[1])*p.localscl &&
 						getter.platformPosY*getter.localscl >= (p.pos[1]+p.platformHeight[0])*p.localscl {
 						angleSinValue := float32(math.Sin(float64(p.platformAngle) / 180 * math.Pi))
@@ -8236,7 +8229,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						onPlatform := func(protrude bool) {
 							getter.platformPosY = ((p.pos[1]+p.platformHeight[0]+p.velocity[1])*p.localscl - angleSinValue*(oldDist/angleCosValue)) / getter.localscl
 							getter.groundAngle = p.platformAngle
-							//足場に乗っている状態
+							// Condition when the character is on the platform
 							if getter.ss.stateType != ST_A {
 								getter.pos[0] += p.velocity[0] * p.facing * (p.localscl / getter.localscl)
 								getter.pos[1] += p.velocity[1] * (p.localscl / getter.localscl)
@@ -8304,8 +8297,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 							sys.cgi[i].pctime = 0
 							sys.cgi[i].pcid = p.id
 						}
-						//MUGENではattrにP属性が入っているProjectileは1Fに一つしかヒットしないらしい。
-						//"In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1."
+						// In MUGEN, it seems that projectiles with the "P" attribute in their "attr" only hit once on frame 1.
 						// This flag prevents two projectiles of the same player from hitting in the same frame
 						// In Mugen, projectiles (sctrl) give 1F of projectile invincibility to the getter instead. Timer persists during (super)pause
 						if p.hitdef.attr&int32(AT_AP) != 0 {

@@ -3165,7 +3165,7 @@ func (sc stateDef) Run(c *Char) {
 		case stateDef_anim:
 			c.changeAnimEx(exp[1].evalI(c), c.playerNo, string(*(*[]byte)(unsafe.Pointer(&exp[0]))), false)
 		case stateDef_ctrl:
-			//in mugen fatal blow ignores statedef ctrl
+			// in mugen fatal blow ignores statedef ctrl
 			if !c.ghv.fatal {
 				c.setCtrl(exp[0].evalB(c))
 			} else {
@@ -4277,7 +4277,7 @@ func (sc palFX) Run(c *Char, _ []int32) bool {
 				pf = newPalFX()
 			}
 			pf.clear2(true)
-			//Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
+			// Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 				pf.invertblend = -2
 			}
@@ -4295,7 +4295,7 @@ func (sc allPalFX) Run(c *Char, _ []int32) bool {
 	sys.allPalFX.clear()
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.allPalFX.PalFXDef, id, exp)
-		//Forcing 1.1 kind behavior
+		// Forcing 1.1 kind behavior
 		sys.allPalFX.invertblend = Clamp(sys.allPalFX.invertblend, 0, 1)
 		return true
 	})
@@ -4306,7 +4306,7 @@ type bgPalFX palFX
 
 func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 	sys.bgPalFX.clear()
-	//Forcing 1.1 behavior
+	// Forcing 1.1 behavior
 	sys.bgPalFX.invertblend = -2
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		palFX(sc).runSub(c, &sys.bgPalFX.PalFXDef, id, exp)
@@ -4800,7 +4800,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.bindtime = t
-					//Bindtime fix(update bindtime according to current explod time)
+					// Bindtime fix (update bindtime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
 						e.bindtime = e.time + t
 					}
@@ -4811,7 +4811,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.removetime = t
-					//Removetime fix(update removetime according to current explod time)
+					// Removetime fix (update removetime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
 						e.removetime = e.time + t
 					}
@@ -4826,7 +4826,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.supermovetime = t
-					//Supermovetime fix(update supermovetime according to current explod time)
+					// Supermovetime fix (update supermovetime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
 						e.supermovetime = e.time + t
 					}
@@ -4835,7 +4835,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.pausemovetime = t
-					//Pausemovetime fix(update pausemovetime according to current explod time)
+					// Pausemovetime fix (update pausemovetime according to current explod time)
 					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
 						e.pausemovetime = e.time + t
 					}
@@ -5162,7 +5162,7 @@ func (sc afterImage) Run(c *Char, _ []int32) bool {
 		}
 		if !doOnce {
 			crun.aimg.clear()
-			//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+			// Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 				crun.aimg.palfx[0].invertblend = -2
 			}
@@ -5625,16 +5625,15 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		}
-		//Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
+		// Mugen 1.1 behavior if invertblend param is omitted (Only if char mugenversion = 1.1)
 		if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 			crun.hitdef.palfx.invertblend = -2
 		}
 		sc.runSub(c, &crun.hitdef, id, exp)
 		return true
 	})
-	//winmugenでHitdefのattrが投げ属性で自分側pausetimeが1以上の時、毎フレーム実行されなくなる
-	//"In Winmugen, when the attr of Hitdef is set to 'Throw' and the pausetime
-	// on the attacker's side is greater than 1, it no longer executes every frame."
+	// In Winmugen, when the attr of Hitdef is set to 'Throw' and the pausetime
+	// on the attacker's side is greater than 1, it no longer executes every frame.
 	if crun.hitdef.attr&int32(AT_AT) != 0 && crun.moveContact() == 1 &&
 		c.gi().mugenver[0] != 1 && crun.hitdef.pausetime > 0 {
 		crun.hitdef.attr = 0
@@ -8037,7 +8036,7 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})*/
-	//TODO: not implemented
+	// TODO: not implemented
 	return false
 }
 
@@ -8403,7 +8402,7 @@ func getHitScaleTarget(char *Char, target int32, force bool, reset bool) [3]*Hit
 	// Get our targets.
 	if target <= -1 {
 		return char.defaultHitScale
-	} else { //Check if target exists.
+	} else { // Check if target exists.
 		if force {
 			if _, ok := char.activeHitScale[target]; !ok || reset {
 				char.activeHitScale[target] = newHitScaleArray()
@@ -9743,7 +9742,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_playerinfo_rightbound:
 			s.rightbound = exp[0].evalF(c)
 		case modifyStageVar_scaling_topscale:
-			if s.mugenver[0] != 1 { //mugen 1.0+ removed support for topscale
+			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topscale
 				s.stageCamera.ztopscale = exp[0].evalF(c)
 			}
 		case modifyStageVar_bound_screenleft:
