@@ -97,6 +97,8 @@ const (
 	ASF_cornerpriority
 	ASF_drawontop
 	ASF_drawunder
+	ASF_runfirst
+	ASF_runlast
 )
 
 type GlobalSpecialFlag uint32
@@ -6459,7 +6461,8 @@ func (c *Char) actionPrepare() {
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
-			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard)
+			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
+				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
 		}
 	}
 	// Decrease unhittable timer
@@ -7325,8 +7328,9 @@ func (cl *CharList) clear() {
 }
 func (cl *CharList) add(c *Char) {
 	// Append to run order
-	c.index = int32(len(cl.runOrder)) + 1
 	cl.runOrder = append(cl.runOrder, c)
+	c.index = int32(len(cl.runOrder))
+	c.runorder = int32(len(cl.runOrder))
 	// If any entries in the draw order are empty, use that one
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
@@ -7385,47 +7389,88 @@ func (cl *CharList) action(x float32) {
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionPrepare()
 	}
-	// Run character state controllers
-	// Process priority based on movetype and player type
-	// Run actions for attacking players and helpers
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].ss.moveType == MT_A {
-			cl.runOrder[i].runorder = 1
-			cl.runOrder[i].actionRun()
+
+    // Reset all run order values
+    for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].runorder = -1
+	}
+
+	// Sort all characters into a list based on their processing order
+	sortedOrder := []int{}
+
+    // Sort players with priority flag
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && cl.runOrder[i].asf(ASF_runfirst) {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for idle players
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
-			cl.runOrder[i].runorder = 2
-			cl.runOrder[i].actionRun()
+
+    // Sort attacking players and helpers
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].ss.moveType == MT_A {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for remaining players
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex == 0 {
-			cl.runOrder[i].runorder = 3
-			cl.runOrder[i].actionRun()
+
+    // Sort idle players
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for idle helpers
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
-			cl.runOrder[i].runorder = 4
-			cl.runOrder[i].actionRun()
+
+    // Sort remaining players
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex == 0 {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
-	// Run actions for remaining helpers
-	for i := 0; i < len(cl.runOrder); i++ {
-		if cl.runOrder[i].helperIndex != 0 {
-			cl.runOrder[i].runorder = 5
-			cl.runOrder[i].actionRun()
+
+    // Sort idle helpers
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
+
+    // Sort remaining helpers
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
+			cl.runOrder[i].helperIndex != 0 {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
+		}
+	}
+
+    // Sort anyone left
+    for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 {
+			sortedOrder = append(sortedOrder, i)
+			cl.runOrder[i].runorder = int32(len(sortedOrder))
+		}
+	}
+
+    // Run actions for each character in the sorted list
+    for i := 0; i < len(sortedOrder); i++ {
+		if sortedOrder[i] <= len(cl.runOrder) {
+			cl.runOrder[sortedOrder[i]].actionRun()
+		}
+    }
+
 	// Finish performing character actions
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionFinish()
 	}
+
 	// Update chars
 	sys.charUpdate()
 }

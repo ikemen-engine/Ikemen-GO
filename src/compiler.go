@@ -2436,6 +2436,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_ytension_enable
 		case "camera.autocenter":
 			opc = OC_const_stagevar_camera_autocenter
+		case "camera.lowestcap":
+			opc = OC_const_stagevar_camera_lowestcap
 		case "playerinfo.leftbound":
 			opc = OC_const_stagevar_playerinfo_leftbound
 		case "playerinfo.rightbound":
