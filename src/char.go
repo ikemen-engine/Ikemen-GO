@@ -7390,24 +7390,24 @@ func (cl *CharList) action(x float32) {
 		cl.runOrder[i].actionPrepare()
 	}
 
-    // Reset all run order values
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Reset all run order values
+	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].runorder = -1
 	}
 
 	// Sort all characters into a list based on their processing order
 	sortedOrder := []int{}
 
-    // Sort players with priority flag
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort players with priority flag
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && cl.runOrder[i].asf(ASF_runfirst) {
 			sortedOrder = append(sortedOrder, i)
 			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
 
-    // Sort attacking players and helpers
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort attacking players and helpers
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
 			cl.runOrder[i].ss.moveType == MT_A {
 			sortedOrder = append(sortedOrder, i)
@@ -7415,8 +7415,8 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-    // Sort idle players
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort idle players
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
 			cl.runOrder[i].helperIndex == 0 && cl.runOrder[i].ss.moveType == MT_I {
 			sortedOrder = append(sortedOrder, i)
@@ -7424,8 +7424,8 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-    // Sort remaining players
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort remaining players
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
 			cl.runOrder[i].helperIndex == 0 {
 			sortedOrder = append(sortedOrder, i)
@@ -7433,8 +7433,8 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-    // Sort idle helpers
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort idle helpers
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
 			cl.runOrder[i].helperIndex != 0 && cl.runOrder[i].ss.moveType == MT_I {
 			sortedOrder = append(sortedOrder, i)
@@ -7442,8 +7442,8 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-    // Sort remaining helpers
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort remaining helpers
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && !cl.runOrder[i].asf(ASF_runlast) &&
 			cl.runOrder[i].helperIndex != 0 {
 			sortedOrder = append(sortedOrder, i)
@@ -7451,20 +7451,20 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-    // Sort anyone left
-    for i := 0; i < len(cl.runOrder); i++ {
+	// Sort anyone left
+	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 {
 			sortedOrder = append(sortedOrder, i)
 			cl.runOrder[i].runorder = int32(len(sortedOrder))
 		}
 	}
 
-    // Run actions for each character in the sorted list
-    for i := 0; i < len(sortedOrder); i++ {
+	// Run actions for each character in the sorted list
+	for i := 0; i < len(sortedOrder); i++ {
 		if sortedOrder[i] <= len(cl.runOrder) {
 			cl.runOrder[sortedOrder[i]].actionRun()
 		}
-    }
+	}
 
 	// Finish performing character actions
 	for i := 0; i < len(cl.runOrder); i++ {
