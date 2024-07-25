@@ -5897,6 +5897,63 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type modifyHitDef hitDef
+
+const (
+	modifyHitDef_redirectid = iota + hitDef_last + 1
+)
+
+func (sc modifyHitDef) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyHitDef_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		default:
+			if crun.hitdef.attr > 0 && crun.hitdef.reversal_attr == 0 {
+				hitDef(sc).runSub(c, &crun.hitdef, id, exp)
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type modifyReversalDef hitDef
+
+const (
+	modifyReversalDef_reversal_attr = iota + hitDef_last + 1
+	modifyReversalDef_redirectid
+)
+
+func (sc modifyReversalDef) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case modifyReversalDef_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		case modifyReversalDef_reversal_attr:
+			if crun.hitdef.reversal_attr > 0 {
+				crun.hitdef.reversal_attr = exp[0].evalI(c)
+			}
+		default:
+			if crun.hitdef.reversal_attr > 0 {
+				hitDef(sc).runSub(c, &crun.hitdef, id, exp)
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type width StateControllerBase
 
 const (

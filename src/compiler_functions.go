@@ -2120,6 +2120,40 @@ func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
 	})
 	return *ret, err
 }
+
+func (c *Compiler) modifyHitDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyHitDef)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyHitDef_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.hitDefSub(is, sc)
+	})
+	return *ret, err
+}
+
+func (c *Compiler) modifyReversalDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyReversalDef)(sc), c.stateSec(is, func() error {
+		attr := int32(-1)
+		var err error
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyReversalDef_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err = c.stateParam(is, "reversal.attr", func(data string) error {
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
+		if attr != -1 {
+			sc.add(modifyReversalDef_reversal_attr, sc.iToExp(attr))
+		}
+		return c.hitDefSub(is, sc)
+	})
+	return *ret, err
+}
+
 func (c *Compiler) width(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*width)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",

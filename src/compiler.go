@@ -174,6 +174,8 @@ func newCompiler() *Compiler {
 		"modifybgm":            c.modifyBgm,
 		"groundleveloffset":    c.groundLevelOffset,
 		"targetadd":            c.targetAdd,
+		"modifyhitdef":         c.modifyHitDef,
+		"modifyreversaldef":    c.modifyReversalDef,
 	}
 	return c
 }
