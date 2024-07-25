@@ -5035,7 +5035,10 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 				e.relativePos[1] += RandF(-rndy, rndy)
 			}
 		case gameMakeAnim_under:
-			e.ontop = !exp[0].evalB(c)
+			if exp[0].evalB(c) {
+				e.under = true
+				e.ontop = false
+			}
 		case gameMakeAnim_anim:
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), true)
 		}
