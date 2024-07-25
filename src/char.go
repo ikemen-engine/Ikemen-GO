@@ -4480,6 +4480,16 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		c.forceRemapPal(p.palfx, [...]int32{rpg, rpn})
 	}
 }
+
+func (c *Char) getProjs(id int32) (projs []*Projectile) {
+	for i, p := range sys.projs[c.playerNo] {
+		if id < 0 || p.id == id {
+			projs = append(projs, &sys.projs[c.playerNo][i])
+		}
+	}
+	return
+}
+
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if !proj {
 		c.hitdefTargets = c.hitdefTargets[:0]

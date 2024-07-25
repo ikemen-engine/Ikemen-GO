@@ -1339,8 +1339,7 @@ func (c *Compiler) afterImageTime(is IniSection, sc *StateControllerBase, _ int8
 	})
 	return *ret, err
 }
-func (c *Compiler) hitDefSub(is IniSection,
-	sc *StateControllerBase) error {
+func (c *Compiler) hitDefSub(is IniSection,	sc *StateControllerBase) error {
 	if err := c.stateParam(is, "attr", func(data string) error {
 		attr, err := c.attr(data, true)
 		if err != nil {
@@ -1925,6 +1924,7 @@ func (c *Compiler) hitDefSub(is IniSection,
 	}
 	return nil
 }
+
 func (c *Compiler) hitDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*hitDef)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
@@ -1935,6 +1935,18 @@ func (c *Compiler) hitDef(is IniSection, sc *StateControllerBase, _ int8) (State
 	})
 	return *ret, err
 }
+
+func (c *Compiler) modifyHitDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyHitDef)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyHitDef_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.hitDefSub(is, sc)
+	})
+	return *ret, err
+}
+
 func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
 		attr := int32(-1)
@@ -1953,180 +1965,6 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase, _ int8) (
 			return Error("reversal.attr parameter not specified")
 		}
 		sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
-		return c.hitDefSub(is, sc)
-	})
-	return *ret, err
-}
-func (c *Compiler) projectile(is IniSection, sc *StateControllerBase,
-	ihp int8) (StateController, error) {
-	ret, err := (*projectile)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			projectile_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramPostype(is, sc, projectile_postype); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projid",
-			projectile_projid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projremove",
-			projectile_projremove, VT_Bool, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projremovetime",
-			projectile_projremovetime, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projshadow",
-			projectile_projshadow, VT_Int, 3, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projmisstime",
-			projectile_projmisstime, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projhits",
-			projectile_projhits, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projpriority",
-			projectile_projpriority, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "projhitanim", func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, projectile_projhitanim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "projremanim", func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, projectile_projremanim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "projcancelanim", func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, projectile_projcancelanim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "velocity",
-			projectile_velocity, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "velmul",
-			projectile_velmul, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "remvelocity",
-			projectile_remvelocity, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "accel",
-			projectile_accel, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projscale",
-			projectile_projscale, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projangle",
-			projectile_projangle, VT_Float, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projrescaleclsn",
-			projectile_projrescaleclsn, VT_Bool, 1, false); err != nil {
-			return err
-		}
-
-		// HitDef section
-		if err := c.hitDefSub(is, sc); err != nil {
-			return err
-		}
-
-		if err := c.paramValue(is, sc, "offset",
-			projectile_offset, VT_Float, 2, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projsprpriority",
-			projectile_projsprpriority, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projstagebound",
-			projectile_projstagebound, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projedgebound",
-			projectile_projedgebound, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "projheightbound",
-			projectile_projheightbound, VT_Int, 2, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "projanim", func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, projectile_projanim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "supermovetime",
-			projectile_supermovetime, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "pausemovetime",
-			projectile_pausemovetime, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "ownpal",
-			projectile_ownpal, VT_Bool, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "remappal",
-			projectile_remappal, VT_Int, 2, false); err != nil {
-			return err
-		}
-		if err := c.afterImageSub(is, sc, ihp, "afterimage."); err != nil {
-			return err
-		}
-		// if err := c.paramValue(is, sc, "platform",
-		// 	projectile_platform, VT_Bool, 1, false); err != nil {
-		// 	return err
-		// }
-		// if err := c.paramValue(is, sc, "platformwidth",
-		// 	projectile_platformwidth, VT_Float, 2, false); err != nil {
-		// 	return err
-		// }
-		// if err := c.paramValue(is, sc, "platformheight",
-		// 	projectile_platformheight, VT_Float, 2, false); err != nil {
-		// 	return err
-		// }
-		// if err := c.paramValue(is, sc, "platformangle",
-		// 	projectile_platformangle, VT_Float, 1, false); err != nil {
-		// 	return err
-		// }
-		// if err := c.paramValue(is, sc, "platformfence",
-		// 	projectile_platformfence, VT_Bool, 1, false); err != nil {
-		// 	return err
-		// }
-		return nil
-	})
-	return *ret, err
-}
-
-func (c *Compiler) modifyHitDef(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
-	ret, err := (*modifyHitDef)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			modifyHitDef_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
 		return c.hitDefSub(is, sc)
 	})
 	return *ret, err
@@ -2150,6 +1988,177 @@ func (c *Compiler) modifyReversalDef(is IniSection, sc *StateControllerBase, _ i
 			sc.add(modifyReversalDef_reversal_attr, sc.iToExp(attr))
 		}
 		return c.hitDefSub(is, sc)
+	})
+	return *ret, err
+}
+
+func (c *Compiler) projectileSub(is IniSection,	sc *StateControllerBase, ihp int8) error {
+	if err := c.paramValue(is, sc, "redirectid",
+		projectile_redirectid, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramPostype(is, sc, projectile_postype); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projid",
+		projectile_projid, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projremove",
+		projectile_projremove, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projremovetime",
+		projectile_projremovetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projshadow",
+		projectile_projshadow, VT_Int, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projmisstime",
+		projectile_projmisstime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projhits",
+		projectile_projhits, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projpriority",
+		projectile_projpriority, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "projhitanim", func(data string) error {
+		prefix := c.getDataPrefix(&data, false)
+		return c.scAdd(sc, projectile_projhitanim, data, VT_Int, 1,
+			sc.beToExp(BytecodeExp(prefix))...)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "projremanim", func(data string) error {
+		prefix := c.getDataPrefix(&data, false)
+		return c.scAdd(sc, projectile_projremanim, data, VT_Int, 1,
+			sc.beToExp(BytecodeExp(prefix))...)
+	}); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "projcancelanim", func(data string) error {
+		prefix := c.getDataPrefix(&data, false)
+		return c.scAdd(sc, projectile_projcancelanim, data, VT_Int, 1,
+			sc.beToExp(BytecodeExp(prefix))...)
+	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "velocity",
+		projectile_velocity, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "velmul",
+		projectile_velmul, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "remvelocity",
+		projectile_remvelocity, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "accel",
+		projectile_accel, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projscale",
+		projectile_projscale, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projangle",
+		projectile_projangle, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projrescaleclsn",
+		projectile_projrescaleclsn, VT_Bool, 1, false); err != nil {
+		return err
+	}
+
+	// HitDef section
+	if err := c.hitDefSub(is, sc); err != nil {
+		return err
+	}
+
+	if err := c.paramValue(is, sc, "offset",
+		projectile_offset, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projsprpriority",
+		projectile_projsprpriority, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projstagebound",
+		projectile_projstagebound, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projedgebound",
+		projectile_projedgebound, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projheightbound",
+		projectile_projheightbound, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "projanim", func(data string) error {
+		prefix := c.getDataPrefix(&data, false)
+		return c.scAdd(sc, projectile_projanim, data, VT_Int, 1,
+			sc.beToExp(BytecodeExp(prefix))...)
+	}); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "supermovetime",
+		projectile_supermovetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "pausemovetime",
+		projectile_pausemovetime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "ownpal",
+		projectile_ownpal, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "remappal",
+		projectile_remappal, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.afterImageSub(is, sc, ihp, "afterimage."); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Compiler) projectile(is IniSection, sc *StateControllerBase, ihp int8) (StateController, error) {
+	ret, err := (*projectile)(sc), c.stateSec(is, func() error {
+		if err := c.projectileSub(is, sc, ihp); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) modifyProjectile(is IniSection, sc *StateControllerBase,
+	ihp int8) (StateController, error) {
+	ret, err := (*modifyProjectile)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			modifyProjectile_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "id",
+			modifyProjectile_id, VT_Int, 1, false); err != nil {
+			return err
+		}
+
+		if err := c.projectileSub(is, sc, ihp); err != nil {
+			return err
+		}
+
+		return nil
 	})
 	return *ret, err
 }

@@ -176,6 +176,7 @@ func newCompiler() *Compiler {
 		"targetadd":            c.targetAdd,
 		"modifyhitdef":         c.modifyHitDef,
 		"modifyreversaldef":    c.modifyReversalDef,
+		"modifyprojectile":     c.modifyProjectile,
 	}
 	return c
 }
