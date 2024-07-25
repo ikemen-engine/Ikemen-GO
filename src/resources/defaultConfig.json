@@ -130,6 +130,7 @@
     "external/icons/IkemenCylia_96.png",
     "external/icons/IkemenCylia_48.png"
   ],
+  "WindowScaleMode": true,
   "WindowTitle": "Ikemen GO",
   "XinputTriggerSensitivity": 0,
   "ZoomActive": true,
