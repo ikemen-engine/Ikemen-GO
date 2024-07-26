@@ -3725,7 +3725,7 @@ const (
 func (sc changeAnim) Run(c *Char, _ []int32) bool {
 	crun := c
 	var elem int32
-	var r int = -1
+	var rpid int = -1
 	setelem := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -3733,17 +3733,17 @@ func (sc changeAnim) Run(c *Char, _ []int32) bool {
 			elem = exp[0].evalI(c)
 			setelem = true
 		case changeAnim_value:
-			pn := crun.playerNo
-			if r != -1 {
-				pn = r
+			pn := crun.playerNo // Default to own player number
+			if rpid != -1 {
+				pn = rpid
 			}
 			crun.changeAnim(exp[1].evalI(c), pn, string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
 			if setelem {
 				crun.setAnimElem(elem)
 			}
 		case changeAnim_readplayerid:
-			if rpid := sys.playerID(exp[0].evalI(c)); rpid != nil {
-				r = rpid.playerNo
+			if read := sys.playerID(exp[0].evalI(c)); read != nil {
+				rpid = read.playerNo
 			} else {
 				return false
 			}
@@ -3764,6 +3764,7 @@ type changeAnim2 changeAnim
 func (sc changeAnim2) Run(c *Char, _ []int32) bool {
 	crun := c
 	var elem int32
+	var rpid int = -1
 	setelem := false
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -3771,9 +3772,19 @@ func (sc changeAnim2) Run(c *Char, _ []int32) bool {
 			elem = exp[0].evalI(c)
 			setelem = true
 		case changeAnim_value:
-			crun.changeAnim2(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
+			pn := crun.ss.sb.playerNo // Default to state owner player number
+			if rpid != -1 {
+				pn = rpid
+			}
+			crun.changeAnim2(exp[1].evalI(c), pn, string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
 			if setelem {
 				crun.setAnimElem(elem)
+			}
+		case changeAnim_readplayerid:
+			if read := sys.playerID(exp[0].evalI(c)); read != nil {
+				rpid = read.playerNo
+			} else {
+				return false
 			}
 		case changeAnim_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -5959,6 +5970,7 @@ type modifyProjectile hitDef
 const (
 	modifyProjectile_redirectid = iota + hitDef_last + 1
 	modifyProjectile_id
+	// TODO: Maybe we could modify projectiles by their index as well
 )
 
 func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
@@ -6115,7 +6127,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			//case projectile_ownpal: // TODO: Test these later. May cause issues
 			//case projectile_remappal:
-			case projectile_projrescaleclsn: // Must be after projectile_projscale
+			case projectile_projrescaleclsn: // Must be placed after projectile_projscale
 				eachProj(func(p *Projectile) {
 					if exp[0].evalB(c) {
 						p.clsnScale = p.scale

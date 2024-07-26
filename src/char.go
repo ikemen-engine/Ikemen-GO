@@ -2929,7 +2929,7 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 		c.animPN = c.playerNo
 		c.prevAnimNo = c.animNo
 		c.animNo = animNo
-		// If player is in custom state and used ChangeAnim2
+		// If using ChangeAnim2, the animation is changed but the sff is kept
 		if alt {
 			c.animPN = playerNo
 			a.sff = sys.cgi[c.playerNo].sff
@@ -2966,12 +2966,12 @@ func (c *Char) changeAnim(animNo int32, playerNo int, ffx string) {
 	}
 	c.changeAnimEx(animNo, playerNo, ffx, false)
 }
-func (c *Char) changeAnim2(animNo int32, ffx string) {
+func (c *Char) changeAnim2(animNo int32, playerNo int, ffx string) {
 	if animNo < 0 && animNo != -2 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted change to negative anim (different from -2)"))
 		animNo = 0
 	}
-	c.changeAnimEx(animNo, c.ss.sb.playerNo, ffx, true)
+	c.changeAnimEx(animNo, playerNo, ffx, true)
 }
 func (c *Char) setAnimElem(e int32) {
 	if c.anim != nil {
