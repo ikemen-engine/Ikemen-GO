@@ -39,7 +39,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	return ret, nil
 }
 
-//export close_callback
+// export close_callback
 func close_callback(closing unsafe.Pointer) bool {
 	*(*bool)(closing) = true
 	return true

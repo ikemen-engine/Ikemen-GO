@@ -16,7 +16,7 @@ type stageCamera struct {
 	lowestcap               bool
 	tension                 int32
 	tensionvel              float32
-	overdrawhigh            int32 //TODO: not implemented
+	overdrawhigh            int32 // TODO: not implemented
 	overdrawlow             int32
 	cuthigh                 int32
 	cutlow                  int32

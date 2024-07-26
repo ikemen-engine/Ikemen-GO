@@ -1471,7 +1471,7 @@ func (s *System) action() {
 					}
 					for _, p := range s.chars {
 						if len(p) > 0 {
-							//default life recovery, used only if externalized Lua implementation is disabled
+							// default life recovery, used only if externalized Lua implementation is disabled
 							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p[0].win() &&
 								p[0].alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
@@ -1610,7 +1610,7 @@ func (s *System) action() {
 		}
 	}
 	if !s.cam.ZoomEnable {
-		// Pos X の誤差が出ないように精度を落とす
+		// Lower the precision to prevent errors in Pos X.
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 	}
 	s.cam.Update(scl, x, y)
@@ -2159,7 +2159,7 @@ func (s *System) fight() (reload bool) {
 		}
 	}
 
-	//default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
+	// default bgm playback, used only in Quick VS or if externalized Lua implementaion is disabled
 	if s.round == 1 && (s.gameMode == "" || len(sys.commonLua) == 0) {
 		s.bgm.Open(s.stage.bgmusic, 1, int(s.stage.bgmvolume), int(s.stage.bgmloopstart), int(s.stage.bgmloopend), int(s.stage.bgmstartposition), s.stage.bgmfreqmul)
 	}
@@ -2728,7 +2728,7 @@ func (s *Select) addChar(def string) {
 		listSpr[[...]int16{k[0], k[1]}] = true
 	}
 	sff := newSff()
-	//read size values
+	// read size values
 	LoadFile(&cns, []string{def, "", "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
@@ -2750,7 +2750,7 @@ func (s *Select) addChar(def string) {
 		}
 		return nil
 	})
-	//preload animations
+	// preload animations
 	LoadFile(&anim, []string{def, "", "data/"}, func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
@@ -2768,7 +2768,7 @@ func (s *Select) addChar(def string) {
 		}
 		return nil
 	})
-	//preload portion of sff file
+	// preload portion of sff file
 	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(def, filepath.Ext(def)))
 	if fp = FileExist(fp); len(fp) == 0 {
 		fp = sprite
@@ -2797,14 +2797,14 @@ func (s *Select) addChar(def string) {
 			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
 	}
-	//read movelist
+	// read movelist
 	if len(movelist) > 0 {
 		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
 			sc.movelist, _ = LoadText(file)
 			return nil
 		})
 	}
-	//preload fonts
+	// preload fonts
 	for i, f := range fnt {
 		if len(f[0]) > 0 {
 			LoadFile(&f[0], []string{def, sys.motifDir, "", "data/", "font/"}, func(filename string) error {
@@ -2891,7 +2891,7 @@ func (s *Select) AddStage(def string) error {
 			listSpr[[...]int16{k[0], k[1]}] = true
 		}
 		sff := newSff()
-		//preload animations
+		// preload animations
 		i = 0
 		at := ReadAnimationTable(sff, &sff.palList, lines, &i)
 		for _, v := range s.stageAnimPreload {
@@ -2902,7 +2902,7 @@ func (s *Select) AddStage(def string) error {
 				}
 			}
 		}
-		//preload portion of sff file
+		// preload portion of sff file
 		LoadFile(&spr, []string{def, "", "data/"}, func(file string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
