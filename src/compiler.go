@@ -4163,14 +4163,15 @@ func (c *Compiler) stateSec(is IniSection, f func() error) error {
 	}
 	return nil
 }
-func (c *Compiler) stateParam(is IniSection, name string,
-	f func(string) error) error {
+func (c *Compiler) stateParam(is IniSection, name string, mandatory bool, f func(string) error) error {
 	data, ok := is[name]
 	if ok {
 		if err := f(data); err != nil {
 			return Error(data + "\n" + name + ": " + err.Error())
 		}
 		delete(is, name)
+	} else if mandatory {
+		return Error(name + " not specified")
 	}
 	return nil
 }
@@ -4227,21 +4228,21 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 }
 func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 	paramname string, id byte, vt ValueType, numArg int, mandatory bool) error {
-	f := false
-	if err := c.stateParam(is, paramname, func(data string) error {
-		f = true
+	found := false
+	if err := c.stateParam(is, paramname, false, func(data string) error {
+		found = true
 		return c.scAdd(sc, id, data, vt, numArg)
 	}); err != nil {
 		return err
 	}
-	if mandatory && !f {
+	if mandatory && !found {
 		return Error(paramname + " not specified")
 	}
 	return nil
 }
 func (c *Compiler) paramPostype(is IniSection, sc *StateControllerBase,
 	id byte) error {
-	return c.stateParam(is, "postype", func(data string) error {
+	return c.stateParam(is, "postype", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("Value not specified")
 		}
@@ -4273,7 +4274,7 @@ func (c *Compiler) paramPostype(is IniSection, sc *StateControllerBase,
 
 func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
 	id byte) error {
-	return c.stateParam(is, "space", func(data string) error {
+	return c.stateParam(is, "space", false, func(data string) error {
 		if len(data) <= 1 {
 			return Error("Value not specified")
 		}
@@ -4292,7 +4293,7 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase,
 
 func (c *Compiler) paramProjection(is IniSection, sc *StateControllerBase,
 	id byte) error {
-	return c.stateParam(is, "projection", func(data string) error {
+	return c.stateParam(is, "projection", false, func(data string) error {
 		if len(data) <= 1 {
 			return Error("Value not specified")
 		}
@@ -4316,7 +4317,7 @@ func (c *Compiler) paramProjection(is IniSection, sc *StateControllerBase,
 
 func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
 	id byte) error {
-	return c.stateParam(is, "savedata", func(data string) error {
+	return c.stateParam(is, "savedata", false, func(data string) error {
 		if len(data) <= 1 {
 			return Error("Value not specified")
 		}
@@ -4338,7 +4339,7 @@ func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase,
 
 func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 	prefix string, id byte, afterImage bool) error {
-	return c.stateParam(is, prefix+"trans", func(data string) error {
+	return c.stateParam(is, prefix+"trans", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("Value not specified")
 		}
@@ -4378,7 +4379,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 		var exp []BytecodeExp
 		b := false
 		if !afterImage || sys.cgi[c.playerNo].mugenver[0] == 1 {
-			if err := c.stateParam(is, prefix+"alpha", func(data string) error {
+			if err := c.stateParam(is, prefix+"alpha", false, func(data string) error {
 				b = true
 				bes, err := c.exprs(data, VT_Int, 2)
 				if err != nil {
@@ -4458,7 +4459,7 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
 		sc := newStateControllerBase()
-		if err := c.stateParam(is, "type", func(data string) error {
+		if err := c.stateParam(is, "type", false, func(data string) error {
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
@@ -4480,7 +4481,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "movetype", func(data string) error {
+		if err := c.stateParam(is, "movetype", false, func(data string) error {
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
@@ -4500,7 +4501,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 		}); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "physics", func(data string) error {
+		if err := c.stateParam(is, "physics", false, func(data string) error {
 			if len(data) == 0 {
 				return Error("Value not specified")
 			}
@@ -4523,7 +4524,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			return err
 		}
 		b := false
-		if err := c.stateParam(is, "hitcountpersist", func(data string) error {
+		if err := c.stateParam(is, "hitcountpersist", false, func(data string) error {
 			b = true
 			return c.scAdd(sc, stateDef_hitcountpersist, data, VT_Bool, 1)
 		}); err != nil {
@@ -4533,7 +4534,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			sc.add(stateDef_hitcountpersist, sc.iToExp(0))
 		}
 		b = false
-		if err := c.stateParam(is, "movehitpersist", func(data string) error {
+		if err := c.stateParam(is, "movehitpersist", false, func(data string) error {
 			b = true
 			return c.scAdd(sc, stateDef_movehitpersist, data, VT_Bool, 1)
 		}); err != nil {
@@ -4543,7 +4544,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			sc.add(stateDef_movehitpersist, sc.iToExp(0))
 		}
 		b = false
-		if err := c.stateParam(is, "hitdefpersist", func(data string) error {
+		if err := c.stateParam(is, "hitdefpersist", false, func(data string) error {
 			b = true
 			return c.scAdd(sc, stateDef_hitdefpersist, data, VT_Bool, 1)
 		}); err != nil {
@@ -4560,7 +4561,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			stateDef_facep2, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "juggle", func(data string) error {
+		if err := c.stateParam(is, "juggle", false, func(data string) error {
 			return c.scAdd(sc, stateDef_juggle, data, VT_Int, 1)
 		}); err != nil {
 			return err
@@ -4569,7 +4570,7 @@ func (c *Compiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			stateDef_velset, VT_Float, 3, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "anim", func(data string) error {
+		if err := c.stateParam(is, "anim", false, func(data string) error {
 			prefix := c.getDataPrefix(&data, false)
 			return c.scAdd(sc, stateDef_anim, data, VT_Int, 1,
 				sc.beToExp(BytecodeExp(prefix))...)
