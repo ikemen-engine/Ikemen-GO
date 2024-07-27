@@ -7122,7 +7122,7 @@ func (c *Char) cueDraw() {
 							break
 						}
 						// If player-specific invincibility
-						if h.playerno >= 0 {
+						if h.playerno >= 0 || h.playerid >= 0 {
 							nhbtxt = "Player-specific"
 							hb = true
 							mtk = false
@@ -7176,7 +7176,7 @@ func (c *Char) cueDraw() {
 						nhbtxt += " Any"
 					}
 					// Attack
-					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
+					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_HA) == 0 {
 						if nhbtxt != "" {
 							nhbtxt += ", "
 						}
@@ -7192,7 +7192,7 @@ func (c *Char) cueDraw() {
 						nhbtxt += " Atk"
 					}
 					// Throw
-					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
+					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_HT) == 0 {
 						if nhbtxt != "" {
 							nhbtxt += ", "
 						}
@@ -7208,7 +7208,7 @@ func (c *Char) cueDraw() {
 						nhbtxt += " Thr"
 					}
 					// Projectile
-					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
+					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_HP) == 0 {
 						if nhbtxt != "" {
 							nhbtxt += ", "
 						}
@@ -7334,7 +7334,6 @@ func (cl *CharList) add(c *Char) {
 	// Append to run order
 	cl.runOrder = append(cl.runOrder, c)
 	c.index = int32(len(cl.runOrder))
-	c.runorder = int32(len(cl.runOrder))
 	// If any entries in the draw order are empty, use that one
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
@@ -7387,22 +7386,18 @@ func (cl *CharList) delete(dc *Char) {
 		}
 	}
 }
-func (cl *CharList) action(x float32) {
-	sys.commandUpdate()
-	// Prepare characters before performing their actions
-	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].actionPrepare()
-	}
+
+// Sort all characters into a list based on their processing order
+func (cl *CharList) sortActionRunOrder() []int {
+
+	sortedOrder := []int{}
 
 	// Reset all run order values
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].runorder = -1
 	}
 
-	// Sort all characters into a list based on their processing order
-	sortedOrder := []int{}
-
-	// Sort players with priority flag
+	// Sort characters with priority flag
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && cl.runOrder[i].asf(ASF_runfirst) {
 			sortedOrder = append(sortedOrder, i)
@@ -7455,7 +7450,7 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-	// Sort anyone left
+	// Sort anyone missed (RunLast flag)
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 {
 			sortedOrder = append(sortedOrder, i)
@@ -7463,10 +7458,38 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
+	// Reset priority flags as they are only needed during this function
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].unsetASF(ASF_runfirst | ASF_runlast)
+	}
+
+	return sortedOrder
+}
+
+func (cl *CharList) action() {
+	sys.commandUpdate()
+
+	// Prepare characters before performing their actions
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].actionPrepare()
+	}
+
 	// Run actions for each character in the sorted list
+	// Sorting the characters first makes new helpers wait for their turn and allows RunOrder trigger accuracy
+	sortedOrder := cl.sortActionRunOrder()
 	for i := 0; i < len(sortedOrder); i++ {
 		if sortedOrder[i] <= len(cl.runOrder) {
 			cl.runOrder[sortedOrder[i]].actionRun()
+		}
+	}
+
+	// Run actions for anyone missed (new helpers)
+	extra := len(sortedOrder) + 1
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 {
+			cl.runOrder[i].runorder = int32(extra)
+			cl.runOrder[i].actionRun()
+			extra++
 		}
 	}
 
@@ -7478,6 +7501,7 @@ func (cl *CharList) action(x float32) {
 	// Update chars
 	sys.charUpdate()
 }
+
 func (cl *CharList) xScreenBound() {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
@@ -8026,9 +8050,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					getter.powerAdd(hd.hitgivepower)
 					getter.ghv.power += hd.hitgivepower
 				}
-				if getter.ss.moveType == MT_A {
-					c.counterHit = true
-				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
 				}
@@ -8037,6 +8058,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						getter.scoreAdd(hd.score[1])
 					}
 				}
+				c.counterHit = getter.ss.moveType == MT_A
 			}
 			if (ghvset || getter.csf(CSF_gethit)) && getter.hoIdx < 0 &&
 				!(c.hitdef.air_type == HT_None && getter.ss.stateType == ST_A || getter.ss.stateType != ST_A && c.hitdef.ground_type == HT_None) {
