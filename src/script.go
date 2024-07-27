@@ -3411,10 +3411,6 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trialsexist))
 		case "numoftrials":
 			l.Push(lua.LNumber(sys.cgi[0].trialsdata.numoftrials))
-		case "currenttrial":
-			l.Push(lua.LNumber(sys.cgi[0].trialsdata.currentTrial))
-		case "currenttrialstep":
-			l.Push(lua.LNumber(sys.cgi[0].trialsdata.currenttrialStep))
 		case "trialname":
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].name))
 		case "trialdummymode":
@@ -3425,6 +3421,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].dummybuttonjam))
 		case "trialnumofsteps":
 			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].numsteps))
+		case "trialvarvalpairs":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].varvalpairs))
 		case "trialsteptext":
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].text))
 		case "trialstepglyphs":

@@ -1846,15 +1846,14 @@ type trial struct {
 	dummymode      string
 	guardmode      string
 	dummybuttonjam string
+	varvalpairs    string
 	trialstep      []*trialstep
 }
 
 type trialsdata struct {
-	trialsexist      bool
-	numoftrials      int
-	currentTrial     int
-	currenttrialStep int
-	trial            []*trial
+	trialsexist bool
+	numoftrials int
+	trial       []*trial
 }
 
 type CharGlobalInfo struct {
@@ -2389,8 +2388,6 @@ func (c *Char) load(def string) error {
 					triallines := SplitAndTrim(trials, "\n")
 
 					gi.trialsdata.numoftrials = 0
-					gi.trialsdata.currentTrial = 1
-					gi.trialsdata.currenttrialStep = 0
 
 					j := 0
 					alltrialdata := []*trial{}
@@ -2408,6 +2405,7 @@ func (c *Char) load(def string) error {
 							trialdata.dummymode = "stand"
 							trialdata.guardmode = "none"
 							trialdata.dummybuttonjam = "none"
+							trialdata.varvalpairs = "-1"
 
 							// Look for default deltas
 							if is[("trial.dummymode")] != "" {
@@ -2418,6 +2416,9 @@ func (c *Char) load(def string) error {
 							}
 							if is[("trial.dummybuttonjam")] != "" {
 								trialdata.dummybuttonjam = strings.ToLower(is[("trial.dummybuttonjam")])
+							}
+							if is[("trial.varvalpairs")] != "" {
+								trialdata.varvalpairs = strings.ToLower(is[("trial.varvalpairs")])
 							}
 
 							trialstepdata := []*trialstep{}
