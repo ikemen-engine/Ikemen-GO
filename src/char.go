@@ -1824,20 +1824,21 @@ const (
 )
 
 type trialstep struct {
-	microsteps   int
-	text         string
-	glyphs       string
-	stateno      []int
-	animno       []int
-	numofhits    []int
-	isthrow      []bool
-	isnohit      []bool
-	iscounterhit []bool
-	ishelper     []bool
-	isproj       []bool
-	specialbool  []bool
-	specialstr   []string
-	specialval   []int
+	microsteps        int
+	text              string
+	glyphs            string
+	stateno           []int
+	animno            []int
+	numofhits         []int
+	isthrow           []bool
+	isnohit           []bool
+	iscounterhit      []bool
+	ishelper          []bool
+	isproj            []bool
+	validuntilnexthit []bool
+	specialbool       []bool
+	specialstr        []string
+	specialval        []int
 }
 
 type trial struct {
@@ -2444,6 +2445,7 @@ func (c *Char) load(def string) error {
 								trialstep.ishelper = make([]bool, trialstep.microsteps)
 								trialstep.iscounterhit = make([]bool, trialstep.microsteps)
 								trialstep.isproj = make([]bool, trialstep.microsteps)
+								trialstep.validuntilnexthit = make([]bool, trialstep.microsteps)
 								trialstep.specialbool = make([]bool, trialstep.microsteps)
 								trialstep.specialstr = make([]string, trialstep.microsteps)
 								trialstep.specialval = make([]int, trialstep.microsteps)
@@ -2457,6 +2459,7 @@ func (c *Char) load(def string) error {
 									trialstep.ishelper[ii] = false
 									trialstep.iscounterhit[ii] = false
 									trialstep.isproj[ii] = false
+									trialstep.validuntilnexthit[ii] = false
 									trialstep.specialbool[ii] = false
 									trialstep.specialstr[ii] = ""
 									trialstep.specialval[ii] = -1
@@ -2506,6 +2509,12 @@ func (c *Char) load(def string) error {
 									tempisproj := strings.Split(is[(currenttrialstep+".isproj")], ",")
 									for ii := 0; ii < trialstep.microsteps; ii++ {
 										trialstep.isproj[ii], _ = strconv.ParseBool(strings.TrimSpace(tempisproj[ii]))
+									}
+								}
+								if is[(currenttrialstep+".validuntilnexthit")] != "" {
+									tempvaliduntilnexthit := strings.Split(is[(currenttrialstep+".validuntilnexthit")], ",")
+									for ii := 0; ii < trialstep.microsteps; ii++ {
+										trialstep.validuntilnexthit[ii], _ = strconv.ParseBool(strings.TrimSpace(tempvaliduntilnexthit[ii]))
 									}
 								}
 								if is[(currenttrialstep+".specialbool")] != "" {

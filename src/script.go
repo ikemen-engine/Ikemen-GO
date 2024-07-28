@@ -3443,6 +3443,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].iscounterhit[int(numArg(l, 4))]))
 		case "trialstepishelper":
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].ishelper[int(numArg(l, 4))]))
+		case "trialstepvaliduntilnexthit":
+			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].validuntilnexthit[int(numArg(l, 4))]))
 		case "trialstepisproj":
 			l.Push(lua.LBool(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].isproj[int(numArg(l, 4))]))
 		case "trialstepspecialbool":
