@@ -3427,6 +3427,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].text))
 		case "trialstepglyphs":
 			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].glyphs))
+		case "trialstepvarvalpairs":
+			l.Push(lua.LString(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].varvalpairs))
 		case "trialstepmicrosteps":
 			l.Push(lua.LNumber(sys.cgi[0].trialsdata.trial[int(numArg(l, 2))].trialstep[int(numArg(l, 3))].microsteps))
 		case "trialstepstateno":

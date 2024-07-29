@@ -1827,6 +1827,7 @@ type trialstep struct {
 	microsteps        int
 	text              string
 	glyphs            string
+	varvalpairs       string
 	stateno           []int
 	animno            []int
 	numofhits         []int
@@ -2406,7 +2407,6 @@ func (c *Char) load(def string) error {
 							trialdata.dummymode = "stand"
 							trialdata.guardmode = "none"
 							trialdata.dummybuttonjam = "none"
-							trialdata.varvalpairs = "-1"
 
 							// Look for default deltas
 							if is[("trial.dummymode")] != "" {
@@ -2418,8 +2418,10 @@ func (c *Char) load(def string) error {
 							if is[("trial.dummybuttonjam")] != "" {
 								trialdata.dummybuttonjam = strings.ToLower(is[("trial.dummybuttonjam")])
 							}
-							if is[("trial.varvalpairs")] != "" {
-								trialdata.varvalpairs = strings.ToLower(is[("trial.varvalpairs")])
+							if is[("trial.showforvarvalpairs")] != "" {
+								trialdata.varvalpairs = is[("trial.showforvarvalpairs")]
+							} else {
+								trialdata.varvalpairs = "-1"
 							}
 
 							trialstepdata := []*trialstep{}
@@ -2431,6 +2433,11 @@ func (c *Char) load(def string) error {
 
 								trialstep.text = is[(currenttrialstep + ".text")]
 								trialstep.glyphs = is[(currenttrialstep + ".glyphs")]
+								if is[(currenttrialstep+".validforvarvalpairs")] != "" {
+									trialstep.varvalpairs = is[(currenttrialstep + ".validforvarvalpairs")]
+								} else {
+									trialstep.varvalpairs = "-1"
+								}
 
 								// Figure out how many "microsteps" there are within the one step
 								tempstateno := strings.Split(is[(currenttrialstep+".stateno")], ",")
