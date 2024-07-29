@@ -15,62 +15,62 @@ var ModCtrlAltShift = NewModifierKey(true, true, true)
 type CommandKey byte
 
 const (
-	CK_B CommandKey = iota
+	CK_U CommandKey = iota
 	CK_D
+	CK_B
 	CK_F
-	CK_U
 	CK_L
 	CK_R
-	CK_DB
 	CK_UB
-	CK_DF
 	CK_UF
-	CK_DL
+	CK_DB
+	CK_DF
 	CK_UL
-	CK_DR
 	CK_UR
-	CK_Bs // s stands for sign ($)
-	CK_Ds
-	CK_Fs
-	CK_Us
-	CK_Ls
-	CK_Rs
-	CK_DBs
-	CK_UBs
-	CK_DFs
-	CK_UFs
-	CK_DLs
-	CK_ULs
-	CK_DRs
-	CK_URs
-	CK_rB // r stands for release (~)
+	CK_DL
+	CK_DR
+	CK_rU // r stands for release (~)
 	CK_rD
+	CK_rB
 	CK_rF
-	CK_rU
 	CK_rL
 	CK_rR
-	CK_rDB
 	CK_rUB
-	CK_rDF
 	CK_rUF
-	CK_rDL
+	CK_rDB
+	CK_rDF
 	CK_rUL
-	CK_rDR
 	CK_rUR
-	CK_rBs
-	CK_rDs
-	CK_rFs
+	CK_rDL
+	CK_rDR
+	CK_Us // s stands for sign ($)
+	CK_Ds
+	CK_Bs
+	CK_Fs
+	CK_Ls
+	CK_Rs
+	CK_UBs
+	CK_UFs
+	CK_DBs
+	CK_DFs
+	CK_ULs
+	CK_URs
+	CK_DLs
+	CK_DRs
 	CK_rUs
+	CK_rDs
+	CK_rBs
+	CK_rFs
 	CK_rLs
 	CK_rRs
-	CK_rDBs
 	CK_rUBs
-	CK_rDFs
 	CK_rUFs
-	CK_rDLs
+	CK_rDBs
+	CK_rDFs
 	CK_rULs
-	CK_rDRs
 	CK_rURs
+	CK_rDLs
+	CK_rDRs
 	CK_a
 	CK_b
 	CK_c
@@ -95,11 +95,11 @@ const (
 )
 
 func (ck CommandKey) IsDirectionPress() bool {
-	return ck >= CK_B && ck <= CK_URs
+	return ck >= CK_U && ck <= CK_DR || ck >= CK_Us && ck >= CK_DRs
 }
 
 func (ck CommandKey) IsDirectionRelease() bool {
-	return ck >= CK_rB && ck <= CK_rURs
+	return ck >= CK_rU && ck <= CK_rDR || ck >= CK_rUs && ck >= CK_rDRs
 }
 
 func (ck CommandKey) IsButtonPress() bool {
@@ -276,7 +276,7 @@ func (ib *InputBits) KeysToBits(U, D, L, R, a, b, c, x, y, z, s, d, w, m bool) {
 
 // Convert received input bits back into keys
 func (ib InputBits) BitsToKeys(cb *CommandBuffer, facing int32) {
-	var U, D, B, F, L, R, a, b, c, x, y, z, s, d, w, m bool
+	var U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool
 	// Convert bits to logical symbols
 	U = ib&IB_PU != 0
 	D = ib&IB_PD != 0
@@ -310,7 +310,7 @@ func (ib InputBits) BitsToKeys(cb *CommandBuffer, facing int32) {
 			L = false
 		}
 	}
-	cb.Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m)
+	cb.Input(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m)
 }
 
 type CommandKeyRemap struct {
@@ -533,22 +533,22 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 
 // Add extra frame of leniency when checking button presses
 func (ir *InputReader) ButtonAssistCheck(a, b, c, x, y, z, s, d, w bool) (bool, bool, bool, bool, bool, bool, bool, bool, bool) {
-	// Set buttons to buffered state
-	a = ir.ButtonAssistBuffer[0] || a
-	b = ir.ButtonAssistBuffer[1] || b
-	c = ir.ButtonAssistBuffer[2] || c
-	x = ir.ButtonAssistBuffer[3] || x
-	y = ir.ButtonAssistBuffer[4] || y
-	z = ir.ButtonAssistBuffer[5] || z
-	s = ir.ButtonAssistBuffer[6] || s
-	d = ir.ButtonAssistBuffer[7] || d
-	w = ir.ButtonAssistBuffer[8] || w
+	// Set buttons to buffered state then clear buffer
+	a = a || ir.ButtonAssistBuffer[0]
+	b = b || ir.ButtonAssistBuffer[1]
+	c = c || ir.ButtonAssistBuffer[2]
+	x = x || ir.ButtonAssistBuffer[3]
+	y = y || ir.ButtonAssistBuffer[4]
+	z = z || ir.ButtonAssistBuffer[5]
+	s = s || ir.ButtonAssistBuffer[6]
+	d = d || ir.ButtonAssistBuffer[7]
+	w = w || ir.ButtonAssistBuffer[8]
 	ir.ButtonAssistBuffer = [9]bool{}
 	// Reenable assist when no buttons are being held
 	if !a && !b && !c && !x && !y && !z && !s && !d && !w {
 		ir.ButtonAssist = true
 	}
-	// Disable then buffer buttons if assist is enabled
+	// Disable and then buffer buttons if assist is enabled. This deliberately creates one frame of lag
 	if ir.ButtonAssist == true {
 		if a || b || c || x || y || z || s || d || w {
 			ir.ButtonAssist = false
@@ -583,28 +583,18 @@ func (c *CommandBuffer) Reset() {
 }
 
 // Update command buffer according to received inputs
-func (__ *CommandBuffer) Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m bool) {
+func (__ *CommandBuffer) Input(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool) {
 	// SOCD resolution is now handled beforehand, so that it may be easier to port to netplay later
-	if B != (__.B > 0) {
-		__.Bb = 0
-		__.B *= -1
-	}
-	__.Bb += int32(__.B)
-	if D != (__.D > 0) {
-		__.Db = 0
-		__.D *= -1
-	}
-	__.Db += int32(__.D)
-	if F != (__.F > 0) {
-		__.Fb = 0
-		__.F *= -1
-	}
-	__.Fb += int32(__.F)
 	if U != (__.U > 0) {
 		__.Ub = 0
 		__.U *= -1
 	}
 	__.Ub += int32(__.U)
+	if D != (__.D > 0) {
+		__.Db = 0
+		__.D *= -1
+	}
+	__.Db += int32(__.D)
 	if L != (__.L > 0) {
 		__.Lb = 0
 		__.L *= -1
@@ -615,6 +605,16 @@ func (__ *CommandBuffer) Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m bo
 		__.R *= -1
 	}
 	__.Rb += int32(__.R)
+	if B != (__.B > 0) {
+		__.Bb = 0
+		__.B *= -1
+	}
+	__.Bb += int32(__.B)
+	if F != (__.F > 0) {
+		__.Fb = 0
+		__.F *= -1
+	}
+	__.Fb += int32(__.F)
 	if a != (__.a > 0) {
 		__.ab = 0
 		__.a *= -1
@@ -670,62 +670,62 @@ func (__ *CommandBuffer) Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m bo
 // Check buffer state of each key
 func (__ *CommandBuffer) State(ck CommandKey) int32 {
 	switch ck {
-	case CK_B:
-		return Min(-Max(__.Db, __.Ub), __.Bb)
-	case CK_D:
-		return Min(-Max(__.Bb, __.Fb), __.Db)
-	case CK_F:
-		return Min(-Max(__.Db, __.Ub), __.Fb)
 	case CK_U:
 		return Min(-Max(__.Bb, __.Fb), __.Ub)
+	case CK_D:
+		return Min(-Max(__.Bb, __.Fb), __.Db)
+	case CK_B:
+		return Min(-Max(__.Db, __.Ub), __.Bb)
+	case CK_F:
+		return Min(-Max(__.Db, __.Ub), __.Fb)
 	case CK_L:
 		return Min(-Max(__.Db, __.Ub), __.Lb)
 	case CK_R:
 		return Min(-Max(__.Db, __.Ub), __.Rb)
-	case CK_DB:
-		return Min(__.Db, __.Bb)
+	case CK_UF:
+		return Min(__.Ub, __.Fb)
 	case CK_UB:
 		return Min(__.Ub, __.Bb)
 	case CK_DF:
 		return Min(__.Db, __.Fb)
-	case CK_UF:
-		return Min(__.Ub, __.Fb)
-	case CK_DL:
-		return Min(__.Db, __.Lb)
+	case CK_DB:
+		return Min(__.Db, __.Bb)
 	case CK_UL:
 		return Min(__.Ub, __.Lb)
-	case CK_DR:
-		return Min(__.Db, __.Rb)
 	case CK_UR:
 		return Min(__.Ub, __.Rb)
-	case CK_Bs:
-		return __.Bb
-	case CK_Ds:
-		return __.Db
-	case CK_Fs:
-		return __.Fb
+	case CK_DL:
+		return Min(__.Db, __.Lb)
+	case CK_DR:
+		return Min(__.Db, __.Rb)
 	case CK_Us:
 		return __.Ub
+	case CK_Ds:
+		return __.Db
+	case CK_Bs:
+		return __.Bb
+	case CK_Fs:
+		return __.Fb
 	case CK_Ls:
 		return __.Lb
 	case CK_Rs:
 		return __.Rb
-	case CK_DBs:
-		return Min(__.Db, __.Bb)
 	case CK_UBs:
 		return Min(__.Ub, __.Bb)
-	case CK_DFs:
-		return Min(__.Db, __.Fb)
 	case CK_UFs:
 		return Min(__.Ub, __.Fb)
-	case CK_DLs:
-		return Min(__.Db, __.Lb)
+	case CK_DBs:
+		return Min(__.Db, __.Bb)
+	case CK_DFs:
+		return Min(__.Db, __.Fb)
 	case CK_ULs:
 		return Min(__.Ub, __.Lb)
-	case CK_DRs:
-		return Min(__.Db, __.Rb)
 	case CK_URs:
 		return Min(__.Ub, __.Rb)
+	case CK_DLs:
+		return Min(__.Db, __.Lb)
+	case CK_DRs:
+		return Min(__.Db, __.Rb)
 	case CK_a:
 		return __.ab
 	case CK_b:
@@ -746,62 +746,62 @@ func (__ *CommandBuffer) State(ck CommandKey) int32 {
 		return __.wb
 	case CK_m:
 		return __.mb
-	case CK_rB:
-		return -Min(-Max(__.Db, __.Ub), __.Bb)
-	case CK_rD:
-		return -Min(-Max(__.Bb, __.Fb), __.Db)
-	case CK_rF:
-		return -Min(-Max(__.Db, __.Ub), __.Fb)
 	case CK_rU:
 		return -Min(-Max(__.Bb, __.Fb), __.Ub)
+	case CK_rD:
+		return -Min(-Max(__.Bb, __.Fb), __.Db)
+	case CK_rB:
+		return -Min(-Max(__.Db, __.Ub), __.Bb)
+	case CK_rF:
+		return -Min(-Max(__.Db, __.Ub), __.Fb)
 	case CK_rL:
 		return -Min(-Max(__.Db, __.Ub), __.Lb)
 	case CK_rR:
 		return -Min(-Max(__.Db, __.Ub), __.Rb)
-	case CK_rDB:
-		return -Min(__.Db, __.Bb)
 	case CK_rUB:
 		return -Min(__.Ub, __.Bb)
-	case CK_rDF:
-		return -Min(__.Db, __.Fb)
 	case CK_rUF:
 		return -Min(__.Ub, __.Fb)
-	case CK_rDL:
-		return -Min(__.Db, __.Lb)
+	case CK_rDB:
+		return -Min(__.Db, __.Bb)
+	case CK_rDF:
+		return -Min(__.Db, __.Fb)
 	case CK_rUL:
 		return -Min(__.Ub, __.Lb)
-	case CK_rDR:
-		return -Min(__.Db, __.Rb)
 	case CK_rUR:
 		return -Min(__.Ub, __.Rb)
-	case CK_rBs:
-		return -__.Bb
-	case CK_rDs:
-		return -__.Db
-	case CK_rFs:
-		return -__.Fb
+	case CK_rDL:
+		return -Min(__.Db, __.Lb)
+	case CK_rDR:
+		return -Min(__.Db, __.Rb)
 	case CK_rUs:
 		return -__.Ub
+	case CK_rDs:
+		return -__.Db
+	case CK_rBs:
+		return -__.Bb
+	case CK_rFs:
+		return -__.Fb
 	case CK_rLs:
 		return -__.Lb
 	case CK_rRs:
 		return -__.Rb
-	case CK_rDBs:
-		return -Min(__.Db, __.Bb)
 	case CK_rUBs:
 		return -Min(__.Ub, __.Bb)
-	case CK_rDFs:
-		return -Min(__.Db, __.Fb)
 	case CK_rUFs:
 		return -Min(__.Ub, __.Fb)
-	case CK_rDLs:
-		return -Min(__.Db, __.Lb)
+	case CK_rDBs:
+		return -Min(__.Db, __.Bb)
+	case CK_rDFs:
+		return -Min(__.Db, __.Fb)
 	case CK_rULs:
 		return -Min(__.Ub, __.Lb)
-	case CK_rDRs:
-		return -Min(__.Db, __.Rb)
 	case CK_rURs:
 		return -Min(__.Ub, __.Rb)
+	case CK_rDLs:
+		return -Min(__.Db, __.Lb)
+	case CK_rDRs:
+		return -Min(__.Db, __.Rb)
 	case CK_ra:
 		return -__.ab
 	case CK_rb:
@@ -840,26 +840,26 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 		return -Max(a, b, c)
 	}
 	switch ck {
-	case CK_Bs:
-		if __.Bb < 0 {
-			return __.Bb
-		}
-		return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Ub))
-	case CK_Ds:
-		if __.Db < 0 {
-			return __.Db
-		}
-		return Min(Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
-	case CK_Fs:
-		if __.Fb < 0 {
-			return __.Fb
-		}
-		return Min(Abs(__.Fb), Abs(__.Db), Abs(__.Ub))
 	case CK_Us:
 		if __.Ub < 0 {
 			return __.Ub
 		}
 		return Min(Abs(__.Ub), Abs(__.Bb), Abs(__.Fb))
+	case CK_Ds:
+		if __.Db < 0 {
+			return __.Db
+		}
+		return Min(Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+	case CK_Bs:
+		if __.Bb < 0 {
+			return __.Bb
+		}
+		return Min(Abs(__.Bb), Abs(__.Db), Abs(__.Ub))
+	case CK_Fs:
+		if __.Fb < 0 {
+			return __.Fb
+		}
+		return Min(Abs(__.Fb), Abs(__.Db), Abs(__.Ub))
 	case CK_Ls:
 		if __.Lb < 0 {
 			return __.Lb
@@ -891,14 +891,14 @@ func (__ *CommandBuffer) State2(ck CommandKey) int32 {
 	//		return s
 	//	}
 	//	return Min(Abs(__.Ub), Abs(__.Fb))
-	case CK_rBs:
-		return f(__.State(CK_B), __.State(CK_UB), __.State(CK_DB))
-	case CK_rDs:
-		return f(__.State(CK_D), __.State(CK_DB), __.State(CK_DF))
-	case CK_rFs:
-		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rUs:
 		return f(__.State(CK_U), __.State(CK_UB), __.State(CK_UF))
+	case CK_rDs:
+		return f(__.State(CK_D), __.State(CK_DB), __.State(CK_DF))
+	case CK_rBs:
+		return f(__.State(CK_B), __.State(CK_UB), __.State(CK_DB))
+	case CK_rFs:
+		return f(__.State(CK_F), __.State(CK_DF), __.State(CK_UF))
 	case CK_rLs:
 		return f(__.State(CK_L), __.State(CK_UL), __.State(CK_DL))
 	case CK_rRs:
@@ -1803,8 +1803,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 			func() {
 				for _, k := range h {
 					ks := cbuf.State(k)
-					if ks == 1 && (c.cmdi > 0 || len(c.hold) > 1) && !c.held[i] &&
-						(*holdTemp)[int(k)] {
+					if ks == 1 && (c.cmdi > 0 || len(c.hold) > 1) && !c.held[i] && (*holdTemp)[int(k)] {
 						c.held[i], (*holdTemp)[int(k)] = true, false
 					}
 					if ks > 0 {
@@ -1837,7 +1836,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 				}
 			} else if len(c.cmd[c.cmdi-1].key) > 1 {
 				for _, k := range c.cmd[c.cmdi-1].key {
-					if k >= CK_a && k <= CK_s && cbuf.State(k) > 0 {
+					if k >= CK_a && k <= CK_m && cbuf.State(k) > 0 {
 						return false
 					}
 				}
@@ -1847,11 +1846,12 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		return true
 	}
 	fail := func() bool {
+		// Fist input requires something to be pressed/held
 		if c.cmdi == 0 {
 			return anyHeld
 		}
-		// There's a bug here where for instance pressing DF does not invalidate F, F
-		// Mugen does the same thing, however
+		// ">" type input check
+		// There's a bug here where for instance pressing DF does not invalidate F, F. Mugen does the same thing, however
 		if !ai && c.cmd[c.cmdi].greater {
 			for _, k := range c.cmd[c.cmdi-1].key {
 				if Abs(cbuf.State2(k)) == cbuf.LastChangeTime() {
@@ -1864,6 +1864,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		return true
 	}
 	if c.chargei != c.cmdi {
+		// If current element must be charged
 		if c.cmd[c.cmdi].chargetime > 1 {
 			for _, k := range c.cmd[c.cmdi].key {
 				ks := cbuf.State(k)
@@ -1880,11 +1881,11 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 				}
 			}
 			c.chargei = c.cmdi
-		} else if c.cmdi > 0 && len(c.cmd[c.cmdi-1].key) == 1 &&
-			len(c.cmd[c.cmdi].key) == 1 && c.cmd[c.cmdi-1].key[0] < CK_Bs &&
-			c.cmd[c.cmdi].key[0] < CK_rB && (c.cmd[c.cmdi-1].key[0]-
-			c.cmd[c.cmdi].key[0])&7 == 0 {
-			if cbuf.B < 0 && cbuf.D < 0 && cbuf.F < 0 && cbuf.U < 0 {
+		// Not sure what this is reproducing yet
+		} else if c.cmdi > 0 && len(c.cmd[c.cmdi-1].key) == 1 && len(c.cmd[c.cmdi].key) == 1 && // If elements are single key
+			c.cmd[c.cmdi-1].key[0] < CK_Us && c.cmd[c.cmdi].key[0] < CK_rU && // "Not sign" then "not sign not release" (simple direction)
+			(c.cmd[c.cmdi-1].key[0]%14 == c.cmd[c.cmdi].key[0]%14) { // Same direction, regardless of symbol. There are 14 directions
+			if cbuf.B < 0 && cbuf.D < 0 && cbuf.F < 0 && cbuf.U < 0 { // If no direction held
 				c.chargei = c.cmdi
 			} else {
 				return fail()
@@ -1894,8 +1895,10 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 	foo := false
 	for _, k := range c.cmd[c.cmdi].key {
 		n := cbuf.State2(k)
+		// If "/" then buffer can be any positive number
 		if c.cmd[c.cmdi].slash {
 			foo = foo || n > 0
+		// If not pressed or taking too long to press all keys (?)
 		} else if n < 1 || n > 7 {
 			return fail()
 		} else {
@@ -1905,8 +1908,9 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 	if !foo {
 		return fail()
 	}
+	// Conditions met. Go to next element
 	c.cmdi++
-	// Both inputs in a direction to button transition are checked in same the frame
+	// Both elements in a direction to button transition are checked in same the frame
 	if c.cmdi < len(c.cmd) && c.cmd[c.cmdi-1].IsDirToButton(c.cmd[c.cmdi]) {
 		return c.bufTest(cbuf, ai, holdTemp)
 	}
@@ -1947,7 +1951,7 @@ func (c *Command) Step(cbuf *CommandBuffer, ai, hitpause bool, buftime int32) {
 	}
 	c.Clear(false)
 	if c.completeflag {
-		// Update buffer only if it's lower. Mugen doesn't do this but it seems like the right thing to do
+		// Update buffer time only if it's lower. Mugen doesn't do this but it seems like the right thing to do
 		c.curbuftime = Max(c.curbuftime, c.buftime+buftime)
 	}
 }
@@ -1987,7 +1991,7 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 		_else = true
 	}
 	if _else {
-		var L, R, U, D, a, b, c, x, y, z, s, d, w, m bool
+		var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
 		if i < 0 {
 			i = ^i
 			if i < len(sys.aiInput) {
@@ -2051,8 +2055,7 @@ func (cl *CommandList) Input(i int, facing int32, aiLevel float32, ib InputBits)
 			m = m || ib&IB_M != 0
 		}
 		// Send inputs to buffer
-		cl.Buffer.Input(B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m)
-		// TODO: Maybe reorder all instances of B and F like input bits (U, D, L, R)
+		cl.Buffer.Input(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m)
 	}
 	return step
 }
