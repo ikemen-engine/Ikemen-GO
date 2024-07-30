@@ -900,18 +900,7 @@ func (s *System) softenAllSound() {
 			}
 		}
 	}
-	for i := 0; i < int(s.soundChannels.count()); i++ {
-		// Temporarily store the volume so it can be recalled later.
-		if s.soundChannels.channels[i].sfx != nil && s.soundChannels.channels[i].ctrl != nil {
-			s.soundChannels.volResume[i] = s.soundChannels.channels[i].sfx.volume
-			s.soundChannels.channels[i].SetVolume(float32(s.pauseMasterVolume * 64 / 25))
-
-			// Pause if pause master volume is 0
-			if s.pauseMasterVolume == 0 {
-				s.soundChannels.channels[i].SetPaused(true)
-			}
-		}
-	}
+	// Don't pause motif sounds
 }
 func (s *System) restoreAllVolume() {
 	for _, p := range s.chars {
@@ -926,17 +915,6 @@ func (s *System) restoreAllVolume() {
 						c.soundChannels.channels[i].SetPaused(false)
 					}
 				}
-			}
-		}
-	}
-	for i := 0; i < int(s.soundChannels.count()); i++ {
-		// Restore the volume we had.
-		if s.soundChannels.channels[i].sfx != nil && s.soundChannels.channels[i].ctrl != nil {
-			s.soundChannels.channels[i].SetVolume(s.soundChannels.volResume[i])
-
-			// Unpause
-			if s.soundChannels.channels[i].ctrl.Paused {
-				s.soundChannels.channels[i].SetPaused(false)
 			}
 		}
 	}
