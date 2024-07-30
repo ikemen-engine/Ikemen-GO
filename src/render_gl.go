@@ -425,7 +425,7 @@ func (r *Renderer) EndFrame() {
 	postShader := r.postShaderSelect[sys.postProcessingShader]
 
 	var scaleMode uint32 // GL enum
-	if (sys.windowScaleMode == true) {
+	if sys.windowScaleMode == true {
 		scaleMode = gl.LINEAR
 	} else {
 		scaleMode = gl.NEAREST
