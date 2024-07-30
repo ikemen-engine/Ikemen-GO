@@ -424,6 +424,13 @@ func (r *Renderer) EndFrame() {
 	x, y, resizedWidth, resizedHeight := sys.window.GetScaledViewportSize()
 	postShader := r.postShaderSelect[sys.postProcessingShader]
 
+	var scaleMode uint32 // GL enum
+	if (sys.windowScaleMode == true) {
+		scaleMode = gl.LINEAR
+	} else {
+		scaleMode = gl.NEAREST
+	}
+
 	gl.UseProgram(postShader.program)
 	gl.Disable(gl.BLEND)
 
@@ -437,11 +444,11 @@ func (r *Renderer) EndFrame() {
 	gl.Uniform2f(postShader.u["TextureSize"], float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	gl.Finish()
 
 	loc := r.modelShader.a["VertCoord"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
-	gl.Finish()
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	gl.DisableVertexAttribArray(uint32(loc))
@@ -454,7 +461,7 @@ func (r *Renderer) EndFrame() {
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_texture)
 	}
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
-	gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], x, y, x+resizedWidth, y+resizedHeight, gl.COLOR_BUFFER_BIT, gl.LINEAR)
+	gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], x, y, x+resizedWidth, y+resizedHeight, gl.COLOR_BUFFER_BIT, scaleMode)
 }
 
 func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
