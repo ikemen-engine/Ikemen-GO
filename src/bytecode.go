@@ -447,7 +447,6 @@ const (
 	OC_ex_gethitvar_hittime
 	OC_ex_gethitvar_slidetime
 	OC_ex_gethitvar_ctrltime
-	OC_ex_gethitvar_recovertime
 	OC_ex_gethitvar_xoff
 	OC_ex_gethitvar_yoff
 	OC_ex_gethitvar_xvel
@@ -495,6 +494,8 @@ const (
 	OC_ex_gethitvar_airguard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_y
 	OC_ex_gethitvar_frame
+	OC_ex_gethitvar_down_recover
+	OC_ex_gethitvar_down_recovertime
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -2125,8 +2126,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.ghv.slidetime)
 	case OC_ex_gethitvar_ctrltime:
 		sys.bcStack.PushI(c.ghv.ctrltime)
-	case OC_ex_gethitvar_recovertime:
-		sys.bcStack.PushI(c.recoverTime)
+	case OC_ex_gethitvar_down_recovertime:
+		sys.bcStack.PushI(c.ghv.down_recovertime)
 	case OC_ex_gethitvar_xoff:
 		sys.bcStack.PushF(c.ghv.xoff * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_yoff:
@@ -2219,6 +2220,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_frame:
 		sys.bcStack.PushB(c.ghv.frame)
+	case OC_ex_gethitvar_down_recover:
+		sys.bcStack.PushB(c.ghv.down_recover)
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
@@ -5334,10 +5337,13 @@ const (
 	hitDef_score
 	hitDef_p2clsncheck
 	hitDef_p2clsnrequire
+	hitDef_down_recover
+	hitDef_down_recovertime
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
 
+// Additions to Hitdef should ideally also be done to GetHitVarSet and ModifyProjectile
 func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	switch id {
 	case hitDef_attr:
@@ -5624,6 +5630,10 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		} else {
 			hd.p2clsnrequire = 0
 		}
+	case hitDef_down_recover:
+		hd.down_recover = exp[0].evalB(c)
+	case hitDef_down_recovertime:
+		hd.down_recovertime = exp[0].evalI(c)
 	default:
 		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {
 			return false
@@ -5740,6 +5750,7 @@ const (
 	projectile_redirectid
 )
 
+// Additions to this state controller should also be done to ModifyProjectile
 func (sc projectile) Run(c *Char, _ []int32) bool {
 	crun := c
 	var lclscround float32 = 1.0
@@ -6595,6 +6606,14 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					} else {
 						p.hitdef.p2clsnrequire = 0
 					}
+				})
+			case hitDef_down_recover:
+				eachProj(func(p *Projectile) {
+					p.hitdef.down_recover = exp[0].evalB(c)
+				})
+			case hitDef_down_recovertime:
+				eachProj(func(p *Projectile) {
+					p.hitdef.down_recovertime = exp[0].evalI(c)
 				})
 			default:
 				eachProj(func(p *Projectile) {
@@ -10645,6 +10664,8 @@ const (
 	getHitVarSet_attr
 	getHitVarSet_chainid
 	getHitVarSet_ctrltime
+	getHitVarSet_down_recovertime
+	getHitVarSet_down_recover
 	getHitVarSet_fall
 	getHitVarSet_fall_damage
 	getHitVarSet_fall_envshake_ampl
@@ -10688,6 +10709,10 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.hitid = exp[0].evalI(c)
 		case getHitVarSet_ctrltime:
 			crun.ghv.ctrltime = exp[0].evalI(c)
+		case getHitVarSet_down_recover:
+			crun.ghv.down_recover = exp[0].evalB(c)
+		case getHitVarSet_down_recovertime:
+			crun.ghv.down_recovertime = exp[0].evalI(c)
 		case getHitVarSet_fall:
 			crun.ghv.fallflag = exp[0].evalB(c)
 		case getHitVarSet_fall_damage:
@@ -10726,8 +10751,6 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.id = exp[0].evalI(c)
 		case getHitVarSet_playerno:
 			crun.ghv.playerNo = int(exp[0].evalI(c))
-		case getHitVarSet_recovertime:
-			crun.recoverTime = exp[0].evalI(c)
 		case getHitVarSet_slidetime:
 			crun.ghv.slidetime = exp[0].evalI(c)
 		case getHitVarSet_xvel:

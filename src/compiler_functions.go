@@ -1872,6 +1872,14 @@ func (c *Compiler) hitDefSub(is IniSection,	sc *StateControllerBase) error {
 	}); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "down.recover",
+		hitDef_down_recover, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "down.recovertime",
+		hitDef_down_recovertime, VT_Int, 1, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -5204,6 +5212,14 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 		}
 		if err := c.paramValue(is, sc, "ctrltime",
 			getHitVarSet_ctrltime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "down.recover",
+			getHitVarSet_down_recover, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "down.recovertime",
+			getHitVarSet_down_recovertime, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "fall",

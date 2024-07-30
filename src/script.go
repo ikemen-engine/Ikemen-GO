@@ -3305,8 +3305,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.slidetime)
 		case "ctrltime":
 			ln = lua.LNumber(c.ghv.ctrltime)
-		case "recovertime":
-			ln = lua.LNumber(c.recoverTime)
+		case "recovertime", "down.recovertime": // Added second term for consistency
+			ln = lua.LNumber(c.ghv.down_recovertime)
 		case "xoff":
 			ln = lua.LNumber(c.ghv.xoff)
 		case "yoff":
@@ -3399,6 +3399,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.airguard_velocity[1])
 		case "frame":
 			ln = lua.LNumber(Btoi(c.ghv.frame))
+		case "down.recover":
+			ln = lua.LNumber(Btoi(c.ghv.down_recover))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

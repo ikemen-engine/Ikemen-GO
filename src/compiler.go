@@ -1886,8 +1886,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_slidetime)
 			case "ctrltime":
 				out.append(OC_ex_gethitvar_ctrltime)
-			case "recovertime":
-				out.append(OC_ex_gethitvar_recovertime)
+			case "recovertime", "down.recovertime": // Added second term for consistency
+				out.append(OC_ex_gethitvar_down_recovertime)
 			case "xoff":
 				out.append(OC_ex_gethitvar_xoff)
 			case "yoff":
@@ -1980,6 +1980,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_airguard_velocity_y)
 			case "frame":
 				out.append(OC_ex_gethitvar_frame)
+			case "down.recover":
+				out.append(OC_ex_gethitvar_down_recover)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
