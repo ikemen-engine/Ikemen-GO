@@ -13,13 +13,17 @@ import (
 
 func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 	attr := int32(-1)
-	vnum := int32(1)
+	vnum := int32(-1)
 	var err error
-	if err = c.stateParam(is, "value", false, func(data string) error {
-		attr, err = c.attr(data, false)
-		return err
-	}); err != nil {
-		return err
+	// Old syntax uses valueX
+	if attr == -1 {
+		if err = c.stateParam(is, "value", false, func(data string) error {
+			vnum = 1
+			attr, err = c.attr(data, false)
+			return err
+		}); err != nil {
+			return err
+		}
 	}
 	if attr == -1 {
 		if err = c.stateParam(is, "value2", false, func(data string) error {
@@ -30,62 +34,24 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 			return err
 		}
 	}
-	if attr == -1 {
-		if err = c.stateParam(is, "value3", false, func(data string) error {
-			vnum = 3
-			attr, err = c.attr(data, false)
-			return err
-		}); err != nil {
-			return err
-		}
-	}
-	if attr == -1 {
-		if err = c.stateParam(is, "value4", false, func(data string) error {
-			vnum = 4
-			attr, err = c.attr(data, false)
-			return err
-		}); err != nil {
+	// New syntax uses attr and slot
+	if err := c.stateParam(is, "attr", false, func(data string) error {
+		vnum = -1
+		attr, err = c.attr(data, false)
+		if err != nil {
 			return err
 		}
+		sc.add(hitBy_attr, sc.iToExp(attr))
+		return nil
+	}); err != nil {
+		return err
 	}
 	if attr == -1 {
-		if err = c.stateParam(is, "value5", false, func(data string) error {
-			vnum = 5
-			attr, err = c.attr(data, false)
-			return err
-		}); err != nil {
-			return err
-		}
+		return Error("Attributes not specified")
 	}
-	if attr == -1 {
-		if err = c.stateParam(is, "value6", false, func(data string) error {
-			vnum = 6
-			attr, err = c.attr(data, false)
-			return err
-		}); err != nil {
-			return err
-		}
-	}
-	if attr == -1 {
-		if err = c.stateParam(is, "value7", false, func(data string) error {
-			vnum = 7
-			attr, err = c.attr(data, false)
-			return err
-		}); err != nil {
-			return err
-		}
-	}
-	if attr == -1 {
-		if err = c.stateParam(is, "value8", false, func(data string) error {
-			vnum = 8
-			attr, err = c.attr(data, false)
-			return err
-		}); err != nil {
-			return err
-		}
-	}
-	if attr == -1 {
-		return Error("value parameter not specified")
+	if err := c.paramValue(is, sc, "slot",
+		hitBy_slot, VT_Int, 1, false); err != nil {
+		return err
 	}
 	if err := c.paramValue(is, sc, "time",
 		hitBy_time, VT_Int, 1, false); err != nil {
@@ -103,25 +69,14 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 		hitBy_stack, VT_Bool, 1, false); err != nil {
 		return err
 	}
-	if vnum == 8 {
-		sc.add(hitBy_value8, sc.iToExp(attr))
-	} else if vnum == 7 {
-		sc.add(hitBy_value7, sc.iToExp(attr))
-	} else if vnum == 6 {
-		sc.add(hitBy_value6, sc.iToExp(attr))
-	} else if vnum == 5 {
-		sc.add(hitBy_value5, sc.iToExp(attr))
-	} else if vnum == 4 {
-		sc.add(hitBy_value4, sc.iToExp(attr))
-	} else if vnum == 3 {
-		sc.add(hitBy_value3, sc.iToExp(attr))
+	if vnum == 1 {
+		sc.add(hitBy_value, sc.iToExp(attr))
 	} else if vnum == 2 {
 		sc.add(hitBy_value2, sc.iToExp(attr))
-	} else {
-		sc.add(hitBy_value, sc.iToExp(attr))
 	}
 	return nil
 }
+
 func (c *Compiler) hitBy(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*hitBy)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",

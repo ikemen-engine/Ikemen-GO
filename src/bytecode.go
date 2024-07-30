@@ -3183,13 +3183,9 @@ type hitBy StateControllerBase
 const (
 	hitBy_value byte = iota
 	hitBy_value2
-	hitBy_value3
-	hitBy_value4
-	hitBy_value5
-	hitBy_value6
-	hitBy_value7
-	hitBy_value8
 	hitBy_time
+	hitBy_attr
+	hitBy_slot
 	hitBy_playerno
 	hitBy_playerid
 	hitBy_stack
@@ -3197,52 +3193,59 @@ const (
 )
 
 func (sc hitBy) Run(c *Char, _ []int32) bool {
+	crun := c
+	slot := int(0)
+	attr := int32(-1)
 	time := int32(1)
 	pno := int(-1)
 	pid := int32(-1)
-	st := false
-	crun := c
-	set := func(idx int, exp []BytecodeExp, time int32, pno int, pid int32, st bool) {
-		crun.hitby[idx].not = false
-		crun.hitby[idx].time = time
-		crun.hitby[idx].flag = exp[0].evalI(c)
-		crun.hitby[idx].playerno = pno - 1
-		crun.hitby[idx].playerid = pid
-		crun.hitby[idx].stack = st
+	stk := false
+	old := false
+	set := func(slot int, attr, time int32, pno int, pid int32, stk bool) {
+		crun.hitby[slot].not = false
+		crun.hitby[slot].time = time
+		crun.hitby[slot].flag = attr
+		crun.hitby[slot].playerno = pno - 1
+		crun.hitby[slot].playerid = pid
+		crun.hitby[slot].stack = stk
 	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c)
-		case hitBy_playerno:
-			pno = int(exp[0].evalI(c))
-		case hitBy_playerid:
-			pid = exp[0].evalI(c)
-		case hitBy_stack:
-			st = exp[0].evalB(c)
 		// This redundancy is because all values can be set simultaneously in Mugen
 		case hitBy_value:
-			set(0, exp, time, pno, pid, st)
+			attr = exp[0].evalI(c)
+			set(0, attr, time, -1, -1, false)
+			old = true
 		case hitBy_value2:
-			set(1, exp, time, pno, pid, st)
-		case hitBy_value3:
-			set(2, exp, time, pno, pid, st)
-		case hitBy_value4:
-			set(3, exp, time, pno, pid, st)
-		case hitBy_value5:
-			set(4, exp, time, pno, pid, st)
-		case hitBy_value6:
-			set(5, exp, time, pno, pid, st)
-		case hitBy_value7:
-			set(6, exp, time, pno, pid, st)
-		case hitBy_value8:
-			set(7, exp, time, pno, pid, st)
-		case hitBy_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-			} else {
-				return false
+			attr = exp[0].evalI(c)
+			set(1, attr, time, -1, -1, false)
+			old = true
+		}
+		if !old { // If old syntax not already used
+			switch id {
+			case hitBy_slot:
+				slot = int(Max(0, exp[0].evalI(c)))
+				if slot > 7 {
+					slot = 0
+				}
+			case hitBy_attr:
+				attr = exp[0].evalI(c)
+			case hitBy_playerno:
+				pno = int(exp[0].evalI(c))
+			case hitBy_playerid:
+				pid = exp[0].evalI(c)
+			case hitBy_stack:
+				stk = exp[0].evalB(c)
+			case hitBy_redirectid:
+				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+					crun = rid
+				} else {
+					return false
+				}
 			}
+			set(slot, attr, time, pno, pid, stk)
 		}
 		return true
 	})
@@ -3252,50 +3255,59 @@ func (sc hitBy) Run(c *Char, _ []int32) bool {
 type notHitBy hitBy
 
 func (sc notHitBy) Run(c *Char, _ []int32) bool {
+	crun := c
+	slot := int(0)
+	attr := int32(-1)
 	time := int32(1)
 	pno := int(-1)
 	pid := int32(-1)
-	st := false
-	crun := c
-	set := func(idx int, exp []BytecodeExp, time int32, pno int, pid int32, st bool) {
-		crun.hitby[idx].not = true
-		crun.hitby[idx].time = time
-		crun.hitby[idx].flag = ^exp[0].evalI(c) // Opposite
-		crun.hitby[idx].playerno = pno - 1
-		crun.hitby[idx].playerid = pid
+	stk := false
+	old := false
+	set := func(slot int, attr, time int32, pno int, pid int32, stk bool) {
+		crun.hitby[slot].not = true
+		crun.hitby[slot].time = time
+		crun.hitby[slot].flag = ^attr // Opposite
+		crun.hitby[slot].playerno = pno - 1
+		crun.hitby[slot].playerid = pid
+		crun.hitby[slot].stack = stk
 	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c)
-		case hitBy_playerno:
-			pno = int(exp[0].evalI(c))
-		case hitBy_playerid:
-			pid = exp[0].evalI(c)
-		case hitBy_stack:
-			st = exp[0].evalB(c)
+		// This redundancy is because all values can be set simultaneously in Mugen
 		case hitBy_value:
-			set(0, exp, time, pno, pid, st)
+			attr = exp[0].evalI(c)
+			set(0, attr, time, -1, -1, false)
+			old = true
 		case hitBy_value2:
-			set(1, exp, time, pno, pid, st)
-		case hitBy_value3:
-			set(2, exp, time, pno, pid, st)
-		case hitBy_value4:
-			set(3, exp, time, pno, pid, st)
-		case hitBy_value5:
-			set(4, exp, time, pno, pid, st)
-		case hitBy_value6:
-			set(5, exp, time, pno, pid, st)
-		case hitBy_value7:
-			set(6, exp, time, pno, pid, st)
-		case hitBy_value8:
-			set(7, exp, time, pno, pid, st)
-		case hitBy_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-			} else {
-				return false
+			attr = exp[0].evalI(c)
+			set(1, attr, time, -1, -1, false)
+			old = true
+		}
+		if !old { // If old syntax not already used
+			switch id {
+			case hitBy_slot:
+				slot = int(Max(0, exp[0].evalI(c)))
+				if slot > 7 {
+					slot = 0
+				}
+			case hitBy_attr:
+				attr = exp[0].evalI(c)
+			case hitBy_playerno:
+				pno = int(exp[0].evalI(c))
+			case hitBy_playerid:
+				pid = exp[0].evalI(c)
+			case hitBy_stack:
+				stk = exp[0].evalB(c)
+			case hitBy_redirectid:
+				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+					crun = rid
+				} else {
+					return false
+				}
 			}
+			set(slot, attr, time, pno, pid, stk)
 		}
 		return true
 	})
@@ -5050,7 +5062,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 				e.under = true
 				e.ontop = false
 			}
-		case gameMakeAnim_anim:
+		case gameMakeAnim_anim: // Minor: Mugen uses anim 0 if nothing is specified
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), true)
 		}
 		return true
