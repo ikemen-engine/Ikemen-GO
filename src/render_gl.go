@@ -453,14 +453,20 @@ func (r *Renderer) EndFrame() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	gl.DisableVertexAttribArray(uint32(loc))
 
-	// resize viewport and scale finished frame to window
-	gl.Viewport(x, y, resizedWidth, resizedHeight)
+	// rebind to prepare frame for blitting to window
 	if sys.multisampleAntialiasing {
-		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_f_texture.handle)
+		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_f)
 	} else {
-		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_texture)
+		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
 	}
 	gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, 0)
+
+	// clear the entire window's contents (prevents garbage data artifacts when resizing)
+	fullw, fullh := sys.window.GetSize()
+	gl.Viewport(0, 0, int32(fullw), int32(fullh))
+	gl.Clear(gl.COLOR_BUFFER_BIT)
+
+	// scale finished frame to window
 	gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], x, y, x+resizedWidth, y+resizedHeight, gl.COLOR_BUFFER_BIT, scaleMode)
 }
 
