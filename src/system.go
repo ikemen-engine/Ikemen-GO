@@ -116,6 +116,7 @@ type System struct {
 	redrawWait              struct{ nextTime, lastDraw time.Time }
 	brightness              int32
 	roundTime               int32
+	language 				string
 	lifeMul                 float32
 	team1VS2Life            float32
 	turnsRecoveryRate       float32
@@ -2640,7 +2641,7 @@ func (s *Select) addChar(def string) {
 		return
 	}
 	sc.def = def
-	lines, i, info, files, keymap, arcade := SplitAndTrim(str, "\n"), 0, true, true, true, true
+	lines, i, info, files, keymap, arcade, lanInfo, lanFiles, lanKeymap, lanArcade := SplitAndTrim(str, "\n"), 0, true, true, true, true, true, true, true, true
 	var cns, sprite, anim, movelist string
 	var fnt [10][2]string
 	for i < len(lines) {
@@ -2649,6 +2650,24 @@ func (s *Select) addChar(def string) {
 		case "info":
 			if info {
 				info = false
+				var ok bool
+				if sc.name, ok, _ = is.getText("displayname"); !ok {
+					sc.name, _, _ = is.getText("name")
+				}
+				if sc.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
+					sc.lifebarname = sc.name
+				}
+				sc.author, _, _ = is.getText("author")
+				sc.pal_defaults = is.readI32CsvForStage("pal.defaults")
+				is.ReadI32("localcoord", &sc.localcoord)
+				if ok = is.ReadF32("portraitscale", &sc.portrait_scale); !ok {
+					sc.portrait_scale = 320 / float32(sc.localcoord)
+				}
+			}
+		case fmt.Sprintf("%v.info", sys.language) :
+			if lanInfo {
+				info = false
+				lanInfo = false
 				var ok bool
 				if sc.name, ok, _ = is.getText("displayname"); !ok {
 					sc.name, _, _ = is.getText("name")
@@ -2681,8 +2700,39 @@ func (s *Select) addChar(def string) {
 					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
 				}
 			}
+		case fmt.Sprintf("%v.files", sys.language) :
+			if lanFiles {
+				files = false
+				lanFiles = false
+				cns = is["cns"]
+				sprite = is["sprite"]
+				anim = is["anim"]
+				sc.sound = is["sound"]
+				for i := 1; i <= MaxPalNo; i++ {
+					if is[fmt.Sprintf("pal%v", i)] != "" {
+						sc.pal = append(sc.pal, int32(i))
+					}
+				}
+				movelist = is["movelist"]
+				for i := range fnt {
+					fnt[i][0] = is[fmt.Sprintf("font%v", i)]
+					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
+				}
+			}
 		case "palette ":
 			if keymap &&
+				len(subname) >= 6 && strings.ToLower(subname[:6]) == "keymap" {
+				keymap = false
+				for _, v := range [12]string{"a", "b", "c", "x", "y", "z",
+					"a2", "b2", "c2", "x2", "y2", "z2"} {
+					var i32 int32
+					if is.ReadI32(v, &i32) {
+						sc.pal_keymap = append(sc.pal_keymap, i32)
+					}
+				}
+			}
+		case fmt.Sprintf("%v.palette ", sys.language) :
+			if lanKeymap &&
 				len(subname) >= 6 && strings.ToLower(subname[:6]) == "keymap" {
 				keymap = false
 				for _, v := range [12]string{"a", "b", "c", "x", "y", "z",
@@ -2696,6 +2746,15 @@ func (s *Select) addChar(def string) {
 		case "arcade":
 			if arcade {
 				arcade = false
+				sc.intro, _, _ = is.getText("intro.storyboard")
+				sc.ending, _, _ = is.getText("ending.storyboard")
+				sc.arcadepath, _, _ = is.getText("arcadepath")
+				sc.ratiopath, _, _ = is.getText("ratiopath")
+			}
+		case fmt.Sprintf("%v.arcade", sys.language) :
+			if lanArcade {
+				arcade = false
+				lanArcade = false
 				sc.intro, _, _ = is.getText("intro.storyboard")
 				sc.ending, _, _ = is.getText("ending.storyboard")
 				sc.arcadepath, _, _ = is.getText("arcadepath")
@@ -2820,7 +2879,7 @@ func (s *Select) AddStage(def string) error {
 		return err
 	}
 	tstr = fmt.Sprintf("Stage added: %v", def)
-	i, info, music, bgdef, stageinfo := 0, true, true, true, true
+	i, info, music, bgdef, stageinfo, lanInfo, lanMusic, lanBgdef, lanStageinfo := 0, true, true, true, true, true, true, true, true
 	var spr string
 	s.stagelist = append(s.stagelist, *newSelectStage())
 	ss := &s.stagelist[len(s.stagelist)-1]
@@ -2844,9 +2903,31 @@ func (s *Select) AddStage(def string) error {
 					return nil
 				}
 			}
+		case fmt.Sprintf("%v.info", sys.language) :
+			if lanInfo {
+				info = false
+				lanInfo = false
+				var ok bool
+				if ss.name, ok, _ = is.getText("displayname"); !ok {
+					if ss.name, ok, _ = is.getText("name"); !ok {
+						ss.name = def
+					}
+				}
+				if err := is.LoadFile("attachedchar", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
+					ss.attachedchardef = filename
+					return nil
+				}); err != nil {
+					return nil
+				}
 		case "music":
 			if music {
 				music = false
+				ss.stagebgm = is
+			}
+		case fmt.Sprintf("%v.music", sys.language) :
+			if lanMusic {
+				music = false
+				lanMusic = false
 				ss.stagebgm = is
 			}
 		case "bgdef":
@@ -2854,9 +2935,25 @@ func (s *Select) AddStage(def string) error {
 				bgdef = false
 				spr = is["spr"]
 			}
+		case fmt.Sprintf("%v.bgdef", sys.language) :
+			if lanBgdef {
+				bgdef = false
+				lanBgdef = false
+				spr = is["spr"]
+			}
 		case "stageinfo":
 			if stageinfo {
 				stageinfo = false
+				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
+					localcoord := float32(320)
+					is.ReadF32("localcoord", &localcoord)
+					ss.portrait_scale = 320 / localcoord
+				}
+			}
+		case fmt.Sprintf("%v.stageinfo", sys.language) :
+			if lanStageinfo {
+				stageinfo = false
+				lanStageinfo = false
 				if ok := is.ReadF32("portraitscale", &ss.portrait_scale); !ok {
 					localcoord := float32(320)
 					is.ReadF32("localcoord", &localcoord)
