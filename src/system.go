@@ -2919,6 +2919,7 @@ func (s *Select) AddStage(def string) error {
 				}); err != nil {
 					return nil
 				}
+			}
 		case "music":
 			if music {
 				music = false
