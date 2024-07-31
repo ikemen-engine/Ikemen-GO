@@ -76,10 +76,9 @@
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info#external-modules
 	module = ""
 
-[Languages]
-	languages = en, ja
+[Languages] ; Ikemen feature, use to declare languages to show in the options menu.
+	languages = en
 	en = "English"
-	ja = "Japanese"
 	
 ;[ja.Files]
 	; Not used by default in Ikemen
