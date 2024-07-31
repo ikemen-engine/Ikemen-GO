@@ -1538,7 +1538,7 @@ func (s *System) action() {
 		if s.superanim != nil {
 			s.superanim.Action()
 		}
-		s.charList.action(x)
+		s.charList.action()
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
 	} else {
 		s.charUpdate()
@@ -1694,13 +1694,13 @@ func (s *System) draw(x, y, scl float32) {
 			}
 			s.stage.draw(false, bgx, bgy, scl)
 		}
-		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
 		if !s.gsf(GSF_globalnoshadow) {
 			if s.stage.reflection > 0 {
 				s.shadows.drawReflection(x, y, scl*s.cam.BaseScale())
 			}
 			s.shadows.draw(x, y, scl*s.cam.BaseScale())
 		}
+		s.bottomSprites.draw(x, y, scl*s.cam.BaseScale())
 		//off := s.envShake.getOffset()
 		//yofs, yofs2 := float32(s.gameHeight), float32(0)
 		//if scl > 1 && s.cam.verticalfollow > 0 {
@@ -1930,7 +1930,7 @@ func (s *System) fight() (reload bool) {
 		s.wincnt.update()
 	}()
 	var oldStageVars Stage
-	oldStageVars.copyStageVars(s.stage)
+	oldStageVars.copyStageVars(s.stage)	// NOTE: This save and restore of stage variables makes ModifyStageVar not persist. Maybe that should not be the case?
 	var life, lifeMax, power, powerMax [len(s.chars)]int32
 	var guardPoints, guardPointsMax, dizzyPoints, dizzyPointsMax, redLife [len(s.chars)]int32
 	var teamside [len(s.chars)]int
@@ -2112,6 +2112,7 @@ func (s *System) fight() (reload bool) {
 						p[0].power = 0
 					}
 				}
+				p[0].power = Clamp(p[0].power, 0, p[0].powerMax) // Because of Turns mode
 				p[0].dialogue = []string{}
 				p[0].mapArray = make(map[string]float32)
 				for k, v := range p[0].mapDefault {

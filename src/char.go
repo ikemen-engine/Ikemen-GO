@@ -616,6 +616,8 @@ type HitDef struct {
 	down_velocity              [2]float32
 	down_hittime               int32
 	down_bounce                bool
+	down_recover               bool
+	down_recovertime           int32
 	id                         int32
 	chainid                    int32
 	nochainid                  [2]int32
@@ -719,6 +721,8 @@ func (hd *HitDef) clear() {
 		score:          [...]float32{float32(math.NaN()), float32(math.NaN())},
 		p2clsncheck:    -1,
 		p2clsnrequire:  -1,
+		down_recover:     true,
+		down_recovertime: -1,
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -797,6 +801,8 @@ type GetHitVar struct {
 	airguard_velocity [2]float32
 	frame             bool
 	cheeseKO          bool
+	down_recover      bool
+	down_recovertime  int32
 }
 
 func (ghv *GetHitVar) clear() {
@@ -1948,7 +1954,6 @@ type CharSystemVar struct {
 	angleRescaleClsn  bool
 	alpha             [2]int32
 	alphaTrg          [2]int32
-	recoverTime       int32
 	systemFlag        SystemCharFlag
 	specialFlag       CharSpecialFlag
 	sprPriority       int32
@@ -2929,7 +2934,7 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 		c.animPN = c.playerNo
 		c.prevAnimNo = c.animNo
 		c.animNo = animNo
-		// If player is in custom state and used ChangeAnim2
+		// If using ChangeAnim2, the animation is changed but the sff is kept
 		if alt {
 			c.animPN = playerNo
 			a.sff = sys.cgi[c.playerNo].sff
@@ -2966,12 +2971,12 @@ func (c *Char) changeAnim(animNo int32, playerNo int, ffx string) {
 	}
 	c.changeAnimEx(animNo, playerNo, ffx, false)
 }
-func (c *Char) changeAnim2(animNo int32, ffx string) {
+func (c *Char) changeAnim2(animNo int32, playerNo int, ffx string) {
 	if animNo < 0 && animNo != -2 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted change to negative anim (different from -2)"))
 		animNo = 0
 	}
-	c.changeAnimEx(animNo, c.ss.sb.playerNo, ffx, true)
+	c.changeAnimEx(animNo, playerNo, ffx, true)
 }
 func (c *Char) setAnimElem(e int32) {
 	if c.anim != nil {
@@ -4480,7 +4485,19 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		c.forceRemapPal(p.palfx, [...]int32{rpg, rpn})
 	}
 }
+
+func (c *Char) getProjs(id int32) (projs []*Projectile) {
+	for i, p := range sys.projs[c.playerNo] {
+		if id < 0 || p.id == id {
+			projs = append(projs, &sys.projs[c.playerNo][i])
+		}
+	}
+	return
+}
+
 func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
+	hd.playerNo = c.ss.sb.playerNo
+	hd.attackerID = c.id
 	if !proj {
 		c.hitdefTargets = c.hitdefTargets[:0]
 	}
@@ -4589,8 +4606,6 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			hd.p2clsncheck = 2
 		}
 	}
-	hd.playerNo = c.ss.sb.playerNo
-	hd.attackerID = c.id
 }
 func (c *Char) setFEdge(fe float32) {
 	c.edge[0] = fe
@@ -6577,7 +6592,7 @@ func (c *Char) actionRun() {
 	c.sizeBox = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
 	if !c.pauseBool {
 		if !c.hitPause() {
-			if c.ss.no == 5110 && c.recoverTime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
+			if c.ss.no == 5110 && c.ghv.down_recovertime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
 				c.changeState(5120, -1, -1, "")
 			}
 			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
@@ -6816,11 +6831,11 @@ func (c *Char) update() {
 				// Mugen does not actually require the first condition here
 				// But that makes characters always invulnerable if their lie down time is <= 10
 				if c.ghv.fallcount > 1 && c.ss.no == 5100 {
-					if c.recoverTime > 0 {
-						c.recoverTime = int32(math.Floor(float64(c.recoverTime) / 2))
+					if c.ghv.down_recovertime > 0 {
+						c.ghv.down_recovertime = int32(math.Floor(float64(c.ghv.down_recovertime) / 2))
 					}
-					//if c.ghv.fallcount > 3 || c.recoverTime <= 0 {
-					if c.recoverTime <= 10 {
+					//if c.ghv.fallcount > 3 || c.ghv.down_recovertime <= 0 {
+					if c.ghv.down_recovertime <= 10 {
 						c.hitby[0].flag = ^int32(ST_SCA)
 						c.hitby[0].time = 180 // Mugen uses infinite time here
 					}
@@ -7025,7 +7040,8 @@ func (c *Char) tick() {
 			}
 		}
 		// Fast recovery from lie down
-		if c.recoverTime > 0 && (c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
+		if c.ghv.down_recover && c.ghv.down_recovertime > 0 &&
+			(c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
 			c.ss.sb.playerNo == c.playerNo && !c.asf(ASF_nofastrecoverfromliedown) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
 				c.cmd[0].Buffer.Fb == 1 || c.cmd[0].Buffer.Ub == 1 ||
@@ -7034,7 +7050,7 @@ func (c *Char) tick() {
 				c.cmd[0].Buffer.yb == 1 || c.cmd[0].Buffer.zb == 1 ||
 				c.cmd[0].Buffer.sb == 1 || c.cmd[0].Buffer.db == 1 ||
 				c.cmd[0].Buffer.wb == 1 /*|| c.cmd[0].Buffer.mb == 1*/) {
-			c.recoverTime -= RandI(1, (c.recoverTime+1)/2)
+			c.ghv.down_recovertime -= RandI(1, (c.ghv.down_recovertime+1)/2)
 		}
 		if !c.stchtmp {
 			if c.helperIndex == 0 && (c.alive() || c.ss.no == 0) && c.life <= 0 &&
@@ -7064,10 +7080,10 @@ func (c *Char) tick() {
 			sys.charList.p2enemyDelete(c)
 		}
 		if c.ss.moveType != MT_H {
-			c.recoverTime = c.gi().data.liedown.time
+			c.ghv.down_recovertime = c.gi().data.liedown.time
 		}
-		if c.ss.no == 5110 && c.recoverTime > 0 && !c.pause() {
-			c.recoverTime--
+		if c.ss.no == 5110 && c.ghv.down_recovertime > 0 && !c.pause() {
+			c.ghv.down_recovertime--
 		}
 	}
 }
@@ -7112,7 +7128,7 @@ func (c *Char) cueDraw() {
 							break
 						}
 						// If player-specific invincibility
-						if h.playerno >= 0 {
+						if h.playerno >= 0 || h.playerid >= 0 {
 							nhbtxt = "Player-specific"
 							hb = true
 							mtk = false
@@ -7166,7 +7182,7 @@ func (c *Char) cueDraw() {
 						nhbtxt += " Any"
 					}
 					// Attack
-					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_SA) == 0 {
+					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_HA) == 0 {
 						if nhbtxt != "" {
 							nhbtxt += ", "
 						}
@@ -7182,7 +7198,7 @@ func (c *Char) cueDraw() {
 						nhbtxt += " Atk"
 					}
 					// Throw
-					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_ST) == 0 {
+					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_HT) == 0 {
 						if nhbtxt != "" {
 							nhbtxt += ", "
 						}
@@ -7198,7 +7214,7 @@ func (c *Char) cueDraw() {
 						nhbtxt += " Thr"
 					}
 					// Projectile
-					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_SP) == 0 {
+					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_HP) == 0 {
 						if nhbtxt != "" {
 							nhbtxt += ", "
 						}
@@ -7324,7 +7340,6 @@ func (cl *CharList) add(c *Char) {
 	// Append to run order
 	cl.runOrder = append(cl.runOrder, c)
 	c.index = int32(len(cl.runOrder))
-	c.runorder = int32(len(cl.runOrder))
 	// If any entries in the draw order are empty, use that one
 	i := 0
 	for ; i < len(cl.drawOrder); i++ {
@@ -7377,22 +7392,18 @@ func (cl *CharList) delete(dc *Char) {
 		}
 	}
 }
-func (cl *CharList) action(x float32) {
-	sys.commandUpdate()
-	// Prepare characters before performing their actions
-	for i := 0; i < len(cl.runOrder); i++ {
-		cl.runOrder[i].actionPrepare()
-	}
+
+// Sort all characters into a list based on their processing order
+func (cl *CharList) sortActionRunOrder() []int {
+
+	sortedOrder := []int{}
 
 	// Reset all run order values
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].runorder = -1
 	}
 
-	// Sort all characters into a list based on their processing order
-	sortedOrder := []int{}
-
-	// Sort players with priority flag
+	// Sort characters with priority flag
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 && cl.runOrder[i].asf(ASF_runfirst) {
 			sortedOrder = append(sortedOrder, i)
@@ -7445,7 +7456,7 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
-	// Sort anyone left
+	// Sort anyone missed (RunLast flag)
 	for i := 0; i < len(cl.runOrder); i++ {
 		if cl.runOrder[i].runorder < 0 {
 			sortedOrder = append(sortedOrder, i)
@@ -7453,10 +7464,38 @@ func (cl *CharList) action(x float32) {
 		}
 	}
 
+	// Reset priority flags as they are only needed during this function
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].unsetASF(ASF_runfirst | ASF_runlast)
+	}
+
+	return sortedOrder
+}
+
+func (cl *CharList) action() {
+	sys.commandUpdate()
+
+	// Prepare characters before performing their actions
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.runOrder[i].actionPrepare()
+	}
+
 	// Run actions for each character in the sorted list
+	// Sorting the characters first makes new helpers wait for their turn and allows RunOrder trigger accuracy
+	sortedOrder := cl.sortActionRunOrder()
 	for i := 0; i < len(sortedOrder); i++ {
 		if sortedOrder[i] <= len(cl.runOrder) {
 			cl.runOrder[sortedOrder[i]].actionRun()
+		}
+	}
+
+	// Run actions for anyone missed (new helpers)
+	extra := len(sortedOrder) + 1
+	for i := 0; i < len(cl.runOrder); i++ {
+		if cl.runOrder[i].runorder < 0 {
+			cl.runOrder[i].runorder = int32(extra)
+			cl.runOrder[i].actionRun()
+			extra++
 		}
 	}
 
@@ -7468,6 +7507,7 @@ func (cl *CharList) action(x float32) {
 	// Update chars
 	sys.charUpdate()
 }
+
 func (cl *CharList) xScreenBound() {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
@@ -7677,25 +7717,18 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.attr = hd.attr
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
-				ghv.p2getp1state = hd.p2getp1state
-				ghv.forcestand = hd.forcestand != 0
-				ghv.forcecrouch = hd.forcecrouch != 0
-				ghv.fall = hd.fall // The group, not the flag
-				getter.fallTime = 0
-				ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)
-				ghv.fall.yvelocity = hd.fall.yvelocity * (c.localscl / getter.localscl)
+				ghv.id = hd.attackerID
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
+				ghv.groundtype = hd.ground_type
+				ghv.airtype = hd.air_type
 				if hd.forcenofall {
 					fall = false
 				}
-				ghv.groundtype = hd.ground_type
-				ghv.airtype = hd.air_type
 				if getter.ss.stateType == ST_A {
 					ghv._type = ghv.airtype
 				} else {
 					ghv._type = ghv.groundtype
 				}
-				ghv.id = hd.attackerID
 				if !math.IsNaN(float64(hd.score[0])) {
 					ghv.score = hd.score[0]
 				}
@@ -7727,6 +7760,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				} else {
 					ghv.hitshaketime = Max(0, hd.shaketime)
 					ghv.slidetime = hd.ground_slidetime
+					ghv.p2getp1state = hd.p2getp1state
+					ghv.forcestand = hd.forcestand != 0
+					ghv.forcecrouch = hd.forcecrouch != 0
+					ghv.fall = hd.fall // The group, not the flag
+					getter.fallTime = 0
+					ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)
+					ghv.fall.yvelocity = hd.fall.yvelocity * (c.localscl / getter.localscl)
 					if getter.ss.stateType == ST_A {
 						ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
 						ghv.ctrltime = hd.air_hittime
@@ -7754,8 +7794,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.ground_fall
 						if ghv.fallflag && ghv.yvel == 0 {
-							// I think it's better not to reproduce the situation where the value inside here
-							// becomes smaller when enlarging the window size in the new MUGEN.
+							// Mugen does this as some form of internal workaround
 							ghv.yvel = -0.001 * (c.localscl / getter.localscl)
 						}
 						if ghv.yvel != 0 {
@@ -7778,7 +7817,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 					ghv.guardcount = gc
 					ghv.fallcount = fc
-					ghv.fallflag = ghv.fallflag || fall
+					ghv.fallflag = ghv.fallflag || fall // If falling now or before the hit
+					ghv.down_recover = hd.down_recover
+					if hd.down_recovertime < 0 {
+						ghv.down_recovertime = getter.gi().data.liedown.time
+					} else {
+						ghv.down_recovertime = hd.down_recovertime
+					}
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
 					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 						ghv.hittime += 1
@@ -7884,7 +7929,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			}
 			getter.setCSF(CSF_gethit)
 			getter.ghv.frame = true
-			// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed remaining life
+			// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed the remaining life
 			bnd := true
 			for _, ho := range getter.ho {
 				if ho.time != 0 {
@@ -8016,9 +8061,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					getter.powerAdd(hd.hitgivepower)
 					getter.ghv.power += hd.hitgivepower
 				}
-				if getter.ss.moveType == MT_A {
-					c.counterHit = true
-				}
 				if !math.IsNaN(float64(hd.score[0])) {
 					c.scoreAdd(hd.score[0])
 				}
@@ -8027,6 +8069,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						getter.scoreAdd(hd.score[1])
 					}
 				}
+				c.counterHit = getter.ss.moveType == MT_A
 			}
 			if (ghvset || getter.csf(CSF_gethit)) && getter.hoIdx < 0 &&
 				!(c.hitdef.air_type == HT_None && getter.ss.stateType == ST_A || getter.ss.stateType != ST_A && c.hitdef.ground_type == HT_None) {
@@ -8405,6 +8448,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 										} else {
 											getter.ghv.fallflag = c.hitdef.ground_fall
 										}
+									}
+
+									getter.ghv.down_recover = c.hitdef.down_recover
+									if c.hitdef.down_recovertime < 0 {
+										getter.ghv.down_recovertime = getter.gi().data.liedown.time
+									} else {
+										getter.ghv.down_recovertime = c.hitdef.down_recovertime
 									}
 
 									getter.hitdefTargetsBuffer = append(getter.hitdefTargetsBuffer, c.id)
