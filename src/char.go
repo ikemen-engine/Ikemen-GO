@@ -2297,7 +2297,7 @@ func (c *Char) load(def string) error {
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
 	cns, sprite, anim, sound := "", "", "", ""
-	info, files, keymap, mapArray := true, true, true, true
+	info, files, keymap, mapArray, lanInfo, lanFiles, lanKeymap, lanMapArray := true, true, true, true, true, true, true, true
 	gi.localcoord = [...]float32{320, 240}
 	c.localcoord = 320 / (float32(sys.gameWidth) / 320)
 	c.localscl = 320 / c.localcoord
@@ -2359,6 +2359,67 @@ func (c *Char) load(def string) error {
 		case "map":
 			if mapArray {
 				mapArray = false
+				for key, value := range is {
+					c.mapDefault[key] = float32(Atof(value))
+				}
+			}
+		case fmt.Sprintf("%v.info", sys.language) :
+			if lanInfo {
+				info = false
+				lanInfo = false
+				c.name, _, _ = is.getText("name")
+				var ok bool
+				if gi.displayname, ok, _ = is.getText("displayname"); !ok {
+					gi.displayname = c.name
+				}
+				if gi.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
+					gi.lifebarname = gi.displayname
+				}
+				gi.author, _, _ = is.getText("author")
+				gi.nameLow = strings.ToLower(c.name)
+				gi.displaynameLow = strings.ToLower(gi.displayname)
+				gi.authorLow = strings.ToLower(gi.author)
+				if is.ReadF32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
+					gi.portraitscale = 320 / gi.localcoord[0]
+					c.localcoord = gi.localcoord[0] / (float32(sys.gameWidth) / 320)
+					c.localscl = 320 / c.localcoord
+				}
+				is.ReadF32("portraitscale", &gi.portraitscale)
+			}
+		case fmt.Sprintf("%v.files", sys.language) :
+			if lanFiles {
+				files = false
+				lanFiles = false
+				cns, sprite = is["cns"], is["sprite"]
+				anim, sound = is["anim"], is["sound"]
+				for i := range gi.pal {
+					gi.pal[i] = is[fmt.Sprintf("pal%v", i+1)]
+				}
+				for i := range fnt {
+					fnt[i][0] = is[fmt.Sprintf("font%v", i)]
+					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
+				}
+			}
+		case fmt.Sprintf("%v.palette ", sys.language) :
+			if lanKeymap &&
+				len(subname) >= 6 && strings.ToLower(subname[:6]) == "keymap" {
+				lanKeymap = false
+				keymap = false
+				for i, v := range [12]string{"a", "b", "c", "x", "y", "z",
+					"a2", "b2", "c2", "x2", "y2", "z2"} {
+					var i32 int32
+					if is.ReadI32(v, &i32) {
+						if i32 < 1 || int(i32) > len(gi.palkeymap) {
+							i32 = 1
+						}
+						gi.palkeymap[i] = i32 - 1
+					}
+				}
+			}
+		case fmt.Sprintf("%v.map", sys.language) :
+			if lanMapArray {
+				mapArray = false
+				lanMapArray = false
 				for key, value := range is {
 					c.mapDefault[key] = float32(Atof(value))
 				}
@@ -2469,7 +2530,7 @@ func (c *Char) load(def string) error {
 
 	gi.remapPreset = make(map[string]RemapPreset)
 
-	data, size, velocity, movement, quotes, constants := true, true, true, true, true, true
+	data, size, velocity, movement, quotes, lanQuotes, constants := true, true, true, true, true, true, true
 
 	if len(cns) > 0 {
 		if err := LoadFile(&cns, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
@@ -2661,6 +2722,16 @@ func (c *Char) load(def string) error {
 				case "quotes":
 					if quotes {
 						quotes = false
+						for i := range gi.quotes {
+							if is[fmt.Sprintf("victory%v", i)] != "" {
+								gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
+							}
+						}
+					}
+				case fmt.Sprintf("%v.quotes", sys.language) :
+					if lanQuotes {
+						quotes = false
+						lanQuotes = false
 						for i := range gi.quotes {
 							if is[fmt.Sprintf("victory%v", i)] != "" {
 								gi.quotes[i], _, _ = is.getText(fmt.Sprintf("victory%v", i))
