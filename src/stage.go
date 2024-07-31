@@ -801,6 +801,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 	}
 	if sectionExists {
+		sectionExists = false
 		var ok bool
 		s.name, ok, _ = sec[0].getText("name")
 		if !ok {
