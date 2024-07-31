@@ -1930,7 +1930,7 @@ func (s *System) fight() (reload bool) {
 		s.wincnt.update()
 	}()
 	var oldStageVars Stage
-	oldStageVars.copyStageVars(s.stage)	// NOTE: This save and restore of stage variables makes ModifyStageVar not persist. Maybe that should not be the case?
+	oldStageVars.copyStageVars(s.stage) // NOTE: This save and restore of stage variables makes ModifyStageVar not persist. Maybe that should not be the case?
 	var life, lifeMax, power, powerMax [len(s.chars)]int32
 	var guardPoints, guardPointsMax, dizzyPoints, dizzyPointsMax, redLife [len(s.chars)]int32
 	var teamside [len(s.chars)]int

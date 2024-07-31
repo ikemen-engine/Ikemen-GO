@@ -1881,7 +1881,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 				}
 			}
 			c.chargei = c.cmdi
-		// Not sure what this is reproducing yet
+			// Not sure what this is reproducing yet
 		} else if c.cmdi > 0 && len(c.cmd[c.cmdi-1].key) == 1 && len(c.cmd[c.cmdi].key) == 1 && // If elements are single key
 			c.cmd[c.cmdi-1].key[0] < CK_Us && c.cmd[c.cmdi].key[0] < CK_rU && // "Not sign" then "not sign not release" (simple direction)
 			(c.cmd[c.cmdi-1].key[0]%14 == c.cmd[c.cmdi].key[0]%14) { // Same direction, regardless of symbol. There are 14 directions
@@ -1898,7 +1898,7 @@ func (c *Command) bufTest(cbuf *CommandBuffer, ai bool, holdTemp *[CK_Last + 1]b
 		// If "/" then buffer can be any positive number
 		if c.cmd[c.cmdi].slash {
 			foo = foo || n > 0
-		// If not pressed or taking too long to press all keys (?)
+			// If not pressed or taking too long to press all keys (?)
 		} else if n < 1 || n > 7 {
 			return fail()
 		} else {

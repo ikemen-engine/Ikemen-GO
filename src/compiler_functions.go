@@ -1289,7 +1289,7 @@ func (c *Compiler) afterImageTime(is IniSection, sc *StateControllerBase, _ int8
 	})
 	return *ret, err
 }
-func (c *Compiler) hitDefSub(is IniSection,	sc *StateControllerBase) error {
+func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.stateParam(is, "attr", false, func(data string) error {
 		attr, err := c.attr(data, true)
 		if err != nil {
@@ -1950,7 +1950,7 @@ func (c *Compiler) modifyReversalDef(is IniSection, sc *StateControllerBase, _ i
 	return *ret, err
 }
 
-func (c *Compiler) projectileSub(is IniSection,	sc *StateControllerBase, ihp int8) error {
+func (c *Compiler) projectileSub(is IniSection, sc *StateControllerBase, ihp int8) error {
 	if err := c.paramValue(is, sc, "redirectid",
 		projectile_redirectid, VT_Int, 1, false); err != nil {
 		return err
