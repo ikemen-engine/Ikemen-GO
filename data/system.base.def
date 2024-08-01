@@ -81,7 +81,7 @@
 	en = "English"
 	
 ;[ja.Files]
-	; Not used by default in Ikemen
+	
 
 [Music]
 	title.bgm = ""
