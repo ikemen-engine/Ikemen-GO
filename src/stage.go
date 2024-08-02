@@ -1008,7 +1008,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 	}
 	s.bgmfreqmul = 1 // fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
-	if sec = defmap[fmt.Sprintf("%v.msuic", sys.language)]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.music", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
 		if sec = defmap["music"]; len(sec) > 0 {
