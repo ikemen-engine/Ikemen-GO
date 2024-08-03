@@ -256,6 +256,18 @@ type System struct {
 	drawc2stb               ClsnRect
 	drawwh                  ClsnRect
 	drawch                  ClsnRect
+
+	drawc1hitTex            *Texture
+	drawc1revTex            *Texture
+	drawc1notTex            *Texture
+	drawc2Tex               *Texture
+	drawc2hbTex             *Texture
+	drawc2mtkTex            *Texture
+	drawc2grdTex            *Texture
+	drawc2stbTex            *Texture
+	drawwhTex               *Texture
+	drawchTex               *Texture
+
 	autoguard               [MaxSimul*2 + MaxAttachedChar]bool
 	accel                   float32
 	clsnSpr                 Sprite
@@ -389,6 +401,7 @@ type System struct {
 // Initialize stuff, this is called after the config int at main.go
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
+	
 	var err error
 	// Create a system window.
 	s.window, err = s.newWindow(int(s.scrrect[2]), int(s.scrrect[3]))
@@ -447,6 +460,18 @@ func (s *System) init(w, h int32) *lua.LState {
 	for i := range s.stringPool {
 		s.stringPool[i] = *NewStringPool()
 	}
+
+	s.drawc1hitTex = PaletteTexture()
+	s.drawc1revTex = PaletteTexture()
+	s.drawc1notTex = PaletteTexture()
+	s.drawc2Tex = PaletteTexture()
+	s.drawc2hbTex = PaletteTexture()
+	s.drawc2mtkTex = PaletteTexture()
+	s.drawc2grdTex = PaletteTexture()
+	s.drawc2stbTex = PaletteTexture()
+	s.drawwhTex = PaletteTexture()
+	s.drawchTex = PaletteTexture()
+
 	s.clsnSpr = *newSprite()
 	s.clsnSpr.Size, s.clsnSpr.Pal = [...]uint16{1, 1}, make([]uint32, 256)
 	s.clsnSpr.SetPxl([]byte{0})
@@ -1789,25 +1814,25 @@ func (s *System) drawTop() {
 	// Draw Clsn boxes
 	if s.clsnDraw {
 		s.clsnSpr.Pal[0] = 0xff0000ff
-		s.drawc1hit.draw(0x3feff)
+		s.drawc1hit.draw(s.drawc1hitTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xff0040c0
-		s.drawc1rev.draw(0x3feff)
+		s.drawc1rev.draw(s.drawc1revTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xff000080
-		s.drawc1not.draw(0x3feff)
+		s.drawc1not.draw(s.drawc1notTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xffff0000
-		s.drawc2.draw(0x3feff)
+		s.drawc2.draw(s.drawc2Tex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xff808000
-		s.drawc2hb.draw(0x3feff)
+		s.drawc2hb.draw(s.drawc2hbTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xff004000
-		s.drawc2mtk.draw(0x3feff)
+		s.drawc2mtk.draw(s.drawc2mtkTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xffc00040
-		s.drawc2grd.draw(0x3feff)
+		s.drawc2grd.draw(s.drawc2grdTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xff404040
-		s.drawc2stb.draw(0x3feff)
+		s.drawc2stb.draw(s.drawc2stbTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xff303030
-		s.drawwh.draw(0x3feff)
+		s.drawwh.draw(s.drawwhTex, 0x3feff)
 		s.clsnSpr.Pal[0] = 0xffffffff
-		s.drawch.draw(0x3feff)
+		s.drawch.draw(s.drawchTex, 0x3feff)
 	}
 }
 func (s *System) drawDebugText() {

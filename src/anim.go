@@ -126,6 +126,7 @@ type Animation struct {
 	sff                *Sff
 	palettedata        *PaletteList
 	spr                *Sprite
+	tex		   *Texture
 	frames             []AnimFrame
 	tile               Tiling
 	loopstart          int32
@@ -158,7 +159,7 @@ type Animation struct {
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
-	return &Animation{sff: sff, palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
+	return &Animation{sff: sff, tex: PaletteTexture(), palettedata: pal, mask: -1, srcAlpha: -1, newframe: true,
 		remap: make(RemapPreset), start_scale: [...]float32{1, 1}}
 }
 func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) *Animation {
@@ -795,7 +796,7 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 					paltemp = a.spr.GetPal(&a.sff.palList)
 				}
 			}
-			rp.paltex = PaletteToTexture(paltemp[:])
+			rp.paltex = PaletteToTexture(a.tex, paltemp[:])
 		}
 	}
 

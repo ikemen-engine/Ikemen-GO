@@ -901,6 +901,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "game", func(l *lua.LState) int {
 		// Anonymous function to load characters and stages, and/or wait for them to finish loading
 		load := func() error {
+			evictSFFCache()
 			sys.loader.runTread()
 			for sys.loader.state != LS_Complete {
 				if sys.loader.state == LS_Error {

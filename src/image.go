@@ -418,8 +418,13 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 	return true
 }
 
-func PaletteToTexture(pal []uint32) *Texture {
+// Generate a single texture for reuse instead of creating new ones every animation frame
+func PaletteTexture() *Texture {
 	tx := newTexture(256, 1, 32, false)
+	return tx
+}
+
+func PaletteToTexture(tx *Texture, pal []uint32) *Texture {
 	tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal)*4))
 	return tx
 }
@@ -680,14 +685,18 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		s.Tex = newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
+		if s.Tex == nil {
+			s.Tex = newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
+		}
 		s.Tex.SetData(px)
 	}
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	sys.mainThreadTask <- func() {
-		s.Tex = newTexture(sprWidth, sprHeight, sprDepth, sys.pngFilter)
+		if s.Tex == nil {
+			s.Tex = newTexture(sprWidth, sprHeight, sprDepth, sys.pngFilter)
+		}
 		s.Tex.SetData(data)
 	}
 }
@@ -1142,7 +1151,11 @@ func (s *Sprite) CachePalette(pal []uint32) *Texture {
 	}
 	// If cached texture is invalid, generate a new one
 	if !hasPalette {
-		s.PalTex = PaletteToTexture(pal)
+		if s.PalTex == nil {
+			s.PalTex = PaletteTexture()
+		}
+
+		PaletteToTexture(s.PalTex, pal)
 		s.paltemp = append([]uint32{}, pal...)
 	}
 	return s.PalTex
@@ -1199,9 +1212,26 @@ func newPaldata() (p *Palette) {
 type SffCacheEntry struct {
 	sffData  Sff
 	refCount int
+	expiry int
 }
 
 var SffCache = map[string]*SffCacheEntry{}
+
+// Give items EXPIRY_LIMIT load cycles to hang out, after that purge to keep RAM in check
+const EXPIRY_LIMIT = 2
+func evictSFFCache() {
+	for filename, entry := range SffCache {
+		entry.expiry -= 1
+
+		if entry.expiry <= 0 {
+			delete(SffCache, filename)
+		}
+	}
+}
+
+func resetSFFCache() {
+	SffCache = map[string]*SffCacheEntry{}
+}
 
 func removeSFFCache(filename string) {
 	if _, ok := SffCache[filename]; ok {
@@ -1212,6 +1242,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 	// If this SFF is already in the cache, just return a copy
 	if cached, ok := SffCache[filename]; ok {
 		cached.refCount++
+		cached.expiry = EXPIRY_LIMIT // Reset expiry
 		s := cached.sffData
 		return &s, nil
 	}
@@ -1348,7 +1379,7 @@ func loadSff(filename string, char bool) (*Sff, error) {
 			shofs += 28
 		}
 	}
-	SffCache[filename] = &SffCacheEntry{*s, 1}
+	SffCache[filename] = &SffCacheEntry{*s, 1, EXPIRY_LIMIT}
 	runtime.SetFinalizer(s, func(s *Sff) {
 		if cached, ok := SffCache[filename]; ok {
 			cached.refCount--
