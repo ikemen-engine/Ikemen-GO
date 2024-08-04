@@ -62,7 +62,7 @@ local function f_play(t, attract)
 				clearColor(scene.clearcolor[1], scene.clearcolor[2], scene.clearcolor[3])
 				--draw layerno = 0 backgrounds
 				if scene.bg_name ~= '' then
-					bgDraw(scene.bg, false)
+					bgDraw(scene.bg, 0)
 				end
 				--loop through layers in order
 				for _, layer in main.f_sortKeys(scene.layer) do
@@ -98,7 +98,7 @@ local function f_play(t, attract)
 				end
 				--draw layerno = 1 backgrounds
 				if scene.bg_name ~= '' then
-					bgDraw(scene.bg, true)
+					bgDraw(scene.bg, 1)
 				end
 				--draw fadein / fadeout
 				if i == scene.end_time - scene.fadeout_time then

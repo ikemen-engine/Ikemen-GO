@@ -2016,7 +2016,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 		clearColor(motif[bgdef].bgclearcolor[1], motif[bgdef].bgclearcolor[2], motif[bgdef].bgclearcolor[3])
 	end
 	--draw layerno = 0 backgrounds
-	bgDraw(motif[bgdef].bg, false)
+	bgDraw(motif[bgdef].bg, 0)
 	--draw menu box
 	if motif.option_info.menu_boxbg_visible == 1 then
 		for i = 1, 2 do
@@ -2263,7 +2263,7 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 		end
 	end
 	--draw layerno = 1 backgrounds
-	bgDraw(motif[bgdef].bg, true)
+	bgDraw(motif[bgdef].bg, 1)
 	main.f_cmdInput()
 	if not skipClear then
 		refresh()

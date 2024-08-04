@@ -143,7 +143,7 @@ type backGround struct {
 	visible            bool
 	active             bool
 	positionlink       bool
-	toplayer           bool
+	layerno            int32
 	autoresizeparallax bool
 	notmaskwindow      int32
 	startrect          [4]int32
@@ -182,12 +182,7 @@ func readBackGround(is IniSection, link *backGround,
 		return bg
 	}
 	var tmp int32
-	if is.ReadI32("layerno", &tmp) {
-		bg.toplayer = tmp == 1
-		if tmp < 0 || tmp > 1 {
-			bg.typ = 3
-		}
-	}
+	is.ReadI32("layerno", &bg.layerno)
 	if bg.typ != 3 {
 		var hasAnim bool
 		if (bg.typ != 0 || len(is["spriteno"]) == 0) &&
@@ -728,6 +723,7 @@ type Stage struct {
 	screenright      int32
 	zoffsetlink      int32
 	reflection       int32
+	reflectionlayerno int32
 	hires            bool
 	autoturn         bool
 	resetbg          bool
@@ -1151,6 +1147,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 			if sec[0].ReadI32("intensity", &tmp) {
 				s.reflection = Clamp(tmp, 0, 255)
 			}
+			if sec[0].ReadI32("layerno", &tmp) {
+				s.reflectionlayerno = Clamp(tmp, -1, 0)
+			}
 		}
 	}
 	var bglink *backGround
@@ -1493,7 +1492,8 @@ func (s *Stage) action() {
 		}
 	}
 }
-func (s *Stage) draw(top bool, x, y, scl float32) {
+
+func (s *Stage) draw(layer int32, x, y, scl float32) {
 	bgscl := float32(1)
 	if s.hires {
 		bgscl = 0.5
@@ -1539,17 +1539,18 @@ func (s *Stage) draw(top bool, x, y, scl float32) {
 			pos[i] = float32(math.Ceil(float64(p - 0.5)))
 		}
 	}
-	if !top {
+	if layer == 0 {
 		s.drawModel(pos, yofs, scl, 0)
-	} else {
+	} else if layer == 1 {
 		s.drawModel(pos, yofs, scl, 1)
 	}
 	for _, b := range s.bg {
-		if b.visible && b.toplayer == top && b.anim.spr != nil {
+		if b.layerno == layer && b.visible && b.anim.spr != nil {
 			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs, true)
 		}
 	}
 }
+
 func (s *Stage) reset() {
 	s.sff.palList.ResetRemap()
 	s.bga.clear()

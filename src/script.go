@@ -390,10 +390,14 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, bg)
 		}
-		top := false
+		layer := int32(0)
 		var x, y, scl float32 = 0, 0, 1
 		if l.GetTop() >= 2 {
-			top = boolArg(l, 2)
+			if numArg(l, 2) == 1 {
+				layer = 1
+			} else {
+				layer = 0
+			}
 		}
 		if l.GetTop() >= 3 {
 			x = float32(numArg(l, 3))
@@ -404,7 +408,7 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 5 {
 			scl = float32(numArg(l, 5))
 		}
-		bg.draw(top, x, y, scl)
+		bg.draw(layer, x, y, scl)
 		return 0
 	})
 	luaRegister(l, "bgNew", func(*lua.LState) int {
@@ -4620,8 +4624,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_noailevel)))
 		case "nointroreset":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nointroreset)))
-		case "ignoreclsn2push":
-			l.Push(lua.LBool(sys.debugWC.asf(ASF_ignoreclsn2push)))
+		case "sizepushonly":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_sizepushonly)))
 		case "immovable":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
 		case "animatehitpause":

@@ -2002,7 +2002,7 @@ function start.f_selectScreen()
 		--draw clearcolor
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
-		bgDraw(motif.selectbgdef.bg, false)
+		bgDraw(motif.selectbgdef.bg, 0)
 		--draw title
 		main.txt_mainSelect:draw()
 		--draw portraits
@@ -2235,7 +2235,7 @@ function start.f_selectScreen()
 		-- hook
 		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
-		bgDraw(motif.selectbgdef.bg, true)
+		bgDraw(motif.selectbgdef.bg, 1)
 		--draw fadein / fadeout
 		main.f_fadeAnim(motif.select_info)
 		--frame transition
@@ -2878,7 +2878,7 @@ function start.f_selectVersus(active, t_orderSelect)
 		--draw clearcolor
 		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
-		bgDraw(motif.versusbgdef.bg, false)
+		bgDraw(motif.versusbgdef.bg, 0)
 		--draw portraits and order icons
 		for side = 1, 2 do
 			start.f_drawPortraits(main.f_remapTable(start.p[side].t_selTemp, start.t_orderRemap[side]), side, motif.vs_screen, '', false, t_icon[side])
@@ -2936,7 +2936,7 @@ function start.f_selectVersus(active, t_orderSelect)
 		-- hook
 		hook.run("start.f_selectVersus")
 		--draw layerno = 1 backgrounds
-		bgDraw(motif.versusbgdef.bg, true)
+		bgDraw(motif.versusbgdef.bg, 1)
 		--draw fadein / fadeout
 		for side = 1, 2 do
 			if main.fadeType == 'fadein' and (
@@ -3150,13 +3150,13 @@ function start.f_result()
 	--draw text at layerno = 0
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 0)
 	--draw layerno = 0 backgrounds
-	bgDraw(motif[start.t_result.bgdef].bg, false)
+	bgDraw(motif[start.t_result.bgdef].bg, 0)
 	--draw text at layerno = 1
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 1)
 	-- hook
 	hook.run("start.f_result")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif[start.t_result.bgdef].bg, true)
+	bgDraw(motif[start.t_result.bgdef].bg, 1)
 	--draw text at layerno = 2
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 2)
 	--draw fadein / fadeout
@@ -3341,7 +3341,7 @@ function start.f_victory()
 	--draw overlay
 	overlay_winquote:draw()
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.victorybgdef.bg, false)
+	bgDraw(motif.victorybgdef.bg, 0)
 	--draw portraits (starting from losers)
 	for side = 2, 1, -1 do
 		start.f_drawPortraits(start.t_victory['team' .. side], side, motif.victory_screen, '', false)
@@ -3377,7 +3377,7 @@ function start.f_victory()
 	-- hook
 	hook.run("start.f_victory")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.victorybgdef.bg, true)
+	bgDraw(motif.victorybgdef.bg, 1)
 	--draw fadein / fadeout
 	if main.fadeType == 'fadein' and ((start.t_victory.textend and start.t_victory.counter - start.t_victory.textcnt >= motif.victory_screen.time) or main.f_input(main.t_players, {'pal', 's'})) then
 		main.f_fadeReset('fadeout', motif.victory_screen)
@@ -3483,7 +3483,7 @@ function start.f_continue()
 	--draw overlay
 	overlay_continue:draw()
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.continuebgdef.bg, false)
+	bgDraw(motif.continuebgdef.bg, 0)
 	if motif.continue_screen.legacymode_enabled == 0 then --extended continue screen parameters
 		if not start.t_continue.selected then
 			if start.t_continue.counter < motif.continue_screen.counter_end_skiptime then
@@ -3654,7 +3654,7 @@ function start.f_continue()
 	-- hook
 	hook.run("start.f_continue")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.continuebgdef.bg, true)
+	bgDraw(motif.continuebgdef.bg, 1)
 	--draw fadein / fadeout
 	if main.fadeType == 'fadein' and (start.t_continue.counter > motif.continue_screen.counter_endtime or start.t_continue.continue or (main.f_input({1}, start.t_continue.t_btnSkip) and (motif.continue_screen.legacymode_enabled == 1 or start.t_continue.counter >= motif.continue_screen.counter_end_skiptime))) then
 		main.f_fadeReset('fadeout', motif.continue_screen)
@@ -3759,7 +3759,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	end
 	start.t_hiscore.counter = start.t_hiscore.counter + 1
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.hiscorebgdef.bg, false)
+	bgDraw(motif.hiscorebgdef.bg, 0)
 	--draw overlay
 	overlay_hiscore:draw()
 	--draw title
@@ -3900,7 +3900,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	-- hook
 	hook.run("start.f_hiscore")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.hiscorebgdef.bg, true)
+	bgDraw(motif.hiscorebgdef.bg, 1)
 	--draw fadein / fadeout
 	if main.fadeType == 'fadein' and not main.fadeActive and not start.t_hiscore.input and (((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal', 's'}))) or (motif.attract_mode.enabled == 1 and main.credits > 0)) then
 		main.f_fadeReset('fadeout', motif.hiscore_info)
@@ -3967,7 +3967,7 @@ function start.f_challenger()
 		f_drawTextAtLayerNo(motif.challenger_info, 'text', {motif.challenger_info.text_text}, txt_challenger, 0)
 	end
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.challengerbgdef.bg, false)
+	bgDraw(motif.challengerbgdef.bg, 0)
 	--draw bg
 	if start.t_challenger.counter >= motif.challenger_info.bg_displaytime then
 		animUpdate(motif.challenger_info.bg_data)
@@ -3980,7 +3980,7 @@ function start.f_challenger()
 	-- hook
 	hook.run("start.f_challenger")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.challengerbgdef.bg, true)
+	bgDraw(motif.challengerbgdef.bg, 1)
 	--draw text at layerno = 2
 	if start.t_challenger.counter >= motif.challenger_info.text_displaytime then
 		f_drawTextAtLayerNo(motif.challenger_info, 'text', {motif.challenger_info.text_text}, txt_challenger, 2)

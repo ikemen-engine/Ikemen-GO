@@ -92,11 +92,9 @@ const (
 	ASF_noailevel
 	ASF_nointroreset
 	ASF_immovable
-	ASF_ignoreclsn2push
+	ASF_sizepushonly
 	ASF_animatehitpause
 	ASF_cornerpriority
-	ASF_drawontop
-	ASF_drawunder
 	ASF_runfirst
 	ASF_runlast
 )
@@ -1053,7 +1051,7 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 	ai.restgap--
 	ai.timecount++
 }
-func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
+func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int32) {
 	if ai.time == 0 || (ai.timecount >= ai.timegap*ai.length+ai.time-1 && ai.time > 0) ||
 		ai.timegap < 1 || ai.timegap > 32767 ||
 		ai.framegap < 1 || ai.framegap > 32767 {
@@ -1063,11 +1061,18 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool) {
 	}
 	end := Min(sys.afterImageMax,
 		(Min(Min(ai.reccount, int32(len(ai.imgs))), ai.length)/ai.framegap)*ai.framegap)
+	// Decide layering
+	sprs := &sys.spritesLayer0
+	if layer > 0 {
+		sprs = &sys.spritesLayer1
+	} else if layer < 0 {
+		sprs = &sys.spritesLayerN1
+	}
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
 		if ai.time < 0 || (ai.timecount/ai.timegap-i) < (ai.time-2)/ai.timegap+1 {
 			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
-			sys.sprites.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
+			sprs.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 				img.scl, ai.alpha, sd.priority - 2, img.rot, img.ascl,
 				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window}, 0, 0, 0, 0)
 		}
@@ -1098,14 +1103,15 @@ type Explod struct {
 	velocity             [2]float32
 	accel                [2]float32
 	sprpriority          int32
+	layerno              int32
 	shadow               [3]int32
 	supermovetime        int32
 	pausemovetime        int32
 	anim                 *Animation
 	animelem             int32
 	animfreeze           bool
-	ontop                bool
-	under                bool
+	//ontop                bool
+	//under                bool
 	alpha                [2]int32
 	ownpal               bool
 	ignorehitpause       bool
@@ -1338,11 +1344,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	if sys.tickFrame() && act {
 		e.anim.UpdateSprite()
 	}
-	sprs := &sys.sprites
-	if e.ontop {
-		sprs = &sys.topSprites
-	} else if e.under {
-		sprs = &sys.bottomSprites
+	sprs := &sys.spritesLayer0
+	if e.layerno > 0 {
+		sprs = &sys.spritesLayer1
+	} else if e.layerno < 0 {
+		sprs = &sys.spritesLayerN1
 	}
 	var pfx *PalFX
 	if e.palfx != nil && (e.anim.sff != sys.ffx["f"].fsff || e.ownpal) {
@@ -1554,6 +1560,7 @@ type Projectile struct {
 	priority        int32
 	priorityPoints  int32
 	sprpriority     int32
+	layerno         int32
 	edgebound       int32
 	stagebound      int32
 	heightbound     [2]int32
@@ -1789,10 +1796,10 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.facing * p.clsnScale[0] * p.localscl
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
-				sys.drawc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
 			if clsn := frm.Clsn2(); len(clsn) > 0 {
-				sys.drawc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
 		}
 	}
@@ -1801,14 +1808,19 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 			p.ani.Action()
 		}
 	}
+	sprs := &sys.spritesLayer0
+	if p.layerno > 0 {
+		sprs = &sys.spritesLayer1
+	} else if p.layerno < 0 {
+		sprs = &sys.spritesLayerN1
+	}
 	if p.ani != nil {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
-		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false)
-		sys.sprites.add(sd,
-			p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
+		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
+		sprs.add(sd, p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
 	}
 }
 
@@ -1957,6 +1969,7 @@ type CharSystemVar struct {
 	systemFlag        SystemCharFlag
 	specialFlag       CharSpecialFlag
 	sprPriority       int32
+	layerNo           int32
 	receivedDmg       int32
 	receivedHits      int32
 	cornerVelOff      float32
@@ -2209,6 +2222,7 @@ func (c *Char) clear2() {
 		superDefenseMul: 1,
 		customDefense:   1,
 		finalDefense:    1.0}
+	c.widthToSizeBox()
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 && c.teamside != -1 {
 		if sys.roundsExisted[c.playerNo&1] > 0 {
@@ -2992,9 +3006,7 @@ func (c *Char) clearMoveHit() {
 func (c *Char) clearHitDef() {
 	c.hitdef.clear()
 }
-func (c *Char) setSprPriority(sprpriority int32) {
-	c.sprPriority = sprpriority
-}
+
 func (c *Char) setJuggle(juggle int32) {
 	c.juggle = juggle
 }
@@ -3931,11 +3943,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.edge[1] *= lsRatio
 		c.height[0] *= lsRatio
 		c.height[1] *= lsRatio
-
-		c.sizeBox[0] *= lsRatio
-		c.sizeBox[1] *= lsRatio
-		c.sizeBox[2] *= lsRatio
-		c.sizeBox[3] *= lsRatio
+		c.widthToSizeBox()
 
 		c.bindPos[0] *= lsRatio
 		c.bindPos[1] *= lsRatio
@@ -4257,8 +4265,8 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 			e.palfx.remap = nil
 		}
 	}
-	if e.ontop {
-		td := &sys.topexplDrawlist[c.playerNo]
+	if e.layerno > 0 {
+		td := &sys.explodsLayer1[c.playerNo]
 		for ii, te := range *td {
 			if te < 0 {
 				(*td)[ii] = i
@@ -4266,8 +4274,8 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 			}
 		}
 		*td = append(*td, i)
-	} else if e.under {
-		td := &sys.underexplDrawlist[c.playerNo]
+	} else if e.layerno < 0 {
+		td := &sys.explodsLayerN1[c.playerNo]
 		for ii, te := range *td {
 			if te < 0 {
 				(*td)[ii] = i
@@ -4276,7 +4284,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 		}
 		*td = append(*td, i)
 	} else {
-		ed := &sys.explDrawlist[c.playerNo]
+		ed := &sys.explodsLayer0[c.playerNo]
 		for ii, ex := range *ed {
 			pid := sys.explods[c.playerNo][ex].playerId
 			if pid >= c.id && (pid > c.id || ex < i) {
@@ -4313,9 +4321,9 @@ func (c *Char) removeExplod(id int32) {
 			}
 		}
 	}
-	remove(&sys.explDrawlist[c.playerNo], true)
-	remove(&sys.topexplDrawlist[c.playerNo], false)
-	remove(&sys.underexplDrawlist[c.playerNo], true)
+	remove(&sys.explodsLayerN1[c.playerNo], true)
+	remove(&sys.explodsLayer0[c.playerNo], true)
+	remove(&sys.explodsLayer1[c.playerNo], false)
 }
 func (c *Char) enemyExplodsRemove(en int) {
 	remove := func(drawlist *[]int, drop bool) {
@@ -4332,9 +4340,9 @@ func (c *Char) enemyExplodsRemove(en int) {
 			}
 		}
 	}
-	remove(&sys.explDrawlist[en], true)
-	remove(&sys.topexplDrawlist[en], false)
-	remove(&sys.underexplDrawlist[en], true)
+	remove(&sys.explodsLayerN1[en], true)
+	remove(&sys.explodsLayer0[en], true)
+	remove(&sys.explodsLayer1[en], false)
 }
 func (c *Char) getAnim(n int32, ffx string, fx bool) (a *Animation) {
 	if n == -2 {
@@ -4704,6 +4712,15 @@ func (c *Char) setBHeight(bh float32) {
 	ClampF(c.height[0], c.height[1], c.height[0])
 	c.setCSF(CSF_bottomheight)
 }
+
+func (c *Char) widthToSizeBox() {
+	if len(c.width) < 2 || len(c.height) < 2 {
+		c.sizeBox = []float32{0, 0, 0, 0}
+	} else {
+		c.sizeBox = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
+	}
+}
+
 func (c *Char) gethitAnimtype() Reaction {
 	if c.ghv.fallflag {
 		return c.ghv.fall.animtype
@@ -5121,6 +5138,10 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	if !absolute {
 		add /= c.finalDefense
 	}
+	// In Mugen, an extremely high defense or low attack still results in at least 1 damage. Not true when healing
+	if add > -1 && add < 0 {
+		add = -1
+	}
 	// Limit value if kill is false
 	if !kill && add <= float64(-c.life) {
 		if c.life > 0 || c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 { // See computeDamage
@@ -5529,6 +5550,7 @@ func (c *Char) makeDust(x, y float32) {
 			e.anim.start_scale[1] *= c.localscl
 		}
 		e.sprpriority = math.MaxInt32
+		e.layerno = c.layerNo
 		e.ownpal = true
 		e.relativePos = [...]float32{x, y}
 		e.setPos(c)
@@ -6659,8 +6681,8 @@ func (c *Char) actionRun() {
 	}
 	// Update size box according to player width and height
 	// This box will replace width and height values in some other parts of the code
-	// TODO: Make this box hittable in hit detection with some new parameter(s)
-	c.sizeBox = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
+	// TODO: More refactoring so the box can replace width and height entirely
+	c.widthToSizeBox()
 	if !c.pauseBool {
 		if !c.hitPause() {
 			if c.ss.no == 5110 && c.ghv.down_recovertime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
@@ -7175,11 +7197,11 @@ func (c *Char) cueDraw() {
 			if c.scf(SCF_standby) {
 				// Add nothing
 			} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
-				sys.drawc1rev.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc1rev.Add(clsn, xoff, yoff, xs, ys)
 			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
-				sys.drawc1hit.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc1hit.Add(clsn, xoff, yoff, xs, ys)
 			} else {
-				sys.drawc1not.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc1not.Add(clsn, xoff, yoff, xs, ys)
 			}
 		}
 		// Check invincibility to decide box colors
@@ -7220,19 +7242,19 @@ func (c *Char) cueDraw() {
 				}
 			}
 			if c.scf(SCF_standby) {
-				sys.drawc2stb.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2stb.Add(clsn, xoff, yoff, xs, ys)
 			} else if mtk {
 				// Add fully invincible Clsn2
-				sys.drawc2mtk.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2mtk.Add(clsn, xoff, yoff, xs, ys)
 			} else if hb {
 				// Add partially invincible Clsn2
-				sys.drawc2hb.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2hb.Add(clsn, xoff, yoff, xs, ys)
 			} else if c.inguarddist && c.scf(SCF_guard) {
 				// Add guarding Clsn2
-				sys.drawc2grd.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2grd.Add(clsn, xoff, yoff, xs, ys)
 			} else {
 				// Add regular Clsn2
-				sys.drawc2.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2.Add(clsn, xoff, yoff, xs, ys)
 			}
 			// Add invulnerability text
 			if nhbtxt == "" {
@@ -7305,10 +7327,10 @@ func (c *Char) cueDraw() {
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.drawwh.Add(c.sizeBox, x, y, c.facing*c.localscl, c.localscl)
+			sys.debugcsize.Add(c.sizeBox, x, y, c.facing*c.localscl, c.localscl)
 		}
 		// Add crosshair
-		sys.drawch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1)
+		sys.debugch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1)
 	}
 	// Prepare information for debug text
 	if sys.debugDraw {
@@ -7366,16 +7388,17 @@ func (c *Char) cueDraw() {
 		//	c.alpha = [...]int32{255, 0}
 		//}
 		sd := sdf()
-		c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause())
+		c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause(), c.layerNo)
 		// Hitshake effect
 		if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
 			sd.pos[0] -= c.facing
 		}
-		sprs := &sys.sprites
-		if c.asf(ASF_drawontop) {
-			sprs = &sys.topSprites
-		} else if c.asf(ASF_drawunder) {
-			sprs = &sys.bottomSprites
+		// Draw char according to layer number
+		sprs := &sys.spritesLayer0
+		if c.layerNo > 0 {
+			sprs = &sys.spritesLayer1
+		} else if c.layerNo < 0 {
+			sprs = &sys.spritesLayerN1
 		}
 		if !c.asf(ASF_invisible) {
 			var sc, sa int32 = -1, 255
@@ -8095,7 +8118,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			c.mhv.sparkxy = off
 			if e, i := c.newExplod(); e != nil {
 				e.anim = c.getAnim(animNo, ffx, true)
-				e.ontop = true
+				//e.ontop = true
+				e.layerno = 1
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
 				e.relativePos = off
@@ -8608,7 +8632,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 			gxmax += sys.xmax / getter.localscl
 
 			push := true
-			if !c.asf(ASF_ignoreclsn2push) {
+			if !c.asf(ASF_sizepushonly) {
 				push = getter.clsnCheck(c, 2, 2)
 			}
 			// Push characters away from each other
