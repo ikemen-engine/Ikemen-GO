@@ -627,6 +627,8 @@ func (r *Renderer) SetModelMorphTarget(offsets [8]uint32, weights [8]float32, po
 
 func (r *Renderer) ReadPixels(data []uint8, width, height int) {
 	r.EndFrame()
+	sys.window.SwapBuffers()
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
 	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 	r.BeginFrame(false)
 }
