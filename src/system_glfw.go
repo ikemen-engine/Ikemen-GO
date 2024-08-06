@@ -111,7 +111,7 @@ func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
 	var ratio float32
 	var x, y, resizedWidth, resizedHeight int32 = 0, 0, int32(winWidth), int32(winHeight)
 
-	if sys.fullscreen {
+	if sys.fullscreen || int32(winWidth) == sys.scrrect[2] && int32(winHeight) == sys.scrrect[3] {
 		return 0, 0, int32(winWidth), int32(winHeight)
 	}
 
