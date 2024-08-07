@@ -792,7 +792,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	var sec []IniSection
 	sectionExists := false
-	
+
 	if sec = defmap[fmt.Sprintf("%v.info", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {

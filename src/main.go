@@ -222,7 +222,7 @@ type configSettings struct {
 	IP                         map[string]string
 	KeepAspect                 bool
 	WindowScaleMode            bool
-	Language 				   string
+	Language                   string
 	LifeMul                    float32
 	ListenPort                 string
 	LoseSimul                  bool

@@ -116,7 +116,7 @@ type System struct {
 	redrawWait              struct{ nextTime, lastDraw time.Time }
 	brightness              int32
 	roundTime               int32
-	language 				string
+	language                string
 	lifeMul                 float32
 	team1VS2Life            float32
 	turnsRecoveryRate       float32
@@ -2665,7 +2665,7 @@ func (s *Select) addChar(def string) {
 					sc.portrait_scale = 320 / float32(sc.localcoord)
 				}
 			}
-		case fmt.Sprintf("%v.info", sys.language) :
+		case fmt.Sprintf("%v.info", sys.language):
 			if lanInfo {
 				info = false
 				lanInfo = false
@@ -2701,7 +2701,7 @@ func (s *Select) addChar(def string) {
 					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
 				}
 			}
-		case fmt.Sprintf("%v.files", sys.language) :
+		case fmt.Sprintf("%v.files", sys.language):
 			if lanFiles {
 				files = false
 				lanFiles = false
@@ -2732,7 +2732,7 @@ func (s *Select) addChar(def string) {
 					}
 				}
 			}
-		case fmt.Sprintf("%v.palette ", sys.language) :
+		case fmt.Sprintf("%v.palette ", sys.language):
 			if lanKeymap &&
 				len(subname) >= 6 && strings.ToLower(subname[:6]) == "keymap" {
 				keymap = false
@@ -2752,7 +2752,7 @@ func (s *Select) addChar(def string) {
 				sc.arcadepath, _, _ = is.getText("arcadepath")
 				sc.ratiopath, _, _ = is.getText("ratiopath")
 			}
-		case fmt.Sprintf("%v.arcade", sys.language) :
+		case fmt.Sprintf("%v.arcade", sys.language):
 			if lanArcade {
 				arcade = false
 				lanArcade = false
@@ -2904,7 +2904,7 @@ func (s *Select) AddStage(def string) error {
 					return nil
 				}
 			}
-		case fmt.Sprintf("%v.info", sys.language) :
+		case fmt.Sprintf("%v.info", sys.language):
 			if lanInfo {
 				info = false
 				lanInfo = false
@@ -2926,7 +2926,7 @@ func (s *Select) AddStage(def string) error {
 				music = false
 				ss.stagebgm = is
 			}
-		case fmt.Sprintf("%v.music", sys.language) :
+		case fmt.Sprintf("%v.music", sys.language):
 			if lanMusic {
 				music = false
 				lanMusic = false
@@ -2937,7 +2937,7 @@ func (s *Select) AddStage(def string) error {
 				bgdef = false
 				spr = is["spr"]
 			}
-		case fmt.Sprintf("%v.bgdef", sys.language) :
+		case fmt.Sprintf("%v.bgdef", sys.language):
 			if lanBgdef {
 				bgdef = false
 				lanBgdef = false
@@ -2952,7 +2952,7 @@ func (s *Select) AddStage(def string) error {
 					ss.portrait_scale = 320 / localcoord
 				}
 			}
-		case fmt.Sprintf("%v.stageinfo", sys.language) :
+		case fmt.Sprintf("%v.stageinfo", sys.language):
 			if lanStageinfo {
 				stageinfo = false
 				lanStageinfo = false

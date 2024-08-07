@@ -2368,7 +2368,7 @@ func (c *Char) load(def string) error {
 					c.mapDefault[key] = float32(Atof(value))
 				}
 			}
-		case fmt.Sprintf("%v.info", sys.language) :
+		case fmt.Sprintf("%v.info", sys.language):
 			if lanInfo {
 				info = false
 				lanInfo = false
@@ -2391,7 +2391,7 @@ func (c *Char) load(def string) error {
 				}
 				is.ReadF32("portraitscale", &gi.portraitscale)
 			}
-		case fmt.Sprintf("%v.files", sys.language) :
+		case fmt.Sprintf("%v.files", sys.language):
 			if lanFiles {
 				files = false
 				lanFiles = false
@@ -2405,7 +2405,7 @@ func (c *Char) load(def string) error {
 					fnt[i][1] = is[fmt.Sprintf("fnt_height%v", i)]
 				}
 			}
-		case fmt.Sprintf("%v.palette ", sys.language) :
+		case fmt.Sprintf("%v.palette ", sys.language):
 			if lanKeymap &&
 				len(subname) >= 6 && strings.ToLower(subname[:6]) == "keymap" {
 				lanKeymap = false
@@ -2421,7 +2421,7 @@ func (c *Char) load(def string) error {
 					}
 				}
 			}
-		case fmt.Sprintf("%v.map", sys.language) :
+		case fmt.Sprintf("%v.map", sys.language):
 			if lanMapArray {
 				mapArray = false
 				lanMapArray = false
@@ -2733,7 +2733,7 @@ func (c *Char) load(def string) error {
 							}
 						}
 					}
-				case fmt.Sprintf("%v.quotes", sys.language) :
+				case fmt.Sprintf("%v.quotes", sys.language):
 					if lanQuotes {
 						quotes = false
 						lanQuotes = false
