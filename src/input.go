@@ -57,7 +57,7 @@ const (
 	CK_URs
 	CK_DLs
 	CK_DRs
-	CK_rUs
+	CK_rUs // ~ and $ together
 	CK_rDs
 	CK_rBs
 	CK_rFs
@@ -95,11 +95,11 @@ const (
 )
 
 func (ck CommandKey) IsDirectionPress() bool {
-	return ck >= CK_U && ck <= CK_DR || ck >= CK_Us && ck >= CK_DRs
+	return ck >= CK_U && ck <= CK_DR || ck >= CK_Us && ck <= CK_DRs
 }
 
 func (ck CommandKey) IsDirectionRelease() bool {
-	return ck >= CK_rU && ck <= CK_rDR || ck >= CK_rUs && ck >= CK_rDRs
+	return ck >= CK_rU && ck <= CK_rDR || ck >= CK_rUs && ck <= CK_rDRs
 }
 
 func (ck CommandKey) IsButtonPress() bool {
@@ -1390,11 +1390,12 @@ func (ce *cmdElem) IsDirection() bool {
 }
 
 // Check if two command elements can be checked in the same frame
+// This logic seems more complex in Mugen because of variable input delay
 func (ce *cmdElem) IsDirToButton(next cmdElem) bool {
+	// Not if second element must be held
 	if next.slash {
 		return false
 	}
-	// This logic seems more complex in Mugen because of variable input delay
 	// Not if first element includes button press or release
 	for _, k := range ce.key {
 		if k.IsButtonPress() || k.IsButtonRelease() {
