@@ -163,8 +163,7 @@ options.t_itemname = {
 			config.MaxPlayerProjectile = 256
 			--config.Modules = {}
 			--config.Motif = "data/system.def"
-			config.MSAA = false
-			config.MSAASamples = 2
+			config.MSAA = 0
 			config.NumSimul = {2, 4}
 			config.NumTag = {2, 4}
 			config.NumTurns = {2, 4}
@@ -845,31 +844,24 @@ options.t_itemname = {
 	end,
 	--MSAA
 	['msaa'] = function(t, item, cursorPosY, moveTxt)
-		if main.f_input(main.t_players, {'$F', '$B', 'pal', 's'}) then
+		if main.f_input(main.t_players, {'$F'}) and config.MSAA < 16 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			if config.MSAA then
-				config.MSAA = false
+			if config.MSAA == 0 then
+				config.MSAA = 2
 			else
-				config.MSAA = true
+				config.MSAA = config.MSAA * 2
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
+			t.items[item].vardisplay = config.MSAA .. 'x'
 			options.modified = true
 			options.needReload = true
-		end
-		return true
-	end,
-	--MSAA samples
-	['msaasamples'] = function(t, item, cursorPosY, moveTxt)
-		if main.f_input(main.t_players, {'$F'}) and config.MSAASamples < 16 then
+		elseif main.f_input(main.t_players, {'$B'}) and config.MSAA > 1 then
 			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MSAASamples = config.MSAASamples * 2
-			t.items[item].vardisplay = config.MSAASamples
-			options.modified = true
-			options.needReload = true
-		elseif main.f_input(main.t_players, {'$B'}) and config.MSAASamples > 1 then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			config.MSAASamples = config.MSAASamples / 2
-			t.items[item].vardisplay = config.MSAASamples
+			if config.MSAA == 2 then
+				config.MSAA = 0
+			else
+				config.MSAA = config.MSAA / 2
+			end
+			t.items[item].vardisplay = options.f_definedDisplay(config.MSAA, {[0] = motif.option_info.menu_valuename_disabled}, config.MSAA .. 'x')
 			options.modified = true
 			options.needReload = true
 		end
@@ -1402,10 +1394,7 @@ options.t_vardisplay = {
 		return config.NumTurns[1]
 	end,
 	['msaa'] = function()
-		return options.f_boolDisplay(config.MSAA, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
-	end,
-	['msaasamples'] = function()
-		return config.MSAASamples
+		return options.f_definedDisplay(config.MSAA, {[0] = motif.option_info.menu_valuename_disabled}, config.MSAA .. 'x')
 	end,
 	['panningrange'] = function()
 		return config.PanningRange .. '%'
