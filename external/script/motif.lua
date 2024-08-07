@@ -93,6 +93,11 @@ local motif =
 		hiscore_bgm_loopstart = 0, --Ikemen feature
 		hiscore_bgm_loopend = 0, --Ikemen feature
 	},
+	languages =
+	{
+		languages = {"en"},
+		en = "English",
+	},
 	title_info =
 	{
 		fadein_time = 10,
@@ -1942,6 +1947,7 @@ end
 
 function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menugame = "Game Settings"
+	motif.option_info.menu_itemname_menugame_language = "Language"
 	motif.option_info.menu_itemname_menugame_difficulty = "Difficulty Level"
 	motif.option_info.menu_itemname_menugame_roundtime = "Time Limit"
 	motif.option_info.menu_itemname_menugame_lifemul = "Life"
@@ -2068,6 +2074,7 @@ function motif.setBaseOptionInfo()
 	end
 	main.t_sort.option_info.menu = {
 		"menugame",
+		"menugame_language",
 		"menugame_difficulty",
 		"menugame_roundtime",
 		"menugame_lifemul",
@@ -2292,6 +2299,9 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 		line = line:match('%[(.-)%s*%]%s*$') --match text between []
 		line = line:gsub('[%. ]', '_') --change . and space to _
 		group = tostring(line:lower())
+		if string.sub(group, 1, 3) == config.Language .. "_" then
+			group = string.sub(group, 4, -1)
+		end
 		if group:match('infobox_text$') then
 			t[group] = ''
 		elseif group:match('^begin_action_[0-9]+$') then --matched anim
@@ -2365,13 +2375,15 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 							if subt == 'teammenu' then
 								prefix = 'p' .. i .. '_'
 							end
-							for _, v in ipairs({'_bg_', '_bg_active_'}) do
-								local bg = param:gsub('_itemname_', v)
-								def_pos[prefix .. bg .. '_anim'] = -1
-								def_pos[prefix .. bg .. '_spr'] = {-1, 0}
-								def_pos[prefix .. bg .. '_offset'] = {0, 0}
-								def_pos[prefix .. bg .. '_facing'] = 1
-								def_pos[prefix .. bg .. '_scale'] = {1.0, 1.0}
+							if prefix == not nil then 
+								for _, v in ipairs({'_bg_', '_bg_active_'}) do
+									local bg = param:gsub('_itemname_', v)
+									def_pos[prefix .. bg .. '_anim'] = -1
+									def_pos[prefix .. bg .. '_spr'] = {-1, 0}
+									def_pos[prefix .. bg .. '_offset'] = {0, 0}
+									def_pos[prefix .. bg .. '_facing'] = 1
+									def_pos[prefix .. bg .. '_scale'] = {1.0, 1.0}
+								end
 							end
 						end
 					end

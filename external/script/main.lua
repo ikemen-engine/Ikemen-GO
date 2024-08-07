@@ -2006,15 +2006,48 @@ local content = main.f_fileRead(motif.files.select)
 local csCell = 0
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
 content = content:gsub('\n%s*\n', '\n')
+
+lanChars = false
+lanStages = false
+lanOptions = false
+lanStory = false
+for line in content:gmatch('[^\r\n]+') do
+	local lineCase = line:lower()
+	if lineCase:match('^%s*%[%s*' .. config.Language .. '.characters' .. '%s*%]') then
+		lanChars = true
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.extrastages' .. '%s*%]') then
+		lanStages = true
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.options' .. '%s*%]') then
+		lanOptions = true
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.storymode' .. '%s*%]') then
+		lanStory = true
+	end
+end
+
+
 for line in content:gmatch('[^\r\n]+') do
 --for line in io.lines("data/select.def") do
 	local lineCase = line:lower()
 	if lineCase:match('^%s*%[%s*characters%s*%]') then
 		row = 0
 		section = 1
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.characters' .. '%s*%]') then
+		if lanChars then
+			row = 0
+			section = 1
+		else 
+			section = -1
+		end
 	elseif lineCase:match('^%s*%[%s*extrastages%s*%]') then
 		row = 0
 		section = 2
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.extrastages' .. '%s*%]') then
+		if lanStages then
+			row = 0
+			section = 2
+		else 
+			section = -1
+		end
 	elseif lineCase:match('^%s*%[%s*options%s*%]') then
 		main.t_selOptions = {
 			arcadestart = {wins = 0, offset = 0},
@@ -2028,9 +2061,33 @@ for line in content:gmatch('[^\r\n]+') do
 		}
 		row = 0
 		section = 3
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.options' .. '%s*%]') then
+		if lanOptions then
+			main.t_selOptions = {
+				arcadestart = {wins = 0, offset = 0},
+				arcadeend = {wins = 0, offset = 0},
+				teamstart = {wins = 0, offset = 0},
+				teamend = {wins = 0, offset = 0},
+				survivalstart = {wins = 0, offset = 0},
+				survivalend = {wins = 0, offset = 0},
+				ratiostart = {wins = 0, offset = 0},
+				ratioend = {wins = 0, offset = 0},
+			}
+			row = 0
+			section = 3
+		else
+			section = -1
+		end
 	elseif lineCase:match('^%s*%[%s*storymode%s*%]') then
 		row = 0
 		section = 4
+	elseif lineCase:match('^%s*%[%s*' .. config.Language .. '.storymode' .. '%s*%]') then
+		if lanStory then
+			row = 0
+			section = 4
+		else
+			section = -1
+		end
 	elseif lineCase:match('^%s*%[%w+%]$') then
 		section = -1
 	elseif section == 1 then --[Characters]
