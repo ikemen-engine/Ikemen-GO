@@ -1638,8 +1638,11 @@
 	menu.itemname.menuvideo.resolution.customres = "Custom"
 	menu.itemname.menuvideo.resolution.back = "Back"
 	menu.itemname.menuvideo.fullscreen = "Fullscreen"
+	menu.itemname.menuvideo.keepaspect = "Keep Aspect Ratio"
+	menu.itemname.menuvideo.windowscalemode = "Bilinear Filtering"
 	menu.itemname.menuvideo.vretrace = "VSync"
 	menu.itemname.menuvideo.msaa = "MSAA"
+	menu.itemname.menuvideo.msaasamples = "MSAA Samples"
 	menu.itemname.menuvideo.shaders = "Shaders" ;reserved submenu
 	; This list is populated with shaders existing in 'external/shaders' directory
 	menu.itemname.menuvideo.shaders.empty = ""
