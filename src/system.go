@@ -320,9 +320,9 @@ type System struct {
 	lifebarLocalcoord    [2]int32
 
 	// Shader Vars
-	postProcessingShader           int32
-	multisampleAntialiasing        int32
-	fontShaderVer                  uint
+	postProcessingShader    int32
+	multisampleAntialiasing int32
+	fontShaderVer           uint
 
 	// External Shader Vars
 	externalShaderList  []string
