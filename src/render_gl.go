@@ -347,7 +347,7 @@ func (r *Renderer) Init() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
 	if sys.multisampleAntialiasing {
-		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, sys.scrrect[2], sys.scrrect[3], true)
+		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, sys.multisampleAntialiasingSamples, gl.RGBA, sys.scrrect[2], sys.scrrect[3], true)
 
 	} else {
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
@@ -361,7 +361,7 @@ func (r *Renderer) Init() {
 	gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
 	if sys.multisampleAntialiasing {
 		//gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
-		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, 16, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
+		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, sys.multisampleAntialiasingSamples, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
 	} else {
 		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
 	}
