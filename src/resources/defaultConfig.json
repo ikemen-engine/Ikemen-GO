@@ -59,6 +59,7 @@
   "InputSOCDResolution": 2,
   "IP": {},
   "KeepAspect": true,
+  "Language": "en",
   "LifeMul": 100,
   "ListenPort": "7500",
   "LoseSimul": true,
