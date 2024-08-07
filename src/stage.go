@@ -790,7 +790,18 @@ func loadStage(def string, main bool) (*Stage, error) {
 			defmap[name] = append(defmap[name], is)
 		}
 	}
-	if sec := defmap["info"]; len(sec) > 0 {
+	var sec []IniSection
+	sectionExists := false
+	
+	if sec = defmap[fmt.Sprintf("%v.info", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["info"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		var ok bool
 		s.name, ok, _ = sec[0].getText("name")
 		if !ok {
@@ -861,12 +872,28 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadBool("roundloop", &sys.stageLoop)
 		}
 	}
-	if sec := defmap["constants"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.constants", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["constants"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		for key, value := range sec[0] {
 			s.constants[key] = float32(Atof(value))
 		}
 	}
-	if sec := defmap["playerinfo"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.playerinfo", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["playerinfo"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		sec[0].ReadI32("p1startx", &s.p[0].startx)
 		sec[0].ReadI32("p1starty", &s.p[0].starty)
 		sec[0].ReadI32("p1startz", &s.p[0].startz)
@@ -877,16 +904,40 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("rightbound", &s.rightbound)
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
 	}
-	if sec := defmap["scaling"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.scaling", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["scaling"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topscale
 			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
 		}
 	}
-	if sec := defmap["bound"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.bound", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["bound"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		sec[0].ReadI32("screenleft", &s.screenleft)
 		sec[0].ReadI32("screenright", &s.screenright)
 	}
-	if sec := defmap["stageinfo"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.stageinfo", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["stageinfo"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		sec[0].ReadI32("zoffset", &s.stageCamera.zoffset)
 		sec[0].ReadI32("zoffsetlink", &s.zoffsetlink)
 		sec[0].ReadBool("hires", &s.hires)
@@ -957,7 +1008,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 	}
 	s.bgmfreqmul = 1 // fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
-	if sec := defmap["music"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.music", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["music"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		s.bgmusic = sec[0]["bgmusic"]
 		sec[0].ReadI32("bgmvolume", &s.bgmvolume)
 		sec[0].ReadI32("bgmloopstart", &s.bgmloopstart)
@@ -968,7 +1027,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
 		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
 	}
-	if sec := defmap["bgdef"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.bgdef", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["bgdef"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		if sec[0].LoadFile("spr", []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
 			sff, err := loadSff(filename, false)
 			if err != nil {
@@ -1007,7 +1074,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
-	if sec := defmap["model"]; len(sec) > 0 && s.model != nil {
+	if sec = defmap[fmt.Sprintf("%v.model", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["model"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		if str, ok := sec[0]["offset"]; ok {
 			for k, v := range SplitAndTrim(str, ",") {
 				if k >= len(s.model.offset) {
@@ -1036,7 +1111,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 	}
 	reflect := true
-	if sec := defmap["shadow"]; len(sec) > 0 {
+	if sec = defmap[fmt.Sprintf("%v.shadow", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["shadow"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
 		var tmp int32
 		if sec[0].ReadI32("intensity", &tmp) {
 			s.sdw.intensity = Clamp(tmp, 0, 255)
@@ -1055,7 +1138,15 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("xshear", &s.sdw.xshear)
 	}
 	if reflect {
-		if sec := defmap["reflection"]; len(sec) > 0 {
+		if sec = defmap[fmt.Sprintf("%v.constants", sys.language)]; len(sec) > 0 {
+			sectionExists = true
+		} else {
+			if sec = defmap["constants"]; len(sec) > 0 {
+				sectionExists = true
+			}
+		}
+		if sectionExists {
+			sectionExists = false
 			var tmp int32
 			if sec[0].ReadI32("intensity", &tmp) {
 				s.reflection = Clamp(tmp, 0, 255)

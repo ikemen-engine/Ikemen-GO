@@ -150,6 +150,7 @@ options.t_itemname = {
 			config.GameHeight = 480
 			config.GameFramerate = 60
 			--config.IP = {}
+			config.Language = "en"
 			config.LifeMul = 100
 			config.ListenPort = "7500"
 			config.LoseSimul = true
@@ -269,6 +270,45 @@ options.t_itemname = {
 			config.RoundTime = config.RoundTime - 1
 			t.items[item].vardisplay = options.f_definedDisplay(config.RoundTime, {[-1] = motif.option_info.menu_valuename_none}, config.RoundTime)
 			options.modified = true
+		end
+		return true
+	end,
+	--Language Setting
+	['language'] = function(t, item, cursorPosY, moveTxt)
+		if main.f_input(main.t_players, {'$F'}) then
+			languageCounter = 0
+			for x, c in ipairs(motif.languages.languages) do
+				if c == config.Language then
+					currentLanguage = x
+				end
+				languageCounter = languageCounter + 1
+			end
+			if languageCounter == currentLanguage then
+				config.Language = motif.languages.languages[1]
+			else
+				config.Language = motif.languages.languages[currentLanguage + 1]
+			end
+			options.modified = true
+			options.needReload = true
+			loadstring("sfs = " .. "motif.languages." .. config.Language)()
+			t.items[item].vardisplay = sfs or config.Language
+		elseif main.f_input(main.t_players, {'$B'}) then
+			languageCounter = 0
+			for x, c in ipairs(motif.languages.languages) do
+				if c == config.Language then
+					currentLanguage = x
+				end
+				languageCounter = languageCounter + 1
+			end
+			if currentLanguage == 1 then
+				config.Language = motif.languages.languages[languageCounter]
+			else
+				config.Language = motif.languages.languages[currentLanguage - 1]
+			end
+			options.modified = true
+			options.needReload = true
+			loadstring("sfs = " .. "motif.languages." .. config.Language)()
+			t.items[item].vardisplay = sfs or config.Language
 		end
 		return true
 	end,
@@ -1312,6 +1352,10 @@ options.t_vardisplay = {
 	end,
 	['helpermax'] = function()
 		return config.MaxHelper
+	end,
+	['language'] = function()
+		loadstring("sfs = " .. "motif.languages." .. config.Language)()
+		return sfs or config.Language
 	end,
 	['lifemul'] = function()
 		return config.LifeMul .. '%'

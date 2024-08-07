@@ -76,8 +76,12 @@
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info#external-modules
 	module = ""
 
+[Languages] ; Ikemen feature, use to declare languages to show in the options menu.
+	languages = en
+	en = "English"
+	
 ;[ja.Files]
-	; Not used in Ikemen
+	
 
 [Music]
 	title.bgm = ""
@@ -1565,6 +1569,7 @@
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.menugame = "Game Settings"
+	menu.itemname.menugame.language = "Language"
 	menu.itemname.menugame.difficulty = "Difficulty Level"
 	menu.itemname.menugame.roundtime = "Time Limit"
 	menu.itemname.menugame.lifemul = "Life"
