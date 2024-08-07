@@ -72,7 +72,7 @@
   "MaxPlayerProjectile": 256,
   "Modules": [],
   "Motif": "data/system.def",
-  "MSAA": false,
+  "MSAA": 0,
   "NumSimul": [
     2,
     4

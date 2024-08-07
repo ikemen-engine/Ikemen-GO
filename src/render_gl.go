@@ -328,14 +328,14 @@ func (r *Renderer) Init() {
 		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
 	}
 
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		gl.Enable(gl.MULTISAMPLE)
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0)
 	gl.GenTextures(1, &r.fbo_texture)
 
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		gl.BindTexture(gl.TEXTURE_2D_MULTISAMPLE, r.fbo_texture)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
@@ -346,8 +346,8 @@ func (r *Renderer) Init() {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-	if sys.multisampleAntialiasing {
-		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, 16, gl.RGBA, sys.scrrect[2], sys.scrrect[3], true)
+	if sys.multisampleAntialiasing > 0 {
+		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, sys.multisampleAntialiasing, gl.RGBA, sys.scrrect[2], sys.scrrect[3], true)
 
 	} else {
 		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sys.scrrect[2], sys.scrrect[3], 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
@@ -359,14 +359,14 @@ func (r *Renderer) Init() {
 	gl.GenRenderbuffers(1, &r.rbo_depth)
 
 	gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		//gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, int(sys.scrrect[2]), int(sys.scrrect[3]))
-		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, 16, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
+		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, sys.multisampleAntialiasing, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
 	} else {
 		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, sys.scrrect[2], sys.scrrect[3])
 	}
 	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		r.fbo_f_texture = newTexture(sys.scrrect[2], sys.scrrect[3], 32, false)
 		r.fbo_f_texture.SetData(nil)
 	} else {
@@ -379,7 +379,7 @@ func (r *Renderer) Init() {
 	gl.GenFramebuffers(1, &r.fbo)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D_MULTISAMPLE, r.fbo_texture, 0)
 		gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.rbo_depth)
 		if status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER); status != gl.FRAMEBUFFER_COMPLETE {
@@ -415,7 +415,7 @@ func (r *Renderer) BeginFrame(clearColor bool) {
 }
 
 func (r *Renderer) EndFrame() {
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, r.fbo_f)
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
 		gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], 0, 0, sys.scrrect[2], sys.scrrect[3], gl.COLOR_BUFFER_BIT, gl.LINEAR)
@@ -435,7 +435,7 @@ func (r *Renderer) EndFrame() {
 	gl.Disable(gl.BLEND)
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_f_texture.handle)
 	} else {
 		gl.BindTexture(gl.TEXTURE_2D, r.fbo_texture)
@@ -454,7 +454,7 @@ func (r *Renderer) EndFrame() {
 	gl.DisableVertexAttribArray(uint32(loc))
 
 	// rebind to prepare frame for blitting to window
-	if sys.multisampleAntialiasing {
+	if sys.multisampleAntialiasing > 0 {
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo_f)
 	} else {
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
@@ -627,6 +627,8 @@ func (r *Renderer) SetModelMorphTarget(offsets [8]uint32, weights [8]float32, po
 
 func (r *Renderer) ReadPixels(data []uint8, width, height int) {
 	r.EndFrame()
+	sys.window.SwapBuffers()
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
 	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 	r.BeginFrame(false)
 }

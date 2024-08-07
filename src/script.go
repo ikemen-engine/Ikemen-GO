@@ -2601,6 +2601,26 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "toggleWindowScaleMode", func(*lua.LState) int {
+		wsm := !sys.windowScaleMode
+		if l.GetTop() >= 1 {
+			wsm = boolArg(l, 1)
+		}
+		if wsm != sys.windowScaleMode {
+			sys.windowScaleMode = !sys.windowScaleMode
+		}
+		return 0
+	})
+	luaRegister(l, "toggleKeepAspect", func(*lua.LState) int {
+		wsm := !sys.keepAspect
+		if l.GetTop() >= 1 {
+			wsm = boolArg(l, 1)
+		}
+		if wsm != sys.keepAspect {
+			sys.keepAspect = !sys.keepAspect
+		}
+		return 0
+	})
 	luaRegister(l, "toggleMaxPowerMode", func(*lua.LState) int {
 		if l.GetTop() >= 1 {
 			sys.maxPowerMode = boolArg(l, 1)

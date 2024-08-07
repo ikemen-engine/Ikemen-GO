@@ -235,7 +235,7 @@ type configSettings struct {
 	MaxPlayerProjectile        int
 	Modules                    []string
 	Motif                      string
-	MSAA                       bool
+	MSAA                       int32
 	NumSimul                   [2]int
 	NumTag                     [2]int
 	NumTurns                   [2]int
@@ -386,6 +386,9 @@ func setupConfig() configSettings {
 	sys.loseSimul = tmp.LoseSimul
 	sys.loseTag = tmp.LoseTag
 	sys.masterVolume = tmp.VolumeMaster
+	if tmp.MSAA <= -1 {
+		tmp.MSAA = 0
+	}
 	sys.multisampleAntialiasing = tmp.MSAA
 	sys.pauseMasterVolume = tmp.PauseMasterVolume
 	sys.panningRange = tmp.PanningRange

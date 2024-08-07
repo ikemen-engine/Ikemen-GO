@@ -2022,6 +2022,8 @@ function motif.setBaseOptionInfo()
 	motif.option_info.menu_itemname_menuvideo_resolution_back = "Back"
 	motif.option_info.menu_itemname_menuvideo_fullscreen = "Fullscreen"
 	motif.option_info.menu_itemname_menuvideo_vretrace = "VSync"
+	motif.option_info.menu_itemname_menuvideo_keepaspect = "Keep Aspect Ratio"
+	motif.option_info.menu_itemname_menuvideo_windowscalemode = "Bilinear Filtering"
 	motif.option_info.menu_itemname_menuvideo_msaa = "MSAA"
 	motif.option_info.menu_itemname_menuvideo_shaders = "Shaders" --reserved submenu
 	-- This list is populated with shaders existing in 'external/shaders' directory
@@ -2145,6 +2147,8 @@ function motif.setBaseOptionInfo()
 		"menuvideo_resolution_back",
 		"menuvideo_fullscreen",
 		"menuvideo_vretrace",
+		"menuvideo_keepaspect",
+		"menuvideo_windowscalemode",
 		"menuvideo_msaa",
 		"menuvideo_shaders",
 		"menuvideo_shaders_empty",
