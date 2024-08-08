@@ -2299,9 +2299,6 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 		line = line:match('%[(.-)%s*%]%s*$') --match text between []
 		line = line:gsub('[%. ]', '_') --change . and space to _
 		group = tostring(line:lower())
-		if string.sub(group, 1, 3) == config.Language .. "_" then
-			group = string.sub(group, 4, -1)
-		end
 		if group:match('infobox_text$') then
 			t[group] = ''
 		elseif group:match('^begin_action_[0-9]+$') then --matched anim
@@ -2442,6 +2439,18 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 	end
 	main.f_loadingRefresh()
 end
+
+for group_k, contents in pairs(t) do
+	if string.sub(group_k, 1, 3) == config.Language .. "_" then
+		local defgroup = string.sub(group_k, 4, -1)
+		if type(t[defgroup]) == "table" then
+			t[defgroup] = main.f_tableMerge(t[defgroup], contents)
+		elseif type(t[defgroup]) == "string" then -- infobox
+			t[defgroup] = contents
+		end
+	end
+end
+
 --file:close()
 
 if main.debugLog then main.f_printTable(main.t_sort, 'debug/t_sort.txt') end
@@ -2761,14 +2770,34 @@ function motif.f_start()
 	for group_k, group_t in pairs(main.t_sort) do
 		for subt_k, subt_t in pairs(group_t) do
 			for _, v in ipairs(subt_t) do
+				local real_t = motif[group_k]
+				if string.sub(group_k, 1, 3) == config.Language .. "_" then
+					real_t = motif[string.sub(group_k, 4, -1)]
+				end
 				if subt_k == 'teammenu' then
 					for i = 1, 2 do
-						motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
-						motif.f_loadSprData(motif[group_k], {s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k]['p' .. i .. '_teammenu_pos'][1], y = motif[group_k]['p' .. i .. '_teammenu_pos'][2]})
+						motif.f_loadSprData(motif[group_k], {
+							s = 'p' .. i .. '_' .. subt_k .. '_bg_' .. v .. '_',
+							x = real_t['p' .. i .. '_teammenu_pos'][1],
+							y = real_t['p' .. i .. '_teammenu_pos'][2]
+						})
+						motif.f_loadSprData(motif[group_k], {
+							s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_',
+							x = real_t['p' .. i .. '_teammenu_pos'][1],
+							y = real_t['p' .. i .. '_teammenu_pos'][2]
+						})
 					end
 				else--if subt_k == 'menu' or subt_k == 'keymenu' then
-					motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
-					motif.f_loadSprData(motif[group_k], {s = subt_k .. '_bg_active_' .. v .. '_', x = motif[group_k].menu_pos[1], y = motif[group_k].menu_pos[2]})
+					motif.f_loadSprData(motif[group_k], {
+						s = subt_k .. '_bg_' .. v .. '_',
+						x = real_t.menu_pos[1],
+						y = real_t.menu_pos[2]
+					})
+					motif.f_loadSprData(motif[group_k], {
+						s = subt_k .. '_bg_active_' .. v .. '_',
+						x = real_t.menu_pos[1],
+						y = real_t.menu_pos[2]
+					})
 				end
 			end
 		end
