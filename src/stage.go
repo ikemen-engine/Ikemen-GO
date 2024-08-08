@@ -1138,10 +1138,10 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("xshear", &s.sdw.xshear)
 	}
 	if reflect {
-		if sec = defmap[fmt.Sprintf("%v.constants", sys.language)]; len(sec) > 0 {
+		if sec = defmap[fmt.Sprintf("%v.reflection", sys.language)]; len(sec) > 0 {
 			sectionExists = true
 		} else {
-			if sec = defmap["constants"]; len(sec) > 0 {
+			if sec = defmap["reflection"]; len(sec) > 0 {
 				sectionExists = true
 			}
 		}
