@@ -2440,12 +2440,13 @@ for line in main.motifData:gmatch('([^\n]*)\n?') do
 	main.f_loadingRefresh()
 end
 
+-- merge current language sections, if any
 for group_k, contents in pairs(t) do
 	if string.sub(group_k, 1, 3) == config.Language .. "_" then
 		local defgroup = string.sub(group_k, 4, -1)
 		if type(t[defgroup]) == "table" then
 			t[defgroup] = main.f_tableMerge(t[defgroup], contents)
-		elseif type(t[defgroup]) == "string" then -- infobox
+		elseif t[defgroup] ~= nil then -- infobox & others
 			t[defgroup] = contents
 		end
 	end
