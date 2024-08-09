@@ -2777,24 +2777,24 @@ function motif.f_start()
 				end
 				if subt_k == 'teammenu' then
 					for i = 1, 2 do
-						motif.f_loadSprData(motif[group_k], {
+						motif.f_loadSprData(real_t, {
 							s = 'p' .. i .. '_' .. subt_k .. '_bg_' .. v .. '_',
 							x = real_t['p' .. i .. '_teammenu_pos'][1],
 							y = real_t['p' .. i .. '_teammenu_pos'][2]
 						})
-						motif.f_loadSprData(motif[group_k], {
+						motif.f_loadSprData(real_t, {
 							s = 'p' .. i .. '_' .. subt_k .. '_bg_active_' .. v .. '_',
 							x = real_t['p' .. i .. '_teammenu_pos'][1],
 							y = real_t['p' .. i .. '_teammenu_pos'][2]
 						})
 					end
 				else--if subt_k == 'menu' or subt_k == 'keymenu' then
-					motif.f_loadSprData(motif[group_k], {
+					motif.f_loadSprData(real_t, {
 						s = subt_k .. '_bg_' .. v .. '_',
 						x = real_t.menu_pos[1],
 						y = real_t.menu_pos[2]
 					})
-					motif.f_loadSprData(motif[group_k], {
+					motif.f_loadSprData(real_t, {
 						s = subt_k .. '_bg_active_' .. v .. '_',
 						x = real_t.menu_pos[1],
 						y = real_t.menu_pos[2]
