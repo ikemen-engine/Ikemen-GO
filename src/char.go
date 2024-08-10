@@ -8224,28 +8224,24 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			// Drop all targets except the current one
 			c.targetDrop(-1, getter.id, true)
 		}
-		if c.helperIndex != 0 {
-			//update parent's or root's target list, add to the their juggle points
+		// Juggle points inheriting
+		if c.helperIndex != 0 && c.inheritJuggle != 0 {
+			// Update parent's or root's target list and juggle points
+			sendJuggle := func(origin *Char) {
+				origin.addTarget(getter.id)
+				jg := origin.gi().data.airjuggle
+				for _, v := range getter.ghv.hitBy {
+					if len(v) >= 2 && (v[0] == origin.id || v[0] == c.id) && v[1] < jg {
+						jg = v[1]
+					}
+				}
+				getter.ghv.dropId(origin.id)
+				getter.ghv.hitBy = append(getter.ghv.hitBy, [...]int32{origin.id, jg - c.juggle})
+			}
 			if c.inheritJuggle == 1 && c.parent() != nil {
-				c.parent().addTarget(getter.id)
-				jg := c.parent().gi().data.airjuggle
-				for _, v := range getter.ghv.hitBy {
-					if (v[0] == c.parent().id || v[0] == c.id) && v[1] < jg {
-						jg = v[1]
-					}
-				}
-				getter.ghv.dropId(c.parent().id)
-				getter.ghv.hitBy = append(getter.ghv.hitBy, [...]int32{c.parent().id, jg - c.juggle})
+				sendJuggle(c.parent())
 			} else if c.inheritJuggle == 2 && c.root() != nil {
-				c.root().addTarget(getter.id)
-				jg := c.root().gi().data.airjuggle
-				for _, v := range getter.ghv.hitBy {
-					if (v[0] == c.root().id || v[0] == c.id) && v[1] < jg {
-						jg = v[1]
-					}
-				}
-				getter.ghv.dropId(c.root().id)
-				getter.ghv.hitBy = append(getter.ghv.hitBy, [...]int32{c.root().id, jg - c.juggle})
+				sendJuggle(c.root())
 			}
 		}
 		c.addTarget(getter.id)
@@ -8703,6 +8699,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 		}
 	}
 }
+
 func (cl *CharList) collisionDetection() {
 
 	sortedOrder := []int{}
@@ -8731,6 +8728,12 @@ func (cl *CharList) collisionDetection() {
 	}
 	sortedOrder = append(sortedOrder, soNum...)
 
+	// Push detection for players
+	// This must happen before hit detection
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1941
+	for i := 0; i < len(cl.runOrder); i++ {
+		cl.pushDetection(cl.runOrder[sortedOrder[i]])
+	}
 	// Hit detection for players
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.hitDetection(cl.runOrder[sortedOrder[i]], false)
@@ -8739,11 +8742,8 @@ func (cl *CharList) collisionDetection() {
 	for _, c := range cl.runOrder {
 		cl.hitDetection(c, true)
 	}
-	// Push detection for players
-	for i := 0; i < len(cl.runOrder); i++ {
-		cl.pushDetection(cl.runOrder[sortedOrder[i]])
-	}
 }
+
 func (cl *CharList) tick() {
 	sys.gameTime++
 	for _, c := range cl.runOrder {
