@@ -280,6 +280,7 @@ options.t_itemname = {
 	--Language Setting
 	['language'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			languageCounter = 0
 			for x, c in ipairs(motif.languages.languages) do
 				if c == config.Language then
@@ -297,6 +298,7 @@ options.t_itemname = {
 			loadstring("sfs = " .. "motif.languages." .. config.Language)()
 			t.items[item].vardisplay = sfs or config.Language
 		elseif main.f_input(main.t_players, {'$B'}) then
+			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
 			languageCounter = 0
 			for x, c in ipairs(motif.languages.languages) do
 				if c == config.Language then
