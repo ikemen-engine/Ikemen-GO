@@ -102,7 +102,7 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 								assertInput{flag: a; flag2: b; flag3: c}
 							}
 						} else {
-							assertCommand{name: "recovery"; buffertime: 2}
+							assertCommand{name: "recovery"; buffer.time: 2}
 							# Buffered 2 frames because asserting a command instead of inputting it has 1 frame of lag in custom fall recovery systems
 						}
 						# Random direction

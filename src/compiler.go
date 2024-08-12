@@ -435,6 +435,7 @@ var triggerMap = map[string]int{
 	"runorder":   1,
 	"bgmvar":     1,
 	"gameoption": 1,
+	"layerno":    1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -2063,6 +2064,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_ishometeam)
 	case "index":
 		out.append(OC_ex2_, OC_ex2_index)
+	case "layerno":
+		out.append(OC_ex2_, OC_ex2_layerno)
 	case "leftedge":
 		out.append(OC_leftedge)
 	case "life", "p2life":
@@ -3307,8 +3310,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noailevel))
 		case "nointroreset":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nointroreset))
-		case "ignoreclsn2push":
-			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_ignoreclsn2push))
+		case "sizepushonly":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_sizepushonly))
 		case "immovable":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_immovable))
 		case "cornerpriority":

@@ -280,17 +280,21 @@ func (s *BGDef) action() {
 		}
 	}
 }
-func (s *BGDef) draw(top bool, x, y, scl float32) {
-	if !top {
+
+func (s *BGDef) draw(layer int32, x, y, scl float32) {
+	// Action will only happen once per frame even though this function is called more times
+	// TODO: Doing this in layer 0 is currently necessary for it to work in screenpacks, but it might be introducing a frame of delay in layer -1
+	if layer == 0 {
 		s.action()
 	}
 	//x, y = x/s.localscl, y/s.localscl
 	for _, b := range s.bg {
-		if b.visible && b.toplayer == top && b.anim.spr != nil {
+		if b.layerno == layer && b.visible && b.anim.spr != nil {
 			b.draw([...]float32{x, y}, scl, s.localscl, 1, s.scale, 0, false)
 		}
 	}
 }
+
 func (s *BGDef) reset() {
 	s.bga.clear()
 	for i := range s.bg {

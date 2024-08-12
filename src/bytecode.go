@@ -686,6 +686,7 @@ const (
 	OC_ex2_gameoption_sound_bgmvolume
 	OC_ex2_gameoption_sound_maxvolume
 	OC_ex2_groundlevel
+	OC_ex2_layerno
 )
 const (
 	NumVar     = 60
@@ -2796,6 +2797,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(sys.wavVolume))
 	case OC_ex2_groundlevel:
 		sys.bcStack.PushF(c.groundLevel)
+	case OC_ex2_layerno:
+		sys.bcStack.PushI(c.layerNo)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
@@ -3150,7 +3153,7 @@ func (sc stateDef) Run(c *Char) {
 				c.clearHitDef()
 			}
 		case stateDef_sprpriority:
-			c.setSprPriority(exp[0].evalI(c))
+			c.sprPriority = exp[0].evalI(c)
 		case stateDef_facep2:
 			if exp[0].evalB(c) && c.rdDistX(c.p2(), c).ToF() < 0 {
 				c.setFacing(-c.facing)
@@ -3197,7 +3200,7 @@ const (
 
 func (sc hitBy) Run(c *Char, _ []int32) bool {
 	crun := c
-	slot := int(0)
+	slot := int(-1)
 	attr := int32(-1)
 	time := int32(1)
 	pno := int(-1)
@@ -3216,42 +3219,39 @@ func (sc hitBy) Run(c *Char, _ []int32) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c)
-		// This redundancy is because all values can be set simultaneously in Mugen
 		case hitBy_value:
-			attr = exp[0].evalI(c)
-			set(0, attr, time, -1, -1, false)
+			val := exp[0].evalI(c)
+			set(0, val, time, -1, -1, false)
 			old = true
 		case hitBy_value2:
-			attr = exp[0].evalI(c)
-			set(1, attr, time, -1, -1, false)
+			val := exp[0].evalI(c)
+			set(1, val, time, -1, -1, false) // This redundancy is because both values can be set simultaneously in Mugen
 			old = true
-		}
-		if !old { // If old syntax not already used
-			switch id {
-			case hitBy_slot:
-				slot = int(Max(0, exp[0].evalI(c)))
-				if slot > 7 {
-					slot = 0
-				}
-			case hitBy_attr:
-				attr = exp[0].evalI(c)
-			case hitBy_playerno:
-				pno = int(exp[0].evalI(c))
-			case hitBy_playerid:
-				pid = exp[0].evalI(c)
-			case hitBy_stack:
-				stk = exp[0].evalB(c)
-			case hitBy_redirectid:
-				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-					crun = rid
-				} else {
-					return false
-				}
+		case hitBy_slot:
+			slot = int(Max(0, exp[0].evalI(c)))
+			if slot > 7 {
+				slot = 0
 			}
-			set(slot, attr, time, pno, pid, stk)
+		case hitBy_attr:
+			attr = exp[0].evalI(c)
+		case hitBy_playerno:
+			pno = int(exp[0].evalI(c))
+		case hitBy_playerid:
+			pid = exp[0].evalI(c)
+		case hitBy_stack:
+			stk = exp[0].evalB(c)
+		case hitBy_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
 		}
 		return true
 	})
+	if !old && slot >= 0 && slot <= 7 {
+		set(slot, attr, time, pno, pid, stk)
+	}
 	return false
 }
 
@@ -3259,7 +3259,7 @@ type notHitBy hitBy
 
 func (sc notHitBy) Run(c *Char, _ []int32) bool {
 	crun := c
-	slot := int(0)
+	slot := int(-1)
 	attr := int32(-1)
 	time := int32(1)
 	pno := int(-1)
@@ -3278,42 +3278,39 @@ func (sc notHitBy) Run(c *Char, _ []int32) bool {
 		switch id {
 		case hitBy_time:
 			time = exp[0].evalI(c)
-		// This redundancy is because all values can be set simultaneously in Mugen
 		case hitBy_value:
-			attr = exp[0].evalI(c)
-			set(0, attr, time, -1, -1, false)
+			val := exp[0].evalI(c)
+			set(0, val, time, -1, -1, false)
 			old = true
 		case hitBy_value2:
-			attr = exp[0].evalI(c)
-			set(1, attr, time, -1, -1, false)
+			val := exp[0].evalI(c)
+			set(1, val, time, -1, -1, false)
 			old = true
-		}
-		if !old { // If old syntax not already used
-			switch id {
-			case hitBy_slot:
-				slot = int(Max(0, exp[0].evalI(c)))
-				if slot > 7 {
-					slot = 0
-				}
-			case hitBy_attr:
-				attr = exp[0].evalI(c)
-			case hitBy_playerno:
-				pno = int(exp[0].evalI(c))
-			case hitBy_playerid:
-				pid = exp[0].evalI(c)
-			case hitBy_stack:
-				stk = exp[0].evalB(c)
-			case hitBy_redirectid:
-				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-					crun = rid
-				} else {
-					return false
-				}
+		case hitBy_slot:
+			slot = int(Max(0, exp[0].evalI(c)))
+			if slot > 7 {
+				slot = 0
 			}
-			set(slot, attr, time, pno, pid, stk)
+		case hitBy_attr:
+			attr = exp[0].evalI(c)
+		case hitBy_playerno:
+			pno = int(exp[0].evalI(c))
+		case hitBy_playerid:
+			pid = exp[0].evalI(c)
+		case hitBy_stack:
+			stk = exp[0].evalB(c)
+		case hitBy_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
 		}
 		return true
 	})
+	if !old && slot >= 0 && slot <= 7 {
+		set(slot, attr, time, pno, pid, stk)
+	}
 	return false
 }
 
@@ -4363,6 +4360,7 @@ const (
 	explod_supermovetime
 	explod_pausemovetime
 	explod_sprpriority
+	explod_layerno
 	explod_ontop
 	explod_strictontop
 	explod_under
@@ -4429,6 +4427,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 {
 				e.postype = PT_None
 			}
+			e.layerno = crun.layerNo // Default
 		}
 		switch id {
 		case explod_anim:
@@ -4511,15 +4510,29 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_sprpriority:
 			e.sprpriority = exp[0].evalI(c)
+		case explod_layerno:
+			l := exp[0].evalI(c)
+			if l > 0 {
+				e.layerno = 1
+			} else if l < 0 {
+				e.layerno = -1
+			} else {
+				e.layerno = 0
+			}
 		case explod_ontop:
-			e.ontop = exp[0].evalB(c)
+			if exp[0].evalB(c) {
+				e.layerno = 1
+			} else {
+				e.layerno = 0
+			}
 		case explod_strictontop:
-			if e.ontop {
+			if e.layerno > 0 {
 				e.sprpriority = 0
 			}
 		case explod_under:
-			if !e.ontop {
-				e.under = exp[0].evalB(c)
+			if exp[0].evalB(c) {
+				e.layerno = 0
+				e.sprpriority = math.MinInt32
 			}
 		case explod_shadow:
 			e.shadow[0] = exp[0].evalI(c)
@@ -4868,29 +4881,43 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			case explod_sprpriority:
 				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.sprpriority = t })
-			case explod_ontop:
-				t := exp[0].evalB(c)
 				eachExpl(func(e *Explod) {
-					e.ontop = t
-					if e.ontop && e.under {
-						e.under = false
+					e.sprpriority = t
+				})
+			case explod_layerno:
+				l := exp[0].evalI(c)
+				eachExpl(func(e *Explod) {
+					if l > 0 {
+						e.layerno = 1
+					} else if l < 0 {
+						e.layerno = -1
+					} else {
+						e.layerno = 0
 					}
 				})
+			case explod_ontop:
+				if exp[0].evalB(c) {
+					eachExpl(func(e *Explod) {
+						e.layerno = 1
+					})
+				} else {
+					eachExpl(func(e *Explod) {
+						e.layerno = 0
+					})
+				}
 			case explod_strictontop:
 				eachExpl(func(e *Explod) {
-					if e.ontop {
+					if e.layerno > 0 {
 						e.sprpriority = 0
 					}
 				})
 			case explod_under:
-				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.under = t
-					if e.under && e.ontop {
-						e.ontop = false
-					}
-				})
+				if exp[0].evalB(c) {
+					eachExpl(func(e *Explod) {
+						e.layerno = 0
+						e.sprpriority = math.MinInt32
+					})
+				}
 			case explod_shadow:
 				r := exp[0].evalI(c)
 				eachExpl(func(e *Explod) { e.shadow[0] = r })
@@ -5045,7 +5072,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 				}
 				e.id = 0
 			}
-			e.ontop, e.sprpriority, e.ownpal = true, math.MinInt32, true
+			e.layerno, e.sprpriority, e.ownpal = 1, math.MinInt32, true
 		}
 		switch id {
 		case gameMakeAnim_pos:
@@ -5062,8 +5089,7 @@ func (sc gameMakeAnim) Run(c *Char, _ []int32) bool {
 			}
 		case gameMakeAnim_under:
 			if exp[0].evalB(c) {
-				e.under = true
-				e.ontop = false
+				e.layerno = 0
 			}
 		case gameMakeAnim_anim: // Minor: Mugen uses anim 0 if nothing is specified
 			e.anim = crun.getAnim(exp[1].evalI(c), string(*(*[]byte)(unsafe.Pointer(&exp[0]))), true)
@@ -5734,6 +5760,7 @@ const (
 	projectile_projrescaleclsn
 	projectile_offset
 	projectile_projsprpriority
+	projectile_projlayerno
 	projectile_projstagebound
 	projectile_projedgebound
 	projectile_projheightbound
@@ -5771,7 +5798,6 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 						return false
 					}
 					p.hitdef.playerNo = sys.workingState.playerNo
-
 				} else {
 					return false
 				}
@@ -5782,6 +5808,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 				}
 				p.hitdef.playerNo = sys.workingState.playerNo
 			}
+			p.layerno = crun.layerNo // Default
 		}
 		switch id {
 		case projectile_postype:
@@ -5850,6 +5877,15 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			}
 		case projectile_projsprpriority:
 			p.sprpriority = exp[0].evalI(c)
+		case projectile_projlayerno:
+			l := exp[0].evalI(c)
+			if l > 0 {
+				p.layerno = 1
+			} else if l < 0 {
+				p.layerno = -1
+			} else {
+				p.layerno = 0
+			}
 		case projectile_projstagebound:
 			p.stagebound = int32(float32(exp[0].evalI(c)) * lclscround)
 		case projectile_projedgebound:
@@ -6113,6 +6149,17 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			case projectile_projsprpriority:
 				eachProj(func(p *Projectile) {
 					p.sprpriority = exp[0].evalI(c)
+				})
+			case projectile_projlayerno:
+				l := exp[0].evalI(c)
+				eachProj(func(p *Projectile) {
+					if l > 0 {
+						p.layerno = 1
+					} else if l < 0 {
+						p.layerno = -1
+					} else {
+						p.layerno = 0
+					}
 				})
 			case projectile_projstagebound:
 				eachProj(func(p *Projectile) {
@@ -6678,16 +6725,20 @@ type sprPriority StateControllerBase
 
 const (
 	sprPriority_value byte = iota
+	sprPriority_layerno
 	sprPriority_redirectid
 )
 
 func (sc sprPriority) Run(c *Char, _ []int32) bool {
 	crun := c
-	v := int32(0) // Mugen uses 0 if no value is set at all
+	v := int32(0) // Mugen uses 0 even if no value is set at all
+	l := int32(0) // Defaults to 0 so that chars are less likely to be left forgotten in a different layer
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case sprPriority_value:
 			v = exp[0].evalI(c)
+		case sprPriority_layerno:
+			l = exp[0].evalI(c)
 		case sprPriority_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -6697,7 +6748,8 @@ func (sc sprPriority) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.setSprPriority(v)
+	crun.sprPriority = v
+	crun.layerNo = l
 	return false
 }
 
