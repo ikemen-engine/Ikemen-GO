@@ -1083,33 +1083,33 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int3
 }
 
 type Explod struct {
-	id                   int32
-	time                 int32
-	postype              PosType
-	space                Space
-	bindId               int32
-	bindtime             int32
-	pos                  [2]float32
-	relativePos          [2]float32
-	offset               [2]float32
-	relativef            float32
-	facing               float32
-	vfacing              float32
-	scale                [2]float32
-	removeongethit       bool
-	removeonchangestate  bool
-	statehaschanged      bool
-	removetime           int32
-	velocity             [2]float32
-	accel                [2]float32
-	sprpriority          int32
-	layerno              int32
-	shadow               [3]int32
-	supermovetime        int32
-	pausemovetime        int32
-	anim                 *Animation
-	animelem             int32
-	animfreeze           bool
+	id                  int32
+	time                int32
+	postype             PosType
+	space               Space
+	bindId              int32
+	bindtime            int32
+	pos                 [2]float32
+	relativePos         [2]float32
+	offset              [2]float32
+	relativef           float32
+	facing              float32
+	vfacing             float32
+	scale               [2]float32
+	removeongethit      bool
+	removeonchangestate bool
+	statehaschanged     bool
+	removetime          int32
+	velocity            [2]float32
+	accel               [2]float32
+	sprpriority         int32
+	layerno             int32
+	shadow              [3]int32
+	supermovetime       int32
+	pausemovetime       int32
+	anim                *Animation
+	animelem            int32
+	animfreeze          bool
 	//ontop                bool
 	//under                bool
 	alpha                [2]int32
