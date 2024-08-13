@@ -3425,7 +3425,7 @@ func triggerFunctions(l *lua.LState) {
 		case "yvel":
 			ln = lua.LNumber(c.ghv.yvel)
 		case "xaccel":
-			ln = lua.LNumber(c.ghv.getXaccel(c))
+			ln = lua.LNumber(c.ghv.getXaccel(c) * c.facing)
 		case "yaccel":
 			ln = lua.LNumber(c.ghv.getYaccel(c))
 		case "hitid", "chainid":

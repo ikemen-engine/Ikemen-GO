@@ -2278,7 +2278,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_down_recover:
 		sys.bcStack.PushB(c.ghv.down_recover)
 	case OC_ex_gethitvar_xaccel:
-		sys.bcStack.PushF(c.ghv.getXaccel(oc) * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.getXaccel(oc) * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
