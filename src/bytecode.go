@@ -6444,9 +6444,13 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			case projectile_projanim:
 				eachProj(func(p *Projectile) {
-					p.anim = exp[1].evalI(c)
-					p.anim_ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-					p.ani = c.getAnim(p.anim, p.anim_ffx, true) // need to change anim ref too
+					tmp := exp[1].evalI(c)
+					ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+					if p.anim != tmp || p.anim_ffx != ffx {
+						p.anim = tmp
+						p.anim_ffx = ffx
+						p.ani = c.getAnim(p.anim, p.anim_ffx, true) // need to change anim ref too
+					}
 				})
 			case projectile_supermovetime:
 				eachProj(func(p *Projectile) {
