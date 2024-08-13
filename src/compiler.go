@@ -436,6 +436,9 @@ var triggerMap = map[string]int{
 	"bgmvar":     1,
 	"gameoption": 1,
 	"layerno":    1,
+	"explodvar":  1,
+	"clsnvar":    1,
+	"projvar":    1,
 }
 
 func (c *Compiler) tokenizer(in *string) string {
@@ -1514,6 +1517,59 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_camerazoom)
 	case "canrecover":
 		out.append(OC_canrecover)
+	case "clsnvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		ctype := c.token
+		switch ctype {
+		case "size":
+			bv1 = BytecodeInt(0)
+		case "clsn1":
+			bv1 = BytecodeInt(1)
+		case "clsn2":
+			bv1 = BytecodeInt(2)
+		}
+		c.token = c.tokenizer(in)
+
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		c.token = c.tokenizer(in)
+		vname := c.token
+
+		switch vname {
+		case "left":
+			opc = OC_ex2_clsnvar_left
+		case "top":
+			opc = OC_ex2_clsnvar_top
+		case "right":
+			opc = OC_ex2_clsnvar_right
+		case "bottom":
+			opc = OC_ex2_clsnvar_bottom
+		default:
+			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
+		}
+		c.token = c.tokenizer(in)
+
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+
+		if bv1.IsNone() || bv2.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+		}
+		out.append(be1...)
+		out.appendValue(bv1)
+		out.appendValue(bv2)
+		out.append(OC_ex2_, opc)
 	case "command", "selfcommand":
 		opc := OC_command
 		if c.token == "selfcommand" {
@@ -1795,6 +1851,114 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "drawgame":
 		out.append(OC_ex_, OC_ex_drawgame)
+	case "explodvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+
+		vname := c.token
+
+		switch vname {
+		case "anim":
+			opc = OC_ex2_explodvar_anim
+		case "animelem":
+			opc = OC_ex2_explodvar_animelem
+		case "removetime":
+			opc = OC_ex2_explodvar_removetime
+		case "pausemovetime":
+			opc = OC_ex2_explodvar_pausemovetime
+		case "pos":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_explodvar_pos_x
+			case "y":
+				opc = OC_ex2_explodvar_pos_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "vel":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_explodvar_vel_x
+			case "y":
+				opc = OC_ex2_explodvar_vel_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "accel":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_explodvar_accel_x
+			case "y":
+				opc = OC_ex2_explodvar_accel_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "scale":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_explodvar_scale_x
+			case "y":
+				opc = OC_ex2_explodvar_scale_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "angle":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_explodvar_angle_x
+			case "y":
+				opc = OC_ex2_explodvar_angle_y
+			case ")":
+				opc = OC_ex2_explodvar_angle
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		default:
+			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
+		}
+		if opc != OC_ex2_explodvar_angle {
+			c.token = c.tokenizer(in)
+
+			if err := c.checkClosingBracket(); err != nil {
+				return bvNone(), err
+			}
+		}
+
+		if bv1.IsNone() || bv2.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+		}
+		out.append(be1...)
+		out.appendValue(bv1)
+		out.append(be2...)
+		out.appendValue(bv2)
+		out.append(OC_ex2_, opc)
 	case "facing":
 		out.append(OC_facing)
 	case "frontedge":
@@ -1983,6 +2147,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_frame)
 			case "down.recover":
 				out.append(OC_ex_gethitvar_down_recover)
+			case "xaccel":
+				out.append(OC_ex_gethitvar_xaccel)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -2296,6 +2462,160 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_projhittime)
+	case "projvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		if bv1, err = c.expBoolOr(&be1, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing ','")
+		}
+		c.token = c.tokenizer(in)
+
+		vname := c.token
+
+		switch vname {
+		case "projremove":
+			opc = OC_ex2_projectilevar_projremove
+		case "projremovetime":
+			opc = OC_ex2_projectilevar_projremovetime
+		case "shadow":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "r":
+				opc = OC_ex2_projectilevar_projshadow_r
+			case "g":
+				opc = OC_ex2_projectilevar_projshadow_g
+			case "b":
+				opc = OC_ex2_projectilevar_projshadow_b
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "misstime":
+			opc = OC_ex2_projectilevar_projmisstime
+		case "hits":
+			opc = OC_ex2_projectilevar_projhits
+		case "priority":
+			opc = OC_ex2_projectilevar_projpriority
+		case "hitanim":
+			opc = OC_ex2_projectilevar_projhitanim
+		case "remanim":
+			opc = OC_ex2_projectilevar_projremanim
+		case "cancelanim":
+			opc = OC_ex2_projectilevar_projcancelanim
+		case "vel":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_projectilevar_vel_x
+			case "y":
+				opc = OC_ex2_projectilevar_vel_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "velmul":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_projectilevar_velmul_x
+			case "y":
+				opc = OC_ex2_projectilevar_velmul_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "remvelocity":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_projectilevar_remvelocity_x
+			case "y":
+				opc = OC_ex2_projectilevar_remvelocity_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "accel":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_projectilevar_accel_x
+			case "y":
+				opc = OC_ex2_projectilevar_accel_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "scale":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_projectilevar_projscale_x
+			case "y":
+				opc = OC_ex2_projectilevar_projscale_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "angle":
+			opc = OC_ex2_projectilevar_projangle
+		case "pos":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_projectilevar_pos_x
+			case "y":
+				opc = OC_ex2_projectilevar_pos_y
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
+		case "sprpriority":
+			opc = OC_ex2_projectilevar_projsprpriority
+		case "stagebound":
+			opc = OC_ex2_projectilevar_projstagebound
+		case "edgebound":
+			opc = OC_ex2_projectilevar_projedgebound
+		case "lowbound":
+			opc = OC_ex2_projectilevar_lowbound
+		case "highbound":
+			opc = OC_ex2_projectilevar_highbound
+		case "anim":
+			opc = OC_ex2_projectilevar_projanim
+		case "animelem":
+			opc = OC_ex2_projectilevar_animelem
+		case "pausemovetime":
+			opc = OC_ex2_projectilevar_pausemovetime
+		default:
+			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
+		}
+		c.token = c.tokenizer(in)
+
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+
+		if bv1.IsNone() || bv2.IsNone() {
+			if rd {
+				out.append(OC_rdreset)
+			}
+		}
+		out.append(be1...)
+		out.appendValue(bv1)
+		out.append(be2...)
+		out.appendValue(bv2)
+		out.append(OC_ex2_, opc)
 	case "random":
 		out.append(OC_random)
 

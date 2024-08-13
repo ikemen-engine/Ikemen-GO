@@ -2961,6 +2961,43 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.canRecover()))
 		return 1
 	})
+	luaRegister(l, "clsnvar", func(l *lua.LState) int {
+		c := strArg(l, 1)
+		idx := int(numArg(l, 2))
+		t := strArg(l, 3)
+		v := lua.LNumber(math.NaN())
+
+		getClsnCoord := func(offset int) {
+			switch c {
+			case "size":
+				v = lua.LNumber(sys.debugWC.sizeBox[offset])
+			case "clsn1":
+				clsn := sys.debugWC.anim.CurrentFrame().Clsn1()
+				if idx >= 0 && idx < len(clsn)/4 {
+					v = lua.LNumber(clsn[idx*4+offset])
+				}
+			case "clsn2":
+				clsn := sys.debugWC.anim.CurrentFrame().Clsn2()
+				if idx >= 0 && idx < len(clsn)/4 {
+					v = lua.LNumber(clsn[idx*4+offset])
+				}
+			}
+		}
+
+		switch t {
+		case "left":
+			getClsnCoord(0)
+		case "top":
+			getClsnCoord(1)
+		case "right":
+			getClsnCoord(2)
+		case "bottom":
+			getClsnCoord(3)
+		}
+
+		l.Push(v)
+		return 1
+	})
 	luaRegister(l, "command", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.commandByName(strArg(l, 1))))
 		return 1
@@ -3233,6 +3270,54 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(ln)
 		return 1
 	})
+	luaRegister(l, "explodvar", func(*lua.LState) int {
+		ln := lua.LNumber(math.NaN())
+		id := int32(numArg(l, 1))
+		idx := int(numArg(l, 2))
+		vname := strArg(l, 3)
+
+		for i, e := range sys.debugWC.getExplods(id) {
+			if i == idx {
+				switch vname {
+				case "anim":
+					ln = lua.LNumber(e.animNo)
+				case "animelem":
+					ln = lua.LNumber(e.animelem)
+				case "pos x":
+					ln = lua.LNumber(e.drawPos[0])
+				case "pos y":
+					ln = lua.LNumber(e.drawPos[1])
+				case "vel x":
+					ln = lua.LNumber(e.velocity[0])
+				case "vel y":
+					ln = lua.LNumber(e.velocity[1])
+				case "accel x":
+					ln = lua.LNumber(e.accel[0])
+				case "accel y":
+					ln = lua.LNumber(e.accel[1])
+				case "scale x":
+					ln = lua.LNumber(e.scale[0])
+				case "scale y":
+					ln = lua.LNumber(e.scale[1])
+				case "angle":
+					ln = lua.LNumber(e.anglerot[0])
+				case "angle x":
+					ln = lua.LNumber(e.anglerot[1])
+				case "angle y":
+					ln = lua.LNumber(e.anglerot[2])
+				case "removetime":
+					ln = lua.LNumber(e.removetime)
+				case "pausemovetime":
+					ln = lua.LNumber(e.pausemovetime)
+				default:
+					l.RaiseError("\nInvalid argument: %v\n", vname)
+				}
+				break
+			}
+		}
+		l.Push(ln)
+		return 1
+	})
 	luaRegister(l, "facing", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.facing))
 		return 1
@@ -3339,6 +3424,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.xvel * c.facing)
 		case "yvel":
 			ln = lua.LNumber(c.ghv.yvel)
+		case "xaccel":
+			ln = lua.LNumber(c.ghv.getXaccel(c))
 		case "yaccel":
 			ln = lua.LNumber(c.ghv.getYaccel(c))
 		case "hitid", "chainid":
@@ -3924,6 +4011,90 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "projhittime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.projHitTime(
 			BytecodeInt(int32(numArg(l, 1)))).ToI()))
+		return 1
+	})
+	luaRegister(l, "projvar", func(*lua.LState) int {
+		var lv lua.LValue
+		id := int32(numArg(l, 1))
+		idx := int(numArg(l, 2))
+		vname := strArg(l, 3)
+
+		for i, p := range sys.debugWC.getProjs(id) {
+			if i == idx {
+				switch vname {
+				case "remove":
+					lv = lua.LBool(p.remove)
+				case "removetime":
+					lv = lua.LNumber(p.removetime)
+				case "shadow r":
+					lv = lua.LNumber(p.shadow[0])
+				case "shadow g":
+					lv = lua.LNumber(p.shadow[0])
+				case "shadow b":
+					lv = lua.LNumber(p.shadow[0])
+				case "misstime":
+					lv = lua.LNumber(p.curmisstime)
+				case "hits":
+					lv = lua.LNumber(p.hits)
+				case "priority":
+					lv = lua.LNumber(p.priority)
+				case "hitanim":
+					lv = lua.LNumber(p.hitanim)
+				case "remanim":
+					lv = lua.LNumber(p.remanim)
+				case "cancelanim":
+					lv = lua.LNumber(p.cancelanim)
+				case "vel x":
+					lv = lua.LNumber(p.velocity[0])
+				case "vel y":
+					lv = lua.LNumber(p.velocity[1])
+				case "velmul x":
+					lv = lua.LNumber(p.velmul[0])
+				case "velmul y":
+					lv = lua.LNumber(p.velmul[1])
+				case "remvelocity x":
+					lv = lua.LNumber(p.remvelocity[0])
+				case "remvelocity y":
+					lv = lua.LNumber(p.remvelocity[1])
+				case "accel x":
+					lv = lua.LNumber(p.accel[0])
+				case "accel y":
+					lv = lua.LNumber(p.accel[1])
+				case "scale x":
+					lv = lua.LNumber(p.scale[0])
+				case "scale y":
+					lv = lua.LNumber(p.scale[1])
+				case "angle":
+					lv = lua.LNumber(p.angle)
+				case "pos x":
+					lv = lua.LNumber(p.pos[0])
+				case "pos y":
+					lv = lua.LNumber(p.pos[1])
+				case "sprpriority":
+					lv = lua.LNumber(p.sprpriority)
+				case "stagebound":
+					lv = lua.LNumber(p.stagebound)
+				case "edgebound":
+					lv = lua.LNumber(p.edgebound)
+				case "lowbound":
+					lv = lua.LNumber(p.heightbound[0])
+				case "highbound":
+					lv = lua.LNumber(p.heightbound[1])
+				case "anim":
+					lv = lua.LNumber(p.anim)
+				case "animelem":
+					lv = lua.LNumber(p.ani.current)
+				case "supermovetime":
+					lv = lua.LNumber(p.supermovetime)
+				case "pausemovetime":
+					lv = lua.LNumber(p.pausemovetime)
+				default:
+					l.RaiseError("\nInvalid argument: %v\n", vname)
+				}
+				break
+			}
+		}
+		l.Push(lv)
 		return 1
 	})
 	luaRegister(l, "runorder", func(*lua.LState) int {

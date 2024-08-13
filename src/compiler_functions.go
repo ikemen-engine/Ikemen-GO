@@ -911,6 +911,10 @@ func (c *Compiler) modifyExplod(is IniSection, sc *StateControllerBase,
 			explod_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "index",
+			modifyexplod_index, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.explodSub(is, sc); err != nil {
 			return err
 		}
@@ -1439,7 +1443,7 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		return err
 	}
 	if err := c.paramValue(is, sc, "nochainid",
-		hitDef_nochainid, VT_Int, 2, false); err != nil {
+		hitDef_nochainid, VT_Int, MaxSimul*2, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "kill",
@@ -1880,6 +1884,10 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_down_recovertime, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "xaccel",
+		hitDef_xaccel, VT_Float, 1, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2115,6 +2123,11 @@ func (c *Compiler) modifyProjectile(is IniSection, sc *StateControllerBase,
 			modifyProjectile_id, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "index",
+			modifyProjectile_index, VT_Int, 1, false); err != nil {
+			return err
+		}
+
 		if err := c.projectileSub(is, sc, ihp); err != nil {
 			return err
 		}
@@ -3550,6 +3563,11 @@ func (c *Compiler) removeExplod(is IniSection, sc *StateControllerBase, _ int8) 
 		if err := c.stateParam(is, "id", false, func(data string) error {
 			b = true
 			return c.scAdd(sc, removeExplod_id, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "index", false, func(data string) error {
+			return c.scAdd(sc, removeExplod_index, data, VT_Int, 1)
 		}); err != nil {
 			return err
 		}
@@ -5314,6 +5332,10 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 		}
 		if err := c.paramValue(is, sc, "xvel",
 			getHitVarSet_xvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "xaccel",
+			getHitVarSet_xaccel, VT_Float, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "yaccel",

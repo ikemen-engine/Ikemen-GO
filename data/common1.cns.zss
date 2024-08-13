@@ -568,7 +568,7 @@ if anim != [5000, 5199] && selfAnimExist(5030) {
 if time = 0 {
 	hitVelSet{x: 1; y: 1}
 } else {
-	velAdd{y: getHitVar(yAccel)}
+	velAdd{x: getHitVar(xAccel); y: getHitVar(yAccel)}
 }
 if hitOver || vel y > 0 && pos y >= const(movement.air.gethit.groundlevel) {
 	if hitFall {
@@ -589,7 +589,7 @@ if time = 0 && selfAnimExist(5035) && anim != [5051, 5059] && anim != 5090 {
 	changeAnim{value: 5035}
 }
 if time > 0 {
-	velAdd{y: getHitVar(yAccel)}
+	velAdd{x: getHitVar(xAccel); y: getHitVar(yAccel)}
 }
 if hitOver || animTime = 0 ||
 	vel y > 0 && pos y >= const(movement.air.gethit.groundlevel) ||
@@ -616,7 +616,7 @@ if hitOver {
 	stateTypeSet{movetype: I}
 }
 if time > 0 {
-	velAdd{y: getHitVar(yAccel)}
+	velAdd{x: getHitVar(xAccel); y: getHitVar(yAccel)}
 }
 if vel y > 0 && pos y >= 0 {
 	changeState{value: 52}
@@ -635,7 +635,7 @@ persistent(0) if anim = [5050, 5059] && vel y >= ifElse(anim = 5050,
 	changeAnim{value: anim + 10}
 }
 if time > 0 {
-	velAdd{y: getHitVar(yAccel)}
+	velAdd{x: getHitVar(xAccel); y: getHitVar(yAccel)}
 }
 if alive && canRecover && command = "recovery" {
 	if vel y > 0 &&
@@ -669,7 +669,7 @@ if time = 0 {
 if time = 0 {
 	hitVelSet{x: 1; y: 1}
 } else {
-	velAdd{y: getHitVar(yAccel)}
+	velAdd{x: getHitVar(xAccel); y: getHitVar(yAccel)}
 }
 if vel y > 0 && pos y >= const(movement.air.gethit.trip.groundlevel) {
 	changeState{value: 5110}
@@ -884,7 +884,7 @@ if anim = 5035 && animTime = 0 {
 	changeAnim{value: 5050}
 }
 if time > 0 {
-	velAdd{y: getHitVar(yAccel)}
+	velAdd{x: getHitVar(xAccel); y: getHitVar(yAccel)}
 }
 if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.groundlevel) {
 	selfState{value: 5201}
