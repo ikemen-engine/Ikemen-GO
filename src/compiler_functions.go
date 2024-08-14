@@ -208,10 +208,14 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
 			case "cornerpriority":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_cornerpriority)))
+			case "drawunder":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_drawunder)))
 			case "runfirst":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_runfirst)))
 			case "runlast":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_runlast)))
+			case "projtypecollision":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_projtypecollision)))
 			// Ikemen global flags
 			case "globalnoko":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoko)))

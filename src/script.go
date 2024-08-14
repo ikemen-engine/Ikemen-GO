@@ -4803,6 +4803,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_animatehitpause)))
 		case "cornerpriority":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_cornerpriority)))
+		case "drawunder":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_drawunder)))
+		case "runfirst":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_runfirst)))
+		case "runlast":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_runlast)))
+		case "projtypecollision":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_projtypecollision)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))

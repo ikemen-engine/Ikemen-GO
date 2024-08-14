@@ -4123,7 +4123,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			case 1:
 				h.player = true
 			case 2:
-				h.hprojectile = true
+				h.hprojectile = true // Currently unused
 			}
 		case helper_name:
 			h.name = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
@@ -4602,9 +4602,9 @@ const (
 	explod_pausemovetime
 	explod_sprpriority
 	explod_layerno
+	explod_under
 	explod_ontop
 	explod_strictontop
-	explod_under
 	explod_shadow
 	explod_removeongethit
 	explod_removeonchangestate
@@ -4669,7 +4669,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 {
 				e.postype = PT_None
 			}
-			e.layerno = crun.layerNo // Default
 		}
 		switch id {
 		case explod_anim:
@@ -4773,10 +4772,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.sprpriority = 0
 			}
 		case explod_under:
-			if exp[0].evalB(c) {
-				e.layerno = 0
-				e.sprpriority = math.MinInt32
-			}
+			e.under = exp[0].evalB(c)
 		case explod_shadow:
 			e.shadow[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
@@ -5171,8 +5167,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_under:
 				if exp[0].evalB(c) {
 					eachExpl(func(e *Explod) {
-						e.layerno = 0
-						e.sprpriority = math.MinInt32
+						e.under = exp[0].evalB(c)
 					})
 				}
 			case explod_shadow:
@@ -6071,7 +6066,6 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 				}
 				p.hitdef.playerNo = sys.workingState.playerNo
 			}
-			p.layerno = crun.layerNo // Default
 		}
 		switch id {
 		case projectile_postype:
