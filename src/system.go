@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ikemen-engine/beep"
-	"github.com/ikemen-engine/beep/speaker"
+	"github.com/gopxl/beep/v2"
+	"github.com/gopxl/beep/v2/speaker"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -25,10 +25,7 @@ const (
 	MaxAttachedChar = 1
 )
 
-var (
-	FPS           = 60
-	Mp3SampleRate = 44100
-)
+var FPS = 60
 
 // sys
 // The only instance of a System struct.
@@ -91,6 +88,7 @@ var sys = System{
 	stereoEffects:        true,
 	panningRange:         30,
 	windowCentered:       true,
+	audioSampleRate:      44100,
 }
 
 type TeamMode int32
@@ -285,6 +283,7 @@ type System struct {
 	audioDucking            bool
 	windowTitle             string
 	screenshotFolder        string
+	audioSampleRate         int32
 	//FLAC_FrameWait          int
 
 	// Common Files
@@ -437,7 +436,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	gfx.Init()
 	gfx.BeginFrame(false)
 	// And the audio.
-	speaker.Init(audioFrequency, audioOutLen)
+	speaker.Init(beep.SampleRate(sys.audioSampleRate), audioOutLen)
 	speaker.Play(NewNormalizer(s.soundMixer))
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true

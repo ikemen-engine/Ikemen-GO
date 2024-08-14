@@ -343,7 +343,7 @@ func setupConfig() configSettings {
 	sys.allowDebugKeys = tmp.DebugKeys
 	sys.allowDebugMode = tmp.DebugMode
 	sys.audioDucking = tmp.AudioDucking
-	Mp3SampleRate = int(tmp.AudioSampleRate)
+	sys.audioSampleRate = tmp.AudioSampleRate
 	sys.bgmVolume = tmp.VolumeBgm
 	sys.maxBgmVolume = tmp.MaxBgmVolume
 	sys.borderless = tmp.Borderless

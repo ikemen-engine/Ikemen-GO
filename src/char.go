@@ -3563,7 +3563,7 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 			case OC_ex2_explodvar_anim:
 				v = BytecodeInt(e.animNo)
 			case OC_ex2_explodvar_animelem:
-				v = BytecodeInt(e.animelem)
+				v = BytecodeInt(e.anim.current + 1)
 			case OC_ex2_explodvar_pos_x:
 				v = BytecodeFloat(e.drawPos[0])
 			case OC_ex2_explodvar_pos_y:
@@ -3665,7 +3665,7 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) Bytec
 			case OC_ex2_projectilevar_projanim:
 				v = BytecodeInt(p.anim)
 			case OC_ex2_projectilevar_animelem:
-				v = BytecodeInt(p.ani.current)
+				v = BytecodeInt(p.ani.current + 1)
 			case OC_ex2_projectilevar_supermovetime:
 				v = BytecodeInt(p.supermovetime)
 			case OC_ex2_projectilevar_pausemovetime:

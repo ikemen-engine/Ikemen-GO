@@ -7,14 +7,14 @@ import (
 	"math"
 	"os"
 
-	"github.com/ikemen-engine/beep"
-	"github.com/ikemen-engine/beep/effects"
+	"github.com/gopxl/beep/v2"
+	"github.com/gopxl/beep/v2/effects"
 
-	"github.com/ikemen-engine/beep/midi"
-	"github.com/ikemen-engine/beep/mp3"
-	"github.com/ikemen-engine/beep/speaker"
-	"github.com/ikemen-engine/beep/vorbis"
-	"github.com/ikemen-engine/beep/wav"
+	"github.com/gopxl/beep/v2/midi"
+	"github.com/gopxl/beep/v2/mp3"
+	"github.com/gopxl/beep/v2/speaker"
+	"github.com/gopxl/beep/v2/vorbis"
+	"github.com/gopxl/beep/v2/wav"
 )
 
 const (
@@ -63,21 +63,21 @@ type NormalizerLR struct {
 }
 
 func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
-	n.bias += (*sam - n.bias) / (audioFrequency/110.0 + 1)
-	n.bias2 += (*sam - n.bias2) / (audioFrequency/112640.0 + 1)
+	n.bias += (*sam - n.bias) / (float64(sys.audioSampleRate)/110.0 + 1)
+	n.bias2 += (*sam - n.bias2) / (float64(sys.audioSampleRate)/112640.0 + 1)
 	s := (n.bias2 - n.bias) * mul
 	if math.Abs(s) > 1 {
 		mul *= math.Pow(math.Abs(s), -n.edge)
-		n.edgeDelta += 32 * (1 - n.edge) / float64(audioFrequency+32)
+		n.edgeDelta += 32 * (1 - n.edge) / float64(sys.audioSampleRate+32)
 		s = math.Copysign(1.0, s)
 	} else {
 		tmp := (1 - math.Pow(1-math.Abs(s), 64)) * math.Pow(0.5-math.Abs(s), 3)
 		mul += mul * (n.edge*(1/32.0-n.average)/n.gain + tmp*n.gain*(1-n.edge)/32) /
-			(audioFrequency*2/8.0 + 1)
-		n.edgeDelta -= (0.5 - n.average) * n.edge / (audioFrequency * 2)
+			(float64(sys.audioSampleRate)*2/8.0 + 1)
+		n.edgeDelta -= (0.5 - n.average) * n.edge / (float64(sys.audioSampleRate) * 2)
 	}
-	n.gain += (1.0 - n.gain*(math.Abs(s)+1/32.0)) / (audioFrequency * 2)
-	n.average += (math.Abs(s) - n.average) / (audioFrequency * 2)
+	n.gain += (1.0 - n.gain*(math.Abs(s)+1/32.0)) / (float64(sys.audioSampleRate) * 2)
+	n.average += (math.Abs(s) - n.average) / (float64(sys.audioSampleRate) * 2)
 	n.edge = float64(ClampF(float32(n.edge+n.edgeDelta), 0, 1))
 	*sam = s
 	return mul
@@ -158,7 +158,7 @@ type Bgm struct {
 	bgmVolume  int
 	volRestore int
 	loop       int
-	streamer   beep.StreamSeekCloser
+	streamer   beep.StreamSeeker
 	ctrl       *beep.Ctrl
 	volctrl    *effects.Volume
 	format     string
@@ -211,7 +211,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 		if soundfont, sferr := loadSoundFont(audioSoundFont); sferr != nil {
 			err = sferr
 		} else {
-			bgm.streamer, format, err = midi.Decode(f, soundfont)
+			bgm.streamer, format, err = midi.Decode(f, soundfont, beep.SampleRate(int(sys.audioSampleRate)))
 			bgm.format = "midi"
 		}
 	} else {
@@ -231,7 +231,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	streamer := newStreamLooper(bgm.streamer, loopCount, bgmLoopStart, bgmLoopEnd)
 	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
 	bgm.sampleRate = format.SampleRate
-	dstFreq := beep.SampleRate(audioFrequency / bgm.freqmul)
+	dstFreq := beep.SampleRate(float32(sys.audioSampleRate) / bgm.freqmul)
 	resampler := beep.Resample(audioResampleQuality, bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
 	bgm.UpdateVolume()
@@ -282,7 +282,7 @@ func (bgm *Bgm) SetFreqMul(freqmul float32) {
 	if bgm.freqmul != freqmul {
 		if bgm.ctrl != nil {
 			srcRate := bgm.sampleRate
-			dstRate := beep.SampleRate(audioFrequency / freqmul)
+			dstRate := beep.SampleRate(float32(sys.audioSampleRate) / freqmul)
 			if resampler, ok := bgm.ctrl.Streamer.(*beep.Resampler); ok {
 				speaker.Lock()
 				resampler.SetRatio(float64(srcRate) / float64(dstRate))
@@ -556,7 +556,7 @@ func (s *SoundChannel) Play(sound *Sound, loop int32, freqmul float32, loopStart
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
 	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul}
 	srcRate := s.sound.format.SampleRate
-	dstRate := beep.SampleRate(audioFrequency / s.sfx.freqmul)
+	dstRate := beep.SampleRate(float32(sys.audioSampleRate) / s.sfx.freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
 	s.streamer.Seek(startPosition)
@@ -607,7 +607,7 @@ func (s *SoundChannel) SetFreqMul(freqmul float32) {
 	if s.ctrl != nil {
 		if s.sound != nil {
 			srcRate := s.sound.format.SampleRate
-			dstRate := beep.SampleRate(audioFrequency / freqmul)
+			dstRate := beep.SampleRate(float32(sys.audioSampleRate) / freqmul)
 			if resampler, ok := s.ctrl.Streamer.(*beep.Resampler); ok {
 				speaker.Lock()
 				resampler.SetRatio(float64(srcRate) / float64(dstRate))
