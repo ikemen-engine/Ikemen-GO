@@ -1593,7 +1593,7 @@ type Projectile struct {
 	aimg            AfterImage
 	palfx           *PalFX
 	localscl        float32
-	parentAttackmul float32
+	parentAttackmul [4]float32
 	platform        bool
 	platformWidth   [2]float32
 	platformHeight  [2]float32
@@ -2000,7 +2000,7 @@ type CharSystemVar struct {
 	width             [2]float32
 	edge              [2]float32
 	height            [2]float32
-	attackMul         float32
+	attackMul         [4]float32 // 0 Damage, 1 Red Life, 2 Dizzy Points, 3 Guard Points
 	superDefenseMul   float32
 	fallDefenseMul    float32
 	customDefense     float32
@@ -2237,15 +2237,18 @@ func (c *Char) enemyNearClear() {
 func (c *Char) clear2() {
 	c.sysVarRangeSet(0, int32(NumSysVar)-1, 0)
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
-	c.CharSystemVar = CharSystemVar{bindToId: -1,
-		angleScale: [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
+	atk := float32(c.gi().data.attack) * c.ocd().attackRatio / 100
+	c.CharSystemVar = CharSystemVar{
+		bindToId: -1,
+		angleScale:      [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
 		height:          [...]float32{c.defTHeight(), c.defBHeight()},
-		attackMul:       float32(c.gi().data.attack) * c.ocd().attackRatio / 100,
+		attackMul:       [4]float32{atk, atk, atk, atk},
 		fallDefenseMul:  1,
 		superDefenseMul: 1,
 		customDefense:   1,
-		finalDefense:    1.0}
+		finalDefense:    1.0,
+	}
 	c.widthToSizeBox()
 	c.oldPos, c.drawPos = c.pos, c.pos
 	if c.helperIndex == 0 && c.teamside != -1 {
@@ -5099,6 +5102,7 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redl
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			// We flip the sign of "add" so that it operates under the same logic as Hitdef damage
+			// Note: LifeAdd and similar state controllers always ignore the attack multiplier
 			dmg := float64(t.computeDamage(-float64(add), kill, absolute, 1, c, true))
 			// Subtract life
 			t.lifeAdd(-dmg, true, true)
@@ -7791,8 +7795,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		return // Stop entire function if getter is disabled
 	}
 	// hit() function definition start.
-	hit := func(c *Char, hd *HitDef, pos [2]float32,
-		projf, attackMul float32, hits int32) (hitType int32) {
+	hit := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32, hits int32) (hitType int32) {
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
 			c.hitdef.ltypehit = true
 			return 0
@@ -7828,7 +7831,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
 			getter.ghv.kill = hd.guard_kill
 			// We only switch to guard behavior if the enemy can survive guarding the attack
-			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul, c, true) ||
+			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul[0], c, true) ||
 				sys.gsf(GSF_globalnoko) || getter.asf(ASF_noko) || getter.asf(ASF_noguardko) {
 				hitType = 2
 			} else {
@@ -8196,17 +8199,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				// Life
 				if !getter.asf(ASF_nohitdamage) {
 					getter.ghv.damage += getter.computeDamage(
-						float64(hd.hitdamage)*float64(hits), getter.ghv.kill, false, attackMul, c, bnd)
+						float64(hd.hitdamage)*float64(hits), getter.ghv.kill, false, attackMul[0], c, bnd)
 				}
 				// Red life
 				if !getter.asf(ASF_noredlifedamage) {
 					getter.ghv.redlife += getter.computeDamage(
-						float64(hd.hitredlife)*float64(hits), true, false, attackMul, c, bnd)
+						float64(hd.hitredlife)*float64(hits), true, false, attackMul[1], c, bnd)
 				}
 				// Dizzy points
 				if !getter.asf(ASF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
 					getter.ghv.dizzypoints += getter.computeDamage(
-						float64(hd.dizzypoints)*float64(hits), true, false, attackMul, c, false)
+						float64(hd.dizzypoints)*float64(hits), true, false, attackMul[2], c, false)
 				}
 			}
 			// Damage on guard
@@ -8214,17 +8217,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				// Life
 				if !getter.asf(ASF_noguarddamage) {
 					getter.ghv.damage += getter.computeDamage(
-						float64(hd.guarddamage)*float64(hits), getter.ghv.kill, false, attackMul, c, bnd)
+						float64(hd.guarddamage)*float64(hits), getter.ghv.kill, false, attackMul[0], c, bnd)
 				}
 				// Red life
 				if !getter.asf(ASF_noredlifedamage) {
 					getter.ghv.redlife += getter.computeDamage(
-						float64(hd.guardredlife)*float64(hits), true, false, attackMul, c, bnd)
+						float64(hd.guardredlife)*float64(hits), true, false, attackMul[1], c, bnd)
 				}
 				// Guard points
 				if !getter.asf(ASF_noguardpointsdamage) {
 					getter.ghv.guardpoints += getter.computeDamage(
-						float64(hd.guardpoints)*float64(hits), true, false, attackMul, c, false)
+						float64(hd.guardpoints)*float64(hits), true, false, attackMul[3], c, false)
 				}
 			}
 			// Absolute values
@@ -8232,13 +8235,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			getter.ghv.hitpower += hd.hitgivepower
 			getter.ghv.guardpower += hd.guardgivepower
 			getter.ghv.hitdamage += getter.computeDamage(
-				float64(hd.hitdamage)*float64(hits), true, false, attackMul, c, false)
+				float64(hd.hitdamage)*float64(hits), true, false, attackMul[0], c, false)
 			getter.ghv.guarddamage += getter.computeDamage(
-				float64(hd.guarddamage)*float64(hits), true, false, attackMul, c, false)
+				float64(hd.guarddamage)*float64(hits), true, false, attackMul[0], c, false)
 			getter.ghv.hitredlife += getter.computeDamage(
-				float64(hd.hitredlife)*float64(hits), true, false, attackMul, c, bnd)
+				float64(hd.hitredlife)*float64(hits), true, false, attackMul[1], c, bnd)
 			getter.ghv.guardredlife += getter.computeDamage(
-				float64(hd.guardredlife)*float64(hits), true, false, attackMul, c, bnd)
+				float64(hd.guardredlife)*float64(hits), true, false, attackMul[1], c, bnd)
 			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
 				if getter.ghv.kill || !getter.alive() {

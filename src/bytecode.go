@@ -2384,7 +2384,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
 	case OC_ex_attack:
-		sys.bcStack.PushF(c.attackMul * 100)
+		sys.bcStack.PushF(c.attackMul[0] * 100)
 	case OC_ex_inputtime_B:
 		if c.keyctrl[0] && c.cmd != nil {
 			sys.bcStack.PushI(c.cmd[0].Buffer.Bb)
@@ -8331,15 +8331,32 @@ type attackMulSet StateControllerBase
 
 const (
 	attackMulSet_value byte = iota
+	attackMulSet_damage
+	attackMulSet_redlife
+	attackMulSet_dizzypoints
+	attackMulSet_guardpoints
 	attackMulSet_redirectid
 )
 
 func (sc attackMulSet) Run(c *Char, _ []int32) bool {
 	crun := c
+	base := float32(crun.gi().data.attack) * crun.ocd().attackRatio / 100
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case attackMulSet_value:
-			crun.attackMul = float32(crun.gi().data.attack) * crun.ocd().attackRatio / 100 * exp[0].evalF(c)
+			v := exp[0].evalF(c)
+			crun.attackMul[0] = v * base
+			crun.attackMul[1] = v * base
+			crun.attackMul[2] = v * base
+			crun.attackMul[3] = v * base
+		case attackMulSet_damage:
+			crun.attackMul[0] = exp[0].evalF(c) * base
+		case attackMulSet_redlife:
+			crun.attackMul[1] = exp[0].evalF(c) * base
+		case attackMulSet_dizzypoints:
+			crun.attackMul[2] = exp[0].evalF(c) * base
+		case attackMulSet_guardpoints:
+			crun.attackMul[3] = exp[0].evalF(c) * base
 		case attackMulSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -10926,6 +10943,7 @@ const (
 	modifyChar_redirectid
 )
 
+// TODO: Undo all effects if a cached character is loaded
 func (sc modifyChar) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
