@@ -588,6 +588,7 @@ type HitDef struct {
 	guard_ctrltime             int32
 	airguard_ctrltime          int32
 	guard_dist                 [2]int32
+	xaccel                     float32
 	yaccel                     float32
 	ground_velocity            [2]float32
 	guard_velocity             float32
@@ -618,7 +619,7 @@ type HitDef struct {
 	down_recovertime           int32
 	id                         int32
 	chainid                    int32
-	nochainid                  [2]int32
+	nochainid                  [MaxSimul * 2]int32
 	hitonce                    int32
 	numhits                    int32
 	hitgetpower                int32
@@ -678,6 +679,7 @@ func (hd *HitDef) clear() {
 		air_hittime:  20,
 		down_hittime: 20,
 
+		xaccel:                     float32(math.NaN()),
 		yaccel:                     float32(math.NaN()),
 		guard_velocity:             float32(math.NaN()),
 		airguard_velocity:          [...]float32{float32(math.NaN()), float32(math.NaN())},
@@ -695,7 +697,7 @@ func (hd *HitDef) clear() {
 		guard_dist:       [...]int32{-1, -1},
 		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:          -1,
-		nochainid:        [...]int32{-1, -1},
+		nochainid:        [...]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
 		hitgetpower:      IErr,
 		guardgetpower:    IErr,
@@ -765,6 +767,7 @@ type GetHitVar struct {
 	ctrltime          int32
 	xvel              float32
 	yvel              float32
+	xaccel            float32
 	yaccel            float32
 	hitid             int32
 	xoff              float32
@@ -810,6 +813,12 @@ func (ghv *GetHitVar) clear() {
 }
 func (ghv *GetHitVar) clearOff() {
 	ghv.xoff, ghv.yoff = 0, 0
+}
+func (ghv GetHitVar) getXaccel(c *Char) float32 {
+	if math.IsNaN(float64(ghv.xaccel)) {
+		return 0
+	}
+	return ghv.xaccel
 }
 func (ghv GetHitVar) getYaccel(c *Char) float32 {
 	if math.IsNaN(float64(ghv.yaccel)) {
@@ -1141,6 +1150,8 @@ type Explod struct {
 	interpolate_pos      [4]float32
 	interpolate_angle    [6]float32
 	interpolate_fLength  [2]float32
+	animNo               int32
+	drawPos              [2]float32
 }
 
 func (e *Explod) clear() {
@@ -1384,9 +1395,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	rot.angle = anglerot[0]
 	rot.xangle = anglerot[1]
 	rot.yangle = anglerot[2]
-	var epos = [2]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * e.localscl, (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl}
+	e.drawPos = [2]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * e.localscl, (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
-	sprs.add(&SprData{e.anim, pfx, epos, [...]float32{(facing * scale[0]) * e.localscl,
+	sprs.add(&SprData{e.anim, pfx, e.drawPos, [...]float32{(facing * scale[0]) * e.localscl,
 		(e.vfacing * scale[1]) * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, 0, 0)
@@ -3539,6 +3550,132 @@ func (c *Char) numExplod(eid BytecodeValue) BytecodeValue {
 	}
 	return BytecodeInt(n)
 }
+func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) BytecodeValue {
+	if eid.IsSF() {
+		return BytecodeSF()
+	}
+	var id = eid.ToI()
+	var i = idx.ToI()
+	var v BytecodeValue
+	for n, e := range c.getExplods(id) {
+		if i == int32(n) {
+			switch vtype {
+			case OC_ex2_explodvar_anim:
+				v = BytecodeInt(e.animNo)
+			case OC_ex2_explodvar_animelem:
+				v = BytecodeInt(e.animelem)
+			case OC_ex2_explodvar_pos_x:
+				v = BytecodeFloat(e.drawPos[0])
+			case OC_ex2_explodvar_pos_y:
+				v = BytecodeFloat(e.drawPos[1])
+			case OC_ex2_explodvar_scale_x:
+				v = BytecodeFloat(e.scale[0])
+			case OC_ex2_explodvar_scale_y:
+				v = BytecodeFloat(e.scale[1])
+			case OC_ex2_explodvar_angle:
+				v = BytecodeFloat(e.anglerot[0])
+			case OC_ex2_explodvar_angle_x:
+				v = BytecodeFloat(e.anglerot[1])
+			case OC_ex2_explodvar_angle_y:
+				v = BytecodeFloat(e.anglerot[2])
+			case OC_ex2_explodvar_vel_x:
+				v = BytecodeFloat(e.velocity[0])
+			case OC_ex2_explodvar_vel_y:
+				v = BytecodeFloat(e.velocity[1])
+			case OC_ex2_explodvar_removetime:
+				v = BytecodeInt(e.removetime)
+			case OC_ex2_explodvar_pausemovetime:
+				v = BytecodeInt(e.pausemovetime)
+			case OC_ex2_explodvar_sprpriority:
+				v = BytecodeInt(e.sprpriority)
+			}
+			break
+		}
+	}
+	return v
+}
+func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) BytecodeValue {
+	if pid.IsSF() {
+		return BytecodeSF()
+	}
+	var id int32 = pid.ToI()
+	var i = idx.ToI()
+	var v BytecodeValue
+	for n, p := range c.getProjs(id) {
+		if i == int32(n) {
+			switch vtype {
+			case OC_ex2_projectilevar_projremove:
+				v = BytecodeBool(p.remove)
+			case OC_ex2_projectilevar_projremovetime:
+				v = BytecodeInt(p.removetime)
+			case OC_ex2_projectilevar_projshadow_r:
+				v = BytecodeInt(p.shadow[0])
+			case OC_ex2_projectilevar_projshadow_g:
+				v = BytecodeInt(p.shadow[1])
+			case OC_ex2_projectilevar_projshadow_b:
+				v = BytecodeInt(p.shadow[2])
+			case OC_ex2_projectilevar_projmisstime:
+				v = BytecodeInt(p.curmisstime)
+			case OC_ex2_projectilevar_projhits:
+				v = BytecodeInt(p.hits)
+			case OC_ex2_projectilevar_projpriority:
+				v = BytecodeInt(p.priority)
+			case OC_ex2_projectilevar_projhitanim:
+				v = BytecodeInt(p.hitanim)
+			case OC_ex2_projectilevar_projremanim:
+				v = BytecodeInt(p.remanim)
+			case OC_ex2_projectilevar_projcancelanim:
+				v = BytecodeInt(p.cancelanim)
+			case OC_ex2_projectilevar_vel_x:
+				v = BytecodeFloat(p.velocity[0])
+			case OC_ex2_projectilevar_vel_y:
+				v = BytecodeFloat(p.velocity[1])
+			case OC_ex2_projectilevar_velmul_x:
+				v = BytecodeFloat(p.velmul[0])
+			case OC_ex2_projectilevar_velmul_y:
+				v = BytecodeFloat(p.velmul[1])
+			case OC_ex2_projectilevar_remvelocity_x:
+				v = BytecodeFloat(p.remvelocity[0])
+			case OC_ex2_projectilevar_remvelocity_y:
+				v = BytecodeFloat(p.remvelocity[1])
+			case OC_ex2_projectilevar_accel_x:
+				v = BytecodeFloat(p.accel[0])
+			case OC_ex2_projectilevar_accel_y:
+				v = BytecodeFloat(p.accel[1])
+			case OC_ex2_projectilevar_projscale_x:
+				v = BytecodeFloat(p.scale[0])
+			case OC_ex2_projectilevar_projscale_y:
+				v = BytecodeFloat(p.scale[1])
+			case OC_ex2_projectilevar_projangle:
+				v = BytecodeFloat(p.angle)
+			case OC_ex2_projectilevar_pos_x:
+				v = BytecodeFloat(p.pos[0])
+			case OC_ex2_projectilevar_pos_y:
+				v = BytecodeFloat(p.pos[1])
+			case OC_ex2_projectilevar_projsprpriority:
+				v = BytecodeInt(p.sprpriority)
+			case OC_ex2_projectilevar_projstagebound:
+				v = BytecodeInt(p.stagebound)
+			case OC_ex2_projectilevar_projedgebound:
+				v = BytecodeInt(p.edgebound)
+			case OC_ex2_projectilevar_lowbound:
+				v = BytecodeInt(p.heightbound[0])
+			case OC_ex2_projectilevar_highbound:
+				v = BytecodeInt(p.heightbound[1])
+			case OC_ex2_projectilevar_projanim:
+				v = BytecodeInt(p.anim)
+			case OC_ex2_projectilevar_animelem:
+				v = BytecodeInt(p.ani.current)
+			case OC_ex2_projectilevar_supermovetime:
+				v = BytecodeInt(p.supermovetime)
+			case OC_ex2_projectilevar_pausemovetime:
+				v = BytecodeInt(p.pausemovetime)
+			}
+			break
+		}
+	}
+	return v
+}
 func (c *Char) numHelper(hid BytecodeValue) BytecodeValue {
 	if hid.IsSF() {
 		return BytecodeSF()
@@ -4089,7 +4226,7 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	}
 	c.setCSF(CSF_destroy)
 	if removeexplods {
-		c.removeExplod(-1)
+		c.removeExplod(-1, -1)
 	}
 	if recursive {
 		for _, ch := range c.children {
@@ -4307,17 +4444,25 @@ func (c *Char) explodBindTime(id, time int32) {
 		}
 	}
 }
-func (c *Char) removeExplod(id int32) {
+func (c *Char) removeExplod(id, idx int32) {
+
 	remove := func(drawlist *[]int, drop bool) {
+		n := int32(0)
 		for i := len(*drawlist) - 1; i >= 0; i-- {
 			ei := (*drawlist)[i]
 			if ei >= 0 && sys.explods[c.playerNo][ei].matchId(id, c.id) {
-				sys.explods[c.playerNo][ei].id = IErr
-				if drop {
-					*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
-				} else {
-					(*drawlist)[i] = -1
+				if idx == n || idx < 0 {
+					sys.explods[c.playerNo][ei].id = IErr
+					if drop {
+						*drawlist = append((*drawlist)[:i], (*drawlist)[i+1:]...)
+					} else {
+						(*drawlist)[i] = -1
+					}
+					if idx == n {
+						break
+					}
 				}
+				n++
 			}
 		}
 	}
@@ -4548,7 +4693,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	}
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
-		p.hitdef.nochainid = [...]int32{-1, -1}
+		p.hitdef.nochainid = [...]int32{-1, -1, -1, -1, -1, -1, -1, -1}
 	}
 	p.removefacing = c.facing
 	if p.velocity[0] < 0 {
@@ -7812,6 +7957,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
 				ghv.id = hd.attackerID
+				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl)
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
 				ghv.groundtype = hd.ground_type
 				ghv.airtype = hd.air_type
