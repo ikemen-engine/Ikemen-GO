@@ -3282,7 +3282,7 @@ func triggerFunctions(l *lua.LState) {
 				case "anim":
 					ln = lua.LNumber(e.animNo)
 				case "animelem":
-					ln = lua.LNumber(e.animelem)
+					ln = lua.LNumber(e.anim.current + 1)
 				case "pos x":
 					ln = lua.LNumber(e.drawPos[0])
 				case "pos y":
@@ -4083,7 +4083,7 @@ func triggerFunctions(l *lua.LState) {
 				case "anim":
 					lv = lua.LNumber(p.anim)
 				case "animelem":
-					lv = lua.LNumber(p.ani.current)
+					lv = lua.LNumber(p.ani.current + 1)
 				case "supermovetime":
 					lv = lua.LNumber(p.supermovetime)
 				case "pausemovetime":
