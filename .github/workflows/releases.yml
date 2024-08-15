@@ -97,7 +97,7 @@ jobs:
       - name: Setup Golang with cache
         uses: magnetikonline/action-golang-cache@v5
         with:
-          go-version: ~1.20
+          go-version: ~1.21
           #go-version-file: go.mod
           #cache-key-suffix: -ikemen
 
