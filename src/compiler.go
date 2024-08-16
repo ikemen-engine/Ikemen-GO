@@ -1544,11 +1544,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		vname := c.token
 
 		switch vname {
-		case "left":
+		case "back":
 			opc = OC_ex2_clsnvar_left
 		case "top":
 			opc = OC_ex2_clsnvar_top
-		case "right":
+		case "front":
 			opc = OC_ex2_clsnvar_right
 		case "bottom":
 			opc = OC_ex2_clsnvar_bottom

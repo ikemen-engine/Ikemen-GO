@@ -2985,11 +2985,11 @@ func triggerFunctions(l *lua.LState) {
 		}
 
 		switch t {
-		case "left":
+		case "back":
 			getClsnCoord(0)
 		case "top":
 			getClsnCoord(1)
-		case "right":
+		case "front":
 			getClsnCoord(2)
 		case "bottom":
 			getClsnCoord(3)
