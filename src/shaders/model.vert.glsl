@@ -1,35 +1,45 @@
+#if __VERSION__ >= 130
+#define COMPAT_VARYING out
+#define COMPAT_ATTRIBUTE in
+#define COMPAT_TEXTURE texture
+#else
+#define COMPAT_VARYING varying 
+#define COMPAT_ATTRIBUTE attribute 
+#define COMPAT_TEXTURE texture2D
+#endif
+
 uniform mat4 modelview, projection;
 uniform sampler2D jointMatrices;
 uniform int numJoints;
 uniform vec4 morphTargetWeight[2];
 uniform int positionTargetCount;
 uniform int uvTargetCount;
-attribute vec3 position;
-attribute vec2 uv;
-attribute vec4 vertColor;
-attribute vec4 joints_0;
-attribute vec4 joints_1;
-attribute vec4 weights_0;
-attribute vec4 weights_1;
+
+COMPAT_ATTRIBUTE vec3 position;
+COMPAT_ATTRIBUTE vec2 uv;
+COMPAT_ATTRIBUTE vec4 vertColor;
+COMPAT_ATTRIBUTE vec4 joints_0;
+COMPAT_ATTRIBUTE vec4 joints_1;
+COMPAT_ATTRIBUTE vec4 weights_0;
+COMPAT_ATTRIBUTE vec4 weights_1;
 //Unfortunately the current OpenGL/shader version does not support attribute array
 //attribute vec4 morphTargets[8]
-attribute vec4 morphTargets_0;
-attribute vec4 morphTargets_1;
-attribute vec4 morphTargets_2;
-attribute vec4 morphTargets_3;
-attribute vec4 morphTargets_4;
-attribute vec4 morphTargets_5;
-attribute vec4 morphTargets_6;
-attribute vec4 morphTargets_7;
-varying vec2 texcoord;
-varying vec4 vColor;
-
+COMPAT_ATTRIBUTE vec4 morphTargets_0;
+COMPAT_ATTRIBUTE vec4 morphTargets_1;
+COMPAT_ATTRIBUTE vec4 morphTargets_2;
+COMPAT_ATTRIBUTE vec4 morphTargets_3;
+COMPAT_ATTRIBUTE vec4 morphTargets_4;
+COMPAT_ATTRIBUTE vec4 morphTargets_5;
+COMPAT_ATTRIBUTE vec4 morphTargets_6;
+COMPAT_ATTRIBUTE vec4 morphTargets_7;
+COMPAT_VARYING vec2 texcoord;
+COMPAT_VARYING vec4 vColor;
 
 mat4 getMatrixFromTexture(float index){
 	mat4 mat;
-	mat[0] = texture2D(jointMatrices,vec2(0.5/3.0,(index+0.5)/numJoints));
-	mat[1] = texture2D(jointMatrices,vec2(1.5/3.0,(index+0.5)/numJoints));
-	mat[2] = texture2D(jointMatrices,vec2(2.5/3.0,(index+0.5)/numJoints));
+	mat[0] = COMPAT_TEXTURE(jointMatrices,vec2(0.5/3.0,(index+0.5)/numJoints));
+	mat[1] = COMPAT_TEXTURE(jointMatrices,vec2(1.5/3.0,(index+0.5)/numJoints));
+	mat[2] = COMPAT_TEXTURE(jointMatrices,vec2(2.5/3.0,(index+0.5)/numJoints));
 	mat[3] = vec4(0,0,0,1);
 	return transpose(mat);
 }
@@ -49,6 +59,7 @@ mat4 getJointMatrix(){
 	}
 	return ret;
 }
+
 void main(void) {
 	texcoord = uv;
 	vColor = vertColor;

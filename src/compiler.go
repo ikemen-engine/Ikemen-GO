@@ -1560,16 +1560,19 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
-
-		if bv1.IsNone() || bv2.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
+		be2.appendValue(bv2)
+		be1.appendValue(bv1)
+		if len(be2) > int(math.MaxUint8-1) {
+			be1.appendI32Op(OC_jz, int32(len(be2)+1))
+		} else {
+			be1.append(OC_jz8, OpCode(len(be2)+1))
+		}
+		be1.append(be2...)
+		be1.append(OC_ex2_, opc)
+		if rd {
+			out.appendI32Op(OC_run, int32(len(be1)))
 		}
 		out.append(be1...)
-		out.appendValue(bv1)
-		out.appendValue(bv2)
-		out.append(OC_ex2_, opc)
 	case "command", "selfcommand":
 		opc := OC_command
 		if c.token == "selfcommand" {
@@ -1949,16 +1952,19 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 		}
 
-		if bv1.IsNone() || bv2.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
+		be2.appendValue(bv2)
+		be1.appendValue(bv1)
+		if len(be2) > int(math.MaxUint8-1) {
+			be1.appendI32Op(OC_jz, int32(len(be2)+1))
+		} else {
+			be1.append(OC_jz8, OpCode(len(be2)+1))
+		}
+		be1.append(be2...)
+		be1.append(OC_ex2_, opc)
+		if rd {
+			out.appendI32Op(OC_run, int32(len(be1)))
 		}
 		out.append(be1...)
-		out.appendValue(bv1)
-		out.append(be2...)
-		out.appendValue(bv2)
-		out.append(OC_ex2_, opc)
 	case "facing":
 		out.append(OC_facing)
 	case "frontedge":
@@ -2606,16 +2612,19 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 
-		if bv1.IsNone() || bv2.IsNone() {
-			if rd {
-				out.append(OC_rdreset)
-			}
+		be2.appendValue(bv2)
+		be1.appendValue(bv1)
+		if len(be2) > int(math.MaxUint8-1) {
+			be1.appendI32Op(OC_jz, int32(len(be2)+1))
+		} else {
+			be1.append(OC_jz8, OpCode(len(be2)+1))
+		}
+		be1.append(be2...)
+		be1.append(OC_ex2_, opc)
+		if rd {
+			out.appendI32Op(OC_run, int32(len(be1)))
 		}
 		out.append(be1...)
-		out.appendValue(bv1)
-		out.append(be2...)
-		out.appendValue(bv2)
-		out.append(OC_ex2_, opc)
 	case "random":
 		out.append(OC_random)
 
