@@ -1,3 +1,14 @@
+#if __VERSION__ >= 130
+#define COMPAT_VARYING in
+#define COMPAT_TEXTURE texture
+out vec4 FragColor;
+#else
+#define COMPAT_VARYING varying
+#define FragColor gl_FragColor
+#define COMPAT_TEXTURE texture2D
+#endif
+
+
 uniform sampler2D tex;
 uniform sampler2D pal;
 
@@ -8,7 +19,7 @@ uniform float alpha, gray, hue;
 uniform int mask;
 uniform bool isFlat, isRgba, isTrapez, neg;
 
-varying vec2 texcoord;
+COMPAT_VARYING vec2 texcoord;
 
 vec3 hue_shift(vec3 color, float dhue) {
 	float s = sin(dhue);
@@ -22,8 +33,7 @@ vec3 hue_shift(vec3 color, float dhue) {
 
 void main(void) {
 	if (isFlat) {
-		gl_FragColor = tint;
-
+		FragColor = tint;
 	} else {
 		vec2 uv = texcoord;
 		if (isTrapez) {
@@ -33,7 +43,7 @@ void main(void) {
 			uv.x = (gl_FragCoord.x - bounds[0]) / (bounds[1] - bounds[0]);
 		}
 
-		vec4 c = texture2D(tex, uv);
+		vec4 c = COMPAT_TEXTURE(tex, uv);
 		vec3 neg_base = vec3(1.0);
 		vec3 final_add = add;
 		vec4 final_mul = vec4(mult, alpha);
@@ -46,7 +56,7 @@ void main(void) {
 			final_add *= c.a;
 			final_mul.rgb *= alpha;
 		} else {
-			c = texture2D(pal, vec2(c.r*0.9966, 0.5));
+			c = COMPAT_TEXTURE(pal, vec2(c.r*0.9966, 0.5));
 			if (mask == -1) {
 				c.a = 1.0;
 			}
@@ -61,6 +71,6 @@ void main(void) {
 		// Add a final tint (used for shadows); make sure the result has premultiplied alpha
 		c.rgb = mix(c.rgb, tint.rgb * c.a, tint.a);
 
-		gl_FragColor = c;
+		FragColor = c;
 	}
 }

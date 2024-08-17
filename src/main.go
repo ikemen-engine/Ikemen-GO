@@ -364,6 +364,10 @@ func setupConfig() configSettings {
 	sys.controllerStickSensitivity = tmp.ControllerStickSensitivity
 	sys.explodMax = tmp.MaxExplod
 	sys.externalShaderList = tmp.ExternalShaders
+	// Bump up shader version for macOS only
+	if runtime.GOOS == "darwin" {
+		tmp.FontShaderVer = max(150, tmp.FontShaderVer)
+	}
 	sys.fontShaderVer = tmp.FontShaderVer
 	// Resoluion stuff
 	sys.fullscreen = tmp.Fullscreen

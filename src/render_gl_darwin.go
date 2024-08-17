@@ -1,7 +1,8 @@
-//go:build !kinc && !darwin
+//go:build !kinc
 
-// IF YOU MAKE CHANGES TO THIS FILE, YOU MUST ALSO MAKE
-// EQUIVALENT CHANGES TO render_gl_darwin.go
+// This is almost identical to render_gl.go except it uses a VAO
+// for GL 3.2 which is the minimum version that runs on modern
+// macOS (Intel and ARM). Work adapted from assemblaj/fantasma
 
 package main
 
@@ -13,13 +14,13 @@ import (
 	"runtime"
 	"unsafe"
 
-	gl "github.com/go-gl/gl/v2.1/gl"
+	gl "github.com/go-gl/gl/v3.2-core/gl"
 	glfw "github.com/go-gl/glfw/v3.3/glfw"
 	"golang.org/x/mobile/exp/f32"
 )
 
 var InternalFormatLUT = map[int32]uint32{
-	8:  gl.LUMINANCE,
+	8:  gl.RED,
 	24: gl.RGB,
 	32: gl.RGBA,
 }
@@ -97,7 +98,7 @@ func (s *ShaderProgram) RegisterTextures(names ...string) {
 
 func compileShader(shaderType uint32, src string) (shader uint32) {
 	shader = gl.CreateShader(shaderType)
-	src = "#version 120\n" + src + "\x00"
+	src = fmt.Sprintf("#version 150\n%s\x00", src)
 	s, _ := gl.Strs(src)
 	var l int32 = int32(len(src) - 1)
 	gl.ShaderSource(shader, 1, s, &l)
@@ -229,7 +230,7 @@ func (t *Texture) SetPixelData(data []float32) {
 
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F_ARB, t.width, t.height, 0, gl.RGBA, gl.FLOAT, unsafe.Pointer(&data[0]))
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, t.width, t.height, 0, gl.RGBA, gl.FLOAT, unsafe.Pointer(&data[0]))
 }
 
 // Return whether texture has a valid handle
@@ -258,6 +259,7 @@ type Renderer struct {
 	modelShader       *ShaderProgram
 	stageVertexBuffer uint32
 	stageIndexBuffer  uint32
+	vao               uint32
 }
 
 //go:embed shaders/sprite.vert.glsl
@@ -282,8 +284,7 @@ var identFragShader string
 // Creates the default shaders, the framebuffer and enables MSAA.
 func (r *Renderer) Init() {
 	chk(gl.Init())
-	sys.errLog.Printf("Using OpenGL %v (%v)", gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
-
+	sys.errLog.Printf("Using OpenGL %v (%v)", gl.GoStr(gl.GetString(gl.VERSION)), gl.GoStr(gl.GetString(gl.RENDERER)))
 	// Store current timestamp
 	sys.prevTimestamp = glfw.GetTime()
 
@@ -291,6 +292,9 @@ func (r *Renderer) Init() {
 
 	// Data buffers for rendering
 	postVertData := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
+
+	gl.GenVertexArrays(1, &r.vao)
+	gl.BindVertexArray(r.vao)
 
 	gl.GenBuffers(1, &r.postVertBuffer)
 
@@ -321,13 +325,17 @@ func (r *Renderer) Init() {
 
 	// Ident shader (no postprocessing)
 	r.postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
-	r.postShaderSelect[0].RegisterAttributes("VertCoord")
+	r.postShaderSelect[0].RegisterAttributes("VertCoord", "TexCoord")
 	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
 		r.postShaderSelect[1+i] = newShaderProgram(sys.externalShaders[0][i],
 			sys.externalShaders[1][i], fmt.Sprintf("Postprocess Shader #%v", i+1))
+		r.postShaderSelect[1+i].RegisterAttributes("VertCoord", "TexCoord")
+		loc := r.postShaderSelect[0].a["TexCoord"]
+		gl.VertexAttribPointer(uint32(loc), 3, gl.FLOAT, false, 5*4, gl.PtrOffset(2*4))
+		gl.EnableVertexAttribArray(uint32(loc))
 		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
 	}
 
@@ -408,6 +416,7 @@ func (r *Renderer) Close() {
 
 func (r *Renderer) BeginFrame(clearColor bool) {
 	sys.absTickCountF++
+	gl.BindVertexArray(r.vao)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
 	if clearColor {
@@ -418,6 +427,8 @@ func (r *Renderer) BeginFrame(clearColor bool) {
 }
 
 func (r *Renderer) EndFrame() {
+	gl.BindVertexArray(r.vao)
+
 	if sys.multisampleAntialiasing > 0 {
 		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, r.fbo_f)
 		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
@@ -428,7 +439,7 @@ func (r *Renderer) EndFrame() {
 	postShader := r.postShaderSelect[sys.postProcessingShader]
 
 	var scaleMode int32 // GL enum
-	if sys.windowScaleMode == true {
+	if sys.windowScaleMode {
 		scaleMode = gl.LINEAR
 	} else {
 		scaleMode = gl.NEAREST
@@ -456,15 +467,16 @@ func (r *Renderer) EndFrame() {
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 
-	loc := r.modelShader.a["VertCoord"]
+	loc := postShader.a["VertCoord"]
 	gl.EnableVertexAttribArray(uint32(loc))
-	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
+	gl.VertexAttribPointer(uint32(loc), 2, gl.FLOAT, false, 0, nil)
 
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	gl.DisableVertexAttribArray(uint32(loc))
 }
 
 func (r *Renderer) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
+	gl.BindVertexArray(r.vao)
 	gl.UseProgram(r.spriteShader.program)
 
 	gl.BlendEquation(BlendEquationLUT[eq])
