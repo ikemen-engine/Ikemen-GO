@@ -208,10 +208,14 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
 			case "cornerpriority":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_cornerpriority)))
+			case "drawunder":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_drawunder)))
 			case "runfirst":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_runfirst)))
 			case "runlast":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_runlast)))
+			case "projtypecollision":
+				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_projtypecollision)))
 			// Ikemen global flags
 			case "globalnoko":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoko)))
@@ -3284,9 +3288,39 @@ func (c *Compiler) attackMulSet(is IniSection, sc *StateControllerBase, _ int8) 
 			attackMulSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "value",
-			attackMulSet_value, VT_Float, 1, true); err != nil {
+		any := false
+		if err := c.stateParam(is, "value", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, attackMulSet_value, data, VT_Float, 1)
+		}); err != nil {
 			return err
+		}
+		if err := c.stateParam(is, "damage", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, attackMulSet_damage, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "redlife", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, attackMulSet_redlife, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "dizzypoints", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, attackMulSet_dizzypoints, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "guardpoints", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, attackMulSet_guardpoints, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if !any {
+			return Error("no multipliers specified")
 		}
 		return nil
 	})

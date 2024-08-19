@@ -242,6 +242,7 @@ type System struct {
 	explodsLayer1           [MaxSimul*2 + MaxAttachedChar][]int
 	changeStateNest         int32
 	spritesLayerN1          DrawList
+	spritesLayerU           DrawList
 	spritesLayer0           DrawList
 	spritesLayer1           DrawList
 	shadows                 ShadowList
@@ -1176,7 +1177,7 @@ func (s *System) charUpdate() {
 		for i, pr := range s.projs {
 			for j, p := range pr {
 				if p.id >= 0 {
-					s.projs[i][j].tradeDetection(i)
+					s.projs[i][j].tradeDetection(i, j)
 				}
 			}
 		}
@@ -1200,6 +1201,7 @@ func (s *System) posReset() {
 }
 func (s *System) action() {
 	s.spritesLayerN1 = s.spritesLayerN1[:0]
+	s.spritesLayerU = s.spritesLayerU[:0]
 	s.spritesLayer0 = s.spritesLayer0[:0]
 	s.spritesLayer1 = s.spritesLayer1[:0]
 	s.shadows = s.shadows[:0]
@@ -1405,12 +1407,14 @@ func (s *System) action() {
 								if !p[0].scf(SCF_inputwait) {
 									p[0].setSCF(SCF_inputwait)
 								}
-								// Check if this character is ready to procced to roundstate 4
-								if p[0].scf(SCF_over) || p[0].ss.no == 5150 || (p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I &&
-									p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L) {
+								// Check if this player is ready to proceed to roundstate 4
+								// TODO: The game should normally only wait for players that are active in the fight // || p[0].teamside == -1 || p[0].scf(SCF_standby)
+								// TODO: This could be manageable from the char's side with an AssertSpecial or such
+								if p[0].scf(SCF_over) || p[0].ss.no == 5150 ||
+									(p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I && p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L) {
 									continue
 								}
-								// Freeze timer if any character is not ready to proceed yet
+								// Freeze timer if any player is not ready to proceed yet
 								s.intro = rs4t
 								break
 							}
@@ -1451,7 +1455,7 @@ func (s *System) action() {
 					}
 					for _, p := range s.chars {
 						if len(p) > 0 {
-							// default life recovery, used only if externalized Lua implementation is disabled
+							// Default life recovery. Used only if externalized Lua implementation is disabled
 							if len(sys.commonLua) == 0 && s.waitdown >= 0 && s.time > 0 && p[0].win() &&
 								p[0].alive() && !s.matchOver() &&
 								(s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns) {
@@ -1461,6 +1465,7 @@ func (s *System) action() {
 									p[0].life = p[0].lifeMax
 								}
 							}
+							// TODO: These changestates ought to be unhardcoded
 							if !p[0].scf(SCF_over) && !p[0].hitPause() && p[0].alive() && p[0].animNo != 5 {
 								p[0].setSCF(SCF_over)
 								p[0].unsetSCF(SCF_inputwait)
@@ -1709,13 +1714,16 @@ func (s *System) draw(x, y, scl float32) {
 			}
 		}
 
-		// Draw characters with layerNo == -1
+		// Draw character sprites with layerNo == -1
 		s.spritesLayerN1.draw(x, y, scl*s.cam.BaseScale())
 
 		// Draw stage elements with layerNo == 0
 		if !s.gsf(GSF_nobg) {
 			s.stage.draw(0, bgx, bgy, scl)
 		}
+
+		// Draw character sprites with special under flag
+		s.spritesLayerU.draw(x, y, scl*s.cam.BaseScale())
 
 		// Draw shadows
 		// Draw reflections on layer 0

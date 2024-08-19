@@ -3645,6 +3645,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_immovable))
 		case "cornerpriority":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_cornerpriority))
+		case "drawunder":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_drawunder))
+		case "runfirst":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_runfirst))
+		case "runlast":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_runlast))
+		case "projtypecollision":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_projtypecollision))
 		// Ikemen global flags
 		case "globalnoko":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoko))

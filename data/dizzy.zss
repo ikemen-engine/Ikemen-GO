@@ -385,6 +385,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 			dizzyPointsSet{value: dizzyPointsMax}
 			dizzySet{value: 0}
 		}
+		assertSpecial{flag: noDizzyPointsDamage}
 	}
 
 	# Set dizzy flag
