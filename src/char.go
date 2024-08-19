@@ -1748,7 +1748,7 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			// Teamside check
 			if pr.hitdef.affectteam != 0 &&
 				((p.hitdef.teamside-1 != pr.hitdef.teamside-1) != (pr.hitdef.affectteam > 0) ||
-				(p.hitdef.teamside-1 == pr.hitdef.teamside-1) != (pr.hitdef.affectteam < 0)) {
+					(p.hitdef.teamside-1 == pr.hitdef.teamside-1) != (pr.hitdef.affectteam < 0)) {
 				continue
 			}
 			clsn1 := pr.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
@@ -2239,8 +2239,8 @@ func (c *Char) clear2() {
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	atk := float32(c.gi().data.attack) * c.ocd().attackRatio / 100
 	c.CharSystemVar = CharSystemVar{
-		bindToId: -1,
-		angleScale:      [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
+		bindToId:   -1,
+		angleScale: [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
 		height:          [...]float32{c.defTHeight(), c.defBHeight()},
 		attackMul:       [4]float32{atk, atk, atk, atk},
@@ -8532,7 +8532,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				// Since the teamside parameter is new to Ikemen, we can make that one allow the projectile to hit the root
 				if p.hitdef.affectteam != 0 &&
 					((getter.teamside != p.hitdef.teamside-1) != (p.hitdef.affectteam > 0) ||
-					(getter.teamside == p.hitdef.teamside-1) != (p.hitdef.affectteam < 0)) {
+						(getter.teamside == p.hitdef.teamside-1) != (p.hitdef.affectteam < 0)) {
 					continue
 				}
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
