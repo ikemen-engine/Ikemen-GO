@@ -7846,9 +7846,13 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	crun := c
 	var t, mt int32 = 30, 0
 	uh := true
-	sys.superanim, sys.superpmap.remap = crun.getAnim(100, "f", true), nil
-	sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
-	sys.superpausebg, sys.superendcmdbuftime, sys.superdarken = true, 0, true
+	animset := false
+	sys.superpmap.remap = nil
+	sys.superpos = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}
+	sys.superfacing = crun.facing
+	sys.superpausebg = true
+	sys.superendcmdbuftime = 0
+	sys.superdarken = true
 	sys.superp2defmul = crun.gi().constants["super.targetdefencemul"]
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -7864,7 +7868,9 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 			sys.superdarken = exp[0].evalB(c)
 		case superPause_anim:
 			ffx := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
-			if sys.superanim = crun.getAnim(exp[1].evalI(c), ffx, true); sys.superanim != nil {
+			num := exp[1].evalI(c)
+			animset = true
+			if sys.superanim = crun.getAnim(num, ffx, true); sys.superanim != nil {
 				if ffx != "" && ffx != "s" {
 					sys.superpmap.remap = nil
 				} else {
@@ -7897,14 +7903,18 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		case superPause_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				sys.superanim, sys.superpmap.remap = crun.getAnim(100, "f", true), nil
-				sys.superpos, sys.superfacing = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}, crun.facing
+				sys.superpmap.remap = nil
+				sys.superpos = [...]float32{crun.pos[0] * crun.localscl, crun.pos[1] * crun.localscl}
+				sys.superfacing = crun.facing
 			} else {
 				return false
 			}
 		}
 		return true
 	})
+	if !animset {
+		sys.superanim = crun.getAnim(100, "f", true) // Default animation
+	}
 	if sys.superanim != nil {
 		sys.superanim.start_scale[0] *= crun.localscl
 		sys.superanim.start_scale[1] *= crun.localscl
