@@ -2570,15 +2570,18 @@ func (s *Stage) drawModel(pos [2]float32, yofs float32, scl float32, sceneNumber
 
 	drawFOV := s.stageCamera.fov * math.Pi / 180
 
-	var posMul float32 = float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] / (float32(sys.scrrect[3]) / 2)
-
 	var syo float32
-	aspectCorrection := (float32(sys.cam.zoffset)*float32(sys.gameHeight)/float32(sys.cam.localcoord[1]) - (float32(sys.cam.zoffset)*s.localscl - sys.cam.aspectcorrection))
-	syo = -(float32(s.stageCamera.zoffset) - float32(sys.cam.localcoord[1])/2) * (1 - scl) / scl * float32(sys.gameHeight) / float32(s.stageCamera.localcoord[1])
-	offset := []float32{(pos[0]*-posMul*s.localscl*sys.widthScale + s.model.offset[0]/scl), (((pos[1]*s.localscl+sys.cam.zoomanchorcorrection+aspectCorrection)/scl+yofs/scl+syo)*posMul*sys.heightScale + s.model.offset[1]), s.model.offset[2] / scl}
-	rotation := []float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
-	scale := []float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
-	proj := mgl.Translate3D(0, sys.cam.yshift*scl, 0)
+	scaleCorrection := float32(sys.cam.localcoord[1]) * sys.cam.localscl / float32(sys.gameHeight)
+	posMul := float32(math.Tan(float64(drawFOV)/2)) * -s.model.offset[2] / (float32(sys.cam.localcoord[1]) / 2)
+	aspectCorrection := (float32(sys.cam.zoffset)/float32(sys.cam.localcoord[1]) - (float32(sys.cam.zoffset)*s.localscl-sys.cam.aspectcorrection)/float32(sys.gameHeight)) * 2
+	syo = -(float32(s.stageCamera.zoffset) - float32(sys.cam.localcoord[1])/2) * (1 - scl) / scl
+	syo2 := -(float32(s.stageCamera.zoffset) - float32(sys.cam.localcoord[1])/2) * (1 - scaleCorrection) / float32(sys.cam.localcoord[1]) * 2
+	offset := [3]float32{(pos[0]*-posMul + s.model.offset[0]/scl), (((pos[1])/scl+syo)*posMul + s.model.offset[1]), s.model.offset[2] / scl}
+	rotation := [3]float32{s.model.rotation[0], s.model.rotation[1], s.model.rotation[2]}
+	scale := [3]float32{s.model.scale[0], s.model.scale[1], s.model.scale[2]}
+	proj := mgl.Translate3D(0, (sys.cam.zoomanchorcorrection+yofs)/float32(sys.gameHeight)*2+syo2+aspectCorrection, 0)
+	proj = proj.Mul4(mgl.Scale3D(scaleCorrection, scaleCorrection, 1))
+	proj = proj.Mul4(mgl.Translate3D(0, (sys.cam.yshift * scl), 0))
 	proj = proj.Mul4(mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.stageCamera.near, s.stageCamera.far))
 	view := mgl.Ident4()
 	view = view.Mul4(mgl.Translate3D(offset[0], offset[1], offset[2]))
