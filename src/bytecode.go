@@ -2861,7 +2861,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[0]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2874,13 +2874,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	case OC_ex2_clsnvar_top:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[1]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2893,13 +2893,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+1]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	case OC_ex2_clsnvar_right:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[2]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2912,13 +2912,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+2]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	case OC_ex2_clsnvar_bottom:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[3]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2931,7 +2931,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+3]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	// BEGIN FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_anim:
 		fallthrough

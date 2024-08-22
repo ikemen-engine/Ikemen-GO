@@ -785,6 +785,15 @@ func systemScriptInit(l *lua.LState) {
 		sys.fileInput = OpenFileInput(strArg(l, 1))
 		return 0
 	})
+	luaRegister(l, "entityMapSet", func(*lua.LState) int {
+		// map_name, value, map_type
+		var scType int32
+		if l.GetTop() >= 3 && strArg(l, 3) == "add" {
+			scType = 1
+		}
+		sys.debugWC.mapSet(strArg(l, 1), float32(numArg(l, 2)), scType)
+		return 0
+	})
 	luaRegister(l, "esc", func(l *lua.LState) int {
 		if l.GetTop() >= 1 {
 			sys.esc = boolArg(l, 1)
