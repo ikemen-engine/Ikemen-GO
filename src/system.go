@@ -1533,12 +1533,14 @@ func (s *System) action() {
 			s.pausetime = ^s.pausetime
 			s.pause = s.pausetime
 		}
-		// in mugen 1.1 most global assertspecial flags are reset during pause
-		// TODO: test if roundnotover should reset (keep intro and noko active)
+		// In Mugen 1.1, few global AssertSpecial flags persist during pauses. Seemingly only TimerFreeze
 		if s.super <= 0 && s.pause <= 0 {
 			s.specialFlag = 0
 		} else {
-			s.unsetGSF(GSF_assertspecial)
+			// These flags persist even during pauses
+			// "Intro" seems to have been deliberately added. Does not persist in Mugen 1.1
+			// "NoKOSlow" added to facilitate custom slowdown. In Mugen that flag only needs to be asserted in first frame of KO slowdown
+			s.specialFlag = (s.specialFlag&GSF_intro | s.specialFlag&GSF_nokoslow | s.specialFlag&GSF_timerfreeze)
 		}
 		if s.superanim != nil {
 			s.superanim.Action()

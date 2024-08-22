@@ -99,6 +99,7 @@ const (
 	ASF_runfirst
 	ASF_runlast
 	ASF_projtypecollision // TODO: Make this a parameter for normal projectiles as well?
+	ASF_nofallhitflag
 )
 
 type GlobalSpecialFlag uint32
@@ -119,9 +120,6 @@ const (
 	// Ikemen flags
 	GSF_roundnotskip
 	GSF_roundfreeze
-	GSF_assertspecial GlobalSpecialFlag = GSF_roundnotover | GSF_nomusic |
-		GSF_nobardisplay | GSF_nobg | GSF_nofg | GSF_globalnoshadow |
-		GSF_roundnotskip
 )
 
 type PosType int32
@@ -6499,7 +6497,7 @@ func (c *Char) attrCheck(ghd *HitDef, getter *Char, gst StateType) bool {
 			(c.hitdef.attr&ghd.reversal_attr&^int32(ST_MASK)) != 0
 	}
 	if ghd.attr <= 0 || ghd.hitflag&int32(c.ss.stateType) == 0 ||
-		ghd.hitflag&int32(ST_F) == 0 && c.hittmp >= 2 ||
+		(ghd.hitflag&int32(ST_F) == 0 || getter.asf(ASF_nofallhitflag)) && c.hittmp >= 2 ||
 		ghd.hitflag&int32(MT_MNS) != 0 && c.hittmp > 0 ||
 		ghd.hitflag&int32(MT_PLS) != 0 && (c.hittmp <= 0 || c.inGuardState()) {
 		return false
@@ -6974,6 +6972,7 @@ func (c *Char) actionRun() {
 					c.receivedDmg = 0
 					c.receivedHits = 0
 					c.ghv.score = 0
+					c.ghv.down_recovertime = c.gi().data.liedown.time
 					// In Mugen, when returning to idle, characters cannot act until the next frame
 					// To account for this, combos in Mugen linger one frame longer than they normally would in a fighting game
 					// Ikemen's "fake combo" code used to replicate this behavior
@@ -6991,6 +6990,9 @@ func (c *Char) actionRun() {
 			}
 			if c.ghv.hitshaketime <= 0 && c.ghv.hittime >= 0 {
 				c.ghv.hittime--
+			}
+			if c.ghv.down_recovertime > 0 && c.ss.no == 5110 {
+				c.ghv.down_recovertime--
 			}
 		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
@@ -7328,8 +7330,8 @@ func (c *Char) tick() {
 		}
 		// Fast recovery from lie down
 		if c.ghv.down_recover && c.ghv.down_recovertime > 0 &&
-			(c.ghv.fallcount > 0 || c.hitPauseTime <= 0 && c.ss.stateType == ST_L) &&
-			c.ss.sb.playerNo == c.playerNo && !c.asf(ASF_nofastrecoverfromliedown) &&
+			!c.asf(ASF_nofastrecoverfromliedown) &&
+			(c.ghv.fallcount > 0 || c.ss.stateType == ST_L) &&
 			(c.cmd[0].Buffer.Bb == 1 || c.cmd[0].Buffer.Db == 1 ||
 				c.cmd[0].Buffer.Fb == 1 || c.cmd[0].Buffer.Ub == 1 ||
 				c.cmd[0].Buffer.ab == 1 || c.cmd[0].Buffer.bb == 1 ||
@@ -7344,15 +7346,14 @@ func (c *Char) tick() {
 				c.ss.moveType != MT_H && !sys.gsf(GSF_globalnoko) && !c.asf(ASF_noko) &&
 				(!c.ghv.guarded || !c.asf(ASF_noguardko)) {
 				c.ghv.fallflag = true
-				// Mugen sets control to 0 here
-				c.selfState(5030, -1, -1, 0, "")
+				c.selfState(5030, -1, -1, 0, "") // Mugen sets control to 0 here
 				c.ss.time = 1
 			} else if c.ss.no == 5150 && c.ss.time >= 90 && c.alive() {
 				c.selfState(5120, -1, -1, -1, "")
 			}
 		}
 	}
-	if !c.hitPause() {
+	if !c.hitPause() && !c.pauseBool {
 		// Set KO flag
 		if c.life <= 0 && !sys.gsf(GSF_globalnoko) && !c.asf(ASF_noko) && (!c.ghv.guarded || !c.asf(ASF_noguardko)) {
 			// KO sound
@@ -7365,12 +7366,6 @@ func (c *Char) tick() {
 			}
 			c.setSCF(SCF_ko)
 			sys.charList.p2enemyDelete(c)
-		}
-		if c.ss.moveType != MT_H {
-			c.ghv.down_recovertime = c.gi().data.liedown.time
-		}
-		if c.ss.no == 5110 && c.ghv.down_recovertime > 0 && !c.pause() {
-			c.ghv.down_recovertime--
 		}
 	}
 }
