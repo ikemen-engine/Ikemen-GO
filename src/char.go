@@ -6481,34 +6481,35 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
 }
 
-func (c *Char) attrCheck(h *HitDef, getter *Char, st StateType) bool {
-	if c.unhittableTime > 0 || h.chainid >= 0 && c.ghv.hitid != h.chainid && h.nochainid[0] == -1 {
+// Check if Hitdef attributes can hit a player
+func (c *Char) attrCheck(ghd *HitDef, getter *Char, gst StateType) bool {
+	if c.unhittableTime > 0 || ghd.chainid >= 0 && c.ghv.hitid != ghd.chainid && ghd.nochainid[0] == -1 {
 		return false
 	}
 	if (len(c.ghv.hitBy) > 0 && c.ghv.hitBy[len(c.ghv.hitBy)-1][0] == getter.id) || c.ghv.hitshaketime > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/320
-		for _, nci := range h.nochainid {
-			if nci >= 0 && c.ghv.hitid == nci && c.ghv.id == h.attackerID {
+		for _, nci := range ghd.nochainid {
+			if nci >= 0 && c.ghv.hitid == nci && c.ghv.id == ghd.attackerID {
 				return false
 			}
 		}
 	}
-	if h.reversal_attr > 0 {
+	if ghd.reversal_attr > 0 {
 		return c.atktmp != 0 && c.hitdef.attr > 0 &&
-			(c.hitdef.attr&h.reversal_attr&int32(ST_MASK)) != 0 &&
-			(c.hitdef.attr&h.reversal_attr&^int32(ST_MASK)) != 0
+			(c.hitdef.attr&ghd.reversal_attr&int32(ST_MASK)) != 0 &&
+			(c.hitdef.attr&ghd.reversal_attr&^int32(ST_MASK)) != 0
 	}
-	if h.attr <= 0 || h.hitflag&int32(c.ss.stateType) == 0 ||
-		h.hitflag&int32(ST_F) == 0 && c.hittmp >= 2 ||
-		h.hitflag&int32(MT_MNS) != 0 && c.hittmp > 0 ||
-		h.hitflag&int32(MT_PLS) != 0 && (c.hittmp <= 0 || c.inGuardState()) {
+	if ghd.attr <= 0 || ghd.hitflag&int32(c.ss.stateType) == 0 ||
+		ghd.hitflag&int32(ST_F) == 0 && c.hittmp >= 2 ||
+		ghd.hitflag&int32(MT_MNS) != 0 && c.hittmp > 0 ||
+		ghd.hitflag&int32(MT_PLS) != 0 && (c.hittmp <= 0 || c.inGuardState()) {
 		return false
 	}
-	//if h.chainid < 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/308
+	//if ghd.chainid < 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/308
 	var styp int32
-	if st == ST_N {
-		styp = h.attr & int32(ST_MASK)
+	if gst == ST_N {
+		styp = ghd.attr & int32(ST_MASK)
 	} else {
-		styp = int32(st)
+		styp = int32(gst)
 	}
 	// HitBy and NotHitBy checks
 	// Stack parameter makes the hit happen if any HitBy slot would allow it
@@ -6535,7 +6536,7 @@ func (c *Char) attrCheck(h *HitDef, getter *Char, st StateType) bool {
 				}
 			}
 			// Attributes
-			if hb.flag&styp == 0 || hb.flag&h.attr&^int32(ST_MASK) == 0 {
+			if hb.flag&styp == 0 || hb.flag&ghd.attr&^int32(ST_MASK) == 0 {
 				hit = false
 				if hb.stack {
 					continue
@@ -6552,36 +6553,57 @@ func (c *Char) attrCheck(h *HitDef, getter *Char, st StateType) bool {
 	return hit
 }
 
-// Check if the enemy's Hitdef should lose to the current one, if applicable
-func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func(*HitDef) bool) bool {
-	if !c.attrCheck(h, oc, st) {
+// Check if the enemy (c) Hitdef should lose to the current one, if applicable
+func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj bool) bool {
+
+	// Enemy can't be hit by Hitdef attributes at all
+	// No more checks needed
+	if !c.attrCheck(ghd, getter, gst) {
 		return false
 	}
-	if c.hasTargetOfHitdef(oc.id) { // If enemy's Hitdef already hit the original char
+
+	// Enemy's Hitdef already hit the original char
+	// Can skip priority checking
+	if c.hasTargetOfHitdef(getter.id) {
 		return true
 	}
+
+	// Check if enemy can trade hits with original char
+	// This should probably be a function that both players access instead of being handled like this
+	countercheck := func(hd *HitDef) bool {
+		if proj {
+			return false
+		} else {
+			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
+				!getter.hasTargetOfHitdef(c.id) &&
+				getter.attrCheck(hd, c, c.ss.stateType) &&
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck)
+		}
+	}
+
+	// Hitdef priority check
 	if c.atktmp != 0 && (c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0) {
 		switch {
 		case c.hitdef.reversal_attr > 0:
-			if h.reversal_attr > 0 { // Reversaldef vs Reversaldef
+			if ghd.reversal_attr > 0 { // Reversaldef vs Reversaldef
 				if countercheck(&c.hitdef) {
 					c.atktmp = -1
-					return oc.atktmp < 0
+					return getter.atktmp < 0
 				}
 				return true
 			}
-		case h.reversal_attr > 0:
+		case ghd.reversal_attr > 0:
 			return true
-		case h.priority < c.hitdef.priority:
-		case h.priority == c.hitdef.priority:
+		case ghd.priority < c.hitdef.priority:
+		case ghd.priority == c.hitdef.priority:
 			switch {
 			case c.hitdef.bothhittype == AT_Dodge:
-			case h.bothhittype != AT_Hit:
+			case ghd.bothhittype != AT_Hit:
 			case c.hitdef.bothhittype == AT_Hit:
 				if (c.hitdef.p1stateno >= 0 || c.hitdef.attr&int32(AT_AT) != 0 &&
-					h.hitonce != 0) && countercheck(&c.hitdef) {
+					ghd.hitonce != 0) && countercheck(&c.hitdef) {
 					c.atktmp = -1
-					return oc.atktmp < 0 || Rand(0, 1) == 1
+					return getter.atktmp < 0 || Rand(0, 1) == 1
 				}
 				return true
 			default:
@@ -6594,6 +6616,7 @@ func (c *Char) loseHitTrade(h *HitDef, oc *Char, st StateType, countercheck func
 	}
 	return true
 }
+
 func (c *Char) actionPrepare() {
 	if c.minus != 2 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
@@ -7092,8 +7115,8 @@ func (c *Char) update() {
 				if !c.asf(ASF_nofallcount) {
 					c.ghv.fallcount++
 				}
-				// Mugen does not actually require the first condition here
-				// But that makes characters always invulnerable if their lie down time is <= 10
+				// Mugen does not actually require the "fallcount" condition here
+				// But that makes characters always invulnerable if their lie down time constant is <= 10
 				if c.ghv.fallcount > 1 && c.ss.no == 5100 {
 					if c.ghv.down_recovertime > 0 {
 						c.ghv.down_recovertime = int32(math.Floor(float64(c.ghv.down_recovertime) / 2))
@@ -7313,7 +7336,7 @@ func (c *Char) tick() {
 				c.cmd[0].Buffer.cb == 1 || c.cmd[0].Buffer.xb == 1 ||
 				c.cmd[0].Buffer.yb == 1 || c.cmd[0].Buffer.zb == 1 ||
 				c.cmd[0].Buffer.sb == 1 || c.cmd[0].Buffer.db == 1 ||
-				c.cmd[0].Buffer.wb == 1 /*|| c.cmd[0].Buffer.mb == 1*/) {
+				c.cmd[0].Buffer.wb == 1) { // Menu button not included
 			c.ghv.down_recovertime -= RandI(1, (c.ghv.down_recovertime+1)/2)
 		}
 		if !c.stchtmp {
@@ -8605,7 +8628,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					(c.asf(ASF_nojugglecheck) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= p.hitdef.air_juggle) &&
 					(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 					(p.hitpause <= 0 || p.contactflag) && p.curmisstime <= 0 && p.hitdef.hitonce >= 0 &&
-					getter.loseHitTrade(&p.hitdef, c, ST_N, func(h *HitDef) bool { return false }) {
+					getter.hittableByChar(&p.hitdef, c, ST_N, true) {
 					orghittmp := getter.hittmp
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallflag)) + 1
@@ -8681,11 +8704,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
 					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
-					getter.loseHitTrade(&c.hitdef, c, c.ss.stateType, func(h *HitDef) bool {
-						return (c.atktmp >= 0 || !getter.hasTarget(c.id)) &&
-							c.attrCheck(h, getter, getter.ss.stateType) &&
-							c.clsnCheck(getter, 1, c.hitdef.p2clsncheck)
-					}) {
+					getter.hittableByChar(&c.hitdef, c, c.ss.stateType, false) {
 					// Guard distance
 					if c.ss.moveType == MT_A &&
 						dist <= float32(c.hitdef.guard_dist[0]) &&
