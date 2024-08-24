@@ -2005,6 +2005,7 @@ type CharSystemVar struct {
 	finalDefense      float64
 	defenseMulDelay   bool
 	counterHit        bool
+	prevNoStandGuard  bool
 }
 
 type Char struct {
@@ -2025,7 +2026,7 @@ type Char struct {
 	teamside            int
 	keyctrl             [4]bool
 	player              bool
-	hprojectile         bool // Currently unused
+	hprojectile         bool // Helper type projectile. Currently unused
 	animPN              int
 	animNo              int32
 	prevAnimNo          int32
@@ -6662,7 +6663,7 @@ func (c *Char) actionPrepare() {
 								c.changeState(12, -1, -1, "")
 							}
 						} else if !c.asf(ASF_nowalk) && c.ss.stateType == ST_S &&
-							(c.cmd[0].Buffer.F > 0 != ((!c.inguarddist || c.asf(ASF_nostandguard)) && c.cmd[0].Buffer.B > 0)) {
+							(c.cmd[0].Buffer.F > 0 != ((!c.inguarddist || c.prevNoStandGuard) && c.cmd[0].Buffer.B > 0)) {
 							if c.ss.no != 20 {
 								c.changeState(20, -1, -1, "")
 							}
@@ -6829,11 +6830,16 @@ func (c *Char) actionRun() {
 					if c.inguarddist && c.scf(SCF_guard) && c.cmd[0].Buffer.B > 0 &&
 						!c.inGuardState() {
 						c.changeState(120, -1, -1, "")
+						// In Mugen the characters *can* change to the guarding states during pauses
+						// They can still block in Ikemen despite not changing state here
 					}
 				}
 			}
 		}
 	}
+	// This variable is necessary because NoStandGuard is reset before the walking instructions are checked
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1966
+	c.prevNoStandGuard = c.asf(ASF_nostandguard)
 	c.unsetASF(ASF_nostandguard | ASF_nocrouchguard | ASF_noairguard)
 	// Run state +1
 	// Uses minus -4 because its properties are similar
