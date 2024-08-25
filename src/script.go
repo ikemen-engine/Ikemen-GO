@@ -4478,7 +4478,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "animframexoffset", func(*lua.LState) int {
 		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
-			l.Push(lua.LNumber(-f.X))
+			l.Push(lua.LNumber(f.X))
 		} else {
 			l.Push(lua.LNumber(0))
 		}
@@ -4496,7 +4496,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "animframeyoffset", func(*lua.LState) int {
 		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
-			l.Push(lua.LNumber(-f.Y))
+			l.Push(lua.LNumber(f.Y))
 		} else {
 			l.Push(lua.LNumber(0))
 		}
@@ -4811,6 +4811,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_runlast)))
 		case "projtypecollision":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_projtypecollision)))
+		case "nofallhitflag":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_nofallhitflag)))
 		// GlobalSpecialFlag
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))
