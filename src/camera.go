@@ -145,8 +145,8 @@ func (c *Camera) Init() {
 	c.zoomindelaytime = c.zoomindelay
 }
 func (c *Camera) ResetTracking() {
-	c.leftest = c.Pos[0]
-	c.rightest = c.Pos[0]
+	c.leftest = math.MaxFloat32
+	c.rightest = -math.MaxFloat32
 	c.highest = math.MaxFloat32
 	c.lowest = -math.MaxFloat32
 	c.leftestvel = 0
@@ -200,7 +200,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 		newY = y / scale
 		switch c.View {
 		case Fighting_View:
-			if c.highest != math.MaxFloat32 && c.lowest != -math.MaxFloat32 {
+			if c.highest != math.MaxFloat32 && c.lowest != -math.MaxFloat32 && c.leftest != math.MaxFloat32 && c.rightest != -math.MaxFloat32 {
 				if c.lowestcap {
 					c.lowest = MaxF(c.lowest, float32(c.boundhigh)*c.localscl-(float32(sys.gameHeight)-c.GroundLevel()-float32(c.tensionlow))/c.zoomout)
 				}
