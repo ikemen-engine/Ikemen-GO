@@ -66,7 +66,7 @@ local function f_play(t, attract)
 				end
 				--loop through layers in order
 				for _, layer in main.f_sortKeys(scene.layer) do
-					if i >= layer.starttime and i <= layer.endtime then
+					if i >= layer.starttime and i < layer.endtime then
 						--layer anim
 						if layer.anim_data ~= nil then
 							animDraw(layer.anim_data)
@@ -234,7 +234,7 @@ local function f_parse(path)
 								vel = {0, 0}, --Ikemen feature
 								spacing = {0, 0}, --Ikemen feature
 								starttime = 0,
-								--endtime = 0,
+								endtime = nil,
 							}
 						end
 						pos_val = pos.layer[num]
@@ -415,7 +415,7 @@ local function f_parse(path)
 				})
 			end
 			--endtime
-			if layer.endtime == nil then
+			if layer.endtime == nil or layer.endtime < layer.starttime then
 				layer.endtime = scene.end_time
 			end
 		end
