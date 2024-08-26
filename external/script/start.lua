@@ -2933,6 +2933,12 @@ function start.f_selectVersus(active, t_orderSelect)
 		if not done and motif.vs_screen.timer_count ~= -1 and timerActive and counter >= 0 then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen, 'timer_', txt_timerVS)
 		end
+		--credits
+		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
+			sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
+			main.credits = main.credits + 1
+			resetKey()
+		end
 		-- hook
 		hook.run("start.f_selectVersus")
 		--draw layerno = 1 backgrounds
