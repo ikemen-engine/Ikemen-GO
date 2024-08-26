@@ -5711,6 +5711,9 @@ func (c *Char) over() bool {
 	return c.scf(SCF_over) || c.ss.no == 5150
 }
 func (c *Char) makeDust(x, y float32) {
+	if c.asf(ASF_nomakedust) {
+		return
+	}
 	if e, i := c.newExplod(); e != nil {
 		e.anim = c.getAnim(120, "f", true)
 		if e.anim != nil {
@@ -7153,7 +7156,7 @@ func (c *Char) update() {
 				c.setSCF(SCF_guard)
 			}
 			if ((c.ss.moveType == MT_H && (c.ss.stateType == ST_S || c.ss.stateType == ST_C)) || c.ss.no == 52) && c.pos[1] == 0 &&
-				AbsF(c.pos[0]-c.dustOldPos) >= 1 && c.ss.time%3 == 0 && !c.asf(ASF_nomakedust) {
+				AbsF(c.pos[0]-c.dustOldPos) >= 1 && c.ss.time%3 == 0 {
 				c.makeDust(0, 0)
 			}
 		}
