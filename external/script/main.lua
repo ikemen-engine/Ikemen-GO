@@ -3210,6 +3210,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						txt_infobox,
 						overlay_infobox
 					)
+					main.f_cmdBufReset()
 				elseif main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
 					sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
 					main.credits = main.credits + 1
