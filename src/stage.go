@@ -1264,6 +1264,8 @@ func (s *Stage) copyStageVars(src *Stage) {
 	s.sdw.fadeend = src.sdw.fadeend
 	s.sdw.fadebgn = src.sdw.fadebgn
 	s.sdw.xshear = src.sdw.xshear
+	s.sdw.offset[0] = src.sdw.offset[0]
+	s.sdw.offset[1] = src.sdw.offset[1]
 	s.reflection.intensity = src.reflection.intensity
 	s.reflection.offset[0] = src.reflection.offset[0]
 	s.reflection.offset[1] = src.reflection.offset[1]
