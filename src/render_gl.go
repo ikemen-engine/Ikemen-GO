@@ -322,13 +322,13 @@ func (r *Renderer) Init() {
 	// Ident shader (no postprocessing)
 	r.postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
 	r.postShaderSelect[0].RegisterAttributes("VertCoord")
-	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
+	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize", "CurrentTime")
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
 		r.postShaderSelect[1+i] = newShaderProgram(sys.externalShaders[0][i],
 			sys.externalShaders[1][i], fmt.Sprintf("Postprocess Shader #%v", i+1))
-		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
+		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize", "CurrentTime")
 	}
 
 	if sys.multisampleAntialiasing > 0 {
@@ -451,6 +451,7 @@ func (r *Renderer) EndFrame() {
 	// set post-processing parameters
 	gl.Uniform1i(postShader.u["Texture"], 0)
 	gl.Uniform2f(postShader.u["TextureSize"], float32(resizedWidth), float32(resizedHeight))
+	gl.Uniform1f(postShader.u["CurrentTime"], float32(glfw.GetTime()))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, scaleMode)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, scaleMode)
 
