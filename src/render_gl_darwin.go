@@ -326,7 +326,7 @@ func (r *Renderer) Init() {
 	// Ident shader (no postprocessing)
 	r.postShaderSelect[0] = newShaderProgram(identVertShader, identFragShader, "Identity Postprocess")
 	r.postShaderSelect[0].RegisterAttributes("VertCoord", "TexCoord")
-	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize")
+	r.postShaderSelect[0].RegisterUniforms("Texture", "TextureSize", "CurrentTime")
 
 	// External Shaders
 	for i := 0; i < len(sys.externalShaderList); i++ {
@@ -336,7 +336,7 @@ func (r *Renderer) Init() {
 		loc := r.postShaderSelect[0].a["TexCoord"]
 		gl.VertexAttribPointer(uint32(loc), 3, gl.FLOAT, false, 5*4, gl.PtrOffset(2*4))
 		gl.EnableVertexAttribArray(uint32(loc))
-		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize")
+		r.postShaderSelect[1+i].RegisterUniforms("Texture", "TextureSize", "CurrentTime")
 	}
 
 	if sys.multisampleAntialiasing > 0 {
@@ -462,6 +462,7 @@ func (r *Renderer) EndFrame() {
 	// set post-processing parameters
 	gl.Uniform1i(postShader.u["Texture"], 0)
 	gl.Uniform2f(postShader.u["TextureSize"], float32(resizedWidth), float32(resizedHeight))
+	gl.Uniform1f(postShader.u["CurrentTime"], float32(glfw.GetTime()))
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, scaleMode)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, scaleMode)
 
