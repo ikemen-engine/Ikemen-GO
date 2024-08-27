@@ -638,7 +638,7 @@
 	p1.face.anim = -1
 	; Done variants replace spr/anim once character is selected
 	p1.face.done.anim = -1
-	p1.face.done.spr = 9000, 1
+	p1.face.done.spr = 
 	; Spacing between portraits.
 	p1.face.spacing = 0, 0
 	; Set to 1 to enable automatic spacing adjustment based on team size
@@ -649,7 +649,7 @@
 	p2.face.num = 1
 	p2.face.anim = -1
 	p2.face.done.anim = -1
-	p2.face.done.spr = 9000, 1
+	p2.face.done.spr = 
 	p2.face.spacing = 0, 0
 	p2.face.padding = 0
 
@@ -658,7 +658,7 @@
 	;p<pn>.member<num>.face.anim = -1
 	;p<pn>.member<num>.face.spr = 9000, 1
 	;p<pn>.member<num>.face.done.anim = -1
-	;p<pn>.member<num>.face.done.spr = 9000, 1
+	;p<pn>.member<num>.face.done.spr = 
 	;p<pn>.member<num>.face.offset = 0, 0
 	;p<pn>.member<num>.face.scale = 1.0, 1.0
 
