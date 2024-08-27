@@ -4302,8 +4302,18 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.sdw.fadeend))
 		case "shadow.xshear":
 			l.Push(lua.LNumber(sys.stage.sdw.xshear))
+		case "shadow.offset.x":
+			l.Push(lua.LNumber(sys.stage.sdw.offset[0]))
+		case "shadow.offset.y":
+			l.Push(lua.LNumber(sys.stage.sdw.offset[1]))
 		case "reflection.intensity":
-			l.Push(lua.LNumber(sys.stage.reflection))
+			l.Push(lua.LNumber(sys.stage.reflection.intensity))
+		case "reflection.yscale":
+			l.Push(lua.LNumber(sys.stage.reflection.yscale))
+		case "reflection.offset.x":
+			l.Push(lua.LNumber(sys.stage.reflection.offset[0]))
+		case "reflection.offset.y":
+			l.Push(lua.LNumber(sys.stage.reflection.offset[1]))
 		default:
 			l.Push(lua.LString(""))
 		}
