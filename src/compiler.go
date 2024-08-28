@@ -1525,7 +1525,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		ctype := c.token
 		switch ctype {
 		case "size":
-			bv1 = BytecodeInt(0)
+			bv1 = BytecodeInt(3)
 		case "clsn1":
 			bv1 = BytecodeInt(1)
 		case "clsn2":
@@ -2814,8 +2814,18 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_shadow_fade_range_end
 		case "shadow.xshear":
 			opc = OC_const_stagevar_shadow_xshear
+		case "shadow.offset.x":
+			opc = OC_const_stagevar_shadow_offset_x
+		case "shadow.offset.y":
+			opc = OC_const_stagevar_shadow_offset_y
 		case "reflection.intensity":
 			opc = OC_const_stagevar_reflection_intensity
+		case "reflection.yscale":
+			opc = OC_const_stagevar_reflection_yscale
+		case "reflection.offset.x":
+			opc = OC_const_stagevar_reflection_offset_x
+		case "reflection.offset.y":
+			opc = OC_const_stagevar_reflection_offset_y
 		default:
 			return bvNone(), Error("Invalid data: " + svname)
 		}

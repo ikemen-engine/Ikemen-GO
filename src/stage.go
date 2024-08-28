@@ -695,6 +695,7 @@ type stageShadow struct {
 	fadeend   int32
 	fadebgn   int32
 	xshear    float32
+	offset    [2]float32
 }
 type stagePlayer struct {
 	startx, starty, startz int32
@@ -722,7 +723,7 @@ type Stage struct {
 	screenleft        int32
 	screenright       int32
 	zoffsetlink       int32
-	reflection        int32
+	reflection        stageShadow
 	reflectionlayerno int32
 	hires             bool
 	autoturn          bool
@@ -1132,6 +1133,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadBool("reflect", &reflect)
 		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
 		sec[0].ReadF32("xshear", &s.sdw.xshear)
+		sec[0].readF32ForStage("offset", &s.sdw.offset[0], &s.sdw.offset[1])
 	}
 	if reflect {
 		if sec = defmap[fmt.Sprintf("%v.reflection", sys.language)]; len(sec) > 0 {
@@ -1142,13 +1144,23 @@ func loadStage(def string, main bool) (*Stage, error) {
 			}
 		}
 		if sectionExists {
+			s.reflection.yscale = 1.0
 			sectionExists = false
 			var tmp int32
+			var tmp2 float32
+			var tmp3 [2]float32
 			if sec[0].ReadI32("intensity", &tmp) {
-				s.reflection = Clamp(tmp, 0, 255)
+				s.reflection.intensity = Clamp(tmp, 0, 255)
 			}
 			if sec[0].ReadI32("layerno", &tmp) {
 				s.reflectionlayerno = Clamp(tmp, -1, 0)
+			}
+			if sec[0].ReadF32("yscale", &tmp2) {
+				s.reflection.yscale = tmp2
+			}
+			if sec[0].readF32ForStage("offset", &tmp3[0], &tmp3[1]) {
+				s.reflection.offset[0] = tmp3[0]
+				s.reflection.offset[1] = tmp3[1]
 			}
 		}
 	}
@@ -1252,7 +1264,11 @@ func (s *Stage) copyStageVars(src *Stage) {
 	s.sdw.fadeend = src.sdw.fadeend
 	s.sdw.fadebgn = src.sdw.fadebgn
 	s.sdw.xshear = src.sdw.xshear
-	s.reflection = src.reflection
+	s.sdw.offset[0] = src.sdw.offset[0]
+	s.sdw.offset[1] = src.sdw.offset[1]
+	s.reflection.intensity = src.reflection.intensity
+	s.reflection.offset[0] = src.reflection.offset[0]
+	s.reflection.offset[1] = src.reflection.offset[1]
 }
 func (s *Stage) getBg(id int32) (bg []*backGround) {
 	if id >= 0 {

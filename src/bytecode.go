@@ -387,7 +387,12 @@ const (
 	OC_const_stagevar_shadow_fade_range_begin
 	OC_const_stagevar_shadow_fade_range_end
 	OC_const_stagevar_shadow_xshear
+	OC_const_stagevar_shadow_offset_x
+	OC_const_stagevar_shadow_offset_y
 	OC_const_stagevar_reflection_intensity
+	OC_const_stagevar_reflection_yscale
+	OC_const_stagevar_reflection_offset_x
+	OC_const_stagevar_reflection_offset_y
 	OC_const_constants
 	OC_const_stage_constants
 )
@@ -2077,8 +2082,18 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.stage.sdw.fadeend)
 	case OC_const_stagevar_shadow_xshear:
 		sys.bcStack.PushF(sys.stage.sdw.xshear)
+	case OC_const_stagevar_shadow_offset_x:
+		sys.bcStack.PushF(sys.stage.sdw.offset[0])
+	case OC_const_stagevar_shadow_offset_y:
+		sys.bcStack.PushF(sys.stage.sdw.offset[1])
 	case OC_const_stagevar_reflection_intensity:
-		sys.bcStack.PushI(sys.stage.reflection)
+		sys.bcStack.PushI(sys.stage.reflection.intensity)
+	case OC_const_stagevar_reflection_yscale:
+		sys.bcStack.PushF(sys.stage.reflection.yscale)
+	case OC_const_stagevar_reflection_offset_x:
+		sys.bcStack.PushF(sys.stage.reflection.offset[0])
+	case OC_const_stagevar_reflection_offset_y:
+		sys.bcStack.PushF(sys.stage.reflection.offset[1])
 	case OC_const_constants:
 		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 			unsafe.Pointer(&be[*i]))]])
@@ -2861,7 +2876,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[0]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2874,13 +2889,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * c.localscl)
 	case OC_ex2_clsnvar_top:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[1]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2893,13 +2908,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+1]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * c.localscl)
 	case OC_ex2_clsnvar_right:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[2]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2912,13 +2927,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+2]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * c.localscl)
 	case OC_ex2_clsnvar_bottom:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
 		v := float32(math.NaN())
 		switch id {
-		case 0:
+		case 3: // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 			v = c.sizeBox[3]
 		case 1:
 			cf1 := c.anim.CurrentFrame().Clsn1()
@@ -2931,7 +2946,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+3]
 			}
 		}
-		sys.bcStack.PushF(v)
+		sys.bcStack.PushF(v * c.localscl)
 	// BEGIN FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_anim:
 		fallthrough
@@ -10771,7 +10786,10 @@ const (
 	modifyStageVar_shadow_yscale
 	modifyStageVar_shadow_fade_range
 	modifyStageVar_shadow_xshear
+	modifyStageVar_shadow_offset
 	modifyStageVar_reflection_intensity
+	modifyStageVar_reflection_yscale
+	modifyStageVar_reflection_offset
 	modifyStageVar_redirectid
 )
 
@@ -10861,8 +10879,16 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.sdw.fadebgn = exp[1].evalI(c)
 		case modifyStageVar_shadow_xshear:
 			s.sdw.xshear = exp[0].evalF(c)
+		case modifyStageVar_shadow_offset:
+			s.sdw.offset[0] = exp[0].evalF(c)
+			s.sdw.offset[1] = exp[1].evalF(c)
 		case modifyStageVar_reflection_intensity:
-			s.reflection = Clamp(exp[0].evalI(c), 0, 255)
+			s.reflection.intensity = Clamp(exp[0].evalI(c), 0, 255)
+		case modifyStageVar_reflection_yscale:
+			s.reflection.yscale = exp[0].evalF(c)
+		case modifyStageVar_reflection_offset:
+			s.reflection.offset[0] = exp[0].evalF(c)
+			s.reflection.offset[1] = exp[1].evalF(c)
 		case modifyStageVar_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				//crun = rid - RedirectID is useless when modifying a stage
