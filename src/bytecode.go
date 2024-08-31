@@ -2696,9 +2696,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_sprpriority:
 		sys.bcStack.PushI(c.sprPriority)
 	case OC_ex_stagebackedgedist:
-		sys.bcStack.PushF(c.stageBackEdgeDist() * (c.localscl / oc.localscl))
+		sys.bcStack.PushI(int32(c.stageBackEdgeDist() * (c.localscl / oc.localscl)))
 	case OC_ex_stagefrontedgedist:
-		sys.bcStack.PushF(c.stageFrontEdgeDist() * (c.localscl / oc.localscl))
+		sys.bcStack.PushI(int32(c.stageFrontEdgeDist() * (c.localscl / oc.localscl)))
 	case OC_ex_stagetime:
 		sys.bcStack.PushI(sys.stage.stageTime)
 	case OC_ex_standby:

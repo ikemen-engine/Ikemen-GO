@@ -3325,9 +3325,21 @@ func (c *Char) backEdge() float32 {
 	}
 	return c.leftEdge()
 }
+
 func (c *Char) backEdgeBodyDist() float32 {
-	return c.backEdgeDist() - c.getEdge(c.edge[1], false)
+	// In Mugen, edge body distance is changed when the character is in statetype A or L
+	// This is undocumented and doesn't seem to offer any benefit
+	offset := float32(0)
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.stateType == ST_A {
+			offset = 0.5/c.localscl
+		} else if c.ss.stateType == ST_L {
+			offset = 1.0/c.localscl
+		}
+	}
+	return c.backEdgeDist() - c.edge[1] - offset
 }
+
 func (c *Char) backEdgeDist() float32 {
 	if c.facing < 0 {
 		return sys.xmax/c.localscl - c.pos[0]
@@ -3400,9 +3412,20 @@ func (c *Char) frontEdge() float32 {
 	}
 	return c.leftEdge()
 }
+
 func (c *Char) frontEdgeBodyDist() float32 {
-	return c.frontEdgeDist() - c.getEdge(c.edge[0], false)
+	// See BackEdgeBodyDist
+	offset := float32(0)
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.stateType == ST_A {
+			offset = 0.5/c.localscl
+		} else if c.ss.stateType == ST_L {
+			offset = 1.0/c.localscl
+		}
+	}
+	return c.frontEdgeDist() - c.edge[0] - offset
 }
+
 func (c *Char) frontEdgeDist() float32 {
 	if c.facing > 0 {
 		return sys.xmax/c.localscl - c.pos[0]
@@ -5610,19 +5633,6 @@ func (c *Char) hitVelSetY() {
 	// Movetype H is not required in Mugen
 	c.setYV(c.ghv.yvel)
 }
-func (c *Char) getEdge(base float32, actually bool) float32 {
-	/*
-		if !actually || c.stWgi().mugenver[0] != 1 {
-			switch c.ss.stateType {
-			case ST_A:
-				return base + 1
-			case ST_L:
-				return base + 2
-			}
-		}
-	*/
-	return base
-}
 func (c *Char) defFW() float32 {
 	if c.ss.stateType == ST_A {
 		return float32(c.size.air.front)
@@ -6301,7 +6311,7 @@ func (c *Char) trackableByCamera() bool {
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
 	if !sys.cam.roundstart && c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
-		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		min, max := c.edge[0], -c.edge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
@@ -6315,7 +6325,7 @@ func (c *Char) xScreenBound() {
 func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 	x := c.pos[0]
 	if c.ss.stateType != ST_A {
-		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		min, max := c.edge[0], -c.edge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
@@ -7407,6 +7417,7 @@ func (c *Char) cueDraw() {
 	xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
 	ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
 	nhbtxt := ""
+	// Debug Clsn display
 	if sys.clsnDraw && c.curFrame != nil {
 		// Add Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 {
@@ -8857,8 +8868,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 			gl += getter.pos[0] * getter.localscl
 			gr += getter.pos[0] * getter.localscl
 
-			gxmin = getter.getEdge(getter.edge[0], true)
-			gxmax = -getter.getEdge(getter.edge[1], true)
+			gxmin = getter.edge[0]
+			gxmax = -getter.edge[1]
 			if getter.facing > 0 {
 				gxmin, gxmax = -gxmax, -gxmin
 			}
@@ -8924,7 +8935,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 					getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 				}
 				if c.trackableByCamera() && c.csf(CSF_screenbound) {
-					l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+					l, r := c.edge[0], -c.edge[1]
 					if c.facing > 0 {
 						l, r = -r, -l
 					}
