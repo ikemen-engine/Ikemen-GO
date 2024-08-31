@@ -2889,7 +2889,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4]
 			}
 		}
-		sys.bcStack.PushF(v * c.localscl)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	case OC_ex2_clsnvar_top:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
@@ -2908,7 +2908,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+1]
 			}
 		}
-		sys.bcStack.PushF(v * c.localscl)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	case OC_ex2_clsnvar_right:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
@@ -2927,7 +2927,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+2]
 			}
 		}
-		sys.bcStack.PushF(v * c.localscl)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	case OC_ex2_clsnvar_bottom:
 		idx := int(sys.bcStack.Pop().ToI())
 		id := int(sys.bcStack.Pop().ToI())
@@ -2946,7 +2946,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				v = cf2[idx*4+3]
 			}
 		}
-		sys.bcStack.PushF(v * c.localscl)
+		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	// BEGIN FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_anim:
 		fallthrough
@@ -4431,6 +4431,38 @@ func (sc velMul) Run(c *Char, _ []int32) bool {
 			} else {
 				exp[0].run(c)
 			}
+		case posSet_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type shadowOffset posSet
+
+const (
+	shadowoffset_reflection = iota + posSet_redirectid + 1
+)
+
+func (sc shadowOffset) Run(c *Char, _ []int32) bool {
+	crun := c
+	isReflect := false
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case shadowoffset_reflection:
+			isReflect = exp[0].evalB(c)
+		case posSet_x:
+			crun.shadXOff(exp[0].evalF(c), isReflect)
+		case posSet_y:
+			crun.shadYOff(exp[0].evalF(c), isReflect)
+		case posSet_z:
+			// the Y offset is all that's needed
+			exp[0].run(c)
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

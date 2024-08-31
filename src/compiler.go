@@ -169,6 +169,7 @@ func newCompiler() *Compiler {
 		"roundtimeset":         c.roundTimeSet,
 		"savefile":             c.saveFile,
 		"scoreadd":             c.scoreAdd,
+		"shadowoffset":         c.shadowOffset,
 		"tagin":                c.tagIn,
 		"tagout":               c.tagOut,
 		"targetadd":            c.targetAdd,
