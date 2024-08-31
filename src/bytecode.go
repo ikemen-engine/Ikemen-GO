@@ -2767,6 +2767,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	(*i)++
 	opc := be[*i-1]
+	correctScale := false
 	switch opc {
 	case OC_ex2_index:
 		sys.bcStack.PushI(c.index)
@@ -2948,6 +2949,24 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		}
 		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	// BEGIN FALLTHROUGH (explodvar)
+	case OC_ex2_explodvar_pos_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_pos_y:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_vel_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_vel_y:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_accel_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_accel_y:
+		correctScale = true
+		fallthrough
 	case OC_ex2_explodvar_anim:
 		fallthrough
 	case OC_ex2_explodvar_animelem:
@@ -2958,33 +2977,61 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_explodvar_sprpriority:
 		fallthrough
-	case OC_ex2_explodvar_pos_x:
-		fallthrough
-	case OC_ex2_explodvar_pos_y:
-		fallthrough
 	case OC_ex2_explodvar_scale_x:
 		fallthrough
 	case OC_ex2_explodvar_scale_y:
-		fallthrough
-	case OC_ex2_explodvar_vel_x:
-		fallthrough
-	case OC_ex2_explodvar_vel_y:
-		fallthrough
-	case OC_ex2_explodvar_accel_x:
 		fallthrough
 	case OC_ex2_explodvar_angle:
 		fallthrough
 	case OC_ex2_explodvar_angle_x:
 		fallthrough
-	case OC_ex2_explodvar_angle_y:
-		fallthrough
 	// END FALLTHROUGH (explodvar)
-	case OC_ex2_explodvar_accel_y:
+	case OC_ex2_explodvar_angle_y:
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.explodVar(id, idx, opc)
-		sys.bcStack.Push(v)
+		if correctScale {
+			sys.bcStack.PushF(v.ToF() * (c.localscl / oc.localscl))
+		} else {
+			sys.bcStack.Push(v)
+		}
 	// BEGIN FALLTHROUGH (projvar)
+	case OC_ex2_projectilevar_accel_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_accel_y:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_pos_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_pos_y:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_vel_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_vel_y:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_projstagebound:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_projedgebound:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_lowbound:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_highbound:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_remvelocity_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_projectilevar_remvelocity_y:
+		correctScale = true
+		fallthrough
 	case OC_ex2_projectilevar_projremove:
 		fallthrough
 	case OC_ex2_projectilevar_projremovetime:
@@ -3007,21 +3054,9 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_projectilevar_projcancelanim:
 		fallthrough
-	case OC_ex2_projectilevar_vel_x:
-		fallthrough
-	case OC_ex2_projectilevar_vel_y:
-		fallthrough
 	case OC_ex2_projectilevar_velmul_x:
 		fallthrough
 	case OC_ex2_projectilevar_velmul_y:
-		fallthrough
-	case OC_ex2_projectilevar_remvelocity_x:
-		fallthrough
-	case OC_ex2_projectilevar_remvelocity_y:
-		fallthrough
-	case OC_ex2_projectilevar_accel_x:
-		fallthrough
-	case OC_ex2_projectilevar_accel_y:
 		fallthrough
 	case OC_ex2_projectilevar_projscale_x:
 		fallthrough
@@ -3029,19 +3064,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_projectilevar_projangle:
 		fallthrough
-	case OC_ex2_projectilevar_pos_x:
-		fallthrough
-	case OC_ex2_projectilevar_pos_y:
-		fallthrough
 	case OC_ex2_projectilevar_projsprpriority:
-		fallthrough
-	case OC_ex2_projectilevar_projstagebound:
-		fallthrough
-	case OC_ex2_projectilevar_projedgebound:
-		fallthrough
-	case OC_ex2_projectilevar_lowbound:
-		fallthrough
-	case OC_ex2_projectilevar_highbound:
 		fallthrough
 	case OC_ex2_projectilevar_projanim:
 		fallthrough
@@ -3054,7 +3077,11 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.projVar(id, idx, opc)
-		sys.bcStack.Push(v)
+		if correctScale {
+			sys.bcStack.PushF(v.ToF() * (c.localscl / oc.localscl))
+		} else {
+			sys.bcStack.Push(v)
+		}
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
