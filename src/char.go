@@ -8026,7 +8026,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
 				ghv.id = hd.attackerID
-				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl)
+				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl) * getter.facing
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
 				ghv.groundtype = hd.ground_type
 				ghv.airtype = hd.air_type
