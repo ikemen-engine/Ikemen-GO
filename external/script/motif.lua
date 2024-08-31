@@ -1520,6 +1520,306 @@ local motif =
 		spr = '', --Ikemen feature
 		bgclearcolor = {0, 0, 0}, --Ikemen feature
 	},
+	trials_mode =
+	{
+		resetonsuccess = "false",
+		trialslayout = "vertical",
+		selscreenpalfx_add = {},
+		selscreenpalfx_mul = {},
+		selscreenpalfx_sinadd = {},
+		selscreenpalfx_invertall = 0,
+		selscreenpalfx_color = 256,
+		fadein_time = 40, --Ikemen feature
+		fadein_col = {0, 0, 0}, --Ikemen feature
+		fadein_anim = -1, --Ikemen feature
+		fadeout_time = 40, --Ikemen feature
+		fadeout_col = {0, 0, 0}, --Ikemen feature
+		fadeout_anim = -1, --Ikemen feature
+		trials_bg_anim = -1,
+		trials_bg_spr = {},
+		trials_bg_offset = {0, 0},
+		trials_bg_facing = 1,
+		trials_bg_scale = {1.0, 1.0},
+		trials_bg_displaytime = 0,
+		trialsteps_pos = {0, 0},
+		trialsteps_spacing = {0, 0},
+		trialsteps_horizontal_padding = 0,
+		trialsteps_window = {0,0,0,0},
+		trialtitle_pos = {0,0},
+		trialtitle_text_offset = {0,0},
+		trialtitle_text_font = {},
+		trialtitle_text_font_height = -1,
+		trialtitle_text_text = '',
+		trialtitle_text_scale = {1.0, 1.0},
+		trialtitle_bg_anim = -1,
+		trialtitle_bg_spr = {},
+		trialtitle_bg_offset = {0, 0},
+		trialtitle_bg_facing = 1,
+		trialtitle_bg_scale = {1.0, 1.0},
+		trialtitle_bg_displaytime = -1,
+		trialtitle_front_anim = -1,
+		trialtitle_front_spr = {},
+		trialtitle_front_offset = {0, 0},
+		trialtitle_front_facing = 1,
+		trialtitle_front_scale = {1.0, 1.0},
+		trialtitle_front_displaytime = -1,
+		upcomingstep_text_offset = {0,0},
+		upcomingstep_text_font = {},
+		upcomingstep_text_font_height = -1,
+		upcomingstep_text_text = '',
+		upcomingstep_text_scale = {1.0, 1.0},
+		upcomingstep_bg_anim = -1,
+		upcomingstep_bg_spr = {},
+		upcomingstep_bg_offset = {0, 0},
+		upcomingstep_bg_facing = 1,
+		upcomingstep_bg_scale = {1.0, 1.0},
+		upcomingstep_bg_displaytime = -1,
+		upcomingstep_bg_tail_anim = -1,
+		upcomingstep_bg_tail_spr = {},
+		upcomingstep_bg_tail_offset = {0, 0},
+		upcomingstep_bg_tail_facing = 1,
+		upcomingstep_bg_tail_scale = {1.0, 1.0},
+		upcomingstep_bg_head_anim = -1,
+		upcomingstep_bg_head_spr = {},
+		upcomingstep_bg_head_offset = {0, 0},
+		upcomingstep_bg_head_facing = 1,
+		upcomingstep_bg_head_scale = {1.0, 1.0},
+		upcomingstep_bg_palfx_add = {0, 0, 0},
+		upcomingstep_bg_palfx_mul = {256, 256, 256},
+		upcomingstep_bg_palfx_sinadd = {0, 0, 0},
+		upcomingstep_bg_palfx_invertall = 0,
+		upcomingstep_bg_palfx_color = 256,
+		upcomingstep_glyphs_palfx_add = {0, 0, 0},
+		upcomingstep_glyphs_palfx_mul = {256, 256, 256},
+		upcomingstep_glyphs_palfx_sinadd = {0, 0, 0},
+		upcomingstep_glyphs_palfx_invertall = 0,
+		upcomingstep_glyphs_palfx_color = 256,
+		currentstep_text_offset = {0,0},
+		currentstep_text_font = {},
+		currentstep_text_font_height = -1,
+		currentstep_text_text = '',
+		currentstep_text_scale = {1.0, 1.0},
+		currentstep_bg_anim = -1,
+		currentstep_bg_spr = {},
+		currentstep_bg_offset = {0, 0},
+		currentstep_bg_facing = 1,
+		currentstep_bg_scale = {1.0, 1.0},
+		currentstep_bg_displaytime = -1,
+		currentstep_bg_tail_anim = -1,
+		currentstep_bg_tail_spr = {},
+		currentstep_bg_tail_offset = {0, 0},
+		currentstep_bg_tail_facing = 1,
+		currentstep_bg_tail_scale = {1.0, 1.0},
+		currentstep_bg_head_anim = -1,
+		currentstep_bg_head_spr = {},
+		currentstep_bg_head_offset = {0, 0},
+		currentstep_bg_head_facing = 1,
+		currentstep_bg_head_scale = {1.0, 1.0},
+		currentstep_bg_palfx_add = {0, 0, 0},
+		currentstep_bg_palfx_mul = {256, 256, 256},
+		currentstep_bg_palfx_sinadd = {0, 0, 0},
+		currentstep_bg_palfx_invertall = 0,
+		currentstep_bg_palfx_color = 256,
+		currentstep_glyphs_palfx_add = {0, 0, 0},
+		currentstep_glyphs_palfx_mul = {256, 256, 256},
+		currentstep_glyphs_palfx_sinadd = {0, 0, 0},
+		currentstep_glyphs_palfx_invertall = 0,
+		currentstep_glyphs_palfx_color = 256,
+		completedstep_text_offset = {0,0},
+		completedstep_text_font = {},
+		completedstep_text_font_height = -1,
+		completedstep_text_text = '',
+		completedstep_text_scale = {1.0, 1.0},
+		completedstep_bg_anim = -1,
+		completedstep_bg_spr = {},
+		completedstep_bg_offset = {0, 0},
+		completedstep_bg_facing = 1,
+		completedstep_bg_scale = {1.0, 1.0},
+		completedstep_bg_displaytime = -1,
+		completedstep_bg_tail_anim = -1,
+		completedstep_bg_tail_spr = {},
+		completedstep_bg_tail_offset = {0, 0},
+		completedstep_bg_tail_facing = 1,
+		completedstep_bg_tail_scale = {1.0, 1.0},
+		completedstep_bg_head_anim = -1,
+		completedstep_bg_head_spr = {},
+		completedstep_bg_head_offset = {0, 0},
+		completedstep_bg_head_facing = 1,
+		completedstep_bg_head_scale = {1.0, 1.0},
+		completedstep_bg_palfx_add = {0, 0, 0},
+		completedstep_bg_palfx_mul = {256, 256, 256},
+		completedstep_bg_palfx_sinadd = {0, 0, 0},
+		completedstep_bg_palfx_invertall = 0,
+		completedstep_bg_palfx_color = 256,
+		completedstep_glyphs_palfx_add = {0, 0, 0},
+		completedstep_glyphs_palfx_mul = {256, 256, 256},
+		completedstep_glyphs_palfx_sinadd = {0, 0, 0},
+		completedstep_glyphs_palfx_invertall = 0,
+		completedstep_glyphs_palfx_color = 256,
+		glyphs_offset = {0, 0},
+		glyphs_scale = {1.0,1.0},
+		glyphs_spacing = {0,0},
+		glyphs_align = 1,
+		glyphs_scalewithtext = "false",
+		trialcounter_pos = {0,0},
+		trialcounter_font = {},
+		trialcounter_text_scale = {1.0, 1.0},
+		trialcounter_font_height = -1,
+		trialcounter_text = '',
+		trialcounter_allclear_text = '',
+		trialcounter_notrialsdata_text = 'No Trials Data Found',
+		totaltrialtimer_pos = {0,0},
+		totaltrialtimer_font = {},
+		totaltrialtimer_text_scale = {1.0, 1.0},
+		totaltrialtimer_font_height = -1,
+		totaltrialtimer_text = '',
+		currenttrialtimer_pos = {0,0},
+		currenttrialtimer_font = {},
+		currenttrialtimer_text_scale = {1.0, 1.0},
+		currenttrialtimer_font_height = -1,
+		currenttrialtimer_text = '',
+		success_pos = {0, 0},
+		success_snd = {-1, 0},
+		success_bg_anim = -1,
+		success_bg_spr = {},
+		success_bg_offset = {0, 0},
+		success_bg_facing = 1,
+		success_bg_scale = {1.0, 1.0},
+		success_bg_displaytime = -1,
+		success_front_anim = -1,
+		success_front_spr = {},
+		success_front_offset = {0, 0},
+		success_front_facing = 1,
+		success_front_scale = {1.0, 1.0},
+		success_front_displaytime = -1,
+		success_text_displaytime = -1,
+		success_text_offset = {0,0},
+		success_text_font = {},
+		success_text_font_height = -1,
+		success_text_text = '',
+		success_text_scale = {1.0, 1.0},
+		allclear_pos = {0, 0},
+		allclear_snd = {-1, 0},
+		allclear_bg_anim = -1,
+		allclear_bg_spr = {},
+		allclear_bg_offset = {0, 0},
+		allclear_bg_facing = 1,
+		allclear_bg_scale = {1.0, 1.0},
+		allclear_bg_displaytime = -1,
+		allclear_front_anim = -1,
+		allclear_front_spr = {},
+		allclear_front_offset = {0, 0},
+		allclear_front_facing = 1,
+		allclear_front_scale = {1.0, 1.0},
+		allclear_front_displaytime = -1,
+		allclear_text_displaytime = -1,
+		allclear_text_offset = {0,0},
+		allclear_text_font = {},
+		allclear_text_font_height = -1,
+		allclear_text_text = '',
+		allclear_text_scale = {1.0, 1.0},
+	},
+	trials_info = 
+	{
+		fadein_time = 10, --Ikemen feature
+		fadein_col = {0, 0, 0}, --Ikemen feature
+		fadein_anim = -1, --Ikemen feature
+		fadeout_time = 10, --Ikemen feature
+		fadeout_col = {0, 0, 0}, --Ikemen feature
+		fadeout_anim = -1, --Ikemen feature
+		title_offset = {159, 15}, --Ikemen feature
+		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
+		title_scale = {1.0, 1.0}, --Ikemen feature
+		title_text = 'PAUSE', --Ikemen feature
+		menu_uselocalcoord = 0, --Ikemen feature
+		menu_pos = {85, 33}, --Ikemen feature
+		menu_item_offset = {0, 0}, --Ikemen feature
+		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191, -1}, --Ikemen feature
+		menu_item_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_active_offset = {0, 0}, --Ikemen feature
+		menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255, -1}, --Ikemen feature
+		menu_item_active_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_selected_offset = {0, 0}, --Ikemen feature
+		menu_item_selected_font = {'f-6x9.def', 0, 1, 0, 247, 247, -1}, --Ikemen feature
+		menu_item_selected_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_selected_active_offset = {0, 0}, --Ikemen feature
+		menu_item_selected_active_font = {'f-6x9.def', 0, 1, 0, 247, 247, -1}, --Ikemen feature
+		menu_item_selected_active_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_value_offset = {150, 0}, --Ikemen feature
+		menu_item_value_font = {'f-6x9.def', 0, -1, 191, 191, 191, -1}, --Ikemen feature
+		menu_item_value_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_value_active_offset = {150, 0}, --Ikemen feature
+		menu_item_value_active_font = {'f-6x9.def', 0, -1, 255, 255, 255, -1}, --Ikemen feature
+		menu_item_value_active_scale = {1.0, 1.0}, --Ikemen feature
+		menu_item_spacing = {0, 14}, --Ikemen feature
+		menu_window_margins_y = {0, 0}, --Ikemen feature
+		menu_window_visibleitems = 13, --Ikemen feature
+		menu_boxcursor_visible = 1, --Ikemen feature
+		menu_boxcursor_coords = {-5, -10, 154, 3}, --Ikemen feature
+		menu_boxcursor_col = {255, 255, 255}, --Ikemen feature
+		menu_boxcursor_alpharange = {10, 40, 2, 255, 255, 0}, --Ikemen feature
+		menu_boxbg_visible = 1, --Ikemen feature
+		menu_boxbg_col = {0, 0, 0}, --Ikemen feature
+		menu_boxbg_alpha = {0, 128}, --Ikemen feature
+		menu_arrow_up_anim = -1, --Ikemen feature
+		menu_arrow_up_spr = {}, --Ikemen feature
+		menu_arrow_up_offset = {0, 0}, --Ikemen feature
+		menu_arrow_up_facing = 1, --Ikemen feature
+		menu_arrow_up_scale = {1.0, 1.0}, --Ikemen feature
+		menu_arrow_down_anim = -1, --Ikemen feature
+		menu_arrow_down_spr = {}, --Ikemen feature
+		menu_arrow_down_offset = {0, 0}, --Ikemen feature
+		menu_arrow_down_facing = 1, --Ikemen feature
+		menu_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
+		menu_title_uppercase = 1, --Ikemen feature
+		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
+		overlay_col = {0, 0, 0}, --Ikemen feature
+		overlay_alpha = {0, 128}, --Ikemen feature
+		cursor_move_snd = {100, 0}, --Ikemen feature
+		cursor_done_snd = {100, 1}, --Ikemen feature
+		cancel_snd = {100, 2}, --Ikemen feature
+		enter_snd = {-1, 0}, --Ikemen feature
+		movelist_pos = {10, 20}, --Ikemen feature
+		movelist_title_offset = {150, 0}, --Ikemen feature
+		movelist_title_font = {'Open_Sans.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
+		movelist_title_scale = {0.4, 0.4}, --Ikemen feature
+		movelist_title_text = '%s', --Ikemen feature
+		movelist_title_uppercase = 0, --Ikemen feature
+		movelist_text_offset = {0, 12}, --Ikemen feature
+		movelist_text_font = {'Open_Sans.def', 0, 1, 255, 255, 255, -1}, --Ikemen feature
+		movelist_text_scale = {0.4, 0.4}, --Ikemen feature
+		movelist_text_spacing = {1, 1}, --Ikemen feature
+		movelist_text_text = 'Command List not found.', --Ikemen feature
+		movelist_glyphs_offset = {0, 2}, --Ikemen feature
+		movelist_glyphs_scale = {1.0, 1.0}, --Ikemen feature
+		movelist_glyphs_spacing = {2, 0}, --Ikemen feature
+		movelist_window_width = 300, --Ikemen feature
+		movelist_window_margins_y = {20, 1}, --Ikemen feature
+		movelist_window_visibleitems = 18, --Ikemen feature
+		movelist_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
+		movelist_overlay_col = {0, 0, 0}, --Ikemen feature
+		movelist_overlay_alpha = {0, 128}, --Ikemen feature
+		movelist_arrow_up_anim = -1, --Ikemen feature
+		movelist_arrow_up_spr = {}, --Ikemen feature
+		movelist_arrow_up_offset = {0, 0}, --Ikemen feature
+		movelist_arrow_up_facing = 1, --Ikemen feature
+		movelist_arrow_up_scale = {1.0, 1.0}, --Ikemen feature
+		movelist_arrow_down_anim = -1, --Ikemen feature
+		movelist_arrow_down_spr = {}, --Ikemen feature
+		movelist_arrow_down_offset = {0, 0}, --Ikemen feature
+		movelist_arrow_down_facing = 1, --Ikemen feature
+		movelist_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
+		menu_valuename_trialsList = "", --Ikemen feature
+		menu_valuename_trialAdvancement_autoadvance = "Auto-Advance",
+		menu_valuename_trialAdvancement_repeat = "Repeat",
+		menu_valuename_trialResetonSuccess_yes = "Yes",
+		menu_valuename_trialResetonSuccess_no = "No",
+	},
+	trialsbgdef =
+	{
+		spr = '', --Ikemen feature
+		bgclearcolor = {0, 0, 0}, --Ikemen feature
+	},
 	attract_mode =
 	{
 		enabled = 0, --Ikemen feature
@@ -2274,6 +2574,51 @@ function motif.setBaseTrainingInfo()
 		"exit",
 	}
 	hook.run("motif.setBaseTrainingInfo")
+end
+
+function motif.setBaseTrialsInfo()
+	motif.trials_info.menu_itemname_back = "Continue"
+	motif.trials_info.menu_itemname_nexttrial = "Next Trial"
+	motif.trials_info.menu_itemname_previoustrial = "Previous Trial"
+	motif.trials_info.menu_itemname_menutrials = "Trials Menu"
+	motif.trials_info.menu_itemname_menutrials_trialsList = "Trials List"
+	motif.trials_info.menu_itemname_menutrials_trialAdvancement = "Trial Advancement"
+	motif.trials_info.menu_itemname_menutrials_trialResetonSuccess = "Reset on Success"
+	motif.trials_info.menu_itemname_menutrials_back = "Back"
+	motif.trials_info.menu_itemname_empty = ""
+	motif.trials_info.menu_itemname_menuinput = "Button Config"
+	motif.trials_info.menu_itemname_menuinput_keyboard = "Key Config"
+	motif.trials_info.menu_itemname_menuinput_gamepad = "Joystick Config"
+	motif.trials_info.menu_itemname_menuinput_empty = ""
+	motif.trials_info.menu_itemname_menuinput_inputdefault = "Default"
+	motif.trials_info.menu_itemname_menuinput_back = "Back"
+	motif.trials_info.menu_itemname_commandlist = "Command List"
+	motif.trials_info.menu_itemname_characterchange = "Character Change"
+	motif.trials_info.menu_itemname_exit = "Exit"
+	if main.t_sort.trials_info == nil then
+		main.t_sort.trials_info = {}
+	end
+	main.t_sort.trials_info.menu = {
+		"back",
+		"nexttrial",
+		"previoustrial",
+		"menutrials",
+		"menutrials_trialsList",
+		"menutrials_trialAdvancement",
+		"menutrials_trialResetonSuccess",
+		"menutrials_back",
+		"empty",
+		"menuinput",
+		"menuinput_keyboard",
+		"menuinput_gamepad",
+		"menuinput_empty",
+		"menuinput_inputdefault",
+		"menuinput_back",
+		"commandlist",
+		"characterchange",
+		"exit",
+	}
+	hook.run("motif.setBaseTrialsInfo")
 end
 
 --;===========================================================

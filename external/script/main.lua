@@ -2974,6 +2974,27 @@ main.t_itemname = {
 	end,
 	--TRIALS
 	['trials'] = function()
+		setHomeTeam(1)
+		main.f_playerInput(main.playerInput, 1)
+		main.t_pIn[2] = 1
+		if main.t_charDef[config.TrainingChar:lower()] ~= nil then
+			main.forceChar[2] = {main.t_charDef[config.TrainingChar:lower()]}
+		end
+		--main.lifebar.p1score = false
+		--main.lifebar.p2aiLevel = true
+		main.roundTime = -1
+		main.selectMenu[2] = true
+		main.stageMenu = true
+		main.teamMenu[1].ratio = false
+		main.teamMenu[1].simul = false
+		main.teamMenu[1].single = true
+		main.teamMenu[1].tag = false
+		main.teamMenu[1].turns = false
+		main.teamMenu[2].single = true
+		main.txt_mainSelect:update({text = motif.select_info.title_trials_text})
+		setGameMode('trials')
+		hook.run("main.t_itemname")
+		return start.f_selectMode
 	end,
 	--VS MODE / TEAM VERSUS
 	['versus'] = function(t, item)
