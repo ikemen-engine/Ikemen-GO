@@ -635,6 +635,8 @@ const (
 	OC_ex_guardcount
 	OC_ex_gamefps
 	OC_ex_fightscreenvar_info_author
+	OC_ex_fightscreenvar_info_localcoord_x
+	OC_ex_fightscreenvar_info_localcoord_y
 	OC_ex_fightscreenvar_info_name
 	OC_ex_fightscreenvar_round_ctrl_time
 	OC_ex_fightscreenvar_round_over_hittime
@@ -2426,6 +2428,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(sys.lifebar.authorLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_ex_fightscreenvar_info_localcoord_x:
+		sys.bcStack.PushI(sys.lifebarLocalcoord[0])
+	case OC_ex_fightscreenvar_info_localcoord_y:
+		sys.bcStack.PushI(sys.lifebarLocalcoord[1])
 	case OC_ex_fightscreenvar_info_name:
 		sys.bcStack.PushB(sys.lifebar.nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
