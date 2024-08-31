@@ -5048,6 +5048,7 @@ func (c *Char) setFacing(f float32) {
 			c.vel[0] *= -1
 			// Flip gethitvars on x axis
 			c.ghv.xvel *= -1
+			c.ghv.xaccel *= -1
 			c.ghv.ground_velocity[0] *= -1
 			c.ghv.air_velocity[0] *= -1
 			c.ghv.down_velocity[0] *= -1
@@ -8026,7 +8027,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
 				ghv.id = hd.attackerID
-				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl) * getter.facing
+				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl)
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
 				ghv.groundtype = hd.ground_type
 				ghv.airtype = hd.air_type
