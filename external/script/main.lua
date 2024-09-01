@@ -197,7 +197,7 @@ end
 function main.f_exists(file)
 	local ok, err, code = os.rename(file, file)
 	if not ok then
-		if code == 13 then
+		if code == 13 or string.match(err, "file exists") then
 			--permission denied, but it exists
 			return true
 		end
