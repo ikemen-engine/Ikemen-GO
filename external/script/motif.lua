@@ -1535,12 +1535,12 @@ local motif =
 		fadeout_time = 40, --Ikemen feature
 		fadeout_col = {0, 0, 0}, --Ikemen feature
 		fadeout_anim = -1, --Ikemen feature
-		trials_bg_anim = -1,
-		trials_bg_spr = {},
-		trials_bg_offset = {0, 0},
-		trials_bg_facing = 1,
-		trials_bg_scale = {1.0, 1.0},
-		trials_bg_displaytime = 0,
+		bg_anim = -1,
+		bg_spr = {},
+		bg_offset = {0, 0},
+		bg_facing = 1,
+		bg_scale = {1.0, 1.0},
+		bg_displaytime = 0,
 		trialsteps_pos = {0, 0},
 		trialsteps_spacing = {0, 0},
 		trialsteps_horizontal_padding = 0,
@@ -2945,9 +2945,11 @@ for _, v in ipairs{'survivalresultsbgdef', 'timeattackresultsbgdef'} do
 	end
 end
 
---trainingbgdef section reuses menubgdef values if not defined
-if t.trainingbgdef == nil then
-	motif.trainingbgdef = motif.menubgdef
+--trainingbgdef and trialsbgdef sections reuses menubgdef values if not defined
+for _, v in ipairs{'trainingbgdef', 'trialsbgdef'} do
+	if t[v] == nil then
+		motif[v] = motif.menudef
+	end
 end
 
 --converts facing value to letter used in anim declaration
@@ -3050,6 +3052,29 @@ for _, v in ipairs({
 	{s = 'stage_portrait_bg_',            x = t_pos.stage_pos[1],                                          y = t_pos.stage_pos[2]},
 }) do
 	motif.f_loadSprData(motif.select_info, v)
+end
+
+--trials spr/anim data
+local tr_pos = motif.trials_mode
+for _, v in ipairs({
+	{s = 'bg_',							x = tr_pos.trialsteps_pos[1] + tr_pos.bg_offset[1],					y = tr_pos.trialsteps_pos[2] + tr_pos.bg_offset[2],					},
+	{s = 'success_bg_',    				x = tr_pos.success_pos[1] + tr_pos.success_bg_offset[1],			y = tr_pos.success_pos[2] + tr_pos.success_bg_offset[2],			},
+	{s = 'allclear_bg_',	   			x = tr_pos.allclear_pos[1] + tr_pos.allclear_bg_offset[1],			y = tr_pos.allclear_pos[2] + tr_pos.allclear_bg_offset[2],			},
+	{s = 'success_front_',    			x = tr_pos.success_pos[1] + tr_pos.success_front_offset[1],			y = tr_pos.success_pos[2] + tr_pos.success_front_offset[2],			},
+	{s = 'allclear_front_',   			x = tr_pos.allclear_pos[1] + tr_pos.allclear_front_offset[1],		y = tr_pos.allclear_pos[2] + tr_pos.allclear_front_offset[2],		},
+	{s = 'upcomingstep_bg_',			x = 0,																y = 0,																},
+	{s = 'upcomingstep_bg_tail_',		x = 0,																y = 0,																},
+	{s = 'upcomingstep_bg_head_',		x = 0,																y = 0,																},
+	{s = 'currentstep_bg_',				x = 0,																y = 0,																},
+	{s = 'currentstep_bg_tail_',		x = 0,																y = 0,																},
+	{s = 'currentstep_bg_head_',		x = 0,																y = 0,																},
+	{s = 'completedstep_bg_',			x = 0,																y = 0,																},
+	{s = 'completedstep_bg_tail_',		x = 0,																y = 0,																},
+	{s = 'completedstep_bg_head_',		x = 0,																y = 0,																},
+	{s = 'trialtitle_bg_',    			x = tr_pos.trialtitle_pos[1] + tr_pos.trialtitle_bg_offset[1],		y = tr_pos.trialtitle_pos[2] + tr_pos.trialtitle_bg_offset[2],		},
+	{s = 'trialtitle_front_',    		x = tr_pos.trialtitle_pos[1] + tr_pos.trialtitle_front_offset[1],	y = tr_pos.trialtitle_pos[2] + tr_pos.trialtitle_front_offset[2],	},
+}) do
+	motif.f_loadSprData(motif.trials_mode, v)
 end
 
 --versus screen spr/anim data

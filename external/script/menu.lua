@@ -58,6 +58,17 @@ menu.t_valuename = {
 		{itemname = 'd', displayname = motif.training_info.menu_valuename_buttonjam_d},
 		{itemname = 'w', displayname = motif.training_info.menu_valuename_buttonjam_w},
 	},
+	trialsList = {
+		{itemname = "0", displayname = "Select Trial"},
+	},
+	trialAdvancement = {
+		{itemname = "Auto-Advance", displayname = motif.trials_info.menu_valuename_trialAdvancement_autoadvance},
+		{itemname = "Repeat", displayname = motif.trials_info.menu_valuename_trialAdvancement_repeat}
+	},
+	trialResetonSuccess = {
+		{itemname = "Yes", displayname = motif.trials_info.menu_valuename_trialResetonSuccess_yes},
+		{itemname = "No", displayname = motif.trials_info.menu_valuename_trialResetonSuccess_no}
+	},
 }
 
 -- Shared logic for training menu option change, returns 2 values:
@@ -258,6 +269,66 @@ menu.t_itemname = {
 		end
 		return true
 	end,
+	--Trials List
+	['trialsList'] = function(t, item, cursorPosY, moveTxt, section)
+		if menu.f_valueChanged(t.items[item], motif[section]) then
+			start.trialsdata.currenttrial = menu.trialsList
+			start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
+			start.trialsdata.trial[start.trialsdata.currenttrial].active = false
+			start.trialsdata.active = false
+			start.trialsdata.displaytimers.totaltimer = false
+			start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
+		end
+		return true
+	end,
+	--Trials Advancement
+	['trialAdvancement'] = function(t, item, cursorPosY, moveTxt, section)
+		if menu.f_valueChanged(t.items[item], motif[section]) then
+			if menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].itemname == "Auto-Advance" then
+				start.trialsdata.trialAdvancement = true
+			else
+				start.trialsdata.trialAdvancement = false
+			end
+		end
+		return true
+	end,
+	--Trials Reset on Success
+	['trialResetonSuccess'] = function(t, item, cursorPosY, moveTxt, section)
+		if menu.f_valueChanged(t.items[item], motif[section]) then
+			if menu.t_valuename.trialResetonSuccess[menu.trialResetonSuccess or 1].itemname == "Yes" then
+				motif.trials_mode.resetonsuccess = "true"
+			else
+				motif.trials_mode.resetonsuccess = "false"
+			end
+		end
+		return true
+	end,
+	--Advance to Next Trial
+	['nexttrial'] = function(t, item, cursorPosY, moveTxt, section)
+		if main.f_input(main.t_players, {'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
+			start.trialsdata.currenttrial = math.min(start.trialsdata.currenttrial + 1, #start.trialsdata.trial)
+			start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
+			start.trialsdata.trial[start.trialsdata.currenttrial].active = false
+			start.trialsdata.active = false
+			start.trialsdata.displaytimers.totaltimer = false
+			start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
+		end
+		return true
+	end,
+	--Return to Previous Trial
+	['previoustrial'] = function(t, item, cursorPosY, moveTxt, section)
+		if main.f_input(main.t_players, {'pal', 's'}) then
+			sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
+			start.trialsdata.currenttrial = math.max(start.trialsdata.currenttrial - 1, 1)
+			start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
+			start.trialsdata.trial[start.trialsdata.currenttrial].active = false
+			start.trialsdata.active = false
+			start.trialsdata.displaytimers.totaltimer = false
+			start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
+		end
+		return true
+	end,
 }
 -- options.t_itemname table functions are also appended to this table, to make
 -- option screen settings logic accessible from within pause menu.
@@ -331,6 +402,15 @@ menu.t_vardisplay = {
 	['buttonjam'] = function()
 		return menu.t_valuename.buttonjam[menu.buttonjam or 1].displayname
 	end,
+	['trialsList'] = function()
+		return menu.t_valuename.trialsList[menu.trialsList or 1].displayname
+	end,
+	['trialAdvancement'] = function()
+		return menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].displayname
+	end,
+	['trialResetonSuccess'] = function()
+		return menu.t_valuename.trialResetonSuccess[menu.trialResetonSuccess or 1].displayname
+	end,
 }
 
 -- Returns setting value rendered alongside menu item name (calls appropriate
@@ -350,6 +430,7 @@ end
 menu.t_menus = {
 	{id = 'menu', section = 'menu_info', bgdef = 'menubgdef', txt_title = 'txt_title_menu', movelist = true},
 	{id = 'training', section = 'training_info', bgdef = 'trainingbgdef', txt_title = 'txt_title_training', movelist = true},
+	{id = 'trials', section = 'trials_info', bgdef = 'trialsbgdef', txt_title = 'txt_title_trials', movelist = true},
 }
 
 -- Dynamically generates all menus and submenus, iterating over values stored in
@@ -360,6 +441,9 @@ function menu.f_start()
 	end
 	if main.t_sort.training_info == nil or main.t_sort.training_info.menu == nil or #main.t_sort.training_info.menu == 0 then
 		motif.setBaseTrainingInfo()
+	end
+	if main.t_sort.trials_info == nil or main.t_sort.trials_info.menu == nil or #main.t_sort.trials_info.menu == 0 then
+		motif.setBaseTrialsInfo()
 	end
 	for k, v in ipairs(menu.t_menus) do
 		menu[v.txt_title] = main.f_createTextImg(motif[v.section], 'title', {defsc = motif.defaultMenu})
@@ -477,6 +561,30 @@ function menu.f_trainingReset()
 	charMapSet(2, '_iksys_trainingFallRecovery', 0)
 	charMapSet(2, '_iksys_trainingDistance', 0)
 	charMapSet(2, '_iksys_trainingButtonJam', 0)
+end
+
+function menu.f_trialsReset()
+	for k, _ in pairs(menu.t_valuename) do
+		menu[k] = 1
+	end
+	if motif.trials_mode.resetonsuccess == "true" then
+		menu.trialResetonSuccess = 1
+	else
+		menu.trialResetonSuccess = 2
+	end
+	for _, v in ipairs(menu.t_vardisplayPointers) do
+		v.vardisplay = menu.f_vardisplay(v.itemname)
+	end
+	player(2)
+	setAILevel(0)
+	charMapSet(2, '_iksys_trialsDummyControl', 0)
+	charMapSet(2, '_iksys_trialsDummyMode', 0)
+	charMapSet(2, '_iksys_trialsGuardMode', 0)
+	charMapSet(2, '_iksys_trialsFallRecovery', 0)
+	charMapSet(2, '_iksys_trialsDistance', 0)
+	charMapSet(2, '_iksys_trialsButtonJam', 0)
+	charMapSet(2, '_iksys_trialsReposition', 0)
+	player(1)
 end
 
 menu.movelistChar = 1

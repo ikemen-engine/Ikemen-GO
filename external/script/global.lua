@@ -218,6 +218,9 @@ function loop()
 			if gamemode('training') then
 				menu.f_trainingReset()
 			end
+			if gamemode('trials') then
+				menu.f_trialsReset()
+			end
 		end
 		start.turnsRecoveryInit = false
 		start.dialogueInit = false

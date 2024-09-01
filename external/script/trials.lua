@@ -94,65 +94,32 @@ end
 --;===========================================================
 --; motif.lua
 --;===========================================================
-if motif.select_info.title_trials_text == nil then
-	motif.select_info.title_trials_text = 'Trials'
-end
+-- if motif.select_info.title_trials_text == nil then
+-- 	motif.select_info.title_trials_text = 'Trials'
+-- end
 
 -- This code creates data out of optional [trialsbgdef] sff file.
 -- Defaults to motif.files.spr_data, defined in screenpack, if not declared.
-if motif.trialsbgdef.spr ~= nil and motif.trialsbgdef.spr ~= '' then
-	motif.trialsbgdef.spr = searchFile(motif.trialsbgdef.spr, {motif.fileDir, '', 'data/'})
-	motif.trialsbgdef.spr_data = sffNew(motif.trialsbgdef.spr)
-else
-	motif.trialsbgdef.spr = motif.files.spr
-	motif.trialsbgdef.spr_data = motif.files.spr_data
-end
+-- if motif.trialsbgdef.spr ~= nil and motif.trialsbgdef.spr ~= '' then
+-- 	motif.trialsbgdef.spr = searchFile(motif.trialsbgdef.spr, {motif.fileDir, '', 'data/'})
+-- 	motif.trialsbgdef.spr_data = sffNew(motif.trialsbgdef.spr)
+-- else
+-- 	motif.trialsbgdef.spr = motif.files.spr
+-- 	motif.trialsbgdef.spr_data = motif.files.spr_data
+-- end
 
 -- Background data generation.
 -- Refer to official Elecbyte docs for information how to define backgrounds.
 -- http://www.elecbyte.com/mugendocs/bgs.html#description-of-background-elements
-motif.trialsbgdef.bg = bgNew(motif.trialsbgdef.spr_data, motif.def, 'trialsbg')
-
---trials spr/anim data
-local tr_pos = motif.trials_mode
-for _, v in ipairs({
-	{s = 'bg_',							x = tr_pos.trialsteps_pos[1] + tr_pos.bg_offset[1],					y = tr_pos.trialsteps_pos[2] + tr_pos.bg_offset[2],					},
-	{s = 'success_bg_',    				x = tr_pos.success_pos[1] + tr_pos.success_bg_offset[1],			y = tr_pos.success_pos[2] + tr_pos.success_bg_offset[2],			},
-	{s = 'allclear_bg_',	   			x = tr_pos.allclear_pos[1] + tr_pos.allclear_bg_offset[1],			y = tr_pos.allclear_pos[2] + tr_pos.allclear_bg_offset[2],			},
-	{s = 'success_front_',    			x = tr_pos.success_pos[1] + tr_pos.success_front_offset[1],			y = tr_pos.success_pos[2] + tr_pos.success_front_offset[2],			},
-	{s = 'allclear_front_',   			x = tr_pos.allclear_pos[1] + tr_pos.allclear_front_offset[1],		y = tr_pos.allclear_pos[2] + tr_pos.allclear_front_offset[2],		},
-	{s = 'upcomingstep_bg_',			x = 0,																y = 0,																},
-	{s = 'upcomingstep_bg_tail_',		x = 0,																y = 0,																},
-	{s = 'upcomingstep_bg_head_',		x = 0,																y = 0,																},
-	{s = 'currentstep_bg_',				x = 0,																y = 0,																},
-	{s = 'currentstep_bg_tail_',		x = 0,																y = 0,																},
-	{s = 'currentstep_bg_head_',		x = 0,																y = 0,																},
-	{s = 'completedstep_bg_',			x = 0,																y = 0,																},
-	{s = 'completedstep_bg_tail_',		x = 0,																y = 0,																},
-	{s = 'completedstep_bg_head_',		x = 0,																y = 0,																},
-	{s = 'trialtitle_bg_',    			x = tr_pos.trialtitle_pos[1] + tr_pos.trialtitle_bg_offset[1],		y = tr_pos.trialtitle_pos[2] + tr_pos.trialtitle_bg_offset[2],		},
-	{s = 'trialtitle_front_',    		x = tr_pos.trialtitle_pos[1] + tr_pos.trialtitle_front_offset[1],	y = tr_pos.trialtitle_pos[2] + tr_pos.trialtitle_front_offset[2],	},
-}) do
-	if motif.files.trials ~= nil and motif.files.trials ~= '' then
-	 	motif.files.trials_data = sffNew(searchFile(motif.files.trials, {motif.fileDir, '', 'data/'}))
-	 	main.f_loadingRefresh()
-	 	motif.f_loadSprData(motif.trials_mode, v, motif.files.trials_data)
-	elseif main.f_fileExists('external/mods/trials/trials.sff') then
-		motif.files.trials_data = sffNew(searchFile('external/mods/trials/trials.sff', {motif.fileDir, '', 'data/'}))
-	 	main.f_loadingRefresh()
-	 	motif.f_loadSprData(motif.trials_mode, v, motif.files.trials_data)
-	else
-	 	motif.f_loadSprData(motif.trials_mode, v)
-	end
-end
+-- motif.trialsbgdef.bg = bgNew(motif.trialsbgdef.spr_data, motif.def, 'trialsbg')
 
 -- fadein/fadeout anim data generation.
-if motif.trials_mode.fadein_anim ~= -1 then
-	motif.f_loadSprData(motif.trials_mode, {s = 'fadein_'})
-end
-if motif.trials_mode.fadeout_anim ~= -1 then
-	motif.f_loadSprData(motif.trials_mode, {s = 'fadeout_'})
-end
+-- if motif.trials_mode.fadein_anim ~= -1 then
+-- 	motif.f_loadSprData(motif.trials_mode, {s = 'fadein_'})
+-- end
+-- if motif.trials_mode.fadeout_anim ~= -1 then
+-- 	motif.f_loadSprData(motif.trials_mode, {s = 'fadeout_'})
+-- end
 
 --;===========================================================
 --; start.lua
@@ -855,40 +822,6 @@ function start.f_trialsFade()
 	start.trialsdata.draw.fade = start.trialsdata.draw.fade - 1
 end
 
-function start.f_trialsSelectScreen()
-	-- Grays out portaits on the trial select screen for characters without trials files
-	if gamemode("trials") then
-		for row = 1, motif.select_info.rows do
-			for col = 1, motif.select_info.columns do
-				local t = start.t_grid[row][col]
-				if t.skip ~= 1 then
-					--draw random cell
-					if t.char == 'randomselect' or t.hidden == 3 then
-						animSetPalFX(motif.select_info.cell_random_data, {
-							time = 1,
-							add = motif.trials_mode.selscreenpalfx_add,
-							mul = motif.trials_mode.selscreenpalfx_mul,
-							sinadd = motif.trials_mode.selscreenpalfx_sinadd,
-							invertall = motif.trials_mode.selscreenpalfx_invertall,
-							color = motif.trials_mode.selscreenpalfx_color
-						})
-					--draw face cell
-					elseif t.char ~= nil and t.hidden == 0 and start.f_getCharData(t.char_ref).trialsdef == ""  then
-						animSetPalFX(start.f_getCharData(t.char_ref).cell_data, {
-							time = 1,
-							add = motif.trials_mode.selscreenpalfx_add,
-							mul = motif.trials_mode.selscreenpalfx_mul,
-							sinadd = motif.trials_mode.selscreenpalfx_sinadd,
-							invertall = motif.trials_mode.selscreenpalfx_invertall,
-							color = motif.trials_mode.selscreenpalfx_color
-						})
-					end
-				end
-			end
-		end
-	end
-end
-
 function start.f_trialsMode()
 	if roundstart() then
 		start.trialsdata = nil
@@ -919,121 +852,6 @@ function start.f_trialsMode()
 		trialcounter:update({x = motif.trials_mode.trialcounter_pos[1], y = motif.trials_mode.trialcounter_pos[2], text = motif.trials_mode.trialcounter_notrialsdata_text})
 		trialcounter:draw()
 	end
-end
-
---;===========================================================
---; menu.lua
---;===========================================================
-
--- Initialize Trials Pause Menu
-table.insert(menu.t_menus, {id = 'trials', section = 'trials_info', bgdef = 'trialsbgdef', txt_title = 'txt_title_trials', movelist = true})
-if main.t_sort.trials_info == nil or main.t_sort.trials_info.menu == nil or #main.t_sort.trials_info.menu == 0 then
-	motif.setBaseTrialsInfo()
-end
-
-menu.t_valuename.trialsList = {
- 	{itemname = "0", displayname = "Select Trial"},
-}
-menu.t_valuename.trialAdvancement = {
-	{itemname = "Auto-Advance", displayname = motif.trials_info.menu_valuename_trialAdvancement_autoadvance},
-	{itemname = "Repeat", displayname = motif.trials_info.menu_valuename_trialAdvancement_repeat}
-}
-menu.t_valuename.trialResetonSuccess = {
-	{itemname = "Yes", displayname = motif.trials_info.menu_valuename_trialResetonSuccess_yes},
-	{itemname = "No", displayname = motif.trials_info.menu_valuename_trialResetonSuccess_no}
-}
-
-menu.t_itemname['trialsList'] = function(t, item, cursorPosY, moveTxt, section)
-	if menu.f_valueChanged(t.items[item], motif[section]) then
-		start.trialsdata.currenttrial = menu.trialsList
-		start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
-		start.trialsdata.trial[start.trialsdata.currenttrial].active = false
-		start.trialsdata.active = false
-		start.trialsdata.displaytimers.totaltimer = false
-		start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
-	end
-	return true
-end
-menu.t_vardisplay['trialsList'] = function()
-	return menu.t_valuename.trialsList[menu.trialsList or 1].displayname
-end
-
-menu.t_itemname['trialAdvancement'] = function(t, item, cursorPosY, moveTxt, section)
-	if menu.f_valueChanged(t.items[item], motif[section]) then
-		if menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].itemname == "Auto-Advance" then
-			start.trialsdata.trialAdvancement = true
-		else
-			start.trialsdata.trialAdvancement = false
-		end
-	end
-	return true
-end
-menu.t_vardisplay['trialAdvancement'] = function()
-	return menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].displayname
-end
-
-menu.t_itemname['trialResetonSuccess'] = function(t, item, cursorPosY, moveTxt, section)
-	if menu.f_valueChanged(t.items[item], motif[section]) then
-		if menu.t_valuename.trialResetonSuccess[menu.trialResetonSuccess or 1].itemname == "Yes" then
-			motif.trials_mode.resetonsuccess = "true"
-		else
-			motif.trials_mode.resetonsuccess = "false"
-		end
-	end
-	return true
-end
-menu.t_vardisplay['trialResetonSuccess'] = function()
-	return menu.t_valuename.trialResetonSuccess[menu.trialResetonSuccess or 1].displayname
-end
-
-menu.t_itemname['nexttrial'] = function(t, item, cursorPosY, moveTxt, section)
-	if main.f_input(main.t_players, {'pal', 's'}) then
-		sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
-		start.trialsdata.currenttrial = math.min(start.trialsdata.currenttrial + 1, #start.trialsdata.trial)
-		start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
-		start.trialsdata.trial[start.trialsdata.currenttrial].active = false
-		start.trialsdata.active = false
-		start.trialsdata.displaytimers.totaltimer = false
-		start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
-	end
-	return true
-end
-
-menu.t_itemname['previoustrial'] = function(t, item, cursorPosY, moveTxt, section)
-	if main.f_input(main.t_players, {'pal', 's'}) then
-		sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
-		start.trialsdata.currenttrial = math.max(start.trialsdata.currenttrial - 1, 1)
-		start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
-		start.trialsdata.trial[start.trialsdata.currenttrial].active = false
-		start.trialsdata.active = false
-		start.trialsdata.displaytimers.totaltimer = false
-		start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
-	end
-	return true
-end
-
-function menu.f_trialsReset()
-	for k, _ in pairs(menu.t_valuename) do
-		menu[k] = 1
-	end
-	if motif.trials_mode.resetonsuccess == "true" then
-		menu.trialResetonSuccess = 1
-	else
-		menu.trialResetonSuccess = 2
-	end
-	for _, v in ipairs(menu.t_vardisplayPointers) do
-		v.vardisplay = menu.f_vardisplay(v.itemname)
-	end
-	player(2)
-	setAILevel(0)
-	charMapSet(2, '_iksys_trialsDummyControl', 0)
-	charMapSet(2, '_iksys_trialsDummyMode', 0)
-	charMapSet(2, '_iksys_trialsGuardMode', 0)
-	charMapSet(2, '_iksys_trialsFallRecovery', 0)
-	charMapSet(2, '_iksys_trialsDistance', 0)
-	charMapSet(2, '_iksys_trialsButtonJam', 0)
-	charMapSet(2, '_iksys_trialsReposition', 0)
-	player(1)
 end
 
 --;===========================================================

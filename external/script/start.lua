@@ -2033,6 +2033,16 @@ function start.f_selectScreen()
 							motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
 							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_random_facing)
 						)
+						if gamemode('trials') then
+							animSetPalFX(motif.select_info.cell_random_data, {
+								time = 1,
+								add = motif.trials_mode.selscreenpalfx_add,
+								mul = motif.trials_mode.selscreenpalfx_mul,
+								sinadd = motif.trials_mode.selscreenpalfx_sinadd,
+								invertall = motif.trials_mode.selscreenpalfx_invertall,
+								color = motif.trials_mode.selscreenpalfx_color
+							})
+						end
 					--draw face cell
 					elseif t.char ~= nil and t.hidden == 0 then
 						main.f_animPosDraw(
@@ -2041,6 +2051,18 @@ function start.f_selectScreen()
 							motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
 							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing)
 						)
+						if gamemode('trials') then
+							if start.f_getCharData(t.char_ref).trialsdef == "" then
+								animSetPalFX(start.f_getCharData(t.char_ref).cell_data, {
+									time = 1,
+									add = motif.trials_mode.selscreenpalfx_add,
+									mul = motif.trials_mode.selscreenpalfx_mul,
+									sinadd = motif.trials_mode.selscreenpalfx_sinadd,
+									invertall = motif.trials_mode.selscreenpalfx_invertall,
+									color = motif.trials_mode.selscreenpalfx_color
+								})
+							end
+						end
 					end
 				end
 			end
