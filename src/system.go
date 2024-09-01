@@ -2739,7 +2739,7 @@ func (s *Select) addChar(def string) {
 				cns = is["cns"]
 				sprite = is["sprite"]
 				anim = is["anim"]
-				trials = is["trials"]
+				sc.trials = is["trials"]
 				sc.sound = is["sound"]
 				for i := 1; i <= MaxPalNo; i++ {
 					if is[fmt.Sprintf("pal%v", i)] != "" {
@@ -2896,12 +2896,12 @@ func (s *Select) addChar(def string) {
 		})
 	}
 	// read trials list
-	// if len(trials) > 0 {
-	// 	LoadFile(&trials, []string{def, "", "data/"}, func(file string) error {
-	// 		sc.trials, _ = LoadText(file)
-	// 		return nil
-	// 	})
-	// }
+	if len(trials) > 0 {
+		// LoadFile(&trials, []string{def, "", "data/"}, func(file string) error {
+		// 	sc.trials, _ = LoadText(file)
+		// 	return nil
+		// })
+	}
 	// preload fonts
 	for i, f := range fnt {
 		if len(f[0]) > 0 {

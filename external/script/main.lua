@@ -40,6 +40,7 @@ function main.f_fileWrite(path, str, mode)
 		return
 	end
 	file:write(str)
+	print("attempting to write")
 	file:close()
 end
 
@@ -197,7 +198,7 @@ end
 function main.f_exists(file)
 	local ok, err, code = os.rename(file, file)
 	if not ok then
-		if code == 13 then
+		if code == 13 or string.match(err, "file exists") then
 			--permission denied, but it exists
 			return true
 		end
@@ -213,6 +214,9 @@ end
 main.debugLog = false
 if main.f_isdir('debug') then
 	main.debugLog = true
+	print("found dir")
+else
+	print("did not find dir")
 end
 
 --check if file exists
@@ -262,6 +266,7 @@ function main.f_printTable(t, toFile)
 		sub_print_t(t, '  ')
 	end
 	main.f_fileWrite(toFile or 'debug/table_print.txt', txt)
+	print("attempted to write")
 end
 
 --prints "v" variable into "toFile" file
