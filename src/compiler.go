@@ -169,6 +169,7 @@ func newCompiler() *Compiler {
 		"roundtimeset":         c.roundTimeSet,
 		"savefile":             c.saveFile,
 		"scoreadd":             c.scoreAdd,
+		"shadowoffset":         c.shadowOffset,
 		"tagin":                c.tagIn,
 		"tagout":               c.tagOut,
 		"targetadd":            c.targetAdd,
@@ -1569,10 +1570,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			be1.append(OC_jz8, OpCode(len(be2)+1))
 		}
 		be1.append(be2...)
-		be1.append(OC_ex2_, opc)
 		if rd {
-			out.appendI32Op(OC_run, int32(len(be1)))
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
 		}
+		// Just in case anybody else bangs their head against a wall with redirects:
+		// it is imperative that the be1.append(opcodetype, opcode) comes after the
+		// rd out.appendI32Op(OC_nordrun, int32(len(be1)))
+		be1.append(OC_ex2_, opc)
 		out.append(be1...)
 	case "command", "selfcommand":
 		opc := OC_command
@@ -1961,10 +1965,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			be1.append(OC_jz8, OpCode(len(be2)+1))
 		}
 		be1.append(be2...)
-		be1.append(OC_ex2_, opc)
 		if rd {
-			out.appendI32Op(OC_run, int32(len(be1)))
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
 		}
+		// Just in case anybody else bangs their head against a wall with redirects:
+		// it is imperative that the be1.append(opcodetype, opcode) comes after the
+		// rd out.appendI32Op(OC_nordrun, int32(len(be1)))
+		be1.append(OC_ex2_, opc)
 		out.append(be1...)
 	case "facing":
 		out.append(OC_facing)
@@ -2621,10 +2628,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			be1.append(OC_jz8, OpCode(len(be2)+1))
 		}
 		be1.append(be2...)
-		be1.append(OC_ex2_, opc)
 		if rd {
-			out.appendI32Op(OC_run, int32(len(be1)))
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
 		}
+		// Just in case anybody else bangs their head against a wall with redirects:
+		// it is imperative that the be1.append(opcodetype, opcode) comes after the
+		// rd out.appendI32Op(OC_nordrun, int32(len(be1)))
+		be1.append(OC_ex2_, opc)
 		out.append(be1...)
 	case "random":
 		out.append(OC_random)
