@@ -272,12 +272,12 @@ menu.t_itemname = {
 	--Trials List
 	['trialsList'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
-			start.trialsdata.currenttrial = menu.trialsList
-			start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
-			start.trialsdata.trial[start.trialsdata.currenttrial].active = false
-			start.trialsdata.active = false
-			start.trialsdata.displaytimers.totaltimer = false
-			start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
+			trials.currenttrial = menu.trialsList
+			trials.trial[trials.currenttrial].complete = false
+			trials.trial[trials.currenttrial].active = false
+			trials.active = false
+			trials.displaytimers.totaltimer = false
+			trials.trial[trials.currenttrial].starttick = tickcount()
 		end
 		return true
 	end,
@@ -285,9 +285,9 @@ menu.t_itemname = {
 	['trialAdvancement'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
 			if menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].itemname == "Auto-Advance" then
-				start.trialsdata.trialAdvancement = true
+				trials.trialAdvancement = true
 			else
-				start.trialsdata.trialAdvancement = false
+				trials.trialAdvancement = false
 			end
 		end
 		return true
@@ -307,12 +307,12 @@ menu.t_itemname = {
 	['nexttrial'] = function(t, item, cursorPosY, moveTxt, section)
 		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
-			start.trialsdata.currenttrial = math.min(start.trialsdata.currenttrial + 1, #start.trialsdata.trial)
-			start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
-			start.trialsdata.trial[start.trialsdata.currenttrial].active = false
-			start.trialsdata.active = false
-			start.trialsdata.displaytimers.totaltimer = false
-			start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
+			trials.currenttrial = math.min(trials.currenttrial + 1, #trials.trial)
+			trials.trial[trials.currenttrial].complete = false
+			trials.trial[trials.currenttrial].active = false
+			trials.active = false
+			trials.displaytimers.totaltimer = false
+			trials.trial[trials.currenttrial].starttick = tickcount()
 		end
 		return true
 	end,
@@ -320,12 +320,12 @@ menu.t_itemname = {
 	['previoustrial'] = function(t, item, cursorPosY, moveTxt, section)
 		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
-			start.trialsdata.currenttrial = math.max(start.trialsdata.currenttrial - 1, 1)
-			start.trialsdata.trial[start.trialsdata.currenttrial].complete = false
-			start.trialsdata.trial[start.trialsdata.currenttrial].active = false
-			start.trialsdata.active = false
-			start.trialsdata.displaytimers.totaltimer = false
-			start.trialsdata.trial[start.trialsdata.currenttrial].starttick = tickcount()
+			trials.currenttrial = math.max(trials.currenttrial - 1, 1)
+			trials.trial[trials.currenttrial].complete = false
+			trials.trial[trials.currenttrial].active = false
+			trials.active = false
+			trials.displaytimers.totaltimer = false
+			trials.trial[trials.currenttrial].starttick = tickcount()
 		end
 		return true
 	end,

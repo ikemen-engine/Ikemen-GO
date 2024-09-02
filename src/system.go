@@ -2555,7 +2555,6 @@ type SelectChar struct {
 	sff            *Sff
 	fnt            [10]*Fnt
 	trialspath     string
-	trialsdata     string
 }
 
 func newSelectChar() *SelectChar {
@@ -2893,13 +2892,6 @@ func (s *Select) addChar(def string) {
 	if len(movelist) > 0 {
 		LoadFile(&movelist, []string{def, "", "data/"}, func(file string) error {
 			sc.movelist, _ = LoadText(file)
-			return nil
-		})
-	}
-	// read trials list
-	if len(sc.trialspath) > 0 {
-		LoadFile(&sc.trialspath, []string{def, "", "data/"}, func(file string) error {
-			sc.trialsdata, _ = LoadText(file)
 			return nil
 		})
 	}

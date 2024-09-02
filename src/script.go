@@ -1327,11 +1327,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(c.movelist))
 		return 1
 	})
-	luaRegister(l, "getCharTrials", func(*lua.LState) int {
-		c := sys.sel.GetChar(int(numArg(l, 1)))
-		l.Push(lua.LString(c.trialsdata))
-		return 1
-	})
 	luaRegister(l, "getCharName", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
 		l.Push(lua.LString(c.name))
