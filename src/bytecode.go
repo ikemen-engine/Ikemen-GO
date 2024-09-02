@@ -8127,9 +8127,8 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			}
 		case angleDraw_rescaleClsn:
 			if exp[0].evalB(c) {
-				crun.clsnScale[0] *= crun.angleScale[0]
-				crun.clsnScale[1] *= crun.angleScale[1]
 				crun.angleRescaleClsn = true
+				crun.updateClsnScale()
 			}
 		case angleDraw_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {

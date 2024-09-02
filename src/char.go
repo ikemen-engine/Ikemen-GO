@@ -3063,11 +3063,8 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 		}
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
-		if c.angleRescaleClsn {
-			c.clsnScale[0] *= c.angleScale[0]
-			c.clsnScale[1] *= c.angleScale[1]
-		}
+		// Clsn scale depends on the animation owner's scale, so it must be updated
+		c.updateClsnScale()
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
 		}
@@ -4920,6 +4917,23 @@ func (c *Char) setBHeight(bh float32) {
 	c.setCSF(CSF_bottomheight)
 }
 
+func (c *Char) updateClsnScale() {
+	// Index range checks. Prevents crashing if chars don't have animations
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1982
+	if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
+		c.clsnScale = [...]float32{
+			sys.chars[c.animPN][0].size.xscale * (320 / sys.chars[c.animPN][0].localcoord),
+			sys.chars[c.animPN][0].size.yscale * (320 / sys.chars[c.animPN][0].localcoord),
+		}
+	} else {
+		c.clsnScale = [...]float32{1.0, 1.0}
+	}
+	if c.angleRescaleClsn {
+		c.clsnScale[0] *= c.angleScale[0]
+		c.clsnScale[1] *= c.angleScale[1]
+	}
+}
+
 func (c *Char) widthToSizeBox() {
 	if len(c.width) < 2 || len(c.height) < 2 {
 		c.sizeBox = []float32{0, 0, 0, 0}
@@ -6448,7 +6462,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
-		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
+		clsn2, [...]float32{c.clsnScale[0], c.clsnScale[1]},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -6503,10 +6517,10 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 		return false
 	}
 
-	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0], c.clsnScale[1]},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing,
-		clsn2, [...]float32{getter.clsnScale[0] * (320 / sys.chars[getter.animPN][0].localcoord), getter.clsnScale[1] * (320 / sys.chars[getter.animPN][0].localcoord)},
+		clsn2, [...]float32{getter.clsnScale[0], getter.clsnScale[1]},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
 }
@@ -6776,10 +6790,6 @@ func (c *Char) actionPrepare() {
 		}
 		// This flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
-		// Reset hitbox scale
-		// This used to be only in changeAnimEx(), but because it can now be dynamically changed it was also placed here
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
-		c.angleRescaleClsn = false
 		// In WinMugen all of these flags persisted during hitpause
 		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset | CSF_trans)
@@ -6788,6 +6798,11 @@ func (c *Char) actionPrepare() {
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
 				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
+		}
+		// Reset AngleDraw Clsn rescaling
+		if c.angleRescaleClsn {
+			c.angleRescaleClsn = false
+			c.updateClsnScale()
 		}
 	}
 	// Decrease unhittable timer
@@ -7414,8 +7429,8 @@ func (c *Char) cueDraw() {
 	y := c.pos[1] * c.localscl
 	xoff := x + c.offsetX()*c.localscl
 	yoff := y + c.offsetY()*c.localscl
-	xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
-	ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
+	xs := c.clsnScale[0] * c.facing
+	ys := c.clsnScale[1]
 	nhbtxt := ""
 	// Debug Clsn display
 	if sys.clsnDraw && c.curFrame != nil {
