@@ -1619,7 +1619,7 @@ func (s *System) action() {
 	if s.superanim != nil {
 		s.spritesLayer1.add(&SprData{s.superanim, &s.superpmap, s.superpos,
 			[...]float32{s.superfacing, 1}, [2]int32{-1}, 5, Rotation{}, [2]float32{},
-			false, true, s.cgi[s.superplayer].mugenver[0] != 1, 1, 1, 0, 0, [4]float32{0, 0, 0, 0}}, 0, 0, 0, 0)
+			false, true, s.cgi[s.superplayer].mugenver[0] != 1, 1, 1, 0, 0, [4]float32{0, 0, 0, 0}}, 0, 0, [2]float32{0, 0}, [2]float32{0, 0}, 0, 0)
 		if s.superanim.loopend {
 			s.superanim = nil
 		}

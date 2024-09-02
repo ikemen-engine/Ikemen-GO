@@ -1083,7 +1083,7 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int3
 			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
 			sprs.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 				img.scl, ai.alpha, sd.priority - 2, img.rot, img.ascl,
-				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window}, 0, 0, 0, 0)
+				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window}, 0, 0, [2]float32{0, 0}, [2]float32{0, 0}, 0, 0)
 		}
 	}
 	if rec || hitpause && ai.ignorehitpause {
@@ -1402,7 +1402,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	sprs.add(&SprData{e.anim, pfx, e.drawPos, [...]float32{(facing * scale[0]) * e.localscl,
 		(e.vfacing * scale[1]) * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
-		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, 0, 0)
+		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, [2]float32{0, 0}, [2]float32{0, 0}, 0, 0)
 	if sys.tickNextFrame() {
 
 		//if e.space == Space_screen && e.bindtime == 0 {
@@ -1836,13 +1836,14 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	} else if p.layerno < 0 {
 		sprs = &sys.spritesLayerN1
 	}
+	var c = sys.chars[playerNo][0]
 	if p.ani != nil {
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
-		sprs.add(sd, p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, 0, 0)
+		sprs.add(sd, p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, c.shadowOffset, c.reflectOffset, 0, 0)
 	}
 }
 
@@ -2109,6 +2110,8 @@ type Char struct {
 	koEchoTime      int32
 	groundLevel     float32
 	sizeBox         []float32
+	shadowOffset    [2]float32
+	reflectOffset   [2]float32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -4640,6 +4643,20 @@ func (c *Char) mulYV(yv float32) {
 func (c *Char) mulZV(zv float32) {
 	c.vel[2] *= zv
 }
+func (c *Char) shadXOff(xv float32, isReflect bool) {
+	if !isReflect {
+		c.shadowOffset[0] = xv
+	} else {
+		c.reflectOffset[0] = xv
+	}
+}
+func (c *Char) shadYOff(yv float32, isReflect bool) {
+	if !isReflect {
+		c.shadowOffset[1] = yv
+	} else {
+		c.reflectOffset[1] = yv
+	}
+}
 
 // --------------------
 
@@ -5031,6 +5048,7 @@ func (c *Char) setFacing(f float32) {
 			c.vel[0] *= -1
 			// Flip gethitvars on x axis
 			c.ghv.xvel *= -1
+			c.ghv.xaccel *= -1
 			c.ghv.ground_velocity[0] *= -1
 			c.ghv.air_velocity[0] *= -1
 			c.ghv.down_velocity[0] *= -1
@@ -7608,7 +7626,7 @@ func (c *Char) cueDraw() {
 			if c.csf(CSF_trans) {
 				sa = 255 - c.alpha[1]
 			}
-			sprs.add(sd, sc, sa, float32(c.size.shadowoffset), c.offsetY())
+			sprs.add(sd, sc, sa, c.shadowOffset, c.reflectOffset, c.size.shadowoffset, c.offsetY())
 		}
 	}
 	if sys.tickNextFrame() {

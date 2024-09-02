@@ -1073,6 +1073,20 @@ func (c *Compiler) velMul(is IniSection, sc *StateControllerBase, _ int8) (State
 	})
 	return *ret, err
 }
+func (c *Compiler) shadowOffset(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*shadowOffset)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			posSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reflection",
+			shadowoffset_reflection, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		return c.posSetSub(is, sc)
+	})
+	return *ret, err
+}
 func (c *Compiler) palFXSub(is IniSection,
 	sc *StateControllerBase, prefix string) error {
 	if err := c.paramValue(is, sc, prefix+"time",
