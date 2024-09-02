@@ -2554,7 +2554,8 @@ type SelectChar struct {
 	anims          PreloadedAnims
 	sff            *Sff
 	fnt            [10]*Fnt
-	trials         string
+	trialspath     string
+	trialsdata     string
 }
 
 func newSelectChar() *SelectChar {
@@ -2693,7 +2694,7 @@ func (s *Select) addChar(def string) {
 	}
 	sc.def = def
 	lines, i, info, files, keymap, arcade, lanInfo, lanFiles, lanKeymap, lanArcade := SplitAndTrim(str, "\n"), 0, true, true, true, true, true, true, true, true
-	var cns, sprite, anim, movelist, trials string
+	var cns, sprite, anim, movelist string
 	var fnt [10][2]string
 	for i < len(lines) {
 		is, name, subname := ReadIniSection(lines, &i)
@@ -2739,7 +2740,7 @@ func (s *Select) addChar(def string) {
 				cns = is["cns"]
 				sprite = is["sprite"]
 				anim = is["anim"]
-				sc.trials = is["trials"]
+				sc.trialspath = is["trials"]
 				sc.sound = is["sound"]
 				for i := 1; i <= MaxPalNo; i++ {
 					if is[fmt.Sprintf("pal%v", i)] != "" {
@@ -2896,11 +2897,11 @@ func (s *Select) addChar(def string) {
 		})
 	}
 	// read trials list
-	if len(trials) > 0 {
-		// LoadFile(&trials, []string{def, "", "data/"}, func(file string) error {
-		// 	sc.trials, _ = LoadText(file)
-		// 	return nil
-		// })
+	if len(sc.trialspath) > 0 {
+		LoadFile(&sc.trialspath, []string{def, "", "data/"}, func(file string) error {
+			sc.trialsdata, _ = LoadText(file)
+			return nil
+		})
 	}
 	// preload fonts
 	for i, f := range fnt {

@@ -36,7 +36,7 @@ if player($pn),ctrl = 0 {
 #===============================================================================
 [StateDef -4]
 
-ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
+ignoreHitPause if gameMode != "training" || gameMode != "trials" || isHelper || teamSide != 2 {
 	# Do nothing, not training more or statedef executed by helper or not P2
 } else ignoreHitPause if roundState = 0 {
 	# Round start reset

@@ -1237,7 +1237,7 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("ending", lua.LString(c.ending))
 		tbl.RawSetString("arcadepath", lua.LString(c.arcadepath))
 		tbl.RawSetString("ratiopath", lua.LString(c.ratiopath))
-		tbl.RawSetString("trials", lua.LString(c.trials))
+		tbl.RawSetString("trialspath", lua.LString(c.trialspath))
 		tbl.RawSetString("portrait_scale", lua.LNumber(c.portrait_scale))
 		subt := l.NewTable()
 		for k, v := range c.cns_scale {
@@ -1329,7 +1329,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getCharTrials", func(*lua.LState) int {
 		c := sys.sel.GetChar(int(numArg(l, 1)))
-		l.Push(lua.LString(c.trials))
+		l.Push(lua.LString(c.trialsdata))
 		return 1
 	})
 	luaRegister(l, "getCharName", func(*lua.LState) int {

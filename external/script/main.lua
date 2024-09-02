@@ -40,7 +40,6 @@ function main.f_fileWrite(path, str, mode)
 		return
 	end
 	file:write(str)
-	print("attempting to write")
 	file:close()
 end
 
@@ -214,9 +213,6 @@ end
 main.debugLog = false
 if main.f_isdir('debug') then
 	main.debugLog = true
-	print("found dir")
-else
-	print("did not find dir")
 end
 
 --check if file exists
@@ -266,7 +262,6 @@ function main.f_printTable(t, toFile)
 		sub_print_t(t, '  ')
 	end
 	main.f_fileWrite(toFile or 'debug/table_print.txt', txt)
-	print("attempted to write")
 end
 
 --prints "v" variable into "toFile" file
@@ -1520,6 +1515,7 @@ end
 main.t_unlockLua = {chars = {}, stages = {}, modes = {}}
 
 motif = require('external.script.motif')
+trials = require('external.script.trials')
 
 main.txt_loading = main.f_createTextImg(motif.title_info, 'loading')
 main.txt_loading:draw()
@@ -1858,6 +1854,10 @@ function main.f_addChar(line, playable, loading, slot)
 		if unlock ~= '' then
 			--main.t_selChars[row].unlock = unlock
 			main.t_unlockLua.chars[row] = unlock
+		end
+		if main.t_selChars[row].trialspath ~= "" then
+			main.t_selChars[row].trialsdata = {}
+			main.t_selChars[row].trialsdata = trials.f_parseTrials(#main.t_selChars)
 		end
 		--cell data
 		for _, v in pairs({{motif.select_info.portrait_anim, -1}, motif.select_info.portrait_spr}) do
