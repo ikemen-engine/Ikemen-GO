@@ -4590,6 +4590,10 @@ func triggerFunctions(l *lua.LState) {
 		switch strArg(l, 1) {
 		case "info.name":
 			l.Push(lua.LString(sys.lifebar.name))
+		case "info.localcoord.x":
+			l.Push(lua.LNumber(sys.lifebarLocalcoord[0]))
+		case "info.localcoord.y":
+			l.Push(lua.LNumber(sys.lifebarLocalcoord[1]))
 		case "info.author":
 			l.Push(lua.LString(sys.lifebar.author))
 		case "round.ctrl.time":

@@ -635,6 +635,8 @@ const (
 	OC_ex_guardcount
 	OC_ex_gamefps
 	OC_ex_fightscreenvar_info_author
+	OC_ex_fightscreenvar_info_localcoord_x
+	OC_ex_fightscreenvar_info_localcoord_y
 	OC_ex_fightscreenvar_info_name
 	OC_ex_fightscreenvar_round_ctrl_time
 	OC_ex_fightscreenvar_round_over_hittime
@@ -2426,6 +2428,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(sys.lifebar.authorLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
+	case OC_ex_fightscreenvar_info_localcoord_x:
+		sys.bcStack.PushI(sys.lifebarLocalcoord[0])
+	case OC_ex_fightscreenvar_info_localcoord_y:
+		sys.bcStack.PushI(sys.lifebarLocalcoord[1])
 	case OC_ex_fightscreenvar_info_name:
 		sys.bcStack.PushB(sys.lifebar.nameLow ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
@@ -2690,9 +2696,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_sprpriority:
 		sys.bcStack.PushI(c.sprPriority)
 	case OC_ex_stagebackedgedist:
-		sys.bcStack.PushF(c.stageBackEdgeDist() * (c.localscl / oc.localscl))
+		sys.bcStack.PushI(int32(c.stageBackEdgeDist() * (c.localscl / oc.localscl)))
 	case OC_ex_stagefrontedgedist:
-		sys.bcStack.PushF(c.stageFrontEdgeDist() * (c.localscl / oc.localscl))
+		sys.bcStack.PushI(int32(c.stageFrontEdgeDist() * (c.localscl / oc.localscl)))
 	case OC_ex_stagetime:
 		sys.bcStack.PushI(sys.stage.stageTime)
 	case OC_ex_standby:
@@ -8121,9 +8127,8 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			}
 		case angleDraw_rescaleClsn:
 			if exp[0].evalB(c) {
-				crun.clsnScale[0] *= crun.angleScale[0]
-				crun.clsnScale[1] *= crun.angleScale[1]
 				crun.angleRescaleClsn = true
+				crun.updateClsnScale()
 			}
 		case angleDraw_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
