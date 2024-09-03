@@ -3329,9 +3329,9 @@ func (c *Char) backEdgeBodyDist() float32 {
 	offset := float32(0)
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.ss.stateType == ST_A {
-			offset = 0.5/c.localscl
+			offset = 0.5 / c.localscl
 		} else if c.ss.stateType == ST_L {
-			offset = 1.0/c.localscl
+			offset = 1.0 / c.localscl
 		}
 	}
 	return c.backEdgeDist() - c.edge[1] - offset
@@ -3415,9 +3415,9 @@ func (c *Char) frontEdgeBodyDist() float32 {
 	offset := float32(0)
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.ss.stateType == ST_A {
-			offset = 0.5/c.localscl
+			offset = 0.5 / c.localscl
 		} else if c.ss.stateType == ST_L {
-			offset = 1.0/c.localscl
+			offset = 1.0 / c.localscl
 		}
 	}
 	return c.frontEdgeDist() - c.edge[0] - offset
