@@ -58,16 +58,16 @@ menu.t_valuename = {
 		{itemname = 'd', displayname = motif.training_info.menu_valuename_buttonjam_d},
 		{itemname = 'w', displayname = motif.training_info.menu_valuename_buttonjam_w},
 	},
-	trialsList = {
+	trialslist = {
 		{itemname = "0", displayname = "Select Trial"},
 	},
-	trialAdvancement = {
-		{itemname = "Auto-Advance", displayname = motif.trials_info.menu_valuename_trialAdvancement_autoadvance},
-		{itemname = "Repeat", displayname = motif.trials_info.menu_valuename_trialAdvancement_repeat}
+	trialadvancement = {
+		{itemname = "Auto-Advance", displayname = motif.trials_info.menu_valuename_trialadvancement_autoadvance},
+		{itemname = "Repeat", displayname = motif.trials_info.menu_valuename_trialadvancement_repeat}
 	},
-	trialResetonSuccess = {
-		{itemname = "Yes", displayname = motif.trials_info.menu_valuename_trialResetonSuccess_yes},
-		{itemname = "No", displayname = motif.trials_info.menu_valuename_trialResetonSuccess_no}
+	trialresetonsuccess = {
+		{itemname = "Yes", displayname = motif.trials_info.menu_valuename_trialresetonsuccess_yes},
+		{itemname = "No", displayname = motif.trials_info.menu_valuename_trialresetonsuccess_no}
 	},
 }
 
@@ -270,32 +270,32 @@ menu.t_itemname = {
 		return true
 	end,
 	--Trials List
-	['trialsList'] = function(t, item, cursorPosY, moveTxt, section)
+	['trialslist'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
-			trials.currenttrial = menu.trialsList
-			trials.trial[trials.currenttrial].complete = false
-			trials.trial[trials.currenttrial].active = false
-			trials.active = false
-			trials.displaytimers.totaltimer = false
-			trials.trial[trials.currenttrial].starttick = tickcount()
+			start.trials.currenttrial = menu.trialslist
+			start.trials.trial[start.trials.currenttrial].complete = false
+			start.trials.trial[start.trials.currenttrial].active = false
+			start.trials.active = false
+			start.trials.displaytimers.totaltimer = false
+			start.trials.trial[start.trials.currenttrial].starttick = tickcount()
 		end
 		return true
 	end,
 	--Trials Advancement
-	['trialAdvancement'] = function(t, item, cursorPosY, moveTxt, section)
+	['trialadvancement'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
-			if menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].itemname == "Auto-Advance" then
-				trials.trialAdvancement = true
+			if menu.t_valuename.trialadvancement[menu.trialadvancement or 1].itemname == "Auto-Advance" then
+				start.trials.trialadvancement = true
 			else
-				trials.trialAdvancement = false
+				start.trials.trialadvancement = false
 			end
 		end
 		return true
 	end,
 	--Trials Reset on Success
-	['trialResetonSuccess'] = function(t, item, cursorPosY, moveTxt, section)
+	['trialresetonsuccess'] = function(t, item, cursorPosY, moveTxt, section)
 		if menu.f_valueChanged(t.items[item], motif[section]) then
-			if menu.t_valuename.trialResetonSuccess[menu.trialResetonSuccess or 1].itemname == "Yes" then
+			if menu.t_valuename.trialresetonsuccess[menu.trialresetonsuccess or 1].itemname == "Yes" then
 				motif.trials_mode.resetonsuccess = "true"
 			else
 				motif.trials_mode.resetonsuccess = "false"
@@ -307,12 +307,12 @@ menu.t_itemname = {
 	['nexttrial'] = function(t, item, cursorPosY, moveTxt, section)
 		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
-			trials.currenttrial = math.min(trials.currenttrial + 1, #trials.trial)
-			trials.trial[trials.currenttrial].complete = false
-			trials.trial[trials.currenttrial].active = false
-			trials.active = false
-			trials.displaytimers.totaltimer = false
-			trials.trial[trials.currenttrial].starttick = tickcount()
+			start.trials.currenttrial = math.min(start.trials.currenttrial + 1, #start.trials.trial)
+			start.trials.trial[start.trials.currenttrial].complete = false
+			start.trials.trial[start.trials.currenttrial].active = false
+			start.trials.active = false
+			start.trials.displaytimers.totaltimer = false
+			start.trials.trial[start.trials.currenttrial].starttick = tickcount()
 		end
 		return true
 	end,
@@ -320,12 +320,12 @@ menu.t_itemname = {
 	['previoustrial'] = function(t, item, cursorPosY, moveTxt, section)
 		if main.f_input(main.t_players, {'pal', 's'}) then
 			sndPlay(motif.files.snd_data, motif[section].cursor_done_snd[1], motif[section].cursor_done_snd[2])
-			trials.currenttrial = math.max(trials.currenttrial - 1, 1)
-			trials.trial[trials.currenttrial].complete = false
-			trials.trial[trials.currenttrial].active = false
-			trials.active = false
-			trials.displaytimers.totaltimer = false
-			trials.trial[trials.currenttrial].starttick = tickcount()
+			start.trials.currenttrial = math.max(start.trials.currenttrial - 1, 1)
+			start.trials.trial[start.trials.currenttrial].complete = false
+			start.trials.trial[start.trials.currenttrial].active = false
+			start.trials.active = false
+			start.trials.displaytimers.totaltimer = false
+			start.trials.trial[start.trials.currenttrial].starttick = tickcount()
 		end
 		return true
 	end,
@@ -402,14 +402,14 @@ menu.t_vardisplay = {
 	['buttonjam'] = function()
 		return menu.t_valuename.buttonjam[menu.buttonjam or 1].displayname
 	end,
-	['trialsList'] = function()
-		return menu.t_valuename.trialsList[menu.trialsList or 1].displayname
+	['trialslist'] = function()
+		return menu.t_valuename.trialslist[menu.trialslist or 1].displayname
 	end,
-	['trialAdvancement'] = function()
-		return menu.t_valuename.trialAdvancement[menu.trialAdvancement or 1].displayname
+	['trialadvancement'] = function()
+		return menu.t_valuename.trialadvancement[menu.trialadvancement or 1].displayname
 	end,
-	['trialResetonSuccess'] = function()
-		return menu.t_valuename.trialResetonSuccess[menu.trialResetonSuccess or 1].displayname
+	['trialresetonsuccess'] = function()
+		return menu.t_valuename.trialresetonsuccess[menu.trialresetonsuccess or 1].displayname
 	end,
 }
 
@@ -568,21 +568,21 @@ function menu.f_trialsReset()
 		menu[k] = 1
 	end
 	if motif.trials_mode.resetonsuccess == "true" then
-		menu.trialResetonSuccess = 1
+		menu.trialresetonsuccess = 1
 	else
-		menu.trialResetonSuccess = 2
+		menu.trialresetonsuccess = 2
 	end
 	for _, v in ipairs(menu.t_vardisplayPointers) do
 		v.vardisplay = menu.f_vardisplay(v.itemname)
 	end
 	player(2)
 	setAILevel(0)
-	charMapSet(2, '_iksys_trialsDummyControl', 0)
-	charMapSet(2, '_iksys_trialsDummyMode', 0)
-	charMapSet(2, '_iksys_trialsGuardMode', 0)
-	charMapSet(2, '_iksys_trialsFallRecovery', 0)
-	charMapSet(2, '_iksys_trialsDistance', 0)
-	charMapSet(2, '_iksys_trialsButtonJam', 0)
+	charMapSet(2, '_iksys_trainingDummyControl', 0)
+	charMapSet(2, '_iksys_trainingDummyMode', 0)
+	charMapSet(2, '_iksys_trainingGuardMode', 0)
+	charMapSet(2, '_iksys_trainingFallRecovery', 0)
+	charMapSet(2, '_iksys_trainingDistance', 0)
+	charMapSet(2, '_iksys_trainingsButtonJam', 0)
 	charMapSet(2, '_iksys_trialsReposition', 0)
 	player(1)
 end
@@ -598,6 +598,11 @@ function menu.f_init()
 		main.f_bgReset(motif.trainingbgdef.bg)
 		main.f_fadeReset('fadein', motif.training_info)
 		menu.currentMenu = {menu.training.loop, menu.training.loop}
+	elseif gamemode('trials') then
+		sndPlay(motif.files.snd_data, motif.trials_info.enter_snd[1], motif.trials_info.enter_snd[2])
+		main.f_bgReset(motif.trialsbgdef.bg)
+		main.f_fadeReset('fadein', motif.trials_info)
+		menu.currentMenu = {menu.trials.loop, menu.trials.loop}
 	else
 		sndPlay(motif.files.snd_data, motif.menu_info.enter_snd[1], motif.menu_info.enter_snd[2])
 		main.f_bgReset(motif.menubgdef.bg)
@@ -615,6 +620,9 @@ function menu.f_run()
 	if gamemode('training') then
 		section = 'training_info'
 		bgdef = 'trainingbgdef'
+	elseif gamemode('trials') then
+		section = 'trials_info'
+		bgdef = 'trialsbgdef'
 	end
 	--draw overlay
 	menu[section .. '_overlay']:draw()

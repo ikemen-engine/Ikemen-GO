@@ -2052,7 +2052,7 @@ function start.f_selectScreen()
 							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing)
 						)
 						if gamemode('trials') then
-							if start.f_getCharData(t.char_ref).trialsdef == "" then
+							if start.f_getCharData(t.char_ref).trialspath == "" then
 								animSetPalFX(start.f_getCharData(t.char_ref).cell_data, {
 									time = 1,
 									add = motif.trials_mode.selscreenpalfx_add,

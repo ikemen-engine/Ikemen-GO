@@ -123,7 +123,8 @@ options.t_itemname = {
 			--	"data/guardbreak.zss",
 			--	"data/score.zss",
 			--	"data/tag.zss",
-			--	"data/training.zss"
+			--	"data/training.zss",
+			--	"data/trials.zss"
 			--}
 			--config.ControllerStickSensitivity = 0.4
 			config.Credits = 10

@@ -218,31 +218,30 @@ function loop()
 			if gamemode('training') then
 				menu.f_trainingReset()
 			end
-			if gamemode('trials') then
-				trials.trial = nil
-				if start.f_getCharData(start.p[1].t_selected[1].ref).trialspath ~= "" then
-					trials.f_inittrialsData()
-					trials.trialsExist = true
-				 else
-					trials.trialsExist = false
-				end
+		end
+		if gamemode('trials') then
+			start.trials = nil
+			if start.f_getCharData(start.p[1].t_selected[1].ref).trialspath ~= "" then
+				trials.f_inittrialsData()
+				start.trialsExist = true
+			 else
+				start.trialsExist = false
 			end
 		end
 		start.turnsRecoveryInit = false
 		start.dialogueInit = false
 	end
 	if roundstate() == 2 and gamemode('trials') then
-		if trials.trialsExist and not trials.trialsInitialized then
+		if start.trialsExist and not start.trials.trialsInitialized then
 			-- Initialize the trials based on parsed file and char state at roundstate() == 2
 			trials.f_trialsBuilder()
 			menu.f_trialsReset()
-		elseif trials.trialsExist and trials.trialsInitialized then
+		elseif start.trialsExist and start.trials.trialsInitialized then
 			-- If trials initialized, draw elements and check for success!
 			trials.f_trialsDrawer()
 			trials.f_trialsChecker()
 		else
 			-- No trials present!
-			print("here is 3")
 			player(2)
 			setAILevel(0)
 			player(1)

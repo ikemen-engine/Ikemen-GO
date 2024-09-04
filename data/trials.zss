@@ -1,0 +1,48 @@
+# Trials Mode global code
+# maps set via trials.lua, also leverages training.zss maps
+
+#===============================================================================
+# Functions
+#===============================================================================
+[Function TrialsInitialPosition()]
+# Get initial positions
+for pn = 1; 2; 1 {
+	mapSet{map:"_iksys_trialsPosX"; value: player($pn),Pos x; redirectID: player($pn),id;}
+	mapSet{map:"_iksys_trialsPosY"; value: player($pn),Pos y; redirectID: player($pn),id;}
+}
+
+[Function TrialsReposition()]
+Camera{view: free; pos:0,0;}
+for pn = 1; 2; 1 {
+	if player($pn), map(_iksys_trialsPosX) != 0 {PosSet{x:player($pn), map(_iksys_trialsPosX); redirectID: player($pn),id;}}
+}
+
+[Function TrialsResetCamera()]
+Camera{view: fighting}
+
+#===============================================================================
+# Global states (not halted by Pause/SuperPause, no helper limitations)
+#===============================================================================
+[StateDef -4]
+
+ignoreHitPause if gameMode != "trials" || isHelper || teamSide != 2 {
+	# Do nothing, not trials more or statedef executed by helper or not P2
+} else ignoreHitPause if roundState = 0 {
+	# Round start reset
+	map(_iksys_trialsReposition) := 0;
+	call TrialsInitialPosition();
+} else ignoreHitPause if roundState = 2 {
+	assertSpecial{flag: globalNoKo}
+	# Dummy Control: Cooperative
+	if aiLevel = 0 && map(_iksys_trainingDummyControl) = 0 {
+		# Reposition players and move camera to center stage
+		if map(_iksys_trialsReposition) != 0 {
+			call TrialsReposition();
+			map(_iksys_trialsReposition) := 0;
+		}
+		if map(_iksys_trialsCameraReset) != 0 {
+			call TrialsResetCamera();
+			map(_iksys_trialsCameraReset) := 0;
+		}
+	}
+}

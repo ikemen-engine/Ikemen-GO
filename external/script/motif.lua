@@ -1720,95 +1720,96 @@ local motif =
 		allclear_text_scale = {1.0, 1.0},
 	},
 	trials_info = 
+	--same default values as menu_info
 	{
-		fadein_time = 10, --Ikemen feature
-		fadein_col = {0, 0, 0}, --Ikemen feature
-		fadein_anim = -1, --Ikemen feature
-		fadeout_time = 10, --Ikemen feature
-		fadeout_col = {0, 0, 0}, --Ikemen feature
-		fadeout_anim = -1, --Ikemen feature
-		title_offset = {159, 15}, --Ikemen feature
-		title_font = {'f-6x9.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
-		title_scale = {1.0, 1.0}, --Ikemen feature
-		title_text = 'PAUSE', --Ikemen feature
-		menu_uselocalcoord = 0, --Ikemen feature
-		menu_pos = {85, 33}, --Ikemen feature
-		menu_item_offset = {0, 0}, --Ikemen feature
-		menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191, -1}, --Ikemen feature
-		menu_item_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_active_offset = {0, 0}, --Ikemen feature
-		menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255, -1}, --Ikemen feature
-		menu_item_active_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_selected_offset = {0, 0}, --Ikemen feature
-		menu_item_selected_font = {'f-6x9.def', 0, 1, 0, 247, 247, -1}, --Ikemen feature
-		menu_item_selected_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_selected_active_offset = {0, 0}, --Ikemen feature
-		menu_item_selected_active_font = {'f-6x9.def', 0, 1, 0, 247, 247, -1}, --Ikemen feature
-		menu_item_selected_active_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_value_offset = {150, 0}, --Ikemen feature
-		menu_item_value_font = {'f-6x9.def', 0, -1, 191, 191, 191, -1}, --Ikemen feature
-		menu_item_value_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_value_active_offset = {150, 0}, --Ikemen feature
-		menu_item_value_active_font = {'f-6x9.def', 0, -1, 255, 255, 255, -1}, --Ikemen feature
-		menu_item_value_active_scale = {1.0, 1.0}, --Ikemen feature
-		menu_item_spacing = {0, 14}, --Ikemen feature
-		menu_window_margins_y = {0, 0}, --Ikemen feature
-		menu_window_visibleitems = 13, --Ikemen feature
-		menu_boxcursor_visible = 1, --Ikemen feature
-		menu_boxcursor_coords = {-5, -10, 154, 3}, --Ikemen feature
-		menu_boxcursor_col = {255, 255, 255}, --Ikemen feature
-		menu_boxcursor_alpharange = {10, 40, 2, 255, 255, 0}, --Ikemen feature
-		menu_boxbg_visible = 1, --Ikemen feature
-		menu_boxbg_col = {0, 0, 0}, --Ikemen feature
-		menu_boxbg_alpha = {0, 128}, --Ikemen feature
-		menu_arrow_up_anim = -1, --Ikemen feature
-		menu_arrow_up_spr = {}, --Ikemen feature
-		menu_arrow_up_offset = {0, 0}, --Ikemen feature
-		menu_arrow_up_facing = 1, --Ikemen feature
-		menu_arrow_up_scale = {1.0, 1.0}, --Ikemen feature
-		menu_arrow_down_anim = -1, --Ikemen feature
-		menu_arrow_down_spr = {}, --Ikemen feature
-		menu_arrow_down_offset = {0, 0}, --Ikemen feature
-		menu_arrow_down_facing = 1, --Ikemen feature
-		menu_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
-		menu_title_uppercase = 1, --Ikemen feature
-		overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		overlay_col = {0, 0, 0}, --Ikemen feature
-		overlay_alpha = {0, 128}, --Ikemen feature
-		cursor_move_snd = {100, 0}, --Ikemen feature
-		cursor_done_snd = {100, 1}, --Ikemen feature
-		cancel_snd = {100, 2}, --Ikemen feature
-		enter_snd = {-1, 0}, --Ikemen feature
-		movelist_pos = {10, 20}, --Ikemen feature
-		movelist_title_offset = {150, 0}, --Ikemen feature
-		movelist_title_font = {'Open_Sans.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
-		movelist_title_scale = {0.4, 0.4}, --Ikemen feature
-		movelist_title_text = '%s', --Ikemen feature
-		movelist_title_uppercase = 0, --Ikemen feature
-		movelist_text_offset = {0, 12}, --Ikemen feature
-		movelist_text_font = {'Open_Sans.def', 0, 1, 255, 255, 255, -1}, --Ikemen feature
-		movelist_text_scale = {0.4, 0.4}, --Ikemen feature
-		movelist_text_spacing = {1, 1}, --Ikemen feature
-		movelist_text_text = 'Command List not found.', --Ikemen feature
-		movelist_glyphs_offset = {0, 2}, --Ikemen feature
-		movelist_glyphs_scale = {1.0, 1.0}, --Ikemen feature
-		movelist_glyphs_spacing = {2, 0}, --Ikemen feature
-		movelist_window_width = 300, --Ikemen feature
-		movelist_window_margins_y = {20, 1}, --Ikemen feature
-		movelist_window_visibleitems = 18, --Ikemen feature
-		movelist_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
-		movelist_overlay_col = {0, 0, 0}, --Ikemen feature
-		movelist_overlay_alpha = {0, 128}, --Ikemen feature
-		movelist_arrow_up_anim = -1, --Ikemen feature
-		movelist_arrow_up_spr = {}, --Ikemen feature
-		movelist_arrow_up_offset = {0, 0}, --Ikemen feature
-		movelist_arrow_up_facing = 1, --Ikemen feature
-		movelist_arrow_up_scale = {1.0, 1.0}, --Ikemen feature
-		movelist_arrow_down_anim = -1, --Ikemen feature
-		movelist_arrow_down_spr = {}, --Ikemen feature
-		movelist_arrow_down_offset = {0, 0}, --Ikemen feature
-		movelist_arrow_down_facing = 1, --Ikemen feature
-		movelist_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
+		-- fadein_time = 10, --Ikemen feature
+		-- fadein_col = {0, 0, 0}, --Ikemen feature
+		-- fadein_anim = -1, --Ikemen feature
+		-- fadeout_time = 10, --Ikemen feature
+		-- fadeout_col = {0, 0, 0}, --Ikemen feature
+		-- fadeout_anim = -1, --Ikemen feature
+		-- title_offset = {159, 15}, --Ikemen feature
+		-- title_font = {'f-6x9.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
+		-- title_scale = {1.0, 1.0}, --Ikemen feature
+		-- title_text = 'PAUSE', --Ikemen feature
+		-- menu_uselocalcoord = 0, --Ikemen feature
+		-- menu_pos = {85, 33}, --Ikemen feature
+		-- menu_item_offset = {0, 0}, --Ikemen feature
+		-- menu_item_font = {'f-6x9.def', 0, 1, 191, 191, 191, -1}, --Ikemen feature
+		-- menu_item_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_item_active_offset = {0, 0}, --Ikemen feature
+		-- menu_item_active_font = {'f-6x9.def', 0, 1, 255, 255, 255, -1}, --Ikemen feature
+		-- menu_item_active_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_item_selected_offset = {0, 0}, --Ikemen feature
+		-- menu_item_selected_font = {'f-6x9.def', 0, 1, 0, 247, 247, -1}, --Ikemen feature
+		-- menu_item_selected_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_item_selected_active_offset = {0, 0}, --Ikemen feature
+		-- menu_item_selected_active_font = {'f-6x9.def', 0, 1, 0, 247, 247, -1}, --Ikemen feature
+		-- menu_item_selected_active_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_item_value_offset = {150, 0}, --Ikemen feature
+		-- menu_item_value_font = {'f-6x9.def', 0, -1, 191, 191, 191, -1}, --Ikemen feature
+		-- menu_item_value_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_item_value_active_offset = {150, 0}, --Ikemen feature
+		-- menu_item_value_active_font = {'f-6x9.def', 0, -1, 255, 255, 255, -1}, --Ikemen feature
+		-- menu_item_value_active_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_item_spacing = {0, 14}, --Ikemen feature
+		-- menu_window_margins_y = {0, 0}, --Ikemen feature
+		-- menu_window_visibleitems = 13, --Ikemen feature
+		-- menu_boxcursor_visible = 1, --Ikemen feature
+		-- menu_boxcursor_coords = {-5, -10, 154, 3}, --Ikemen feature
+		-- menu_boxcursor_col = {255, 255, 255}, --Ikemen feature
+		-- menu_boxcursor_alpharange = {10, 40, 2, 255, 255, 0}, --Ikemen feature
+		-- menu_boxbg_visible = 1, --Ikemen feature
+		-- menu_boxbg_col = {0, 0, 0}, --Ikemen feature
+		-- menu_boxbg_alpha = {0, 128}, --Ikemen feature
+		-- menu_arrow_up_anim = -1, --Ikemen feature
+		-- menu_arrow_up_spr = {}, --Ikemen feature
+		-- menu_arrow_up_offset = {0, 0}, --Ikemen feature
+		-- menu_arrow_up_facing = 1, --Ikemen feature
+		-- menu_arrow_up_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_arrow_down_anim = -1, --Ikemen feature
+		-- menu_arrow_down_spr = {}, --Ikemen feature
+		-- menu_arrow_down_offset = {0, 0}, --Ikemen feature
+		-- menu_arrow_down_facing = 1, --Ikemen feature
+		-- menu_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
+		-- menu_title_uppercase = 1, --Ikemen feature
+		-- overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
+		-- overlay_col = {0, 0, 0}, --Ikemen feature
+		-- overlay_alpha = {0, 128}, --Ikemen feature
+		-- cursor_move_snd = {100, 0}, --Ikemen feature
+		-- cursor_done_snd = {100, 1}, --Ikemen feature
+		-- cancel_snd = {100, 2}, --Ikemen feature
+		-- enter_snd = {-1, 0}, --Ikemen feature
+		-- movelist_pos = {10, 20}, --Ikemen feature
+		-- movelist_title_offset = {150, 0}, --Ikemen feature
+		-- movelist_title_font = {'Open_Sans.def', 0, 0, 255, 255, 255, -1}, --Ikemen feature
+		-- movelist_title_scale = {0.4, 0.4}, --Ikemen feature
+		-- movelist_title_text = '%s', --Ikemen feature
+		-- movelist_title_uppercase = 0, --Ikemen feature
+		-- movelist_text_offset = {0, 12}, --Ikemen feature
+		-- movelist_text_font = {'Open_Sans.def', 0, 1, 255, 255, 255, -1}, --Ikemen feature
+		-- movelist_text_scale = {0.4, 0.4}, --Ikemen feature
+		-- movelist_text_spacing = {1, 1}, --Ikemen feature
+		-- movelist_text_text = 'Command List not found.', --Ikemen feature
+		-- movelist_glyphs_offset = {0, 2}, --Ikemen feature
+		-- movelist_glyphs_scale = {1.0, 1.0}, --Ikemen feature
+		-- movelist_glyphs_spacing = {2, 0}, --Ikemen feature
+		-- movelist_window_width = 300, --Ikemen feature
+		-- movelist_window_margins_y = {20, 1}, --Ikemen feature
+		-- movelist_window_visibleitems = 18, --Ikemen feature
+		-- movelist_overlay_window = {0, 0, main.SP_Localcoord[1], main.SP_Localcoord[2]}, --Ikemen feature (0, 0, 320, 240)
+		-- movelist_overlay_col = {0, 0, 0}, --Ikemen feature
+		-- movelist_overlay_alpha = {0, 128}, --Ikemen feature
+		-- movelist_arrow_up_anim = -1, --Ikemen feature
+		-- movelist_arrow_up_spr = {}, --Ikemen feature
+		-- movelist_arrow_up_offset = {0, 0}, --Ikemen feature
+		-- movelist_arrow_up_facing = 1, --Ikemen feature
+		-- movelist_arrow_up_scale = {1.0, 1.0}, --Ikemen feature
+		-- movelist_arrow_down_anim = -1, --Ikemen feature
+		-- movelist_arrow_down_spr = {}, --Ikemen feature
+		-- movelist_arrow_down_offset = {0, 0}, --Ikemen feature
+		-- movelist_arrow_down_facing = 1, --Ikemen feature
+		-- movelist_arrow_down_scale = {1.0, 1.0}, --Ikemen feature
 		menu_valuename_trialsList = "", --Ikemen feature
 		menu_valuename_trialAdvancement_autoadvance = "Auto-Advance",
 		menu_valuename_trialAdvancement_repeat = "Repeat",
@@ -2581,9 +2582,9 @@ function motif.setBaseTrialsInfo()
 	motif.trials_info.menu_itemname_nexttrial = "Next Trial"
 	motif.trials_info.menu_itemname_previoustrial = "Previous Trial"
 	motif.trials_info.menu_itemname_menutrials = "Trials Menu"
-	motif.trials_info.menu_itemname_menutrials_trialsList = "Trials List"
-	motif.trials_info.menu_itemname_menutrials_trialAdvancement = "Trial Advancement"
-	motif.trials_info.menu_itemname_menutrials_trialResetonSuccess = "Reset on Success"
+	motif.trials_info.menu_itemname_menutrials_trialslist = "Trials List"
+	motif.trials_info.menu_itemname_menutrials_trialadvancement = "Trial Advancement"
+	motif.trials_info.menu_itemname_menutrials_trialresetonSuccess = "Reset on Success"
 	motif.trials_info.menu_itemname_menutrials_back = "Back"
 	motif.trials_info.menu_itemname_empty = ""
 	motif.trials_info.menu_itemname_menuinput = "Button Config"
@@ -2603,9 +2604,9 @@ function motif.setBaseTrialsInfo()
 		"nexttrial",
 		"previoustrial",
 		"menutrials",
-		"menutrials_trialsList",
-		"menutrials_trialAdvancement",
-		"menutrials_trialResetonSuccess",
+		"menutrials_trialslist",
+		"menutrials_trialadvancement",
+		"menutrials_trialresetonSuccess",
 		"menutrials_back",
 		"empty",
 		"menuinput",
@@ -2810,12 +2811,14 @@ if type(t.select_info.cell_spacing) ~= "table" then
 end
 
 --training_info section reuses menu_info values (excluding itemnames)
-motif.training_info = main.f_tableMerge(motif.training_info, motif.menu_info)
-if t.menu_info == nil then t.menu_info = {} end
-if t.training_info == nil then t.training_info = {} end
-for k, v in pairs(t.menu_info) do
-	if t.training_info[k] == nil and not k:match('_itemname_') then
-		t.training_info[k] = v
+for _, k in pairs({'training_info', 'trials_info'}) do
+	motif[k] = main.f_tableMerge(motif[k], motif.menu_info)
+	if t.menu_info == nil then t.menu_info = {} end
+	if t[k] == nil then t[k] = {} end
+	for kk, vv in pairs(t.menu_info) do
+		if t[k][kk] == nil and not kk:match('_itemname_') then
+			t[k][kk] = vv
+		end
 	end
 end
 
@@ -2948,7 +2951,7 @@ end
 --trainingbgdef and trialsbgdef sections reuses menubgdef values if not defined
 for _, v in ipairs{'trainingbgdef', 'trialsbgdef'} do
 	if t[v] == nil then
-		motif[v] = motif.menudef
+		motif[v] = motif.menubgdef
 	end
 end
 
@@ -3101,11 +3104,11 @@ motif.f_loadSprData(motif.continue_screen, {s = 'counter_'})
 motif.f_loadSprData(motif.challenger_info, {s = 'bg_'})
 
 --arrows spr/anim data
-for _, v in ipairs({motif.title_info, motif.option_info, motif.replay_info, motif.menu_info, motif.training_info, motif.attract_mode}) do
+for _, v in ipairs({motif.title_info, motif.option_info, motif.replay_info, motif.menu_info, motif.training_info, motif.attract_mode, motif.trials_info}) do
 	motif.f_loadSprData(v, {s = 'menu_arrow_up_',   x = v.menu_pos[1], y = v.menu_pos[2]})
 	motif.f_loadSprData(v, {s = 'menu_arrow_down_', x = v.menu_pos[1], y = v.menu_pos[2]})
 end
-for _, v in ipairs({motif.menu_info, motif.training_info}) do
+for _, v in ipairs({motif.menu_info, motif.training_info, motif.trials_info}) do
 	motif.f_loadSprData(v, {s = 'movelist_arrow_up_',   x = v.movelist_pos[1], y = v.movelist_pos[2]})
 	motif.f_loadSprData(v, {s = 'movelist_arrow_down_', x = v.movelist_pos[1], y = v.movelist_pos[2]})
 end
