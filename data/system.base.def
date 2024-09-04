@@ -2534,11 +2534,11 @@
 [Trials Info] ;Ikemen feature
 	; If not overridden, values used for [Menu Info] are shared with this group.
 	; Trials specific parameters:
-	menu.valuename.trialsList = ""
-	menu.valuename.trialAdvancement.autoadvance = "Auto-Advance"
-	menu.valuename.trialAdvancement.repeat = "Repeat"
-	menu.valuename.trialResetonSuccess.yes = "Yes"
-	menu.valuename.trialResetonSuccess.no = "No"
+	menu.valuename.trialslist = ""
+	menu.valuename.trialadvancement.autoadvance = "Auto-Advance"
+	menu.valuename.trialadvancement.repeat = "Repeat"
+	menu.valuename.trialresetonsuccess.yes = "Yes"
+	menu.valuename.trialresetonsuccess.no = "No"
 
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
@@ -2546,9 +2546,9 @@
 	; menu.itemname.nexttrial = "Next Trial"
 	; menu.itemname.previoustrial = "Previous Trial"
 	; menu.itemname.menutrials = "Trials Menu"
-	; menu.itemname.menutrials.trialsList = "Trials List"
-	; menu.itemname.menutrials.trialAdvancement = "Trials Advancement"
-	; menu.itemname.menutrials.trialResetonSuccess = "Reset to Center on Success"
+	; menu.itemname.menutrials.trialslist = "Trials List"
+	; menu.itemname.menutrials.trialadvancement = "Trials Advancement"
+	; menu.itemname.menutrials.trialresetonsuccess = "Reset to Center on Success"
 	; menu.itemname.menutrials.back = "Back"
 	; menu.itemname.menuinput = "Button Config"
 	; menu.itemname.menuinput.keyboard = "Key Config"
