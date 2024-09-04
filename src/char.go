@@ -3063,11 +3063,8 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 		}
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
-		if c.angleRescaleClsn {
-			c.clsnScale[0] *= c.angleScale[0]
-			c.clsnScale[1] *= c.angleScale[1]
-		}
+		// Clsn scale depends on the animation owner's scale, so it must be updated
+		c.updateClsnScale()
 		if c.hitPause() {
 			c.curFrame = a.CurrentFrame()
 		}
@@ -3325,9 +3322,21 @@ func (c *Char) backEdge() float32 {
 	}
 	return c.leftEdge()
 }
+
 func (c *Char) backEdgeBodyDist() float32 {
-	return c.backEdgeDist() - c.getEdge(c.edge[1], false)
+	// In Mugen, edge body distance is changed when the character is in statetype A or L
+	// This is undocumented and doesn't seem to offer any benefit
+	offset := float32(0)
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.stateType == ST_A {
+			offset = 0.5 / c.localscl
+		} else if c.ss.stateType == ST_L {
+			offset = 1.0 / c.localscl
+		}
+	}
+	return c.backEdgeDist() - c.edge[1] - offset
 }
+
 func (c *Char) backEdgeDist() float32 {
 	if c.facing < 0 {
 		return sys.xmax/c.localscl - c.pos[0]
@@ -3400,9 +3409,20 @@ func (c *Char) frontEdge() float32 {
 	}
 	return c.leftEdge()
 }
+
 func (c *Char) frontEdgeBodyDist() float32 {
-	return c.frontEdgeDist() - c.getEdge(c.edge[0], false)
+	// See BackEdgeBodyDist
+	offset := float32(0)
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.stateType == ST_A {
+			offset = 0.5 / c.localscl
+		} else if c.ss.stateType == ST_L {
+			offset = 1.0 / c.localscl
+		}
+	}
+	return c.frontEdgeDist() - c.edge[0] - offset
 }
+
 func (c *Char) frontEdgeDist() float32 {
 	if c.facing > 0 {
 		return sys.xmax/c.localscl - c.pos[0]
@@ -4897,6 +4917,23 @@ func (c *Char) setBHeight(bh float32) {
 	c.setCSF(CSF_bottomheight)
 }
 
+func (c *Char) updateClsnScale() {
+	// Index range checks. Prevents crashing if chars don't have animations
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1982
+	if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
+		c.clsnScale = [...]float32{
+			sys.chars[c.animPN][0].size.xscale * (320 / sys.chars[c.animPN][0].localcoord),
+			sys.chars[c.animPN][0].size.yscale * (320 / sys.chars[c.animPN][0].localcoord),
+		}
+	} else {
+		c.clsnScale = [...]float32{1.0, 1.0}
+	}
+	if c.angleRescaleClsn {
+		c.clsnScale[0] *= c.angleScale[0]
+		c.clsnScale[1] *= c.angleScale[1]
+	}
+}
+
 func (c *Char) widthToSizeBox() {
 	if len(c.width) < 2 || len(c.height) < 2 {
 		c.sizeBox = []float32{0, 0, 0, 0}
@@ -5610,19 +5647,6 @@ func (c *Char) hitVelSetY() {
 	// Movetype H is not required in Mugen
 	c.setYV(c.ghv.yvel)
 }
-func (c *Char) getEdge(base float32, actually bool) float32 {
-	/*
-		if !actually || c.stWgi().mugenver[0] != 1 {
-			switch c.ss.stateType {
-			case ST_A:
-				return base + 1
-			case ST_L:
-				return base + 2
-			}
-		}
-	*/
-	return base
-}
 func (c *Char) defFW() float32 {
 	if c.ss.stateType == ST_A {
 		return float32(c.size.air.front)
@@ -6301,7 +6325,7 @@ func (c *Char) trackableByCamera() bool {
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
 	if !sys.cam.roundstart && c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
-		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		min, max := c.edge[0], -c.edge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
@@ -6315,7 +6339,7 @@ func (c *Char) xScreenBound() {
 func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 	x := c.pos[0]
 	if c.ss.stateType != ST_A {
-		min, max := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+		min, max := c.edge[0], -c.edge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
@@ -6438,7 +6462,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
-		clsn2, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
+		clsn2, [...]float32{c.clsnScale[0], c.clsnScale[1]},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -6493,10 +6517,10 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 		return false
 	}
 
-	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord), c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)},
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0], c.clsnScale[1]},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing,
-		clsn2, [...]float32{getter.clsnScale[0] * (320 / sys.chars[getter.animPN][0].localcoord), getter.clsnScale[1] * (320 / sys.chars[getter.animPN][0].localcoord)},
+		clsn2, [...]float32{getter.clsnScale[0], getter.clsnScale[1]},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
 }
@@ -6766,10 +6790,6 @@ func (c *Char) actionPrepare() {
 		}
 		// This flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
-		// Reset hitbox scale
-		// This used to be only in changeAnimEx(), but because it can now be dynamically changed it was also placed here
-		c.clsnScale = [...]float32{sys.chars[c.animPN][0].size.xscale, sys.chars[c.animPN][0].size.yscale}
-		c.angleRescaleClsn = false
 		// In WinMugen all of these flags persisted during hitpause
 		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_offset | CSF_trans)
@@ -6778,6 +6798,11 @@ func (c *Char) actionPrepare() {
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
 				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
+		}
+		// Reset AngleDraw Clsn rescaling
+		if c.angleRescaleClsn {
+			c.angleRescaleClsn = false
+			c.updateClsnScale()
 		}
 	}
 	// Decrease unhittable timer
@@ -7404,9 +7429,10 @@ func (c *Char) cueDraw() {
 	y := c.pos[1] * c.localscl
 	xoff := x + c.offsetX()*c.localscl
 	yoff := y + c.offsetY()*c.localscl
-	xs := c.clsnScale[0] * (320 / sys.chars[c.animPN][0].localcoord) * c.facing
-	ys := c.clsnScale[1] * (320 / sys.chars[c.animPN][0].localcoord)
+	xs := c.clsnScale[0] * c.facing
+	ys := c.clsnScale[1]
 	nhbtxt := ""
+	// Debug Clsn display
 	if sys.clsnDraw && c.curFrame != nil {
 		// Add Clsn1
 		if clsn := c.curFrame.Clsn1(); len(clsn) > 0 {
@@ -8857,8 +8883,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 			gl += getter.pos[0] * getter.localscl
 			gr += getter.pos[0] * getter.localscl
 
-			gxmin = getter.getEdge(getter.edge[0], true)
-			gxmax = -getter.getEdge(getter.edge[1], true)
+			gxmin = getter.edge[0]
+			gxmax = -getter.edge[1]
 			if getter.facing > 0 {
 				gxmin, gxmax = -gxmax, -gxmin
 			}
@@ -8924,7 +8950,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 					getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
 				}
 				if c.trackableByCamera() && c.csf(CSF_screenbound) {
-					l, r := c.getEdge(c.edge[0], true), -c.getEdge(c.edge[1], true)
+					l, r := c.edge[0], -c.edge[1]
 					if c.facing > 0 {
 						l, r = -r, -l
 					}

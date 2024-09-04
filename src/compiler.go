@@ -3418,6 +3418,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "info.author":
 			opc = OC_ex_fightscreenvar_info_author
 			isStr = true
+		case "info.localcoord.x":
+			opc = OC_ex_fightscreenvar_info_localcoord_x
+		case "info.localcoord.y":
+			opc = OC_ex_fightscreenvar_info_localcoord_y
 		case "info.name":
 			opc = OC_ex_fightscreenvar_info_name
 			isStr = true
