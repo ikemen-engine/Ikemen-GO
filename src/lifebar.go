@@ -1721,6 +1721,9 @@ type LifeBarRound struct {
 	round_default      AnimTextSnd
 	round_default_top  AnimLayout
 	round_default_bg   [32]AnimLayout
+	round_single       AnimTextSnd
+	round_single_top   AnimLayout
+	round_single_bg    [32]AnimLayout
 	round_final        AnimTextSnd
 	round_final_top    AnimLayout
 	round_final_bg     [32]AnimLayout
@@ -1800,6 +1803,13 @@ func readLifeBarRound(is IniSection,
 	for i := range ro.round_default_bg {
 		ro.round_default_bg[i] = *ReadAnimLayout(fmt.Sprintf("round.default.bg%v.", i), is, sff, at, 2)
 	}
+	// Single round animations and sounds
+	ro.round_single = *ReadAnimTextSnd("round.single.", is, sff, at, 2, f)
+	ro.round_single_top = *ReadAnimLayout("round.single.top.", is, sff, at, 2)
+	for i := range ro.round_single_bg {
+		ro.round_single_bg[i] = *ReadAnimLayout(fmt.Sprintf("round.single.bg%v.", i), is, sff, at, 2)
+	}
+	// Final round animations and sounds
 	ro.round_final = *ReadAnimTextSnd("round.final.", is, sff, at, 2, f)
 	ro.round_final_top = *ReadAnimLayout("round.final.top.", is, sff, at, 2)
 	for i := range ro.round_final_bg {
@@ -2072,6 +2082,7 @@ func readLifeBarRound(is IniSection,
 	is.ReadI32("callfight.time", &ro.callfight_time)
 	return ro
 }
+
 func (ro *LifeBarRound) callFight() {
 	ro.fight.Reset()
 	ro.fight_top.Reset()
@@ -2079,6 +2090,16 @@ func (ro *LifeBarRound) callFight() {
 	sys.timerCount = append(sys.timerCount, sys.gameTime)
 	ro.timerActive = true
 }
+
+func (ro *LifeBarRound) isSingleRound() bool {
+	return !sys.consecutiveRounds && sys.round == 1 && sys.roundType[0] == RT_Final
+}
+
+func (ro *LifeBarRound) isFinalRound() bool {
+	return !sys.consecutiveRounds && sys.round > 1 && sys.roundType[0] == RT_Final &&
+			(sys.draws >= sys.lifebar.ro.match_maxdrawgames[0] || sys.draws >= sys.lifebar.ro.match_maxdrawgames[1])
+}
+
 func (ro *LifeBarRound) act() bool {
 	if (sys.paused && !sys.step) || sys.gsf(GSF_roundfreeze) {
 		return false
@@ -2111,7 +2132,9 @@ func (ro *LifeBarRound) act() bool {
 				}
 				// Announcer round call
 				if ro.swt[0] == 0 {
-					if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
+					if ro.isSingleRound() && ro.round_single.snd[0] != -1 {
+						ro.snd.play(ro.round_single.snd, 100, 0, 0, 0, 0)
+					} else if ro.isFinalRound() && ro.round_final.snd[0] != -1 {
 						ro.snd.play(ro.round_final.snd, 100, 0, 0, 0, 0)
 					} else if int(roundNum) <= len(ro.round) && ro.round[roundNum-1].snd[0] != -1 {
 						ro.snd.play(ro.round[roundNum-1].snd, 100, 0, 0, 0, 0)
@@ -2122,7 +2145,7 @@ func (ro *LifeBarRound) act() bool {
 				ro.swt[0]--
 				if ro.wt[0] <= 0 {
 					ro.dt[0]++
-					if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && ro.round_final.snd[0] != -1 {
+					if !sys.consecutiveRounds && ro.isFinalRound() && ro.round_final.snd[0] != -1 {
 						if len(ro.round_final_top.anim.frames) > 0 {
 							ro.round_final_top.Action()
 						} else {
@@ -2380,45 +2403,88 @@ func (ro *LifeBarRound) reset() {
 	}
 	ro.introState = [2]bool{}
 }
+
 func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 	ob := sys.brightness
 	sys.brightness = 256
+	// Round call animations
 	if !ro.introState[0] && ro.wt[0] < 0 && sys.intro <= ro.ctrl_time {
+
+		// Draw default round background
 		for i := range ro.round_default_bg {
-			ro.round_default_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+			ro.round_default_bg[i].Draw(
+				float32(ro.pos[0])+sys.lifebarOffsetX, 
+				float32(ro.pos[1]), 
+				layerno, 
+				sys.lifebarScale,
+			)
 		}
+		// Determine the round number
 		var round_ref AnimTextSnd
 		roundNum := sys.round
 		if sys.consecutiveRounds {
 			roundNum = sys.consecutiveWins[0] + 1
 		}
-		if !sys.consecutiveRounds && sys.roundType[0] == RT_Final &&
+
+		// Draw background
+		if ro.isSingleRound() &&
+			(ro.round_single.text.font[0] != -1 || len(ro.round_single.anim.anim.frames) > 0 || len(ro.round_single_bg[0].anim.frames) > 0) {
+			// Single round
+			for i := range ro.round_single_bg {
+				ro.round_single_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+			}
+			round_ref = ro.round_single
+		} else if ro.isFinalRound() &&
 			(ro.round_final.text.font[0] != -1 || len(ro.round_final.anim.anim.frames) > 0 || len(ro.round_final_bg[0].anim.frames) > 0) {
+			// Final round
 			for i := range ro.round_final_bg {
 				ro.round_final_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 			}
 			round_ref = ro.round_final
 		} else if int(roundNum) <= len(ro.round) {
+			// Otherwise, use the appropriate round reference
 			round_ref = ro.round[roundNum-1]
 		}
+
+		// Backup default text
 		tmp := ro.round_default.text.text
+
+		// If round_ref text is empty, format the default round text
 		if round_ref.text.text == "" {
 			ro.round_default.text.text = OldSprintf(tmp, roundNum)
 		} else {
 			ro.round_default.text.text = ""
 		}
+
+		// Draw default round
 		ro.round_default.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+
+		// Restore default text
 		ro.round_default.text.text = tmp
+
+		// Backup round_ref text
 		tmp = round_ref.text.text
+		
+		// Format the round_ref text with the round number
 		round_ref.text.text = OldSprintf(tmp, roundNum)
+
+		// Draw round-specific elements
 		round_ref.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
+
+		// Restore round_ref text
 		round_ref.text.text = tmp
-		if !sys.consecutiveRounds && sys.roundType[0] == RT_Final && len(ro.round_final_top.anim.frames) > 0 {
+
+		// Draw the single or final top layer if appropriate, otherwise draw the default top layer
+		if ro.isSingleRound() && len(ro.round_single_top.anim.frames) > 0 {
+			ro.round_single_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
+		} else if ro.isFinalRound() && len(ro.round_final_top.anim.frames) > 0 {
 			ro.round_final_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 		} else {
 			ro.round_default_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 		}
 	}
+
+	// "Fight!" animations
 	if !ro.introState[1] && ro.wt[1] < 0 {
 		for i := range ro.fight_bg {
 			ro.fight_bg[i].Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
@@ -2426,7 +2492,9 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 		ro.fight.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, f, sys.lifebarScale)
 		ro.fight_top.Draw(float32(ro.pos[0])+sys.lifebarOffsetX, float32(ro.pos[1]), layerno, sys.lifebarScale)
 	}
+
 	if ro.cur == 2 {
+		// KO animations
 		if ro.wt[2] < 0 {
 			switch sys.finish {
 			case FT_KO:
