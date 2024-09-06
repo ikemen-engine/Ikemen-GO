@@ -782,125 +782,133 @@ function trials.f_parseTrials(row)
 	i = 0 --Trial number
 	j = 0 --TrialStep number
 	trial = {}
-	local trialsFile = main.f_fileRead(main.t_selChars[row].dir .. main.t_selChars[row].trialspath, "r")
-	for line in trialsFile:gmatch('([^\n]*)\n?') do
-		line = line:gsub('%s*;.*$', '')
-		lcline = string.lower(line)
-		if lcline:find("trialstep." .. j+1 .. ".") then
-			j = j + 1
-			trial[i].trialstep[j] = {
-				numofmicrosteps = 1,
-				text = "",
-				glyphs = "",
-				stateno = {},
-				animno = {},
-				numofhits = {},
-				stephitscount = {},
-				combocountonstep = {},
-				isthrow = {},
-				isnohit = {},
-				ishelper = {},
-				isproj = {},
-				iscounterhit = {},
-				validuntilnexthit = {},
-				validforvarvalpairs = {nil},
-				validforvar = {},
-				validforval = {},
-				glyphline = {
-					glyph = {},
-					pos = {},
-					width = {},
-					alignOffset = {},
-					lengthOffset = {},
-					scale = {},
-				},
-			}
-		end 
-		if line:match('^%s*%[.-%s*%]%s*$') then --matched [] group
-			line = line:match('^%s*%[(.-)%s*%]%s*$') --match text between []
+	local path = ''
+	if main.f_fileExists(main.t_selChars[row].trialspath) then
+		path = main.t_selChars[row].trialspath
+	elseif main.f_fileExists(main.t_selChars[row].dir .. main.t_selChars[row].trialspath) then
+		path = main.t_selChars[row].dir .. main.t_selChars[row].trialspath
+	end
+	if path ~= '' then
+		local trialsFile = main.f_fileRead(path, "r")
+		for line in trialsFile:gmatch('([^\n]*)\n?') do
+			line = line:gsub('%s*;.*$', '')
 			lcline = string.lower(line)
-			if lcline:match('^trialdef') then --matched trialdef block
-				i = i + 1 -- increment Trial number
-				j = 0 -- reset trialstep number
-				trial[i] = {
-					name = "",
-					dummymode = "stand",
-					guardmode = "none",
-					buttonjam = "none",
-					active = false,
-					complete = false,
-					showforvarvalpairs = {nil},
-					elapsedtime = 0,
-					starttick = tickcount(),
-					trialstep = {},
+			if lcline:find("trialstep." .. j+1 .. ".") then
+				j = j + 1
+				trial[i].trialstep[j] = {
+					numofmicrosteps = 1,
+					text = "",
+					glyphs = "",
+					stateno = {},
+					animno = {},
+					numofhits = {},
+					stephitscount = {},
+					combocountonstep = {},
+					isthrow = {},
+					isnohit = {},
+					ishelper = {},
+					isproj = {},
+					iscounterhit = {},
+					validuntilnexthit = {},
+					validforvarvalpairs = {nil},
+					validforvar = {},
+					validforval = {},
+					glyphline = {
+						glyph = {},
+						pos = {},
+						width = {},
+						alignOffset = {},
+						lengthOffset = {},
+						scale = {},
+					},
 				}
-				line = f_trimafterchar(line, ",")
-				if line == "" then
-					line = "Trial " .. tostring(i)
+			end 
+			if line:match('^%s*%[.-%s*%]%s*$') then --matched [] group
+				line = line:match('^%s*%[(.-)%s*%]%s*$') --match text between []
+				lcline = string.lower(line)
+				if lcline:match('^trialdef') then --matched trialdef block
+					i = i + 1 -- increment Trial number
+					j = 0 -- reset trialstep number
+					trial[i] = {
+						name = "",
+						dummymode = "stand",
+						guardmode = "none",
+						buttonjam = "none",
+						active = false,
+						complete = false,
+						showforvarvalpairs = {nil},
+						elapsedtime = 0,
+						starttick = tickcount(),
+						trialstep = {},
+					}
+					line = f_trimafterchar(line, ",")
+					if line == "" then
+						line = "Trial " .. tostring(i)
+					end
+					trial[i].name = line
 				end
-				trial[i].name = line
-			end
-		elseif lcline:find("dummymode") then
-			trial[i].dummymode = f_trimafterchar(lcline, "=")
-		elseif lcline:find("guardmode") then
-			trial[i].guardmode = f_trimafterchar(lcline, "=")
-		elseif lcline:find("dummybuttonjam") then
-			trial[i].buttonjam = f_trimafterchar(lcline, "=")
-		elseif lcline:find("showforvarvalpairs") then
-			trial[i].showforvarvalpairs = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-		elseif lcline:find("trialstep." .. j .. ".text") then
-			trial[i].trialstep[j].text = f_trimafterchar(line, "=")
-		elseif lcline:find("trialstep." .. j .. ".glyphs") then
-			trial[i].trialstep[j].glyphs = f_trimafterchar(line, "=")
-		elseif lcline:find("trialstep." .. j .. ".stateno") then
-			trial[i].trialstep[j].stateno = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			trial[i].trialstep[j].numofmicrosteps = #trial[i].trialstep[j].stateno
-			for k = 1, trial[i].trialstep[j].numofmicrosteps, 1 do
-				trial[i].trialstep[j].stephitscount[k] = 0
-				trial[i].trialstep[j].combocountonstep[k] = 0
-				trial[i].trialstep[j].numofhits[k] = 1
-				trial[i].trialstep[j].isthrow[k] = false
-				trial[i].trialstep[j].isnohit[k] = false
-				trial[i].trialstep[j].ishelper[k] = false
-				trial[i].trialstep[j].isproj[k] = false
-				trial[i].trialstep[j].iscounterhit[k] = false
-				trial[i].trialstep[j].validuntilnexthit[k] = false
-			end
-		elseif lcline:find("trialstep." .. j .. ".anim") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].anim = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".numofhits") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].numofhits = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".isthrow") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].isthrow = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".isnohit") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].isnohit = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".iscounterhit") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].iscounterhit = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".ishelper") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].ishelper = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".isproj") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].isproj = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
-			end
-		elseif lcline:find("trialstep." .. j .. ".validuntilnexthit") then
-			if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
-				trial[i].trialstep[j].validuntilnexthit = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+			elseif lcline:find("dummymode") then
+				trial[i].dummymode = f_trimafterchar(lcline, "=")
+			elseif lcline:find("guardmode") then
+				trial[i].guardmode = f_trimafterchar(lcline, "=")
+			elseif lcline:find("dummybuttonjam") then
+				trial[i].buttonjam = f_trimafterchar(lcline, "=")
+			elseif lcline:find("showforvarvalpairs") then
+				trial[i].showforvarvalpairs = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+			elseif lcline:find("trialstep." .. j .. ".text") then
+				trial[i].trialstep[j].text = f_trimafterchar(line, "=")
+			elseif lcline:find("trialstep." .. j .. ".glyphs") then
+				trial[i].trialstep[j].glyphs = f_trimafterchar(line, "=")
+			elseif lcline:find("trialstep." .. j .. ".stateno") then
+				trial[i].trialstep[j].stateno = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				trial[i].trialstep[j].numofmicrosteps = #trial[i].trialstep[j].stateno
+				for k = 1, trial[i].trialstep[j].numofmicrosteps, 1 do
+					trial[i].trialstep[j].stephitscount[k] = 0
+					trial[i].trialstep[j].combocountonstep[k] = 0
+					trial[i].trialstep[j].numofhits[k] = 1
+					trial[i].trialstep[j].isthrow[k] = false
+					trial[i].trialstep[j].isnohit[k] = false
+					trial[i].trialstep[j].ishelper[k] = false
+					trial[i].trialstep[j].isproj[k] = false
+					trial[i].trialstep[j].iscounterhit[k] = false
+					trial[i].trialstep[j].validuntilnexthit[k] = false
+				end
+			elseif lcline:find("trialstep." .. j .. ".anim") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].anim = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".numofhits") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].numofhits = f_strtonumber(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".isthrow") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].isthrow = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".isnohit") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].isnohit = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".iscounterhit") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].iscounterhit = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".ishelper") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].ishelper = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".isproj") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].isproj = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
+			elseif lcline:find("trialstep." .. j .. ".validuntilnexthit") then
+				if string.gsub(f_trimafterchar(lcline, "="),"%s+", "") ~= "" then
+					trial[i].trialstep[j].validuntilnexthit = f_strtoboolean(main.f_strsplit(',', string.gsub(f_trimafterchar(lcline, "="),"%s+", "")))
+				end
 			end
 		end
-	end
 	return trial
+	end
 end
 
 return trials
