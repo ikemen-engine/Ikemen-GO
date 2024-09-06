@@ -782,7 +782,7 @@ function trials.f_parseTrials(row)
 	i = 0 --Trial number
 	j = 0 --TrialStep number
 	trial = {}
-	local trialsFile = main.f_fileRead(main.t_selChars[row].trialspath, "r")
+	local trialsFile = main.f_fileRead(main.t_selChars[row].dir .. main.t_selChars[row].trialspath, "r")
 	for line in trialsFile:gmatch('([^\n]*)\n?') do
 		line = line:gsub('%s*;.*$', '')
 		lcline = string.lower(line)
