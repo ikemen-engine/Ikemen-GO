@@ -706,6 +706,7 @@ function trials.f_trialsChecker()
 				end
 			elseif start.trials.trial[ct].trialstep[cts].numofhits[ctms] == 0 then
 				start.trials.trial[ct].trialstep[cts].stephitscount[ctms] = 0
+				start.trials.trial[ct].trialstep[cts].isnohit[ctms] = true
 			end
 
 			if start.trials.trial[ct].trialstep[cts].numofhits[ctms] == start.trials.trial[ct].trialstep[cts].stephitscount[ctms] then
@@ -728,7 +729,11 @@ function trials.f_trialsChecker()
 				if start.trials.currenttrialmicrostep > start.trials.trial[ct].trialstep[cts].numofmicrosteps then
 					start.trials.currenttrialmicrostep = 1
 					start.trials.currenttrialstep = cts + 1
-					start.trials.combocounter = combocount()
+					if not start.trialsdata.trial[ct].trialstep[cts].isnohit[ctms] and combocount() == 0 and combocount() == start.trialsdata.combocounter then
+						start.trialsdata.combocounter = start.trialsdata.combocounter + 1
+					else
+						start.trialsdata.combocounter = combocount()
+					end	
 					start.trials.pauseuntilnexthit = start.trials.trial[ct].trialstep[cts].validuntilnexthit[ctms]
 					if start.trials.currenttrialstep > #start.trials.trial[ct].trialstep then
 						-- If trial step was last, go to next trial and display success banner
