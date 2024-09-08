@@ -111,7 +111,7 @@ local function f_trialsDummySetup()
 		if start.trials.trial[start.trials.currenttrial].guardmode == 'none' then
 			charMapSet(2, '_iksys_trainingGuardMode', 0)
 		elseif start.trials.trial[start.trials.currenttrial].guardmode == 'auto' then
-			charMapSet(2, '_iksys_trainingGuardMode', 1)
+			charMapSet(2, '_iksys_trainingGuardMode', 2)
 		end
 		if start.trials.trial[start.trials.currenttrial].buttonjam == 'none' then
 			charMapSet(2, '_iksys_trainingButtonJam', 0)
