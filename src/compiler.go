@@ -2611,6 +2611,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_projectilevar_animelem
 		case "pausemovetime":
 			opc = OC_ex2_projectilevar_pausemovetime
+		case "projid":
+			opc = OC_ex2_projectilevar_projid
+		case "teamside":
+			opc = OC_ex2_projectilevar_teamside
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
 		}

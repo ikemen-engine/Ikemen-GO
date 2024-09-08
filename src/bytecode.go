@@ -748,6 +748,8 @@ const (
 	OC_ex2_projectilevar_animelem
 	OC_ex2_projectilevar_supermovetime
 	OC_ex2_projectilevar_pausemovetime
+	OC_ex2_projectilevar_projid
+	OC_ex2_projectilevar_teamside
 )
 const (
 	NumVar     = 60
@@ -3077,6 +3079,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_projectilevar_animelem:
 		fallthrough
 	case OC_ex2_projectilevar_supermovetime:
+		fallthrough
+	case OC_ex2_projectilevar_projid:
+		fallthrough
+	case OC_ex2_projectilevar_teamside:
 		fallthrough
 	// END FALLTHROUGH (projvar)
 	case OC_ex2_projectilevar_pausemovetime:

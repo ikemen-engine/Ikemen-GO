@@ -3131,7 +3131,7 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 			}
 		}
 		// Update animation local scale
-		c.animlocalscl = (320 / sys.chars[c.animPN][0].localcoord)
+		c.animlocalscl = 320 / sys.chars[c.animPN][0].localcoord
 		// Clsn scale depends on the animation owner's scale, so it must be updated
 		c.updateClsnScale()
 		if c.hitPause() {
@@ -3777,6 +3777,10 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) Bytec
 				v = BytecodeInt(p.supermovetime)
 			case OC_ex2_projectilevar_pausemovetime:
 				v = BytecodeInt(p.pausemovetime)
+			case OC_ex2_projectilevar_projid:
+				v = BytecodeInt(int32(p.id))
+			case OC_ex2_projectilevar_teamside:
+				v = BytecodeInt(int32(p.hitdef.teamside))
 			}
 			break
 		}
