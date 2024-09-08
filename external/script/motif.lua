@@ -1723,10 +1723,10 @@ local motif =
 	{
 		--same default values as menu_info
 		menu_valuename_trialsList = "", --Ikemen feature
-		menu_valuename_trialAdvancement_autoadvance = "Auto-Advance",
-		menu_valuename_trialAdvancement_repeat = "Repeat",
-		menu_valuename_trialResetonSuccess_yes = "Yes",
-		menu_valuename_trialResetonSuccess_no = "No",
+		menu_valuename_trialadvancement_autoadvance = "Auto-Advance",
+		menu_valuename_trialadvancement_repeat = "Repeat",
+		menu_valuename_trialresetonsuccess_yes = "Yes",
+		menu_valuename_trialresetonsuccess_no = "No",
 	},
 	trialsbgdef =
 	{
@@ -2496,7 +2496,7 @@ function motif.setBaseTrialsInfo()
 	motif.trials_info.menu_itemname_menutrials = "Trials Menu"
 	motif.trials_info.menu_itemname_menutrials_trialslist = "Trials List"
 	motif.trials_info.menu_itemname_menutrials_trialadvancement = "Trial Advancement"
-	motif.trials_info.menu_itemname_menutrials_trialresetonSuccess = "Reset on Success"
+	motif.trials_info.menu_itemname_menutrials_trialresetonsuccess = "Reset on Success"
 	motif.trials_info.menu_itemname_menutrials_back = "Back"
 	motif.trials_info.menu_itemname_empty = ""
 	motif.trials_info.menu_itemname_menuinput = "Button Config"
@@ -2518,7 +2518,7 @@ function motif.setBaseTrialsInfo()
 		"menutrials",
 		"menutrials_trialslist",
 		"menutrials_trialadvancement",
-		"menutrials_trialresetonSuccess",
+		"menutrials_trialresetonsuccess",
 		"menutrials_back",
 		"empty",
 		"menuinput",

@@ -748,7 +748,7 @@ function trials.f_trialsChecker()
 							else
 								start.trials.draw.success = math.max(motif.trials_mode.success_front_displaytime, motif.trials_mode.success_bg_displaytime, motif.trials_mode.success_text_displaytime)
 							end
-							if motif.trials_mode.resetonsuccess == "true" then
+							if motif.trials_mode.trialresetonsuccess == "true" then
 								start.trials.draw.fadein = motif.trials_mode.fadein_time
 								start.trials.draw.fadeout = motif.trials_mode.fadeout_time
 								start.trials.draw.fade = start.trials.draw.fadein + start.trials.draw.fadeout
@@ -769,7 +769,7 @@ function trials.f_trialsChecker()
 	--If the trial was completed successfully, draw the trials success
 	if start.trials.draw.success > 0 then
 		f_trialsSuccess('success', ct)
-	elseif start.trials.draw.fade > 0 and motif.trials_mode.resetonsuccess == "true" then
+	elseif start.trials.draw.fade > 0 and motif.trials_mode.trialresetonsuccess == "true" then
 		if start.trials.draw.fade < start.trials.draw.fadein + start.trials.draw.fadeout then
 			f_trialsFade()
 		else
