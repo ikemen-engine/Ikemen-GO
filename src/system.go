@@ -830,39 +830,60 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 		s.appendToConsole(str)
 	}
 }
+
 func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32,
 	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32) bool {
+
+	// Skip function if any boxes are missing
 	if clsn1 == nil || clsn2 == nil {
 		return false
 	}
+
+	// Flip boxes if scale < 0
 	if scl1[0] < 0 {
-		facing1 *= -1
-		scl1[0] *= -1
+		facing1 = -facing1
+		scl1[0] = -scl1[0]
 	}
 	if scl2[0] < 0 {
-		facing2 *= -1
-		scl2[0] *= -1
+		facing2 = -facing2
+		scl2[0] = -scl2[0]
 	}
-	for i1 := 0; i1+3 < len(clsn1); i1 += 4 {
-		l1, r1 := clsn1[i1], clsn1[i1+2]
+
+	// Loop through first set of boxes
+	for i := 0; i+3 < len(clsn1); i += 4 {
+		// Calculate positions
+		l1 := clsn1[i]
+		r1 := clsn1[i+2]
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
-		for i2 := 0; i2+3 < len(clsn2); i2 += 4 {
-			l2, r2 := clsn2[i2], clsn2[i2+2]
+		left1 := l1*scl1[0]+pos1[0]
+		right1 := r1*scl1[0]+pos1[0]
+		top1 := clsn1[i+1]*scl1[1]+pos1[1]
+		bottom1 := clsn1[i+3]*scl1[1]+pos1[1]
+
+		// Loop through second set of boxes
+		for j := 0; j+3 < len(clsn2); j += 4 {
+			// Calculate positions
+			l2 := clsn2[j]
+			r2 := clsn2[j+2]
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			if l1*scl1[0]+pos1[0] <= r2*scl2[0]+pos2[0] && // Left Clsn1 <= Right Clsn2
-				l2*scl2[0]+pos2[0] <= r1*scl1[0]+pos1[0] && // Left Clsn2 <= Right Clsn1
-				clsn1[i1+1]*scl1[1]+pos1[1] <= (clsn2[i2+3])*scl2[1]+pos2[1] && // Top Clsn1 <= Bottom Clsn2
-				clsn2[i2+1]*scl2[1]+pos2[1] <= (clsn1[i1+3])*scl1[1]+pos1[1] { // Top Clsn2 <= Bottom Clsn1
+			left2 := l2*scl2[0]+pos2[0]
+			right2 := r2*scl2[0]+pos2[0]
+			top2 := clsn2[j+1]*scl2[1]+pos2[1]
+			bottom2 := clsn2[j+3]*scl2[1]+pos2[1]
+
+			// Check for overlap
+			if left1 <= right2 && left2 <= right1 && top1 <= bottom2 && top2 <= bottom1 {
 				return true
 			}
 		}
 	}
 	return false
 }
+
 func (s *System) newCharId() int32 {
 	s.nextCharId++
 	return s.nextCharId - 1
@@ -1219,7 +1240,7 @@ func (s *System) action() {
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
 
-	// Run lifebar
+	// Run fight screen
 	if s.lifebar.ro.act() {
 		if s.intro > s.lifebar.ro.ctrl_time {
 			s.intro--

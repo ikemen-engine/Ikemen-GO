@@ -1155,12 +1155,26 @@ type Explod struct {
 }
 
 func (e *Explod) clear() {
-	*e = Explod{id: IErr, bindtime: 1, scale: [...]float32{1, 1}, removetime: -2,
-		postype: PT_P1, space: Space_none, relativef: 1, facing: 1, vfacing: 1, localscl: 1,
-		projection: Projection_Orthographic,
-		window:     [4]float32{0, 0, 0, 0},
-		animelem:   1, blendmode: 0,
-		alpha: [...]int32{-1, 0}, playerId: -1, bindId: -2, ignorehitpause: true}
+	*e = Explod{
+		id:             IErr,
+		bindtime:       1,
+		scale:          [...]float32{1, 1},
+		removetime:     -2,
+		postype:        PT_P1,
+		space:          Space_none,
+		relativef:      1,
+		facing:         1,
+		vfacing:        1,
+		localscl:       1,
+		projection:     Projection_Orthographic,
+		window:         [4]float32{0, 0, 0, 0},
+		animelem:       1,
+		blendmode:      0,
+		alpha:          [...]int32{-1, 0},
+		playerId:       -1,
+		bindId:         -2,
+		ignorehitpause: true,
+	}
 }
 func (e *Explod) reset() {
 	e.facing = 1
@@ -1607,14 +1621,33 @@ func newProjectile() *Projectile {
 	p.clear()
 	return p
 }
+
 func (p *Projectile) clear() {
-	*p = Projectile{id: IErr, hitanim: -1, remanim: IErr, cancelanim: IErr,
-		scale: [...]float32{1, 1}, clsnScale: [...]float32{1, 1}, remove: true, localscl: 1,
-		removetime: -1, velmul: [...]float32{1, 1}, hits: 1, priority: 1,
-		priorityPoints: 1, sprpriority: 3, edgebound: 40, stagebound: 40,
-		heightbound: [...]int32{-240, 1}, facing: 1, aimg: *newAfterImage(), platformFence: true}
+	*p = Projectile{
+		id:             IErr,
+		hitanim:        -1,
+		remanim:        IErr,
+		cancelanim:     IErr,
+		scale:          [...]float32{1, 1},
+		clsnScale:      [...]float32{1, 1},
+		remove:         true,
+		localscl:       1,
+		removetime:     -1,
+		velmul:         [...]float32{1, 1},
+		hits:           1,
+		priority:       1,
+		priorityPoints: 1,
+		sprpriority:    3,
+		edgebound:      40,
+		stagebound:     40,
+		heightbound:    [...]int32{-240, 1},
+		facing:         1,
+		aimg:           *newAfterImage(),
+		platformFence:  true,
+	}
 	p.hitdef.clear()
 }
+
 func (p *Projectile) setPos(pos [2]float32) {
 	p.pos, p.oldPos, p.newPos = pos, pos, pos
 }
@@ -1635,45 +1668,55 @@ func (p *Projectile) paused(playerNo int) bool {
 func (p *Projectile) update(playerNo int) {
 	// Check projectile removal conditions
 	if sys.tickFrame() && !p.paused(playerNo) && p.hitpause == 0 {
-		p.remflag = true
 		if p.anim >= 0 {
-			if p.hits < 0 && p.remove {
-				if p.hits == -1 {
-					if p.hitanim != p.anim || p.hitanim_ffx != p.anim_ffx {
-						p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, p.hitanim_ffx, true)
+			if !p.remflag {
+				remove := true
+				if p.hits < 0 {
+					// Remove behavior
+					if p.hits == -1 && p.remove {
+						if p.hitanim != p.anim || p.hitanim_ffx != p.anim_ffx {
+							p.ani = sys.chars[playerNo][0].getAnim(p.hitanim, p.hitanim_ffx, true)
+						}
 					}
-				} else if p.cancelanim != p.anim || p.cancelanim_ffx != p.anim_ffx {
-					p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_ffx, true)
-				}
-			} else if p.removetime == 0 ||
-				p.removetime <= -2 && (p.ani == nil || p.ani.loopend) ||
-				p.pos[0] < (sys.xmin-sys.screenleft)/p.localscl-float32(p.edgebound) ||
-				p.pos[0] > (sys.xmax+sys.screenright)/p.localscl+float32(p.edgebound) ||
-				p.velocity[0]*p.facing < 0 && p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
-				p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
-				p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
-				p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) {
-				if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
-					p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
-				}
-			} else {
-				p.remflag = false
-			}
-			if p.remflag {
-				if p.ani != nil {
-					p.ani.UpdateSprite()
-				}
-				p.velocity = p.remvelocity
-				if p.facing == p.removefacing {
-					p.facing = p.removefacing
+					// Cancel behavior
+					if p.hits == -2 {
+						if p.cancelanim != p.anim || p.cancelanim_ffx != p.anim_ffx {
+							p.ani = sys.chars[playerNo][0].getAnim(p.cancelanim, p.cancelanim_ffx, true)
+						}
+					}
+				} else if p.removetime == 0 ||
+					p.removetime <= -2 && (p.ani == nil || p.ani.loopend) ||
+					p.pos[0] < (sys.xmin-sys.screenleft)/p.localscl-float32(p.edgebound) ||
+					p.pos[0] > (sys.xmax+sys.screenright)/p.localscl+float32(p.edgebound) ||
+					p.velocity[0]*p.facing < 0 && p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
+					p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
+					p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
+					p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) {
+					if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
+						p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
+					}
 				} else {
-					p.velocity[0] *= -1
+					remove = false
 				}
-				p.accel, p.velmul, p.anim = [2]float32{}, [...]float32{1, 1}, -1
-				// In Mugen, projectiles can hit even after their removetime expires - https://github.com/ikemen-engine/Ikemen-GO/issues/1362
-				//if p.hits >= 0 {
-				//	p.hits = -1
-				//}
+				if remove {
+					p.remflag = true
+					if p.ani != nil {
+						p.ani.UpdateSprite()
+					}
+					p.velocity = p.remvelocity
+					if p.facing == p.removefacing {
+						p.facing = p.removefacing
+					} else {
+						p.velocity[0] *= -1
+					}
+					p.accel = [2]float32{0, 0}
+					p.velmul = [2]float32{1, 1}
+					p.anim = -1
+					// In Mugen, projectiles can hit even after their removetime expires - https://github.com/ikemen-engine/Ikemen-GO/issues/1362
+					//if p.hits >= 0 {
+					//	p.hits = -1
+					//}
+				}
 			}
 		}
 		if p.remflag {
@@ -1714,53 +1757,80 @@ func (p *Projectile) update(playerNo int) {
 
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo, index int) {
-	if p.ani == nil || len(p.ani.frames) == 0 {
+
+	// Skip if this projectile can't trade at all
+	if p.remflag || p.hits < 0 || p.id < 0 {
 		return
 	}
 
+	// Skip if this projectile can't run a collision check at all
+	if p.ani == nil || len(p.ani.frames) == 0 || p.ani.CurrentFrame().Clsn2() == nil {
+		return
+	}
+
+	// Function to subtract projectile hits upon trading
 	cancel := func(priorityPoints *int32, hits *int32, oppPriorityPoints int32) {
 		if *priorityPoints > oppPriorityPoints {
 			(*priorityPoints)--
 		} else {
 			(*hits)--
 		}
-
 		if *hits <= 0 {
-			*hits = -2
+			*hits = -2 // -2 hits means the projectile was cancelled
 		}
 	}
 
-	for i := 0; i < len(sys.chars) && p.hits >= 0; i++ {
-		// In Mugen projectiles could not hit projectiles from the same player
-		//if len(sys.chars[i]) == 0 {//|| i == playerNo {
+	// Loop through all players starting from the current one
+	// Previous players are skipped to prevent checking the same projectile pairs twice
+	for i := playerNo; i < len(sys.chars) && p.hits >= 0; i++ {
 		if len(sys.chars[i]) == 0 {
 			continue
 		}
-		for j, pr := range sys.projs[i] {
-			if i == playerNo && j == index { // Self
-				continue
-			}
-			if pr.hits < 0 || pr.id < 0 || pr.ani == nil || len(pr.ani.frames) == 0 {
-				continue
-			}
-			// Teamside check
-			if pr.hitdef.affectteam != 0 &&
-				((p.hitdef.teamside-1 != pr.hitdef.teamside-1) != (pr.hitdef.affectteam > 0) ||
-					(p.hitdef.teamside-1 == pr.hitdef.teamside-1) != (pr.hitdef.affectteam < 0)) {
-				continue
-			}
-			clsn1 := pr.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
-			clsn2 := p.ani.CurrentFrame().Clsn2()
-			if clsn1 != nil && clsn2 != nil {
-				if sys.clsnOverlap(clsn1, [...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
-					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing,
-					clsn2, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing) {
 
-					opp, pp := &sys.projs[i][j], p.priorityPoints
+        // If at parent's index, skip self and previously checked pairs
+		// In Mugen, projectiles just never hit other projectiles from the same player
+        startj := 0
+        if i == playerNo {
+            startj = index + 1
+        }
+
+		// Loop through their projectiles
+        for j := startj; j < len(sys.projs[i]); j++ {
+            pr := &sys.projs[i][j]
+
+			// Skip if other projectile can't trade
+			if pr.remflag || pr.hits < 0 || pr.id < 0 {
+				continue
+			}
+
+			// Skip if other projectile can't run collision check
+			if pr.ani == nil || len(pr.ani.frames) == 0 || pr.ani.CurrentFrame().Clsn2() == nil {
+				continue
+			}
+
+			// Teamside check for both projectiles
+			if p.hitdef.affectteam != 0 && pr.hitdef.affectteam != 0 {
+				friendly := p.hitdef.teamside == pr.hitdef.teamside
+				if (p.hitdef.affectteam > 0 && pr.hitdef.affectteam > 0 && friendly) ||
+				   (p.hitdef.affectteam < 0 && pr.hitdef.affectteam < 0 && !friendly) {
+					continue
+				}
+			}
+
+			// Run Clsn check
+			clsn1 := p.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
+			clsn2 := pr.ani.CurrentFrame().Clsn2()
+			if clsn1 != nil && clsn2 != nil {
+				if sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
+					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
+					clsn2, [...]float32{pr.clsnScale[0] * p.localscl, pr.clsnScale[1] * p.localscl},
+					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing) {
+					// Subtract projectile hits from each other
+					pp := p.priorityPoints
+					opp := &sys.projs[i][j]
 					cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
 					cancel(&opp.priorityPoints, &opp.hits, pp)
-
+					// Stop entire loop when out of projectile hits
 					if p.hits < 0 {
 						break
 					}
@@ -1769,6 +1839,7 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 		}
 	}
 }
+
 func (p *Projectile) tick(playerNo int) {
 	if p.contactflag {
 		p.contactflag = false
@@ -1778,15 +1849,10 @@ func (p *Projectile) tick(playerNo int) {
 			p.hits--
 			if p.hits <= 0 {
 				p.hits = -1
-				if p.remove {
-					p.remflag = true // Set flag immediately just in case
-				}
+				p.hitpause = 0
 			}
 		}
 		p.hitdef.air_juggle = 0
-	}
-	if p.remflag {
-		p.hitpause = 0
 	}
 	if !p.paused(playerNo) {
 		if p.hitpause <= 0 {
@@ -1816,7 +1882,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	}
 	if sys.clsnDraw && p.ani != nil {
 		if frm := p.ani.drawFrame(); frm != nil {
-			xs := p.facing * p.clsnScale[0] * p.localscl
+			xs := p.clsnScale[0] * p.localscl * p.facing
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
 				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
 			}
@@ -2044,6 +2110,7 @@ type Char struct {
 	fallTime            int32
 	localcoord          float32
 	localscl            float32
+	animlocalscl        float32
 	size                CharSize
 	clsnScale           [2]float32
 	hitdef              HitDef
@@ -3063,6 +3130,8 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 				c.anim.palettedata.Remap(spr.palidx, di)
 			}
 		}
+		// Update animation local scale
+		c.animlocalscl = 320 / sys.chars[c.animPN][0].localcoord
 		// Clsn scale depends on the animation owner's scale, so it must be updated
 		c.updateClsnScale()
 		if c.hitPause() {
@@ -3708,6 +3777,10 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) Bytec
 				v = BytecodeInt(p.supermovetime)
 			case OC_ex2_projectilevar_pausemovetime:
 				v = BytecodeInt(p.pausemovetime)
+			case OC_ex2_projectilevar_projid:
+				v = BytecodeInt(int32(p.id))
+			case OC_ex2_projectilevar_teamside:
+				v = BytecodeInt(int32(p.hitdef.teamside))
 			}
 			break
 		}
@@ -4741,11 +4814,12 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if p.ani != nil {
 		p.ani.UpdateSprite()
 	}
+	// Clsn scale
 	if c.size.proj.doscale != 0 {
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
 	}
-	if rc {
+	if rc { // ProjRescaleClsn
 		p.clsnScale = p.scale
 	} else {
 		p.clsnScale = c.clsnScale
@@ -4921,13 +4995,17 @@ func (c *Char) updateClsnScale() {
 	// Index range checks. Prevents crashing if chars don't have animations
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1982
 	if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
+		// The char's own Clsn scale
+		// Based on the animation owner's scale constants
 		c.clsnScale = [...]float32{
-			sys.chars[c.animPN][0].size.xscale * (320 / sys.chars[c.animPN][0].localcoord),
-			sys.chars[c.animPN][0].size.yscale * (320 / sys.chars[c.animPN][0].localcoord),
+			sys.chars[c.animPN][0].size.xscale,
+			sys.chars[c.animPN][0].size.yscale,
 		}
 	} else {
+		// Normally not used. Just a safeguard
 		c.clsnScale = [...]float32{1.0, 1.0}
 	}
+	// AngleDraw rescaling
 	if c.angleRescaleClsn {
 		c.clsnScale[0] *= c.angleScale[0]
 		c.clsnScale[1] *= c.angleScale[1]
@@ -6462,7 +6540,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
-		clsn2, [...]float32{c.clsnScale[0], c.clsnScale[1]},
+		clsn2, [...]float32{c.clsnScale[0] * c.animlocalscl, c.clsnScale[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
 }
@@ -6517,10 +6595,10 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 		return false
 	}
 
-	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0], c.clsnScale[1]},
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.animlocalscl, c.clsnScale[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing,
-		clsn2, [...]float32{getter.clsnScale[0], getter.clsnScale[1]},
+		clsn2, [...]float32{getter.clsnScale[0] * getter.animlocalscl, getter.clsnScale[1] * getter.animlocalscl},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
 }
@@ -7429,8 +7507,8 @@ func (c *Char) cueDraw() {
 	y := c.pos[1] * c.localscl
 	xoff := x + c.offsetX()*c.localscl
 	yoff := y + c.offsetY()*c.localscl
-	xs := c.clsnScale[0] * c.facing
-	ys := c.clsnScale[1]
+	xs := c.clsnScale[0] * c.animlocalscl * c.facing
+	ys := c.clsnScale[1] * c.animlocalscl
 	nhbtxt := ""
 	// Debug Clsn display
 	if sys.clsnDraw && c.curFrame != nil {

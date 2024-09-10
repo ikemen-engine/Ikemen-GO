@@ -748,6 +748,8 @@ const (
 	OC_ex2_projectilevar_animelem
 	OC_ex2_projectilevar_supermovetime
 	OC_ex2_projectilevar_pausemovetime
+	OC_ex2_projectilevar_projid
+	OC_ex2_projectilevar_teamside
 )
 const (
 	NumVar     = 60
@@ -3077,6 +3079,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_projectilevar_animelem:
 		fallthrough
 	case OC_ex2_projectilevar_supermovetime:
+		fallthrough
+	case OC_ex2_projectilevar_projid:
+		fallthrough
+	case OC_ex2_projectilevar_teamside:
 		fallthrough
 	// END FALLTHROUGH (projvar)
 	case OC_ex2_projectilevar_pausemovetime:
@@ -11030,65 +11036,75 @@ func (sc height) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-type modifyChar StateControllerBase
+type modifyPlayer StateControllerBase
 
 const (
-	modifyChar_lifemax byte = iota
-	modifyChar_powermax
-	modifyChar_dizzypointsmax
-	modifyChar_guardpointsmax
-	modifyChar_teamside
-	modifyChar_displayname
-	modifyChar_lifebarname
-	modifyChar_redirectid
+	modifyPlayer_lifemax byte = iota
+	modifyPlayer_powermax
+	modifyPlayer_dizzypointsmax
+	modifyPlayer_guardpointsmax
+	modifyPlayer_teamside
+	modifyPlayer_displayname
+	modifyPlayer_lifebarname
+	modifyPlayer_helperid
+	modifyPlayer_redirectid
 )
 
 // TODO: Undo all effects if a cached character is loaded
-func (sc modifyChar) Run(c *Char, _ []int32) bool {
+func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 	crun := c
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
-		case modifyChar_lifemax:
+		case modifyPlayer_lifemax:
 			lm := exp[0].evalI(c)
 			if lm < 1 {
 				lm = 1
 			}
 			crun.lifeMax = lm
 			crun.life = Clamp(crun.life, 0, crun.lifeMax)
-		case modifyChar_powermax:
+		case modifyPlayer_powermax:
 			pm := exp[0].evalI(c)
 			if pm < 0 {
 				pm = 0
 			}
 			crun.powerMax = pm
 			crun.power = Clamp(crun.power, 0, crun.powerMax)
-		case modifyChar_dizzypointsmax:
+		case modifyPlayer_dizzypointsmax:
 			dp := exp[0].evalI(c)
 			if dp < 0 {
 				dp = 0
 			}
 			crun.dizzyPointsMax = dp
 			crun.dizzyPoints = Clamp(crun.dizzyPoints, 0, crun.dizzyPointsMax)
-		case modifyChar_guardpointsmax:
+		case modifyPlayer_guardpointsmax:
 			gp := exp[0].evalI(c)
 			if gp < 0 {
 				gp = 0
 			}
 			crun.guardPointsMax = gp
 			crun.guardPoints = Clamp(crun.guardPoints, 0, crun.guardPointsMax)
-		case modifyChar_teamside:
+		case modifyPlayer_teamside:
 			ts := int(exp[0].evalI(c))
 			if ts >= 0 && ts <= 2 {
 				ts -= 1 // Internally the teamside goes from -1 to 1
 				crun.teamside = ts
 			}
-		case modifyChar_displayname:
+		case modifyPlayer_displayname:
 			dn := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			sys.cgi[crun.playerNo].displayname = dn
-		case modifyChar_lifebarname:
+		case modifyPlayer_lifebarname:
 			ln := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
 			sys.cgi[crun.playerNo].lifebarname = ln
-		case modifyChar_redirectid:
+		case modifyPlayer_helperid:
+			if crun.helperIndex != 0 {
+				id := exp[0].evalI(c)
+				if id >= 0 {
+					crun.helperId = id
+				} else {
+					crun.helperId = 0
+				}
+			}
+		case modifyPlayer_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
 			} else {

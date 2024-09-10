@@ -5201,37 +5201,37 @@ func (c *Compiler) height(is IniSection, sc *StateControllerBase, _ int8) (State
 	return *ret, err
 }
 
-func (c *Compiler) modifyChar(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
-	ret, err := (*modifyChar)(sc), c.stateSec(is, func() error {
+func (c *Compiler) modifyPlayer(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*modifyPlayer)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
-			modifyChar_redirectid, VT_Int, 1, false); err != nil {
+			modifyPlayer_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "lifemax",
-			modifyChar_lifemax, VT_Int, 1, false); err != nil {
+			modifyPlayer_lifemax, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "powermax",
-			modifyChar_powermax, VT_Int, 1, false); err != nil {
+			modifyPlayer_powermax, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "dizzypointsmax",
-			modifyChar_dizzypointsmax, VT_Int, 1, false); err != nil {
+			modifyPlayer_dizzypointsmax, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "guardpointsmax",
-			modifyChar_guardpointsmax, VT_Int, 1, false); err != nil {
+			modifyPlayer_guardpointsmax, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "teamside",
-			modifyChar_teamside, VT_Int, 1, false); err != nil {
+			modifyPlayer_teamside, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "displayname", false, func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Not enclosed in \"")
 			}
-			sc.add(modifyChar_displayname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(modifyPlayer_displayname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
 			return err
@@ -5240,9 +5240,13 @@ func (c *Compiler) modifyChar(is IniSection, sc *StateControllerBase, _ int8) (S
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Not enclosed in \"")
 			}
-			sc.add(modifyChar_lifebarname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(modifyPlayer_lifebarname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "helperid",
+			modifyPlayer_helperid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return nil
