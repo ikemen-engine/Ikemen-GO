@@ -2104,7 +2104,7 @@ func (ro *LifeBarRound) isSingleRound() bool {
 
 func (ro *LifeBarRound) isFinalRound() bool {
 	return !sys.consecutiveRounds && sys.round > 1 && sys.roundType[0] == RT_Final &&
-			(sys.draws >= sys.lifebar.ro.match_maxdrawgames[0] || sys.draws >= sys.lifebar.ro.match_maxdrawgames[1])
+		(sys.draws >= sys.lifebar.ro.match_maxdrawgames[0] || sys.draws >= sys.lifebar.ro.match_maxdrawgames[1])
 }
 
 func (ro *LifeBarRound) act() bool {
@@ -2440,9 +2440,9 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 		// Draw default round background
 		for i := range ro.round_default_bg {
 			ro.round_default_bg[i].Draw(
-				float32(ro.pos[0])+sys.lifebarOffsetX, 
-				float32(ro.pos[1]), 
-				layerno, 
+				float32(ro.pos[0])+sys.lifebarOffsetX,
+				float32(ro.pos[1]),
+				layerno,
 				sys.lifebarScale,
 			)
 		}
@@ -2492,7 +2492,7 @@ func (ro *LifeBarRound) draw(layerno int16, f []*Fnt) {
 
 		// Backup round_ref text
 		tmp = round_ref.text.text
-		
+
 		// Format the round_ref text with the round number
 		round_ref.text.text = OldSprintf(tmp, roundNum)
 

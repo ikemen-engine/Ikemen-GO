@@ -1787,16 +1787,16 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			continue
 		}
 
-        // If at parent's index, skip self and previously checked pairs
+		// If at parent's index, skip self and previously checked pairs
 		// In Mugen, projectiles just never hit other projectiles from the same player
-        startj := 0
-        if i == playerNo {
-            startj = index + 1
-        }
+		startj := 0
+		if i == playerNo {
+			startj = index + 1
+		}
 
 		// Loop through their projectiles
-        for j := startj; j < len(sys.projs[i]); j++ {
-            pr := &sys.projs[i][j]
+		for j := startj; j < len(sys.projs[i]); j++ {
+			pr := &sys.projs[i][j]
 
 			// Skip if other projectile can't trade
 			if pr.remflag || pr.hits < 0 || pr.id < 0 {
@@ -1812,7 +1812,7 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			if p.hitdef.affectteam != 0 && pr.hitdef.affectteam != 0 {
 				friendly := p.hitdef.teamside == pr.hitdef.teamside
 				if (p.hitdef.affectteam > 0 && pr.hitdef.affectteam > 0 && friendly) ||
-				   (p.hitdef.affectteam < 0 && pr.hitdef.affectteam < 0 && !friendly) {
+					(p.hitdef.affectteam < 0 && pr.hitdef.affectteam < 0 && !friendly) {
 					continue
 				}
 			}
