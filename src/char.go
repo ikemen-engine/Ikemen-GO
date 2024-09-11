@@ -3699,6 +3699,10 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 				v = BytecodeInt(e.pausemovetime)
 			case OC_ex2_explodvar_sprpriority:
 				v = BytecodeInt(e.sprpriority)
+			case OC_ex2_explodvar_layerno:
+				v = BytecodeInt(e.layerno)
+			case OC_ex2_explodvar_id:
+				v = BytecodeInt(e.id)
 			}
 			break
 		}

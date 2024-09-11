@@ -715,6 +715,8 @@ const (
 	OC_ex2_explodvar_removetime
 	OC_ex2_explodvar_pausemovetime
 	OC_ex2_explodvar_sprpriority
+	OC_ex2_explodvar_layerno
+	OC_ex2_explodvar_id
 	OC_ex2_projectilevar_projremove
 	OC_ex2_projectilevar_projremovetime
 	OC_ex2_projectilevar_projshadow_r
@@ -2985,6 +2987,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_explodvar_sprpriority:
 		fallthrough
+	case OC_ex2_explodvar_layerno:
+		fallthrough
+	case OC_ex2_explodvar_id:
+		fallthrough
 	case OC_ex2_explodvar_scale_x:
 		fallthrough
 	case OC_ex2_explodvar_scale_y:
@@ -3233,6 +3239,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			b.forEnd, b.forIncrement = b.forExpression[1].evalI(c), b.forExpression[2].evalI(c)
 		}
 		// Start loop
+		loopCount := 0
 		interrupt := false
 		for {
 			// Decide if while loop should be stopped
@@ -3287,6 +3294,12 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 				}
 			}
 			if interrupt {
+				break
+			}
+			// Safety check. Prevents a bad loop from freezing Ikemen
+			loopCount++	
+			if loopCount >= 2500 {
+				sys.appendToConsole("Loop automatically stopped after 2500 iterations")
 				break
 			}
 		}

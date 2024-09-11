@@ -1889,6 +1889,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_explodvar_removetime
 		case "pausemovetime":
 			opc = OC_ex2_explodvar_pausemovetime
+		case "sprpriority":
+			opc = OC_ex2_explodvar_sprpriority
+		case "layerno":
+			opc = OC_ex2_explodvar_layerno
+		case "id":
+			opc = OC_ex2_explodvar_id
 		case "pos":
 			c.token = c.tokenizer(in)
 
