@@ -221,6 +221,14 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 			// Ikemen global flags
 			case "globalnoko":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_globalnoko)))
+			case "nofightdisplay":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nofightdisplay)))
+			case "nokodisplay":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nokodisplay)))
+			case "norounddisplay":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_norounddisplay)))
+			case "nowindisplay":
+				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_nowindisplay)))
 			case "roundnotskip":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_roundnotskip)))
 			case "roundfreeze":

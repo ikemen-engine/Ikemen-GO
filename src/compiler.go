@@ -3687,6 +3687,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		// Ikemen global flags
 		case "globalnoko":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoko))
+		case "nofightdisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofightdisplay))
+		case "nokodisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokodisplay))
+		case "norounddisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_norounddisplay))
+		case "nowindisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nowindisplay))
 		case "roundnotskip":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
 		case "roundfreeze":

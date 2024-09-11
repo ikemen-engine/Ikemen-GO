@@ -4836,7 +4836,7 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_projtypecollision)))
 		case "nofallhitflag":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nofallhitflag)))
-		// GlobalSpecialFlag
+		// GlobalSpecialFlag Mugen
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))
 		case "roundnotover":
@@ -4857,8 +4857,17 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.gsf(GSF_nokosnd)))
 		case "nokoslow":
 			l.Push(lua.LBool(sys.gsf(GSF_nokoslow)))
+		// GlobalSpecialFlag Ikemen
 		case "globalnoko":
 			l.Push(lua.LBool(sys.gsf(GSF_globalnoko)))
+		case "nofightdisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_nofightdisplay)))
+		case "nokodisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_nokodisplay)))
+		case "norounddisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_norounddisplay)))
+		case "nowindisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_nowindisplay)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.gsf(GSF_roundnotskip)))
 		case "roundfreeze":

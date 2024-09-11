@@ -118,6 +118,10 @@ const (
 	GSF_roundnotover
 	GSF_timerfreeze
 	// Ikemen flags
+	GSF_nofightdisplay
+	GSF_nokodisplay
+	GSF_norounddisplay
+	GSF_nowindisplay
 	GSF_roundnotskip
 	GSF_roundfreeze
 )
@@ -3568,10 +3572,10 @@ func (c *Char) lose() bool {
 	return sys.winTeam == ^c.playerNo&1
 }
 func (c *Char) loseKO() bool {
-	return c.lose() && sys.finish == FT_KO
+	return c.lose() && sys.finishType == FT_KO
 }
 func (c *Char) loseTime() bool {
-	return c.lose() && sys.finish == FT_TO
+	return c.lose() && sys.finishType == FT_TO
 }
 func (c *Char) moveContact() int32 {
 	if c.mctype != MC_Reversed {
@@ -4060,10 +4064,10 @@ func (c *Char) win() bool {
 	return sys.winTeam == c.playerNo&1
 }
 func (c *Char) winKO() bool {
-	return c.win() && sys.finish == FT_KO
+	return c.win() && sys.finishType == FT_KO
 }
 func (c *Char) winTime() bool {
-	return c.win() && sys.finish == FT_TO
+	return c.win() && sys.finishType == FT_TO
 }
 func (c *Char) winPerfect() bool {
 	return c.win() && sys.winType[c.playerNo&1] >= WT_PNormal
