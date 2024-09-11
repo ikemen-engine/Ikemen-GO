@@ -661,7 +661,7 @@ func (s *System) playerIndex(id int32) *Char {
 	return s.charList.getIndex(id)
 }
 func (s *System) matchOver() bool {
-	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
+	return s.wins[0] > 0 && (s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1])
 }
 func (s *System) playerIDExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
@@ -993,12 +993,12 @@ func (s *System) nextRound() {
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
 	s.time = s.roundTime
 	s.nextCharId = s.helperMax
-	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0]-1) ||
-		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins[0]-1) {
+	if (s.tmode[0] == TM_Turns && s.wins[1] >= s.numTurns[0]-1) ||
+		(s.tmode[0] != TM_Turns && s.wins[1] >= s.lifebar.ro.match_wins[0]-1) {
 		s.roundType[0] = RT_Deciding
 	}
-	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1]-1) ||
-		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins[1]-1) {
+	if (s.tmode[1] == TM_Turns && s.wins[0] >= s.numTurns[1]-1) ||
+		(s.tmode[1] != TM_Turns && s.wins[0] >= s.lifebar.ro.match_wins[1]-1) {
 		s.roundType[1] = RT_Deciding
 	}
 	if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
@@ -1391,6 +1391,7 @@ func (s *System) action() {
 			return ko[0] || ko[1] || s.time == 0
 		}
 		if s.roundEnd() || fin() {
+			// Consecutive wins counter
 			inclWinCount := func() {
 				w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
 				if !w[0] || !w[1] ||
