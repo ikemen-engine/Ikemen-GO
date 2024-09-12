@@ -40,7 +40,6 @@ const (
 	CSF_gethit
 	CSF_movecamera_x
 	CSF_movecamera_y
-	CSF_offset
 	CSF_playerpush
 	CSF_posfreeze
 	CSF_screenbound
@@ -2053,12 +2052,9 @@ type CharSystemVar struct {
 	bindFacing        float32
 	hitPauseTime      int32
 	angle             float32
-	angleTrg          float32
 	angleScale        [2]float32
-	angleScaleTrg     [2]float32
 	angleRescaleClsn  bool
 	alpha             [2]int32
-	alphaTrg          [2]int32
 	systemFlag        SystemCharFlag
 	specialFlag       CharSpecialFlag
 	sprPriority       int32
@@ -2147,7 +2143,6 @@ type Char struct {
 	cpucmd          int32
 	attackDist      [2]float32
 	offset          [2]float32
-	offsetTrg       [2]float32
 	stchtmp         bool
 	inguarddist     bool
 	pushed          bool
@@ -2312,8 +2307,9 @@ func (c *Char) clear2() {
 	c.sysFvarRangeSet(0, int32(NumSysFvar)-1, 0)
 	atk := float32(c.gi().data.attack) * c.ocd().attackRatio / 100
 	c.CharSystemVar = CharSystemVar{
-		bindToId:   -1,
-		angleScale: [...]float32{1, 1}, angleScaleTrg: [...]float32{1, 1}, alphaTrg: [...]int32{255, 0}, alpha: [...]int32{255, 0},
+		bindToId:        -1,
+		angleScale:      [...]float32{1, 1},
+		alpha:           [...]int32{255, 0},
 		width:           [...]float32{c.defFW(), c.defBW()},
 		height:          [...]float32{c.defTHeight(), c.defBHeight()},
 		attackMul:       [4]float32{atk, atk, atk, atk},
@@ -5825,7 +5821,6 @@ func (c *Char) hitPause() bool {
 }
 func (c *Char) angleSet(a float32) {
 	c.angle = a
-	c.angleTrg = c.angle
 }
 func (c *Char) inputOver() bool {
 	if c.asf(ASF_postroundinput) {
@@ -6848,10 +6843,8 @@ func (c *Char) actionPrepare() {
 					c.setCSF(CSF_playerpush)
 				}
 			}
-			c.angleScale = [...]float32{1, 1}
 			c.attackDist[0] = float32(c.size.attack.dist.front)
 			c.attackDist[1] = float32(c.size.attack.dist.back)
-			c.offset = [2]float32{}
 			// HitBy timers
 			// In Mugen this seems to happen at the end of each frame instead
 			for i, hb := range c.hitby {
@@ -6878,7 +6871,7 @@ func (c *Char) actionPrepare() {
 		c.unsetASF(ASF_animatehitpause)
 		// In WinMugen all of these flags persisted during hitpause
 		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
-			c.unsetCSF(CSF_angledraw | CSF_offset | CSF_trans)
+			c.unsetCSF(CSF_angledraw | CSF_trans)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
@@ -7207,17 +7200,6 @@ func (c *Char) update() {
 		if c.csf(CSF_destroy) {
 			c.destroy()
 			return
-		}
-		if !c.csf(CSF_offset) {
-			c.offsetTrg = [2]float32{}
-		}
-		if !c.csf(CSF_angledraw) {
-			c.angleTrg = 0
-			c.angleScaleTrg = [...]float32{1, 1}
-		}
-		if !c.csf(CSF_trans) {
-			c.alphaTrg[0] = 255
-			c.alphaTrg[1] = 0
 		}
 		if !c.pause() && !c.isBound() {
 			c.bind()

@@ -2747,19 +2747,39 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
 		}
 	case OC_ex_angle:
-		sys.bcStack.PushF(c.angleTrg)
+		if c.csf(CSF_angledraw) {
+			sys.bcStack.PushF(c.angle)
+		} else {
+			sys.bcStack.PushF(0)
+		}
 	case OC_ex_scale_x:
-		sys.bcStack.PushF(c.angleScaleTrg[0])
+		if c.csf(CSF_angledraw) {
+			sys.bcStack.PushF(c.angleScale[0])
+		} else {
+			sys.bcStack.PushF(0)
+		}
 	case OC_ex_scale_y:
-		sys.bcStack.PushF(c.angleScaleTrg[1])
+		if c.csf(CSF_angledraw) {
+			sys.bcStack.PushF(c.angleScale[1])
+		} else {
+			sys.bcStack.PushF(0)
+		}
 	case OC_ex_offset_x:
-		sys.bcStack.PushF(c.offsetTrg[0])
+		sys.bcStack.PushF(c.offset[0]) // Already in local scale
 	case OC_ex_offset_y:
-		sys.bcStack.PushF(c.offsetTrg[1])
+		sys.bcStack.PushF(c.offset[1])
 	case OC_ex_alpha_s:
-		sys.bcStack.PushI(c.alphaTrg[0])
+		if c.csf(CSF_trans) {
+			sys.bcStack.PushI(c.alpha[0])
+		} else {
+			sys.bcStack.PushI(255)
+		}
 	case OC_ex_alpha_d:
-		sys.bcStack.PushI(c.alphaTrg[1])
+		if c.csf(CSF_trans) {
+			sys.bcStack.PushI(c.alpha[1])
+		} else {
+			sys.bcStack.PushI(0)
+		}
 	case OC_ex_selfcommand:
 		if c.cmd == nil {
 			sys.bcStack.PushB(false)
@@ -3299,7 +3319,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			// Safety check. Prevents a bad loop from freezing Ikemen
 			loopCount++	
 			if loopCount >= 2500 {
-				sys.appendToConsole("Loop automatically stopped after 2500 iterations")
+				sys.appendToConsole(sys.workingChar.warn() + "loop automatically stopped after 2500 iterations")
 				break
 			}
 		}
@@ -8047,8 +8067,6 @@ func (sc trans) Run(c *Char, _ []int32) bool {
 					crun.alpha[0] = 0
 				}
 			}
-			crun.alphaTrg[0] = crun.alpha[0]
-			crun.alphaTrg[1] = crun.alpha[1]
 		case trans_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8139,10 +8157,8 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			crun.angleSet(exp[0].evalF(c))
 		case angleDraw_scale:
 			crun.angleScale[0] *= exp[0].evalF(c)
-			crun.angleScaleTrg[0] = crun.angleScale[0]
 			if len(exp) > 1 {
 				crun.angleScale[1] *= exp[1].evalF(c)
-				crun.angleScaleTrg[1] = crun.angleScale[1]
 			}
 		case angleDraw_rescaleClsn:
 			if exp[0].evalB(c) {
@@ -9073,10 +9089,8 @@ func (sc offset) Run(c *Char, _ []int32) bool {
 		switch id {
 		case offset_x:
 			crun.offset[0] = exp[0].evalF(c) * c.localscl
-			crun.offsetTrg[0] = crun.offset[0]
 		case offset_y:
 			crun.offset[1] = exp[0].evalF(c) * c.localscl
-			crun.offsetTrg[1] = crun.offset[1]
 		case offset_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
