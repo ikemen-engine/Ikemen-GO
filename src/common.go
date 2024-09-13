@@ -91,6 +91,40 @@ func ClampF(x, a, b float32) float32 {
 	return MaxF(a, MinF(x, b))
 }
 
+func Rad(f float32) float32 {
+	return float32(f * math.Pi / 180)
+}
+
+func Deg(f float32) float32 {
+	return float32(f * 180 / math.Pi)
+}
+
+func Cos(f float32) float32 {
+	return float32(math.Cos(float64(f)))
+}
+
+func Sin(f float32) float32 {
+	return float32(math.Sin(float64(f)))
+}
+func Sign(i int32) int32 {
+	if i < 0 {
+		return -1
+	} else if i > 0 {
+		return 1
+	} else {
+		return 0
+	}
+}
+
+func SignF(f float32) float32 {
+	if f < 0 {
+		return -1
+	} else if f > 0 {
+		return 1
+	} else {
+		return 0
+	}
+}
 func Abs(i int32) int32 {
 	if i < 0 {
 		return -i

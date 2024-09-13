@@ -831,13 +831,79 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 	}
 }
 
-func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32,
-	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32) bool {
+func rectrotate(x, y, w, h, cx, cy, angle float32) ([][2]float32) {
+	rp := make([][2]float32, 4)
+	corners := [][2]float32{
+		{x, y},
+		{x+w, y},
+		{x+w, y+h},
+		{x, y+h},
+	}
+	for i := 0; i < 4; i++ {
+		p := corners[i]
+		tx := p[0]-cx
+		ty := p[1]-cy
+		newX := Cos(angle)*tx-Sin(angle)*ty+cx
+		newY := Sin(angle)*tx+Cos(angle)*ty+cy
+		rp[i] = [2]float32{newX, newY}
+	}
+	return rp
+}
+
+// Check if two rotated rectangles intersect.
+func rectintersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, angle2 float32) bool {
+	rect1 := rectrotate(x1, y1, w1, h1, cx1, cy1, angle1)
+	rect2 := rectrotate(x2, y2, w2, h2, cx2, cy2, angle2)
+	projectionRange := func(rect [][2]float32, normal [2]float32) (min float32, max float32) {
+		min = math.MaxFloat32
+		max = -math.MaxFloat32
+		for _, p := range rect {
+			projected := normal[0]*p[0]+normal[1]*p[1]
+			if projected < min {
+				min = projected
+			}
+			if projected > max {
+				max = projected
+			}
+		}
+		return
+	}
+	for i1 := 0; i1 < len(rect1); i1++ {
+		i2 := (i1+1)%len(rect1)
+		p1 := rect1[i1]
+		p2 := rect1[i2]
+		nx := p2[1]-p1[1]
+		ny := p1[0]-p2[0]
+		minA, maxA := projectionRange(rect1, [2]float32{nx, ny})
+		minB, maxB := projectionRange(rect2, [2]float32{nx, ny})
+		if maxA < minB || maxB < minA {
+			return false
+		}
+	}
+	for i1 := 0; i1 < len(rect2); i1++ {
+		i2 := (i1 + 1) % len(rect2)
+		p1 := rect2[i1]
+		p2 := rect2[i2]
+		nx := p2[1] - p1[1]
+		ny := p1[0] - p2[0]
+		minA, maxA := projectionRange(rect1, [2]float32{nx, ny})
+		minB, maxB := projectionRange(rect2, [2]float32{nx, ny})
+		if maxA < minB || maxB < minA {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32, angle1 float32,
+	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32, angle2 float32) bool {
 
 	// Skip function if any boxes are missing
 	if clsn1 == nil || clsn2 == nil {
 		return false
 	}
+	anface1 := facing1
+	anface2 := facing2
 
 	// Flip boxes if scale < 0
 	if scl1[0] < 0 {
@@ -848,7 +914,6 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 		facing2 = -facing2
 		scl2[0] = -scl2[0]
 	}
-
 	// Loop through first set of boxes
 	for i := 0; i+3 < len(clsn1); i += 4 {
 		// Calculate positions
@@ -857,10 +922,10 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
-		left1 := l1*scl1[0] + pos1[0]
-		right1 := r1*scl1[0] + pos1[0]
-		top1 := clsn1[i+1]*scl1[1] + pos1[1]
-		bottom1 := clsn1[i+3]*scl1[1] + pos1[1]
+		left1 := l1*scl1[0] //+ pos1[0]
+		right1 := r1*scl1[0] //+ pos1[0]
+		top1 := clsn1[i+1]*scl1[1] //+ pos1[1]
+		bottom1 := clsn1[i+3]*scl1[1] //+ pos1[1]
 
 		// Loop through second set of boxes
 		for j := 0; j+3 < len(clsn2); j += 4 {
@@ -870,15 +935,22 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			left2 := l2*scl2[0] + pos2[0]
-			right2 := r2*scl2[0] + pos2[0]
-			top2 := clsn2[j+1]*scl2[1] + pos2[1]
-			bottom2 := clsn2[j+3]*scl2[1] + pos2[1]
+			left2 := l2*scl2[0] //+ pos2[0]
+			right2 := r2*scl2[0] //+ pos2[0]
+			top2 := clsn2[j+1]*scl2[1] //+ pos2[1]
+			bottom2 := clsn2[j+3]*scl2[1] //+ pos2[1]
 
 			// Check for overlap
-			if left1 <= right2 && left2 <= right1 && top1 <= bottom2 && top2 <= bottom1 {
-				return true
+			if angle1 != 0 || angle2  != 0 {
+				if rectintersect(left1+pos1[0], top1+pos1[1], right1-left1, bottom1-top1, left2+pos2[0], top2+pos2[1], right2-left2, bottom2-top2, pos1[0], pos1[1], pos2[0], pos2[1], -Rad(angle1*anface1), -Rad(angle2*anface2)) {
+					return true
+				}
+			} else {
+				if left1+ pos1[0] <= right2+pos2[0] && left2+pos2[0] <= right1+pos1[0] && top1+pos1[1] <= bottom2+pos2[1]  && top2+pos2[1]  <= bottom1+pos1[1]  {
+					return true
+				}
 			}
+
 		}
 	}
 	return false
