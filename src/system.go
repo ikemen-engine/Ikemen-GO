@@ -660,9 +660,13 @@ func (s *System) playerID(id int32) *Char {
 func (s *System) playerIndex(id int32) *Char {
 	return s.charList.getIndex(id)
 }
+
+// We must check if wins are greater than 0 because modes like Training may have "0 rounds to win"
 func (s *System) matchOver() bool {
-	return s.wins[0] > 0 && (s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1])
+	return s.wins[0] > 0 && s.wins[0] >= s.matchWins[0] ||
+		s.wins[1] > 0 && s.wins[1] >= s.matchWins[1]
 }
+
 func (s *System) playerIDExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
 		return BytecodeSF()
@@ -1398,14 +1402,16 @@ func (s *System) action() {
 			return ko[0] || ko[1] || s.time == 0
 		}
 		if s.roundEnd() || fin() {
-			// Consecutive wins counter
-			inclWinCount := func() {
-				w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
-				if !w[0] || !w[1] ||
+			rs4t := -s.lifebar.ro.over_waittime
+			s.intro--
+			if s.intro == -s.lifebar.ro.over_hittime && s.finishType != FT_NotYet {
+				// Consecutive wins counter
+				winner := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+				if !winner[0] || !winner[1] ||
 					s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 					s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
 					s.draws >= s.lifebar.ro.match_maxdrawgames[1] {
-					for i, win := range w {
+					for i, win := range winner {
 						if win {
 							s.wins[i]++
 							if s.matchOver() && s.wins[^i&1] == 0 {
@@ -1415,11 +1421,6 @@ func (s *System) action() {
 						}
 					}
 				}
-			}
-			rs4t := -s.lifebar.ro.over_waittime
-			s.intro--
-			if s.intro == -s.lifebar.ro.over_hittime && s.finishType != FT_NotYet {
-				inclWinCount()
 			}
 			// Check if player skipped win pose time
 			if s.roundWinTime() && (s.anyButton() && !s.gsf(GSF_roundnotskip)) {
@@ -1465,16 +1466,24 @@ func (s *System) action() {
 				// Set characters into win/lose poses, update win counters
 				if s.waitdown <= 0 || s.roundWinTime() {
 					if s.waitdown >= 0 {
-						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
-						if !w[0] || !w[1] ||
+						winner := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+						if !winner[0] || !winner[1] ||
 							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames[1] {
-							for i, win := range w {
+							for i, win := range winner {
 								if win {
 									s.lifebar.wi[i].add(s.winType[i])
-									if s.matchOver() && s.wins[i] >= s.matchWins[i] {
-										s.lifebar.wc[i].wins += 1
+									if s.matchOver() {
+										// In a draw game both players go back to 0 wins
+										if winner[0] && winner[1] { // sys.winTeam < 0
+											s.lifebar.wc[0].wins = 0
+											s.lifebar.wc[1].wins = 0
+										} else {
+											if s.wins[i] >= s.matchWins[i] {
+												s.lifebar.wc[i].wins += 1
+											}
+										}
 									}
 								}
 							}
