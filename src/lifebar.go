@@ -3836,6 +3836,7 @@ func (l *Lifebar) reloadLifebar() error {
 	sys.lifebar = *lb
 	return nil
 }
+
 func (l *Lifebar) step() {
 	if sys.paused && !sys.step {
 		return
@@ -3951,6 +3952,7 @@ func (l *Lifebar) step() {
 		}
 	}
 }
+
 func (l *Lifebar) reset() {
 	var num [2]int
 	for ti, tm := range sys.tmode {

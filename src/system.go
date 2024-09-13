@@ -1098,19 +1098,28 @@ func (s *System) nextRound() {
 func (s *System) debugPaused() bool {
 	return s.paused && !s.step && s.oldTickCount < s.tickCount
 }
+
+// "Tick frames" are the frames where most of the game logic happens
 func (s *System) tickFrame() bool {
 	return (!s.paused || s.step) && s.oldTickCount < s.tickCount
 }
+
+// "Tick next frame" is right after the "tick frame"
+// Where for instance the collision detections happen
 func (s *System) tickNextFrame() bool {
 	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
 		(!s.paused || s.step || s.oldTickCount >= s.tickCount)
 }
-func (s *System) tickInterpola() float32 {
+
+// This divides a frame into fractions for the purpose of drawing position interpolation
+func (s *System) tickInterpolation() float32 {
 	if s.tickNextFrame() {
 		return 1
+	} else {
+		return s.tickCountF - s.lastTick + s.nextAddTime
 	}
-	return s.tickCountF - s.lastTick + s.nextAddTime
 }
+
 func (s *System) addFrameTime(t float32) bool {
 	if s.debugPaused() {
 		s.oldNextAddTime = 0
@@ -1209,7 +1218,8 @@ func (s *System) charUpdate() {
 	}
 }
 
-func (s *System) charTickNextUpdate() {
+// Run collision detection for chars and projectiles
+func (s *System) globalCollision() {
 	for i, pr := range s.projs {
 		for j, p := range pr {
 			if p.id >= 0 {
@@ -1225,7 +1235,6 @@ func (s *System) charTickNextUpdate() {
 			}
 		}
 	}
-	s.charList.tick()
 }
 
 func (s *System) posReset() {
@@ -1236,6 +1245,7 @@ func (s *System) posReset() {
 	}
 }
 func (s *System) action() {
+	// Clear sprite data
 	s.spritesLayerN1 = s.spritesLayerN1[:0]
 	s.spritesLayerU = s.spritesLayerU[:0]
 	s.spritesLayer0 = s.spritesLayer0[:0]
@@ -1252,6 +1262,7 @@ func (s *System) action() {
 	s.debugcsize = s.debugcsize[:0]
 	s.debugch = s.debugch[:0]
 	s.clsnText = nil
+
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
 
@@ -1591,14 +1602,18 @@ func (s *System) action() {
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
 	}
 
-	// This function runs every tick unlike charTickNextUpdate()
-	// It must be between "tick frame" and "tick next frame"
+	// This function runs every tick
+	// It should be placed between "tick frame" and "tick next frame"
 	s.charUpdate()
 
 	// Update lifebars
 	// This must happen before hit detection for accurate display
 	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
 	s.lifebar.step()
+	if s.tickNextFrame() {
+		s.globalCollision()
+		s.charList.tick()
+	}
 
 	// Run camera
 	x, y, scl = s.cam.action(x, y, scl, s.super > 0 || s.pause > 0)
@@ -1606,7 +1621,6 @@ func (s *System) action() {
 	// Run "tick next frame"
 	//introSkip := false
 	if s.tickNextFrame() {
-		s.charTickNextUpdate()
 		if s.lifebar.ro.current < 1 && !s.introSkipped {
 			if s.shuttertime > 0 ||
 				s.anyButton() && !s.gsf(GSF_roundnotskip) && s.intro > s.lifebar.ro.ctrl_time {
@@ -1704,7 +1718,7 @@ func (s *System) action() {
 	explUpdate(&s.explodsLayer1, false)
 	if s.tickNextFrame() {
 		spd := s.gameSpeed * s.accel
-		if s.postMatchFlg {
+		if s.postMatchFlg || s.step {
 			spd = 1
 		} else if !s.gsf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed

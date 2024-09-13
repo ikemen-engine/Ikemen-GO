@@ -1349,9 +1349,10 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			// e.setY(e.pos[1])
 		}
 	} else {
+		// Explod position interpolation
+		spd := sys.tickInterpolation()
 		for i := range e.pos {
-			e.pos[i] = e.newPos[i] -
-				(e.newPos[i]-e.oldPos[i])*(1-sys.tickInterpola())
+			e.pos[i] = e.newPos[i] - (e.newPos[i]-e.oldPos[i])*(1-spd)
 		}
 	}
 	off := e.relativePos
@@ -1599,6 +1600,8 @@ type Projectile struct {
 	stagebound      int32
 	heightbound     [2]int32
 	pos             [2]float32
+	oldPos          [2]float32
+	drawPos         [2]float32
 	facing          float32
 	removefacing    float32
 	shadow          [3]int32
@@ -1607,8 +1610,6 @@ type Projectile struct {
 	ani             *Animation
 	curmisstime     int32
 	hitpause        int32
-	oldPos          [2]float32
-	newPos          [2]float32
 	aimg            AfterImage
 	palfx           *PalFX
 	localscl        float32
@@ -1657,8 +1658,11 @@ func (p *Projectile) clear() {
 }
 
 func (p *Projectile) setPos(pos [2]float32) {
-	p.pos, p.oldPos, p.newPos = pos, pos, pos
+	p.pos = pos
+	p.oldPos = pos
+	p.drawPos = pos
 }
+
 func (p *Projectile) paused(playerNo int) bool {
 	//if !sys.chars[playerNo][0].pause() {
 	if sys.super > 0 {
@@ -1741,15 +1745,15 @@ func (p *Projectile) update(playerNo int) {
 		// There's a minor issue here where a projectile will lag behind one frame relative to Mugen if created during a pause
 	} else {
 		if sys.tickFrame() {
-			p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
-		}
-		ti := sys.tickInterpola()
-		for i, np := range p.newPos {
-			p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
+			p.pos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
+			p.drawPos = p.pos
+		} 
+		spd := sys.tickInterpolation()
+		for i := 0; i < 2; i++ {
+			p.drawPos[i] = p.pos[i] - (p.pos[i]-p.oldPos[i])*(1-spd)
 		}
 		if sys.tickNextFrame() {
 			p.oldPos = p.pos
-			p.pos = p.newPos
 			for i := range p.velocity {
 				p.velocity[i] += p.accel[i]
 				p.velocity[i] *= p.velmul[i]
@@ -1888,6 +1892,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	if sys.tickFrame() && p.ani != nil && notpause {
 		p.ani.UpdateSprite()
 	}
+	// Projectie Clsn display
 	if sys.clsnDraw && p.ani != nil {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.clsnScale[0] * p.localscl * p.facing
@@ -1912,7 +1917,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	}
 	var c = sys.chars[playerNo][0]
 	if p.ani != nil {
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
@@ -7319,7 +7324,7 @@ func (c *Char) update() {
 		c.pushed = false
 	}
 	if c.acttmp > 0 {
-		spd := sys.tickInterpola()
+		spd := sys.tickInterpolation()
 		if c.pushed {
 			spd = 0
 		}
@@ -9087,6 +9092,7 @@ func (cl *CharList) collisionDetection() {
 	// Push detection for players
 	// This must happen before hit detection
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1941
+	// An attempt was made to skip redundant player pair checks, but that makes chars push each other too slowly in screen corners
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.pushDetection(cl.runOrder[sortedOrder[i]])
 	}
