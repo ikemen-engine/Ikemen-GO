@@ -944,6 +944,7 @@ func (dl DrawList) draw(x, y, scl float32) {
 		}
 		sys.brightness = ob
 	}
+	BlendReset()
 }
 
 type ShadowSprite struct {
@@ -1083,7 +1084,6 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 					(s.pos[1]-s.reflectOffset[1]-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, 0,
 				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
 		}
-
 	}
 }
 

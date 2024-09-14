@@ -192,6 +192,7 @@ func (cr ClsnRect) draw(trans int32) {
 		}
 		RenderSprite(params)
 	}
+
 }
 
 type CharData struct {
@@ -1492,7 +1493,12 @@ func (e *Explod) Interpolate(act bool, scale *[2]float32, alpha *[2]int32, angle
 		if i < 2 {
 			(*scale)[i] = e.interpolate_scale[i] * e.scale[i]
 			if e.blendmode == 1 {
-				(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+				if (*alpha)[0] == 1 && (*alpha)[1] == 255 {
+					(*alpha)[0] = 0
+				} else {
+					(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+				}
+
 			}
 		}
 		(*anglerot)[i] = e.interpolate_angle[i] + e.anglerot[i]

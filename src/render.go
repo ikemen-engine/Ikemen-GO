@@ -284,6 +284,9 @@ func rmInitSub(rp *RenderParams) {
 	rp.y += rp.rcy
 }
 
+func BlendReset() {
+	gfx.BlendReset()
+}
 func RenderSprite(rp RenderParams) {
 	if !rp.IsValid() {
 		return
@@ -339,7 +342,6 @@ func RenderSprite(rp RenderParams) {
 
 		gfx.ReleasePipeline()
 	}, rp.trans, rp.paltex != nil, invblend, &neg, &padd, &pmul, rp.paltex == nil)
-
 	gfx.DisableScissor()
 }
 

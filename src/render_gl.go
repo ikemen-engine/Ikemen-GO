@@ -417,6 +417,10 @@ func (r *Renderer) BeginFrame(clearColor bool) {
 	}
 }
 
+func (r *Renderer) BlendReset() {
+	gl.BlendEquation(BlendEquationLUT[BlendAdd])
+	gl.BlendFunc(BlendFunctionLUT[BlendSrcAlpha], BlendFunctionLUT[BlendOneMinusSrcAlpha])
+}
 func (r *Renderer) EndFrame() {
 	if sys.multisampleAntialiasing > 0 {
 		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, r.fbo_f)
