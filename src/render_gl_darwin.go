@@ -426,6 +426,10 @@ func (r *Renderer) BeginFrame(clearColor bool) {
 	}
 }
 
+func (r *Renderer) BlendReset() {
+	gl.BlendEquation(BlendEquationLUT[BlendAdd])
+	gl.BlendFunc(BlendFunctionLUT[BlendSrcAlpha], BlendFunctionLUT[BlendOneMinusSrcAlpha])
+}
 func (r *Renderer) EndFrame() {
 	gl.BindVertexArray(r.vao)
 
