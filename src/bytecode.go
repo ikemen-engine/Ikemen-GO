@@ -2756,13 +2756,13 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		if c.csf(CSF_angledraw) {
 			sys.bcStack.PushF(c.angleScale[0])
 		} else {
-			sys.bcStack.PushF(0)
+			sys.bcStack.PushF(1)
 		}
 	case OC_ex_scale_y:
 		if c.csf(CSF_angledraw) {
 			sys.bcStack.PushF(c.angleScale[1])
 		} else {
-			sys.bcStack.PushF(0)
+			sys.bcStack.PushF(1)
 		}
 	case OC_ex_offset_x:
 		sys.bcStack.PushF(c.offset[0]) // Already in local scale
@@ -5705,7 +5705,6 @@ const (
 	hitDef_ground_hittime
 	hitDef_guard_hittime
 	hitDef_guard_dist
-	hitDef_guard_dist_back
 	hitDef_pausetime
 	hitDef_guard_pausetime
 	hitDef_air_velocity
@@ -5931,8 +5930,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.guard_hittime = exp[0].evalI(c)
 	case hitDef_guard_dist:
 		hd.guard_dist[0] = exp[0].evalI(c)
-	case hitDef_guard_dist_back:
-		hd.guard_dist[1] = exp[0].evalI(c)
+		if len(exp) > 1 {
+			hd.guard_dist[1] = exp[1].evalI(c)
+		}
 	case hitDef_pausetime:
 		hd.pausetime = exp[0].evalI(c)
 		hd.guard_pausetime = hd.pausetime
@@ -6888,10 +6888,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			case hitDef_guard_dist:
 				eachProj(func(p *Projectile) {
 					p.hitdef.guard_dist[0] = exp[0].evalI(c)
-				})
-			case hitDef_guard_dist_back:
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_dist[1] = exp[0].evalI(c)
+					if len(exp) > 1 {
+						p.hitdef.guard_dist[1] = exp[1].evalI(c)
+					}
 				})
 			case hitDef_pausetime:
 				eachProj(func(p *Projectile) {
@@ -8435,7 +8434,6 @@ type attackDist StateControllerBase
 
 const (
 	attackDist_value byte = iota
-	attackDist_back
 	attackDist_redirectid
 )
 
@@ -8446,8 +8444,9 @@ func (sc attackDist) Run(c *Char, _ []int32) bool {
 		switch id {
 		case attackDist_value:
 			crun.attackDist[0] = exp[0].evalF(c) * lclscround
-		case attackDist_back:
-			crun.attackDist[1] = exp[0].evalF(c) * lclscround
+			if len(exp) > 1 {
+				crun.attackDist[1] = exp[1].evalF(c) * lclscround
+			}
 		case attackDist_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

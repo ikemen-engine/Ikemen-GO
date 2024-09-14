@@ -5020,7 +5020,7 @@ func triggerFunctions(l *lua.LState) {
 		if sys.debugWC.csf(CSF_angledraw) {
 			l.Push(lua.LNumber(sys.debugWC.angleScale[0]))
 		} else {
-			l.Push(lua.LNumber(0))
+			l.Push(lua.LNumber(1))
 		}
 		return 1
 	})
@@ -5028,7 +5028,7 @@ func triggerFunctions(l *lua.LState) {
 		if sys.debugWC.csf(CSF_angledraw) {
 			l.Push(lua.LNumber(sys.debugWC.angleScale[1]))
 		} else {
-			l.Push(lua.LNumber(0))
+			l.Push(lua.LNumber(1))
 		}
 		return 1
 	})
