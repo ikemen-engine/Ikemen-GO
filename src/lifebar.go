@@ -3944,7 +3944,9 @@ func (l *Lifebar) step() {
 		} else {
 			l.textsprite[i].Draw()
 			if sys.tickNextFrame() {
-				l.textsprite[i].removetime--
+				if l.textsprite[i].removetime > 0 {
+					l.textsprite[i].removetime--
+				}
 			}
 		}
 	}

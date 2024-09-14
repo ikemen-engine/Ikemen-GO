@@ -1193,6 +1193,7 @@ func (s *System) commandUpdate() {
 		}
 	}
 }
+
 func (s *System) charUpdate() {
 	s.charList.update()
 	for i, pr := range s.projs {
@@ -1202,28 +1203,31 @@ func (s *System) charUpdate() {
 			}
 		}
 	}
-	// Update lifebars before hit detection
-	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
-	s.lifebar.step()
-	if s.tickNextFrame() {
-		for i, pr := range s.projs {
-			for j, p := range pr {
-				if p.id >= 0 {
-					s.projs[i][j].tradeDetection(i, j)
-				}
-			}
-		}
-		s.charList.collisionDetection()
-		for i, pr := range s.projs {
-			for j, p := range pr {
-				if p.id != IErr {
-					s.projs[i][j].tick(i)
-				}
-			}
-		}
-		s.charList.tick()
+	// Set global First Attack flag if either team got it
+	if s.firstAttack[0] >= 0 || s.firstAttack[1] >= 0 {
+		s.firstAttack[2] = 1
 	}
 }
+
+func (s *System) charTickNextUpdate() {
+	for i, pr := range s.projs {
+		for j, p := range pr {
+			if p.id >= 0 {
+				s.projs[i][j].tradeDetection(i, j)
+			}
+		}
+	}
+	s.charList.collisionDetection()
+	for i, pr := range s.projs {
+		for j, p := range pr {
+			if p.id != IErr {
+				s.projs[i][j].tick(i)
+			}
+		}
+	}
+	s.charList.tick()
+}
+
 func (s *System) posReset() {
 	for _, p := range s.chars {
 		if len(p) > 0 {
@@ -1531,7 +1535,7 @@ func (s *System) action() {
 		}
 	}
 
-	// Run tick frame
+	// Run "tick frame"
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
@@ -1585,20 +1589,24 @@ func (s *System) action() {
 		}
 		s.charList.action()
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
-	} else {
-		s.charUpdate()
 	}
 
-	// Set global First Attack flag if either team got it
-	if s.firstAttack[0] >= 0 || s.firstAttack[1] >= 0 {
-		s.firstAttack[2] = 1
-	}
+	// This function runs every tick unlike charTickNextUpdate()
+	// It must be between "tick frame" and "tick next frame"
+	s.charUpdate()
+
+	// Update lifebars
+	// This must happen before hit detection for accurate display
+	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
+	s.lifebar.step()
 
 	// Run camera
 	x, y, scl = s.cam.action(x, y, scl, s.super > 0 || s.pause > 0)
 
+	// Run "tick next frame"
 	//introSkip := false
 	if s.tickNextFrame() {
+		s.charTickNextUpdate()
 		if s.lifebar.ro.current < 1 && !s.introSkipped {
 			if s.shuttertime > 0 ||
 				s.anyButton() && !s.gsf(GSF_roundnotskip) && s.intro > s.lifebar.ro.ctrl_time {
@@ -1637,6 +1645,7 @@ func (s *System) action() {
 			}
 		}
 	}
+
 	if !s.cam.ZoomEnable {
 		// Lower the precision to prevent errors in Pos X.
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
