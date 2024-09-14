@@ -1775,9 +1775,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_size_attack_dist_back:
 		sys.bcStack.PushF(c.size.attack.dist.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_back:
-		sys.bcStack.PushF(c.size.attack.z.width[1] * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.size.attack.z.width.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_front:
-		sys.bcStack.PushF(c.size.attack.z.width[0] * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.size.attack.z.width.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_front:
 		sys.bcStack.PushF(c.size.proj.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_back:

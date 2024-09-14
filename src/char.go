@@ -271,7 +271,10 @@ type CharSize struct {
 			back  float32
 		}
 		z struct {
-			width [2]float32
+			width struct {
+				front float32
+				back  float32
+			}
 		}
 	}
 	proj struct {
@@ -322,7 +325,8 @@ func (cs *CharSize) init() {
 	cs.draw.offset = [...]float32{0, 0}
 	cs.z.width = 3
 	cs.z.enable = false
-	cs.attack.z.width = [...]float32{4, 4}
+	cs.attack.z.width.back = 4
+	cs.attack.z.width.front = 4
 }
 
 type CharVelocity struct {
@@ -2532,8 +2536,8 @@ func (c *Char) load(def string) error {
 	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
 	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
 	c.size.z.width = c.size.z.width / originLs
-	c.size.attack.z.width[0] = c.size.attack.z.width[0] / originLs
-	c.size.attack.z.width[1] = c.size.attack.z.width[1] / originLs
+	c.size.attack.z.width.back = c.size.attack.z.width.back / originLs
+	c.size.attack.z.width.front = c.size.attack.z.width.front / originLs
 
 	gi.velocity.init()
 
@@ -2666,8 +2670,10 @@ func (c *Char) load(def string) error {
 						if ztemp == 1 {
 							c.size.z.enable = true
 						}
-						is.ReadF32("attack.z.width",
-							&c.size.attack.z.width[0], &c.size.attack.z.width[1])
+						is.ReadF32("attack.width",
+							&c.size.attack.z.width.back, &c.size.attack.z.width.front)
+						is.ReadF32("attack.z.width.back", &c.size.attack.z.width.back)
+						is.ReadF32("attack.z.width.front", &c.size.attack.z.width.front)
 					}
 				case "velocity":
 					if velocity {

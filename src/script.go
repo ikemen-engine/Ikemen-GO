@@ -3076,9 +3076,9 @@ func triggerFunctions(l *lua.LState) {
 		case "size.attack.dist.back":
 			ln = lua.LNumber(c.size.attack.dist.back)
 		case "size.attack.z.width.back":
-			ln = lua.LNumber(c.size.attack.z.width[1])
+			ln = lua.LNumber(c.size.attack.z.width.back)
 		case "size.attack.z.width.front":
-			ln = lua.LNumber(c.size.attack.z.width[0])
+			ln = lua.LNumber(c.size.attack.z.width.front)
 		case "size.proj.attack.dist", "size.proj.attack.dist.front":
 			ln = lua.LNumber(c.size.proj.attack.dist.front)
 		case "size.proj.attack.dist.back":
