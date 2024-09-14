@@ -36,9 +36,9 @@ if player($pn),ctrl = 0 {
 #===============================================================================
 [StateDef -4]
 
-ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
-	# Do nothing, not training more or statedef executed by helper or not P2
-} else ignoreHitPause if roundState = 0 {
+ignoreHitPause if gameMode != "training" || teamSide != 2 || isHelper {
+	# Do nothing
+} else if roundState = 0 {
 	# Round start reset
 	powerSet{value: player(1),powerMax; redirectid: player(1),id}
 	powerSet{value: player(2),powerMax; redirectid: player(2),id}
@@ -46,7 +46,10 @@ ignoreHitPause if gameMode != "training" || isHelper || teamSide != 2 {
 	map(_iksys_trainingPowerTimer) := 0;
 	map(_iksys_trainingDirection) := 0;
 	map(_iksys_trainingAirJumpNum) := 0;
-} else ignoreHitPause if roundState = 2 {
+} else if roundState = 1 {
+	# Skip round and fight calls
+	assertSpecial{flag: noRoundDisplay; flag2: noFightDisplay}
+} else if roundState = 2 {
 	assertSpecial{flag: globalNoKo}
 	# Life and Power recovery
 	for i = 1; player(1),numPartner + 1; 1 {

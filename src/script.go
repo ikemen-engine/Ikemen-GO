@@ -4410,15 +4410,27 @@ func triggerFunctions(l *lua.LState) {
 	// new triggers
 	// atan2 (dedicated functionality already exists in Lua)
 	luaRegister(l, "angle", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.angleTrg))
+		if sys.debugWC.csf(CSF_angledraw) {
+			l.Push(lua.LNumber(sys.debugWC.angle))
+		} else {
+			l.Push(lua.LNumber(0))
+		}
 		return 1
 	})
 	luaRegister(l, "alphaSource", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.alphaTrg[0]))
+		if sys.debugWC.csf(CSF_trans) {
+			l.Push(lua.LNumber(sys.debugWC.alpha[0]))
+		} else {
+			l.Push(lua.LNumber(255))
+		}
 		return 1
 	})
 	luaRegister(l, "alphaDest", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.alphaTrg[1]))
+		if sys.debugWC.csf(CSF_trans) {
+			l.Push(lua.LNumber(sys.debugWC.alpha[1]))
+		} else {
+			l.Push(lua.LNumber(0))
+		}
 		return 1
 	})
 	luaRegister(l, "animelemlength", func(*lua.LState) int {
@@ -4836,7 +4848,7 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_projtypecollision)))
 		case "nofallhitflag":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nofallhitflag)))
-		// GlobalSpecialFlag
+		// GlobalSpecialFlag Mugen
 		case "intro":
 			l.Push(lua.LBool(sys.gsf(GSF_intro)))
 		case "roundnotover":
@@ -4857,8 +4869,17 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.gsf(GSF_nokosnd)))
 		case "nokoslow":
 			l.Push(lua.LBool(sys.gsf(GSF_nokoslow)))
+		// GlobalSpecialFlag Ikemen
 		case "globalnoko":
 			l.Push(lua.LBool(sys.gsf(GSF_globalnoko)))
+		case "nofightdisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_nofightdisplay)))
+		case "nokodisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_nokodisplay)))
+		case "norounddisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_norounddisplay)))
+		case "nowindisplay":
+			l.Push(lua.LBool(sys.gsf(GSF_nowindisplay)))
 		case "roundnotskip":
 			l.Push(lua.LBool(sys.gsf(GSF_roundnotskip)))
 		case "roundfreeze":
@@ -4926,11 +4947,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "offsetX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.offsetTrg[0]))
+		l.Push(lua.LNumber(sys.debugWC.offset[0]))
 		return 1
 	})
 	luaRegister(l, "offsetY", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.offsetTrg[1]))
+		l.Push(lua.LNumber(sys.debugWC.offset[1]))
 		return 1
 	})
 	luaRegister(l, "pausetime", func(*lua.LState) int {
@@ -4996,11 +5017,19 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "scaleX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.angleScaleTrg[0]))
+		if sys.debugWC.csf(CSF_angledraw) {
+			l.Push(lua.LNumber(sys.debugWC.angleScale[0]))
+		} else {
+			l.Push(lua.LNumber(0))
+		}
 		return 1
 	})
 	luaRegister(l, "scaleY", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.angleScaleTrg[1]))
+		if sys.debugWC.csf(CSF_angledraw) {
+			l.Push(lua.LNumber(sys.debugWC.angleScale[1]))
+		} else {
+			l.Push(lua.LNumber(0))
+		}
 		return 1
 	})
 	luaRegister(l, "sign", func(*lua.LState) int {

@@ -1889,6 +1889,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_explodvar_removetime
 		case "pausemovetime":
 			opc = OC_ex2_explodvar_pausemovetime
+		case "sprpriority":
+			opc = OC_ex2_explodvar_sprpriority
+		case "layerno":
+			opc = OC_ex2_explodvar_layerno
+		case "id":
+			opc = OC_ex2_explodvar_id
 		case "pos":
 			c.token = c.tokenizer(in)
 
@@ -3687,6 +3693,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		// Ikemen global flags
 		case "globalnoko":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_globalnoko))
+		case "nofightdisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nofightdisplay))
+		case "nokodisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nokodisplay))
+		case "norounddisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_norounddisplay))
+		case "nowindisplay":
+			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_nowindisplay))
 		case "roundnotskip":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_roundnotskip))
 		case "roundfreeze":

@@ -228,7 +228,7 @@ type System struct {
 	zoomPos                 [2]float32
 	debugWC                 *Char
 	cam                     Camera
-	finish                  FinishType
+	finishType              FinishType
 	waitdown                int32
 	slowtime                int32
 	shuttertime             int32
@@ -661,7 +661,7 @@ func (s *System) playerIndex(id int32) *Char {
 	return s.charList.getIndex(id)
 }
 func (s *System) matchOver() bool {
-	return s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1]
+	return s.wins[0] > 0 && (s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1])
 }
 func (s *System) playerIDExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
@@ -754,9 +754,9 @@ func (s *System) roundState() int32 {
 		return -1
 	case sys.intro > sys.lifebar.ro.ctrl_time+1:
 		return 0
-	case sys.lifebar.ro.cur == 0:
+	case sys.lifebar.ro.current == 0:
 		return 1
-	case sys.intro >= 0 || sys.finish == FT_NotYet:
+	case sys.intro >= 0 || sys.finishType == FT_NotYet:
 		return 2
 	case sys.intro < -sys.lifebar.ro.over_waittime:
 		return 4
@@ -773,10 +773,10 @@ func (s *System) introState() int32 {
 	case sys.intro > sys.lifebar.ro.ctrl_time:
 		// characters are doing their intros
 		return 2
-	case sys.lifebar.ro.cur == 1 && sys.intro > 0:
+	case sys.lifebar.ro.current == 1 && sys.intro > 0:
 		// fight!
 		return 4
-	case sys.lifebar.ro.cur == 0:
+	case sys.lifebar.ro.current == 0:
 		// dialogueFlg doesn't work here :(
 		for _, p := range sys.chars {
 			if len(p) > 0 && len(p[0].dialogue) > 0 {
@@ -841,12 +841,12 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 
 	// Flip boxes if scale < 0
 	if scl1[0] < 0 {
-		facing1 = -facing1
-		scl1[0] = -scl1[0]
+		facing1 *= -1
+		scl1[0] *= -1
 	}
 	if scl2[0] < 0 {
-		facing2 = -facing2
-		scl2[0] = -scl2[0]
+		facing2 *= -1
+		scl2[0] *= -1
 	}
 
 	// Loop through first set of boxes
@@ -978,7 +978,7 @@ func (s *System) nextRound() {
 	s.resetGblEffect()
 	s.lifebar.reset()
 	s.firstAttack = [3]int{-1, -1, 0}
-	s.finish = FT_NotYet
+	s.finishType = FT_NotYet
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_Normal, WT_Normal}
 	s.winTrigger = [...]WinType{WT_Normal, WT_Normal}
@@ -993,12 +993,12 @@ func (s *System) nextRound() {
 	s.intro = s.lifebar.ro.start_waittime + s.lifebar.ro.ctrl_time + 1
 	s.time = s.roundTime
 	s.nextCharId = s.helperMax
-	if (s.tmode[0] == TM_Turns && s.wins[1] == s.numTurns[0]-1) ||
-		(s.tmode[0] != TM_Turns && s.wins[1] == s.lifebar.ro.match_wins[0]-1) {
+	if (s.tmode[0] == TM_Turns && s.wins[1] >= s.numTurns[0]-1) ||
+		(s.tmode[0] != TM_Turns && s.wins[1] >= s.lifebar.ro.match_wins[0]-1) {
 		s.roundType[0] = RT_Deciding
 	}
-	if (s.tmode[1] == TM_Turns && s.wins[0] == s.numTurns[1]-1) ||
-		(s.tmode[1] != TM_Turns && s.wins[0] == s.lifebar.ro.match_wins[1]-1) {
+	if (s.tmode[1] == TM_Turns && s.wins[0] >= s.numTurns[1]-1) ||
+		(s.tmode[1] != TM_Turns && s.wins[0] >= s.lifebar.ro.match_wins[1]-1) {
 		s.roundType[1] = RT_Deciding
 	}
 	if s.roundType[0] == RT_Deciding && s.roundType[1] == RT_Deciding {
@@ -1308,7 +1308,7 @@ func (s *System) action() {
 					}
 				}
 			}
-			ft := s.finish
+			ft := s.finishType
 			if s.time == 0 {
 				l := [2]float32{}
 				for i := 0; i < 2; i++ {
@@ -1337,7 +1337,7 @@ func (s *System) action() {
 					if p {
 						s.winType[0].SetPerfect()
 					}
-					s.finish = FT_TO
+					s.finishType = FT_TO
 					s.winTeam = 0
 				} else if l[0] < l[1] {
 					p := true
@@ -1351,10 +1351,10 @@ func (s *System) action() {
 					if p {
 						s.winType[1].SetPerfect()
 					}
-					s.finish = FT_TO
+					s.finishType = FT_TO
 					s.winTeam = 1
 				} else {
-					s.finish = FT_TODraw
+					s.finishType = FT_TODraw
 					s.winTeam = -1
 				}
 				if !(ko[0] || ko[1]) {
@@ -1363,14 +1363,14 @@ func (s *System) action() {
 			}
 			if s.intro >= -1 && (ko[0] || ko[1]) {
 				if ko[0] && ko[1] {
-					s.finish = FT_DKO
+					s.finishType = FT_DKO
 					s.winTeam = -1
 				} else {
-					s.finish = FT_KO
+					s.finishType = FT_KO
 					s.winTeam = int(Btoi(ko[0]))
 				}
 			}
-			if ft != s.finish {
+			if ft != s.finishType {
 				for i, p := range sys.chars {
 					if len(p) > 0 && ko[^i&1] {
 						for _, h := range p {
@@ -1391,6 +1391,7 @@ func (s *System) action() {
 			return ko[0] || ko[1] || s.time == 0
 		}
 		if s.roundEnd() || fin() {
+			// Consecutive wins counter
 			inclWinCount := func() {
 				w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
 				if !w[0] || !w[1] ||
@@ -1410,7 +1411,7 @@ func (s *System) action() {
 			}
 			rs4t := -s.lifebar.ro.over_waittime
 			s.intro--
-			if s.intro == -s.lifebar.ro.over_hittime && s.finish != FT_NotYet {
+			if s.intro == -s.lifebar.ro.over_hittime && s.finishType != FT_NotYet {
 				inclWinCount()
 			}
 			// Check if player skipped win pose time
@@ -1582,13 +1583,16 @@ func (s *System) action() {
 
 	//introSkip := false
 	if s.tickNextFrame() {
-		if s.lifebar.ro.cur < 1 && !s.introSkipped {
+		if s.lifebar.ro.current < 1 && !s.introSkipped {
 			if s.shuttertime > 0 ||
 				s.anyButton() && !s.gsf(GSF_roundnotskip) && s.intro > s.lifebar.ro.ctrl_time {
 				s.shuttertime++
 				if s.shuttertime == s.lifebar.ro.shutter_time {
 					s.fadeintime = 0
+					// NoFightDisplay flag must be preserved during intro skip frame
+					skipfight := s.specialFlag&GSF_nofightdisplay
 					s.resetGblEffect()
+					s.specialFlag = skipfight
 					s.intro = s.lifebar.ro.ctrl_time
 					for i, p := range s.chars {
 						if len(p) > 0 {
@@ -1829,7 +1833,7 @@ func (s *System) drawTop() {
 		for _, p := range s.chars {
 			if len(p) > 0 {
 				if len(p[0].dialogue) > 0 {
-					s.lifebar.ro.cur = 3
+					s.lifebar.ro.current = 3
 					s.dialogueFlg = true
 					break
 				}
