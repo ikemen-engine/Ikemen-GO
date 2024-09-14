@@ -1590,7 +1590,7 @@ func (s *System) action() {
 				if s.shuttertime == s.lifebar.ro.shutter_time {
 					s.fadeintime = 0
 					// NoFightDisplay flag must be preserved during intro skip frame
-					skipfight := s.specialFlag&GSF_nofightdisplay
+					skipfight := s.specialFlag & GSF_nofightdisplay
 					s.resetGblEffect()
 					s.specialFlag = skipfight
 					s.intro = s.lifebar.ro.ctrl_time

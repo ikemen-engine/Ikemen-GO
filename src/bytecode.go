@@ -3317,7 +3317,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 				break
 			}
 			// Safety check. Prevents a bad loop from freezing Ikemen
-			loopCount++	
+			loopCount++
 			if loopCount >= 2500 {
 				sys.appendToConsole(sys.workingChar.warn() + "loop automatically stopped after 2500 iterations")
 				break

@@ -2247,7 +2247,7 @@ func (ro *LifeBarRound) act() bool {
 					}
 					ro.waitTimer[1]--
 				} else if !ro.introState[1] {
-					if ro.waitSoundTimer[1] == 0{
+					if ro.waitSoundTimer[1] == 0 {
 						ro.snd.play(ro.fight.snd, 100, 0, 0, 0, 0)
 					}
 					ro.waitSoundTimer[1]--
