@@ -6135,6 +6135,7 @@ const (
 	projectile_projscale
 	projectile_projangle
 	projectile_projrescaleclsn
+	projectile_projrotateclsn
 	projectile_offset
 	projectile_projsprpriority
 	projectile_projlayerno
@@ -6163,6 +6164,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	var x, y float32 = 0, 0
 	op := false
 	rc := false
+	ran := false
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
@@ -6309,6 +6311,8 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		// 	p.platformAngle = exp[0].evalF(c)
 		// case projectile_platformfence:
 		// 	p.platformFence = exp[0].evalB(c)
+		case projectile_projrotateclsn:
+			ran = exp[0].evalB(c)
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
 				afterImage(sc).runSub(c, &p.aimg, id, exp)
@@ -6339,7 +6343,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	} else {
 		p.localscl = crun.localscl
 	}
-	crun.projInit(p, pt, x, y, op, rp[0], rp[1], rc)
+	crun.projInit(p, pt, x, y, op, rp[0], rp[1], rc, ran)
 	return false
 }
 
@@ -8146,6 +8150,7 @@ const (
 	angleDraw_value byte = iota
 	angleDraw_scale
 	angleDraw_rescaleClsn
+	angleDraw_rotateClsn
 	angleDraw_redirectid
 )
 
@@ -8164,6 +8169,11 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			if exp[0].evalB(c) {
 				crun.angleRescaleClsn = true
 				crun.updateClsnScale()
+			}
+		case angleDraw_rotateClsn:
+			if exp[0].evalB(c) {
+				crun.angleRotateClsn = true
+				crun.updateClsnAngle()
 			}
 		case angleDraw_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {

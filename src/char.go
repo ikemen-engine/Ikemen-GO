@@ -167,23 +167,20 @@ type ClsnText struct {
 	r, g, b int32
 }
 
-type ClsnRect [][4]float32
+type ClsnRect [][7]float32
 
-func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys float32) {
+func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys, angle float32) {
 	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
 	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 	xs *= sys.cam.Scale
 	ys *= sys.cam.Scale
 	for i := 0; i+3 < len(clsn); i += 4 {
-		rect := [...]float32{x + xs*clsn[i] + float32(sys.gameWidth)/2,
-			y + ys*clsn[i+1] + float32(sys.gameHeight-240),
-			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1])}
-		if xs < 0 {
-			rect[0] *= -1
-		}
-		if ys < 0 {
-			rect[1] *= -1
-		}
+		offx := (float32(sys.gameWidth)/2)
+		offy := (float32(sys.gameHeight-240))
+		rect := [...]float32{
+			AbsF(xs)*clsn[i],AbsF(ys)*clsn[i+1] ,
+			xs*(clsn[i+2] - clsn[i]),ys*(clsn[i+3] - clsn[i+1]),
+			(x+offx)*sys.widthScale, (y+offy)*sys.heightScale,angle}
 		*cr = append(*cr, rect)
 	}
 }
@@ -192,12 +189,13 @@ func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		params := RenderParams{
 			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
-			-c[0] * sys.widthScale, -c[1] * sys.heightScale, notiling,
-			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale, 1, 0,
-			1, 1, Rotation{}, 0, trans, -1, nil, &sys.scrrect, 0, 0, 0, 0, 0, 0,
+			-c[0]*sys.widthScale, -c[1]*sys.heightScale, notiling,
+			c[2]*sys.widthScale , c[2]*sys.widthScale , c[3]*sys.heightScale , 1, 0,
+			1, 1, Rotation{c[6],0,0}, 0, trans, -1, nil, &sys.scrrect, c[4], c[5], 0, 0, 0, 0,
 		}
 		RenderSprite(params)
 	}
+
 }
 
 type CharData struct {
@@ -1498,7 +1496,12 @@ func (e *Explod) Interpolate(act bool, scale *[2]float32, alpha *[2]int32, angle
 		if i < 2 {
 			(*scale)[i] = e.interpolate_scale[i] * e.scale[i]
 			if e.blendmode == 1 {
-				(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+				if (*alpha)[0] == 1 && (*alpha)[1] == 255 {
+					(*alpha)[0] = 0
+				} else {
+					(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+				}
+
 			}
 		}
 		(*anglerot)[i] = e.interpolate_angle[i] + e.anglerot[i]
@@ -1579,6 +1582,7 @@ type Projectile struct {
 	scale           [2]float32
 	angle           float32
 	clsnScale       [2]float32
+	clsnAngle       float32
 	remove          bool
 	removetime      int32
 	velocity        [2]float32
@@ -1633,6 +1637,7 @@ func (p *Projectile) clear() {
 		cancelanim:     IErr,
 		scale:          [...]float32{1, 1},
 		clsnScale:      [...]float32{1, 1},
+		clsnAngle:      0,
 		remove:         true,
 		localscl:       1,
 		removetime:     -1,
@@ -1825,9 +1830,9 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			clsn2 := pr.ani.CurrentFrame().Clsn2()
 			if clsn1 != nil && clsn2 != nil {
 				if sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
+					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing, p.clsnAngle,
 					clsn2, [...]float32{pr.clsnScale[0] * p.localscl, pr.clsnScale[1] * p.localscl},
-					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing) {
+					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing, p.clsnAngle) {
 					// Subtract projectile hits from each other
 					pp := p.priorityPoints
 					opp := &sys.projs[i][j]
@@ -1887,10 +1892,10 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.clsnScale[0] * p.localscl * p.facing
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
-				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl, p.clsnAngle)
 			}
 			if clsn := frm.Clsn2(); len(clsn) > 0 {
-				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl)
+				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl, p.clsnAngle)
 			}
 		}
 	}
@@ -2054,6 +2059,7 @@ type CharSystemVar struct {
 	angle             float32
 	angleScale        [2]float32
 	angleRescaleClsn  bool
+	angleRotateClsn   bool
 	alpha             [2]int32
 	systemFlag        SystemCharFlag
 	specialFlag       CharSpecialFlag
@@ -2113,6 +2119,7 @@ type Char struct {
 	animlocalscl        float32
 	size                CharSize
 	clsnScale           [2]float32
+	clsnAngle           float32
 	hitdef              HitDef
 	ghv                 GetHitVar
 	mhv                 MoveHitVar
@@ -4802,7 +4809,7 @@ func (c *Char) newProj() *Projectile {
 	return nil
 }
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
-	op bool, rpg, rpn int32, rc bool) {
+	op bool, rpg, rpn int32, rc bool, ran bool) {
 	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
 	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
@@ -4827,6 +4834,11 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 		p.clsnScale = p.scale
 	} else {
 		p.clsnScale = c.clsnScale
+	}
+	if ran { // ProjRotateClsn
+		p.clsnAngle = p.angle
+	} else {
+		p.clsnAngle = c.clsnAngle
 	}
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
@@ -5013,6 +5025,14 @@ func (c *Char) updateClsnScale() {
 	if c.angleRescaleClsn {
 		c.clsnScale[0] *= c.angleScale[0]
 		c.clsnScale[1] *= c.angleScale[1]
+	}
+}
+
+func (c *Char) updateClsnAngle() {
+	if c.angleRotateClsn {
+		c.clsnAngle = c.angle
+	} else {
+		c.clsnAngle = 0
 	}
 }
 
@@ -6542,10 +6562,10 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 	}
 
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing,
+		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing, p.clsnAngle,
 		clsn2, [...]float32{c.clsnScale[0] * c.animlocalscl, c.clsnScale[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing)
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
 
 func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
@@ -6600,10 +6620,10 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 
 	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.animlocalscl, c.clsnScale[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing,
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
 		clsn2, [...]float32{getter.clsnScale[0] * getter.animlocalscl, getter.clsnScale[1] * getter.animlocalscl},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
-			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing)
+			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
 }
 
 // Check if Hitdef attributes can hit a player
@@ -6882,6 +6902,10 @@ func (c *Char) actionPrepare() {
 		if c.angleRescaleClsn {
 			c.angleRescaleClsn = false
 			c.updateClsnScale()
+		}
+		if c.angleRotateClsn {
+			c.angleRotateClsn = false
+			c.updateClsnAngle()
 		}
 	}
 	// Decrease unhittable timer
@@ -7497,8 +7521,9 @@ func (c *Char) cueDraw() {
 	y := c.pos[1] * c.localscl
 	xoff := x + c.offsetX()*c.localscl
 	yoff := y + c.offsetY()*c.localscl
-	xs := c.clsnScale[0] * c.animlocalscl * c.facing
-	ys := c.clsnScale[1] * c.animlocalscl
+	xs := (c.clsnScale[0] * c.animlocalscl * c.facing)
+	ys := (c.clsnScale[1] * c.animlocalscl)
+	angle := c.clsnAngle*c.facing
 	nhbtxt := ""
 	// Debug Clsn display
 	if sys.clsnDraw && c.curFrame != nil {
@@ -7507,11 +7532,11 @@ func (c *Char) cueDraw() {
 			if c.scf(SCF_standby) {
 				// Add nothing
 			} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
-				sys.debugc1rev.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc1rev.Add(clsn, xoff, yoff, xs, ys, angle)
 			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
-				sys.debugc1hit.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc1hit.Add(clsn, xoff, yoff, xs, ys, angle)
 			} else {
-				sys.debugc1not.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc1not.Add(clsn, xoff, yoff, xs, ys, angle)
 			}
 		}
 		// Check invincibility to decide box colors
@@ -7552,19 +7577,19 @@ func (c *Char) cueDraw() {
 				}
 			}
 			if c.scf(SCF_standby) {
-				sys.debugc2stb.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2stb.Add(clsn, xoff, yoff, xs, ys, angle)
 			} else if mtk {
 				// Add fully invincible Clsn2
-				sys.debugc2mtk.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2mtk.Add(clsn, xoff, yoff, xs, ys, angle)
 			} else if hb {
 				// Add partially invincible Clsn2
-				sys.debugc2hb.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2hb.Add(clsn, xoff, yoff, xs, ys, angle)
 			} else if c.inguarddist && c.scf(SCF_guard) {
 				// Add guarding Clsn2
-				sys.debugc2grd.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2grd.Add(clsn, xoff, yoff, xs, ys, angle)
 			} else {
 				// Add regular Clsn2
-				sys.debugc2.Add(clsn, xoff, yoff, xs, ys)
+				sys.debugc2.Add(clsn, xoff, yoff, xs, ys, angle)
 			}
 			// Add invulnerability text
 			if nhbtxt == "" {
@@ -7637,10 +7662,10 @@ func (c *Char) cueDraw() {
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.debugcsize.Add(c.sizeBox, x, y, c.facing*c.localscl, c.localscl)
+			sys.debugcsize.Add(c.sizeBox, x, y, c.facing*c.localscl, c.localscl, 0)
 		}
 		// Add crosshair
-		sys.debugch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1)
+		sys.debugch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1, 0)
 	}
 	// Prepare information for debug text
 	if sys.debugDraw {
