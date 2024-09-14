@@ -175,12 +175,12 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys, angle float32) {
 	xs *= sys.cam.Scale
 	ys *= sys.cam.Scale
 	for i := 0; i+3 < len(clsn); i += 4 {
-		offx := (float32(sys.gameWidth)/2)
-		offy := (float32(sys.gameHeight-240))
+		offx := (float32(sys.gameWidth) / 2)
+		offy := (float32(sys.gameHeight - 240))
 		rect := [...]float32{
-			AbsF(xs)*clsn[i],AbsF(ys)*clsn[i+1] ,
-			xs*(clsn[i+2] - clsn[i]),ys*(clsn[i+3] - clsn[i+1]),
-			(x+offx)*sys.widthScale, (y+offy)*sys.heightScale,angle}
+			AbsF(xs) * clsn[i], AbsF(ys) * clsn[i+1],
+			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1]),
+			(x + offx) * sys.widthScale, (y + offy) * sys.heightScale, angle}
 		*cr = append(*cr, rect)
 	}
 }
@@ -189,9 +189,9 @@ func (cr ClsnRect) draw(trans int32) {
 	for _, c := range cr {
 		params := RenderParams{
 			sys.clsnSpr.Tex, paltex, sys.clsnSpr.Size,
-			-c[0]*sys.widthScale, -c[1]*sys.heightScale, notiling,
-			c[2]*sys.widthScale , c[2]*sys.widthScale , c[3]*sys.heightScale , 1, 0,
-			1, 1, Rotation{c[6],0,0}, 0, trans, -1, nil, &sys.scrrect, c[4], c[5], 0, 0, 0, 0,
+			-c[0] * sys.widthScale, -c[1] * sys.heightScale, notiling,
+			c[2] * sys.widthScale, c[2] * sys.widthScale, c[3] * sys.heightScale, 1, 0,
+			1, 1, Rotation{c[6], 0, 0}, 0, trans, -1, nil, &sys.scrrect, c[4], c[5], 0, 0, 0, 0,
 		}
 		RenderSprite(params)
 	}
@@ -7523,7 +7523,7 @@ func (c *Char) cueDraw() {
 	yoff := y + c.offsetY()*c.localscl
 	xs := (c.clsnScale[0] * c.animlocalscl * c.facing)
 	ys := (c.clsnScale[1] * c.animlocalscl)
-	angle := c.clsnAngle*c.facing
+	angle := c.clsnAngle * c.facing
 	nhbtxt := ""
 	// Debug Clsn display
 	if sys.clsnDraw && c.curFrame != nil {

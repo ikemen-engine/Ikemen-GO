@@ -857,10 +857,10 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
-		left1 := l1*scl1[0] //+ pos1[0]
-		right1 := r1*scl1[0] //+ pos1[0]
-		top1 := clsn1[i+1]*scl1[1] //+ pos1[1]
-		bottom1 := clsn1[i+3]*scl1[1] //+ pos1[1]
+		left1 := l1 * scl1[0]           //+ pos1[0]
+		right1 := r1 * scl1[0]          //+ pos1[0]
+		top1 := clsn1[i+1] * scl1[1]    //+ pos1[1]
+		bottom1 := clsn1[i+3] * scl1[1] //+ pos1[1]
 
 		// Loop through second set of boxes
 		for j := 0; j+3 < len(clsn2); j += 4 {
@@ -870,18 +870,18 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			left2 := l2*scl2[0] //+ pos2[0]
-			right2 := r2*scl2[0] //+ pos2[0]
-			top2 := clsn2[j+1]*scl2[1] //+ pos2[1]
-			bottom2 := clsn2[j+3]*scl2[1] //+ pos2[1]
+			left2 := l2 * scl2[0]           //+ pos2[0]
+			right2 := r2 * scl2[0]          //+ pos2[0]
+			top2 := clsn2[j+1] * scl2[1]    //+ pos2[1]
+			bottom2 := clsn2[j+3] * scl2[1] //+ pos2[1]
 
 			// Check for overlap
-			if angle1 != 0 || angle2  != 0 {
+			if angle1 != 0 || angle2 != 0 {
 				if RectIntersect(left1+pos1[0], top1+pos1[1], right1-left1, bottom1-top1, left2+pos2[0], top2+pos2[1], right2-left2, bottom2-top2, pos1[0], pos1[1], pos2[0], pos2[1], -Rad(angle1*anface1), -Rad(angle2*anface2)) {
 					return true
 				}
 			} else {
-				if left1+ pos1[0] <= right2+pos2[0] && left2+pos2[0] <= right1+pos1[0] && top1+pos1[1] <= bottom2+pos2[1]  && top2+pos2[1]  <= bottom1+pos1[1]  {
+				if left1+pos1[0] <= right2+pos2[0] && left2+pos2[0] <= right1+pos1[0] && top1+pos1[1] <= bottom2+pos2[1] && top2+pos2[1] <= bottom1+pos1[1] {
 					return true
 				}
 			}

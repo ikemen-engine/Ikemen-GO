@@ -238,24 +238,25 @@ func Atof(str string) float64 {
 	}
 	return f
 }
-func RectRotate(x, y, w, h, cx, cy, angle float32) ([][2]float32) {
+func RectRotate(x, y, w, h, cx, cy, angle float32) [][2]float32 {
 	rp := make([][2]float32, 4)
 	corners := [][2]float32{
 		{x, y},
-		{x+w, y},
-		{x+w, y+h},
-		{x, y+h},
+		{x + w, y},
+		{x + w, y + h},
+		{x, y + h},
 	}
 	for i := 0; i < 4; i++ {
 		p := corners[i]
-		tx := p[0]-cx
-		ty := p[1]-cy
-		newX := Cos(angle)*tx-Sin(angle)*ty+cx
-		newY := Sin(angle)*tx+Cos(angle)*ty+cy
+		tx := p[0] - cx
+		ty := p[1] - cy
+		newX := Cos(angle)*tx - Sin(angle)*ty + cx
+		newY := Sin(angle)*tx + Cos(angle)*ty + cy
 		rp[i] = [2]float32{newX, newY}
 	}
 	return rp
 }
+
 // Check if two rotated rectangles intersect.
 func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, angle2 float32) bool {
 	rect1 := RectRotate(x1, y1, w1, h1, cx1, cy1, angle1)
@@ -264,7 +265,7 @@ func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, a
 		min = math.MaxFloat32
 		max = -math.MaxFloat32
 		for _, p := range rect {
-			projected := normal[0]*p[0]+normal[1]*p[1]
+			projected := normal[0]*p[0] + normal[1]*p[1]
 			if projected < min {
 				min = projected
 			}
@@ -275,11 +276,11 @@ func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, a
 		return
 	}
 	for i1 := 0; i1 < len(rect1); i1++ {
-		i2 := (i1+1)%len(rect1)
+		i2 := (i1 + 1) % len(rect1)
 		p1 := rect1[i1]
 		p2 := rect1[i2]
-		nx := p2[1]-p1[1]
-		ny := p1[0]-p2[0]
+		nx := p2[1] - p1[1]
+		ny := p1[0] - p2[0]
 		minA, maxA := projectionRange(rect1, [2]float32{nx, ny})
 		minB, maxB := projectionRange(rect2, [2]float32{nx, ny})
 		if maxA < minB || maxB < minA {
@@ -300,6 +301,7 @@ func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, a
 	}
 	return true
 }
+
 // Prevent overflow errors when converting float64 to int32
 func F64toI32(f float64) int32 {
 	if f >= float64(math.MaxInt32) {
