@@ -4017,30 +4017,35 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 	_, ok := c.gi().states[stateno.ToI()]
 	return BytecodeBool(ok)
 }
+
+// If the stage is coded incorrectly we must check distance to "leftbound" or "rightbound"
+// https://github.com/ikemen-engine/Ikemen-GO/issues/1996
 func (c *Char) stageFrontEdgeDist() float32 {
-	side := float32(0)
+	corner := float32(0)
 	if c.facing < 0 {
-		side = sys.screenleft / c.localscl
+		corner = MaxF(sys.cam.XMin/c.localscl + sys.screenleft/c.localscl,
+			sys.stage.leftbound*sys.stage.localscl/c.localscl)
+		return c.pos[0] - corner
 	} else {
-		side = sys.screenright / c.localscl
+		corner = MinF(sys.cam.XMax/c.localscl - sys.screenright/c.localscl,
+			sys.stage.rightbound*sys.stage.localscl/c.localscl)
+		return corner - c.pos[0]
 	}
-	if c.facing > 0 {
-		return sys.cam.XMax/c.localscl - side - c.pos[0]
-	}
-	return c.pos[0] - sys.cam.XMin/c.localscl - side
 }
+
 func (c *Char) stageBackEdgeDist() float32 {
-	side := float32(0)
+	corner := float32(0)
 	if c.facing < 0 {
-		side = sys.screenleft / c.localscl
+		corner = MinF(sys.cam.XMax/c.localscl - sys.screenright/c.localscl,
+			sys.stage.rightbound*sys.stage.localscl/c.localscl)
+		return corner - c.pos[0]
 	} else {
-		side = sys.screenright / c.localscl
+		corner = MaxF(sys.cam.XMin/c.localscl + sys.screenleft/c.localscl,
+			sys.stage.leftbound*sys.stage.localscl/c.localscl)
+		return c.pos[0] - corner
 	}
-	if c.facing < 0 {
-		return sys.cam.XMax/c.localscl - side - c.pos[0]
-	}
-	return c.pos[0] - sys.cam.XMin/c.localscl - side
 }
+
 func (c *Char) teamLeader() int {
 	if c.teamside == -1 || sys.tmode[c.playerNo&1] == TM_Single || sys.tmode[c.playerNo&1] == TM_Turns {
 		return c.playerNo + 1

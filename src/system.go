@@ -3363,6 +3363,10 @@ func (l *Loader) loadStage() bool {
 					sys.appendToConsole("Stage with unknown engine version.")
 				}
 			}
+			// Warn when camera boundaries are smaller than player boundaries
+			if int32(sys.stage.leftbound) > sys.stage.stageCamera.boundleft || int32(sys.stage.rightbound) < sys.stage.stageCamera.boundright {
+				sys.appendToConsole("Warning: Stage player boundaries defined incorrectly")
+			}
 		}()
 		var def string
 		if sys.sel.selectedStageNo == 0 {
