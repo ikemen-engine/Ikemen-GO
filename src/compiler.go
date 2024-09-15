@@ -180,6 +180,7 @@ func newCompiler() *Compiler {
 		"teammapadd":           c.teamMapAdd,
 		"teammapset":           c.teamMapSet,
 		"text":                 c.text,
+		"transformclsn":        c.transformClsn,
 	}
 	return c
 }

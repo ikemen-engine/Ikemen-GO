@@ -6134,8 +6134,8 @@ const (
 	projectile_accel
 	projectile_projscale
 	projectile_projangle
-	projectile_projrescaleclsn
-	projectile_projrotateclsn
+	projectile_projclsnscale
+	projectile_projclsnangle
 	projectile_offset
 	projectile_projsprpriority
 	projectile_projlayerno
@@ -6163,8 +6163,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	pt := PT_P1
 	var x, y float32 = 0, 0
 	op := false
-	rc := false
-	ran := false
+	clsnscale := false
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if p == nil {
@@ -6293,8 +6292,16 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
-		case projectile_projrescaleclsn:
-			rc = exp[0].evalB(c)
+		case projectile_projclsnscale:
+			clsnscale = true
+			p.clsnScale[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				p.clsnScale[1] = exp[1].evalF(c)
+			} else {
+				p.clsnScale[1] = 1.0 // Default
+			}
+		case projectile_projclsnangle:
+			p.clsnAngle = exp[0].evalF(c)
 		// case projectile_platform:
 		// 	p.platform = exp[0].evalB(c)
 		// case projectile_platformwidth:
@@ -6311,8 +6318,6 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		// 	p.platformAngle = exp[0].evalF(c)
 		// case projectile_platformfence:
 		// 	p.platformFence = exp[0].evalB(c)
-		case projectile_projrotateclsn:
-			ran = exp[0].evalB(c)
 		default:
 			if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
 				afterImage(sc).runSub(c, &p.aimg, id, exp)
@@ -6343,7 +6348,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	} else {
 		p.localscl = crun.localscl
 	}
-	crun.projInit(p, pt, x, y, op, rp[0], rp[1], rc, ran)
+	crun.projInit(p, pt, x, y, op, rp[0], rp[1], clsnscale)
 	return false
 }
 
@@ -6585,13 +6590,18 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			//case projectile_ownpal: // TODO: Test these later. May cause issues
 			//case projectile_remappal:
-			case projectile_projrescaleclsn: // Must be placed after projectile_projscale
+			case projectile_projclsnscale:
 				eachProj(func(p *Projectile) {
-					if exp[0].evalB(c) {
-						p.clsnScale = p.scale
+					p.clsnScale[0] = exp[0].evalF(c)
+					if len(exp) > 1 {
+						p.clsnScale[1] = exp[1].evalF(c)
 					} else {
-						p.clsnScale = c.clsnScale
+						p.clsnScale[1] = 1.0 // Default
 					}
+				})
+			case projectile_projclsnangle:
+				eachProj(func(p *Projectile) {
+					p.clsnAngle = exp[0].evalF(c)
 				})
 			case hitDef_attr:
 				eachProj(func(p *Projectile) {
@@ -8148,8 +8158,6 @@ type angleDraw StateControllerBase
 const (
 	angleDraw_value byte = iota
 	angleDraw_scale
-	angleDraw_rescaleClsn
-	angleDraw_rotateClsn
 	angleDraw_redirectid
 )
 
@@ -8163,16 +8171,6 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			crun.angleScale[0] *= exp[0].evalF(c)
 			if len(exp) > 1 {
 				crun.angleScale[1] *= exp[1].evalF(c)
-			}
-		case angleDraw_rescaleClsn:
-			if exp[0].evalB(c) {
-				crun.angleRescaleClsn = true
-				crun.updateClsnScale()
-			}
-		case angleDraw_rotateClsn:
-			if exp[0].evalB(c) {
-				crun.angleRotateClsn = true
-				crun.updateClsnAngle()
 			}
 		case angleDraw_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -10111,7 +10109,9 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	t, v := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
 	x, y := float32(math.NaN()), float32(math.NaN())
 	src, dst := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
-	add, mul, sinadd, sinmul, sincolor, sinhue := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}, [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
+	add, mul := [3]int32{IErr, IErr, IErr}, [3]int32{IErr, IErr, IErr}
+	sinadd, sinmul := [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}
+	sincolor, sinhue := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
 	invall, invblend, color, hue := IErr, IErr, float32(math.NaN()), float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -11346,6 +11346,37 @@ func (sc targetAdd) Run(c *Char, _ []int32) bool {
 				if done {
 					break
 				}
+			}
+		}
+		return true
+	})
+	return false
+}
+
+type transformClsn StateControllerBase
+
+const (
+	transformClsn_scale byte = iota
+	transformClsn_angle
+	transformClsn_redirectid
+)
+
+func (sc transformClsn) Run(c *Char, _ []int32) bool {
+	crun := c
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case transformClsn_scale:
+			crun.clsnScaleMul[0] *= exp[0].evalF(c)
+			if len(exp) > 1 {
+				crun.clsnScaleMul[1] *= exp[1].evalF(c)
+			}
+		case transformClsn_angle:
+			crun.clsnAngle = exp[0].evalF(c)
+		case transformClsn_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
 			}
 		}
 		return true
