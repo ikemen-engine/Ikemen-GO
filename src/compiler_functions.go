@@ -5248,6 +5248,15 @@ func (c *Compiler) modifyPlayer(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyPlayer_helperid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.stateParam(is, "helpername", false, func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(modifyPlayer_helpername, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

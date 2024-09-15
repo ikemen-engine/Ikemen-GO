@@ -11083,6 +11083,7 @@ const (
 	modifyPlayer_displayname
 	modifyPlayer_lifebarname
 	modifyPlayer_helperid
+	modifyPlayer_helpername
 	modifyPlayer_redirectid
 )
 
@@ -11139,6 +11140,11 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 				} else {
 					crun.helperId = 0
 				}
+			}
+		case modifyPlayer_helpername:
+			if crun.helperIndex != 0 {
+				hn := string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+				crun.name = hn
 			}
 		case modifyPlayer_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
