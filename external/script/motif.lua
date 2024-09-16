@@ -1910,6 +1910,15 @@ local motif =
 		['_)'] = {129, 0}, --Close
 		['_('] = {130, 0}, --Away
 		['_`'] = {135, 0}, --Small Dot
+		['_CHARGE'] = {136,0}, --Charge
+		['_HOLD'] = {137,0}, --Hold
+		['_RELEASE'] = {138,0}, --Release
+		['_MASH'] = {139,0}, --Mash
+		['_CLOSE'] = {140,0}, --Close
+		['_FAR'] = {141,0}, --Far
+		['_AIROK'] = {142,0}, --AIR OK
+		['_THROW'] = {143,0}, --Throw
+		['_COUNTER'] = {144,0}, --Counter
 	},
 	anim = {},
 }
