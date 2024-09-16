@@ -2496,11 +2496,16 @@ func (s *System) fight() (reload bool) {
 	return false
 }
 
-type wincntMap map[string][]int32
+// Code responsible for updating the 'autolevel.save' file.
+// This file stores win/loss data for each character per palette, which is used by 'randomtest.lua'.
+// The 'randomtest.lua' script reads this data to generate AI ranks and adjust the difficulty of opponents in random battles.
 
+type wincntMap map[string][]int32 // Map of character definitions to their win counts per palette
+
+// Initializes the win count map by reading from 'autolevel.save' file
 func (wm *wincntMap) init() {
 	if sys.autolevel {
-		b, err := os.ReadFile(sys.wincntFileName)
+		b, err := os.ReadFile(sys.wincntFileName) // Read the autolevel.save file
 		if err != nil {
 			return
 		}
@@ -2508,9 +2513,10 @@ func (wm *wincntMap) init() {
 		if len(str) < 3 {
 			return
 		}
-		if str[:3] == "\ufeff" {
+		if str[:3] == "\ufeff" { // Remove Byte Order Mark if present
 			str = str[3:]
 		}
+		// Converts array of strings to array of int32
 		toint := func(strAry []string) (intAry []int32) {
 			for _, s := range strAry {
 				i, _ := strconv.ParseInt(s, 10, 32)
@@ -2518,19 +2524,23 @@ func (wm *wincntMap) init() {
 			}
 			return
 		}
+		// Parse each line in the autolevel.save file
 		for _, l := range strings.Split(str, "\n") {
 			tmp := strings.Split(l, ",")
 			if len(tmp) >= 2 {
-				item := toint(strings.Split(strings.TrimSpace(tmp[1]), " "))
+				item := toint(strings.Split(strings.TrimSpace(tmp[1]), " ")) // Get win counts per palette
 				if len(item) < MaxPalNo {
-					item = append(item, make([]int32, MaxPalNo-len(item))...)
+					item = append(item, make([]int32, MaxPalNo-len(item))...) // Ensure item has MaxPalNo elements
 				}
-				(*wm)[tmp[0]] = item
+				(*wm)[tmp[0]] = item // Map character definition to win counts
 			}
 		}
 	}
 }
+
+// Updates the win count map after a match and writes to 'autolevel.save' file
 func (wm *wincntMap) update() {
+	// Calculates win points based on team modes and number of simul characters
 	winPoint := func(i int) int32 {
 		if sys.tmode[(i+1)&1] == TM_Simul || sys.tmode[(i+1)&1] == TM_Tag {
 			if sys.tmode[i&1] != TM_Simul && sys.tmode[i&1] != TM_Tag {
@@ -2541,26 +2551,30 @@ func (wm *wincntMap) update() {
 		}
 		return 1
 	}
+	// Updates win counts for winning characters
 	win := func(i int) {
 		item := wm.getItem(sys.cgi[i].def)
 		item[sys.cgi[i].palno-1] += winPoint(i)
 		wm.setItem(i, item)
 	}
+	// Updates win counts for losing characters
 	lose := func(i int) {
 		item := wm.getItem(sys.cgi[i].def)
 		item[sys.cgi[i].palno-1] -= winPoint(i)
 		wm.setItem(i, item)
 	}
 	if sys.autolevel && sys.matchOver() {
+		// Iterate over all characters in the match
 		for i, p := range sys.chars {
 			if len(p) > 0 {
 				if p[0].win() {
-					win(i)
+					win(i) // Update win counts for winners
 				} else if p[0].lose() {
-					lose(i)
+					lose(i) // Update win counts for losers
 				}
 			}
 		}
+		// Write updated win counts back to 'autolevel.save' file
 		var str string
 		for k, v := range *wm {
 			str += k + ","
@@ -2576,6 +2590,8 @@ func (wm *wincntMap) update() {
 		}
 	}
 }
+
+// Retrieves win counts for a character, ensuring the slice has MaxPalNo elements
 func (wm wincntMap) getItem(def string) []int32 {
 	lv := wm[def]
 	if len(lv) < MaxPalNo {
@@ -2583,6 +2599,8 @@ func (wm wincntMap) getItem(def string) []int32 {
 	}
 	return lv
 }
+
+// Sets win counts for a character, averaging values for non-selectable palettes
 func (wm wincntMap) setItem(pn int, item []int32) {
 	var ave, palcnt int32 = 0, 0
 	for i, v := range item {
@@ -2591,14 +2609,18 @@ func (wm wincntMap) setItem(pn int, item []int32) {
 			palcnt++
 		}
 	}
-	ave /= palcnt
+	if palcnt > 0 {
+		ave /= palcnt
+	}
 	for i := range item {
 		if !sys.cgi[pn].palSelectable[i] {
-			item[i] = ave
+			item[i] = ave // Set non-selectable palettes to average value
 		}
 	}
 	wm[sys.cgi[pn].def] = item
 }
+
+// Gets the win count (level) for a character's specific palette
 func (wm wincntMap) getLevel(p int) int32 {
 	return wm.getItem(sys.cgi[p].def)[sys.cgi[p].palno-1]
 }
