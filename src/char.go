@@ -1747,7 +1747,7 @@ func (p *Projectile) update(playerNo int) {
 		if sys.tickFrame() {
 			p.pos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
 			p.drawPos = p.pos
-		} 
+		}
 		spd := sys.tickInterpolation()
 		for i := 0; i < 2; i++ {
 			p.drawPos[i] = p.pos[i] - (p.pos[i]-p.oldPos[i])*(1-spd)
@@ -4023,11 +4023,11 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 func (c *Char) stageFrontEdgeDist() float32 {
 	corner := float32(0)
 	if c.facing < 0 {
-		corner = MaxF(sys.cam.XMin/c.localscl + sys.screenleft/c.localscl,
+		corner = MaxF(sys.cam.XMin/c.localscl+sys.screenleft/c.localscl,
 			sys.stage.leftbound*sys.stage.localscl/c.localscl)
 		return c.pos[0] - corner
 	} else {
-		corner = MinF(sys.cam.XMax/c.localscl - sys.screenright/c.localscl,
+		corner = MinF(sys.cam.XMax/c.localscl-sys.screenright/c.localscl,
 			sys.stage.rightbound*sys.stage.localscl/c.localscl)
 		return corner - c.pos[0]
 	}
@@ -4036,11 +4036,11 @@ func (c *Char) stageFrontEdgeDist() float32 {
 func (c *Char) stageBackEdgeDist() float32 {
 	corner := float32(0)
 	if c.facing < 0 {
-		corner = MinF(sys.cam.XMax/c.localscl - sys.screenright/c.localscl,
+		corner = MinF(sys.cam.XMax/c.localscl-sys.screenright/c.localscl,
 			sys.stage.rightbound*sys.stage.localscl/c.localscl)
 		return corner - c.pos[0]
 	} else {
-		corner = MaxF(sys.cam.XMin/c.localscl + sys.screenleft/c.localscl,
+		corner = MaxF(sys.cam.XMin/c.localscl+sys.screenleft/c.localscl,
 			sys.stage.leftbound*sys.stage.localscl/c.localscl)
 		return c.pos[0] - corner
 	}
@@ -6554,7 +6554,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing, p.clsnAngle,
 		clsn2, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
-		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
+			c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
@@ -6614,7 +6614,7 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
 		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
-		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
+			getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
 }

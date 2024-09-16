@@ -888,9 +888,9 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 				}
 			} else {
 				if left1+pos1[0] <= right2+pos2[0] &&
-				left2+pos2[0] <= right1+pos1[0] &&
-				top1+pos1[1] <= bottom2+pos2[1] &&
-				top2+pos2[1] <= bottom1+pos1[1] {
+					left2+pos2[0] <= right1+pos1[0] &&
+					top1+pos1[1] <= bottom2+pos2[1] &&
+					top2+pos2[1] <= bottom1+pos1[1] {
 					return true
 				}
 			}
