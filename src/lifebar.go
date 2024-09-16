@@ -3836,6 +3836,7 @@ func (l *Lifebar) reloadLifebar() error {
 	sys.lifebar = *lb
 	return nil
 }
+
 func (l *Lifebar) step() {
 	if sys.paused && !sys.step {
 		return
@@ -3944,11 +3945,14 @@ func (l *Lifebar) step() {
 		} else {
 			l.textsprite[i].Draw()
 			if sys.tickNextFrame() {
-				l.textsprite[i].removetime--
+				if l.textsprite[i].removetime > 0 {
+					l.textsprite[i].removetime--
+				}
 			}
 		}
 	}
 }
+
 func (l *Lifebar) reset() {
 	var num [2]int
 	for ti, tm := range sys.tmode {

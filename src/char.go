@@ -1349,9 +1349,10 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			// e.setY(e.pos[1])
 		}
 	} else {
+		// Explod position interpolation
+		spd := sys.tickInterpolation()
 		for i := range e.pos {
-			e.pos[i] = e.newPos[i] -
-				(e.newPos[i]-e.oldPos[i])*(1-sys.tickInterpola())
+			e.pos[i] = e.newPos[i] - (e.newPos[i]-e.oldPos[i])*(1-spd)
 		}
 	}
 	off := e.relativePos
@@ -1599,6 +1600,8 @@ type Projectile struct {
 	stagebound      int32
 	heightbound     [2]int32
 	pos             [2]float32
+	oldPos          [2]float32
+	drawPos         [2]float32
 	facing          float32
 	removefacing    float32
 	shadow          [3]int32
@@ -1607,8 +1610,6 @@ type Projectile struct {
 	ani             *Animation
 	curmisstime     int32
 	hitpause        int32
-	oldPos          [2]float32
-	newPos          [2]float32
 	aimg            AfterImage
 	palfx           *PalFX
 	localscl        float32
@@ -1657,8 +1658,11 @@ func (p *Projectile) clear() {
 }
 
 func (p *Projectile) setPos(pos [2]float32) {
-	p.pos, p.oldPos, p.newPos = pos, pos, pos
+	p.pos = pos
+	p.oldPos = pos
+	p.drawPos = pos
 }
+
 func (p *Projectile) paused(playerNo int) bool {
 	//if !sys.chars[playerNo][0].pause() {
 	if sys.super > 0 {
@@ -1741,15 +1745,15 @@ func (p *Projectile) update(playerNo int) {
 		// There's a minor issue here where a projectile will lag behind one frame relative to Mugen if created during a pause
 	} else {
 		if sys.tickFrame() {
-			p.newPos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
-		}
-		ti := sys.tickInterpola()
-		for i, np := range p.newPos {
-			p.pos[i] = np - (np-p.oldPos[i])*(1-ti)
+			p.pos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
+			p.drawPos = p.pos
+		} 
+		spd := sys.tickInterpolation()
+		for i := 0; i < 2; i++ {
+			p.drawPos[i] = p.pos[i] - (p.pos[i]-p.oldPos[i])*(1-spd)
 		}
 		if sys.tickNextFrame() {
 			p.oldPos = p.pos
-			p.pos = p.newPos
 			for i := range p.velocity {
 				p.velocity[i] += p.accel[i]
 				p.velocity[i] *= p.velmul[i]
@@ -1888,6 +1892,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	if sys.tickFrame() && p.ani != nil && notpause {
 		p.ani.UpdateSprite()
 	}
+	// Projectie Clsn display
 	if sys.clsnDraw && p.ani != nil {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.clsnScale[0] * p.localscl * p.facing
@@ -1912,7 +1917,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	}
 	var c = sys.chars[playerNo][0]
 	if p.ani != nil {
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1] * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
@@ -2058,8 +2063,6 @@ type CharSystemVar struct {
 	hitPauseTime      int32
 	angle             float32
 	angleScale        [2]float32
-	angleRescaleClsn  bool
-	angleRotateClsn   bool
 	alpha             [2]int32
 	systemFlag        SystemCharFlag
 	specialFlag       CharSpecialFlag
@@ -2119,6 +2122,7 @@ type Char struct {
 	animlocalscl        float32
 	size                CharSize
 	clsnScale           [2]float32
+	clsnScaleMul        [2]float32
 	clsnAngle           float32
 	hitdef              HitDef
 	ghv                 GetHitVar
@@ -4013,30 +4017,35 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 	_, ok := c.gi().states[stateno.ToI()]
 	return BytecodeBool(ok)
 }
+
+// If the stage is coded incorrectly we must check distance to "leftbound" or "rightbound"
+// https://github.com/ikemen-engine/Ikemen-GO/issues/1996
 func (c *Char) stageFrontEdgeDist() float32 {
-	side := float32(0)
+	corner := float32(0)
 	if c.facing < 0 {
-		side = sys.screenleft / c.localscl
+		corner = MaxF(sys.cam.XMin/c.localscl + sys.screenleft/c.localscl,
+			sys.stage.leftbound*sys.stage.localscl/c.localscl)
+		return c.pos[0] - corner
 	} else {
-		side = sys.screenright / c.localscl
+		corner = MinF(sys.cam.XMax/c.localscl - sys.screenright/c.localscl,
+			sys.stage.rightbound*sys.stage.localscl/c.localscl)
+		return corner - c.pos[0]
 	}
-	if c.facing > 0 {
-		return sys.cam.XMax/c.localscl - side - c.pos[0]
-	}
-	return c.pos[0] - sys.cam.XMin/c.localscl - side
 }
+
 func (c *Char) stageBackEdgeDist() float32 {
-	side := float32(0)
+	corner := float32(0)
 	if c.facing < 0 {
-		side = sys.screenleft / c.localscl
+		corner = MinF(sys.cam.XMax/c.localscl - sys.screenright/c.localscl,
+			sys.stage.rightbound*sys.stage.localscl/c.localscl)
+		return corner - c.pos[0]
 	} else {
-		side = sys.screenright / c.localscl
+		corner = MaxF(sys.cam.XMin/c.localscl + sys.screenleft/c.localscl,
+			sys.stage.leftbound*sys.stage.localscl/c.localscl)
+		return c.pos[0] - corner
 	}
-	if c.facing < 0 {
-		return sys.cam.XMax/c.localscl - side - c.pos[0]
-	}
-	return c.pos[0] - sys.cam.XMin/c.localscl - side
 }
+
 func (c *Char) teamLeader() int {
 	if c.teamside == -1 || sys.tmode[c.playerNo&1] == TM_Single || sys.tmode[c.playerNo&1] == TM_Turns {
 		return c.playerNo + 1
@@ -4808,8 +4817,9 @@ func (c *Char) newProj() *Projectile {
 	}
 	return nil
 }
+
 func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
-	op bool, rpg, rpn int32, rc bool, ran bool) {
+	op bool, rpg, rpn int32, clsnscale bool) {
 	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
 	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
@@ -4825,20 +4835,13 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
 	if p.ani != nil {
 		p.ani.UpdateSprite()
 	}
-	// Clsn scale
 	if c.size.proj.doscale != 0 {
 		p.scale[0] *= c.size.xscale
 		p.scale[1] *= c.size.yscale
 	}
-	if rc { // ProjRescaleClsn
-		p.clsnScale = p.scale
-	} else {
+	// Default Clsn scale
+	if !clsnscale {
 		p.clsnScale = c.clsnScale
-	}
-	if ran { // ProjRotateClsn
-		p.clsnAngle = p.angle
-	} else {
-		p.clsnAngle = c.clsnAngle
 	}
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
@@ -5020,19 +5023,6 @@ func (c *Char) updateClsnScale() {
 	} else {
 		// Normally not used. Just a safeguard
 		c.clsnScale = [...]float32{1.0, 1.0}
-	}
-	// AngleDraw rescaling
-	if c.angleRescaleClsn {
-		c.clsnScale[0] *= c.angleScale[0]
-		c.clsnScale[1] *= c.angleScale[1]
-	}
-}
-
-func (c *Char) updateClsnAngle() {
-	if c.angleRotateClsn {
-		c.clsnAngle = c.angle
-	} else {
-		c.clsnAngle = 0
 	}
 }
 
@@ -6563,7 +6553,8 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 
 	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
 		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing, p.clsnAngle,
-		clsn2, [...]float32{c.clsnScale[0] * c.animlocalscl, c.clsnScale[1] * c.animlocalscl},
+		clsn2, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
+		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
@@ -6618,10 +6609,12 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 		return false
 	}
 
-	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.animlocalscl, c.clsnScale[1] * c.animlocalscl},
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
+		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
-		clsn2, [...]float32{getter.clsnScale[0] * getter.animlocalscl, getter.clsnScale[1] * getter.animlocalscl},
+		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
+		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
 }
@@ -6898,15 +6891,9 @@ func (c *Char) actionPrepare() {
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
 				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
 		}
-		// Reset AngleDraw Clsn rescaling
-		if c.angleRescaleClsn {
-			c.angleRescaleClsn = false
-			c.updateClsnScale()
-		}
-		if c.angleRotateClsn {
-			c.angleRotateClsn = false
-			c.updateClsnAngle()
-		}
+		// Reset Clsn modifiers
+		c.clsnScaleMul = [...]float32{1.0, 1.0}
+		c.clsnAngle = 0
 	}
 	// Decrease unhittable timer
 	// This used to be in tick(), but Mugen Clsn display suggests it happens sooner than that
@@ -7319,7 +7306,7 @@ func (c *Char) update() {
 		c.pushed = false
 	}
 	if c.acttmp > 0 {
-		spd := sys.tickInterpola()
+		spd := sys.tickInterpolation()
 		if c.pushed {
 			spd = 0
 		}
@@ -7521,8 +7508,8 @@ func (c *Char) cueDraw() {
 	y := c.pos[1] * c.localscl
 	xoff := x + c.offsetX()*c.localscl
 	yoff := y + c.offsetY()*c.localscl
-	xs := (c.clsnScale[0] * c.animlocalscl * c.facing)
-	ys := (c.clsnScale[1] * c.animlocalscl)
+	xs := c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl * c.facing
+	ys := c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl
 	angle := c.clsnAngle * c.facing
 	nhbtxt := ""
 	// Debug Clsn display
@@ -7934,9 +7921,6 @@ func (cl *CharList) action() {
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.runOrder[i].actionFinish()
 	}
-
-	// Update chars
-	sys.charUpdate()
 }
 
 func (cl *CharList) xScreenBound() {
@@ -7946,6 +7930,7 @@ func (cl *CharList) xScreenBound() {
 		c.xScreenBound()
 	}
 }
+
 func (cl *CharList) update() {
 	ro := make([]*Char, len(cl.runOrder))
 	copy(ro, cl.runOrder)
@@ -7954,6 +7939,7 @@ func (cl *CharList) update() {
 		c.track()
 	}
 }
+
 func (cl *CharList) hitDetection(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return // Stop entire function if getter is disabled
@@ -9088,6 +9074,7 @@ func (cl *CharList) collisionDetection() {
 	// Push detection for players
 	// This must happen before hit detection
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1941
+	// An attempt was made to skip redundant player pair checks, but that makes chars push each other too slowly in screen corners
 	for i := 0; i < len(cl.runOrder); i++ {
 		cl.pushDetection(cl.runOrder[sortedOrder[i]])
 	}

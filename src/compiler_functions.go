@@ -35,7 +35,7 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 		}
 	}
 	// New syntax uses attr and slot
-	if err := c.stateParam(is, "attr", false, func(data string) error {
+	if err = c.stateParam(is, "attr", false, func(data string) error {
 		vnum = -1
 		attr, err = c.attr(data, false)
 		if err != nil {
@@ -49,23 +49,23 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase) error {
 	if attr == -1 {
 		return Error("Attributes not specified")
 	}
-	if err := c.paramValue(is, sc, "slot",
+	if err = c.paramValue(is, sc, "slot",
 		hitBy_slot, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "time",
+	if err = c.paramValue(is, sc, "time",
 		hitBy_time, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "playerno",
+	if err = c.paramValue(is, sc, "playerno",
 		hitBy_playerno, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "playerid",
+	if err = c.paramValue(is, sc, "playerid",
 		hitBy_playerid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "stack",
+	if err = c.paramValue(is, sc, "stack",
 		hitBy_stack, VT_Bool, 1, false); err != nil {
 		return err
 	}
@@ -1709,11 +1709,7 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		return err
 	}
 	if err := c.paramValue(is, sc, "guard.dist",
-		hitDef_guard_dist, VT_Int, 1, false); err != nil {
-		return err
-	}
-	if err := c.paramValue(is, sc, "guard.dist.back",
-		hitDef_guard_dist_back, VT_Int, 1, false); err != nil {
+		hitDef_guard_dist, VT_Int, 2, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "pausetime",
@@ -1945,7 +1941,7 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase, _ int8) (
 	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
 		attr := int32(-1)
 		var err error
-		if err := c.paramValue(is, sc, "redirectid",
+		if err = c.paramValue(is, sc, "redirectid",
 			reversalDef_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
@@ -1968,7 +1964,7 @@ func (c *Compiler) modifyReversalDef(is IniSection, sc *StateControllerBase, _ i
 	ret, err := (*modifyReversalDef)(sc), c.stateSec(is, func() error {
 		attr := int32(-1)
 		var err error
-		if err := c.paramValue(is, sc, "redirectid",
+		if err = c.paramValue(is, sc, "redirectid",
 			modifyReversalDef_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
@@ -2067,12 +2063,12 @@ func (c *Compiler) projectileSub(is IniSection, sc *StateControllerBase, ihp int
 		projectile_projangle, VT_Float, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "projrescaleclsn",
-		projectile_projrescaleclsn, VT_Bool, 1, false); err != nil {
+	if err := c.paramValue(is, sc, "projclsnscale",
+		projectile_projclsnscale, VT_Float, 2, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "projrotateclsn",
-		projectile_projrotateclsn, VT_Bool, 1, false); err != nil {
+	if err := c.paramValue(is, sc, "projclsnangle",
+		projectile_projclsnangle, VT_Float, 1, false); err != nil {
 		return err
 	}
 	// HitDef section
@@ -3114,14 +3110,6 @@ func (c *Compiler) angleDraw(is IniSection, sc *StateControllerBase, _ int8) (St
 			angleDraw_scale, VT_Float, 2, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "rescaleclsn",
-			angleDraw_rescaleClsn, VT_Bool, 1, false); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "rotateclsn",
-			angleDraw_rotateClsn, VT_Bool, 1, false); err != nil {
-			return err
-		}
 		return nil
 	})
 	return *ret, err
@@ -3302,11 +3290,7 @@ func (c *Compiler) attackDist(is IniSection, sc *StateControllerBase, _ int8) (S
 			return err
 		}
 		if err := c.paramValue(is, sc, "value",
-			attackDist_value, VT_Float, 1, true); err != nil {
-			return err
-		}
-		if err := c.paramValue(is, sc, "back",
-			attackDist_back, VT_Float, 1, false); err != nil {
+			attackDist_value, VT_Float, 2, true); err != nil {
 			return err
 		}
 		return nil
@@ -5264,6 +5248,15 @@ func (c *Compiler) modifyPlayer(is IniSection, sc *StateControllerBase, _ int8) 
 			modifyPlayer_helperid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.stateParam(is, "helpername", false, func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Not enclosed in \"")
+			}
+			sc.add(modifyPlayer_helpername, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
@@ -5456,6 +5449,33 @@ func (c *Compiler) targetAdd(is IniSection, sc *StateControllerBase, _ int8) (St
 		if err := c.paramValue(is, sc, "playerid",
 			targetAdd_playerid, VT_Int, 1, true); err != nil {
 			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) transformClsn(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*transformClsn)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			transformClsn_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		any := false
+		if err := c.stateParam(is, "scale", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, transformClsn_scale, data, VT_Float, 2)
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "angle", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, transformClsn_angle, data, VT_Float, 1)
+		}); err != nil {
+			return err
+		}
+		if !any {
+			return Error("no parameters specified")
 		}
 		return nil
 	})

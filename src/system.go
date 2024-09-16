@@ -660,9 +660,13 @@ func (s *System) playerID(id int32) *Char {
 func (s *System) playerIndex(id int32) *Char {
 	return s.charList.getIndex(id)
 }
+
+// We must check if wins are greater than 0 because modes like Training may have "0 rounds to win"
 func (s *System) matchOver() bool {
-	return s.wins[0] > 0 && (s.wins[0] >= s.matchWins[0] || s.wins[1] >= s.matchWins[1])
+	return s.wins[0] > 0 && s.wins[0] >= s.matchWins[0] ||
+		s.wins[1] > 0 && s.wins[1] >= s.matchWins[1]
 }
+
 func (s *System) playerIDExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
 		return BytecodeSF()
@@ -857,10 +861,10 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
-		left1 := l1 * scl1[0]           //+ pos1[0]
-		right1 := r1 * scl1[0]          //+ pos1[0]
-		top1 := clsn1[i+1] * scl1[1]    //+ pos1[1]
-		bottom1 := clsn1[i+3] * scl1[1] //+ pos1[1]
+		left1 := l1 * scl1[0]
+		right1 := r1 * scl1[0]
+		top1 := clsn1[i+1] * scl1[1]
+		bottom1 := clsn1[i+3] * scl1[1]
 
 		// Loop through second set of boxes
 		for j := 0; j+3 < len(clsn2); j += 4 {
@@ -870,18 +874,23 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			left2 := l2 * scl2[0]           //+ pos2[0]
-			right2 := r2 * scl2[0]          //+ pos2[0]
-			top2 := clsn2[j+1] * scl2[1]    //+ pos2[1]
-			bottom2 := clsn2[j+3] * scl2[1] //+ pos2[1]
+			left2 := l2 * scl2[0]
+			right2 := r2 * scl2[0]
+			top2 := clsn2[j+1] * scl2[1]
+			bottom2 := clsn2[j+3] * scl2[1]
 
 			// Check for overlap
 			if angle1 != 0 || angle2 != 0 {
-				if RectIntersect(left1+pos1[0], top1+pos1[1], right1-left1, bottom1-top1, left2+pos2[0], top2+pos2[1], right2-left2, bottom2-top2, pos1[0], pos1[1], pos2[0], pos2[1], -Rad(angle1*anface1), -Rad(angle2*anface2)) {
+				if RectIntersect(left1+pos1[0], top1+pos1[1], right1-left1, bottom1-top1,
+					left2+pos2[0], top2+pos2[1], right2-left2, bottom2-top2, pos1[0], pos1[1], pos2[0], pos2[1],
+					-Rad(angle1*anface1), -Rad(angle2*anface2)) {
 					return true
 				}
 			} else {
-				if left1+pos1[0] <= right2+pos2[0] && left2+pos2[0] <= right1+pos1[0] && top1+pos1[1] <= bottom2+pos2[1] && top2+pos2[1] <= bottom1+pos1[1] {
+				if left1+pos1[0] <= right2+pos2[0] &&
+				left2+pos2[0] <= right1+pos1[0] &&
+				top1+pos1[1] <= bottom2+pos2[1] &&
+				top2+pos2[1] <= bottom1+pos1[1] {
 					return true
 				}
 			}
@@ -1094,19 +1103,28 @@ func (s *System) nextRound() {
 func (s *System) debugPaused() bool {
 	return s.paused && !s.step && s.oldTickCount < s.tickCount
 }
+
+// "Tick frames" are the frames where most of the game logic happens
 func (s *System) tickFrame() bool {
 	return (!s.paused || s.step) && s.oldTickCount < s.tickCount
 }
+
+// "Tick next frame" is right after the "tick frame"
+// Where for instance the collision detections happen
 func (s *System) tickNextFrame() bool {
 	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
 		(!s.paused || s.step || s.oldTickCount >= s.tickCount)
 }
-func (s *System) tickInterpola() float32 {
+
+// This divides a frame into fractions for the purpose of drawing position interpolation
+func (s *System) tickInterpolation() float32 {
 	if s.tickNextFrame() {
 		return 1
+	} else {
+		return s.tickCountF - s.lastTick + s.nextAddTime
 	}
-	return s.tickCountF - s.lastTick + s.nextAddTime
 }
+
 func (s *System) addFrameTime(t float32) bool {
 	if s.debugPaused() {
 		s.oldNextAddTime = 0
@@ -1189,6 +1207,7 @@ func (s *System) commandUpdate() {
 		}
 	}
 }
+
 func (s *System) charUpdate() {
 	s.charList.update()
 	for i, pr := range s.projs {
@@ -1198,28 +1217,31 @@ func (s *System) charUpdate() {
 			}
 		}
 	}
-	// Update lifebars before hit detection
-	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
-	s.lifebar.step()
-	if s.tickNextFrame() {
-		for i, pr := range s.projs {
-			for j, p := range pr {
-				if p.id >= 0 {
-					s.projs[i][j].tradeDetection(i, j)
-				}
-			}
-		}
-		s.charList.collisionDetection()
-		for i, pr := range s.projs {
-			for j, p := range pr {
-				if p.id != IErr {
-					s.projs[i][j].tick(i)
-				}
-			}
-		}
-		s.charList.tick()
+	// Set global First Attack flag if either team got it
+	if s.firstAttack[0] >= 0 || s.firstAttack[1] >= 0 {
+		s.firstAttack[2] = 1
 	}
 }
+
+// Run collision detection for chars and projectiles
+func (s *System) globalCollision() {
+	for i, pr := range s.projs {
+		for j, p := range pr {
+			if p.id >= 0 {
+				s.projs[i][j].tradeDetection(i, j)
+			}
+		}
+	}
+	s.charList.collisionDetection()
+	for i, pr := range s.projs {
+		for j, p := range pr {
+			if p.id != IErr {
+				s.projs[i][j].tick(i)
+			}
+		}
+	}
+}
+
 func (s *System) posReset() {
 	for _, p := range s.chars {
 		if len(p) > 0 {
@@ -1228,6 +1250,7 @@ func (s *System) posReset() {
 	}
 }
 func (s *System) action() {
+	// Clear sprite data
 	s.spritesLayerN1 = s.spritesLayerN1[:0]
 	s.spritesLayerU = s.spritesLayerU[:0]
 	s.spritesLayer0 = s.spritesLayer0[:0]
@@ -1244,6 +1267,7 @@ func (s *System) action() {
 	s.debugcsize = s.debugcsize[:0]
 	s.debugch = s.debugch[:0]
 	s.clsnText = nil
+
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
 
@@ -1398,14 +1422,16 @@ func (s *System) action() {
 			return ko[0] || ko[1] || s.time == 0
 		}
 		if s.roundEnd() || fin() {
-			// Consecutive wins counter
-			inclWinCount := func() {
-				w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
-				if !w[0] || !w[1] ||
+			rs4t := -s.lifebar.ro.over_waittime
+			s.intro--
+			if s.intro == -s.lifebar.ro.over_hittime && s.finishType != FT_NotYet {
+				// Consecutive wins counter
+				winner := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+				if !winner[0] || !winner[1] ||
 					s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 					s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
 					s.draws >= s.lifebar.ro.match_maxdrawgames[1] {
-					for i, win := range w {
+					for i, win := range winner {
 						if win {
 							s.wins[i]++
 							if s.matchOver() && s.wins[^i&1] == 0 {
@@ -1415,11 +1441,6 @@ func (s *System) action() {
 						}
 					}
 				}
-			}
-			rs4t := -s.lifebar.ro.over_waittime
-			s.intro--
-			if s.intro == -s.lifebar.ro.over_hittime && s.finishType != FT_NotYet {
-				inclWinCount()
 			}
 			// Check if player skipped win pose time
 			if s.roundWinTime() && (s.anyButton() && !s.gsf(GSF_roundnotskip)) {
@@ -1465,16 +1486,24 @@ func (s *System) action() {
 				// Set characters into win/lose poses, update win counters
 				if s.waitdown <= 0 || s.roundWinTime() {
 					if s.waitdown >= 0 {
-						w := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
-						if !w[0] || !w[1] ||
+						winner := [...]bool{!s.chars[1][0].win(), !s.chars[0][0].win()}
+						if !winner[0] || !winner[1] ||
 							s.tmode[0] == TM_Turns || s.tmode[1] == TM_Turns ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames[0] ||
 							s.draws >= s.lifebar.ro.match_maxdrawgames[1] {
-							for i, win := range w {
+							for i, win := range winner {
 								if win {
 									s.lifebar.wi[i].add(s.winType[i])
-									if s.matchOver() && s.wins[i] >= s.matchWins[i] {
-										s.lifebar.wc[i].wins += 1
+									if s.matchOver() {
+										// In a draw game both players go back to 0 wins
+										if winner[0] && winner[1] { // sys.winTeam < 0
+											s.lifebar.wc[0].wins = 0
+											s.lifebar.wc[1].wins = 0
+										} else {
+											if s.wins[i] >= s.matchWins[i] {
+												s.lifebar.wc[i].wins += 1
+											}
+										}
 									}
 								}
 							}
@@ -1522,7 +1551,7 @@ func (s *System) action() {
 		}
 	}
 
-	// Run tick frame
+	// Run "tick frame"
 	if s.tickFrame() {
 		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
 		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
@@ -1576,18 +1605,25 @@ func (s *System) action() {
 		}
 		s.charList.action()
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
-	} else {
-		s.charUpdate()
 	}
 
-	// Set global First Attack flag if either team got it
-	if s.firstAttack[0] >= 0 || s.firstAttack[1] >= 0 {
-		s.firstAttack[2] = 1
+	// This function runs every tick
+	// It should be placed between "tick frame" and "tick next frame"
+	s.charUpdate()
+
+	// Update lifebars
+	// This must happen before hit detection for accurate display
+	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
+	s.lifebar.step()
+	if s.tickNextFrame() {
+		s.globalCollision() // This could perhaps happen during "tick frame" instead? Would need more testing
+		s.charList.tick()
 	}
 
 	// Run camera
 	x, y, scl = s.cam.action(x, y, scl, s.super > 0 || s.pause > 0)
 
+	// Run "tick next frame"
 	//introSkip := false
 	if s.tickNextFrame() {
 		if s.lifebar.ro.current < 1 && !s.introSkipped {
@@ -1628,6 +1664,7 @@ func (s *System) action() {
 			}
 		}
 	}
+
 	if !s.cam.ZoomEnable {
 		// Lower the precision to prevent errors in Pos X.
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
@@ -1686,7 +1723,7 @@ func (s *System) action() {
 	explUpdate(&s.explodsLayer1, false)
 	if s.tickNextFrame() {
 		spd := s.gameSpeed * s.accel
-		if s.postMatchFlg {
+		if s.postMatchFlg || s.step {
 			spd = 1
 		} else if !s.gsf(GSF_nokoslow) && s.time != 0 && s.intro < 0 && s.slowtime > 0 {
 			spd *= s.lifebar.ro.slow_speed
@@ -3325,6 +3362,10 @@ func (l *Loader) loadStage() bool {
 				} else {
 					sys.appendToConsole("Stage with unknown engine version.")
 				}
+			}
+			// Warn when camera boundaries are smaller than player boundaries
+			if int32(sys.stage.leftbound) > sys.stage.stageCamera.boundleft || int32(sys.stage.rightbound) < sys.stage.stageCamera.boundright {
+				sys.appendToConsole("Warning: Stage player boundaries defined incorrectly")
 			}
 		}()
 		var def string
