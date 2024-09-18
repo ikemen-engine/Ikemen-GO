@@ -4070,9 +4070,11 @@ func triggerFunctions(l *lua.LState) {
 				case "angle":
 					lv = lua.LNumber(p.angle)
 				case "pos x":
-					lv = lua.LNumber(p.pos[0])
+					lv = lua.LNumber(p.drawPos[0])
 				case "pos y":
-					lv = lua.LNumber(p.pos[1])
+					lv = lua.LNumber(p.drawPos[1])
+				case "pos z":
+					lv = lua.LNumber(p.drawPos[2])
 				case "projsprpriority":
 					lv = lua.LNumber(p.sprpriority)
 				case "projstagebound":

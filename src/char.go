@@ -1623,7 +1623,7 @@ type Projectile struct {
 	stagebound      int32
 	heightbound     [2]int32
 	pos             [3]float32
-	drawPos         [2]float32
+	drawPos         [3]float32
 	facing          float32
 	removefacing    float32
 	shadow          [3]int32
@@ -1769,10 +1769,10 @@ func (p *Projectile) update(playerNo int) {
 	} else {
 		if sys.tickFrame() {
 			p.pos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1], p.pos[2] + p.velocity[2]}
-			p.drawPos = [...]float32{p.pos[0], p.pos[1] + p.pos[2]}
+			p.drawPos = [...]float32{p.pos[0], p.pos[1], p.pos[2]}
 		}
 		spd := sys.tickInterpolation()
-		for i := 0; i < 2; i++ {
+		for i := 0; i < 3; i++ {
 			p.drawPos[i] = p.pos[i] - (p.pos[i]-p.oldPos[i])*(1-spd)
 		}
 		if sys.tickNextFrame() {
@@ -1941,7 +1941,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	var c = sys.chars[playerNo][0]
 	zscale := c.updateZScale(p.pos[2])
 	if p.ani != nil {
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1]*p.localscl + p.pos[2]*p.localscl},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1]*p.localscl + p.drawPos[2]*p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
@@ -3803,9 +3803,11 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) Bytec
 			case OC_ex2_projectilevar_projangle:
 				v = BytecodeFloat(p.angle)
 			case OC_ex2_projectilevar_pos_x:
-				v = BytecodeFloat(p.pos[0])
+				v = BytecodeFloat(p.drawPos[0])
 			case OC_ex2_projectilevar_pos_y:
-				v = BytecodeFloat(p.pos[1])
+				v = BytecodeFloat(p.drawPos[1])
+			case OC_ex2_projectilevar_pos_z:
+				v = BytecodeFloat(p.drawPos[2])
 			case OC_ex2_projectilevar_projsprpriority:
 				v = BytecodeInt(p.sprpriority)
 			case OC_ex2_projectilevar_projstagebound:
