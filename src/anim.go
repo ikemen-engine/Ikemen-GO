@@ -740,7 +740,10 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		return
 	}
 	h, v, angle := a.drawSub1(rot.angle, facing)
-	rot.angle = -angle
+	rot.angle = angle
+	if yscl < 0 && rot.angle != 0 {
+		rxadd = -rxadd
+	}
 	x += xscl * posLocalscl * h * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * (1 / a.scale_x)
 	y += yscl * posLocalscl * vscl * v * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * (1 / a.scale_x)
 
@@ -903,7 +906,12 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so, ro [2]float32, soy, fo 
 		if sd.oldVer {
 			soy *= 1.5
 		}
-		sys.shadows.add(&ShadowSprite{sd, sc, salp, [2]float32{so[0], soy + so[1]}, ro, fo})
+		// Do the FX copying here, we don't want things lagging
+		sd2 := *sd
+		fx := *sd.fx
+		sd2.fx = &fx
+		ss := &ShadowSprite{&sd2, sc, salp, [2]float32{so[0], soy + so[1]}, ro, fo}
+		sys.shadows.add(ss)
 	}
 }
 func (dl DrawList) draw(x, y, scl float32) {
@@ -1007,8 +1015,13 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		if sys.stage.sdw.yscale < 0 {
 			sign = -1
 		}
-		// TODO: rot offset
-		xshearoff := (sign * 100 * xshear) + sys.stage.sdw.offset[0]
+		xshearoff := sys.stage.sdw.offset[0]
+		xrotoff := sign * xshear * (float32(s.anim.spr.Size[1]) * s.scl[1])
+		if s.rot.angle != 0 {
+			xshearoff -= xrotoff
+		} else {
+			xshearoff += xrotoff
+		}
 		if s.window[0] != 0 || s.window[1] != 0 || s.window[2] != 0 || s.window[3] != 0 {
 			w := s.window
 			w[1], w[3] = -w[1], -w[3]
@@ -1057,7 +1070,36 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 			s.anim.srcAlpha = 0
 		}
 
-		offsetX, offsetY := sys.stage.reflection.offset[0], sys.stage.reflection.offset[1]
+		// Set the tint if it's there
+		col := int32(sys.stage.reflection.color)
+
+		// default: full color
+		if !s.fx.enable {
+			s.fx.setColor((col&0xFF0000)>>16, (col&0x00FF00)>>8, col&0x0000FF)
+		} else {
+			add := [...]int32{0, 0, 0}
+			// don't add EVERYTHING if that's our default
+			if col != 0xFFFFFF {
+				add = [...]int32{(col & 0xFF0000) >> 16, (col & 0x00FF00) >> 8, col & 0x0000FF}
+			}
+			s.fx.setColor(s.fx.eMul[0]+add[0], s.fx.eMul[1]+add[1], s.fx.eMul[2]+add[2])
+		}
+
+		xshear := sys.stage.reflection.xshear * sys.cam.Scale / sys.cam.BaseScale()
+		// Have to do it this way, -xshear results in improper behavior for the rotation offset
+		sign := float32(1)
+		if sys.stage.reflection.yscale < 0 {
+			sign = -1
+		}
+		offsetX := (s.reflectOffset[0] + sys.stage.reflection.offset[0]) * sys.cam.Scale
+		offsetY := (s.reflectOffset[1] + sys.stage.reflection.offset[1]) * sys.cam.Scale
+		xrotoff := sign * xshear * (float32(s.anim.spr.Size[1]) * s.scl[1]) * sys.cam.Scale
+		if s.rot.angle != 0 {
+			xshear = -xshear
+			offsetX -= xrotoff
+		} else {
+			offsetX += xrotoff
+		}
 
 		if s.window[0] != 0 || s.window[1] != 0 || s.window[2] != 0 || s.window[3] != 0 {
 			w := s.window
@@ -1074,14 +1116,14 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 			window[2] = int32(scl * (w[2] - w[0]) * sys.widthScale)
 			window[3] = int32(scl * (w[3] - w[1]) * sys.heightScale)
 
-			s.anim.Draw(&window, sys.cam.Offset[0]/scl-(x-s.pos[0]-s.reflectOffset[0]-offsetX),
+			s.anim.Draw(&window, sys.cam.Offset[0]/scl-(x-s.pos[0]-offsetX),
 				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-y-
-					(s.pos[1]-s.reflectOffset[1]-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, 0,
+					(s.pos[1]*sys.stage.reflection.yscale-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, xshear,
 				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
 		} else {
-			s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]-s.reflectOffset[0]-offsetX),
+			s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]-offsetX),
 				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-y-
-					(s.pos[1]-s.reflectOffset[1]-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, 0,
+					(s.pos[1]*sys.stage.reflection.yscale-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, xshear,
 				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
 		}
 	}

@@ -8,7 +8,9 @@ import (
 	"log"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -387,6 +389,12 @@ type System struct {
 	absTickCountF float32
 }
 
+// Check if the application is running inside a macOS app bundle
+func isRunningInsideAppBundle(exePath string) bool {
+	// Check if we're on Darwin and the executable path contains .app (macOS application bundle)
+	return runtime.GOOS == "darwin" && strings.Contains(exePath, ".app")
+}
+
 // Initialize stuff, this is called after the config int at main.go
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
@@ -394,6 +402,33 @@ func (s *System) init(w, h int32) *lua.LState {
 	// Create a system window.
 	s.window, err = s.newWindow(int(s.scrrect[2]), int(s.scrrect[3]))
 	chk(err)
+
+	// Correct the joystick mappings (macOS)
+	if runtime.GOOS == "darwin" {
+		for i := 0; i < len(sys.joystickConfig); i++ {
+			jc := &sys.joystickConfig[i]
+			joyS := jc.Joy
+
+			if input.IsJoystickPresent(joyS) {
+				guid := input.GetJoystickGUID(joyS)
+
+				// Correct the inner config
+				if sys.joystickConfig[joyS].GUID != guid && !sys.joystickConfig[i].isInitialized {
+
+					// Swap those that don't match
+					joyIndices := input.GetJoystickIndices(guid)
+					if len(joyIndices) == 1 {
+						for j := 0; j < len(sys.joystickConfig); j++ {
+							if sys.joystickConfig[j].GUID == guid {
+								sys.joystickConfig[i].swap(&sys.joystickConfig[j])
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 
 	// Check if the shader selected is currently available.
 	if s.postProcessingShader < int32(len(s.externalShaderList)) {
@@ -460,6 +495,16 @@ func (s *System) init(w, h int32) *lua.LState {
 		s.windowMainIcon = make([]image.Image, len(s.windowMainIconLocation))
 		// And then we load them.
 		for i, iconLocation := range s.windowMainIconLocation {
+			exePath, err := os.Executable()
+			if err != nil {
+				fmt.Println("Error getting executable path:", err)
+			} else {
+				// Change the context for Darwin if we're in an app bundle
+				if isRunningInsideAppBundle(exePath) {
+					os.Chdir(path.Dir(exePath))
+					os.Chdir("../../../")
+				}
+			}
 			f[i], err = os.Open(iconLocation)
 			if err != nil {
 				var dErr = "Icon file can not be found.\nPanic: " + err.Error()

@@ -270,8 +270,16 @@ func (bgm *Bgm) UpdateVolume() {
 		sys.errLog.Printf("WARNING: BGM volume set beyond expected range (value: %v). Clamped to MaxBgmVolume", bgm.bgmVolume)
 		bgm.bgmVolume = sys.maxBgmVolume
 	}
-	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
-	silent := volume <= -5
+	volume := -5 + 6*(math.Pow(2, 0.0000008125*float64(sys.bgmVolume)*float64(sys.masterVolume)*float64(bgm.bgmVolume))-0.8125)
+
+	// leaving the following below in case we ever need to revert to the old method
+	// volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+
+	// clamp to 1
+	if volume >= 1 {
+		volume = 1
+	}
+	silent := volume <= -3.875
 	speaker.Lock()
 	bgm.volctrl.Volume = volume
 	bgm.volctrl.Silent = silent

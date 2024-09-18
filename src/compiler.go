@@ -1904,6 +1904,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_explodvar_pos_x
 			case "y":
 				opc = OC_ex2_explodvar_pos_y
+			case "z":
+				opc = OC_ex2_explodvar_pos_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -1915,6 +1917,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_explodvar_vel_x
 			case "y":
 				opc = OC_ex2_explodvar_vel_y
+			case "z":
+				opc = OC_ex2_explodvar_vel_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -1926,6 +1930,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_explodvar_accel_x
 			case "y":
 				opc = OC_ex2_explodvar_accel_y
+			case "z":
+				opc = OC_ex2_explodvar_accel_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2524,15 +2530,17 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			}
 		case "misstime":
 			opc = OC_ex2_projectilevar_projmisstime
-		case "hits":
+		case "projhits":
 			opc = OC_ex2_projectilevar_projhits
-		case "priority":
+		case "projhitsmax":
+			opc = OC_ex2_projectilevar_projhitsmax
+		case "projpriority":
 			opc = OC_ex2_projectilevar_projpriority
-		case "hitanim":
+		case "projhitanim":
 			opc = OC_ex2_projectilevar_projhitanim
-		case "remanim":
+		case "projremanim":
 			opc = OC_ex2_projectilevar_projremanim
-		case "cancelanim":
+		case "projcancelanim":
 			opc = OC_ex2_projectilevar_projcancelanim
 		case "vel":
 			c.token = c.tokenizer(in)
@@ -2542,6 +2550,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_projectilevar_vel_x
 			case "y":
 				opc = OC_ex2_projectilevar_vel_y
+			case "z":
+				opc = OC_ex2_projectilevar_vel_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2553,6 +2563,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_projectilevar_velmul_x
 			case "y":
 				opc = OC_ex2_projectilevar_velmul_y
+			case "z":
+				opc = OC_ex2_projectilevar_velmul_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2564,6 +2576,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_projectilevar_remvelocity_x
 			case "y":
 				opc = OC_ex2_projectilevar_remvelocity_y
+			case "z":
+				opc = OC_ex2_projectilevar_remvelocity_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2575,6 +2589,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_projectilevar_accel_x
 			case "y":
 				opc = OC_ex2_projectilevar_accel_y
+			case "z":
+				opc = OC_ex2_projectilevar_accel_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2599,14 +2615,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				opc = OC_ex2_projectilevar_pos_x
 			case "y":
 				opc = OC_ex2_projectilevar_pos_y
+			case "z":
+				opc = OC_ex2_projectilevar_pos_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
-		case "sprpriority":
+		case "projsprpriority":
 			opc = OC_ex2_projectilevar_projsprpriority
-		case "stagebound":
+		case "projstagebound":
 			opc = OC_ex2_projectilevar_projstagebound
-		case "edgebound":
+		case "projedgebound":
 			opc = OC_ex2_projectilevar_projedgebound
 		case "lowbound":
 			opc = OC_ex2_projectilevar_lowbound
@@ -2801,8 +2819,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_playerinfo_leftbound
 		case "playerinfo.rightbound":
 			opc = OC_const_stagevar_playerinfo_rightbound
+		case "scaling.topz":
+			opc = OC_const_stagevar_scaling_topz
+		case "scaling.botz":
+			opc = OC_const_stagevar_scaling_botz
 		case "scaling.topscale":
 			opc = OC_const_stagevar_scaling_topscale
+		case "scaling.botscale":
+			opc = OC_const_stagevar_scaling_botscale
 		case "bound.screenleft":
 			opc = OC_const_stagevar_bound_screenleft
 		case "bound.screenright":
@@ -2847,6 +2871,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_reflection_offset_x
 		case "reflection.offset.y":
 			opc = OC_const_stagevar_reflection_offset_y
+		case "reflection.xshear":
+			opc = OC_const_stagevar_reflection_xshear
+		case "reflection.color.r":
+			opc = OC_const_stagevar_reflection_color_r
+		case "reflection.color.g":
+			opc = OC_const_stagevar_reflection_color_g
+		case "reflection.color.b":
+			opc = OC_const_stagevar_reflection_color_b
 		default:
 			return bvNone(), Error("Invalid data: " + svname)
 		}

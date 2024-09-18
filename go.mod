@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20231124074035-2de0cf0c80af
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a
 	github.com/go-gl/mathgl v1.0.0
 	github.com/gopxl/beep/v2 v2.0.2
 	github.com/ikemen-engine/glfont v0.0.0-20240816074833-3b3b0c69a290

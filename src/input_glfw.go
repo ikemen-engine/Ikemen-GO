@@ -3,6 +3,12 @@
 package main
 
 import (
+	"fmt"
+	"math"
+	"runtime"
+	"strconv"
+	"strings"
+
 	glfw "github.com/go-gl/glfw/v3.3/glfw"
 )
 
@@ -214,4 +220,94 @@ func (input *Input) GetJoystickButtons(joy int) []glfw.Action {
 		return []glfw.Action{}
 	}
 	return input.joystick[joy].GetButtons()
+}
+
+func (input *Input) GetJoystickGUID(joy int) string {
+	if joy < 0 || joy >= len(input.joystick) {
+		return ""
+	}
+	return input.joystick[joy].GetGUID()
+}
+
+func (input *Input) GetJoystickIndices(guid string) []int {
+	if guid != "" {
+		numIdenticalJoyFound := 0
+		identicalJoys := make([]int, input.GetMaxJoystickCount())
+		for i := 0; i < len(identicalJoys); i++ {
+			identicalJoys[i] = math.MaxInt
+		}
+
+		for i, j := range input.joystick {
+			if j.GetGUID() == guid {
+				identicalJoys[numIdenticalJoyFound] = i
+				numIdenticalJoyFound++
+			}
+		}
+		slice := identicalJoys[:numIdenticalJoyFound]
+		return slice
+	}
+
+	slice := make([]int, 1)
+	slice[0] = math.MaxInt
+	return slice
+}
+
+// From @leonkasovan's branch
+func CheckAxisForDpad(joy int, axes *[]float32, base int) string {
+	var s string
+	if (*axes)[0] > sys.controllerStickSensitivity { // right
+		s = strconv.Itoa(2 + base)
+	} else if -(*axes)[0] > sys.controllerStickSensitivity { // left
+		s = strconv.Itoa(1 + base)
+	}
+	if (*axes)[1] > sys.controllerStickSensitivity { // down
+		s = strconv.Itoa(3 + base)
+	} else if -(*axes)[1] > sys.controllerStickSensitivity { // up
+		s = strconv.Itoa(base)
+	}
+	return s
+}
+
+// Adapted from @leonkasovan's branch (GLFW controllers are handled slightly differently depending on OS)
+func CheckAxisForTrigger(joy int, axes *[]float32) string {
+	var s string = ""
+	for i := range *axes {
+		if (*axes)[i] < -sys.controllerStickSensitivity {
+			name := input.GetJoystickName(joy)
+			os := runtime.GOOS
+			joyName := name + "." + os + "." + runtime.GOARCH + ".glfw"
+			if strings.Contains(name, "XInput") || strings.Contains(name, "X360") ||
+				strings.Contains(name, "Xbox Wireless") || strings.Contains(name, "Xbox Elite") || strings.Contains(name, "Xbox One") ||
+				strings.Contains(name, "Xbox Series") || strings.Contains(name, "Xbox Adaptive") {
+				if (i == 4 || i == 5) && os == "windows" {
+					// do nothing
+				} else if (i == 2 || i == 5) && os != "windows" {
+					// do nothing
+				}
+			} else if (i == 4 || i == 5) && joyName == "PS4 Controller.windows.amd64.sdl" {
+				// do nothing
+			} else if (i == 2 || i == 5) && joyName == "Steam Virtual Gamepad.linux.amd64.glfw" {
+				// do nothing
+			} else if (i == 2 || i == 5) && joyName == "Steam Deck Controller.linux.amd64.sdl" {
+				// do nothing
+			} else if (i == 3 || i == 4 || i == 6 || i == 7) && name == "PS3 Controller" && os == "windows" {
+				// do nothing
+			} else if (i == 2 || i == 5) && name == "PS3 Controller" && os != "windows" {
+				// do nothing
+			} else if (i == 2 || i == 5) && joyName == "Logitech Dual Action.linux.amd64.sdl" {
+				// do nothing
+			} else if (i == 3 || i == 4) && name == "PS4 Controller" {
+				// do nothing
+			} else {
+				s = strconv.Itoa(-i*2 - 1)
+				fmt.Printf("[input_glfw.go][checkAxisForTrigger] 1.AXIS joy=%v i=%v s:%v axes[i]=%v\n", joy, i, s, (*axes)[i])
+				break
+			}
+		} else if (*axes)[i] > sys.controllerStickSensitivity {
+			s = strconv.Itoa(-i*2 - 2)
+			fmt.Printf("[input_glfw.go][checkAxisForTrigger] 2.AXIS joy=%v i=%v s:%v axes[i]=%v\n", joy, i, s, (*axes)[i])
+			break
+		}
+	}
+	return s
 }

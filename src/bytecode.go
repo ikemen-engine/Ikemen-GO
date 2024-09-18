@@ -370,7 +370,10 @@ const (
 	OC_const_stagevar_camera_lowestcap
 	OC_const_stagevar_playerinfo_leftbound
 	OC_const_stagevar_playerinfo_rightbound
+	OC_const_stagevar_scaling_topz
+	OC_const_stagevar_scaling_botz
 	OC_const_stagevar_scaling_topscale
+	OC_const_stagevar_scaling_botscale
 	OC_const_stagevar_bound_screenleft
 	OC_const_stagevar_bound_screenright
 	OC_const_stagevar_stageinfo_localcoord_x
@@ -393,6 +396,10 @@ const (
 	OC_const_stagevar_reflection_yscale
 	OC_const_stagevar_reflection_offset_x
 	OC_const_stagevar_reflection_offset_y
+	OC_const_stagevar_reflection_xshear
+	OC_const_stagevar_reflection_color_r
+	OC_const_stagevar_reflection_color_g
+	OC_const_stagevar_reflection_color_b
 	OC_const_constants
 	OC_const_stage_constants
 )
@@ -703,12 +710,15 @@ const (
 	OC_ex2_explodvar_animelem
 	OC_ex2_explodvar_pos_x
 	OC_ex2_explodvar_pos_y
+	OC_ex2_explodvar_pos_z
 	OC_ex2_explodvar_scale_x
 	OC_ex2_explodvar_scale_y
 	OC_ex2_explodvar_vel_x
 	OC_ex2_explodvar_vel_y
+	OC_ex2_explodvar_vel_z
 	OC_ex2_explodvar_accel_x
 	OC_ex2_explodvar_accel_y
+	OC_ex2_explodvar_accel_z
 	OC_ex2_explodvar_angle
 	OC_ex2_explodvar_angle_x
 	OC_ex2_explodvar_angle_y
@@ -724,23 +734,29 @@ const (
 	OC_ex2_projectilevar_projshadow_b
 	OC_ex2_projectilevar_projmisstime
 	OC_ex2_projectilevar_projhits
+	OC_ex2_projectilevar_projhitsmax
 	OC_ex2_projectilevar_projpriority
 	OC_ex2_projectilevar_projhitanim
 	OC_ex2_projectilevar_projremanim
 	OC_ex2_projectilevar_projcancelanim
 	OC_ex2_projectilevar_vel_x
 	OC_ex2_projectilevar_vel_y
+	OC_ex2_projectilevar_vel_z
 	OC_ex2_projectilevar_velmul_x
 	OC_ex2_projectilevar_velmul_y
+	OC_ex2_projectilevar_velmul_z
 	OC_ex2_projectilevar_remvelocity_x
 	OC_ex2_projectilevar_remvelocity_y
+	OC_ex2_projectilevar_remvelocity_z
 	OC_ex2_projectilevar_accel_x
 	OC_ex2_projectilevar_accel_y
+	OC_ex2_projectilevar_accel_z
 	OC_ex2_projectilevar_projscale_x
 	OC_ex2_projectilevar_projscale_y
 	OC_ex2_projectilevar_projangle
 	OC_ex2_projectilevar_pos_x
 	OC_ex2_projectilevar_pos_y
+	OC_ex2_projectilevar_pos_z
 	OC_ex2_projectilevar_projsprpriority
 	OC_ex2_projectilevar_projstagebound
 	OC_ex2_projectilevar_projedgebound
@@ -1779,9 +1795,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_size_attack_dist_back:
 		sys.bcStack.PushF(c.size.attack.dist.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_back:
-		sys.bcStack.PushF(c.size.attack.z.width[1] * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.size.attack.z.width.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_front:
-		sys.bcStack.PushF(c.size.attack.z.width[0] * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.size.attack.z.width.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_front:
 		sys.bcStack.PushF(c.size.proj.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_back:
@@ -2054,8 +2070,14 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.stage.leftbound)
 	case OC_const_stagevar_playerinfo_rightbound:
 		sys.bcStack.PushF(sys.stage.rightbound)
+	case OC_const_stagevar_scaling_topz:
+		sys.bcStack.PushF(sys.stage.stageCamera.topz)
+	case OC_const_stagevar_scaling_botz:
+		sys.bcStack.PushF(sys.stage.stageCamera.botz)
 	case OC_const_stagevar_scaling_topscale:
 		sys.bcStack.PushF(sys.stage.stageCamera.ztopscale)
+	case OC_const_stagevar_scaling_botscale:
+		sys.bcStack.PushF(sys.stage.stageCamera.zbotscale)
 	case OC_const_stagevar_bound_screenleft:
 		sys.bcStack.PushI(sys.stage.screenleft)
 	case OC_const_stagevar_bound_screenright:
@@ -2100,6 +2122,14 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.stage.reflection.offset[0])
 	case OC_const_stagevar_reflection_offset_y:
 		sys.bcStack.PushF(sys.stage.reflection.offset[1])
+	case OC_const_stagevar_reflection_xshear:
+		sys.bcStack.PushF(sys.stage.reflection.xshear)
+	case OC_const_stagevar_reflection_color_r:
+		sys.bcStack.PushI(int32((sys.stage.reflection.color & 0xFF0000) >> 16))
+	case OC_const_stagevar_reflection_color_g:
+		sys.bcStack.PushI(int32((sys.stage.reflection.color & 0xFF00) >> 8))
+	case OC_const_stagevar_reflection_color_b:
+		sys.bcStack.PushI(int32(sys.stage.reflection.color & 0xFF))
 	case OC_const_constants:
 		sys.bcStack.PushF(c.gi().constants[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 			unsafe.Pointer(&be[*i]))]])
@@ -2798,6 +2828,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	(*i)++
 	opc := be[*i-1]
 	correctScale := false
+	camOff := float32(0)
 	switch opc {
 	case OC_ex2_index:
 		sys.bcStack.PushI(c.index)
@@ -3038,6 +3069,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_projectilevar_pos_x:
 		correctScale = true
+		camOff = -sys.cam.Pos[0] / oc.localscl
 		fallthrough
 	case OC_ex2_projectilevar_pos_y:
 		correctScale = true
@@ -3080,6 +3112,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_projectilevar_projhits:
 		fallthrough
+	case OC_ex2_projectilevar_projhitsmax:
+		fallthrough
 	case OC_ex2_projectilevar_projpriority:
 		fallthrough
 	case OC_ex2_projectilevar_projhitanim:
@@ -3116,7 +3150,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		id := sys.bcStack.Pop()
 		v := c.projVar(id, idx, opc)
 		if correctScale {
-			sys.bcStack.PushF(v.ToF() * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) + camOff)
 		} else {
 			sys.bcStack.Push(v)
 		}
@@ -3493,7 +3527,7 @@ func (sc stateDef) Run(c *Char) {
 			if len(exp) > 1 {
 				c.setYV(exp[1].evalF(c))
 				if len(exp) > 2 {
-					exp[2].run(c)
+					c.setZV(exp[2].evalF(c))
 				}
 			}
 		case stateDef_anim:
@@ -4184,7 +4218,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 	pt := PT_P1
 	var f, st int32 = 1, 0
 	var extmap bool
-	var x, y float32 = 0, 0
+	var x, y, z float32 = 0, 0, 0
 	rp := [...]int32{-1, 0}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		if h == nil {
@@ -4270,6 +4304,9 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				y = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					z = exp[2].evalF(c) * lclscround
+				}
 			}
 		case helper_facing:
 			f = exp[0].evalI(c)
@@ -4315,7 +4352,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		h.localscl = crun.localscl
 		h.localcoord = crun.localcoord
 	}
-	crun.helperInit(h, st, pt, x, y, f, rp, extmap)
+	crun.helperInit(h, st, pt, x, y, z, f, rp, extmap)
 	return false
 }
 
@@ -4822,6 +4859,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.relativePos[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				e.relativePos[1] = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					e.relativePos[2] = exp[2].evalF(c) * lclscround
+				}
 			}
 		case explod_random:
 			rndx := (exp[0].evalF(c) / 2) * lclscround
@@ -4829,6 +4869,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				rndy := (exp[1].evalF(c) / 2) * lclscround
 				e.relativePos[1] += RandF(-rndy, rndy)
+				if len(exp) > 2 {
+					rndz := (exp[2].evalF(c) / 2) * lclscround
+					e.relativePos[2] += RandF(-rndz, rndz)
+				}
 			}
 		case explod_space:
 			e.space = Space(exp[0].evalI(c))
@@ -4838,11 +4882,17 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.velocity[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				e.velocity[1] = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					e.velocity[2] = exp[2].evalF(c) * lclscround
+				}
 			}
 		case explod_accel:
 			e.accel[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				e.accel[1] = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					e.accel[2] = exp[2].evalF(c) * lclscround
+				}
 			}
 		case explod_scale:
 			e.scale[0] = exp[0].evalF(c)
@@ -5002,9 +5052,12 @@ func (sc explod) setInterpolation(c *Char, e *Explod,
 		e.interpolate_animelem[0] = e.animelem
 		e.interpolate_animelem[2] = e.interpolate_animelem[1]
 	case explod_interpolate_pos:
-		e.interpolate_pos[2] = exp[0].evalF(c)
+		e.interpolate_pos[3] = exp[0].evalF(c)
 		if len(exp) > 1 {
-			e.interpolate_pos[3] = exp[1].evalF(c)
+			e.interpolate_pos[4] = exp[1].evalF(c)
+			if len(exp) > 2 {
+				e.interpolate_pos[5] = exp[2].evalF(c)
+			}
 		}
 	case explod_interpolate_scale:
 		e.interpolate_scale[2] = exp[0].evalF(c)
@@ -5067,7 +5120,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	rp := [...]int32{-1, 0}
 	remap := false
 	var f, vf float32 = 1, 1
-	sp, pos, vel, accel := Space_none, [2]float32{0, 0}, [2]float32{0, 0}, [2]float32{0, 0}
+	sp, pos, vel, accel := Space_none, [3]float32{0, 0, 0}, [3]float32{0, 0, 0}, [3]float32{0, 0, 0}
 	ptexists := false
 	eachExpl := func(f func(e *Explod)) {
 		if idx < 0 {
@@ -5142,6 +5195,12 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.relativePos[1] = pos[1] })
 					}
+					if len(exp) > 2 {
+						pos[2] = exp[2].evalF(c) * lclscround
+						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+							eachExpl(func(e *Explod) { e.relativePos[2] = pos[2] })
+						}
+					}
 				}
 			case explod_random:
 				rndx := (exp[0].evalF(c) / 2) * lclscround
@@ -5157,6 +5216,14 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.relativePos[1] += rndy })
 					}
+					if len(exp) > 2 {
+						rndz := (exp[2].evalF(c) / 2) * lclscround
+						rndz = RandF(-rndz, rndz)
+						pos[2] += rndz
+						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+							eachExpl(func(e *Explod) { e.relativePos[2] += rndz })
+						}
+					}
 				}
 			case explod_velocity:
 				vel[0] = exp[0].evalF(c) * lclscround
@@ -5168,6 +5235,12 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.velocity[1] = vel[1] })
 					}
+					if len(exp) > 2 {
+						vel[2] = exp[2].evalF(c) * lclscround
+						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+							eachExpl(func(e *Explod) { e.velocity[2] = vel[2] })
+						}
+					}
 				}
 			case explod_accel:
 				accel[0] = exp[0].evalF(c) * lclscround
@@ -5178,6 +5251,12 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					accel[1] = exp[1].evalF(c) * lclscround
 					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
 						eachExpl(func(e *Explod) { e.accel[1] = accel[1] })
+					}
+					if len(exp) > 2 {
+						accel[2] = exp[2].evalF(c) * lclscround
+						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+							eachExpl(func(e *Explod) { e.accel[2] = accel[2] })
+						}
 					}
 				}
 			case explod_space:
@@ -5217,6 +5296,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 					e.setX(e.pos[0])
 					e.setY(e.pos[1])
+					e.setZ(e.pos[2])
 				})
 			case explod_removetime:
 				t := exp[0].evalI(c)
@@ -5740,6 +5820,7 @@ const (
 	hitDef_down_recover
 	hitDef_down_recovertime
 	hitDef_xaccel
+	hitDef_attack_width
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
@@ -6037,6 +6118,13 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.down_recovertime = exp[0].evalI(c)
 	case hitDef_xaccel:
 		hd.xaccel = exp[0].evalF(c)
+	case hitDef_attack_width:
+		hd.attack.width[0] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			hd.attack.width[1] = exp[1].evalF(c)
+		} else {
+			hd.attack.width[1] = hd.attack.width[0]
+		}
 	default:
 		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {
 			return false
@@ -6161,7 +6249,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	var lclscround float32 = 1.0
 	var p *Projectile
 	pt := PT_P1
-	var x, y float32 = 0, 0
+	var x, y, z float32 = 0, 0, 0
 	op := false
 	clsnscale := false
 	rp := [...]int32{-1, 0}
@@ -6207,7 +6295,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		case projectile_projmisstime:
 			p.misstime = exp[0].evalI(c)
 		case projectile_projhits:
-			p.hits = exp[0].evalI(c)
+			tmp := p.totalhits
+			p.totalhits = exp[0].evalI(c)
+			p.hits += (p.totalhits - tmp)
 		case projectile_projpriority:
 			p.priority = exp[0].evalI(c)
 			p.priorityPoints = p.priority
@@ -6229,6 +6319,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.velmul[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
 				p.velmul[1] = exp[1].evalF(c)
+				if len(exp) > 2 {
+					p.velmul[2] = exp[2].evalF(c)
+				}
 			}
 		case projectile_remvelocity:
 			p.remvelocity[0] = exp[0].evalF(c) * lclscround
@@ -6239,6 +6332,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.accel[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				p.accel[1] = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					p.accel[2] = exp[2].evalF(c)
+				}
 			}
 		case projectile_projscale:
 			p.scale[0] = exp[0].evalF(c)
@@ -6251,6 +6347,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				y = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					z = exp[2].evalF(c) * lclscround
+				}
 			}
 		case projectile_projsprpriority:
 			p.sprpriority = exp[0].evalI(c)
@@ -6348,7 +6447,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	} else {
 		p.localscl = crun.localscl
 	}
-	crun.projInit(p, pt, x, y, op, rp[0], rp[1], clsnscale)
+	crun.projInit(p, pt, x, y, z, op, rp[0], rp[1], clsnscale)
 	return false
 }
 
@@ -7062,6 +7161,16 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				eachProj(func(p *Projectile) {
 					p.hitdef.xaccel = exp[0].evalF(c)
 				})
+			case hitDef_attack_width:
+				eachProj(
+					func(p *Projectile) {
+						p.hitdef.attack.width[0] = exp[0].evalF(c)
+						if len(exp) > 1 {
+							p.hitdef.attack.width[1] = exp[1].evalF(c)
+						} else {
+							p.hitdef.attack.width[1] = p.hitdef.attack.width[0]
+						}
+					})
 			default:
 				eachProj(func(p *Projectile) {
 					if !hitDef(sc).runSub(c, &p.hitdef, id, exp) {
@@ -7260,7 +7369,7 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 	var lclscround float32 = 1.0
 	tar := crun.getTarget(-1)
 	t := int32(1)
-	var x, y float32 = 0, 0
+	var x, y, z float32 = 0, 0, 0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case targetBind_id:
@@ -7274,6 +7383,9 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				y = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					z = exp[2].evalF(c) * lclscround
+				}
 			}
 		case targetBind_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -7293,7 +7405,7 @@ func (sc targetBind) Run(c *Char, _ []int32) bool {
 	if len(tar) == 0 {
 		return false
 	}
-	crun.targetBind(tar, t, x, y)
+	crun.targetBind(tar, t, x, y, z)
 	return false
 }
 
@@ -7303,6 +7415,7 @@ const (
 	bindToTarget_id byte = iota
 	bindToTarget_time
 	bindToTarget_pos
+	bindToTarget_posz
 	bindToTarget_redirectid
 )
 
@@ -7310,7 +7423,7 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 	crun := c
 	var lclscround float32 = 1.0
 	tar := crun.getTarget(-1)
-	t, x, y, hmf := int32(1), float32(0), float32(math.NaN()), HMF_F
+	t, x, y, z, hmf := int32(1), float32(0), float32(math.NaN()), float32(math.NaN()), HMF_F
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case bindToTarget_id:
@@ -7328,6 +7441,8 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 					hmf = HMF(exp[2].evalI(c))
 				}
 			}
+		case bindToTarget_posz:
+			z = exp[0].evalF(c) * lclscround
 		case bindToTarget_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7345,7 +7460,7 @@ func (sc bindToTarget) Run(c *Char, _ []int32) bool {
 	if len(tar) == 0 {
 		return false
 	}
-	crun.bindToTarget(tar, t, x, y, hmf)
+	crun.bindToTarget(tar, t, x, y, z, hmf)
 	return false
 }
 
@@ -8403,19 +8518,25 @@ func (sc makeDust) Run(c *Char, _ []int32) bool {
 				return false
 			}
 		case makeDust_pos:
-			x, y := exp[0].evalF(c), float32(0)
+			x, y, z := exp[0].evalF(c), float32(0), float32(0)
 			if len(exp) > 1 {
 				y = exp[1].evalF(c)
+				if len(exp) > 2 {
+					z = exp[2].evalF(c)
+				}
 			}
 			crun.makeDust(x-float32(crun.size.draw.offset[0]),
-				y-float32(crun.size.draw.offset[1]))
+				y-float32(crun.size.draw.offset[1]), z)
 		case makeDust_pos2:
-			x, y := exp[0].evalF(c), float32(0)
+			x, y, z := exp[0].evalF(c), float32(0), float32(0)
 			if len(exp) > 1 {
 				y = exp[1].evalF(c)
+				if len(exp) > 2 {
+					z = exp[2].evalF(c)
+				}
 			}
 			crun.makeDust(x-float32(crun.size.draw.offset[0]),
-				y-float32(crun.size.draw.offset[1]))
+				y-float32(crun.size.draw.offset[1]), z)
 		case makeDust_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8889,7 +9010,7 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 	crun := c
 	var lclscround float32 = 1.0
 	p := crun.parent()
-	var x, y float32 = 0, 0
+	var x, y, z float32 = 0, 0, 0
 	var time int32 = 1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -8905,6 +9026,9 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				y = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					z = exp[2].evalF(c) * lclscround
+				}
 			}
 		case bindToParent_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -8922,6 +9046,7 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 	}
 	crun.bindPos[0] = x
 	crun.bindPos[1] = y
+	crun.bindPos[2] = z
 	crun.setBindToId(p)
 	crun.setBindTime(time)
 	return false
@@ -8933,7 +9058,7 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 	crun := c
 	var lclscround float32 = 1.0
 	r := crun.root()
-	var x, y float32 = 0, 0
+	var x, y, z float32 = 0, 0, 0
 	var time int32 = 1
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -8949,6 +9074,9 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 			x = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				y = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					z = exp[2].evalF(c) * lclscround
+				}
 			}
 		case bindToParent_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -8966,6 +9094,7 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 	}
 	crun.bindPos[0] = x
 	crun.bindPos[1] = y
+	crun.bindPos[2] = z
 	crun.setBindToId(r)
 	crun.setBindTime(time)
 	return false
@@ -10464,7 +10593,12 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case playBgm_bgm:
-			if bgm = string(*(*[]byte)(unsafe.Pointer(&exp[0]))); bgm != "" {
+			bgm = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
+			// Default to stage BGM if string is stage
+			if bgm == "stage" {
+				// Search .def directory last in this instance
+				bgm = SearchFile(sys.stage.bgmusic, []string{"", "sound/", crun.gi().def})
+			} else if bgm != "" {
 				bgm = SearchFile(bgm, []string{crun.gi().def, "", "sound/"})
 			}
 			b = true
@@ -10880,7 +11014,10 @@ const (
 	modifyStageVar_camera_lowestcap
 	modifyStageVar_playerinfo_leftbound
 	modifyStageVar_playerinfo_rightbound
+	modifyStageVar_scaling_topz
+	modifyStageVar_scaling_botz
 	modifyStageVar_scaling_topscale
+	modifyStageVar_scaling_botscale
 	modifyStageVar_bound_screenleft
 	modifyStageVar_bound_screenright
 	modifyStageVar_stageinfo_zoffset
@@ -10895,6 +11032,7 @@ const (
 	modifyStageVar_shadow_offset
 	modifyStageVar_reflection_intensity
 	modifyStageVar_reflection_yscale
+	modifyStageVar_reflection_xshear
 	modifyStageVar_reflection_offset
 	modifyStageVar_redirectid
 )
@@ -10952,9 +11090,21 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.leftbound = exp[0].evalF(c)
 		case modifyStageVar_playerinfo_rightbound:
 			s.rightbound = exp[0].evalF(c)
+		case modifyStageVar_scaling_topz:
+			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topz
+				s.stageCamera.topz = exp[0].evalF(c)
+			}
+		case modifyStageVar_scaling_botz:
+			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for botz
+				s.stageCamera.botz = exp[0].evalF(c)
+			}
 		case modifyStageVar_scaling_topscale:
 			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topscale
 				s.stageCamera.ztopscale = exp[0].evalF(c)
+			}
+		case modifyStageVar_scaling_botscale:
+			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for botscale
+				s.stageCamera.zbotscale = exp[0].evalF(c)
 			}
 		case modifyStageVar_bound_screenleft:
 			s.screenleft = exp[0].evalI(c)
@@ -10992,6 +11142,8 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.reflection.intensity = Clamp(exp[0].evalI(c), 0, 255)
 		case modifyStageVar_reflection_yscale:
 			s.reflection.yscale = exp[0].evalF(c)
+		case modifyStageVar_reflection_xshear:
+			s.reflection.xshear = exp[0].evalF(c)
 		case modifyStageVar_reflection_offset:
 			s.reflection.offset[0] = exp[0].evalF(c)
 			s.reflection.offset[1] = exp[1].evalF(c)

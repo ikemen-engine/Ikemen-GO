@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -48,6 +49,18 @@ func closeLog(f *os.File) {
 }
 
 func main() {
+
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error getting executable path:", err)
+	} else {
+		// Change the context for Darwin if we're in an app bundle
+		if isRunningInsideAppBundle(exePath) {
+			os.Chdir(path.Dir(exePath))
+			os.Chdir("../../../")
+		}
+	}
+
 	// Make save directories, if they don't exist
 	os.Mkdir("save", os.ModeSticky|0755)
 	os.Mkdir("save/replays", os.ModeSticky|0755)
@@ -278,10 +291,12 @@ type configSettings struct {
 	ZoomSpeed                  float32
 	KeyConfig                  []struct {
 		Joystick int
+		GUID     string
 		Buttons  []interface{}
 	}
 	JoystickConfig []struct {
 		Joystick int
+		GUID     string
 		Buttons  []interface{}
 	}
 }
@@ -433,7 +448,7 @@ func setupConfig() configSettings {
 			stoki(b[3].(string)), stoki(b[4].(string)), stoki(b[5].(string)),
 			stoki(b[6].(string)), stoki(b[7].(string)), stoki(b[8].(string)),
 			stoki(b[9].(string)), stoki(b[10].(string)), stoki(b[11].(string)),
-			stoki(b[12].(string)), stoki(b[13].(string))})
+			stoki(b[12].(string)), stoki(b[13].(string)), kc.GUID, false})
 	}
 	if _, ok := sys.cmdFlags["-nojoy"]; !ok {
 		for _, jc := range tmp.JoystickConfig {
@@ -443,7 +458,7 @@ func setupConfig() configSettings {
 				Atoi(b[3].(string)), Atoi(b[4].(string)), Atoi(b[5].(string)),
 				Atoi(b[6].(string)), Atoi(b[7].(string)), Atoi(b[8].(string)),
 				Atoi(b[9].(string)), Atoi(b[10].(string)), Atoi(b[11].(string)),
-				Atoi(b[12].(string)), Atoi(b[13].(string))})
+				Atoi(b[12].(string)), Atoi(b[13].(string)), jc.GUID, false})
 		}
 	}
 
