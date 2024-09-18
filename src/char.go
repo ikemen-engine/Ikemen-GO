@@ -2771,8 +2771,6 @@ func (c *Char) load(def string) error {
 						}
 						is.ReadF32("attack.z.width",
 							&c.size.attack.z.width.front, &c.size.attack.z.width.back)
-						is.ReadF32("attack.z.width.back", &c.size.attack.z.width.back)
-						is.ReadF32("attack.z.width.front", &c.size.attack.z.width.front)
 					}
 				case "velocity":
 					if velocity {

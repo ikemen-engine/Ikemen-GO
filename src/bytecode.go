@@ -11033,6 +11033,7 @@ const (
 	modifyStageVar_reflection_intensity
 	modifyStageVar_reflection_yscale
 	modifyStageVar_reflection_xshear
+	modifyStageVar_reflection_color
 	modifyStageVar_reflection_offset
 	modifyStageVar_redirectid
 )
@@ -11144,6 +11145,14 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.reflection.yscale = exp[0].evalF(c)
 		case modifyStageVar_reflection_xshear:
 			s.reflection.xshear = exp[0].evalF(c)
+		case modifyStageVar_reflection_color:
+			// mugen 1.1 removed support for color
+			if (s.mugenver[0] != 1 || s.mugenver[1] != 1) && (s.sff.header.Ver0 != 2 || s.sff.header.Ver2 != 1) {
+				r := Clamp(exp[0].evalI(c), 0, 255)
+				g := Clamp(exp[1].evalI(c), 0, 255)
+				b := Clamp(exp[2].evalI(c), 0, 255)
+				s.reflection.color = uint32(r<<16 | g<<8 | b)
+			}
 		case modifyStageVar_reflection_offset:
 			s.reflection.offset[0] = exp[0].evalF(c)
 			s.reflection.offset[1] = exp[1].evalF(c)

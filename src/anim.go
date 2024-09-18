@@ -1085,7 +1085,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 			s.fx.setColor(s.fx.eMul[0]+add[0], s.fx.eMul[1]+add[1], s.fx.eMul[2]+add[2])
 		}
 
-		xshear := sys.stage.reflection.xshear * sys.cam.Scale / sys.cam.BaseScale()
+		xshear := sys.stage.reflection.xshear
 		// Have to do it this way, -xshear results in improper behavior for the rotation offset
 		sign := float32(1)
 		if sys.stage.reflection.yscale < 0 {
