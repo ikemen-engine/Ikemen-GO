@@ -1402,6 +1402,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.frameCounter))
 		return 1
 	})
+	luaRegister(l, "getJoystickGUID", func(*lua.LState) int {
+		l.Push(lua.LString(input.GetJoystickGUID(int(numArg(l, 1)))))
+		return 1
+	})
 	luaRegister(l, "getJoystickName", func(*lua.LState) int {
 		l.Push(lua.LString(input.GetJoystickName(int(numArg(l, 1)))))
 		return 1
@@ -1421,32 +1425,14 @@ func systemScriptInit(l *lua.LState) {
 			if input.IsJoystickPresent(joy) {
 				axes := input.GetJoystickAxes(joy)
 				btns := input.GetJoystickButtons(joy)
-				name := input.GetJoystickName(joy)
-				for i := range axes {
-					if strings.Contains(name, "XInput") || strings.Contains(name, "X360") {
-						if axes[i] > 0.5 {
-							s = strconv.Itoa(-i*2 - 2)
-						} else if axes[i] < -0.5 && i < 4 {
-							s = strconv.Itoa(-i*2 - 1)
-						}
-					} else if name == "PS3 Controller" {
-						if (len(axes) == 8 && i != 3 && i != 4 && i != 6 && i != 7) ||
-							(len(axes) == 6 && i != 2 && i != 5) {
-							// 8 axes in Windows (need to skip 3, 4, 6, 7) and
-							// 6 axes in Linux (need to skip 2 and 5)
-							if axes[i] < -0.2 {
-								s = strconv.Itoa(-i*2 - 1)
-							} else if axes[i] > 0.2 {
-								s = strconv.Itoa(-i*2 - 2)
-							}
-						}
-					} else if name != "PS4 Controller" || !(i == 3 || i == 4) {
-						if axes[i] < -0.2 {
-							s = strconv.Itoa(-i*2 - 1)
-						} else if axes[i] > 0.2 {
-							s = strconv.Itoa(-i*2 - 2)
-						}
-					}
+
+				s = CheckAxisForDpad(joy, &axes, len(btns))
+				if s != "" {
+					break
+				}
+				s = CheckAxisForTrigger(joy, &axes)
+				if s != "" {
+					break
 				}
 				for i := range btns {
 					if btns[i] > 0 {
@@ -3076,9 +3062,9 @@ func triggerFunctions(l *lua.LState) {
 		case "size.attack.dist.back":
 			ln = lua.LNumber(c.size.attack.dist.back)
 		case "size.attack.z.width.back":
-			ln = lua.LNumber(c.size.attack.z.width[1])
+			ln = lua.LNumber(c.size.attack.z.width.back)
 		case "size.attack.z.width.front":
-			ln = lua.LNumber(c.size.attack.z.width[0])
+			ln = lua.LNumber(c.size.attack.z.width.front)
 		case "size.proj.attack.dist", "size.proj.attack.dist.front":
 			ln = lua.LNumber(c.size.proj.attack.dist.front)
 		case "size.proj.attack.dist.back":
@@ -3296,14 +3282,20 @@ func triggerFunctions(l *lua.LState) {
 					ln = lua.LNumber(e.drawPos[0])
 				case "pos y":
 					ln = lua.LNumber(e.drawPos[1])
+				case "pos z":
+					ln = lua.LNumber(e.drawPos[2])
 				case "vel x":
 					ln = lua.LNumber(e.velocity[0])
 				case "vel y":
 					ln = lua.LNumber(e.velocity[1])
+				case "vel z":
+					ln = lua.LNumber(e.velocity[2])
 				case "accel x":
 					ln = lua.LNumber(e.accel[0])
 				case "accel y":
 					ln = lua.LNumber(e.accel[1])
+				case "accel z":
+					ln = lua.LNumber(e.accel[2])
 				case "scale x":
 					ln = lua.LNumber(e.scale[0])
 				case "scale y":
@@ -3434,7 +3426,7 @@ func triggerFunctions(l *lua.LState) {
 		case "yvel":
 			ln = lua.LNumber(c.ghv.yvel)
 		case "xaccel":
-			ln = lua.LNumber(c.ghv.getXaccel(c) * c.facing)
+			ln = lua.LNumber(c.ghv.getXaccel(c))
 		case "yaccel":
 			ln = lua.LNumber(c.ghv.getYaccel(c))
 		case "hitid", "chainid":
@@ -4031,9 +4023,9 @@ func triggerFunctions(l *lua.LState) {
 		for i, p := range sys.debugWC.getProjs(id) {
 			if i == idx {
 				switch vname {
-				case "remove":
+				case "projremove":
 					lv = lua.LBool(p.remove)
-				case "removetime":
+				case "projremovetime":
 					lv = lua.LNumber(p.removetime)
 				case "shadow r":
 					lv = lua.LNumber(p.shadow[0])
@@ -4043,15 +4035,17 @@ func triggerFunctions(l *lua.LState) {
 					lv = lua.LNumber(p.shadow[0])
 				case "misstime":
 					lv = lua.LNumber(p.curmisstime)
-				case "hits":
+				case "projhits":
 					lv = lua.LNumber(p.hits)
-				case "priority":
+				case "projhitsmax":
+					lv = lua.LNumber(p.totalhits)
+				case "projpriority":
 					lv = lua.LNumber(p.priority)
-				case "hitanim":
+				case "projhitanim":
 					lv = lua.LNumber(p.hitanim)
-				case "remanim":
+				case "projremanim":
 					lv = lua.LNumber(p.remanim)
-				case "cancelanim":
+				case "projcancelanim":
 					lv = lua.LNumber(p.cancelanim)
 				case "vel x":
 					lv = lua.LNumber(p.velocity[0])
@@ -4076,14 +4070,16 @@ func triggerFunctions(l *lua.LState) {
 				case "angle":
 					lv = lua.LNumber(p.angle)
 				case "pos x":
-					lv = lua.LNumber(p.pos[0])
+					lv = lua.LNumber(p.drawPos[0])
 				case "pos y":
-					lv = lua.LNumber(p.pos[1])
-				case "sprpriority":
+					lv = lua.LNumber(p.drawPos[1])
+				case "pos z":
+					lv = lua.LNumber(p.drawPos[2])
+				case "projsprpriority":
 					lv = lua.LNumber(p.sprpriority)
-				case "stagebound":
+				case "projstagebound":
 					lv = lua.LNumber(p.stagebound)
-				case "edgebound":
+				case "projedgebound":
 					lv = lua.LNumber(p.edgebound)
 				case "lowbound":
 					lv = lua.LNumber(p.heightbound[0])
@@ -4268,7 +4264,13 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.leftbound))
 		case "playerinfo.rightbound":
 			l.Push(lua.LNumber(sys.stage.rightbound))
+		case "scaling.topz":
+			l.Push(lua.LNumber(sys.stage.stageCamera.topz))
+		case "scaling.botz":
+			l.Push(lua.LNumber(sys.stage.stageCamera.botz))
 		case "scaling.topscale":
+			l.Push(lua.LNumber(sys.stage.stageCamera.ztopscale))
+		case "scaling.botscale":
 			l.Push(lua.LNumber(sys.stage.stageCamera.ztopscale))
 		case "bound.screenleft":
 			l.Push(lua.LNumber(sys.stage.screenleft))
@@ -4314,6 +4316,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.reflection.offset[0]))
 		case "reflection.offset.y":
 			l.Push(lua.LNumber(sys.stage.reflection.offset[1]))
+		case "reflection.xshear":
+			l.Push(lua.LNumber(sys.stage.reflection.xshear))
+		case "reflection.color.r":
+			l.Push(lua.LNumber(int32((sys.stage.reflection.color & 0xFF0000) >> 16)))
+		case "reflection.color.g":
+			l.Push(lua.LNumber(int32((sys.stage.reflection.color & 0xFF00) >> 8)))
+		case "reflection.color.b":
+			l.Push(lua.LNumber(int32(sys.stage.reflection.color & 0xFF)))
 		default:
 			l.Push(lua.LString(""))
 		}

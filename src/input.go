@@ -184,17 +184,56 @@ func JoystickState(joy, button int) bool {
 	if joy >= input.GetMaxJoystickCount() {
 		return false
 	}
+	axes := input.GetJoystickAxes(joy)
 	if button >= 0 {
 		// Query button state
 		btns := input.GetJoystickButtons(joy)
+
 		if button >= len(btns) {
-			return false
+			if len(btns) == 0 {
+				return false
+			} else {
+				if button == sys.joystickConfig[joy].dR {
+					return axes[0] > sys.controllerStickSensitivity
+				}
+				if button == sys.joystickConfig[joy].dL {
+					return -axes[0] > sys.controllerStickSensitivity
+				}
+				if button == sys.joystickConfig[joy].dU {
+					return -axes[1] > sys.controllerStickSensitivity
+				}
+				if button == sys.joystickConfig[joy].dD {
+					return axes[1] > sys.controllerStickSensitivity
+				}
+				return false
+			}
+		}
+
+		// override with axes
+		if button == sys.joystickConfig[joy].dR {
+			if axes[0] > sys.controllerStickSensitivity {
+				btns[button] = 1
+			}
+		}
+		if button == sys.joystickConfig[joy].dL {
+			if -axes[0] > sys.controllerStickSensitivity {
+				btns[button] = 1
+			}
+		}
+		if button == sys.joystickConfig[joy].dU {
+			if -axes[1] > sys.controllerStickSensitivity {
+				btns[button] = 1
+			}
+		}
+		if button == sys.joystickConfig[joy].dD {
+			if axes[1] > sys.controllerStickSensitivity {
+				btns[button] = 1
+			}
 		}
 		return btns[button] != 0
 	} else {
 		// Query axis state
 		axis := -button - 1
-		axes := input.GetJoystickAxes(joy)
 		if axis >= len(axes)*2 {
 			return false
 		}
@@ -206,7 +245,9 @@ func JoystickState(joy, button int) bool {
 
 		// Xbox360コントローラーのLRトリガー判定
 		// "Evaluate LR triggers on the Xbox 360 controller"
-		if (axis == 9 || axis == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360")) {
+		if (axis == 9 || axis == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360") ||
+			strings.Contains(joyName, "Xbox Wireless") || strings.Contains(joyName, "Xbox Elite") || strings.Contains(joyName, "Xbox One") ||
+			strings.Contains(joyName, "Xbox Series") || strings.Contains(joyName, "Xbox Adaptive")) {
 			return val > sys.xinputTriggerSensitivity
 		}
 
@@ -219,7 +260,64 @@ func JoystickState(joy, button int) bool {
 	}
 }
 
-type KeyConfig struct{ Joy, dU, dD, dL, dR, kA, kB, kC, kX, kY, kZ, kS, kD, kW, kM int }
+type KeyConfig struct {
+	Joy, dU, dD, dL, dR, kA, kB, kC, kX, kY, kZ, kS, kD, kW, kM int
+	GUID                                                        string
+	isInitialized                                               bool
+}
+
+func (kc *KeyConfig) swap(kc2 *KeyConfig) {
+	// joy := kc.Joy
+	dD := kc.dD
+	dL := kc.dL
+	dR := kc.dR
+	dU := kc.dU
+	kA := kc.kA
+	kB := kc.kB
+	kC := kc.kC
+	kD := kc.kD
+	kW := kc.kW
+	kX := kc.kX
+	kY := kc.kY
+	kZ := kc.kZ
+	kM := kc.kM
+	kS := kc.kS
+
+	// kc.Joy = kc2.Joy
+	kc.dD = kc2.dD
+	kc.dL = kc2.dL
+	kc.dR = kc2.dR
+	kc.dU = kc2.dU
+	kc.kA = kc2.kA
+	kc.kB = kc2.kB
+	kc.kC = kc2.kC
+	kc.kD = kc2.kD
+	kc.kW = kc2.kW
+	kc.kX = kc2.kX
+	kc.kY = kc2.kY
+	kc.kZ = kc2.kZ
+	kc.kM = kc2.kM
+	kc.kS = kc2.kS
+
+	// kc2.Joy = joy
+	kc2.dD = dD
+	kc2.dL = dL
+	kc2.dR = dR
+	kc2.dU = dU
+	kc2.kA = kA
+	kc2.kB = kB
+	kc2.kC = kC
+	kc2.kD = kD
+	kc2.kW = kW
+	kc2.kX = kX
+	kc2.kY = kY
+	kc2.kZ = kZ
+	kc2.kM = kM
+	kc2.kS = kS
+
+	kc.isInitialized = true
+	kc2.isInitialized = true
+}
 
 func (kc KeyConfig) U() bool { return JoystickState(kc.Joy, kc.dU) }
 func (kc KeyConfig) D() bool { return JoystickState(kc.Joy, kc.dD) }

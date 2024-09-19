@@ -133,7 +133,7 @@
   ],
   "WindowScaleMode": true,
   "WindowTitle": "Ikemen GO",
-  "XinputTriggerSensitivity": 0,
+  "XinputTriggerSensitivity": 0.5,
   "ZoomActive": true,
   "ZoomDelay": false,
   "ZoomSpeed": 1,

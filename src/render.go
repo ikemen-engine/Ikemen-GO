@@ -139,7 +139,7 @@ func rmTileHSub(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, width fl
 }
 
 func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
-	x1, y1 := rp.x+rp.rxadd*rp.ys*float32(rp.size[1]), rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
+	x1, y1 := rp.x, rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
 	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
 	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
 	x4, y4 := rp.x, y3
@@ -176,6 +176,15 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 			modelview = modelview.Mul4(mgl.Translate3D(rp.xOffset, -rp.yOffset, -rp.fLength))
 		}
 
+		// Apply shear matrix before rotation
+		shearMatrix := mgl.Mat4{
+			1, 0, 0, 0,
+			rp.rxadd, 1, 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1}
+		modelview = modelview.Mul4(shearMatrix)
+		modelview = modelview.Mul4(mgl.Translate3D(rp.rxadd*rp.ys*float32(rp.size[1]), 0, 0))
+
 		modelview = modelview.Mul4(mgl.Scale3D(1, rp.vs, 1))
 		modelview = modelview.Mul4(
 			mgl.Rotate3DX(-rp.rot.xangle * math.Pi / 180.0).Mul3(
@@ -187,6 +196,8 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 		return
 	}
 	if rp.tile.y == 1 && rp.xbs != 0 {
+		x1 += rp.rxadd * rp.ys * float32(rp.size[1])
+		x2 = x1 + rp.xbs*float32(rp.size[0])
 		x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d := x1, y1, x2, y2, x3, y3, x4, y4
 		n := 0
 		var xy []float32
@@ -222,6 +233,8 @@ func rmTileSub(modelview mgl.Mat4, rp RenderParams) {
 		}
 	}
 	if rp.tile.y == 0 || rp.xts != 0 {
+		x1 += rp.rxadd * rp.ys * float32(rp.size[1])
+		x2 = x1 + rp.xbs*float32(rp.size[0])
 		n := rp.tile.y
 		oy := y1
 		for {

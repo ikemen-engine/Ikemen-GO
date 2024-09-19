@@ -24,6 +24,9 @@ type stageCamera struct {
 	localscl                float32
 	zoffset                 int32
 	ztopscale               float32
+	zbotscale               float32
+	topz                    float32
+	botz                    float32
 	startzoom               float32
 	zoomin                  float32
 	zoomout                 float32
@@ -59,8 +62,8 @@ func newStageCamera() *stageCamera {
 	return &stageCamera{verticalfollow: 0.2, tensionvel: 1, tension: 50,
 		cuthigh: 0, cutlow: math.MinInt32,
 		localcoord: [...]int32{320, 240}, localscl: float32(sys.gameWidth / 320),
-		ztopscale: 1, startzoom: 1, zoomin: 1, zoomout: 1, ytensionenable: false,
-		tensionhigh: 0, tensionlow: 0,
+		topz: 0, botz: 0, ztopscale: 1, zbotscale: 1, startzoom: 1, zoomin: 1, zoomout: 1,
+		ytensionenable: false, tensionhigh: 0, tensionlow: 0,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
 		zoomindelay: 0, zoominspeed: 1, zoomoutspeed: 1, yscrollspeed: 1,
 		boundhighzoomdelta: 0, verticalfollowzoomdelta: 0}

@@ -452,7 +452,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
 		bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*ys3,
 			xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
-			Rotation{}, float32(sys.gameWidth)/2, bg.palfx, true, 1, false, 1, 0, 0)
+			Rotation{}, float32(sys.gameWidth)/2, bg.palfx, true, 1, false, 1, 0, 0, 0)
 	}
 }
 
@@ -750,6 +750,8 @@ type Stage struct {
 	stageprops        StageProps
 	model             *Model
 	ikemenver         [3]uint16
+	topbound          float32
+	botbound          float32
 }
 
 func newStage(def string) *Stage {
@@ -761,6 +763,7 @@ func newStage(def string) *Stage {
 		constants: make(map[string]float32), p1p3dist: 25, bgmvolume: 100}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
+	s.reflection.color = 0xFFFFFF
 	s.sdw.yscale = 0.4
 	s.p[0].startx, s.p[1].startx = -70, 70
 	s.stageprops = newStageProps()
@@ -900,6 +903,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("leftbound", &s.leftbound)
 		sec[0].ReadF32("rightbound", &s.rightbound)
 		sec[0].ReadF32("p1p3dist", &s.p1p3dist)
+		sec[0].ReadF32("topbound", &s.topbound)
+		sec[0].ReadF32("botbound", &s.botbound)
 	}
 	if sec = defmap[fmt.Sprintf("%v.scaling", sys.language)]; len(sec) > 0 {
 		sectionExists = true
@@ -910,8 +915,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	if sectionExists {
 		sectionExists = false
-		if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topscale
+		if s.mugenver[0] != 1 || s.ikemenver[0] >= 1 { // mugen 1.0+ removed support for z-axis, IKEMEN-Go 1.0 adds it back
+			sec[0].ReadF32("topz", &s.stageCamera.topz)
+			sec[0].ReadF32("botz", &s.stageCamera.botz)
 			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
+			sec[0].ReadF32("botscale", &s.stageCamera.zbotscale)
 		}
 	}
 	if sec = defmap[fmt.Sprintf("%v.bound", sys.language)]; len(sec) > 0 {
@@ -1130,7 +1138,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
-		sec[0].ReadBool("reflect", &reflect)
+		// sec[0].ReadBool("reflect", &reflect) // this does nothing in MUGEN
 		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
 		sec[0].ReadF32("xshear", &s.sdw.xshear)
 		sec[0].readF32ForStage("offset", &s.sdw.offset[0], &s.sdw.offset[1])
@@ -1145,6 +1153,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		if sectionExists {
 			s.reflection.yscale = 1.0
+			s.reflection.xshear = 0
+			s.reflection.color = 0xFFFFFF
 			sectionExists = false
 			var tmp int32
 			var tmp2 float32
@@ -1152,11 +1162,19 @@ func loadStage(def string, main bool) (*Stage, error) {
 			if sec[0].ReadI32("intensity", &tmp) {
 				s.reflection.intensity = Clamp(tmp, 0, 255)
 			}
+			var r, g, b int32 = 0, 0, 0
+			sec[0].readI32ForStage("color", &r, &g, &b)
+			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+			s.reflection.color = uint32(r<<16 | g<<8 | b)
+
 			if sec[0].ReadI32("layerno", &tmp) {
 				s.reflectionlayerno = Clamp(tmp, -1, 0)
 			}
 			if sec[0].ReadF32("yscale", &tmp2) {
 				s.reflection.yscale = tmp2
+			}
+			if sec[0].ReadF32("xshear", &tmp2) {
+				s.reflection.xshear = tmp2
 			}
 			if sec[0].readF32ForStage("offset", &tmp3[0], &tmp3[1]) {
 				s.reflection.offset[0] = tmp3[0]
@@ -1251,7 +1269,10 @@ func (s *Stage) copyStageVars(src *Stage) {
 	s.stageCamera.ytensionenable = src.stageCamera.ytensionenable
 	s.leftbound = src.leftbound
 	s.rightbound = src.rightbound
+	s.stageCamera.topz = src.stageCamera.topz
+	s.stageCamera.botz = src.stageCamera.botz
 	s.stageCamera.ztopscale = src.stageCamera.ztopscale
+	s.stageCamera.zbotscale = src.stageCamera.zbotscale
 	s.screenleft = src.screenleft
 	s.screenright = src.screenright
 	s.stageCamera.zoffset = src.stageCamera.zoffset
@@ -1269,6 +1290,8 @@ func (s *Stage) copyStageVars(src *Stage) {
 	s.reflection.intensity = src.reflection.intensity
 	s.reflection.offset[0] = src.reflection.offset[0]
 	s.reflection.offset[1] = src.reflection.offset[1]
+	s.reflection.xshear = src.reflection.xshear
+	s.reflection.yscale = src.reflection.yscale
 }
 func (s *Stage) getBg(id int32) (bg []*backGround) {
 	if id >= 0 {

@@ -272,7 +272,10 @@ type CharSize struct {
 			back  float32
 		}
 		z struct {
-			width [2]float32
+			width struct {
+				front float32
+				back  float32
+			}
 		}
 	}
 	proj struct {
@@ -323,7 +326,7 @@ func (cs *CharSize) init() {
 	cs.draw.offset = [...]float32{0, 0}
 	cs.z.width = 3
 	cs.z.enable = false
-	cs.attack.z.width = [...]float32{4, 4}
+	cs.attack.z.width.front, cs.attack.z.width.back = 4, 4
 }
 
 type CharVelocity struct {
@@ -651,6 +654,9 @@ type HitDef struct {
 	score                      [2]float32
 	p2clsncheck                int32
 	p2clsnrequire              int32
+	attack                     struct {
+		width [2]float32
+	}
 }
 
 func (hd *HitDef) clear() {
@@ -724,6 +730,9 @@ func (hd *HitDef) clear() {
 		p2clsnrequire:    -1,
 		down_recover:     true,
 		down_recovertime: -1,
+		attack: struct{ width [2]float32 }{
+			[2]float32{float32(4), float32(4)},
+		},
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -1099,9 +1108,9 @@ type Explod struct {
 	space               Space
 	bindId              int32
 	bindtime            int32
-	pos                 [2]float32
-	relativePos         [2]float32
-	offset              [2]float32
+	pos                 [3]float32
+	relativePos         [3]float32
+	offset              [3]float32
 	relativef           float32
 	facing              float32
 	vfacing             float32
@@ -1110,8 +1119,8 @@ type Explod struct {
 	removeonchangestate bool
 	statehaschanged     bool
 	removetime          int32
-	velocity            [2]float32
-	accel               [2]float32
+	velocity            [3]float32
+	accel               [3]float32
 	sprpriority         int32
 	layerno             int32
 	shadow              [3]int32
@@ -1129,8 +1138,8 @@ type Explod struct {
 	anglerot             [3]float32
 	projection           Projection
 	fLength              float32
-	oldPos               [2]float32
-	newPos               [2]float32
+	oldPos               [3]float32
+	newPos               [3]float32
 	playerId             int32
 	palfx                *PalFX
 	palfxdef             PalFXDef
@@ -1148,11 +1157,11 @@ type Explod struct {
 	interpolate_animelem [3]int32
 	interpolate_scale    [4]float32
 	interpolate_alpha    [5]int32
-	interpolate_pos      [4]float32
+	interpolate_pos      [6]float32
 	interpolate_angle    [6]float32
 	interpolate_fLength  [2]float32
 	animNo               int32
-	drawPos              [2]float32
+	drawPos              [3]float32
 }
 
 func (e *Explod) clear() {
@@ -1179,12 +1188,13 @@ func (e *Explod) clear() {
 }
 func (e *Explod) reset() {
 	e.facing = 1
-	e.offset[0], e.offset[1] = 0, 0
+	e.offset[0], e.offset[1], e.offset[2] = 0, 0, 0
 	e.setX(e.offset[0])
 	e.setY(e.offset[1])
-	e.relativePos[0], e.relativePos[1] = 0, 0
-	e.velocity[0], e.velocity[1] = 0, 0
-	e.accel[0], e.accel[1] = 0, 0
+	e.setZ(e.offset[2])
+	e.relativePos[0], e.relativePos[1], e.relativePos[2] = 0, 0, 0
+	e.velocity[0], e.velocity[1], e.velocity[2] = 0, 0, 0
+	e.accel[0], e.accel[1], e.accel[2] = 0, 0, 0
 	e.bindId = -2
 	if e.bindtime == 0 {
 		e.bindtime = 1
@@ -1195,6 +1205,9 @@ func (e *Explod) setX(x float32) {
 }
 func (e *Explod) setY(y float32) {
 	e.pos[1], e.oldPos[1], e.newPos[1] = y, y, y
+}
+func (e *Explod) setZ(z float32) {
+	e.pos[2], e.oldPos[2], e.newPos[2] = z, z, z
 }
 func (e *Explod) setBind(bId int32) {
 	if e.space == Space_screen && (e.postype == PT_P1 || e.postype == PT_P2) {
@@ -1211,10 +1224,12 @@ func (e *Explod) setPos(c *Char) {
 		if e.space == Space_screen {
 			e.offset[0] = c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
 			e.offset[1] = sys.cam.GroundLevel()*e.localscl +
-				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
+				c.pos[1]*c.localscl/e.localscl + (c.offsetY()-(c.pos[2]/c.localscl))*c.localscl/e.localscl // we need to subtract the Z pos in the offset here
+			e.offset[2] = ClampF(c.pos[2]*c.localscl/e.localscl, sys.stage.stageCamera.topz, sys.stage.stageCamera.botz)
 		} else {
 			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl)
-			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl)
+			e.setY(c.pos[1]*c.localscl/e.localscl + (c.offsetY()-(c.pos[2]/c.localscl))*c.localscl/e.localscl) // we need to subtract the Z pos in the offset here
+			e.setZ(c.pos[2] * c.localscl / e.localscl)
 		}
 	}
 	lPos := func() {
@@ -1340,7 +1355,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		(e.space == Space_screen && e.postype <= PT_P2)) {
 		if c := sys.playerID(e.bindId); c != nil {
 			e.pos[0] = c.drawPos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
-			e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
+			e.pos[1] = c.drawPos[1]*c.localscl/e.localscl + (c.offsetY()-(c.pos[2]/c.localscl))*c.localscl/e.localscl // we need to subtract the Z pos in the offset here
+			e.pos[2] = c.drawPos[2] * c.localscl / e.localscl
 		} else {
 			// Doesn't seem necessary to do this, since MUGEN 1.1 seems to carry bindtime even if
 			// you change bindId to something that doesn't point to any character
@@ -1413,10 +1429,14 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	rot.angle = anglerot[0]
 	rot.xangle = anglerot[1]
 	rot.yangle = anglerot[2]
-	e.drawPos = [2]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * e.localscl, (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl}
+	zscale := float32(1)
+	if e.space == Space_stage {
+		zscale = c.updateZScale(e.pos[2])
+	}
+	e.drawPos = [3]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * zscale * e.localscl, zscale * (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl, zscale * (e.pos[2] + e.offset[2] + off[2] + e.interpolate_pos[2]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
-	sprs.add(&SprData{e.anim, pfx, e.drawPos, [...]float32{(facing * scale[0]) * e.localscl,
-		(e.vfacing * scale[1]) * e.localscl}, alp, e.sprpriority, rot, [...]float32{1, 1},
+	sprs.add(&SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]}, [...]float32{(facing * scale[0]) * e.localscl * zscale,
+		(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority, rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
 		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, [2]float32{0, 0}, [2]float32{0, 0}, 0, 0)
 	if sys.tickNextFrame() {
@@ -1450,6 +1470,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			e.oldPos = e.pos
 			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing
 			e.newPos[1] = e.pos[1] + e.velocity[1]
+			e.newPos[2] = e.pos[2] + e.velocity[2]
 			for i := range e.velocity {
 				e.velocity[i] += e.accel[i]
 			}
@@ -1463,6 +1484,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		} else {
 			e.setX(e.pos[0])
 			e.setY(e.pos[1])
+			e.setZ(e.pos[2])
 		}
 	}
 }
@@ -1480,8 +1502,8 @@ func (e *Explod) Interpolate(act bool, scale *[2]float32, alpha *[2]int32, angle
 			e.animelem = Clamp(elem, Min(e.interpolate_animelem[0], e.interpolate_animelem[1]), Max(e.interpolate_animelem[0], e.interpolate_animelem[1]))
 		}
 		for i := 0; i < 3; i++ {
+			e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
 			if i < 2 {
-				e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+2], 0, t)
 				e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t) //-e.start_scale[i]
 				if e.blendmode == 1 {
 					e.interpolate_alpha[i] = Clamp(int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t)), 0, 255)
@@ -1586,11 +1608,12 @@ type Projectile struct {
 	clsnAngle       float32
 	remove          bool
 	removetime      int32
-	velocity        [2]float32
-	remvelocity     [2]float32
-	accel           [2]float32
-	velmul          [2]float32
+	velocity        [3]float32
+	remvelocity     [3]float32
+	accel           [3]float32
+	velmul          [3]float32
 	hits            int32
+	totalhits       int32
 	misstime        int32
 	priority        int32
 	priorityPoints  int32
@@ -1599,9 +1622,8 @@ type Projectile struct {
 	edgebound       int32
 	stagebound      int32
 	heightbound     [2]int32
-	pos             [2]float32
-	oldPos          [2]float32
-	drawPos         [2]float32
+	pos             [3]float32
+	drawPos         [3]float32
 	facing          float32
 	removefacing    float32
 	shadow          [3]int32
@@ -1610,6 +1632,8 @@ type Projectile struct {
 	ani             *Animation
 	curmisstime     int32
 	hitpause        int32
+	oldPos          [3]float32
+	newPos          [3]float32
 	aimg            AfterImage
 	palfx           *PalFX
 	localscl        float32
@@ -1642,8 +1666,9 @@ func (p *Projectile) clear() {
 		remove:         true,
 		localscl:       1,
 		removetime:     -1,
-		velmul:         [...]float32{1, 1},
+		velmul:         [...]float32{1, 1, 1},
 		hits:           1,
+		totalhits:      1,
 		priority:       1,
 		priorityPoints: 1,
 		sprpriority:    3,
@@ -1657,10 +1682,8 @@ func (p *Projectile) clear() {
 	p.hitdef.clear()
 }
 
-func (p *Projectile) setPos(pos [2]float32) {
-	p.pos = pos
-	p.oldPos = pos
-	p.drawPos = pos
+func (p *Projectile) setPos(pos [3]float32) {
+	p.pos, p.oldPos, p.newPos = pos, pos, pos
 }
 
 func (p *Projectile) paused(playerNo int) bool {
@@ -1721,8 +1744,8 @@ func (p *Projectile) update(playerNo int) {
 					} else {
 						p.velocity[0] *= -1
 					}
-					p.accel = [2]float32{0, 0}
-					p.velmul = [2]float32{1, 1}
+					p.accel = [3]float32{0, 0, 0}
+					p.velmul = [3]float32{1, 1, 1}
 					p.anim = -1
 					// In Mugen, projectiles can hit even after their removetime expires - https://github.com/ikemen-engine/Ikemen-GO/issues/1362
 					//if p.hits >= 0 {
@@ -1745,11 +1768,11 @@ func (p *Projectile) update(playerNo int) {
 		// There's a minor issue here where a projectile will lag behind one frame relative to Mugen if created during a pause
 	} else {
 		if sys.tickFrame() {
-			p.pos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1]}
-			p.drawPos = p.pos
+			p.pos = [...]float32{p.pos[0] + p.velocity[0]*p.facing, p.pos[1] + p.velocity[1], p.pos[2] + p.velocity[2]}
+			p.drawPos = [...]float32{p.pos[0], p.pos[1], p.pos[2]}
 		}
 		spd := sys.tickInterpolation()
-		for i := 0; i < 2; i++ {
+		for i := 0; i < 3; i++ {
 			p.drawPos[i] = p.pos[i] - (p.pos[i]-p.oldPos[i])*(1-spd)
 		}
 		if sys.tickNextFrame() {
@@ -1916,13 +1939,14 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		sprs = &sys.spritesLayerN1
 	}
 	var c = sys.chars[playerNo][0]
+	zscale := c.updateZScale(p.pos[2])
 	if p.ani != nil {
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1] * p.localscl},
-			[...]float32{p.facing * p.scale[0] * p.localscl, p.scale[1] * p.localscl}, [2]int32{-1},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1]*p.localscl + p.drawPos[2]*p.localscl},
+			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
-		sprs.add(sd, p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 256, c.shadowOffset, c.reflectOffset, 0, 0)
+		sprs.add(sd, p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 0, [2]float32{0, p.pos[2]}, [2]float32{0, p.pos[2]}, 0, 0)
 	}
 }
 
@@ -2057,8 +2081,8 @@ type CharSystemVar struct {
 	unhittableTime    int32
 	bindTime          int32
 	bindToId          int32
-	bindPos           [2]float32
-	bindPosAdd        [2]float32
+	bindPos           [3]float32
+	bindPosAdd        [3]float32
 	bindFacing        float32
 	hitPauseTime      int32
 	angle             float32
@@ -2124,6 +2148,7 @@ type Char struct {
 	clsnScale           [2]float32
 	clsnScaleMul        [2]float32
 	clsnAngle           float32
+	zScale              float32
 	hitdef              HitDef
 	ghv                 GetHitVar
 	mhv                 MoveHitVar
@@ -2192,7 +2217,7 @@ type Char struct {
 }
 
 func newChar(n int, idx int32) (c *Char) {
-	c = &Char{aimg: *newAfterImage()}
+	c = &Char{aimg: *newAfterImage(), zScale: 1}
 	c.init(n, idx)
 	return c
 }
@@ -2610,8 +2635,8 @@ func (c *Char) load(def string) error {
 	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
 	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
 	c.size.z.width = c.size.z.width / originLs
-	c.size.attack.z.width[0] = c.size.attack.z.width[0] / originLs
-	c.size.attack.z.width[1] = c.size.attack.z.width[1] / originLs
+	c.size.attack.z.width.front = c.size.attack.z.width.front / originLs
+	c.size.attack.z.width.back = c.size.attack.z.width.back / originLs
 
 	gi.velocity.init()
 
@@ -2745,7 +2770,7 @@ func (c *Char) load(def string) error {
 							c.size.z.enable = true
 						}
 						is.ReadF32("attack.z.width",
-							&c.size.attack.z.width[0], &c.size.attack.z.width[1])
+							&c.size.attack.z.width.front, &c.size.attack.z.width.back)
 					}
 				case "velocity":
 					if velocity {
@@ -3143,6 +3168,7 @@ func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 		}
 		// Update animation local scale
 		c.animlocalscl = 320 / sys.chars[c.animPN][0].localcoord
+		c.zScale = c.updateZScale(c.pos[2])
 		// Clsn scale depends on the animation owner's scale, so it must be updated
 		c.updateClsnScale()
 		if c.hitPause() {
@@ -3686,6 +3712,8 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 				v = BytecodeFloat(e.drawPos[0])
 			case OC_ex2_explodvar_pos_y:
 				v = BytecodeFloat(e.drawPos[1])
+			case OC_ex2_explodvar_pos_z:
+				v = BytecodeFloat(e.drawPos[2])
 			case OC_ex2_explodvar_scale_x:
 				v = BytecodeFloat(e.scale[0])
 			case OC_ex2_explodvar_scale_y:
@@ -3700,6 +3728,8 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 				v = BytecodeFloat(e.velocity[0])
 			case OC_ex2_explodvar_vel_y:
 				v = BytecodeFloat(e.velocity[1])
+			case OC_ex2_explodvar_vel_z:
+				v = BytecodeFloat(e.velocity[2])
 			case OC_ex2_explodvar_removetime:
 				v = BytecodeInt(e.removetime)
 			case OC_ex2_explodvar_pausemovetime:
@@ -3740,6 +3770,8 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) Bytec
 				v = BytecodeInt(p.curmisstime)
 			case OC_ex2_projectilevar_projhits:
 				v = BytecodeInt(p.hits)
+			case OC_ex2_projectilevar_projhitsmax:
+				v = BytecodeInt(p.totalhits)
 			case OC_ex2_projectilevar_projpriority:
 				v = BytecodeInt(p.priority)
 			case OC_ex2_projectilevar_projhitanim:
@@ -3771,9 +3803,11 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) Bytec
 			case OC_ex2_projectilevar_projangle:
 				v = BytecodeFloat(p.angle)
 			case OC_ex2_projectilevar_pos_x:
-				v = BytecodeFloat(p.pos[0])
+				v = BytecodeFloat(p.drawPos[0])
 			case OC_ex2_projectilevar_pos_y:
-				v = BytecodeFloat(p.pos[1])
+				v = BytecodeFloat(p.drawPos[1])
+			case OC_ex2_projectilevar_pos_z:
+				v = BytecodeFloat(p.drawPos[2])
 			case OC_ex2_projectilevar_projsprpriority:
 				v = BytecodeInt(p.sprpriority)
 			case OC_ex2_projectilevar_projstagebound:
@@ -4392,8 +4426,8 @@ func (c *Char) newHelper() (h *Char) {
 	sys.charList.add(h)
 	return
 }
-func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
-	dstFacing *float32, localscl float32, isProj bool) (p [2]float32) {
+func (c *Char) helperPos(pt PosType, pos [3]float32, facing int32,
+	dstFacing *float32, localscl float32, isProj bool) (p [3]float32) {
 	if facing < 0 {
 		*dstFacing *= -1
 	}
@@ -4401,11 +4435,13 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 	case PT_P1:
 		p[0] = c.pos[0]*(c.localscl/localscl) + pos[0]*c.facing
 		p[1] = c.pos[1]*(c.localscl/localscl) + pos[1]
+		p[2] = c.pos[2]*(c.localscl/localscl) + pos[2]
 		*dstFacing *= c.facing
 	case PT_P2:
 		if p2 := sys.charList.enemyNear(c, 0, true, true, false); p2 != nil {
 			p[0] = p2.pos[0]*(p2.localscl/localscl) + pos[0]*p2.facing
 			p[1] = p2.pos[1]*(p2.localscl/localscl) + pos[1]
+			p[2] = p2.pos[2]*(p2.localscl/localscl) + pos[2]
 			if isProj {
 				*dstFacing *= c.facing
 			} else {
@@ -4424,6 +4460,7 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 			p[0] -= pos[0]
 		}
 		p[1] = pos[1]
+		p[2] = c.pos[2]
 		*dstFacing *= c.facing
 	case PT_Left:
 		p[0] = c.leftEdge()*(c.localscl/localscl) + pos[0]
@@ -4437,19 +4474,21 @@ func (c *Char) helperPos(pt PosType, pos [2]float32, facing int32,
 		if isProj {
 			*dstFacing *= c.facing
 		}
+		p[2] = c.pos[2]
 	case PT_None:
-		p = pos
+		p = [3]float32{pos[0], pos[1], c.pos[2]}
 		if isProj {
 			*dstFacing *= c.facing
 		}
 	}
 	return
 }
-func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y float32,
+func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
 	facing int32, rp [2]int32, extmap bool) {
-	p := c.helperPos(pt, [...]float32{x, y}, facing, &h.facing, h.localscl, false)
+	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
 	h.setX(p[0])
 	h.setY(p[1])
+	h.setZ(p[2])
 	h.vel = [3]float32{}
 	if h.ownpal {
 		h.palfx = newPalFX()
@@ -4687,7 +4726,8 @@ func (c *Char) setPosY(y float32) {
 	c.pos[1] = y
 }
 func (c *Char) setPosZ(z float32) {
-	c.pos[2] = z
+	cz := ClampF(z, sys.stage.topbound, sys.stage.botbound)
+	c.pos[2] = cz
 }
 func (c *Char) posReset() {
 	if c.teamside == -1 {
@@ -4715,7 +4755,7 @@ func (c *Char) setY(y float32) {
 	c.setPosY(y)
 }
 func (c *Char) setZ(z float32) {
-	c.oldPos[2], c.drawPos[1] = z, z
+	c.oldPos[2], c.drawPos[2] = z, z
 	c.setPosZ(z)
 }
 func (c *Char) addX(x float32) {
@@ -4818,9 +4858,10 @@ func (c *Char) newProj() *Projectile {
 	return nil
 }
 
-func (c *Char) projInit(p *Projectile, pt PosType, x, y float32,
+func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 	op bool, rpg, rpn int32, clsnscale bool) {
-	p.setPos(c.helperPos(pt, [...]float32{x, y}, 1, &p.facing, p.localscl, true))
+	pos := c.helperPos(pt, [...]float32{x, y, z}, 1, &p.facing, p.localscl, true)
+	p.setPos([...]float32{pos[0], pos[1], pos[2]})
 	p.parentAttackmul = c.attackMul
 	if p.anim < -1 {
 		p.anim = 0
@@ -4913,6 +4954,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
 	ifierrset(&hd.fall.envshake_ampl, -4)
 	ifnanset(&hd.fall.envshake_phase, 0)
+	ifnanset(&hd.xaccel, 0)
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
@@ -5024,6 +5066,17 @@ func (c *Char) updateClsnScale() {
 		// Normally not used. Just a safeguard
 		c.clsnScale = [...]float32{1.0, 1.0}
 	}
+}
+
+func (c *Char) updateZScale(z float32) float32 {
+	topz, botz, scale := sys.stage.stageCamera.topz, sys.stage.stageCamera.botz, float32(1)
+	if topz != botz {
+		ztopscale, zbotscale := sys.stage.stageCamera.ztopscale, sys.stage.stageCamera.zbotscale
+		clampedZ := ClampF(z, topz, botz)
+		d := (clampedZ - topz) / (botz - topz)
+		scale = ztopscale + d*(zbotscale-ztopscale)
+	}
+	return scale
 }
 
 func (c *Char) widthToSizeBox() {
@@ -5211,7 +5264,7 @@ func (c *Char) targetFacing(tar []int32, f int32) {
 		}
 	}
 }
-func (c *Char) targetBind(tar []int32, time int32, x, y float32) {
+func (c *Char) targetBind(tar []int32, time int32, x, y, z float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			t.setBindToId(c)
@@ -5219,11 +5272,12 @@ func (c *Char) targetBind(tar []int32, time int32, x, y float32) {
 			t.bindFacing = 0
 			x *= c.localscl / t.localscl
 			y *= c.localscl / t.localscl
-			t.bindPos = [...]float32{x, y}
+			z *= c.localscl / t.localscl
+			t.bindPos = [...]float32{x, y, z}
 		}
 	}
 }
-func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
+func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 	if len(tar) > 0 {
 		if t := sys.playerID(tar[0]); t != nil {
 			switch hmf {
@@ -5240,7 +5294,10 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y float32, hmf HMF) {
 			if !math.IsNaN(float64(y)) {
 				c.setY(t.pos[1]*(t.localscl/c.localscl) + y)
 			}
-			c.targetBind(tar[:1], time, c.facing*c.distX(t, c), (t.pos[1]*(t.localscl/c.localscl))-(c.pos[1]*(c.localscl/t.localscl)))
+			c.targetBind(tar[:1], time,
+				c.facing*c.distX(t, c),
+				(t.pos[1]*(t.localscl/c.localscl))-(c.pos[1]*(c.localscl/t.localscl)),
+				(t.pos[2]*(t.localscl/c.localscl))-(c.pos[2]*(c.localscl/t.localscl)))
 		}
 	}
 }
@@ -5843,7 +5900,7 @@ func (c *Char) inputOver() bool {
 func (c *Char) over() bool {
 	return c.scf(SCF_over) || c.ss.no == 5150
 }
-func (c *Char) makeDust(x, y float32) {
+func (c *Char) makeDust(x, y, z float32) {
 	if c.asf(ASF_nomakedust) {
 		return
 	}
@@ -5856,7 +5913,7 @@ func (c *Char) makeDust(x, y float32) {
 		e.sprpriority = math.MaxInt32
 		e.layerno = c.layerNo
 		e.ownpal = true
-		e.relativePos = [...]float32{x, y}
+		e.relativePos = [...]float32{x, y, z}
 		e.setPos(c)
 		c.insertExplod(i)
 	}
@@ -6274,7 +6331,8 @@ func (c *Char) posUpdate() {
 		}
 	}
 	nobind := [...]bool{c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])),
-		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[1]))}
+		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[1])),
+		c.bindTime == 0 || math.IsNaN(float64(c.bindPos[2]))}
 	for i := range nobind {
 		if nobind[i] {
 			c.oldPos[i], c.drawPos[i] = c.pos[i], c.pos[i]
@@ -6292,7 +6350,9 @@ func (c *Char) posUpdate() {
 		if nobind[1] {
 			c.setPosY(c.oldPos[1] + c.vel[1])
 		}
-		c.setPosZ(c.oldPos[2] + c.vel[2])
+		if nobind[2] {
+			c.setPosZ(c.oldPos[2] + c.vel[2])
+		}
 
 		switch c.ss.physics {
 		case ST_S:
@@ -6312,7 +6372,7 @@ func (c *Char) posUpdate() {
 			c.cornerVelOff = 0
 		}
 	}
-	c.bindPosAdd = [...]float32{0, 0}
+	c.bindPosAdd = [...]float32{0, 0, 0}
 }
 func (c *Char) addTarget(id int32) {
 	if !c.hasTarget(id) {
@@ -6397,6 +6457,11 @@ func (c *Char) bind() {
 			c.drawPos[1] += bt.drawPos[1] - bt.pos[1]
 			c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
 			c.ghv.yoff = 0
+		}
+		if !math.IsNaN(float64(c.bindPos[2])) {
+			c.setZ(bt.pos[2]*bt.localscl/c.localscl + (c.bindPos[2] + c.bindPosAdd[2]))
+			c.drawPos[2] += bt.drawPos[2] - bt.pos[2]
+			c.oldPos[2] += bt.oldPos[2] - bt.pos[2]
 		}
 		if AbsF(c.bindFacing) == 1 {
 			if c.bindFacing > 0 {
@@ -6497,7 +6562,7 @@ func (c *Char) offsetX() float32 {
 	return float32(c.size.draw.offset[0])*c.facing + c.offset[0]/c.localscl
 }
 func (c *Char) offsetY() float32 {
-	return float32(c.size.draw.offset[1]) + c.offset[1]/c.localscl
+	return float32(c.size.draw.offset[1]) + c.offset[1]/c.localscl + c.pos[2]/c.localscl
 }
 
 func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
@@ -6559,7 +6624,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
 
-func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
+func (c *Char) clsnCheck(getter *Char, attackerbox, getterbox int32) bool {
 	// Nil anim & standby check.
 	if c.curFrame == nil || getter.curFrame == nil ||
 		c.scf(SCF_standby) || getter.scf(SCF_standby) ||
@@ -6568,7 +6633,7 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 	}
 
 	// Accepted box types
-	if gbox != 1 && gbox != 2 && gbox != 3 {
+	if getterbox != 1 && getterbox != 2 && getterbox != 3 {
 		return false
 	}
 
@@ -6578,30 +6643,34 @@ func (c *Char) clsnCheck(getter *Char, cbox, gbox int32) bool {
 		return false
 	}
 
-	// Z axis check.
-	if c.size.z.enable && getter.size.z.enable &&
-		((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
-			(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl) {
-		return false
-	}
-
 	// Decide which box types should collide
 	var clsn1, clsn2 []float32
 	if c.asf(ASF_projtypecollision) && getter.asf(ASF_projtypecollision) { // Projectiles trade with their Clsn2 only
 		clsn1 = c.curFrame.Clsn2()
 		clsn2 = getter.curFrame.Clsn2()
 	} else {
-		if cbox == 2 {
+		if attackerbox == 2 {
 			clsn1 = c.curFrame.Clsn2() // For push checking
 		} else {
 			clsn1 = c.curFrame.Clsn1()
 		}
-		if gbox == 1 {
+		if getterbox == 1 {
 			clsn2 = getter.curFrame.Clsn1()
-		} else if gbox == 3 {
+		} else if getterbox == 3 {
 			clsn2 = getter.sizeBox
 		} else {
 			clsn2 = getter.curFrame.Clsn2()
+		}
+	}
+
+	// Z axis check (changed to no longer check z enable constant, depends on stage now)
+	if sys.stage.topbound != sys.stage.botbound {
+		if (((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
+			(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl) && attackerbox == 2 && getterbox == 2) ||
+			// Attack width Check
+			((((c.pos[2]+c.hitdef.attack.width[0])*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl) ||
+				((c.pos[2]-c.hitdef.attack.width[1])*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl)) && (attackerbox == 1 && getterbox != 1)) {
+			return false
 		}
 	}
 
@@ -6891,6 +6960,7 @@ func (c *Char) actionPrepare() {
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
 				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
 		}
+		c.zScale = c.updateZScale(c.pos[2])
 		// Reset Clsn modifiers
 		c.clsnScaleMul = [...]float32{1.0, 1.0}
 		c.clsnAngle = 0
@@ -7279,7 +7349,7 @@ func (c *Char) update() {
 			}
 			if ((c.ss.moveType == MT_H && (c.ss.stateType == ST_S || c.ss.stateType == ST_C)) || c.ss.no == 52) && c.pos[1] == 0 &&
 				AbsF(c.pos[0]-c.dustOldPos) >= 1 && c.ss.time%3 == 0 {
-				c.makeDust(0, 0)
+				c.makeDust(0, 0, 0)
 			}
 		}
 
@@ -7679,7 +7749,7 @@ func (c *Char) cueDraw() {
 	// Add char sprite
 	if c.anim != nil {
 		pos := [...]float32{c.drawPos[0]*c.localscl + c.offsetX()*c.localscl, c.drawPos[1]*c.localscl + c.offsetY()*c.localscl}
-		scl := [...]float32{c.facing * c.size.xscale * (320 / c.localcoord), c.size.yscale * (320 / c.localcoord)}
+		scl := [...]float32{c.facing * c.size.xscale * c.zScale * (320 / c.localcoord), c.size.yscale * c.zScale * (320 / c.localcoord)}
 		agl := float32(0)
 		if c.csf(CSF_angledraw) {
 			agl = c.angle
@@ -7732,7 +7802,7 @@ func (c *Char) cueDraw() {
 			if c.csf(CSF_trans) {
 				sa = 255 - c.alpha[1]
 			}
-			sprs.add(sd, sc, sa, c.shadowOffset, c.reflectOffset, c.size.shadowoffset, c.offsetY())
+			sprs.add(sd, sc, sa, [2]float32{c.shadowOffset[0], c.shadowOffset[1] + sys.stage.sdw.yscale*c.pos[2] + c.pos[2]}, [2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*c.pos[2] + c.pos[2]}, c.size.shadowoffset, c.offsetY())
 		}
 	}
 	if sys.tickNextFrame() {
@@ -8459,7 +8529,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				e.layerno = 1
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
-				e.relativePos = off
+				e.relativePos = [...]float32{off[0], off[1], 0}
 				e.supermovetime = -1
 				e.pausemovetime = -1
 				e.localscl = 1

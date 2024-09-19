@@ -703,28 +703,28 @@ func (c *Compiler) explodSub(is IniSection,
 		return err
 	}
 	if err := c.paramValue(is, sc, "pos",
-		explod_pos, VT_Float, 2, false); err != nil {
+		explod_pos, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "random",
-		explod_random, VT_Float, 2, false); err != nil {
+		explod_random, VT_Float, 3, false); err != nil {
 		return err
 	}
 	found := false
 	if err := c.stateParam(is, "vel", false, func(data string) error {
 		found = true
-		return c.scAdd(sc, explod_velocity, data, VT_Float, 2)
+		return c.scAdd(sc, explod_velocity, data, VT_Float, 3)
 	}); err != nil {
 		return err
 	}
 	if !found {
 		if err := c.paramValue(is, sc, "velocity",
-			explod_velocity, VT_Float, 2, false); err != nil {
+			explod_velocity, VT_Float, 3, false); err != nil {
 			return err
 		}
 	}
 	if err := c.paramValue(is, sc, "accel",
-		explod_accel, VT_Float, 2, false); err != nil {
+		explod_accel, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramSpace(is, sc, explod_space); err != nil {
@@ -838,7 +838,7 @@ func (c *Compiler) explodInterpolate(is IniSection,
 		return err
 	}
 	if err := c.paramValue(is, sc, "interpolation.offset",
-		explod_interpolate_pos, VT_Float, 2, false); err != nil {
+		explod_interpolate_pos, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "interpolation.focallength",
@@ -1912,6 +1912,10 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_xaccel, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "attack.width",
+		hitDef_attack_width, VT_Float, 2, false); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2040,19 +2044,19 @@ func (c *Compiler) projectileSub(is IniSection, sc *StateControllerBase, ihp int
 		return err
 	}
 	if err := c.paramValue(is, sc, "velocity",
-		projectile_velocity, VT_Float, 2, false); err != nil {
+		projectile_velocity, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "velmul",
-		projectile_velmul, VT_Float, 2, false); err != nil {
+		projectile_velmul, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "remvelocity",
-		projectile_remvelocity, VT_Float, 2, false); err != nil {
+		projectile_remvelocity, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "accel",
-		projectile_accel, VT_Float, 2, false); err != nil {
+		projectile_accel, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "projscale",
@@ -2077,7 +2081,7 @@ func (c *Compiler) projectileSub(is IniSection, sc *StateControllerBase, ihp int
 	}
 
 	if err := c.paramValue(is, sc, "offset",
-		projectile_offset, VT_Float, 2, false); err != nil {
+		projectile_offset, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "projsprpriority",
@@ -2570,6 +2574,10 @@ func (c *Compiler) bindToTarget(is IniSection, sc *StateControllerBase, _ int8) 
 			sc.add(bindToTarget_pos, append(exp, sc.iToExp(int32(hmf))...))
 			return nil
 		}); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "posz",
+			bindToTarget_posz, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil
@@ -3585,7 +3593,7 @@ func (c *Compiler) bindToParentSub(is IniSection,
 		return err
 	}
 	if err := c.paramValue(is, sc, "pos",
-		bindToParent_pos, VT_Float, 2, false); err != nil {
+		bindToParent_pos, VT_Float, 3, false); err != nil {
 		return err
 	}
 	return nil
@@ -5083,8 +5091,20 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 			modifyStageVar_playerinfo_rightbound, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "scaling.topz",
+			modifyStageVar_scaling_topz, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scaling.botz",
+			modifyStageVar_scaling_botz, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "scaling.topscale",
 			modifyStageVar_scaling_topscale, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "scaling.botscale",
+			modifyStageVar_scaling_botscale, VT_Float, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "bound.screenleft",
@@ -5141,6 +5161,14 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 		}
 		if err := c.paramValue(is, sc, "reflection.yscale",
 			modifyStageVar_reflection_yscale, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reflection.xshear",
+			modifyStageVar_reflection_xshear, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reflection.color",
+			modifyStageVar_reflection_xshear, VT_Int, 3, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "reflection.offset",

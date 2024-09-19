@@ -1858,6 +1858,14 @@ function options.f_keyCfg(cfgType, controller, bgdef, skipClear)
 		--gamepad key detection
 		else
 			local tmp = getJoystickKey(joyNum)
+			local guid = getJoystickGUID(joyNum)
+
+			-- Fix the GUID so that configs are preserved between boots for macOS
+			if config[cfgType][player].GUID ~= guid then
+				config[cfgType][player].GUID = guid
+				options.modified = true
+			end
+
 			if tonumber(tmp) == nil then
 				btnReleased = true
 			elseif btnReleased then
