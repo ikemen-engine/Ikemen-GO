@@ -1069,21 +1069,10 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		// Set the tint if it's there
 		color := sys.stage.reflection.color
 
-		// Add full alpha if color is specified
+		// Add alpha if color is specified
 		if color != 0 {
-			color |= 0xFF000000
+			color |= uint32(ref << 24)
 		}
-
-		// the below makes tint work with PalFX (TODO)
-		// add := [...]int32{0, 0, 0}
-		// if !s.fx.enable {
-		// 	s.fx.clear()
-		// 	s.fx.eMul = [...]int32{256, 256, 256}
-		// 	s.fx.enable = true
-		// }
-		// s.fx.eAdd[0] = Clamp(s.fx.eAdd[0]+add[0], 0, 255)
-		// s.fx.eAdd[1] = Clamp(s.fx.eAdd[1]+add[1], 0, 255)
-		// s.fx.eAdd[2] = Clamp(s.fx.eAdd[2]+add[2], 0, 255)
 
 		xshear := sys.stage.reflection.xshear
 		// Have to do it this way, -xshear results in improper behavior for the rotation offset
