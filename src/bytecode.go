@@ -4209,6 +4209,7 @@ const (
 	helper_kovelocity
 	helper_preserve
 	helper_standby
+	helper_ownclsnscale
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -4333,6 +4334,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			if exp[0].evalB(c) {
 				h.preserve = sys.round
 			}
+		case helper_ownclsnscale:
+			h.ownclsnscale = exp[0].evalB(c)
 		case helper_standby:
 			if exp[0].evalB(c) {
 				h.setSCF(SCF_standby)

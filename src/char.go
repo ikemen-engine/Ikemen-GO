@@ -2231,6 +2231,7 @@ type Char struct {
 	sizeBox         []float32
 	shadowOffset    [2]float32
 	reflectOffset   [2]float32
+	ownclsnscale    bool
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -5108,6 +5109,11 @@ func (c *Char) setBHeight(bh float32) {
 }
 
 func (c *Char) updateClsnScale() {
+	// Helper parameter
+	if c.ownclsnscale && c.animPN == c.playerNo {
+		c.clsnScale = [...]float32{c.size.xscale, c.size.yscale}
+		return
+	}
 	// Index range checks. Prevents crashing if chars don't have animations
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1982
 	if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
