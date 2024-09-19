@@ -1931,10 +1931,10 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		if frm := p.ani.drawFrame(); frm != nil {
 			xs := p.clsnScale[0] * p.localscl * p.facing
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
-				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl, p.clsnAngle)
+				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl, p.clsnAngle*p.facing)
 			}
 			if clsn := frm.Clsn2(); len(clsn) > 0 {
-				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl, p.clsnAngle)
+				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl, xs, p.clsnScale[1]*p.localscl, p.clsnAngle*p.facing)
 			}
 		}
 	}
@@ -5111,7 +5111,7 @@ func (c *Char) updateClsnScale() {
 	// Index range checks. Prevents crashing if chars don't have animations
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1982
 	if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
-		// The char's own Clsn scale
+		// The char's base Clsn scale
 		// Based on the animation owner's scale constants
 		c.clsnScale = [...]float32{
 			sys.chars[c.animPN][0].size.xscale,
@@ -5138,7 +5138,20 @@ func (c *Char) widthToSizeBox() {
 	if len(c.width) < 2 || len(c.height) < 2 {
 		c.sizeBox = []float32{0, 0, 0, 0}
 	} else {
-		c.sizeBox = []float32{-c.width[1], -c.height[0], c.width[0], c.height[1]}
+		// Correct left/right and top/bottom
+		// Same behavior as Clsn boxes
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/2008
+		back := -c.width[1]
+		front := c.width[0]
+		top := -c.height[0]
+		bottom := c.height[1]
+		if back > front {
+			back, front = front, back
+		}
+		if top > bottom { // Negative sign
+			top, bottom = bottom, top
+		}
+		c.sizeBox = []float32{back, top, front, bottom}
 	}
 }
 
