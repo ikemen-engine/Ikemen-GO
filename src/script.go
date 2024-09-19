@@ -4684,6 +4684,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.hoIdx >= 0))
 		return 1
 	})
+	luaRegister(l, "ikemenversion", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.gi().ikemenverF))
+		return 1
+	})
 	luaRegister(l, "incustomanim", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.animPN != sys.debugWC.playerNo))
 		return 1

@@ -2000,6 +2000,8 @@ type CharGlobalInfo struct {
 	pal              [MaxPalNo]string
 	palExist         [MaxPalNo]bool
 	palSelectable    [MaxPalNo]bool
+	ikemenver        [3]uint16
+	ikemenverF       float32
 	mugenver         [2]uint16
 	data             CharData
 	velocity         CharVelocity
@@ -2015,7 +2017,6 @@ type CharGlobalInfo struct {
 	remapPreset      map[string]RemapPreset
 	remappedpal      [2]int32
 	localcoord       [2]float32
-	ikemenver        [3]uint16
 	fnt              [10]*Fnt
 }
 
@@ -3658,6 +3659,8 @@ func (c *Char) moveReversed() int32 {
 	}
 	return 0
 }
+
+// Mugen version trigger
 func (c *Char) mugenVersion() float32 {
 	// Here the version is always checked directly in the character instead of the working state
 	// This is because in a custom state this trigger will be used to know the enemy's version rather than our own
@@ -3673,6 +3676,7 @@ func (c *Char) mugenVersion() float32 {
 		return 0
 	}
 }
+
 func (c *Char) numEnemy() int32 {
 	var n int32
 	if c.teamside == -1 {

@@ -572,6 +572,7 @@ const (
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
 	OC_ex_movehitvar_uniqhit
+	OC_ex_ikemenversion
 	OC_ex_incustomanim
 	OC_ex_incustomstate
 	OC_ex_indialogue
@@ -2528,6 +2529,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.helperByIndexExist(*sys.bcStack.Top())
 	case OC_ex_hitoverridden:
 		sys.bcStack.PushB(c.hoIdx >= 0)
+	case OC_ex_ikemenversion:
+		sys.bcStack.PushF(c.gi().ikemenverF)
 	case OC_ex_incustomanim:
 		sys.bcStack.PushB(c.animPN != c.playerNo)
 	case OC_ex_incustomstate:
