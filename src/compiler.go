@@ -377,6 +377,7 @@ var triggerMap = map[string]int{
 	"helperindexexist":   1,
 	"helpername":         1,
 	"hitoverridden":      1,
+	"incustomanim":      1,
 	"incustomstate":      1,
 	"index":              1,
 	"indialogue":         1,
@@ -3600,6 +3601,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
+	case "incustomanim":
+		out.append(OC_ex_, OC_ex_incustomanim)
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
 	case "indialogue":

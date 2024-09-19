@@ -4686,6 +4686,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.hoIdx >= 0))
 		return 1
 	})
+	luaRegister(l, "incustomanim", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.animPN != sys.debugWC.playerNo))
+		return 1
+	})
 	luaRegister(l, "incustomstate", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.ss.sb.playerNo != sys.debugWC.playerNo))
 		return 1
