@@ -661,7 +661,8 @@ func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 	return
 }
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd float32, rot Rotation, rcx float32, pfx *PalFX, old bool, facing float32, isReflection bool, posLocalscl float32, projectionMode int32, fLength float32) {
+	rxadd float32, rot Rotation, rcx float32, pfx *PalFX, old bool, facing float32, isReflection bool, posLocalscl float32, projectionMode int32, fLength float32,
+	color uint32) {
 	if a.spr == nil || a.spr.Tex == nil {
 		return
 	}
@@ -728,7 +729,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		x * sys.widthScale,
 		y * sys.heightScale, a.tile, xs * sys.widthScale, xcs * xbs * h * sys.widthScale,
 		ys * sys.heightScale, 1, xcs * rxadd * sys.widthScale / sys.heightScale, h, v, rot,
-		0, trans, mask, pfx, window, rcx, rcy, projectionMode, fLength * sys.heightScale,
+		color, trans, mask, pfx, window, rcx, rcy, projectionMode, fLength * sys.heightScale,
 		xs * posLocalscl * (float32(a.frames[a.drawidx].X) + a.interpolate_offset_x) * a.start_scale[0] * (1 / a.scale_x) * sys.widthScale,
 		ys * posLocalscl * (float32(a.frames[a.drawidx].Y) + a.interpolate_offset_y) * a.start_scale[1] * (1 / a.scale_y) * sys.heightScale,
 	}
@@ -906,12 +907,7 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so, ro [2]float32, soy, fo 
 		if sd.oldVer {
 			soy *= 1.5
 		}
-		// Do the FX copying here, we don't want things lagging
-		sd2 := *sd
-		fx := *sd.fx
-		sd2.fx = &fx
-		ss := &ShadowSprite{&sd2, sc, salp, [2]float32{so[0], soy + so[1]}, ro, fo}
-		sys.shadows.add(ss)
+		sys.shadows.add(&ShadowSprite{sd, sc, salp, [2]float32{so[0], soy + so[1]}, ro, fo})
 	}
 }
 func (dl DrawList) draw(x, y, scl float32) {
@@ -945,10 +941,10 @@ func (dl DrawList) draw(x, y, scl float32) {
 			window[2] = int32(cs * (w[2] - w[0]) * sys.widthScale)
 			window[3] = int32(cs * (w[3] - w[1]) * sys.heightScale)
 			s.anim.Draw(&window, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-				s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
+				s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength, 0)
 		} else {
 			s.anim.Draw(&sys.scrrect, p[0], p[1], cs, cs, s.scl[0], s.scl[0],
-				s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength)
+				s.scl[1], 0, s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, false, s.posLocalscl, s.projection, s.fLength, 0)
 		}
 		sys.brightness = ob
 	}
@@ -1071,19 +1067,23 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		}
 
 		// Set the tint if it's there
-		col := int32(sys.stage.reflection.color)
+		color := sys.stage.reflection.color
 
-		// default: full color
-		if !s.fx.enable {
-			s.fx.setColor((col&0xFF0000)>>16, (col&0x00FF00)>>8, col&0x0000FF)
-		} else {
-			add := [...]int32{0, 0, 0}
-			// don't add EVERYTHING if that's our default
-			if col != 0xFFFFFF {
-				add = [...]int32{(col & 0xFF0000) >> 16, (col & 0x00FF00) >> 8, col & 0x0000FF}
-			}
-			s.fx.setColor(s.fx.eMul[0]+add[0], s.fx.eMul[1]+add[1], s.fx.eMul[2]+add[2])
+		// Add full alpha if color is specified
+		if color != 0 {
+			color |= 0xFF000000
 		}
+
+		// the below makes tint work with PalFX (TODO)
+		// add := [...]int32{0, 0, 0}
+		// if !s.fx.enable {
+		// 	s.fx.clear()
+		// 	s.fx.eMul = [...]int32{256, 256, 256}
+		// 	s.fx.enable = true
+		// }
+		// s.fx.eAdd[0] = Clamp(s.fx.eAdd[0]+add[0], 0, 255)
+		// s.fx.eAdd[1] = Clamp(s.fx.eAdd[1]+add[1], 0, 255)
+		// s.fx.eAdd[2] = Clamp(s.fx.eAdd[2]+add[2], 0, 255)
 
 		xshear := sys.stage.reflection.xshear
 		// Have to do it this way, -xshear results in improper behavior for the rotation offset
@@ -1119,12 +1119,12 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 			s.anim.Draw(&window, sys.cam.Offset[0]/scl-(x-s.pos[0]-offsetX),
 				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-y-
 					(s.pos[1]*sys.stage.reflection.yscale-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, xshear,
-				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
+				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength, color)
 		} else {
 			s.anim.Draw(&sys.scrrect, sys.cam.Offset[0]/scl-(x-s.pos[0]-offsetX),
 				(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-y-
 					(s.pos[1]*sys.stage.reflection.yscale-offsetY), scl, scl, s.scl[0], s.scl[0], -s.scl[1]*sys.stage.reflection.yscale, xshear,
-				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength)
+				s.rot, float32(sys.gameWidth)/2, s.fx, s.oldVer, s.facing, true, s.posLocalscl, s.projection, s.fLength, color)
 		}
 	}
 }
@@ -1186,7 +1186,7 @@ func (a *Anim) Draw() {
 	if !sys.frameSkip {
 		a.anim.Draw(&a.window, a.x+float32(sys.gameWidth-320)/2,
 			a.y+float32(sys.gameHeight-240), 1, 1, a.xscl, a.xscl, a.yscl,
-			0, Rotation{}, 0, a.palfx, false, 1, false, 1, 0, 0)
+			0, Rotation{}, 0, a.palfx, false, 1, false, 1, 0, 0, 0)
 	}
 }
 func (a *Anim) ResetFrames() {

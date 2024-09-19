@@ -452,7 +452,7 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
 		bg.anim.Draw(&rect, x, y, sclx, scly, bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, xbs*bgscl*(bg.scalestart[0]+xs)*xs3, ys*ys3,
 			xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
-			Rotation{}, float32(sys.gameWidth)/2, bg.palfx, true, 1, false, 1, 0, 0)
+			Rotation{}, float32(sys.gameWidth)/2, bg.palfx, true, 1, false, 1, 0, 0, 0)
 	}
 }
 
@@ -915,7 +915,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	if sectionExists {
 		sectionExists = false
-		if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topscale
+		if s.mugenver[0] != 1 || s.ikemenver[0] >= 1 { // mugen 1.0+ removed support for z-axis, IKEMEN-Go 1.0 adds it back
 			sec[0].ReadF32("topz", &s.stageCamera.topz)
 			sec[0].ReadF32("botz", &s.stageCamera.botz)
 			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
@@ -1162,14 +1162,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 			if sec[0].ReadI32("intensity", &tmp) {
 				s.reflection.intensity = Clamp(tmp, 0, 255)
 			}
-			var r, g, b int32 = 255, 255, 255
+			var r, g, b int32 = 0, 0, 0
 			sec[0].readI32ForStage("color", &r, &g, &b)
 			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
-			// Disable color parameter specifically in Mugen 1.1 stages
-			if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 && s.mugenver[0] == 1 && s.mugenver[1] == 1 {
-				r, g, b = 255, 255, 255
-			}
 			s.reflection.color = uint32(r<<16 | g<<8 | b)
+
 			if sec[0].ReadI32("layerno", &tmp) {
 				s.reflectionlayerno = Clamp(tmp, -1, 0)
 			}
