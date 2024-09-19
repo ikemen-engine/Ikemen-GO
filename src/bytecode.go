@@ -526,6 +526,7 @@ const (
 	OC_ex_animframe_numclsn1
 	OC_ex_animframe_numclsn2
 	OC_ex_animlength
+	OC_ex_animplayerno
 	OC_ex_attack
 	OC_ex_combocount
 	OC_ex_consecutivewins
@@ -2437,6 +2438,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
+	case OC_ex_animplayerno:
+		sys.bcStack.PushI(int32(c.animPN) + 1)
 	case OC_ex_attack:
 		sys.bcStack.PushF(c.attackMul[0] * 100)
 	case OC_ex_combocount:

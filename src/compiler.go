@@ -339,7 +339,9 @@ var triggerMap = map[string]int{
 	"alpha":              1,
 	"angle":              1,
 	"animelemlength":     1,
+	"animframe":          1,
 	"animlength":         1,
+	"animplayerno":       1,
 	"atan2":              1,
 	"attack":             1,
 	"bgmlength":          1,
@@ -3415,6 +3417,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "animlength":
 		out.append(OC_ex_, OC_ex_animlength)
+	case "animplayerno":
+		out.append(OC_ex_, OC_ex_animplayerno)
 	case "attack":
 		out.append(OC_ex_, OC_ex_attack)
 	case "combocount":
