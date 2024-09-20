@@ -1442,7 +1442,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin}
 	sprs.add(sd)
 	// Add shadow if color is not 0
-	sdwclr := e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff
+	sdwclr := e.shadow[0]<<16 | e.shadow[1]&0xff<<8 | e.shadow[2]&0xff
 	if sdwclr != 0 {
 		sdwalp := 255 - alp[1]
 		if sdwalp < 0 {
@@ -1960,9 +1960,9 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
 		sprs.add(sd)
 		// Add a shadow if color is not 0
-		sdwclr := p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255
+		sdwclr := p.shadow[0]<<16 | p.shadow[1]&255<<8 | p.shadow[2]&255
 		if sdwclr != 0 {
-			sys.shadows.add(&ShadowSprite{sd, sdwclr,  0, [2]float32{0, p.pos[2]}, [2]float32{0, p.pos[2]}, 0})
+			sys.shadows.add(&ShadowSprite{sd, sdwclr, 0, [2]float32{0, p.pos[2]}, [2]float32{0, p.pos[2]}, 0})
 		}
 	}
 }
@@ -6833,7 +6833,7 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) && 
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) &&
 				c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1], getter.size.z.width, getter.size.z.width)
 		}
 	}
@@ -7860,7 +7860,7 @@ func (c *Char) cueDraw() {
 				//}
 				sys.shadows.add(&ShadowSprite{sd, -1, sdwalp,
 					[2]float32{c.shadowOffset[0], c.size.shadowoffset + c.shadowOffset[1] + sys.stage.sdw.yscale*c.pos[2] + c.pos[2]}, // Shadow offset
-					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*c.pos[2] + c.pos[2]}, // Reflection offset
+					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*c.pos[2] + c.pos[2]},              // Reflection offset
 					c.offsetY()}) // Fade offset
 			}
 		}
@@ -9101,8 +9101,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 			//		(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
 
 			// Normal collision check
-			cxleft := c.sizeBox[0]*c.localscl
-			cxright := c.sizeBox[2]*c.localscl
+			cxleft := c.sizeBox[0] * c.localscl
+			cxright := c.sizeBox[2] * c.localscl
 			if c.facing < 0 {
 				cxleft, cxright = -cxright, -cxleft
 			}
@@ -9110,8 +9110,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 			cxleft += c.pos[0] * c.localscl
 			cxright += c.pos[0] * c.localscl
 
-			gxleft := getter.sizeBox[0]*getter.localscl
-			gxright := getter.sizeBox[2]*getter.localscl
+			gxleft := getter.sizeBox[0] * getter.localscl
+			gxright := getter.sizeBox[2] * getter.localscl
 			if getter.facing < 0 {
 				gxleft, gxright = -gxright, -gxleft
 			}
