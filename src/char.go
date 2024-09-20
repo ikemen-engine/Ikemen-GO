@@ -9084,46 +9084,72 @@ func (cl *CharList) pushDetection(getter *Char) {
 		if !c.csf(CSF_playerpush) || c.teamside == getter.teamside || c.scf(SCF_standby) || c.scf(SCF_disabled) {
 			continue // Stop current iteration if char won't push
 		}
+
 		// Pushbox vertical size and coordinates
 		ctop := (c.pos[1] + c.sizeBox[1]) * c.localscl
 		cbot := (c.pos[1] + c.sizeBox[3]) * c.localscl
 		gtop := (getter.pos[1] + getter.sizeBox[1]) * getter.localscl
 		gbot := (getter.pos[1] + getter.sizeBox[3]) * getter.localscl
-		if cbot >= gtop && ctop <= gbot && // Pushbox vertical overlap
-			c.zAxisCheck(getter, c.size.z.width, c.size.z.width, getter.size.z.width, getter.size.z.width) {
+
+		if cbot >= gtop && ctop <= gbot { // Pushbox vertical overlap
+
+			// We skip the zAxisCheck function because we'll need to calculate the overlap again anyway
+
+			//c.zAxisCheck(getter, c.size.z.width, c.size.z.width, getter.size.z.width, getter.size.z.width) {
 			//!(c.size.z.enable && getter.size.z.enable &&
 			//	((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
 			//		(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
+
 			// Normal collision check
-			cl, cr := c.sizeBox[0]*c.localscl, c.sizeBox[2]*c.localscl
+			cxleft := c.sizeBox[0]*c.localscl
+			cxright := c.sizeBox[2]*c.localscl
 			if c.facing < 0 {
-				cl, cr = -cr, -cl
+				cxleft, cxright = -cxright, -cxleft
 			}
-			cl += c.pos[0] * c.localscl
-			cr += c.pos[0] * c.localscl
 
-			gl, gr := getter.sizeBox[0]*getter.localscl, getter.sizeBox[2]*getter.localscl
+			cxleft += c.pos[0] * c.localscl
+			cxright += c.pos[0] * c.localscl
+
+			gxleft := getter.sizeBox[0]*getter.localscl
+			gxright := getter.sizeBox[2]*getter.localscl
 			if getter.facing < 0 {
-				gl, gr = -gr, -gl
+				gxleft, gxright = -gxright, -gxleft
 			}
-			gl += getter.pos[0] * getter.localscl
-			gr += getter.pos[0] * getter.localscl
 
-			gxmin = getter.edge[0]
-			gxmax = -getter.edge[1]
-			if getter.facing > 0 {
-				gxmin, gxmax = -gxmax, -gxmin
-			}
-			gxmin += sys.xmin / getter.localscl
-			gxmax += sys.xmax / getter.localscl
+			gxleft += getter.pos[0] * getter.localscl
+			gxright += getter.pos[0] * getter.localscl
 
-			push := true
-			if !c.asf(ASF_sizepushonly) {
-				push = getter.clsnCheck(c, 2, 2)
+			// X axis fail
+			if gxleft >= cxright || cxleft >= gxright {
+				continue
 			}
+
+			czback, czfront := -c.size.z.width*c.localscl, c.size.z.width*c.localscl
+			czback += c.pos[2] * c.localscl
+			czfront += c.pos[2] * c.localscl
+
+			gzback, gzfront := -getter.size.z.width*c.localscl, getter.size.z.width*c.localscl
+			gzback += getter.pos[2] * getter.localscl
+			gzfront += getter.pos[2] * getter.localscl
+
+			// Z axis fail
+			if gzback >= czfront || czback >= gzfront {
+				continue
+			}
+
 			// Push characters away from each other
-			if gl < cr && cl < gr && push {
+			if c.asf(ASF_sizepushonly) || getter.clsnCheck(c, 2, 2) {
+
+				gxmin = getter.edge[0]
+				gxmax = -getter.edge[1]
+				if getter.facing > 0 {
+					gxmin, gxmax = -gxmax, -gxmin
+				}
+				gxmin += sys.xmin / getter.localscl
+				gxmax += sys.xmax / getter.localscl
+
 				getter.pushed, c.pushed = true, true
+
 				tmp := getter.distX(c, getter)
 				if tmp == 0 {
 					// Decide direction in which to push each player in case of a tie in position
@@ -9156,24 +9182,52 @@ func (cl *CharList) pushDetection(getter *Char) {
 						tmp = -c.facing
 					}
 				}
+
+				// Determine in which axes to push the players
+				pushx := sys.stage.topbound == sys.stage.botbound || getter.vel[0] != 0 || c.vel[0] != 0
+				pushz := sys.stage.topbound != sys.stage.botbound && (getter.vel[2] != 0 || c.vel[2] != 0)
+
 				// TODO: This 0.5 multiplier could be a character or system constant instead of being hardcoded
-				if tmp > 0 {
-					if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-						getter.pos[0] -= ((gr - cl) * 0.5) / getter.localscl
-					}
-					if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-						c.pos[0] += ((gr - cl) * 0.5) / c.localscl
-					}
-				} else {
-					if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-						getter.pos[0] += ((cr - gl) * 0.5) / getter.localscl
-					}
-					if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-						c.pos[0] -= ((cr - gl) * 0.5) / c.localscl
+				if pushx {
+					if tmp > 0 {
+						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+							getter.pos[0] -= ((gxright - cxleft) * 0.5) / getter.localscl
+						}
+						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+							c.pos[0] += ((gxright - cxleft) * 0.5) / c.localscl
+						}
+					} else {
+						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+							getter.pos[0] += ((cxright - gxleft) * 0.5) / getter.localscl
+						}
+						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+							c.pos[0] -= ((cxright - gxleft) * 0.5) / c.localscl
+						}
 					}
 				}
+
+				// TODO: Z axis push might need some decision for who stays in the corner, like X axis
+				if pushz {
+					if getter.pos[2] < c.pos[2] {
+						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+							getter.pos[2] -= ((gzfront - czback) * 0.5) / getter.localscl
+						}
+						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+							c.pos[2] += ((gzfront - czback) * 0.5) / c.localscl
+						}
+					} else {
+						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+							getter.pos[2] -= ((czfront - gzback) * 0.5) / getter.localscl
+						}
+						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+							c.pos[2] += ((czfront - gzback) * 0.5) / c.localscl
+						}
+					}
+				}
+
 				if getter.trackableByCamera() && getter.csf(CSF_screenbound) {
 					getter.pos[0] = ClampF(getter.pos[0], gxmin, gxmax)
+					getter.pos[2] = ClampF(getter.pos[2], sys.stage.topbound, sys.stage.botbound)
 				}
 				if c.trackableByCamera() && c.csf(CSF_screenbound) {
 					l, r := c.edge[0], -c.edge[1]
@@ -9181,6 +9235,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 						l, r = -r, -l
 					}
 					c.pos[0] = ClampF(c.pos[0], l+sys.xmin/c.localscl, r+sys.xmax/c.localscl)
+					c.pos[2] = ClampF(c.pos[2], sys.stage.topbound, sys.stage.botbound)
 				}
 				getter.pos[0] = ClampF(getter.pos[0], sys.stage.leftbound*(sys.stage.localscl/getter.localscl), sys.stage.rightbound*(sys.stage.localscl/getter.localscl))
 				c.pos[0] = ClampF(c.pos[0], sys.stage.leftbound*(sys.stage.localscl/c.localscl), sys.stage.rightbound*(sys.stage.localscl/c.localscl))
