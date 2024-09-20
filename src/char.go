@@ -1805,6 +1805,7 @@ func (p *Projectile) update(playerNo int) {
 func (p *Projectile) tradeDetection(playerNo, index int) {
 
 	// Skip if this projectile can't trade at all
+	// Projectiles can trade even if they are spawned with 0 hits
 	if p.remflag || p.hits < 0 || p.id < 0 {
 		return
 	}
@@ -8074,41 +8075,59 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return // Stop entire function if getter is disabled
 	}
-	// hit() function definition start.
-	hit := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32, hits int32) (hitType int32) {
+
+	// hitTypeGet() function definition start.
+	hitTypeGet := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32, hits int32) (hitType int32) {
+
+		// Early exits
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
 			c.hitdef.ltypehit = true
 			return 0
 		}
-		if getter.stchtmp && getter.ss.sb.playerNo != hd.playerNo && func() bool {
+
+		if getter.stchtmp && getter.ss.sb.playerNo != hd.playerNo {
 			if getter.csf(CSF_gethit) {
-				return hd.p2stateno >= 0
+				if hd.p2stateno >= 0 {
+					return 0
+				}
+			} else if getter.acttmp > 0 {
+				return 0
 			}
-			return getter.acttmp > 0
-		}() || getter.csf(CSF_gethit) && getter.ghv.attr&int32(AT_AT) != 0 ||
-			hd.p1stateno >= 0 && (c.csf(CSF_gethit) ||
-				c.stchtmp && c.ss.sb.playerNo != hd.playerNo) {
+		}
+
+		if hd.p1stateno >= 0 && (c.csf(CSF_gethit) || c.stchtmp && c.ss.sb.playerNo != hd.playerNo) {
 			return 0
 		}
+
+		if getter.csf(CSF_gethit) && getter.ghv.attr&int32(AT_AT) != 0 {
+			return 0
+		}
+
 		// Check if the enemy can guard this attack
-		guard := (proj || !c.asf(ASF_unguardable)) && getter.scf(SCF_guard) &&
+		canguard := (proj || !c.asf(ASF_unguardable)) && getter.scf(SCF_guard) &&
 			(!getter.csf(CSF_gethit) || getter.ghv.guarded)
-		// Automatically choose which way to guard in case of auto guard
-		if guard && getter.asf(ASF_autoguard) &&
-			getter.acttmp > 0 && !getter.csf(CSF_gethit) &&
-			(getter.ss.stateType == ST_S || getter.ss.stateType == ST_C) &&
-			int32(getter.ss.stateType)&hd.guardflag == 0 {
-			if int32(ST_S)&hd.guardflag != 0 && !getter.asf(ASF_nostandguard) {
-				getter.ss.changeStateType(ST_S)
-			} else if int32(ST_C)&hd.guardflag != 0 &&
-				!getter.asf(ASF_nocrouchguard) {
-				getter.ss.changeStateType(ST_C)
+
+		// Automatically choose high or low in case of auto guard
+		if canguard && getter.asf(ASF_autoguard) && getter.acttmp > 0 && !getter.csf(CSF_gethit) {
+			if int32(getter.ss.stateType)&hd.guardflag == 0 {
+				if getter.ss.stateType == ST_S {
+					// High to Low
+					if int32(ST_C)&hd.guardflag != 0 && !getter.asf(ASF_nocrouchguard) {
+						getter.ss.changeStateType(ST_C)
+					}
+				} else if getter.ss.stateType == ST_C {
+					// Low to High
+					if int32(ST_S)&hd.guardflag != 0 && !getter.asf(ASF_nostandguard) {
+						getter.ss.changeStateType(ST_S)
+					}
+				}
 			}
 		}
+
 		hitType = 1
 		getter.ghv.kill = hd.kill
 		// If enemy is guarding the correct way, "hitType" is set to "guard"
-		if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
+		if canguard && int32(getter.ss.stateType)&hd.guardflag != 0 {
 			getter.ghv.kill = hd.guard_kill
 			// We only switch to guard behavior if the enemy can survive guarding the attack
 			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul[0], c, true) ||
@@ -8118,6 +8137,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				getter.ghv.cheeseKO = true // TODO: find a better name then expose this variable
 			}
 		}
+
 		// If any previous hit in the current frame will KO the enemy, the following ones will not prevent it
 		if getter.ghv.damage >= getter.life {
 			getter.ghv.kill = true
@@ -8131,6 +8151,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		} else if hd.ground_type == HT_None {
 			hitType *= -1
 		}
+
 		p2s := false
 		// Check HitOverride
 		if !getter.stchtmp || !getter.csf(CSF_gethit) {
@@ -8302,10 +8323,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.p2getp1state = hd.p2getp1state
 					ghv.forcestand = hd.forcestand != 0
 					ghv.forcecrouch = hd.forcecrouch != 0
+
 					ghv.fall = hd.fall // The group, not the flag
 					getter.fallTime = 0
+					ghv.fall.envshake_ampl = int32(float32(hd.fall.envshake_ampl) * (c.localscl / getter.localscl))
 					ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)
 					ghv.fall.yvelocity = hd.fall.yvelocity * (c.localscl / getter.localscl)
+
 					if getter.ss.stateType == ST_A {
 						ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
 						ghv.ctrltime = hd.air_hittime
@@ -8787,6 +8811,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return
 	}
+
 	// Projectile hitting player check
 	// TODO: Disable projectiles if player is disabled?
 	if proj {
@@ -8800,14 +8825,18 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			ap_projhit := false
 			for j := range pr {
 				p := &pr[j]
-				if p.id < 0 || p.hits < 0 {
+
+				// Skip if projectile can't hit
+				if p.id < 0 || p.hits <= 0 {
 					continue
 				}
+
 				// In Mugen, projectiles couldn't hit their root even with the proper affectteam
 				if i == getter.playerNo && getter.helperIndex == 0 &&
 					(getter.teamside == p.hitdef.teamside-1) && !p.platform {
 					continue
 				}
+
 				// Teamside check
 				// Since the teamside parameter is new to Ikemen, we can make that one allow the projectile to hit the root
 				if p.hitdef.affectteam != 0 &&
@@ -8815,7 +8844,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						(getter.teamside == p.hitdef.teamside-1) != (p.hitdef.affectteam < 0)) {
 					continue
 				}
+
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
+
 				// Projectile guard distance
 				if !p.platform && p.hitdef.attr > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1445
 					if p.hitdef.guard_dist[0] < 0 {
@@ -8830,6 +8861,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 				}
+
 				if p.platform {
 					// Check if the character is above the platform's surface
 					if getter.pos[1]*getter.localscl-getter.vel[1]*getter.localscl <= (p.pos[1]+p.platformHeight[1])*p.localscl &&
@@ -8861,9 +8893,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 				}
-				if p.hits == 0 {
-					continue
-				}
+
 				// Cancel a projectile with hitflag P
 				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
@@ -8895,7 +8925,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						if p.misstime > 0 {
 							hits = 1
 						}
-						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
+						if ht := hitTypeGet(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
 							p.pos[1] - c.pos[1]*(c.localscl/p.localscl)}, p.facing, p.parentAttackmul, hits); ht != 0 {
 							p.contactflag = true
 							if Abs(ht) == 1 {
@@ -8921,20 +8951,25 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			c.atktmp = orgatktmp
 		}
 	}
+
 	// Player check
 	if !proj {
 		getter.inguarddist = false
 		getter.unsetCSF(CSF_gethit)
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
+
+			// Stop current iteration if this char is disabled
 			if c.scf(SCF_standby) || c.scf(SCF_disabled) {
-				continue // Stop current iteration if this char is disabled
+				continue
 			}
+
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				((getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0) && c.hitdef.teamside >= 0) ||
 				((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
 
 				dist := -getter.distX(c, getter) * c.facing
+
 				// Default guard distance
 				if c.ss.moveType == MT_A && c.hitdef.guard_dist[0] < 0 &&
 					dist <= c.attackDist[0]*(c.localscl/getter.localscl) &&
@@ -8985,7 +9020,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 
 					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
-						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
+						if ht := hitTypeGet(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
 								if mvh {
@@ -8994,7 +9029,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 								}
 								// ReversalDef connects
 								if c.hitdef.reversal_attr > 0 {
-
+									// ReversalDef seems to set an arbitrary set of get hit variables in Mugen
 									c.powerAdd(c.hitdef.hitgetpower)
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
@@ -9017,7 +9052,11 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.ghv.hitid = c.hitdef.id
 									getter.ghv.playerNo = c.playerNo
 									getter.ghv.id = c.id
+
+									getter.ghv.fall = c.hitdef.fall // The group, not the flag
 									getter.fallTime = 0
+									// https://github.com/ikemen-engine/Ikemen-GO/issues/2012
+									getter.ghv.fall.envshake_ampl = int32(float32(c.hitdef.fall.envshake_ampl) * (c.localscl / getter.localscl))
 									getter.ghv.fall.xvelocity = c.hitdef.fall.xvelocity * (c.localscl / getter.localscl)
 									getter.ghv.fall.yvelocity = c.hitdef.fall.yvelocity * (c.localscl / getter.localscl)
 
@@ -9075,6 +9114,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		}
 	}
 }
+
 func (cl *CharList) pushDetection(getter *Char) {
 	var gxmin, gxmax float32
 	if !getter.csf(CSF_playerpush) || getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
