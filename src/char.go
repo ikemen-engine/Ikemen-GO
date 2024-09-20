@@ -1093,7 +1093,8 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int3
 			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
 			sprs.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
 				img.scl, ai.alpha, sd.priority - 2, img.rot, img.ascl,
-				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window}, 0, 0, [2]float32{0, 0}, [2]float32{0, 0}, 0, 0)
+				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window})
+			// Afterimages don't cast shadows or reflections
 		}
 	}
 	if rec || hitpause && ai.ignorehitpause {
@@ -1435,10 +1436,20 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	}
 	e.drawPos = [3]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * zscale * e.localscl, zscale * (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl, zscale * (e.pos[2] + e.offset[2] + off[2] + e.interpolate_pos[2]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
-	sprs.add(&SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]}, [...]float32{(facing * scale[0]) * e.localscl * zscale,
+	// Add sprite to draw list
+	sd := &SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]}, [...]float32{(facing * scale[0]) * e.localscl * zscale,
 		(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority, rot, [...]float32{1, 1},
-		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin},
-		e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff, sdwalp, [2]float32{0, 0}, [2]float32{0, 0}, 0, 0)
+		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin}
+	sprs.add(sd)
+	// Add shadow if color is not 0
+	sdwclr := e.shadow[0]<<16|e.shadow[1]&0xff<<8|e.shadow[2]&0xff
+	if sdwclr != 0 {
+		sdwalp := 255 - alp[1]
+		if sdwalp < 0 {
+			sdwalp = 256
+		}
+		sys.shadows.add(&ShadowSprite{sd, sdwclr, sdwalp, [2]float32{0, 0}, [2]float32{0, 0}, 0})
+	}
 	if sys.tickNextFrame() {
 
 		//if e.space == Space_screen && e.bindtime == 0 {
@@ -1941,12 +1952,18 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	var c = sys.chars[playerNo][0]
 	zscale := c.updateZScale(p.pos[2])
 	if p.ani != nil {
+		// Add sprite to draw list
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1]*p.localscl + p.drawPos[2]*p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
 			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
-		sprs.add(sd, p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255, 0, [2]float32{0, p.pos[2]}, [2]float32{0, p.pos[2]}, 0, 0)
+		sprs.add(sd)
+		// Add a shadow if color is not 0
+		sdwclr := p.shadow[0]<<16|p.shadow[1]&255<<8|p.shadow[2]&255
+		if sdwclr != 0 {
+			sys.shadows.add(&ShadowSprite{sd, sdwclr,  0, [2]float32{0, p.pos[2]}, [2]float32{0, p.pos[2]}, 0})
+		}
 	}
 }
 
@@ -2346,8 +2363,8 @@ func (c *Char) clear2() {
 		bindToId:        -1,
 		angleScale:      [...]float32{1, 1},
 		alpha:           [...]int32{255, 0},
-		width:           [...]float32{c.defFW(), c.defBW()},
-		height:          [...]float32{c.defTHeight(), c.defBHeight()},
+		width:           [...]float32{c.baseWidthFront(), c.baseWidthBack()},
+		height:          [...]float32{c.baseHeightTop(), c.baseHeightBottom()},
 		attackMul:       [4]float32{atk, atk, atk, atk},
 		fallDefenseMul:  1,
 		superDefenseMul: 1,
@@ -5025,30 +5042,68 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 		}
 	}
 }
+
+func (c *Char) baseWidthFront() float32 {
+	if c.ss.stateType == ST_A {
+		return float32(c.size.air.front)
+	}
+	return float32(c.size.ground.front)
+}
+
+func (c *Char) baseWidthBack() float32 {
+	if c.ss.stateType == ST_A {
+		return float32(c.size.air.back)
+	}
+	return float32(c.size.ground.back)
+}
+
+func (c *Char) baseHeightTop() float32 {
+	if c.ss.stateType == ST_L {
+		return float32(c.size.height.down)
+	} else if c.ss.stateType == ST_A {
+		return float32(c.size.height.air[0])
+	} else if c.ss.stateType == ST_C {
+		return float32(c.size.height.crouch)
+	} else {
+		return float32(c.size.height.stand)
+	}
+}
+
+func (c *Char) baseHeightBottom() float32 {
+	if c.ss.stateType == ST_A {
+		return float32(c.size.height.air[1])
+	} else {
+		return 0
+	}
+}
+
 func (c *Char) setFEdge(fe float32) {
 	c.edge[0] = fe
 	c.setCSF(CSF_frontedge)
 }
+
 func (c *Char) setBEdge(be float32) {
 	c.edge[1] = be
 	c.setCSF(CSF_backedge)
 }
+
 func (c *Char) setFWidth(fw float32) {
-	c.width[0] = c.defFW()*((320/c.localcoord)/c.localscl) + fw
+	c.width[0] = c.baseWidthFront()*((320/c.localcoord)/c.localscl) + fw
 	c.setCSF(CSF_frontwidth)
 }
+
 func (c *Char) setBWidth(bw float32) {
-	c.width[1] = c.defBW()*((320/c.localcoord)/c.localscl) + bw
+	c.width[1] = c.baseWidthBack()*((320/c.localcoord)/c.localscl) + bw
 	c.setCSF(CSF_backwidth)
 }
+
 func (c *Char) setTHeight(th float32) {
-	c.height[0] = c.defTHeight()*((320/c.localcoord)/c.localscl) + th
-	ClampF(c.height[1], c.height[0], c.height[1])
+	c.height[0] = c.baseHeightTop()*((320/c.localcoord)/c.localscl) + th
 	c.setCSF(CSF_topheight)
 }
+
 func (c *Char) setBHeight(bh float32) {
-	c.height[1] = c.defBHeight()*((320/c.localcoord)/c.localscl) + bh
-	ClampF(c.height[0], c.height[1], c.height[0])
+	c.height[1] = c.baseHeightBottom()*((320/c.localcoord)/c.localscl) + bh
 	c.setCSF(CSF_bottomheight)
 }
 
@@ -5795,36 +5850,6 @@ func (c *Char) hitVelSetX() {
 func (c *Char) hitVelSetY() {
 	// Movetype H is not required in Mugen
 	c.setYV(c.ghv.yvel)
-}
-func (c *Char) defFW() float32 {
-	if c.ss.stateType == ST_A {
-		return float32(c.size.air.front)
-	}
-	return float32(c.size.ground.front)
-}
-func (c *Char) defBW() float32 {
-	if c.ss.stateType == ST_A {
-		return float32(c.size.air.back)
-	}
-	return float32(c.size.ground.back)
-}
-func (c *Char) defTHeight() float32 {
-	if c.ss.stateType == ST_L {
-		return float32(c.size.height.down)
-	} else if c.ss.stateType == ST_A {
-		return float32(c.size.height.air[0])
-	} else if c.ss.stateType == ST_C {
-		return float32(c.size.height.crouch)
-	} else {
-		return float32(c.size.height.stand)
-	}
-}
-func (c *Char) defBHeight() float32 {
-	if c.ss.stateType == ST_A {
-		return float32(c.size.height.air[1])
-	} else {
-		return 0
-	}
 }
 func (c *Char) setPauseTime(pausetime, movetime int32) {
 	if ^pausetime < sys.pausetime || c.playerNo != c.ss.sb.playerNo ||
@@ -7064,10 +7089,10 @@ func (c *Char) actionRun() {
 	// TODO: Some of this code could probably be integrated with the new size box
 	if !c.hitPause() {
 		if !c.csf(CSF_frontwidth) {
-			c.width[0] = c.defFW() * ((320 / c.localcoord) / c.localscl)
+			c.width[0] = c.baseWidthFront() * ((320 / c.localcoord) / c.localscl)
 		}
 		if !c.csf(CSF_backwidth) {
-			c.width[1] = c.defBW() * ((320 / c.localcoord) / c.localscl)
+			c.width[1] = c.baseWidthBack() * ((320 / c.localcoord) / c.localscl)
 		}
 		if !c.csf(CSF_frontedge) {
 			c.edge[0] = 0
@@ -7076,10 +7101,10 @@ func (c *Char) actionRun() {
 			c.edge[1] = 0
 		}
 		if !c.csf(CSF_topheight) {
-			c.height[0] = c.defTHeight() * ((320 / c.localcoord) / c.localscl)
+			c.height[0] = c.baseHeightTop() * ((320 / c.localcoord) / c.localscl)
 		}
 		if !c.csf(CSF_bottomheight) {
-			c.height[1] = c.defBHeight() * ((320 / c.localcoord) / c.localscl)
+			c.height[1] = c.baseHeightBottom() * ((320 / c.localcoord) / c.localscl)
 		}
 	}
 	// Update size box according to player width and height
@@ -7760,17 +7785,7 @@ func (c *Char) cueDraw() {
 			}
 		}
 		rec := sys.tickNextFrame() && c.acttmp > 0
-		sdf := func() *SprData {
-			sd := &SprData{c.anim, c.getPalfx(), pos,
-				scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
-				c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing,
-				c.localcoord / sys.chars[c.animPN][0].localcoord, // https://github.com/ikemen-engine/Ikemen-GO/issues/1459 and 1778
-				0, 0, [4]float32{0, 0, 0, 0}}
-			if !c.csf(CSF_trans) {
-				sd.alpha[0] = -1
-			}
-			return sd
-		}
+
 		//if rec {
 		//	c.aimg.recAfterImg(sdf(), c.hitPause())
 		//}
@@ -7779,7 +7794,16 @@ func (c *Char) cueDraw() {
 		//	c.setCSF(CSF_trans)
 		//	c.alpha = [...]int32{255, 0}
 		//}
-		sd := sdf()
+
+		sd := &SprData{c.anim, c.getPalfx(), pos,
+			scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
+			c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing,
+			c.localcoord / sys.chars[c.animPN][0].localcoord, // https://github.com/ikemen-engine/Ikemen-GO/issues/1459 and 1778
+			0, 0, [4]float32{0, 0, 0, 0}}
+		if !c.csf(CSF_trans) {
+			sd.alpha[0] = -1
+		}
+		// Record afterimage
 		c.aimg.recAndCue(sd, rec, sys.tickNextFrame() && c.hitPause(), c.layerNo)
 		// Hitshake effect
 		if c.ghv.hitshaketime > 0 && c.ss.time&1 != 0 {
@@ -7795,14 +7819,25 @@ func (c *Char) cueDraw() {
 			sprs = &sys.spritesLayerU
 		}
 		if !c.asf(ASF_invisible) {
-			var sc, sa int32 = -1, 255
-			if c.asf(ASF_noshadow) {
-				sc = 0
-			}
+			sdwalp := int32(255)
 			if c.csf(CSF_trans) {
-				sa = 255 - c.alpha[1]
+				sdwalp = 255 - c.alpha[1]
 			}
-			sprs.add(sd, sc, sa, [2]float32{c.shadowOffset[0], c.shadowOffset[1] + sys.stage.sdw.yscale*c.pos[2] + c.pos[2]}, [2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*c.pos[2] + c.pos[2]}, c.size.shadowoffset, c.offsetY())
+			// Add sprite to draw list
+			sprs.add(sd)
+			// Add shadow
+			if !c.asf(ASF_noshadow) {
+				// Previously Ikemen applied a multiplier of 1.5 to c.size.shadowoffset for Winmugen chars
+				// That doesn't seem to actually happen in either Winmugen or Mugen 1.1
+				//soy := c.size.shadowoffset
+				//if sd.oldVer {
+				//	soy *= 1.5
+				//}
+				sys.shadows.add(&ShadowSprite{sd, -1, sdwalp,
+					[2]float32{c.shadowOffset[0], c.size.shadowoffset + c.shadowOffset[1] + sys.stage.sdw.yscale*c.pos[2] + c.pos[2]}, // Shadow offset
+					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*c.pos[2] + c.pos[2]}, // Reflection offset
+					c.offsetY()}) // Fade offset
+			}
 		}
 	}
 	if sys.tickNextFrame() {
