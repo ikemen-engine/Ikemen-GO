@@ -6672,7 +6672,19 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
 
-func (c *Char) clsnCheck(getter *Char, attackerbox, getterbox int32) bool {
+// Z axis check
+// Changed to no longer check z enable constant, depends on stage now
+func (c *Char) zAxisCheck(getter *Char, charfront, charback, getterfront, getterback float32) bool {
+	if sys.stage.topbound != sys.stage.botbound {
+		if (c.pos[2]+charfront)*c.localscl < (getter.pos[2]-getterback)*getter.localscl ||
+			(c.pos[2]-charback)*c.localscl > (getter.pos[2]+getterfront)*getter.localscl {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
 	// Nil anim & standby check.
 	if c.curFrame == nil || getter.curFrame == nil ||
 		c.scf(SCF_standby) || getter.scf(SCF_standby) ||
@@ -6697,7 +6709,7 @@ func (c *Char) clsnCheck(getter *Char, attackerbox, getterbox int32) bool {
 		clsn1 = c.curFrame.Clsn2()
 		clsn2 = getter.curFrame.Clsn2()
 	} else {
-		if attackerbox == 2 {
+		if charbox == 2 {
 			clsn1 = c.curFrame.Clsn2() // For push checking
 		} else {
 			clsn1 = c.curFrame.Clsn1()
@@ -6708,17 +6720,6 @@ func (c *Char) clsnCheck(getter *Char, attackerbox, getterbox int32) bool {
 			clsn2 = getter.sizeBox
 		} else {
 			clsn2 = getter.curFrame.Clsn2()
-		}
-	}
-
-	// Z axis check (changed to no longer check z enable constant, depends on stage now)
-	if sys.stage.topbound != sys.stage.botbound {
-		if (((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
-			(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl) && attackerbox == 2 && getterbox == 2) ||
-			// Attack width Check
-			((((c.pos[2]+c.hitdef.attack.width[0])*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl) ||
-				((c.pos[2]-c.hitdef.attack.width[1])*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl)) && (attackerbox == 1 && getterbox != 1)) {
-			return false
 		}
 	}
 
@@ -6832,7 +6833,8 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck)
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) && 
+				c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1], getter.size.z.width, getter.size.z.width)
 		}
 	}
 
@@ -8931,6 +8933,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				((getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0) && c.hitdef.teamside >= 0) ||
 				((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
+
 				dist := -getter.distX(c, getter) * c.facing
 				// Default guard distance
 				if c.ss.moveType == MT_A && c.hitdef.guard_dist[0] < 0 &&
@@ -8938,6 +8941,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					dist >= -c.attackDist[1]*(c.localscl/getter.localscl) {
 					getter.inguarddist = true
 				}
+
 				if c.helperIndex != 0 {
 					//inherit parent's or root's juggle points
 					if c.inheritJuggle == 1 && c.parent() != nil {
@@ -8956,18 +8960,31 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 				}
+
 				if c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 					(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
 					(getter.hittmp < 2 || c.asf(ASF_nojugglecheck) || !c.hasTarget(getter.id) || getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) >= c.juggle) &&
 					getter.hittableByChar(&c.hitdef, c, c.ss.stateType, false) {
+
 					// Guard distance
 					if c.ss.moveType == MT_A &&
 						dist <= float32(c.hitdef.guard_dist[0]) &&
 						dist >= -float32(c.hitdef.guard_dist[1]) {
 						getter.inguarddist = true
 					}
-					// ReversalDef connects
-					if c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
+
+					// Z axis check
+					// Reversaldef checks attack width vs attack width
+					zok := true
+					if c.hitdef.reversal_attr > 0 {
+						zok = c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1],
+							getter.hitdef.attack.width[0], getter.hitdef.attack.width[1])
+					} else {
+						zok = c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1],
+							getter.size.z.width, getter.size.z.width)
+					}
+
+					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
 						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
@@ -8975,7 +8992,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									c.mctype = MC_Hit
 									c.mctime = -1
 								}
+								// ReversalDef connects
 								if c.hitdef.reversal_attr > 0 {
+
 									c.powerAdd(c.hitdef.hitgetpower)
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
@@ -9071,10 +9090,10 @@ func (cl *CharList) pushDetection(getter *Char) {
 		gtop := (getter.pos[1] + getter.sizeBox[1]) * getter.localscl
 		gbot := (getter.pos[1] + getter.sizeBox[3]) * getter.localscl
 		if cbot >= gtop && ctop <= gbot && // Pushbox vertical overlap
-			// Z axis check
-			!(c.size.z.enable && getter.size.z.enable &&
-				((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
-					(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
+			c.zAxisCheck(getter, c.size.z.width, c.size.z.width, getter.size.z.width, getter.size.z.width) {
+			//!(c.size.z.enable && getter.size.z.enable &&
+			//	((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
+			//		(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
 			// Normal collision check
 			cl, cr := c.sizeBox[0]*c.localscl, c.sizeBox[2]*c.localscl
 			if c.facing < 0 {
