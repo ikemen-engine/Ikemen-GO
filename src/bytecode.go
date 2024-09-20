@@ -526,6 +526,7 @@ const (
 	OC_ex_animframe_numclsn1
 	OC_ex_animframe_numclsn2
 	OC_ex_animlength
+	OC_ex_animplayerno
 	OC_ex_attack
 	OC_ex_combocount
 	OC_ex_consecutivewins
@@ -571,6 +572,8 @@ const (
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
 	OC_ex_movehitvar_uniqhit
+	OC_ex_ikemenversion
+	OC_ex_incustomanim
 	OC_ex_incustomstate
 	OC_ex_indialogue
 	OC_ex_isassertedchar
@@ -2436,6 +2439,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_animlength:
 		sys.bcStack.PushI(c.anim.totaltime)
+	case OC_ex_animplayerno:
+		sys.bcStack.PushI(int32(c.animPN) + 1)
 	case OC_ex_attack:
 		sys.bcStack.PushF(c.attackMul[0] * 100)
 	case OC_ex_combocount:
@@ -2524,6 +2529,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.helperByIndexExist(*sys.bcStack.Top())
 	case OC_ex_hitoverridden:
 		sys.bcStack.PushB(c.hoIdx >= 0)
+	case OC_ex_ikemenversion:
+		sys.bcStack.PushF(c.gi().ikemenverF)
+	case OC_ex_incustomanim:
+		sys.bcStack.PushB(c.animPN != c.playerNo)
 	case OC_ex_incustomstate:
 		sys.bcStack.PushB(c.ss.sb.playerNo != c.playerNo)
 	case OC_ex_indialogue:
@@ -4209,6 +4218,7 @@ const (
 	helper_kovelocity
 	helper_preserve
 	helper_standby
+	helper_ownclsnscale
 )
 
 func (sc helper) Run(c *Char, _ []int32) bool {
@@ -4333,6 +4343,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			if exp[0].evalB(c) {
 				h.preserve = sys.round
 			}
+		case helper_ownclsnscale:
+			h.ownclsnscale = exp[0].evalB(c)
 		case helper_standby:
 			if exp[0].evalB(c) {
 				h.setSCF(SCF_standby)

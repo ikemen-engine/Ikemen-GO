@@ -1115,7 +1115,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			}
 		}
 	}
-	reflect := true
+	// Shadow group
 	if sec = defmap[fmt.Sprintf("%v.shadow", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -1138,48 +1138,46 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec[0].ReadF32("yscale", &s.sdw.yscale)
-		// sec[0].ReadBool("reflect", &reflect) // this does nothing in MUGEN
 		sec[0].readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
 		sec[0].ReadF32("xshear", &s.sdw.xshear)
 		sec[0].readF32ForStage("offset", &s.sdw.offset[0], &s.sdw.offset[1])
 	}
-	if reflect {
-		if sec = defmap[fmt.Sprintf("%v.reflection", sys.language)]; len(sec) > 0 {
+	// Reflection group
+	if sec = defmap[fmt.Sprintf("%v.reflection", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["reflection"]; len(sec) > 0 {
 			sectionExists = true
-		} else {
-			if sec = defmap["reflection"]; len(sec) > 0 {
-				sectionExists = true
-			}
 		}
-		if sectionExists {
-			s.reflection.yscale = 1.0
-			s.reflection.xshear = 0
-			s.reflection.color = 0xFFFFFF
-			sectionExists = false
-			var tmp int32
-			var tmp2 float32
-			var tmp3 [2]float32
-			if sec[0].ReadI32("intensity", &tmp) {
-				s.reflection.intensity = Clamp(tmp, 0, 255)
-			}
-			var r, g, b int32 = 0, 0, 0
-			sec[0].readI32ForStage("color", &r, &g, &b)
-			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
-			s.reflection.color = uint32(r<<16 | g<<8 | b)
-
-			if sec[0].ReadI32("layerno", &tmp) {
-				s.reflectionlayerno = Clamp(tmp, -1, 0)
-			}
-			if sec[0].ReadF32("yscale", &tmp2) {
-				s.reflection.yscale = tmp2
-			}
-			if sec[0].ReadF32("xshear", &tmp2) {
-				s.reflection.xshear = tmp2
-			}
-			if sec[0].readF32ForStage("offset", &tmp3[0], &tmp3[1]) {
-				s.reflection.offset[0] = tmp3[0]
-				s.reflection.offset[1] = tmp3[1]
-			}
+	}
+	if sectionExists {
+		sectionExists = false
+		s.reflection.yscale = 1.0
+		s.reflection.xshear = 0
+		s.reflection.color = 0xFFFFFF
+		var tmp int32
+		var tmp2 float32
+		var tmp3 [2]float32
+		//sec[0].ReadBool("reflect", &reflect) // This parameter is documented in Mugen but doesn't do anything
+		if sec[0].ReadI32("intensity", &tmp) {
+			s.reflection.intensity = Clamp(tmp, 0, 255)
+		}
+		var r, g, b int32 = 0, 0, 0
+		sec[0].readI32ForStage("color", &r, &g, &b)
+		r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+		s.reflection.color = uint32(r<<16 | g<<8 | b)
+		if sec[0].ReadI32("layerno", &tmp) {
+			s.reflectionlayerno = Clamp(tmp, -1, 0)
+		}
+		if sec[0].ReadF32("yscale", &tmp2) {
+			s.reflection.yscale = tmp2
+		}
+		if sec[0].ReadF32("xshear", &tmp2) {
+			s.reflection.xshear = tmp2
+		}
+		if sec[0].readF32ForStage("offset", &tmp3[0], &tmp3[1]) {
+			s.reflection.offset[0] = tmp3[0]
+			s.reflection.offset[1] = tmp3[1]
 		}
 	}
 	var bglink *backGround

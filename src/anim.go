@@ -875,9 +875,10 @@ type SprData struct {
 	fLength     float32
 	window      [4]float32
 }
+
 type DrawList []*SprData
 
-func (dl *DrawList) add(sd *SprData, sc, salp int32, so, ro [2]float32, soy, fo float32) {
+func (dl *DrawList) add(sd *SprData) {
 	if sys.frameSkip || sd.anim == nil || sd.anim.spr == nil {
 		return
 	}
@@ -903,13 +904,8 @@ func (dl *DrawList) add(sd *SprData, sc, salp int32, so, ro [2]float32, soy, fo 
 	*dl = append(*dl, nil)
 	copy((*dl)[i+1:], (*dl)[i:])
 	(*dl)[i] = sd
-	if sc != 0 {
-		if sd.oldVer {
-			soy *= 1.5
-		}
-		sys.shadows.add(&ShadowSprite{sd, sc, salp, [2]float32{so[0], soy + so[1]}, ro, fo})
-	}
 }
+
 func (dl DrawList) draw(x, y, scl float32) {
 	for _, s := range dl {
 		s.anim.srcAlpha, s.anim.dstAlpha = int16(s.alpha[0]), int16(s.alpha[1])
@@ -959,9 +955,16 @@ type ShadowSprite struct {
 	reflectOffset [2]float32
 	fadeOffset    float32
 }
+
 type ShadowList []*ShadowSprite
 
 func (sl *ShadowList) add(ss *ShadowSprite) {
+
+	// Skip blank shadows
+	if ss.SprData == nil || ss.SprData.anim == nil || ss.SprData.anim.spr == nil {
+		return
+	}
+
 	i, start := 0, 0
 	for l := len(*sl); l > 0; {
 		i = start + l>>1
@@ -979,8 +982,15 @@ func (sl *ShadowList) add(ss *ShadowSprite) {
 	copy((*sl)[i+1:], (*sl)[i:])
 	(*sl)[i] = ss
 }
+
 func (sl ShadowList) draw(x, y, scl float32) {
 	for _, s := range sl {
+
+		// Skip blank shadows
+		if s.anim == nil || s.anim.spr == nil {
+			continue
+		}
+
 		intensity := sys.stage.sdw.intensity
 		color, alpha := s.shadowColor, s.shadowAlpha
 		if alpha >= 255 {
@@ -1047,15 +1057,21 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		}
 	}
 }
+
 func (sl ShadowList) drawReflection(x, y, scl float32) {
 	for _, s := range sl {
+
+		// Skip blank reflections
+		if s.anim == nil || s.anim.spr == nil {
+			return
+		}
+
 		if s.alpha[0] < 0 {
 			s.anim.srcAlpha = int16(s.anim.interpolate_blend_srcalpha)
 			s.anim.dstAlpha = int16(s.anim.interpolate_blend_dstalpha)
 		} else {
 			s.anim.srcAlpha, s.anim.dstAlpha = int16(s.alpha[0]), int16(s.alpha[1])
 		}
-		//ref := sys.stage.reflection * s.shadowAlpha >> 8
 		ref := sys.stage.reflection.intensity
 		s.anim.srcAlpha = int16(float32(int32(s.anim.srcAlpha)*ref) / 255)
 		if s.anim.dstAlpha < 0 {

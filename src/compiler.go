@@ -339,7 +339,9 @@ var triggerMap = map[string]int{
 	"alpha":              1,
 	"angle":              1,
 	"animelemlength":     1,
+	"animframe":          1,
 	"animlength":         1,
+	"animplayerno":       1,
 	"atan2":              1,
 	"attack":             1,
 	"bgmlength":          1,
@@ -377,6 +379,8 @@ var triggerMap = map[string]int{
 	"helperindexexist":   1,
 	"helpername":         1,
 	"hitoverridden":      1,
+	"ikemenversion":      1,
+	"incustomanim":       1,
 	"incustomstate":      1,
 	"index":              1,
 	"indialogue":         1,
@@ -3414,6 +3418,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "animlength":
 		out.append(OC_ex_, OC_ex_animlength)
+	case "animplayerno":
+		out.append(OC_ex_, OC_ex_animplayerno)
 	case "attack":
 		out.append(OC_ex_, OC_ex_attack)
 	case "combocount":
@@ -3526,6 +3532,14 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
+	case "ikemenversion":
+		out.append(OC_ex_, OC_ex_ikemenversion)
+	case "incustomanim":
+		out.append(OC_ex_, OC_ex_incustomanim)
+	case "incustomstate":
+		out.append(OC_ex_, OC_ex_incustomstate)
+	case "indialogue":
+		out.append(OC_ex_, OC_ex_indialogue)
 	case "inputtime":
 		if err := c.checkOpeningBracketCS(in); err != nil {
 			return bvNone(), err
@@ -3571,39 +3585,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error("Invalid data: " + key)
 		}
-	case "movehitvar":
-		if err := c.checkOpeningBracket(in); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ex_)
-		switch c.token {
-		case "cornerpush":
-			out.append(OC_ex_movehitvar_cornerpush)
-		case "frame":
-			out.append(OC_ex_movehitvar_frame)
-		case "id":
-			out.append(OC_ex_movehitvar_id)
-		case "overridden":
-			out.append(OC_ex_movehitvar_overridden)
-		case "playerno":
-			out.append(OC_ex_movehitvar_playerno)
-		case "sparkx":
-			out.append(OC_ex_movehitvar_spark_x)
-		case "sparky":
-			out.append(OC_ex_movehitvar_spark_y)
-		case "uniqhit":
-			out.append(OC_ex_movehitvar_uniqhit)
-		default:
-			return bvNone(), Error("Invalid data: " + c.token)
-		}
-		c.token = c.tokenizer(in)
-		if err := c.checkClosingBracket(); err != nil {
-			return bvNone(), err
-		}
-	case "incustomstate":
-		out.append(OC_ex_, OC_ex_incustomstate)
-	case "indialogue":
-		out.append(OC_ex_, OC_ex_indialogue)
 	case "isasserted":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -3800,6 +3781,35 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_memberno)
 	case "movecountered":
 		out.append(OC_ex_, OC_ex_movecountered)
+	case "movehitvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_ex_)
+		switch c.token {
+		case "cornerpush":
+			out.append(OC_ex_movehitvar_cornerpush)
+		case "frame":
+			out.append(OC_ex_movehitvar_frame)
+		case "id":
+			out.append(OC_ex_movehitvar_id)
+		case "overridden":
+			out.append(OC_ex_movehitvar_overridden)
+		case "playerno":
+			out.append(OC_ex_movehitvar_playerno)
+		case "sparkx":
+			out.append(OC_ex_movehitvar_spark_x)
+		case "sparky":
+			out.append(OC_ex_movehitvar_spark_y)
+		case "uniqhit":
+			out.append(OC_ex_movehitvar_uniqhit)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
 	case "mugenversion":
 		out.append(OC_ex_, OC_ex_mugenversion)
 	case "numplayer":
@@ -6412,6 +6422,19 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 						} else {
 							break
 						}
+					}
+					// Convert into a float for triggers
+					// TODO: Same thing for stages etc
+					re := regexp.MustCompile(`[^0-9.]`)
+					str = re.ReplaceAllString(str, "")
+					// Keep only the first decimal point
+					parts := strings.Split(str, ".")
+					if len(parts) > 1 {
+						str = parts[0] + "." + strings.Join(parts[1:], "")
+					}
+					// Convert clean string to float
+					if result, err := strconv.ParseFloat(str, 32); err == nil {
+						sys.cgi[pn].ikemenverF = float32(result)
 					}
 				}
 				// Ikemen characters adopt Mugen 1.1 version as a safeguard
