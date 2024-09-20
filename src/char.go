@@ -540,10 +540,16 @@ func (f *Fall) clear() {
 		yvelocity: -4.5}
 }
 func (f *Fall) setDefault() {
-	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: float32(math.NaN()), recover: true, recovertime: 4, kill: true,
-		envshake_freq: 60, envshake_ampl: IErr, envshake_phase: float32(math.NaN()),
-		envshake_mul: 1.0}
+	*f = Fall{animtype: RA_Unknown,
+		xvelocity:      float32(math.NaN()),
+		yvelocity:      float32(math.NaN()),
+		recover:        true,
+		recovertime:    4,
+		kill:           true,
+		envshake_freq:  60,
+		envshake_ampl:  IErr,
+		envshake_phase: float32(math.NaN()),
+		envshake_mul:   1.0}
 }
 func (f *Fall) xvel() float32 {
 	if math.IsNaN(float64(f.xvelocity)) {
@@ -1801,6 +1807,26 @@ func (p *Projectile) update(playerNo int) {
 	}
 }
 
+// This subtracts projectile hits when two projectiles clash
+func (p *Projectile) cancelHits(opp *Projectile) {
+	// Check priority
+	if p.priorityPoints > opp.priorityPoints {
+		p.priorityPoints--
+	} else {
+		p.hits--
+	}
+	// Flag for removal
+	if p.hits <= 0 {
+		p.hits = -2 // -2 hits means the projectile was cancelled
+	}
+	// Set hitpause
+	if p.hits > 0 {
+		p.hitpause = Max(0, p.hitdef.pausetime) // -Btoi(c.gi().mugenver[0] == 0))
+	} else {
+		p.hitpause = 0
+	}
+}
+
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo, index int) {
 
@@ -1813,18 +1839,6 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 	// Skip if this projectile can't run a collision check at all
 	if p.ani == nil || len(p.ani.frames) == 0 || p.ani.CurrentFrame().Clsn2() == nil {
 		return
-	}
-
-	// Function to subtract projectile hits upon trading
-	cancel := func(priorityPoints *int32, hits *int32, oppPriorityPoints int32) {
-		if *priorityPoints > oppPriorityPoints {
-			(*priorityPoints)--
-		} else {
-			(*hits)--
-		}
-		if *hits <= 0 {
-			*hits = -2 // -2 hits means the projectile was cancelled
-		}
 	}
 
 	// Loop through all players starting from the current one
@@ -1873,10 +1887,8 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 					clsn2, [...]float32{pr.clsnScale[0] * p.localscl, pr.clsnScale[1] * p.localscl},
 					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing, p.clsnAngle) {
 					// Subtract projectile hits from each other
-					pp := p.priorityPoints
-					opp := &sys.projs[i][j]
-					cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
-					cancel(&opp.priorityPoints, &opp.hits, pp)
+					p.cancelHits(pr)
+					pr.cancelHits(p)
 					// Stop entire loop when out of projectile hits
 					if p.hits < 0 {
 						break

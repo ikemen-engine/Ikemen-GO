@@ -2276,7 +2276,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_fall_envshake_ampl:
 		sys.bcStack.PushI(int32(float32(c.ghv.fall.envshake_ampl) * (c.localscl / oc.localscl)))
 	case OC_ex_gethitvar_fall_envshake_phase:
-		sys.bcStack.PushF(c.ghv.fall.envshake_phase * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.fall.envshake_phase)
 	case OC_ex_gethitvar_fall_envshake_mul:
 		sys.bcStack.PushF(c.ghv.fall.envshake_mul)
 	case OC_ex_gethitvar_attr:
@@ -7979,7 +7979,7 @@ func (sc envShake) Run(c *Char, _ []int32) bool {
 		case envShake_ampl:
 			sys.envShake.ampl = float32(int32(float32(exp[0].evalI(c)) * c.localscl))
 		case envShake_phase:
-			sys.envShake.phase = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180) * c.localscl
+			sys.envShake.phase = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180)
 		case envShake_freq:
 			sys.envShake.freq = MaxF(0, exp[0].evalF(c)*float32(math.Pi)/180)
 		case envShake_mul:
@@ -8700,8 +8700,9 @@ func (sc fallEnvShake) Run(c *Char, _ []int32) bool {
 			if crun.ghv.fall.envshake_time > 0 {
 				sys.envShake = EnvShake{time: crun.ghv.fall.envshake_time,
 					freq:  crun.ghv.fall.envshake_freq * math.Pi / 180,
-					ampl:  float32(crun.ghv.fall.envshake_ampl),
-					phase: crun.ghv.fall.envshake_phase, mul: crun.ghv.fall.envshake_mul}
+					ampl:  float32(crun.ghv.fall.envshake_ampl) * c.localscl,
+					phase: crun.ghv.fall.envshake_phase, 
+					mul: crun.ghv.fall.envshake_mul}
 				sys.envShake.setDefPhase()
 				crun.ghv.fall.envshake_time = 0
 			}
