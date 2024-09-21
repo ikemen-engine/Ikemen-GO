@@ -1893,6 +1893,12 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 				}
 			}
 
+			// Run Z axis check
+			if !sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
+				pr.pos[2], pr.hitdef.attack.width[0], pr.hitdef.attack.width[1], pr.localscl) {
+				continue
+			}
+
 			// Run Clsn check
 			clsn1 := p.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
 			clsn2 := pr.ani.CurrentFrame().Clsn2()
@@ -1981,7 +1987,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	zscale := c.updateZScale(p.pos[2])
 	if p.ani != nil {
 		// Add sprite to draw list
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1]*p.localscl + p.drawPos[2]*p.localscl},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, (p.drawPos[1] + p.drawPos[2])*p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
 			p.sprpriority + int32(p.pos[2]), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
@@ -6701,18 +6707,6 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
 
-// Z axis check
-// Changed to no longer check z enable constant, depends on stage now
-func (c *Char) zAxisCheck(getter *Char, charfront, charback, getterfront, getterback float32) bool {
-	if sys.stage.topbound != sys.stage.botbound {
-		if (c.pos[2]+charfront)*c.localscl < (getter.pos[2]-getterback)*getter.localscl ||
-			(c.pos[2]-charback)*c.localscl > (getter.pos[2]+getterfront)*getter.localscl {
-			return false
-		}
-	}
-	return true
-}
-
 func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
 	// Nil anim & standby check.
 	if c.curFrame == nil || getter.curFrame == nil ||
@@ -6862,8 +6856,9 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) &&
-				c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1], getter.size.z.width, getter.size.z.width)
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) && 
+				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
+					getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 		}
 	}
 
@@ -8926,7 +8921,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
-					getter.projClsnCheck(p, 1, 2) {
+					getter.projClsnCheck(p, 1, 2) &&
+					sys.zAxisOverlap(getter.pos[2], getter.hitdef.attack.width[0], getter.hitdef.attack.width[1], getter.localscl,
+						p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl) {
 					if getter.hitdef.p1stateno >= 0 && getter.stateChange1(getter.hitdef.p1stateno, getter.hitdef.playerNo) {
 						getter.setCtrl(false)
 					}
@@ -8948,7 +8945,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallflag)) + 1
 					}
-					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) {
+					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) &&
+						sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
+							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl) {
 						hits := p.hits
 						if p.misstime > 0 {
 							hits = 1
@@ -9040,11 +9039,11 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					// Reversaldef checks attack width vs attack width
 					zok := true
 					if c.hitdef.reversal_attr > 0 {
-						zok = c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1],
-							getter.hitdef.attack.width[0], getter.hitdef.attack.width[1])
+						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
+							getter.pos[2], getter.hitdef.attack.width[0], getter.hitdef.attack.width[1], getter.localscl)
 					} else {
-						zok = c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1],
-							getter.size.z.width, getter.size.z.width)
+						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
+							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 					}
 
 					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
@@ -9163,11 +9162,6 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 			// We skip the zAxisCheck function because we'll need to calculate the overlap again anyway
 
-			//c.zAxisCheck(getter, c.size.z.width, c.size.z.width, getter.size.z.width, getter.size.z.width) {
-			//!(c.size.z.enable && getter.size.z.enable &&
-			//	((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
-			//		(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
-
 			// Normal collision check
 			cxleft := c.sizeBox[0] * c.localscl
 			cxright := c.sizeBox[2] * c.localscl
@@ -9192,13 +9186,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 				continue
 			}
 
-			czback, czfront := -c.size.z.width*c.localscl, c.size.z.width*c.localscl
-			czback += c.pos[2] * c.localscl
-			czfront += c.pos[2] * c.localscl
+			czback := (c.pos[2] - c.size.z.width) * c.localscl
+			czfront := (c.pos[2] + c.size.z.width) * c.localscl
 
-			gzback, gzfront := -getter.size.z.width*c.localscl, getter.size.z.width*c.localscl
-			gzback += getter.pos[2] * getter.localscl
-			gzfront += getter.pos[2] * getter.localscl
+			gzback := (getter.pos[2] - getter.size.z.width) * c.localscl
+			gzfront := (getter.pos[2] + getter.size.z.width) * getter.localscl
 
 			// Z axis fail
 			if gzback >= czfront || czback >= gzfront {

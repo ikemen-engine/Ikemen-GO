@@ -879,6 +879,19 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 		s.appendToConsole(str)
 	}
 }
+
+// Z axis check
+// Changed to no longer check z enable constant, depends on stage now
+func (s *System) zAxisOverlap(posz1, front1, back1, localscl1, posz2, front2, back2, localscl2 float32) bool {
+	if sys.stage.topbound != sys.stage.botbound {
+		if (posz1 + front1) * localscl1 < (posz2 - back2) * localscl2 ||
+			(posz1 - back1) * localscl1 > (posz2 + front2) * localscl2 {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32, angle1 float32,
 	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32, angle2 float32) bool {
 

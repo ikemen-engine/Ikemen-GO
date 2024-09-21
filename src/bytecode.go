@@ -6335,6 +6335,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.velocity[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				p.velocity[1] = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					p.velocity[2] = exp[2].evalF(c) * lclscround
+				}
 			}
 		case projectile_velmul:
 			p.velmul[0] = exp[0].evalF(c)
@@ -6348,6 +6351,9 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.remvelocity[0] = exp[0].evalF(c) * lclscround
 			if len(exp) > 1 {
 				p.remvelocity[1] = exp[1].evalF(c) * lclscround
+				if len(exp) > 2 {
+					p.remvelocity[2] = exp[2].evalF(c) * lclscround
+				}
 			}
 		case projectile_accel:
 			p.accel[0] = exp[0].evalF(c) * lclscround
@@ -6619,6 +6625,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.velocity[0] = exp[0].evalF(c) * lclscround
 					if len(exp) > 1 {
 						p.velocity[1] = exp[1].evalF(c) * lclscround
+						if len(exp) > 2 {
+							p.velocity[2] = exp[2].evalF(c) * lclscround
+						}
 					}
 				})
 			case projectile_velmul:
@@ -6626,6 +6635,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.velmul[0] = exp[0].evalF(c)
 					if len(exp) > 1 {
 						p.velmul[1] = exp[1].evalF(c)
+						if len(exp) > 2 {
+							p.velmul[2] = exp[2].evalF(c)
+						}
 					}
 				})
 			case projectile_remvelocity:
@@ -6633,6 +6645,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.remvelocity[0] = exp[0].evalF(c) * lclscround
 					if len(exp) > 1 {
 						p.remvelocity[1] = exp[1].evalF(c) * lclscround
+						if len(exp) > 2 {
+							p.remvelocity[2] = exp[2].evalF(c) * lclscround
+						}
 					}
 				})
 			case projectile_accel:
@@ -6640,6 +6655,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.accel[0] = exp[0].evalF(c) * lclscround
 					if len(exp) > 1 {
 						p.accel[1] = exp[1].evalF(c) * lclscround
+						if len(exp) > 2 {
+							p.accel[2] = exp[2].evalF(c) * lclscround
+						}
 					}
 				})
 			case projectile_projscale:
