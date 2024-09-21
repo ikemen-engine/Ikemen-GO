@@ -598,6 +598,18 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			helper_size_shadowoffset, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "z.width",
+			helper_size_z_width, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "weight",
+			helper_size_weight, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pushfactor",
+			helper_size_pushfactor, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "stateno",
 			helper_stateno, VT_Int, 1, false); err != nil {
 			return err

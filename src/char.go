@@ -301,6 +301,8 @@ type CharSize struct {
 		width  float32
 		enable bool
 	}
+	weight int32
+	pushfactor float32
 }
 
 func (cs *CharSize) init() {
@@ -327,6 +329,8 @@ func (cs *CharSize) init() {
 	cs.z.width = 3
 	cs.z.enable = false
 	cs.attack.z.width.front, cs.attack.z.width.back = 4, 4
+	cs.weight = 100
+	cs.pushfactor = 1
 }
 
 type CharVelocity struct {
@@ -2803,6 +2807,8 @@ func (c *Char) load(def string) error {
 						}
 						is.ReadF32("attack.z.width",
 							&c.size.attack.z.width.front, &c.size.attack.z.width.back)
+						is.ReadI32("weight", &c.size.weight)
+						is.ReadF32("pushfactor", &c.size.pushfactor)
 					}
 				case "velocity":
 					if velocity {
@@ -9201,77 +9207,79 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				getter.pushed, c.pushed = true, true
 
-				tmp := getter.distX(c, getter)
-				if tmp == 0 {
-					// Decide direction in which to push each player in case of a tie in position
-					// This also decides who gets to stay in the corner
-					// Some of these checks are similar to char run order, but this approach allows better tie break control
-					// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
-					if c.asf(ASF_cornerpriority) && !getter.asf(ASF_cornerpriority) {
-						if c.pos[0] >= 0 {
-							tmp = 1
-						} else {
-							tmp = -1
-						}
-					} else if !c.asf(ASF_cornerpriority) && getter.asf(ASF_cornerpriority) {
-						if getter.pos[0] >= 0 {
-							tmp = -1
-						} else {
-							tmp = 1
-						}
-					} else if c.ss.moveType == MT_H && getter.ss.moveType != MT_H {
-						tmp = -c.facing
-					} else if c.ss.moveType != MT_H && getter.ss.moveType == MT_H {
-						tmp = getter.facing
-					} else if c.ss.moveType == MT_A && getter.ss.moveType != MT_A {
-						tmp = getter.facing
-					} else if c.ss.moveType != MT_A && getter.ss.moveType == MT_A {
-						tmp = -c.facing
-					} else if c.pos[1]*c.localscl < getter.pos[1]*getter.localscl {
-						tmp = getter.facing
-					} else {
-						tmp = -c.facing
-					}
-				}
+				// Compare player weights and apply pushing factors
+				cfactor := float32(getter.size.weight) / float32(c.size.weight + getter.size.weight) * c.size.pushfactor/2
+				gfactor := float32(c.size.weight) / float32(c.size.weight + getter.size.weight) * getter.size.pushfactor/2
 
 				// Determine in which axes to push the players
 				pushx := sys.stage.topbound == sys.stage.botbound || getter.vel[0] != 0 || c.vel[0] != 0
 				pushz := sys.stage.topbound != sys.stage.botbound && (getter.vel[2] != 0 || c.vel[2] != 0)
 
-				// TODO: This 0.5 multiplier could be a character or system constant instead of being hardcoded
 				if pushx {
+					tmp := getter.distX(c, getter)
+					if tmp == 0 {
+						// Decide direction in which to push each player in case of a tie in position
+						// This also decides who gets to stay in the corner
+						// Some of these checks are similar to char run order, but this approach allows better tie break control
+						// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
+						if c.asf(ASF_cornerpriority) && !getter.asf(ASF_cornerpriority) {
+							if c.pos[0] >= 0 {
+								tmp = 1
+							} else {
+								tmp = -1
+							}
+						} else if !c.asf(ASF_cornerpriority) && getter.asf(ASF_cornerpriority) {
+							if getter.pos[0] >= 0 {
+								tmp = -1
+							} else {
+								tmp = 1
+							}
+						} else if c.ss.moveType == MT_H && getter.ss.moveType != MT_H {
+							tmp = -c.facing
+						} else if c.ss.moveType != MT_H && getter.ss.moveType == MT_H {
+							tmp = getter.facing
+						} else if c.ss.moveType == MT_A && getter.ss.moveType != MT_A {
+							tmp = getter.facing
+						} else if c.ss.moveType != MT_A && getter.ss.moveType == MT_A {
+							tmp = -c.facing
+						} else if c.pos[1]*c.localscl < getter.pos[1]*getter.localscl {
+							tmp = getter.facing
+						} else {
+							tmp = -c.facing
+						}
+					}
 					if tmp > 0 {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[0] -= ((gxright - cxleft) * 0.5) / getter.localscl
+							getter.pos[0] -= ((gxright - cxleft) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[0] += ((gxright - cxleft) * 0.5) / c.localscl
+							c.pos[0] += ((gxright - cxleft) * cfactor) / c.localscl
 						}
 					} else {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[0] += ((cxright - gxleft) * 0.5) / getter.localscl
+							getter.pos[0] += ((cxright - gxleft) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[0] -= ((cxright - gxleft) * 0.5) / c.localscl
+							c.pos[0] -= ((cxright - gxleft) * cfactor) / c.localscl
 						}
 					}
 				}
 
 				// TODO: Z axis push might need some decision for who stays in the corner, like X axis
 				if pushz {
-					if getter.pos[2] < c.pos[2] {
+					if getter.pos[2] >= c.pos[2] {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[2] -= ((gzfront - czback) * 0.5) / getter.localscl
+							getter.pos[2] -= ((czfront - gzback) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[2] += ((gzfront - czback) * 0.5) / c.localscl
+							c.pos[2] += ((czfront - gzback) * cfactor) / c.localscl
 						}
 					} else {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[2] -= ((czfront - gzback) * 0.5) / getter.localscl
+							getter.pos[2] -= ((gzfront - czback) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[2] += ((czfront - gzback) * 0.5) / c.localscl
+							c.pos[2] += ((gzfront - czback) * cfactor) / c.localscl
 						}
 					}
 				}

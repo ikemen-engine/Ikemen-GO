@@ -4202,6 +4202,9 @@ const (
 	helper_size_head_pos
 	helper_size_mid_pos
 	helper_size_shadowoffset
+	helper_size_z_width
+	helper_size_weight
+	helper_size_pushfactor
 	helper_stateno
 	helper_keyctrl
 	helper_id
@@ -4299,6 +4302,12 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			}
 		case helper_size_shadowoffset:
 			h.size.shadowoffset = exp[0].evalF(c)
+		case helper_size_z_width:
+			h.size.z.width = exp[0].evalF(c)
+		case helper_size_weight:
+			h.size.weight = exp[0].evalI(c)
+		case helper_size_pushfactor:
+			h.size.pushfactor = exp[0].evalF(c)
 		case helper_stateno:
 			st = exp[0].evalI(c)
 		case helper_keyctrl:
