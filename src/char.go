@@ -4988,7 +4988,6 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
 	ifierrset(&hd.fall.envshake_ampl, -4)
-	ifnanset(&hd.fall.envshake_phase, 0)
 	ifnanset(&hd.xaccel, 0)
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
@@ -8790,7 +8789,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				sys.envShake.ampl = float32(int32(float32(hd.envshake_ampl) * c.localscl))
 				sys.envShake.phase = hd.envshake_phase
 				sys.envShake.mul = hd.envshake_mul
-				sys.envShake.setDefPhase()
+				sys.envShake.setDefaultPhase()
 			}
 			// Set corner push
 			// In Mugen it is only set if the enemy is already in the corner before the hit

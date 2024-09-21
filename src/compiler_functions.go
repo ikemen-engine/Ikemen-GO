@@ -1812,12 +1812,12 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_envshake_ampl, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "envshake.phase",
-		hitDef_envshake_phase, VT_Float, 1, false); err != nil {
-		return err
-	}
 	if err := c.paramValue(is, sc, "envshake.freq",
 		hitDef_envshake_freq, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "envshake.phase",
+		hitDef_envshake_phase, VT_Float, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "envshake.mul",
@@ -1832,12 +1832,12 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_fall_envshake_ampl, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "fall.envshake.phase",
-		hitDef_fall_envshake_phase, VT_Float, 1, false); err != nil {
-		return err
-	}
 	if err := c.paramValue(is, sc, "fall.envshake.freq",
 		hitDef_fall_envshake_freq, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "fall.envshake.phase",
+		hitDef_fall_envshake_phase, VT_Float, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "fall.envshake.mul",
