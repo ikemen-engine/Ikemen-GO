@@ -920,7 +920,10 @@ func (mhv *MoveHitVar) clear() {
 
 type aimgImage struct {
 	anim           Animation
-	pos, scl, ascl [2]float32
+	pos            [2]float32
+	scl            [2]float32
+	ascl           [2]float32
+	priority       int32
 	rot            Rotation
 	projection     int32
 	fLength        float32
@@ -942,6 +945,7 @@ type AfterImage struct {
 	restgap        int32
 	reccount       int32
 	timecount      int32
+	priority       int32
 	ignorehitpause bool
 }
 
@@ -1073,6 +1077,7 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		img.fLength = sd.fLength
 		img.ascl = sd.ascl
 		img.oldVer = sd.oldVer
+		img.priority = sd.priority-2 // Starting afterimage sprpriority offset
 		ai.imgidx = (ai.imgidx + 1) & 63
 		ai.reccount++
 		ai.restgap = ai.timegap
@@ -1099,11 +1104,16 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int3
 	}
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
+		if img.priority >= sd.priority { // Maximum afterimage sprpriority offset
+			img.priority = sd.priority-2
+		}
 		if ai.time < 0 || (ai.timecount/ai.timegap-i) < (ai.time-2)/ai.timegap+1 {
-			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
-			sprs.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
-				img.scl, ai.alpha, sd.priority - 2, img.rot, img.ascl,
-				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window})
+			step := i/ai.framegap-1
+			ai.palfx[step].remap = sd.fx.remap
+			sprs.add(&SprData{&img.anim, &ai.palfx[step], img.pos,
+				img.scl, ai.alpha, img.priority-step, // Afterimages decrease in sprpriority over time
+				img.rot, img.ascl, false, sd.bright, sd.oldVer, sd.facing,
+				sd.posLocalscl, img.projection, img.fLength, sd.window})
 			// Afterimages don't cast shadows or reflections
 		}
 	}
