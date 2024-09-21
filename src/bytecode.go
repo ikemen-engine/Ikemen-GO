@@ -2913,13 +2913,21 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		if sys.bgm.volctrl != nil {
 			if sl, ok := sys.bgm.volctrl.Streamer.(*StreamLooper); ok {
 				sys.bcStack.PushI(int32(sl.loopstart))
+			} else {
+				sys.bcStack.PushI(0)
 			}
+		} else {
+			sys.bcStack.PushI(0)
 		}
 	case OC_ex2_bgmvar_loopend:
 		if sys.bgm.volctrl != nil {
 			if sl, ok := sys.bgm.volctrl.Streamer.(*StreamLooper); ok {
 				sys.bcStack.PushI(int32(sl.loopend))
+			} else {
+				sys.bcStack.PushI(0)
 			}
+		} else {
+			sys.bcStack.PushI(0)
 		}
 	case OC_ex2_bgmvar_startposition:
 		sys.bcStack.PushI(int32(sys.bgm.startPos))
@@ -10593,6 +10601,7 @@ const (
 	playBgm_loopend
 	playBgm_startposition
 	playBgm_freqmul
+	playBgm_loopcount
 	playBgm_redirectid
 )
 
@@ -10600,7 +10609,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	crun := c
 	var b bool
 	var bgm string
-	var loop, volume, loopstart, loopend, startposition int = 1, 100, 0, 0, 0
+	var loop, loopcount, volume, loopstart, loopend, startposition int = 1, -1, 100, 0, 0, 0
 	var freqmul float32 = 1.0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -10630,6 +10639,8 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			startposition = int(exp[0].evalI(c))
 		case playBgm_freqmul:
 			freqmul = exp[0].evalF(c)
+		case playBgm_loopcount:
+			loopcount = int(exp[0].evalI(c))
 		case playBgm_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -10640,7 +10651,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if b {
-		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition, freqmul)
+		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition, freqmul, loopcount)
 		sys.playBgmFlg = true
 	}
 	return false

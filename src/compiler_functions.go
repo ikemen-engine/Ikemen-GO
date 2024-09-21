@@ -4452,6 +4452,10 @@ func (c *Compiler) playBgm(is IniSection, sc *StateControllerBase, _ int8) (Stat
 			playBgm_startposition, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "loopcount",
+			playBgm_loopcount, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

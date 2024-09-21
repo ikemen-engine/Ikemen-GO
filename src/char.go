@@ -5137,9 +5137,11 @@ func (c *Char) updateZScale(z float32) float32 {
 	topz, botz, scale := sys.stage.stageCamera.topz, sys.stage.stageCamera.botz, float32(1)
 	if topz != botz {
 		ztopscale, zbotscale := sys.stage.stageCamera.ztopscale, sys.stage.stageCamera.zbotscale
-		clampedZ := ClampF(z, topz, botz)
-		d := (clampedZ - topz) / (botz - topz)
+		d := (z - topz) / (botz - topz)
 		scale = ztopscale + d*(zbotscale-ztopscale)
+		if scale <= 0 {
+			scale = 0
+		}
 	}
 	return scale
 }

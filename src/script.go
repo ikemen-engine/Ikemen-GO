@@ -1150,7 +1150,7 @@ func systemScriptInit(l *lua.LState) {
 				l.Push(lua.LNumber(winp))
 				l.Push(tbl)
 				if sys.playBgmFlg {
-					sys.bgm.Open("", 1, 100, 0, 0, 0, 1.0)
+					sys.bgm.Open("", 1, 100, 0, 0, 0, 1.0, 1)
 					sys.playBgmFlg = false
 				}
 				sys.clearAllSound()
@@ -1633,7 +1633,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "playBGM", func(l *lua.LState) int {
-		var loop, volume, loopstart, loopend, startposition int = 1, 100, 0, 0, 0
+		var loop, loopcount, volume, loopstart, loopend, startposition int = 1, -1, 100, 0, 0, 0
 		var freqmul float32 = 1.0
 		if l.GetTop() >= 2 {
 			loop = int(numArg(l, 2))
@@ -1653,7 +1653,10 @@ func systemScriptInit(l *lua.LState) {
 		if l.GetTop() >= 7 {
 			freqmul = ClampF(float32(numArg(l, 7)), 0.01, 5.0)
 		}
-		sys.bgm.Open(strArg(l, 1), loop, volume, loopstart, loopend, startposition, freqmul)
+		if l.GetTop() >= 8 {
+			loopcount = int(numArg(l, 8))
+		}
+		sys.bgm.Open(strArg(l, 1), loop, volume, loopstart, loopend, startposition, freqmul, loopcount)
 		return 0
 	})
 	luaRegister(l, "playerBufReset", func(*lua.LState) int {

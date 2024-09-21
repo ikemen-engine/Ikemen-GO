@@ -83,6 +83,24 @@ func MaxF(arg ...float32) (max float32) {
 	return
 }
 
+func MinI(arg ...int) (min int) {
+	for i, x := range arg {
+		if i == 0 || x < min {
+			min = x
+		}
+	}
+	return
+}
+
+func MaxI(arg ...int) (max int) {
+	for i, x := range arg {
+		if i == 0 || x > max {
+			max = x
+		}
+	}
+	return
+}
+
 func Clamp(x, a, b int32) int32 {
 	return Max(a, Min(x, b))
 }

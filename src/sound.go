@@ -92,44 +92,56 @@ type StreamLooper struct {
 	loopcount int
 	loopstart int
 	loopend   int
+	err       error
 }
 
 func newStreamLooper(s beep.StreamSeeker, loopcount, loopstart, loopend int) beep.Streamer {
-	if loopstart < 0 || loopstart >= s.Len() {
-		loopstart = 0
-	}
-	if loopend <= loopstart {
-		loopend = s.Len()
-	}
-	return &StreamLooper{
+	sl := &StreamLooper{
 		s:         s,
 		loopcount: loopcount,
 		loopstart: loopstart,
 		loopend:   loopend,
 	}
+	if sl.loopstart < 0 || sl.loopstart >= s.Len() {
+		sl.loopstart = 0
+	}
+	if sl.loopend <= sl.loopstart {
+		sl.loopend = s.Len()
+	}
+	return sl
 }
 
-func (b *StreamLooper) Stream(samples [][2]float64) (n int, ok bool) {
-	if b.loopcount == 0 || b.s.Err() != nil {
+// Adapted from beep.Loop2 (for dynamic modification)
+func (l *StreamLooper) Stream(samples [][2]float64) (n int, ok bool) {
+	if l.err != nil {
 		return 0, false
 	}
 	for len(samples) > 0 {
-		sn, sok := b.s.Stream(samples)
-		if !sok || (b.s.Position() >= b.loopend && b.loopend < b.s.Len()) {
-			if b.loopcount > 0 {
-				b.loopcount--
+		toStream := len(samples)
+		if l.loopcount != 0 {
+			samplesUntilEnd := l.loopend - l.s.Position()
+			if samplesUntilEnd <= 0 {
+				// End of loop, reset the position and decrease the loop count.
+				if l.loopcount > 0 {
+					l.loopcount--
+				}
+				if err := l.s.Seek(l.loopstart); err != nil {
+					l.err = err
+					return n, true
+				}
+				continue
 			}
-			if b.loopcount == 0 {
-				break
-			}
-			err := b.s.Seek(b.loopstart)
-			if err != nil {
-				return n, true
-			}
-			continue
+			// Stream only up to the end of the loop.
+			toStream = MinI(samplesUntilEnd, toStream)
+		}
+
+		sn, sok := l.s.Stream(samples[:toStream])
+		n += sn
+		if sn < toStream || !sok {
+			l.err = l.s.Err()
+			return n, n > 0
 		}
 		samples = samples[sn:]
-		n += sn
 	}
 	return n, true
 }
@@ -171,7 +183,7 @@ func newBgm() *Bgm {
 	return &Bgm{}
 }
 
-func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32) {
+func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32, loopcount int) {
 	bgm.filename = filename
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
@@ -222,13 +234,14 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 		sys.errLog.Printf("Failed to load bgm: %v", err)
 		return
 	}
-
-	loopCount := int(1)
-	if loop > 0 {
-		loopCount = -1
+	lc := 0
+	if loop != 0 {
+		lc = MaxI(0, loopcount-1)
 	}
 	bgm.startPos = startPosition
-	streamer := newStreamLooper(bgm.streamer, loopCount, bgmLoopStart, bgmLoopEnd)
+	// we're going to continue to use our own modified streamLooper because beep doesn't allow
+	// direct access to loop2 for dynamic modifications to loopstart, loopend, etc.
+	streamer := newStreamLooper(bgm.streamer, lc, bgmLoopStart, bgmLoopEnd)
 	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
 	bgm.sampleRate = format.SampleRate
 	dstFreq := beep.SampleRate(float32(sys.audioSampleRate) / bgm.freqmul)
@@ -270,16 +283,16 @@ func (bgm *Bgm) UpdateVolume() {
 		sys.errLog.Printf("WARNING: BGM volume set beyond expected range (value: %v). Clamped to MaxBgmVolume", bgm.bgmVolume)
 		bgm.bgmVolume = sys.maxBgmVolume
 	}
-	volume := -5 + 6*(math.Pow(2, 0.0000008125*float64(sys.bgmVolume)*float64(sys.masterVolume)*float64(bgm.bgmVolume))-0.8125)
 
-	// leaving the following below in case we ever need to revert to the old method
-	// volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	// NOTE: This is what we're going to do, no matter the complaints, because BGMVolume is handled differently
+	// than WAV volume anyway.  We've had problems changing this in the past so it's best to keep it as-is.
+	volume := -5 + float64(sys.bgmVolume)*0.06*(float64(sys.masterVolume)/100)*(float64(bgm.bgmVolume)/100)
 
 	// clamp to 1
 	if volume >= 1 {
 		volume = 1
 	}
-	silent := volume <= -3.875
+	silent := volume <= -5
 	speaker.Lock()
 	bgm.volctrl.Volume = volume
 	bgm.volctrl.Silent = silent
@@ -555,12 +568,13 @@ func (s *SoundChannel) Play(sound *Sound, loop int32, freqmul float32, loopStart
 	}
 	s.sound = sound
 	s.streamer = s.sound.GetStreamer()
-	loopCount := int(1)
+	loopCount := int(0)
 	if loop < 0 {
 		loopCount = -1
 	} else {
-		loopCount = int(Max(loop, 1))
+		loopCount = MaxI(0, int(loop-1))
 	}
+	// going to continue using our streamLooper which is now modified from beep.Loop2
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
 	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul}
 	srcRate := s.sound.format.SampleRate
