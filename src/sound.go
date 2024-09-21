@@ -236,7 +236,11 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	}
 	lc := 0
 	if loop != 0 {
-		lc = MaxI(0, loopcount-1)
+		if loopcount >= 0 {
+			lc = MaxI(0, loopcount-1)
+		} else {
+			lc = -1
+		}
 	}
 	bgm.startPos = startPosition
 	// we're going to continue to use our own modified streamLooper because beep doesn't allow

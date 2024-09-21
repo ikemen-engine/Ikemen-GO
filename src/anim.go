@@ -1096,9 +1096,9 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 		if sys.stage.reflection.yscale < 0 {
 			sign = -1
 		}
-		offsetX := (s.reflectOffset[0] + sys.stage.reflection.offset[0]) * sys.cam.Scale
-		offsetY := (s.reflectOffset[1] + sys.stage.reflection.offset[1]) * sys.cam.Scale
-		xrotoff := sign * xshear * (float32(s.anim.spr.Size[1]) * s.scl[1]) * sys.cam.Scale
+		offsetX := (s.reflectOffset[0] + sys.stage.reflection.offset[0])
+		offsetY := (s.reflectOffset[1] + sys.stage.reflection.offset[1])
+		xrotoff := sign * xshear * (float32(s.anim.spr.Size[1]) * s.scl[1])
 		if s.rot.angle != 0 {
 			xshear = -xshear
 			offsetX -= xrotoff
