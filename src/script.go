@@ -4036,7 +4036,7 @@ func triggerFunctions(l *lua.LState) {
 					lv = lua.LNumber(p.shadow[0])
 				case "shadow b":
 					lv = lua.LNumber(p.shadow[0])
-				case "misstime":
+				case "projmisstime":
 					lv = lua.LNumber(p.curmisstime)
 				case "projhits":
 					lv = lua.LNumber(p.hits)
