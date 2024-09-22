@@ -1565,6 +1565,7 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 			b.draw(pos, scl, bgscl, s.localscl, s.scale, yofs, true)
 		}
 	}
+	BlendReset()
 }
 
 func (s *Stage) reset() {

@@ -174,9 +174,11 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys, angle float32) {
 	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 	xs *= sys.cam.Scale
 	ys *= sys.cam.Scale
+	sw := float32(sys.gameWidth)
+	sh := float32(0)//float32(sys.gameHeight)
 	for i := 0; i+3 < len(clsn); i += 4 {
-		offx := (float32(sys.gameWidth) / 2)
-		offy := (float32(sys.gameHeight - 240))
+		offx := sw/2
+		offy := sh
 		rect := [...]float32{
 			AbsF(xs) * clsn[i], AbsF(ys) * clsn[i+1],
 			xs * (clsn[i+2] - clsn[i]), ys * (clsn[i+3] - clsn[i+1]),
@@ -3251,31 +3253,17 @@ func (c *Char) helper(id int32) *Char {
 	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper: %v", id))
 	return nil
 }
-func (c *Char) gethelperByIndex(id int32) *Char {
-	index := int32(id - 1)
-	if index < 0 {
-		return sys.chars[c.playerNo][0]
+func (c *Char) getPlayerHelperIndex(n int32, ex bool) *Char {
+	if n <= 0 {
+		return c
 	}
-	for j, h := range sys.chars[c.playerNo][1:] {
-		if index == int32(j) {
-			return h
-		}
-	}
-	return nil
-}
-func (c *Char) helperByIndex(id int32) *Char {
-	h := c.gethelperByIndex(id)
-	if h != nil {
-		return h
-	}
-	sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper with index: %v", id))
-	return nil
+	return sys.charList.getHelperIndex(c, n, ex)
 }
 func (c *Char) helperByIndexExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
 		return BytecodeSF()
 	}
-	return BytecodeBool(c.gethelperByIndex(id.ToI()) != nil)
+	return BytecodeBool(c.getPlayerHelperIndex(id.ToI(),true) != nil)
 }
 func (c *Char) target(id int32) *Char {
 	for _, tid := range c.targets {
@@ -9125,6 +9113,43 @@ func (cl *CharList) getIndex(id int32) *Char {
 		if (id - 1) == int32(j) {
 			return p
 		}
+	}
+	return nil
+}
+func (cl *CharList) getHelperIndex(c *Char, id int32, ex bool) *Char {
+	var t[]int32
+	parent := func (c *Char) *Char {
+		if c.parentIndex == IErr {
+			return nil
+		}
+		return sys.chars[c.playerNo][Abs(c.parentIndex)]
+	}
+	for j, h := range cl.runOrder {
+		if c.teamside == h.teamside && c.id != h.id {
+			if c.helperIndex == 0 {
+				hr := sys.chars[c.playerNo][0]
+				if h.helperIndex != 0 && hr != nil && c.id == hr.id {
+					t = append(t, int32(j))
+				}
+			} else {
+				hp := parent(h)
+			    for hp != nil {
+			        if hp.id == c.id {
+				        t = append(t, int32(j))
+			        }
+			        hp = parent(hp)
+			    }
+			}
+		}
+	}
+	for i := 0; i < len(t); i++ {
+		ch := cl.runOrder[int32(t[i])]
+		if (id - 1) == int32(i) && ch != nil {
+			return ch
+		}
+	}
+	if !ex {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no helper with index: %v", id))
 	}
 	return nil
 }
