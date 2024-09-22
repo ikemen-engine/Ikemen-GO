@@ -3029,9 +3029,11 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	// BEGIN FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_pos_x:
 		correctScale = true
+		camOff = -sys.cam.Pos[0] / oc.localscl
 		fallthrough
 	case OC_ex2_explodvar_pos_y:
 		correctScale = true
+		camOff = -sys.cam.Pos[1] / oc.localscl
 		fallthrough
 	case OC_ex2_explodvar_vel_x:
 		correctScale = true
@@ -3073,7 +3075,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		id := sys.bcStack.Pop()
 		v := c.explodVar(id, idx, opc)
 		if correctScale {
-			sys.bcStack.PushF(v.ToF() * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) + camOff)
 		} else {
 			sys.bcStack.Push(v)
 		}
