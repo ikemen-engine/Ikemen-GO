@@ -2838,6 +2838,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	opc := be[*i-1]
 	correctScale := false
 	camOff := float32(0)
+	camCorrected := false
 	switch opc {
 	case OC_ex2_index:
 		sys.bcStack.PushI(c.index)
@@ -3027,14 +3028,6 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		}
 		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	// BEGIN FALLTHROUGH (explodvar)
-	case OC_ex2_explodvar_pos_x:
-		correctScale = true
-		camOff = -sys.cam.Pos[0] / oc.localscl
-		fallthrough
-	case OC_ex2_explodvar_pos_y:
-		correctScale = true
-		camOff = -sys.cam.Pos[1] / oc.localscl
-		fallthrough
 	case OC_ex2_explodvar_vel_x:
 		correctScale = true
 		fallthrough
@@ -3069,8 +3062,23 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_explodvar_angle_x:
 		fallthrough
-	// END FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_angle_y:
+		camCorrected = true // gotta do this
+		fallthrough
+		// END FALLTHROUGH (explodvar)
+	case OC_ex2_explodvar_pos_x:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[0] / oc.localscl
+			camCorrected = true
+		}
+		fallthrough
+	case OC_ex2_explodvar_pos_y:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[1] / oc.localscl
+			camCorrected = true
+		}
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.explodVar(id, idx, opc)
@@ -3084,13 +3092,6 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		correctScale = true
 		fallthrough
 	case OC_ex2_projectilevar_accel_y:
-		correctScale = true
-		fallthrough
-	case OC_ex2_projectilevar_pos_x:
-		correctScale = true
-		camOff = -sys.cam.Pos[0] / oc.localscl
-		fallthrough
-	case OC_ex2_projectilevar_pos_y:
 		correctScale = true
 		fallthrough
 	case OC_ex2_projectilevar_vel_x:
@@ -3163,8 +3164,23 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_projectilevar_teamside:
 		fallthrough
-	// END FALLTHROUGH (projvar)
 	case OC_ex2_projectilevar_pausemovetime:
+		camCorrected = true // gotta do this
+		fallthrough
+		// END FALLTHROUGH (projvar)
+	case OC_ex2_projectilevar_pos_x:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[0] / oc.localscl
+			camCorrected = true
+		}
+		fallthrough
+	case OC_ex2_projectilevar_pos_y:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[1] / oc.localscl
+			camCorrected = true
+		}
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.projVar(id, idx, opc)
