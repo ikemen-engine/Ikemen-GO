@@ -9125,9 +9125,9 @@ func (cl *CharList) getHelperIndex(c *Char, id int32, ex bool) *Char {
 		return sys.chars[c.playerNo][Abs(c.parentIndex)]
 	}
 	for j, h := range cl.runOrder {
-		if c.teamside == h.teamside && c.id != h.id {
+		if c.id != h.id {
 			if c.helperIndex == 0 {
-				hr := sys.chars[c.playerNo][0]
+				hr := sys.chars[h.playerNo][0]
 				if h.helperIndex != 0 && hr != nil && c.id == hr.id {
 					t = append(t, int32(j))
 				}
