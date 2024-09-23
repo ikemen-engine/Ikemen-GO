@@ -23,6 +23,10 @@ github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 h1:DACJavvAHhabrF0
 github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0/go.mod h1:E/TSTwGwJL78qG/PmXZO1EjYhfJinVAhrmmHX6Z8B9k=
 github.com/gopxl/beep/v2 v2.0.2 h1:cwyFs9p3qBGjTw9K//qjtyHPk3xgf5X9jMkHgvLPl40=
 github.com/gopxl/beep/v2 v2.0.2/go.mod h1:sQvj2oSsu8fmmDWH3t0DzIe0OZzTW6/TJEHW4Ku+22o=
+github.com/gopxl/beep/v2 v2.1.0 h1:Jv95iHw3aNWoAa/J78YyXvOvMHH2ZGeAYD5ug8tVt8c=
+github.com/gopxl/beep/v2 v2.1.0/go.mod h1:sQvj2oSsu8fmmDWH3t0DzIe0OZzTW6/TJEHW4Ku+22o=
+github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99 h1:NWZSubpAEbmsAp6qwjHsQLmz9x2xAVY2THDx6Kd4r5o=
+github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99/go.mod h1:VZr3fM8tYQdJW5BwiCddz3xbuVGdzmgfdt4hRz4P2mM=
 github.com/hajimehoshi/go-mp3 v0.3.4 h1:NUP7pBYH8OguP4diaTZ9wJbUbk3tC0KlfzsEpWmYj68=
 github.com/hajimehoshi/go-mp3 v0.3.4/go.mod h1:fRtZraRFcWb0pu7ok0LqyFhCUrPeMsGRSVop0eemFmo=
 github.com/hajimehoshi/oto/v2 v2.3.1/go.mod h1:seWLbgHH7AyUMYKfKYT9pg7PhUu9/SisyJvNTT+ASQo=

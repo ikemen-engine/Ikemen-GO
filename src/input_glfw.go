@@ -276,6 +276,7 @@ func CheckAxisForTrigger(joy int, axes *[]float32) string {
 			name := input.GetJoystickName(joy)
 			os := runtime.GOOS
 			joyName := name + "." + os + "." + runtime.GOARCH + ".glfw"
+
 			if strings.Contains(name, "XInput") || strings.Contains(name, "X360") ||
 				strings.Contains(name, "Xbox Wireless") || strings.Contains(name, "Xbox Elite") || strings.Contains(name, "Xbox One") ||
 				strings.Contains(name, "Xbox Series") || strings.Contains(name, "Xbox Adaptive") {
@@ -297,6 +298,8 @@ func CheckAxisForTrigger(joy int, axes *[]float32) string {
 			} else if (i == 2 || i == 5) && joyName == "Logitech Dual Action.linux.amd64.sdl" {
 				// do nothing
 			} else if (i == 3 || i == 4) && name == "PS4 Controller" {
+				// do nothing
+			} else if (i == 3 || i == 4) && (name == "Sony DualSense" || name == "PS5 Controller") {
 				// do nothing
 			} else {
 				s = strconv.Itoa(-i*2 - 1)

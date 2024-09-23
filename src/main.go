@@ -381,7 +381,7 @@ func setupConfig() configSettings {
 	sys.externalShaderList = tmp.ExternalShaders
 	// Bump up shader version for macOS only
 	if runtime.GOOS == "darwin" {
-		tmp.FontShaderVer = max(150, tmp.FontShaderVer)
+		tmp.FontShaderVer = uint(MaxI(150, int(tmp.FontShaderVer)))
 	}
 	sys.fontShaderVer = tmp.FontShaderVer
 	// Resoluion stuff

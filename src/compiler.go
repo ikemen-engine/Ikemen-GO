@@ -2532,7 +2532,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
-		case "misstime":
+		case "projmisstime":
 			opc = OC_ex2_projectilevar_projmisstime
 		case "projhits":
 			opc = OC_ex2_projectilevar_projhits

@@ -1,13 +1,15 @@
 module github.com/ikemen-engine/Ikemen-GO
 
-go 1.21
+go 1.20
+
+replace github.com/gopxl/beep/v2 => github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 
 require (
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a
 	github.com/go-gl/mathgl v1.0.0
-	github.com/gopxl/beep/v2 v2.0.2
+	github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 	github.com/ikemen-engine/glfont v0.0.0-20240816074833-3b3b0c69a290
 	github.com/lukegb/dds v0.0.0-20190402175749-8b7170e64003
 	github.com/qmuntal/gltf v0.24.2

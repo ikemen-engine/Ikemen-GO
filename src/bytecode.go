@@ -2838,6 +2838,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	opc := be[*i-1]
 	correctScale := false
 	camOff := float32(0)
+	camCorrected := false
 	switch opc {
 	case OC_ex2_index:
 		sys.bcStack.PushI(c.index)
@@ -2913,13 +2914,21 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		if sys.bgm.volctrl != nil {
 			if sl, ok := sys.bgm.volctrl.Streamer.(*StreamLooper); ok {
 				sys.bcStack.PushI(int32(sl.loopstart))
+			} else {
+				sys.bcStack.PushI(0)
 			}
+		} else {
+			sys.bcStack.PushI(0)
 		}
 	case OC_ex2_bgmvar_loopend:
 		if sys.bgm.volctrl != nil {
 			if sl, ok := sys.bgm.volctrl.Streamer.(*StreamLooper); ok {
 				sys.bcStack.PushI(int32(sl.loopend))
+			} else {
+				sys.bcStack.PushI(0)
 			}
+		} else {
+			sys.bcStack.PushI(0)
 		}
 	case OC_ex2_bgmvar_startposition:
 		sys.bcStack.PushI(int32(sys.bgm.startPos))
@@ -3019,12 +3028,6 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		}
 		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
 	// BEGIN FALLTHROUGH (explodvar)
-	case OC_ex2_explodvar_pos_x:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_pos_y:
-		correctScale = true
-		fallthrough
 	case OC_ex2_explodvar_vel_x:
 		correctScale = true
 		fallthrough
@@ -3059,13 +3062,28 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_explodvar_angle_x:
 		fallthrough
-	// END FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_angle_y:
+		camCorrected = true // gotta do this
+		fallthrough
+		// END FALLTHROUGH (explodvar)
+	case OC_ex2_explodvar_pos_x:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[0] / oc.localscl
+			camCorrected = true
+		}
+		fallthrough
+	case OC_ex2_explodvar_pos_y:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[1] / oc.localscl
+			camCorrected = true
+		}
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.explodVar(id, idx, opc)
 		if correctScale {
-			sys.bcStack.PushF(v.ToF() * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) + camOff)
 		} else {
 			sys.bcStack.Push(v)
 		}
@@ -3074,13 +3092,6 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		correctScale = true
 		fallthrough
 	case OC_ex2_projectilevar_accel_y:
-		correctScale = true
-		fallthrough
-	case OC_ex2_projectilevar_pos_x:
-		correctScale = true
-		camOff = -sys.cam.Pos[0] / oc.localscl
-		fallthrough
-	case OC_ex2_projectilevar_pos_y:
 		correctScale = true
 		fallthrough
 	case OC_ex2_projectilevar_vel_x:
@@ -3153,8 +3164,23 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_projectilevar_teamside:
 		fallthrough
-	// END FALLTHROUGH (projvar)
 	case OC_ex2_projectilevar_pausemovetime:
+		camCorrected = true // gotta do this
+		fallthrough
+		// END FALLTHROUGH (projvar)
+	case OC_ex2_projectilevar_pos_x:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[0] / oc.localscl
+			camCorrected = true
+		}
+		fallthrough
+	case OC_ex2_projectilevar_pos_y:
+		correctScale = true
+		if !camCorrected {
+			camOff = -sys.cam.Pos[1] / oc.localscl
+			camCorrected = true
+		}
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.projVar(id, idx, opc)
@@ -10621,6 +10647,7 @@ const (
 	playBgm_loopend
 	playBgm_startposition
 	playBgm_freqmul
+	playBgm_loopcount
 	playBgm_redirectid
 )
 
@@ -10628,7 +10655,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 	crun := c
 	var b bool
 	var bgm string
-	var loop, volume, loopstart, loopend, startposition int = 1, 100, 0, 0, 0
+	var loop, loopcount, volume, loopstart, loopend, startposition int = 1, -1, 100, 0, 0, 0
 	var freqmul float32 = 1.0
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -10658,6 +10685,8 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			startposition = int(exp[0].evalI(c))
 		case playBgm_freqmul:
 			freqmul = exp[0].evalF(c)
+		case playBgm_loopcount:
+			loopcount = int(exp[0].evalI(c))
 		case playBgm_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -10668,7 +10697,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if b {
-		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition, freqmul)
+		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition, freqmul, loopcount)
 		sys.playBgmFlg = true
 	}
 	return false
