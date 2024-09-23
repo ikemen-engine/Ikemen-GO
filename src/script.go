@@ -2825,7 +2825,7 @@ func triggerFunctions(l *lua.LState) {
 		if l.GetTop() >= 1 {
 			id = int32(numArg(l, 1))
 		}
-		if c := sys.debugWC.helperByIndex(id); c != nil {
+		if c := sys.debugWC.getPlayerHelperIndex(id,false); c != nil {
 			sys.debugWC, ret = c, true
 		}
 		l.Push(lua.LBool(ret))

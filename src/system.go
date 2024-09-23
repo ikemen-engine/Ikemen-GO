@@ -1926,6 +1926,7 @@ func (s *System) draw(x, y, scl float32) {
 }
 
 func (s *System) drawTop() {
+	BlendReset()
 	fade := func(rect [4]int32, color uint32, alpha int32) {
 		FillRect(rect, color, alpha>>uint(Btoi(s.clsnDraw))+Btoi(s.clsnDraw)*128)
 	}
@@ -2518,7 +2519,6 @@ func (s *System) fight() (reload bool) {
 			}
 			s.draw(dx, dy, dscl)
 		}
-		BlendReset()
 		// Render top elements such as fade effects
 		if !s.frameSkip {
 			s.drawTop()

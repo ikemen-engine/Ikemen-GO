@@ -4210,4 +4210,5 @@ func (l *Lifebar) draw(layerno int16) {
 			v.Draw()
 		}
 	}
+	BlendReset()
 }
