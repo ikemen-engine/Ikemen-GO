@@ -175,9 +175,9 @@ func (cr *ClsnRect) Add(clsn []float32, x, y, xs, ys, angle float32) {
 	xs *= sys.cam.Scale
 	ys *= sys.cam.Scale
 	sw := float32(sys.gameWidth)
-	sh := float32(0)//float32(sys.gameHeight)
+	sh := float32(0) //float32(sys.gameHeight)
 	for i := 0; i+3 < len(clsn); i += 4 {
-		offx := sw/2
+		offx := sw / 2
 		offy := sh
 		rect := [...]float32{
 			AbsF(xs) * clsn[i], AbsF(ys) * clsn[i+1],
@@ -3348,7 +3348,7 @@ func (c *Char) helperByIndexExist(id BytecodeValue) BytecodeValue {
 	if id.IsSF() {
 		return BytecodeSF()
 	}
-	return BytecodeBool(c.getPlayerHelperIndex(id.ToI(),true) != nil)
+	return BytecodeBool(c.getPlayerHelperIndex(id.ToI(), true) != nil)
 }
 func (c *Char) target(id int32) *Char {
 	for _, tid := range c.targets {
@@ -9370,8 +9370,8 @@ func (cl *CharList) getIndex(id int32) *Char {
 	return nil
 }
 func (cl *CharList) getHelperIndex(c *Char, id int32, ex bool) *Char {
-	var t[]int32
-	parent := func (c *Char) *Char {
+	var t []int32
+	parent := func(c *Char) *Char {
 		if c.parentIndex == IErr {
 			return nil
 		}
@@ -9386,18 +9386,18 @@ func (cl *CharList) getHelperIndex(c *Char, id int32, ex bool) *Char {
 				}
 			} else {
 				hp := parent(h)
-			    for hp != nil {
-			        if hp.id == c.id {
-				        t = append(t, int32(j))
-			        }
-			        hp = parent(hp)
-			    }
+				for hp != nil {
+					if hp.id == c.id {
+						t = append(t, int32(j))
+					}
+					hp = parent(hp)
+				}
 			}
 		}
 	}
 	for i := 0; i < len(t); i++ {
 		ch := cl.runOrder[int32(t[i])]
-		if (id - 1) == int32(i) && ch != nil {
+		if (id-1) == int32(i) && ch != nil {
 			return ch
 		}
 	}

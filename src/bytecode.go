@@ -1327,7 +1327,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_helperindex:
-			if c = c.getPlayerHelperIndex(sys.bcStack.Pop().ToI(),false); c != nil {
+			if c = c.getPlayerHelperIndex(sys.bcStack.Pop().ToI(), false); c != nil {
 				i += 4
 				continue
 			}
