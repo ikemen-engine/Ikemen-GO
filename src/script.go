@@ -4954,7 +4954,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "mugenversion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.mugenVersion()))
+		l.Push(lua.LNumber(sys.debugWC.mugenVersionF()))
 		return 1
 	})
 	luaRegister(l, "numplayer", func(*lua.LState) int {
