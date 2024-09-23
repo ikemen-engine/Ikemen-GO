@@ -301,6 +301,8 @@ type CharSize struct {
 		width  float32
 		enable bool
 	}
+	weight int32
+	pushfactor float32
 }
 
 func (cs *CharSize) init() {
@@ -327,6 +329,8 @@ func (cs *CharSize) init() {
 	cs.z.width = 3
 	cs.z.enable = false
 	cs.attack.z.width.front, cs.attack.z.width.back = 4, 4
+	cs.weight = 100
+	cs.pushfactor = 1
 }
 
 type CharVelocity struct {
@@ -540,10 +544,16 @@ func (f *Fall) clear() {
 		yvelocity: -4.5}
 }
 func (f *Fall) setDefault() {
-	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: float32(math.NaN()), recover: true, recovertime: 4, kill: true,
-		envshake_freq: 60, envshake_ampl: IErr, envshake_phase: float32(math.NaN()),
-		envshake_mul: 1.0}
+	*f = Fall{animtype: RA_Unknown,
+		xvelocity:      float32(math.NaN()),
+		yvelocity:      float32(math.NaN()),
+		recover:        true,
+		recovertime:    4,
+		kill:           true,
+		envshake_freq:  60,
+		envshake_ampl:  IErr,
+		envshake_phase: float32(math.NaN()),
+		envshake_mul:   1.0}
 }
 func (f *Fall) xvel() float32 {
 	if math.IsNaN(float64(f.xvelocity)) {
@@ -910,7 +920,10 @@ func (mhv *MoveHitVar) clear() {
 
 type aimgImage struct {
 	anim           Animation
-	pos, scl, ascl [2]float32
+	pos            [2]float32
+	scl            [2]float32
+	ascl           [2]float32
+	priority       int32
 	rot            Rotation
 	projection     int32
 	fLength        float32
@@ -932,6 +945,7 @@ type AfterImage struct {
 	restgap        int32
 	reccount       int32
 	timecount      int32
+	priority       int32
 	ignorehitpause bool
 }
 
@@ -1063,6 +1077,7 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		img.fLength = sd.fLength
 		img.ascl = sd.ascl
 		img.oldVer = sd.oldVer
+		img.priority = sd.priority-2 // Starting afterimage sprpriority offset
 		ai.imgidx = (ai.imgidx + 1) & 63
 		ai.reccount++
 		ai.restgap = ai.timegap
@@ -1089,11 +1104,16 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int3
 	}
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
+		if img.priority >= sd.priority { // Maximum afterimage sprpriority offset
+			img.priority = sd.priority-2
+		}
 		if ai.time < 0 || (ai.timecount/ai.timegap-i) < (ai.time-2)/ai.timegap+1 {
-			ai.palfx[i/ai.framegap-1].remap = sd.fx.remap
-			sprs.add(&SprData{&img.anim, &ai.palfx[i/ai.framegap-1], img.pos,
-				img.scl, ai.alpha, sd.priority - 2, img.rot, img.ascl,
-				false, sd.bright, sd.oldVer, sd.facing, sd.posLocalscl, img.projection, img.fLength, sd.window})
+			step := i/ai.framegap-1
+			ai.palfx[step].remap = sd.fx.remap
+			sprs.add(&SprData{&img.anim, &ai.palfx[step], img.pos,
+				img.scl, ai.alpha, img.priority-step, // Afterimages decrease in sprpriority over time
+				img.rot, img.ascl, false, sd.bright, sd.oldVer, sd.facing,
+				sd.posLocalscl, img.projection, img.fLength, sd.window})
 			// Afterimages don't cast shadows or reflections
 		}
 	}
@@ -1437,8 +1457,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	e.drawPos = [3]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * zscale * e.localscl, zscale * (e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl, zscale * (e.pos[2] + e.offset[2] + off[2] + e.interpolate_pos[2]) * e.localscl}
 	var ewin = [4]float32{e.window[0] * e.localscl * facing, e.window[1] * e.localscl * e.vfacing, e.window[2] * e.localscl * facing, e.window[3] * e.localscl * e.vfacing}
 	// Add sprite to draw list
-	sd := &SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]}, [...]float32{(facing * scale[0]) * e.localscl * zscale,
-		(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority, rot, [...]float32{1, 1},
+	sd := &SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]},
+		[...]float32{(facing * scale[0]) * e.localscl * zscale,
+		(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.drawPos[2]), rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin}
 	sprs.add(sd)
 	// Add shadow if color is not 0
@@ -1801,10 +1822,31 @@ func (p *Projectile) update(playerNo int) {
 	}
 }
 
+// This subtracts projectile hits when two projectiles clash
+func (p *Projectile) cancelHits(opp *Projectile) {
+	// Check priority
+	if p.priorityPoints > opp.priorityPoints {
+		p.priorityPoints--
+	} else {
+		p.hits--
+	}
+	// Flag for removal
+	if p.hits <= 0 {
+		p.hits = -2 // -2 hits means the projectile was cancelled
+	}
+	// Set hitpause
+	if p.hits > 0 {
+		p.hitpause = Max(0, p.hitdef.pausetime) // -Btoi(c.gi().mugenver[0] == 0))
+	} else {
+		p.hitpause = 0
+	}
+}
+
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo, index int) {
 
 	// Skip if this projectile can't trade at all
+	// Projectiles can trade even if they are spawned with 0 hits
 	if p.remflag || p.hits < 0 || p.id < 0 {
 		return
 	}
@@ -1812,18 +1854,6 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 	// Skip if this projectile can't run a collision check at all
 	if p.ani == nil || len(p.ani.frames) == 0 || p.ani.CurrentFrame().Clsn2() == nil {
 		return
-	}
-
-	// Function to subtract projectile hits upon trading
-	cancel := func(priorityPoints *int32, hits *int32, oppPriorityPoints int32) {
-		if *priorityPoints > oppPriorityPoints {
-			(*priorityPoints)--
-		} else {
-			(*hits)--
-		}
-		if *hits <= 0 {
-			*hits = -2 // -2 hits means the projectile was cancelled
-		}
 	}
 
 	// Loop through all players starting from the current one
@@ -1863,6 +1893,12 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 				}
 			}
 
+			// Run Z axis check
+			if !sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
+				pr.pos[2], pr.hitdef.attack.width[0], pr.hitdef.attack.width[1], pr.localscl) {
+				continue
+			}
+
 			// Run Clsn check
 			clsn1 := p.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
 			clsn2 := pr.ani.CurrentFrame().Clsn2()
@@ -1872,10 +1908,8 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 					clsn2, [...]float32{pr.clsnScale[0] * p.localscl, pr.clsnScale[1] * p.localscl},
 					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing, p.clsnAngle) {
 					// Subtract projectile hits from each other
-					pp := p.priorityPoints
-					opp := &sys.projs[i][j]
-					cancel(&p.priorityPoints, &p.hits, opp.priorityPoints)
-					cancel(&opp.priorityPoints, &opp.hits, pp)
+					p.cancelHits(pr)
+					pr.cancelHits(p)
 					// Stop entire loop when out of projectile hits
 					if p.hits < 0 {
 						break
@@ -1953,9 +1987,9 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	zscale := c.updateZScale(p.pos[2])
 	if p.ani != nil {
 		// Add sprite to draw list
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, p.drawPos[1]*p.localscl + p.drawPos[2]*p.localscl},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, (p.drawPos[1] + p.drawPos[2])*p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
-			p.sprpriority, Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
+			p.sprpriority + int32(p.pos[2]), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
 		sprs.add(sd)
@@ -2790,6 +2824,8 @@ func (c *Char) load(def string) error {
 						}
 						is.ReadF32("attack.z.width",
 							&c.size.attack.z.width.front, &c.size.attack.z.width.back)
+						is.ReadI32("weight", &c.size.weight)
+						is.ReadF32("pushfactor", &c.size.pushfactor)
 					}
 				case "velocity":
 					if velocity {
@@ -4975,7 +5011,6 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
 	ifierrset(&hd.fall.envshake_ampl, -4)
-	ifnanset(&hd.fall.envshake_phase, 0)
 	ifnanset(&hd.xaccel, 0)
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
@@ -6672,18 +6707,6 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
 }
 
-// Z axis check
-// Changed to no longer check z enable constant, depends on stage now
-func (c *Char) zAxisCheck(getter *Char, charfront, charback, getterfront, getterback float32) bool {
-	if sys.stage.topbound != sys.stage.botbound {
-		if (c.pos[2]+charfront)*c.localscl < (getter.pos[2]-getterback)*getter.localscl ||
-			(c.pos[2]-charback)*c.localscl > (getter.pos[2]+getterfront)*getter.localscl {
-			return false
-		}
-	}
-	return true
-}
-
 func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
 	// Nil anim & standby check.
 	if c.curFrame == nil || getter.curFrame == nil ||
@@ -6833,8 +6856,9 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) &&
-				c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1], getter.size.z.width, getter.size.z.width)
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) && 
+				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
+					getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 		}
 	}
 
@@ -7821,7 +7845,7 @@ func (c *Char) cueDraw() {
 		//}
 
 		sd := &SprData{c.anim, c.getPalfx(), pos,
-			scl, c.alpha, c.sprPriority, Rotation{agl, 0, 0}, c.angleScale, false,
+			scl, c.alpha, c.sprPriority + int32(c.pos[2]), Rotation{agl, 0, 0}, c.angleScale, false,
 			c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing,
 			c.localcoord / sys.chars[c.animPN][0].localcoord, // https://github.com/ikemen-engine/Ikemen-GO/issues/1459 and 1778
 			0, 0, [4]float32{0, 0, 0, 0}}
@@ -8074,41 +8098,59 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return // Stop entire function if getter is disabled
 	}
-	// hit() function definition start.
-	hit := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32, hits int32) (hitType int32) {
+
+	// hitTypeGet() function definition start.
+	hitTypeGet := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32, hits int32) (hitType int32) {
+
+		// Early exits
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
 			c.hitdef.ltypehit = true
 			return 0
 		}
-		if getter.stchtmp && getter.ss.sb.playerNo != hd.playerNo && func() bool {
+
+		if getter.stchtmp && getter.ss.sb.playerNo != hd.playerNo {
 			if getter.csf(CSF_gethit) {
-				return hd.p2stateno >= 0
+				if hd.p2stateno >= 0 {
+					return 0
+				}
+			} else if getter.acttmp > 0 {
+				return 0
 			}
-			return getter.acttmp > 0
-		}() || getter.csf(CSF_gethit) && getter.ghv.attr&int32(AT_AT) != 0 ||
-			hd.p1stateno >= 0 && (c.csf(CSF_gethit) ||
-				c.stchtmp && c.ss.sb.playerNo != hd.playerNo) {
+		}
+
+		if hd.p1stateno >= 0 && (c.csf(CSF_gethit) || c.stchtmp && c.ss.sb.playerNo != hd.playerNo) {
 			return 0
 		}
+
+		if getter.csf(CSF_gethit) && getter.ghv.attr&int32(AT_AT) != 0 {
+			return 0
+		}
+
 		// Check if the enemy can guard this attack
-		guard := (proj || !c.asf(ASF_unguardable)) && getter.scf(SCF_guard) &&
+		canguard := (proj || !c.asf(ASF_unguardable)) && getter.scf(SCF_guard) &&
 			(!getter.csf(CSF_gethit) || getter.ghv.guarded)
-		// Automatically choose which way to guard in case of auto guard
-		if guard && getter.asf(ASF_autoguard) &&
-			getter.acttmp > 0 && !getter.csf(CSF_gethit) &&
-			(getter.ss.stateType == ST_S || getter.ss.stateType == ST_C) &&
-			int32(getter.ss.stateType)&hd.guardflag == 0 {
-			if int32(ST_S)&hd.guardflag != 0 && !getter.asf(ASF_nostandguard) {
-				getter.ss.changeStateType(ST_S)
-			} else if int32(ST_C)&hd.guardflag != 0 &&
-				!getter.asf(ASF_nocrouchguard) {
-				getter.ss.changeStateType(ST_C)
+
+		// Automatically choose high or low in case of auto guard
+		if canguard && getter.asf(ASF_autoguard) && getter.acttmp > 0 && !getter.csf(CSF_gethit) {
+			if int32(getter.ss.stateType)&hd.guardflag == 0 {
+				if getter.ss.stateType == ST_S {
+					// High to Low
+					if int32(ST_C)&hd.guardflag != 0 && !getter.asf(ASF_nocrouchguard) {
+						getter.ss.changeStateType(ST_C)
+					}
+				} else if getter.ss.stateType == ST_C {
+					// Low to High
+					if int32(ST_S)&hd.guardflag != 0 && !getter.asf(ASF_nostandguard) {
+						getter.ss.changeStateType(ST_S)
+					}
+				}
 			}
 		}
+
 		hitType = 1
 		getter.ghv.kill = hd.kill
 		// If enemy is guarding the correct way, "hitType" is set to "guard"
-		if guard && int32(getter.ss.stateType)&hd.guardflag != 0 {
+		if canguard && int32(getter.ss.stateType)&hd.guardflag != 0 {
 			getter.ghv.kill = hd.guard_kill
 			// We only switch to guard behavior if the enemy can survive guarding the attack
 			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul[0], c, true) ||
@@ -8118,6 +8160,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				getter.ghv.cheeseKO = true // TODO: find a better name then expose this variable
 			}
 		}
+
 		// If any previous hit in the current frame will KO the enemy, the following ones will not prevent it
 		if getter.ghv.damage >= getter.life {
 			getter.ghv.kill = true
@@ -8131,6 +8174,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		} else if hd.ground_type == HT_None {
 			hitType *= -1
 		}
+
 		p2s := false
 		// Check HitOverride
 		if !getter.stchtmp || !getter.csf(CSF_gethit) {
@@ -8302,10 +8346,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.p2getp1state = hd.p2getp1state
 					ghv.forcestand = hd.forcestand != 0
 					ghv.forcecrouch = hd.forcecrouch != 0
+
 					ghv.fall = hd.fall // The group, not the flag
 					getter.fallTime = 0
+					ghv.fall.envshake_ampl = int32(float32(hd.fall.envshake_ampl) * (c.localscl / getter.localscl))
 					ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)
 					ghv.fall.yvelocity = hd.fall.yvelocity * (c.localscl / getter.localscl)
+
 					if getter.ss.stateType == ST_A {
 						ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
 						ghv.ctrltime = hd.air_hittime
@@ -8754,7 +8801,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				sys.envShake.ampl = float32(int32(float32(hd.envshake_ampl) * c.localscl))
 				sys.envShake.phase = hd.envshake_phase
 				sys.envShake.mul = hd.envshake_mul
-				sys.envShake.setDefPhase()
+				sys.envShake.setDefaultPhase()
 			}
 			// Set corner push
 			// In Mugen it is only set if the enemy is already in the corner before the hit
@@ -8787,6 +8834,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 		return
 	}
+
 	// Projectile hitting player check
 	// TODO: Disable projectiles if player is disabled?
 	if proj {
@@ -8800,14 +8848,18 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			ap_projhit := false
 			for j := range pr {
 				p := &pr[j]
-				if p.id < 0 || p.hits < 0 {
+
+				// Skip if projectile can't hit
+				if p.id < 0 || p.hits <= 0 {
 					continue
 				}
+
 				// In Mugen, projectiles couldn't hit their root even with the proper affectteam
 				if i == getter.playerNo && getter.helperIndex == 0 &&
 					(getter.teamside == p.hitdef.teamside-1) && !p.platform {
 					continue
 				}
+
 				// Teamside check
 				// Since the teamside parameter is new to Ikemen, we can make that one allow the projectile to hit the root
 				if p.hitdef.affectteam != 0 &&
@@ -8815,7 +8867,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						(getter.teamside == p.hitdef.teamside-1) != (p.hitdef.affectteam < 0)) {
 					continue
 				}
+
 				dist := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
+
 				// Projectile guard distance
 				if !p.platform && p.hitdef.attr > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1445
 					if p.hitdef.guard_dist[0] < 0 {
@@ -8830,6 +8884,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 				}
+
 				if p.platform {
 					// Check if the character is above the platform's surface
 					if getter.pos[1]*getter.localscl-getter.vel[1]*getter.localscl <= (p.pos[1]+p.platformHeight[1])*p.localscl &&
@@ -8861,14 +8916,14 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 				}
-				if p.hits == 0 {
-					continue
-				}
+
 				// Cancel a projectile with hitflag P
 				if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
-					getter.projClsnCheck(p, 1, 2) {
+					getter.projClsnCheck(p, 1, 2) &&
+					sys.zAxisOverlap(getter.pos[2], getter.hitdef.attack.width[0], getter.hitdef.attack.width[1], getter.localscl,
+						p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl) {
 					if getter.hitdef.p1stateno >= 0 && getter.stateChange1(getter.hitdef.p1stateno, getter.hitdef.playerNo) {
 						getter.setCtrl(false)
 					}
@@ -8890,12 +8945,14 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					if getter.csf(CSF_gethit) {
 						getter.hittmp = int8(Btoi(getter.ghv.fallflag)) + 1
 					}
-					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) {
+					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) &&
+						sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
+							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl) {
 						hits := p.hits
 						if p.misstime > 0 {
 							hits = 1
 						}
-						if ht := hit(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
+						if ht := hitTypeGet(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
 							p.pos[1] - c.pos[1]*(c.localscl/p.localscl)}, p.facing, p.parentAttackmul, hits); ht != 0 {
 							p.contactflag = true
 							if Abs(ht) == 1 {
@@ -8921,20 +8978,25 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			c.atktmp = orgatktmp
 		}
 	}
+
 	// Player check
 	if !proj {
 		getter.inguarddist = false
 		getter.unsetCSF(CSF_gethit)
 		getter.enemyNearClear()
 		for _, c := range cl.runOrder {
+
+			// Stop current iteration if this char is disabled
 			if c.scf(SCF_standby) || c.scf(SCF_disabled) {
-				continue // Stop current iteration if this char is disabled
+				continue
 			}
+
 			if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
 				((getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0) && c.hitdef.teamside >= 0) ||
 				((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
 
 				dist := -getter.distX(c, getter) * c.facing
+
 				// Default guard distance
 				if c.ss.moveType == MT_A && c.hitdef.guard_dist[0] < 0 &&
 					dist <= c.attackDist[0]*(c.localscl/getter.localscl) &&
@@ -8977,15 +9039,15 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					// Reversaldef checks attack width vs attack width
 					zok := true
 					if c.hitdef.reversal_attr > 0 {
-						zok = c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1],
-							getter.hitdef.attack.width[0], getter.hitdef.attack.width[1])
+						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
+							getter.pos[2], getter.hitdef.attack.width[0], getter.hitdef.attack.width[1], getter.localscl)
 					} else {
-						zok = c.zAxisCheck(getter, c.hitdef.attack.width[0], c.hitdef.attack.width[1],
-							getter.size.z.width, getter.size.z.width)
+						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
+							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 					}
 
 					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
-						if ht := hit(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
+						if ht := hitTypeGet(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
 								if mvh {
@@ -8994,7 +9056,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 								}
 								// ReversalDef connects
 								if c.hitdef.reversal_attr > 0 {
-
+									// ReversalDef seems to set an arbitrary set of get hit variables in Mugen
 									c.powerAdd(c.hitdef.hitgetpower)
 									getter.hitdef.hitflag = 0
 									getter.mctype = MC_Reversed
@@ -9017,7 +9079,11 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.ghv.hitid = c.hitdef.id
 									getter.ghv.playerNo = c.playerNo
 									getter.ghv.id = c.id
+
+									getter.ghv.fall = c.hitdef.fall // The group, not the flag
 									getter.fallTime = 0
+									// https://github.com/ikemen-engine/Ikemen-GO/issues/2012
+									getter.ghv.fall.envshake_ampl = int32(float32(c.hitdef.fall.envshake_ampl) * (c.localscl / getter.localscl))
 									getter.ghv.fall.xvelocity = c.hitdef.fall.xvelocity * (c.localscl / getter.localscl)
 									getter.ghv.fall.yvelocity = c.hitdef.fall.yvelocity * (c.localscl / getter.localscl)
 
@@ -9075,6 +9141,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		}
 	}
 }
+
 func (cl *CharList) pushDetection(getter *Char) {
 	var gxmin, gxmax float32
 	if !getter.csf(CSF_playerpush) || getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
@@ -9094,11 +9161,6 @@ func (cl *CharList) pushDetection(getter *Char) {
 		if cbot >= gtop && ctop <= gbot { // Pushbox vertical overlap
 
 			// We skip the zAxisCheck function because we'll need to calculate the overlap again anyway
-
-			//c.zAxisCheck(getter, c.size.z.width, c.size.z.width, getter.size.z.width, getter.size.z.width) {
-			//!(c.size.z.enable && getter.size.z.enable &&
-			//	((c.pos[2]-c.size.z.width)*c.localscl > (getter.pos[2]+getter.size.z.width)*getter.localscl ||
-			//		(c.pos[2]+c.size.z.width)*c.localscl < (getter.pos[2]-getter.size.z.width)*getter.localscl)) {
 
 			// Normal collision check
 			cxleft := c.sizeBox[0] * c.localscl
@@ -9124,13 +9186,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 				continue
 			}
 
-			czback, czfront := -c.size.z.width*c.localscl, c.size.z.width*c.localscl
-			czback += c.pos[2] * c.localscl
-			czfront += c.pos[2] * c.localscl
+			czback := (c.pos[2] - c.size.z.width) * c.localscl
+			czfront := (c.pos[2] + c.size.z.width) * c.localscl
 
-			gzback, gzfront := -getter.size.z.width*c.localscl, getter.size.z.width*c.localscl
-			gzback += getter.pos[2] * getter.localscl
-			gzfront += getter.pos[2] * getter.localscl
+			gzback := (getter.pos[2] - getter.size.z.width) * c.localscl
+			gzfront := (getter.pos[2] + getter.size.z.width) * getter.localscl
 
 			// Z axis fail
 			if gzback >= czfront || czback >= gzfront {
@@ -9150,77 +9210,79 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				getter.pushed, c.pushed = true, true
 
-				tmp := getter.distX(c, getter)
-				if tmp == 0 {
-					// Decide direction in which to push each player in case of a tie in position
-					// This also decides who gets to stay in the corner
-					// Some of these checks are similar to char run order, but this approach allows better tie break control
-					// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
-					if c.asf(ASF_cornerpriority) && !getter.asf(ASF_cornerpriority) {
-						if c.pos[0] >= 0 {
-							tmp = 1
-						} else {
-							tmp = -1
-						}
-					} else if !c.asf(ASF_cornerpriority) && getter.asf(ASF_cornerpriority) {
-						if getter.pos[0] >= 0 {
-							tmp = -1
-						} else {
-							tmp = 1
-						}
-					} else if c.ss.moveType == MT_H && getter.ss.moveType != MT_H {
-						tmp = -c.facing
-					} else if c.ss.moveType != MT_H && getter.ss.moveType == MT_H {
-						tmp = getter.facing
-					} else if c.ss.moveType == MT_A && getter.ss.moveType != MT_A {
-						tmp = getter.facing
-					} else if c.ss.moveType != MT_A && getter.ss.moveType == MT_A {
-						tmp = -c.facing
-					} else if c.pos[1]*c.localscl < getter.pos[1]*getter.localscl {
-						tmp = getter.facing
-					} else {
-						tmp = -c.facing
-					}
-				}
+				// Compare player weights and apply pushing factors
+				cfactor := float32(getter.size.weight) / float32(c.size.weight + getter.size.weight) * c.size.pushfactor/2
+				gfactor := float32(c.size.weight) / float32(c.size.weight + getter.size.weight) * getter.size.pushfactor/2
 
 				// Determine in which axes to push the players
 				pushx := sys.stage.topbound == sys.stage.botbound || getter.vel[0] != 0 || c.vel[0] != 0
 				pushz := sys.stage.topbound != sys.stage.botbound && (getter.vel[2] != 0 || c.vel[2] != 0)
 
-				// TODO: This 0.5 multiplier could be a character or system constant instead of being hardcoded
 				if pushx {
+					tmp := getter.distX(c, getter)
+					if tmp == 0 {
+						// Decide direction in which to push each player in case of a tie in position
+						// This also decides who gets to stay in the corner
+						// Some of these checks are similar to char run order, but this approach allows better tie break control
+						// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
+						if c.asf(ASF_cornerpriority) && !getter.asf(ASF_cornerpriority) {
+							if c.pos[0] >= 0 {
+								tmp = 1
+							} else {
+								tmp = -1
+							}
+						} else if !c.asf(ASF_cornerpriority) && getter.asf(ASF_cornerpriority) {
+							if getter.pos[0] >= 0 {
+								tmp = -1
+							} else {
+								tmp = 1
+							}
+						} else if c.ss.moveType == MT_H && getter.ss.moveType != MT_H {
+							tmp = -c.facing
+						} else if c.ss.moveType != MT_H && getter.ss.moveType == MT_H {
+							tmp = getter.facing
+						} else if c.ss.moveType == MT_A && getter.ss.moveType != MT_A {
+							tmp = getter.facing
+						} else if c.ss.moveType != MT_A && getter.ss.moveType == MT_A {
+							tmp = -c.facing
+						} else if c.pos[1]*c.localscl < getter.pos[1]*getter.localscl {
+							tmp = getter.facing
+						} else {
+							tmp = -c.facing
+						}
+					}
 					if tmp > 0 {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[0] -= ((gxright - cxleft) * 0.5) / getter.localscl
+							getter.pos[0] -= ((gxright - cxleft) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[0] += ((gxright - cxleft) * 0.5) / c.localscl
+							c.pos[0] += ((gxright - cxleft) * cfactor) / c.localscl
 						}
 					} else {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[0] += ((cxright - gxleft) * 0.5) / getter.localscl
+							getter.pos[0] += ((cxright - gxleft) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[0] -= ((cxright - gxleft) * 0.5) / c.localscl
+							c.pos[0] -= ((cxright - gxleft) * cfactor) / c.localscl
 						}
 					}
 				}
 
 				// TODO: Z axis push might need some decision for who stays in the corner, like X axis
 				if pushz {
-					if getter.pos[2] < c.pos[2] {
+					if getter.pos[2] >= c.pos[2] {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[2] -= ((gzfront - czback) * 0.5) / getter.localscl
+							getter.pos[2] -= ((czfront - gzback) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[2] += ((gzfront - czback) * 0.5) / c.localscl
+							c.pos[2] += ((czfront - gzback) * cfactor) / c.localscl
 						}
 					} else {
 						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
-							getter.pos[2] -= ((czfront - gzback) * 0.5) / getter.localscl
+							getter.pos[2] -= ((gzfront - czback) * gfactor) / getter.localscl
 						}
 						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
-							c.pos[2] += ((czfront - gzback) * 0.5) / c.localscl
+							c.pos[2] += ((gzfront - czback) * cfactor) / c.localscl
 						}
 					}
 				}

@@ -879,6 +879,19 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 		s.appendToConsole(str)
 	}
 }
+
+// Z axis check
+// Changed to no longer check z enable constant, depends on stage now
+func (s *System) zAxisOverlap(posz1, front1, back1, localscl1, posz2, front2, back2, localscl2 float32) bool {
+	if sys.stage.topbound != sys.stage.botbound {
+		if (posz1 + front1) * localscl1 < (posz2 - back2) * localscl2 ||
+			(posz1 - back1) * localscl1 > (posz2 + front2) * localscl2 {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 float32, angle1 float32,
 	clsn2 []float32, scl2, pos2 [2]float32, facing2 float32, angle2 float32) bool {
 
@@ -3534,4 +3547,47 @@ func (l *Loader) runTread() bool {
 	l.state = LS_Loading
 	go l.load()
 	return true
+}
+
+type EnvShake struct {
+	time  int32
+	freq  float32
+	ampl  float32
+	phase float32
+	mul   float32
+}
+
+func (es *EnvShake) clear() {
+	*es = EnvShake{freq: float32(math.Pi / 3), ampl: -4.0,
+		phase: float32(math.NaN()), mul: 1.0}
+}
+
+func (es *EnvShake) setDefaultPhase() {
+	if math.IsNaN(float64(es.phase)) {
+		if es.freq >= math.Pi/2 {
+			es.phase = math.Pi / 2
+		} else {
+			es.phase = 0
+		}
+	}
+}
+
+func (es *EnvShake) next() {
+	if es.time > 0 {
+		es.time--
+		es.phase += es.freq
+		if es.phase > math.Pi*2 {
+			es.ampl *= es.mul
+			es.phase -= math.Pi * 2
+		}
+	} else {
+		es.ampl = 0
+	}
+}
+
+func (es *EnvShake) getOffset() float32 {
+	if es.time > 0 {
+		return es.ampl * float32(math.Sin(float64(es.phase)))
+	}
+	return 0
 }
