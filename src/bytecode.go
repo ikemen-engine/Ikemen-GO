@@ -8728,8 +8728,8 @@ func (sc fallEnvShake) Run(c *Char, _ []int32) bool {
 				sys.envShake = EnvShake{time: crun.ghv.fall.envshake_time,
 					freq:  crun.ghv.fall.envshake_freq * math.Pi / 180,
 					ampl:  float32(crun.ghv.fall.envshake_ampl) * c.localscl,
-					phase: crun.ghv.fall.envshake_phase, 
-					mul: crun.ghv.fall.envshake_mul}
+					phase: crun.ghv.fall.envshake_phase,
+					mul:   crun.ghv.fall.envshake_mul}
 				sys.envShake.setDefaultPhase()
 				crun.ghv.fall.envshake_time = 0
 			}

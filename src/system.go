@@ -884,8 +884,8 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 // Changed to no longer check z enable constant, depends on stage now
 func (s *System) zAxisOverlap(posz1, front1, back1, localscl1, posz2, front2, back2, localscl2 float32) bool {
 	if sys.stage.topbound != sys.stage.botbound {
-		if (posz1 + front1) * localscl1 < (posz2 - back2) * localscl2 ||
-			(posz1 - back1) * localscl1 > (posz2 + front2) * localscl2 {
+		if (posz1+front1)*localscl1 < (posz2-back2)*localscl2 ||
+			(posz1-back1)*localscl1 > (posz2+front2)*localscl2 {
 			return false
 		}
 	}

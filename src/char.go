@@ -301,7 +301,7 @@ type CharSize struct {
 		width  float32
 		enable bool
 	}
-	weight int32
+	weight     int32
 	pushfactor float32
 }
 
@@ -919,15 +919,15 @@ func (mhv *MoveHitVar) clear() {
 }
 
 type aimgImage struct {
-	anim           Animation
-	pos            [2]float32
-	scl            [2]float32
-	ascl           [2]float32
-	priority       int32
-	rot            Rotation
-	projection     int32
-	fLength        float32
-	oldVer         bool
+	anim       Animation
+	pos        [2]float32
+	scl        [2]float32
+	ascl       [2]float32
+	priority   int32
+	rot        Rotation
+	projection int32
+	fLength    float32
+	oldVer     bool
 }
 
 type AfterImage struct {
@@ -1077,7 +1077,7 @@ func (ai *AfterImage) recAfterImg(sd *SprData, hitpause bool) {
 		img.fLength = sd.fLength
 		img.ascl = sd.ascl
 		img.oldVer = sd.oldVer
-		img.priority = sd.priority-2 // Starting afterimage sprpriority offset
+		img.priority = sd.priority - 2 // Starting afterimage sprpriority offset
 		ai.imgidx = (ai.imgidx + 1) & 63
 		ai.reccount++
 		ai.restgap = ai.timegap
@@ -1105,13 +1105,13 @@ func (ai *AfterImage) recAndCue(sd *SprData, rec bool, hitpause bool, layer int3
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		img := &ai.imgs[(ai.imgidx-i)&63]
 		if img.priority >= sd.priority { // Maximum afterimage sprpriority offset
-			img.priority = sd.priority-2
+			img.priority = sd.priority - 2
 		}
 		if ai.time < 0 || (ai.timecount/ai.timegap-i) < (ai.time-2)/ai.timegap+1 {
-			step := i/ai.framegap-1
+			step := i/ai.framegap - 1
 			ai.palfx[step].remap = sd.fx.remap
 			sprs.add(&SprData{&img.anim, &ai.palfx[step], img.pos,
-				img.scl, ai.alpha, img.priority-step, // Afterimages decrease in sprpriority over time
+				img.scl, ai.alpha, img.priority - step, // Afterimages decrease in sprpriority over time
 				img.rot, img.ascl, false, sd.bright, sd.oldVer, sd.facing,
 				sd.posLocalscl, img.projection, img.fLength, sd.window})
 			// Afterimages don't cast shadows or reflections
@@ -1459,7 +1459,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	// Add sprite to draw list
 	sd := &SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]},
 		[...]float32{(facing * scale[0]) * e.localscl * zscale,
-		(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.drawPos[2]), rot, [...]float32{1, 1},
+			(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.drawPos[2]), rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin}
 	sprs.add(sd)
 	// Add shadow if color is not 0
@@ -1987,7 +1987,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 	zscale := c.updateZScale(p.pos[2])
 	if p.ani != nil {
 		// Add sprite to draw list
-		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, (p.drawPos[1] + p.drawPos[2])*p.localscl},
+		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, (p.drawPos[1] + p.drawPos[2]) * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
 			p.sprpriority + int32(p.pos[2]), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
@@ -6856,7 +6856,7 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) && 
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) &&
 				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
 					getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 		}
@@ -9211,8 +9211,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 				getter.pushed, c.pushed = true, true
 
 				// Compare player weights and apply pushing factors
-				cfactor := float32(getter.size.weight) / float32(c.size.weight + getter.size.weight) * c.size.pushfactor/2
-				gfactor := float32(c.size.weight) / float32(c.size.weight + getter.size.weight) * getter.size.pushfactor/2
+				cfactor := float32(getter.size.weight) / float32(c.size.weight+getter.size.weight) * c.size.pushfactor / 2
+				gfactor := float32(c.size.weight) / float32(c.size.weight+getter.size.weight) * getter.size.pushfactor / 2
 
 				// Determine in which axes to push the players
 				pushx := sys.stage.topbound == sys.stage.botbound || getter.vel[0] != 0 || c.vel[0] != 0
