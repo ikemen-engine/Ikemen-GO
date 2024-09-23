@@ -528,6 +528,7 @@ const (
 	OC_ex_animlength
 	OC_ex_animplayerno
 	OC_ex_attack
+	OC_ex_clsnoverlap
 	OC_ex_combocount
 	OC_ex_consecutivewins
 	OC_ex_defence
@@ -2443,6 +2444,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.animPN) + 1)
 	case OC_ex_attack:
 		sys.bcStack.PushF(c.attackMul[0] * 100)
+	case OC_ex_clsnoverlap:
+		c2 := sys.bcStack.Pop().ToI()
+		id := sys.bcStack.Pop().ToI()
+		c1 := sys.bcStack.Pop().ToI()
+		sys.bcStack.PushB(c.clsnOverlapTrigger(c1, id, c2))
 	case OC_ex_combocount:
 		sys.bcStack.PushI(c.comboCount())
 	case OC_ex_consecutivewins:

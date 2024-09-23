@@ -348,6 +348,7 @@ var triggerMap = map[string]int{
 	"bgmposition":        1,
 	"bgmvar":             1,
 	"clamp":              1,
+	"clsnoverlap":        1,
 	"clsnvar":            1,
 	"combocount":         1,
 	"consecutivewins":    1,
@@ -1524,6 +1525,62 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_camerazoom)
 	case "canrecover":
 		out.append(OC_canrecover)
+	case "clsnoverlap":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		c1type := c.token
+		switch c1type {
+		case "clsn1":
+			bv1 = BytecodeInt(1)
+		case "clsn2":
+			bv1 = BytecodeInt(2)
+		case "size":
+			bv1 = BytecodeInt(3)
+		default:
+			return bvNone(), Error("Invalid clsn1 type")
+		}
+		c.token = c.tokenizer(in)
+		if c.token != "," {
+			return bvNone(), Error("Missing A ','")
+		}
+		c.token = c.tokenizer(in)
+		if bv2, err = c.expBoolOr(&be2, in); err != nil {
+			return bvNone(), err
+		}
+		if c.token != "," {
+			return bvNone(), Error("Missing B ','")
+		}
+		c.token = c.tokenizer(in)
+		c2type := c.token
+		switch c2type {
+		case "clsn1":
+			bv3 = BytecodeInt(1)
+		case "clsn2":
+			bv3 = BytecodeInt(2)
+		case "size":
+			bv3 = BytecodeInt(3)
+		default:
+			return bvNone(), Error("Invalid clsn2 type")
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		be2.appendValue(bv2)
+		be1.appendValue(bv1)
+		if len(be2) > int(math.MaxUint8-1) {
+			be1.appendI32Op(OC_jz, int32(len(be2)+1))
+		} else {
+			be1.append(OC_jz8, OpCode(len(be2)+1))
+		}
+		be1.append(be2...)
+		be1.appendValue(bv3)
+		if rd {
+			out.appendI32Op(OC_nordrun, int32(len(be1)))
+		}
+		out.append(be1...)
+		out.append(OC_ex_, OC_ex_clsnoverlap)
 	case "clsnvar":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err

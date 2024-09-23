@@ -2365,6 +2365,47 @@ func (c *Char) clear1() {
 	c.kovelocity = false
 	c.preserve = 0
 }
+
+func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
+
+	getter := sys.playerID(pid)
+
+	// No animations to check
+	if c.curFrame == nil || getter.curFrame == nil {
+		return false
+	}
+
+	var clsn1, clsn2 []float32
+
+	if box1 == 2 {
+		clsn1 = c.curFrame.Clsn2()
+	} else {
+		clsn1 = c.curFrame.Clsn1()
+	}
+
+	if box2 == 1 {
+		clsn2 = getter.curFrame.Clsn1()
+	} else if box2 == 3 {
+		clsn2 = getter.sizeBox
+	} else {
+		clsn2 = getter.curFrame.Clsn2()
+	}
+
+	if clsn1 == nil || clsn2 == nil {
+		return false
+	}
+
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
+		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
+		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
+		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
+		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
+		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
+			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
+
+}
+
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
 	c.name, c.key, c.size, c.teamside = p.name+"'s helper", p.key, p.size, p.teamside
