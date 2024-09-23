@@ -8277,6 +8277,7 @@ type playerPush StateControllerBase
 
 const (
 	playerPush_value byte = iota
+	playerPush_priority
 	playerPush_redirectid
 )
 
@@ -8290,6 +8291,8 @@ func (sc playerPush) Run(c *Char, _ []int32) bool {
 			} else {
 				crun.unsetCSF(CSF_playerpush)
 			}
+		case playerPush_priority:
+			crun.pushPriority = exp[0].evalI(c)
 		case playerPush_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

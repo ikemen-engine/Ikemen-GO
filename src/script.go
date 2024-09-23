@@ -4851,12 +4851,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nointroreset)))
 		case "sizepushonly":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_sizepushonly)))
-		case "immovable":
-			l.Push(lua.LBool(sys.debugWC.asf(ASF_immovable)))
 		case "animatehitpause":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_animatehitpause)))
-		case "cornerpriority":
-			l.Push(lua.LBool(sys.debugWC.asf(ASF_cornerpriority)))
 		case "drawunder":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_drawunder)))
 		case "runfirst":

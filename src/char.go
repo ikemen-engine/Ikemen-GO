@@ -90,10 +90,8 @@ const (
 	ASF_nokovelocity
 	ASF_noailevel
 	ASF_nointroreset
-	ASF_immovable
 	ASF_sizepushonly
 	ASF_animatehitpause
-	ASF_cornerpriority
 	ASF_drawunder
 	ASF_runfirst
 	ASF_runlast
@@ -2269,6 +2267,7 @@ type Char struct {
 	shadowOffset    [2]float32
 	reflectOffset   [2]float32
 	ownclsnscale    bool
+	pushPriority    int32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -6989,6 +6988,7 @@ func (c *Char) actionPrepare() {
 					c.setCSF(CSF_playerpush)
 				}
 			}
+			c.pushPriority = 0 // Reset player pushing priority
 			c.attackDist[0] = float32(c.size.attack.dist.front)
 			c.attackDist[1] = float32(c.size.attack.dist.back)
 			// HitBy timers
@@ -9200,9 +9200,20 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				getter.pushed, c.pushed = true, true
 
+				// Decide who gets pushed
+				cpushed := float32(0.5)
+				gpushed := float32(0.5)
+				if c.pushPriority > getter.pushPriority {
+					cpushed = 0
+					gpushed = 1
+				} else if c.pushPriority < getter.pushPriority {
+					cpushed = 1
+					gpushed = 0
+				}
+
 				// Compare player weights and apply pushing factors
-				cfactor := float32(getter.size.weight) / float32(c.size.weight+getter.size.weight) * c.size.pushfactor / 2
-				gfactor := float32(c.size.weight) / float32(c.size.weight+getter.size.weight) * getter.size.pushfactor / 2
+				cfactor := float32(getter.size.weight) / float32(c.size.weight+getter.size.weight) * c.size.pushfactor * cpushed
+				gfactor := float32(c.size.weight) / float32(c.size.weight+getter.size.weight) * getter.size.pushfactor * gpushed
 
 				// Determine in which axes to push the players
 				pushx := sys.stage.topbound == sys.stage.botbound || getter.vel[0] != 0 || c.vel[0] != 0
@@ -9215,13 +9226,13 @@ func (cl *CharList) pushDetection(getter *Char) {
 						// This also decides who gets to stay in the corner
 						// Some of these checks are similar to char run order, but this approach allows better tie break control
 						// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
-						if c.asf(ASF_cornerpriority) && !getter.asf(ASF_cornerpriority) {
+						if c.pushPriority > getter.pushPriority {
 							if c.pos[0] >= 0 {
 								tmp = 1
 							} else {
 								tmp = -1
 							}
-						} else if !c.asf(ASF_cornerpriority) && getter.asf(ASF_cornerpriority) {
+						} else if c.pushPriority < getter.pushPriority {
 							if getter.pos[0] >= 0 {
 								tmp = -1
 							} else {
@@ -9242,17 +9253,17 @@ func (cl *CharList) pushDetection(getter *Char) {
 						}
 					}
 					if tmp > 0 {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[0] -= ((gxright - cxleft) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[0] += ((gxright - cxleft) * cfactor) / c.localscl
 						}
 					} else {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[0] += ((cxright - gxleft) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[0] -= ((cxright - gxleft) * cfactor) / c.localscl
 						}
 					}
@@ -9261,17 +9272,17 @@ func (cl *CharList) pushDetection(getter *Char) {
 				// TODO: Z axis push might need some decision for who stays in the corner, like X axis
 				if pushz {
 					if getter.pos[2] >= c.pos[2] {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[2] -= ((czfront - gzback) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[2] += ((czfront - gzback) * cfactor) / c.localscl
 						}
 					} else {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[2] -= ((gzfront - czback) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[2] += ((gzfront - czback) * cfactor) / c.localscl
 						}
 					}

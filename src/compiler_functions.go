@@ -202,12 +202,8 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nointroreset)))
 			case "sizepushonly":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_sizepushonly)))
-			case "immovable":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_immovable)))
 			case "animatehitpause":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_animatehitpause)))
-			case "cornerpriority":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_cornerpriority)))
 			case "drawunder":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_drawunder)))
 			case "runfirst":
@@ -246,7 +242,7 @@ func (c *Compiler) assertSpecial(is IniSection, sc *StateControllerBase, _ int8)
 			return err
 		}
 		if !f {
-			return Error("flag parameter not specified")
+			return Error("AssertSpecial flags not specified")
 		}
 		if err := c.stateParam(is, "flag2", false, func(data string) error {
 			return foo(data)
@@ -598,15 +594,15 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			helper_size_shadowoffset, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "z.width",
+		if err := c.paramValue(is, sc, "size.z.width",
 			helper_size_z_width, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "weight",
+		if err := c.paramValue(is, sc, "size.weight",
 			helper_size_weight, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "pushfactor",
+		if err := c.paramValue(is, sc, "size.pushfactor",
 			helper_size_pushfactor, VT_Float, 1, false); err != nil {
 			return err
 		}
@@ -1972,7 +1968,7 @@ func (c *Compiler) reversalDef(is IniSection, sc *StateControllerBase, _ int8) (
 			return err
 		}
 		if attr == -1 {
-			return Error("reversal.attr parameter not specified")
+			return Error("ReversalDef reversal.attr not specified")
 		}
 		sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
 		return c.hitDefSub(is, sc)
@@ -2431,7 +2427,7 @@ func (c *Compiler) varSetSub(is IniSection,
 	if b {
 		return nil
 	}
-	return Error("value parameter not specified")
+	return Error("Value parameter not specified")
 }
 func (c *Compiler) varSet(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*varSet)(sc), c.stateSec(is, func() error {
@@ -3025,10 +3021,21 @@ func (c *Compiler) playerPush(is IniSection, sc *StateControllerBase, _ int8) (S
 			playerPush_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "value", true, func(data string) error {
+		any := false
+		if err := c.stateParam(is, "value", false, func(data string) error {
+			any = true
 			return c.scAdd(sc, playerPush_value, data, VT_Bool, 1)
 		}); err != nil {
 			return err
+		}
+		if err := c.stateParam(is, "priority", false, func(data string) error {
+			any = true
+			return c.scAdd(sc, playerPush_priority, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !any {
+			return Error("Must specify at least one PlayerPush parameter")
 		}
 		return nil
 	})
@@ -3188,7 +3195,7 @@ func (c *Compiler) envColor(is IniSection, sc *StateControllerBase, _ int8) (Sta
 				return err
 			}
 			if len(bes) < 3 {
-				return Error("value - not enough arguments")
+				return Error("Value - not enough arguments")
 			}
 			sc.add(envColor_value, bes)
 			return nil
@@ -3246,7 +3253,7 @@ func (c *Compiler) displayToClipboardSub(is IniSection,
 		return err
 	}
 	if !b {
-		return Error("text parameter not specified")
+		return Error("Text parameter not specified")
 	}
 	return nil
 }
@@ -3359,7 +3366,7 @@ func (c *Compiler) attackMulSet(is IniSection, sc *StateControllerBase, _ int8) 
 			return err
 		}
 		if !any {
-			return Error("no multipliers specified")
+			return Error("Must specify at least one AttackMulSet multiplier")
 		}
 		return nil
 	})
@@ -3504,7 +3511,7 @@ func (c *Compiler) varRangeSet(is IniSection, sc *StateControllerBase, _ int8) (
 				return err
 			}
 			if !b {
-				return Error("value parameter not specified")
+				return Error("Value parameter not specified")
 			}
 		}
 		return nil
@@ -3869,7 +3876,7 @@ func (c *Compiler) assertInput(is IniSection, sc *StateControllerBase, _ int8) (
 			return err
 		}
 		if !f {
-			return Error("flag parameter not specified")
+			return Error("No AssertInput flags specified")
 		}
 		if err := c.stateParam(is, "flag2", false, func(data string) error {
 			return foo(data)
@@ -5523,7 +5530,7 @@ func (c *Compiler) transformClsn(is IniSection, sc *StateControllerBase, _ int8)
 			return err
 		}
 		if !any {
-			return Error("no parameters specified")
+			return Error("Must specify at least one TransformClsn parameter")
 		}
 		return nil
 	})

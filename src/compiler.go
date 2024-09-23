@@ -3690,10 +3690,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nointroreset))
 		case "sizepushonly":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_sizepushonly))
-		case "immovable":
-			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_immovable))
-		case "cornerpriority":
-			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_cornerpriority))
 		case "drawunder":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_drawunder))
 		case "runfirst":
@@ -4656,6 +4652,8 @@ func (c *Compiler) scAdd(sc *StateControllerBase, id byte,
 	sc.add(id, append(topbe, bes...))
 	return nil
 }
+
+// ParamValue adds the parameter immediately, unlike StateParam which only reads it
 func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 	paramname string, id byte, vt ValueType, numArg int, mandatory bool) error {
 	found := false
@@ -4670,6 +4668,7 @@ func (c *Compiler) paramValue(is IniSection, sc *StateControllerBase,
 	}
 	return nil
 }
+
 func (c *Compiler) paramPostype(is IniSection, sc *StateControllerBase,
 	id byte) error {
 	return c.stateParam(is, "postype", false, func(data string) error {
