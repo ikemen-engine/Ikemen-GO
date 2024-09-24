@@ -959,9 +959,29 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 }
 
 func (s *System) newCharId() int32 {
-	s.nextCharId++
-	return s.nextCharId - 1
+	// Check if next ID is already being used
+	// This is needed because helpers may be preserved between rounds
+	newid := s.nextCharId
+	taken := true
+	for taken {
+		taken = false
+		for _, p := range s.chars {
+			for _, c := range p {
+				if c.id == newid && !c.csf(CSF_destroy){
+					taken = true
+					newid++
+					break
+				}
+			}
+			if taken {
+				break // Skip outer loop
+			}
+		}
+	}
+	s.nextCharId = newid + 1
+	return newid
 }
+
 func (s *System) resetGblEffect() {
 	s.allPalFX.clear()
 	s.bgPalFX.clear()
@@ -1119,7 +1139,7 @@ func (s *System) nextRound() {
 	s.cam.ResetZoomdelay()
 	for i, p := range s.chars {
 		if len(p) > 0 {
-			s.nextCharId = Max(s.nextCharId, p[0].id+1)
+			s.nextCharId = Max(s.nextCharId, p[0].id+1) // nextCharId can't be this char's ID
 			s.playerClear(i, false)
 			p[0].posReset()
 			p[0].setCtrl(false)

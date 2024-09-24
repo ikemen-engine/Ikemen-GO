@@ -4424,6 +4424,7 @@ func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {
 	}
 	c.changeStateEx(no, playerno, anim, ctrl, ffx)
 }
+
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
 		c.exitTarget(true)
@@ -4463,6 +4464,7 @@ func (c *Char) destroy() {
 		c.setCSF(CSF_destroy)
 	}
 }
+
 func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	if c.helperIndex <= 0 {
 		return false
@@ -4480,6 +4482,7 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	}
 	return true
 }
+
 func (c *Char) newHelper() (h *Char) {
 	// If any existing helper entries are valid for overwriting, use that one
 	i := int32(0)
@@ -4490,7 +4493,7 @@ func (c *Char) newHelper() (h *Char) {
 			break
 		}
 	}
-	// Otherwise appends to the end
+	// Otherwise append to the end
 	if int(i) >= len(sys.chars[c.playerNo]) {
 		if i >= sys.helperMax {
 			return
@@ -4498,12 +4501,53 @@ func (c *Char) newHelper() (h *Char) {
 		h = newChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 	}
-	h.id, h.helperId, h.ownpal = sys.newCharId(), 0, false
+	h.id = sys.newCharId()
+	h.helperId = 0
+	h.ownpal = false
 	h.copyParent(c)
 	c.addChild(h)
 	sys.charList.add(h)
 	return
 }
+
+func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
+	facing int32, rp [2]int32, extmap bool) {
+	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
+	h.setX(p[0])
+	h.setY(p[1])
+	h.setZ(p[2])
+	h.vel = [3]float32{}
+	if h.ownpal {
+		h.palfx = newPalFX()
+		if c.getPalfx().remap == nil {
+			c.palfx.remap = c.gi().palettedata.palList.GetPalMap()
+		}
+		tmp := c.getPalfx().remap
+		h.palfx.remap = make([]int, len(tmp))
+		copy(h.palfx.remap, tmp)
+		c.forceRemapPal(h.palfx, rp)
+	} else {
+		h.palfx = c.getPalfx()
+	}
+	if extmap {
+		for key, value := range c.mapArray {
+			h.mapArray[key] = value
+		}
+	}
+	// Mugen 1.1 behavior if invertblend param is omitted (only if char mugenversion = 1.1)
+	if c.ss.sb.mugenver[0] == 1 && c.ss.sb.mugenver[1] == 1 && c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
+		h.palfx.invertblend = -2
+	}
+	h.changeStateEx(st, c.playerNo, 0, 1, "")
+	// Helper ID must be positive
+	if h.helperId < 0 {
+		sys.appendToConsole(h.warn() + fmt.Sprintf("has negative Helper ID"))
+		h.helperId = 0
+	}
+	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
+	h.actionPrepare()
+}
+
 func (c *Char) helperPos(pt PosType, pos [3]float32, facing int32,
 	dstFacing *float32, localscl float32, isProj bool) (p [3]float32) {
 	if facing < 0 {
@@ -4561,43 +4605,7 @@ func (c *Char) helperPos(pt PosType, pos [3]float32, facing int32,
 	}
 	return
 }
-func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
-	facing int32, rp [2]int32, extmap bool) {
-	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
-	h.setX(p[0])
-	h.setY(p[1])
-	h.setZ(p[2])
-	h.vel = [3]float32{}
-	if h.ownpal {
-		h.palfx = newPalFX()
-		if c.getPalfx().remap == nil {
-			c.palfx.remap = c.gi().palettedata.palList.GetPalMap()
-		}
-		tmp := c.getPalfx().remap
-		h.palfx.remap = make([]int, len(tmp))
-		copy(h.palfx.remap, tmp)
-		c.forceRemapPal(h.palfx, rp)
-	} else {
-		h.palfx = c.getPalfx()
-	}
-	if extmap {
-		for key, value := range c.mapArray {
-			h.mapArray[key] = value
-		}
-	}
-	// Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if h.ss.sb.mugenver[0] == 1 && h.ss.sb.mugenver[1] == 1 && h.ss.sb.ikemenver[0] == 0 && h.ss.sb.ikemenver[1] == 0 {
-		h.palfx.invertblend = -2
-	}
-	h.changeStateEx(st, c.playerNo, 0, 1, "")
-	// Helper ID must be positive
-	if h.helperId < 0 {
-		sys.appendToConsole(h.warn() + fmt.Sprintf("has negative Helper ID"))
-		h.helperId = 0
-	}
-	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
-	h.actionPrepare()
-}
+
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
