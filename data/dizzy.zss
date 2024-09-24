@@ -3,7 +3,7 @@
 # Functions
 #===============================================================================
 # Dizzy Bird Helper
-[Function DizzyBirdHelper()]
+[Function IkSys_DizzyBirdHelper()]
 if !numHelper(const(StateDizzyBirdsHelper)) {
 	# Background
 	explod{
@@ -29,7 +29,7 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 }
 
 # Dizzy Bird Explod Creation [from Helper]
-[Function DizzyBirdExplodCreation(arg)]
+[Function IkSys_DizzyBirdExplodCreation(arg)]
 if !numExplod($arg) {
 	explod{
 		id: $arg;
@@ -43,7 +43,7 @@ if !numExplod($arg) {
 }
 
 # Dizzy Bird Explod Update [from Helper]
-[Function DizzyBirdExplodUpdate(arg)]
+[Function IkSys_DizzyBirdExplodUpdate(arg)]
 if numExplod($arg) {
 	let circleTime = ((gameTime % 90) + 22.5 * $arg) / 45.0 * pi;
 	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
@@ -63,7 +63,7 @@ if numExplod($arg) {
 }
 
 # Dizzy Hit Ground Explod (direct copy from common1)
-[Function DizzyHitGroundExplod(vely)]
+[Function IkSys_DizzyHitGroundExplod(vely)]
 explod{
 	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
 	postype: p1;
@@ -119,10 +119,10 @@ if map(birdState) <= 0 {
 	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.10;
 
 	# Create dizzy bird explods
-	call DizzyBirdExplodCreation(0);
-	call DizzyBirdExplodCreation(1);
-	call DizzyBirdExplodCreation(2);
-	call DizzyBirdExplodCreation(3);
+	call IkSys_DizzyBirdExplodCreation(0);
+	call IkSys_DizzyBirdExplodCreation(1);
+	call IkSys_DizzyBirdExplodCreation(2);
+	call IkSys_DizzyBirdExplodCreation(3);
 
 	# Play sound again as soon as it stops
 	# Volume goes down as character recovers from dizzy
@@ -138,10 +138,10 @@ if map(birdState) <= 0 {
 
 # Update dizzy bird explods
 # Replaces creating new explods every frame
-call DizzyBirdExplodUpdate(0);
-call DizzyBirdExplodUpdate(1);
-call DizzyBirdExplodUpdate(2);
-call DizzyBirdExplodUpdate(3);
+call IkSys_DizzyBirdExplodUpdate(0);
+call IkSys_DizzyBirdExplodUpdate(1);
+call IkSys_DizzyBirdExplodUpdate(2);
+call IkSys_DizzyBirdExplodUpdate(3);
 
 #===============================================================================
 # StateDizzyFallDown_standCrouch
@@ -168,7 +168,7 @@ if anim = [const(AnimStandOrAirHitHigh_hard), const(AnimStandOrAirHitLow_hard)] 
 	stateTypeSet{statetype: C}
 }
 if (anim = const(AnimCrouchHit_hard) && animTime = 0) || time > 26 {
-	call DizzyHitGroundExplod(0);
+	call IkSys_DizzyHitGroundExplod(0);
 	selfState{value: const(StateDizzyLyingDown)}
 }
 
@@ -230,7 +230,7 @@ if anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall) + 
 	velSet{y: 0}
 	posFreeze{}
 	persistent(0) if getHitVar(fall.yVel) {
-		call DizzyHitGroundExplod(floor(vel y));
+		call IkSys_DizzyHitGroundExplod(floor(vel y));
 	}
 }
 
@@ -252,7 +252,7 @@ persistent(0) if anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9]
 # Hit ground from bounce
 if anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9] {
 	if vel y > 0 && pos y >= const(movement.down.bounce.groundlevel) {
-		call DizzyHitGroundExplod(floor(vel y));
+		call IkSys_DizzyHitGroundExplod(floor(vel y));
 		selfState{value: const(StateDizzyLyingDown)}
 	}
 }
@@ -371,12 +371,13 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	map(_iksys_dizzyPointsTimer) := 0;
 	map(_iksys_dizzyLimit) := 0;
 } else if alive {
-	# Upon getting hit, set cooldown timer
-	if dizzy || moveType = H || stateNo = const(StateDownedGetHit_gettingUp) {
-		map(_iksys_dizzyPointsTimer) := 60;
-	# Otherwise decrease cooldown timer by 1 each frame
-	} else if map(_iksys_dizzyPointsTimer) > 0 {
+	# Decrease cooldown timer
+	if map(_iksys_dizzyPointsTimer) > 0 {
 		mapAdd{map: "_iksys_dizzyPointsTimer"; value: -1}
+	}
+	# Set cooldown timer while getting hit
+	if dizzy || moveType = H && getHitVar(guarded) = 0 || stateNo = const(StateDownedGetHit_gettingUp) {
+		map(_iksys_dizzyPointsTimer) := 60;
 	}
 
 	# Freeze dizzy points if character was already dizzied once in the combo
@@ -402,7 +403,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Start dizzy behavior
 	if dizzy {
 		# Create dizzy effects
-		call DizzyBirdHelper();
+		call IkSys_DizzyBirdHelper();
 
 		# Become invulnerable until moving into Dizzy states for the first time
 		if stateNo != const(StateDizzy) && !map(_iksys_dizzyLimit) {
@@ -434,7 +435,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsTimer) = 0 {
 		# Fixed value. Characters with a longer dizzy bar take longer to recover
 		# This property could use a character constant as well instead
-		dizzyPointsAdd{value: 5; absolute: 1}
+		dizzyPointsAdd{value: 3; absolute: 1}
 	}
 
 	# Reset dizzy limit once character can act again

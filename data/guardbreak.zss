@@ -150,17 +150,17 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	guardPointsSet{value: guardPointsMax}
 	map(_iksys_guardPointsTimer) := 0;
 } else if roundState = 2 && alive {
-	# Manage cooldown timer
-	if moveType = H {
-		map(_iksys_guardPointsTimer) := 60;
-	} else if map(_iksys_guardPointsTimer) > 0 {
+	# Decrease cooldown timer
+	if map(_iksys_guardPointsTimer) > 0 {
 		mapAdd{map: "_iksys_guardPointsTimer"; value: -1}
 	}
 	# Upon block
 	if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
-		# Coloring if guard points left are under 333 or 50% for characters with a small guard bar
-		if (gameTime % 5) = 0 && guardPoints <= min((0.5 * guardPointsMax), 333) {
-			palFx{time: 2; add: 200, 0, 0}
+		# Start cooldown timer
+		map(_iksys_guardPointsTimer) := 60;
+		# Warning if guard points left are under 333 or 50% for characters with a small guard bar
+		if getHitVar(frame) && guardPoints <= min((0.5 * guardPointsMax), 333) {
+			palFx{time: 20; add: 64, 0, 0; sinadd: 64, 0, 0, 4}
 		}
 		# Enter guard break state
 		if !guardBreak && guardPoints = 0 {
