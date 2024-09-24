@@ -8315,6 +8315,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
 				dpnt, gpnt := ghv.dizzypoints, ghv.guardpoints
 				fall, hc, gc, fc, by := ghv.fallflag, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
+				drec := ghv.down_recovertime
 				kill := ghv.kill
 				cheese := ghv.cheeseKO
 				// Clear variables
@@ -8330,6 +8331,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.guardpower = gpwr
 				ghv.dizzypoints = dpnt
 				ghv.guardpoints = gpnt
+				ghv.down_recovertime = drec
 				ghv.kill = kill
 				ghv.cheeseKO = cheese
 				// Update variables
@@ -8432,10 +8434,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.fallcount = fc
 					ghv.fallflag = ghv.fallflag || fall // If falling now or before the hit
 					ghv.down_recover = hd.down_recover
-					if hd.down_recovertime < 0 {
-						ghv.down_recovertime = getter.gi().data.liedown.time
+					// Down recovery time
+					// When the char is already down this can't normally be increased
+					// https://github.com/ikemen-engine/Ikemen-GO/issues/2026
+					if hd.down_recovertime < 0 { // Default to char constant
+						if ghv.down_recovertime > getter.gi().data.liedown.time || getter.ss.stateType != ST_L {
+							ghv.down_recovertime = getter.gi().data.liedown.time
+						}
 					} else {
-						ghv.down_recovertime = hd.down_recovertime
+						if ghv.down_recovertime > hd.down_recovertime || getter.ss.stateType != ST_L {
+							ghv.down_recovertime = hd.down_recovertime
+						}
 					}
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
 					if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
