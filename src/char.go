@@ -3536,27 +3536,30 @@ func (c *Char) comboCount() int32 {
 	}
 	return sys.lifebar.co[c.teamside].combo
 }
+
 func (c *Char) command(pn, i int) bool {
 	if !c.keyctrl[0] || c.cmd == nil {
 		return false
 	}
 	cl := c.cmd[pn].At(i)
-	if len(cl) > 0 && c.key < 0 {
-		if c.helperIndex != 0 || len(cl[0].cmd) != 1 || len(cl[0].cmd[0].key) !=
-			1 || int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
-			return i == int(c.cpucmd)
-		}
-		if c.helperIndex != 0 {
-			return false
-		}
-	}
+	// Check if any command with that name is buffered
 	for _, c := range cl {
 		if c.curbuftime > 0 {
 			return true
 		}
 	}
+	// AI cheating for commands longer than 1 button
+	if c.key < 0 && len(cl) > 0 {
+		if c.helperIndex != 0 || len(cl[0].cmd) > 1 || len(cl[0].cmd[0].key) > 1 ||
+			int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
+			if i == int(c.cpucmd) {
+				return true
+			}
+		}
+	}
 	return false
 }
+
 func (c *Char) commandByName(name string) bool {
 	if c.cmd == nil {
 		return false

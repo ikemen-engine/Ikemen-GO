@@ -1875,11 +1875,11 @@ func ReadCommand(name, cmdstr string, kr *CommandKeyRemap) (*Command, error) {
 	return c, nil
 }
 
-func (c *Command) Clear(buf bool) {
+func (c *Command) Clear(bufreset bool) {
 	c.cmdi = 0
 	c.chargei = -1
 	c.curtime = 0
-	if !buf { // Otherwise keep buffer time. Mugen doesn't do this but it seems like the right thing to do
+	if bufreset {
 		c.curbuftime = 0
 	}
 	for i := range c.held {
@@ -2178,7 +2178,7 @@ func (cl *CommandList) ClearName(name string) {
 	for i := range cl.Commands {
 		for j := range cl.Commands[i] {
 			if !cl.Commands[i][j].completeflag && cl.Commands[i][j].name == name {
-				cl.Commands[i][j].Clear(true)
+				cl.Commands[i][j].Clear(false) // Keep their buffer time. Mugen doesn't do this but it seems like the right thing to do
 			}
 		}
 	}
@@ -2211,7 +2211,7 @@ func (cl *CommandList) BufReset() {
 		cl.Buffer.Reset()
 		for i := range cl.Commands {
 			for j := range cl.Commands[i] {
-				cl.Commands[i][j].Clear(false)
+				cl.Commands[i][j].Clear(true)
 			}
 		}
 	}
