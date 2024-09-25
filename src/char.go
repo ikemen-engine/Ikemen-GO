@@ -90,10 +90,8 @@ const (
 	ASF_nokovelocity
 	ASF_noailevel
 	ASF_nointroreset
-	ASF_immovable
 	ASF_sizepushonly
 	ASF_animatehitpause
-	ASF_cornerpriority
 	ASF_drawunder
 	ASF_runfirst
 	ASF_runlast
@@ -1318,7 +1316,7 @@ func (e *Explod) setPos(c *Char) {
 	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
 	// The engine will leave the sprite facing to that side indefinitely.
 	// Ikemen chars aren't affected by this.
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[0] == 0 && !e.lockSpriteFacing &&
 		e.facing*e.relativef < 0 {
 		e.lockSpriteFacing = true
 	}
@@ -1461,7 +1459,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	// Add sprite to draw list
 	sd := &SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]},
 		[...]float32{(facing * scale[0]) * e.localscl * zscale,
-			(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.drawPos[2]), rot, [...]float32{1, 1},
+			(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.pos[2] * e.localscl), rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin}
 	sprs.add(sd)
 	// Add shadow if color is not 0
@@ -1991,7 +1989,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		// Add sprite to draw list
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, (p.drawPos[1] + p.drawPos[2]) * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
-			p.sprpriority + int32(p.pos[2]), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
+			p.sprpriority + int32(p.pos[2] * p.localscl), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
 		sprs.add(sd)
@@ -2072,7 +2070,8 @@ type StateState struct {
 	physics         StateType
 	ps              []int32
 	wakegawakaranai [MaxSimul*2 + MaxAttachedChar][]bool
-	no, prevno      int32
+	no              int32
+	prevno          int32
 	time            int32
 	sb              StateBytecode
 }
@@ -2269,6 +2268,7 @@ type Char struct {
 	shadowOffset    [2]float32
 	reflectOffset   [2]float32
 	ownclsnscale    bool
+	pushPriority    int32
 }
 
 func newChar(n int, idx int32) (c *Char) {
@@ -2366,6 +2366,52 @@ func (c *Char) clear1() {
 	c.kovelocity = false
 	c.preserve = 0
 }
+
+func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
+
+	getter := sys.playerID(pid)
+
+	// Invalid ID
+	if getter == nil {
+		return false
+	}
+
+	// No animations to check
+	if c.curFrame == nil || getter.curFrame == nil {
+		return false
+	}
+
+	var clsn1, clsn2 []float32
+
+	if box1 == 2 {
+		clsn1 = c.curFrame.Clsn2()
+	} else {
+		clsn1 = c.curFrame.Clsn1()
+	}
+
+	if box2 == 1 {
+		clsn2 = getter.curFrame.Clsn1()
+	} else if box2 == 3 {
+		clsn2 = getter.sizeBox
+	} else {
+		clsn2 = getter.curFrame.Clsn2()
+	}
+
+	if clsn1 == nil || clsn2 == nil {
+		return false
+	}
+
+	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
+		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
+		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
+		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
+		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
+		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
+			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
+
+}
+
 func (c *Char) copyParent(p *Char) {
 	c.parentIndex = p.helperIndex
 	c.name, c.key, c.size, c.teamside = p.name+"'s helper", p.key, p.size, p.teamside
@@ -2465,20 +2511,6 @@ func (c *Char) gi() *CharGlobalInfo {
 // Return Char Global Info from the state owner
 func (c *Char) stOgi() *CharGlobalInfo {
 	return &sys.cgi[c.ss.sb.playerNo]
-}
-
-// Return Char Global Info according to working state
-// Essentially check it in the character itself during negative states and in the state owner otherwise
-// There was a bug in the default values of DefenceMulSet and Explod when a character threw another character with a different engine version
-// This showed that engine version should always be checked in the player that owns the code
-// So this function was added to replace stOgi() in version checks
-// Version checks should probably be refactored in the future, regardless
-func (c *Char) stWgi() *CharGlobalInfo {
-	if c.minus == 0 {
-		return &sys.cgi[c.ss.sb.playerNo]
-	} else {
-		return &sys.cgi[c.playerNo]
-	}
 }
 
 func (c *Char) ocd() *OverrideCharData {
@@ -3476,7 +3508,7 @@ func (c *Char) backEdgeBodyDist() float32 {
 	// In Mugen, edge body distance is changed when the character is in statetype A or L
 	// This is undocumented and doesn't seem to offer any benefit
 	offset := float32(0)
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 		if c.ss.stateType == ST_A {
 			offset = 0.5 / c.localscl
 		} else if c.ss.stateType == ST_L {
@@ -3504,27 +3536,30 @@ func (c *Char) comboCount() int32 {
 	}
 	return sys.lifebar.co[c.teamside].combo
 }
+
 func (c *Char) command(pn, i int) bool {
 	if !c.keyctrl[0] || c.cmd == nil {
 		return false
 	}
 	cl := c.cmd[pn].At(i)
-	if len(cl) > 0 && c.key < 0 {
-		if c.helperIndex != 0 || len(cl[0].cmd) != 1 || len(cl[0].cmd[0].key) !=
-			1 || int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
-			return i == int(c.cpucmd)
-		}
-		if c.helperIndex != 0 {
-			return false
-		}
-	}
+	// Check if any command with that name is buffered
 	for _, c := range cl {
 		if c.curbuftime > 0 {
 			return true
 		}
 	}
+	// AI cheating for commands longer than 1 button
+	if c.key < 0 && len(cl) > 0 {
+		if c.helperIndex != 0 || len(cl[0].cmd) > 1 || len(cl[0].cmd[0].key) > 1 ||
+			int(Btoi(cl[0].cmd[0].slash)) != len(cl[0].hold) {
+			if i == int(c.cpucmd) {
+				return true
+			}
+		}
+	}
 	return false
 }
+
 func (c *Char) commandByName(name string) bool {
 	if c.cmd == nil {
 		return false
@@ -3562,7 +3597,7 @@ func (c *Char) frontEdge() float32 {
 func (c *Char) frontEdgeBodyDist() float32 {
 	// See BackEdgeBodyDist
 	offset := float32(0)
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 		if c.ss.stateType == ST_A {
 			offset = 0.5 / c.localscl
 		} else if c.ss.stateType == ST_L {
@@ -3685,7 +3720,7 @@ func (c *Char) moveReversed() int32 {
 }
 
 // Mugen version trigger
-func (c *Char) mugenVersion() float32 {
+func (c *Char) mugenVersionF() float32 {
 	// Here the version is always checked directly in the character instead of the working state
 	// This is because in a custom state this trigger will be used to know the enemy's version rather than our own
 	if c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0 {
@@ -4327,7 +4362,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
 	// of a hitpause when attempting to change state during the hitpause.
 	// Ikemenver chars aren't affected by this.
-	if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+	if c.ss.sb.ikemenver[0] != 0 || c.ss.sb.ikemenver[1] != 0 {
 		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 	}
 	c.stchtmp = true
@@ -4337,7 +4372,7 @@ func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
 		// Reset persistent counters for this state (MUGEN chars)
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
 		}
 		// Flag RemoveOnChangeState explods for removal
@@ -4392,6 +4427,7 @@ func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {
 	}
 	c.changeStateEx(no, playerno, anim, ctrl, ffx)
 }
+
 func (c *Char) destroy() {
 	if c.helperIndex > 0 {
 		c.exitTarget(true)
@@ -4431,6 +4467,7 @@ func (c *Char) destroy() {
 		c.setCSF(CSF_destroy)
 	}
 }
+
 func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	if c.helperIndex <= 0 {
 		return false
@@ -4448,6 +4485,7 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	}
 	return true
 }
+
 func (c *Char) newHelper() (h *Char) {
 	// If any existing helper entries are valid for overwriting, use that one
 	i := int32(0)
@@ -4458,7 +4496,7 @@ func (c *Char) newHelper() (h *Char) {
 			break
 		}
 	}
-	// Otherwise appends to the end
+	// Otherwise append to the end
 	if int(i) >= len(sys.chars[c.playerNo]) {
 		if i >= sys.helperMax {
 			return
@@ -4466,12 +4504,53 @@ func (c *Char) newHelper() (h *Char) {
 		h = newChar(c.playerNo, i)
 		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 	}
-	h.id, h.helperId, h.ownpal = sys.newCharId(), 0, false
+	h.id = sys.newCharId()
+	h.helperId = 0
+	h.ownpal = false
 	h.copyParent(c)
 	c.addChild(h)
 	sys.charList.add(h)
 	return
 }
+
+func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
+	facing int32, rp [2]int32, extmap bool) {
+	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
+	h.setX(p[0])
+	h.setY(p[1])
+	h.setZ(p[2])
+	h.vel = [3]float32{}
+	if h.ownpal {
+		h.palfx = newPalFX()
+		if c.getPalfx().remap == nil {
+			c.palfx.remap = c.gi().palettedata.palList.GetPalMap()
+		}
+		tmp := c.getPalfx().remap
+		h.palfx.remap = make([]int, len(tmp))
+		copy(h.palfx.remap, tmp)
+		c.forceRemapPal(h.palfx, rp)
+	} else {
+		h.palfx = c.getPalfx()
+	}
+	if extmap {
+		for key, value := range c.mapArray {
+			h.mapArray[key] = value
+		}
+	}
+	// Mugen 1.1 behavior if invertblend param is omitted (only if char mugenversion = 1.1)
+	if c.ss.sb.mugenver[0] == 1 && c.ss.sb.mugenver[1] == 1 && c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
+		h.palfx.invertblend = -2
+	}
+	h.changeStateEx(st, c.playerNo, 0, 1, "")
+	// Helper ID must be positive
+	if h.helperId < 0 {
+		sys.appendToConsole(h.warn() + fmt.Sprintf("has negative Helper ID"))
+		h.helperId = 0
+	}
+	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
+	h.actionPrepare()
+}
+
 func (c *Char) helperPos(pt PosType, pos [3]float32, facing int32,
 	dstFacing *float32, localscl float32, isProj bool) (p [3]float32) {
 	if facing < 0 {
@@ -4529,43 +4608,7 @@ func (c *Char) helperPos(pt PosType, pos [3]float32, facing int32,
 	}
 	return
 }
-func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
-	facing int32, rp [2]int32, extmap bool) {
-	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
-	h.setX(p[0])
-	h.setY(p[1])
-	h.setZ(p[2])
-	h.vel = [3]float32{}
-	if h.ownpal {
-		h.palfx = newPalFX()
-		if c.getPalfx().remap == nil {
-			c.palfx.remap = c.gi().palettedata.palList.GetPalMap()
-		}
-		tmp := c.getPalfx().remap
-		h.palfx.remap = make([]int, len(tmp))
-		copy(h.palfx.remap, tmp)
-		c.forceRemapPal(h.palfx, rp)
-	} else {
-		h.palfx = c.getPalfx()
-	}
-	if extmap {
-		for key, value := range c.mapArray {
-			h.mapArray[key] = value
-		}
-	}
-	// Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if h.stWgi().mugenver[0] == 1 && h.stWgi().mugenver[1] == 1 && h.stWgi().ikemenver[0] == 0 && h.stWgi().ikemenver[1] == 0 {
-		h.palfx.invertblend = -2
-	}
-	h.changeStateEx(st, c.playerNo, 0, 1, "")
-	// Helper ID must be positive
-	if h.helperId < 0 {
-		sys.appendToConsole(h.warn() + fmt.Sprintf("has negative Helper ID"))
-		h.helperId = 0
-	}
-	// Prepare newly created helper so it can be successfully run later via actionRun() in charList.action()
-	h.actionPrepare()
-}
+
 func (c *Char) newExplod() (*Explod, int) {
 	explinit := func(expl *Explod) *Explod {
 		expl.clear()
@@ -4575,7 +4618,7 @@ func (c *Char) newExplod() (*Explod, int) {
 		expl.layerno = c.layerNo
 		expl.palfx = c.getPalfx()
 		expl.palfxdef = PalFXDef{color: 1, hue: 0, mul: [...]int32{256, 256, 256}}
-		if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.sb.mugenver[0] == 1 && c.ss.sb.mugenver[1] == 1 && c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 			expl.projection = Projection_Perspective
 		} else {
 			expl.projection = Projection_Orthographic
@@ -4930,7 +4973,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 	if !clsnscale {
 		p.clsnScale = c.clsnScale
 	}
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
 		p.hitdef.nochainid = [...]int32{-1, -1, -1, -1, -1, -1, -1, -1}
 	}
@@ -5018,7 +5061,7 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 	if hd.attr&int32(ST_A) != 0 {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity*1.3)
 		} else {
 			ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
@@ -5596,7 +5639,7 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1200
 	if !kill && damage >= float64(c.life) {
 		// If a Mugen character attacks a char with 0 life and kill = 0, the attack will actually heal
-		if c.life > 0 || c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if c.life > 0 || c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 			damage = float64(c.life - 1)
 		}
 	}
@@ -5619,7 +5662,7 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	}
 	// Limit value if kill is false
 	if !kill && add <= float64(-c.life) {
-		if c.life > 0 || c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 { // See computeDamage
+		if c.life > 0 || c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 { // See computeDamage
 			add = float64(1 - c.life)
 		}
 	}
@@ -5791,7 +5834,7 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 	cpos := c.pos[0] * c.localscl
 	opos := opp.pos[0] * opp.localscl
 	// Update distance while bound. Mugen chars only
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
 				f := bt.facing
@@ -5812,7 +5855,7 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	cpos := c.pos[1] * c.localscl
 	opos := opp.pos[1] * opp.localscl
 	// Update distance while bound. Mugen chars only
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
 				cpos = bt.pos[1]*bt.localscl + (c.bindPos[1]+c.bindPosAdd[1])*c.localscl
@@ -5850,8 +5893,8 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeSF()
 	}
 	dist := c.facing * c.distX(rd, oc)
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if c.stWgi().mugenver[0] != 1 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
+		if c.ss.sb.mugenver[0] != 1 {
 			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
 			dist = float32(int32(dist))
 		}
@@ -5863,8 +5906,8 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeSF()
 	}
 	dist := c.distY(rd, oc)
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if c.stWgi().mugenver[0] != 1 {
+	if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
+		if c.ss.sb.mugenver[0] != 1 {
 			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
 			dist = float32(int32(dist))
 		}
@@ -5876,7 +5919,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 		return BytecodeSF()
 	} else {
 		dist := c.facing * c.bodyDistX(p2, oc)
-		if c.stWgi().mugenver[0] != 1 {
+		if c.ss.sb.mugenver[0] != 1 {
 			dist = float32(int32(dist)) // In the old version, decimal truncation was used
 		}
 		return BytecodeFloat(dist)
@@ -5885,7 +5928,7 @@ func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 func (c *Char) p2BodyDistY(oc *Char) BytecodeValue {
 	if p2 := c.p2(); p2 == nil {
 		return BytecodeSF()
-	} else if oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
+	} else if oc.ss.sb.ikemenver[0] == 0 && oc.ss.sb.ikemenver[1] == 0 {
 		return c.rdDistY(c.p2(), oc) // In Mugen, P2BodyDist Y simply does the same as P2Dist Y
 	} else {
 		return BytecodeFloat(c.bodyDistY(p2, oc))
@@ -5945,7 +5988,7 @@ func (c *Char) getPalfx() *PalFX {
 	}
 	c.palfx = newPalFX()
 	// Mugen 1.1 behavior if invertblend param is omitted(Only if char mugenversion = 1.1)
-	if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 1 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.palfx != nil {
+	if c.ss.sb.mugenver[0] == 1 && c.ss.sb.mugenver[1] == 1 && c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 && c.palfx != nil {
 		c.palfx.PalFXDef.invertblend = -2
 	}
 	return c.palfx
@@ -6391,7 +6434,7 @@ func (c *Char) posUpdate() {
 					c.mhv.cornerpush = c.cornerVelOff
 				}
 				// In Ikemen the cornerpush friction is defined by the target instead
-				if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+				if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 					friction = 0.7
 				} else {
 					if p[0].ss.stateType == ST_C || p[0].ss.stateType == ST_L {
@@ -6989,6 +7032,7 @@ func (c *Char) actionPrepare() {
 					c.setCSF(CSF_playerpush)
 				}
 			}
+			c.pushPriority = 0 // Reset player pushing priority
 			c.attackDist[0] = float32(c.size.attack.dist.front)
 			c.attackDist[1] = float32(c.size.attack.dist.back)
 			// HitBy timers
@@ -7016,7 +7060,7 @@ func (c *Char) actionPrepare() {
 		// This flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
 		// In WinMugen all of these flags persisted during hitpause
-		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
+		if !c.hitPause() || c.ss.sb.ikemenver[0] != 0 || c.ss.sb.ikemenver[1] != 0 || c.ss.sb.mugenver[0] == 1 {
 			c.unsetCSF(CSF_angledraw | CSF_trans)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
@@ -7835,7 +7879,7 @@ func (c *Char) cueDraw() {
 		//}
 
 		sd := &SprData{c.anim, c.getPalfx(), pos,
-			scl, c.alpha, c.sprPriority + int32(c.pos[2]), Rotation{agl, 0, 0}, c.angleScale, false,
+			scl, c.alpha, c.sprPriority + int32(c.pos[2] * c.localscl), Rotation{agl, 0, 0}, c.angleScale, false,
 			c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing,
 			c.localcoord / sys.chars[c.animPN][0].localcoord, // https://github.com/ikemen-engine/Ikemen-GO/issues/1459 and 1778
 			0, 0, [4]float32{0, 0, 0, 0}}
@@ -8274,6 +8318,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				pwr, hpwr, gpwr := ghv.power, ghv.hitpower, ghv.guardpower
 				dpnt, gpnt := ghv.dizzypoints, ghv.guardpoints
 				fall, hc, gc, fc, by := ghv.fallflag, ghv.hitcount, ghv.guardcount, ghv.fallcount, ghv.hitBy
+				drec := ghv.down_recovertime
 				kill := ghv.kill
 				cheese := ghv.cheeseKO
 				// Clear variables
@@ -8289,6 +8334,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.guardpower = gpwr
 				ghv.dizzypoints = dpnt
 				ghv.guardpoints = gpnt
+				ghv.down_recovertime = drec
 				ghv.kill = kill
 				ghv.cheeseKO = cheese
 				// Update variables
@@ -8391,13 +8437,20 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.fallcount = fc
 					ghv.fallflag = ghv.fallflag || fall // If falling now or before the hit
 					ghv.down_recover = hd.down_recover
-					if hd.down_recovertime < 0 {
-						ghv.down_recovertime = getter.gi().data.liedown.time
+					// Down recovery time
+					// When the char is already down this can't normally be increased
+					// https://github.com/ikemen-engine/Ikemen-GO/issues/2026
+					if hd.down_recovertime < 0 { // Default to char constant
+						if ghv.down_recovertime > getter.gi().data.liedown.time || getter.ss.stateType != ST_L {
+							ghv.down_recovertime = getter.gi().data.liedown.time
+						}
 					} else {
-						ghv.down_recovertime = hd.down_recovertime
+						if ghv.down_recovertime > hd.down_recovertime || getter.ss.stateType != ST_L {
+							ghv.down_recovertime = hd.down_recovertime
+						}
 					}
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
-					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+					if c.ss.sb.ikemenver[0] == 0 && c.ss.sb.ikemenver[1] == 0 {
 						ghv.hittime += 1
 					}
 				}
@@ -9200,13 +9253,27 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				getter.pushed, c.pushed = true, true
 
+				// Decide who gets pushed
+				cpushed := float32(0.5)
+				gpushed := float32(0.5)
+				if c.pushPriority > getter.pushPriority {
+					cpushed = 0
+					gpushed = 1
+				} else if c.pushPriority < getter.pushPriority {
+					cpushed = 1
+					gpushed = 0
+				}
+
 				// Compare player weights and apply pushing factors
-				cfactor := float32(getter.size.weight) / float32(c.size.weight+getter.size.weight) * c.size.pushfactor / 2
-				gfactor := float32(c.size.weight) / float32(c.size.weight+getter.size.weight) * getter.size.pushfactor / 2
+				cfactor := float32(getter.size.weight) / float32(c.size.weight+getter.size.weight) * c.size.pushfactor * cpushed
+				gfactor := float32(c.size.weight) / float32(c.size.weight+getter.size.weight) * getter.size.pushfactor * gpushed
 
 				// Determine in which axes to push the players
-				pushx := sys.stage.topbound == sys.stage.botbound || getter.vel[0] != 0 || c.vel[0] != 0
-				pushz := sys.stage.topbound != sys.stage.botbound && (getter.vel[2] != 0 || c.vel[2] != 0)
+				// This needs to check both if the players have velocity or if their positions changed
+				pushx := sys.stage.topbound == sys.stage.botbound ||
+					getter.vel[0] != 0 || c.vel[0] != 0 || getter.pos[0] != getter.oldPos[0] || c.pos[0] != c.oldPos[0]
+				pushz := sys.stage.topbound != sys.stage.botbound &&
+					(getter.vel[2] != 0 || c.vel[2] != 0 || getter.pos[2] != getter.oldPos[2] || c.pos[2] != c.oldPos[2])
 
 				if pushx {
 					tmp := getter.distX(c, getter)
@@ -9215,13 +9282,13 @@ func (cl *CharList) pushDetection(getter *Char) {
 						// This also decides who gets to stay in the corner
 						// Some of these checks are similar to char run order, but this approach allows better tie break control
 						// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
-						if c.asf(ASF_cornerpriority) && !getter.asf(ASF_cornerpriority) {
+						if c.pushPriority > getter.pushPriority {
 							if c.pos[0] >= 0 {
 								tmp = 1
 							} else {
 								tmp = -1
 							}
-						} else if !c.asf(ASF_cornerpriority) && getter.asf(ASF_cornerpriority) {
+						} else if c.pushPriority < getter.pushPriority {
 							if getter.pos[0] >= 0 {
 								tmp = -1
 							} else {
@@ -9242,17 +9309,17 @@ func (cl *CharList) pushDetection(getter *Char) {
 						}
 					}
 					if tmp > 0 {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[0] -= ((gxright - cxleft) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[0] += ((gxright - cxleft) * cfactor) / c.localscl
 						}
 					} else {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[0] += ((cxright - gxleft) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[0] -= ((cxright - gxleft) * cfactor) / c.localscl
 						}
 					}
@@ -9261,17 +9328,17 @@ func (cl *CharList) pushDetection(getter *Char) {
 				// TODO: Z axis push might need some decision for who stays in the corner, like X axis
 				if pushz {
 					if getter.pos[2] >= c.pos[2] {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[2] -= ((czfront - gzback) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[2] += ((czfront - gzback) * cfactor) / c.localscl
 						}
 					} else {
-						if !getter.asf(ASF_immovable) || c.asf(ASF_immovable) {
+						if c.pushPriority >= getter.pushPriority {
 							getter.pos[2] -= ((gzfront - czback) * gfactor) / getter.localscl
 						}
-						if !c.asf(ASF_immovable) || getter.asf(ASF_immovable) {
+						if c.pushPriority <= getter.pushPriority {
 							c.pos[2] += ((gzfront - czback) * cfactor) / c.localscl
 						}
 					}

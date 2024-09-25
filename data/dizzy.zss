@@ -1,69 +1,9 @@
-# Dizzy code adopted from Shiyo Kakuge's add004
+# Dizzy code adapted from Shiyo Kakuge's add004
 #===============================================================================
 # Functions
 #===============================================================================
-# Dizzy Bird Helper
-[Function DizzyBirdHelper()]
-if !numHelper(const(StateDizzyBirdsHelper)) {
-	# Background
-	explod{
-		# Do note that dizzy bird anims and sounds are called from gofx.def, not fightfx.air/common.snd
-		anim: GO const(FxBackgroundColor);
-		space: screen;
-		postype: left;
-		pos: const240p(-3 * 320), screenHeight / 2; # color 3 (red)
-		scale: 320, 7.5 * screenHeight / const240p(240);
-		bindtime: -1;
-		supermovetime: -1;
-		pausemovetime: -1;
-		ownpal: 1;
-		under: 1;
-		ignorehitpause: 1;
-	}
-	helper{
-		id: const(StateDizzyBirdsHelper);
-		stateno: const(StateDizzyBirdsHelper);
-		name: "Dizzy Birds";
-		ownpal: 1;
-	}
-}
-
-# Dizzy Bird Explod Creation [from Helper]
-[Function DizzyBirdExplodCreation(arg)]
-if !numExplod($arg) {
-	explod{
-		id: $arg;
-		anim: GO const(FxDizzyEffect) + map(birdType);
-		postype: p1;
-		ownpal: 1;
-		vel: 0, 0;
-		facing: -1;
-		removetime: 600;
-	}
-}
-
-# Dizzy Bird Explod Update [from Helper]
-[Function DizzyBirdExplodUpdate(arg)]
-if numExplod($arg) {
-	let circleTime = ((gameTime % 90) + 22.5 * $arg) / 45.0 * pi;
-	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
-	let birdScale = (cos($circleTime) + 3) * 0.12 * ifElse(($circleHeight < 0), -1, 1);
-	let fadeTime = ifElse(map(birdState) <= 0, 0, ifElse(map(birdState) >= 32, 32, map(birdState))); # Effects are faded out by code rather than animation
-	modifyExplod{
-		id: $arg;
-		anim: GO const(FxDizzyEffect) + map(birdType);
-		postype: p1;
-		pos: sin($circleTime) * map(birdRadius), $circleHeight + fVar(11) + $fadeTime * const240p(-1);
-		angle: 15 * sin($circleTime * 3);
-		sprpriority: ifElse($circleHeight > 0, 10, -10);
-		scale: ifElse(map(birdType) = 5, abs($birdScale), $birdScale), abs($birdScale); # Musical notes don't flip
-		trans: addAlpha;
-		alpha: 256 - $fadeTime * 8, $fadeTime * 8;
-	}
-}
-
 # Dizzy Hit Ground Explod (direct copy from common1)
-[Function DizzyHitGroundExplod(vely)]
+[Function IkSys_DizzyHitGroundExplod(vely)]
 explod{
 	anim: F (60 + ($vely > const240p(5)) + ($vely > const240p(14)));
 	postype: p1;
@@ -119,10 +59,17 @@ if map(birdState) <= 0 {
 	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.10;
 
 	# Create dizzy bird explods
-	call DizzyBirdExplodCreation(0);
-	call DizzyBirdExplodCreation(1);
-	call DizzyBirdExplodCreation(2);
-	call DizzyBirdExplodCreation(3);
+	# Do note that dizzy bird anims and sounds are called from gofx.def, not fightfx.air/common.snd
+	if numExplod < 4 {
+		explod{
+			anim: GO const(FxDizzyEffect) + map(birdType);
+			postype: p1;
+			ownpal: 1;
+			vel: 0, 0;
+			facing: -1;
+			removetime: 600;
+		}
+	}
 
 	# Play sound again as soon as it stops
 	# Volume goes down as character recovers from dizzy
@@ -131,186 +78,60 @@ if map(birdState) <= 0 {
 		value: GO 5300, 0;
 		channel: 2;
 		lowpriority: 1;
-		volumescale: ifElse(parent,stateNo = const(StateDizzy), 100 * (180 - min(120, parent,time)) / 180.0, 100)
 	}
-
 }
 
 # Update dizzy bird explods
-# Replaces creating new explods every frame
-call DizzyBirdExplodUpdate(0);
-call DizzyBirdExplodUpdate(1);
-call DizzyBirdExplodUpdate(2);
-call DizzyBirdExplodUpdate(3);
+for i = 0; numExplod; 1 {
+	let circleTime = ((gameTime % 90) + 22.5 * $i) / 45.0 * pi;
+	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
+	let birdScale = (cos($circleTime) + 3) * 0.12 * ifElse(($circleHeight < 0), -1, 1);
+	let fadeTime = ifElse(map(birdState) <= 0, 0, ifElse(map(birdState) >= 32, 32, map(birdState))); # Effects are faded out by code rather than animation
+	modifyExplod{
+		id: -1;
+		index: $i;
+		anim: GO const(FxDizzyEffect) + map(birdType);
+		postype: p1;
+		pos: sin($circleTime) * map(birdRadius), $circleHeight + fVar(11) + $fadeTime * const240p(-1);
+		angle: 15 * sin($circleTime * 3);
+		sprpriority: ifElse($circleHeight > 0, 10, -10);
+		scale: ifElse(map(birdType) = 5, abs($birdScale) * facing, $birdScale), abs($birdScale); # Musical notes don't flip
+		trans: addAlpha;
+		alpha: 256 - $fadeTime * 8, $fadeTime * 8;
+	}
+}
+
+# Fade out bird sound
+if parent, stateNo = const(StateDizzy) {
+	modifySnd{
+		channel: 2;
+		volumescale: 100.0 * (240.0 - min(120, parent, time)) / 240.0; # Fade to 50%
+	}
+}
 
 #===============================================================================
 # StateDizzyFallDown_standCrouch
+# StateDizzyFallDown_air
+# StateDizzyLyingDown
 #===============================================================================
+
+# These states are deprecated in Ikemen 1.0. They are currently only kept to prevent older characters from entering invalid states
+
 [StateDef const(StateDizzyFallDown_standCrouch); type: U; movetype: H; physics: N; velset: 0, 0; ctrl: 0;]
 
-notHitBy{value: SCA}
-
-if time = 0 {
-	dizzySet{value: 1}
-	if stateType = S {
-		if anim > const(AnimStandOrAirHitLow_light) {
-			changeAnim{value: const(AnimStandOrAirHitHigh_hard)}
-		} else {
-			changeAnim{value: const(AnimStandOrAirHitLow_hard)}
-		}
-	} else {
-		changeAnim{value: const(AnimCrouchHit_hard)}
-	}
-}
-
-if anim = [const(AnimStandOrAirHitHigh_hard), const(AnimStandOrAirHitLow_hard)] && (animTime = 0 || time > 16) {
-	changeAnim{value: const(AnimCrouchHit_hard)}
-	stateTypeSet{statetype: C}
-}
-if (anim = const(AnimCrouchHit_hard) && animTime = 0) || time > 26 {
-	call DizzyHitGroundExplod(0);
-	selfState{value: const(StateDizzyLyingDown)}
-}
-
-# Failsafe
-if !dizzy || time > 300 {
+if time > 0 { # Avoid ChangeState loops
 	selfState{value: const(StateStandGetHit_knockedBack)}
 }
 
-#===============================================================================
-# StateDizzyFallDown_air
-#===============================================================================
 [StateDef const(StateDizzyFallDown_air); type: A; movetype: H; physics: N; anim: const(AnimAirFall); ctrl: 0;]
 
-notHitBy{value: SCA}
-
-# Acceleration
-velAdd{y: ifElse(stateType = A, getHitVar(yAccel), const240p(0.5))}
-
-# Set dizzy flag and initial animation
-if time = 0 {
-	dizzySet{value: 1}
-	if selfAnimExist(const(AnimAirFall_hitUpDiagonal)) {
-		changeAnim{value: const(AnimAirFall_hitUpDiagonal)}
-	} else {
-		changeAnim{value: const(AnimStandOrAirHitBack)}
-	}
-}
-
-# Falling through the air animations
-if anim = const(AnimStandOrAirHitBack) {
-	if animTime = 0 {
-		changeAnim{value: ifElse(selfAnimExist(const(AnimStandOrAirHitTransition)), const(AnimStandOrAirHitTransition), const(AnimAirFall))}
-	}
-}
-if anim = const(AnimStandOrAirHitTransition) {
-	if animTime = 0 {
-		changeAnim{value: const(AnimAirFall)}
-	}
-}
-if anim = [const(AnimAirFall), const(AnimAirFall) + 9] {
-	if vel y > 0 {
-		if SelfAnimExist(const(AnimAirFall_comingDown) + (anim % 10)) {
-			changeAnim{value: const(AnimAirFall_comingDown) + (anim % 10)}
-		}
-	}
-}
-
-# Hit ground from fall
-if anim = [const(AnimStandOrAirHitBack), const(AnimLieDownHit_hitUpIntoAir)] {
-	if vel y > 0 &&
-	pos y >= ifElse(anim = [const(AnimAirFall) + 1, const(AnimAirFall) + 9] || anim = [const(AnimAirFall_comingDown) + 1, const(AnimAirFall_comingDown) + 9], 0, const(movement.air.gethit.groundlevel)) {
-		stateTypeSet{statetype: L}
-		changeAnim{value: const(AnimHittingGroundFromFall) + (anim % 10) * SelfAnimExist(const(AnimHittingGroundFromFall) + (anim % 10))}
-	}
-}
-
-if anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall) + 9] {
-	posSet{y: 0}
-	velSet{y: 0}
-	posFreeze{}
-	persistent(0) if getHitVar(fall.yVel) {
-		call DizzyHitGroundExplod(floor(vel y));
-	}
-}
-
-# Bounce into air
-if animTime = 0 && anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall) + 9] {
-	stateTypeSet{statetype: L}
-	changeAnim{value: const(AnimBounceIntoAir) + (anim % 10) * SelfAnimExist(const(AnimBounceIntoAir) + (anim % 10))}
-}
-
-persistent(0) if anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9] {
-	hitFallVel{}
-	posSet{y: const(movement.down.bounce.offset.y)}
-	posAdd{
-		x: const(movement.down.bounce.offset.x);
-		y: ifElse(const(movement.down.bounce.offset.y) > -5, -5, const(movement.down.bounce.offset.y));
-	}
-}
-
-# Hit ground from bounce
-if anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9] {
-	if vel y > 0 && pos y >= const(movement.down.bounce.groundlevel) {
-		call DizzyHitGroundExplod(floor(vel y));
-		selfState{value: const(StateDizzyLyingDown)}
-	}
-}
-
-# Failsafe
-if !dizzy || time > 300 {
+if time > 0 {
 	selfState{value: const(StateAirGetHit_falling)}
 }
 
-#===============================================================================
-# StateDizzyLyingDown
-#===============================================================================
 [StateDef const(StateDizzyLyingDown); type: L; movetype: H; physics: N; ctrl: 0;]
 
-notHitBy{value: SCA; time: 1}
-
-# Friction
-if abs(vel x) < const(movement.down.friction.threshold) {
-	velSet{x: 0}
-} else {
-	velMul{x: 0.85}
-}
-
-if time = 0 {
-	posSet{y: 0}
-	velSet{y: 0}
-	dizzySet{value: 1}
-}
-
-# Hitting ground animation
-if time = 0 {
-	if anim = [const(AnimAirFall), const(AnimAirFall) + 9]
-	|| anim = [const(AnimAirFall_comingDown), const(AnimAirFall_comingDown) + 9]
-	|| anim = [const(AnimHittingGroundFromFall), const(AnimHittingGroundFromFall) + 9]
-	|| anim = [const(AnimBounceIntoAir), const(AnimBounceIntoAir) + 9] {
-		changeAnim{value: const(AnimHitGroundFromBounce) + (anim % 10) * SelfAnimExist(const(AnimHitGroundFromBounce) + (anim % 10))}
-	} else {
-		changeAnim{value: const(AnimHitGroundFromBounce)}
-	}
-}
-
-# Lying down animation
-if animTime = 0 && anim = [const(AnimHitGroundFromBounce), const(AnimHitGroundFromBounce) + 9] {
-	changeAnim{value: const(AnimLieDown) + (anim % 10) * SelfAnimExist(const(AnimLieDown) + (anim % 10))}
-}
-
-# Getting up animation
-if time >= 30 && anim = [const(AnimLieDown), const(AnimLieDown) + 9] {
-	changeAnim{value: const(AnimGetUpFromLieDown) + (anim % 10) * SelfAnimExist(const(AnimGetUpFromLieDown) + (anim % 10))}
-}
-
-# End state
-if (animTime = 0 && anim = [const(AnimGetUpFromLieDown), const(AnimGetUpFromLieDown) + 9]) || time >= 90 {
-	selfState{value: const(StateDizzy)}
-}
-
-# Failsafe
-if !dizzy || time > 300 {
+if time > 0 {
 	selfState{value: const(StateDownedGetHit_gettingUp)}
 }
 
@@ -338,15 +159,20 @@ if !numHelper(const(StateDizzyBirdsHelper)) {
 
 if time > 0 {
 	mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -1}
+	# Mash buttons to recover faster
 	if aiLevel = 0 {
-		if (command = "x" || command = "y" || command = "z" || command = "a" || command = "b" || command = "c") {
-			mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3} # Directions should also reduce time, but single directional inputs currently aren't common inputs
+		if inputTime(U) = 1 || inputTime(D) = 1 || inputTime(B) = 1 || inputTime(F) = 1 ||
+		inputTime(a) = 1 || inputTime(b) = 1 || inputTime(c) = 1 || inputTime(x) = 1 || inputTime(y) = 1 || inputTime(z) = 1 {
+			mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
+			palFx{add: 32, 32, 32; time: 1}
 		}
 	} else if max(4, aiLevel) >= randomRange(1, 12) { # 33% - 66,67% chance, depending on aiLevel
 		mapAdd{map: "_iksys_dizzyRecoveryTime"; value: -3}
+		palFx{add: 32, 32, 32; time: 1}
 	}
 }
 
+# Must stay dizzy for at least 60 frames
 if time >= 60 {
 	if map(_iksys_dizzyRecoveryTime) <= 0 || roundState > 2 {
 		dizzySet{value: 0}
@@ -367,16 +193,18 @@ if !dizzy || time > 300 {
 if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
+	# Initialize points and variables
 	dizzyPointsSet{value: dizzyPointsMax}
 	map(_iksys_dizzyPointsTimer) := 0;
 	map(_iksys_dizzyLimit) := 0;
 } else if alive {
-	# Upon getting hit, set cooldown timer
-	if dizzy || moveType = H || stateNo = const(StateDownedGetHit_gettingUp) {
-		map(_iksys_dizzyPointsTimer) := 60;
-	# Otherwise decrease cooldown timer by 1 each frame
-	} else if map(_iksys_dizzyPointsTimer) > 0 {
+	# Decrease cooldown timer
+	if map(_iksys_dizzyPointsTimer) > 0 {
 		mapAdd{map: "_iksys_dizzyPointsTimer"; value: -1}
+	}
+	# Set cooldown timer while getting hit
+	if dizzy || moveType = H && !getHitVar(guarded) || stateNo = const(StateDownedGetHit_gettingUp) {
+		map(_iksys_dizzyPointsTimer) := 60;
 	}
 
 	# Freeze dizzy points if character was already dizzied once in the combo
@@ -390,43 +218,80 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 	# Set dizzy flag
 	if !dizzy && dizzyPoints = 0 && !getHitVar(guarded) {
+		# Prevent dizzy if current attack does no dizzy damage
+		# Similar to using kill = 0 in LifeAdd
 		if getHitVar(frame) && getHitVar(dizzyPoints) <= 0 {
-			dizzyPointsSet{value: 1} # Similar to using kill = 0 in LifeAdd
+			dizzyPointsSet{value: 1}
 		} else if moveType = H && !inCustomState {
+			# Change get hit properties when becoming dizzy
 			dizzySet{value: 1}
-			hitFallSet{value: 1}
-			getHitVarSet{fall.recover: 0}
+			getHitVarSet{
+				xvel: getHitVar(air.velocity.x) + const(velocity.air.gethit.ko.add.y) * facing;
+				yvel: min(getHitVar(air.velocity.y), const(velocity.air.gethit.ko.ymin));
+				fall.recover: 0;
+				down.recover: 0;
+				down.recovertime: 30;
+			}
+			if !hitfall {
+				hitFallSet{value: 1}
+				if anim = [const(AnimCrouchHit_light), const(AnimCrouchHit_hard)] {
+					changeAnim{value: const(AnimStandOrAirHitBack)}
+				}
+			}
+			# Use diagonal hit animation if available
+			if anim != const(AnimAirFall_hitUpDiagonal) && selfAnimExist(const(AnimAirFall_hitUpDiagonal)) {
+				changeAnim{value: const(AnimAirFall_hitUpDiagonal)}
+			}
 		}
 	}
 
 	# Start dizzy behavior
 	if dizzy {
-		# Create dizzy effects
-		call DizzyBirdHelper();
 
-		# Become invulnerable until moving into Dizzy states for the first time
+		# Compatibility safeguard
+		if stateNo != const(StateDizzy) {
+			assertSpecial{flag: noInput; flag2: noAIlevel}
+		}
+
+		# Become invulnerable until moving into Dizzy state for the first time
 		if stateNo != const(StateDizzy) && !map(_iksys_dizzyLimit) {
 			notHitBy{value: SCA}
 		}
 
-		# Dizzy initial state depending on hit type
-		# Character can't enter dizzy state more than once per combo
+		# Enter Dizzy state
+		# Only allowed once per combo
 		if !map(_iksys_dizzyLimit) {
-			if stateNo = const(StateStandGetHit_knockedBack) || stateNo = const(StateCrouchGetHit_knockedBack) {
-				if hitOver {
-					selfState{value: const(StateDizzyFallDown_standCrouch)}
-				}
-			} else if (stateNo = const(StateAirGetHit_knockedAway) || stateNo = const(StateTrippedGetHit_knockedAway)) && hitShakeOver {
-				selfState{value: const(StateDizzyFallDown_air)}
-			} else if stateNo = const(StateDownedGetHit_lyingDown) || stateNo = const(StateDownedGetHit_lyingDown) + 1 {
-				selfState{value: const(StateDizzyLyingDown)}
+			if stateNo = [const(StateStand), const(StateGuard_end)] ||
+				(stateType = S || stateType = C) && hitShakeOver && hitOver ||
+				stateNo = const(StateDownedGetHit_gettingUp) && animTime = 0 {
+				selfState{value: const(StateDizzy)}
 			}
 		}
 
 		# Reset dizzy points and remove dizzy flag if the player is no longer being hit
-		if moveType != H && stateNo != const(StateDizzy) {
+		if moveType != H && stateType != L && stateNo != const(StateDizzy) {
 			dizzyPointsSet{value: dizzyPointsMax}
 			dizzySet{value: 0}
+		}
+
+		# Special effects
+		if !numHelper(const(StateDizzyBirdsHelper)) {
+			# Red screen
+			if palFxVar(bg.time) = 0 {
+				bgPalFx{
+					time: 30;
+					sincolor: -255, 60;
+					sinmul: 0, -255, -255, 60;
+				}
+			}
+			# Dizzy birds
+			helper{
+				id: const(StateDizzyBirdsHelper);
+				stateno: const(StateDizzyBirdsHelper);
+				name: "Dizzy Birds";
+				facing: ifelse(random < 500, -1, 1);
+				ownpal: 1;
+			}
 		}
 	}
 
@@ -434,7 +299,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 	if !dizzy && dizzyPoints < dizzyPointsMax && map(_iksys_dizzyPointsTimer) = 0 {
 		# Fixed value. Characters with a longer dizzy bar take longer to recover
 		# This property could use a character constant as well instead
-		dizzyPointsAdd{value: 5; absolute: 1}
+		dizzyPointsAdd{value: 3; absolute: 1}
 	}
 
 	# Reset dizzy limit once character can act again

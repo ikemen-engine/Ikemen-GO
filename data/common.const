@@ -197,9 +197,9 @@ StateInitialize = 5900
 
 ; dizzy.zss states
 StateDizzy = 6565300
-StateDizzyFallDown_standCrouch = 6565301
-StateDizzyFallDown_air = 6565302
-StateDizzyLyingDown = 6565303
+StateDizzyFallDown_standCrouch = 6565301 ; Deprecated
+StateDizzyFallDown_air = 6565302         ; Deprecated
+StateDizzyLyingDown = 6565303            ; Deprecated
 StateDizzyBirdsHelper = 6565310
 
 ; guardbreak.zss states
@@ -240,7 +240,7 @@ FxGuardBreakShockwave = 5410
 FxTagSwitchAI = 5600
 FxTagSwitchP1 = 5601
 FxTagSwitchP2 = 5602
-FxBackgroundColor = 9000
+FxBackgroundColor = 9000 ; Deprecated
 
 ; fight.def
 MsgFirstAttack = 401
@@ -258,15 +258,15 @@ MsgCombo25 = 412
 MsgWinSpecial = 413
 MsgWinHyper = 414
 MsgWinPerfect = 415
-MsgPartnerAssist = 416 ;not used
+MsgPartnerAssist = 416   ; Not used by default tag system
 MsgPartnerChange = 417
 MsgPartnerDown = 418
-MsgPartnerAssistOK = 419 ;not used
-MsgActiveSwitch = 420
-MsgCounterSwitch = 421
+MsgPartnerAssistOK = 419 ; Not used by default tag system
+MsgActiveSwitch = 420    ; Not used by default tag system
+MsgCounterSwitch = 421   ; Not used by default tag system
 MsgGuardBreak = 422
 MsgParry = 423
-MsgJustDefend = 424 ;not used
+MsgJustDefend = 424
 
 ; GetHitVar(attr)
 AttrStandingNormalAttack = 65
