@@ -1459,7 +1459,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	// Add sprite to draw list
 	sd := &SprData{e.anim, pfx, [2]float32{e.drawPos[0], e.drawPos[1] + e.drawPos[2]},
 		[...]float32{(facing * scale[0]) * e.localscl * zscale,
-			(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.pos[2] * e.localscl), rot, [...]float32{1, 1},
+			(e.vfacing * scale[1]) * e.localscl * zscale}, alp, e.sprpriority + int32(e.pos[2]*e.localscl), rot, [...]float32{1, 1},
 		e.space == Space_screen, playerNo == sys.superplayer, oldVer, facing, 1, int32(e.projection), fLength, ewin}
 	sprs.add(sd)
 	// Add shadow if color is not 0
@@ -1989,7 +1989,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		// Add sprite to draw list
 		sd := &SprData{p.ani, p.palfx, [...]float32{p.drawPos[0] * p.localscl, (p.drawPos[1] + p.drawPos[2]) * p.localscl},
 			[...]float32{p.facing * p.scale[0] * p.localscl * zscale, p.scale[1] * p.localscl * zscale}, [2]int32{-1},
-			p.sprpriority + int32(p.pos[2] * p.localscl), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
+			p.sprpriority + int32(p.pos[2]*p.localscl), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
 		sprs.add(sd)
@@ -2406,7 +2406,7 @@ func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
 		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
-		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
+			getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
 
@@ -7879,7 +7879,7 @@ func (c *Char) cueDraw() {
 		//}
 
 		sd := &SprData{c.anim, c.getPalfx(), pos,
-			scl, c.alpha, c.sprPriority + int32(c.pos[2] * c.localscl), Rotation{agl, 0, 0}, c.angleScale, false,
+			scl, c.alpha, c.sprPriority + int32(c.pos[2]*c.localscl), Rotation{agl, 0, 0}, c.angleScale, false,
 			c.playerNo == sys.superplayer, c.gi().mugenver[0] != 1, c.facing,
 			c.localcoord / sys.chars[c.animPN][0].localcoord, // https://github.com/ikemen-engine/Ikemen-GO/issues/1459 and 1778
 			0, 0, [4]float32{0, 0, 0, 0}}

@@ -324,7 +324,7 @@ func (bg *backGround) reset() {
 
 func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool) {
-	
+
 	// Handle parallax scaling (type = 2)
 	if bg.typ == 2 && (bg.width[0] != 0 || bg.width[1] != 0) && bg.anim.spr != nil {
 		bg.xscale[0] = float32(bg.width[0]) / float32(bg.anim.spr.Size[0])
@@ -422,14 +422,14 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	}
 
 	// Calculate window top left corner position
-	startrect0 := (float32(rect[0]) - (pos[0])*bg.windowdelta[0] + 
+	startrect0 := (float32(rect[0]) - (pos[0])*bg.windowdelta[0] +
 		(float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0] * stgscl[0]
 	if !isStage && wscl[0] == 1 {
 		startrect0 += float32(sys.gameWidth-320) / 2 * sys.widthScale
 	}
 	// TODO: Zoom doesn't work correctly. Especially in different localcoords
-	startrect1 := (float32(rect[1]) - pos[1] * bg.windowdelta[1] +
-		(float32(sys.gameHeight) - 240 * scly)) * sys.heightScale * wscl[1] * stgscl[1]
+	startrect1 := (float32(rect[1]) - pos[1]*bg.windowdelta[1] +
+		(float32(sys.gameHeight) - 240*scly)) * sys.heightScale * wscl[1] * stgscl[1]
 	startrect1 -= shakeY
 
 	// Determine final window
@@ -440,9 +440,9 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 
 	// Render background if it's within the screen area
 	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
-		bg.anim.Draw(&rect, x, y, sclx, scly, 
-			bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3, 
-			xbs*bgscl*(bg.scalestart[0]+xs)*xs3, 
+		bg.anim.Draw(&rect, x, y, sclx, scly,
+			bg.xscale[0]*bgscl*(bg.scalestart[0]+xs)*xs3,
+			xbs*bgscl*(bg.scalestart[0]+xs)*xs3,
 			ys*ys3, xras*x/(AbsF(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1],
 			Rotation{}, float32(sys.gameWidth)/2, bg.palfx, true, 1, false, 1, 0, 0, 0)
 	}

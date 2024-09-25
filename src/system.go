@@ -967,7 +967,7 @@ func (s *System) newCharId() int32 {
 		taken = false
 		for _, p := range s.chars {
 			for _, c := range p {
-				if c.id == newid && !c.csf(CSF_destroy){
+				if c.id == newid && !c.csf(CSF_destroy) {
 					taken = true
 					newid++
 					break

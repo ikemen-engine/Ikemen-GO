@@ -6445,7 +6445,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 func (c *Compiler) stateEngineVersion(sbc *StateBytecode, iscommon bool) {
 	if iscommon {
 		sbc.ikemenver = [3]uint16{1, 0, 0} // Use current Ikemen version
-		sbc.mugenver = [2]uint16{1, 1} // Just in case
+		sbc.mugenver = [2]uint16{1, 1}     // Just in case
 	} else {
 		sbc.ikemenver = sys.cgi[c.playerNo].ikemenver
 		sbc.mugenver = sys.cgi[c.playerNo].mugenver
