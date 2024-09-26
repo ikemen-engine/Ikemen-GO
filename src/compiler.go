@@ -1538,18 +1538,18 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "size":
 			bv1 = BytecodeInt(3)
 		default:
-			return bvNone(), Error("Invalid clsn1 type")
+			return bvNone(), Error("Invalid collision box type")
 		}
 		c.token = c.tokenizer(in)
 		if c.token != "," {
-			return bvNone(), Error("Missing A ','")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("Missing B ','")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		c2type := c.token
@@ -1561,7 +1561,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "size":
 			bv3 = BytecodeInt(3)
 		default:
-			return bvNone(), Error("Invalid clsn2 type")
+			return bvNone(), Error("Invalid collision box type")
 		}
 		c.token = c.tokenizer(in)
 		if err := c.checkClosingBracket(); err != nil {

@@ -2368,48 +2368,12 @@ func (c *Char) clear1() {
 }
 
 func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
-
 	getter := sys.playerID(pid)
-
 	// Invalid ID
 	if getter == nil {
 		return false
 	}
-
-	// No animations to check
-	if c.curFrame == nil || getter.curFrame == nil {
-		return false
-	}
-
-	var clsn1, clsn2 []float32
-
-	if box1 == 2 {
-		clsn1 = c.curFrame.Clsn2()
-	} else {
-		clsn1 = c.curFrame.Clsn1()
-	}
-
-	if box2 == 1 {
-		clsn2 = getter.curFrame.Clsn1()
-	} else if box2 == 3 {
-		clsn2 = getter.sizeBox
-	} else {
-		clsn2 = getter.curFrame.Clsn2()
-	}
-
-	if clsn1 == nil || clsn2 == nil {
-		return false
-	}
-
-	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
-		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
-		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
-		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
-			getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
-		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
-			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
-
+	return c.clsnCheck(getter, box1, box2, false)
 }
 
 func (c *Char) copyParent(p *Char) {
@@ -6732,15 +6696,30 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 		return false
 	}
 
-	return sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing, p.clsnAngle,
-		clsn2, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
-			c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
+
+	// Exceptions for size boxes as they don't rescale or rotate
+	charscale := [2]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
+		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
+	charangle := c.clsnAngle
+	if cbox == 3 {
+		charscale = [2]float32{c.localscl, c.localscl}
+		charangle = 0
+	}
+
+	return sys.clsnOverlap(clsn1,
+		[...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
+		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+		p.facing,
+		p.clsnAngle,
+		clsn2,
+		charscale,
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle)
+		c.pos[1]*c.localscl + c.offsetY()*c.localscl},
+		c.facing,
+		charangle)
 }
 
-func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
+func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) bool {
 	// Nil anim & standby check.
 	if c.curFrame == nil || getter.curFrame == nil ||
 		c.scf(SCF_standby) || getter.scf(SCF_standby) ||
@@ -6749,14 +6728,20 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
 	}
 
 	// Accepted box types
+	if charbox != 1 && charbox != 2 && charbox != 3 {
+		return false
+	}
 	if getterbox != 1 && getterbox != 2 && getterbox != 3 {
 		return false
 	}
 
 	// Required boxes not found
-	if c.hitdef.p2clsnrequire == 1 && getter.curFrame.Clsn1() == nil ||
-		c.hitdef.p2clsnrequire == 2 && getter.curFrame.Clsn2() == nil {
-		return false
+	// Only Hitdef and Reversaldef do this check
+	if reqcheck {
+		if c.hitdef.p2clsnrequire == 1 && getter.curFrame.Clsn1() == nil ||
+			c.hitdef.p2clsnrequire == 2 && getter.curFrame.Clsn2() == nil {
+			return false
+		}
 	}
 
 	// Decide which box types should collide
@@ -6765,10 +6750,12 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
 		clsn1 = c.curFrame.Clsn2()
 		clsn2 = getter.curFrame.Clsn2()
 	} else {
-		if charbox == 2 {
-			clsn1 = c.curFrame.Clsn2() // For push checking
-		} else {
+		if charbox == 1 {
 			clsn1 = c.curFrame.Clsn1()
+		} else if charbox == 3 {
+			clsn1 = c.sizeBox
+		} else {
+			clsn1 = c.curFrame.Clsn2()
 		}
 		if getterbox == 1 {
 			clsn2 = getter.curFrame.Clsn1()
@@ -6783,14 +6770,35 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32) bool {
 		return false
 	}
 
-	return sys.clsnOverlap(clsn1, [...]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
-		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl},
+	// Exceptions for size boxes as they don't rescale or rotate
+	charscale := [2]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
+		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
+	charangle := c.clsnAngle
+	if charbox == 3 {
+		charscale = [2]float32{c.localscl, c.localscl}
+		charangle = 0
+	}
+
+	getterscale := [2]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
+		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl}
+	getterangle := getter.clsnAngle
+	if getterbox == 3 {
+		getterscale = [2]float32{getter.localscl, getter.localscl}
+		getterangle = 0
+	}
+
+	return sys.clsnOverlap(clsn1,
+		charscale,
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
-		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
-			getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
+		c.pos[1]*c.localscl + c.offsetY()*c.localscl},
+		c.facing,
+		charangle,
+		clsn2, // Getter
+		getterscale,
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
-			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
+		getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl},
+		getter.facing,
+		getterangle)
 }
 
 // Check if Hitdef attributes can hit a player
@@ -6889,7 +6897,7 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) &&
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) &&
 				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
 					getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 		}
@@ -9089,7 +9097,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
 					}
 
-					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck) {
+					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) {
 						if ht := hitTypeGet(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
@@ -9241,7 +9249,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 			}
 
 			// Push characters away from each other
-			if c.asf(ASF_sizepushonly) || getter.clsnCheck(c, 2, 2) {
+			if c.asf(ASF_sizepushonly) || getter.clsnCheck(c, 2, 2, false) {
 
 				gxmin = getter.edge[0]
 				gxmax = -getter.edge[1]
