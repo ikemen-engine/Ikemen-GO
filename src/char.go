@@ -2478,11 +2478,20 @@ func (c *Char) stOgi() *CharGlobalInfo {
 }
 
 func (c *Char) ocd() *OverrideCharData {
+	team := c.teamside
 	if c.teamside == -1 {
-		return &sys.sel.ocd[2][c.memberNo]
+		team = 2
 	}
-	return &sys.sel.ocd[c.teamside][c.memberNo]
+	// This check prevents a crash when modifying helpers to be teamside 0
+	// This happens because OverrideCharData is indexed by teamside
+	// TODO: Perhaps ModifyPlayer or OverrideCharData could be refactored to not need this and be safer overall
+	if c.memberNo < len(sys.sel.ocd[team]) {
+		return &sys.sel.ocd[team][c.memberNo]
+	}
+	// Return default values as safeguard
+	return newOverrideCharData()
 }
+
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
 	gi.def, gi.displayname, gi.lifebarname, gi.author = def, "", "", ""
