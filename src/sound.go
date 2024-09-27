@@ -105,7 +105,7 @@ func newStreamLooper(s beep.StreamSeeker, loopcount, loopstart, loopend int) bee
 	if sl.loopstart < 0 || sl.loopstart >= s.Len() {
 		sl.loopstart = 0
 	}
-	if sl.loopend <= sl.loopstart {
+	if sl.loopend <= sl.loopstart || sl.loopend >= s.Len() {
 		sl.loopend = s.Len()
 	}
 	return sl

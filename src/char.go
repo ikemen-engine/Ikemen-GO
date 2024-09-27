@@ -3790,11 +3790,11 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 			case OC_ex2_explodvar_animelem:
 				v = BytecodeInt(e.anim.current + 1)
 			case OC_ex2_explodvar_pos_x:
-				v = BytecodeFloat(e.drawPos[0])
+				v = BytecodeFloat(e.pos[0] + e.offset[0] + e.relativePos[0] + e.interpolate_pos[0])
 			case OC_ex2_explodvar_pos_y:
-				v = BytecodeFloat(e.drawPos[1])
+				v = BytecodeFloat(e.pos[1] + e.offset[1] + e.relativePos[1] + e.interpolate_pos[1])
 			case OC_ex2_explodvar_pos_z:
-				v = BytecodeFloat(e.drawPos[2])
+				v = BytecodeFloat(e.pos[2] + e.offset[2] + e.relativePos[2] + e.interpolate_pos[2])
 			case OC_ex2_explodvar_scale_x:
 				v = BytecodeFloat(e.scale[0])
 			case OC_ex2_explodvar_scale_y:

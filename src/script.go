@@ -3282,11 +3282,11 @@ func triggerFunctions(l *lua.LState) {
 				case "animelem":
 					ln = lua.LNumber(e.anim.current + 1)
 				case "pos x":
-					ln = lua.LNumber(e.drawPos[0])
+					ln = lua.LNumber(e.pos[0] + e.offset[0] + e.relativePos[0] + e.interpolate_pos[0])
 				case "pos y":
-					ln = lua.LNumber(e.drawPos[1])
+					ln = lua.LNumber(e.pos[1] + e.offset[1] + e.relativePos[1] + e.interpolate_pos[1])
 				case "pos z":
-					ln = lua.LNumber(e.drawPos[2])
+					ln = lua.LNumber(e.pos[2] + e.offset[2] + e.relativePos[2] + e.interpolate_pos[2])
 				case "vel x":
 					ln = lua.LNumber(e.velocity[0])
 				case "vel y":

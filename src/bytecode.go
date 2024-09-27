@@ -3073,23 +3073,22 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 		// END FALLTHROUGH (explodvar)
 	case OC_ex2_explodvar_pos_x:
-		correctScale = true
 		if !camCorrected {
-			camOff = -sys.cam.Pos[0] / oc.localscl
+			camOff = sys.cam.Pos[0] / c.localscl
 			camCorrected = true
+			correctScale = true
 		}
 		fallthrough
 	case OC_ex2_explodvar_pos_y:
-		correctScale = true
 		if !camCorrected {
-			camOff = -sys.cam.Pos[1] / oc.localscl
 			camCorrected = true
+			correctScale = true
 		}
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
 		v := c.explodVar(id, idx, opc)
 		if correctScale {
-			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) + camOff)
+			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) - camOff)
 		} else {
 			sys.bcStack.Push(v)
 		}
@@ -10561,7 +10560,12 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 				loopSet = true
 			}
 		case modifySnd_loopcount:
-			lc = int(exp[0].evalI(c))
+			tmp := int(exp[0].evalI(c))
+			if tmp < 0 {
+				lc = -1
+			} else {
+				lc = MaxI(tmp-1, 0)
+			}
 			lcSet = true
 		case modifySnd_stopongethit:
 			stopgh = exp[0].evalB(c)
@@ -10662,7 +10666,7 @@ const (
 
 func (sc playBgm) Run(c *Char, _ []int32) bool {
 	crun := c
-	var b bool
+	var b, totalRecall bool
 	var bgm string
 	var loop, loopcount, volume, loopstart, loopend, startposition int = 1, -1, 100, 0, 0, 0
 	var freqmul float32 = 1.0
@@ -10674,6 +10678,7 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 			if bgm == "stage" {
 				// Search .def directory last in this instance
 				bgm = SearchFile(sys.stage.bgmusic, []string{"", "sound/", crun.gi().def})
+				totalRecall = true
 			} else if bgm != "" {
 				bgm = SearchFile(bgm, []string{crun.gi().def, "", "sound/"})
 			}
@@ -10706,6 +10711,14 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if b {
+		// Recall all the stage info
+		if totalRecall {
+			volume = int(sys.stage.bgmvolume)
+			startposition = int(sys.stage.bgmstartposition)
+			loopstart = int(sys.stage.bgmloopstart)
+			loopend = int(sys.stage.bgmloopend)
+			freqmul = sys.stage.bgmfreqmul
+		}
 		sys.bgm.Open(bgm, loop, volume, loopstart, loopend, startposition, freqmul, loopcount)
 		sys.playBgmFlg = true
 	}
