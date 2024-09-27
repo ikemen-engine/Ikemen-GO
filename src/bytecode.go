@@ -509,6 +509,7 @@ const (
 	OC_ex_gethitvar_down_recover
 	OC_ex_gethitvar_down_recovertime
 	OC_ex_gethitvar_xaccel
+	OC_ex_gethitvar_guardflag
 	OC_ex_ailevelf
 	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
@@ -573,6 +574,7 @@ const (
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
 	OC_ex_movehitvar_uniqhit
+	OC_ex_movehitvar_guardflag
 	OC_ex_ikemenversion
 	OC_ex_incustomanim
 	OC_ex_incustomstate
@@ -2334,6 +2336,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ghv.down_recover)
 	case OC_ex_gethitvar_xaccel:
 		sys.bcStack.PushF(c.ghv.getXaccel(oc) * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_guardflag:
+		sys.bcStack.PushI(c.ghv.guardflag)
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
@@ -2684,6 +2688,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.mhv.sparkxy[1] * (c.localscl / oc.localscl))
 	case OC_ex_movehitvar_uniqhit:
 		sys.bcStack.PushI(c.mhv.uniqhit)
+	case OC_ex_movehitvar_guardflag:
+		sys.bcStack.PushI(c.mhv.guardflag)
 	case OC_ex_numplayer:
 		sys.bcStack.PushI(c.numPlayer())
 	case OC_ex_clamp:

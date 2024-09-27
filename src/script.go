@@ -3516,6 +3516,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(Btoi(c.ghv.frame))
 		case "down.recover":
 			ln = lua.LNumber(Btoi(c.ghv.down_recover))
+		case "guardflag":
+			ln = lua.LNumber(g.ghv.guardflag)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -3693,6 +3695,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.mhv.sparkxy[1])
 		case "uniqhit":
 			ln = lua.LNumber(c.mhv.uniqhit)
+		case "guardflag":
+			ln = lua.LNumber(c.mhv.guardflag)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

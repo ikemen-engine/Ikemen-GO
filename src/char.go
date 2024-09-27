@@ -824,6 +824,7 @@ type GetHitVar struct {
 	cheeseKO          bool
 	down_recover      bool
 	down_recovertime  int32
+	guardflag         int32
 }
 
 func (ghv *GetHitVar) clear() {
@@ -912,6 +913,7 @@ type MoveHitVar struct {
 	playerNo   int
 	sparkxy    [2]float32
 	uniqhit    int32
+	guardflag  int32
 }
 
 func (mhv *MoveHitVar) clear() {
@@ -7278,6 +7280,7 @@ func (c *Char) actionRun() {
 					// HitOverride KeepState preserves some GetHitVars for 1 frame so they can be accessed by the char
 					if !c.hoKeepState {
 						c.ghv.hitshaketime = 0
+						c.ghv.guardflag = 0
 						c.ghv.attr = 0
 						c.ghv.id = 0
 						c.ghv.playerNo = -1
@@ -7637,6 +7640,7 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
+		c.mhv.guardflag = c.hitdef.guardflag;      // Set MoveHitVar(guardflag) regardless of HitDef
 		// Fast recovery from lie down
 		if c.ghv.down_recover && c.ghv.down_recovertime > 0 &&
 			!c.asf(ASF_nofastrecoverfromliedown) &&
@@ -8159,7 +8163,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		if getter.csf(CSF_gethit) && getter.ghv.attr&int32(AT_AT) != 0 {
 			return 0
 		}
-
+	
 		// Check if the enemy can guard this attack
 		canguard := (proj || !c.asf(ASF_unguardable)) && getter.scf(SCF_guard) &&
 			(!getter.csf(CSF_gethit) || getter.ghv.guarded)
@@ -8339,6 +8343,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.cheeseKO = cheese
 				// Update variables
 				ghv.attr = hd.attr
+				ghv.guardflag = hd.guardflag
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
 				ghv.id = hd.attackerID

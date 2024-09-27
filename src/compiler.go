@@ -2237,6 +2237,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_down_recover)
 			case "xaccel":
 				out.append(OC_ex_gethitvar_xaccel)
+			case "guardflag":
+				out.append(OC_ex_gethitvar_guardflag)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -3856,6 +3858,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_movehitvar_spark_y)
 		case "uniqhit":
 			out.append(OC_ex_movehitvar_uniqhit)
+		case "guardflag":
+			out.append(OC_ex_movehitvar_guardflag)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
