@@ -8197,8 +8197,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		return // Stop entire function if getter is disabled
 	}
 
-	// hitTypeGet() function definition start.
-	hitTypeGet := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32, hits int32) (hitType int32) {
+	// hitTypeGet() function definition start
+	hitTypeGet := func(c *Char, hd *HitDef, pos [2]float32, projf float32, attackMul [4]float32) (hitType int32) {
 
 		// Early exits
 		if !proj && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
@@ -8251,7 +8251,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 		if canguard && int32(getter.ss.stateType)&hd.guardflag != 0 {
 			getter.ghv.kill = hd.guard_kill
 			// We only switch to guard behavior if the enemy can survive guarding the attack
-			if getter.life > getter.computeDamage(float64(hd.guarddamage)*float64(hits), hd.guard_kill, false, attackMul[0], c, true) ||
+			if getter.life > getter.computeDamage(float64(hd.guarddamage), hd.guard_kill, false, attackMul[0], c, true) ||
 				sys.gsf(GSF_globalnoko) || getter.asf(ASF_noko) || getter.asf(ASF_noguardko) {
 				hitType = 2
 			} else {
@@ -8338,13 +8338,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			} else {
 				getter.ghv._type = getter.ghv.groundtype
 			}
-		}
-		if Abs(hitType) == 1 {
-			if hd.pausetime > 0 {
-				hits = 1
-			}
-		} else if hd.guard_pausetime > 0 {
-			hits = 1
 		}
 		byf := c.facing
 		if proj {
@@ -8598,16 +8591,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					getter.setBindTime(0)
 				}
 			}
-			// This currently seems redundant
-			//} else if hitType == 1 {
-			//	if !getter.asf(ASF_nohitdamage) {
-			//		absdamage = hd.hitdamage
-			//		absredlife = hd.hitredlife
-			//	}
-			//} else if !getter.asf(ASF_noguarddamage) {
-			//	absdamage = hd.guarddamage
-			//	absredlife = hd.guardredlife
-			//}
 			if sys.super > 0 {
 				getter.superMovetime =
 					Max(getter.superMovetime, getter.ghv.hitshaketime)
@@ -8633,17 +8616,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				// Life
 				if !getter.asf(ASF_nohitdamage) {
 					getter.ghv.damage += getter.computeDamage(
-						float64(hd.hitdamage)*float64(hits), getter.ghv.kill, false, attackMul[0], c, bnd)
+						float64(hd.hitdamage), getter.ghv.kill, false, attackMul[0], c, bnd)
 				}
 				// Red life
 				if !getter.asf(ASF_noredlifedamage) {
 					getter.ghv.redlife += getter.computeDamage(
-						float64(hd.hitredlife)*float64(hits), true, false, attackMul[1], c, bnd)
+						float64(hd.hitredlife), true, false, attackMul[1], c, bnd)
 				}
 				// Dizzy points
 				if !getter.asf(ASF_nodizzypointsdamage) && !getter.scf(SCF_dizzy) {
 					getter.ghv.dizzypoints += getter.computeDamage(
-						float64(hd.dizzypoints)*float64(hits), true, false, attackMul[2], c, false)
+						float64(hd.dizzypoints), true, false, attackMul[2], c, false)
 				}
 			}
 			// Damage on guard
@@ -8651,17 +8634,17 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				// Life
 				if !getter.asf(ASF_noguarddamage) {
 					getter.ghv.damage += getter.computeDamage(
-						float64(hd.guarddamage)*float64(hits), getter.ghv.kill, false, attackMul[0], c, bnd)
+						float64(hd.guarddamage), getter.ghv.kill, false, attackMul[0], c, bnd)
 				}
 				// Red life
 				if !getter.asf(ASF_noredlifedamage) {
 					getter.ghv.redlife += getter.computeDamage(
-						float64(hd.guardredlife)*float64(hits), true, false, attackMul[1], c, bnd)
+						float64(hd.guardredlife), true, false, attackMul[1], c, bnd)
 				}
 				// Guard points
 				if !getter.asf(ASF_noguardpointsdamage) {
 					getter.ghv.guardpoints += getter.computeDamage(
-						float64(hd.guardpoints)*float64(hits), true, false, attackMul[3], c, false)
+						float64(hd.guardpoints), true, false, attackMul[3], c, false)
 				}
 			}
 			// Absolute values
@@ -8669,13 +8652,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			getter.ghv.hitpower += hd.hitgivepower
 			getter.ghv.guardpower += hd.guardgivepower
 			getter.ghv.hitdamage += getter.computeDamage(
-				float64(hd.hitdamage)*float64(hits), true, false, attackMul[0], c, false)
+				float64(hd.hitdamage), true, false, attackMul[0], c, false)
 			getter.ghv.guarddamage += getter.computeDamage(
-				float64(hd.guarddamage)*float64(hits), true, false, attackMul[0], c, false)
+				float64(hd.guarddamage), true, false, attackMul[0], c, false)
 			getter.ghv.hitredlife += getter.computeDamage(
-				float64(hd.hitredlife)*float64(hits), true, false, attackMul[1], c, bnd)
+				float64(hd.hitredlife), true, false, attackMul[1], c, bnd)
 			getter.ghv.guardredlife += getter.computeDamage(
-				float64(hd.guardredlife)*float64(hits), true, false, attackMul[1], c, bnd)
+				float64(hd.guardredlife), true, false, attackMul[1], c, bnd)
 			// Hit behavior on KO
 			if ghvset && getter.ghv.damage >= getter.life {
 				if getter.ghv.kill || !getter.alive() {
@@ -8789,9 +8772,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 			}
 			if (ghvset || getter.csf(CSF_gethit)) && getter.hoIdx < 0 &&
 				!(c.hitdef.air_type == HT_None && getter.ss.stateType == ST_A || getter.ss.stateType != ST_A && c.hitdef.ground_type == HT_None) {
-				getter.receivedHits += hd.numhits * hits
+				getter.receivedHits += hd.numhits
 				if c.teamside != -1 {
-					sys.lifebar.co[c.teamside].combo += hd.numhits * hits
+					sys.lifebar.co[c.teamside].combo += hd.numhits
 				}
 			}
 		} else {
@@ -9055,12 +9038,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) &&
 						sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
 							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl) {
-						hits := p.hits
-						if p.misstime > 0 {
-							hits = 1
-						}
 						if ht := hitTypeGet(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
-							p.pos[1] - c.pos[1]*(c.localscl/p.localscl)}, p.facing, p.parentAttackmul, hits); ht != 0 {
+							p.pos[1] - c.pos[1]*(c.localscl/p.localscl)}, p.facing, p.parentAttackmul); ht != 0 {
 							p.contactflag = true
 							if Abs(ht) == 1 {
 								sys.cgi[i].pctype = PC_Hit
@@ -9154,7 +9133,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 
 					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) {
-						if ht := hitTypeGet(c, &c.hitdef, [2]float32{}, 0, c.attackMul, 1); ht != 0 {
+						if ht := hitTypeGet(c, &c.hitdef, [2]float32{}, 0, c.attackMul); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
 								if mvh {
