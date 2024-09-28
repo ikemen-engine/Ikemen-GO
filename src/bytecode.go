@@ -731,6 +731,8 @@ const (
 	OC_ex2_explodvar_sprpriority
 	OC_ex2_explodvar_layerno
 	OC_ex2_explodvar_id
+	OC_ex2_explodvar_bindtime
+	OC_ex2_explodvar_facing
 	OC_ex2_projectilevar_projremove
 	OC_ex2_projectilevar_projremovetime
 	OC_ex2_projectilevar_projshadow_r
@@ -3063,6 +3065,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_layerno:
 		fallthrough
 	case OC_ex2_explodvar_id:
+		fallthrough
+	case OC_ex2_explodvar_bindtime:
+		fallthrough
+	case OC_ex2_explodvar_facing:
 		fallthrough
 	case OC_ex2_explodvar_scale_x:
 		fallthrough

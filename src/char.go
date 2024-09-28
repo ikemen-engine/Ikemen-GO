@@ -3842,6 +3842,10 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 				v = BytecodeInt(e.layerno)
 			case OC_ex2_explodvar_id:
 				v = BytecodeInt(e.id)
+			case OC_ex2_explodvar_bindtime:
+				v = BytecodeInt(e.bindtime)
+			case OC_ex2_explodvar_facing:
+				v = BytecodeInt(int32(e.facing))
 			}
 			break
 		}

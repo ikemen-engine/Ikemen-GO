@@ -3313,6 +3313,16 @@ func triggerFunctions(l *lua.LState) {
 					ln = lua.LNumber(e.removetime)
 				case "pausemovetime":
 					ln = lua.LNumber(e.pausemovetime)
+				case "sprpriority":
+					ln = lua.LNumber(e.sprpriority)
+				case "layerno":
+					ln = lua.LNumber(e.layerno)
+				case "id":
+					ln = lua.LNumber(e.id)
+				case "bindtime":
+					ln = lua.LNumber(e.bindtime)
+				case "facing":
+					ln = lua.LNumber(e.facing)
 				default:
 					l.RaiseError("\nInvalid argument: %v\n", vname)
 				}
