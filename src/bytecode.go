@@ -3201,13 +3201,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_hitdefvar_guardflag:
 		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
 		sys.bcStack.PushB(
-			c.hitdef.guardflag & attr != 0,
+			c.hitdef.guardflag&attr != 0,
 		)
 		*i += 4
 	case OC_ex2_hitdefvar_hitflag:
 		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
 		sys.bcStack.PushB(
-			c.hitdef.hitflag & attr != 0,
+			c.hitdef.hitflag&attr != 0,
 		)
 		*i += 4
 	case OC_ex2_hitdefvar_hitdamage:

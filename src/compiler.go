@@ -1199,41 +1199,41 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return nil
 		})
 	}
-	flagSub := func(opct, opc OpCode) error{
-		return eqne(func() error{
-			flg := int32(0);
+	flagSub := func(opct, opc OpCode) error {
+		return eqne(func() error {
+			flg := int32(0)
 			base := c.token
 			for _, ch := range base {
-				switch ch{
-					case 'H', 'h':
-						flg |= int32(ST_S)
-					case 'L', 'l':
-						flg |= int32(ST_C)
-					case 'M', 'm':
-						flg |= int32(ST_S | ST_C)
-					case 'A', 'a':
-						flg |= int32(ST_A)
-					case 'F', 'f':
-						flg |= int32(ST_F)
-					case 'D', 'd':
-						flg |= int32(ST_D)
-					case 'P', 'p':
-						flg |= int32(ST_P)
-					default:
-						return Error("Invalid flags: "+base)
+				switch ch {
+				case 'H', 'h':
+					flg |= int32(ST_S)
+				case 'L', 'l':
+					flg |= int32(ST_C)
+				case 'M', 'm':
+					flg |= int32(ST_S | ST_C)
+				case 'A', 'a':
+					flg |= int32(ST_A)
+				case 'F', 'f':
+					flg |= int32(ST_F)
+				case 'D', 'd':
+					flg |= int32(ST_D)
+				case 'P', 'p':
+					flg |= int32(ST_P)
+				default:
+					return Error("Invalid flags: " + base)
 				}
 			}
 			// peek ahead to see if we have signs in the flag
-			if(len(*in) > 0){
-				switch (*in)[0]{
-					case '+':
-						// move forward
-						flg |= int32(MT_PLS)
-						*in = (*in)[1:]
-					case '-':
-						// move forward
-						flg |= int32(MT_MNS)
-						*in = (*in)[1:]
+			if len(*in) > 0 {
+				switch (*in)[0] {
+				case '+':
+					// move forward
+					flg |= int32(MT_PLS)
+					*in = (*in)[1:]
+				case '-':
+					// move forward
+					flg |= int32(MT_MNS)
+					*in = (*in)[1:]
 				}
 			}
 			out.append(opct)
@@ -2339,22 +2339,22 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		isFlag := false
 		switch param {
-			case "guardflag":
-				opc = OC_ex2_hitdefvar_guardflag
-				isFlag = true
-			case "hitflag":
-				opc = OC_ex2_hitdefvar_hitflag
-				isFlag = true
-			case "hitdamage":
-				opc = OC_ex2_hitdefvar_hitdamage
-			case "guarddamage":
-				opc = OC_ex2_hitdefvar_guarddamage
-			default:
-				return bvNone(), Error("Invalid data: " + c.token)
+		case "guardflag":
+			opc = OC_ex2_hitdefvar_guardflag
+			isFlag = true
+		case "hitflag":
+			opc = OC_ex2_hitdefvar_hitflag
+			isFlag = true
+		case "hitdamage":
+			opc = OC_ex2_hitdefvar_hitdamage
+		case "guarddamage":
+			opc = OC_ex2_hitdefvar_guarddamage
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 		if isFlag {
 			if err := flagSub(OC_ex2_, opc); err != nil {
-				return bvNone(), err;
+				return bvNone(), err
 			}
 		} else {
 			out.append(OC_ex2_)

@@ -3380,27 +3380,43 @@ func triggerFunctions(l *lua.LState) {
 		c := sys.debugWC
 		flagStr := func(flag int32) lua.LString {
 			str := ""
-			if(flag&int32(ST_S)!=0){ str += "H" }
-			if(flag&int32(ST_C)!=0){ str += "L" }
-			if(flag&int32(ST_A)!=0){ str += "A" }
-			if(flag&int32(ST_F)!=0){ str += "F" }
-			if(flag&int32(ST_D)!=0){ str += "D" }
-			if(flag&int32(ST_P)!=0){ str += "P" }
-			if(flag&int32(MT_MNS)!=0){ str += "-" }
-			if(flag&int32(MT_PLS)!=0){ str += "+" }
+			if flag&int32(ST_S) != 0 {
+				str += "H"
+			}
+			if flag&int32(ST_C) != 0 {
+				str += "L"
+			}
+			if flag&int32(ST_A) != 0 {
+				str += "A"
+			}
+			if flag&int32(ST_F) != 0 {
+				str += "F"
+			}
+			if flag&int32(ST_D) != 0 {
+				str += "D"
+			}
+			if flag&int32(ST_P) != 0 {
+				str += "P"
+			}
+			if flag&int32(MT_MNS) != 0 {
+				str += "-"
+			}
+			if flag&int32(MT_PLS) != 0 {
+				str += "+"
+			}
 			return lua.LString(str)
 		}
 		switch strArg(l, 1) {
-			case "guardflag":
-				l.Push(flagStr(c.hitdef.guardflag))
-			case "hitflag":
-				l.Push(flagStr(c.hitdef.hitflag))
-			case "hitdamage":
-				l.Push(lua.LNumber(c.hitdef.hitdamage))
-			case "guarddamage":
-				l.Push(lua.LNumber(c.hitdef.guarddamage))
-			default:
-				l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		case "guardflag":
+			l.Push(flagStr(c.hitdef.guardflag))
+		case "hitflag":
+			l.Push(flagStr(c.hitdef.hitflag))
+		case "hitdamage":
+			l.Push(lua.LNumber(c.hitdef.hitdamage))
+		case "guarddamage":
+			l.Push(lua.LNumber(c.hitdef.guarddamage))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
 		return 1
 	})
