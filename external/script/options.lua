@@ -60,6 +60,25 @@ local function f_externalShaderName()
 	return motif.option_info.menu_valuename_disabled
 end
 
+local function changeLanguageSetting(val)
+	sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
+	languageCounter = 0
+	currentLanguage = -1
+	for x, c in ipairs(motif.languages.languages) do
+		if c == config.Language then
+			currentLanguage = x
+		end
+		languageCounter = languageCounter + 1
+	end
+	if currentLanguage > 0 then
+		config.Language = motif.languages.languages[((currentLanguage + val) % languageCounter) + 1]
+	else
+		config.Language = motif.languages.languages[1] or "en"
+	end
+	options.modified = true
+	options.needReload = true
+end
+
 -- Associative elements table storing functions controlling behaviour of each
 -- option screen item. Can be appended via external module.
 options.t_itemname = {
@@ -280,41 +299,13 @@ options.t_itemname = {
 	--Language Setting
 	['language'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			languageCounter = 0
-			for x, c in ipairs(motif.languages.languages) do
-				if c == config.Language then
-					currentLanguage = x
-				end
-				languageCounter = languageCounter + 1
-			end
-			if languageCounter == currentLanguage then
-				config.Language = motif.languages.languages[1]
-			else
-				config.Language = motif.languages.languages[currentLanguage + 1]
-			end
-			options.modified = true
-			options.needReload = true
-			loadstring("sfs = " .. "motif.languages." .. config.Language)()
-			t.items[item].vardisplay = sfs or config.Language
+			changeLanguageSetting(0)
+			loadstring("LanguageName = " .. "motif.languages." .. config.Language)()
+			t.items[item].vardisplay = LanguageName or config.Language
 		elseif main.f_input(main.t_players, {'$B'}) then
-			sndPlay(motif.files.snd_data, motif.option_info.cursor_move_snd[1], motif.option_info.cursor_move_snd[2])
-			languageCounter = 0
-			for x, c in ipairs(motif.languages.languages) do
-				if c == config.Language then
-					currentLanguage = x
-				end
-				languageCounter = languageCounter + 1
-			end
-			if currentLanguage == 1 then
-				config.Language = motif.languages.languages[languageCounter]
-			else
-				config.Language = motif.languages.languages[currentLanguage - 1]
-			end
-			options.modified = true
-			options.needReload = true
-			loadstring("sfs = " .. "motif.languages." .. config.Language)()
-			t.items[item].vardisplay = sfs or config.Language
+			changeLanguageSetting(-2)
+			loadstring("LanguageName = " .. "motif.languages." .. config.Language)()
+			t.items[item].vardisplay = LanguageName or config.Language
 		end
 		return true
 	end,
@@ -1789,6 +1780,7 @@ function options.f_keyDefault()
 	resetRemapInput()
 end
 if config.FirstRun then
+	config.Language = motif.languages.languages[1] or "en"
 	options.f_keyDefault()
 end
 
