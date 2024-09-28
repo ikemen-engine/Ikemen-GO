@@ -2083,7 +2083,6 @@ function motif.setBaseOptionInfo()
 	end
 	main.t_sort.option_info.menu = {
 		"menugame",
-		"menugame_language",
 		"menugame_difficulty",
 		"menugame_roundtime",
 		"menugame_lifemul",
