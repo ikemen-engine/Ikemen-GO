@@ -1220,19 +1220,21 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					case 'P', 'p':
 						flg |= int32(ST_P)
 					default:
-						return Error("Invalid flags: "+c.token)
+						return Error("Invalid flags: "+base)
 				}
 			}
 			// peek ahead to see if we have signs in the flag
-			sign := c.tokenizer(in)
-			switch sign[0]{
-				case '+':
-					flg |= int32(MT_PLS)
-				case '-':
-					flg |= int32(MT_MNS)
-				default:
-					// no sign? step back
-					*in = base
+			if(len(*in) > 0){
+				switch (*in)[0]{
+					case '+':
+						// move forward
+						flg |= int32(MT_PLS)
+						*in = (*in)[1:]
+					case '-':
+						// move forward
+						flg |= int32(MT_MNS)
+						*in = (*in)[1:]
+				}
 			}
 			out.append(opct)
 			out.appendI32Op(opc, flg)
