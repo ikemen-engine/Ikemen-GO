@@ -1581,18 +1581,18 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "size":
 			bv1 = BytecodeInt(3)
 		default:
-			return bvNone(), Error("Invalid clsn1 type")
+			return bvNone(), Error("Invalid collision box type")
 		}
 		c.token = c.tokenizer(in)
 		if c.token != "," {
-			return bvNone(), Error("Missing A ','")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		if bv2, err = c.expBoolOr(&be2, in); err != nil {
 			return bvNone(), err
 		}
 		if c.token != "," {
-			return bvNone(), Error("Missing B ','")
+			return bvNone(), Error("Missing ','")
 		}
 		c.token = c.tokenizer(in)
 		c2type := c.token
@@ -1604,7 +1604,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "size":
 			bv3 = BytecodeInt(3)
 		default:
-			return bvNone(), Error("Invalid clsn2 type")
+			return bvNone(), Error("Invalid collision box type")
 		}
 		c.token = c.tokenizer(in)
 		if err := c.checkClosingBracket(); err != nil {
@@ -5194,7 +5194,7 @@ func cnsStringArray(arg string) ([]string, error) {
 
 // Compile a state file
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
-	filename string, dirs []string, constants map[string]float32, iscommon bool) error {
+	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
 	var str string
 	zss := HasExtension(filename, ".zss")
 	fnz := filename
@@ -5208,7 +5208,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 				return err
 			}
 			str = string(b)
-			return c.stateCompileZ(states, fnz, str, constants, iscommon)
+			return c.stateCompileZ(states, fnz, str, constants)
 		}
 
 		// Try reading as an st file
@@ -5225,7 +5225,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			str = string(b)
 			return nil
 		}); err == nil {
-			return c.stateCompileZ(states, fnz, str, constants, iscommon)
+			return c.stateCompileZ(states, fnz, str, constants)
 		}
 		return err
 	}
@@ -5268,7 +5268,6 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			return errmes(err)
 		}
 		sbc := newStateBytecode(c.playerNo)
-
 		if _, ok := states[c.stateNo]; ok && c.stateNo < 0 {
 			*sbc = states[c.stateNo]
 		}
@@ -5276,9 +5275,6 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		if err := c.stateDef(is, sbc); err != nil {
 			return errmes(err)
 		}
-
-		// Set state engine version
-		c.stateEngineVersion(sbc, iscommon)
 
 		// Continue looping through state file lines to define the current state
 		for c.i++; c.i < len(c.lines); c.i++ {
@@ -5511,9 +5507,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			}
 		}
 
-		// Skip appending if already declared
-		// Exception for negative states present in CommonStates and files belonging to chars flagged with ikemenversion
-		negoverride := !iscommon && sys.cgi[c.playerNo].ikemenver[0] == 0 && sys.cgi[c.playerNo].ikemenver[1] == 0
+		// Skip appending if already declared. Exception for negative states present in CommonStates and files belonging to char flagged with ikemenversion
 		if _, ok := states[c.stateNo]; !ok || (!negoverride && c.stateNo < 0) {
 			states[c.stateNo] = *sbc
 		}
@@ -6338,7 +6332,7 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 	return c.wrongClosureToken()
 }
 func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
-	filename, src string, constants map[string]float32, iscommon bool) error {
+	filename, src string, constants map[string]float32) error {
 	defer func(oime bool) {
 		sys.ignoreMostErrors = oime
 	}(sys.ignoreMostErrors)
@@ -6433,10 +6427,6 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 			if _, ok := states[c.stateNo]; ok && c.stateNo < 0 {
 				*sbc = states[c.stateNo]
 			}
-
-			// Set state engine version
-			c.stateEngineVersion(sbc, iscommon)
-
 			c.vars = make(map[string]uint8)
 			if err := c.stateDef(is, sbc); err != nil {
 				return errmes(err)
@@ -6512,19 +6502,6 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 		}
 	}
 	return nil
-}
-
-// Note: This block should be updated to use current Ikemen version in common states
-// TODO: Make current version check automatic
-// NOTE: Maybe local scale could be defined by the state itself as well
-func (c *Compiler) stateEngineVersion(sbc *StateBytecode, iscommon bool) {
-	if iscommon {
-		sbc.ikemenver = [3]uint16{1, 0, 0} // Use current Ikemen version
-		sbc.mugenver = [2]uint16{1, 1}     // Just in case
-	} else {
-		sbc.ikemenver = sys.cgi[c.playerNo].ikemenver
-		sbc.mugenver = sys.cgi[c.playerNo].mugenver
-	}
 }
 
 // Compile a character definition file
@@ -6738,27 +6715,33 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
-			if err := c.stateCompile(states, s, []string{def, "", sys.motifDir, "data/"}, constants, false); err != nil {
+			if err := c.stateCompile(states, s, []string{def, "", sys.motifDir, "data/"},
+				sys.cgi[pn].ikemenver[0] == 0 &&
+					sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 				return nil, err
 			}
 		}
 	}
 	// Compile states in command file
 	if len(cmd) > 0 {
-		if err := c.stateCompile(states, cmd, []string{def, "", sys.motifDir, "data/"}, constants, false); err != nil {
+		if err := c.stateCompile(states, cmd, []string{def, "", sys.motifDir, "data/"},
+			sys.cgi[pn].ikemenver[0] == 0 &&
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
 	// Compile states in stcommon state file
-	// These use the character's own engine version, unlike common state files
 	if len(stcommon) > 0 {
-		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motifDir, "data/"}, constants, false); err != nil {
+		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motifDir, "data/"},
+			sys.cgi[pn].ikemenver[0] == 0 &&
+				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
 	// Compile common states
 	for _, s := range sys.commonStates {
-		if err := c.stateCompile(states, s, []string{def, sys.motifDir, sys.lifebar.def, "", "data/"}, constants, true); err != nil {
+		if err := c.stateCompile(states, s, []string{def, sys.motifDir, sys.lifebar.def, "", "data/"},
+			false, constants); err != nil {
 			return nil, err
 		}
 	}
