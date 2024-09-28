@@ -2405,7 +2405,7 @@ func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl}, c.facing, c.clsnAngle,
 		clsn2, [...]float32{getter.clsnScale[0] * getter.clsnScaleMul[0] * getter.animlocalscl,
-		getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
+			getter.clsnScale[1] * getter.clsnScaleMul[1] * getter.animlocalscl},
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl}, getter.facing, getter.clsnAngle)
 }
@@ -6753,7 +6753,6 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 		return false
 	}
 
-
 	// Exceptions for size boxes as they don't rescale or rotate
 	charscale := [2]float32{c.clsnScale[0] * c.clsnScaleMul[0] * c.animlocalscl,
 		c.clsnScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
@@ -6771,7 +6770,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 		clsn2,
 		charscale,
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-		c.pos[1]*c.localscl + c.offsetY()*c.localscl},
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl},
 		c.facing,
 		charangle)
 }
@@ -6847,13 +6846,13 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) 
 	return sys.clsnOverlap(clsn1,
 		charscale,
 		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-		c.pos[1]*c.localscl + c.offsetY()*c.localscl},
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl},
 		c.facing,
 		charangle,
 		clsn2, // Getter
 		getterscale,
 		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
-		getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl},
+			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl},
 		getter.facing,
 		getterangle)
 }
