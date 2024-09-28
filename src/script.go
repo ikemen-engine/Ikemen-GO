@@ -3695,8 +3695,6 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.mhv.sparkxy[1])
 		case "uniqhit":
 			ln = lua.LNumber(c.mhv.uniqhit)
-		case "guardflag":
-			ln = lua.LNumber(c.mhv.guardflag)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

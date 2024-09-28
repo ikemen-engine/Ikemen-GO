@@ -913,7 +913,6 @@ type MoveHitVar struct {
 	playerNo   int
 	sparkxy    [2]float32
 	uniqhit    int32
-	guardflag  int32
 }
 
 func (mhv *MoveHitVar) clear() {
@@ -7640,7 +7639,6 @@ func (c *Char) tick() {
 				c.ss.clearWw()
 			}
 		}
-		c.mhv.guardflag = c.hitdef.guardflag;      // Set MoveHitVar(guardflag) regardless of HitDef
 		// Fast recovery from lie down
 		if c.ghv.down_recover && c.ghv.down_recovertime > 0 &&
 			!c.asf(ASF_nofastrecoverfromliedown) &&

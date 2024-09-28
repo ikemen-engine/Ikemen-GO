@@ -574,7 +574,6 @@ const (
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
 	OC_ex_movehitvar_uniqhit
-	OC_ex_movehitvar_guardflag
 	OC_ex_ikemenversion
 	OC_ex_incustomanim
 	OC_ex_incustomstate
@@ -2688,8 +2687,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.mhv.sparkxy[1] * (c.localscl / oc.localscl))
 	case OC_ex_movehitvar_uniqhit:
 		sys.bcStack.PushI(c.mhv.uniqhit)
-	case OC_ex_movehitvar_guardflag:
-		sys.bcStack.PushI(c.mhv.guardflag)
 	case OC_ex_numplayer:
 		sys.bcStack.PushI(c.numPlayer())
 	case OC_ex_clamp:
