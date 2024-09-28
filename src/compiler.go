@@ -839,6 +839,7 @@ func (c *Compiler) trgAttr(in *string) (int32, error) {
 	}
 	return flg, nil
 }
+
 func (c *Compiler) checkOpeningBracket(in *string) error {
 	if c.tokenizer(in) != "(" {
 		return Error("Missing '(' after " + c.token)
@@ -1195,6 +1196,46 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(opct)
 			out.appendI32Op(opc, int32(sys.stringPool[c.playerNo].Add(
 				strings.ToLower(c.token))))
+			return nil
+		})
+	}
+	flagSub := func(opct, opc OpCode) error{
+		return eqne(func() error{
+			flg := int32(0);
+			base := c.token
+			for _, ch := range base {
+				switch ch{
+					case 'H', 'h':
+						flg |= int32(ST_S)
+					case 'L', 'l':
+						flg |= int32(ST_C)
+					case 'M', 'm':
+						flg |= int32(ST_S | ST_C)
+					case 'A', 'a':
+						flg |= int32(ST_A)
+					case 'F', 'f':
+						flg |= int32(ST_F)
+					case 'D', 'd':
+						flg |= int32(ST_D)
+					case 'P', 'p':
+						flg |= int32(ST_P)
+					default:
+						return Error("Invalid flags: "+c.token)
+				}
+			}
+			// peek ahead to see if we have signs in the flag
+			sign := c.tokenizer(in)
+			switch sign[0]{
+				case '+':
+					flg |= int32(MT_PLS)
+				case '-':
+					flg |= int32(MT_MNS)
+				default:
+					// no sign? step back
+					*in = base
+			}
+			out.append(opct)
+			out.appendI32Op(opc, flg)
 			return nil
 		})
 	}
@@ -2284,6 +2325,38 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		// }
 		if err := eqne(hda); err != nil {
 			return bvNone(), err
+		}
+	case "hitdefvar":
+		if err := c.checkOpeningBracket(in); err != nil {
+			return bvNone(), err
+		}
+		param := c.token
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingBracket(); err != nil {
+			return bvNone(), err
+		}
+		isFlag := false
+		switch param {
+			case "guardflag":
+				opc = OC_ex2_hitdefvar_guardflag
+				isFlag = true
+			case "hitflag":
+				opc = OC_ex2_hitdefvar_hitflag
+				isFlag = true
+			case "hitdamage":
+				opc = OC_ex2_hitdefvar_hitdamage
+			case "guarddamage":
+				opc = OC_ex2_hitdefvar_guarddamage
+			default:
+				return bvNone(), Error("Invalid data: " + c.token)
+		}
+		if isFlag {
+			if err := flagSub(OC_ex2_, opc); err != nil {
+				return bvNone(), err;
+			}
+		} else {
+			out.append(OC_ex2_)
+			out.append(opc)
 		}
 	case "hitfall":
 		out.append(OC_hitfall)

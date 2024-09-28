@@ -772,6 +772,10 @@ const (
 	OC_ex2_projectilevar_pausemovetime
 	OC_ex2_projectilevar_projid
 	OC_ex2_projectilevar_teamside
+	OC_ex2_hitdefvar_guardflag
+	OC_ex2_hitdefvar_hitflag
+	OC_ex2_hitdefvar_guarddamage
+	OC_ex2_hitdefvar_hitdamage
 )
 const (
 	NumVar     = 60
@@ -3194,6 +3198,22 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.Push(v)
 		}
+	case OC_ex2_hitdefvar_guardflag:
+		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
+		sys.bcStack.PushB(
+			c.hitdef.guardflag & attr == attr,
+		)
+		*i += 4
+	case OC_ex2_hitdefvar_hitflag:
+		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
+		sys.bcStack.PushB(
+			c.hitdef.hitflag & attr == attr,
+		)
+		*i += 4
+	case OC_ex2_hitdefvar_hitdamage:
+		sys.bcStack.PushI(c.hitdef.hitdamage)
+	case OC_ex2_hitdefvar_guarddamage:
+		sys.bcStack.PushI(c.hitdef.guarddamage)
 	default:
 		sys.errLog.Printf("%v\n", be[*i-1])
 		c.panic()
