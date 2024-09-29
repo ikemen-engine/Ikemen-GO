@@ -880,6 +880,23 @@ func (s *System) loadTime(start time.Time, str string, shell, console bool) {
 	}
 }
 
+// Update Z scale
+// TODO: See if this still works correctly with Winmugen stages that scaled chars with Z
+func (s *System) updateZScale(pos, localscale float32) float32 {
+	topz := sys.stage.stageCamera.topz / localscale
+	botz := sys.stage.stageCamera.botz / localscale
+	scale := float32(1)
+	if topz != botz {
+		ztopscale, zbotscale := sys.stage.stageCamera.ztopscale, sys.stage.stageCamera.zbotscale
+		d := (pos - topz) / (botz - topz)
+		scale = ztopscale + d*(zbotscale-ztopscale)
+		if scale <= 0 {
+			scale = 0
+		}
+	}
+	return scale
+}
+
 // Z axis check
 // Changed to no longer check z enable constant, depends on stage now
 func (s *System) zAxisOverlap(posz1, front1, back1, localscl1, posz2, front2, back2, localscl2 float32) bool {

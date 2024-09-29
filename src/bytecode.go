@@ -731,6 +731,8 @@ const (
 	OC_ex2_explodvar_sprpriority
 	OC_ex2_explodvar_layerno
 	OC_ex2_explodvar_id
+	OC_ex2_explodvar_bindtime
+	OC_ex2_explodvar_facing
 	OC_ex2_projectilevar_projremove
 	OC_ex2_projectilevar_projremovetime
 	OC_ex2_projectilevar_projshadow_r
@@ -3064,6 +3066,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_explodvar_id:
 		fallthrough
+	case OC_ex2_explodvar_bindtime:
+		fallthrough
+	case OC_ex2_explodvar_facing:
+		fallthrough
 	case OC_ex2_explodvar_scale_x:
 		fallthrough
 	case OC_ex2_explodvar_scale_y:
@@ -4518,10 +4524,10 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 				crun.bindPosAdd[1] = y
 			}
 		case posSet_z:
-			if crun.size.z.enable {
-				crun.addZ(exp[0].evalF(c) * lclscround)
-			} else {
-				exp[0].run(c)
+			z := exp[0].evalF(c) * lclscround
+			crun.addZ(z)
+			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
+				crun.bindPosAdd[0] = z
 			}
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -4548,11 +4554,7 @@ func (sc velSet) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.setYV(exp[0].evalF(c) * lclscround)
 		case posSet_z:
-			if crun.size.z.enable {
-				crun.setZV(exp[0].evalF(c) * lclscround)
-			} else {
-				exp[0].run(c)
-			}
+			crun.setZV(exp[0].evalF(c) * lclscround)
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5053,7 +5055,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_animelem:
 			animelem := exp[0].evalI(c)
 			e.animelem = animelem
-			e.anim.Action()
+			// e.anim.Action() This being in this place can cause a nil animation crash
 			e.setAnimElem()
 		case explod_animfreeze:
 			e.animfreeze = exp[0].evalB(c)
@@ -5499,7 +5501,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.interpolate_animelem[1] = -1
 					e.animelem = animelem
-					e.anim.Action()
+					// e.anim.Action() This being in this place can cause a nil animation crash
 					e.setAnimElem()
 				})
 			case explod_animfreeze:
@@ -6367,9 +6369,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		case projectile_projmisstime:
 			p.misstime = exp[0].evalI(c)
 		case projectile_projhits:
-			tmp := p.totalhits
-			p.totalhits = exp[0].evalI(c)
-			p.hits += (p.totalhits - tmp)
+			p.hits = exp[0].evalI(c)
 		case projectile_projpriority:
 			p.priority = exp[0].evalI(c)
 			p.priorityPoints = p.priority
@@ -6648,7 +6648,6 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			case projectile_projhits:
 				eachProj(func(p *Projectile) {
-					// TODO: Maybe this should be adjusted so that the maximum (not current) number of hits is changed
 					p.hits = exp[0].evalI(c)
 				})
 			case projectile_projpriority:

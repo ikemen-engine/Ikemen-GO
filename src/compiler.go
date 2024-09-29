@@ -2000,6 +2000,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_explodvar_layerno
 		case "id":
 			opc = OC_ex2_explodvar_id
+		case "bindtime":
+			opc = OC_ex2_explodvar_bindtime
+		case "facing":
+			opc = OC_ex2_explodvar_facing
 		case "pos":
 			c.token = c.tokenizer(in)
 

@@ -3313,6 +3313,16 @@ func triggerFunctions(l *lua.LState) {
 					ln = lua.LNumber(e.removetime)
 				case "pausemovetime":
 					ln = lua.LNumber(e.pausemovetime)
+				case "sprpriority":
+					ln = lua.LNumber(e.sprpriority)
+				case "layerno":
+					ln = lua.LNumber(e.layerno)
+				case "id":
+					ln = lua.LNumber(e.id)
+				case "bindtime":
+					ln = lua.LNumber(e.bindtime)
+				case "facing":
+					ln = lua.LNumber(e.facing)
 				default:
 					l.RaiseError("\nInvalid argument: %v\n", vname)
 				}
@@ -4117,11 +4127,11 @@ func triggerFunctions(l *lua.LState) {
 				case "angle":
 					lv = lua.LNumber(p.angle)
 				case "pos x":
-					lv = lua.LNumber(p.drawPos[0])
+					lv = lua.LNumber(p.pos[0])
 				case "pos y":
-					lv = lua.LNumber(p.drawPos[1])
+					lv = lua.LNumber(p.pos[1])
 				case "pos z":
-					lv = lua.LNumber(p.drawPos[2])
+					lv = lua.LNumber(p.pos[2])
 				case "projsprpriority":
 					lv = lua.LNumber(p.sprpriority)
 				case "projstagebound":
