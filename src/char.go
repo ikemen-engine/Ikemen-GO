@@ -1989,14 +1989,14 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		if frm := p.ani.drawFrame(); frm != nil {
 			if clsn := frm.Clsn1(); len(clsn) > 0 {
 				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl,
-					p.clsnScale[0] * p.localscl * p.facing * p.zScale,
-					p.clsnScale[1]*p.localscl * p.zScale,
+					p.clsnScale[0]*p.localscl*p.facing*p.zScale,
+					p.clsnScale[1]*p.localscl*p.zScale,
 					p.clsnAngle*p.facing)
 			}
 			if clsn := frm.Clsn2(); len(clsn) > 0 {
 				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl,
-					p.clsnScale[0] * p.localscl * p.facing * p.zScale,
-					p.clsnScale[1]*p.localscl * p.zScale,
+					p.clsnScale[0]*p.localscl*p.facing*p.zScale,
+					p.clsnScale[1]*p.localscl*p.zScale,
 					p.clsnAngle*p.facing)
 			}
 		}
@@ -4841,7 +4841,7 @@ func (c *Char) setPosY(y float32) {
 
 func (c *Char) setPosZ(z float32) {
 	// TODO: Maybe this could be related to screenbound flag somehow, like with xScreenBound
-	cz := ClampF(z, sys.stage.topbound / c.localscl, sys.stage.botbound / c.localscl)
+	cz := ClampF(z, sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
 	c.pos[2] = cz
 }
 
@@ -7378,7 +7378,7 @@ func (c *Char) actionRun() {
 	//c.zScreenBound() TODO?
 
 	// Final scale calculations
-	// There's a minor issue here in that this scale is calculated 
+	// There's a minor issue here in that this scale is calculated
 	c.zScale = sys.updateZScale(c.pos[2], c.localscl) // Must be placed after posUpdate()
 	c.sizeBoxScale = c.localscl * c.zScale
 	c.clsnScale = [2]float32{c.clsnBaseScale[0] * c.clsnScaleMul[0] * c.animlocalscl * c.zScale, // No facing here
@@ -7927,7 +7927,7 @@ func (c *Char) cueDraw() {
 
 		// Apply Z axis drawing offset
 		if sys.stage.topbound != sys.stage.botbound {
-			pos[1] += c.pos[2]*c.localscl
+			pos[1] += c.pos[2] * c.localscl
 		}
 
 		agl := float32(0)
@@ -7988,10 +7988,10 @@ func (c *Char) cueDraw() {
 				//if sd.oldVer {
 				//	soy *= 1.5
 				//}
-				charposz := c.pos[2]*c.localscl
+				charposz := c.pos[2] * c.localscl
 				sys.shadows.add(&ShadowSprite{sd, -1, sdwalp,
 					[2]float32{c.shadowOffset[0], c.size.shadowoffset + c.shadowOffset[1] + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
-					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*charposz + charposz},     // Reflection offset
+					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*charposz + charposz},              // Reflection offset
 					c.offsetY()}) // Fade offset
 			}
 		}
@@ -9065,7 +9065,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl) {
 
 						if ht := hitTypeGet(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
-							p.pos[1] - c.pos[1]*(c.localscl/p.localscl), p.pos[2] - c.pos[2]*(c.localscl/p.localscl),},
+							p.pos[1] - c.pos[1]*(c.localscl/p.localscl), p.pos[2] - c.pos[2]*(c.localscl/p.localscl)},
 							p.facing, p.parentAttackmul); ht != 0 {
 
 							p.contactflag = true
@@ -9300,11 +9300,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 				continue
 			}
 
-			czback := c.pos[2] * c.localscl - c.size.z.width * c.sizeBoxScale
-			czfront := c.pos[2] * c.localscl + c.size.z.width * c.sizeBoxScale
+			czback := c.pos[2]*c.localscl - c.size.z.width*c.sizeBoxScale
+			czfront := c.pos[2]*c.localscl + c.size.z.width*c.sizeBoxScale
 
-			gzback := getter.pos[2] * getter.localscl - getter.size.z.width * getter.sizeBoxScale
-			gzfront := getter.pos[2] * getter.localscl + getter.size.z.width * getter.sizeBoxScale
+			gzback := getter.pos[2]*getter.localscl - getter.size.z.width*getter.sizeBoxScale
+			gzfront := getter.pos[2]*getter.localscl + getter.size.z.width*getter.sizeBoxScale
 
 			// Z axis fail
 			if gzback >= czfront || czback >= gzfront {
@@ -9414,8 +9414,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 						}
 					}
 					// Clamp Z positions
-					c.pos[2] = ClampF(c.pos[2], sys.stage.topbound / c.localscl, sys.stage.botbound / c.localscl)
-					getter.pos[2] = ClampF(getter.pos[2], sys.stage.topbound / getter.localscl, sys.stage.botbound / getter.localscl)
+					c.pos[2] = ClampF(c.pos[2], sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
+					getter.pos[2] = ClampF(getter.pos[2], sys.stage.topbound/getter.localscl, sys.stage.botbound/getter.localscl)
 				}
 
 				if getter.trackableByCamera() && getter.csf(CSF_screenbound) {
