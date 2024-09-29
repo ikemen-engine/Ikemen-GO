@@ -558,6 +558,10 @@ func (a *Animation) UpdateSprite() {
 	}
 }
 func (a *Animation) Action() {
+	// Ignore invalid animation instead of crashing engine
+	if a == nil || a.frames == nil {
+		return
+	}
 	if len(a.frames) == 0 {
 		a.loopend = true
 		return

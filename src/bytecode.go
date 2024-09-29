@@ -5055,7 +5055,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_animelem:
 			animelem := exp[0].evalI(c)
 			e.animelem = animelem
-			e.anim.Action()
+			// e.anim.Action() This being in this place can cause a nil animation crash
 			e.setAnimElem()
 		case explod_animfreeze:
 			e.animfreeze = exp[0].evalB(c)
@@ -5501,7 +5501,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.interpolate_animelem[1] = -1
 					e.animelem = animelem
-					e.anim.Action()
+					// e.anim.Action() This being in this place can cause a nil animation crash
 					e.setAnimElem()
 				})
 			case explod_animfreeze:
