@@ -5880,6 +5880,13 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	}
 	return (opos - cpos) / oc.localscl
 }
+
+func (c *Char) distZ(opp *Char, oc *Char) float32 {
+	cpos := c.pos[2] * c.localscl
+	opos := opp.pos[2] * opp.localscl
+	return (opos - cpos) / oc.localscl
+}
+
 func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	// In Mugen P2BodyDist X does not account for changes in Width like Ikemen does here
 	dist := c.distX(opp, oc)
@@ -5904,6 +5911,21 @@ func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
 		return 0
 	}
 }
+
+func (c *Char) bodyDistZ(opp *Char, oc *Char) float32 {
+	ctop := (c.pos[2] - c.size.z.width) * c.localscl
+	cbot := (c.pos[2] + c.size.z.width) * c.localscl
+	otop := (opp.pos[2] - opp.size.z.width) * opp.localscl
+	obot := (opp.pos[2] + opp.size.z.width) * opp.localscl
+	if cbot < otop {
+		return (otop - cbot) / oc.localscl
+	} else if ctop > obot {
+		return (obot - ctop) / oc.localscl
+	} else {
+		return 0
+	}
+}
+
 func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeSF()
@@ -5930,6 +5952,15 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 	}
 	return BytecodeFloat(dist)
 }
+
+func (c *Char) rdDistZ(rd *Char, oc *Char) BytecodeValue {
+	if rd == nil {
+		return BytecodeSF()
+	}
+	dist := c.distZ(rd, oc)
+	return BytecodeFloat(dist)
+}
+
 func (c *Char) p2BodyDistX(oc *Char) BytecodeValue {
 	if p2 := c.p2(); p2 == nil {
 		return BytecodeSF()
@@ -5950,6 +5981,15 @@ func (c *Char) p2BodyDistY(oc *Char) BytecodeValue {
 		return BytecodeFloat(c.bodyDistY(p2, oc))
 	}
 }
+
+func (c *Char) p2BodyDistZ(oc *Char) BytecodeValue {
+	if p2 := c.p2(); p2 == nil {
+		return BytecodeSF()
+	} else {
+		return BytecodeFloat(c.bodyDistZ(p2, oc))
+	}
+}
+
 func (c *Char) hitVelSetX() {
 	// Movetype H is not required in Mugen
 	c.setXV(c.ghv.xvel)

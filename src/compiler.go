@@ -3144,7 +3144,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_p2dist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_p2dist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3156,7 +3156,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_p2bodydist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_p2bodydist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3168,7 +3168,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_rootdist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_rootdist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3180,7 +3180,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_parentdist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_parentdist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

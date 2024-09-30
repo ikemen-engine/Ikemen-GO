@@ -3917,12 +3917,20 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.p2BodyDistY(sys.debugWC).ToI()))
 		return 1
 	})
+	luaRegister(l, "p2bodydistZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.p2BodyDistZ(sys.debugWC).ToI()))
+		return 1
+	})
 	luaRegister(l, "p2distX", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.rdDistX(sys.debugWC.p2(), sys.debugWC).ToI()))
 		return 1
 	})
 	luaRegister(l, "p2distY", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.rdDistY(sys.debugWC.p2(), sys.debugWC).ToI()))
+		return 1
+	})
+	luaRegister(l, "p2distZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.rdDistZ(sys.debugWC.p2(), sys.debugWC).ToI()))
 		return 1
 	})
 	luaRegister(l, "p2life", func(*lua.LState) int {
@@ -3985,6 +3993,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "parentdistY", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.rdDistY(sys.debugWC.parent(), sys.debugWC).ToI()))
+		return 1
+	})
+	luaRegister(l, "parentdistZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.rdDistZ(sys.debugWC.parent(), sys.debugWC).ToI()))
 		return 1
 	})
 	luaRegister(l, "posX", func(*lua.LState) int {
@@ -4217,6 +4229,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "rootdistY", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.rdDistY(sys.debugWC.root(), sys.debugWC).ToI()))
+		return 1
+	})
+	luaRegister(l, "rootdistZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.rdDistZ(sys.debugWC.root(), sys.debugWC).ToI()))
 		return 1
 	})
 	luaRegister(l, "roundno", func(*lua.LState) int {

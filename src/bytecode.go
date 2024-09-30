@@ -417,12 +417,16 @@ const (
 const (
 	OC_ex_p2dist_x OpCode = iota
 	OC_ex_p2dist_y
+	OC_ex_p2dist_z
 	OC_ex_p2bodydist_x
 	OC_ex_p2bodydist_y
+	OC_ex_p2bodydist_z
 	OC_ex_parentdist_x
 	OC_ex_parentdist_y
+	OC_ex_parentdist_z
 	OC_ex_rootdist_x
 	OC_ex_rootdist_y
+	OC_ex_rootdist_z
 	OC_ex_win
 	OC_ex_winko
 	OC_ex_wintime
@@ -2162,18 +2166,26 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
 	case OC_ex_p2dist_y:
 		sys.bcStack.Push(c.rdDistY(c.p2(), oc))
+	case OC_ex_p2dist_z:
+		sys.bcStack.Push(c.rdDistZ(c.p2(), oc))
 	case OC_ex_p2bodydist_x:
 		sys.bcStack.Push(c.p2BodyDistX(oc))
 	case OC_ex_p2bodydist_y:
 		sys.bcStack.Push(c.p2BodyDistY(oc))
+	case OC_ex_p2bodydist_z:
+		sys.bcStack.Push(c.p2BodyDistZ(oc))
 	case OC_ex_parentdist_x:
 		sys.bcStack.Push(c.rdDistX(c.parent(), oc))
 	case OC_ex_parentdist_y:
 		sys.bcStack.Push(c.rdDistY(c.parent(), oc))
+	case OC_ex_parentdist_z:
+		sys.bcStack.Push(c.rdDistZ(c.parent(), oc))
 	case OC_ex_rootdist_x:
 		sys.bcStack.Push(c.rdDistX(c.root(), oc))
 	case OC_ex_rootdist_y:
 		sys.bcStack.Push(c.rdDistY(c.root(), oc))
+	case OC_ex_rootdist_z:
+		sys.bcStack.Push(c.rdDistZ(c.root(), oc))
 	case OC_ex_win:
 		sys.bcStack.PushB(c.win())
 	case OC_ex_winko:
