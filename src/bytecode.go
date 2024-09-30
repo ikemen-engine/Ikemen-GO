@@ -537,7 +537,6 @@ const (
 	OC_ex_dizzypointsmax
 	OC_ex_fighttime
 	OC_ex_firstattack
-	OC_ex_framespercount
 	OC_ex_float
 	OC_ex_gamemode
 	OC_ex_getplayerid
@@ -644,7 +643,6 @@ const (
 	OC_ex_alpha_d
 	OC_ex_selfcommand
 	OC_ex_guardcount
-	OC_ex_gamefps
 	OC_ex_fightscreenvar_info_author
 	OC_ex_fightscreenvar_info_localcoord_x
 	OC_ex_fightscreenvar_info_localcoord_y
@@ -656,6 +654,7 @@ const (
 	OC_ex_fightscreenvar_round_over_wintime
 	OC_ex_fightscreenvar_round_slow_time
 	OC_ex_fightscreenvar_round_start_waittime
+	OC_ex_fightscreenvar_time_framespercount
 	OC_ex_groundlevel
 	OC_ex_layerno
 )
@@ -2501,16 +2500,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.lifebar.ro.slow_time)
 	case OC_ex_fightscreenvar_round_start_waittime:
 		sys.bcStack.PushI(sys.lifebar.ro.start_waittime)
+	case OC_ex_fightscreenvar_time_framespercount:
+		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_fighttime:
 		sys.bcStack.PushI(sys.gameTime)
 	case OC_ex_firstattack:
 		sys.bcStack.PushB(sys.firstAttack[c.teamside] == c.playerNo)
-	case OC_ex_framespercount:
-		sys.bcStack.PushI(sys.lifebar.ti.framespercount)
 	case OC_ex_float:
 		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
-	case OC_ex_gamefps:
-		sys.bcStack.PushF(sys.gameFPS)
 	case OC_ex_gamemode:
 		sys.bcStack.PushB(strings.ToLower(sys.gameMode) ==
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(

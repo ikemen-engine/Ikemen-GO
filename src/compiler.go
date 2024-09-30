@@ -366,8 +366,6 @@ var triggerMap = map[string]int{
 	"fighttime":          1,
 	"firstattack":        1,
 	"float":              1,
-	"framespercount":     1,
-	"gamefps":            1,
 	"gamemode":           1,
 	"gameoption":         1,
 	"getplayerid":        1,
@@ -3624,6 +3622,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex_fightscreenvar_round_slow_time
 		case "round.start.waittime":
 			opc = OC_ex_fightscreenvar_round_start_waittime
+		case "time.framespercount":
+			opc = OC_ex_fightscreenvar_time_framespercount
 		default:
 			return bvNone(), Error("Invalid data: " + fsvname)
 		}
@@ -3639,10 +3639,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_fighttime)
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
-	case "framespercount":
-		out.append(OC_ex_, OC_ex_framespercount)
-	case "gamefps":
-		out.append(OC_ex_, OC_ex_gamefps)
 	case "gamemode":
 		if err := nameSub(OC_ex_, OC_ex_gamemode); err != nil {
 			return bvNone(), err

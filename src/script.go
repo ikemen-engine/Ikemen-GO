@@ -4687,6 +4687,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.lifebar.ro.slow_time))
 		case "round.start.waittime":
 			l.Push(lua.LNumber(sys.lifebar.ro.start_waittime))
+		case "time.framespercount":
+			l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -4698,14 +4700,6 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "firstattack", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.firstAttack[sys.debugWC.teamside] == sys.debugWC.playerNo))
-		return 1
-	})
-	luaRegister(l, "framespercount", func(l *lua.LState) int {
-		l.Push(lua.LNumber(sys.lifebar.ti.framespercount))
-		return 1
-	})
-	luaRegister(l, "gamefps", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.gameFPS))
 		return 1
 	})
 	luaRegister(l, "gamemode", func(*lua.LState) int {
@@ -5199,6 +5193,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "gameend", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.gameEnd))
+		return 1
+	})
+	luaRegister(l, "gamefps", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.gameFPS))
 		return 1
 	})
 	luaRegister(l, "gamespeed", func(*lua.LState) int {
