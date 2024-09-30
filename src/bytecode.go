@@ -1511,6 +1511,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				pno := c.playerNo
 				// For a Mugen character, the command position is checked in the redirecting char
 				// Recovery command is an exception in that its position is always checked in the final char
+				// Note: In Mugen, a character running a negative state will use its own engine version but the localcoord and commands of the state owner
+				// The commands part is not fully recreated at the moment, but no issues have come out of it so far
 				if cmdName != "recovery" && oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
 					redir = oc.ss.sb.playerNo
 					pno = c.ss.sb.playerNo
@@ -5055,7 +5057,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_animelem:
 			animelem := exp[0].evalI(c)
 			e.animelem = animelem
-			// e.anim.Action() This being in this place can cause a nil animation crash
+			if e.anim != nil {
+				e.anim.Action() // This being in this place can cause a nil animation crash
+			}
 			e.setAnimElem()
 		case explod_animfreeze:
 			e.animfreeze = exp[0].evalB(c)
@@ -5501,7 +5505,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.interpolate_animelem[1] = -1
 					e.animelem = animelem
-					// e.anim.Action() This being in this place can cause a nil animation crash
+					if e.anim != nil {
+						e.anim.Action() // This being in this place can cause a nil animation crash
+					}
 					e.setAnimElem()
 				})
 			case explod_animfreeze:

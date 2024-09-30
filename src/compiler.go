@@ -6546,7 +6546,9 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 						}
 					}
 				}
+				// Clear previous character's version
 				sys.cgi[pn].ikemenver = [3]uint16{}
+				sys.cgi[pn].ikemenverF = 0
 				if str, ok = is["ikemenversion"]; ok {
 					for i, s := range SplitAndTrim(str, ".") {
 						if i >= len(sys.cgi[pn].ikemenver) {

@@ -1165,7 +1165,7 @@ type Explod struct {
 	palfx                *PalFX
 	palfxdef             PalFXDef
 	window               [4]float32
-	lockSpriteFacing     bool
+	//lockSpriteFacing     bool
 	localscl             float32
 	blendmode            int32
 	start_animelem       int32
@@ -1313,13 +1313,14 @@ func (e *Explod) setPos(c *Char) {
 			e.offset[0] = -(float32(sys.gameWidth) / e.localscl / 2)
 		}
 	}
+	// Update: Importing this bug negatively impacts Ikemenversion chars' ability to modify non-Ikemenversion chars' explods
 	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
 	// The engine will leave the sprite facing to that side indefinitely.
 	// Ikemen chars aren't affected by this.
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
-		e.facing*e.relativef < 0 {
-		e.lockSpriteFacing = true
-	}
+	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
+	//	e.facing*e.relativef < 0 {
+	//	e.lockSpriteFacing = true
+	//}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
@@ -1402,9 +1403,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 		}
 	}
 	var facing float32 = e.facing * e.relativef
-	if e.lockSpriteFacing {
-		facing = -1
-	}
+	//if e.lockSpriteFacing {
+	//	facing = -1
+	//}
 	if sys.tickFrame() && act {
 		e.anim.UpdateSprite()
 	}
