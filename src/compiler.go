@@ -140,7 +140,6 @@ func newCompiler() *Compiler {
 		"guardpointsadd":       c.guardPointsAdd,
 		"guardpointsset":       c.guardPointsSet,
 		"height":               c.height,
-		"hitscaleset":          c.hitScaleSet,
 		"lifebaraction":        c.lifebarAction,
 		"loadfile":             c.loadFile,
 		"mapadd":               c.mapAdd,

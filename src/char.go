@@ -2286,9 +2286,6 @@ type Char struct {
 	immortal        bool
 	kovelocity      bool
 	preserve        int32
-	defaultHitScale [3]*HitScale
-	nextHitScale    map[int32][3]*HitScale
-	activeHitScale  map[int32][3]*HitScale
 	inputFlag       InputBits
 	pauseBool       bool
 	downHitOffset   float32
@@ -2330,10 +2327,6 @@ func (c *Char) init(n int, idx int32) {
 	} else {
 		c.mapArray = make(map[string]float32)
 		c.remapSpr = make(RemapPreset)
-
-		c.defaultHitScale = newHitScaleArray()
-		c.activeHitScale = make(map[int32][3]*HitScale)
-		c.nextHitScale = make(map[int32][3]*HitScale)
 	}
 	c.key = n
 	if n >= 0 && n < len(sys.com) && sys.com[n] != 0 {
@@ -2493,9 +2486,6 @@ func (c *Char) clearCachedData() {
 	c.winquote = -1
 	c.mapArray = make(map[string]float32)
 	c.remapSpr = make(RemapPreset)
-	c.defaultHitScale = newHitScaleArray()
-	c.activeHitScale = make(map[int32][3]*HitScale)
-	c.nextHitScale = make(map[int32][3]*HitScale)
 }
 
 // Return Char Global Info normally
@@ -5639,7 +5629,6 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool,
 	}
 	// Apply attack and defense multipliers
 	if !absolute {
-		damage = float64(attacker.scaleHit(F64toI32(damage), c.id, 0))
 		damage *= float64(atkmul) / c.finalDefense
 	}
 	// In Mugen, an extremely high defense or low attack still results in at least 1 damage. Not true when healing
@@ -6202,139 +6191,6 @@ func (c *Char) remapSpritePreset(preset string) {
 		for src[1], dst = range c.gi().remapPreset[preset][src[0]] {
 			c.remapSprite(src, dst)
 		}
-	}
-}
-
-type HitScale struct {
-	active  bool
-	mul     float32
-	add     int32
-	addType int32
-	min     float32
-	max     float32
-	time    int32
-}
-
-func newHitScale() *HitScale {
-	return &HitScale{
-		active:  false,
-		mul:     1,
-		add:     0,
-		addType: 0,
-		min:     -math.MaxInt32,
-		max:     math.MaxInt32,
-		time:    1,
-	}
-}
-
-func newHitScaleArray() [3]*HitScale {
-	var ret [3]*HitScale
-	for i := 0; i < 3; i++ {
-		ret[i] = &HitScale{
-			active:  false,
-			mul:     1,
-			add:     0,
-			addType: 0,
-			min:     -math.MaxInt32,
-			max:     math.MaxInt32,
-			time:    1,
-		}
-	}
-	return ret
-}
-
-// Mixes current hitScale values with the new ones.
-func (hs *HitScale) mix(nhs *HitScale) {
-	hs.mul *= nhs.mul
-	hs.add += nhs.add
-	hs.addType = nhs.addType
-	hs.min = nhs.min
-	hs.max = nhs.max
-	hs.time = nhs.time
-}
-
-func (hs *HitScale) copy(nhs *HitScale) {
-	hs.mul = nhs.mul
-	hs.add = nhs.add
-	hs.addType = nhs.addType
-	hs.min = nhs.min
-	hs.max = nhs.max
-	hs.time = nhs.time
-}
-
-// Resets defaultHitScale to the defaut values.
-func (hs *HitScale) reset() {
-	hs.active = false
-	hs.mul = 1
-	hs.add = 0
-	hs.addType = 0
-	hs.min = -math.MaxInt32
-	hs.max = math.MaxInt32
-	hs.time = 1
-}
-
-// Parses the timer of a hitScaleArray.
-func hitScaletimeAdvance(hsa [3]*HitScale) {
-	for _, hs := range hsa {
-		if hs.active && hs.time > 0 {
-			hs.time--
-		} else if hs.time == 0 {
-			hs.reset()
-			hs.time = -1
-		}
-	}
-}
-
-// Scales a hit based on hit scale.
-func (c *Char) scaleHit(baseDamage, id int32, index int) int32 {
-	var hs *HitScale
-	var ahs *HitScale
-	var heal = false
-
-	// Check if we are healing.
-	if baseDamage < 0 {
-		baseDamage *= -1
-		heal = true
-	}
-	var retDamage = baseDamage
-
-	// Get the values we want to scale.
-	if t, ok := c.nextHitScale[id]; ok && t[index].active {
-		hs = t[index]
-	} else {
-		hs = c.defaultHitScale[index]
-	}
-
-	// Get the current hitScale of the char,
-	// if one does not exist create one.
-	if _, ok := c.activeHitScale[id]; !ok {
-		c.activeHitScale[id] = newHitScaleArray()
-	}
-	ahs = c.activeHitScale[id][index]
-
-	// Calculate damage.
-	if hs.addType != 0 {
-		retDamage = F64toI32(math.Round(float64(retDamage)*float64(ahs.mul))) + ahs.add
-	} else {
-		retDamage = F64toI32(math.Round(float64(retDamage+ahs.add) * float64(ahs.mul)))
-	}
-
-	// Apply scale for the next hit.
-	ahs.mix(hs)
-
-	// Get Max/Min.
-	if hs.min != -math.MaxInt32 {
-		retDamage = Max(F64toI32(math.Round(float64(hs.min)*float64(baseDamage))), retDamage)
-	}
-	if hs.max != math.MaxInt32 {
-		retDamage = Min(F64toI32(math.Round(float64(hs.max)*float64(baseDamage))), retDamage)
-	}
-
-	// Convert the heal back to negative damage.
-	if heal {
-		return retDamage * -1
-	} else { // If it's not a heal, do nothing and just return it.
-		return retDamage
 	}
 }
 
@@ -7564,20 +7420,6 @@ func (c *Char) update() {
 				c.makeDust(0, 0, 0)
 			}
 		}
-
-		for k := range c.activeHitScale {
-			if p := sys.playerID(k); p != nil && p.ss.moveType != MT_H {
-				delete(c.activeHitScale, k)
-			}
-		}
-		for k, hs := range c.nextHitScale {
-			if p := sys.playerID(k); p != nil && p.ss.moveType != MT_H {
-				delete(c.nextHitScale, k)
-			} else if p.ss.moveType != MT_H {
-				hitScaletimeAdvance(hs)
-			}
-		}
-		hitScaletimeAdvance(c.defaultHitScale)
 	}
 	var customDefense float32 = 1
 	if !c.defenseMulDelay || c.ss.moveType == MT_H {
@@ -8469,7 +8311,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				if hitType == 2 {
 					ghv.guarded = true
 					ghv.hitshaketime = Max(0, hd.guard_shaketime)
-					ghv.hittime = Max(0, c.scaleHit(hd.guard_hittime, getter.id, 1))
+					ghv.hittime = Max(0, hd.guard_hittime)
 					ghv.slidetime = hd.guard_slidetime
 					if getter.ss.stateType == ST_A {
 						ghv.ctrltime = hd.airguard_ctrltime
@@ -8497,13 +8339,15 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.fall.yvelocity = hd.fall.yvelocity * (c.localscl / getter.localscl)
 
 					if getter.ss.stateType == ST_A {
-						ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
+						ghv.hittime = hd.air_hittime
+						// Note: ctrl time is not affected on hit in Mugen
+						// This is further proof that gethitvars don't need to be reset above
 						ghv.ctrltime = hd.air_hittime
 						ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
 						ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.air_fall
 					} else if getter.ss.stateType == ST_L {
-						ghv.hittime = c.scaleHit(hd.down_hittime, getter.id, 1)
+						ghv.hittime = hd.down_hittime
 						ghv.ctrltime = hd.down_hittime
 						ghv.fallflag = hd.ground_fall
 						if getter.pos[1] == 0 {
@@ -8527,9 +8371,9 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 							ghv.yvel = -0.001 * (c.localscl / getter.localscl)
 						}
 						if ghv.yvel != 0 {
-							ghv.hittime = c.scaleHit(hd.air_hittime, getter.id, 1)
+							ghv.hittime = hd.air_hittime
 						} else {
-							ghv.hittime = c.scaleHit(hd.ground_hittime, getter.id, 1)
+							ghv.hittime = hd.ground_hittime
 						}
 					}
 					if ghv.hittime < 0 {
