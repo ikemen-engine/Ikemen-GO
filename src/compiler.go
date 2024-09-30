@@ -1509,28 +1509,28 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		isStr := false
 		switch vname {
-		case "length":
-			opct = OC_ex_
-			opc = OC_ex2_bgmvar_length
-		case "position":
-			opct = OC_ex_
-			opc = OC_ex2_bgmvar_position
-		case "volume":
-			opct = OC_ex2_
-			opc = OC_ex2_bgmvar_volume
-		case "loopstart":
-			opct = OC_ex2_
-			opc = OC_ex2_bgmvar_loopstart
-		case "loopend":
-			opct = OC_ex2_
-			opc = OC_ex2_bgmvar_loopend
-		case "startposition":
-			opct = OC_ex2_
-			opc = OC_ex2_bgmvar_startposition
 		case "filename":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_filename
 			isStr = true
+		case "length":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_length
+		case "loopend":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_loopend
+		case "loopstart":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_loopstart
+		case "position":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_position
+		case "startposition":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_startposition
+		case "volume":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_volume
 		}
 		if isStr {
 			if err := nameSub(opct, opc); err != nil {

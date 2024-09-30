@@ -689,12 +689,12 @@ const (
 	OC_ex2_palfxvar_all_invertblend
 	OC_ex2_introstate
 	OC_ex2_bgmvar_filename
+	OC_ex2_bgmvar_length
 	OC_ex2_bgmvar_loopend
 	OC_ex2_bgmvar_loopstart
+	OC_ex2_bgmvar_position
 	OC_ex2_bgmvar_startposition
 	OC_ex2_bgmvar_volume
-	OC_ex2_bgmvar_length
-	OC_ex2_bgmvar_position
 	OC_ex2_gameoption_sound_panningrange
 	OC_ex2_gameoption_sound_wavchannels
 	OC_ex2_gameoption_sound_mastervolume
