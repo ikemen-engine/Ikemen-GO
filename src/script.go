@@ -2886,22 +2886,6 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(int32(sys.debugWC.backEdgeDist())))
 		return 1
 	})
-	luaRegister(l, "bgmlength", func(*lua.LState) int {
-		if sys.bgm.streamer == nil {
-			l.Push(lua.LNumber(0))
-		} else {
-			l.Push(lua.LNumber(int32(sys.bgm.streamer.Len())))
-		}
-		return 1
-	})
-	luaRegister(l, "bgmposition", func(*lua.LState) int {
-		if sys.bgm.streamer == nil {
-			l.Push(lua.LNumber(0))
-		} else {
-			l.Push(lua.LNumber(int32(sys.bgm.streamer.Position())))
-		}
-		return 1
-	})
 	luaRegister(l, "bgmvar", func(*lua.LState) int {
 
 		arg := strings.ToLower(strArg(l, 1))
@@ -4500,14 +4484,6 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
-	luaRegister(l, "animelemlength", func(*lua.LState) int {
-		if f := sys.debugWC.anim.CurrentFrame(); f != nil {
-			l.Push(lua.LNumber(f.Time))
-		} else {
-			l.Push(lua.LNumber(0))
-		}
-		return 1
-	})
 	luaRegister(l, "animframe", func(*lua.LState) int {
 		c := sys.debugWC
 		switch strArg(l, 1) {
@@ -4569,7 +4545,7 @@ func triggerFunctions(l *lua.LState) {
 				l.Push(lua.LNumber(0))
 			}
 			return 1
-		case "time": // Same as AnimElemLength
+		case "time":
 			if f := c.anim.CurrentFrame(); f != nil {
 				l.Push(lua.LNumber(f.Time))
 			} else {
@@ -4708,10 +4684,6 @@ func triggerFunctions(l *lua.LState) {
 			return 1
 		}
 		l.Push(lua.LBool(sys.gameMode == strArg(l, 1)))
-		return 1
-	})
-	luaRegister(l, "getplayerid", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.getPlayerID(int(numArg(l, 1)))))
 		return 1
 	})
 	luaRegister(l, "guardbreak", func(*lua.LState) int {
@@ -4979,14 +4951,6 @@ func triggerFunctions(l *lua.LState) {
 		a, b, amount, retv := float32(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3)), float32(0)
 		retv = float32(a + (b-a)*MaxF(0, MinF(amount, 1)))
 		l.Push(lua.LNumber(retv))
-		return 1
-	})
-	luaRegister(l, "localscale", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.localscl))
-		return 1
-	})
-	luaRegister(l, "majorversion", func(*lua.LState) int {
-		l.Push(lua.LBool(sys.debugWC.gi().mugenver[0] == 1))
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
