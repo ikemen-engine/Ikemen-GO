@@ -2917,6 +2917,8 @@ func triggerFunctions(l *lua.LState) {
 					ln = lua.LNumber(int32(sys.bgm.streamer.Position()))
 				case "startposition":
 					ln = lua.LNumber(int32(sys.bgm.startPos))
+				case "volume":
+					ln = lua.LNumber(int32(sys.bgm.bgmVolume))
 				}
 			}
 			l.Push(ln)
