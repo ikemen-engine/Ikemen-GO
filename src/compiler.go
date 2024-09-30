@@ -338,14 +338,11 @@ var triggerMap = map[string]int{
 	"airjumpcount":       1,
 	"alpha":              1,
 	"angle":              1,
-	"animelemlength":     1,
 	"animframe":          1,
 	"animlength":         1,
 	"animplayerno":       1,
 	"atan2":              1,
 	"attack":             1,
-	"bgmlength":          1,
-	"bgmposition":        1,
 	"bgmvar":             1,
 	"clamp":              1,
 	"clsnoverlap":        1,
@@ -368,7 +365,6 @@ var triggerMap = map[string]int{
 	"float":              1,
 	"gamemode":           1,
 	"gameoption":         1,
-	"getplayerid":        1,
 	"groundangle":        1,
 	"guardbreak":         1,
 	"guardcount":         1,
@@ -391,8 +387,6 @@ var triggerMap = map[string]int{
 	"layerno":            1,
 	"lerp":               1,
 	"localcoord":         1,
-	"localscale":         1,
-	"majorversion":       1,
 	"map":                1,
 	"max":                1,
 	"memberno":           1,
@@ -1503,10 +1497,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_backedgebodydist)
 	case "backedgedist":
 		out.append(OC_backedgedist)
-	case "bgmlength":
-		out.append(OC_ex_, OC_ex_bgmlength)
-	case "bgmposition":
-		out.append(OC_ex_, OC_ex_bgmposition)
 	case "bgmvar":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -1521,10 +1511,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		switch vname {
 		case "length":
 			opct = OC_ex_
-			opc = OC_ex_bgmlength
+			opc = OC_ex2_bgmvar_length
 		case "position":
 			opct = OC_ex_
-			opc = OC_ex_bgmposition
+			opc = OC_ex2_bgmvar_position
 		case "volume":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_volume
@@ -3325,7 +3315,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.min(&bv1, bv2)
 			bv = bv1
 		}
-	case "randomrange", "rand": // rand is deprecated, kept for backward compatibility
+	case "randomrange":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
 		}
@@ -3507,8 +3497,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_ailevelf)
 	case "airjumpcount":
 		out.append(OC_ex_, OC_ex_airjumpcount)
-	case "animelemlength":
-		out.append(OC_ex_, OC_ex_animelemlength)
 	case "animframe":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -3643,11 +3631,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		if err := nameSub(OC_ex_, OC_ex_gamemode); err != nil {
 			return bvNone(), err
 		}
-	case "getplayerid":
-		if _, err := c.oneArg(out, in, rd, true); err != nil {
-			return bvNone(), err
-		}
-		out.append(OC_ex_, OC_ex_getplayerid)
 	case "groundangle":
 		out.append(OC_ex_, OC_ex_groundangle)
 	case "guardbreak":
@@ -3873,10 +3856,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
-	case "localscale":
-		out.append(OC_ex_, OC_ex_localscale)
-	case "majorversion":
-		out.append(OC_ex_, OC_ex_majorversion)
 	case "map":
 		if err := c.checkOpeningBracket(in); err != nil {
 			return bvNone(), err
@@ -4016,7 +3995,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_teamsize)
 	case "timeelapsed":
 		out.append(OC_ex_, OC_ex_timeelapsed)
-	case "timeremaining", "timeleft": // timeleft is deprecated, kept for backward compatibility
+	case "timeremaining":
 		out.append(OC_ex_, OC_ex_timeremaining)
 	case "timetotal":
 		out.append(OC_ex_, OC_ex_timetotal)

@@ -439,7 +439,6 @@ const (
 	OC_ex_roundsexisted
 	OC_ex_ishometeam
 	OC_ex_tickspersecond
-	OC_ex_majorversion
 	OC_ex_drawpalno
 	OC_ex_const240p
 	OC_ex_const480p
@@ -510,7 +509,6 @@ const (
 	OC_ex_gethitvar_down_recovertime
 	OC_ex_gethitvar_xaccel
 	OC_ex_ailevelf
-	OC_ex_animelemlength
 	OC_ex_animframe_alphadest
 	OC_ex_animframe_angle
 	OC_ex_animframe_alphasource
@@ -539,7 +537,6 @@ const (
 	OC_ex_firstattack
 	OC_ex_float
 	OC_ex_gamemode
-	OC_ex_getplayerid
 	OC_ex_groundangle
 	OC_ex_guardbreak
 	OC_ex_guardpoints
@@ -582,7 +579,6 @@ const (
 	OC_ex_jugglepoints
 	OC_ex_localcoord_x
 	OC_ex_localcoord_y
-	OC_ex_localscale
 	OC_ex_maparray
 	OC_ex_max
 	OC_ex_min
@@ -628,8 +624,6 @@ const (
 	OC_ex_prevmovetype
 	OC_ex_prevstatetype
 	OC_ex_reversaldefattr
-	OC_ex_bgmlength
-	OC_ex_bgmposition
 	OC_ex_airjumpcount
 	OC_ex_envshakevar_time
 	OC_ex_envshakevar_freq
@@ -699,6 +693,8 @@ const (
 	OC_ex2_bgmvar_loopstart
 	OC_ex2_bgmvar_startposition
 	OC_ex2_bgmvar_volume
+	OC_ex2_bgmvar_length
+	OC_ex2_bgmvar_position
 	OC_ex2_gameoption_sound_panningrange
 	OC_ex2_gameoption_sound_wavchannels
 	OC_ex2_gameoption_sound_mastervolume
@@ -2347,12 +2343,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		}
 	case OC_ex_airjumpcount:
 		sys.bcStack.PushI(c.airJumpCount)
-	case OC_ex_animelemlength:
-		if f := c.anim.CurrentFrame(); f != nil {
-			sys.bcStack.PushI(f.Time)
-		} else {
-			sys.bcStack.PushI(0)
-		}
 	case OC_ex_animframe_alphadest:
 		if f := c.anim.CurrentFrame(); f != nil {
 			sys.bcStack.PushI(int32(f.DstAlpha))
@@ -2391,7 +2381,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushI(-1)
 		}
-	case OC_ex_animframe_time: // Same as AnimElemLength
+	case OC_ex_animframe_time:
 		if f := c.anim.CurrentFrame(); f != nil {
 			sys.bcStack.PushI(f.Time)
 		} else {
@@ -2513,8 +2503,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.stringPool[sys.workingState.playerNo].List[*(*int32)(
 				unsafe.Pointer(&be[*i]))])
 		*i += 4
-	case OC_ex_getplayerid:
-		sys.bcStack.Top().SetI(c.getPlayerID(int(sys.bcStack.Top().ToI())))
 	case OC_ex_groundangle:
 		sys.bcStack.PushF(c.groundAngle)
 	case OC_ex_groundlevel:
@@ -2658,10 +2646,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.cgi[c.playerNo].localcoord[0])
 	case OC_ex_localcoord_y:
 		sys.bcStack.PushF(sys.cgi[c.playerNo].localcoord[1])
-	case OC_ex_localscale:
-		sys.bcStack.PushF(c.localscl)
-	case OC_ex_majorversion:
-		sys.bcStack.PushB(c.gi().mugenver[0] == 1)
 	case OC_ex_maparray:
 		sys.bcStack.PushF(c.mapArray[sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))]])
 		*i += 4
@@ -2782,18 +2766,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_reversaldefattr:
 		sys.bcStack.PushB(c.reversalDefAttr(*(*int32)(unsafe.Pointer(&be[*i]))))
 		*i += 4
-	case OC_ex_bgmlength:
-		if sys.bgm.streamer == nil {
-			sys.bcStack.PushI(0)
-		} else {
-			sys.bcStack.PushI(int32(sys.bgm.streamer.Len()))
-		}
-	case OC_ex_bgmposition:
-		if sys.bgm.streamer == nil {
-			sys.bcStack.PushI(0)
-		} else {
-			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
-		}
 	case OC_ex_angle:
 		if c.csf(CSF_angledraw) {
 			sys.bcStack.PushF(c.angle)
@@ -2919,6 +2891,18 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.palfxvar(-2, 2))
 	case OC_ex2_introstate:
 		sys.bcStack.PushI(sys.introState())
+	case OC_ex2_bgmvar_length:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Len()))
+		}
+	case OC_ex2_bgmvar_position:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
+		}
 	case OC_ex2_bgmvar_loopstart:
 		if sys.bgm.volctrl != nil {
 			if sl, ok := sys.bgm.volctrl.Streamer.(*StreamLooper); ok {
