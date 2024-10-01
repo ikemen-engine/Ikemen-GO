@@ -417,12 +417,16 @@ const (
 const (
 	OC_ex_p2dist_x OpCode = iota
 	OC_ex_p2dist_y
+	OC_ex_p2dist_z
 	OC_ex_p2bodydist_x
 	OC_ex_p2bodydist_y
+	OC_ex_p2bodydist_z
 	OC_ex_parentdist_x
 	OC_ex_parentdist_y
+	OC_ex_parentdist_z
 	OC_ex_rootdist_x
 	OC_ex_rootdist_y
+	OC_ex_rootdist_z
 	OC_ex_win
 	OC_ex_winko
 	OC_ex_wintime
@@ -728,47 +732,48 @@ const (
 	OC_ex2_explodvar_id
 	OC_ex2_explodvar_bindtime
 	OC_ex2_explodvar_facing
-	OC_ex2_projectilevar_projremove
-	OC_ex2_projectilevar_projremovetime
-	OC_ex2_projectilevar_projshadow_r
-	OC_ex2_projectilevar_projshadow_g
-	OC_ex2_projectilevar_projshadow_b
-	OC_ex2_projectilevar_projmisstime
-	OC_ex2_projectilevar_projhits
-	OC_ex2_projectilevar_projhitsmax
-	OC_ex2_projectilevar_projpriority
-	OC_ex2_projectilevar_projhitanim
-	OC_ex2_projectilevar_projremanim
-	OC_ex2_projectilevar_projcancelanim
-	OC_ex2_projectilevar_vel_x
-	OC_ex2_projectilevar_vel_y
-	OC_ex2_projectilevar_vel_z
-	OC_ex2_projectilevar_velmul_x
-	OC_ex2_projectilevar_velmul_y
-	OC_ex2_projectilevar_velmul_z
-	OC_ex2_projectilevar_remvelocity_x
-	OC_ex2_projectilevar_remvelocity_y
-	OC_ex2_projectilevar_remvelocity_z
-	OC_ex2_projectilevar_accel_x
-	OC_ex2_projectilevar_accel_y
-	OC_ex2_projectilevar_accel_z
-	OC_ex2_projectilevar_projscale_x
-	OC_ex2_projectilevar_projscale_y
-	OC_ex2_projectilevar_projangle
-	OC_ex2_projectilevar_pos_x
-	OC_ex2_projectilevar_pos_y
-	OC_ex2_projectilevar_pos_z
-	OC_ex2_projectilevar_projsprpriority
-	OC_ex2_projectilevar_projstagebound
-	OC_ex2_projectilevar_projedgebound
-	OC_ex2_projectilevar_lowbound
-	OC_ex2_projectilevar_highbound
-	OC_ex2_projectilevar_projanim
-	OC_ex2_projectilevar_animelem
-	OC_ex2_projectilevar_supermovetime
-	OC_ex2_projectilevar_pausemovetime
-	OC_ex2_projectilevar_projid
-	OC_ex2_projectilevar_teamside
+	OC_ex2_projvar_accel_x
+	OC_ex2_projvar_accel_y
+	OC_ex2_projvar_accel_z
+	OC_ex2_projvar_animelem
+	OC_ex2_projvar_highbound
+	OC_ex2_projvar_lowbound
+	OC_ex2_projvar_pausemovetime
+	OC_ex2_projvar_pos_x
+	OC_ex2_projvar_pos_y
+	OC_ex2_projvar_pos_z
+	OC_ex2_projvar_projangle
+	OC_ex2_projvar_projanim
+	OC_ex2_projvar_projcancelanim
+	OC_ex2_projvar_projedgebound
+	OC_ex2_projvar_projhitanim
+	OC_ex2_projvar_projhits
+	OC_ex2_projvar_projhitsmax
+	OC_ex2_projvar_projid
+	OC_ex2_projvar_projlayerno
+	OC_ex2_projvar_projmisstime
+	OC_ex2_projvar_projpriority
+	OC_ex2_projvar_projremanim
+	OC_ex2_projvar_projremove
+	OC_ex2_projvar_projremovetime
+	OC_ex2_projvar_projscale_x
+	OC_ex2_projvar_projscale_y
+	OC_ex2_projvar_projshadow_b
+	OC_ex2_projvar_projshadow_g
+	OC_ex2_projvar_projshadow_r
+	OC_ex2_projvar_projsprpriority
+	OC_ex2_projvar_projstagebound
+	OC_ex2_projvar_remvelocity_x
+	OC_ex2_projvar_remvelocity_y
+	OC_ex2_projvar_remvelocity_z
+	OC_ex2_projvar_supermovetime
+	OC_ex2_projvar_teamside
+	OC_ex2_projvar_vel_x
+	OC_ex2_projvar_vel_y
+	OC_ex2_projvar_vel_z
+	OC_ex2_projvar_velmul_x
+	OC_ex2_projvar_velmul_y
+	OC_ex2_projvar_velmul_z
 	OC_ex2_hitdefvar_guardflag
 	OC_ex2_hitdefvar_hitflag
 	OC_ex2_hitdefvar_guarddamage
@@ -1506,6 +1511,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 				pno := c.playerNo
 				// For a Mugen character, the command position is checked in the redirecting char
 				// Recovery command is an exception in that its position is always checked in the final char
+				// Note: In Mugen, a character running a negative state will use its own engine version but the localcoord and commands of the state owner
+				// The commands part is not fully recreated at the moment, but no issues have come out of it so far
 				if cmdName != "recovery" && oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
 					redir = oc.ss.sb.playerNo
 					pno = c.ss.sb.playerNo
@@ -2155,18 +2162,26 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.Push(c.rdDistX(c.p2(), oc))
 	case OC_ex_p2dist_y:
 		sys.bcStack.Push(c.rdDistY(c.p2(), oc))
+	case OC_ex_p2dist_z:
+		sys.bcStack.Push(c.rdDistZ(c.p2(), oc))
 	case OC_ex_p2bodydist_x:
 		sys.bcStack.Push(c.p2BodyDistX(oc))
 	case OC_ex_p2bodydist_y:
 		sys.bcStack.Push(c.p2BodyDistY(oc))
+	case OC_ex_p2bodydist_z:
+		sys.bcStack.Push(c.p2BodyDistZ(oc))
 	case OC_ex_parentdist_x:
 		sys.bcStack.Push(c.rdDistX(c.parent(), oc))
 	case OC_ex_parentdist_y:
 		sys.bcStack.Push(c.rdDistY(c.parent(), oc))
+	case OC_ex_parentdist_z:
+		sys.bcStack.Push(c.rdDistZ(c.parent(), oc))
 	case OC_ex_rootdist_x:
 		sys.bcStack.Push(c.rdDistX(c.root(), oc))
 	case OC_ex_rootdist_y:
 		sys.bcStack.Push(c.rdDistY(c.root(), oc))
+	case OC_ex_rootdist_z:
+		sys.bcStack.Push(c.rdDistZ(c.root(), oc))
 	case OC_ex_win:
 		sys.bcStack.PushB(c.win())
 	case OC_ex_winko:
@@ -3084,107 +3099,93 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			sys.bcStack.Push(v)
 		}
 	// BEGIN FALLTHROUGH (projvar)
-	case OC_ex2_projectilevar_accel_x:
+	case OC_ex2_projvar_accel_x:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_accel_y:
+	case OC_ex2_projvar_accel_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_vel_x:
+	case OC_ex2_projvar_vel_x:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_vel_y:
+	case OC_ex2_projvar_vel_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_projstagebound:
+	case OC_ex2_projvar_projstagebound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_projedgebound:
+	case OC_ex2_projvar_projedgebound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_lowbound:
+	case OC_ex2_projvar_lowbound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_highbound:
+	case OC_ex2_projvar_highbound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_remvelocity_x:
+	case OC_ex2_projvar_remvelocity_x:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_remvelocity_y:
+	case OC_ex2_projvar_remvelocity_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_projremove:
+	case OC_ex2_projvar_projremove:
 		fallthrough
-	case OC_ex2_projectilevar_projremovetime:
+	case OC_ex2_projvar_projremovetime:
 		fallthrough
-	case OC_ex2_projectilevar_projshadow_r:
+	case OC_ex2_projvar_projshadow_r:
 		fallthrough
-	case OC_ex2_projectilevar_projshadow_g:
+	case OC_ex2_projvar_projshadow_g:
 		fallthrough
-	case OC_ex2_projectilevar_projshadow_b:
+	case OC_ex2_projvar_projshadow_b:
 		fallthrough
-	case OC_ex2_projectilevar_projmisstime:
+	case OC_ex2_projvar_projmisstime:
 		fallthrough
-	case OC_ex2_projectilevar_projhits:
+	case OC_ex2_projvar_projhits:
 		fallthrough
-	case OC_ex2_projectilevar_projhitsmax:
+	case OC_ex2_projvar_projhitsmax:
 		fallthrough
-	case OC_ex2_projectilevar_projpriority:
+	case OC_ex2_projvar_projpriority:
 		fallthrough
-	case OC_ex2_projectilevar_projhitanim:
+	case OC_ex2_projvar_projhitanim:
 		fallthrough
-	case OC_ex2_projectilevar_projremanim:
+	case OC_ex2_projvar_projremanim:
 		fallthrough
-	case OC_ex2_projectilevar_projcancelanim:
+	case OC_ex2_projvar_projcancelanim:
 		fallthrough
-	case OC_ex2_projectilevar_velmul_x:
+	case OC_ex2_projvar_velmul_x:
 		fallthrough
-	case OC_ex2_projectilevar_velmul_y:
+	case OC_ex2_projvar_velmul_y:
 		fallthrough
-	case OC_ex2_projectilevar_projscale_x:
+	case OC_ex2_projvar_projscale_x:
 		fallthrough
-	case OC_ex2_projectilevar_projscale_y:
+	case OC_ex2_projvar_projscale_y:
 		fallthrough
-	case OC_ex2_projectilevar_projangle:
+	case OC_ex2_projvar_projangle:
 		fallthrough
-	case OC_ex2_projectilevar_projsprpriority:
+	case OC_ex2_projvar_projsprpriority:
 		fallthrough
-	case OC_ex2_projectilevar_projanim:
+	case OC_ex2_projvar_projlayerno:
 		fallthrough
-	case OC_ex2_projectilevar_animelem:
+	case OC_ex2_projvar_projanim:
 		fallthrough
-	case OC_ex2_projectilevar_supermovetime:
+	case OC_ex2_projvar_animelem:
 		fallthrough
-	case OC_ex2_projectilevar_projid:
+	case OC_ex2_projvar_supermovetime:
 		fallthrough
-	case OC_ex2_projectilevar_teamside:
+	case OC_ex2_projvar_projid:
 		fallthrough
-	case OC_ex2_projectilevar_pausemovetime:
-		camCorrected = true // gotta do this
+	case OC_ex2_projvar_teamside:
 		fallthrough
-		// END FALLTHROUGH (projvar)
-	case OC_ex2_projectilevar_pos_x:
-		correctScale = true
-		if !camCorrected {
-			camOff = -sys.cam.Pos[0] / oc.localscl
-			camCorrected = true
-		}
+	case OC_ex2_projvar_pausemovetime:
 		fallthrough
-	case OC_ex2_projectilevar_pos_y:
-		correctScale = true
-		if !camCorrected {
-			camOff = -sys.cam.Pos[1] / oc.localscl
-			camCorrected = true
-		}
+	case OC_ex2_projvar_pos_x:
+		fallthrough
+	case OC_ex2_projvar_pos_y:
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
-		v := c.projVar(id, idx, opc)
-		if correctScale {
-			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) + camOff)
-		} else {
-			sys.bcStack.Push(v)
-		}
+		v := c.projVar(id, idx, opc, oc)
+		sys.bcStack.Push(v)
 	case OC_ex2_hitdefvar_guardflag:
 		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
 		sys.bcStack.PushB(
@@ -5036,7 +5037,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_animelem:
 			animelem := exp[0].evalI(c)
 			e.animelem = animelem
-			// e.anim.Action() This being in this place can cause a nil animation crash
+			if e.anim != nil {
+				e.anim.Action() // This being in this place can cause a nil animation crash
+			}
 			e.setAnimElem()
 		case explod_animfreeze:
 			e.animfreeze = exp[0].evalB(c)
@@ -5482,7 +5485,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.interpolate_animelem[1] = -1
 					e.animelem = animelem
-					// e.anim.Action() This being in this place can cause a nil animation crash
+					if e.anim != nil {
+						e.anim.Action() // This being in this place can cause a nil animation crash
+					}
 					e.setAnimElem()
 				})
 			case explod_animfreeze:
@@ -9699,131 +9704,6 @@ func (sc guardPointsSet) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	return false
-}
-
-type hitScaleSet StateControllerBase
-
-const (
-	hitScaleSet_id byte = iota
-	hitScaleSet_affects_damage
-	hitScaleSet_affects_hitTime
-	hitScaleSet_affects_pauseTime
-	hitScaleSet_mul
-	hitScaleSet_add
-	hitScaleSet_addType
-	hitScaleSet_min
-	hitScaleSet_max
-	hitScaleSet_time
-	hitScaleSet_reset
-	hitScaleSet_force
-	hitScaleSet_redirectid
-)
-
-// Takes the values given by Compiler.hitScaleSet and executes it.
-func (sc hitScaleSet) Run(c *Char, _ []int32) bool {
-	var crun = c
-	// Default values
-	var affects = []bool{false, false, false}
-	// Target of the hitScale, -1 is default.
-	var target int32 = -1
-	var targetArray [3]*HitScale
-	// Do we reset everithng back to default?
-	var resetAll = false
-	var reset = false
-	// If false we wait to hit to apply hitScale.
-	// If true we apply on call.
-	var force = false
-	// Holder variables
-	var tempHitScale = newHitScale()
-
-	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
-		switch id {
-		// What is hitScale ging to affect.
-		case hitScaleSet_affects_damage:
-			affects[0] = true
-		case hitScaleSet_affects_hitTime:
-			affects[1] = true
-		case hitScaleSet_affects_pauseTime:
-			affects[2] = true
-		// ID of the char to apply to.
-		case hitScaleSet_id:
-			target = exp[0].evalI(c)
-		case hitScaleSet_mul:
-			tempHitScale.mul = exp[0].evalF(c)
-		case hitScaleSet_add:
-			tempHitScale.add = exp[0].evalI(c)
-		case hitScaleSet_addType:
-			tempHitScale.addType = exp[0].evalI(c)
-		case hitScaleSet_min:
-			tempHitScale.min = exp[0].evalF(c)
-		case hitScaleSet_max:
-			tempHitScale.max = exp[0].evalF(c)
-		case hitScaleSet_time:
-			tempHitScale.time = exp[0].evalI(c)
-		case hitScaleSet_reset:
-			if exp[0].evalI(c) == 1 {
-				reset = true
-			} else if exp[0].evalI(c) == 2 {
-				resetAll = true
-			}
-		case hitScaleSet_force:
-			force = exp[0].evalB(c)
-		// Genric redirectId.
-		case hitScaleSet_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-			} else {
-				return false
-			}
-		}
-		return true
-	})
-
-	// ----------------------------------------------------------------------
-
-	if resetAll {
-		for _, hs := range crun.defaultHitScale {
-			hs.reset()
-		}
-		crun.nextHitScale = make(map[int32][3]*HitScale)
-		crun.activeHitScale = make(map[int32][3]*HitScale)
-	}
-
-	targetArray = getHitScaleTarget(crun, target, force, reset)
-
-	// Apply the new values and activate it.
-	for i, hs := range targetArray {
-		if affects[i] {
-			if reset {
-				if ahs, ok := crun.activeHitScale[target]; ok {
-					ahs[int32(i)].reset()
-				}
-			}
-			hs.copy(tempHitScale)
-			hs.active = true
-		}
-	}
-
-	return false
-}
-
-func getHitScaleTarget(char *Char, target int32, force bool, reset bool) [3]*HitScale {
-	// Get our targets.
-	if target <= -1 {
-		return char.defaultHitScale
-	} else { // Check if target exists.
-		if force {
-			if _, ok := char.activeHitScale[target]; !ok || reset {
-				char.activeHitScale[target] = newHitScaleArray()
-			}
-			return char.activeHitScale[target]
-		} else {
-			if _, ok := char.nextHitScale[target]; !ok || reset {
-				char.nextHitScale[target] = newHitScaleArray()
-			}
-			return char.nextHitScale[target]
-		}
-	}
 }
 
 type lifebarAction StateControllerBase

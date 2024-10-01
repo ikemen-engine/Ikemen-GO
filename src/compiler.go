@@ -140,7 +140,6 @@ func newCompiler() *Compiler {
 		"guardpointsadd":       c.guardPointsAdd,
 		"guardpointsset":       c.guardPointsSet,
 		"height":               c.height,
-		"hitscaleset":          c.hitScaleSet,
 		"lifebaraction":        c.lifebarAction,
 		"loadfile":             c.loadFile,
 		"mapadd":               c.mapAdd,
@@ -2640,46 +2639,46 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 
 		switch vname {
 		case "projremove":
-			opc = OC_ex2_projectilevar_projremove
+			opc = OC_ex2_projvar_projremove
 		case "projremovetime":
-			opc = OC_ex2_projectilevar_projremovetime
+			opc = OC_ex2_projvar_projremovetime
 		case "shadow":
 			c.token = c.tokenizer(in)
 
 			switch c.token {
 			case "r":
-				opc = OC_ex2_projectilevar_projshadow_r
+				opc = OC_ex2_projvar_projshadow_r
 			case "g":
-				opc = OC_ex2_projectilevar_projshadow_g
+				opc = OC_ex2_projvar_projshadow_g
 			case "b":
-				opc = OC_ex2_projectilevar_projshadow_b
+				opc = OC_ex2_projvar_projshadow_b
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
 		case "projmisstime":
-			opc = OC_ex2_projectilevar_projmisstime
+			opc = OC_ex2_projvar_projmisstime
 		case "projhits":
-			opc = OC_ex2_projectilevar_projhits
+			opc = OC_ex2_projvar_projhits
 		case "projhitsmax":
-			opc = OC_ex2_projectilevar_projhitsmax
+			opc = OC_ex2_projvar_projhitsmax
 		case "projpriority":
-			opc = OC_ex2_projectilevar_projpriority
+			opc = OC_ex2_projvar_projpriority
 		case "projhitanim":
-			opc = OC_ex2_projectilevar_projhitanim
+			opc = OC_ex2_projvar_projhitanim
 		case "projremanim":
-			opc = OC_ex2_projectilevar_projremanim
+			opc = OC_ex2_projvar_projremanim
 		case "projcancelanim":
-			opc = OC_ex2_projectilevar_projcancelanim
+			opc = OC_ex2_projvar_projcancelanim
 		case "vel":
 			c.token = c.tokenizer(in)
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projectilevar_vel_x
+				opc = OC_ex2_projvar_vel_x
 			case "y":
-				opc = OC_ex2_projectilevar_vel_y
+				opc = OC_ex2_projvar_vel_y
 			case "z":
-				opc = OC_ex2_projectilevar_vel_z
+				opc = OC_ex2_projvar_vel_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2688,11 +2687,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projectilevar_velmul_x
+				opc = OC_ex2_projvar_velmul_x
 			case "y":
-				opc = OC_ex2_projectilevar_velmul_y
+				opc = OC_ex2_projvar_velmul_y
 			case "z":
-				opc = OC_ex2_projectilevar_velmul_z
+				opc = OC_ex2_projvar_velmul_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2701,11 +2700,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projectilevar_remvelocity_x
+				opc = OC_ex2_projvar_remvelocity_x
 			case "y":
-				opc = OC_ex2_projectilevar_remvelocity_y
+				opc = OC_ex2_projvar_remvelocity_y
 			case "z":
-				opc = OC_ex2_projectilevar_remvelocity_z
+				opc = OC_ex2_projvar_remvelocity_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2714,11 +2713,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projectilevar_accel_x
+				opc = OC_ex2_projvar_accel_x
 			case "y":
-				opc = OC_ex2_projectilevar_accel_y
+				opc = OC_ex2_projvar_accel_y
 			case "z":
-				opc = OC_ex2_projectilevar_accel_z
+				opc = OC_ex2_projvar_accel_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
@@ -2727,47 +2726,47 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projectilevar_projscale_x
+				opc = OC_ex2_projvar_projscale_x
 			case "y":
-				opc = OC_ex2_projectilevar_projscale_y
+				opc = OC_ex2_projvar_projscale_y
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
 		case "angle":
-			opc = OC_ex2_projectilevar_projangle
+			opc = OC_ex2_projvar_projangle
 		case "pos":
 			c.token = c.tokenizer(in)
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projectilevar_pos_x
+				opc = OC_ex2_projvar_pos_x
 			case "y":
-				opc = OC_ex2_projectilevar_pos_y
+				opc = OC_ex2_projvar_pos_y
 			case "z":
-				opc = OC_ex2_projectilevar_pos_z
+				opc = OC_ex2_projvar_pos_z
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
 		case "projsprpriority":
-			opc = OC_ex2_projectilevar_projsprpriority
+			opc = OC_ex2_projvar_projsprpriority
 		case "projstagebound":
-			opc = OC_ex2_projectilevar_projstagebound
+			opc = OC_ex2_projvar_projstagebound
 		case "projedgebound":
-			opc = OC_ex2_projectilevar_projedgebound
+			opc = OC_ex2_projvar_projedgebound
 		case "lowbound":
-			opc = OC_ex2_projectilevar_lowbound
+			opc = OC_ex2_projvar_lowbound
 		case "highbound":
-			opc = OC_ex2_projectilevar_highbound
+			opc = OC_ex2_projvar_highbound
 		case "anim":
-			opc = OC_ex2_projectilevar_projanim
+			opc = OC_ex2_projvar_projanim
 		case "animelem":
-			opc = OC_ex2_projectilevar_animelem
+			opc = OC_ex2_projvar_animelem
 		case "pausemovetime":
-			opc = OC_ex2_projectilevar_pausemovetime
+			opc = OC_ex2_projvar_pausemovetime
 		case "projid":
-			opc = OC_ex2_projectilevar_projid
+			opc = OC_ex2_projvar_projid
 		case "teamside":
-			opc = OC_ex2_projectilevar_teamside
+			opc = OC_ex2_projvar_teamside
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
 		}
@@ -3132,7 +3131,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_p2dist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_p2dist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3144,7 +3143,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_p2bodydist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_p2bodydist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3156,7 +3155,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_rootdist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_rootdist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -3168,7 +3167,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_ex_, OC_ex_parentdist_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_ex_, OC_ex_parentdist_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -6521,7 +6520,9 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 						}
 					}
 				}
+				// Clear previous character's version
 				sys.cgi[pn].ikemenver = [3]uint16{}
+				sys.cgi[pn].ikemenverF = 0
 				if str, ok = is["ikemenversion"]; ok {
 					for i, s := range SplitAndTrim(str, ".") {
 						if i >= len(sys.cgi[pn].ikemenver) {

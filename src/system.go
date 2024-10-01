@@ -2183,11 +2183,6 @@ func (s *System) fight() (reload bool) {
 		for k, v := range s.chars[pn][0].remapSpr {
 			remapSpr[pn][k] = v
 		}
-
-		// Reset hitScale.
-		s.chars[pn][0].defaultHitScale = newHitScaleArray()
-		s.chars[pn][0].activeHitScale = make(map[int32][3]*HitScale)
-		s.chars[pn][0].nextHitScale = make(map[int32][3]*HitScale)
 	}
 
 	s.debugWC = sys.chars[0][0]
@@ -2333,11 +2328,6 @@ func (s *System) fight() (reload bool) {
 					p[0].mapArray[k] = v
 				}
 				p[0].remapSpr = make(RemapPreset)
-
-				// Reset hitScale
-				p[0].defaultHitScale = newHitScaleArray()
-				p[0].activeHitScale = make(map[int32][3]*HitScale)
-				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
 
 			if p[0].ocd().guardPoints != -1 {
@@ -2388,11 +2378,6 @@ func (s *System) fight() (reload bool) {
 				for k, v := range remapSpr[i] {
 					p[0].remapSpr[k] = v
 				}
-
-				// Reset hitScale
-				p[0].defaultHitScale = newHitScaleArray()
-				p[0].activeHitScale = make(map[int32][3]*HitScale)
-				p[0].nextHitScale = make(map[int32][3]*HitScale)
 			}
 		}
 		s.stage.copyStageVars(&oldStageVars)
@@ -3445,18 +3430,18 @@ func (l *Loader) loadAttachedChar(pn int) int {
 	if sys.cgi[pn].sff == nil {
 		if l.err = p.load(cdef); l.err != nil {
 			sys.chars[pn] = nil
-			tstr = fmt.Sprintf("WARNING: Failed to load new attachedchar: %v", cdef)
+			tstr = fmt.Sprintf("WARNING: Failed to load new attached char: %v", cdef)
 			return -1
 		}
 		if sys.cgi[pn].states, l.err =
 			newCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
 			sys.chars[pn] = nil
-			tstr = fmt.Sprintf("WARNING: Failed to compile new attachedchar states: %v", cdef)
+			tstr = fmt.Sprintf("WARNING: Failed to compile new attached char states: %v", cdef)
 			return -1
 		}
-		tstr = fmt.Sprintf("New attachedchar loaded: %v", cdef)
+		tstr = fmt.Sprintf("New attached char loaded: %v", cdef)
 	} else {
-		tstr = fmt.Sprintf("Cached attachedchar loaded: %v", cdef)
+		tstr = fmt.Sprintf("Cached attached char loaded: %v", cdef)
 	}
 	sys.cgi[pn].palno = 1
 	return 1
