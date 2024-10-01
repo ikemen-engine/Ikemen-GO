@@ -714,7 +714,7 @@ func (hd *HitDef) clear() {
 		guard_dist:       [...]int32{-1, -1},
 		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:          -1,
-		nochainid:        [...]int32{-1, -1, -1, -1, -1, -1, -1, -1},
+		//nochainid:      [...]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
 		hitgetpower:      IErr,
 		guardgetpower:    IErr,
@@ -743,6 +743,10 @@ func (hd *HitDef) clear() {
 		attack: struct{ width [2]float32 }{
 			[2]float32{float32(4), float32(4)},
 		},
+	}
+	// This needs a loop because the length of the array depends on MaxSimul
+	for i := range hd.nochainid {
+		hd.nochainid[i] = -1
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -4994,7 +4998,9 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 	}
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
-		p.hitdef.nochainid = [...]int32{-1, -1, -1, -1, -1, -1, -1, -1}
+		for i := range p.hitdef.nochainid {
+			p.hitdef.nochainid[i] = -1
+		}
 	}
 	p.removefacing = c.facing
 	if p.velocity[0] < 0 {
@@ -6745,8 +6751,93 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) 
 		getterangle)
 }
 
+func (c *Char) hitByAttrCheck(attr int32, gstyp StateType) bool {
+	// Get state type (SCA) from among the attributes
+	styp := attr & int32(ST_MASK)
+	// Note: In Mugen, invincibility is checked against both the Hitdef attribute and the enemy's actual statetype
+	// Ikemen characters work as documented. Invincibility only cares about the Hitdef's attributes (including its statetype)
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		if gstyp == ST_N {
+			styp = attr & int32(ST_MASK)
+		} else {
+			styp = int32(gstyp)
+		}
+	}
+
+	hit := true
+	for _, hb := range c.hitby {
+		if hb.time != 0 {
+			if hb.flag&styp == 0 || hb.flag&attr&^int32(ST_MASK) == 0 {
+				hit = false
+				if hb.stack { // Stack parameter makes the hit happen if any HitBy slot would allow it
+					continue
+				} else {
+					break
+				}
+			}
+			if hb.stack {
+				hit = true
+				break
+			}
+		}
+	}
+	return hit
+}
+
+func (c *Char) hitByPlayerNoCheck(getterno int) bool {
+	hit := true
+	for _, hb := range c.hitby {
+		if hb.time != 0 {
+			if hb.playerno >= 0 && hb.playerno != getterno {
+				if hb.not {
+					hit = true
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				} else {
+					hit = false
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				}
+			}
+		}
+	}
+	return hit
+}
+
+func (c *Char) hitByPlayerIdCheck(getterid int32) bool {
+	hit := true
+	for _, hb := range c.hitby {
+		if hb.time != 0 {
+			if hb.playerid >= 0 && hb.playerid != getterid {
+				if hb.not {
+					hit = true
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				} else {
+					hit = false
+					if hb.stack {
+						continue
+					} else {
+						break
+					}
+				}
+			}
+		}
+	}
+	return hit
+}
+
 // Check if Hitdef attributes can hit a player
-func (c *Char) attrCheck(ghd *HitDef, getter *Char, gst StateType) bool {
+func (c *Char) attrCheck(ghd *HitDef, getter *Char, gstyp StateType) bool {
 	if c.unhittableTime > 0 || ghd.chainid >= 0 && c.ghv.hitid != ghd.chainid && ghd.nochainid[0] == -1 {
 		return false
 	}
@@ -6768,53 +6859,21 @@ func (c *Char) attrCheck(ghd *HitDef, getter *Char, gst StateType) bool {
 		ghd.hitflag&int32(MT_PLS) != 0 && (c.hittmp <= 0 || c.inGuardState()) {
 		return false
 	}
-	//if ghd.chainid < 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/308
-	var styp int32
-	if gst == ST_N {
-		styp = ghd.attr & int32(ST_MASK)
-	} else {
-		styp = int32(gst)
-	}
+
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/308
+	//if ghd.chainid < 0 {
+
 	// HitBy and NotHitBy checks
-	// Stack parameter makes the hit happen if any HitBy slot would allow it
-	hit := true
-	for _, hb := range c.hitby {
-		if hb.time != 0 {
-			// PlayerNo and Player ID
-			if hb.playerno >= 0 && hb.playerno != getter.playerNo ||
-				hb.playerid >= 0 && hb.playerid != getter.id {
-				if hb.not {
-					hit = true
-					if hb.stack {
-						continue
-					} else {
-						break
-					}
-				} else {
-					hit = false
-					if hb.stack {
-						continue
-					} else {
-						break
-					}
-				}
-			}
-			// Attributes
-			if hb.flag&styp == 0 || hb.flag&ghd.attr&^int32(ST_MASK) == 0 {
-				hit = false
-				if hb.stack {
-					continue
-				} else {
-					break
-				}
-			}
-			if hb.stack {
-				hit = true
-				break
-			}
-		}
+	if !c.hitByAttrCheck(ghd.attr, gstyp) {
+		return false
 	}
-	return hit
+	if !c.hitByPlayerNoCheck(getter.playerNo) {
+		return false
+	}
+	if !c.hitByPlayerIdCheck(getter.id) {
+		return false
+	}
+	return true
 }
 
 // Check if the enemy (c) Hitdef should lose to the current one, if applicable
