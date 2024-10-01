@@ -4,7 +4,7 @@
 #===============================================================================
 # Returns tagged in char id
 [Function TagGetPartnerId(add) partnerId]
-let rootId = getPlayerId(teamSide);
+let rootId = player(teamSide), id;
 let partnerCnt = 0;
 let partnerId = id + $add;
 for i = 0; numPartner; 1 {

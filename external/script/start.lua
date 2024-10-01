@@ -1690,7 +1690,7 @@ function launchFight(data)
 		t.ai = data.ai or nil
 		t.vsscreen = main.f_arg(data.vsscreen, main.versusScreen)
 		t.victoryscreen = main.f_arg(data.victoryscreen, main.victoryScreen)
-		--t.frames = data.frames or framespercount()
+		--t.frames = data.frames or fightscreenvar("time.framespercount")
 		t.roundtime = data.time or nil
 		t.lua = data.lua or ''
 		t.stageNo = start.f_getStageRef(t.stage)

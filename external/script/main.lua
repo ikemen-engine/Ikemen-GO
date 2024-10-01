@@ -1335,7 +1335,7 @@ function main.f_commandLine()
 		loadLifebar(main.lifebarDef)
 	end
 	setLifebarElements({guardbar = config.BarGuard, stunbar = config.BarStun, redlifebar = config.BarRedLife})
-	local frames = framespercount()
+	local frames = fightscreenvar("time.framespercount")
 	main.f_updateRoundsNum()
 	local t = {}
 	local t_assignedPals = {}
@@ -1521,7 +1521,7 @@ main.txt_loading:draw()
 refresh()
 loadLifebar(main.lifebarDef)
 main.f_loadingRefresh(main.txt_loading)
-main.timeFramesPerCount = framespercount()
+main.timeFramesPerCount = fightscreenvar("time.framespercount")
 main.f_updateRoundsNum()
 
 -- generate preload character spr/anim list
