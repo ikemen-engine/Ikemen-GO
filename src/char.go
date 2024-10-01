@@ -706,14 +706,14 @@ func (hd *HitDef) clear() {
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()),
 
-		p1sprpriority:    1,
-		p1stateno:        -1,
-		p2stateno:        -1,
-		forcestand:       IErr,
-		forcecrouch:      IErr,
-		guard_dist:       [...]int32{-1, -1},
-		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN())},
-		chainid:          -1,
+		p1sprpriority: 1,
+		p1stateno:     -1,
+		p2stateno:     -1,
+		forcestand:    IErr,
+		forcecrouch:   IErr,
+		guard_dist:    [...]int32{-1, -1},
+		down_velocity: [...]float32{float32(math.NaN()), float32(math.NaN())},
+		chainid:       -1,
 		//nochainid:      [...]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
 		hitgetpower:      IErr,
@@ -1155,20 +1155,20 @@ type Explod struct {
 	animelem            int32
 	animfreeze          bool
 	//ontop                bool
-	under                bool
-	alpha                [2]int32
-	ownpal               bool
-	ignorehitpause       bool
-	rot                  Rotation
-	anglerot             [3]float32
-	projection           Projection
-	fLength              float32
-	oldPos               [3]float32
-	newPos               [3]float32
-	playerId             int32
-	palfx                *PalFX
-	palfxdef             PalFXDef
-	window               [4]float32
+	under          bool
+	alpha          [2]int32
+	ownpal         bool
+	ignorehitpause bool
+	rot            Rotation
+	anglerot       [3]float32
+	projection     Projection
+	fLength        float32
+	oldPos         [3]float32
+	newPos         [3]float32
+	playerId       int32
+	palfx          *PalFX
+	palfxdef       PalFXDef
+	window         [4]float32
 	//lockSpriteFacing     bool
 	localscl             float32
 	blendmode            int32
@@ -3888,21 +3888,21 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *C
 			case OC_ex2_projvar_projcancelanim:
 				v = BytecodeInt(p.cancelanim)
 			case OC_ex2_projvar_vel_x:
-				v = BytecodeFloat(p.velocity[0]*p.localscl/oc.localscl)
+				v = BytecodeFloat(p.velocity[0] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_vel_y:
-				v = BytecodeFloat(p.velocity[1]*p.localscl/oc.localscl)
+				v = BytecodeFloat(p.velocity[1] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_velmul_x:
 				v = BytecodeFloat(p.velmul[0])
 			case OC_ex2_projvar_velmul_y:
 				v = BytecodeFloat(p.velmul[1])
 			case OC_ex2_projvar_remvelocity_x:
-				v = BytecodeFloat(p.remvelocity[0]*p.localscl/oc.localscl)
+				v = BytecodeFloat(p.remvelocity[0] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_remvelocity_y:
-				v = BytecodeFloat(p.remvelocity[1]*p.localscl/oc.localscl)
+				v = BytecodeFloat(p.remvelocity[1] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_accel_x:
-				v = BytecodeFloat(p.accel[0]*p.localscl)
+				v = BytecodeFloat(p.accel[0] * p.localscl)
 			case OC_ex2_projvar_accel_y:
-				v = BytecodeFloat(p.accel[1]*p.localscl)
+				v = BytecodeFloat(p.accel[1] * p.localscl)
 			case OC_ex2_projvar_projscale_x:
 				v = BytecodeFloat(p.scale[0])
 			case OC_ex2_projvar_projscale_y:
@@ -3910,23 +3910,23 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *C
 			case OC_ex2_projvar_projangle:
 				v = BytecodeFloat(p.angle)
 			case OC_ex2_projvar_pos_x:
-				v = BytecodeFloat((p.pos[0]*p.localscl - sys.cam.Pos[0])/oc.localscl)
+				v = BytecodeFloat((p.pos[0]*p.localscl - sys.cam.Pos[0]) / oc.localscl)
 			case OC_ex2_projvar_pos_y:
-				v = BytecodeFloat(p.pos[1]*p.localscl/oc.localscl)
+				v = BytecodeFloat(p.pos[1] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_pos_z:
-				v = BytecodeFloat(p.pos[2]*p.localscl/oc.localscl)
+				v = BytecodeFloat(p.pos[2] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_projsprpriority:
 				v = BytecodeInt(p.sprpriority)
 			case OC_ex2_projvar_projlayerno:
 				v = BytecodeInt(p.layerno)
 			case OC_ex2_projvar_projstagebound:
-				v = BytecodeInt(int32(float32(p.stagebound)*p.localscl/oc.localscl))
+				v = BytecodeInt(int32(float32(p.stagebound) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_projedgebound:
-				v = BytecodeInt(int32(float32(p.edgebound)*p.localscl/oc.localscl))
+				v = BytecodeInt(int32(float32(p.edgebound) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_lowbound:
-				v = BytecodeInt(int32(float32(p.heightbound[0])*p.localscl/oc.localscl))
+				v = BytecodeInt(int32(float32(p.heightbound[0]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_highbound:
-				v = BytecodeInt(int32(float32(p.heightbound[1])*p.localscl/oc.localscl))
+				v = BytecodeInt(int32(float32(p.heightbound[1]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_projanim:
 				v = BytecodeInt(p.anim)
 			case OC_ex2_projvar_animelem:
