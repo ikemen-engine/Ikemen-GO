@@ -737,47 +737,48 @@ const (
 	OC_ex2_explodvar_id
 	OC_ex2_explodvar_bindtime
 	OC_ex2_explodvar_facing
-	OC_ex2_projectilevar_projremove
-	OC_ex2_projectilevar_projremovetime
-	OC_ex2_projectilevar_projshadow_r
-	OC_ex2_projectilevar_projshadow_g
-	OC_ex2_projectilevar_projshadow_b
-	OC_ex2_projectilevar_projmisstime
-	OC_ex2_projectilevar_projhits
-	OC_ex2_projectilevar_projhitsmax
-	OC_ex2_projectilevar_projpriority
-	OC_ex2_projectilevar_projhitanim
-	OC_ex2_projectilevar_projremanim
-	OC_ex2_projectilevar_projcancelanim
-	OC_ex2_projectilevar_vel_x
-	OC_ex2_projectilevar_vel_y
-	OC_ex2_projectilevar_vel_z
-	OC_ex2_projectilevar_velmul_x
-	OC_ex2_projectilevar_velmul_y
-	OC_ex2_projectilevar_velmul_z
-	OC_ex2_projectilevar_remvelocity_x
-	OC_ex2_projectilevar_remvelocity_y
-	OC_ex2_projectilevar_remvelocity_z
-	OC_ex2_projectilevar_accel_x
-	OC_ex2_projectilevar_accel_y
-	OC_ex2_projectilevar_accel_z
-	OC_ex2_projectilevar_projscale_x
-	OC_ex2_projectilevar_projscale_y
-	OC_ex2_projectilevar_projangle
-	OC_ex2_projectilevar_pos_x
-	OC_ex2_projectilevar_pos_y
-	OC_ex2_projectilevar_pos_z
-	OC_ex2_projectilevar_projsprpriority
-	OC_ex2_projectilevar_projstagebound
-	OC_ex2_projectilevar_projedgebound
-	OC_ex2_projectilevar_lowbound
-	OC_ex2_projectilevar_highbound
-	OC_ex2_projectilevar_projanim
-	OC_ex2_projectilevar_animelem
-	OC_ex2_projectilevar_supermovetime
-	OC_ex2_projectilevar_pausemovetime
-	OC_ex2_projectilevar_projid
-	OC_ex2_projectilevar_teamside
+	OC_ex2_projvar_accel_x
+	OC_ex2_projvar_accel_y
+	OC_ex2_projvar_accel_z
+	OC_ex2_projvar_animelem
+	OC_ex2_projvar_highbound
+	OC_ex2_projvar_lowbound
+	OC_ex2_projvar_pausemovetime
+	OC_ex2_projvar_pos_x
+	OC_ex2_projvar_pos_y
+	OC_ex2_projvar_pos_z
+	OC_ex2_projvar_projangle
+	OC_ex2_projvar_projanim
+	OC_ex2_projvar_projcancelanim
+	OC_ex2_projvar_projedgebound
+	OC_ex2_projvar_projhitanim
+	OC_ex2_projvar_projhits
+	OC_ex2_projvar_projhitsmax
+	OC_ex2_projvar_projid
+	OC_ex2_projvar_projlayerno
+	OC_ex2_projvar_projmisstime
+	OC_ex2_projvar_projpriority
+	OC_ex2_projvar_projremanim
+	OC_ex2_projvar_projremove
+	OC_ex2_projvar_projremovetime
+	OC_ex2_projvar_projscale_x
+	OC_ex2_projvar_projscale_y
+	OC_ex2_projvar_projshadow_b
+	OC_ex2_projvar_projshadow_g
+	OC_ex2_projvar_projshadow_r
+	OC_ex2_projvar_projsprpriority
+	OC_ex2_projvar_projstagebound
+	OC_ex2_projvar_remvelocity_x
+	OC_ex2_projvar_remvelocity_y
+	OC_ex2_projvar_remvelocity_z
+	OC_ex2_projvar_supermovetime
+	OC_ex2_projvar_teamside
+	OC_ex2_projvar_vel_x
+	OC_ex2_projvar_vel_y
+	OC_ex2_projvar_vel_z
+	OC_ex2_projvar_velmul_x
+	OC_ex2_projvar_velmul_y
+	OC_ex2_projvar_velmul_z
 	OC_ex2_hitdefvar_guardflag
 	OC_ex2_hitdefvar_hitflag
 	OC_ex2_hitdefvar_guarddamage
@@ -3117,107 +3118,93 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			sys.bcStack.Push(v)
 		}
 	// BEGIN FALLTHROUGH (projvar)
-	case OC_ex2_projectilevar_accel_x:
+	case OC_ex2_projvar_accel_x:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_accel_y:
+	case OC_ex2_projvar_accel_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_vel_x:
+	case OC_ex2_projvar_vel_x:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_vel_y:
+	case OC_ex2_projvar_vel_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_projstagebound:
+	case OC_ex2_projvar_projstagebound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_projedgebound:
+	case OC_ex2_projvar_projedgebound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_lowbound:
+	case OC_ex2_projvar_lowbound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_highbound:
+	case OC_ex2_projvar_highbound:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_remvelocity_x:
+	case OC_ex2_projvar_remvelocity_x:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_remvelocity_y:
+	case OC_ex2_projvar_remvelocity_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_projectilevar_projremove:
+	case OC_ex2_projvar_projremove:
 		fallthrough
-	case OC_ex2_projectilevar_projremovetime:
+	case OC_ex2_projvar_projremovetime:
 		fallthrough
-	case OC_ex2_projectilevar_projshadow_r:
+	case OC_ex2_projvar_projshadow_r:
 		fallthrough
-	case OC_ex2_projectilevar_projshadow_g:
+	case OC_ex2_projvar_projshadow_g:
 		fallthrough
-	case OC_ex2_projectilevar_projshadow_b:
+	case OC_ex2_projvar_projshadow_b:
 		fallthrough
-	case OC_ex2_projectilevar_projmisstime:
+	case OC_ex2_projvar_projmisstime:
 		fallthrough
-	case OC_ex2_projectilevar_projhits:
+	case OC_ex2_projvar_projhits:
 		fallthrough
-	case OC_ex2_projectilevar_projhitsmax:
+	case OC_ex2_projvar_projhitsmax:
 		fallthrough
-	case OC_ex2_projectilevar_projpriority:
+	case OC_ex2_projvar_projpriority:
 		fallthrough
-	case OC_ex2_projectilevar_projhitanim:
+	case OC_ex2_projvar_projhitanim:
 		fallthrough
-	case OC_ex2_projectilevar_projremanim:
+	case OC_ex2_projvar_projremanim:
 		fallthrough
-	case OC_ex2_projectilevar_projcancelanim:
+	case OC_ex2_projvar_projcancelanim:
 		fallthrough
-	case OC_ex2_projectilevar_velmul_x:
+	case OC_ex2_projvar_velmul_x:
 		fallthrough
-	case OC_ex2_projectilevar_velmul_y:
+	case OC_ex2_projvar_velmul_y:
 		fallthrough
-	case OC_ex2_projectilevar_projscale_x:
+	case OC_ex2_projvar_projscale_x:
 		fallthrough
-	case OC_ex2_projectilevar_projscale_y:
+	case OC_ex2_projvar_projscale_y:
 		fallthrough
-	case OC_ex2_projectilevar_projangle:
+	case OC_ex2_projvar_projangle:
 		fallthrough
-	case OC_ex2_projectilevar_projsprpriority:
+	case OC_ex2_projvar_projsprpriority:
 		fallthrough
-	case OC_ex2_projectilevar_projanim:
+	case OC_ex2_projvar_projlayerno:
 		fallthrough
-	case OC_ex2_projectilevar_animelem:
+	case OC_ex2_projvar_projanim:
 		fallthrough
-	case OC_ex2_projectilevar_supermovetime:
+	case OC_ex2_projvar_animelem:
 		fallthrough
-	case OC_ex2_projectilevar_projid:
+	case OC_ex2_projvar_supermovetime:
 		fallthrough
-	case OC_ex2_projectilevar_teamside:
+	case OC_ex2_projvar_projid:
 		fallthrough
-	case OC_ex2_projectilevar_pausemovetime:
-		camCorrected = true // gotta do this
+	case OC_ex2_projvar_teamside:
 		fallthrough
-		// END FALLTHROUGH (projvar)
-	case OC_ex2_projectilevar_pos_x:
-		correctScale = true
-		if !camCorrected {
-			camOff = -sys.cam.Pos[0] / oc.localscl
-			camCorrected = true
-		}
+	case OC_ex2_projvar_pausemovetime:
 		fallthrough
-	case OC_ex2_projectilevar_pos_y:
-		correctScale = true
-		if !camCorrected {
-			camOff = -sys.cam.Pos[1] / oc.localscl
-			camCorrected = true
-		}
+	case OC_ex2_projvar_pos_x:
+		fallthrough
+	case OC_ex2_projvar_pos_y:
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
-		v := c.projVar(id, idx, opc)
-		if correctScale {
-			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) + camOff)
-		} else {
-			sys.bcStack.Push(v)
-		}
+		v := c.projVar(id, idx, opc, oc)
+		sys.bcStack.Push(v)
 	case OC_ex2_hitdefvar_guardflag:
 		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
 		sys.bcStack.PushB(

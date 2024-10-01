@@ -1932,10 +1932,16 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			clsn1 := p.ani.CurrentFrame().Clsn2() // Projectiles trade with their Clsn2 only
 			clsn2 := pr.ani.CurrentFrame().Clsn2()
 			if clsn1 != nil && clsn2 != nil {
-				if sys.clsnOverlap(clsn1, [...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl}, p.facing, p.clsnAngle,
-					clsn2, [...]float32{pr.clsnScale[0] * p.localscl, pr.clsnScale[1] * p.localscl},
-					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl}, pr.facing, p.clsnAngle) {
+				if sys.clsnOverlap(clsn1,
+					[...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
+					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+					p.facing,
+					p.clsnAngle,
+					clsn2,
+					[...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
+					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
+					pr.facing,
+					pr.clsnAngle) {
 					// Subtract projectile hits from each other
 					p.cancelHits(pr)
 					pr.cancelHits(p)
@@ -3843,89 +3849,95 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 	}
 	return v
 }
-func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode) BytecodeValue {
+func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *Char) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
 	}
 	var id int32 = pid.ToI()
 	var i = idx.ToI()
 	var v BytecodeValue
-	for n, p := range c.getProjs(id) {
+	projs := c.getProjs(id)
+	if len(projs) == 0 {
+		return BytecodeSF()
+	}
+	for n, p := range projs {
 		if i == int32(n) {
 			switch vtype {
-			case OC_ex2_projectilevar_projremove:
+			case OC_ex2_projvar_projremove:
 				v = BytecodeBool(p.remove)
-			case OC_ex2_projectilevar_projremovetime:
+			case OC_ex2_projvar_projremovetime:
 				v = BytecodeInt(p.removetime)
-			case OC_ex2_projectilevar_projshadow_r:
+			case OC_ex2_projvar_projshadow_r:
 				v = BytecodeInt(p.shadow[0])
-			case OC_ex2_projectilevar_projshadow_g:
+			case OC_ex2_projvar_projshadow_g:
 				v = BytecodeInt(p.shadow[1])
-			case OC_ex2_projectilevar_projshadow_b:
+			case OC_ex2_projvar_projshadow_b:
 				v = BytecodeInt(p.shadow[2])
-			case OC_ex2_projectilevar_projmisstime:
+			case OC_ex2_projvar_projmisstime:
 				v = BytecodeInt(p.curmisstime)
-			case OC_ex2_projectilevar_projhits:
+			case OC_ex2_projvar_projhits:
 				v = BytecodeInt(p.hits)
-			case OC_ex2_projectilevar_projhitsmax:
+			case OC_ex2_projvar_projhitsmax:
 				v = BytecodeInt(p.totalhits)
-			case OC_ex2_projectilevar_projpriority:
+			case OC_ex2_projvar_projpriority:
 				v = BytecodeInt(p.priority)
-			case OC_ex2_projectilevar_projhitanim:
+			case OC_ex2_projvar_projhitanim:
 				v = BytecodeInt(p.hitanim)
-			case OC_ex2_projectilevar_projremanim:
+			case OC_ex2_projvar_projremanim:
 				v = BytecodeInt(p.remanim)
-			case OC_ex2_projectilevar_projcancelanim:
+			case OC_ex2_projvar_projcancelanim:
 				v = BytecodeInt(p.cancelanim)
-			case OC_ex2_projectilevar_vel_x:
-				v = BytecodeFloat(p.velocity[0])
-			case OC_ex2_projectilevar_vel_y:
-				v = BytecodeFloat(p.velocity[1])
-			case OC_ex2_projectilevar_velmul_x:
+			case OC_ex2_projvar_vel_x:
+				v = BytecodeFloat(p.velocity[0]*p.localscl/oc.localscl)
+			case OC_ex2_projvar_vel_y:
+				v = BytecodeFloat(p.velocity[1]*p.localscl/oc.localscl)
+			case OC_ex2_projvar_velmul_x:
 				v = BytecodeFloat(p.velmul[0])
-			case OC_ex2_projectilevar_velmul_y:
+			case OC_ex2_projvar_velmul_y:
 				v = BytecodeFloat(p.velmul[1])
-			case OC_ex2_projectilevar_remvelocity_x:
-				v = BytecodeFloat(p.remvelocity[0])
-			case OC_ex2_projectilevar_remvelocity_y:
-				v = BytecodeFloat(p.remvelocity[1])
-			case OC_ex2_projectilevar_accel_x:
-				v = BytecodeFloat(p.accel[0])
-			case OC_ex2_projectilevar_accel_y:
-				v = BytecodeFloat(p.accel[1])
-			case OC_ex2_projectilevar_projscale_x:
+			case OC_ex2_projvar_remvelocity_x:
+				v = BytecodeFloat(p.remvelocity[0]*p.localscl/oc.localscl)
+			case OC_ex2_projvar_remvelocity_y:
+				v = BytecodeFloat(p.remvelocity[1]*p.localscl/oc.localscl)
+			case OC_ex2_projvar_accel_x:
+				v = BytecodeFloat(p.accel[0]*p.localscl)
+			case OC_ex2_projvar_accel_y:
+				v = BytecodeFloat(p.accel[1]*p.localscl)
+			case OC_ex2_projvar_projscale_x:
 				v = BytecodeFloat(p.scale[0])
-			case OC_ex2_projectilevar_projscale_y:
+			case OC_ex2_projvar_projscale_y:
 				v = BytecodeFloat(p.scale[1])
-			case OC_ex2_projectilevar_projangle:
+			case OC_ex2_projvar_projangle:
 				v = BytecodeFloat(p.angle)
-			case OC_ex2_projectilevar_pos_x:
-				v = BytecodeFloat(p.pos[0])
-			case OC_ex2_projectilevar_pos_y:
-				v = BytecodeFloat(p.pos[1])
-			case OC_ex2_projectilevar_pos_z:
-				v = BytecodeFloat(p.pos[2])
-			case OC_ex2_projectilevar_projsprpriority:
+			case OC_ex2_projvar_pos_x:
+				v = BytecodeFloat((p.pos[0]*p.localscl - sys.cam.Pos[0])/oc.localscl)
+			case OC_ex2_projvar_pos_y:
+				v = BytecodeFloat(p.pos[1]*p.localscl/oc.localscl)
+			case OC_ex2_projvar_pos_z:
+				v = BytecodeFloat(p.pos[2]*p.localscl/oc.localscl)
+			case OC_ex2_projvar_projsprpriority:
 				v = BytecodeInt(p.sprpriority)
-			case OC_ex2_projectilevar_projstagebound:
-				v = BytecodeInt(p.stagebound)
-			case OC_ex2_projectilevar_projedgebound:
-				v = BytecodeInt(p.edgebound)
-			case OC_ex2_projectilevar_lowbound:
-				v = BytecodeInt(p.heightbound[0])
-			case OC_ex2_projectilevar_highbound:
-				v = BytecodeInt(p.heightbound[1])
-			case OC_ex2_projectilevar_projanim:
+			case OC_ex2_projvar_projlayerno:
+				v = BytecodeInt(p.layerno)
+			case OC_ex2_projvar_projstagebound:
+				v = BytecodeInt(int32(float32(p.stagebound)*p.localscl/oc.localscl))
+			case OC_ex2_projvar_projedgebound:
+				v = BytecodeInt(int32(float32(p.edgebound)*p.localscl/oc.localscl))
+			case OC_ex2_projvar_lowbound:
+				v = BytecodeInt(int32(float32(p.heightbound[0])*p.localscl/oc.localscl))
+			case OC_ex2_projvar_highbound:
+				v = BytecodeInt(int32(float32(p.heightbound[1])*p.localscl/oc.localscl))
+			case OC_ex2_projvar_projanim:
 				v = BytecodeInt(p.anim)
-			case OC_ex2_projectilevar_animelem:
+			case OC_ex2_projvar_animelem:
 				v = BytecodeInt(p.ani.current + 1)
-			case OC_ex2_projectilevar_supermovetime:
+			case OC_ex2_projvar_supermovetime:
 				v = BytecodeInt(p.supermovetime)
-			case OC_ex2_projectilevar_pausemovetime:
+			case OC_ex2_projvar_pausemovetime:
 				v = BytecodeInt(p.pausemovetime)
-			case OC_ex2_projectilevar_projid:
+			case OC_ex2_projvar_projid:
 				v = BytecodeInt(int32(p.id))
-			case OC_ex2_projectilevar_teamside:
+			case OC_ex2_projvar_teamside:
 				v = BytecodeInt(int32(p.hitdef.teamside))
 			}
 			break
@@ -5019,7 +5031,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 
 func (c *Char) getProjs(id int32) (projs []*Projectile) {
 	for i, p := range sys.projs[c.playerNo] {
-		if id < 0 || p.id == id {
+		if p.id >= 0 && (id < 0 || p.id == id) { // Removed projectiles have negative ID
 			projs = append(projs, &sys.projs[c.playerNo][i])
 		}
 	}

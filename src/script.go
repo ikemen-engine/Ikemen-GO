@@ -4146,6 +4146,8 @@ func triggerFunctions(l *lua.LState) {
 					lv = lua.LNumber(p.pos[2])
 				case "projsprpriority":
 					lv = lua.LNumber(p.sprpriority)
+				case "projlayerno":
+					lv = lua.LNumber(p.layerno)
 				case "projstagebound":
 					lv = lua.LNumber(p.stagebound)
 				case "projedgebound":
