@@ -225,7 +225,7 @@ options.t_itemname = {
 			--config.ZoomDelay = false
 			--config.ZoomSpeed = 1
 			loadLifebar(motif.files.fight)
-			main.timeFramesPerCount = framespercount()
+			main.timeFramesPerCount = fightscreenvar("time.framespercount")
 			main.f_updateRoundsNum()
 			main.f_setPlayers(config.Players, true)
 			for _, v in ipairs(options.t_vardisplayPointers) do
