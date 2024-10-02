@@ -3050,10 +3050,10 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.attack.dist.front)
 		case "size.attack.dist.back":
 			ln = lua.LNumber(c.size.attack.dist.back)
-		case "size.attack.z.width.back":
-			ln = lua.LNumber(c.size.attack.z.width.back)
-		case "size.attack.z.width.front":
-			ln = lua.LNumber(c.size.attack.z.width.front)
+		case "size.attack.width.back":
+			ln = lua.LNumber(c.size.attack.width.back)
+		case "size.attack.width.front":
+			ln = lua.LNumber(c.size.attack.width.front)
 		case "size.proj.attack.dist", "size.proj.attack.dist.front":
 			ln = lua.LNumber(c.size.proj.attack.dist.front)
 		case "size.proj.attack.dist.back":
@@ -3076,8 +3076,6 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.draw.offset[1])
 		case "size.z.width":
 			ln = lua.LNumber(c.size.z.width)
-		case "size.z.enable":
-			ln = lua.LNumber(Btoi(c.size.z.enable))
 		case "velocity.walk.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.walk.fwd)
 		case "velocity.walk.back.x":

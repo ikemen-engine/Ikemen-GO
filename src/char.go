@@ -271,11 +271,9 @@ type CharSize struct {
 			front float32
 			back  float32
 		}
-		z struct {
-			width struct {
-				front float32
-				back  float32
-			}
+		width struct {
+			front float32
+			back  float32
 		}
 	}
 	proj struct {
@@ -299,7 +297,6 @@ type CharSize struct {
 	}
 	z struct {
 		width  float32
-		enable bool
 	}
 	weight     int32
 	pushfactor float32
@@ -327,8 +324,8 @@ func (cs *CharSize) init() {
 	cs.shadowoffset = 0
 	cs.draw.offset = [...]float32{0, 0}
 	cs.z.width = 3
-	cs.z.enable = false
-	cs.attack.z.width.front, cs.attack.z.width.back = 4, 4
+	cs.attack.width.front = 4
+	cs.attack.width.back = 4
 	cs.weight = 100
 	cs.pushfactor = 1
 }
@@ -2740,8 +2737,8 @@ func (c *Char) load(def string) error {
 	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
 	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
 	c.size.z.width = c.size.z.width / originLs
-	c.size.attack.z.width.front = c.size.attack.z.width.front / originLs
-	c.size.attack.z.width.back = c.size.attack.z.width.back / originLs
+	c.size.attack.width.front = c.size.attack.width.front / originLs
+	c.size.attack.width.back = c.size.attack.width.back / originLs
 
 	gi.velocity.init()
 
@@ -2869,13 +2866,7 @@ func (c *Char) load(def string) error {
 						is.ReadF32("draw.offset",
 							&c.size.draw.offset[0], &c.size.draw.offset[1])
 						is.ReadF32("z.width", &c.size.z.width)
-						var ztemp int32 = 0
-						is.ReadI32("z.enable", &ztemp)
-						if ztemp == 1 {
-							c.size.z.enable = true
-						}
-						is.ReadF32("attack.z.width",
-							&c.size.attack.z.width.front, &c.size.attack.z.width.back)
+						is.ReadF32("attack.width", &c.size.attack.width.front, &c.size.attack.width.back)
 						is.ReadI32("weight", &c.size.weight)
 						is.ReadF32("pushfactor", &c.size.pushfactor)
 					}
