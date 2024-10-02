@@ -563,6 +563,7 @@ func (f *Fall) xvel() float32 {
 }
 
 type HitDef struct {
+	isprojectile               bool // Projectile state controller
 	attr                       int32
 	reversal_attr              int32
 	hitflag                    int32
@@ -633,7 +634,7 @@ type HitDef struct {
 	down_recovertime           int32
 	id                         int32
 	chainid                    int32
-	nochainid                  [MaxSimul * 2]int32
+	nochainid                  [8]int32
 	hitonce                    int32
 	numhits                    int32
 	hitgetpower                int32
@@ -714,7 +715,7 @@ func (hd *HitDef) clear() {
 		guard_dist:    [...]int32{-1, -1},
 		down_velocity: [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:       -1,
-		//nochainid:      [...]int32{-1, -1, -1, -1, -1, -1, -1, -1},
+		nochainid:        [8]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
 		hitgetpower:      IErr,
 		guardgetpower:    IErr,
@@ -740,13 +741,11 @@ func (hd *HitDef) clear() {
 		p2clsnrequire:    -1,
 		down_recover:     true,
 		down_recovertime: -1,
+		air_juggle:       IErr,
+		isprojectile:     false,
 		attack: struct{ width [2]float32 }{
-			[2]float32{float32(4), float32(4)},
+			[2]float32{4, 4},
 		},
-	}
-	// This needs a loop because the length of the array depends on MaxSimul
-	for i := range hd.nochainid {
-		hd.nochainid[i] = -1
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -3247,9 +3246,6 @@ func (c *Char) clearHitDef() {
 	c.hitdef.clear()
 }
 
-func (c *Char) setJuggle(juggle int32) {
-	c.juggle = juggle
-}
 func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, false); a != nil {
 		c.anim = a
@@ -5009,9 +5005,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 	}
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
-		for i := range p.hitdef.nochainid {
-			p.hitdef.nochainid[i] = -1
-		}
+		p.hitdef.nochainid = [8]int32{-1, -1, -1, -1, -1, -1, -1, -1}
 	}
 	p.removefacing = c.facing
 	if p.velocity[0] < 0 {
@@ -5037,10 +5031,10 @@ func (c *Char) getProjs(id int32) (projs []*Projectile) {
 	return
 }
 
-func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
+func (c *Char) setHitdefDefault(hd *HitDef) {
 	hd.playerNo = c.ss.sb.playerNo
 	hd.attackerID = c.id
-	if !proj {
+	if !hd.isprojectile {
 		c.hitdefTargets = c.hitdefTargets[:0]
 	}
 	if hd.attr&^int32(ST_MASK) == 0 {
@@ -5146,6 +5140,17 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			hd.p2clsncheck = 1
 		} else {
 			hd.p2clsncheck = 2
+		}
+	}
+	// In Mugen, only projectiles can use air.juggle
+	// Ikemen characters can use it to update their juggle points
+	if hd.air_juggle == IErr {
+		if hd.isprojectile {
+			hd.air_juggle = 0
+		}
+	} else {
+		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+			c.juggle = hd.air_juggle
 		}
 	}
 }
@@ -7334,6 +7339,13 @@ func (c *Char) actionRun() {
 			}
 			if c.ghv.down_recovertime > 0 && c.ss.no == 5110 {
 				c.ghv.down_recovertime--
+			}
+			// Reset juggle points
+			// Mugen does not do this by default, so it is often overlooked
+			if c.ss.moveType != MT_A {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					c.juggle = 0
+				}
 			}
 		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
