@@ -7051,8 +7051,7 @@ func (c *Char) actionPrepare() {
 				}
 			}
 			c.pushPriority = 0 // Reset player pushing priority
-			c.attackDist[0] = float32(c.size.attack.dist.front)
-			c.attackDist[1] = float32(c.size.attack.dist.back)
+			c.attackDist = [2]float32{c.size.attack.dist.front, c.size.attack.dist.back}
 			// HitBy timers
 			// In Mugen this seems to happen at the end of each frame instead
 			for i, hb := range c.hitby {
@@ -7075,10 +7074,11 @@ func (c *Char) actionPrepare() {
 				c.pauseMovetime--
 			}
 		}
-		// This flag is special in that it must always reset regardless of hitpause
+		// This AssertSpecial flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
-		// In WinMugen all of these flags persisted during hitpause
-		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
+		// The flags in this block are to be reset even during hitpause
+		// Exception for WinMugen chars, where they persisted during hitpause
+		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 || !c.hitPause() {
 			c.unsetCSF(CSF_angledraw | CSF_trans)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
@@ -7086,9 +7086,13 @@ func (c *Char) actionPrepare() {
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
 				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
 		}
+		// The flags below also reset during hitpause, but are new to Ikemen and don't need the exception above
 		// Reset Clsn modifiers
 		c.clsnScaleMul = [...]float32{1.0, 1.0}
 		c.clsnAngle = 0
+		// Reset shadow offsets
+		c.shadowOffset = [2]float32{}
+		c.reflectOffset = [2]float32{}
 	}
 	// Decrease unhittable timer
 	// This used to be in tick(), but Mugen Clsn display suggests it happens sooner than that
@@ -7944,10 +7948,10 @@ func (c *Char) cueDraw() {
 				//if sd.oldVer {
 				//	soy *= 1.5
 				//}
-				charposz := c.pos[2] * c.localscl
+				charposz := c.interPos[2] * c.localscl
 				sys.shadows.add(&ShadowSprite{sd, -1, sdwalp,
-					[2]float32{c.shadowOffset[0], c.size.shadowoffset + c.shadowOffset[1] + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
-					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*charposz + charposz},              // Reflection offset
+					[2]float32{c.shadowOffset[0]*c.localscl, (c.size.shadowoffset + c.shadowOffset[1])*c.localscl + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
+					[2]float32{c.reflectOffset[0]*c.localscl, c.reflectOffset[1]*c.localscl + sys.stage.reflection.yscale*charposz + charposz}, // Reflection offset
 					c.offsetY()}) // Fade offset
 			}
 		}
