@@ -888,9 +888,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 		for i := 0; i < len(s.p); i++ {
 			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
 				if i%2 == 0 { // Even players (p3, p5, p7...)
-					s.p[i].startx = s.p[0].startx - int32(25 * (i / 2))
+					s.p[i].startx = s.p[0].startx - int32(25*(i/2))
 				} else { // Odd players (p4, p6, p8...)
-					s.p[i].startx = s.p[1].startx + int32(25 * (i / 2))
+					s.p[i].startx = s.p[1].startx + int32(25*(i/2))
 				}
 			}
 			sec[0].ReadI32(fmt.Sprintf("p%dstarty", i+1), &s.p[i].starty)
