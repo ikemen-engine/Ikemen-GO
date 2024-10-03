@@ -690,7 +690,7 @@ type stageShadow struct {
 	offset    [2]float32
 }
 type stagePlayer struct {
-	startx, starty, startz int32
+	startx, starty, startz, facing int32
 }
 type Stage struct {
 	def               string
@@ -736,6 +736,7 @@ type Stage struct {
 	stageCamera       stageCamera
 	stageTime         int32
 	constants         map[string]float32
+	partnerspacing	  int32
 	mugenver          [2]uint16
 	reload            bool
 	stageprops        StageProps
@@ -751,7 +752,7 @@ func newStage(def string) *Stage {
 		zoffsetlink: -1, autoturn: true, resetbg: true, localscl: 1,
 		scale:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		bgmratiolife: 30, stageCamera: *newStageCamera(),
-		constants: make(map[string]float32), bgmvolume: 100}
+		constants: make(map[string]float32), partnerspacing: 25, bgmvolume: 100}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
 	s.reflection.color = 0xFFFFFF
@@ -886,12 +887,16 @@ func loadStage(def string, main bool) (*Stage, error) {
 	if sectionExists {
 		sectionExists = false
 		for i := 0; i < len(s.p); i++ {
+			sec[0].ReadI32("partnerspacing", &s.partnerspacing)
 			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
-				if i%2 == 0 { // Even players (p3, p5, p7...)
-					s.p[i].startx = s.p[0].startx - int32(25*(i/2))
-				} else { // Odd players (p4, p6, p8...)
-					s.p[i].startx = s.p[1].startx + int32(25*(i/2))
+				if i%2 == 0 { // Odd players (p3, p5, p7...)
+					s.p[i].startx = s.p[0].startx - int32(s.partnerspacing * int32(i/2))
+				} else { // Even players (p4, p6, p8...)
+					s.p[i].startx = s.p[1].startx + int32(s.partnerspacing * int32(i/2))
 				}
+			}
+			if !sec[0].ReadI32(fmt.Sprintf("p%dfacing", i+1), &s.p[i].facing) {
+				s.p[i].facing = int32(1 - 2*(i%2))
 			}
 			sec[0].ReadI32(fmt.Sprintf("p%dstarty", i+1), &s.p[i].starty)
 			sec[0].ReadI32(fmt.Sprintf("p%dstartz", i+1), &s.p[i].startz)
