@@ -736,7 +736,7 @@ type Stage struct {
 	stageCamera       stageCamera
 	stageTime         int32
 	constants         map[string]float32
-	partnerspacing	  int32
+	partnerspacing    int32
 	mugenver          [2]uint16
 	reload            bool
 	stageprops        StageProps
@@ -890,9 +890,9 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadI32("partnerspacing", &s.partnerspacing)
 			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
 				if i%2 == 0 { // Odd players (p3, p5, p7...)
-					s.p[i].startx = s.p[0].startx - int32(s.partnerspacing * int32(i/2))
+					s.p[i].startx = s.p[0].startx - int32(s.partnerspacing*int32(i/2))
 				} else { // Even players (p4, p6, p8...)
-					s.p[i].startx = s.p[1].startx + int32(s.partnerspacing * int32(i/2))
+					s.p[i].startx = s.p[1].startx + int32(s.partnerspacing*int32(i/2))
 				}
 			}
 			if !sec[0].ReadI32(fmt.Sprintf("p%dfacing", i+1), &s.p[i].facing) {
