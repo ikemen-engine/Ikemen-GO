@@ -431,8 +431,7 @@ func (f *Fnt) drawChar(
 	xscl, yscl float32,
 	bank, bt int32,
 	c rune, pal []uint32,
-	window *[4]int32,
-	palfx *PalFX,
+	rp RenderParams,
 ) float32 {
 	if c == ' ' {
 		return float32(f.Size[0]) * xscl
@@ -456,16 +455,14 @@ func (f *Fnt) drawChar(
 	if spr.coldepth <= 8 && f.paltex == nil {
 		f.paltex = spr.CachePalette(pal)
 	}
-	rp := RenderParams{
-		spr.Tex, f.paltex, spr.Size,
-		-x * sys.widthScale, -y * sys.heightScale, notiling,
-		xscl * sys.widthScale, xscl * sys.widthScale,
-		yscl * sys.heightScale, 1, 0, 1, 1,
-		Rotation{},
-		0, sys.brightness*255>>8 | 1<<9, 0,
-		palfx, window, 0, 0,
-		0, 0, -xscl * float32(spr.Offset[0]), -yscl * float32(spr.Offset[1]),
-	}
+
+	// Update only the render parameters that change between each character
+	rp.tex = spr.Tex
+	rp.paltex = f.paltex
+	rp.size = spr.Size
+	rp.x = -x * sys.widthScale
+	rp.y = -y * sys.heightScale
+
 	RenderSprite(rp)
 	return float32(spr.Size[0]) * xscl
 }
@@ -520,8 +517,38 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl float32, bank, align int32,
 	}
 
 	f.paltex = nil
+
+	// Initialize common render parameters
+	rp := RenderParams{
+		tex: nil,
+		paltex: nil,
+		size: [2]uint16{0, 0},
+		x: 0,
+		y: 0,
+		tile: notiling,
+		xts: xscl * sys.widthScale,
+		xbs: xscl * sys.widthScale,
+		ys: yscl * sys.heightScale,
+		vs: 1, 
+		rxadd: 0,
+		xas: 1,
+		yas: 1,
+		rot: Rotation{},
+		tint: 0, 
+		trans: sys.brightness*255>>8 | 1<<9,
+		mask: 0,
+		pfx: palfx, 
+		window: window, 
+		rcx: 0,
+		rcy: 0,
+		projectionMode: 0, 
+		fLength: 0,
+		xOffset: 0, 
+		yOffset: 0,
+	}
+
 	for _, c := range txt {
-		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, window, palfx) + xscl*float32(f.Spacing[0])
+		x += f.drawChar(x, y, xscl, yscl, bank, bt, c, pal, rp) + xscl*float32(f.Spacing[0])
 	}
 }
 

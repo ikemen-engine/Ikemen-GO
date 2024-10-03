@@ -271,11 +271,9 @@ type CharSize struct {
 			front float32
 			back  float32
 		}
-		z struct {
-			width struct {
-				front float32
-				back  float32
-			}
+		width struct {
+			front float32
+			back  float32
 		}
 	}
 	proj struct {
@@ -299,7 +297,6 @@ type CharSize struct {
 	}
 	z struct {
 		width  float32
-		enable bool
 	}
 	weight     int32
 	pushfactor float32
@@ -327,8 +324,8 @@ func (cs *CharSize) init() {
 	cs.shadowoffset = 0
 	cs.draw.offset = [...]float32{0, 0}
 	cs.z.width = 3
-	cs.z.enable = false
-	cs.attack.z.width.front, cs.attack.z.width.back = 4, 4
+	cs.attack.width.front = 4
+	cs.attack.width.back = 4
 	cs.weight = 100
 	cs.pushfactor = 1
 }
@@ -563,6 +560,7 @@ func (f *Fall) xvel() float32 {
 }
 
 type HitDef struct {
+	isprojectile               bool // Projectile state controller
 	attr                       int32
 	reversal_attr              int32
 	hitflag                    int32
@@ -633,7 +631,7 @@ type HitDef struct {
 	down_recovertime           int32
 	id                         int32
 	chainid                    int32
-	nochainid                  [MaxSimul * 2]int32
+	nochainid                  [8]int32
 	hitonce                    int32
 	numhits                    int32
 	hitgetpower                int32
@@ -714,7 +712,7 @@ func (hd *HitDef) clear() {
 		guard_dist:    [...]int32{-1, -1},
 		down_velocity: [...]float32{float32(math.NaN()), float32(math.NaN())},
 		chainid:       -1,
-		//nochainid:      [...]int32{-1, -1, -1, -1, -1, -1, -1, -1},
+		nochainid:        [8]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
 		hitgetpower:      IErr,
 		guardgetpower:    IErr,
@@ -740,13 +738,11 @@ func (hd *HitDef) clear() {
 		p2clsnrequire:    -1,
 		down_recover:     true,
 		down_recovertime: -1,
+		air_juggle:       IErr,
+		isprojectile:     false,
 		attack: struct{ width [2]float32 }{
-			[2]float32{float32(4), float32(4)},
+			[2]float32{4, 4},
 		},
-	}
-	// This needs a loop because the length of the array depends on MaxSimul
-	for i := range hd.nochainid {
-		hd.nochainid[i] = -1
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
 	hd.fall.setDefault()
@@ -2741,8 +2737,8 @@ func (c *Char) load(def string) error {
 	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
 	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
 	c.size.z.width = c.size.z.width / originLs
-	c.size.attack.z.width.front = c.size.attack.z.width.front / originLs
-	c.size.attack.z.width.back = c.size.attack.z.width.back / originLs
+	c.size.attack.width.front = c.size.attack.width.front / originLs
+	c.size.attack.width.back = c.size.attack.width.back / originLs
 
 	gi.velocity.init()
 
@@ -2870,13 +2866,7 @@ func (c *Char) load(def string) error {
 						is.ReadF32("draw.offset",
 							&c.size.draw.offset[0], &c.size.draw.offset[1])
 						is.ReadF32("z.width", &c.size.z.width)
-						var ztemp int32 = 0
-						is.ReadI32("z.enable", &ztemp)
-						if ztemp == 1 {
-							c.size.z.enable = true
-						}
-						is.ReadF32("attack.z.width",
-							&c.size.attack.z.width.front, &c.size.attack.z.width.back)
+						is.ReadF32("attack.width", &c.size.attack.width.front, &c.size.attack.width.back)
 						is.ReadI32("weight", &c.size.weight)
 						is.ReadF32("pushfactor", &c.size.pushfactor)
 					}
@@ -3247,9 +3237,6 @@ func (c *Char) clearHitDef() {
 	c.hitdef.clear()
 }
 
-func (c *Char) setJuggle(juggle int32) {
-	c.juggle = juggle
-}
 func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
 	if a := sys.chars[playerNo][0].getAnim(animNo, ffx, false); a != nil {
 		c.anim = a
@@ -5009,9 +4996,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 	}
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		p.hitdef.chainid = -1
-		for i := range p.hitdef.nochainid {
-			p.hitdef.nochainid[i] = -1
-		}
+		p.hitdef.nochainid = [8]int32{-1, -1, -1, -1, -1, -1, -1, -1}
 	}
 	p.removefacing = c.facing
 	if p.velocity[0] < 0 {
@@ -5037,10 +5022,10 @@ func (c *Char) getProjs(id int32) (projs []*Projectile) {
 	return
 }
 
-func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
+func (c *Char) setHitdefDefault(hd *HitDef) {
 	hd.playerNo = c.ss.sb.playerNo
 	hd.attackerID = c.id
-	if !proj {
+	if !hd.isprojectile {
 		c.hitdefTargets = c.hitdefTargets[:0]
 	}
 	if hd.attr&^int32(ST_MASK) == 0 {
@@ -5146,6 +5131,17 @@ func (c *Char) setHitdefDefault(hd *HitDef, proj bool) {
 			hd.p2clsncheck = 1
 		} else {
 			hd.p2clsncheck = 2
+		}
+	}
+	// In Mugen, only projectiles can use air.juggle
+	// Ikemen characters can use it to update their juggle points
+	if hd.air_juggle == IErr {
+		if hd.isprojectile {
+			hd.air_juggle = 0
+		}
+	} else {
+		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+			c.juggle = hd.air_juggle
 		}
 	}
 }
@@ -7055,8 +7051,7 @@ func (c *Char) actionPrepare() {
 				}
 			}
 			c.pushPriority = 0 // Reset player pushing priority
-			c.attackDist[0] = float32(c.size.attack.dist.front)
-			c.attackDist[1] = float32(c.size.attack.dist.back)
+			c.attackDist = [2]float32{c.size.attack.dist.front, c.size.attack.dist.back}
 			// HitBy timers
 			// In Mugen this seems to happen at the end of each frame instead
 			for i, hb := range c.hitby {
@@ -7079,10 +7074,11 @@ func (c *Char) actionPrepare() {
 				c.pauseMovetime--
 			}
 		}
-		// This flag is special in that it must always reset regardless of hitpause
+		// This AssertSpecial flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
-		// In WinMugen all of these flags persisted during hitpause
-		if !c.hitPause() || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 {
+		// The flags in this block are to be reset even during hitpause
+		// Exception for WinMugen chars, where they persisted during hitpause
+		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 || !c.hitPause() {
 			c.unsetCSF(CSF_angledraw | CSF_trans)
 			c.angleScale = [...]float32{1, 1}
 			c.offset = [2]float32{}
@@ -7090,9 +7086,13 @@ func (c *Char) actionPrepare() {
 			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
 				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
 		}
+		// The flags below also reset during hitpause, but are new to Ikemen and don't need the exception above
 		// Reset Clsn modifiers
 		c.clsnScaleMul = [...]float32{1.0, 1.0}
 		c.clsnAngle = 0
+		// Reset shadow offsets
+		c.shadowOffset = [2]float32{}
+		c.reflectOffset = [2]float32{}
 	}
 	// Decrease unhittable timer
 	// This used to be in tick(), but Mugen Clsn display suggests it happens sooner than that
@@ -7334,6 +7334,13 @@ func (c *Char) actionRun() {
 			}
 			if c.ghv.down_recovertime > 0 && c.ss.no == 5110 {
 				c.ghv.down_recovertime--
+			}
+			// Reset juggle points
+			// Mugen does not do this by default, so it is often overlooked
+			if c.ss.moveType != MT_A {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					c.juggle = 0
+				}
 			}
 		}
 		if c.helperIndex == 0 && c.gi().pctime >= 0 {
@@ -7941,10 +7948,10 @@ func (c *Char) cueDraw() {
 				//if sd.oldVer {
 				//	soy *= 1.5
 				//}
-				charposz := c.pos[2] * c.localscl
+				charposz := c.interPos[2] * c.localscl
 				sys.shadows.add(&ShadowSprite{sd, -1, sdwalp,
-					[2]float32{c.shadowOffset[0], c.size.shadowoffset + c.shadowOffset[1] + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
-					[2]float32{c.reflectOffset[0], c.reflectOffset[1] + sys.stage.reflection.yscale*charposz + charposz},              // Reflection offset
+					[2]float32{c.shadowOffset[0]*c.localscl, (c.size.shadowoffset + c.shadowOffset[1])*c.localscl + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
+					[2]float32{c.reflectOffset[0]*c.localscl, c.reflectOffset[1]*c.localscl + sys.stage.reflection.yscale*charposz + charposz}, // Reflection offset
 					c.offsetY()}) // Fade offset
 			}
 		}

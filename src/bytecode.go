@@ -1807,9 +1807,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_size_attack_dist_back:
 		sys.bcStack.PushF(c.size.attack.dist.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_back:
-		sys.bcStack.PushF(c.size.attack.z.width.back * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.size.attack.width.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_z_width_front:
-		sys.bcStack.PushF(c.size.attack.z.width.front * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.size.attack.width.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_front:
 		sys.bcStack.PushF(c.size.proj.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_back:
@@ -1832,8 +1832,6 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.draw.offset[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_z_width:
 		sys.bcStack.PushF(c.size.z.width * ((320 / c.localcoord) / oc.localscl))
-	case OC_const_size_z_enable:
-		sys.bcStack.PushB(c.size.z.enable)
 	case OC_const_velocity_walk_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_back_x:
@@ -3569,7 +3567,7 @@ func (sc stateDef) Run(c *Char) {
 				c.setFacing(-c.facing)
 			}
 		case stateDef_juggle:
-			c.setJuggle(exp[0].evalI(c))
+			c.juggle = exp[0].evalI(c)
 		case stateDef_velset:
 			c.setXV(exp[0].evalF(c))
 			if len(exp) > 1 {
@@ -4468,11 +4466,7 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 				crun.bindPosAdd[1] = y
 			}
 		case posSet_z:
-			if crun.size.z.enable {
-				crun.setZ(exp[0].evalF(c) * lclscround)
-			} else {
-				exp[0].run(c)
-			}
+			crun.setZ(exp[0].evalF(c) * lclscround)
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -4562,11 +4556,7 @@ func (sc velAdd) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.addYV(exp[0].evalF(c) * lclscround)
 		case posSet_z:
-			if crun.size.z.enable {
-				crun.addZV(exp[0].evalF(c) * lclscround)
-			} else {
-				exp[0].run(c)
-			}
+			crun.addZV(exp[0].evalF(c) * lclscround)
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -4591,11 +4581,7 @@ func (sc velMul) Run(c *Char, _ []int32) bool {
 		case posSet_y:
 			crun.mulYV(exp[0].evalF(c))
 		case posSet_z:
-			if crun.size.z.enable {
-				crun.mulZV(exp[0].evalF(c))
-			} else {
-				exp[0].run(c)
-			}
+			crun.mulZV(exp[0].evalF(c))
 		case posSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -5920,7 +5906,7 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 	case hitDef_chainid:
 		hd.chainid = exp[0].evalI(c)
 	case hitDef_nochainid:
-		for i := 0; i < int(math.Min(MaxSimul, float64(len(exp)))); i++ {
+		for i := 0; i < int(math.Min(8, float64(len(exp)))); i++ {
 			hd.nochainid[i] = exp[i].evalI(c)
 		}
 	case hitDef_kill:
@@ -6226,7 +6212,7 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 		crun.hitdef.attr = 0
 		return false
 	}
-	crun.setHitdefDefault(&crun.hitdef, false)
+	crun.setHitdefDefault(&crun.hitdef)
 	return false
 }
 
@@ -6258,7 +6244,7 @@ func (sc reversalDef) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.setHitdefDefault(&crun.hitdef, false)
+	crun.setHitdefDefault(&crun.hitdef)
 	return false
 }
 
@@ -6319,21 +6305,16 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 				if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 					crun = rid
 					lclscround = c.localscl / crun.localscl
-					p = crun.newProj()
-					if p == nil {
-						return false
-					}
-					p.hitdef.playerNo = sys.workingState.playerNo
 				} else {
 					return false
 				}
-			} else {
-				p = crun.newProj()
-				if p == nil {
-					return false
-				}
-				p.hitdef.playerNo = sys.workingState.playerNo
 			}
+			p = crun.newProj()
+			if p == nil {
+				return false
+			}
+			p.hitdef.playerNo = sys.workingState.playerNo
+			p.hitdef.isprojectile = true
 		}
 		switch id {
 		case projectile_postype:
@@ -6491,7 +6472,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	if p == nil {
 		return false
 	}
-	crun.setHitdefDefault(&p.hitdef, true)
+	crun.setHitdefDefault(&p.hitdef)
 	if p.hitanim == -1 {
 		p.hitanim_ffx = p.anim_ffx
 	}
@@ -6834,7 +6815,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			case hitDef_nochainid:
 				eachProj(func(p *Projectile) {
-					for i := 0; i < int(math.Min(MaxSimul, float64(len(exp)))); i++ {
+					for i := 0; i < int(math.Min(8, float64(len(exp)))); i++ {
 						p.hitdef.nochainid[i] = exp[i].evalI(c)
 					}
 				})
