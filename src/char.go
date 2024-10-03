@@ -1243,11 +1243,11 @@ func (e *Explod) setPos(c *Char) {
 		if e.space == Space_screen {
 			e.offset[0] = c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
 			e.offset[1] = sys.cam.GroundLevel()*e.localscl +
-				c.pos[1]*c.localscl/e.localscl + (c.offsetY()-(c.pos[2]/c.localscl))*c.localscl/e.localscl // we need to subtract the Z pos in the offset here
+				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
 			e.offset[2] = ClampF(c.pos[2]*c.localscl/e.localscl, sys.stage.stageCamera.topz, sys.stage.stageCamera.botz)
 		} else {
 			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl)
-			e.setY(c.pos[1]*c.localscl/e.localscl + (c.offsetY()-(c.pos[2]/c.localscl))*c.localscl/e.localscl) // we need to subtract the Z pos in the offset here
+			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl)
 			e.setZ(c.pos[2] * c.localscl / e.localscl)
 		}
 	}
@@ -1451,7 +1451,8 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	rot.yangle = anglerot[2]
 
 	// Interpolated position
-	e.interPos = [3]float32{(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * e.localscl,
+	e.interPos = [3]float32{
+		(e.pos[0] + e.offset[0] + off[0] + e.interpolate_pos[0]) * e.localscl,
 		(e.pos[1] + e.offset[1] + off[1] + e.interpolate_pos[1]) * e.localscl,
 		(e.pos[2] + e.offset[2] + off[2] + e.interpolate_pos[2]) * e.localscl,
 	}
@@ -1460,16 +1461,14 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	drawpos := [2]float32{e.interPos[0], e.interPos[1]}
 
 	// Set scale
-	drawscale := [2]float32{(facing * scale[0]) * e.localscl, (e.vfacing * scale[1]) * e.localscl}
+	drawscale := [2]float32{facing * scale[0] * e.localscl, e.vfacing * scale[1] * e.localscl}
 
-	// Apply Z axis drawing offset
-	if sys.stage.topbound != sys.stage.botbound {
-		drawpos[1] += e.interPos[2]
-	}
-
-	// Apply Z axis rescale
+	// Apply Z axis perspective
 	if e.space == Space_stage && sys.stage.topbound != sys.stage.botbound {
 		zscale := sys.updateZScale(e.pos[2], e.localscl)
+		drawpos[0] *= zscale
+		drawpos[1] *= zscale
+		drawpos[1] += e.interPos[2] * e.localscl
 		drawscale[0] *= zscale
 		drawscale[1] *= zscale
 	}
@@ -2015,6 +2014,19 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 			p.ani.Action()
 		}
 	}
+
+	pos := [2]float32{p.interPos[0]*p.localscl,	p.interPos[1]*p.localscl}
+
+	scl := [...]float32{p.facing * p.scale[0] * p.localscl * p.zScale,
+		p.scale[1] * p.localscl * p.zScale}
+
+	// Apply Z axis perspective
+	if sys.stage.topbound != sys.stage.botbound {
+		pos[0] *= p.zScale
+		pos[1] *= p.zScale
+		pos[1] += p.interPos[2] * p.localscl
+	}
+
 	sprs := &sys.spritesLayer0
 	if p.layerno > 0 {
 		sprs = &sys.spritesLayer1
@@ -2024,9 +2036,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 
 	if p.ani != nil {
 		// Add sprite to draw list
-		sd := &SprData{p.ani, p.palfx,
-			[...]float32{p.interPos[0] * p.localscl, (p.interPos[1] + p.interPos[2]) * p.localscl},
-			[...]float32{p.facing * p.scale[0] * p.localscl * p.zScale, p.scale[1] * p.localscl * p.zScale}, [2]int32{-1},
+		sd := &SprData{p.ani, p.palfx, pos, scl, [2]int32{-1},
 			p.sprpriority + int32(p.pos[2]*p.localscl), Rotation{p.facing * p.angle, 0, 0}, [...]float32{1, 1}, false, playerNo == sys.superplayer,
 			sys.cgi[playerNo].mugenver[0] != 1, p.facing, 1, 0, 0, [4]float32{0, 0, 0, 0}}
 		p.aimg.recAndCue(sd, sys.tickNextFrame() && notpause, false, p.layerno)
@@ -2300,7 +2310,6 @@ type Char struct {
 	koEchoTime      int32
 	groundLevel     float32
 	sizeBox         []float32
-	sizeBoxScale    float32
 	shadowOffset    [2]float32
 	reflectOffset   [2]float32
 	ownclsnscale    bool
@@ -4351,7 +4360,6 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.height[0] *= lsRatio
 		c.height[1] *= lsRatio
 		c.widthToSizeBox()
-		c.sizeBoxScale /= lsRatio
 
 		c.bindPos[0] *= lsRatio
 		c.bindPos[1] *= lsRatio
@@ -4650,11 +4658,13 @@ func (c *Char) newExplod() (*Explod, int) {
 		}
 		return expl
 	}
+	// Reuse free explod slots
 	for i := range sys.explods[c.playerNo] {
 		if sys.explods[c.playerNo][i].id == IErr {
 			return explinit(&sys.explods[c.playerNo][i]), i
 		}
 	}
+	// Otherwise append it
 	i := len(sys.explods[c.playerNo])
 	if i < sys.explodMax {
 		sys.explods[c.playerNo] = append(sys.explods[c.playerNo], Explod{})
@@ -5900,17 +5910,18 @@ func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	dist := c.distX(opp, oc)
 	var oppw float32
 	if dist == 0 || (dist < 0) != (opp.facing < 0) {
-		oppw = opp.facing * opp.width[0] * (opp.localscl / oc.localscl)
+		oppw = opp.facing * opp.sizeBox[2] * (opp.localscl / oc.localscl)
 	} else {
-		oppw = -opp.facing * opp.width[1] * (opp.localscl / oc.localscl)
+		oppw = -opp.facing * opp.sizeBox[0] * (opp.localscl / oc.localscl)
 	}
-	return dist + oppw - c.facing*c.width[0]*(c.localscl/oc.localscl)
+	return dist + oppw - c.facing*c.sizeBox[2]*(c.localscl/oc.localscl)
 }
+
 func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
-	ctop := (c.pos[1] - c.height[0]) * c.localscl
-	cbot := (c.pos[1] + c.height[1]) * c.localscl
-	otop := (opp.pos[1] - opp.height[0]) * opp.localscl
-	obot := (opp.pos[1] + opp.height[1]) * opp.localscl
+	ctop := (c.pos[1] + c.sizeBox[1]) * c.localscl
+	cbot := (c.pos[1] + c.sizeBox[3]) * c.localscl
+	otop := (opp.pos[1] + opp.sizeBox[1]) * opp.localscl
+	obot := (opp.pos[1] + opp.sizeBox[3]) * opp.localscl
 	if cbot < otop {
 		return (otop - cbot) / oc.localscl
 	} else if ctop > obot {
@@ -6677,7 +6688,7 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 	charscale := c.clsnScale
 	charangle := c.clsnAngle
 	if cbox == 3 {
-		charscale = [2]float32{c.sizeBoxScale, c.sizeBoxScale}
+		charscale = [2]float32{c.localscl, c.localscl}
 		charangle = 0
 	}
 
@@ -6749,14 +6760,14 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) 
 	charscale := c.clsnScale
 	charangle := c.clsnAngle
 	if charbox == 3 {
-		charscale = [2]float32{c.sizeBoxScale, c.sizeBoxScale}
+		charscale = [2]float32{c.localscl, c.localscl}
 		charangle = 0
 	}
 
 	getterscale := getter.clsnScale
 	getterangle := getter.clsnAngle
 	if getterbox == 3 {
-		getterscale = [2]float32{getter.sizeBoxScale, getter.sizeBoxScale}
+		getterscale = [2]float32{getter.localscl, getter.localscl}
 		getterangle = 0
 	}
 
@@ -7369,10 +7380,11 @@ func (c *Char) actionRun() {
 
 	// Final scale calculations
 	// There's a minor issue here in that this scale is calculated
+	// Clsn and size box scale used to factor zScale here, but they shouldn't
+	// Game logic should stay the same regardless of Z scale. Only drawing changes
 	c.zScale = sys.updateZScale(c.pos[2], c.localscl) // Must be placed after posUpdate()
-	c.sizeBoxScale = c.localscl * c.zScale
-	c.clsnScale = [2]float32{c.clsnBaseScale[0] * c.clsnScaleMul[0] * c.animlocalscl * c.zScale, // No facing here
-		c.clsnBaseScale[1] * c.clsnScaleMul[1] * c.animlocalscl * c.zScale}
+	c.clsnScale = [2]float32{c.clsnBaseScale[0] * c.clsnScaleMul[0] * c.animlocalscl, // No facing here
+		c.clsnBaseScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
 
 	if !c.pauseBool {
 		for _, tid := range c.targets {
@@ -7866,7 +7878,7 @@ func (c *Char) cueDraw() {
 		}
 		// Add size box (width * height)
 		if c.csf(CSF_playerpush) {
-			sys.debugcsize.Add(c.sizeBox, x, y, c.facing*c.sizeBoxScale, c.sizeBoxScale, 0)
+			sys.debugcsize.Add(c.sizeBox, x, y, c.facing*c.localscl, c.localscl, 0)
 		}
 		// Add crosshair
 		sys.debugch.Add([]float32{-1, -1, 1, 1}, x, y, 1, 1, 0)
@@ -7901,10 +7913,18 @@ func (c *Char) cueDraw() {
 		scl := [...]float32{c.facing * c.size.xscale * c.zScale * (320 / c.localcoord),
 			c.size.yscale * c.zScale * (320 / c.localcoord)}
 
-		// Apply Z axis drawing offset
+		// Apply Z axis perspective
 		if sys.stage.topbound != sys.stage.botbound {
+			pos[0] *= c.zScale
+			pos[1] *= c.zScale
 			pos[1] += c.interPos[2] * c.localscl
 		}
+		//if sys.stage.topbound != sys.stage.botbound {
+		//	ratio := float32(1.618) // Possible stage parameter?
+		//	pos[0] *= 1 + (ratio-1)*(c.zScale-1)
+		//	pos[1] *= 1 + (ratio-1)*(c.zScale-1)
+		//	pos[1] += c.interPos[2] * c.localscl
+		//}
 
 		agl := float32(0)
 		if c.csf(CSF_angledraw) {
@@ -8709,10 +8729,6 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				off[0] -= hd.sparkxy[0] * c.localscl
 			}
 			off[1] += hd.sparkxy[1] * c.localscl
-			// Apply Z scaling to Y offset
-			if !proj {
-				off[1] *= p1.zScale
-			}
 
 			// Reversaldef spark (?)
 			if c.id != p1.id {
@@ -9255,8 +9271,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 			// We skip the zAxisCheck function because we'll need to calculate the overlap again anyway
 
 			// Normal collision check
-			cxleft := c.sizeBox[0] * c.sizeBoxScale
-			cxright := c.sizeBox[2] * c.sizeBoxScale
+			cxleft := c.sizeBox[0] * c.localscl
+			cxright := c.sizeBox[2] * c.localscl
 			if c.facing < 0 {
 				cxleft, cxright = -cxright, -cxleft
 			}
@@ -9264,8 +9280,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 			cxleft += c.pos[0] * c.localscl
 			cxright += c.pos[0] * c.localscl
 
-			gxleft := getter.sizeBox[0] * getter.sizeBoxScale
-			gxright := getter.sizeBox[2] * getter.sizeBoxScale
+			gxleft := getter.sizeBox[0] * getter.localscl
+			gxright := getter.sizeBox[2] * getter.localscl
 			if getter.facing < 0 {
 				gxleft, gxright = -gxright, -gxleft
 			}
@@ -9278,11 +9294,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 				continue
 			}
 
-			czback := c.pos[2]*c.localscl - c.size.depth*c.sizeBoxScale
-			czfront := c.pos[2]*c.localscl + c.size.depth*c.sizeBoxScale
+			czback := c.pos[2]*c.localscl - c.size.depth*c.localscl
+			czfront := c.pos[2]*c.localscl + c.size.depth*c.localscl
 
-			gzback := getter.pos[2]*getter.localscl - getter.size.depth*getter.sizeBoxScale
-			gzfront := getter.pos[2]*getter.localscl + getter.size.depth*getter.sizeBoxScale
+			gzback := getter.pos[2]*getter.localscl - getter.size.depth*getter.localscl
+			gzfront := getter.pos[2]*getter.localscl + getter.size.depth*getter.localscl
 
 			// Z axis fail
 			if gzback >= czfront || czback >= gzfront {
