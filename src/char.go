@@ -296,7 +296,7 @@ type CharSize struct {
 		offset [2]float32
 	}
 	z struct {
-		width  float32
+		width float32
 	}
 	weight     int32
 	pushfactor float32
@@ -704,14 +704,14 @@ func (hd *HitDef) clear() {
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()),
 
-		p1sprpriority: 1,
-		p1stateno:     -1,
-		p2stateno:     -1,
-		forcestand:    IErr,
-		forcecrouch:   IErr,
-		guard_dist:    [...]int32{-1, -1},
-		down_velocity: [...]float32{float32(math.NaN()), float32(math.NaN())},
-		chainid:       -1,
+		p1sprpriority:    1,
+		p1stateno:        -1,
+		p2stateno:        -1,
+		forcestand:       IErr,
+		forcecrouch:      IErr,
+		guard_dist:       [...]int32{-1, -1},
+		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN())},
+		chainid:          -1,
 		nochainid:        [8]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
 		hitgetpower:      IErr,
@@ -7950,8 +7950,8 @@ func (c *Char) cueDraw() {
 				//}
 				charposz := c.interPos[2] * c.localscl
 				sys.shadows.add(&ShadowSprite{sd, -1, sdwalp,
-					[2]float32{c.shadowOffset[0]*c.localscl, (c.size.shadowoffset + c.shadowOffset[1])*c.localscl + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
-					[2]float32{c.reflectOffset[0]*c.localscl, c.reflectOffset[1]*c.localscl + sys.stage.reflection.yscale*charposz + charposz}, // Reflection offset
+					[2]float32{c.shadowOffset[0] * c.localscl, (c.size.shadowoffset+c.shadowOffset[1])*c.localscl + sys.stage.sdw.yscale*charposz + charposz}, // Shadow offset
+					[2]float32{c.reflectOffset[0] * c.localscl, c.reflectOffset[1]*c.localscl + sys.stage.reflection.yscale*charposz + charposz},              // Reflection offset
 					c.offsetY()}) // Fade offset
 			}
 		}

@@ -1052,7 +1052,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			if (w[1] > w[3] && sys.stage.sdw.yscale > 0) || (w[1] < w[3] && sys.stage.sdw.yscale < 0) {
 				w[1], w[3] = w[3], w[1]
 			}
-			
+
 			window[0] = int32((sys.cam.Offset[0] - ((x - s.pos[0] - xshearoff) * scl) + w[0]*scl + float32(sys.gameWidth)/2) * sys.widthScale)
 			window[1] = int32((sys.cam.GroundLevel() + sys.cam.Offset[1] - sys.envShake.getOffset() - y - (s.pos[1]*sys.stage.sdw.yscale-s.shadowOffset[1])*scl + w[1]*sys.stage.sdw.yscale*scl) * sys.heightScale)
 			window[2] = int32(scl * (w[2] - w[0]) * sys.widthScale)
@@ -1143,7 +1143,7 @@ func (sl ShadowList) drawReflection(x, y, scl float32) {
 
 		s.anim.Draw(drawwindow,
 			sys.cam.Offset[0]/scl-(x-s.pos[0]-offsetX),
-			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl - y/scl -
+			(sys.cam.GroundLevel()+sys.cam.Offset[1]-sys.envShake.getOffset())/scl-y/scl-
 				(s.pos[1]*sys.stage.reflection.yscale-offsetY),
 			scl, scl, s.scl[0], s.scl[0],
 			-s.scl[1]*sys.stage.reflection.yscale, xshear, s.rot, float32(sys.gameWidth)/2,
