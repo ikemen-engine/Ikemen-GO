@@ -4121,12 +4121,18 @@ func (c *Char) roundType() int32 {
 	}
 	return 0
 }
+
+// TODO: These are supposed to be affected by zoom camera shifting
+// In Mugen 1.1 they don't work properly when zoom scale is actually used
+// Perhaps in Ikemen they could return the final rendering position of the chars
 func (c *Char) screenPosX() float32 {
 	return (c.pos[0]*c.localscl - sys.cam.ScreenPos[0]) // * sys.cam.Scale
 }
+
 func (c *Char) screenPosY() float32 {
 	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
 }
+
 func (c *Char) screenHeight() float32 {
 	return sys.screenHeight() / (320.0 / float32(c.stOgi().localcoord[0])) /
 		((3.0 / 4.0) / (float32(sys.scrrect[3]) / float32(sys.scrrect[2])))
@@ -4829,14 +4835,12 @@ func (c *Char) setPosX(x float32) {
 	}
 }
 
-func (c *Char) setPosY(y float32) {
+func (c *Char) setPosY(y float32) { // TODO: Do we really need these two functions?
 	c.pos[1] = y
 }
 
 func (c *Char) setPosZ(z float32) {
-	// TODO: Maybe this could be related to screenbound flag somehow, like with xScreenBound
-	cz := ClampF(z, sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
-	c.pos[2] = cz
+	c.pos[2] = z
 }
 
 func (c *Char) posReset() {
@@ -4849,7 +4853,7 @@ func (c *Char) posReset() {
 		c.facing = float32(sys.stage.p[c.playerNo].facing)
 		c.setX((float32(sys.stage.p[c.playerNo].startx) * sys.stage.localscl) / c.localscl)
 		c.setY(float32(sys.stage.p[c.playerNo].starty) * sys.stage.localscl / c.localscl)
-		c.setZ(float32(sys.stage.p[c.playerNo].startz))
+		c.setZ(float32(sys.stage.p[c.playerNo].startz) * sys.stage.localscl / c.localscl)
 	}
 	c.setXV(0)
 	c.setYV(0)
@@ -6519,6 +6523,7 @@ func (c *Char) bind() {
 func (c *Char) trackableByCamera() bool {
 	return sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar
 }
+
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
 	if !sys.cam.roundstart && c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
@@ -6533,6 +6538,15 @@ func (c *Char) xScreenBound() {
 	}
 	c.setPosX(x)
 }
+
+func (c *Char) zWidthBound() {
+	posz := c.pos[2]
+	if !c.csf(CSF_stagebound) {
+		posz = ClampF(posz, sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
+	}
+	c.setPosZ(posz)
+}
+
 func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 	x := c.pos[0]
 	if c.ss.stateType != ST_A {
@@ -7349,7 +7363,7 @@ func (c *Char) actionRun() {
 		c.gi().projidcount = 0
 	}
 	c.xScreenBound()
-	//c.zScreenBound() TODO?
+	c.zWidthBound()
 
 	// Final scale calculations
 	// There's a minor issue here in that this scale is calculated
@@ -7879,7 +7893,7 @@ func (c *Char) cueDraw() {
 	}
 	// Add char sprite
 	if c.anim != nil {
-		pos := [...]float32{c.interPos[0]*c.localscl + c.offsetX()*c.localscl,
+		pos := [2]float32{c.interPos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.interPos[1]*c.localscl + c.offsetY()*c.localscl}
 
 		scl := [...]float32{c.facing * c.size.xscale * c.zScale * (320 / c.localcoord),
@@ -7887,7 +7901,7 @@ func (c *Char) cueDraw() {
 
 		// Apply Z axis drawing offset
 		if sys.stage.topbound != sys.stage.botbound {
-			pos[1] += c.pos[2] * c.localscl
+			pos[1] += c.interPos[2] * c.localscl
 		}
 
 		agl := float32(0)
@@ -9376,8 +9390,9 @@ func (cl *CharList) pushDetection(getter *Char) {
 						}
 					}
 					// Clamp Z positions
-					c.pos[2] = ClampF(c.pos[2], sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
-					getter.pos[2] = ClampF(getter.pos[2], sys.stage.topbound/getter.localscl, sys.stage.botbound/getter.localscl)
+					c.zWidthBound()
+					getter.zWidthBound()
+
 				}
 
 				if getter.trackableByCamera() && getter.csf(CSF_screenbound) {
