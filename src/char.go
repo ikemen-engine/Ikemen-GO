@@ -271,7 +271,7 @@ type CharSize struct {
 			front float32
 			back  float32
 		}
-		width struct {
+		depth struct {
 			front float32
 			back  float32
 		}
@@ -295,9 +295,7 @@ type CharSize struct {
 	draw         struct {
 		offset [2]float32
 	}
-	z struct {
-		width float32
-	}
+	depth      float32 // Former depth
 	weight     int32
 	pushfactor float32
 }
@@ -323,9 +321,9 @@ func (cs *CharSize) init() {
 	cs.mid.pos = [...]float32{-5, -60}
 	cs.shadowoffset = 0
 	cs.draw.offset = [...]float32{0, 0}
-	cs.z.width = 3
-	cs.attack.width.front = 4
-	cs.attack.width.back = 4
+	cs.depth = 3
+	cs.attack.depth.front = 4
+	cs.attack.depth.back = 4
 	cs.weight = 100
 	cs.pushfactor = 1
 }
@@ -663,7 +661,7 @@ type HitDef struct {
 	p2clsncheck                int32
 	p2clsnrequire              int32
 	attack                     struct {
-		width [2]float32
+		depth [2]float32
 	}
 }
 
@@ -740,7 +738,7 @@ func (hd *HitDef) clear() {
 		down_recovertime: -1,
 		air_juggle:       IErr,
 		isprojectile:     false,
-		attack: struct{ width [2]float32 }{
+		attack: struct{ depth [2]float32 }{
 			[2]float32{4, 4},
 		},
 	}
@@ -1677,6 +1675,7 @@ type Projectile struct {
 	edgebound       int32
 	stagebound      int32
 	heightbound     [2]int32
+	depthbound      int32
 	pos             [3]float32
 	interPos        [3]float32
 	facing          float32
@@ -1730,6 +1729,7 @@ func (p *Projectile) clear() {
 		edgebound:      40,
 		stagebound:     40,
 		heightbound:    [...]int32{-240, 1},
+		depthbound:     math.MaxInt32,
 		facing:         1,
 		aimg:           *newAfterImage(),
 		platformFence:  true,
@@ -1781,7 +1781,9 @@ func (p *Projectile) update(playerNo int) {
 					p.velocity[0]*p.facing < 0 && p.pos[0] < sys.cam.XMin/p.localscl-float32(p.stagebound) ||
 					p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
 					p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
-					p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) {
+					p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
+					p.pos[2] < (sys.stage.topbound/p.localscl - float32(p.depthbound)) ||
+					p.pos[2] > (sys.stage.botbound/p.localscl + float32(p.depthbound)) {
 					if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
 						p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 					}
@@ -1919,8 +1921,8 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			}
 
 			// Run Z axis check
-			if !sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
-				pr.pos[2], pr.hitdef.attack.width[0], pr.hitdef.attack.width[1], pr.localscl) {
+			if !sys.zAxisOverlap(p.pos[2], p.hitdef.attack.depth[0], p.hitdef.attack.depth[1], p.localscl,
+				pr.pos[2], pr.hitdef.attack.depth[0], pr.hitdef.attack.depth[1], pr.localscl) {
 				continue
 			}
 
@@ -2736,9 +2738,9 @@ func (c *Char) load(def string) error {
 	c.size.shadowoffset = c.size.shadowoffset / originLs
 	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
 	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
-	c.size.z.width = c.size.z.width / originLs
-	c.size.attack.width.front = c.size.attack.width.front / originLs
-	c.size.attack.width.back = c.size.attack.width.back / originLs
+	c.size.depth = c.size.depth / originLs
+	c.size.attack.depth.front = c.size.attack.depth.front / originLs
+	c.size.attack.depth.back = c.size.attack.depth.back / originLs
 
 	gi.velocity.init()
 
@@ -2865,8 +2867,8 @@ func (c *Char) load(def string) error {
 						is.ReadF32("shadowoffset", &c.size.shadowoffset)
 						is.ReadF32("draw.offset",
 							&c.size.draw.offset[0], &c.size.draw.offset[1])
-						is.ReadF32("z.width", &c.size.z.width)
-						is.ReadF32("attack.width", &c.size.attack.width.front, &c.size.attack.width.back)
+						is.ReadF32("depth", &c.size.depth)
+						is.ReadF32("attack.depth", &c.size.attack.depth.front, &c.size.attack.depth.back)
 						is.ReadI32("weight", &c.size.weight)
 						is.ReadF32("pushfactor", &c.size.pushfactor)
 					}
@@ -5919,10 +5921,10 @@ func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
 }
 
 func (c *Char) bodyDistZ(opp *Char, oc *Char) float32 {
-	ctop := (c.pos[2] - c.size.z.width) * c.localscl
-	cbot := (c.pos[2] + c.size.z.width) * c.localscl
-	otop := (opp.pos[2] - opp.size.z.width) * opp.localscl
-	obot := (opp.pos[2] + opp.size.z.width) * opp.localscl
+	ctop := (c.pos[2] - c.size.depth) * c.localscl
+	cbot := (c.pos[2] + c.size.depth) * c.localscl
+	otop := (opp.pos[2] - opp.size.depth) * opp.localscl
+	obot := (opp.pos[2] + opp.size.depth) * opp.localscl
 	if cbot < otop {
 		return (otop - cbot) / oc.localscl
 	} else if ctop > obot {
@@ -6922,8 +6924,8 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
 				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) &&
-				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
-					getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
+				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.depth[0], c.hitdef.attack.depth[1], c.localscl,
+					getter.pos[2], getter.size.depth, getter.size.depth, getter.localscl)
 		}
 	}
 
@@ -9012,8 +9014,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 					getter.hitdef.hitflag&int32(ST_P) != 0 &&
 					getter.projClsnCheck(p, 1, 2) &&
-					sys.zAxisOverlap(getter.pos[2], getter.hitdef.attack.width[0], getter.hitdef.attack.width[1], getter.localscl,
-						p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl) {
+					sys.zAxisOverlap(getter.pos[2], getter.hitdef.attack.depth[0], getter.hitdef.attack.depth[1], getter.localscl,
+						p.pos[2], p.hitdef.attack.depth[0], p.hitdef.attack.depth[1], p.localscl) {
 					if getter.hitdef.p1stateno >= 0 && getter.stateChange1(getter.hitdef.p1stateno, getter.hitdef.playerNo) {
 						getter.setCtrl(false)
 					}
@@ -9037,8 +9039,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 
 					if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) &&
-						sys.zAxisOverlap(p.pos[2], p.hitdef.attack.width[0], p.hitdef.attack.width[1], p.localscl,
-							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl) {
+						sys.zAxisOverlap(p.pos[2], p.hitdef.attack.depth[0], p.hitdef.attack.depth[1], p.localscl,
+							getter.pos[2], getter.size.depth, getter.size.depth, getter.localscl) {
 
 						if ht := hitTypeGet(c, &p.hitdef, [...]float32{p.pos[0] - c.pos[0]*(c.localscl/p.localscl),
 							p.pos[1] - c.pos[1]*(c.localscl/p.localscl), p.pos[2] - c.pos[2]*(c.localscl/p.localscl)},
@@ -9126,14 +9128,14 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 
 					// Z axis check
-					// Reversaldef checks attack width vs attack width
+					// Reversaldef checks attack depth vs attack depth
 					zok := true
 					if c.hitdef.reversal_attr > 0 {
-						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
-							getter.pos[2], getter.hitdef.attack.width[0], getter.hitdef.attack.width[1], getter.localscl)
+						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.depth[0], c.hitdef.attack.depth[1], c.localscl,
+							getter.pos[2], getter.hitdef.attack.depth[0], getter.hitdef.attack.depth[1], getter.localscl)
 					} else {
-						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.width[0], c.hitdef.attack.width[1], c.localscl,
-							getter.pos[2], getter.size.z.width, getter.size.z.width, getter.localscl)
+						zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack.depth[0], c.hitdef.attack.depth[1], c.localscl,
+							getter.pos[2], getter.size.depth, getter.size.depth, getter.localscl)
 					}
 
 					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) {
@@ -9276,11 +9278,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 				continue
 			}
 
-			czback := c.pos[2]*c.localscl - c.size.z.width*c.sizeBoxScale
-			czfront := c.pos[2]*c.localscl + c.size.z.width*c.sizeBoxScale
+			czback := c.pos[2]*c.localscl - c.size.depth*c.sizeBoxScale
+			czfront := c.pos[2]*c.localscl + c.size.depth*c.sizeBoxScale
 
-			gzback := getter.pos[2]*getter.localscl - getter.size.z.width*getter.sizeBoxScale
-			gzfront := getter.pos[2]*getter.localscl + getter.size.z.width*getter.sizeBoxScale
+			gzback := getter.pos[2]*getter.localscl - getter.size.depth*getter.sizeBoxScale
+			gzfront := getter.pos[2]*getter.localscl + getter.size.depth*getter.sizeBoxScale
 
 			// Z axis fail
 			if gzback >= czfront || czback >= gzfront {
