@@ -9332,22 +9332,20 @@ const (
 	zoom_pos byte = iota
 	zoom_scale
 	zoom_lag
-	zoom_redirectid
 	zoom_camerabound
 	zoom_time
 	zoom_stagebound
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
-	crun := c
-	zoompos := [2]float32{0, 0}
+	pos := [2]float32{0, 0}
 	t := int32(1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case zoom_pos:
-			zoompos[0] = exp[0].evalF(c) * crun.localscl
+			pos[0] = exp[0].evalF(c) * c.localscl
 			if len(exp) > 1 {
-				zoompos[1] = exp[1].evalF(c) * crun.localscl
+				pos[1] = exp[1].evalF(c) * c.localscl
 			}
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
@@ -9359,17 +9357,13 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 			sys.zoomlag = exp[0].evalF(c)
 		case zoom_time:
 			t = exp[0].evalI(c)
-		case zoom_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-			} else {
-				return false
-			}
 		}
 		return true
 	})
-	sys.zoomPos[0] = sys.zoomScale * zoompos[0]
-	sys.zoomPos[1] = zoompos[1]
+	// This old calculation is both less accurate to Mugen and less intuitive to work with
+	// sys.zoomPos[0] = sys.zoomScale * pos[0]
+	sys.zoomPos[0] = pos[0]
+	sys.zoomPos[1] = pos[1]
 	sys.enableZoomtime = t
 	return false
 }

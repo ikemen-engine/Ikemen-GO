@@ -2812,7 +2812,7 @@ func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase, _ int8) (
 			return err
 		}
 		if !b {
-			sc.add(screenBound_value, sc.iToExp(0))
+			sc.add(screenBound_value, sc.iToExp(0)) // In Mugen everything defaults to 0/false if you don't specify any parameters
 		}
 		b = false
 		if err := c.stateParam(is, "movecamera", false, func(data string) error {
@@ -3744,10 +3744,6 @@ func (c *Compiler) victoryQuote(is IniSection, sc *StateControllerBase, _ int8) 
 }
 func (c *Compiler) zoom(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*zoom)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			zoom_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
 		if err := c.paramValue(is, sc, "pos",
 			zoom_pos, VT_Float, 2, false); err != nil {
 			return err
