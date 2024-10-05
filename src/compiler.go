@@ -4014,6 +4014,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_, OC_ex_scale_x)
 		case "y":
 			out.append(OC_ex_, OC_ex_scale_y)
+		case "z":
+			out.append(OC_ex_, OC_ex_scale_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

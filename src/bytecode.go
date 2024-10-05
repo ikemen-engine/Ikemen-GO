@@ -634,6 +634,7 @@ const (
 	OC_ex_angle
 	OC_ex_scale_x
 	OC_ex_scale_y
+	OC_ex_scale_z
 	OC_ex_offset_x
 	OC_ex_offset_y
 	OC_ex_alpha_s
@@ -2796,6 +2797,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushF(1)
 		}
+	case OC_ex_scale_z:
+		sys.bcStack.PushF(c.zScale)
 	case OC_ex_offset_x:
 		sys.bcStack.PushF(c.offset[0]) // Already in local scale
 	case OC_ex_offset_y:

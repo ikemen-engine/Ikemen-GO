@@ -5077,6 +5077,10 @@ func triggerFunctions(l *lua.LState) {
 		}
 		return 1
 	})
+	luaRegister(l, "scaleZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.zScale))
+		return 1
+	})
 	luaRegister(l, "sign", func(*lua.LState) int {
 		v, retv := float32(numArg(l, 1)), int32(0)
 		if v < 0 {
