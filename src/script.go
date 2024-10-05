@@ -3050,10 +3050,10 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.attack.dist.front)
 		case "size.attack.dist.back":
 			ln = lua.LNumber(c.size.attack.dist.back)
-		case "size.attack.width.back":
-			ln = lua.LNumber(c.size.attack.width.back)
-		case "size.attack.width.front":
-			ln = lua.LNumber(c.size.attack.width.front)
+		case "size.attack.depth.back":
+			ln = lua.LNumber(c.size.attack.depth.back)
+		case "size.attack.depth.front":
+			ln = lua.LNumber(c.size.attack.depth.front)
 		case "size.proj.attack.dist", "size.proj.attack.dist.front":
 			ln = lua.LNumber(c.size.proj.attack.dist.front)
 		case "size.proj.attack.dist.back":
@@ -3074,8 +3074,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.size.draw.offset[0])
 		case "size.draw.offset.y":
 			ln = lua.LNumber(c.size.draw.offset[1])
-		case "size.z.width":
-			ln = lua.LNumber(c.size.z.width)
+		case "size.depth":
+			ln = lua.LNumber(c.size.depth)
 		case "velocity.walk.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.walk.fwd)
 		case "velocity.walk.back.x":
@@ -5075,6 +5075,10 @@ func triggerFunctions(l *lua.LState) {
 		} else {
 			l.Push(lua.LNumber(1))
 		}
+		return 1
+	})
+	luaRegister(l, "scaleZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.zScale))
 		return 1
 	})
 	luaRegister(l, "sign", func(*lua.LState) int {

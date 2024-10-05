@@ -1755,10 +1755,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_attack_dist_front)
 		case "size.attack.dist.back":
 			out.append(OC_const_size_attack_dist_back)
-		case "size.attack.width.back":
-			out.append(OC_const_size_attack_z_width_back)
-		case "size.attack.width.front":
-			out.append(OC_const_size_attack_z_width_front)
+		case "size.attack.depth.back":
+			out.append(OC_const_size_attack_depth_back)
+		case "size.attack.depth.front":
+			out.append(OC_const_size_attack_depth_front)
 		case "size.proj.attack.dist", "size.proj.attack.dist.front":
 			out.append(OC_const_size_proj_attack_dist_front)
 		case "size.proj.attack.dist.back":
@@ -1779,8 +1779,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_const_size_draw_offset_x)
 		case "size.draw.offset.y":
 			out.append(OC_const_size_draw_offset_y)
-		case "size.z.width":
-			out.append(OC_const_size_z_width)
+		case "size.depth":
+			out.append(OC_const_size_depth)
 		case "velocity.walk.fwd.x":
 			out.append(OC_const_velocity_walk_fwd_x)
 		case "velocity.walk.back.x":
@@ -4014,6 +4014,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_, OC_ex_scale_x)
 		case "y":
 			out.append(OC_ex_, OC_ex_scale_y)
+		case "z":
+			out.append(OC_ex_, OC_ex_scale_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}

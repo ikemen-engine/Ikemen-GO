@@ -254,8 +254,8 @@ const (
 	OC_const_size_height_down
 	OC_const_size_attack_dist_front
 	OC_const_size_attack_dist_back
-	OC_const_size_attack_z_width_back
-	OC_const_size_attack_z_width_front
+	OC_const_size_attack_depth_back
+	OC_const_size_attack_depth_front
 	OC_const_size_proj_attack_dist_front
 	OC_const_size_proj_attack_dist_back
 	OC_const_size_proj_doscale
@@ -266,8 +266,7 @@ const (
 	OC_const_size_shadowoffset
 	OC_const_size_draw_offset_x
 	OC_const_size_draw_offset_y
-	OC_const_size_z_width
-	OC_const_size_z_enable
+	OC_const_size_depth
 	OC_const_velocity_walk_fwd_x
 	OC_const_velocity_walk_back_x
 	OC_const_velocity_walk_up_x
@@ -635,6 +634,7 @@ const (
 	OC_ex_angle
 	OC_ex_scale_x
 	OC_ex_scale_y
+	OC_ex_scale_z
 	OC_ex_offset_x
 	OC_ex_offset_y
 	OC_ex_alpha_s
@@ -1655,9 +1655,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_screenheight:
 			sys.bcStack.PushF(c.screenHeight())
 		case OC_screenpos_x:
-			sys.bcStack.PushF((c.screenPosX()) / oc.localscl)
+			sys.bcStack.PushF(c.screenPosX() / oc.localscl)
 		case OC_screenpos_y:
-			sys.bcStack.PushF((c.screenPosY()) / oc.localscl)
+			sys.bcStack.PushF(c.screenPosY() / oc.localscl)
 		case OC_screenwidth:
 			sys.bcStack.PushF(c.screenWidth())
 		case OC_selfanimexist:
@@ -1806,10 +1806,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_attack_dist_back:
 		sys.bcStack.PushF(c.size.attack.dist.back * ((320 / c.localcoord) / oc.localscl))
-	case OC_const_size_attack_z_width_back:
-		sys.bcStack.PushF(c.size.attack.width.back * ((320 / c.localcoord) / oc.localscl))
-	case OC_const_size_attack_z_width_front:
-		sys.bcStack.PushF(c.size.attack.width.front * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_attack_depth_back:
+		sys.bcStack.PushF(c.size.attack.depth.back * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_attack_depth_front:
+		sys.bcStack.PushF(c.size.attack.depth.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_front:
 		sys.bcStack.PushF(c.size.proj.attack.dist.front * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_proj_attack_dist_back:
@@ -1830,8 +1830,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.size.draw.offset[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_size_draw_offset_y:
 		sys.bcStack.PushF(c.size.draw.offset[1] * ((320 / c.localcoord) / oc.localscl))
-	case OC_const_size_z_width:
-		sys.bcStack.PushF(c.size.z.width * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_size_depth:
+		sys.bcStack.PushF(c.size.depth * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_back_x:
@@ -2797,6 +2797,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushF(1)
 		}
+	case OC_ex_scale_z:
+		sys.bcStack.PushF(c.zScale)
 	case OC_ex_offset_x:
 		sys.bcStack.PushF(c.offset[0]) // Already in local scale
 	case OC_ex_offset_y:
@@ -4239,7 +4241,7 @@ const (
 	helper_size_head_pos
 	helper_size_mid_pos
 	helper_size_shadowoffset
-	helper_size_z_width
+	helper_size_depth
 	helper_size_weight
 	helper_size_pushfactor
 	helper_stateno
@@ -4339,8 +4341,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			}
 		case helper_size_shadowoffset:
 			h.size.shadowoffset = exp[0].evalF(c)
-		case helper_size_z_width:
-			h.size.z.width = exp[0].evalF(c)
+		case helper_size_depth:
+			h.size.depth = exp[0].evalF(c)
 		case helper_size_weight:
 			h.size.weight = exp[0].evalI(c)
 		case helper_size_pushfactor:
@@ -5866,7 +5868,7 @@ const (
 	hitDef_down_recover
 	hitDef_down_recovertime
 	hitDef_xaccel
-	hitDef_attack_width
+	hitDef_attack_depth
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
@@ -6164,12 +6166,12 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.down_recovertime = exp[0].evalI(c)
 	case hitDef_xaccel:
 		hd.xaccel = exp[0].evalF(c)
-	case hitDef_attack_width:
-		hd.attack.width[0] = exp[0].evalF(c)
+	case hitDef_attack_depth:
+		hd.attack.depth[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
-			hd.attack.width[1] = exp[1].evalF(c)
+			hd.attack.depth[1] = exp[1].evalF(c)
 		} else {
-			hd.attack.width[1] = hd.attack.width[0]
+			hd.attack.depth[1] = hd.attack.depth[0]
 		}
 	default:
 		if !palFX(sc).runSub(c, &hd.palfx, id, exp) {
@@ -6276,6 +6278,7 @@ const (
 	projectile_projstagebound
 	projectile_projedgebound
 	projectile_projheightbound
+	projectile_projdepthbound
 	projectile_projanim
 	projectile_supermovetime
 	projectile_pausemovetime
@@ -6416,6 +6419,8 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				p.heightbound[1] = int32(float32(exp[1].evalI(c)) * lclscround)
 			}
+		case projectile_projdepthbound:
+			p.depthbound= int32(float32(exp[0].evalI(c)) * lclscround)
 		case projectile_projanim:
 			p.anim = exp[1].evalI(c)
 			p.anim_ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))
@@ -6718,6 +6723,10 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					if len(exp) > 1 {
 						p.heightbound[1] = int32(float32(exp[1].evalI(c)) * lclscround)
 					}
+				})
+			case projectile_projdepthbound:
+				eachProj(func(p *Projectile) {
+					p.depthbound = int32(float32(exp[0].evalI(c)) * lclscround)
 				})
 			case projectile_projanim:
 				eachProj(func(p *Projectile) {
@@ -7217,14 +7226,14 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				eachProj(func(p *Projectile) {
 					p.hitdef.xaccel = exp[0].evalF(c)
 				})
-			case hitDef_attack_width:
+			case hitDef_attack_depth:
 				eachProj(
 					func(p *Projectile) {
-						p.hitdef.attack.width[0] = exp[0].evalF(c)
+						p.hitdef.attack.depth[0] = exp[0].evalF(c)
 						if len(exp) > 1 {
-							p.hitdef.attack.width[1] = exp[1].evalF(c)
+							p.hitdef.attack.depth[1] = exp[1].evalF(c)
 						} else {
-							p.hitdef.attack.width[1] = p.hitdef.attack.width[0]
+							p.hitdef.attack.depth[1] = p.hitdef.attack.depth[0]
 						}
 					})
 			default:
@@ -9332,22 +9341,20 @@ const (
 	zoom_pos byte = iota
 	zoom_scale
 	zoom_lag
-	zoom_redirectid
 	zoom_camerabound
 	zoom_time
 	zoom_stagebound
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
-	crun := c
-	zoompos := [2]float32{0, 0}
+	pos := [2]float32{0, 0}
 	t := int32(1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case zoom_pos:
-			zoompos[0] = exp[0].evalF(c) * crun.localscl
+			pos[0] = exp[0].evalF(c) * c.localscl
 			if len(exp) > 1 {
-				zoompos[1] = exp[1].evalF(c) * crun.localscl
+				pos[1] = exp[1].evalF(c) * c.localscl
 			}
 		case zoom_scale:
 			sys.zoomScale = exp[0].evalF(c)
@@ -9359,17 +9366,13 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 			sys.zoomlag = exp[0].evalF(c)
 		case zoom_time:
 			t = exp[0].evalI(c)
-		case zoom_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				crun = rid
-			} else {
-				return false
-			}
 		}
 		return true
 	})
-	sys.zoomPos[0] = sys.zoomScale * zoompos[0]
-	sys.zoomPos[1] = zoompos[1]
+	// This old calculation is both less accurate to Mugen and less intuitive to work with
+	// sys.zoomPos[0] = sys.zoomScale * pos[0]
+	sys.zoomPos[0] = pos[0]
+	sys.zoomPos[1] = pos[1]
 	sys.enableZoomtime = t
 	return false
 }

@@ -594,8 +594,8 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 			helper_size_shadowoffset, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "size.z.width",
-			helper_size_z_width, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "size.depth",
+			helper_size_depth, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "size.weight",
@@ -1924,8 +1924,8 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_xaccel, VT_Float, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "attack.width",
-		hitDef_attack_width, VT_Float, 2, false); err != nil {
+	if err := c.paramValue(is, sc, "attack.depth",
+		hitDef_attack_depth, VT_Float, 2, false); err != nil {
 		return err
 	}
 	return nil
@@ -2114,6 +2114,10 @@ func (c *Compiler) projectileSub(is IniSection, sc *StateControllerBase, ihp int
 	}
 	if err := c.paramValue(is, sc, "projheightbound",
 		projectile_projheightbound, VT_Int, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "projdepthbound",
+		projectile_projdepthbound, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.stateParam(is, "projanim", false, func(data string) error {
@@ -2812,7 +2816,7 @@ func (c *Compiler) screenBound(is IniSection, sc *StateControllerBase, _ int8) (
 			return err
 		}
 		if !b {
-			sc.add(screenBound_value, sc.iToExp(0))
+			sc.add(screenBound_value, sc.iToExp(0)) // In Mugen everything defaults to 0/false if you don't specify any parameters
 		}
 		b = false
 		if err := c.stateParam(is, "movecamera", false, func(data string) error {
@@ -3744,10 +3748,6 @@ func (c *Compiler) victoryQuote(is IniSection, sc *StateControllerBase, _ int8) 
 }
 func (c *Compiler) zoom(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*zoom)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			zoom_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
 		if err := c.paramValue(is, sc, "pos",
 			zoom_pos, VT_Float, 2, false); err != nil {
 			return err
