@@ -6420,7 +6420,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 				p.heightbound[1] = int32(float32(exp[1].evalI(c)) * lclscround)
 			}
 		case projectile_projdepthbound:
-			p.depthbound= int32(float32(exp[0].evalI(c)) * lclscround)
+			p.depthbound = int32(float32(exp[0].evalI(c)) * lclscround)
 		case projectile_projanim:
 			p.anim = exp[1].evalI(c)
 			p.anim_ffx = string(*(*[]byte)(unsafe.Pointer(&exp[0])))

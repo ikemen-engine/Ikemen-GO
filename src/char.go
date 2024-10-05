@@ -1781,8 +1781,8 @@ func (p *Projectile) update(playerNo int) {
 					p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
 					p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
 					p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
-					p.pos[2] < (sys.stage.topbound/p.localscl - float32(p.depthbound)) ||
-					p.pos[2] > (sys.stage.botbound/p.localscl + float32(p.depthbound)) {
+					p.pos[2] < (sys.stage.topbound/p.localscl-float32(p.depthbound)) ||
+					p.pos[2] > (sys.stage.botbound/p.localscl+float32(p.depthbound)) {
 					if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
 						p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 					}
@@ -2015,7 +2015,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		}
 	}
 
-	pos := [2]float32{p.interPos[0]*p.localscl,	p.interPos[1]*p.localscl}
+	pos := [2]float32{p.interPos[0] * p.localscl, p.interPos[1] * p.localscl}
 
 	scl := [...]float32{p.facing * p.scale[0] * p.localscl * p.zScale,
 		p.scale[1] * p.localscl * p.zScale}
@@ -7382,7 +7382,7 @@ func (c *Char) actionRun() {
 	// There's a minor issue here in that this scale is calculated
 	// Clsn and size box scale used to factor zScale here, but they shouldn't
 	// Game logic should stay the same regardless of Z scale. Only drawing changes
-	c.zScale = sys.updateZScale(c.pos[2], c.localscl) // Must be placed after posUpdate()
+	c.zScale = sys.updateZScale(c.pos[2], c.localscl)                                 // Must be placed after posUpdate()
 	c.clsnScale = [2]float32{c.clsnBaseScale[0] * c.clsnScaleMul[0] * c.animlocalscl, // No facing here
 		c.clsnBaseScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
 
