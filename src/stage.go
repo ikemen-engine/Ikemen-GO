@@ -736,7 +736,7 @@ type Stage struct {
 	stageCamera       stageCamera
 	stageTime         int32
 	constants         map[string]float32
-	partnerspacing    int32
+	partnerspacing    float32
 	mugenver          [2]uint16
 	reload            bool
 	stageprops        StageProps
@@ -752,7 +752,7 @@ func newStage(def string) *Stage {
 		zoffsetlink: -1, autoturn: true, resetbg: true, localscl: 1,
 		scale:        [...]float32{float32(math.NaN()), float32(math.NaN())},
 		bgmratiolife: 30, stageCamera: *newStageCamera(),
-		constants: make(map[string]float32), partnerspacing: 25, bgmvolume: 100}
+		constants: make(map[string]float32), partnerspacing: 25.0, bgmvolume: 100}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
 	s.reflection.color = 0xFFFFFF
@@ -877,35 +877,6 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.constants[key] = float32(Atof(value))
 		}
 	}
-	if sec = defmap[fmt.Sprintf("%v.playerinfo", sys.language)]; len(sec) > 0 {
-		sectionExists = true
-	} else {
-		if sec = defmap["playerinfo"]; len(sec) > 0 {
-			sectionExists = true
-		}
-	}
-	if sectionExists {
-		sectionExists = false
-		for i := 0; i < len(s.p); i++ {
-			sec[0].ReadI32("partnerspacing", &s.partnerspacing)
-			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
-				if i%2 == 0 { // Odd players (p3, p5, p7...)
-					s.p[i].startx = s.p[0].startx - int32(s.partnerspacing*int32(i/2))
-				} else { // Even players (p4, p6, p8...)
-					s.p[i].startx = s.p[1].startx + int32(s.partnerspacing*int32(i/2))
-				}
-			}
-			if !sec[0].ReadI32(fmt.Sprintf("p%dfacing", i+1), &s.p[i].facing) {
-				s.p[i].facing = int32(1 - 2*(i%2))
-			}
-			sec[0].ReadI32(fmt.Sprintf("p%dstarty", i+1), &s.p[i].starty)
-			sec[0].ReadI32(fmt.Sprintf("p%dstartz", i+1), &s.p[i].startz)
-		}
-		sec[0].ReadF32("leftbound", &s.leftbound)
-		sec[0].ReadF32("rightbound", &s.rightbound)
-		sec[0].ReadF32("topbound", &s.topbound)
-		sec[0].ReadF32("botbound", &s.botbound)
-	}
 	if sec = defmap[fmt.Sprintf("%v.scaling", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -965,6 +936,46 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
 	s.stageCamera.localscl = s.localscl
+	// Player Info Group - Needs to be here to return the correct s.localscl and localcoord
+	if sec = defmap[fmt.Sprintf("%v.playerinfo", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["playerinfo"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
+		sec[0].ReadF32("partnerspacing", &s.partnerspacing)
+		adjust := float32(1.0)
+		if s.partnerspacing == 25.0 && float32(sys.gameWidth) > 320 {
+			switch float32(s.stageCamera.localcoord[0]) {
+			case 320:
+				adjust = 25.5 / (s.partnerspacing / s.localscl)
+			case 640:
+				adjust = 50.0 / (s.partnerspacing / s.localscl)
+			default:
+				adjust = 100.0 / (s.partnerspacing / s.localscl)
+			}
+		}
+		for i := range s.p {
+			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
+				offset := int32((s.partnerspacing / s.localscl) * adjust * float32(i/2))
+				s.p[i].startx = s.p[i%2].startx + offset * int32(2*(i%2)-1)
+			}//pXstarty
+			sec[0].ReadI32(fmt.Sprintf("p%dstarty", i+1), &s.p[i].starty)
+			if !sec[0].ReadI32(fmt.Sprintf("p%dstartz", i+1), &s.p[i].startz) {
+				s.p[i].startz = s.p[i%2].startz
+			}
+			if !sec[0].ReadI32(fmt.Sprintf("p%dfacing", i+1), &s.p[i].facing) {
+				s.p[i].facing = int32(1 - 2*(i%2))
+			}
+		}
+		sec[0].ReadF32("leftbound", &s.leftbound)
+		sec[0].ReadF32("rightbound", &s.rightbound)
+		sec[0].ReadF32("topbound", &s.topbound)
+		sec[0].ReadF32("botbound", &s.botbound)
+	}
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
 		sec[0].ReadI32("starty", &s.stageCamera.starty)
