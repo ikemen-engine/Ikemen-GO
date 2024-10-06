@@ -862,6 +862,205 @@ func systemScriptInit(l *lua.LState) {
 		FillRect(rect, col, a)
 		return 0
 	})
+	luaRegister(l, "findEntityByPlayerId", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
+
+		pid := int32(numArg(l, 1))
+
+		pn := sys.debugRef[0]
+		hn := sys.debugRef[1]
+		pnStart := pn
+		hnStart := hn + 1
+
+		found := false
+
+		// Don't let these loops fool you, this is still iterating
+		// over n entities.
+		for i := pnStart; i < len(sys.chars) && !found; i++ {
+			if !sys.debugDraw {
+				for j := 0; j < len(sys.chars[i]) && !found; j++ {
+					if sys.chars[i][j] != nil && (j == 0 || !sys.chars[i][j].csf(CSF_destroy)) {
+						if sys.chars[i][j].id == pid {
+							sys.debugRef[0] = i
+							sys.debugRef[1] = j
+							found = true
+							sys.debugDraw = true
+							break
+						}
+					}
+				}
+			} else {
+				for j := hnStart; j < len(sys.chars[i]) && !found; j++ {
+					if sys.chars[i][j] != nil && (j == 0 || !sys.chars[i][j].csf(CSF_destroy)) {
+						if sys.chars[i][j].id == pid {
+							sys.debugRef[0] = i
+							sys.debugRef[1] = j
+							found = true
+							break
+						}
+					}
+				}
+				// gotta reset after one full iteration
+				hnStart = 0
+			}
+		}
+
+		// Come back around if we haven't found it and we're not starting from 0
+		if (pnStart > 0 || hnStart > 0) && !found {
+			for i := 0; i < len(sys.chars) && !found; i++ {
+				for j := 0; j < len(sys.chars[i]); j++ {
+					if sys.chars[i][j].id == pid {
+						sys.debugRef[0] = i
+						sys.debugRef[1] = j
+						found = true
+						break
+					}
+				}
+			}
+		}
+
+		if !found {
+			l.RaiseError("Could not find an entity matching player ID %d", pid)
+		}
+
+		return 0
+	})
+	luaRegister(l, "findEntityByName", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
+
+		text := strings.ToLower(strArg(l, 1))
+		nameLower := ""
+
+		pn := sys.debugRef[0]
+		hn := sys.debugRef[1]
+		pnStart := pn
+		hnStart := hn + 1
+
+		found := false
+
+		// Don't let these loops fool you, this is still iterating
+		// over n entities.
+		for i := pnStart; i < len(sys.chars) && !found; i++ {
+			if !sys.debugDraw {
+				for j := 0; j < len(sys.chars[i]) && !found; j++ {
+					if sys.chars[i][j] != nil && (j == 0 || !sys.chars[i][j].csf(CSF_destroy)) {
+						nameLower = strings.ToLower(sys.chars[i][j].name)
+						if strings.Contains(nameLower, text) {
+							sys.debugRef[0] = i
+							sys.debugRef[1] = j
+							found = true
+							sys.debugDraw = true
+							break
+						}
+					}
+				}
+			} else {
+				for j := hnStart; j < len(sys.chars[i]) && !found; j++ {
+					if sys.chars[i][j] != nil && !sys.chars[i][j].csf(CSF_destroy) {
+						nameLower = strings.ToLower(sys.chars[i][j].name)
+						if strings.Contains(nameLower, text) {
+							sys.debugRef[0] = i
+							sys.debugRef[1] = j
+							found = true
+							break
+						}
+					}
+				}
+				// gotta reset after one full iteration
+				hnStart = 0
+			}
+		}
+
+		// Come back around if we haven't found it and we're not starting from 0
+		if (pnStart > 0 || hnStart > 0) && !found {
+			for i := 0; i < len(sys.chars) && !found; i++ {
+				for j := 0; j < len(sys.chars[i]); j++ {
+					nameLower = strings.ToLower(sys.chars[i][j].name)
+					if strings.Contains(nameLower, text) {
+						sys.debugRef[0] = i
+						sys.debugRef[1] = j
+						found = true
+						break
+					}
+				}
+			}
+		}
+
+		if !found {
+			l.RaiseError("Could not find an entity matching \"%s\"", nameLower)
+		}
+
+		return 0
+	})
+	luaRegister(l, "findHelperById", func(*lua.LState) int {
+		if !sys.allowDebugMode {
+			return 0
+		}
+
+		hid := int32(numArg(l, 1))
+
+		pn := sys.debugRef[0]
+		hn := sys.debugRef[1]
+		pnStart := pn
+		hnStart := hn + 1
+
+		found := false
+
+		// Don't let these loops fool you, this is still iterating
+		// over n entities.
+		for i := pnStart; i < len(sys.chars) && !found; i++ {
+			if !sys.debugDraw {
+				for j := 1; j < len(sys.chars[i]) && !found; j++ {
+					if sys.chars[i][j] != nil && (j == 0 || !sys.chars[i][j].csf(CSF_destroy)) {
+						if sys.chars[i][j].helperId == hid {
+							sys.debugRef[0] = i
+							sys.debugRef[1] = j
+							found = true
+							sys.debugDraw = true
+							break
+						}
+					}
+				}
+			} else {
+				for j := hnStart; j < len(sys.chars[i]) && !found; j++ {
+					if sys.chars[i][j] != nil && (j == 0 || !sys.chars[i][j].csf(CSF_destroy)) {
+						if sys.chars[i][j].helperId == hid {
+							sys.debugRef[0] = i
+							sys.debugRef[1] = j
+							found = true
+							break
+						}
+					}
+				}
+				// gotta reset after one full iteration
+				hnStart = 0
+			}
+		}
+
+		// Come back around if we haven't found it and we're not starting from 0
+		if (pnStart > 0 || hnStart > 0) && !found {
+			for i := 0; i < len(sys.chars) && !found; i++ {
+				for j := 1; j < len(sys.chars[i]); j++ {
+					if sys.chars[i][j].helperId == hid {
+						sys.debugRef[0] = i
+						sys.debugRef[1] = j
+						found = true
+						break
+					}
+				}
+			}
+		}
+
+		if !found {
+			l.RaiseError("Could not find any helpers matching helper ID %d", hid)
+		}
+
+		return 0
+	})
 	luaRegister(l, "fontGetDef", func(l *lua.LState) int {
 		fnt, ok := toUserData(l, 1).(*Fnt)
 		if !ok {
@@ -3284,15 +3483,15 @@ func triggerFunctions(l *lua.LState) {
 				case "accel z":
 					ln = lua.LNumber(e.accel[2])
 				case "scale x":
-					ln = lua.LNumber(e.scale[0])
+					ln = lua.LNumber(e.scale[0] * e.interpolate_scale[0])
 				case "scale y":
-					ln = lua.LNumber(e.scale[1])
+					ln = lua.LNumber(e.scale[1] * e.interpolate_scale[1])
 				case "angle":
-					ln = lua.LNumber(e.anglerot[0])
+					ln = lua.LNumber(e.anglerot[0] + e.interpolate_angle[0])
 				case "angle x":
-					ln = lua.LNumber(e.anglerot[1])
+					ln = lua.LNumber(e.anglerot[1] + e.interpolate_angle[1])
 				case "angle y":
-					ln = lua.LNumber(e.anglerot[2])
+					ln = lua.LNumber(e.anglerot[2] + e.interpolate_angle[2])
 				case "removetime":
 					ln = lua.LNumber(e.removetime)
 				case "pausemovetime":

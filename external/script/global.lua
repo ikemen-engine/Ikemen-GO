@@ -121,6 +121,63 @@ function closeMenu()
 end
 
 --;===========================================================
+--; MCONSOLE EQUIVALENTS
+--;===========================================================
+function toggleDebugPause()
+	togglePause()
+	closeMenu()
+end
+
+function toggleMaxPowerModeAll() -- maxpowermode
+	toggleMaxPowerMode()
+	debugFlag(1)
+	debugFlag(2)
+end
+
+function matchReload() -- matchreset
+	reload()
+	closeMenu()
+end
+
+function powMaxAll()
+	powMax(1)
+	powMax(2)
+	debugFlag(1)
+	debugFlag(2)
+end
+
+function roundResetNow()
+	roundReset()
+	closeMenu()
+end
+
+function fullAll()
+	full(1)
+	full(2)
+	full(3)
+	full(4)
+	full(5)
+	full(6)
+	full(7)
+	full(8)
+	setTime(getRoundTime())
+	debugFlag(1)
+	debugFlag(2)
+	clearConsole()
+end
+
+function standAll()
+	stand(1)
+	stand(2)
+	stand(3)
+	stand(4)
+	stand(5)
+	stand(6)
+	stand(7)
+	stand(8)
+end
+
+--;===========================================================
 --; DEBUG STATUS INFO
 --;===========================================================
 function statusInfo(p)
