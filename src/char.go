@@ -2886,15 +2886,14 @@ func (c *Char) load(def string) error {
 						velocity = false
 						is.ReadF32("walk.fwd", &gi.velocity.walk.fwd)
 						is.ReadF32("walk.back", &gi.velocity.walk.back)
-						is.ReadF32("walk.up.x", &gi.velocity.walk.up.x)
+						is.ReadF32("walk.up.x", &gi.velocity.walk.up.x) // Should be Z
 						is.ReadF32("walk.down.x", &gi.velocity.walk.down.x)
 						is.ReadF32("run.fwd", &gi.velocity.run.fwd[0], &gi.velocity.run.fwd[1])
 						is.ReadF32("run.back",
 							&gi.velocity.run.back[0], &gi.velocity.run.back[1])
-						is.ReadF32("run.up.x", &gi.velocity.run.up.x)
-						is.ReadF32("run.up.y", &gi.velocity.run.up.y)
-						is.ReadF32("run.down.x", &gi.velocity.run.down.x)
-						is.ReadF32("run.down.y", &gi.velocity.run.down.y)
+						is.ReadF32("run.up", &gi.velocity.run.up.x, &gi.velocity.run.up.y)
+						is.ReadF32("run.down", // Z and Y? 
+							&gi.velocity.run.down.x, &gi.velocity.run.down.y)
 						is.ReadF32("jump.neu",
 							&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
 						is.ReadF32("jump.back", &gi.velocity.jump.back)
@@ -6554,7 +6553,7 @@ func (c *Char) xScreenBound() {
 
 func (c *Char) zWidthBound() {
 	posz := c.pos[2]
-	if !c.csf(CSF_stagebound) {
+	if c.csf(CSF_stagebound) {
 		posz = ClampF(posz, sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
 	}
 	c.setPosZ(posz)
