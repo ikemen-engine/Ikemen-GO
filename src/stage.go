@@ -322,7 +322,7 @@ func (bg *backGround) reset() {
 	bg.palfx.invertblend = -3
 }
 
-func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
+func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool) {
 
 	// Handle parallax scaling (type = 2)
@@ -338,29 +338,29 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 
 	// Initialize local scaling factors
 	var sclx_recip, sclx, scly float32 = 1, 1, 1
-	lscl := [...]float32{lclscl * stgscl[0], lclscl * stgscl[1]}
+	lscl := [...]float32{stglscl * stgscl[0], stglscl * stgscl[1]}
 
 	// Handle zoom scaling if zoomdelta is specified
 	if bg.zoomdelta[0] != math.MaxFloat32 {
-		sclx = scl + (1-scl)*(1-bg.zoomdelta[0])
-		scly = scl + (1-scl)*(1-bg.zoomdelta[1])
+		sclx = drawscl + (1-drawscl)*(1-bg.zoomdelta[0])
+		scly = drawscl + (1-drawscl)*(1-bg.zoomdelta[1])
 		if !bg.autoresizeparallax {
 			sclx_recip = 1 + bg.zoomdelta[0]*((1/(sclx*lscl[0])*lscl[0])-1)
 		}
 	} else {
-		sclx = MaxF(0, scl+(1-scl)*(1-dx))
-		scly = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.delta[1]*bgscl)))
+		sclx = MaxF(0, drawscl+(1-drawscl)*(1-dx))
+		scly = MaxF(0, drawscl+(1-drawscl)*(1-MaxF(0, bg.delta[1]*bgscl)))
 	}
 
 	// Adjust x scale and x bottom zoom if autoresizeparallax is enabled
 	if sclx != 0 && bg.autoresizeparallax {
 		tmp := 1 / sclx
 		if bg.xbottomzoomdelta != math.MaxFloat32 {
-			xbs *= MaxF(0, scl+(1-scl)*(1-bg.xbottomzoomdelta*(xbs/bg.xscale[0]))) * tmp
+			xbs *= MaxF(0, drawscl+(1-drawscl)*(1-bg.xbottomzoomdelta*(xbs/bg.xscale[0]))) * tmp
 		} else {
-			xbs *= MaxF(0, scl+(1-scl)*(1-dx*(xbs/bg.xscale[0]))) * tmp
+			xbs *= MaxF(0, drawscl+(1-drawscl)*(1-dx*(xbs/bg.xscale[0]))) * tmp
 		}
-		tmp *= MaxF(0, scl+(1-scl)*(1-dx*(xras+1)))
+		tmp *= MaxF(0, drawscl+(1-drawscl)*(1-dx*(xras+1)))
 		xras -= tmp - 1
 		xbs *= tmp
 	}
@@ -368,24 +368,24 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 	// Adjust scaling based on zoomscaledelta if available
 	var xs3, ys3 float32 = 1, 1
 	if bg.zoomscaledelta[0] != math.MaxFloat32 {
-		xs3 = (scl + (1-scl)*(1-bg.zoomscaledelta[0])) / sclx
+		xs3 = (drawscl + (1-drawscl)*(1-bg.zoomscaledelta[0])) / sclx
 	}
 	if bg.zoomscaledelta[1] != math.MaxFloat32 {
-		ys3 = (scl + (1-scl)*(1-bg.zoomscaledelta[1])) / scly
+		ys3 = (drawscl + (1-drawscl)*(1-bg.zoomscaledelta[1])) / scly
 	}
 
 	// This handles the flooring of the camera position in MUGEN versions earlier than 1.0.
 	var x, yScrollPos float32
 	if bg.roundpos {
 		x = bg.start[0] + bg.xofs - float32(Floor(pos[0]/stgscl[0]))*bg.delta[0] + bg.bga.offset[0]
-		yScrollPos = float32(Floor(pos[1]/scl/stgscl[1])) * bg.delta[1]
+		yScrollPos = float32(Floor(pos[1]/drawscl/stgscl[1])) * bg.delta[1]
 		for i := 0; i < 2; i++ {
 			pos[i] = float32(math.Floor(float64(pos[i])))
 		}
 	} else {
 		x = bg.start[0] + bg.xofs - pos[0]/stgscl[0]*bg.delta[0] + bg.bga.offset[0]
 		// Hires breaks ydelta scrolling vel, so bgscl was commented from here.
-		yScrollPos = (pos[1] / scl / stgscl[1]) * bg.delta[1] // * bgscl
+		yScrollPos = (pos[1] / drawscl / stgscl[1]) * bg.delta[1] // * bgscl
 	}
 
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
@@ -398,38 +398,42 @@ func (bg backGround) draw(pos [2]float32, scl, bgscl, lclscl float32,
 
 	// Apply stage logic if BG is part of a stage
 	if isStage {
-		zoff := float32(sys.cam.zoffset) * lclscl
-		y = y*bgscl + ((zoff-shakeY)/scly-zoff)/lclscl/stgscl[1]
-		y -= sys.cam.aspectcorrection / (scly * lclscl * stgscl[1])
-		y -= sys.cam.zoomanchorcorrection / (scly * lclscl * stgscl[1])
+		zoff := float32(sys.cam.zoffset) * stglscl
+		y = y*bgscl + ((zoff-shakeY)/scly-zoff)/stglscl/stgscl[1]
+		y -= sys.cam.aspectcorrection / (scly * stglscl * stgscl[1])
+		y -= sys.cam.zoomanchorcorrection / (scly * stglscl * stgscl[1])
 	} else {
-		y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/lclscl/scly-240)/stgscl[1]
+		y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/stglscl/scly-240)/stgscl[1]
 	}
 
 	// Final scaling factors
 	sclx *= lscl[0]
-	scly *= lclscl * stgscl[1]
+	scly *= stglscl * stgscl[1]
 
 	// Calculate window scale
-	rect := bg.startrect
 	var wscl [2]float32
 	for i := range wscl {
 		if bg.zoomdelta[i] != math.MaxFloat32 {
-			wscl[i] = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.zoomdelta[i]))) * bgscl * lscl[i]
+			wscl[i] = MaxF(0, drawscl+(1-drawscl)*(1-MaxF(0, bg.zoomdelta[i]))) * bgscl * lscl[i]
 		} else {
-			wscl[i] = MaxF(0, scl+(1-scl)*(1-MaxF(0, bg.windowdelta[i]*bgscl))) * bgscl * lscl[i]
+			wscl[i] = MaxF(0, drawscl+(1-drawscl)*(1-MaxF(0, bg.windowdelta[i]*bgscl))) * bgscl * lscl[i]
 		}
 	}
 
 	// Calculate window top left corner position
-	startrect0 := (float32(rect[0]) - (pos[0])*bg.windowdelta[0] +
-		(float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))) * sys.widthScale * wscl[0] * stgscl[0]
+	rect := bg.startrect
+
+	startrect0 := float32(rect[0]) - (pos[0])*bg.windowdelta[0] +
+		(float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))
+	startrect0 *= sys.widthScale * wscl[0]
 	if !isStage && wscl[0] == 1 {
+		// Screenpacks X coordinates start from left edge of screen
 		startrect0 += float32(sys.gameWidth-320) / 2 * sys.widthScale
 	}
-	// TODO: Zoom doesn't work correctly. Especially in different localcoords
-	startrect1 := (float32(rect[1]) - pos[1]*bg.windowdelta[1] +
-		(float32(sys.gameHeight) - 240*scly)) * sys.heightScale * wscl[1] * stgscl[1]
+
+	// TODO: Zoom doesn't work correctly here. Especially in different localcoords
+	startrect1 := float32(rect[1]) - pos[1]*bg.windowdelta[1] + (float32(sys.gameHeight) - 240*scly)
+	startrect1 *= sys.heightScale * wscl[1]
 	startrect1 -= shakeY
 
 	// Determine final window
