@@ -965,8 +965,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		for i := range s.p {
 			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
 				offset := int32((s.partnerspacing / s.localscl) * adjust * float32(i/2))
-				s.p[i].startx = s.p[i%2].startx + offset * int32(2*(i%2)-1)
-			}//pXstarty
+				s.p[i].startx = s.p[i%2].startx + offset*int32(2*(i%2)-1)
+			} //pXstarty
 			sec[0].ReadI32(fmt.Sprintf("p%dstarty", i+1), &s.p[i].starty)
 			if !sec[0].ReadI32(fmt.Sprintf("p%dstartz", i+1), &s.p[i].startz) {
 				s.p[i].startz = s.p[i%2].startz

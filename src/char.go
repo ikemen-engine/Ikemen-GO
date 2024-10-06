@@ -2892,7 +2892,7 @@ func (c *Char) load(def string) error {
 						is.ReadF32("run.back",
 							&gi.velocity.run.back[0], &gi.velocity.run.back[1])
 						is.ReadF32("run.up", &gi.velocity.run.up.x, &gi.velocity.run.up.y)
-						is.ReadF32("run.down", // Z and Y? 
+						is.ReadF32("run.down", // Z and Y?
 							&gi.velocity.run.down.x, &gi.velocity.run.down.y)
 						is.ReadF32("jump.neu",
 							&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
