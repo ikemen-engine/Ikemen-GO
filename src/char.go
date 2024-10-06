@@ -3812,15 +3812,15 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 			case OC_ex2_explodvar_pos_z:
 				v = BytecodeFloat(e.pos[2] + e.offset[2] + e.relativePos[2] + e.interpolate_pos[2])
 			case OC_ex2_explodvar_scale_x:
-				v = BytecodeFloat(e.scale[0])
+				v = BytecodeFloat(e.scale[0] * e.interpolate_scale[0])
 			case OC_ex2_explodvar_scale_y:
-				v = BytecodeFloat(e.scale[1])
+				v = BytecodeFloat(e.scale[1] * e.interpolate_scale[1])
 			case OC_ex2_explodvar_angle:
-				v = BytecodeFloat(e.anglerot[0])
+				v = BytecodeFloat(e.anglerot[0] + e.interpolate_angle[0])
 			case OC_ex2_explodvar_angle_x:
-				v = BytecodeFloat(e.anglerot[1])
+				v = BytecodeFloat(e.anglerot[1] + e.interpolate_angle[1])
 			case OC_ex2_explodvar_angle_y:
-				v = BytecodeFloat(e.anglerot[2])
+				v = BytecodeFloat(e.anglerot[2] + e.interpolate_angle[2])
 			case OC_ex2_explodvar_vel_x:
 				v = BytecodeFloat(e.velocity[0])
 			case OC_ex2_explodvar_vel_y:
