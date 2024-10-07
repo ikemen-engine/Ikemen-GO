@@ -5360,12 +5360,12 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.anim.time))
 		return 1
 	})
-	luaRegister(l, "animtimesum", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.anim.sumtime))
+	luaRegister(l, "animplayerno", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.animPN) + 1)
 		return 1
 	})
-	luaRegister(l, "animowner", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.animPN) + 1)
+	luaRegister(l, "animtimesum", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.anim.sumtime))
 		return 1
 	})
 	luaRegister(l, "continue", func(*lua.LState) int {
@@ -5438,14 +5438,6 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "selectno", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.selectNo))
-		return 1
-	})
-	luaRegister(l, "spritegroup", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.curFrame.Group))
-		return 1
-	})
-	luaRegister(l, "spritenumber", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.curFrame.Number))
 		return 1
 	})
 	luaRegister(l, "stateownerid", func(*lua.LState) int {
