@@ -1837,9 +1837,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_walk_back_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_up_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.walk.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_down_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.walk.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.run.fwd[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_fwd_y:
@@ -1849,13 +1849,13 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_run_back_y:
 		sys.bcStack.PushF(c.gi().velocity.run.back[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_up_x:
-		sys.bcStack.PushF(c.gi().velocity.run.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.up[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_up_y:
-		sys.bcStack.PushF(c.gi().velocity.run.up.y * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.up[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_down_x:
-		sys.bcStack.PushF(c.gi().velocity.run.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.down[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_down_y:
-		sys.bcStack.PushF(c.gi().velocity.run.down.y * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.down[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_y:
 		sys.bcStack.PushF(c.gi().velocity.jump.neu[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_neu_x:
@@ -1865,9 +1865,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_jump_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.jump.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.jump.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.jump.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_back_x:
 		sys.bcStack.PushF(c.gi().velocity.runjump.back[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_back_y:
@@ -1877,9 +1877,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_runjump_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.runjump.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.runjump.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_y:
 		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_neu_x:
@@ -1889,9 +1889,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_airjump_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.airjump.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.airjump.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.airjump.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_air_gethit_groundrecover_x:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_air_gethit_groundrecover_y:
