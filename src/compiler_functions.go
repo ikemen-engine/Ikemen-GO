@@ -4905,10 +4905,6 @@ func (c *Compiler) createPlatform(is IniSection, sc *StateControllerBase, _ int8
 }
 func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*modifyStageVar)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			modifyStageVar_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
 		if err := c.paramValue(is, sc, "camera.boundleft",
 			modifyStageVar_camera_boundleft, VT_Int, 1, false); err != nil {
 			return err
