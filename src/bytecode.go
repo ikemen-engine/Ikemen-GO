@@ -5165,8 +5165,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	var expls []*Explod
 	rp := [...]int32{-1, 0}
 	remap := false
-	var f, vf float32 = 1, 1
-	sp, pos, vel, accel := Space_none, [3]float32{0, 0, 0}, [3]float32{0, 0, 0}, [3]float32{0, 0, 0}
 	ptexists := false
 	eachExpl := func(f func(e *Explod)) {
 		if idx < 0 {
@@ -5196,8 +5194,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			remap = true
 		case explod_id:
 			eid = exp[0].evalI(c)
-		case explod_postypeExists:
-			ptexists = true
 		case modifyexplod_index:
 			idx = exp[0].evalI(c)
 		default:
@@ -5213,131 +5209,162 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			}
 			switch id {
-			case explod_facing:
-				if exp[0].evalI(c) < 0 {
-					f = -1
-				}
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+			case explod_postype:
+				ptexists = true // In Mugen you can only update some parameters if postype is specified
+				pt := PosType(exp[0].evalI(c))
+				eachExpl(func(e *Explod) {
+					e.postype = pt
+				})
+				// In Mugen many explod parameters are defaulted when not being modified
+				// What possibly happens in Mugen is that all parameters are read first then only applied if postype is defined
+				// Ikemen chars instead can more freely update individual parameters without affecting others
+				if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 					eachExpl(func(e *Explod) {
-						e.relativef = f
+						e.facing = 1
+						e.offset = [3]float32{0, 0, 0}
+						e.setX(e.offset[0])
+						e.setY(e.offset[1])
+						e.setZ(e.offset[2])
+						e.relativePos = [3]float32{0, 0, 0}
+						e.velocity = [3]float32{0, 0, 0}
+						e.accel = [3]float32{0, 0, 0}
+						e.bindId = -2
+						if e.bindtime == 0 {
+							e.bindtime = 1
+						}
+					})
+				}
+			case explod_space:
+				sp := Space(exp[0].evalI(c))
+				eachExpl(func(e *Explod) {
+					e.space = sp
+				})
+			case explod_facing:
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					rf := exp[0].evalF(c)
+					eachExpl(func(e *Explod) {
+						e.relativef = rf
 					})
 				}
 			case explod_vfacing:
-				if exp[0].evalI(c) < 0 {
-					vf = -1
-				}
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					vf := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
 						e.vfacing = vf
 					})
 				}
 			case explod_pos:
-				pos[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.relativePos[0] = pos[0] })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					pos := exp[0].evalF(c) * lclscround
+					eachExpl(func(e *Explod) {
+						e.relativePos[0] = pos
+					})
 				}
 				if len(exp) > 1 {
-					pos[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.relativePos[1] = pos[1] })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						pos := exp[1].evalF(c) * lclscround
+						eachExpl(func(e *Explod) {
+							e.relativePos[1] = pos
+						})
 					}
 					if len(exp) > 2 {
-						pos[2] = exp[2].evalF(c) * lclscround
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.relativePos[2] = pos[2] })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							pos := exp[2].evalF(c) * lclscround
+							eachExpl(func(e *Explod) {
+								e.relativePos[2] = pos
+							})
 						}
 					}
 				}
 			case explod_random:
-				rndx := (exp[0].evalF(c) / 2) * lclscround
-				rndx = RandF(-rndx, rndx)
-				pos[0] += rndx
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.relativePos[0] += rndx })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					rndx := (exp[0].evalF(c) / 2) * lclscround
+					rndx = RandF(-rndx, rndx)
+					eachExpl(func(e *Explod) {
+						e.relativePos[0] += rndx
+					})
 				}
 				if len(exp) > 1 {
-					rndy := (exp[1].evalF(c) / 2) * lclscround
-					rndy = RandF(-rndy, rndy)
-					pos[1] += rndy
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.relativePos[1] += rndy })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						rndy := (exp[1].evalF(c) / 2) * lclscround
+						rndy = RandF(-rndy, rndy)
+						eachExpl(func(e *Explod) {
+							e.relativePos[1] += rndy
+						})
 					}
 					if len(exp) > 2 {
-						rndz := (exp[2].evalF(c) / 2) * lclscround
-						rndz = RandF(-rndz, rndz)
-						pos[2] += rndz
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.relativePos[2] += rndz })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							rndz := (exp[2].evalF(c) / 2) * lclscround
+							rndz = RandF(-rndz, rndz)
+							eachExpl(func(e *Explod) {
+								e.relativePos[2] += rndz
+							})
 						}
 					}
 				}
 			case explod_velocity:
-				vel[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.velocity[0] = vel[0] })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					vel := exp[0].evalF(c) * lclscround
+					eachExpl(func(e *Explod) {
+						e.velocity[0] = vel
+					})
 				}
 				if len(exp) > 1 {
-					vel[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.velocity[1] = vel[1] })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						vel := exp[1].evalF(c) * lclscround
+						eachExpl(func(e *Explod) {
+							e.velocity[1] = vel
+						})
 					}
 					if len(exp) > 2 {
-						vel[2] = exp[2].evalF(c) * lclscround
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.velocity[2] = vel[2] })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							vel := exp[2].evalF(c) * lclscround
+							eachExpl(func(e *Explod) {
+								e.velocity[2] = vel
+							})
 						}
 					}
 				}
 			case explod_accel:
-				accel[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.accel[0] = accel[0] })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					accel := exp[0].evalF(c) * lclscround
+					eachExpl(func(e *Explod) {
+						e.accel[0] = accel
+					})
 				}
 				if len(exp) > 1 {
-					accel[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.accel[1] = accel[1] })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						accel := exp[1].evalF(c) * lclscround
+						eachExpl(func(e *Explod) {
+							e.accel[1] = accel
+						})
 					}
 					if len(exp) > 2 {
-						accel[2] = exp[2].evalF(c) * lclscround
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.accel[2] = accel[2] })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							accel := exp[2].evalF(c) * lclscround
+							eachExpl(func(e *Explod) {
+								e.accel[2] = accel
+							})
 						}
 					}
 				}
-			case explod_space:
-				sp = Space(exp[0].evalI(c))
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.space = sp })
-				}
-			case explod_postype:
-				pt := PosType(exp[0].evalI(c))
-				eachExpl(func(e *Explod) {
-					// Reset explod
-					e.reset()
-					// Set declared values
-					e.postype = pt
-					e.relativef, e.vfacing = f, vf
-					e.relativePos, e.velocity, e.accel = pos, vel, accel
-					if sp != Space_none {
-						e.space = sp
-					}
-					// Finish pos configuration
-					e.setPos(crun)
-				})
 			case explod_scale:
 				x := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.scale[0] = x })
+				eachExpl(func(e *Explod) {
+					e.scale[0] = x
+				})
 				if len(exp) > 1 {
 					y := exp[1].evalF(c)
-					eachExpl(func(e *Explod) { e.scale[1] = y })
+					eachExpl(func(e *Explod) {
+						e.scale[1] = y
+					})
 				}
 			case explod_bindtime:
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.bindtime = t
 					// Bindtime fix (update bindtime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.bindtime = e.time + t
 					}
 					e.setX(e.pos[0])
@@ -5349,22 +5376,26 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.removetime = t
 					// Removetime fix (update removetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.removetime = e.time + t
 					}
 				})
 			case explod_supermove:
 				if exp[0].evalB(c) {
-					eachExpl(func(e *Explod) { e.supermovetime = -1 })
+					eachExpl(func(e *Explod) {
+						e.supermovetime = -1
+					})
 				} else {
-					eachExpl(func(e *Explod) { e.supermovetime = 0 })
+					eachExpl(func(e *Explod) {
+						e.supermovetime = 0
+					})
 				}
 			case explod_supermovetime:
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.supermovetime = t
 					// Supermovetime fix (update supermovetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.supermovetime = e.time + t
 					}
 				})
@@ -5373,7 +5404,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.pausemovetime = t
 					// Pausemovetime fix (update pausemovetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.pausemovetime = e.time + t
 					}
 				})
@@ -5417,21 +5448,31 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 			case explod_shadow:
 				r := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.shadow[0] = r })
+				eachExpl(func(e *Explod) {
+					e.shadow[0] = r
+				})
 				if len(exp) > 1 {
 					g := exp[1].evalI(c)
-					eachExpl(func(e *Explod) { e.shadow[1] = g })
+					eachExpl(func(e *Explod) {
+						e.shadow[1] = g
+					})
 					if len(exp) > 2 {
 						b := exp[2].evalI(c)
-						eachExpl(func(e *Explod) { e.shadow[2] = b })
+						eachExpl(func(e *Explod) {
+							e.shadow[2] = b
+						})
 					}
 				}
 			case explod_removeongethit:
 				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.removeongethit = t })
+				eachExpl(func(e *Explod) {
+					e.removeongethit = t
+				})
 			case explod_removeonchangestate:
 				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.removeonchangestate = t })
+				eachExpl(func(e *Explod) {
+					e.removeonchangestate = t
+				})
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
 				blendmode := 0
@@ -5460,7 +5501,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.blendmode = int32(blendmode)
 				})
 			case explod_anim:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
 					animNo := exp[1].evalI(c)
 					anim := crun.getAnim(animNo, string(*(*[]byte)(unsafe.Pointer(&exp[0]))), true)
 					eachExpl(func(e *Explod) {
@@ -5480,35 +5521,51 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			case explod_animfreeze:
 				animfreeze := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.animfreeze = animfreeze })
+				eachExpl(func(e *Explod) {
+					e.animfreeze = animfreeze
+				})
 			case explod_angle:
 				a := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.anglerot[0] = a })
+				eachExpl(func(e *Explod) {
+					e.anglerot[0] = a
+				})
 			case explod_yangle:
 				ya := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.anglerot[2] = ya })
+				eachExpl(func(e *Explod) {
+					e.anglerot[2] = ya
+				})
 			case explod_xangle:
 				xa := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.anglerot[1] = xa })
+				eachExpl(func(e *Explod) {
+					e.anglerot[1] = xa
+				})
 			case explod_projection:
-				eachExpl(func(e *Explod) { e.projection = Projection(exp[0].evalI(c)) })
+				eachExpl(func(e *Explod) {
+					e.projection = Projection(exp[0].evalI(c))
+				})
 			case explod_focallength:
-				eachExpl(func(e *Explod) { e.fLength = exp[0].evalF(c) })
+				eachExpl(func(e *Explod) {
+					e.fLength = exp[0].evalF(c)
+				})
 			case explod_window:
 				eachExpl(func(e *Explod) {
 					e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 				})
 			case explod_ignorehitpause:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
 					ihp := exp[0].evalB(c)
-					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+					eachExpl(func(e *Explod) {
+						e.ignorehitpause = ihp
+					})
 				}
 			case explod_bindid:
 				bId := exp[0].evalI(c)
 				if bId == -1 {
 					bId = crun.id
 				}
-				eachExpl(func(e *Explod) { e.setBind(bId) })
+				eachExpl(func(e *Explod) {
+					e.setBind(bId)
+				})
 			case explod_interpolation:
 				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					interpolation := exp[0].evalB(c)
@@ -5531,6 +5588,12 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					if e.ownpal {
 						palFX(sc).runSub(c, &e.palfx.PalFXDef, id, exp)
 					}
+				})
+			}
+			// Update relative positions if postype was updated
+			if ptexists {
+				eachExpl(func(e *Explod) {
+					e.setPos(crun)
 				})
 			}
 		}

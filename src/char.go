@@ -1183,20 +1183,6 @@ func (e *Explod) clear() {
 		ignorehitpause: true,
 	}
 }
-func (e *Explod) reset() {
-	e.facing = 1
-	e.offset[0], e.offset[1], e.offset[2] = 0, 0, 0
-	e.setX(e.offset[0])
-	e.setY(e.offset[1])
-	e.setZ(e.offset[2])
-	e.relativePos = [3]float32{0, 0, 0}
-	e.velocity = [3]float32{0, 0, 0}
-	e.accel[0], e.accel[1], e.accel[2] = 0, 0, 0
-	e.bindId = -2
-	if e.bindtime == 0 {
-		e.bindtime = 1
-	}
-}
 func (e *Explod) setX(x float32) {
 	e.pos[0], e.oldPos[0], e.newPos[0] = x, x, x
 }
