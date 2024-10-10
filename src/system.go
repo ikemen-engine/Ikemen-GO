@@ -209,6 +209,7 @@ type System struct {
 	screenleft              float32
 	screenright             float32
 	xmin, xmax              float32
+	zmin, zmax              float32
 	winskipped              bool
 	paused, step            bool
 	roundResetFlg           bool
@@ -1661,6 +1662,8 @@ func (s *System) action() {
 		if AbsF(s.cam.minLeft-s.xmin) < 0.0001 {
 			s.xmin = s.cam.minLeft
 		}
+		s.zmin = s.stage.topbound * s.stage.localscl
+		s.zmax = s.stage.botbound * s.stage.localscl
 		s.allPalFX.step()
 		//s.bgPalFX.step()
 		s.envShake.next()

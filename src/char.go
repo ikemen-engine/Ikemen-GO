@@ -1438,7 +1438,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	drawscale := [2]float32{facing * scale[0] * e.localscl, e.vfacing * scale[1] * e.localscl}
 
 	// Apply Z axis perspective
-	if e.space == Space_stage && sys.stage.topbound != sys.stage.botbound {
+	if e.space == Space_stage && sys.zmin != sys.zmax {
 		zscale := sys.updateZScale(e.pos[2], e.localscl)
 		drawpos[0] *= zscale
 		drawpos[1] *= zscale
@@ -1755,8 +1755,8 @@ func (p *Projectile) update(playerNo int) {
 					p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
 					p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
 					p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
-					p.pos[2] < (sys.stage.topbound/p.localscl-float32(p.depthbound)) ||
-					p.pos[2] > (sys.stage.botbound/p.localscl+float32(p.depthbound)) {
+					p.pos[2] < (sys.zmin/p.localscl-float32(p.depthbound)) ||
+					p.pos[2] > (sys.zmax/p.localscl+float32(p.depthbound)) {
 					if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
 						p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 					}
@@ -1995,7 +1995,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		p.scale[1] * p.localscl * p.zScale}
 
 	// Apply Z axis perspective
-	if sys.stage.topbound != sys.stage.botbound {
+	if sys.zmin != sys.zmax {
 		pos[0] *= p.zScale
 		pos[1] *= p.zScale
 		pos[1] += p.interPos[2] * p.localscl
@@ -3528,7 +3528,7 @@ func (c *Char) bottomEdge() float32 {
 	return sys.cam.ScreenPos[1]/c.localscl + c.gameHeight()
 }
 func (c *Char) bottomEdgeDist() float32 {
-	return sys.stage.botbound/c.localscl - c.pos[2]
+	return sys.zmax/c.localscl - c.pos[2]
 }
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
@@ -4211,7 +4211,7 @@ func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
 func (c *Char) topEdgeDist() float32 {
-	return sys.stage.topbound/c.localscl - c.pos[2]
+	return sys.zmin/c.localscl - c.pos[2]
 }
 func (c *Char) win() bool {
 	if c.teamside == -1 {
@@ -6596,7 +6596,7 @@ func (c *Char) xScreenBound() {
 func (c *Char) zWidthBound() {
 	posz := c.pos[2]
 	if c.csf(CSF_stagebound) {
-		posz = ClampF(posz, sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
+		posz = ClampF(posz, sys.zmin/c.localscl, sys.zmax/c.localscl)
 	}
 	c.setPosZ(posz)
 }
@@ -7958,12 +7958,12 @@ func (c *Char) cueDraw() {
 			c.size.yscale * c.zScale * (320 / c.localcoord)}
 
 		// Apply Z axis perspective
-		if sys.stage.topbound != sys.stage.botbound {
+		if sys.zmin != sys.zmax {
 			pos[0] *= c.zScale
 			pos[1] *= c.zScale
 			pos[1] += c.interPos[2] * c.localscl
 		}
-		//if sys.stage.topbound != sys.stage.botbound {
+		//if sys.zmin != sys.zmax {
 		//	ratio := float32(1.618) // Possible stage parameter?
 		//	pos[0] *= 1 + (ratio-1)*(c.zScale-1)
 		//	pos[1] *= 1 + (ratio-1)*(c.zScale-1)
@@ -9414,9 +9414,9 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				// Determine in which axes to push the players
 				// This needs to check both if the players have velocity or if their positions changed
-				pushx := sys.stage.topbound == sys.stage.botbound ||
+				pushx := sys.zmin == sys.zmax ||
 					getter.vel[0] != 0 || c.vel[0] != 0 || getter.pos[0] != getter.oldPos[0] || c.pos[0] != c.oldPos[0]
-				pushz := sys.stage.topbound != sys.stage.botbound &&
+				pushz := sys.zmin != sys.zmax &&
 					(getter.vel[2] != 0 || c.vel[2] != 0 || getter.pos[2] != getter.oldPos[2] || c.pos[2] != c.oldPos[2])
 
 				if pushx {
