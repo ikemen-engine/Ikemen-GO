@@ -332,7 +332,7 @@ type CharVelocity struct {
 	walk struct {
 		fwd  float32
 		back float32
-		up float32
+		up   float32
 		down float32
 	}
 	run struct {

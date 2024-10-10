@@ -752,22 +752,22 @@ type Stage struct {
 
 func newStage(def string) *Stage {
 	s := &Stage{
-		def: def,
-		leftbound: -1000,
-		rightbound: 1000,
-		screenleft: 15,
-		screenright: 15,
-		zoffsetlink: -1,
-		autoturn: true,
-		resetbg: true,
-		localscl: 1,
-		scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
-		bgmratiolife: 30,
-		stageCamera: *newStageCamera(),
-		constants: make(map[string]float32),
+		def:            def,
+		leftbound:      -1000,
+		rightbound:     1000,
+		screenleft:     15,
+		screenright:    15,
+		zoffsetlink:    -1,
+		autoturn:       true,
+		resetbg:        true,
+		localscl:       1,
+		scale:          [...]float32{float32(math.NaN()), float32(math.NaN())},
+		bgmratiolife:   30,
+		stageCamera:    *newStageCamera(),
+		constants:      make(map[string]float32),
 		partnerspacing: 25,
-		bgmvolume: 100,
-		bgmfreqmul: 1, // Fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
+		bgmvolume:      100,
+		bgmfreqmul:     1, // Fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
 	}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
@@ -992,9 +992,9 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 			// Defaults
 			if i >= 2 {
 				s.p[i].startx = s.p[i-2].startx + s.partnerspacing*int32(2*(i%2)-1) // Previous partner + partnerspacing
-				s.p[i].starty = s.p[i%2].starty // Same as players 1 or 2
-				s.p[i].startz = s.p[i%2].startz // Same as players 1 or 2
-				s.p[i].facing = int32(1 - 2*(i%2)) // By team side
+				s.p[i].starty = s.p[i%2].starty                                     // Same as players 1 or 2
+				s.p[i].startz = s.p[i%2].startz                                     // Same as players 1 or 2
+				s.p[i].facing = int32(1 - 2*(i%2))                                  // By team side
 			}
 			// pXstartx
 			sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx)

@@ -2041,23 +2041,23 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_camera_autocenter:
 		sys.bcStack.PushB(sys.stage.stageCamera.autocenter)
 	case OC_const_stagevar_camera_boundleft:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundleft) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundleft) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_boundright:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundright) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundright) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_boundhigh:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundhigh) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundhigh) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_boundlow:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundlow) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundlow) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_floortension:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.floortension) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.floortension) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_lowestcap:
 		sys.bcStack.PushB(sys.stage.stageCamera.lowestcap)
 	case OC_const_stagevar_camera_tension:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tension) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tension) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_tensionhigh:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tensionhigh) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tensionhigh) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_tensionlow:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tensionlow) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tensionlow) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_camera_startzoom:
 		sys.bcStack.PushF(sys.stage.stageCamera.startzoom)
 	case OC_const_stagevar_camera_verticalfollow:
@@ -2077,9 +2077,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_camera_ytension_enable:
 		sys.bcStack.PushB(sys.stage.stageCamera.ytensionenable)
 	case OC_const_stagevar_playerinfo_leftbound:
-		sys.bcStack.PushF(sys.stage.leftbound * sys.stage.localscl/oc.localscl)
+		sys.bcStack.PushF(sys.stage.leftbound * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_playerinfo_rightbound:
-		sys.bcStack.PushF(sys.stage.rightbound * sys.stage.localscl/oc.localscl)
+		sys.bcStack.PushF(sys.stage.rightbound * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_scaling_topz:
 		sys.bcStack.PushF(sys.stage.stageCamera.topz)
 	case OC_const_stagevar_scaling_botz:
@@ -2089,9 +2089,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_scaling_botscale:
 		sys.bcStack.PushF(sys.stage.stageCamera.zbotscale)
 	case OC_const_stagevar_bound_screenleft:
-		sys.bcStack.PushI(int32(float32(sys.stage.screenleft) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.screenleft) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_bound_screenright:
-		sys.bcStack.PushI(int32(float32(sys.stage.screenright) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.screenright) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_stageinfo_localcoord_x:
 		sys.bcStack.PushI(sys.stage.stageCamera.localcoord[0])
 	case OC_const_stagevar_stageinfo_localcoord_y:
@@ -2101,7 +2101,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_stageinfo_yscale:
 		sys.bcStack.PushF(sys.stage.scale[1])
 	case OC_const_stagevar_stageinfo_zoffset:
-		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.zoffset) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.zoffset) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_stageinfo_zoffsetlink:
 		sys.bcStack.PushI(sys.stage.zoffsetlink)
 	case OC_const_stagevar_shadow_intensity:
@@ -2115,23 +2115,23 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_shadow_yscale:
 		sys.bcStack.PushF(sys.stage.sdw.yscale)
 	case OC_const_stagevar_shadow_fade_range_begin:
-		sys.bcStack.PushI(int32(float32(sys.stage.sdw.fadebgn) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.sdw.fadebgn) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_shadow_fade_range_end:
-		sys.bcStack.PushI(int32(float32(sys.stage.sdw.fadeend) * sys.stage.localscl/oc.localscl))
+		sys.bcStack.PushI(int32(float32(sys.stage.sdw.fadeend) * sys.stage.localscl / oc.localscl))
 	case OC_const_stagevar_shadow_xshear:
 		sys.bcStack.PushF(sys.stage.sdw.xshear)
 	case OC_const_stagevar_shadow_offset_x:
-		sys.bcStack.PushF(sys.stage.sdw.offset[0] * sys.stage.localscl/oc.localscl)
+		sys.bcStack.PushF(sys.stage.sdw.offset[0] * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_shadow_offset_y:
-		sys.bcStack.PushF(sys.stage.sdw.offset[1] * sys.stage.localscl/oc.localscl)
+		sys.bcStack.PushF(sys.stage.sdw.offset[1] * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_reflection_intensity:
 		sys.bcStack.PushI(sys.stage.reflection.intensity)
 	case OC_const_stagevar_reflection_yscale:
 		sys.bcStack.PushF(sys.stage.reflection.yscale)
 	case OC_const_stagevar_reflection_offset_x:
-		sys.bcStack.PushF(sys.stage.reflection.offset[0] * sys.stage.localscl/oc.localscl)
+		sys.bcStack.PushF(sys.stage.reflection.offset[0] * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_reflection_offset_y:
-		sys.bcStack.PushF(sys.stage.reflection.offset[1] * sys.stage.localscl/oc.localscl)
+		sys.bcStack.PushF(sys.stage.reflection.offset[1] * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_reflection_xshear:
 		sys.bcStack.PushF(sys.stage.reflection.xshear)
 	case OC_const_stagevar_reflection_color_r:
@@ -11107,9 +11107,9 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.stageCamera.yscrollspeed = exp[0].evalF(c)
 		// PlayerInfo group
 		case modifyStageVar_playerinfo_leftbound:
-			s.leftbound = exp[0].evalF(c) * sys.stage.localscl/c.localscl
+			s.leftbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
 		case modifyStageVar_playerinfo_rightbound:
-			s.rightbound = exp[0].evalF(c) * sys.stage.localscl/c.localscl
+			s.rightbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
 		// Scaling group
 		case modifyStageVar_scaling_topz:
 			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topz
