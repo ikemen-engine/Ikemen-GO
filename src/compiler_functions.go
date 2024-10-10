@@ -700,11 +700,12 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_id, VT_Int, 1, false); err != nil {
 		return err
 	}
-	// First, we see if postype parameter was declared, to see if
-	// an ikemenver character will modify facing, pos, random, vel
-	// or accel values without declaring postype.
-	if _, ok := is["postype"]; ok {
-		c.scAdd(sc, explod_postypeExists, "1", VT_Bool, 1)
+	// Postype must be placed before parameters such as pos, for the sake of ModifyExplod
+	if err := c.paramPostype(is, sc, explod_postype); err != nil {
+		return err
+	}
+	if err := c.paramSpace(is, sc, explod_space); err != nil {
+		return err
 	}
 	if err := c.paramValue(is, sc, "facing",
 		explod_facing, VT_Int, 1, false); err != nil {
@@ -737,12 +738,6 @@ func (c *Compiler) explodSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "accel",
 		explod_accel, VT_Float, 3, false); err != nil {
-		return err
-	}
-	if err := c.paramSpace(is, sc, explod_space); err != nil {
-		return err
-	}
-	if err := c.paramPostype(is, sc, explod_postype); err != nil {
 		return err
 	}
 	if err := c.paramProjection(is, sc, explod_projection); err != nil {
@@ -4905,10 +4900,6 @@ func (c *Compiler) createPlatform(is IniSection, sc *StateControllerBase, _ int8
 }
 func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*modifyStageVar)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			modifyStageVar_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
 		if err := c.paramValue(is, sc, "camera.boundleft",
 			modifyStageVar_camera_boundleft, VT_Int, 1, false); err != nil {
 			return err

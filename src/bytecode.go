@@ -1837,9 +1837,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_walk_back_x:
 		sys.bcStack.PushF(c.gi().velocity.walk.back * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_up_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.walk.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_walk_down_x:
-		sys.bcStack.PushF(c.gi().velocity.walk.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.walk.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.run.fwd[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_fwd_y:
@@ -1849,13 +1849,13 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_run_back_y:
 		sys.bcStack.PushF(c.gi().velocity.run.back[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_up_x:
-		sys.bcStack.PushF(c.gi().velocity.run.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.up[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_up_y:
-		sys.bcStack.PushF(c.gi().velocity.run.up.y * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.up[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_down_x:
-		sys.bcStack.PushF(c.gi().velocity.run.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.down[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_run_down_y:
-		sys.bcStack.PushF(c.gi().velocity.run.down.y * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.run.down[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_y:
 		sys.bcStack.PushF(c.gi().velocity.jump.neu[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_neu_x:
@@ -1865,9 +1865,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_jump_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.jump.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.jump.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_jump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.jump.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.jump.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_back_x:
 		sys.bcStack.PushF(c.gi().velocity.runjump.back[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_back_y:
@@ -1877,9 +1877,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_runjump_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.runjump.fwd[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.runjump.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_runjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.runjump.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.runjump.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_y:
 		sys.bcStack.PushF(c.gi().velocity.airjump.neu[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_neu_x:
@@ -1889,9 +1889,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_velocity_airjump_fwd_x:
 		sys.bcStack.PushF(c.gi().velocity.airjump.fwd * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_up_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.up.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.airjump.up * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_airjump_down_x:
-		sys.bcStack.PushF(c.gi().velocity.airjump.down.x * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().velocity.airjump.down * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_air_gethit_groundrecover_x:
 		sys.bcStack.PushF(c.gi().velocity.air.gethit.groundrecover[0] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_velocity_air_gethit_groundrecover_y:
@@ -2041,23 +2041,23 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_camera_autocenter:
 		sys.bcStack.PushB(sys.stage.stageCamera.autocenter)
 	case OC_const_stagevar_camera_boundleft:
-		sys.bcStack.PushI(sys.stage.stageCamera.boundleft)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundleft) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_boundright:
-		sys.bcStack.PushI(sys.stage.stageCamera.boundright)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundright) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_boundhigh:
-		sys.bcStack.PushI(sys.stage.stageCamera.boundhigh)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundhigh) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_boundlow:
-		sys.bcStack.PushI(sys.stage.stageCamera.boundlow)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.boundlow) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_floortension:
-		sys.bcStack.PushI(sys.stage.stageCamera.floortension)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.floortension) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_lowestcap:
 		sys.bcStack.PushB(sys.stage.stageCamera.lowestcap)
 	case OC_const_stagevar_camera_tension:
-		sys.bcStack.PushI(sys.stage.stageCamera.tension)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tension) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_tensionhigh:
-		sys.bcStack.PushI(sys.stage.stageCamera.tensionhigh)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tensionhigh) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_tensionlow:
-		sys.bcStack.PushI(sys.stage.stageCamera.tensionlow)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.tensionlow) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_camera_startzoom:
 		sys.bcStack.PushF(sys.stage.stageCamera.startzoom)
 	case OC_const_stagevar_camera_verticalfollow:
@@ -2077,9 +2077,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_camera_ytension_enable:
 		sys.bcStack.PushB(sys.stage.stageCamera.ytensionenable)
 	case OC_const_stagevar_playerinfo_leftbound:
-		sys.bcStack.PushF(sys.stage.leftbound)
+		sys.bcStack.PushF(sys.stage.leftbound * sys.stage.localscl/oc.localscl)
 	case OC_const_stagevar_playerinfo_rightbound:
-		sys.bcStack.PushF(sys.stage.rightbound)
+		sys.bcStack.PushF(sys.stage.rightbound * sys.stage.localscl/oc.localscl)
 	case OC_const_stagevar_scaling_topz:
 		sys.bcStack.PushF(sys.stage.stageCamera.topz)
 	case OC_const_stagevar_scaling_botz:
@@ -2089,9 +2089,9 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_scaling_botscale:
 		sys.bcStack.PushF(sys.stage.stageCamera.zbotscale)
 	case OC_const_stagevar_bound_screenleft:
-		sys.bcStack.PushI(sys.stage.screenleft)
+		sys.bcStack.PushI(int32(float32(sys.stage.screenleft) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_bound_screenright:
-		sys.bcStack.PushI(sys.stage.screenright)
+		sys.bcStack.PushI(int32(float32(sys.stage.screenright) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_stageinfo_localcoord_x:
 		sys.bcStack.PushI(sys.stage.stageCamera.localcoord[0])
 	case OC_const_stagevar_stageinfo_localcoord_y:
@@ -2101,7 +2101,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_stageinfo_yscale:
 		sys.bcStack.PushF(sys.stage.scale[1])
 	case OC_const_stagevar_stageinfo_zoffset:
-		sys.bcStack.PushI(sys.stage.stageCamera.zoffset)
+		sys.bcStack.PushI(int32(float32(sys.stage.stageCamera.zoffset) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_stageinfo_zoffsetlink:
 		sys.bcStack.PushI(sys.stage.zoffsetlink)
 	case OC_const_stagevar_shadow_intensity:
@@ -2115,23 +2115,23 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_shadow_yscale:
 		sys.bcStack.PushF(sys.stage.sdw.yscale)
 	case OC_const_stagevar_shadow_fade_range_begin:
-		sys.bcStack.PushI(sys.stage.sdw.fadebgn)
+		sys.bcStack.PushI(int32(float32(sys.stage.sdw.fadebgn) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_shadow_fade_range_end:
-		sys.bcStack.PushI(sys.stage.sdw.fadeend)
+		sys.bcStack.PushI(int32(float32(sys.stage.sdw.fadeend) * sys.stage.localscl/oc.localscl))
 	case OC_const_stagevar_shadow_xshear:
 		sys.bcStack.PushF(sys.stage.sdw.xshear)
 	case OC_const_stagevar_shadow_offset_x:
-		sys.bcStack.PushF(sys.stage.sdw.offset[0])
+		sys.bcStack.PushF(sys.stage.sdw.offset[0] * sys.stage.localscl/oc.localscl)
 	case OC_const_stagevar_shadow_offset_y:
-		sys.bcStack.PushF(sys.stage.sdw.offset[1])
+		sys.bcStack.PushF(sys.stage.sdw.offset[1] * sys.stage.localscl/oc.localscl)
 	case OC_const_stagevar_reflection_intensity:
 		sys.bcStack.PushI(sys.stage.reflection.intensity)
 	case OC_const_stagevar_reflection_yscale:
 		sys.bcStack.PushF(sys.stage.reflection.yscale)
 	case OC_const_stagevar_reflection_offset_x:
-		sys.bcStack.PushF(sys.stage.reflection.offset[0])
+		sys.bcStack.PushF(sys.stage.reflection.offset[0] * sys.stage.localscl/oc.localscl)
 	case OC_const_stagevar_reflection_offset_y:
-		sys.bcStack.PushF(sys.stage.reflection.offset[1])
+		sys.bcStack.PushF(sys.stage.reflection.offset[1] * sys.stage.localscl/oc.localscl)
 	case OC_const_stagevar_reflection_xshear:
 		sys.bcStack.PushF(sys.stage.reflection.xshear)
 	case OC_const_stagevar_reflection_color_r:
@@ -5165,8 +5165,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	var expls []*Explod
 	rp := [...]int32{-1, 0}
 	remap := false
-	var f, vf float32 = 1, 1
-	sp, pos, vel, accel := Space_none, [3]float32{0, 0, 0}, [3]float32{0, 0, 0}, [3]float32{0, 0, 0}
 	ptexists := false
 	eachExpl := func(f func(e *Explod)) {
 		if idx < 0 {
@@ -5196,8 +5194,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			remap = true
 		case explod_id:
 			eid = exp[0].evalI(c)
-		case explod_postypeExists:
-			ptexists = true
 		case modifyexplod_index:
 			idx = exp[0].evalI(c)
 		default:
@@ -5213,131 +5209,162 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			}
 			switch id {
-			case explod_facing:
-				if exp[0].evalI(c) < 0 {
-					f = -1
-				}
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+			case explod_postype:
+				ptexists = true // In Mugen you can only update some parameters if postype is specified
+				pt := PosType(exp[0].evalI(c))
+				eachExpl(func(e *Explod) {
+					e.postype = pt
+				})
+				// In Mugen many explod parameters are defaulted when not being modified
+				// What possibly happens in Mugen is that all parameters are read first then only applied if postype is defined
+				// Ikemen chars instead can more freely update individual parameters without affecting others
+				if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 					eachExpl(func(e *Explod) {
-						e.relativef = f
+						e.facing = 1
+						e.offset = [3]float32{0, 0, 0}
+						e.setX(e.offset[0])
+						e.setY(e.offset[1])
+						e.setZ(e.offset[2])
+						e.relativePos = [3]float32{0, 0, 0}
+						e.velocity = [3]float32{0, 0, 0}
+						e.accel = [3]float32{0, 0, 0}
+						e.bindId = -2
+						if e.bindtime == 0 {
+							e.bindtime = 1
+						}
+					})
+				}
+			case explod_space:
+				sp := Space(exp[0].evalI(c))
+				eachExpl(func(e *Explod) {
+					e.space = sp
+				})
+			case explod_facing:
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					rf := exp[0].evalF(c)
+					eachExpl(func(e *Explod) {
+						e.relativef = rf
 					})
 				}
 			case explod_vfacing:
-				if exp[0].evalI(c) < 0 {
-					vf = -1
-				}
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					vf := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
 						e.vfacing = vf
 					})
 				}
 			case explod_pos:
-				pos[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.relativePos[0] = pos[0] })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					pos := exp[0].evalF(c) * lclscround
+					eachExpl(func(e *Explod) {
+						e.relativePos[0] = pos
+					})
 				}
 				if len(exp) > 1 {
-					pos[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.relativePos[1] = pos[1] })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						pos := exp[1].evalF(c) * lclscround
+						eachExpl(func(e *Explod) {
+							e.relativePos[1] = pos
+						})
 					}
 					if len(exp) > 2 {
-						pos[2] = exp[2].evalF(c) * lclscround
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.relativePos[2] = pos[2] })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							pos := exp[2].evalF(c) * lclscround
+							eachExpl(func(e *Explod) {
+								e.relativePos[2] = pos
+							})
 						}
 					}
 				}
 			case explod_random:
-				rndx := (exp[0].evalF(c) / 2) * lclscround
-				rndx = RandF(-rndx, rndx)
-				pos[0] += rndx
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.relativePos[0] += rndx })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					rndx := (exp[0].evalF(c) / 2) * lclscround
+					rndx = RandF(-rndx, rndx)
+					eachExpl(func(e *Explod) {
+						e.relativePos[0] += rndx
+					})
 				}
 				if len(exp) > 1 {
-					rndy := (exp[1].evalF(c) / 2) * lclscround
-					rndy = RandF(-rndy, rndy)
-					pos[1] += rndy
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.relativePos[1] += rndy })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						rndy := (exp[1].evalF(c) / 2) * lclscround
+						rndy = RandF(-rndy, rndy)
+						eachExpl(func(e *Explod) {
+							e.relativePos[1] += rndy
+						})
 					}
 					if len(exp) > 2 {
-						rndz := (exp[2].evalF(c) / 2) * lclscround
-						rndz = RandF(-rndz, rndz)
-						pos[2] += rndz
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.relativePos[2] += rndz })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							rndz := (exp[2].evalF(c) / 2) * lclscround
+							rndz = RandF(-rndz, rndz)
+							eachExpl(func(e *Explod) {
+								e.relativePos[2] += rndz
+							})
 						}
 					}
 				}
 			case explod_velocity:
-				vel[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.velocity[0] = vel[0] })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					vel := exp[0].evalF(c) * lclscround
+					eachExpl(func(e *Explod) {
+						e.velocity[0] = vel
+					})
 				}
 				if len(exp) > 1 {
-					vel[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.velocity[1] = vel[1] })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						vel := exp[1].evalF(c) * lclscround
+						eachExpl(func(e *Explod) {
+							e.velocity[1] = vel
+						})
 					}
 					if len(exp) > 2 {
-						vel[2] = exp[2].evalF(c) * lclscround
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.velocity[2] = vel[2] })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							vel := exp[2].evalF(c) * lclscround
+							eachExpl(func(e *Explod) {
+								e.velocity[2] = vel
+							})
 						}
 					}
 				}
 			case explod_accel:
-				accel[0] = exp[0].evalF(c) * lclscround
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.accel[0] = accel[0] })
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					accel := exp[0].evalF(c) * lclscround
+					eachExpl(func(e *Explod) {
+						e.accel[0] = accel
+					})
 				}
 				if len(exp) > 1 {
-					accel[1] = exp[1].evalF(c) * lclscround
-					if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-						eachExpl(func(e *Explod) { e.accel[1] = accel[1] })
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						accel := exp[1].evalF(c) * lclscround
+						eachExpl(func(e *Explod) {
+							e.accel[1] = accel
+						})
 					}
 					if len(exp) > 2 {
-						accel[2] = exp[2].evalF(c) * lclscround
-						if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-							eachExpl(func(e *Explod) { e.accel[2] = accel[2] })
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							accel := exp[2].evalF(c) * lclscround
+							eachExpl(func(e *Explod) {
+								e.accel[2] = accel
+							})
 						}
 					}
 				}
-			case explod_space:
-				sp = Space(exp[0].evalI(c))
-				if (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) && !ptexists {
-					eachExpl(func(e *Explod) { e.space = sp })
-				}
-			case explod_postype:
-				pt := PosType(exp[0].evalI(c))
-				eachExpl(func(e *Explod) {
-					// Reset explod
-					e.reset()
-					// Set declared values
-					e.postype = pt
-					e.relativef, e.vfacing = f, vf
-					e.relativePos, e.velocity, e.accel = pos, vel, accel
-					if sp != Space_none {
-						e.space = sp
-					}
-					// Finish pos configuration
-					e.setPos(crun)
-				})
 			case explod_scale:
 				x := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.scale[0] = x })
+				eachExpl(func(e *Explod) {
+					e.scale[0] = x
+				})
 				if len(exp) > 1 {
 					y := exp[1].evalF(c)
-					eachExpl(func(e *Explod) { e.scale[1] = y })
+					eachExpl(func(e *Explod) {
+						e.scale[1] = y
+					})
 				}
 			case explod_bindtime:
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.bindtime = t
 					// Bindtime fix (update bindtime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.bindtime = e.time + t
 					}
 					e.setX(e.pos[0])
@@ -5349,22 +5376,26 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.removetime = t
 					// Removetime fix (update removetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.removetime = e.time + t
 					}
 				})
 			case explod_supermove:
 				if exp[0].evalB(c) {
-					eachExpl(func(e *Explod) { e.supermovetime = -1 })
+					eachExpl(func(e *Explod) {
+						e.supermovetime = -1
+					})
 				} else {
-					eachExpl(func(e *Explod) { e.supermovetime = 0 })
+					eachExpl(func(e *Explod) {
+						e.supermovetime = 0
+					})
 				}
 			case explod_supermovetime:
 				t := exp[0].evalI(c)
 				eachExpl(func(e *Explod) {
 					e.supermovetime = t
 					// Supermovetime fix (update supermovetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.supermovetime = e.time + t
 					}
 				})
@@ -5373,7 +5404,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.pausemovetime = t
 					// Pausemovetime fix (update pausemovetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] > 0 || crun.stWgi().ikemenver[1] > 0) && t > 0 {
+					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
 						e.pausemovetime = e.time + t
 					}
 				})
@@ -5417,21 +5448,31 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 			case explod_shadow:
 				r := exp[0].evalI(c)
-				eachExpl(func(e *Explod) { e.shadow[0] = r })
+				eachExpl(func(e *Explod) {
+					e.shadow[0] = r
+				})
 				if len(exp) > 1 {
 					g := exp[1].evalI(c)
-					eachExpl(func(e *Explod) { e.shadow[1] = g })
+					eachExpl(func(e *Explod) {
+						e.shadow[1] = g
+					})
 					if len(exp) > 2 {
 						b := exp[2].evalI(c)
-						eachExpl(func(e *Explod) { e.shadow[2] = b })
+						eachExpl(func(e *Explod) {
+							e.shadow[2] = b
+						})
 					}
 				}
 			case explod_removeongethit:
 				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.removeongethit = t })
+				eachExpl(func(e *Explod) {
+					e.removeongethit = t
+				})
 			case explod_removeonchangestate:
 				t := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.removeonchangestate = t })
+				eachExpl(func(e *Explod) {
+					e.removeonchangestate = t
+				})
 			case explod_trans:
 				s, d := exp[0].evalI(c), exp[1].evalI(c)
 				blendmode := 0
@@ -5460,7 +5501,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.blendmode = int32(blendmode)
 				})
 			case explod_anim:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
 					animNo := exp[1].evalI(c)
 					anim := crun.getAnim(animNo, string(*(*[]byte)(unsafe.Pointer(&exp[0]))), true)
 					eachExpl(func(e *Explod) {
@@ -5480,35 +5521,51 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			case explod_animfreeze:
 				animfreeze := exp[0].evalB(c)
-				eachExpl(func(e *Explod) { e.animfreeze = animfreeze })
+				eachExpl(func(e *Explod) {
+					e.animfreeze = animfreeze
+				})
 			case explod_angle:
 				a := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.anglerot[0] = a })
+				eachExpl(func(e *Explod) {
+					e.anglerot[0] = a
+				})
 			case explod_yangle:
 				ya := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.anglerot[2] = ya })
+				eachExpl(func(e *Explod) {
+					e.anglerot[2] = ya
+				})
 			case explod_xangle:
 				xa := exp[0].evalF(c)
-				eachExpl(func(e *Explod) { e.anglerot[1] = xa })
+				eachExpl(func(e *Explod) {
+					e.anglerot[1] = xa
+				})
 			case explod_projection:
-				eachExpl(func(e *Explod) { e.projection = Projection(exp[0].evalI(c)) })
+				eachExpl(func(e *Explod) {
+					e.projection = Projection(exp[0].evalI(c))
+				})
 			case explod_focallength:
-				eachExpl(func(e *Explod) { e.fLength = exp[0].evalF(c) })
+				eachExpl(func(e *Explod) {
+					e.fLength = exp[0].evalF(c)
+				})
 			case explod_window:
 				eachExpl(func(e *Explod) {
 					e.window = [4]float32{exp[0].evalF(c) * lclscround, exp[1].evalF(c) * lclscround, exp[2].evalF(c) * lclscround, exp[3].evalF(c) * lclscround}
 				})
 			case explod_ignorehitpause:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
 					ihp := exp[0].evalB(c)
-					eachExpl(func(e *Explod) { e.ignorehitpause = ihp })
+					eachExpl(func(e *Explod) {
+						e.ignorehitpause = ihp
+					})
 				}
 			case explod_bindid:
 				bId := exp[0].evalI(c)
 				if bId == -1 {
 					bId = crun.id
 				}
-				eachExpl(func(e *Explod) { e.setBind(bId) })
+				eachExpl(func(e *Explod) {
+					e.setBind(bId)
+				})
 			case explod_interpolation:
 				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					interpolation := exp[0].evalB(c)
@@ -5531,6 +5588,12 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					if e.ownpal {
 						palFX(sc).runSub(c, &e.palfx.PalFXDef, id, exp)
 					}
+				})
+			}
+			// Update relative positions if postype was updated
+			if ptexists {
+				eachExpl(func(e *Explod) {
+					e.setPos(crun)
 				})
 			}
 		}
@@ -10990,42 +11053,42 @@ const (
 	modifyStageVar_reflection_xshear
 	modifyStageVar_reflection_color
 	modifyStageVar_reflection_offset
-	modifyStageVar_redirectid
 )
 
 func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
-	//crun := c
+	//crun := c RedirectID is pointless when modifying a stage
 	s := *&sys.stage
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
+		// Camera group
 		case modifyStageVar_camera_autocenter:
 			s.stageCamera.autocenter = exp[0].evalB(c)
 		case modifyStageVar_camera_boundleft:
-			s.stageCamera.boundleft = exp[0].evalI(c)
+			s.stageCamera.boundleft = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_boundright:
-			s.stageCamera.boundright = exp[0].evalI(c)
+			s.stageCamera.boundright = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_boundhigh:
-			s.stageCamera.boundhigh = exp[0].evalI(c)
+			s.stageCamera.boundhigh = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_boundlow:
-			s.stageCamera.boundlow = exp[0].evalI(c)
+			s.stageCamera.boundlow = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_verticalfollow:
 			s.stageCamera.verticalfollow = exp[0].evalF(c)
 		case modifyStageVar_camera_floortension:
-			s.stageCamera.floortension = exp[0].evalI(c)
+			s.stageCamera.floortension = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_lowestcap:
 			s.stageCamera.lowestcap = exp[0].evalB(c)
 		case modifyStageVar_camera_tensionhigh:
-			s.stageCamera.tensionhigh = exp[0].evalI(c)
+			s.stageCamera.tensionhigh = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_tensionlow:
-			s.stageCamera.tensionlow = exp[0].evalI(c)
+			s.stageCamera.tensionlow = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_tension:
-			s.stageCamera.tension = exp[0].evalI(c)
+			s.stageCamera.tension = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_tensionvel:
 			s.stageCamera.tensionvel = exp[0].evalF(c)
 		case modifyStageVar_camera_cuthigh:
-			s.stageCamera.cuthigh = exp[0].evalI(c)
+			s.stageCamera.cuthigh = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_cutlow:
-			s.stageCamera.cutlow = exp[0].evalI(c)
+			s.stageCamera.cutlow = int32(exp[0].evalF(c) * c.localscl / sys.stage.localscl)
 		case modifyStageVar_camera_startzoom:
 			s.stageCamera.startzoom = exp[0].evalF(c)
 		case modifyStageVar_camera_zoomout:
@@ -11042,10 +11105,12 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.stageCamera.ytensionenable = exp[0].evalB(c)
 		case modifyStageVar_camera_yscrollspeed:
 			s.stageCamera.yscrollspeed = exp[0].evalF(c)
+		// PlayerInfo group
 		case modifyStageVar_playerinfo_leftbound:
-			s.leftbound = exp[0].evalF(c)
+			s.leftbound = exp[0].evalF(c) * sys.stage.localscl/c.localscl
 		case modifyStageVar_playerinfo_rightbound:
-			s.rightbound = exp[0].evalF(c)
+			s.rightbound = exp[0].evalF(c) * sys.stage.localscl/c.localscl
+		// Scaling group
 		case modifyStageVar_scaling_topz:
 			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topz
 				s.stageCamera.topz = exp[0].evalF(c)
@@ -11062,10 +11127,12 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for botscale
 				s.stageCamera.zbotscale = exp[0].evalF(c)
 			}
+		// Bound group
 		case modifyStageVar_bound_screenleft:
 			s.screenleft = exp[0].evalI(c)
 		case modifyStageVar_bound_screenright:
 			s.screenright = exp[0].evalI(c)
+		// StageInfo group
 		case modifyStageVar_stageinfo_zoffset:
 			s.stageCamera.zoffset = exp[0].evalI(c)
 		case modifyStageVar_stageinfo_zoffsetlink:
@@ -11074,6 +11141,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.scale[0] = exp[0].evalF(c)
 		case modifyStageVar_stageinfo_yscale:
 			s.scale[1] = exp[0].evalF(c)
+		// Shadow group
 		case modifyStageVar_shadow_intensity:
 			s.sdw.intensity = Clamp(exp[0].evalI(c), 0, 255)
 		case modifyStageVar_shadow_color:
@@ -11094,6 +11162,7 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_shadow_offset:
 			s.sdw.offset[0] = exp[0].evalF(c)
 			s.sdw.offset[1] = exp[1].evalF(c)
+		// Reflection group
 		case modifyStageVar_reflection_intensity:
 			s.reflection.intensity = Clamp(exp[0].evalI(c), 0, 255)
 		case modifyStageVar_reflection_yscale:
@@ -11111,12 +11180,6 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_reflection_offset:
 			s.reflection.offset[0] = exp[0].evalF(c)
 			s.reflection.offset[1] = exp[1].evalF(c)
-		case modifyStageVar_redirectid:
-			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
-				//crun = rid - RedirectID is useless when modifying a stage
-			} else {
-				return false
-			}
 		}
 		return true
 	})

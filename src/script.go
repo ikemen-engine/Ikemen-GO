@@ -3280,9 +3280,9 @@ func triggerFunctions(l *lua.LState) {
 		case "velocity.walk.back.x":
 			ln = lua.LNumber(c.gi().velocity.walk.back)
 		case "velocity.walk.up.x":
-			ln = lua.LNumber(c.gi().velocity.walk.up.x)
+			ln = lua.LNumber(c.gi().velocity.walk.up)
 		case "velocity.walk.down.x":
-			ln = lua.LNumber(c.gi().velocity.walk.down.x)
+			ln = lua.LNumber(c.gi().velocity.walk.down)
 		case "velocity.run.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.run.fwd[0])
 		case "velocity.run.fwd.y":
@@ -3292,13 +3292,13 @@ func triggerFunctions(l *lua.LState) {
 		case "velocity.run.back.y":
 			ln = lua.LNumber(c.gi().velocity.run.back[1])
 		case "velocity.run.up.x":
-			ln = lua.LNumber(c.gi().velocity.run.up.x)
+			ln = lua.LNumber(c.gi().velocity.run.up[0])
 		case "velocity.run.up.y":
-			ln = lua.LNumber(c.gi().velocity.run.up.y)
+			ln = lua.LNumber(c.gi().velocity.run.up[1])
 		case "velocity.run.down.x":
-			ln = lua.LNumber(c.gi().velocity.run.down.x)
+			ln = lua.LNumber(c.gi().velocity.run.down[0])
 		case "velocity.run.down.y":
-			ln = lua.LNumber(c.gi().velocity.run.down.y)
+			ln = lua.LNumber(c.gi().velocity.run.down[1])
 		case "velocity.jump.y":
 			ln = lua.LNumber(c.gi().velocity.jump.neu[1])
 		case "velocity.jump.neu.x":
@@ -3308,9 +3308,9 @@ func triggerFunctions(l *lua.LState) {
 		case "velocity.jump.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.jump.fwd)
 		case "velocity.jump.up.x":
-			ln = lua.LNumber(c.gi().velocity.jump.up.x)
+			ln = lua.LNumber(c.gi().velocity.jump.up)
 		case "velocity.jump.down.x":
-			ln = lua.LNumber(c.gi().velocity.jump.down.x)
+			ln = lua.LNumber(c.gi().velocity.jump.down)
 		case "velocity.runjump.back.x":
 			ln = lua.LNumber(c.gi().velocity.runjump.back[0])
 		case "velocity.runjump.back.y":
@@ -3320,9 +3320,9 @@ func triggerFunctions(l *lua.LState) {
 		case "velocity.runjump.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.runjump.fwd[0])
 		case "velocity.runjump.up.x":
-			ln = lua.LNumber(c.gi().velocity.runjump.up.x)
+			ln = lua.LNumber(c.gi().velocity.runjump.up)
 		case "velocity.runjump.down.x":
-			ln = lua.LNumber(c.gi().velocity.runjump.down.x)
+			ln = lua.LNumber(c.gi().velocity.runjump.down)
 		case "velocity.airjump.y":
 			ln = lua.LNumber(c.gi().velocity.airjump.neu[1])
 		case "velocity.airjump.neu.x":
@@ -3332,9 +3332,9 @@ func triggerFunctions(l *lua.LState) {
 		case "velocity.airjump.fwd.x":
 			ln = lua.LNumber(c.gi().velocity.airjump.fwd)
 		case "velocity.airjump.up.x":
-			ln = lua.LNumber(c.gi().velocity.airjump.up.x)
+			ln = lua.LNumber(c.gi().velocity.airjump.up)
 		case "velocity.airjump.down.x":
-			ln = lua.LNumber(c.gi().velocity.airjump.down.x)
+			ln = lua.LNumber(c.gi().velocity.airjump.down)
 		case "velocity.air.gethit.groundrecover.x":
 			ln = lua.LNumber(c.gi().velocity.air.gethit.groundrecover[0])
 		case "velocity.air.gethit.groundrecover.y":

@@ -740,7 +740,7 @@ type Stage struct {
 	stageCamera       stageCamera
 	stageTime         int32
 	constants         map[string]float32
-	partnerspacing    float32
+	partnerspacing    int32
 	mugenver          [2]uint16
 	reload            bool
 	stageprops        StageProps
@@ -751,21 +751,35 @@ type Stage struct {
 }
 
 func newStage(def string) *Stage {
-	s := &Stage{def: def, leftbound: -1000,
-		rightbound: 1000, screenleft: 15, screenright: 15,
-		zoffsetlink: -1, autoturn: true, resetbg: true, localscl: 1,
-		scale:        [...]float32{float32(math.NaN()), float32(math.NaN())},
-		bgmratiolife: 30, stageCamera: *newStageCamera(),
-		constants: make(map[string]float32), partnerspacing: 25.0, bgmvolume: 100}
+	s := &Stage{
+		def: def,
+		leftbound: -1000,
+		rightbound: 1000,
+		screenleft: 15,
+		screenright: 15,
+		zoffsetlink: -1,
+		autoturn: true,
+		resetbg: true,
+		localscl: 1,
+		scale: [...]float32{float32(math.NaN()), float32(math.NaN())},
+		bgmratiolife: 30,
+		stageCamera: *newStageCamera(),
+		constants: make(map[string]float32),
+		partnerspacing: 25,
+		bgmvolume: 100,
+		bgmfreqmul: 1, // Fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
+	}
 	s.sdw.intensity = 128
 	s.sdw.color = 0x808080
 	s.reflection.color = 0xFFFFFF
 	s.sdw.yscale = 0.4
-	s.p[0].startx, s.p[1].startx = -70, 70
+	s.p[0].startx = -70
+	s.p[1].startx = 70
 	s.stageprops = newStageProps()
 	return s
 }
-func loadStage(def string, main bool) (*Stage, error) {
+
+func loadStage(def string, maindef bool) (*Stage, error) {
 	s := newStage(def)
 	str, err := LoadText(def)
 	if err != nil {
@@ -786,9 +800,11 @@ func loadStage(def string, main bool) (*Stage, error) {
 			defmap[name] = append(defmap[name], is)
 		}
 	}
+
 	var sec []IniSection
 	sectionExists := false
 
+	// Info group
 	if sec = defmap[fmt.Sprintf("%v.info", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -847,7 +863,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}); err != nil {
 			return nil, err
 		}
-		if main {
+		// RoundXdef
+		if maindef {
 			r, _ := regexp.Compile("^round[0-9]+def$")
 			for k, v := range sec[0] {
 				if r.MatchString(k) {
@@ -868,47 +885,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadBool("roundloop", &sys.stageLoop)
 		}
 	}
-	if sec = defmap[fmt.Sprintf("%v.constants", sys.language)]; len(sec) > 0 {
-		sectionExists = true
-	} else {
-		if sec = defmap["constants"]; len(sec) > 0 {
-			sectionExists = true
-		}
-	}
-	if sectionExists {
-		sectionExists = false
-		for key, value := range sec[0] {
-			s.constants[key] = float32(Atof(value))
-		}
-	}
-	if sec = defmap[fmt.Sprintf("%v.scaling", sys.language)]; len(sec) > 0 {
-		sectionExists = true
-	} else {
-		if sec = defmap["scaling"]; len(sec) > 0 {
-			sectionExists = true
-		}
-	}
-	if sectionExists {
-		sectionExists = false
-		if s.mugenver[0] != 1 || s.ikemenver[0] >= 1 { // mugen 1.0+ removed support for z-axis, IKEMEN-Go 1.0 adds it back
-			sec[0].ReadF32("topz", &s.stageCamera.topz)
-			sec[0].ReadF32("botz", &s.stageCamera.botz)
-			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
-			sec[0].ReadF32("botscale", &s.stageCamera.zbotscale)
-		}
-	}
-	if sec = defmap[fmt.Sprintf("%v.bound", sys.language)]; len(sec) > 0 {
-		sectionExists = true
-	} else {
-		if sec = defmap["bound"]; len(sec) > 0 {
-			sectionExists = true
-		}
-	}
-	if sectionExists {
-		sectionExists = false
-		sec[0].ReadI32("screenleft", &s.screenleft)
-		sec[0].ReadI32("screenright", &s.screenright)
-	}
+
+	// StageInfo group. Needs to be read before most other groups so that localcoord is known
 	if sec = defmap[fmt.Sprintf("%v.stageinfo", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -940,7 +918,66 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
 	s.stageCamera.localscl = s.localscl
-	// Player Info Group - Needs to be here to return the correct s.localscl and localcoord
+	if s.stageCamera.localcoord[0] != 320 {
+		// Update default values to new localcoord. Like characters do
+		originLs := 320 / float32(s.stageCamera.localcoord[0])
+		s.leftbound /= originLs
+		s.rightbound /= originLs
+		s.screenleft = int32(float32(s.screenleft) / originLs)
+		s.screenright = int32(float32(s.screenright) / originLs)
+		s.partnerspacing = int32(float32(s.partnerspacing) / originLs)
+		s.p[0].startx = int32(float32(s.p[0].startx) / originLs)
+		s.p[1].startx = int32(float32(s.p[1].startx) / originLs)
+	}
+
+	// Constants group
+	if sec = defmap[fmt.Sprintf("%v.constants", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["constants"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
+		for key, value := range sec[0] {
+			s.constants[key] = float32(Atof(value))
+		}
+	}
+
+	// Scaling group
+	if sec = defmap[fmt.Sprintf("%v.scaling", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["scaling"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
+		if s.mugenver[0] != 1 || s.ikemenver[0] >= 1 { // mugen 1.0+ removed support for z-axis, IKEMEN-Go 1.0 adds it back
+			sec[0].ReadF32("topz", &s.stageCamera.topz)
+			sec[0].ReadF32("botz", &s.stageCamera.botz)
+			sec[0].ReadF32("topscale", &s.stageCamera.ztopscale)
+			sec[0].ReadF32("botscale", &s.stageCamera.zbotscale)
+		}
+	}
+
+	// Bound group
+	if sec = defmap[fmt.Sprintf("%v.bound", sys.language)]; len(sec) > 0 {
+		sectionExists = true
+	} else {
+		if sec = defmap["bound"]; len(sec) > 0 {
+			sectionExists = true
+		}
+	}
+	if sectionExists {
+		sectionExists = false
+		sec[0].ReadI32("screenleft", &s.screenleft)
+		sec[0].ReadI32("screenright", &s.screenright)
+	}
+
+	// PlayerInfo Group
 	if sec = defmap[fmt.Sprintf("%v.playerinfo", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -950,36 +987,31 @@ func loadStage(def string, main bool) (*Stage, error) {
 	}
 	if sectionExists {
 		sectionExists = false
-		sec[0].ReadF32("partnerspacing", &s.partnerspacing)
-		adjust := float32(1.0)
-		if s.partnerspacing == 25.0 && float32(sys.gameWidth) > 320 {
-			switch float32(s.stageCamera.localcoord[0]) {
-			case 320:
-				adjust = 25.5 / (s.partnerspacing / s.localscl)
-			case 640:
-				adjust = 50.0 / (s.partnerspacing / s.localscl)
-			default:
-				adjust = 100.0 / (s.partnerspacing / s.localscl)
-			}
-		}
+		sec[0].ReadI32("partnerspacing", &s.partnerspacing)
 		for i := range s.p {
-			if !sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx) {
-				offset := int32((s.partnerspacing / s.localscl) * adjust * float32(i/2))
-				s.p[i].startx = s.p[i%2].startx + offset*int32(2*(i%2)-1)
-			} //pXstarty
+			// Defaults
+			if i >= 2 {
+				s.p[i].startx = s.p[i-2].startx + s.partnerspacing*int32(2*(i%2)-1) // Previous partner + partnerspacing
+				s.p[i].starty = s.p[i%2].starty // Same as players 1 or 2
+				s.p[i].startz = s.p[i%2].startz // Same as players 1 or 2
+				s.p[i].facing = int32(1 - 2*(i%2)) // By team side
+			}
+			// pXstartx
+			sec[0].ReadI32(fmt.Sprintf("p%dstartx", i+1), &s.p[i].startx)
+			// pXstarty
 			sec[0].ReadI32(fmt.Sprintf("p%dstarty", i+1), &s.p[i].starty)
-			if !sec[0].ReadI32(fmt.Sprintf("p%dstartz", i+1), &s.p[i].startz) {
-				s.p[i].startz = s.p[i%2].startz
-			}
-			if !sec[0].ReadI32(fmt.Sprintf("p%dfacing", i+1), &s.p[i].facing) {
-				s.p[i].facing = int32(1 - 2*(i%2))
-			}
+			// pXstartz
+			sec[0].ReadI32(fmt.Sprintf("p%dstartz", i+1), &s.p[i].startz)
+			// pXfacing
+			sec[0].ReadI32(fmt.Sprintf("p%dfacing", i+1), &s.p[i].facing)
 		}
 		sec[0].ReadF32("leftbound", &s.leftbound)
 		sec[0].ReadF32("rightbound", &s.rightbound)
 		sec[0].ReadF32("topbound", &s.topbound)
 		sec[0].ReadF32("botbound", &s.botbound)
 	}
+
+	// Camera group
 	if sec := defmap["camera"]; len(sec) > 0 {
 		sec[0].ReadI32("startx", &s.stageCamera.startx)
 		sec[0].ReadI32("starty", &s.stageCamera.starty)
@@ -1027,7 +1059,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 			sec[0].ReadI32("tensionhigh", &s.stageCamera.tensionhigh)
 		}
 	}
-	s.bgmfreqmul = 1 // fallback value to allow music to play on legacy stages without a bgmfreqmul parameter
+
+	// Music group
 	if sec = defmap[fmt.Sprintf("%v.music", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -1047,6 +1080,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadI32("bgmtrigger.life", &s.bgmtriggerlife)
 		sec[0].ReadI32("bgmtrigger.alt", &s.bgmtriggeralt)
 	}
+
+	// BGDef group
 	if sec = defmap[fmt.Sprintf("%v.bgdef", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -1094,6 +1129,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
 		sec[0].ReadBool("roundpos", &s.stageprops.roundpos)
 	}
+
+	// Model group
 	if sec = defmap[fmt.Sprintf("%v.model", sys.language)]; len(sec) > 0 {
 		sectionExists = true
 	} else {
@@ -1130,6 +1167,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 			}
 		}
 	}
+
 	// Shadow group
 	if sec = defmap[fmt.Sprintf("%v.shadow", sys.language)]; len(sec) > 0 {
 		sectionExists = true
@@ -1157,6 +1195,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		sec[0].ReadF32("xshear", &s.sdw.xshear)
 		sec[0].readF32ForStage("offset", &s.sdw.offset[0], &s.sdw.offset[1])
 	}
+
 	// Reflection group
 	if sec = defmap[fmt.Sprintf("%v.reflection", sys.language)]; len(sec) > 0 {
 		sectionExists = true
@@ -1195,6 +1234,8 @@ func loadStage(def string, main bool) (*Stage, error) {
 			s.reflection.offset[1] = tmp3[1]
 		}
 	}
+
+	// BG group
 	var bglink *backGround
 	for _, bgsec := range defmap["bg"] {
 		if len(s.bg) > 0 && !s.bg[len(s.bg)-1].positionlink {
@@ -1263,7 +1304,7 @@ func loadStage(def string, main bool) (*Stage, error) {
 		}
 	}
 
-	s.mainstage = main
+	s.mainstage = maindef
 	return s, nil
 }
 func (s *Stage) copyStageVars(src *Stage) {

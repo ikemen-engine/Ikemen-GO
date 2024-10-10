@@ -332,56 +332,34 @@ type CharVelocity struct {
 	walk struct {
 		fwd  float32
 		back float32
-		up   struct {
-			x float32
-		}
-		down struct {
-			x float32
-		}
+		up float32
+		down float32
 	}
 	run struct {
 		fwd  [2]float32
 		back [2]float32
-		up   struct {
-			x float32
-			y float32
-		}
-		down struct {
-			x float32
-			y float32
-		}
+		up   [2]float32
+		down [2]float32
 	}
 	jump struct {
 		neu  [2]float32
 		back float32
 		fwd  float32
-		up   struct {
-			x float32
-		}
-		down struct {
-			x float32
-		}
+		up   float32
+		down float32
 	}
 	runjump struct {
 		back [2]float32
 		fwd  [2]float32
-		up   struct {
-			x float32
-		}
-		down struct {
-			x float32
-		}
+		up   float32
+		down float32
 	}
 	airjump struct {
 		neu  [2]float32
 		back float32
 		fwd  float32
-		up   struct {
-			x float32
-		}
-		down struct {
-			x float32
-		}
+		up   float32
+		down float32
 	}
 	air struct {
 		gethit struct {
@@ -1203,20 +1181,6 @@ func (e *Explod) clear() {
 		playerId:       -1,
 		bindId:         -2,
 		ignorehitpause: true,
-	}
-}
-func (e *Explod) reset() {
-	e.facing = 1
-	e.offset[0], e.offset[1], e.offset[2] = 0, 0, 0
-	e.setX(e.offset[0])
-	e.setY(e.offset[1])
-	e.setZ(e.offset[2])
-	e.relativePos = [3]float32{0, 0, 0}
-	e.velocity = [3]float32{0, 0, 0}
-	e.accel[0], e.accel[1], e.accel[2] = 0, 0, 0
-	e.bindId = -2
-	if e.bindtime == 0 {
-		e.bindtime = 1
 	}
 }
 func (e *Explod) setX(x float32) {
@@ -2725,72 +2689,79 @@ func (c *Char) load(def string) error {
 	// Correct engine default values to character's own localcoord
 	gi.data.init()
 	c.size.init()
-	originLs := c.localscl * (320 / float32(sys.gameWidth))
 
-	c.size.ground.back = c.size.ground.back / originLs
-	c.size.ground.front = c.size.ground.front / originLs
-	c.size.air.back = c.size.air.back / originLs
-	c.size.air.front = c.size.air.front / originLs
-	c.size.height.stand = c.size.height.stand / originLs
-	c.size.height.crouch = c.size.height.crouch / originLs
-	c.size.height.air[0] = c.size.height.air[0] / originLs
-	c.size.height.air[1] = c.size.height.air[1] / originLs
-	c.size.height.down = c.size.height.down / originLs
-	c.size.attack.dist.front = c.size.attack.dist.front / originLs
-	c.size.attack.dist.back = c.size.attack.dist.back / originLs
-	c.size.proj.attack.dist.front = c.size.proj.attack.dist.front / originLs
-	c.size.proj.attack.dist.back = c.size.proj.attack.dist.back / originLs
-	c.size.head.pos[0] = c.size.head.pos[0] / originLs
-	c.size.head.pos[1] = c.size.head.pos[1] / originLs
-	c.size.mid.pos[0] = c.size.mid.pos[0] / originLs
-	c.size.mid.pos[1] = c.size.mid.pos[1] / originLs
-	c.size.shadowoffset = c.size.shadowoffset / originLs
-	c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
-	c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
-	c.size.depth = c.size.depth / originLs
-	c.size.attack.depth.front = c.size.attack.depth.front / originLs
-	c.size.attack.depth.back = c.size.attack.depth.back / originLs
+	originLs := 320 / float32(c.gi().localcoord[0])
+
+	if originLs != 1 {
+		c.size.ground.back = c.size.ground.back / originLs
+		c.size.ground.front = c.size.ground.front / originLs
+		c.size.air.back = c.size.air.back / originLs
+		c.size.air.front = c.size.air.front / originLs
+		c.size.height.stand = c.size.height.stand / originLs
+		c.size.height.crouch = c.size.height.crouch / originLs
+		c.size.height.air[0] = c.size.height.air[0] / originLs
+		c.size.height.air[1] = c.size.height.air[1] / originLs
+		c.size.height.down = c.size.height.down / originLs
+		c.size.attack.dist.front = c.size.attack.dist.front / originLs
+		c.size.attack.dist.back = c.size.attack.dist.back / originLs
+		c.size.proj.attack.dist.front = c.size.proj.attack.dist.front / originLs
+		c.size.proj.attack.dist.back = c.size.proj.attack.dist.back / originLs
+		c.size.head.pos[0] = c.size.head.pos[0] / originLs
+		c.size.head.pos[1] = c.size.head.pos[1] / originLs
+		c.size.mid.pos[0] = c.size.mid.pos[0] / originLs
+		c.size.mid.pos[1] = c.size.mid.pos[1] / originLs
+		c.size.shadowoffset = c.size.shadowoffset / originLs
+		c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
+		c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
+		c.size.depth = c.size.depth / originLs
+		c.size.attack.depth.front = c.size.attack.depth.front / originLs
+		c.size.attack.depth.back = c.size.attack.depth.back / originLs
+	}
 
 	gi.velocity.init()
 
-	gi.velocity.air.gethit.groundrecover[0] /= originLs
-	gi.velocity.air.gethit.groundrecover[1] /= originLs
-	gi.velocity.air.gethit.airrecover.add[0] /= originLs
-	gi.velocity.air.gethit.airrecover.add[1] /= originLs
-	gi.velocity.air.gethit.airrecover.back /= originLs
-	gi.velocity.air.gethit.airrecover.fwd /= originLs
-	gi.velocity.air.gethit.airrecover.up /= originLs
-	gi.velocity.air.gethit.airrecover.down /= originLs
+	if originLs != 1 {
+		gi.velocity.air.gethit.groundrecover[0] /= originLs
+		gi.velocity.air.gethit.groundrecover[1] /= originLs
+		gi.velocity.air.gethit.airrecover.add[0] /= originLs
+		gi.velocity.air.gethit.airrecover.add[1] /= originLs
+		gi.velocity.air.gethit.airrecover.back /= originLs
+		gi.velocity.air.gethit.airrecover.fwd /= originLs
+		gi.velocity.air.gethit.airrecover.up /= originLs
+		gi.velocity.air.gethit.airrecover.down /= originLs
 
-	gi.velocity.airjump.neu[0] /= originLs
-	gi.velocity.airjump.neu[1] /= originLs
-	gi.velocity.airjump.back /= originLs
-	gi.velocity.airjump.fwd /= originLs
+		gi.velocity.airjump.neu[0] /= originLs
+		gi.velocity.airjump.neu[1] /= originLs
+		gi.velocity.airjump.back /= originLs
+		gi.velocity.airjump.fwd /= originLs
 
-	gi.velocity.air.gethit.ko.add[0] /= originLs
-	gi.velocity.air.gethit.ko.add[1] /= originLs
-	gi.velocity.air.gethit.ko.ymin /= originLs
-	gi.velocity.ground.gethit.ko.add[0] /= originLs
-	gi.velocity.ground.gethit.ko.add[1] /= originLs
-	gi.velocity.ground.gethit.ko.ymin /= originLs
+		gi.velocity.air.gethit.ko.add[0] /= originLs
+		gi.velocity.air.gethit.ko.add[1] /= originLs
+		gi.velocity.air.gethit.ko.ymin /= originLs
+		gi.velocity.ground.gethit.ko.add[0] /= originLs
+		gi.velocity.ground.gethit.ko.add[1] /= originLs
+		gi.velocity.ground.gethit.ko.ymin /= originLs
+	}
 
 	gi.movement.init()
 
-	gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / originLs)
-	gi.movement.yaccel /= originLs
-	gi.movement.stand.friction_threshold /= originLs
-	gi.movement.crouch.friction_threshold /= originLs
-	gi.movement.air.gethit.groundlevel /= originLs
-	gi.movement.air.gethit.groundrecover.ground.threshold /= originLs
-	gi.movement.air.gethit.groundrecover.groundlevel /= originLs
-	gi.movement.air.gethit.airrecover.threshold /= originLs
-	gi.movement.air.gethit.airrecover.yaccel /= originLs
-	gi.movement.air.gethit.trip.groundlevel /= originLs
-	gi.movement.down.bounce.offset[0] /= originLs
-	gi.movement.down.bounce.offset[1] /= originLs
-	gi.movement.down.bounce.yaccel /= originLs
-	gi.movement.down.bounce.groundlevel /= originLs
-	gi.movement.down.friction_threshold /= originLs
+	if originLs != 1 {
+		gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / originLs)
+		gi.movement.yaccel /= originLs
+		gi.movement.stand.friction_threshold /= originLs
+		gi.movement.crouch.friction_threshold /= originLs
+		gi.movement.air.gethit.groundlevel /= originLs
+		gi.movement.air.gethit.groundrecover.ground.threshold /= originLs
+		gi.movement.air.gethit.groundrecover.groundlevel /= originLs
+		gi.movement.air.gethit.airrecover.threshold /= originLs
+		gi.movement.air.gethit.airrecover.yaccel /= originLs
+		gi.movement.air.gethit.trip.groundlevel /= originLs
+		gi.movement.down.bounce.offset[0] /= originLs
+		gi.movement.down.bounce.offset[1] /= originLs
+		gi.movement.down.bounce.yaccel /= originLs
+		gi.movement.down.bounce.groundlevel /= originLs
+		gi.movement.down.friction_threshold /= originLs
+	}
 
 	gi.remapPreset = make(map[string]RemapPreset)
 
@@ -2886,14 +2857,9 @@ func (c *Char) load(def string) error {
 						velocity = false
 						is.ReadF32("walk.fwd", &gi.velocity.walk.fwd)
 						is.ReadF32("walk.back", &gi.velocity.walk.back)
-						is.ReadF32("walk.up.x", &gi.velocity.walk.up.x) // Should be Z
-						is.ReadF32("walk.down.x", &gi.velocity.walk.down.x)
 						is.ReadF32("run.fwd", &gi.velocity.run.fwd[0], &gi.velocity.run.fwd[1])
 						is.ReadF32("run.back",
 							&gi.velocity.run.back[0], &gi.velocity.run.back[1])
-						is.ReadF32("run.up", &gi.velocity.run.up.x, &gi.velocity.run.up.y)
-						is.ReadF32("run.down", // Z and Y?
-							&gi.velocity.run.down.x, &gi.velocity.run.down.y)
 						is.ReadF32("jump.neu",
 							&gi.velocity.jump.neu[0], &gi.velocity.jump.neu[1])
 						is.ReadF32("jump.back", &gi.velocity.jump.back)
@@ -2906,20 +2872,14 @@ func (c *Char) load(def string) error {
 						c.gi().velocity.airjump.neu = c.gi().velocity.jump.neu
 						c.gi().velocity.airjump.back = c.gi().velocity.jump.back
 						c.gi().velocity.airjump.fwd = c.gi().velocity.jump.fwd
-						is.ReadF32("jump.up.x", &gi.velocity.jump.up.x)
-						is.ReadF32("jump.down.x", &gi.velocity.jump.down.x)
 						is.ReadF32("runjump.back",
 							&gi.velocity.runjump.back[0], &gi.velocity.runjump.back[1])
 						is.ReadF32("runjump.fwd",
 							&gi.velocity.runjump.fwd[0], &gi.velocity.runjump.fwd[1])
-						is.ReadF32("runjump.up.x", &gi.velocity.runjump.up.x)
-						is.ReadF32("runjump.down.x", &gi.velocity.runjump.down.x)
 						is.ReadF32("airjump.neu",
 							&gi.velocity.airjump.neu[0], &gi.velocity.airjump.neu[1])
 						is.ReadF32("airjump.back", &gi.velocity.airjump.back)
 						is.ReadF32("airjump.fwd", &gi.velocity.airjump.fwd)
-						is.ReadF32("airjump.up.x", &gi.velocity.airjump.up.x)
-						is.ReadF32("airjump.down.x", &gi.velocity.airjump.down.x)
 						is.ReadF32("air.gethit.groundrecover",
 							&gi.velocity.air.gethit.groundrecover[0],
 							&gi.velocity.air.gethit.groundrecover[1])
@@ -2944,6 +2904,21 @@ func (c *Char) load(def string) error {
 						is.ReadF32("ground.gethit.ko.add", &gi.velocity.ground.gethit.ko.add[0],
 							&gi.velocity.ground.gethit.ko.add[1])
 						is.ReadF32("ground.gethit.ko.ymin", &gi.velocity.ground.gethit.ko.ymin)
+
+						// Mugen accepts these but they are not documented
+						// Possible leftovers of Z axis implementation
+						is.ReadF32("walk.up", &gi.velocity.walk.up) // Should be "z" but Elecbyte decided on "x"
+						is.ReadF32("walk.down", &gi.velocity.walk.down)
+						is.ReadF32("run.up",
+							&gi.velocity.run.up[0], &gi.velocity.run.up[1])
+						is.ReadF32("run.down",
+							&gi.velocity.run.down[0], &gi.velocity.run.down[1]) // Z and Y?
+						is.ReadF32("jump.up", &gi.velocity.jump.up) // Mugen accepts them with this syntax, but they need "x" when retrieved with const trigger
+						is.ReadF32("jump.down", &gi.velocity.jump.down)
+						is.ReadF32("runjump.up", &gi.velocity.runjump.up)
+						is.ReadF32("runjump.down", &gi.velocity.runjump.down)
+						is.ReadF32("airjump.up", &gi.velocity.airjump.up)
+						is.ReadF32("airjump.down", &gi.velocity.airjump.down)
 					}
 				case "movement":
 					if movement {
@@ -7378,7 +7353,6 @@ func (c *Char) actionRun() {
 	c.zWidthBound()
 
 	// Final scale calculations
-	// There's a minor issue here in that this scale is calculated
 	// Clsn and size box scale used to factor zScale here, but they shouldn't
 	// Game logic should stay the same regardless of Z scale. Only drawing changes
 	c.zScale = sys.updateZScale(c.pos[2], c.localscl)                                 // Must be placed after posUpdate()
