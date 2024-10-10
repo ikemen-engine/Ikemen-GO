@@ -1616,6 +1616,10 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_fall_yvelocity, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "fall.zvelocity",
+		hitDef_fall_zvelocity, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "fall.recover",
 		hitDef_fall_recover, VT_Bool, 1, false); err != nil {
 		return err
@@ -1700,7 +1704,7 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		return err
 	}
 	if err := c.paramValue(is, sc, "down.velocity",
-		hitDef_down_velocity, VT_Float, 2, false); err != nil {
+		hitDef_down_velocity, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "down.cornerpush.veloff",
@@ -1728,11 +1732,11 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		return err
 	}
 	if err := c.paramValue(is, sc, "air.velocity",
-		hitDef_air_velocity, VT_Float, 2, false); err != nil {
+		hitDef_air_velocity, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "airguard.velocity",
-		hitDef_airguard_velocity, VT_Float, 2, false); err != nil {
+		hitDef_airguard_velocity, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "ground.slidetime",
@@ -1773,11 +1777,26 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 				}
 			} else {
 				in = oldin
-				be, err := c.fullExpression(&in, VT_Float)
+				be, err := c.argExpression(&in, VT_Float)
 				if err != nil {
 					return err
 				}
 				sc.add(hitDef_ground_velocity_y, sc.beToExp(be))
+			}
+		}
+		if c.token == "," {
+			oldin := in
+			if c.token = c.tokenizer(&in); c.token == "n" {
+				if c.token = c.tokenizer(&in); len(c.token) > 0 {
+					return Error("Invalid data: " + c.token)
+				}
+			} else {
+				in = oldin
+				be, err := c.fullExpression(&in, VT_Float)
+				if err != nil {
+					return err
+				}
+				sc.add(hitDef_ground_velocity_z, sc.beToExp(be))
 			}
 		}
 		return nil
@@ -1785,7 +1804,7 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		return err
 	}
 	if err := c.paramValue(is, sc, "guard.velocity",
-		hitDef_guard_velocity, VT_Float, 1, false); err != nil {
+		hitDef_guard_velocity, VT_Float, 2, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "ground.cornerpush.veloff",
@@ -1800,8 +1819,16 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_airguard_cornerpush_veloff, VT_Float, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "xaccel",
+		hitDef_xaccel, VT_Float, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "yaccel",
 		hitDef_yaccel, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "zaccel",
+		hitDef_zaccel, VT_Float, 1, false); err != nil {
 		return err
 	}
 	if err := c.palFXSub(is, sc, "palfx."); err != nil {
@@ -1913,10 +1940,6 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 	}
 	if err := c.paramValue(is, sc, "down.recovertime",
 		hitDef_down_recovertime, VT_Int, 1, false); err != nil {
-		return err
-	}
-	if err := c.paramValue(is, sc, "xaccel",
-		hitDef_xaccel, VT_Float, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "attack.depth",
@@ -2532,7 +2555,7 @@ func (c *Compiler) targetBind(is IniSection, sc *StateControllerBase, _ int8) (S
 			return err
 		}
 		if err := c.paramValue(is, sc, "pos",
-			targetBind_pos, VT_Float, 2, false); err != nil {
+			targetBind_pos, VT_Float, 3, false); err != nil {
 			return err
 		}
 		return nil
@@ -2665,6 +2688,10 @@ func (c *Compiler) targetVelSet(is IniSection, sc *StateControllerBase, _ int8) 
 			targetVelSet_y, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "z",
+			targetVelSet_z, VT_Float, 1, false); err != nil {
+		return err
+		}
 		return nil
 	})
 	return *ret, err
@@ -2686,6 +2713,10 @@ func (c *Compiler) targetVelAdd(is IniSection, sc *StateControllerBase, _ int8) 
 		if err := c.paramValue(is, sc, "y",
 			targetVelAdd_y, VT_Float, 1, false); err != nil {
 			return err
+		}
+		if err := c.paramValue(is, sc, "z",
+			targetVelAdd_z, VT_Float, 1, false); err != nil {
+		return err
 		}
 		return nil
 	})
@@ -2792,6 +2823,10 @@ func (c *Compiler) hitVelSet(is IniSection, sc *StateControllerBase, _ int8) (St
 		if err := c.paramValue(is, sc, "y",
 			hitVelSet_y, VT_Bool, 1, false); err != nil {
 			return err
+		}
+		if err := c.paramValue(is, sc, "z",
+			hitVelSet_z, VT_Bool, 1, false); err != nil {
+		return err
 		}
 		return nil
 	})
@@ -4996,6 +5031,14 @@ func (c *Compiler) modifyStageVar(is IniSection, sc *StateControllerBase, _ int8
 			modifyStageVar_playerinfo_rightbound, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "playerinfo.topbound",
+			modifyStageVar_playerinfo_topbound, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "playerinfo.botbound",
+			modifyStageVar_playerinfo_botbound, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "scaling.topz",
 			modifyStageVar_scaling_topz, VT_Float, 1, false); err != nil {
 			return err
@@ -5301,6 +5344,10 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 			getHitVarSet_fall_yvel, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "fall.zvel",
+			getHitVarSet_fall_zvel, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "fallcount",
 			getHitVarSet_fallcount, VT_Int, 1, false); err != nil {
 			return err
@@ -5349,8 +5396,16 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 			getHitVarSet_yaccel, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "zaccel",
+			getHitVarSet_zaccel, VT_Float, 1, false); err != nil {
+		return err
+		}
 		if err := c.paramValue(is, sc, "yvel",
 			getHitVarSet_yvel, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "zvel",
+			getHitVarSet_zvel, VT_Float, 1, false); err != nil {
 			return err
 		}
 		return nil
