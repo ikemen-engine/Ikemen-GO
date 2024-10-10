@@ -4881,7 +4881,6 @@ const (
 	explod_bindid
 	explod_space
 	explod_window
-	explod_postypeExists
 	explod_interpolate_time
 	explod_interpolate_animelem
 	explod_interpolate_pos
@@ -5281,7 +5280,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				// Ikemen chars instead can more freely update individual parameters without affecting others
 				if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 					eachExpl(func(e *Explod) {
-						e.facing = 1
+						if e.facing*e.relativef >= 0 { // See below
+							e.relativef = 1
+						}
 						e.offset = [3]float32{0, 0, 0}
 						e.setX(e.offset[0])
 						e.setY(e.offset[1])
@@ -5304,14 +5305,23 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					rf := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
-						e.relativef = rf
+						// There's a bug in Mugen 1.1 where an explod that is facing left can't be flipped
+						// https://github.com/ikemen-engine/Ikemen-GO/issues/1252
+						// Ikemen chars just work as supposed to
+						if e.facing*e.relativef >= 0 || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							e.relativef = rf
+						}
 					})
 				}
 			case explod_vfacing:
 				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					vf := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
-						e.vfacing = vf
+						// There's a bug in Mugen 1.1 where an explod that is upside down can't be flipped
+						// Ikemen chars just work as supposed to
+						if e.vfacing >= 0 || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							e.vfacing = vf
+						}
 					})
 				}
 			case explod_pos:
@@ -5651,15 +5661,15 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				})
 			}
-			// Update relative positions if postype was updated
-			if ptexists {
-				eachExpl(func(e *Explod) {
-					e.setPos(crun)
-				})
-			}
 		}
 		return true
 	})
+	// Update relative positions if postype was updated
+	if ptexists {
+		eachExpl(func(e *Explod) {
+			e.setPos(crun)
+		})
+	}
 	return false
 }
 

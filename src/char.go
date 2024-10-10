@@ -1212,20 +1212,25 @@ func (e *Explod) setBind(bId int32) {
 	e.bindId = bId
 }
 
-// Initial pos setting based on postype and space. This function probably needs a heavy refactor.
+// Set explod position based on postype and space
 func (e *Explod) setPos(c *Char) {
 	pPos := func(c *Char) {
 		e.bindId, e.facing = c.id, c.facing
+
 		e.relativePos[0] *= c.facing
+
+		posX := (c.pos[0] + c.offsetX()) * c.localscl / e.localscl
+		posY := (c.pos[1] + c.offsetY()) * c.localscl / e.localscl
+		posZ := c.pos[2] * c.localscl / e.localscl
+
 		if e.space == Space_screen {
-			e.offset[0] = c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
-			e.offset[1] = sys.cam.GroundLevel()*e.localscl +
-				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
-			e.offset[2] = ClampF(c.pos[2]*c.localscl/e.localscl, sys.stage.stageCamera.topz, sys.stage.stageCamera.botz)
+			e.offset[0] = posX
+			e.offset[1] = sys.cam.GroundLevel()*e.localscl + posY
+			e.offset[2] = ClampF(posZ, sys.stage.stageCamera.topz, sys.stage.stageCamera.botz)
 		} else {
-			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl)
-			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl)
-			e.setZ(c.pos[2] * c.localscl / e.localscl)
+			e.setX(posX)
+			e.setY(posY)
+			e.setZ(posZ)
 		}
 	}
 	lPos := func() {
@@ -1262,7 +1267,7 @@ func (e *Explod) setPos(c *Char) {
 		if e.postype == PT_Back {
 			e.facing = c.facing
 		}
-		// Due to binding constraints, adjust the front and back to either left or right.
+		// Convert back and front types to left and right
 		if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
 			if e.postype == PT_Back {
 				e.relativePos[0] *= -1
@@ -1270,7 +1275,7 @@ func (e *Explod) setPos(c *Char) {
 			e.postype = PT_Right
 			rPos()
 		} else {
-			// explod's postype = front does not cause pos to invert based on the character's facing
+			// postype = front does not cause pos to invert based on the character's facing
 			//if e.postype == PT_Front && c.gi().mugenver[0] != 1 {
 			// In older versions, front does not reflect the character's facing direction
 			// It seems that even in version 1.1, it is not reflected
@@ -1288,14 +1293,6 @@ func (e *Explod) setPos(c *Char) {
 			e.offset[0] = -(float32(sys.gameWidth) / e.localscl / 2)
 		}
 	}
-	// Update: Importing this bug negatively impacts Ikemenversion chars' ability to modify non-Ikemenversion chars' explods
-	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
-	// The engine will leave the sprite facing to that side indefinitely.
-	// Ikemen chars aren't affected by this.
-	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
-	//	e.facing*e.relativef < 0 {
-	//	e.lockSpriteFacing = true
-	//}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
