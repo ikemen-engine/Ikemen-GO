@@ -7303,7 +7303,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			case hitDef_xaccel:
 				eachProj(func(p *Projectile) {
 					p.hitdef.xaccel = exp[0].evalF(c)
-			})
+				})
 			case hitDef_yaccel:
 				eachProj(func(p *Projectile) {
 					p.hitdef.yaccel = exp[0].evalF(c)

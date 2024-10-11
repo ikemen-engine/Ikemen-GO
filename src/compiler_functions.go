@@ -2690,7 +2690,7 @@ func (c *Compiler) targetVelSet(is IniSection, sc *StateControllerBase, _ int8) 
 		}
 		if err := c.paramValue(is, sc, "z",
 			targetVelSet_z, VT_Float, 1, false); err != nil {
-		return err
+			return err
 		}
 		return nil
 	})
@@ -2716,7 +2716,7 @@ func (c *Compiler) targetVelAdd(is IniSection, sc *StateControllerBase, _ int8) 
 		}
 		if err := c.paramValue(is, sc, "z",
 			targetVelAdd_z, VT_Float, 1, false); err != nil {
-		return err
+			return err
 		}
 		return nil
 	})
@@ -2826,7 +2826,7 @@ func (c *Compiler) hitVelSet(is IniSection, sc *StateControllerBase, _ int8) (St
 		}
 		if err := c.paramValue(is, sc, "z",
 			hitVelSet_z, VT_Bool, 1, false); err != nil {
-		return err
+			return err
 		}
 		return nil
 	})
@@ -5398,7 +5398,7 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 		}
 		if err := c.paramValue(is, sc, "zaccel",
 			getHitVarSet_zaccel, VT_Float, 1, false); err != nil {
-		return err
+			return err
 		}
 		if err := c.paramValue(is, sc, "yvel",
 			getHitVarSet_yvel, VT_Float, 1, false); err != nil {

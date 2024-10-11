@@ -3531,7 +3531,7 @@ func (c *Char) bottomEdge() float32 {
 	return sys.cam.ScreenPos[1]/c.localscl + c.gameHeight()
 }
 func (c *Char) bottomEdgeDist() float32 {
-	return sys.stage.botbound / c.localscl - c.pos[2]
+	return sys.stage.botbound/c.localscl - c.pos[2]
 }
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
@@ -4214,7 +4214,7 @@ func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
 func (c *Char) topEdgeDist() float32 {
-	return sys.stage.topbound / c.localscl - c.pos[2]
+	return sys.stage.topbound/c.localscl - c.pos[2]
 }
 func (c *Char) win() bool {
 	if c.teamside == -1 {
@@ -5087,7 +5087,7 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifierrset(&hd.fall.envshake_ampl, -4)
 	ifnanset(&hd.xaccel, 0)
 	ifnanset(&hd.zaccel, 0) // Here too
-	
+
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
