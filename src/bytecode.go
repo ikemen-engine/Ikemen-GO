@@ -179,9 +179,9 @@ const (
 	OC_leftedge
 	OC_rightedge
 	OC_topedge
-	OC_topedgedist
+	OC_topbounddist
 	OC_bottomedge
-	OC_bottomedgedist
+	OC_botbounddist
 	OC_camerapos_x
 	OC_camerapos_y
 	OC_camerazoom
@@ -1510,8 +1510,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.backEdgeDist() * (c.localscl / oc.localscl)))
 		case OC_bottomedge:
 			sys.bcStack.PushF(c.bottomEdge() * (c.localscl / oc.localscl))
-		case OC_bottomedgedist:
-			sys.bcStack.PushF(c.bottomEdgeDist() * (c.localscl / oc.localscl))
+		case OC_botbounddist:
+			sys.bcStack.PushF(c.botBoundDist() * (c.localscl / oc.localscl))
 		case OC_camerapos_x:
 			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
@@ -1700,8 +1700,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.time())
 		case OC_topedge:
 			sys.bcStack.PushF(c.topEdge() * (c.localscl / oc.localscl))
-		case OC_topedgedist:
-			sys.bcStack.PushF(c.topEdgeDist() * (c.localscl / oc.localscl))
+		case OC_topbounddist:
+			sys.bcStack.PushF(c.topBoundDist() * (c.localscl / oc.localscl))
 		case OC_uniqhitcount:
 			sys.bcStack.PushI(c.uniqHitCount)
 		case OC_vel_x:

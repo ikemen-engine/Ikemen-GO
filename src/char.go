@@ -3521,7 +3521,7 @@ func (c *Char) backEdgeDist() float32 {
 func (c *Char) bottomEdge() float32 {
 	return sys.cam.ScreenPos[1]/c.localscl + c.gameHeight()
 }
-func (c *Char) bottomEdgeDist() float32 {
+func (c *Char) botBoundDist() float32 {
 	return sys.zmax/c.localscl - c.pos[2]
 }
 func (c *Char) canRecover() bool {
@@ -4204,7 +4204,7 @@ func (c *Char) time() int32 {
 func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
-func (c *Char) topEdgeDist() float32 {
+func (c *Char) topBoundDist() float32 {
 	return sys.zmin/c.localscl - c.pos[2]
 }
 func (c *Char) win() bool {

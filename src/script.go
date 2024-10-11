@@ -3128,8 +3128,8 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.bottomEdge()))
 		return 1
 	})
-	luaRegister(l, "bottomedgedist", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.bottomEdgeDist()))
+	luaRegister(l, "botboundDist", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.botBoundDist()))
 		return 1
 	})
 	luaRegister(l, "cameraposX", func(*lua.LState) int {
@@ -4668,8 +4668,8 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.topEdge()))
 		return 1
 	})
-	luaRegister(l, "topedgedist", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.topEdgeDist()))
+	luaRegister(l, "topBounddist", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.topBoundDist()))
 		return 1
 	})
 	luaRegister(l, "uniqhitcount", func(*lua.LState) int {
