@@ -977,15 +977,15 @@ func (s *System) clsnOverlap(clsn1 []float32, scl1, pos1 [2]float32, facing1 flo
 }
 
 func (s *System) newCharId() int32 {
-	// Check if next ID is already being used
-	// This is needed because helpers may be preserved between rounds
+	// Check if the next ID is already being used by a helper with "preserve"
+	// We specifically check for preserved helpers because otherwise this also detects the players from the previous match that are being replaced
 	newid := s.nextCharId
 	taken := true
 	for taken {
 		taken = false
 		for _, p := range s.chars {
 			for _, c := range p {
-				if c.id == newid && !c.csf(CSF_destroy) {
+				if c.id == newid && c.preserve != 0 && !c.csf(CSF_destroy) {
 					taken = true
 					newid++
 					break
