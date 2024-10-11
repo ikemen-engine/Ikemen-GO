@@ -1804,7 +1804,7 @@ func (c *Compiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		return err
 	}
 	if err := c.paramValue(is, sc, "guard.velocity",
-		hitDef_guard_velocity, VT_Float, 2, false); err != nil {
+		hitDef_guard_velocity, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "ground.cornerpush.veloff",

@@ -582,7 +582,7 @@ type HitDef struct {
 	yaccel                     float32
 	zaccel                     float32
 	ground_velocity            [3]float32
-	guard_velocity             [2]float32
+	guard_velocity             [3]float32
 	air_velocity               [3]float32
 	airguard_velocity          [3]float32
 	ground_cornerpush_veloff   float32
@@ -676,7 +676,7 @@ func (hd *HitDef) clear() {
 		xaccel:                     float32(math.NaN()),
 		yaccel:                     float32(math.NaN()),
 		zaccel:                     float32(math.NaN()),
-		guard_velocity:             [...]float32{float32(math.NaN()), float32(math.NaN())},
+		guard_velocity:             [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		airguard_velocity:          [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
@@ -801,7 +801,7 @@ type GetHitVar struct {
 	ground_velocity   [3]float32
 	air_velocity      [3]float32
 	down_velocity     [3]float32
-	guard_velocity    [2]float32
+	guard_velocity    [3]float32
 	airguard_velocity [3]float32
 	frame             bool
 	cheeseKO          bool
@@ -5074,7 +5074,8 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifnanset(&hd.air_velocity[1], 0)
 	ifnanset(&hd.air_velocity[2], 0)
 	ifnanset(&hd.guard_velocity[0], hd.ground_velocity[0])
-	ifnanset(&hd.guard_velocity[1], hd.ground_velocity[2])
+	ifnanset(&hd.guard_velocity[1], 0) // We don't want chars to be launched while blocking
+	ifnanset(&hd.guard_velocity[2], hd.ground_velocity[2])
 	ifnanset(&hd.airguard_velocity[0], hd.air_velocity[0]*1.5)
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
 	ifnanset(&hd.airguard_velocity[2], hd.air_velocity[2]*1.5)
@@ -5086,7 +5087,7 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifierrset(&hd.fall.envshake_ampl, -4)
 	ifnanset(&hd.xaccel, 0)
 	ifnanset(&hd.zaccel, 0) // Here too
-	//ifnanset(&hd.zaccel, 0)
+	
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
@@ -8481,9 +8482,10 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
 						ghv.xvel = hd.guard_velocity[0] * (c.localscl / getter.localscl)
-						ghv.zvel = hd.guard_velocity[1] * (c.localscl / getter.localscl)
 						// Mugen does not accept a Y component for ground guard velocity
-						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
+						// But since we're adding Z to the other parameters, let's add Y here as well to keep things consistent
+						ghv.yvel = hd.guard_velocity[1] * (c.localscl / getter.localscl)
+						ghv.zvel = hd.guard_velocity[2] * (c.localscl / getter.localscl)
 					}
 					ghv.hitcount = hc
 					ghv.guardcount = gc + 1
@@ -8585,6 +8587,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.down_velocity[2] = hd.down_velocity[2] * (c.localscl / getter.localscl)
 				ghv.guard_velocity[0] = hd.guard_velocity[0] * (c.localscl / getter.localscl)
 				ghv.guard_velocity[1] = hd.guard_velocity[1] * (c.localscl / getter.localscl)
+				ghv.guard_velocity[2] = hd.guard_velocity[2] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[1] = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[2] = hd.airguard_velocity[2] * (c.localscl / getter.localscl)

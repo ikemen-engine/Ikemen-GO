@@ -2277,6 +2277,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_down_velocity_z)
 			case "guard.velocity.x":
 				out.append(OC_ex_gethitvar_guard_velocity_x)
+			case "guard.velocity.y":
+				out.append(OC_ex_gethitvar_guard_velocity_y)
 			case "guard.velocity.z":
 				out.append(OC_ex_gethitvar_guard_velocity_z)
 			case "airguard.velocity.x":

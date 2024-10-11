@@ -519,6 +519,7 @@ const (
 	OC_ex_gethitvar_down_velocity_y
 	OC_ex_gethitvar_down_velocity_z
 	OC_ex_gethitvar_guard_velocity_x
+	OC_ex_gethitvar_guard_velocity_y
 	OC_ex_gethitvar_guard_velocity_z
 	OC_ex_gethitvar_airguard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_y
@@ -2381,8 +2382,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.down_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_guard_velocity_x:
 		sys.bcStack.PushF(c.ghv.guard_velocity[0] * c.facing * (c.localscl / oc.localscl))
-	case OC_ex_gethitvar_guard_velocity_z:
+	case OC_ex_gethitvar_guard_velocity_y:
 		sys.bcStack.PushF(c.ghv.guard_velocity[1] * c.facing * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_guard_velocity_z:
+		sys.bcStack.PushF(c.ghv.guard_velocity[2] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_x:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_y:
@@ -6243,6 +6246,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		if len(exp) > 1 {
 			hd.guard_velocity[1] = exp[1].evalF(c)
 		}
+		if len(exp) > 2 {
+			hd.guard_velocity[2] = exp[2].evalF(c)
+		}
 	case hitDef_ground_cornerpush_veloff:
 		hd.ground_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_guard_cornerpush_veloff:
@@ -7283,6 +7289,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.hitdef.guard_velocity[0] = exp[0].evalF(c)
 					if len(exp) > 1 {
 						p.hitdef.guard_velocity[1] = exp[0].evalF(c)
+					}
+					if len(exp) > 2 {
+						p.hitdef.guard_velocity[2] = exp[0].evalF(c)
 					}
 				})
 			//case hitDef_ground_cornerpush_veloff:

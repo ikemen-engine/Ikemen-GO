@@ -3759,8 +3759,10 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.down_velocity[2])
 		case "guard.velocity.x":
 			ln = lua.LNumber(c.ghv.guard_velocity[0])
-		case "guard.velocity.z":
+		case "guard.velocity.y":
 			ln = lua.LNumber(c.ghv.guard_velocity[1])
+		case "guard.velocity.z":
+			ln = lua.LNumber(c.ghv.guard_velocity[2])
 		case "airguard.velocity.x":
 			ln = lua.LNumber(c.ghv.airguard_velocity[0])
 		case "airguard.velocity.y":
