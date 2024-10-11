@@ -2287,7 +2287,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_zoff:
 		sys.bcStack.PushF(c.ghv.zoff * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_xvel:
-		sys.bcStack.PushF(c.ghv.xvel * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.xvel * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_yvel:
 		sys.bcStack.PushF(c.ghv.yvel * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_zvel:
@@ -2371,31 +2371,31 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_facing:
 		sys.bcStack.PushI(c.ghv.facing)
 	case OC_ex_gethitvar_ground_velocity_x:
-		sys.bcStack.PushF(c.ghv.ground_velocity[0] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.ground_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_ground_velocity_y:
 		sys.bcStack.PushF(c.ghv.ground_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_ground_velocity_z:
 		sys.bcStack.PushF(c.ghv.ground_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_x:
-		sys.bcStack.PushF(c.ghv.air_velocity[0] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.air_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_y:
 		sys.bcStack.PushF(c.ghv.air_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_z:
 		sys.bcStack.PushF(c.ghv.air_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_x:
-		sys.bcStack.PushF(c.ghv.down_velocity[0] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.down_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_y:
 		sys.bcStack.PushF(c.ghv.down_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_z:
 		sys.bcStack.PushF(c.ghv.down_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_guard_velocity_x:
-		sys.bcStack.PushF(c.ghv.guard_velocity[0] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.guard_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_guard_velocity_y:
-		sys.bcStack.PushF(c.ghv.guard_velocity[1] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.guard_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_guard_velocity_z:
-		sys.bcStack.PushF(c.ghv.guard_velocity[2] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.guard_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_x:
-		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_y:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_z:
@@ -8122,7 +8122,7 @@ func (sc hitVelSet) Run(c *Char, _ []int32) bool {
 		switch id {
 		case hitVelSet_x:
 			if exp[0].evalB(c) {
-				crun.vel[0] = crun.ghv.xvel
+				crun.vel[0] = crun.ghv.xvel * crun.facing
 			}
 		case hitVelSet_y:
 			if exp[0].evalB(c) {
@@ -11597,7 +11597,7 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_slidetime:
 			crun.ghv.slidetime = exp[0].evalI(c)
 		case getHitVarSet_xvel:
-			crun.ghv.xvel = exp[0].evalF(c) * crun.facing * redirscale
+			crun.ghv.xvel = exp[0].evalF(c) * redirscale
 		case getHitVarSet_yvel:
 			crun.ghv.yvel = exp[0].evalF(c) * redirscale
 		case getHitVarSet_zvel:

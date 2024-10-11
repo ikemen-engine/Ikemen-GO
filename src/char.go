@@ -5382,14 +5382,6 @@ func (c *Char) setFacing(f float32) {
 		if (c.facing < 0) != (f < 0) {
 			c.facing *= -1
 			c.vel[0] *= -1
-			// Flip gethitvars on x axis
-			c.ghv.xvel *= -1
-			c.ghv.xaccel *= -1
-			c.ghv.ground_velocity[0] *= -1
-			c.ghv.air_velocity[0] *= -1
-			c.ghv.down_velocity[0] *= -1
-			c.ghv.guard_velocity[0] *= -1
-			c.ghv.airguard_velocity[0] *= -1
 		}
 	}
 }
@@ -8401,7 +8393,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
 				ghv.id = hd.attackerID
-				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl)
+				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl) * -byf
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
 				ghv.zaccel = hd.zaccel * (c.localscl / getter.localscl)
 				ghv.groundtype = hd.ground_type
@@ -8426,12 +8418,12 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.slidetime = hd.guard_slidetime
 					if getter.ss.stateType == ST_A {
 						ghv.ctrltime = hd.airguard_ctrltime
-						ghv.xvel = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.airguard_velocity[0] * (c.localscl / getter.localscl) * -byf
 						ghv.yvel = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
 						ghv.zvel = hd.airguard_velocity[2] * (c.localscl / getter.localscl)
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
-						ghv.xvel = hd.guard_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.guard_velocity[0] * (c.localscl / getter.localscl) * -byf
 						// Mugen does not accept a Y component for ground guard velocity
 						// But since we're adding Z to the other parameters, let's add Y here as well to keep things consistent
 						ghv.yvel = hd.guard_velocity[1] * (c.localscl / getter.localscl)
@@ -8458,7 +8450,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						// Note: ctrl time is not affected on hit in Mugen
 						// This is further proof that gethitvars don't need to be reset above
 						ghv.ctrltime = hd.air_hittime
-						ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl) * -byf
 						ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 						ghv.zvel = hd.air_velocity[2] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.air_fall
@@ -8467,7 +8459,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						ghv.ctrltime = hd.down_hittime
 						ghv.fallflag = hd.ground_fall
 						if getter.pos[1] == 0 {
-							ghv.xvel = hd.down_velocity[0] * (c.localscl / getter.localscl)
+							ghv.xvel = hd.down_velocity[0] * (c.localscl / getter.localscl) * -byf
 							ghv.yvel = hd.down_velocity[1] * (c.localscl / getter.localscl)
 							ghv.zvel = hd.down_velocity[2] * (c.localscl / getter.localscl)
 							if !hd.down_bounce && ghv.yvel != 0 {
@@ -8476,13 +8468,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 								ghv.fall.zvelocity = float32(math.NaN())
 							}
 						} else {
-							ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
+							ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl) * -byf
 							ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 							ghv.zvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 						}
 					} else {
 						ghv.ctrltime = hd.ground_hittime
-						ghv.xvel = hd.ground_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.ground_velocity[0] * (c.localscl / getter.localscl) * -byf
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 						ghv.zvel = hd.ground_velocity[2] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.ground_fall
@@ -8526,19 +8518,19 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 				}
 				// Save velocities regardless of statetype
-				ghv.ground_velocity[0] = hd.ground_velocity[0] * (c.localscl / getter.localscl)
+				ghv.ground_velocity[0] = hd.ground_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.ground_velocity[1] = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 				ghv.ground_velocity[2] = hd.ground_velocity[2] * (c.localscl / getter.localscl)
-				ghv.air_velocity[0] = hd.air_velocity[0] * (c.localscl / getter.localscl)
+				ghv.air_velocity[0] = hd.air_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.air_velocity[1] = hd.air_velocity[1] * (c.localscl / getter.localscl)
 				ghv.air_velocity[2] = hd.air_velocity[2] * (c.localscl / getter.localscl)
-				ghv.down_velocity[0] = hd.down_velocity[0] * (c.localscl / getter.localscl)
+				ghv.down_velocity[0] = hd.down_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.down_velocity[1] = hd.down_velocity[1] * (c.localscl / getter.localscl)
 				ghv.down_velocity[2] = hd.down_velocity[2] * (c.localscl / getter.localscl)
-				ghv.guard_velocity[0] = hd.guard_velocity[0] * (c.localscl / getter.localscl)
+				ghv.guard_velocity[0] = hd.guard_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.guard_velocity[1] = hd.guard_velocity[1] * (c.localscl / getter.localscl)
 				ghv.guard_velocity[2] = hd.guard_velocity[2] * (c.localscl / getter.localscl)
-				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
+				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.airguard_velocity[1] = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[2] = hd.airguard_velocity[2] * (c.localscl / getter.localscl)
 				ghv.airanimtype = hd.air_animtype
@@ -8859,15 +8851,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					byf = c.facing
 				}
 			}
+			// Flip low and high hit animations when hitting enemy from behind
 			if (getter.facing < 0) == (byf < 0) {
-				// Flip X Gethitvars
-				getter.ghv.xvel *= -1
-				getter.ghv.xaccel *= -1
-				getter.ghv.ground_velocity[0] *= -1
-				getter.ghv.air_velocity[0] *= -1
-				getter.ghv.down_velocity[0] *= -1
-				getter.ghv.guard_velocity[0] *= -1
-				getter.ghv.airguard_velocity[0] *= -1
 				if getter.ghv.groundtype == 1 || getter.ghv.groundtype == 2 {
 					getter.ghv.groundtype += 3 - getter.ghv.groundtype*2
 				}
