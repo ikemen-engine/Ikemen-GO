@@ -3672,11 +3672,11 @@ func triggerFunctions(l *lua.LState) {
 		case "zvel":
 			ln = lua.LNumber(c.ghv.zvel)
 		case "xaccel":
-			ln = lua.LNumber(c.ghv.getXaccel(c))
+			ln = lua.LNumber(c.ghv.xaccel)
 		case "yaccel":
-			ln = lua.LNumber(c.ghv.getYaccel(c))
+			ln = lua.LNumber(c.ghv.yaccel)
 		case "zaccel":
-			ln = lua.LNumber(c.ghv.getZaccel(c))
+			ln = lua.LNumber(c.ghv.zaccel)
 		case "hitid", "chainid":
 			ln = lua.LNumber(c.ghv.chainId())
 		case "guarded":
@@ -3688,11 +3688,19 @@ func triggerFunctions(l *lua.LState) {
 		case "fall.damage":
 			ln = lua.LNumber(c.ghv.fall.damage)
 		case "fall.xvel":
-			ln = lua.LNumber(c.ghv.fall.xvel())
+			if math.IsNaN(float64(c.ghv.fall.xvelocity)) {
+				ln = lua.LNumber(-32760) // Winmugen behavior
+			} else {
+				ln = lua.LNumber(c.ghv.fall.xvelocity)
+			}
 		case "fall.yvel":
 			ln = lua.LNumber(c.ghv.fall.yvelocity)
 		case "fall.zvel":
-			ln = lua.LNumber(c.ghv.fall.zvelocity)
+			if math.IsNaN(float64(c.ghv.fall.zvelocity)) {
+				ln = lua.LNumber(-32760) // Winmugen behavior
+			} else {
+				ln = lua.LNumber(c.ghv.fall.zvelocity)
+			}
 		case "fall.recover":
 			ln = lua.LNumber(Btoi(c.ghv.fall.recover))
 		case "fall.time":

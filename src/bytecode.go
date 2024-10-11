@@ -2293,11 +2293,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_zvel:
 		sys.bcStack.PushF(c.ghv.zvel * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_xaccel:
-		sys.bcStack.PushF(c.ghv.getXaccel(oc) * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.xaccel * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_yaccel:
-		sys.bcStack.PushF(c.ghv.getYaccel(oc) * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.yaccel * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_zaccel:
-		sys.bcStack.PushF(c.ghv.getZaccel(oc) * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.zaccel * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_chainid:
 		sys.bcStack.PushI(c.ghv.chainId())
 	case OC_ex_gethitvar_guarded:
@@ -2309,11 +2309,19 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_fall_damage:
 		sys.bcStack.PushI(c.ghv.fall.damage)
 	case OC_ex_gethitvar_fall_xvel:
-		sys.bcStack.PushF(c.ghv.fall.xvel() * (c.localscl / oc.localscl))
+		if math.IsNaN(float64(c.ghv.fall.xvelocity)) {
+			sys.bcStack.PushF(-32760) // Winmugen behavior
+		} else {
+			sys.bcStack.PushF(c.ghv.fall.xvelocity * (c.localscl / oc.localscl))
+		}
 	case OC_ex_gethitvar_fall_yvel:
 		sys.bcStack.PushF(c.ghv.fall.yvelocity * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_zvel:
-		sys.bcStack.PushF(c.ghv.fall.zvelocity * (c.localscl / oc.localscl))
+		if math.IsNaN(float64(c.ghv.fall.zvelocity)) {
+			sys.bcStack.PushF(-32760) // Winmugen behavior
+		} else {
+			sys.bcStack.PushF(c.ghv.fall.zvelocity * (c.localscl / oc.localscl))
+		}
 	case OC_ex_gethitvar_fall_recover:
 		sys.bcStack.PushB(c.ghv.fall.recover)
 	case OC_ex_gethitvar_fall_time:
@@ -6339,7 +6347,7 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 }
 func (sc hitDef) Run(c *Char, _ []int32) bool {
 	crun := c
-	crun.hitdef.clear()
+	crun.hitdef.clear(crun.localscl)
 	crun.hitdef.playerNo = sys.workingState.playerNo
 	crun.hitdef.sparkno = c.gi().data.sparkno
 	crun.hitdef.guard_sparkno = c.gi().data.guard.sparkno
@@ -6349,7 +6357,7 @@ func (sc hitDef) Run(c *Char, _ []int32) bool {
 		if id == hitDef_redirectid {
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				crun.hitdef.clear()
+				crun.hitdef.clear(crun.localscl)
 				crun.hitdef.playerNo = sys.workingState.playerNo
 				crun.hitdef.sparkno = c.gi().data.sparkno
 				crun.hitdef.guard_sparkno = c.gi().data.guard.sparkno
@@ -6384,7 +6392,7 @@ const (
 
 func (sc reversalDef) Run(c *Char, _ []int32) bool {
 	crun := c
-	crun.hitdef.clear()
+	crun.hitdef.clear(crun.localscl)
 	crun.hitdef.playerNo = sys.workingState.playerNo
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -6393,7 +6401,7 @@ func (sc reversalDef) Run(c *Char, _ []int32) bool {
 		case reversalDef_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				crun.hitdef.clear()
+				crun.hitdef.clear(crun.localscl)
 				crun.hitdef.playerNo = sys.workingState.playerNo
 			} else {
 				return false
