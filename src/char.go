@@ -513,15 +513,20 @@ type Fall struct {
 	envshake_mul   float32
 }
 
-func (f *Fall) clear() {
-	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: -4.5, zvelocity: float32(math.NaN())}
+func (f *Fall) clear(localscl float32) {
+	*f = Fall{
+		animtype:  RA_Unknown,
+		xvelocity: float32(math.NaN()),
+		yvelocity: -4.5 / localscl,
+		zvelocity: float32(math.NaN()),
+	}
 }
-func (f *Fall) setDefault() {
+
+func (f *Fall) setDefault(localscl float32) {
 	*f = Fall{animtype: RA_Unknown,
 		xvelocity:      float32(math.NaN()),
-		yvelocity:      float32(math.NaN()),
-		zvelocity:      float32(math.NaN()),
+		yvelocity:      -4.5 / localscl,
+		zvelocity:      0, // Should this work like the X component instead?
 		recover:        true,
 		recovertime:    4,
 		kill:           true,
@@ -529,12 +534,6 @@ func (f *Fall) setDefault() {
 		envshake_ampl:  IErr,
 		envshake_phase: float32(math.NaN()),
 		envshake_mul:   1.0}
-}
-func (f *Fall) xvel() float32 {
-	if math.IsNaN(float64(f.xvelocity)) {
-		return -32760
-	}
-	return f.xvelocity
 }
 
 type HitDef struct {
@@ -646,8 +645,9 @@ type HitDef struct {
 	}
 }
 
-func (hd *HitDef) clear() {
+func (hd *HitDef) clear(localscl float32) {
 	*hd = HitDef{
+		isprojectile:       false,
 		hitflag:            int32(ST_S | ST_C | ST_A | ST_F),
 		affectteam:         1,
 		teamside:           -1,
@@ -661,10 +661,10 @@ func (hd *HitDef) clear() {
 		guard_sparkno:      -1,
 		guard_sparkno_ffx:  "f",
 		guard_sparkangle:   0,
-		hitsound:           [...]int32{-1, 0},
+		hitsound:           [2]int32{-1, 0},
 		hitsound_channel:   -1,
 		hitsound_ffx:       "f",
-		guardsound:         [...]int32{-1, 0},
+		guardsound:         [2]int32{-1, 0},
 		guardsound_channel: -1,
 		guardsound_ffx:     "f",
 		ground_type:        HT_High,
@@ -673,16 +673,20 @@ func (hd *HitDef) clear() {
 		air_hittime:  20,
 		down_hittime: 20,
 
-		xaccel:                     float32(math.NaN()),
-		yaccel:                     float32(math.NaN()),
-		zaccel:                     float32(math.NaN()),
-		guard_velocity:             [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
-		airguard_velocity:          [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		ground_velocity:            [3]float32{0, 0, 0},
+		air_velocity:               [3]float32{0, 0, 0},
+		down_velocity:              [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		guard_velocity:             [3]float32{float32(math.NaN()), 0, float32(math.NaN())}, // We don't want chars to be launched in Y while guarding
+		airguard_velocity:          [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
 		down_cornerpush_veloff:     float32(math.NaN()),
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()),
+
+		xaccel:                     0,
+		yaccel:                     0.35 / localscl,
+		zaccel:                     0,
 
 		p1sprpriority:    1,
 		p1stateno:        -1,
@@ -690,7 +694,6 @@ func (hd *HitDef) clear() {
 		forcestand:       IErr,
 		forcecrouch:      IErr,
 		guard_dist:       [...]int32{-1, -1},
-		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		chainid:          -1,
 		nochainid:        [8]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
@@ -719,13 +722,12 @@ func (hd *HitDef) clear() {
 		down_recover:     true,
 		down_recovertime: -1,
 		air_juggle:       IErr,
-		isprojectile:     false,
 		attack: struct{ depth [2]float32 }{
-			[2]float32{4, 4},
+			[2]float32{4 / localscl, 4 / localscl},
 		},
 	}
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
-	hd.fall.setDefault()
+	hd.fall.setDefault(localscl)
 }
 
 // When a Hitdef connects, its statetype attribute will be updated to the character's current type
@@ -809,32 +811,23 @@ type GetHitVar struct {
 	down_recovertime  int32
 }
 
-func (ghv *GetHitVar) clear() {
-	*ghv = GetHitVar{hittime: -1, yaccel: float32(math.NaN()),
-		xoff: ghv.xoff, yoff: ghv.yoff, zoff: ghv.zoff, hitid: -1, playerNo: -1}
-	ghv.fall.clear()
+func (ghv *GetHitVar) clear(c *Char) {
+	*ghv = GetHitVar{
+		hittime: -1,
+		yaccel: 0.35 / c.localscl,
+		xoff: ghv.xoff,
+		yoff: ghv.yoff,
+		zoff: ghv.zoff,
+		hitid: -1,
+		playerNo: -1,
+	}
+	ghv.fall.clear(c.localscl)
 }
+
 func (ghv *GetHitVar) clearOff() {
 	ghv.xoff, ghv.yoff, ghv.zoff = 0, 0, 0
 }
-func (ghv GetHitVar) getXaccel(c *Char) float32 {
-	if math.IsNaN(float64(ghv.xaccel)) {
-		return 0
-	}
-	return ghv.xaccel
-}
-func (ghv GetHitVar) getYaccel(c *Char) float32 {
-	if math.IsNaN(float64(ghv.yaccel)) {
-		return 0.35 / (c.localscl * (320 / float32(sys.gameWidth)))
-	}
-	return ghv.yaccel
-}
-func (ghv GetHitVar) getZaccel(c *Char) float32 {
-	if math.IsNaN(float64(ghv.zaccel)) {
-		return 0
-	}
-	return ghv.zaccel
-}
+
 func (ghv GetHitVar) chainId() int32 {
 	if ghv.hitid > 0 {
 		return ghv.hitid
@@ -1212,20 +1205,25 @@ func (e *Explod) setBind(bId int32) {
 	e.bindId = bId
 }
 
-// Initial pos setting based on postype and space. This function probably needs a heavy refactor.
+// Set explod position based on postype and space
 func (e *Explod) setPos(c *Char) {
 	pPos := func(c *Char) {
 		e.bindId, e.facing = c.id, c.facing
+
 		e.relativePos[0] *= c.facing
+
+		posX := (c.pos[0] + c.offsetX()) * c.localscl / e.localscl
+		posY := (c.pos[1] + c.offsetY()) * c.localscl / e.localscl
+		posZ := c.pos[2] * c.localscl / e.localscl
+
 		if e.space == Space_screen {
-			e.offset[0] = c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl
-			e.offset[1] = sys.cam.GroundLevel()*e.localscl +
-				c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl
-			e.offset[2] = ClampF(c.pos[2]*c.localscl/e.localscl, sys.stage.stageCamera.topz, sys.stage.stageCamera.botz)
+			e.offset[0] = posX
+			e.offset[1] = sys.cam.GroundLevel()*e.localscl + posY
+			e.offset[2] = ClampF(posZ, sys.stage.stageCamera.topz, sys.stage.stageCamera.botz)
 		} else {
-			e.setX(c.pos[0]*c.localscl/e.localscl + c.offsetX()*c.localscl/e.localscl)
-			e.setY(c.pos[1]*c.localscl/e.localscl + c.offsetY()*c.localscl/e.localscl)
-			e.setZ(c.pos[2] * c.localscl / e.localscl)
+			e.setX(posX)
+			e.setY(posY)
+			e.setZ(posZ)
 		}
 	}
 	lPos := func() {
@@ -1262,7 +1260,7 @@ func (e *Explod) setPos(c *Char) {
 		if e.postype == PT_Back {
 			e.facing = c.facing
 		}
-		// Due to binding constraints, adjust the front and back to either left or right.
+		// Convert back and front types to left and right
 		if c.facing > 0 && e.postype == PT_Front || c.facing < 0 && e.postype == PT_Back {
 			if e.postype == PT_Back {
 				e.relativePos[0] *= -1
@@ -1270,7 +1268,7 @@ func (e *Explod) setPos(c *Char) {
 			e.postype = PT_Right
 			rPos()
 		} else {
-			// explod's postype = front does not cause pos to invert based on the character's facing
+			// postype = front does not cause pos to invert based on the character's facing
 			//if e.postype == PT_Front && c.gi().mugenver[0] != 1 {
 			// In older versions, front does not reflect the character's facing direction
 			// It seems that even in version 1.1, it is not reflected
@@ -1288,14 +1286,6 @@ func (e *Explod) setPos(c *Char) {
 			e.offset[0] = -(float32(sys.gameWidth) / e.localscl / 2)
 		}
 	}
-	// Update: Importing this bug negatively impacts Ikemenversion chars' ability to modify non-Ikemenversion chars' explods
-	// In MUGEN 1.1, there's a bug where, when an explod gets to face left
-	// The engine will leave the sprite facing to that side indefinitely.
-	// Ikemen chars aren't affected by this.
-	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[0] == 0 && !e.lockSpriteFacing &&
-	//	e.facing*e.relativef < 0 {
-	//	e.lockSpriteFacing = true
-	//}
 }
 func (e *Explod) matchId(eid, pid int32) bool {
 	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
@@ -1441,7 +1431,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 	drawscale := [2]float32{facing * scale[0] * e.localscl, e.vfacing * scale[1] * e.localscl}
 
 	// Apply Z axis perspective
-	if e.space == Space_stage && sys.stage.topbound != sys.stage.botbound {
+	if e.space == Space_stage && sys.zmin != sys.zmax {
 		zscale := sys.updateZScale(e.pos[2], e.localscl)
 		drawpos[0] *= zscale
 		drawpos[1] *= zscale
@@ -1710,7 +1700,7 @@ func (p *Projectile) clear() {
 		aimg:           *newAfterImage(),
 		platformFence:  true,
 	}
-	p.hitdef.clear()
+	p.hitdef.clear(p.localscl)
 }
 
 func (p *Projectile) setPos(pos [3]float32) {
@@ -1758,8 +1748,8 @@ func (p *Projectile) update(playerNo int) {
 					p.velocity[0]*p.facing > 0 && p.pos[0] > sys.cam.XMax/p.localscl+float32(p.stagebound) ||
 					p.velocity[1] > 0 && p.pos[1] > float32(p.heightbound[1]) ||
 					p.velocity[1] < 0 && p.pos[1] < float32(p.heightbound[0]) ||
-					p.pos[2] < (sys.stage.topbound/p.localscl-float32(p.depthbound)) ||
-					p.pos[2] > (sys.stage.botbound/p.localscl+float32(p.depthbound)) {
+					p.pos[2] < (sys.zmin/p.localscl-float32(p.depthbound)) ||
+					p.pos[2] > (sys.zmax/p.localscl+float32(p.depthbound)) {
 					if p.remanim != p.anim || p.remanim_ffx != p.anim_ffx {
 						p.ani = sys.chars[playerNo][0].getAnim(p.remanim, p.remanim_ffx, true)
 					}
@@ -1998,7 +1988,7 @@ func (p *Projectile) cueDraw(oldVer bool, playerNo int) {
 		p.scale[1] * p.localscl * p.zScale}
 
 	// Apply Z axis perspective
-	if sys.stage.topbound != sys.stage.botbound {
+	if sys.zmin != sys.zmax {
 		pos[0] *= p.zScale
 		pos[1] *= p.zScale
 		pos[1] += p.interPos[2] * p.localscl
@@ -2329,9 +2319,8 @@ func (c *Char) init(n int, idx int32) {
 }
 func (c *Char) clearState() {
 	c.ss.clear()
-	c.hitdef.clear()
-	c.ghv.clear()
-	c.ghv.fall.yvelocity /= c.localscl
+	c.hitdef.clear(c.localscl)
+	c.ghv.clear(c)
 	c.ghv.clearOff()
 	c.hitby = [8]HitBy{}
 	c.mhv.clear()
@@ -2669,7 +2658,9 @@ func (c *Char) load(def string) error {
 
 	gi.constants = make(map[string]float32)
 	gi.constants["default.attack.lifetopowermul"] = 0.7
+	gi.constants["super.attack.lifetopowermul"] = 0
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
+	gi.constants["super.gethit.lifetopowermul"] = 0.6
 	gi.constants["super.targetdefencemul"] = 1.5
 	gi.constants["default.lifetoguardpointsmul"] = 1.5
 	gi.constants["super.lifetoguardpointsmul"] = -0.33
@@ -3232,7 +3223,7 @@ func (c *Char) clearMoveHit() {
 	c.counterHit = false
 }
 func (c *Char) clearHitDef() {
-	c.hitdef.clear()
+	c.hitdef.clear(c.localscl)
 }
 
 func (c *Char) changeAnimEx(animNo int32, playerNo int, ffx string, alt bool) {
@@ -3531,7 +3522,7 @@ func (c *Char) bottomEdge() float32 {
 	return sys.cam.ScreenPos[1]/c.localscl + c.gameHeight()
 }
 func (c *Char) bottomEdgeDist() float32 {
-	return sys.stage.botbound/c.localscl - c.pos[2]
+	return sys.zmax/c.localscl - c.pos[2]
 }
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
@@ -4214,7 +4205,7 @@ func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
 func (c *Char) topEdgeDist() float32 {
-	return sys.stage.topbound/c.localscl - c.pos[2]
+	return sys.zmin/c.localscl - c.pos[2]
 }
 func (c *Char) win() bool {
 	if c.teamside == -1 {
@@ -4835,6 +4826,9 @@ func (c *Char) getAnim(n int32, ffx string, fx bool) (a *Animation) {
 func (c *Char) setPosX(x float32) {
 	if c.pos[0] != x {
 		c.pos[0] = x
+		// We do this because Mugen is very sensitive to enemy position changes
+		// Perhaps what it does is only calculate who "enemynear" is when the trigger is called?
+		// "P2" enemy reference is less sensitive than this however
 		c.enemyNearClear()
 		if c.player {
 			for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
@@ -4846,7 +4840,7 @@ func (c *Char) setPosX(x float32) {
 	}
 }
 
-func (c *Char) setPosY(y float32) { // TODO: Do we really need these two functions?
+func (c *Char) setPosY(y float32) { // These functions mostly exist right now so we don't forget to use setPosX for X
 	c.pos[1] = y
 }
 
@@ -4866,10 +4860,11 @@ func (c *Char) posReset() {
 		c.setY(float32(sys.stage.p[c.playerNo].starty) * sys.stage.localscl / c.localscl)
 		c.setZ(float32(sys.stage.p[c.playerNo].startz) * sys.stage.localscl / c.localscl)
 	}
-	c.setXV(0)
-	c.setYV(0)
-	c.setZV(0)
+	c.vel[0] = 0
+	c.vel[1] = 0
+	c.vel[2] = 0
 }
+
 func (c *Char) setX(x float32) {
 	c.oldPos[0], c.interPos[0] = x, x
 	c.setPosX(x)
@@ -4882,6 +4877,7 @@ func (c *Char) setZ(z float32) {
 	c.oldPos[2], c.interPos[2] = z, z
 	c.setPosZ(z)
 }
+
 func (c *Char) addX(x float32) {
 	c.setX(c.pos[0] + c.facing*x)
 }
@@ -4892,34 +4888,6 @@ func (c *Char) addZ(z float32) {
 	c.setZ(c.pos[2] + z)
 }
 
-// Velocity functions
-func (c *Char) addXV(xv float32) {
-	c.vel[0] += xv
-}
-func (c *Char) addYV(yv float32) {
-	c.vel[1] += yv
-}
-func (c *Char) addZV(zv float32) {
-	c.vel[2] += zv
-}
-func (c *Char) setXV(xv float32) {
-	c.vel[0] = xv
-}
-func (c *Char) setYV(yv float32) {
-	c.vel[1] = yv
-}
-func (c *Char) setZV(zv float32) {
-	c.vel[2] = zv
-}
-func (c *Char) mulXV(xv float32) {
-	c.vel[0] *= xv
-}
-func (c *Char) mulYV(yv float32) {
-	c.vel[1] *= yv
-}
-func (c *Char) mulZV(zv float32) {
-	c.vel[2] *= zv
-}
 func (c *Char) shadXOff(xv float32, isReflect bool) {
 	if !isReflect {
 		c.shadowOffset[0] = xv
@@ -5067,14 +5035,7 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 		}
 		return false
 	}
-	ifnanset(&hd.ground_velocity[0], 0)
-	ifnanset(&hd.ground_velocity[1], 0)
-	ifnanset(&hd.ground_velocity[2], 0)
-	ifnanset(&hd.air_velocity[0], 0)
-	ifnanset(&hd.air_velocity[1], 0)
-	ifnanset(&hd.air_velocity[2], 0)
 	ifnanset(&hd.guard_velocity[0], hd.ground_velocity[0])
-	ifnanset(&hd.guard_velocity[1], 0) // We don't want chars to be launched while guarding
 	ifnanset(&hd.guard_velocity[2], hd.ground_velocity[2])
 	ifnanset(&hd.airguard_velocity[0], hd.air_velocity[0]*1.5)
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
@@ -5082,11 +5043,7 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
 	ifnanset(&hd.down_velocity[2], hd.air_velocity[2])
-	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
-	ifnanset(&hd.fall.zvelocity, 0) // Just to be sure
 	ifierrset(&hd.fall.envshake_ampl, -4)
-	ifnanset(&hd.xaccel, 0)
-	ifnanset(&hd.zaccel, 0) // Here too
 
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
@@ -5116,13 +5073,14 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
-	ifierrset(&hd.hitgetpower,
-		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
-	ifierrset(&hd.hitgivepower,
-		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgivepower, int32(float32(hd.hitgivepower)*0.5))
+	// Super attack behaviour
 	if hd.attr&int32(AT_AH) != 0 {
+		ifierrset(&hd.hitgetpower,
+			int32(c.gi().constants["super.attack.lifetopowermul"]*float32(hd.hitdamage)))
+		ifierrset(&hd.hitgivepower,
+			int32(c.gi().constants["super.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
@@ -5132,6 +5090,10 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 		ifierrset(&hd.guardredlife,
 			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.guarddamage)))
 	} else {
+		ifierrset(&hd.hitgetpower,
+			int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
+		ifierrset(&hd.hitgivepower,
+			int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
@@ -5420,14 +5382,6 @@ func (c *Char) setFacing(f float32) {
 		if (c.facing < 0) != (f < 0) {
 			c.facing *= -1
 			c.vel[0] *= -1
-			// Flip gethitvars on x axis
-			c.ghv.xvel *= -1
-			c.ghv.xaccel *= -1
-			c.ghv.ground_velocity[0] *= -1
-			c.ghv.air_velocity[0] *= -1
-			c.ghv.down_velocity[0] *= -1
-			c.ghv.guard_velocity[0] *= -1
-			c.ghv.airguard_velocity[0] *= -1
 		}
 	}
 }
@@ -5577,7 +5531,7 @@ func (c *Char) targetVelSetX(tar []int32, x float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			x *= c.localscl / t.localscl
-			t.setXV(x)
+			t.vel[0] = x
 		}
 	}
 }
@@ -5585,7 +5539,7 @@ func (c *Char) targetVelSetY(tar []int32, y float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			y *= c.localscl / t.localscl
-			t.setYV(y)
+			t.vel[1] = y
 		}
 	}
 }
@@ -5593,7 +5547,7 @@ func (c *Char) targetVelSetZ(tar []int32, z float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			z *= c.localscl / t.localscl
-			t.setZV(z)
+			t.vel[2] = z
 		}
 	}
 }
@@ -6039,18 +5993,6 @@ func (c *Char) p2BodyDistZ(oc *Char) BytecodeValue {
 	}
 }
 
-func (c *Char) hitVelSetX() {
-	// Movetype H is not required in Mugen
-	c.setXV(c.ghv.xvel)
-}
-func (c *Char) hitVelSetY() {
-	// Movetype H is not required in Mugen
-	c.setYV(c.ghv.yvel)
-}
-func (c *Char) hitVelSetZ() {
-	// Movetype H is not required in Mugen
-	c.setZV(c.ghv.zvel)
-}
 func (c *Char) setPauseTime(pausetime, movetime int32) {
 	if ^pausetime < sys.pausetime || c.playerNo != c.ss.sb.playerNo ||
 		sys.pauseplayer == c.playerNo {
@@ -6152,12 +6094,12 @@ func (c *Char) hitFallDamage() {
 func (c *Char) hitFallVel() {
 	if c.ss.moveType == MT_H {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
-			c.setXV(c.ghv.fall.xvelocity)
+			c.vel[0] = c.ghv.fall.xvelocity
 		}
+		c.vel[1] = c.ghv.fall.yvelocity
 		if !math.IsNaN(float64(c.ghv.fall.zvelocity)) {
-			c.setZV(c.ghv.fall.zvelocity)
+			c.vel[2] = c.ghv.fall.zvelocity
 		}
-		c.setYV(c.ghv.fall.yvelocity)
 	}
 }
 func (c *Char) hitFallSet(f int32, xv, yv, zv float32) {
@@ -6533,13 +6475,13 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if !math.IsNaN(float64(c.bindPos[0])) {
-				c.setXV(c.facing * bt.facing * bt.vel[0])
+				c.vel[0] = c.facing * bt.facing * bt.vel[0]
 			}
 			if !math.IsNaN(float64(c.bindPos[1])) {
-				c.setYV(bt.vel[1])
+				c.vel[1] = bt.vel[1]
 			}
 			if !math.IsNaN(float64(c.bindPos[2])) {
-				c.setZV(bt.vel[2])
+				c.vel[2] = bt.vel[2]
 			}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
@@ -6596,10 +6538,10 @@ func (c *Char) xScreenBound() {
 	c.setPosX(x)
 }
 
-func (c *Char) zWidthBound() {
+func (c *Char) zDepthBound() {
 	posz := c.pos[2]
 	if c.csf(CSF_stagebound) {
-		posz = ClampF(posz, sys.stage.topbound/c.localscl, sys.stage.botbound/c.localscl)
+		posz = ClampF(posz, sys.zmin/c.localscl, sys.zmax/c.localscl)
 	}
 	c.setPosZ(posz)
 }
@@ -7420,7 +7362,7 @@ func (c *Char) actionRun() {
 		c.gi().projidcount = 0
 	}
 	c.xScreenBound()
-	c.zWidthBound()
+	c.zDepthBound()
 
 	// Final scale calculations
 	// Clsn and size box scale used to factor zScale here, but they shouldn't
@@ -7961,12 +7903,12 @@ func (c *Char) cueDraw() {
 			c.size.yscale * c.zScale * (320 / c.localcoord)}
 
 		// Apply Z axis perspective
-		if sys.stage.topbound != sys.stage.botbound {
+		if sys.zmin != sys.zmax {
 			pos[0] *= c.zScale
 			pos[1] *= c.zScale
 			pos[1] += c.interPos[2] * c.localscl
 		}
-		//if sys.stage.topbound != sys.stage.botbound {
+		//if sys.zmin != sys.zmax {
 		//	ratio := float32(1.618) // Possible stage parameter?
 		//	pos[0] *= 1 + (ratio-1)*(c.zScale-1)
 		//	pos[1] *= 1 + (ratio-1)*(c.zScale-1)
@@ -8432,7 +8374,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				cheese := ghv.cheeseKO
 				// Clear variables
 				// TODO: It's possible that this doesn't need to happen, like ReversalDef
-				ghv.clear()
+				ghv.clear(getter)
 				// Restore persistent variables
 				ghv.hitBy = by
 				ghv.damage = dmg
@@ -8451,7 +8393,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.hitid = hd.id
 				ghv.playerNo = hd.playerNo
 				ghv.id = hd.attackerID
-				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl)
+				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl) * -byf
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
 				ghv.zaccel = hd.zaccel * (c.localscl / getter.localscl)
 				ghv.groundtype = hd.ground_type
@@ -8476,12 +8418,12 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.slidetime = hd.guard_slidetime
 					if getter.ss.stateType == ST_A {
 						ghv.ctrltime = hd.airguard_ctrltime
-						ghv.xvel = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.airguard_velocity[0] * (c.localscl / getter.localscl) * -byf
 						ghv.yvel = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
 						ghv.zvel = hd.airguard_velocity[2] * (c.localscl / getter.localscl)
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
-						ghv.xvel = hd.guard_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.guard_velocity[0] * (c.localscl / getter.localscl) * -byf
 						// Mugen does not accept a Y component for ground guard velocity
 						// But since we're adding Z to the other parameters, let's add Y here as well to keep things consistent
 						ghv.yvel = hd.guard_velocity[1] * (c.localscl / getter.localscl)
@@ -8508,7 +8450,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						// Note: ctrl time is not affected on hit in Mugen
 						// This is further proof that gethitvars don't need to be reset above
 						ghv.ctrltime = hd.air_hittime
-						ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl) * -byf
 						ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 						ghv.zvel = hd.air_velocity[2] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.air_fall
@@ -8517,7 +8459,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						ghv.ctrltime = hd.down_hittime
 						ghv.fallflag = hd.ground_fall
 						if getter.pos[1] == 0 {
-							ghv.xvel = hd.down_velocity[0] * (c.localscl / getter.localscl)
+							ghv.xvel = hd.down_velocity[0] * (c.localscl / getter.localscl) * -byf
 							ghv.yvel = hd.down_velocity[1] * (c.localscl / getter.localscl)
 							ghv.zvel = hd.down_velocity[2] * (c.localscl / getter.localscl)
 							if !hd.down_bounce && ghv.yvel != 0 {
@@ -8526,13 +8468,13 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 								ghv.fall.zvelocity = float32(math.NaN())
 							}
 						} else {
-							ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
+							ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl) * -byf
 							ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 							ghv.zvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 						}
 					} else {
 						ghv.ctrltime = hd.ground_hittime
-						ghv.xvel = hd.ground_velocity[0] * (c.localscl / getter.localscl)
+						ghv.xvel = hd.ground_velocity[0] * (c.localscl / getter.localscl) * -byf
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 						ghv.zvel = hd.ground_velocity[2] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.ground_fall
@@ -8576,19 +8518,19 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					}
 				}
 				// Save velocities regardless of statetype
-				ghv.ground_velocity[0] = hd.ground_velocity[0] * (c.localscl / getter.localscl)
+				ghv.ground_velocity[0] = hd.ground_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.ground_velocity[1] = hd.ground_velocity[1] * (c.localscl / getter.localscl)
 				ghv.ground_velocity[2] = hd.ground_velocity[2] * (c.localscl / getter.localscl)
-				ghv.air_velocity[0] = hd.air_velocity[0] * (c.localscl / getter.localscl)
+				ghv.air_velocity[0] = hd.air_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.air_velocity[1] = hd.air_velocity[1] * (c.localscl / getter.localscl)
 				ghv.air_velocity[2] = hd.air_velocity[2] * (c.localscl / getter.localscl)
-				ghv.down_velocity[0] = hd.down_velocity[0] * (c.localscl / getter.localscl)
+				ghv.down_velocity[0] = hd.down_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.down_velocity[1] = hd.down_velocity[1] * (c.localscl / getter.localscl)
 				ghv.down_velocity[2] = hd.down_velocity[2] * (c.localscl / getter.localscl)
-				ghv.guard_velocity[0] = hd.guard_velocity[0] * (c.localscl / getter.localscl)
+				ghv.guard_velocity[0] = hd.guard_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.guard_velocity[1] = hd.guard_velocity[1] * (c.localscl / getter.localscl)
 				ghv.guard_velocity[2] = hd.guard_velocity[2] * (c.localscl / getter.localscl)
-				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
+				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl) * -byf
 				ghv.airguard_velocity[1] = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[2] = hd.airguard_velocity[2] * (c.localscl / getter.localscl)
 				ghv.airanimtype = hd.air_animtype
@@ -8909,8 +8851,8 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					byf = c.facing
 				}
 			}
+			// Flip low and high hit animations when hitting enemy from behind
 			if (getter.facing < 0) == (byf < 0) {
-				getter.ghv.xvel *= -1
 				if getter.ghv.groundtype == 1 || getter.ghv.groundtype == 2 {
 					getter.ghv.groundtype += 3 - getter.ghv.groundtype*2
 				}
@@ -9260,7 +9202,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									// In Mugen, ReversalDef does not clear the enemy's GetHitVars
 									// https://github.com/ikemen-engine/Ikemen-GO/issues/1891
 									// fall, by := getter.ghv.fallflag, getter.ghv.hitBy
-									// getter.ghv.clear()
+									// getter.ghv.clear(getter)
 									// getter.ghv.hitBy = by
 									// getter.ghv.fall = c.hitdef.fall
 
@@ -9417,9 +9359,9 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				// Determine in which axes to push the players
 				// This needs to check both if the players have velocity or if their positions changed
-				pushx := sys.stage.topbound == sys.stage.botbound ||
+				pushx := sys.zmin == sys.zmax ||
 					getter.vel[0] != 0 || c.vel[0] != 0 || getter.pos[0] != getter.oldPos[0] || c.pos[0] != c.oldPos[0]
-				pushz := sys.stage.topbound != sys.stage.botbound &&
+				pushz := sys.zmin != sys.zmax &&
 					(getter.vel[2] != 0 || c.vel[2] != 0 || getter.pos[2] != getter.oldPos[2] || c.pos[2] != c.oldPos[2])
 
 				if pushx {
@@ -9490,8 +9432,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 						}
 					}
 					// Clamp Z positions
-					c.zWidthBound()
-					getter.zWidthBound()
+					c.zDepthBound()
+					getter.zDepthBound()
 
 				}
 
