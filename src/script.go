@@ -3745,6 +3745,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.ground_velocity[0])
 		case "ground.velocity.y":
 			ln = lua.LNumber(c.ghv.ground_velocity[1])
+		case "ground.velocity.z":
+			ln = lua.LNumber(c.ghv.ground_velocity[2])
 		case "air.velocity.x":
 			ln = lua.LNumber(c.ghv.air_velocity[0])
 		case "air.velocity.y":
