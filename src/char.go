@@ -5074,7 +5074,7 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifnanset(&hd.air_velocity[1], 0)
 	ifnanset(&hd.air_velocity[2], 0)
 	ifnanset(&hd.guard_velocity[0], hd.ground_velocity[0])
-	ifnanset(&hd.guard_velocity[1], 0) // We don't want chars to be launched while blocking
+	ifnanset(&hd.guard_velocity[1], 0) // We don't want chars to be launched while guarding
 	ifnanset(&hd.guard_velocity[2], hd.ground_velocity[2])
 	ifnanset(&hd.airguard_velocity[0], hd.air_velocity[0]*1.5)
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
