@@ -139,6 +139,7 @@ const (
 	OC_pos_y
 	OC_vel_x
 	OC_vel_y
+	OC_vel_z
 	OC_screenpos_x
 	OC_screenpos_y
 	OC_facing
@@ -178,7 +179,9 @@ const (
 	OC_leftedge
 	OC_rightedge
 	OC_topedge
+	OC_topedgedist
 	OC_bottomedge
+	OC_bottomedgedist
 	OC_camerapos_x
 	OC_camerapos_y
 	OC_camerazoom
@@ -204,6 +207,7 @@ const (
 	OC_hitfall
 	OC_hitvel_x
 	OC_hitvel_y
+	OC_hitvel_z
 	OC_player
 	OC_parent
 	OC_root
@@ -369,6 +373,8 @@ const (
 	OC_const_stagevar_camera_lowestcap
 	OC_const_stagevar_playerinfo_leftbound
 	OC_const_stagevar_playerinfo_rightbound
+	OC_const_stagevar_playerinfo_topbound
+	OC_const_stagevar_playerinfo_botbound
 	OC_const_stagevar_scaling_topz
 	OC_const_stagevar_scaling_botz
 	OC_const_stagevar_scaling_topscale
@@ -463,9 +469,13 @@ const (
 	OC_ex_gethitvar_ctrltime
 	OC_ex_gethitvar_xoff
 	OC_ex_gethitvar_yoff
+	OC_ex_gethitvar_zoff
 	OC_ex_gethitvar_xvel
 	OC_ex_gethitvar_yvel
+	OC_ex_gethitvar_zvel
+	OC_ex_gethitvar_xaccel
 	OC_ex_gethitvar_yaccel
+	OC_ex_gethitvar_zaccel
 	OC_ex_gethitvar_chainid
 	OC_ex_gethitvar_guarded
 	OC_ex_gethitvar_isbound
@@ -473,6 +483,7 @@ const (
 	OC_ex_gethitvar_fall_damage
 	OC_ex_gethitvar_fall_xvel
 	OC_ex_gethitvar_fall_yvel
+	OC_ex_gethitvar_fall_zvel
 	OC_ex_gethitvar_fall_recover
 	OC_ex_gethitvar_fall_time
 	OC_ex_gethitvar_fall_recovertime
@@ -500,17 +511,22 @@ const (
 	OC_ex_gethitvar_facing
 	OC_ex_gethitvar_ground_velocity_x
 	OC_ex_gethitvar_ground_velocity_y
+	OC_ex_gethitvar_ground_velocity_z
 	OC_ex_gethitvar_air_velocity_x
 	OC_ex_gethitvar_air_velocity_y
+	OC_ex_gethitvar_air_velocity_z
 	OC_ex_gethitvar_down_velocity_x
 	OC_ex_gethitvar_down_velocity_y
+	OC_ex_gethitvar_down_velocity_z
 	OC_ex_gethitvar_guard_velocity_x
+	OC_ex_gethitvar_guard_velocity_y
+	OC_ex_gethitvar_guard_velocity_z
 	OC_ex_gethitvar_airguard_velocity_x
 	OC_ex_gethitvar_airguard_velocity_y
+	OC_ex_gethitvar_airguard_velocity_z
 	OC_ex_gethitvar_frame
 	OC_ex_gethitvar_down_recover
 	OC_ex_gethitvar_down_recovertime
-	OC_ex_gethitvar_xaccel
 	OC_ex_ailevelf
 	OC_ex_animframe_alphadest
 	OC_ex_animframe_angle
@@ -1494,6 +1510,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(int32(c.backEdgeDist() * (c.localscl / oc.localscl)))
 		case OC_bottomedge:
 			sys.bcStack.PushF(c.bottomEdge() * (c.localscl / oc.localscl))
+		case OC_bottomedgedist:
+			sys.bcStack.PushF(c.bottomEdgeDist() * (c.localscl / oc.localscl))
 		case OC_camerapos_x:
 			sys.bcStack.PushF(sys.cam.Pos[0] / oc.localscl)
 		case OC_camerapos_y:
@@ -1575,6 +1593,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(c.hitVelX() * (c.localscl / oc.localscl))
 		case OC_hitvel_y:
 			sys.bcStack.PushF(c.hitVelY() * (c.localscl / oc.localscl))
+		case OC_hitvel_z:
+			sys.bcStack.PushF(c.hitVelZ() * (c.localscl / oc.localscl))
 		case OC_id:
 			sys.bcStack.PushI(c.id)
 		case OC_inguarddist:
@@ -1680,12 +1700,16 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.time())
 		case OC_topedge:
 			sys.bcStack.PushF(c.topEdge() * (c.localscl / oc.localscl))
+		case OC_topedgedist:
+			sys.bcStack.PushF(c.topEdgeDist() * (c.localscl / oc.localscl))
 		case OC_uniqhitcount:
 			sys.bcStack.PushI(c.uniqHitCount)
 		case OC_vel_x:
 			sys.bcStack.PushF(c.vel[0] * (c.localscl / oc.localscl))
 		case OC_vel_y:
 			sys.bcStack.PushF(c.vel[1] * (c.localscl / oc.localscl))
+		case OC_vel_z:
+			sys.bcStack.PushF(c.vel[2] * (c.localscl / oc.localscl))
 		case OC_st_:
 			be.run_st(c, &i)
 		case OC_const_:
@@ -2080,6 +2104,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.stage.leftbound * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_playerinfo_rightbound:
 		sys.bcStack.PushF(sys.stage.rightbound * sys.stage.localscl / oc.localscl)
+	case OC_const_stagevar_playerinfo_topbound:
+		sys.bcStack.PushF(sys.stage.topbound * sys.stage.localscl / oc.localscl)
+	case OC_const_stagevar_playerinfo_botbound:
+		sys.bcStack.PushF(sys.stage.botbound * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_scaling_topz:
 		sys.bcStack.PushF(sys.stage.stageCamera.topz)
 	case OC_const_stagevar_scaling_botz:
@@ -2256,12 +2284,20 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.xoff * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_yoff:
 		sys.bcStack.PushF(c.ghv.yoff * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_zoff:
+		sys.bcStack.PushF(c.ghv.zoff * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_xvel:
 		sys.bcStack.PushF(c.ghv.xvel * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_yvel:
 		sys.bcStack.PushF(c.ghv.yvel * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_zvel:
+		sys.bcStack.PushF(c.ghv.zvel * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_xaccel:
+		sys.bcStack.PushF(c.ghv.getXaccel(oc) * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_yaccel:
 		sys.bcStack.PushF(c.ghv.getYaccel(oc) * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_zaccel:
+		sys.bcStack.PushF(c.ghv.getZaccel(oc) * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_chainid:
 		sys.bcStack.PushI(c.ghv.chainId())
 	case OC_ex_gethitvar_guarded:
@@ -2276,6 +2312,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.fall.xvel() * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_yvel:
 		sys.bcStack.PushF(c.ghv.fall.yvelocity * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_fall_zvel:
+		sys.bcStack.PushF(c.ghv.fall.zvelocity * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_fall_recover:
 		sys.bcStack.PushB(c.ghv.fall.recover)
 	case OC_ex_gethitvar_fall_time:
@@ -2328,26 +2366,36 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.ghv.ground_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_ground_velocity_y:
 		sys.bcStack.PushF(c.ghv.ground_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_ground_velocity_z:
+		sys.bcStack.PushF(c.ghv.ground_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_x:
 		sys.bcStack.PushF(c.ghv.air_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_air_velocity_y:
 		sys.bcStack.PushF(c.ghv.air_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_air_velocity_z:
+		sys.bcStack.PushF(c.ghv.air_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_x:
 		sys.bcStack.PushF(c.ghv.down_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_down_velocity_y:
 		sys.bcStack.PushF(c.ghv.down_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_down_velocity_z:
+		sys.bcStack.PushF(c.ghv.down_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_guard_velocity_x:
-		sys.bcStack.PushF(c.ghv.guard_velocity * c.facing * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(c.ghv.guard_velocity[0] * c.facing * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_guard_velocity_y:
+		sys.bcStack.PushF(c.ghv.guard_velocity[1] * c.facing * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_guard_velocity_z:
+		sys.bcStack.PushF(c.ghv.guard_velocity[2] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_x:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[0] * c.facing * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_airguard_velocity_y:
 		sys.bcStack.PushF(c.ghv.airguard_velocity[1] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_airguard_velocity_z:
+		sys.bcStack.PushF(c.ghv.airguard_velocity[2] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_frame:
 		sys.bcStack.PushB(c.ghv.frame)
 	case OC_ex_gethitvar_down_recover:
 		sys.bcStack.PushB(c.ghv.down_recover)
-	case OC_ex_gethitvar_xaccel:
-		sys.bcStack.PushF(c.ghv.getXaccel(oc) * (c.localscl / oc.localscl))
 	case OC_ex_ailevelf:
 		if !c.asf(ASF_noailevel) {
 			sys.bcStack.PushF(c.aiLevel())
@@ -3086,6 +3134,19 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		}
 		fallthrough
 	case OC_ex2_explodvar_pos_y:
+		if !camCorrected {
+			camCorrected = true
+			correctScale = true
+		}
+		idx := sys.bcStack.Pop()
+		id := sys.bcStack.Pop()
+		v := c.explodVar(id, idx, opc)
+		if correctScale {
+			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) - camOff)
+		} else {
+			sys.bcStack.Push(v)
+		}
+	case OC_ex2_explodvar_pos_z:
 		if !camCorrected {
 			camCorrected = true
 			correctScale = true
@@ -5872,6 +5933,7 @@ const (
 	hitDef_fall_damage
 	hitDef_fall_xvelocity
 	hitDef_fall_yvelocity
+	hitDef_fall_zvelocity
 	hitDef_fall_recover
 	hitDef_fall_recovertime
 	hitDef_sparkno
@@ -5906,12 +5968,14 @@ const (
 	hitDef_airguard_ctrltime
 	hitDef_ground_velocity_x
 	hitDef_ground_velocity_y
-	hitDef_ground_velocity
+	hitDef_ground_velocity_z
 	hitDef_guard_velocity
 	hitDef_ground_cornerpush_veloff
 	hitDef_guard_cornerpush_veloff
 	hitDef_airguard_cornerpush_veloff
+	hitDef_xaccel
 	hitDef_yaccel
+	hitDef_zaccel
 	hitDef_envshake_time
 	hitDef_envshake_ampl
 	hitDef_envshake_phase
@@ -5930,7 +5994,6 @@ const (
 	hitDef_p2clsnrequire
 	hitDef_down_recover
 	hitDef_down_recovertime
-	hitDef_xaccel
 	hitDef_attack_depth
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
@@ -6043,6 +6106,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.fall.xvelocity = exp[0].evalF(c)
 	case hitDef_fall_yvelocity:
 		hd.fall.yvelocity = exp[0].evalF(c)
+	case hitDef_fall_zvelocity:
+		hd.fall.zvelocity = exp[0].evalF(c)
 	case hitDef_fall_recover:
 		hd.fall.recover = exp[0].evalB(c)
 	case hitDef_fall_recovertime:
@@ -6073,7 +6138,7 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		if len(exp) > 1 {
 			hd.mindist[1] = exp[1].evalF(c)
 			if len(exp) > 2 {
-				exp[2].run(c)
+				hd.mindist[2] = exp[2].evalF(c)
 			}
 		}
 	case hitDef_maxdist:
@@ -6081,7 +6146,7 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		if len(exp) > 1 {
 			hd.maxdist[1] = exp[1].evalF(c)
 			if len(exp) > 2 {
-				exp[2].run(c)
+				hd.maxdist[2] = exp[2].evalF(c)
 			}
 		}
 	case hitDef_snap:
@@ -6089,9 +6154,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		if len(exp) > 1 {
 			hd.snap[1] = exp[1].evalF(c)
 			if len(exp) > 2 {
-				exp[2].run(c)
+				hd.snap[2] = exp[2].evalF(c)
 				if len(exp) > 3 {
-					hd.snapt = exp[3].evalI(c)
+					hd.snaptime = exp[3].evalI(c)
 				}
 			}
 		}
@@ -6112,6 +6177,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.down_velocity[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
 			hd.down_velocity[1] = exp[1].evalF(c)
+		}
+		if len(exp) > 2 {
+			hd.down_velocity[2] = exp[2].evalF(c)
 		}
 	case hitDef_down_cornerpush_veloff:
 		hd.down_cornerpush_veloff = exp[0].evalF(c)
@@ -6142,10 +6210,16 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		if len(exp) > 1 {
 			hd.air_velocity[1] = exp[1].evalF(c)
 		}
+		if len(exp) > 2 {
+			hd.air_velocity[2] = exp[2].evalF(c)
+		}
 	case hitDef_airguard_velocity:
 		hd.airguard_velocity[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
 			hd.airguard_velocity[1] = exp[1].evalF(c)
+		}
+		if len(exp) > 2 {
+			hd.airguard_velocity[2] = exp[2].evalF(c)
 		}
 	case hitDef_ground_slidetime:
 		hd.ground_slidetime = exp[0].evalI(c)
@@ -6165,16 +6239,28 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.ground_velocity[0] = exp[0].evalF(c)
 	case hitDef_ground_velocity_y:
 		hd.ground_velocity[1] = exp[0].evalF(c)
+	case hitDef_ground_velocity_z:
+		hd.ground_velocity[2] = exp[0].evalF(c)
 	case hitDef_guard_velocity:
-		hd.guard_velocity = exp[0].evalF(c)
+		hd.guard_velocity[0] = exp[0].evalF(c)
+		if len(exp) > 1 {
+			hd.guard_velocity[1] = exp[1].evalF(c)
+		}
+		if len(exp) > 2 {
+			hd.guard_velocity[2] = exp[2].evalF(c)
+		}
 	case hitDef_ground_cornerpush_veloff:
 		hd.ground_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_guard_cornerpush_veloff:
 		hd.guard_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_airguard_cornerpush_veloff:
 		hd.airguard_cornerpush_veloff = exp[0].evalF(c)
+	case hitDef_xaccel:
+		hd.xaccel = exp[0].evalF(c)
 	case hitDef_yaccel:
 		hd.yaccel = exp[0].evalF(c)
+	case hitDef_zaccel:
+		hd.zaccel = exp[0].evalF(c)
 	case hitDef_envshake_time:
 		hd.envshake_time = exp[0].evalI(c)
 	case hitDef_envshake_ampl:
@@ -6227,8 +6313,6 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, id byte, exp []BytecodeExp) bool {
 		hd.down_recover = exp[0].evalB(c)
 	case hitDef_down_recovertime:
 		hd.down_recovertime = exp[0].evalI(c)
-	case hitDef_xaccel:
-		hd.xaccel = exp[0].evalF(c)
 	case hitDef_attack_depth:
 		hd.attack.depth[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -7008,6 +7092,10 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				eachProj(func(p *Projectile) {
 					p.hitdef.fall.yvelocity = exp[0].evalF(c)
 				})
+			case hitDef_fall_zvelocity:
+				eachProj(func(p *Projectile) {
+					p.hitdef.fall.zvelocity = exp[0].evalF(c)
+				})
 			case hitDef_fall_recover:
 				eachProj(func(p *Projectile) {
 					p.hitdef.fall.recover = exp[0].evalB(c)
@@ -7054,7 +7142,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					if len(exp) > 1 {
 						p.hitdef.mindist[1] = exp[1].evalF(c)
 						if len(exp) > 2 {
-							exp[2].run(c)
+							p.hitdef.mindist[2] = exp[2].evalF(c)
 						}
 					}
 				})
@@ -7064,7 +7152,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					if len(exp) > 1 {
 						p.hitdef.maxdist[1] = exp[1].evalF(c)
 						if len(exp) > 2 {
-							exp[2].run(c)
+							p.hitdef.maxdist[2] = exp[2].evalF(c)
 						}
 					}
 				})
@@ -7074,9 +7162,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					if len(exp) > 1 {
 						p.hitdef.snap[1] = exp[1].evalF(c)
 						if len(exp) > 2 {
-							exp[2].run(c)
+							p.hitdef.snap[2] = exp[2].evalF(c)
 							if len(exp) > 3 {
-								p.hitdef.snapt = exp[3].evalI(c)
+								p.hitdef.snaptime = exp[3].evalI(c)
 							}
 						}
 					}
@@ -7109,6 +7197,9 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.hitdef.down_velocity[0] = exp[0].evalF(c)
 					if len(exp) > 1 {
 						p.hitdef.down_velocity[1] = exp[1].evalF(c)
+					}
+					if len(exp) > 2 {
+						p.hitdef.down_velocity[2] = exp[2].evalF(c)
 					}
 				})
 			//case hitDef_down_cornerpush_veloff:
@@ -7151,12 +7242,18 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					if len(exp) > 1 {
 						p.hitdef.air_velocity[1] = exp[1].evalF(c)
 					}
+					if len(exp) > 2 {
+						p.hitdef.air_velocity[2] = exp[2].evalF(c)
+					}
 				})
 			case hitDef_airguard_velocity:
 				eachProj(func(p *Projectile) {
 					p.hitdef.airguard_velocity[0] = exp[0].evalF(c)
 					if len(exp) > 1 {
 						p.hitdef.airguard_velocity[1] = exp[1].evalF(c)
+					}
+					if len(exp) > 2 {
+						p.hitdef.airguard_velocity[2] = exp[2].evalF(c)
 					}
 				})
 			case hitDef_ground_slidetime:
@@ -7183,9 +7280,19 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				eachProj(func(p *Projectile) {
 					p.hitdef.ground_velocity[1] = exp[0].evalF(c)
 				})
+			case hitDef_ground_velocity_z:
+				eachProj(func(p *Projectile) {
+					p.hitdef.ground_velocity[2] = exp[0].evalF(c)
+				})
 			case hitDef_guard_velocity:
 				eachProj(func(p *Projectile) {
-					p.hitdef.guard_velocity = exp[0].evalF(c)
+					p.hitdef.guard_velocity[0] = exp[0].evalF(c)
+					if len(exp) > 1 {
+						p.hitdef.guard_velocity[1] = exp[0].evalF(c)
+					}
+					if len(exp) > 2 {
+						p.hitdef.guard_velocity[2] = exp[0].evalF(c)
+					}
 				})
 			//case hitDef_ground_cornerpush_veloff:
 			//	p.hitdef.ground_cornerpush_veloff = exp[0].evalF(c)
@@ -7193,9 +7300,17 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			//	p.hitdef.guard_cornerpush_veloff = exp[0].evalF(c)
 			//case hitDef_airguard_cornerpush_veloff:
 			//	p.hitdef.airguard_cornerpush_veloff = exp[0].evalF(c)
+			case hitDef_xaccel:
+				eachProj(func(p *Projectile) {
+					p.hitdef.xaccel = exp[0].evalF(c)
+			})
 			case hitDef_yaccel:
 				eachProj(func(p *Projectile) {
 					p.hitdef.yaccel = exp[0].evalF(c)
+				})
+			case hitDef_zaccel:
+				eachProj(func(p *Projectile) {
+					p.hitdef.zaccel = exp[0].evalF(c)
 				})
 			case hitDef_envshake_time:
 				eachProj(func(p *Projectile) {
@@ -7284,10 +7399,6 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			case hitDef_down_recovertime:
 				eachProj(func(p *Projectile) {
 					p.hitdef.down_recovertime = exp[0].evalI(c)
-				})
-			case hitDef_xaccel:
-				eachProj(func(p *Projectile) {
-					p.hitdef.xaccel = exp[0].evalF(c)
 				})
 			case hitDef_attack_depth:
 				eachProj(
@@ -7688,6 +7799,7 @@ const (
 	targetVelSet_id byte = iota
 	targetVelSet_x
 	targetVelSet_y
+	targetVelSet_z
 	targetVelSet_redirectid
 )
 
@@ -7712,6 +7824,11 @@ func (sc targetVelSet) Run(c *Char, _ []int32) bool {
 				return false
 			}
 			crun.targetVelSetY(tar, exp[0].evalF(c)*lclscround)
+		case targetVelSet_z:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetVelSetZ(tar, exp[0].evalF(c)*lclscround)
 		case targetVelSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7735,6 +7852,7 @@ const (
 	targetVelAdd_id byte = iota
 	targetVelAdd_x
 	targetVelAdd_y
+	targetVelAdd_z
 	targetVelAdd_redirectid
 )
 
@@ -7759,6 +7877,11 @@ func (sc targetVelAdd) Run(c *Char, _ []int32) bool {
 				return false
 			}
 			crun.targetVelAddY(tar, exp[0].evalF(c)*lclscround)
+		case targetVelAdd_z:
+			if len(tar) == 0 {
+				return false
+			}
+			crun.targetVelAddZ(tar, exp[0].evalF(c)*lclscround)
 		case targetVelAdd_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -7970,6 +8093,7 @@ type hitVelSet StateControllerBase
 const (
 	hitVelSet_x byte = iota
 	hitVelSet_y
+	hitVelSet_z
 	hitVelSet_redirectid
 )
 
@@ -7984,6 +8108,10 @@ func (sc hitVelSet) Run(c *Char, _ []int32) bool {
 		case hitVelSet_y:
 			if exp[0].evalB(c) {
 				crun.hitVelSetY()
+			}
+		case hitVelSet_z:
+			if exp[0].evalB(c) {
+				crun.hitVelSetZ()
 			}
 		case hitVelSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
@@ -8893,12 +9021,13 @@ const (
 	hitFallSet_value byte = iota
 	hitFallSet_xvel
 	hitFallSet_yvel
+	hitFallSet_zvel
 	hitFallSet_redirectid
 )
 
 func (sc hitFallSet) Run(c *Char, _ []int32) bool {
 	crun := c
-	f, xv, yv := int32(-1), float32(math.NaN()), float32(math.NaN())
+	f, xv, yv, zv := int32(-1), float32(math.NaN()), float32(math.NaN()), float32(math.NaN())
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case hitFallSet_value:
@@ -8910,6 +9039,8 @@ func (sc hitFallSet) Run(c *Char, _ []int32) bool {
 			xv = exp[0].evalF(c)
 		case hitFallSet_yvel:
 			yv = exp[0].evalF(c)
+		case hitFallSet_zvel:
+			zv = exp[0].evalF(c)
 		case hitFallSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -8919,7 +9050,7 @@ func (sc hitFallSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.hitFallSet(f, xv, yv)
+	crun.hitFallSet(f, xv, yv, zv)
 	return false
 }
 
@@ -11032,6 +11163,8 @@ const (
 	modifyStageVar_camera_lowestcap
 	modifyStageVar_playerinfo_leftbound
 	modifyStageVar_playerinfo_rightbound
+	modifyStageVar_playerinfo_topbound
+	modifyStageVar_playerinfo_botbound
 	modifyStageVar_scaling_topz
 	modifyStageVar_scaling_botz
 	modifyStageVar_scaling_topscale
@@ -11110,6 +11243,10 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.leftbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
 		case modifyStageVar_playerinfo_rightbound:
 			s.rightbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
+		case modifyStageVar_playerinfo_topbound:
+			s.topbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
+		case modifyStageVar_playerinfo_botbound:
+			s.botbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
 		// Scaling group
 		case modifyStageVar_scaling_topz:
 			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topz
@@ -11359,6 +11496,7 @@ const (
 	getHitVarSet_fall_recovertime
 	getHitVarSet_fall_xvel
 	getHitVarSet_fall_yvel
+	getHitVarSet_fall_zvel
 	getHitVarSet_fallcount
 	getHitVarSet_ground_animtype
 	getHitVarSet_groundtype
@@ -11372,7 +11510,9 @@ const (
 	getHitVarSet_xvel
 	getHitVarSet_xaccel
 	getHitVarSet_yaccel
+	getHitVarSet_zaccel
 	getHitVarSet_yvel
+	getHitVarSet_zvel
 	getHitVarSet_redirectid
 )
 
@@ -11419,6 +11559,8 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.fall.xvelocity = exp[0].evalF(c) * lclscround
 		case getHitVarSet_fall_yvel:
 			crun.ghv.fall.yvelocity = exp[0].evalF(c) * lclscround
+		case getHitVarSet_fall_zvel:
+			crun.ghv.fall.zvelocity = exp[0].evalF(c) * lclscround
 		case getHitVarSet_fallcount:
 			crun.ghv.fallcount = exp[0].evalI(c)
 		case getHitVarSet_groundtype:
@@ -11437,12 +11579,16 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.slidetime = exp[0].evalI(c)
 		case getHitVarSet_xvel:
 			crun.ghv.xvel = exp[0].evalF(c) * crun.facing * lclscround
+		case getHitVarSet_yvel:
+			crun.ghv.yvel = exp[0].evalF(c) * lclscround
+		case getHitVarSet_zvel:
+			crun.ghv.zvel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_xaccel:
 			crun.ghv.xaccel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_yaccel:
 			crun.ghv.yaccel = exp[0].evalF(c) * lclscround
-		case getHitVarSet_yvel:
-			crun.ghv.yvel = exp[0].evalF(c) * lclscround
+		case getHitVarSet_zaccel:
+			crun.ghv.zaccel = exp[0].evalF(c) * lclscround
 		case getHitVarSet_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid

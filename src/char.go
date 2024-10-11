@@ -501,6 +501,7 @@ type Fall struct {
 	animtype       Reaction
 	xvelocity      float32
 	yvelocity      float32
+	zvelocity      float32
 	recover        bool
 	recovertime    int32
 	damage         int32
@@ -514,12 +515,13 @@ type Fall struct {
 
 func (f *Fall) clear() {
 	*f = Fall{animtype: RA_Unknown, xvelocity: float32(math.NaN()),
-		yvelocity: -4.5}
+		yvelocity: -4.5, zvelocity: float32(math.NaN())}
 }
 func (f *Fall) setDefault() {
 	*f = Fall{animtype: RA_Unknown,
 		xvelocity:      float32(math.NaN()),
 		yvelocity:      float32(math.NaN()),
+		zvelocity:      float32(math.NaN()),
 		recover:        true,
 		recovertime:    4,
 		kill:           true,
@@ -578,10 +580,11 @@ type HitDef struct {
 	guard_dist                 [2]int32
 	xaccel                     float32
 	yaccel                     float32
-	ground_velocity            [2]float32
-	guard_velocity             float32
-	air_velocity               [2]float32
-	airguard_velocity          [2]float32
+	zaccel                     float32
+	ground_velocity            [3]float32
+	guard_velocity             [3]float32
+	air_velocity               [3]float32
+	airguard_velocity          [3]float32
 	ground_cornerpush_veloff   float32
 	air_cornerpush_veloff      float32
 	down_cornerpush_veloff     float32
@@ -600,7 +603,7 @@ type HitDef struct {
 	forcecrouch                int32
 	ground_fall                bool
 	air_fall                   bool
-	down_velocity              [2]float32
+	down_velocity              [3]float32
 	down_hittime               int32
 	down_bounce                bool
 	down_recover               bool
@@ -620,10 +623,10 @@ type HitDef struct {
 	envshake_ampl              int32
 	envshake_phase             float32
 	envshake_mul               float32
-	mindist                    [2]float32
-	maxdist                    [2]float32
-	snap                       [2]float32
-	snapt                      int32
+	mindist                    [3]float32
+	maxdist                    [3]float32
+	snap                       [3]float32
+	snaptime                   int32
 	fall                       Fall
 	playerNo                   int
 	kill                       bool
@@ -672,8 +675,9 @@ func (hd *HitDef) clear() {
 
 		xaccel:                     float32(math.NaN()),
 		yaccel:                     float32(math.NaN()),
-		guard_velocity:             float32(math.NaN()),
-		airguard_velocity:          [...]float32{float32(math.NaN()), float32(math.NaN())},
+		zaccel:                     float32(math.NaN()),
+		guard_velocity:             [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		airguard_velocity:          [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
 		down_cornerpush_veloff:     float32(math.NaN()),
@@ -686,7 +690,7 @@ func (hd *HitDef) clear() {
 		forcestand:       IErr,
 		forcecrouch:      IErr,
 		guard_dist:       [...]int32{-1, -1},
-		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN())},
+		down_velocity:    [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		chainid:          -1,
 		nochainid:        [8]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
@@ -698,9 +702,9 @@ func (hd *HitDef) clear() {
 		envshake_ampl:    -4,
 		envshake_phase:   float32(math.NaN()),
 		envshake_mul:     1.0,
-		mindist:          [...]float32{float32(math.NaN()), float32(math.NaN())},
-		maxdist:          [...]float32{float32(math.NaN()), float32(math.NaN())},
-		snap:             [...]float32{float32(math.NaN()), float32(math.NaN())},
+		mindist:          [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		maxdist:          [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		snap:             [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		hitonce:          -1,
 		kill:             true,
 		guard_kill:       true,
@@ -763,11 +767,14 @@ type GetHitVar struct {
 	ctrltime          int32
 	xvel              float32
 	yvel              float32
+	zvel              float32
 	xaccel            float32
 	yaccel            float32
+	zaccel            float32
 	hitid             int32
 	xoff              float32
 	yoff              float32
+	zoff              float32
 	fall              Fall
 	playerNo          int
 	fallflag          bool
@@ -791,11 +798,11 @@ type GetHitVar struct {
 	kill              bool
 	priority          int32
 	facing            int32
-	ground_velocity   [2]float32
-	air_velocity      [2]float32
-	down_velocity     [2]float32
-	guard_velocity    float32
-	airguard_velocity [2]float32
+	ground_velocity   [3]float32
+	air_velocity      [3]float32
+	down_velocity     [3]float32
+	guard_velocity    [3]float32
+	airguard_velocity [3]float32
 	frame             bool
 	cheeseKO          bool
 	down_recover      bool
@@ -804,11 +811,11 @@ type GetHitVar struct {
 
 func (ghv *GetHitVar) clear() {
 	*ghv = GetHitVar{hittime: -1, yaccel: float32(math.NaN()),
-		xoff: ghv.xoff, yoff: ghv.yoff, hitid: -1, playerNo: -1}
+		xoff: ghv.xoff, yoff: ghv.yoff, zoff: ghv.zoff, hitid: -1, playerNo: -1}
 	ghv.fall.clear()
 }
 func (ghv *GetHitVar) clearOff() {
-	ghv.xoff, ghv.yoff = 0, 0
+	ghv.xoff, ghv.yoff, ghv.zoff = 0, 0, 0
 }
 func (ghv GetHitVar) getXaccel(c *Char) float32 {
 	if math.IsNaN(float64(ghv.xaccel)) {
@@ -821,6 +828,12 @@ func (ghv GetHitVar) getYaccel(c *Char) float32 {
 		return 0.35 / (c.localscl * (320 / float32(sys.gameWidth)))
 	}
 	return ghv.yaccel
+}
+func (ghv GetHitVar) getZaccel(c *Char) float32 {
+	if math.IsNaN(float64(ghv.zaccel)) {
+		return 0
+	}
+	return ghv.zaccel
 }
 func (ghv GetHitVar) chainId() int32 {
 	if ghv.hitid > 0 {
@@ -3517,6 +3530,9 @@ func (c *Char) backEdgeDist() float32 {
 func (c *Char) bottomEdge() float32 {
 	return sys.cam.ScreenPos[1]/c.localscl + c.gameHeight()
 }
+func (c *Char) bottomEdgeDist() float32 {
+	return sys.stage.botbound / c.localscl - c.pos[2]
+}
 func (c *Char) canRecover() bool {
 	return c.ghv.fall.recover && c.fallTime >= c.ghv.fall.recovertime
 }
@@ -3635,6 +3651,9 @@ func (c *Char) hitVelX() float32 {
 }
 func (c *Char) hitVelY() float32 {
 	return c.ghv.yvel
+}
+func (c *Char) hitVelZ() float32 {
+	return c.ghv.zvel
 }
 func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	if hid.IsSF() {
@@ -4194,6 +4213,9 @@ func (c *Char) time() int32 {
 func (c *Char) topEdge() float32 {
 	return sys.cam.ScreenPos[1] / c.localscl
 }
+func (c *Char) topEdgeDist() float32 {
+	return sys.stage.topbound / c.localscl - c.pos[2]
+}
 func (c *Char) win() bool {
 	if c.teamside == -1 {
 		return false
@@ -4323,9 +4345,12 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 
 		c.ghv.xvel *= lsRatio
 		c.ghv.yvel *= lsRatio
+		c.ghv.zvel *= lsRatio
 		c.ghv.fall.xvelocity *= lsRatio
 		c.ghv.fall.yvelocity *= lsRatio
+		c.ghv.fall.zvelocity *= lsRatio
 		c.ghv.yaccel *= lsRatio
+		c.ghv.zaccel *= lsRatio
 
 		c.width[0] *= lsRatio
 		c.width[1] *= lsRatio
@@ -4874,6 +4899,9 @@ func (c *Char) addXV(xv float32) {
 func (c *Char) addYV(yv float32) {
 	c.vel[1] += yv
 }
+func (c *Char) addZV(zv float32) {
+	c.vel[2] += zv
+}
 func (c *Char) setXV(xv float32) {
 	c.vel[0] = xv
 }
@@ -4882,9 +4910,6 @@ func (c *Char) setYV(yv float32) {
 }
 func (c *Char) setZV(zv float32) {
 	c.vel[2] = zv
-}
-func (c *Char) addZV(zv float32) {
-	c.vel[2] += zv
 }
 func (c *Char) mulXV(xv float32) {
 	c.vel[0] *= xv
@@ -5044,16 +5069,25 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	}
 	ifnanset(&hd.ground_velocity[0], 0)
 	ifnanset(&hd.ground_velocity[1], 0)
+	ifnanset(&hd.ground_velocity[2], 0)
 	ifnanset(&hd.air_velocity[0], 0)
 	ifnanset(&hd.air_velocity[1], 0)
-	ifnanset(&hd.guard_velocity, hd.ground_velocity[0])
+	ifnanset(&hd.air_velocity[2], 0)
+	ifnanset(&hd.guard_velocity[0], hd.ground_velocity[0])
+	ifnanset(&hd.guard_velocity[1], 0) // We don't want chars to be launched while guarding
+	ifnanset(&hd.guard_velocity[2], hd.ground_velocity[2])
 	ifnanset(&hd.airguard_velocity[0], hd.air_velocity[0]*1.5)
 	ifnanset(&hd.airguard_velocity[1], hd.air_velocity[1]*0.5)
+	ifnanset(&hd.airguard_velocity[2], hd.air_velocity[2]*1.5)
 	ifnanset(&hd.down_velocity[0], hd.air_velocity[0])
 	ifnanset(&hd.down_velocity[1], hd.air_velocity[1])
+	ifnanset(&hd.down_velocity[2], hd.air_velocity[2])
 	ifnanset(&hd.fall.yvelocity, -4.5/c.localscl)
+	ifnanset(&hd.fall.zvelocity, 0) // Just to be sure
 	ifierrset(&hd.fall.envshake_ampl, -4)
 	ifnanset(&hd.xaccel, 0)
+	ifnanset(&hd.zaccel, 0) // Here too
+	
 	if hd.air_animtype == RA_Unknown {
 		hd.air_animtype = hd.animtype
 	}
@@ -5073,7 +5107,7 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 		ifnanset(&hd.ground_cornerpush_veloff, 0)
 	} else {
 		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity*1.3)
+			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity[0]*1.3)
 		} else {
 			ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
 		}
@@ -5112,6 +5146,9 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	}
 	if !math.IsNaN(float64(hd.snap[1])) {
 		hd.maxdist[1], hd.mindist[1] = hd.snap[1], hd.snap[1]
+	}
+	if !math.IsNaN(float64(hd.snap[2])) {
+		hd.maxdist[2], hd.mindist[2] = hd.snap[2], hd.snap[2]
 	}
 	if hd.teamside == -1 {
 		hd.teamside = c.teamside + 1
@@ -5389,7 +5426,7 @@ func (c *Char) setFacing(f float32) {
 			c.ghv.ground_velocity[0] *= -1
 			c.ghv.air_velocity[0] *= -1
 			c.ghv.down_velocity[0] *= -1
-			c.ghv.guard_velocity *= -1
+			c.ghv.guard_velocity[0] *= -1
 			c.ghv.airguard_velocity[0] *= -1
 		}
 	}
@@ -5448,6 +5485,9 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 			}
 			if !math.IsNaN(float64(y)) {
 				c.setY(t.pos[1]*(t.localscl/c.localscl) + y)
+			}
+			if !math.IsNaN(float64(z)) {
+				c.setZ(t.pos[2]*(t.localscl/c.localscl) + z)
 			}
 			c.targetBind(tar[:1], time,
 				c.facing*c.distX(t, c),
@@ -5549,6 +5589,14 @@ func (c *Char) targetVelSetY(tar []int32, y float32) {
 		}
 	}
 }
+func (c *Char) targetVelSetZ(tar []int32, z float32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			z *= c.localscl / t.localscl
+			t.setZV(z)
+		}
+	}
+}
 func (c *Char) targetVelAddX(tar []int32, x float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
@@ -5562,6 +5610,14 @@ func (c *Char) targetVelAddY(tar []int32, y float32) {
 		if t := sys.playerID(tid); t != nil {
 			y *= c.localscl / t.localscl
 			t.vel[1] += y
+		}
+	}
+}
+func (c *Char) targetVelAddZ(tar []int32, z float32) {
+	for _, tid := range tar {
+		if t := sys.playerID(tid); t != nil {
+			z *= c.localscl / t.localscl
+			t.vel[2] += z
 		}
 	}
 }
@@ -5991,6 +6047,10 @@ func (c *Char) hitVelSetY() {
 	// Movetype H is not required in Mugen
 	c.setYV(c.ghv.yvel)
 }
+func (c *Char) hitVelSetZ() {
+	// Movetype H is not required in Mugen
+	c.setZV(c.ghv.zvel)
+}
 func (c *Char) setPauseTime(pausetime, movetime int32) {
 	if ^pausetime < sys.pausetime || c.playerNo != c.ss.sb.playerNo ||
 		sys.pauseplayer == c.playerNo {
@@ -6094,10 +6154,13 @@ func (c *Char) hitFallVel() {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
 			c.setXV(c.ghv.fall.xvelocity)
 		}
+		if !math.IsNaN(float64(c.ghv.fall.zvelocity)) {
+			c.setZV(c.ghv.fall.zvelocity)
+		}
 		c.setYV(c.ghv.fall.yvelocity)
 	}
 }
-func (c *Char) hitFallSet(f int32, xv, yv float32) {
+func (c *Char) hitFallSet(f int32, xv, yv, zv float32) {
 	if f >= 0 {
 		c.ghv.fallflag = f != 0
 	}
@@ -6106,6 +6169,9 @@ func (c *Char) hitFallSet(f int32, xv, yv float32) {
 	}
 	if !math.IsNaN(float64(yv)) {
 		c.ghv.fall.yvelocity = yv
+	}
+	if !math.IsNaN(float64(zv)) {
+		c.ghv.fall.zvelocity = zv
 	}
 }
 func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
@@ -6472,6 +6538,9 @@ func (c *Char) bind() {
 			if !math.IsNaN(float64(c.bindPos[1])) {
 				c.setYV(bt.vel[1])
 			}
+			if !math.IsNaN(float64(c.bindPos[2])) {
+				c.setZV(bt.vel[2])
+			}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
 			f := bt.facing
@@ -6494,6 +6563,7 @@ func (c *Char) bind() {
 			c.setZ(bt.pos[2]*bt.localscl/c.localscl + (c.bindPos[2] + c.bindPosAdd[2]))
 			c.interPos[2] += bt.interPos[2] - bt.pos[2]
 			c.oldPos[2] += bt.oldPos[2] - bt.pos[2]
+			c.ghv.zoff = 0
 		}
 		if AbsF(c.bindFacing) == 1 {
 			if c.bindFacing > 0 {
@@ -7444,6 +7514,10 @@ func (c *Char) update() {
 					c.setPosY(c.pos[1] + c.ghv.yoff)
 					c.ghv.yoff = 0
 				}
+				if c.ghv.zoff != 0 {
+					c.setPosZ(c.pos[2] + c.ghv.zoff)
+					c.ghv.zoff = 0
+				}
 			}
 		}
 		if c.ss.moveType == MT_H {
@@ -8379,6 +8453,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				ghv.id = hd.attackerID
 				ghv.xaccel = hd.xaccel * (c.localscl / getter.localscl)
 				ghv.yaccel = hd.yaccel * (c.localscl / getter.localscl)
+				ghv.zaccel = hd.zaccel * (c.localscl / getter.localscl)
 				ghv.groundtype = hd.ground_type
 				ghv.airtype = hd.air_type
 				if hd.forcenofall {
@@ -8403,11 +8478,14 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						ghv.ctrltime = hd.airguard_ctrltime
 						ghv.xvel = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
 						ghv.yvel = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
+						ghv.zvel = hd.airguard_velocity[2] * (c.localscl / getter.localscl)
 					} else {
 						ghv.ctrltime = hd.guard_ctrltime
-						ghv.xvel = hd.guard_velocity * (c.localscl / getter.localscl)
+						ghv.xvel = hd.guard_velocity[0] * (c.localscl / getter.localscl)
 						// Mugen does not accept a Y component for ground guard velocity
-						//ghv.yvel = hd.ground_velocity[1] * c.localscl / getter.localscl
+						// But since we're adding Z to the other parameters, let's add Y here as well to keep things consistent
+						ghv.yvel = hd.guard_velocity[1] * (c.localscl / getter.localscl)
+						ghv.zvel = hd.guard_velocity[2] * (c.localscl / getter.localscl)
 					}
 					ghv.hitcount = hc
 					ghv.guardcount = gc + 1
@@ -8423,6 +8501,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 					ghv.fall.envshake_ampl = int32(float32(hd.fall.envshake_ampl) * (c.localscl / getter.localscl))
 					ghv.fall.xvelocity = hd.fall.xvelocity * (c.localscl / getter.localscl)
 					ghv.fall.yvelocity = hd.fall.yvelocity * (c.localscl / getter.localscl)
+					ghv.fall.zvelocity = hd.fall.zvelocity * (c.localscl / getter.localscl)
 
 					if getter.ss.stateType == ST_A {
 						ghv.hittime = hd.air_hittime
@@ -8431,6 +8510,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						ghv.ctrltime = hd.air_hittime
 						ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
 						ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
+						ghv.zvel = hd.air_velocity[2] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.air_fall
 					} else if getter.ss.stateType == ST_L {
 						ghv.hittime = hd.down_hittime
@@ -8439,18 +8519,22 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						if getter.pos[1] == 0 {
 							ghv.xvel = hd.down_velocity[0] * (c.localscl / getter.localscl)
 							ghv.yvel = hd.down_velocity[1] * (c.localscl / getter.localscl)
+							ghv.zvel = hd.down_velocity[2] * (c.localscl / getter.localscl)
 							if !hd.down_bounce && ghv.yvel != 0 {
 								ghv.fall.xvelocity = float32(math.NaN())
 								ghv.fall.yvelocity = 0
+								ghv.fall.zvelocity = float32(math.NaN())
 							}
 						} else {
 							ghv.xvel = hd.air_velocity[0] * (c.localscl / getter.localscl)
 							ghv.yvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
+							ghv.zvel = hd.air_velocity[1] * (c.localscl / getter.localscl)
 						}
 					} else {
 						ghv.ctrltime = hd.ground_hittime
 						ghv.xvel = hd.ground_velocity[0] * (c.localscl / getter.localscl)
 						ghv.yvel = hd.ground_velocity[1] * (c.localscl / getter.localscl)
+						ghv.zvel = hd.ground_velocity[2] * (c.localscl / getter.localscl)
 						ghv.fallflag = hd.ground_fall
 						if ghv.fallflag && ghv.yvel == 0 {
 							// Mugen does this as some form of internal workaround
@@ -8494,13 +8578,19 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 				// Save velocities regardless of statetype
 				ghv.ground_velocity[0] = hd.ground_velocity[0] * (c.localscl / getter.localscl)
 				ghv.ground_velocity[1] = hd.ground_velocity[1] * (c.localscl / getter.localscl)
+				ghv.ground_velocity[2] = hd.ground_velocity[2] * (c.localscl / getter.localscl)
 				ghv.air_velocity[0] = hd.air_velocity[0] * (c.localscl / getter.localscl)
 				ghv.air_velocity[1] = hd.air_velocity[1] * (c.localscl / getter.localscl)
+				ghv.air_velocity[2] = hd.air_velocity[2] * (c.localscl / getter.localscl)
 				ghv.down_velocity[0] = hd.down_velocity[0] * (c.localscl / getter.localscl)
 				ghv.down_velocity[1] = hd.down_velocity[1] * (c.localscl / getter.localscl)
-				ghv.guard_velocity = hd.guard_velocity * (c.localscl / getter.localscl)
+				ghv.down_velocity[2] = hd.down_velocity[2] * (c.localscl / getter.localscl)
+				ghv.guard_velocity[0] = hd.guard_velocity[0] * (c.localscl / getter.localscl)
+				ghv.guard_velocity[1] = hd.guard_velocity[1] * (c.localscl / getter.localscl)
+				ghv.guard_velocity[2] = hd.guard_velocity[2] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[0] = hd.airguard_velocity[0] * (c.localscl / getter.localscl)
 				ghv.airguard_velocity[1] = hd.airguard_velocity[1] * (c.localscl / getter.localscl)
+				ghv.airguard_velocity[2] = hd.airguard_velocity[2] * (c.localscl / getter.localscl)
 				ghv.airanimtype = hd.air_animtype
 				ghv.groundanimtype = hd.animtype
 				ghv.animtype = getter.gethitAnimtype() // This must be placed after ghv.yvel
@@ -8511,7 +8601,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						byPos[i] += p
 					}
 				}
-				snap := [...]float32{float32(math.NaN()), float32(math.NaN())}
+				snap := [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())}
 				if !math.IsNaN(float64(hd.mindist[0])) {
 					if byf < 0 {
 						if getter.pos[0] > byPos[0]-hd.mindist[0] {
@@ -8546,15 +8636,28 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 				}
+				if !math.IsNaN(float64(hd.mindist[2])) {
+					if getter.pos[2]*(getter.localscl/c.localscl) < byPos[2]+hd.mindist[2] {
+						snap[2] = byPos[2] + hd.mindist[2]
+					}
+				}
+				if !math.IsNaN(float64(hd.maxdist[2])) {
+					if getter.pos[2]*(getter.localscl/c.localscl) > byPos[2]+hd.maxdist[2] {
+						snap[2] = byPos[2] + hd.maxdist[2]
+					}
+				}
 				if !math.IsNaN(float64(snap[0])) {
 					ghv.xoff = snap[0]*(c.localscl/getter.localscl) - getter.pos[0]
 				}
 				if !math.IsNaN(float64(snap[1])) {
 					ghv.yoff = snap[1]*(c.localscl/getter.localscl) - getter.pos[1]
 				}
-				if hd.snapt != 0 && getter.hoIdx < 0 {
+				if !math.IsNaN(float64(snap[2])) {
+					ghv.zoff = snap[2]*(c.localscl/getter.localscl) - getter.pos[2]
+				}
+				if hd.snaptime != 0 && getter.hoIdx < 0 {
 					getter.setBindToId(c)
-					getter.setBindTime(hd.snapt + Btoi(hd.snapt > 0 && !c.pause()))
+					getter.setBindTime(hd.snaptime + Btoi(hd.snaptime > 0 && !c.pause()))
 					getter.bindFacing = 0
 					if !math.IsNaN(float64(snap[0])) {
 						getter.bindPos[0] = hd.mindist[0] * (c.localscl / getter.localscl)
@@ -8566,6 +8669,11 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						getter.bindPos[1] = hd.mindist[1] * (c.localscl / getter.localscl)
 					} else {
 						getter.bindPos[1] = float32(math.NaN())
+					}
+					if !math.IsNaN(float64(snap[2])) {
+						getter.bindPos[2] = hd.mindist[2] * (c.localscl / getter.localscl)
+					} else {
+						getter.bindPos[2] = float32(math.NaN())
 					}
 				} else if getter.bindToId == c.id {
 					getter.setBindTime(0)
@@ -9167,6 +9275,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 									getter.ghv.fall.envshake_ampl = int32(float32(c.hitdef.fall.envshake_ampl) * (c.localscl / getter.localscl))
 									getter.ghv.fall.xvelocity = c.hitdef.fall.xvelocity * (c.localscl / getter.localscl)
 									getter.ghv.fall.yvelocity = c.hitdef.fall.yvelocity * (c.localscl / getter.localscl)
+									getter.ghv.fall.zvelocity = c.hitdef.fall.zvelocity * (c.localscl / getter.localscl)
 
 									if c.hitdef.forcenofall {
 										getter.ghv.fallflag = false

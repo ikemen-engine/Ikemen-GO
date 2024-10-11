@@ -217,6 +217,7 @@ var triggerMap = map[string]int{
 	"backedgebodydist":  1,
 	"backedgedist":      1,
 	"bottomedge":        1,
+	"bottomedgedist":    1,
 	"camerapos":         1,
 	"camerazoom":        1,
 	"canrecover":        1,
@@ -325,6 +326,7 @@ var triggerMap = map[string]int{
 	"time":              1,
 	"timemod":           1,
 	"topedge":           1,
+	"topedgedist":       1,
 	"uniqhitcount":      1,
 	"var":               1,
 	"vel":               1,
@@ -1541,6 +1543,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 	case "bottomedge":
 		out.append(OC_bottomedge)
+	case "bottomedgedist":
+		out.append(OC_bottomedgedist)
 	case "camerapos":
 		c.token = c.tokenizer(in)
 		switch c.token {
@@ -2134,8 +2138,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			bv.SetF(0)
 		case "yveladd":
 			bv.SetF(0)
-		case "zoff":
-			bv.SetF(0)
 		case "fall.envshake.dir":
 			bv.SetI(0)
 		default:
@@ -2177,12 +2179,20 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_xoff)
 			case "yoff":
 				out.append(OC_ex_gethitvar_yoff)
+			case "zoff":
+				out.append(OC_ex_gethitvar_zoff)
 			case "xvel":
 				out.append(OC_ex_gethitvar_xvel)
 			case "yvel":
 				out.append(OC_ex_gethitvar_yvel)
+			case "zvel":
+				out.append(OC_ex_gethitvar_zvel)
+			case "xaccel":
+				out.append(OC_ex_gethitvar_xaccel)
 			case "yaccel":
 				out.append(OC_ex_gethitvar_yaccel)
+			case "zaccel":
+				out.append(OC_ex_gethitvar_zaccel)
 			case "hitid", "chainid":
 				out.append(OC_ex_gethitvar_chainid)
 			case "guarded":
@@ -2197,6 +2207,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_fall_xvel)
 			case "fall.yvel":
 				out.append(OC_ex_gethitvar_fall_yvel)
+			case "fall.zvel":
+				out.append(OC_ex_gethitvar_fall_zvel)
 			case "fall.recover":
 				out.append(OC_ex_gethitvar_fall_recover)
 			case "fall.time":
@@ -2249,26 +2261,36 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 				out.append(OC_ex_gethitvar_ground_velocity_x)
 			case "ground.velocity.y":
 				out.append(OC_ex_gethitvar_ground_velocity_y)
+			case "ground.velocity.z":
+				out.append(OC_ex_gethitvar_ground_velocity_z)
 			case "air.velocity.x":
 				out.append(OC_ex_gethitvar_air_velocity_x)
 			case "air.velocity.y":
 				out.append(OC_ex_gethitvar_air_velocity_y)
+			case "air.velocity.z":
+				out.append(OC_ex_gethitvar_air_velocity_z)
 			case "down.velocity.x":
 				out.append(OC_ex_gethitvar_down_velocity_x)
 			case "down.velocity.y":
 				out.append(OC_ex_gethitvar_down_velocity_y)
+			case "down.velocity.z":
+				out.append(OC_ex_gethitvar_down_velocity_z)
 			case "guard.velocity.x":
 				out.append(OC_ex_gethitvar_guard_velocity_x)
+			case "guard.velocity.y":
+				out.append(OC_ex_gethitvar_guard_velocity_y)
+			case "guard.velocity.z":
+				out.append(OC_ex_gethitvar_guard_velocity_z)
 			case "airguard.velocity.x":
 				out.append(OC_ex_gethitvar_airguard_velocity_x)
 			case "airguard.velocity.y":
 				out.append(OC_ex_gethitvar_airguard_velocity_y)
+			case "airguard.velocity.z":
+				out.append(OC_ex_gethitvar_airguard_velocity_z)
 			case "frame":
 				out.append(OC_ex_gethitvar_frame)
 			case "down.recover":
 				out.append(OC_ex_gethitvar_down_recover)
-			case "xaccel":
-				out.append(OC_ex_gethitvar_xaccel)
 			default:
 				return bvNone(), Error("Invalid data: " + c.token)
 			}
@@ -2365,7 +2387,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		case "y":
 			out.append(OC_hitvel_y)
 		case "z":
-			bv = BytecodeFloat(0)
+			out.append(OC_hitvel_z)
 		default:
 			return bvNone(), Error("Invalid data: " + c.token)
 		}
@@ -2944,6 +2966,10 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_playerinfo_leftbound
 		case "playerinfo.rightbound":
 			opc = OC_const_stagevar_playerinfo_rightbound
+		case "playerinfo.topbound":
+			opc = OC_const_stagevar_playerinfo_topbound
+		case "playerinfo.botbound":
+			opc = OC_const_stagevar_playerinfo_botbound
 		case "scaling.topz":
 			opc = OC_const_stagevar_scaling_topz
 		case "scaling.botz":
@@ -3046,6 +3072,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_time)
 	case "topedge":
 		out.append(OC_topedge)
+	case "topedgedist":
+		out.append(OC_topedgedist)
 	case "uniqhitcount":
 		out.append(OC_uniqhitcount)
 	case "vel":

@@ -3128,6 +3128,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.bottomEdge()))
 		return 1
 	})
+	luaRegister(l, "bottomedgedist", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.bottomEdgeDist()))
+		return 1
+	})
 	luaRegister(l, "cameraposX", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.cam.Pos[0]))
 		return 1
@@ -3621,8 +3625,6 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(0)
 		case "yveladd":
 			ln = lua.LNumber(0)
-		case "zoff":
-			ln = lua.LNumber(0)
 		case "fall.envshake.dir":
 			ln = lua.LNumber(0)
 		case "animtype":
@@ -3661,14 +3663,20 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.xoff)
 		case "yoff":
 			ln = lua.LNumber(c.ghv.yoff)
+		case "zoff":
+			ln = lua.LNumber(c.ghv.zoff)
 		case "xvel":
 			ln = lua.LNumber(c.ghv.xvel * c.facing)
 		case "yvel":
 			ln = lua.LNumber(c.ghv.yvel)
+		case "zvel":
+			ln = lua.LNumber(c.ghv.zvel)
 		case "xaccel":
 			ln = lua.LNumber(c.ghv.getXaccel(c))
 		case "yaccel":
 			ln = lua.LNumber(c.ghv.getYaccel(c))
+		case "zaccel":
+			ln = lua.LNumber(c.ghv.getZaccel(c))
 		case "hitid", "chainid":
 			ln = lua.LNumber(c.ghv.chainId())
 		case "guarded":
@@ -3683,6 +3691,8 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.fall.xvel())
 		case "fall.yvel":
 			ln = lua.LNumber(c.ghv.fall.yvelocity)
+		case "fall.zvel":
+			ln = lua.LNumber(c.ghv.fall.zvelocity)
 		case "fall.recover":
 			ln = lua.LNumber(Btoi(c.ghv.fall.recover))
 		case "fall.time":
@@ -3739,16 +3749,26 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.ghv.air_velocity[0])
 		case "air.velocity.y":
 			ln = lua.LNumber(c.ghv.air_velocity[1])
+		case "air.velocity.z":
+			ln = lua.LNumber(c.ghv.air_velocity[2])
 		case "down.velocity.x":
 			ln = lua.LNumber(c.ghv.down_velocity[0])
 		case "down.velocity.y":
 			ln = lua.LNumber(c.ghv.down_velocity[1])
+		case "down.velocity.z":
+			ln = lua.LNumber(c.ghv.down_velocity[2])
 		case "guard.velocity.x":
-			ln = lua.LNumber(c.ghv.guard_velocity)
+			ln = lua.LNumber(c.ghv.guard_velocity[0])
+		case "guard.velocity.y":
+			ln = lua.LNumber(c.ghv.guard_velocity[1])
+		case "guard.velocity.z":
+			ln = lua.LNumber(c.ghv.guard_velocity[2])
 		case "airguard.velocity.x":
 			ln = lua.LNumber(c.ghv.airguard_velocity[0])
 		case "airguard.velocity.y":
 			ln = lua.LNumber(c.ghv.airguard_velocity[1])
+		case "airguard.velocity.z":
+			ln = lua.LNumber(c.ghv.airguard_velocity[2])
 		case "frame":
 			ln = lua.LNumber(Btoi(c.ghv.frame))
 		case "down.recover":
@@ -3840,6 +3860,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "hitvelY", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.hitVelY()))
+		return 1
+	})
+	luaRegister(l, "hitvelZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.hitVelZ()))
 		return 1
 	})
 	luaRegister(l, "id", func(*lua.LState) int {
@@ -4522,6 +4546,10 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.leftbound))
 		case "playerinfo.rightbound":
 			l.Push(lua.LNumber(sys.stage.rightbound))
+		case "playerinfo.topbound":
+			l.Push(lua.LNumber(sys.stage.topbound))
+		case "playerinfo.botbound":
+			l.Push(lua.LNumber(sys.stage.botbound))
 		case "scaling.topz":
 			l.Push(lua.LNumber(sys.stage.stageCamera.topz))
 		case "scaling.botz":
@@ -4628,6 +4656,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "topedge", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.topEdge()))
+		return 1
+	})
+	luaRegister(l, "topedgedist", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.topEdgeDist()))
 		return 1
 	})
 	luaRegister(l, "uniqhitcount", func(*lua.LState) int {
