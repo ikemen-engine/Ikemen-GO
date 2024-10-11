@@ -4832,6 +4832,9 @@ func (c *Char) getAnim(n int32, ffx string, fx bool) (a *Animation) {
 func (c *Char) setPosX(x float32) {
 	if c.pos[0] != x {
 		c.pos[0] = x
+		// We do this because Mugen is very sensitive to enemy position changes
+		// Perhaps what it does is only calculate who "enemynear" is when the trigger is called?
+		// "P2" enemy reference is less sensitive than this however
 		c.enemyNearClear()
 		if c.player {
 			for i := ^c.playerNo & 1; i < len(sys.chars); i += 2 {
@@ -4843,7 +4846,7 @@ func (c *Char) setPosX(x float32) {
 	}
 }
 
-func (c *Char) setPosY(y float32) { // TODO: Do we really need these two functions?
+func (c *Char) setPosY(y float32) { // These functions mostly exist right now so we don't forget to use setPosX for X
 	c.pos[1] = y
 }
 
@@ -4863,10 +4866,11 @@ func (c *Char) posReset() {
 		c.setY(float32(sys.stage.p[c.playerNo].starty) * sys.stage.localscl / c.localscl)
 		c.setZ(float32(sys.stage.p[c.playerNo].startz) * sys.stage.localscl / c.localscl)
 	}
-	c.setXV(0)
-	c.setYV(0)
-	c.setZV(0)
+	c.vel[0] = 0
+	c.vel[1] = 0
+	c.vel[2] = 0
 }
+
 func (c *Char) setX(x float32) {
 	c.oldPos[0], c.interPos[0] = x, x
 	c.setPosX(x)
@@ -4879,6 +4883,7 @@ func (c *Char) setZ(z float32) {
 	c.oldPos[2], c.interPos[2] = z, z
 	c.setPosZ(z)
 }
+
 func (c *Char) addX(x float32) {
 	c.setX(c.pos[0] + c.facing*x)
 }
@@ -4889,34 +4894,6 @@ func (c *Char) addZ(z float32) {
 	c.setZ(c.pos[2] + z)
 }
 
-// Velocity functions
-func (c *Char) addXV(xv float32) {
-	c.vel[0] += xv
-}
-func (c *Char) addYV(yv float32) {
-	c.vel[1] += yv
-}
-func (c *Char) addZV(zv float32) {
-	c.vel[2] += zv
-}
-func (c *Char) setXV(xv float32) {
-	c.vel[0] = xv
-}
-func (c *Char) setYV(yv float32) {
-	c.vel[1] = yv
-}
-func (c *Char) setZV(zv float32) {
-	c.vel[2] = zv
-}
-func (c *Char) mulXV(xv float32) {
-	c.vel[0] *= xv
-}
-func (c *Char) mulYV(yv float32) {
-	c.vel[1] *= yv
-}
-func (c *Char) mulZV(zv float32) {
-	c.vel[2] *= zv
-}
 func (c *Char) shadXOff(xv float32, isReflect bool) {
 	if !isReflect {
 		c.shadowOffset[0] = xv
@@ -5574,7 +5551,7 @@ func (c *Char) targetVelSetX(tar []int32, x float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			x *= c.localscl / t.localscl
-			t.setXV(x)
+			t.vel[0] = x
 		}
 	}
 }
@@ -5582,7 +5559,7 @@ func (c *Char) targetVelSetY(tar []int32, y float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			y *= c.localscl / t.localscl
-			t.setYV(y)
+			t.vel[1] = y
 		}
 	}
 }
@@ -5590,7 +5567,7 @@ func (c *Char) targetVelSetZ(tar []int32, z float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
 			z *= c.localscl / t.localscl
-			t.setZV(z)
+			t.vel[2] = z
 		}
 	}
 }
@@ -6036,18 +6013,6 @@ func (c *Char) p2BodyDistZ(oc *Char) BytecodeValue {
 	}
 }
 
-func (c *Char) hitVelSetX() {
-	// Movetype H is not required in Mugen
-	c.setXV(c.ghv.xvel)
-}
-func (c *Char) hitVelSetY() {
-	// Movetype H is not required in Mugen
-	c.setYV(c.ghv.yvel)
-}
-func (c *Char) hitVelSetZ() {
-	// Movetype H is not required in Mugen
-	c.setZV(c.ghv.zvel)
-}
 func (c *Char) setPauseTime(pausetime, movetime int32) {
 	if ^pausetime < sys.pausetime || c.playerNo != c.ss.sb.playerNo ||
 		sys.pauseplayer == c.playerNo {
@@ -6149,12 +6114,12 @@ func (c *Char) hitFallDamage() {
 func (c *Char) hitFallVel() {
 	if c.ss.moveType == MT_H {
 		if !math.IsNaN(float64(c.ghv.fall.xvelocity)) {
-			c.setXV(c.ghv.fall.xvelocity)
+			c.vel[0] = c.ghv.fall.xvelocity
 		}
+		c.vel[1] = c.ghv.fall.yvelocity
 		if !math.IsNaN(float64(c.ghv.fall.zvelocity)) {
-			c.setZV(c.ghv.fall.zvelocity)
+			c.vel[2] = c.ghv.fall.zvelocity
 		}
-		c.setYV(c.ghv.fall.yvelocity)
 	}
 }
 func (c *Char) hitFallSet(f int32, xv, yv, zv float32) {
@@ -6530,13 +6495,13 @@ func (c *Char) bind() {
 	if bt := sys.playerID(c.bindToId); bt != nil {
 		if bt.hasTarget(c.id) {
 			if !math.IsNaN(float64(c.bindPos[0])) {
-				c.setXV(c.facing * bt.facing * bt.vel[0])
+				c.vel[0] = c.facing * bt.facing * bt.vel[0]
 			}
 			if !math.IsNaN(float64(c.bindPos[1])) {
-				c.setYV(bt.vel[1])
+				c.vel[1] = bt.vel[1]
 			}
 			if !math.IsNaN(float64(c.bindPos[2])) {
-				c.setZV(bt.vel[2])
+				c.vel[2] = bt.vel[2]
 			}
 		}
 		if !math.IsNaN(float64(c.bindPos[0])) {
