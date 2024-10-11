@@ -2658,7 +2658,9 @@ func (c *Char) load(def string) error {
 
 	gi.constants = make(map[string]float32)
 	gi.constants["default.attack.lifetopowermul"] = 0.7
+	gi.constants["super.attack.lifetopowermul"] = 0
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
+	gi.constants["super.gethit.lifetopowermul"] = 0.6
 	gi.constants["super.targetdefencemul"] = 1.5
 	gi.constants["default.lifetoguardpointsmul"] = 1.5
 	gi.constants["super.lifetoguardpointsmul"] = -0.33
@@ -5071,13 +5073,14 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
-	ifierrset(&hd.hitgetpower,
-		int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
-	ifierrset(&hd.hitgivepower,
-		int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 	ifierrset(&hd.guardgivepower, int32(float32(hd.hitgivepower)*0.5))
+	// Super attack behaviour
 	if hd.attr&int32(AT_AH) != 0 {
+		ifierrset(&hd.hitgetpower,
+			int32(c.gi().constants["super.attack.lifetopowermul"]*float32(hd.hitdamage)))
+		ifierrset(&hd.hitgivepower,
+			int32(c.gi().constants["super.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
@@ -5087,6 +5090,10 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 		ifierrset(&hd.guardredlife,
 			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.guarddamage)))
 	} else {
+		ifierrset(&hd.hitgetpower,
+			int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
+		ifierrset(&hd.hitgivepower,
+			int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
 			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
