@@ -684,9 +684,9 @@ func (hd *HitDef) clear(localscl float32) {
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()),
 
-		xaccel:                     0,
-		yaccel:                     0.35 / localscl,
-		zaccel:                     0,
+		xaccel: 0,
+		yaccel: 0.35 / localscl,
+		zaccel: 0,
 
 		p1sprpriority:    1,
 		p1stateno:        -1,
@@ -813,12 +813,12 @@ type GetHitVar struct {
 
 func (ghv *GetHitVar) clear(c *Char) {
 	*ghv = GetHitVar{
-		hittime: -1,
-		yaccel: 0.35 / c.localscl,
-		xoff: ghv.xoff,
-		yoff: ghv.yoff,
-		zoff: ghv.zoff,
-		hitid: -1,
+		hittime:  -1,
+		yaccel:   0.35 / c.localscl,
+		xoff:     ghv.xoff,
+		yoff:     ghv.yoff,
+		zoff:     ghv.zoff,
+		hitid:    -1,
 		playerNo: -1,
 	}
 	ghv.fall.clear(c.localscl)
