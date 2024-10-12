@@ -1590,11 +1590,12 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_hitshakeover:
 			sys.bcStack.PushB(c.hitShakeOver())
 		case OC_hitvel_x:
-			sys.bcStack.PushF(c.hitVelX() * (c.localscl / oc.localscl))
+			// This trigger is bugged in Mugen 1.1, with its output being affected by game resolution
+			sys.bcStack.PushF(c.ghv.xvel * c.facing * (c.localscl / oc.localscl))
 		case OC_hitvel_y:
-			sys.bcStack.PushF(c.hitVelY() * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(c.ghv.yvel  * (c.localscl / oc.localscl))
 		case OC_hitvel_z:
-			sys.bcStack.PushF(c.hitVelZ() * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(c.ghv.zvel  * (c.localscl / oc.localscl))
 		case OC_id:
 			sys.bcStack.PushI(c.id)
 		case OC_inguarddist:
@@ -11259,13 +11260,13 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			s.stageCamera.yscrollspeed = exp[0].evalF(c)
 		// PlayerInfo group
 		case modifyStageVar_playerinfo_leftbound:
-			s.leftbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
+			s.leftbound = exp[0].evalF(c) * c.localscl / sys.stage.localscl
 		case modifyStageVar_playerinfo_rightbound:
-			s.rightbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
+			s.rightbound = exp[0].evalF(c) * c.localscl / sys.stage.localscl
 		case modifyStageVar_playerinfo_topbound:
-			s.topbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
+			s.topbound = exp[0].evalF(c) * c.localscl / sys.stage.localscl
 		case modifyStageVar_playerinfo_botbound:
-			s.botbound = exp[0].evalF(c) * sys.stage.localscl / c.localscl
+			s.botbound = exp[0].evalF(c) * c.localscl / sys.stage.localscl
 		// Scaling group
 		case modifyStageVar_scaling_topz:
 			if s.mugenver[0] != 1 { // mugen 1.0+ removed support for topz

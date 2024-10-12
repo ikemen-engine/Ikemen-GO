@@ -3637,15 +3637,6 @@ func (c *Char) hitOver() bool {
 func (c *Char) hitShakeOver() bool {
 	return c.ghv.hitshaketime <= 0
 }
-func (c *Char) hitVelX() float32 {
-	return c.ghv.xvel
-}
-func (c *Char) hitVelY() float32 {
-	return c.ghv.yvel
-}
-func (c *Char) hitVelZ() float32 {
-	return c.ghv.zvel
-}
 func (c *Char) isHelper(hid BytecodeValue) BytecodeValue {
 	if hid.IsSF() {
 		return BytecodeSF()
@@ -5073,8 +5064,6 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
-	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
-	ifierrset(&hd.guardgivepower, int32(float32(hd.hitgivepower)*0.5))
 	// Super attack behaviour
 	if hd.attr&int32(AT_AH) != 0 {
 		ifierrset(&hd.hitgetpower,
@@ -5103,6 +5092,8 @@ func (c *Char) setHitdefDefault(hd *HitDef) {
 		ifierrset(&hd.guardredlife,
 			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.guarddamage)))
 	}
+	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
+	ifierrset(&hd.guardgivepower, int32(float32(hd.hitgivepower)*0.5))
 	if !math.IsNaN(float64(hd.snap[0])) {
 		hd.maxdist[0], hd.mindist[0] = hd.snap[0], hd.snap[0]
 	}

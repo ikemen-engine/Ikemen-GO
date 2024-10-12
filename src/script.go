@@ -3865,15 +3865,15 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "hitvelX", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.hitVelX()))
+		l.Push(lua.LNumber(sys.debugWC.ghv.xvel * sys.debugWC.facing))
 		return 1
 	})
 	luaRegister(l, "hitvelY", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.hitVelY()))
+		l.Push(lua.LNumber(sys.debugWC.ghv.yvel))
 		return 1
 	})
 	luaRegister(l, "hitvelZ", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.hitVelZ()))
+		l.Push(lua.LNumber(sys.debugWC.ghv.zvel))
 		return 1
 	})
 	luaRegister(l, "id", func(*lua.LState) int {
