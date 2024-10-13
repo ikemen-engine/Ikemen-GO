@@ -1593,9 +1593,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			// This trigger is bugged in Mugen 1.1, with its output being affected by game resolution
 			sys.bcStack.PushF(c.ghv.xvel * c.facing * (c.localscl / oc.localscl))
 		case OC_hitvel_y:
-			sys.bcStack.PushF(c.ghv.yvel  * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(c.ghv.yvel * (c.localscl / oc.localscl))
 		case OC_hitvel_z:
-			sys.bcStack.PushF(c.ghv.zvel  * (c.localscl / oc.localscl))
+			sys.bcStack.PushF(c.ghv.zvel * (c.localscl / oc.localscl))
 		case OC_id:
 			sys.bcStack.PushI(c.id)
 		case OC_inguarddist:
