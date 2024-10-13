@@ -2380,7 +2380,7 @@ func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
 	if getter == nil {
 		return false
 	}
-	return c.clsnCheck(getter, box1, box2, false)
+	return c.clsnCheck(getter, box1, box2, false, true)
 }
 
 func (c *Char) copyParent(p *Char) {
@@ -6682,9 +6682,19 @@ func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
 		charangle)
 }
 
-func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) bool {
+func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck, trigger bool) bool {
+
+	// What this does is normally check the Clsn in the currently displayed frame
+	// But in the ClsnOverlap trigger, we must check the frame that *will* be displayed instead
+	charframe := c.curFrame
+	getterframe := getter.curFrame
+	if trigger {
+		charframe = c.anim.CurrentFrame()
+		getterframe = getter.anim.CurrentFrame()
+	}
+
 	// Nil anim & standby check.
-	if c.curFrame == nil || getter.curFrame == nil ||
+	if charframe == nil || getterframe == nil ||
 		c.scf(SCF_standby) || getter.scf(SCF_standby) ||
 		c.scf(SCF_disabled) || getter.scf(SCF_disabled) {
 		return false
@@ -6701,8 +6711,8 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) 
 	// Required boxes not found
 	// Only Hitdef and Reversaldef do this check
 	if reqcheck {
-		if c.hitdef.p2clsnrequire == 1 && getter.curFrame.Clsn1() == nil ||
-			c.hitdef.p2clsnrequire == 2 && getter.curFrame.Clsn2() == nil {
+		if c.hitdef.p2clsnrequire == 1 && getterframe.Clsn1() == nil ||
+			c.hitdef.p2clsnrequire == 2 && getterframe.Clsn2() == nil {
 			return false
 		}
 	}
@@ -6710,22 +6720,22 @@ func (c *Char) clsnCheck(getter *Char, charbox, getterbox int32, reqcheck bool) 
 	// Decide which box types should collide
 	var clsn1, clsn2 []float32
 	if c.asf(ASF_projtypecollision) && getter.asf(ASF_projtypecollision) { // Projectiles trade with their Clsn2 only
-		clsn1 = c.curFrame.Clsn2()
-		clsn2 = getter.curFrame.Clsn2()
+		clsn1 = charframe.Clsn2()
+		clsn2 = getterframe.Clsn2()
 	} else {
 		if charbox == 1 {
-			clsn1 = c.curFrame.Clsn1()
+			clsn1 = charframe.Clsn1()
 		} else if charbox == 3 {
 			clsn1 = c.sizeBox
 		} else {
-			clsn1 = c.curFrame.Clsn2()
+			clsn1 = charframe.Clsn2()
 		}
 		if getterbox == 1 {
-			clsn2 = getter.curFrame.Clsn1()
+			clsn2 = getterframe.Clsn1()
 		} else if getterbox == 3 {
 			clsn2 = getter.sizeBox
 		} else {
-			clsn2 = getter.curFrame.Clsn2()
+			clsn2 = getterframe.Clsn2()
 		}
 	}
 
@@ -6911,7 +6921,7 @@ func (c *Char) hittableByChar(ghd *HitDef, getter *Char, gst StateType, proj boo
 			return (getter.atktmp >= 0 || !c.hasTarget(getter.id)) &&
 				!getter.hasTargetOfHitdef(c.id) &&
 				getter.attrCheck(hd, c, c.ss.stateType) &&
-				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) &&
+				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true, false) &&
 				sys.zAxisOverlap(c.pos[2], c.hitdef.attack.depth[0], c.hitdef.attack.depth[1], c.localscl,
 					getter.pos[2], getter.size.depth, getter.size.depth, getter.localscl)
 		}
@@ -9168,7 +9178,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 							getter.pos[2], getter.size.depth, getter.size.depth, getter.localscl)
 					}
 
-					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) {
+					if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true, false) {
 						if ht := hitTypeGet(c, &c.hitdef, [3]float32{}, 0, c.attackMul); ht != 0 {
 							mvh := ht > 0 || c.hitdef.reversal_attr > 0
 							if Abs(ht) == 1 {
@@ -9321,7 +9331,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 			}
 
 			// Push characters away from each other
-			if c.asf(ASF_sizepushonly) || getter.clsnCheck(c, 2, 2, false) {
+			if c.asf(ASF_sizepushonly) || getter.clsnCheck(c, 2, 2, false, false) {
 
 				gxmin = getter.edge[0]
 				gxmax = -getter.edge[1]
