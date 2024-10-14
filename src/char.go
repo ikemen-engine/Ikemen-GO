@@ -408,7 +408,7 @@ func (cv *CharVelocity) init() {
 type CharMovement struct {
 	airjump struct {
 		num    int32
-		height int32
+		height float32
 	}
 	yaccel float32
 	stand  struct {
@@ -511,29 +511,6 @@ type Fall struct {
 	envshake_ampl  int32
 	envshake_phase float32
 	envshake_mul   float32
-}
-
-func (f *Fall) clear(localscl float32) {
-	*f = Fall{
-		animtype:  RA_Unknown,
-		xvelocity: float32(math.NaN()),
-		yvelocity: -4.5 / localscl,
-		zvelocity: float32(math.NaN()),
-	}
-}
-
-func (f *Fall) setDefault(localscl float32) {
-	*f = Fall{animtype: RA_Unknown,
-		xvelocity:      float32(math.NaN()),
-		yvelocity:      -4.5 / localscl,
-		zvelocity:      0, // Should this work like the X component instead?
-		recover:        true,
-		recovertime:    4,
-		kill:           true,
-		envshake_freq:  60,
-		envshake_ampl:  IErr,
-		envshake_phase: float32(math.NaN()),
-		envshake_mul:   1.0}
 }
 
 type HitDef struct {
@@ -646,6 +623,9 @@ type HitDef struct {
 }
 
 func (hd *HitDef) clear(localscl float32) {
+	// Convert local scale back to 4:3 to keep values consistent in widescreen
+	originLs := localscl * (320 / float32(sys.gameWidth))
+
 	*hd = HitDef{
 		isprojectile:       false,
 		hitflag:            int32(ST_S | ST_C | ST_A | ST_F),
@@ -685,7 +665,7 @@ func (hd *HitDef) clear(localscl float32) {
 		airguard_cornerpush_veloff: float32(math.NaN()),
 
 		xaccel: 0,
-		yaccel: 0.35 / localscl,
+		yaccel: 0.35 / originLs,
 		zaccel: 0,
 
 		p1sprpriority:    1,
@@ -722,12 +702,28 @@ func (hd *HitDef) clear(localscl float32) {
 		down_recover:     true,
 		down_recovertime: -1,
 		air_juggle:       IErr,
+
+		// Fall group
+		fall: Fall{
+			animtype:      RA_Unknown,
+			xvelocity:     float32(math.NaN()),
+			yvelocity:     -4.5 / originLs,
+			zvelocity:     0, // Should this work like the X component instead?
+			recover:       true,
+			recovertime:   4,
+			kill:          true,
+			envshake_freq: 60,
+			envshake_ampl: IErr,
+			envshake_phase: float32(math.NaN()),
+			envshake_mul:  1.0,
+		},
+
 		attack: struct{ depth [2]float32 }{
-			[2]float32{4 / localscl, 4 / localscl},
+			[2]float32{4 / originLs, 4 / originLs},
 		},
 	}
+
 	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
-	hd.fall.setDefault(localscl)
 }
 
 // When a Hitdef connects, its statetype attribute will be updated to the character's current type
@@ -812,16 +808,25 @@ type GetHitVar struct {
 }
 
 func (ghv *GetHitVar) clear(c *Char) {
+	// Convert local scale back to 4:3 to keep values consistent in widescreen
+	originLs := c.localscl * (320 / float32(sys.gameWidth))
+
 	*ghv = GetHitVar{
 		hittime:  -1,
-		yaccel:   0.35 / c.localscl,
+		yaccel:   0.35 / originLs,
 		xoff:     ghv.xoff,
 		yoff:     ghv.yoff,
 		zoff:     ghv.zoff,
 		hitid:    -1,
 		playerNo: -1,
+		// Fall group
+		fall: Fall{
+			animtype:  RA_Unknown,
+			xvelocity: float32(math.NaN()),
+			yvelocity: -4.5 / originLs,
+			zvelocity: float32(math.NaN()),
+		},
 	}
-	ghv.fall.clear(c.localscl)
 }
 
 func (ghv *GetHitVar) clearOff() {
@@ -2694,77 +2699,77 @@ func (c *Char) load(def string) error {
 	gi.data.init()
 	c.size.init()
 
-	originLs := 320 / float32(c.gi().localcoord[0])
+	coordRatio := float32(c.gi().localcoord[0]) / 320
 
-	if originLs != 1 {
-		c.size.ground.back = c.size.ground.back / originLs
-		c.size.ground.front = c.size.ground.front / originLs
-		c.size.air.back = c.size.air.back / originLs
-		c.size.air.front = c.size.air.front / originLs
-		c.size.height.stand = c.size.height.stand / originLs
-		c.size.height.crouch = c.size.height.crouch / originLs
-		c.size.height.air[0] = c.size.height.air[0] / originLs
-		c.size.height.air[1] = c.size.height.air[1] / originLs
-		c.size.height.down = c.size.height.down / originLs
-		c.size.attack.dist.front = c.size.attack.dist.front / originLs
-		c.size.attack.dist.back = c.size.attack.dist.back / originLs
-		c.size.proj.attack.dist.front = c.size.proj.attack.dist.front / originLs
-		c.size.proj.attack.dist.back = c.size.proj.attack.dist.back / originLs
-		c.size.head.pos[0] = c.size.head.pos[0] / originLs
-		c.size.head.pos[1] = c.size.head.pos[1] / originLs
-		c.size.mid.pos[0] = c.size.mid.pos[0] / originLs
-		c.size.mid.pos[1] = c.size.mid.pos[1] / originLs
-		c.size.shadowoffset = c.size.shadowoffset / originLs
-		c.size.draw.offset[0] = c.size.draw.offset[0] / originLs
-		c.size.draw.offset[1] = c.size.draw.offset[1] / originLs
-		c.size.depth = c.size.depth / originLs
-		c.size.attack.depth.front = c.size.attack.depth.front / originLs
-		c.size.attack.depth.back = c.size.attack.depth.back / originLs
+	if coordRatio != 1 {
+		c.size.ground.back *= coordRatio
+		c.size.ground.front *= coordRatio
+		c.size.air.back *= coordRatio
+		c.size.air.front *= coordRatio
+		c.size.height.stand *= coordRatio
+		c.size.height.crouch *= coordRatio
+		c.size.height.air[0] *= coordRatio
+		c.size.height.air[1] *= coordRatio
+		c.size.height.down *= coordRatio
+		c.size.attack.dist.front *= coordRatio
+		c.size.attack.dist.back *= coordRatio
+		c.size.proj.attack.dist.front *= coordRatio
+		c.size.proj.attack.dist.back *= coordRatio
+		c.size.head.pos[0] *= coordRatio
+		c.size.head.pos[1] *= coordRatio
+		c.size.mid.pos[0] *= coordRatio
+		c.size.mid.pos[1] *= coordRatio
+		c.size.shadowoffset *= coordRatio
+		c.size.draw.offset[0] *= coordRatio
+		c.size.draw.offset[1] *= coordRatio
+		c.size.depth *= coordRatio
+		c.size.attack.depth.front *= coordRatio
+		c.size.attack.depth.back *= coordRatio
 	}
 
 	gi.velocity.init()
 
-	if originLs != 1 {
-		gi.velocity.air.gethit.groundrecover[0] /= originLs
-		gi.velocity.air.gethit.groundrecover[1] /= originLs
-		gi.velocity.air.gethit.airrecover.add[0] /= originLs
-		gi.velocity.air.gethit.airrecover.add[1] /= originLs
-		gi.velocity.air.gethit.airrecover.back /= originLs
-		gi.velocity.air.gethit.airrecover.fwd /= originLs
-		gi.velocity.air.gethit.airrecover.up /= originLs
-		gi.velocity.air.gethit.airrecover.down /= originLs
+	if coordRatio != 1 {
+		gi.velocity.air.gethit.groundrecover[0] *= coordRatio
+		gi.velocity.air.gethit.groundrecover[1] *= coordRatio
+		gi.velocity.air.gethit.airrecover.add[0] *= coordRatio
+		gi.velocity.air.gethit.airrecover.add[1] *= coordRatio
+		gi.velocity.air.gethit.airrecover.back *= coordRatio
+		gi.velocity.air.gethit.airrecover.fwd *= coordRatio
+		gi.velocity.air.gethit.airrecover.up *= coordRatio
+		gi.velocity.air.gethit.airrecover.down *= coordRatio
 
-		gi.velocity.airjump.neu[0] /= originLs
-		gi.velocity.airjump.neu[1] /= originLs
-		gi.velocity.airjump.back /= originLs
-		gi.velocity.airjump.fwd /= originLs
+		gi.velocity.airjump.neu[0] *= coordRatio
+		gi.velocity.airjump.neu[1] *= coordRatio
+		gi.velocity.airjump.back *= coordRatio
+		gi.velocity.airjump.fwd *= coordRatio
 
-		gi.velocity.air.gethit.ko.add[0] /= originLs
-		gi.velocity.air.gethit.ko.add[1] /= originLs
-		gi.velocity.air.gethit.ko.ymin /= originLs
-		gi.velocity.ground.gethit.ko.add[0] /= originLs
-		gi.velocity.ground.gethit.ko.add[1] /= originLs
-		gi.velocity.ground.gethit.ko.ymin /= originLs
+		gi.velocity.air.gethit.ko.add[0] *= coordRatio
+		gi.velocity.air.gethit.ko.add[1] *= coordRatio
+		gi.velocity.air.gethit.ko.ymin *= coordRatio
+		gi.velocity.ground.gethit.ko.add[0] *= coordRatio
+		gi.velocity.ground.gethit.ko.add[1] *= coordRatio
+		gi.velocity.ground.gethit.ko.ymin *= coordRatio
 	}
 
 	gi.movement.init()
 
-	if originLs != 1 {
-		gi.movement.airjump.height = int32(float32(gi.movement.airjump.height) / originLs)
-		gi.movement.yaccel /= originLs
-		gi.movement.stand.friction_threshold /= originLs
-		gi.movement.crouch.friction_threshold /= originLs
-		gi.movement.air.gethit.groundlevel /= originLs
-		gi.movement.air.gethit.groundrecover.ground.threshold /= originLs
-		gi.movement.air.gethit.groundrecover.groundlevel /= originLs
-		gi.movement.air.gethit.airrecover.threshold /= originLs
-		gi.movement.air.gethit.airrecover.yaccel /= originLs
-		gi.movement.air.gethit.trip.groundlevel /= originLs
-		gi.movement.down.bounce.offset[0] /= originLs
-		gi.movement.down.bounce.offset[1] /= originLs
-		gi.movement.down.bounce.yaccel /= originLs
-		gi.movement.down.bounce.groundlevel /= originLs
-		gi.movement.down.friction_threshold /= originLs
+	if coordRatio != 1 {
+		gi.movement.airjump.height *= coordRatio
+		gi.movement.yaccel *= coordRatio
+		gi.movement.stand.friction_threshold *= coordRatio
+		gi.movement.crouch.friction_threshold *= coordRatio
+		gi.movement.air.gethit.groundlevel *= coordRatio
+		gi.movement.air.gethit.groundrecover.ground.threshold *= coordRatio
+		gi.movement.air.gethit.groundrecover.groundlevel *= coordRatio
+		gi.movement.air.gethit.airrecover.threshold *= coordRatio
+		gi.movement.air.gethit.airrecover.yaccel *= coordRatio
+		gi.movement.air.gethit.trip.groundlevel *= coordRatio
+		gi.movement.down.bounce.offset[0] *= coordRatio
+		gi.movement.down.bounce.offset[1] *= coordRatio
+		gi.movement.down.bounce.yaccel *= coordRatio
+		gi.movement.down.bounce.groundlevel *= coordRatio
+		gi.movement.down.friction_threshold *= coordRatio
 	}
 
 	gi.remapPreset = make(map[string]RemapPreset)
@@ -2928,7 +2933,7 @@ func (c *Char) load(def string) error {
 					if movement {
 						movement = false
 						is.ReadI32("airjump.num", &gi.movement.airjump.num)
-						is.ReadI32("airjump.height", &gi.movement.airjump.height)
+						is.ReadF32("airjump.height", &gi.movement.airjump.height)
 						is.ReadF32("yaccel", &gi.movement.yaccel)
 						is.ReadF32("stand.friction", &gi.movement.stand.friction)
 						is.ReadF32("stand.friction.threshold",
@@ -4331,6 +4336,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ghv.fall.xvelocity *= lsRatio
 		c.ghv.fall.yvelocity *= lsRatio
 		c.ghv.fall.zvelocity *= lsRatio
+		c.ghv.xaccel *= lsRatio
 		c.ghv.yaccel *= lsRatio
 		c.ghv.zaccel *= lsRatio
 
