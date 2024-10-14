@@ -276,6 +276,10 @@ func rmInitSub(rp *RenderParams) {
 		rp.rot.angle *= -1
 		rp.rot.xangle *= -1
 	}
+
+	rp.x = float32(math.Trunc(float64(rp.x)))
+	rp.y = float32(math.Trunc(float64(rp.y)))
+
 	if rp.tile.x == 0 {
 		rp.tile.sx = 0
 	} else if rp.tile.sx > 0 {
