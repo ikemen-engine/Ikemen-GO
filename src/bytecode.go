@@ -1954,7 +1954,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_movement_airjump_num:
 		sys.bcStack.PushI(c.gi().movement.airjump.num)
 	case OC_const_movement_airjump_height:
-		sys.bcStack.PushI(int32(float32(c.gi().movement.airjump.height) * ((320 / c.localcoord) / oc.localscl)))
+		sys.bcStack.PushI(c.gi().movement.airjump.height * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_yaccel:
 		sys.bcStack.PushF(c.gi().movement.yaccel * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_stand_friction:
