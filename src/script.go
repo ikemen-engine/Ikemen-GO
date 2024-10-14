@@ -3408,6 +3408,10 @@ func triggerFunctions(l *lua.LState) {
 			ln = lua.LNumber(c.gi().movement.down.bounce.yaccel)
 		case "movement.down.bounce.groundlevel":
 			ln = lua.LNumber(c.gi().movement.down.bounce.groundlevel)
+		case "movement.down.gethit.offset.x":
+			ln = lua.LNumber(c.gi().movement.down.gethit.offset[0])
+		case "movement.down.gethit.offset.y":
+			ln = lua.LNumber(c.gi().movement.down.gethit.offset[1])
 		case "movement.down.friction.threshold":
 			ln = lua.LNumber(c.gi().movement.down.friction_threshold)
 		default:

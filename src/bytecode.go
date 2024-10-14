@@ -335,6 +335,8 @@ const (
 	OC_const_movement_down_bounce_offset_y
 	OC_const_movement_down_bounce_yaccel
 	OC_const_movement_down_bounce_groundlevel
+	OC_const_movement_down_gethit_offset_x
+	OC_const_movement_down_gethit_offset_y
 	OC_const_movement_down_friction_threshold
 	OC_const_name
 	OC_const_p2name
@@ -1954,7 +1956,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_movement_airjump_num:
 		sys.bcStack.PushI(c.gi().movement.airjump.num)
 	case OC_const_movement_airjump_height:
-		sys.bcStack.PushI(c.gi().movement.airjump.height * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().movement.airjump.height * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_yaccel:
 		sys.bcStack.PushF(c.gi().movement.yaccel * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_stand_friction:
@@ -1986,6 +1988,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_down_bounce_groundlevel:
 		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_movement_down_gethit_offset_x:
+		sys.bcStack.PushF(c.gi().movement.down.gethit.offset[0] * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_movement_down_gethit_offset_y:
+		sys.bcStack.PushF(c.gi().movement.down.gethit.offset[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_down_friction_threshold:
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_authorname:
