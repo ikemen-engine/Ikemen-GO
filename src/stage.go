@@ -920,14 +920,14 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 	s.stageCamera.localscl = s.localscl
 	if s.stageCamera.localcoord[0] != 320 {
 		// Update default values to new localcoord. Like characters do
-		originLs := 320 / float32(s.stageCamera.localcoord[0])
-		s.leftbound /= originLs
-		s.rightbound /= originLs
-		s.screenleft = int32(float32(s.screenleft) / originLs)
-		s.screenright = int32(float32(s.screenright) / originLs)
-		s.partnerspacing = int32(float32(s.partnerspacing) / originLs)
-		s.p[0].startx = int32(float32(s.p[0].startx) / originLs)
-		s.p[1].startx = int32(float32(s.p[1].startx) / originLs)
+		coordRatio := float32(s.stageCamera.localcoord[0]) / 320
+		s.leftbound *= coordRatio
+		s.rightbound *= coordRatio
+		s.screenleft = int32(float32(s.screenleft) * coordRatio)
+		s.screenright = int32(float32(s.screenright) * coordRatio)
+		s.partnerspacing = int32(float32(s.partnerspacing) * coordRatio)
+		s.p[0].startx = int32(float32(s.p[0].startx) * coordRatio)
+		s.p[1].startx = int32(float32(s.p[1].startx) * coordRatio)
 	}
 
 	// Constants group
