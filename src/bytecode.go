@@ -790,6 +790,8 @@ const (
 	OC_ex2_projvar_velmul_x
 	OC_ex2_projvar_velmul_y
 	OC_ex2_projvar_velmul_z
+	OC_ex2_projvar_guardflag
+	OC_ex2_projvar_hitflag
 	OC_ex2_hitdefvar_guardflag
 	OC_ex2_hitdefvar_hitflag
 	OC_ex2_hitdefvar_guarddamage
@@ -968,10 +970,14 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 	}
 	return true
 }
+
+// Pushes an OpCode with an int32 operand to the top of the BytecodeExp.
 func (be *BytecodeExp) appendI32Op(op OpCode, addr int32) {
 	be.append(op)
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
+
+// Pushes an OpCode with an int64 operand to the top of the BytecodeExp.
 func (be *BytecodeExp) appendI64Op(op OpCode, addr int64) {
 	be.append(op)
 	be.append((*(*[8]OpCode)(unsafe.Pointer(&addr)))[:]...)
@@ -3252,10 +3258,16 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_projvar_pos_x:
 		fallthrough
 	case OC_ex2_projvar_pos_y:
+		fallthrough
+	case OC_ex2_projvar_guardflag:
+		fallthrough
+	case OC_ex2_projvar_hitflag:
+		flg := sys.bcStack.Pop()
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
-		v := c.projVar(id, idx, opc, oc)
+		v := c.projVar(id, idx, flg, opc, oc)
 		sys.bcStack.Push(v)
+	// END FALLTHROUGH (projvar)
 	case OC_ex2_hitdefvar_guardflag:
 		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
 		sys.bcStack.PushB(
