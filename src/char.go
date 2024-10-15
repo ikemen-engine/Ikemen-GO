@@ -444,7 +444,7 @@ type CharMovement struct {
 			groundlevel float32
 		}
 		gethit struct {
-			offset      [2]float32
+			offset [2]float32
 		}
 		friction_threshold float32
 	}
@@ -708,17 +708,17 @@ func (hd *HitDef) clear(localscl float32) {
 		air_juggle:       IErr,
 		// Fall group
 		fall: Fall{
-			animtype:      RA_Unknown,
-			xvelocity:     float32(math.NaN()),
-			yvelocity:     -4.5 / originLs,
-			zvelocity:     0, // Should this work like the X component instead?
-			recover:       true,
-			recovertime:   4,
-			kill:          true,
-			envshake_freq: 60,
-			envshake_ampl: IErr,
+			animtype:       RA_Unknown,
+			xvelocity:      float32(math.NaN()),
+			yvelocity:      -4.5 / originLs,
+			zvelocity:      0, // Should this work like the X component instead?
+			recover:        true,
+			recovertime:    4,
+			kill:           true,
+			envshake_freq:  60,
+			envshake_ampl:  IErr,
 			envshake_phase: float32(math.NaN()),
-			envshake_mul:  1.0,
+			envshake_mul:   1.0,
 		},
 		// Attack depth
 		attack: struct{ depth [2]float32 }{
