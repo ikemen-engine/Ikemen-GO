@@ -3845,7 +3845,9 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, flag BytecodeValue,
 
 	// See compiler.go:ProjVar
 	var id int32 = pid.ToI()
-	if(id > 0){ id--; }
+	if id > 0 {
+		id--
+	}
 
 	var i = idx.ToI()
 	var fl int32 = flag.ToI()
@@ -3934,9 +3936,9 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, flag BytecodeValue,
 			case OC_ex2_projvar_teamside:
 				v = BytecodeInt(int32(p.hitdef.teamside))
 			case OC_ex2_projvar_guardflag:
-				v = BytecodeBool(p.hitdef.guardflag & fl != 0)
+				v = BytecodeBool(p.hitdef.guardflag&fl != 0)
 			case OC_ex2_projvar_hitflag:
-				v = BytecodeBool(p.hitdef.hitflag & fl != 0)
+				v = BytecodeBool(p.hitdef.hitflag&fl != 0)
 			}
 			break
 		}

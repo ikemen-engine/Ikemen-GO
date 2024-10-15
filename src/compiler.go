@@ -2349,21 +2349,21 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		isFlag := false
 		switch param {
-			case "guardflag":
-				opc = OC_ex2_hitdefvar_guardflag
-				isFlag = true
-			case "hitflag":
-				opc = OC_ex2_hitdefvar_hitflag
-				isFlag = true
-			case "hitdamage":
-				opc = OC_ex2_hitdefvar_hitdamage
-			case "guarddamage":
-				opc = OC_ex2_hitdefvar_guarddamage
-			default:
-				return bvNone(), Error("Invalid data: " + c.token)
+		case "guardflag":
+			opc = OC_ex2_hitdefvar_guardflag
+			isFlag = true
+		case "hitflag":
+			opc = OC_ex2_hitdefvar_hitflag
+			isFlag = true
+		case "hitdamage":
+			opc = OC_ex2_hitdefvar_hitdamage
+		case "guarddamage":
+			opc = OC_ex2_hitdefvar_guarddamage
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
 		}
 		if isFlag {
-			if err := eqne(func () error {
+			if err := eqne(func() error {
 				if flg, err := flagSub(); err != nil {
 					return err
 				} else {
@@ -2371,7 +2371,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					out.appendI32Op(opc, flg)
 					return nil
 				}
-			}); err != nil{
+			}); err != nil {
 				return bvNone(), err
 			}
 		} else {
@@ -2814,11 +2814,13 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		// I do not know why this happens.
 		// It happened with clsnVar.
 		idx := bv1.ToI()
-		if(idx >= 0){ bv1.SetI(idx+1); }
+		if idx >= 0 {
+			bv1.SetI(idx + 1)
+		}
 
 		bv3 := BytecodeInt(0)
 		if isFlag {
-			if err := eqne2(func (not bool) error {
+			if err := eqne2(func(not bool) error {
 				if flg, err := flagSub(); err != nil {
 					return err
 				} else {
@@ -2829,7 +2831,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 					}
 				}
 				return nil
-			}); err != nil{
+			}); err != nil {
 				return bvNone(), err
 			}
 		}
