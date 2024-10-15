@@ -2810,6 +2810,12 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 
+		// If bv1 is ever 0 Ikemen crashes.
+		// I do not know why this happens.
+		// It happened with clsnVar.
+		idx := bv1.ToI()
+		if(idx >= 0){ bv1.SetI(idx+1); }
+
 		bv3 := BytecodeInt(0)
 		if isFlag {
 			if err := eqne2(func (not bool) error {

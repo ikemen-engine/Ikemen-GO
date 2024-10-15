@@ -3826,7 +3826,11 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, flag BytecodeValue,
 	if pid.IsSF() {
 		return BytecodeSF()
 	}
+
+	// See compiler.go:ProjVar
 	var id int32 = pid.ToI()
+	if(id > 0){ id--; }
+
 	var i = idx.ToI()
 	var fl int32 = flag.ToI()
 	var v BytecodeValue
