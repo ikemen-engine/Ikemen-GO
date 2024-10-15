@@ -1094,6 +1094,8 @@ func (c *Compiler) mathFunc(out *BytecodeExp, in *string, rd bool,
 	}
 	return
 }
+
+// rd means Redirect
 func (c *Compiler) expValue(out *BytecodeExp, in *string,
 	rd bool) (BytecodeValue, error) {
 	c.reverseOrder, c.norange = true, false
@@ -1192,47 +1194,44 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return nil
 		})
 	}
-	flagSub := func(opct, opc OpCode) error {
-		return eqne(func() error {
-			flg := int32(0)
-			base := c.token
-			for _, ch := range base {
-				switch ch {
-				case 'H', 'h':
-					flg |= int32(ST_S)
-				case 'L', 'l':
-					flg |= int32(ST_C)
-				case 'M', 'm':
-					flg |= int32(ST_S | ST_C)
-				case 'A', 'a':
-					flg |= int32(ST_A)
-				case 'F', 'f':
-					flg |= int32(ST_F)
-				case 'D', 'd':
-					flg |= int32(ST_D)
-				case 'P', 'p':
-					flg |= int32(ST_P)
-				default:
-					return Error("Invalid flags: " + base)
-				}
+	// Parses a flag. Returns flag and error.
+	flagSub := func() (int32, error) {
+		flg := int32(0)
+		base := c.token
+		for _, ch := range base {
+			switch ch {
+			case 'H', 'h':
+				flg |= int32(ST_S)
+			case 'L', 'l':
+				flg |= int32(ST_C)
+			case 'M', 'm':
+				flg |= int32(ST_S | ST_C)
+			case 'A', 'a':
+				flg |= int32(ST_A)
+			case 'F', 'f':
+				flg |= int32(ST_F)
+			case 'D', 'd':
+				flg |= int32(ST_D)
+			case 'P', 'p':
+				flg |= int32(ST_P)
+			default:
+				return flg, Error("Invalid flags: " + base)
 			}
-			// peek ahead to see if we have signs in the flag
-			if len(*in) > 0 {
-				switch (*in)[0] {
-				case '+':
-					// move forward
-					flg |= int32(MT_PLS)
-					*in = (*in)[1:]
-				case '-':
-					// move forward
-					flg |= int32(MT_MNS)
-					*in = (*in)[1:]
-				}
+		}
+		// peek ahead to see if we have signs in the flag
+		if len(*in) > 0 {
+			switch (*in)[0] {
+			case '+':
+				// move forward
+				flg |= int32(MT_PLS)
+				*in = (*in)[1:]
+			case '-':
+				// move forward
+				flg |= int32(MT_MNS)
+				*in = (*in)[1:]
 			}
-			out.append(opct)
-			out.appendI32Op(opc, flg)
-			return nil
-		})
+		}
+		return flg, nil
 	}
 	var be1, be2, be3 BytecodeExp
 	var bv1, bv2, bv3 BytecodeValue
@@ -2350,21 +2349,29 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		}
 		isFlag := false
 		switch param {
-		case "guardflag":
-			opc = OC_ex2_hitdefvar_guardflag
-			isFlag = true
-		case "hitflag":
-			opc = OC_ex2_hitdefvar_hitflag
-			isFlag = true
-		case "hitdamage":
-			opc = OC_ex2_hitdefvar_hitdamage
-		case "guarddamage":
-			opc = OC_ex2_hitdefvar_guarddamage
-		default:
-			return bvNone(), Error("Invalid data: " + c.token)
+			case "guardflag":
+				opc = OC_ex2_hitdefvar_guardflag
+				isFlag = true
+			case "hitflag":
+				opc = OC_ex2_hitdefvar_hitflag
+				isFlag = true
+			case "hitdamage":
+				opc = OC_ex2_hitdefvar_hitdamage
+			case "guarddamage":
+				opc = OC_ex2_hitdefvar_guarddamage
+			default:
+				return bvNone(), Error("Invalid data: " + c.token)
 		}
 		if isFlag {
-			if err := flagSub(OC_ex2_, opc); err != nil {
+			if err := eqne(func () error {
+				if flg, err := flagSub(); err != nil {
+					return err
+				} else {
+					out.append(OC_ex2_)
+					out.appendI32Op(opc, flg)
+					return nil
+				}
+			}); err != nil{
 				return bvNone(), err
 			}
 		} else {
@@ -2656,6 +2663,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		c.token = c.tokenizer(in)
 
 		vname := c.token
+		isFlag := false
 
 		switch vname {
 		case "projremove":
@@ -2787,23 +2795,57 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_projvar_projid
 		case "teamside":
 			opc = OC_ex2_projvar_teamside
+		case "guardflag":
+			opc = OC_ex2_projvar_guardflag
+			isFlag = true
+		case "hitflag":
+			opc = OC_ex2_projvar_hitflag
+			isFlag = true
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
 		}
-		c.token = c.tokenizer(in)
 
+		c.token = c.tokenizer(in)
 		if err := c.checkClosingBracket(); err != nil {
 			return bvNone(), err
 		}
 
+		// If bv1 is ever 0 Ikemen crashes.
+		// I do not know why this happens.
+		// It happened with clsnVar.
+		idx := bv1.ToI()
+		if(idx >= 0){ bv1.SetI(idx+1); }
+
+		bv3 := BytecodeInt(0)
+		if isFlag {
+			if err := eqne2(func (not bool) error {
+				if flg, err := flagSub(); err != nil {
+					return err
+				} else {
+					if not {
+						bv3 = BytecodeInt(^flg)
+					} else {
+						bv3 = BytecodeInt(flg)
+					}
+				}
+				return nil
+			}); err != nil{
+				return bvNone(), err
+			}
+		}
+
+		be3.appendValue(bv3)
 		be2.appendValue(bv2)
 		be1.appendValue(bv1)
+
 		if len(be2) > int(math.MaxUint8-1) {
 			be1.appendI32Op(OC_jz, int32(len(be2)+1))
 		} else {
 			be1.append(OC_jz8, OpCode(len(be2)+1))
 		}
 		be1.append(be2...)
+		be1.append(be3...)
+
 		if rd {
 			out.appendI32Op(OC_nordrun, int32(len(be1)))
 		}

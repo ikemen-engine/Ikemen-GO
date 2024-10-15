@@ -3838,12 +3838,17 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 	}
 	return v
 }
-func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *Char) BytecodeValue {
+func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, flag BytecodeValue, vtype OpCode, oc *Char) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
 	}
+
+	// See compiler.go:ProjVar
 	var id int32 = pid.ToI()
+	if(id > 0){ id--; }
+
 	var i = idx.ToI()
+	var fl int32 = flag.ToI()
 	var v BytecodeValue
 	projs := c.getProjs(id)
 	if len(projs) == 0 {
@@ -3928,6 +3933,10 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *C
 				v = BytecodeInt(int32(p.id))
 			case OC_ex2_projvar_teamside:
 				v = BytecodeInt(int32(p.hitdef.teamside))
+			case OC_ex2_projvar_guardflag:
+				v = BytecodeBool(p.hitdef.guardflag & fl != 0)
+			case OC_ex2_projvar_hitflag:
+				v = BytecodeBool(p.hitdef.hitflag & fl != 0)
 			}
 			break
 		}
