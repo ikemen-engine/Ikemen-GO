@@ -11181,18 +11181,28 @@ type removeText StateControllerBase
 
 const (
 	removetext_id byte = iota
+	removetext_redirectid
 )
 
 func (sc removeText) Run(c *Char, _ []int32) bool {
-	ownerID := c.id
+	crun := c
+	ownerID := crun.id
+	textID := int32(-1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case removetext_id:
-			idToRemove := exp[0].evalI(c)
-			sys.lifebar.RemoveText(idToRemove, ownerID)
+			textID = exp[0].evalI(c)
+		case removetext_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+				ownerID = crun.id
+			} else {
+				return false
+			}
 		}
 		return true
 	})
+	sys.lifebar.RemoveText(textID, ownerID)
 	return false
 }
 
