@@ -11065,7 +11065,7 @@ const (
 func (sc text) Run(c *Char, _ []int32) bool {
 	crun := c
 	params := []interface{}{}
-	ownerID := c.id
+	ownerID := crun.id
 	ts := NewTextSprite()
 	ts.SetLocalcoord(float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 	var xscl, yscl float32 = 1, 1
@@ -11157,6 +11157,7 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
+				ts.ownerid = crun.id
 			} else {
 				return false
 			}
