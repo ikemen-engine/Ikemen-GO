@@ -3490,6 +3490,12 @@ func triggerFunctions(l *lua.LState) {
 					ln = lua.LNumber(e.accel[1])
 				case "accel z":
 					ln = lua.LNumber(e.accel[2])
+				case "friction x":
+					ln = lua.LNumber(e.friction[0])
+				case "friction y":
+					ln = lua.LNumber(e.friction[1])
+				case "friction z":
+					ln = lua.LNumber(e.friction[2])
 				case "scale x":
 					ln = lua.LNumber(e.scale[0] * e.interpolate_scale[0])
 				case "scale y":
@@ -4054,6 +4060,14 @@ func triggerFunctions(l *lua.LState) {
 			id = int32(numArg(l, 1))
 		}
 		l.Push(lua.LNumber(sys.debugWC.numTarget(BytecodeInt(id)).ToI()))
+		return 1
+	})
+	luaRegister(l, "numtext", func(*lua.LState) int {
+		id := int32(-1)
+		if l.GetTop() >= 1 {
+			id = int32(numArg(l, 1))
+		}
+		l.Push(lua.LNumber(sys.debugWC.numText(BytecodeInt(id)).ToI()))
 		return 1
 	})
 	luaRegister(l, "palfxvar", func(*lua.LState) int {
