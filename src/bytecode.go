@@ -11115,7 +11115,7 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		case text_align:
 			ts.align = exp[0].evalI(c)
 		case text_linespacing:
-			ts.lineSpacing = exp[0].evalF(c) / ts.localScale
+			ts.lineSpacing = exp[0].evalF(c)
 		case text_textdelay:
 			ts.textDelay = exp[0].evalF(c)
 		case text_pos:
