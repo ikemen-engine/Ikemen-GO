@@ -605,7 +605,7 @@ func NewTextSprite() *TextSprite {
 		layerno:    1,
 		localScale: 1,
 		offsetX:    0,
-		lineSpacing:0,
+		lineSpacing:10,
 		textDelay:  0,
 		velocity:   [2]float32{0.0, 0.0},
 		accel:      [2]float32{0.0, 0.0},

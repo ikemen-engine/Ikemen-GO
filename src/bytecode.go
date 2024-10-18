@@ -11051,11 +11051,11 @@ const (
 	text_align
 	text_linespacing
 	text_textdelay
-	text_velocity
-	text_friction
-	text_accel
 	text_text
 	text_pos
+	text_velocity
+	text_accel
+	text_friction
 	text_scale
 	text_color
 	text_id
@@ -11115,29 +11115,29 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		case text_align:
 			ts.align = exp[0].evalI(c)
 		case text_linespacing:
-			ts.lineSpacing = exp[0].evalF(c)
+			ts.lineSpacing = exp[0].evalF(c) / ts.localScale
 		case text_textdelay:
 			ts.textDelay = exp[0].evalF(c)
+		case text_pos:
+			ts.x = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+			if len(exp) > 1 {
+				ts.y = exp[1].evalF(c) / ts.localScale
+			}
 		case text_velocity:
 			ts.velocity[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
 				if len(exp) > 1 {
 					ts.velocity[1] = exp[1].evalF(c) / ts.localScale
-				}
-		case text_friction:
-			ts.friction[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
-				if len(exp) > 1 {
-					ts.friction[1] = exp[1].evalF(c) / ts.localScale
 				}
 		case text_accel:
 			ts.accel[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
 				if len(exp) > 1 {
 					ts.accel[1] = exp[1].evalF(c) / ts.localScale
 				}
-		case text_pos:
-			ts.x = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
-			if len(exp) > 1 {
-				ts.y = exp[1].evalF(c) / ts.localScale
-			}
+		case text_friction:
+			ts.friction[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+				if len(exp) > 1 {
+					ts.friction[1] = exp[1].evalF(c) / ts.localScale
+				}
 		case text_scale:
 			xscl = exp[0].evalF(c)
 			if len(exp) > 1 {
