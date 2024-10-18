@@ -1133,8 +1133,8 @@ type Explod struct {
 	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
-	accel               [3]float32
 	friction            [3]float32
+	accel               [3]float32
 	sprpriority         int32
 	layerno             int32
 	shadow              [3]int32
@@ -1503,9 +1503,9 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			e.newPos[1] = e.pos[1] + e.velocity[1]
 			e.newPos[2] = e.pos[2] + e.velocity[2]
 			for i := range e.velocity {
-				e.velocity[i] += e.accel[i]
 				e.velocity[i] *= e.friction[i]
-				if math.Abs(float64(e.velocity[i])) < 0.1 {
+				e.velocity[i] += e.accel[i]
+				if math.Abs(float64(e.velocity[i])) < 0.1 && math.Abs(float64(e.friction[i])) > 0 {
 					e.velocity[i] = 0
 				}
 			}

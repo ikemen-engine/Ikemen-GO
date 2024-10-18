@@ -587,8 +587,8 @@ type TextSprite struct {
 	elapsedTicks     float32
 	textDelay        float32
 	velocity         [2]float32
-	accel            [2]float32
 	friction         [2]float32
+	accel            [2]float32
 }
 
 func NewTextSprite() *TextSprite {
@@ -608,8 +608,8 @@ func NewTextSprite() *TextSprite {
 		lineSpacing:10,
 		textDelay:  0,
 		velocity:   [2]float32{0.0, 0.0},
-		accel:      [2]float32{0.0, 0.0},
 		friction:   [2]float32{1.0, 1.0},
+		accel:      [2]float32{0.0, 0.0},
 	}
 	ts.palfx.setColor(255, 255, 255)
 	return ts
@@ -641,9 +641,9 @@ func (ts *TextSprite) SetTextVel() {
 	ts.x += ts.velocity[0]
 	ts.y += ts.velocity[1]
 	for i := range ts.velocity {
-		ts.velocity[i] += ts.accel[i]
 		ts.velocity[i] *= ts.friction[i]
-		if math.Abs(float64(ts.velocity[i])) < 0.1 {
+		ts.velocity[i] += ts.accel[i]
+		if math.Abs(float64(ts.velocity[i])) < 0.1 && math.Abs(float64(ts.friction[i])) > 0 {
 			ts.velocity[i] = 0
 		}
 	}

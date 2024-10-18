@@ -740,12 +740,12 @@ func (c *Compiler) explodSub(is IniSection,
 			return err
 		}
 	}
-	if err := c.paramValue(is, sc, "accel",
-		explod_accel, VT_Float, 3, false); err != nil {
-		return err
-	}
 	if err := c.paramValue(is, sc, "friction",
 		explod_friction, VT_Float, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "accel",
+		explod_accel, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramProjection(is, sc, explod_projection); err != nil {
@@ -4870,12 +4870,12 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 			text_velocity, VT_Float, 2, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "accel",
-			text_accel, VT_Float, 2, false); err != nil {
-			return err
-		}
 		if err := c.paramValue(is, sc, "friction",
 			text_friction, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "accel",
+			text_accel, VT_Float, 2, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "scale",

@@ -4896,8 +4896,8 @@ const (
 	explod_random
 	explod_postype
 	explod_velocity
-	explod_accel
 	explod_friction
+	explod_accel
 	explod_scale
 	explod_bindtime
 	explod_removetime
@@ -5033,20 +5033,20 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 					e.velocity[2] = exp[2].evalF(c) * redirscale
 				}
 			}
+		case explod_friction:
+			e.friction[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				e.friction[1] = exp[1].evalF(c)
+				if len(exp) > 2 {
+					e.friction[2] = exp[2].evalF(c)
+				}
+			}
 		case explod_accel:
 			e.accel[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
 				e.accel[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
 					e.accel[2] = exp[2].evalF(c) * redirscale
-				}
-			}
-		case explod_friction:
-			e.friction[0] = exp[0].evalF(c) * redirscale
-			if len(exp) > 1 {
-				e.friction[1] = exp[1].evalF(c) * redirscale
-				if len(exp) > 2 {
-					e.friction[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		case explod_scale:
@@ -5340,8 +5340,8 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						e.setZ(e.offset[2])
 						e.relativePos = [3]float32{0, 0, 0}
 						e.velocity = [3]float32{0, 0, 0}
-						e.accel = [3]float32{0, 0, 0}
 						e.friction = [3]float32{1, 1, 1}
+						e.accel = [3]float32{0, 0, 0}
 						e.bindId = -2
 						if e.bindtime == 0 {
 							e.bindtime = 1
@@ -5448,29 +5448,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						}
 					}
 				}
-			case explod_accel:
-				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-					accel := exp[0].evalF(c) * redirscale
-					eachExpl(func(e *Explod) {
-						e.accel[0] = accel
-					})
-				}
-				if len(exp) > 1 {
-					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-						accel := exp[1].evalF(c) * redirscale
-						eachExpl(func(e *Explod) {
-							e.accel[1] = accel
-						})
-					}
-					if len(exp) > 2 {
-						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-							accel := exp[2].evalF(c) * redirscale
-							eachExpl(func(e *Explod) {
-								e.accel[2] = accel
-							})
-						}
-					}
-				}
 			case explod_friction:
 				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 					friction := exp[0].evalF(c) * redirscale
@@ -5490,6 +5467,29 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 							friction := exp[2].evalF(c) * redirscale
 							eachExpl(func(e *Explod) {
 								e.friction[2] = friction
+							})
+						}
+					}
+				}
+			case explod_accel:
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					accel := exp[0].evalF(c) * redirscale
+					eachExpl(func(e *Explod) {
+						e.accel[0] = accel
+					})
+				}
+				if len(exp) > 1 {
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						accel := exp[1].evalF(c) * redirscale
+						eachExpl(func(e *Explod) {
+							e.accel[1] = accel
+						})
+					}
+					if len(exp) > 2 {
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							accel := exp[2].evalF(c) * redirscale
+							eachExpl(func(e *Explod) {
+								e.accel[2] = accel
 							})
 						}
 					}
@@ -11054,8 +11054,8 @@ const (
 	text_text
 	text_pos
 	text_velocity
-	text_accel
 	text_friction
+	text_accel
 	text_scale
 	text_color
 	text_id
@@ -11128,15 +11128,15 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				if len(exp) > 1 {
 					ts.velocity[1] = exp[1].evalF(c) / ts.localScale
 				}
+		case text_friction:
+			ts.friction[0] = exp[0].evalF(c) + float32(ts.offsetX)
+				if len(exp) > 1 {
+					ts.friction[1] = exp[1].evalF(c)
+				}
 		case text_accel:
 			ts.accel[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
 				if len(exp) > 1 {
 					ts.accel[1] = exp[1].evalF(c) / ts.localScale
-				}
-		case text_friction:
-			ts.friction[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
-				if len(exp) > 1 {
-					ts.friction[1] = exp[1].evalF(c) / ts.localScale
 				}
 		case text_scale:
 			xscl = exp[0].evalF(c)
