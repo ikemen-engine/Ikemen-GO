@@ -5450,21 +5450,21 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				}
 			case explod_friction:
 				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-					friction := exp[0].evalF(c) * redirscale
+					friction := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
 						e.friction[0] = friction
 					})
 				}
 				if len(exp) > 1 {
 					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-						friction := exp[1].evalF(c) * redirscale
+						friction := exp[1].evalF(c)
 						eachExpl(func(e *Explod) {
 							e.friction[1] = friction
 						})
 					}
 					if len(exp) > 2 {
 						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-							friction := exp[2].evalF(c) * redirscale
+							friction := exp[2].evalF(c)
 							eachExpl(func(e *Explod) {
 								e.friction[2] = friction
 							})
@@ -11124,17 +11124,17 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				ts.y = exp[1].evalF(c) / ts.localScale
 			}
 		case text_velocity:
-			ts.velocity[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+			ts.velocity[0] = exp[0].evalF(c)/ts.localScale
 				if len(exp) > 1 {
 					ts.velocity[1] = exp[1].evalF(c) / ts.localScale
 				}
 		case text_friction:
-			ts.friction[0] = exp[0].evalF(c) + float32(ts.offsetX)
+			ts.friction[0] = exp[0].evalF(c)
 				if len(exp) > 1 {
 					ts.friction[1] = exp[1].evalF(c)
 				}
 		case text_accel:
-			ts.accel[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+			ts.accel[0] = exp[0].evalF(c)/ts.localScale
 				if len(exp) > 1 {
 					ts.accel[1] = exp[1].evalF(c) / ts.localScale
 				}
@@ -11186,7 +11186,6 @@ const (
 
 func (sc removeText) Run(c *Char, _ []int32) bool {
 	crun := c
-	ownerID := crun.id
 	textID := int32(-1)
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -11195,14 +11194,13 @@ func (sc removeText) Run(c *Char, _ []int32) bool {
 		case removetext_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
-				ownerID = crun.id
 			} else {
 				return false
 			}
 		}
 		return true
 	})
-	sys.lifebar.RemoveText(textID, ownerID)
+	sys.lifebar.RemoveText(textID, crun.id)
 	return false
 }
 
