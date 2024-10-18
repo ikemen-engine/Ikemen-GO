@@ -643,7 +643,7 @@ func (ts *TextSprite) SetTextVel() {
 	for i := range ts.velocity {
 		ts.velocity[i] *= ts.friction[i]
 		ts.velocity[i] += ts.accel[i]
-		if math.Abs(float64(ts.velocity[i])) < 0.1 && math.Abs(float64(ts.friction[i])) != 1 {
+		if math.Abs(float64(ts.velocity[i])) < 0.1 && math.Abs(float64(ts.friction[i])) < 1 {
 			ts.velocity[i] = 0
 		}
 	}

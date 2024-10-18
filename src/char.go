@@ -1505,7 +1505,7 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			for i := range e.velocity {
 				e.velocity[i] *= e.friction[i]
 				e.velocity[i] += e.accel[i]
-				if math.Abs(float64(e.velocity[i])) < 0.1 && math.Abs(float64(e.friction[i])) != 1 {
+				if math.Abs(float64(e.velocity[i])) < 0.1 && math.Abs(float64(e.friction[i])) < 1 {
 					e.velocity[i] = 0
 				}
 			}
