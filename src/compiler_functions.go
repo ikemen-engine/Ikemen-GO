@@ -4893,11 +4893,11 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 
 func (c *Compiler) removeText(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*removeText)(sc), c.stateSec(is, func() error {
-		b := false
 		if err := c.paramValue(is, sc, "redirectid",
 			removetext_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		b := false
 		if err := c.stateParam(is, "id", false, func(data string) error {
 			b = true
 			return c.scAdd(sc, removetext_id, data, VT_Int, 1)
