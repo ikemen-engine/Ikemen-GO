@@ -98,6 +98,7 @@ func newCompiler() *Compiler {
 		"projectile":         c.projectile,
 		"remappal":           c.remapPal,
 		"removeexplod":       c.removeExplod,
+		"removetext":         c.removeText,
 		"reversaldef":        c.reversalDef,
 		"screenbound":        c.screenBound,
 		"selfstate":          c.selfState,
@@ -278,6 +279,7 @@ var triggerMap = map[string]int{
 	"numproj":           1,
 	"numprojid":         1,
 	"numtarget":         1,
+	"numtext":           1,
 	"p1name":            1,
 	"p2bodydist":        1,
 	"p2dist":            1,
@@ -2031,6 +2033,19 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
 			}
+		case "friction":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "x":
+				opc = OC_ex2_explodvar_friction_x
+			case "y":
+				opc = OC_ex2_explodvar_friction_y
+			case "z":
+				opc = OC_ex2_explodvar_friction_z
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
 		case "scale":
 			c.token = c.tokenizer(in)
 
@@ -2596,6 +2611,11 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_numtarget)
+	case "numtext":
+		if _, err := c.oneArg(out, in, rd, true, BytecodeInt(-1)); err != nil {
+			return bvNone(), err
+		}
+		out.append(OC_numtext)
 	case "palno":
 		out.append(OC_palno)
 	case "pos":

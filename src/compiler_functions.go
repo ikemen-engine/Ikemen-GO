@@ -457,6 +457,10 @@ func (c *Compiler) destroySelf(is IniSection, sc *StateControllerBase, _ int8) (
 			destroySelf_removeexplods, VT_Bool, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "removetexts",
+			destroySelf_removetexts, VT_Bool, 1, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err
@@ -738,6 +742,10 @@ func (c *Compiler) explodSub(is IniSection,
 	}
 	if err := c.paramValue(is, sc, "accel",
 		explod_accel, VT_Float, 3, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "friction",
+		explod_friction, VT_Float, 3, false); err != nil {
 		return err
 	}
 	if err := c.paramProjection(is, sc, explod_projection); err != nil {
@@ -4785,6 +4793,10 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 			text_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "id",
+			text_id, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "removetime",
 			text_removetime, VT_Int, 1, false); err != nil {
 			return err
@@ -4842,6 +4854,26 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 			text_align, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "linespacing",
+			text_linespacing, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "textdelay",
+			text_textdelay, VT_Float, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "velocity",
+			text_velocity, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "friction",
+			text_friction, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "accel",
+			text_accel, VT_Float, 2, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "pos",
 			text_pos, VT_Float, 2, false); err != nil {
 			return err
@@ -4853,6 +4885,23 @@ func (c *Compiler) text(is IniSection, sc *StateControllerBase, _ int8) (StateCo
 		if err := c.paramValue(is, sc, "color",
 			text_color, VT_Int, 3, false); err != nil {
 			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
+
+func (c *Compiler) removeText(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*removeText)(sc), c.stateSec(is, func() error {
+		b := false
+		if err := c.stateParam(is, "id", false, func(data string) error {
+			b = true
+			return c.scAdd(sc, removetext_id, data, VT_Int, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(removetext_id, sc.iToExp(-1))
 		}
 		return nil
 	})

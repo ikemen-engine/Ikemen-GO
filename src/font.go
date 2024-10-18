@@ -570,6 +570,8 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
 }
 
 type TextSprite struct {
+	ownerid          int32
+	id               int32
 	text             string
 	fnt              *Fnt
 	bank, align      int32
@@ -581,10 +583,17 @@ type TextSprite struct {
 	layerno          int16      // text sctrl
 	localScale       float32    // text sctrl
 	offsetX          int32      // text sctrl
+	lineSpacing      float32
+	elapsedTicks     float32
+	textDelay        float32
+	velocity         [2]float32
+	accel            [2]float32
+	friction         [2]float32
 }
 
 func NewTextSprite() *TextSprite {
 	ts := &TextSprite{
+		id:         -1,
 		align:      1,
 		x:          sys.luaSpriteOffsetX,
 		xscl:       1,
@@ -596,6 +605,11 @@ func NewTextSprite() *TextSprite {
 		layerno:    1,
 		localScale: 1,
 		offsetX:    0,
+		lineSpacing:0,
+		textDelay:  0,
+		velocity:   [2]float32{0.0, 0.0},
+		accel:      [2]float32{0.0, 0.0},
+		friction:   [2]float32{1.0, 1.0},
 	}
 	ts.palfx.setColor(255, 255, 255)
 	return ts
@@ -623,12 +637,61 @@ func (ts *TextSprite) SetColor(r, g, b int32) {
 		float32(b) / 255, 1.0}
 }
 
+func (ts *TextSprite) SetTextVel() {
+	ts.x += ts.velocity[0]
+	ts.y += ts.velocity[1]
+	for i := range ts.velocity {
+		ts.velocity[i] += ts.accel[i]
+		ts.velocity[i] *= ts.friction[i]
+		if math.Abs(float64(ts.velocity[i])) < 0.1 {
+			ts.velocity[i] = 0
+		}
+	}
+}
+
 func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
-		if ts.fnt.Type == "truetype" {
-			ts.fnt.DrawTtf(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.align, true, &ts.window, ts.frgba)
-		} else {
-			ts.fnt.DrawText(ts.text, ts.x, ts.y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window, ts.palfx)
+		tabSize := 4
+		tabSpaces := strings.Repeat(" ", tabSize)
+		
+		if sys.tickFrame() {
+			if ts.textDelay > 0 { // If textDelay is greater than 0, it controls the maximum number of characters
+				ts.elapsedTicks++
+				}
+				ts.SetTextVel()
+			}
+		
+		maxChars := int32(ts.elapsedTicks / ts.textDelay)
+		totalCharsShown := 0 // Control of total displayed characters
+
+		lines := strings.Split(ts.text, "\n")
+		for i, line := range lines {
+			line = strings.ReplaceAll(line, "\t", tabSpaces)
+			newY := ts.y + float32(i)*ts.yscl*ts.lineSpacing
+			lineLength := len(line)
+
+			// Shows the characters progressively
+			charsToShow := lineLength // Default to show the entire line
+			if ts.textDelay > 0 {
+				charsToShow = int(Min(int32(lineLength), maxChars-int32(totalCharsShown)))
+				totalCharsShown += charsToShow
+			}
+
+			// Draws the visible line
+			ts.DrawLine(line[:charsToShow], newY)
+
+			if ts.textDelay > 0 && totalCharsShown >= int(maxChars) {
+				break
+			}
 		}
+	}
+}
+
+// Helper function to draw a line
+func (ts *TextSprite) DrawLine(line string, y float32) {
+	if ts.fnt.Type == "truetype" {
+		ts.fnt.DrawTtf(line, ts.x, y, ts.xscl, ts.yscl, ts.align, true, &ts.window, ts.frgba)
+	} else {
+		ts.fnt.DrawText(line, ts.x, y, ts.xscl, ts.yscl, ts.bank, ts.align, &ts.window, ts.palfx)
 	}
 }

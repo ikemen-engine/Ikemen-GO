@@ -158,6 +158,7 @@ const (
 	OC_numexplod
 	OC_numprojid
 	OC_numproj
+	OC_numtext
 	OC_teammode
 	OC_teamside
 	OC_hitdefattr
@@ -740,6 +741,9 @@ const (
 	OC_ex2_explodvar_accel_x
 	OC_ex2_explodvar_accel_y
 	OC_ex2_explodvar_accel_z
+	OC_ex2_explodvar_friction_x
+	OC_ex2_explodvar_friction_y
+	OC_ex2_explodvar_friction_z
 	OC_ex2_explodvar_angle
 	OC_ex2_explodvar_angle_x
 	OC_ex2_explodvar_angle_y
@@ -1641,6 +1645,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			*sys.bcStack.Top() = c.numProjID(*sys.bcStack.Top())
 		case OC_numtarget:
 			*sys.bcStack.Top() = c.numTarget(*sys.bcStack.Top())
+		case OC_numtext:
+			*sys.bcStack.Top() = c.numText(*sys.bcStack.Top())
 		case OC_palno:
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
@@ -3117,6 +3123,12 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_accel_y:
 		correctScale = true
 		fallthrough
+	case OC_ex2_explodvar_friction_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_friction_y:
+		correctScale = true
+		fallthrough
 	case OC_ex2_explodvar_anim:
 		fallthrough
 	case OC_ex2_explodvar_animelem:
@@ -4197,12 +4209,13 @@ type destroySelf StateControllerBase
 const (
 	destroySelf_recursive = iota
 	destroySelf_removeexplods
+	destroySelf_removetexts
 	destroySelf_redirectid
 )
 
 func (sc destroySelf) Run(c *Char, _ []int32) bool {
 	crun := c
-	rec, rem := false, false
+	rec, rem, rtx := false, false, false
 	self := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -4210,6 +4223,8 @@ func (sc destroySelf) Run(c *Char, _ []int32) bool {
 			rec = exp[0].evalB(c)
 		case destroySelf_removeexplods:
 			rem = exp[0].evalB(c)
+		case destroySelf_removetexts:
+			rtx = exp[0].evalB(c)
 		case destroySelf_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				self = rid.id == c.id
@@ -4220,7 +4235,7 @@ func (sc destroySelf) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return crun.destroySelf(rec, rem) && self
+	return crun.destroySelf(rec, rem, rtx) && self
 }
 
 type changeAnim StateControllerBase
@@ -4882,6 +4897,7 @@ const (
 	explod_postype
 	explod_velocity
 	explod_accel
+	explod_friction
 	explod_scale
 	explod_bindtime
 	explod_removetime
@@ -5023,6 +5039,14 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.accel[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
 					e.accel[2] = exp[2].evalF(c) * redirscale
+				}
+			}
+		case explod_friction:
+			e.friction[0] = exp[0].evalF(c) * redirscale
+			if len(exp) > 1 {
+				e.friction[1] = exp[1].evalF(c) * redirscale
+				if len(exp) > 2 {
+					e.friction[2] = exp[2].evalF(c) * redirscale
 				}
 			}
 		case explod_scale:
@@ -5317,6 +5341,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						e.relativePos = [3]float32{0, 0, 0}
 						e.velocity = [3]float32{0, 0, 0}
 						e.accel = [3]float32{0, 0, 0}
+						e.friction = [3]float32{1, 1, 1}
 						e.bindId = -2
 						if e.bindtime == 0 {
 							e.bindtime = 1
@@ -5442,6 +5467,29 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 							accel := exp[2].evalF(c) * redirscale
 							eachExpl(func(e *Explod) {
 								e.accel[2] = accel
+							})
+						}
+					}
+				}
+			case explod_friction:
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					friction := exp[0].evalF(c) * redirscale
+					eachExpl(func(e *Explod) {
+						e.friction[0] = friction
+					})
+				}
+				if len(exp) > 1 {
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						friction := exp[1].evalF(c) * redirscale
+						eachExpl(func(e *Explod) {
+							e.friction[1] = friction
+						})
+					}
+					if len(exp) > 2 {
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							friction := exp[2].evalF(c) * redirscale
+							eachExpl(func(e *Explod) {
+								e.friction[2] = friction
 							})
 						}
 					}
@@ -11001,20 +11049,28 @@ const (
 	text_localcoord
 	text_bank
 	text_align
+	text_linespacing
+	text_textdelay
+	text_velocity
+	text_friction
+	text_accel
 	text_text
 	text_pos
 	text_scale
 	text_color
+	text_id
 	text_redirectid
 )
 
 func (sc text) Run(c *Char, _ []int32) bool {
 	crun := c
 	params := []interface{}{}
+	ownerID := c.id
 	ts := NewTextSprite()
 	ts.SetLocalcoord(float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 	var xscl, yscl float32 = 1, 1
 	var fnt int = -1
+	ts.ownerid = ownerID
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case text_removetime:
@@ -11058,6 +11114,25 @@ func (sc text) Run(c *Char, _ []int32) bool {
 			ts.bank = exp[0].evalI(c)
 		case text_align:
 			ts.align = exp[0].evalI(c)
+		case text_linespacing:
+			ts.lineSpacing = exp[0].evalF(c)
+		case text_textdelay:
+			ts.textDelay = exp[0].evalF(c)
+		case text_velocity:
+			ts.velocity[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+				if len(exp) > 1 {
+					ts.velocity[1] = exp[1].evalF(c) / ts.localScale
+				}
+		case text_friction:
+			ts.friction[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+				if len(exp) > 1 {
+					ts.friction[1] = exp[1].evalF(c) / ts.localScale
+				}
+		case text_accel:
+			ts.accel[0] = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
+				if len(exp) > 1 {
+					ts.accel[1] = exp[1].evalF(c) / ts.localScale
+				}
 		case text_pos:
 			ts.x = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
 			if len(exp) > 1 {
@@ -11077,6 +11152,8 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				}
 			}
 			ts.SetColor(r, g, b)
+		case text_id:
+			ts.id = exp[0].evalI(c)
 		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
@@ -11097,6 +11174,25 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		ts.text = OldSprintf("%v", params...)
 	}
 	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
+	return false
+}
+
+type removeText StateControllerBase
+
+const (
+	removetext_id byte = iota
+)
+
+func (sc removeText) Run(c *Char, _ []int32) bool {
+	ownerID := c.id
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case removetext_id:
+			idToRemove := exp[0].evalI(c)
+			sys.lifebar.RemoveText(idToRemove, ownerID)
+		}
+		return true
+	})
 	return false
 }
 
