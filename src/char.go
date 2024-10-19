@@ -1133,6 +1133,7 @@ type Explod struct {
 	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
+	friction            [3]float32
 	accel               [3]float32
 	sprpriority         int32
 	layerno             int32
@@ -1198,6 +1199,7 @@ func (e *Explod) clear() {
 		bindId:            -2,
 		ignorehitpause:    true,
 		interpolate_scale: [...]float32{1, 1, 0, 0},
+		friction:          [3]float32{1, 1, 1},
 	}
 }
 func (e *Explod) setX(x float32) {
@@ -1501,7 +1503,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			e.newPos[1] = e.pos[1] + e.velocity[1]
 			e.newPos[2] = e.pos[2] + e.velocity[2]
 			for i := range e.velocity {
+				e.velocity[i] *= e.friction[i]
 				e.velocity[i] += e.accel[i]
+				if math.Abs(float64(e.velocity[i])) < 0.1 && math.Abs(float64(e.friction[i])) < 1 {
+					e.velocity[i] = 0
+				}
 			}
 			eleminterpolate := e.interpolate && e.interpolate_time[1] > 0 && e.interpolate_animelem[1] >= 0
 			if e.animfreeze || eleminterpolate {
@@ -3782,6 +3788,20 @@ func (c *Char) numExplod(eid BytecodeValue) BytecodeValue {
 	}
 	return BytecodeInt(n)
 }
+
+func (c *Char) numText(textid BytecodeValue) BytecodeValue {
+	if textid.IsSF() {
+		return BytecodeSF()
+	}
+	var id, n int32 = textid.ToI(), 0
+	for _, ts := range sys.lifebar.textsprite {
+		if ts.id == id && ts.ownerid == c.id {
+			n++
+		}
+	}
+	return BytecodeInt(n)
+}
+
 func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) BytecodeValue {
 	if eid.IsSF() {
 		return BytecodeSF()
@@ -4510,7 +4530,7 @@ func (c *Char) destroy() {
 	}
 }
 
-func (c *Char) destroySelf(recursive, removeexplods bool) bool {
+func (c *Char) destroySelf(recursive, removeexplods, removetexts bool) bool {
 	if c.helperIndex <= 0 {
 		return false
 	}
@@ -4518,10 +4538,13 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	if removeexplods {
 		c.removeExplod(-1, -1)
 	}
+	if removetexts {
+		sys.lifebar.RemoveText(-1, c.id)
+	}
 	if recursive {
 		for _, ch := range c.children {
 			if ch != nil {
-				ch.destroySelf(recursive, removeexplods)
+				ch.destroySelf(recursive, removeexplods, removetexts)
 			}
 		}
 	}
