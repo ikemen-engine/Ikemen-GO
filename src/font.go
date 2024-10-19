@@ -593,23 +593,23 @@ type TextSprite struct {
 
 func NewTextSprite() *TextSprite {
 	ts := &TextSprite{
-		id:         -1,
-		align:      1,
-		x:          sys.luaSpriteOffsetX,
-		xscl:       1,
-		yscl:       1,
-		window:     sys.scrrect,
-		palfx:      newPalFX(),
-		frgba:      [...]float32{1.0, 1.0, 1.0, 1.0},
-		removetime: 1,
-		layerno:    1,
-		localScale: 1,
-		offsetX:    0,
-		lineSpacing:10,
-		textDelay:  0,
-		velocity:   [2]float32{0.0, 0.0},
-		friction:   [2]float32{1.0, 1.0},
-		accel:      [2]float32{0.0, 0.0},
+		id:          -1,
+		align:       1,
+		x:           sys.luaSpriteOffsetX,
+		xscl:        1,
+		yscl:        1,
+		window:      sys.scrrect,
+		palfx:       newPalFX(),
+		frgba:       [...]float32{1.0, 1.0, 1.0, 1.0},
+		removetime:  1,
+		layerno:     1,
+		localScale:  1,
+		offsetX:     0,
+		lineSpacing: 10,
+		textDelay:   0,
+		velocity:    [2]float32{0.0, 0.0},
+		friction:    [2]float32{1.0, 1.0},
+		accel:       [2]float32{0.0, 0.0},
 	}
 	ts.palfx.setColor(255, 255, 255)
 	return ts
@@ -653,14 +653,14 @@ func (ts *TextSprite) Draw() {
 	if !sys.frameSkip && ts.fnt != nil {
 		tabSize := 4
 		tabSpaces := strings.Repeat(" ", tabSize)
-		
+
 		if sys.tickFrame() {
 			if ts.textDelay > 0 { // If textDelay is greater than 0, it controls the maximum number of characters
 				ts.elapsedTicks++
-				}
-				ts.SetTextVel()
 			}
-		
+			ts.SetTextVel()
+		}
+
 		maxChars := int32(ts.elapsedTicks / ts.textDelay)
 		totalCharsShown := 0 // Control of total displayed characters
 

@@ -11124,20 +11124,20 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				ts.y = exp[1].evalF(c) / ts.localScale
 			}
 		case text_velocity:
-			ts.velocity[0] = exp[0].evalF(c)/ts.localScale
-				if len(exp) > 1 {
-					ts.velocity[1] = exp[1].evalF(c) / ts.localScale
-				}
+			ts.velocity[0] = exp[0].evalF(c) / ts.localScale
+			if len(exp) > 1 {
+				ts.velocity[1] = exp[1].evalF(c) / ts.localScale
+			}
 		case text_friction:
 			ts.friction[0] = exp[0].evalF(c)
-				if len(exp) > 1 {
-					ts.friction[1] = exp[1].evalF(c)
-				}
+			if len(exp) > 1 {
+				ts.friction[1] = exp[1].evalF(c)
+			}
 		case text_accel:
-			ts.accel[0] = exp[0].evalF(c)/ts.localScale
-				if len(exp) > 1 {
-					ts.accel[1] = exp[1].evalF(c) / ts.localScale
-				}
+			ts.accel[0] = exp[0].evalF(c) / ts.localScale
+			if len(exp) > 1 {
+				ts.accel[1] = exp[1].evalF(c) / ts.localScale
+			}
 		case text_scale:
 			xscl = exp[0].evalF(c)
 			if len(exp) > 1 {
