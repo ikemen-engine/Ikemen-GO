@@ -678,6 +678,7 @@ func (hd *HitDef) clear(localscl float32) {
 		forcestand:       IErr,
 		forcecrouch:      IErr,
 		guard_dist:       [...]int32{-1, -1},
+		id:               -1, // fixes an issue where targetState with ID can trigger on hitdefs with unset ID's
 		chainid:          -1,
 		nochainid:        [8]int32{-1, -1, -1, -1, -1, -1, -1, -1},
 		numhits:          1,
