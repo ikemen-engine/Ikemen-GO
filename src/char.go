@@ -5428,7 +5428,7 @@ func (c *Char) setFacing(f float32) {
 	}
 }
 func (c *Char) getTarget(id int32) []int32 {
-	if id < 0 {
+	if id < 0 { // In Mugen the ID must be specifically -1
 		return c.targets
 	}
 	var tg []int32
@@ -8567,7 +8567,7 @@ func (cl *CharList) hitDetection(getter *Char, proj bool) {
 						}
 					}
 					// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
-					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && ghv.hittime > 0 {
 						ghv.hittime += 1
 					}
 				}

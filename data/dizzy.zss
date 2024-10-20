@@ -37,26 +37,29 @@ if parent,alive = 0 || parent,dizzy = 0 || parent,ctrl || parent,standby {
 if time = 0 {
 	map(birdType) := randomRange(0, 5); # Bird type. Currently has no effect on gameplay
 	map(birdRadius) := parent,const(size.ground.back) + parent,const(size.ground.front); # Circling effect radius
-	fVar(12) := parent,const(size.head.pos.y) - const240p(20); # Pos Y
-	fVar(11) := fVar(12); # Pos Y tracking
 }
 
 # Play effects before and during the dizzy state
 if map(birdState) <= 0 {
-	# Track parent
-	posSet{x: parent,pos x; y: ifElse(parent,pos y > 0, 0, parent,pos y)}
 
-	# Set explod binding position
+	# Set destination binding position
 	if parent,stateType = C || (parent,stateType = L && parent,pos y != 0) {
-		fVar(12) := parent,const(size.head.pos.y) * 0.67 - const240p(20);
+		map(bindPosY) := parent,pos y + parent,const(size.head.pos.y) * 0.67 - const240p(20);
 	} else if parent,stateType = L && parent,anim != const(AnimGetUpFromLieDown) {
-		fVar(12) := parent,const(size.head.pos.y) * 0.33 - const240p(20);
+		map(bindPosY) := parent,pos y + parent,const(size.head.pos.y) * 0.33 - const240p(20);
 	} else {
-		fVar(12) := parent,const(size.head.pos.y) - const240p(20);
+		map(bindPosY) := parent,pos y + parent,const(size.head.pos.y) - const240p(20);
 	}
 
-	# Update explod binding position
-	fVar(11) := fVar(11) + (fVar(12) - fVar(11)) * 0.10;
+	# Update binding position
+	if time = 0 {
+		map(posY) := map(bindPosY);
+	} else {
+		map(posY) := map(posY) + (map(bindPosY) - map(posY)) / 20.0;
+	}
+
+	# Track parent
+	posSet{x: parent,pos x; y: min(0, map(posY))}
 
 	# Create dizzy bird explods
 	# Do note that dizzy bird anims and sounds are called from gofx.def, not fightfx.air/common.snd
@@ -66,7 +69,7 @@ if map(birdState) <= 0 {
 			postype: p1;
 			ownpal: 1;
 			vel: 0, 0;
-			facing: -1;
+			facing: 1;
 			removetime: 600;
 		}
 	}
@@ -85,17 +88,21 @@ if map(birdState) <= 0 {
 for i = 0; numExplod; 1 {
 	let circleTime = ((gameTime % 90) + 22.5 * $i) / 45.0 * pi;
 	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
-	let birdScale = (cos($circleTime) + 3) * 0.12 * ifElse(($circleHeight < 0), -1, 1);
+	let birdScale = (cos($circleTime) + 3) * 0.12 * ifElse($circleHeight < 0, -1, 1);
 	let fadeTime = ifElse(map(birdState) <= 0, 0, ifElse(map(birdState) >= 32, 32, map(birdState))); # Effects are faded out by code rather than animation
+	# Musical notes don't flip
+	if map(birdType) = 5 {
+		let birdScale = abs($birdScale) * facing;
+	}
 	modifyExplod{
 		id: -1;
 		index: $i;
 		anim: GO const(FxDizzyEffect) + map(birdType);
 		postype: p1;
-		pos: sin($circleTime) * map(birdRadius), $circleHeight + fVar(11) + $fadeTime * const240p(-1);
-		angle: 15 * sin($circleTime * 3);
+		pos: sin($circleTime) * map(birdRadius), $circleHeight + $fadeTime * const240p(-1);
+		angle: 15 * cos($circleTime * 3);
 		sprpriority: ifElse($circleHeight > 0, 10, -10);
-		scale: ifElse(map(birdType) = 5, abs($birdScale) * facing, $birdScale), abs($birdScale); # Musical notes don't flip
+		scale: $birdScale, abs($birdScale);
 		trans: addAlpha;
 		alpha: 256 - $fadeTime * 8, $fadeTime * 8;
 	}
@@ -260,7 +267,7 @@ if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {
 
 		# Enter Dizzy state
 		# Only allowed once per combo
-		if !map(_iksys_dizzyLimit) {
+		if !map(_iksys_dizzyLimit) && !inCustomState {
 			if stateNo = [const(StateStand), const(StateGuard_end)] ||
 				(stateType = S || stateType = C) && hitShakeOver && hitOver ||
 				stateNo = const(StateDownedGetHit_gettingUp) && animTime = 0 {

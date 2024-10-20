@@ -3664,6 +3664,7 @@ func (sc stateDef) Run(c *Char) {
 			}
 		case stateDef_sprpriority:
 			c.sprPriority = exp[0].evalI(c)
+			c.layerNo = 0 // Prevent char from being forgotten in a different layer
 		case stateDef_facep2:
 			if exp[0].evalB(c) && c.rdDistX(c.p2(), c).ToF() < 0 {
 				c.setFacing(-c.facing)
