@@ -300,11 +300,11 @@ options.t_itemname = {
 	['language'] = function(t, item, cursorPosY, moveTxt)
 		if main.f_input(main.t_players, {'$F'}) then
 			changeLanguageSetting(0)
-			loadstring("LanguageName = " .. "motif.languages." .. config.Language)()
+			LanguageName = motif.languages[config.Language]
 			t.items[item].vardisplay = LanguageName or config.Language
 		elseif main.f_input(main.t_players, {'$B'}) then
 			changeLanguageSetting(-2)
-			loadstring("LanguageName = " .. "motif.languages." .. config.Language)()
+			LanguageName = motif.languages[config.Language]
 			t.items[item].vardisplay = LanguageName or config.Language
 		end
 		return true
@@ -1394,7 +1394,7 @@ options.t_vardisplay = {
 		return options.f_boolDisplay(config.KeepAspect, motif.option_info.menu_valuename_enabled, motif.option_info.menu_valuename_disabled)
 	end,
 	['language'] = function()
-		loadstring("sfs = " .. "motif.languages." .. config.Language)()
+		sfs = motif.languages[config.Language]
 		return sfs or config.Language
 	end,
 	['lifemul'] = function()

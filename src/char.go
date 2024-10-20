@@ -443,6 +443,9 @@ type CharMovement struct {
 			yaccel      float32
 			groundlevel float32
 		}
+		gethit struct {
+			offset [2]float32
+		}
 		friction_threshold float32
 	}
 }
@@ -460,9 +463,10 @@ func (cm *CharMovement) init() {
 	cm.air.gethit.airrecover.threshold = -1.0
 	cm.air.gethit.airrecover.yaccel = 0.35
 	cm.air.gethit.trip.groundlevel = 15.0
-	cm.down.bounce.offset = [...]float32{0.0, 20.0}
+	cm.down.bounce.offset = [...]float32{0, 20}
 	cm.down.bounce.yaccel = 0.4
 	cm.down.bounce.groundlevel = 12.0
+	cm.down.gethit.offset = [...]float32{0, 15}
 	cm.down.friction_threshold = 0.05
 }
 
@@ -623,7 +627,7 @@ type HitDef struct {
 }
 
 func (hd *HitDef) clear(localscl float32) {
-	// Convert local scale back to 4:3 to keep values consistent in widescreen
+	// Convert local scale back to 4:3 in order to keep values consistent in widescreen
 	originLs := localscl * (320 / float32(sys.gameWidth))
 
 	*hd = HitDef{
@@ -702,28 +706,29 @@ func (hd *HitDef) clear(localscl float32) {
 		down_recover:     true,
 		down_recovertime: -1,
 		air_juggle:       IErr,
-
 		// Fall group
 		fall: Fall{
-			animtype:      RA_Unknown,
-			xvelocity:     float32(math.NaN()),
-			yvelocity:     -4.5 / originLs,
-			zvelocity:     0, // Should this work like the X component instead?
-			recover:       true,
-			recovertime:   4,
-			kill:          true,
-			envshake_freq: 60,
-			envshake_ampl: IErr,
+			animtype:       RA_Unknown,
+			xvelocity:      float32(math.NaN()),
+			yvelocity:      -4.5 / originLs,
+			zvelocity:      0, // Should this work like the X component instead?
+			recover:        true,
+			recovertime:    4,
+			kill:           true,
+			envshake_freq:  60,
+			envshake_ampl:  IErr,
 			envshake_phase: float32(math.NaN()),
-			envshake_mul:  1.0,
+			envshake_mul:   1.0,
 		},
-
+		// Attack depth
 		attack: struct{ depth [2]float32 }{
 			[2]float32{4 / originLs, 4 / originLs},
 		},
 	}
-
-	hd.palfx.mul, hd.palfx.color, hd.palfx.hue = [...]int32{255, 255, 255}, 1, 0
+	// PalFX
+	hd.palfx.mul = [...]int32{255, 255, 255}
+	hd.palfx.color = 1
+	hd.palfx.hue = 0
 }
 
 // When a Hitdef connects, its statetype attribute will be updated to the character's current type
@@ -808,7 +813,7 @@ type GetHitVar struct {
 }
 
 func (ghv *GetHitVar) clear(c *Char) {
-	// Convert local scale back to 4:3 to keep values consistent in widescreen
+	// Convert local scale back to 4:3 in order to keep values consistent in widescreen
 	originLs := c.localscl * (320 / float32(sys.gameWidth))
 
 	*ghv = GetHitVar{
@@ -1128,6 +1133,7 @@ type Explod struct {
 	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
+	friction            [3]float32
 	accel               [3]float32
 	sprpriority         int32
 	layerno             int32
@@ -1174,24 +1180,26 @@ type Explod struct {
 
 func (e *Explod) clear() {
 	*e = Explod{
-		id:             IErr,
-		bindtime:       1,
-		scale:          [...]float32{1, 1},
-		removetime:     -2,
-		postype:        PT_P1,
-		space:          Space_none,
-		relativef:      1,
-		facing:         1,
-		vfacing:        1,
-		localscl:       1,
-		projection:     Projection_Orthographic,
-		window:         [4]float32{0, 0, 0, 0},
-		animelem:       1,
-		blendmode:      0,
-		alpha:          [...]int32{-1, 0},
-		playerId:       -1,
-		bindId:         -2,
-		ignorehitpause: true,
+		id:                IErr,
+		bindtime:          1,
+		scale:             [...]float32{1, 1},
+		removetime:        -2,
+		postype:           PT_P1,
+		space:             Space_none,
+		relativef:         1,
+		facing:            1,
+		vfacing:           1,
+		localscl:          1,
+		projection:        Projection_Orthographic,
+		window:            [4]float32{0, 0, 0, 0},
+		animelem:          1,
+		blendmode:         0,
+		alpha:             [...]int32{-1, 0},
+		playerId:          -1,
+		bindId:            -2,
+		ignorehitpause:    true,
+		interpolate_scale: [...]float32{1, 1, 0, 0},
+		friction:          [3]float32{1, 1, 1},
 	}
 }
 func (e *Explod) setX(x float32) {
@@ -1495,7 +1503,11 @@ func (e *Explod) update(oldVer bool, playerNo int) {
 			e.newPos[1] = e.pos[1] + e.velocity[1]
 			e.newPos[2] = e.pos[2] + e.velocity[2]
 			for i := range e.velocity {
+				e.velocity[i] *= e.friction[i]
 				e.velocity[i] += e.accel[i]
+				if math.Abs(float64(e.velocity[i])) < 0.1 && math.Abs(float64(e.friction[i])) < 1 {
+					e.velocity[i] = 0
+				}
 			}
 			eleminterpolate := e.interpolate && e.interpolate_time[1] > 0 && e.interpolate_animelem[1] >= 0
 			if e.animfreeze || eleminterpolate {
@@ -2278,7 +2290,7 @@ type Char struct {
 	preserve        int32
 	inputFlag       InputBits
 	pauseBool       bool
-	downHitOffset   float32
+	downHitOffset   bool
 	koEchoTime      int32
 	groundLevel     float32
 	sizeBox         []float32
@@ -2769,6 +2781,8 @@ func (c *Char) load(def string) error {
 		gi.movement.down.bounce.offset[1] *= coordRatio
 		gi.movement.down.bounce.yaccel *= coordRatio
 		gi.movement.down.bounce.groundlevel *= coordRatio
+		gi.movement.down.gethit.offset[0] *= coordRatio
+		gi.movement.down.gethit.offset[1] *= coordRatio
 		gi.movement.down.friction_threshold *= coordRatio
 	}
 
@@ -2961,6 +2975,9 @@ func (c *Char) load(def string) error {
 							&gi.movement.down.bounce.groundlevel)
 						is.ReadF32("down.friction.threshold",
 							&gi.movement.down.friction_threshold)
+						is.ReadF32("down.gethit.offset",
+							&gi.movement.down.gethit.offset[0],
+							&gi.movement.down.gethit.offset[1])
 					}
 				case "quotes":
 					if quotes {
@@ -3771,6 +3788,20 @@ func (c *Char) numExplod(eid BytecodeValue) BytecodeValue {
 	}
 	return BytecodeInt(n)
 }
+
+func (c *Char) numText(textid BytecodeValue) BytecodeValue {
+	if textid.IsSF() {
+		return BytecodeSF()
+	}
+	var id, n int32 = textid.ToI(), 0
+	for _, ts := range sys.lifebar.textsprite {
+		if ts.id == id && ts.ownerid == c.id {
+			n++
+		}
+	}
+	return BytecodeInt(n)
+}
+
 func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) BytecodeValue {
 	if eid.IsSF() {
 		return BytecodeSF()
@@ -3827,12 +3858,19 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 	}
 	return v
 }
-func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *Char) BytecodeValue {
+func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, flag BytecodeValue, vtype OpCode, oc *Char) BytecodeValue {
 	if pid.IsSF() {
 		return BytecodeSF()
 	}
+
+	// See compiler.go:ProjVar
 	var id int32 = pid.ToI()
+	if id > 0 {
+		id--
+	}
+
 	var i = idx.ToI()
+	var fl int32 = flag.ToI()
 	var v BytecodeValue
 	projs := c.getProjs(id)
 	if len(projs) == 0 {
@@ -3917,6 +3955,10 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, vtype OpCode, oc *C
 				v = BytecodeInt(int32(p.id))
 			case OC_ex2_projvar_teamside:
 				v = BytecodeInt(int32(p.hitdef.teamside))
+			case OC_ex2_projvar_guardflag:
+				v = BytecodeBool(p.hitdef.guardflag&fl != 0)
+			case OC_ex2_projvar_hitflag:
+				v = BytecodeBool(p.hitdef.hitflag&fl != 0)
 			}
 			break
 		}
@@ -4336,6 +4378,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ghv.fall.xvelocity *= lsRatio
 		c.ghv.fall.yvelocity *= lsRatio
 		c.ghv.fall.zvelocity *= lsRatio
+		c.ghv.xaccel *= lsRatio
 		c.ghv.yaccel *= lsRatio
 		c.ghv.zaccel *= lsRatio
 
@@ -4487,7 +4530,7 @@ func (c *Char) destroy() {
 	}
 }
 
-func (c *Char) destroySelf(recursive, removeexplods bool) bool {
+func (c *Char) destroySelf(recursive, removeexplods, removetexts bool) bool {
 	if c.helperIndex <= 0 {
 		return false
 	}
@@ -4495,10 +4538,13 @@ func (c *Char) destroySelf(recursive, removeexplods bool) bool {
 	if removeexplods {
 		c.removeExplod(-1, -1)
 	}
+	if removetexts {
+		sys.lifebar.RemoveText(-1, c.id)
+	}
 	if recursive {
 		for _, ch := range c.children {
 			if ch != nil {
-				ch.destroySelf(recursive, removeexplods)
+				ch.destroySelf(recursive, removeexplods, removetexts)
 			}
 		}
 	}
@@ -7121,9 +7167,10 @@ func (c *Char) actionPrepare() {
 		c.unhittableTime--
 	}
 	c.dropTargets()
-	if c.downHitOffset != 0 {
-		c.pos[1] += c.downHitOffset
-		c.downHitOffset = 0
+	if c.downHitOffset {
+		c.pos[0] += c.gi().movement.down.gethit.offset[0] * (320 / c.localcoord) / c.localscl * c.facing
+		c.pos[1] += c.gi().movement.down.gethit.offset[1] * (320 / c.localcoord) / c.localscl
+		c.downHitOffset = false
 	}
 }
 func (c *Char) actionRun() {
@@ -7651,9 +7698,6 @@ func (c *Char) tick() {
 			}
 		} else if c.ss.stateType == ST_L && c.pos[1] == 0 {
 			c.changeStateEx(5080, pn, -1, 0, "")
-			if c.ghv.yvel != 0 {
-				c.downHitOffset = 15 * (c.gi().localcoord[0] / 320) // This value could be unhardcoded
-			}
 		} else if c.ghv._type == HT_Trip {
 			c.changeStateEx(5070, pn, -1, 0, "")
 		} else {
@@ -7670,6 +7714,10 @@ func (c *Char) tick() {
 			default:
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
+		}
+		// Prepare down get hit offset
+		if c.ss.stateType == ST_L && c.pos[1] == 0 && c.ghv.yvel != 0 {
+			c.downHitOffset = true
 		}
 		// Change to HitOverride state
 		if c.hoIdx >= 0 {

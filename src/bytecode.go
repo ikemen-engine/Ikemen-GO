@@ -158,6 +158,7 @@ const (
 	OC_numexplod
 	OC_numprojid
 	OC_numproj
+	OC_numtext
 	OC_teammode
 	OC_teamside
 	OC_hitdefattr
@@ -335,6 +336,8 @@ const (
 	OC_const_movement_down_bounce_offset_y
 	OC_const_movement_down_bounce_yaccel
 	OC_const_movement_down_bounce_groundlevel
+	OC_const_movement_down_gethit_offset_x
+	OC_const_movement_down_gethit_offset_y
 	OC_const_movement_down_friction_threshold
 	OC_const_name
 	OC_const_p2name
@@ -738,6 +741,9 @@ const (
 	OC_ex2_explodvar_accel_x
 	OC_ex2_explodvar_accel_y
 	OC_ex2_explodvar_accel_z
+	OC_ex2_explodvar_friction_x
+	OC_ex2_explodvar_friction_y
+	OC_ex2_explodvar_friction_z
 	OC_ex2_explodvar_angle
 	OC_ex2_explodvar_angle_x
 	OC_ex2_explodvar_angle_y
@@ -790,6 +796,8 @@ const (
 	OC_ex2_projvar_velmul_x
 	OC_ex2_projvar_velmul_y
 	OC_ex2_projvar_velmul_z
+	OC_ex2_projvar_guardflag
+	OC_ex2_projvar_hitflag
 	OC_ex2_hitdefvar_guardflag
 	OC_ex2_hitdefvar_hitflag
 	OC_ex2_hitdefvar_guarddamage
@@ -968,10 +976,14 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 	}
 	return true
 }
+
+// Pushes an OpCode with an int32 operand to the top of the BytecodeExp.
 func (be *BytecodeExp) appendI32Op(op OpCode, addr int32) {
 	be.append(op)
 	be.append((*(*[4]OpCode)(unsafe.Pointer(&addr)))[:]...)
 }
+
+// Pushes an OpCode with an int64 operand to the top of the BytecodeExp.
 func (be *BytecodeExp) appendI64Op(op OpCode, addr int64) {
 	be.append(op)
 	be.append((*(*[8]OpCode)(unsafe.Pointer(&addr)))[:]...)
@@ -1633,6 +1645,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			*sys.bcStack.Top() = c.numProjID(*sys.bcStack.Top())
 		case OC_numtarget:
 			*sys.bcStack.Top() = c.numTarget(*sys.bcStack.Top())
+		case OC_numtext:
+			*sys.bcStack.Top() = c.numText(*sys.bcStack.Top())
 		case OC_palno:
 			sys.bcStack.PushI(c.palno())
 		case OC_pos_x:
@@ -1954,7 +1968,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_movement_airjump_num:
 		sys.bcStack.PushI(c.gi().movement.airjump.num)
 	case OC_const_movement_airjump_height:
-		sys.bcStack.PushI(c.gi().movement.airjump.height * ((320 / c.localcoord) / oc.localscl))
+		sys.bcStack.PushF(c.gi().movement.airjump.height * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_yaccel:
 		sys.bcStack.PushF(c.gi().movement.yaccel * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_stand_friction:
@@ -1986,6 +2000,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.gi().movement.down.bounce.yaccel * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_down_bounce_groundlevel:
 		sys.bcStack.PushF(c.gi().movement.down.bounce.groundlevel * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_movement_down_gethit_offset_x:
+		sys.bcStack.PushF(c.gi().movement.down.gethit.offset[0] * ((320 / c.localcoord) / oc.localscl))
+	case OC_const_movement_down_gethit_offset_y:
+		sys.bcStack.PushF(c.gi().movement.down.gethit.offset[1] * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_movement_down_friction_threshold:
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_authorname:
@@ -3105,6 +3123,12 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_accel_y:
 		correctScale = true
 		fallthrough
+	case OC_ex2_explodvar_friction_x:
+		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_friction_y:
+		correctScale = true
+		fallthrough
 	case OC_ex2_explodvar_anim:
 		fallthrough
 	case OC_ex2_explodvar_animelem:
@@ -3252,10 +3276,16 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_projvar_pos_x:
 		fallthrough
 	case OC_ex2_projvar_pos_y:
+		fallthrough
+	case OC_ex2_projvar_guardflag:
+		fallthrough
+	case OC_ex2_projvar_hitflag:
+		flg := sys.bcStack.Pop()
 		idx := sys.bcStack.Pop()
 		id := sys.bcStack.Pop()
-		v := c.projVar(id, idx, opc, oc)
+		v := c.projVar(id, idx, flg, opc, oc)
 		sys.bcStack.Push(v)
+	// END FALLTHROUGH (projvar)
 	case OC_ex2_hitdefvar_guardflag:
 		attr := (*(*int32)(unsafe.Pointer(&be[*i])))
 		sys.bcStack.PushB(
@@ -4179,12 +4209,13 @@ type destroySelf StateControllerBase
 const (
 	destroySelf_recursive = iota
 	destroySelf_removeexplods
+	destroySelf_removetexts
 	destroySelf_redirectid
 )
 
 func (sc destroySelf) Run(c *Char, _ []int32) bool {
 	crun := c
-	rec, rem := false, false
+	rec, rem, rtx := false, false, false
 	self := true
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
@@ -4192,6 +4223,8 @@ func (sc destroySelf) Run(c *Char, _ []int32) bool {
 			rec = exp[0].evalB(c)
 		case destroySelf_removeexplods:
 			rem = exp[0].evalB(c)
+		case destroySelf_removetexts:
+			rtx = exp[0].evalB(c)
 		case destroySelf_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				self = rid.id == c.id
@@ -4202,7 +4235,7 @@ func (sc destroySelf) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return crun.destroySelf(rec, rem) && self
+	return crun.destroySelf(rec, rem, rtx) && self
 }
 
 type changeAnim StateControllerBase
@@ -4863,6 +4896,7 @@ const (
 	explod_random
 	explod_postype
 	explod_velocity
+	explod_friction
 	explod_accel
 	explod_scale
 	explod_bindtime
@@ -4997,6 +5031,14 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				e.velocity[1] = exp[1].evalF(c) * redirscale
 				if len(exp) > 2 {
 					e.velocity[2] = exp[2].evalF(c) * redirscale
+				}
+			}
+		case explod_friction:
+			e.friction[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				e.friction[1] = exp[1].evalF(c)
+				if len(exp) > 2 {
+					e.friction[2] = exp[2].evalF(c)
 				}
 			}
 		case explod_accel:
@@ -5298,6 +5340,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						e.setZ(e.offset[2])
 						e.relativePos = [3]float32{0, 0, 0}
 						e.velocity = [3]float32{0, 0, 0}
+						e.friction = [3]float32{1, 1, 1}
 						e.accel = [3]float32{0, 0, 0}
 						e.bindId = -2
 						if e.bindtime == 0 {
@@ -5401,6 +5444,29 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 							vel := exp[2].evalF(c) * redirscale
 							eachExpl(func(e *Explod) {
 								e.velocity[2] = vel
+							})
+						}
+					}
+				}
+			case explod_friction:
+				if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+					friction := exp[0].evalF(c)
+					eachExpl(func(e *Explod) {
+						e.friction[0] = friction
+					})
+				}
+				if len(exp) > 1 {
+					if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						friction := exp[1].evalF(c)
+						eachExpl(func(e *Explod) {
+							e.friction[1] = friction
+						})
+					}
+					if len(exp) > 2 {
+						if ptexists || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+							friction := exp[2].evalF(c)
+							eachExpl(func(e *Explod) {
+								e.friction[2] = friction
 							})
 						}
 					}
@@ -10983,20 +11049,28 @@ const (
 	text_localcoord
 	text_bank
 	text_align
+	text_linespacing
+	text_textdelay
 	text_text
 	text_pos
+	text_velocity
+	text_friction
+	text_accel
 	text_scale
 	text_color
+	text_id
 	text_redirectid
 )
 
 func (sc text) Run(c *Char, _ []int32) bool {
 	crun := c
 	params := []interface{}{}
+	ownerID := crun.id
 	ts := NewTextSprite()
 	ts.SetLocalcoord(float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 	var xscl, yscl float32 = 1, 1
 	var fnt int = -1
+	ts.ownerid = ownerID
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case text_removetime:
@@ -11040,10 +11114,29 @@ func (sc text) Run(c *Char, _ []int32) bool {
 			ts.bank = exp[0].evalI(c)
 		case text_align:
 			ts.align = exp[0].evalI(c)
+		case text_linespacing:
+			ts.lineSpacing = exp[0].evalF(c)
+		case text_textdelay:
+			ts.textDelay = exp[0].evalF(c)
 		case text_pos:
 			ts.x = exp[0].evalF(c)/ts.localScale + float32(ts.offsetX)
 			if len(exp) > 1 {
 				ts.y = exp[1].evalF(c) / ts.localScale
+			}
+		case text_velocity:
+			ts.velocity[0] = exp[0].evalF(c) / ts.localScale
+			if len(exp) > 1 {
+				ts.velocity[1] = exp[1].evalF(c) / ts.localScale
+			}
+		case text_friction:
+			ts.friction[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				ts.friction[1] = exp[1].evalF(c)
+			}
+		case text_accel:
+			ts.accel[0] = exp[0].evalF(c) / ts.localScale
+			if len(exp) > 1 {
+				ts.accel[1] = exp[1].evalF(c) / ts.localScale
 			}
 		case text_scale:
 			xscl = exp[0].evalF(c)
@@ -11059,9 +11152,12 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				}
 			}
 			ts.SetColor(r, g, b)
+		case text_id:
+			ts.id = exp[0].evalI(c)
 		case text_redirectid:
 			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
 				crun = rid
+				ts.ownerid = crun.id
 			} else {
 				return false
 			}
@@ -11079,6 +11175,33 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		ts.text = OldSprintf("%v", params...)
 	}
 	sys.lifebar.textsprite = append(sys.lifebar.textsprite, ts)
+	return false
+}
+
+type removeText StateControllerBase
+
+const (
+	removetext_id byte = iota
+	removetext_redirectid
+)
+
+func (sc removeText) Run(c *Char, _ []int32) bool {
+	crun := c
+	textID := int32(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		switch id {
+		case removetext_id:
+			textID = exp[0].evalI(c)
+		case removetext_redirectid:
+			if rid := sys.playerID(exp[0].evalI(c)); rid != nil {
+				crun = rid
+			} else {
+				return false
+			}
+		}
+		return true
+	})
+	sys.lifebar.RemoveText(textID, crun.id)
 	return false
 }
 
