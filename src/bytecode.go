@@ -5780,6 +5780,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					if e.ownpal && remap {
 						crun.remapPal(e.palfx, [...]int32{1, 1}, rp)
+						crun.getExplodDrawPal(e, rp)
 					}
 				})
 			}
