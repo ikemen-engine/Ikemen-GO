@@ -5067,6 +5067,18 @@ func (c *Char) newHelper() (h *Char) {
 	return
 }
 
+func (c *Char) getHelperDrawPal(h *Char, rp [2]int32) {
+	if h.ownpal {
+		if rp == [2]int32{-1, 0} {
+			h.drawpal = c.drawpal
+		} else {
+			h.drawpal = rp
+		}
+	} else {
+		h.drawpal = c.drawpal
+	}
+}
+
 func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
 	facing int32, rp [2]int32, extmap bool) {
 	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
@@ -5074,7 +5086,6 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
 	h.setY(p[1])
 	h.setZ(p[2])
 	h.vel = [3]float32{}
-	h.drawpal = c.drawpal
 	if h.ownpal {
 		h.palfx = newPalFX()
 		if c.getPalfx().remap == nil {
@@ -5239,7 +5250,6 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 			e.palfx.remap = nil
 		}
 	}
-	c.getExplodDrawPal(e,rp)
 	if e.layerno > 0 {
 		td := &sys.explodsLayer1[c.playerNo]
 		for ii, te := range *td {
@@ -5571,7 +5581,6 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 		p.palfx.remap = remap
 		c.forceRemapPal(p.palfx, [...]int32{rpg, rpn})
 	}
-	c.getProjDrawPal(p, rpg, rpn, op)
 }
 
 func (c *Char) getProjs(id int32) (projs []*Projectile) {

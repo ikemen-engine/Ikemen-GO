@@ -4943,6 +4943,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		h.localcoord = crun.localcoord
 	}
 	crun.helperInit(h, st, pt, x, y, z, f, rp, extmap)
+	crun.getHelperDrawPal(h,rp)
 	return false
 }
 
@@ -5649,6 +5650,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	e.setStartParams(&e.palfxdef)
 	e.setPos(crun)
 	crun.insertExplodEx(i, rp)
+	crun.getExplodDrawPal(e, rp)
 	return false
 }
 
@@ -7214,6 +7216,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		p.aimg.setupPalFX()
 	}
 	crun.projInit(p, pt, x, y, z, op, rp[0], rp[1], clsnscale)
+	crun.getProjDrawPal(p, rp[0], rp[1], op)
 	return false
 }
 
