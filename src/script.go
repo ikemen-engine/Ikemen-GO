@@ -4476,6 +4476,19 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.gi().palno))
 		return 1
 	})
+	luaRegister(l, "drawpal", func(*lua.LState) int {
+		var ln lua.LNumber
+		switch strings.ToLower(strArg(l, 1)) {
+		case "group":
+			ln = lua.LNumber(sys.debugWC.drawpal[0])
+		case "index":
+			ln = lua.LNumber(sys.debugWC.drawpal[1])
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
+		l.Push(ln)
+		return 1
+	})
 	luaRegister(l, "parentdistX", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.rdDistX(sys.debugWC.parent(), sys.debugWC).ToI()))
 		return 1

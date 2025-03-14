@@ -208,6 +208,8 @@ const (
 	OC_numpartner
 	OC_ailevel
 	OC_palno
+	OC_drawpal_group
+	OC_drawpal_index
 	OC_hitcount
 	OC_uniqhitcount
 	OC_hitpausetime
@@ -1856,6 +1858,10 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.gi().palno)
 			// In Winmugen a helper's PalNo is always 1
 			// That behavior has no apparent benefits and even Mugen 1.0 compatibility mode does not keep it
+		case OC_drawpal_group:
+			sys.bcStack.PushI(c.drawpal[0])
+		case OC_drawpal_index:
+			sys.bcStack.PushI(c.drawpal[1])
 		case OC_pos_x:
 			sys.bcStack.PushF((c.pos[0]*(c.localscl/oc.localscl) - sys.cam.Pos[0]/oc.localscl))
 		case OC_pos_y:

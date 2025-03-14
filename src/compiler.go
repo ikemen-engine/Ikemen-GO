@@ -2833,6 +2833,16 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_numtext)
 	case "palno":
 		out.append(OC_palno)
+	case "drawpal":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "group":
+			out.append(OC_drawpal_group)
+		case "index":
+			out.append(OC_drawpal_index)
+		default:
+			return bvNone(), Error("Invalid data: " + c.token)
+		}
 	case "pos":
 		c.token = c.tokenizer(in)
 		switch c.token {

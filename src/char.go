@@ -2404,6 +2404,7 @@ type Char struct {
 	powerMax            int32
 	dizzyPoints         int32
 	dizzyPointsMax      int32
+	drawpal             [2]int32
 	guardPoints         int32
 	guardPointsMax      int32
 	redLife             int32
@@ -5063,6 +5064,8 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
 	h.setY(p[1])
 	h.setZ(p[2])
 	h.vel = [3]float32{}
+	h.drawpal[0] = c.drawpal[0]
+	h.drawpal[1] = c.drawpal[1]
 	if h.ownpal {
 		h.palfx = newPalFX()
 		if c.getPalfx().remap == nil {
@@ -6897,6 +6900,9 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 	}
 
 	c.gi().remappedpal = [...]int32{dst[0], dst[1]}
+	// Gets the remapped palette individually
+	c.drawpal[0] = dst[0]
+	c.drawpal[1] = dst[1]
 }
 
 func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
