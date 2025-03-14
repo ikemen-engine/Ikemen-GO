@@ -1821,6 +1821,7 @@ type Projectile struct {
 	remflag         bool
 	freezeflag      bool
 	contactflag     bool
+	drawpal         [2]int32
 }
 
 func newProjectile() *Projectile {
@@ -4297,6 +4298,10 @@ func (c *Char) projVar(pid BytecodeValue, idx BytecodeValue, flag BytecodeValue,
 				v = BytecodeBool(p.hitdef.hitflag&fl != 0)
 			case OC_ex2_projvar_facing:
 				v = BytecodeFloat(p.facing)
+			case OC_ex2_projvar_drawpal_group:
+				v = BytecodeInt(p.drawpal[0])
+			case OC_ex2_projvar_drawpal_index:
+				v = BytecodeInt(p.drawpal[1])
 			}
 			break
 		}
@@ -5510,6 +5515,18 @@ func (c *Char) newProj() *Projectile {
 	return p
 }
 
+func (c *Char) getProjDrawPal(p *Projectile, rpg, rpn int32, op bool) {
+	if op {
+		if [2]int32{rpg, rpn} == [2]int32{-1, 0} {
+			p.drawpal = c.drawpal
+		} else {
+			p.drawpal = [2]int32{rpg, rpn}
+		}
+	} else {
+		p.drawpal = c.drawpal
+	}
+}
+
 func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 	op bool, rpg, rpn int32, clsnscale bool) {
 	pos := c.helperPos(pt, [...]float32{x, y, z}, 1, &p.facing, p.localscl, true)
@@ -5554,6 +5571,7 @@ func (c *Char) projInit(p *Projectile, pt PosType, x, y, z float32,
 		p.palfx.remap = remap
 		c.forceRemapPal(p.palfx, [...]int32{rpg, rpn})
 	}
+	c.getProjDrawPal(p, rpg, rpn, op)
 }
 
 func (c *Char) getProjs(id int32) (projs []*Projectile) {

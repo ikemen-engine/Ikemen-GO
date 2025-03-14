@@ -4688,6 +4688,10 @@ func triggerFunctions(l *lua.LState) {
 				//	lv = lua.LNumber(p.hitdef.hitflag&fl != 0)
 				case "facing":
 					lv = lua.LNumber(p.facing)
+				case "drawpal group":
+					lv = lua.LNumber(p.drawpal[0])
+				case "drawpal index":
+					lv = lua.LNumber(p.drawpal[1])
 				default:
 					l.RaiseError("\nInvalid argument: %v\n", vname)
 				}

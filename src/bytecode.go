@@ -810,6 +810,8 @@ const (
 	OC_ex2_projvar_accel_y
 	OC_ex2_projvar_accel_z
 	OC_ex2_projvar_animelem
+	OC_ex2_projvar_drawpal_group
+	OC_ex2_projvar_drawpal_index
 	OC_ex2_projvar_facing
 	OC_ex2_projvar_guardflag
 	OC_ex2_projvar_highbound
@@ -3519,6 +3521,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_projvar_pos_z:
 		fallthrough
 	case OC_ex2_projvar_facing:
+		fallthrough
+	case OC_ex2_projvar_drawpal_group:
+		fallthrough
+	case OC_ex2_projvar_drawpal_index:
 		fallthrough
 	case OC_ex2_projvar_guardflag:
 		fallthrough

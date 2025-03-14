@@ -3063,6 +3063,17 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			isFlag = true
 		case "facing":
 			opc = OC_ex2_projvar_facing
+		case "drawpal":
+			c.token = c.tokenizer(in)
+
+			switch c.token {
+			case "group":
+				opc = OC_ex2_projvar_drawpal_group
+			case "index":
+				opc = OC_ex2_projvar_drawpal_index
+			default:
+				return bvNone(), Error(fmt.Sprint("Invalid argument: %s", c.token))
+			}
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid argument: %s", vname))
 		}
