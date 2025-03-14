@@ -3709,6 +3709,10 @@ func triggerFunctions(l *lua.LState) {
 					ln = lua.LNumber(e.bindtime)
 				case "facing":
 					ln = lua.LNumber(e.facing)
+				case "drawpal group":
+					ln = lua.LNumber(e.drawpal[0])
+				case "drawpal index":
+					ln = lua.LNumber(e.drawpal[1])
 				default:
 					l.RaiseError("\nInvalid argument: %v\n", vname)
 				}

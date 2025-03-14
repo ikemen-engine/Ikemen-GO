@@ -804,6 +804,8 @@ const (
 	OC_ex2_explodvar_id
 	OC_ex2_explodvar_bindtime
 	OC_ex2_explodvar_facing
+	OC_ex2_explodvar_drawpal_group
+	OC_ex2_explodvar_drawpal_index
 	OC_ex2_projvar_accel_x
 	OC_ex2_projvar_accel_y
 	OC_ex2_projvar_accel_z
@@ -3368,6 +3370,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_bindtime:
 		fallthrough
 	case OC_ex2_explodvar_facing:
+		fallthrough
+	case OC_ex2_explodvar_drawpal_group:
+		fallthrough
+	case OC_ex2_explodvar_drawpal_index:
 		fallthrough
 	case OC_ex2_explodvar_scale_x:
 		fallthrough

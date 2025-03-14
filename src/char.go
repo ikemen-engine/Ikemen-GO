@@ -1279,6 +1279,7 @@ type Explod struct {
 	interpolate_fLength  [2]float32
 	animNo               int32
 	interPos             [3]float32
+	drawpal              [2]int32
 }
 
 func (e *Explod) clear() {
@@ -4174,6 +4175,10 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 				v = BytecodeInt(e.bindtime)
 			case OC_ex2_explodvar_facing:
 				v = BytecodeInt(int32(e.facing))
+			case OC_ex2_explodvar_drawpal_group:
+				v = BytecodeInt(e.drawpal[0])
+			case OC_ex2_explodvar_drawpal_index:
+				v = BytecodeInt(e.drawpal[1])
 			}
 			break
 		}
@@ -5064,8 +5069,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
 	h.setY(p[1])
 	h.setZ(p[2])
 	h.vel = [3]float32{}
-	h.drawpal[0] = c.drawpal[0]
-	h.drawpal[1] = c.drawpal[1]
+	h.drawpal = c.drawpal
 	if h.ownpal {
 		h.palfx = newPalFX()
 		if c.getPalfx().remap == nil {
@@ -5197,6 +5201,18 @@ func (c *Char) getExplods(id int32) (expls []*Explod) {
 	return
 }
 
+func (c *Char) getExplodDrawPal(e *Explod, rp [2]int32) {
+	if e.ownpal {
+		if rp == [2]int32{-1, 0} {
+			e.drawpal = c.drawpal
+		} else {
+			e.drawpal = rp
+		}
+	} else {
+		e.drawpal = c.drawpal
+	}
+}
+
 func (c *Char) insertExplodEx(i int, rp [2]int32) {
 	e := &sys.explods[c.playerNo][i]
 	if e.anim == nil {
@@ -5218,6 +5234,7 @@ func (c *Char) insertExplodEx(i int, rp [2]int32) {
 			e.palfx.remap = nil
 		}
 	}
+	c.getExplodDrawPal(e,rp)
 	if e.layerno > 0 {
 		td := &sys.explodsLayer1[c.playerNo]
 		for ii, te := range *td {
@@ -6901,8 +6918,7 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 
 	c.gi().remappedpal = [...]int32{dst[0], dst[1]}
 	// Gets the remapped palette individually
-	c.drawpal[0] = dst[0]
-	c.drawpal[1] = dst[1]
+	c.drawpal = dst
 }
 
 func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
