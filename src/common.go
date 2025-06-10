@@ -981,7 +981,7 @@ func (l *Layout) DrawFaceSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fs
 			drawwindow = &fwin
 		}
 
-		s.Draw(x+l.offset[0]-xsoffset*sys.lifebarScale, y+l.offset[1]*sys.lifebarScale,
+		s.Draw(x+l.offset[0]*sys.lifebarScale-xsoffset, y+l.offset[1]*sys.lifebarScale,
 			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale,
 			xshear, Rotation{l.angle, 0, 0}, fx, drawwindow)
 	}

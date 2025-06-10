@@ -5612,22 +5612,19 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase, id byte) e
 
 func (c *Compiler) paramProjection(is IniSection, sc *StateControllerBase, key string, id byte) error {
 	return c.stateParam(is, key, false, func(data string) error {
-		if len(data) <= 1 {
-			return Error("projection not specified")
-		}
 		var proj Projection
-		if len(data) >= 2 {
-			if strings.ToLower(data[:2]) == "or" {
-				proj = Projection_Orthographic
-			} else if strings.ToLower(data[:2]) == "pe" {
-				if data[len(data)-1] != '2' {
-					proj = Projection_Perspective
-				} else {
-					proj = Projection_Perspective2
-				}
 
-			}
+		switch strings.ToLower(strings.TrimSpace(data)) {
+		case "orthographic":
+			proj = Projection_Orthographic
+		case "perspective":
+			proj = Projection_Perspective
+		case "perspective2":
+			proj = Projection_Perspective2
+		default:
+			return Error("invalid projection type: " + data)
 		}
+
 		sc.add(id, sc.iToExp(int32(proj)))
 		return nil
 	})

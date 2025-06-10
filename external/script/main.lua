@@ -1186,16 +1186,22 @@ function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_de
 	local retDone = false
 	local retLength = 0
 	local lengthCnt = 0
-	local subEnd = math.floor(#text - (#text - counter / delay))
+	local subEnd = math.floor(main.f_utf8len(str) - (main.f_utf8len(str) - counter / delay))
+	
 	for i = 1, #t do
-		if subEnd < #str then
-			local length = #t[i]
+	-- Compare with the total number of characters in the string
+		if subEnd < main.f_utf8len(str) then
+			-- Get the number of characters in each line
+			local length = main.f_utf8len(t[i])
 			if i > 1 and i <= #t then
-				length = length + 1
+				length = length + 1 -- Account for newline character
 			end
+			-- Accumulate the total character count
 			lengthCnt = lengthCnt + length
 			if subEnd < lengthCnt then
-				t[i] = t[i]:sub(0, subEnd - lengthCnt)
+				-- Calculate the number of characters to render and pass to main.f_runeSub
+				local charsToRender = subEnd - (lengthCnt - main.f_utf8len(t[i]))
+				t[i] = main.f_runeSub(t[i], charsToRender)
 			end
 		elseif i == #t then
 			retDone = true
@@ -1214,7 +1220,8 @@ function main.f_textRender(data, str, counter, x, y, spacingX, spacingY, font_de
 			y = y + (main.f_round((font_def.Size[2] + font_def.Spacing[2]) * data.scaleY) + spacingY) * (i - 1),
 		})
 		data:draw()
-		retLength = retLength + string.len(t[i])
+		-- Return the number of characters actually rendered
+		retLength = retLength + main.f_utf8len(t[i])
 	end
 	return retDone, retLength
 end
@@ -4158,6 +4165,83 @@ function main.f_fadeReset(fadeType, fadeGroup)
 	end
 end
 
+-- Returns a substring of a UTF-8 string, based on character count.
+function main.f_runeSub(str, numChars)
+    if numChars <= 0 then return "" end
+    
+    -- utf8.offset gets the byte position of the n-th character.
+    -- The third argument to utf8.offset is the starting byte position.
+    local byteEnd = main.f_utf8offset(str, numChars + 1)
+    
+    if byteEnd then
+        -- The offset is the start of the next character, so we subtract 1
+        -- to get the end of the character we want.
+        return str:sub(1, byteEnd - 1)
+    else
+        -- If offset is nil, it means numChars is >= the number of characters in the string.
+        -- In this case, we return the whole string.
+        return str
+    end
+end
+
+-- Counts the number of UTF-8 characters in a string without using the utf8 library.
+function main.f_utf8len(str)
+    if str == nil or str == '' then
+        return 0
+    end
+    
+    local len = 0
+    local i = 1
+    while i <= #str do
+        local byte = string.byte(str, i)
+        if byte < 0x80 then -- 1-byte character (ASCII)
+            i = i + 1
+        elseif byte < 0xE0 then -- 2-byte character
+            i = i + 2
+        elseif byte < 0xF0 then -- 3-byte character
+            i = i + 3
+        else -- 4-byte character
+            i = i + 4
+        end
+        len = len + 1
+    end
+    return len
+end
+
+-- Finds the byte offset of the n-th character in a UTF-8 string without using the utf8 library.
+function main.f_utf8offset(str, n)
+    if n <= 0 then return nil end
+    if n == 1 then return 1 end
+    
+    local bytePos = 1
+    local charCount = 0
+    
+    while bytePos <= #str do
+        charCount = charCount + 1
+        if charCount == n then
+            return bytePos
+        end
+        
+        local byte = string.byte(str, bytePos)
+        if byte < 0x80 then
+            bytePos = bytePos + 1
+        elseif byte < 0xE0 then
+            bytePos = bytePos + 2
+        elseif byte < 0xF0 then
+            bytePos = bytePos + 3
+        else
+            bytePos = bytePos + 4
+        end
+    end
+    
+    -- If n is exactly one more than the number of characters, return the position after the last character.
+    if charCount == n - 1 then
+        return #str + 1
+    end
+
+    -- n is out of bounds
+    return nil
+end
 --;===========================================================
 --; EXTERNAL LUA CODE
 --;===========================================================

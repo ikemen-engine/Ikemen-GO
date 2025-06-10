@@ -5010,8 +5010,7 @@ func (c *Char) playSound(ffx string, lowpriority bool, loopCount int32, g, n, ch
 }
 
 func (c *Char) autoTurn() {
-	if c.helperIndex == 0 && !c.asf(ASF_noautoturn) && sys.stage.autoturn &&
-		(c.ss.stateType == ST_S || c.ss.stateType == ST_C) && c.shouldFaceP2() {
+	if c.helperIndex == 0 && !c.asf(ASF_noautoturn) && sys.stage.autoturn && c.shouldFaceP2() {
 		switch c.ss.stateType {
 		case ST_S:
 			if c.animNo != 5 {

@@ -226,11 +226,11 @@ func readBackGround(is IniSection, link *backGround,
 	is.readF32ForStage("focallength", &bg.fLength)
 	if str, ok := is["projection"]; ok {
 		switch strings.ToLower(strings.TrimSpace(str)) {
-		case "orthographic", "or":
+		case "orthographic":
 			bg.projection = Projection_Orthographic
-		case "perspective", "pe":
+		case "perspective":
 			bg.projection = Projection_Perspective
-		case "perspective2", "pe2":
+		case "perspective2":
 			bg.projection = Projection_Perspective2
 		}
 	}
@@ -458,9 +458,9 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	y := bg.start[1] - yScrollPos + bg.bga.offset[1]
 
 	// Calculate Y scaling based on vertical scroll position and delta
-	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl / drawscl
+	ys2 := bg.scaledelta[1] * pos[1] * bg.delta[1] * bgscl / drawscl / stgscl[1]
 	ys := ((100-(pos[1])*bg.yscaledelta)*bgscl/bg.yscalestart)*bg.scalestart[1] + ys2
-	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl
+	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl / stgscl[0]
 	x *= bgscl
 
 	// Apply stage logic if BG is part of a stage
@@ -497,7 +497,7 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	// Calculate window top left corner position
 	rect := bg.startrect
 
-	startrect0 := float32(rect[0]) - (pos[0])*bg.windowdelta[0] +
+	startrect0 := float32(rect[0]) - (pos[0])/stgscl[0]*bg.windowdelta[0] +
 		(float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))
 	startrect0 *= sys.widthScale * wscl[0]
 	if !isStage && wscl[0] == 1 {
@@ -1328,11 +1328,11 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		sec[0].ReadF32("focallength", &s.sdw.fLength)
 		if str, ok := sec[0]["projection"]; ok {
 			switch strings.ToLower(strings.TrimSpace(str)) {
-			case "orthographic", "or":
+			case "orthographic":
 				s.sdw.projection = Projection_Orthographic
-			case "perspective", "pe":
+			case "perspective":
 				s.sdw.projection = Projection_Perspective
-			case "perspective2", "pe2":
+			case "perspective2":
 				s.sdw.projection = Projection_Perspective2
 			}
 		}
@@ -1388,11 +1388,11 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		}
 		if str, ok := sec[0]["projection"]; ok {
 			switch strings.ToLower(strings.TrimSpace(str)) {
-			case "orthographic", "or":
+			case "orthographic":
 				s.reflection.projection = Projection_Orthographic
-			case "perspective", "pe":
+			case "perspective":
 				s.reflection.projection = Projection_Perspective
-			case "perspective2", "pe2":
+			case "perspective2":
 				s.reflection.projection = Projection_Perspective2
 			}
 		}
