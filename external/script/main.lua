@@ -351,11 +351,14 @@ end
 if main.flags['-ailevel'] ~= nil then
 	modifyGameOption('Options.Difficulty', math.max(1, math.min(tonumber(main.flags['-ailevel']), 8)))
 end
-if main.flags['-speed'] ~= nil and tonumber(main.flags['-speed']) > 0 then
-	setGameSpeed(tonumber(main.flags['-speed']) * gameOption('Config.Framerate') / 100)
+if main.flags['-speed'] ~= nil then
+	local speed_val = tonumber(main.flags['-speed'])
+	if speed_val ~= nil and speed_val >= -9 and speed_val <= 9 then
+		modifyGameOption('Options.GameSpeed', speed_val)
+	end
 end
 if main.flags['-speedtest'] ~= nil then
-	setGameSpeed(100 * gameOption('Config.Framerate'))
+	modifyGameOption('Options.GameSpeedMultiplier', 100)
 end
 if main.flags['-nosound'] ~= nil then
 	modifyGameOption('Sound.MasterVolume', 0)

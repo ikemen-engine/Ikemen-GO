@@ -140,12 +140,33 @@ func processCommandLine() {
 	// If there are command line arguments
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
+		boolFlags := map[string]bool{
+			"-windowed":       true,
+			"-togglelifebars": true,
+			"-maxpowermode":   true,
+			"-debug":          true,
+			"-nojoy":          true,
+			"-nomusic":        true,
+			"-nosound":        true,
+			"-speedtest":      true,
+		}
+		const ignoreNextArg = "@@IGNORE_NEXT_ARG@@" // Special value for 'key'
+
 		key := ""
 		player := 1
 		r1, _ := regexp.Compile("^-[h%?]$")
 		r2, _ := regexp.Compile("^-")
 		// Loop through arguments
 		for _, a := range os.Args[1:] {
+			if key == ignoreNextArg { // If previous flag was boolean, ignore this argument
+				key = "" // Reset for next iteration
+				continue
+			}
+			// If a key was expecting a value but the next argument is another flag, set the key to "true"
+			if key != "" && r2.MatchString(a) {
+				sys.cmdFlags[key] = "true"
+				key = ""
+			}
 			// If getting help about command line options
 			if r1.MatchString(a) {
 				text := `Options (case sensitive):
@@ -187,22 +208,30 @@ Debug Options:
 				fmt.Scanln(&s)
 				os.Exit(0)
 				// If a control argument starting with - (eg. -p3, -s, -rounds)
-			} else if r2.MatchString(a) {
-				// Set a blank value for the key to start with
-				sys.cmdFlags[a] = ""
-				// Prepare the key for the next argument
-				key = a
-				// If an argument with no key
-			} else if key == "" {
-				// Set p1/p2's name
-				sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
-				player += 1
-				// If a key is prepared for this argument
-			} else {
-				// Set the argument for this key
-				sys.cmdFlags[key] = a
-				key = ""
+			} else if r2.MatchString(a) { // 'a' is a flag
+				// If it's a boolean flag, set its value to "true"
+				if _, isBool := boolFlags[a]; isBool {
+					sys.cmdFlags[a] = "true"
+					key = ignoreNextArg // Set key to ignore next argument
+				} else {
+					// Otherwise, it's a value-expecting flag. Set blank and prepare key.
+					sys.cmdFlags[a] = ""
+					key = a // Prepare key for the next argument (value)
+				}
+			} else { // 'a' is not a flag (it's a value or a player name)
+				// If a key is waiting for a value
+				if key != "" {
+					sys.cmdFlags[key] = a
+					key = "" // Value consumed, clear key
+				} else { // No active flag, treat as player name
+					sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
+					player += 1
+				}
 			}
+		}
+		// After the loop, if a key is still waiting for a value
+		if key != "" && key != ignoreNextArg {
+			sys.cmdFlags[key] = "true"
 		}
 	}
 }

@@ -1796,7 +1796,7 @@ func (s *System) action() {
 	explUpdate(&s.explodsLayer1, false)
 	// Adjust game speed
 	if s.tickNextFrame() {
-		spd := (60 + s.cfg.Options.GameSpeed*5) / float32(s.cfg.Config.Framerate) * s.accel
+		spd := ((60 + s.cfg.Options.GameSpeed*5) / float32(s.cfg.Config.Framerate)) * s.accel * s.cfg.Options.GameSpeedMultiplier
 		// KO slowdown
 		s.slowtimeTrigger = 0
 		if s.intro < 0 && s.time != 0 && s.slowtime > 0 {
