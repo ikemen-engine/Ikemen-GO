@@ -150,26 +150,26 @@ func processCommandLine() {
 			"-nosound":        true,
 			"-speedtest":      true,
 		}
-		const ignoreNextArg = "@@IGNORE_NEXT_ARG@@" // Special value for 'key'
-
 		key := ""
 		player := 1
+		flagsEncountered := false // New variable to track if any flags have been encountered
 		r1, _ := regexp.Compile("^-[h%?]$")
 		r2, _ := regexp.Compile("^-")
 		// Loop through arguments
 		for _, a := range os.Args[1:] {
-			if key == ignoreNextArg { // If previous flag was boolean, ignore this argument
-				key = "" // Reset for next iteration
-				continue
-			}
-			// If a key was expecting a value but the next argument is another flag, set the key to "true"
-			if key != "" && r2.MatchString(a) {
-				sys.cmdFlags[key] = "true"
-				key = ""
-			}
-			// If getting help about command line options
-			if r1.MatchString(a) {
-				text := `Options (case sensitive):
+			// Check if the current argument 'a' is a flag (starts with '-')
+			if r2.MatchString(a) {
+				flagsEncountered = true // A flag has been encountered
+				// If there was a flag 'key' expecting a value, but 'a' is another flag,
+				// then the 'key' flag didn't get its value. Set its value to "true".
+				if key != "" {
+					sys.cmdFlags[key] = "true"
+					key = "" // Clear key, as its value is now set
+				}
+
+				// If getting help about command line options
+				if r1.MatchString(a) {
+					text := `Options (case sensitive):
 -h -?                   Help
 -log <logfile>          Records match data to <logfile>
 -r <path>               Loads motif <path>. eg. -r motifdir or -r motifdir/system.def
@@ -179,7 +179,7 @@ func processCommandLine() {
 -width <num>            Sets game width
 -height <num>           Sets game height
 -setvolume <num>        Sets master volume to <num> (0-100)
-
+	
 Quick VS Options:
 -p<n> <playername>      Loads player n, eg. -p3 kfm
 -p<n>.ai <level>        Sets player n's AI to <level>, eg. -p1.ai 8
@@ -191,7 +191,7 @@ Quick VS Options:
 -time <num>             Round time (-1 to disable)
 -rounds <num>           Plays for <num> rounds, and then quits
 -s <stagename>          Loads stage <stagename>
-
+	
 Debug Options:
 -nojoy                  Disables joysticks
 -nomusic                Disables music
@@ -202,35 +202,37 @@ Debug Options:
 -speed <speed>          Changes game speed setting to <speed> (10%%-200%%)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
-				//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
-				fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
-				var s string
-				fmt.Scanln(&s)
-				os.Exit(0)
-				// If a control argument starting with - (eg. -p3, -s, -rounds)
-			} else if r2.MatchString(a) { // 'a' is a flag
-				// If it's a boolean flag, set its value to "true"
+					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
+					fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
+					var s string
+					fmt.Scanln(&s)
+					os.Exit(0)
+				}
+				// If 'a' is a boolean flag, set its value to "true".
 				if _, isBool := boolFlags[a]; isBool {
 					sys.cmdFlags[a] = "true"
-					key = ignoreNextArg // Set key to ignore next argument
+					// key remains "" because boolean flags don't consume the next argument.
 				} else {
-					// Otherwise, it's a value-expecting flag. Set blank and prepare key.
+					// 'a' is a value-expecting flag. Set its value to blank and store its name in 'key'.
 					sys.cmdFlags[a] = ""
-					key = a // Prepare key for the next argument (value)
+					key = a // Now 'key' expects a value in the next iteration.
 				}
 			} else { // 'a' is not a flag (it's a value or a player name)
-				// If a key is waiting for a value
+				// If 'key' is not empty, it means the previous argument was a flag expecting a value.
 				if key != "" {
-					sys.cmdFlags[key] = a
-					key = "" // Value consumed, clear key
-				} else { // No active flag, treat as player name
+					sys.cmdFlags[key] = a // Assign 'a' as the value for 'key'
+					key = ""              // Value consumed, clear key.
+				} else if !flagsEncountered && player <= 2 { // Only assign to -p1 or -p2 if no flag has been encountered yet and player count is within limit
+					// This block handles initial positional player names like "kfm kfm"
 					sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
 					player += 1
 				}
+				// If key is empty and player > 2, and it's not a flag, then it's an unhandled positional argument.
+				// We just ignore it in this case to prevent the 8/8.def error.
 			}
 		}
-		// After the loop, if a key is still waiting for a value
-		if key != "" && key != ignoreNextArg {
+		// After the loop, if a key is still waiting for a value, set it to "true".
+		if key != "" {
 			sys.cmdFlags[key] = "true"
 		}
 	}
