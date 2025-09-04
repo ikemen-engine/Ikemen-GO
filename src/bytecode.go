@@ -1,3 +1,27 @@
+// bytecode.go
+//
+// Interpreter for compiled script bytecode. The compiler (compiler.go)
+// emits OpCode streams that are executed here against Char instances at
+// runtime. The engine behaves as a simple stack machine and delegates
+// most operations to methods on Char or BytecodeValue.
+//
+// Call graph overview:
+//
+//	State controller -> BytecodeExp.run -> run_{st,const,ex,ex2}
+//	   -> Char methods and system queries.
+//
+// [EXAMPLE] Adding a new opcode:
+//
+//	const (
+//	  OC_myop OpCode = iota + ...
+//	)
+//	// In BytecodeExp.run add:
+//	case OC_myop:
+//	    a := sys.bcStack.Pop()
+//	    // ... work with 'a' ...
+//	    sys.bcStack.Push(a)
+//
+// Ensure the stack remains balanced and the compiler emits the opcode.
 package main
 
 import (
@@ -85,161 +109,161 @@ const (
 type OpCode byte
 
 const (
-	OC_var OpCode = iota
-	OC_sysvar
-	OC_fvar
-	OC_sysfvar
-	OC_localvar
-	OC_int8
-	OC_int
-	OC_int64
-	OC_float
-	OC_pop
-	OC_dup
-	OC_swap
-	OC_run
-	OC_nordrun
-	OC_jsf8
-	OC_jmp8
-	OC_jz8
-	OC_jnz8
-	OC_jmp
-	OC_jz
-	OC_jnz
-	OC_eq
-	OC_ne
-	OC_gt
-	OC_ge
-	OC_lt
-	OC_le
-	OC_neg
-	OC_blnot
-	OC_bland
-	OC_blxor
-	OC_blor
-	OC_not
-	OC_and
-	OC_xor
-	OC_or
-	OC_add
-	OC_sub
-	OC_mul
-	OC_div
-	OC_mod
-	OC_pow
-	OC_abs
-	OC_exp
-	OC_ln
-	OC_log
-	OC_cos
-	OC_sin
-	OC_tan
-	OC_acos
-	OC_asin
-	OC_atan
-	OC_floor
-	OC_ceil
-	OC_ifelse
-	OC_time
-	OC_animtime
-	OC_animelemtime
-	OC_animelemno
-	OC_statetype
-	OC_movetype
-	OC_ctrl
-	OC_command
-	OC_random
-	OC_pos_x
-	OC_pos_y
-	OC_vel_x
-	OC_vel_y
-	OC_vel_z
-	OC_screenpos_x
-	OC_screenpos_y
-	OC_facing
-	OC_anim
-	OC_animexist
-	OC_selfanimexist
-	OC_alive
-	OC_life
-	OC_lifemax
-	OC_power
-	OC_powermax
-	OC_canrecover
-	OC_roundstate
-	OC_roundswon
-	OC_ishelper
-	OC_numhelper
-	OC_numexplod
-	OC_numprojid
-	OC_numproj
-	OC_numtext
-	OC_teammode
-	OC_teamside
-	OC_hitdefattr
-	OC_inguarddist
-	OC_movecontact
-	OC_movehit
-	OC_moveguarded
-	OC_movereversed
-	OC_projcontacttime
-	OC_projhittime
-	OC_projguardedtime
-	OC_projcanceltime
-	OC_backedge
-	OC_backedgedist
-	OC_backedgebodydist
-	OC_frontedge
-	OC_frontedgedist
-	OC_frontedgebodydist
-	OC_leftedge
-	OC_rightedge
-	OC_topedge
-	OC_bottomedge
-	OC_camerapos_x
-	OC_camerapos_y
-	OC_camerazoom
-	OC_gamewidth
-	OC_gameheight
-	OC_screenwidth
-	OC_screenheight
-	OC_stateno
-	OC_prevstateno
-	OC_id
-	OC_playeridexist
-	OC_gametime
-	OC_numtarget
-	OC_numenemy
-	OC_numpartner
-	OC_ailevel
-	OC_palno
-	OC_hitcount
-	OC_uniqhitcount
-	OC_hitpausetime
-	OC_hitover
-	OC_hitshakeover
-	OC_hitfall
-	OC_hitvel_x
-	OC_hitvel_y
-	OC_hitvel_z
-	OC_player
-	OC_parent
-	OC_root
-	OC_helper
-	OC_target
-	OC_partner
-	OC_enemy
-	OC_enemynear
-	OC_playerid
-	OC_playerindex
-	OC_helperindex
-	OC_p2
-	OC_stateowner
-	OC_rdreset
-	OC_const_
-	OC_st_
-	OC_ex_
-	OC_ex2_
+	OC_var               OpCode = iota // push player variable by index
+	OC_sysvar                          // push system variable
+	OC_fvar                            // push floating point variable
+	OC_sysfvar                         // push system floating variable
+	OC_localvar                        // push per-state local variable
+	OC_int8                            // push 8-bit immediate integer
+	OC_int                             // push 32-bit immediate integer
+	OC_int64                           // push 64-bit immediate integer
+	OC_float                           // push float constant
+	OC_pop                             // discard top of stack
+	OC_dup                             // duplicate top of stack
+	OC_swap                            // swap top two stack values
+	OC_run                             // execute embedded state controller
+	OC_nordrun                         // run controller without resetting run count
+	OC_jsf8                            // short jump forward if SF (undefined)
+	OC_jmp8                            // unconditional short jump
+	OC_jz8                             // short jump if top == 0
+	OC_jnz8                            // short jump if top != 0
+	OC_jmp                             // unconditional long jump
+	OC_jz                              // long jump if top == 0
+	OC_jnz                             // long jump if top != 0
+	OC_eq                              // compare equal, push bool
+	OC_ne                              // compare not equal
+	OC_gt                              // compare greater than
+	OC_ge                              // compare greater or equal
+	OC_lt                              // compare less than
+	OC_le                              // compare less or equal
+	OC_neg                             // unary minus
+	OC_blnot                           // bitwise not
+	OC_bland                           // bitwise and
+	OC_blxor                           // bitwise xor
+	OC_blor                            // bitwise or
+	OC_not                             // logical not
+	OC_and                             // logical and
+	OC_xor                             // logical xor
+	OC_or                              // logical or
+	OC_add                             // numeric addition
+	OC_sub                             // numeric subtraction
+	OC_mul                             // numeric multiplication
+	OC_div                             // numeric division
+	OC_mod                             // numeric modulo
+	OC_pow                             // numeric power
+	OC_abs                             // absolute value
+	OC_exp                             // math.Exp
+	OC_ln                              // natural logarithm
+	OC_log                             // logarithm with base
+	OC_cos                             // cosine
+	OC_sin                             // sine
+	OC_tan                             // tangent
+	OC_acos                            // arccosine
+	OC_asin                            // arcsine
+	OC_atan                            // arctangent
+	OC_floor                           // floor
+	OC_ceil                            // ceil
+	OC_ifelse                          // ternary operator (cond ? a : b)
+	OC_time                            // push state time
+	OC_animtime                        // push current animation time
+	OC_animelemtime                    // push time of specified anim element
+	OC_animelemno                      // push current animation element number
+	OC_statetype                       // push state type
+	OC_movetype                        // push move type
+	OC_ctrl                            // push control flag
+	OC_command                         // check command input
+	OC_random                          // push random int 0..999
+	OC_pos_x                           // push x position
+	OC_pos_y                           // push y position
+	OC_vel_x                           // push x velocity
+	OC_vel_y                           // push y velocity
+	OC_vel_z                           // push z velocity
+	OC_screenpos_x                     // push screen x coordinate
+	OC_screenpos_y                     // push screen y coordinate
+	OC_facing                          // push facing direction
+	OC_anim                            // push current animation number
+	OC_animexist                       // test if animation exists
+	OC_selfanimexist                   // test if animation exists for self
+	OC_alive                           // push alive flag
+	OC_life                            // push life value
+	OC_lifemax                         // push maximum life
+	OC_power                           // push power meter
+	OC_powermax                        // push power max
+	OC_canrecover                      // push recover ability flag
+	OC_roundstate                      // push round state
+	OC_roundswon                       // push rounds won
+	OC_ishelper                        // push helper flag
+	OC_numhelper                       // push number of helpers
+	OC_numexplod                       // push number of explods
+	OC_numprojid                       // push number of projectiles by id
+	OC_numproj                         // push number of projectiles
+	OC_numtext                         // push number of text objects
+	OC_teammode                        // push team mode
+	OC_teamside                        // push team side (1 or 2)
+	OC_hitdefattr                      // compare hitdef attr
+	OC_inguarddist                     // push in guard distance flag
+	OC_movecontact                     // push move contact flag
+	OC_movehit                         // push move hit flag
+	OC_moveguarded                     // push move guarded flag
+	OC_movereversed                    // push move reversed flag
+	OC_projcontacttime                 // projectile contact time
+	OC_projhittime                     // projectile hit time
+	OC_projguardedtime                 // projectile guarded time
+	OC_projcanceltime                  // projectile cancel time
+	OC_backedge                        // push back edge position
+	OC_backedgedist                    // push back edge distance
+	OC_backedgebodydist                // push back edge body distance
+	OC_frontedge                       // push front edge position
+	OC_frontedgedist                   // push front edge distance
+	OC_frontedgebodydist               // push front edge body distance
+	OC_leftedge                        // push left screen edge
+	OC_rightedge                       // push right screen edge
+	OC_topedge                         // push top screen edge
+	OC_bottomedge                      // push bottom screen edge
+	OC_camerapos_x                     // push camera X position
+	OC_camerapos_y                     // push camera Y position
+	OC_camerazoom                      // push camera zoom
+	OC_gamewidth                       // push base game width
+	OC_gameheight                      // push base game height
+	OC_screenwidth                     // push screen width
+	OC_screenheight                    // push screen height
+	OC_stateno                         // push current state number
+	OC_prevstateno                     // push previous state number
+	OC_id                              // push unique player id
+	OC_playeridexist                   // check if player id exists
+	OC_gametime                        // push global game time
+	OC_numtarget                       // push number of active targets
+	OC_numenemy                        // push number of enemies
+	OC_numpartner                      // push number of partners
+	OC_ailevel                         // push AI level
+	OC_palno                           // push palette number
+	OC_hitcount                        // push hit count
+	OC_uniqhitcount                    // push unique hit count
+	OC_hitpausetime                    // push hit pause time
+	OC_hitover                         // push hit over flag
+	OC_hitshakeover                    // push hit shake over flag
+	OC_hitfall                         // push hit fall flag
+	OC_hitvel_x                        // push x velocity on hit
+	OC_hitvel_y                        // push y velocity on hit
+	OC_hitvel_z                        // push z velocity on hit
+	OC_player                          // change context to player by id
+	OC_parent                          // change context to parent
+	OC_root                            // change context to root
+	OC_helper                          // change context to helper
+	OC_target                          // change context to target
+	OC_partner                         // change context to partner
+	OC_enemy                           // change context to enemy
+	OC_enemynear                       // change context to nearest enemy
+	OC_playerid                        // change context to player by id (alias)
+	OC_playerindex                     // change context to player by index
+	OC_helperindex                     // change context to helper by index
+	OC_p2                              // change context to player 2
+	OC_stateowner                      // restore context owner
+	OC_rdreset                         // round/reset check
+	OC_const_                          // invoke constant handler
+	OC_st_                             // invoke state variable handler
+	OC_ex_                             // invoke extended handler
+	OC_ex2_                            // invoke extended handler 2
 )
 const (
 	OC_const_data_life OpCode = iota
@@ -1508,10 +1532,13 @@ func (BytecodeExp) lerp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
 }
 
 func (be BytecodeExp) run(c *Char) BytecodeValue {
+	// Preserve original character context so jump opcodes can restore it.
 	oc := c
+	// Main interpreter loop. 'i' is the program counter and may be
+	// altered by individual opcode handlers to implement jumps.
 	for i := 1; i <= len(be); i++ {
 		switch be[i-1] {
-		case OC_jsf8:
+		case OC_jsf8: // jump short if SFalse
 			if sys.bcStack.Top().IsSF() {
 				if be[i] == 0 {
 					i = len(be)
@@ -1521,48 +1548,48 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			} else {
 				i++
 			}
-		case OC_jz8, OC_jnz8:
+		case OC_jz8, OC_jnz8: // short conditional jump if zero / not zero
 			if sys.bcStack.Top().ToB() == (be[i-1] == OC_jz8) {
 				i++
 				break
 			}
 			fallthrough
-		case OC_jmp8:
+		case OC_jmp8: // unconditional short jump
 			if be[i] == 0 {
 				i = len(be)
 			} else {
 				i += int(uint8(be[i])) + 1
 			}
-		case OC_jz, OC_jnz:
+		case OC_jz, OC_jnz: // long conditional jumps
 			if sys.bcStack.Top().ToB() == (be[i-1] == OC_jz) {
 				i += 4
 				break
 			}
 			fallthrough
-		case OC_jmp:
+		case OC_jmp: // long unconditional jump
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_player:
+		case OC_player: // redirect to arbitrary player by id
 			if c = sys.playerID(c.getPlayerID(int(sys.bcStack.Pop().ToI()))); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_parent:
+		case OC_parent: // redirect to parent
 			if c = c.parent(true); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_root:
+		case OC_root: // redirect to root
 			if c = c.root(true); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_helper:
+		case OC_helper: // redirect to helper (id, index)
 			v2 := sys.bcStack.Pop().ToI()
 			v1 := sys.bcStack.Pop().ToI()
 			if c = c.helperTrigger(v1, int(v2)); c != nil {
@@ -1571,7 +1598,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_target:
+		case OC_target: // redirect to target (id, index)
 			v2 := sys.bcStack.Pop().ToI()
 			v1 := sys.bcStack.Pop().ToI()
 			if c = c.targetTrigger(v1, int(v2)); c != nil {
@@ -1580,56 +1607,56 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_partner:
+		case OC_partner: // redirect to partner
 			if c = c.partner(sys.bcStack.Pop().ToI(), true); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_enemy:
+		case OC_enemy: // redirect to enemy
 			if c = c.enemy(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_enemynear:
+		case OC_enemynear: // redirect to nearest enemy
 			if c = c.enemyNearTrigger(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_playerid:
+		case OC_playerid: // redirect to player by id
 			if c = sys.playerID(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_playerindex:
+		case OC_playerindex: // redirect to player by index
 			if c = sys.playerIndex(sys.bcStack.Pop().ToI()); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_p2:
+		case OC_p2: // redirect to opponent
 			if c = c.p2(); c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_stateowner:
+		case OC_stateowner: // redirect to state owner
 			if c = sys.chars[c.ss.sb.playerNo][0]; c != nil {
 				i += 4
 				continue
 			}
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
-		case OC_helperindex:
+		case OC_helperindex: // redirect to helper by index
 			if c = c.helperIndexTrigger(sys.bcStack.Pop().ToI(), true); c != nil {
 				i += 4
 				continue
@@ -1637,26 +1664,26 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeSF())
 			i += int(*(*int32)(unsafe.Pointer(&be[i]))) + 4
 		case OC_rdreset:
-			// NOP
-		case OC_run:
+			// reserved no-op
+		case OC_run: // execute nested bytecode block
 			l := int(*(*int32)(unsafe.Pointer(&be[i])))
 			sys.bcStack.Push(be[i+4 : i+4+l].run(c))
 			i += 4 + l
-		case OC_nordrun:
+		case OC_nordrun: // run block without changing context
 			l := int(*(*int32)(unsafe.Pointer(&be[i])))
 			sys.bcStack.Push(be[i+4 : i+4+l].run(oc))
 			i += 4 + l
 			continue
-		case OC_int8:
+		case OC_int8: // push literal int8
 			sys.bcStack.PushI(int32(int8(be[i])))
 			i++
-		case OC_int:
+		case OC_int: // push literal int32
 			sys.bcStack.PushI(*(*int32)(unsafe.Pointer(&be[i])))
 			i += 4
-		case OC_int64:
+		case OC_int64: // push literal int64
 			sys.bcStack.PushI64(*(*int64)(unsafe.Pointer(&be[i])))
 			i += 8
-		case OC_float:
+		case OC_float: // push literal float32
 			arr := make([]byte, 4)
 			arr[0] = byte(be[i])
 			arr[1] = byte(be[i+1])
@@ -1665,92 +1692,92 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			flo := Float32frombytes(arr)
 			sys.bcStack.PushF(flo)
 			i += 4
-		case OC_neg:
+		case OC_neg: // unary negation
 			be.neg(sys.bcStack.Top())
-		case OC_not:
+		case OC_not: // logical not
 			be.not(sys.bcStack.Top())
-		case OC_blnot:
+		case OC_blnot: // bitwise not
 			be.blnot(sys.bcStack.Top())
-		case OC_pow:
+		case OC_pow: // exponentiation
 			v2 := sys.bcStack.Pop()
 			be.pow(sys.bcStack.Top(), v2, sys.workingChar.ss.sb.playerNo)
-		case OC_mul:
+		case OC_mul: // multiplication
 			v2 := sys.bcStack.Pop()
 			be.mul(sys.bcStack.Top(), v2)
-		case OC_div:
+		case OC_div: // division
 			v2 := sys.bcStack.Pop()
 			be.div(sys.bcStack.Top(), v2)
-		case OC_mod:
+		case OC_mod: // modulus
 			v2 := sys.bcStack.Pop()
 			be.mod(sys.bcStack.Top(), v2)
-		case OC_add:
+		case OC_add: // addition
 			v2 := sys.bcStack.Pop()
 			be.add(sys.bcStack.Top(), v2)
-		case OC_sub:
+		case OC_sub: // subtraction
 			v2 := sys.bcStack.Pop()
 			be.sub(sys.bcStack.Top(), v2)
-		case OC_gt:
+		case OC_gt: // greater than
 			v2 := sys.bcStack.Pop()
 			be.gt(sys.bcStack.Top(), v2)
-		case OC_ge:
+		case OC_ge: // greater or equal
 			v2 := sys.bcStack.Pop()
 			be.ge(sys.bcStack.Top(), v2)
-		case OC_lt:
+		case OC_lt: // less than
 			v2 := sys.bcStack.Pop()
 			be.lt(sys.bcStack.Top(), v2)
-		case OC_le:
+		case OC_le: // less or equal
 			v2 := sys.bcStack.Pop()
 			be.le(sys.bcStack.Top(), v2)
-		case OC_eq:
+		case OC_eq: // equality
 			v2 := sys.bcStack.Pop()
 			be.eq(sys.bcStack.Top(), v2)
-		case OC_ne:
+		case OC_ne: // inequality
 			v2 := sys.bcStack.Pop()
 			be.ne(sys.bcStack.Top(), v2)
-		case OC_and:
+		case OC_and: // logical and
 			v2 := sys.bcStack.Pop()
 			be.and(sys.bcStack.Top(), v2)
-		case OC_xor:
+		case OC_xor: // logical xor
 			v2 := sys.bcStack.Pop()
 			be.xor(sys.bcStack.Top(), v2)
-		case OC_or:
+		case OC_or: // logical or
 			v2 := sys.bcStack.Pop()
 			be.or(sys.bcStack.Top(), v2)
-		case OC_bland:
+		case OC_bland: // bitwise and
 			v2 := sys.bcStack.Pop()
 			be.bland(sys.bcStack.Top(), v2)
-		case OC_blxor:
+		case OC_blxor: // bitwise xor
 			v2 := sys.bcStack.Pop()
 			be.blxor(sys.bcStack.Top(), v2)
-		case OC_blor:
+		case OC_blor: // bitwise or
 			v2 := sys.bcStack.Pop()
 			be.blor(sys.bcStack.Top(), v2)
-		case OC_abs:
+		case OC_abs: // absolute value
 			be.abs(sys.bcStack.Top())
-		case OC_exp:
+		case OC_exp: // exponential
 			be.exp(sys.bcStack.Top())
-		case OC_ln:
+		case OC_ln: // natural log
 			be.ln(sys.bcStack.Top())
-		case OC_log:
+		case OC_log: // log with base
 			v2 := sys.bcStack.Pop()
 			be.log(sys.bcStack.Top(), v2)
-		case OC_cos:
+		case OC_cos: // cosine
 			be.cos(sys.bcStack.Top())
-		case OC_sin:
+		case OC_sin: // sine
 			be.sin(sys.bcStack.Top())
-		case OC_tan:
+		case OC_tan: // tangent
 			be.tan(sys.bcStack.Top())
-		case OC_acos:
+		case OC_acos: // arccosine
 			be.acos(sys.bcStack.Top())
-		case OC_asin:
+		case OC_asin: // arcsine
 			be.asin(sys.bcStack.Top())
-		case OC_atan:
+		case OC_atan: // arctangent
 			be.atan(sys.bcStack.Top())
-		case OC_floor:
+		case OC_floor: // floor
 			be.floor(sys.bcStack.Top())
-		case OC_ceil:
+		case OC_ceil: // ceil
 			be.ceil(sys.bcStack.Top())
-		case OC_ifelse:
+		case OC_ifelse: // ternary operator
 			v3 := sys.bcStack.Pop()
 			v2 := sys.bcStack.Pop()
 			if sys.bcStack.Top().ToB() {
@@ -1758,21 +1785,21 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			} else {
 				*sys.bcStack.Top() = v3
 			}
-		case OC_pop:
+		case OC_pop: // drop value
 			sys.bcStack.Pop()
-		case OC_dup:
+		case OC_dup: // duplicate top value
 			sys.bcStack.Dup()
-		case OC_swap:
+		case OC_swap: // swap top two values
 			sys.bcStack.Swap()
-		case OC_ailevel:
+		case OC_ailevel: // query AI level
 			if !c.asf(ASF_noailevel) {
 				sys.bcStack.PushI(int32(c.getAILevel()))
 			} else {
 				sys.bcStack.PushI(0)
 			}
-		case OC_alive:
+		case OC_alive: // push alive flag
 			sys.bcStack.PushB(c.alive())
-		case OC_anim:
+		case OC_anim: // push current animation
 			sys.bcStack.PushI(c.animNo)
 		case OC_animelemno:
 			*sys.bcStack.Top() = c.animElemNo(sys.bcStack.Top().ToI())
@@ -2003,8 +2030,10 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(sys.bcVar[uint8(be[i])])
 			i++
 		}
+		// After each opcode, restore original character context.
 		c = oc
 	}
+	// Pop and return final result of expression.
 	return sys.bcStack.Pop()
 }
 
