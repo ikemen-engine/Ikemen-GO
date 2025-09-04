@@ -1,3 +1,7 @@
+// Package main provides common helper utilities shared across the engine.
+// The routines here span random generation, math, string manipulation,
+// file handling and more.  [PITFALL] comments call out behaviours that may
+// surprise maintainers, such as nil handling or type conversions.
 package main
 
 import (
@@ -20,10 +24,14 @@ import (
 )
 
 const (
+	// IMax is the maximum signed 32-bit integer value.
 	IMax = int32(^uint32(0) >> 1)
+	// IErr is returned from helpers such as Atoi on overflow.
 	IErr = ^IMax
 )
 
+// Random returns a pseudo-random signed 32-bit integer.
+// The internal generator is linear-congruential and seeded via Srand.
 func Random() int32 {
 	w := sys.randseed / 127773
 	sys.randseed = (sys.randseed-w*127773)*16807 - w*2836
@@ -33,18 +41,24 @@ func Random() int32 {
 	return sys.randseed
 }
 
+// Srand seeds the random number generator used by Random.
 func Srand(s int32) {
 	sys.randseed = s
 }
 
+// Rand returns a pseudo-random integer within [min, max].
+// min must be less than or equal to max.
 func Rand(min, max int32) int32 {
 	return min + Random()/(IMax/(max-min+1)+1)
 }
 
+// RandF32 returns a pseudo-random float within [min, max].
 func RandF32(min, max float32) float32 {
 	return min + float32(Random())/(float32(IMax)/(max-min+1.0)+1.0)
 }
 
+// RandI returns a pseudo-random int32 between x and y inclusive.
+// [PITFALL] For ranges larger than IMax, int64 arithmetic is used.
 func RandI(x, y int32) int32 {
 	if y < x {
 		if uint32(x-y) > uint32(IMax) {
@@ -58,10 +72,13 @@ func RandI(x, y int32) int32 {
 	return Rand(x, y)
 }
 
+// RandF returns a pseudo-random float32 between x and y.
 func RandF(x, y float32) float32 {
 	return x + float32(Random())*(y-x)/float32(IMax)
 }
 
+// Min returns the smallest value among arg.
+// If arg is empty, min defaults to 0.
 func Min(arg ...int32) (min int32) {
 	for i, x := range arg {
 		if i == 0 || x < min {
@@ -71,6 +88,8 @@ func Min(arg ...int32) (min int32) {
 	return
 }
 
+// Max returns the largest value among arg.
+// If arg is empty, max defaults to 0.
 func Max(arg ...int32) (max int32) {
 	for i, x := range arg {
 		if i == 0 || x > max {
@@ -80,6 +99,8 @@ func Max(arg ...int32) (max int32) {
 	return
 }
 
+// MinF returns the smallest float32 value among arg.
+// If arg is empty, min defaults to 0.
 func MinF(arg ...float32) (min float32) {
 	for i, x := range arg {
 		if i == 0 || x < min {
@@ -89,6 +110,8 @@ func MinF(arg ...float32) (min float32) {
 	return
 }
 
+// MaxF returns the largest float32 value among arg.
+// If arg is empty, max defaults to 0.
 func MaxF(arg ...float32) (max float32) {
 	for i, x := range arg {
 		if i == 0 || x > max {
@@ -98,6 +121,8 @@ func MaxF(arg ...float32) (max float32) {
 	return
 }
 
+// MinI returns the smallest int value among arg.
+// If arg is empty, min defaults to 0.
 func MinI(arg ...int) (min int) {
 	for i, x := range arg {
 		if i == 0 || x < min {
@@ -107,6 +132,8 @@ func MinI(arg ...int) (min int) {
 	return
 }
 
+// MaxI returns the largest int value among arg.
+// If arg is empty, max defaults to 0.
 func MaxI(arg ...int) (max int) {
 	for i, x := range arg {
 		if i == 0 || x > max {
@@ -116,30 +143,37 @@ func MaxI(arg ...int) (max int) {
 	return
 }
 
+// Clamp confines x to the inclusive range [a, b].
 func Clamp(x, a, b int32) int32 {
 	return Max(a, Min(x, b))
 }
 
+// ClampF confines x to the inclusive range [a, b] for float32 values.
 func ClampF(x, a, b float32) float32 {
 	return MaxF(a, MinF(x, b))
 }
 
+// Rad converts degrees to radians.
 func Rad(f float32) float32 {
 	return float32(f * math.Pi / 180)
 }
 
+// Deg converts radians to degrees.
 func Deg(f float32) float32 {
 	return float32(f * 180 / math.Pi)
 }
 
+// Cos returns the cosine of f where f is in radians.
 func Cos(f float32) float32 {
 	return float32(math.Cos(float64(f)))
 }
 
+// Sin returns the sine of f where f is in radians.
 func Sin(f float32) float32 {
 	return float32(math.Sin(float64(f)))
 }
 
+// Sign returns 1 if i>0, -1 if i<0, and 0 otherwise.
 func Sign(i int32) int32 {
 	if i < 0 {
 		return -1
@@ -150,6 +184,7 @@ func Sign(i int32) int32 {
 	}
 }
 
+// SignF returns 1 if f>0, -1 if f<0, and 0 otherwise.
 func SignF(f float32) float32 {
 	if f < 0 {
 		return -1
@@ -160,6 +195,7 @@ func SignF(f float32) float32 {
 	}
 }
 
+// Abs returns the absolute value of i.
 func Abs(i int32) int32 {
 	if i < 0 {
 		return -i
@@ -167,6 +203,7 @@ func Abs(i int32) int32 {
 	return i
 }
 
+// AbsF returns the absolute value of f.
 func AbsF(f float32) float32 {
 	if f < 0 {
 		return -f
@@ -174,32 +211,40 @@ func AbsF(f float32) float32 {
 	return f
 }
 
+// Pow returns x raised to the power y.
 func Pow(x, y float32) float32 {
 	return float32(math.Pow(float64(x), float64(y)))
 }
 
+// Lerp linearly interpolates between x and y by factor a (0..1).
 func Lerp(x, y, a float32) float32 {
 	//return float32(x + (y - x) * ClampF(a, 0, 1))
 	return float32((1-a)*x + a*y)
 }
 
+// Ceil returns the least integer value greater than or equal to x.
 func Ceil(x float32) int32 {
 	return int32(math.Ceil(float64(x)))
 }
 
+// Floor returns the greatest integer value less than or equal to x.
 func Floor(x float32) int32 {
 	return int32(math.Floor(float64(x)))
 }
 
+// IsFinite reports whether f is neither NaN nor an infinity.
 func IsFinite(f float32) bool {
 	return math.Abs(float64(f)) <= math.MaxFloat64
 }
 
+// IsNumeric reports whether s can be parsed as a floating point number.
 func IsNumeric(s string) bool {
 	_, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
 	return err == nil
 }
 
+// Atoi converts str to int32, returning IErr on overflow.
+// [PITFALL] Trailing non-digits are ignored and overflows log warnings.
 func Atoi(str string) int32 {
 	var n int64
 	str = strings.TrimSpace(str)
@@ -231,6 +276,8 @@ func Atoi(str string) int32 {
 	return int32(n)
 }
 
+// Atof converts str to float64.
+// [PITFALL] Parsing stops at the first invalid character; remaining data is ignored.
 func Atof(str string) float64 {
 	f := 0.0
 	str = strings.TrimSpace(str)
@@ -283,6 +330,8 @@ func Atof(str string) float64 {
 	return f
 }
 
+// RectRotate returns the four corners of a rectangle rotated by angle.
+// (x,y) is the top-left corner; (w,h) are dimensions; (cx,cy) the rotation center.
 func RectRotate(x, y, w, h, cx, cy, angle float32) [][2]float32 {
 	rp := make([][2]float32, 4)
 	corners := [][2]float32{
@@ -302,7 +351,8 @@ func RectRotate(x, y, w, h, cx, cy, angle float32) [][2]float32 {
 	return rp
 }
 
-// Check if two rotated rectangles intersect.
+// RectIntersect reports whether two rotated rectangles intersect.
+// Rectangles are defined by position, dimensions, rotation centers and angles.
 func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, angle2 float32) bool {
 	rect1 := RectRotate(x1, y1, w1, h1, cx1, cy1, angle1)
 	rect2 := RectRotate(x2, y2, w2, h2, cx2, cy2, angle2)
@@ -347,7 +397,7 @@ func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, a
 	return true
 }
 
-// Prevent overflow errors when converting float64 to int32
+// F64toI32 converts f to int32, saturating at the 32-bit bounds.
 func F64toI32(f float64) int32 {
 	if f >= float64(math.MaxInt32) {
 		return math.MaxInt32
@@ -358,6 +408,8 @@ func F64toI32(f float64) int32 {
 	return int32(f)
 }
 
+// readDigit parses d as a non-negative integer without leading zeros.
+// Returns the value and whether parsing succeeded.
 func readDigit(d string) (int32, bool) {
 	if len(d) == 0 || (len(d) >= 2 && d[0] == '0') {
 		return 0, false
@@ -370,6 +422,7 @@ func readDigit(d string) (int32, bool) {
 	return int32(Atof(d)), true
 }
 
+// Btoi converts a bool to 1 or 0.
 func Btoi(b bool) int32 {
 	if b {
 		return 1
@@ -377,6 +430,7 @@ func Btoi(b bool) int32 {
 	return 0
 }
 
+// I32ToI16 converts i32 to int16, clamping to the int16 range.
 func I32ToI16(i32 int32) int16 {
 	if i32 < ^int32(^uint16(0)>>1) {
 		return ^int16(^uint16(0) >> 1)
@@ -387,6 +441,7 @@ func I32ToI16(i32 int32) int16 {
 	return int16(i32)
 }
 
+// I32ToU16 converts i32 to uint16, clamping to the uint16 range.
 func I32ToU16(i32 int32) uint16 {
 	if i32 < 0 {
 		return 0
@@ -397,11 +452,13 @@ func I32ToU16(i32 int32) uint16 {
 	return uint16(i32)
 }
 
+// RoundFloat rounds val to the specified decimal precision.
 func RoundFloat(val float64, precision int) float64 {
 	factor := math.Pow(10, float64(precision))
 	return math.Round(val*factor) / factor
 }
 
+// NormalizeNewlines converts CRLF and CR newlines in input to LF.
 func NormalizeNewlines(input string) string {
 	// Replace CRLF (\r\n) with LF (\n)
 	input = strings.ReplaceAll(input, "\r\n", "\n")
@@ -410,6 +467,8 @@ func NormalizeNewlines(input string) string {
 	return input
 }
 
+// LoadText reads filename and returns its contents as a string.
+// [PITFALL] UTF-8 BOM is stripped; caller must close returned reader.
 func LoadText(filename string) (string, error) {
 	rc, err := OpenFile(filename)
 	if err != nil {
@@ -429,6 +488,8 @@ func LoadText(filename string) (string, error) {
 	return string(bytes), nil
 }
 
+// decodeShiftJIS attempts to decode input as Shift_JIS.
+// [PITFALL] If decoding fails, the original string is returned.
 func decodeShiftJIS(input string) string {
 	bytes := []byte(input)
 
@@ -444,6 +505,9 @@ func decodeShiftJIS(input string) string {
 	return string(decodedBytes)
 }
 
+// FileExist checks for a file on disk or inside a zip archive.
+// Returns the normalized path if found, otherwise an empty string.
+// [PITFALL] Searches case-insensitively using glob patterns which may be slow.
 func FileExist(filename string) string {
 	filename = filepath.ToSlash(filename)
 	isZip, zipFilePath, pathInZip := IsZipPath(filename)
@@ -532,9 +596,8 @@ func FileExist(filename string) string {
 	return ""
 }
 
-// SearchFile searches for 'file' in 'dirs'.
-// 'dirs' elements can be plain directory paths or logical paths to .def files (which might be inside zips).
-// 'file' is the filename to search (e.g., "kfm.sff").
+// SearchFile looks for file in the provided dirs.
+// dirs may be plain directories or logical paths inside zips.
 func SearchFile(file string, dirs []string) string {
 	file = strings.Replace(file, "\\", "/", -1)
 	if file == "" {
@@ -682,11 +745,16 @@ func SectionName(sec string) (string, string) {
 	return strings.ToLower(name), sec
 }
 
+// HasExtension reports whether file's extension matches the regular expression ext.
 func HasExtension(file, ext string) bool {
 	match, _ := regexp.MatchString(ext, filepath.Ext(strings.ToLower(file)))
 	return match
 }
 
+// sliceContains reports whether str is contained within slice s.
+// If lower is true, comparison is case-insensitive.
+// [PITFALL] strings.ToLower returns a new string; this function discards it,
+// so the case-insensitive branch currently has no effect.
 func sliceContains(s []string, str string, lower bool) bool {
 	if lower {
 		strings.ToLower(str)
@@ -702,20 +770,24 @@ func sliceContains(s []string, str string, lower bool) bool {
 	return false
 }
 
+// sliceInsertInt inserts value into array at index and returns the new slice.
 func sliceInsertInt(array []int, value int, index int) []int {
 	return append(array[:index], append([]int{value}, array[index:]...)...)
 }
 
+// sliceRemoveInt removes the element at index from array.
 func sliceRemoveInt(array []int, index int) []int {
 	return append(array[:index], array[index+1:]...)
 }
 
+// sliceMoveInt moves the element from srcIndex to dstIndex in array.
 func sliceMoveInt(array []int, srcIndex int, dstIndex int) []int {
 	value := array[srcIndex]
 	return sliceInsertInt(sliceRemoveInt(array, srcIndex), value, dstIndex)
 }
 
-// We save an array for precise checking, and a float for triggers
+// parseIkemenVersion parses an Ikemen version string.
+// Returns the version as an array and a float for comparisons.
 func parseIkemenVersion(versionStr string) ([3]uint16, float32) {
 	var ver [3]uint16
 	parts := SplitAndTrim(versionStr, ".")
@@ -746,6 +818,8 @@ func parseIkemenVersion(versionStr string) ([3]uint16, float32) {
 	return ver, verF
 }
 
+// parseMugenVersion parses a Mugen version string.
+// Returns the version as an array and a float approximation.
 func parseMugenVersion(versionStr string) ([2]uint16, float32) {
 	var ver [2]uint16
 	var verF float32
@@ -778,16 +852,21 @@ func parseMugenVersion(versionStr string) ([2]uint16, float32) {
 
 type Error string
 
+// Error satisfies the error interface for a string error.
 func (e Error) Error() string {
 	return string(e)
 }
 
 type IniSection map[string]string
 
+// NewIniSection creates a new, empty IniSection.
 func NewIniSection() IniSection {
 	return IniSection(make(map[string]string))
 }
 
+// ReadIniSection scans lines starting at *i for an INI section.
+// It returns the parsed section along with its name and subname.
+// [PITFALL] The index pointer is advanced past the section header.
 func ReadIniSection(lines []string, i *int) (
 	is IniSection, name string, subname string) {
 	for ; *i < len(lines); (*i)++ {
@@ -805,6 +884,7 @@ func ReadIniSection(lines []string, i *int) (
 	return
 }
 
+// Parse fills the section from the provided lines until the next header.
 func (is IniSection) Parse(lines []string, i *int) {
 	for ; *i < len(lines); (*i)++ {
 		if len(lines[*i]) > 0 && lines[*i][0] == '[' {
@@ -827,6 +907,8 @@ func (is IniSection) Parse(lines []string, i *int) {
 	}
 }
 
+// LoadFile loads an external file referenced by key name using load.
+// dirs lists search locations for the referenced file.
 func (is IniSection) LoadFile(name string, dirs []string,
 	load func(string) error) error {
 	str := is[name]
@@ -836,6 +918,7 @@ func (is IniSection) LoadFile(name string, dirs []string,
 	return LoadFile(&str, dirs, load)
 }
 
+// ReadI32 parses comma-separated int32 values from key name into out.
 func (is IniSection) ReadI32(name string, out ...*int32) bool {
 	str := is[name]
 	if len(str) == 0 {
@@ -852,6 +935,7 @@ func (is IniSection) ReadI32(name string, out ...*int32) bool {
 	return true
 }
 
+// ReadF32 parses comma-separated float32 values from key name into out.
 func (is IniSection) ReadF32(name string, out ...*float32) bool {
 	str := is[name]
 	if len(str) == 0 {
@@ -868,6 +952,8 @@ func (is IniSection) ReadF32(name string, out ...*float32) bool {
 	return true
 }
 
+// ReadBool parses comma-separated booleans from key name into out.
+// Non-zero values are treated as true.
 func (is IniSection) ReadBool(name string, out ...*bool) bool {
 	str := is[name]
 	if len(str) == 0 {
@@ -884,6 +970,7 @@ func (is IniSection) ReadBool(name string, out ...*bool) bool {
 	return true
 }
 
+// readI32ForStage parses stage-specific int32 values from key name.
 func (is IniSection) readI32ForStage(name string, out ...*int32) bool {
 	str := is[name]
 	if len(str) == 0 {
@@ -903,6 +990,7 @@ func (is IniSection) readI32ForStage(name string, out ...*int32) bool {
 	return true
 }
 
+// readF32ForStage parses stage-specific float32 values from key name.
 func (is IniSection) readF32ForStage(name string, out ...*float32) bool {
 	str := is[name]
 	if len(str) == 0 {
@@ -922,6 +1010,7 @@ func (is IniSection) readF32ForStage(name string, out ...*float32) bool {
 	return true
 }
 
+// readI32CsvForStage returns all int32 values from key name as a slice.
 func (is IniSection) readI32CsvForStage(name string) (ary []int32) {
 	if str := is[name]; len(str) > 0 {
 		for _, s := range strings.Split(str, ",") {
@@ -936,6 +1025,7 @@ func (is IniSection) readI32CsvForStage(name string) (ary []int32) {
 	return
 }
 
+// readF32CsvForStage returns all float32 values from key name as a slice.
 func (is IniSection) readF32CsvForStage(name string) (ary []float32) {
 	if str := is[name]; len(str) > 0 {
 		for _, s := range strings.Split(str, ",") {
@@ -950,6 +1040,8 @@ func (is IniSection) readF32CsvForStage(name string) (ary []float32) {
 	return
 }
 
+// getText retrieves a quoted string by key name.
+// [PITFALL] If the value is not quoted, an error is returned.
 func (is IniSection) getText(name string) (str string, ok bool, err error) {
 	str, ok = is[name]
 	if !ok {
