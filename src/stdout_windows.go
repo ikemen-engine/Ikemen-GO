@@ -1,6 +1,8 @@
 //go:build windows
 // +build windows
 
+// Windows UTF-8 output fix: attach to the parent console so stdout/stderr use
+// the correct encoding when running on Windows.
 package main
 
 import (
