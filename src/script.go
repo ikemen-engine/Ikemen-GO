@@ -15,7 +15,25 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+/*
+Lua runtime integration and extension points
+
+Ikemen GO embeds the gopher-lua runtime to allow motif and gameplay
+scripts to interact with engine internals. Functions registered in this
+file become global Lua APIs. To expose additional engine features to
+Lua, add new luaRegister calls in systemScriptInit and document their
+parameters and return values. See the official Ikemen GO wiki for
+guidelines and examples: https://github.com/ikemen-engine/Ikemen-GO/wiki
+*/
+
 // Data handlers
+// luaRegister exposes a Go function to the embedded Lua runtime under
+// the provided name.
+//
+// name: Lua global function name.
+// f:    Go function receiving *lua.LState and returning the number of
+//
+//	values pushed onto the stack.
 func luaRegister(l *lua.LState, name string, f func(*lua.LState) int) {
 	l.Register(name, f)
 }
@@ -223,6 +241,10 @@ func toLValue(l *lua.LState, v interface{}) lua.LValue {
 func systemScriptInit(l *lua.LState) {
 	triggerFunctions(l)
 	deprecatedFunctions(l)
+	// addChar(defs string)
+	// Adds one or more character definition paths to the select screen.
+	// Each line of the string parameter is treated as a separate .def file.
+	// Returns nothing.
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		for _, c := range strings.Split(strings.TrimSpace(strArg(l, 1)), "\n") {
 			c = strings.Trim(c, "\r")
@@ -232,6 +254,8 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	// addHotkey(key string, ctrl, shift, alt, pause, debug bool, script string) -> bool
+	// Registers a global hotkey that triggers a Lua script. Returns true on success.
 	luaRegister(l, "addHotkey", func(*lua.LState) int {
 		l.Push(lua.LBool(func() bool {
 			k := StringToKey(strArg(l, 1))
@@ -244,6 +268,8 @@ func systemScriptInit(l *lua.LState) {
 		}()))
 		return 1
 	})
+	// addStage(name string) -> number
+	// Loads stage definition(s) and returns the number successfully added.
 	luaRegister(l, "addStage", func(l *lua.LState) int {
 		var n int
 		for _, c := range SplitAndTrim(strings.TrimSpace(strArg(l, 1)), "\n") {
@@ -254,6 +280,8 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(n))
 		return 1
 	})
+	// animAddPos(anim *Anim, x, y float64)
+	// Adds position offsets to an animation.
 	luaRegister(l, "animAddPos", func(*lua.LState) int {
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
@@ -287,6 +315,9 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(a.anim.totaltime))
 		return 2
 	})
+	// animGetPreloadedCharData(pn, anim, frame int[, keepTime bool]) -> *Anim
+	// [Ikemen-Only] Accesses animation data preloaded on the select screen.
+	// See: https://github.com/ikemen-engine/Ikemen-GO/wiki
 	luaRegister(l, "animGetPreloadedCharData", func(l *lua.LState) int {
 		if anim := sys.sel.GetChar(int(numArg(l, 1))).anims.get(int16(numArg(l, 2)), int16(numArg(l, 3))); anim != nil {
 			pfx := newPalFX()
@@ -302,6 +333,9 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	// animGetPreloadedStageData(stage, anim, frame int[, keepTime bool]) -> *Anim
+	// [Ikemen-Only] Returns stage animation data loaded on the select screen.
+	// See: https://github.com/ikemen-engine/Ikemen-GO/wiki
 	luaRegister(l, "animGetPreloadedStageData", func(l *lua.LState) int {
 		if anim := sys.sel.GetStage(int(numArg(l, 1))).anims.get(int16(numArg(l, 2)), int16(numArg(l, 3))); anim != nil {
 			pfx := newPalFX()
@@ -351,6 +385,8 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(tbl)
 		return 1
 	})
+	// animNew(sff *Sff, action string) -> *Anim
+	// Creates a new animation from the given SFF resource and action string.
 	luaRegister(l, "animNew", func(*lua.LState) int {
 		s, ok := toUserData(l, 1).(*Sff)
 		if !ok {
@@ -674,6 +710,9 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(false))
 		return 1
 	})
+	// changeState(state int) -> bool
+	// Forces the debugged player into the specified state.
+	// Returns true if the transition succeeds.
 	luaRegister(l, "changeState", func(l *lua.LState) int {
 		//state_no
 		st := int32(numArg(l, 1))
@@ -5543,6 +5582,9 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.hoverIdx >= 0))
 		return 1
 	})
+	// ikemenversion() -> number
+	// [Ikemen-Only] Returns the engine version defined by the character.
+	// See: https://github.com/ikemen-engine/Ikemen-GO/wiki
 	luaRegister(l, "ikemenversion", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.gi().ikemenverF))
 		return 1
