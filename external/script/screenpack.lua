@@ -1,3 +1,6 @@
+-- screenpack.lua
+-- Lifecycle: initialized at boot to handle localcoord scaling and viewport calculations for screenpacks.
+-- API: provides helpers like main.f_getViewport and main.f_setLuaScale.
 --;===========================================================
 --; LOCALCOORD
 --;===========================================================

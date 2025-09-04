@@ -22,6 +22,7 @@
 -- SOFTWARE.
 --
 
+-- Utility module providing json.encode and json.decode, loaded by main.lua during startup.
 local json = { _version = "0.1.2" }
 
 -------------------------------------------------------------------------------

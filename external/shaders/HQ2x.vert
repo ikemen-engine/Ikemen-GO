@@ -1,3 +1,9 @@
+/*
+ * HQ2x.vert
+ * Inputs: VertCoord attribute provides clip-space quad coordinates; TextureSize uniform gives source resolution.
+ * Coordinate spaces: VertCoord in normalized device coordinates is converted to [0,1] UV space for sampling.
+ * Performance: Lightweight per-vertex math; impact is negligible compared to the fragment shader.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING out
 #define COMPAT_ATTRIBUTE in

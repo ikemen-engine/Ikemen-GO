@@ -16,6 +16,15 @@ Download the ZIP archive that matches your operating system and extract its cont
 On Windows, double-click `Ikemen_GO.exe` (`Ikemen_GO_x86.exe` on 32-bit OSes).
 On macOS or Linux, double-click `Ikemen_GO.command`.
 
+## Mods, Icons and Shaders
+Ikemen GO loads optional content from the `external` directory at startup:
+
+- **Mods** in `external/mods` can override or extend engine behavior by providing assets and scripts.
+- **Icons** in `external/icons` replace the application's window and task bar images.
+- **Shaders** in `external/shaders` supply custom GLSL programs for post-processing or scaling.
+
+Files dropped into these folders are picked up automatically without rebuilding the engine.
+
 ## Developing
 These instructions are for those interested in developing the Ikemen GO engine itself. Instructions for creating custom stages, fonts, characters and other resources can be found in the community forum.
 

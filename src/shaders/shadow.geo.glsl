@@ -1,3 +1,9 @@
+/*
+ * shadow.geo.glsl
+ * Inputs: triangles from shadow.vert.glsl plus per-vertex color and texcoord; uniforms lightIndex, lightType, lightMatrices.
+ * Coordinate spaces: Consumes clip-space positions and emits geometry to cubemap or planar shadow map layers.
+ * Performance: Geometry shader may emit up to six triangles per input for point lights; keep light count low to maintain speed.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_POS_IN(i) gl_in[i].gl_Position
 layout(triangle_strip, max_vertices = 18) out;

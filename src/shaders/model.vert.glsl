@@ -1,3 +1,9 @@
+/*
+ * model.vert.glsl
+ * Inputs: vertex attributes (position, normal, tangent, uv, vertexId, joints_*, weights_*, etc.) and uniforms such as model, view, projection matrices.
+ * Coordinate spaces: applies skinning and morph targets in model space, then projects to clip space and outputs worldSpacePos for lighting.
+ * Performance: Loops over joints and morph targets with multiple texture fetches; limit numTargets and joints for better performance.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING out
 #define COMPAT_ATTRIBUTE in

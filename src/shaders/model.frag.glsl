@@ -1,3 +1,9 @@
+/*
+ * model.frag.glsl
+ * Inputs: material samplers (albedo, normal, metallicRoughness, etc.), lighting arrays, and varyings from model.vert.glsl.
+ * Coordinate spaces: performs lighting in world space and uses environment maps in reflection space.
+ * Performance: Implements a PBR shading model with conditional shadow sampling and many texture lookups; consider reducing mipCount or disabling unused maps to optimize.
+ */
 #if __VERSION__ >= 130
 #extension GL_ARB_texture_cube_map_array : enable
 #define COMPAT_VARYING in

@@ -1,3 +1,9 @@
+/*
+ * HQ4x.frag
+ * Inputs: Texture sampler2D and TexCoord array with expanded kernel taps.
+ * Coordinate spaces: TexCoord entries represent [0,1] UVs for the source and neighboring samples.
+ * Performance: High cost fragment shader performing many texture fetches and weight calculations; consider GPU capability.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture

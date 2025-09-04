@@ -1,3 +1,9 @@
+/*
+ * cubemapFiltering.frag.glsl
+ * Inputs: cubeMap sampler, sampleCount, distribution type, roughness and other parameters controlling BRDF integration.
+ * Coordinate spaces: derives direction vectors from cube face UVs and operates in reflection space for environment maps.
+ * Performance: Integrates over sampleCount iterations with heavy math; reduce sampleCount for real-time usage.
+ */
 #define MATH_PI 3.1415926535897932384626433832795
 
 #if __VERSION__ >= 130

@@ -1,3 +1,6 @@
+-- menu.lua
+-- Lifecycle: constructs and updates pause/training menus when invoked during gameplay.
+-- API: reads option definitions from motif.training_info and exposes menu.t_valuename for extension.
 local menu = {}
 
 --;===========================================================

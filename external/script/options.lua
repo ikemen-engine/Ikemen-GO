@@ -1,3 +1,6 @@
+-- options.lua
+-- Lifecycle: called from the options menu to read and write configuration values.
+-- API: wraps helpers like gameOption, modifyGameOption and saveGameOption.
 local options = {}
 --;===========================================================
 --; COMMON

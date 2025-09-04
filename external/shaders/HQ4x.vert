@@ -1,3 +1,9 @@
+/*
+ * HQ4x.vert
+ * Inputs: VertCoord attribute for clip-space quad and TextureSize uniform.
+ * Coordinate spaces: Converts normalized device VertCoord to [0,1] UVs and builds offset taps for 4x upscaling.
+ * Performance: Simple arithmetic; per-vertex overhead is minimal.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING out
 #define COMPAT_ATTRIBUTE in

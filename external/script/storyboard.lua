@@ -1,3 +1,6 @@
+-- storyboard.lua
+-- Lifecycle: parsed when launchStoryboard is called to display intros, endings, and other scene sequences.
+-- API: manages storyboard.t_storyboard cache and functions such as bgReset and animReset.
 local storyboard = {}
 
 --http://www.elecbyte.com/mugendocs/storyboard.html
