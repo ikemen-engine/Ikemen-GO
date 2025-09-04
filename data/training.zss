@@ -1,3 +1,8 @@
+#===============================================================================
+# File: training.zss
+# Purpose: Training mode behaviors and dummy control
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
 # Mugen style Training Mode global code
 # maps set via Pause Menu (menu.lua)
 # _iksys_trainingDummyControl: 0 - cooperative, 1 - ai, 2 - manual
@@ -6,10 +11,14 @@
 # _iksys_trainingDummyMode: 0 - stand, 1 - crouch, 2 - jump, 3 - wjump
 # _iksys_trainingDistance: 0 - any, 1 - close, 2 - medium, 3 - far
 # _iksys_trainingButtonJam: 0 - none, 1-9 - a/b/c/x/y/z/s/d/w
+# Example usage:
+#     ; enable random guard
+#     mapSet{map: "_iksys_trainingGuardMode"; value: 3}
 
 #===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -4]
 
 ignoreHitPause if gameMode = "training" {
@@ -99,14 +108,17 @@ ignoreHitPause if gameMode = "training" {
 							# Ground recovery. Attempt only if common1 conditions are met
 							if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.ground.threshold) {
 								if map(_iksys_trainingFallRecovery) = 1 { 
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 									let rcv = 1;
 								}
 							# Air recovery. Attempt only if conditions for ground recovery are not met
 							} else if map(_iksys_trainingFallRecovery) = 2 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 								let rcv = 1;
 							}
 							# Random recovery. Attempt regardless of conditions
 							if map(_iksys_trainingFallRecovery) = 3 && random < 100 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 								let rcv = 1;
 							}
 							if $rcv {
@@ -139,29 +151,35 @@ ignoreHitPause if gameMode = "training" {
 					}
 				}
 				# Distance
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let dir = 0;
 				if map(_iksys_trainingDistance) != 0 {
 					# Close
 					if map(_iksys_trainingDistance) = 1 {
 						if p2BodyDist x > const240p(10) {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 							let dir = 1;
 							map(_iksys_trainingDirection) := 1;
 						} else if p2BodyDist x < -(const(size.ground.front) + const(size.ground.back) + const240p(10)) {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 							let dir = -1;
 							map(_iksys_trainingDirection) := -1;
 						}
 					# Medium
 					} else if map(_iksys_trainingDistance) = 2 {
 						if p2BodyDist x > const240p(130) {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 							let dir = 1;
 							map(_iksys_trainingDirection) := 1;
 						} else if p2BodyDist x < const240p(80) && backEdgeBodyDist > const240p(10) {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 							let dir = -1;
 							map(_iksys_trainingDirection) := -1;
 						}
 					# Far
 					} else if map(_iksys_trainingDistance) = 3 {
 						if p2BodyDist x < const240p(260) && backEdgeBodyDist > const240p(10) {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 							let dir = -1;
 							map(_iksys_trainingDirection) := -1;
 						}

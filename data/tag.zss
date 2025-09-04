@@ -1,54 +1,79 @@
+#===============================================================================
+# File: tag.zss
+# Purpose: Basic tag team switching support
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
 # Basic tag code that can be used as base for more advanced tag implementations
+# Example usage:
+#     ; switch to next partner
+#     let pid = call TagGetPartnerId(1);
+#     if $pid { changePartner{pid: $pid} }
 #===============================================================================
 # Functions
 #===============================================================================
 # Returns tagged in char id
 [Function TagGetPartnerId(add) partnerId]
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let rootId = player(teamSide), id;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let partnerCnt = 0;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let partnerId = id + $add;
 for i = 0; numPartner; 1 {
 	if $partnerId > $rootId + numPartner {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerId = $rootId;
 	} else if $partnerId < $rootId {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerId = $rootId + numPartner;
 	}
 	if playerId($partnerId),alive = 0 && $partnerCnt < numPartner {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerCnt = $partnerCnt + 1;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerId = $partnerId + $add;
 	} else {
 		break;
 	}
 }
 if $partnerCnt >= numPartner {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let partnerId = 0;
 }
 
 # Decides if AI switch should happen, returns tagged in char id (function can be overridden locally)
 # TODO: Balance default AI switch scaling.
 [Function TagAISwitch(nextPartnerId, previousPartnerId) partnerId]
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let partnerId = 0;
 if const(TagCommandAIChance) >= randomRange(1, 100) {
 	if command = "TagShiftFwd" {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerId = $nextPartnerId;
 	} else if command = "TagShiftBack" {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerId = $previousPartnerId;
 	}
 }
 
 # tagIn Switch explod
 [Function TagSwitchExplod()]
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let anim = const(FxTagSwitchAI);
 if aiLevel = 0 {
 	if gameMode = "versuscoop" {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let anim = $anim + playerNo;
 	} else if gameMode = "netplaysurvivalcoop" || gameMode = "netplayteamcoop" || gameMode = "survivalcoop" || gameMode = "teamcoop" {
 		if teamSide = 1 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let anim = $anim + playerNo / 2 + 1;
 		} else {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let anim = $anim + playerNo / 2;
 		}
 	} else {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let anim = $anim + teamSide;
 	}
 }
@@ -71,6 +96,7 @@ explod{
 #===============================================================================
 # StateTagEnteringScreen
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateTagEnteringScreen); 
 	type: S; movetype: I; physics: N;
 	anim: const(AnimTagEnteringScreen);
@@ -107,6 +133,7 @@ if backEdgeDist >= 0 && (floor(map(_iksys_tagSwitchDist)) <= 0 || p2BodyDist X <
 #===============================================================================
 # StateTagLeavingScreen
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateTagLeavingScreen);
 	type: S; movetype: I; physics: N;
 	anim: const(AnimTagLeavingScreen); sprpriority: -2;
@@ -130,6 +157,7 @@ if backEdgeDist < -const240p(160) || frontEdgeDist < -const240p(160) {
 #===============================================================================
 # StateTagWaitingOutside
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateTagWaitingOutside);
 	type: A; movetype: I; physics: N;
 	anim: const(AnimStanding);
@@ -155,6 +183,7 @@ if life < redLife && (time % const(TagRedLifeRegenFrames)) = 0 { # every 30 fram
 #===============================================================================
 # StateTagJumpingIn
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateTagJumpingIn);
 	type: A; movetype: I; physics: N;
 	anim: const(AnimTagJumpingIn);
@@ -207,6 +236,7 @@ if time = 0 {
 #===============================================================================
 # StateTagLanding
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateTagLanding);
 	type: S; movetype: I; physics: N;
 	anim: const(AnimTagLanding);
@@ -224,6 +254,7 @@ if animTime >= 0 {
 #===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -4]
 
 # Make players (any mode) only turn towards enemy Tag team leader
@@ -241,6 +272,7 @@ ignoreHitPause if roundState = 2 && !isHelper {
 #===============================================================================
 # Global states
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -2]
 
 if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
@@ -266,12 +298,14 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 		map(_iksys_tagActive) := 0;
 	# alive players
 	} else if alive {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let beingHit = 0;
 		ignoreHitPause if moveType = H
 			|| getHitVar(isBound) != 0
 			|| stateNo = const(StateDownedGetHit_gettingUp) ||
 			stateNo = [const(StateAirGetHit_fallRecoveryOnGroundStillFalling), const(StateAirGetHit_fallRecoveryInAir)]
 		{
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let beingHit = 1;
 		}
 		# active player
@@ -287,19 +321,26 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 					|| playerId(map(_iksys_tagLastId)),alive = 0
 				{
 					# get partner id in case of tag command
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 					let partnerId = 0;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 					let nextPartnerId = call TagGetPartnerId(1);
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 					let previousPartnerId = call TagGetPartnerId(-1);
 					if aiLevel > 0 {
 						# id is remembered by AI player, switch will happen at first frame that meets switch conditions
 						if map(_iksys_tagPartnerId) = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 							let partnerId = call TagAISwitch($nextPartnerId, $previousPartnerId);
 							map(_iksys_tagPartnerId) := $partnerId;
 						}
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 						let partnerId = map(_iksys_tagPartnerId);
 					} else if command = "TagShiftFwd" {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 						let partnerId = $nextPartnerId;
 					} else if command = "TagShiftBack" {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 						let partnerId = $previousPartnerId;
 					}
 					# having control, command buffered, partner standby
@@ -338,6 +379,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 	{
 		map(_iksys_tagActive) := 0;
 		# bring next team member
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let partnerId = call TagGetPartnerId(1);
 		if $partnerId > 0 {
 			mapSet{map: "_iksys_tagSwitchCooldown"; value: playerId($partnerId),const(TagSwitchCooldown); redirectid: $partnerId}
@@ -351,6 +393,7 @@ if !const(Default.Enable.Tag) || isHelper || teamSide = 0 {
 #===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef +1]
 
 # fix erratic camera during intros
