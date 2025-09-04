@@ -1,3 +1,8 @@
+// image.go houses the image loading pipeline for Ikemen GO. It parses SFF
+// sprite archives, converts pixel data and applies palettes before uploading
+// textures to the platform specific renderer. The produced textures are
+// consumed by the backends implemented in render_gl.go, render_gl_gl32.go and
+// render_kinc.go.
 package main
 
 import (
@@ -47,6 +52,8 @@ type PalFXDef struct {
 	itime       int32
 }
 
+// newPalFXDef returns a PalFXDef configured with the default palette
+// transformation values.
 func newPalFXDef() *PalFXDef {
 	return &PalFXDef{
 		color:  1,
@@ -77,10 +84,13 @@ type PalFX struct {
 	eiTime       int32
 }
 
+// newPalFX allocates a PalFX with zeroed runtime state.
 func newPalFX() *PalFX {
 	return &PalFX{}
 }
 
+// clear2 resets the palette effect to its defaults and toggles negative type
+// handling based on nt.
 func (pf *PalFX) clear2(nt bool) {
 	pf.PalFXDef = *newPalFXDef()
 	pf.negType = nt
@@ -89,10 +99,13 @@ func (pf *PalFX) clear2(nt bool) {
 	}
 }
 
+// clear resets the palette effect without enabling negative type handling.
 func (pf *PalFX) clear() {
 	pf.clear2(false)
 }
 
+// getSynFx merges global and local palette effects depending on the blending
+// mode. It returns a synthesized PalFX used for rendering.
 func (pf *PalFX) getSynFx(blending int) *PalFX {
 	if pf == nil || !pf.enable {
 		if blending == -2 && sys.allPalFX.enable {
@@ -117,6 +130,9 @@ func (pf *PalFX) getSynFx(blending int) *PalFX {
 	return &synth
 }
 
+// getFxPal applies palette effects to pal. If neg is true, the palette is
+// processed as a negative. The returned slice reuses sys.workpal to avoid
+// allocations.
 func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	p := pf.getSynFx(0)
 	if !p.enable {
@@ -169,6 +185,9 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	return sys.workpal
 }
 
+// getFcPalFx exposes palette effect parameters for fast color calculations.
+// It returns negative flag, grayscale amount, additive and multiplicative
+// components as well as inversion blend mode and hue shift.
 func (pf *PalFX) getFcPalFx(transNeg bool, blending int) (neg bool, grayscale float32,
 	add, mul [3]float32, invblend int32, hue float32) {
 	p := pf.getSynFx(blending)
@@ -202,6 +221,8 @@ func (pf *PalFX) getFcPalFx(transNeg bool, blending int) (neg bool, grayscale fl
 	return
 }
 
+// sinAdd applies sine-wave based addition to the color channels using the
+// configured cycle time.
 func (pf *PalFX) sinAdd(color *[3]int32) {
 	if pf.cycletime[0] > 1 {
 		st := 2 * math.Pi * float64(pf.sintime[0])
@@ -215,6 +236,7 @@ func (pf *PalFX) sinAdd(color *[3]int32) {
 	}
 }
 
+// sinMul modulates color channels using sine-wave multipliers.
 func (pf *PalFX) sinMul(color *[3]int32) {
 	if pf.cycletime[1] > 1 {
 		st := 2 * math.Pi * float64(pf.sintime[1])
@@ -228,6 +250,7 @@ func (pf *PalFX) sinMul(color *[3]int32) {
 	}
 }
 
+// sinColor adjusts the overall color intensity on a sine curve.
 func (pf *PalFX) sinColor(color *float32) {
 	if pf.cycletime[2] > 1 {
 		st := 2 * math.Pi * float64(pf.sintime[2])
@@ -241,6 +264,7 @@ func (pf *PalFX) sinColor(color *float32) {
 	}
 }
 
+// sinHueshift periodically shifts hue based on a sine wave.
 func (pf *PalFX) sinHueshift(color *float32) {
 	if pf.cycletime[3] > 1 {
 		st := 2 * math.Pi * float64(pf.sintime[3])
@@ -254,6 +278,8 @@ func (pf *PalFX) sinHueshift(color *float32) {
 	}
 }
 
+// interpolationUpdate advances the interpolation timers and recalculates the
+// current palette transformation state.
 func (pf *PalFX) interpolationUpdate() {
 	if pf.eiTime < pf.itime {
 		pf.eiTime++
@@ -271,6 +297,7 @@ func (pf *PalFX) interpolationUpdate() {
 	pf.eHue = pf.eiHue + pf.hue
 }
 
+// step updates internal counters and derived palette values each frame.
 func (pf *PalFX) step() {
 	pf.enable = pf.time != 0
 	if pf.enable {
@@ -307,6 +334,8 @@ func (pf *PalFX) step() {
 	}
 }
 
+// synthesize merges another palette effect pfx into the receiver using the
+// specified blending mode.
 func (pf *PalFX) synthesize(pfx PalFX, blending int) {
 	if blending == -2 {
 		for i, a := range pfx.eAdd {
@@ -366,6 +395,8 @@ func (pf *PalFX) synthesize(pfx PalFX, blending int) {
 
 }
 
+// setColor forces the palette to a single RGB color by setting appropriate
+// multipliers. Color component values are clamped to [0,255].
 func (pf *PalFX) setColor(r, g, b int32) {
 	rNormalized := Clamp(r, 0, 255)
 	gNormalized := Clamp(g, 0, 255)
@@ -389,6 +420,7 @@ type PaletteList struct {
 	PalTex     []Texture
 }
 
+// init initializes the palette list's internal maps and slices.
 func (pl *PaletteList) init() {
 	pl.palettes = nil
 	pl.paletteMap = nil
@@ -397,6 +429,8 @@ func (pl *PaletteList) init() {
 	pl.PalTex = nil
 }
 
+// SetSource registers palette p at index i. It ensures palette maps and
+// texture caches are expanded as needed.
 func (pl *PaletteList) SetSource(i int, p []uint32) {
 	if i < len(pl.paletteMap) {
 		pl.paletteMap[i] = i
@@ -417,32 +451,39 @@ func (pl *PaletteList) SetSource(i int, p []uint32) {
 	}
 }
 
+// NewPal allocates a new palette entry and returns its index and storage slice.
 func (pl *PaletteList) NewPal() (i int, p []uint32) {
 	i, p = len(pl.palettes), make([]uint32, 256)
 	pl.SetSource(i, p)
 	return
 }
 
+// Get returns the palette at logical index i after remapping.
 func (pl *PaletteList) Get(i int) []uint32 {
 	return pl.palettes[pl.paletteMap[i]]
 }
 
+// Remap changes palette mapping from source to destination index.
 func (pl *PaletteList) Remap(source int, destination int) {
 	pl.paletteMap[source] = destination
 }
 
+// ResetRemap restores the identity mapping for all palettes.
 func (pl *PaletteList) ResetRemap() {
 	for i := range pl.paletteMap {
 		pl.paletteMap[i] = i
 	}
 }
 
+// GetPalMap returns a copy of the current palette remap table.
 func (pl *PaletteList) GetPalMap() []int {
 	pm := make([]int, len(pl.paletteMap))
 	copy(pm, pl.paletteMap)
 	return pm
 }
 
+// SwapPalMap exchanges the current remap table with palMap. It returns false
+// if the provided map has a different length.
 func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 	if len(*palMap) != len(pl.paletteMap) {
 		return false
@@ -451,18 +492,22 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 	return true
 }
 
+// PaletteToTexture converts a 256 color palette into a 1x256 RGBA texture used
+// by the render backends.
 func PaletteToTexture(pal []uint32) Texture {
 	tx := gfx.newTexture(256, 1, 32, false)
 
-	// Safely handle invalid palettes
+	// Safely handle invalid palettes.
 	if len(pal) == 0 {
 		sys.errLog.Printf("Invalid palette texture. Defaulting to none")
 		tx.SetData(nil)
 		return tx
-	} else {
-		tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal)*4))
-		return tx
 	}
+
+	// Upload palette data as 32-bit RGBA. Using unsafe avoids extra
+	// allocations but requires the slice to remain alive until upload.
+	tx.SetData(unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal)*4))
+	return tx
 }
 
 type SffHeader struct {
@@ -473,6 +518,9 @@ type SffHeader struct {
 	NumberOfPalettes         uint32
 }
 
+// Read parses an SFF file header from r. lofs and tofs are filled with local
+// and global subheader offsets. An error is returned for invalid headers or
+// unexpected EOF.
 func (sh *SffHeader) Read(r io.Reader, lofs *uint32, tofs *uint32) error {
 	buf := make([]byte, 12)
 	n, err := r.Read(buf)
@@ -560,10 +608,12 @@ type Sprite struct {
 	PalTex   Texture
 }
 
+// isBlank reports whether the sprite has no texture or zero dimensions.
 func (s *Sprite) isBlank() bool {
 	return s.Tex == nil || s.Size[0] == 0 || s.Size[1] == 0
 }
 
+// newSprite returns a Sprite with an invalid palette index ready for loading.
 func newSprite() *Sprite {
 	return &Sprite{palidx: -1}
 }
@@ -694,6 +744,9 @@ func newSprite() *Sprite {
 		return s, nil
 	}
 */
+
+// shareCopy duplicates pointers from src so the sprite can reuse textures and
+// palettes without additional GPU uploads.
 func (s *Sprite) shareCopy(src *Sprite) {
 	s.Pal = src.Pal
 	s.Tex = src.Tex
@@ -706,6 +759,8 @@ func (s *Sprite) shareCopy(src *Sprite) {
 	//s.PalTex = src.PalTex
 }
 
+// GetPal returns the palette used by the sprite, retrieving it from pl when the
+// sprite references a shared palette index.
 func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	if len(s.Pal) > 0 || s.coldepth > 8 {
 		return s.Pal
@@ -713,6 +768,8 @@ func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 	return pl.Get(int(s.palidx)) //pl.palettes[pl.paletteMap[int(s.palidx)]]
 }
 
+// GetPalTex returns a cached palette texture, regenerating it if the palette
+// content has changed.
 func (s *Sprite) GetPalTex(pl *PaletteList) Texture {
 	if s.coldepth > 8 {
 		return nil
@@ -720,6 +777,8 @@ func (s *Sprite) GetPalTex(pl *PaletteList) Texture {
 	return pl.PalTex[pl.paletteMap[int(s.palidx)]]
 }
 
+// SetPxl uploads paletted pixel data to the GPU. The length of px must match
+// sprite dimensions. Uses an 8-bit texture format.
 func (s *Sprite) SetPxl(px []byte) {
 	if len(px) == 0 {
 		return
@@ -728,18 +787,27 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
+		// Texture creation is deferred to the main thread to satisfy
+		// graphics context requirements.
 		s.Tex = gfx.newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
 		s.Tex.SetData(px)
 	}
 }
 
+// SetRaw uploads raw pixel data without palette conversion. sprDepth specifies
+// the texture bit depth (e.g., 24 or 32). Bilinear filtering is applied based on
+// configuration.
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	sys.mainThreadTask <- func() {
+		// Raw textures bypass palette usage; depth reflects source pixel
+		// format. Bilinear filtering may be enabled for smoother scaling.
 		s.Tex = gfx.newTexture(sprWidth, sprHeight, sprDepth, sys.cfg.Video.RGBSpriteBilinearFilter)
 		s.Tex.SetData(data)
 	}
 }
 
+// readHeader reads a version 1 sprite subheader from r, filling ofs, size and
+// link. Errors from the underlying reader are propagated.
 func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32, link *uint16) error {
 	read := func(x interface{}) error {
 		return binary.Read(r, binary.LittleEndian, x)
@@ -765,6 +833,8 @@ func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32, link *uint16) error 
 	return nil
 }
 
+// readPcxHeader reads a PCX header at offset and sets sprite dimensions and RLE
+// stride. Only 8-bit paletted images are supported.
 func (s *Sprite) readPcxHeader(r io.ReadSeeker, offset int64) error {
 	if _, err := r.Seek(offset, io.SeekStart); err != nil {
 		return fmt.Errorf("readPcxHeader seek error: %w", err)
@@ -784,6 +854,7 @@ func (s *Sprite) readPcxHeader(r io.ReadSeeker, offset int64) error {
 		return err
 	}
 	if bpp != 8 {
+		// PCX sprites are expected to be paletted; bail out on other depths.
 		return Error(fmt.Sprintf("Invalid PCX color depth: expected 8-bit, got %v", bpp))
 	}
 	var rect [4]uint16
@@ -807,6 +878,8 @@ func (s *Sprite) readPcxHeader(r io.ReadSeeker, offset int64) error {
 	return nil
 }
 
+// RlePcxDecode expands PCX RLE compressed data into a paletted pixel buffer.
+// The returned slice has one byte per pixel.
 func (s *Sprite) RlePcxDecode(rle []byte) (p []byte) {
 	if len(rle) == 0 || s.rle <= 0 {
 		return rle
@@ -841,6 +914,10 @@ func (s *Sprite) RlePcxDecode(rle []byte) (p []byte) {
 	return
 }
 
+// read loads a version 1 sprite located at offset and decodes its pixel data.
+// nextSubheader defines the offset of the next subheader to determine data
+// size. prev allows palette sharing when paletteSame is set, and c00 forces the
+// color at index 0 to be transparent. Returns any I/O error encountered.
 func (s *Sprite) read(f io.ReadSeeker, sh *SffHeader, offset int64, datasize uint32,
 	nextSubheader uint32, prev *Sprite, pl *PaletteList, c00 bool) error {
 	if int64(nextSubheader) > offset {
@@ -901,6 +978,9 @@ func (s *Sprite) read(f io.ReadSeeker, sh *SffHeader, offset int64, datasize uin
 	return nil
 }
 
+// readHeaderV2 parses a version 2 sprite subheader. It returns offsets to the
+// pixel data and palette and resolves links relative to local (lofs) or global
+// (tofs) tables.
 func (s *Sprite) readHeaderV2(r io.Reader, ofs *uint32, size *uint32,
 	lofs uint32, tofs uint32, link *uint16) error {
 	read := func(x interface{}) error {
@@ -951,6 +1031,7 @@ func (s *Sprite) readHeaderV2(r io.Reader, ofs *uint32, size *uint32,
 	return nil
 }
 
+// Rle8Decode decodes the SFFv2 RLE8 format to a byte-per-pixel buffer.
 func (s *Sprite) Rle8Decode(rle []byte) (p []byte) {
 	if len(rle) == 0 {
 		return rle
@@ -979,6 +1060,7 @@ func (s *Sprite) Rle8Decode(rle []byte) (p []byte) {
 	return
 }
 
+// Rle5Decode handles the legacy SFFv2 RLE5 compression format.
 func (s *Sprite) Rle5Decode(rle []byte) (p []byte) {
 	if len(rle) == 0 {
 		return rle
@@ -1023,6 +1105,7 @@ func (s *Sprite) Rle5Decode(rle []byte) (p []byte) {
 	return
 }
 
+// Lz5Decode decompresses LZ5 encoded sprite data to a paletted pixel buffer.
 func (s *Sprite) Lz5Decode(rle []byte) (p []byte) {
 	if len(rle) == 0 {
 		return rle
@@ -1100,6 +1183,8 @@ func (s *Sprite) Lz5Decode(rle []byte) (p []byte) {
 	return
 }
 
+// readV2 handles loading of SFFv2 sprite data. It supports raw RGB(A) and
+// compressed paletted formats and uploads textures accordingly.
 func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 	var px []byte
 	var isRaw bool = false
@@ -1117,6 +1202,7 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 			// Do nothing, px is already in the expected format
 		case 24, 32:
 			isRaw = true
+			// Directly upload 24/32-bit data without palette
 			s.SetRaw(px, int32(s.Size[0]), int32(s.Size[1]), int32(s.coldepth))
 		default:
 			return Error("Unknown color depth")
@@ -1171,6 +1257,8 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 
 			if !ok {
 				rgba = image.NewRGBA(rect)
+				// draw.Draw performs necessary pixel format conversion
+				// without per-pixel loops.
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
 			}
 			s.SetRaw(rgba.Pix, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
@@ -1185,8 +1273,9 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 	return nil
 }
 
-// Compare current palette to previous one and reuse if possible
-// This saves a lot of palette operations when the same player has many sprites on screen
+// CachePalette compares pal with the previously used palette and reuses the
+// existing texture when possible. This avoids redundant palette uploads when
+// the same sprite appears multiple times.
 func (s *Sprite) CachePalette(pal []uint32) Texture {
 	hasPalette := true
 	if s.PalTex == nil || len(pal) != len(s.paltemp) {
@@ -1207,6 +1296,9 @@ func (s *Sprite) CachePalette(pal []uint32) Texture {
 	return s.PalTex
 }
 
+// Draw renders the sprite at the given position using optional scaling,
+// rotation and palette effects. window defines the scissor rectangle or nil for
+// full-screen drawing.
 func (s *Sprite) Draw(x, y, xscale, yscale float32, rxadd float32, rot Rotation, fx *PalFX, window *[4]int32) {
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
@@ -1266,6 +1358,7 @@ type Palette struct {
 	palList PaletteList
 }
 
+// newSff initializes an empty Sff structure with default palette tables.
 func newSff() (s *Sff) {
 	s = &Sff{sprites: make(map[[2]int16]*Sprite)}
 	s.palList.init()
@@ -1275,6 +1368,7 @@ func newSff() (s *Sff) {
 	return
 }
 
+// newPaldata creates a palette container with initialized palette list.
 func newPaldata() (p *Palette) {
 	p = &Palette{}
 	p.palList.init()
@@ -1292,12 +1386,15 @@ type SffCacheEntry struct {
 
 var SffCache = map[string]*SffCacheEntry{}
 
+// removeSFFCache deletes the cached entry for filename, freeing memory.
 func removeSFFCache(filename string) {
 	if _, ok := SffCache[filename]; ok {
 		delete(SffCache, filename)
 	}
 }
 
+// loadSff reads an SFF archive from disk. When char is true, palettes are
+// initialized with default character values. The result is cached for reuse.
 func loadSff(filename string, char bool) (*Sff, error) {
 	// If this SFF is already in the cache, just return a copy
 	if cached, ok := SffCache[filename]; ok {
@@ -1450,6 +1547,9 @@ func loadSff(filename string, char bool) (*Sff, error) {
 	return s, nil
 }
 
+// preloadSff loads only the headers of an SFF file and optionally preloads
+// selected sprites specified in preloadSpr. It returns the partially populated
+// Sff and a list of palette counts for each sprite.
 func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff, []int32, error) {
 	sff := newSff()
 	f, err := OpenFile(filename)
@@ -1608,6 +1708,7 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]int16]bool) (*Sff,
 	return sff, selPal, nil
 }
 
+// GetSprite looks up the sprite by group and number. A group of -1 returns nil.
 func (s *Sff) GetSprite(g, n int16) *Sprite {
 	if g == -1 {
 		return nil
@@ -1615,6 +1716,8 @@ func (s *Sff) GetSprite(g, n int16) *Sprite {
 	return s.sprites[[...]int16{g, n}]
 }
 
+// getOwnPalSprite returns a copy of the sprite with its own palette data so
+// modifications do not affect the shared cache.
 func (s *Sff) getOwnPalSprite(g, n int16, pl *PaletteList) *Sprite {
 	sys.runMainThreadTask() // Generate texture
 	sp := s.GetSprite(g, n)
@@ -1627,18 +1730,21 @@ func (s *Sff) getOwnPalSprite(g, n int16, pl *PaletteList) *Sprite {
 	return &osp
 }
 
+// captureScreen grabs the current framebuffer, flips it vertically to match
+// screen coordinates and saves it as a PNG in the screenshot folder.
 func captureScreen() {
 	width, height := sys.window.GetSize()
 	pixdata := make([]uint8, 4*width*height)
 	img := image.NewNRGBA(image.Rect(0, 0, width, height))
 	gfx.ReadPixels(pixdata, width, height)
+	// Flip the image vertically because OpenGL's origin is bottom-left.
 	for i := 0; i < 4*width*height; i++ {
 		var x, y, j int
 		x = i % (width * 4)
 		y = i / (width * 4)
 		j = x + (height-1-y)*width*4
 		if i%4 == 3 {
-			pixdata[i] = 255 // Set the alpha value to 255
+			pixdata[i] = 255 // Force opaque alpha.
 		}
 		img.Pix[j] = pixdata[i]
 	}
