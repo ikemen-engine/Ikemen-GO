@@ -1,3 +1,8 @@
+;===============================================================================
+; File: common.const
+; Purpose: Shared constants for standard character attributes
+; Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+;===============================================================================
 ; Common Constants
 ; The constants defined in this file will be loaded by every character
 ; Characters can override them by defining them in their own constants files
@@ -5,303 +10,444 @@
 [Constants]
 
 ; Negative state global code toggle
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Default.Enable.Action = 1
 Default.Enable.Dizzy = 1
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Default.Enable.GuardBreak = 1
 Default.Enable.Score = 1
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Default.Enable.Tag = 1
 
 ; Input toggles
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Input.FBFlipEnemyDistance = -1      ; Positive value inverts B and F inputs when an enemy is behind the player by that distance
 Input.PauseOnHitPause = 1           ; 1 makes commands be buffered during hit pause. Deprecated. See command parameters
 
 ; Backward compatibility toggles
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Default.LegacyGameDistanceSpec = 1  ; 1 prevents GameWidth/GameHeight from being affected by stage zoom for mugenversion 1.0 chars
 
 ; Rules
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when a normal/special attack successfully hits (overridden by getpower HitDef option)
 Super.Attack.LifeToPowerMul = 0     ; multiplier for power the attacker gets when a super attack successfully hits (overridden by getpower HitDef option)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when a normal/special attack successfully hits (overridden by givepower HitDef option)
 Super.GetHit.LifeToPowerMul = 0.6   ; multiplier for power the receiver gets when a super attack successfully hits (overridden by givepower HitDef option)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Super.TargetDefenceMul = 1.5        ; multiplier for how much a SuperPause increases the opponent's defence during combos (ignored if SuperPause p2defmul option is set)
 Default.LifeToGuardPointsMul = 1.5  ; multiplier for guard points the receiver loses when a normal/special attack is blocked (overridden by guardpoints HitDef option)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Super.LifeToGuardPointsMul = 0.33   ; multiplier for guard points the receiver loses when a super attack is blocked (overridden by guardpoints HitDef option)
 Default.LifeToDizzyPointsMul = 1.8  ; multiplier for dizzy points the receiver loses when a normal/special attack successfully hits (overridden by dizzypoints HitDef option)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Super.LifeToDizzyPointsMul = 0      ; multiplier for dizzy points the receiver loses when a super attack successfully hits (overridden by dizzypoints HitDef option)
 Default.LifeToRedLifeMul = 0.75     ; multiplier for red life the receiver loses when a normal/special attack successfully hits (overridden by redlife HitDef option)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Super.LifeToRedLifeMul = 0.75       ; multiplier for red life the receiver loses when a super attack successfully hits (overridden by redlife HitDef option)
 
 ; tag.zss options
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 TagInTime = 20                 ; tag-in total switch time
 TagInVelX = 12.5               ; tag-in max Vel X
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 TagCommandAIChance = 50        ; affects default AI switching probability (range 0-100)
 TagCounterSwitchPower = 1000   ; counter switch power cost (used in MvCI ver only)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 TagRedLifeRegenFrames = 30     ; red life regeneration interval (in frames)
 TagRedLifeRegenPercent = 0.005 ; red life regenerated each interval (percentage of max life)
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 TagSwitchCooldown = 0          ; number of ticks the tag switch cooldown lasts
 
 ; Character Reserved Action Numbers
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStanding = 0
 AnimStandTurning = 5
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimCrouchTurning = 6
 AnimStandToCrouch = 10
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimCrouching = 11
 AnimCrouchToStand = 12
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimWalkingForwards = 20
 AnimWalkingBackwards = 21
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimJumpStart_onGround = 40
 AnimJumpNeutral_upwards = 41
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimJumpForwards_upwards = 42
 AnimJumpBack_upwards = 43
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimJumpNeutral_downwards = 44 ;opt
 AnimJumpFwd_downwards = 45 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimJumpBack_downwards = 46 ;opt
 AnimJumpLanding = 47
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimRunFwdOrHopForward = 100
 AnimHopBack = 105
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimRunUp = 110 ;deprecated
 AnimRunDown = 115 ;deprecated
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStartGuarding_stand = 120
 AnimStartGuarding_crouch = 121
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStartGuarding_air = 122
 AnimGuard_stand = 130
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimGuard_crouch = 131
 AnimGuard_air = 132
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStopGuarding_stand = 140
 AnimStopGuarding_crouch = 141
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStopGuarding_air = 142
 AnimGuardingAHit_stand = 150
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimGuardingAHit_crouch = 151
 AnimGuardingAHit_air = 152
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLose = 170 ;opt
 AnimTimeOverDrawGame = 175 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimWin = 180 ;opt
 AnimIntro = 190 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimTaunt = 195 ;opt
 AnimStandOrAirHitHigh_light = 5000
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandOrAirHitHigh_medium = 5001
 AnimStandOrAirHitHigh_hard = 5002
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandRecoverHigh_light = 5005
 AnimStandRecoverHigh_medium = 5006
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandRecoverHigh_hard = 5007
 AnimStandOrAirHitLow_light = 5010
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandOrAirHitLow_medium = 5011
 AnimStandOrAirHitLow_hard = 5012
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandRecoverLow_light = 5015
 AnimStandRecoverLow_medium = 5016
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandRecoverLow_hard = 5017
 AnimCrouchHit_light = 5020
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimCrouchHit_medium = 5021
 AnimCrouchHit_hard = 5022
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimCrouchRecover_light = 5025
 AnimCrouchRecover_medium = 5026
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimCrouchRecover_hard = 5027
 AnimStandOrAirHitBack = 5030
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimStandOrAirHitTransition = 5035 ;opt
 AnimAirRecover = 5040
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimAirFall = 5050
 AnimAirFall_hitUp = 5051 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimAirFall_hitUpDiagonal = 5052 ;opt
 AnimAirFall_comingDown = 5060 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimAirFall_comingDown_hitUp = 5061 ;opt
 AnimAirFall_comingDown_hitUpDiagonal = 5062 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimTripped = 5070
 AnimLieDownHit_stayDown = 5080
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDownHit_stayDown_hitUp = 5081 ;opt
 AnimLieDownHit_stayDown_hitUpDiagonal = 5082 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDownHit_hitUpIntoAir = 5090
 AnimHittingGroundFromFall = 5100
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimBounceFromGroundIntoAir_hitUp = 5101 ;opt
 AnimBounceFromGroundIntoAir_hitUpDiagonal = 5102 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimBounceIntoAir = 5160
 AnimBounceIntoAir_hitUp = 5161 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimBounceIntoAir_hitUpDiagonal = 5162 ;opt
 AnimHitGroundFromBounce = 5170
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimHitGroundFromBounce_hitUp = 5171 ;opt
 AnimHitGroundFromBounce_hitUpDiagonal = 5172 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDown = 5110
 AnimLieDown_hitUp = 5111 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDown_hitUpDiagonal = 5112 ;opt
 AnimGetUpFromLieDown = 5120
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimGetUpFromLieDown_hitUp = 5121 ;opt
 AnimGetUpFromLieDown_hitUpDiagonal = 5122 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDead_firstRounds = 5140 ;opt
 AnimLieDead_finalRound = 5150 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDead_firstRounds_hitUp = 5151 ;opt
 AnimLieDead_firstRounds_hitUpDiagonal = 5152 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimLieDead_finalRound_hitUp = 5156 ;opt
 AnimLieDead_finalRound_hitUpDiagonal = 5157 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimFallRecoveryNearGround = 5200
 AnimFallRecoveryInMidAir = 5210
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimDizzy = 5300
 AnimContinueScreen = 5500 ;opt
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimYesToContinue = 5510 ;opt
 AnimNoToContinue = 5520 ;opt
 
 ; tag.zss anims
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimTagEnteringScreen = 100
 AnimTagLeavingScreen = 100
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 AnimTagJumpingIn = 42
 AnimTagLanding = 47
 
 ; common1.cns / common1.cns.zss states
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateStand = 0
 StateStandToCrouch = 10
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateCrouching = 11
 StateCrouchToStand = 12
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateWalk = 20
 StateJumpStart = 40
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirJumpStart = 45
 StateJumpUp = 50
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateJumpDown = 51
 StateJumpLand = 52
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateRunForward = 100
 StateHopBackwards = 105
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateHopBackwards_land = 106
 StateRunUp = 110 ;deprecated
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateRunDown = 115 ;deprecated
 StateGuard_start = 120
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateStandGuard_guarding = 130
 StateCrouchGuard_guarding = 131
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGuard_guarding = 132
 StateGuard_end = 140
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateStandGuardHit_shaking = 150
 StateStandGuardHit_knockedBack = 151
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateCrouchGuardHit_shaking = 152
 StateCrouchGuardHit_knockedBack = 153
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGuardHit_shaking = 154
 StateAirGuardHit_knockedAway = 155
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateLose_timeOver = 170
 StateDrawGame_timeOver = 175
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StatePreIntro = 190
 StateIntro = 191
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateStandGetHit_shaking = 5000
 StateStandGetHit_knockedBack = 5001
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateCrouchGetHit_shaking = 5010
 StateCrouchGetHit_knockedBack = 5011
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGetHit_shaking = 5020
 StateAirGetHit_knockedAway = 5030
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGetHit_transition = 5035
 StateAirGetHit_recoveringInAirNotFalling = 5040
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGetHit_falling = 5050
 StateTrippedGetHit_shaking = 5070
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateTrippedGetHit_knockedAway = 5071
 StateDownedGetHit_shaking = 5080
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateDownedGetHit_knockedBack = 5081
 StateDownedGetHit_hitGroundFromFall = 5100
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateDownedGetHit_bounceOffGround = 5101
 StateDownedGetHit_lyingDown = 5110
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateDownedGetHit_gettingUp = 5120
 StateDownedGetHit_lyingDefeated = 5150
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGetHit_fallRecoveryOnGroundStillFalling = 5200
 StateAirGetHit_fallRecoveryOnGround = 5201
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateAirGetHit_fallRecoveryInAir = 5210
 StateContinueScreenAnimation = 5500
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateInitialize = 5900
 
 ; dizzy.zss states
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateDizzy = 6565300
 StateDizzyFallDown_standCrouch = 6565301 ; Deprecated
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateDizzyFallDown_air = 6565302         ; Deprecated
 StateDizzyLyingDown = 6565303            ; Deprecated
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateDizzyBirdsHelper = 6565310
 
 ; guardbreak.zss states
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateGuardBreakHit = 6565400
 StateGuardBreakRecover = 6565401
 
 ; tag.zss states
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateTagEnteringScreen = 6565600
 StateTagLeavingScreen = 6565610
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateTagWaitingOutside = 6565611
 StateTagJumpingIn = 6565620
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 StateTagLanding = 6565621
 
 ; fightfx.air
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxLightHitSpark = 0
 FxMediumHitSpark = 1
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxStrongHitSpark = 2
 FxVeryStrongHitSpark = 3
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxWeakBloodHitSpark = 10
 FxMediumBloodHitSpark = 11
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxStrongBloodHitSpark = 12
 FxGuardSpark = 40
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxSmallGroundShockwave = 60
 FxMediumGroundShockwave = 61
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxStrongGroundShockwave = 62
 FxLightWallHitShockwave = 70
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxMediumWallHitShockwave = 71
 FxStrongWallHitShockwave = 72
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxLevel1SuperEffect = 100
 FxLevel2SuperEffect = 101
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxLevel3SuperEffect = 102
 FxSmallFloorDust = 120
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxPowerUpEffect = 130
 
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxDizzyEffect = 5300
 FxGuardBreakSpark = 5400
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxGuardBreakShockwave = 5410
 FxTagSwitchAI = 5600
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxTagSwitchP1 = 5601
 FxTagSwitchP2 = 5602
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 FxBackgroundColor = 9000 ; Deprecated
 
 ; fight.def
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgFirstAttack = 401
 MsgCounterHit = 402
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgTechnical = 403
 MsgReversal = 404
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgDanger = 405
 MsgDizzy = 406
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgCombo3 = 407
 MsgCombo5 = 408
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgCombo10 = 409
 MsgCombo15 = 410
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgCombo20 = 411
 MsgCombo25 = 412
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgWinSpecial = 413
 MsgWinHyper = 414
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgWinPerfect = 415
 MsgPartnerAssist = 416   ; Not used by default tag system
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgPartnerChange = 417
 MsgPartnerDown = 418
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgPartnerAssistOK = 419 ; Not used by default tag system
 MsgActiveSwitch = 420    ; Not used by default tag system
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgCounterSwitch = 421   ; Not used by default tag system
 MsgGuardBreak = 422
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 MsgParry = 423
 MsgJustDefend = 424
 
 ; Bitwise shifting
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit1 = 1
 Bit2 = 2
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit3 = 4
 Bit4 = 8
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit5 = 16
 Bit6 = 32
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit7 = 64
 Bit8 = 128
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit9 = 256
 Bit10 = 512
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit11 = 1024
 Bit12 = 2048
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit13 = 4096
 Bit14 = 8192
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit15 = 16384
 Bit16 = 32768
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit17 = 65536
 Bit18 = 131072
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit19 = 262144
 Bit20 = 524288
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit21 = 1048576
 Bit22 = 2097152
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit23 = 4194304
 Bit24 = 8388608
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit25 = 16777216
 Bit26 = 33554432
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit27 = 67108864
 Bit28 = 134217728
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit29 = 268435456
 Bit30 = 536870912
+; Trigger: referenced by state controllers; Range: tune carefully; [PITFALL]: invalid values crash
 Bit31 = 1073741824
 Bit32 = -2147483648

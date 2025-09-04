@@ -1,7 +1,13 @@
+#===============================================================================
+# File: guardbreak.zss
+# Purpose: Guard break mechanics and related states
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
 # Guard Break code adapted from Shiyo Kakuge's add004
 #===============================================================================
 # StateGuardBreakHit
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateGuardBreakHit); type: U; movetype: I; physics: N; velset: 0, 0; ctrl: 0;]
 
 if !guardBreak {
@@ -53,6 +59,7 @@ if time < 13 {
 		}
 	}
 	# Glass shards
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let direction = (random / 1000.0) * ifelse(random < 667, -1, 1);
 	explod{
 		anim: GO const(FxGuardBreakSpark) + randomRange(0, 2);
@@ -84,6 +91,7 @@ if time >= 20 {
 #===============================================================================
 # StateGuardBreakRecover
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateGuardBreakRecover); type: U; movetype: I; physics: N; velset: 0, 0; ctrl: 0;]
 
 if time = 0 {
@@ -140,6 +148,7 @@ if time >= 60 {
 #===============================================================================
 # Global states
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -2]
 
 if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {

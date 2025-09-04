@@ -1,57 +1,73 @@
 #===============================================================================
+# File: action.zss
+# Purpose: Global states for lifebar messages and system events
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
+#===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -4]
 
 ignoreHitPause if !const(Default.Enable.Action) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper or stage
 } else if roundState >= 2 {
 	# First Attack
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_FirstAttack();
 	if $ret {
 		lifebarAction{spr: const(MsgFirstAttack), 0; top: 1}
 	}
 	# Counter Hit
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_CounterHit();
 	if $ret {
 		lifebarAction{spr: const(MsgCounterHit), 0; top: 1}
 	}
 	# Technical
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_Technical();
 	if $ret {
 		lifebarAction{spr: const(MsgTechnical), 0; top: 1}
 	}
 	# Reversal
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_Reversal();
 	if $ret {
 		lifebarAction{spr: const(MsgReversal), 0; top: 1}
 	}
 	# Parry
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_Parry();
 	if $ret {
 		lifebarAction{spr: const(MsgParry), 0; top: 1; redirectId: enemy,id}
 	}
 	# Just Defend
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_JustDefend();
 	if $ret {
 		lifebarAction{spr: const(MsgJustDefend), 0; top: 1}
 	}
 	# Danger
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_Danger();
 	if $ret {
 		lifebarAction{spr: const(MsgDanger), 0; timeMul: 2; top: 1}
 	}
 	# Dizzy
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_Dizzy();
 	if $ret {
 		lifebarAction{spr: const(MsgDizzy), 0; timeMul: 2; top: 1}
 	}
 	# Guard Break
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_GuardBreak();
 	if $ret {
 		lifebarAction{spr: const(MsgGuardBreak), 0; timeMul: 2; top: 1}
 	}
 	# Partner Down
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_PartnerDown();
 	if $ret {
 		lifebarAction{spr: const(MsgPartnerDown), 0; timeMul: 2; top: 1}
@@ -59,6 +75,7 @@ ignoreHitPause if !const(Default.Enable.Action) || isHelper || teamSide = 0 {
 	# code executed only by P1 and P2
 	if playerNo = teamSide {
 		# Combo Count
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_ComboCount();
 		if $ret {
 			# gdlk combo (mugen)
@@ -82,16 +99,19 @@ ignoreHitPause if !const(Default.Enable.Action) || isHelper || teamSide = 0 {
 			}
 		}
 		# Win Perfect
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinPerfect();
 		if $ret {
 			lifebarAction{spr: const(MsgWinPerfect), 0; timeMul: 3; top: 1}
 		}
 		# Win Hyper
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinHyper();
 		if $ret {
 			lifebarAction{spr: const(MsgWinHyper), 0; timeMul: 3; top: 1}
 		}
 		# Win Special
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinSpecial();
 		if $ret {
 			lifebarAction{spr: const(MsgWinSpecial), 0; timeMul: 3; top: 1}

@@ -1,3 +1,8 @@
+#===============================================================================
+# File: common1.cns.zss
+# Purpose: Base state machine and logic for characters
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
 # Zantei State Script
 # Syntax highlighter for Notepad++: https://github.com/ikemen-engine/zss_npp
 #-------------------------------------------------------------------------------
@@ -20,6 +25,7 @@
 
 #-------------------------------------------------------------------------------
 # Stand
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 0; type: S; physics: S; sprpriority: 0;]
 
 if cond(anim = 5, animTime = 0, anim != 0) {
@@ -37,6 +43,7 @@ if !alive {
 
 #-------------------------------------------------------------------------------
 # Stand to Crouch
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 10; type: C; physics: C; anim: 10;]
 
 if time = 0 {
@@ -51,6 +58,7 @@ if animTime = 0 {
 
 #-------------------------------------------------------------------------------
 # Crouching
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 11; type: C; physics: C; anim: 11; sprpriority: 0;]
 
 if anim = 6 && animTime = 0 {
@@ -62,6 +70,7 @@ if abs(vel x) < const(movement.crouch.friction.threshold) {
 
 #-------------------------------------------------------------------------------
 # Crouch to Stand
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 12; type: S; physics: S; anim: 12;]
 
 if animTime = 0 {
@@ -70,6 +79,7 @@ if animTime = 0 {
 
 #-------------------------------------------------------------------------------
 # Walk
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 20; type: S; physics: S; sprpriority: 0;]
 
 if command = "holdback" {
@@ -89,6 +99,7 @@ if vel x > 0 {
 
 #-------------------------------------------------------------------------------
 # Jump Start
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 40; type: S; physics: S; anim: 40; ctrl: 0; sprpriority: 1; facep2: 1;]
 
 if time = 0 {
@@ -101,14 +112,18 @@ if command = "holdback" {
 }
 if animTime = 0 {
 	if sysVar(1) = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let x = const(velocity.jump.neu.x);
 	} else if sysVar(1) = 1 {
 		if prevStateNo = 100 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let x = const(velocity.runjump.fwd.x);
 		} else {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let x = const(velocity.jump.fwd.x);
 		}
 	} else {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let x = const(velocity.jump.back.x);
 	}
 	velSet{x: $x; y: const(velocity.jump.y)}
@@ -117,6 +132,7 @@ if animTime = 0 {
 
 #-------------------------------------------------------------------------------
 # AirJump Start
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 45; type: A; physics: N; ctrl: 0; velset: 0, 0;]
 
 changeAnim{value: ifElse(selfAnimExist(44), 44, 41)}
@@ -130,10 +146,13 @@ if command = "holdback" {
 }
 if time = 2 {
 	if sysVar(1) = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let x = const(velocity.airjump.neu.x);
 	} else if sysVar(1) = 1 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let x = const(velocity.airjump.fwd.x);
 	} else {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let x = const(velocity.airjump.back.x);
 	}
 	velSet{x: $x; y: const(velocity.airjump.y)}
@@ -142,6 +161,7 @@ if time = 2 {
 
 #-------------------------------------------------------------------------------
 # Jump Up
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 50; type: A; physics: A;]
 
 if time = 0 {
@@ -154,12 +174,14 @@ persistent(0) if vel y > const240p(-2) && selfAnimExist(anim + 3) && anim = [41,
 
 #-------------------------------------------------------------------------------
 # Jump Down (empty state for compatibility)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 51; type: A; physics: A;]
 
 null{}
 
 #-------------------------------------------------------------------------------
 # Jump Land
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 52; type: S; physics: S; ctrl: 0; anim: 47;]
 
 if time = 0 {
@@ -177,6 +199,7 @@ if animTime = 0 {
 
 #-------------------------------------------------------------------------------
 # Run forward
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 100; type: S; physics: S; anim: 100; sprpriority: 1;]
 
 velSet{x: const(velocity.run.fwd.x)}
@@ -187,6 +210,7 @@ if command != "holdfwd" {
 
 #-------------------------------------------------------------------------------
 # Hop backwards
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 105; type: A; physics: A; ctrl: 0; anim: 105; sprpriority: 1;]
 
 if time = 0 {
@@ -200,6 +224,7 @@ if vel y > 0 && pos y >= 0 {
 
 #-------------------------------------------------------------------------------
 # Hop backwards (land)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 106; type: S; physics: S; ctrl: 0; anim: 47;]
 
 if abs(vel x) < const(movement.stand.friction.threshold) {
@@ -217,6 +242,7 @@ if time = 0 {
 #-------------------------------------------------------------------------------
 # Run up (Deprecated in DosMugen)
 # TODO: Make this work now that Z-Axis is back.
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 110; type: S; physics: N;]
 
 if time = 0 {
@@ -235,6 +261,7 @@ if animTime = -8 {
 #-------------------------------------------------------------------------------
 # Run down (Deprecated in DosMugen)
 # TODO: Make this work now that Z-Axis is back.
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 115; type: S; physics: N;]
 
 if time = 0 {
@@ -268,6 +295,7 @@ if command != "holdback" || !inGuardDist {
 
 #-------------------------------------------------------------------------------
 # GUARD (start)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 120; type: U; physics: U;]
 
 call IkSys_HiToLoAndLoToHi();
@@ -288,6 +316,7 @@ call IkSys_StopGuarding();
 
 #-------------------------------------------------------------------------------
 # Stand guard (guarding)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 130; type: S; physics: S;]
 
 if anim != 130 {
@@ -300,6 +329,7 @@ call IkSys_StopGuarding();
 
 #-------------------------------------------------------------------------------
 # Crouch guard (guarding)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 131; type: C; physics: C;]
 
 if anim != 131 {
@@ -321,6 +351,7 @@ if sysVar(0) := (pos y >= 0 && vel y > 0) {
 
 #-------------------------------------------------------------------------------
 # Air guard (guarding)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 132; type: A; physics: N;]
 
 if anim != 132 {
@@ -331,6 +362,7 @@ call IkSys_StopGuarding();
 
 #-------------------------------------------------------------------------------
 # Guard (end)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 140; type: U; physics: U; ctrl: 1;]
 
 call IkSys_HiToLoAndLoToHi();
@@ -371,6 +403,7 @@ if hitOver {
 
 #-------------------------------------------------------------------------------
 # Stand guard hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 150; type: S; movetype: H; physics: N; velset: 0, 0;]
 
 call IkSys_GuardShaking(150);
@@ -380,12 +413,14 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Stand guard hit (knocked back)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 151; type: S; movetype: H; physics: S; anim: 150;]
 
 call IkSys_GuardKnockedBack(130);
 
 #-------------------------------------------------------------------------------
 # Crouch guard hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 152; type: C; movetype: H; physics: N; velset: 0, 0;]
 
 call IkSys_GuardShaking(151);
@@ -395,12 +430,14 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Crouch guard hit (knocked back)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 153; type: C; movetype: H; physics: C; anim: 151;]
 
 call IkSys_GuardKnockedBack(131);
 
 #-------------------------------------------------------------------------------
 # Air guard hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 154; type: A; movetype: H; physics: N; velset: 0, 0;]
 
 changeAnim{value: 152}
@@ -413,6 +450,7 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Air guard hit (knocked away)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 155; type: A; movetype: H; physics: N; anim: 152;]
 
 if time = 0 {
@@ -425,12 +463,14 @@ call IkSys_AirGuardLand();
 
 #-------------------------------------------------------------------------------
 # Lose (time over)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 170; type: S; ctrl: 0; anim: 170; velset: 0, 0;]
 
 notHitBy{value: SCA; time: 1}
 
 #-------------------------------------------------------------------------------
 # Draw game (time over)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 175; type: S; ctrl: 0; velset: 0, 0;]
 
 if time = 0 {
@@ -443,6 +483,7 @@ notHitBy{value: SCA; time: 1}
 
 #-------------------------------------------------------------------------------
 # Pre-intro
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 190; type: S; ctrl: 0; velset: 0, 0;]
 
 if selfAnimExist(190) {
@@ -454,6 +495,7 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Intro (override this state to give character an intro)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 191; type: S; ctrl: 0;]
 
 if time = 0 {
@@ -494,6 +536,7 @@ if hitOver {
 
 #-------------------------------------------------------------------------------
 # Stand get-hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5000; type: S; movetype: H; physics: N; velset: 0, 0;]
 
 call IkSys_GetHitShaking(ifElse(getHitVar(groundType) = 1, 5000, 5010));
@@ -513,12 +556,14 @@ if hitShakeOver {
 
 #-------------------------------------------------------------------------------
 # Stand get-hit (knocked back)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5001; type: S; movetype: H; physics: S;]
 
 call IkSys_GetHitKnockedBack(5005 + (getHitVar(groundType) = 2) * 10, 0);
 
 #-------------------------------------------------------------------------------
 # Crouch get-hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5010; type: C; movetype: H; physics: N; velset: 0, 0;]
 
 call IkSys_GetHitShaking(5020);
@@ -538,12 +583,14 @@ if anim = 5020 {
 
 #-------------------------------------------------------------------------------
 # Crouch get-hit (knocked back)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5011; type: C; movetype: H; physics: C;]
 
 call IkSys_GetHitKnockedBack(5025, 11);
 
 #-------------------------------------------------------------------------------
 # Air get-hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5020; type: A; movetype: H; physics: N; velset: 0, 0;]
 
 call IkSys_GetHitShaking(ifElse(getHitVar(airType) = 1, 5000, 5010));
@@ -560,6 +607,7 @@ if anim = 5000 || anim = 5010 {
 
 #-------------------------------------------------------------------------------
 # Air get-hit (knocked away)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5030; type: A; movetype: H; physics: N; ctrl: 0;]
 
 if anim != [5000, 5199] && selfAnimExist(5030) {
@@ -583,6 +631,7 @@ if animTime = 0 {
 
 #-------------------------------------------------------------------------------
 # Air get-hit (transition)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5035; type: A; movetype: H; physics: N;]
 
 if time = 0 && selfAnimExist(5035) && anim != [5051, 5059] && anim != 5090 {
@@ -603,6 +652,7 @@ if hitOver || animTime = 0 ||
 
 #-------------------------------------------------------------------------------
 # Air get-hit (recovering in air, not falling)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5040; type: A; movetype: H; physics: N;]
 
 if !alive {
@@ -624,6 +674,7 @@ if vel y > 0 && pos y >= 0 {
 
 #-------------------------------------------------------------------------------
 # Air get-hit (falling)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5050; type: A; movetype: H; physics: N;]
 
 if animTime = 0 && anim = 5035 || time = 0 && anim != 5035 &&
@@ -652,6 +703,7 @@ if vel y > 0 && pos y >= cond(anim = [5051, 5059] || anim = [5061, 5069], 0, con
 
 #-------------------------------------------------------------------------------
 # Tripped get-hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5070; type: A; movetype: H; physics: N; velset: 0, 0;]
 
 changeAnim{value: 5070}
@@ -664,6 +716,7 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Tripped get-hit (knocked away)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5071; type: A; movetype: H; physics: N;]
 
 if time = 0 {
@@ -677,11 +730,13 @@ if vel y > 0 && pos y >= const(movement.air.gethit.trip.groundlevel) {
 
 #-------------------------------------------------------------------------------
 [Function IkSys_SelfAnimExistAddMod10(cond, base) ret]
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let ret = cond($cond && selfAnimExist($base + anim % 10),
 	$base + anim % 10, $base);
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (shaking)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5080; type: L; movetype: H; physics: N; velset: 0, 0;]
 
 if time = 0 {
@@ -705,6 +760,7 @@ if hitShakeOver {
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (knocked back)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5081; type: L; movetype: H; physics: C;]
 
 if time = 0 {
@@ -737,6 +793,7 @@ playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (hit ground from fall)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5100; type: L; movetype: H; physics: N;]
 
 if time = 0 {
@@ -745,6 +802,7 @@ if time = 0 {
 	}
 	fallEnvShake{}
 	sysVar(1) := floor(vel y);
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let a = call IkSys_SelfAnimExistAddMod10(anim = [5051, 5059] ||
 		anim = [5061, 5069], 5100);
 	changeAnim{value: $a}
@@ -769,9 +827,11 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (bounce off ground)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5101; type: L; movetype: H; physics: N;]
 
 if time = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let a = call IkSys_SelfAnimExistAddMod10(anim = [5101, 5109], 5160);
 	changeAnim{value: $a}
 	hitFallVel{}
@@ -787,6 +847,7 @@ if vel y > 0 && pos y >= const(movement.down.bounce.groundlevel) {
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (lying down)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5110; type: L; movetype: H; physics: N;]
 
 persistent(0) if selfAnimExist(5110 + anim % 10) && anim = [5081, 5089] {
@@ -795,6 +856,7 @@ persistent(0) if selfAnimExist(5110 + anim % 10) && anim = [5081, 5089] {
 if time = 0 {
 	fallEnvShake{}
 	if anim != [5110, 5119] {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let a = call IkSys_SelfAnimExistAddMod10(anim = [5161, 5169], 5170);
 		changeAnim{value: $a}
 	}
@@ -808,6 +870,7 @@ if time = 0 {
 	}
 	velSet{y: 0}
 }
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 let atEq0OrSv0 = animTime = 0 || sysVar(0);
 if $atEq0OrSv0 {
 	persistent(0) if anim = [5171, 5179] && selfAnimExist(5110 + anim % 10) {
@@ -837,9 +900,11 @@ if time = 0 {
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (getting up)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5120; type: L; movetype: I; physics: N;]
 
 if time = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let a = call IkSys_SelfAnimExistAddMod10(anim = [5111, 5119], 5120);
 	changeAnim{value: $a}
 	velSet{x: 0}
@@ -854,9 +919,11 @@ if animTime = 0 {
 
 #-------------------------------------------------------------------------------
 # Downed get-hit (lying defeated)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5150; type: L; movetype: H; physics: N; sprpriority: -3; ctrl: 0;]
 
 if time = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let a = call IkSys_SelfAnimExistAddMod10(anim = [5111, 5119] ||
 		anim = [5171, 5179], 5140);
 	if selfAnimExist($a) {
@@ -878,6 +945,7 @@ notHitBy{value: SCA; time: 1}
 
 #-------------------------------------------------------------------------------
 # Air get-hit (fall recovery on ground; still falling)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5200; type: A; movetype: H; physics: N;]
 
 if anim = 5035 && animTime = 0 {
@@ -892,6 +960,7 @@ if vel y > 0 && pos y >= const(movement.air.gethit.groundrecover.groundlevel) {
 
 #-------------------------------------------------------------------------------
 # Air get-hit (fall recovery on ground)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5201; type: A; movetype: H; physics: A; anim: 5200;]
 
 if time = 0 {
@@ -920,6 +989,7 @@ notHitBy{value: SCA; time: 1}
 
 #-------------------------------------------------------------------------------
 # Air get-hit (fall recovery in air)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5210; type: A; movetype: I; physics: N; anim: 5210; ctrl: 0;]
 
 if time = 0 {
@@ -977,6 +1047,7 @@ if vel y > 0 && pos y >= 0 {
 
 #-------------------------------------------------------------------------------
 # Continue screen animation
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5500; type: S; ctrl: 0; anim: 5300; velset: 0, 0;]
 
 if time = 0 && selfAnimExist(5500) {
@@ -985,6 +1056,7 @@ if time = 0 && selfAnimExist(5500) {
 
 #-------------------------------------------------------------------------------
 # Initialize (at the start of the round)
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef 5900; type: S;]
 
 if roundsExisted = 0 {

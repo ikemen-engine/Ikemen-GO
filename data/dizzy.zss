@@ -1,3 +1,8 @@
+#===============================================================================
+# File: dizzy.zss
+# Purpose: Dizzy mechanics and recovery states
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
 # Dizzy code adapted from Shiyo Kakuge's add004
 #===============================================================================
 # Functions
@@ -16,6 +21,7 @@ playSnd{value: F7, ($vely > const240p(5)) + ($vely > const240p(14))}
 #===============================================================================
 # StateDizzyBirdsHelper [helper]
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateDizzyBirdsHelper); type: A; physics: N; anim: -2; velset: 0, 0; ctrl: 0;]
 
 # Destroy helper
@@ -86,12 +92,17 @@ if map(birdState) <= 0 {
 
 # Update dizzy bird explods
 for i = 0; numExplod; 1 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let circleTime = ((gameTime % 90) + 22.5 * $i) / 45.0 * pi;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let birdScale = (cos($circleTime) + 3) * 0.12 * ifElse($circleHeight < 0, -1, 1);
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let fadeTime = ifElse(map(birdState) <= 0, 0, ifElse(map(birdState) >= 32, 32, map(birdState))); # Effects are faded out by code rather than animation
 	# Musical notes don't flip
 	if map(birdType) = 5 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let birdScale = abs($birdScale) * facing;
 	}
 	modifyExplod{
@@ -124,18 +135,21 @@ if parent, stateNo = const(StateDizzy) {
 
 # These states are deprecated in Ikemen 1.0. They are currently only kept to prevent older characters from entering invalid states
 
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateDizzyFallDown_standCrouch); type: U; movetype: H; physics: N; velset: 0, 0; ctrl: 0;]
 
 if time > 0 { # Avoid ChangeState loops
 	selfState{value: const(StateStandGetHit_knockedBack)}
 }
 
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateDizzyFallDown_air); type: A; movetype: H; physics: N; anim: const(AnimAirFall); ctrl: 0;]
 
 if time > 0 {
 	selfState{value: const(StateAirGetHit_falling)}
 }
 
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateDizzyLyingDown); type: L; movetype: H; physics: N; ctrl: 0;]
 
 if time > 0 {
@@ -145,6 +159,7 @@ if time > 0 {
 #===============================================================================
 # StateDizzy
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef const(StateDizzy); type: S; movetype: I; physics: S; anim: const(AnimDizzy); velset: 0, 0; ctrl: 0;]
 
 # This flag prevents the char from becoming dizzy more than once in the same combo
@@ -195,6 +210,7 @@ if !dizzy || time > 300 {
 #===============================================================================
 # Global states
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -2]
 
 if !const(Default.Enable.Dizzy) || isHelper || teamSide = 0 {

@@ -1,6 +1,12 @@
 #===============================================================================
+# File: score.zss
+# Purpose: Scoring and tally logic
+# Safe-edit: Back up before modification; maintain syntax to avoid runtime errors
+#===============================================================================
+#===============================================================================
 # Global states (not halted by Pause/SuperPause, no helper limitations)
 #===============================================================================
+# Trigger: state activation; Range: -2 to 9999; [PITFALL]: verify transitions
 [StateDef -4]
 
 ignoreHitPause if !const(Default.Enable.Score) || teamSide = 0 {
@@ -14,29 +20,41 @@ ignoreHitPause if !const(Default.Enable.Score) || teamSide = 0 {
 			# skip time ratio multiplier, adjust vital bonus depending on how many rounds it took turns team to beat the enemy
 			scoreAdd{value: round(float(life) / lifeMax / (numPartner + 1) * 10000 / (enemy,roundsExisted + 1), -2)}
 		} else {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let p1TagNum = 1;
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let p2TagNum = 1;
 			if teamMode = Tag {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let p1TagNum = numPartner + 1;
 			}
 			if enemy,teamMode = Tag {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let p2TagNum = enemy,numPartner + 1;
 			}
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let timeRatio = 100 * timeRemaining / (timeRemaining + timeElapsed);
 			if $p1TagNum > $p2TagNum {
 				# time ratio penalty in case of Tag adjusted FramesPerCount value and not equal team sizes
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let timeRatio = $timeRatio * $p2TagNum / $p1TagNum;
 			}
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let timeMul = 1;
 			if $timeRatio > 90 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let timeMul = 5;
 			} else if $timeRatio > 85 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let timeMul = 4;
 			} else if $timeRatio > 80 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let timeMul = 2.5;
 			} else if $timeRatio > 70 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let timeMul = 2;
 			} else if $timeRatio > 60 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 				let timeMul = 1.5;
 			}
 			scoreAdd{value: round(float(life) / lifeMax / (numPartner + 1) * 10000 * $timeMul, -2)}
@@ -46,40 +64,53 @@ ignoreHitPause if !const(Default.Enable.Score) || teamSide = 0 {
 } else if roundState >= 2 {
 	# score: first attack bonus
 	if !isHelper {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_FirstAttack();
 		if $ret {
 			scoreAdd{value: 1500}
 		}
 	}
 	# score: counter bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_CounterHit();
 	if $ret {
 		scoreAdd{value: 100}
 	}
 	# score: damage bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 	let ret = call IkSys_ReceivedDamage();
 	if $ret && getHitVar(score) = 0 {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let dmgMul = 0;
 		# normal attacks
 		if getHitVar(attr) = SCA, HA {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 10;
 		} else if getHitVar(attr) = SCA, SA {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 9;
 		} else if getHitVar(attr) = SCA, NA {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 8;
 		# throws
 		} else if getHitVar(attr) = SCA, HT {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 10;
 		} else if getHitVar(attr) = SCA, ST {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 9;
 		} else if getHitVar(attr) = SCA, NT {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 8;
 		# projectiles
 		} else if getHitVar(attr) = SCA, HP {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 10;
 		} else if getHitVar(attr) = SCA, SP {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 9;
 		} else if getHitVar(attr) = SCA, NP {
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 			let dmgMul = 8;
 		}
 		if $dmgMul > 0 {
@@ -89,6 +120,7 @@ ignoreHitPause if !const(Default.Enable.Score) || teamSide = 0 {
 	# code executed only by P1 and P2
 	if playerNo = teamSide && !isHelper {
 		# score: combo count bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_ComboCount();
 		if $ret {
 			switch $ret {
@@ -123,21 +155,25 @@ ignoreHitPause if !const(Default.Enable.Score) || teamSide = 0 {
 			}
 		}
 		# score: win perfect bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinPerfect();
 		if $ret {
 			scoreAdd{value: 15000}
 		}
 		# score: win hyper bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinHyper();
 		if $ret {
 			scoreAdd{value: 10000}
 		}
 		# score: win special bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinSpecial();
 		if $ret {
 			scoreAdd{value: 3000}
 		}
 		# score: win streak bonus
+# Trigger: evaluated each tick; Range: variable-dependent; [PITFALL]: misuse may desync
 		let ret = call IkSys_WinStreak();
 		if $ret {
 			scoreAdd{value: 30000 + ($ret - 1) * 10000}
