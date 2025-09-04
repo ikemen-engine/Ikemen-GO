@@ -1,3 +1,33 @@
+// compiler.go - state scripting compiler
+//
+// This file implements the compiler for the engine's state scripting
+// language used in character definition files. The language follows an
+// INI-like grammar with `statedef` blocks and controller entries written as
+// `key = value` pairs. Source files are tokenized into symbols, parsed into an
+// abstract syntax tree (AST) of state blocks and expressions, and finally
+// encoded into bytecode executed by the runtime.
+//
+// Output format: a map of state numbers to bytecode sequences (`StateBytecode`).
+// Callers should check returned errors and abort loading if any are produced.
+//
+// Example – adding a new state controller called `flash`:
+//
+//	func (c *Compiler) flash(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+//	    // parse controller parameters here
+//	    return sc, nil
+//	}
+//
+//	func newCompiler() *Compiler {
+//	    c := &Compiler{funcs: make(map[string]bytecodeFunction)}
+//	    c.scmap = map[string]scFunc{
+//	        "flash": c.flash, // register new construct
+//	    }
+//	    return c
+//	}
+//
+// Any compilation error carries file and line information; callers should
+// surface the message to users and refrain from executing partially compiled
+// bytecode.
 package main
 
 import (
@@ -467,11 +497,20 @@ var triggerMap = map[string]int{
 	"xshear":             1,
 }
 
+// tokenizer performs lexical analysis on the remaining input string.
+// Step 1: `tokenizerCS` trims leading whitespace and extracts the next token.
+// Step 2: convert the token to lowercase so keywords become case-insensitive.
 func (c *Compiler) tokenizer(in *string) string {
 	return strings.ToLower(c.tokenizerCS(in))
 }
 
-// Same but case-sensitive
+// tokenizerCS returns the next raw token without altering case.
+// It advances the input pointer while:
+//  1. Trimming leading spaces.
+//  2. Emitting operators and punctuation as single tokens.
+//  3. Collecting identifiers or numbers until a special symbol is found.
+//
+// Callers typically wrap this with `tokenizer` for case-insensitive parsing.
 func (*Compiler) tokenizerCS(in *string) string {
 	*in = strings.TrimSpace(*in)
 	if len(*in) == 0 {
@@ -6004,7 +6043,14 @@ func cnsStringArray(arg string) ([]string, error) {
 	return fullStrArray, nil
 }
 
-// Compile a state file
+// stateCompile converts a traditional ST/CNS file into bytecode.
+// Steps:
+//  1. Load the source text from the provided directories.
+//  2. Tokenize the file line-by-line.
+//  3. Parse `statedef` blocks into an AST of controllers and expressions.
+//  4. Emit bytecode for each state and store it in the `states` map.
+//
+// Any error includes file/line information and aborts compilation.
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
 	var str string
@@ -6041,14 +6087,14 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		}
 		return err
 	}
-	c.lines, c.i = SplitAndTrim(str, "\n"), 0
+	c.lines, c.i = SplitAndTrim(str, "\n"), 0 // Step 2: tokenize lines
 	errmes := func(err error) error {
 		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i+1, err.Error()))
 	}
 	// Keep a map of states that have already been found in this file
 	existInThisFile := make(map[int32]bool)
 	c.vars = make(map[string]uint8)
-	// Loop through state file lines
+	// Loop through tokenized lines and build the AST/state bytecode
 	for ; c.i < len(c.lines); c.i++ {
 		// Find a statedef, skipping over other lines until finding one
 		// Get the current line, without comments
@@ -6074,7 +6120,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		existInThisFile[c.stateNo] = true
 
 		c.i++
-		// Parse the statedef properties
+		// Parse the statedef properties (AST nodes)
 		is, _, err := c.parseSection(nil)
 		if err != nil {
 			return errmes(err)
@@ -6083,7 +6129,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 		if _, ok := states[c.stateNo]; ok && c.stateNo < 0 {
 			*sbc = states[c.stateNo]
 		}
-		// Interpret the statedef properties
+		// Interpret the statedef properties and emit bytecode
 		if err := c.stateDef(is, sbc); err != nil {
 			return errmes(err)
 		}
@@ -6103,7 +6149,7 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			}
 			c.i++
 
-			// Create this sctrl and get its properties
+			// Create this sctrl and get its properties (AST + bytecode)
 			c.block = newStateBlock()
 			sc := newStateControllerBase()
 			var scf scFunc
@@ -7170,6 +7216,14 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 }
 
 // Compile a ZSS state
+// stateCompileZ compiles a ZSS script into bytecode.
+// Steps:
+//  1. Split the source into lines and spawn a scanner goroutine.
+//  2. Tokenize using `scan` and `tokenizer`.
+//  3. Build nested `StateBlock` structures representing the AST.
+//  4. Emit bytecode for states and functions.
+//
+// Errors are returned with file/line positions for caller handling.
 func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 	filename, src string, constants map[string]float32) error {
 	defer func(oime bool) {
@@ -7343,12 +7397,20 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode,
 	return nil
 }
 
-// Compile a character definition file
+// Compile parses a character definition and all referenced state scripts.
+// Steps:
+//  1. Tokenize the definition file and gather command/state file names.
+//  2. Load command scripts and convert command definitions to bytecode.
+//  3. Compile each state file by tokenizing, building an AST, and emitting
+//     bytecode via `stateCompile`/`stateCompileZ`.
+//
+// Errors are returned to the caller, who should abort character loading if any
+// occur.
 func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (map[int32]StateBytecode, error) {
 	c.playerNo = pn
 	states := make(map[int32]StateBytecode)
 
-	// Load initial data from definition file
+	// Step 1: load and tokenize the definition file
 	str, err := LoadText(def)
 	if err != nil {
 		return nil, err
@@ -7402,7 +7464,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		}
 	}
 
-	// Load the command file
+	// Step 2: load the command file and tokenize commands
 	str = ""
 	if len(cmd) > 0 {
 		if err := LoadFile(&cmd, []string{def, "", sys.motifDir, "data/"}, func(filename string) error {
@@ -7559,7 +7621,7 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 		c.cmdl.Add(*cm)
 	}
 
-	// Compile states
+	// Step 3: compile referenced state files into bytecode
 	sys.stringPool[pn].Clear()
 	sys.cgi[pn].hitPauseToggleFlagCount = 0
 	c.funcUsed = make(map[string]bool)
