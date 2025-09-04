@@ -1,3 +1,7 @@
+// system.go defines the core System type that orchestrates rendering, audio,
+// input handling and the main game loop. Platform-specific window management
+// and event backends are delegated to system_glfw.go (GLFW) and system_kinc.go
+// (Kinc) to allow different runtime environments.
 package main
 
 import (
@@ -315,11 +319,19 @@ func isRunningInsideAppBundle(exePath string) bool {
 	return runtime.GOOS == "darwin" && strings.Contains(exePath, ".app")
 }
 
-// Initialize stuff, this is called after the config int at main.go
+// init sets up all core subsystems and must be called before the main loop.
+// Step order is important because later subsystems depend on earlier ones:
+// 1. compute internal resolution and create the OS window;
+// 2. optionally load external shaders prior to renderer initialization;
+// 3. initialize renderer and audio devices owned by System;
+// 4. allocate global Lua state and shared textures;
+// 5. load window icons and start a goroutine for console input.
+// Errors are checked via chk(), which aborts start-up on failure. The caller
+// takes ownership of the returned Lua state.
 func (s *System) init(w, h int32) *lua.LState {
 	s.setWindowSize(w, h)
 	var err error
-	// Create a system window.
+	// Step 1: create a system window.
 	s.window, err = s.newWindow(int(s.scrrect[2]), int(s.scrrect[3]))
 	chk(err)
 
@@ -350,8 +362,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		}
 	}
 
-	// Loading of external shader data.
-	// We need to do this before the render initialization at "gfx.Init()"
+	// Step 2: load external shader data before initializing the renderer.
 	if len(s.cfg.Video.ExternalShaders) > 0 {
 		// First we initialize arrays.
 		s.externalShaders = make([][]string, 2)
@@ -380,7 +391,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	}
 	// PS: The "\x00" is what is know as Null Terminator.
 
-	// Now we proceed to init the render.
+	// Step 3: initialize rendering and audio subsystems.
 	if s.cfg.Video.RenderMode == "OpenGL 2.1" {
 		gfx = &Renderer_GL21{}
 		gfxFont = &glfont.FontRenderer_GL21{}
@@ -393,6 +404,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	// And the audio.
 	speaker.Init(beep.SampleRate(sys.cfg.Sound.SampleRate), audioOutLen)
 	speaker.Play(NewNormalizer(s.soundMixer))
+	// Step 4: create Lua state and initialize input mappings.
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
@@ -415,7 +427,7 @@ func (s *System) init(w, h int32) *lua.LState {
 
 	systemScriptInit(l)
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
-	// So now that we have a window we add an icon.
+	// Step 5: load window icons if configured.
 	if len(s.cfg.Config.WindowIcon) > 0 {
 		// First we initialize arrays.
 		var f = make([]io.ReadCloser, len(s.cfg.Config.WindowIcon))
@@ -445,7 +457,8 @@ func (s *System) init(w, h int32) *lua.LState {
 	}
 	// [Icon add end]
 
-	// Error print?
+	// Spawn a goroutine so console input can be read concurrently without
+	// blocking the main event loop.
 	go func() {
 		stdin := bufio.NewScanner(os.Stdin)
 		for stdin.Scan() {
@@ -459,11 +472,17 @@ func (s *System) init(w, h int32) *lua.LState {
 	return l
 }
 
+// shutdown releases resources owned by System in reverse initialization order.
+// It marks the game as ended, then closes graphics, window and audio devices.
+// Errors during shutdown are ignored because no recovery is possible.
 func (s *System) shutdown() {
+	// Step 1: signal the main loop to exit.
 	if !sys.gameEnd {
 		sys.gameEnd = true
 	}
+	// Step 2: release renderer resources.
 	gfx.Close()
+	// Step 3: close window and audio subsystems.
 	s.window.Close()
 	speaker.Close()
 }
@@ -479,6 +498,8 @@ func (s *System) setWindowSize(w, h int32) {
 	s.heightScale = float32(s.scrrect[3]) / float32(s.gameHeight)
 }
 
+// eventUpdate pumps window events each frame. It runs on the main goroutine
+// and updates flags that may be consumed by other goroutines via channels.
 func (s *System) eventUpdate() bool {
 	s.esc = false
 	for _, v := range s.shortcutScripts {
@@ -489,6 +510,9 @@ func (s *System) eventUpdate() bool {
 	return !s.gameEnd
 }
 
+// runMainThreadTask executes functions queued by other goroutines on the main
+// thread. This pattern allows concurrent subsystems to schedule work that must
+// interact with graphics or window APIs that are not goroutine-safe.
 func (s *System) runMainThreadTask() {
 	for {
 		select {
@@ -500,6 +524,9 @@ func (s *System) runMainThreadTask() {
 	}
 }
 
+// await synchronizes the frame rate and forms the cadence of the main event
+// loop. It swaps buffers and then services any tasks queued by other
+// goroutines before sleeping until the next frame.
 func (s *System) await(fps int) bool {
 	if !s.frameSkip {
 		// Render the finished frame
@@ -513,6 +540,7 @@ func (s *System) await(fps int) bool {
 		// the screen if network input is present.
 		defer gfx.BeginFrame(sys.netConnection == nil)
 	}
+	// Execute any work submitted from other goroutines.
 	s.runMainThreadTask()
 	now := time.Now()
 	diff := s.redrawWait.nextTime.Sub(now)

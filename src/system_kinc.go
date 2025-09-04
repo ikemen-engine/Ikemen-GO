@@ -1,5 +1,9 @@
 //go:build kinc
 
+// system_kinc.go implements the windowing backend using the Kinc framework.
+// In contrast to the GLFW-based backend, this version relies on Kinc's
+// cross-platform abstractions and integrates with its event and rendering
+// systems.
 package main
 
 import (
@@ -31,10 +35,18 @@ type Window struct {
 }
 
 func (s *System) newWindow(w, h int) (*Window, error) {
+	// Step 1: allocate the Window structure that will be owned by System.
 	ret := &Window{width: w, height: h}
+
+	// Step 2: initialize Kinc and register a close callback so that the
+	// main loop can observe shutdown requests. Kinc returns a window handle
+	// which is stored for later use.
 	handle := C.kinc_init(C.CString(s.cfg.Config.WindowTitle), C.int(w), C.int(h), nil, nil)
 	C.kinc_window_set_close_callback(handle, (C.close_callback_t)(C.close_callback),
 		unsafe.Pointer(&ret.closing))
+
+	// Step 3: return the initialized window. Kinc functions typically
+	// signal failure via asserts, so no explicit error is propagated here.
 	// TODO: add keyboard input callbacks
 	return ret, nil
 }
@@ -70,6 +82,8 @@ func (w *Window) toggleFullscreen() {
 	// TODO
 }
 
+// pollEvents advances Kinc's internal event loop. Like GLFW, this must run on
+// the main goroutine and is not thread-safe.
 func (w *Window) pollEvents() {
 	C.kinc_internal_frame()
 }
@@ -79,4 +93,7 @@ func (w *Window) shouldClose() bool {
 }
 
 func (w *Window) Close() {
+	// Kinc currently doesn't expose an explicit termination API for the
+	// system module in this context, so Close is a placeholder to satisfy
+	// the interface. Resources are released by the runtime on exit.
 }
