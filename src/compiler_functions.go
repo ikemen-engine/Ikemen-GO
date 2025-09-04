@@ -1,3 +1,16 @@
+// compiler_functions.go - state controller parsers
+//
+// These helpers interpret the scripting language used in ZSS/CNS state files.
+// Grammar is INI-inspired: each controller block lists parameters as
+// `key = value` pairs, which are tokenized and parsed into an AST before
+// being emitted as bytecode consumed by the engine.
+//
+// Example – adding a new language construct `flash`:
+//  1. Implement a handler `func (c *Compiler) flash(...)` in this file.
+//  2. Register it in `newCompiler()`'s `scmap` (see compiler.go).
+//
+// Errors from these functions propagate upward; callers should stop
+// compilation and report the issue to the user.
 package main
 
 import (
