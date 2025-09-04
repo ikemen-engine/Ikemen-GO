@@ -1,3 +1,9 @@
+// Font rendering and caching infrastructure.
+//
+// This file centralizes font handling for the engine. Glyphs are cached for
+// efficient reuse, drawing is delegated to the active rendering backend, and
+// safe extension zones are marked for developers who wish to plug in new
+// font formats or backends without touching core logic.
 package main
 
 import (
@@ -8,7 +14,11 @@ import (
 	"strings"
 )
 
-// FntCharImage stores sprite and position
+// FntCharImage represents a single glyph within the font atlas.
+//
+// The engine indexes glyphs by rune; ASCII characters map directly while
+// multibyte runes allow full Unicode text. Each entry stores the horizontal
+// offset and width alongside sprite data for each palette bank.
 type FntCharImage struct {
 	ofs, w uint16
 	img    []Sprite
@@ -21,7 +31,12 @@ type TtfFont interface {
 	Printf(x, y float32, scale float32, align int32, blend bool, window [4]int32, fs string, argv ...interface{}) error
 }
 
-// Fnt is a interface for basic font information
+// Fnt describes a cached font and its glyphs.
+//
+// The images map stores glyphs keyed by Unicode rune and bank. Using runes
+// enables seamless handling of ASCII and extended Unicode characters.
+// Colors and other metadata allow both palette and TrueType backends to
+// share this structure.
 type Fnt struct {
 	images    map[int32]map[rune]*FntCharImage
 	palettes  [][256]uint32
@@ -467,6 +482,12 @@ func (f *Fnt) drawChar(
 	return float32(spr.Size[0]) * xscl
 }
 
+// Print dispatches text rendering to the appropriate backend.
+//
+// txt is drawn at (x, y) with scaling (xscl, yscl). rxadd applies horizontal
+// shear and rot specifies rotation. bank selects the palette or sprite bank.
+// Alignment uses >0 left, 0 center and <0 right. window clips drawing. Color
+// information is supplied either via palfx (sprite fonts) or frgba (TrueType).
 func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, bank, align int32,
 	window *[4]int32, palfx *PalFX, frgba [4]float32) {
 	if !sys.frameSkip {
@@ -478,7 +499,10 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, b
 	}
 }
 
-// DrawText prints on screen a specified text with the current font sprites
+// DrawText renders sprite-based text.
+//
+// Alignment uses >0 left, 0 center and <0 right. Colors come from the
+// palette bank with additional effects via palfx.
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, bank, align int32, window *[4]int32, palfx *PalFX) {
 
 	if len(txt) == 0 || xscl == 0 || yscl == 0 {
@@ -493,7 +517,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation
 		bank = 0
 	}
 
-	// not existing characters treated as space
+	// [PITFALL] No glyph fallback: unknown runes become spaces
 	for i, c := range txt {
 		if c != ' ' && f.images[bt][c] == nil {
 			//txt = strings.Replace(txt, string(c), " ", -1)
@@ -566,6 +590,10 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation
 	}
 }
 
+// DrawTtf renders TrueType fonts using RGBA colors.
+//
+// align follows the same semantics as DrawText. frgba specifies the text
+// color, while blend toggles alpha blending.
 func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
 	blend bool, window *[4]int32, frgba [4]float32) {
 
