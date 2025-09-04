@@ -1,3 +1,14 @@
+// Package main wires Ikemen GO's audio pipeline.  Sound effects and
+// background music are decoded with gopxl/beep's format-specific
+// packages, resampled to `audioFrequency` (48 kHz), mixed and finally
+// sent to the speaker.  Normalisation, panning and channel priorities
+// are handled here to provide a consistent sound stage.
+//
+// Dependencies: gopxl/beep/v2 and subpackages (wav, mp3, flac, vorbis,
+// midi), plus the standard library packages listed below.
+//
+// [PITFALL] Failing to close files when decode errors occur will leak
+// file descriptors.
 package main
 
 import (
@@ -159,8 +170,8 @@ func (sw *SwapSeeker) Err() error {
 }
 
 // ------------------------------------------------------------------
-// BufferSeeker ‒ wraps *beep.Buffer and gives an in-memory
-// StreamSeeker
+// BufferSeeker wraps a decoded *beep.Buffer and exposes it as an
+// in-memory StreamSeeker used for looping BGM without hitting disk.
 type BufferSeeker struct {
 	buf *beep.Buffer  // the decoded audio buffer
 	pos int           // absolute position in samples
@@ -278,8 +289,10 @@ func (b *StreamLooper) Seek(p int) error {
 }
 
 // ------------------------------------------------------------------
-// Bgm
-
+// Bgm manages background music playback including decoding, looping and
+// volume control.
+// loop positions and startPos are measured in sample frames at the
+// source format's sample rate (Hz).
 type Bgm struct {
 	filename   string
 	bgmVolume  int
@@ -300,6 +313,13 @@ func newBgm() *Bgm {
 	return &Bgm{}
 }
 
+// Open loads the audio file at `filename` and starts playback. Loop
+// points and `startPosition` are expressed in samples; `freqmul`
+// multiplies the original playback frequency (1.0 preserves the
+// decoded Hz).
+//
+// [PITFALL] The file handle is closed on decode errors. Forgetting to
+// close it will leak descriptors.
 func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32, loopcount int) {
 	// Right away, cancel any running goroutines.
 	bgm.mu.Lock()
@@ -495,6 +515,9 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	}
 }
 
+// loadSoundFont loads a SF2 soundfont used for MIDI playback.
+// [PITFALL] The caller must ensure the returned SoundFont is closed when
+// no longer needed; the file is closed on decode errors to avoid leaks.
 func loadSoundFont(filename string) (*midi.SoundFont, error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -597,14 +620,17 @@ func (bgm *Bgm) Seek(positionSample int) {
 }
 
 // ------------------------------------------------------------------
-// Sound
-
+// Sound is an in-memory PCM buffer decoded from a wav entry inside an
+// SND archive. The length field counts sample frames.
 type Sound struct {
 	wavData []byte
 	format  beep.Format
 	length  int
 }
 
+// readSound reads `size` bytes from `f` and decodes them as a WAV
+// sound.  The returned Sound reports its length in sample frames at
+// `fmt.SampleRate` Hz.
 func readSound(f io.ReadSeekCloser, size uint32) (*Sound, error) {
 	if size < 128 {
 		return nil, fmt.Errorf("wav size is too small")
@@ -639,8 +665,8 @@ func (s *Sound) GetStreamer() beep.StreamSeeker {
 }
 
 // ------------------------------------------------------------------
-// Snd
-
+// Snd is a collection of Sound buffers indexed by group and number from
+// an Elecbyte `.snd` archive.
 type Snd struct {
 	table     map[[2]int32]*Sound
 	ver, ver2 uint16
@@ -654,9 +680,10 @@ func LoadSnd(filename string) (*Snd, error) {
 	return LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] >= 0 && gn[1] >= 0 }, 0)
 }
 
-// Parse a .snd file and return an Snd structure with its contents
-// The "keepItem" function allows to filter out unwanted waves.
-// If max > 0, the function returns immediately when a matching entry is found. It also gives up after "max" non-matching entries.
+// LoadSndFiltered parses a `.snd` file and fills an Snd with the waves
+// matching `keepItem`.  `max` limits the number of sounds read.  Sound
+// lengths are measured in sample frames at their respective sample rate
+// (Hz).
 func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) (*Snd, error) {
 	s := newSnd()
 	f, err := OpenFile(filename)
@@ -758,8 +785,9 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
 }
 
 // ------------------------------------------------------------------
-// SoundEffect (handles volume and panning)
-
+// SoundEffect wraps a streamer with volume, panning and priority
+// settings used by a SoundChannel. `volume` ranges 0..512 while
+// `freqmul` scales playback pitch.
 type SoundEffect struct {
 	streamer beep.Streamer
 	volume   float32
@@ -772,6 +800,8 @@ type SoundEffect struct {
 	startPos int
 }
 
+// Stream applies volume/pan and writes stereo frames to `samples`.
+// Each frame represents 1 / SampleRate seconds (ms) of audio.
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
 	lv, rv := s.volume, s.volume
@@ -801,8 +831,8 @@ func (s *SoundEffect) Err() error {
 }
 
 // ------------------------------------------------------------------
-// SoundChannel
-
+// SoundChannel represents a single sound effect player with its own
+// control block and looping state.
 type SoundChannel struct {
 	streamer          beep.StreamSeeker
 	sfx               *SoundEffect
@@ -814,6 +844,9 @@ type SoundChannel struct {
 	number            int32
 }
 
+// Play starts playback on the channel. Loop points and `startPosition`
+// are measured in samples at the source's sample rate (Hz). `freqmul`
+// scales the playback frequency; a value of 2 doubles pitch.
 func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul float32, loopStart, loopEnd, startPosition int) {
 	if sound == nil {
 		return
@@ -923,8 +956,8 @@ func (s *SoundChannel) SetLoopPoints(loopstart, loopend int) {
 }
 
 // ------------------------------------------------------------------
-// SoundChannels (collection of prioritised sound channels)
-
+// SoundChannels manages a priority-ordered collection of SoundChannel
+// players used for sound effects.
 type SoundChannels struct {
 	channels  []SoundChannel
 	volResume []float32
@@ -993,6 +1026,10 @@ func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	}
 	return nil
 }
+
+// Play reserves a channel and starts playback. `loopStart`, `loopEnd`
+// and `startPosition` use sample offsets (1/sampleRate seconds). `pan`
+// ranges -1..1 and `volumescale` is in 0..256 units.
 func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan float32, loopStart, loopEnd, startPosition int) bool {
 	if sound == nil {
 		return false
