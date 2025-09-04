@@ -1,5 +1,10 @@
 //go:build kinc
 
+// Kinc rendering backend using CGO bindings.
+//
+// Requires the Kinc library and a compatible GPU driver. [PITFALL]
+// Context loss or driver incompatibilities will invalidate GPU
+// resources and may crash rendering.
 package main
 
 import (
@@ -56,8 +61,9 @@ var BlendFunctionLUT = map[BlendFunc]C.kinc_g4_blending_factor_t{
 }
 
 // ------------------------------------------------------------------
-// Texture
-
+// Texture encapsulates a Kinc texture handle.
+// Lifetime: freed via a finalizer; invalid after context loss. Not
+// goroutine-safe.
 type Texture struct {
 	width  int32
 	height int32
@@ -114,6 +120,9 @@ type PipelineParams struct {
 	dst BlendFunc
 }
 
+// Pipeline caches a compiled Kinc pipeline and its uniform/texture
+// locations. Lifetime: owned by the renderer; not safe for concurrent
+// use.
 type Pipeline struct {
 	kp *C.kinc_g4_pipeline_t
 	u  map[string]C.kinc_g4_constant_location_t
@@ -137,8 +146,9 @@ func (p *Pipeline) RegisterUniforms(names ...string) {
 }
 
 // ------------------------------------------------------------------
-// Renderer
-
+// Renderer orchestrates Kinc GPU state and buffers. Resources are
+// allocated in Init and released on Close; calls must occur on the
+// render thread.
 type Renderer struct {
 	layout       *C.kinc_g4_vertex_structure_t
 	indexBuffer  *C.kinc_g4_index_buffer_t
@@ -299,6 +309,8 @@ func (r *Renderer) SetVertexData(values ...float32) {
 	C.kinc_g4_vertex_buffer_unlock_all(r.vertexBuffer)
 }
 
+// RenderQuad draws the currently configured quad. Must be invoked on
+// the render thread and assumes buffers are pre-populated.
 func (r *Renderer) RenderQuad() {
 	C.kinc_g4_set_vertex_buffer(r.vertexBuffer)
 	C.kinc_g4_set_index_buffer(r.indexBuffer)

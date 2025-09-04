@@ -1,3 +1,10 @@
+// Rendering interface and embedded shader sources.
+//
+// This file defines backend-agnostic abstractions that every renderer
+// must implement. Calls are expected to occur on the main rendering
+// thread and assume a valid GPU context. [PITFALL] Context loss or
+// incompatible GPU drivers will invalidate resources and may crash
+// rendering.
 package main
 
 import (
@@ -70,10 +77,25 @@ type Renderer interface {
 	SetModelVertexData(bufferIndex uint32, values []byte)
 	SetModelIndexData(bufferIndex uint32, values ...uint32)
 
+	// RenderQuad draws a screen-aligned quad using the current
+	// pipeline state. Not safe for concurrent use; keep state changes
+	// minimal for best performance.
 	RenderQuad()
+	// RenderElements issues an indexed draw call.
+	// mode selects primitive topology, count is element count, and
+	// offset is the starting byte within the index buffer. Not
+	// goroutine-safe.
 	RenderElements(mode PrimitiveMode, count, offset int)
+	// RenderCubeMap converts an environment texture into a cube map.
+	// Must be invoked on the render thread and may perform multiple
+	// draw calls internally.
 	RenderCubeMap(envTexture Texture, cubeTexture Texture)
+	// RenderFilteredCubeMap prefilters a cube map for image-based
+	// lighting. High sample counts improve quality at the cost of
+	// CPU/GPU time.
 	RenderFilteredCubeMap(distribution int32, cubeTexture Texture, filteredTexture Texture, mipmapLevel, sampleCount int32, roughness float32)
+	// RenderLUT generates a lookup table texture for BRDF
+	// integration. Expensive; run during initialization.
 	RenderLUT(distribution int32, cubeTexture Texture, lutTexture Texture, sampleCount int32)
 }
 
