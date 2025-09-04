@@ -8,6 +8,26 @@ import (
 	"strings"
 )
 
+// -----------------------------------------------------------------------------
+// Lifebar <-> fight.def mapping
+//
+// The lifebar system reads parameters from fight.def using prefixes such as
+// "p1." and "p2.". Each section populates the structures below:
+//   * HealthBar  - [Lifebar]       p<n>.* (pos, range.x, bg0., top., front., ...)
+//   * PowerBar   - [Powerbar]      p<n>.powerbar.* (pos, range, level<n>.snd, ...)
+//   * GuardBar   - [Guardbar]      p<n>.guardbar.* (pos, range, warn.range, ...)
+//   * StunBar    - [Stunbar]       p<n>.stunbar.* (pos, range, warn.range, ...)
+// Additional elements like win icons or timers are mapped in a similar fashion.
+// See data/system.base.def for the exhaustive list of parameters.
+//
+// [EXAMPLE] Adding a custom bar
+// ------------------------------------
+// 1. Define a struct with position, range and AnimLayout fields (e.g. PoisonBar).
+// 2. Extend loadLifebar to parse `[PoisonBar]` p<n>.poisonbar.* entries.
+// 3. Add step/bgDraw/draw methods mirroring GuardBar or StunBar.
+// 4. Include the new bar in Lifebar.step and Lifebar.draw loops.
+// -----------------------------------------------------------------------------
+
 type FinishType int32
 
 const (
@@ -377,6 +397,10 @@ func calcBarFillRect(pos int32, range_ [2]int32, offset, scale, screenScale, mid
 	return
 }
 
+// HealthBar represents a player's life gauge. Coordinates use lifebar
+// localcoord pixels with the origin at the top-left corner of the screen.
+// `pos` is the drawing origin, while `range_x`/`range_y` describe the pixel
+// span that fills in proportion to remaining life.
 type HealthBar struct {
 	pos        [2]int32
 	range_x    [2]int32
@@ -463,6 +487,8 @@ func readHealthBar(pre string, is IniSection,
 	return hb
 }
 
+// step updates life values and animation frames for the HealthBar. It also
+// calculates midlife delays and gradients used by the draw routines.
 func (hb *HealthBar) step(ref int, hbr *HealthBar) {
 	var life float32 = float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
 	//redlife := (float32(sys.chars[ref][0].life) + float32(sys.chars[ref][0].redLife)) / float32(sys.chars[ref][0].lifeMax)
@@ -580,12 +606,14 @@ func (hb *HealthBar) reset() {
 }
 
 func (hb *HealthBar) bgDraw(layerno int16) {
+	// bgDraw renders static background layers of the health bar.
 	hb.bg0.Draw(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 	hb.bg1.Draw(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 	hb.bg2.Draw(float32(hb.pos[0])+sys.lifebarOffsetX, float32(hb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 }
 
 func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
+	// draw renders the fill, foreground and value text for the health bar.
 	life := float32(sys.chars[ref][0].life) / float32(sys.chars[ref][0].lifeMax)
 	redlife := float32(sys.chars[ref][0].redLife) / float32(sys.chars[ref][0].lifeMax)
 	redval := sys.chars[ref][0].redLife - sys.chars[ref][0].life
@@ -729,6 +757,9 @@ func (hb *HealthBar) draw(layerno int16, ref int, hbr *HealthBar, f []*Fnt) {
 	}
 }
 
+// PowerBar renders the player's power meter. All positions and ranges are
+// specified in lifebar localcoord pixels (origin at top-left). The bar fills
+// according to power level and supports optional level sound triggers.
 type PowerBar struct {
 	pos              [2]int32
 	range_x          [2]int32
@@ -817,6 +848,8 @@ func readPowerBar(pre string, is IniSection,
 	return pb
 }
 
+// step advances power meter animations and plays level sounds when power
+// thresholds are crossed. It also manages the draining midpower overlay.
 func (pb *PowerBar) step(ref int, pbr *PowerBar, snd *Snd) {
 	pbval := sys.chars[ref][0].getPower()
 	power := float32(pbval) / float32(sys.chars[ref][0].powerMax)
@@ -913,6 +946,8 @@ func (pb *PowerBar) reset() {
 	pb.shift.anim.dstAlpha = 255
 }
 
+// bgDraw renders background layers for the power bar. It selects the background
+// variant based on current power level.
 func (pb *PowerBar) bgDraw(layerno int16, ref int) {
 	pbval := sys.chars[ref][0].getPower()
 	var fv int32
@@ -926,6 +961,8 @@ func (pb *PowerBar) bgDraw(layerno int16, ref int) {
 	pb.bg2.Draw(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 }
 
+// draw renders the filled portion of the power bar, numeric counters, and
+// applies scaling or clipping based on current power.
 func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 	pbval := sys.chars[ref][0].getPower()
 	power := float32(pbval) / float32(sys.chars[ref][0].powerMax)
@@ -1047,6 +1084,9 @@ func (pb *PowerBar) draw(layerno int16, ref int, pbr *PowerBar, f []*Fnt) {
 	pb.top.Draw(float32(pb.pos[0])+sys.lifebarOffsetX, float32(pb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 }
 
+// GuardBar tracks guard durability. Coordinates are lifebar local pixels with
+// origin at top-left. `pos` anchors the bar and `range_x`/`range_y` define the
+// fill direction. When the guard meter empties it can trigger warnings.
 type GuardBar struct {
 	pos         [2]int32
 	range_x     [2]int32
@@ -1102,6 +1142,8 @@ func readGuardBar(pre string, is IniSection,
 	return gb
 }
 
+// step updates guard bar animations and the draining overlay. If the character
+// has guard break disabled the update is skipped.
 func (gb *GuardBar) step(ref int, gbr *GuardBar, snd *Snd) {
 	if !sys.chars[ref][0].guardBreakEnabled() {
 		return
@@ -1168,6 +1210,7 @@ func (gb *GuardBar) reset() {
 	gb.warn.Reset()
 }
 
+// bgDraw draws the static backgrounds of the guard bar.
 func (gb *GuardBar) bgDraw(layerno int16) {
 	// Handled in outer loop
 	//if !sys.lifebar.guardbar {
@@ -1179,6 +1222,7 @@ func (gb *GuardBar) bgDraw(layerno int16) {
 	gb.bg2.Draw(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 }
 
+// draw renders the filled portion, values and warnings for the guard bar.
 func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	// Handled in outer loop
 	//if !sys.lifebar.guardbar {
@@ -1282,6 +1326,9 @@ func (gb *GuardBar) draw(layerno int16, ref int, gbr *GuardBar, f []*Fnt) {
 	gb.top.Draw(float32(gb.pos[0])+sys.lifebarOffsetX, float32(gb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 }
 
+// StunBar displays dizzy accumulation. Coordinates use lifebar local pixels
+// (origin at top-left). The bar fills according to dizzy points and can invert
+// its fill direction depending on configuration.
 type StunBar struct {
 	pos         [2]int32
 	range_x     [2]int32
@@ -1337,6 +1384,8 @@ func readStunBar(pre string, is IniSection,
 	return sb
 }
 
+// step updates dizzy bar animations and the draining overlay. It is skipped if
+// the character's dizzy system is disabled.
 func (sb *StunBar) step(ref int, sbr *StunBar, snd *Snd) {
 	if !sys.chars[ref][0].dizzyEnabled() {
 		return
@@ -1401,6 +1450,7 @@ func (sb *StunBar) reset() {
 	sb.warn.Reset()
 }
 
+// bgDraw draws the static backgrounds for the stun bar.
 func (sb *StunBar) bgDraw(layerno int16) {
 	// Handled in outer loop
 	//if !sys.lifebar.stunbar {
@@ -1412,6 +1462,7 @@ func (sb *StunBar) bgDraw(layerno int16) {
 	sb.bg2.Draw(float32(sb.pos[0])+sys.lifebarOffsetX, float32(sb.pos[1])+sys.lifebarOffsetY, layerno, sys.lifebarScale)
 }
 
+// draw renders the filled portion, value text and warnings for the stun bar.
 func (sb *StunBar) draw(layerno int16, ref int, sbr *StunBar, f []*Fnt) {
 	// Handled in outer loop
 	//if !sys.lifebar.stunbar {
