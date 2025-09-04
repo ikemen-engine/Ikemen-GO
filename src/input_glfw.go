@@ -1,5 +1,10 @@
 //go:build !kinc
 
+// input_glfw.go implements desktop input using GLFW.
+// It translates keyboard and joystick events into the
+// platform-agnostic structures consumed by the core logic.
+// [PITFALL] Differences in joystick drivers may report axes
+// differently across platforms.
 package main
 
 import (
@@ -12,6 +17,7 @@ import (
 	glfw "github.com/go-gl/glfw/v3.3/glfw"
 )
 
+// Input wraps GLFW joystick handles for polling.
 type Input struct {
 	joystick []glfw.Joystick
 }
@@ -155,6 +161,7 @@ func init() {
 	}
 }
 
+// StringToKey maps a key name to its GLFW code.
 func StringToKey(s string) glfw.Key {
 	if key, ok := StringToKeyLUT[s]; ok {
 		return key
@@ -162,6 +169,7 @@ func StringToKey(s string) glfw.Key {
 	return glfw.KeyUnknown
 }
 
+// KeyToString returns the lookup name for a GLFW key code.
 func KeyToString(k glfw.Key) string {
 	if s, ok := KeyToStringLUT[k]; ok {
 		return s
@@ -169,6 +177,7 @@ func KeyToString(k glfw.Key) string {
 	return ""
 }
 
+// NewModifierKey builds a GLFW modifier mask.
 func NewModifierKey(ctrl, alt, shift bool) (mod glfw.ModifierKey) {
 	if ctrl {
 		mod |= glfw.ModControl
@@ -190,10 +199,12 @@ var input = Input{
 		glfw.Joystick16},
 }
 
+// GetMaxJoystickCount returns the number of supported joysticks.
 func (input *Input) GetMaxJoystickCount() int {
 	return len(input.joystick)
 }
 
+// IsJoystickPresent checks if the given joystick is available.
 func (input *Input) IsJoystickPresent(joy int) bool {
 	if joy < 0 || joy >= len(input.joystick) {
 		return false
@@ -201,6 +212,7 @@ func (input *Input) IsJoystickPresent(joy int) bool {
 	return input.joystick[joy].Present()
 }
 
+// GetJoystickName retrieves the system name for the joystick.
 func (input *Input) GetJoystickName(joy int) string {
 	if joy < 0 || joy >= len(input.joystick) {
 		return ""
@@ -208,6 +220,7 @@ func (input *Input) GetJoystickName(joy int) string {
 	return input.joystick[joy].GetGamepadName()
 }
 
+// GetJoystickAxes returns the analog axes state for a joystick.
 func (input *Input) GetJoystickAxes(joy int) []float32 {
 	if joy < 0 || joy >= len(input.joystick) {
 		return []float32{}
@@ -215,6 +228,7 @@ func (input *Input) GetJoystickAxes(joy int) []float32 {
 	return input.joystick[joy].GetAxes()
 }
 
+// GetJoystickButtons returns button states for a joystick.
 func (input *Input) GetJoystickButtons(joy int) []glfw.Action {
 	if joy < 0 || joy >= len(input.joystick) {
 		return []glfw.Action{}
@@ -222,6 +236,7 @@ func (input *Input) GetJoystickButtons(joy int) []glfw.Action {
 	return input.joystick[joy].GetButtons()
 }
 
+// GetJoystickGUID reports the GUID associated with the joystick.
 func (input *Input) GetJoystickGUID(joy int) string {
 	if joy < 0 || joy >= len(input.joystick) {
 		return ""
@@ -229,6 +244,7 @@ func (input *Input) GetJoystickGUID(joy int) string {
 	return input.joystick[joy].GetGUID()
 }
 
+// GetJoystickIndices returns indices of joysticks matching a GUID.
 func (input *Input) GetJoystickIndices(guid string) []int {
 	if guid != "" {
 		numIdenticalJoyFound := 0
@@ -252,7 +268,10 @@ func (input *Input) GetJoystickIndices(guid string) []int {
 	return slice
 }
 
-// From @leonkasovan's branch
+// CheckAxisForDpad converts joystick axes into simulated D-pad
+// button indices.
+// [PITFALL] Some joysticks omit axes leading to out-of-bounds
+// access; guard accordingly.
 func CheckAxisForDpad(joy int, axes *[]float32, base int) string {
 	var s string = ""
 	if (*axes)[0] > sys.cfg.Input.ControllerStickSensitivity { // right
@@ -272,7 +291,9 @@ func CheckAxisForDpad(joy int, axes *[]float32, base int) string {
 	return s
 }
 
-// Adapted from @leonkasovan's branch (GLFW controllers are handled slightly differently depending on OS)
+// CheckAxisForTrigger handles analog trigger axes across
+// multiple OS backends.
+// [PITFALL] Trigger axes numbering differs on various drivers.
 func CheckAxisForTrigger(joy int, axes *[]float32) string {
 	var s string = ""
 	for i := range *axes {

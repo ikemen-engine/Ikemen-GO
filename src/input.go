@@ -1,3 +1,8 @@
+// input.go houses platform-agnostic input handling.
+// It manages polling cycles, debouncing, and mapping state
+// into command buffers for further processing.
+// [PITFALL] conflicting directional inputs are filtered,
+// but misconfiguration can still cause stuck directions.
 package main
 
 import (
@@ -15,12 +20,15 @@ var ModCtrlAlt = NewModifierKey(true, true, false)
 var ModCtrlAltShift = NewModifierKey(true, true, true)
 
 // CommandList > Command > CommandStep > CommandStepKey
+// CommandStepKey represents a single key element in a command
+// sequence. Directional entries and button presses are chained
+// together to build complex commands.
 type CommandStepKey struct {
-	key        CommandKey
-	slash      bool
-	tilde      bool
-	dollar     bool
-	chargetime int32
+	key        CommandKey // input key represented in this step
+	slash      bool       // indicates that key must be held
+	tilde      bool       // signals key release
+	dollar     bool       // denotes a charge requirement
+	chargetime int32      // duration key must be held
 }
 
 type CommandKey byte
@@ -69,6 +77,7 @@ func (ck CommandStepKey) IsButtonRelease() bool {
 	return ck.tilde && ck.key >= CK_a && ck.key <= CK_m
 }
 
+// NetState represents the state of a network session.
 type NetState int
 
 const (
@@ -79,18 +88,23 @@ const (
 	NS_Error
 )
 
+// ShortcutScript binds a key combination to a script
+// that can be executed during runtime.
 type ShortcutScript struct {
-	Activate bool
-	Script   string
-	Pause    bool
-	DebugKey bool
+	Activate bool   // flag indicating activation request
+	Script   string // script source to execute
+	Pause    bool   // pause game when running script
+	DebugKey bool   // script only runs when debug keys allowed
 }
 
+// ShortcutKey pairs a key code with modifier flags.
 type ShortcutKey struct {
-	Key Key
-	Mod ModifierKey
+	Key Key         // key code to match
+	Mod ModifierKey // required modifiers (ctrl/alt/shift)
 }
 
+// NewShortcutKey constructs a ShortcutKey with
+// optional ctrl/alt/shift modifiers.
 func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
 	sk := &ShortcutKey{}
 	sk.Key = key
@@ -98,10 +112,14 @@ func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
 	return sk
 }
 
+// Test returns true when the supplied key and modifiers
+// match this shortcut.
 func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 	return k == sk.Key && (m&ModCtrlAltShift) == sk.Mod
 }
 
+// OnKeyReleased updates the global key state when a key
+// is released, resetting debounce timers and recorded text.
 func OnKeyReleased(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
 		sys.keyState[key] = false
@@ -110,6 +128,9 @@ func OnKeyReleased(key Key, mk ModifierKey) {
 	}
 }
 
+// OnKeyPressed registers a key press and triggers
+// shortcut scripts. It also handles special system
+// keys such as screenshot capture and fullscreen toggling.
 func OnKeyPressed(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
 		sys.keyState[key] = true
@@ -132,6 +153,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 	}
 }
 
+// OnTextEntered saves entered text for use in menus or chat.
 func OnTextEntered(s string) {
 	sys.keyString = s
 }
@@ -235,10 +257,11 @@ func JoystickState(joy, button int) bool {
 }
 */
 
-// Checks keyboard and/or joystick input states
-// This is now called only once instead of per button
-// Note: Joystick axes cannot be assigned to buttons, only directions
-// TODO: Maybe an even better solution would be to poll keyboard and joysticks in the same place once per frame then use that cache
+// ControllerState polls the keyboard or joystick once per frame
+// and maps the results into a 14 button boolean array consumed by
+// the command buffer.
+// [PITFALL] Joystick axes cannot be assigned to buttons and
+// simultaneous opposite directions rely on SOCD rules upstream.
 func ControllerState(kc KeyConfig) [14]bool {
 	var out [14]bool
 	joy := kc.Joy
@@ -377,10 +400,11 @@ func ControllerState(kc KeyConfig) [14]bool {
 	return out
 }
 
+// KeyConfig maps a controller's physical inputs to engine actions.
 type KeyConfig struct {
-	Joy, dU, dD, dL, dR, kA, kB, kC, kX, kY, kZ, kS, kD, kW, kM int
-	GUID                                                        string
-	isInitialized                                               bool
+	Joy, dU, dD, dL, dR, kA, kB, kC, kX, kY, kZ, kS, kD, kW, kM int    // button indices
+	GUID                                                        string // joystick identifier
+	isInitialized                                               bool   // true once bindings set
 }
 
 func (kc *KeyConfig) swap(kc2 *KeyConfig) {
@@ -518,24 +542,34 @@ type CommandKeyRemap struct {
 	a, b, c, x, y, z, s, d, w, m CommandKey
 }
 
+// NewCommandKeyRemap returns a default mapping of engine
+// command keys to gameplay buttons.
 func NewCommandKeyRemap() *CommandKeyRemap {
 	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m}
 }
 
 type InputReader struct {
-	SocdAllow          [4]bool // Up, down, back, forward
-	SocdFirst          [4]bool
-	ButtonAssistBuffer [9]bool
+	SocdAllow          [4]bool // allow simultaneous opposite inputs for each direction
+	SocdFirst          [4]bool // tracks first direction held for SOCD resolution
+	ButtonAssistBuffer [9]bool // buffers auto-assist buttons
 }
 
+// NewInputReader creates a fresh reader with SOCD and button
+// assist state cleared.
 func NewInputReader() *InputReader {
 	return &InputReader{}
 }
 
+// Reset clears all buffered state.
 func (ir *InputReader) Reset() {
 	*ir = InputReader{}
 }
 
+// LocalInput polls hardware for the current frame and returns
+// a button array. Debounce and SOCD rules are applied here before
+// mapping into the command buffer.
+// [PITFALL] Platform drivers may report noisy axes leading to
+// phantom directions without proper deadzones.
 func (ir *InputReader) LocalInput(in int, script bool) [14]bool {
 	var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
 
@@ -636,6 +670,10 @@ func (ir *InputReader) LocalInput(in int, script bool) [14]bool {
 
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
 // Left and Right are solved in CommandList Input based on B and F outcome
+// SocdResolution applies simultaneous-opposite-cardinal-direction
+// filtering to avoid impossible inputs.
+// [PITFALL] Misconfigured SOCD rules can leave characters
+// stuck in opposing directions.
 func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) {
 	method := sys.cfg.Input.SOCDResolution
 
@@ -780,6 +818,8 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 }
 
 // Add extra frame of leniency when checking button presses
+// ButtonAssistCheck performs simple debounce and buffering for
+// built-in button assists.
 func (ir *InputReader) ButtonAssistCheck(curr [9]bool) [9]bool {
 	var result [9]bool
 
@@ -805,20 +845,23 @@ func (ir *InputReader) ButtonAssistCheck(curr [9]bool) [9]bool {
 }
 
 // This used to hold button state variables (e.g. U), but that didn't have any info we can't derive from the *b (e.g. Ub) vars
+// InputBuffer stores historical input state for command parsing.
 type InputBuffer struct {
-	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Buffer
-	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
-	Bc, Dc, Fc, Uc, Lc, Rc, Nc             int32 // Charge
-	ac, bc, cc, xc, yc, zc, sc, dc, wc, mc int32
-	InputReader                            *InputReader
+	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32        // direction buffers
+	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32        // button buffers
+	Bc, Dc, Fc, Uc, Lc, Rc, Nc             int32        // direction charge times
+	ac, bc, cc, xc, yc, zc, sc, dc, wc, mc int32        // button charge times
+	InputReader                            *InputReader // raw input source
 }
 
+// NewInputBuffer allocates an InputBuffer with a fresh reader.
 func NewInputBuffer() *InputBuffer {
 	return &InputBuffer{
 		InputReader: NewInputReader(),
 	}
 }
 
+// Reset clears all buffers while preserving the reader.
 func (ib *InputBuffer) Reset() {
 	ir := ib.InputReader
 	*ib = InputBuffer{
@@ -827,7 +870,8 @@ func (ib *InputBuffer) Reset() {
 	ib.InputReader.Reset()
 }
 
-// Updates how long ago a char pressed or released a button
+// updateInputTime advances buffer timers and performs
+// debounce logic for each button and direction.
 func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool) {
 	update := func(held bool, buffer *int32, charge *int32) {
 		// Detect change
@@ -879,7 +923,7 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	update(m, &ib.mb, &ib.mc)
 }
 
-// Check the buffer state of each key
+// State returns the buffer state of each key for command evaluation.
 func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 
 	// Hold simple directions
@@ -1225,7 +1269,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 	return 0
 }
 
-// Return charge time of a key
+// StateCharge returns charge time of a key.
 func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	// Ignore a direction that was just pressed
 	// Fixes an issue where charge for a strict direction release (e.g. ~B) will be overridden if you press a different direction in the next frame
@@ -1553,7 +1597,8 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	return 0
 }
 
-// Time since last change of any key. Used for ">" type commands
+// LastChangeTime reports time since the last input change and is
+// used for ">" type commands.
 func (__ *InputBuffer) LastChangeTime() int32 {
 	dir := Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.Lb), Abs(__.Rb))
 	btn := Min(Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb), Abs(__.mb))
@@ -1561,13 +1606,14 @@ func (__ *InputBuffer) LastChangeTime() int32 {
 	return Min(dir, btn)
 }
 
-// NetBuffer holds the inputs that are sent between players
+// NetBuffer holds the inputs that are sent between players.
 type NetBuffer struct {
-	buf              [32]InputBits
-	curT, inpT, senT int32
-	InputReader      *InputReader
+	buf              [32]InputBits // circular buffer of input bits
+	curT, inpT, senT int32         // timing counters
+	InputReader      *InputReader  // local input source
 }
 
+// NewNetBuffer allocates a buffer with its own reader.
 func NewNetBuffer() NetBuffer {
 	return NetBuffer{
 		InputReader: NewInputReader(),
@@ -1579,7 +1625,7 @@ func (nb *NetBuffer) reset(time int32) {
 	nb.InputReader.Reset()
 }
 
-// Convert local player's key inputs into input bits for sending
+// writeNetBuffer converts local key states to bitfields for network transmission.
 func (nb *NetBuffer) writeNetBuffer(in int) {
 	if nb.inpT-nb.curT < 32 {
 		nb.buf[nb.inpT&31].KeysToBits(nb.InputReader.LocalInput(in, false))
@@ -1587,7 +1633,7 @@ func (nb *NetBuffer) writeNetBuffer(in int) {
 	}
 }
 
-// Read input bits from the net buffer
+// readNetBuffer fetches the next buffered input, mapping bits back to buttons.
 func (nb *NetBuffer) readNetBuffer() [14]bool {
 	if nb.curT < nb.inpT {
 		return nb.buf[nb.curT&31].BitsToKeys()
@@ -1595,17 +1641,17 @@ func (nb *NetBuffer) readNetBuffer() [14]bool {
 	return [14]bool{}
 }
 
-// NetConnection manages the communication between players
+// NetConnection manages the communication between players.
 type NetConnection struct {
-	ln           *net.TCPListener
-	conn         *net.TCPConn
-	st           NetState
-	sendEnd      chan bool
-	recvEnd      chan bool
-	buf          [MaxPlayerNo]NetBuffer
-	locIn        int
-	remIn        int
-	time         int32
+	ln           *net.TCPListener       // listening socket
+	conn         *net.TCPConn           // active connection
+	st           NetState               // current state
+	sendEnd      chan bool              // send goroutine sync
+	recvEnd      chan bool              // recv goroutine sync
+	buf          [MaxPlayerNo]NetBuffer // per-player input buffers
+	locIn        int                    // local player index
+	remIn        int                    // remote player index
+	time         int32                  // sync timer
 	stoppedcnt   int32
 	delay        int32
 	recording    *os.File
@@ -1613,6 +1659,7 @@ type NetConnection struct {
 	preFightTime int32
 }
 
+// NewNetConnection prepares a network session with initial buffers.
 func NewNetConnection() *NetConnection {
 	nc := &NetConnection{st: NS_Stop,
 		sendEnd: make(chan bool, 1), recvEnd: make(chan bool, 1)}
@@ -1626,6 +1673,7 @@ func NewNetConnection() *NetConnection {
 	return nc
 }
 
+// Close terminates sockets and goroutines for the connection.
 func (nc *NetConnection) Close() {
 	if nc.ln != nil {
 		nc.ln.Close()
@@ -1899,18 +1947,21 @@ func (nc *NetConnection) Update() bool {
 	return !sys.gameEnd
 }
 
+// ReplayFile loads and feeds recorded inputs.
 type ReplayFile struct {
-	f      *os.File
-	ibit   [MaxPlayerNo]InputBits
-	pfTime int32
+	f      *os.File               // underlying file handle
+	ibit   [MaxPlayerNo]InputBits // preloaded input bits
+	pfTime int32                  // pre-fight timer
 }
 
+// OpenReplayFile opens a recording for playback.
 func OpenReplayFile(filename string) *ReplayFile {
 	rf := &ReplayFile{}
 	rf.f, _ = os.Open(filename)
 	return rf
 }
 
+// Close releases the underlying file.
 func (rf *ReplayFile) Close() {
 	if rf.f != nil {
 		rf.f.Close()
@@ -2638,19 +2689,21 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 
 // Command List refers to the entire set of a character's commands
 // Each player has multiple lists: one with its own commands, and a copy of each other player's lists
+// CommandList contains all commands available to a character.
 type CommandList struct {
-	Buffer                *InputBuffer // TODO: This should exist higher up in the character. Is probably here because of current menu implementation
-	Names                 map[string]int
-	Commands              [][]Command // [name][commands]
-	DefaultTime           int32
-	DefaultStepTime       int32
-	DefaultAutoGreater    bool
-	DefaultBufferTime     int32
-	DefaultBufferHitpause bool
-	DefaultBufferPauseEnd bool
-	DefaultBufferShared   bool
+	Buffer                *InputBuffer   // source of buffered inputs
+	Names                 map[string]int // command name to index
+	Commands              [][]Command    // [name][variants]
+	DefaultTime           int32          // default overall time window
+	DefaultStepTime       int32          // default per-step time
+	DefaultAutoGreater    bool           // auto-expand steps with ">"
+	DefaultBufferTime     int32          // default input buffer frames
+	DefaultBufferHitpause bool           // allow during hitpause
+	DefaultBufferPauseEnd bool           // allow during pause end
+	DefaultBufferShared   bool           // share buffer across commands
 }
 
+// NewCommandList creates a list using the supplied input buffer.
 func NewCommandList(cb *InputBuffer) *CommandList {
 	return &CommandList{
 		Buffer:                cb,
