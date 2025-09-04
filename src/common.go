@@ -1375,6 +1375,12 @@ func IsZipPath(path string) (isZip bool, zipFilePath string, pathInZip string) {
 	return false, "", ""
 }
 
+// zipMemFileReader wraps a bytes.Reader so that a file extracted from a zip
+// archive satisfies io.ReadSeekCloser. The entire entry is kept in memory and
+// the underlying archive is closed once reading begins.
+// [PITFALL] Cross-platform builds must ensure paths inside archives are
+// normalized with forward slashes or lookups may fail on some operating
+// systems.
 type zipMemFileReader struct {
 	reader     *bytes.Reader   // Reader for the in-memory content of the file in zip
 	zipArchive *zip.ReadCloser // The main zip archive reader
@@ -1394,7 +1400,9 @@ func (zmfr *zipMemFileReader) Close() error {
 }
 
 // OpenFile opens a regular file or a file within a zip archive.
-// For zip files, it reads the entire entry into memory to ensure full io.Seeker compatibility.
+// For zip files, it reads the entire entry into memory to ensure full
+// io.Seeker compatibility and returns a wrapper that closes the archive when
+// the caller is finished.
 // It returns an io.ReadSeekCloser that must be closed by the caller.
 func OpenFile(filename string) (io.ReadSeekCloser, error) {
 	filename = filepath.ToSlash(filename)
