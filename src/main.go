@@ -1,3 +1,14 @@
+// Main entry point for the Ikemen GO engine.
+//
+// Initialization steps:
+// 1. Load configuration.
+// 2. Load assets.
+// 3. Enter the main loop.
+//
+// Dependent modules:
+// - input  (src/input.go)  : user input processing
+// - render (src/render.go) : video rendering
+// - sound  (src/sound.go)  : audio playback
 package main
 
 import (
@@ -66,7 +77,7 @@ func main() {
 	os.Mkdir("save", os.ModeSticky|0755)
 	os.Mkdir("save/replays", os.ModeSticky|0755)
 
-	processCommandLine()
+	processCommandLine() // parse command-line flags into sys.cmdFlags
 
 	// Try reading stats
 	if _, err := os.ReadFile("save/stats.json"); err != nil {
@@ -85,7 +96,7 @@ func main() {
 	}
 
 	if cfg, err := loadConfig(cfgPath); err != nil {
-		chk(err)
+		chk(err) // handle config load errors immediately
 	} else {
 		sys.cfg = *cfg
 	}
@@ -106,6 +117,7 @@ func main() {
 	}
 
 	// Initialize game and create window
+	// Starts goroutines for input, rendering, and sound subsystems
 	sys.luaLState = sys.init(sys.gameWidth, sys.gameHeight)
 	defer sys.shutdown()
 
