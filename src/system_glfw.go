@@ -1,5 +1,9 @@
 //go:build !kinc
 
+// system_glfw.go provides a desktop backend based on the GLFW library.
+// It handles window creation, event polling and OpenGL context setup for
+// the main engine. Compared to the Kinc backend, this implementation relies
+// on GLFW's cross-platform facilities and is tightly coupled with OpenGL.
 package main
 
 import (
@@ -21,18 +25,22 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var window *glfw.Window
 	var monitor *glfw.Monitor
 
-	// Initialize OpenGL
+	// Step 1: initialize the GLFW library and global state. Failure here
+	// propagates through chk(), aborting startup if the OS backend cannot
+	// be prepared.
 	chk(glfw.Init())
 
+	// Step 2: query the primary monitor to determine fullscreen metrics.
 	if monitor = glfw.GetPrimaryMonitor(); monitor == nil {
 		return nil, fmt.Errorf("failed to obtain primary monitor")
 	}
 
-	// "-windowed" overrides the configuration setting but does not change it
+	// Step 3: resolve desired fullscreen/windowed mode. Ownership of the
+	// resulting window remains with the System for later shutdown.
 	_, forceWindowed := sys.cmdFlags["-windowed"]
 	fullscreen := s.cfg.Video.Fullscreen && !forceWindowed
 
-	// Calculate window size & offset it
+	// Step 4: compute window size and offsets prior to creation.
 	var mode = monitor.GetVideoMode()
 	var w2, h2 = w, h
 	if sys.cfg.Video.WindowWidth > 0 || sys.cfg.Video.WindowHeight > 0 {
@@ -42,7 +50,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 
 	glfw.WindowHint(glfw.Resizable, glfw.True)
 
-	// only GL 3.2 needs this
+	// Step 5: configure the desired OpenGL context.
 	if sys.cfg.Video.RenderMode == "OpenGL 3.2" {
 		glfw.WindowHint(glfw.ContextVersionMajor, 3)
 		glfw.WindowHint(glfw.ContextVersionMinor, 2)
@@ -53,7 +61,8 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	}
 
-	// Create main window.
+	// Step 6: create the native window. Errors are wrapped and returned so
+	// that initialization can abort gracefully.
 	// NOTE: Borderless fullscreen is in reality just a window without borders.
 	if fullscreen && !s.cfg.Video.Borderless {
 		window, err = glfw.CreateWindow(w2, h2, s.cfg.Config.WindowTitle, monitor, nil)
@@ -64,7 +73,8 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		return nil, fmt.Errorf("failed to create window: %w", err)
 	}
 
-	// Set windows attributes
+	// Step 7: apply window attributes and input callbacks. The System owns
+	// the resulting window and is responsible for closing it on shutdown.
 	if fullscreen {
 		window.SetPos(0, 0)
 		if s.cfg.Video.Borderless {
@@ -90,6 +100,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		glfw.SwapInterval(s.cfg.Video.VSync)
 	}
 
+	// Step 8: return the initialized window to the caller.
 	ret := &Window{window, s.cfg.Config.WindowTitle, fullscreen, x, y, w, h}
 	return ret, err
 }
@@ -180,6 +191,8 @@ func (w *Window) toggleFullscreen() {
 	w.fullscreen = !w.fullscreen
 }
 
+// pollEvents pumps the GLFW event loop. It must run on the same goroutine
+// that created the window as GLFW is not goroutine-safe.
 func (w *Window) pollEvents() {
 	glfw.PollEvents()
 }
@@ -188,6 +201,8 @@ func (w *Window) shouldClose() bool {
 	return w.Window.ShouldClose()
 }
 
+// Close releases GLFW's global resources. There is no error return from
+// glfw.Terminate(), so shutdown proceeds without additional propagation.
 func (w *Window) Close() {
 	glfw.Terminate()
 }
