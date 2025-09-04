@@ -1,5 +1,24 @@
 package main
 
+// -----------------------------------------------------------------------------
+// Character Module Overview
+//
+// Lifecycle
+//   init() -> load() -> prepareNextRound() -> tick()/cueDraw() -> destroy
+//   Characters progress through scripted states while responding to input or AI.
+//   State controllers mutate fields on Char and may spawn helpers/projectiles.
+//
+// Dependencies
+//   * State machine (StateState) for behavioral scripts.
+//   * Command processing for player inputs or AI generated commands.
+//   * Global system (sys) for scheduling, rendering and shared resources.
+//
+// Safe Extension Points
+//   * Implement additional state controllers or input handlers.
+//   * Extend Char fields that are tagged [Ikemen-Only].
+//   * Hook into CharList.tick/cueDraw for custom logic or rendering layers.
+// -----------------------------------------------------------------------------
+
 import (
 	"fmt"
 	"io"
@@ -2539,136 +2558,136 @@ type CharSystemVar struct {
 }
 
 type Char struct {
-	name                string
-	palfx               *PalFX
-	anim                *Animation
-	animBackup          *Animation
-	curFrame            *AnimFrame
-	cmd                 []CommandList
-	ss                  StateState
-	controller          int
-	id                  int32
-	index               int32
-	runorder            int32
-	helperId            int32
-	helperIndex         int32
-	parentIndex         int32
-	playerNo            int
-	teamside            int
-	keyctrl             [4]bool
-	playerFlag          bool // Root and player type helpers
-	hprojectile         bool // Helper type projectile. Currently unused
-	animPN              int
-	spritePN            int
-	animNo              int32
-	prevAnimNo          int32
-	life                int32
-	lifeMax             int32
-	power               int32
-	powerMax            int32
-	dizzyPoints         int32
-	dizzyPointsMax      int32
-	guardPoints         int32
-	guardPointsMax      int32
-	redLife             int32
-	juggle              int32
-	fallTime            int32
-	localcoord          float32 // Char localcoord[0] scaled to game resolution
-	localscl            float32 // Ratio between 320 and the localcoord of the current state
-	animlocalscl        float32
-	size                CharSize
-	clsnBaseScale       [2]float32
-	clsnScaleMul        [2]float32 // From TransformClsn
-	clsnScale           [2]float32 // The final one
-	clsnAngle           float32
-	zScale              float32
-	hitdef              HitDef
-	ghv                 GetHitVar
-	mhv                 MoveHitVar
-	hitby               [8]HitBy
-	hover               [8]HitOverride
-	hoverIdx            int
-	hoverKeepState      bool
-	mctype              MoveContact
-	mctime              int32
-	children            []*Char
-	isclsnproxy         bool
-	targets             []int32
-	hitdefTargets       []int32
-	hitdefTargetsBuffer []int32
-	enemyNearList       []*Char // Enemies retrieved by EnemyNear
-	p2EnemyList         []*Char // Enemies retrieved by P2, P4, P6 and P8
-	p2EnemyBackup       *Char   // Backup of last valid P2 enemy
-	pos                 [3]float32
-	interPos            [3]float32 // Interpolated position. For the visuals when game and logic speed are different
-	oldPos              [3]float32
-	vel                 [3]float32
-	facing              float32
-	fbFlip              bool
-	cnsvar              map[int32]int32
-	cnsfvar             map[int32]float32
-	cnssysvar           map[int32]int32
-	cnssysfvar          map[int32]float32
-	CharSystemVar
-	aimg              AfterImage
-	soundChannels     SoundChannels
-	p1facing          float32
-	cpucmd            int32
-	offset            [2]float32
-	stchtmp           bool
-	inguarddist       bool
-	pushed            bool
-	hitdefContact     bool
-	atktmp            int8 // 1 hitdef can hit, 0 cannot hit, -1 other
-	hittmp            int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
-	acttmp            int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
-	minus             int8 // Essentially the current negative state
-	platformPosY      float32
-	groundAngle       float32
-	ownpal            bool
-	winquote          int32
-	memberNo          int
-	selectNo          int
-	inheritJuggle     int32
-	inheritChannels   int32
-	mapArray          map[string]float32
-	mapDefault        map[string]float32
-	remapSpr          RemapPreset
-	clipboardText     []string
-	dialogue          []string
-	immortal          bool
-	kovelocity        bool
-	preserve          int32
-	inputFlag         InputBits
-	inputShift        [][2]int
-	pauseBool         bool
-	downHitOffset     bool
-	koEchoTimer       int32
-	groundLevel       float32
-	sizeBox           [4]float32
-	shadowColor       [3]int32
-	shadowIntensity   int32
-	shadowOffset      [2]float32
-	shadowWindow      [4]float32
-	shadowXshear      float32
-	shadowYscale      float32
-	shadowRot         Rotation
-	shadowProjection  Projection
-	shadowfLength     float32
-	reflectColor      [3]int32
-	reflectIntensity  int32
-	reflectOffset     [2]float32
-	reflectWindow     [4]float32
-	reflectXshear     float32
-	reflectYscale     float32
-	reflectRot        Rotation
-	reflectProjection Projection
-	reflectfLength    float32
-	ownclsnscale      bool
-	pushPriority      int32
-	prevfallflag      bool
-	dustOldPos        [3]float32
-	dustTime          int
+	name                string             // character display name; default "" [MUGEN-Compat]
+	palfx               *PalFX             // palette effects controller; nil until round start [MUGEN-Compat]
+	anim                *Animation         // currently playing animation; nil before load [MUGEN-Compat]
+	animBackup          *Animation         // previous animation kept for restoration; nil by default [Ikemen-Only]
+	curFrame            *AnimFrame         // frame processed this tick; nil until animation active [MUGEN-Compat]
+	cmd                 []CommandList      // command lists for inputs; empty slice by default [MUGEN-Compat]
+	ss                  StateState         // current state data; zero-value starts at state 0 [MUGEN-Compat]
+	controller          int                // input controller index; defaults to playerNo or CPU [MUGEN-Compat]
+	id                  int32              // unique runtime id; -1 until assigned [MUGEN-Compat]
+	index               int32              // index within CharList; -1 default [Ikemen-Only]
+	runorder            int32              // processing order within CharList; -1 default [Ikemen-Only]
+	helperId            int32              // helper type identifier; 0 for root [MUGEN-Compat]
+	helperIndex         int32              // helper runtime index; 0 for player [MUGEN-Compat]
+	parentIndex         int32              // reference to parent character; IErr default [MUGEN-Compat]
+	playerNo            int                // player slot number; 0 default [MUGEN-Compat]
+	teamside            int                // team side identifier; 0 default [MUGEN-Compat]
+	keyctrl             [4]bool            // human input permission flags; true for root by default [MUGEN-Compat]
+	playerFlag          bool               // root or player-type helper indicator; set in init [Ikemen-Only]
+	hprojectile         bool               // helper acting as projectile flag; default false [Ikemen-Only]
+	animPN              int                // owner of current animation; defaults to playerNo [MUGEN-Compat]
+	spritePN            int                // owner of current sprites; defaults to playerNo [MUGEN-Compat]
+	animNo              int32              // current animation number; 0 default [MUGEN-Compat]
+	prevAnimNo          int32              // previous animation number for comparison; 0 default [Ikemen-Only]
+	life                int32              // current life points; 0 until loaded [MUGEN-Compat]
+	lifeMax             int32              // maximum life points; 0 until loaded [MUGEN-Compat]
+	power               int32              // current power meter; 0 default [MUGEN-Compat]
+	powerMax            int32              // maximum power meter; 0 default [MUGEN-Compat]
+	dizzyPoints         int32              // accumulated dizzy points; 0 default [Ikemen-Only]
+	dizzyPointsMax      int32              // maximum dizzy points; 0 default [Ikemen-Only]
+	guardPoints         int32              // guard crush gauge; 0 default [Ikemen-Only]
+	guardPointsMax      int32              // maximum guard points; 0 default [Ikemen-Only]
+	redLife             int32              // recoverable life amount; 0 default [Ikemen-Only]
+	juggle              int32              // current juggle counter; 0 default [MUGEN-Compat]
+	fallTime            int32              // frames spent in falling state; 0 default [MUGEN-Compat]
+	localcoord          float32            // char localcoord scaled to game resolution; 0 default [MUGEN-Compat]
+	localscl            float32            // ratio between 320 and state localcoord; 0 default [Ikemen-Only]
+	animlocalscl        float32            // animation-specific scale ratio; 0 default [Ikemen-Only]
+	size                CharSize           // current dimensions; zero value [MUGEN-Compat]
+	clsnBaseScale       [2]float32         // base collision scale; defaults to [1,1] [Ikemen-Only]
+	clsnScaleMul        [2]float32         // TransformClsn multiplier; defaults to [1,1] [Ikemen-Only]
+	clsnScale           [2]float32         // final collision scale; defaults to [1,1] [Ikemen-Only]
+	clsnAngle           float32            // collision box rotation angle; 0 default [Ikemen-Only]
+	zScale              float32            // pseudo-3D Z axis scale; 1 default [Ikemen-Only]
+	hitdef              HitDef             // active HitDef data; zero value [MUGEN-Compat]
+	ghv                 GetHitVar          // get-hit variables; zero value [MUGEN-Compat]
+	mhv                 MoveHitVar         // move-hit variables; zero value [MUGEN-Compat]
+	hitby               [8]HitBy           // hitby filters; zero default [MUGEN-Compat]
+	hover               [8]HitOverride     // hit override filters; zero default [MUGEN-Compat]
+	hoverIdx            int                // last hover index used; -1 default [Ikemen-Only]
+	hoverKeepState      bool               // prevent state change on hit override; false default [Ikemen-Only]
+	mctype              MoveContact        // last move contact type; MC_Hit default [Ikemen-Only]
+	mctime              int32              // timer for move contact; 0 default [Ikemen-Only]
+	children            []*Char            // references to spawned helpers; nil slice default [MUGEN-Compat]
+	isclsnproxy         bool               // using parent's collision boxes; false default [Ikemen-Only]
+	targets             []int32            // ids hit by current hitdef; empty default [MUGEN-Compat]
+	hitdefTargets       []int32            // ids gathered this frame; empty default [Ikemen-Only]
+	hitdefTargetsBuffer []int32            // buffer for target ids; empty default [Ikemen-Only]
+	enemyNearList       []*Char            // cached EnemyNear results; empty default [Ikemen-Only]
+	p2EnemyList         []*Char            // cached P2/P4 etc results; empty default [Ikemen-Only]
+	p2EnemyBackup       *Char              // last valid P2 enemy; nil default [Ikemen-Only]
+	pos                 [3]float32         // current position (x,y,z); zeros default [MUGEN-Compat]
+	interPos            [3]float32         // interpolated position for rendering; zeros default [Ikemen-Only]
+	oldPos              [3]float32         // previous frame position; zeros default [MUGEN-Compat]
+	vel                 [3]float32         // velocity components; zeros default [MUGEN-Compat]
+	facing              float32            // horizontal facing direction; 1 default [MUGEN-Compat]
+	fbFlip              bool               // front/back sprite flip flag; false default [Ikemen-Only]
+	cnsvar              map[int32]int32    // integer var storage; nil map default [MUGEN-Compat]
+	cnsfvar             map[int32]float32  // float var storage; nil map default [MUGEN-Compat]
+	cnssysvar           map[int32]int32    // system var storage; nil map default [Ikemen-Only]
+	cnssysfvar          map[int32]float32  // system fvar storage; nil map default [Ikemen-Only]
+	CharSystemVar                          // embedded engine variables; zero value [Ikemen-Only]
+	aimg                AfterImage         // afterimage controller; zero value [MUGEN-Compat]
+	soundChannels       SoundChannels      // character sound channels; zero value [MUGEN-Compat]
+	p1facing            float32            // facing of P1 for auto-turn; 0 default [Ikemen-Only]
+	cpucmd              int32              // AI selected command index; -1 default [Ikemen-Only]
+	offset              [2]float32         // drawing offset; zeros default [MUGEN-Compat]
+	stchtmp             bool               // temp flag used during state changes; false default [Ikemen-Only]
+	inguarddist         bool               // proximity guard flag; false default [MUGEN-Compat]
+	pushed              bool               // true if being pushed this tick; false default [MUGEN-Compat]
+	hitdefContact       bool               // hitdef connected this tick; false default [MUGEN-Compat]
+	atktmp              int8               // 1 hitdef can hit, 0 cannot, -1 other; 0 default [MUGEN-Compat]
+	hittmp              int8               // 0 idle, 1 hit, 2 falling, -1 reversal; 0 default [MUGEN-Compat]
+	acttmp              int8               // 1 unpaused, 0 default, -1 hitpause, -2 pause; 0 default [MUGEN-Compat]
+	minus               int8               // negative state level; 2 default [MUGEN-Compat]
+	platformPosY        float32            // platform support Y position; 0 default [Ikemen-Only]
+	groundAngle         float32            // current ground angle; 0 default [Ikemen-Only]
+	ownpal              bool               // use own palette; true default [MUGEN-Compat]
+	winquote            int32              // chosen winquote; -1 default [Ikemen-Only]
+	memberNo            int                // member index in team; 0 default [MUGEN-Compat]
+	selectNo            int                // selection table index; 0 default [Ikemen-Only]
+	inheritJuggle       int32              // helper juggle inheritance mode; 0 default [Ikemen-Only]
+	inheritChannels     int32              // helper channel inheritance; 0 default [Ikemen-Only]
+	mapArray            map[string]float32 // remap values; nil default [Ikemen-Only]
+	mapDefault          map[string]float32 // default remap values; nil default [Ikemen-Only]
+	remapSpr            RemapPreset        // sprite remapping preset; zero value [Ikemen-Only]
+	clipboardText       []string           // debug clipboard text; nil default [Ikemen-Only]
+	dialogue            []string           // character dialogue lines; nil default [Ikemen-Only]
+	immortal            bool               // ignore KO flag; false default [Ikemen-Only]
+	kovelocity          bool               // keep velocity after KO; false default [Ikemen-Only]
+	preserve            int32              // frames to preserve state vars; 0 default [Ikemen-Only]
+	inputFlag           InputBits          // current input bits; 0 default [MUGEN-Compat]
+	inputShift          [][2]int           // buffered input data; nil default [MUGEN-Compat]
+	pauseBool           bool               // pause controller active; false default [MUGEN-Compat]
+	downHitOffset       bool               // down-hit offset flag; false default [Ikemen-Only]
+	koEchoTimer         int32              // remaining KO echo frames; 0 default [Ikemen-Only]
+	groundLevel         float32            // current floor level; 0 default [Ikemen-Only]
+	sizeBox             [4]float32         // cached pushbox dimensions; zeros default [Ikemen-Only]
+	shadowColor         [3]int32           // custom shadow color; zeros default [Ikemen-Only]
+	shadowIntensity     int32              // shadow alpha; 0 default [Ikemen-Only]
+	shadowOffset        [2]float32         // shadow draw offset; zeros default [Ikemen-Only]
+	shadowWindow        [4]float32         // shadow clipping window; zeros default [Ikemen-Only]
+	shadowXshear        float32            // shadow x-axis shear; 0 default [Ikemen-Only]
+	shadowYscale        float32            // shadow y-axis scale; 0 default [Ikemen-Only]
+	shadowRot           Rotation           // shadow rotation; zero value [Ikemen-Only]
+	shadowProjection    Projection         // shadow projection type; Projection_Orthographic default [Ikemen-Only]
+	shadowfLength       float32            // shadow perspective length; 0 default [Ikemen-Only]
+	reflectColor        [3]int32           // reflection color; zeros default [Ikemen-Only]
+	reflectIntensity    int32              // reflection alpha; 0 default [Ikemen-Only]
+	reflectOffset       [2]float32         // reflection draw offset; zeros default [Ikemen-Only]
+	reflectWindow       [4]float32         // reflection clipping window; zeros default [Ikemen-Only]
+	reflectXshear       float32            // reflection shear; 0 default [Ikemen-Only]
+	reflectYscale       float32            // reflection y-scale; 0 default [Ikemen-Only]
+	reflectRot          Rotation           // reflection rotation; zero value [Ikemen-Only]
+	reflectProjection   Projection         // reflection projection type; Projection_Orthographic default [Ikemen-Only]
+	reflectfLength      float32            // reflection perspective length; 0 default [Ikemen-Only]
+	ownclsnscale        bool               // apply own collision scaling; false default [Ikemen-Only]
+	pushPriority        int32              // push priority against others; 0 default [Ikemen-Only]
+	prevfallflag        bool               // previous frame fall flag; false default [Ikemen-Only]
+	dustOldPos          [3]float32         // previous pos for dust effects; zeros default [Ikemen-Only]
+	dustTime            int                // frames until dust dissipates; 0 default [Ikemen-Only]
 }
 
 // Add a new char to the game
@@ -2741,6 +2760,9 @@ func (c *Char) init(n int, idx int32) {
 	c.clearState()
 }
 
+// clearState resets state-specific flags and hit variables.
+// Parameters: none. Side effects: mutates c.ss and hit-related structs.
+// Thread-safety: not goroutine-safe.
 func (c *Char) clearState() {
 	c.ss.clear()
 	c.hitdef.clear(c, c.localscl)
@@ -2789,6 +2811,9 @@ func (c *Char) enemyNearP2Clear() {
 }
 
 // Clear character variables upon a new round or creation of a new helper
+// prepareNextRound resets per-round variables and initializes visual effects.
+// Parameters: none. Side effects: clears system vars and resets caches.
+// Thread-safety: not goroutine-safe.
 func (c *Char) prepareNextRound() {
 	c.sysVarRangeSet(0, math.MaxInt32, 0)
 	c.sysFvarRangeSet(0, math.MaxInt32, 0)
@@ -4144,6 +4169,9 @@ func (c *Char) isEnemyOf(e *Char) bool {
 }
 
 // Returns AI level as a float. Is truncated for AIlevel trigger, or not for AIlevelF
+// getAILevel reports the configured AI strength for this character.
+// Helpers return 0 in M.U.G.E.N 1.0 for compatibility.
+// Side effects: none. Thread-safety: read-only but uses global sys.aiLevel.
 func (c *Char) getAILevel() float32 {
 	if c.helperIndex != 0 && c.gi().mugenver[0] == 1 {
 		return 0
@@ -5488,6 +5516,10 @@ func (c *Char) stateChange2() bool {
 	return false
 }
 
+// changeStateEx switches the character to state `no` using player context `pn`.
+// anim, ctrl and ffx optionally override animation, control flag and fall FX.
+// Side effects: updates state machine and may execute controllers.
+// Thread-safety: not safe; interacts with global state.
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	// This is a very specific and undocumented Mugen behavior that was probably superseded by "facep2"
 	// It serves very little purpose while negatively affecting some new Ikemen features like NoTurnTarget
@@ -5514,10 +5546,16 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 	}
 }
 
+// changeState is a convenience wrapper using the character's own player number.
+// Parameters mirror changeStateEx without player context.
+// Side effects: same as changeStateEx.
 func (c *Char) changeState(no, anim, ctrl int32, ffx string) {
 	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl, ffx)
 }
 
+// selfState changes this character's state while optionally reading
+// the state definition from another player via readplayerid.
+// Side effects and thread-safety mirror changeStateEx.
 func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {
 	var playerno int
 	if readplayerid >= 0 {
@@ -5773,6 +5811,9 @@ func (c *Char) getExplods(id int32) (expls []*Explod) {
 	return
 }
 
+// explodDrawPal resolves palette indexes used to render an Explod.
+// Parameter e: target explod. Side effects: none.
+// Thread-safety: read-only.
 func (c *Char) explodDrawPal(e *Explod) [2]int32 {
 	if len(e.palfx.remap) == 0 {
 		return [2]int32{0, 0}
@@ -6138,6 +6179,9 @@ func (c *Char) projInit(p *Projectile, pt PosType, offx, offy, offz float32,
 	}
 }
 
+// projDrawPal resolves palette indexes used to render a Projectile.
+// Parameter p: projectile to draw. Side effects: none.
+// Thread-safety: read-only.
 func (c *Char) projDrawPal(p *Projectile) [2]int32 {
 	if len(p.palfx.remap) == 0 {
 		return [2]int32{0, 0}
@@ -7791,6 +7835,9 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 	}
 }
 
+// getDrawPal resolves palette numbers for drawing based on a palette index.
+// Side effects: none; iterates over global palette tables.
+// Thread-safety: read-only.
 func (c *Char) getDrawPal(palIndex int) [2]int32 {
 	for key, val := range c.gi().palettedata.palList.PalTable {
 		if val == palIndex {
@@ -10501,6 +10548,9 @@ func (c *Char) tick() {
 }
 
 // Prepare collision boxes and debug text for drawing
+// cueDebugDraw queues debug visualization like collision boxes.
+// Parameters: none. Side effects: pushes debug geometry to renderer.
+// Thread-safety: not goroutine-safe.
 func (c *Char) cueDebugDraw() {
 	x := c.pos[0] * c.localscl
 	y := c.pos[1] * c.localscl
@@ -10679,6 +10729,9 @@ func (c *Char) cueDebugDraw() {
 }
 
 // Prepare character sprites for drawing
+// cueDraw queues the character's sprites and child entities for rendering.
+// Parameters: none. Side effects: appends draw operations to global renderer.
+// Thread-safety: not goroutine-safe.
 func (c *Char) cueDraw() {
 	if c.helperIndex < 0 || c.scf(SCF_disabled) {
 		return
@@ -11133,6 +11186,9 @@ func (cl *CharList) update() {
 }
 
 // Check player vs player hits
+// hitDetectionPlayer performs player vs player hit resolution.
+// getter: potential victim being evaluated.
+// Side effects: mutates hit vars and juggle counts. Not thread-safe.
 func (cl *CharList) hitDetectionPlayer(getter *Char) {
 
 	// Stop outer loop if enemy is disabled
@@ -11158,7 +11214,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 			((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
 
 			// Guard distance check
-			// Mugen uses < checks so that 0 does not trigger proximity guard at 0 distance
+			// [INFERRED] M.U.G.E.N uses < comparisons so 0 distance does not trigger proximity guard.
 			// Localcoord conversion is already built into the dist functions, so it will be skipped
 			if c.ss.moveType == MT_A {
 				var inguardx, inguardy, inguardz bool
@@ -11210,6 +11266,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 				}
 			}
 
+			// [INFERRED] Juggle checks reproduce M.U.G.E.N's air combo limits.
 			// In Mugen, you can no longer hit a standing target if you don't have enough points
 			// In Mugen, you can juggle any enemy if they're not your target yet
 			// If IkemenVersion, the rules are a little more consistent
@@ -11361,6 +11418,9 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 }
 
 // Check projectile vs player hits
+// hitDetectionProjectile performs projectile vs player hit checks.
+// getter: potential victim being evaluated.
+// Side effects: mutates hit vars and projectile state. Not thread-safe.
 func (cl *CharList) hitDetectionProjectile(getter *Char) {
 
 	// Stop outer loop if enemy is disabled
@@ -11405,6 +11465,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			}
 
 			// Projectile guard distance check
+			// [INFERRED] Mirrors M.U.G.E.N's proximity guard rules for projectiles.
 			distX := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
 			distY := (getter.pos[1]*getter.localscl - (p.pos[1])*p.localscl)
 			distZ := (getter.pos[2]*getter.localscl - (p.pos[2])*p.localscl)
@@ -11808,6 +11869,8 @@ func (cl *CharList) tick() {
 
 // Prepare characters for drawing
 // We once again check the movetype to minimize the difference between player sides
+// cueDraw prepares characters for rendering grouped by movetype.
+// Side effects: calls each character's cueDraw. Not goroutine-safe.
 func (cl *CharList) cueDraw() {
 	for _, c := range cl.drawOrder {
 		if c != nil && c.ss.moveType == MT_A {
