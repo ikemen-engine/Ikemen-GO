@@ -1,0 +1,29 @@
+; Constants File Template for Ikemen GO
+; Each parameter references M.U.G.E.N documentation and notes compatibility.
+
+[Data]
+life = 1000 ; [MUGEN-Compat] Starting life (M.U.G.E.N docs: CNS -> Data)
+attack = 100 ; [MUGEN-Compat] Base attack strength
+defence = 100 ; [MUGEN-Compat] Base defense power
+fall.defence_up = 50 ; [MUGEN-Compat] Defense increase while falling
+liedown.time = 60 ; [MUGEN-Compat] Time before getting up
+airjuggle = 15 ; [MUGEN-Compat] Juggle capacity
+sparkno = 2 ; [MUGEN-Compat] Default hit spark number
+guard.sparkno = 40 ; [MUGEN-Compat] Guard spark
+KO.echo = 0 ; [MUGEN-Compat] Play KO sound with echo
+volume = 0 ; [MUGEN-Compat] Volume correction
+IntPersistIndex = 0 ; [MUGEN-Compat] Integer persistence starting index
+FloatPersistIndex = 0 ; [MUGEN-Compat] Float persistence starting index
+parry.enabled = 1 ; [Ikemen-Only] Enable parry system
+
+[Velocity]
+walk.fwd = 2.5 ; [MUGEN-Compat] Walk forward speed
+walk.back = -2.5 ; [MUGEN-Compat] Walk backward speed
+run.fwd = 5 ; [MUGEN-Compat] Run forward speed
+run.back = -5 ; [MUGEN-Compat] Run backward speed
+
+[Movement]
+airjump.num = 1 ; [MUGEN-Compat] Number of air jumps
+airjump.height = 35 ; [MUGEN-Compat] Height added by air jump
+yaccel = 0.72 ; [MUGEN-Compat] Gravity applied to player
+air.gethit.groundrecover = 0 ; [Ikemen-Only] Allow quick ground recover from air hit

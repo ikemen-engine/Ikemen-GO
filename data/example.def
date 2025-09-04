@@ -1,0 +1,39 @@
+; Stage Definition Template for Ikemen GO
+; Each parameter references M.U.G.E.N documentation and notes compatibility.
+
+[Info]
+name = "Example Stage" ; [MUGEN-Compat] Internal stage name (M.U.G.E.N docs: stage info)
+displayname = "Example Stage" ; [MUGEN-Compat] Name shown in select screen
+version = "1.0" ; [MUGEN-Compat] Format version
+mugenversion = 1.1 ; [MUGEN-Compat] Required M.U.G.E.N version
+ikemenversion = 0,99,0 ; [Ikemen-Only] Required Ikemen GO version
+
+[Camera]
+startx = 0 ; [MUGEN-Compat] Initial X position of camera
+starty = 0 ; [MUGEN-Compat] Initial Y position of camera
+boundleft = -500 ; [MUGEN-Compat] Minimum X position
+boundright = 500 ; [MUGEN-Compat] Maximum X position
+boundhigh = 0 ; [MUGEN-Compat] Highest Y camera position
+boundlow = 0 ; [MUGEN-Compat] Lowest Y camera position
+
+; [EXAMPLE] Custom wide stage bounds
+;boundleft = -1000
+;boundright = 1000
+
+[StageInfo]
+zoffset = 0 ; [MUGEN-Compat] Player ground level
+zoffsetlink = 1 ; [Ikemen-Only] Link floor to camera
+gravity = 1 ; [MUGEN-Compat] Vertical acceleration applied to players
+
+; [EXAMPLE] Enable vertical scrolling
+;topbound = -240 ; [MUGEN-Compat]
+;botbound = 0 ; [MUGEN-Compat]
+
+[Shadow]
+intensity = 128 ; [MUGEN-Compat] Darkness of shadow
+color = 000000 ; [MUGEN-Compat] Shadow color
+
+[Reflection]
+enabled = 1 ; [Ikemen-Only] Enable stage reflection effect
+
+; End of stage template
