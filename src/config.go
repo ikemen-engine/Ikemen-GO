@@ -1,3 +1,6 @@
+// config.go handles runtime configuration for Ikemen GO.
+// Configuration is loaded from embedded defaults, user INI files, and command-line flags.
+// Parsing and reflection helpers live in iniutils.go.
 package main
 
 import (
@@ -13,11 +16,15 @@ import (
 //go:embed resources/defaultConfig.ini
 var defaultConfig []byte
 
+// AIrampProperties describes the AI difficulty ramp.
+// Start and End store {match, difficulty} pairs.
 type AIrampProperties struct {
-	Start [2]int32 `ini:"start"`
-	End   [2]int32 `ini:"end"`
+	Start [2]int32 `ini:"start"` // {match, diff}
+	End   [2]int32 `ini:"end"`   // {match, diff}
 }
 
+// KeysProperties lists per-player input bindings.
+// Fields hold raw key names; command-line flags such as -nojoy can disable joystick reading.
 type KeysProperties struct {
 	Joystick int    `ini:"Joystick"`
 	Up       string `ini:"Up"`
@@ -51,10 +58,10 @@ type Config struct {
 		Lua     map[string][]string `ini:"map:^(?i)Lua[0-9]*$" lua:"Lua"`
 	} `ini:"Common"`
 	Options struct {
-		Difficulty int     `ini:"Difficulty"`
-		Life       float32 `ini:"Life"`
-		Time       int32   `ini:"Time"`
-		GameSpeed  float32 `ini:"GameSpeed"`
+		Difficulty int     `ini:"Difficulty"` // 1-8 scale; -ailevel flag overrides
+		Life       float32 `ini:"Life"`       // percent of default life
+		Time       int32   `ini:"Time"`       // seconds; -1 = infinite
+		GameSpeed  float32 `ini:"GameSpeed"`  // speed steps [-9..9]; -speed flag overrides
 		Match      struct {
 			Wins         int32 `ini:"Wins"`
 			MaxDrawGames int32 `ini:"MaxDrawGames"`
@@ -69,11 +76,11 @@ type Config struct {
 			Duplicates       bool    `ini:"Duplicates"`
 			LifeShare        bool    `ini:"LifeShare"`
 			PowerShare       bool    `ini:"PowerShare"`
-			SingleVsTeamLife float32 `ini:"SingleVsTeamLife"`
+			SingleVsTeamLife float32 `ini:"SingleVsTeamLife"` // percent
 		} `ini:"Team"`
 		Simul struct {
-			Min   int `ini:"Min"`
-			Max   int `ini:"Max"`
+			Min   int `ini:"Min"` // min team size
+			Max   int `ini:"Max"` // max team size
 			Match struct {
 				Wins int32 `ini:"Wins"`
 			} `ini:"Match"`
@@ -122,7 +129,7 @@ type Config struct {
 	Config struct {
 		Motif               string   `ini:"Motif"`
 		Players             int      `ini:"Players"`
-		Framerate           int      `ini:"Framerate"`
+		Framerate           int      `ini:"Framerate"` // frames per second
 		Language            string   `ini:"Language"`
 		AfterImageMax       int32    `ini:"AfterImageMax"`
 		ExplodMax           int      `ini:"ExplodMax"`
@@ -152,10 +159,10 @@ type Config struct {
 	} `ini:"Debug"`
 	Video struct {
 		RenderMode              string   `ini:"RenderMode"`
-		GameWidth               int32    `ini:"GameWidth"`
-		GameHeight              int32    `ini:"GameHeight"`
-		WindowWidth             int      `ini:"WindowWidth"`
-		WindowHeight            int      `ini:"WindowHeight"`
+		GameWidth               int32    `ini:"GameWidth"`    // pixels; overridden by -width flag
+		GameHeight              int32    `ini:"GameHeight"`   // pixels; overridden by -height flag
+		WindowWidth             int      `ini:"WindowWidth"`  // pixels
+		WindowHeight            int      `ini:"WindowHeight"` // pixels
 		VSync                   int      `ini:"VSync"`
 		Fullscreen              bool     `ini:"Fullscreen"`
 		Borderless              bool     `ini:"Borderless"`
@@ -169,15 +176,15 @@ type Config struct {
 		EnableModelShadow       bool     `ini:"EnableModelShadow"`
 	} `ini:"Video"`
 	Sound struct {
-		SampleRate        int32   `ini:"SampleRate"`
+		SampleRate        int32   `ini:"SampleRate"` // Hz
 		StereoEffects     bool    `ini:"StereoEffects"`
-		PanningRange      float32 `ini:"PanningRange"`
+		PanningRange      float32 `ini:"PanningRange"` // percent
 		WavChannels       int32   `ini:"WavChannels"`
-		MasterVolume      int     `ini:"MasterVolume"`
-		PauseMasterVolume int     `ini:"PauseMasterVolume"`
-		WavVolume         int     `ini:"WavVolume"`
-		BGMVolume         int     `ini:"BGMVolume"`
-		MaxBGMVolume      int     `ini:"MaxBGMVolume"`
+		MasterVolume      int     `ini:"MasterVolume"`      // percent; -setvolume flag overrides
+		PauseMasterVolume int     `ini:"PauseMasterVolume"` // percent
+		WavVolume         int     `ini:"WavVolume"`         // percent
+		BGMVolume         int     `ini:"BGMVolume"`         // percent
+		MaxBGMVolume      int     `ini:"MaxBGMVolume"`      // percent
 		AudioDucking      bool    `ini:"AudioDucking"`
 	} `ini:"Sound"`
 	Arcade struct {
@@ -214,7 +221,10 @@ type Config struct {
 	Joystick map[string]*KeysProperties `ini:"map:^(?i)Joystick_P[0-9]+$" lua:"Joystick"`
 }
 
-// Loads and parses the INI file into a Config struct.
+// loadConfig reads configuration from the provided INI file path.
+// Assumes `def` points to a valid config file; if missing, embedded defaults are used.
+// Command-line flags may override values after loading. Environment variables are ignored.
+// [MUGEN-Compat] Section and key names follow M.U.G.E.N's configuration format.
 func loadConfig(def string) (*Config, error) {
 	// Define load options if needed
 	// https://github.com/go-ini/ini/blob/main/ini.go
@@ -287,13 +297,17 @@ func loadConfig(def string) (*Config, error) {
 	return &c, nil
 }
 
-// Initialize struct
+// initStruct prepares nested maps before assignment.
+// Must be called prior to parsing to avoid nil map writes.
+// [MUGEN-Compat] mirrors M.U.G.E.N's default structure.
 func (c *Config) initStruct() {
 	initMaps(reflect.ValueOf(c).Elem())
 	//applyDefaultsToValue(reflect.ValueOf(c).Elem())
 }
 
-// Normalize values
+// normalize clamps and sanitizes loaded values.
+// Assumes fields are already populated from INI; no environment overrides.
+// [MUGEN-Compat] keeps values within engine-supported ranges.
 func (c *Config) normalize() {
 	c.SetValueUpdate("Options.GameSpeed", ClampF(c.Options.GameSpeed, -9, 9))
 	c.SetValueUpdate("Options.Simul.Min", int(Clamp(int32(c.Options.Simul.Min), 2, int32(MaxSimul))))
@@ -329,7 +343,10 @@ func (c *Config) normalize() {
 	}
 }
 
-// Sets system values
+// sysSet applies configuration to the runtime system.
+// Command-line flags like -width/-height take precedence over INI values.
+// Environment variables are not checked.
+// [MUGEN-Compat] keeps behavior aligned with original key mapping rules.
 func (c *Config) sysSet() {
 	if _, ok := sys.cmdFlags["-width"]; ok {
 		var w, _ = strconv.ParseInt(sys.cmdFlags["-width"], 10, 32)
@@ -405,17 +422,23 @@ func (c *Config) sysSet() {
 	}
 }
 
-// GetValue retrieves the value based on the query string.
+// GetValue returns the value referenced by a dotted query path.
+// Query syntax matches assignField/SetValueUpdate. No env var expansion.
+// [MUGEN-Compat] case-insensitive tags mimic M.U.G.E.N lookups.
 func (c *Config) GetValue(query string) (interface{}, error) {
 	return GetValue(c, query)
 }
 
-// SetValueUpdate sets the value based on the query string and updates the IniFile.
+// SetValueUpdate updates a field using a dotted query path and writes back to IniFile.
+// Accepts basic types; invalid paths return an error. Environment variables are ignored.
+// [MUGEN-Compat] allows runtime overrides similar to original engine's config editing.
 func (c *Config) SetValueUpdate(query string, value interface{}) error {
 	return SetValueUpdate(c, c.IniFile, query, value)
 }
 
-// Save writes the current IniFile to disk, preserving comments and syntax.
+// Save persists the current configuration to disk.
+// Assumes `file` is writeable; environment is not consulted for path expansion.
+// [MUGEN-Compat] preserves INI formatting to match upstream expectations.
 func (c *Config) Save(file string) error {
 	return SaveINI(c.IniFile, file)
 }

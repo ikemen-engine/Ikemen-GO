@@ -542,7 +542,10 @@ func assignToPatternMap(v reflect.Value, lastPartName string, value interface{},
 	return false, v, nil
 }
 
-// assignField assigns a value to a struct field based on query parts
+// assignField assigns a value to a struct field based on query parts.
+// structPtr must be a pointer to the Config tree; parts follow dotted query syntax.
+// Values are taken verbatim—environment variables are not expanded.
+// [MUGEN-Compat] Field lookup is case-insensitive to mirror M.U.G.E.N semantics.
 func assignField(structPtr interface{}, parts []queryPart, value interface{}) error {
 	v := reflect.ValueOf(structPtr)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
@@ -972,7 +975,9 @@ func getValueFromPatternMap(v reflect.Value, partName string) (bool, reflect.Val
 	return false, reflect.Value{}
 }
 
-// GetValue retrieves a value from the struct based on the query and returns it as an interface{}
+// GetValue retrieves a value from the struct based on the query and returns it as an interface{}.
+// structPtr must be a Config pointer; query uses dotted path syntax.
+// Environment variables are not resolved. [MUGEN-Compat] mirrors INI lookup semantics.
 func GetValue(structPtr interface{}, query string) (interface{}, error) {
 	parts := parseQueryPath(query)
 	if len(parts) == 0 {
@@ -1072,7 +1077,10 @@ func SetValue(structPtr interface{}, query string, val interface{}) error {
 	return assignField(structPtr, parts, val)
 }
 
-// SetValueUpdate sets a value and updates the INI file accordingly
+// SetValueUpdate sets a value and updates the INI file accordingly.
+// query uses dotted path syntax referencing struct fields.
+// No environment variable expansion is performed.
+// [MUGEN-Compat] Maintains original INI formatting when writing changes.
 func SetValueUpdate(obj interface{}, iniFile *ini.File, query string, value interface{}) error {
 	err := SetValue(obj, query, value)
 	if err != nil {
