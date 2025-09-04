@@ -1,3 +1,6 @@
+// bgdef.go manages background definitions for stages and screenpacks.
+// It parses stage `.def` files into runtime structures that interact with stage
+// logic and the rendering pipeline each frame.
 package main
 
 import (
@@ -44,37 +47,47 @@ func (bgct *bgcTimeLine) stepBGDef(s *BGDef) {
 	}
 }
 
-// BGDef is used on screenpacks lifebars and stages.
-// Also contains the SFF.
+// BGDef bundles background layers, controllers, and rendering parameters parsed
+// from stage or screenpack `.def` files. It holds pointers to the sprite file
+// (SFF), animation table, and runtime state used by stage logic.
 type BGDef struct {
-	def          string
-	localcoord   [2]float32
-	sff          *Sff
-	at           AnimationTable
-	bg           []*backGround
-	bgc          []bgCtrl
-	bgct         bgcTimeLine
-	bga          bgAction
-	resetbg      bool
-	localscl     float32
-	scale        [2]float32
-	stageprops   StageProps
-	bgclearcolor [3]int32
-	model        *Model
-	sceneNumber  int32
-	fov          float32
-	near         float32
-	far          float32
-	modelOffset  [3]float32
-	modelScale   [3]float32
+	def          string         // [MUGEN-Compat] path to `.def` file
+	localcoord   [2]float32     // [MUGEN-Compat] width,height in pixels (>0); default 320x240 [PITFALL] wrong values skew placement
+	sff          *Sff           // [MUGEN-Compat] sprite file handle; nil if missing [PITFALL] nil yields invisible layers
+	at           AnimationTable // [MUGEN-Compat] animation table extracted from the definition
+	bg           []*backGround  // [MUGEN-Compat] ordered background layers
+	bgc          []bgCtrl       // [MUGEN-Compat] background controller definitions
+	bgct         bgcTimeLine    // [Ikemen-Only] runtime scheduler for controllers
+	bga          bgAction       // [Ikemen-Only] global background action state
+	resetbg      bool           // [Ikemen-Only] reset backgrounds between rounds
+	localscl     float32        // [Ikemen-Only] pixel-to-screen scale factor
+	scale        [2]float32     // [Ikemen-Only] extra scaling multipliers (1=default)
+	stageprops   StageProps     // [MUGEN-Compat] camera and bound properties
+	bgclearcolor [3]int32       // [MUGEN-Compat] RGB clear color (0-255); default black [PITFALL] omission may leave artifacts
+	model        *Model         // [Ikemen-Only] optional 3D model reference
+	sceneNumber  int32          // [Ikemen-Only] 3D scene index (>=0 to enable)
+	fov          float32        // [Ikemen-Only] field of view in degrees; 0 disables perspective
+	near         float32        // [Ikemen-Only] near clipping plane (>0) [PITFALL] zero causes depth issues
+	far          float32        // [Ikemen-Only] far clipping plane (>near) [PITFALL] small values clip models
+	modelOffset  [3]float32     // [Ikemen-Only] 3D model offset (x,y,z) in stage units
+	modelScale   [3]float32     // [Ikemen-Only] 3D model scaling factors; default 1
 }
 
+// newBGDef initializes BGDef with default parameters before parsing a stage
+// definition. Local coordinates default to 320x240 and scaling factors to 1.
+// [PITFALL] Leaving localcoord at the default can misalign high-resolution assets.
 func newBGDef(def string) *BGDef {
 	s := &BGDef{def: def, localcoord: [...]float32{320, 240}, resetbg: true, localscl: 1, scale: [...]float32{1, 1}}
 	s.stageprops = newStageProps()
 	return s
 }
 
+// loadBGDef parses a background definition from a stage `.def` file. The file
+// should contain INI-style sections such as `[info]`, `[<bgname>]`, and
+// `<bgname>ctrldef`. Lines follow `key = value` format with comma-separated
+// numbers for vectors. Returns an error if the file cannot be read. Stage
+// dependencies include an accompanying SFF sprite file and optional 3D model.
+// [PITFALL] Missing lines fall back to defaults and may cause rendering artifacts.
 func loadBGDef(sff *Sff, model *Model, def string, bgname string) (*BGDef, error) {
 	s := newBGDef(def)
 	str, err := LoadText(def)
@@ -95,10 +108,10 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string) (*BGDef, error
 	}
 	i = 0
 	if sec := defmap["info"]; len(sec) > 0 {
-		sec[0].readF32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1])
+		sec[0].readF32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1]) // [PITFALL] defaults to 320,240
 	}
 	if sec := defmap[fmt.Sprintf("%sdef", bgname)]; len(sec) > 0 {
-		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
+		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2]) // [PITFALL] default black may expose previous frame
 		s.sceneNumber = -1
 		sec[0].readI32ForStage("scenenumber", &s.sceneNumber)
 		sec[0].readF32ForStage("fov", &s.fov)
@@ -106,10 +119,10 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string) (*BGDef, error
 		sec[0].readF32ForStage("far", &s.far)
 		if offset := sec[0].readF32CsvForStage("modeloffset"); len(offset) == 3 {
 			s.modelOffset = [3]float32{offset[0], offset[1], offset[2]}
-		}
+		} // [PITFALL] omitted offset anchors model at origin
 		if scale := sec[0].readF32CsvForStage("modelscale"); len(scale) == 3 {
 			s.modelScale = [3]float32{scale[0], scale[1], scale[2]}
-		}
+		} // [PITFALL] omitted scale leaves model at full size
 	}
 	s.sff = sff
 	s.model = model
