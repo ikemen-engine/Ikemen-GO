@@ -1,3 +1,15 @@
+// Animation frame parsing utilities.
+//
+// This file defines the structures and helpers that turn comma separated
+// animation definitions into runtime data used by the engine.  It is safe to
+// edit and extend and has no network or save-file side effects.
+// Dependencies: "strings" for CSV tokenisation and "sort" for ordering frames
+// when constructing animations.
+// Execution flow:
+//  1. ReadAnimFrame splits and validates a single line of text.
+//  2. newAnimFrame supplies default values and normalises orientation/alpha.
+//  3. The caller assembles a slice of AnimFrame values and sort.Sort can be
+//     used to organise them before playback.
 package main
 
 import (
@@ -5,23 +17,31 @@ import (
 	"strings"
 )
 
-// AnimFrame holds frame data, used in animation tables.
+// AnimFrame holds one frame of animation data parsed from a definition file.
+// All values follow M.U.G.E.N semantics so existing content remains compatible.
 type AnimFrame struct {
-	Time          int32
-	Group, Number int16
-	Xoffset       int16
-	Yoffset       int16
-	SrcAlpha      byte
-	DstAlpha      byte
-	Hscale        int8
-	Vscale        int8
-	Xscale        float32
-	Yscale        float32
-	Angle         float32
-	Clsn1         [][4]float32
-	Clsn2         [][4]float32
+	Time          int32        // Display time in ticks; -1 uses previous frame's duration
+	Group, Number int16        // Sprite group and index within SFF; -1 indicates none
+	Xoffset       int16        // X axis offset in pixels relative to axis
+	Yoffset       int16        // Y axis offset in pixels relative to axis
+	SrcAlpha      byte         // Source blend factor (0-255)
+	DstAlpha      byte         // Destination blend factor (0-255)
+	Hscale        int8         // Horizontal flip flag: 1 normal, -1 mirrored
+	Vscale        int8         // Vertical flip flag: 1 normal, -1 mirrored
+	Xscale        float32      // Horizontal scaling factor; 1.0 retains size
+	Yscale        float32      // Vertical scaling factor; 1.0 retains size
+	Angle         float32      // Rotation angle in degrees
+	Clsn1         [][4]float32 // Attack collision boxes {x1,y1,x2,y2}
+	Clsn2         [][4]float32 // Body collision boxes {x1,y1,x2,y2}
 }
 
+// newAnimFrame returns an AnimFrame initialised with M.U.G.E.N compatible
+// defaults. Time and Group are set to -1 so callers can detect missing values
+// and apply their own fallbacks.
+//
+// Example:
+//
+//	af := newAnimFrame()
 func newAnimFrame() *AnimFrame {
 	return &AnimFrame{
 		Time:     -1,
@@ -36,14 +56,25 @@ func newAnimFrame() *AnimFrame {
 	}
 }
 
+// ReadAnimFrame parses a single comma separated line from an [Animation]
+// section and returns the resulting AnimFrame. The expected format is:
+//
+//	group,number,xoffset,yoffset,time[,HV][,alpha][,xscale][,yscale][,angle]
+//
+// Nil is returned when the line is empty or the CSV is malformed. Negative
+// time values are preserved, allowing -1 to indicate an infinite frame.
+//
+// Example:
+//
+//	af := ReadAnimFrame("0,0,0,0,1,H,AS256D0,1.0,1.0,0")
 func ReadAnimFrame(line string) *AnimFrame {
 	if len(line) == 0 || (line[0] < '0' || '9' < line[0]) && line[0] != '-' {
-		return nil
+		return nil // reject non-numeric starting lines
 	}
 	ary := strings.SplitN(line, ",", 10)
 	// Read required parameters
 	if len(ary) < 5 {
-		return nil
+		return nil // not enough columns
 	}
 	af := newAnimFrame()
 	af.Group = int16(Atoi(ary[0]))
@@ -55,12 +86,12 @@ func ReadAnimFrame(line string) *AnimFrame {
 	if len(ary) < 6 {
 		return af
 	}
-	for i := range ary[5] {
+	for i := range ary[5] { // iterate over each character in flag string
 		switch ary[5][i] {
-		case 'H', 'h':
+		case 'H', 'h': // horizontal flip
 			af.Hscale = -1
-			af.Xoffset *= -1
-		case 'V', 'v':
+			af.Xoffset *= -1 // mirrored frames require mirrored offsets
+		case 'V', 'v': // vertical flip
 			af.Vscale = -1
 			af.Yoffset *= -1
 		}
@@ -75,14 +106,14 @@ func ReadAnimFrame(line string) *AnimFrame {
 	}
 	a := strings.ToLower(SplitAndTrim(ary[6], ",")[0])
 	switch {
-	case a == "a1":
+	case a == "a1": // additive blend with half destination alpha
 		af.SrcAlpha, af.DstAlpha = 255, 128
-	case len(a) > 0 && a[0] == 's':
+	case len(a) > 0 && a[0] == 's': // subtractive blend
 		af.SrcAlpha, af.DstAlpha = 1, 255 // Ikemen uses AS1D255 in place of Sub. TODO: This ought to be refactored
-	case len(a) >= 2 && a[:2] == "as":
+	case len(a) >= 2 && a[:2] == "as": // ASxxDyy form
 		if len(a) > 2 && a[2] >= '0' && a[2] <= '9' {
 			i, alp := 2, 0
-			for ; i < len(a) && a[i] >= '0' && a[i] <= '9'; i++ {
+			for ; i < len(a) && a[i] >= '0' && a[i] <= '9'; i++ { // parse src alpha digits
 				alp = alp*10 + int(a[i]-'0')
 			}
 			alp &= 0x3fff
@@ -95,7 +126,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 				i++
 				if i < len(a) && a[i] >= '0' && a[i] <= '9' {
 					alp = 0
-					for ; i < len(a) && a[i] >= '0' && a[i] <= '9'; i++ {
+					for ; i < len(a) && a[i] >= '0' && a[i] <= '9'; i++ { // parse dst alpha digits
 						alp = alp*10 + int(a[i]-'0')
 					}
 					alp &= 0x3fff
@@ -110,7 +141,7 @@ func ReadAnimFrame(line string) *AnimFrame {
 				}
 			}
 		}
-	case len(a) > 0 && a[0] == 'a':
+	case len(a) > 0 && a[0] == 'a': // simple additive blend
 		af.SrcAlpha, af.DstAlpha = 255, 255
 	}
 	// Read X scale
@@ -120,21 +151,21 @@ func ReadAnimFrame(line string) *AnimFrame {
 		return af
 	}
 	if IsNumeric(ary[7]) {
-		af.Xscale = float32(Atof(ary[7]))
+		af.Xscale = float32(Atof(ary[7])) // horizontal scaling factor
 	}
 	// Read Y scale
 	if len(ary) < 9 {
 		return af
 	}
 	if IsNumeric(ary[8]) {
-		af.Yscale = float32(Atof(ary[8]))
+		af.Yscale = float32(Atof(ary[8])) // vertical scaling factor
 	}
 	// Read angle
 	if len(ary) < 10 {
 		return af
 	}
 	if IsNumeric(ary[9]) {
-		af.Angle = float32(Atof(ary[9]))
+		af.Angle = float32(Atof(ary[9])) // rotation degrees
 	}
 	return af
 }
