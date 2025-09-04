@@ -1,3 +1,6 @@
+-- default.lua
+-- Lifecycle: drives arcade-style progression after character selection, spawning fights and storyboards.
+-- API: interacts with engine functions such as launchFight, setMatchNo and launchStoryboard.
 if not main.makeRoster then
 	launchFight{}
 	setMatchNo(-1)

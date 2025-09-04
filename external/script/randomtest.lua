@@ -3,6 +3,8 @@
 -- The 'autolevel.save' file is updated by the engine's backend (Golang code) after each match.
 -- This script generates AI rank data to adjust the difficulty of opponents, creating a dynamic and challenging gameplay experience.
 -- It selects characters for battles based on their AI ranks, ensuring a varied and balanced roster.
+-- Lifecycle: invoked when Random Test mode is selected to continuously simulate AI battles.
+-- API: relies on engine-updated `autolevel.save` data and uses launchFight to start matches.
 
 local randomtest = {}
 

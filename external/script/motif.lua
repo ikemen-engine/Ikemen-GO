@@ -1,3 +1,6 @@
+-- motif.lua
+-- Lifecycle: parsed when a motif or screenpack is loaded to populate UI defaults and file paths.
+-- API: supplies the `motif` table consumed by screenpack and menu scripts.
 --;===========================================================
 --; DEFAULT VALUES
 --;===========================================================

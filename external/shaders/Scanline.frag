@@ -1,3 +1,9 @@
+/*
+ * Scanline.frag
+ * Inputs: Texture sampler2D, TextureSize uniform, and interpolated vTexCoord.
+ * Coordinate spaces: vTexCoord.xy are [0,1] UVs; gl_FragCoord is used for screen-space scanline calculation.
+ * Performance: One texture lookup per fragment plus simple math; suitable for real-time post-processing.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture

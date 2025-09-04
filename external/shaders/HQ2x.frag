@@ -1,3 +1,9 @@
+/*
+ * HQ2x.frag
+ * Inputs: Texture sampler2D and TexCoord array containing 3x3 neighborhood UVs.
+ * Coordinate spaces: TexCoord values are normalized [0,1] coordinates with offsets for the upscale kernel.
+ * Performance: Performs nine texture fetches and several arithmetic operations per fragment; avoid on low-end GPUs.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture

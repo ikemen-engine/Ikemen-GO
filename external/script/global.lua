@@ -1,3 +1,6 @@
+-- global.lua
+-- Lifecycle: executed at startup to register debug and utility hotkeys.
+-- API: relies on addHotkey and helper functions like debugFlag and toggleAI.
 --;===========================================================
 --; DEBUG HOTKEYS
 --;===========================================================

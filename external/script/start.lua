@@ -1,3 +1,6 @@
+-- start.lua
+-- Lifecycle: handles character selection and match setup before battles begin.
+-- API: exposes roster utilities like start.f_unifySettings and calls launchFight for each match.
 local start = {}
 
 --team side specific data storage

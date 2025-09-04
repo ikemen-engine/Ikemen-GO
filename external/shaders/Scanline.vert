@@ -1,3 +1,9 @@
+/*
+ * Scanline.vert
+ * Inputs: VertCoord attribute for quad vertices and optional TexCoord.z for line phase; TextureSize uniform scales UVs.
+ * Coordinate spaces: Converts VertCoord from NDC to UV and passes through user-supplied scanline index.
+ * Performance: Minimal arithmetic and no texture access; vertex cost is trivial.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING out
 #define COMPAT_ATTRIBUTE in

@@ -1,3 +1,6 @@
+-- main.lua
+-- Lifecycle: executed on engine startup to parse command line flags and initialize shared tables.
+-- API: exposes helpers like main.f_fileRead, main.f_fileWrite, and command utilities.
 main = {}
 --nClock = os.clock()
 --print("Elapsed time: " .. os.clock() - nClock)

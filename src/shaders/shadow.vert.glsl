@@ -1,3 +1,9 @@
+/*
+ * shadow.vert.glsl
+ * Inputs: vertexId, position, uv, joints and weights attributes with uniforms for model transform, jointMatrices and morph targets.
+ * Coordinate spaces: transforms vertices from model space into light clip space for shadow map rendering while passing UV and vertex color.
+ * Performance: Includes skinning and morph target loops; reducing joint counts and targets can improve speed.
+ */
 #if __VERSION__ >= 130
 #define COMPAT_VARYING out
 #define COMPAT_ATTRIBUTE in
