@@ -1,3 +1,10 @@
+// Package main contains camera logic for Ikemen GO.
+//
+// The camera is responsible for framing the fight scene every frame. It
+// reacts to player positions and stage configuration to adjust scroll, zoom and
+// boundaries. The update loop is executed once per game tick, keeping the
+// action centered while respecting stage limits and player tracking. Many of
+// the behaviors mirror those found in the original M.U.G.E.N engine.
 package main
 
 import "math"
@@ -75,14 +82,24 @@ func newStageCamera() *stageCamera {
 		boundhighzoomdelta: 0, verticalfollowzoomdelta: 0}
 }
 
+// CameraView describes the active camera mode used by the engine.
+//
+// Fighting_View is the default behaviour tracking both players. Follow_View
+// locks the camera to a specific character, while Free_View allows manual
+// control by debug tooling.
 type CameraView int
 
 const (
-	Fighting_View CameraView = iota
-	Follow_View
-	Free_View
+	Fighting_View CameraView = iota // camera tracks all fighters
+	Follow_View                     // camera follows a single character
+	Free_View                       // camera position is manually controlled
 )
 
+// Camera exposes the run‑time camera state used for rendering.
+//
+// All positions are expressed in stage units (equivalent to pixels at the stage
+// local coordinate system). Scale values are multipliers where 1.0 means no
+// zoom. The struct embeds stageCamera which holds stage configuration values.
 type Camera struct {
 	stageCamera
 	View                            CameraView
@@ -101,6 +118,9 @@ func newCamera() *Camera {
 	return &Camera{View: Fighting_View}
 }
 
+// Reset recomputes static bounds and zoom parameters based on stage settings.
+// It should be called when the stage or configuration changes. All distances
+// are in stage pixels.
 func (c *Camera) Reset() {
 	c.ZoomEnable = sys.cfg.Config.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1)
 	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
@@ -145,6 +165,8 @@ func (c *Camera) Reset() {
 	c.minLeft = float32(c.boundleft)*c.localscl - c.halfWidth/c.zoomout
 }
 
+// Init prepares the camera for a new round.
+// It resets internal state and positions to stage starting coordinates.
 func (c *Camera) Init() {
 	c.Reset()
 	c.View = Fighting_View
@@ -154,6 +176,7 @@ func (c *Camera) Init() {
 	c.zoomindelaytime = c.zoomindelay
 }
 
+// ResetTracking clears extreme position tracking for a new frame cycle.
 func (c *Camera) ResetTracking() {
 	c.leftest = math.MaxFloat32
 	c.rightest = -math.MaxFloat32
@@ -163,8 +186,9 @@ func (c *Camera) ResetTracking() {
 	c.rightestvel = 0
 }
 
-// Use last known good positions if the current ones are invalid
-// Mugen does not do this. Instead, if either axis is not updated (if no character has movecamera) the camera does not move at all
+// SaveRestoreTracking preserves the last valid extremes when no character
+// updated them in the current frame. M.U.G.E.N simply stops camera movement in
+// those cases; this implementation keeps previous positions for smoother motion.
 func (c *Camera) SaveRestoreTracking() {
 	if c.highest == math.MaxFloat32 {
 		c.highest = c.prevHighest
@@ -191,6 +215,11 @@ func (c *Camera) SaveRestoreTracking() {
 	}
 }
 
+// Update finalizes the camera for the current frame.
+//
+// scl is the scaling multiplier from action(), and x/y are the target camera
+// center in stage units. The method computes screen-space offsets and writes
+// the results to the camera state.
 func (c *Camera) Update(scl, x, y float32) {
 	if sys.gsf(GSF_camerafreeze) {
 		return
@@ -210,6 +239,14 @@ func (c *Camera) Update(scl, x, y float32) {
 	c.Pos[1] = y
 }
 
+// ScaleBound clamps a proposed zoom level.
+//
+// Parameters:
+//   - scl: current scale factor (1.0 = no zoom).
+//   - sclmul: multiplier applied to scl; values in [0,+inf).
+//
+// Returns the scale limited to [MinScale, zoomin]; if zooming is disabled, 1 is
+// returned.
 func (c *Camera) ScaleBound(scl, sclmul float32) float32 {
 	if c.ZoomEnable {
 		if sys.debugPaused() {
@@ -222,20 +259,32 @@ func (c *Camera) ScaleBound(scl, sclmul float32) float32 {
 	return 1
 }
 
+// XBound clamps the horizontal camera center.
+//
+// Parameters:
+//   - scl: current scale.
+//   - x: desired center position in stage units.
+//
+// Returns x clamped so that the viewport stays within stage bounds.
 func (c *Camera) XBound(scl, x float32) float32 {
 	return ClampF(x,
 		c.boundL-c.halfWidth+c.halfWidth/scl,
 		c.boundR+c.halfWidth-c.halfWidth/scl)
 }
 
+// BaseScale returns the stage's top level scale factor used as baseline for
+// zoom calculations.
 func (c *Camera) BaseScale() float32 {
 	return c.ztopscale
 }
 
+// GroundLevel reports the Y coordinate of the stage floor in stage units after
+// corrections for aspect ratio and zoom anchoring.
 func (c *Camera) GroundLevel() float32 {
 	return c.zoff - c.aspectcorrection - c.zoomanchorcorrection
 }
 
+// ResetZoomdelay clears the internal delay before zooming starts.
 func (c *Camera) ResetZoomdelay() {
 	c.zoomdelay = 0
 }
@@ -255,23 +304,25 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				c.lowest = MaxF(c.lowest, float32(c.boundhigh)*c.localscl-(float32(sys.gameHeight)-c.GroundLevel()-float32(c.tensionlow))/c.zoomout)
 			}
 			tension := MaxF(0, float32(c.tension)*c.localscl)
-			oldLeft, oldRight := x-c.halfWidth/scale, x+c.halfWidth/scale
-			targetLeft, targetRight := oldLeft, oldRight
+			oldLeft, oldRight := x-c.halfWidth/scale, x+c.halfWidth/scale // previous frame bounds
+			targetLeft, targetRight := oldLeft, oldRight                  // desired bounds this frame
 			if c.autocenter {
 				targetLeft = MinF(MaxF((c.leftest+c.rightest)/2-c.halfWidth/scale, c.minLeft), c.maxRight-2*c.halfWidth/scale)
 				targetRight = targetLeft + 2*c.halfWidth/scale
 			}
 
 			if c.leftest < targetLeft+tension {
+				// Push left bound so leftmost fighter stays within tension margin
 				diff := targetLeft - MaxF(c.leftest-tension, c.minLeft)
 				targetLeft = MaxF(c.leftest-tension, c.minLeft)
 				targetRight = MaxF(oldRight-diff, MinF(c.rightest+tension, c.maxRight))
 			} else if c.rightest > targetRight-tension {
+				// Same for right edge
 				diff := targetRight - MinF(c.rightest+tension, c.maxRight)
 				targetRight = MinF(c.rightest+tension, c.maxRight)
 				targetLeft = MinF(oldLeft-diff, MaxF(c.leftest-tension, c.minLeft))
 			}
-			if c.halfWidth*2/(targetRight-targetLeft) < c.zoomout {
+			if c.halfWidth*2/(targetRight-targetLeft) < c.zoomout { // prevent zooming out beyond limit
 				rLeft := MaxF(targetLeft+tension-c.leftest, 0)
 				rRight := MaxF(c.rightest-(targetRight-tension), 0)
 				diff := 2 * ((targetRight-targetLeft)/2 - c.halfWidth/c.zoomout)
@@ -335,7 +386,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			}
 
 			targetX := (targetLeft + targetRight) / 2
-			targetScale := MinF(c.halfWidth*2/(targetRight-targetLeft), maxScale)
+			targetScale := MinF(c.halfWidth*2/(targetRight-targetLeft), maxScale) // proposed zoom level
 
 			if !c.ytensionenable {
 				//newY = c.ywithoutbound
@@ -344,7 +395,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				targetY := (c.highest + float32(c.floortension)*c.localscl) * verticalfollow
 				if !c.roundstart {
 					for i := 0; i < 3; i++ {
-						ywithoutbound = ywithoutbound*.85 + targetY*.15
+						ywithoutbound = ywithoutbound*.85 + targetY*.15 // exponential smoothing
 						if AbsF(targetY-ywithoutbound)*sys.heightScale < 1 {
 							ywithoutbound = targetY
 						}
@@ -396,6 +447,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			if !c.roundstart {
 				diff := float32(sys.gameWidth) / 3200
 				for i := 0; i < 3; i++ {
+					// iterative smoothing towards target bounds
 					newLeft = newLeft + (targetLeft-newLeft)*0.05*sys.turbo*c.tensionvel
 					newRight = newRight + (targetRight-newRight)*0.05*sys.turbo*c.tensionvel
 					diffLeft := targetLeft - newLeft
@@ -451,6 +503,12 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 	return
 }
 
+// reduceZoomSpeed linearly interpolates between the old and new zoom values and
+// distributes the required boundary adjustments. It returns the adjusted left,
+// right and scale values.
+//
+// [PITFALL] Setting zoominspeed close to 1 triggers very fast zooming which may
+// cause visible jitter compared to M.U.G.E.N's more conservative camera.
 func (c *Camera) reduceZoomSpeed(newLeft float32, newRight float32, newScale float32, oldLeft float32, oldRight float32, oldScale float32) (float32, float32, float32) {
 	const minBoundDiff float32 = 5e-5
 	const minScaleDiff float32 = 5e-4
@@ -473,6 +531,7 @@ func (c *Camera) reduceZoomSpeed(newLeft float32, newRight float32, newScale flo
 		return newLeft, newRight, newScale
 	}
 
+	// Interpolate scale then adjust bounds proportionally to maintain center
 	adjustedNewScale := oldScale + speedFactor*scaleDiff
 	scaleAdjustmentFactor := adjustedNewScale / newScale
 
@@ -491,6 +550,8 @@ func (c *Camera) reduceZoomSpeed(newLeft float32, newRight float32, newScale flo
 }
 
 func (c *Camera) keepScreenEdge(left float32, right float32) (float32, float32) {
+	// Ensure both players remain inside their screen edge margins by
+	// translating the bounds when necessary.
 	screenLeftest := c.leftest - float32(sys.stage.screenleft)*c.localscl
 	if left > screenLeftest {
 		right += screenLeftest - left
@@ -507,6 +568,7 @@ func (c *Camera) keepScreenEdge(left float32, right float32) (float32, float32) 
 }
 
 func (c *Camera) keepStageEdge(left float32, right float32) (float32, float32) {
+	// Prevent the viewport from leaving the stage bounds.
 	if left < c.minLeft {
 		right += c.minLeft - left
 		left = c.minLeft
@@ -519,6 +581,7 @@ func (c *Camera) keepStageEdge(left float32, right float32) (float32, float32) {
 }
 
 func (c *Camera) hardLimit(left float32, right float32) (float32, float32, float32) {
+	// Final clamp ensuring stage limits and recomputing scale for new width.
 	left = MaxF(left, c.minLeft)
 	right = MinF(right, c.maxRight)
 	scale := MaxF(MinF(c.halfWidth*2/(right-left), c.zoomin), c.zoomout)
@@ -526,6 +589,7 @@ func (c *Camera) hardLimit(left float32, right float32) (float32, float32, float
 }
 
 func (c *Camera) reduceYScrollSpeed(newY float32, oldY float32) float32 {
+	// Apply smoothing to vertical movement so camera does not snap instantly.
 	const minYDiff float32 = 5e-5
 
 	yDiff := newY - oldY
@@ -537,11 +601,12 @@ func (c *Camera) reduceYScrollSpeed(newY float32, oldY float32) float32 {
 }
 
 func (c *Camera) boundY(y float32, scale float32) float32 {
+	// Compute vertical bounds; when boundhighzoomdelta > 0 the top bound
+	// relaxes with zoom to avoid showing outside the stage.
 	if c.boundhighzoomdelta > 0 {
 		topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
 		boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/scale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
 		return MinF(MaxF(y, boundHigh), float32(c.boundlow)*c.localscl) * scale
-	} else {
-		return MinF(MaxF(y, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * scale
 	}
+	return MinF(MaxF(y, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * scale
 }
