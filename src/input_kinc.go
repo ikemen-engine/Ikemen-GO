@@ -1,5 +1,10 @@
 //go:build kinc
 
+// input_kinc.go implements input using the Kinc framework.
+// It translates Kinc keyboard and gamepad events for the
+// engine's core logic.
+// [PITFALL] Kinc reports trigger ranges differently on some
+// platforms which may require calibration.
 package main
 
 /*
@@ -33,11 +38,13 @@ const (
 	MAX_AXIS_COUNT     = 8
 )
 
+// Joystick captures button and axis state from Kinc.
 type Joystick struct {
 	buttons [MAX_BUTTON_COUNT]int32
 	axes    [MAX_AXIS_COUNT]float32
 }
 
+// Input maintains the set of connected joysticks.
 type Input struct {
 	joysticks [MAX_JOYSTICK_COUNT]Joystick
 }
@@ -181,6 +188,7 @@ func init() {
 	}
 }
 
+// StringToKey maps a key name to its Kinc code.
 func StringToKey(s string) Key {
 	if key, ok := StringToKeyLUT[s]; ok {
 		return key
@@ -188,6 +196,7 @@ func StringToKey(s string) Key {
 	return C.KINC_KEY_UNKNOWN
 }
 
+// KeyToString returns the lookup name for a Kinc key code.
 func KeyToString(k Key) string {
 	if s, ok := KeyToStringLUT[k]; ok {
 		return s
@@ -195,6 +204,7 @@ func KeyToString(k Key) string {
 	return ""
 }
 
+// NewModifierKey builds a Kinc modifier mask.
 func NewModifierKey(ctrl, alt, shift bool) (mod ModifierKey) {
 	// TODO: implement modifiers
 	if ctrl || alt || shift {
