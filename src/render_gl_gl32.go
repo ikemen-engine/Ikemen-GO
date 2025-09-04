@@ -3,7 +3,10 @@
 // This is almost identical to render_gl.go except it uses a VAO
 // for GL 3.2 which is the minimum version that runs on modern
 // macOS (Intel and ARM). Work adapted from assemblaj/fantasma
-
+//
+// OpenGL 3.2 renderer using core profile and VAOs. Requires a driver
+// supporting OpenGL 3.2. [PITFALL] Loss of context or incompatible GPU
+// drivers will invalidate resources and may crash rendering.
 package main
 
 import (
@@ -24,8 +27,8 @@ import (
 //const GL_SHADER_VER = 150 // OpenGL 3.2
 
 // ------------------------------------------------------------------
-// ShaderProgram_GL32
-
+// ShaderProgram_GL32 wraps an OpenGL program object.
+// Lifetime: valid until deletion or context loss. Not goroutine-safe.
 type ShaderProgram_GL32 struct {
 	// Program
 	program uint32
@@ -151,8 +154,9 @@ func (r *Renderer_GL32) linkProgram(params ...uint32) (program uint32, err error
 }
 
 // ------------------------------------------------------------------
-// Texture_GL32
-
+// Texture_GL32 represents an OpenGL texture handle.
+// Lifetime: freed via a finalizer; invalid after context loss. Not
+// safe for concurrent use.
 type Texture_GL32 struct {
 	width  int32
 	height int32
@@ -304,8 +308,9 @@ func (t *Texture_GL32) MapInternalFormat(i int32) uint32 {
 }
 
 // ------------------------------------------------------------------
-// Renderer_GL32
-
+// Renderer_GL32 owns OpenGL 3.2 state and buffer objects. Buffers are
+// freed when Close is called and should only be accessed on the render
+// thread.
 type Renderer_GL32 struct {
 	fbo         uint32
 	fbo_texture uint32
@@ -1460,13 +1465,21 @@ func (r *Renderer_GL32) SetModelIndexData(bufferIndex uint32, values ...uint32) 
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(values)*4, unsafe.Pointer(&data.Bytes()[0]), gl.STATIC_DRAW)
 }
 
+// RenderQuad draws the currently bound quad. Must be called from the
+// render thread.
 func (r *Renderer_GL32) RenderQuad() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
+
+// RenderElements submits an indexed draw call. mode selects primitive
+// topology, count is index count and offset is the starting byte within
+// the index buffer. Not goroutine-safe.
 func (r *Renderer_GL32) RenderElements(mode PrimitiveMode, count, offset int) {
 	gl.DrawElementsWithOffset(r.MapPrimitiveMode(mode), int32(count), gl.UNSIGNED_INT, uintptr(offset))
 }
 
+// RenderCubeMap renders a panorama texture into a cube map target.
+// Heavy operation intended for initialization only.
 func (r *Renderer_GL32) RenderCubeMap(envTex Texture, cubeTex Texture) {
 	envTexture := envTex.(*Texture_GL32)
 	cubeTexture := cubeTex.(*Texture_GL32)
@@ -1497,6 +1510,12 @@ func (r *Renderer_GL32) RenderCubeMap(envTex Texture, cubeTex Texture) {
 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture.handle)
 	gl.GenerateMipmap(gl.TEXTURE_CUBE_MAP)
 }
+
+// RenderFilteredCubeMap prefilters cube maps for image-based lighting.
+// distribution selects the BRDF; cubeTex is the input environment map;
+// filteredTex is the output; mipmapLevel and sampleCount control
+// quality versus time; roughness controls reflection blur.
+// Thread-safety: render thread only.
 func (r *Renderer_GL32) RenderFilteredCubeMap(distribution int32, cubeTex Texture, filteredTex Texture, mipmapLevel, sampleCount int32, roughness float32) {
 	cubeTexture := cubeTex.(*Texture_GL32)
 	filteredTexture := filteredTex.(*Texture_GL32)
@@ -1538,6 +1557,9 @@ func (r *Renderer_GL32) RenderFilteredCubeMap(distribution int32, cubeTex Textur
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 }
+
+// RenderLUT generates a BRDF lookup table. sampleCount trades
+// precision for generation time. Invoke sparingly on the render thread.
 func (r *Renderer_GL32) RenderLUT(distribution int32, cubeTex Texture, lutTex Texture, sampleCount int32) {
 	cubeTexture := cubeTex.(*Texture_GL32)
 	lutTexture := lutTex.(*Texture_GL32)

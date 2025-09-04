@@ -3,6 +3,12 @@
 // IF YOU MAKE CHANGES TO THIS FILE, YOU MUST ALSO MAKE
 // EQUIVALENT CHANGES TO render_gl_gl32.go
 
+// OpenGL 2.1 renderer implementation.
+//
+// Provides texture, shader, and buffer management using the go-gl
+// bindings and requires a driver supporting OpenGL 2.1. [PITFALL]
+// Losing the GL context or running on an incompatible GPU driver will
+// invalidate resources and may crash rendering operations.
 package main
 
 import (
@@ -24,8 +30,9 @@ import (
 //const GL_SHADER_VER = 120 // OpenGL 2.1
 
 // ------------------------------------------------------------------
-// ShaderProgram_GL21
-
+// ShaderProgram_GL21 wraps an OpenGL program object.
+// Lifetime: valid until deleted or context loss; methods are not
+// goroutine-safe.
 type ShaderProgram_GL21 struct {
 	// Program
 	program uint32
@@ -152,8 +159,9 @@ func (r *Renderer_GL21) linkProgram(params ...uint32) (program uint32, err error
 }
 
 // ------------------------------------------------------------------
-// Texture_GL21
-
+// Texture_GL21 represents an OpenGL texture handle.
+// Lifetime: freed by a finalizer on the main thread; invalid after
+// context loss. Not concurrency-safe.
 type Texture_GL21 struct {
 	width  int32
 	height int32
@@ -307,6 +315,10 @@ func (t *Texture_GL21) MapInternalFormat(i int32) uint32 {
 // ------------------------------------------------------------------
 // Renderer_GL21
 
+// Renderer_GL21 manages OpenGL state and buffer objects for the 2.1
+// backend. Buffer handles live for the lifetime of the renderer and are
+// released during Close; none of the fields are safe for concurrent
+// access.
 type Renderer_GL21 struct {
 	fbo         uint32
 	fbo_texture uint32
@@ -1453,13 +1465,23 @@ func (r *Renderer_GL21) SetModelIndexData(bufferIndex uint32, values ...uint32) 
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(values)*4, unsafe.Pointer(&data.Bytes()[0]), gl.STATIC_DRAW)
 }
 
+// RenderQuad draws the currently bound quad.
+// Thread-safety: must be called on the render thread.
+// Performance: minimal when state is preconfigured.
 func (r *Renderer_GL21) RenderQuad() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
+
+// RenderElements submits an indexed draw call.
+// mode selects primitive topology, count is index count and offset is
+// the starting byte within the index buffer. Not goroutine-safe.
 func (r *Renderer_GL21) RenderElements(mode PrimitiveMode, count, offset int) {
 	gl.DrawElementsWithOffset(r.MapPrimitiveMode(mode), int32(count), gl.UNSIGNED_INT, uintptr(offset))
 }
 
+// RenderCubeMap renders a panorama texture into a cube map target.
+// envTex is the equirectangular source and cubeTex the destination
+// cube map. Expensive and intended for initialization only.
 func (r *Renderer_GL21) RenderCubeMap(envTex Texture, cubeTex Texture) {
 	envTexture := envTex.(*Texture_GL21)
 	cubeTexture := cubeTex.(*Texture_GL21)
@@ -1490,6 +1512,12 @@ func (r *Renderer_GL21) RenderCubeMap(envTex Texture, cubeTex Texture) {
 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture.handle)
 	gl.GenerateMipmap(gl.TEXTURE_CUBE_MAP)
 }
+
+// RenderFilteredCubeMap prefilters a cube map for image-based lighting.
+// distribution selects the BRDF, cubeTex is the input environment
+// map, filteredTex the output, mipmapLevel and sampleCount trade
+// quality for time, and roughness controls reflection blur.
+// Thread-safety: render thread only.
 func (r *Renderer_GL21) RenderFilteredCubeMap(distribution int32, cubeTex Texture, filteredTex Texture, mipmapLevel, sampleCount int32, roughness float32) {
 	cubeTexture := cubeTex.(*Texture_GL21)
 	filteredTexture := filteredTex.(*Texture_GL21)
@@ -1531,6 +1559,9 @@ func (r *Renderer_GL21) RenderFilteredCubeMap(distribution int32, cubeTex Textur
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 }
+
+// RenderLUT generates a BRDF lookup texture. sampleCount determines
+// quality versus generation time. Invoke sparingly on the render thread.
 func (r *Renderer_GL21) RenderLUT(distribution int32, cubeTex Texture, lutTex Texture, sampleCount int32) {
 	cubeTexture := cubeTex.(*Texture_GL21)
 	lutTexture := lutTex.(*Texture_GL21)
