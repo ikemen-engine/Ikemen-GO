@@ -1,64 +1,61 @@
-# Ikemen GO
+# 📝 Ikemen GO — Commented Fork
 
-Ikemen GO is an open source fighting game engine that supports resources from the [M.U.G.E.N](https://en.wikipedia.org/wiki/Mugen_(game_engine)) engine, written in Google’s programming language, [Go](https://go.dev/). It is a complete rewrite of a prior engine known simply as Ikemen.
+This repository is a **documentary fork** of [Ikemen GO](https://github.com/ikemen-engine/Ikemen-GO), an open-source 2D fighting game engine compatible with M.U.G.E.N resources.
 
-## Features
-Ikemen GO aims for backwards-compatibility on par with M.U.G.E.N version 1.1 Beta, while simultaneously expanding on its features in a variety of ways.
+> 👉 **This fork does not introduce any new features or functionality.**  
+> Its sole purpose is to **comment and document the original codebase**, making it easier to read, understand, and contribute to for future developers.
 
-Refer to [our wiki](https://github.com/ikemen-engine/Ikemen-GO/wiki) to see a comprehensive list of new features that have been added in Ikemen GO.
+---
 
-## Installing
-Ready to use builds for Windows, macOS and Linux can be found in the [releases section](https://github.com/ikemen-engine/Ikemen-GO/releases) of this repository. You can find nightly builds [here](https://github.com/ikemen-engine/Ikemen-GO/releases/tag/nightly) as well, which update on every commit.
+## 🔍 Purpose of This Fork
 
-## Running
-Download the ZIP archive that matches your operating system and extract its contents to your preferred location.
+This project exists to:
 
-On Windows, double-click `Ikemen_GO.exe` (`Ikemen_GO_x86.exe` on 32-bit OSes).
-On macOS or Linux, double-click `Ikemen_GO.command`.
+- **Add clear comments** throughout the Go source code  
+- **Document key modules**, functions, and core logic  
+- **Explain internal behavior** without altering execution  
+- Help developers **understand how the engine works**
 
-## Mods, Icons and Shaders
-Ikemen GO loads optional content from the `external` directory at startup:
+There are **no code changes**, **no feature removals**, and **no additions**.  
+The engine built from this repo is functionally **identical** to the original upstream repository.
 
-- **Mods** in `external/mods` can override or extend engine behavior by providing assets and scripts.
-- **Icons** in `external/icons` replace the application's window and task bar images.
-- **Shaders** in `external/shaders` supply custom GLSL programs for post-processing or scaling.
+---
 
-Files dropped into these folders are picked up automatically without rebuilding the engine.
+## 📦 Installation
 
-## Developing
-These instructions are for those interested in developing the Ikemen GO engine itself. Instructions for creating custom stages, fonts, characters and other resources can be found in the community forum.
+If you want to install and run Ikemen GO, please refer to the original repository:  
+🔗 [https://github.com/ikemen-engine/Ikemen-GO](https://github.com/ikemen-engine/Ikemen-GO)
 
-### Building
-You can find instructions for building Ikemen GO on our wiki. Instructions are available for [Windows](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building,-Installing-and-Distributing#building-on-windows), [macOS](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building,-Installing-and-Distributing#building-on-macos), and [Linux](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building,-Installing-and-Distributing#building-on-linux).
+---
 
-### Debugging
-In order to run the compiled Ikemen GO executable, you will need to download the [engine dependencies](https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack) and unpack them into the Ikemen-GO source directory. After that, you can use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
+## 📚 Useful References
 
-### Cross-compiling binaries with Docker (Linux/Windows/MacOS)
-The easiest way to compile binaries for other platforms is with Docker.
-You don't need the native development environment set to be able to build binaries if you decide to use Docker.  
-The image downloaded has all the required tools to compile Ikemen GO for all three major platforms.
+- 🧠 Ikemen GO Wiki: [https://github.com/ikemen-engine/Ikemen-GO/wiki](https://github.com/ikemen-engine/Ikemen-GO/wiki)  
+- 📘 M.U.G.E.N 1.1 Documentation (Elecbyte): [http://www.elecbyte.com/mugendocs-11b1/mugen.html](http://www.elecbyte.com/mugendocs-11b1/mugen.html)  
+- 🇫🇷 Community MUGEN Docs (French): [https://shenronmugen.free.fr](https://shenronmugen.free.fr)
 
-Install [Docker for your platform](https://www.docker.com/get-started).  
-For macOS, you can install Docker using Homebrew (`brew cask install docker`).
+---
 
-Open a terminal, go to the Ikemen `build` directory folder and then run the script `build_docker.sh`. Look inside the script for details on how it works.
+## 🔧 For Developers
 
-## Troubleshooting
-If you run into any issues with Ikemen Go, you can report it on our [issue tracker](https://github.com/ikemen-engine/Ikemen-GO/issues). It is recommend to read [this page](https://github.com/ikemen-engine/Ikemen-GO/blob/develop/CONTRIBUTING.md) before submitting a bug report.
+You can build the engine from this repository using the same instructions provided in the main Ikemen GO wiki.  
+Since this fork contains no functional changes, all original build and debug workflows still apply.
 
-## References
-- [The original reposity of Ikemen GO.](https://osdn.net/users/supersuehiro/pf/ikemen_go/) This project was forked from this repository due to its original author seemingly abandoning the project.
+---
 
-- [The default motif bundled with the engine.](https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack) Note that this motif is licensed under CC-BY 3 rather than Ikemen GO's source, which is MIT.
+## 📜 License
 
-## Name
-"Ikemen" is an acronym of:
+- The source code is provided under the **MIT License**  
+- Some bundled assets (motifs, fonts, etc.) are licensed under **CC-BY 3.0**
 
-**い**つまでも **完**成しない **永**遠に **未**完成 **エン**ジン  
-**I**tsu made mo **K**ansei shinai **E**ien ni **M**ikansei **EN**gine
+Refer to `License.txt` for full licensing details.
 
-## License
-Ikemen GO's source code is available under the MIT License. Certain non-code assets are licensed under CC-BY 3.0.
+---
 
-See [License.txt](License.txt) for more details.
+## 🙋 About This Fork
+
+This fork is maintained by an independent developer with the intent to:
+
+> 🛠️ *Make Ikemen GO more accessible and understandable for contributors, modders, and engine enthusiasts.*
+
+Feel free to fork, review, or contribute comments to make the codebase even more transparent.
