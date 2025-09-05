@@ -57,8 +57,6 @@ func (rs *RollbackSystem) fight(s *System) bool {
 	}
 	s.wincnt.init()
 
-	// These look like a good refactor. We could do the same to current system.go
-	// Initialize super meter values, and max power for teams sharing meter
 	rs.currentFight.initSuperMeter()
 	rs.currentFight.initTeamsLevels()
 
@@ -107,6 +105,7 @@ func (rs *RollbackSystem) fight(s *System) bool {
 	rs.session.netTime = 0
 	rs.currentFight.reset()
 
+	// These empty frames help the netcode stabilize. Without them, the chances of it desyncing at match start increase a lot
 	for i := 0; i < 120; i++ {
 		err := rs.session.backend.Idle(
 			int(math.Max(0, float64(120))))
@@ -115,7 +114,7 @@ func (rs *RollbackSystem) fight(s *System) bool {
 			panic(err)
 		}
 
-		s.render()
+		s.renderFrame() // Do we need to render at this point? Is there anything to render?
 		frameTime := rs.session.loopTimer.usToWaitThisLoop()
 		running = rs.update(s, frameTime)
 
@@ -145,7 +144,7 @@ func (rs *RollbackSystem) fight(s *System) bool {
 		if !running {
 			break
 		}
-		s.render()
+		s.renderFrame()
 		frameTime := rs.session.loopTimer.usToWaitThisLoop()
 		running = rs.update(s, frameTime)
 
@@ -905,53 +904,6 @@ func (rs *RollbackSystem) updateCamera(s *System) {
 	}
 }
 
-func (rs *RollbackSystem) render(s *System) {
-	if !s.frameSkip {
-		x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
-		dx, dy, dscl := x, y, scl
-		if s.enableZoomtime > 0 {
-			if !s.debugPaused() {
-				s.zoomPosXLag += ((s.zoomPos[0] - s.zoomPosXLag) * (1 - s.zoomlag))
-				s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
-				s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
-			}
-			if s.zoomStageBound {
-				dscl = MaxF(s.cam.MinScale, s.drawScale/s.cam.BaseScale())
-				if s.zoomCameraBound {
-					dx = x + ClampF(s.zoomPosXLag/scl, -s.cam.halfWidth/scl*2*(1-1/s.zoomScale), s.cam.halfWidth/scl*2*(1-1/s.zoomScale))
-				} else {
-					dx = x + s.zoomPosXLag/scl
-				}
-				dx = s.cam.XBound(dscl, dx)
-			} else {
-				dscl = s.drawScale / s.cam.BaseScale()
-				dx = x + s.zoomPosXLag/scl
-			}
-			dy = y + s.zoomPosYLag/scl
-		} else {
-			s.zoomlag = 0
-			s.zoomPosXLag = 0
-			s.zoomPosYLag = 0
-			s.zoomScale = 1
-			s.zoomPos = [2]float32{0, 0}
-			s.drawScale = s.cam.Scale
-		}
-		s.draw(dx, dy, dscl)
-	}
-	// Render top elements such as fade effects
-	if !s.frameSkip {
-		s.drawTop()
-	}
-	// Lua code is executed after drawing the fade effects, so that the menus are on top of them
-	for _, key := range SortedKeys(sys.cfg.Common.Lua) {
-		for _, v := range sys.cfg.Common.Lua[key] {
-			if err := s.luaLState.DoString(v); err != nil {
-				s.luaLState.RaiseError(err.Error())
-			}
-		}
-	}
-}
-
 func (rs *RollbackSystem) update(s *System, wait time.Duration) bool {
 	s.frameCounter++
 	return rs.await(s, wait)
@@ -1138,6 +1090,7 @@ func (ib *InputBits) SetInputAI(in int) {
 		Btoi(sys.aiInput[in].m())<<13)
 }
 
+// system.go already refactored to use a local var to save all this data
 type Fight struct {
 	fin                                                               bool
 	oldTeamLeader                                                     [2]int
@@ -1396,6 +1349,7 @@ func (f *Fight) initTeamsLevels() {
 		}
 	}
 }
+
 func NewFight() Fight {
 	f := Fight{}
 	f.oldStageVars.copyStageVars(sys.stage)
@@ -1421,6 +1375,7 @@ func NewFight() Fight {
 	f.level = make([]int32, len(sys.chars))
 	return f
 }
+
 func readI32(b []byte) int32 {
 	if len(b) < 4 {
 		return 0
@@ -1459,21 +1414,4 @@ func (rs *RollbackSystem) getTestInputs(player int) []byte {
 	var ib InputBits
 	ib.KeysToBits(sys.chars[0][0].cmd[0].Buffer.InputReader.LocalInput(player, false))
 	return writeI32(int32(ib))
-}
-
-func (rs *RollbackSystem) roundState(s *System) int32 {
-	switch {
-	case s.postMatchFlg:
-		return -1
-	case s.intro > s.lifebar.ro.ctrl_time+1:
-		return 0
-	case s.lifebar.ro.current == 0:
-		return 1
-	case s.intro >= 0 || s.finishType == FT_NotYet:
-		return 2
-	case s.intro < -s.lifebar.ro.over_waittime:
-		return 4
-	default:
-		return 3
-	}
 }

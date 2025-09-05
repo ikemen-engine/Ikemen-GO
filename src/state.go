@@ -280,9 +280,16 @@ func NewGameState() *GameState {
 }
 
 func (gs *GameState) LoadState(stateID int) {
+	// No state to load
+	if gs == nil || !gs.saved {
+		sys.appendToConsole(fmt.Sprintf("%v: No game state available for loading", sys.tickCount))
+		return
+	}
+
 	if sys.rollback.session != nil {
 		sys.rollback.session.netTime = gs.netTime
 	}
+
 	sys.arenaLoadMap[stateID] = arena.NewArena()
 	a := sys.arenaLoadMap[stateID]
 	gsp := &sys.loadPool
@@ -497,6 +504,9 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.brightnessOld = gs.brightnessOld
 
 	sys.wintime = gs.wintime
+
+	// Log state load
+	sys.appendToConsole(fmt.Sprintf("%v: Game state loaded", sys.tickCount))
 }
 
 func (gs *GameState) SaveState(stateID int) {
@@ -705,6 +715,9 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.brightnessOld = sys.brightnessOld
 
 	gs.wintime = sys.wintime
+
+	// Log save state
+	sys.appendToConsole(fmt.Sprintf("%v: Game state saved", sys.tickCount))
 }
 
 func (gs *GameState) cloneLuaTable(s *lua.LTable) *lua.LTable {

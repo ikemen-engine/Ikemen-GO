@@ -4449,13 +4449,8 @@ func (c *Char) isHelper(id int32, idx int) bool {
 }
 
 func (c *Char) isHost() bool {
-	if sys.cfg.Netplay.RollbackNetcode {
-		return (sys.netConnection != nil && sys.netConnection.host) ||
-			(sys.rollback.session != nil && sys.rollback.session.host == "")
-	}
-
 	// Local play has no host
-	if sys.netConnection == nil && sys.replayFile == nil {
+	if sys.netConnection == nil && sys.replayFile == nil && sys.rollback.session == nil {
 		return false
 	}
 
