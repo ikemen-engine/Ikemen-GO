@@ -281,7 +281,6 @@ type System struct {
 	consecutiveRounds bool
 	firstAttack       [3]int
 	teamLeader        [2]int
-	gameSpeed         float32
 	maxPowerMode      bool
 	clsnText          []ClsnText
 	consoleText       []string
@@ -400,7 +399,6 @@ func (s *System) init(w, h int32) *lua.LState {
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
-	s.gameSpeed = 1.0
 	for i := range s.inputRemap {
 		s.inputRemap[i] = i
 	}
@@ -1797,7 +1795,7 @@ func (s *System) action() {
 	explUpdate(&s.explodsLayer1, false)
 	// Adjust game speed
 	if s.tickNextFrame() {
-		spd := ((60 + s.gameSpeed*5) / float32(s.cfg.Config.Framerate)) * s.accel
+		spd := ((60 + s.cfg.Options.GameSpeed*5) / float32(s.cfg.Config.Framerate)) * s.accel
 		// KO slowdown
 		s.slowtimeTrigger = 0
 		if s.intro < 0 && s.time != 0 && s.slowtime > 0 {

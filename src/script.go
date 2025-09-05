@@ -2653,7 +2653,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
-		sys.gameSpeed = float32(numArg(l, 1))
+		sys.cfg.Options.GameSpeed = float32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setRoundTime", func(l *lua.LState) int {
