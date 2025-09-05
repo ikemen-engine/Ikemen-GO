@@ -6,6 +6,7 @@ import (
 	"path"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	lua "github.com/yuin/gopher-lua"
@@ -158,14 +159,16 @@ func processCommandLine() {
 		// Loop through arguments
 		for _, a := range os.Args[1:] {
 			// Check if the current argument 'a' is a flag (starts with '-')
-			if r2.MatchString(a) {
+			// Check if 'a' is a number (could be negative)
+			_, err := strconv.ParseFloat(a, 64)
+			isNumber := err == nil
+
+			// If there was a flag 'key' expecting a value, and 'a' is a number or not a flag
+			if key != "" && (isNumber || !r2.MatchString(a)) { // If 'a' is a number OR 'a' is not a flag, it's a value for 'key'
+				sys.cmdFlags[key] = a // Assign 'a' as the value for 'key'
+				key = ""              // Value consumed, clear key.
+			} else if r2.MatchString(a) { // 'a' is a flag (starts with '-')
 				flagsEncountered = true // A flag has been encountered
-				// If there was a flag 'key' expecting a value, but 'a' is another flag,
-				// then the 'key' flag didn't get its value. Set its value to "true".
-				if key != "" {
-					sys.cmdFlags[key] = "true"
-					key = "" // Clear key, as its value is now set
-				}
 
 				// If getting help about command line options
 				if r1.MatchString(a) {
@@ -199,7 +202,7 @@ Debug Options:
 -togglelifebars         Disables display of the Life and Power bars
 -maxpowermode           Enables auto-refill of Power bars
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
--speed <speed>          Changes game speed setting to <speed> (10%%-200%%)
+-speed <speed>          Changes game speed setting to <speed> (-9 to 9)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
 					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
@@ -217,19 +220,13 @@ Debug Options:
 					sys.cmdFlags[a] = ""
 					key = a // Now 'key' expects a value in the next iteration.
 				}
-			} else { // 'a' is not a flag (it's a value or a player name)
-				// If 'key' is not empty, it means the previous argument was a flag expecting a value.
-				if key != "" {
-					sys.cmdFlags[key] = a // Assign 'a' as the value for 'key'
-					key = ""              // Value consumed, clear key.
-				} else if !flagsEncountered && player <= 2 { // Only assign to -p1 or -p2 if no flag has been encountered yet and player count is within limit
-					// This block handles initial positional player names like "kfm kfm"
-					sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
-					player += 1
-				}
-				// If key is empty and player > 2, and it's not a flag, then it's an unhandled positional argument.
-				// We just ignore it in this case to prevent the 8/8.def error.
+			} else if !flagsEncountered && player <= 2 { // Only assign to -p1 or -p2 if no flag has been encountered yet and player count is within limit
+				// This block handles initial positional player names like "kfm kfm"
+				sys.cmdFlags[fmt.Sprintf("-p%v", player)] = a
+				player += 1
 			}
+			// If key is empty and player > 2, and it's not a flag, then it's an unhandled positional argument.
+			// We just ignore it in this case to prevent the 8/8.def error.
 		}
 		// After the loop, if a key is still waiting for a value, set it to "true".
 		if key != "" {

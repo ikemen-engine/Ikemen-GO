@@ -2652,6 +2652,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.debugWC.redLifeSet(int32(numArg(l, 1)))
 		return 0
 	})
+	luaRegister(l, "setGameSpeed", func(*lua.LState) int {
+		sys.gameSpeed = float32(numArg(l, 1))
+		return 0
+	})
 	luaRegister(l, "setRoundTime", func(l *lua.LState) int {
 		sys.roundTime = int32(numArg(l, 1))
 		return 0
