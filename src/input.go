@@ -2564,8 +2564,8 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 	// Match inputs to command steps
 	// Process steps in the predetermined iteration order
 	for _, i := range c.loopOrder {
-		// Skip if previous step is not complete or was completed later
-		if i > 0 && (!c.completed[i-1] || c.stepTimers[i-1] < c.stepTimers[i]) {
+		// Skip if previous step is not complete
+		if i > 0 && !c.completed[i-1] {
 			continue
 		}
 
@@ -2585,46 +2585,47 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 		// Ikemen's parser makes /B+a mean "press a while holding B" which seems consistent
 		// This does not work in Mugen. For instance "/B+a" and "/a+B" can both be completed by just holding B
 		if c.steps[i].orLogic {
-			// OR logic: any key + charge matches
+			// OR logic: any key matches
 			inputMatched = false
 			for _, k := range c.steps[i].keys {
 				t := ibuf.State(k)
 				keyOk := false
+
 				if k.slash {
 					keyOk = t > 0
 				} else {
 					keyOk = t == 1
 				}
+
 				// Check if charge is defined and enough charge is stored
-				if keyOk && k.chargetime > 1 {
-					if ibuf.StateCharge(k) < k.chargetime {
-						keyOk = false
-					}
+				if keyOk && k.chargetime > 1 && ibuf.StateCharge(k) < k.chargetime {
+					keyOk = false
 				}
+
 				if keyOk {
-					inputMatched = true
+					inputMatched = true // OR logic already satisfied
 					break
 				}
 			}
 		} else {
-			// AND logic: all keys + charge must match
+			// AND logic: all keys match
 			inputMatched = true
 			for _, k := range c.steps[i].keys {
 				t := ibuf.State(k)
 				keyOk := false
+
 				if k.slash {
 					keyOk = t > 0
 				} else {
 					keyOk = t == 1
 				}
-				// Charge check
-				if keyOk && k.chargetime > 1 {
-					if ibuf.StateCharge(k) < k.chargetime {
-						keyOk = false
-					}
+
+				if keyOk && k.chargetime > 1 && ibuf.StateCharge(k) < k.chargetime {
+					keyOk = false
 				}
+
 				if !keyOk {
-					inputMatched = false
+					inputMatched = false // AND logic already failed
 					break
 				}
 			}
@@ -2650,11 +2651,21 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 			c.completed[i] = true
 			c.stepTimers[i] = 0
 
+			// Clear previous step to prevent refreshing the current one
+			if i > 0 {
+				c.completed[i-1] = false
+				c.stepTimers[i-1] = 0
+			}
+
 			// Reset global timer when first step completes (start the window)
 			if i == 0 {
 				c.curtime = 0
 			}
 		}
+	}
+
+	if c.name == "QCF_x" {
+		sys.appendToConsole(fmt.Sprintf("Step timers: %v", c.stepTimers))
 	}
 
 	// Command is complete if last step is completed
