@@ -844,10 +844,10 @@ func (ir *InputReader) ButtonAssistCheck(curr [9]bool) [9]bool {
 
 // This used to hold button state variables (e.g. U), but that didn't have any info we can't derive from the *b (e.g. Ub) vars
 type InputBuffer struct {
-	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Buffer
+	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Current state of buffer
 	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
-	Bc, Dc, Fc, Uc, Lc, Rc, Nc             int32 // Charge
-	ac, bc, cc, xc, yc, zc, sc, dc, wc, mc int32
+	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
+	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp int32
 	InputReader                            *InputReader
 }
 
@@ -867,12 +867,31 @@ func (ib *InputBuffer) Reset() {
 
 // Updates how long ago a char pressed or released a button
 func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool) {
-	update := func(held bool, buffer *int32, charge *int32) {
+	// Save previous buffer state before updating
+	ib.Up = ib.Ub
+	ib.Dp = ib.Db
+	ib.Lp = ib.Lb
+	ib.Rp = ib.Rb
+	ib.Bp = ib.Bb
+	ib.Fp = ib.Fb
+	ib.Np = ib.Nb
+	ib.ap = ib.ab
+	ib.bp = ib.bb
+	ib.cp = ib.cb
+	ib.xp = ib.xb
+	ib.yp = ib.yb
+	ib.zp = ib.zb
+	ib.sp = ib.sb
+	ib.dp = ib.db
+	ib.wp = ib.wb
+	ib.mp = ib.mb
+
+	// Function to update current buffer state of each key
+	update := func(held bool, buffer *int32) {
 		// Detect change
 		if held != (*buffer > 0) {
 			if held {
 				*buffer = 1
-				*charge = 1
 			} else {
 				*buffer = -1
 			}
@@ -885,36 +904,31 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 		} else {
 			*buffer -= 1
 		}
-
-		// Save charge time
-		if *buffer > 0 {
-			*charge = *buffer
-		}
 	}
 
 	// Directions
-	update(U, &ib.Ub, &ib.Uc)
-	update(D, &ib.Db, &ib.Dc)
-	update(L, &ib.Lb, &ib.Lc)
-	update(R, &ib.Rb, &ib.Rc)
-	update(B, &ib.Bb, &ib.Bc)
-	update(F, &ib.Fb, &ib.Fc)
+	update(U, &ib.Ub)
+	update(D, &ib.Db)
+	update(L, &ib.Lb)
+	update(R, &ib.Rb)
+	update(B, &ib.Bb)
+	update(F, &ib.Fb)
 
 	// Neutral
 	nodir := !(U || D || L || R || B || F)
-	update(nodir, &ib.Nb, &ib.Nc)
+	update(nodir, &ib.Nb)
 
 	// Buttons
-	update(a, &ib.ab, &ib.ac)
-	update(b, &ib.bb, &ib.bc)
-	update(c, &ib.cb, &ib.cc)
-	update(x, &ib.xb, &ib.xc)
-	update(y, &ib.yb, &ib.yc)
-	update(z, &ib.zb, &ib.zc)
-	update(s, &ib.sb, &ib.sc)
-	update(d, &ib.db, &ib.dc)
-	update(w, &ib.wb, &ib.wc)
-	update(m, &ib.mb, &ib.mc)
+	update(a, &ib.ab)
+	update(b, &ib.bb)
+	update(c, &ib.cb)
+	update(x, &ib.xb)
+	update(y, &ib.yb)
+	update(z, &ib.zb)
+	update(s, &ib.sb)
+	update(d, &ib.db)
+	update(w, &ib.wb)
+	update(m, &ib.mb)
 }
 
 // Check the buffer state of each key
@@ -1022,8 +1036,8 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		case CK_R:
 			return __.Rb
 
-		// In MUGEN, adding '$' to diagonal inputs doesn't have any meaning.
-		// Update: It does actually. For instance, $DB is true even if you also press U or F, but DB isn't
+		// What '$' seems to do in Mugen is ignore conflicting directions
+		// So it also works on diagonals. For instance, $DB is true even if you also press U or F, but DB isn't
 		case CK_UB:
 			return Min(__.Ub, __.Bb)
 
@@ -1054,76 +1068,105 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 	// Release simple directions
 	if ck.tilde && !ck.dollar {
 		switch ck.key {
-
 		case CK_U:
-			conflict := -Max(__.Bb, Max(__.Db, __.Fb))
-			intended := __.Ub
-			return -Min(conflict, intended)
+			// If already not held or still held in the previous frame. Prevents for instance UF from trigger ~U
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/2626
+			if __.Ub < 0 || __.Up > 0 {
+				conflict := -Max(__.Bb, Max(__.Db, __.Fb))
+				intended := __.Ub
+				return -Min(conflict, intended)
+			}
 
 		case CK_D:
-			conflict := -Max(__.Bb, Max(__.Ub, __.Fb))
-			intended := __.Db
-			return -Min(conflict, intended)
+			if __.Db < 0 || __.Dp > 0 {
+				conflict := -Max(__.Bb, Max(__.Ub, __.Fb))
+				intended := __.Db
+				return -Min(conflict, intended)
+			}
 
 		case CK_B:
-			conflict := -Max(__.Db, Max(__.Ub, __.Fb))
-			intended := __.Bb
-			return -Min(conflict, intended)
+			if __.Bb < 0 || __.Bp > 0 {
+				conflict := -Max(__.Db, Max(__.Ub, __.Fb))
+				intended := __.Bb
+				return -Min(conflict, intended)
+			}
 
 		case CK_F:
-			conflict := -Max(__.Db, Max(__.Ub, __.Bb))
-			intended := __.Fb
-			return -Min(conflict, intended)
+			if __.Fb < 0 || __.Fp > 0 {
+				conflict := -Max(__.Db, Max(__.Ub, __.Bb))
+				intended := __.Fb
+				return -Min(conflict, intended)
+			}
 
 		case CK_L:
-			conflict := -Max(__.Db, Max(__.Ub, __.Rb))
-			intended := __.Lb
-			return -Min(conflict, intended)
+			if __.Lb < 0 || __.Lp > 0 {
+				conflict := -Max(__.Db, Max(__.Ub, __.Rb))
+				intended := __.Lb
+				return -Min(conflict, intended)
+			}
 
 		case CK_R:
-			conflict := -Max(__.Db, Max(__.Ub, __.Lb))
-			intended := __.Rb
-			return -Min(conflict, intended)
+			if __.Rb < 0 || __.Rp > 0 {
+				conflict := -Max(__.Db, Max(__.Ub, __.Lb))
+				intended := __.Rb
+				return -Min(conflict, intended)
+			}
 
 		case CK_UF:
-			conflict := -Max(__.Db, __.Bb)
-			intended := Min(__.Ub, __.Fb)
-			return -Min(conflict, intended)
+			if (__.Ub < 0 || __.Up > 0) && (__.Fb < 0 || __.Fp > 0) {
+				conflict := -Max(__.Db, __.Bb)
+				intended := Min(__.Ub, __.Fb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_UB:
-			conflict := -Max(__.Db, __.Fb)
-			intended := Min(__.Ub, __.Bb)
-			return -Min(conflict, intended)
+			if (__.Ub < 0 || __.Up > 0) && (__.Bb < 0 || __.Bp > 0) {
+				conflict := -Max(__.Db, __.Fb)
+				intended := Min(__.Ub, __.Bb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_DF:
-			conflict := -Max(__.Ub, __.Bb)
-			intended := Min(__.Db, __.Fb)
-			return -Min(conflict, intended)
+			if (__.Db < 0 || __.Dp > 0) && (__.Fb < 0 || __.Fp > 0) {
+				conflict := -Max(__.Ub, __.Bb)
+				intended := Min(__.Db, __.Fb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_DB:
-			conflict := -Max(__.Ub, __.Fb)
-			intended := Min(__.Db, __.Bb)
-			return -Min(conflict, intended)
+			if (__.Db < 0 || __.Dp > 0) && (__.Bb < 0 || __.Bp > 0) {
+				conflict := -Max(__.Ub, __.Fb)
+				intended := Min(__.Db, __.Bb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_UL:
-			conflict := -Max(__.Db, __.Rb)
-			intended := Min(__.Ub, __.Lb)
-			return -Min(conflict, intended)
+			if (__.Ub < 0 || __.Up > 0) && (__.Lb < 0 || __.Lp > 0) {
+				conflict := -Max(__.Db, __.Rb)
+				intended := Min(__.Ub, __.Lb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_UR:
-			conflict := -Max(__.Db, __.Lb)
-			intended := Min(__.Ub, __.Rb)
-			return -Min(conflict, intended)
+			if (__.Ub < 0 || __.Up > 0) && (__.Rb < 0 || __.Rp > 0) {
+				conflict := -Max(__.Db, __.Lb)
+				intended := Min(__.Ub, __.Rb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_DL:
-			conflict := -Max(__.Ub, __.Rb)
-			intended := Min(__.Db, __.Lb)
-			return -Min(conflict, intended)
+			if (__.Db < 0 || __.Dp > 0) && (__.Lb < 0 || __.Lp > 0) {
+				conflict := -Max(__.Ub, __.Rb)
+				intended := Min(__.Db, __.Lb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_DR:
-			conflict := -Max(__.Ub, __.Lb)
-			intended := Min(__.Db, __.Rb)
-			return -Min(conflict, intended)
+			if (__.Db < 0 || __.Dp > 0) && (__.Rb < 0 || __.Rp > 0) {
+				conflict := -Max(__.Ub, __.Lb)
+				intended := Min(__.Db, __.Rb)
+				return -Min(conflict, intended)
+			}
 
 		case CK_N:
 			return -__.Nb
@@ -1134,49 +1177,75 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 	// Release dollar directions
 	if ck.tilde && ck.dollar {
 		switch ck.key {
-
 		case CK_U:
-			return -__.Ub
+			if __.Ub < 0 || __.Up > 0 {
+				return -__.Ub
+			}
 
 		case CK_D:
-			return -__.Db
+			if __.Db < 0 || __.Dp > 0 {
+				return -__.Db
+			}
 
 		case CK_B:
-			return -__.Bb
+			if __.Bb < 0 || __.Bp > 0 {
+				return -__.Bb
+			}
 
 		case CK_F:
-			return -__.Fb
+			if __.Fb < 0 || __.Fp > 0 {
+				return -__.Fb
+			}
 
 		case CK_L:
-			return -__.Lb
+			if __.Lb < 0 || __.Lp > 0 {
+				return -__.Lb
+			}
 
 		case CK_R:
-			return -__.Rb
+			if __.Rb < 0 || __.Rp > 0 {
+				return -__.Rb
+			}
 
 		case CK_UB:
-			return -Min(__.Ub, __.Bb)
+			if (__.Ub < 0 || __.Up > 0) && (__.Bb < 0 || __.Bp > 0) {
+				return -Min(__.Ub, __.Bb)
+			}
 
 		case CK_UF:
-			return -Min(__.Ub, __.Fb)
+			if (__.Ub < 0 || __.Up > 0) && (__.Fb < 0 || __.Fp > 0) {
+				return -Min(__.Ub, __.Fb)
+			}
 
 		case CK_DB:
-			return -Min(__.Db, __.Bb)
+			if (__.Db < 0 || __.Dp > 0) && (__.Bb < 0 || __.Bp > 0) {
+				return -Min(__.Db, __.Bb)
+			}
 
 		case CK_DF:
-			return -Min(__.Db, __.Fb)
+			if (__.Db < 0 || __.Dp > 0) && (__.Fb < 0 || __.Fp > 0) {
+				return -Min(__.Db, __.Fb)
+			}
 
 		case CK_UL:
-			return -Min(__.Ub, __.Lb)
+			if (__.Ub < 0 || __.Up > 0) && (__.Lb < 0 || __.Lp > 0) {
+				return -Min(__.Ub, __.Lb)
+			}
 
 		case CK_UR:
-			return -Min(__.Ub, __.Rb)
+			if (__.Ub < 0 || __.Up > 0) && (__.Rb < 0 || __.Rp > 0) {
+				return -Min(__.Ub, __.Rb)
+			}
 
 		case CK_DL:
-			return -Min(__.Db, __.Lb)
+			if (__.Db < 0 || __.Dp > 0) && (__.Lb < 0 || __.Lp > 0) {
+				return -Min(__.Db, __.Lb)
+			}
 
 		case CK_DR:
-			return -Min(__.Db, __.Rb)
-
+			if (__.Db < 0 || __.Dp > 0) && (__.Rb < 0 || __.Rp > 0) {
+				return -Min(__.Db, __.Rb)
+			}
 		}
 	}
 
@@ -1220,37 +1289,55 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 	// Release buttons
 	if ck.tilde {
 		switch ck.key {
-
 		case CK_a:
-			return -__.ab
+			if __.ab < 0 || __.ap > 0 {
+				return -__.ab
+			}
 
 		case CK_b:
-			return -__.bb
+			if __.bb < 0 || __.bp > 0 {
+				return -__.bb
+			}
 
 		case CK_c:
-			return -__.cb
+			if __.cb < 0 || __.cp > 0 {
+				return -__.cb
+			}
 
 		case CK_x:
-			return -__.xb
+			if __.xb < 0 || __.xp > 0 {
+				return -__.xb
+			}
 
 		case CK_y:
-			return -__.yb
+			if __.yb < 0 || __.yp > 0 {
+				return -__.yb
+			}
 
 		case CK_z:
-			return -__.zb
+			if __.zb < 0 || __.zp > 0 {
+				return -__.zb
+			}
 
 		case CK_s:
-			return -__.sb
+			if __.sb < 0 || __.sp > 0 {
+				return -__.sb
+			}
 
 		case CK_d:
-			return -__.db
+			if __.db < 0 || __.dp > 0 {
+				return -__.db
+			}
 
 		case CK_w:
-			return -__.wb
+			if __.wb < 0 || __.wp > 0 {
+				return -__.wb
+			}
 
 		case CK_m:
-			return -__.mb
-
+			if __.mb < 0 || __.mp > 0 {
+				return -__.mb
+			}
 		}
 	}
 
@@ -1275,28 +1362,52 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		return buf
 	}
 
-	// Hold or release dollar directions
-	// The proper way to do charge most of the time
-	if ck.dollar {
+	// Hold dollar directions
+	if !ck.tilde && ck.dollar {
 		switch ck.key {
 
 		case CK_U:
-			return ib.Uc
+			return ib.Ub
 
 		case CK_D:
-			return ib.Dc
+			return ib.Db
 
 		case CK_B:
-			return ib.Bc
+			return ib.Bb
 
 		case CK_F:
-			return ib.Fc
+			return ib.Fb
 
 		case CK_L:
-			return ib.Lc
+			return ib.Lb
 
 		case CK_R:
-			return ib.Rc
+			return ib.Rb
+
+		}
+	}
+
+	// Release dollar directions
+	if ck.tilde && ck.dollar {
+		switch ck.key {
+
+		case CK_U:
+			return ib.Up // Check previous buffer state instead
+
+		case CK_D:
+			return ib.Dp
+
+		case CK_B:
+			return ib.Bp
+
+		case CK_F:
+			return ib.Fp
+
+		case CK_L:
+			return ib.Lp
+
+		case CK_R:
+			return ib.Rp
 
 		}
 	}
@@ -1308,77 +1419,76 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 		case CK_U:
 			conflict := -Max(ib.Db, Max(ib.Bb, ib.Fb))
-			strict := Min(conflict, ib.Uc)
+			strict := Min(conflict, ib.Ub)
 			return Max(0, strict)
 
 		case CK_D:
 			conflict := -Max(ib.Ub, Max(ib.Bb, ib.Fb))
-			strict := Min(conflict, ib.Dc)
+			strict := Min(conflict, ib.Db)
 			return Max(0, strict)
 
 		case CK_B:
 			conflict := -Max(ib.Ub, Max(ib.Db, ib.Fb))
-			strict := Min(conflict, ib.Bc)
+			strict := Min(conflict, ib.Bb)
 			return Max(0, strict)
 
 		case CK_F:
 			conflict := -Max(ib.Ub, Max(ib.Db, ib.Bb))
-			strict := Min(conflict, ib.Fc)
+			strict := Min(conflict, ib.Fb)
 			return Max(0, strict)
 
 		case CK_L:
 			conflict := -Max(ib.Ub, Max(ib.Db, ib.Rb))
-			strict := Min(conflict, ib.Lc)
+			strict := Min(conflict, ib.Lb)
 			return Max(0, strict)
 
 		case CK_R:
 			conflict := -Max(ib.Ub, Max(ib.Db, ib.Lb))
-			strict := Min(conflict, ib.Rc)
+			strict := Min(conflict, ib.Rb)
 			return Max(0, strict)
 
 		case CK_UF:
 			conflict := -Max(ib.Db, ib.Bb) // Just in case of SOCD funny business
-			strict := Min(conflict, Min(ib.Uc, ib.Fc))
+			strict := Min(conflict, Min(ib.Ub, ib.Fb))
 			return Max(0, strict)
 
 		case CK_UB:
 			conflict := -Max(ib.Db, ib.Fb)
-			strict := Min(conflict, Min(ib.Uc, ib.Bc))
+			strict := Min(conflict, Min(ib.Ub, ib.Bb))
 			return Max(0, strict)
 
 		case CK_DF:
 			conflict := -Max(ib.Ub, ib.Bb)
-			strict := Min(conflict, Min(ib.Dc, ib.Fc))
+			strict := Min(conflict, Min(ib.Db, ib.Fb))
 			return Max(0, strict)
 
 		case CK_DB:
 			conflict := -Max(ib.Ub, ib.Fb)
-			strict := Min(conflict, Min(ib.Dc, ib.Bc))
+			strict := Min(conflict, Min(ib.Db, ib.Bb))
 			return Max(0, strict)
 
 		case CK_UL:
 			conflict := -Max(ib.Db, ib.Rb)
-			strict := Min(conflict, Min(ib.Uc, ib.Lc))
+			strict := Min(conflict, Min(ib.Ub, ib.Lb))
 			return Max(0, strict)
 
 		case CK_UR:
 			conflict := -Max(ib.Db, ib.Lb)
-			strict := Min(conflict, Min(ib.Uc, ib.Rc))
+			strict := Min(conflict, Min(ib.Ub, ib.Rb))
 			return Max(0, strict)
 
 		case CK_DL:
 			conflict := -Max(ib.Ub, ib.Rb)
-			strict := Min(conflict, Min(ib.Dc, ib.Lc))
+			strict := Min(conflict, Min(ib.Db, ib.Lb))
 			return Max(0, strict)
 
 		case CK_DR:
 			conflict := -Max(ib.Ub, ib.Lb)
-			strict := Min(conflict, Min(ib.Dc, ib.Rc))
+			strict := Min(conflict, Min(ib.Db, ib.Rb))
 			return Max(0, strict)
 
-		// Neutral
 		case CK_N: // CK_Ns, CK_N: // TODO: Mugen's bugged $N
-			return ib.Nc
+			return ib.Nb
 		}
 	}
 
@@ -1391,7 +1501,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 			D := ignoreRecent(ib.Db)
 			F := ignoreRecent(ib.Fb)
 			conflict := -Max(B, Max(D, F))
-			strict := Min(conflict, ib.Uc)
+			strict := Min(conflict, ib.Up)
 			return Max(0, strict)
 
 		case CK_D:
@@ -1399,7 +1509,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 			B := ignoreRecent(ib.Bb)
 			F := ignoreRecent(ib.Fb)
 			conflict := -Max(U, Max(B, F))
-			strict := Min(conflict, ib.Dc)
+			strict := Min(conflict, ib.Dp)
 			return Max(0, strict)
 
 		case CK_B:
@@ -1407,7 +1517,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 			D := ignoreRecent(ib.Db)
 			F := ignoreRecent(ib.Fb)
 			conflict := -Max(U, Max(D, F))
-			strict := Min(conflict, ib.Bc)
+			strict := Min(conflict, ib.Bp)
 			return Max(0, strict)
 
 		case CK_F:
@@ -1415,7 +1525,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 			D := ignoreRecent(ib.Db)
 			B := ignoreRecent(ib.Bb)
 			conflict := -Max(U, Max(D, B))
-			strict := Min(conflict, ib.Fc)
+			strict := Min(conflict, ib.Fp)
 			return Max(0, strict)
 
 		case CK_L:
@@ -1423,7 +1533,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 			D := ignoreRecent(ib.Db)
 			R := ignoreRecent(ib.Rb)
 			conflict := -Max(U, Max(D, R))
-			strict := Min(conflict, ib.Lc)
+			strict := Min(conflict, ib.Lp)
 			return Max(0, strict)
 
 		case CK_R:
@@ -1431,65 +1541,67 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 			D := ignoreRecent(ib.Db)
 			L := ignoreRecent(ib.Lb)
 			conflict := -Max(U, Max(D, L))
-			strict := Min(conflict, ib.Rc)
+			strict := Min(conflict, ib.Rp)
 			return Max(0, strict)
 
 		case CK_UF:
 			D := ignoreRecent(ib.Db)
 			B := ignoreRecent(ib.Bb)
 			conflict := -Max(D, B)
-			strict := Min(conflict, Min(ib.Uc, ib.Fc))
+			strict := Min(conflict, Min(ib.Up, ib.Fp))
 			return Max(0, strict)
 
 		case CK_UB:
 			D := ignoreRecent(ib.Db)
 			F := ignoreRecent(ib.Fb)
 			conflict := -Max(D, F)
-			strict := Min(conflict, Min(ib.Uc, ib.Bc))
+			strict := Min(conflict, Min(ib.Up, ib.Bp))
 			return Max(0, strict)
 
 		case CK_DB:
 			U := ignoreRecent(ib.Ub)
 			F := ignoreRecent(ib.Fb)
 			conflict := -Max(U, F)
-			strict := Min(conflict, Min(ib.Dc, ib.Bc))
+			strict := Min(conflict, Min(ib.Dp, ib.Bp))
 			return Max(0, strict)
 
 		case CK_DF:
 			U := ignoreRecent(ib.Ub)
 			B := ignoreRecent(ib.Bb)
 			conflict := -Max(U, B)
-			strict := Min(conflict, Min(ib.Dc, ib.Fc))
+			strict := Min(conflict, Min(ib.Dp, ib.Fp))
 			return Max(0, strict)
 
 		case CK_UL:
 			D := ignoreRecent(ib.Db)
 			R := ignoreRecent(ib.Rb)
 			conflict := -Max(D, R)
-			strict := Min(conflict, Min(ib.Uc, ib.Lc))
+			strict := Min(conflict, Min(ib.Up, ib.Lp))
 			return Max(0, strict)
 
 		case CK_UR:
 			D := ignoreRecent(ib.Db)
 			L := ignoreRecent(ib.Lb)
 			conflict := -Max(D, L)
-			strict := Min(conflict, Min(ib.Uc, ib.Rc))
+			strict := Min(conflict, Min(ib.Up, ib.Rp))
 			return Max(0, strict)
 
 		case CK_DL:
 			U := ignoreRecent(ib.Ub)
 			R := ignoreRecent(ib.Rb)
 			conflict := -Max(U, R)
-			strict := Min(conflict, Min(ib.Dc, ib.Lc))
+			strict := Min(conflict, Min(ib.Dp, ib.Lp))
 			return Max(0, strict)
 
 		case CK_DR:
 			U := ignoreRecent(ib.Ub)
 			L := ignoreRecent(ib.Lb)
 			conflict := -Max(U, L)
-			strict := Min(conflict, Min(ib.Dc, ib.Rc))
+			strict := Min(conflict, Min(ib.Dp, ib.Rp))
 			return Max(0, strict)
 
+		case CK_N:
+			return ib.Np
 		}
 	}
 
@@ -1499,28 +1611,28 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		switch ck.key {
 
 		case CK_UF:
-			return Min(ib.Uc, ib.Fc)
+			return Min(ib.Ub, ib.Fb)
 
 		case CK_UB:
-			return Min(ib.Uc, ib.Bc)
+			return Min(ib.Ub, ib.Bb)
 
 		case CK_DF:
-			return Min(ib.Dc, ib.Fc)
+			return Min(ib.Db, ib.Fb)
 
 		case CK_DB:
-			return Min(ib.Dc, ib.Bc)
+			return Min(ib.Db, ib.Bb)
 
 		case CK_UL:
-			return Min(ib.Uc, ib.Lc)
+			return Min(ib.Ub, ib.Lb)
 
 		case CK_UR:
-			return Min(ib.Uc, ib.Rc)
+			return Min(ib.Ub, ib.Rb)
 
 		case CK_DL:
-			return Min(ib.Dc, ib.Lc)
+			return Min(ib.Db, ib.Lb)
 
 		case CK_DR:
-			return Min(ib.Dc, ib.Rc)
+			return Min(ib.Db, ib.Rb)
 		}
 	}
 
@@ -1529,63 +1641,99 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		switch ck.key {
 
 		case CK_UF:
-			return Min(ib.Uc, ib.Fc)
+			return Min(ib.Up, ib.Fp)
 
 		case CK_UB:
-			return Min(ib.Uc, ib.Bc)
+			return Min(ib.Up, ib.Bp)
 
 		case CK_DF:
-			return Min(ib.Dc, ib.Fc)
+			return Min(ib.Dp, ib.Fp)
 
 		case CK_DB:
-			return Min(ib.Dc, ib.Bc)
+			return Min(ib.Dp, ib.Bp)
 
 		case CK_UL:
-			return Min(ib.Uc, ib.Lc)
+			return Min(ib.Up, ib.Lp)
 
 		case CK_UR:
-			return Min(ib.Uc, ib.Rc)
+			return Min(ib.Up, ib.Rp)
 
 		case CK_DL:
-			return Min(ib.Dc, ib.Lc)
+			return Min(ib.Dp, ib.Lp)
 
 		case CK_DR:
-			return Min(ib.Dc, ib.Rc)
+			return Min(ib.Dp, ib.Rp)
 		}
 	}
 
-	// Buttons
-	// Symbols are irrelevant
-	switch ck.key {
-	case CK_a:
-		return ib.ac
+	// Hold buttons
+	if !ck.tilde {
+		switch ck.key {
+		case CK_a:
+			return ib.ab
 
-	case CK_b:
-		return ib.bc
+		case CK_b:
+			return ib.bb
 
-	case CK_c:
-		return ib.cc
+		case CK_c:
+			return ib.cb
 
-	case CK_x:
-		return ib.xc
+		case CK_x:
+			return ib.xb
 
-	case CK_y:
-		return ib.yc
+		case CK_y:
+			return ib.yb
 
-	case CK_z:
-		return ib.zc
+		case CK_z:
+			return ib.zb
 
-	case CK_s:
-		return ib.sc
+		case CK_s:
+			return ib.sb
 
-	case CK_d:
-		return ib.dc
+		case CK_d:
+			return ib.db
 
-	case CK_w:
-		return ib.wc
+		case CK_w:
+			return ib.wb
 
-	case CK_m:
-		return ib.mc
+		case CK_m:
+			return ib.mb
+		}
+	}
+
+	// Release buttons
+	if ck.tilde {
+		switch ck.key {
+		case CK_a:
+			return ib.ap
+
+		case CK_b:
+			return ib.bp
+
+		case CK_c:
+			return ib.cp
+
+		case CK_x:
+			return ib.xp
+
+		case CK_y:
+			return ib.yp
+
+		case CK_z:
+			return ib.zp
+
+		case CK_s:
+			return ib.sp
+
+		case CK_d:
+			return ib.dp
+
+		case CK_w:
+			return ib.wp
+
+		case CK_m:
+			return ib.mp
+		}
 	}
 
 	return 0
@@ -2424,6 +2572,9 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 	c.stepTimers = make([]int32, len(c.steps))
 
 	// Determine order in which command steps will be evaluated later
+	// Using a reverse order prevents one input from completing two consecutive steps
+	// The exception is "IsDirToButton" steps, which are checked forwards precisely so they can be checked in the same frame
+	// This reversal of the loop order is the most robust method tried so far
 	c.loopOrder = c.loopOrder[:0] // Clear just in case
 	for i := len(c.steps) - 1; i >= 0; {
 		if i > 0 && c.steps[i-1].IsDirToButton(c.steps[i]) {
@@ -2637,7 +2788,7 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 		// Out of the methods tried, this one has the best results for the least work
 		if !inputMatched &&
 			i > 0 && c.steps[i].greater && len(c.steps) >= 2 &&
-			c.completed[i-1] && !c.completed[i] && ibuf.State(c.steps[i-1].keys[0]) != ibuf.LastChangeTime() {
+			c.completed[i-1] && !c.completed[i] && ibuf.State(c.steps[i-1].keys[0]) != ibuf.LastChangeTime() { // ibuf.LastChangeTime() == 1 {
 			// Ikemen used to do a c.Clear(false) here
 			// But Mugen seems to do something like this instead. Or it's more like a ">" failure just prevents "inputMatched"
 			// This makes mashing some commands like "D, D, D" easier to do
@@ -2664,10 +2815,6 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 		}
 	}
 
-	if c.name == "QCF_x" {
-		sys.appendToConsole(fmt.Sprintf("Step timers: %v", c.stepTimers))
-	}
-
 	// Command is complete if last step is completed
 	c.completeframe = len(c.completed) > 0 && c.completed[len(c.completed)-1]
 
@@ -2678,7 +2825,7 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 			return
 		}
 		// If still within allowed overall time, keep going
-		if c.curtime <= c.maxtime {
+		if c.curtime < c.maxtime { // Using <= makes maxtime of 0 or 1 act the same
 			return
 		}
 	}
@@ -2711,7 +2858,7 @@ func NewCommandList(cb *InputBuffer) *CommandList {
 		Buffer:                cb,
 		Names:                 make(map[string]int),
 		DefaultTime:           15,
-		DefaultStepTime:       -1, // Undefined. Later defaults to same as time
+		DefaultStepTime:       -1, // Undefined. Later defaults to same as time. Maybe this should be 15 as well
 		DefaultAutoGreater:    true,
 		DefaultBufferTime:     1,
 		DefaultBufferHitpause: true,
