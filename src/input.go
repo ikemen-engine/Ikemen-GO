@@ -1014,6 +1014,9 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		}
 	}
 
+	// This would be the proper way to do it but it breaks some legacy characters
+	// TODO: Add new symbol with this behavior
+	/*
 	// Hold dollar directions
 	if !ck.tilde && ck.dollar {
 		switch ck.key {
@@ -1061,6 +1064,87 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 
 		case CK_DR:
 			return Min(__.Db, __.Rb)
+
+		}
+	}
+*/
+
+	// Hold dollar directions
+	// The backward compatible way
+	if !ck.tilde && ck.dollar {
+		switch ck.key {
+
+		case CK_U:
+			if __.Ub > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_D:
+			if __.Db > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_B:
+			if __.Bb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_F:
+			if __.Fb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_L:
+			if __.Lb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb), Abs(__.Rb))
+			}
+
+		case CK_R:
+			if __.Rb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb), Abs(__.Rb))
+			}
+
+		// What '$' seems to do in Mugen is ignore conflicting directions
+		// So it also works on diagonals. For instance, $DB is true even if you also press U or F, but DB isn't
+		case CK_UB:
+			if __.Ub > 0 && __.Bb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_UF:
+			if __.Ub > 0 && __.Fb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_DB:
+			if __.Db > 0 && __.Bb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_DF:
+			if __.Db > 0 && __.Fb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_UL:
+			if __.Ub > 0 && __.Lb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb), Abs(__.Rb))
+			}
+
+		case CK_UR:
+			if __.Ub > 0 && __.Rb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb), Abs(__.Rb))
+			}
+
+		case CK_DL:
+			if __.Db > 0 && __.Lb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb), Abs(__.Rb))
+			}
+
+		case CK_DR:
+			if __.Db > 0 && __.Rb > 0 {
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb), Abs(__.Rb))
+			}
 
 		}
 	}
@@ -1174,6 +1258,9 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		}
 	}
 
+	// This would be the proper way to do it but it breaks some legacy characters
+	// TODO: Add new symbol with this behavior
+	/*
 	// Release dollar directions
 	if ck.tilde && ck.dollar {
 		switch ck.key {
@@ -1247,6 +1334,127 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 				return -Min(__.Db, __.Rb)
 			}
 		}
+	}
+	*/
+
+	// Release dollar directions
+	// The backward compatible way
+	if ck.tilde && ck.dollar {
+		switch ck.key {
+
+		case CK_U:
+			if __.Ub < 0 || __.Up > 0 {
+				if __.Ub < 0 {
+					return -__.Ub
+				}
+				return Min(Abs(__.Db), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_D:
+			if __.Db < 0 || __.Dp > 0 {
+				if __.Db < 0 {
+					return -__.Db
+				}
+				return Min(Abs(__.Ub), Abs(__.Bb), Abs(__.Fb))
+			}
+
+		case CK_B:
+			if __.Bb < 0 || __.Bp > 0 {
+				if __.Bb < 0 {
+					return -__.Bb
+				}
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Fb))
+			}
+
+		case CK_F:
+			if __.Fb < 0 || __.Fp > 0 {
+				if __.Fb < 0 {
+					return -__.Fb
+				}
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb))
+			}
+
+		case CK_L:
+			if __.Lb < 0 || __.Lp > 0 {
+				if __.Lb < 0 {
+					return -__.Lb
+				}
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Rb))
+			}
+
+		case CK_R:
+			if __.Rb < 0 || __.Rp > 0 {
+				if __.Rb < 0 {
+					return -__.Rb
+				}
+				return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Lb))
+			}
+
+		case CK_UB:
+			if (__.Ub < 0 || __.Up > 0) && (__.Bb < 0 || __.Bp > 0) {
+				if __.Ub < 0 || __.Bb < 0 {
+					return -Min(__.Ub, __.Bb)
+				}
+				return Min(Abs(__.Db), Abs(__.Fb))
+			}
+
+		case CK_UF:
+			if (__.Ub < 0 || __.Up > 0) && (__.Fb < 0 || __.Fp > 0) {
+				if __.Ub < 0 || __.Fb < 0 {
+					return -Min(__.Ub, __.Fb)
+				}
+				return Min(Abs(__.Db), Abs(__.Bb))
+			}
+
+		case CK_DB:
+			if (__.Db < 0 || __.Dp > 0) && (__.Bb < 0 || __.Bp > 0) {
+				if __.Db < 0 || __.Bb < 0 {
+					return -Min(__.Db, __.Bb)
+				}
+				return Min(Abs(__.Ub), Abs(__.Fb))
+			}
+
+		case CK_DF:
+			if (__.Db < 0 || __.Dp > 0) && (__.Fb < 0 || __.Fp > 0) {
+				if __.Db < 0 || __.Fb < 0 {
+					return -Min(__.Db, __.Fb)
+				}
+				return Min(Abs(__.Ub), Abs(__.Bb))
+			}
+
+		case CK_UL:
+			if (__.Ub < 0 || __.Up > 0) && (__.Lb < 0 || __.Lp > 0) {
+				if __.Ub < 0 || __.Lb < 0 {
+					return -Min(__.Ub, __.Lb)
+				}
+				return Min(Abs(__.Db), Abs(__.Rb))
+			}
+
+		case CK_UR:
+			if (__.Ub < 0 || __.Up > 0) && (__.Rb < 0 || __.Rp > 0) {
+				if __.Ub < 0 || __.Rb < 0 {
+					return -Min(__.Ub, __.Rb)
+				}
+				return Min(Abs(__.Db), Abs(__.Rb))
+			}
+
+		case CK_DL:
+			if (__.Db < 0 || __.Dp > 0) && (__.Lb < 0 || __.Lp > 0) {
+				if __.Db < 0 || __.Lb < 0 {
+					return -Min(__.Db, __.Lb)
+				}
+				return Min(Abs(__.Ub), Abs(__.Rb))
+			}
+
+		case CK_DR:
+			if (__.Db < 0 || __.Dp > 0) && (__.Rb < 0 || __.Rp > 0) {
+				if __.Db < 0 || __.Rb < 0 {
+					return -Min(__.Db, __.Rb)
+				}
+				return Min(Abs(__.Ub), Abs(__.Rb))
+			}
+		}
+
 	}
 
 	// Hold buttons
