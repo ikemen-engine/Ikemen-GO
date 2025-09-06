@@ -2994,15 +2994,26 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 		// This approach has a quirk in that foreign inputs are accepted if they're entered the same frame that the intended input matched
 		// Should be harmless because at least that's very hard for a human to perform
 		// Out of the methods tried, this one has the best results for the least work
-		if !inputMatched &&
-			i > 0 && c.steps[i].greater && len(c.steps) >= 2 &&
-			c.completed[i-1] && !c.completed[i] && ibuf.State(c.steps[i-1].keys[0]) != ibuf.LastChangeTime() { // ibuf.LastChangeTime() == 1 {
+		if !inputMatched && c.steps[i].greater && 
+			i > 0 && len(c.steps) >= 2 && c.completed[i-1] && !c.completed[i] {
+
+			// Check if the last change in inputs can be found in the previous step
+			hasLast := false
+			for _, key := range c.steps[i-1].keys {
+				if ibuf.State(key) == ibuf.LastChangeTime() {
+					hasLast = true
+					break
+				}
+			}
+
 			// Ikemen used to do a c.Clear(false) here
 			// But Mugen seems to do something like this instead. Or it's more like a ">" failure just prevents "inputMatched"
 			// This makes mashing some commands like "D, D, D" easier to do
 			// Clear previous step only
-			c.completed[i-1] = false
-			c.stepTimers[i-1] = 0
+			if !hasLast {
+				c.completed[i-1] = false
+				c.stepTimers[i-1] = 0
+			}
 		}
 
 		if inputMatched {
