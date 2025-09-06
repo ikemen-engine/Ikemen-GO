@@ -6455,11 +6455,14 @@ func (c *Compiler) shiftInput(is IniSection, sc *StateControllerBase, _ int8) (S
 			return 12, nil
 		case "m":
 			return 13, nil
-		case "none":
-			return -1, nil
 		case "B", "F":
 			return -1, Error("'B' and 'F' symbols not accepted. Must be 'L' or 'R'")
 		default:
+			// This one is case insensitive
+			if strings.ToLower(name) == "none" {
+				return -1, nil
+			}
+			// Unknown
 			return -1, Error("Invalid key name: " + name)
 		}
 	}
