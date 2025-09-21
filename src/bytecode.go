@@ -10140,6 +10140,7 @@ func (sc remapPal) Run(c *Char, _ []int32) bool {
 
 	src := [...]int32{-1, 0}
 	dst := [...]int32{-1, 0} // This is the default but technically the compiler crashes if dest is not specified
+	//In Mugen, the group and index are the only parts scanned. https://github.com/ikemen-engine/Ikemen-GO/issues/168 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case remapPal_source:
