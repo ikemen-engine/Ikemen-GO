@@ -1,0 +1,38 @@
+;=====================================================
+; A.N.I.M.E | Main Title Screen
+; Powered by Straw Hat Devs 🏴‍☠️
+;=====================================================
+
+[Info]
+name = "A.N.I.M.E Title Screen"
+author = "Straw Hat Devs"
+version = "1.0"
+
+[Music]
+bgmusic =
+bgmloop = 1
+
+[Script]
+lua = script/menu_music.lua
+
+[Background]
+; Simple background color until we add visuals
+bgcolor = 0,0,0
+
+[Text]
+; Game title (placeholder)
+title = "A.N.I.M.E"
+font = 1
+size = 60
+color = 255,255,255
+pos = 160,120
+
+[Menu]
+; Simple placeholder menu
+menu.items = "Arcade,VS Mode,Options,Exit"
+menu.cursor = ">"
+menu.pos = 140,200
+menu.spacing = 30
+menu.font = 1
+menu.color = 255,255,255
+menu.activecolor = 255,0,0
