@@ -1,37 +1,49 @@
 --========================================================
---  A.N.I.M.E  |  Random Menu Music Selector
+--  A.N.I.M.E  |  Robust Random Menu Music for Android & PC
 --  Powered by Straw Hat Devs 🏴‍☠️
 --========================================================
 
--- Folder where the OGG files are stored (relative path)
-local musicFolder = "./sound/menu_music/"
+-- Folder where the OGG files are stored
+local musicFolder = "sound/menu_music/"
 
 -- List of available tracks
 local tracks = {
     "showdown.ogg",
-    "plot armour.ogg",
+    "plot_armor.ogg",
     "zenitsu_uk_drill.ogg"
 }
 
--- Seed the random number generator
+-- Seed RNG
 math.randomseed(os.time())
 
--- Pick a random track from the list
-local chosen = tracks[math.random(#tracks)]
-local selectedTrack = musicFolder .. chosen
-
--- Debug print in console
-print("[A.N.I.M.E] Now playing: " .. selectedTrack)
-
 -- Function to check if file exists
-local function fileExists(name)
-    local f = io.open(name, "r")
+local function fileExists(path)
+    local f = io.open(path, "r")
     if f then f:close() return true else return false end
 end
 
--- Play the soundtrack if the file exists
-if fileExists(selectedTrack) then
-    bgmPlay(selectedTrack, true, 1.0) -- loop = true, volume = 1.0
+-- Function to pick a random valid track
+local function pickRandomTrack()
+    local validTracks = {}
+    for _, track in ipairs(tracks) do
+        local fullPath = musicFolder .. track
+        if fileExists(fullPath) then
+            table.insert(validTracks, fullPath)
+        else
+            print("[A.N.I.M.E] WARNING: Missing file -> " .. fullPath)
+        end
+    end
+    if #validTracks == 0 then
+        return nil
+    end
+    return validTracks[math.random(#validTracks)]
+end
+
+-- Pick and play
+local selectedTrack = pickRandomTrack()
+if selectedTrack then
+    print("[A.N.I.M.E] Now playing: " .. selectedTrack)
+    bgmPlay(selectedTrack, true, 1.0)
 else
-    print("[A.N.I.M.E] ERROR: File not found -> " .. selectedTrack)
+    print("[A.N.I.M.E] ERROR: No valid music files found!")
 end
