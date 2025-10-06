@@ -9,7 +9,7 @@ local musicFolder = "./sound/menu_music/"
 -- List of available tracks
 local tracks = {
     "showdown.ogg",
-    "plot_amor.ogg",
+    "plot amour.ogg",
     "zenitsu_uk_drill.ogg"
 }
 
