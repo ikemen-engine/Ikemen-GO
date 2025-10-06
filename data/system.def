@@ -1,0 +1,14 @@
+;=====================================================
+; A.N.I.M.E | System Settings
+;=====================================================
+
+[System]
+; Enable Lua console
+lua.console = 1
+
+; Optional: show FPS
+showfps = 1
+
+; Optional: screen resolution (if you want)
+screenwidth = 640
+screenheight = 480
