@@ -44,7 +44,7 @@ jobs:
       buildTime: ${{ env.buildTime }}
       #previousTag: ${{ steps.previousTag.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       #- name: Get previous tag
       #  id: previousTag
@@ -53,6 +53,7 @@ jobs:
       #    semver_only: true
 
       - name: Set version
+        shell: bash
         run: |
           if [ "${{ github.event.inputs.tag }}" != "" ]; then
             echo "version=${{ github.event.inputs.tag }}" >> $GITHUB_ENV
@@ -60,7 +61,6 @@ jobs:
             echo "version=nightly" >> $GITHUB_ENV
           fi
           echo "buildTime=$(date '+%Y-%m-%d')" >> $GITHUB_ENV
-        shell: bash
 
   build:
     name: prepare release
@@ -76,85 +76,225 @@ jobs:
             bin: Ikemen_GO.exe
             glibc: ''
             target: ''
+            build_target: Win64
           - runner_os: linux
-            os: ubuntu-20.04 # ubuntu-22.04 / ubuntu-18.04 (deprecated)
+            os: ubuntu-22.04
             goos: linux
             goarch: amd64
             bin: Ikemen_GO_Linux
             glibc: '2.13'
             target: ''
+            build_target: Linux
           - runner_os: macos
-            os: macos-11 # macos-10.15 (deprecated)
+            os: macos-14 # macos-13
             goos: darwin
-            goarch: amd64
-            bin: Ikemen_GO_MacOS
+            goarch: arm64 # amd64
+            bin: Ikemen_GO_MacOSARM # Ikemen_GO_MacOS
             glibc: ''
             target: '10.7'
+            build_target: MacOSARM # MacOS
     runs-on: ${{ matrix.cfg.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Golang with cache
-        uses: magnetikonline/action-golang-cache@v4
+        uses: magnetikonline/action-golang-cache@v5
         with:
           go-version: ~1.20
           #go-version-file: go.mod
           #cache-key-suffix: -ikemen
 
-      - name: Install dependencies
-        run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            sudo apt-get update && sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev libgtk-3-dev
-          fi
-        shell: bash
+      - name: Setup MSYS2 (Windows)
+        if: ${{ matrix.cfg.runner_os == 'windows' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: >-
+            git
+            make
+            diffutils
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-bzip2
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-tools-git
+            mingw-w64-x86_64-yasm
 
-      - name: Build
+      - name: Install dependencies
+        shell: bash
         run: |
-          ldflags="-X 'main.Version=${{ needs.tag.outputs.version }}' -X 'main.BuildTime=${{ needs.tag.outputs.buildTime }}'"
-          export GOOS="${{ matrix.cfg.goos }}"
-          export GOARCH="${{ matrix.cfg.goarch }}"
-          export CGO_ENABLED=1
-          if [ "${{ matrix.cfg.glibc }}" != "" ]; then
-            wget https://raw.githubusercontent.com/wheybags/glibc_version_header/master/version_headers/x64/force_link_glibc_${{ matrix.cfg.glibc }}.h -O $PWD/force_link_glibc.h
-            export CGO_CFLAGS="$CGO_CFLAGS -include $PWD/force_link_glibc.h"
-            export CGO_CXXFLAGS="$CGO_CXXFLAGS -include $PWD/force_link_glibc.h"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libasound2-dev libgl1-mesa-dev xorg-dev libgtk-3-dev \
+              build-essential pkg-config git yasm nasm curl ca-certificates
           fi
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            export CGO_LDFLAGS="$CGO_LDFLAGS -mmacosx-version-min=${{ matrix.cfg.target }}"
-            export CGO_CFLAGS="$CGO_CFLAGS -mmacosx-version-min=${{ matrix.cfg.target }}"
-            export CGO_CXXFLAGS="$CGO_CXXFLAGS -mmacosx-version-min=${{ matrix.cfg.target }}"
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            ldflags="$ldflags -H windowsgui"
-            cd windres
-            windres -o ../src/ikemen_go.syso Ikemen_GO.rc
-            cd ..
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            brew update
+            brew install --quiet pkg-config git nasm
           fi
-          echo "ldflags: $ldflags"
-          echo "CGO_LDFLAGS: $CGO_LDFLAGS"
-          echo "CGO_CFLAGS: $CGO_CFLAGS"
-          echo "CGO_CXXFLAGS: $CGO_CXXFLAGS"
+
+      - name: Build (POSIX)
+        if: ${{ runner.os != 'Windows' }}
+        shell: bash
+        env:
+          BUILD_FFMPEG: "yes"
+          GOOS: ${{ matrix.cfg.goos }}
+          GOARCH: ${{ matrix.cfg.goarch }}
+          CGO_ENABLED: "1"
+          GOEXPERIMENT: "arenas"
+          APP_VERSION: ${{ needs.tag.outputs.version }}
+          APP_BUILDTIME: ${{ needs.tag.outputs.buildTime }}
+        run: |
           go env -w GO111MODULE=on
           go mod download
-          go build -v -ldflags "$ldflags" -o ./${{ matrix.cfg.bin }} ./src
-          if [ "$RUNNER_OS" != "Windows" ]; then
-            chmod +x ${{ matrix.cfg.bin }}
+          ./build/build.sh ${{ matrix.cfg.build_target }}
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            make appbundle BINNAME=bin/${{ matrix.cfg.bin }}
           fi
-        shell: bash
 
-      - name: Prepare artifacts
+      - name: Build (MSYS2)
+        if: ${{ runner.os == 'Windows' }}
+        shell: 'msys2 {0}'
+        env:
+          BUILD_FFMPEG: "yes"
+          GOOS: ${{ matrix.cfg.goos }}
+          GOARCH: ${{ matrix.cfg.goarch }}
+          CGO_ENABLED: "1"
+          GOEXPERIMENT: "arenas"
+          APP_VERSION: ${{ needs.tag.outputs.version }}
+          APP_BUILDTIME: ${{ needs.tag.outputs.buildTime }}
+        run: |
+          go env -w GO111MODULE=on
+          go mod download
+          ./build/build.sh ${{ matrix.cfg.build_target }}
+
+      - name: Prepare FFmpeg artifacts
+        # if: ${{ matrix.cfg.runner_os == 'windows' }}
+        id: artifacts_ffmpeg
+        shell: bash
+        run: |
+          mkdir -p FFmpeg-CS
+          # Export the *exact* tree
+          ( cd build/ffmpeg-src && git archive --format=tar HEAD ) | tar -x -C FFmpeg-CS
+          cp build/ffmpeg-src/config.h FFmpeg-CS/ 2>/dev/null || true
+          cp build/ffmpeg-src/config.log FFmpeg-CS/ 2>/dev/null || true
+          cp build/ffmpeg-src/BUILDINFO.txt FFmpeg-CS/ 2>/dev/null || true
+          tar -czf "src_ffmpeg.tar.gz" FFmpeg-CS
+          echo "artifact_ffsrc=src_ffmpeg.tar.gz" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare release artifacts
         id: artifacts
+        shell: bash
         run: |
           echo "Preparing files for deployment"
-          mkdir deploy
-          cp ${{ matrix.cfg.bin }} deploy/
+          mkdir -p deploy
+
+          # 1) Put binary and shared libs generated by build.sh
+          if [ "$RUNNER_OS" != "macOS" ]; then
+            cp "./${{ matrix.cfg.bin }}" deploy/
+            mkdir -p deploy/lib
+            cp -r lib/* deploy/lib/ 2>/dev/null || true
+          else
+            cp -r I.K.E.M.E.N-Go.app deploy/
+            if [ -d "build/ffmpeg/lib" ]; then
+              mkdir -p deploy/I.K.E.M.E.N-Go.app/Contents/Frameworks
+              cp -av build/ffmpeg/lib/lib*.dylib deploy/I.K.E.M.E.N-Go.app/Contents/Frameworks/ 2>/dev/null || true
+            fi
+          fi
+
+          # 2) Bring in runtime assets
           git clone https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack.git
-          cp -r data external font Ikemen_GO-Elecbyte-Screenpack/chars Ikemen_GO-Elecbyte-Screenpack/data Ikemen_GO-Elecbyte-Screenpack/font Ikemen_GO-Elecbyte-Screenpack/sound Ikemen_GO-Elecbyte-Screenpack/stages deploy/
-          cp License.txt deploy/
-          cp Ikemen_GO-Elecbyte-Screenpack/LICENCE.txt deploy/ScreenpackLicense.txt
+          cp -r data font external \
+                Ikemen_GO-Elecbyte-Screenpack/chars \
+                Ikemen_GO-Elecbyte-Screenpack/data \
+                Ikemen_GO-Elecbyte-Screenpack/font \
+                Ikemen_GO-Elecbyte-Screenpack/sound \
+                Ikemen_GO-Elecbyte-Screenpack/stages \
+                Ikemen_GO-Elecbyte-Screenpack/video \
+                deploy/
+
+          # 3) Include readme
+          cp README.md deploy/
+
+          # 4) Build a single LICENSES.txt dynamically
+          {
+            echo "============================="
+            echo " Ikemen GO - LICENSES.txt"
+            echo "============================="
+            echo
+            echo "Section 1: Ikemen GO (MIT)"
+            echo "--------------------------"
+            cat LICENCE.txt
+            echo
+            echo "Section 2: Bundled Assets (Creative Commons)"
+            echo "-------------------------------------------"
+            echo "Screenpack license from Ikemen_GO-Elecbyte-Screenpack/LICENCE.txt:"
+            echo
+            cat Ikemen_GO-Elecbyte-Screenpack/LICENCE.txt
+            echo
+            echo "Note: Some assets in the engine repo are under CC-BY 3.0 as noted in the MIT section above."
+            echo
+            echo "Section 3: FFmpeg (LGPL v2.1) and Notices"
+            echo "-----------------------------------------"
+            echo "This program dynamically links FFmpeg under the GNU Lesser General Public License v2.1."
+            echo "The FFmpeg shared libraries are included in this archive so the app runs out of the box."
+            echo "The exact corresponding FFmpeg source is attached to the release page as:"
+            echo "  src_ffmpeg.tar.gz"
+            echo
+            echo "3.1 Full LGPL v2.1 license text (from FFmpeg/COPYING.LGPLv2.1):"
+            echo "----------------------------------------------------------------"
+            cat build/ffmpeg-src/COPYING.LGPLv2.1
+            echo
+            echo "3.2 FFmpeg LICENSE.md:"
+            echo "----------------------"
+            cat build/ffmpeg-src/LICENSE.md
+            echo
+            echo "3.3 FFmpeg CREDITS:"
+            echo "-------------------"
+            cat build/ffmpeg-src/CREDITS
+            echo
+            echo "3.4 FFmpeg shared objects shipped in this archive:"
+            echo "-----------------------------------------------"
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              ( cd deploy/lib 2>/dev/null && ls -1 *.dll 2>/dev/null || true )
+            elif [ "$RUNNER_OS" = "Linux" ]; then
+              ( cd deploy/lib 2>/dev/null && ls -1 *.so* 2>/dev/null || true )
+            else
+              ( cd deploy/I.K.E.M.E.N-Go.app/Contents/Frameworks 2>/dev/null && ls -1 *.dylib 2>/dev/null || true )
+            fi
+            echo
+          } > deploy/LICENSES.txt
+
+          # 5) Extra runtime db
+          GAMEPAD_DB_URL="https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/refs/heads/master/gamecontrollerdb.txt"
+          echo "Downloading SDL GameController DB..."
+          curl -L "$GAMEPAD_DB_URL" -o deploy/external/gamecontrollerdb.txt
+
+          # 6) Archive
           echo "Zipping deploy directory"
           cd deploy
-          if [ "${{ github.event.inputs.tag }}" == "" ]; then
-            ARTIFACT_NAME=Ikemen_GO-dev-${{ matrix.cfg.runner_os }}.zip         
+
+          # Linux desktop integration: ship .desktop + 256px icon
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            #mkdir -p icons/hicolor/256x256/apps
+            #cp ../external/icons/IkemenCylia_256.png icons/hicolor/256x256/apps/ikemen-go.png
+            cp ../external/icons/IkemenCylia_256.png ikemen-go.png
+            cat > Ikemen_GO.desktop <<'EOF'
+          [Desktop Entry]
+          Name=Ikemen GO
+          Comment=An open-source fighting game engine
+          TryExec=Ikemen_GO_Linux
+          Exec=./Ikemen_GO_Linux
+          Icon=ikemen-go.png
+          Terminal=false
+          Type=Application
+          Categories=Game;ArcadeGame;
+          EOF
+          fi
+
+          if [ "${{ github.event.inputs.tag }}" = "" ]; then
+            ARTIFACT_NAME=Ikemen_GO-dev-${{ matrix.cfg.runner_os }}.zip
             echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
             echo "${{ needs.tag.outputs.buildTime }}" > external/script/version
           else
@@ -162,14 +302,13 @@ jobs:
             echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
             echo "${{ needs.tag.outputs.version }}" > external/script/version
           fi
-          if [ "$RUNNER_OS" == "Windows" ]; then
+          if [ "$RUNNER_OS" = "Windows" ]; then
             "/c/Program Files/7-Zip/7z.exe" a ../$ARTIFACT_NAME *
           else
             cp ../build/Ikemen_GO.command .
             zip -r ../$ARTIFACT_NAME *
           fi
           echo "Successfully prepared assets for deployment"
-        shell: bash
 
       - name: Update dev release
         if: "${{ github.event.inputs.tag == '' }}"
@@ -178,7 +317,7 @@ jobs:
           token: ${{ secrets.IKEMEN_TOKEN }}
           allowUpdates: true
           artifactErrorsFailBuild: true
-          artifacts: "${{ steps.artifacts.outputs.artifact }}"
+          artifacts: "${{ steps.artifacts.outputs.artifact }},${{ steps.artifacts_ffmpeg.outputs.artifact_ffsrc }}"
           body: |
             The nightly release, or more precisely, the latest development version, is generated after each commit and always represents the most up-to-date iteration of the source code. It features the newest development version of the engine and screenpack files, making it ready for testing straightaway. Using it can eliminate the need to compile the source code for the latest, cutting-edge updates. However, as a consequence, it may sometimes contain regressions that were not yet discovered and/or outpace the documentation that corresponds to stable releases with version numbers like v x.x.x.
           discussionCategory: ""
@@ -206,7 +345,7 @@ jobs:
           token: ${{ secrets.IKEMEN_TOKEN }}
           allowUpdates: true
           artifactErrorsFailBuild: true
-          artifacts: "${{ steps.artifacts.outputs.artifact }}"
+          artifacts: "${{ steps.artifacts.outputs.artifact }},${{ steps.artifacts_ffmpeg.outputs.artifact_ffsrc }}"
           # body: |
           #   ${{ needs.tag.outputs.changelog }}
           discussionCategory: ${{ github.event.inputs.discussionCategory }}

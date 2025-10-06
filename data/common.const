@@ -11,14 +11,19 @@ Default.Enable.GuardBreak = 1
 Default.Enable.Score = 1
 Default.Enable.Tag = 1
 
+; Input toggles
+Input.FBFlipEnemyDistance = -1      ; Positive value inverts B and F inputs when an enemy is behind the player by that distance
+Input.PauseOnHitPause = 1           ; 1 makes commands be buffered during hit pause. Deprecated. See command parameters
+
 ; Backward compatibility toggles
 Default.LegacyGameDistanceSpec = 1  ; 1 prevents GameWidth/GameHeight from being affected by stage zoom for mugenversion 1.0 chars
-Default.IgnoreDefeatedEnemies = 1   ; 1 prevents EnemyNear from redirecting defeated enemies
-Input.PauseOnHitPause = 1           ; 1 makes inputs to be retained during hit pause
+Default.LegacyFallYVelYAccel = 0    ; 1 sets HitDef's fall.yvelocity and yaccel defaults to fixed values, ignoring chars localcoord scaling.
 
 ; Rules
-Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when an attack successfully hits (overridden by getpower HitDef option)
-Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when an attack successfully hits (overridden by givepower HitDef option)
+Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when a normal/special attack successfully hits (overridden by getpower HitDef option)
+Super.Attack.LifeToPowerMul = 0     ; multiplier for power the attacker gets when a super attack successfully hits (overridden by getpower HitDef option)
+Default.GetHit.LifeToPowerMul = 0.6 ; multiplier for power the receiver gets when a normal/special attack successfully hits (overridden by givepower HitDef option)
+Super.GetHit.LifeToPowerMul = 0.6   ; multiplier for power the receiver gets when a super attack successfully hits (overridden by givepower HitDef option)
 Super.TargetDefenceMul = 1.5        ; multiplier for how much a SuperPause increases the opponent's defence during combos (ignored if SuperPause p2defmul option is set)
 Default.LifeToGuardPointsMul = 1.5  ; multiplier for guard points the receiver loses when a normal/special attack is blocked (overridden by guardpoints HitDef option)
 Super.LifeToGuardPointsMul = 0.33   ; multiplier for guard points the receiver loses when a super attack is blocked (overridden by guardpoints HitDef option)
@@ -197,9 +202,9 @@ StateInitialize = 5900
 
 ; dizzy.zss states
 StateDizzy = 6565300
-StateDizzyFallDown_standCrouch = 6565301
-StateDizzyFallDown_air = 6565302
-StateDizzyLyingDown = 6565303
+StateDizzyFallDown_standCrouch = 6565301 ; Deprecated
+StateDizzyFallDown_air = 6565302         ; Deprecated
+StateDizzyLyingDown = 6565303            ; Deprecated
 StateDizzyBirdsHelper = 6565310
 
 ; guardbreak.zss states
@@ -240,7 +245,7 @@ FxGuardBreakShockwave = 5410
 FxTagSwitchAI = 5600
 FxTagSwitchP1 = 5601
 FxTagSwitchP2 = 5602
-FxBackgroundColor = 9000
+FxBackgroundColor = 9000 ; Deprecated
 
 ; fight.def
 MsgFirstAttack = 401
@@ -258,44 +263,15 @@ MsgCombo25 = 412
 MsgWinSpecial = 413
 MsgWinHyper = 414
 MsgWinPerfect = 415
-MsgPartnerAssist = 416 ;not used
+MsgPartnerAssist = 416   ; Not used by default tag system
 MsgPartnerChange = 417
 MsgPartnerDown = 418
-MsgPartnerAssistOK = 419 ;not used
-MsgActiveSwitch = 420
-MsgCounterSwitch = 421
+MsgPartnerAssistOK = 419 ; Not used by default tag system
+MsgActiveSwitch = 420    ; Not used by default tag system
+MsgCounterSwitch = 421   ; Not used by default tag system
 MsgGuardBreak = 422
 MsgParry = 423
-MsgJustDefend = 424 ;not used
-
-; GetHitVar(attr)
-AttrStandingNormalAttack = 65
-AttrCrouchingNormalAttack = 66
-AttrAerialNormalAttack = 68
-AttrStandingNormalThrow = 129
-AttrCrouchingNormalThrow = 130
-AttrAerialNormalThrow = 132
-AttrStandingNormalProjectile = 257
-AttrCrouchingNormalProjectile = 258
-AttrAerialNormalProjectile = 260
-AttrStandingSpecialAttack = 513
-AttrCrouchingSpecialAttack = 514
-AttrAerialSpecialAttack = 516
-AttrStandingSpecialThrow = 1025
-AttrCrouchingSpecialThrow = 1026
-AttrAerialSpecialThrow = 1028
-AttrStandingSpecialProjectile = 2049
-AttrCrouchingSpecialProjectile = 2050
-AttrAerialSpecialProjectile = 2052
-AttrStandingHyperAttack = 4097
-AttrCrouchingHyperAttack = 4098
-AttrAerialHyperAttack = 4100
-AttrStandingHyperThrow = 8193
-AttrCrouchingHyperThrow = 8194
-AttrAerialHyperThrow = 8196
-AttrStandingHyperProjectile = 16385
-AttrCrouchingHyperProjectile = 16386
-AttrAerialHyperProjectile = 16388
+MsgJustDefend = 424
 
 ; Bitwise shifting
 Bit1 = 1

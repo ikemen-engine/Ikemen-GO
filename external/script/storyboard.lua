@@ -7,21 +7,23 @@ storyboard.t_storyboard = {} --stores all parsed storyboards (we parse each of t
 local function f_reset(t)
 	main.f_setStoryboardScale(t.info.localcoord)
 	for _, scene in pairs(t.scene) do
-		if scene.bg_name ~= '' then
+		if scene.bg_name ~= '' and scene.bg then
 			bgReset(scene.bg)
 		end
 		for _, layer in pairs(scene.layer) do
 			if layer.anim_data ~= nil then
 				animReset(layer.anim_data)
 				animUpdate(layer.anim_data)
-				animSetPalFX(layer.anim_data, {
-					time =      layer.palfx_time,
-					add =       layer.palfx_add,
-					mul =       layer.palfx_mul,
-					sinadd =    layer.palfx_sinadd,
-					invertall = layer.palfx_invertall,
-					color =     layer.palfx_color
-				})
+				if layer.palfx_time then
+					animSetPalFX(layer.anim_data, {
+						time =      layer.palfx_time,
+						add =       layer.palfx_add,
+						mul =       layer.palfx_mul,
+						sinadd =    layer.palfx_sinadd,
+						invertall = layer.palfx_invertall,
+						color =     layer.palfx_color
+					})
+				end
 			end
 		end
 	end
@@ -47,7 +49,7 @@ local function f_play(t, attract)
 					resetKey()
 				end
 				--play bgm
-				if i == 0 and (k - 1 == t.scenedef.startscene or scene.bgm ~= '') then
+				if i == 0 and (--[[k - 1 == t.scenedef.startscene or]] scene.bgm ~= '') then
 					main.f_playBGM(k - 1 == t.scenedef.startscene, scene.bgm, scene.bgm_loop, scene.bgm_volume, scene.bgm_loopstart, scene.bgm_loopend)
 				end
 				--play snd
@@ -62,11 +64,11 @@ local function f_play(t, attract)
 				clearColor(scene.clearcolor[1], scene.clearcolor[2], scene.clearcolor[3])
 				--draw layerno = 0 backgrounds
 				if scene.bg_name ~= '' then
-					bgDraw(scene.bg, false)
+					bgDraw(scene.bg, 0)
 				end
 				--loop through layers in order
 				for _, layer in main.f_sortKeys(scene.layer) do
-					if i >= layer.starttime and i <= layer.endtime then
+					if i >= layer.starttime and i < layer.endtime then
 						--layer anim
 						if layer.anim_data ~= nil then
 							animDraw(layer.anim_data)
@@ -98,7 +100,7 @@ local function f_play(t, attract)
 				end
 				--draw layerno = 1 backgrounds
 				if scene.bg_name ~= '' then
-					bgDraw(scene.bg, true)
+					bgDraw(scene.bg, 1)
 				end
 				--draw fadein / fadeout
 				if i == scene.end_time - scene.fadeout_time then
@@ -121,7 +123,10 @@ local function f_play(t, attract)
 end
 
 local function f_parse(path)
-	local file = io.open(path, 'r')
+	local content = loadText(path)
+	if content == nil then
+		return nil
+	end
 	local fileDir, fileName = path:match('^(.-)([^/\\]+)$')
 	local t = {info = {localcoord = {320, 240}}}
 	local pos = t
@@ -146,7 +151,7 @@ local function f_parse(path)
 		},
 		scene = {},
 	}
-	for line in file:lines() do
+	for line in content:gmatch("([^\r\n]*)[\r\n]?") do
 		line = line:gsub('%s*;.*$', '')
 		if line:match('^%s*%[.-%s*%]%s*$') then --matched [] group
 			line = line:match('^%s*%[(.-)%s*%]%s*$') --match text between []
@@ -229,12 +234,12 @@ local function f_parse(path)
 								palfx_invertall = 0, --Ikemen feature
 								palfx_color = 256, --Ikemen feature
 								textdelay = 2,
-								textwindow = {0, 0, math.max(config.GameWidth, t.info.localcoord[1]), math.max(config.GameHeight, t.info.localcoord[2])}, --Ikemen feature
+								textwindow = {0, 0, math.max(gameOption('Video.GameWidth'), t.info.localcoord[1]), math.max(gameOption('Video.GameHeight'), t.info.localcoord[2])}, --Ikemen feature
 								offset = {0, 0},
 								vel = {0, 0}, --Ikemen feature
 								spacing = {0, 0}, --Ikemen feature
 								starttime = 0,
-								--endtime = 0,
+								endtime = nil,
 							}
 						end
 						pos_val = pos.layer[num]
@@ -313,7 +318,6 @@ local function f_parse(path)
 			end
 		end
 	end
-	file:close()
 	--;===========================================================
 	--; FIX REFERENCES, LOAD DATA
 	--;===========================================================
@@ -370,9 +374,9 @@ local function f_parse(path)
 				if t.spr_data[t[spr_def].spr] == nil then --sff data not created yet
 					t.spr_data[t[spr_def].spr] = sffNew(t[spr_def].spr)
 				end
-				scene.bg = bgNew(t.spr_data[t[spr_def].spr], t.def, scene.bg_name:lower())
+				scene.bg = bgNew(t.spr_data[t[spr_def].spr], t.def, scene.bg_name:lower(),nil)
 			else
-				scene.bg = bgNew(t.spr_data[t.scenedef.spr], t.def, scene.bg_name:lower())
+				scene.bg = bgNew(t.spr_data[t.scenedef.spr], t.def, scene.bg_name:lower(),nil)
 			end
 			bgReset(scene.bg)
 		end
@@ -415,7 +419,7 @@ local function f_parse(path)
 				})
 			end
 			--endtime
-			if layer.endtime == nil then
+			if layer.endtime == nil or layer.endtime < layer.starttime then
 				layer.endtime = scene.end_time
 			end
 		end
@@ -435,13 +439,14 @@ end
 
 function storyboard.f_storyboard(path, attract)
 	path = path:gsub('\\', '/')
-	if not main.f_fileExists(path) then
-		return
-	end
 	main.f_cmdBufReset()
 	main.f_disableLuaScale()
 	if storyboard.t_storyboard[path] == nil then
 		storyboard.t_storyboard[path] = f_parse(path)
+		if storyboard.t_storyboard[path] == nil then
+			main.f_setLuaScale()
+			return false
+		end
 	else
 		f_reset(storyboard.t_storyboard[path])
 	end

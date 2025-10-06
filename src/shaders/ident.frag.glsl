@@ -1,7 +1,17 @@
+#if __VERSION__ >= 130
+#define COMPAT_VARYING in
+#define COMPAT_TEXTURE texture
+out vec4 FragColor;
+#else
+#define COMPAT_VARYING varying
+#define FragColor gl_FragColor
+#define COMPAT_TEXTURE texture2D
+#endif
+
 uniform sampler2D Texture;
 
-varying vec2 texcoord;
+COMPAT_VARYING vec2 texcoord;
 
 void main(void) {
-	gl_FragColor = texture2D(Texture, texcoord);
+    FragColor = COMPAT_TEXTURE(Texture, texcoord);
 }

@@ -76,8 +76,12 @@
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info#external-modules
 	module = ""
 
+[Languages] ; Ikemen feature, use to declare languages to show in the options menu.
+	languages = en
+	en = "English"
+	
 ;[ja.Files]
-	; Not used in Ikemen
+	
 
 [Music]
 	title.bgm = ""
@@ -181,18 +185,29 @@
 	fadeout.anim = -1
 
 	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0.0
+	menu.item.angle = 0.0
 	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0.0
+	menu.item.active.angle = 0.0
+
+	; Enables Mugen menu tween (if > 0) and allows adjusting its velocity
+	menu.tween.time = 3
 
 	; Title text rendered in main menu
 	title.offset = 159, 19
 	title.font = -1, 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = "MAIN MENU"
 
 	; Loading text rendered during initial loading (black screen)
 	;loading.offset = (localcoordX - 1 - (10 * localcoordX / 320)), (localcoordY - 8)
 	loading.font = "default-3x5.def", 0, -1, 191, 191, 191, -1
 	loading.scale = 1.0, 1.0
+	loading.xshear = 0.0
+	loading.angle = 0.0
 	loading.text = "LOADING..."
 
 	; Footer parameters control rendering of engine version info. Separated into
@@ -200,14 +215,20 @@
 	;footer1.offset = (2 * localcoordX / 320), localcoordY
 	footer1.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	footer1.scale = 1.0, 1.0
+	footer1.xshear = 0.0
+	footer1.angle = 0.0
 	footer1.text = "I.K.E.M.E.N. GO"
 	;footer2.offset = (localcoordX / 2), localcoordY
 	footer2.font = "default-3x5.def", 0, 0, 191, 191, 191, -1
 	footer2.scale = 1.0, 1.0
+	footer2.xshear = 0.0
+	footer2.angle = 0.0
 	footer2.text = "Press F1 for info"
 	;footer3.offset = (localcoordX - 1 - (2 * localcoordX / 320)), localcoordY
 	footer3.font = "default-3x5.def", 0, -1, 191, 191, 191, -1
 	footer3.scale = 1.0, 1.0
+	footer3.xshear = 0.0
+	footer3.angle = 0.0
 	footer3.text = "verBeta"
 	;footer.overlay.window = 0, (localcoordY - 7), (localcoordX - 1), (localcoordY - 1)
 	footer.overlay.col = 0, 0, 64
@@ -217,6 +238,8 @@
 	;connecting.offset = (10 * localcoordX / 320), 40
 	connecting.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	connecting.scale = 1.0, 1.0
+	connecting.xshear = 0.0
+	connecting.angle = 0.0
 	connecting.host.text = "Waiting for player 2... (%s)"
 	connecting.join.text = "Now connecting to %s... (%s)"
 	;connecting.overlay.window = 0, 0, localcoordX, localcoordY
@@ -227,6 +250,8 @@
 	textinput.offset = 25, 32
 	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	textinput.scale = 1.0, 1.0
+	textinput.xshear = 0.0
+	textinput.angle = 0.0
 	textinput.name.text = "Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button."
 	textinput.address.text = "Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button."
 	;textinput.overlay.window = 0, 0, localcoordX, localcoordY
@@ -257,6 +282,19 @@
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
 
+	; menu.item.bg are layered below every itemname; like menu.bg elements, but
+	; global
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = 
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.offset = 0.0, 0.0
+	menu.item.bg.facing = 1
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = 
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.offset = 0.0, 0.0
+	menu.item.active.bg.facing = 1
+
 	menu.item.offset = 0, 0
 	menu.item.active.offset = 0, 0
 
@@ -264,6 +302,11 @@
 	; changes (srcMin, srcMax, srcStep, dstMin, dstMax, dstStep)
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
+
+	; Snap boxcursor on menu section change
+	menu.boxcursor.tween.snap = 0
+	; Enables boxcursor tween (if > 0) and allows adjusting its velocity
+	menu.boxcursor.tween.time = 3
 
 	; boxbg is an automatically generated overlay around itemnames, based on
 	; values assigned to menu.pos and menu.boxcursor.coords parameters.
@@ -329,11 +372,15 @@
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = ""
 
 	text.offset = 25, 32
 	text.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	text.scale = 1.0, 1.0
+	text.xshear = 0.0
+	text.angle = 0.0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -574,6 +621,14 @@
 	; ticks between blinks when p2.cursor.blink = 1
 	p2.cursor.switchtime = 3
 
+	; Enables the Mugen 1.1 cursor tween (if > 0) and allows adjusting its x and y tween time
+	p1.cursor.tween.time = 0, 0
+	; Resets cursor animation when moving to a new cell
+	p1.cursor.reset = 0
+
+	p2.cursor.tween.time = 0, 0
+	p2.cursor.reset = 0
+
 	; cursor parameters defaults to p1 and p2 values, if not specified
 	;p<pn>.cursor.startcell = 0, 0
 	;p<pn>.cursor.active.anim = -1
@@ -607,6 +662,8 @@
 	portrait.anim = -1
 
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 
 	; Text rendered using title element (hardcoded in Mugen)
 	title.arcade.text = "Arcade"
@@ -634,29 +691,33 @@
 	p1.face.anim = -1
 	; Done variants replace spr/anim once character is selected
 	p1.face.done.anim = -1
-	p1.face.done.spr = 9000, 1
+	p1.face.done.spr = 
 	; Spacing between portraits.
 	p1.face.spacing = 0, 0
 	; Set to 1 to enable automatic spacing adjustment based on team size
 	; (starting position adjusted by values assigned to face.num, face.spacing,
 	; and actual team count in a given match)
 	p1.face.padding = 0
+	; Set 1 to apply selected palette to Portraits
+	p1.face.applypal = 0
 
 	p2.face.num = 1
 	p2.face.anim = -1
 	p2.face.done.anim = -1
-	p2.face.done.spr = 9000, 1
+	p2.face.done.spr = 
 	p2.face.spacing = 0, 0
 	p2.face.padding = 0
+	p2.face.applypal = 0
 
 	; Parameters for customizing portraits on per team member basis (values take
 	; priority over standard ones, if defined)
 	;p<pn>.member<num>.face.anim = -1
 	;p<pn>.member<num>.face.spr = 9000, 1
 	;p<pn>.member<num>.face.done.anim = -1
-	;p<pn>.member<num>.face.done.spr = 9000, 1
+	;p<pn>.member<num>.face.done.spr = 
 	;p<pn>.member<num>.face.offset = 0, 0
 	;p<pn>.member<num>.face.scale = 1.0, 1.0
+	;p<pn>.member<num>.face.anim = 0
 
 	; Optional portrait sliding is handled by 2 parameters:
 	; speed decides how many pixels the portrait movement covers on each frame
@@ -684,10 +745,14 @@
 	; member's name has priority. Not used in co-op.
 	p1.name.num = 4
 	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0.0
+	p1.name.angle = 0.0
 	p1.name.random.text = "Random"
 
 	p2.name.num = 4
 	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0.0
+	p2.name.angle = 0.0
 	p2.name.random.text = "Random"
 
 	stage.active.offset = 0, 0
@@ -716,6 +781,15 @@
 	stage.portrait.random.offset = 0, 0
 	stage.portrait.random.scale = 1.0, 1.0
 	stage.portrait.window = 
+	
+	p1.teammenu.selftitle.xshear = 0.0
+	p1.teammenu.selftitle.angle = 0.0
+	p1.teammenu.enemytitle.xshear = 0.0
+	p1.teammenu.enemytitle.angle = 0.0
+	p2.teammenu.selftitle.xshear = 0.0
+	p2.teammenu.selftitle.angle = 0.0
+	p2.teammenu.enemytitle.xshear = 0.0
+	p2.teammenu.enemytitle.angle = 0.0
 
 	; These parameters allows renaming or disabling team modes from selection
 	; (via blank assignment) in all modes that supports them.
@@ -744,12 +818,24 @@
 	;p<pn>.teammenu.bg.active.<itemname>.scale = 1.0, 1.0
 
 	p1.teammenu.item.scale = 1.0, 1.0
+	p1.teammenu.item.xshear = 0.0
+	p1.teammenu.item.angle = 0.0
 	p1.teammenu.item.active.scale = 1.0, 1.0
+	p1.teammenu.item.active.xshear = 0.0
+	p1.teammenu.item.active.angle = 0.0
 	p1.teammenu.item.active2.scale = 1.0, 1.0
+	p1.teammenu.item.active2.xshear = 0.0
+	p1.teammenu.item.active2.angle = 0.0
 	p1.teammenu.item.active.switchtime = 2
 	p2.teammenu.item.scale = 1.0, 1.0
+	p2.teammenu.item.xshear = 0.0
+	p2.teammenu.item.angle = 0.0
 	p2.teammenu.item.active.scale = 1.0, 1.0
+	p2.teammenu.item.active.xshear = 0.0
+	p2.teammenu.item.active.angle = 0.0
 	p2.teammenu.item.active2.scale = 1.0, 1.0
+	p2.teammenu.item.active2.xshear = 0.0
+	p2.teammenu.item.active2.angle = 0.0
 	p2.teammenu.item.active.switchtime = 2
 
 	p1.teammenu.next.key = "$D"
@@ -768,6 +854,8 @@
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255, -1
 	timer.scale = 1.0, 1.0
+	timer.xshear = 0.0
+	timer.angle = 0.0
 	timer.text = "%i"
 	timer.count = -1
 	timer.framespercount = 60
@@ -778,6 +866,8 @@
 	record.offset = 0, 0
 	record.font = -1, 0, 0, 255, 255, 255, -1
 	record.scale = 1.0, 1.0
+	record.xshear = 0.0
+	record.angle = 0.0
 	;record.<gamemode>.text = ""
 
 	; Sound triggered when swapping slots (see slot feature in select.def)
@@ -864,6 +954,36 @@
 	p2.teammenu.ratio7.icon.facing = 1
 	p2.teammenu.ratio7.icon.scale = 1.0, 1.0
 
+	paletteselect = 0
+	;p<pn>_member<num>.palette.number.offset = 0, 0
+	;p<pn>.member<num>.palette.number.font = -1, 0, 0
+	;p<pn>.member<num>.palette.number.scale = 1.0, 1.0
+	;p<pn>_member<num>_palette_number_xshear = 1.0
+	;p<pn>_member<num>_palette_number_angle = 1
+	;p<pn>.palette.number.offset = 0, 0
+	;p<pn>.palette.number.font = -1, 0, 0
+	;p<pn>.palette.number.scale = 1.0, 1.0
+	;p<pn>_palette_number_xshear = 1.0
+	;p<pn>_palette_number_angle = 1
+	;p<pn>_member<num>.palette.text.offset = 0, 0
+	;p<pn>.member<num>.palette.text.font = -1, 0, 0
+	;p<pn>.member<num>.palette.text.scale = 1.0, 1.0
+	;p<pn>_member<num>_palette_text_xshear = 1.0
+	;p<pn>_member<num>_palette_text_angle = 1
+	;p<pn>.palette.text.offset = 0, 0
+	;p<pn>.palette.text.font = -1, 0, 0
+	;p<pn>.palette.text.scale = 1.0, 1.0
+	;p<pn>_palette_text_xshear = 1.0
+	;p<pn>_palette_text_angle = 1
+	p1.palette.next.key = "$F"
+	p1.palette.previous.key = "$B"
+	p1.palette.accept.key = "a&b&c&x&y&z&s"
+	p2.palette.next.key = "$F"
+	p2.palette.previous.key = "$B"
+	p2.palette.accept.key = "a&b&c&x&y&z&s"
+	palette.move.snd = -1, 0
+	palette.done.snd = -1, 0
+
 [SelectBgDef] ;Ikemen feature
 	spr = ""
 	bgclearcolor = 0, 0, 0
@@ -909,17 +1029,23 @@
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
 
+	match.xshear = 0.0
+	match.angle = 0.0
+
 	; Refer to [Select Info] face parameters for extra comments about portraits.
 
 	p1.num = 1
 	p1.anim = -1
 	p1.spacing = 0, 0
 	p1.padding = 0
+	; Set 1 to apply selected palette to Portraits
+	p1.applypal = 0
 
 	p2.num = 1
 	p2.anim = -1
 	p2.spacing = 0, 0
 	p2.padding = 0
+	p2.applypal = 0
 
 	;p<pn>.member<num>.anim = -1
 	;p<pn>.member<num>.spr = 9000, 1
@@ -929,6 +1055,7 @@
 	;p<pn>.member<num>.scale = 1.0, 1.0
 	;p<pn>.member<num>.slide.speed = 0, 0
 	;p<pn>.member<num>.slide.dist = 0, 0
+	;p<pn>.member<num>.pal = 0
 
 	; Additional portrait layered under standard ones. Limited to 1 portrait per
 	; team side. Character that will fight first takes priority (portrait may
@@ -939,6 +1066,7 @@
 	p1.face2.facing = 1
 	p1.face2.scale = 1.0, 1.0
 	p1.face2.window = 
+	p1.face2.applypal = 0
 
 	p2.face2.anim = -1
 	p2.face2.spr = 
@@ -946,6 +1074,7 @@
 	p2.face2.facing = -1
 	p2.face2.scale = 1.0, 1.0
 	p2.face2.window = 
+	p2.face2.applypal = 0
 
 	; Set to 1 to enable order selection
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-Info#orderselect
@@ -1013,6 +1142,8 @@
 	timer.offset = 0, 0
 	timer.font = -1, 0, 0, 255, 255, 255, -1
 	timer.scale = 1.0, 1.0
+	timer.xshear = 0.0
+	timer.angle = 0.0
 	timer.text = "%i"
 	timer.count = -1
 	timer.framespercount = 6
@@ -1026,8 +1157,12 @@
 	; leader name has priority. Not used in co-op.
 	p1.name.num = 4
 	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0.0
+	p1.name.angle = 0.0
 	p2.name.num = 4
 	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0.0
+	p2.name.angle = 0.0
 
 	; Sound triggered when particular stage is selected (data read from
 	; attachedchar SND file associated with stage)
@@ -1108,6 +1243,22 @@
 	move.snd = 100, 0
 	done.snd = 100, 1
 	cancel.snd = 100, 2
+	
+	continue.scale = 1.0, 1.0
+	continue.xshear = 0.0
+	continue.angle = 0.0
+	yes.scale = 1.0, 1.0
+	yes.xshear = 0.0
+	yes.angle = 0.0
+	yes.active.scale = 1.0, 1.0
+	yes.active.xshear = 0.0
+	yes.active.angle = 0.0
+	no.scale = 1.0, 1.0
+	no.xshear = 0.0
+	no.angle = 0.0
+	no.active.scale = 1.0, 1.0
+	no.active.xshear = 0.0
+	no.active.angle = 0.0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -1135,6 +1286,8 @@
 	credits.offset = 0, 0
 	credits.font = "jg.fnt", 0, 1, 255, 255, 255, -1
 	credits.scale = 1.0, 1.0
+	credits.xshear = 0.0
+	credits.angle = 0.0
 
 	; Extended continue screen (legacymode.enabled = 0) renders interactive
 	; counter animation, defined as a single 'counter' element. This animation
@@ -1216,6 +1369,8 @@
 	p1.anim = -1
 	p1.spacing = 0, 0
 	p1.padding = 0
+	; Set 1 to apply selected palette to Portraits
+	p1.applypal = 0
 
 	p2.pos = 0, 0
 	p2.num = 0
@@ -1227,6 +1382,7 @@
 	p2.window = 
 	p2.spacing = 0, 0
 	p2.padding = 0
+	p2.pal = 0
 
 	;p<pn>.member<num>.anim = -1
 	;p<pn>.member<num>.spr = 9000, 2
@@ -1244,6 +1400,7 @@
 	p1.face2.facing = 1
 	p1.face2.scale = 1.0, 1.0
 	p1.face2.window = 
+	p1.face2.applypal = 0
 
 	p2.face2.anim = -1
 	p2.face2.spr = 
@@ -1251,13 +1408,20 @@
 	p2.face2.facing = -1
 	p2.face2.scale = 1.0, 1.0
 	p2.face2.window = 
+	p2.face2.applypal = 0
 
 	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0.0
+	p1.name.angle = 0.0
 
 	p2.name.offset = 0, 0
 	p2.name.font = -1, 0, 1, 255, 255, 255, -1
 	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0.0
+	p2.name.angle = 0.0
 
+	winquote.xshear = 0.0
+	winquote.angle = 0.0
 	winquote.spacing = 0, 0
 	winquote.delay = 2
 	winquote.displaytime = 0
@@ -1296,6 +1460,9 @@
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
+
+	wintext.xshear = 0.0
+	wintext.angle = 0.0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -1341,6 +1508,9 @@
 	fadein.anim = -1
 	fadeout.col = 0, 0, 0
 	fadeout.anim = -1
+	
+	winstext.xshear = 0.0
+	winstext.angle = 0.0
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
 	overlay.col = 0, 0, 0
@@ -1374,6 +1544,8 @@
 	winstext.offset = 159, 70
 	winstext.font = "jg.fnt", 0, 0, 255, 255, 255, -1
 	winstext.scale = 1.0, 1.0
+	winstext.xshear = 0.0
+	winstext.angle = 0.0
 	winstext.displaytime = 0
 	winstext.layerno = 2
 
@@ -1400,6 +1572,8 @@
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 
 	cursor.move.snd = 100, 0
 	cursor.done.snd = 100, 1
@@ -1423,6 +1597,8 @@
 
 	menu.pos = 85, 33
 
+	menu.tween.time = 3
+
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
@@ -1433,40 +1609,69 @@
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
+	
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = 
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.offset = 0.0, 0.0
+	menu.item.bg.facing = 1
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = 
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.offset = 0.0, 0.0
+	menu.item.active.bg.facing = 1
 
 	menu.item.offset = 0, 0
 	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191, -1
 	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0.0
+	menu.item.angle = 0.0
 
 	menu.item.active.offset = 0, 0
 	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0.0
+	menu.item.active.angle = 0.0
 
 	menu.item.selected.offset = 0, 0
 	menu.item.selected.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
 	menu.item.selected.scale = 1.0, 1.0
+	menu.item.selected.xshear = 0.0
+	menu.item.selected.angle = 0.0
 	menu.item.selected.active.offset = 0, 0
 	menu.item.selected.active.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
 	menu.item.selected.active.scale = 1.0, 1.0
+	menu.item.selected.active.xshear = 0.0
+	menu.item.selected.active.angle = 0.0
 
 	menu.item.value.offset = 150, 0
 	menu.item.value.font = "f-6x9.def", 0, -1, 191, 191, 191, -1
 	menu.item.value.scale = 1.0, 1.0
+	menu.item.value.xshear = 0.0
+	menu.item.value.angle = 0.0
 
 	menu.item.value.active.offset = 150, 0
 	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255, -1
 	menu.item.value.active.scale = 1.0, 1.0
+	menu.item.value.active.xshear = 0.0
+	menu.item.value.active.angle = 0.0
 
 	menu.item.value.conflict.offset = 150, 0
 	menu.item.value.conflict.font = "f-6x9.def", 0, -1, 247, 0, 0, -1
 	menu.item.value.conflict.scale = 1.0, 1.0
+	menu.item.value.conflict.xshear = 0.0
+	menu.item.value.conflict.angle = 0.0
 
 	menu.item.info.offset = 150, 0
 	menu.item.info.font = "f-6x9.def", 0, -1, 247, 247, 0, -1
 	menu.item.info.scale = 1.0, 1.0
+	menu.item.info.xshear = 0.0
+	menu.item.info.angle = 0.0
 	menu.item.info.active.offset = 150, 0
 	menu.item.info.active.font = "f-6x9.def", 0, -1, 247, 247, 0, -1
 	menu.item.info.active.scale = 1.0, 1.0
+	menu.item.info.active.xshear = 0.0
+	menu.item.info.active.angle = 0.0
 
 	menu.item.spacing = 0, 14
 	menu.window.margins.y = 0, 0
@@ -1476,6 +1681,9 @@
 	menu.boxcursor.coords = -5, -10, 154, 3
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.time = 3
+
 	menu.boxbg.visible = 1
 	menu.boxbg.col = 0, 0, 0
 	menu.boxbg.alpha = 0, 128
@@ -1503,6 +1711,9 @@
 	menu.valuename.no = "No"
 	menu.valuename.enabled = "Enabled"
 	menu.valuename.disabled = "Disabled"
+	menu.valuename.normal = "Normal"
+	menu.valuename.slow = "Slow %i"
+	menu.valuename.fast = "Fast %i"
 
 	keymenu.p1.pos = 39, 33
 	keymenu.p2.pos = 178, 33
@@ -1521,9 +1732,13 @@
 	keymenu.item.p1.offset = 52, 0
 	keymenu.item.p1.font = "f-6x9.def", 0, 0, 0, 247, 247, -1
 	keymenu.item.p1.scale = 1.0, 1.0
+	keymenu.item.p1.xshear = 0.0
+	keymenu.item.p1.angle = 0.0
 	keymenu.item.p2.offset = 52, 0
 	keymenu.item.p2.font = "f-6x9.def", 0, 0, 247, 0, 0, -1
 	keymenu.item.p2.scale = 1.0, 1.0
+	keymenu.item.p2.xshear = 0.0
+	keymenu.item.p2.angle = 0.0
 
 	; Unassigned keymenu.item parameters use corresponding menu.item values.
 	keymenu.item.spacing = 0, 12
@@ -1555,6 +1770,8 @@
 	textinput.offset = 25, 32
 	textinput.font = "default-3x5.def", 0, 1, 191, 191, 191, -1
 	textinput.scale = 1.0, 1.0
+	textinput.xshear = 0.0
+	textinput.angle = 0.0
 	textinput.port.text = "Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel."
 	textinput.reswidth.text = "Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel."
 	textinput.resheight.text = "Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel."
@@ -1565,6 +1782,7 @@
 	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
 	; If custom menu is not declared, following menu is loaded by default:
 	menu.itemname.menugame = "Game Settings"
+	menu.itemname.menugame.language = "Language"
 	menu.itemname.menugame.difficulty = "Difficulty Level"
 	menu.itemname.menugame.roundtime = "Time Limit"
 	menu.itemname.menugame.lifemul = "Life"
@@ -1578,9 +1796,9 @@
 	menu.itemname.menugame.airamping = "AI Ramping"
 	menu.itemname.menugame.quickcontinue = "Quick Continue"
 	menu.itemname.menugame.autoguard = "Auto-Guard"
-	menu.itemname.menugame.stunbar = "Dizzy"
-	menu.itemname.menugame.guardbar = "Guard Break"
-	menu.itemname.menugame.redlifebar = "Red Life"
+	menu.itemname.menugame.dizzy = "Dizzy"
+	menu.itemname.menugame.guardbreak = "Guard Break"
+	menu.itemname.menugame.redlife = "Red Life"
 	menu.itemname.menugame.teamduplicates = "Team Duplicates"
 	menu.itemname.menugame.teamlifeshare = "Team Life Share"
 	menu.itemname.menugame.teampowershare = "Team Power Share"
@@ -1626,6 +1844,11 @@
 	menu.itemname.menugame.back = "Back"
 
 	menu.itemname.menuvideo = "Video Settings"
+	menu.itemname.menuvideo.renderer = "Renderer"
+	menu.itemname.menuvideo.renderer.gl32 = "OpenGL 3.2"
+	menu.itemname.menuvideo.renderer.gl21 = "OpenGL 2.1"
+	menu.itemname.menuvideo.renderer.empty = ""
+	menu.itemname.menuvideo.renderer.back = "Back"
 	menu.itemname.menuvideo.resolution = "Resolution" ;reserved submenu
 	; Resolution is assigned based on values used in itemname suffix (e.g. 320x240)
 	menu.itemname.menuvideo.resolution.320x240 = "320x240    (4:3 QVGA)"
@@ -1638,13 +1861,20 @@
 	menu.itemname.menuvideo.resolution.customres = "Custom"
 	menu.itemname.menuvideo.resolution.back = "Back"
 	menu.itemname.menuvideo.fullscreen = "Fullscreen"
-	menu.itemname.menuvideo.vretrace = "VSync"
+	menu.itemname.menuvideo.keepaspect = "Keep Aspect Ratio"
+	menu.itemname.menuvideo.windowscalemode = "Window Scale Mode"
+	menu.itemname.menuvideo.vsync = "VSync"
 	menu.itemname.menuvideo.msaa = "MSAA"
 	menu.itemname.menuvideo.shaders = "Shaders" ;reserved submenu
 	; This list is populated with shaders existing in 'external/shaders' directory
 	menu.itemname.menuvideo.shaders.empty = ""
 	menu.itemname.menuvideo.shaders.noshader = "Disable"
 	menu.itemname.menuvideo.shaders.back = "Back"
+	menu.itemname.menuvideo.model = "3D Model Settings"
+	menu.itemname.menuvideo.model.enablemodel = "3D Model"
+	menu.itemname.menuvideo.model.enablemodelshadow = "Shadow"
+	menu.itemname.menuvideo.model.empty = ""
+	menu.itemname.menuvideo.model.back = "Back"
 	menu.itemname.menuvideo.empty = ""
 	menu.itemname.menuvideo.back = "Back"
 
@@ -1700,6 +1930,8 @@
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = "REPLAY SELECT"
 
 	; Refer to Notes at the beginning of this file.
@@ -1709,6 +1941,9 @@
 	; define menus.
 
 	menu.pos = 85, 33
+
+	menu.tween.time = 3
+
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
@@ -1719,33 +1954,60 @@
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
+	
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = 
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.offset = 0.0, 0.0
+	menu.item.bg.facing = 1
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = 
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.offset = 0.0, 0.0
+	menu.item.active.bg.facing = 1
+
 	menu.item.offset = 0, 0
 	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191, -1
 	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0.0
+	menu.item.angle = 0.0
+
 	menu.item.active.offset = 0, 0
 	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0.0
+	menu.item.active.angle = 0.0
+	
 	menu.item.spacing = 0, 14
+	
 	menu.window.margins.y = 0, 0
 	menu.window.visibleitems = 13
+	
 	menu.boxcursor.visible = 1
 	menu.boxcursor.coords = -5, -10, 154, 3
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.time = 3
+
 	menu.boxbg.visible = 1
 	menu.boxbg.col = 0, 0, 0
 	menu.boxbg.alpha = 0, 128
+	
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
 	menu.arrow.up.facing = 1
 	menu.arrow.up.scale = 1.0, 1.0
+	
 	menu.arrow.down.anim = -1
 	menu.arrow.down.spr = 
 	menu.arrow.down.offset = 0, 0
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
+	
 	menu.title.uppercase = 1
+	
 	menu.itemname.back = "Back"
 
 	cursor.move.snd = 100, 0
@@ -1767,6 +2029,8 @@
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = "PAUSE"
 
 	; Refer to Notes at the beginning of this file.
@@ -1776,6 +2040,9 @@
 	; define menus.
 
 	menu.pos = 85, 33
+
+	menu.tween.time = 3
+
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
@@ -1786,44 +2053,82 @@
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = 
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.offset = 0.0, 0.0
+	menu.item.bg.facing = 1
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = 
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.offset = 0.0, 0.0
+	menu.item.active.bg.facing = 1
+
 	menu.item.offset = 0, 0
 	menu.item.font = "f-6x9.def", 0, 1, 191, 191, 191, -1
 	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0.0
+	menu.item.angle = 0.0
+
 	menu.item.active.offset = 0, 0
 	menu.item.active.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0.0
+	menu.item.active.angle = 0.0
+
 	menu.item.selected.offset = 0, 0
 	menu.item.selected.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
 	menu.item.selected.scale = 1.0, 1.0
+	menu.item.selected.xshear = 0.0
+	menu.item.selected.angle = 0.0
+
 	menu.item.selected.active.offset = 0, 0
 	menu.item.selected.active.font = "f-6x9.def", 0, 1, 0, 247, 247, -1
 	menu.item.selected.active.scale = 1.0, 1.0
+	menu.item.selected.active.xshear = 0.0
+	menu.item.selected.active.angle = 0.0
+
 	menu.item.value.offset = 150, 0
 	menu.item.value.font = "f-6x9.def", 0, -1, 191, 191, 191, -1
 	menu.item.value.scale = 1.0, 1.0
+	menu.item.value.xshear = 0.0
+	menu.item.value.angle = 0.0
+
 	menu.item.value.active.offset = 150, 0
 	menu.item.value.active.font = "f-6x9.def", 0, -1, 255, 255, 255, -1
 	menu.item.value.active.scale = 1.0, 1.0
+	menu.item.value.active.xshear = 0.0
+	menu.item.value.active.angle = 0.0
+
 	menu.item.spacing = 0, 14
+
 	menu.window.margins.y = 0, 0
 	menu.window.visibleitems = 13
+
 	menu.boxcursor.visible = 1
 	menu.boxcursor.coords = -5, -10, 154, 3
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.time = 3
+
 	menu.boxbg.visible = 1
 	menu.boxbg.col = 0, 0, 0
 	menu.boxbg.alpha = 0, 128
+	
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
 	menu.arrow.up.facing = 1
 	menu.arrow.up.scale = 1.0, 1.0
+	
 	menu.arrow.down.anim = -1
 	menu.arrow.down.spr = 
 	menu.arrow.down.offset = 0, 0
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
+	
 	menu.title.uppercase = 1
 
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -1839,11 +2144,15 @@
 	movelist.title.offset = 150, 0
 	movelist.title.font = "Open.Sans.def", 0, 0, 255, 255, 255, -1
 	movelist.title.scale = 0.4, 0.4
+	movelist.title.xshear = 0.0
+	movelist.title.angle = 0.0
 	movelist.title.text = "%s"
 	movelist.title.uppercase = 0
 	movelist.text.offset = 0, 12
 	movelist.text.font = "Open.Sans.def", 0, 1, 255, 255, 255, -1
 	movelist.text.scale = 0.4, 0.4
+	movelist.text.xshear = 0.0
+	movelist.text.angle = 0.0
 	movelist.text.spacing = 1, 1
 	movelist.text.text = "Command List not found."
 	movelist.glyphs.offset = 0, 2
@@ -1972,11 +2281,15 @@
 	start.insert.offset = 159, 185
 	start.insert.font = "jg.fnt", 0, 0, 255, 255, 255, -1
 	start.insert.scale = 1.0, 1.0
+	start.insert.xshear = 0.0
+	start.insert.angle = 0.0
 	start.insert.blinktime = 30
 	start.press.text = "Press Start"
 	start.press.offset = 159, 185
 	start.press.font = "jg.fnt", 0, 0, 255, 255, 255, -1
 	start.press.scale = 1.0, 1.0
+	start.press.xshear = 0.0
+	start.press.angle = 0.0
 	start.press.blinktime = 30
 
 	; Positive count enables timer, limiting time (count * framespercount) that
@@ -1984,6 +2297,8 @@
 	start.timer.offset = 310, 234
 	start.timer.font = "f-4x6.fnt", 0, -1, 255, 255, 255, -1
 	start.timer.scale = 1.0, 1.0
+	start.timer.xshear = 0.0
+	start.timer.angle = 0.0
 	start.timer.text = "%i"
 	start.timer.count = 60
 	start.timer.framespercount = 60
@@ -1993,10 +2308,14 @@
 	credits.offset = 159, 234
 	credits.font = "f-4x6.fnt", 0, 0, 255, 255, 255, -1
 	credits.scale = 1.0, 1.0
+	credits.xshear = 0.0
+	credits.angle = 0.0
 
 	title.offset = 159, 19
 	title.font = -1, 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = "MAIN MENU"
 
 	credits.key = ""
@@ -2009,6 +2328,9 @@
 	; define menus.
 
 	menu.pos = 159, 158
+
+	menu.tween.time = 3
+
 	;menu.bg.<itemname>.anim = -1
 	;menu.bg.<itemname>.spr = 
 	;menu.bg.<itemname>.offset = 0, 0
@@ -2019,32 +2341,58 @@
 	;menu.bg.active.<itemname>.offset = 0, 0
 	;menu.bg.active.<itemname>.facing = 1
 	;menu.bg.active.<itemname>.scale = 1.0, 1.0
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = 
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.offset = 0.0, 0.0
+	menu.item.bg.facing = 1
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = 
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.offset = 0.0, 0.0
+	menu.item.active.bg.facing = 1
+
 	menu.item.offset = 0, 0
 	menu.item.font = "f-6x9.def", 0, 0, 191, 191, 191, -1
 	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0.0
+	menu.item.angle = 0.0
+	
 	menu.item.active.offset = 0, 0
 	menu.item.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0.0
+	menu.item.active.angle = 0.0
+	
 	menu.item.spacing = 0, 13
+	
 	menu.window.margins.y = 12, 8
 	menu.window.visibleitems = 5
+	
 	menu.boxcursor.visible = 1
 	menu.boxcursor.coords = -40, -10, 39, 2
 	menu.boxcursor.col = 255, 255, 255
 	menu.boxcursor.alpharange = 10, 40, 2, 255, 255, 0
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.time = 3
+
 	menu.boxbg.visible = 0
 	menu.boxbg.col = 0, 0, 0
 	menu.boxbg.alpha = 0, 128
+	
 	menu.arrow.up.anim = -1
 	menu.arrow.up.spr = 
 	menu.arrow.up.offset = 0, 0
 	menu.arrow.up.facing = 1
 	menu.arrow.up.scale = 1.0, 1.0
+	
 	menu.arrow.down.anim = -1
 	menu.arrow.down.spr = 
 	menu.arrow.down.offset = 0, 0
 	menu.arrow.down.facing = 1
 	menu.arrow.down.scale = 1.0, 1.0
+
 	menu.title.uppercase = 1
 
 	credits.snd = -1, 0
@@ -2079,6 +2427,8 @@
 	text.offset = 0, 0
 	text.font = -1, 0, 1, 255, 255, 255, -1
 	text.scale = 1.0, 1.0
+	text.xshear = 0.0
+	text.angle = 0.0
 	text.displaytime = 0
 	text.layerno = 2
 	;overlay.window = 0, 0, localcoordX, localcoordY
@@ -2119,13 +2469,19 @@
 	p1.name.offset = 0, 0
 	p1.name.font = -1, 0, 1, 255, 255, 255, -1
 	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0.0
+	p1.name.angle = 0.0
 	p2.name.offset = 0, 0
 	p2.name.font = -1, 0, 1, 255, 255, 255, -1
 	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0.0
+	p2.name.angle = 0.0
 	p1.text.offset = 20, 192
 	p1.text.spacing = 0, 0
 	p1.text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	p1.text.scale = 1.0, 1.0
+	p1.text.xshear = 0.0
+	p1.text.angle = 0.0
 	p1.text.delay = 2
 	p1.text.textwrap = "w"
 	p1.text.window = 
@@ -2133,6 +2489,8 @@
 	p2.text.spacing = 0, 0
 	p2.text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	p2.text.scale = 1.0, 1.0
+	p2.text.xshear = 0.0
+	p2.text.angle = 0.0
 	p2.text.delay = 2
 	p2.text.textwrap = "w"
 	p2.text.window = 
@@ -2164,23 +2522,33 @@
 	title.offset = 0, 0
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = "Ranking %s"
 	title.uppercase = 0
 	title.rank.offset = 0, 0
 	title.rank.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.rank.scale = 1.0, 1.0
+	title.rank.xshear = 0.0
+	title.rank.angle = 0.0
 	title.rank.text = "Rank"
 	title.data.offset = 0, 0
 	title.data.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.data.scale = 1.0, 1.0
+	title.data.xshear = 0.0
+	title.data.angle = 0.0
 	title.data.text = "Result"
 	title.name.offset = 0, 0
 	title.name.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.name.scale = 1.0, 1.0
+	title.name.xshear = 0.0
+	title.name.angle = 0.0
 	title.name.text = "Name"
 	title.face.offset = 0, 0
 	title.face.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.face.scale = 1.0, 1.0
+	title.face.xshear = 0.0
+	title.face.angle = 0.0
 	title.face.text = "Character"
 	item.offset = 0, 0
 	item.spacing = 0, 0
@@ -2192,12 +2560,18 @@
 	;item.rank.<num>.text = "%s"
 	item.rank.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.rank.active.scale = 1.0, 1.0
+	item.rank.active.xshear = 0.0
+	item.rank.active.angle = 0.0
 	item.rank.active.switchtime = 3
 	item.rank.active2.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.rank.active2.scale = 1.0, 1.0
+	item.rank.active2.xshear = 0.0
+	item.rank.active2.angle = 0.0
 	item.data.offset = 0, 0
 	item.data.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.data.scale = 1.0, 1.0
+	item.data.xshear = 0.0
+	item.data.angle = 0.0
 	item.data.spacing = 0, 0
 	item.data.text = "%s"
 	item.data.score.text = "%8s"
@@ -2205,19 +2579,29 @@
 	item.data.win.text = "Round %s"
 	item.data.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.data.active.scale = 1.0, 1.0
+	item.data.active.xshear = 0.0
+	item.data.active.angle = 0.0
 	item.data.active.switchtime = 3
 	item.data.active2.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.data.active2.scale = 1.0, 1.0
+	item.data.active2.xshear = 0.0
+	item.data.active2.angle = 0.0
 	item.name.offset = 0, 0
 	item.name.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.name.scale = 1.0, 1.0
+	item.name.xshear = 0.0
+	item.name.angle = 0.0
 	item.name.spacing = 0, 0
 	item.name.text = "%3s"
 	item.name.active.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.name.active.scale = 1.0, 1.0
+	item.name.active.xshear = 0.0
+	item.name.active.angle = 0.0
 	item.name.active.switchtime = 3
 	item.name.active2.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	item.name.active2.scale = 1.0, 1.0
+	item.name.active2.xshear = 0.0
+	item.name.active2.angle = 0.0
 	item.name.uppercase = 1
 	item.face.anim = -1
 	item.face.spr = 9000, 0
@@ -2243,6 +2627,8 @@
 	timer.offset = 0, 0
 	timer.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	timer.scale = 1.0, 1.0
+	timer.xshear = 0.0
+	timer.angle = 0.0
 	timer.text = "%s"
 	timer.count = 99
 	timer.framespercount = 60
@@ -2267,10 +2653,14 @@
 	title.offset = 159, 19
 	title.font = "f-6x9.def", 0, 0, 255, 255, 255, -1
 	title.scale = 1.0, 1.0
+	title.xshear = 0.0
+	title.angle = 0.0
 	title.text = "WARNING"
 	text.offset = 25, 33
 	text.font = "f-6x9.def", 0, 1, 255, 255, 255, -1
 	text.scale = 1.0, 1.0
+	text.xshear = 0.0
+	text.angle = 0.0
 	text.ratio.text = "Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def."
 	text.reload.text = "Some selected options require Ikemen to be restarted.\nPress any key to exit the program."
 	text.noreload.text = "Some selected options require Ikemen to be restarted.\nPress any key to continue."

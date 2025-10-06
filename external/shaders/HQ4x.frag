@@ -1,3 +1,15 @@
+#if __VERSION__ >= 130
+#define COMPAT_VARYING in
+#define COMPAT_TEXTURE texture
+out vec4 FragColor;
+in vec4 TexCoord[7];
+#else
+#define COMPAT_VARYING varying
+#define FragColor gl_FragColor
+#define COMPAT_TEXTURE texture2D
+#define TexCoord gl_TexCoord
+#endif
+
 uniform sampler2D Texture;
 const float mx = 1.00;		// start smoothing wt.
 const float k = -1.10;		// wt. decrease factor
@@ -6,19 +18,19 @@ const float min_w = 0.03;	// min filter weigth
 const float lum_add = 0.33;	// effects smoothing
 
 void main() {
-	vec3 c  = texture2D(Texture, gl_TexCoord[0].xy).xyz;
-	vec3 i1 = texture2D(Texture, gl_TexCoord[1].xy).xyz;
-	vec3 i2 = texture2D(Texture, gl_TexCoord[2].xy).xyz;
-	vec3 i3 = texture2D(Texture, gl_TexCoord[3].xy).xyz;
-	vec3 i4 = texture2D(Texture, gl_TexCoord[4].xy).xyz;
-	vec3 o1 = texture2D(Texture, gl_TexCoord[5].xy).xyz;
-	vec3 o3 = texture2D(Texture, gl_TexCoord[6].xy).xyz;
-	vec3 o2 = texture2D(Texture, gl_TexCoord[5].zw).xyz;
-	vec3 o4 = texture2D(Texture, gl_TexCoord[6].zw).xyz;
-	vec3 s1 = texture2D(Texture, gl_TexCoord[1].zw).xyz;
-	vec3 s2 = texture2D(Texture, gl_TexCoord[2].zw).xyz;
-	vec3 s3 = texture2D(Texture, gl_TexCoord[3].zw).xyz;
-	vec3 s4 = texture2D(Texture, gl_TexCoord[4].zw).xyz;
+	vec3 c  = COMPAT_TEXTURE(Texture, TexCoord[0].xy).xyz;
+	vec3 i1 = COMPAT_TEXTURE(Texture, TexCoord[1].xy).xyz;
+	vec3 i2 = COMPAT_TEXTURE(Texture, TexCoord[2].xy).xyz;
+	vec3 i3 = COMPAT_TEXTURE(Texture, TexCoord[3].xy).xyz;
+	vec3 i4 = COMPAT_TEXTURE(Texture, TexCoord[4].xy).xyz;
+	vec3 o1 = COMPAT_TEXTURE(Texture, TexCoord[5].xy).xyz;
+	vec3 o3 = COMPAT_TEXTURE(Texture, TexCoord[6].xy).xyz;
+	vec3 o2 = COMPAT_TEXTURE(Texture, TexCoord[5].zw).xyz;
+	vec3 o4 = COMPAT_TEXTURE(Texture, TexCoord[6].zw).xyz;
+	vec3 s1 = COMPAT_TEXTURE(Texture, TexCoord[1].zw).xyz;
+	vec3 s2 = COMPAT_TEXTURE(Texture, TexCoord[2].zw).xyz;
+	vec3 s3 = COMPAT_TEXTURE(Texture, TexCoord[3].zw).xyz;
+	vec3 s4 = COMPAT_TEXTURE(Texture, TexCoord[4].zw).xyz;
 	vec3 dt = vec3(1.0,1.0,1.0);
 	float ko1=dot(abs(o1-c),dt);
 	float ko2=dot(abs(o2-c),dt);
@@ -39,6 +51,6 @@ void main() {
 	w2 = clamp(w2+mx,min_w,max_w);
 	w3 = clamp(w3+mx,min_w,max_w);
 	w4 = clamp(w4+mx,min_w,max_w);
-	gl_FragColor.xyz=(w1*(i1+i3)+w2*(i2+i4)+w3*(s1+s3)+w4*(s2+s4)+c)/(2.0*(w1+w2+w3+w4)+1.0);
-	gl_FragColor.a = 1.0;
+	FragColor.xyz=(w1*(i1+i3)+w2*(i2+i4)+w3*(s1+s3)+w4*(s2+s4)+c)/(2.0*(w1+w2+w3+w4)+1.0);
+	FragColor.a = 1.0;
 }

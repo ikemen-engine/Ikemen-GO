@@ -14,26 +14,13 @@ Ikemen_GO_MacOS
 Ikemen_GO_x86.exe
 Ikemen_GO.command
 external/script/.idea/*
+*.manifest
 
 # Ikemen_GO-Elecbyte-Screenpack
 ScreenpackLicense.txt
 chars/*
 data/big/*
-data/common.snd
-data/fight.def
-data/fight.sff
-data/fight.snd
-data/fightfx.air
-data/fightfx.sff
-data/glyphs.sff
-data/gofx*
-data/kfm/*
-data/mugen1/*
-data/select.def
-data/system.def
-data/system.sff
-data/system.snd
-data/work/*
+data/*
 font/*
 !font/Open_Sans/
 !font/debug.def
@@ -43,6 +30,8 @@ font/*
 !font/default-3x5.sff
 stages/*
 sound/*
+debug/*
+video/*
 
 # Temp
 src/lua_triggers.go
@@ -54,7 +43,15 @@ external/script/wip/*
 .idea/*
 
 # Binaries
-bin/*
+build/ffmpeg-src/
+build/ffmpeg/
+build/delaylib/
+build/winres/
+
+# macOS bundle by local make
+/I.K.E.M.E.N-Go.app/
 
 # Compilation files
-src/*.syso
+*.syso
+*.exe
+*.dll

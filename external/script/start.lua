@@ -4,12 +4,13 @@ local start = {}
 start.p = {{}, {}}
 --cell data storage
 start.c = {}
-for i = 1, --[[config.Players]]8 do
+for i = 1, --[[gameOption('Config.Players')]]8 do
 	table.insert(start.c, {selX = 0, selY = 0, cell = -1, randCnt = 0, randRef = nil})
 end
 --globally accessible temp data
 start.challenger = 0
 --local variables
+local didLoadStageBGM = false
 local restoreCursor = false
 local selScreenEnd = false
 local stageEnd = false
@@ -20,6 +21,8 @@ local t_gameStats = {}
 local t_recordText = {}
 local t_reservedChars = {{}, {}}
 local timerSelect = 0
+local cursorActive = {}
+local cursorDone = {}
 
 --;===========================================================
 --; COMMON FUNCTIONS
@@ -157,18 +160,18 @@ end
 start.t_aiRampData = {}
 start.t_aiRampData.arcade = function()
 	if start.p[2].teamMode == 0 then --Single
-		return main.t_selOptions.arcadestart.wins, main.t_selOptions.arcadestart.offset, main.t_selOptions.arcadeend.wins, main.t_selOptions.arcadeend.offset
+		return gameOption('Arcade.arcade.AIramp.start')[1], gameOption('Arcade.arcade.AIramp.start')[2], gameOption('Arcade.arcade.AIramp.end')[1], gameOption('Arcade.arcade.AIramp.end')[2]
 	elseif start.p[2].ratio then --Ratio
-		return main.t_selOptions.ratiostart.wins, main.t_selOptions.ratiostart.offset, main.t_selOptions.ratioend.wins, main.t_selOptions.ratioend.offset
+		return gameOption('Arcade.ratio.AIramp.start')[1], gameOption('Arcade.ratio.AIramp.start')[2], gameOption('Arcade.ratio.AIramp.end')[1], gameOption('Arcade.ratio.AIramp.end')[2]
 	else --Simul / Turns / Tag
-		return main.t_selOptions.teamstart.wins, main.t_selOptions.teamstart.offset, main.t_selOptions.teamend.wins, main.t_selOptions.teamend.offset
+		return gameOption('Arcade.team.AIramp.start')[1], gameOption('Arcade.team.AIramp.start')[2], gameOption('Arcade.team.AIramp.end')[1], gameOption('Arcade.team.AIramp.end')[2]
 	end
 end
 start.t_aiRampData.teamcoop = start.t_aiRampData.arcade
 start.t_aiRampData.netplayteamcoop = start.t_aiRampData.arcade
 start.t_aiRampData.timeattack = start.t_aiRampData.arcade
 start.t_aiRampData.survival = function()
-	return main.t_selOptions.survivalstart.wins, main.t_selOptions.survivalstart.offset, main.t_selOptions.survivalend.wins, main.t_selOptions.survivalend.offset
+	return gameOption('Arcade.survival.AIramp.start')[1], gameOption('Arcade.survival.AIramp.start')[2], gameOption('Arcade.survival.AIramp.end')[1], gameOption('Arcade.survival.AIramp.end')[2]
 end
 start.t_aiRampData.survivalcoop = start.t_aiRampData.survival
 start.t_aiRampData.netplaysurvivalcoop = start.t_aiRampData.survival
@@ -179,13 +182,13 @@ function start.f_aiRamp(currentMatch)
 		panicError("\n" .. gamemode() .. " game mode unrecognized by start.f_aiRamp()\n")
 	end
 	local start_match, start_diff, end_match, end_diff = start.t_aiRampData[gamemode()]()
-	local startAI = config.Difficulty + start_diff
+	local startAI = gameOption('Options.Difficulty') + start_diff
 	if startAI > 8 then
 		startAI = 8
 	elseif startAI < 1 then
 		startAI = 1
 	end
-	local endAI = config.Difficulty + end_diff
+	local endAI = gameOption('Options.Difficulty') + end_diff
 	if endAI > 8 then
 		endAI = 8
 	elseif endAI < 1 then
@@ -219,7 +222,7 @@ function start.f_difficulty(player, offset)
 	if t.ai ~= nil then
 		return t.ai
 	else
-		return config.Difficulty + offset
+		return gameOption('Options.Difficulty') + offset
 	end
 end
 
@@ -227,11 +230,11 @@ end
 function start.f_remapAI(ai)
 	--Offset
 	local offset = 0
-	if config.AIRamping and main.aiRamp then
+	if gameOption('Arcade.AI.Ramping') and main.aiRamp then
 		if t_aiRamp[matchno()] == nil then
 			start.f_aiRamp(matchno())
 		end
-		offset = t_aiRamp[matchno()] - config.Difficulty
+		offset = t_aiRamp[matchno()] - gameOption('Options.Difficulty')
 	end
 	local t_ex = {}
 	for side = 1, 2 do
@@ -287,17 +290,24 @@ end
 --sets lifebar elements, round time, rounds to win
 function start.f_setRounds(roundTime, t_rounds)
 	setLifebarElements(main.lifebar)
-	--round time
+	-- Round time
 	local frames = main.timeFramesPerCount
 	local p1FramesMul = 1
 	local p2FramesMul = 1
-	if start.p[1].teamMode == 3 then --Tag
+	if start.p[1].teamMode == 3 then -- Tag
 		p1FramesMul = start.p[1].numChars
 	end
-	if start.p[2].teamMode == 3 then --Tag
+	if start.p[2].teamMode == 3 then -- Tag
 		p2FramesMul = start.p[2].numChars
 	end
-	frames = frames * math.max(p1FramesMul, p2FramesMul)
+	if (start.p[1].teamMode == 3 or start.p[2].teamMode == 3) and gameOption('Options.Tag.TimeScaling') > 0 then
+		-- Calculate the maximum team size
+		local maxTeamSize = math.max(p1FramesMul, p2FramesMul)
+		-- Apply a base multiplier for team size
+		local adjustedFrames = frames * (1 + (maxTeamSize - 1) * gameOption('Options.Tag.TimeScaling'))
+		-- Enforce a minimum threshold to avoid overly short rounds
+		frames = main.f_round(math.max(adjustedFrames, frames), 0)
+	end
 	setTimeFramesPerCount(frames)
 	if roundTime ~= nil then
 		setRoundTime(math.max(-1, roundTime * frames)) --round time predefined
@@ -485,7 +495,7 @@ function start.f_storeStats()
 			name = start.t_savedData.name or '',
 			chars = f_listCharRefs(start.p[1].t_selected),
 			tmode = start.p[1].teamMode,
-			ailevel = config.Difficulty,
+			ailevel = gameOption('Options.Difficulty'),
 			win = start.t_savedData.win[1],
 			lose = start.t_savedData.lose[1],
 			consecutive = start.t_savedData.consecutive[1],
@@ -605,15 +615,8 @@ function start.f_setMusic(num, data)
 	end
 end
 
---remaps palette based on button press and character's keymap settings
-function start.f_reampPal(ref, num)
-	return start.f_getCharData(ref).pal_keymap[num] or num
-end
-
--- returns palette number
-function start.f_selectPal(ref, palno)
-	-- generate table with palette entries already used by this char ref
-	local t_assignedPals = {}
+-- generate table with palette entries already used by this char ref
+function start.f_setAssignedPal(ref, t_assignedPals)
 	for side = 1, 2 do
 		for k, v in pairs(start.p[side].t_selected) do
 			if v.ref == ref then
@@ -621,37 +624,128 @@ function start.f_selectPal(ref, palno)
 			end
 		end
 	end
-	-- selected palette
-	if palno ~= nil and palno > 0 then
-		if not t_assignedPals[start.f_reampPal(ref, palno)] then
-			return start.f_reampPal(ref, palno)
-		else
-			for _, v in ipairs(start.f_getCharData(ref).pal) do
-				if not t_assignedPals[start.f_reampPal(ref, v)] then
-					return start.f_reampPal(ref, v)
-				end
-			end
-		end
-	-- default palette
-	elseif (not main.rotationChars and not config.AIRandomColor) or (main.rotationChars and not config.AISurvivalColor) then
-		for _, v in ipairs(start.f_getCharData(ref).pal_defaults) do
-			if not t_assignedPals[v] then
-				return v
-			end
-		end
-	end
-	-- random palette
-	t = main.f_tableCopy(start.f_getCharData(ref).pal)
-	if #t_assignedPals >= #t then -- not enough palettes for unique selection
-		return t[math.random(1, #t)]
-	end
-	main.f_tableShuffle(t)
-	for k, v in ipairs(t) do
-		if not t_assignedPals[v] then
-			return v
-		end
-	end
-	panicError("\n" .. start.f_getCharData(ref).name .. " palette was not selected\n")
+end
+
+--remaps palette based on button press and character's keymap settings
+function start.f_keyPalMap(ref, num)
+	return start.f_getCharData(ref).pal_keymap[num] or num
+end
+
+-- returns palette number
+function start.f_selectPal(ref, palno)
+    -- generate table with palette entries already used by this char ref
+    local t_assignedPals = {}
+    start.f_setAssignedPal(ref, t_assignedPals)
+    
+    local charData = start.f_getCharData(ref)
+    local availablePals = charData.pal
+
+    -- selected palette by player input
+    if palno ~= nil and palno > 0 then
+        local mappedPal = start.f_keyPalMap(ref, palno)
+
+        -- Check if the mapped palette is defined and not already used. (MUGEN doesn't do this)
+		-- This leads to issues with certain characters who don't have the entire group 1's indices
+		-- filled out, so it's been commented out for compatibility.
+
+        -- local isDefined = false
+        -- for _, p in ipairs(availablePals) do
+        --     if p == mappedPal then
+        --         isDefined = true
+        --         break
+        --     end
+        -- end
+
+        if not t_assignedPals[mappedPal] then
+            return mappedPal
+        end
+        
+        -- If the desired palette is not available, find the next available one.
+        
+        -- 1. Dynamically build the list of palettes to cycle through
+        local cycleList = {1, 2, 3, 4, 5, 6}
+        local customDefaults = false
+
+        if charData.pal_defaults then
+            local defaultsSet = {}
+            for _, p_val in ipairs(charData.pal_defaults) do
+                if p_val > 6 then
+                    -- To avoid duplicates in cycleList
+                    if not defaultsSet[p_val] then
+                        table.insert(cycleList, p_val)
+                        defaultsSet[p_val] = true
+                        customDefaults = true
+                    end
+                end
+            end
+            if customDefaults then
+                table.sort(cycleList) -- Ensure a consistent cycle order
+            end
+        end
+		
+        -- Exception: If a palette from 7 to 12 was chosen directly, cycle through all 12
+        if mappedPal > 6 and not customDefaults then
+            cycleList = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+        end
+        
+        -- 2. Find the starting index for our search in the cycleList
+        local startIndex = 1
+        for i, p_val in ipairs(cycleList) do
+            if p_val == mappedPal then
+                startIndex = i
+                break
+            end
+        end
+
+        -- 3. Search for the next available palette in a circular manner
+        for i = 1, #cycleList do
+            -- Get the index for the next palette in the cycle
+            local nextIndex = (startIndex - 1 + i) % #cycleList + 1
+            local nextPal = cycleList[nextIndex]
+            
+            -- Check if this next palette is defined for the character
+            local isNextDefined = false
+            for _, p in ipairs(availablePals) do
+                if p == nextPal then
+                    isNextDefined = true
+                    break
+                end
+            end
+
+            -- If it's defined and not used, assign it.
+            if isNextDefined and not t_assignedPals[nextPal] then
+                return nextPal
+            end
+        end
+
+        -- If all palettes in the cycle list are taken, return the originally mapped one as a fallback.
+        return mappedPal
+
+    -- default palette for AI or no-input selection
+    elseif (not main.rotationChars and not gameOption('Arcade.AI.RandomColor')) or (main.rotationChars and not gameOption('Arcade.AI.SurvivalColor')) then
+        for _, v in ipairs(charData.pal_defaults) do
+            if not t_assignedPals[v] then
+                return v
+            end
+        end
+    end
+
+    -- random palette
+    local t = main.f_tableCopy(availablePals)
+    if #t_assignedPals >= #t then -- not enough palettes for unique selection
+        if #t > 0 then
+            return t[math.random(1, #t)]
+        else
+            return 1
+        end
+    end
+    main.f_tableShuffle(t)
+    for _, v in ipairs(t) do
+        if not t_assignedPals[v] then
+            return v
+        end
+    end
+    panicError("\n" .. charData.name .. " palette was not selected\n")
 end
 
 --returns ratio level
@@ -739,7 +833,7 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, default)
 	if ref == nil then
 		return nil
 	end
-	for _, v in pairs({
+	for k, v in pairs({
 		{t['p' .. side .. '_member' .. member .. subname .. prefix .. '_anim'], -1},
 		{t['p' .. side .. subname .. prefix .. '_anim'], -1},
 		t['p' .. side .. '_member' .. member .. subname .. prefix .. '_spr'],
@@ -747,7 +841,20 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, default)
 		default
 	}) do
 		if v[1] ~= nil and v[1] ~= -1 then
-			local a = animGetPreloadedData('char', ref, v[1], v[2], loop)
+			--Check if palettes should be used for this animation
+			if k == 1 or k == 3 then
+				usePal = t['p' .. side .. '_member' .. member .. subname .. prefix .. '_pal'] or 0
+			elseif k == 2 or k == 4 then
+				usePal = t['p' .. side .. subname .. prefix .. '_pal'] or 0 
+			elseif k == 5 then
+				usePal = 0
+			end
+			if subname == face then
+				if usePal == 0 then
+					usePal = t['p' .. side .. '_pal'] or 0
+				end
+			end
+			local a = animGetPreloadedCharData(ref, v[1], v[2], loop)
 			if a ~= nil then
 				local xscale = start.f_getCharData(ref).portrait_scale / (main.SP_Viewport43[3] / main.SP_Localcoord[1])
 				local yscale = xscale
@@ -768,6 +875,12 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, default)
 					t['p' .. side .. subname .. '_window'][3],
 					t['p' .. side .. subname .. '_window'][4]
 				)
+				if usePal == 1 then
+					--Checks if the player is on the character select, we want to laod palettes after selecting in which case, to avoid fps drops moving quickly across the roster.
+					if t['title_netplayteamcoop_text'] == nil then
+						a = start.loadPalettes(a, ref, start.f_getCharData(start.p[side].t_selected[member].ref).pal[start.p[side].t_selected[member].pal])
+					end
+				end
 				animUpdate(a)
 				return a
 			end
@@ -776,20 +889,17 @@ function start.f_animGet(ref, side, member, t, subname, prefix, loop, default)
 	return nil
 end
 
---calculate portraits slide.dist offset
+--calculate portraits slide.dist and cursor tween offset
 local function f_slideDistCalc(slide_dist, t_dist, t_speed)
-	if t_dist == nil or t_speed == nil then
-		return
+	if t_dist == nil or t_speed == nil then 
+		return 
 	end
 	for i = 1, 2 do
-		if (t_dist[i] or 0) > 0 then
-			if slide_dist[i] < (t_dist[i] or 0) then
-				slide_dist[i] = math.min(slide_dist[i] + (t_speed[i] or 0), t_dist[i] or 0)
-			end
-		elseif (t_dist[i] or 0) < 0 then
-			if slide_dist[i] > (t_dist[i] or 0) then
-				slide_dist[i] = math.max(slide_dist[i] - (t_speed[i] or 0), t_dist[i] or 0)
-			end
+		local target = t_dist[i] or 0
+		if slide_dist[i] < target then
+			slide_dist[i] = math.min(slide_dist[i] + (t_speed[i] or 0), target)
+		elseif slide_dist[i] > target then
+			slide_dist[i] = math.max(slide_dist[i] - (t_speed[i] or 0), target)
 		end
 	end
 end
@@ -893,7 +1003,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 			end
 			if dir ~= nil then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, -1)
-			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 				break
 			elseif motif.select_info.searchemptyboxesup ~= 0 then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, motif.select_info.searchemptyboxesup)
@@ -914,7 +1024,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 			end
 			if dir ~= nil then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
-			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+			elseif (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 				break
 			elseif motif.select_info.searchemptyboxesdown ~= 0 then
 				found, selX = start.f_searchEmptyBoxes(selX, selY, side, motif.select_info.searchemptyboxesdown)
@@ -936,7 +1046,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 						selX = tmpX
 					end
 				end
-				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 					break
 				end
 			end
@@ -954,7 +1064,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 						selX = tmpX
 					end
 				end
-				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (config.TeamDuplicates or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
+				if (start.t_grid[selY + 1][selX + 1].char ~= nil or motif.select_info.moveoveremptyboxes == 1) and start.t_grid[selY + 1][selX + 1].skip ~= 1 and (gameOption('Options.Team.Duplicates') or start.t_grid[selY + 1][selX + 1].char == 'randomselect' or not t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref]) and start.t_grid[selY + 1][selX + 1].hidden ~= 2 then
 					break
 				end
 			end
@@ -991,6 +1101,24 @@ function start.f_searchEmptyBoxes(x, y, side, direction)
 	end
 end
 
+--calculate cursor.tween
+local function f_cursorTween(val, target, velocity)
+    if not velocity or not target then
+        return val
+    end
+    for i = 1, 2 do
+        local t = target[i] or 0
+        local v = velocity[i] or 0
+        if v > 0 then
+            local factor = math.min(v * 0.1, 1)
+            val[i] = val[i] + (t - val[i]) * factor
+        else
+            val[i] = t
+        end
+    end
+    return val
+end
+
 --returns player cursor data
 function start.f_getCursorData(pn, suffix)
 	if main.coop and motif.select_info['p' .. pn .. suffix] ~= nil then
@@ -1000,7 +1128,7 @@ function start.f_getCursorData(pn, suffix)
 end
 
 --draw cursor
-function start.f_drawCursor(pn, x, y, param)
+function start.f_drawCursor(pn, x, y, param, done)
 	-- in non-coop modes only p1 and p2 cursors are used
 	if not main.coop then
 		pn = (pn - 1) % 2 + 1
@@ -1016,14 +1144,71 @@ function start.f_drawCursor(pn, x, y, param)
 		end
 		motif.f_loadSprData(motif.select_info, {s = prefix .. '_'})
 	end
+
+	-- select appropriate cursor table and initialize if needed
+	local store = done and cursorDone or cursorActive
+	if store[pn] == nil then
+		store[pn] = {
+			currentPos = {0, 0},
+			targetPos  = {0, 0},
+			startPos   = {0, 0},
+			slideOffset= {0, 0},
+			init       = false,
+			snap       = false -- only used by active cursors
+		}
+	end
+	local cd = store[pn]
+
+	-- calculate target cell coordinates
+	local baseX = motif.select_info.pos[1] + x * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(x + 1, y + 1, 1)
+    local baseY = motif.select_info.pos[2] + y * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(x + 1, y + 1, 2)
+
+	-- initialization or snap: set cursor directly
+	if not cd.init or done or cd.snap then
+		for i = 1, 2 do
+			cd.currentPos[i] = (i == 1) and baseX or baseY
+			cd.targetPos[i]  = cd.currentPos[i]
+			cd.startPos[i]   = cd.currentPos[i]
+			cd.slideOffset[i]= 0
+		end
+		cd.init, cd.snap = true, false
+	-- new cell selected: recalc tween offsets
+	elseif cd.targetPos[1] ~= baseX or cd.targetPos[2] ~= baseY then
+		cd.startPos[1], cd.startPos[2] = cd.currentPos[1], cd.currentPos[2]
+		cd.targetPos[1], cd.targetPos[2] = baseX, baseY
+		cd.slideOffset[1] = cd.startPos[1] - baseX
+		cd.slideOffset[2] = cd.startPos[2] - baseY
+	end
+	local t_time = {
+		motif.select_info['p' .. pn .. '_cursor_tween_time'][1],
+		motif.select_info['p' .. pn .. '_cursor_tween_time'][2]
+	}
+	-- apply tween if enabled, otherwise snap to target
+	if not done and t_time[1] > 0 and t_time[2] > 0 then
+		f_cursorTween(cd.slideOffset, {0, 0}, t_time)
+	else
+		cd.slideOffset[1], cd.slideOffset[2] = 0, 0
+	end
+	-- update final cursor position
+	cd.currentPos[1] = cd.targetPos[1] + cd.slideOffset[1]
+	cd.currentPos[2] = cd.targetPos[2] + cd.slideOffset[2]
+
 	-- draw
 	main.f_animPosDraw(
 		motif.select_info[prefix .. '_data'],
-		motif.select_info.pos[1] + x * (motif.select_info.cell_size[1] + motif.select_info.cell_spacing[1]) + start.f_faceOffset(x + 1, y + 1, 1),
-		motif.select_info.pos[2] + y * (motif.select_info.cell_size[2] + motif.select_info.cell_spacing[2]) + start.f_faceOffset(x + 1, y + 1, 2),
+		cd.currentPos[1],
+		cd.currentPos[2],
 		(motif.select_info['cell_' .. x + 1 .. '_' .. y + 1 .. '_facing'] or motif.select_info['p' .. pn .. param .. '_facing'])
 	)
 end
+
+-- snaps the cursor instantly to its target cell
+local function f_snapCursor()
+    for k, v in pairs(cursorActive) do
+        v.snap = true
+    end
+end
+
 --returns t_selChars table out of cell number
 function start.f_selGrid(cell, slot)
 	if main.t_selGrid[cell] == nil or #main.t_selGrid[cell].chars == 0 then
@@ -1127,7 +1312,7 @@ function start.f_playWave(ref, name, g, n, loops)
 		if main.t_selStages[ref][name .. '_wave_data'] == nil then
 			main.t_selStages[ref][name .. '_wave_data'] = getWaveData(a.dir .. a.sound, g, n, loops or -1)
 		end
-		wavePlay(main.t_selStages[ref][name .. '_wave_data'])
+		wavePlay(main.t_selStages[ref][name .. '_wave_data'], g, n)
 	else
 		local sound = start.f_getCharData(ref).sound
 		if sound == nil or sound == '' then
@@ -1136,7 +1321,7 @@ function start.f_playWave(ref, name, g, n, loops)
 		if start.f_getCharData(ref)[name .. '_wave_data'] == nil then
 			start.f_getCharData(ref)[name .. '_wave_data'] = getWaveData(start.f_getCharData(ref).dir .. sound, g, n, loops or -1)
 		end
-		wavePlay(start.f_getCharData(ref)[name .. '_wave_data'])
+		wavePlay(start.f_getCharData(ref)[name .. '_wave_data'], g, n)
 	end
 end
 
@@ -1162,7 +1347,7 @@ function start.f_randomChar(pn)
 	if #main.t_randomChars == 0 then
 		return nil
 	end
-	if config.TeamDuplicates then
+	if gameOption('Options.Team.Duplicates') then
 		return main.t_randomChars[math.random(1, #main.t_randomChars)]
 	end
 	local t = {}
@@ -1180,7 +1365,7 @@ end
 --return true if slot is selected, update start.t_grid
 function start.f_slotSelected(cell, side, cmd, player, x, y)
 	if cmd == nil then
-		return false
+		return false, false
 	end
 	if #main.t_selGrid[cell].chars > 0 then
 		-- select.def 'slot' parameter special keys detection
@@ -1238,14 +1423,14 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 						start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
 						start.t_grid[y + 1][x + 1].hidden = start.f_selGrid(cell).hidden
 						start.t_grid[y + 1][x + 1].skip = start.f_selGrid(cell).skip
-						return cmdType == 'select'
+						return cmdType == 'select', (main.t_selGrid[cell].slot ~= original_slot)
 					end
 				end
 			end
 		end
 	end
 	-- returns true on pressed key if current slot is not blocked by TeamDuplicates feature
-	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect')
+	return main.f_btnPalNo(cmd) > 0 and (not t_reservedChars[side][start.t_grid[y + 1][x + 1].char_ref] or start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char == 'randomselect'),false
 end
 
 --generate start.t_grid table, assign row and cell to main.t_selChars
@@ -1281,11 +1466,11 @@ if main.debugLog then main.f_printTable(start.t_grid, 'debug/t_grid.txt') end
 
 -- return amount of life to recover
 local function f_lifeRecovery(lifeMax, ratioLevel)
-	local bonus = lifeMax * config.TurnsRecoveryBonus / 100
-	local base = lifeMax * config.TurnsRecoveryBase / 100
+	local bonus = lifeMax * gameOption('Options.Turns.Recovery.Bonus') / 100
+	local base = lifeMax * gameOption('Options.Turns.Recovery.Base') / 100
 	if ratioLevel > 0 then
-		bonus = lifeMax * config.RatioRecoveryBonus / 100
-		base = lifeMax * config.RatioRecoveryBase / 100
+		bonus = lifeMax * gameOption('Options.Ratio.Recovery.Bonus') / 100
+		base = lifeMax * gameOption('Options.Ratio.Recovery.Base') / 100
 	end
 	return base + main.f_round(timeremaining() / (timeremaining() + timeelapsed()) * bonus)
 end
@@ -1378,15 +1563,21 @@ end
 function start.f_overrideCharData()
 	for side = 1, 2 do
 		for member, v in ipairs(start.p[side].t_selected) do
+			local lifeRatio = nil
+			local attackRatio = nil
+			if v.ratioLevel then
+				lifeRatio = gameOption('Options.Ratio.Level' .. v.ratioLevel .. '.Life')
+				attackRatio = gameOption('Options.Ratio.Level' .. v.ratioLevel .. '.Attack')
+			end
 			overrideCharData(side, member, {
 				['life'] = v.life,
-				['lifeMax'] = v.lifeMax,
+				['lifemax'] = v.lifeMax,
 				['power'] = v.power,
-				['dizzyPoints'] = v.dizzyPoints,
-				['guardPoints'] = v.guardPoints,
-				['ratioLevel'] = v.ratioLevel,
-				['lifeRatio'] = v.lifeRatio or config.RatioLife[v.ratioLevel],
-				['attackRatio'] = v.attackRatio or config.RatioAttack[v.ratioLevel],
+				['dizzypoints'] = v.dizzyPoints,
+				['guardpoints'] = v.guardPoints,
+				['ratiolevel'] = v.ratioLevel,
+				['liferatio'] = v.lifeRatio or lifeRatio,
+				['attackratio'] = v.attackRatio or attackRatio, 
 				['existed'] = v.existed,
 			})
 		end
@@ -1399,10 +1590,32 @@ function start.f_game(lua)
 	if main.debugLog and start ~= nil then main.f_printTable(start.p, 'debug/t_p.txt') end
 	local p2In = main.t_pIn[2]
 	main.t_pIn[2] = 2
-	if lua ~= '' then commonLuaInsert(lua) end
+	if lua ~= '' then
+		local t = gameOption('Common.Lua')
+		local ok = false
+		for _, v in ipairs(t) do
+			if v == lua then
+				ok = true
+				break
+			end
+		end
+		if not ok then
+			table.insert(t, lua)
+		end
+		modifyGameOption('Common.Lua', t)
+	end
 	local winner, tbl = game()
 	main.f_restoreInput()
-	if lua ~= '' then commonLuaDelete(lua) end
+	if lua ~= '' then
+		local t = gameOption('Common.Lua')
+		for i, v in ipairs(t) do
+			if v == lua then
+				table.remove(t, i)
+				break
+			end
+		end
+		modifyGameOption('Common.Lua', t)
+	end
 	if gameend() then
 		clearColor(0, 0, 0)
 		os.exit()
@@ -1480,7 +1693,7 @@ function start.f_selectMode()
 				end
 				--game over
 				if main.storyboard.gameover and motif.game_over_screen.enabled == 1 and main.f_fileExists(motif.game_over_screen.storyboard) then
-					if not main.continueScreen or (not continue() and motif.continue_screen.gameover_enabled == 1) then
+					if cleared or not main.continueScreen or (not continue() and motif.continue_screen.gameover_enabled == 1) then
 						storyboard.f_storyboard(motif.game_over_screen.storyboard)
 					end
 				end
@@ -1536,7 +1749,7 @@ function start.f_selectReset(hardReset)
 		stageListNo = 0
 		restoreCursor = false
 		--cursor start cell
-		for i = 1, config.Players do
+		for i = 1, gameOption('Config.Players') do
 			if start.f_getCursorData(i, '_cursor_startcell')[1] < motif.select_info.rows then
 				start.c[i].selY = start.f_getCursorData(i, '_cursor_startcell')[1]
 			else
@@ -1558,17 +1771,17 @@ function start.f_selectReset(hardReset)
 	end
 	for side = 1, 2 do
 		if hardReset then
-			start.p[side].numSimul = math.max(2, config.NumSimul[1])
-			start.p[side].numTag = math.max(2, config.NumTag[1])
-			start.p[side].numTurns = math.max(2, config.NumTurns[1])
+			start.p[side].numSimul = math.max(2, gameOption('Options.Simul.Min'))
+			start.p[side].numTag = math.max(2, gameOption('Options.Tag.Min'))
+			start.p[side].numTurns = math.max(2, gameOption('Options.Turns.Min'))
 			start.p[side].numRatio = 1
 			start.p[side].teamMenu = 1
 			start.p[side].t_cursor = {}
 			start.p[side].teamMode = 0
 		end
-		start.p[side].numSimul = math.min(start.p[side].numSimul, main.numSimul[2])
-		start.p[side].numTag = math.min(start.p[side].numTag, main.numTag[2])
-		start.p[side].numTurns = math.min(start.p[side].numTurns, main.numTurns[2])
+		start.p[side].numSimul = math.min(start.p[side].numSimul, gameOption('Options.Simul.Max'))
+		start.p[side].numTag = math.min(start.p[side].numTag, gameOption('Options.Tag.Max'))
+		start.p[side].numTurns = math.min(start.p[side].numTurns, gameOption('Options.Turns.Max'))
 		start.p[side].numChars = 1
 		start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
 		start.p[side].selEnd = not main.selectMenu[side]
@@ -1599,6 +1812,7 @@ function start.f_selectReset(hardReset)
 	end
 	t_recordText = start.f_getRecordText()
 	menu.movelistChar = 1
+	hook.run("start.f_selectReset")
 end
 
 function start.f_selectChallenger()
@@ -1653,7 +1867,7 @@ function launchFight(data)
 		t.p2teammode = start.p[2].teamMode
 		t.challenger = main.f_arg(data.challenger, false)
 		t.continue = main.f_arg(data.continue, main.continueScreen)
-		t.quickcontinue = (not main.selectMenu[1] and not main.selectMenu[2]) or main.f_arg(data.quickcontinue, main.quickContinue or config.QuickContinue)
+		t.quickcontinue = (not main.selectMenu[1] and not main.selectMenu[2]) or main.f_arg(data.quickcontinue, main.quickContinue or gameOption('Options.QuickContinue'))
 		t.order = data.order or 1
 		t.orderselect = {main.f_arg(data.p1orderselect, main.orderSelect[1]), main.f_arg(data.p2orderselect, main.orderSelect[2])}
 		t.p1char = data.p1char or {}
@@ -1689,7 +1903,7 @@ function launchFight(data)
 		t.ai = data.ai or nil
 		t.vsscreen = main.f_arg(data.vsscreen, main.versusScreen)
 		t.victoryscreen = main.f_arg(data.victoryscreen, main.victoryScreen)
-		--t.frames = data.frames or framespercount()
+		--t.frames = data.frames or fightscreenvar("time.framespercount")
 		t.roundtime = data.time or nil
 		t.lua = data.lua or ''
 		t.stageNo = start.f_getStageRef(t.stage)
@@ -1810,8 +2024,8 @@ function launchFight(data)
 			return true --continue lua code execution
 		end
 	end
-	--TODO: fix config.BackgroundLoading setting
-	--if config.BackgroundLoading then
+	--TODO: fix gameOption('Config.BackgroundLoading') setting
+	--if gameOption('Config.BackgroundLoading') then
 	--	selectStart()
 	--else
 		clearSelected()
@@ -1900,11 +2114,10 @@ function launchFight(data)
 end
 
 function launchStoryboard(path)
-	if path == nil or not main.f_fileExists(path) then
+	if path == nil or path == '' then
 		return false
 	end
-	storyboard.f_storyboard(path)
-	return true
+	return storyboard.f_storyboard(path)
 end
 
 function codeInput(name)
@@ -1932,6 +2145,51 @@ if main.t_sort.select_info.teammenu == nil then
 	main.t_sort.select_info.teammenu = {'single', 'simul', 'turns'}
 end
 
+function start.updateDrawList()
+    local drawList = {}
+
+    for row = 1, motif.select_info.rows do
+        for col = 1, motif.select_info.columns do
+            local cellIndex = (row - 1) * motif.select_info.columns + col
+            local t = start.t_grid[row][col]
+
+            if t.skip ~= 1 then
+                local charData = start.f_selGrid(cellIndex)
+
+                if (charData and charData.char ~= nil and (charData.hidden == 0 or charData.hidden == 3)) or motif.select_info.showemptyboxes == 1 then
+                    table.insert(drawList, {
+                        anim = motif.select_info.cell_bg_data,
+                        x = motif.select_info.pos[1] + t.x,
+                        y = motif.select_info.pos[2] + t.y,
+                        facing = motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_bg_facing or 1
+                    })
+                end
+
+                if charData and (charData.char == 'randomselect' or charData.hidden == 3) then
+                    table.insert(drawList, {
+                        anim = motif.select_info.cell_random_data,
+                        x = motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
+                        y = motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
+                        facing = motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_random_facing or 1
+                    })
+                end
+                
+                if charData and charData.char_ref ~= nil and charData.hidden == 0 then
+                    table.insert(drawList, {
+                        anim = charData.cell_data,
+                        x = motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
+                        y = motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
+                        facing = motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing or 1
+                    })
+                end
+            end
+        end
+    end
+
+    return drawList
+end
+
+start.needUpdateDrawList = false
 function start.f_selectScreen()
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
 		return true
@@ -1940,6 +2198,7 @@ function start.f_selectScreen()
 	main.f_fadeReset('fadein', motif.select_info)
 	main.f_playBGM(false, motif.music.select_bgm, motif.music.select_bgm_loop, motif.music.select_bgm_volume, motif.music.select_bgm_loopstart, motif.music.select_bgm_loopend)
 	start.f_resetTempData(motif.select_info, '_face')
+	f_snapCursor()
 	local stageActiveCount = 0
 	local stageActiveType = 'stage_active'
 	timerSelect = 0
@@ -1990,6 +2249,10 @@ function start.f_selectScreen()
 			end
 		end
 	end
+
+	local staticDrawList = start.updateDrawList()
+	start.needUpdateDrawList = false
+
 	while not selScreenEnd do
 		counter = counter + 1
 		--credits
@@ -1998,10 +2261,11 @@ function start.f_selectScreen()
 			main.credits = main.credits + 1
 			resetKey()
 		end
+
 		--draw clearcolor
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
-		bgDraw(motif.selectbgdef.bg, false)
+		bgDraw(motif.selectbgdef.bg, 0)
 		--draw title
 		main.txt_mainSelect:draw()
 		--draw portraits
@@ -2011,39 +2275,14 @@ function start.f_selectScreen()
 			end
 		end
 		--draw cell art
-		for row = 1, motif.select_info.rows do
-			for col = 1, motif.select_info.columns do
-				local t = start.t_grid[row][col]
-				if t.skip ~= 1 then
-					--draw cell background
-					if (t.char ~= nil and (t.hidden == 0 or t.hidden == 3)) or motif.select_info.showemptyboxes == 1 then
-						main.f_animPosDraw(
-							motif.select_info.cell_bg_data,
-							motif.select_info.pos[1] + t.x,
-							motif.select_info.pos[2] + t.y,
-							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_bg_facing)
-						)
-					end
-					--draw random cell
-					if t.char == 'randomselect' or t.hidden == 3 then
-						main.f_animPosDraw(
-							motif.select_info.cell_random_data,
-							motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
-							motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
-							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.cell_random_facing)
-						)
-					--draw face cell
-					elseif t.char ~= nil and t.hidden == 0 then
-						main.f_animPosDraw(
-							start.f_getCharData(t.char_ref).cell_data,
-							motif.select_info.pos[1] + t.x + motif.select_info.portrait_offset[1],
-							motif.select_info.pos[2] + t.y + motif.select_info.portrait_offset[2],
-							(motif.select_info['cell_' .. col .. '_' .. row .. '_facing'] or motif.select_info.portrait_facing)
-						)
-					end
-				end
-			end
-		end
+
+
+
+    if start.needUpdateDrawList then
+        staticDrawList = start.updateDrawList()
+        start.needUpdateDrawList = false 
+    end
+	batchDraw(staticDrawList)
 		--draw done cursors
 		for side = 1, 2 do
 			for _, v in pairs(start.p[side].t_selected) do
@@ -2054,14 +2293,14 @@ function start.f_selectScreen()
 					local t = start.t_grid[y + 1][x + 1]
 					--retrieve proper cell coordinates in case of random selection
 					--TODO: doesn't work with slot feature
-					--if (t.char == 'randomselect' or t.hidden == 3) --[[and not config.TeamDuplicates]] then
+					--if (t.char == 'randomselect' or t.hidden == 3) --[[and not gameOption('Options.Team.Duplicates')]] then
 					--	x = start.f_getCharData(v.ref).col - 1
 					--	y = start.f_getCharData(v.ref).row - 1
 					--	t = start.t_grid[y + 1][x + 1]
 					--end
 					--render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
-						start.f_drawCursor(v.pn, x, y, '_cursor_done')
+						start.f_drawCursor(v.pn, x, y, '_cursor_done', true)
 					end
 				end
 			end
@@ -2083,7 +2322,10 @@ function start.f_selectScreen()
 						member = k
 					end
 					--member selection
-					v.selectState = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
+					v.selectState, DrawUpdateflag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
+					if start.needUpdateDrawList == false then
+						start.needUpdateDrawList= DrawUpdateflag
+					end
 					--draw active cursor
 					if side == 2 and motif.select_info.p2_cursor_blink == 1 then
 						local sameCell = false
@@ -2101,7 +2343,7 @@ function start.f_selectScreen()
 						end
 					end
 					if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 and not start.c[v.player].blink then
-						start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, '_cursor_active')
+						start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, '_cursor_active', false)
 					end
 				end
 			end
@@ -2143,6 +2385,8 @@ function start.f_selectScreen()
 							g =      motif.select_info['p' .. side .. '_name_font'][5],
 							b =      motif.select_info['p' .. side .. '_name_font'][6],
 							height = motif.select_info['p' .. side .. '_name_font'][7],
+							xshear = motif.select_info['p' .. side .. '_name_xshear'],
+							angle  = motif.select_info['p' .. side .. '_name_angle'],
 						})
 						t_txt_name[side]:draw()
 					end
@@ -2214,6 +2458,8 @@ function start.f_selectScreen()
 						g =      motif.select_info[stageActiveType .. '_font'][5],
 						b =      motif.select_info[stageActiveType .. '_font'][6],
 						height = motif.select_info[stageActiveType .. '_font'][7],
+						xshear = motif.select_info[stageActiveType .. '_xshear'],
+						angle  = motif.select_info[stageActiveType .. '_angle'],
 					})
 					txt_selStage:draw()
 				end
@@ -2234,7 +2480,7 @@ function start.f_selectScreen()
 		-- hook
 		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
-		bgDraw(motif.selectbgdef.bg, true)
+		bgDraw(motif.selectbgdef.bg, 1)
 		--draw fadein / fadeout
 		main.f_fadeAnim(motif.select_info)
 		--frame transition
@@ -2282,7 +2528,7 @@ function start.f_teamMenu(side, t)
 		--Commands
 		local t_cmd = {}
 		if main.coop then
-			for i = 1, config.Players do
+			for i = 1, gameOption('Config.Players') do
 				if not gamemode('versuscoop') or (i - 1) % 2 + 1 == side then
 					table.insert(t_cmd, i)
 				end
@@ -2410,6 +2656,8 @@ function start.f_teamMenu(side, t)
 					g =      motif.select_info[t_teamActiveType[side] .. '_font'][5],
 					b =      motif.select_info[t_teamActiveType[side] .. '_font'][6],
 					height = motif.select_info[t_teamActiveType[side] .. '_font'][7],
+					xshear = motif.select_info[t_teamActiveType[side] .. '_xshear'],
+					angle  = motif.select_info[t_teamActiveType[side] .. '_angle'],
 				})
 				t[i].data:draw()
 			else
@@ -2429,6 +2677,8 @@ function start.f_teamMenu(side, t)
 					g =      motif.select_info['p' .. side .. '_teammenu_item_font'][5],
 					b =      motif.select_info['p' .. side .. '_teammenu_item_font'][6],
 					height = motif.select_info['p' .. side .. '_teammenu_item_font'][7],
+					xshear = motif.select_info['p' .. side .. '_teammenu_item_xshear'],
+					angle  = motif.select_info['p' .. side .. '_teammenu_item_angle'],
 				})
 				t[i].data:draw()
 			end
@@ -2540,10 +2790,86 @@ function start.f_teamMenu(side, t)
 	end
 end
 
+--;============Add the characters who already loaded their palettes to a list, preventing palettes from being loaded multiple times.
+LoadedPals = {}
+local function ifCharPalsLoaded(ref)
+	for _, v in ipairs(LoadedPals) do
+		if v == ref then
+			return true
+		end
+	end
+	table.insert(LoadedPals, ref)
+	return false
+end
+
+function start.loadPalettes(a, ref, pal)
+	if not ifCharPalsLoaded(ref) then
+		a = loadPalettes(a, ref)
+	end
+	a = colorPortrait(a, ref)
+	a = changeColorPalette(a, pal)
+	return a
+end
+
+--;===========================================================
+--; Draw Palette Number and Text
+--;===========================================================
+function start.f_paletteNumberDraw(side, member)
+	local numFontInfo = motif.select_info['p' .. side .. '_member' .. member .. '_palette_number_font'] or motif.select_info['p' .. side  .. '_palette_number_font']
+	local numOffset = motif.select_info['p' .. side .. '_member' .. member .. '_palette_number_offset'] or  motif.select_info['p' .. side  .. '_palette_number_offset']
+	local numScale = motif.select_info['p' .. side .. '_member' .. member .. '_palette_number_scale'] or motif.select_info['p' .. side  .. '_palette_number_scale']
+	local numXshear = motif.select_info['p' .. side .. '_member' .. member .. '_palette_number_xshear'] or motif.select_info['p' .. side .. '_palette_number_xshear']
+	local numAngle = motif.select_info['p' .. side .. '_member' .. member .. '_palette_number_angle'] or motif.select_info['p' .. side .. '_palette_number_angle']
+	if (numFontInfo and numOffset and numScale) ~= nil then
+		currentPallete = text:create({
+			font =   numFontInfo[1],
+			bank =   numFontInfo[2],
+			align =  numFontInfo[3],
+			text =   start.f_getCharData(start.p[side].t_selTemp[member].ref).pal[start.p[side].t_selTemp[member].pal],
+			x =      numOffset[1],
+			y =      numOffset[2],
+			scaleX = numScale[1],
+			scaleY = numScale[2],
+			r =      numFontInfo[4],
+			g =      numFontInfo[5],
+			b =      numFontInfo[6],
+			height = numFontInfo[7],
+			xshear = numXshear,
+			angle  = numAngle,
+		})
+		currentPallete:draw()
+	end
+	local textFontInfo = motif.select_info['p' .. side .. '_member' .. member .. '_palette_text_font'] or motif.select_info['p' .. side  .. '_palette_text_font']
+	local textOffset = motif.select_info['p' .. side .. '_member' .. member .. '_palette_text_offset'] or  motif.select_info['p' .. side  .. '_palette_text_offset']
+	local textScale = motif.select_info['p' .. side .. '_member' .. member .. '_palette_text_scale'] or motif.select_info['p' .. side  .. '_palette_text_scale']
+	local textXshear = motif.select_info['p' .. side .. '_member' .. member .. '_palette_text_xshear'] or motif.select_info['p' .. side .. '_palette_text_xshear']
+	local textAngle = motif.select_info['p' .. side .. '_member' .. member .. '_palette_text_angle'] or motif.select_info['p' .. side .. '_palette_text_angle']
+	if (textFontInfo and textOffset and textScale) ~= nil then
+		palleteText = text:create({
+			font =   textFontInfo[1],
+			bank =   textFontInfo[2],
+			align =  textFontInfo[3],
+			text =   motif.select_info['p' .. side  .. '_palette_text_text'],
+			x =      textOffset[1],
+			y =      textOffset[2],
+			scaleX = textScale[1],
+			scaleY = textScale[2],
+			r =      textFontInfo[4],
+			g =      textFontInfo[5],
+			b =      textFontInfo[6],
+			height = textFontInfo[7],
+			xshear = textXshear,
+			angle  = textAngle,
+		})
+		palleteText:draw()
+	end
+end
+
 --;===========================================================
 --; SELECT MENU
 --;===========================================================
 function start.f_selectMenu(side, cmd, player, member, selectState)
+	local needUpdateDrawList = false
 	--predefined selection
 	if main.forceChar[side] ~= nil then
 		local t = {}
@@ -2577,7 +2903,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				if start.p[side].t_cursor[member] ~= nil then
 					local selX = start.p[side].t_cursor[member].x
 					local selY = start.p[side].t_cursor[member].y
-					if config.TeamDuplicates or t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref] == nil then
+					if gameOption('Options.Team.Duplicates') or t_reservedChars[side][start.t_grid[selY + 1][selX + 1].char_ref] == nil then
 						start.c[player].selX = selX
 						start.c[player].selY = selY
 					end
@@ -2600,7 +2926,8 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				})
 			else
 				local updateAnim = false
-				local slotSelected = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
+				local slotSelected,slotChanged = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
+				needUpdateDrawList = slotChanged
 				-- cursor changed position or character change within current slot
 				if start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then
 					--start.p[side].t_selTemp[member].pal = 1
@@ -2608,6 +2935,12 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_selTemp[member].cell = start.c[player].cell
 					start.p[side].t_selTemp[member].anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] or motif.select_info['p' .. side .. '_face_anim']
 					start.p[side].t_selTemp[member].slide_dist = {0, 0}
+					if motif.select_info['p' .. player .. '_cursor_reset'] == 1 then
+						local cursorData = start.f_getCursorData(player, '_cursor_active' .. '_' .. start.c[player].selX + 1 .. '_' .. start.c[player].selY + 1 .. '_data')
+						if cursorData ~= nil then
+							animReset(cursorData)
+						end
+					end
 					updateAnim = true
 				end
 				-- cursor at randomselect cell
@@ -2641,24 +2974,102 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
 						start.p[side].t_selTemp[member].pal = 1
 					end
+					if start.f_getCharData(start.p[side].t_selTemp[member].ref).pal ~= nil then
+						if motif.select_info['paletteselect'] == 2 then
+							for c, v in ipairs(start.f_getCharData(start.p[side].t_selTemp[member].ref).pal_keymap) do
+								if start.p[side].t_selTemp[member].pal == c then
+									start.p[side].t_selTemp[member].pal = v
+									break
+								end
+							end
+						elseif motif.select_info['paletteselect'] > 2 then
+							start.p[side].t_selTemp[member].pal = 1
+						end
+						validPalette = false
+						for _, v in ipairs(start.f_getCharData(start.p[side].t_selTemp[member].ref).pal) do
+							if start.p[side].t_selTemp[member].pal == v then
+								validPalette = true
+								break
+							end
+						end
+					end
+					if not validPalette then
+						start.p[side].t_selTemp[member].pal = 1
+					end
 					-- if select anim differs from done anim and coop or pX.face.num allows to display more than 1 portrait or it's the last team member
 					local done_anim = motif.select_info['p' .. side .. '_member' .. member .. '_face_done_anim'] or motif.select_info['p' .. side .. '_face_done_anim']
 					if done_anim ~= -1 and start.p[side].t_selTemp[member].anim ~= done_anim and (main.coop or motif.select_info['p' .. side .. '_face_num'] > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
-						start.p[side].t_selTemp[member].anim_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false) or start.p[side].t_selTemp[member].anim_data
-						if start.p[side].t_selTemp[member].anim_data ~= nil then
+						local a = start.f_animGet(start.c[player].selRef, side, member, motif.select_info, '_face', '_done', false)
+						if a then
+							start.p[side].t_selTemp[member].anim_data = a
 							start.p[side].screenDelay = math.min(120, math.max(start.p[side].screenDelay, animGetLength(start.p[side].t_selTemp[member].anim_data)))
 						end
 					end
 					start.p[side].t_selTemp[member].ref = start.c[player].selRef
+					if start.p[side].t_selTemp[member].anim_data ~= nil then
+						if (motif.select_info['p' .. side .. '_member' .. member .. '_face_applypal'] ~= nil and motif.select_info['p' .. side .. '_member' .. member .. '_face_applypal'] >= 1) or (motif.select_info['p' .. side .. '_face_applypal'] ~= nil and motif.select_info['p' .. side .. '_face_applypal'] >= 1)  then
+							start.p[side].t_selTemp[member].anim_data = start.loadPalettes(start.p[side].t_selTemp[member].anim_data, start.p[side].t_selTemp[member].ref, start.p[side].t_selTemp[member].pal)
+							animUpdate(start.p[side].t_selTemp[member].anim_data)
+						end
+					end
+					if start.p[side].t_selTemp[member].face2_data ~= nil then
+						if (motif.select_info['p' .. side .. '_member' .. member .. '_face2_applypal'] ~= nil and motif.select_info['p' .. side .. '_member' .. member .. '_face2_applypal'] >= 1) or (motif.select_info['p' .. side .. '_face2_applypal'] ~= nil and motif.select_info['p' .. side .. '_face2_applypal'] >= 1)  then
+							start.p[side].t_selTemp[member].face2_data = start.loadPalettes(start.p[side].t_selTemp[member].face2_data, start.p[side].t_selTemp[member].ref, start.p[side].t_selTemp[member].pal)
+							animUpdate(start.p[side].t_selTemp[member].face2_data)
+						end
+					end
 					main.f_cmdBufReset(cmd)
 					selectState = 1
 				end
 			end
 		--selection menu
 		elseif selectState == 1 then
-			--TODO: hook left for optional menu that shows up after selecting character (groove, palette selection etc.)
-			--once everything is ready set selectState to 3 to confirm character selection
-			selectState = 3
+			if motif.select_info['paletteselect'] ~= nil and motif.select_info['paletteselect'] > 0 then
+				palleteCounter = 0
+				for _, v in ipairs(start.f_getCharData(start.p[side].t_selTemp[member].ref).pal) do
+					palleteCounter = palleteCounter + 1
+				end
+				if main.f_input({cmd}, main.f_extractKeys(motif.select_info['p' .. side .. '_palette_accept_key'])) then
+					sndPlay(motif.files.snd_data, motif.select_info.palette_done_snd[1], motif.select_info.palette_done_snd[2])
+					start.p[side].t_selTemp[member].pal = start.f_getCharData(start.p[side].t_selTemp[member].ref).pal[start.p[side].t_selTemp[member].pal]
+					for c, v in ipairs(start.f_getCharData(start.p[side].t_selTemp[member].ref).pal_keymap) do
+						if start.p[side].t_selTemp[member].pal == v then
+							start.p[side].t_selTemp[member].pal = c
+							break
+						end
+					end
+					selectState = 3
+				elseif main.f_input({cmd}, {motif.select_info['p' .. side .. '_palette_next_key']})then 
+					if start.p[side].t_selTemp[member].pal == palleteCounter then
+						start.p[side].t_selTemp[member].pal = 1
+					else
+						start.p[side].t_selTemp[member].pal = start.p[side].t_selTemp[member].pal + 1
+					end
+					if palleteCounter > 1 and (motif.select_info.p1_face_anim >= 0 or motif.select_info.p1_face_anim ~= nil or (motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] ~= nil or motif.select_info['p' .. side .. '_member' .. member .. '_face_spr'] ~= nil)) then
+						start.p[side].t_selTemp[member].anim_data = changeColorPalette(start.p[side].t_selTemp[member].anim_data, start.f_getCharData(start.p[side].t_selTemp[member].ref).pal[start.p[side].t_selTemp[member].pal])
+						if start.p[side].t_selTemp[member].face2_data ~= nil then
+							start.p[side].t_selTemp[member].face2_data = changeColorPalette(start.p[side].t_selTemp[member].face2_data, start.f_getCharData(start.p[side].t_selTemp[member].ref).pal[start.p[side].t_selTemp[member].pal])
+						end
+					end
+					sndPlay(motif.files.snd_data, motif.select_info.palette_move_snd[1], motif.select_info.palette_move_snd[2])
+				elseif main.f_input({cmd}, {motif.select_info['p' .. side .. '_palette_previous_key']})then 
+					if start.p[side].t_selTemp[member].pal == 1 then
+						start.p[side].t_selTemp[member].pal = palleteCounter
+					else
+						start.p[side].t_selTemp[member].pal = start.p[side].t_selTemp[member].pal - 1
+					end
+					if palleteCounter > 1 and (motif.select_info.p1_face_anim >= 0 or motif.select_info.p1_face_anim ~= nil or (motif.select_info['p' .. side .. '_member' .. member .. '_face_anim'] ~= nil or motif.select_info['p' .. side .. '_member' .. member .. '_face_spr'] ~= nil)) then
+						start.p[side].t_selTemp[member].anim_data = changeColorPalette(start.p[side].t_selTemp[member].anim_data, start.f_getCharData(start.p[side].t_selTemp[member].ref).pal[start.p[side].t_selTemp[member].pal])
+						if start.p[side].t_selTemp[member].face2_data ~= nil then
+							start.p[side].t_selTemp[member].face2_data = changeColorPalette(start.p[side].t_selTemp[member].face2_data, start.f_getCharData(start.p[side].t_selTemp[member].ref).pal[start.p[side].t_selTemp[member].pal])
+						end
+					end
+					sndPlay(motif.files.snd_data, motif.select_info.palette_move_snd[1], motif.select_info.palette_move_snd[2])
+				end
+				start.f_paletteNumberDraw(side, member)
+			else
+				selectState = 3
+			end
 		--confirm selection
 		elseif selectState == 3 then
 			start.p[side].t_selected[member] = {
@@ -2668,7 +3079,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				cursor = {start.c[player].selX, start.c[player].selY},
 				ratioLevel = start.f_getRatio(side),
 			}
-			if not config.TeamDuplicates then
+			if not gameOption('Options.Team.Duplicates') then
 				t_reservedChars[side][start.c[player].selRef] = true
 			end
 			start.p[side].t_cursor[member] = {x = start.c[player].selX, y = start.c[player].selY}
@@ -2685,7 +3096,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					end
 				end
 				start.p[side].selEnd = true
-			elseif not config.TeamDuplicates and start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char ~= 'randomselect' then
+			elseif not gameOption('Options.Team.Duplicates') and start.t_grid[start.c[player].selY + 1][start.c[player].selX + 1].char ~= 'randomselect' then
 				local t_dirs = {'F', 'B', 'D', 'U'}
 				if start.c[player].selY + 1 >= motif.select_info.rows then --next row not visible on the screen
 					t_dirs = {'F', 'B', 'U', 'D'}
@@ -2708,7 +3119,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			end
 		end
 	end
-	return selectState
+	return selectState, needUpdateDrawList
 end
 
 --;===========================================================
@@ -2816,7 +3227,7 @@ function start.f_selectVersus(active, t_orderSelect)
 							if main.cpuSide[side] and t_orderSelect[side] then
 								main.f_tableShuffle(t_order[side])
 							end
-							-- confirm char selection (starts loading immediately if config.BackgroundLoading is true)
+							-- confirm char selection (starts loading immediately if gameOption('Config.BackgroundLoading') is true)
 							for _, member in ipairs(t_order[side]) do
 								if not start.p[side].t_selected[member].loading then
 									selectChar(side, start.p[side].t_selected[member].ref, start.p[side].t_selected[member].pal)
@@ -2832,7 +3243,7 @@ function start.f_selectVersus(active, t_orderSelect)
 						end
 					elseif motif.vs_screen['p' .. side .. '_member' .. k .. '_key'] ~= nil and main.f_input({side}, main.f_extractKeys(motif.vs_screen['p' .. side .. '_member' .. k .. '_key'])) or (#start.p[side].t_selected == #t_order[side] + 1) then
 						table.insert(t_order[side], k)
-						-- confirm char selection (starts loading immediately if config.BackgroundLoading is true)
+						-- confirm char selection (starts loading immediately if gameOption('Config.BackgroundLoading') is true)
 						selectChar(side, v.ref, v.pal)
 						v.loading = true
 						-- if it's the last unordered team member
@@ -2865,6 +3276,7 @@ function start.f_selectVersus(active, t_orderSelect)
 							start.p[side].t_selTemp[member].anim_data = start.f_animGet(v.ref, side, member, motif.vs_screen, '', '_done', false) or start.p[side].t_selTemp[member].anim_data
 						end
 					end
+
 				end
 				if t_orderSelect[side] then
 					t_icon[side] = '_icon_done'
@@ -2877,7 +3289,7 @@ function start.f_selectVersus(active, t_orderSelect)
 		--draw clearcolor
 		clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
-		bgDraw(motif.versusbgdef.bg, false)
+		bgDraw(motif.versusbgdef.bg, 0)
 		--draw portraits and order icons
 		for side = 1, 2 do
 			start.f_drawPortraits(main.f_remapTable(start.p[side].t_selTemp, start.t_orderRemap[side]), side, motif.vs_screen, '', false, t_icon[side])
@@ -2919,6 +3331,8 @@ function start.f_selectVersus(active, t_orderSelect)
 						g =      motif.vs_screen['p' .. side .. '_name_font'][5],
 						b =      motif.vs_screen['p' .. side .. '_name_font'][6],
 						height = motif.vs_screen['p' .. side .. '_name_font'][7],
+						xshear = motif.vs_screen['p' .. side .. '_name_xshear'],
+						angle  = motif.vs_screen['p' .. side .. '_name_angle'],
 					})
 					t_txt_nameVS[side]:draw()
 				end
@@ -2932,10 +3346,16 @@ function start.f_selectVersus(active, t_orderSelect)
 		if not done and motif.vs_screen.timer_count ~= -1 and timerActive and counter >= 0 then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen, 'timer_', txt_timerVS)
 		end
+		--credits
+		if main.credits ~= -1 and getKey(motif.attract_mode.credits_key) then
+			sndPlay(motif.files.snd_data, motif.attract_mode.credits_snd[1], motif.attract_mode.credits_snd[2])
+			main.credits = main.credits + 1
+			resetKey()
+		end
 		-- hook
 		hook.run("start.f_selectVersus")
 		--draw layerno = 1 backgrounds
-		bgDraw(motif.versusbgdef.bg, true)
+		bgDraw(motif.versusbgdef.bg, 1)
 		--draw fadein / fadeout
 		for side = 1, 2 do
 			if main.fadeType == 'fadein' and (
@@ -2975,8 +3395,8 @@ function start.f_selectLoading()
 			end
 		end
 	end
-	--TODO: fix config.BackgroundLoading setting
-	--if not config.BackgroundLoading then
+	--TODO: fix gameOption('Config.BackgroundLoading') setting
+	--if not gameOption('Config.BackgroundLoading') then
 		loadStart()
 	--end
 	-- calling refresh() during netplay data loading can lead to synchronization error
@@ -3110,19 +3530,20 @@ function start.f_resultInit()
 	end
 	for i = 1, 2 do
 		for k, v in ipairs(t['p' .. i .. start.t_result.stateType .. '_state']) do
-			if charChangeState(i, v) then
+			if player(i) and changeState(v) then
 				break
 			end
 		end
 		player(i) --assign sys.debugWC to player i
 		for j = 1, numpartner() do
 			for _, v in ipairs(t['p' .. i .. '_teammate' .. start.t_result.stateType .. '_state']) do
-				if charChangeState(j * 2 + i, v) then
+				if player(j * 2 + i) and changeState(v) then
 					break
 				end
 			end
 		end
 	end
+	toggleWinScreen(true)
 	if main.resultsTable.sounds_enabled == 0 then
 		clearAllSound()
 		toggleNoSound(true)
@@ -3149,13 +3570,13 @@ function start.f_result()
 	--draw text at layerno = 0
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 0)
 	--draw layerno = 0 backgrounds
-	bgDraw(motif[start.t_result.bgdef].bg, false)
+	bgDraw(motif[start.t_result.bgdef].bg, 0)
 	--draw text at layerno = 1
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 1)
 	-- hook
 	hook.run("start.f_result")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif[start.t_result.bgdef].bg, true)
+	bgDraw(motif[start.t_result.bgdef].bg, 1)
 	--draw text at layerno = 2
 	f_drawTextAtLayerNo(t, start.t_result.prefix, start.t_result.resultText, start.t_result.txt, 2)
 	--draw fadein / fadeout
@@ -3171,6 +3592,7 @@ function start.f_result()
 	end
 	if not main.f_frameChange() then
 		start.t_result.active = false
+		toggleWinScreen(false)
 		toggleNoSound(false)
 		return false
 	end
@@ -3299,19 +3721,20 @@ function start.f_victoryInit()
 	end
 	for i = 1, 2 do
 		for k, v in ipairs(motif.victory_screen['p' .. i .. '_state']) do
-			if charChangeState(i, v) then
+			if player(i) and changeState(v) then
 				break
 			end
 		end
 		player(i) --assign sys.debugWC to player i
 		for j = 1, numpartner() do
 			for _, v in ipairs(motif.victory_screen['p' .. i .. '_teammate_state']) do
-				if charChangeState(j * 2 + i, v) then
+				if player(j * 2 + i) and changeState(j * 2 + i, v) then
 					break
 				end
 			end
 		end
 	end
+	toggleVictoryScreen(true)
 	if motif.victory_screen.sounds_enabled == 0 then
 		clearAllSound()
 		toggleNoSound(true)
@@ -3340,7 +3763,7 @@ function start.f_victory()
 	--draw overlay
 	overlay_winquote:draw()
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.victorybgdef.bg, false)
+	bgDraw(motif.victorybgdef.bg, 0)
 	--draw portraits (starting from losers)
 	for side = 2, 1, -1 do
 		start.f_drawPortraits(start.t_victory['team' .. side], side, motif.victory_screen, '', false)
@@ -3376,7 +3799,7 @@ function start.f_victory()
 	-- hook
 	hook.run("start.f_victory")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.victorybgdef.bg, true)
+	bgDraw(motif.victorybgdef.bg, 1)
 	--draw fadein / fadeout
 	if main.fadeType == 'fadein' and ((start.t_victory.textend and start.t_victory.counter - start.t_victory.textcnt >= motif.victory_screen.time) or main.f_input(main.t_players, {'pal', 's'})) then
 		main.f_fadeReset('fadeout', motif.victory_screen)
@@ -3390,6 +3813,7 @@ function start.f_victory()
 	end
 	if not main.f_frameChange() then
 		start.t_victory.active = false
+		toggleVictoryScreen(false)
 		toggleNoSound(false)
 		return false
 	end
@@ -3442,6 +3866,7 @@ function start.f_continueInit()
 	else
 		start.t_continue.t_btnSkip = {'pal', 's'}
 	end
+	toggleContinueScreen(true)
 	if motif.continue_screen.sounds_enabled == 0 then
 		clearAllSound()
 		toggleNoSound(true)
@@ -3458,14 +3883,14 @@ function start.f_continueInit()
 			v.selectState = 0
 		end
 		for _, v in ipairs(motif.continue_screen['p' .. i .. '_state']) do
-			if charChangeState(i, v) then
+			if player(i) and changeState(v) then
 				break
 			end
 		end
 		player(i) --assign sys.debugWC to player i
 		for j = 1, numpartner() do
 			for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_state']) do
-				if charChangeState(j * 2 + i, v) then
+				if player(j * 2 + i) and changeState(v) then
 					break
 				end
 			end
@@ -3482,7 +3907,7 @@ function start.f_continue()
 	--draw overlay
 	overlay_continue:draw()
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.continuebgdef.bg, false)
+	bgDraw(motif.continuebgdef.bg, 0)
 	if motif.continue_screen.legacymode_enabled == 0 then --extended continue screen parameters
 		if not start.t_continue.selected then
 			if start.t_continue.counter < motif.continue_screen.counter_end_skiptime then
@@ -3492,14 +3917,14 @@ function start.f_continue()
 					sndPlay(motif.files.snd_data, motif.continue_screen.done_snd[1], motif.continue_screen.done_snd[2])
 					for i = 1, 2 do
 						for _, v in ipairs(motif.continue_screen['p' .. i .. '_yes_state']) do
-							if charChangeState(i, v) then
+							if player(i) and changeState(v) then
 								break
 							end
 						end
 						player(i) --assign sys.debugWC to player i
 						for j = 1, numpartner() do
 							for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_yes_state']) do
-								if charChangeState(j * 2 + i, v) then
+								if player(j * 2 + i) and changeState(v) then
 									break
 								end
 							end
@@ -3535,14 +3960,14 @@ function start.f_continue()
 				sndPlay(motif.files.snd_data, motif.continue_screen.counter_end_snd[1], motif.continue_screen.counter_end_snd[2])
 				for i = 1, 2 do
 					for _, v in ipairs(motif.continue_screen['p' .. i .. '_no_state']) do
-						if charChangeState(i, v) then
+						if player(i) and changeState(v) then
 							break
 						end
 					end
 					player(i) --assign sys.debugWC to player i
 					for j = 1, numpartner() do
 						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_no_state']) do
-							if charChangeState(j * 2 + i, v) then
+							if player(j * 2 + i) and changeState(v) then
 								break
 							end
 						end
@@ -3573,14 +3998,14 @@ function start.f_continue()
 				sndPlay(motif.files.snd_data, motif.continue_screen.done_snd[1], motif.continue_screen.done_snd[2])
 				for i = 1, 2 do
 					for _, v in ipairs(motif.continue_screen['p' .. i .. '_yes_state']) do
-						if charChangeState(i, v) then
+						if player(i) and changeState(v) then
 							break
 						end
 					end
 					player(i) --assign sys.debugWC to player i
 					for j = 1, numpartner() do
 						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_yes_state']) do
-							if charChangeState(j * 2 + i, v) then
+							if player(j * 2 + i) and changeState(v) then
 								break
 							end
 						end
@@ -3592,14 +4017,14 @@ function start.f_continue()
 				sndPlay(motif.files.snd_data, motif.continue_screen.cancel_snd[1], motif.continue_screen.cancel_snd[2])
 				for i = 1, 2 do
 					for _, v in ipairs(motif.continue_screen['p' .. i .. '_no_state']) do
-						if charChangeState(i, v) then
+						if player(i) and changeState(v) then
 							break
 						end
 					end
 					player(i) --assign sys.debugWC to player i
 					for j = 1, numpartner() do
 						for _, v in ipairs(motif.continue_screen['p' .. i .. '_teammate_no_state']) do
-							if charChangeState(j * 2 + i, v) then
+							if player(j * 2 + i) and changeState(v) then
 								break
 							end
 						end
@@ -3641,6 +4066,8 @@ function start.f_continue()
 				g =      motif.continue_screen[var .. '_font'][5],
 				b =      motif.continue_screen[var .. '_font'][6],
 				height = motif.continue_screen[var .. '_font'][7],
+				xshear = motif.continue_screen[var .. '_xshear'],
+				angle  = motif.continue_screen[var .. '_angle'],
 			})
 			txt:draw()
 		end
@@ -3653,7 +4080,7 @@ function start.f_continue()
 	-- hook
 	hook.run("start.f_continue")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.continuebgdef.bg, true)
+	bgDraw(motif.continuebgdef.bg, 1)
 	--draw fadein / fadeout
 	if main.fadeType == 'fadein' and (start.t_continue.counter > motif.continue_screen.counter_endtime or start.t_continue.continue or (main.f_input({1}, start.t_continue.t_btnSkip) and (motif.continue_screen.legacymode_enabled == 1 or start.t_continue.counter >= motif.continue_screen.counter_end_skiptime))) then
 		main.f_fadeReset('fadeout', motif.continue_screen)
@@ -3668,6 +4095,7 @@ function start.f_continue()
 	if not main.f_frameChange() then
 		start.t_continue.active = false
 		setContinue(start.t_continue.continue)
+		toggleContinueScreen(false)
 		toggleNoSound(false)
 		return false
 	end
@@ -3729,7 +4157,7 @@ function start.f_hiscoreInit(gameMode, playMusic, input)
 					motif.hiscore_info.item_face_spr,
 				}) do
 					if v[1] ~= -1 then
-						local a = animGetPreloadedData('char', main.t_charDef[def], v[1], v[2], true)
+						local a = animGetPreloadedCharData(main.t_charDef[def], v[1], v[2], true)
 						if a ~= nil then
 							animSetScale(
 								a,
@@ -3758,7 +4186,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	end
 	start.t_hiscore.counter = start.t_hiscore.counter + 1
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.hiscorebgdef.bg, false)
+	bgDraw(motif.hiscorebgdef.bg, 0)
 	--draw overlay
 	overlay_hiscore:draw()
 	--draw title
@@ -3899,7 +4327,7 @@ function start.f_hiscore(t, playMusic, place, infinite)
 	-- hook
 	hook.run("start.f_hiscore")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.hiscorebgdef.bg, true)
+	bgDraw(motif.hiscorebgdef.bg, 1)
 	--draw fadein / fadeout
 	if main.fadeType == 'fadein' and not main.fadeActive and not start.t_hiscore.input and (((not infinite and start.t_hiscore.counter >= motif.hiscore_info.time) or (motif.attract_mode.enabled == 0 and main.f_input(main.t_players, {'pal', 's'}))) or (motif.attract_mode.enabled == 1 and main.credits > 0)) then
 		main.f_fadeReset('fadeout', motif.hiscore_info)
@@ -3966,7 +4394,7 @@ function start.f_challenger()
 		f_drawTextAtLayerNo(motif.challenger_info, 'text', {motif.challenger_info.text_text}, txt_challenger, 0)
 	end
 	--draw layerno = 0 backgrounds
-	bgDraw(motif.challengerbgdef.bg, false)
+	bgDraw(motif.challengerbgdef.bg, 0)
 	--draw bg
 	if start.t_challenger.counter >= motif.challenger_info.bg_displaytime then
 		animUpdate(motif.challenger_info.bg_data)
@@ -3979,7 +4407,7 @@ function start.f_challenger()
 	-- hook
 	hook.run("start.f_challenger")
 	--draw layerno = 1 backgrounds
-	bgDraw(motif.challengerbgdef.bg, true)
+	bgDraw(motif.challengerbgdef.bg, 1)
 	--draw text at layerno = 2
 	if start.t_challenger.counter >= motif.challenger_info.text_displaytime then
 		f_drawTextAtLayerNo(motif.challenger_info, 'text', {motif.challenger_info.text_text}, txt_challenger, 2)
@@ -4010,8 +4438,12 @@ function start.f_stageMusic()
 	if gamemode('demo') and motif.demo_mode.fight_playbgm == 0 then
 		return
 	end
-	-- bgmusic / bgmusic.roundX / bgmusic.final
+	-- Reset
 	if roundstart() then
+		didLoadStageBGM = false
+	end
+	-- bgmusic / bgmusic.roundX / bgmusic.final
+	if (stagetime() > 0 and not didLoadStageBGM and roundstate() <= 2) then
 		-- only if the round is not restarted
 		if start.bgmround ~= roundno() then
 			start.bgmround = roundno()
@@ -4026,20 +4458,24 @@ function start.f_stageMusic()
 				end
 			end
 			-- final round music assigned
-			if roundNo > 1 and roundtype() == 3 and start.t_music.musicfinal.bgmusic ~= nil then
+			if roundNo > 1 and player(1) and decisiveround() and player(2) and decisiveround() and start.t_music.musicfinal.bgmusic ~= nil then
 				main.f_playBGM(false, start.t_music.musicfinal.bgmusic, 1, start.t_music.musicfinal.bgmvolume, start.t_music.musicfinal.bgmloopstart, start.t_music.musicfinal.bgmloopend)
+				didLoadStageBGM = true
 			-- music exists for this round
 			elseif start.t_music.music[roundNo] ~= nil then
 				-- interrupt same track playing only on round 1 of first match (skips continuous survival etc.)
 				main.f_playBGM(matchno() == 1 and roundNo == 1, start.t_music.music[roundNo].bgmusic, 1, start.t_music.music[roundNo].bgmvolume, start.t_music.music[roundNo].bgmloopstart, start.t_music.music[roundNo].bgmloopend)
+				didLoadStageBGM = true
 			-- stop versus screen track or life bgm even if stage music is not assigned
 			elseif start.bgmround == 1 or start.bgmstate == 1 then
 				main.f_playBGM(true)
+				didLoadStageBGM = true
 			end
 		end
 		start.bgmstate = 0
+	end
 	-- bgmusic.life
-	elseif start.t_music.musiclife.bgmusic ~= nil and start.bgmstate == 0 and roundstate() == 2 then
+	if start.t_music.musiclife.bgmusic ~= nil and start.bgmstate == 0 and roundstate() == 2 then
 		for i = 1, 2 do
 			player(i) --assign sys.debugWC to player i
 			-- continue only if p1/p2 life meets life ratio criteria
@@ -4054,7 +4490,7 @@ function start.f_stageMusic()
 					end
 				end
 				if ok then
-					if start.t_music.bgmtrigger_life == 1 or roundtype() >= 2 then
+					if start.t_music.bgmtrigger_life == 1 or (enemy(0) and decisiveround()) then
 						main.f_playBGM(true, start.t_music.musiclife.bgmusic, 1, start.t_music.musiclife.bgmvolume, start.t_music.musiclife.bgmloopstart, start.t_music.musiclife.bgmloopend)
 						start.bgmstate = 1
 						break
@@ -4062,10 +4498,11 @@ function start.f_stageMusic()
 				end
 			end
 		end
+	end
 	-- bgmusic.victory
-	elseif #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and roundstate() == 3 then
+	if #start.t_music.musicvictory > 0 and start.bgmstate ~= -1 and roundstate() == 3 then
 		for i = 1, 2 do
-			if start.t_music.musicvictory[i] ~= nil and player(i) and win() and (roundtype() == 1 or roundtype() == 3) then --assign sys.debugWC to player i
+			if start.t_music.musicvictory[i] ~= nil and player(i) and win() and decisiveround() then --assign sys.debugWC to player i
 				main.f_playBGM(true, start.t_music.musicvictory[i].bgmusic, 1, start.t_music.musicvictory[i].bgmvolume, start.t_music.musicvictory[i].bgmloopstart, start.t_music.musicvictory[i].bgmloopend)
 				start.bgmstate = -1
 				break
@@ -4277,16 +4714,20 @@ function start.f_dialogueTokens(key, t)
 				end
 			--play sound
 			elseif v.param == 'sound' then --pn, group_no, sound_no, volumescale
-				charSndPlay(v.pn, v.value[1] or -1, v.value[2] or 0, v.value[3] or 100)
+				player(v.pn)
+				sndPlay(v.value[1] or -1, v.value[2] or 0, v.value[3] or 100)
 			--change anim
 			elseif v.param == 'anim' then --pn, anim_no, anim_elem
-				charChangeAnim(v.pn, v.value[1] or 0, v.value[2] or 0)
+				player(v.pn)
+				changeAnim(v.value[1] or 0, v.value[2] or 0)
 			--change state
 			elseif v.param == 'state' then --pn, state_no
-				charChangeState(v.pn, v.value[1] or 0)
+				player(v.pn)
+				changeState(v.value[1] or 0)
 			--map operation
 			elseif v.param == 'map' then --pn, map_name, value, map_type
-				charMapSet(v.pn, v.value[1] or 'dummy', v.value[2] or 0, v.value[3] or 'set')
+				player(v.pn)
+				mapSet(v.pn, v.value[1] or 'dummy', v.value[2] or 0, v.value[3] or 'set')
 			end
 		end
 	end
@@ -4367,8 +4808,8 @@ function start.f_dialogue()
 			motif.dialogue_info['p' .. side .. '_face_facing'],
 			motif.dialogue_info['p' .. side .. '_face_window'][1],
 			motif.dialogue_info['p' .. side .. '_face_window'][2],
-			motif.dialogue_info['p' .. side .. '_face_window'][3] * config.GameWidth / main.SP_Localcoord[1],
-			motif.dialogue_info['p' .. side .. '_face_window'][4] * config.GameHeight / main.SP_Localcoord[2]
+			motif.dialogue_info['p' .. side .. '_face_window'][3] * gameOption('Video.GameWidth') / main.SP_Localcoord[1],
+			motif.dialogue_info['p' .. side .. '_face_window'][4] * gameOption('Video.GameHeight') / main.SP_Localcoord[2]
 		)
 		--draw names
 		start['txt_dialogue_p' .. side .. '_name']:draw()
@@ -4385,7 +4826,7 @@ function start.f_dialogue()
 		end
 	end
 	if main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.skip_key)) then
-		charSndStop()
+		stopAllSound()
 		t.parsed[t.textNum].cnt = 9999
 		t.parsed[t.textNum].tokens = {}
 		t.wait = 0
@@ -4408,7 +4849,7 @@ function start.f_dialogue()
 	local key_cancel = main.f_input(main.t_players, main.f_extractKeys(motif.dialogue_info.cancel_key))
 	if (t.endtime ~= -1 and t.counter > t.endtime) or (t.counter > motif.dialogue_info.skiptime and key_cancel) then
 		if key_cancel then
-			charSndStop()
+			stopAllSound()
 		end
 		dialogueReset()
 		start.dialogueInit = false

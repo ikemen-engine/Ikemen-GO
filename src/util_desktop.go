@@ -7,7 +7,6 @@ import (
 	"os"
 
 	findfont "github.com/flopp/go-findfont"
-	"github.com/ikemen-engine/glfont"
 	"github.com/sqweek/dialog"
 )
 
@@ -27,9 +26,9 @@ func ShowErrorDialog(message string) {
 
 // TTF font loading
 func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
-	//Search in local directory
+	// Search in local directory
 	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
-	//Search in system directory
+	// Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {
 		var err error
@@ -38,19 +37,19 @@ func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 			panic(err)
 		}
 	}
-	//Load ttf
+	// Load ttf
 	if height == -1 {
 		height = int32(f.Size[1])
 	} else {
 		f.Size[1] = uint16(height)
 	}
-	ttf, err := glfont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight), sys.fontShaderVer)
+	ttf, err := gfxFont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight))
 	if err != nil {
 		panic(err)
 	}
 	f.ttf = ttf
 
-	//Create Ttf dummy palettes
+	// Create Ttf dummy palettes
 	f.palettes = make([][256]uint32, 1)
 	for i := 0; i < 256; i++ {
 		f.palettes[0][i] = 0

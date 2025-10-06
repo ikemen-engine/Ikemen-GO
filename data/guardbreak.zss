@@ -1,4 +1,4 @@
-# Guard Break code adopted from Shiyo Kakuge's add004
+# Guard Break code adapted from Shiyo Kakuge's add004
 #===============================================================================
 # StateGuardBreakHit
 #===============================================================================
@@ -12,57 +12,8 @@ if time = 0 {
 	if pos y < 0 {
 		stateTypeSet{statetype: A} # Just in case
 	}
-	playSnd{value: GO 5400, 0}
-	explod{
-		# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
-		anim: GO const(FxGuardBreakShockwave);
-		postype: p1;
-		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
-		sprpriority: 7;
-		ownpal: 1;
-		scale: 0.15, 4.5;
-		trans: add;
-		alpha: 256, 256;
-		pausemovetime: -1;
-		ignorehitpause: 1;
-	}
-}
-
-if time < 13 {
-	explod{
-		anim: GO const(FxGuardBreakSpark) + randomRange(0, 2);
-		postype: p1;
-		pos: floor((const(size.mid.pos.x)) * const(size.xscale)), floor(const(size.mid.pos.y) * const(size.yscale) * ifElse(stateType = C, 0.5, 1));
-		sprpriority: 6;
-		ownpal: 1;
-		random: floor(const(size.height) / 8 * const(size.xscale)), floor(const(size.height) * const(size.yscale));
-		scale: randomRange(0, 8) * 0.03 + 0.25, randomRange(0, 8) * 0.03 + 0.25;
-		vel: -(randomRange(0, 17) + 5) * 0.36, (randomRange(0, 18) - 8) * 0.36;
-		accel: 0.038, 0;
-		facing: ifElse(random < 500, 1, -1);
-		vfacing: ifElse(random < 500, 1, -1);
-		pausemovetime: -1;
-		ignorehitpause: 1;
-	}
-}
-
-if time = 0 {
-	explod{
-		anim: GO const(FxBackgroundColor);
-		sprpriority: -6000;
-		space: screen;
-		postype: left;
-		pos: 0, screenHeight / 2; # color 0 (blue)
-		scale: 320, 7.5 * screenHeight / const240p(240);
-		bindtime: -1;
-		supermovetime: -1;
-		pausemovetime: -1;
-		ownpal: 1;
-		ignorehitpause: 1;
-	}
-	# Removed the pause as it doesn't exist in the main reference game and it affected every player on screen
-	stateTypeSet{physics: stateType}
-	# Changed animations a bit. I think all of them could use common guard break constants later
+	# Decide animation type
+	# These could perhaps use common guard break constants later
 	if stateType = S {
 		changeAnim{value: const(AnimStandOrAirHitHigh_hard)}
 	} else if stateType = C {
@@ -72,6 +23,53 @@ if time = 0 {
 	}
 } else {
 	changeAnim{value: anim}
+}
+
+# Special effects
+if time < 13 {
+	if time = 0 {
+		# Guard break sound
+		playSnd{value: GO 5400, 0}
+		# Blue screen
+		if palFxVar(bg.time) = 0 {
+			bgPalFx{
+				time: 30;
+				sincolor: -255, 60;
+				sinmul: -255, -255, 0, 60;
+			}
+		}
+		# Shockwave
+		explod{
+			# Do note all anims and playsnds on this file are called from gofx.def, not fightfx.air/common.snd
+			anim: GO const(FxGuardBreakShockwave);
+			postype: p1;
+			pos: const(size.ground.front), const(size.mid.pos.y) * ifElse(stateType = C, 0.5, 1);
+			sprpriority: 7;
+			ownpal: 1;
+			scale: 0.25, 0.25;
+			vfacing: ifElse(random < 500, 1, -1);
+			pausemovetime: -1;
+			ignorehitpause: 1;
+		}
+	}
+	# Glass shards
+	let direction = (random / 1000.0) * ifelse(random < 667, -1, 1);
+	explod{
+		anim: GO const(FxGuardBreakSpark) + randomRange(0, 2);
+		postype: p1;
+		pos: 0, const(size.mid.pos.y) * ifElse(stateType = C, 0.5, 1) - 0.5 * const(size.mid.pos.y) * $direction;
+		sprpriority: 6;
+		ownpal: 1;
+		random: const(size.ground.front), 0;
+		scale: 0.20 + (random / 5000.0), 0.20 + (random / 5000.0);
+		angle: (random % 360);
+		vel: const240p(-3.0 - (random / 333.3)), const240p(random / 200.0) * $direction;
+		accel: 0, const240p(0.1);
+		facing: ifElse(random < 500, 1, -1);
+		vfacing: ifElse(random < 500, 1, -1);
+		pausemovetime: -1;
+		ignorehitpause: 1;
+	}
 }
 
 # Every character stays in these states the same time, regardless of animation timing
@@ -147,20 +145,21 @@ if time >= 60 {
 if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 	# Do nothing, global code disabled locally or executed by helper/stage
 } else if roundState = 0 {
+	# Initialize points and variables
 	guardPointsSet{value: guardPointsMax}
 	map(_iksys_guardPointsTimer) := 0;
 } else if roundState = 2 && alive {
-	# Manage cooldown timer
-	ignoreHitPause if moveType = H {
-		map(_iksys_guardPointsTimer) := 60;
-	} else if map(_iksys_guardPointsTimer) > 0 {
+	# Decrease cooldown timer
+	if map(_iksys_guardPointsTimer) > 0 {
 		mapAdd{map: "_iksys_guardPointsTimer"; value: -1}
 	}
 	# Upon block
-	ignoreHitPause if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
-		# Coloring if guard points left are under 333 or 50% for characters with a small guard bar
-		if (gameTime % 5) = 0 && guardPoints <= min((0.5 * guardPointsMax), 333) {
-			palFx{time: 2; add: 200, 0, 0}
+	if stateNo = const(StateStandGuardHit_shaking) || stateNo = const(StateCrouchGuardHit_shaking) || stateNo = const(StateAirGuardHit_shaking) {
+		# Start cooldown timer
+		map(_iksys_guardPointsTimer) := 60;
+		# Warning if guard points left are under 333 or 50% for characters with a small guard bar
+		if getHitVar(frame) && guardPoints <= min((0.5 * guardPointsMax), 333) {
+			palFx{time: 20; add: 64, 0, 0; sinadd: 64, 0, 0, 4}
 		}
 		# Enter guard break state
 		if !guardBreak && guardPoints = 0 {
@@ -168,12 +167,18 @@ if !const(Default.Enable.GuardBreak) || isHelper || teamSide = 0 {
 		}
 	}
 	# Reset guard points and remove guard break flag if player is no longer in one of guard break states
-	ignoreHitPause if guardBreak && stateNo != [const(StateGuardBreakHit), const(StateGuardBreakRecover)] {
+	if guardBreak && stateNo != [const(StateGuardBreakHit), const(StateGuardBreakRecover)] {
 		guardPointsSet{value: guardPointsMax}
 		guardBreakSet{value: 0}
 	}
 	# Guard points recovery
-	ignoreHitPause if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsTimer) <= 0 {
+	if !guardBreak && guardPoints < guardPointsMax && map(_iksys_guardPointsTimer) <= 0 {
 		guardPointsAdd{value: 2; absolute: 1}
+	}
+# Reset status if char is KO
+} else {
+	guardBreakSet{value: 0}
+	if guardPoints < 1 {
+		guardPointsSet{value: 1}
 	}
 }

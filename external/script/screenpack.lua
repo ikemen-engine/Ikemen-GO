@@ -68,7 +68,7 @@ function main.f_localcoord()
 		main.LB_Localcoord = main.SP_Localcoord
 	end
 	main.LB_Viewport43 = main.f_getViewport(main.LB_Localcoord[1], main.LB_Localcoord[2], 4, 3)
-	main.LB_Viewport = main.f_getViewport(main.LB_Localcoord[1], main.LB_Localcoord[2], config.GameWidth, config.GameHeight)
+	main.LB_Viewport = main.f_getViewport(main.LB_Localcoord[1], main.LB_Localcoord[2], gameOption('Video.GameWidth'), gameOption('Video.GameHeight'))
 	main.LB_Scale = main.LB_Viewport[3] / main.LB_Localcoord[1]
 	if main.LB_Scale == 1 then
 		main.LB_OffsetX = (main.LB_Viewport43[3] - main.LB_Localcoord[1]) / 2

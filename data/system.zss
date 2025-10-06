@@ -1,0 +1,10 @@
+#===============================================================================
+# Global states (not halted by Pause/SuperPause, no helper limitations)
+#===============================================================================
+[StateDef -4]
+
+if PauseTime = 0 {
+	if time > 0 && (stateNo = 5030 || stateNo = 5035 || stateNo = 5040 || stateNo = 5050 || stateNo = 5071 || stateNo = 5200){
+		velAdd{x: getHitVar(xAccel); z: getHitVar(zAccel)}
+	}
+}
