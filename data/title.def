@@ -13,7 +13,7 @@ bgmusic =
 bgmloop = 1
 
 [Script]
-lua = script/menu_music.lua
+lua=script/menu_music.lua
 
 [Background]
 ; Simple background color until we add visuals
