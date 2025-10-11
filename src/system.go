@@ -3933,6 +3933,8 @@ func (s *Select) AddStage(def string) error {
 	return nil
 }
 
+// Not sure where to run this
+// Should be run after s.charlist has been set 
 func (s *Select) InitRandomPools(numTeams int) {
 	s.unchosenIndices = make([][]int, numTeams)
 	for i := 0; i < numTeams; i++ {
@@ -3984,7 +3986,8 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 		return false
 	}
 	/*
-		Old Version
+		Old Version, should be used when the proper config.ini setting is used
+		Not sure how to retrieve it
 		m := 0
 		for s.charlist[n].def == "randomselect" || len(s.charlist[n].def) == 0 {
 			m++
@@ -3997,7 +4000,7 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 	*/
 
 	if s.charlist[n].def == "randomselect" {
-		n = s.GetRandomUnchosen(tn) // Pass team number
+		n = s.GetRandomUnchosen(tn)
 		if n < 0 {
 			return false
 		}
