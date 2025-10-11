@@ -3965,6 +3965,7 @@ func (s *Select) GetRandomUnchosen(tn int) int {
 		s.ResetUnchosen(tn)
 	}
 
+	// If all items in charlist are randomselect or nonexistant, the list will be empty after resetting
 	if len(s.unchosenIndices[tn]) == 0 {
 		return -1
 	}
