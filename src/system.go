@@ -3308,6 +3308,8 @@ type Select struct {
 	cdefOverwrite      map[int]string
 	sdefOverwrite      string
 	ocd                [3][]OverrideCharData
+
+	unchosenIndices [][]int // Used to track unchosen characters for random select
 }
 
 func newSelect() *Select {
@@ -3931,19 +3933,77 @@ func (s *Select) AddStage(def string) error {
 	return nil
 }
 
+func (s *Select) InitRandomPools(numTeams int) {
+	s.unchosenIndices = make([][]int, numTeams)
+	for i := 0; i < numTeams; i++ {
+		s.ResetUnchosen(i)
+	}
+}
+
+func (s *Select) ResetUnchosen(tn int) {
+	if tn < 0 || tn >= len(s.unchosenIndices) {
+		return
+	}
+
+	s.unchosenIndices[tn] = make([]int, 0, len(s.charlist))
+	for i := range s.charlist {
+		// only add non randomselect characters to possible options
+		if s.charlist[i].def != "randomselect" && len(s.charlist[i].def) > 0 {
+			s.unchosenIndices[tn] = append(s.unchosenIndices[tn], i)
+		}
+	}
+}
+
+func (s *Select) GetRandomUnchosen(tn int) int {
+	if tn < 0 || tn >= len(s.unchosenIndices) {
+		return -1
+	}
+
+	if len(s.unchosenIndices[tn]) == 0 {
+		s.ResetUnchosen(tn)
+	}
+
+	if len(s.unchosenIndices[tn]) == 0 {
+		return -1
+	}
+
+	pool := s.unchosenIndices[tn]
+	randomPos := int(Rand(0, int32(len(pool))-1))
+	chosen := pool[randomPos]
+
+	lastIdx := len(pool) - 1
+	pool[randomPos] = pool[lastIdx]
+	s.unchosenIndices[tn] = pool[:lastIdx]
+
+	return chosen
+}
+
 func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
-	m, n := 0, s.GetCharNo(cn)
+	n := s.GetCharNo(cn)
 	if len(s.charlist) == 0 || len(s.charlist[n].def) == 0 {
 		return false
 	}
-	for s.charlist[n].def == "randomselect" || len(s.charlist[n].def) == 0 {
-		m++
-		if m > 100000 {
+	/*
+		Old Version
+		m := 0
+		for s.charlist[n].def == "randomselect" || len(s.charlist[n].def) == 0 {
+			m++
+			if m > 100000 {
+				return false
+			}
+			n = int(Rand(0, int32(len(s.charlist))-1))
+			pl = int(Rand(1, int32(sys.cfg.Config.PaletteMax)))
+		}
+	*/
+
+	if s.charlist[n].def == "randomselect" {
+		n = s.GetRandomUnchosen(tn) // Pass team number
+		if n < 0 {
 			return false
 		}
-		n = int(Rand(0, int32(len(s.charlist))-1))
 		pl = int(Rand(1, int32(sys.cfg.Config.PaletteMax)))
 	}
+
 	sys.loadMutex.Lock()
 	s.selected[tn] = append(s.selected[tn], [...]int{n, pl})
 	s.ocd[tn] = append(s.ocd[tn], *newOverrideCharData())
