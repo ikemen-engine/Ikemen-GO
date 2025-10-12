@@ -20,7 +20,7 @@ local t_aiRamp = {}
 local t_gameStats = {}
 local t_recordText = {}
 local t_reservedChars = {{}, {}}
-local t_unchosenChars = {{}, {}}
+local t_unchosenRandChars = {{}, {}}
 local timerSelect = 0
 local cursorActive = {}
 local cursorDone = {}
@@ -1367,38 +1367,38 @@ end
 
 -- Resets the unchosen character pool for a player
 local function f_resetUnchosenChars(pn, allowReserved)
-	t_unchosenChars[pn] = {}
+	t_unchosenRandChars[pn] = {}
 	if allowReserved then
 		for _, v in ipairs(main.t_randomChars) do
-			table.insert(t_unchosenChars[pn], v)
+			table.insert(t_unchosenRandChars[pn], v)
 		end
 		return
 	end
 
 	for _, v in ipairs(main.t_randomChars) do
 		if not t_reservedChars[pn][v] then
-			table.insert(t_unchosenChars[pn], v)
+			table.insert(t_unchosenRandChars[pn], v)
 		end
 	end
 
 	-- If we still have no characters, allow reserved characters
 	-- This is similar to the way the old code worked
-	if #t_unchosenChars[pn] == 0 then
+	if #t_unchosenRandChars[pn] == 0 then
 		f_resetUnchosenChars(pn, true)
 	end
 end
 
 -- Selects a random character and removes it from the unchosen pool
 local function f_useUnchosenChar(pn)
-	if #t_unchosenChars[pn] == 0 then
+	if #t_unchosenRandChars[pn] == 0 then
 		return nil
 	end
-	local randomIndex = math.random(1, #t_unchosenChars[pn])
-	local selectedChar = t_unchosenChars[pn][randomIndex]
+	local randomIndex = math.random(1, #t_unchosenRandChars[pn])
+	local selectedChar = t_unchosenRandChars[pn][randomIndex]
 
 	-- Remove selected character from pool (swap with last and remove)
-	t_unchosenChars[pn][randomIndex] = t_unchosenChars[pn][#t_unchosenChars[pn]]
-	table.remove(t_unchosenChars[pn])
+	t_unchosenRandChars[pn][randomIndex] = t_unchosenRandChars[pn][#t_unchosenRandChars[pn]]
+	table.remove(t_unchosenRandChars[pn])
 
 	return selectedChar
 end
@@ -1409,7 +1409,7 @@ function start.f_randomChar(pn)
 		return nil
 	end
 
-	if #t_unchosenChars[pn] == 0 then
+	if #t_unchosenRandChars[pn] == 0 then
 		if gameOption('Options.Team.Duplicates') then
 			f_resetUnchosenChars(pn, true)
 		else
