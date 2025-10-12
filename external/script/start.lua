@@ -1402,17 +1402,34 @@ function start.f_excludeChar(t, ref)
 	return t
 end
 
+function start.sszRandomFromRange(min, max)
+	if max == nil then
+		max = min
+		min = 1
+	end
+
+	local range = max - min + 1
+	if range <= 0 then
+		error("sszRandomFromRange: max must be greater than or equal to min")
+	end
+	if range == 1 then
+		return min
+	end
+	local randomInt = sszRandom()
+	return min + (randomInt % range)
+end
+
 --shuffles a table in-place
 function start.shuffleTable(t)
 	for i = #t, 2, -1 do
-		local j = math.random(i)
+		local j = start.sszRandomFromRange(i)
 		t[i], t[j] = t[j], t[i]
 	end
 end
 
 function start.shuffleLastElement(t)
 	local tmp = t[#t]
-	local newLast = math.random(1, #t - 1)
+	local newLast = start.sszRandomFromRange(1, #t - 1)
 	t[#t] = t[newLast]
 	t[newLast] = tmp
 end
