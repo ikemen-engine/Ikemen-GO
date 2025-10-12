@@ -539,10 +539,7 @@ function start.stageShuffleBag(id, pool)
 
 		-- prevent same stage from being chosen twice in a row
 		if #t > 1 and start.previousRandStage[id] == t[#t] then
-			local tmp = t[#t]
-			local newLast = math.random(1, #t - 1)
-			t[#t] = t[newLast]
-			t[newLast] = tmp
+			start.shuffleLastElement(t)
 		end
 		start.previousRandStage[id] = t[1]
 	end
@@ -1413,6 +1410,13 @@ function start.shuffleTable(t)
 	end
 end
 
+function start.shuffleLastElement(t)
+	local tmp = t[#t]
+	local newLast = math.random(1, #t - 1)
+	t[#t] = t[newLast]
+	t[newLast] = tmp
+end
+
 --returns random char ref
 function start.f_randomChar(pn)
 	if #main.t_randomChars == 0 then
@@ -1434,10 +1438,7 @@ function start.f_randomChar(pn)
 
 		-- prevent same character from being chosen twice in a row
 		if #t > 1 and start.previousRandChar[pn] == t[#t] then
-			local tmp = t[#t]
-			local newLast = math.random(1, #t - 1)
-			t[#t] = t[newLast]
-			t[newLast] = tmp
+			start.shuffleLastElement(t)
 		end
 		start.previousRandChar[pn] = t[1]
 	end
@@ -2991,10 +2992,7 @@ function start.f_randomPal(charRef)
 
 		-- prevent same palette from being chosen twice in a row
 		if #t > 1 and start.previousRandPal[charRef] == t[#t] then
-			local tmp = t[#t]
-			local newLast = math.random(1, #t - 1)
-			t[#t] = t[newLast]
-			t[newLast] = tmp
+			start.shuffleLastElement(t)
 		end
 		start.previousRandPal[charRef] = t[1]
 	end
