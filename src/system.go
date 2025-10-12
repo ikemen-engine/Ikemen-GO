@@ -3309,7 +3309,7 @@ type Select struct {
 	sdefOverwrite      string
 	ocd                [3][]OverrideCharData
 
-	unchosenIndices [][]int // Used to track unchosen characters for random select
+	validCharIndices []int
 }
 
 func newSelect() *Select {
@@ -3933,52 +3933,14 @@ func (s *Select) AddStage(def string) error {
 	return nil
 }
 
-// Not sure where to run this
-// Should be run after s.charlist has been set 
-func (s *Select) InitRandomPools(numTeams int) {
-	s.unchosenIndices = make([][]int, numTeams)
-	for i := 0; i < numTeams; i++ {
-		s.ResetUnchosen(i)
-	}
-}
-
-func (s *Select) ResetUnchosen(tn int) {
-	if tn < 0 || tn >= len(s.unchosenIndices) {
-		return
-	}
-
-	s.unchosenIndices[tn] = make([]int, 0, len(s.charlist))
+func (s *Select) ResetValidCharIndices() {
+	s.validCharIndices = make([]int, 0, len(s.charlist))
 	for i := range s.charlist {
 		// only add non randomselect characters to possible options
 		if s.charlist[i].def != "randomselect" && len(s.charlist[i].def) > 0 {
-			s.unchosenIndices[tn] = append(s.unchosenIndices[tn], i)
+			s.validCharIndices = append(s.validCharIndices, i)
 		}
 	}
-}
-
-func (s *Select) GetRandomUnchosen(tn int) int {
-	if tn < 0 || tn >= len(s.unchosenIndices) {
-		return -1
-	}
-
-	if len(s.unchosenIndices[tn]) == 0 {
-		s.ResetUnchosen(tn)
-	}
-
-	// If all items in charlist are randomselect or nonexistant, the list will be empty after resetting
-	if len(s.unchosenIndices[tn]) == 0 {
-		return -1
-	}
-
-	pool := s.unchosenIndices[tn]
-	randomPos := int(Rand(0, int32(len(pool))-1))
-	chosen := pool[randomPos]
-
-	lastIdx := len(pool) - 1
-	pool[randomPos] = pool[lastIdx]
-	s.unchosenIndices[tn] = pool[:lastIdx]
-
-	return chosen
 }
 
 func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
@@ -4001,7 +3963,12 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 	*/
 
 	if s.charlist[n].def == "randomselect" {
-		n = s.GetRandomUnchosen(tn)
+		if len(s.validCharIndices) == 0 {
+			return false
+		}
+		randomPos := int(Rand(0, int32(len(s.validCharIndices))-1))
+
+		n = s.validCharIndices[randomPos]
 		if n < 0 {
 			return false
 		}
@@ -4021,6 +3988,7 @@ func (s *Select) ClearSelected() {
 	s.ocd = [3][]OverrideCharData{}
 	sys.loadMutex.Unlock()
 	s.selectedStageNo = -1
+	s.ResetValidCharIndices()
 }
 
 type LoaderState int32
