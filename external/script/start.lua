@@ -21,6 +21,7 @@ local t_gameStats = {}
 local t_recordText = {}
 local t_reservedChars = {{}, {}}
 local t_unchosenRandChars = {{}, {}}
+local t_lastRandChar = {}
 local timerSelect = 0
 local cursorActive = {}
 local cursorDone = {}
@@ -1396,9 +1397,20 @@ local function f_useUnchosenChar(pn)
 	local randomIndex = math.random(1, #t_unchosenRandChars[pn])
 	local selectedChar = t_unchosenRandChars[pn][randomIndex]
 
+	-- Just making sure we don't select the same character twice in a row
+	if selectedChar == t_lastRandChar[pn] and #t_unchosenRandChars[pn] > 1 then
+		if randomIndex == 1 then
+			randomIndex = #t_unchosenRandChars[pn]
+		else
+			randomIndex = randomIndex - 1
+		end
+		selectedChar = t_unchosenRandChars[pn][randomIndex]
+	end
+
 	-- Remove selected character from pool (swap with last and remove)
 	t_unchosenRandChars[pn][randomIndex] = t_unchosenRandChars[pn][#t_unchosenRandChars[pn]]
 	table.remove(t_unchosenRandChars[pn])
+	t_lastRandChar[pn] = selectedChar
 
 	return selectedChar
 end
