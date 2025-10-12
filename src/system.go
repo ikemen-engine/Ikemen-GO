@@ -3967,11 +3967,7 @@ func (s *Select) AddSelectedChar(tn, cn, pl int) bool {
 			return false
 		}
 		randomPos := int(Rand(0, int32(len(s.validCharIndices))-1))
-
 		n = s.validCharIndices[randomPos]
-		if n < 0 {
-			return false
-		}
 		pl = int(Rand(1, int32(sys.cfg.Config.PaletteMax)))
 	}
 
