@@ -527,6 +527,7 @@ function start.stageShuffleBag(id, pool)
 	id = id or 'defaultStageBag'
 	start.shuffleBags = start.shuffleBags or {}
 	start.shuffleBags[id] = start.shuffleBags[id] or {}
+	start.previousRandStage = start.previousRandStage or {}
 
 	if #start.shuffleBags[id] == 0 then
 		local t = {}
@@ -535,6 +536,13 @@ function start.stageShuffleBag(id, pool)
 		end
 		start.shuffleTable(t)
 		start.shuffleBags[id] = t
+		-- prevent same stage from being chosen twice in a row
+		if start.previousRandStage[id] == t[#t] then
+			local tmp = t[#t]
+			t[#t] = t[1]
+			t[1] = tmp
+		end
+		start.previousRandStage[id] = t[1]
 	end
 
 	local idx = table.remove(start.shuffleBags[id])
@@ -1409,6 +1417,7 @@ function start.f_randomChar(pn)
 		return nil
 	end
 	start.shuffleBags = start.shuffleBags or {}
+	start.previousRandChar = start.previousRandChar or {}
 
 	if not start.shuffleBags[pn] or #start.shuffleBags[pn] == 0 then
 		start.shuffleBags[pn] = {}
@@ -1420,6 +1429,14 @@ function start.f_randomChar(pn)
 		end
 		start.shuffleTable(t)
 		start.shuffleBags[pn] = t
+
+		-- prevent same character from being chosen twice in a row
+		if start.previousRandChar[pn] == t[#t] then
+			local tmp = t[#t]
+			t[#t] = t[1]
+			t[1] = tmp
+		end
+		start.previousRandChar[pn] = t[1]
 	end
 	--draws one char from the bag
 	local result = table.remove(start.shuffleBags[pn])
@@ -2953,6 +2970,7 @@ end
 function start.f_randomPal(charRef)
 	start.shufflePals = start.shufflePals or {}
 	start.shufflePals[charRef] = start.shufflePals[charRef] or {}
+	start.previousRandPal = start.previousRandPal or {}
 
 	local charData = start.f_getCharData(charRef)
 	local pals = charData and charData.pal
@@ -2967,6 +2985,14 @@ function start.f_randomPal(charRef)
 		end
 		start.shuffleTable(t)
 		start.shufflePals[charRef] = t
+
+		-- prevent same palette from being chosen twice in a row
+		if start.previousRandPal[charRef] == t[#t] then
+			local tmp = t[#t]
+			t[#t] = t[1]
+			t[1] = tmp
+		end
+		start.previousRandPal[charRef] = t[1]
 	end
 	--draws one pal from the bag
 	local result = table.remove(start.shufflePals[charRef])
