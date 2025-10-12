@@ -540,7 +540,7 @@ function start.stageShuffleBag(id, pool)
 		-- prevent same stage from being chosen twice in a row
 		if #t > 1 and start.previousRandStage[id] == t[#t] then
 			local tmp = t[#t]
-			newLast = math.random(1, #t - 1)
+			local newLast = math.random(1, #t - 1)
 			t[#t] = t[newLast]
 			t[newLast] = tmp
 		end
@@ -1435,7 +1435,7 @@ function start.f_randomChar(pn)
 		-- prevent same character from being chosen twice in a row
 		if #t > 1 and start.previousRandChar[pn] == t[#t] then
 			local tmp = t[#t]
-			newLast = math.random(1, #t - 1)
+			local newLast = math.random(1, #t - 1)
 			t[#t] = t[newLast]
 			t[newLast] = tmp
 		end
@@ -2992,7 +2992,7 @@ function start.f_randomPal(charRef)
 		-- prevent same palette from being chosen twice in a row
 		if #t > 1 and start.previousRandPal[charRef] == t[#t] then
 			local tmp = t[#t]
-			newLast = math.random(1, #t - 1)
+			local newLast = math.random(1, #t - 1)
 			t[#t] = t[newLast]
 			t[newLast] = tmp
 		end
