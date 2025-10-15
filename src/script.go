@@ -2886,6 +2886,10 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(Random()))
 		return 1
 	})
+	luaRegister(l, "sszRandomSeed", func(l *lua.LState) int {
+		Srand(int32(numArg(l, 1)))
+		return 0
+	})
 	luaRegister(l, "frameStep", func(*lua.LState) int {
 		sys.frameStepFlag = true
 		return 0

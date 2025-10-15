@@ -4,6 +4,18 @@ main = {}
 --;===========================================================
 --; INITIALIZE DATA
 --;===========================================================
+math.randomseed = function(seed)
+	if type(seed) ~= "number" then
+		error("number expected, got " .. type(seed))
+	end
+	if seed % 1 ~= 0 then
+		error("seed must be an integer")
+	end
+	if seed < 0 or seed >= 2^31 then
+		error("seed out of range, must be between 0 and 2^31 - 1")
+	end
+	sszRandomSeed(seed)
+end
 math.random = function(min, max)
 	-- should return a float between 0 and 1
 	if min == nil then
