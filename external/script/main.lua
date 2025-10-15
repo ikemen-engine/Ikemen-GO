@@ -4,6 +4,34 @@ main = {}
 --;===========================================================
 --; INITIALIZE DATA
 --;===========================================================
+math.random = function(min, max)
+	-- should return a float between 0 and 1
+	if min == nil then
+		-- int32 maximum is (2^31 - 1)
+		-- using 2^31 should make 1 impossible
+		-- lua's max integer apparently is 2^63 - 1
+		return sszRandom() / 2^31
+	end
+	-- supports math.random(2)
+	if max == nil then
+		max = min
+		min = 1
+	end
+
+	local range = max - min + 1
+	if range <= 0 then
+		error("max must be greater than or equal to min")
+	end
+	if range == 1 then
+		return min
+	end
+	-- sszRandom doesn't support values greater than 2^31
+	-- might as well fail so users don't run into unexpected behaviour
+	if range > 2^31 then
+		error("range must be less than or equal to 2^31")
+	end
+	return min + (sszRandom() % range)
+end
 math.randomseed(os.time())
 
 main.flags = getCommandLineFlags()
