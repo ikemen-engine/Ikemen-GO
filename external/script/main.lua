@@ -3865,7 +3865,7 @@ local function getUniquePalette(ch, prev)
 	local pals = charData and charData.pal or {1}
 
 	if not prev or ch ~= prev.ch then
-		return pals[sszRandom() % #pals + 1]
+		return pals[math.random(#pals)]
 	end
 
 	local available = {}
@@ -3876,7 +3876,7 @@ local function getUniquePalette(ch, prev)
 	end
 
 	if #available > 0 then
-		return available[sszRandom() % #available + 1]
+		return available[math.random(#available)]
 	else
 		return prev.pal
 	end
