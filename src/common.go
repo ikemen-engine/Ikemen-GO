@@ -1118,7 +1118,7 @@ func (al *AnimLayout) Read(pre string, is IniSection, at AnimationTable, ln int1
 	var g, n int32
 	if is.ReadI32(pre+"spr", &g, &n) {
 		al.anim.frames = []AnimFrame{*newAnimFrame()}
-		al.anim.frames[0].Group, al.anim.frames[0].Number = I32ToU16(g), I32ToU16(n)
+		al.anim.frames[0].Group, al.anim.frames[0].Number = g, n
 		al.anim.mask = 0
 		al.lay = *newLayout(ln)
 	}

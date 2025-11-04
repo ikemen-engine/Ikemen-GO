@@ -299,8 +299,7 @@ func readBackGround(is IniSection, link *backGround,
 			var g, n int32
 			if is.readI32ForStage("spriteno", &g, &n) {
 				bg.anim.frames = []AnimFrame{*newAnimFrame()}
-				bg.anim.frames[0].Group, bg.anim.frames[0].Number =
-					I32ToU16(g), I32ToU16(n)
+				bg.anim.frames[0].Group, bg.anim.frames[0].Number = g, n
 			}
 			if is.ReadI32("mask", &tmp) {
 				if tmp != 0 {
@@ -413,10 +412,13 @@ func readBackGround(is IniSection, link *backGround,
 		is.ReadI32("tilespacing", &bg.anim.tile.xspacing, &bg.anim.tile.yspacing)
 		//bg.anim.tile.yspacing = bg.anim.tile.xspacing
 		if bg.actionno < 0 && len(bg.anim.frames) > 0 {
-			if spr := sff.GetSprite(
-				bg.anim.frames[0].Group, bg.anim.frames[0].Number); spr != nil {
-				bg.anim.tile.xspacing += int32(spr.Size[0])
-				bg.anim.tile.yspacing += int32(spr.Size[1])
+			group := bg.anim.frames[0].Group
+			number := bg.anim.frames[0].Number
+			if group >= 0 && number >= 0 {
+				if spr := sff.GetSprite(uint16(group), uint16(number)); spr != nil {
+					bg.anim.tile.xspacing += int32(spr.Size[0])
+					bg.anim.tile.yspacing += int32(spr.Size[1])
+				}
 			}
 		} else {
 			if bg.anim.tile.xspacing == 0 {

@@ -11258,8 +11258,7 @@ func (sc remapSprite) Run(c *Char, _ []int32) bool {
 	if crun == nil {
 		return false
 	}
-	nullSpr := uint16(0xFFFF)
-	src := [...]uint16{nullSpr, nullSpr}
+	src := [...]int32{-1, -1}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -11270,14 +11269,14 @@ func (sc remapSprite) Run(c *Char, _ []int32) bool {
 		case remapSprite_preset:
 			crun.remapSpritePreset(string(*(*[]byte)(unsafe.Pointer(&exp[0]))))
 		case remapSprite_source:
-			src[0] = uint16(exp[0].evalI(c))
+			src[0] = int32(exp[0].evalI(c))
 			if len(exp) > 1 {
-				src[1] = uint16(exp[1].evalI(c))
+				src[1] = int32(exp[1].evalI(c))
 			}
 		case remapSprite_dest:
-			dst := [...]uint16{uint16(exp[0].evalI(c)), nullSpr}
+			dst := [...]int32{int32(exp[0].evalI(c)), -1}
 			if len(exp) > 1 {
-				dst[1] = uint16(exp[1].evalI(c))
+				dst[1] = int32(exp[1].evalI(c))
 			}
 			crun.remapSprite(src, dst)
 		}
@@ -13556,8 +13555,8 @@ func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 				eachBg(func(bg *backGround) {
 					if bg._type == BG_Normal {
 						bg.anim.frames = []AnimFrame{*newAnimFrame()}
-						bg.anim.frames[0].Group = I32ToU16(gr)
-						bg.anim.frames[0].Number = I32ToU16(im)
+						bg.anim.frames[0].Group = gr
+						bg.anim.frames[0].Number = im
 					}
 				})
 			case modifyStageBG_start_x:

@@ -1649,7 +1649,7 @@ func readLifeBarFace(pre string, is IniSection, sff *Sff, at AnimationTable) *Li
 
 func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
 	refChar := sys.chars[ref][0]
-	group, number := uint16(fa.face_spr[0]), uint16(fa.face_spr[1])
+	group, number := fa.face_spr[0], fa.face_spr[1]
 	if refChar != nil && refChar.anim != nil {
 		if mg, ok := refChar.anim.remap[group]; ok {
 			if mn, ok := mg[number]; ok {
@@ -1657,10 +1657,10 @@ func (fa *LifeBarFace) step(ref int, far *LifeBarFace) {
 			}
 		}
 	}
-	if far.old_spr[0] != int32(group) || far.old_spr[1] != int32(number) ||
+	if far.old_spr[0] != group || far.old_spr[1] != number ||
 		far.old_pal[0] != sys.cgi[ref].remappedpal[0] || far.old_pal[1] != sys.cgi[ref].remappedpal[1] {
-		far.face = sys.cgi[ref].sff.getOwnPalSprite(group, number, &sys.cgi[ref].palettedata.palList)
-		far.old_spr = [...]int32{int32(group), int32(number)}
+		far.face = sys.cgi[ref].sff.getOwnPalSprite(uint16(group), uint16(number), &sys.cgi[ref].palettedata.palList)
+		far.old_spr = [...]int32{group, number}
 		far.old_pal = [...]int32{sys.cgi[ref].remappedpal[0], sys.cgi[ref].remappedpal[1]}
 	}
 	fa.bg.Action()

@@ -9,10 +9,10 @@ import (
 // AnimFrame holds frame data, used in animation tables.
 type AnimFrame struct {
 	Time      int32
-	Group     uint16
-	Number    uint16
-	Xoffset   int16
-	Yoffset   int16
+	Group     int32
+	Number    int32
+	Xoffset   int32
+	Yoffset   int32
 	TransType TransType
 	SrcAlpha  byte
 	DstAlpha  byte
@@ -28,7 +28,7 @@ type AnimFrame struct {
 func newAnimFrame() *AnimFrame {
 	return &AnimFrame{
 		Time:      -1,
-		Group:     0xFFFF,
+		Group:     -1,
 		TransType: TT_none,
 		SrcAlpha:  255,
 		DstAlpha:  0,
@@ -51,10 +51,10 @@ func ReadAnimFrame(line string) *AnimFrame {
 
 	// Read required parameters
 	af := newAnimFrame()
-	af.Group = uint16(Atoi(ary[0]))
-	af.Number = uint16(Atoi(ary[1]))
-	af.Xoffset = int16(Atoi(ary[2]))
-	af.Yoffset = int16(Atoi(ary[3]))
+	af.Group = int32(Atoi(ary[0]))
+	af.Number = int32(Atoi(ary[1]))
+	af.Xoffset = int32(Atoi(ary[2]))
+	af.Yoffset = int32(Atoi(ary[3]))
 	af.Time = Atoi(ary[4])
 
 	// Read H and V flags
@@ -551,7 +551,11 @@ func (a *Animation) UpdateSprite() {
 				group, number = mn[0], mn[1]
 			}
 		}
-		a.spr = a.sff.GetSprite(group, number)
+		if group >= 0 && number >= 0 {
+			a.spr = a.sff.GetSprite(uint16(group), uint16(number))
+		} else {
+			a.spr = nil
+		}
 	}
 	a.newframe, a.drawidx = false, a.curelem
 
@@ -1725,7 +1729,10 @@ func CopyAnim(a *Anim) *Anim {
 	newAnim.anim.interpolate_scale = a.anim.interpolate_scale
 	// Copy all valid sprites safely
 	for _, c := range a.anim.frames {
-		key := [...]uint16{c.Group, c.Number}
+		if c.Group < 0 || c.Number < 0 {
+			continue // skip empty frames
+		}
+		key := [...]uint16{uint16(c.Group), uint16(c.Number)}
 		src, ok := srcSff.sprites[key]
 		if !ok || src == nil {
 			continue
@@ -1804,16 +1811,16 @@ func (a *Anim) ResetFrames() {
 	a.anim.Reset()
 }
 
-type PreloadedAnims map[[2]uint16]*Animation
+type PreloadedAnims map[[2]int32]*Animation
 
 func NewPreloadedAnims() PreloadedAnims {
-	return PreloadedAnims(make(map[[2]uint16]*Animation))
+	return PreloadedAnims(make(map[[2]int32]*Animation))
 }
 
-func (pa PreloadedAnims) get(grp, idx uint16) *Animation {
-	a := pa[[...]uint16{grp, idx}]
+func (pa PreloadedAnims) get(grp, idx int32) *Animation {
+	a := pa[[...]int32{grp, idx}]
 	if a == nil {
-		return a
+		return nil
 	}
 	ret := &Animation{}
 	*ret = *a
@@ -1821,7 +1828,7 @@ func (pa PreloadedAnims) get(grp, idx uint16) *Animation {
 }
 
 func (pa PreloadedAnims) addAnim(anim *Animation, no int32) {
-	pa[[...]uint16{uint16(no), 0xFFFF}] = anim
+	pa[[...]int32{no, -1}] = anim
 }
 
 func (pa PreloadedAnims) addSprite(sff *Sff, grp, idx uint16) {
@@ -1831,9 +1838,9 @@ func (pa PreloadedAnims) addSprite(sff *Sff, grp, idx uint16) {
 	anim := newAnimation(sff, &sff.palList)
 	anim.mask = 0
 	af := newAnimFrame()
-	af.Group, af.Number = grp, idx
+	af.Group, af.Number = int32(grp), int32(idx)
 	anim.frames = append(anim.frames, *af)
-	pa[[...]uint16{grp, idx}] = anim
+	pa[[...]int32{int32(grp), int32(idx)}] = anim
 }
 
 func (pa PreloadedAnims) updateSff(sff *Sff) {

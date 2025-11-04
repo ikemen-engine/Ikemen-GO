@@ -3608,7 +3608,10 @@ func (s *Select) addChar(defLine string) {
 				if animation := at.get(v_anim); animation != nil {
 					sc.anims.addAnim(animation, v_anim)
 					for _, fr := range animation.frames {
-						listSpr[[2]uint16{fr.Group, fr.Number}] = true
+						if fr.Group < 0 || fr.Number < 0 {
+							continue
+						}
+						listSpr[[2]uint16{uint16(fr.Group), uint16(fr.Number)}] = true
 					}
 				}
 			}
@@ -3861,7 +3864,9 @@ func (s *Select) AddStage(def string) error {
 			if anim := at.get(v); anim != nil {
 				ss.anims.addAnim(anim, v)
 				for _, fr := range anim.frames {
-					listSpr[[...]uint16{fr.Group, fr.Number}] = true
+					if fr.Group >= 0 && fr.Number >= 0 {
+						listSpr[[2]uint16{uint16(fr.Group), uint16(fr.Number)}] = true
+					}
 				}
 			}
 		}

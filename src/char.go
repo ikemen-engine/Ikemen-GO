@@ -3637,10 +3637,12 @@ func (c *Char) load(def string) error {
 							if len(k) == 2 {
 								var v [2]int32
 								is.ReadI32(key, &v[0], &v[1])
-								if _, ok := gi.remapPreset[subname][uint16(Atoi(k[0]))]; !ok {
-									gi.remapPreset[subname][uint16(Atoi(k[0]))] = make(RemapTable)
+								g0 := int32(Atoi(k[0]))
+								n0 := int32(Atoi(k[1]))
+								if _, ok := gi.remapPreset[subname][g0]; !ok {
+									gi.remapPreset[subname][g0] = make(RemapTable)
 								}
-								gi.remapPreset[subname][uint16(Atoi(k[0]))][uint16(Atoi(k[1]))] = [...]uint16{uint16(v[0]), uint16(v[1])}
+								gi.remapPreset[subname][g0][n0] = v
 							}
 						}
 					}
@@ -8399,25 +8401,24 @@ func (c *Char) drawPal() [2]int32 {
 	return c.getDrawPal(palMap[0])
 }
 
-type RemapTable map[uint16][2]uint16
-type RemapPreset map[uint16]RemapTable
+type RemapTable map[int32][2]int32
+type RemapPreset map[int32]RemapTable
 
-func (c *Char) remapSprite(src [2]uint16, dst [2]uint16) {
-	nullSpr := uint16(0xFFFF)
-	if src[0] == nullSpr || src[1] == nullSpr || dst[0] == nullSpr || dst[1] == nullSpr {
+func (c *Char) remapSprite(src [2]int32, dst [2]int32) {
+	if src[0] == -1 || src[1] == -1 || dst[0] == -1 || dst[1] == -1 {
 		return
 	}
 	if _, ok := c.remapSpr[src[0]]; !ok {
 		c.remapSpr[src[0]] = make(RemapTable)
 	}
-	c.remapSpr[src[0]][src[1]] = [...]uint16{dst[0], dst[1]}
+	c.remapSpr[src[0]][src[1]] = [...]int32{dst[0], dst[1]}
 }
 
 func (c *Char) remapSpritePreset(preset string) {
 	if _, ok := c.gi().remapPreset[preset]; !ok {
 		return
 	}
-	var src, dst [2]uint16
+	var src, dst [2]int32
 	for src[0] = range c.gi().remapPreset[preset] {
 		for src[1], dst = range c.gi().remapPreset[preset][src[0]] {
 			c.remapSprite(src, dst)

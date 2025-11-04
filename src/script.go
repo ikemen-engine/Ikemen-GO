@@ -288,7 +288,7 @@ func systemScriptInit(l *lua.LState) {
 		return 2
 	})
 	luaRegister(l, "animGetPreloadedCharData", func(l *lua.LState) int {
-		if anim := sys.sel.GetChar(int(numArg(l, 1))).anims.get(uint16(numArg(l, 2)), uint16(numArg(l, 3))); anim != nil {
+		if anim := sys.sel.GetChar(int(numArg(l, 1))).anims.get(int32(numArg(l, 2)), int32(numArg(l, 3))); anim != nil {
 			pfx := newPalFX()
 			pfx.clear()
 			pfx.time = -1
@@ -303,7 +303,7 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "animGetPreloadedStageData", func(l *lua.LState) int {
-		if anim := sys.sel.GetStage(int(numArg(l, 1))).anims.get(uint16(numArg(l, 2)), uint16(numArg(l, 3))); anim != nil {
+		if anim := sys.sel.GetStage(int(numArg(l, 1))).anims.get(int32(numArg(l, 2)), int32(numArg(l, 3))); anim != nil {
 			pfx := newPalFX()
 			pfx.clear()
 			pfx.time = -1
@@ -796,7 +796,10 @@ func systemScriptInit(l *lua.LState) {
 			copyAnim := CopyAnim(a)
 			char := sys.sel.GetChar(int(numArg(l, 2)))
 			for _, c := range copyAnim.anim.frames {
-				spr, ok := copyAnim.anim.sff.sprites[[...]uint16{c.Group, c.Number}]
+				if c.Group < 0 || c.Number < 0 {
+					continue
+				}
+				spr, ok := copyAnim.anim.sff.sprites[[2]uint16{uint16(c.Group), uint16(c.Number)}]
 				if !ok || spr == nil {
 					continue
 				}
