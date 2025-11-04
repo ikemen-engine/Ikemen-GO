@@ -1,0 +1,73 @@
+name: lua-style
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ develop, release ]
+  #pull_request:
+  #  branches: [ develop, release ]
+
+# minimal perms to allow auto-commit on push
+permissions:
+  contents: write
+
+jobs:
+  lua-style:
+    name: style linters
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v5
+        with:
+          # lets auto-commit push back to the same branch
+          ref: ${{ github.head_ref }}
+
+      # Formatting (StyLua)
+      # check-only on PRs
+      - name: StyLua (check)
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.IKEMEN_TOKEN }}
+          version: v0.20.0
+          args: >
+            --check
+            --syntax Lua51
+            --column_width 120
+            --line_endings Unix
+            --indent_type Tabs
+            --indent_width 4
+            --quote_style AutoPreferSingle # AutoPreferDouble
+            --call_parentheses Always
+            --space_after_function_names Never
+            --block_newline_gaps Never
+            --collapse_simple_statement Never
+
+      # write fixes on branch pushes
+      - name: StyLua (write)
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.IKEMEN_TOKEN }}
+          version: v0.20.0
+          args: .
+
+      # Linting (Luacheck)
+      - name: Luacheck
+        uses: lunarmodules/luacheck@v1
+        continue-on-error: true
+        with:
+          # pass extra args if you have a .luacheckrc
+          args: . --no-color --ignore 111 --ignore 112 --ignore 113 --ignore 142 --ignore 143
+
+      # Commit format changes on push
+      - name: Commit formatting changes
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style(lua): fix code style issues with StyLua"
+          commit_user_name: lint-action
+          commit_user_email: 59283862+lint-action@users.noreply.github.com
+          commit_author: "lint-action <59283862+lint-action@users.noreply.github.com>"
+          file_pattern: "**/*.lua"
