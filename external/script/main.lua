@@ -234,7 +234,9 @@ function main.f_input(p, b)
 						return true
 					end
 				end
-			elseif commandGetState(main.t_cmd[pn], btn) then
+			-- We care about the dead time because otherwise for analog axes mapped to digital
+			-- directions, it might fire twice without checking it!
+			elseif commandGetState(main.t_cmd[pn], btn) and main.analogDeadTime <= 0 then
 				main.playerInput = pn
 				return true
 			end

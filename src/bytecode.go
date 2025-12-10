@@ -10805,9 +10805,9 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 	if crun.controller >= 0 && crun.controller < len(sys.ffbparams) {
 		joy := crun.controller
 		if newAPI { // New API: just rumble straight away on the ultimately redirected character
-			input.RumbleController(sys.inputRemap[sys.joystickConfig[joy].Joy], lo, hi, time)
+			input.RumbleController(joy, lo, hi, time)
 		} else { // Old API: fill out FFB params
-			// Do a final redirect to P2 if self defined
+			// Do a final redirect to P2 if self not defined
 			if !self {
 				if crun = crun.p2(); crun == nil {
 					return false
@@ -10815,8 +10815,8 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 				joy = crun.controller
 			}
 			// Don't rumble helpers.
-			if joy >= 0 && joy < len(sys.joystickConfig) && crun.helperIndex == 0 {
-				sys.ffbparams[sys.inputRemap[sys.joystickConfig[joy].Joy]] = ForceFeedbackParams{
+			if joy >= 0 && joy < len(sys.ffbparams) && crun.helperIndex == 0 {
+				sys.ffbparams[joy] = ForceFeedbackParams{
 					timer:    time,
 					start:    ampl[0],
 					d1:       ampl[1],
