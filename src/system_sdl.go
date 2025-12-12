@@ -267,49 +267,75 @@ func convertI16toI8(val int16) (converted int8) {
 	}
 }
 
+// Helper to find the array index based on the SDL Instance ID
+func findControllerIndex(instanceID sdl.JoystickID) int {
+    for i, ctrl := range input.controllers {
+        if ctrl != nil {
+            // We need to check the Joystick associated with the GameController
+            if joy := ctrl.Joystick(); joy != nil {
+                if joy.InstanceID() == instanceID {
+                    return i
+                }
+            }
+        }
+    }
+    return -1
+}
+
 func (w *Window) pollEvents() {
-	const MAX_VALUE float32 = 32768.0
-	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-		switch t := event.(type) {
-		case sdl.ControllerAxisEvent:
-			input.controllerstate[t.Which].Axes[t.Axis] = convertI16toI8(t.Value)
-			// fmt.Printf("system_sdl.go : Axis: %v, Value: %v\n", t.Axis, t.Value)
-		case sdl.ControllerButtonEvent:
-			input.controllerstate[t.Which].Buttons[t.Button] = byte(t.State)
-			// fmt.Printf("system_sdl.go : Button: %v, State: %v\n", t.Button, t.State)
-		case sdl.QuitEvent:
-			w.closeflag = true
-		case sdl.KeyboardEvent:
-			// fmt.Printf("DEBUG: sdl.KeyboardEvent: Sym: %v, Mod: %v", t.Keysym.Sym, t.Keysym.Mod)
-			if t.State == sdl.PRESSED {
-				OnKeyPressed(t.Keysym.Sym, t.Keysym.Mod)
-			} else if t.State == sdl.RELEASED {
-				OnKeyReleased(t.Keysym.Sym, t.Keysym.Mod)
-			}
-		case sdl.WindowEvent:
-			if t.Event == sdl.WINDOWEVENT_EXPOSED {
-				if sys.cfg.Video.RenderMode == "OpenGL 3.2" || sys.cfg.Video.RenderMode == "OpenGL 2.1" {
-					gfx.EndFrame()
-					w.SwapBuffers()
-				}
-			} else if t.Event == sdl.WINDOWEVENT_CLOSE {
-				// This is the equivalent of setting ShouldClose to true
-				w.closeflag = true
-			}
-		case sdl.TextInputEvent:
-			if len(t.Text) > 0 {
-				OnTextEntered(t.Text)
-			}
-		case sdl.JoyDeviceAddedEvent:
-			joyS := int(t.Which)
-			input.controllers[joyS] = sdl.GameControllerOpen(joyS)
-			input.controllerstate[joyS].HasRumble = input.controllers[joyS].HasRumble()
-		case sdl.JoyDeviceRemovedEvent:
-			if controller := input.controllers[int(t.Which)]; controller != nil {
-				controller.Close()
-			}
-		}
-	}
+    const MAX_VALUE float32 = 32768.0
+    for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
+        switch t := event.(type) {
+        case sdl.ControllerAxisEvent:
+            // FIX: Map Instance ID (t.Which) to Array Index
+            if idx := findControllerIndex(t.Which); idx != -1 {
+                input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+            }
+        case sdl.ControllerButtonEvent:
+            // FIX: Map Instance ID (t.Which) to Array Index
+            if idx := findControllerIndex(t.Which); idx != -1 {
+                input.controllerstate[idx].Buttons[t.Button] = byte(t.State)
+            }
+        case sdl.QuitEvent:
+            w.closeflag = true
+        case sdl.KeyboardEvent:
+            if t.State == sdl.PRESSED {
+                OnKeyPressed(t.Keysym.Sym, t.Keysym.Mod)
+            } else if t.State == sdl.RELEASED {
+                OnKeyReleased(t.Keysym.Sym, t.Keysym.Mod)
+            }
+        case sdl.WindowEvent:
+            if t.Event == sdl.WINDOWEVENT_EXPOSED {
+                if sys.cfg.Video.RenderMode == "OpenGL 3.2" || sys.cfg.Video.RenderMode == "OpenGL 2.1" {
+                    gfx.EndFrame()
+                    w.SwapBuffers()
+                }
+            } else if t.Event == sdl.WINDOWEVENT_CLOSE {
+                w.closeflag = true
+            }
+        case sdl.TextInputEvent:
+            if len(t.Text) > 0 {
+                OnTextEntered(t.Text)
+            }
+        case sdl.JoyDeviceAddedEvent:
+            // t.Which here IS the device index (0, 1, 2...), so this is safe
+            joyS := int(t.Which)
+            if joyS < len(input.controllers) {
+                input.controllers[joyS] = sdl.GameControllerOpen(joyS)
+                if input.controllers[joyS] != nil {
+                    input.controllerstate[joyS].HasRumble = input.controllers[joyS].HasRumble()
+                }
+            }
+        case sdl.JoyDeviceRemovedEvent:
+            // FIX: Map Instance ID (t.Which) to Array Index
+            if idx := findControllerIndex(t.Which); idx != -1 {
+                if controller := input.controllers[idx]; controller != nil {
+                    controller.Close()
+                    input.controllers[idx] = nil // Clear the reference
+                }
+            }
+        }
+    }
 }
 
 func (w *Window) shouldClose() bool {
