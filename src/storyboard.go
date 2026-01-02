@@ -134,7 +134,7 @@ func loadStoryboard(def string) (*Storyboard, error) {
 		IgnoreInlineComment:     false,
 		SkipUnrecognizableLines: true,
 		//AllowBooleanKeys: true,
-		AllowShadows: false,
+		AllowShadows: true,
 		//AllowNestedValues: true,
 		UnparseableSections:        []string{},
 		AllowPythonMultilineValues: false,
@@ -223,7 +223,11 @@ func loadStoryboard(def string) (*Storyboard, error) {
 					existing := make(map[string]bool)
 					for _, k := range section.Keys() {
 						if ptr, ok := keysToCheck[strings.ToLower(k.Name())]; ok {
-							*ptr = k.Value()
+							v, dup := iniFirstValue(k)
+							if dup > 0 {
+								sys.errLog.Printf("Duplicate key [%s]%s=%q (%d duplicates ignored)", section.Name(), "."+k.Name(), v, dup)
+							}
+							*ptr = v
 							existing[strings.ToLower(k.Name())] = true
 						}
 					}
@@ -238,7 +242,10 @@ func loadStoryboard(def string) (*Storyboard, error) {
 
 				for _, key := range section.Keys() {
 					keyName := key.Name()
-					value := key.Value()
+					value, dup := iniFirstValue(key)
+					if dup > 0 {
+						sys.errLog.Printf("Duplicate key [%s]%s=%q (%d duplicates ignored)", section.Name(), "."+keyName, value, dup)
+					}
 					fullKey := strings.ReplaceAll(sectionName, " ", "_") + "." + strings.ReplaceAll(keyName, " ", "_")
 					keyParts := parseQueryPath(fullKey)
 					if err := assignField(&s, keyParts, value, def); err != nil {

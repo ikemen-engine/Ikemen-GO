@@ -238,7 +238,7 @@ func loadConfig(def string) (*Config, error) {
 		IgnoreInlineComment:     false,
 		SkipUnrecognizableLines: true,
 		//AllowBooleanKeys: true,
-		AllowShadows: false,
+		AllowShadows: true,
 		//AllowNestedValues: true,
 		UnparseableSections:        []string{},
 		AllowPythonMultilineValues: false,
@@ -300,18 +300,14 @@ func loadConfig(def string) (*Config, error) {
 			}
 			for _, key := range section.Keys() {
 				keyName := key.Name()
-				values := key.ValueWithShadows()
-				// go-ini can return an empty slice here for keys with an empty value.
-				// We still want to process the key once so empty arrays can override defaults.
-				if len(values) == 0 {
-					values = []string{key.Value()}
+				value, dup := iniFirstValue(key)
+				if dup > 0 {
+					fmt.Printf("Warning: Duplicate key [%s]%s=%q (%d duplicates ignored)\n", sectionName, "."+keyName, value, dup)
 				}
-				for _, value := range values {
-					fullKey := strings.ReplaceAll(sectionName, " ", "_") + "." + strings.ReplaceAll(keyName, " ", "_")
-					keyParts := parseQueryPath(fullKey)
-					if err := assignField(&c, keyParts, value, def); err != nil {
-						fmt.Printf("Warning: Failed to assign key [%s]: %v\n", fullKey, err)
-					}
+				fullKey := strings.ReplaceAll(sectionName, " ", "_") + "." + strings.ReplaceAll(keyName, " ", "_")
+				keyParts := parseQueryPath(fullKey)
+				if err := assignField(&c, keyParts, value, def); err != nil {
+					fmt.Printf("Warning: Failed to assign key [%s]: %v\n", fullKey, err)
 				}
 			}
 		}

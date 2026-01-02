@@ -1539,7 +1539,7 @@ func loadMotif(def string) (*Motif, error) {
 		IgnoreInlineComment:     false,
 		SkipUnrecognizableLines: true,
 		//AllowBooleanKeys: true,
-		AllowShadows: false,
+		AllowShadows: true,
 		//AllowNestedValues: true,
 		UnparseableSections:        []string{"Infobox Text"},
 		AllowPythonMultilineValues: false,
@@ -1575,15 +1575,26 @@ func loadMotif(def string) (*Motif, error) {
 			if err != nil {
 				return fmt.Errorf("Failed to load mod system.def from %s: %w", p, err)
 			}
-			modsConcat.WriteString(txt)
-			if !strings.HasSuffix(txt, "\n") {
+			nt := NormalizeNewlines(txt)
+			modsConcat.WriteString(nt)
+			if !strings.HasSuffix(nt, "\n") {
 				modsConcat.WriteString("\n")
 			}
 		}
 
 		// Preprocess and load INI sources from memory.
-		// Mods go on top so the motif file (last) can override them.
-		combined := modsConcat.String() + NormalizeNewlines(string(inputBytes))
+		// Mods are appended so the motif file (first) can override them.
+		baseTxt := NormalizeNewlines(string(inputBytes))
+		modsTxt := modsConcat.String()
+		var combined string
+		if modsTxt != "" {
+			if baseTxt != "" && !strings.HasSuffix(baseTxt, "\n") {
+				baseTxt += "\n"
+			}
+			combined = baseTxt + modsTxt
+		} else {
+			combined = baseTxt
+		}
 		normalizedInput := []byte(preprocessINIContent(combined))
 		normalizedDefault := []byte(preprocessINIContent(NormalizeNewlines(string(defaultMotif))))
 
@@ -1686,7 +1697,10 @@ func loadMotif(def string) (*Motif, error) {
 					// handled in script.go to preserve order
 					continue
 				}
-				value := key.Value()
+				value, dup := iniFirstValue(key)
+				if dup > 0 {
+					sys.errLog.Printf("Duplicate key [%s]%s=%q (%d duplicates ignored)", section.Name(), "."+keyName, value, dup)
+				}
 
 				// Normalize spaces
 				secNorm := strings.ReplaceAll(sectionName, " ", "_")

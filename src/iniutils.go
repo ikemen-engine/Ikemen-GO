@@ -158,6 +158,25 @@ func splitLangPrefix(name string) (string, string, bool) {
 // Helper Functions
 // -------------------------------------------------------------------
 
+// returns the first occurrence of a key's value when duplicates exist.
+// Requires LoadOptions.AllowShadows = true to preserve duplicates.
+func iniFirstValue(k *ini.Key) (val string, dupCount int) {
+	if k == nil {
+		return "", 0
+	}
+	vs := k.ValueWithShadows()
+	if len(vs) == 0 {
+		// No shadows support or not duplicated
+		return k.Value(), 0
+	}
+	// Oldest is the first-defined value.
+	val = vs[len(vs)-1]
+	if len(vs) > 1 {
+		dupCount = len(vs) - 1
+	}
+	return val, dupCount
+}
+
 // queryPart represents a single part of a query path
 type queryPart struct {
 	name  string
@@ -2798,8 +2817,9 @@ func parseMusicSection(section *ini.Section) Music {
 
 	// Parse keys
 	for _, key := range section.Keys() {
-		rawKey := strings.TrimSpace(key.Name())  // e.g. "title.bgm.loop" or "bgmusic"
-		rawVal := strings.TrimSpace(key.Value()) // e.g. "1, 2, 3"
+		rawKey := strings.TrimSpace(key.Name())
+		val, _ := iniFirstValue(key)
+		rawVal := strings.TrimSpace(val)
 		if rawKey == "" {
 			continue
 		}
@@ -2978,7 +2998,8 @@ func resolveInlineFonts(iniFile *ini.File, baseDef string, fnt map[int]*Fnt, ind
 			if !(ln == "font" || strings.HasSuffix(ln, ".font")) {
 				continue
 			}
-			raw := strings.TrimSpace(k.Value())
+			v, _ := iniFirstValue(k)
+			raw := strings.TrimSpace(v)
 			if raw == "" {
 				continue
 			}
