@@ -266,6 +266,9 @@ func (input *Input) IsJoystickPresent(joy int) bool {
 	if joy < 0 || joy >= len(input.controllers) {
 		return false
 	}
+	if input.controllers[joy] == nil {
+		return false
+	}
 	return input.controllers[joy].Attached()
 }
 

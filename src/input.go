@@ -292,8 +292,12 @@ func GetControllerState(kc KeyConfig) [14]bool {
 		return out
 	}
 
-	axes := input.GetJoystickAxes(sys.inputRemap[joy])
-	btns := input.GetJoystickButtons(sys.inputRemap[joy])
+	if !input.IsJoystickPresent(joy) {
+		return out
+	}
+
+	axes := input.GetJoystickAxes(joy)
+	btns := input.GetJoystickButtons(joy)
 
 	// Convert button polling results to bools
 	getBtn := func(idx int) bool {
@@ -572,8 +576,15 @@ func (ir *InputReader) LocalInput(in int, script bool) [14]bool {
 }
 
 func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
+	if in < 0 || in >= len(sys.joystickConfig) {
+		return [6]int8{}
+	}
+
 	joy := sys.joystickConfig[in].Joy
-	if joy < 0 || joy > len(input.controllerstate) {
+	if joy < 0 || joy >= len(input.controllerstate) {
+		return [6]int8{}
+	}
+	if input.controllerstate[joy] == nil {
 		return [6]int8{}
 	}
 
@@ -3349,10 +3360,14 @@ func (cl *CommandList) InputUpdate(owner *Char, controller int, aiLevel float32,
 		// If not AI, replay, or network, then it's a local human player
 		if controller >= 0 {
 			if controller < len(sys.inputRemap) {
-				buttons = cl.Buffer.InputReader.LocalInput(sys.inputRemap[controller], script)
-			}
-			if controller < len(sys.joystickConfig) {
-				axes = input.GetJoystickAxes(sys.joystickConfig[controller].Joy) // THIS IS INTENTIONAL TO PREVENT ANALOG SWAPPING ON MACOS, DO NOT CHANGE THIS
+				in := sys.inputRemap[controller] // remapped input index/config
+				buttons = cl.Buffer.InputReader.LocalInput(in, script)
+					// Keep analog axes in sync with the same remap used for digital inputs
+				if in >= 0 && in < len(sys.joystickConfig) {
+					axes = input.GetJoystickAxes(sys.joystickConfig[in].Joy)
+				} else {
+					axes = [6]float32{0, 0, 0, 0, 0, 0}
+				}
 			}
 		}
 	}
