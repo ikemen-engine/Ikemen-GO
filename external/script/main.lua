@@ -204,8 +204,6 @@ end
 
 --return bool based on command input
 main.playerInput = 1
-main.lastAxis = nil
-main.analogDeadTime = 0
 function main.f_input(p, ...)
 	-- Collect all key arrays passed
 	local keyTables = {...}
@@ -216,23 +214,13 @@ function main.f_input(p, ...)
 			if type(b) == "table" then
 				for _, btn in ipairs(b) do
 					if main.isJoystickAxis[btn] then
-						local key = getJoystickKey(pn - 1)
-						local stickIsNeutral = (key == nil or key == '') and pn == main.playerInput
-						-- Handle analog axes
-						if stickIsNeutral then
-							main.lastAxis = nil
-						else
-							if main.analogDeadTime > 0 then
-								main.analogDeadTime = main.analogDeadTime - 1
-							end
-							if key == btn and main.analogDeadTime == 0 and key ~= main.lastAxis then
-								main.playerInput = pn
-								main.analogDeadTime = gameOption('Input.AnalogDeadTime')
-								main.lastAxis = key
-								return true
-							end
+						-- Centralized in Go (CommandList.IsControllerButtonPressed) and shared with motif.button().
+						-- pn is passed as 1-based controller number.
+						if commandGetControllerTokenState(main.t_cmd[pn], btn, pn) then
+							main.playerInput = pn
+							return true
 						end
-					elseif commandGetState(main.t_cmd[pn], btn) and main.analogDeadTime <= 0 then
+					elseif commandGetState(main.t_cmd[pn], btn) then
 						main.playerInput = pn
 						return true
 					end

@@ -3294,8 +3294,6 @@ type CommandList struct {
 	AnalogLastAxis        string
 }
 
-const analogDeadTimeFrames = 20
-
 func NewCommandList(cb *InputBuffer, cn int32) *CommandList {
 	return &CommandList{
 		Buffer:                cb,
@@ -3308,7 +3306,6 @@ func NewCommandList(cb *InputBuffer, cn int32) *CommandList {
 		DefaultBufferPauseEnd: true,
 		DefaultBufferShared:   true,
 		ControllerNo:          cn,
-		AnalogDeadTime:        analogDeadTimeFrames,
 		AnalogLastAxis:        "",
 	}
 }
@@ -3702,17 +3699,28 @@ func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int
 	if isAnalog(token) {
 		key, _ := getJoystickKey(joyIdx)
 		stickIsNeutral := key == ""
+
+		// Always tick down (prevents "stuck" deadtime if callers stop polling analog tokens).
+		if cl.AnalogDeadTime > 0 {
+			cl.AnalogDeadTime--
+		}
+
 		if stickIsNeutral {
 			// When returning to neutral, forget last axis for this list.
 			cl.AnalogLastAxis = ""
 			return false
 		}
+		// Still in dead-time window.
 		if cl.AnalogDeadTime > 0 {
-			cl.AnalogDeadTime--
 			return false
 		}
 		if key == token && key != cl.AnalogLastAxis {
-			cl.AnalogDeadTime = analogDeadTimeFrames
+			// Use configured analog dead-time
+			dt := int(sys.cfg.Input.AnalogDeadTime)
+			if dt < 0 {
+				dt = 0
+			}
+			cl.AnalogDeadTime = dt
 			cl.AnalogLastAxis = key
 			return true
 		}
@@ -3723,20 +3731,38 @@ func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int
 	if !ok {
 		return false
 	}
+	// Map SDL button id (idx) to the correct slot in the buttons slice via buttonOrder.
+	btnSlot := -1
+	for i, b := range buttonOrder {
+		if int(b) == idx {
+			btnSlot = i
+			break
+		}
+	}
+	if btnSlot < 0 {
+		return false
+	}
+
+	// controllerIdx < 0: any controller.
+	if controllerIdx < 0 {
+		for joy := 0; joy < input.GetMaxJoystickCount(); joy++ {
+			if !input.IsJoystickPresent(joy) {
+				continue
+			}
+			buttons := input.GetJoystickButtons(joy)
+			if btnSlot < len(buttons) && buttons[btnSlot] != 0 {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Specific controller: resolved joystick index only.
 	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() {
 		return false
 	}
 	buttons := input.GetJoystickButtons(joyIdx)
-	if len(buttons) == 0 {
-		return false
-	}
-	// Map button id (idx) to the correct slot in buttons slice via buttonOrder.
-	for i, b := range buttonOrder {
-		if int(b) == idx {
-			return i < len(buttons) && buttons[i] != 0
-		}
-	}
-	return false
+	return btnSlot < len(buttons) && buttons[btnSlot] != 0
 }
 
 /*
