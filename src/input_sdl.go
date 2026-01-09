@@ -209,6 +209,7 @@ func initLUTs() {
 		22:                                       "RS_X-",
 		23:                                       "RS_X+",
 		24:                                       "RS_Y+",
+		25:                                       "Not used",
 	}
 
 	// Explicitly allocate the maps here
@@ -442,7 +443,7 @@ func getJoystickKey(controllerIdx int) (string, int) {
 				s = ButtonToStringLUT[i]
 			}
 		}
-		if s != "" {
+		if s != "" && strings.ToLower(s) != "not used" {
 			return s, joy
 		}
 	}

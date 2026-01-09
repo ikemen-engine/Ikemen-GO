@@ -3720,7 +3720,7 @@ func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int
 	}
 	// Non-analog controller tokens (A/B/X/Y/etc.): simple digital button check.
 	idx, ok := StringToButtonLUT[token]
-	if !ok {
+	if !ok || idx == 25 { // if not successful or "Not used" is ever returned
 		return false
 	}
 	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() {
