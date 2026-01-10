@@ -291,10 +291,11 @@ type MenuProperties struct {
 	Tween TweenProperties `ini:"tween"`
 	Item  struct {
 		TextProperties
-		Uppercase bool                            `ini:"uppercase"`
-		Spacing   [2]float32                      `ini:"spacing"`
-		Tween     TweenProperties                 `ini:"tween"`
-		Bg        map[string]*AnimationProperties `ini:"bg" flatten:"true"`
+		Uppercase bool                             `ini:"uppercase"`
+		BgSpacing bool                             `ini:"bgspacing"`
+		Spacing   [2]float32                       `ini:"spacing"`
+		Tween     TweenProperties                  `ini:"tween"`
+		Bg        map[string]*AnimationProperties  `ini:"bg" flatten:"true"`
 		Active    struct {
 			TextProperties
 			Bg map[string]*AnimationProperties `ini:"bg" flatten:"true"`

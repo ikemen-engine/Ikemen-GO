@@ -3365,10 +3365,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		-- draw background
 		main.f_animPosDraw(
 			params.AnimData,
-			-- TODO: pre 1.0 skipped spacing calc for bg elements, consider adding it
-			-- posX, posY
-			offx,
-			offy
+			(sec.menu.item.bgspacing == true) and (params.offset[1] + posX) or offx,
+			(sec.menu.item.bgspacing == true) and (params.offset[2] + posY) or offy
 		)
 		-- text sprite for label
 		local labelSprite
