@@ -101,19 +101,6 @@ main.t_defaultJoystickMapping = {
 	menu = 'BACK',
 }
 
-main.isJoystickAxis = {
-	['LS_X-'] = true,
-	['LS_X+'] = true,
-	['LS_Y-'] = true,
-	['LS_Y+'] = true,
-	['RS_X-'] = true,
-	['RS_X+'] = true,
-	['RS_Y-'] = true,
-	['RS_Y+'] = true,
-	['LT'] = true,
-	['RT'] = true,
-}
-
 --prepare players/command tables
 function main.f_setPlayers()
 	local n = gameOption('Config.Players')
@@ -1049,8 +1036,8 @@ function main.f_addChar(line, playable, loading, slot)
 	local valid = false
 	--store 'unlock' param and get rid of everything that follows it
 	local unlock = ''
-	line = line:gsub(',%s*unlock%s*=%s*(.-)s*$', function(m1)
-		unlock = m1
+	line = line:gsub(',%s*unlock%s*=%s*(.-)%s*$', function(m1)
+		unlock = (m1 or ''):match('^%s*(.-)%s*$')
 		return ''
 	end)
 	--parse rest of the line
@@ -1385,8 +1372,8 @@ for line in content:gmatch('[^\r\n]+') do
 		--store 'unlock' param and get rid of everything that follows it
 		local unlock = ''
 		local hidden = 0 --TODO: temporary flag, won't be used once stage selection screen is ready
-		line = line:gsub(',%s*unlock%s*=%s*(.-)s*$', function(m1)
-			unlock = m1
+		line = line:gsub(',%s*unlock%s*=%s*(.-)%s*$', function(m1)
+			unlock = (m1 or ''):match('^%s*(.-)%s*$')
 			hidden = 1
 			return ''
 		end)
@@ -1490,7 +1477,6 @@ if gameOption('Config.TrainingChar') ~= '' and main.t_charDef[gameOption('Config
 end
 
 --add remaining character parameters
-main.t_randomChars = {}
 --for each character loaded
 for i = 1, #main.t_selChars do
 	--character stage param
@@ -1510,14 +1496,30 @@ for i = 1, #main.t_selChars do
 			end
 		end
 	end
-	--if character's name has been stored
-	if main.t_selChars[i].name ~= nil then
-		--generate table with characters allowed to be randomly selected
-		if main.t_selChars[i].playable and (main.t_selChars[i].hidden == nil or main.t_selChars[i].hidden <= 1) and (main.t_selChars[i].exclude == nil or main.t_selChars[i].exclude == 0) then
-			table.insert(main.t_randomChars, i - 1)
+end
+
+-- (Re)build list of characters allowed to be randomly selected. Must be called after any unlock/hidden state changes.
+main.t_randomChars = {}
+function main.f_updateRandomChars()
+	local t = {}
+	for i = 1, #main.t_selChars do
+		local ch = main.t_selChars[i]
+		-- only real character entries
+		if ch ~= nil and ch.name ~= nil then
+			-- generate table with characters allowed to be randomly selected
+			if ch.playable
+				and (ch.hidden == nil or ch.hidden <= 1)
+				and (ch.exclude == nil or ch.exclude == 0) then
+				table.insert(t, i - 1)
+			end
 		end
 	end
+	main.t_randomChars = t
+	if gameOption('Debug.DumpLuaTables') then main.f_printTable(main.t_randomChars, "debug/t_randomChars.txt") end
 end
+
+-- build initial pool (may be refreshed later after unlock() runs)
+main.f_updateRandomChars()
 
 --add default starting stage if no stages have been added via select.def
 if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
@@ -2800,13 +2802,16 @@ end
 
 --asserts content unlock conditions
 function main.f_unlock(permanent)
+	local refreshRandom = false
 	for group, t in pairs(main.t_unlockLua) do
 		local t_del = {}
 		for k, v in pairs(t) do
 			local bool = assert(loadstring('return ' .. v))()
 			if type(bool) == 'boolean' then
 				if group == 'chars' then
-					main.f_unlockChar(k, bool, false)
+					if main.f_unlockChar(k, bool, false) then
+						refreshRandom = true
+					end
 				elseif group == 'stages' then
 					main.f_unlockStage(k, bool)
 				elseif group == 'modes' then
@@ -2824,10 +2829,18 @@ function main.f_unlock(permanent)
 			t[v] = nil
 		end
 	end
+	-- If any character visibility changed, rebuild random pool and clear shuffle bags so RandomSelect immediately reflects the updated roster.
+	if refreshRandom then
+		main.f_updateRandomChars()
+		if start ~= nil then
+			main.f_clearShuffleTables()
+		end
+	end
 end
 
 --unlock characters (select screen grid only)
 function main.f_unlockChar(num, bool, reset)
+	local changed = false
 	if bool then
 		if main.t_selChars[num].hidden ~= 0 then
 			main.t_selChars[num].hidden_default = main.t_selChars[num].hidden
@@ -2843,14 +2856,17 @@ function main.f_unlockChar(num, bool, reset)
 			end
 			start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
 			if reset then start.f_resetGrid() end
+			changed = true
 		end
 	elseif main.t_selChars[num].hidden_default == nil then
-		return
+		return false
 	elseif main.t_selChars[num].hidden ~= main.t_selChars[num].hidden_default then
 		main.t_selChars[num].hidden = main.t_selChars[num].hidden_default
 		start.t_grid[main.t_selChars[num].row][main.t_selChars[num].col].hidden = main.t_selChars[num].hidden
 		if reset then start.f_resetGrid() end
+		changed = true
 	end
+	return changed
 end
 
 --unlock stages (stage selection menu only)
