@@ -2580,34 +2580,53 @@ func (m *Motif) Save(file string) error {
 }
 
 func (m *Motif) button(btns []string, controllerNo int) bool {
-	checkConflict := func(btn, last string) bool {
-		if (btn == "$D" && last == "LS_Y+") || (btn == "LS_Y+" && last == "$D") {
-			return true
+	// returns (kind, typ):
+	//   kind: 1=Down, 2=Up, 3=Back, 4=Forward
+	//   typ:  1=Dir token (D/U/B/F with optional '$'), 2=Axis token (LS_*)
+	conflictInfo := func(tok string) (kind uint8, typ uint8) {
+		switch tok {
+		case "LS_Y+":
+			return 1, 2 // Down
+		case "LS_Y-":
+			return 2, 2 // Up
+		case "LS_X-":
+			return 3, 2 // Back (left)
+		case "LS_X+":
+			return 4, 2 // Forward (right)
 		}
-		if (btn == "$U" && last == "LS_Y-") || (btn == "LS_Y-" && last == "$U") {
-			return true
+		if len(tok) == 2 && tok[0] == '$' {
+			tok = tok[1:] // slice, no allocation
 		}
-		if (btn == "$B" && last == "LS_X-") || (btn == "LS_X-" && last == "$B") {
-			return true
+		if len(tok) != 1 {
+			return 0, 0
 		}
-		if (btn == "$F" && last == "LS_X+") || (btn == "LS_X+" && last == "$F") {
-			return true
+		switch tok[0] {
+		case 'D':
+			return 1, 1
+		case 'U':
+			return 2, 1
+		case 'B':
+			return 3, 1
+		case 'F':
+			return 4, 1
 		}
-		return false
+		return 0, 0
 	}
 
 	checkOne := func(i int, cl *CommandList) bool {
 		if cl == nil {
 			return false
 		}
+		lastKind, lastType := conflictInfo(sys.uiLastInputToken)
 		for _, btn := range btns {
 			// Handle conflict exceptions
-			if checkConflict(btn, sys.uiLastInputToken) {
+			btnKind, btnType := conflictInfo(btn)
+			if btnKind != 0 && btnKind == lastKind && btnType != 0 && lastType != 0 && btnType != lastType {
 				return false
 			}
 
-			// Raw controller tokens (A/B/X/Y, DP_*, LS_*, RS_*, LT/RT)
-			if sys.isControllerButtonToken(btn) {
+			// Raw controller LS/RS axis directions
+			if sys.isControllerStickAxisToken(btn) {
 				if cl.IsControllerButtonPressed(btn, i) {
 					sys.lastInputController = i
 					sys.uiLastInputToken = btn

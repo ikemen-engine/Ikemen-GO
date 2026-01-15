@@ -986,19 +986,30 @@ func (s *System) EnsureCommandLists() {
 	}
 }
 
-// returns true if the given string is either empty or matches one of the raw controller button tokens
-func (s *System) isControllerButtonToken(cmdstr string) bool {
+func (s *System) isControllerStickAxisToken(cmdstr string) bool {
 	cmd := strings.TrimSpace(cmdstr)
 	if cmd == "" {
 		return false
 	}
-	_, ok := StringToButtonLUT[cmd]
-	return ok
+	id, ok := StringToButtonLUT[cmd]
+	if !ok {
+		return false
+	}
+
+	// Only LS/RS axis directions:
+	// 15: LS_Y-  16: LS_X-  17: LS_X+  18: LS_Y+
+	// 21: RS_Y-  22: RS_X-  23: RS_X+  24: RS_Y+
+	switch id {
+	case 15, 16, 17, 18, 21, 22, 23, 24:
+		return true
+	default:
+		return false
+	}
 }
 
 // Compiles the given command string and adds it to every initialized CommandList.
 func (s *System) AddCommandToLists(cmdstr string) {
-	if s.isControllerButtonToken(cmdstr) {
+	if s.isControllerStickAxisToken(cmdstr) {
 		return
 	}
 	s.EnsureCommandLists()
