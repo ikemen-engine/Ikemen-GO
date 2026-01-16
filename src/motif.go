@@ -2582,7 +2582,7 @@ func (m *Motif) Save(file string) error {
 func (m *Motif) button(btns []string, controllerNo int) bool {
 	// returns (kind, typ):
 	//   kind: 1=Down, 2=Up, 3=Back, 4=Forward
-	//   typ:  1=Dir token (D/U/B/F with optional '$'), 2=Axis token (LS_*)
+	//   typ:  1=Dir token (D/U/B/F with optional '$' / '^'), 2=Axis token (LS_*)
 	conflictInfo := func(tok string) (kind uint8, typ uint8) {
 		switch tok {
 		case "LS_Y+":
@@ -2594,8 +2594,13 @@ func (m *Motif) button(btns []string, controllerNo int) bool {
 		case "LS_X+":
 			return 4, 2 // Forward (right)
 		}
-		if len(tok) == 2 && tok[0] == '$' {
-			tok = tok[1:] // slice, no allocation
+		// Strip optional prefixes ($ and ^), without allocating.
+		for len(tok) > 1 {
+			if tok[0] == '$' || tok[0] == '^' {
+				tok = tok[1:]
+				continue
+			}
+			break
 		}
 		if len(tok) != 1 {
 			return 0, 0

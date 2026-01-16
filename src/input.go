@@ -25,6 +25,7 @@ type CommandStepKey struct {
 	slash      bool
 	tilde      bool
 	dollar     bool
+	caret      bool
 	chargetime int32
 }
 
@@ -72,6 +73,10 @@ func (ck CommandStepKey) IsButtonPress() bool {
 
 func (ck CommandStepKey) IsButtonRelease() bool {
 	return ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+}
+
+func (ck CommandStepKey) IsDollarOrCaret() bool {
+	return ck.dollar || ck.caret
 }
 
 type NetState int
@@ -753,7 +758,7 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 
 	// Hold simple directions
-	if !ck.tilde && !ck.dollar {
+	if !ck.tilde && !ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_U:
@@ -832,60 +837,57 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		}
 	}
 
-	// This would be the proper way to do it but it breaks some legacy characters
-	// TODO: Add new symbol with this behavior
-	/*
-		// Hold dollar directions
-		if !ck.tilde && ck.dollar {
-			switch ck.key {
+	// This would be the proper way to do dollar but it breaks some legacy characters
+	// Hold dollar (caret) directions
+	if !ck.tilde && ck.caret {
+		switch ck.key {
 
-			case CK_U:
-				return __.Ub
+		case CK_U:
+			return __.Ub
 
-			case CK_D:
-				return __.Db
+		case CK_D:
+			return __.Db
 
-			case CK_B:
-				return __.Bb
+		case CK_B:
+			return __.Bb
 
-			case CK_F:
-				return __.Fb
+		case CK_F:
+			return __.Fb
 
-			case CK_L:
-				return __.Lb
+		case CK_L:
+			return __.Lb
 
-			case CK_R:
-				return __.Rb
+		case CK_R:
+			return __.Rb
 
-			// What '$' seems to do in Mugen is ignore conflicting directions
-			// So it also works on diagonals. For instance, $DB is true even if you also press U or F, but DB isn't
-			case CK_UB:
-				return Min(__.Ub, __.Bb)
+		// What '$' seems to do in Mugen is ignore conflicting directions
+		// So it also works on diagonals. For instance, $DB is true even if you also press U or F, but DB isn't
+		case CK_UB:
+			return Min(__.Ub, __.Bb)
 
-			case CK_UF:
-				return Min(__.Ub, __.Fb)
+		case CK_UF:
+			return Min(__.Ub, __.Fb)
 
-			case CK_DB:
-				return Min(__.Db, __.Bb)
+		case CK_DB:
+			return Min(__.Db, __.Bb)
 
-			case CK_DF:
-				return Min(__.Db, __.Fb)
+		case CK_DF:
+			return Min(__.Db, __.Fb)
 
-			case CK_UL:
-				return Min(__.Ub, __.Lb)
+		case CK_UL:
+			return Min(__.Ub, __.Lb)
 
-			case CK_UR:
-				return Min(__.Ub, __.Rb)
+		case CK_UR:
+			return Min(__.Ub, __.Rb)
 
-			case CK_DL:
-				return Min(__.Db, __.Lb)
+		case CK_DL:
+			return Min(__.Db, __.Lb)
 
-			case CK_DR:
-				return Min(__.Db, __.Rb)
+		case CK_DR:
+			return Min(__.Db, __.Rb)
 
-			}
 		}
-	*/
+	}
 
 	// Hold dollar directions
 	// The backward compatible way
@@ -968,7 +970,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 	}
 
 	// Release simple directions
-	if ck.tilde && !ck.dollar {
+	if ck.tilde && !ck.IsDollarOrCaret() {
 		switch ck.key {
 		case CK_U:
 			// If already not held or still held in the previous frame. Prevents for instance UF from trigger ~U
@@ -1076,84 +1078,83 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		}
 	}
 
-	// This would be the proper way to do it but it breaks some legacy characters
-	// TODO: Add new symbol with this behavior
-	/*
-		// Release dollar directions
-		if ck.tilde && ck.dollar {
-			switch ck.key {
-			case CK_U:
-				if __.Ub < 0 || __.Up > 0 {
-					return -__.Ub
-				}
+	// This would be the proper way to do dollar but it breaks some legacy characters
+	// Hold dollar (caret) directions
+	// Release dollar (caret) directions
+	if ck.tilde && ck.caret {
+		switch ck.key {
+		case CK_U:
+			if __.Ub < 0 || __.Up > 0 {
+				return -__.Ub
+			}
 
-			case CK_D:
-				if __.Db < 0 || __.Dp > 0 {
-					return -__.Db
-				}
+		case CK_D:
+			if __.Db < 0 || __.Dp > 0 {
+				return -__.Db
+			}
 
-			case CK_B:
-				if __.Bb < 0 || __.Bp > 0 {
-					return -__.Bb
-				}
+		case CK_B:
+			if __.Bb < 0 || __.Bp > 0 {
+				return -__.Bb
+			}
 
-			case CK_F:
-				if __.Fb < 0 || __.Fp > 0 {
-					return -__.Fb
-				}
+		case CK_F:
+			if __.Fb < 0 || __.Fp > 0 {
+				return -__.Fb
+			}
 
-			case CK_L:
-				if __.Lb < 0 || __.Lp > 0 {
-					return -__.Lb
-				}
+		case CK_L:
+			if __.Lb < 0 || __.Lp > 0 {
+				return -__.Lb
+			}
 
-			case CK_R:
-				if __.Rb < 0 || __.Rp > 0 {
-					return -__.Rb
-				}
+		case CK_R:
+			if __.Rb < 0 || __.Rp > 0 {
+				return -__.Rb
+			}
 
-			case CK_UB:
-				if (__.Ub < 0 || __.Up > 0) && (__.Bb < 0 || __.Bp > 0) {
-					return -Min(__.Ub, __.Bb)
-				}
+		case CK_UB:
+			if (__.Ub < 0 || __.Up > 0) && (__.Bb < 0 || __.Bp > 0) {
+				return -Min(__.Ub, __.Bb)
+			}
 
-			case CK_UF:
-				if (__.Ub < 0 || __.Up > 0) && (__.Fb < 0 || __.Fp > 0) {
-					return -Min(__.Ub, __.Fb)
-				}
+		case CK_UF:
+			if (__.Ub < 0 || __.Up > 0) && (__.Fb < 0 || __.Fp > 0) {
+				return -Min(__.Ub, __.Fb)
+			}
 
-			case CK_DB:
-				if (__.Db < 0 || __.Dp > 0) && (__.Bb < 0 || __.Bp > 0) {
-					return -Min(__.Db, __.Bb)
-				}
+		case CK_DB:
+			if (__.Db < 0 || __.Dp > 0) && (__.Bb < 0 || __.Bp > 0) {
+				return -Min(__.Db, __.Bb)
+			}
 
-			case CK_DF:
-				if (__.Db < 0 || __.Dp > 0) && (__.Fb < 0 || __.Fp > 0) {
-					return -Min(__.Db, __.Fb)
-				}
+		case CK_DF:
+			if (__.Db < 0 || __.Dp > 0) && (__.Fb < 0 || __.Fp > 0) {
+				return -Min(__.Db, __.Fb)
+			}
 
-			case CK_UL:
-				if (__.Ub < 0 || __.Up > 0) && (__.Lb < 0 || __.Lp > 0) {
-					return -Min(__.Ub, __.Lb)
-				}
+		case CK_UL:
+			if (__.Ub < 0 || __.Up > 0) && (__.Lb < 0 || __.Lp > 0) {
+				return -Min(__.Ub, __.Lb)
+			}
 
-			case CK_UR:
-				if (__.Ub < 0 || __.Up > 0) && (__.Rb < 0 || __.Rp > 0) {
-					return -Min(__.Ub, __.Rb)
-				}
+		case CK_UR:
+			if (__.Ub < 0 || __.Up > 0) && (__.Rb < 0 || __.Rp > 0) {
+				return -Min(__.Ub, __.Rb)
+			}
 
-			case CK_DL:
-				if (__.Db < 0 || __.Dp > 0) && (__.Lb < 0 || __.Lp > 0) {
-					return -Min(__.Db, __.Lb)
-				}
+		case CK_DL:
+			if (__.Db < 0 || __.Dp > 0) && (__.Lb < 0 || __.Lp > 0) {
+				return -Min(__.Db, __.Lb)
+			}
 
-			case CK_DR:
-				if (__.Db < 0 || __.Dp > 0) && (__.Rb < 0 || __.Rp > 0) {
-					return -Min(__.Db, __.Rb)
-				}
+		case CK_DR:
+			if (__.Db < 0 || __.Dp > 0) && (__.Rb < 0 || __.Rp > 0) {
+				return -Min(__.Db, __.Rb)
 			}
 		}
-	*/
+	}
+
 
 	// Release dollar directions
 	// The backward compatible way
@@ -1369,7 +1370,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 
 	// Special $N (and ~$N) case
 	// This one somehow returns "any change" in Mugen. Since "any neutral" is useless anyway we'll just add support for that
-	if ck.dollar && ck.key == CK_N {
+	if ck.IsDollarOrCaret() && ck.key == CK_N {
 		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb))
 	}
 
@@ -1389,7 +1390,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	}
 
 	// Hold dollar directions
-	if !ck.tilde && ck.dollar {
+	if !ck.tilde && ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_U:
@@ -1414,7 +1415,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	}
 
 	// Release dollar directions
-	if ck.tilde && ck.dollar {
+	if ck.tilde && ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_U:
@@ -1440,7 +1441,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 	// Hold simple directions
 	// Mugen doesn't use "hold charge" but we could in the future
-	if !ck.tilde && !ck.dollar {
+	if !ck.tilde && !ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_U:
@@ -1519,7 +1520,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	}
 
 	// Release simple directions
-	if ck.tilde && !ck.dollar {
+	if ck.tilde && !ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_U:
@@ -1633,7 +1634,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 	// Hold sign diagonals
 	// These allow conflicts. Not very useful but is consistent with Mugen's "$" symbol
-	if !ck.tilde && ck.dollar {
+	if !ck.tilde && ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_UF:
@@ -1663,7 +1664,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	}
 
 	// Release sign diagonals
-	if ck.tilde && ck.dollar {
+	if ck.tilde && ck.IsDollarOrCaret() {
 		switch ck.key {
 
 		case CK_UF:
@@ -1776,7 +1777,6 @@ func (__ *InputBuffer) LastChangeTime() int32 {
 */
 
 // Check if any recently changed key invalidates a ">" step
-// TODO: Make this work with the new $ replacement symbol
 func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 	// Determine which directional groups to check
 	// Otherwise B/F presses can invalidate L/R and vice-versa
@@ -1788,32 +1788,81 @@ func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 		}
 	}
 
+	// For '$' / '^' prefixed direction symbols, treat related directions as "part of the step"
+	// so they don't invalidate '>' (e.g. $D should allow DF/DB presses too).
+	dollarAllows := func(base, k CommandKey) bool {
+		switch base {
+		// Cardinals expand to adjacent diagonals
+		case CK_U:
+			return k == CK_U || k == CK_UB || k == CK_UF
+		case CK_D:
+			return k == CK_D || k == CK_DB || k == CK_DF
+		case CK_B:
+			return k == CK_B || k == CK_UB || k == CK_DB
+		case CK_F:
+			return k == CK_F || k == CK_UF || k == CK_DF
+		case CK_L:
+			return k == CK_L || k == CK_UL || k == CK_DL
+		case CK_R:
+			return k == CK_R || k == CK_UR || k == CK_DR
+
+		// Diagonals also allow their component cardinals
+		case CK_UB:
+			return k == CK_UB || k == CK_U || k == CK_B
+		case CK_UF:
+			return k == CK_UF || k == CK_U || k == CK_F
+		case CK_DB:
+			return k == CK_DB || k == CK_D || k == CK_B
+		case CK_DF:
+			return k == CK_DF || k == CK_D || k == CK_F
+		case CK_UL:
+			return k == CK_UL || k == CK_U || k == CK_L
+		case CK_UR:
+			return k == CK_UR || k == CK_U || k == CK_R
+		case CK_DL:
+			return k == CK_DL || k == CK_D || k == CK_L
+		case CK_DR:
+			return k == CK_DR || k == CK_D || k == CK_R
+		}
+		return false
+	}
+
+	stepAllowsKey := func(k CommandKey, tilde bool) bool {
+		for _, sk := range c.steps[i].keys {
+			if sk.tilde != tilde {
+				continue
+			}
+
+			// $N / !N behaves like "any change" in Mugen; treat as allowing anything for '>'
+			if sk.IsDollarOrCaret() && sk.key == CK_N {
+				return true
+			}
+
+			// Direct match
+			if sk.key == k {
+				return true
+			}
+
+			// Dollar-like expansion
+			if sk.IsDollarOrCaret() && dollarAllows(sk.key, k) {
+				return true
+			}
+		}
+		return false
+	}
+
 	// Check each recent key to see if they belong in the step
 	checkKey := func(k CommandKey) bool {
 		// Press
 		if ibuf.State(CommandStepKey{key: k, tilde: false}) == 1 {
-			allowed := false
-			for _, sk := range c.steps[i].keys {
-				if sk.key == k && !sk.tilde {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
+			if !stepAllowsKey(k, false) {
 				return true
 			}
 			return false
 		}
 		// Release
 		if ibuf.State(CommandStepKey{key: k, tilde: true}) == 1 {
-			allowed := false
-			for _, sk := range c.steps[i].keys {
-				if sk.key == k && sk.tilde {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
+			if !stepAllowsKey(k, true) {
 				return true
 			}
 		}
@@ -2797,7 +2846,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 			}
 
 			// Parse prefix symbols
-			var slash, tilde, dollar bool
+			var slash, tilde, dollar, caret bool
 			var chargetime int32
 
 			getChar := func() rune {
@@ -2861,7 +2910,19 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					if dollar {
 						err = Error("Duplicate '$' symbol found")
 					}
+					if caret {
+						err = Error("Cannot combine '$' and '^' in the same symbol")
+					}
 					dollar = true
+					nextChar()
+				case '^':
+					if caret {
+						err = Error("Duplicate '^' symbol found")
+					}
+					if dollar {
+						err = Error("Cannot combine '$' and '^' in the same symbol")
+					}
+					caret = true
 					nextChar()
 				default:
 					goto ParseKey // Break out of prefix loop
@@ -2923,7 +2984,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 						nextChar()
 					}
 				}
-				cs.keys = append(cs.keys, CommandStepKey{key: k, slash: slash, tilde: tilde, dollar: dollar, chargetime: chargetime})
+				cs.keys = append(cs.keys, CommandStepKey{key: k, slash: slash, tilde: tilde, dollar: dollar, caret: caret, chargetime: chargetime})
 				nextChar()
 			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm':
 				// Maybe too restrictive. Will make people blame poor module code on IkemenVersion characters
@@ -2954,7 +3015,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 				case 'm':
 					k = kr.m
 				}
-				cs.keys = append(cs.keys, CommandStepKey{key: k, slash: slash, tilde: tilde, dollar: false, chargetime: chargetime})
+				cs.keys = append(cs.keys, CommandStepKey{key: k, slash: slash, tilde: tilde, dollar: false, caret: false, chargetime: chargetime})
 				nextChar()
 			default:
 				err = Error(fmt.Sprintf("Invalid symbol '%c' found", c0))
@@ -3035,6 +3096,7 @@ func (c *Command) AutoGreaterExpand() {
 						key:    curr.keys[0].key,
 						tilde:  !curr.keys[0].tilde,
 						dollar: curr.keys[0].dollar,
+						caret:  curr.keys[0].caret,
 					}},
 				},
 				CommandStep{
