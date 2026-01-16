@@ -809,7 +809,11 @@ function sync_android_apk_repo() {
 
 function stage_android_apk_libs() {
 	local app_dir="$ANDROID_APK_DIR/app"
-	local abi_dir="$app_dir/libs/arm64-v8a"
+	# Clean any pre-existing native libs that Gradle might pick up
+	find "$app_dir" -type f \( -name "*.so" -o -name "*.so.*" \) \
+		\( -path "*/src/main/jniLibs/*" -o -path "*/jniLibs/*" -o -path "*/libs/*" \) \
+		-print -delete 2>/dev/null || true
+	local abi_dir="$app_dir/src/main/jniLibs/arm64-v8a"
 
 	mkdir -p "$abi_dir"
 	# Clean previous staged libs (but keep the dir)
@@ -871,6 +875,9 @@ function build_android_apk() {
 	ensure_android_runtime_assets
 	stage_android_apk_libs
 	stage_android_apk_assets
+
+	echo "==> Checking for stray native libs in apk repo..."
+	find "$ANDROID_APK_DIR/app" -type f -name "libmain.so" -print || true
 
 	echo "==> Building APK with Gradle (debug)..."
 	pushd "$ANDROID_APK_DIR" >/dev/null
