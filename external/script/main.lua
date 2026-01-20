@@ -1758,6 +1758,7 @@ main.t_itemname = {
 			main.teamMenu[2].single = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.arcade)
 			main.teamarcade = false
+			setGameMode('arcade')
 		else --teamarcade
 			main.teamMenu[1].ratio = true
 			main.teamMenu[1].simul = true
@@ -1771,12 +1772,12 @@ main.t_itemname = {
 			main.teamMenu[2].turns = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.teamarcade)
 			main.teamarcade = true
+			setGameMode('teamarcade')
 			
 		end
 		main.f_setCredits()
 		remapInput(main.playerInput, 1)
 		setCommandInputSource(2, 1)
-		setGameMode('arcade')
 		hook.run("main.t_itemname")
 		if start.challenger == 0 then
 			return start.f_selectMode
@@ -2245,10 +2246,15 @@ main.t_itemname = {
 		main.orderSelect[2] = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
-		if (start.challenger == 0 and t[item].itemname == 'versus') or (start.challenger ~= 0 and not main.teamarcade) then
+		if start.challenger > 0 then
+			setCommandInputSource(2, start.challenger)
+			setGameMode('challenger')
+		elseif (start.challenger == 0 and t[item].itemname == 'versus') or (start.challenger ~= 0 and not main.teamarcade) then
 			main.teamMenu[1].single = true
 			main.teamMenu[2].single = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versus)
+			setCommandInputSource(2, 2)
+			setGameMode('versus')
 		else --teamversus
 			main.teamMenu[1].ratio = true
 			main.teamMenu[1].simul = true
@@ -2261,13 +2267,8 @@ main.t_itemname = {
 			main.teamMenu[2].tag = true
 			main.teamMenu[2].turns = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.teamversus)
-		end
-		if start.challenger > 0 then
-			setCommandInputSource(2, start.challenger)
-			setGameMode('challenger')
-		else
 			setCommandInputSource(2, 2)
-			setGameMode('versus')
+			setGameMode('teamversus')
 		end
 		hook.run("main.t_itemname")
 		if start.challenger == 0 then
