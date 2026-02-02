@@ -2405,7 +2405,7 @@ func (nc *NetConnection) Update() bool {
 
 				// Break loop if we have reached the frame that both buffers have sent
 				if nc.time >= foo {
-					if sys.esc || !sys.await(sys.cfg.Config.Framerate) || nc.st != NS_Playing {
+					if sys.esc || !sys.await(sys.cfg.Video.Framerate) || nc.st != NS_Playing {
 						break
 					}
 					continue

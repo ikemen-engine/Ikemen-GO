@@ -122,26 +122,26 @@ type Config struct {
 		} `ini:"Ratio"`
 	} `ini:"Options"`
 	Config struct {
-		Motif            string   `ini:"Motif"`
-		Players          int      `ini:"Players"`
-		Framerate        int      `ini:"Framerate"`
-		Language         string   `ini:"Language"`
-		AfterImageMax    int32    `ini:"AfterImageMax"`
-		ExplodMax        int      `ini:"ExplodMax"`
-		HelperMax        int32    `ini:"HelperMax"`
-		ProjectileMax    int      `ini:"ProjectileMax"`
-		PaletteMax       int      `ini:"PaletteMax"`
-		TextMax          int      `ini:"TextMax"`
-		ZoomActive       bool     `ini:"ZoomActive"`
-		EscOpensMenu     bool     `ini:"EscOpensMenu"`
-		FirstRun         bool     `ini:"FirstRun"`
-		WindowTitle      string   `ini:"WindowTitle"`
-		WindowIcon       []string `ini:"WindowIcon"`
-		System           string   `ini:"System"`
-		ScreenshotFolder string   `ini:"ScreenshotFolder"`
-		TrainingChar     string   `ini:"TrainingChar"`
-		TrainingStage    string   `ini:"TrainingStage"`
-		GamepadMappings  string   `ini:"GamepadMappings"`
+		Motif             string   `ini:"Motif"`
+		Players           int      `ini:"Players"`
+		Language          string   `ini:"Language"`
+		AfterImageMax     int32    `ini:"AfterImageMax"`
+		ExplodMax         int      `ini:"ExplodMax"`
+		HelperMax         int32    `ini:"HelperMax"`
+		ProjectileMax     int      `ini:"ProjectileMax"`
+		PaletteMax        int      `ini:"PaletteMax"`
+		TextMax           int      `ini:"TextMax"`
+		TickInterpolation bool     `ini:"TickInterpolation"`
+		ZoomActive        bool     `ini:"ZoomActive"`
+		EscOpensMenu      bool     `ini:"EscOpensMenu"`
+		FirstRun          bool     `ini:"FirstRun"`
+		WindowTitle       string   `ini:"WindowTitle"`
+		WindowIcon        []string `ini:"WindowIcon"`
+		System            string   `ini:"System"`
+		ScreenshotFolder  string   `ini:"ScreenshotFolder"`
+		TrainingChar      string   `ini:"TrainingChar"`
+		TrainingStage     string   `ini:"TrainingStage"`
+		GamepadMappings   string   `ini:"GamepadMappings"`
 	} `ini:"Config"`
 	Debug struct {
 		AllowDebugMode      bool    `ini:"AllowDebugMode"`
@@ -165,6 +165,7 @@ type Config struct {
 		GameHeight              int32    `ini:"GameHeight"`
 		WindowWidth             int      `ini:"WindowWidth"`
 		WindowHeight            int      `ini:"WindowHeight"`
+		Framerate               int      `ini:"Framerate"`
 		VSync                   int      `ini:"VSync"`
 		Fullscreen              bool     `ini:"Fullscreen"`
 		Borderless              bool     `ini:"Borderless"`
@@ -332,7 +333,6 @@ func (c *Config) initStruct() {
 
 // Normalize values
 func (c *Config) normalize() {
-	c.SetValueUpdate("Config.Framerate", int(Clamp(int32(c.Config.Framerate), 1, 840)))
 	c.SetValueUpdate("Config.Players", int(Clamp(int32(c.Config.Players), 1, int32(MaxSimul)*2)))
 	c.SetValueUpdate("Options.GameSpeed", int(Clamp(int32(c.Options.GameSpeed), -9, 9)))
 	c.SetValueUpdate("Options.GameSpeedStep", int(Clamp(int32(c.Options.GameSpeedStep), 1, 60)))
@@ -340,6 +340,7 @@ func (c *Config) normalize() {
 	c.SetValueUpdate("Options.Simul.Min", int(Clamp(int32(c.Options.Simul.Min), 2, int32(MaxSimul))))
 	c.SetValueUpdate("Options.Tag.Max", int(Clamp(int32(c.Options.Tag.Max), int32(c.Options.Tag.Min), int32(MaxSimul))))
 	c.SetValueUpdate("Options.Tag.Min", int(Clamp(int32(c.Options.Tag.Min), 2, int32(MaxSimul))))
+	c.SetValueUpdate("Video.Framerate", int(Clamp(int32(c.Video.Framerate), 1, 840)))
 
 	// Options that determine allocation sizes should not be negative
 	// Update: AfterImageMax no longer does, but it's good to keep it in mind

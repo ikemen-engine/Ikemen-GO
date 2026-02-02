@@ -1785,34 +1785,27 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 
 	if far.face != nil {
 		// Get player current PalFX if applicable
-		pfx := newPalFX()
+		var pfx *PalFX
 		if far.palfxshare {
 			pfx = refChar.getPalfx()
 		}
 
-		// Swap palette maps to get the player's current palette
-		if far.palshare {
-			sys.cgi[ref].palettedata.palList.SwapPalMap(&refChar.getPalfx().remap)
-		}
-
-		// Get texture
+		// Update portrait palette
 		if far.face.coldepth <= 8 {
-			// This method created a large hot spot in the profile
-			// It was throwing away good textures because of bad GetPalTex returns
-			//far.face.Pal = nil
-			//if far.face.PalTex != nil {
-			//	far.face.PalTex = far.face.GetPalTex(&sys.cgi[ref].palettedata.palList)
-			//} else {
-			//	far.face.Pal = far.face.GetPal(&sys.cgi[ref].palettedata.palList)
-			//}
-
-			// Now we just update the palette data and let the engine figure it out
-			far.face.Pal = far.face.GetPal(&sys.cgi[ref].palettedata.palList)
-		}
-
-		// Revert palette maps to initial state
-		if far.palshare {
-			sys.cgi[ref].palettedata.palList.SwapPalMap(&refChar.getPalfx().remap)
+			// Check the player's current palette
+			palIdx := far.face.palidx
+			if far.palshare {
+				remap := refChar.getPalfx().remap
+				if int(palIdx) < len(remap) {
+					palIdx = remap[palIdx]
+				}
+			}
+			// Retrieve that palette
+			palList := &sys.cgi[ref].palettedata.palList
+			charPal := palList.Get(palIdx)
+			// Update portrait palette and cache
+			far.face.Pal = charPal
+			far.face.PalTex = far.face.CachePalTex(charPal)
 		}
 
 		// TODO: PalFX sharing has a bug in Tag in that it uses the parameter from the char's original placement in the team
@@ -3781,7 +3774,6 @@ func (ro *LifeBarRound) draw(layerno int16, f map[int]*Fnt) {
 			ro.fadeIn.drawRect(rect, ro.shutter_col, 255)
 		}
 	}
-	//BlendReset()
 }
 
 type LifeBarRatio struct {
@@ -5381,7 +5373,6 @@ func (l *Lifebar) draw(layerno int16) {
 		// LifeBarRound
 		l.ro.draw(layerno, l.fnt)
 	}
-	//BlendReset()
 }
 
 func (l *Lifebar) setLifebarScale() {

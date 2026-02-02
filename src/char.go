@@ -4165,7 +4165,7 @@ func (c *Char) loadPalette() {
 		return nil, false
 	}
 
-	if gi.sff.header.Ver0 == 1 {
+	if gi.sff.header.Version[0] == 1 {
 		gi.palettedata.palList.ResetRemap()
 		tmp := 0
 		for i := 0; i < maxPal; i++ {
@@ -8737,7 +8737,7 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		plist.Remap(si, di)
 
 		// Remap palette 1, 1 in SFF v1
-		if src[0] == 1 && src[1] == 1 && c.gi().sff.header.Ver0 == 1 {
+		if src[0] == 1 && src[1] == 1 && c.gi().sff.header.Version[0] == 1 {
 			if spr := c.gi().sff.GetSprite(0, 0); spr != nil {
 				plist.Remap(spr.palidx, di)
 			}

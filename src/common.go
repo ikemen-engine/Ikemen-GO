@@ -1099,7 +1099,7 @@ func (l *Layout) DrawFaceSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fs
 			y += sys.lifebar.fnt_scale * sys.lifebar.scale
 		}
 		if s.coldepth <= 8 && s.PalTex == nil {
-			s.PalTex = s.CachePalette(s.Pal)
+			s.PalTex = s.CachePalTex(s.Pal)
 		}
 		// Xshear offset correction
 		xshear := -l.xshear

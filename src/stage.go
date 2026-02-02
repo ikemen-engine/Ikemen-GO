@@ -1346,7 +1346,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 			}
 			*s.sff = *sff
 			// SFF v2.01 was not available before Mugen 1.1, therefore we assume that's the minimum correct version for the stage
-			if s.sff.header.Ver0 == 2 && s.sff.header.Ver2 == 1 {
+			if s.sff.header.Version[0] == 2 && s.sff.header.Version[2] == 1 {
 				s.mugenver[0] = 1
 				s.mugenver[1] = 1
 			}
@@ -2022,7 +2022,6 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 			b.draw(pos, scl, bgscl, s.localscl, s.scale, ofs[1], true)
 		}
 	}
-	//BlendReset()
 }
 
 func (s *Stage) reset() {

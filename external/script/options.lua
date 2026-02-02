@@ -137,8 +137,8 @@ options.t_itemname = {
 			modifyGameOption('Options.Life', 100)
 			modifyGameOption('Options.Time', 99)
 			modifyGameOption('Options.GameSpeed', 0)
-			modifyGameOption('Options.Match.Wins', 2)
 			--modifyGameOption('Options.GameSpeedStep', 5)
+			modifyGameOption('Options.Match.Wins', 2)
 			modifyGameOption('Options.Match.MaxDrawGames', -2) -- -2: match.maxdrawgames
 			modifyGameOption('Options.Credits', 10)
 			modifyGameOption('Options.QuickContinue', false)
@@ -175,7 +175,6 @@ options.t_itemname = {
 			modifyGameOption('Options.Ratio.Level4.Life', 1.40)
 			--modifyGameOption('Config.Motif', "data/system.def")
 			modifyGameOption('Config.Players', 4)
-			--modifyGameOption('Config.Framerate', 60)
 			modifyGameOption('Config.Language', "en")
 			modifyGameOption('Config.AfterImageMax', 128)
 			modifyGameOption('Config.ExplodMax', 512)
@@ -183,6 +182,7 @@ options.t_itemname = {
 			modifyGameOption('Config.ProjectileMax', 256)
 			modifyGameOption('Config.PaletteMax', 100)
 			modifyGameOption('Config.TextMax', 128)
+			--modifyGameOption('Config.TickInterpolation', true)
 			--modifyGameOption('Config.ZoomActive', true)
 			--modifyGameOption('Config.EscOpensMenu', true)
 			--modifyGameOption('Config.BackgroundLoading', false) --TODO: not implemented
@@ -222,6 +222,7 @@ options.t_itemname = {
 			modifyGameOption('Video.Fullscreen', false)
 			--modifyGameOption('Video.Borderless', false)
 			--modifyGameOption('Video.RGBSpriteBilinearFilter', true)
+			--modifyGameOption('Video.Framerate', 60)
 			modifyGameOption('Video.VSync', 1)
 			modifyGameOption('Video.MSAA', 0)
 			--modifyGameOption('Video.WindowCentered', true)

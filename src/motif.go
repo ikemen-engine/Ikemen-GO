@@ -2707,7 +2707,6 @@ func (m *Motif) drawLoading() {
 		FillRect(sys.scrrect, 0x000000, [2]int32{255, 0})
 
 		ts.Draw(ts.layerno)
-		//BlendReset()
 
 		// Submit and present
 		gfx.EndFrame()
@@ -2991,7 +2990,6 @@ func (m *Motif) draw(layerno int16) {
 			m.fadeIn.draw()
 		}
 	}
-	//BlendReset()
 }
 
 func (m *Motif) isDialogueSet() bool {

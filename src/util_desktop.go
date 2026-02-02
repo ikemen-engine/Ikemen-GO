@@ -61,14 +61,20 @@ func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 func selectRenderer(cfgVal string) (Renderer, FontRenderer) {
 	var gfx Renderer
 	var gfxFont FontRenderer
+
 	// Now we proceed to init the render.
-	if cfgVal == "Vulkan 1.3" {
-		gfx = &Renderer_VK{}
-		gfxFont = &FontRenderer_VK{}
-	} else if cfgVal == "OpenGL 2.1" {
+	switch cfgVal {
+	case "OpenGL 2.1":
 		gfx = &Renderer_GL21{}
 		gfxFont = &FontRenderer_GL21{}
-	} else {
+	case "OpenGL 3.2":
+		gfx = &Renderer_GL32{}
+		gfxFont = &FontRenderer_GL32{}
+	case "Vulkan 1.3":
+		gfx = &Renderer_VK{}
+		gfxFont = &FontRenderer_VK{}
+	default:
+		sys.errLog.Printf("Error: Invalid RenderMode '%s'. Defaulting to OpenGL 3.2.", cfgVal)
 		gfx = &Renderer_GL32{}
 		gfxFont = &FontRenderer_GL32{}
 	}

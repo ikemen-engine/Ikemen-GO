@@ -29,34 +29,20 @@ type Font_GL21 struct {
 
 type FontRenderer_GL21 struct {
 	shaderProgram *ShaderProgram_GL21
-	vao           uint32
 	vbo           uint32
+	//vao           uint32
 }
 
 func (r *FontRenderer_GL21) Init(renderer interface{}) {
-	// Configure the default font vertex and fragment shaders
 	r.newProgram(120, vertexFontShader, fragmentFontShader)
 
-	// Configure VAO/VBO for texture quads
-	gl.GenVertexArrays(1, &r.vao)
 	gl.GenBuffers(1, &r.vbo)
-	gl.BindVertexArray(r.vao)
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
 
-	gl.BufferData(gl.ARRAY_BUFFER, 6*4*4, nil, gl.STATIC_DRAW)
-
-	vertAttrib := uint32(gl.GetAttribLocation(r.shaderProgram.program, gl.Str("vert\x00")))
-	gl.EnableVertexAttribArray(vertAttrib)
-	gl.VertexAttribPointer(vertAttrib, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
-	defer gl.DisableVertexAttribArray(vertAttrib)
-
-	texCoordAttrib := uint32(gl.GetAttribLocation(r.shaderProgram.program, gl.Str("vertTexCoord\x00")))
-	gl.EnableVertexAttribArray(texCoordAttrib)
-	gl.VertexAttribPointer(texCoordAttrib, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
-	defer gl.DisableVertexAttribArray(texCoordAttrib)
-
+	// Pre-allocate for maximum batch size
+	gl.BufferData(gl.ARRAY_BUFFER, MaxFontBatchSize*6*4*4, nil, gl.DYNAMIC_DRAW)
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	gl.BindVertexArray(0)
 }
 
 // LoadFont loads the specified font at the given scale.
@@ -101,15 +87,14 @@ func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 	}
 
 	// Buffer to store vertex data for multiple glyphs
-	batchSize := Min(250, int32(len(indices)))
+	batchSize := Min(MaxFontBatchSize, int32(len(indices)))
 	batchVertices := make([]float32, 0, batchSize*6*4)
 
 	//setup blending mode
 	r.SetBlending(blend, BlendAdd, BlendSrcAlpha, BlendOneMinusSrcAlpha)
 
 	//restrict drawing to a certain part of the window
-	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(window[0], window[1], window[2], window[3])
+	r.EnableScissor(window[0], window[1], window[2], window[3])
 
 	// Activate corresponding render state
 	program := gfxFont.(*FontRenderer_GL21).shaderProgram
@@ -120,7 +105,6 @@ func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 	gl.Uniform2f(program.u["resolution"], float32(f.windowWidth), float32(f.windowHeight))
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	gl.BindVertexArray(gfxFont.(*FontRenderer_GL21).vao)
 
 	//calculate alignment position
 	if align == 0 {
@@ -154,7 +138,7 @@ func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 
 		if int32(len(batchVertices)/24) >= batchSize || (textureID != -1 && textureID != int32(ch.textureID)) {
 			// Render the current batch
-			f.renderGlyphBatch(indices, batchVertices, uint32(textureID))
+			f.renderGlyphBatch(batchVertices, uint32(textureID))
 			// Clear the batch buffers
 			batchVertices = make([]float32, 0, batchSize*6*4)
 		}
@@ -187,31 +171,40 @@ func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 
 	// Render any remaining glyphs in the batch
 	if len(batchVertices) > 0 {
-		f.renderGlyphBatch(indices, batchVertices, uint32(textureID))
+		f.renderGlyphBatch(batchVertices, uint32(textureID))
 	}
 
-	//clear opengl textures and programs
-	gl.BindVertexArray(0)
-	gl.BindTexture(gl.TEXTURE_2D, 0)
-	//gl.UseProgram(0)
-	//gl.Disable(gl.BLEND)
+	// Disable scissor just in case
 	gl.Disable(gl.SCISSOR_TEST)
 
 	return nil
 }
 
 // Helper function to render a batch of glyphs
-func (f *Font_GL21) renderGlyphBatch(indices []rune, vertices []float32, textureID uint32) {
+func (f *Font_GL21) renderGlyphBatch(vertices []float32, textureID uint32) {
+	program := gfxFont.(*FontRenderer_GL21).shaderProgram
+
 	// Bind the buffer and update its data
 	gl.BindBuffer(gl.ARRAY_BUFFER, gfxFont.(*FontRenderer_GL21).vbo)
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.DYNAMIC_DRAW)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertices)*4, gl.Ptr(vertices))
+
+	// Manually set pointers because there's no VAO to remember them between frames
+	vLoc := uint32(gl.GetAttribLocation(program.program, gl.Str("vert\x00")))
+	tLoc := uint32(gl.GetAttribLocation(program.program, gl.Str("vertTexCoord\x00")))
+
+	gl.EnableVertexAttribArray(vLoc)
+	gl.VertexAttribPointer(vLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
+
+	gl.EnableVertexAttribArray(tLoc)
+	gl.VertexAttribPointer(tLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
+
 	// Bind the texture
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
 
-	// Unbind the buffer and texture
-	// gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	// gl.BindTexture(gl.TEXTURE_2D, 0)
+	// Cleanup
+	gl.DisableVertexAttribArray(vLoc)
+	gl.DisableVertexAttribArray(tLoc)
 }
 
 // Width returns the width of a piece of text in pixels

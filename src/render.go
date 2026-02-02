@@ -32,9 +32,7 @@ type Renderer interface {
 	IsModelEnabled() bool
 	IsShadowEnabled() bool
 
-	//BlendReset()
 	SetPipeline(eq BlendEquation, src, dst BlendFunc)
-	ReleasePipeline()
 	prepareShadowMapPipeline(bufferIndex uint32)
 	setShadowMapPipeline(doubleSided, invertFrontFace, useUV, useNormal, useTangent, useVertColor, useJoint0, useJoint1 bool, numVertices, vertAttrOffset uint32)
 	ReleaseShadowPipeline()
@@ -50,7 +48,7 @@ type Renderer interface {
 	newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) (t Texture)
 
 	ReadPixels(data []uint8, width, height int)
-	Scissor(x, y, width, height int32)
+	EnableScissor(x, y, width, height int32)
 	DisableScissor()
 
 	SetUniformI(name string, val int)
@@ -86,7 +84,7 @@ type Renderer interface {
 	PerspectiveProjectionMatrix(angle, aspect, near, far float32) mgl.Mat4
 	OrthographicProjectionMatrix(left, right, bottom, top, near, far float32) mgl.Mat4
 
-	SetVSync()
+	SetVSync(interval int)
 	NewWorkerThread() bool
 }
 
@@ -489,13 +487,6 @@ func initRenderSpriteQuad(rp *RenderParams) {
 	rp.y += rp.rcy
 }
 
-// We relied too much on this, which hurt performance a little
-/*
-func BlendReset() {
-	gfx.BlendReset()
-}
-*/
-
 func RenderSprite(rp RenderParams) {
 	if !rp.IsValid() {
 		return
@@ -514,7 +505,7 @@ func RenderSprite(rp RenderParams) {
 	proj := gfx.OrthographicProjectionMatrix(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
-	gfx.Scissor(rp.window[0], rp.window[1], rp.window[2], rp.window[3])
+	gfx.EnableScissor(rp.window[0], rp.window[1], rp.window[2], rp.window[3])
 
 	render := func(eq BlendEquation, src, dst BlendFunc, a float32) {
 		gfx.SetPipeline(eq, src, dst)
@@ -540,8 +531,6 @@ func RenderSprite(rp RenderParams) {
 		gfx.SetUniformF("alpha", a)
 
 		renderSpriteQuad(modelview, rp)
-
-		gfx.ReleasePipeline()
 	}
 
 	renderWithBlending(render, rp.blendMode, rp.blendAlpha, rp.paltex != nil, invblend, &neg, &padd, &pmul, rp.paltex == nil)
@@ -683,7 +672,6 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32) {
 		gfx.SetUniformI("isFlat", 1)
 		gfx.SetUniformF("tint", r, g, b, a)
 		gfx.RenderQuad()
-		gfx.ReleasePipeline()
 	}
 
 	renderWithBlending(render, TT_add, alpha, true, 0, nil, nil, nil, false)

@@ -870,7 +870,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		var pal []uint32
 		pal, paltex = a.pal(pfx)
 		if a.spr.coldepth <= 8 && paltex == nil {
-			paltex = a.spr.CachePalette(pal)
+			paltex = a.spr.CachePalTex(pal)
 		}
 	}
 
@@ -977,10 +977,10 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	//}
 
 	if a.spr.coldepth <= 8 && (color != 0 || intensity > 0) {
-		if a.sff.header.Ver0 == 2 && a.sff.header.Ver2 == 1 {
+		if a.sff.header.Version[0] == 2 && a.sff.header.Version[2] == 1 {
 			pal, _ := a.pal(pfx)
 			if a.spr.PalTex == nil {
-				a.spr.PalTex = a.spr.CachePalette(pal)
+				a.spr.PalTex = a.spr.CachePalTex(pal)
 			}
 			rp.paltex = a.spr.PalTex
 		} else {
@@ -1239,7 +1239,6 @@ func (dl DrawList) draw(cameraX, cameraY, cameraScl float32) {
 		// Restore system brightness
 		sys.brightness = oldBright
 	}
-	//BlendReset()
 }
 
 type ShadowSprite struct {

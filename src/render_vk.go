@@ -5009,11 +5009,6 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 	}
 }
 
-func (r *Renderer_VK) BlendReset() {
-	r.VKState.VulkanBlendState.op = BlendAdd
-	r.VKState.VulkanBlendState.src = BlendSrcAlpha
-	r.VKState.VulkanBlendState.dst = BlendOneMinusSrcAlpha
-}
 func (r *Renderer_VK) EndFrame() {
 	if len(r.stagingImageBarriers[0]) > 0 || len(r.tempCommands) > 0 {
 		r.FlushTempCommands()
@@ -5289,10 +5284,6 @@ func (r *Renderer_VK) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
 	r.VKState.VulkanPipelineState.VulkanBlendState.op = eq
 	r.VKState.VulkanPipelineState.VulkanBlendState.src = src
 	r.VKState.VulkanPipelineState.VulkanBlendState.dst = dst
-}
-
-func (r *Renderer_VK) ReleasePipeline() {
-	//Do nothing
 }
 
 func (r *Renderer_VK) prepareShadowMapPipeline(bufferIndex uint32) {
@@ -5614,7 +5605,7 @@ func (r *Renderer_VK) ReadPixels(data []uint8, width, height int) {
 	vk.FreeMemory(r.device, imageMemory, nil)
 }
 
-func (r *Renderer_VK) Scissor(x, y, width, height int32) {
+func (r *Renderer_VK) EnableScissor(x, y, width, height int32) {
 	r.VKState.scissor = vk.Rect2D{
 		Offset: vk.Offset2D{
 			X: int32(MaxI(int(x), 0)),
@@ -7589,6 +7580,7 @@ func (r *Renderer_VK) AllocateImageMemory(img vk.Image, memoryProperty vk.Memory
 	return imageMemory
 }
 
-func (r *Renderer_VK) SetVSync() {
+func (r *Renderer_VK) SetVSync(interval int) {
+	// We just ignore the interval here and force it on
 	r.setVSync = true
 }

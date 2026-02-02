@@ -10,6 +10,8 @@ import (
 	"unicode/utf8"
 )
 
+const MaxFontBatchSize = 250
+
 type FontRenderer interface {
 	Init(renderer interface{})
 	LoadFont(file string, scale int32, windowWidth int, windowHeight int) (interface{}, error)
@@ -381,7 +383,7 @@ func LoadFntSff(f *Fnt, fontfile string, filename string) {
 			if f.images[int32(sprite.Group)] == nil {
 				f.images[int32(sprite.Group)] = make(map[rune]*FntCharImage)
 			}
-			if pal_default == nil && sff.header.Ver0 == 1 {
+			if pal_default == nil && sff.header.Version[0] == 1 {
 				pal_default = s.Pal
 			}
 			offsetX := uint16(s.Offset[0])

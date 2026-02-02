@@ -421,6 +421,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	gfx, gfxFont = selectRenderer(s.cfg.Video.RenderMode)
 	Logcat("Check B: Initializing GFX")
 	gfx.Init()
+	s.window.SetSwapInterval(s.cfg.Video.VSync) // VSync must be set after gfx, or our config will be ignored
 	Logcat("Check C: Initializing GFX Font")
 	gfxFont.Init(gfx)
 	Logcat("Check D: We are GOOD")
@@ -839,19 +840,19 @@ func (s *System) update() bool {
 
 	if s.replayFile != nil {
 		if s.anyHardButton() {
-			s.await(s.cfg.Config.Framerate * 4)
+			s.await(s.cfg.Video.Framerate * 4)
 		} else {
-			s.await(s.cfg.Config.Framerate)
+			s.await(s.cfg.Video.Framerate)
 		}
 		return s.replayFile.Update()
 	}
 
 	if s.netConnection != nil {
-		s.await(s.cfg.Config.Framerate)
+		s.await(s.cfg.Video.Framerate)
 		return s.netConnection.Update()
 	}
 
-	return s.await(s.cfg.Config.Framerate)
+	return s.await(s.cfg.Video.Framerate)
 }
 
 func (s *System) tickSound() {
@@ -1896,7 +1897,7 @@ func (s *System) resetRoundState() {
 		}
 		if s.roundsExisted[i&1] == 0 {
 			s.cgi[i].palettedata.palList.ResetRemap()
-			if s.cgi[i].sff.header.Ver0 == 1 {
+			if s.cgi[i].sff.header.Version[0] == 1 {
 				p[0].remapPal(p[0].getPalfx(),
 					[...]int32{1, 1}, [...]int32{1, s.cgi[i].palno})
 			}
@@ -1973,11 +1974,16 @@ func (s *System) tickNextFrame() bool {
 
 // This divides a frame into fractions for the purpose of drawing position interpolation
 func (s *System) tickInterpolation() float32 {
+	// Always synchronize here
 	if s.tickNextFrame() {
 		return 1
-	} else {
-		return s.tickCountF - s.lastTick + s.nextAddTime
 	}
+	// Apply interpolation if enabled
+	if sys.cfg.Config.TickInterpolation {
+		progress := s.tickCountF - s.lastTick + s.nextAddTime
+		return ClampF(progress, 0, 1)
+	}
+	return 1
 }
 
 func (s *System) addFrameTime(t float32) bool {
@@ -2191,21 +2197,6 @@ func (s *System) action() {
 	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
 	s.lifebar.step()
 
-	// Update motif
-	s.motif.step()
-
-	// Run motif
-	s.motif.act()
-
-	// Common Lua calls
-	for _, key := range SortedKeys(sys.cfg.Common.Lua) {
-		for _, v := range sys.cfg.Common.Lua[key] {
-			if err := sys.luaLState.DoString(v); err != nil {
-				sys.luaLState.RaiseError("Error executing Lua code: %s\n%v", v, err.Error())
-			}
-		}
-	}
-
 	if s.tickNextFrame() {
 		s.globalCollision() // This could perhaps happen during "tick frame" instead? Would need more testing
 		s.globalTick()
@@ -2299,6 +2290,25 @@ func (s *System) action() {
 			}
 		}
 	}
+
+	// Update motif
+	// Needs to happen at the very end or pause toggles will get out of sync
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3080
+	s.motif.step()
+
+	// Run motif
+	s.motif.act()
+
+	// Common Lua calls
+	// Needs to happens after motif update or motif inputs will lag 1 frame
+	for _, key := range SortedKeys(sys.cfg.Common.Lua) {
+		for _, v := range sys.cfg.Common.Lua[key] {
+			if err := sys.luaLState.DoString(v); err != nil {
+				sys.luaLState.RaiseError("Error executing Lua code: %s\n%v", v, err.Error())
+			}
+		}
+	}
+
 	s.tickSound()
 	return
 }
@@ -2974,8 +2984,6 @@ func (s *System) drawCharTexts(layerno int16) {
 }
 
 func (s *System) drawTop() {
-	//BlendReset()
-
 	s.brightness = s.brightnessOld
 
 	// Draw Clsn boxes
@@ -2984,7 +2992,7 @@ func (s *System) drawTop() {
 		// Change the first color of the Clsn sprite
 		setColor := func(color uint32) {
 			s.clsnSpr.Pal[0] = color
-			s.clsnSpr.updatePaletteTexture(s.clsnSpr.Pal)
+			s.clsnSpr.PalTex = s.clsnSpr.CachePalTex(s.clsnSpr.Pal)
 		}
 		// Clsn1 HitDef
 		setColor(0xff0000ff)
@@ -3470,7 +3478,7 @@ func (s *System) gameLogicSpeed() int32 {
 }
 
 func (s *System) gameRenderSpeed() int32 {
-	spd := int32(s.cfg.Config.Framerate)
+	spd := int32(s.cfg.Video.Framerate)
 	return Max(1, spd)
 }
 
@@ -4119,7 +4127,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 				sc.anims.addSprite(sc.sff, k_spr[0], k_spr[1])
 			}
 			// Synchronize SFFv2 internal palettes with DEF declarations
-			if sc.sff.header.Ver0 != 1 {
+			if sc.sff.header.Version[0] != 1 {
 				defPals := make(map[int32]bool)
 				for _, p := range sc.pal {
 					defPals[p] = true
