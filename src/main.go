@@ -220,14 +220,16 @@ func processCommandLine() {
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
 		boolFlags := map[string]bool{
-			"-windowed":       true,
-			"-togglelifebars": true,
-			"-maxpowermode":   true,
-			"-debug":          true,
-			"-nojoy":          true,
-			"-nomusic":        true,
-			"-nosound":        true,
-			"-speedtest":      true,
+			"-windowed":                true,
+			"-togglelifebars":          true,
+			"-maxpowermode":            true,
+			"-debug":                   true,
+			"-nojoy":                   true,
+			"-nomusic":                 true,
+			"-nosound":                 true,
+			"-speedtest":               true,
+			"--enable-extended-inputs": true,
+			"--input-ipc":              true,
 		}
 		key := ""
 		player := 1
@@ -282,7 +284,10 @@ Debug Options:
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
 -speed <speed>          Changes game speed setting to <speed> (-9 to 9)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
--speedtest              Speed test (match speed x100)`
+-speedtest              Speed test (match speed x100)
+--enable-extended-inputs Allow up to 12 human input slots (P1-P12); P3-P12 can be toggled at runtime
+--input-ipc              Read inputs from Unix socket (requires --enable-extended-inputs)
+--input-socket-path <path> Socket path for IPC (default: /tmp/ikemen-input.sock)`
 					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
 					fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
 					var s string
@@ -309,6 +314,17 @@ Debug Options:
 		// After the loop, if a key is still waiting for a value, set it to "true".
 		if key != "" {
 			sys.cmdFlags[key] = "true"
+		}
+		if sys.cmdFlags["--enable-extended-inputs"] == "true" {
+			sys.extendedInputsEnabled = true
+		}
+		if sys.cmdFlags["--input-ipc"] == "true" {
+			sys.externalInputMode = true
+		}
+		if path, ok := sys.cmdFlags["--input-socket-path"]; ok && path != "" && path != "true" {
+			sys.inputSocketPath = path
+		} else if sys.externalInputMode {
+			sys.inputSocketPath = "/tmp/ikemen-input.sock"
 		}
 	}
 }

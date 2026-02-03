@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -1364,6 +1365,34 @@ func hasUserKey(iniFile *ini.File, section, key string) bool {
 	return sec.HasKey(key)
 }
 
+// parseSelectInfoMaxPlayer returns the highest player slot (1–12) defined in [Select Info]
+// by scanning keys like p1.face, p2.cursor, etc. Returns 0 if none found.
+func parseSelectInfoMaxPlayer(iniFile *ini.File) int {
+	sec, err := iniFile.GetSection("Select Info")
+	if err != nil || sec == nil {
+		return 0
+	}
+	max := 0
+	for _, k := range sec.Keys() {
+		name := strings.ToLower(k.Name())
+		if len(name) < 2 || name[0] != 'p' {
+			continue
+		}
+		i := 1
+		for i < len(name) && name[i] >= '0' && name[i] <= '9' {
+			i++
+		}
+		if i == 1 || i >= len(name) || name[i] != '.' {
+			continue
+		}
+		n, _ := strconv.Atoi(name[1:i])
+		if n >= 1 && n <= 12 && n > max {
+			max = n
+		}
+	}
+	return max
+}
+
 // preprocessINIContent removes or modifies specific sections before parsing.
 func preprocessINIContent(input string) string {
 	// Define a regex to find the [Infobox Text] section
@@ -1841,6 +1870,11 @@ func loadMotif(def string) (*Motif, error) {
 
 	m.Music = parseMusicSection(pickLangSectionMerged(iniFile, "Music"))
 	m.Music.DebugDump("Motif [Music]")
+
+	if sys.extendedInputsEnabled && iniFile != nil {
+		maxSlot := parseSelectInfoMaxPlayer(iniFile)
+		sys.applyMotifInputCap(maxSlot)
+	}
 
 	return &m, nil
 }

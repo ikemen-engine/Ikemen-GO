@@ -4664,6 +4664,13 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "setPlayers", func(l *lua.LState) int {
 		total := int(numArg(l, 1))
+		maxPlayers := int(MaxSimul) * 2
+		if sys.extendedInputsEnabled {
+			maxPlayers = 12
+		}
+		if total > maxPlayers {
+			total = maxPlayers
+		}
 
 		if total < len(sys.commandLists) {
 			sys.commandLists = sys.commandLists[:total]
@@ -4706,6 +4713,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 
 		sys.resetCommandInputSource()
+		return 0
+	})
+	luaRegister(l, "togglePlayerInput", func(l *lua.LState) int {
+		index := int(numArg(l, 1)) // 1-based (P1–P12)
+		enable := boolArg(l, 2)
+		if index >= 1 && index <= 12 {
+			sys.TogglePlayerInput(index-1, enable)
+		}
 		return 0
 	})
 	luaRegister(l, "setPower", func(*lua.LState) int {

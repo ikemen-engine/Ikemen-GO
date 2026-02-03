@@ -3341,8 +3341,17 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 		buttons = sys.rollback.readRollbackInput(controller)
 		rawAxes := sys.rollback.readRollbackInputAnalog(controller)
 		axes = NormalizeAxes(&rawAxes)
+	} else if sys.extendedInputsEnabled && sys.externalInputMode && controller >= 0 && controller < 12 {
+		// IPC: read from external program via Unix socket state
+		sys.externalInputMu.Lock()
+		bm := sys.lastButtonStates[controller]
+		for i := 0; i < 14; i++ {
+			buttons[i] = (bm & (1 << uint(i))) != 0
+		}
+		copy(axes[:], sys.lastAxes[controller][:])
+		sys.externalInputMu.Unlock()
 	} else {
-		// If not AI, replay, or network, then it's a local human player
+		// If not AI, replay, network, or IPC, then it's a local human player (SDL)
 		if controller >= 0 {
 			if controller < len(sys.inputRemap) {
 				in := sys.inputRemap[controller] // remapped input index/config

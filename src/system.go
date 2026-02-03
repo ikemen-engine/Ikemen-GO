@@ -3,11 +3,14 @@ package main
 import (
 	"arena"
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"io"
 	"log"
 	"math"
+	"net"
 	"os"
 	"path"
 	"path/filepath"
@@ -121,6 +124,14 @@ type System struct {
 	ffbparams               [MaxPlayerNo]ForceFeedbackParams
 	keyConfig               []KeyConfig
 	joystickConfig          []KeyConfig
+	extendedInputsEnabled   bool     // When true, up to 12 human input slots (P1-P12)
+	inputActive             [12]bool // Per-slot input polling: true = poll and feed command list
+	externalInputMode       bool     // When true, read inputs from IPC socket instead of SDL
+	inputSocketPath         string   // Unix socket path for IPC (e.g. /tmp/ikemen-input.sock)
+	externalInputChan       chan []byte
+	lastButtonStates        [12]uint16 // IPC: 14-bit bitmask per slot (U=0, D=1, ..., m=13)
+	lastAxes                [12][6]float32
+	externalInputMu         sync.Mutex
 	aiLevel                 [MaxPlayerNo]float32
 	home                    int
 	matchTime               int32
@@ -449,6 +460,21 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.whitePalTex.SetData(Pal32ToBytes(whitepal))
 
 	systemScriptInit(l)
+	if sys.extendedInputsEnabled {
+		for len(sys.commandLists) < 12 {
+			sys.commandLists = append(sys.commandLists, nil)
+		}
+		for i := 0; i < 12; i++ {
+			sys.inputActive[i] = i < 2 // P1–P2 always active; P3–P12 initially disabled
+		}
+	}
+	if sys.extendedInputsEnabled && sys.externalInputMode {
+		sys.externalInputChan = make(chan []byte, 100)
+		if sys.inputSocketPath == "" {
+			sys.inputSocketPath = "/tmp/ikemen-input.sock"
+		}
+		go startInputListener(sys.inputSocketPath)
+	}
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
 	if runtime.GOOS != "android" {
 		// So now that we have a window we add an icon.
@@ -1075,8 +1101,23 @@ func (s *System) buttonController(btns []string) int {
 }
 
 func (s *System) stepCommandLists() {
+	// Drain pending IPC input messages before stepping (non-blocking)
+	if s.externalInputChan != nil {
+		for {
+			select {
+			case msg := <-s.externalInputChan:
+				parseInputMessage(msg)
+			default:
+				goto doneDrain
+			}
+		}
+	doneDrain:
+	}
 	for i, cl := range s.commandLists {
 		if cl == nil || cl.Buffer == nil {
+			continue
+		}
+		if s.extendedInputsEnabled && i < len(s.inputActive) && !s.inputActive[i] {
 			continue
 		}
 		// controller index is 0-based here.
@@ -1088,6 +1129,122 @@ func (s *System) stepCommandLists() {
 		// Step commands only if the buffer has already stepped. Prevents rapid fire inputs
 		if cl.InputUpdate(nil, controller) {
 			cl.Step(false, false, false, false, 0)
+		}
+	}
+}
+
+// TogglePlayerInput enables or disables input polling for a given slot (0–11).
+// Only P3–P12 (indices 2–11) can be toggled; P1–P2 are always active.
+// No-op when --enable-extended-inputs was not used.
+func (s *System) TogglePlayerInput(index int, enable bool) {
+	if !s.extendedInputsEnabled || index < 2 || index >= 12 {
+		return
+	}
+	s.inputActive[index] = enable
+	if !enable && s.externalInputMode {
+		s.externalInputMu.Lock()
+		s.lastButtonStates[index] = 0
+		for k := 0; k < 6; k++ {
+			s.lastAxes[index][k] = 0
+		}
+		s.externalInputMu.Unlock()
+	}
+}
+
+// applyMotifInputCap disables input slots >= maxSlot (1-based) when extended inputs
+// are enabled, so UI-only player counts (e.g. motif with only P1–P8) don't poll P9–P12.
+func (s *System) applyMotifInputCap(maxSlot int) {
+	if !s.extendedInputsEnabled || maxSlot <= 0 {
+		return
+	}
+	for i := maxSlot; i < 12; i++ {
+		s.inputActive[i] = false
+	}
+}
+
+const (
+	ipcMagic0    = 0x49        // 'I'
+	ipcMagic1    = 0x4B        // 'K'
+	ipcHeaderLen = 3           // magic(2) + numPlayers(1)
+	ipcPlayerLen = 1 + 2 + 6*4 // idx(1) + buttons(2) + 6*float32(24)
+)
+
+// startInputListener runs in a goroutine and accepts one client at a time on a Unix socket.
+func startInputListener(path string) {
+	os.Remove(path)
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		sys.errLog.Printf("IPC input: failed to listen on %s: %v", path, err)
+		return
+	}
+	defer listener.Close()
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			continue
+		}
+		go handleInputConn(conn)
+	}
+}
+
+func handleInputConn(conn net.Conn) {
+	defer conn.Close()
+	buf := make([]byte, 512)
+	for {
+		n, err := conn.Read(buf)
+		if err != nil {
+			return
+		}
+		if n > 0 {
+			msg := make([]byte, n)
+			copy(msg, buf[:n])
+			select {
+			case sys.externalInputChan <- msg:
+			default:
+				// Channel full; drop oldest or this message (drop this to avoid blocking)
+			}
+		}
+	}
+}
+
+// parseInputMessage parses the IPC binary protocol and updates lastButtonStates/lastAxes.
+// Protocol: magic "IK" (2 bytes), numPlayers (1 byte), then per player: idx(1), buttons(2), axes(6*float32).
+func parseInputMessage(msg []byte) {
+	if len(msg) < ipcHeaderLen || msg[0] != ipcMagic0 || msg[1] != ipcMagic1 {
+		return
+	}
+	numPlayers := int(msg[2])
+	if numPlayers <= 0 || numPlayers > 12 {
+		return
+	}
+	need := ipcHeaderLen + numPlayers*ipcPlayerLen
+	if len(msg) < need {
+		return
+	}
+	r := bytes.NewReader(msg[3:])
+	sys.externalInputMu.Lock()
+	defer sys.externalInputMu.Unlock()
+	for j := 0; j < numPlayers; j++ {
+		var idx byte
+		if binary.Read(r, binary.LittleEndian, &idx) != nil {
+			break
+		}
+		if idx >= 12 || !sys.inputActive[idx] {
+			// Skip disabled slots; advance reader by buttons+axes
+			r.Seek(int64(2+6*4), io.SeekCurrent)
+			continue
+		}
+		var buttons uint16
+		if binary.Read(r, binary.LittleEndian, &buttons) != nil {
+			break
+		}
+		sys.lastButtonStates[idx] = buttons
+		for k := 0; k < 6; k++ {
+			var ax float32
+			if binary.Read(r, binary.LittleEndian, &ax) != nil {
+				break
+			}
+			sys.lastAxes[idx][k] = ax
 		}
 	}
 }

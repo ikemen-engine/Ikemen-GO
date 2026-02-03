@@ -185,14 +185,16 @@ check_deps() {
 			need pkg-config
 			need clang
 			need clang++
-			need nasm
 			need go
+			# nasm is only required when building FFmpeg locally; if using system FFmpeg, skip
+			command -v nasm >/dev/null 2>&1 || echo "Note: nasm not found. If FFmpeg is built locally, install: brew install nasm" >&2
 			# yasm not strictly required when using NASM, but list it if missing for parity
 			command -v yasm >/dev/null 2>&1 || echo "Note: yasm not found (nasm present). If build fails, try: brew install yasm" >&2
 			if ((${#missing[@]})); then
 				echo "ERROR: Missing tools: ${missing[*]}" >&2
 				echo "Install with Homebrew:" >&2
-				echo "  brew update && brew install git go pkg-config nasm libxmp sdl2 molten-vk" >&2
+				echo "  brew update && brew install git go pkg-config libxmp sdl2 molten-vk" >&2
+				echo "  (If building FFmpeg locally, also: brew install nasm)" >&2
 				exit 1
 			fi
 		;;
@@ -479,6 +481,10 @@ function ensure_pkg_config_path() {
 }
 
 function build_ffmpeg() {
+	if ! command -v nasm >/dev/null 2>&1; then
+		echo "ERROR: Building FFmpeg requires nasm. Install with: brew install nasm" >&2
+		exit 1
+	fi
 	echo "==> Building minimal FFmpeg to $FFMPEG_PREFIX (sources in $FFMPEG_SRCDIR)"
 	mkdir -p "$BUILDDIR"
 	rm -rf "$FFMPEG_SRCDIR"
@@ -989,6 +995,8 @@ function build() {
 	require_moltenvk
 
 	echo "==> Building Go binary (this may take a while)..."
+	# Build in module mode only (ignore parent go.work so this repo builds in isolation)
+	export GOWORK=off
 
 	# Android has slightly different steps.
 	if [[ "$GOOS" == "android" ]]; then
@@ -1029,6 +1037,7 @@ function buildWin() {
 	export CGO_LDFLAGS="-L$PWD/$DELAYLIB_DIR ${deps_libs} ${CGO_LDFLAGS:-}"
 
 	echo "==> Building Go binary (this may take a while)..."
+	export GOWORK=off
 	if [[ "${DEBUG_BUILD:-}" -eq 1 ]]; then
 		# Console subsystem: keep a terminal for logs/panics while debugging
 		go build -trimpath -v \
