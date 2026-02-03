@@ -1,6 +1,27 @@
 # Set Bash as the shell.
 SHELL=/bin/bash
 
+# Default target when running `make` with no arguments.
+DEFAULT_GOAL := help
+
+help:
+	@echo "Ikemen GO - Makefile targets"
+	@echo ""
+	@echo "Build targets (platform binaries):"
+	@echo "  Ikemen_GO.exe       - Windows 64-bit"
+	@echo "  Ikemen_GO_x86.exe   - Windows 32-bit"
+	@echo "  Ikemen_GO_Linux     - Linux"
+	@echo "  Ikemen_GO_LinuxARM  - Linux ARM"
+	@echo "  Ikemen_GO_MacOS     - MacOS x64 (+ app bundle)"
+	@echo "  Ikemen_GO_MacOSARM  - MacOS Apple Silicon (+ app bundle)"
+	@echo ""
+	@echo "Other targets:"
+	@echo "  appbundle          - Create MacOS .app bundle (BINNAME=bin/...)"
+	@echo "  clean_appbundle    - Remove I.K.E.M.E.N-Go.app"
+	@echo "  android-apk        - Build Android APK"
+	@echo ""
+	@echo "Examples: make Ikemen_GO_Linux   make Ikemen_GO_MacOSARM   make help"
+
 # NOTE: Only used for make's change detection; Go still builds ./src.
 # /src files
 srcFiles=src/resources/defaultConfig.ini \
@@ -104,7 +125,7 @@ appbundle:
 	cp build/icontmp/icon.icns I.K.E.M.E.N-Go.app/Contents/Resources/icon.icns
 	rm -rf build/icontmp
 
-.PHONY: android-apk
+.PHONY: help android-apk
 android-apk:
 	bash ./build/build_android.sh
 

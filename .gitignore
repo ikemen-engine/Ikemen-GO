@@ -85,3 +85,4 @@ build/winres/
 *.exe
 *.dll
 external/script/version
+lib/
