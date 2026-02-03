@@ -142,6 +142,12 @@ func realMain() {
 		chk(f.Close())
 	}
 
+	go func() {
+		for msg := range BattleEventChan {
+			fmt.Printf("[BATTLE_EVENT] %s\n", msg)
+		}
+	}()
+
 	if runtime.GOOS == "android" {
 		sdl.InitSubSystem(sdl.INIT_JOYSTICK)
 		sdl.InitSubSystem(sdl.INIT_GAMECONTROLLER)

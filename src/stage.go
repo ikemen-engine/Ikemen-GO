@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"gopkg.in/ini.v1"
 
@@ -959,6 +960,7 @@ type Stage struct {
 	model           *Model
 	topbound        float32
 	botbound        float32
+	lastEventEmit   time.Time
 }
 
 func newStage(def string) *Stage {
@@ -1951,6 +1953,29 @@ func (s *Stage) action() {
 			s.model.pfx.eInvertall = sys.bgPalFX.eInvertall
 			s.model.pfx.eInvertblend = sys.bgPalFX.eInvertblend
 			s.model.pfx.eAllowNeg = sys.bgPalFX.eAllowNeg
+		}
+	}
+
+	if canStep && time.Since(s.lastEventEmit) > time.Second {
+		s.lastEventEmit = time.Now()
+		evt := struct {
+			Type      string `json:"type"`
+			StageTime int32  `json:"stage_time"`
+			Shake     int32  `json:"shake"`
+			MusicPos  int    `json:"music_pos"`
+			Bounds    []int  `json:"bounds"`
+		}{
+			Type:      "stage_update",
+			StageTime: s.stageTime,
+			Shake:     sys.envShake.time,
+			MusicPos:  0,
+			Bounds:    []int{int(s.leftbound), int(s.rightbound), int(s.topbound), int(s.botbound)},
+		}
+		if jsonBytes, err := json.Marshal(evt); err == nil {
+			select {
+			case BattleEventChan <- string(jsonBytes):
+			default:
+			}
 		}
 	}
 }

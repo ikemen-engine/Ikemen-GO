@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"math"
@@ -8159,10 +8160,30 @@ func (c *Char) setPower(pow int32) {
 	if sys.intro < 0 {
 		return
 	}
+	oldPower := c.power
 	if sys.maxPowerMode {
 		c.power = c.powerMax
 	} else {
 		c.power = Clamp(pow, 0, c.powerMax)
+	}
+	if Abs(c.power-oldPower) > 100 {
+		evt := struct {
+			Type       string `json:"type"`
+			CharId     int    `json:"char_id"`
+			Change     int32  `json:"change"`
+			PowerAfter int32  `json:"power_after"`
+		}{
+			Type:       "mp_update",
+			CharId:     int(c.id),
+			Change:     c.power - oldPower,
+			PowerAfter: c.power,
+		}
+		if jsonBytes, err := json.Marshal(evt); err == nil {
+			select {
+			case BattleEventChan <- string(jsonBytes):
+			default:
+			}
+		}
 	}
 }
 
@@ -10939,6 +10960,29 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			c.mhv.cornerpush_veloff = hd.airguard_cornerpush_veloff * c.facing
 		}
 	}
+	if hitResult != 0 {
+		triggerId := "hit"
+		if Abs(hitResult) == 2 {
+			triggerId = "guard"
+		} else if Abs(hitResult) == 1 {
+			triggerId = "hit"
+		}
+		evt := struct {
+			Type      string `json:"type"`
+			TriggerId string `json:"trigger_id"`
+			Context   string `json:"context"`
+		}{
+			Type:      "trigger_fire",
+			TriggerId: triggerId,
+			Context:   fmt.Sprintf("attacker:%d target:%d", c.id, getter.id),
+		}
+		if jsonBytes, err := json.Marshal(evt); err == nil {
+			select {
+			case BattleEventChan <- string(jsonBytes):
+			default:
+			}
+		}
+	}
 	invertXvel(byf)
 	return
 }
@@ -11255,7 +11299,29 @@ func (c *Char) actionRun() {
 		}
 		if c.ghv.damage != 0 {
 			if c.ss.moveType == MT_H || (c.ghv.keepstate && c.hoverIdx == -1) {
+				damage := c.ghv.damage
 				c.lifeAdd(-float64(c.ghv.damage), true, true)
+				if damage > 0 {
+					evt := struct {
+						Type     string `json:"type"`
+						Attacker int    `json:"attacker_id"`
+						Target   int    `json:"target_id"`
+						Damage   int32  `json:"damage"`
+						HpAfter  int32  `json:"hp_after"`
+					}{
+						Type:     "hit_hp_update",
+						Attacker: int(c.ghv.playerid),
+						Target:   int(c.id),
+						Damage:   damage,
+						HpAfter:  c.life,
+					}
+					if jsonBytes, err := json.Marshal(evt); err == nil {
+						select {
+						case BattleEventChan <- string(jsonBytes):
+						default:
+						}
+					}
+				}
 			}
 			c.ghv.damage = 0
 		}

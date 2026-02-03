@@ -19,6 +19,23 @@ const (
 	FT_TODraw
 )
 
+func (ft FinishType) String() string {
+	switch ft {
+	case FT_NotYet:
+		return "FT_NotYet"
+	case FT_KO:
+		return "FT_KO"
+	case FT_DKO:
+		return "FT_DKO"
+	case FT_TO:
+		return "FT_TO"
+	case FT_TODraw:
+		return "FT_TODraw"
+	default:
+		return fmt.Sprintf("FinishType(%d)", ft)
+	}
+}
+
 type WinType int32
 
 const (
@@ -61,6 +78,42 @@ func (wt *WinType) SetClutch() {
 	if *wt >= WT_Normal && *wt < WT_Perfect {
 		*wt += WT_CNormal - WT_Normal
 	}
+}
+
+func (wt WinType) String() string {
+	base := func(w WinType) string {
+		switch w {
+		case WT_Normal:
+			return "Normal"
+		case WT_Special:
+			return "Special"
+		case WT_Hyper:
+			return "Hyper"
+		case WT_Cheese:
+			return "Cheese"
+		case WT_Time:
+			return "Time"
+		case WT_Throw:
+			return "Throw"
+		case WT_Suicide:
+			return "Suicide"
+		case WT_Teammate:
+			return "Teammate"
+		case WT_Perfect:
+			return "Perfect"
+		case WT_Clutch:
+			return "Clutch"
+		default:
+			return fmt.Sprintf("%d", w)
+		}
+	}
+	if wt >= WT_PNormal && wt < WT_PNormal+WT_NumTypes {
+		return "WT_P" + base(wt-WT_PNormal)
+	}
+	if wt >= WT_CNormal && wt < WT_CNormal+WT_NumTypes {
+		return "WT_C" + base(wt-WT_CNormal)
+	}
+	return "WT_" + base(wt)
 }
 
 type FightFx struct {

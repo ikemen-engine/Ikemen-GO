@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"image"
 	"io"
@@ -220,6 +221,7 @@ type System struct {
 	debugWC                 *Char
 	cam                     Camera
 	finishType              FinishType
+	fightEndEventEmitted    bool
 	winwaittime             int32
 	slowtime                int32
 	winposetime             int32
@@ -1968,6 +1970,7 @@ func (s *System) resetRoundState() {
 	s.finishType = FT_NotYet
 	s.winTeam = -1
 	s.winType = [...]WinType{WT_Normal, WT_Normal}
+	s.fightEndEventEmitted = false
 	s.winTrigger = [...]WinType{WT_Normal, WT_Normal}
 	s.effectiveLoss = [2]bool{false, false}
 	s.lastHitter = [2]int{-1, -1}
@@ -2688,6 +2691,30 @@ func (s *System) stepRoundState() {
 
 	// Post round
 	if s.roundEnded() || s.roundEndDecision() {
+		if !s.fightEndEventEmitted && s.finishType != FT_NotYet {
+			s.fightEndEventEmitted = true
+			winTypeStr := s.winType[0].String()
+			if s.winTeam >= 0 {
+				winTypeStr = s.winType[s.winTeam].String()
+			}
+			evt := struct {
+				Type       string `json:"type"`
+				WinTeam    int    `json:"win_team"`
+				WinType    string `json:"win_type"`
+				FinishType string `json:"finish_type"`
+			}{
+				Type:       "fight_end",
+				WinTeam:    s.winTeam,
+				WinType:    winTypeStr,
+				FinishType: s.finishType.String(),
+			}
+			if jsonBytes, err := json.Marshal(evt); err == nil {
+				select {
+				case BattleEventChan <- string(jsonBytes):
+				default:
+				}
+			}
+		}
 		rs4t := -s.lifebar.ro.over_waittime
 		fadeoutStart := rs4t - 2 - s.lifebar.ro.over_time + s.lifebar.ro.fadeOut.time
 

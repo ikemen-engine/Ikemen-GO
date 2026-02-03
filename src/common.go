@@ -19,6 +19,9 @@ import (
 	"golang.org/x/text/transform"
 )
 
+// BattleEventChan carries JSON event strings from battle hooks for external CLI consumption.
+var BattleEventChan = make(chan string, 100)
+
 const (
 	IMax = int32(^uint32(0) >> 1)
 	IErr = ^IMax
