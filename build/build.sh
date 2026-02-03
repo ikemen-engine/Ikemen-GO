@@ -1082,7 +1082,8 @@ function build() {
 		if [[ "$GOOS" == "linux" ]]; then
 			export CGO_LDFLAGS="${deps_libs} -lpthread -lm -ldl -lz -Wl,-rpath,\$ORIGIN -Wl,-rpath,\$ORIGIN/lib ${CGO_LDFLAGS:-}"
 		elif [[ "$GOOS" == "darwin" ]]; then
-			export CGO_LDFLAGS="${deps_libs} ${CGO_LDFLAGS:-} -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks"
+			# UniformTypeIdentifiers required for UTType (SDL2/clipboard on macOS 11+)
+			export CGO_LDFLAGS="${deps_libs} ${CGO_LDFLAGS:-} -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks -framework UniformTypeIdentifiers"
 		fi		
 	fi
 
