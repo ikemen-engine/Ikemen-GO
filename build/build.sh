@@ -100,6 +100,11 @@ BUILD_FFMPEG="${BUILD_FFMPEG:-auto}"   # auto|yes|no
 APP_VERSION="${APP_VERSION:-nightly}"
 APP_BUILDTIME="${APP_BUILDTIME:-$(date '+%Y.%m.%d')}"
 
+# On macOS, Homebrew may provide pkgconf instead of pkg-config; use it when pkg-config is not in PATH.
+case "$OSTYPE" in darwin*)
+	[[ -z "${PKG_CONFIG:-}" && -z "$(command -v pkg-config 2>/dev/null)" && -n "$(command -v pkgconf 2>/dev/null)" ]] && export PKG_CONFIG=pkgconf
+	;; esac
+
 # --- Always pause on Windows on exit (covers success and failure) ----------
 pause_always_windows() {
 	local status="${1:-0}"
@@ -165,7 +170,10 @@ collect_missing_deps() {
 			need gendef; need dlltool
 			;;
 		darwin*)
-			need git; need pkg-config; need clang; need clang++; need go
+			need git
+			# Homebrew installs pkgconf which may provide pkg-config; accept either.
+			command -v pkg-config >/dev/null 2>&1 || command -v pkgconf >/dev/null 2>&1 || DEPS_MISSING+=("pkg-config")
+			need clang; need clang++; need go
 			command -v nasm >/dev/null 2>&1 || true
 			command -v yasm >/dev/null 2>&1 || true
 			;;
@@ -222,7 +230,9 @@ install_missing_deps() {
 # Dependency preflight (prints actionable commands and exits if anything missing)
 check_deps() {
 	collect_missing_deps || true
-	local missing=("${DEPS_MISSING[@]:-}")
+	# Copy array; avoid "${arr[@]:-}" when arr is empty (bash gives one empty element).
+	local missing=()
+	[[ ${#DEPS_MISSING[@]} -gt 0 ]] && missing=("${DEPS_MISSING[@]}")
 
 	case "$OSTYPE" in
 		msys|cygwin)
@@ -243,7 +253,8 @@ check_deps() {
 			command -v nasm >/dev/null 2>&1 || echo "Note: nasm not found. If FFmpeg is built locally, install: brew install nasm" >&2
 			command -v yasm >/dev/null 2>&1 || echo "Note: yasm not found (nasm present). If build fails, try: brew install yasm" >&2
 			if ((${#missing[@]})); then
-				echo "ERROR: Missing tools: ${missing[*]}" >&2
+				echo "ERROR: Missing tools:" >&2
+				printf '  - %s\n' "${missing[@]}" >&2
 				echo "Install with Homebrew:" >&2
 				echo "  brew update && brew install git go pkg-config libxmp sdl2 molten-vk" >&2
 				echo "  (If building FFmpeg locally, also: brew install nasm)" >&2
