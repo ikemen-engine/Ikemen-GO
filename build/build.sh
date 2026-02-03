@@ -317,6 +317,7 @@ require_libxmp() {
 # MoltenVK (macOS Vulkan) detection
 MVK_DYLIB=""
 MVK_LIB_DIR=""
+VK_INCLUDE_DIR=""
 find_moltenvk() {
 	local candidates=()
 	# Prefer Homebrew paths if available
@@ -338,12 +339,47 @@ find_moltenvk() {
 	return 1
 }
 
+# Vulkan headers (vulkan/vulkan.h) required by github.com/Eiton/vulkan on macOS
+find_vulkan_headers() {
+	local candidates=()
+	[[ -n "${VULKAN_SDK:-}" ]] && [[ -d "$VULKAN_SDK/include" ]] && candidates+=("$VULKAN_SDK/include")
+	if command -v brew >/dev/null 2>&1; then
+		local bp; bp="$(brew --prefix 2>/dev/null || true)"
+		[[ -n "$bp" ]] && candidates+=("$bp/include")
+		local vh; vh="$(brew --prefix vulkan-headers 2>/dev/null || true)"
+		[[ -n "$vh" ]] && candidates+=("$vh/include")
+	fi
+	candidates+=("/opt/homebrew/include" "/usr/local/include")
+	for d in "${candidates[@]}"; do
+		if [[ -f "$d/vulkan/vulkan.h" ]]; then
+			VK_INCLUDE_DIR="$d"
+			return 0
+		fi
+	done
+	return 1
+}
+
 require_moltenvk() {
 	[[ "$GOOS" != "darwin" ]] && return 0
 	if find_moltenvk; then
 		# Ensure clang can find MoltenVK when CGO links
 		if [[ "${CGO_LDFLAGS:-}" != *"-L$MVK_LIB_DIR"* ]]; then
 			export CGO_LDFLAGS="${CGO_LDFLAGS:-} -L$MVK_LIB_DIR"
+		fi
+		# Vulkan headers required for Eiton/vulkan (vk_wrapper.h #include "vulkan/vulkan.h")
+		if find_vulkan_headers; then
+			if [[ -n "$VK_INCLUDE_DIR" ]] && [[ "${CGO_CFLAGS:-}" != *"-I$VK_INCLUDE_DIR"* ]]; then
+				export CGO_CFLAGS="-I$VK_INCLUDE_DIR ${CGO_CFLAGS:-}"
+			fi
+		else
+			if [[ "${AUTO_INSTALL_DEPS:-0}" == "1" && -z "${CI:-}" && -z "${GITHUB_ACTIONS:-}" ]] && command -v brew >/dev/null 2>&1; then
+				brew install vulkan-headers 2>/dev/null || true
+				find_vulkan_headers && export CGO_CFLAGS="-I$VK_INCLUDE_DIR ${CGO_CFLAGS:-}" && return 0
+			fi
+			echo "ERROR: Vulkan headers (vulkan/vulkan.h) not found (required for Vulkan renderer on macOS)." >&2
+			echo "Install with Homebrew:" >&2
+			echo "  brew install vulkan-headers" >&2
+			exit 1
 		fi
 		return 0
 	fi
