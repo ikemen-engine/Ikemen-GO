@@ -1956,7 +1956,7 @@ func (s *Stage) action() {
 		}
 	}
 
-	if canStep && time.Since(s.lastEventEmit) > time.Second {
+	if sys.battleEventsEnabled && canStep && time.Since(s.lastEventEmit) > time.Second {
 		s.lastEventEmit = time.Now()
 		evt := struct {
 			Type      string `json:"type"`

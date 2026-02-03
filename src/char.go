@@ -8166,7 +8166,7 @@ func (c *Char) setPower(pow int32) {
 	} else {
 		c.power = Clamp(pow, 0, c.powerMax)
 	}
-	if Abs(c.power-oldPower) > 100 {
+	if sys.battleEventsEnabled && Abs(c.power-oldPower) > 100 {
 		evt := struct {
 			Type       string `json:"type"`
 			CharId     int    `json:"char_id"`
@@ -10960,7 +10960,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			c.mhv.cornerpush_veloff = hd.airguard_cornerpush_veloff * c.facing
 		}
 	}
-	if hitResult != 0 {
+	if sys.battleEventsEnabled && hitResult != 0 {
 		triggerId := "hit"
 		if Abs(hitResult) == 2 {
 			triggerId = "guard"
@@ -11301,7 +11301,7 @@ func (c *Char) actionRun() {
 			if c.ss.moveType == MT_H || (c.ghv.keepstate && c.hoverIdx == -1) {
 				damage := c.ghv.damage
 				c.lifeAdd(-float64(c.ghv.damage), true, true)
-				if damage > 0 {
+				if damage > 0 && sys.battleEventsEnabled {
 					evt := struct {
 						Type     string `json:"type"`
 						Attacker int    `json:"attacker_id"`

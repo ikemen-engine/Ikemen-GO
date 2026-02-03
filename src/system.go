@@ -129,6 +129,7 @@ type System struct {
 	inputActive             [12]bool // Per-slot input polling: true = poll and feed command list
 	externalInputMode       bool     // When true, read inputs from IPC socket instead of SDL
 	inputSocketPath         string   // Unix socket path for IPC (e.g. /tmp/ikemen-input.sock)
+	battleEventsEnabled     bool     // When true, emit JSON battle events to stdout for CLI consumption
 	externalInputChan       chan []byte
 	lastButtonStates        [12]uint16 // IPC: 14-bit bitmask per slot (U=0, D=1, ..., m=13)
 	lastAxes                [12][6]float32
@@ -2691,7 +2692,7 @@ func (s *System) stepRoundState() {
 
 	// Post round
 	if s.roundEnded() || s.roundEndDecision() {
-		if !s.fightEndEventEmitted && s.finishType != FT_NotYet {
+		if s.battleEventsEnabled && !s.fightEndEventEmitted && s.finishType != FT_NotYet {
 			s.fightEndEventEmitted = true
 			winTypeStr := s.winType[0].String()
 			if s.winTeam >= 0 {

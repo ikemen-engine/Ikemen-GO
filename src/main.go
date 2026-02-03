@@ -142,11 +142,13 @@ func realMain() {
 		chk(f.Close())
 	}
 
-	go func() {
-		for msg := range BattleEventChan {
-			fmt.Printf("[BATTLE_EVENT] %s\n", msg)
-		}
-	}()
+	if sys.battleEventsEnabled {
+		go func() {
+			for msg := range BattleEventChan {
+				fmt.Printf("[BATTLE_EVENT] %s\n", msg)
+			}
+		}()
+	}
 
 	if runtime.GOOS == "android" {
 		sdl.InitSubSystem(sdl.INIT_JOYSTICK)
@@ -236,6 +238,7 @@ func processCommandLine() {
 			"-speedtest":               true,
 			"--enable-extended-inputs": true,
 			"--input-ipc":              true,
+			"--battle-events":          true,
 		}
 		key := ""
 		player := 1
@@ -293,7 +296,8 @@ Debug Options:
 -speedtest              Speed test (match speed x100)
 --enable-extended-inputs Allow up to 12 human input slots (P1-P12); P3-P12 can be toggled at runtime
 --input-ipc              Read inputs from Unix socket (requires --enable-extended-inputs)
---input-socket-path <path> Socket path for IPC (default: /tmp/ikemen-input.sock)`
+--input-socket-path <path> Socket path for IPC (default: /tmp/ikemen-input.sock)
+--battle-events            Emit JSON battle events to stdout (prefix [BATTLE_EVENT]) for external tools`
 					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
 					fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
 					var s string
@@ -331,6 +335,9 @@ Debug Options:
 			sys.inputSocketPath = path
 		} else if sys.externalInputMode {
 			sys.inputSocketPath = "/tmp/ikemen-input.sock"
+		}
+		if sys.cmdFlags["--battle-events"] == "true" {
+			sys.battleEventsEnabled = true
 		}
 	}
 }
