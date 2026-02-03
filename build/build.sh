@@ -79,6 +79,9 @@ SCREENPACK_REPO="${SCREENPACK_REPO:-https://github.com/ikemen-engine/Ikemen_GO-E
 SCREENPACK_REF="${SCREENPACK_REF:-master}"
 SCREENPACK_DIR="$REPO_ROOT/$BUILDDIR/elecbyte-screenpack"
 
+# When 1, attempt to install missing build deps via system package manager (brew/apt/pacman). Skip in CI.
+AUTO_INSTALL_DEPS="${AUTO_INSTALL_DEPS:-0}"
+
 # Android APK packaging (ikemen-droid)
 BUILD_ANDROID_APK="${BUILD_ANDROID_APK:-1}"  # 1=yes, 0=no
 # ANDROID_APK_REPO can be a git URL (default) OR a local directory path to an existing ikemen-droid checkout.
@@ -150,25 +153,81 @@ ensure_go_env() {
 	fi
 }
 
-# Dependency preflight (prints actionable commands)
-check_deps() {
-	local missing=()
-	need() { command -v "$1" >/dev/null 2>&1 || missing+=("$1"); }
+# Populate DEPS_MISSING with names of missing tools; return 0 if none missing, 1 otherwise.
+collect_missing_deps() {
+	DEPS_MISSING=()
+	local need
+	need() { command -v "$1" >/dev/null 2>&1 || DEPS_MISSING+=("$1"); }
 
 	case "$OSTYPE" in
 		msys|cygwin)
-			# MSYS2/MINGW64
-			need git
-			need make
-			need pkg-config
-			need gcc
-			need g++
-			need nasm
-			need go
-			need gendef
-			need dlltool
+			need git; need make; need pkg-config; need gcc; need g++; need nasm; need go
+			need gendef; need dlltool
+			;;
+		darwin*)
+			need git; need pkg-config; need clang; need clang++; need go
+			command -v nasm >/dev/null 2>&1 || true
+			command -v yasm >/dev/null 2>&1 || true
+			;;
+		linux*)
+			need git; need pkg-config; need gcc; need g++; need make; need nasm; need yasm; need go
+			;;
+		*) return 0 ;;
+	esac
+	[[ ${#DEPS_MISSING[@]} -eq 0 ]]
+}
+
+# Install missing build dependencies via system package manager when allowed.
+# Skips when AUTO_INSTALL_DEPS!=1 or in CI. Run before check_deps so check_deps can re-verify.
+install_missing_deps() {
+	collect_missing_deps || true
+	[[ ${#DEPS_MISSING[@]} -eq 0 ]] && return 0
+	[[ "${AUTO_INSTALL_DEPS:-0}" != "1" ]] && return 0
+	[[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]] && return 0
+
+	case "$OSTYPE" in
+		msys|cygwin)
+			echo "==> Installing missing dependencies (pacman)..."
+			pacman -Syu --noconfirm || true
+			pacman -S --noconfirm \
+				git make diffutils mingw-w64-x86_64-pkg-config \
+				mingw-w64-x86_64-go mingw-w64-x86_64-toolchain \
+				mingw-w64-x86_64-nasm mingw-w64-x86_64-yasm \
+				mingw-w64-x86_64-tools-git mingw-w64-x86_64-libxmp \
+				mingw-w64-x86_64-SDL2 || { echo "WARNING: pacman install failed or incomplete." >&2; return 1; }
+			;;
+		darwin*)
+			if ! command -v brew >/dev/null 2>&1; then
+				echo "WARNING: Homebrew not found; cannot auto-install. Install from https://brew.sh" >&2
+				return 1
+			fi
+			echo "==> Installing missing dependencies (Homebrew)..."
+			brew update && brew install git go pkg-config libxmp sdl2 molten-vk || { echo "WARNING: brew install failed or incomplete." >&2; return 1; }
+			;;
+		linux*)
+			if ! command -v apt-get >/dev/null 2>&1; then
+				echo "WARNING: apt-get not found; cannot auto-install. Install packages manually (e.g. dnf/yum)." >&2
+				return 1
+			fi
+			echo "==> Installing missing dependencies (apt)..."
+			sudo apt-get update && sudo apt-get install -y golang-go git pkg-config make nasm yasm build-essential libxmp-dev libsdl2-dev || { echo "WARNING: apt install failed or incomplete." >&2; return 1; }
+			;;
+		*)
+			return 1
+			;;
+	esac
+	return 0
+}
+
+# Dependency preflight (prints actionable commands and exits if anything missing)
+check_deps() {
+	collect_missing_deps || true
+	local missing=("${DEPS_MISSING[@]:-}")
+
+	case "$OSTYPE" in
+		msys|cygwin)
 			if ((${#missing[@]})); then
-				echo "Missing package: ${missing[@]}" >&2
+				echo "Missing package: ${missing[*]}" >&2
 				echo "Install from the MINGW64 shell:" >&2
 				echo "  pacman -Syu --noconfirm" >&2
 				echo "  pacman -S --noconfirm \\" >&2
@@ -181,14 +240,7 @@ check_deps() {
 			fi
 		;;
 		darwin*)
-			need git
-			need pkg-config
-			need clang
-			need clang++
-			need go
-			# nasm is only required when building FFmpeg locally; if using system FFmpeg, skip
 			command -v nasm >/dev/null 2>&1 || echo "Note: nasm not found. If FFmpeg is built locally, install: brew install nasm" >&2
-			# yasm not strictly required when using NASM, but list it if missing for parity
 			command -v yasm >/dev/null 2>&1 || echo "Note: yasm not found (nasm present). If build fails, try: brew install yasm" >&2
 			if ((${#missing[@]})); then
 				echo "ERROR: Missing tools: ${missing[*]}" >&2
@@ -199,14 +251,6 @@ check_deps() {
 			fi
 		;;
 		linux*)
-			need git
-			need pkg-config
-			need gcc
-			need g++
-			need make
-			need nasm
-			need yasm
-			need go
 			if ((${#missing[@]})); then
 				echo "ERROR: Missing tools: ${missing[*]}" >&2
 				echo "Install (Debian/Ubuntu):" >&2
@@ -217,48 +261,46 @@ check_deps() {
 	esac
 }
 
-# Ensure SDL2 (via pkg-config) is available
+# Ensure SDL2 (via pkg-config) is available; optionally install when AUTO_INSTALL_DEPS=1
 require_sdl2() {
 	local pc="${PKG_CONFIG:-pkg-config}"
-	if ! $pc --exists sdl2 2>/dev/null; then
-	case "$OSTYPE" in
-		msys|cygwin)
-			echo "ERROR: SDL2 dev package not found. Install: pacman -S mingw-w64-x86_64-SDL2" >&2
-			;;
-		darwin*)
-			echo "ERROR: SDL2 not found. Install with Homebrew: brew install sdl2" >&2
-			;;
-		linux*)
-			echo "ERROR: SDL2 dev package not found. Install (Debian/Ubuntu): sudo apt install -y libsdl2-dev" >&2
-			;;
-		*)
-			echo "ERROR: SDL2 dev package not found (pkg-config module 'sdl2')." >&2
-			;;
+	if $pc --exists sdl2 2>/dev/null; then return 0; fi
+	if [[ "${AUTO_INSTALL_DEPS:-0}" == "1" && -z "${CI:-}" && -z "${GITHUB_ACTIONS:-}" ]]; then
+		case "$OSTYPE" in
+			msys|cygwin) pacman -S --noconfirm mingw-w64-x86_64-SDL2 2>/dev/null || true ;;
+			darwin*)     command -v brew >/dev/null 2>&1 && brew install sdl2 2>/dev/null || true ;;
+			linux*)      command -v apt-get >/dev/null 2>&1 && sudo apt-get install -y libsdl2-dev 2>/dev/null || true ;;
 		esac
-		exit 1
+		$pc --exists sdl2 2>/dev/null && return 0
 	fi
+	case "$OSTYPE" in
+		msys|cygwin) echo "ERROR: SDL2 dev package not found. Install: pacman -S mingw-w64-x86_64-SDL2" >&2 ;;
+		darwin*)     echo "ERROR: SDL2 not found. Install with Homebrew: brew install sdl2" >&2 ;;
+		linux*)      echo "ERROR: SDL2 dev package not found. Install (Debian/Ubuntu): sudo apt install -y libsdl2-dev" >&2 ;;
+		*)           echo "ERROR: SDL2 dev package not found (pkg-config module 'sdl2')." >&2 ;;
+	esac
+	exit 1
 }
 
-# Ensure libxmp (via pkg-config) is available
+# Ensure libxmp (via pkg-config) is available; optionally install when AUTO_INSTALL_DEPS=1
 require_libxmp() {
 	local pc="${PKG_CONFIG:-pkg-config}"
-	if ! $pc --exists libxmp 2>/dev/null; then
-	case "$OSTYPE" in
-		msys|cygwin)
-			echo "ERROR: libxmp dev package not found. Install: pacman -S mingw-w64-x86_64-libxmp" >&2
-			;;
-		darwin*)
-			echo "ERROR: libxmp not found. Install with Homebrew: brew install libxmp" >&2
-			;;
-		linux*)
-			echo "ERROR: libxmp dev package not found. Install (Debian/Ubuntu): sudo apt install -y libxmp-dev" >&2
-			;;
-		*)
-			echo "ERROR: libxmp dev package not found (pkg-config module 'libxmp')." >&2
-			;;
+	if $pc --exists libxmp 2>/dev/null; then return 0; fi
+	if [[ "${AUTO_INSTALL_DEPS:-0}" == "1" && -z "${CI:-}" && -z "${GITHUB_ACTIONS:-}" ]]; then
+		case "$OSTYPE" in
+			msys|cygwin) pacman -S --noconfirm mingw-w64-x86_64-libxmp 2>/dev/null || true ;;
+			darwin*)     command -v brew >/dev/null 2>&1 && brew install libxmp 2>/dev/null || true ;;
+			linux*)      command -v apt-get >/dev/null 2>&1 && sudo apt-get install -y libxmp-dev 2>/dev/null || true ;;
 		esac
-		exit 1
+		$pc --exists libxmp 2>/dev/null && return 0
 	fi
+	case "$OSTYPE" in
+		msys|cygwin) echo "ERROR: libxmp dev package not found. Install: pacman -S mingw-w64-x86_64-libxmp" >&2 ;;
+		darwin*)     echo "ERROR: libxmp not found. Install with Homebrew: brew install libxmp" >&2 ;;
+		linux*)      echo "ERROR: libxmp dev package not found. Install (Debian/Ubuntu): sudo apt install -y libxmp-dev" >&2 ;;
+		*)           echo "ERROR: libxmp dev package not found (pkg-config module 'libxmp')." >&2 ;;
+	esac
+	exit 1
 }
 
 # MoltenVK (macOS Vulkan) detection
@@ -292,12 +334,16 @@ require_moltenvk() {
 		if [[ "${CGO_LDFLAGS:-}" != *"-L$MVK_LIB_DIR"* ]]; then
 			export CGO_LDFLAGS="${CGO_LDFLAGS:-} -L$MVK_LIB_DIR"
 		fi
-	else
-		echo "ERROR: MoltenVK not found (required for the Vulkan renderer on macOS)." >&2
-		echo "Install with Homebrew:" >&2
-		echo "  brew install molten-vk" >&2
-		exit 1
+		return 0
 	fi
+	if [[ "${AUTO_INSTALL_DEPS:-0}" == "1" && -z "${CI:-}" && -z "${GITHUB_ACTIONS:-}" ]] && command -v brew >/dev/null 2>&1; then
+		brew install molten-vk 2>/dev/null || true
+		find_moltenvk && return 0
+	fi
+	echo "ERROR: MoltenVK not found (required for the Vulkan renderer on macOS)." >&2
+	echo "Install with Homebrew:" >&2
+	echo "  brew install molten-vk" >&2
+	exit 1
 }
 
 # Main function.
@@ -327,6 +373,8 @@ function main() {
 	# Make sure Go toolchain is usable
 	ensure_go_env
 
+	# Optionally install missing build deps (AUTO_INSTALL_DEPS=1); then verify
+	install_missing_deps || true
 	# Make sure required build tools exist
 	check_deps
 
