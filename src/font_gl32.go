@@ -194,7 +194,7 @@ func (f *Font_GL32) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 	}
 
 	// Disable scissor just in case
-	gl.Disable(gl.SCISSOR_TEST)
+	r.DisableScissor()
 
 	return nil
 }

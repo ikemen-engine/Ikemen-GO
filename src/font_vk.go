@@ -586,7 +586,8 @@ func (f *Font_VK) Printf(x, y float32, scale float32, spacingXAdd float32, align
 	scissors := []vk.Rect2D{{
 		Offset: vk.Offset2D{
 			X: int32(MaxI(int(window[0]), 0)),
-			Y: int32(int(sys.scrrect[3]) - int(window[3]) - MaxI(int(window[1]), 0)),
+			//Y: int32(int(sys.scrrect[3]) - int(window[3]) - MaxI(int(window[1]), 0)),
+			Y: int32(MaxI(int(window[1]), 0)),
 		},
 		Extent: vk.Extent2D{
 			Width:  uint32(window[2]),

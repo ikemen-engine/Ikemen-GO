@@ -683,11 +683,12 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl float32, align int32,
 	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
 	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
-	win := [4]int32{(*window)[0], sys.scrrect[3] - ((*window)[1] + (*window)[3]),
-		(*window)[2], (*window)[3]}
+	// Use same window as sprites and let the renderer handle it
+	//win := [4]int32{(*window)[0], sys.scrrect[3] - ((*window)[1] + (*window)[3]),
+	//	(*window)[2], (*window)[3]}
 
 	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3])
-	f.ttf.Printf(x, y, (xscl+yscl)/2, spacingXAdd, align, blend, win, "%s", txt) //x, y, scale, spacingXAdd, align, blend, window, string, printf args
+	f.ttf.Printf(x, y, (xscl+yscl)/2, spacingXAdd, align, blend, *window, "%s", txt) //x, y, scale, spacingXAdd, align, blend, window, string, printf args
 }
 
 type TextSprite struct {
