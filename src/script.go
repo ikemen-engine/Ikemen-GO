@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -8474,6 +8475,35 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(ti))
 		return 1
 	})
+
+	luaRegister(l, "httpget", func(*lua.LState) int {
+		url := l.CheckString(1)
+		resp, err := http.Get(url)
+    if err != nil {
+        l.Push(lua.LNil)
+        return 1
+    }
+    defer resp.Body.Close()
+    body, _ := io.ReadAll(resp.Body)
+    l.Push(lua.LString(string(body)))
+		return 1
+	})
+
+	luaRegister(l, "httppost", func(*lua.LState) int {
+		url := l.CheckString(1)
+		contentType := l.CheckString(2)
+		data := l.CheckString(3)
+		resp, err := http.Post(url, contentType, strings.NewReader(data))
+    if err != nil {
+        l.Push(lua.LNil)
+        return 1
+    }
+    defer resp.Body.Close()
+    body, _ := io.ReadAll(resp.Body)
+    l.Push(lua.LString(string(body)))
+		return 1
+	})
+
 	luaRegister(l, "network", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.netplay()))
 		return 1
