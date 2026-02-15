@@ -1,0 +1,5739 @@
+;-----------------------------------------------------------
+; Ver 1.0
+; This file contains a list of all available screenpack parameters and the
+; default values used by the screenpack definition file.
+;
+; This file is not loaded by the engine and should not be used as-is. It's
+; meant to be a reference for adding parameters to your own screenpack
+; system.def file.
+;
+; Features that didn't exist in Mugen and have non self-explanatory names
+; have additional comments (often only the first occurrence of a new
+; parameter in this file is commented).
+;
+;-----------------------------------------------------------
+; Notes:
+;   - it's good practice to skip inclusion of parameters that you're not
+;     using (e.g. window, localcoord, etc.)
+;   - by default, all elements are rendered using 240p localcoord.
+;     Specifying any parameter for the given element changes localcoord to
+;     the screenpack localcoord (unless a custom localcoord is set in the
+;     DEF file)
+;   - fonts can be specified in the [Files] section (no limit to how many)
+;   - fonts indexed for system.def do not refer to the ones in fight.def
+;   - fonts are searched in directories in the following order:
+;     1. system directory (where system.def is located)
+;     2. top-level Ikemen directory (not recommended to keep custom fonts
+;        here)
+;     3. data/ (not recommended to keep custom fonts here)
+;     4. font/
+;   - font parameters consist of the following arguments:
+;       fnt, bank, align, r, g, b, a, height
+;     where fnt can be either the index matching the font number declared
+;     under [Files] or the font filename (path to file). The height
+;     argument is used only by Truetype fonts (if not equal to -1 it
+;     overrides both the font<num>.height parameter and the size of the
+;     TTF font declared in its DEF file)
+;   - the value -1 used as fnt index, anim, or spr/snd group disables them
+;   - text enclosed in angle brackets in parameter names should be
+;     replaced (including the brackets) with appropriate data, e.g. <pn>
+;     can be 1-8.
+;   - .col-suffixed params take r, g, b values (default: 255,255,255)
+;   - .alpha-suffixed params set source and destination alpha (default:
+;     255,255)
+;   - .key-suffixed params use the same syntax as character CMD files.
+;   - .state-suffixed params control the StateNo that a particular player
+;     is forced into during the post-match screen. The first existing
+;     state will be chosen if more than one state number is specified
+;     (separated by commas). An empty value means no state change; -1
+;     disables the player from the screen.
+;   - animated portraits replace sprite portraits if specified. The value
+;     refers to ActionNo in the character's AIR file. Animation respects
+;     constant [Size] xscale, yscale values (horizontal/vertical scaling
+;     factor).
+;
+;-----------------------------------------------------------
+
+[Info]
+	name = Default
+	author =
+	versiondate = 09,01,2009
+	mugenversion = 1.0
+	ikemenversion =
+	localcoord = 320, 240
+
+[Files]
+	spr = system.sff
+	snd = system.snd
+	logo.storyboard =
+	intro.storyboard =
+	select = select.def
+	fight = fight.def
+	font0 = Open_Sans.def
+	font1 = default-3x5.def
+	font2 = f-6x9.def
+	font3 = jg.fnt
+	font4 =
+	font5 =
+	font6 =
+	font7 =
+	font8 =
+	font9 =
+	font0.height = -1
+	font1.height = -1
+	font2.height = -1
+	font3.height = -1
+	font4.height = -1
+	font5.height = -1
+	font6.height = -1
+	font7.height = -1
+	font8.height = -1
+	font9.height = -1
+
+	; Glyph art used by Movelists feature
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info
+	glyphs = glyphs.sff
+
+	; Path to external module associated with this screenpack
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-info#external-modules
+	module =
+
+[Languages]
+	; Use to declare languages to show in the options menu.
+	en = English
+
+;[ja.Files]
+
+[Music]
+	title.bgm =
+	title.bgm.loop = 1
+	title.bgm.volume = 100
+	title.bgm.loopstart = 0
+	title.bgm.loopend = 0
+	title.bgm.startposition = 0
+	title.bgm.freqmul = 1.0
+	title.bgm.loopcount = -1
+
+	select.bgm =
+	select.bgm.loop = 1
+	select.bgm.volume = 100
+	select.bgm.loopstart = 0
+	select.bgm.loopend = 0
+	select.bgm.startposition = 0
+	select.bgm.freqmul = 1.0
+	select.bgm.loopcount = -1
+
+	vs.bgm =
+	vs.bgm.loop = 1
+	vs.bgm.volume = 100
+	vs.bgm.loopstart = 0
+	vs.bgm.loopend = 0
+	vs.bgm.startposition = 0
+	vs.bgm.freqmul = 1.0
+	vs.bgm.loopcount = -1
+
+	victory.bgm =
+	victory.bgm.loop = 1
+	victory.bgm.volume = 100
+	victory.bgm.loopstart = 0
+	victory.bgm.loopend = 0
+	victory.bgm.startposition = 0
+	victory.bgm.freqmul = 1.0
+	victory.bgm.loopcount = -1
+
+	option.bgm =
+	option.bgm.loop = 1
+	option.bgm.volume = 100
+	option.bgm.loopstart = 0
+	option.bgm.loopend = 0
+	option.bgm.startposition = 0
+	option.bgm.freqmul = 1.0
+	option.bgm.loopcount = -1
+
+	replay.bgm =
+	replay.bgm.loop = 1
+	replay.bgm.volume = 100
+	replay.bgm.loopstart = 0
+	replay.bgm.loopend = 0
+	replay.bgm.startposition = 0
+	replay.bgm.freqmul = 1.0
+	replay.bgm.loopcount = -1
+
+	continue.bgm =
+	continue.bgm.loop = 1
+	continue.bgm.volume = 100
+	continue.bgm.loopstart = 0
+	continue.bgm.loopend = 0
+	continue.bgm.startposition = 0
+	continue.bgm.freqmul = 1.0
+	continue.bgm.loopcount = -1
+
+	continue.end.bgm =
+	continue.end.bgm.loop = 1
+	continue.end.bgm.volume = 100
+	continue.end.bgm.loopstart = 0
+	continue.end.bgm.loopend = 0
+	continue.end.bgm.startposition = 0
+	continue.end.bgm.freqmul = 1.0
+	continue.end.bgm.loopcount = -1
+
+	results.bgm =
+	results.bgm.loop = 1
+	results.bgm.volume = 100
+	results.bgm.loopstart = 0
+	results.bgm.loopend = 0
+	results.bgm.startposition = 0
+	results.bgm.freqmul = 1.0
+	results.bgm.loopcount = -1
+
+	hiscore.bgm =
+	hiscore.bgm.loop = 1
+	hiscore.bgm.volume = 100
+	hiscore.bgm.loopstart = 0
+	hiscore.bgm.loopend = 0
+	hiscore.bgm.startposition = 0
+	hiscore.bgm.freqmul = 1.0
+	hiscore.bgm.loopcount = -1
+
+[Title Info]
+	fadein.time = 10
+	; Change colour that the screen will fade into or fade out from
+	fadein.col = 0, 0, 0
+	; Sets fading animation that should play instead of fade effect
+	fadein.anim = -1
+	; Plays sound at the start of fadein/fadeout
+	fadein.snd = -1, 0
+
+	fadeout.time = 10
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	; Title text rendered in main menu
+	title.font = -1, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = MAIN MENU
+	title.layerno = 0
+	title.window =
+	title.localcoord = 320, 240
+
+	menu.pos = 159, 158
+
+	; Enables Mugen menu tween (if > 0.0) and allows adjusting its factor
+	menu.tween.factor = 0.5
+	; Snaps menu when wrapping
+	menu.tween.wrap.snap = 0
+
+	menu.item.font = f-6x9.def, 0, 1, 191, 191, 191, 255, -1
+	menu.item.offset = 0, 0
+	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0
+	menu.item.angle = 0
+	menu.item.xangle = 0
+	menu.item.yangle = 0
+	menu.item.projection = orthographic
+	menu.item.focallength = 2048
+	;;menu.item.text =
+	menu.item.layerno = 0
+	menu.item.window =
+	menu.item.localcoord = 320, 240
+
+	; Uppercases all menu itemnames (including those read from bonus games DEF
+	; files and serverjoin menu names associated with IP addresses)
+	menu.item.uppercase = 0
+	menu.item.spacing = 0, 13
+	menu.item.tween.factor = 0.5
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = -1, 0
+	menu.item.bg.offset = 0, 0
+	menu.item.bg.facing = 1
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.xshear = 0
+	menu.item.bg.angle = 0
+	menu.item.bg.xangle = 0
+	menu.item.bg.yangle = 0
+	menu.item.bg.projection = orthographic
+	menu.item.bg.focallength = 2048
+	menu.item.bg.layerno = 0
+	menu.item.bg.window =
+	menu.item.bg.localcoord = 320, 240
+	menu.item.bg.spacing = 0, 0
+
+	; menu.item.bg elements are layered below text rendered with menu.itemname
+	; params Standard element is replaced with active variant when itemname is
+	; highlighted. These parameters can be also used as an alternative for a
+	; mugen font trick for displaying image instead of text based menus
+	;menu.item.bg.<itemname>.anim = -1
+	;menu.item.bg.<itemname>.spr = -1, 0
+	;menu.item.bg.<itemname>.offset = 0, 0
+	;menu.item.bg.<itemname>.facing = 1
+	;menu.item.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.bg.<itemname>.xshear = 0
+	;menu.item.bg.<itemname>.angle = 0
+	;menu.item.bg.<itemname>.xangle = 0
+	;menu.item.bg.<itemname>.yangle = 0
+	;menu.item.bg.<itemname>.projection = orthographic
+	;menu.item.bg.<itemname>.focallength = 2048
+	;menu.item.bg.<itemname>.layerno = 0
+	;menu.item.bg.<itemname>.window =
+	;menu.item.bg.<itemname>.localcoord = 320, 240
+	;menu.item.bg.<itemname>.spacing = 0, 0
+
+	menu.item.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	menu.item.active.offset = 0, 0
+	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0
+	menu.item.active.angle = 0
+	menu.item.active.xangle = 0
+	menu.item.active.yangle = 0
+	menu.item.active.projection = orthographic
+	menu.item.active.focallength = 2048
+	;;menu.item.active.text =
+	menu.item.active.layerno = 0
+	menu.item.active.window =
+	menu.item.active.localcoord = 320, 240
+
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = -1, 0
+	menu.item.active.bg.offset = 0, 0
+	menu.item.active.bg.facing = 1
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.xshear = 0
+	menu.item.active.bg.angle = 0
+	menu.item.active.bg.xangle = 0
+	menu.item.active.bg.yangle = 0
+	menu.item.active.bg.projection = orthographic
+	menu.item.active.bg.focallength = 2048
+	menu.item.active.bg.layerno = 0
+	menu.item.active.bg.window =
+	menu.item.active.bg.localcoord = 320, 240
+	menu.item.active.bg.spacing = 0, 0
+
+	;menu.item.active.bg.<itemname>.anim = -1
+	;menu.item.active.bg.<itemname>.spr = -1, 0
+	;menu.item.active.bg.<itemname>.offset = 0, 0
+	;menu.item.active.bg.<itemname>.facing = 1
+	;menu.item.active.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.active.bg.<itemname>.xshear = 0
+	;menu.item.active.bg.<itemname>.angle = 0
+	;menu.item.active.bg.<itemname>.xangle = 0
+	;menu.item.active.bg.<itemname>.yangle = 0
+	;menu.item.active.bg.<itemname>.projection = orthographic
+	;menu.item.active.bg.<itemname>.focallength = 2048
+	;menu.item.active.bg.<itemname>.layerno = 0
+	;menu.item.active.bg.<itemname>.window =
+	;menu.item.active.bg.<itemname>.localcoord = 320, 240
+	;menu.item.active.bg.<itemname>.spacing = 0, 0
+
+	menu.window.margins.y = 12, 8
+	menu.window.visibleitems = 5
+
+	menu.boxcursor.visible = 1
+	menu.boxcursor.coords = -40, -10, 39, 2
+	menu.boxcursor.col = 255, 255, 255
+	menu.boxcursor.layerno = 0
+	menu.boxcursor.localcoord = 320, 240
+	menu.boxcursor.pulse = 30, 20, 30
+	; Enables boxcursor tween (if > 0.0) and allows adjusting its factor
+	menu.boxcursor.tween.factor = 0.5
+	; Snap boxcursor on menu section change
+	menu.boxcursor.tween.snap = 0
+	; Snaps boxcursor when the menu is wrapping
+	menu.boxcursor.tween.wrap.snap = 0
+
+	; boxbg is an automatically generated overlay around itemnames, based on
+	; values assigned to menu.pos and menu.boxcursor.coords parameters.
+	menu.boxbg.visible = 0
+	menu.boxbg.col = 0, 0, 0
+	menu.boxbg.alpha = 0, 128
+	menu.boxbg.layerno = 0
+	menu.boxbg.localcoord = 320, 240
+
+	; This art is rendered only if there are more menu itemanames to display
+	; than allowed by menu.window.visibleitems. Meant to be used as a visual
+	; feedback that moving cursor up or down can reveal more items.
+	menu.arrow.up.anim = -1
+	menu.arrow.up.spr = -1, 0
+	menu.arrow.up.offset = 0, 0
+	menu.arrow.up.facing = 1
+	menu.arrow.up.scale = 1.0, 1.0
+	menu.arrow.up.xshear = 0
+	menu.arrow.up.angle = 0
+	menu.arrow.up.xangle = 0
+	menu.arrow.up.yangle = 0
+	menu.arrow.up.projection = orthographic
+	menu.arrow.up.focallength = 2048
+	menu.arrow.up.layerno = 0
+	menu.arrow.up.window =
+	menu.arrow.up.localcoord = 320, 240
+
+	menu.arrow.down.anim = -1
+	menu.arrow.down.spr = -1, 0
+	menu.arrow.down.offset = 0, 0
+	menu.arrow.down.facing = 1
+	menu.arrow.down.scale = 1.0, 1.0
+	menu.arrow.down.xshear = 0
+	menu.arrow.down.angle = 0
+	menu.arrow.down.xangle = 0
+	menu.arrow.down.yangle = 0
+	menu.arrow.down.projection = orthographic
+	menu.arrow.down.focallength = 2048
+	menu.arrow.down.layerno = 0
+	menu.arrow.down.window =
+	menu.arrow.down.localcoord = 320, 240
+
+	; Uppercases all title itemnames
+	menu.title.uppercase = 1
+
+	; Menu item unlocking. Text assigned to this parameter is read as a pure Lua
+	; code and works in similar fashion to character and stages unlocking (item
+	; will be visible only if the parameter is missing or if it returns true).
+	; Menu items unlocking is runtime permanent (once unlocked, the condition
+	; won't be checked again, until the game is restarted).
+	;menu.unlock.<itemname> = true
+
+	; Keys responsible for menu movement
+	menu.next.key = $D, $F
+	menu.previous.key = $U, $B
+	; Key for selecting menu item
+	menu.done.key = a, b, c, x, y, z, s
+	menu.cancel.key = m
+	; Key for displaying highlighted mode hiscore data (if available)
+	menu.hiscore.key = s
+
+	; If custom menu is not declared, following menu is loaded by default:
+	menu.itemname.arcade = ARCADE
+	menu.itemname.versus = VS MODE
+	menu.itemname.teamarcade = TEAM ARCADE
+	menu.itemname.teamversus = TEAM VS
+	menu.itemname.teamcoop = TEAM CO-OP
+	menu.itemname.survival = SURVIVAL
+	menu.itemname.survivalcoop = SURVIVAL CO-OP
+	menu.itemname.training = TRAINING
+	menu.itemname.watch = WATCH
+	menu.itemname.options = OPTIONS
+	menu.itemname.exit = EXIT
+	;menu.itemname.versuscoop = VERSUS CO-OP
+	;menu.itemname.freebattle = QUICK MATCH
+	;menu.itemname.storymode = STORY MODE
+	;menu.itemname.serverhost = HOST GAME
+	;menu.itemname.serverjoin = JOIN GAME
+	;menu.itemname.joinadd = NEW ADDRESS
+	;menu.itemname.netplayversus = VERSUS 2P
+	;menu.itemname.netplayteamcoop = ARCADE CO-OP
+	;menu.itemname.netplaysurvivalcoop = SURVIVAL CO-OP
+	;menu.itemname.timeattack = TIME ATTACK
+	;menu.itemname.bonusgames = BONUS GAMES
+	;menu.itemname.replay = REPLAY
+	;menu.itemname.back = BACK
+
+	cursor.move.snd = 100, 0
+	cursor.done.snd = 100, 1
+	; Sound played upon itemname selection
+	;cursor.done.<itemname>.snd = -1, 0
+	cancel.snd = 100, 2
+
+	; Loading text rendered during initial loading (black screen)
+	loading.font = default-3x5.def, 0, -1, 191, 191, 191, 255, -1
+	loading.offset = 0, 0
+	loading.scale = 1.0, 1.0
+	loading.xshear = 0
+	loading.angle = 0
+	loading.xangle = 0
+	loading.yangle = 0
+	loading.projection = orthographic
+	loading.focallength = 2048
+	loading.text = LOADING...
+	loading.layerno = 0
+	loading.window =
+	loading.localcoord =
+
+	; Footer parameters control rendering of engine version info. Separated into
+	; 3 elements to allow left/center/right text align at the same time.
+	; Unless overridden, offsets and version text are set when loading the motif.
+	footer.title.font = default-3x5.def, 0, 1, 191, 191, 191, 255, -1
+	footer.title.offset =
+	footer.title.scale = 1.0, 1.0
+	footer.title.xshear = 0
+	footer.title.angle = 0
+	footer.title.xangle = 0
+	footer.title.yangle = 0
+	footer.title.projection = orthographic
+	footer.title.focallength = 2048
+	footer.title.text = I.K.E.M.E.N. GO
+	footer.title.layerno = 0
+	footer.title.window =
+	footer.title.localcoord =
+
+	footer.info.font = default-3x5.def, 0, 0, 191, 191, 191, 255, -1
+	footer.info.offset =
+	footer.info.scale = 1.0, 1.0
+	footer.info.xshear = 0
+	footer.info.angle = 0
+	footer.info.xangle = 0
+	footer.info.yangle = 0
+	footer.info.projection = orthographic
+	footer.info.focallength = 2048
+	footer.info.text = Press F1 for info
+	footer.info.layerno = 0
+	footer.info.window =
+	footer.info.localcoord =
+
+	footer.version.font = default-3x5.def, 0, -1, 191, 191, 191, 255, -1
+	footer.version.offset =
+	footer.version.scale = 1.0, 1.0
+	footer.version.xshear = 0
+	footer.version.angle = 0
+	footer.version.xangle = 0
+	footer.version.yangle = 0
+	footer.version.projection = orthographic
+	footer.version.focallength = 2048
+	footer.version.text =
+	footer.version.layerno = 0
+	footer.version.window =
+	footer.version.localcoord =
+
+	footer.overlay.col = 0, 0, 64
+	footer.overlay.alpha = 255, 100
+	footer.overlay.layerno = 0
+	footer.overlay.window =
+	footer.overlay.localcoord =
+
+	; Controls screen rendered during establishing connection with other player
+	connecting.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	connecting.offset = 160, 120
+	connecting.scale = 1.0, 1.0
+	connecting.xshear = 0
+	connecting.angle = 0
+	connecting.xangle = 0
+	connecting.yangle = 0
+	connecting.projection = orthographic
+	connecting.focallength = 2048
+	;;connecting.text =
+	connecting.text = Waiting for player 2... (%s)
+	connecting.join.text = Now connecting to %s... (%s)
+	connecting.layerno = 0
+	connecting.window =
+	connecting.localcoord = 320, 240
+
+	connecting.overlay.col = 0, 0, 0
+	connecting.overlay.alpha = 0, 128
+	connecting.overlay.layerno = 0
+	connecting.overlay.window =
+	connecting.overlay.localcoord = 320, 240
+
+	; Controls screen rendered during adding new serverjoin IP address
+	textinput.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	textinput.offset = 25, 33
+	textinput.scale = 1.0, 1.0
+	textinput.xshear = 0
+	textinput.angle = 0
+	textinput.xangle = 0
+	textinput.yangle = 0
+	textinput.projection = orthographic
+	textinput.focallength = 2048
+	;;textinput.text =
+	textinput.name.text = Enter Host display name, e.g. John.\nExisting entries can be removed with DELETE button.
+	textinput.address.text = Enter Host IP address, e.g. 127.0.0.1\nCopied text can be pasted with INSERT button.
+	textinput.layerno = 0
+	textinput.window =
+	textinput.localcoord = 320, 240
+
+	textinput.overlay.col = 0, 0, 0
+	textinput.overlay.alpha = 0, 128
+	textinput.overlay.layerno = 0
+	textinput.overlay.window =
+	textinput.overlay.localcoord = 320, 240
+
+[TitleBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 0
+	localcoord =
+
+[InfoBox]
+	title.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text =
+	title.layerno = 0
+	title.window =
+	title.localcoord = 320, 240
+
+	text.font = default-3x5.def, 0, 1, 191, 191, 191, 255, -1
+	text.offset = 25, 131
+	text.scale = 1.0, 1.0
+	text.xshear = 0
+	text.angle = 0
+	text.xangle = 0
+	text.yangle = 0
+	text.projection = orthographic
+	text.focallength = 2048
+	;;text.text =
+	text.layerno = 0
+	text.window =
+	text.localcoord = 320, 240
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 0
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+[Infobox Text]
+Welcome to I.K.E.M.E.N GO engine! (%s - %s)
+
+* This is a public development release, for testing purposes.
+* This build may contain bugs and incomplete features.
+* Your help and cooperation are appreciated!
+* Source code: https://github.com/ikemen-engine/Ikemen-GO
+* Bug reports: https://github.com/ikemen-engine/Ikemen-GO/issues
+* Docs: https://github.com/ikemen-engine/Ikemen-GO/wiki
+
+[Select Info]
+	fadein.time = 10
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 10
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	rows = 2
+	columns = 5
+	wrapping = 0
+	pos = 90, 170
+	showemptyboxes = 0
+	moveoveremptyboxes = 0
+	; 1 to allow cursor to skip over empty boxes (lookup for first valid slot)
+	searchemptyboxesup = 0
+	searchemptyboxesdown = 0
+
+	cell.size = 27, 27
+	; In Mugen spacing accepts only x value which is used for both coordinates
+	cell.spacing = 2, 2
+
+	cell.up.key = $U
+	cell.down.key = $D
+	cell.left.key = $B
+	cell.right.key = $F
+
+	cell.bg.anim = -1
+	cell.bg.spr = -1, 0
+	cell.bg.offset = 0, 0
+	cell.bg.facing = 1
+	cell.bg.scale = 1.0, 1.0
+	cell.bg.xshear = 0
+	cell.bg.angle = 0
+	cell.bg.xangle = 0
+	cell.bg.yangle = 0
+	cell.bg.projection = orthographic
+	cell.bg.focallength = 2048
+	cell.bg.layerno = 0
+	cell.bg.window =
+	cell.bg.localcoord = 320, 240
+
+	cell.random.anim = -1
+	cell.random.spr = -1, 0
+	cell.random.offset = 0, 0
+	cell.random.facing = 1
+	cell.random.scale = 1.0, 1.0
+	cell.random.xshear = 0
+	cell.random.angle = 0
+	cell.random.xangle = 0
+	cell.random.yangle = 0
+	cell.random.projection = orthographic
+	cell.random.focallength = 2048
+	cell.random.layerno = 0
+	cell.random.window =
+	cell.random.localcoord = 320, 240
+
+	cell.random.switchtime = 4
+
+	; <col>-<row> cell variants replace standard ones on per cell basis.
+	; Asterisk <col-*> or <*-row> can be used as a wildcard to apply changes to entire columns or rows.
+	; <*-*> can be used to aplly changes to all cells.
+	; Portraits, cell backgrounds, and cursors inherit all cell transformations.
+	;cell.<col>-<row>.spacing = 0, 0
+	;cell.<col>-<row>.offset = 0, 0
+	;cell.<col>-<row>.facing = 0
+	;cell.<col>-<row>.scale = 1.0, 1.0
+	;cell.<col>-<row>.xshear = 0
+	;cell.<col>-<row>.angle = 0
+	;cell.<col>-<row>.xangle = 0
+	;cell.<col>-<row>.yangle = 0
+	;cell.<col>-<row>.projection = orthographic
+	;cell.<col>-<row>.focallength = 2048
+	;cell.<col>-<row>.skip = 0
+
+	; All cursor parameters can be specified for player 1-8.
+	; p3-p8 assignments defaults to p1 and p2 values, if not specified
+	p1.cursor.startcell = 0, 0
+	; Enables the Mugen 1.1 cursor tween (if > 0) and allows adjusting its x and y tween factors
+	p1.cursor.tween.factor = 0.5, 0.5
+	; Snaps the cursor when wrapping
+	p1.cursor.tween.wrap.snap = 0
+	; Reset cursor animation when changing cells
+	p1.cursor.reset = 0
+	; When in team modes and not in co-op, it makes the cursor stay on each selected team member
+	; When set to 0, the done cursor is only shown on the last member at the end of the selection
+	; Only used by P1 and P2
+	p1.cursor.persist = 1
+
+	p1.cursor.active.anim = -1
+	p1.cursor.active.spr = -1, 0
+	p1.cursor.active.offset = 0, 0
+	p1.cursor.active.facing = 1
+	p1.cursor.active.scale = 1.0, 1.0
+	p1.cursor.active.xshear = 0
+	p1.cursor.active.angle = 0
+	p1.cursor.active.xangle = 0
+	p1.cursor.active.yangle = 0
+	p1.cursor.active.projection = orthographic
+	p1.cursor.active.focallength = 2048
+	p1.cursor.active.layerno = 0
+	p1.cursor.active.window =
+	p1.cursor.active.localcoord = 320, 240
+
+	; <col>-<row> cursor variants replace standard ones on per cell basis.
+	; Undefined params defaults to p<pn>.cursor.active/p<pn>.cursor.done values
+	;p1.cursor.active.<col>-<row>.anim = -1
+	;p1.cursor.active.<col>-<row>.spr = -1, 0
+	;p1.cursor.active.<col>-<row>.offset = 0, 0
+	;p1.cursor.active.<col>-<row>.facing = 1
+	;p1.cursor.active.<col>-<row>.scale = 1.0, 1.0
+	;p1.cursor.active.<col>-<row>.xshear = 0
+	;p1.cursor.active.<col>-<row>.angle = 0
+	;p1.cursor.active.<col>-<row>.xangle = 0
+	;p1.cursor.active.<col>-<row>.yangle = 0
+	;p1.cursor.active.<col>-<row>.projection = orthographic
+	;p1.cursor.active.<col>-<row>.focallength = 2048
+	;p1.cursor.active.<col>-<row>.layerno = 0
+	;p1.cursor.active.<col>-<row>.window =
+	;p1.cursor.active.<col>-<row>.localcoord = 320, 240
+
+	p1.cursor.done.anim = -1
+	p1.cursor.done.spr = -1, 0
+	p1.cursor.done.offset = 0, 0
+	p1.cursor.done.facing = 1
+	p1.cursor.done.scale = 1.0, 1.0
+	p1.cursor.done.xshear = 0
+	p1.cursor.done.angle = 0
+	p1.cursor.done.xangle = 0
+	p1.cursor.done.yangle = 0
+	p1.cursor.done.projection = orthographic
+	p1.cursor.done.focallength = 2048
+	p1.cursor.done.layerno = 0
+	p1.cursor.done.window =
+	p1.cursor.done.localcoord = 320, 240
+
+	;p1.cursor.done.<col>-<row>.anim = -1
+	;p1.cursor.done.<col>-<row>.spr = -1, 0
+	;p1.cursor.done.<col>-<row>.offset = 0, 0
+	;p1.cursor.done.<col>-<row>.facing = 1
+	;p1.cursor.done.<col>-<row>.scale = 1.0, 1.0
+	;p1.cursor.done.<col>-<row>.xshear = 0
+	;p1.cursor.done.<col>-<row>.angle = 0
+	;p1.cursor.done.<col>-<row>.xangle = 0
+	;p1.cursor.done.<col>-<row>.yangle = 0
+	;p1.cursor.done.<col>-<row>.projection = orthographic
+	;p1.cursor.done.<col>-<row>.focallength = 2048
+	;p1.cursor.done.<col>-<row>.layerno = 0
+	;p1.cursor.done.<col>-<row>.window =
+	;p1.cursor.done.<col>-<row>.localcoord = 320, 240
+
+	p1.cursor.move.snd = 100, 0
+	p1.cursor.done.snd = 100, 1
+	p1.random.move.snd = 100, 0
+
+	p1.face.anim = -1
+	p1.face.spr = 9000, 1
+	p1.face.offset = 0, 0
+	p1.face.facing = 1
+	p1.face.scale = 1.0, 1.0
+	p1.face.xshear = 0
+	p1.face.angle = 0
+	p1.face.xangle = 0
+	p1.face.yangle = 0
+	p1.face.projection = orthographic
+	p1.face.focallength = 2048
+	p1.face.layerno = 0
+	p1.face.window =
+	p1.face.localcoord = 320, 240
+	; Set to 1 to apply selected palette to Portraits
+	p1.face.applypal = 0
+	; Controls stacked portrait render order (int)
+	p1.face.draworder = 0
+
+	; Done variants replace standard portrait once character is selected
+	; They inherit values from standard portraits if not defined.
+	p1.face.done.anim = -1
+	p1.face.done.spr = -1, 0
+	p1.face.done.offset = 0, 0
+	p1.face.done.facing = 1
+	p1.face.done.scale = 1.0, 1.0
+	p1.face.done.xshear = 0
+	p1.face.done.angle = 0
+	p1.face.done.xangle = 0
+	p1.face.done.yangle = 0
+	p1.face.done.projection = orthographic
+	p1.face.done.focallength = 2048
+	p1.face.done.layerno = 0
+	p1.face.done.window =
+	p1.face.done.localcoord = 320, 240
+	p1.face.done.applypal = 0
+	p1.face.done.draworder = 0
+
+	; If defined draws a sprite or anim from the screenpack during char random
+	; select instead of cycling portraits.
+	p1.face.random.anim = -1
+	p1.face.random.spr = -1, 1
+	p1.face.random.offset = 0, 0
+	p1.face.random.facing = 1
+	p1.face.random.scale = 1.0, 1.0
+	p1.face.random.xshear = 0
+	p1.face.random.angle = 0
+	p1.face.random.xangle = 0
+	p1.face.random.yangle = 0
+	p1.face.random.projection = orthographic
+	p1.face.random.focallength = 2048
+	p1.face.random.layerno = 0
+	p1.face.random.window =
+	p1.face.random.localcoord = 320, 240
+
+	p1.face.velocity = 0, 0
+	p1.face.maxdist = 0, 0
+	p1.face.accel = 0, 0
+	p1.face.friction = 1, 1
+	p1.face.pos = 0, 0
+	; Controls max number of portraits to render. If set to 1, last active
+	; member's portrait has priority
+	p1.face.num = 1
+	; Spacing between portraits.
+	p1.face.spacing = 0, 0
+	; Set to 1 to enable automatic spacing adjustment based on team size
+	; (starting position adjusted by values assigned to face.num, face.spacing,
+	; and actual team count in a given match)
+	p1.face.padding = 0
+
+	; Additional portrait layered under standard ones. Last selected character
+	; takes priority.
+	p1.face2.anim = -1
+	p1.face2.spr = -1, 0
+	p1.face2.offset = 0, 0
+	p1.face2.facing = 1
+	p1.face2.scale = 1.0, 1.0
+	p1.face2.xshear = 0
+	p1.face2.angle = 0
+	p1.face2.xangle = 0
+	p1.face2.yangle = 0
+	p1.face2.projection = orthographic
+	p1.face2.focallength = 2048
+	p1.face2.layerno = 0
+	p1.face2.window =
+	p1.face2.localcoord = 320, 240
+	p1.face2.applypal = 0
+	p1.face2.draworder = 0
+
+	p1.face2.done.anim = -1
+	p1.face2.done.spr = -1, 0
+	p1.face2.done.offset = 0, 0
+	p1.face2.done.facing = 1
+	p1.face2.done.scale = 1.0, 1.0
+	p1.face2.done.xshear = 0
+	p1.face2.done.angle = 0
+	p1.face2.done.xangle = 0
+	p1.face2.done.yangle = 0
+	p1.face2.done.projection = orthographic
+	p1.face2.done.focallength = 2048
+	p1.face2.done.layerno = 0
+	p1.face2.done.window =
+	p1.face2.done.localcoord = 320, 240
+	p1.face2.done.applypal = 0
+	p1.face2.done.draworder = 0
+
+	p1.face2.random.anim = -1
+	p1.face2.random.spr = -1, 1
+	p1.face2.random.offset = 0, 0
+	p1.face2.random.facing = 1
+	p1.face2.random.scale = 1.0, 1.0
+	p1.face2.random.xshear = 0
+	p1.face2.random.angle = 0
+	p1.face2.random.xangle = 0
+	p1.face2.random.yangle = 0
+	p1.face2.random.projection = orthographic
+	p1.face2.random.focallength = 2048
+	p1.face2.random.layerno = 0
+	p1.face2.random.window =
+	p1.face2.random.localcoord = 320, 240
+
+	p1.face2.velocity = 0, 0
+	p1.face2.maxdist = 0, 0
+	p1.face2.accel = 0, 0
+	p1.face2.friction = 1, 1
+	p1.face2.pos = 0, 0
+	p1.face2.num = 1
+	p1.face2.spacing = 0, 0
+	p1.face2.padding = 0
+
+	p1.name.font = jg.fnt, 4, 1, 255, 255, 255, 255, -1
+	p1.name.offset = 0, 0
+	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0
+	p1.name.angle = 0
+	p1.name.xangle = 0
+	p1.name.yangle = 0
+	p1.name.projection = orthographic
+	p1.name.focallength = 2048
+	;;p1.name.text =
+	p1.name.layerno = 0
+	p1.name.window =
+	p1.name.localcoord = 320, 240
+
+	p1.name.num = 4
+	p1.name.spacing = 0, 14
+
+	p1.name.random.text = Random
+
+	; Sound triggered when swapping slots (see slot feature in select.def)
+	p1.swap.snd = -1, 0
+	; Sound triggered when particular character is selected (data read from
+	; character's SND file)
+	p1.select.snd = -1, 0
+
+	p1.teammenu.pos = 0, 0
+
+	; teammenu.bg elements are layered below teammenu.itemname text. Standard
+	; element is replaced with active variant when itemname is highlighted.
+	p1.teammenu.bg.anim = -1
+	p1.teammenu.bg.spr = -1, 0
+	p1.teammenu.bg.offset = 0, 0
+	p1.teammenu.bg.facing = 1
+	p1.teammenu.bg.scale = 1.0, 1.0
+	p1.teammenu.bg.xshear = 0
+	p1.teammenu.bg.angle = 0
+	p1.teammenu.bg.xangle = 0
+	p1.teammenu.bg.yangle = 0
+	p1.teammenu.bg.projection = orthographic
+	p1.teammenu.bg.focallength = 2048
+	p1.teammenu.bg.layerno = 0
+	p1.teammenu.bg.window =
+	p1.teammenu.bg.localcoord = 320, 240
+
+	;p1.teammenu.bg.<gamemode>-<itemname>.anim = -1
+	;p1.teammenu.bg.<gamemode>-<itemname>.spr = -1, 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.offset = 0, 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.facing = 1
+	;p1.teammenu.bg.<gamemode>-<itemname>.scale = 1.0, 1.0
+	;p1.teammenu.bg.<gamemode>-<itemname>.xshear = 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.angle = 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.xangle = 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.yangle = 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.projection = orthographic
+	;p1.teammenu.bg.<gamemode>-<itemname>.focallength = 2048
+	;p1.teammenu.bg.<gamemode>-<itemname>.layerno = 0
+	;p1.teammenu.bg.<gamemode>-<itemname>.window =
+	;p1.teammenu.bg.<gamemode>-<itemname>.localcoord = 320, 240
+
+	;p1.teammenu.bg.<itemname>.anim = -1
+	;p1.teammenu.bg.<itemname>.spr = -1, 0
+	;p1.teammenu.bg.<itemname>.offset = 0, 0
+	;p1.teammenu.bg.<itemname>.facing = 1
+	;p1.teammenu.bg.<itemname>.scale = 1.0, 1.0
+	;p1.teammenu.bg.<itemname>.xshear = 0
+	;p1.teammenu.bg.<itemname>.angle = 0
+	;p1.teammenu.bg.<itemname>.xangle = 0
+	;p1.teammenu.bg.<itemname>.yangle = 0
+	;p1.teammenu.bg.<itemname>.projection = orthographic
+	;p1.teammenu.bg.<itemname>.focallength = 2048
+	;p1.teammenu.bg.<itemname>.layerno = 0
+	;p1.teammenu.bg.<itemname>.window =
+	;p1.teammenu.bg.<itemname>.localcoord = 320, 240
+
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.anim = -1
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.spr = -1, 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.offset = 0, 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.facing = 1
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.scale = 1.0, 1.0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.xshear = 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.angle = 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.xangle = 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.yangle = 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.projection = orthographic
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.focallength = 2048
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.layerno = 0
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.window =
+	;p1.teammenu.active.bg.<gamemode>-<itemname>.localcoord = 320, 240
+
+	;p1.teammenu.active.bg.<itemname>.anim = -1
+	;p1.teammenu.active.bg.<itemname>.spr = -1, 0
+	;p1.teammenu.active.bg.<itemname>.offset = 0, 0
+	;p1.teammenu.active.bg.<itemname>.facing = 1
+	;p1.teammenu.active.bg.<itemname>.scale = 1.0, 1.0
+	;p1.teammenu.active.bg.<itemname>.xshear = 0
+	;p1.teammenu.active.bg.<itemname>.angle = 0
+	;p1.teammenu.active.bg.<itemname>.layerno = 0
+	;p1.teammenu.active.bg.<itemname>.window =
+	;p1.teammenu.active.bg.<itemname>.localcoord = 320, 240
+
+	p1.teammenu.selftitle.anim = -1
+	p1.teammenu.selftitle.spr = -1, 0
+	p1.teammenu.selftitle.offset = 0, 0
+	p1.teammenu.selftitle.facing = 1
+	p1.teammenu.selftitle.scale = 1.0, 1.0
+	p1.teammenu.selftitle.xshear = 0
+	p1.teammenu.selftitle.angle = 0
+	p1.teammenu.selftitle.xangle = 0
+	p1.teammenu.selftitle.yangle = 0
+	p1.teammenu.selftitle.projection = orthographic
+	p1.teammenu.selftitle.focallength = 2048
+	p1.teammenu.selftitle.layerno = 0
+	p1.teammenu.selftitle.window =
+	p1.teammenu.selftitle.localcoord = 320, 240
+
+	p1.teammenu.selftitle.font = -1, 0, 1, 255, 255, 255, 255, -1
+	p1.teammenu.selftitle.xshear = 0
+	p1.teammenu.selftitle.angle = 0
+	p1.teammenu.selftitle.xangle = 0
+	p1.teammenu.selftitle.yangle = 0
+	p1.teammenu.selftitle.projection = orthographic
+	p1.teammenu.selftitle.focallength = 2048
+	p1.teammenu.selftitle.text =
+
+	p1.teammenu.enemytitle.anim = -1
+	p1.teammenu.enemytitle.spr = -1, 0
+	p1.teammenu.enemytitle.offset = 0, 0
+	p1.teammenu.enemytitle.facing = 1
+	p1.teammenu.enemytitle.scale = 1.0, 1.0
+	p1.teammenu.enemytitle.xshear = 0
+	p1.teammenu.enemytitle.angle = 0
+	p1.teammenu.enemytitle.xangle = 0
+	p1.teammenu.enemytitle.yangle = 0
+	p1.teammenu.enemytitle.projection = orthographic
+	p1.teammenu.enemytitle.focallength = 2048
+	p1.teammenu.enemytitle.layerno = 0
+	p1.teammenu.enemytitle.window =
+	p1.teammenu.enemytitle.localcoord = 320, 240
+
+	p1.teammenu.enemytitle.font = -1, 0, 1, 255, 255, 255, 255, -1
+	p1.teammenu.enemytitle.xshear = 0
+	p1.teammenu.enemytitle.angle = 0
+	p1.teammenu.enemytitle.xangle = 0
+	p1.teammenu.enemytitle.yangle = 0
+	p1.teammenu.enemytitle.projection = orthographic
+	p1.teammenu.enemytitle.focallength = 2048
+	p1.teammenu.enemytitle.text =
+
+	p1.teammenu.move.snd = 100, 0
+	p1.teammenu.value.snd = 100, 0
+	p1.teammenu.done.snd = 100, 1
+
+	p1.teammenu.done.key = a, b, c, x, y, z, s
+	p1.teammenu.next.key = $D
+	p1.teammenu.previous.key = $U
+	p1.teammenu.add.key = $F
+	p1.teammenu.subtract.key = $B
+
+	p1.teammenu.value.icon.anim = -1
+	p1.teammenu.value.icon.spr = -1, 0
+	p1.teammenu.value.icon.offset = 0, 0
+	p1.teammenu.value.icon.facing = 1
+	p1.teammenu.value.icon.scale = 1.0, 1.0
+	p1.teammenu.value.icon.xshear = 0
+	p1.teammenu.value.icon.angle = 0
+	p1.teammenu.value.icon.xangle = 0
+	p1.teammenu.value.icon.yangle = 0
+	p1.teammenu.value.icon.projection = orthographic
+	p1.teammenu.value.icon.focallength = 2048
+	p1.teammenu.value.icon.layerno = 0
+	p1.teammenu.value.icon.window =
+	p1.teammenu.value.icon.localcoord = 320, 240
+
+	p1.teammenu.value.empty.icon.anim = -1
+	p1.teammenu.value.empty.icon.spr = -1, 0
+	p1.teammenu.value.empty.icon.offset = 0, 0
+	p1.teammenu.value.empty.icon.facing = 1
+	p1.teammenu.value.empty.icon.scale = 1.0, 1.0
+	p1.teammenu.value.empty.icon.xshear = 0
+	p1.teammenu.value.empty.icon.angle = 0
+	p1.teammenu.value.empty.icon.xangle = 0
+	p1.teammenu.value.empty.icon.yangle = 0
+	p1.teammenu.value.empty.icon.projection = orthographic
+	p1.teammenu.value.empty.icon.focallength = 2048
+	p1.teammenu.value.empty.icon.layerno = 0
+	p1.teammenu.value.empty.icon.window =
+	p1.teammenu.value.empty.icon.localcoord = 320, 240
+
+	p1.teammenu.value.spacing = 6, 0
+
+	p1.teammenu.item.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p1.teammenu.item.offset = 0, 0
+	p1.teammenu.item.scale = 1.0, 1.0
+	p1.teammenu.item.xshear = 0
+	p1.teammenu.item.angle = 0
+	p1.teammenu.item.xangle = 0
+	p1.teammenu.item.yangle = 0
+	p1.teammenu.item.projection = orthographic
+	p1.teammenu.item.focallength = 2048
+	;;p1.teammenu.item.text =
+	p1.teammenu.item.layerno = 0
+	p1.teammenu.item.window =
+	p1.teammenu.item.localcoord = 320, 240
+
+	p1.teammenu.item.uppercase = 0
+	p1.teammenu.item.spacing = 0, 15
+	p1.teammenu.item.tween.factor = 0.5
+
+	p1.teammenu.item.active.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p1.teammenu.item.active.offset = 0, 0
+	p1.teammenu.item.active.scale = 1.0, 1.0
+	p1.teammenu.item.active.xshear = 0
+	p1.teammenu.item.active.angle = 0
+	p1.teammenu.item.active.xangle = 0
+	p1.teammenu.item.active.yangle = 0
+	p1.teammenu.item.active.projection = orthographic
+	p1.teammenu.item.active.focallength = 2048
+	;;p1.teammenu.item.active.text =
+	p1.teammenu.item.active.layerno = 0
+	p1.teammenu.item.active.window =
+	p1.teammenu.item.active.localcoord = 320, 240
+
+	p1.teammenu.item.active.switchtime = 2
+
+	p1.teammenu.item.active2.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p1.teammenu.item.active2.offset = 0, 0
+	p1.teammenu.item.active2.scale = 1.0, 1.0
+	p1.teammenu.item.active2.xshear = 0
+	p1.teammenu.item.active2.angle = 0
+	p1.teammenu.item.active2.xangle = 0
+	p1.teammenu.item.active2.yangle = 0
+	p1.teammenu.item.active2.projection = orthographic
+	p1.teammenu.item.active2.focallength = 2048
+	;;p1.teammenu.item.active2.text =
+	p1.teammenu.item.active2.layerno = 0
+	p1.teammenu.item.active2.window =
+	p1.teammenu.item.active2.localcoord = 320, 240
+
+	p1.teammenu.item.cursor.anim = -1
+	p1.teammenu.item.cursor.spr = -1, 0
+	p1.teammenu.item.cursor.offset = 0, 0
+	p1.teammenu.item.cursor.facing = 1
+	p1.teammenu.item.cursor.scale = 1.0, 1.0
+	p1.teammenu.item.cursor.xshear = 0
+	p1.teammenu.item.cursor.angle = 0
+	p1.teammenu.item.cursor.xangle = 0
+	p1.teammenu.item.cursor.yangle = 0
+	p1.teammenu.item.cursor.projection = orthographic
+	p1.teammenu.item.cursor.focallength = 2048
+	p1.teammenu.item.cursor.layerno = 0
+	p1.teammenu.item.cursor.window =
+	p1.teammenu.item.cursor.localcoord = 320, 240
+
+	; Ratio icons offset from ratio item position, which is affected by
+	; teammenu.item.spacing (same way as value.icon/value.empty.icon elements)
+	; Ratio variants: 1: 2-1-1, 2: 1-2-1, 3: 1-1-2, 4: 2-2, 5: 3-1, 6: 1-3, 7: 4
+	p1.teammenu.ratio1.icon.anim = -1
+	p1.teammenu.ratio1.icon.spr = -1, 0
+	p1.teammenu.ratio1.icon.offset = 0, 0
+	p1.teammenu.ratio1.icon.facing = 1
+	p1.teammenu.ratio1.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio1.icon.xshear = 0
+	p1.teammenu.ratio1.icon.angle = 0
+	p1.teammenu.ratio1.icon.xangle = 0
+	p1.teammenu.ratio1.icon.yangle = 0
+	p1.teammenu.ratio1.icon.projection = orthographic
+	p1.teammenu.ratio1.icon.focallength = 2048
+	p1.teammenu.ratio1.icon.layerno = 0
+	p1.teammenu.ratio1.icon.window =
+	p1.teammenu.ratio1.icon.localcoord = 320, 240
+
+	p1.teammenu.ratio2.icon.anim = -1
+	p1.teammenu.ratio2.icon.spr = -1, 0
+	p1.teammenu.ratio2.icon.offset = 0, 0
+	p1.teammenu.ratio2.icon.facing = 1
+	p1.teammenu.ratio2.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio2.icon.xshear = 0
+	p1.teammenu.ratio2.icon.angle = 0
+	p1.teammenu.ratio2.icon.xangle = 0
+	p1.teammenu.ratio2.icon.yangle = 0
+	p1.teammenu.ratio2.icon.projection = orthographic
+	p1.teammenu.ratio2.icon.focallength = 2048
+	p1.teammenu.ratio2.icon.layerno = 0
+	p1.teammenu.ratio2.icon.window =
+	p1.teammenu.ratio2.icon.localcoord = 320, 240
+
+	p1.teammenu.ratio3.icon.anim = -1
+	p1.teammenu.ratio3.icon.spr = -1, 0
+	p1.teammenu.ratio3.icon.offset = 0, 0
+	p1.teammenu.ratio3.icon.facing = 1
+	p1.teammenu.ratio3.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio3.icon.xshear = 0
+	p1.teammenu.ratio3.icon.angle = 0
+	p1.teammenu.ratio3.icon.xangle = 0
+	p1.teammenu.ratio3.icon.yangle = 0
+	p1.teammenu.ratio3.icon.projection = orthographic
+	p1.teammenu.ratio3.icon.focallength = 2048
+	p1.teammenu.ratio3.icon.layerno = 0
+	p1.teammenu.ratio3.icon.window =
+	p1.teammenu.ratio3.icon.localcoord = 320, 240
+
+	p1.teammenu.ratio4.icon.anim = -1
+	p1.teammenu.ratio4.icon.spr = -1, 0
+	p1.teammenu.ratio4.icon.offset = 0, 0
+	p1.teammenu.ratio4.icon.facing = 1
+	p1.teammenu.ratio4.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio4.icon.xshear = 0
+	p1.teammenu.ratio4.icon.angle = 0
+	p1.teammenu.ratio4.icon.xangle = 0
+	p1.teammenu.ratio4.icon.yangle = 0
+	p1.teammenu.ratio4.icon.projection = orthographic
+	p1.teammenu.ratio4.icon.focallength = 2048
+	p1.teammenu.ratio4.icon.layerno = 0
+	p1.teammenu.ratio4.icon.window =
+	p1.teammenu.ratio4.icon.localcoord = 320, 240
+
+	p1.teammenu.ratio5.icon.anim = -1
+	p1.teammenu.ratio5.icon.spr = -1, 0
+	p1.teammenu.ratio5.icon.offset = 0, 0
+	p1.teammenu.ratio5.icon.facing = 1
+	p1.teammenu.ratio5.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio5.icon.xshear = 0
+	p1.teammenu.ratio5.icon.angle = 0
+	p1.teammenu.ratio5.icon.xangle = 0
+	p1.teammenu.ratio5.icon.yangle = 0
+	p1.teammenu.ratio5.icon.projection = orthographic
+	p1.teammenu.ratio5.icon.focallength = 2048
+	p1.teammenu.ratio5.icon.layerno = 0
+	p1.teammenu.ratio5.icon.window =
+	p1.teammenu.ratio5.icon.localcoord = 320, 240
+
+	p1.teammenu.ratio6.icon.anim = -1
+	p1.teammenu.ratio6.icon.spr = -1, 0
+	p1.teammenu.ratio6.icon.offset = 0, 0
+	p1.teammenu.ratio6.icon.facing = 1
+	p1.teammenu.ratio6.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio6.icon.xshear = 0
+	p1.teammenu.ratio6.icon.angle = 0
+	p1.teammenu.ratio6.icon.xangle = 0
+	p1.teammenu.ratio6.icon.yangle = 0
+	p1.teammenu.ratio6.icon.projection = orthographic
+	p1.teammenu.ratio6.icon.focallength = 2048
+	p1.teammenu.ratio6.icon.layerno = 0
+	p1.teammenu.ratio6.icon.window =
+	p1.teammenu.ratio6.icon.localcoord = 320, 240
+
+	p1.teammenu.ratio7.icon.anim = -1
+	p1.teammenu.ratio7.icon.spr = -1, 0
+	p1.teammenu.ratio7.icon.offset = 0, 0
+	p1.teammenu.ratio7.icon.facing = 1
+	p1.teammenu.ratio7.icon.scale = 1.0, 1.0
+	p1.teammenu.ratio7.icon.xshear = 0
+	p1.teammenu.ratio7.icon.angle = 0
+	p1.teammenu.ratio7.icon.xangle = 0
+	p1.teammenu.ratio7.icon.yangle = 0
+	p1.teammenu.ratio7.icon.projection = orthographic
+	p1.teammenu.ratio7.icon.focallength = 2048
+	p1.teammenu.ratio7.icon.layerno = 0
+	p1.teammenu.ratio7.icon.window =
+	p1.teammenu.ratio7.icon.localcoord = 320, 240
+
+	p1.palmenu.pos = 0, 0
+
+	p1.palmenu.next.key = $U, $F
+	p1.palmenu.previous.key = $D, $B
+	p1.palmenu.done.key = a, b, c, x, y, z
+	p1.palmenu.cancel.key = m
+	p1.palmenu.random.key = s
+
+	p1.palmenu.random.text = ?
+
+	p1.palmenu.value.snd = -1, 0
+	p1.palmenu.done.snd = -1, 0
+	p1.palmenu.cancel.snd = -1, 0
+
+	p1.palmenu.preview.snd = -1, 0
+	p1.palmenu.preview.anim = -1
+	p1.palmenu.preview.spr = -1, 0
+
+	p1.palmenu.number.font = -1, 1, -1, 255, 255, 255, 255, -1
+	p1.palmenu.number.offset = 0, 0
+	p1.palmenu.number.scale = 1.0, 1.0
+	p1.palmenu.number.xshear = 0
+	p1.palmenu.number.angle = 0
+	p1.palmenu.number.xangle = 0
+	p1.palmenu.number.yangle = 0
+	p1.palmenu.number.projection = orthographic
+	p1.palmenu.number.focallength = 2048
+	p1.palmenu.number.text = %d
+	p1.palmenu.number.layerno = 0
+	p1.palmenu.number.window =
+	p1.palmenu.number.localcoord = 320, 240
+
+	p1.palmenu.text.font = -1, 1, -1, 255, 255, 255, 255, -1
+	p1.palmenu.text.offset = 0, 0
+	p1.palmenu.text.scale = 1.0, 1.0
+	p1.palmenu.text.xshear = 0
+	p1.palmenu.text.angle = 0
+	p1.palmenu.text.xangle = 0
+	p1.palmenu.text.yangle = 0
+	p1.palmenu.text.projection = orthographic
+	p1.palmenu.text.focallength = 2048
+	p1.palmenu.text.text = Color
+	p1.palmenu.text.layerno = 0
+	p1.palmenu.text.window =
+	p1.palmenu.text.localcoord = 320, 240
+
+	p1.palmenu.bg.anim = -1
+	p1.palmenu.bg.spr = -1, 0
+	p1.palmenu.bg.offset = 0, 0
+	p1.palmenu.bg.facing = 1
+	p1.palmenu.bg.scale = 1.0, 1.0
+	p1.palmenu.bg.xshear = 0
+	p1.palmenu.bg.angle = 0
+	p1.palmenu.bg.xangle = 0
+	p1.palmenu.bg.yangle = 0
+	p1.palmenu.bg.projection = orthographic
+	p1.palmenu.bg.focallength = 2048
+	p1.palmenu.bg.layerno = 0
+	p1.palmenu.bg.window =
+	p1.palmenu.bg.localcoord = 320, 240
+
+	p2.cursor.startcell = 0, 4
+	p2.cursor.tween.factor = 0.5, 0.5
+	p2.cursor.reset = 0
+	p2.cursor.persist = 1
+
+	p2.cursor.active.anim = -1
+	p2.cursor.active.spr = -1, 0
+	p2.cursor.active.offset = 0, 0
+	p2.cursor.active.facing = 1
+	p2.cursor.active.scale = 1.0, 1.0
+	p2.cursor.active.xshear = 0
+	p2.cursor.active.angle = 0
+	p2.cursor.active.xangle = 0
+	p2.cursor.active.yangle = 0
+	p2.cursor.active.projection = orthographic
+	p2.cursor.active.focallength = 2048
+	p2.cursor.active.layerno = 0
+	p2.cursor.active.window =
+	p2.cursor.active.localcoord = 320, 240
+
+	;p2.cursor.active.<col>-<row>.anim = -1
+	;p2.cursor.active.<col>-<row>.spr = -1, 0
+	;p2.cursor.active.<col>-<row>.offset = 0, 0
+	;p2.cursor.active.<col>-<row>.facing = 1
+	;p2.cursor.active.<col>-<row>.scale = 1.0, 1.0
+	;p2.cursor.active.<col>-<row>.xshear = 0
+	;p2.cursor.active.<col>-<row>.angle = 0
+	;p2.cursor.active.<col>-<row>.xangle = 0
+	;p2.cursor.active.<col>-<row>.yangle = 0
+	;p2.cursor.active.<col>-<row>.projection = orthographic
+	;p2.cursor.active.<col>-<row>.focallength = 2048
+	;p2.cursor.active.<col>-<row>.layerno = 0
+	;p2.cursor.active.<col>-<row>.window =
+	;p2.cursor.active.<col>-<row>.localcoord = 320, 240
+
+	p2.cursor.done.anim = -1
+	p2.cursor.done.spr = -1, 0
+	p2.cursor.done.offset = 0, 0
+	p2.cursor.done.facing = 1
+	p2.cursor.done.scale = 1.0, 1.0
+	p2.cursor.done.xshear = 0
+	p2.cursor.done.angle = 0
+	p2.cursor.done.xangle = 0
+	p2.cursor.done.yangle = 0
+	p2.cursor.done.projection = orthographic
+	p2.cursor.done.focallength = 2048
+	p2.cursor.done.layerno = 0
+	p2.cursor.done.window =
+	p2.cursor.done.localcoord = 320, 240
+
+	;p2.cursor.done.<col>-<row>.anim = -1
+	;p2.cursor.done.<col>-<row>.spr = -1, 0
+	;p2.cursor.done.<col>-<row>.offset = 0, 0
+	;p2.cursor.done.<col>-<row>.facing = 1
+	;p2.cursor.done.<col>-<row>.scale = 1.0, 1.0
+	;p2.cursor.done.<col>-<row>.xshear = 0
+	;p2.cursor.done.<col>-<row>.angle = 0
+	;p2.cursor.done.<col>-<row>.xangle = 0
+	;p2.cursor.done.<col>-<row>.yangle = 0
+	;p2.cursor.done.<col>-<row>.projection = orthographic
+	;p2.cursor.done.<col>-<row>.focallength = 2048
+	;p2.cursor.done.<col>-<row>.layerno = 0
+	;p2.cursor.done.<col>-<row>.window =
+	;p2.cursor.done.<col>-<row>.localcoord = 320, 240
+
+	p2.cursor.move.snd = 100, 0
+	p2.cursor.done.snd = 100, 1
+	p2.random.move.snd = 100, 0
+
+	p2.cursor.blink = 1
+	; ticks between blinks when p2.cursor.blink = 1
+	p2.cursor.switchtime = 3
+
+	p2.face.anim = -1
+	p2.face.spr = 9000, 1
+	p2.face.offset = 0, 0
+	p2.face.facing = -1
+	p2.face.scale = 1.0, 1.0
+	p2.face.xshear = 0
+	p2.face.angle = 0
+	p2.face.xangle = 0
+	p2.face.yangle = 0
+	p2.face.projection = orthographic
+	p2.face.focallength = 2048
+	p2.face.layerno = 0
+	p2.face.window =
+	p2.face.localcoord = 320, 240
+	p2.face.applypal = 0
+	p2.face.draworder = 0
+
+	p2.face.done.anim = -1
+	p2.face.done.spr = -1, 0
+	p2.face.done.offset = 0, 0
+	p2.face.done.facing = -1
+	p2.face.done.scale = 1.0, 1.0
+	p2.face.done.xshear = 0
+	p2.face.done.angle = 0
+	p2.face.done.xangle = 0
+	p2.face.done.yangle = 0
+	p2.face.done.projection = orthographic
+	p2.face.done.focallength = 2048
+	p2.face.done.layerno = 0
+	p2.face.done.window =
+	p2.face.done.localcoord = 320, 240
+	p2.face.done.applypal = 0
+	p2.face.done.draworder = 0
+
+	p2.face.random.anim = -1
+	p2.face.random.spr = -1, 1
+	p2.face.random.offset = 0, 0
+	p2.face.random.facing = 1
+	p2.face.random.scale = 1.0, 1.0
+	p2.face.random.xshear = 0
+	p2.face.random.angle = 0
+	p2.face.random.xangle = 0
+	p2.face.random.yangle = 0
+	p2.face.random.projection = orthographic
+	p2.face.random.focallength = 2048
+	p2.face.random.layerno = 0
+	p2.face.random.window =
+	p2.face.random.localcoord = 320, 240
+
+	p2.face.velocity = 0, 0
+	p2.face.maxdist = 0, 0
+	p2.face.accel = 0, 0
+	p2.face.friction = 1, 1
+	p2.face.pos = 0, 0
+	p2.face.num = 1
+	p2.face.spacing = 0, 0
+	p2.face.padding = 0
+
+	p2.face2.anim = -1
+	p2.face2.spr = -1, 0
+	p2.face2.offset = 0, 0
+	p2.face2.facing = -1
+	p2.face2.scale = 1.0, 1.0
+	p2.face2.xshear = 0
+	p2.face2.angle = 0
+	p2.face2.xangle = 0
+	p2.face2.yangle = 0
+	p2.face2.projection = orthographic
+	p2.face2.focallength = 2048
+	p2.face2.layerno = 0
+	p2.face2.window =
+	p2.face2.localcoord = 320, 240
+	p2.face2.applypal = 0
+	p2.face2.draworder = 0
+
+	p2.face2.done.anim = -1
+	p2.face2.done.spr = -1, 0
+	p2.face2.done.offset = 0, 0
+	p2.face2.done.facing = -1
+	p2.face2.done.scale = 1.0, 1.0
+	p2.face2.done.xshear = 0
+	p2.face2.done.angle = 0
+	p2.face2.done.xangle = 0
+	p2.face2.done.yangle = 0
+	p2.face2.done.projection = orthographic
+	p2.face2.done.focallength = 2048
+	p2.face2.done.layerno = 0
+	p2.face2.done.window =
+	p2.face2.done.localcoord = 320, 240
+	p2.face2.done.applypal = 0
+	p2.face2.done.draworder = 0
+
+	p2.face2.random.anim = -1
+	p2.face2.random.spr = -1, 1
+	p2.face2.random.offset = 0, 0
+	p2.face2.random.facing = 1
+	p2.face2.random.scale = 1.0, 1.0
+	p2.face2.random.xshear = 0
+	p2.face2.random.angle = 0
+	p2.face2.random.xangle = 0
+	p2.face2.random.yangle = 0
+	p2.face2.random.projection = orthographic
+	p2.face2.random.focallength = 2048
+	p2.face2.random.layerno = 0
+	p2.face2.random.window =
+	p2.face2.random.localcoord = 320, 240
+
+	p2.face2.velocity = 0, 0
+	p2.face2.maxdist = 0, 0
+	p2.face2.accel = 0, 0
+	p2.face2.friction = 1, 1
+	p2.face2.pos = 0, 0
+	p2.face2.num = 1
+	p2.face2.spacing = 0, 0
+	p2.face2.padding = 0
+
+	p2.name.font = jg.fnt, 1, -1, 255, 255, 255, 255, -1
+	p2.name.offset = 0, 0
+	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0
+	p2.name.angle = 0
+	p2.name.xangle = 0
+	p2.name.yangle = 0
+	p2.name.projection = orthographic
+	p2.name.focallength = 2048
+	;;p2.name.text =
+	p2.name.layerno = 0
+	p2.name.window =
+	p2.name.localcoord = 320, 240
+
+	p2.name.num = 4
+	p2.name.spacing = 0, 14
+
+	p2.name.random.text = Random
+
+	p2.swap.snd = -1, 0
+	p2.select.snd = -1, 0
+
+	p2.teammenu.pos = 0, 0
+
+	p2.teammenu.bg.anim = -1
+	p2.teammenu.bg.spr = -1, 0
+	p2.teammenu.bg.offset = 0, 0
+	p2.teammenu.bg.facing = 1
+	p2.teammenu.bg.scale = 1.0, 1.0
+	p2.teammenu.bg.xshear = 0
+	p2.teammenu.bg.angle = 0
+	p2.teammenu.bg.xangle = 0
+	p2.teammenu.bg.yangle = 0
+	p2.teammenu.bg.projection = orthographic
+	p2.teammenu.bg.focallength = 2048
+	p2.teammenu.bg.layerno = 0
+	p2.teammenu.bg.window =
+	p2.teammenu.bg.localcoord = 320, 240
+
+	;p2.teammenu.bg.<gamemode>-<itemname>.anim = -1
+	;p2.teammenu.bg.<gamemode>-<itemname>.spr = -1, 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.offset = 0, 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.facing = 1
+	;p2.teammenu.bg.<gamemode>-<itemname>.scale = 1.0, 1.0
+	;p2.teammenu.bg.<gamemode>-<itemname>.xshear = 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.angle = 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.xangle = 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.yangle = 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.projection = orthographic
+	;p2.teammenu.bg.<gamemode>-<itemname>.focallength = 2048
+	;p2.teammenu.bg.<gamemode>-<itemname>.layerno = 0
+	;p2.teammenu.bg.<gamemode>-<itemname>.window =
+	;p2.teammenu.bg.<gamemode>-<itemname>.localcoord = 320, 240
+
+	;p2.teammenu.bg.<itemname>.anim = -1
+	;p2.teammenu.bg.<itemname>.spr = -1, 0
+	;p2.teammenu.bg.<itemname>.offset = 0, 0
+	;p2.teammenu.bg.<itemname>.facing = 1
+	;p2.teammenu.bg.<itemname>.scale = 1.0, 1.0
+	;p2.teammenu.bg.<itemname>.xshear = 0
+	;p2.teammenu.bg.<itemname>.angle = 0
+	;p2.teammenu.bg.<itemname>.xangle = 0
+	;p2.teammenu.bg.<itemname>.yangle = 0
+	;p2.teammenu.bg.<itemname>.projection = orthographic
+	;p2.teammenu.bg.<itemname>.focallength = 2048
+	;p2.teammenu.bg.<itemname>.layerno = 0
+	;p2.teammenu.bg.<itemname>.window =
+	;p2.teammenu.bg.<itemname>.localcoord = 320, 240
+
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.anim = -1
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.spr = -1, 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.offset = 0, 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.facing = 1
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.scale = 1.0, 1.0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.xshear = 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.angle = 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.xangle = 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.yangle = 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.projection = orthographic
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.focallength = 2048
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.layerno = 0
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.window =
+	;p2.teammenu.active.bg.<gamemode>-<itemname>.localcoord = 320, 240
+
+	;p2.teammenu.active.bg.<itemname>.anim = -1
+	;p2.teammenu.active.bg.<itemname>.spr = -1, 0
+	;p2.teammenu.active.bg.<itemname>.offset = 0, 0
+	;p2.teammenu.active.bg.<itemname>.facing = 1
+	;p2.teammenu.active.bg.<itemname>.scale = 1.0, 1.0
+	;p2.teammenu.active.bg.<itemname>.xshear = 0
+	;p2.teammenu.active.bg.<itemname>.angle = 0
+	;p2.teammenu.active.bg.<itemname>.layerno = 0
+	;p2.teammenu.active.bg.<itemname>.window =
+	;p2.teammenu.active.bg.<itemname>.localcoord = 320, 240
+
+	p2.teammenu.selftitle.anim = -1
+	p2.teammenu.selftitle.spr = -1, 0
+	p2.teammenu.selftitle.offset = 0, 0
+	p2.teammenu.selftitle.facing = 1
+	p2.teammenu.selftitle.scale = 1.0, 1.0
+	p2.teammenu.selftitle.xshear = 0
+	p2.teammenu.selftitle.angle = 0
+	p2.teammenu.selftitle.xangle = 0
+	p2.teammenu.selftitle.yangle = 0
+	p2.teammenu.selftitle.projection = orthographic
+	p2.teammenu.selftitle.focallength = 2048
+	p2.teammenu.selftitle.layerno = 0
+	p2.teammenu.selftitle.window =
+	p2.teammenu.selftitle.localcoord = 320, 240
+
+	p2.teammenu.selftitle.font = -1, 0, -1, 255, 255, 255, 255, -1
+	p2.teammenu.selftitle.xshear = 0
+	p2.teammenu.selftitle.angle = 0
+	p2.teammenu.selftitle.xangle = 0
+	p2.teammenu.selftitle.yangle = 0
+	p2.teammenu.selftitle.projection = orthographic
+	p2.teammenu.selftitle.focallength = 2048
+	p2.teammenu.selftitle.text =
+
+	p2.teammenu.enemytitle.anim = -1
+	p2.teammenu.enemytitle.spr = -1, 0
+	p2.teammenu.enemytitle.offset = 0, 0
+	p2.teammenu.enemytitle.facing = 1
+	p2.teammenu.enemytitle.scale = 1.0, 1.0
+	p2.teammenu.enemytitle.xshear = 0
+	p2.teammenu.enemytitle.angle = 0
+	p2.teammenu.enemytitle.xangle = 0
+	p2.teammenu.enemytitle.yangle = 0
+	p2.teammenu.enemytitle.projection = orthographic
+	p2.teammenu.enemytitle.focallength = 2048
+	p2.teammenu.enemytitle.layerno = 0
+	p2.teammenu.enemytitle.window =
+	p2.teammenu.enemytitle.localcoord = 320, 240
+
+	p2.teammenu.enemytitle.font = -1, 0, -1, 255, 255, 255, 255, -1
+	p2.teammenu.enemytitle.text =
+	p2.teammenu.enemytitle.xshear = 0
+	p2.teammenu.enemytitle.angle = 0
+	p2.teammenu.enemytitle.xangle = 0
+	p2.teammenu.enemytitle.yangle = 0
+	p2.teammenu.enemytitle.projection = orthographic
+	p2.teammenu.enemytitle.focallength = 2048
+	p2.teammenu.enemytitle.text =
+
+	p2.teammenu.move.snd = 100, 0
+	p2.teammenu.value.snd = 100, 0
+	p2.teammenu.done.snd = 100, 1
+
+	p2.teammenu.done.key = a, b, c, x, y, z, s
+	p2.teammenu.next.key = $D
+	p2.teammenu.previous.key = $U
+	p2.teammenu.add.key = $B
+	p2.teammenu.subtract.key = $F
+
+	p2.teammenu.value.icon.anim = -1
+	p2.teammenu.value.icon.spr = -1, 0
+	p2.teammenu.value.icon.offset = 0, 0
+	p2.teammenu.value.icon.facing = 1
+	p2.teammenu.value.icon.scale = 1.0, 1.0
+	p2.teammenu.value.icon.xshear = 0
+	p2.teammenu.value.icon.angle = 0
+	p2.teammenu.value.icon.xangle = 0
+	p2.teammenu.value.icon.yangle = 0
+	p2.teammenu.value.icon.projection = orthographic
+	p2.teammenu.value.icon.focallength = 2048
+	p2.teammenu.value.icon.layerno = 0
+	p2.teammenu.value.icon.window =
+	p2.teammenu.value.icon.localcoord = 320, 240
+
+	p2.teammenu.value.empty.icon.anim = -1
+	p2.teammenu.value.empty.icon.spr = -1, 0
+	p2.teammenu.value.empty.icon.offset = 0, 0
+	p2.teammenu.value.empty.icon.facing = 1
+	p2.teammenu.value.empty.icon.scale = 1.0, 1.0
+	p2.teammenu.value.empty.icon.xshear = 0
+	p2.teammenu.value.empty.icon.angle = 0
+	p2.teammenu.value.empty.icon.xangle = 0
+	p2.teammenu.value.empty.icon.yangle = 0
+	p2.teammenu.value.empty.icon.projection = orthographic
+	p2.teammenu.value.empty.icon.focallength = 2048
+	p2.teammenu.value.empty.icon.layerno = 0
+	p2.teammenu.value.empty.icon.window =
+	p2.teammenu.value.empty.icon.localcoord = 320, 240
+
+	p2.teammenu.value.spacing = -6, 0
+
+	p2.teammenu.item.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	p2.teammenu.item.offset = 0, 0
+	p2.teammenu.item.scale = 1.0, 1.0
+	p2.teammenu.item.xshear = 0
+	p2.teammenu.item.angle = 0
+	p2.teammenu.item.xangle = 0
+	p2.teammenu.item.yangle = 0
+	p2.teammenu.item.projection = orthographic
+	p2.teammenu.item.focallength = 2048
+	;;p2.teammenu.item.text =
+	p2.teammenu.item.layerno = 0
+	p2.teammenu.item.window =
+	p2.teammenu.item.localcoord = 320, 240
+
+	p2.teammenu.item.uppercase = 0
+	p2.teammenu.item.spacing = 0, 15
+	p2.teammenu.item.tween.factor = 0.5
+
+	p2.teammenu.item.active.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	p2.teammenu.item.active.offset = 0, 0
+	p2.teammenu.item.active.scale = 1.0, 1.0
+	p2.teammenu.item.active.xshear = 0
+	p2.teammenu.item.active.angle = 0
+	p2.teammenu.item.active.xangle = 0
+	p2.teammenu.item.active.yangle = 0
+	p2.teammenu.item.active.projection = orthographic
+	p2.teammenu.item.active.focallength = 2048
+	;;p2.teammenu.item.active.text =
+	p2.teammenu.item.active.layerno = 0
+	p2.teammenu.item.active.window =
+	p2.teammenu.item.active.localcoord = 320, 240
+
+	p2.teammenu.item.active.switchtime = 2
+
+	p2.teammenu.item.active2.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	p2.teammenu.item.active2.offset = 0, 0
+	p2.teammenu.item.active2.scale = 1.0, 1.0
+	p2.teammenu.item.active2.xshear = 0
+	p2.teammenu.item.active2.angle = 0
+	p2.teammenu.item.active2.xangle = 0
+	p2.teammenu.item.active2.yangle = 0
+	p2.teammenu.item.active2.projection = orthographic
+	p2.teammenu.item.active2.focallength = 2048
+	;;p2.teammenu.item.active2.text =
+	p2.teammenu.item.active2.layerno = 0
+	p2.teammenu.item.active2.window =
+	p2.teammenu.item.active2.localcoord = 320, 240
+
+	p2.teammenu.item.cursor.anim = -1
+	p2.teammenu.item.cursor.spr = -1, 0
+	p2.teammenu.item.cursor.offset = 0, 0
+	p2.teammenu.item.cursor.facing = 1
+	p2.teammenu.item.cursor.scale = 1.0, 1.0
+	p2.teammenu.item.cursor.xshear = 0
+	p2.teammenu.item.cursor.angle = 0
+	p2.teammenu.item.cursor.xangle = 0
+	p2.teammenu.item.cursor.yangle = 0
+	p2.teammenu.item.cursor.projection = orthographic
+	p2.teammenu.item.cursor.focallength = 2048
+	p2.teammenu.item.cursor.layerno = 0
+	p2.teammenu.item.cursor.window =
+	p2.teammenu.item.cursor.localcoord = 320, 240
+
+	p2.teammenu.ratio1.icon.anim = -1
+	p2.teammenu.ratio1.icon.spr = -1, 0
+	p2.teammenu.ratio1.icon.offset = 0, 0
+	p2.teammenu.ratio1.icon.facing = 1
+	p2.teammenu.ratio1.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio1.icon.xshear = 0
+	p2.teammenu.ratio1.icon.angle = 0
+	p2.teammenu.ratio1.icon.xangle = 0
+	p2.teammenu.ratio1.icon.yangle = 0
+	p2.teammenu.ratio1.icon.projection = orthographic
+	p2.teammenu.ratio1.icon.focallength = 2048
+	p2.teammenu.ratio1.icon.layerno = 0
+	p2.teammenu.ratio1.icon.window =
+	p2.teammenu.ratio1.icon.localcoord = 320, 240
+
+	p2.teammenu.ratio2.icon.anim = -1
+	p2.teammenu.ratio2.icon.spr = -1, 0
+	p2.teammenu.ratio2.icon.offset = 0, 0
+	p2.teammenu.ratio2.icon.facing = 1
+	p2.teammenu.ratio2.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio2.icon.xshear = 0
+	p2.teammenu.ratio2.icon.angle = 0
+	p2.teammenu.ratio2.icon.xangle = 0
+	p2.teammenu.ratio2.icon.yangle = 0
+	p2.teammenu.ratio2.icon.projection = orthographic
+	p2.teammenu.ratio2.icon.focallength = 2048
+	p2.teammenu.ratio2.icon.layerno = 0
+	p2.teammenu.ratio2.icon.window =
+	p2.teammenu.ratio2.icon.localcoord = 320, 240
+
+	p2.teammenu.ratio3.icon.anim = -1
+	p2.teammenu.ratio3.icon.spr = -1, 0
+	p2.teammenu.ratio3.icon.offset = 0, 0
+	p2.teammenu.ratio3.icon.facing = 1
+	p2.teammenu.ratio3.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio3.icon.xshear = 0
+	p2.teammenu.ratio3.icon.angle = 0
+	p2.teammenu.ratio3.icon.xangle = 0
+	p2.teammenu.ratio3.icon.yangle = 0
+	p2.teammenu.ratio3.icon.projection = orthographic
+	p2.teammenu.ratio3.icon.focallength = 2048
+	p2.teammenu.ratio3.icon.layerno = 0
+	p2.teammenu.ratio3.icon.window =
+	p2.teammenu.ratio3.icon.localcoord = 320, 240
+
+	p2.teammenu.ratio4.icon.anim = -1
+	p2.teammenu.ratio4.icon.spr = -1, 0
+	p2.teammenu.ratio4.icon.offset = 0, 0
+	p2.teammenu.ratio4.icon.facing = 1
+	p2.teammenu.ratio4.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio4.icon.xshear = 0
+	p2.teammenu.ratio4.icon.angle = 0
+	p2.teammenu.ratio4.icon.xangle = 0
+	p2.teammenu.ratio4.icon.yangle = 0
+	p2.teammenu.ratio4.icon.projection = orthographic
+	p2.teammenu.ratio4.icon.focallength = 2048
+	p2.teammenu.ratio4.icon.layerno = 0
+	p2.teammenu.ratio4.icon.window =
+	p2.teammenu.ratio4.icon.localcoord = 320, 240
+
+	p2.teammenu.ratio5.icon.anim = -1
+	p2.teammenu.ratio5.icon.spr = -1, 0
+	p2.teammenu.ratio5.icon.offset = 0, 0
+	p2.teammenu.ratio5.icon.facing = 1
+	p2.teammenu.ratio5.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio5.icon.xshear = 0
+	p2.teammenu.ratio5.icon.angle = 0
+	p2.teammenu.ratio5.icon.xangle = 0
+	p2.teammenu.ratio5.icon.yangle = 0
+	p2.teammenu.ratio5.icon.projection = orthographic
+	p2.teammenu.ratio5.icon.focallength = 2048
+	p2.teammenu.ratio5.icon.layerno = 0
+	p2.teammenu.ratio5.icon.window =
+	p2.teammenu.ratio5.icon.localcoord = 320, 240
+
+	p2.teammenu.ratio6.icon.anim = -1
+	p2.teammenu.ratio6.icon.spr = -1, 0
+	p2.teammenu.ratio6.icon.offset = 0, 0
+	p2.teammenu.ratio6.icon.facing = 1
+	p2.teammenu.ratio6.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio6.icon.xshear = 0
+	p2.teammenu.ratio6.icon.angle = 0
+	p2.teammenu.ratio6.icon.xangle = 0
+	p2.teammenu.ratio6.icon.yangle = 0
+	p2.teammenu.ratio6.icon.projection = orthographic
+	p2.teammenu.ratio6.icon.focallength = 2048
+	p2.teammenu.ratio6.icon.layerno = 0
+	p2.teammenu.ratio6.icon.window =
+	p2.teammenu.ratio6.icon.localcoord = 320, 240
+
+	p2.teammenu.ratio7.icon.anim = -1
+	p2.teammenu.ratio7.icon.spr = -1, 0
+	p2.teammenu.ratio7.icon.offset = 0, 0
+	p2.teammenu.ratio7.icon.facing = 1
+	p2.teammenu.ratio7.icon.scale = 1.0, 1.0
+	p2.teammenu.ratio7.icon.xshear = 0
+	p2.teammenu.ratio7.icon.angle = 0
+	p2.teammenu.ratio7.icon.xangle = 0
+	p2.teammenu.ratio7.icon.yangle = 0
+	p2.teammenu.ratio7.icon.projection = orthographic
+	p2.teammenu.ratio7.icon.focallength = 2048
+	p2.teammenu.ratio7.icon.layerno = 0
+	p2.teammenu.ratio7.icon.window =
+	p2.teammenu.ratio7.icon.localcoord = 320, 240
+
+	p2.palmenu.pos = 0, 0
+
+	p2.palmenu.next.key = $U, $F
+	p2.palmenu.previous.key = $D, $B
+	p2.palmenu.done.key = a, b, c, x, y, z
+	p2.palmenu.cancel.key = m
+	p2.palmenu.random.key = s
+
+	p2.palmenu.random.text = ?
+
+	p2.palmenu.value.snd = -1, 0
+	p2.palmenu.done.snd = -1, 0
+	p2.palmenu.cancel.snd = -1, 0
+
+	p2.palmenu.preview.snd = -1, 0
+	p2.palmenu.preview.anim = -1
+	p2.palmenu.preview.spr = -1, 0
+
+	p2.palmenu.number.font = -1, 1, -1, 255, 255, 255, 255, -1
+	p2.palmenu.number.offset = 0, 0
+	p2.palmenu.number.scale = 1.0, 1.0
+	p2.palmenu.number.xshear = 0
+	p2.palmenu.number.angle = 0
+	p2.palmenu.number.xangle = 0
+	p2.palmenu.number.yangle = 0
+	p2.palmenu.number.projection = orthographic
+	p2.palmenu.number.focallength = 2048
+	p2.palmenu.number.text = %d
+	p2.palmenu.number.layerno = 0
+	p2.palmenu.number.window =
+	p2.palmenu.number.localcoord = 320, 240
+
+	p2.palmenu.text.font = -1, 1, -1, 255, 255, 255, 255, -1
+	p2.palmenu.text.offset = 0, 0
+	p2.palmenu.text.scale = 1.0, 1.0
+	p2.palmenu.text.xshear = 0
+	p2.palmenu.text.angle = 0
+	p2.palmenu.text.xangle = 0
+	p2.palmenu.text.yangle = 0
+	p2.palmenu.text.projection = orthographic
+	p2.palmenu.text.focallength = 2048
+	p2.palmenu.text.text = Color
+	p2.palmenu.text.layerno = 0
+	p2.palmenu.text.window =
+	p2.palmenu.text.localcoord = 320, 240
+
+	p2.palmenu.bg.anim = -1
+	p2.palmenu.bg.spr = -1, 0
+	p2.palmenu.bg.offset = 0, 0
+	p2.palmenu.bg.facing = 1
+	p2.palmenu.bg.scale = 1.0, 1.0
+	p2.palmenu.bg.xshear = 0
+	p2.palmenu.bg.angle = 0
+	p2.palmenu.bg.xangle = 0
+	p2.palmenu.bg.yangle = 0
+	p2.palmenu.bg.projection = orthographic
+	p2.palmenu.bg.focallength = 2048
+	p2.palmenu.bg.layerno = 0
+	p2.palmenu.bg.window =
+	p2.palmenu.bg.localcoord = 320, 240
+
+	palmenu.random.switchtime = 4
+	palmenu.random.applypal = 1
+
+	random.move.snd.cancel = 0
+
+	stage.pos = 0, 0
+
+	stage.font = -1, 0, 0, 255, 255, 255, 255, -1
+	stage.offset = 0, 0
+	stage.scale = 1.0, 1.0
+	stage.xshear = 0
+	stage.angle = 0
+	stage.xangle = 0
+	stage.yangle = 0
+	stage.projection = orthographic
+	stage.focallength = 2048
+	stage.text = Stage %i: %s
+	stage.layerno = 0
+	stage.window =
+	stage.localcoord = 320, 240
+
+	stage.random.text = Stage: Random
+	; 0 = randomselect disabled (doesn’t show in the list)
+	; 1 = default
+	; 2 = randomselect at the 'end' of the list
+	stage.randomselect = 1
+
+	stage.active.font = -1, 0, 0, 255, 255, 255, 255, -1
+	stage.active.offset = 0, 0
+	stage.active.scale = 1.0, 1.0
+	stage.active.xshear = 0
+	stage.active.angle = 0
+	stage.active.xangle = 0
+	stage.active.yangle = 0
+	stage.active.projection = orthographic
+	stage.active.focallength = 2048
+	stage.active.text = Stage %i: %s
+	stage.active.layerno = 0
+	stage.active.window =
+	stage.active.localcoord = 320, 240
+
+	stage.active.switchtime = 2
+
+	stage.active2.font = -1, 0, 0, 255, 255, 255, 255, -1
+	stage.active2.offset = 0, 0
+	stage.active2.scale = 1.0, 1.0
+	stage.active2.xshear = 0
+	stage.active2.angle = 0
+	stage.active2.xangle = 0
+	stage.active2.yangle = 0
+	stage.active2.projection = orthographic
+	stage.active2.focallength = 2048
+	stage.active2.text = Stage %i: %s
+	stage.active2.layerno = 0
+	stage.active2.window =
+	stage.active2.localcoord = 320, 240
+
+	stage.done.font = -1, 0, 0, 255, 255, 255, 255, -1
+	stage.done.offset = 0, 0
+	stage.done.scale = 1.0, 1.0
+	stage.done.xshear = 0
+	stage.done.angle = 0
+	stage.done.xangle = 0
+	stage.done.yangle = 0
+	stage.done.projection = orthographic
+	stage.done.focallength = 2048
+	stage.done.text = Stage %i: %s
+	stage.done.layerno = 0
+	stage.done.window =
+	stage.done.localcoord = 320, 240
+
+	stage.done.snd = 100, 1
+
+	stage.move.snd = 100, 0
+
+	; Stage portrait use sprites and anim data from stage's SFF and DEF files.
+	; portrait.bg and portrait.random use screenpack data. portrait element is
+	; layered below stage.active / stage.active2 elements but above portrait.bg.
+	stage.portrait.anim = -1
+	stage.portrait.spr = -1, 0
+	stage.portrait.offset = 0, 0
+	stage.portrait.facing = 1
+	stage.portrait.scale = 1.0, 1.0
+	stage.portrait.xshear = 0
+	stage.portrait.angle = 0
+	stage.portrait.xangle = 0
+	stage.portrait.yangle = 0
+	stage.portrait.projection = orthographic
+	stage.portrait.focallength = 2048
+	stage.portrait.layerno = 0
+	stage.portrait.window =
+	stage.portrait.localcoord = 320, 240
+
+	stage.portrait.bg.anim = -1
+	stage.portrait.bg.spr = -1, 0
+	stage.portrait.bg.offset = 0, 0
+	stage.portrait.bg.facing = 1
+	stage.portrait.bg.scale = 1.0, 1.0
+	stage.portrait.bg.xshear = 0
+	stage.portrait.bg.angle = 0
+	stage.portrait.bg.xangle = 0
+	stage.portrait.bg.yangle = 0
+	stage.portrait.bg.projection = orthographic
+	stage.portrait.bg.focallength = 2048
+	stage.portrait.bg.layerno = 0
+	stage.portrait.bg.window =
+	stage.portrait.bg.localcoord = 320, 240
+
+	stage.portrait.random.anim = -1
+	stage.portrait.random.spr = -1, 0
+	stage.portrait.random.offset = 0, 0
+	stage.portrait.random.facing = 1
+	stage.portrait.random.scale = 1.0, 1.0
+	stage.portrait.random.xshear = 0
+	stage.portrait.random.angle = 0
+	stage.portrait.random.xangle = 0
+	stage.portrait.random.yangle = 0
+	stage.portrait.random.projection = orthographic
+	stage.portrait.random.focallength = 2048
+	stage.portrait.random.layerno = 0
+	stage.portrait.random.window =
+	stage.portrait.random.localcoord = 320, 240
+
+	done.key = a, b, c, x, y, z, s
+
+	cancel.key = m
+	cancel.snd = 100, 2
+
+	portrait.anim = -1
+	portrait.spr = 9000, 0
+	portrait.offset = 0, 0
+	portrait.facing = 1
+	portrait.scale = 1.0, 1.0
+	portrait.xshear = 0
+	portrait.angle = 0
+	portrait.xangle = 0
+	portrait.yangle = 0
+	portrait.projection = orthographic
+	portrait.focallength = 2048
+	portrait.layerno = 0
+	portrait.window =
+	portrait.localcoord = 320, 240
+
+	title.font = -1, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	; Text rendered using title element (hardcoded in Mugen)
+	;title.<gamemode>.text =
+	title.arcade.text = Arcade
+	title.teamarcade.text = Team Arcade
+	title.teamcoop.text = Team Cooperative
+	title.versus.text = Versus Mode
+	title.teamversus.text = Team Versus
+	title.versuscoop.text = Versus Cooperative
+	title.freebattle.text = Quick Match
+	title.storymode.text = Story Mode
+	title.netplayversus.text = Online Versus
+	title.netplayteamcoop.text = Online Cooperative
+	title.netplaysurvivalcoop.text = Online Survival
+	title.training.text = Training Mode
+	title.timeattack.text = Time Attack
+	title.survival.text = Survival
+	title.survivalcoop.text = Survival Cooperative
+	title.bonus.text = Bonus
+	title.watch.text = Watch Mode
+	title.replay.text = Replay
+	title.layerno = 0
+	title.window =
+	title.localcoord = 320, 240
+
+	teammenu.move.wrapping = 1
+
+	; These parameters allows renaming or disabling team modes from selection
+	; (via blank assignment) in all modes that supports them.
+	teammenu.itemname.single = Single
+	teammenu.itemname.simul = Simul
+	teammenu.itemname.turns = Turns
+	teammenu.itemname.tag =  ; Tag
+	teammenu.itemname.ratio =  ; Ratio
+
+	; This parameter allows renaming or disabling team mode from selection (via
+	; blank assignment) on per game mode basis.
+	;teammenu.itemname.<gamemode>.single =
+	;teammenu.itemname.<gamemode>.simul =
+	;teammenu.itemname.<gamemode>.turns =
+	;teammenu.itemname.<gamemode>.tag =
+	;teammenu.itemname.<gamemode>.ratio =
+
+	timer.font = -1, 0, 0, 255, 255, 255, 255, -1
+	timer.offset = 0, 0
+	timer.scale = 1.0, 1.0
+	timer.xshear = 0
+	timer.angle = 0
+	timer.xangle = 0
+	timer.yangle = 0
+	timer.projection = orthographic
+	timer.focallength = 2048
+	timer.text = %i
+	timer.layerno = 0
+	timer.window =
+	timer.localcoord = 320, 240
+
+	; Positive count enables timer, limiting time (count * framespercount) for
+	; selecting team modes and characters. Each selection resets timer.
+	timer.count = -1
+	timer.framespercount = 60
+	timer.displaytime = 10
+
+	; Displaying the game mode record directly on the mode select screen.
+	; This element remains active until stage selection.
+	record.font = -1, 0, 0, 255, 255, 255, 255, -1
+	record.offset = 0, 0
+	record.scale = 1.0, 1.0
+	record.xshear = 0
+	record.angle = 0
+	record.xangle = 0
+	record.yangle = 0
+	record.projection = orthographic
+	record.focallength = 2048
+	;record.<gamemode>.text =
+	record.timeattack.text = "- BEST RECORD: %n -\n%c: %m:%s.%x"
+	record.survival.text = "- BEST RECORD: %n -\n%c: Round %r"
+	record.survivalcoop.text = "- BEST RECORD: %n -\n%c: Round %r"
+	record.netplaysurvivalcoop.text = "- BEST RECORD: %n -\n%c: Round %r"
+	record.layerno = 0
+	record.window =
+	record.localcoord = 320, 240
+
+	; 0 - Palette select disabled
+	; 1 - Initial selected palette is 1
+	; 2 - Initial selected palette corresponds to key pressed(a = 1, b = 2)
+	; 3 - Initial selected palette corresponds to key pressed + keymap (a = 4, x = 1 on kfm)
+	paletteselect = 0
+
+[SelectBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 0
+	localcoord =
+
+[VS Screen]
+	fadein.time = 15
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 15
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	time = 150
+
+	match.font = -1, 0, 0, 255, 255, 255, 255, -1
+	match.offset = 159, 12
+	match.scale = 1.0, 1.0
+	match.xshear = 0
+	match.angle = 0
+	match.xangle = 0
+	match.yangle = 0
+	match.projection = orthographic
+	match.focallength = 2048
+	match.text = Match %i
+	match.layerno = 0
+	match.window =
+	match.localcoord = 320, 240
+
+	; Set to 1 to enable order selection
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-Info#orderselect
+	orderselect.enabled = 0
+
+	; Refer to [Select Info] face parameters for extra comments about portraits.
+
+	p1.anim = -1
+	p1.spr = 9000, 1
+	p1.offset = 0, 0
+	p1.facing = 1
+	p1.scale = 1.0, 1.0
+	p1.xshear = 0
+	p1.angle = 0
+	p1.xangle = 0
+	p1.yangle = 0
+	p1.projection = orthographic
+	p1.focallength = 2048
+	p1.layerno = 0
+	p1.window =
+	p1.localcoord = 320, 240
+	p1.applypal = 0
+	p1.draworder = 0
+
+	p1.done.anim = -1
+	p1.done.spr = 9000, 1
+	p1.done.offset = 0, 0
+	p1.done.facing = 1
+	p1.done.scale = 1.0, 1.0
+	p1.done.xshear = 0
+	p1.done.angle = 0
+	p1.done.xangle = 0
+	p1.done.yangle = 0
+	p1.done.projection = orthographic
+	p1.done.focallength = 2048
+	p1.done.layerno = 0
+	p1.done.window =
+	p1.done.localcoord = 320, 240
+	p1.done.applypal = 0
+	p1.done.draworder = 0
+
+	p1.key =
+
+	p1.velocity = 0, 0
+	p1.maxdist = 0, 0
+	p1.accel = 0, 0
+	p1.friction = 1, 1
+	p1.pos = 0, 0
+	p1.num = 1
+	p1.spacing = 0, 0
+	p1.padding = 0
+
+	; Additional portrait layered under standard ones. Character that will fight
+	; first takes priority (portrait may change depending on order selection)
+	p1.face2.anim = -1
+	p1.face2.spr = -1, 0
+	p1.face2.offset = 0, 0
+	p1.face2.facing = 1
+	p1.face2.scale = 1.0, 1.0
+	p1.face2.xshear = 0
+	p1.face2.angle = 0
+	p1.face2.xangle = 0
+	p1.face2.yangle = 0
+	p1.face2.projection = orthographic
+	p1.face2.focallength = 2048
+	p1.face2.layerno = 0
+	p1.face2.window =
+	p1.face2.localcoord = 320, 240
+	p1.face2.applypal = 0
+	p1.face2.draworder = 0
+
+	p1.face2.done.anim = -1
+	p1.face2.done.spr = -1, 0
+	p1.face2.done.offset = 0, 0
+	p1.face2.done.facing = 1
+	p1.face2.done.scale = 1.0, 1.0
+	p1.face2.done.xshear = 0
+	p1.face2.done.angle = 0
+	p1.face2.done.xangle = 0
+	p1.face2.done.yangle = 0
+	p1.face2.done.projection = orthographic
+	p1.face2.done.focallength = 2048
+	p1.face2.done.layerno = 0
+	p1.face2.done.window =
+	p1.face2.done.localcoord = 320, 240
+	p1.face2.done.applypal = 0
+	p1.face2.done.draworder = 0
+
+	p1.face2.velocity = 0, 0
+	p1.face2.maxdist = 0, 0
+	p1.face2.accel = 0, 0
+	p1.face2.friction = 1, 1
+	p1.face2.pos = 0, 0
+	p1.face2.num = 1
+	p1.face2.spacing = 0, 0
+	p1.face2.padding = 0
+
+	p1.name.font = jg.fnt, 0, 0, 255, 255, 255, 255, -1
+	p1.name.offset = 0, 0
+	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0
+	p1.name.angle = 0
+	p1.name.xangle = 0
+	p1.name.yangle = 0
+	p1.name.projection = orthographic
+	p1.name.focallength = 2048
+	;;p1.name.text =
+	p1.name.layerno = 0
+	p1.name.window =
+	p1.name.localcoord = 320, 240
+
+	p1.name.pos = 0, 0
+	; num param controls max number of names to render. If set to 1, last active
+	; member's name has priority. Not used in co-op.
+	p1.name.num = 4
+	p1.name.spacing = 0, 14
+
+	; Icon elements are rendered on top of portraits, with positioning affected
+	; by portrait num, offset, spacing, and padding. Done variants replace
+	; spr/anim once order selection is completed.
+	p1.icon.anim = -1
+	p1.icon.spr = -1, 0
+	p1.icon.offset = 0, 0
+	p1.icon.facing = 1
+	p1.icon.scale = 1.0, 1.0
+	p1.icon.xshear = 0
+	p1.icon.angle = 0
+	p1.icon.xangle = 0
+	p1.icon.yangle = 0
+	p1.icon.projection = orthographic
+	p1.icon.focallength = 2048
+	p1.icon.layerno = 0
+	p1.icon.window =
+	p1.icon.localcoord = 320, 240
+
+	p1.icon.done.anim = -1
+	p1.icon.done.spr = -1, 0
+	p1.icon.done.offset = 0, 0
+	p1.icon.done.facing = 1
+	p1.icon.done.scale = 1.0, 1.0
+	p1.icon.done.xshear = 0
+	p1.icon.done.angle = 0
+	p1.icon.done.xangle = 0
+	p1.icon.done.yangle = 0
+	p1.icon.done.projection = orthographic
+	p1.icon.done.focallength = 2048
+	p1.icon.done.layerno = 0
+	p1.icon.done.window =
+	p1.icon.done.localcoord = 320, 240
+
+	; Value icons are rendered on top of portraits, with positioning starting at
+	; 0, 0. empty.icon elements are replaced with icon upon order selection.
+	; p3-p8 assignments defaults to p1 and p2 values, if not specified
+	p1.value.icon.anim = -1
+	p1.value.icon.spr = -1, 0
+	p1.value.icon.offset = 0, 0
+	p1.value.icon.facing = 1
+	p1.value.icon.scale = 1.0, 1.0
+	p1.value.icon.xshear = 0
+	p1.value.icon.angle = 0
+	p1.value.icon.xangle = 0
+	p1.value.icon.yangle = 0
+	p1.value.icon.projection = orthographic
+	p1.value.icon.focallength = 2048
+	p1.value.icon.layerno = 0
+	p1.value.icon.window =
+	p1.value.icon.localcoord = 320, 240
+
+	p1.value.icon.spacing = 0, 0
+
+	p1.value.empty.icon.anim = -1
+	p1.value.empty.icon.spr = -1, 0
+	p1.value.empty.icon.offset = 0, 0
+	p1.value.empty.icon.facing = 1
+	p1.value.empty.icon.scale = 1.0, 1.0
+	p1.value.empty.icon.xshear = 0
+	p1.value.empty.icon.angle = 0
+	p1.value.empty.icon.xangle = 0
+	p1.value.empty.icon.yangle = 0
+	p1.value.empty.icon.projection = orthographic
+	p1.value.empty.icon.focallength = 2048
+	p1.value.empty.icon.layerno = 0
+	p1.value.empty.icon.window =
+	p1.value.empty.icon.localcoord = 320, 240
+
+	p1.value.snd = -1, 0
+
+	p2.anim = -1
+	p2.spr = 9000, 1
+	p2.offset = 0, 0
+	p2.facing = -1
+	p2.scale = 1.0, 1.0
+	p2.xshear = 0
+	p2.angle = 0
+	p2.xangle = 0
+	p2.yangle = 0
+	p2.projection = orthographic
+	p2.focallength = 2048
+	p2.layerno = 0
+	p2.window =
+	p2.localcoord = 320, 240
+	p2.applypal = 0
+	p2.draworder = 0
+
+	p2.done.anim = -1
+	p2.done.spr = 9000, 1
+	p2.done.offset = 0, 0
+	p2.done.facing = -1
+	p2.done.scale = 1.0, 1.0
+	p2.done.xshear = 0
+	p2.done.angle = 0
+	p2.done.xangle = 0
+	p2.done.yangle = 0
+	p2.done.projection = orthographic
+	p2.done.focallength = 2048
+	p2.done.layerno = 0
+	p2.done.window =
+	p2.done.localcoord = 320, 240
+	p2.done.applypal = 0
+	p2.done.draworder = 0
+
+	p2.key =
+
+	p2.velocity = 0, 0
+	p2.maxdist = 0, 0
+	p2.accel = 0, 0
+	p2.friction = 1, 1
+	p2.pos = 0, 0
+	p2.num = 1
+	p2.spacing = 0, 0
+	p2.padding = 0
+
+	p2.face2.anim = -1
+	p2.face2.spr = -1, 0
+	p2.face2.offset = 0, 0
+	p2.face2.facing = -1
+	p2.face2.scale = 1.0, 1.0
+	p2.face2.xshear = 0
+	p2.face2.angle = 0
+	p2.face2.xangle = 0
+	p2.face2.yangle = 0
+	p2.face2.projection = orthographic
+	p2.face2.focallength = 2048
+	p2.face2.layerno = 0
+	p2.face2.window =
+	p2.face2.localcoord = 320, 240
+	p2.face2.applypal = 0
+	p2.face2.draworder = 0
+
+	p2.face2.done.anim = -1
+	p2.face2.done.spr = -1, 0
+	p2.face2.done.offset = 0, 0
+	p2.face2.done.facing = -1
+	p2.face2.done.scale = 1.0, 1.0
+	p2.face2.done.xshear = 0
+	p2.face2.done.angle = 0
+	p2.face2.done.xangle = 0
+	p2.face2.done.yangle = 0
+	p2.face2.done.projection = orthographic
+	p2.face2.focallength = 2048
+	p2.face2.done.layerno = 0
+	p2.face2.done.window =
+	p2.face2.done.localcoord = 320, 240
+	p2.face2.done.applypal = 0
+	p2.face2.done.draworder = 0
+
+	p2.face2.velocity = 0, 0
+	p2.face2.maxdist = 0, 0
+	p2.face2.accel = 0, 0
+	p2.face2.friction = 1, 1
+	p2.face2.pos = 0, 0
+	p2.face2.num = 1
+	p2.face2.spacing = 0, 0
+	p2.face2.padding = 0
+
+	p2.name.font = jg.fnt, 0, 0, 255, 255, 255, 255, -1
+	p2.name.offset = 0, 0
+	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0
+	p2.name.angle = 0
+	p2.name.xangle = 0
+	p2.name.yangle = 0
+	p2.name.projection = orthographic
+	p2.name.focallength = 2048
+	;;p2.name.text =
+	p2.name.layerno = 0
+	p2.name.window =
+	p2.name.localcoord = 320, 240
+
+	p2.name.pos = 0, 0
+	; num param controls max number of names to render. If set to 1, team's
+	; leader name has priority. Not used in co-op.
+	p2.name.num = 4
+	p2.name.spacing = 0, 14
+
+	p2.icon.anim = -1
+	p2.icon.spr = -1, 0
+	p2.icon.offset = 0, 0
+	p2.icon.facing = 1
+	p2.icon.scale = 1.0, 1.0
+	p2.icon.xshear = 0
+	p2.icon.angle = 0
+	p2.icon.xangle = 0
+	p2.icon.yangle = 0
+	p2.icon.projection = orthographic
+	p2.icon.focallength = 2048
+	p2.icon.layerno = 0
+	p2.icon.window =
+	p2.icon.localcoord = 320, 240
+
+	p2.icon.done.anim = -1
+	p2.icon.done.spr = -1, 0
+	p2.icon.done.offset = 0, 0
+	p2.icon.done.facing = 1
+	p2.icon.done.scale = 1.0, 1.0
+	p2.icon.done.xshear = 0
+	p2.icon.done.angle = 0
+	p2.icon.done.xangle = 0
+	p2.icon.done.yangle = 0
+	p2.icon.done.projection = orthographic
+	p2.icon.done.focallength = 2048
+	p2.icon.done.layerno = 0
+	p2.icon.done.window =
+	p2.icon.done.localcoord = 320, 240
+
+	p2.value.icon.anim = -1
+	p2.value.icon.spr = -1, 0
+	p2.value.icon.offset = 0, 0
+	p2.value.icon.facing = 1
+	p2.value.icon.scale = 1.0, 1.0
+	p2.value.icon.xshear = 0
+	p2.value.icon.angle = 0
+	p2.value.icon.xangle = 0
+	p2.value.icon.yangle = 0
+	p2.value.icon.projection = orthographic
+	p2.value.icon.focallength = 2048
+	p2.value.icon.layerno = 0
+	p2.value.icon.window =
+	p2.value.icon.localcoord = 320, 240
+
+	p2.value.icon.spacing = 0, 0
+
+	p2.value.empty.icon.anim = -1
+	p2.value.empty.icon.spr = -1, 0
+	p2.value.empty.icon.offset = 0, 0
+	p2.value.empty.icon.facing = 1
+	p2.value.empty.icon.scale = 1.0, 1.0
+	p2.value.empty.icon.xshear = 0
+	p2.value.empty.icon.angle = 0
+	p2.value.empty.icon.xangle = 0
+	p2.value.empty.icon.yangle = 0
+	p2.value.empty.icon.projection = orthographic
+	p2.value.empty.icon.focallength = 2048
+	p2.value.empty.icon.layerno = 0
+	p2.value.empty.icon.window =
+	p2.value.empty.icon.localcoord = 320, 240
+
+	p2.value.snd = -1, 0
+
+	; Positive count enables timer, limiting time (count * framespercount) for
+	; selecting orders.
+	timer.font = -1, 0, 0, 255, 255, 255, 255, -1
+	timer.offset = 0, 0
+	timer.scale = 1.0, 1.0
+	timer.xshear = 0
+	timer.angle = 0
+	timer.xangle = 0
+	timer.yangle = 0
+	timer.projection = orthographic
+	timer.focallength = 2048
+	timer.text = %i
+	timer.layerno = 0
+	timer.window =
+	timer.localcoord = 320, 240
+
+	timer.count = -1
+	timer.framespercount = 6
+	timer.displaytime = 0
+
+	; Time to maintain versus screen after both sides confirm their order
+	; (in which order parameters are rendered using optional done variants)
+	done.time = 60
+
+	done.key = a, b, c, x, y, z, s
+	skip.key = s
+	cancel.key = m
+
+	; Stage portrait use sprites and anim data from stage's SFF and DEF files.
+	; portrait.bg use screenpack data.
+	stage.pos = 0, 0
+
+	stage.font = -1, 0, 0, 255, 255, 255, 255, -1
+	stage.offset = 0, 0
+	stage.scale = 1.0, 1.0
+	stage.xshear = 0
+	stage.angle = 0
+	stage.xangle = 0
+	stage.yangle = 0
+	stage.projection = orthographic
+	stage.focallength = 2048
+	stage.text = Next Stage: %s
+	stage.layerno = 0
+	stage.window =
+	stage.localcoord = 320, 240
+
+	stage.portrait.anim = -1
+	stage.portrait.spr = -1, 0
+	stage.portrait.offset = 0, 0
+	stage.portrait.facing = 1
+	stage.portrait.scale = 1.0, 1.0
+	stage.portrait.xshear = 0
+	stage.portrait.angle = 0
+	stage.portrait.xangle = 0
+	stage.portrait.yangle = 0
+	stage.portrait.projection = orthographic
+	stage.portrait.focallength = 2048
+	stage.portrait.layerno = 0
+	stage.portrait.window =
+	stage.portrait.localcoord = 320, 240
+
+	stage.portrait.bg.anim = -1
+	stage.portrait.bg.spr = -1, 0
+	stage.portrait.bg.offset = 0, 0
+	stage.portrait.bg.facing = 1
+	stage.portrait.bg.scale = 1.0, 1.0
+	stage.portrait.bg.xshear = 0
+	stage.portrait.bg.angle = 0
+	stage.portrait.bg.xangle = 0
+	stage.portrait.bg.yangle = 0
+	stage.portrait.bg.projection = orthographic
+	stage.portrait.bg.focallength = 2048
+	stage.portrait.bg.layerno = 0
+	stage.portrait.bg.window =
+	stage.portrait.bg.localcoord = 320, 240
+
+	; Sound triggered when particular stage is selected (data read from
+	; attachedchar SND file associated with stage)
+	stage.snd = -1, 0
+
+[VersusBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 0
+	localcoord =
+
+[Demo Mode]
+	enabled = 1
+
+	fadein.time = 50
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 50
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	title.waittime = 600
+	fight.endtime = 1500
+	fight.playbgm = 0
+	fight.stopbgm = 0
+	fight.bars.display = 0
+	intro.waitcycles = 1
+	debuginfo = 0
+	select.enabled = 0
+	vsscreen.enabled = 0
+
+	cancel.key = a, b, c, x, y, z, s, m
+
+	; Not implemented yet in Ikemen
+	; --------------------------------------------------------------------------
+	;select.enabled = 0
+	;vsscreen.enabled = 0
+
+[Continue Screen]
+	enabled = 1
+
+	fadein.time = 8
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 120
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	pos = 160, 40
+
+	continue.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	continue.offset = 0, 0
+	continue.scale = 1.0, 1.0
+	continue.xshear = 0
+	continue.angle = 0
+	continue.xangle = 0
+	continue.yangle = 0
+	continue.projection = orthographic
+	continue.focallength = 2048
+	continue.text = Continue?
+	continue.layerno = 2
+	continue.window =
+	continue.localcoord = 320, 240
+
+	yes.font = f-6x9.def, 0, 0, 191, 191, 191, 255, -1
+	yes.offset = -17, 20
+	yes.scale = 1.0, 1.0
+	yes.xshear = 0
+	yes.angle = 0
+	yes.xangle = 0
+	yes.yangle = 0
+	yes.projection = orthographic
+	yes.focallength = 2048
+	yes.text = Yes
+	yes.layerno = 2
+	yes.window =
+	yes.localcoord = 320, 240
+
+	yes.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	yes.active.offset = -17, 20
+	yes.active.scale = 1.0, 1.0
+	yes.active.xshear = 0
+	yes.active.angle = 0
+	yes.active.xangle = 0
+	yes.active.yangle = 0
+	yes.active.projection = orthographic
+	yes.active.focallength = 2048
+	yes.active.text = Yes
+	yes.active.layerno = 2
+	yes.active.window =
+	yes.active.localcoord = 320, 240
+
+	no.font = f-6x9.def, 0, 0, 191, 191, 191, 255, -1
+	no.offset = 15, 20
+	no.scale = 1.0, 1.0
+	no.xshear = 0
+	no.angle = 0
+	no.xangle = 0
+	no.yangle = 0
+	no.projection = orthographic
+	no.focallength = 2048
+	no.text = No
+	no.layerno = 2
+	no.window =
+	no.localcoord = 320, 240
+
+	no.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	no.active.offset = 15, 20
+	no.active.scale = 1.0, 1.0
+	no.active.xshear = 0
+	no.active.angle = 0
+	no.xangle = 0
+	no.yangle = 0
+	no.projection = orthographic
+	no.focallength = 2048
+	no.active.text = No
+	no.active.layerno = 2
+	no.active.window =
+	no.active.localcoord = 320, 240
+
+	; If set to 0, stops all player sounds and prevents new ones from starting.
+	sounds.enabled = 0
+	; Enables legacy (Mugen) bare bones continue screen functionality.
+	legacymode.enabled = 1
+	; Enables [Game Over Screen] storyboard after not continuing.
+	gameover.enabled = 1
+
+	move.snd = 100, 0
+	cancel.snd = 100, 2
+	done.snd = 100, 1
+
+	move.key = $D, $F, $U, $B
+	done.key = s
+	skip.key = a, b, c, x, y, z
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.window =
+	overlay.layerno = 1
+	overlay.localcoord = 320, 240
+
+	p1.state = 5500, 5300
+	p1.yes.state = 5510, 180
+	p1.no.state = 5520, 170
+
+	p1.teammate.state =
+	p1.teammate.yes.state =
+	p1.teammate.no.state =
+
+	p2.state =
+	p2.yes.state =
+	p2.no.state =
+
+	p2.teammate.state =
+	p2.teammate.yes.state =
+	p2.teammate.no.state =
+
+	; This element refers to credits set in options screen and won't be rendered
+	; if limited continuing is disabled.
+	credits.font = jg.fnt, 0, 1, 255, 255, 255, 255, -1
+	credits.offset = 0, 0
+	credits.scale = 1.0, 1.0
+	credits.xshear = 0
+	credits.angle = 0
+	credits.xangle = 0
+	credits.yangle = 0
+	credits.projection = orthographic
+	credits.focallength = 2048
+	credits.text = CREDITS: %02d
+	credits.layerno = 2
+	credits.window =
+	credits.localcoord = 320, 240
+
+	; Extended continue screen (legacymode.enabled = 0) renders interactive
+	; counter animation, defined as a single 'counter' element. This animation
+	; is running between starttime tick up to the endtime tick. skipstart is a
+	; delay from starttime before player's button presses are detected.
+	; counter.<num>.skiptime points to animation tick that the engine should
+	; skip into when action button is pressed (skipping counter numbers).
+	; counter.<num>.snd points to animation tick at which corresponding sound
+	; should trigger. <num> portion of these parameter names should be replaced
+	; with corresponding counter number (there is no limit for amount of these
+	; parameters, assigned values are checked in <num> descending order).
+	; Optional 'end' variant of these 2 parameters refers to final portion of
+	; animation, when it's no longer possible to confirm continue (can be used
+	; for example to display game over screen integrated with the same anim).
+	; Refer to default screenpack for a working example how to use this feature.
+	counter.anim = -1
+	counter.spr = -1, 0
+	counter.offset = 0, 0
+	counter.facing = 1
+	counter.scale = 1.0, 1.0
+	counter.xshear = 0
+	counter.angle = 0
+	counter.xangle = 0
+	counter.yangle = 0
+	counter.projection = orthographic
+	counter.focallength = 2048
+	counter.layerno = 2
+	counter.window =
+	counter.localcoord = 320, 240
+
+	counter.starttime = 0
+	counter.endtime = 0
+
+	counter.default.snd = -1, 0
+	counter.skipstart = 0
+
+	;counter.<num>.skiptime = 0
+	;counter.<num>.snd = -1, 0
+
+	counter.end.skiptime = 0
+	counter.end.snd = -1, 0
+
+[ContinueBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Game Over Screen]
+	enabled = 1
+	storyboard =
+
+[Victory Screen]
+	enabled = 0
+	; If set to 0, stops all player sounds and prevents new ones from starting.
+	sounds.enabled = 0
+	; Enables victory screen for CPU-controlled team side.
+	cpu.enabled = 1
+	; Enables victory screen in versus mode.
+	vs.enabled = 1
+	; If set to 1, characters keep their original match sides on the victory screen.
+	; (P1 stays on the left, P2 stays on the right, even if P2 wins).
+	keepside.enabled = 0
+	; Enables including defeated team members portraits of the winner team.
+	winner.teamko.enabled = 0
+
+	fadein.time = 0
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 15
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	time = 300
+
+	winquote.font = -1, 0, 1, 255, 255, 255, 255, -1
+	winquote.offset = 0, 0
+	winquote.scale = 1.0, 1.0
+	winquote.xshear = 0
+	winquote.angle = 0
+	winquote.xangle = 0
+	winquote.yangle = 0
+	winquote.projection = orthographic
+	winquote.focallength = 2048
+	winquote.text = Winner!
+	winquote.layerno = 2
+	winquote.window =
+	winquote.localcoord = 320, 240
+
+	winquote.textspacing = 0, 0
+	winquote.textdelay = 2
+	winquote.textwrap = w
+
+	winquote.displaytime = 0
+
+	; If defined, displays only the winner’s name regardless of team side or player number
+	; winname.font = -1, 0, 1, 255, 255, 255, 255, -1
+	; winname.offset = 0, 0
+	; winname.scale = 1.0, 1.0
+	; winname.xshear = 0
+	; winname.angle = 0
+	; winname.xangle = 0
+	; winname.yangle = 0
+	; winname.projection = orthographic
+	; winname.focallength = 2048
+	;;winname.text =
+	; winname.layerno = 2
+	; winname.window =
+	; winname.localcoord = 320, 240
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	skip.key = a
+	cancel.key = b, c, x, y, z, s
+
+	; Refer to [Select Info] face parameters for extra comments about portraits.
+
+	p1.anim = -1
+	p1.spr = 9000, 2
+	p1.offset = 0, 0
+	p1.facing = 1
+	p1.scale = 1.0, 1.0
+	p1.xshear = 0
+	p1.angle = 0
+	p1.xangle = 0
+	p1.yangle = 0
+	p1.projection = orthographic
+	p1.focallength = 2048
+	p1.layerno = 2
+	p1.window =
+	p1.localcoord = 320, 240
+	; Set 1 to apply selected palette to Portraits
+	p1.applypal = 0
+	p1.draworder = 0
+	; Replaces the character portrait with the one defined below when the character loses the match.
+	; Useful for displaying "defeated" / "beaten" versions of the character.
+	; If not defined, the standard victory portrait is used instead.
+	p1.lose.spr = -1, 0
+	p1.lose.anim = -1
+	; Can be used to darken the defeated character's portrait. Useful when the character does not have a dedicated defeated portrait.
+	; 256 = normal, 0 = completely black
+	p1.lose.brightness = 256
+
+	p1.velocity = 0, 0
+	p1.maxdist = 0, 0
+	p1.accel = 0, 0
+	p1.friction = 1, 1
+	p1.pos = 0, 0
+	p1.num = 1
+	p1.spacing = 0, 0
+	p1.padding = 0
+
+	; Additional portrait layered under standard ones. On p1 side winner team
+	; last hitter takes priority. On p2 first team member from the loser team.
+	p1.face2.anim = -1
+	p1.face2.spr = -1, 0
+	p1.face2.offset = 0, 0
+	p1.face2.facing = 1
+	p1.face2.scale = 1.0, 1.0
+	p1.face2.xshear = 0
+	p1.face2.angle = 0
+	p1.face2.xangle = 0
+	p1.face2.yangle = 0
+	p1.face2.projection = orthographic
+	p1.face2.focallength = 2048
+	p1.face2.layerno = 2
+	p1.face2.window =
+	p1.face2.localcoord = 320, 240
+	p1.face2.applypal = 0
+	p1.face2.draworder = 0
+	p1.face2.lose.spr = -1, 0
+	p1.face2.lose.anim = -1
+	p1.face2.lose.brightness = 256
+
+	p1.face2.velocity = 0, 0
+	p1.face2.maxdist = 0, 0
+	p1.face2.accel = 0, 0
+	p1.face2.friction = 1, 1
+	p1.face2.pos = 0, 0
+	p1.face2.num = 1
+	p1.face2.spacing = 0, 0
+	p1.face2.padding = 0
+
+	p1.name.font = -1, 0, 1, 255, 255, 255, 255, -1
+	p1.name.offset = 0, 0
+	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0
+	p1.name.angle = 0
+	p1.name.xangle = 0
+	p1.name.yangle = 0
+	p1.name.projection = orthographic
+	p1.name.focallength = 2048
+	;;p1.name.text =
+	p1.name.layerno = 2
+	p1.name.window =
+	p1.name.localcoord = 320, 240
+
+	p1.state =
+	p1.teammate.state =
+
+	p2.anim = -1
+	p2.spr =  -1, 0
+	p2.offset = 0, 0
+	p2.facing = -1
+	p2.scale = 1.0, 1.0
+	p2.xshear = 0
+	p2.angle = 0
+	p2.xangle = 0
+	p2.yangle = 0
+	p2.projection = orthographic
+	p2.focallength = 2048
+	p2.layerno = 2
+	p2.window =
+	p2.localcoord = 320, 240
+	p2.applypal = 0
+	p2.draworder = 0
+	p2.lose.spr = -1, 0
+	p2.lose.anim = -1
+	p2.lose.brightness = 256
+
+	p2.velocity = 0, 0
+	p2.maxdist = 0, 0
+	p2.accel = 0, 0
+	p2.friction = 1, 1
+	p2.pos = 0, 0
+	p2.num = 1
+	p2.spacing = 0, 0
+	p2.padding = 0
+
+	p2.face2.anim = -1
+	p2.face2.spr = -1, 0
+	p2.face2.offset = 0, 0
+	p2.face2.facing = -1
+	p2.face2.scale = 1.0, 1.0
+	p2.face2.xshear = 0
+	p2.face2.angle = 0
+	p2.face2.xangle = 0
+	p2.face2.yangle = 0
+	p2.face2.projection = orthographic
+	p2.face2.focallength = 2048
+	p2.face2.layerno = 2
+	p2.face2.window =
+	p2.face2.localcoord = 320, 240
+	p2.face2.applypal = 0
+	p2.face2.draworder = 0
+	p2.face2.lose.spr = -1, 0
+	p2.face2.lose.anim = -1
+	p2.face2.lose.brightness = 256
+
+	p2.face2.velocity = 0, 0
+	p2.face2.maxdist = 0, 0
+	p2.face2.accel = 0, 0
+	p2.face2.friction = 1, 1
+	p2.face2.pos = 0, 0
+	p2.face2.num = 1
+	p2.face2.spacing = 0, 0
+	p2.face2.padding = 0
+
+	p2.name.font = -1, 0, 1, 255, 255, 255, 255, -1
+	p2.name.offset = 0, 0
+	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0
+	p2.name.angle = 0
+	p2.name.xangle = 0
+	p2.name.yangle = 0
+	p2.name.projection = orthographic
+	p2.name.focallength = 2048
+	;;p2.name.text =
+	p2.name.layerno = 2
+	p2.name.window =
+	p2.name.localcoord = 320, 240
+
+	p2.state =
+	p2.teammate.state =
+
+[VictoryBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Win Screen]
+	enabled = 1
+	sounds.enabled = 0
+
+	fadein.time = 32
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 64
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	; Set per-gamemode win/results screen variant to use for that mode.
+	; Use "Win Screen" (default) or a specific "<X> Results Screen" name.
+	;results.<gamemode> =
+	results.arcade = Win Screen
+	results.teamarcade = Win Screen
+	results.teamcoop = Win Screen
+	results.timeattack = Time Attack Results Screen
+	results.survival = Survival Results Screen
+	results.survivalcoop = Survival Results Screen
+
+	pose.time = 300
+	state.time = 0
+
+	wintext.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	wintext.offset = 159, 70
+	wintext.scale = 1.0, 1.0
+	wintext.xshear = 0
+	wintext.angle = 0
+	wintext.xangle = 0
+	wintext.yangle = 0
+	wintext.projection = orthographic
+	wintext.focallength = 2048
+	wintext.text = Congratulations!
+	wintext.layerno = 2
+	wintext.window =
+	wintext.localcoord = 320, 240
+
+	wintext.displaytime = 0
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	cancel.key = a, b, c, x, y, z, s
+
+	p1.state = 180
+	p1.teammate.state =
+
+	p2.state =
+	p2.teammate.state =
+
+; results screens variants defaults to WinBgDef, if dedicated BgDef section is missing
+[WinBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Default Ending]
+	enabled = 0
+	storyboard =
+
+[End Credits]
+	enabled = 0
+	storyboard =
+
+[Survival Results Screen]
+	enabled = 1
+	sounds.enabled = 0
+
+	roundstowin = 5
+
+	fadein.time = 32
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 64
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	show.time = 300
+	state.time = 0
+
+	winstext.font = jg.fnt, 0, 0, 255, 255, 255, 255, -1
+	winstext.offset = 159, 70
+	winstext.scale = 1.0, 1.0
+	winstext.xshear = 0
+	winstext.angle = 0
+	winstext.xangle = 0
+	winstext.yangle = 0
+	winstext.projection = orthographic
+	winstext.focallength = 2048
+	winstext.text = Rounds survived: %i
+	winstext.layerno = 2
+	winstext.window =
+	winstext.localcoord = 320, 240
+
+	winstext.displaytime = 0
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	cancel.key = a, b, c, x, y, z, s
+
+	p1.state = 175, 170
+	p1.win.state = 180
+	p1.teammate.state =
+	p1.teammate.win.state =
+
+	p2.state =
+	p2.win.state =
+	p2.teammate.state =
+	p2.teammate.win.state =
+
+[SurvivalResultsBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Time Attack Results Screen]
+	enabled = 1
+	sounds.enabled = 0
+
+	fadein.time = 32
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 64
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	show.time = 300
+	state.time = 0
+
+	winstext.font = jg.fnt, 0, 0, 255, 255, 255, 255, -1
+	winstext.offset = 159, 70
+	winstext.scale = 1.0, 1.0
+	winstext.xshear = 0
+	winstext.angle = 0
+	winstext.xangle = 0
+	winstext.yangle = 0
+	winstext.projection = orthographic
+	winstext.focallength = 2048
+	winstext.text = Clear Time: %m:%s.%x
+	winstext.layerno = 2
+	winstext.window =
+	winstext.localcoord = 320, 240
+
+	winstext.displaytime = 0
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	cancel.key = a, b, c, x, y, z, s
+
+	p1.state = 175, 170
+	p1.win.state = 180
+	p1.teammate.state =
+	p1.teammate.win.state =
+
+	p2.state =
+	p2.win.state =
+	p2.teammate.state =
+	p2.teammate.win.state =
+
+[TimeAttackResultsBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Option Info]
+	fadein.time = 10
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 10
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	title.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = OPTIONS
+	title.layerno = 2
+	title.window =
+	title.localcoord = 320, 240
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus (unlike Mugen, where option screen look is hardcoded, Ikemen
+	; follows vanilla Mugen convention from Title Screen for building menus)
+
+	menu.pos = 85, 33
+
+	menu.tween.factor = 0.5
+	menu.tween.wrap.snap = 0
+
+	menu.item.font = f-6x9.def, 0, 1, 191, 191, 191, 255, -1
+	menu.item.offset = 0, 0
+	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0
+	menu.item.angle = 0
+	menu.item.xangle = 0
+	menu.item.yangle = 0
+	menu.item.projection = orthographic
+	menu.item.focallength = 2048
+	;;menu.item.text =
+	menu.item.layerno = 0
+	menu.item.window =
+	menu.item.localcoord = 320, 240
+
+	menu.item.uppercase = 0
+	menu.item.spacing = 0, 14
+	menu.item.tween.factor = 0.5
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = -1, 0
+	menu.item.bg.offset = 0, 0
+	menu.item.bg.facing = 1
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.xshear = 0
+	menu.item.bg.angle = 0
+	menu.item.bg.xangle = 0
+	menu.item.bg.yangle = 0
+	menu.item.bg.projection = orthographic
+	menu.item.bg.focallength = 2048
+	menu.item.bg.layerno = 0
+	menu.item.bg.window =
+	menu.item.bg.localcoord = 320, 240
+	menu.item.bg.spacing = 0, 0
+
+	;menu.item.bg.<itemname>.anim = -1
+	;menu.item.bg.<itemname>.spr = -1, 0
+	;menu.item.bg.<itemname>.offset = 0, 0
+	;menu.item.bg.<itemname>.facing = 1
+	;menu.item.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.bg.<itemname>.xshear = 0
+	;menu.item.bg.<itemname>.angle = 0
+	;menu.item.bg.<itemname>.xangle = 0
+	;menu.item.bg.<itemname>.yangle = 0
+	;menu.item.bg.<itemname>.projection = orthographic
+	;menu.item.bg.<itemname>.focallength = 2048
+	;menu.item.bg.<itemname>.layerno = 0
+	;menu.item.bg.<itemname>.window =
+	;menu.item.bg.<itemname>.localcoord = 320, 240
+	;menu.item.bg.<itemname>.spacing = 0, 0
+
+	menu.item.active.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	menu.item.active.offset = 0, 0
+	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0
+	menu.item.active.angle = 0
+	menu.item.active.xangle = 0
+	menu.item.active.yangle = 0
+	menu.item.active.projection = orthographic
+	menu.item.active.focallength = 2048
+	;;menu.item.active.text =
+	menu.item.active.layerno = 0
+	menu.item.active.window =
+	menu.item.active.localcoord = 320, 240
+
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = -1, 0
+	menu.item.active.bg.offset = 0, 0
+	menu.item.active.bg.facing = 1
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.xshear = 0
+	menu.item.active.bg.angle = 0
+	menu.item.active.bg.xangle = 0
+	menu.item.active.bg.yangle = 0
+	menu.item.active.bg.projection = orthographic
+	menu.item.active.bg.focallength = 2048
+	menu.item.active.bg.layerno = 0
+	menu.item.active.bg.window =
+	menu.item.active.bg.localcoord = 320, 240
+	menu.item.active.bg.spacing = 0, 0
+
+	;menu.item.active.bg.<itemname>.anim = -1
+	;menu.item.active.bg.<itemname>.spr = -1, 0
+	;menu.item.active.bg.<itemname>.offset = 0, 0
+	;menu.item.active.bg.<itemname>.facing = 1
+	;menu.item.active.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.active.bg.<itemname>.xshear = 0
+	;menu.item.active.bg.<itemname>.angle = 0
+	;menu.item.active.bg.<itemname>.xangle = 0
+	;menu.item.active.bg.<itemname>.yangle = 0
+	;menu.item.active.bg.<itemname>.projection = orthographic
+	;menu.item.active.bg.<itemname>.focallength = 2048
+	;menu.item.active.bg.<itemname>.layerno = 0
+	;menu.item.active.bg.<itemname>.window =
+	;menu.item.active.bg.<itemname>.localcoord = 320, 240
+	;menu.item.active.bg.<itemname>.spacing = 0, 0
+
+	menu.item.selected.font = f-6x9.def, 0, 1, 0, 247, 247, 255, -1
+	menu.item.selected.offset = 0, 0
+	menu.item.selected.scale = 1.0, 1.0
+	menu.item.selected.xshear = 0
+	menu.item.selected.angle = 0
+	menu.item.selected.xangle = 0
+	menu.item.selected.yangle = 0
+	menu.item.selected.projection = orthographic
+	menu.item.selected.focallength = 2048
+	;;menu.item.selected.text =
+	menu.item.selected.layerno = 0
+	menu.item.selected.window =
+	menu.item.selected.localcoord = 320, 240
+
+	menu.item.selected.active.font = f-6x9.def, 0, 1, 0, 247, 247, 255, -1
+	menu.item.selected.active.offset = 0, 0
+	menu.item.selected.active.scale = 1.0, 1.0
+	menu.item.selected.active.xshear = 0
+	menu.item.selected.active.angle = 0
+	menu.item.selected.active.xangle = 0
+	menu.item.selected.active.yangle = 0
+	menu.item.selected.active.projection = orthographic
+	menu.item.selected.active.focallength = 2048
+	;;menu.item.selected.active.text =
+	menu.item.selected.active.layerno = 0
+	menu.item.selected.active.window =
+	menu.item.selected.active.localcoord = 320, 240
+
+	menu.item.value.font = f-6x9.def, 0, -1, 191, 191, 191, 255, -1
+	menu.item.value.offset = 150, 0
+	menu.item.value.scale = 1.0, 1.0
+	menu.item.value.xshear = 0
+	menu.item.value.angle = 0
+	menu.item.value.xangle = 0
+	menu.item.value.yangle = 0
+	menu.item.value.projection = orthographic
+	menu.item.value.focallength = 2048
+	;;menu.item.value.text =
+	menu.item.value.layerno = 0
+	menu.item.value.window =
+	menu.item.value.localcoord = 320, 240
+
+	menu.item.value.active.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	menu.item.value.active.offset = 150, 0
+	menu.item.value.active.scale = 1.0, 1.0
+	menu.item.value.active.xshear = 0
+	menu.item.value.active.angle = 0
+	menu.item.value.active.xangle = 0
+	menu.item.value.active.yangle = 0
+	menu.item.value.active.projection = orthographic
+	menu.item.value.active.focallength = 2048
+	;;menu.item.value.active.text =
+	menu.item.value.active.layerno = 0
+	menu.item.value.active.window =
+	menu.item.value.active.localcoord = 320, 240
+
+	menu.item.value.conflict.font = f-6x9.def, 0, -1, 247, 0, 0, 255, -1
+	menu.item.value.conflict.offset = 150, 0
+	menu.item.value.conflict.scale = 1.0, 1.0
+	menu.item.value.conflict.xshear = 0
+	menu.item.value.conflict.angle = 0
+	menu.item.value.conflict.xangle = 0
+	menu.item.value.conflict.yangle = 0
+	menu.item.value.conflict.projection = orthographic
+	menu.item.value.conflict.focallength = 2048
+	;;menu.item.value.conflict.text =
+	menu.item.value.conflict.layerno = 0
+	menu.item.value.conflict.window =
+	menu.item.value.conflict.localcoord = 320, 240
+
+	menu.item.info.font = f-6x9.def, 0, -1, 247, 247, 0, 255, -1
+	menu.item.info.offset = 150, 0
+	menu.item.info.scale = 1.0, 1.0
+	menu.item.info.xshear = 0
+	menu.item.info.angle = 0
+	menu.item.info.xangle = 0
+	menu.item.info.yangle = 0
+	menu.item.info.projection = orthographic
+	menu.item.info.focallength = 2048
+	;;menu.item.info.text =
+	menu.item.info.layerno = 0
+	menu.item.info.window =
+	menu.item.info.localcoord = 320, 240
+
+	menu.item.info.active.font = f-6x9.def, 0, -1, 247, 247, 0, 255, -1
+	menu.item.info.active.offset = 150, 0
+	menu.item.info.active.scale = 1.0, 1.0
+	menu.item.info.active.xshear = 0
+	menu.item.info.active.angle = 0
+	menu.item.info.active.xangle = 0
+	menu.item.info.active.yangle = 0
+	menu.item.info.active.projection = orthographic
+	menu.item.info.active.focallength = 2048
+	;;menu.item.info.active.text =
+	menu.item.info.active.layerno = 0
+	menu.item.info.active.window =
+	menu.item.info.active.localcoord = 320, 240
+
+	menu.window.margins.y = 0, 0
+	menu.window.visibleitems = 13
+
+	menu.boxcursor.visible = 1
+	menu.boxcursor.coords = -5, -10, 154, 3
+	menu.boxcursor.col = 255, 255, 255
+	menu.boxcursor.layerno = 0
+	menu.boxcursor.localcoord = 320, 240
+	menu.boxcursor.pulse = 30, 20, 30
+	menu.boxcursor.tween.factor = 0.5
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.wrap.snap = 0
+
+	menu.boxbg.visible = 1
+	menu.boxbg.col = 0, 0, 0
+	menu.boxbg.alpha = 0, 128
+	menu.boxbg.layerno = 0
+	menu.boxbg.localcoord = 320, 240
+
+	menu.arrow.up.anim = -1
+	menu.arrow.up.spr = -1, 0
+	menu.arrow.up.offset = 0, 0
+	menu.arrow.up.facing = 1
+	menu.arrow.up.scale = 1.0, 1.0
+	menu.arrow.up.xshear = 0
+	menu.arrow.up.angle = 0
+	menu.arrow.up.xangle = 0
+	menu.arrow.up.yangle = 0
+	menu.arrow.up.projection = orthographic
+	menu.arrow.up.focallength = 2048
+	menu.arrow.up.layerno = 0
+	menu.arrow.up.window =
+	menu.arrow.up.localcoord = 320, 240
+
+	menu.arrow.down.anim = -1
+	menu.arrow.down.spr = -1, 0
+	menu.arrow.down.offset = 0, 0
+	menu.arrow.down.facing = 1
+	menu.arrow.down.scale = 1.0, 1.0
+	menu.arrow.down.xshear = 0
+	menu.arrow.down.angle = 0
+	menu.arrow.down.xangle = 0
+	menu.arrow.down.yangle = 0
+	menu.arrow.down.projection = orthographic
+	menu.arrow.down.focallength = 2048
+	menu.arrow.down.layerno = 0
+	menu.arrow.down.window =
+	menu.arrow.down.localcoord = 320, 240
+
+	menu.title.uppercase = 1
+
+	;menu.unlock.<itemname> = true
+
+	menu.next.key = $D
+	menu.previous.key = $U
+	menu.add.key = $F
+	menu.subtract.key = $B
+	menu.done.key = a, b, c, x, y, z, s
+	menu.cancel.key = m
+
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
+	; If custom menu is not declared, following menu is loaded by default:
+	menu.itemname.menugame = Game Settings
+	menu.itemname.menugame.language = Language
+	menu.itemname.menugame.difficulty = Difficulty Level
+	menu.itemname.menugame.roundtime = Time Limit
+	menu.itemname.menugame.lifemul = Life
+	menu.itemname.menugame.singlevsteamlife = Single VS Team Life
+	menu.itemname.menugame.gamespeed = Game Speed
+	menu.itemname.menugame.roundsnumsingle = Rounds to Win (Single)
+	menu.itemname.menugame.maxdrawgames = Max Draw Games
+	menu.itemname.menugame.credits = Credits
+	menu.itemname.menugame.aipalette = Arcade Palette
+	menu.itemname.menugame.aisurvivalpalette = Survival Palette
+	menu.itemname.menugame.airamping = AI Ramping
+	menu.itemname.menugame.quickcontinue = Quick Continue
+	menu.itemname.menugame.autoguard = Auto-Guard
+	menu.itemname.menugame.dizzy = Dizzy
+	menu.itemname.menugame.guardbreak = Guard Break
+	menu.itemname.menugame.redlife = Red Life
+	menu.itemname.menugame.teamduplicates = Team Duplicates
+	menu.itemname.menugame.teamlifeshare = Team Life Share
+	menu.itemname.menugame.teampowershare = Team Power Share
+	menu.itemname.menugame.spacer1 = -
+	menu.itemname.menugame.menutag = Tag Settings
+	menu.itemname.menugame.menutag.roundsnumtag = Rounds to Win (Tag)
+	menu.itemname.menugame.menutag.losekotag = Partner KOed Lose
+	menu.itemname.menugame.menutag.spacer1 = -
+	menu.itemname.menugame.menutag.mintag = Min Tag Chars
+	menu.itemname.menugame.menutag.maxtag = Max Tag Chars
+	menu.itemname.menugame.menutag.spacer2 = -
+	menu.itemname.menugame.menutag.back = Back
+	menu.itemname.menugame.menusimul = Simul Settings
+	menu.itemname.menugame.menusimul.roundsnumsimul = Rounds to Win (Simul)
+	menu.itemname.menugame.menusimul.losekosimul = Player KOed Lose
+	menu.itemname.menugame.menusimul.spacer1 = -
+	menu.itemname.menugame.menusimul.minsimul = Min Simul Chars
+	menu.itemname.menugame.menusimul.maxsimul = Max Simul Chars
+	menu.itemname.menugame.menusimul.spacer2 = -
+	menu.itemname.menugame.menusimul.back = Back
+	menu.itemname.menugame.menuturns = Turns Settings
+	menu.itemname.menugame.menuturns.turnsrecoverybase = Turns Recovery Base
+	menu.itemname.menugame.menuturns.turnsrecoverybonus = Turns Recovery Bonus
+	menu.itemname.menugame.menuturns.spacer1 = -
+	menu.itemname.menugame.menuturns.minturns = Min Turns Chars
+	menu.itemname.menugame.menuturns.maxturns = Max Turns Chars
+	menu.itemname.menugame.menuturns.spacer2 = -
+	menu.itemname.menugame.menuturns.back = Back
+	menu.itemname.menugame.menuratio = Ratio Settings
+	menu.itemname.menugame.menuratio.ratiorecoverybase = Ratio Recovery Base
+	menu.itemname.menugame.menuratio.ratiorecoverybonus = Ratio Recovery Bonus
+	menu.itemname.menugame.menuratio.spacer1 = -
+	menu.itemname.menugame.menuratio.ratio1life = Ratio 1 Life
+	menu.itemname.menugame.menuratio.ratio1attack = Ratio 1 Damage
+	menu.itemname.menugame.menuratio.ratio2life = Ratio 2 Life
+	menu.itemname.menugame.menuratio.ratio2attack = Ratio 2 Damage
+	menu.itemname.menugame.menuratio.ratio3life = Ratio 3 Life
+	menu.itemname.menugame.menuratio.ratio3attack = Ratio 3 Damage
+	menu.itemname.menugame.menuratio.ratio4life = Ratio 4 Life
+	menu.itemname.menugame.menuratio.ratio4attack = Ratio 4 Damage
+	menu.itemname.menugame.menuratio.spacer2 = -
+	menu.itemname.menugame.menuratio.back = Back
+	menu.itemname.menugame.back = Back
+
+	menu.itemname.menuvideo = Video Settings
+	menu.itemname.menuvideo.renderer = Renderer
+	menu.itemname.menuvideo.renderer.gles32 = OpenGL ES 3.2
+	menu.itemname.menuvideo.renderer.gl32 = OpenGL 3.2
+	menu.itemname.menuvideo.renderer.gl21 = OpenGL 2.1
+	menu.itemname.menuvideo.renderer.vk13 = Vulkan 1.3
+	menu.itemname.menuvideo.renderer.spacer1 = -
+	menu.itemname.menuvideo.renderer.back = Back
+	menu.itemname.menuvideo.resolution = Resolution ;reserved submenu
+	; Resolution is assigned based on values used in itemname suffix (e.g. 320x240)
+	menu.itemname.menuvideo.resolution.320x240 = 320x240    (4:3 QVGA)
+	menu.itemname.menuvideo.resolution.640x480 = 640x480    (4:3 VGA)
+	menu.itemname.menuvideo.resolution.960x720 = 960x720    (4:3 HD)
+	menu.itemname.menuvideo.resolution.1280x720 = 1280x720   (16:9 HD)
+	menu.itemname.menuvideo.resolution.1600x900 = 1600x900   (16:9 HD+)
+	menu.itemname.menuvideo.resolution.1920x1080 = 1920x1080  (16:9 FHD)
+	menu.itemname.menuvideo.resolution.spacer1 = -
+	menu.itemname.menuvideo.resolution.customres = Custom
+	menu.itemname.menuvideo.resolution.back = Back
+	menu.itemname.menuvideo.fullscreen = Fullscreen
+	menu.itemname.menuvideo.vsync = VSync
+	menu.itemname.menuvideo.aspectratio = Aspect Ratio
+	; Aspect ratio is assigned based on values used in itemname suffix (e.g. 4:3)
+	menu.itemname.menuvideo.aspectratio.defaultaspect = Default
+	menu.itemname.menuvideo.aspectratio.stageaspect = Stage
+	menu.itemname.menuvideo.aspectratio.4x3 = 4:3
+	menu.itemname.menuvideo.aspectratio.16x9 = 16:9
+	menu.itemname.menuvideo.aspectratio.customaspect = Custom
+	menu.itemname.menuvideo.aspectratio.spacer1 = -
+	menu.itemname.menuvideo.aspectratio.back = Back
+	menu.itemname.menuvideo.keepaspect = Keep Aspect Ratio
+	menu.itemname.menuvideo.windowscalemode = Window Scale Mode
+	menu.itemname.menuvideo.msaa = MSAA
+	; This list is populated with shaders existing in 'external/shaders' directory
+	menu.itemname.menuvideo.shaders = Shaders
+	menu.itemname.menuvideo.shaders.spacer1 = -
+	menu.itemname.menuvideo.shaders.noshader = Disable
+	menu.itemname.menuvideo.shaders.back = Back
+	menu.itemname.menuvideo.model = 3D Model Settings
+	menu.itemname.menuvideo.model.enablemodel = 3D Model
+	menu.itemname.menuvideo.model.enablemodelshadow = Shadow
+	menu.itemname.menuvideo.model.spacer1 = -
+	menu.itemname.menuvideo.model.back = Back
+	menu.itemname.menuvideo.spacer1 = -
+	menu.itemname.menuvideo.back = Back
+
+	menu.itemname.menuaudio = Audio Settings
+	menu.itemname.menuaudio.mastervolume = Master Volume
+	menu.itemname.menuaudio.bgmvolume = BGM Volume
+	menu.itemname.menuaudio.sfxvolume = SFX Volume
+	menu.itemname.menuaudio.audioducking = Audio Ducking
+	menu.itemname.menuaudio.stereoeffects = Stereo Effects
+	menu.itemname.menuaudio.panningrange = Panning Range
+	menu.itemname.menuaudio.spacer1 = -
+	menu.itemname.menuaudio.back = Back
+
+	menu.itemname.menuinput = Input Settings
+	menu.itemname.menuinput.keyboard = Key Config
+	menu.itemname.menuinput.gamepad = Joystick Config
+
+	menu.itemname.menuinput.spacer1 = -
+	menu.itemname.menuinput.inputdefault = Default
+	menu.itemname.menuinput.back = Back
+
+	menu.itemname.menuengine = Engine Settings
+	menu.itemname.menuengine.players = Players
+	menu.itemname.menuengine.debugkeys = Debug Keys
+	menu.itemname.menuengine.debugmode = Debug Mode
+	menu.itemname.menuengine.spacer1 = -
+	menu.itemname.menuengine.helpermax = HelperMax
+	menu.itemname.menuengine.projectilemax = ProjectileMax
+	menu.itemname.menuengine.explodmax = ExplodMax
+	menu.itemname.menuengine.afterimagemax = AfterImageMax
+	menu.itemname.menuengine.palettemax = PaletteMax
+	menu.itemname.menuengine.textmax = TextMax
+	menu.itemname.menuengine.spacer2 = -
+	menu.itemname.menuengine.back = Back
+
+	menu.itemname.spacer1 = -
+	menu.itemname.portchange = Port Change
+	menu.itemname.default = Default Values
+	menu.itemname.spacer2 = -
+	menu.itemname.savereturn = Save and Return
+	menu.itemname.return = Return Without Saving
+
+	menu.valuename.none = None
+	menu.valuename.random = Random
+	menu.valuename.default = Default
+	menu.valuename.f = (F%i)
+	menu.valuename.esc = (Esc)
+	menu.valuename.page = (Tab)
+	menu.valuename.nokey = Not used
+	menu.valuename.presskey = Press a key
+	menu.valuename.yes = Yes
+	menu.valuename.no = No
+	menu.valuename.enabled = Enabled
+	menu.valuename.disabled = Disabled
+	menu.valuename.normal = Normal
+	menu.valuename.slow = Slow %i
+	menu.valuename.fast = Fast %i
+
+	cursor.move.snd = 100, 0
+	cursor.done.snd = 100, 1
+	cancel.snd = 100, 2
+
+	textinput.font = default-3x5.def, 0, 1, 191, 191, 191, 255, -1
+	textinput.offset = 25, 33
+	textinput.scale = 1.0, 1.0
+	textinput.xshear = 0
+	textinput.angle = 0
+	textinput.xangle = 0
+	textinput.yangle = 0
+	textinput.projection = orthographic
+	textinput.focallength = 2048
+	;;textinput.text =
+	textinput.port.text = Type in Host Port, e.g. 7500.\nPress ENTER to accept.\nPress ESC to cancel.
+	textinput.reswidth.text = Type in screen width.\nPress ENTER to accept.\nPress ESC to cancel.
+	textinput.resheight.text = Type in screen height.\nPress ENTER to accept.\nPress ESC to cancel.
+	textinput.aspectwidth.text = Type in aspect width.\nPress ENTER to accept.\nPress ESC to cancel.
+	textinput.aspectheight.text = Type in aspect height.\nPress ENTER to accept.\nPress ESC to cancel.
+	textinput.layerno = 0
+	textinput.window =
+	textinput.localcoord = 320, 240
+
+	textinput.overlay.col = 0, 0, 0
+	textinput.overlay.alpha = 0, 128
+	textinput.overlay.layerno = 0
+	textinput.overlay.window =
+	textinput.overlay.localcoord = 320, 240
+
+	keymenu.p1.menuoffset = 39, 33
+
+	keymenu.p1.playerno.font = f-6x9.def, 0, 0, 0, 247, 247, 255, -1
+	keymenu.p1.playerno.offset = 52, 0
+	keymenu.p1.playerno.scale = 1.0, 1.0
+	keymenu.p1.playerno.xshear = 0
+	keymenu.p1.playerno.angle = 0
+	keymenu.p1.playerno.xangle = 0
+	keymenu.p1.playerno.yangle = 0
+	keymenu.p1.playerno.projection = orthographic
+	keymenu.p1.playerno.focallength = 2048
+	keymenu.p1.playerno.text = PLAYER %i
+	keymenu.p1.playerno.layerno = 2
+	keymenu.p1.playerno.window =
+	keymenu.p1.playerno.localcoord = 320, 240
+
+	keymenu.p2.menuoffset = 178, 33
+
+	keymenu.p2.playerno.font = f-6x9.def, 0, 0, 247, 0, 0, 255, -1
+	keymenu.p2.playerno.offset = 52, 0
+	keymenu.p2.playerno.scale = 1.0, 1.0
+	keymenu.p2.playerno.xshear = 0
+	keymenu.p2.playerno.angle = 0
+	keymenu.p2.playerno.xangle = 0
+	keymenu.p2.playerno.yangle = 0
+	keymenu.p2.playerno.projection = orthographic
+	keymenu.p2.playerno.focallength = 2048
+	keymenu.p2.playerno.text = PLAYER %i
+	keymenu.p2.playerno.layerno = 2
+	keymenu.p2.playerno.window =
+	keymenu.p2.playerno.localcoord = 320, 240
+
+	; Unassigned keymenu parameters use corresponding menu values.
+
+	keymenu.pos = 0, 0
+
+	keymenu.tween.factor = 0.5
+	keymenu.tween.wrap.snap = 0
+
+	keymenu.item.font = f-6x9.def, 0, 1, 191, 191, 191, 255, -1
+	keymenu.item.offset = 0, 0
+	keymenu.item.scale = 1.0, 1.0
+	keymenu.item.xshear = 0
+	keymenu.item.angle = 0
+	keymenu.item.xangle = 0
+	keymenu.item.yangle = 0
+	keymenu.item.projection = orthographic
+	keymenu.item.focallength = 2048
+	;;keymenu.item.text =
+	keymenu.item.layerno = 2
+	keymenu.item.window =
+	keymenu.item.localcoord = 320, 240
+
+	keymenu.item.uppercase = 0
+	keymenu.item.spacing = 0, 12
+
+	keymenu.item.bg.anim = -1
+	keymenu.item.bg.spr = -1, 0
+	keymenu.item.bg.offset = 0, 0
+	keymenu.item.bg.facing = 1
+	keymenu.item.bg.scale = 1.0, 1.0
+	keymenu.item.bg.xshear = 0
+	keymenu.item.bg.angle = 0
+	keymenu.item.bg.xangle = 0
+	keymenu.item.bg.yangle = 0
+	keymenu.item.bg.projection = orthographic
+	keymenu.item.bg.focallength = 2048
+	keymenu.item.bg.layerno = 2
+	keymenu.item.bg.window =
+	keymenu.item.bg.localcoord = 320, 240
+	keymenu.item.bg.spacing = 0, 0
+
+	;keymenu.item.bg.<itemname>.anim = -1
+	;keymenu.item.bg.<itemname>.spr = -1, 0
+	;keymenu.item.bg.<itemname>.offset = 0, 0
+	;keymenu.item.bg.<itemname>.facing = 1
+	;keymenu.item.bg.<itemname>.scale = 1.0, 1.0
+	;keymenu.item.bg.<itemname>.xshear = 0
+	;keymenu.item.bg.<itemname>.angle = 0
+	;keymenu.item.bg.<itemname>.xangle = 0
+	;keymenu.item.bg.<itemname>.yangle = 0
+	;keymenu.item.bg.<itemname>.projection = orthographic
+	;keymenu.item.bg.<itemname>.focallength = 2048
+	;keymenu.item.bg.<itemname>.layerno = 2
+	;keymenu.item.bg.<itemname>.window =
+	;keymenu.item.bg.<itemname>.localcoord = 320, 240
+	;keymenu.item.bg.<itemname>.spacing = 0, 0
+
+	keymenu.item.active.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	keymenu.item.active.offset = 0, 0
+	keymenu.item.active.scale = 1.0, 1.0
+	keymenu.item.active.xshear = 0
+	keymenu.item.active.angle = 0
+	keymenu.item.active.xangle = 0
+	keymenu.item.active.yangle = 0
+	keymenu.item.active.projection = orthographic
+	keymenu.item.active.focallength = 2048
+	;;keymenu.item.active.text =
+	keymenu.item.active.layerno = 2
+	keymenu.item.active.window =
+	keymenu.item.active.localcoord = 320, 240
+
+	keymenu.item.active.bg.anim = -1
+	keymenu.item.active.bg.spr = -1, 0
+	keymenu.item.active.bg.offset = 0, 0
+	keymenu.item.active.bg.facing = 1
+	keymenu.item.active.bg.scale = 1.0, 1.0
+	keymenu.item.active.bg.xshear = 0
+	keymenu.item.active.bg.angle = 0
+	keymenu.item.active.bg.xangle = 0
+	keymenu.item.active.bg.yangle = 0
+	keymenu.item.active.bg.projection = orthographic
+	keymenu.item.active.bg.focallength = 2048
+	keymenu.item.active.bg.layerno = 2
+	keymenu.item.active.bg.window =
+	keymenu.item.active.bg.localcoord = 320, 240
+	keymenu.item.active.bg.spacing = 0, 0
+
+	;keymenu.item.active.bg.<itemname>.anim = -1
+	;keymenu.item.active.bg.<itemname>.spr = -1, 0
+	;keymenu.item.active.bg.<itemname>.offset = 0, 0
+	;keymenu.item.active.bg.<itemname>.facing = 1
+	;keymenu.item.active.bg.<itemname>.scale = 1.0, 1.0
+	;keymenu.item.active.bg.<itemname>.xshear = 0
+	;keymenu.item.active.bg.<itemname>.angle = 0
+	;keymenu.item.active.bg.<itemname>.xangle = 0
+	;keymenu.item.active.bg.<itemname>.yangle = 0
+	;keymenu.item.active.bg.<itemname>.projection = orthographic
+	;keymenu.item.active.bg.<itemname>.focallength = 2048
+	;keymenu.item.active.bg.<itemname>.layerno = 2
+	;keymenu.item.active.bg.<itemname>.window =
+	;keymenu.item.active.bg.<itemname>.localcoord = 320, 240
+	;keymenu.item.active.bg.<itemname>.spacing = 0, 0
+
+	keymenu.item.value.font = f-6x9.def, 0, -1, 191, 191, 191, 255, -1
+	keymenu.item.value.offset = 101, 0
+	keymenu.item.value.scale = 1.0, 1.0
+	keymenu.item.value.xshear = 0
+	keymenu.item.value.angle = 0
+	keymenu.item.value.xangle = 0
+	keymenu.item.value.yangle = 0
+	keymenu.item.value.projection = orthographic
+	keymenu.item.value.focallength = 2048
+	;;keymenu.item.value.text =
+	keymenu.item.value.layerno = 2
+	keymenu.item.value.window =
+	keymenu.item.value.localcoord = 320, 240
+
+	keymenu.item.value.active.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	keymenu.item.value.active.offset = 101, 0
+	keymenu.item.value.active.scale = 1.0, 1.0
+	keymenu.item.value.active.xshear = 0
+	keymenu.item.value.active.angle = 0
+	keymenu.item.value.active.xangle = 0
+	keymenu.item.value.active.yangle = 0
+	keymenu.item.value.active.projection = orthographic
+	keymenu.item.value.active.focallength = 2048
+	;;keymenu.item.value.active.text =
+	keymenu.item.value.active.layerno = 2
+	keymenu.item.value.active.window =
+	keymenu.item.value.active.localcoord = 320, 240
+
+	keymenu.item.value.conflict.font = f-6x9.def, 0, -1, 247, 0, 0, 255, -1
+	keymenu.item.value.conflict.offset = 101, 0
+	keymenu.item.value.conflict.scale = 1.0, 1.0
+	keymenu.item.value.conflict.xshear = 0
+	keymenu.item.value.conflict.angle = 0
+	keymenu.item.value.conflict.xangle = 0
+	keymenu.item.value.conflict.yangle = 0
+	keymenu.item.value.conflict.projection = orthographic
+	keymenu.item.value.conflict.focallength = 2048
+	;;keymenu.item.value.conflict.text =
+	keymenu.item.value.conflict.layerno = 2
+	keymenu.item.value.conflict.window =
+	keymenu.item.value.conflict.localcoord = 320, 240
+
+	keymenu.item.info.font = f-6x9.def, 0, -1, 247, 247, 0, 255, -1
+	keymenu.item.info.offset = 101, 0
+	keymenu.item.info.scale = 1.0, 1.0
+	keymenu.item.info.xshear = 0
+	keymenu.item.info.angle = 0
+	keymenu.item.info.xangle = 0
+	keymenu.item.info.yangle = 0
+	keymenu.item.info.projection = orthographic
+	keymenu.item.info.focallength = 2048
+	;;keymenu.item.info.text =
+	keymenu.item.info.layerno = 2
+	keymenu.item.info.window =
+	keymenu.item.info.localcoord = 320, 240
+
+	keymenu.item.info.active.font = f-6x9.def, 0, -1, 247, 247, 0, 255, -1
+	keymenu.item.info.active.offset = 101, 0
+	keymenu.item.info.active.scale = 1.0, 1.0
+	keymenu.item.info.active.xshear = 0
+	keymenu.item.info.active.angle = 0
+	keymenu.item.info.active.xangle = 0
+	keymenu.item.info.active.yangle = 0
+	keymenu.item.info.active.projection = orthographic
+	keymenu.item.info.active.focallength = 2048
+	;;keymenu.item.info.active.text =
+	keymenu.item.info.active.layerno = 2
+	keymenu.item.info.active.window =
+	keymenu.item.info.active.localcoord = 320, 240
+
+	keymenu.window.margins.y = 0, 0
+	keymenu.window.visibleitems = 0
+
+	keymenu.boxcursor.coords = -5, -9, 106, 2
+	keymenu.boxcursor.visible = 1
+	keymenu.boxcursor.col = 255, 255, 255
+	keymenu.boxcursor.layerno = 2
+	keymenu.boxcursor.localcoord = 320, 240
+	keymenu.boxcursor.pulse = 30, 20, 30
+	keymenu.boxcursor.tween.factor = 0.5
+	keymenu.boxcursor.tween.snap = 0
+	keymenu.boxcursor.tween.wrap.snap = 0
+
+	keymenu.boxbg.visible = 1
+	keymenu.boxbg.col = 0, 0, 0
+	keymenu.boxbg.alpha = 0, 128
+	keymenu.boxbg.layerno = 2
+	keymenu.boxbg.localcoord = 320, 240
+
+	keymenu.arrow.up.anim = -1
+	keymenu.arrow.up.spr = -1, 0
+	keymenu.arrow.up.offset = 0, 0
+	keymenu.arrow.up.facing = 1
+	keymenu.arrow.up.scale = 1.0, 1.0
+	keymenu.arrow.up.xshear = 0
+	keymenu.arrow.up.angle = 0
+	keymenu.arrow.up.xangle = 0
+	keymenu.arrow.up.yangle = 0
+	keymenu.arrow.up.projection = orthographic
+	keymenu.arrow.up.focallength = 2048
+	keymenu.arrow.up.layerno = 2
+	keymenu.arrow.up.window =
+	keymenu.arrow.up.localcoord = 320, 240
+
+	keymenu.arrow.down.anim = -1
+	keymenu.arrow.down.spr = -1, 0
+	keymenu.arrow.down.offset = 0, 0
+	keymenu.arrow.down.facing = 1
+	keymenu.arrow.down.scale = 1.0, 1.0
+	keymenu.arrow.down.xshear = 0
+	keymenu.arrow.down.angle = 0
+	keymenu.arrow.down.xangle = 0
+	keymenu.arrow.down.yangle = 0
+	keymenu.arrow.down.projection = orthographic
+	keymenu.arrow.down.focallength = 2048
+	keymenu.arrow.down.layerno = 2
+	keymenu.arrow.down.window =
+	keymenu.arrow.down.localcoord = 320, 240
+
+	keymenu.title.uppercase = 1
+
+	keymenu.next.key = $D
+	keymenu.previous.key = $U
+	keymenu.add.key = $F
+	keymenu.subtract.key = $B
+	keymenu.done.key = a, b, c, x, y, z, s
+	keymenu.cancel.key = m
+
+	;keymenu.itemname.spacer = -
+	keymenu.itemname.configall = Config all
+	keymenu.itemname.up = Up
+	keymenu.itemname.down = Down
+	keymenu.itemname.left = Left
+	keymenu.itemname.right = Right
+	keymenu.itemname.a = A
+	keymenu.itemname.b = B
+	keymenu.itemname.c = C
+	keymenu.itemname.x = X
+	keymenu.itemname.y = Y
+	keymenu.itemname.z = Z
+	keymenu.itemname.start = Start
+	keymenu.itemname.d = D
+	keymenu.itemname.w = W
+	keymenu.itemname.menu = Menu
+	keymenu.itemname.rumble = ;Rumble
+	keymenu.itemname.back = Back
+	keymenu.itemname.page = Page
+
+[OptionBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 0
+	localcoord =
+
+[Replay Info]
+	fadein.time = 10
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 10
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	title.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = REPLAY SELECT
+	title.layerno = 0
+	title.window =
+	title.localcoord = 320, 240
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus.
+	menu.pos = 85, 33
+
+	menu.tween.factor = 0.5
+	menu.tween.wrap.snap = 0
+
+	menu.item.font = f-6x9.def, 0, 0, 191, 191, 191, 255, -1
+	menu.item.offset = 0, 0
+	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0
+	menu.item.angle = 0
+	menu.item.xangle = 0
+	menu.item.yangle = 0
+	menu.item.projection = orthographic
+	menu.item.focallength = 2048
+	;;menu.item.text =
+	menu.item.layerno = 0
+	menu.item.window =
+	menu.item.localcoord = 320, 240
+
+	menu.item.uppercase = 0
+	menu.item.spacing = 0, 14
+	menu.item.tween.factor = 0.5
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = -1, 0
+	menu.item.bg.offset = 0, 0
+	menu.item.bg.facing = 1
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.xshear = 0
+	menu.item.bg.angle = 0
+	menu.item.bg.xangle = 0
+	menu.item.bg.yangle = 0
+	menu.item.bg.projection = orthographic
+	menu.item.bg.focallength = 2048
+	menu.item.bg.layerno = 0
+	menu.item.bg.window =
+	menu.item.bg.localcoord = 320, 240
+	menu.item.bg.spacing = 0, 0
+
+	;menu.item.bg.<itemname>.anim = -1
+	;menu.item.bg.<itemname>.spr = -1, 0
+	;menu.item.bg.<itemname>.offset = 0, 0
+	;menu.item.bg.<itemname>.facing = 1
+	;menu.item.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.bg.<itemname>.xshear = 0
+	;menu.item.bg.<itemname>.angle = 0
+	;menu.item.bg.<itemname>.xangle = 0
+	;menu.item.bg.<itemname>.yangle = 0
+	;menu.item.bg.<itemname>.projection = orthographic
+	;menu.item.bg.<itemname>.focallength = 2048
+	;menu.item.bg.<itemname>.layerno = 0
+	;menu.item.bg.<itemname>.window =
+	;menu.item.bg.<itemname>.localcoord = 320, 240
+	;menu.item.bg.<itemname>.spacing = 0, 0
+
+	menu.item.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	menu.item.active.offset = 0, 0
+	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0
+	menu.item.active.angle = 0
+	menu.item.active.xangle = 0
+	menu.item.active.yangle = 0
+	menu.item.active.projection = orthographic
+	menu.item.active.focallength = 2048
+	;;menu.item.active.text =
+	menu.item.active.layerno = 0
+	menu.item.active.window =
+	menu.item.active.localcoord = 320, 240
+
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = -1, 0
+	menu.item.active.bg.offset = 0, 0
+	menu.item.active.bg.facing = 1
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.xshear = 0
+	menu.item.active.bg.angle = 0
+	menu.item.active.bg.xangle = 0
+	menu.item.active.bg.yangle = 0
+	menu.item.active.bg.projection = orthographic
+	menu.item.active.bg.focallength = 2048
+	menu.item.active.bg.layerno = 0
+	menu.item.active.bg.window =
+	menu.item.active.bg.localcoord = 320, 240
+	menu.item.active.bg.spacing = 0, 0
+
+	;menu.item.active.bg.<itemname>.anim = -1
+	;menu.item.active.bg.<itemname>.spr = -1, 0
+	;menu.item.active.bg.<itemname>.offset = 0, 0
+	;menu.item.active.bg.<itemname>.facing = 1
+	;menu.item.active.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.active.bg.<itemname>.xshear = 0
+	;menu.item.active.bg.<itemname>.angle = 0
+	;menu.item.active.bg.<itemname>.xangle = 0
+	;menu.item.active.bg.<itemname>.yangle = 0
+	;menu.item.active.bg.<itemname>.projection = orthographic
+	;menu.item.active.bg.<itemname>.focallength = 2048
+	;menu.item.active.bg.<itemname>.layerno = 0
+	;menu.item.active.bg.<itemname>.window =
+	;menu.item.active.bg.<itemname>.localcoord = 320, 240
+	;menu.item.active.bg.<itemname>.spacing = 0, 0
+
+	menu.window.margins.y = 0, 0
+	menu.window.visibleitems = 13
+
+	menu.boxcursor.visible = 1
+	menu.boxcursor.coords = -5, -10, 154, 3
+	menu.boxcursor.col = 255, 255, 255
+	menu.boxcursor.layerno = 0
+	menu.boxcursor.localcoord = 320, 240
+	menu.boxcursor.pulse = 30, 20, 30
+	menu.boxcursor.tween.factor = 0.5
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.wrap.snap = 0
+
+	menu.boxbg.visible = 1
+	menu.boxbg.col = 0, 0, 0
+	menu.boxbg.alpha = 0, 128
+	menu.boxbg.layerno = 0
+	menu.boxbg.localcoord = 320, 240
+
+	menu.arrow.up.anim = -1
+	menu.arrow.up.spr = -1, 0
+	menu.arrow.up.offset = 0, 0
+	menu.arrow.up.facing = 1
+	menu.arrow.up.scale = 1.0, 1.0
+	menu.arrow.up.xshear = 0
+	menu.arrow.up.angle = 0
+	menu.arrow.up.xangle = 0
+	menu.arrow.up.yangle = 0
+	menu.arrow.up.projection = orthographic
+	menu.arrow.up.focallength = 2048
+	menu.arrow.up.layerno = 0
+	menu.arrow.up.window =
+	menu.arrow.up.localcoord = 320, 240
+
+	menu.arrow.down.anim = -1
+	menu.arrow.down.spr = -1, 0
+	menu.arrow.down.offset = 0, 0
+	menu.arrow.down.facing = 1
+	menu.arrow.down.scale = 1.0, 1.0
+	menu.arrow.down.xshear = 0
+	menu.arrow.down.angle = 0
+	menu.arrow.down.xangle = 0
+	menu.arrow.down.yangle = 0
+	menu.arrow.down.projection = orthographic
+	menu.arrow.down.focallength = 2048
+	menu.arrow.down.layerno = 0
+	menu.arrow.down.window =
+	menu.arrow.down.localcoord = 320, 240
+
+	menu.title.uppercase = 1
+
+	menu.next.key = $D
+	menu.previous.key = $U
+	menu.done.key = a, b, c, x, y, z, s
+	menu.cancel.key = m
+
+	menu.itemname.back = Back
+
+	cursor.move.snd = 100, 0
+	cursor.done.snd = 100, 1
+	cancel.snd = 100, 2
+
+[ReplayBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 0
+	localcoord =
+
+[Pause Menu]
+	enabled = 1
+
+	fadein.time = 0
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 0
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	title.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = PAUSE
+	title.layerno = 2
+	title.window =
+	title.localcoord = 320, 240
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus.
+	menu.pos = 85, 33
+
+	menu.tween.factor = 0.5
+	menu.tween.wrap.snap = 0
+
+	menu.item.font = f-6x9.def, 0, 1, 191, 191, 191, 255, -1
+	menu.item.offset = 0, 0
+	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0
+	menu.item.angle = 0
+	menu.item.xangle = 0
+	menu.item.yangle = 0
+	menu.item.projection = orthographic
+	menu.item.focallength = 2048
+	;;menu.item.text =
+	menu.item.layerno = 2
+	menu.item.window =
+	menu.item.localcoord = 320, 240
+
+	menu.item.uppercase = 0
+	menu.item.spacing = 0, 14
+	menu.item.tween.factor = 0.5
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = -1, 0
+	menu.item.bg.offset = 0, 0
+	menu.item.bg.facing = 1
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.xshear = 0
+	menu.item.bg.angle = 0
+	menu.item.bg.xangle = 0
+	menu.item.bg.yangle = 0
+	menu.item.bg.projection = orthographic
+	menu.item.bg.focallength = 2048
+	menu.item.bg.layerno = 2
+	menu.item.bg.window =
+	menu.item.bg.localcoord = 320, 240
+	menu.item.bg.spacing = 0, 0
+
+	;menu.item.bg.<itemname>.anim = -1
+	;menu.item.bg.<itemname>.spr = -1, 0
+	;menu.item.bg.<itemname>.offset = 0, 0
+	;menu.item.bg.<itemname>.facing = 1
+	;menu.item.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.bg.<itemname>.xshear = 0
+	;menu.item.bg.<itemname>.angle = 0
+	;menu.item.bg.<itemname>.xangle = 0
+	;menu.item.bg.<itemname>.yangle = 0
+	;menu.item.bg.<itemname>.projection = orthographic
+	;menu.item.bg.<itemname>.focallength = 2048
+	;menu.item.bg.<itemname>.layerno = 2
+	;menu.item.bg.<itemname>.window =
+	;menu.item.bg.<itemname>.localcoord = 320, 240
+	;menu.item.bg.<itemname>.spacing = 0, 0
+
+	menu.item.active.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	menu.item.active.offset = 0, 0
+	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0
+	menu.item.active.angle = 0
+	menu.item.active.xangle = 0
+	menu.item.active.yangle = 0
+	menu.item.active.projection = orthographic
+	menu.item.active.focallength = 2048
+	;;menu.item.active.text =
+	menu.item.active.layerno = 2
+	menu.item.active.window =
+	menu.item.active.localcoord = 320, 240
+
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = -1, 0
+	menu.item.active.bg.offset = 0, 0
+	menu.item.active.bg.facing = 1
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.xshear = 0
+	menu.item.active.bg.angle = 0
+	menu.item.active.bg.xangle = 0
+	menu.item.active.bg.yangle = 0
+	menu.item.active.bg.projection = orthographic
+	menu.item.active.bg.focallength = 2048
+	menu.item.active.bg.layerno = 2
+	menu.item.active.bg.window =
+	menu.item.active.bg.localcoord = 320, 240
+	menu.item.active.bg.spacing = 0, 0
+
+	;menu.item.active.bg.<itemname>.anim = -1
+	;menu.item.active.bg.<itemname>.spr = -1, 0
+	;menu.item.active.bg.<itemname>.offset = 0, 0
+	;menu.item.active.bg.<itemname>.facing = 1
+	;menu.item.active.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.active.bg.<itemname>.xshear = 0
+	;menu.item.active.bg.<itemname>.angle = 0
+	;menu.item.active.bg.<itemname>.xangle = 0
+	;menu.item.active.bg.<itemname>.yangle = 0
+	;menu.item.active.bg.<itemname>.projection = orthographic
+	;menu.item.active.bg.<itemname>.focallength = 2048
+	;menu.item.active.bg.<itemname>.layerno = 2
+	;menu.item.active.bg.<itemname>.window =
+	;menu.item.active.bg.<itemname>.localcoord = 320, 240
+	;menu.item.active.bg.<itemname>.spacing = 0, 0
+
+	menu.item.selected.font = f-6x9.def, 0, 1, 0, 247, 247, 255, -1
+	menu.item.selected.offset = 0, 0
+	menu.item.selected.scale = 1.0, 1.0
+	menu.item.selected.xshear = 0
+	menu.item.selected.angle = 0
+	menu.item.selected.xangle = 0
+	menu.item.selected.yangle = 0
+	menu.item.selected.projection = orthographic
+	menu.item.selected.focallength = 2048
+	;;menu.item.selected.text =
+	menu.item.selected.layerno = 2
+	menu.item.selected.window =
+	menu.item.selected.localcoord = 320, 240
+
+	menu.item.selected.active.font = f-6x9.def, 0, 1, 0, 247, 247, 255, -1
+	menu.item.selected.active.offset = 0, 0
+	menu.item.selected.active.scale = 1.0, 1.0
+	menu.item.selected.active.xshear = 0
+	menu.item.selected.active.angle = 0
+	menu.item.selected.active.xangle = 0
+	menu.item.selected.active.yangle = 0
+	menu.item.selected.active.projection = orthographic
+	menu.item.selected.active.focallength = 2048
+	;;menu.item.selected.active.text =
+	menu.item.selected.active.layerno = 2
+	menu.item.selected.active.window =
+	menu.item.selected.active.localcoord = 320, 240
+
+	menu.item.value.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	menu.item.value.offset = 150, 0
+	menu.item.value.scale = 1.0, 1.0
+	menu.item.value.xshear = 0
+	menu.item.value.angle = 0
+	menu.item.value.xangle = 0
+	menu.item.value.yangle = 0
+	menu.item.value.projection = orthographic
+	menu.item.value.focallength = 2048
+	;;menu.item.value.text =
+	menu.item.value.layerno = 2
+	menu.item.value.window =
+	menu.item.value.localcoord = 320, 240
+
+	menu.item.value.active.font = f-6x9.def, 0, -1, 255, 255, 255, 255, -1
+	menu.item.value.active.offset = 150, 0
+	menu.item.value.active.scale = 1.0, 1.0
+	menu.item.value.active.xshear = 0
+	menu.item.value.active.angle = 0
+	menu.item.value.active.xangle = 0
+	menu.item.value.active.yangle = 0
+	menu.item.value.active.projection = orthographic
+	menu.item.value.active.focallength = 2048
+	;;menu.item.value.active.text =
+	menu.item.value.active.layerno = 2
+	menu.item.value.active.window =
+	menu.item.value.active.localcoord = 320, 240
+
+	menu.window.margins.y = 0, 0
+	menu.window.visibleitems = 13
+
+	menu.boxcursor.visible = 1
+	menu.boxcursor.coords = -5, -10, 154, 3
+	menu.boxcursor.col = 255, 255, 255
+	menu.boxcursor.layerno = 2
+	menu.boxcursor.localcoord = 320, 240
+	menu.boxcursor.pulse = 30, 20, 30
+	menu.boxcursor.tween.factor = 0.5
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.wrap.snap = 0
+
+	menu.boxbg.visible = 1
+	menu.boxbg.col = 0, 0, 0
+	menu.boxbg.alpha = 0, 128
+	menu.boxbg.layerno = 2
+	menu.boxbg.localcoord = 320, 240
+
+	menu.arrow.up.anim = -1
+	menu.arrow.up.spr = -1, 0
+	menu.arrow.up.offset = 0, 0
+	menu.arrow.up.facing = 1
+	menu.arrow.up.scale = 1.0, 1.0
+	menu.arrow.up.xshear = 0
+	menu.arrow.up.angle = 0
+	menu.arrow.up.xangle = 0
+	menu.arrow.up.yangle = 0
+	menu.arrow.up.projection = orthographic
+	menu.arrow.up.focallength = 2048
+	menu.arrow.up.layerno = 2
+	menu.arrow.up.window =
+	menu.arrow.up.localcoord = 320, 240
+
+	menu.arrow.down.anim = -1
+	menu.arrow.down.spr = -1, 0
+	menu.arrow.down.offset = 0, 0
+	menu.arrow.down.facing = 1
+	menu.arrow.down.scale = 1.0, 1.0
+	menu.arrow.down.xshear = 0
+	menu.arrow.down.angle = 0
+	menu.arrow.down.xangle = 0
+	menu.arrow.down.yangle = 0
+	menu.arrow.down.projection = orthographic
+	menu.arrow.down.focallength = 2048
+	menu.arrow.down.layerno = 2
+	menu.arrow.down.window =
+	menu.arrow.down.localcoord = 320, 240
+
+	menu.title.uppercase = 1
+
+	menu.next.key = $D
+	menu.previous.key = $U
+	menu.add.key = $F
+	menu.subtract.key = $B
+	menu.done.key = a, b, c, x, y, z, s
+	menu.cancel.key = m
+
+	hidebars = 1
+
+	cursor.move.snd = 100, 0
+	cursor.done.snd = 100, 1
+	cancel.snd = 100, 2
+	enter.snd = 100, 1
+	exit.snd = 100, 2
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	movelist.pos = 10, 20
+
+	movelist.title.font = Open_Sans.def, 0, 0, 255, 255, 255, 255, -1
+	movelist.title.offset = 150, 0
+	movelist.title.scale = 0.4, 0.4
+	movelist.title.xshear = 0
+	movelist.title.angle = 0
+	movelist.title.xangle = 0
+	movelist.title.yangle = 0
+	movelist.title.projection = orthographic
+	movelist.title.focallength = 2048
+	movelist.title.text = %s
+	movelist.title.layerno = 2
+	movelist.title.window =
+	movelist.title.localcoord = 320, 240
+
+	movelist.title.uppercase = 0
+
+	movelist.text.font = Open_Sans.def, 0, 1, 255, 255, 255, 255, -1
+	movelist.text.offset = 0, 12
+	movelist.text.scale = 0.4, 0.4
+	movelist.text.xshear = 0
+	movelist.text.angle = 0
+	movelist.text.xangle = 0
+	movelist.text.yangle = 0
+	movelist.text.projection = orthographic
+	movelist.text.focallength = 2048
+	movelist.text.text = Command List not found.
+	movelist.text.layerno = 2
+	movelist.text.window =
+	movelist.text.localcoord = 320, 240
+
+	movelist.text.spacing = 1, 1
+
+	movelist.glyphs.offset = 0, 2
+	movelist.glyphs.scale = 1.0, 1.0
+	movelist.glyphs.layerno = 2
+	movelist.glyphs.localcoord = 320, 240
+	movelist.glyphs.spacing = 2, 0
+
+	movelist.window.margins.y = 20, 1
+	movelist.window.visibleitems = 18
+	movelist.window.width = 300
+
+	movelist.overlay.col = 0, 0, 0
+	movelist.overlay.alpha = 0, 128
+	movelist.overlay.layerno = 1
+	movelist.overlay.window =
+	movelist.overlay.localcoord = 320, 240
+
+	movelist.arrow.up.anim = -1
+	movelist.arrow.up.spr = -1, 0
+	movelist.arrow.up.offset = 0, 0
+	movelist.arrow.up.facing = 1
+	movelist.arrow.up.scale = 1.0, 1.0
+	movelist.arrow.up.xshear = 0
+	movelist.arrow.up.angle = 0
+	movelist.arrow.up.xangle = 0
+	movelist.arrow.up.yangle = 0
+	movelist.arrow.up.projection = orthographic
+	movelist.arrow.up.focallength = 2048
+	movelist.arrow.up.layerno = 2
+	movelist.arrow.up.window =
+	movelist.arrow.up.localcoord = 320, 240
+
+	movelist.arrow.down.anim = -1
+	movelist.arrow.down.spr = -1, 0
+	movelist.arrow.down.offset = 0, 0
+	movelist.arrow.down.facing = 1
+	movelist.arrow.down.scale = 1.0, 1.0
+	movelist.arrow.down.xshear = 0
+	movelist.arrow.down.angle = 0
+	movelist.arrow.down.xangle = 0
+	movelist.arrow.down.yangle = 0
+	movelist.arrow.down.projection = orthographic
+	movelist.arrow.down.focallength = 2048
+	movelist.arrow.down.layerno = 2
+	movelist.arrow.down.window =
+	movelist.arrow.down.localcoord = 320, 240
+
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Screenpack-features#submenus
+	; If custom menu is not declared, following menu is loaded by default:
+	menu.itemname.back = Continue
+	menu.itemname.menuinput = Button Config
+	menu.itemname.menuinput.keyboard = Key Config
+	menu.itemname.menuinput.gamepad = Joystick Config
+	menu.itemname.menuinput.spacer = -
+	menu.itemname.menuinput.inputdefault = Default
+	menu.itemname.menuinput.back = Back
+	menu.itemname.commandlist = Command List
+	menu.itemname.characterchange = Character Change
+	menu.itemname.exit = Exit
+	; Unassigned menu items:
+	;menu.itemname.reset = Round Reset
+	;menu.itemname.reload = Rematch
+
+[PauseBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Training Pause Menu]
+	; If not overridden, values used for [Pause Menu] are shared with this group.
+
+	; Training specific parameters:
+	menu.valuename.dummycontrol_cooperative = Cooperative
+	menu.valuename.dummycontrol_ai = AI
+	menu.valuename.dummycontrol_manual = Manual
+	menu.valuename.ailevel_1 = 1
+	menu.valuename.ailevel_2 = 2
+	menu.valuename.ailevel_3 = 3
+	menu.valuename.ailevel_4 = 4
+	menu.valuename.ailevel_5 = 5
+	menu.valuename.ailevel_6 = 6
+	menu.valuename.ailevel_7 = 7
+	menu.valuename.ailevel_8 = 8
+	menu.valuename.dummymode_stand = Stand
+	menu.valuename.dummymode_crouch = Crouch
+	menu.valuename.dummymode_jump = Jump
+	menu.valuename.dummymode_wjump = W Jump
+	menu.valuename.guardmode_none = None
+	menu.valuename.guardmode_auto = Auto
+	menu.valuename.guardmode_all = All
+	menu.valuename.guardmode_random = Random
+	menu.valuename.fallrecovery_none = None
+	menu.valuename.fallrecovery_ground = Ground
+	menu.valuename.fallrecovery_air = Air
+	menu.valuename.fallrecovery_random = Random
+	menu.valuename.distance_any = Any
+	menu.valuename.distance_close = Close
+	menu.valuename.distance_medium = Medium
+	menu.valuename.distance_far = Far
+	menu.valuename.buttonjam_none = None
+	menu.valuename.buttonjam_a = A
+	menu.valuename.buttonjam_b = B
+	menu.valuename.buttonjam_c = C
+	menu.valuename.buttonjam_x = X
+	menu.valuename.buttonjam_y = Y
+	menu.valuename.buttonjam_z = Z
+	menu.valuename.buttonjam_s = Start
+	menu.valuename.buttonjam_d = D
+	menu.valuename.buttonjam_w = W
+
+	menu.itemname.back = Continue
+	menu.itemname.menutraining = Training Menu
+	menu.itemname.menutraining.dummycontrol = Dummy Control
+	menu.itemname.menutraining.ailevel = AI Level
+	menu.itemname.menutraining.dummymode = Dummy Mode
+	menu.itemname.menutraining.guardmode = Guard Mode
+	menu.itemname.menutraining.fallrecovery = Fall Recovery
+	menu.itemname.menutraining.distance = Distance
+	menu.itemname.menutraining.buttonjam = Button Jam
+	menu.itemname.menutraining.back = Back
+	menu.itemname.menuinput = Button Config
+	menu.itemname.menuinput.keyboard = Key Config
+	menu.itemname.menuinput.gamepad = Joystick Config
+	menu.itemname.menuinput.spacer = -
+	menu.itemname.menuinput.inputdefault = Default
+	menu.itemname.menuinput.back = Back
+	menu.itemname.commandlist = Command List
+	menu.itemname.characterchange = Character Change
+	menu.itemname.exit = Exit
+
+	; Unassigned menu items:
+	;menu.itemname.reset = Round Reset
+	;menu.itemname.reload = Rematch
+
+[TrainingPauseBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Attract Mode]
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/Miscellaneous-Info/#attract
+	enabled = 0
+
+	fadein.time = 10
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 10
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	title.font = -1, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = MAIN MENU
+	title.layerno = 0
+	title.window =
+	title.localcoord = 320, 240
+
+	; Refer to [Title Info] menu parameters for extra comments explaining how to
+	; define menus.
+
+	menu.pos = 159, 158
+
+	menu.tween.factor = 0.5
+	menu.tween.wrap.snap = 0
+
+	menu.item.font = f-6x9.def, 0, 0, 191, 191, 191, 255, -1
+	menu.item.offset = 0, 0
+	menu.item.scale = 1.0, 1.0
+	menu.item.xshear = 0
+	menu.item.angle = 0
+	menu.item.xangle = 0
+	menu.item.yangle = 0
+	menu.item.projection = orthographic
+	menu.item.focallength = 2048
+	;;menu.item.text =
+	menu.item.layerno = 0
+	menu.item.window =
+	menu.item.localcoord = 320, 240
+
+	menu.item.uppercase = 0
+	menu.item.spacing = 0, 13
+	menu.item.tween.factor = 0.5
+
+	menu.item.bg.anim = -1
+	menu.item.bg.spr = -1, 0
+	menu.item.bg.offset = 0, 0
+	menu.item.bg.facing = 1
+	menu.item.bg.scale = 1.0, 1.0
+	menu.item.bg.xshear = 0
+	menu.item.bg.angle = 0
+	menu.item.bg.xangle = 0
+	menu.item.bg.yangle = 0
+	menu.item.bg.projection = orthographic
+	menu.item.bg.focallength = 2048
+	menu.item.bg.layerno = 0
+	menu.item.bg.window =
+	menu.item.bg.localcoord = 320, 240
+	menu.item.bg.spacing = 0, 0
+
+	;menu.item.bg.<itemname>.anim = -1
+	;menu.item.bg.<itemname>.spr = -1, 0
+	;menu.item.bg.<itemname>.offset = 0, 0
+	;menu.item.bg.<itemname>.facing = 1
+	;menu.item.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.bg.<itemname>.xshear = 0
+	;menu.item.bg.<itemname>.angle = 0
+	;menu.item.bg.<itemname>.xangle = 0
+	;menu.item.bg.<itemname>.yangle = 0
+	;menu.item.bg.<itemname>.projection = orthographic
+	;menu.item.bg.<itemname>.focallength = 2048
+	;menu.item.bg.<itemname>.layerno = 0
+	;menu.item.bg.<itemname>.window =
+	;menu.item.bg.<itemname>.localcoord = 320, 240
+	;menu.item.bg.<itemname>.spacing = 0, 0
+
+	menu.item.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	menu.item.active.offset = 0, 0
+	menu.item.active.scale = 1.0, 1.0
+	menu.item.active.xshear = 0
+	menu.item.active.angle = 0
+	menu.item.active.xangle = 0
+	menu.item.active.yangle = 0
+	menu.item.active.projection = orthographic
+	menu.item.active.focallength = 2048
+	;;menu.item.active.text =
+	menu.item.active.layerno = 0
+	menu.item.active.window =
+	menu.item.active.localcoord = 320, 240
+
+	menu.item.active.bg.anim = -1
+	menu.item.active.bg.spr = -1, 0
+	menu.item.active.bg.offset = 0, 0
+	menu.item.active.bg.facing = 1
+	menu.item.active.bg.scale = 1.0, 1.0
+	menu.item.active.bg.xshear = 0
+	menu.item.active.bg.angle = 0
+	menu.item.active.bg.xangle = 0
+	menu.item.active.bg.yangle = 0
+	menu.item.active.bg.projection = orthographic
+	menu.item.active.bg.focallength = 2048
+	menu.item.active.bg.layerno = 0
+	menu.item.active.bg.window =
+	menu.item.active.bg.localcoord = 320, 240
+	menu.item.active.bg.spacing = 0, 0
+
+	;menu.item.active.bg.<itemname>.anim = -1
+	;menu.item.active.bg.<itemname>.spr = -1, 0
+	;menu.item.active.bg.<itemname>.offset = 0, 0
+	;menu.item.active.bg.<itemname>.facing = 1
+	;menu.item.active.bg.<itemname>.scale = 1.0, 1.0
+	;menu.item.active.bg.<itemname>.xshear = 0
+	;menu.item.active.bg.<itemname>.angle = 0
+	;menu.item.active.bg.<itemname>.xangle = 0
+	;menu.item.active.bg.<itemname>.yangle = 0
+	;menu.item.active.bg.<itemname>.projection = orthographic
+	;menu.item.active.bg.<itemname>.focallength = 2048
+	;menu.item.active.bg.<itemname>.layerno = 0
+	;menu.item.active.bg.<itemname>.window =
+	;menu.item.active.bg.<itemname>.localcoord = 320, 240
+	;menu.item.active.bg.<itemname>.spacing = 0, 0
+
+	menu.window.margins.y = 12, 8
+	menu.window.visibleitems = 5
+
+	menu.boxcursor.visible = 1
+	menu.boxcursor.coords = -40, -10, 39, 2
+	menu.boxcursor.col = 255, 255, 255
+	menu.boxcursor.layerno = 0
+	menu.boxcursor.localcoord = 320, 240
+	menu.boxcursor.pulse = 30, 20, 30
+	menu.boxcursor.tween.factor = 0.5
+	menu.boxcursor.tween.snap = 0
+	menu.boxcursor.tween.wrap.snap = 0
+
+	menu.boxbg.visible = 0
+	menu.boxbg.col = 0, 0, 0
+	menu.boxbg.alpha = 0, 128
+	menu.boxbg.layerno = 0
+	menu.boxbg.localcoord = 320, 240
+
+	menu.arrow.up.anim = -1
+	menu.arrow.up.spr = -1, 0
+	menu.arrow.up.offset = 0, 0
+	menu.arrow.up.facing = 1
+	menu.arrow.up.scale = 1.0, 1.0
+	menu.arrow.up.xshear = 0
+	menu.arrow.up.angle = 0
+	menu.arrow.up.xangle = 0
+	menu.arrow.up.yangle = 0
+	menu.arrow.up.projection = orthographic
+	menu.arrow.up.focallength = 2048
+	menu.arrow.up.layerno = 0
+	menu.arrow.up.window =
+	menu.arrow.up.localcoord = 320, 240
+
+	menu.arrow.down.anim = -1
+	menu.arrow.down.spr = -1, 0
+	menu.arrow.down.offset = 0, 0
+	menu.arrow.down.facing = 1
+	menu.arrow.down.scale = 1.0, 1.0
+	menu.arrow.down.xshear = 0
+	menu.arrow.down.angle = 0
+	menu.arrow.down.xangle = 0
+	menu.arrow.down.yangle = 0
+	menu.arrow.down.projection = orthographic
+	menu.arrow.down.focallength = 2048
+	menu.arrow.down.layerno = 0
+	menu.arrow.down.window =
+	menu.arrow.down.localcoord = 320, 240
+
+	menu.title.uppercase = 1
+
+	;menu.unlock.<itemname> = true
+
+	menu.next.key = $D, $F
+	menu.previous.key = $U, $B
+	menu.done.key = a, b, c, x, y, z, s
+	menu.cancel.key = m
+	menu.hiscore.key = s
+
+	menu.itemname.arcade = ARCADE
+
+	cursor.move.snd = 100, 0
+	cursor.done.snd = 100, 1
+	; Sound played upon itemname selection
+	;cursor.done.<itemname>.snd = -1, 0
+	cancel.snd = 100, 2
+
+	credits.font = f-4x6.fnt, 0, 0, 255, 255, 255, 255, -1
+	credits.offset = 159, 234
+	credits.scale = 1.0, 1.0
+	credits.xshear = 0
+	credits.angle = 0
+	credits.xangle = 0
+	credits.yangle = 0
+	credits.projection = orthographic
+	credits.focallength = 2048
+	credits.text = CREDITS: %02d
+	credits.layerno = 0
+	credits.window =
+	credits.localcoord = 320, 240
+
+	credits.snd = -1, 0
+
+	; Defaults to storyboards declared under [Files], if not defined
+	logo.storyboard =
+	intro.storyboard =
+	start.storyboard =
+
+	start.done.snd = 100, 1
+
+	start.time = 600
+
+	; Attract Mode start screen
+	start.insert.font = jg.fnt, 0, 0, 255, 255, 255, 255, -1
+	start.insert.offset = 159, 185
+	start.insert.scale = 1.0, 1.0
+	start.insert.xshear = 0
+	start.insert.angle = 0
+	start.insert.xangle = 0
+	start.insert.yangle = 0
+	start.insert.projection = orthographic
+	start.insert.focallength = 2048
+	start.insert.text = Insert coin
+	start.insert.layerno = 0
+	start.insert.window =
+	start.insert.localcoord = 320, 240
+
+	start.insert.blinktime = 30
+
+	start.press.font = jg.fnt, 0, 0, 255, 255, 255, 255, -1
+	start.press.offset = 159, 185
+	start.press.scale = 1.0, 1.0
+	start.press.xshear = 0
+	start.press.angle = 0
+	start.press.xangle = 0
+	start.press.yangle = 0
+	start.press.projection = orthographic
+	start.press.focallength = 2048
+	start.press.text = Press Start
+	start.press.layerno = 0
+	start.press.window =
+	start.press.localcoord = 320, 240
+
+	start.press.blinktime = 30
+	start.press.key = s
+
+	; Positive count enables timer, limiting time (count * framespercount) that
+	; start screen remains on screen if not skipped with button.
+	start.timer.font = f-4x6.fnt, 0, -1, 255, 255, 255, 255, -1
+	start.timer.offset = 310, 234
+	start.timer.scale = 1.0, 1.0
+	start.timer.xshear = 0
+	start.timer.angle = 0
+	start.timer.xangle = 0
+	start.timer.yangle = 0
+	start.timer.projection = orthographic
+	start.timer.focallength = 2048
+	start.timer.text = %i
+	start.timer.layerno = 0
+	start.timer.window =
+	start.timer.localcoord = 320, 240
+
+	start.timer.count = 60
+	start.timer.framespercount = 60
+	start.timer.displaytime = 10
+
+	options.keycode = F11
+
+[AttractBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 0
+	localcoord =
+
+[Challenger Info]
+	enabled = 0
+
+	fadein.time = 0
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 64
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	time = 0
+	pause.time = 0
+	snd.time = 0
+
+	snd = -1, 0
+	key = s
+
+	text.font = -1, 0, 1, 255, 255, 255, 255, -1
+	text.offset = 0, 0
+	text.scale = 1.0, 1.0
+	text.xshear = 0
+	text.angle = 0
+	text.xangle = 0
+	text.yangle = 0
+	text.projection = orthographic
+	text.focallength = 2048
+	text.text  =
+	text.layerno = 2
+	text.window =
+	text.localcoord = 320, 240
+
+	text.displaytime = 0
+
+	bg.anim = -1
+	bg.spr = -1, 0
+	bg.offset = 0, 0
+	bg.facing = 1
+	bg.scale = 1.0, 1.0
+	bg.xshear = 0
+	bg.angle = 0
+	bg.xangle = 0
+	bg.yangle = 0
+	bg.projection = orthographic
+	bg.focallength = 2048
+	bg.layerno = 2
+	bg.window =
+	bg.localcoord = 320, 240
+
+	bg.displaytime = 0
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 0
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+[ChallengerBgDef]
+	spr =
+	bgclearcolor = -1, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Dialogue Info]
+	; https://github.com/ikemen-engine/Ikemen-GO/wiki/State-controllers/#new_dialogue
+	enabled = 0
+
+	starttime = 0
+	endtime = 0
+	switchtime = 0
+	skiptime = 0
+
+	skip.key = a
+	cancel.key = b, c, x, y, z, s
+
+	p1.bg.anim = -1
+	p1.bg.spr = -1, 0
+	p1.bg.offset = 0, 0
+	p1.bg.facing = 1
+	p1.bg.scale = 1.0, 1.0
+	p1.bg.xshear = 0
+	p1.bg.angle = 0
+	p1.bg.xangle = 0
+	p1.bg.yangle = 0
+	p1.bg.projection = orthographic
+	p1.bg.focallength = 2048
+	p1.bg.layerno = 1
+	p1.bg.window =
+	p1.bg.localcoord = 320, 240
+
+	p1.face.anim = -1
+	p1.face.spr = 9000, 1
+	p1.face.offset = 0, 0
+	p1.face.facing = 1
+	p1.face.scale = 1.0, 1.0
+	p1.face.xshear = 0
+	p1.face.angle = 0
+	p1.face.xangle = 0
+	p1.face.yangle = 0
+	p1.face.projection = orthographic
+	p1.face.focallength = 2048
+	p1.face.layerno = 1
+	p1.face.window =
+	p1.face.localcoord = 320, 240
+
+	p1.face.active.anim = -1
+	p1.face.active.spr = 9000, 1
+	p1.face.active.offset = 0, 0
+	p1.face.active.facing = 1
+	p1.face.active.scale = 1.0, 1.0
+	p1.face.active.xshear = 0
+	p1.face.active.angle = 0
+	p1.face.active.xangle = 0
+	p1.face.active.yangle = 0
+	p1.face.active.projection = orthographic
+	p1.face.active.focallength = 2048
+	p1.face.active.layerno = 1
+	p1.face.active.window =
+	p1.face.active.localcoord = 320, 240
+
+	p1.name.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p1.name.offset = 0, 0
+	p1.name.scale = 1.0, 1.0
+	p1.name.xshear = 0
+	p1.name.angle = 0
+	p1.name.xangle = 0
+	p1.name.yangle = 0
+	p1.name.projection = orthographic
+	p1.name.focallength = 2048
+	;;p1.name.text =
+	p1.name.layerno = 1
+	p1.name.window =
+	p1.name.localcoord = 320, 240
+
+	p1.text.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p1.text.offset = 20, 192
+	p1.text.scale = 1.0, 1.0
+	p1.text.xshear = 0
+	p1.text.angle = 0
+	p1.text.xangle = 0
+	p1.text.yangle = 0
+	p1.text.projection = orthographic
+	p1.text.focallength = 2048
+	;;p1.text.text =
+	p1.text.layerno = 1
+	p1.text.window =
+	p1.text.localcoord = 320, 240
+
+	p1.text.textspacing = 0, 0
+	p1.text.textdelay = 2
+	p1.text.textwrap = w
+
+	; active element is rendered on top, only when pX side is executing text.
+	; Can be used e.g. to display button press prompt on active side and/or dim
+	; opposite player text box. Animation is reset whenever active side changes.
+	p1.active.anim = -1
+	p1.active.spr = -1, 0
+	p1.active.offset = 0, 0
+	p1.active.facing = 1
+	p1.active.scale = 1.0, 1.0
+	p1.active.xshear = 0
+	p1.active.angle = 0
+	p1.active.xangle = 0
+	p1.active.yangle = 0
+	p1.active.projection = orthographic
+	p1.active.focallength = 2048
+	p1.active.layerno = 1
+	p1.active.window =
+	p1.active.localcoord = 320, 240
+
+	p2.bg.anim = -1
+	p2.bg.spr = -1, 0
+	p2.bg.offset = 0, 0
+	p2.bg.facing = 1
+	p2.bg.scale = 1.0, 1.0
+	p2.bg.xshear = 0
+	p2.bg.angle = 0
+	p2.bg.xangle = 0
+	p2.bg.yangle = 0
+	p2.bg.projection = orthographic
+	p2.bg.focallength = 2048
+	p2.bg.layerno = 1
+	p2.bg.window =
+	p2.bg.localcoord = 320, 240
+
+	p2.face.anim = -1
+	p2.face.spr = 9000, 0
+	p2.face.offset = 0, 0
+	p2.face.facing = -1
+	p2.face.scale = 1.0, 1.0
+	p2.face.xshear = 0
+	p2.face.angle = 0
+	p2.face.xangle = 0
+	p2.face.yangle = 0
+	p2.face.projection = orthographic
+	p2.face.focallength = 2048
+	p2.face.layerno = 1
+	p2.face.window =
+	p2.face.localcoord = 320, 240
+
+	p2.face.active.anim = -1
+	p2.face.active.spr = 9000, 1
+	p2.face.active.offset = 0, 0
+	p2.face.active.facing = 1
+	p2.face.active.scale = 1.0, 1.0
+	p2.face.active.xshear = 0
+	p2.face.active.angle = 0
+	p2.face.active.xangle = 0
+	p2.face.active.yangle = 0
+	p2.face.active.projection = orthographic
+	p2.face.active.focallength = 2048
+	p2.face.active.layerno = 1
+	p2.face.active.window =
+	p2.face.active.localcoord = 320, 240
+
+	p2.name.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p2.name.offset = 0, 0
+	p2.name.scale = 1.0, 1.0
+	p2.name.xshear = 0
+	p2.name.angle = 0
+	p2.name.xangle = 0
+	p2.name.yangle = 0
+	p2.name.projection = orthographic
+	p2.name.focallength = 2048
+	;;p2.name.text =
+	p2.name.layerno = 1
+	p2.name.window =
+	p2.name.localcoord = 320, 240
+
+	p2.text.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	p2.text.offset = 20, 192
+	p2.text.scale = 1.0, 1.0
+	p2.text.xshear = 0
+	p2.text.angle = 0
+	p2.text.xangle = 0
+	p2.text.yangle = 0
+	p2.text.projection = orthographic
+	p2.text.focallength = 2048
+	;;p2.text.text =
+	p2.text.layerno = 1
+	p2.text.window =
+	p2.text.localcoord = 320, 240
+
+	p2.text.textspacing = 0, 0
+	p2.text.textdelay = 2
+	p2.text.textwrap = w
+
+	p2.active.anim = -1
+	p2.active.spr = -1, 0
+	p2.active.offset = 0, 0
+	p2.active.facing = 1
+	p2.active.scale = 1.0, 1.0
+	p2.active.xshear = 0
+	p2.active.angle = 0
+	p2.active.xangle = 0
+	p2.active.yangle = 0
+	p2.active.projection = orthographic
+	p2.active.focallength = 2048
+	p2.active.layerno = 1
+	p2.active.window =
+	p2.active.localcoord = 320, 240
+
+[Hiscore Info]
+	enabled = 0
+
+	fadein.time = 50
+	fadein.col = 0, 0, 0
+	fadein.anim = -1
+	fadein.snd = -1, 0
+
+	fadeout.time = 50
+	fadeout.col = 0, 0, 0
+	fadeout.anim = -1
+	fadeout.snd = -1, 0
+
+	time = 360
+
+	pos = 0, 0
+
+	; Set per-gamemode ranking criteria: score|time|win. Used to sort hiscores for that mode.
+	;ranking.<gamemode> =
+	ranking.arcade = score
+	ranking.teamarcade = score
+	ranking.teamcoop = score
+	ranking.netplayteamcoop = score
+	ranking.timeattack = time
+	ranking.survival = win
+	ranking.survivalcoop = win
+	ranking.netplaysurvivalcoop = win
+
+	title.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 0, 0
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = Ranking %s
+	;title.<gamemode>.text =
+	title.arcade.text = Ranking Arcade
+	title.teamarcade.text = Ranking Team Arcade
+	title.teamcoop.text = Ranking Team Cooperative
+	title.timeattack.text = Ranking Time Attack
+	title.survival.text = Ranking Survival
+	title.survivalcoop.text = Ranking Survival Cooperative
+	title.layerno = 2
+	title.window =
+	title.localcoord = 320, 240
+
+	title.uppercase = 0
+
+	title.rank.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.rank.offset = 0, 0
+	title.rank.scale = 1.0, 1.0
+	title.rank.xshear = 0
+	title.rank.angle = 0
+	title.rank.xangle = 0
+	title.rank.yangle = 0
+	title.rank.projection = orthographic
+	title.rank.focallength = 2048
+	title.rank.text = Rank
+	title.rank.layerno = 2
+	title.rank.window =
+	title.rank.localcoord = 320, 240
+
+	title.result.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.result.offset = 0, 0
+	title.result.scale = 1.0, 1.0
+	title.result.xshear = 0
+	title.result.angle = 0
+	title.result.xangle = 0
+	title.result.yangle = 0
+	title.result.projection = orthographic
+	title.result.focallength = 2048
+	title.result.text = Result
+	title.result.layerno = 2
+	title.result.window =
+	title.result.localcoord = 320, 240
+
+	title.name.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.name.offset = 0, 0
+	title.name.scale = 1.0, 1.0
+	title.name.xshear = 0
+	title.name.angle = 0
+	title.name.xangle = 0
+	title.name.yangle = 0
+	title.name.projection = orthographic
+	title.name.focallength = 2048
+	title.name.text = Name
+	title.name.layerno = 2
+	title.name.window =
+	title.name.localcoord = 320, 240
+
+	title.face.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.face.offset = 0, 0
+	title.face.scale = 1.0, 1.0
+	title.face.xshear = 0
+	title.face.angle = 0
+	title.face.xangle = 0
+	title.face.yangle = 0
+	title.face.projection = orthographic
+	title.face.focallength = 2048
+	title.face.text = Character
+	title.face.layerno = 2
+	title.face.window =
+	title.face.localcoord = 320, 240
+
+	item.offset = 0, 0
+	item.spacing = 0, 0
+
+	item.rank.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.rank.offset = 0, 0
+	item.rank.scale = 1.0, 1.0
+	item.rank.xshear = 0
+	item.rank.angle = 0
+	item.rank.xangle = 0
+	item.rank.yangle = 0
+	item.rank.projection = orthographic
+	item.rank.focallength = 2048
+	item.rank.text = %dth
+	;item.rank.<rankno>.text = %d
+	item.rank.1.text = %dst
+	item.rank.2.text = %dnd
+	item.rank.3.text = %drd
+	item.rank.layerno = 2
+	item.rank.window =
+	item.rank.localcoord = 320, 240
+
+	item.rank.spacing = 0, 0
+
+	item.rank.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.rank.active.offset = 0, 0
+	item.rank.active.scale = 1.0, 1.0
+	item.rank.active.xshear = 0
+	item.rank.active.angle = 0
+	item.rank.active.xangle = 0
+	item.rank.active.yangle = 0
+	item.rank.active.projection = orthographic
+	item.rank.active.focallength = 2048
+	item.rank.active.text = %s
+	item.rank.active.layerno = 2
+	item.rank.active.window =
+	item.rank.active.localcoord = 320, 240
+
+	item.rank.active.switchtime = 3
+
+	item.rank.active2.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.rank.active2.offset = 0, 0
+	item.rank.active2.scale = 1.0, 1.0
+	item.rank.active2.xshear = 0
+	item.rank.active2.angle = 0
+	item.rank.active2.xangle = 0
+	item.rank.active2.yangle = 0
+	item.rank.active2.projection = orthographic
+	item.rank.active2.focallength = 2048
+	item.rank.active2.text = %s
+	item.rank.active2.layerno = 2
+	item.rank.active2.window =
+	item.rank.active2.localcoord = 320, 240
+
+	item.result.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.result.offset = 0, 0
+	item.result.scale = 1.0, 1.0
+	item.result.xshear = 0
+	item.result.angle = 0
+	item.result.xangle = 0
+	item.result.yangle = 0
+	item.result.projection = orthographic
+	item.result.focallength = 2048
+	;item.result.text = %d
+	item.result.score.text = %08d
+	item.result.time.text = "%m'%s''%x"
+	item.result.win.text = Round %d
+	item.result.layerno = 2
+	item.result.window =
+	item.result.localcoord = 320, 240
+
+	item.result.spacing = 0, 0
+
+	item.result.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.result.active.offset = 0, 0
+	item.result.active.scale = 1.0, 1.0
+	item.result.active.xshear = 0
+	item.result.active.angle = 0
+	item.result.active.xangle = 0
+	item.result.active.yangle = 0
+	item.result.active.projection = orthographic
+	item.result.active.focallength = 2048
+	item.result.active.text = %s
+	item.result.active.layerno = 2
+	item.result.active.window =
+	item.result.active.localcoord = 320, 240
+
+	item.result.active.switchtime = 3
+
+	item.result.active2.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.result.active2.offset = 0, 0
+	item.result.active2.scale = 1.0, 1.0
+	item.result.active2.xshear = 0
+	item.result.active2.angle = 0
+	item.result.active2.xangle = 0
+	item.result.active2.yangle = 0
+	item.result.active2.projection = orthographic
+	item.result.active2.focallength = 2048
+	item.result.active2.text = %s
+	item.result.active2.layerno = 2
+	item.result.active2.window =
+	item.result.active2.localcoord = 320, 240
+
+	item.name.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.name.offset = 0, 0
+	item.name.scale = 1.0, 1.0
+	item.name.xshear = 0
+	item.name.angle = 0
+	item.name.xangle = 0
+	item.name.yangle = 0
+	item.name.projection = orthographic
+	item.name.focallength = 2048
+	item.name.text = %s
+	item.name.layerno = 2
+	item.name.window =
+	item.name.localcoord = 320, 240
+
+	item.name.spacing = 0, 0
+
+	item.name.active.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.name.active.offset = 0, 0
+	item.name.active.scale = 1.0, 1.0
+	item.name.active.xshear = 0
+	item.name.active.angle = 0
+	item.name.active.xangle = 0
+	item.name.active.yangle = 0
+	item.name.active.projection = orthographic
+	item.name.active.focallength = 2048
+	item.name.active.text = %s
+	item.name.active.layerno = 2
+	item.name.active.window =
+	item.name.active.localcoord = 320, 240
+
+	item.name.active.switchtime = 3
+
+	item.name.active2.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	item.name.active2.offset = 0, 0
+	item.name.active2.scale = 1.0, 1.0
+	item.name.active2.xshear = 0
+	item.name.active2.angle = 0
+	item.name.active2.xangle = 0
+	item.name.active2.yangle = 0
+	item.name.active2.projection = orthographic
+	item.name.active2.focallength = 2048
+	item.name.active2.text = %s
+	item.name.active2.layerno = 2
+	item.name.active2.window =
+	item.name.active2.localcoord = 320, 240
+
+	item.name.uppercase = 1
+
+	item.face.anim = -1
+	item.face.spr = 9000, 0
+	item.face.offset = 0, 0
+	item.face.facing = 1
+	item.face.scale = 1.0, 1.0
+	item.face.xshear = 0
+	item.face.angle = 0
+	item.face.xangle = 0
+	item.face.yangle = 0
+	item.face.projection = orthographic
+	item.face.focallength = 2048
+	item.face.layerno = 2
+	item.face.window =
+	item.face.localcoord = 320, 240
+
+	item.face.num = 1
+	item.face.spacing = 0, 0
+
+	item.face.bg.anim = -1
+	item.face.bg.spr =
+	item.face.bg.offset = 0, 0
+	item.face.bg.facing = 1
+	item.face.bg.scale = 1.0, 1.0
+	item.face.bg.xshear = 0
+	item.face.bg.angle = 0
+	item.face.bg.xangle = 0
+	item.face.bg.yangle = 0
+	item.face.bg.projection = orthographic
+	item.face.bg.focallength = 2048
+	item.face.bg.layerno = 2
+	item.face.bg.window =
+	item.face.bg.localcoord = 320, 240
+
+	item.face.unknown.anim = -1
+	item.face.unknown.spr =
+	item.face.unknown.offset = 0, 0
+	item.face.unknown.facing = 1
+	item.face.unknown.scale = 1.0, 1.0
+	item.face.unknown.xshear = 0
+	item.face.unknown.angle = 0
+	item.face.unknown.xangle = 0
+	item.face.unknown.yangle = 0
+	item.face.unknown.projection = orthographic
+	item.face.unknown.focallength = 2048
+	item.face.unknown.layerno = 2
+	item.face.unknown.window =
+	item.face.unknown.localcoord = 320, 240
+
+	; Positive count enables timer, limiting time (count * framespercount) for
+	; selecting hiscore name.
+	timer.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	timer.offset = 0, 0
+	timer.scale = 1.0, 1.0
+	timer.xshear = 0
+	timer.angle = 0
+	timer.xangle = 0
+	timer.yangle = 0
+	timer.projection = orthographic
+	timer.focallength = 2048
+	timer.text = %s
+	timer.layerno = 2
+	timer.window =
+	timer.localcoord = 320, 240
+
+	timer.count = 99
+	timer.framespercount = 60
+	timer.displaytime = 10
+
+	window.margins.y = 20, 1
+	window.visibleitems = 10
+	window.width = 300
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 1
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	next.key = $D
+	previous.key = $U
+	done.key = a, b, c, x, y, z
+	cancel.key = m
+
+	done.snd = 100, 1
+	cancel.snd = 100, 2
+	move.snd = 100, 0
+
+	done.time = 30
+
+	glyphs = A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, !, ?, ., <, >
+
+[HiscoreBgDef]
+	spr =
+	bgclearcolor = 0, 0, 0
+	bgclearalpha = 255, 0
+	bgclearlayerno = 0
+	startlayer = 1
+	localcoord =
+
+[Warning Info]
+	title.font = f-6x9.def, 0, 0, 255, 255, 255, 255, -1
+	title.offset = 159, 19
+	title.scale = 1.0, 1.0
+	title.xshear = 0
+	title.angle = 0
+	title.xangle = 0
+	title.yangle = 0
+	title.projection = orthographic
+	title.focallength = 2048
+	title.text = WARNING
+	title.layerno = 0
+	title.window =
+	title.localcoord = 320, 240
+
+	text.font = f-6x9.def, 0, 1, 255, 255, 255, 255, -1
+	text.offset = 25, 33
+	text.scale = 1.0, 1.0
+	text.xshear = 0
+	text.angle = 0
+	text.xangle = 0
+	text.yangle = 0
+	text.projection = orthographic
+	text.focallength = 2048
+	;;item.text =
+	text.ratio.text = Incorrect 'arcade.ratiomatches' settings detected.\nRefer to tutorial available in default select.def.
+	text.reload.text = Some selected options require Ikemen to be restarted.\nPress any key to exit the program.
+	text.noreload.text = Some selected options require Ikemen to be restarted.\nPress any key to continue.
+	text.keys.text = Conflict between button keys detected.\nAll keys should have unique assignment.\n\nPress any key to continue.\nPress ESC to reset.
+	text.pad.text = Controller not detected.\nCheck if your controller is plugged in.
+	text.shaders.text = No external OpenGL shaders detected.\nIkemen GO supports files with .vert and .frag extensions.\nShaders are loaded from \'./external/shaders' directory.
+	text.layerno = 0
+	text.window =
+	text.localcoord = 320, 240
+
+	overlay.col = 0, 0, 0
+	overlay.alpha = 0, 128
+	overlay.layerno = 0
+	overlay.window =
+	overlay.localcoord = 320, 240
+
+	done.snd = 100, 0
+	cancel.snd = 100, 2
+
+[Glyphs]
+	^A = 1, 0 ; A
+	^B = 2, 0 ; B
+	^C = 3, 0 ; C
+	^D = 4, 0 ; D
+	^W = 23, 0 ; W
+	^X = 24, 0 ; X
+	^Y = 25, 0 ; Y
+	^Z = 26, 0 ; Z
+	_+ = 39, 0 ; + (press at the same time as previous button)
+	_. = 40, 0 ; ...
+	_DB = 41, 0 ; Down-Back
+	_D = 42, 0 ; Down
+	_DF = 43, 0 ; Down-Forward
+	_B = 44, 0 ; Back
+	_F = 46, 0 ; Forward
+	_UB = 47, 0 ; Up-Back
+	_U = 48, 0 ; Up
+	_UF = 49, 0 ; Up-Forward
+	^S = 51, 0 ; Start
+	^M = 52, 0 ; Menu (Select/Back)
+	^P = 53, 0 ; Any Punch (X / Y / Z)
+	^K = 54, 0 ; Any Kick (A / B / C)
+	^LP = 57, 0 ; Light Punch (X)
+	^MP = 58, 0 ; Medium Punch (Y)
+	^HP = 59, 0 ; Heavy Punch (Z)
+	^LK = 60, 0 ; Light Kick (A)
+	^MK = 61, 0 ; Medium Kick (B)
+	^HK = 62, 0 ; Heavy Kick (C)
+	^3K = 63, 0 ; 3 Kick (A+B+C)
+	^3P = 64, 0 ; 3 Punch (X+Y+Z)
+	^2K = 65, 0 ; 2 Kick (A+B / B+C / A+C)
+	^2P = 66, 0 ; 2 Punch (X+Y / Y+Z / X+Z)
+	_- = 90, 0 ; Arrow (tap following Button immediately - use in combos)
+	_! = 91, 0 ; Continue Arrow (follow with this move)
+	~DB = 92, 0 ; hold Down-Back
+	~D = 93, 0 ; hold Down
+	~DF = 94, 0 ; hold Down-Forward
+	~B = 95, 0 ; hold Back
+	~F = 96, 0 ; hold Forward
+	~UB = 97, 0 ; hold Up-Back
+	~U = 98, 0 ; hold Up
+	~UF = 99, 0 ; hold Up-Forward
+	_HCB = 100, 0 ; 1/2 Circle Back
+	_HUF = 101, 0 ; 1/2 Circle Forward Up
+	_HCF = 102, 0 ; 1/2 Circle Forward
+	_HUB = 103, 0 ; 1/2 Circle Back Up
+	_QFD = 104, 0 ; 1/4 Circle Forward Down
+	_QDB = 105, 0 ; 1/4 Circle Down Back (QCB/QDB)
+	_QCB = 105, 0 ; 1/4 Circle Down Back (QCB/QDB)
+	_QBU = 106, 0 ; 1/4 Circle Back Up
+	_QUF = 107, 0 ; 1/4 Circle Up Forward
+	_QBD = 108, 0 ; 1/4 Circle Back Down
+	_QDF = 109, 0 ; 1/4 Circle Down Forward (QCF/QDF)
+	_QCF = 109, 0 ; 1/4 Circle Down Forward (QCF/QDF)
+	_QFU = 110, 0 ; 1/4 Circle Forward Up
+	_QUB = 111, 0 ; 1/4 Circle Up Back
+	_FDF = 112, 0 ; Full Clock Forward
+	_FUB = 113, 0 ; Full Clock Back
+	_FUF = 114, 0 ; Full Count Forward
+	_FDB = 115, 0 ; Full Count Back
+	_XFF = 116, 0 ; 2x Forward
+	_XBB = 117, 0 ; 2x Back
+	_DSF = 118, 0 ; Dragon Screw Forward
+	_DSB = 119, 0 ; Dragon Screw Back
+	_AIR = 121, 0 ; AIR
+	_TAP = 122, 0 ; TAP
+	_MAX = 123, 0 ; MAX
+	_EX = 124, 0 ; EX
+	_^ = 127, 0 ; Air
+	"_=" = 128, 0 ; Squatting
+	_) = 129, 0 ; Close
+	_( = 130, 0 ; Away
+	_` = 135, 0 ; Small Dot
+	_CHARGE = 136,0 ; Charge
+	_HOLD = 137,0 ; Hold
+	_RELEASE = 138,0 ; Release
+	_MASH = 139,0 ; Mash
+	_CLOSE = 140,0 ; Close
+	_FAR = 141,0 ; Far
+	_AIROK = 142,0 ; AIR OK
+	_THROW = 143,0 ; Throw
+	_COUNTER = 144,0 ; Counter

@@ -1,0 +1,10 @@
+
+[SoundDef]
+group = 5300
+sample = 0
+file = 5300-0.wav
+
+[SoundDef]
+group = 5400
+sample = 0
+file = 5400-0.wav

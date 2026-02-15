@@ -1,0 +1,167 @@
+; Kung Fu Man motif introduction storyboard
+
+; This storyboard uses several scenes
+
+[Info]
+localcoord = 320,240
+
+[SceneDef]
+spr = intro.sff
+
+;------------------------------------
+;Scrolling mountain
+;This scene uses a background to achieve the movement
+[Scene 0]
+fadein.time = 120
+fadeout.time = 30
+; BG
+bg.name = BG0          ;Name of BG to show (no spaces allowed)
+; Total time
+end.time = 240
+
+;------------------------------------
+;BG def for scrolling mountain
+;Note: the name for this BG must correspond to the value of bg.name in
+;      Scene 0. For example, if you used "Scene0bg" instead of "BG0" for
+;      bg.name, then the background definition group name should be
+;      [Scene0bgDef].
+[BG0Def]
+
+[BG0 Mountains]
+type = normal
+spriteno = 0,0
+start = 0,48
+velocity = 6
+tile = 1,0
+
+[BG0 Wall]
+type = normal
+spriteno = 1,0
+start = 0,48
+velocity = 12
+tile = 1,0
+mask = 1
+
+[BG0 Shadows]
+type = normal
+spriteno = 5,0
+start = -7000,48
+velocity = 36
+tile = 2,0
+tilespacing = 480
+mask = 1
+trans = sub
+
+;------------------------------------
+;Flash Suave Dude
+[Scene 1]
+; Fade
+fadein.time = 15
+fadein.col = 255,255,255
+fadeout.time = 30
+; Screen color
+clearcolor = 221,248,248
+; Overlay Anims (from 0 to 9)
+layerall.pos = 160,24  ;Default position for all layers
+layer0.offset = -40,150
+layer0.anim =  10      ;Anim action number
+; Total time
+end.time = 45
+
+;Animation for Suave
+[Begin Action 10]
+10,0, 0,0, -1
+
+;------------------------------------
+;Black wait
+[Scene 2]
+; Screen color
+clearcolor = 0,0,0
+end.time = 15
+
+;------------------------------------
+;Flash Kung Fu Man
+[Scene 3]
+; Fade
+fadein.time = 15
+fadein.col = 255,255,255
+fadeout.time = 30
+; Screen color
+clearcolor = 221,248,248
+; Overlay Anims (from 0 to 9)
+layerall.pos = 160,24  ;Default position for all layers
+layer0.offset = 40,150
+layer0.anim =  11      ;Anim action number
+; Total time
+end.time = 45
+
+;Animation for Kung Fu Man
+[Begin Action 11]
+11,0, 0,0, -1
+
+;------------------------------------
+;Black wait
+[Scene 4]
+; Screen color
+clearcolor = 0,0,0
+end.time = 30
+
+;------------------------------------
+;Kung Fu Man text
+;Uses 3 layers for each word, and a starttime parameter to make the
+;words show up one after another.
+[Scene 5]
+; Fade
+fadein.time = 5
+fadeout.time = 30
+; Screen color
+clearcolor = 255,255,255
+; Overlay Anims (from 0 to 9)
+layerall.pos = 160,24  ;Default position for all layers
+layer0.offset = 0,26
+layer0.anim =  100
+layer0.starttime = 30
+layer1.offset = 0,26
+layer1.anim =  101
+layer1.starttime = 60
+layer2.offset = 0,26
+layer2.anim =  102
+layer2.starttime = 90
+; Total time
+end.time = 180
+
+;Shaking "Kung" text
+[Begin Action 100]
+100,0, 0,20, 1
+100,0, 0,-15, 1
+100,0, 0,11, 1
+100,0, 0,-8, 1
+100,0, 0,6, 1
+100,0, 0,-4, 1
+100,0, 0,2, 1
+100,0, 0,-1, 1
+100,0, 0,0, -1
+
+;Shaking "Fu" text
+[Begin Action 101]
+100,1, 0,20, 1
+100,1, 0,-15, 1
+100,1, 0,11, 1
+100,1, 0,-8, 1
+100,1, 0,6, 1
+100,1, 0,-4, 1
+100,1, 0,2, 1
+100,1, 0,-1, 1
+100,1, 0,0, -1
+
+;Shaking "Man" text
+[Begin Action 102]
+100,2, 0,20, 1
+100,2, 0,-15, 1
+100,2, 0,11, 1
+100,2, 0,-8, 1
+100,2, 0,6, 1
+100,2, 0,-4, 1
+100,2, 0,2, 1
+100,2, 0,-1, 1
+100,2, 0,0, -1

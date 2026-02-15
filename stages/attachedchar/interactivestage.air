@@ -1,0 +1,25 @@
+[Begin Action 0];This has to be defined to avoid debug errors
+
+[Begin Action 599];
+Clsn2: 1
+  Clsn2[0] = -35, -193, 33, -2
+-1,0,0,0,-1
+
+[Begin Action 600];
+600,0,0,0,2
+-1,0,0,0,2
+[Begin Action 601];
+600,1,0,0,2
+-1,0,0,0,2
+[Begin Action 602];
+600,2,0,0,2
+-1,0,0,0,2
+[Begin Action 603];
+600,3,0,0,2
+-1,0,0,0,2
+[Begin Action 604];
+600,4,0,0,2
+-1,0,0,0,2
+[Begin Action 605];
+600,5,0,0,2
+-1,0,0,0,2

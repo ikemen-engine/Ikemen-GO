@@ -1,0 +1,194 @@
+[PaletteDef]
+group = 5000
+number = 0
+file = 5000-0.act
+
+[PaletteDef]
+group = 5600
+number = 0
+file = 5600-0.act
+
+[PaletteDef]
+group = 9000
+number = 0
+file = 9000-0.act
+
+[SpriteDef]
+group = 5300
+image = 0
+xaxis = 11
+yaxis = 10
+flags = 0
+palette = 5000,0
+file = 5300-0.png
+
+[SpriteDef]
+group = 5300
+image = 1
+xaxis = 15
+yaxis = 14
+flags = 0
+palette = 5000,0
+file = 5300-1.png
+
+[SpriteDef]
+group = 5300
+image = 2
+xaxis = 10
+yaxis = 10
+flags = 0
+palette = 5000,0
+file = 5300-2.png
+
+[SpriteDef]
+group = 5300
+image = 3
+xaxis = 12
+yaxis = 12
+flags = 0
+palette = 5000,0
+file = 5300-3.png
+
+[SpriteDef]
+group = 5300
+image = 4
+xaxis = 12
+yaxis = 10
+flags = 0
+palette = 5000,0
+file = 5300-4.png
+
+[SpriteDef]
+group = 5300
+image = 5
+xaxis = 13
+yaxis = 11
+flags = 0
+palette = 5000,0
+file = 5300-5.png
+
+[SpriteDef]
+group = 5400
+image = 0
+xaxis = 40
+yaxis = 18
+flags = 0
+palette = 5000,0
+file = 5400-0.png
+
+[SpriteDef]
+group = 5400
+image = 1
+xaxis = 26
+yaxis = 35
+flags = 0
+palette = 5000,0
+file = 5400-1.png
+
+[SpriteDef]
+group = 5400
+image = 2
+xaxis = 30
+yaxis = 29
+flags = 0
+palette = 5000,0
+file = 5400-2.png
+
+[SpriteDef]
+group = 5410
+image = 0
+xaxis = 111
+yaxis = 14
+flags = 0
+palette = 5000,0
+file = 5410-0.png
+
+[SpriteDef]
+group = 5410
+image = 1
+xaxis = 158
+yaxis = 23
+flags = 0
+palette = 5000,0
+file = 5410-1.png
+
+[SpriteDef]
+group = 5410
+image = 2
+xaxis = 168
+yaxis = 22
+flags = 0
+palette = 5000,0
+file = 5410-2.png
+
+[SpriteDef]
+group = 5410
+image = 3
+xaxis = 180
+yaxis = 24
+flags = 0
+palette = 5000,0
+file = 5410-3.png
+
+[SpriteDef]
+group = 5410
+image = 4
+xaxis = 178
+yaxis = 24
+flags = 0
+palette = 5000,0
+file = 5410-4.png
+
+[SpriteDef]
+group = 5410
+image = 5
+xaxis = 177
+yaxis = 24
+flags = 0
+palette = 5000,0
+file = 5410-5.png
+
+[SpriteDef]
+group = 5410
+image = 6
+xaxis = 152
+yaxis = 21
+flags = 0
+palette = 5000,0
+file = 5410-6.png
+
+[SpriteDef]
+group = 5600
+image = 0
+xaxis = 39
+yaxis = 33
+flags = 0
+palette = 5600,0
+file = 5600-0.png
+
+[SpriteDef]
+group = 5600
+image = 1
+xaxis = 39
+yaxis = 33
+flags = 0
+palette = 5600,0
+file = 5600-1.png
+
+[SpriteDef]
+group = 5600
+image = 2
+xaxis = 39
+yaxis = 33
+flags = 0
+palette = 5600,0
+file = 5600-2.png
+
+[SpriteDef]
+group = 9000
+image = 0
+xaxis = 0
+yaxis = 16
+flags = 0
+palette = 9000,0
+file = 9000-0.png

@@ -1,0 +1,282 @@
+;0 always import the palette, 1 import only if all colors doesn't match to any existing palette
+noDuplicatePal = 0
+
+[PaletteDef]
+group = 300
+number = 0
+file = 300-0.act
+
+[PaletteDef]
+group = 400
+number = 0
+file = 400-0.act
+
+[SpriteDef]
+group = 300
+image = 0
+xaxis = 15
+yaxis = 14
+flags = 0
+palette = 300,0
+file = 300-0.png
+
+[SpriteDef]
+group = 300
+image = 1
+xaxis = 15
+yaxis = 14
+flags = 0
+palette = 300,0
+file = 300-1.png
+
+[SpriteDef]
+group = 300
+image = 2
+xaxis = 15
+yaxis = 14
+flags = 0
+palette = 300,0
+file = 300-2.png
+
+[SpriteDef]
+group = 300
+image = 3
+xaxis = 15
+yaxis = 14
+flags = 0
+palette = 300,0
+file = 300-3.png
+
+[SpriteDef]
+group = 400
+image = 0
+xaxis = 135
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 400-0.png
+
+[SpriteDef]
+group = 401
+image = 0
+xaxis = 65
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 401-0.png
+
+[SpriteDef]
+group = 402
+image = 0
+xaxis = 65
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 402-0.png
+
+[SpriteDef]
+group = 403
+image = 0
+xaxis = 54
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 403-0.png
+
+[SpriteDef]
+group = 404
+image = 0
+xaxis = 49
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 404-0.png
+
+[SpriteDef]
+group = 405
+image = 0
+xaxis = 40
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 405-0.png
+
+[SpriteDef]
+group = 406
+image = 0
+xaxis = 24
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 406-0.png
+
+[SpriteDef]
+group = 407
+image = 0
+xaxis = 62
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 407-0.png
+
+[SpriteDef]
+group = 408
+image = 0
+xaxis = 69
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 408-0.png
+
+[SpriteDef]
+group = 409
+image = 0
+xaxis = 71
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 409-0.png
+
+[SpriteDef]
+group = 410
+image = 0
+xaxis = 70
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 410-0.png
+
+[SpriteDef]
+group = 411
+image = 0
+xaxis = 85
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 411-0.png
+
+[SpriteDef]
+group = 412
+image = 0
+xaxis = 66
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 412-0.png
+
+[SpriteDef]
+group = 413
+image = 0
+xaxis = 75
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 413-0.png
+
+[SpriteDef]
+group = 414
+image = 0
+xaxis = 66
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 414-0.png
+
+[SpriteDef]
+group = 415
+image = 0
+xaxis = 42
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 415-0.png
+
+[SpriteDef]
+group = 416
+image = 0
+xaxis = 79
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 416-0.png
+
+[SpriteDef]
+group = 417
+image = 0
+xaxis = 67
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 417-0.png
+
+[SpriteDef]
+group = 418
+image = 0
+xaxis = 29
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 418-0.png
+
+[SpriteDef]
+group = 419
+image = 0
+xaxis = 50
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 419-0.png
+
+[SpriteDef]
+group = 420
+image = 0
+xaxis = 73
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 420-0.png
+
+[SpriteDef]
+group = 421
+image = 0
+xaxis = 86
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 421-0.png
+
+[SpriteDef]
+group = 422
+image = 0
+xaxis = 70
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 422-0.png
+
+[SpriteDef]
+group = 423
+image = 0
+xaxis = 47
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 423-0.png
+
+[SpriteDef]
+group = 424
+image = 0
+xaxis = 78
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 424-0.png
+
+[SpriteDef]
+group = 425
+image = 0
+xaxis = 38
+yaxis = 0
+flags = 0
+palette = 400,0
+file = 425-0.png

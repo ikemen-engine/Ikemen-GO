@@ -1,0 +1,570 @@
+;0 always import the palette, 1 import only if all colors doesn't match to any existing palette
+noDuplicatePal = 0
+
+[SpriteDef]
+group = 1
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^A.png
+
+[SpriteDef]
+group = 2
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^B.png
+
+[SpriteDef]
+group = 3
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^C.png
+
+[SpriteDef]
+group = 4
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^D.png
+
+[SpriteDef]
+group = 23
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^W.png
+
+[SpriteDef]
+group = 24
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^X.png
+
+[SpriteDef]
+group = 25
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^Y.png
+
+[SpriteDef]
+group = 26
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^Z.png
+
+[SpriteDef]
+group = 39
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _+.png
+
+[SpriteDef]
+group = 40
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _..png
+
+[SpriteDef]
+group = 41
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _DB.png
+
+[SpriteDef]
+group = 42
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _D.png
+
+[SpriteDef]
+group = 43
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _DF.png
+
+[SpriteDef]
+group = 44
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _B.png
+
+[SpriteDef]
+group = 46
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _F.png
+
+[SpriteDef]
+group = 47
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _UB.png
+
+[SpriteDef]
+group = 48
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _U.png
+
+[SpriteDef]
+group = 49
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _UF.png
+
+[SpriteDef]
+group = 51
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^S.png
+
+[SpriteDef]
+group = 52
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^M.png
+
+[SpriteDef]
+group = 53
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^P.png
+
+[SpriteDef]
+group = 54
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^K.png
+
+[SpriteDef]
+group = 57
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^LP.png
+
+[SpriteDef]
+group = 58
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^MP.png
+
+[SpriteDef]
+group = 59
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^HP.png
+
+[SpriteDef]
+group = 60
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^LK.png
+
+[SpriteDef]
+group = 61
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^MK.png
+
+[SpriteDef]
+group = 62
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^HK.png
+
+[SpriteDef]
+group = 63
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^3K.png
+
+[SpriteDef]
+group = 64
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^3P.png
+
+[SpriteDef]
+group = 65
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^2K.png
+
+[SpriteDef]
+group = 66
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ^2P.png
+
+[SpriteDef]
+group = 90
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _-.png
+
+[SpriteDef]
+group = 91
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _!.png
+
+[SpriteDef]
+group = 92
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~DB.png
+
+[SpriteDef]
+group = 93
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~D.png
+
+[SpriteDef]
+group = 94
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~DF.png
+
+[SpriteDef]
+group = 95
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~B.png
+
+[SpriteDef]
+group = 96
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~F.png
+
+[SpriteDef]
+group = 97
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~UB.png
+
+[SpriteDef]
+group = 98
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~U.png
+
+[SpriteDef]
+group = 99
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = ~UF.png
+
+[SpriteDef]
+group = 100
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _HCB.png
+
+[SpriteDef]
+group = 101
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _HUF.png
+
+[SpriteDef]
+group = 102
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _HCF.png
+
+[SpriteDef]
+group = 103
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _HUB.png
+
+[SpriteDef]
+group = 104
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QFD.png
+
+[SpriteDef]
+group = 105
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QDB.png
+
+[SpriteDef]
+group = 106
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QBU.png
+
+[SpriteDef]
+group = 107
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QUF.png
+
+[SpriteDef]
+group = 108
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QBD.png
+
+[SpriteDef]
+group = 109
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QDF.png
+
+[SpriteDef]
+group = 110
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QFU.png
+
+[SpriteDef]
+group = 111
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _QUB.png
+
+[SpriteDef]
+group = 112
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _FDF.png
+
+[SpriteDef]
+group = 113
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _FUB.png
+
+[SpriteDef]
+group = 114
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _FUF.png
+
+[SpriteDef]
+group = 115
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _FDB.png
+
+[SpriteDef]
+group = 116
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _XFF.png
+
+[SpriteDef]
+group = 117
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _XBB.png
+
+[SpriteDef]
+group = 118
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _DSF.png
+
+[SpriteDef]
+group = 119
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _DSB.png
+
+[SpriteDef]
+group = 121
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _AIR.png
+
+[SpriteDef]
+group = 122
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _TAP.png
+
+[SpriteDef]
+group = 123
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _MAX.png
+
+[SpriteDef]
+group = 124
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _EX.png
+
+[SpriteDef]
+group = 127
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _^.png
+
+[SpriteDef]
+group = 128
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _=.png
+
+[SpriteDef]
+group = 129
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _).png
+
+[SpriteDef]
+group = 130
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _(.png
+
+[SpriteDef]
+group = 135
+image = 0
+xaxis = 0
+yaxis = 64
+flags = 0
+file = _`.png
