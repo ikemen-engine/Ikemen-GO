@@ -45,8 +45,15 @@ addHotkey('o', true, false, false, true, false, 'setCom(2,0)')
 addHotkey('u', true, false, false, true, false, 'setLevels(1,6)')
 addHotkey('l', true, false, false, true, false, 'printLife(1,6)')
 
+local frames = 0
+local function testPrint()
+  frames = frames + 1
+  print("frame: ".. frames)
+end
+hook.add("loop#watch","test", testPrint);
 
 
 
--- setGameSpeed(50)
+
+-- setGameSpeed(10000)
 print("SB Loaded")
