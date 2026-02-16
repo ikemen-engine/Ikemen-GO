@@ -317,8 +317,8 @@ Welcome to I.K.E.M.E.N GO engine! (%s - %s)
 ;-------------------------------------------------------------------
 ;Character select definition
 [Select Info]
-fadein.time = 10
-fadeout.time = 10
+fadein.time = 0;10
+fadeout.time = 0;10
 rows = 9
 columns = 6
 wrapping = 0              ;1 to let cursor wrap around
@@ -717,9 +717,9 @@ velocity = -9, 0
 
 ;-------------------------------------------------------------------
 [VS Screen]
-time = 200                   ;Time to show screen
-fadein.time = 20
-fadeout.time = 25
+time = 0 ;200                   ;Time to show screen
+fadein.time = 0;20
+fadeout.time = 0;25
 
 ;Match text in arcade modes
 match.text = "Match %i"      ;%i can be used for the match number
