@@ -1273,7 +1273,12 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		if strings.ToLower(anchor) == "bottom" {
 			s.stageCamera.zoomanchor = true
 		}
-		sec[0].ReadBool("autozoom", &s.stageCamera.autoZoom)
+
+		autoZoomExisted := sec[0].ReadBool("autozoom", &s.stageCamera.autoZoom)
+		if sys.cfg.Debug.ForceStageAutoZoom && !autoZoomExisted &&
+			(s.stageCamera.zoomin == 1 || sys.cfg.Debug.ForceStageZoomin > 0) && (s.stageCamera.zoomout == 1 || sys.cfg.Debug.ForceStageZoomout > 0) {
+			s.stageCamera.autoZoom = true
+		}
 
 		if s.stageCamera.autoZoom {
 			if s.stageCamera.zoomin == 1 {
@@ -4011,12 +4016,23 @@ func drawNode(mdl *Model, scene *Scene, layerNumber int, defaultLayerNumber int,
 		return
 	}
 
-	negTrans := (n.trans == TransReverseSubtract)
+	// Convert to our sprite blend modes for PalFX synthesis
+	var blendMode TransType
+	switch n.trans {
+	case TransReverseSubtract:
+		blendMode = TT_sub // The one that matters right now
+	case TransAdd, TransMul:
+		blendMode = TT_add
+	default:
+		blendMode = TT_none
+	}
+
 	alpha := [2]int32{255, 255}
 	if n.trans == TransNone {
 		alpha = [2]int32{255, 0}
 	}
-	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFcPalFx(negTrans, alpha)
+
+	neg, grayscale, padd, pmul, invblend, hue := mdl.pfx.getFinalPalFx(blendMode, alpha)
 
 	blendEq := BlendAdd
 	src := BlendOne
@@ -4266,7 +4282,8 @@ func (model *Model) drawShadow(bufferIndex uint32, sceneNumber int, offset [3]fl
 	var lightTypes [4]LightType
 	for i := 0; i < 4; i++ {
 		if i >= len(scene.lightNodes) {
-			gfx.SetShadowMapUniformI("lightType["+strconv.Itoa(i)+"]", 0)
+			//gfx.SetShadowMapUniformI("lightType["+strconv.Itoa(i)+"]", 0) OpenGL error
+			gfx.SetShadowMapUniformI("lights["+strconv.Itoa(i)+"].type", 0)
 			continue
 		}
 		numLights += 1

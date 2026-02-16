@@ -35,8 +35,8 @@ addHotkey('F2', true, false, false, false, true, 'kill(1,1); kill(3,1); kill(5,1
 addHotkey('F2', false, false, true, false, true, 'kill(2,1); kill(4,1); kill(6,1); kill(8,1)')
 addHotkey('F3', false, false, false, false, true, 'powMax(1); powMax(2)')
 addHotkey('F3', true, false, true, false, true, 'toggleMaxPowerMode()')
-addHotkey('F4', false, false, false, false, true, 'roundReset(); closeMenu()')
-addHotkey('F4', false, false, true, false, true, 'reload(); closeMenu()')
+addHotkey('F4', false, false, false, false, true, 'roundReset(); closeMenu(); trainingReset()')
+addHotkey('F4', false, false, true, false, true, 'reload(); closeMenu(); trainingReset()')
 addHotkey('F5', false, false, false, false, true, 'setTime(0)')
 addHotkey('F9', false, false, false, true, false, 'loadState()')
 addHotkey('F10', false, false, false, true, false, 'saveState()')
@@ -112,6 +112,12 @@ end
 
 function closeMenu()
 	main.pauseMenu = false
+end
+
+function trainingReset()
+	if gamemode() == 'training' then
+		menu.f_trainingReset()
+	end
 end
 
 --;===========================================================
@@ -195,7 +201,7 @@ function boolToInt(bool)
 end
 
 function engineInfo()
-	return string.format('Frames: %d, VSync: %d; Speed: %d/%d%%; FPS: %.3f', roundtime(), gameOption('Video.VSync'), tickspersecond(), gamespeed(), gamefps())
+	return string.format('Frames: %d, VSync: %d; Speed: %d/%d%%; FPS: %.1f', roundtime(), gameOption('Video.VSync'), tickspersecond(), gamespeed(), gamefps())
 end
 
 function playerInfo()

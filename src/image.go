@@ -91,9 +91,9 @@ func (pf *PalFX) clear() {
 	pf.clearWithNeg(false)
 }
 
-func (pf *PalFX) getSynFx(alpha [2]int32) *PalFX {
+func (pf *PalFX) getSynFx(blendMode TransType, alpha [2]int32) *PalFX {
 	if pf == nil || !pf.enable {
-		if alpha[0] == -2 && sys.allPalFX.enable { // Sub magic number
+		if blendMode == TT_sub && sys.allPalFX.enable {
 			if pf == nil {
 				pf = newPalFX()
 			}
@@ -111,12 +111,12 @@ func (pf *PalFX) getSynFx(alpha [2]int32) *PalFX {
 		return pf
 	}
 	synth := *pf
-	synth.synthesize(sys.allPalFX, alpha)
+	synth.synthesize(sys.allPalFX, blendMode, alpha)
 	return &synth
 }
 
-func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
-	p := pf.getSynFx([2]int32{0, 0})
+func (pf *PalFX) getFxPal(blendMode TransType, pal []uint32, neg bool) []uint32 {
+	p := pf.getSynFx(blendMode, [2]int32{0, 0})
 	if !p.enable {
 		return pal
 	}
@@ -167,9 +167,10 @@ func (pf *PalFX) getFxPal(pal []uint32, neg bool) []uint32 {
 	return sys.workpal
 }
 
-func (pf *PalFX) getFcPalFx(transNeg bool, alpha [2]int32) (neg bool, grayscale float32,
+func (pf *PalFX) getFinalPalFx(blendMode TransType, alpha [2]int32) (neg bool, grayscale float32,
 	add, mul [3]float32, invblend int32, hue float32) {
-	p := pf.getSynFx(alpha)
+
+	p := pf.getSynFx(blendMode, alpha)
 	if !p.enable {
 		neg = false
 		grayscale = 0
@@ -185,12 +186,13 @@ func (pf *PalFX) getFcPalFx(transNeg bool, alpha [2]int32) (neg bool, grayscale 
 	grayscale = 1 - p.eColor
 	invblend = p.eInvertblend
 	hue = -(p.eHue * 180.0) * (math.Pi / 180.0)
-	if !p.eAllowNeg {
-		transNeg = false
-	}
+
+	// Determine if we use negative color math based on blendMode
+	useNeg := blendMode == TT_sub && p.eAllowNeg
+
 	for i, v := range p.eAdd {
 		add[i] = float32(v) / 255
-		if transNeg {
+		if useNeg {
 			//add[i] *= -1
 			mul[i] = float32(p.eMul[(i+1)%3]+p.eMul[(i+2)%3]) / 512
 		} else {
@@ -305,8 +307,8 @@ func (pf *PalFX) step() {
 	}
 }
 
-func (pf *PalFX) synthesize(pfx *PalFX, alpha [2]int32) {
-	if alpha[0] == -2 { // Sub magic number
+func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
+	if blendMode == TT_sub {
 		for i, a := range pfx.eAdd {
 			pf.eAdd[i] = Clamp(pf.eAdd[i]-Abs(a), 0, 255)
 			pf.eMul[i] = Clamp(pf.eMul[i]-a, 0, 255)
@@ -449,11 +451,23 @@ func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
 	return true
 }
 
+// Convert palette color slice into the format used in textures
 func Pal32ToBytes(pal []uint32) []byte {
 	if len(pal) == 0 {
 		return nil
 	}
-	return unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal)*4)
+
+	// Fast path if palette is already 256 colors
+	if len(pal) == 256 {
+		return unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), 1024)
+	}
+
+	// Otherwise add padding because the GPU expects 256 colors
+	// Extra colors will just be invisible because of the 0 alpha
+	padded := make([]uint32, 256)
+	copy(padded, pal)
+
+	return unsafe.Slice((*byte)(unsafe.Pointer(&padded[0])), 1024)
 }
 
 func NewTextureFromPalette(pal []uint32) Texture {
@@ -1258,35 +1272,6 @@ func (s *Sprite) CachePalTex(pal []uint32) Texture {
 	return s.PalTex
 }
 
-// Updates the palette texture only if the palette data has changed
-func (s *Sprite) SyncPalette(pal []uint32) {
-	// 2. The "Gatekeeper" - Check if we can skip the work
-	match := true
-	if s.PalTex == nil || len(pal) != len(s.paltemp) {
-		match = false
-	} else {
-		for i := range pal {
-			if pal[i] != s.paltemp[i] {
-				match = false
-				break
-			}
-		}
-	}
-
-	// 3. The "Worker" - Update if data is dirty or texture is missing
-	if !match {
-		if s.PalTex == nil {
-			s.PalTex = gfx.newPaletteTexture()
-		}
-
-		// Upload to VRAM
-		s.PalTex.SetData(Pal32ToBytes(pal))
-
-		// Refresh CPU-side cache (using a fresh clone)
-		s.paltemp = append([]uint32(nil), pal...)
-	}
-}
-
 func (s *Sprite) Draw(x, y, xscale, yscale float32, rxadd float32, rot Rotation, projectionMode int32, fLength float32, fx *PalFX, window *[4]int32) {
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
@@ -1654,8 +1639,7 @@ func loadCharPalettes(sff *Sff, filename string, ref int) error {
 	// TODO: External .ACTs on SFFv2 without palette slots may cause color bleeding,
 	// on sprites with unique palettes if a SFFv2 with Acts is loaded by sffNew, since is a simplified utility
 	// and lacks the engine's palInfo/cgi logic to properly isolate palette remapping during rendering.
-	parts := strings.SplitAfterN(c.def, "/", -1)
-	pathname := strings.Join(parts[:len(parts)-1], "")
+	searchDirs := []string{c.def}
 
 	// Read ACT palettes
 	for x := 0; x < len(c.pal_files) && x < len(c.pal); x++ {
@@ -1670,9 +1654,10 @@ func loadCharPalettes(sff *Sff, filename string, ref int) error {
 			continue
 		}
 
-		pal, err := readActPalette(pathname + c.pal_files[x])
+		palPath := SearchFile(c.pal_files[x], searchDirs)
+		pal, err := readActPalette(palPath)
 		if err != nil {
-			fmt.Println("Error reading " + c.pal_files[x])
+			fmt.Println("Error reading " + palPath)
 			continue
 		}
 
@@ -1985,8 +1970,7 @@ func (s *Sff) ReadPalette(f io.ReadSeeker, offset int64, size uint32) ([]uint32,
 	}
 
 	// Allocate only what we need
-	// Previously Ikemen always allocated 256 colors, so the check in SwapPalMap always passed
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/2408
+	// Previously Ikemen always allocated 256 colors, but because of RemapPal we must respect the original color count
 	pal := make([]uint32, depth)
 
 	// Read the actual data

@@ -13,9 +13,9 @@
         #define COMPAT_ATTRIBUTE attribute 
     #endif
 
-    uniform vec2 TextureSize;
+    uniform vec2 TextureSize; // Not used
     COMPAT_ATTRIBUTE vec2 VertCoord;
-    COMPAT_VARYING vec2 texcoord;
+    COMPAT_VARYING vec2 texcoord; // TODO: Casing doesn't match Go
 #endif
 
 void main() {

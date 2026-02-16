@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/veandco/go-sdl2/sdl"
 	lua "github.com/yuin/gopher-lua"
@@ -58,6 +60,13 @@ func main() {
 }
 
 func realMain() {
+	// Crash path
+	defer func() {
+		if r := recover(); r != nil {
+			handlePanic(r)
+		}
+	}()
+
 	if runtime.GOOS == "android" {
 		Logcat("Inside realMain...")
 		runtime.LockOSThread()
@@ -110,7 +119,7 @@ func realMain() {
 		sys.baseDir = "./"
 	}
 
-	// 1. Handle Permissions and Directory Creation
+	// Handle Permissions and Directory Creation
 	permission := os.FileMode(0755)
 	if runtime.GOOS != "android" {
 		permission |= os.ModeSticky
@@ -194,32 +203,20 @@ func realMain() {
 	// Initialize game and create window
 	// This is where the window is born!
 	sys.luaLState = sys.init(sys.gameWidth, sys.gameHeight)
-	defer sys.shutdown()
+	//defer sys.shutdown()
 
 	// Begin processing game using its lua scripts
 	if err := sys.luaLState.DoFile(sys.cfg.Config.System); err != nil {
-		// Display error logs.
-		errorLog := createLog("save/logs/Ikemen.log")
-		defer closeLog(errorLog)
-
-		// Write version and build time at the top
-		fmt.Fprintf(errorLog, "Version: %s\nBuild Time: %s\n\nError log:\n", Version, BuildTime)
-
-		// Write the rest of the log
-		fmt.Fprintln(errorLog, err)
-
-		switch err.(type) {
-		case *lua.ApiError:
-			errstr := strings.Split(err.Error(), "\n")[0]
-			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
-				ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
-				panic(err)
-			}
-		default:
-			ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
-			panic(err)
+		if strings.Contains(err.Error(), "<game end>") {
+			handleExit()
+			return
 		}
+		panic(err)
 	}
+
+	// Clean exit path
+	// Just in case, because normally we'll get a Lua error first
+	handleExit()
 }
 
 // Loops through given comand line arguments and processes them for later use by the game
@@ -340,4 +337,75 @@ Debug Options:
 			sys.battleEventsEnabled = true
 		}
 	}
+}
+
+// Exit program without any errors
+func handleExit() {
+	sys.shutdown()
+	os.Exit(0)
+}
+
+// Always attempt to show and log error messages when crashing
+func handlePanic(r interface{}) {
+	// System snapshot
+	now := time.Now()
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+
+	// Prepare message metadata
+	version := fmt.Sprintf("Version: %s", Version)
+	buildTime := fmt.Sprintf("Build Time: %s", BuildTime)
+	platform := fmt.Sprintf("Platform: %s (%s)", runtime.GOOS, runtime.GOARCH)
+	render := gfx.GetName()
+
+	// Prepare stats
+	memory := fmt.Sprintf("RAM in Use: %v MB / OS Reserved: %v MB", mem.Alloc/1024/1024, mem.Sys/1024/1024)
+	threads := fmt.Sprintf("Active Goroutines: %d", runtime.NumGoroutine())
+
+	// Identify the crash type
+	crashType := "Fatal runtime error" // Default for unsafe crashes
+	if _, ok := r.(*lua.ApiError); ok {
+		crashType = "Engine error" // If error was caught by Lua
+	} else if _, ok := r.(error); ok {
+		crashType = "Application error" // Otherwise generic message
+	}
+
+	// Capture the error string
+	errStr := fmt.Sprint(r)
+
+	// Capture Go stack trace
+	goStack := fmt.Sprintf("Go stack traceback:\n%s", debug.Stack())
+
+	// Write to log file
+	logDir := filepath.Join(sys.baseDir, "save", "logs")
+	timestamp := now.Format("2006-01-02_15-04-05")
+	logPath := filepath.Join(logDir, fmt.Sprintf("Ikemen_%s.log", timestamp))
+
+	os.MkdirAll(logDir, 0755)
+	if f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644); err == nil {
+		fmt.Fprintf(f, "%s\n%s\n%s\n%s\n%s\nTimestamp: %s\n\n%s\n\nError: %s\n\n%s",
+			version, platform, render, memory, threads,
+			now.Format("2006-01-02 15:04:05"), crashType, errStr, goStack)
+		f.Close()
+	}
+
+	// Show popup message
+	displayErr := errStr
+	if _, ok := r.(*lua.ApiError); ok {
+		parts := strings.SplitN(errStr, "stack traceback:", 2)
+		displayErr = strings.TrimSpace(parts[0]) // Remove the Lua traceback from this one
+	}
+
+	if len(displayErr) > 1000 {
+		displayErr = displayErr[:1000] + "..."
+	}
+
+	dialogMsg := fmt.Sprintf("%s\n\n%s\n%s\n\nError: %s\n\nDetails saved to %s folder",
+		crashType, version, buildTime, displayErr, logDir)
+
+	ShowErrorDialog(dialogMsg)
+
+	// Cleanup and exit
+	sys.shutdown()
+	os.Exit(1)
 }

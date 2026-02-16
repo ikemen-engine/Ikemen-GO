@@ -300,7 +300,7 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 	// Pointers, slices, maps, functions, channels etc
 	result.ghv = *c.ghv.Clone(a)
 
-	result.children = arena.MakeSlice[*Char](a, len(c.children), len(c.children))
+	result.children = arena.MakeSlice[int32](a, len(c.children), len(c.children))
 	copy(result.children, c.children)
 
 	result.targets = arena.MakeSlice[int32](a, len(c.targets), len(c.targets))
@@ -312,10 +312,10 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 	result.hitdefTargetsBuffer = arena.MakeSlice[int32](a, len(c.hitdefTargetsBuffer), len(c.hitdefTargetsBuffer))
 	copy(result.hitdefTargetsBuffer, c.hitdefTargetsBuffer)
 
-	result.enemyNearList = arena.MakeSlice[*Char](a, len(c.enemyNearList), len(c.enemyNearList))
+	result.enemyNearList = arena.MakeSlice[int32](a, len(c.enemyNearList), len(c.enemyNearList))
 	copy(result.enemyNearList, c.enemyNearList)
 
-	result.p2EnemyList = arena.MakeSlice[*Char](a, len(c.p2EnemyList), len(c.p2EnemyList))
+	result.p2EnemyList = arena.MakeSlice[int32](a, len(c.p2EnemyList), len(c.p2EnemyList))
 	copy(result.p2EnemyList, c.p2EnemyList)
 
 	//if c.p2EnemyBackup != nil {
@@ -323,7 +323,8 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 	//	result.p2EnemyBackup = &tmp
 	//}
 	// This ought to be enough
-	result.p2EnemyBackup = c.p2EnemyBackup
+	//result.p2EnemyBackup = c.p2EnemyBackup
+	// Converted to an ID so the shallow copy now gets it
 
 	result.inputShift = arena.MakeSlice[[2]int](a, len(c.inputShift), len(c.inputShift))
 	copy(result.inputShift, c.inputShift)
@@ -379,6 +380,9 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 
 func (cl *CharList) Clone(a *arena.Arena, gsp *GameStatePool) (result CharList) {
 	result = *cl
+
+	result.creationOrder = arena.MakeSlice[*Char](a, len(cl.creationOrder), len(cl.creationOrder))
+	copy(result.creationOrder, cl.creationOrder)
 
 	result.runOrder = arena.MakeSlice[*Char](a, len(cl.runOrder), len(cl.runOrder))
 	copy(result.runOrder, cl.runOrder)
@@ -866,21 +870,15 @@ func (wi *MotifWin) Clone(a *arena.Arena) (result MotifWin) {
 		result.keyCancel = arena.MakeSlice[string](a, len(wi.keyCancel), len(wi.keyCancel))
 		copy(result.keyCancel, wi.keyCancel)
 	}
-	if wi.p1State != nil {
-		result.p1State = arena.MakeSlice[int32](a, len(wi.p1State), len(wi.p1State))
-		copy(result.p1State, wi.p1State)
-	}
-	if wi.p1TeammateState != nil {
-		result.p1TeammateState = arena.MakeSlice[int32](a, len(wi.p1TeammateState), len(wi.p1TeammateState))
-		copy(result.p1TeammateState, wi.p1TeammateState)
-	}
-	if wi.p2State != nil {
-		result.p2State = arena.MakeSlice[int32](a, len(wi.p2State), len(wi.p2State))
-		copy(result.p2State, wi.p2State)
-	}
-	if wi.p2TeammateState != nil {
-		result.p2TeammateState = arena.MakeSlice[int32](a, len(wi.p2TeammateState), len(wi.p2TeammateState))
-		copy(result.p2TeammateState, wi.p2TeammateState)
+	for i := 0; i < 4; i++ {
+		if wi.p1States[i] != nil {
+			result.p1States[i] = arena.MakeSlice[int32](a, len(wi.p1States[i]), len(wi.p1States[i]))
+			copy(result.p1States[i], wi.p1States[i])
+		}
+		if wi.p2States[i] != nil {
+			result.p2States[i] = arena.MakeSlice[int32](a, len(wi.p2States[i]), len(wi.p2States[i]))
+			copy(result.p2States[i], wi.p2States[i])
+		}
 	}
 	return
 }

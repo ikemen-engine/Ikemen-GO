@@ -27,40 +27,43 @@ import (
 // ShaderProgram_GL21
 
 type ShaderProgram_GL21 struct {
-	// Program
-	program uint32
-	// Attributes
-	a map[string]int32
-	// Uniforms
-	u map[string]int32
-	// Texture_GL21 units
-	t map[string]int
+	program    uint32           // OpenGL handle
+	attributes map[string]int32 // Attribute name to location
+	uniforms   map[string]int32 // Uniform name to location
+	textures   map[string]int   // Sampler name to texture unit
+	name       string           // For debugging
 }
 
-func (r *Renderer_GL21) newShaderProgram(vert, frag, geo, id string, crashWhenFail bool) (s *ShaderProgram_GL21, err error) {
+func (r *Renderer_GL21) newShaderProgram(vert, frag, geo, name string, crashWhenFail bool) (s *ShaderProgram_GL21, err error) {
 	var vertObj, fragObj, geoObj, prog uint32
-	if vertObj, err = r.compileShader(gl.VERTEX_SHADER, vert); chkEX(err, "Shader compilation error on "+id+"\n", crashWhenFail) {
+	if vertObj, err = r.compileShader(gl.VERTEX_SHADER, vert); chkEX(err, "Shader compilation error on "+name+"\n", crashWhenFail) {
 		return nil, err
 	}
-	if fragObj, err = r.compileShader(gl.FRAGMENT_SHADER, frag); chkEX(err, "Shader compilation error on "+id+"\n", crashWhenFail) {
+	if fragObj, err = r.compileShader(gl.FRAGMENT_SHADER, frag); chkEX(err, "Shader compilation error on "+name+"\n", crashWhenFail) {
 		return nil, err
 	}
 	if len(geo) > 0 {
-		if geoObj, err = r.compileShader(gl.GEOMETRY_SHADER_EXT, geo); chkEX(err, "Shader compilation error on "+id+"\n", crashWhenFail) {
+		if geoObj, err = r.compileShader(gl.GEOMETRY_SHADER_EXT, geo); chkEX(err, "Shader compilation error on "+name+"\n", crashWhenFail) {
 			return nil, err
 		}
-		if prog, err = r.linkProgram(vertObj, fragObj, geoObj); chkEX(err, "Link program error on "+id+"\n", crashWhenFail) {
+		if prog, err = r.linkProgram(vertObj, fragObj, geoObj); chkEX(err, "Link program error on "+name+"\n", crashWhenFail) {
 			return nil, err
 		}
 	} else {
-		if prog, err = r.linkProgram(vertObj, fragObj); chkEX(err, "Link program error on "+id+"\n", crashWhenFail) {
+		if prog, err = r.linkProgram(vertObj, fragObj); chkEX(err, "Link program error on "+name+"\n", crashWhenFail) {
 			return nil, err
 		}
 	}
-	s = &ShaderProgram_GL21{program: prog}
-	s.a = make(map[string]int32)
-	s.u = make(map[string]int32)
-	s.t = make(map[string]int)
+	s = &ShaderProgram_GL21{program: prog, name: name}
+	s.attributes = make(map[string]int32)
+	s.uniforms = make(map[string]int32)
+	s.textures = make(map[string]int)
+
+	// Debug
+	if r.debugMode {
+		fmt.Printf("[GL Debug] Linked shader '%s' as Program ID: %d\n", name, prog)
+	}
+
 	return s, nil
 }
 
@@ -69,21 +72,39 @@ func (r *ShaderProgram_GL21) glStr(s string) *uint8 {
 }
 
 func (s *ShaderProgram_GL21) RegisterAttributes(names ...string) {
+	r := gfx.(*Renderer_GL21)
 	for _, name := range names {
-		s.a[name] = gl.GetAttribLocation(s.program, s.glStr(name))
+		loc := gl.GetAttribLocation(s.program, s.glStr(name))
+		s.attributes[name] = loc
+
+		if r.debugMode && loc == -1 {
+			fmt.Printf("[GL Debug] Shader %v: Attribute '%s' not found!\n", s.name, name)
+		}
 	}
 }
 
 func (s *ShaderProgram_GL21) RegisterUniforms(names ...string) {
+	r := gfx.(*Renderer_GL21)
 	for _, name := range names {
-		s.u[name] = gl.GetUniformLocation(s.program, s.glStr(name))
+		loc := gl.GetUniformLocation(s.program, s.glStr(name))
+		s.uniforms[name] = loc
+
+		if r.debugMode && loc == -1 {
+			fmt.Printf("[GL Debug] Shader %v: Uniform '%s' not found!\n", s.name, name)
+		}
 	}
 }
 
 func (s *ShaderProgram_GL21) RegisterTextures(names ...string) {
+	r := gfx.(*Renderer_GL21)
 	for _, name := range names {
-		s.u[name] = gl.GetUniformLocation(s.program, s.glStr(name))
-		s.t[name] = len(s.t)
+		loc := gl.GetUniformLocation(s.program, s.glStr(name))
+		s.uniforms[name] = loc
+		s.textures[name] = len(s.textures)
+
+		if r.debugMode && loc == -1 {
+			fmt.Printf("[GL Debug] Shader %v: Texture uniform '%s' not found or optimized out!\n", s.name, name)
+		}
 	}
 }
 
@@ -120,13 +141,17 @@ func (r *Renderer_GL21) linkProgram(params ...uint32) (program uint32, err error
 	for _, param := range params {
 		gl.AttachShader(program, param)
 	}
+
+	// Geometry Shader Params
+	// Only OpenGL 2.1 needs this in the Go side
 	if len(params) > 2 {
-		// Geometry Shader Params
 		gl.ProgramParameteriARB(program, gl.GEOMETRY_INPUT_TYPE_ARB, gl.TRIANGLES)
 		gl.ProgramParameteriARB(program, gl.GEOMETRY_OUTPUT_TYPE_ARB, gl.TRIANGLE_STRIP)
 		gl.ProgramParameteriARB(program, gl.GEOMETRY_VERTICES_OUT_ARB, 3*6)
 	}
+
 	gl.LinkProgram(program)
+
 	// Mark shaders for deletion when the program is deleted
 	for _, param := range params {
 		gl.DeleteShader(param)
@@ -265,6 +290,8 @@ func (t *Texture_GL21) SetData(data []byte) {
 
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+
 	if data != nil {
 		gl.TexImage2D(gl.TEXTURE_2D, 0, int32(format), t.width, t.height, 0, format, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 	} else {
@@ -277,21 +304,36 @@ func (t *Texture_GL21) SetData(data []byte) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 }
 
-func (t *Texture_GL21) SetSubData(data []byte, x, y, width, height int32) {
+func (t *Texture_GL21) SetSubData(data []byte, x, y, width, height, stride int32) {
 	var interp int32 = gl.NEAREST
 	if t.filter {
 		interp = gl.LINEAR
 	}
 
-	format := t.MapInternalFormat(Max(t.depth, 8))
-
+	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+
+	format := t.MapInternalFormat(Max(t.depth, 8))
+	bytesPerPixel := t.depth / 8
+	if bytesPerPixel < 1 {
+		bytesPerPixel = 1
+	}
+
+	// Doing this should respect both Linux and Android requirements
+	if stride > 0 && stride != width*bytesPerPixel {
+		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, stride/bytesPerPixel)
+	} else {
+		gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
+	}
+
 	if data != nil {
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, x, y, width, height, uint32(format), gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 	} else {
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, x, y, width, height, uint32(format), gl.UNSIGNED_BYTE, nil)
 	}
+
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interp)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interp)
@@ -299,16 +341,13 @@ func (t *Texture_GL21) SetSubData(data []byte, x, y, width, height int32) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 }
 
-func (t *Texture_GL21) SetSubDataStride(textureData []byte, x, y, width, height, stride int32) {
-
-}
-
 func (t *Texture_GL21) SetDataG(data []byte, mag, min, ws, wt TextureSamplingParam) {
-
 	format := t.MapInternalFormat(Max(t.depth, 8))
 
+	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, int32(format), t.width, t.height, 0, format, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
 	gl.GenerateMipmap(gl.TEXTURE_2D)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, t.MapTextureSamplingParam(mag))
@@ -320,8 +359,11 @@ func (t *Texture_GL21) SetDataG(data []byte, mag, min, ws, wt TextureSamplingPar
 func (t *Texture_GL21) SetPixelData(data []float32) {
 	format := t.MapInternalFormat(Max(t.depth/4, 8))
 	internalFormat := t.MapInternalFormat(Max(t.depth, 8))
+
+	gl.ActiveTexture(gl.TEXTURE0)
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1)
+	gl.PixelStorei(gl.UNPACK_ROW_LENGTH, 0)
 	gl.TexImage2D(gl.TEXTURE_2D, 0, int32(internalFormat), t.width, t.height, 0, uint32(format), gl.FLOAT, unsafe.Pointer(&data[0]))
 }
 
@@ -402,6 +444,7 @@ type Renderer_GL21 struct {
 
 	enableModel  bool
 	enableShadow bool
+	debugMode    bool
 	GL21State
 }
 
@@ -415,6 +458,16 @@ type GL21State struct {
 	blendEquation       BlendEquation
 	blendSrc            BlendFunc
 	blendDst            BlendFunc
+	scissorRect         [4]int32
+	scissorEnabled      bool
+	texCacheTexHandle   []uint32 // Unit to handle. Sized per GPU
+	texCacheLastUsed    []uint64 // Timer value when the slot was last used. Sized per GPU
+	texCacheTimer       uint64   // Increments on every texture access
+	uniformICache       map[uint32]int32
+	uniformF1Cache      map[uint32]float32
+	uniformF2Cache      map[uint32][2]float32
+	uniformF3Cache      map[uint32][3]float32
+	uniformF4Cache      map[uint32][4]float32
 	useUV               bool
 	useNormal           bool
 	useTangent          bool
@@ -439,7 +492,9 @@ func (r *Renderer_GL21) InitModelShader() error {
 	if err != nil {
 		return err
 	}
+
 	r.modelShader.RegisterAttributes("inVertexId", "position", "uv", "normalIn", "tangentIn", "vertColor", "joints_0", "joints_1", "weights_0", "weights_1", "outlineAttributeIn")
+
 	r.modelShader.RegisterUniforms("model", "view", "projection", "normalMatrix", "unlit", "baseColorFactor", "add", "mult", "useTexture", "useNormalMap", "useMetallicRoughnessMap", "useEmissionMap", "neg", "gray", "hue",
 		"enableAlpha", "alphaThreshold", "numJoints", "morphTargetWeight", "morphTargetOffset", "morphTargetTextureDimension", "numTargets", "numVertices",
 		"metallicRoughness", "ambientOcclusionStrength", "emission", "environmentIntensity", "mipCount", "meshOutline",
@@ -458,7 +513,9 @@ func (r *Renderer_GL21) InitModelShader() error {
 		if err != nil {
 			return err
 		}
+
 		r.shadowMapShader.RegisterAttributes("inVertexId", "position", "vertColor", "uv", "joints_0", "joints_1", "weights_0", "weights_1")
+
 		r.shadowMapShader.RegisterUniforms("model", "lightMatrices[0]", "lightMatrices[1]", "lightMatrices[2]", "lightMatrices[3]", "lightMatrices[4]", "lightMatrices[5]",
 			"lightMatrices[6]", "lightMatrices[7]", "lightMatrices[8]", "lightMatrices[9]", "lightMatrices[10]", "lightMatrices[11]",
 			"lightMatrices[12]", "lightMatrices[13]", "lightMatrices[14]", "lightMatrices[15]", "lightMatrices[16]", "lightMatrices[17]",
@@ -491,6 +548,11 @@ func (r *Renderer_GL21) InitModelShader() error {
 func (r *Renderer_GL21) Init() {
 	r.enableModel = sys.cfg.Video.EnableModel
 	r.enableShadow = sys.cfg.Video.EnableModelShadow
+
+	if sys.cfg.Video.RendererDebugMode {
+		r.EnableDebug()
+	}
+
 	chk(gl.Init())
 	sys.errLog.Printf("Using OpenGL %v (%v)", gl.GetString(gl.VERSION), gl.GetString(gl.RENDERER))
 
@@ -500,11 +562,6 @@ func (r *Renderer_GL21) Init() {
 		sys.cfg.SetValueUpdate("Video.MSAA", maxSamples)
 		sys.msaa = maxSamples
 	}
-
-	// Store current timestamp
-	sys.prevTimestamp = sdl.GetPerformanceCounter()
-
-	r.postShaderSelect = make([]*ShaderProgram_GL21, 1+len(sys.cfg.Video.ExternalShaders))
 
 	// Data buffers for rendering
 	postVertData := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
@@ -532,19 +589,24 @@ func (r *Renderer_GL21) Init() {
 
 	// Compile postprocessing shaders
 
-	// Calculate total amount of shaders loaded.
+	// Pre-allocate the shader slice to accommodate all external shaders plus the identity shader
 	r.postShaderSelect = make([]*ShaderProgram_GL21, 1+len(sys.cfg.Video.ExternalShaders))
 
-	// Ident shader (no postprocessing)
-	r.postShaderSelect[0], _ = r.newShaderProgram(identVertShader, identFragShader, "", "Identity Postprocess", true)
-	r.postShaderSelect[0].RegisterAttributes("VertCoord")
-	r.postShaderSelect[0].RegisterUniforms("Texture_GL21", "TextureSize", "CurrentTime")
+	// Identity shader (no postprocessing)
+	identShader, _ := r.newShaderProgram(identVertShader, identFragShader, "", "Identity Postprocess", true)
+	identShader.RegisterAttributes("VertCoord")
+	//identShader.RegisterUniforms("Texture_GL21", "TextureSize", "CurrentTime") // None of these are used
+
+	// It should be the first one in OpenGL 2.1
+	r.postShaderSelect[0] = identShader
 
 	// External Shaders
 	for i := 0; i < len(sys.cfg.Video.ExternalShaders); i++ {
-		r.postShaderSelect[1+i], _ = r.newShaderProgram(string(sys.externalShaders[0][i])+"\x00",
-			string(sys.externalShaders[1][i])+"\x00", "", fmt.Sprintf("Postprocess Shader #%v", i+1), true)
-		r.postShaderSelect[1+i].RegisterUniforms("Texture_GL21", "TextureSize", "CurrentTime")
+		idx := i + 1
+		r.postShaderSelect[idx], _ = r.newShaderProgram(string(sys.externalShaders[0][i])+"\x00", string(sys.externalShaders[1][i])+"\x00",
+			"", fmt.Sprintf("Postprocess Shader #%v", idx), true)
+		r.postShaderSelect[idx].RegisterAttributes("VertCoord") // "TexCoord" was registered but never used
+		r.postShaderSelect[idx].RegisterUniforms("Texture_GL21", "TextureSize", "CurrentTime")
 	}
 
 	if sys.msaa > 0 {
@@ -695,9 +757,93 @@ func (r *Renderer_GL21) Init() {
 	}
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+
+	// Check hardware texture limit
+	// TODO: Maybe clamp the result
+	var maxTex int32
+	gl.GetIntegerv(gl.MAX_TEXTURE_IMAGE_UNITS, &maxTex)
+
+	if r.debugMode {
+		fmt.Printf("[GL Debug] GPU supports up to %d textures\n", maxTex)
+	}
+
+	// Initialize sprite texture cache
+	r.texCacheTexHandle = make([]uint32, maxTex)
+	r.texCacheLastUsed = make([]uint64, maxTex)
+
+	// Initialize uniform cache
+	r.uniformICache = make(map[uint32]int32, 32)
+	r.uniformF1Cache = make(map[uint32]float32, 32)
+	r.uniformF2Cache = make(map[uint32][2]float32, 32)
+	r.uniformF3Cache = make(map[uint32][3]float32, 32)
+	r.uniformF4Cache = make(map[uint32][4]float32, 32)
 }
 
 func (r *Renderer_GL21) Close() {
+}
+
+func (r *Renderer_GL21) EnableDebug() {
+	r.debugMode = true
+	fmt.Printf("[GL Debug] Debug mode enabled\n")
+}
+
+func (r *Renderer_GL21) DebugCheckLeaks(nextprog uint32) {
+	var enabled int32
+	leaked := []int{}
+	for slot := uint32(0); slot < 16; slot++ {
+		gl.GetVertexAttribiv(slot, gl.VERTEX_ATTRIB_ARRAY_ENABLED, &enabled)
+		if enabled != 0 {
+			leaked = append(leaked, int(slot))
+		}
+	}
+	if len(leaked) > 0 {
+		fmt.Printf("[GL Debug] Changing to program %d with program %d's attributes %v enabled.\n", nextprog, r.program, leaked)
+	}
+}
+
+func (r *Renderer_GL21) CheckErrors(label string) {
+	if !r.debugMode {
+		return
+	}
+	// Read error queue
+	for {
+		err := gl.GetError()
+		if err == gl.NO_ERROR {
+			break
+		}
+
+		var name, description string
+		switch err {
+		case gl.INVALID_ENUM:
+			name = "GL_INVALID_ENUM"
+			description = "An unacceptable value was passed to an enum argument."
+		case gl.INVALID_VALUE:
+			name = "GL_INVALID_VALUE"
+			description = "A numeric argument is out of range."
+		case gl.INVALID_OPERATION:
+			name = "GL_INVALID_OPERATION"
+			description = "The command is not allowed in the current state."
+		case gl.STACK_OVERFLOW:
+			name = "GL_STACK_OVERFLOW"
+			description = "Command would cause a stack overflow."
+		case gl.STACK_UNDERFLOW:
+			name = "GL_STACK_UNDERFLOW"
+			description = "Command would cause a stack underflow."
+		case gl.OUT_OF_MEMORY:
+			name = "GL_OUT_OF_MEMORY"
+			description = "There is not enough memory left to execute the command."
+		case 0x0506:
+			name = "GL_INVALID_FRAMEBUFFER_OPERATION"
+			description = "The framebuffer object is not complete."
+		default:
+			name = ""
+			description = "Consult provider documentation for this specific code."
+		}
+
+		// Log the error with a label so we know where it happened
+		// Format: [GL Debug] [Label]: 1281 (0x0501) GL_INVALID_VALUE - Description
+		fmt.Printf("[GL Debug] [%s]: %d (0x%04X) %s - %s\n", label, err, err, name, description)
+	}
 }
 
 func (r *Renderer_GL21) IsModelEnabled() bool {
@@ -709,7 +855,6 @@ func (r *Renderer_GL21) IsShadowEnabled() bool {
 }
 
 func (r *Renderer_GL21) BeginFrame(clearColor bool) {
-	sys.absTickCountF++
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
 	if clearColor {
@@ -754,11 +899,17 @@ func (r *Renderer_GL21) EndFrame() {
 		fbo_texture = r.fbo_f_texture.handle
 	}
 
-	// disable blending
+	// Reset global state
+	r.DisableScissor()
 	r.SetBlending(false, 0, 0, 0)
+	r.SetDepthTest(false)
+	r.SetDepthMask(false)
 
 	for i := 0; i < len(r.postShaderSelect); i++ {
 		postShader := r.postShaderSelect[i]
+
+		// tell GL we want to use our shader program
+		r.ChangeProgram(postShader.program)
 
 		// this is here because it is undefined
 		// behavior to write to the same FBO
@@ -790,13 +941,17 @@ func (r *Renderer_GL21) EndFrame() {
 			gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 		}
 
-		// tell GL we want to use our shader program
-		r.UseProgram(postShader.program)
-
 		// set post-processing parameters
-		gl.Uniform1i(postShader.u["Texture_GL21"], 0)
-		gl.Uniform2f(postShader.u["TextureSize"], float32(width), float32(height))
-		gl.Uniform1f(postShader.u["CurrentTime"], float32(time))
+		if loc, ok := postShader.uniforms["Texture_GL21"]; ok && loc >= 0 {
+			r.SetUniformISub(loc, 0)
+		}
+		if loc, ok := postShader.uniforms["TextureSize"]; ok && loc >= 0 {
+			r.SetUniformFSub(loc, float32(width), float32(height))
+		}
+		if loc, ok := postShader.uniforms["CurrentTime"]; ok && loc >= 0 {
+			r.SetUniformFSub(loc, float32(time))
+		}
+
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, scaleMode)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, scaleMode)
 
@@ -805,14 +960,32 @@ func (r *Renderer_GL21) EndFrame() {
 		gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 
 		// construct the UVs of the quad
-		loc := postShader.a["VertCoord"]
-		gl.EnableVertexAttribArray(uint32(loc))
-		gl.VertexAttribPointer(uint32(loc), 2, gl.FLOAT, false, 0, nil)
+		// VertCoord is the primary position attribute
+		if loc, ok := postShader.attributes["VertCoord"]; ok && loc >= 0 {
+			vLoc := uint32(loc)
+			gl.EnableVertexAttribArray(vLoc)
+			gl.VertexAttribPointer(vLoc, 2, gl.FLOAT, false, 0, nil)
+		}
+
+		// Some external shaders may use a separate TexCoord attribute instead of calculating it from VertCoord
+		//if loc, ok := postShader.attributes["TexCoord"]; ok && loc >= 0 {
+		//	tLoc := uint32(loc)
+		//	gl.EnableVertexAttribArray(tLoc)
+		//	gl.VertexAttribPointer(tLoc, 2, gl.FLOAT, false, 0, nil)
+		//}
 
 		// construct the quad and draw it
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
-		gl.DisableVertexAttribArray(uint32(loc))
+
+		// Disable attributes after use
+		for _, loc := range postShader.attributes {
+			if loc >= 0 {
+				gl.DisableVertexAttribArray(uint32(loc))
+			}
+		}
 	}
+
+	r.CheckErrors("EndFrame")
 }
 
 func (r *Renderer_GL21) Await() {
@@ -863,6 +1036,7 @@ func (r *Renderer_GL21) SetDepthTest(depthTest bool) {
 	}
 }
 
+// Note: This one defaults to enable so we must sync the cache early
 func (r *Renderer_GL21) SetDepthMask(depthMask bool) {
 	if depthMask != r.depthMask {
 		r.depthMask = depthMask
@@ -893,11 +1067,40 @@ func (r *Renderer_GL21) SetCullFace(doubleSided bool) {
 	}
 }
 
-func (r *Renderer_GL21) UseProgram(program uint32) {
-	if r.program != program {
-		gl.UseProgram(program)
-		r.program = program
+// This should be called instead of gl.UseProgram()
+func (r *Renderer_GL21) ChangeProgram(prog uint32) {
+	// Program already in use
+	if r.program == prog {
+		return
 	}
+
+	// Lazy release of sprite pipeline
+	// We can't tell if the next thing we will draw is also a sprite, so this prevents releasing the pipeline after every single sprite
+	if r.program == r.spriteShader.program {
+		r.ReleasePipeline()
+	}
+
+	// Same for TTF fonts
+	if r.program == gfxFont.(*FontRenderer_GL21).shaderProgram.program {
+		gfxFont.(*FontRenderer_GL21).ReleaseFontPipeline()
+	}
+
+	// State leak detector
+	// TODO: Just move to separate VAO's if we drop GL2.1
+	if r.debugMode {
+		r.DebugCheckLeaks(prog)
+	}
+
+	// Switch program
+	gl.UseProgram(prog)
+	r.program = prog
+
+	// Reset sprite texture cache
+	for i := range r.texCacheTexHandle {
+		r.texCacheTexHandle[i] = 0xFFFFFFFF
+		r.texCacheLastUsed[i] = 0
+	}
+	r.texCacheTimer = 1
 }
 
 func (r *Renderer_GL21) SetBlending(enable bool, eq BlendEquation, src, dst BlendFunc) {
@@ -910,7 +1113,6 @@ func (r *Renderer_GL21) SetBlending(enable bool, eq BlendEquation, src, dst Blen
 			gl.Disable(gl.BLEND)
 		}
 	}
-
 	if enable {
 		if eq != r.blendEquation {
 			r.blendEquation = eq
@@ -924,29 +1126,41 @@ func (r *Renderer_GL21) SetBlending(enable bool, eq BlendEquation, src, dst Blen
 	}
 }
 
-func (r *Renderer_GL21) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
-	r.UseProgram(r.spriteShader.program)
-	r.SetBlending(true, eq, src, dst)
+func (r *Renderer_GL21) SetPipeline() {
+	// Do nothing if we were already using the sprite shader
+	if r.program == r.spriteShader.program {
+		return
+	}
 
-	// Must bind buffer before enabling attributes
+	r.ChangeProgram(r.spriteShader.program)
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	loc := r.spriteShader.a["position"]
-	gl.EnableVertexAttribArray(uint32(loc))
-	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 16, 0)
-	loc = r.spriteShader.a["uv"]
-	gl.EnableVertexAttribArray(uint32(loc))
-	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 16, 8)
+
+	locPos := r.spriteShader.attributes["position"]
+	gl.EnableVertexAttribArray(uint32(locPos))
+	gl.VertexAttribPointerWithOffset(uint32(locPos), 2, gl.FLOAT, false, 16, 0)
+
+	locUV := r.spriteShader.attributes["uv"]
+	gl.EnableVertexAttribArray(uint32(locUV))
+	gl.VertexAttribPointerWithOffset(uint32(locUV), 2, gl.FLOAT, false, 16, 8)
+}
+
+func (r *Renderer_GL21) ReleasePipeline() {
+	loc := r.spriteShader.attributes["position"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	loc = r.spriteShader.attributes["uv"]
+	gl.DisableVertexAttribArray(uint32(loc))
+	//gl.Disable(gl.BLEND)
 }
 
 func (r *Renderer_GL21) prepareShadowMapPipeline(bufferIndex uint32) {
-	r.UseProgram(r.shadowMapShader.program)
+	r.ChangeProgram(r.shadowMapShader.program)
 	gl.BindFramebufferEXT(gl.FRAMEBUFFER, r.fbo_shadow)
 	gl.Viewport(0, 0, 1024, 1024)
 	gl.Enable(gl.TEXTURE_2D)
 	gl.Disable(gl.BLEND)
-	gl.Enable(gl.DEPTH_TEST)
-	gl.DepthFunc(gl.LESS)
-	gl.DepthMask(true)
+	r.SetDepthTest(true)
+	r.SetDepthMask(true)
 	gl.BlendEquation(gl.FUNC_ADD)
 	gl.BlendFunc(gl.ONE, gl.ZERO)
 	if r.invertFrontFace {
@@ -960,8 +1174,8 @@ func (r *Renderer_GL21) prepareShadowMapPipeline(bufferIndex uint32) {
 	} else {
 		gl.Disable(gl.CULL_FACE)
 	}
-	r.depthTest = true
-	r.depthMask = true
+	//r.depthTest = true
+	//r.depthMask = true
 	r.blendEquation = BlendAdd
 	r.blendSrc = BlendOne
 	r.blendDst = BlendZero
@@ -974,27 +1188,29 @@ func (r *Renderer_GL21) setShadowMapPipeline(doubleSided, invertFrontFace, useUV
 	r.SetFrontFace(invertFrontFace)
 	r.SetCullFace(doubleSided)
 
-	loc := r.shadowMapShader.a["inVertexId"]
+	loc := r.shadowMapShader.attributes["inVertexId"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 1, gl.INT, false, 0, uintptr(vertAttrOffset))
 	offset := vertAttrOffset + 4*numVertices
 
-	loc = r.shadowMapShader.a["position"]
+	loc = r.shadowMapShader.attributes["position"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 3, gl.FLOAT, false, 0, uintptr(offset))
 	offset += 12 * numVertices
+
 	if useUV {
 		r.useUV = true
-		loc = r.modelShader.a["uv"]
+		loc = r.shadowMapShader.attributes["uv"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 8 * numVertices
 	} else if r.useUV {
 		r.useUV = false
-		loc = r.modelShader.a["uv"]
+		loc = r.shadowMapShader.attributes["uv"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib2f(uint32(loc), 0, 0)
 	}
+
 	if useNormal {
 		offset += 12 * numVertices
 	}
@@ -1002,97 +1218,96 @@ func (r *Renderer_GL21) setShadowMapPipeline(doubleSided, invertFrontFace, useUV
 		offset += 16 * numVertices
 	}
 	if useVertColor {
-		loc = r.shadowMapShader.a["vertColor"]
+		loc = r.shadowMapShader.attributes["vertColor"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
 	} else {
-		loc = r.shadowMapShader.a["vertColor"]
+		loc = r.shadowMapShader.attributes["vertColor"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 1, 1, 1, 1)
 	}
 	if useJoint0 {
 		r.useJoint0 = true
-		loc = r.modelShader.a["joints_0"]
+		loc = r.shadowMapShader.attributes["joints_0"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
-		loc = r.modelShader.a["weights_0"]
+		loc = r.shadowMapShader.attributes["weights_0"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
 		if useJoint1 {
 			r.useJoint1 = true
-			loc = r.modelShader.a["joints_1"]
+			loc = r.shadowMapShader.attributes["joints_1"]
 			gl.EnableVertexAttribArray(uint32(loc))
 			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 			offset += 16 * numVertices
-			loc = r.modelShader.a["weights_1"]
+			loc = r.shadowMapShader.attributes["weights_1"]
 			gl.EnableVertexAttribArray(uint32(loc))
 			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 			offset += 16 * numVertices
 		} else if r.useJoint1 {
 			r.useJoint1 = false
-			loc = r.modelShader.a["joints_1"]
+			loc = r.shadowMapShader.attributes["joints_1"]
 			gl.DisableVertexAttribArray(uint32(loc))
 			gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-			loc = r.modelShader.a["weights_1"]
+			loc = r.shadowMapShader.attributes["weights_1"]
 			gl.DisableVertexAttribArray(uint32(loc))
 			gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 		}
 	} else if r.useJoint0 {
 		r.useJoint0 = false
 		r.useJoint1 = false
-		loc = r.modelShader.a["joints_0"]
+		loc = r.shadowMapShader.attributes["joints_0"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-		loc = r.modelShader.a["weights_0"]
+		loc = r.shadowMapShader.attributes["weights_0"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-		loc = r.modelShader.a["joints_1"]
+		loc = r.shadowMapShader.attributes["joints_1"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-		loc = r.modelShader.a["weights_1"]
+		loc = r.shadowMapShader.attributes["weights_1"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 	}
 }
 
 func (r *Renderer_GL21) ReleaseShadowPipeline() {
-	loc := r.modelShader.a["inVertexId"]
+	loc := r.shadowMapShader.attributes["inVertexId"]
 	gl.DisableVertexAttribArray(uint32(loc))
-	loc = r.modelShader.a["position"]
+	loc = r.shadowMapShader.attributes["position"]
 	gl.DisableVertexAttribArray(uint32(loc))
-	loc = r.modelShader.a["uv"]
+	loc = r.shadowMapShader.attributes["uv"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib2f(uint32(loc), 0, 0)
-	loc = r.modelShader.a["vertColor"]
+	loc = r.shadowMapShader.attributes["vertColor"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 1, 1, 1, 1)
-	loc = r.modelShader.a["joints_0"]
+	loc = r.shadowMapShader.attributes["joints_0"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["weights_0"]
+	loc = r.shadowMapShader.attributes["weights_0"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["joints_1"]
+	loc = r.shadowMapShader.attributes["joints_1"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["weights_1"]
+	loc = r.shadowMapShader.attributes["weights_1"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 	//gl.Disable(gl.TEXTURE_2D)
-	gl.DepthMask(true)
-	gl.Disable(gl.DEPTH_TEST)
+	r.SetDepthMask(true)
+	r.SetDepthTest(false)
 	gl.Disable(gl.CULL_FACE)
 	gl.Disable(gl.BLEND)
-	r.useUV = false
 	r.useJoint0 = false
 	r.useJoint1 = false
 }
 
 func (r *Renderer_GL21) prepareModelPipeline(bufferIndex uint32, env *Environment) {
-	r.UseProgram(r.modelShader.program)
+	r.ChangeProgram(r.modelShader.program)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
@@ -1100,13 +1315,17 @@ func (r *Renderer_GL21) prepareModelPipeline(bufferIndex uint32, env *Environmen
 	gl.Enable(gl.TEXTURE_CUBE_MAP)
 	gl.Enable(gl.BLEND)
 
-	if r.depthTest {
-		gl.Enable(gl.DEPTH_TEST)
-		gl.DepthFunc(gl.LESS)
-	} else {
-		gl.Disable(gl.DEPTH_TEST)
-	}
-	gl.DepthMask(r.depthMask)
+	/*
+		// These should be redundant now
+		if r.depthTest {
+			r.SetDepthTest(true)
+			gl.DepthFunc(gl.LESS)
+		} else {
+			r.SetDepthTest(false)
+		}
+		r.SetDepthMask(r.depthMask)
+	*/
+
 	if r.invertFrontFace {
 		gl.FrontFace(gl.CW)
 	} else {
@@ -1125,49 +1344,49 @@ func (r *Renderer_GL21) prepareModelPipeline(bufferIndex uint32, env *Environmen
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
 	if r.enableShadow {
 		for i := 0; i < 4; i++ {
-			loc, unit := r.modelShader.u["shadowCubeMap["+strconv.Itoa(i)+"]"], r.modelShader.t["shadowCubeMap["+strconv.Itoa(i)+"]"]
+			loc, unit := r.modelShader.uniforms["shadowCubeMap["+strconv.Itoa(i)+"]"], r.modelShader.textures["shadowCubeMap["+strconv.Itoa(i)+"]"]
 			gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 			gl.BindTexture(gl.TEXTURE_CUBE_MAP, r.fbo_shadow_cube_texture[i])
 			gl.Uniform1i(loc, int32(unit))
 		}
 	}
 	if env != nil {
-		loc, unit := r.modelShader.u["lambertianEnvSampler"], r.modelShader.t["lambertianEnvSampler"]
+		loc, unit := r.modelShader.uniforms["lambertianEnvSampler"], r.modelShader.textures["lambertianEnvSampler"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 		gl.BindTexture(gl.TEXTURE_CUBE_MAP, env.lambertianTexture.tex.(*Texture_GL21).handle)
 		gl.Uniform1i(loc, int32(unit))
-		loc, unit = r.modelShader.u["GGXEnvSampler"], r.modelShader.t["GGXEnvSampler"]
+		loc, unit = r.modelShader.uniforms["GGXEnvSampler"], r.modelShader.textures["GGXEnvSampler"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 		gl.BindTexture(gl.TEXTURE_CUBE_MAP, env.GGXTexture.tex.(*Texture_GL21).handle)
 		gl.Uniform1i(loc, int32(unit))
-		loc, unit = r.modelShader.u["GGXLUT"], r.modelShader.t["GGXLUT"]
+		loc, unit = r.modelShader.uniforms["GGXLUT"], r.modelShader.textures["GGXLUT"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 		gl.BindTexture(gl.TEXTURE_2D, env.GGXLUT.tex.(*Texture_GL21).handle)
 		gl.Uniform1i(loc, int32(unit))
 
-		loc = r.modelShader.u["environmentIntensity"]
+		loc = r.modelShader.uniforms["environmentIntensity"]
 		gl.Uniform1f(loc, env.environmentIntensity)
-		loc = r.modelShader.u["mipCount"]
+		loc = r.modelShader.uniforms["mipCount"]
 		gl.Uniform1i(loc, env.mipmapLevels)
-		loc = r.modelShader.u["environmentRotation"]
+		loc = r.modelShader.uniforms["environmentRotation"]
 		rotationMatrix := mgl.Rotate3DX(math.Pi).Mul3(mgl.Rotate3DY(0.5 * math.Pi))
 		rotationM := rotationMatrix[:]
 		gl.UniformMatrix3fv(loc, 1, false, &rotationM[0])
 
 	} else {
-		loc, unit := r.modelShader.u["lambertianEnvSampler"], r.modelShader.t["lambertianEnvSampler"]
+		loc, unit := r.modelShader.uniforms["lambertianEnvSampler"], r.modelShader.textures["lambertianEnvSampler"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 		gl.BindTexture(gl.TEXTURE_CUBE_MAP, 0)
 		gl.Uniform1i(loc, int32(unit))
-		loc, unit = r.modelShader.u["GGXEnvSampler"], r.modelShader.t["GGXEnvSampler"]
+		loc, unit = r.modelShader.uniforms["GGXEnvSampler"], r.modelShader.textures["GGXEnvSampler"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 		gl.BindTexture(gl.TEXTURE_CUBE_MAP, 0)
 		gl.Uniform1i(loc, int32(unit))
-		loc, unit = r.modelShader.u["GGXLUT"], r.modelShader.t["GGXLUT"]
+		loc, unit = r.modelShader.uniforms["GGXLUT"], r.modelShader.textures["GGXLUT"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 		gl.BindTexture(gl.TEXTURE_2D, 0)
 		gl.Uniform1i(loc, int32(unit))
-		loc = r.modelShader.u["environmentIntensity"]
+		loc = r.modelShader.uniforms["environmentIntensity"]
 		gl.Uniform1f(loc, 0)
 	}
 }
@@ -1180,117 +1399,119 @@ func (r *Renderer_GL21) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, d
 	r.SetCullFace(doubleSided)
 	r.SetBlending(true, eq, src, dst)
 
-	loc := r.modelShader.a["inVertexId"]
+	loc := r.modelShader.attributes["inVertexId"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 1, gl.INT, false, 0, uintptr(vertAttrOffset))
 	offset := vertAttrOffset + 4*numVertices
 
-	loc = r.modelShader.a["position"]
+	loc = r.modelShader.attributes["position"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 3, gl.FLOAT, false, 0, uintptr(offset))
 	offset += 12 * numVertices
+
 	if useUV {
 		r.useUV = true
-		loc = r.modelShader.a["uv"]
+		loc = r.modelShader.attributes["uv"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 8 * numVertices
 	} else if r.useUV {
 		r.useUV = false
-		loc = r.modelShader.a["uv"]
+		loc = r.modelShader.attributes["uv"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib2f(uint32(loc), 0, 0)
 	}
+
 	if useNormal {
 		r.useNormal = true
-		loc = r.modelShader.a["normalIn"]
+		loc = r.modelShader.attributes["normalIn"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 3, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 12 * numVertices
 	} else if r.useNormal {
 		r.useNormal = false
-		loc = r.modelShader.a["normalIn"]
+		loc = r.modelShader.attributes["normalIn"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib3f(uint32(loc), 0, 0, 0)
 	}
 	if useTangent {
 		r.useTangent = true
-		loc = r.modelShader.a["tangentIn"]
+		loc = r.modelShader.attributes["tangentIn"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
 	} else if r.useTangent {
 		r.useTangent = false
-		loc = r.modelShader.a["tangentIn"]
+		loc = r.modelShader.attributes["tangentIn"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 	}
 	if useVertColor {
 		r.useVertColor = true
-		loc = r.modelShader.a["vertColor"]
+		loc = r.modelShader.attributes["vertColor"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
 	} else if r.useVertColor {
 		r.useVertColor = false
-		loc = r.modelShader.a["vertColor"]
+		loc = r.modelShader.attributes["vertColor"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 1, 1, 1, 1)
 	}
 	if useJoint0 {
 		r.useJoint0 = true
-		loc = r.modelShader.a["joints_0"]
+		loc = r.modelShader.attributes["joints_0"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
-		loc = r.modelShader.a["weights_0"]
+		loc = r.modelShader.attributes["weights_0"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
 		if useJoint1 {
 			r.useJoint1 = true
-			loc = r.modelShader.a["joints_1"]
+			loc = r.modelShader.attributes["joints_1"]
 			gl.EnableVertexAttribArray(uint32(loc))
 			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 			offset += 16 * numVertices
-			loc = r.modelShader.a["weights_1"]
+			loc = r.modelShader.attributes["weights_1"]
 			gl.EnableVertexAttribArray(uint32(loc))
 			gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 			offset += 16 * numVertices
 		} else if r.useJoint1 {
 			r.useJoint1 = false
-			loc = r.modelShader.a["joints_1"]
+			loc = r.modelShader.attributes["joints_1"]
 			gl.DisableVertexAttribArray(uint32(loc))
 			gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-			loc = r.modelShader.a["weights_1"]
+			loc = r.modelShader.attributes["weights_1"]
 			gl.DisableVertexAttribArray(uint32(loc))
 			gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 		}
 	} else if r.useJoint0 {
 		r.useJoint0 = false
 		r.useJoint1 = false
-		loc = r.modelShader.a["joints_0"]
+		loc = r.modelShader.attributes["joints_0"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-		loc = r.modelShader.a["weights_0"]
+		loc = r.modelShader.attributes["weights_0"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-		loc = r.modelShader.a["joints_1"]
+		loc = r.modelShader.attributes["joints_1"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-		loc = r.modelShader.a["weights_1"]
+		loc = r.modelShader.attributes["weights_1"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 	}
 	if useOutlineAttribute {
 		r.useOutlineAttribute = true
-		loc = r.modelShader.a["outlineAttributeIn"]
+		loc = r.modelShader.attributes["outlineAttributeIn"]
 		gl.EnableVertexAttribArray(uint32(loc))
 		gl.VertexAttribPointerWithOffset(uint32(loc), 4, gl.FLOAT, false, 0, uintptr(offset))
 		offset += 16 * numVertices
 	} else if r.useOutlineAttribute {
 		r.useOutlineAttribute = false
-		loc = r.modelShader.a["outlineAttributeIn"]
+		loc = r.modelShader.attributes["outlineAttributeIn"]
 		gl.DisableVertexAttribArray(uint32(loc))
 		gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 	}
@@ -1298,47 +1519,46 @@ func (r *Renderer_GL21) SetModelPipeline(eq BlendEquation, src, dst BlendFunc, d
 
 func (r *Renderer_GL21) SetMeshOulinePipeline(invertFrontFace bool, meshOutline float32) {
 	r.SetFrontFace(invertFrontFace)
-	loc := r.modelShader.u["meshOutline"]
+	loc := r.modelShader.uniforms["meshOutline"]
 	gl.Uniform1f(loc, meshOutline)
 }
 
 func (r *Renderer_GL21) ReleaseModelPipeline() {
-	loc := r.modelShader.a["inVertexId"]
+	loc := r.modelShader.attributes["inVertexId"]
 	gl.DisableVertexAttribArray(uint32(loc))
-	loc = r.modelShader.a["position"]
+	loc = r.modelShader.attributes["position"]
 	gl.DisableVertexAttribArray(uint32(loc))
-	loc = r.modelShader.a["uv"]
+	loc = r.modelShader.attributes["uv"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib2f(uint32(loc), 0, 0)
-	loc = r.modelShader.a["normalIn"]
+	loc = r.modelShader.attributes["normalIn"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib3f(uint32(loc), 0, 0, 0)
-	loc = r.modelShader.a["tangentIn"]
+	loc = r.modelShader.attributes["tangentIn"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["vertColor"]
+	loc = r.modelShader.attributes["vertColor"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 1, 1, 1, 1)
-	loc = r.modelShader.a["joints_0"]
+	loc = r.modelShader.attributes["joints_0"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["weights_0"]
+	loc = r.modelShader.attributes["weights_0"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["joints_1"]
+	loc = r.modelShader.attributes["joints_1"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["weights_1"]
+	loc = r.modelShader.attributes["weights_1"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
-	loc = r.modelShader.a["outlineAttributeIn"]
+	loc = r.modelShader.attributes["outlineAttributeIn"]
 	gl.DisableVertexAttribArray(uint32(loc))
 	gl.VertexAttrib4f(uint32(loc), 0, 0, 0, 0)
 	//gl.Disable(gl.TEXTURE_2D)
-	gl.DepthMask(true)
-	gl.Disable(gl.DEPTH_TEST)
+	r.SetDepthMask(true)
+	r.SetDepthTest(false)
 	gl.Disable(gl.CULL_FACE)
-	r.useUV = false
 	r.useNormal = false
 	r.useTangent = false
 	r.useVertColor = false
@@ -1364,158 +1584,243 @@ func (r *Renderer_GL21) ReadPixels(data []uint8, width, height int) {
 }
 
 func (r *Renderer_GL21) EnableScissor(x, y, width, height int32) {
-	gl.Enable(gl.SCISSOR_TEST)
-	gl.Scissor(x, sys.scrrect[3]-(y+height), width, height)
+	// Flip Y to OpenGL convention
+	realY := sys.scrrect[3] - (y + height)
+
+	if r.scissorEnabled &&
+		r.scissorRect[0] == x && r.scissorRect[1] == realY &&
+		r.scissorRect[2] == width && r.scissorRect[3] == height {
+		return
+	}
+
+	if !r.scissorEnabled {
+		gl.Enable(gl.SCISSOR_TEST)
+		r.scissorEnabled = true
+	}
+
+	gl.Scissor(x, realY, width, height)
+	r.scissorRect = [4]int32{x, realY, width, height}
 }
 
 func (r *Renderer_GL21) DisableScissor() {
-	gl.Disable(gl.SCISSOR_TEST)
+	if r.scissorEnabled {
+		gl.Disable(gl.SCISSOR_TEST)
+		r.scissorEnabled = false
+		r.scissorRect = [4]int32{0, 0, 0, 0}
+	}
+}
+
+func (r *Renderer_GL21) SetUniformISub(loc int32, val int32) {
+	if loc < 0 {
+		return
+	}
+
+	// Cached path for the sprite shader
+	if r.program == r.spriteShader.program {
+		key := (r.program << 16) | uint32(loc)
+		if old, exists := r.uniformICache[key]; exists && old == val {
+			return
+		}
+		r.uniformICache[key] = val
+	}
+
+	gl.Uniform1i(loc, val)
+}
+
+func (r *Renderer_GL21) SetUniformFSub(loc int32, values ...float32) {
+	if loc < 0 || len(values) == 0 {
+		return
+	}
+
+	// Cached path for the sprite shader
+	if r.program == r.spriteShader.program {
+		key := (r.program << 16) | uint32(loc)
+
+		switch len(values) {
+		case 1:
+			if old, exists := r.uniformF1Cache[key]; exists && old == values[0] {
+				return
+			}
+			r.uniformF1Cache[key] = values[0]
+		case 2:
+			v2 := [2]float32{values[0], values[1]}
+			if old, exists := r.uniformF2Cache[key]; exists && old == v2 {
+				return
+			}
+			r.uniformF2Cache[key] = v2
+		case 3:
+			v3 := [3]float32{values[0], values[1], values[2]}
+			if old, exists := r.uniformF3Cache[key]; exists && old == v3 {
+				return
+			}
+			r.uniformF3Cache[key] = v3
+		case 4:
+			v4 := [4]float32{values[0], values[1], values[2], values[3]}
+			if old, exists := r.uniformF4Cache[key]; exists && old == v4 {
+				return
+			}
+			r.uniformF4Cache[key] = v4
+		}
+	}
+
+	// Uncached path
+	switch len(values) {
+	case 1:
+		gl.Uniform1f(loc, values[0])
+	case 2:
+		gl.Uniform2f(loc, values[0], values[1])
+	case 3:
+		gl.Uniform3f(loc, values[0], values[1], values[2])
+	case 4:
+		gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
+	}
+}
+
+func (r *Renderer_GL21) SetUniformFvSub(loc int32, values []float32) {
+	if loc < 0 || len(values) == 0 {
+		return
+	}
+
+	switch len(values) {
+	case 1, 2, 3, 4:
+		r.SetUniformFSub(loc, values...)
+	case 8:
+		gl.Uniform4fv(loc, 2, &values[0])
+	default:
+		gl.Uniform1fv(loc, int32(len(values)), &values[0])
+	}
 }
 
 func (r *Renderer_GL21) SetUniformI(name string, val int) {
-	loc := r.spriteShader.u[name]
-	gl.Uniform1i(loc, int32(val))
+	loc := r.spriteShader.uniforms[name]
+	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL21) SetUniformF(name string, values ...float32) {
-	loc := r.spriteShader.u[name]
-	switch len(values) {
-	case 1:
-		gl.Uniform1f(loc, values[0])
-	case 2:
-		gl.Uniform2f(loc, values[0], values[1])
-	case 3:
-		gl.Uniform3f(loc, values[0], values[1], values[2])
-	case 4:
-		gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
-	}
+	loc := r.spriteShader.uniforms[name]
+	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL21) SetUniformFv(name string, values []float32) {
-	loc := r.spriteShader.u[name]
-	switch len(values) {
-	case 2:
-		gl.Uniform2fv(loc, 1, &values[0])
-	case 3:
-		gl.Uniform3fv(loc, 1, &values[0])
-	case 4:
-		gl.Uniform4fv(loc, 1, &values[0])
-	}
+	loc := r.spriteShader.uniforms[name]
+	r.SetUniformFvSub(loc, values)
 }
 
+// Caching matrices is as expensive as direct function calls
 func (r *Renderer_GL21) SetUniformMatrix(name string, value []float32) {
-	loc := r.spriteShader.u[name]
+	loc := r.spriteShader.uniforms[name]
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
-func (r *Renderer_GL21) SetTexture(name string, tex Texture) {
-	t := tex.(*Texture_GL21)
-	loc, unit := r.spriteShader.u[name], r.spriteShader.t[name]
-	gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
-	gl.BindTexture(gl.TEXTURE_2D, t.handle)
-	gl.Uniform1i(loc, int32(unit))
-}
-
 func (r *Renderer_GL21) SetModelUniformI(name string, val int) {
-	loc := r.modelShader.u[name]
-	gl.Uniform1i(loc, int32(val))
+	loc := r.modelShader.uniforms[name]
+	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL21) SetModelUniformF(name string, values ...float32) {
-	loc := r.modelShader.u[name]
-	switch len(values) {
-	case 1:
-		gl.Uniform1f(loc, values[0])
-	case 2:
-		gl.Uniform2f(loc, values[0], values[1])
-	case 3:
-		gl.Uniform3f(loc, values[0], values[1], values[2])
-	case 4:
-		gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
-	}
+	loc := r.modelShader.uniforms[name]
+	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL21) SetModelUniformFv(name string, values []float32) {
-	loc := r.modelShader.u[name]
-	switch len(values) {
-	case 2:
-		gl.Uniform2fv(loc, 1, &values[0])
-	case 3:
-		gl.Uniform3fv(loc, 1, &values[0])
-	case 4:
-		gl.Uniform4fv(loc, 1, &values[0])
-	case 8:
-		gl.Uniform4fv(loc, 2, &values[0])
-	}
+	loc := r.modelShader.uniforms[name]
+	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GL21) SetModelUniformMatrix(name string, value []float32) {
-	loc := r.modelShader.u[name]
+	loc := r.modelShader.uniforms[name]
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL21) SetModelUniformMatrix3(name string, value []float32) {
-	loc := r.modelShader.u[name]
+	loc := r.modelShader.uniforms[name]
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
 }
 
-func (r *Renderer_GL21) SetModelTexture(name string, tex Texture) {
-	t := tex.(*Texture_GL21)
-	loc, unit := r.modelShader.u[name], r.modelShader.t[name]
-	gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
-	gl.BindTexture(gl.TEXTURE_2D, t.handle)
-	gl.Uniform1i(loc, int32(unit))
-}
-
 func (r *Renderer_GL21) SetShadowMapUniformI(name string, val int) {
-	loc := r.shadowMapShader.u[name]
-	gl.Uniform1i(loc, int32(val))
+	loc := r.shadowMapShader.uniforms[name]
+	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL21) SetShadowMapUniformF(name string, values ...float32) {
-	loc := r.shadowMapShader.u[name]
-	switch len(values) {
-	case 1:
-		gl.Uniform1f(loc, values[0])
-	case 2:
-		gl.Uniform2f(loc, values[0], values[1])
-	case 3:
-		gl.Uniform3f(loc, values[0], values[1], values[2])
-	case 4:
-		gl.Uniform4f(loc, values[0], values[1], values[2], values[3])
-	}
+	loc := r.shadowMapShader.uniforms[name]
+	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL21) SetShadowMapUniformFv(name string, values []float32) {
-	loc := r.shadowMapShader.u[name]
-	switch len(values) {
-	case 2:
-		gl.Uniform2fv(loc, 1, &values[0])
-	case 3:
-		gl.Uniform3fv(loc, 1, &values[0])
-	case 4:
-		gl.Uniform4fv(loc, 1, &values[0])
-	case 8:
-		gl.Uniform4fv(loc, 2, &values[0])
-	}
+	loc := r.shadowMapShader.uniforms[name]
+	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GL21) SetShadowMapUniformMatrix(name string, value []float32) {
-	loc := r.shadowMapShader.u[name]
+	loc := r.shadowMapShader.uniforms[name]
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL21) SetShadowMapUniformMatrix3(name string, value []float32) {
-	loc := r.shadowMapShader.u[name]
+	loc := r.shadowMapShader.uniforms[name]
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
 }
 
-func (r *Renderer_GL21) SetShadowMapTexture(name string, tex Texture) {
+func (r *Renderer_GL21) SetTextureSub(uMap map[string]int32, tMap map[string]int, name string, tex Texture) {
 	t := tex.(*Texture_GL21)
-	loc, unit := r.shadowMapShader.u[name], r.shadowMapShader.t[name]
-	gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
+	loc := uMap[name]
+
+	// Cached path for the sprite shader
+	// Note: The cache doesn't care if a texture is "tex" or "pal"
+	if r.program == r.spriteShader.program {
+		// Increment reference timer
+		r.texCacheTimer++
+
+		var oldestUnit int32 = 0
+		var minTime uint64 = math.MaxUint64
+
+		// Look for a hit or the oldest slot
+		for i := range r.texCacheTexHandle {
+			// If we find the texture already bound, that's a hit
+			if r.texCacheTexHandle[i] == t.handle {
+				r.texCacheLastUsed[i] = r.texCacheTimer
+				r.SetUniformISub(loc, int32(i))
+				return
+			}
+
+			// While searching, track the oldest slot in case we miss
+			if r.texCacheLastUsed[i] < minTime {
+				minTime = r.texCacheLastUsed[i]
+				oldestUnit = int32(i)
+			}
+		}
+
+		// Cache miss
+		gl.ActiveTexture(gl.TEXTURE0 + uint32(oldestUnit))
+		gl.BindTexture(gl.TEXTURE_2D, t.handle)
+
+		// Update cache state
+		r.texCacheTexHandle[oldestUnit] = t.handle
+		r.texCacheLastUsed[oldestUnit] = r.texCacheTimer
+
+		// Update uniform
+		r.SetUniformISub(loc, oldestUnit)
+		return
+	}
+
+	// Uncached path
+	fixedUnit := uint32(tMap[name])
+	gl.ActiveTexture(gl.TEXTURE0 + fixedUnit)
 	gl.BindTexture(gl.TEXTURE_2D, t.handle)
-	gl.Uniform1i(loc, int32(unit))
+	r.SetUniformISub(loc, int32(fixedUnit))
+}
+
+func (r *Renderer_GL21) SetTexture(name string, tex Texture) {
+	r.SetTextureSub(r.spriteShader.uniforms, r.spriteShader.textures, name, tex)
+}
+
+func (r *Renderer_GL21) SetModelTexture(name string, tex Texture) {
+	r.SetTextureSub(r.modelShader.uniforms, r.modelShader.textures, name, tex)
+}
+
+func (r *Renderer_GL21) SetShadowMapTexture(name string, tex Texture) {
+	r.SetTextureSub(r.shadowMapShader.uniforms, r.shadowMapShader.textures, name, tex)
 }
 
 func (r *Renderer_GL21) SetShadowFrameTexture(i uint32) {
@@ -1564,16 +1869,19 @@ func (r *Renderer_GL21) RenderCubeMap(envTex Texture, cubeTex Texture) {
 	envTexture := envTex.(*Texture_GL21)
 	cubeTexture := cubeTex.(*Texture_GL21)
 	textureSize := cubeTexture.width
+
+	r.ChangeProgram(r.panoramaToCubeMapShader.program)
+
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_env)
 	gl.Viewport(0, 0, textureSize, textureSize)
-	r.UseProgram(r.panoramaToCubeMapShader.program)
-	loc := r.panoramaToCubeMapShader.a["VertCoord"]
+
+	loc := r.panoramaToCubeMapShader.attributes["VertCoord"]
 	gl.EnableVertexAttribArray(uint32(loc))
 	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
 	data := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
-	loc, unit := r.panoramaToCubeMapShader.u["panorama"], r.panoramaToCubeMapShader.t["panorama"]
+	loc, unit := r.panoramaToCubeMapShader.uniforms["panorama"], r.panoramaToCubeMapShader.textures["panorama"]
 	gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 	gl.BindTexture(gl.TEXTURE_2D, envTexture.handle)
 	gl.Uniform1i(loc, int32(unit))
@@ -1581,7 +1889,7 @@ func (r *Renderer_GL21) RenderCubeMap(envTex Texture, cubeTex Texture) {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X+i), cubeTexture.handle, 0)
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		loc := r.panoramaToCubeMapShader.u["currentFace"]
+		loc := r.panoramaToCubeMapShader.uniforms["currentFace"]
 		gl.Uniform1i(loc, int32(i))
 
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
@@ -1596,36 +1904,41 @@ func (r *Renderer_GL21) RenderFilteredCubeMap(distribution int32, cubeTex Textur
 	filteredTexture := filteredTex.(*Texture_GL21)
 	textureSize := filteredTexture.width
 	currentTextureSize := textureSize >> mipmapLevel
+
+	r.ChangeProgram(r.cubemapFilteringShader.program)
+
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_env)
 	gl.Viewport(0, 0, currentTextureSize, currentTextureSize)
-	r.UseProgram(r.cubemapFilteringShader.program)
-	loc := r.cubemapFilteringShader.a["VertCoord"]
-	gl.EnableVertexAttribArray(uint32(loc))
-	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
+
 	data := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
-	loc, unit := r.cubemapFilteringShader.u["cubeMap"], r.cubemapFilteringShader.t["cubeMap"]
+
+	loc := r.cubemapFilteringShader.attributes["VertCoord"]
+	gl.EnableVertexAttribArray(uint32(loc))
+	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
+
+	loc, unit := r.cubemapFilteringShader.uniforms["cubeMap"], r.cubemapFilteringShader.textures["cubeMap"]
 	gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture.handle)
 	gl.Uniform1i(loc, int32(unit))
-	loc = r.cubemapFilteringShader.u["sampleCount"]
+	loc = r.cubemapFilteringShader.uniforms["sampleCount"]
 	gl.Uniform1i(loc, sampleCount)
-	loc = r.cubemapFilteringShader.u["distribution"]
+	loc = r.cubemapFilteringShader.uniforms["distribution"]
 	gl.Uniform1i(loc, distribution)
-	loc = r.cubemapFilteringShader.u["width"]
+	loc = r.cubemapFilteringShader.uniforms["width"]
 	gl.Uniform1i(loc, textureSize)
-	loc = r.cubemapFilteringShader.u["roughness"]
+	loc = r.cubemapFilteringShader.uniforms["roughness"]
 	gl.Uniform1f(loc, roughness)
-	loc = r.cubemapFilteringShader.u["intensityScale"]
+	loc = r.cubemapFilteringShader.uniforms["intensityScale"]
 	gl.Uniform1f(loc, 1)
-	loc = r.cubemapFilteringShader.u["isLUT"]
+	loc = r.cubemapFilteringShader.uniforms["isLUT"]
 	gl.Uniform1i(loc, 0)
 	for i := 0; i < 6; i++ {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X+i), filteredTexture.handle, mipmapLevel)
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
-		loc := r.cubemapFilteringShader.u["currentFace"]
+		loc := r.cubemapFilteringShader.uniforms["currentFace"]
 		gl.Uniform1i(loc, int32(i))
 
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
@@ -1637,32 +1950,37 @@ func (r *Renderer_GL21) RenderLUT(distribution int32, cubeTex Texture, lutTex Te
 	cubeTexture := cubeTex.(*Texture_GL21)
 	lutTexture := lutTex.(*Texture_GL21)
 	textureSize := lutTexture.width
+
+	r.ChangeProgram(r.cubemapFilteringShader.program)
+
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_env)
 	gl.Viewport(0, 0, textureSize, textureSize)
-	r.UseProgram(r.cubemapFilteringShader.program)
-	loc := r.cubemapFilteringShader.a["VertCoord"]
-	gl.EnableVertexAttribArray(uint32(loc))
-	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
+
 	data := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
-	loc, unit := r.cubemapFilteringShader.u["cubeMap"], r.cubemapFilteringShader.t["cubeMap"]
+
+	loc := r.cubemapFilteringShader.attributes["VertCoord"]
+	gl.EnableVertexAttribArray(uint32(loc))
+	gl.VertexAttribPointerWithOffset(uint32(loc), 2, gl.FLOAT, false, 0, 0)
+
+	loc, unit := r.cubemapFilteringShader.uniforms["cubeMap"], r.cubemapFilteringShader.textures["cubeMap"]
 	gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture.handle)
 	gl.Uniform1i(loc, int32(unit))
-	loc = r.cubemapFilteringShader.u["sampleCount"]
+	loc = r.cubemapFilteringShader.uniforms["sampleCount"]
 	gl.Uniform1i(loc, sampleCount)
-	loc = r.cubemapFilteringShader.u["distribution"]
+	loc = r.cubemapFilteringShader.uniforms["distribution"]
 	gl.Uniform1i(loc, distribution)
-	loc = r.cubemapFilteringShader.u["width"]
+	loc = r.cubemapFilteringShader.uniforms["width"]
 	gl.Uniform1i(loc, textureSize)
-	loc = r.cubemapFilteringShader.u["roughness"]
+	loc = r.cubemapFilteringShader.uniforms["roughness"]
 	gl.Uniform1f(loc, 0)
-	loc = r.cubemapFilteringShader.u["intensityScale"]
+	loc = r.cubemapFilteringShader.uniforms["intensityScale"]
 	gl.Uniform1f(loc, 1)
-	loc = r.cubemapFilteringShader.u["currentFace"]
+	loc = r.cubemapFilteringShader.uniforms["currentFace"]
 	gl.Uniform1i(loc, 0)
-	loc = r.cubemapFilteringShader.u["isLUT"]
+	loc = r.cubemapFilteringShader.uniforms["isLUT"]
 	gl.Uniform1i(loc, 1)
 
 	gl.BindTexture(gl.TEXTURE_2D, lutTexture.handle)

@@ -1072,18 +1072,11 @@ func (l *Layout) Read(pre string, is IniSection) {
 		}
 	}
 	if is.ReadI32(pre+"window", &l.window[0], &l.window[1], &l.window[2], &l.window[3]) {
-		l.window[0] = int32(float32(l.window[0]) * float32(sys.scrrect[2]/sys.lifebar.localcoord[0]))
-		l.window[1] = int32(float32(l.window[1]) * float32(sys.scrrect[3]/sys.lifebar.localcoord[1]))
-		l.window[2] = int32(float32(l.window[2]) * float32(sys.scrrect[2]/sys.lifebar.localcoord[0]))
-		l.window[3] = int32(float32(l.window[3]) * float32(sys.scrrect[3]/sys.lifebar.localcoord[1]))
-		window := l.window
-		if window[2] < window[0] {
-			l.window[2] = window[0]
-			l.window[0] = window[2]
+		if l.window[2] < l.window[0] {
+			l.window[2], l.window[0] = l.window[0], l.window[2]
 		}
-		if window[3] < window[1] {
-			l.window[3] = window[1]
-			l.window[1] = window[3]
+		if l.window[3] < l.window[1] {
+			l.window[3], l.window[1] = l.window[1], l.window[3]
 		}
 		l.window[2] -= l.window[0]
 		l.window[3] -= l.window[1]
@@ -1092,8 +1085,34 @@ func (l *Layout) Read(pre string, is IniSection) {
 	}
 }
 
+// Calculates the lifebar window local coordinates into real screen pixels,
+// taking the FightAspect ratio into account
+func (l *Layout) calcLBRect(window [4]int32) [4]int32 {
+	if window[2] == sys.scrrect[2] && window[3] == sys.scrrect[3] {
+		return sys.scrrect
+	}
+
+	baseScale := float32(sys.scrrect[2]) / float32(sys.lifebar.localcoord[0])
+	screenAspect := float32(sys.scrrect[2]) / float32(sys.scrrect[3])
+	fightAspect := sys.getFightAspect()
+	correction := fightAspect / screenAspect
+
+	x := float32(window[0]) * baseScale
+	y := (float32(window[1]) * baseScale) * correction
+	w := float32(window[2]) * baseScale
+	h := (float32(window[3]) * baseScale) * correction
+
+	return [4]int32{int32(x), int32(y), int32(w), int32(h)}
+}
+
 func (l *Layout) DrawFaceSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32, window *[4]int32) {
 	if l.layerno == ln && s != nil {
+		drawwindow := &sys.scrrect
+
+		if window != nil {
+			rect := l.calcLBRect(*window)
+			drawwindow = &rect
+		}
 		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale * sys.lifebar.scale
@@ -1110,7 +1129,7 @@ func (l *Layout) DrawFaceSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fs
 
 		s.Draw(x+l.offset[0]*sys.lifebar.scale-xsoffset, y+l.offset[1]*sys.lifebar.scale,
 			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale,
-			xshear, l.rot, int32(l.projection), l.fLength, fx, window)
+			xshear, l.rot, int32(l.projection), l.fLength, fx, drawwindow)
 	}
 }
 
@@ -1120,6 +1139,16 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 		return
 	}
 	if l.layerno == ln {
+		drawwindow := &sys.scrrect
+
+		if r != nil {
+			if r == &l.window {
+				rect := l.calcLBRect(*r)
+				drawwindow = &rect
+			} else {
+				drawwindow = r
+			}
+		}
 		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale
@@ -1131,7 +1160,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 		xshear := -l.xshear
 		xsoffset := xshear * (float32(a.spr.Offset[1]) * l.scale[1] * scl)
 
-		a.Draw(r, x+l.offset[0]-xsoffset, y+l.offset[1]+float32(sys.gameHeight-240),
+		a.Draw(drawwindow, x+l.offset[0]-xsoffset, y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, (l.scale[0]*xscl)*float32(l.facing), (l.scale[0]*xscl)*float32(l.facing),
 			(l.scale[1]*yscl)*float32(l.vfacing), xshear, l.rot,
 			float32(sys.gameWidth-320)/2, palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false)
@@ -1141,6 +1170,12 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	text string, f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32) {
 	if l.layerno == ln {
+		drawwindow := &sys.scrrect
+
+		if l.window != [4]int32{0, 0, 0, 0} {
+			rect := l.calcLBRect(l.window)
+			drawwindow = &rect
+		}
 		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale
@@ -1155,7 +1190,7 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 		f.Print(text, (x+l.offset[0]-xsoffset)*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebar.fnt_scale*float32(l.facing)*scl,
 			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, xshear, l.rot,
-			int32(l.projection), l.fLength, b, a, &l.window, palfx, frgba)
+			int32(l.projection), l.fLength, b, a, drawwindow, palfx, frgba)
 	}
 }
 
@@ -1570,9 +1605,13 @@ func SliceDelete[T any](slice []T, i int) []T {
 // Nils out all elements and returns a zero-length slice while preserving the underlying capacity
 // This is better than plain [:0] because we ensure data from previous characters is GC'd
 func PointerSliceReset[T any](slice []*T) []*T {
+	// Recover the whole capacity so we can deep clean it
+	slice = slice[:cap(slice)]
+	// Clear everything
 	for i := range slice {
 		slice[i] = nil
 	}
+	// Shrink back to zero length
 	return slice[:0]
 }
 

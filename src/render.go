@@ -4,15 +4,13 @@ import (
 	"container/list"
 	_ "embed"
 	"math"
-	"runtime"
 
 	mgl "github.com/go-gl/mathgl/mgl32"
 )
 
 type Texture interface {
 	SetData(data []byte)
-	SetSubData(data []byte, x, y, width, height int32)
-	SetSubDataStride(data []byte, x, y, width, height, stride int32)
+	SetSubData(data []byte, x, y, width, height, stride int32)
 	SetDataG(data []byte, mag, min, ws, wt TextureSamplingParam)
 	SetPixelData(data []float32)
 	IsValid() bool
@@ -32,7 +30,9 @@ type Renderer interface {
 	IsModelEnabled() bool
 	IsShadowEnabled() bool
 
-	SetPipeline(eq BlendEquation, src, dst BlendFunc)
+	SetPipeline()
+	SetBlending(blend bool, eq BlendEquation, src, dst BlendFunc)
+
 	prepareShadowMapPipeline(bufferIndex uint32)
 	setShadowMapPipeline(doubleSided, invertFrontFace, useUV, useNormal, useTangent, useVertColor, useJoint0, useJoint1 bool, numVertices, vertAttrOffset uint32)
 	ReleaseShadowPipeline()
@@ -494,46 +494,61 @@ func RenderSprite(rp RenderParams) {
 
 	initRenderSpriteQuad(&rp)
 
+	// PalFX and color setup
 	neg, grayscale, padd, pmul, invblend, hue := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, int32(0), float32(0)
+	if rp.pfx != nil {
+		neg, grayscale, padd, pmul, invblend, hue = rp.pfx.getFinalPalFx(rp.blendMode, rp.blendAlpha)
+	}
+
 	tint := [4]float32{float32(rp.tint&0xff) / 255, float32(rp.tint>>8&0xff) / 255,
 		float32(rp.tint>>16&0xff) / 255, float32(rp.tint>>24&0xff) / 255}
-
-	if rp.pfx != nil {
-		neg, grayscale, padd, pmul, invblend, hue = rp.pfx.getFcPalFx(false, rp.blendAlpha)
-	}
 
 	proj := gfx.OrthographicProjectionMatrix(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 
+	// Heavy state change
+	// Because renderWithBlending() sometimes needs 2 passes, we'll do most of the setup outside of render()
+	gfx.SetPipeline()
 	gfx.EnableScissor(rp.window[0], rp.window[1], rp.window[2], rp.window[3])
 
-	render := func(eq BlendEquation, src, dst BlendFunc, a float32) {
-		gfx.SetPipeline(eq, src, dst)
+	// Static uniforms
+	gfx.SetUniformMatrix("projection", proj[:])
+	gfx.SetUniformI("isFlat", 0)
+	gfx.SetUniformI("mask", int(rp.mask))
+	gfx.SetUniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
 
-		gfx.SetUniformMatrix("projection", proj[:])
-		gfx.SetTexture("tex", rp.tex)
-		if rp.paltex == nil {
-			gfx.SetUniformI("isRgba", 1)
-		} else {
-			gfx.SetTexture("pal", rp.paltex)
-			gfx.SetUniformI("isRgba", 0)
-		}
-		gfx.SetUniformI("mask", int(rp.mask))
-		gfx.SetUniformI("isTrapez", int(Btoi(AbsF(AbsF(rp.xts)-AbsF(rp.xbs)) > 0.001)))
-		gfx.SetUniformI("isFlat", 0)
+	gfx.SetUniformF("gray", grayscale)
+	gfx.SetUniformF("hue", hue)
+	gfx.SetUniformFv("tint", tint[:])
 
+	if rp.paltex == nil {
+		gfx.SetUniformI("isRgba", 1)
+	} else {
+		gfx.SetUniformI("isRgba", 0)
+	}
+
+	// Texture binding
+	gfx.SetTexture("tex", rp.tex)
+	if rp.paltex != nil {
+		gfx.SetTexture("pal", rp.paltex)
+	}
+
+	// Local function called for each blending pass
+	renderPass := func(eq BlendEquation, src, dst BlendFunc, a float32) {
+		// Lightweight state change
+		gfx.SetBlending(true, eq, src, dst)
+
+		// Dynamic uniforms
+		// We must include the parameters that renderWithBlending() may have changed
 		gfx.SetUniformI("neg", int(Btoi(neg)))
-		gfx.SetUniformF("gray", grayscale)
-		gfx.SetUniformF("hue", hue)
 		gfx.SetUniformFv("add", padd[:])
 		gfx.SetUniformFv("mult", pmul[:])
-		gfx.SetUniformFv("tint", tint[:])
 		gfx.SetUniformF("alpha", a)
 
 		renderSpriteQuad(modelview, rp)
 	}
 
-	renderWithBlending(render, rp.blendMode, rp.blendAlpha, rp.paltex != nil, invblend, &neg, &padd, &pmul, rp.paltex == nil)
+	renderWithBlending(renderPass, rp.blendMode, rp.blendAlpha, rp.paltex != nil, invblend, &neg, &padd, &pmul, rp.paltex == nil)
 	gfx.DisableScissor()
 }
 
@@ -648,10 +663,16 @@ func renderWithBlending(
 	}
 }
 
-func FillRect(rect [4]int32, color uint32, alpha [2]int32) {
+func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 	r := float32(color>>16&0xff) / 255
 	g := float32(color>>8&0xff) / 255
 	b := float32(color&0xff) / 255
+
+	// PalFX setup
+	neg, grayscale, padd, pmul, invblend, hue := false, float32(0), [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, int32(0), float32(0)
+
+	// This call is safe even if fx is nil. Defaults to just AllPalFX
+	neg, grayscale, padd, pmul, invblend, hue = fx.getFinalPalFx(TT_add, alpha)
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := gfx.OrthographicProjectionMatrix(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
@@ -659,22 +680,37 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32) {
 	x1, y1 := float32(rect[0]), -float32(rect[1])
 	x2, y2 := float32(rect[0]+rect[2]), -float32(rect[1]+rect[3])
 
-	render := func(eq BlendEquation, src, dst BlendFunc, a float32) {
-		gfx.SetPipeline(eq, src, dst)
-		gfx.SetVertexData(
-			x2, y2, 1, 1,
-			x2, y1, 1, 0,
-			x1, y2, 0, 1,
-			x1, y1, 0, 0,
-		)
-		gfx.SetUniformMatrix("modelview", modelview[:])
-		gfx.SetUniformMatrix("projection", proj[:])
-		gfx.SetUniformI("isFlat", 1)
+	// Prepare the heavy state
+	gfx.SetPipeline()
+
+	// Set geometry
+	gfx.SetVertexData(
+		x2, y2, 1, 1,
+		x2, y1, 1, 0,
+		x1, y2, 0, 1,
+		x1, y1, 0, 0,
+	)
+
+	// Static uniforms
+	gfx.SetUniformMatrix("modelview", modelview[:])
+	gfx.SetUniformMatrix("projection", proj[:])
+	gfx.SetUniformF("gray", grayscale)
+	gfx.SetUniformF("hue", hue)
+	gfx.SetUniformI("isFlat", 1)
+
+	// Local function called for each blending pass
+	renderPass := func(eq BlendEquation, src, dst BlendFunc, a float32) {
+		// Update only the dynamic state
+		gfx.SetBlending(true, eq, src, dst)
 		gfx.SetUniformF("tint", r, g, b, a)
+		gfx.SetUniformI("neg", int(Btoi(neg)))
+		gfx.SetUniformFv("add", padd[:])
+		gfx.SetUniformFv("mult", pmul[:])
+
 		gfx.RenderQuad()
 	}
 
-	renderWithBlending(render, TT_add, alpha, true, 0, nil, nil, nil, false)
+	renderWithBlending(renderPass, TT_add, alpha, true, invblend, &neg, &padd, &pmul, true)
 }
 
 type TextureAtlas struct {
@@ -694,34 +730,9 @@ func CreateTextureAtlas(width, height int32, depth int32, filter bool) *TextureA
 	return ta
 }
 
-func (ta *TextureAtlas) AddImage(width, height int32, data []byte) ([4]float32, bool) {
+func (ta *TextureAtlas) AddImage(width, height, stride int32, data []byte) ([4]float32, bool) {
 	const maxWidth = 4096
-	if ta.resize {
-		if width > ta.width || height > ta.height {
-			if width > maxWidth/2 || height > maxWidth/2 {
-				return [4]float32{}, false
-			}
-			ta.Resize(width*2, height*2)
-		}
-	}
-	x, y, ok := ta.FindPlaceToInsert(width, height)
-	if !ok {
-		if ta.resize {
-			if ta.width != maxWidth && ta.height != maxWidth {
-				ta.Resize(ta.width*2, ta.height*2)
-			}
-			x, y, ok = ta.FindPlaceToInsert(width, height)
-		}
-		if !ok {
-			return [4]float32{}, false
-		}
-	}
-	ta.texture.SetSubData(data, x, y, width, height)
-	return [4]float32{float32(x) / float32(ta.width), float32(y) / float32(ta.height), float32(x+width) / float32(ta.width), float32(y+height) / float32(ta.height)}, true
-}
 
-func (ta *TextureAtlas) AddImageStride(width, height, stride int32, data []byte) ([4]float32, bool) {
-	const maxWidth = 4096
 	if ta.resize {
 		if width > ta.width || height > ta.height {
 			if width > maxWidth/2 || height > maxWidth/2 {
@@ -730,6 +741,7 @@ func (ta *TextureAtlas) AddImageStride(width, height, stride int32, data []byte)
 			ta.Resize(width*2, height*2)
 		}
 	}
+
 	x, y, ok := ta.FindPlaceToInsert(width, height)
 	if !ok {
 		if ta.resize {
@@ -742,12 +754,15 @@ func (ta *TextureAtlas) AddImageStride(width, height, stride int32, data []byte)
 			return [4]float32{}, false
 		}
 	}
-	if runtime.GOOS == "android" {
-		ta.texture.SetSubDataStride(data, x, y, width, height, stride)
-	} else {
-		ta.texture.SetSubData(data, x, y, width, height)
-	}
-	return [4]float32{float32(x) / float32(ta.width), float32(y) / float32(ta.height), float32(x+width) / float32(ta.width), float32(y+height) / float32(ta.height)}, true
+
+	ta.texture.SetSubData(data, x, y, width, height, stride)
+
+	return [4]float32{
+		float32(x) / float32(ta.width),
+		float32(y) / float32(ta.height),
+		float32(x+width) / float32(ta.width),
+		float32(y+height) / float32(ta.height),
+	}, true
 }
 
 func (ta *TextureAtlas) FindPlaceToInsert(width, height int32) (int32, int32, bool) {

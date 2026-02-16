@@ -1922,7 +1922,6 @@ main.t_itemname = {
 	end,
 	--NETPLAY VERSUS
 	['netplayversus'] = function()
-		setHomeTeam(1)
 		main.cpuSide[2] = false
 		--main.lifebar.p1wincount = true
 		--main.lifebar.p2wincount = true
@@ -1944,6 +1943,7 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.netplayversus)
 		setGameMode('netplayversus')
+		setHomeTeam(1)
 		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
@@ -2184,8 +2184,6 @@ main.t_itemname = {
 	end,
 	--TRAINING
 	['training'] = function()
-		setHomeTeam(1)
-		setCommandInputSource(2, 1)
 		if main.t_charDef[gameOption('Config.TrainingChar'):lower()] ~= nil then
 			main.forceChar[2] = {main.t_charDef[gameOption('Config.TrainingChar'):lower()]}
 		end
@@ -2208,7 +2206,10 @@ main.t_itemname = {
 		main.matchWins.tag = {0, 0}
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.training)
 		remapInput(1, getLastInputController())
+		remapInput(getLastInputController(), 1)
+		setCommandInputSource(2, 1)
 		setGameMode('training')
+		setHomeTeam(1)
 		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
@@ -2217,7 +2218,6 @@ main.t_itemname = {
 	end,
 	--VS MODE / TEAM VERSUS
 	['versus'] = function(t, item)
-		setHomeTeam(1)
 		main.cpuSide[2] = false
 		--main.lifebar.p1wincount = true
 		--main.lifebar.p2wincount = true
@@ -2251,6 +2251,7 @@ main.t_itemname = {
 			setCommandInputSource(2, 2)
 			setGameMode('versus')
 		end
+		setHomeTeam(1)
 		hook.run("main.t_itemname")
 		if start.challenger == 0 then
 			return start.f_selectMode
@@ -2259,7 +2260,6 @@ main.t_itemname = {
 	end,
 	--VERSUS CO-OP
 	['versuscoop'] = function()
-		setHomeTeam(1)
 		main.coop = true
 		main.cpuSide[2] = false
 		--main.lifebar.p1wincount = true
@@ -2276,12 +2276,12 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versuscoop)
 		setGameMode('versuscoop')
+		setHomeTeam(1)
 		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
 	--WATCH
 	['watch'] = function()
-		setHomeTeam(1)
 		main.cpuSide[1] = true
 		--main.lifebar.p1ailevel = true
 		--main.lifebar.p2ailevel = true
@@ -2303,6 +2303,7 @@ main.t_itemname = {
 		remapInput(1, getLastInputController())
 		setCommandInputSource(2, 1)
 		setGameMode('watch')
+		setHomeTeam(1)
 		hook.run("main.t_itemname")
 		return start.f_selectMode
 	end,
@@ -2547,6 +2548,45 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					end
 				end
 			end
+		end
+	end
+end
+
+-- Recursively remove pruned items/submenus.
+function main.f_pruneMenu(tbl, excluded)
+	if type(tbl) ~= 'table' or type(excluded) ~= 'table' then
+		return
+	end
+	-- Remove items
+	if type(tbl.items) == 'table' then
+		for i = #tbl.items, 1, -1 do
+			local it = tbl.items[i]
+			if type(it) == 'table' and excluded[it.itemname] then
+				table.remove(tbl.items, i)
+			end
+		end
+	end
+	-- Remove / recurse submenus
+	if type(tbl.submenu) == 'table' then
+		for k, sub in pairs(tbl.submenu) do
+			if excluded[k] then
+				tbl.submenu[k] = nil
+			else
+				main.f_pruneMenu(sub, excluded)
+			end
+		end
+	end
+end
+
+-- Remove vardisplay pointer entries for items that were pruned from the menu.
+function main.f_prunePointers(ptrs, excluded)
+	if type(ptrs) ~= 'table' or type(excluded) ~= 'table' then
+		return
+	end
+	for i = #ptrs, 1, -1 do
+		local v = ptrs[i]
+		if type(v) == 'table' and excluded[v.itemname] then
+			table.remove(ptrs, i)
 		end
 	end
 end
@@ -2837,14 +2877,18 @@ function main.f_unlockStage(num, bool)
 	end
 end
 
+main.t_hiscoreMap = {
+	teamarcade = 'arcade',
+}
 function main.f_hiscoreDisplay(itemname)
 	local stats = jsonDecode(getCommandLineValue("-stats"))
-	if not motif.hiscore_info.enabled or stats.modes == nil or stats.modes[itemname] == nil or stats.modes[itemname].ranking == nil then
+	local mode = main.t_hiscoreMap[itemname] or itemname
+	if not motif.hiscore_info.enabled or stats.modes == nil or stats.modes[mode] == nil or stats.modes[mode].ranking == nil then
 		return false
 	end
 	main.f_cmdBufReset()
 	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
-	main.f_hiscore(itemname, -1)
+	main.f_hiscore(mode, -1)
 	--main.f_fadeReset('fadein', motif[main.group])
 	playBgm({source = "motif.title", interrupt = true})
 	return true
@@ -3185,7 +3229,9 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 		moveDir = -1
 	end
 	if moveDir == 1 then
-		sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
+		if forcedDir == nil then
+			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
+		end
 		while true do
 			item = item + 1
 			if cursorPosY < visible then
@@ -3196,7 +3242,9 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 			end
 		end
 	elseif moveDir == -1 then
-		sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
+		if forcedDir == nil then
+			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
+		end
 		while true do
 			item = item - 1
 			if cursorPosY > startItem then

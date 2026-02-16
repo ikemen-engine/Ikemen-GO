@@ -490,7 +490,7 @@ func (cm *CharMovement) init() {
 	cm.stand.friction_threshold = 2.0
 	cm.crouch.friction = 0.82
 	cm.crouch.friction_threshold = 0.0
-	cm.air.gethit.groundlevel = 10.0
+	cm.air.gethit.groundlevel = 25.0
 	cm.air.gethit.groundrecover.ground.threshold = -20.0
 	cm.air.gethit.groundrecover.groundlevel = 10.0
 	cm.air.gethit.airrecover.threshold = -1.0
@@ -1250,6 +1250,7 @@ func (ho *HitOverride) clear() {
 }
 
 type MoveHitVar struct {
+	power             int32
 	cornerpush_veloff float32
 	frame             bool
 	overridden        bool
@@ -1581,6 +1582,8 @@ func (ai *AfterImage) recAndCue(sd *SprData, playerNo int, rec bool, hitpause bo
 
 type Explod struct {
 	id                  int32
+	playerno            int
+	playerId            int32
 	time                int32
 	postype             PosType
 	space               Space
@@ -1628,7 +1631,6 @@ type Explod struct {
 	oldPos              [3]float32
 	newPos              [3]float32
 	interPos            [3]float32
-	playerId            int32
 	palfx               *PalFX
 	palfxdef            PalFXDef
 	window              [4]float32
@@ -1655,6 +1657,8 @@ type Explod struct {
 	interpolate_angle    [6]float32
 	interpolate_fLength  [2]float32
 	interpolate_xshear   [2]float32
+	timestamp            int32 // Determines run order
+	sortindex            int   // For faster run order sorting
 }
 
 func newExplod() *Explod {
@@ -1669,6 +1673,7 @@ func (e *Explod) clear() {
 func (e *Explod) initFromChar(c *Char) *Explod {
 	*e = Explod{
 		id:           -1,
+		playerno:     c.playerNo,
 		playerId:     c.id,
 		animPN:       c.playerNo,
 		spritePN:     c.playerNo,
@@ -1700,6 +1705,7 @@ func (e *Explod) initFromChar(c *Char) *Explod {
 		interpolate_scale: [4]float32{1, 1, 0, 0},
 		friction:          [3]float32{1, 1, 1},
 		remappal:          [2]int32{-1, 0},
+		timestamp:         sys.matchTime,
 		//aimg:              *newAfterImage(),
 	}
 
@@ -1872,7 +1878,7 @@ func (e *Explod) setAnimElem() {
 	}
 }
 
-func (e *Explod) update(playerNo int) {
+func (e *Explod) update() {
 	if e.anim == nil {
 		e.id = IErr
 	}
@@ -1883,7 +1889,7 @@ func (e *Explod) update(playerNo int) {
 	}
 
 	parent := sys.playerID(e.playerId)
-	root := sys.chars[playerNo][0]
+	root := sys.chars[e.playerno][0]
 
 	if root.scf(SCF_disabled) {
 		return
@@ -2126,7 +2132,7 @@ func (e *Explod) update(playerNo int) {
 	// Record afterimage
 	if e.aimg != nil {
 		if e.aimg.isActive() {
-			e.aimg.recAndCue(sd, playerNo, sys.tickNextFrame() && act,
+			e.aimg.recAndCue(sd, e.playerno, sys.tickNextFrame() && act,
 				sys.tickNextFrame() && e.ignorehitpause && (e.supermovetime != 0 || e.pausemovetime != 0),
 				e.layerno, e.space == Space_screen)
 		} else {
@@ -3069,6 +3075,7 @@ type Char struct {
 	teamside       int
 	keyctrl        [4]bool
 	helperType     int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
+	isclsnproxy    bool
 	animPN         int
 	spritePN       int
 	animNo         int32
@@ -3104,14 +3111,13 @@ type Char struct {
 	hoverKeepState      bool
 	mctype              MoveContact
 	mctime              int32
-	children            []*Char
-	isclsnproxy         bool
+	children            []int32
 	targets             []int32
 	hitdefTargets       []int32
 	hitdefTargetsBuffer []int32
-	enemyNearList       []*Char // Enemies retrieved by EnemyNear
-	p2EnemyList         []*Char // Enemies retrieved by P2, P4, P6 and P8
-	p2EnemyBackup       *Char   // Backup of last valid P2 enemy
+	enemyNearList       []int32 // Enemies retrieved by EnemyNear
+	p2EnemyList         []int32 // Enemies retrieved by P2, P4, P6 and P8
+	p2EnemyBackup       int32   // Backup of last valid P2 enemy
 	pos                 [3]float32
 	interPos            [3]float32 // Interpolated position. For the visuals when game and logic speed are different
 	oldPos              [3]float32
@@ -3293,6 +3299,8 @@ func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
 	return c.clsnCheck(getter, box1, box2, false)
 }
 
+/*
+// We're just appending at the end now so this function became useless
 func (c *Char) addChild(ch *Char) {
 	for i, chi := range c.children {
 		if chi == nil {
@@ -3302,6 +3310,7 @@ func (c *Char) addChild(ch *Char) {
 	}
 	c.children = append(c.children, ch)
 }
+*/
 
 // Clear EnemyNear and P2 lists. For instance when player positions change
 // A new list will be built the next time the redirect is called
@@ -4680,51 +4689,60 @@ func (c *Char) helperTrigger(id int32, idx int) *Char {
 }
 
 func (c *Char) getHelperChainIndex(idx int32) *Char {
+	// Index 0 refers to the char itself
 	if idx <= 0 {
 		return c
 	}
 
-	var found []*Char
+	count := int32(0)
 
 	// Find all helpers in parent-child chain
 	for _, h := range sys.charList.creationOrder {
-		// Check only the relevant player number
+		// Skip self
+		if h.id == c.id {
+			continue
+		}
+		// Filter by player number
 		if h.playerNo != c.playerNo {
 			continue
 		}
-		if c.id != h.id {
-			if c.helperIndex == 0 {
-				// Helpers created by the root. Direct check
-				hr := h.root(false)
-				if h.helperIndex != 0 && hr != nil && c.id == hr.id {
-					found = append(found, h)
-				}
-			} else {
-				// Helpers created by other helpers
-				hp := h.parent(false)
 
-				// Track checked helpers to prevent infinite loops when parentIndex repeats itself
-				// https://github.com/ikemen-engine/Ikemen-GO/issues/2462
-				// This should no longer be necessary now that destroyed helpers are no longer valid parents
-				//checked := make(map[*Char]bool)
+		isDescendant := false
 
-				// Iterate until reaching the root or some error
-				for hp != nil {
-					// Original player found to be this helper's (grand)parent. Add helper to list
-					if hp.id == c.id {
-						found = append(found, h)
-						break
-					}
-					// Search further up the parent chain for a relation to the original player
-					hp = hp.parent(false)
+		if c.helperIndex == 0 {
+			// Helpers created by the root. Direct check
+			if hr := h.root(false); hr != nil && hr.id == c.id {
+				isDescendant = true
+			}
+		} else {
+			// Helpers created by other helpers
+			// Iterate until reaching the root or some error
+			hp := h.parent(false)
+
+			// Track checked helpers to prevent infinite loops when parentIndex repeats itself
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/2462
+			// This should no longer be necessary now that destroyed helpers are no longer valid parents
+			//checked := make(map[*Char]bool)
+
+			for hp != nil {
+				// Original char found to be this helper's (grand)parent. Add helper to list
+				if hp.id == c.id {
+					isDescendant = true
+					break
 				}
+				// Search further up the parent chain for a relation to the original player
+				hp = hp.parent(false)
 			}
 		}
-	}
 
-	// Return the Nth helper we found
-	if idx > 0 && int(idx-1) < len(found) {
-		return found[idx-1]
+		if isDescendant {
+			// Increment first because index 1 is the first helper found
+			count++
+			// Return the Nth helper we found
+			if count == idx {
+				return h
+			}
+		}
 	}
 
 	return nil
@@ -4777,14 +4795,15 @@ func (c *Char) targetTrigger(id int32, idx int) *Char {
 	}
 
 	// Filter targets with the specified ID
-	var filteredTargets []*Char
+	count := 0
 	for _, tid := range c.targets {
-		if t := sys.playerID(tid); t != nil && (id < 0 || id == t.ghv.hitid) {
-			filteredTargets = append(filteredTargets, t)
+		t := sys.playerID(tid)
+		if t != nil && (id < 0 || id == t.ghv.hitid) {
 			// Target found at requested index
-			if idx >= 0 && len(filteredTargets) == idx+1 {
-				return filteredTargets[idx]
+			if count == idx {
+				return t
 			}
+			count++
 		}
 	}
 
@@ -4861,16 +4880,24 @@ func (c *Char) enemy(n int32) *Char {
 
 // This is only used to simplify the redirection call
 func (c *Char) enemyNearTrigger(n int32) *Char {
-	return sys.charList.enemyNear(c, n, false, true)
+	// Search enemy at requested index
+	e := sys.charList.enemyNear(c, n, false)
+
+	// Log invalid return
+	if e == nil {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
+	}
+
+	return e
 }
 
 // Get the "P2" enemy reference
 func (c *Char) p2() *Char {
-	p := sys.charList.enemyNear(c, 0, true, false)
+	p := sys.charList.enemyNear(c, 0, true)
 	// Cache last valid P2 enemy
 	// Mugen seems to do this for the sake of auto turning before win poses
 	if p != nil {
-		c.p2EnemyBackup = p
+		c.p2EnemyBackup = p.id
 	}
 	return p
 }
@@ -6074,7 +6101,7 @@ func (c *Char) updateFBFlip() {
 		// See shouldFaceP2()
 		e := c.p2()
 		if e == nil {
-			e = c.p2EnemyBackup
+			e = sys.playerID(c.p2EnemyBackup)
 		}
 		if e != nil {
 			distX := c.rdDistX(e, c).ToF() // Already in the char's localcoord
@@ -6098,7 +6125,7 @@ func (c *Char) shouldFaceP2() bool {
 	// If P2 was not found, fall back to the last valid one
 	// Maybe this should only happen during win poses?
 	if e == nil {
-		e = c.p2EnemyBackup
+		e = sys.playerID(c.p2EnemyBackup)
 	}
 
 	if e != nil && !e.asf(ASF_noturntarget) {
@@ -6343,26 +6370,27 @@ func (c *Char) destroy() {
 
 	// Remove ID from parent's children list
 	if p := c.parent(false); p != nil {
-		for i, ch := range p.children {
-			if ch == c {
+		for i, childID := range p.children {
+			if childID == c.id {
 				p.children = SliceDelete(p.children, i)
 				break
 			}
 		}
 	}
 
-	// Remove ID from children
+	// Remove parent ID from children
 	// This is no longer strictly necessary but it makes extra sure the helper will never end up with a different parent
-	for i, ch := range c.children {
-		ch.parentId = -1
-		c.children[i] = nil // Kill the pointer so the GC can work
+	for _, childID := range c.children {
+		if child := sys.playerID(childID); child != nil {
+			child.parentId = -1
+		}
 	}
 	c.children = c.children[:0]
 
 	if c.isPlayerType() {
-		// sys.charList.p2enemyDelete(c)
 		sys.charList.enemyNearChanged = true
 	}
+
 	sys.charList.delete(c)
 	c.helperIndex = -1
 	c.setCSF(CSF_destroy)
@@ -6386,8 +6414,10 @@ func (c *Char) destroySelf(recursive, removeexplods, removetexts bool) bool {
 	}
 
 	if recursive {
-		for _, ch := range c.children {
-			ch.destroySelf(recursive, removeexplods, removetexts)
+		for _, childID := range c.children {
+			if child := sys.playerID(childID); child != nil {
+				child.destroySelf(recursive, removeexplods, removetexts)
+			}
 		}
 	}
 
@@ -6447,14 +6477,13 @@ func (c *Char) newHelper() (h *Char) {
 	h.prepareNextRound()
 
 	// Add to player lists
-	c.addChild(h)
+	c.children = append(c.children, h.id)
 	sys.charList.add(h)
 	return
 }
 
 // Init helper after reading the bytecode parameters
-func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32,
-	facing int32, rp [2]int32, extmap bool) {
+func (c *Char) helperInit(h *Char, st int32, pt PosType, x, y, z float32, facing int32, rp [2]int32, extmap bool) {
 	p := c.helperPos(pt, [...]float32{x, y, z}, facing, &h.facing, h.localscl, false)
 	h.setPosX(p[0], true)
 	h.setPosY(p[1], true)
@@ -6725,14 +6754,6 @@ func (c *Char) commitExplod(i int) {
 			e.palfx.PalFXDef = e.palfxdef
 			e.palfx.remap = nil
 		}
-	}
-
-	// Emulate legacy ontop behavior
-	// Move from the end of the slice to the beginning to invert drawing order
-	if e.ontop {
-		playerExplods := &sys.explods[c.playerNo]
-		copy((*playerExplods)[1:i+1], (*playerExplods)[0:i])
-		(*playerExplods)[0] = e
 	}
 
 	// Explod ready
@@ -8749,10 +8770,33 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		return
 	}
 
-	// Init palette remap if needed
+	// Get both palettes so we can compare them
+	srcPal := plist.Get(si)
+	dstPal := plist.Get(di)
+
+	// Ensure palettes exist
+	if srcPal == nil || dstPal == nil {
+		return
+	}
+
+	// Check the actual color depths
+	srcDepth := len(srcPal)
+	dstDepth := len(dstPal)
+
+	// Color depths must match
+	// TODO: Now that this actually works, we could make it optional via a new parameter
+	if srcDepth != dstDepth {
+		sys.appendToConsole(c.warn() + fmt.Sprintf(
+			" RemapPal color depth mismatch: %v,%v (%d colors) -> %v,%v (%d colors)",
+			src[0], src[1], srcDepth, dst[0], dst[1], dstDepth))
+		return
+	}
+
+	// Init remaps if needed
 	if pfx.remap == nil {
 		pfx.remap = plist.GetPalMap()
 	}
+
 	// Perform palette remap
 	if plist.SwapPalMap(&pfx.remap) {
 		plist.Remap(si, di)
@@ -8779,18 +8823,34 @@ func (c *Char) forceRemapPal(pfx *PalFX, dst [2]int32) {
 		return
 	}
 
-	// Get new palette
-	di, ok := c.gi().palettedata.palList.PalTable[[...]uint16{uint16(dst[0]), uint16(dst[1])}]
+	plist := c.gi().palettedata.palList
+
+	// Look up the destination palette
+	di, ok := plist.PalTable[[...]uint16{uint16(dst[0]), uint16(dst[1])}]
 	if !ok || di < 0 {
 		return
 	}
 
-	// Clear previous remaps
-	pfx.remap = make([]int, len(c.gi().palettedata.palList.paletteMap))
+	// Get the depth of the destination palette
+	dstDepth := len(plist.palettes[di])
 
-	// Apply the new remap
+	// Initialize or clear the remap table
+	pfx.remap = make([]int, len(plist.paletteMap))
 	for i := range pfx.remap {
-		pfx.remap[i] = di
+		// TODO: Confirm if this should be reset or not touched at all
+		pfx.remap[i] = i
+	}
+
+	// Selective remap only if color depths match
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/2408
+	for i := 0; i < len(pfx.remap); i++ {
+		// Get the palette at this index
+		if i < len(plist.palettes) && plist.palettes[i] != nil {
+			srcDepth := len(plist.palettes[i])
+			if srcDepth == dstDepth {
+				pfx.remap[i] = di
+			}
+		}
 	}
 }
 
@@ -9405,6 +9465,7 @@ func (c *Char) dropTargets() {
 	}
 }
 
+// Remove a target from the char's own list
 func (c *Char) removeTarget(pid int32) {
 	for i, t := range c.targets {
 		if t == pid {
@@ -9443,21 +9504,32 @@ func (c *Char) offsetY() float32 {
 
 // Gather the character as well as all its proxy children (and their proxy children) in a flat slice
 func (c *Char) flattenClsnProxies() []*Char {
-	var list []*Char
+	// Fast path if char has no children
+	hasProxy := false
+	for _, childID := range c.children {
+		if child := sys.playerID(childID); child != nil && child.isclsnproxy {
+			hasProxy = true
+			break
+		}
+	}
+	if !hasProxy {
+		return []*Char{c}
+	}
 
-	// Start with the base character
-	queue := []*Char{c}
+	// Slow path if char has proxies
+	list := make([]*Char, 0, 8)
 
-	// Process the queue until all characters (base + proxies) have been handled
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
+	// Start from our character
+	list = append(list, c)
 
-		list = append(list, current)
-
-		for _, child := range current.children {
-			if child != nil && child.isclsnproxy {
-				queue = append(queue, child)
+	// Process the list for as long as it keeps growing
+	for i := 0; i < len(list); i++ {
+		// Switch working char
+		branch := list[i]
+		// Append all the children of this char that are proxies
+		for _, childID := range branch.children {
+			if child := sys.playerID(childID); child != nil && child.isclsnproxy {
+				list = append(list, child)
 			}
 		}
 	}
@@ -10693,15 +10765,13 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 	// Power management
 	if hitResult > 0 {
 		if Abs(hitResult) == 1 {
-			c.powerAdd(hd.hitgetpower)
+			c.mhv.power += hd.hitgetpower
 			if getter.isPlayerType() {
-				getter.powerAdd(hd.hitgivepower)
 				getter.ghv.power += hd.hitgivepower
 			}
 		} else {
-			c.powerAdd(hd.guardgetpower)
+			c.mhv.power += hd.guardgetpower
 			if getter.isPlayerType() {
-				getter.powerAdd(hd.guardgivepower)
 				getter.ghv.power += hd.guardgivepower
 			}
 		}
@@ -10830,6 +10900,38 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		}
 	}
 
+	if getter.hoverIdx < 0 {
+		// HitOnce drops all targets except the current one
+		if !isProjectile && hd.hitonce > 0 {
+			c.targetDrop(-1, getter.id, true)
+		}
+
+		// Juggle points inheriting
+		if c.helperIndex != 0 && c.inheritJuggle != 0 {
+			// Update parent's or root's target list and juggle points
+			sendJuggle := func(origin *Char) {
+				origin.addTarget(getter.id)
+				jg := origin.gi().data.airjuggle
+				for _, v := range getter.ghv.targetedBy {
+					if len(v) >= 2 && (v[0] == origin.id || v[0] == c.id) && v[1] < jg {
+						jg = v[1]
+					}
+				}
+				getter.ghv.dropPlayerId(origin.id)
+				getter.ghv.targetedBy = append(getter.ghv.targetedBy, [...]int32{origin.id, jg - c.juggle})
+			}
+			if c.inheritJuggle == 1 && c.parent(false) != nil {
+				sendJuggle(c.parent(false))
+			} else if c.inheritJuggle == 2 && c.root(false) != nil {
+				sendJuggle(c.root(false))
+			}
+		}
+
+		// Add players to each other's lists
+		c.addTarget(getter.id)
+		getter.ghv.addId(c.id, c.gi().data.airjuggle)
+	}
+
 	// If not setting GetHitVars then the rest is skipped
 	if !ghvset {
 		return
@@ -10858,36 +10960,6 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		invertXvel(byf)
 		return
 	}
-
-	// HitOnce drops all targets except the current one
-	if !isProjectile && hd.hitonce > 0 {
-		c.targetDrop(-1, getter.id, true)
-	}
-
-	// Juggle points inheriting
-	if c.helperIndex != 0 && c.inheritJuggle != 0 {
-		// Update parent's or root's target list and juggle points
-		sendJuggle := func(origin *Char) {
-			origin.addTarget(getter.id)
-			jg := origin.gi().data.airjuggle
-			for _, v := range getter.ghv.targetedBy {
-				if len(v) >= 2 && (v[0] == origin.id || v[0] == c.id) && v[1] < jg {
-					jg = v[1]
-				}
-			}
-			getter.ghv.dropPlayerId(origin.id)
-			getter.ghv.targetedBy = append(getter.ghv.targetedBy, [...]int32{origin.id, jg - c.juggle})
-		}
-		if c.inheritJuggle == 1 && c.parent(false) != nil {
-			sendJuggle(c.parent(false))
-		} else if c.inheritJuggle == 2 && c.root(false) != nil {
-			sendJuggle(c.root(false))
-		}
-	}
-
-	// Add players to each other's lists
-	c.addTarget(getter.id)
-	getter.ghv.addId(c.id, c.gi().data.airjuggle)
 
 	// On hit, reversal or type None
 	if Abs(hitResult) == 1 {
@@ -11345,7 +11417,6 @@ func (c *Char) actionRun() {
 		}
 		c.ghv.hitdamage = 0
 		c.ghv.guarddamage = 0
-		c.ghv.power = 0
 		c.ghv.hitpower = 0
 		c.ghv.guardpower = 0
 		c.ghv.keepstate = false
@@ -11422,6 +11493,16 @@ func (c *Char) actionRun() {
 			c.gi().pctime++
 		}
 		c.makeDustSpacing++
+	}
+	// In Mugen these happen instantly instead of in the next frame
+	// This way is more consistent with damage, however
+	if c.ghv.power != 0 {
+		c.powerAdd(c.ghv.power)
+		c.ghv.power = 0
+	}
+	if c.mhv.power != 0 {
+		c.powerAdd(c.mhv.power)
+		c.mhv.power = 0
 	}
 	c.xScreenBound()
 	c.zDepthBound()
@@ -12345,6 +12426,12 @@ func (cl *CharList) clear() {
 }
 
 func (cl *CharList) add(c *Char) {
+	// A char ID conflict would be catastrophic for the game logic, so we might as well crash
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/2856
+	if _, exist := cl.idMap[c.id]; exist {
+		panic(Error("Attempted to overwrite an active Char in CharList"))
+	}
+
 	// Append to slices
 	cl.creationOrder = append(cl.creationOrder, c)
 	cl.runOrder = append(cl.runOrder, c)
@@ -12353,8 +12440,40 @@ func (cl *CharList) add(c *Char) {
 	cl.idMap[c.id] = c
 }
 
+func (cl *CharList) delete(dc *Char) {
+	// Remove the char pointer from the idMap directly
+	// This is safer than removing by ID
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3247
+	for k, v := range sys.charList.idMap {
+		if v == dc {
+			delete(sys.charList.idMap, k)
+			// Just in case, don't break so we also remove eventual duplicates
+			//break
+		}
+	}
+
+	// Remove char from creationOrder
+	for i, c := range cl.creationOrder {
+		if c == dc {
+			cl.creationOrder = SliceDelete(cl.creationOrder, i)
+			//break
+		}
+	}
+
+	// Remove char from runOrder
+	for i, c := range cl.runOrder {
+		if c == dc {
+			cl.runOrder = SliceDelete(cl.runOrder, i)
+			//break
+		}
+	}
+	// Mugen and older versions of Ikemen could reuse the drawing order of an old removed helper for a new helper
+	// However not reusing it creates a more predictable drawing order
+}
+
 func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
-	// Find the old character occupying the slow
+	// Find the old character occupying the slot
+	// We cannot look at sys.chars directly because that has already been updated to the new char
 	var oldChar *Char
 	for _, c := range cl.creationOrder {
 		if c.playerNo == pn && c.helperIndex == idx {
@@ -12371,29 +12490,6 @@ func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
 	}
 
 	return false
-}
-
-func (cl *CharList) delete(dc *Char) {
-	// Remove char from idMap
-	delete(cl.idMap, dc.id)
-
-	// Remove char from creationOrder
-	for i, c := range cl.creationOrder {
-		if c == dc {
-			cl.creationOrder = SliceDelete(cl.creationOrder, i)
-			break
-		}
-	}
-
-	// Remove char from runOrder
-	for i, c := range cl.runOrder {
-		if c == dc {
-			cl.runOrder = SliceDelete(cl.runOrder, i)
-			return
-		}
-	}
-	// Mugen and older versions of Ikemen could reuse the drawing order of an old removed helper for a new helper
-	// However not reusing it creates a more predictable drawing order
 }
 
 func (cl *CharList) commandUpdate() {
@@ -12511,16 +12607,19 @@ func (cl *CharList) updateRunOrder() {
 	}
 
 	// Sort by priority
-	sort.SliceStable(cl.runOrder, func(i, j int) bool {
-		pri := getPriority(cl.runOrder[i])
-		prj := getPriority(cl.runOrder[j])
+	sort.Slice(cl.runOrder, func(i, j int) bool {
+		chari := cl.runOrder[i]
+		charj := cl.runOrder[j]
+		pri := getPriority(chari)
+		prj := getPriority(charj)
 		// If priorities are different, sort by priority
 		if pri != prj {
 			return pri > prj
 		}
 		// Otherwise run lower ID first
 		// This makes the order more predictable
-		return cl.runOrder[i].id < cl.runOrder[j].id
+		// The fact we have ID's to fall back on also means we don't need SliceStable
+		return chari.id < charj.id
 	})
 
 	// Reset priority flags as they are only needed during this function
@@ -12562,17 +12661,6 @@ func (cl *CharList) xScreenBound() {
 		c.xScreenBound()
 	}
 }
-
-/*
-func (cl *CharList) update() {
-	ro := make([]*Char, len(cl.runOrder))
-	copy(ro, cl.runOrder)
-	for _, c := range ro {
-		c.update()
-		c.track()
-	}
-}
-*/
 
 // This function runs every tick, since it also handles interpolation, etc
 func (cl *CharList) update() {
@@ -12720,7 +12808,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 							}
 							// Successful ReversalDef
 							if c.hitdef.reversal_attr > 0 {
-								c.powerAdd(c.hitdef.hitgetpower)
+								c.mhv.power += c.hitdef.hitgetpower
 
 								// Precompute localcoord conversion factor
 								scaleratio := c.localscl / getter.localscl
@@ -13230,33 +13318,39 @@ func (cl *CharList) pushDetection(getter *Char) {
 }
 
 func (cl *CharList) collisionDetection() {
-	// Temp sorting list
-	sorting := make([][2]int, len(cl.runOrder)) // [2]int{index, priority}
+	// Temp slice for sorting
+	sortedOrder := make([]int, len(cl.runOrder))
+	for i := range sortedOrder {
+		sortedOrder[i] = i
+	}
 
-	// Decide priority of each player
+	// Helper to decide the hit detection priority of each player
 	// TODO: Maybe this could also be affected by runfirst/runlast
-	for i, c := range cl.runOrder {
-		var pr int
+	getPr := func(c *Char) int {
 		if c.hitdef.reversal_attr > 0 { // ReversalDef first
-			pr = 2
-		} else if c.hitdef.attr > 0 { // Then HitDef
-			pr = 1
-		} else { // Everyone else
-			pr = 0
+			return 2
 		}
-		sorting[i] = [2]int{i, pr}
+		if c.hitdef.attr > 0 { // Then HitDef
+			return 1
+		}
+		return 0
 	}
 
-	// Sort by priority
-	sort.SliceStable(sorting, func(i, j int) bool {
-		return sorting[i][1] > sorting[j][1]
+	// Sort players by priority
+	// Using runOrder or creationOrder here probably has the same result
+	sort.Slice(sortedOrder, func(i, j int) bool {
+		chari := cl.runOrder[sortedOrder[i]]
+		charj := cl.runOrder[sortedOrder[j]]
+		pri := getPr(chari)
+		prj := getPr(charj)
+
+		if pri != prj {
+			return pri > prj
+		}
+
+		// Fallback to ID's
+		return chari.id < charj.id
 	})
-
-	// Create the new sorted list
-	sortedOrder := make([]int, len(sorting))
-	for i := 0; i < len(sorting); i++ {
-		sortedOrder[i] = sorting[i][0]
-	}
 
 	// Push detection for players
 	// This must happen before hit detection
@@ -13309,85 +13403,76 @@ func (cl *CharList) cueDraw() {
 // Update enemy near or "P2" lists and return specified index
 // The current approach makes the distance calculation loops only be done when necessary, using cached enemies the rest of the time
 // In Mugen the P2 enemy reference seems to only refresh at the start of each frame instead
-func (cl *CharList) enemyNear(c *Char, n int32, p2list, log bool) *Char {
-	// Invalid reference
+func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
+	// Invalid index
 	if n < 0 {
-		if log {
-			sys.appendToConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
-		}
 		return nil
 	}
 
 	// Clear every player's lists if something changed
 	if cl.enemyNearChanged {
-		for _, c := range cl.runOrder {
-			c.enemyNearP2Clear()
+		for _, char := range cl.runOrder {
+			char.enemyNearP2Clear()
 		}
 		cl.enemyNearChanged = false
 	}
 
 	// Select EnemyNear or P2 cache
-	var cache *[]*Char
+	var cache *[]int32
 	if p2list { // List for P2 redirects as well as P4, P6 and P8 triggers
 		cache = &c.p2EnemyList
 	} else {
 		cache = &c.enemyNearList
 	}
 
-	// If we already have the Nth enemy cached, then return it
+	// If we already have the Nth enemy cached, then return it via ID lookup
 	if int(n) < len(*cache) {
-		return (*cache)[n]
+		return sys.playerID((*cache)[n])
 	}
 
 	// Else reset the cache and start over
 	*cache = (*cache)[:0]
 
-	// Gather all valid enemies
-	var enemies []*Char
+	// Local struct for sorting
+	type enemyDist struct {
+		id   int32
+		dist float32
+	}
+	pairs := make([]enemyDist, 0, MaxPlayerNo)
+
+	// Gather all valid enemies and calculate distances
 	for _, e := range cl.runOrder {
 		if e.isPlayerType() && c.isEnemyOf(e) {
+			valid := false
 			// P2 checks for alive enemies even if they are player type helpers
 			if p2list && !e.scf(SCF_standby) && !e.scf(SCF_over_ko) {
-				enemies = append(enemies, e)
+				valid = true
 			}
 			// EnemyNear checks for dead or alive root players
 			if !p2list && e.helperIndex == 0 {
-				enemies = append(enemies, e)
+				valid = true
+			}
+
+			if valid {
+				// Factor x distance first
+				distX := c.distX(e, c) * c.facing
+				dist := distX
+				// If an enemy is behind the player, an extra distance buffer is added for the "P2" list
+				if p2list && distX < 0 {
+					dist -= 30.0
+				}
+				// Factor z distance if applicable
+				if sys.zEnabled() {
+					distZ := c.distZ(e, c) * 4.0
+					if p2list {
+						distZ *= 4.0
+					}
+					dist = float32(math.Hypot(float64(distX), float64(distZ)))
+				}
+				// Append this enemy and their distance
+				pairs = append(pairs, enemyDist{id: e.id, dist: dist})
 			}
 		}
-	}
-
-	// Calculate distances between all valid enemies and the player
-	type enemyDist struct {
-		enemy *Char
-		dist  float32
-	}
-	pairs := make([]enemyDist, 0, len(enemies))
-
-	for _, e := range enemies {
-		// Factor x distance first
-		distX := c.distX(e, c) * c.facing
-		dist := distX
-		// If an enemy is behind the player, an extra distance buffer is added for the "P2" list
-		// This makes the player turn less frequently when surrounded
-		// Mugen uses a hardcoded value of 30 pixels. Maybe it could be a character constant instead in Ikemen
-		if p2list && distX < 0 {
-			dist -= 30.0
-		}
-		// Factor z distance if applicable
-		if sys.zEnabled() {
-			distZ := c.distZ(e, c) * 4.0
-			if p2list {
-				// We'll arbitrarily give more weight to the z axis, so that the player doesn't turn as easily to enemies on a different plane
-				// 4.0 is a magic number, roughly based on default x and z size ratio
-				// TODO: Calculate z weight like in distzadj in player pushing, or add a global var for x/z ratio
-				distZ *= 4.0
-			}
-			// Calculate the hypotenuse between both
-			dist = float32(math.Hypot(float64(distX), float64(distZ)))
-		}
-		// Append this enemy and their distance
-		pairs = append(pairs, enemyDist{enemy: e, dist: dist})
 	}
 
 	// Sort enemies by shortest absolute distance
@@ -13396,21 +13481,17 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list, log bool) *Char {
 	})
 
 	// Rebuild cache
-	*cache = make([]*Char, len(pairs))
-	for i, pair := range pairs {
-		(*cache)[i] = pair.enemy
+	for _, p := range pairs {
+		*cache = append(*cache, p.id)
 	}
 
-	// If reference exceeds number of valid enemies
+	// Bounds check
 	if int(n) >= len(*cache) {
-		if log {
-			sys.appendToConsole(c.warn() + fmt.Sprintf("has no nearest enemy: %v", n))
-		}
 		return nil
 	}
 
 	// Return Nth enemy
-	return (*cache)[n]
+	return sys.playerID((*cache)[n])
 }
 
 type Platform struct {

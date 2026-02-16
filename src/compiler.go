@@ -4859,6 +4859,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_movehitvar_playerid)
 		case "playerno":
 			out.append(OC_ex_movehitvar_playerno)
+		case "power":
+			out.append(OC_ex_movehitvar_power)
 		case "sparkx":
 			out.append(OC_ex_movehitvar_spark_x)
 		case "sparky":

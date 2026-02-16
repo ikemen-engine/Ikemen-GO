@@ -151,6 +151,13 @@ func newBgMusic() *bgMusic {
 // Value: ordered slice of candidates; Read() picks one at random.
 type Music map[string][]*bgMusic
 
+// HasPrefix reports whether a music prefix exists.
+func (m Music) HasPrefix(prefix string) bool {
+	nkey := normalizeMusicPrefix(prefix)
+	lst, ok := m[nkey]
+	return ok && len(lst) > 0
+}
+
 // Append merges another Music by concatenating candidate lists per prefix.
 // Use when adding sources of equal or lower priority (e.g. stage.def base
 // then select.def stage params).

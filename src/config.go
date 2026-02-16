@@ -155,6 +155,7 @@ type Config struct {
 		StartStage          string  `ini:"StartStage"`
 		ForceStageZoomout   float32 `ini:"ForceStageZoomout"`
 		ForceStageZoomin    float32 `ini:"ForceStageZoomin"`
+		ForceStageAutoZoom  bool    `ini:"ForceStageAutoZoom"`
 		KeepSpritesOnReload bool    `ini:"KeepSpritesOnReload"`
 		MacOSUseCommandKey  bool    `ini:"MacOSUseCommandKey"`
 		SpeedTest           int     `ini:"SpeedTest"`

@@ -1935,6 +1935,15 @@ function options.f_start()
 			lastNum = j
 		end
 	end
+	-- Runtime platform filtering
+	local runtimeOS = getRuntimeOS()
+	local excluded = {gles32 = true}
+	if runtimeOS == 'android' then
+		excluded = {keyboard = true, gl32 = true, gl21 = true, vk13 = true}
+	end
+	main.f_pruneMenu(options.menu, excluded)
+	main.f_prunePointers(options.t_vardisplayPointers, excluded)
+	-- Menu windows
 	textImgSetWindow(motif.option_info.menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
 	textImgSetWindow(motif.option_info.menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
 	textImgSetWindow(motif.option_info.menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])

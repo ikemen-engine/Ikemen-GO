@@ -184,10 +184,19 @@ func (t *Texture_VK) SetData(textureData []byte) {
 	if textureData == nil {
 		return
 	}
-	t.SetSubData(textureData, t.offset[0], t.offset[1], t.width, t.height)
+	t.SetSubData(textureData, t.offset[0], t.offset[1], t.width, t.height, 0)
 }
-func (t *Texture_VK) SetSubData(textureData []byte, x, y, width, height int32) {
-	size := uint32(width * height * t.depth / 8)
+
+func (t *Texture_VK) SetSubData(textureData []byte, x, y, width, height, stride int32) {
+	bytesPerPixel := uint32(t.depth / 8)
+
+	rowLength := uint32(width)
+	if stride > 0 {
+		rowLength = uint32(stride) / bytesPerPixel
+	}
+
+	size := rowLength * uint32(height) * bytesPerPixel
+
 	bufferOffset := gfx.(*Renderer_VK).CopyToStagingBuffer(size, textureData)
 	imageExtent := vk.Extent3D{
 		Width:  uint32(width),
@@ -239,7 +248,7 @@ func (t *Texture_VK) SetSubData(textureData []byte, x, y, width, height int32) {
 	}
 	gfx.(*Renderer_VK).stagingImageCopyRegions[t.img] = append(regions, vk.BufferImageCopy{
 		BufferOffset:      bufferOffset,
-		BufferRowLength:   0,
+		BufferRowLength:   rowLength,
 		BufferImageHeight: 0,
 		ImageSubresource: vk.ImageSubresourceLayers{
 			AspectMask:     vk.ImageAspectFlags(vk.ImageAspectColorBit),
@@ -250,9 +259,6 @@ func (t *Texture_VK) SetSubData(textureData []byte, x, y, width, height int32) {
 		ImageOffset: imageOffset,
 		ImageExtent: imageExtent,
 	})
-}
-func (t *Texture_VK) SetSubDataStride(textureData []byte, x, y, width, height, stride int32) {
-
 }
 
 func (t *Texture_VK) SetDataG(textureData []byte, mag, min, ws, wt TextureSamplingParam) {
@@ -4828,6 +4834,10 @@ func (r *Renderer_VK) Close() {
 	r.Destroy()
 }
 
+func (r *Renderer_VK) EnableDebug() {
+	// Do nothing
+}
+
 func (r *Renderer_VK) IsModelEnabled() bool {
 	return r.enableModel
 }
@@ -4866,15 +4876,7 @@ func (r *Renderer_VK) DestroyResources(queueLength int) {
 }
 
 func (r *Renderer_VK) BeginFrame(clearColor bool) {
-	sys.absTickCountF++
-	now := sdl.GetPerformanceCounter()
-	firstFrame := sys.prevTimestamp == 0
-	diff := float32(now - sys.prevTimestamp)
-	if diff*float32(sdl.GetPerformanceFrequency()) >= 1 {
-		sys.gameFPS = float32(sdl.GetPerformanceFrequency()) / diff
-		sys.absTickCountF = 0
-		sys.prevTimestamp = now
-	}
+	firstFrame := sys.gameFPSprevcount == 0
 	if !firstFrame {
 		vk.WaitForFences(r.device, 1, r.fences[:1], vk.True, 10*1000*1000*1000)
 	}
@@ -5280,7 +5282,12 @@ func (r *Renderer_VK) Await() {
 	vk.QueueWaitIdle(r.queue)
 }
 
-func (r *Renderer_VK) SetPipeline(eq BlendEquation, src, dst BlendFunc) {
+func (r *Renderer_VK) SetPipeline() {
+	// Do nothing
+}
+
+// Vulkan currently never uses this path to disable blending
+func (r *Renderer_VK) SetBlending(blend bool, eq BlendEquation, src, dst BlendFunc) {
 	r.VKState.VulkanPipelineState.VulkanBlendState.op = eq
 	r.VKState.VulkanPipelineState.VulkanBlendState.src = src
 	r.VKState.VulkanPipelineState.VulkanBlendState.dst = dst
@@ -5808,7 +5815,9 @@ func (r *Renderer_VK) SetModelUniformFv(name string, values []float32) {
 	switch name {
 	case "morphTargetWeight":
 		copy(r.VKState.VulkanModelProgramUniformBufferObject2.morphTargetWeight[0][:], values)
-		copy(r.VKState.VulkanModelProgramUniformBufferObject2.morphTargetWeight[1][4:], values)
+		if len(values) > 4 {
+			copy(r.VKState.VulkanModelProgramUniformBufferObject2.morphTargetWeight[1][:], values[4:])
+		}
 		break
 	case "add":
 		copy(r.VKState.VulkanModelProgramUniformBufferObject2.modelAdd[:], values)
@@ -5936,7 +5945,9 @@ func (r *Renderer_VK) SetShadowMapUniformFv(name string, values []float32) {
 	switch name {
 	case "morphTargetWeight":
 		copy(r.VKState.VulkanShadowMapProgramUniformBufferObject2.morphTargetWeight[0][:], values)
-		copy(r.VKState.VulkanShadowMapProgramUniformBufferObject2.morphTargetWeight[1][4:], values)
+		if len(values) > 4 {
+			copy(r.VKState.VulkanShadowMapProgramUniformBufferObject2.morphTargetWeight[1][:], values[4:])
+		}
 		break
 	case "baseColorFactor":
 		copy(r.VKState.VulkanShadowMapProgramUniformBufferObject1.baseColorFactor[:], values)

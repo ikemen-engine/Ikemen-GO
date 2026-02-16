@@ -676,6 +676,14 @@ function start.f_getName(ref, side)
 	return start.f_getCharData(ref).name
 end
 
+-- Resolve per-member motif tables (p3/p4/..), fallback to p1/p2 when undefined.
+local function f_getMotifP(t, pn, side)
+	if type(t) ~= "table" then return nil end
+	local p = t["p" .. pn]
+	if p ~= nil then return p end
+	return t["p" .. side]
+end
+
 --reset temp data values
 function start.f_resetTempData(t, subname)
 	-- reset AnimData
@@ -706,15 +714,16 @@ function start.f_resetTempData(t, subname)
 		end
 		for member, v in ipairs(start.p[side].t_selTemp) do
 			local pn = 2 * (member - 1) + side
+			local pCfg = f_getMotifP(t, pn, side)
 			if subname == '' then
-				v.face_anim = t['p' .. pn].anim
-				v.face_data = start.f_animGet(v.ref, side, member, t['p' .. pn], nil, true)
+				v.face_anim = pCfg.anim
+				v.face_data = start.f_animGet(v.ref, side, member, pCfg, nil, true)
 			else
-				v.face_anim = t['p' .. pn][subname].anim
-				v.face_data = start.f_animGet(v.ref, side, member, t['p' .. pn][subname], nil, true)
+				v.face_anim = pCfg[subname].anim
+				v.face_data = start.f_animGet(v.ref, side, member, pCfg[subname], nil, true)
 			end
-			v.face2_anim = t['p' .. pn].face2.anim
-			v.face2_data = start.f_animGet(v.ref, side, member, t['p' .. pn].face2, nil, true)
+			v.face2_anim = pCfg.face2.anim
+			v.face2_data = start.f_animGet(v.ref, side, member, pCfg.face2, nil, true)
 		end
 		start.p[side].screenDelay = 0
 	end
@@ -787,7 +796,7 @@ end
 local function getParams(side, member, t, subname)
 	local paramsSide = t['p' .. side]
 	local pn = 2 * (member - 1) + side
-	local params = t['p' .. pn]
+	local params = f_getMotifP(t, pn, side)
 	if subname and subname ~= '' then
 		paramsSide = paramsSide[subname]
 		params = params[subname]
@@ -864,7 +873,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 	for m = 1, #t_portraits do
 		if t_portraits[m].inRandom then
 			local pn = 2 * (m - 1) + side
-			local pData = t['p' .. pn]
+			local pData = f_getMotifP(t, pn, side)
 			-- face2 layer random portrait
 			if pData.face2.random and drawPortraitRandom(pData.face2.random) then
 				t_portraits[m].skipCurrent = true
@@ -889,6 +898,9 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 	end
 	for member = 1, #t_portraits do
 		local paramsSide, params = getParams(side, member, t, subname)
+		if member > paramsSide.num then
+			break
+		end
 		local animData = params.icon.AnimData
 		if iconDone then
 			animData = params.icon.done.AnimData
@@ -1016,8 +1028,48 @@ function start.f_searchEmptyBoxes(x, y, side, direction)
 	end
 end
 
---calculate cursor.tween
-local function f_cursorTween(val, target, factor)
+-- Returns player cursor data
+function start.f_getCursorData(pn)
+	-- In coop/multi, p3+ may be undefined in motif; fallback to p1/p2 by parity.
+	if main.coop then
+		return motif.select_info['p' .. pn] or motif.select_info['p' .. ((pn - 1) % 2 + 1)]
+	end
+	return motif.select_info['p' .. ((pn - 1) % 2 + 1)]
+end
+
+-- Reset cursor animation for a specific slot only
+local function resetCursorData(pn, store, param)
+	local pData = start.f_getCursorData(pn)
+	local cursorCfg = pData.cursor[param]
+	local key = start.c[pn].selX .. '-' .. start.c[pn].selY
+	local cursorParams = cursorCfg.default
+	if cursorCfg[key] then
+		cursorParams = cursorCfg[key]
+	end
+	local src = cursorParams.AnimData
+	if not src then
+		return
+	end
+	store[pn] = store[pn] or {}
+	local cd = store[pn]
+	cd.animCache = cd.animCache or {}
+	local cache = cd.animCache[param]
+	if cache == nil or cache.src ~= src then
+		cache = {src = src, anim = animCopy(src)}
+		cd.animCache[param] = cache
+		if cache.anim then
+			animReset(cache.anim)
+			animUpdate(cache.anim)
+		end
+	end
+	if cache.anim then
+		animReset(cache.anim)
+		animUpdate(cache.anim)
+	end
+end
+
+-- Calculate cursor.tween
+local function cursorTween(val, target, factor)
 	if not factor or not target then
 		return val
 	end
@@ -1027,14 +1079,6 @@ local function f_cursorTween(val, target, factor)
 		val[i] = val[i] + (t - val[i]) * f
 	end
 	return val
-end
-
---returns player cursor data
-function start.f_getCursorData(pn)
-	if main.coop and motif.select_info['p' .. pn] ~= nil then
-		return motif.select_info['p' .. pn]
-	end
-	return motif.select_info['p' .. (pn - 1) % 2 + 1]
 end
 
 local function getCellOverride(col, row)
@@ -1089,6 +1133,14 @@ function getCellSpacing(col, row)
 	return motif.select_info.cell.spacing
 end
 
+function getCellSkip(col, row)
+	local override = getCellOverride(col, row)
+	if override ~= nil then
+		return override.skip
+	end
+	return false
+end
+
 function getCellTransform(col, row, paramName, default)
 	local override = getCellOverride(col, row)
 	if override ~= nil then
@@ -1115,35 +1167,27 @@ end
 
 --draw cursor
 function start.f_drawCursor(pn, x, y, param, done)
-	-- in non-coop modes only p1 and p2 cursors are used
-	if not main.coop then
-		pn = (pn - 1) % 2 + 1
-	end
-
+	local pData = start.f_getCursorData(pn)
 	-- select appropriate cursor table and initialize if needed
 	local store = done and cursorDone or cursorActive
-	if store[pn] == nil then
-		store[pn] = {
-			currentPos  = {0, 0},
-			targetPos   = {0, 0},
-			startPos    = {0, 0},
-			slideOffset = {0, 0},
-			init        = false,
-			snap        = false -- only used by active cursors
-		}
-	end
+	store[pn] = store[pn] or {}
 	local cd = store[pn]
-
+	cd.currentPos  = cd.currentPos  or {0, 0}
+	cd.targetPos   = cd.targetPos   or {0, 0}
+	cd.startPos    = cd.startPos    or {0, 0}
+	cd.slideOffset = cd.slideOffset or {0, 0}
+	cd.init        = cd.init or false
+	if not done then
+		cd.snap = cd.snap or false -- only used by active cursors
+	end
 	-- calculate target cell coordinates using the pre-calculated grid
 	local cellData = start.t_grid[y + 1] and start.t_grid[y + 1][x + 1]
 	local baseX, baseY
-
 	if cellData then
 		-- cellData already includes all spacing and offsets
 		baseX = motif.select_info.pos[1] + cellData.x
 		baseY = motif.select_info.pos[2] + cellData.y
 	end
-
 	-- initialization or snap: set cursor directly
 	if not cd.init or done or cd.snap then
 		for i = 1, 2 do
@@ -1161,17 +1205,16 @@ function start.f_drawCursor(pn, x, y, param, done)
 		cd.slideOffset[2] = cd.startPos[2] - baseY
 	end
 	local t_factor = {
-		motif.select_info['p' .. pn].cursor.tween.factor[1],
-		motif.select_info['p' .. pn].cursor.tween.factor[2]
+		pData.cursor.tween.factor[1],
+		pData.cursor.tween.factor[2]
 	}
 	-- apply tween if enabled, otherwise snap to target
 	if not done and t_factor[1] > 0 and t_factor[2] > 0 then
-		f_cursorTween(cd.slideOffset, {0, 0}, t_factor)
+		cursorTween(cd.slideOffset, {0, 0}, t_factor)
 	else
 		cd.slideOffset[1], cd.slideOffset[2] = 0, 0
 	end
-
-	if motif.select_info['p' .. pn].cursor.tween.wrap.snap then
+	if pData.cursor.tween.wrap.snap then
 		local dx = cd.targetPos[1] - cd.startPos[1]
 		local dy = cd.targetPos[2] - cd.startPos[2]
 		if math.abs(dx) > motif.select_info.cell.size[1] * (motif.select_info.columns - 1) or math.abs(dy) > motif.select_info.cell.size[2] * (motif.select_info.rows - 1) then
@@ -1181,32 +1224,34 @@ function start.f_drawCursor(pn, x, y, param, done)
 	-- update final cursor position
 	cd.currentPos[1] = cd.targetPos[1] + cd.slideOffset[1]
 	cd.currentPos[2] = cd.targetPos[2] + cd.slideOffset[2]
-
 	-- draw
-	local params = motif.select_info['p' .. pn].cursor[param].default
+	local params = pData.cursor[param].default
 	local key = x .. '-' .. y
-	if motif.select_info['p' .. pn].cursor[param][key] ~= nil then
-		params = motif.select_info['p' .. pn].cursor[param][key]
+	if pData.cursor[param][key] ~= nil then
+		params = pData.cursor[param][key]
 	end
 	local a = params.AnimData
-	if a then -- inherit cell transformation
-		animSetFacing(a, getCellFacing(params.facing, x, y))
-		local scale = getCellTransform(x, y, "scale", params.scale)
-		animSetScale(a, scale[1], scale[2])
-		animSetXShear(a, getCellTransform(x, y, "xshear", params.xshear))
-		animSetAngle(a, getCellTransform(x, y, "angle", params.angle))
-		animSetXAngle(a, getCellTransform(x, y, "xangle", params.xangle))
-		animSetYAngle(a, getCellTransform(x, y, "yangle", params.yangle))
-		animSetProjection(a, getCellTransform(x, y, "projection", params.projection))
-		animSetFocalLength(a, getCellTransform(x, y, "focallength", params.focallength))
-		animUpdate(a)
+	cd.animCache = cd.animCache or {}
+	local cache = cd.animCache[param]
+	if cache == nil or cache.src ~= a then
+		cache = {src = a, anim = animCopy(a)}
+		cd.animCache[param] = cache
+		if cache.anim then
+			animReset(cache.anim)
+		end
 	end
-	main.f_animPosDraw(
-		a,
-		cd.currentPos[1],
-		cd.currentPos[2],
-		getCellFacing(params.facing, x, y)
-	)
+	a = cache.anim
+	animSetFacing(a, getCellFacing(params.facing, x, y))
+	local scale = getCellTransform(x, y, "scale", params.scale)
+	animSetScale(a, scale[1], scale[2])
+	animSetXShear(a, getCellTransform(x, y, "xshear", params.xshear))
+	animSetAngle(a, getCellTransform(x, y, "angle", params.angle))
+	animSetXAngle(a, getCellTransform(x, y, "xangle", params.xangle))
+	animSetYAngle(a, getCellTransform(x, y, "yangle", params.yangle))
+	animSetProjection(a, getCellTransform(x, y, "projection", params.projection))
+	animSetFocalLength(a, getCellTransform(x, y, "focallength", params.focallength))
+	animUpdate(a)
+	main.f_animPosDraw(a, cd.currentPos[1], cd.currentPos[2], getCellFacing(params.facing, x, y))
 end
 
 -- snaps the cursor instantly to its target cell
@@ -1497,7 +1542,8 @@ for i = 1, motif.select_info.rows * motif.select_info.columns do
 			start.f_selGrid(i, j).col = col
 		end
 	end
-	if start.f_selGrid(i).skip == 1 then
+	local overrideSkip = getCellSkip(col - 1, row - 1)
+	if start.f_selGrid(i).skip == 1 or overrideSkip then
 		start.t_grid[row][col].skip = 1
 	end
 end
@@ -1824,6 +1870,8 @@ function start.f_selectReset(hardReset)
 	selScreenEnd = false
 	stageEnd = false
 	t_reservedChars = {{}, {}}
+	cursorActive = {}
+	cursorDone = {}
 	if start.challenger == 0 then
 		start.t_roster = {}
 		start.reset = true
@@ -2302,7 +2350,9 @@ function start.f_selectScreen()
 		batchDraw(staticDrawList)
 		--draw done cursors
 		for side = 1, 2 do
-			for _, v in pairs(start.p[side].t_selected) do
+			local persist = motif.select_info['p' .. side].cursor.persist 
+			local totalSelected = #start.p[side].t_selected
+			for k, v in pairs(start.p[side].t_selected) do
 				if v.cursor ~= nil then
 					--get cell coordinates
 					local x = v.cursor[1]
@@ -2317,7 +2367,16 @@ function start.f_selectScreen()
 					--end
 					--render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
-						start.f_drawCursor(v.pn, x, y, 'done', true)
+						local shouldDraw = false
+						if main.coop or persist then
+							shouldDraw = true
+						end
+						if start.p[side].selEnd and k == totalSelected then
+							shouldDraw = true
+						end
+						if shouldDraw then
+							start.f_drawCursor(v.pn, x, y, 'done', true)
+						end
 					end
 				end
 			end
@@ -2363,13 +2422,13 @@ function start.f_selectScreen()
 							start.c[v.player].blink = false
 						end
 					end
+					local cursorState = 'active'
+					if v.selectState > 0 and motif.select_info.paletteselect > 0 then
+						--cursorState when palmenu is active
+						cursorState = 'done'
+					end
 					if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 and not start.c[v.player].blink then
-						if v.selectState > 0 and motif.select_info.paletteselect > 0 then --draw done cursor when palmenu is active
-							start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, 'done', false)
-						else
-							start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, 'active', false)
-						end
-
+						start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, cursorState, false)
 					end
 				end
 			end
@@ -2809,16 +2868,17 @@ function start.f_palMenuDraw(side, member, curIdx, validIdx ,maxIdx)
 	local palIndex = start.p[side].t_selTemp[member].pal
 	local totalPals = #charData.pal
 	local pn = 2 * (member - 1) + side
-	local displayText = (curIdx == maxIdx) and motif.select_info['p' .. pn].palmenu.random.text or tostring(validIdx)
+	local pCfg = f_getMotifP(motif.select_info, pn, side)
+	local displayText = (curIdx == maxIdx) and pCfg.palmenu.random.text or tostring(validIdx)
 	-- bg
-	main.f_animPosDraw(motif.select_info['p' .. pn].palmenu.bg.AnimData)
+	main.f_animPosDraw(pCfg.palmenu.bg.AnimData)
 	-- draw number
-	textImgReset(motif.select_info['p' .. pn].palmenu.number.TextSpriteData)
-	textImgSetText(motif.select_info['p' .. pn].palmenu.number.TextSpriteData, displayText)
-	textImgDraw(motif.select_info['p' .. pn].palmenu.number.TextSpriteData)
+	textImgReset(pCfg.palmenu.number.TextSpriteData)
+	textImgSetText(pCfg.palmenu.number.TextSpriteData, displayText)
+	textImgDraw(pCfg.palmenu.number.TextSpriteData)
 	-- draw text
-	textImgReset(motif.select_info['p' .. pn].palmenu.text.TextSpriteData)
-	textImgDraw(motif.select_info['p' .. pn].palmenu.text.TextSpriteData)
+	textImgReset(pCfg.palmenu.text.TextSpriteData)
+	textImgDraw(pCfg.palmenu.text.TextSpriteData)
 end
 
 --returns a random palette (using synced RNG)
@@ -2893,6 +2953,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 	local charRef = st.ref
 	local charData = start.f_getCharData(charRef)
 	local pn = 2 * (member - 1) + side
+	local pCfg = f_getMotifP(motif.select_info, pn, side)
 	-- initialize palette list and index if character changed or not yet set
 	if st.validPalsCharRef ~= charRef or not st.validPals then
 		local valid, seen, cur = {}, {}, validatePal(1, charRef)
@@ -2924,11 +2985,11 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		st.pal, st.currentIdx = pal, curIdx
 
 		-- done anim after pal confirmation - primary face
-		local done_anim = motif.select_info['p' .. pn].face.done.anim
-		local preview_anim = motif.select_info['p' .. pn].palmenu.preview.anim
+		local done_anim = pCfg.face.done.anim
+		local preview_anim = pCfg.palmenu.preview.anim
 		if done_anim ~= preview_anim then
 			if st.face_anim ~= done_anim and (main.coop or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
-				local a = start.f_animGet(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face.done, motif.select_info['p' .. pn].face, false, st.face_data)
+				local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, false, st.face_data)
 				if a then
 					st.face_data = start.loadPalettes(a, charRef, pal)
 					animUpdate(st.face_data)
@@ -2938,9 +2999,9 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		end
 
 		-- face2 "done" anim after pal confirmation
-		local done_anim2 = motif.select_info['p' .. pn].face2.done.anim
+		local done_anim2 = pCfg.face2.done.anim
 		if st.face2_anim ~= done_anim2 and (main.coop or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
-			local a = start.f_animGet(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face2.done, motif.select_info['p' .. pn].face2, false, st.face2_data)
+			local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2.done, pCfg.face2, false, st.face2_data)
 			if a then
 				st.face2_data = start.loadPalettes(a, charRef, pal)
 				animUpdate(st.face2_data)
@@ -2973,10 +3034,6 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		selectState = 0
 		st.currentIdx = nil
 		st.validPals = nil
-		local key = start.c[player].selX .. '-' .. start.c[player].selY
-		if start.f_getCursorData(player).cursor.done[key] ~= nil then
-			animReset(start.f_getCursorData(player).cursor.done[key].AnimData)
- 		end
 		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.cancel.snd[1], motif.select_info['p' .. side].palmenu.cancel.snd[2])
 	end
 	-- random hotkey
@@ -3027,6 +3084,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 	--manual selection
 	elseif not start.p[side].selEnd then
 		local pn = 2 * (member - 1) + side
+		local pCfg = f_getMotifP(motif.select_info, pn, side)
 		--cell not selected yet
 		if selectState == 0 then
 			--restore cursor coordinates
@@ -3058,30 +3116,31 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					ref = start.c[player].selRef,
 					cell = start.c[player].cell,
 					inRandom = false,
-					face_anim = motif.select_info['p' .. pn].face.anim,
-					face_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face, nil, true),
-					face2_anim = motif.select_info['p' .. pn].face2.anim,
-					face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face2, nil, true),
+					face_anim = pCfg.face.anim,
+					face_data = start.f_animGet(start.c[player].selRef, side, member, pCfg.face, nil, true),
+					face2_anim = pCfg.face2.anim,
+					face2_data = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2, nil, true),
 				})
 			else
 				local updateAnim = false
 				local slotSelected,slotChanged = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
+				local timerExpired = motif.select_info.timer.count ~= -1 and timerSelect == -1
 				needUpdateDrawList = slotChanged
 				local velCopy = false
+				if timerExpired then
+					if start.c[player].selRef == nil or main.t_selChars[start.c[player].selRef + 1] == nil then
+						start.c[player].selRef = start.f_randomChar(side)
+					end
+				end
 				-- cursor changed position or character change within current slot
 				if start.p[side].t_selTemp[member].cell ~= start.c[player].cell or start.p[side].t_selTemp[member].ref ~= start.c[player].selRef then
 					--start.p[side].t_selTemp[member].pal = 1
 					start.p[side].t_selTemp[member].ref = start.c[player].selRef
 					start.p[side].t_selTemp[member].cell = start.c[player].cell
-					start.p[side].t_selTemp[member].face_anim = motif.select_info['p' .. pn].face.anim
-					start.p[side].t_selTemp[member].face2_anim = motif.select_info['p' .. pn].face2.anim
-					if motif.select_info['p' .. player].cursor.reset then
-						local cursorParams = start.f_getCursorData(player).cursor.active.default
-						local key = start.c[player].selX .. '-' .. start.c[player].selY
-						if start.f_getCursorData(player).cursor.active[key] ~= nil then
-							cursorParams = start.f_getCursorData(player).cursor.active[key]
- 						end
-						animReset(cursorParams.AnimData)
+					start.p[side].t_selTemp[member].face_anim = pCfg.face.anim
+					start.p[side].t_selTemp[member].face2_anim = pCfg.face2.anim
+					if start.f_getCursorData(player).cursor.reset then
+						resetCursorData(player, cursorActive, 'active')
 					end
 					updateAnim = true
 				end
@@ -3092,7 +3151,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					velCopy = wasRandom
 					-- re-entering random slot: reset random overlay anims so sliding restarts
 					if not wasRandom then
-						local pData = motif.select_info['p' .. pn]
+						local pData = pCfg
 						if pData.face2.random then
 							animReset(pData.face2.random.AnimData)
 							animUpdate(pData.face2.random.AnimData)
@@ -3124,17 +3183,20 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				if updateAnim then
 					local face_data = velCopy and start.p[side].t_selTemp[member].face_data or nil
 					local face2_data = velCopy and start.p[side].t_selTemp[member].face2_data or nil
-					start.p[side].t_selTemp[member].face_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face, nil, true, face_data)
-					start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face2, nil, true, face2_data)
+					start.p[side].t_selTemp[member].face_data = start.f_animGet(start.c[player].selRef, side, member, pCfg.face, nil, true, face_data)
+					start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2, nil, true, face2_data)
 				end
 				-- cell selected or select screen timer reached 0
-				if (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or (motif.select_info.timer.count ~= -1 and timerSelect == -1) then
+				if (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired then
 					if motif.select_info.paletteselect ~= 0 then
 						timerSelect = motif.select_info.timer.displaytime
 					end
 					sndPlay(motif.Snd, start.f_getCursorData(player).cursor.done.default.snd[1], start.f_getCursorData(player).cursor.done.default.snd[2])
 					if motif.select_info.paletteselect == 0 then
 						start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
+					end
+					if motif.select_info.paletteselect > 0 then
+						resetCursorData(player, cursorActive, 'done')
 					end
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
 					start.p[side].t_selTemp[member].inRandom = false
@@ -3150,9 +3212,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 						end
 					end
 					-- if select anim differs from done anim and coop or pX.face.num allows to display more than 1 portrait or it's the last team member
-					local done_anim = motif.select_info['p' .. pn].face.done.anim
-					local done_anim2 = motif.select_info['p' .. pn].face2.done.anim
-					local palmenu_preview_anim = motif.select_info['p' .. pn].palmenu.preview.anim
+					local done_anim = pCfg.face.done.anim
+					local done_anim2 = pCfg.face2.done.anim
+					local palmenu_preview_anim = pCfg.palmenu.preview.anim
 					local face_anim = start.p[side].t_selTemp[member].face_anim
 					local face2_anim = start.p[side].t_selTemp[member].face2_anim
 					local canShow = main.coop or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
@@ -3160,15 +3222,15 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					-- primary face "done" / preview
 					if face_anim ~= done_anim and canShow then
 						if motif.select_info.paletteselect == 0 and done_anim ~= -1 then
-							setDoneAnim(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face.done, motif.select_info['p' .. pn].face, 'face_data')
+							setDoneAnim(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, 'face_data')
 						elseif palmenu_preview_anim ~= -1 and motif.select_info.paletteselect ~= 0 then
 							start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].palmenu.preview.snd[1], motif.select_info['p' .. side].palmenu.preview.snd[2])
-							setDoneAnim(start.c[player].selRef, side, member, motif.select_info['p' .. pn].palmenu.preview, motif.select_info['p' .. pn].face, 'face_data')
+							setDoneAnim(start.c[player].selRef, side, member, pCfg.palmenu.preview, pCfg.face, 'face_data')
 						end
 					end
 					-- face2 "done" anim
 					if face2_anim ~= done_anim and canShow2 and done_anim2 ~= -1 then
-						setDoneAnim(start.c[player].selRef, side, member, motif.select_info['p' .. pn].face2.done, motif.select_info['p' .. pn].face2, 'face2_data')
+						setDoneAnim(start.c[player].selRef, side, member, pCfg.face2.done, pCfg.face2, 'face2_data')
 					end
 
 					start.p[side].t_selTemp[member].ref = start.c[player].selRef
@@ -3195,14 +3257,14 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					end
 
 					if start.p[side].t_selTemp[member].face_data ~= nil then
-						local applyFlag = motif.select_info['p' .. pn].face.applypal
+						local applyFlag = pCfg.face.applypal
 						if applyFlag then
 							start.p[side].t_selTemp[member].face_data = start.loadPalettes(start.p[side].t_selTemp[member].face_data, charRef, finalPal)
 							animUpdate(start.p[side].t_selTemp[member].face_data)
 						end
 					end
 					if start.p[side].t_selTemp[member].face2_data ~= nil then
-						local applyFlag = motif.select_info['p' .. pn].face2.applypal
+						local applyFlag = pCfg.face2.applypal
 						if applyFlag then
 							start.p[side].t_selTemp[member].face2_data = start.loadPalettes(start.p[side].t_selTemp[member].face2_data, charRef, finalPal)
 							animUpdate(start.p[side].t_selTemp[member].face2_data)
@@ -3392,10 +3454,11 @@ function start.f_selectVersus(active, t_orderSelect)
 		for side = 1, 2 do
 			for k, v in ipairs(start.p[side].t_selected) do
 				local pn = 2 * (k - 1) + side
+				local pCfg = f_getMotifP(motif.vs_screen, pn, side)
 				-- until loading flag is set
 				if not v.loading then
 					-- if not valid for order selection or CPU or doesn't have key for this member assigned, or order timer run out
-					if not t_orderSelect[side] or main.cpuSide[side] or (#motif.vs_screen['p' .. pn].key == 0 and #t_order[side] == k - 1) or timerCount == -1 then
+					if not t_orderSelect[side] or main.cpuSide[side] or (#pCfg.key == 0 and #t_order[side] == k - 1) or timerCount == -1 then
 						table.insert(t_order[side], k)
 						-- if it's the last unordered team member
 						if #start.p[side].t_selected == #t_order[side] then
@@ -3417,7 +3480,7 @@ function start.f_selectVersus(active, t_orderSelect)
 								snd = true
 							end
 						end
-					elseif getInput({side}, motif.vs_screen['p' .. pn].key) or (#start.p[side].t_selected == #t_order[side] + 1) then
+					elseif getInput({side}, pCfg.key) or (#start.p[side].t_selected == #t_order[side] + 1) then
 						table.insert(t_order[side], k)
 						-- confirm char selection (starts loading immediately if gameOption('Config.BackgroundLoading') is true)
 						selectChar(side, v.ref, v.pal)
@@ -3447,15 +3510,16 @@ function start.f_selectVersus(active, t_orderSelect)
 				-- update spr/anim data
 				for member, v in ipairs(start.p[side].t_selected) do
 					local pn = 2 * (member - 1) + side
+					local pCfg = f_getMotifP(motif.vs_screen, pn, side)
 					-- primary face "done" anim
-					local done_anim = motif.vs_screen['p' .. pn].done.anim
+					local done_anim = pCfg.done.anim
 					if done_anim ~= -1 and start.p[side].t_selTemp[member].face_anim ~= done_anim then
-						start.p[side].t_selTemp[member].face_data = start.f_animGet(v.ref, side, member, motif.vs_screen['p' .. pn].done, motif.vs_screen['p' .. pn], false, start.p[side].t_selTemp[member].face_data)
+						start.p[side].t_selTemp[member].face_data = start.f_animGet(v.ref, side, member, pCfg.done, pCfg, false, start.p[side].t_selTemp[member].face_data)
 					end
 					-- face2 "done" anim
-					local done_anim2 = motif.vs_screen['p' .. pn].face2.done.anim
+					local done_anim2 = pCfg.face2.done.anim
 					if done_anim2 ~= -1 and start.p[side].t_selTemp[member].face2_anim ~= done_anim2 then
-						start.p[side].t_selTemp[member].face2_data = start.f_animGet(v.ref, side, member, motif.vs_screen['p' .. pn].face2.done, motif.vs_screen['p' .. pn].face2, false, start.p[side].t_selTemp[member].face2_data)
+						start.p[side].t_selTemp[member].face2_data = start.f_animGet(v.ref, side, member, pCfg.face2.done, pCfg.face2, false, start.p[side].t_selTemp[member].face2_data)
 					end
 				end
 				if t_orderSelect[side] then
@@ -3477,17 +3541,18 @@ function start.f_selectVersus(active, t_orderSelect)
 		--draw order values
 		for side = 1, 2 do
 			if t_orderSelect[side] then
-				for i = 1, #start.p[side].t_selected do
+				for i = 1, math.min(#start.p[side].t_selected, motif.vs_screen['p' .. side].num) do
 					local pn = 2 * (i - 1) + side
+					local pCfg = f_getMotifP(motif.vs_screen, pn, side)
 					if i > #t_order[side] and #start.p[side].t_selected > #t_order[side] then
 						main.f_animPosDraw(
-							motif.vs_screen['p' .. pn].value.empty.icon.AnimData,
+							pCfg.value.empty.icon.AnimData,
 							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
 							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
 						)
 					else
 						main.f_animPosDraw(
-							motif.vs_screen['p' .. pn].value.icon.AnimData,
+							pCfg.value.icon.AnimData,
 							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
 							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
 						)

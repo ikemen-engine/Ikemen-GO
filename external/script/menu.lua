@@ -500,6 +500,13 @@ function menu.f_start()
 				lastNum = j
 			end
 		end
+		-- Runtime platform filtering
+		if getRuntimeOS() == 'android' then
+			local excluded = {keyboard = true}
+			main.f_pruneMenu(menu[v.id], excluded)
+			main.f_prunePointers(menu.t_vardisplayPointers, excluded)
+		end
+		-- Menu windows
 		textImgSetWindow(v.sec.menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
 		textImgSetWindow(v.sec.menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
 		textImgSetWindow(v.sec.menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
@@ -532,8 +539,7 @@ function menu.f_start()
 	end
 end
 
--- Called from global.lua loop() function, at the start of first round, to reset
--- training menu values and p2 settings for a new match
+-- Called from start.lua right before game() function to reset training menu values and p2 settings for a new match
 function menu.f_trainingReset()
 	for k, _ in pairs(menu.t_valuename) do
 		menu[k] = 1

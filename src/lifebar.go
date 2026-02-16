@@ -1730,6 +1730,8 @@ type LifeBarFace struct {
 	numko             int32
 	old_spr           [2]int32
 	old_pal           [2]int32
+	face_pfx          *PalFX
+	teammate_face_pfx []*PalFX
 }
 
 func newLifeBarFace() *LifeBarFace {
@@ -1737,6 +1739,8 @@ func newLifeBarFace() *LifeBarFace {
 		face_spr:          [2]int32{-1},
 		teammate_face_spr: [2]int32{-1},
 		palshare:          true,
+		face_pfx:          newPalFX(),
+		teammate_face_pfx: nil, // Allocated later
 	}
 }
 
@@ -1838,9 +1842,8 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 
 	if far.face != nil {
 		// Get player current PalFX if applicable
-		var pfx *PalFX
 		if far.palfxshare {
-			pfx = refChar.getPalfx()
+			*fa.face_pfx = *refChar.getPalfx()
 		}
 
 		// Update portrait palette
@@ -1873,7 +1876,7 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 
 		// Draw the actual face sprite
 		fa.face_lay.DrawFaceSprite((float32(fa.pos[0])+sys.lifebar.offsetX)*sys.lifebar.scale, float32(fa.pos[1])*sys.lifebar.scale, layerno,
-			far.face, pfx, sys.cgi[ref].portraitscale*sys.lifebar.portraitScale, &fa.face_lay.window)
+			far.face, fa.face_pfx, sys.cgi[ref].portraitscale*sys.lifebar.portraitScale, &fa.face_lay.window)
 
 		// Draw KO layer
 		if !refChar.alive() {
@@ -1893,6 +1896,7 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 			y -= float32(fa.teammate_spacing[1] * fa.numko)
 		}
 
+		// Loop starting from the last member
 		for ; i >= 0; i-- {
 			if i != fa.numko {
 				// Skip in case of KO hiding
@@ -1901,18 +1905,29 @@ func (fa *LifeBarFace) draw(layerno int16, ref int, far *LifeBarFace) {
 					y -= float32(fa.teammate_spacing[1])
 					continue
 				}
+
 				// Draw background
 				fa.teammate_bg.Draw((x + sys.lifebar.offsetX), y, layerno, sys.lifebar.scale)
 				fa.teammate_bg0.Draw((x + sys.lifebar.offsetX), y, layerno, sys.lifebar.scale)
 				fa.teammate_bg1.Draw((x + sys.lifebar.offsetX), y, layerno, sys.lifebar.scale)
 				fa.teammate_bg2.Draw((x + sys.lifebar.offsetX), y, layerno, sys.lifebar.scale)
+
+				// Fetch the PalFX for this member
+				pfx := fa.teammate_face_pfx[i]
+
+				// TODO: Defeated PalFX
+				//if pfx != nil && i < fa.numko {
+				//}
+
 				// Draw face
-				fa.teammate_face_lay.DrawFaceSprite((x+sys.lifebar.offsetX)*sys.lifebar.scale, y*sys.lifebar.scale, layerno, far.teammate_face[i], nil,
-					far.teammate_scale[i]*sys.lifebar.portraitScale, &fa.teammate_face_lay.window)
+				fa.teammate_face_lay.DrawFaceSprite((x+sys.lifebar.offsetX)*sys.lifebar.scale, y*sys.lifebar.scale, layerno,
+					far.teammate_face[i], pfx, far.teammate_scale[i]*sys.lifebar.portraitScale, &fa.teammate_face_lay.window)
+
 				// Draw KO layer
 				if i < fa.numko {
 					fa.teammate_ko.Draw((x + sys.lifebar.offsetX), y, layerno, sys.lifebar.scale)
 				}
+
 				// Add spacing
 				x -= float32(fa.teammate_spacing[0])
 				y -= float32(fa.teammate_spacing[1])

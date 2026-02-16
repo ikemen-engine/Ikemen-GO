@@ -388,9 +388,10 @@ func (rs *RollbackSession) LiveChecksum() uint32 {
 		}
 
 		// CharGlobalInfo
-		for i := range sys.cgi {
-			buf = binary.BigEndian.AppendUint32(buf, uint32(sys.cgi[i].palno))
-		}
+		// Checking selected palette is a little overzealous and makes palette modules desync
+		//for i := range sys.cgi {
+		//	buf = binary.BigEndian.AppendUint32(buf, uint32(sys.cgi[i].palno))
+		//}
 	}
 
 	// During fight checks

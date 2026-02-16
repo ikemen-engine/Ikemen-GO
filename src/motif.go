@@ -389,6 +389,7 @@ type PlayerCursorProperties struct {
 	SwitchTime int32           `ini:"switchtime"` // only used by P2
 	Tween      TweenProperties `ini:"tween"`
 	Reset      bool            `ini:"reset"`
+	Persist    bool            `ini:"persist"` // only used by P1 and P2
 }
 
 type ItemProperties struct {
@@ -575,6 +576,16 @@ type PlayerVsProperties struct {
 	} `ini:"value"`
 }
 
+type PlayerContinueProperties struct {
+	State []int32 `ini:"state"`
+	Yes   struct {
+		State []int32 `ini:"state"`
+	} `ini:"yes"`
+	No struct {
+		State []int32 `ini:"state"`
+	} `ini:"no"`
+}
+
 type PlayerLoseProperties struct {
 	FaceProperties
 	Brightness int32 `ini:"brightness"`
@@ -587,11 +598,8 @@ type PlayerVictoryProperties struct {
 		FaceProperties
 		Lose PlayerLoseProperties `ini:"lose"`
 	}
-	Name     TextProperties `ini:"name"`
-	State    []int32        `ini:"state"`
-	Teammate struct {
-		State []int32 `ini:"state"`
-	} `ini:"teammate"`
+	Name  TextProperties `ini:"name"`
+	State []int32        `ini:"state"`
 }
 
 type PlayerResultsProperties struct {
@@ -599,12 +607,6 @@ type PlayerResultsProperties struct {
 	Win   struct { // not used by [Win Screen], [Time Attack Result Screen]
 		State []int32 `ini:"state"`
 	} `ini:"win"`
-	Teammate struct {
-		State []int32  `ini:"state"`
-		Win   struct { // not used by [Win Screen], [Time Attack Result Screen]
-			State []int32 `ini:"state"`
-		} `ini:"win"`
-	} `ini:"teammate"`
 }
 
 type PlayerDialogueProperties struct {
@@ -865,44 +867,16 @@ type ContinueScreenProperties struct {
 	Skip struct {
 		Key []string `ini:"key"`
 	} `ini:"skip"`
-	Overlay OverlayProperties `ini:"overlay"`
-	P1      struct {
-		State []int32 `ini:"state"`
-		Yes   struct {
-			State []int32 `ini:"state"`
-		} `ini:"yes"`
-		No struct {
-			State []int32 `ini:"state"`
-		} `ini:"no"`
-		Teammate struct {
-			State []int32 `ini:"state"`
-			Yes   struct {
-				State []int32 `ini:"state"`
-			} `ini:"yes"`
-			No struct {
-				State []int32 `ini:"state"`
-			} `ini:"no"`
-		} `ini:"teammate"`
-	} `ini:"p1"`
-	P2 struct {
-		State []int32 `ini:"state"`
-		Yes   struct {
-			State []int32 `ini:"state"`
-		} `ini:"yes"`
-		No struct {
-			State []int32 `ini:"state"`
-		} `ini:"no"`
-		Teammate struct {
-			State []int32 `ini:"state"`
-			Yes   struct {
-				State []int32 `ini:"state"`
-			} `ini:"yes"`
-			No struct {
-				State []int32 `ini:"state"`
-			} `ini:"no"`
-		} `ini:"teammate"`
-	} `ini:"p2"`
-	Credits TextProperties `ini:"credits"`
+	Overlay OverlayProperties        `ini:"overlay"`
+	P1      PlayerContinueProperties `ini:"p1"`
+	P2      PlayerContinueProperties `ini:"p2"`
+	P3      PlayerContinueProperties `ini:"p3"`
+	P4      PlayerContinueProperties `ini:"p4"`
+	P5      PlayerContinueProperties `ini:"p5"`
+	P6      PlayerContinueProperties `ini:"p6"`
+	P7      PlayerContinueProperties `ini:"p7"`
+	P8      PlayerContinueProperties `ini:"p8"`
+	Credits TextProperties           `ini:"credits"`
 	Counter struct {
 		AnimationProperties
 		StartTime int32 `ini:"starttime"`
@@ -992,6 +966,12 @@ type WinScreenProperties struct {
 	} `ini:"cancel"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
+	P3 PlayerResultsProperties `ini:"p3"`
+	P4 PlayerResultsProperties `ini:"p4"`
+	P5 PlayerResultsProperties `ini:"p5"`
+	P6 PlayerResultsProperties `ini:"p6"`
+	P7 PlayerResultsProperties `ini:"p7"`
+	P8 PlayerResultsProperties `ini:"p8"`
 }
 
 type ResultsScreenProperties struct {
@@ -1018,6 +998,12 @@ type ResultsScreenProperties struct {
 	} `ini:"cancel"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
+	P3 PlayerResultsProperties `ini:"p3"`
+	P4 PlayerResultsProperties `ini:"p4"`
+	P5 PlayerResultsProperties `ini:"p5"`
+	P6 PlayerResultsProperties `ini:"p6"`
+	P7 PlayerResultsProperties `ini:"p7"`
+	P8 PlayerResultsProperties `ini:"p8"`
 }
 
 type OptionInfoProperties struct {
@@ -1396,7 +1382,7 @@ func parseSelectInfoMaxPlayer(iniFile *ini.File) int {
 // preprocessINIContent removes or modifies specific sections before parsing.
 func preprocessINIContent(input string) string {
 	// Define a regex to find the [Infobox Text] section
-	infoboxRegex := regexp.MustCompile(`(?s)\[Infobox Text\]\n(.*?)(\n\[|$)`)
+	infoboxRegex := regexp.MustCompile(`(?is)\[\s*infobox\s+text\s*\]\s*\n(.*?)(\n\s*\[|$)`)
 	// Extract the content of [Infobox Text]
 	matches := infoboxRegex.FindStringSubmatch(input)
 	if len(matches) < 3 {
@@ -1415,9 +1401,16 @@ func preprocessINIContent(input string) string {
 	// Remove the [Infobox Text] section from the input
 	output := infoboxRegex.ReplaceAllString(input, "$2")
 	// Define a regex to find the [InfoBox] section header
-	infoBoxHeaderRegex := regexp.MustCompile(`(?im)(\[InfoBox\]\n)`)
-	// Insert the new text.text line right after the [InfoBox] header
-	output = infoBoxHeaderRegex.ReplaceAllString(output, "${1}"+newTextLine)
+	infoBoxHeaderRegex := regexp.MustCompile(`(?im)(^\[(?i:infobox)\]\s*\n)`)
+	// Insert the new text.text line right after the [InfoBox] header.
+	if infoBoxHeaderRegex.MatchString(output) {
+		output = infoBoxHeaderRegex.ReplaceAllString(output, "${1}"+newTextLine)
+	} else {
+		if !strings.HasSuffix(output, "\n") {
+			output += "\n"
+		}
+		output += "[InfoBox]\n" + newTextLine
+	}
 	return output
 }
 
@@ -1744,7 +1737,7 @@ func loadMotif(def string) (*Motif, error) {
 			// Backgrounds and [Begin Action] blocks are skipped (case-insensitive).
 			lb := strings.ToLower(logical)
 			// Skip BG element sections like [XResultsBg] (but still allow *BgDef sections).
-			if strings.Contains(lb, "resultsbg") {
+			if strings.Contains(lb, "resultsbg") || strings.Contains(lb, "pausebg") {
 				if !strings.HasSuffix(lb, "bgdef") {
 					goto nextSection
 				}
@@ -2200,6 +2193,35 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 	}
 }
 
+func (m *Motif) customResultsScreenSections() []string {
+	if m == nil || m.IniFile == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, s := range m.IniFile.Sections() {
+		raw := s.Name()
+		if raw == ini.DEFAULT_SECTION {
+			continue
+		}
+		_, base, _ := splitLangPrefix(raw)
+		base = strings.TrimSpace(base)
+		if base == "" {
+			continue
+		}
+		lower := strings.ToLower(base)
+		if !strings.HasSuffix(lower, " results screen") {
+			continue
+		}
+		if seen[lower] {
+			continue
+		}
+		seen[lower] = true
+		out = append(out, base)
+	}
+	return out
+}
+
 func (m *Motif) overrideParams() {
 	// Define inheritance rules (section/prefix based).
 	specs := []InheritSpec{
@@ -2243,6 +2265,20 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Victory Screen", SrcPrefix: "p2.", DstSec: "Victory Screen", DstPrefix: "p4."},
 		{SrcSec: "Victory Screen", SrcPrefix: "p2.", DstSec: "Victory Screen", DstPrefix: "p6."},
 		{SrcSec: "Victory Screen", SrcPrefix: "p2.", DstSec: "Victory Screen", DstPrefix: "p8."},
+		// [Continue Screen]
+		{SrcSec: "Continue Screen", SrcPrefix: "p1.", DstSec: "Continue Screen", DstPrefix: "p3."},
+		{SrcSec: "Continue Screen", SrcPrefix: "p1.", DstSec: "Continue Screen", DstPrefix: "p5."},
+		{SrcSec: "Continue Screen", SrcPrefix: "p1.", DstSec: "Continue Screen", DstPrefix: "p7."},
+		{SrcSec: "Continue Screen", SrcPrefix: "p2.", DstSec: "Continue Screen", DstPrefix: "p4."},
+		{SrcSec: "Continue Screen", SrcPrefix: "p2.", DstSec: "Continue Screen", DstPrefix: "p6."},
+		{SrcSec: "Continue Screen", SrcPrefix: "p2.", DstSec: "Continue Screen", DstPrefix: "p8."},
+		// [Win Screen]
+		{SrcSec: "Win Screen", SrcPrefix: "p1.", DstSec: "Win Screen", DstPrefix: "p3."},
+		{SrcSec: "Win Screen", SrcPrefix: "p1.", DstSec: "Win Screen", DstPrefix: "p5."},
+		{SrcSec: "Win Screen", SrcPrefix: "p1.", DstSec: "Win Screen", DstPrefix: "p7."},
+		{SrcSec: "Win Screen", SrcPrefix: "p2.", DstSec: "Win Screen", DstPrefix: "p4."},
+		{SrcSec: "Win Screen", SrcPrefix: "p2.", DstSec: "Win Screen", DstPrefix: "p6."},
+		{SrcSec: "Win Screen", SrcPrefix: "p2.", DstSec: "Win Screen", DstPrefix: "p8."},
 		// [Dialogue Info]
 		{SrcSec: "Dialogue Info", SrcPrefix: "p1.face.", DstSec: "Dialogue Info", DstPrefix: "p1.face.active."},
 		{SrcSec: "Dialogue Info", SrcPrefix: "p2.face.", DstSec: "Dialogue Info", DstPrefix: "p2.face.active."},
@@ -2258,9 +2294,19 @@ func (m *Motif) overrideParams() {
 	for _, sec := range m.customPauseMenuSections() {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
 	}
+	// Apply p1/p2 -> p3..p8 inheritance to every [* Results Screen]
+	for _, sec := range m.customResultsScreenSections() {
+		specs = append(specs,
+			InheritSpec{SrcSec: sec, SrcPrefix: "p1.", DstSec: sec, DstPrefix: "p3."},
+			InheritSpec{SrcSec: sec, SrcPrefix: "p1.", DstSec: sec, DstPrefix: "p5."},
+			InheritSpec{SrcSec: sec, SrcPrefix: "p1.", DstSec: sec, DstPrefix: "p7."},
+			InheritSpec{SrcSec: sec, SrcPrefix: "p2.", DstSec: sec, DstPrefix: "p4."},
+			InheritSpec{SrcSec: sec, SrcPrefix: "p2.", DstSec: sec, DstPrefix: "p6."},
+			InheritSpec{SrcSec: sec, SrcPrefix: "p2.", DstSec: sec, DstPrefix: "p8."},
+		)
+	}
+
 	m.mergeWithInheritance(specs)
-	// Inheritance may add new font filenames; rerun resolver to map them to deduped font indices.
-	//resolveInlineFonts(m.IniFile, m.Def, m.Fnt, m.fntIndexByKey, m.SetValueUpdate)
 }
 
 func (m *Motif) customPauseMenuSections() []string {
@@ -2409,12 +2455,23 @@ func (m *Motif) loadFiles() {
 	} else {
 		m.ReplayBgDef = m.TitleBgDef
 	}
+
+	basePause := m.PauseBgDef["pausebgdef"]
+	m.loadBgDefProperties(basePause, "pausebg", m.Files.Spr)
 	// Load all PauseBgDef entries (any mode that defines <mode>PauseBgDef).
 	for secKey, bg := range m.PauseBgDef {
 		if bg == nil {
 			continue
 		}
 		key := strings.ToLower(secKey)
+		if key == "pausebgdef" {
+			continue
+		}
+		// If the user did not declare this section, fall back to [PauseBGdef].
+		if _, err := m.UserIniFile.GetSection(secKey); err != nil {
+			*bg = *basePause
+			continue
+		}
 		bgName := strings.TrimSuffix(key, "def") // e.g. "pausebgdef" -> "pausebg"
 		m.loadBgDefProperties(bg, bgName, m.Files.Spr)
 	}
@@ -2738,7 +2795,7 @@ func (m *Motif) drawLoading() {
 		// Start a one-off frame
 		gfx.BeginFrame(true)
 
-		FillRect(sys.scrrect, 0x000000, [2]int32{255, 0})
+		FillRect(sys.scrrect, 0x000000, [2]int32{255, 0}, nil)
 
 		ts.Draw(ts.layerno)
 
@@ -2772,82 +2829,76 @@ func (m *Motif) Save(file string) error {
 }
 
 func (mo *Motif) processStateChange(c *Char, states []int32) bool {
+	if len(states) == 0 {
+		c.setSCF(SCF_disabled)
+		return true
+	}
 	for _, stateNo := range states {
-		// Negative state numbers are treated as hide/disable this character.
 		if stateNo < 0 {
-			c.setSCF(SCF_disabled)
+			// Explicit "no change".
 			return true
 		}
 		if c.selfStatenoExist(BytecodeInt(stateNo)) == BytecodeBool(true) {
-			// If the character was previously hidden/disabled, re-enable it when a valid state transition is requested.
+			// If the character was previously disabled, re-enable it when a valid state transition is requested.
 			c.unsetSCF(SCF_disabled)
-			c.changeState(int32(stateNo), -1, -1, "")
+			c.changeState(stateNo, -1, -1, "")
 			return true
 		}
 	}
 	return false
 }
 
-// processStateTransitions applies state changes by win/lose outcome.
-func (mo *Motif) processStateTransitions(winnerState, winnerTeammateState, loserState, loserTeammateState []int32) {
-	isWinnerLeader, isLoserLeader := false, false
+func (mo *Motif) processStateTransitions(winnerStates, loserStates [4][]int32) {
+	wIdx, lIdx := 0, 0
 	for _, p := range sys.chars {
 		if len(p) == 0 {
 			continue
 		}
 		c := p[0]
 		if c.win() {
-			// Handle P1 state
-			if !isWinnerLeader {
-				mo.processStateChange(c, winnerState)
-				isWinnerLeader = true
-			} else {
-				mo.processStateChange(c, winnerTeammateState)
+			i := wIdx
+			if i > 3 {
+				i = 3
 			}
+			mo.processStateChange(c, winnerStates[i])
+			wIdx++
 		} else {
-			// Handle P2 state
-			if !isLoserLeader {
-				mo.processStateChange(c, loserState)
-				isLoserLeader = true
-			} else {
-				mo.processStateChange(c, loserTeammateState)
+			i := lIdx
+			if i > 3 {
+				i = 3
 			}
+			mo.processStateChange(c, loserStates[i])
+			lIdx++
 		}
 	}
 }
 
 // applies state changes by team side, not by win/lose outcome.
-func (mo *Motif) processStateTransitionsBySide(p1State, p1TeammateState, p2State, p2TeammateState []int32) {
-	// Track whether we've assigned a "leader" state for each side.
+func (mo *Motif) processStateTransitionsBySide(p1States, p2States [4][]int32) {
 	leaderDone := [2]bool{false, false}
-
-	// Helper to choose state slices by side.
-	getStates := func(side int) (leader []int32, mate []int32) {
+	assigned := [2]int{0, 0} // how many members already consumed slots for each side
+	get := func(side int) [4][]int32 {
 		if side == 0 {
-			return p1State, p1TeammateState
+			return p1States
 		}
-		return p2State, p2TeammateState
+		return p2States
 	}
-
-	// 1) Prefer applying leader state to the actual team leader (if available).
-	// sys.teamLeader[] is used elsewhere in this file, so it should be stable here too.
+	// 1) Prefer applying slot0 to the actual team leader (if available).
 	for side := 0; side < 2; side++ {
 		leaderPn := sys.teamLeader[side]
 		if leaderPn < 0 || leaderPn >= len(sys.chars) || len(sys.chars[leaderPn]) == 0 {
 			continue
 		}
 		c := sys.chars[leaderPn][0]
-		// Only accept if the character is actually on that side.
 		if int(c.teamside) != side {
 			continue
 		}
-		ls, _ := getStates(side)
-		mo.processStateChange(c, ls)
+		st := get(side)
+		mo.processStateChange(c, st[0])
 		leaderDone[side] = true
+		assigned[side] = 1
 	}
-
 	// 2) Apply remaining members in stable playerNo order.
-	// First encountered member becomes leader if we couldn't resolve a leader above.
 	for pn, p := range sys.chars {
 		if len(p) == 0 {
 			continue
@@ -2857,19 +2908,20 @@ func (mo *Motif) processStateTransitionsBySide(p1State, p1TeammateState, p2State
 		if side < 0 || side > 1 {
 			continue
 		}
-
-		// If we already applied to the explicit leaderPn, skip it here.
 		if leaderDone[side] && pn == sys.teamLeader[side] {
 			continue
 		}
-
-		ls, ms := getStates(side)
+		st := get(side)
 		if !leaderDone[side] {
-			mo.processStateChange(c, ls)
+			// First encountered becomes "leader" slot0 if we couldn't resolve a leader above.
 			leaderDone[side] = true
-		} else {
-			mo.processStateChange(c, ms)
 		}
+		i := assigned[side]
+		if i > 3 {
+			i = 3
+		}
+		mo.processStateChange(c, st[i])
+		assigned[side]++
 	}
 }
 
@@ -2979,7 +3031,7 @@ func (m *Motif) drawAspectBars() {
 	for _, r := range rects {
 		if r[2] > 0 && r[3] > 0 {
 			// 0x000000 = black, fully opaque.
-			FillRect(r, 0x000000, [2]int32{255, 0})
+			FillRect(r, 0x000000, [2]int32{255, 0}, nil)
 		}
 	}
 }
@@ -3527,7 +3579,10 @@ func (co *MotifContinue) init(m *Motif) {
 	co.updateCreditsText(m)
 
 	// Handle state transitions
-	m.processStateTransitions(m.ContinueScreen.P2.State, m.ContinueScreen.P2.Teammate.State, m.ContinueScreen.P1.State, m.ContinueScreen.P1.Teammate.State)
+	m.processStateTransitions(
+		[4][]int32{m.ContinueScreen.P2.State, m.ContinueScreen.P4.State, m.ContinueScreen.P6.State, m.ContinueScreen.P8.State},
+		[4][]int32{m.ContinueScreen.P1.State, m.ContinueScreen.P3.State, m.ContinueScreen.P5.State, m.ContinueScreen.P7.State},
+	)
 
 	co.yesSide = true
 
@@ -3549,10 +3604,8 @@ func (co *MotifContinue) processSelection(m *Motif, continueSelected bool) {
 	cs := m.ContinueScreen
 	if continueSelected {
 		m.processStateTransitions(
-			cs.P2.Yes.State,
-			cs.P2.Teammate.Yes.State,
-			cs.P1.Yes.State,
-			cs.P1.Teammate.Yes.State,
+			[4][]int32{cs.P2.Yes.State, cs.P4.Yes.State, cs.P6.Yes.State, cs.P8.Yes.State},
+			[4][]int32{cs.P1.Yes.State, cs.P3.Yes.State, cs.P5.Yes.State, cs.P7.Yes.State},
 		)
 		sys.continueFlg = true
 		if sys.credits != -1 {
@@ -3560,10 +3613,8 @@ func (co *MotifContinue) processSelection(m *Motif, continueSelected bool) {
 		}
 	} else {
 		m.processStateTransitions(
-			cs.P2.No.State,
-			cs.P2.Teammate.No.State,
-			cs.P1.No.State,
-			cs.P1.Teammate.No.State,
+			[4][]int32{cs.P2.No.State, cs.P4.No.State, cs.P6.No.State, cs.P8.No.State},
+			[4][]int32{cs.P1.No.State, cs.P3.No.State, cs.P5.No.State, cs.P7.No.State},
 		)
 	}
 	startFadeOut(m.ContinueScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
@@ -3649,10 +3700,8 @@ func (co *MotifContinue) step(m *Motif) {
 				if !m.ContinueScreen.GameOver.Enabled {
 					cs := m.ContinueScreen
 					m.processStateTransitions(
-						cs.P2.No.State,
-						cs.P2.Teammate.No.State,
-						cs.P1.No.State,
-						cs.P1.Teammate.No.State,
+						[4][]int32{cs.P2.No.State, cs.P4.No.State, cs.P6.No.State, cs.P8.No.State},
+						[4][]int32{cs.P1.No.State, cs.P3.No.State, cs.P5.No.State, cs.P7.No.State},
 					)
 					co.selected = true
 					co.showEndAnim = true
@@ -6008,9 +6057,15 @@ func (vi *MotifVictory) init(m *Motif) {
 	//fmt.Printf("[Victory] init done. Winners=%d entries, Losers=%d entries. WinQuote=%q\n", len(wEntries), len(lEntries), vi.text)
 
 	if sys.winnerTeam() == 1 {
-		m.processStateTransitions(m.VictoryScreen.P1.State, m.VictoryScreen.P1.Teammate.State, m.VictoryScreen.P2.State, m.VictoryScreen.P2.Teammate.State)
+		m.processStateTransitions(
+			[4][]int32{m.VictoryScreen.P1.State, m.VictoryScreen.P3.State, m.VictoryScreen.P5.State, m.VictoryScreen.P7.State},
+			[4][]int32{m.VictoryScreen.P2.State, m.VictoryScreen.P4.State, m.VictoryScreen.P6.State, m.VictoryScreen.P8.State},
+		)
 	} else if sys.winnerTeam() == 2 {
-		m.processStateTransitions(m.VictoryScreen.P2.State, m.VictoryScreen.P2.Teammate.State, m.VictoryScreen.P1.State, m.VictoryScreen.P1.Teammate.State)
+		m.processStateTransitions(
+			[4][]int32{m.VictoryScreen.P2.State, m.VictoryScreen.P4.State, m.VictoryScreen.P6.State, m.VictoryScreen.P8.State},
+			[4][]int32{m.VictoryScreen.P1.State, m.VictoryScreen.P3.State, m.VictoryScreen.P5.State, m.VictoryScreen.P7.State},
+		)
 	}
 
 	if !m.VictoryScreen.Sounds.Enabled {
@@ -6018,7 +6073,35 @@ func (vi *MotifVictory) init(m *Motif) {
 		sys.noSoundFlg = true
 	}
 
-	m.Music.Play("victory", sys.motif.Def)
+	// If match/stage/select.def defines victory.music, it should keep playing
+	// into the victory screen. Only fall back to motif victory BGM when the
+	// match has no victory entry at all.
+	pn := -1
+	if leader != nil {
+		pn = leader.playerNo
+	}
+	if pn < 0 {
+		pn = sys.lastHitter[winnerSide]
+		if pn < 0 {
+			pn = sys.teamLeader[winnerSide]
+		}
+	}
+	if pn < 0 || pn >= len(sys.cgi) {
+		// Fallback: find any loaded player on the winner side.
+		for i := 0; i < MaxPlayerNo; i++ {
+			if len(sys.chars[i]) == 0 || sys.chars[i][0] == nil {
+				continue
+			}
+			if int(sys.chars[i][0].teamside) == winnerSide {
+				pn = i
+				break
+			}
+		}
+	}
+	matchHasVictory := pn >= 0 && pn < len(sys.cgi) && sys.cgi[pn].music.HasPrefix("victory")
+	if !matchHasVictory {
+		m.Music.Play("victory", sys.motif.Def)
+	}
 
 	m.VictoryScreen.FadeIn.FadeData.init(m.fadeIn, true)
 	vi.counter = 0
@@ -6341,24 +6424,22 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 }
 
 type MotifWin struct {
-	winEnabled      bool
-	loseEnabled     bool
-	active          bool
-	initialized     bool
-	counter         int32
-	endTimer        int32
-	fadeIn          *Fade
-	fadeOut         *Fade
-	stateDone       bool
-	soundsEnabled   bool
-	fadeOutTime     int32
-	time            int32
-	keyCancel       []string
-	p1State         []int32
-	p1TeammateState []int32
-	p2State         []int32
-	p2TeammateState []int32
-	stateTime       int32
+	winEnabled    bool
+	loseEnabled   bool
+	active        bool
+	initialized   bool
+	counter       int32
+	endTimer      int32
+	fadeIn        *Fade
+	fadeOut       *Fade
+	stateDone     bool
+	soundsEnabled bool
+	fadeOutTime   int32
+	time          int32
+	keyCancel     []string
+	p1States      [4][]int32
+	p2States      [4][]int32
+	stateTime     int32
 	//winCount        int32
 	//loseCnt         int32
 
@@ -6368,11 +6449,9 @@ type MotifWin struct {
 }
 
 // Assign state data to MotifWin
-func (wi *MotifWin) assignStates(p1, p1Teammate, p2, p2Teammate []int32) {
-	wi.p1State = p1
-	wi.p1TeammateState = p1Teammate
-	wi.p2State = p2
-	wi.p2TeammateState = p2Teammate
+func (wi *MotifWin) assignStates(p1States, p2States [4][]int32) {
+	wi.p1States = p1States
+	wi.p2States = p2States
 	if !sys.skipMotifScaling() {
 		sys.applyFightAspect()
 	}
@@ -6477,9 +6556,15 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 			rs.WinsText.TextSpriteData.text = m.sprintf(rs.WinsText.Text, tal.winP1, tal.loseP1)
 		}
 		if wouldPlace && rs.RoundsToWin > 0 && sys.match >= rs.RoundsToWin {
-			wi.assignStates(rs.P1.Win.State, rs.P1.Teammate.Win.State, rs.P2.Win.State, rs.P2.Teammate.Win.State)
+			wi.assignStates(
+				[4][]int32{rs.P1.Win.State, rs.P3.Win.State, rs.P5.Win.State, rs.P7.Win.State},
+				[4][]int32{rs.P2.Win.State, rs.P4.Win.State, rs.P6.Win.State, rs.P8.Win.State},
+			)
 		} else {
-			wi.assignStates(rs.P1.State, rs.P1.Teammate.State, rs.P2.State, rs.P2.Teammate.State)
+			wi.assignStates(
+				[4][]int32{rs.P1.State, rs.P3.State, rs.P5.State, rs.P7.State},
+				[4][]int32{rs.P2.State, rs.P4.State, rs.P6.State, rs.P8.State},
+			)
 		}
 	case "time":
 		if rs.WinsText.TextSpriteData != nil {
@@ -6487,11 +6572,14 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 		}
 		if wouldPlace {
 			wi.assignStates(
-				rs.P1.Win.State, rs.P1.Teammate.Win.State,
-				rs.P2.Win.State, rs.P2.Teammate.Win.State,
+				[4][]int32{rs.P1.Win.State, rs.P3.Win.State, rs.P5.Win.State, rs.P7.Win.State},
+				[4][]int32{rs.P2.Win.State, rs.P4.Win.State, rs.P6.Win.State, rs.P8.Win.State},
 			)
 		} else {
-			wi.assignStates(rs.P1.State, rs.P1.Teammate.State, rs.P2.State, rs.P2.Teammate.State)
+			wi.assignStates(
+				[4][]int32{rs.P1.State, rs.P3.State, rs.P5.State, rs.P7.State},
+				[4][]int32{rs.P2.State, rs.P4.State, rs.P6.State, rs.P8.State},
+			)
 		}
 	case "score":
 		if rs.WinsText.TextSpriteData != nil {
@@ -6510,18 +6598,24 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 		}
 		if wouldPlace {
 			wi.assignStates(
-				rs.P1.Win.State, rs.P1.Teammate.Win.State,
-				rs.P2.Win.State, rs.P2.Teammate.Win.State,
+				[4][]int32{rs.P1.Win.State, rs.P3.Win.State, rs.P5.Win.State, rs.P7.Win.State},
+				[4][]int32{rs.P2.Win.State, rs.P4.Win.State, rs.P6.Win.State, rs.P8.Win.State},
 			)
 		} else {
-			wi.assignStates(rs.P1.State, rs.P1.Teammate.State, rs.P2.State, rs.P2.Teammate.State)
+			wi.assignStates(
+				[4][]int32{rs.P1.State, rs.P3.State, rs.P5.State, rs.P7.State},
+				[4][]int32{rs.P2.State, rs.P4.State, rs.P6.State, rs.P8.State},
+			)
 		}
 	default:
 		// dataType == "" (or unknown): no formatting fallback.
 		if rs.WinsText.TextSpriteData != nil {
 			rs.WinsText.TextSpriteData.text = rs.WinsText.Text
 		}
-		wi.assignStates(rs.P1.State, rs.P1.Teammate.State, rs.P2.State, rs.P2.Teammate.State)
+		wi.assignStates(
+			[4][]int32{rs.P1.State, rs.P3.State, rs.P5.State, rs.P7.State},
+			[4][]int32{rs.P2.State, rs.P4.State, rs.P6.State, rs.P8.State},
+		)
 	}
 
 	wi.stateTime = rs.State.Time
@@ -6546,7 +6640,10 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 	wi.resultsBgDef = nil
 	wi.resultsKey = ""
 
-	wi.assignStates(m.WinScreen.P1.State, m.WinScreen.P1.Teammate.State, m.WinScreen.P2.State, m.WinScreen.P2.Teammate.State)
+	wi.assignStates(
+		[4][]int32{m.WinScreen.P1.State, m.WinScreen.P3.State, m.WinScreen.P5.State, m.WinScreen.P7.State},
+		[4][]int32{m.WinScreen.P2.State, m.WinScreen.P4.State, m.WinScreen.P6.State, m.WinScreen.P8.State},
+	)
 	wi.stateTime = m.WinScreen.State.Time
 	wi.soundsEnabled = m.WinScreen.Sounds.Enabled
 
@@ -6575,7 +6672,7 @@ func (wi *MotifWin) step(m *Motif) {
 
 	// Handle state transitions
 	if !wi.stateDone && wi.counter >= wi.stateTime {
-		m.processStateTransitionsBySide(wi.p1State, wi.p1TeammateState, wi.p2State, wi.p2TeammateState)
+		m.processStateTransitionsBySide(wi.p1States, wi.p2States)
 		wi.stateDone = true
 	}
 

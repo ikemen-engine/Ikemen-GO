@@ -805,6 +805,18 @@ func systemScriptInit(l *lua.LState) {
 		a.vel = src.vel
 		return 0
 	})
+	luaRegister(l, "animCopy", func(l *lua.LState) int {
+		a, ok := toUserData(l, 1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
+		}
+		if a == nil {
+			l.Push(lua.LNil)
+			return 1
+		}
+		l.Push(newUserData(l, a.Copy()))
+		return 1
+	})
 	luaRegister(l, "animDebug", func(*lua.LState) int {
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
@@ -1695,7 +1707,7 @@ func systemScriptInit(l *lua.LState) {
 		colLocal := col
 		srcLocal, dstLocal := src, dst
 		sys.luaQueuePreDraw(func() {
-			FillRect(sys.scrrect, colLocal, [2]int32{srcLocal, dstLocal})
+			FillRect(sys.scrrect, colLocal, [2]int32{srcLocal, dstLocal}, nil)
 		})
 		return 0
 	})
@@ -1968,7 +1980,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		col := uint32(int32(b)&0xff | int32(g)&0xff<<8 | int32(r)&0xff<<16)
 		sys.luaQueueLayerDraw(2, func() {
-			FillRect(sys.scrrect, col, [2]int32{src, dst})
+			FillRect(sys.scrrect, col, [2]int32{src, dst}, nil)
 		})
 		l.Push(lua.LBool(true))
 		return 1
@@ -2217,7 +2229,10 @@ func systemScriptInit(l *lua.LState) {
 		sys.luaDiscardDrawQueue()
 		sys.gameRunning = true
 		sys.endMatch = false
-		// Anonymous function to load characters and stages, and/or wait for them to finish loading
+
+		// Synchronize timing to prevent speed fluctuations when changing FPS (entering matches)
+		sys.resetFrameTime()
+
 		load := func() error {
 			sys.loader.runTread()
 			for sys.loader.state != LS_Complete {
@@ -2226,7 +2241,7 @@ func systemScriptInit(l *lua.LState) {
 				} else if sys.loader.state == LS_Cancel {
 					return nil
 				}
-				sys.await(sys.cfg.Video.Framerate)
+				sys.await(sys.gameRenderSpeed())
 			}
 			runtime.GC()
 			return nil
@@ -6608,6 +6623,8 @@ func triggerFunctions(l *lua.LState) {
 			lv = lua.LNumber(c.mhv.playerid)
 		case "playerno":
 			lv = lua.LNumber(c.mhv.playerno + 1)
+		case "power":
+			lv = lua.LNumber(c.mhv.power)
 		case "sparkx":
 			lv = lua.LNumber(c.mhv.sparkxy[0])
 		case "sparky":
@@ -6652,7 +6669,7 @@ func triggerFunctions(l *lua.LState) {
 				l.Push(lua.LString(""))
 			}
 		} else {
-			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true, false); p != nil {
+			if p := sys.charList.enemyNear(sys.debugWC, n/2-1, true); p != nil {
 				l.Push(lua.LString(p.name))
 			} else {
 				l.Push(lua.LString(""))

@@ -657,6 +657,7 @@ const (
 	OC_ex_movehitvar_overridden
 	OC_ex_movehitvar_playerid
 	OC_ex_movehitvar_playerno
+	OC_ex_movehitvar_power
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
 	OC_ex_movehitvar_uniqhit
@@ -2395,7 +2396,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			p3.gi().nameLow == sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p4name:
-		p4 := sys.charList.enemyNear(c, 1, true, false)
+		p4 := sys.charList.enemyNear(c, 1, true)
 		sys.bcStack.PushB(p4 != nil &&
 			p4.gi().nameLow == sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
@@ -2405,7 +2406,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			p5.gi().nameLow == sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p6name:
-		p6 := sys.charList.enemyNear(c, 2, true, false)
+		p6 := sys.charList.enemyNear(c, 2, true)
 		sys.bcStack.PushB(p6 != nil &&
 			p6.gi().nameLow == sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
@@ -2415,7 +2416,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 			p7.gi().nameLow == sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
 	case OC_const_p8name:
-		p8 := sys.charList.enemyNear(c, 3, true, false)
+		p8 := sys.charList.enemyNear(c, 3, true)
 		sys.bcStack.PushB(p8 != nil &&
 			p8.gi().nameLow == sys.stringPool[sys.workingState.playerNo].List[*(*int32)(unsafe.Pointer(&be[*i]))])
 		*i += 4
@@ -3098,6 +3099,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.mhv.frame)
 	case OC_ex_movehitvar_playerid:
 		sys.bcStack.PushI(c.mhv.playerid)
+	case OC_ex_movehitvar_power:
+		sys.bcStack.PushI(c.mhv.power)
 	case OC_ex_movehitvar_overridden:
 		sys.bcStack.PushB(c.mhv.overridden)
 	case OC_ex_movehitvar_playerno:

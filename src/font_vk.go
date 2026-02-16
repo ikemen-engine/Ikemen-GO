@@ -433,7 +433,9 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 		}
 		var uv [4]float32
 		textureIndex := 0
-		for uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), pix); !ok; uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), pix) {
+		stride := int32(rgba.Rect.Dx()) // This was added to unify desktop and Android
+
+		for uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix); !ok; uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix) {
 			textureIndex += 1
 			if textureIndex >= len(f.textures) {
 				f.textures = append(f.textures, CreateTextureAtlas(256, 256, 8, true))
@@ -484,6 +486,7 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 
 	return nil
 }
+
 func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, high rune, dir Direction) (Font, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {

@@ -74,7 +74,7 @@ func selectRenderer(cfgVal string) (Renderer, FontRenderer) {
 		gfx = &Renderer_VK{}
 		gfxFont = &FontRenderer_VK{}
 	default:
-		sys.errLog.Printf("Error: Invalid RenderMode '%s'. Defaulting to OpenGL 3.2.", cfgVal)
+		fmt.Printf("Error: Invalid RenderMode '%s'. Defaulting to OpenGL 3.2.\n", cfgVal)
 		gfx = &Renderer_GL32{}
 		gfxFont = &FontRenderer_GL32{}
 	}

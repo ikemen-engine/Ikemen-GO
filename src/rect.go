@@ -61,7 +61,7 @@ func (fa *Fade) step() {
 func (fa *Fade) drawRect(rect [4]int32, color uint32, alpha int32) {
 	src := alpha>>uint(Btoi(sys.clsnDisplay)) + Btoi(sys.clsnDisplay)*128
 	dst := 255 - src
-	FillRect(rect, color, [2]int32{src, dst})
+	FillRect(rect, color, [2]int32{src, dst}, nil)
 }
 
 func (fa *Fade) draw() {
@@ -204,7 +204,7 @@ func (r *Rect) updateAlpha() {
 
 func (r *Rect) Draw(ln int16) {
 	if r.layerno == ln && r != nil {
-		FillRect(r.window, r.col, r.alpha)
+		FillRect(r.window, r.col, r.alpha, nil)
 	}
 }
 

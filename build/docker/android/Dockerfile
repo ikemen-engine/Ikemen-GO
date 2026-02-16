@@ -15,26 +15,21 @@ ARG ANDROID_CMDLINE_TOOLS_URL=https://dl.google.com/android/repository/${ANDROID
 ARG ANDROID_PLATFORM=android-34
 ARG ANDROID_BUILD_TOOLS=34.0.0
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    bash \
-    ca-certificates \
-    curl \
-    git \
-    unzip \
-    xz-utils \
-    zip \
-    file \
-    binutils \
-    openjdk-17-jdk-headless \
-    build-essential \
-    make \
-    pkg-config \
-    cmake \
-    ninja-build \
-    nasm \
-    yasm \
-    python3 \
-  && rm -rf /var/lib/apt/lists/*
+RUN set -eux; \
+  apt-get -o Acquire::Retries=5 update; \
+  (apt-get -o Acquire::Retries=5 install -y --no-install-recommends \
+    bash ca-certificates curl git unzip xz-utils zip file binutils \
+    openjdk-17-jdk-headless build-essential make pkg-config cmake ninja-build \
+    nasm yasm python3 \
+  ) || ( \
+    # Mirror got out of sync: refresh indexes and try once more
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      bash ca-certificates curl git unzip xz-utils zip file binutils \
+      openjdk-17-jdk-headless build-essential make pkg-config cmake ninja-build \
+      nasm yasm python3 \
+  ); \
+  rm -rf /var/lib/apt/lists/*
 
 # Go (match CI's ~1.20)
 RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tgz \

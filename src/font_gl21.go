@@ -36,12 +36,15 @@ type FontRenderer_GL21 struct {
 func (r *FontRenderer_GL21) Init(renderer interface{}) {
 	r.newProgram(120, vertexFontShader, fragmentFontShader)
 
+	r.shaderProgram.RegisterAttributes("vert", "vertTexCoord")
+
 	gl.GenBuffers(1, &r.vbo)
 
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
 
 	// Pre-allocate for maximum batch size
 	gl.BufferData(gl.ARRAY_BUFFER, MaxFontBatchSize*6*4*4, nil, gl.DYNAMIC_DRAW)
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 }
 
@@ -76,11 +79,34 @@ func (f *Font_GL21) UpdateResolution(windowWidth int, windowHeight int) {
 	f.windowHeight = windowHeight
 }
 
+func (r *FontRenderer_GL21) SetFontPipeline() {
+	mr := gfx.(*Renderer_GL21)
+
+	// Do nothing if we were already using the font shader
+	if mr.program == r.shaderProgram.program {
+		return
+	}
+
+	mr.ChangeProgram(r.shaderProgram.program)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
+
+	vLoc := uint32(r.shaderProgram.attributes["vert"])
+	gl.EnableVertexAttribArray(vLoc)
+	gl.VertexAttribPointer(vLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
+
+	tLoc := uint32(r.shaderProgram.attributes["vertTexCoord"])
+	gl.EnableVertexAttribArray(tLoc)
+	gl.VertexAttribPointer(tLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
+}
+
 // Printf draws a string to the screen, takes a list of arguments like printf
-func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, align int32, blend bool, window [4]int32, fs string, argv ...interface{}) error {
+func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32,
+	align int32, blend bool, window [4]int32, fs string, argv ...interface{}) error {
 
 	indices := []rune(fmt.Sprintf(fs, argv...))
 	r := gfx.(*Renderer_GL21)
+	fr := gfxFont.(*FontRenderer_GL21)
 
 	if len(indices) == 0 {
 		return nil
@@ -97,12 +123,17 @@ func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 	r.EnableScissor(window[0], window[1], window[2], window[3])
 
 	// Activate corresponding render state
-	program := gfxFont.(*FontRenderer_GL21).shaderProgram
-	r.UseProgram(program.program)
+	fr.SetFontPipeline()
+	program := fr.shaderProgram
+
+	// Set texture location
+	r.SetUniformISub(program.uniforms["tex"], 0)
+
 	//set text color
-	gl.Uniform4f(program.u["textColor"], f.color.r, f.color.g, f.color.b, f.color.a)
+	r.SetUniformFSub(program.uniforms["textColor"], f.color.r, f.color.g, f.color.b, f.color.a)
+
 	//set screen resolution
-	gl.Uniform2f(program.u["resolution"], float32(f.windowWidth), float32(f.windowHeight))
+	r.SetUniformFSub(program.uniforms["resolution"], float32(f.windowWidth), float32(f.windowHeight))
 
 	gl.ActiveTexture(gl.TEXTURE0)
 
@@ -180,31 +211,23 @@ func (f *Font_GL21) Printf(x, y float32, scale float32, spacingXAdd float32, ali
 	return nil
 }
 
-// Helper function to render a batch of glyphs
 func (f *Font_GL21) renderGlyphBatch(vertices []float32, textureID uint32) {
-	program := gfxFont.(*FontRenderer_GL21).shaderProgram
+	fr := gfxFont.(*FontRenderer_GL21)
 
-	// Bind the buffer and update its data
-	gl.BindBuffer(gl.ARRAY_BUFFER, gfxFont.(*FontRenderer_GL21).vbo)
+	gl.BindBuffer(gl.ARRAY_BUFFER, fr.vbo)
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertices)*4, gl.Ptr(vertices))
 
-	// Manually set pointers because there's no VAO to remember them between frames
-	vLoc := uint32(gl.GetAttribLocation(program.program, gl.Str("vert\x00")))
-	tLoc := uint32(gl.GetAttribLocation(program.program, gl.Str("vertTexCoord\x00")))
-
-	gl.EnableVertexAttribArray(vLoc)
-	gl.VertexAttribPointer(vLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(0))
-
-	gl.EnableVertexAttribArray(tLoc)
-	gl.VertexAttribPointer(tLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
-
-	// Bind the texture
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
+}
 
-	// Cleanup
-	gl.DisableVertexAttribArray(vLoc)
-	gl.DisableVertexAttribArray(tLoc)
+func (r *FontRenderer_GL21) ReleaseFontPipeline() {
+	locVert := r.shaderProgram.attributes["vert"]
+	gl.DisableVertexAttribArray(uint32(locVert))
+	locTex := r.shaderProgram.attributes["vertTexCoord"]
+	gl.DisableVertexAttribArray(uint32(locTex))
+
+	//gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 }
 
 // Width returns the width of a piece of text in pixels
@@ -339,11 +362,23 @@ func (f *Font_GL21) GenerateGlyphs(low, high rune) error {
 
 		var uv [4]float32
 		textureIndex := 0
-		for uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), rgba.Pix); !ok; uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), rgba.Pix) {
-			textureIndex += 1
+		w, h := int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy())
+		pix := rgba.Pix
+		stride := int32(rgba.Stride) // This was added to unify desktop and Android
+
+		for {
 			if textureIndex >= len(f.textures) {
 				f.textures = append(f.textures, CreateTextureAtlas(256, 256, 32, true))
 			}
+
+			var inserted bool
+			uv, inserted = f.textures[textureIndex].AddImage(w, h, stride, pix)
+
+			if inserted {
+				break
+			}
+
+			textureIndex++
 		}
 
 		texAtlas := f.textures[textureIndex]
@@ -402,5 +437,5 @@ func (r *FontRenderer_GL21) LoadTrueTypeFont(reader io.Reader, scale int32, low,
 func (r *FontRenderer_GL21) newProgram(GLSLVersion uint, vertexShaderSource, fragmentShaderSource string) {
 	shaderProgram, _ := gfx.(*Renderer_GL21).newShaderProgram(vertexShaderSource, fragmentShaderSource, "", "font shader", true)
 	r.shaderProgram = shaderProgram
-	r.shaderProgram.RegisterUniforms("textColor", "resolution")
+	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex")
 }
