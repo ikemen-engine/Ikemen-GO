@@ -219,11 +219,11 @@ menu.itemname.menumission.back =; "BACK"                      ;Ikemen feature
 menu.itemname.menumission.bonusgames.back =; "BACK"           ;Ikemen feature
 
 ; Submenu: Watch Mode
-menu.itemname.menuwatch =; "WATCH MODE"                       ;Ikemen feature
-menu.itemname.menuwatch.watch =; "CPU MATCH"
+menu.itemname.menuwatch = "WATCH MODE"                       ;Ikemen feature
+menu.itemname.menuwatch.watch = "CPU MATCH"
 menu.itemname.menuwatch.randomtest =; "RANDOMTEST"            ;Ikemen feature
 menu.itemname.menuwatch.replay =; "REPLAY"                    ;Ikemen feature
-menu.itemname.menuwatch.back =; "BACK"                        ;Ikemen feature
+menu.itemname.menuwatch.back = "BACK"                        ;Ikemen feature
 
 ; Options
 menu.itemname.options = "OPTIONS"
@@ -1644,7 +1644,7 @@ storyboard = gameover.def             ;Game over storyboard filename
 ;This is the screen that is shown when you win a match in arcade mode.
 ;It will not be displayed on the last match of arcade mode.
 [Victory Screen]
-enabled = 1
+enabled = 0
 sounds.enabled = 0        ;Ikemen feature
 time = 300                ;Time to show screen
 fadein.time = 8
