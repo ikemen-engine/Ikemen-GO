@@ -1,3 +1,7 @@
+# Ikemen-GO-SB
+This is a game which forks Ikemen GO.
+SB stand for Skill balancer.
+
 # Ikemen GO
 
 Ikemen GO is an open source fighting game engine that supports resources from the [M.U.G.E.N](https://en.wikipedia.org/wiki/Mugen_(game_engine)) engine, written in Google’s programming language, [Go](https://go.dev/). It is a complete rewrite of a prior engine known simply as Ikemen.
@@ -37,7 +41,7 @@ If you run into any issues with Ikemen Go, you can report it on our [issue track
 ## Name
 "Ikemen" is an acronym of:
 
-**い**つまでも **完**成しない **永**遠に **未**完成 **エン**ジン  
+**い**つまでも **完**成しない **永**遠に **未**完成 **エン**ジン
 **I**tsu made mo **K**ansei shinai **E**ien ni **M**ikansei **EN**gine
 
 ## License
