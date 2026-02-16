@@ -302,7 +302,7 @@ end
 if getCommandLineValue("-width") ~= nil then
 	modifyGameOption('Video.GameWidth', getCommandLineValue("-width"))
 end
-if getCommandLineValue("-height") ~= nil then 
+if getCommandLineValue("-height") ~= nil then
 	modifyGameOption('Video.GameHeight', getCommandLineValue("-height"))
 end
 
@@ -1276,7 +1276,7 @@ for line in content:gmatch('[^\r\n]+') do
 		if lanChars then
 			row = 0
 			section = 1
-		else 
+		else
 			section = -1
 		end
 	elseif lineCase:match('^%s*%[%s*extrastages%s*%]') then
@@ -1286,7 +1286,7 @@ for line in content:gmatch('[^\r\n]+') do
 		if lanStages then
 			row = 0
 			section = 2
-		else 
+		else
 			section = -1
 		end
 	elseif lineCase:match('^%s*%[%s*options%s*%]') then
@@ -1745,7 +1745,7 @@ main.t_itemname = {
 			main.teamMenu[2].turns = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.teamarcade)
 			main.teamarcade = true
-			
+
 		end
 		main.f_setCredits()
 		remapInput(1, getLastInputController())
@@ -2289,16 +2289,16 @@ main.t_itemname = {
 		main.motif.victoryscreen = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
-		main.teamMenu[1].ratio = true
-		main.teamMenu[1].simul = true
+		-- main.teamMenu[1].ratio = true
+		-- main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
-		main.teamMenu[1].tag = true
-		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
-		main.teamMenu[2].simul = true
+		-- main.teamMenu[1].tag = true
+		-- main.teamMenu[1].turns = true
+		-- main.teamMenu[2].ratio = true
+		-- main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
-		main.teamMenu[2].tag = true
-		main.teamMenu[2].turns = true
+		-- main.teamMenu[2].tag = true
+		-- main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.watch)
 		remapInput(1, getLastInputController())
 		setCommandInputSource(2, 1)
@@ -3409,7 +3409,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		local bgTable = isActive and m.item.active.bg or m.item.bg
 		local params = bgTable[itemData.paramname] or bgTable.default
 		-- draw background
-		local bgPosX = offx 
+		local bgPosX = offx
 		local bgPosY = offy
 		if bgTable.default.spacing[1] ~= 0 or bgTable.default.spacing[2] ~= 0 then
 			bgPosX = bgPosX + (i - 1) * bgTable.default.spacing[1]
@@ -3471,8 +3471,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	--initialize storage for boxcursor per section if missing
 	if not sec.boxCursorData then
 		sec.boxCursorData = {
-			offsetY = 0, 
-			snap = 0, 
+			offsetY = 0,
+			snap = 0,
 			init = false
 		}
 	end
@@ -3591,7 +3591,7 @@ function main.f_drawTimer(timer, params)
 		active = false
 		timer = -1
 		textImgReset(params.TextSpriteData)
-		textImgSetText(params.TextSpriteData, string.format(params.text, 0))		
+		textImgSetText(params.TextSpriteData, string.format(params.text, 0))
 	elseif timer ~= -1 then
 		timer = timer + 1
 		textImgReset(params.TextSpriteData)
