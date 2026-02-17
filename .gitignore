@@ -4,7 +4,7 @@ vendor/*
 
 # Runtime
 *.log
-*.cmd
+# *.cmd
 *.bat
 /*.sh
 !build/**/*.sh
