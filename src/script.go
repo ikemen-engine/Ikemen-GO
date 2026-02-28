@@ -2730,77 +2730,132 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "getInputTime", func(l *lua.LState) int {
-		pn := int(numArg(l, 1))
-		key := strArg(l, 2)
-		// pn == -1 => last controller (0-based) + 1
-		if pn == -1 && sys.lastInputController >= 0 {
-		pn = sys.lastInputController + 1
+		var players []int
+		switch v := l.Get(1).(type) {
+		case *lua.LTable:
+			v.ForEach(func(_ lua.LValue, val lua.LValue) {
+				n, ok := val.(lua.LNumber)
+				if !ok {
+					return
+				}
+				pn := int(n)
+				if pn < 1 || pn > len(sys.commandLists) {
+					return
+				}
+				players = append(players, pn)
+			})
+		case lua.LNumber:
+			pn := int(v)
+			if pn == -1 {
+				players = make([]int, 0, len(sys.commandLists))
+				for i := 1; i <= len(sys.commandLists); i++ {
+					players = append(players, i)
+				}
+			} else {
+				players = append(players, pn)
+			}
+		default:
+			l.Push(lua.LNumber(0))
+			return 1
 		}
-		controllerIdx := pn - 1
-		// Axis tokens (LS_*/RS_*/LT/RT) are tracked by the UI axis-hold state.
-		// Return 0 if not currently held / not matching this controller.
-		if (len(key) >= 3 && (key[:3] == "LS_" || key[:3] == "RS_")) || key == "LT" || key == "RT" {
-			if controllerIdx >= 0 && controllerIdx == sys.uiAxisHoldController && sys.uiAxisHoldToken == key {
-				l.Push(lua.LNumber(int32(sys.frameCounter-sys.uiAxisHoldStartFrame) + 1))
+		// Helper to compute the hold time for a key token on a given controller index.
+		keyTime := func(controllerIdx int, key string) int32 {
+			if controllerIdx == -2 && sys.lastInputController >= 0 {
+				controllerIdx = sys.lastInputController
+			}
+			// Axis tokens (LS_*/RS_*/LT/RT) are tracked by the UI axis-hold state.
+			// Return 0 if not currently held / not matching this controller.
+			if (len(key) >= 3 && (key[:3] == "LS_" || key[:3] == "RS_")) || key == "LT" || key == "RT" {
+				if controllerIdx >= 0 && controllerIdx == sys.uiAxisHoldController && sys.uiAxisHoldToken == key {
+					return int32(sys.frameCounter-sys.uiAxisHoldStartFrame) + 1
+				}
+				return 0
+			}
+			if controllerIdx < 0 || controllerIdx >= len(sys.commandLists) ||
+				sys.commandLists[controllerIdx] == nil || sys.commandLists[controllerIdx].Buffer == nil {
+				return 0
+			}
+			ib := sys.commandLists[controllerIdx].Buffer
+			var v int32
+			switch key {
+			case "B":
+				v = ib.Bb
+			case "D":
+				v = ib.Db
+			case "F":
+				v = ib.Fb
+			case "U":
+				v = ib.Ub
+			case "L":
+				v = ib.Lb
+			case "R":
+				v = ib.Rb
+			case "a":
+				v = ib.ab
+			case "b":
+				v = ib.bb
+			case "c":
+				v = ib.cb
+			case "x":
+				v = ib.xb
+			case "y":
+				v = ib.yb
+			case "z":
+				v = ib.zb
+			case "s":
+				v = ib.sb
+			case "d":
+				v = ib.db
+			case "w":
+				v = ib.wb
+			case "m":
+				v = ib.mb
+			default:
+				l.RaiseError("\nInvalid argument: %v\n", key)
+				return 0
+			}
+			// 0 if < 0, otherwise 1+
+			if v < 0 {
+				return 0
+			} else if v == 0 {
 				return 1
 			}
-			l.Push(lua.LNumber(0))
-			return 1
+			return v
 		}
-		if controllerIdx < 0 || controllerIdx >= len(sys.commandLists) ||
-			sys.commandLists[controllerIdx] == nil || sys.commandLists[controllerIdx].Buffer == nil {
-			l.Push(lua.LNumber(0))
-			return 1
+		top := l.GetTop()
+		for _, pn := range players {
+			if pn == 0 {
+				continue
+			}
+			controllerIdx := pn - 1
+			if pn == -1 {
+				controllerIdx = -2
+			}
+			// Loop over all key tables/strings passed
+			for ai := 2; ai <= top; ai++ {
+				arg := l.Get(ai)
+				var keys []string
+				switch t := arg.(type) {
+				case *lua.LTable:
+					t.ForEach(func(_ lua.LValue, v lua.LValue) {
+						if s, ok := v.(lua.LString); ok {
+							keys = append(keys, string(s))
+						}
+					})
+				case lua.LString:
+					keys = []string{string(t)}
+				default:
+					continue
+				}
+				for _, key := range keys {
+					if out := keyTime(controllerIdx, key); out > 0 {
+						l.Push(lua.LNumber(out))
+						return 1
+					}
+				}
+			}
 		}
-		ib := sys.commandLists[controllerIdx].Buffer
-		var v int32
-		switch key {
-		case "B":
-			v = ib.Bb
-		case "D":
-			v = ib.Db
-		case "F":
-			v = ib.Fb
-		case "U":
-			v = ib.Ub
-		case "L":
-			v = ib.Lb
-		case "R":
-			v = ib.Rb
-		case "a":
-			v = ib.ab
-		case "b":
-			v = ib.bb
-		case "c":
-			v = ib.cb
-		case "x":
-			v = ib.xb
-		case "y":
-			v = ib.yb
-		case "z":
-			v = ib.zb
-		case "s":
-			v = ib.sb
-		case "d":
-			v = ib.db
-		case "w":
-			v = ib.wb
-		case "m":
-			v = ib.mb
-		default:
-			l.RaiseError("\nInvalid argument: %v\n", key)
-			return 1
-		}
-		// 0 if < 0, otherwise 1+
-		var out int32
-		if v < 0 {
-			out = 0
-		} else if v == 0 {
-			out = 1
-		} else {
-			out = v
-		}
-		l.Push(lua.LNumber(out))
+		l.Push(lua.LNumber(0))
 		return 1
 	})
 	luaRegister(l, "getJoystickGUID", func(*lua.LState) int {
