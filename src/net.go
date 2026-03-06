@@ -6,12 +6,10 @@ import (
 	"hash/crc32"
 	"log"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
 	ggpo "github.com/assemblaj/ggpo"
-	"golang.org/x/exp/maps"
 )
 
 type RollbackLogger struct {
@@ -87,6 +85,7 @@ type RollbackSession struct {
 	lastConfirmedInput  [MaxPlayerNo]InputBits
 	inputBits           []InputBits
 	inRollback          bool
+	replaySaved         bool
 }
 
 func (rs *RollbackSession) SetInput(time int32, player int, input InputBits, axes [6]int8) {
@@ -102,40 +101,75 @@ func (rs *RollbackSession) SetInput(time int32, player int, input InputBits, axe
 	rs.analogInputs[int(time)] = analogInputs
 }
 
-func (rs *RollbackSession) SaveReplay() {
-	if rs.recording != nil && len(rs.inputs) > 0 {
-		frames := maps.Keys(rs.inputs)
-		sort.Ints(frames)
-		lastFrame := frames[len(frames)-1]
+func (rs *RollbackSession) RecordReplayFrame(time int32, inputs []InputBits, axes [][6]int8) {
+	if _, ok := rs.inputs[int(time)]; !ok {
+		rs.inputs[int(time)] = [MaxPlayerNo]InputBits{}
+		rs.analogInputs[int(time)] = [MaxPlayerNo][6]int8{}
+	}
 
-		size := lastFrame * (MaxPlayerNo) * 4
-		buf := make([]byte, size)
-		offset := 0
+	inputFrame := rs.inputs[int(time)]
+	axisFrame := rs.analogInputs[int(time)]
 
-		for i := 0; i < lastFrame; i++ {
-			if _, ok := rs.inputs[i]; ok {
-				inputBuf := rs.inputToBytes(i)
-				copy(buf[offset:offset+len(inputBuf)], inputBuf)
-				offset += len(inputBuf)
-			} else {
-				inputBuf := []byte{}
-				for i := 0; i < MaxSimul*2+MaxAttachedChar; i++ {
-					inputBuf = append(inputBuf, writeI32(int32(0))...)
-				}
-				copy(buf[offset:offset+len(inputBuf)], inputBuf)
-				offset += len(inputBuf)
-			}
+	for i := 0; i < REPLAY_NUM_INPUTS; i++ {
+		if i < len(inputs) {
+			inputFrame[i] = inputs[i]
+		} else {
+			inputFrame[i] = 0
 		}
-		rs.recording.Write(buf)
+
+		if i < len(axes) {
+			axisFrame[i] = axes[i]
+		} else {
+			axisFrame[i] = [6]int8{}
+		}
+	}
+
+	rs.inputs[int(time)] = inputFrame
+	rs.analogInputs[int(time)] = axisFrame
+}
+
+func (rs *RollbackSession) TruncateReplayFrom(time int32) {
+	frame := int(time)
+	for t := range rs.inputs {
+		if t >= frame {
+			delete(rs.inputs, t)
+		}
+	}
+	for t := range rs.analogInputs {
+		if t >= frame {
+			delete(rs.analogInputs, t)
+		}
 	}
 }
 
-func (rs *RollbackSession) inputToBytes(time int) []byte {
-	buf := []byte{}
-	for i := 0; i < MaxSimul*2+MaxAttachedChar; i++ {
-		buf = append(buf, writeI16(int16(rs.inputs[time][i]))...)
+func (rs *RollbackSession) SaveReplay() {
+	if rs == nil || rs.recording == nil || rs.replaySaved {
+		return
 	}
-	return buf
+
+	// Never append the same rollback replay twice.
+	rs.replaySaved = true
+
+	frameCount := int(rs.netTime)
+	if frameCount <= 0 {
+		return
+	}
+
+	for frame := 0; frame < frameCount; frame++ {
+		inputFrame, okInputs := rs.inputs[frame]
+		axisFrame, okAxes := rs.analogInputs[frame]
+		if !okInputs || !okAxes {
+			log.Printf("Missing rollback replay frame %d; truncating replay at this point", frame)
+			break
+		}
+
+		for i := 0; i < REPLAY_NUM_INPUTS; i++ {
+			if err := writeReplayInput(rs.recording, inputFrame[i], axisFrame[i]); err != nil {
+				log.Printf("Error while writing rollback replay frame %d controller %d: %v", frame, i, err)
+				return
+			}
+		}
+	}
 }
 
 type LoopTimer struct {
@@ -273,16 +307,14 @@ func (r *RollbackSession) AdvanceFrame(flags int) {
 	// Get the confirmed inputs from the GGPO backend for the frame being simulated
 	var disconnectFlags int
 	inputs, ggpoerr := r.backend.SyncInput(&disconnectFlags)
-	sys.rollback.ggpoInputs, sys.rollback.ggpoAnalogInputs = decodeInputs(inputs)
-
-	if r.recording != nil {
-		r.SetInput(r.netTime, 0, sys.rollback.ggpoInputs[0], sys.rollback.ggpoAnalogInputs[0])
-		r.SetInput(r.netTime, 1, sys.rollback.ggpoInputs[1], sys.rollback.ggpoAnalogInputs[1])
-		r.netTime++
-	}
 
 	// Run frame again using confirmed inputs
 	if ggpoerr == nil {
+		sys.rollback.ggpoInputs, sys.rollback.ggpoAnalogInputs = decodeInputs(inputs)
+		if r.recording != nil {
+			r.RecordReplayFrame(r.netTime, sys.rollback.ggpoInputs, sys.rollback.ggpoAnalogInputs)
+			r.netTime++
+		}
 		if !sys.rollback.simulateFrame(&sys) {
 			return
 		}

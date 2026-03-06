@@ -1883,8 +1883,37 @@ func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 	return false
 }
 
-// This defines the number of frames to store for the net buffer inputs (digital and analog)
-const NETBUF_NUM_FRAMES int32 = 32
+const (
+	// This defines the number of frames to store for the net buffer inputs (digital and analog)
+	NETBUF_NUM_FRAMES int32 = 32
+
+	// Replay files store the same payload for both delay-based and rollback netplay:
+	// 2 bytes of digital inputs followed by 6 bytes of signed analog axes per controller.
+	REPLAY_NUM_INPUTS  = MaxSimul * 2
+	REPLAY_INPUT_BYTES = 2 + 6
+)
+
+func writeReplayInput(w io.Writer, ibit InputBits, axes [6]int8) error {
+	var buf [REPLAY_INPUT_BYTES]byte
+	binary.LittleEndian.PutUint16(buf[:2], uint16(ibit))
+	for i := 0; i < len(axes); i++ {
+		buf[2+i] = byte(axes[i])
+	}
+	_, err := w.Write(buf[:])
+	return err
+}
+
+func readReplayInput(r io.Reader, ibit *InputBits, axes *[6]int8) error {
+	var buf [REPLAY_INPUT_BYTES]byte
+	if _, err := io.ReadFull(r, buf[:]); err != nil {
+		return err
+	}
+	*ibit = InputBits(int16(binary.LittleEndian.Uint16(buf[:2])))
+	for i := 0; i < len(axes); i++ {
+		axes[i] = int8(buf[2+i])
+	}
+	return nil
+}
 
 // NetBuffer holds the inputs that are sent between players
 type NetBuffer struct {
@@ -2458,8 +2487,11 @@ func (nc *NetConnection) Update() bool {
 				if nc.recording != nil {
 					for i := range nc.buf {
 						ringIdx := nc.time & (NETBUF_NUM_FRAMES - 1)
-						binary.Write(nc.recording, binary.LittleEndian, &nc.buf[i].buf[ringIdx])
-						binary.Write(nc.recording, binary.LittleEndian, &nc.buf[i].axisBuf[ringIdx])
+						if err := writeReplayInput(nc.recording, nc.buf[i].buf[ringIdx], nc.buf[i].axisBuf[ringIdx]); err != nil {
+							log.Printf("Error while writing replay input for controller %d: %v", i, err)
+							nc.recording = nil
+							break
+						}
 					}
 				}
 
@@ -2486,8 +2518,8 @@ func (nc *NetConnection) Update() bool {
 
 type ReplayFile struct {
 	file         *os.File
-	ibit         [MaxSimul * 2]InputBits
-	iaxes        [MaxSimul * 2][6]int8
+	ibit         [REPLAY_NUM_INPUTS]InputBits
+	iaxes        [REPLAY_NUM_INPUTS][6]int8
 	preMatchTime int32
 }
 
@@ -2565,28 +2597,16 @@ func (rf *ReplayFile) Update() bool {
 		sys.esc = true
 	} else {
 		if sys.oldNextAddTime > 0 {
-			// Clear everything first
-			for i := range rf.ibit {
-				rf.ibit[i] = 0
-			}
-			for i := 0; i < len(rf.iaxes); i++ {
-				for j := 0; j < len(rf.iaxes[i]); j++ {
-					rf.iaxes[i][j] = int8(0)
-				}
-			}
+			rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
+			rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
 
-			// Read each player at a time, in the order of digital inputs, followed by each analog axis
 			for i := 0; i < len(rf.ibit); i++ {
-				// Read digital input (pointer)
-				if err := binary.Read(rf.file, binary.LittleEndian, &rf.ibit[i]); err != nil {
-					log.Printf("Error while reading digital input for controller %d: %v", i, err)
-					sys.esc = true
-					break
-				}
-
-				// Read analog input (pointer to all at once)
-				if err := binary.Read(rf.file, binary.LittleEndian, &rf.iaxes[i]); err != nil {
-					log.Printf("Error while reading analog input for controller %d: %v", i, err)
+				if err := readReplayInput(rf.file, &rf.ibit[i], &rf.iaxes[i]); err != nil {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
+						log.Printf("Closing replay file")
+					} else {
+						log.Printf("Error while reading replay input for controller %d: %v", i, err)
+					}
 					sys.esc = true
 					break
 				}
