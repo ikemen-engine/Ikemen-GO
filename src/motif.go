@@ -5227,9 +5227,14 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 
 	m.HiscoreInfo.Title.TextSpriteData.Reset()
 	m.HiscoreInfo.Title.TextSpriteData.AddPos(m.HiscoreInfo.Pos[0], m.HiscoreInfo.Pos[1])
-	if v, ok := m.HiscoreInfo.Title.Text[mode]; ok {
-		m.HiscoreInfo.Title.TextSpriteData.text = v
+	titleText := m.HiscoreInfo.Title.TextSpriteData.text
+	if v, ok := m.HiscoreInfo.Title.Text[mode]; ok && v != "" {
+		titleText = v
 	}
+	if m.HiscoreInfo.Title.Uppercase {
+		titleText = strings.ToUpper(titleText)
+	}
+	m.HiscoreInfo.Title.TextSpriteData.text = titleText
 
 	m.HiscoreInfo.Title.Rank.TextSpriteData.Reset()
 	m.HiscoreInfo.Title.Rank.TextSpriteData.AddPos(m.HiscoreInfo.Pos[0], m.HiscoreInfo.Pos[1])

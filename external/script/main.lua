@@ -2686,6 +2686,8 @@ function main.f_replay()
 	for _, v in pairs(motif.replay_info.menu.item.active.bg) do
 		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
 	end
+	textImgReset(motif.replay_info.title.TextSpriteData)
+	textImgSetText(motif.replay_info.title.TextSpriteData, main.f_itemnameUpper(motif.replay_info.title.text, motif.replay_info.menu.title.uppercase))
 	local cursorPosY = 1
 	local moveTxt = 0
 	local item = 1
