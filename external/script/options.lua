@@ -801,8 +801,8 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--gl32
-	['gl32'] = function(t, item, cursorPosY, moveTxt)
+	--gl33
+	['gl33'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Video.RenderMode', "OpenGL 3.3")
@@ -1935,7 +1935,7 @@ function options.f_start()
 	local runtimeOS = getRuntimeOS()
 	local excluded = {gles32 = true}
 	if runtimeOS == 'android' then
-		excluded = {keyboard = true, gl32 = true, vk13 = true}
+		excluded = {keyboard = true, gl33 = true, vk13 = true}
 	end
 	main.f_pruneMenu(options.menu, excluded)
 	main.f_prunePointers(options.t_vardisplayPointers, excluded)
