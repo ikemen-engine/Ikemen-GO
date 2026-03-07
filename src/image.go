@@ -1583,7 +1583,7 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)
 	}
-
+//In Mugen the group and index are read instead of the header offset. https://github.com/ikemen-engine/Ikemen-GO/issues/168
 	if s.header.Version[0] != 1 {
 		uniquePals := make(map[[2]uint16]int)
 		for i := 0; i < int(s.header.NumberOfPalettes); i++ {
