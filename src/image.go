@@ -575,7 +575,7 @@ func loadCharPalettes(sff *Sff, filename string, ref int) error {
 	// SFF v2
 	uniquePals := make(map[[2]uint16]int)
 	loaded := make(map[int]bool)
-
+//In Mugen, the group and index are scanned instead of the header offset. https://github.com/ikemen-engine/Ikemen-GO/issues/168 
 	for headerIdx := 0; headerIdx < int(h.NumberOfPalettes); headerIdx++ {
 		f.Seek(int64(h.FirstPaletteHeaderOffset)+int64(headerIdx*16), 0)
 
