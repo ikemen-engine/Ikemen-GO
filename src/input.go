@@ -4,16 +4,20 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/veandco/go-sdl2/sdl"
 )
 
-var ModAlt = NewModifierKey(false, true, false)
-var ModCtrlAlt = NewModifierKey(true, true, false)
-var ModCtrlAltShift = NewModifierKey(true, true, true)
+var ModAlt ModifierKey
+var ModCtrlAlt ModifierKey
+var ModCtrlAltShift ModifierKey
 
 // CommandList > Command > CommandStep > CommandStepKey
 type CommandStepKey struct {
@@ -93,6 +97,11 @@ type ShortcutKey struct {
 }
 
 func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
+	if ModAlt == 0 {
+		ModAlt = NewModifierKey(false, true, false)
+		ModCtrlAlt = NewModifierKey(true, true, false)
+		ModCtrlAltShift = NewModifierKey(true, true, true)
+	}
 	sk := &ShortcutKey{}
 	sk.Key = key
 	sk.Mod = NewModifierKey(ctrl, alt, shift)
@@ -100,26 +109,48 @@ func NewShortcutKey(key Key, ctrl, alt, shift bool) *ShortcutKey {
 }
 
 func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
-	return k == sk.Key && (m&ModCtrlAltShift) == sk.Mod
+	trgtMods := sk.Mod & ModCtrlAltShift
+	var expandCurr sdl.Keymod
+	if (m & sdl.KMOD_GUI) != 0 {
+		expandCurr |= sdl.KMOD_GUI
+	}
+	if (m & sdl.KMOD_CTRL) != 0 {
+		expandCurr |= sdl.KMOD_CTRL
+	}
+	if (m & sdl.KMOD_ALT) != 0 {
+		expandCurr |= sdl.KMOD_ALT
+	}
+	if (m & sdl.KMOD_SHIFT) != 0 {
+		expandCurr |= sdl.KMOD_SHIFT
+	}
+
+	return k == sk.Key && trgtMods == expandCurr
 }
 
 func OnKeyReleased(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
 		sys.keyState[key] = false
-		sys.keyInput = KeyUnknown
-		sys.keyString = ""
+		// sys.keyInput is used as an edge-triggered "new key press" signal for Lua (getKey()).
+		if sys.keyInput == key {
+			sys.keyInput = KeyUnknown
+			sys.keyString = ""
+		}
 	}
 }
 
 func OnKeyPressed(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
+		// Treat sys.keyInput as edge-triggered. Ignore repeats.
+		if sys.keyState[key] {
+			return
+		}
 		sys.keyState[key] = true
 		sys.keyInput = key
 		sys.esc = sys.esc ||
 			key == KeyEscape && (mk&ModCtrlAlt) == 0
 		for k, v := range sys.shortcutScripts {
 			if sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
-				//(!sys.paused || sys.step || v.Pause) &&
+				//(!sys.paused || sys.frameStepFlag || v.Pause) &&
 				(sys.cfg.Debug.AllowDebugKeys || !v.DebugKey) {
 				v.Activate = v.Activate || k.Test(key, mk)
 			}
@@ -127,8 +158,20 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		if key == KeyF12 {
 			captureScreen()
 		}
+		if key == KeyF5 && sys.credits != -1 {
+			sys.credits += 1
+			sys.motif.Snd.play(sys.motif.AttractMode.Credits.Snd, 100, 0, 0, 0, 0)
+		}
 		if key == KeyEnter && (mk&ModAlt) != 0 {
 			sys.window.toggleFullscreen()
+		}
+		if !sys.gameRunning && sys.netConnection == nil {
+			if key == KeyPause {
+				sys.paused = !sys.paused
+			}
+			if key == KeyScrollLock {
+				sys.frameStepFlag = true
+			}
 		}
 	}
 }
@@ -137,324 +180,197 @@ func OnTextEntered(s string) {
 	sys.keyString = s
 }
 
-// There's nothing wrong with this function, but the way code was structured it needed to be called many times per frame to get all buttons
-/*
-func JoystickState(joy, button int) bool {
-	if joy < 0 {
-		return sys.keyState[Key(button)]
+// Return the state of all keyboard keys for a player
+func GetKeyboardState(kc KeyConfig) [14]bool {
+	var out [14]bool
+
+	// If this config is for a joystick, return no input
+	if kc.Joy >= 0 {
+		return out
 	}
-	if joy >= input.GetMaxJoystickCount() {
-		return false
-	}
-	axes := input.GetJoystickAxes(joy)
-	if button >= 0 {
-		// Query button state
-		btns := input.GetJoystickButtons(joy)
 
-		if button >= len(btns) {
-			if len(btns) == 0 {
-				return false
-				// Prevent OOB errors #2141
-			} else if len(axes) > 0 {
-				if button == sys.joystickConfig[joy].dR {
-					return axes[0] > sys.cfg.Input.ControllerStickSensitivity
-				}
-				if button == sys.joystickConfig[joy].dL {
-					return -axes[0] > sys.cfg.Input.ControllerStickSensitivity
-				}
-
-				// Prevent OOB errors #2141
-				if len(axes) > 1 {
-					if button == sys.joystickConfig[joy].dU {
-						return -axes[1] > sys.cfg.Input.ControllerStickSensitivity
-					}
-					if button == sys.joystickConfig[joy].dD {
-						return axes[1] > sys.cfg.Input.ControllerStickSensitivity
-					}
-				}
-				return false
-			} else {
-				return false
-			}
-		}
-
-		// override with axes if they exist #2141
-		if len(axes) > 0 {
-			if button == sys.joystickConfig[joy].dR {
-				if axes[0] > sys.cfg.Input.ControllerStickSensitivity {
-					btns[button] = 1
-				}
-			}
-			if button == sys.joystickConfig[joy].dL {
-				if -axes[0] > sys.cfg.Input.ControllerStickSensitivity {
-					btns[button] = 1
-				}
-			}
-
-			// prevent OOB errors #2141
-			if len(axes) > 1 {
-				if button == sys.joystickConfig[joy].dU {
-					if -axes[1] > sys.cfg.Input.ControllerStickSensitivity {
-						btns[button] = 1
-					}
-				}
-				if button == sys.joystickConfig[joy].dD {
-					if axes[1] > sys.cfg.Input.ControllerStickSensitivity {
-						btns[button] = 1
-					}
-				}
-			}
-		}
-
-		return btns[button] != 0
-	} else {
-		// Query axis state
-		axis := -button - 1
-		if axis >= len(axes)*2 {
-			return false
-		}
-
-		// Read value and invert sign for odd indices
-		val := axes[axis/2] * float32((axis&1)*2-1)
-
-		var joyName = input.GetJoystickName(joy)
-
-		// Evaluate LR triggers on the Xbox 360 controller
-		if (axis == 9 || axis == 11) && (strings.Contains(joyName, "XInput") || strings.Contains(joyName, "X360") ||
-			strings.Contains(joyName, "Xbox Wireless") || strings.Contains(joyName, "Xbox Elite") || strings.Contains(joyName, "Xbox One") ||
-			strings.Contains(joyName, "Xbox Series") || strings.Contains(joyName, "Xbox Adaptive")) {
-			return val > sys.cfg.Input.XinputTriggerSensitivity
-		}
-
-		// Ignore trigger axis on PS4 (We already have buttons)
-		if (axis >= 6 && axis <= 9) && joyName == "PS4 Controller" {
-			return false
-		}
-
-		return val > sys.cfg.Input.ControllerStickSensitivity
+	return [14]bool{
+		sys.keyState[Key(kc.dU)],
+		sys.keyState[Key(kc.dD)],
+		sys.keyState[Key(kc.dL)],
+		sys.keyState[Key(kc.dR)],
+		sys.keyState[Key(kc.bA)],
+		sys.keyState[Key(kc.bB)],
+		sys.keyState[Key(kc.bC)],
+		sys.keyState[Key(kc.bX)],
+		sys.keyState[Key(kc.bY)],
+		sys.keyState[Key(kc.bZ)],
+		sys.keyState[Key(kc.bS)],
+		sys.keyState[Key(kc.bD)],
+		sys.keyState[Key(kc.bW)],
+		sys.keyState[Key(kc.bM)],
 	}
 }
-*/
 
-// Checks keyboard and/or joystick input states
-// This is now called only once instead of per button
-// Note: Joystick axes cannot be assigned to buttons, only directions
-// TODO: Maybe an even better solution would be to poll keyboard and joysticks in the same place once per frame then use that cache
-func ControllerState(kc KeyConfig) [14]bool {
+// Return the state of all joystick keys for a player
+// This is now called only once instead of per button and retrieves
+// values from a shared state for both buttons and axes.
+// All XInput axes and digital buttons are supported.
+func GetJoystickState(kc KeyConfig) [14]bool {
 	var out [14]bool
 	joy := kc.Joy
 
-	// Keyboard early exit
-	if joy < 0 {
-		return [14]bool{
-			sys.keyState[Key(kc.dU)],
-			sys.keyState[Key(kc.dD)],
-			sys.keyState[Key(kc.dL)],
-			sys.keyState[Key(kc.dR)],
-			sys.keyState[Key(kc.kA)],
-			sys.keyState[Key(kc.kB)],
-			sys.keyState[Key(kc.kC)],
-			sys.keyState[Key(kc.kX)],
-			sys.keyState[Key(kc.kY)],
-			sys.keyState[Key(kc.kZ)],
-			sys.keyState[Key(kc.kS)],
-			sys.keyState[Key(kc.kD)],
-			sys.keyState[Key(kc.kW)],
-			sys.keyState[Key(kc.kM)],
-		}
+	// If this config is for keyboard or out of range, return no input
+	if joy < 0 || joy >= input.GetMaxJoystickCount() {
+		return out
 	}
 
-	// Joystick out of bounds
-	if joy >= input.GetMaxJoystickCount() {
+	if !input.IsJoystickPresent(joy) {
 		return out
 	}
 
 	axes := input.GetJoystickAxes(joy)
 	btns := input.GetJoystickButtons(joy)
-	joyName := input.GetJoystickName(joy)
 
 	// Convert button polling results to bools
 	getBtn := func(idx int) bool {
 		return idx >= 0 && idx < len(btns) && btns[idx] != 0
 	}
 
-	// Convert axes polling results to bools
-	getDir := func(axisIdx int, sign float32, btnIdx int) bool {
-		// Check axes normally
-		if axisIdx >= 0 && axisIdx < len(axes) {
-			if sign*axes[axisIdx] > sys.cfg.Input.ControllerStickSensitivity {
-				return true
-			}
-		}
-
-		// Fallback: override even if button index is OOB
-		if len(axes) > 0 {
-			switch btnIdx {
-			case kc.dL:
-				if -axes[0] > sys.cfg.Input.ControllerStickSensitivity {
-					return true
-				}
-			case kc.dR:
-				if axes[0] > sys.cfg.Input.ControllerStickSensitivity {
-					return true
-				}
-			case kc.dU:
-				if len(axes) > 1 && -axes[1] > sys.cfg.Input.ControllerStickSensitivity {
-					return true
-				}
-			case kc.dD:
-				if len(axes) > 1 && axes[1] > sys.cfg.Input.ControllerStickSensitivity {
-					return true
-				}
-			}
-		}
-
-		// Fallback to buttons
-		return getBtn(btnIdx)
-	}
-
-	// Directions
-	out[0] = getDir(1, -1, kc.dU)
-	out[1] = getDir(1, +1, kc.dD)
-	out[2] = getDir(0, -1, kc.dL)
-	out[3] = getDir(0, +1, kc.dR)
-
-	// Buttons
-	out[4] = getBtn(kc.kA)
-	out[5] = getBtn(kc.kB)
-	out[6] = getBtn(kc.kC)
-	out[7] = getBtn(kc.kX)
-	out[8] = getBtn(kc.kY)
-	out[9] = getBtn(kc.kZ)
-	out[10] = getBtn(kc.kS)
-	out[11] = getBtn(kc.kD)
-	out[12] = getBtn(kc.kW)
-	out[13] = getBtn(kc.kM)
-
-	// Negative indices: axes as buttons (triggers)
+	// axes as buttons
 	handleAxisBtn := func(axisBtn int) bool {
-		if axisBtn >= 0 {
+		var axis int = 0
+		if axisBtn == 16 || axisBtn == 17 { // LS_X
+			axis = 0
+		} else if axisBtn == 15 || axisBtn == 18 { // LS_Y
+			axis = 1
+		} else if axisBtn == 22 || axisBtn == 23 { // RS_X
+			axis = 2
+		} else if axisBtn == 21 || axisBtn == 24 { // RS_Y
+			axis = 3
+		} else if axisBtn == 19 { // LT
+			axis = 4
+		} else if axisBtn == 20 { // RT
+			axis = 5
+		} else { // Invalid
 			return false
 		}
-		axis := -axisBtn - 1
-		if axis >= len(axes)*2 {
-			return false
-		}
-
-		// Read value and invert sign for odd indices
-		val := axes[axis/2] * float32((axis&1)*2-1)
+		val := axes[axis]
 
 		// Evaluate LR triggers on the Xbox 360 controller
-		if (axis == 9 || axis == 11) && (strings.Contains(joyName, "XInput") ||
-			strings.Contains(joyName, "X360") ||
-			strings.Contains(joyName, "Xbox Wireless") ||
-			strings.Contains(joyName, "Xbox Elite") ||
-			strings.Contains(joyName, "Xbox One") ||
-			strings.Contains(joyName, "Xbox Series") ||
-			strings.Contains(joyName, "Xbox Adaptive")) {
+		if axis == 4 || axis == 5 {
 			return val > sys.cfg.Input.XinputTriggerSensitivity
 		}
 
-		// Ignore trigger axis on PS4 (We already have buttons)
-		if (axis >= 6 && axis <= 9) && joyName == "PS4 Controller" {
+		if val < 0 && (axisBtn == 15 || axisBtn == 16 || axisBtn == 21 || axisBtn == 22) {
+			return -val > sys.cfg.Input.ControllerStickSensitivity
+		} else if axisBtn == 17 || axisBtn == 18 || axisBtn == 23 || axisBtn == 24 {
+			return val > sys.cfg.Input.ControllerStickSensitivity
+		} else {
 			return false
 		}
-
-		return val > sys.cfg.Input.ControllerStickSensitivity
 	}
 
 	// Apply axis button logic
 	axisIndices := []int{
 		kc.dU, kc.dD, kc.dL, kc.dR,
-		kc.kA, kc.kB, kc.kC, kc.kX, kc.kY, kc.kZ,
-		kc.kS, kc.kD, kc.kW, kc.kM,
+		kc.bA, kc.bB, kc.bC, kc.bX, kc.bY, kc.bZ,
+		kc.bS, kc.bD, kc.bW, kc.bM,
 	}
 	for i, idx := range axisIndices {
-		if idx < 0 {
+		if idx >= 15 && idx <= 24 {
 			out[i] = handleAxisBtn(idx)
+		} else {
+			out[i] = getBtn(idx)
 		}
 	}
 
 	return out
 }
 
+type CommandSpec struct {
+	Cmd            string
+	Time           int32
+	BufTime        int32
+	BufferHitpause bool
+	BufferPauseend bool
+	StepTime       int32
+}
+
 type KeyConfig struct {
-	Joy, dU, dD, dL, dR, kA, kB, kC, kX, kY, kZ, kS, kD, kW, kM int
-	GUID                                                        string
-	isInitialized                                               bool
+	Joy                                                    int
+	dU, dD, dL, dR, bA, bB, bC, bX, bY, bZ, bS, bD, bW, bM int
+	isInitialized                                          bool
+	rumbleOn                                               bool
+	GUID                                                   string
+}
+
+func (kc *KeyConfig) set(v [14]int) {
+	kc.dU = v[0]
+	kc.dD = v[1]
+	kc.dL = v[2]
+	kc.dR = v[3]
+	kc.bA = v[4]
+	kc.bB = v[5]
+	kc.bC = v[6]
+	kc.bX = v[7]
+	kc.bY = v[8]
+	kc.bZ = v[9]
+	kc.bS = v[10]
+	kc.bD = v[11]
+	kc.bW = v[12]
+	kc.bM = v[13]
 }
 
 func (kc *KeyConfig) swap(kc2 *KeyConfig) {
-	// joy := kc.Joy
-	dD := kc.dD
-	dL := kc.dL
-	dR := kc.dR
-	dU := kc.dU
-	kA := kc.kA
-	kB := kc.kB
-	kC := kc.kC
-	kD := kc.kD
-	kW := kc.kW
-	kX := kc.kX
-	kY := kc.kY
-	kZ := kc.kZ
-	kM := kc.kM
-	kS := kc.kS
+	joy := kc.Joy
+	// dD := kc.dD
+	// dL := kc.dL
+	// dR := kc.dR
+	// dU := kc.dU
+	// bA := kc.bA
+	// bB := kc.bB
+	// bC := kc.bC
+	// bD := kc.bD
+	// bW := kc.bW
+	// bX := kc.bX
+	// bY := kc.bY
+	// bZ := kc.bZ
+	// bM := kc.bM
+	// bS := kc.bS
 
-	// kc.Joy = kc2.Joy
-	kc.dD = kc2.dD
-	kc.dL = kc2.dL
-	kc.dR = kc2.dR
-	kc.dU = kc2.dU
-	kc.kA = kc2.kA
-	kc.kB = kc2.kB
-	kc.kC = kc2.kC
-	kc.kD = kc2.kD
-	kc.kW = kc2.kW
-	kc.kX = kc2.kX
-	kc.kY = kc2.kY
-	kc.kZ = kc2.kZ
-	kc.kM = kc2.kM
-	kc.kS = kc2.kS
+	kc.Joy = kc2.Joy
+	// kc.dD = kc2.dD
+	// kc.dL = kc2.dL
+	// kc.dR = kc2.dR
+	// kc.dU = kc2.dU
+	// kc.bA = kc2.bA
+	// kc.bB = kc2.bB
+	// kc.bC = kc2.bC
+	// kc.bD = kc2.bD
+	// kc.bW = kc2.bW
+	// kc.bX = kc2.bX
+	// kc.bY = kc2.bY
+	// kc.bZ = kc2.bZ
+	// kc.bM = kc2.bM
+	// kc.bS = kc2.bS
 
-	// kc2.Joy = joy
-	kc2.dD = dD
-	kc2.dL = dL
-	kc2.dR = dR
-	kc2.dU = dU
-	kc2.kA = kA
-	kc2.kB = kB
-	kc2.kC = kC
-	kc2.kD = kD
-	kc2.kW = kW
-	kc2.kX = kX
-	kc2.kY = kY
-	kc2.kZ = kZ
-	kc2.kM = kM
-	kc2.kS = kS
+	kc2.Joy = joy
+	// kc2.dD = dD
+	// kc2.dL = dL
+	// kc2.dR = dR
+	// kc2.dU = dU
+	// kc2.bA = bA
+	// kc2.bB = bB
+	// kc2.bC = bC
+	// kc2.bD = bD
+	// kc2.bW = bW
+	// kc2.bX = bX
+	// kc2.bY = bY
+	// kc2.bZ = bZ
+	// kc2.bM = bM
+	// kc2.bS = bS
 
 	kc.isInitialized = true
 	kc2.isInitialized = true
 }
 
-/*
-func (kc KeyConfig) U() bool { return JoystickState(kc.Joy, kc.dU) }
-func (kc KeyConfig) D() bool { return JoystickState(kc.Joy, kc.dD) }
-func (kc KeyConfig) L() bool { return JoystickState(kc.Joy, kc.dL) }
-func (kc KeyConfig) R() bool { return JoystickState(kc.Joy, kc.dR) }
-func (kc KeyConfig) a() bool { return JoystickState(kc.Joy, kc.kA) }
-func (kc KeyConfig) b() bool { return JoystickState(kc.Joy, kc.kB) }
-func (kc KeyConfig) c() bool { return JoystickState(kc.Joy, kc.kC) }
-func (kc KeyConfig) x() bool { return JoystickState(kc.Joy, kc.kX) }
-func (kc KeyConfig) y() bool { return JoystickState(kc.Joy, kc.kY) }
-func (kc KeyConfig) z() bool { return JoystickState(kc.Joy, kc.kZ) }
-func (kc KeyConfig) s() bool { return JoystickState(kc.Joy, kc.kS) }
-func (kc KeyConfig) d() bool { return JoystickState(kc.Joy, kc.kD) }
-func (kc KeyConfig) w() bool { return JoystickState(kc.Joy, kc.kW) }
-func (kc KeyConfig) m() bool { return JoystickState(kc.Joy, kc.kM) }
-*/
-
-type InputBits int32
+type InputBits int16
 
 const (
 	IB_PU InputBits = 1 << iota
@@ -537,102 +453,59 @@ func (ir *InputReader) Reset() {
 	*ir = InputReader{}
 }
 
-func (ir *InputReader) LocalInput(in int, script bool) [14]bool {
-	var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
-
+func (ir *InputReader) LocalInput(in int) [14]bool {
 	// Keyboard
+	var keyIn [14]bool
 	if in < len(sys.keyConfig) {
-		joy := sys.keyConfig[in].Joy
-		if joy < 0 {
-			buttons := ControllerState(sys.keyConfig[in])
-			U = buttons[0]
-			D = buttons[1]
-			L = buttons[2]
-			R = buttons[3]
-			a = buttons[4]
-			b = buttons[5]
-			c = buttons[6]
-			x = buttons[7]
-			y = buttons[8]
-			z = buttons[9]
-			s = buttons[10]
-			d = buttons[11]
-			w = buttons[12]
-			m = buttons[13]
-		}
-		/*
-			U = sys.keyConfig[in].U()
-			D = sys.keyConfig[in].D()
-			L = sys.keyConfig[in].L()
-			R = sys.keyConfig[in].R()
-			a = sys.keyConfig[in].a()
-			b = sys.keyConfig[in].b()
-			c = sys.keyConfig[in].c()
-			x = sys.keyConfig[in].x()
-			y = sys.keyConfig[in].y()
-			z = sys.keyConfig[in].z()
-			s = sys.keyConfig[in].s()
-			d = sys.keyConfig[in].d()
-			w = sys.keyConfig[in].w()
-			m = sys.keyConfig[in].m()
-		*/
+		keyIn = GetKeyboardState(sys.keyConfig[in])
 	}
 
 	// Joystick
+	var joyIn [14]bool
 	if in < len(sys.joystickConfig) {
-		joy := sys.joystickConfig[in].Joy
-		if joy >= 0 {
-			buttons := ControllerState(sys.joystickConfig[in])
-			U = U || buttons[0] // Does not override keyboard
-			D = D || buttons[1]
-			L = L || buttons[2]
-			R = R || buttons[3]
-			a = a || buttons[4]
-			b = b || buttons[5]
-			c = c || buttons[6]
-			x = x || buttons[7]
-			y = y || buttons[8]
-			z = z || buttons[9]
-			s = s || buttons[10]
-			d = d || buttons[11]
-			w = w || buttons[12]
-			m = m || buttons[13]
-		}
+		joyIn = GetJoystickState(sys.joystickConfig[in])
 	}
 
-	/*
-		if in < len(sys.joystickConfig) {
-			joyS := sys.joystickConfig[in].Joy
-			if joyS >= 0 {
-				U = U || sys.joystickConfig[in].U() // Does not override keyboard
-				D = D || sys.joystickConfig[in].D()
-				L = L || sys.joystickConfig[in].L()
-				R = R || sys.joystickConfig[in].R()
-				a = a || sys.joystickConfig[in].a()
-				b = b || sys.joystickConfig[in].b()
-				c = c || sys.joystickConfig[in].c()
-				x = x || sys.joystickConfig[in].x()
-				y = y || sys.joystickConfig[in].y()
-				z = z || sys.joystickConfig[in].z()
-				s = s || sys.joystickConfig[in].s()
-				d = d || sys.joystickConfig[in].d()
-				w = w || sys.joystickConfig[in].w()
-				m = m || sys.joystickConfig[in].m()
-			}
-		}
-	*/
+	// Merge both
+	U := keyIn[0] || joyIn[0]
+	D := keyIn[1] || joyIn[1]
+	L := keyIn[2] || joyIn[2]
+	R := keyIn[3] || joyIn[3]
+	a := keyIn[4] || joyIn[4]
+	b := keyIn[5] || joyIn[5]
+	c := keyIn[6] || joyIn[6]
+	x := keyIn[7] || joyIn[7]
+	y := keyIn[8] || joyIn[8]
+	z := keyIn[9] || joyIn[9]
+	s := keyIn[10] || joyIn[10]
+	d := keyIn[11] || joyIn[11]
+	w := keyIn[12] || joyIn[12]
+	m := keyIn[13] || joyIn[13]
 
-	// Button assist is checked locally so that the sent inputs are already processed
+	// Apply button assist
+	// Checked locally so that network inputs are processed before being sent
 	if sys.cfg.Input.ButtonAssist {
-		if script {
-			ir.ButtonAssistBuffer = [9]bool{}
-		} else {
-			result := ir.ButtonAssistCheck([9]bool{a, b, c, x, y, z, s, d, w})
-			a, b, c, x, y, z, s, d, w = result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8]
-		}
+		result := ir.ButtonAssistCheck([9]bool{a, b, c, x, y, z, s, d, w})
+		a, b, c, x, y, z, s, d, w = result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8]
 	}
 
 	return [14]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+}
+
+func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
+	if in < 0 || in >= len(sys.joystickConfig) {
+		return [6]int8{}
+	}
+
+	joy := sys.joystickConfig[in].Joy
+	if joy < 0 || joy >= len(input.controllerstate) {
+		return [6]int8{}
+	}
+	if input.controllerstate[joy] == nil {
+		return [6]int8{}
+	}
+
+	return input.controllerstate[joy].Axes
 }
 
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
@@ -781,26 +654,40 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 }
 
 // Add extra frame of leniency when checking button presses
-func (ir *InputReader) ButtonAssistCheck(curr [9]bool) [9]bool {
+func (ir *InputReader) ButtonAssistCheck(current [9]bool) [9]bool {
 	var result [9]bool
 
-	// Check if any button was pressed in the previous frame
-	prev := false
+	// Disable assist during pauses and screenpack inputs
+	if sys.paused || !sys.middleOfMatch() {
+		// Consume any buffer leftovers so we don't drop inputs when pausing
+		// TODO: This will also mean pressing a button then opening the menu in the next frame can select an option. However that is a separate issue
+		// Disabling because this may bring more trouble than it's worth at the moment
+		//for i := range ir.ButtonAssistBuffer {
+		//	result[i] = current[i] || ir.ButtonAssistBuffer[i]
+		//	ir.ButtonAssistBuffer[i] = false
+		//}
+		//return result
+		ir.ButtonAssistBuffer = [9]bool{}
+		return current
+	}
+
+	// Check if any button was held in the previous frame
+	prevAny := false
 	for i := range ir.ButtonAssistBuffer {
 		if ir.ButtonAssistBuffer[i] {
-			prev = true
+			prevAny = true
 			break
 		}
 	}
 
-	// Check both current and previous frame if any button was pressed in the previous frame
-	// Otherwise just use the previous frame's buttons
+	// If any, check button inputs in both the current and previous frames
+	// Otherwise check only the previous frame
 	for i := range ir.ButtonAssistBuffer {
-		result[i] = ir.ButtonAssistBuffer[i] || (curr[i] && prev)
+		result[i] = ir.ButtonAssistBuffer[i] || (current[i] && prevAny)
 	}
 
 	// Save current frame's buttons to be checked in the next frame
-	ir.ButtonAssistBuffer = curr
+	ir.ButtonAssistBuffer = current
 
 	return result
 }
@@ -1996,9 +1883,13 @@ func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 	return false
 }
 
+// This defines the number of frames to store for the net buffer inputs (digital and analog)
+const NETBUF_NUM_FRAMES int32 = 32
+
 // NetBuffer holds the inputs that are sent between players
 type NetBuffer struct {
-	buf              [32]InputBits
+	buf              [NETBUF_NUM_FRAMES]InputBits
+	axisBuf          [NETBUF_NUM_FRAMES][6]int8
 	curT, inpT, senT int32
 	InputReader      *InputReader
 }
@@ -2016,8 +1907,9 @@ func (nb *NetBuffer) reset(time int32) {
 
 // Convert local player's key inputs into input bits for sending
 func (nb *NetBuffer) writeNetBuffer(in int) {
-	if nb.inpT-nb.curT < 32 {
-		nb.buf[nb.inpT&31].KeysToBits(nb.InputReader.LocalInput(in, false))
+	if nb.inpT-nb.curT < NETBUF_NUM_FRAMES {
+		nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)].KeysToBits(nb.InputReader.LocalInput(in))
+		nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = nb.InputReader.LocalAnalogInput(in)
 		nb.inpT++
 	}
 }
@@ -2025,32 +1917,46 @@ func (nb *NetBuffer) writeNetBuffer(in int) {
 // Read input bits from the net buffer
 func (nb *NetBuffer) readNetBuffer() [14]bool {
 	if nb.curT < nb.inpT {
-		return nb.buf[nb.curT&31].BitsToKeys()
+		return nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)].BitsToKeys()
 	}
 	return [14]bool{}
 }
 
+func (nb *NetBuffer) readNetBufferAnalog() [6]int8 {
+	if nb.curT < nb.inpT {
+		return nb.axisBuf[nb.curT&(NETBUF_NUM_FRAMES-1)]
+	}
+	return [6]int8{}
+}
+
 // NetConnection manages the communication between players
 type NetConnection struct {
-	ln           *net.TCPListener
-	conn         *net.TCPConn
-	st           NetState
-	sendEnd      chan bool
-	recvEnd      chan bool
-	buf          [MaxPlayerNo]NetBuffer
-	locIn        int
-	remIn        int
-	time         int32
-	stoppedcnt   int32
-	delay        int32
-	recording    *os.File
-	host         bool
-	preFightTime int32
+	ln               *net.TCPListener
+	conn             *net.TCPConn
+	st               NetState
+	sendEnd          chan bool
+	recvEnd          chan bool
+	buf              [MaxSimul * 2]NetBuffer // We skip attached characters here because they never have human inputs
+	locIn            int
+	remIn            int
+	time             int32
+	stoppedcnt       int32
+	delay            int32
+	recording        *os.File
+	host             bool
+	preMatchTime     int32
+	closing          chan struct{}
+	closeOnce        sync.Once
+	uiInputDebounced bool
 }
 
 func NewNetConnection() *NetConnection {
-	nc := &NetConnection{st: NS_Stop,
-		sendEnd: make(chan bool, 1), recvEnd: make(chan bool, 1)}
+	nc := &NetConnection{
+		st:      NS_Stop,
+		sendEnd: make(chan bool, 1),
+		recvEnd: make(chan bool, 1),
+		closing: make(chan struct{}),
+	}
 	nc.sendEnd <- true
 	nc.recvEnd <- true
 
@@ -2061,7 +1967,32 @@ func NewNetConnection() *NetConnection {
 	return nc
 }
 
+func (nc *NetConnection) isClosing() bool {
+	if nc == nil || nc.closing == nil {
+		return true
+	}
+	select {
+	case <-nc.closing:
+		return true
+	default:
+		return false
+	}
+}
+
 func (nc *NetConnection) Close() {
+	if nc == nil {
+		return
+	}
+	// Ensure connect/accept goroutines stop retrying/handshaking.
+	nc.closeOnce.Do(func() {
+		if nc.closing != nil {
+			close(nc.closing)
+		}
+	})
+	// Ensure send/recv goroutines can exit even if they have nothing to write.
+	if nc.st == NS_Playing {
+		nc.st = NS_End
+	}
 	if nc.ln != nil {
 		nc.ln.Close()
 		nc.ln = nil
@@ -2080,6 +2011,7 @@ func (nc *NetConnection) Close() {
 		nc.recvEnd = nil
 	}
 	nc.conn = nil
+	nc.uiInputDebounced = false
 }
 
 func (nc *NetConnection) GetHostGuestRemap() (host, guest int) {
@@ -2119,20 +2051,32 @@ func (nc *NetConnection) Accept(port string) error {
 	nc.conn = nil // Make sure this is a new connection
 	nc.locIn, nc.remIn = nc.GetHostGuestRemap()
 
-	go func() {
-		defer nc.ln.Close()
+	lnLocal := nc.ln
+	SafeGo(func() {
+		defer lnLocal.Close()
 
-		tempConn, err := nc.ln.AcceptTCP()
+		tempConn, err := lnLocal.AcceptTCP()
 		if err != nil {
 			return
 		}
+
+		if nc.isClosing() {
+			tempConn.Close()
+			return
+		}
+
+		// Don't allow the handshake to block forever (important when shutting down).
+		_ = tempConn.SetDeadline(time.Now().Add(2 * time.Second))
 
 		if sys.cfg.Netplay.RollbackNetcode {
 			sys.rollback.session.remoteIp = tempConn.RemoteAddr().(*net.TCPAddr).IP.String()
 		}
 
 		//Send handshake
-		tempConn.Write([]byte("IKEMENGO"))
+		if _, err := tempConn.Write([]byte("IKEMENGO")); err != nil {
+			tempConn.Close()
+			return
+		}
 
 		// Wait for client acknowledgment
 		ack := make([]byte, 8) // Length of our "password"
@@ -2142,9 +2086,16 @@ func (nc *NetConnection) Accept(port string) error {
 			return
 		}
 
+		// Handshake complete; clear deadlines for normal play.
+		_ = tempConn.SetDeadline(time.Time{})
+
 		// Handshake complete. Make temp connection permanent
+		if nc.isClosing() {
+			tempConn.Close()
+			return
+		}
 		nc.conn = tempConn
-	}()
+	})
 
 	return nil
 }
@@ -2154,15 +2105,26 @@ func (nc *NetConnection) Connect(server, port string) {
 	nc.conn = nil // Make sure this is a new connection
 	nc.remIn, nc.locIn = nc.GetHostGuestRemap()
 
-	go func() {
+	SafeGo(func() {
+		d := net.Dialer{Timeout: 1 * time.Second}
 		for {
-			tempConn, err := net.Dial("tcp", server+":"+port)
+			if nc.isClosing() {
+				return
+			}
+			tempConn, err := d.Dial("tcp", server+":"+port)
 			if err != nil {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 
 			tcpConn := tempConn.(*net.TCPConn)
+			if nc.isClosing() {
+				tcpConn.Close()
+				return
+			}
+
+			// Don't allow the handshake to block forever (important when shutting down).
+			_ = tcpConn.SetDeadline(time.Now().Add(2 * time.Second))
 
 			// Wait for host handshake
 			buf := make([]byte, 8)
@@ -2174,17 +2136,39 @@ func (nc *NetConnection) Connect(server, port string) {
 			}
 
 			// Send acknowledgment
-			tcpConn.Write([]byte("IKEMENGO"))
+			if _, err := tcpConn.Write([]byte("IKEMENGO")); err != nil {
+				tcpConn.Close()
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			// Handshake complete; clear deadlines for normal play.
+			_ = tcpConn.SetDeadline(time.Time{})
 
 			// Handshake complete. Make temp connection permanent
+			if nc.isClosing() {
+				tcpConn.Close()
+				return
+			}
 			nc.conn = tcpConn
 			return
 		}
-	}()
+	})
 }
 
 func (nc *NetConnection) IsConnected() bool {
-	return nc != nil && nc.conn != nil
+	if nc == nil {
+		return false
+	}
+	connected := nc.conn != nil
+	// Stop a held button from registering as a fresh press and auto-accepting the first menu.
+	if connected && !nc.uiInputDebounced {
+		nc.uiInputDebounced = true
+		sys.uiResetTokenGuard()
+	} else if !connected {
+		nc.uiInputDebounced = false
+	}
+	return connected
 }
 
 func (nc *NetConnection) readNetInput(i int) [14]bool {
@@ -2194,9 +2178,16 @@ func (nc *NetConnection) readNetInput(i int) [14]bool {
 	return [14]bool{}
 }
 
+func (nc *NetConnection) readNetInputAnalog(i int) [6]int8 {
+	if i >= 0 && i < len(nc.buf) {
+		return nc.buf[sys.inputRemap[i]].readNetBufferAnalog()
+	}
+	return [6]int8{}
+}
+
 func (nc *NetConnection) AnyButton() bool {
 	for _, nb := range nc.buf {
-		if nb.buf[nb.curT&31]&IB_anybutton != 0 {
+		if nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)]&IB_anybutton != 0 {
 			return true
 		}
 	}
@@ -2224,6 +2215,38 @@ func (nc *NetConnection) end() {
 	nc.Close()
 }
 
+func (nc *NetConnection) readI8() (int8, error) {
+	b := [1]byte{}
+	if _, err := nc.conn.Read(b[:]); err != nil {
+		return 0, err
+	}
+	return int8(b[0]), nil
+}
+
+func (nc *NetConnection) writeI8(i8 int8) error {
+	b := [...]byte{byte(i8)}
+	if _, err := nc.conn.Write(b[:]); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (nc *NetConnection) readI16() (int16, error) {
+	b := [2]byte{}
+	if _, err := nc.conn.Read(b[:]); err != nil {
+		return 0, err
+	}
+	return int16(b[0]) | int16(b[1])<<8, nil
+}
+
+func (nc *NetConnection) writeI16(i16 int16) error {
+	b := [...]byte{byte(i16), byte(i16 >> 8)}
+	if _, err := nc.conn.Write(b[:]); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (nc *NetConnection) readI32() (int32, error) {
 	b := [4]byte{}
 	if _, err := nc.conn.Read(b[:]); err != nil {
@@ -2245,6 +2268,8 @@ func (nc *NetConnection) Synchronize() error {
 		return Error("Cannot connect to the other player")
 	}
 	nc.Stop()
+
+	// Synchronize to host's random seed
 	var seed int32
 	if nc.host {
 		seed = Random()
@@ -2258,23 +2283,29 @@ func (nc *NetConnection) Synchronize() error {
 		}
 	}
 	Srand(seed)
-	var pfTime int32
+
+	// Synchronize to host's pre-match time
+	var pmTime int32
 	if nc.host {
-		pfTime = sys.preFightTime
-		if err := nc.writeI32(pfTime); err != nil {
+		pmTime = sys.preMatchTime
+		if err := nc.writeI32(pmTime); err != nil {
 			return err
 		}
 	} else {
 		var err error
-		if pfTime, err = nc.readI32(); err != nil {
+		if pmTime, err = nc.readI32(); err != nil {
 			return err
 		}
 	}
-	nc.preFightTime = pfTime
+	nc.preMatchTime = pmTime
+
+	// Write seed and pre-match time to replay file
 	if nc.recording != nil {
 		binary.Write(nc.recording, binary.LittleEndian, &seed)
-		binary.Write(nc.recording, binary.LittleEndian, &pfTime)
+		binary.Write(nc.recording, binary.LittleEndian, &pmTime)
 	}
+
+	// Verify connection time synchronization
 	if err := nc.writeI32(nc.time); err != nil {
 		return err
 	}
@@ -2286,38 +2317,71 @@ func (nc *NetConnection) Synchronize() error {
 	if sys.rollback.session != nil {
 		sys.rollback.session.netTime = nc.time
 	}
+
+	// Reset local and remote input buffers for the current time
 	nc.buf[nc.locIn].reset(nc.time)
 	nc.buf[nc.remIn].reset(nc.time)
 	nc.st = NS_Playing
+
+	// Start sending inputs to remote peer in a goroutine
 	<-nc.sendEnd
 	go func(nb *NetBuffer) {
-		defer func() { nc.sendEnd <- true }()
+		defer func() {
+			nc.sendEnd <- true
+		}()
 		for nc.st == NS_Playing {
+			// Check if there are unsent frames
 			if nb.senT < nb.inpT {
-				if err := nc.writeI32(int32(nb.buf[nb.senT&31])); err != nil {
+				// Write digital inputs
+				if err := nc.writeI16(int16(nb.buf[nb.senT&(NETBUF_NUM_FRAMES-1)])); err != nil {
 					nc.st = NS_Error
 					return
+				} else {
+					// Write analog inputs
+					for j := 0; j < len(nb.axisBuf[nb.senT&(NETBUF_NUM_FRAMES-1)]); j++ {
+						if err = nc.writeI8(nb.axisBuf[nb.senT&(NETBUF_NUM_FRAMES-1)][j]); err != nil {
+							nc.st = NS_Error
+							return
+						}
+					}
 				}
 				nb.senT++
 			}
 			time.Sleep(time.Millisecond)
 		}
-		nc.writeI32(-1)
+		// Write termination signal to indicate no more input frames
+		nc.writeI16(-1)
 	}(&nc.buf[nc.locIn])
+
+	// Start receiving inputs from remote peer in a goroutine
 	<-nc.recvEnd
 	go func(nb *NetBuffer) {
-		defer func() { nc.recvEnd <- true }()
+		defer func() {
+			nc.recvEnd <- true
+		}()
 		for nc.st == NS_Playing {
-			if nb.inpT-nb.curT < 32 {
-				if tmp, err := nc.readI32(); err != nil {
+			// Check if there is space in the input buffer
+			if nb.inpT-nb.curT < NETBUF_NUM_FRAMES {
+				if tmp, err := nc.readI16(); err != nil {
 					nc.st = NS_Error
 					return
 				} else {
-					nb.buf[nb.inpT&31] = InputBits(tmp)
+					// Read digital inputs
+					nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = InputBits(tmp)
 					if tmp < 0 {
+						// If remote sent termination signal
 						nc.st = NS_Stopped
 						return
 					} else {
+						// Read analog inputs
+						for j := 0; j < len(nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)]); j++ {
+							if tmp2, err := nc.readI8(); err != nil {
+								nc.st = NS_Error
+								return
+							} else {
+								nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)][j] = tmp2
+							}
+						}
 						nb.inpT++
 						nb.senT = nb.inpT
 					}
@@ -2325,14 +2389,22 @@ func (nc *NetConnection) Synchronize() error {
 			}
 			time.Sleep(time.Millisecond)
 		}
-		for tmp := int32(0); tmp != -1; {
+
+		// There may be padding for the axis buffer so safest to just change this.
+		for tmp := int16(0); tmp != -1; {
 			var err error
-			if tmp, err = nc.readI32(); err != nil {
+			if tmp, err = nc.readI16(); err != nil {
 				break
 			}
 		}
 	}(&nc.buf[nc.remIn])
+
+	// Update game state after synchronization
 	nc.Update()
+
+	// Log status
+	log.Printf("Network synchronized: seed=%d pmTime=%d time=%d host=%v", seed, pmTime, nc.time, nc.host)
+
 	return nil
 }
 
@@ -2340,6 +2412,7 @@ func (nc *NetConnection) Update() bool {
 	if nc.st != NS_Stopped {
 		nc.stoppedcnt = 0
 	}
+
 	if !sys.gameEnd {
 		switch nc.st {
 		case NS_Stopped:
@@ -2351,70 +2424,108 @@ func (nc *NetConnection) Update() bool {
 			fallthrough
 		case NS_Playing:
 			for {
+				// Determine the earliest frame that has been processed by both local and remote buffers
 				foo := Min(nc.buf[nc.locIn].senT, nc.buf[nc.remIn].senT)
+
+				// Calculate network delay difference between local and remote input buffers
 				tmp := nc.buf[nc.remIn].inpT + nc.delay>>3 - nc.buf[nc.locIn].inpT
+
+				// Adjust local buffer to synchronize with remote
 				if tmp >= 0 {
+					// Local buffer is behind. Advance it
 					nc.buf[nc.locIn].writeNetBuffer(0)
 					if nc.delay > 0 {
 						nc.delay--
 					}
 				} else if tmp < -1 {
+					// Local buffer is ahead. Increase delay to catch up
 					nc.delay += 4
 				}
+
+				// Break loop if we have reached the frame that both buffers have sent
 				if nc.time >= foo {
-					if sys.esc || !sys.await(sys.cfg.Config.Framerate) || nc.st != NS_Playing {
+					if sys.esc || !sys.await(sys.gameRenderSpeed()) || nc.st != NS_Playing {
 						break
 					}
 					continue
 				}
+
+				// Update current frame time for local and remote buffers
 				nc.buf[nc.locIn].curT = nc.time
 				nc.buf[nc.remIn].curT = nc.time
+
+				// Write inputs to replay file
 				if nc.recording != nil {
-					for i := 0; i < MaxSimul*2; i++ {
-						binary.Write(nc.recording, binary.LittleEndian, &nc.buf[i].buf[nc.time&31])
+					for i := range nc.buf {
+						ringIdx := nc.time & (NETBUF_NUM_FRAMES - 1)
+						binary.Write(nc.recording, binary.LittleEndian, &nc.buf[i].buf[ringIdx])
+						binary.Write(nc.recording, binary.LittleEndian, &nc.buf[i].axisBuf[ringIdx])
 					}
 				}
+
 				nc.time++
+
+				// Ensure local buffer writes any remaining frames
 				if nc.time >= foo {
 					nc.buf[nc.locIn].writeNetBuffer(0)
 				}
+
 				break
 			}
 		case NS_End, NS_Error:
 			sys.esc = true
 		}
 	}
+
 	if sys.esc {
 		nc.end()
 	}
+
 	return !sys.gameEnd
 }
 
 type ReplayFile struct {
-	f      *os.File
-	ibit   [MaxPlayerNo]InputBits
-	pfTime int32
+	file         *os.File
+	ibit         [MaxSimul * 2]InputBits
+	iaxes        [MaxSimul * 2][6]int8
+	preMatchTime int32
 }
 
 func OpenReplayFile(filename string) *ReplayFile {
-	rf := &ReplayFile{}
-	rf.f, _ = os.Open(filename)
-	return rf
+	rf, err := os.Open(filename)
+	if err != nil {
+		log.Printf("Failed to open replay file %s: %v", filename, err)
+		return nil
+	}
+	log.Printf("Replay file opened: %s", filename)
+	return &ReplayFile{file: rf}
 }
 
 func (rf *ReplayFile) Close() {
-	if rf.f != nil {
-		rf.f.Close()
-		rf.f = nil
+	if rf.file != nil {
+		rf.file.Close()
+		rf.file = nil
 	}
 }
 
 // Read input buttons from replay input
-func (rf *ReplayFile) readReplayFile(i int) [14]bool {
+func (rf *ReplayFile) readReplayInput(i int) [14]bool {
 	if i >= 0 && i < len(rf.ibit) {
 		return rf.ibit[sys.inputRemap[i]].BitsToKeys()
 	}
 	return [14]bool{}
+}
+
+func (rf *ReplayFile) readReplayInputAnalog(i int) [6]int8 {
+	if i >= 0 && i < len(rf.ibit) {
+		remap := sys.inputRemap[i] // we'll be using this a lot
+
+		// New replay file, read in the axes too
+		if remap >= 0 && remap < len(rf.iaxes) {
+			return rf.iaxes[remap]
+		}
+	}
+	return [6]int8{}
 }
 
 func (rf *ReplayFile) AnyButton() bool {
@@ -2426,34 +2537,64 @@ func (rf *ReplayFile) AnyButton() bool {
 	return false
 }
 
+// Read system variables from replay file
 func (rf *ReplayFile) Synchronize() {
-	if rf.f != nil {
+	if rf.file != nil {
+		// Read random seed
 		var seed int32
-		if binary.Read(rf.f, binary.LittleEndian, &seed) == nil {
+		if err := binary.Read(rf.file, binary.LittleEndian, &seed); err == nil {
 			Srand(seed)
 		}
-		var pfTime int32
-		if binary.Read(rf.f, binary.LittleEndian, &pfTime) == nil {
-			rf.pfTime = pfTime
+
+		// Read pre-match time
+		var pmTime int32
+		if err := binary.Read(rf.file, binary.LittleEndian, &pmTime); err == nil {
+			rf.preMatchTime = pmTime
+			// Advance first frame
 			rf.Update()
 		}
+
+		// Log status
+		log.Printf("Replay synchronized: seed=%d pmTime=%d", seed, pmTime)
 	}
 }
 
+// Read a chunk of inputs from the replay file
 func (rf *ReplayFile) Update() bool {
-	if rf.f == nil {
+	if rf.file == nil {
 		sys.esc = true
 	} else {
 		if sys.oldNextAddTime > 0 {
+			// Clear everything first
 			for i := range rf.ibit {
 				rf.ibit[i] = 0
 			}
-			err := binary.Read(rf.f, binary.LittleEndian, rf.ibit[:MaxSimul*2])
-			if err != nil {
-				sys.esc = true
+			for i := 0; i < len(rf.iaxes); i++ {
+				for j := 0; j < len(rf.iaxes[i]); j++ {
+					rf.iaxes[i][j] = int8(0)
+				}
+			}
+
+			// Read each player at a time, in the order of digital inputs, followed by each analog axis
+			for i := 0; i < len(rf.ibit); i++ {
+				// Read digital input (pointer)
+				if err := binary.Read(rf.file, binary.LittleEndian, &rf.ibit[i]); err != nil {
+					log.Printf("Error while reading digital input for controller %d: %v", i, err)
+					sys.esc = true
+					break
+				}
+
+				// Read analog input (pointer to all at once)
+				if err := binary.Read(rf.file, binary.LittleEndian, &rf.iaxes[i]); err != nil {
+					log.Printf("Error while reading analog input for controller %d: %v", i, err)
+					sys.esc = true
+					break
+				}
 			}
 		}
+
 		if sys.esc {
+			log.Printf("Closing replay file")
 			rf.Close()
 		}
 	}
@@ -3090,7 +3231,7 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 		}
 
 		// Check ">" steps
-		if c.steps[i].greater && c.completed[i-1] && !c.completed[i] {
+		if c.steps[i].greater && i > 0 && len(c.steps) >= 2 && c.completed[i-1] && !c.completed[i] {
 			if c.GreaterCheckFail(i, ibuf) {
 				inputMatched = false
 				c.completed[i-1] = false
@@ -3142,7 +3283,7 @@ func (c *Command) Step(ibuf *InputBuffer, ai, isHelper, hpbuf, pausebuf bool, ex
 // Command List refers to the entire set of a character's commands
 // Each player has multiple lists: one with its own commands, and a copy of each other player's lists
 type CommandList struct {
-	Buffer                *InputBuffer // TODO: This should exist higher up in the character. Is probably here because of current menu implementation
+	Buffer                *InputBuffer
 	Names                 map[string]int
 	Commands              [][]Command // [name][commands]
 	DefaultTime           int32
@@ -3159,7 +3300,7 @@ func NewCommandList(cb *InputBuffer) *CommandList {
 		Buffer:                cb,
 		Names:                 make(map[string]int),
 		DefaultTime:           15,
-		DefaultStepTime:       -1, // Undefined. Later defaults to same as time. Maybe this should be 15 as well
+		DefaultStepTime:       -1, // Undefined. Later defaults to same as time
 		DefaultAutoGreater:    true,
 		DefaultBufferTime:     1,
 		DefaultBufferHitpause: true,
@@ -3168,65 +3309,88 @@ func NewCommandList(cb *InputBuffer) *CommandList {
 	}
 }
 
+// Compiles a command string and adds it to this CommandList using the provided spec.
+func (cl *CommandList) AddCommand(name string, spec CommandSpec) error {
+	if cl == nil {
+		return fmt.Errorf("AddCommand called on nil CommandList")
+	}
+
+	cmdstr := strings.TrimSpace(spec.Cmd)
+	if cmdstr == "" {
+		// Nothing to add, but not an error.
+		return nil
+	}
+
+	cm := newCommand()
+	cm.name = name
+
+	if err := cm.ReadCommandSymbols(cmdstr, NewCommandKeyRemap()); err != nil {
+		return err
+	}
+
+	cm.maxtime = spec.Time
+	cm.maxbuftime = spec.BufTime
+	cm.buffer_hitpause = spec.BufferHitpause
+	cm.buffer_pauseend = spec.BufferPauseend
+	cm.maxsteptime = spec.StepTime
+
+	cl.Add(*cm)
+	return nil
+}
+
 // Read inputs from the correct source (local, AI, net or replay) in order to update the input buffer
-func (cl *CommandList) InputUpdate(owner *Char, controller int, aiLevel float32, script bool) bool {
+func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	if cl.Buffer == nil {
 		return false
 	}
 
-	var aijam, flipbf bool
-	var ibit InputBits
-	var shifting [][2]int
-
-	// Get char parameters
-	if owner != nil {
-		//controller := owner.controller // We need this one as an argument because of currect script architecture
-		flipbf = owner.fbFlip
-		aijam = !owner.asf(ASF_noaibuttonjam)
-		ibit = owner.inputFlag
-		shifting = owner.inputShift
-	}
-
-	// With scripts we bypass most flags
-	if script {
-		flipbf = false
-		aijam = false
-		ibit = 0
-		shifting = nil
-	}
-
-	// This check is currently needed to prevent screenpack inputs from rapid firing
-	// Previously it was checked outside of screenpacks as well, but that caused 1 frame delay in several places of the code
-	// Such as making players wait one frame after creation to input anything or a continuous NoInput flag only resetting the buffer every two frames
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/1201 and https://github.com/ikemen-engine/Ikemen-GO/issues/2203
-	step := true
-	if script {
-		step = cl.Buffer.Bb != 0
-	}
-
 	isAI := controller < 0
 
+	// Needed for motif
+	hadStepped := cl.Buffer.Ub != 0 || cl.Buffer.Db != 0 || cl.Buffer.Lb != 0 || cl.Buffer.Rb != 0
+
 	var buttons [14]bool
+	var axes [6]float32
 
 	if isAI {
-		if aijam {
+		if char != nil && !char.asf(ASF_noaibuttonjam) {
 			// Since AI inputs use random numbers, we handle them locally to avoid desync
 			idx := ^controller
 			if idx >= 0 && idx < len(sys.aiInput) {
+				aiLevel := sys.aiLevel[char.playerNo]
 				sys.aiInput[idx].Update(aiLevel)
 				buttons = sys.aiInput[idx].Buttons()
+				char.analogAxes = [6]float32{0, 0, 0, 0, 0, 0}
 			}
 		}
 	} else if sys.replayFile != nil {
-		buttons = sys.replayFile.readReplayFile(controller)
+		buttons = sys.replayFile.readReplayInput(controller)
+		rawAxes := sys.replayFile.readReplayInputAnalog(controller)
+		axes = NormalizeAxes(&rawAxes)
 	} else if sys.netConnection != nil {
 		buttons = sys.netConnection.readNetInput(controller)
+		rawAxes := sys.netConnection.readNetInputAnalog(controller)
+		axes = NormalizeAxes(&rawAxes)
 	} else if sys.rollback.session != nil {
 		buttons = sys.rollback.readRollbackInput(controller)
+		rawAxes := sys.rollback.readRollbackInputAnalog(controller)
+		axes = NormalizeAxes(&rawAxes)
 	} else {
 		// If not AI, replay, or network, then it's a local human player
-		if controller < len(sys.inputRemap) {
-			buttons = cl.Buffer.InputReader.LocalInput(sys.inputRemap[controller], script)
+		if controller >= 0 {
+			if controller < len(sys.inputRemap) {
+				in := sys.inputRemap[controller] // remapped input index/config
+				buttons = cl.Buffer.InputReader.LocalInput(in)
+				// Keep analog axes in sync with the same remap used for digital inputs
+				if in >= 0 && in < len(sys.joystickConfig) &&
+					sys.joystickConfig[in].Joy >= 0 &&
+					sys.joystickConfig[in].Joy < input.GetMaxJoystickCount() &&
+					input.IsJoystickPresent(sys.joystickConfig[in].Joy) {
+					axes = input.GetJoystickAxes(sys.joystickConfig[in].Joy)
+				} else {
+					axes = [6]float32{0, 0, 0, 0, 0, 0}
+				}
+			}
 		}
 	}
 
@@ -3235,85 +3399,135 @@ func (cl *CommandList) InputUpdate(owner *Char, controller int, aiLevel float32,
 	a, b, c := buttons[4], buttons[5], buttons[6]
 	x, y, z := buttons[7], buttons[8], buttons[9]
 	s, d, w, m := buttons[10], buttons[11], buttons[12], buttons[13]
+	B, F := L, R
 
-	// AssertInput flags
-	// Skips button assist. Respects SOCD
-	if ibit > 0 {
-		U = U || ibit&IB_PU != 0
-		D = D || ibit&IB_PD != 0
-		L = L || ibit&IB_PL != 0
-		R = R || ibit&IB_PR != 0
-		a = a || ibit&IB_A != 0
-		b = b || ibit&IB_B != 0
-		c = c || ibit&IB_C != 0
-		x = x || ibit&IB_X != 0
-		y = y || ibit&IB_Y != 0
-		z = z || ibit&IB_Z != 0
-		s = s || ibit&IB_S != 0
-		d = d || ibit&IB_D != 0
-		w = w || ibit&IB_W != 0
-		m = m || ibit&IB_M != 0
+	// UI-only: let Left Stick drive U/D/L/R even if the player's config uses DPAD.
+	if char == nil {
+		thr := sys.cfg.Input.ControllerStickSensitivity
+		// LS_X (axes[0]), LS_Y (axes[1])
+		if axes[1] > thr {
+			D = true
+		} else if axes[1] < -thr {
+			U = true
+		}
+		if axes[0] > thr {
+			R = true
+		} else if axes[0] < -thr {
+			L = true
+		}
+		//B, F = L, R
+		// Apply SOCD resolution for UI too (same helper used for characters).
+		//U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+		//L, R = B, F
 	}
 
-	// Apply ShiftInput
-	if shifting != nil {
-		// Collect current input states and prepare remap states
-		inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
-		output := make([]bool, len(inputs))
-
-		// Use a map for fast lookup
-		swapMap := make(map[int]int)
-		for _, pair := range shifting {
-			src, dst := pair[0], pair[1]
-			swapMap[src] = dst
+	// Character-specific features
+	if char != nil {
+		// AssertInput flags
+		// Skips button assist. Respects SOCD
+		ibit := char.inputFlag
+		if ibit > 0 {
+			U = U || ibit&IB_PU != 0
+			D = D || ibit&IB_PD != 0
+			L = L || ibit&IB_PL != 0
+			R = R || ibit&IB_PR != 0
+			a = a || ibit&IB_A != 0
+			b = b || ibit&IB_B != 0
+			c = c || ibit&IB_C != 0
+			x = x || ibit&IB_X != 0
+			y = y || ibit&IB_Y != 0
+			z = z || ibit&IB_Z != 0
+			s = s || ibit&IB_S != 0
+			d = d || ibit&IB_D != 0
+			w = w || ibit&IB_W != 0
+			m = m || ibit&IB_M != 0
 		}
 
-		// Apply remapping logic to active keys
-		for i, active := range inputs {
-			if !active {
-				continue
+		// Apply ShiftInput
+		if char.inputShift != nil {
+			// Collect current input states and prepare remap states
+			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+			output := make([]bool, len(inputs))
+
+			// Use a map for fast lookup
+			swapMap := make(map[int]int)
+			for _, pair := range char.inputShift {
+				src, dst := pair[0], pair[1]
+				swapMap[src] = dst
 			}
-			// If current key has a remap, use it
-			if dst, ok := swapMap[i]; ok {
-				if dst >= 0 && dst < len(output) {
-					output[dst] = true // Apply remap to output
+
+			// Apply remapping logic to active keys
+			for i, active := range inputs {
+				if !active {
+					continue
 				}
-				// Negative dest disables input, so do nothing
-			} else {
-				output[i] = true // No remap, retain original input
+				// If current key has a remap, use it
+				if dst, ok := swapMap[i]; ok {
+					if dst >= 0 && dst < len(output) {
+						output[dst] = true // Apply remap to output
+					}
+					// Negative dest disables input, so do nothing
+				} else {
+					output[i] = true // No remap, retain original input
+				}
 			}
+
+			// Assign back to input variables
+			U, D, L, R = output[0], output[1], output[2], output[3]
+			a, b, c, x, y, z = output[4], output[5], output[6], output[7], output[8], output[9]
+			s, d, w, m = output[10], output[11], output[12], output[13]
 		}
 
-		// Assign back to input variables
-		U, D, L, R = output[0], output[1], output[2], output[3]
-		a, b, c, x, y, z = output[4], output[5], output[6], output[7], output[8], output[9]
-		s, d, w, m = output[10], output[11], output[12], output[13]
-	}
+		// Get B and F from L and R for SOCD resolution
+		if char.fbFlip {
+			B, F = R, L
+		} else {
+			B, F = L, R
+		}
 
-	// Get B and F from L and R for SOCD resolution
-	var B, F bool
-	if flipbf {
-		B, F = R, L
-	} else {
-		B, F = L, R
-	}
+		// Resolve SOCD for U/D and B/F
+		U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
 
-	// Resolve SOCD for U/D and B/F
-	U, D, B, F = cl.Buffer.InputReader.SocdResolution(U, D, B, F)
+		// Get L and R back from B and F
+		if char.fbFlip {
+			L, R = F, B
+		} else {
+			L, R = B, F
+		}
 
-	// Get L and R back from B and F
-	if flipbf {
-		L, R = F, B
-	} else {
-		L, R = B, F
+		// Update analog axes
+		for i := 0; i < len(axes); i++ {
+			char.analogAxes[i] = axes[i]
+		}
 	}
 
 	// Send final inputs to buffer
 	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m)
 
-	// Decide whether commands should be updated
-	// Normally they should, but script inputs need this check
-	return step
+	// This check is currently needed to prevent screenpack inputs from rapid firing
+	// It forces the command list update to wait one frame after a buffer reset
+	// Previously it was checked outside of screenpacks as well, but that caused 1 frame delay in several places of the code
+	// Such as making players wait one frame after creation to input anything or a continuous NoInput flag only resetting the buffer every two frames
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1201 and https://github.com/ikemen-engine/Ikemen-GO/issues/2203
+	if char == nil {
+		return hadStepped
+	}
+
+	return true
+}
+
+// Normalize from [-32768,32767] to [-1.0,1.0]
+func NormalizeAxes(axes *[6]int8) [6]float32 {
+	const MAX_VALUE float32 = 128.0
+	normalizedAxes := [6]float32{0, 0, 0, 0, 0, 0}
+	for i := 0; i < len(axes); i++ {
+		if (*axes)[i] < 0 {
+			normalizedAxes[i] = float32((*axes)[i]) / MAX_VALUE
+		} else {
+			normalizedAxes[i] = float32((*axes)[i]) / (MAX_VALUE - 1)
+		}
+	}
+	return normalizedAxes
 }
 
 // Assert commands with a given name for a given time
@@ -3448,6 +3662,64 @@ func (cl *CommandList) CopyList(src CommandList) {
 	}
 }
 
+// Checks raw controller tokens (A/B/X/Y, DP_*, LS_*, RS_*, LT/RT).
+// controllerIdx is the index in sys.commandLists (0-based).
+func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int) bool {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return false
+	}
+	idx, ok := StringToButtonLUT[token]
+	if !ok || idx == 25 { // "Not used"
+		return false
+	}
+	// Resolve controllerIdx -> physical joystick index
+	joyIdx := controllerIdx
+	if controllerIdx >= 0 {
+		in := controllerIdx
+		if controllerIdx < len(sys.inputRemap) {
+			m := sys.inputRemap[controllerIdx]
+			if m >= 0 {
+				in = m
+			}
+		}
+		if in >= 0 && in < len(sys.joystickConfig) && sys.joystickConfig[in].Joy >= 0 {
+			joyIdx = sys.joystickConfig[in].Joy
+		} else {
+			joyIdx = in
+		}
+	}
+
+	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() || !input.IsJoystickPresent(joyIdx) {
+		return false
+	}
+
+	// Axis tokens
+	if idx >= 15 && idx <= 24 {
+		axes := input.GetJoystickAxes(joyIdx)
+		btns := input.GetJoystickButtons(joyIdx)
+		// Determine active axis token (sticks first, then triggers)
+		active := CheckAxisForDpad(&axes, len(btns))
+		if active == "" {
+			active = CheckAxisForTrigger(&axes)
+		}
+		// Axis tokens are treated as "held" state checks here.
+		return active != "" && active == token
+	}
+
+	// Digital buttons / DPAD: direct state check.
+	buttons := input.GetJoystickButtons(joyIdx)
+	if len(buttons) == 0 {
+		return false
+	}
+	for i, b := range buttonOrder {
+		if int(b) == idx {
+			return i < len(buttons) && buttons[i] != 0
+		}
+	}
+	return false
+}
+
 /*
 func withoutTildeKey(k CommandKey) CommandKey {
 	if k >= CK_rU && k <= CK_rN {
@@ -3465,8 +3737,8 @@ func withoutTildeKey(k CommandKey) CommandKey {
 
 /*
 func autoGenerateExtendedCommand(originalCmd *Command) *Command {
-	// 対象コマンドか判定
-	// タメコマンド(/)や短すぎるコマンドは対象外
+	// Determine whether the command is eligible.
+	// Charge commands (/) and commands that are too short are excluded.
 	if len(originalCmd.cmd) < 3 {
 		return nil
 	}
@@ -3480,17 +3752,17 @@ func autoGenerateExtendedCommand(originalCmd *Command) *Command {
 		return nil
 	}
 
-	// 最初の方向キー入力を探す
+	// Find the first directional key input.
 	firstInputKey := originalCmd.cmd[0].key[0]
 
 	var repeatPattern []cmdElem
 	repeatPos := -1
 
-	// 2番目の要素からループを開始し、最初のキーと同じキーを含む要素を探す
+	// Starting from the second element, look for an element that contains the same key as the first.
 	for i := 1; i < len(originalCmd.cmd); i++ {
 		found := false
 		for _, k := range originalCmd.cmd[i].key {
-			// `~` や `$` を無視して純粋なキーが同じか比較
+			// Compare the raw key while ignoring ~ and $.
 			if withoutTildeKey(k) == withoutTildeKey(firstInputKey) {
 				found = true
 				break
@@ -3498,7 +3770,7 @@ func autoGenerateExtendedCommand(originalCmd *Command) *Command {
 		}
 		if found {
 			repeatPos = i
-			// 最初の入力から、それが再度現れる直前までをパターンとする
+			// Treat the sequence from the first input up to just before it reappears as the pattern.
 			repeatPattern = originalCmd.cmd[0:repeatPos]
 			break
 		}
@@ -3516,7 +3788,7 @@ func autoGenerateExtendedCommand(originalCmd *Command) *Command {
 		modifiedPattern[i].key = newKeys
 	}
 
-	// 2番目以降のキー入力を$Nに置き換える
+	// Replace the second and subsequent key inputs with $N.
 	if len(modifiedPattern) > 1 {
 		for i := 1; i < len(modifiedPattern); i++ {
 			elem := &modifiedPattern[i]
@@ -3524,17 +3796,17 @@ func autoGenerateExtendedCommand(originalCmd *Command) *Command {
 		}
 	}
 
-	// 自動生成コマンドを作成
+	// Build the auto-generated command.
 	newCmdSlice := make([]cmdElem, 0, len(originalCmd.cmd)+len(modifiedPattern))
 	newCmdSlice = append(newCmdSlice, modifiedPattern...)
 	newCmdSlice = append(newCmdSlice, originalCmd.cmd...)
 
-	// 新規Command構造体を生成
+	// Create a new Command struct.
 	generatedCmd := *originalCmd
 	generatedCmd.cmd = newCmdSlice
 	generatedCmd.held = make([]bool, len(generatedCmd.hold))
 
-	// 繰り返しパターンの入力数に応じて猶予フレーム数 を加算する
+	// Add "grace frames" (time extension) based on the number of inputs in the repeating pattern.
 	timeExtension := int32(len(modifiedPattern)) * 4
 	generatedCmd.maxtime += timeExtension
 

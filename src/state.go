@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	glfw "github.com/go-gl/glfw/v3.3/glfw"
+	"github.com/veandco/go-sdl2/sdl"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -28,7 +28,7 @@ func (cs Char) String() string {
 	Id                  :%d
 	HelperId            :%d
 	HelperIndex         :%d
-	ParentIndex         :%d
+	ParentId            :%d
 	PlayerNo            :%d
 	Teamside            :%d
 	AnimPN              :%d
@@ -42,7 +42,7 @@ func (cs Char) String() string {
 	HoIdx               :%d
 	Mctime              :%d
 	Targets             :%v
-	TargetsOfHitdef     :%v
+	HitdefTargets       :%v
 	Atktmp              :%d
 	Hittmp              :%d
 	Acttmp              :%d
@@ -55,9 +55,9 @@ func (cs Char) String() string {
 	Offset              :%v`,
 		cs.name, cs.redLife, cs.juggle, cs.life, cs.controller, cs.localcoord,
 		cs.localscl, cs.pos, cs.interPos, cs.oldPos, cs.vel, cs.facing,
-		cs.id, cs.helperId, cs.helperIndex, cs.parentIndex, cs.playerNo,
+		cs.id, cs.helperId, cs.helperIndex, cs.parentId, cs.playerNo,
 		cs.teamside, cs.animPN, cs.animNo, cs.lifeMax, cs.powerMax, cs.dizzyPoints,
-		cs.guardPoints, cs.fallTime, cs.clsnScale, cs.hoverIdx, cs.mctime, cs.targets, cs.hitdefTargetsBuffer,
+		cs.guardPoints, cs.fallTime, cs.clsnScale, cs.hoverIdx, cs.mctime, cs.targets, cs.hitdefTargets,
 		cs.atktmp, cs.hittmp, cs.acttmp, cs.minus, cs.groundAngle, cs.inheritJuggle,
 		cs.preserve, cs.cnsvar, cs.cnsfvar, cs.offset)
 	return str
@@ -82,7 +82,7 @@ func (gs *GameState) Checksum() int {
 }
 
 func (gs *GameState) String() (str string) {
-	str = fmt.Sprintf("GameTime %d CurRoundTime: %d\n", gs.gameTime, gs.curRoundTime)
+	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d CurPlayTime: %d\n", gs.matchTime, gs.curRoundTime, gs.curPlayTime)
 	str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
 	str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
 	str += fmt.Sprintf("bcVar: %v\n", gs.bcVar)
@@ -98,6 +98,8 @@ func (gs *GameState) String() (str string) {
 
 const MaxSaveStates = 8
 
+// TODO: System ought to be refactored so we don't need to keep track of and manually copy all of this
+// There could be an embedded MatchState struct in System that we shallow copied as a start
 type GameState struct {
 	// Identifiers
 	bytes []byte
@@ -107,25 +109,24 @@ type GameState struct {
 
 	// Selective copy of the system struct
 	randseed     int32
-	gameTime     int32
+	matchTime    int32
 	curRoundTime int32
+	curPlayTime  int32
 
-	projs          [MaxPlayerNo][]*Projectile
-	chars          [MaxPlayerNo][]*Char
-	charData       [MaxPlayerNo][]Char
-	explods        [MaxPlayerNo][]*Explod
-	explodsLayer0  [MaxPlayerNo][]int
-	explodsLayer1  [MaxPlayerNo][]int
-	explodsLayerN1 [MaxPlayerNo][]int
-	aiInput        [MaxPlayerNo]AiInput
-	inputRemap     [MaxPlayerNo]int
-	charList       CharList
+	chars      [MaxPlayerNo][]*Char
+	charData   [MaxPlayerNo][]Char
+	projs      [MaxPlayerNo][]*Projectile
+	explods    [MaxPlayerNo][]*Explod
+	chartexts  [MaxPlayerNo][]*TextSprite
+	aiInput    [MaxPlayerNo]AiInput
+	ffbParams  [MaxPlayerNo]ForceFeedbackParams
+	inputRemap [MaxPlayerNo]int
+	charList   CharList
 
 	aiLevel            [MaxPlayerNo]float32 // UIT
 	cam                Camera
 	allPalFX           *PalFX
 	bgPalFX            *PalFX
-	pause              int32
 	pausetime          int32
 	pausebg            bool
 	pauseendcmdbuftime int32
@@ -136,7 +137,7 @@ type GameState struct {
 	superpausebg       bool
 	superendcmdbuftime int32
 	superplayerno      int
-	superdarken        bool
+	superbrightness    float32
 
 	envShake            EnvShake
 	specialFlag         GlobalSpecialFlag // UIT
@@ -150,10 +151,9 @@ type GameState struct {
 	gameWidth, gameHeight   int32 // UIT
 	widthScale, heightScale float32
 	gameEnd, frameSkip      bool
-	brightness              int32
+	brightness              float32
+	brightnessOld           float32
 	maxRoundTime            int32 // UIT
-	team1VS2Life            float32
-	turnsRecoveryRate       float32
 	match                   int32 // UIT
 	round                   int32 // UIT
 	intro                   int32
@@ -164,11 +164,12 @@ type GameState struct {
 	matchWins, wins         [2]int32   // UIT
 	roundsExisted           [2]int32
 	draws                   int32
+	effectiveLoss           [2]bool
 	tmode                   [2]TeamMode // UIT
 	numSimul, numTurns      [2]int32    // UIT
 	esc                     bool
 	envcol_under            bool
-	nextCharId              int32
+	lastCharId              int32
 	tickCount               int
 	oldTickCount            int
 	tickCountF              float32
@@ -178,9 +179,10 @@ type GameState struct {
 	screenleft              float32
 	screenright             float32
 	xmin, xmax              float32
+	zmin, zmax              float32
 	winskipped              bool
-	paused, frameStepFlag   bool
 	roundResetFlg           bool
+	roundResetMatchStart    bool
 	reloadFlg               bool
 	reloadStageFlg          bool
 	reloadLifebarFlg        bool
@@ -195,7 +197,7 @@ type GameState struct {
 	zoomCameraBound         bool
 	zoomPos                 [2]float32
 	finishType              FinishType // UIT
-	waitdown                int32
+	winwaittime             int32
 	slowtime                int32
 
 	changeStateNest int32
@@ -204,6 +206,8 @@ type GameState struct {
 	keyConfig       []KeyConfig
 	joystickConfig  []KeyConfig
 	lifebar         Lifebar
+	motif           Motif
+	storyboard      Storyboard
 	cgi             [MaxPlayerNo]CharGlobalInfo
 
 	//accel                   float32
@@ -211,19 +215,20 @@ type GameState struct {
 	//debugDisplay            bool
 
 	// New 11/04/2022 all UIT
-	timerStart      int32
-	timerRounds     []int32
-	teamLeader      [2]int
-	stage           *Stage
-	postMatchFlg    bool
-	scoreStart      [2]float32
-	scoreRounds     [][2]float32
-	decisiveRound   [2]bool
-	sel             Select
-	stringPool      [MaxPlayerNo]StringPool
+	timerStart    int32
+	timerRounds   []int32
+	teamLeader    [2]int
+	stage         *Stage
+	postMatchFlg  bool
+	scoreStart    [2]float32
+	scoreRounds   [][2]float32
+	decisiveRound [2]bool
+	sel           Select
+	//stringPool      [MaxPlayerNo]StringPool // Only mutated while compiling
 	dialogueFlg     bool
 	gameMode        string
 	consecutiveWins [2]int32
+	firstAttack     [3]int
 	home            int
 
 	// Non UIT, but adding them anyway just because
@@ -236,7 +241,7 @@ type GameState struct {
 	playBgmFlg      bool
 
 	// Input
-	keyInput  glfw.Key
+	keyInput  sdl.Keycode
 	keyString string
 
 	// LifeBar
@@ -244,25 +249,21 @@ type GameState struct {
 
 	// Script
 	endMatch    bool
-	matchData   *lua.LTable
 	noSoundFlg  bool
 	continueFlg bool
 
 	stageLoopNo int
 
 	// 11/5/2022
-	fight        Fight
-	introSkipped bool
-	preFightTime int32
-	debugWC      *Char
+	introSkipCall bool
+	preMatchTime  int32
 
 	commandLists []*CommandList
 	luaTables    []*lua.LTable
 
-	loopBreak     bool
-	loopContinue  bool
-	brightnessOld int32
-	wintime       int32
+	loopBreak    bool
+	loopContinue bool
+	winposetime  int32
 
 	// Rollback
 	netTime int32
@@ -290,18 +291,20 @@ func (gs *GameState) LoadState(stateID int) {
 	gsp := &sys.loadPool
 
 	sys.randseed = gs.randseed
-	sys.gameTime = gs.gameTime
+	sys.matchTime = gs.matchTime
 	sys.curRoundTime = gs.curRoundTime // UIT
+	sys.curPlayTime = gs.curPlayTime
 
 	gs.loadCharData(a, gsp)
+	gs.loadProjectileData(a, gsp)
 	gs.loadExplodData(a, gsp)
+	gs.loadCharTextData(a)
 	sys.cam = gs.cam
 
 	gs.loadPauseData()
 	gs.loadSuperPauseData()
 
 	gs.loadPalFX(a)
-	gs.loadProjectileData(a, gsp)
 	sys.aiLevel = gs.aiLevel
 	sys.envShake = gs.envShake
 	sys.envcol_time = gs.envcol_time
@@ -315,11 +318,8 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.bcVar = arena.MakeSlice[BytecodeValue](a, len(gs.bcVar), len(gs.bcVar))
 	copy(sys.bcVar, gs.bcVar)
 
-	if sys.rollback.session != nil || sys.cfg.Netplay.Rollback.DesyncTestFrames > 0 {
-		if sys.cfg.Netplay.Rollback.SaveStageData {
-			sys.stage = gs.stage.Clone(a, gsp)
-		}
-	} else {
+	// Only try loading the stage if it was saved
+	if gs.stage != nil {
 		sys.stage = gs.stage.Clone(a, gsp)
 	}
 
@@ -337,13 +337,13 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.winType = gs.winType
 	sys.winTrigger = gs.winTrigger
 	sys.lastHitter = gs.lastHitter
-	sys.waitdown = gs.waitdown
+	sys.winwaittime = gs.winwaittime
 	sys.slowtime = gs.slowtime
 
 	sys.winskipped = gs.winskipped
 
 	sys.intro = gs.intro
-	sys.nextCharId = gs.nextCharId
+	sys.lastCharId = gs.lastCharId
 
 	sys.scrrect = gs.scrrect
 	sys.gameWidth = gs.gameWidth
@@ -353,8 +353,8 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.gameEnd = gs.gameEnd
 	sys.frameSkip = gs.frameSkip
 	sys.brightness = gs.brightness
+	sys.brightnessOld = gs.brightnessOld
 	sys.maxRoundTime = gs.maxRoundTime
-	sys.turnsRecoveryRate = gs.turnsRecoveryRate
 
 	sys.changeStateNest = gs.changeStateNest
 
@@ -389,12 +389,13 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.wins = gs.wins
 	sys.roundsExisted = gs.roundsExisted
 	sys.draws = gs.draws
+	sys.effectiveLoss = gs.effectiveLoss
 	sys.tmode = gs.tmode
 	sys.numSimul = gs.numSimul
 	sys.numTurns = gs.numTurns
 	sys.esc = gs.esc
 	sys.envcol_under = gs.envcol_under
-	sys.nextCharId = gs.nextCharId
+	sys.lastCharId = gs.lastCharId
 	sys.tickCount = gs.tickCount
 	sys.oldTickCount = gs.oldTickCount
 	sys.tickCountF = gs.tickCountF
@@ -405,18 +406,32 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.screenright = gs.screenright
 	sys.xmin = gs.xmin
 	sys.xmax = gs.xmax
+	sys.zmin = gs.zmin
+	sys.zmax = gs.zmax
 	sys.winskipped = gs.winskipped
-	sys.paused = gs.paused
-	sys.frameStepFlag = gs.frameStepFlag
 	sys.roundResetFlg = gs.roundResetFlg
+	sys.roundResetMatchStart = gs.roundResetMatchStart
 	sys.reloadFlg = gs.reloadFlg
 	sys.reloadStageFlg = gs.reloadStageFlg
 	sys.reloadLifebarFlg = gs.reloadLifebarFlg
+	sys.ffbparams = gs.ffbParams
 
 	sys.match = gs.match
 	sys.round = gs.round
 
 	sys.lifebar = gs.lifebar.Clone(a)
+	sys.motif = gs.motif.Clone(a)
+
+	// Storyboard: only rollback-touch it when it was actually running.
+	if gs.storyboard.active {
+		sys.storyboard = gs.storyboard.Clone(a)
+	} else {
+		// If storyboard started after the save point, prevent it from continuing after rollback.
+		sys.storyboard.active = false
+		sys.storyboard.initialized = false
+		sys.storyboard.dialogueLayers = nil
+		sys.storyboard.dialoguePos = 0
+	}
 
 	sys.cgi = gs.cgi
 
@@ -434,14 +449,15 @@ func (gs *GameState) LoadState(stateID int) {
 
 	sys.decisiveRound = gs.decisiveRound
 
-	sys.sel = gs.sel.Clone(a)
-	for i := 0; i < len(sys.stringPool); i++ {
-		sys.stringPool[i] = gs.stringPool[i].Clone(a, gsp)
-	}
+	//sys.sel = gs.sel.Clone(a)
+	// for i := 0; i < len(sys.stringPool); i++ {
+	// 	sys.stringPool[i] = gs.stringPool[i].Clone(a, gsp)
+	// }
 
-	sys.dialogueFlg = gs.dialogueFlg
+	sys.motif.di.active = gs.dialogueFlg
 	sys.gameMode = gs.gameMode
 	sys.consecutiveWins = gs.consecutiveWins
+	sys.firstAttack = gs.firstAttack
 	sys.home = gs.home
 
 	// Not UIT
@@ -458,17 +474,9 @@ func (gs *GameState) LoadState(stateID int) {
 
 	sys.endMatch = gs.endMatch
 
-	// theoretically this shouldn't do anything.
-	sys.matchData = gs.cloneLuaTable(gs.matchData)
-
 	sys.noSoundFlg = gs.noSoundFlg
 	sys.continueFlg = gs.continueFlg
 	sys.stageLoopNo = gs.stageLoopNo
-
-	// 11/5/22
-
-	wc := gs.debugWC.Clone(a, gsp)
-	sys.debugWC = &wc
 
 	// gotta keep these pointers around because they are userdata
 	for i := 0; i < len(sys.commandLists); i++ {
@@ -477,20 +485,30 @@ func (gs *GameState) LoadState(stateID int) {
 
 	// sys.luaTables = gs.luaTables
 
-	// This won't be around if we aren't in a proper rollback session.
-	if sys.rollback.session != nil {
-		sys.rollback.currentFight = gs.fight.Clone(a, gsp)
-	}
-
-	sys.introSkipped = gs.introSkipped
-
-	sys.preFightTime = gs.preFightTime
+	sys.preMatchTime = gs.preMatchTime
+	sys.introSkipCall = gs.introSkipCall
+	sys.winposetime = gs.winposetime
 
 	sys.loopBreak = gs.loopBreak
 	sys.loopContinue = gs.loopContinue
-	sys.brightnessOld = gs.brightnessOld
 
-	sys.wintime = gs.wintime
+	// Stop all sounds if they started playing after the point of the save state
+	for i := range sys.soundChannels.channels {
+		ch := &sys.soundChannels.channels[i]
+		if ch.timeStamp > sys.gameTime() {
+			ch.Stop()
+		}
+	}
+	for _, p := range sys.chars {
+		for _, c := range p {
+			for i := range c.soundChannels.channels {
+				ch := &c.soundChannels.channels[i]
+				if ch.timeStamp > sys.gameTime() {
+					ch.Stop()
+				}
+			}
+		}
+	}
 
 	// Log state load
 	if sys.rollback.session == nil {
@@ -512,18 +530,20 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.frame = sys.frameCounter
 
 	gs.randseed = sys.randseed
-	gs.gameTime = sys.gameTime
+	gs.matchTime = sys.matchTime
 	gs.curRoundTime = sys.curRoundTime
+	gs.curPlayTime = sys.curPlayTime
 
 	gs.saveCharData(a, gsp)
+	gs.saveProjectileData(a, gsp)
 	gs.saveExplodData(a, gsp)
+	gs.saveCharTextData(a)
 	gs.cam = sys.cam
 
 	gs.savePauseData()
 	gs.saveSuperPauseData()
 
 	gs.savePalFX(a)
-	gs.saveProjectileData(a, gsp)
 
 	gs.aiLevel = sys.aiLevel
 	gs.envShake = sys.envShake
@@ -538,11 +558,13 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.bcVar = arena.MakeSlice[BytecodeValue](a, len(sys.bcVar), len(sys.bcVar))
 	copy(gs.bcVar, sys.bcVar)
 
+	// We only save the stage's state if any existing characters can modify it
 	if sys.rollback.session != nil || sys.cfg.Netplay.Rollback.DesyncTestFrames > 0 {
-		if sys.cfg.Netplay.Rollback.SaveStageData {
+		if gs.stageCanMutate() || sys.cfg.Netplay.Rollback.SaveStageData {
 			gs.stage = sys.stage.Clone(a, gsp)
 		}
 	} else {
+		// Save anyway if using debug keys
 		gs.stage = sys.stage.Clone(a, gsp)
 	}
 
@@ -559,11 +581,11 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.winType = sys.winType
 	gs.winTrigger = sys.winTrigger
 	gs.lastHitter = sys.lastHitter
-	gs.waitdown = sys.waitdown
+	gs.winwaittime = sys.winwaittime
 	gs.slowtime = sys.slowtime
 	gs.winskipped = sys.winskipped
 	gs.intro = sys.intro
-	gs.nextCharId = sys.nextCharId
+	gs.lastCharId = sys.lastCharId
 
 	gs.scrrect = sys.scrrect
 	gs.gameWidth = sys.gameWidth
@@ -573,8 +595,8 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.gameEnd = sys.gameEnd
 	gs.frameSkip = sys.frameSkip
 	gs.brightness = sys.brightness
+	gs.brightnessOld = sys.brightnessOld
 	gs.maxRoundTime = sys.maxRoundTime
-	gs.turnsRecoveryRate = sys.turnsRecoveryRate
 
 	gs.changeStateNest = sys.changeStateNest
 
@@ -608,12 +630,13 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.wins = sys.wins
 	gs.roundsExisted = sys.roundsExisted
 	gs.draws = sys.draws
+	gs.effectiveLoss = sys.effectiveLoss
 	gs.tmode = sys.tmode
 	gs.numSimul = sys.numSimul
 	gs.numTurns = sys.numTurns
 	gs.esc = sys.esc
 	gs.envcol_under = sys.envcol_under
-	gs.nextCharId = sys.nextCharId
+	gs.lastCharId = sys.lastCharId
 	gs.tickCount = sys.tickCount
 	gs.oldTickCount = sys.oldTickCount
 	gs.tickCountF = sys.tickCountF
@@ -624,18 +647,29 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.screenright = sys.screenright
 	gs.xmin = sys.xmin
 	gs.xmax = sys.xmax
+	gs.zmin = sys.zmin
+	gs.zmax = sys.zmax
 	gs.winskipped = sys.winskipped
-	gs.paused = sys.paused
-	gs.frameStepFlag = sys.frameStepFlag
 	gs.roundResetFlg = sys.roundResetFlg
+	gs.roundResetMatchStart = sys.roundResetMatchStart
 	gs.reloadFlg = sys.reloadFlg
 	gs.reloadStageFlg = sys.reloadStageFlg
 	gs.reloadLifebarFlg = sys.reloadLifebarFlg
+	gs.ffbParams = sys.ffbparams
 
 	gs.match = sys.match
 	gs.round = sys.round
 
 	gs.lifebar = sys.lifebar.Clone(a)
+	gs.motif = sys.motif.Clone(a)
+
+	// Storyboard: only rollback-save while active.
+	if sys.storyboard.active {
+		gs.storyboard = sys.storyboard.Clone(a)
+	} else {
+		gs.storyboard = Storyboard{}
+		gs.storyboard.active = false
+	}
 
 	gs.timerStart = sys.timerStart
 	gs.timerRounds = arena.MakeSlice[int32](a, len(sys.timerRounds), len(sys.timerRounds))
@@ -646,14 +680,17 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.scoreRounds = arena.MakeSlice[[2]float32](a, len(sys.scoreRounds), len(sys.scoreRounds))
 	copy(gs.scoreRounds, sys.scoreRounds)
 	gs.decisiveRound = sys.decisiveRound
-	gs.sel = sys.sel.Clone(a)
-	for i := 0; i < len(sys.stringPool); i++ {
-		gs.stringPool[i] = sys.stringPool[i].Clone(a, gsp)
-	}
 
-	gs.dialogueFlg = sys.dialogueFlg
+	//gs.sel = sys.sel.Clone(a)
+	// for i := 0; i < len(sys.stringPool); i++ {
+	//		gs.stringPool[i] = sys.stringPool[i].Clone(a, gsp)
+	// }
+
+	gs.dialogueFlg = sys.motif.di.active
 	gs.gameMode = sys.gameMode
 	gs.consecutiveWins = sys.consecutiveWins
+	gs.firstAttack = sys.firstAttack
+	gs.home = sys.home
 
 	gs.stageLoop = sys.stageLoop
 	gs.dialogueBarsFlg = sys.dialogueBarsFlg
@@ -668,16 +705,10 @@ func (gs *GameState) SaveState(stateID int) {
 
 	gs.endMatch = sys.endMatch
 
-	// can't deep copy because its members are private
-	//matchData := *sys.matchData
-	gs.matchData = gs.cloneLuaTable(sys.matchData)
-
 	gs.noSoundFlg = sys.noSoundFlg
 	gs.continueFlg = sys.continueFlg
 	gs.stageLoopNo = sys.stageLoopNo
 
-	debugWC := sys.debugWC.Clone(a, gsp)
-	gs.debugWC = &debugWC
 	gs.commandLists = arena.MakeSlice[*CommandList](a, len(sys.commandLists), len(sys.commandLists))
 	for i := 0; i < len(sys.commandLists); i++ {
 		cl := sys.commandLists[i].Clone(a)
@@ -688,19 +719,13 @@ func (gs *GameState) SaveState(stateID int) {
 		gs.luaTables[i] = gs.cloneLuaTable(sys.luaTables[i])
 	}
 
-	// This won't be around if we aren't in a proper rollback session.
-	if sys.rollback.session != nil {
-		gs.fight = sys.rollback.currentFight.Clone(a, gsp)
-	}
-
-	gs.introSkipped = sys.introSkipped
-	gs.preFightTime = sys.preFightTime
+	gs.introSkipCall = sys.introSkipCall
+	gs.preMatchTime = sys.preMatchTime
 
 	gs.loopBreak = sys.loopBreak
 	gs.loopContinue = sys.loopContinue
-	gs.brightnessOld = sys.brightnessOld
 
-	gs.wintime = sys.wintime
+	gs.winposetime = sys.winposetime
 
 	// Log save state
 	if sys.rollback.session == nil {
@@ -779,7 +804,7 @@ func (gs *GameState) saveSuperPauseData() {
 	gs.superpausebg = sys.superpausebg
 	gs.superendcmdbuftime = sys.superendcmdbuftime
 	gs.superplayerno = sys.superplayerno
-	gs.superdarken = sys.superdarken
+	gs.superbrightness = sys.superbrightness
 }
 
 func (gs *GameState) saveExplodData(a *arena.Arena, gsp *GameStatePool) {
@@ -789,19 +814,14 @@ func (gs *GameState) saveExplodData(a *arena.Arena, gsp *GameStatePool) {
 			gs.explods[i][j] = sys.explods[i][j].Clone(a, gsp)
 		}
 	}
-	for i := range sys.explodsLayer0 {
-		gs.explodsLayer0[i] = arena.MakeSlice[int](a, len(sys.explodsLayer0[i]), len(sys.explodsLayer0[i]))
-		copy(gs.explodsLayer0[i], sys.explodsLayer0[i])
-	}
+}
 
-	for i := range sys.explodsLayer1 {
-		gs.explodsLayer1[i] = arena.MakeSlice[int](a, len(sys.explodsLayer1[i]), len(sys.explodsLayer1[i]))
-		copy(gs.explodsLayer1[i], sys.explodsLayer1[i])
-	}
-
-	for i := range sys.explodsLayerN1 {
-		gs.explodsLayerN1[i] = arena.MakeSlice[int](a, len(sys.explodsLayerN1[i]), len(sys.explodsLayerN1[i]))
-		copy(gs.explodsLayerN1[i], sys.explodsLayerN1[i])
+func (gs *GameState) saveCharTextData(a *arena.Arena) {
+	for i := range sys.chartexts {
+		gs.chartexts[i] = arena.MakeSlice[*TextSprite](a, len(sys.chartexts[i]), len(sys.chartexts[i]))
+		for j := range sys.chartexts[i] {
+			gs.chartexts[i][j] = cloneTextSprite(a, sys.chartexts[i][j])
+		}
 	}
 }
 
@@ -830,19 +850,11 @@ func (gs *GameState) loadCharData(a *arena.Arena, gsp *GameStatePool) {
 		}
 	}
 
-	// Set workingChar to the first char we find, just in case
-	sys.workingChar = nil
-	for i := range sys.chars {
-		for j := range sys.chars[i] {
-			if sys.chars[i][j] != nil {
-				sys.workingChar = sys.chars[i][j]
-				sys.workingState = &sys.workingChar.ss.sb
-				break
-			}
-		}
-		if sys.workingChar != nil {
-			break
-		}
+	// Set workingChar and debugWC to the first char we find, just in case
+	if c := sys.anyChar(); c != nil {
+		sys.workingChar = c
+		sys.workingState = &c.ss.sb
+		sys.debugWC = c
 	}
 
 	sys.charList = gs.charList.Clone(a, gsp)
@@ -854,7 +866,7 @@ func (gs *GameState) loadSuperPauseData() {
 	sys.superpausebg = gs.superpausebg
 	sys.superendcmdbuftime = gs.superendcmdbuftime
 	sys.superplayerno = gs.superplayerno
-	sys.superdarken = gs.superdarken
+	sys.superbrightness = gs.superbrightness
 }
 
 func (gs *GameState) loadPauseData() {
@@ -865,30 +877,6 @@ func (gs *GameState) loadPauseData() {
 	sys.pauseplayerno = gs.pauseplayerno
 }
 
-func (gs *GameState) loadExplodData(a *arena.Arena, gsp *GameStatePool) {
-	for i := range gs.explods {
-		sys.explods[i] = arena.MakeSlice[*Explod](a, len(gs.explods[i]), len(gs.explods[i]))
-		for j := 0; j < len(gs.explods[i]); j++ {
-			sys.explods[i][j] = gs.explods[i][j].Clone(a, gsp)
-		}
-	}
-
-	for i := range gs.explodsLayer0 {
-		sys.explodsLayer0[i] = arena.MakeSlice[int](a, len(gs.explodsLayer0[i]), len(gs.explodsLayer0[i]))
-		copy(sys.explodsLayer0[i], gs.explodsLayer0[i])
-	}
-
-	for i := range gs.explodsLayer1 {
-		sys.explodsLayer1[i] = arena.MakeSlice[int](a, len(gs.explodsLayer1[i]), len(gs.explodsLayer1[i]))
-		copy(sys.explodsLayer1[i], gs.explodsLayer1[i])
-	}
-
-	for i := range gs.explodsLayerN1 {
-		sys.explodsLayerN1[i] = arena.MakeSlice[int](a, len(gs.explodsLayerN1[i]), len(gs.explodsLayerN1[i]))
-		copy(sys.explodsLayerN1[i], gs.explodsLayerN1[i])
-	}
-}
-
 func (gs *GameState) loadProjectileData(a *arena.Arena, gsp *GameStatePool) {
 	for i := range gs.projs {
 		sys.projs[i] = arena.MakeSlice[*Projectile](a, len(gs.projs[i]), len(gs.projs[i]))
@@ -896,6 +884,33 @@ func (gs *GameState) loadProjectileData(a *arena.Arena, gsp *GameStatePool) {
 			sys.projs[i][j] = gs.projs[i][j].clone(a, gsp)
 		}
 	}
+}
+
+func (gs *GameState) loadExplodData(a *arena.Arena, gsp *GameStatePool) {
+	for i := range gs.explods {
+		sys.explods[i] = arena.MakeSlice[*Explod](a, len(gs.explods[i]), len(gs.explods[i]))
+		for j := 0; j < len(gs.explods[i]); j++ {
+			sys.explods[i][j] = gs.explods[i][j].Clone(a, gsp)
+		}
+	}
+}
+
+func (gs *GameState) loadCharTextData(a *arena.Arena) {
+	for i := range gs.chartexts {
+		sys.chartexts[i] = arena.MakeSlice[*TextSprite](a, len(gs.chartexts[i]), len(gs.chartexts[i]))
+		for j := range gs.chartexts[i] {
+			sys.chartexts[i][j] = cloneTextSprite(a, gs.chartexts[i][j])
+		}
+	}
+}
+
+func (gs *GameState) stageCanMutate() bool {
+	for i := range sys.cgi {
+		if sys.cgi[i].canMutateStage {
+			return true
+		}
+	}
+	return false
 }
 
 func (gsp *GameStatePool) Get(item interface{}) (result interface{}) {

@@ -16,17 +16,15 @@ import (
 	"github.com/gopxl/beep/v2/flac"
 	"github.com/gopxl/beep/v2/midi"
 	"github.com/gopxl/beep/v2/mp3"
-	"github.com/gopxl/beep/v2/speaker"
 	"github.com/gopxl/beep/v2/vorbis"
 	"github.com/gopxl/beep/v2/wav"
 )
 
 const (
 	audioOutLen          = 2048
-	audioFrequency       = 48000
+	audioFrequency       = 44100
 	audioPrecision       = 4
 	audioResampleQuality = 1
-	audioSoundFont       = "sound/soundfont.sf2" // default path for MIDI soundfont
 )
 
 // ------------------------------------------------------------------
@@ -49,7 +47,7 @@ func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 	// really long time and the below streamer.Stream method does not
 	// do a nil check. This should at least prevent crashes, but may
 	// lead to sound glitches.
-	if len(samples) <= 0 {
+	if n.streamer == nil || len(samples) <= 0 {
 		return 0, false
 	}
 	s, ok = n.streamer.Stream(samples)
@@ -66,6 +64,9 @@ func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 }
 
 func (n *Normalizer) Err() error {
+	if n.streamer == nil {
+		return nil
+	}
 	return n.streamer.Err()
 }
 
@@ -92,6 +93,13 @@ func (n *NormalizerLR) process(mul float64, sam *float64) float64 {
 	n.edge = float64(ClampF(float32(n.edge+n.edgeDelta), 0, 1))
 	*sam = s
 	return mul
+}
+
+// Safe wrapper for streamer operations
+func WithSpeakerLock(f func()) {
+	speaker.Lock()
+	defer speaker.Unlock()
+	f()
 }
 
 // ------------------------------------------------------------------
@@ -132,6 +140,7 @@ func (sw *SwapSeeker) Stream(out [][2]float64) (int, bool) {
 	sw.mu.RUnlock()
 	return ss.Stream(out)
 }
+
 func (sw *SwapSeeker) Seek(p int) error {
 	sw.mu.RLock()
 	ss := sw.ss
@@ -139,18 +148,21 @@ func (sw *SwapSeeker) Seek(p int) error {
 	sw.mu.RUnlock()
 	return err
 }
+
 func (sw *SwapSeeker) Position() int {
 	sw.mu.RLock()
 	pos := sw.ss.Position()
 	sw.mu.RUnlock()
 	return pos
 }
+
 func (sw *SwapSeeker) Len() int {
 	sw.mu.RLock()
 	l := sw.ss.Len()
 	sw.mu.RUnlock()
 	return l
 }
+
 func (sw *SwapSeeker) Err() error {
 	sw.mu.RLock()
 	e := sw.ss.Err()
@@ -182,7 +194,7 @@ func (b *BufferSeeker) Stream(out [][2]float64) (n int, ok bool) {
 }
 
 func (b *BufferSeeker) Seek(p int) error {
-	// Clamp p so we don’t panic on bogus values
+	// Clamp p so we don't panic on bogus values
 	if p < 0 {
 		p = 0
 	} else if p > b.buf.Len() {
@@ -195,8 +207,10 @@ func (b *BufferSeeker) Seek(p int) error {
 }
 
 func (b *BufferSeeker) Position() int { return b.pos }
-func (b *BufferSeeker) Len() int      { return b.buf.Len() }
-func (b *BufferSeeker) Err() error    { return nil }
+
+func (b *BufferSeeker) Len() int { return b.buf.Len() }
+
+func (b *BufferSeeker) Err() error { return nil }
 
 // ------------------------------------------------------------------
 // Loop Streamer
@@ -300,6 +314,15 @@ func newBgm() *Bgm {
 	return &Bgm{}
 }
 
+func (bgm *Bgm) Stop() {
+	if bgm.ctrl != nil {
+		WithSpeakerLock(func() {
+			bgm.ctrl.Streamer = nil
+		})
+	}
+	bgm.filename = ""
+}
+
 func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32, loopcount int) {
 	// Right away, cancel any running goroutines.
 	bgm.mu.Lock()
@@ -316,9 +339,9 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	bgm.freqmul = freqmul
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
-		speaker.Lock()
-		bgm.ctrl.Streamer = nil
-		speaker.Unlock()
+		WithSpeakerLock(func() {
+			bgm.ctrl.Streamer = nil
+		})
 	}
 	// Special value "" is used to stop music
 	if filename == "" {
@@ -345,18 +368,21 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 		bgm.streamer, format, err = flac.Decode(f)
 		bgm.format = "flac"
 	} else if HasExtension(bgm.filename, ".mid") || HasExtension(bgm.filename, ".midi") {
-		if sf, sferr := loadSoundFont(audioSoundFont); sferr != nil {
+		if sf, sferr := loadSoundFont(sys.cfg.Sound.SoundFont); sferr != nil {
 			err = sferr
 		} else {
 			bgm.streamer, format, err = midi.Decode(f, sf, beep.SampleRate(int(sys.cfg.Sound.SampleRate)))
 			bgm.format = "midi"
 		}
+	} else if HasExtension(bgm.filename, ".xm") || HasExtension(bgm.filename, ".mod") || HasExtension(bgm.filename, ".it") || HasExtension(bgm.filename, ".s3m") {
+		bgm.streamer, format, err = xmpDecode(f)
+		bgm.format = "xmp"
 	} else {
 		err = Error(fmt.Sprintf("unsupported file extension: %v", bgm.filename))
 	}
 	if err != nil {
 		f.Close()
-		sys.errLog.Printf("Failed to load bgm: %v", err)
+		sys.errLog.Printf("Failed to load bgm: %v\n%v", bgm.filename, err)
 		return
 	}
 	lc := 0
@@ -382,6 +408,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	}
 	bgm.startPos = startPosition
 	sw := newSwapSeeker(bgm.streamer)
+	bgm.streamer = sw // fix pos not updating after swapping
 	streamer := newStreamLooper(sw, lc, bgmLoopStart, bgmLoopEnd)
 	// we're going to continue to use our own modified streamLooper because beep doesn't allow
 	// negative values for loopcount (no forever case)
@@ -396,7 +423,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	speaker.Play(bgm.ctrl)
 
 	// Handle the RAM swap in the background (only for looped BGM and only if the user enabled it)
-	if lc != 0 && sys.cfg.Sound.BGMRAMBuffer {
+	if lc != 0 && sys.cfg.Sound.BGMRAMBuffer && bgm.format != "xmp" {
 		go func(ctx context.Context) {
 			// Call the cancel function when the goroutine exits
 			// to ensure cleanup.
@@ -447,7 +474,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 			case "flac":
 				dec, _, err = flac.Decode(lf)
 			case "midi":
-				sf, e := loadSoundFont(audioSoundFont)
+				sf, e := loadSoundFont(sys.cfg.Sound.SoundFont)
 				if e != nil {
 					sys.errLog.Println(e)
 					return
@@ -512,9 +539,9 @@ func (bgm *Bgm) SetPaused(pause bool) {
 	if bgm.ctrl == nil || bgm.ctrl.Paused == pause {
 		return
 	}
-	speaker.Lock()
-	bgm.ctrl.Paused = pause
-	speaker.Unlock()
+	WithSpeakerLock(func() {
+		bgm.ctrl.Paused = pause
+	})
 }
 
 func (bgm *Bgm) UpdateVolume() {
@@ -536,10 +563,10 @@ func (bgm *Bgm) UpdateVolume() {
 		volume = 1
 	}
 	silent := volume <= -5
-	speaker.Lock()
-	bgm.volctrl.Volume = volume
-	bgm.volctrl.Silent = silent
-	speaker.Unlock()
+	WithSpeakerLock(func() {
+		bgm.volctrl.Volume = volume
+		bgm.volctrl.Silent = silent
+	})
 }
 
 func (bgm *Bgm) SetFreqMul(freqmul float32) {
@@ -554,46 +581,93 @@ func (bgm *Bgm) SetFreqMul(freqmul float32) {
 			srcRate := bgm.sampleRate
 			dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / freqmul)
 			if resampler, ok := bgm.ctrl.Streamer.(*beep.Resampler); ok {
-				speaker.Lock()
-				resampler.SetRatio(float64(srcRate) / float64(dstRate))
-				bgm.freqmul = freqmul
-				speaker.Unlock()
+				WithSpeakerLock(func() {
+					resampler.SetRatio(float64(srcRate) / float64(dstRate))
+					bgm.freqmul = freqmul
+				})
 			}
 		}
 	}
 }
 
+// OpenFromStreamer wires an arbitrary Beep streamer (e.g. Reisen-backed audio)
+// into the existing BGM path so the video BGM replaces/uses the same channel.
+func (bgm *Bgm) OpenFromStreamer(stream beep.Streamer, srcSampleRate beep.SampleRate, bgmVolume int) {
+	// Right away, cancel any running goroutines.
+	bgm.mu.Lock()
+	if bgm.cancel != nil {
+		bgm.cancel()
+	}
+	var ctx context.Context
+	ctx, bgm.cancel = context.WithCancel(context.Background())
+	_ = ctx // reserved for future use (mirrors Open)
+	bgm.mu.Unlock()
+
+	bgm.filename = "<video-stream>"
+	bgm.loop = 0
+	bgm.bgmVolume = bgmVolume
+	bgm.freqmul = 1
+
+	// Starve the current music streamer
+	if bgm.ctrl != nil {
+		WithSpeakerLock(func() {
+			bgm.ctrl.Streamer = nil
+		})
+	}
+	// Honor CLI flags just like normal Open()
+	if _, ok := sys.cmdFlags["-nomusic"]; ok {
+		return
+	}
+	if _, ok := sys.cmdFlags["-nosound"]; ok {
+		return
+	}
+
+	// Build the standard BGM chain: Volume -> Resample -> Ctrl -> Mixer
+	bgm.sampleRate = srcSampleRate
+	bgm.volctrl = &effects.Volume{Streamer: stream, Base: 2, Volume: 0, Silent: true}
+	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
+	resampler := beep.Resample(audioResampleQuality, bgm.sampleRate, dstFreq, bgm.volctrl)
+	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
+	bgm.volRestore = 0
+	bgm.UpdateVolume()
+	speaker.Play(bgm.ctrl)
+}
+
 func (bgm *Bgm) SetLoopPoints(bgmLoopStart int, bgmLoopEnd int) {
-	// Set both at once, why not
 	if sl, ok := bgm.volctrl.Streamer.(*StreamLooper); ok {
 		if sl.loopstart != bgmLoopStart && sl.loopend != bgmLoopEnd {
-			speaker.Lock()
-			sl.loopstart = bgmLoopStart
-			sl.loopend = bgmLoopEnd
-			speaker.Unlock()
-			// Set one at a time
-		} else {
-			if sl.loopstart != bgmLoopStart {
-				speaker.Lock()
+			// Set both at once, why not
+			WithSpeakerLock(func() {
 				sl.loopstart = bgmLoopStart
-				speaker.Unlock()
-			} else if sl.loopend != bgmLoopEnd {
-				speaker.Lock()
 				sl.loopend = bgmLoopEnd
-				speaker.Unlock()
+			})
+		} else {
+			// Set one at a time
+			if sl.loopstart != bgmLoopStart {
+				WithSpeakerLock(func() {
+					sl.loopstart = bgmLoopStart
+				})
+			} else if sl.loopend != bgmLoopEnd {
+				WithSpeakerLock(func() {
+					sl.loopend = bgmLoopEnd
+				})
 			}
 		}
 	}
 }
 
 func (bgm *Bgm) Seek(positionSample int) {
-	speaker.Lock()
-	// Reset to 0 if out of range
-	if positionSample < 0 || positionSample > bgm.streamer.Len() {
-		positionSample = 0
+	// For stream-only sources (e.g., video audio) we don't support seeking; ignore safely.
+	if bgm.streamer == nil {
+		return
 	}
-	bgm.streamer.Seek(positionSample)
-	speaker.Unlock()
+	// Reset to 0 if out of range
+	WithSpeakerLock(func() {
+		if positionSample < 0 || positionSample > bgm.streamer.Len() {
+			positionSample = 0
+		}
+		_ = bgm.streamer.Seek(positionSample)
+	})
 }
 
 // ------------------------------------------------------------------
@@ -619,35 +693,35 @@ func readSound(f io.ReadSeekCloser, size uint32) (*Sound, error) {
 		return nil, err
 	}
 	// Check if the file can be fully played
-	// デコードテストを実行し、パニックを捕捉する
+	// Run a decode test and catch any panics.
 	var recovered interface{}
 	func() {
 		defer func() {
-			// この無名関数内で発生したパニックを捕捉
+			// Catch any panic that occurs inside this anonymous function.
 			if r := recover(); r != nil {
 				recovered = r
 			}
 		}()
 
-		// ファイルの終端までストリーミングを試みる
+		// Try streaming until the end of the file.
 		var samples [512][2]float64
 		for {
 			n, ok := s.Stream(samples[:])
 			if n == 0 || !ok {
-				// 正常に終端に達した場合
+				// When the end is reached normally.
 				if s.Err() == nil && s.Position() >= s.Len() {
 					break
 				}
-				// その他のエラー
+				// Other errors.
 				if s.Err() != nil {
-					// recover()で補足できないエラーはここでerrに詰める
+					// Errors not caught by recover() are stored here.
 					recovered = s.Err()
 				}
 				break
 			}
 		}
 	}()
-	// パニックが捕捉された場合
+	// If a panic was caught.
 	if recovered != nil {
 		return nil, nil // If sound wasn't able to be fully played, we disable it to avoid engine freezing
 	}
@@ -672,7 +746,11 @@ func newSnd() *Snd {
 }
 
 func LoadSnd(filename string) (*Snd, error) {
-	return LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] >= 0 && gn[1] >= 0 }, 0)
+	s, err := LoadSndFiltered(filename, func(gn [2]int32) bool { return gn[0] >= 0 && gn[1] >= 0 }, 0)
+	if err != nil {
+		return nil, Error(fmt.Sprintf("LoadSnd failed: %v\n%v", filename, err))
+	}
+	return s, nil
 }
 
 // Parse a .snd file and return an Snd structure with its contents
@@ -753,13 +831,16 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 	}
 	return s, nil
 }
+
 func (s *Snd) Get(gn [2]int32) *Sound {
 	return s.table[gn]
 }
+
 func (s *Snd) play(gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int) bool {
 	sound := s.Get(gn)
 	return sys.soundChannels.Play(sound, gn[0], gn[1], volumescale, pan, loopstart, loopend, startposition)
 }
+
 func (s *Snd) stop(gn [2]int32) {
 	sound := s.Get(gn)
 	sys.soundChannels.Stop(sound)
@@ -787,7 +868,6 @@ type SoundEffect struct {
 	ls, p    float32
 	x        *float32
 	priority int32
-	channel  int32
 	loop     int32
 	freqmul  float32
 	startPos int
@@ -829,60 +909,86 @@ type SoundChannel struct {
 	sfx               *SoundEffect
 	ctrl              *beep.Ctrl
 	sound             *Sound
+	channelNo         int32 // Logical channel assigned by char code
 	stopOnGetHit      bool
 	stopOnChangeState bool
 	group             int32
 	number            int32
+	timeStamp         int32
 }
 
 func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul float32, loopStart, loopEnd, startPosition int) {
 	if sound == nil {
 		return
 	}
+
 	s.sound = sound
 	s.group = group
 	s.number = number
+	s.timeStamp = sys.gameTime()
 	s.streamer = s.sound.GetStreamer()
+
 	loopCount := int(0)
 	if loop < 0 {
 		loopCount = -1
 	} else {
 		loopCount = MaxI(0, int(loop-1))
 	}
+
 	// going to continue using our streamLooper which is now modified from beep.Loop2
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, channel: -1, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / s.sfx.freqmul)
 	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
 	s.streamer.Seek(startPosition)
-	sys.soundMixer.Add(s.ctrl)
+
+	WithSpeakerLock(func() {
+		sys.soundMixer.Add(s.ctrl)
+	})
 }
+
 func (s *SoundChannel) IsPlaying() bool {
 	return s.sound != nil
 }
+
 func (s *SoundChannel) SetPaused(pause bool) {
 	if s.ctrl == nil || s.ctrl.Paused == pause {
 		return
 	}
-	speaker.Lock()
-	s.ctrl.Paused = pause
-	speaker.Unlock()
+	WithSpeakerLock(func() {
+		s.ctrl.Paused = pause
+	})
 }
+
+// This is now pretty much a reset()
 func (s *SoundChannel) Stop() {
 	if s.ctrl != nil {
-		speaker.Lock()
-		s.ctrl.Streamer = nil
-		speaker.Unlock()
+		WithSpeakerLock(func() {
+			s.ctrl.Streamer = nil
+		})
 	}
+
+	s.streamer = nil
+	s.sfx = nil
+	s.ctrl = nil
 	s.sound = nil
+
+	s.channelNo = -1
+	s.stopOnGetHit = false
+	s.stopOnChangeState = false
+	s.group = 0
+	s.number = 0
+	s.timeStamp = 0
 }
+
 func (s *SoundChannel) SetVolume(vol float32) {
 	if s.ctrl != nil {
 		s.sfx.volume = ClampF(vol, 0, 512)
 	}
 }
+
 func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
 	if s.ctrl != nil {
 		s.sfx.ls = ls
@@ -890,16 +996,13 @@ func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
 		s.sfx.p = p * ls
 	}
 }
+
 func (s *SoundChannel) SetPriority(priority int32) {
 	if s.ctrl != nil {
 		s.sfx.priority = priority
 	}
 }
-func (s *SoundChannel) SetChannel(channel int32) {
-	if s.ctrl != nil {
-		s.sfx.channel = channel
-	}
-}
+
 func (s *SoundChannel) SetFreqMul(freqmul float32) {
 	if s.ctrl != nil {
 		if s.sound != nil {
@@ -912,32 +1015,33 @@ func (s *SoundChannel) SetFreqMul(freqmul float32) {
 			srcRate := s.sound.format.SampleRate
 			dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / freqmul)
 			if resampler, ok := s.ctrl.Streamer.(*beep.Resampler); ok {
-				speaker.Lock()
-				resampler.SetRatio(float64(srcRate) / float64(dstRate))
-				s.sfx.freqmul = freqmul
-				speaker.Unlock()
+				WithSpeakerLock(func() {
+					resampler.SetRatio(float64(srcRate) / float64(dstRate))
+					s.sfx.freqmul = freqmul
+				})
 			}
 		}
 	}
 }
+
 func (s *SoundChannel) SetLoopPoints(loopstart, loopend int) {
 	// Set both at once, why not
 	if sl, ok := s.sfx.streamer.(*StreamLooper); ok {
 		if sl.loopstart != loopstart && sl.loopend != loopend {
-			speaker.Lock()
-			sl.loopstart = loopstart
-			sl.loopend = loopend
-			speaker.Unlock()
+			WithSpeakerLock(func() {
+				sl.loopstart = loopstart
+				sl.loopend = loopend
+			})
 			// Set one at a time
 		} else {
 			if sl.loopstart != loopstart {
-				speaker.Lock()
-				sl.loopstart = loopstart
-				speaker.Unlock()
+				WithSpeakerLock(func() {
+					sl.loopstart = loopstart
+				})
 			} else if sl.loopend != loopend {
-				speaker.Lock()
-				sl.loopend = loopend
-				speaker.Unlock()
+				WithSpeakerLock(func() {
+					sl.loopend = loopend
+				})
 			}
 		}
 	}
@@ -956,45 +1060,130 @@ func newSoundChannels(size int32) *SoundChannels {
 	s.SetSize(size)
 	return s
 }
+
 func (s *SoundChannels) SetSize(size int32) {
-	if size > s.count() {
-		c := make([]SoundChannel, size-s.count())
-		v := make([]float32, size-s.count())
+	currentSize := s.count()
+
+	switch {
+	case size > currentSize:
+		// Add new channels
+		newSlotsCount := size - currentSize
+		c := make([]SoundChannel, newSlotsCount)
+		v := make([]float32, newSlotsCount)
+
+		// Initialize the new slots
+		for i := range c {
+			c[i].channelNo = -1
+		}
+
 		s.channels = append(s.channels, c...)
 		s.volResume = append(s.volResume, v...)
-	} else if size < s.count() {
-		for i := s.count() - 1; i >= size; i-- {
+	case size < currentSize:
+		// Remove channels
+		for i := currentSize - 1; i >= size; i-- {
 			s.channels[i].Stop()
 		}
+
 		s.channels = s.channels[:size]
 		s.volResume = s.volResume[:size]
 	}
 }
+
 func (s *SoundChannels) count() int32 {
 	return int32(len(s.channels))
 }
-func (s *SoundChannels) New(ch int32, lowpriority bool, priority int32) *SoundChannel {
-	if ch >= 0 && ch < sys.cfg.Sound.WavChannels {
-		for i := s.count() - 1; i >= 0; i-- {
-			if s.channels[i].IsPlaying() && s.channels[i].sfx.channel == ch {
-				if (lowpriority && priority <= s.channels[i].sfx.priority) || priority < s.channels[i].sfx.priority {
-					return nil
-				}
-				s.channels[i].Stop()
-				return &s.channels[i]
-			}
-		}
-	}
+
+// Returns a channel with the requested logical ID
+func (s *SoundChannels) Request(chNo int32, lowpriority bool, priority int32) *SoundChannel {
+	// Ensure capacity
 	if s.count() < sys.cfg.Sound.WavChannels {
 		s.SetSize(sys.cfg.Sound.WavChannels)
 	}
-	for i := sys.cfg.Sound.WavChannels - 1; i >= 0; i-- {
-		if !s.channels[i].IsPlaying() {
-			return &s.channels[i]
+
+	// Normalize channel number
+	if chNo < 0 || chNo >= sys.cfg.Sound.WavChannels {
+		chNo = -1
+	}
+
+	// Specific channel request
+	// Try to use the same index if it's active
+	if chNo >= 0 {
+		for i := range s.channels {
+			ch := &s.channels[i]
+			if ch.channelNo == chNo {
+				if ch.IsPlaying() {
+					if lowpriority || ch.sfx != nil && priority < ch.sfx.priority {
+						return nil
+					}
+					ch.Stop()
+				}
+				ch.channelNo = chNo // Redundant but explicit
+				return ch
+			}
 		}
 	}
+
+	// If same channel was not found or if channel was not specified
+	// Look for any free index
+	for i := range s.channels {
+		ch := &s.channels[i]
+		if !ch.IsPlaying() {
+			ch.channelNo = chNo
+			return ch
+		}
+	}
+
+	// If "lowpriority" we don't even need to run the replacement code
+	if lowpriority {
+		return nil
+	}
+
+	// All channels full
+	// Replace the oldest sound. Negative channels are more likely to be replaced
+	var oldestNegativeIdx int = -1
+	var minTimeNegative int32 = math.MaxInt32
+	var oldestPositiveIdx int = -1
+	var minTimePositive int32 = math.MaxInt32
+
+	for i := 0; i < int(s.count()); i++ {
+		ch := &s.channels[i]
+		// We still take priority into account here
+		if ch.IsPlaying() && ch.sfx != nil && priority < ch.sfx.priority {
+			continue
+		}
+
+		if ch.channelNo < 0 {
+			if ch.timeStamp < minTimeNegative {
+				minTimeNegative = ch.timeStamp
+				oldestNegativeIdx = i
+			}
+		} else {
+			if ch.timeStamp < minTimePositive {
+				minTimePositive = ch.timeStamp
+				oldestPositiveIdx = i
+			}
+		}
+	}
+
+	// Kick out the oldest negative channel first
+	if oldestNegativeIdx != -1 {
+		ch := &s.channels[oldestNegativeIdx]
+		ch.Stop()
+		ch.channelNo = chNo
+		return ch
+	}
+
+	// If no negative channels can be evicted, try the oldest positive one
+	if oldestPositiveIdx != -1 {
+		ch := &s.channels[oldestPositiveIdx]
+		ch.Stop()
+		ch.channelNo = chNo
+		return ch
+	}
+
 	return nil
 }
+
 func (s *SoundChannels) reserveChannel() *SoundChannel {
 	for i := range s.channels {
 		if !s.channels[i].IsPlaying() {
@@ -1003,10 +1192,11 @@ func (s *SoundChannels) reserveChannel() *SoundChannel {
 	}
 	return nil
 }
+
 func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	if ch >= 0 && ch < s.count() {
 		for i := range s.channels {
-			if s.channels[i].IsPlaying() && s.channels[i].sfx != nil && s.channels[i].sfx.channel == ch {
+			if s.channels[i].IsPlaying() && s.channels[i].sfx != nil && s.channels[i].channelNo == ch {
 				return &s.channels[i]
 			}
 		}
@@ -1014,6 +1204,7 @@ func (s *SoundChannels) Get(ch int32) *SoundChannel {
 	}
 	return nil
 }
+
 func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan float32, loopStart, loopEnd, startPosition int) bool {
 	if sound == nil {
 		return false
@@ -1027,6 +1218,7 @@ func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan
 	c.SetPan(pan, 0, nil)
 	return true
 }
+
 func (s *SoundChannels) IsPlaying(sound *Sound) bool {
 	for i := range s.channels {
 		v := &s.channels[i]
@@ -1036,6 +1228,7 @@ func (s *SoundChannels) IsPlaying(sound *Sound) bool {
 	}
 	return false
 }
+
 func (s *SoundChannels) Stop(sound *Sound) {
 	for i := range s.channels {
 		v := &s.channels[i]
@@ -1057,8 +1250,8 @@ func (s *SoundChannels) Tick() {
 	for i := range s.channels {
 		v := &s.channels[i]
 		if v.IsPlaying() {
-			if v.streamer.Position() >= v.sound.length && v.sfx.loop != -1 { // End the sound
-				v.sound = nil
+			if v.streamer.Position() >= v.sound.length && v.sfx.loop != -1 { // End of sound
+				v.Stop()
 			}
 		}
 	}

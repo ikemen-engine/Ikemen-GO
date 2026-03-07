@@ -21,7 +21,7 @@ for i = matchno(), #start.t_roster do
 end
 
 if main.storyboard.ending then
-	if not launchStoryboard(start.f_getCharData(start.p[1].t_selected[1].ref).ending) and motif.default_ending.enabled == 1 then
+	if not launchStoryboard(start.f_getCharData(start.p[1].t_selected[1].ref).ending) and motif.default_ending.enabled then
 		launchStoryboard(motif.default_ending.storyboard)
 	end
 end

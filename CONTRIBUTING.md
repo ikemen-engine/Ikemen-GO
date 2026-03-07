@@ -7,21 +7,19 @@ As a contributor, here are the guidelines we would like you to follow:
  - [Issues and Bugs](#issue)
  - [Feature Requests](#feature)
  - [Branching Strategy](#branching-strategy)
+ - [Code Style Guidelines](#style)
  - [Submission Guidelines](#submit)
  - [PR Message Guidelines](#pr)
  - [Commit Message Guidelines](#commit)
-
 
 ## <a name="question"></a> Got a Question or Problem?
 
 Do not open issues for general support questions as we want to keep GitHub issues for bug reports. Q&As are allowed on [discussions section][discussions], but in most cases we prefer that you use the *ikemen-help* section of [our Discord server][discord], which you can find an invitation to on the [Ikemen GO website][website]. This is because many problems can be solved by members of the community who do not use GitHub. Please remember to check the [wiki][wiki] page before asking a question and use the search bar before creating a new feature request topic.
 
-
 ## <a name="issue"></a> Found a Bug?
 
 If you find a bug, you can help us by [submitting an issue](#submit-issue) to our [GitHub Repository][github].
 Even better, you can [submit a Pull Request](#submit-pr) with a fix.
-
 
 ## <a name="feature"></a> Missing a Feature?
 
@@ -41,21 +39,33 @@ Our project utilizes a specific branching strategy to ensure a well-organized an
 - `develop`: The active development branch where all feature branches are created and merged back into. This branch contains features that will be part of the next release cycle.
 - `release`: Created off the `develop` branch when we're ready for a new release cycle. It's reserved for preparing the release and will only receive bug fixes.
 
+## <a name="style"></a> Code Style Guidelines
+
+To keep the codebase consistent and accessible to all contributors, please follow these rules:
+
+- **Language:** All source code comments must be written in **English**.  
+- **Clarity:** Write clear, concise comments that explain the intent of the code, not just what it does.  
+- **Consistency:** Follow existing formatting and naming conventions in the project.  
+- **Simplicity:** Prefer straightforward, readable code over clever but hard-to-understand solutions.  
+
+Additional style or formatting rules may be introduced over time; please check existing code for guidance when in doubt.
+
 ## <a name="submit"></a> Submission Guidelines
 
 ### <a name="submit-issue"></a> Submitting an Issue
 
-Before submitting an issue, it is recommended that you search the issue tracker to see if your problem has already been reported. If an issue exists, the discussion might provide you with readily available workarounds.
+Before submitting an issue, please check the issue tracker to see if it has already been reported. Existing reports may also contain useful workarounds.
 
-It is also advisable to test the problematic content against the latest build, preferably using the [nightly development release][nightly] in addition to the [latest release][latest], as the problem may have already been resolved. Once a new release is pushed, previous releases are no longer supported.
+Test your content with the [nightly development release][nightly] and the [latest release][latest], as the problem may already be fixed. Note that only the most recent release is supported.
 
-We strive to resolve all issues as quickly as possible, but before we can fix a bug, we must first reproduce and confirm it. To do so, we require a minimal reproduction. Ideally, the minimal reproduction should include a link to the problematic content and detailed information what has to be done for the bug to occur. If the content is related to a complicated piece of code, preparing a test case with resources shipped with the engine (e.g. kfm/kfmz character or default screenpack) increases the chances of the bug being fixed.
+To resolve bugs, we must be able to reproduce them. A minimal reproduction is essential:
+* Include a link to the problematic content.
+* Provide clear steps to trigger the bug.
+* When possible, use resources included with the engine (e.g. kfm/kfmz character or default screenpack) to maximize reproducibility.
 
-A minimal reproduction provides us with a wealth of important information without the need for additional questions. It enables us to quickly confirm a bug or identify a coding problem, as well as ensure that we are addressing the correct issue. Having a minimal reproduction saves our developers' time, allowing us to fix more bugs. We understand that it can be challenging to extract essential bits of code from a larger codebase, but isolating the problem is crucial for us to be able to fix it.
+A good minimal reproduction helps us quickly confirm whether an issue is a bug or a coding error, ensures we address the correct problem, and saves valuable development time. Issues without enough information to reproduce the problem cannot be addressed and will be closed.
 
-Unfortunately, we cannot investigate or fix bugs without a minimal reproduction. If we do not receive enough information to reproduce the issue, we will have to close the issue.
-
-To file a new issue, you can select from our [new issue templates][templates] and fill out the issue template.
+To create a new issue, please choose from our [new issue templates][templates] and complete the relevant template.
 
 ### <a name="submit-pr"></a> Submitting a Pull Request (PR)
 
@@ -94,7 +104,7 @@ Before you submit your Pull Request (PR), please follow these guidelines:
 
 #### Reviewing a Pull Request
 
-All PRs are subject to review by the Ikemen GO team, which retains the right to decline any contributions.
+All PRs are subject to review by the Ikemen GO dev team, which retains the right to decline any contributions.
 
 #### Addressing Review Feedback
 
@@ -109,18 +119,6 @@ To update the commit message of the last commit:
 
 1. Check out your branch and amend the commit message.
 2. Force push to your repository to update the PR.
-
-#### After Your Pull Request Is Merged
-
-Once merged, you can delete your branch:
-
-1. Delete the remote branch on GitHub.
-2. Update your local `master` with the latest from the upstream repository.
-3. Delete your local branch.
-
-Remember to work from the `develop` branch for features and the `release` branch for bug fixes. The `master` branch is now for stable releases only.
-
-Remember to base your work on the `develop` branch when contributing new features for the upcoming release cycle, and the release branch for urgent bug fixes targeting the current release. The master branch serves as the archive for stable releases only and is updated strictly with finalized releases.
 
 ## <a name="pr"></a> PR Message Format
 
@@ -184,7 +182,6 @@ Fixes #<issue number>
 ## <a name="commit"></a> Commit Message Format
 
 Unlike pull requests, which are used for automatic generation of changelogs, there is no strict convention for commit titles. It is optional to follow the Conventional Commits specification described in the [PR Message Format](#pr).
-
 
 ### Revert commits
 

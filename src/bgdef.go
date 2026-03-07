@@ -14,16 +14,18 @@ type BGDef struct {
 	def          string
 	localcoord   [2]float32
 	sff          *Sff
-	at           AnimationTable
+	animTable    AnimationTable
 	bg           []*backGround
 	bgc          []bgCtrl
 	bga          bgAction
 	time         int32
 	resetbg      bool
+	lastTick     int32
 	localscl     float32
 	scale        [2]float32
 	stageprops   StageProps
 	bgclearcolor [3]int32
+	startlayer   int32
 	model        *Model
 	sceneNumber  int32
 	fov          float32
@@ -36,10 +38,12 @@ type BGDef struct {
 func newBGDef(def string) *BGDef {
 	s := &BGDef{def: def, localcoord: [...]float32{320, 240}, resetbg: true, localscl: 1, scale: [...]float32{1, 1}}
 	s.stageprops = newStageProps()
+	s.lastTick = -1
 	return s
 }
 
-func loadBGDef(sff *Sff, model *Model, def string, bgname string) (*BGDef, error) {
+func loadBGDef(sff *Sff, model *Model, def string, bgname string, startlayer int32) (*BGDef, error) {
+	bgname = strings.ToLower(bgname)
 	s := newBGDef(def)
 	str, err := LoadText(def)
 	if err != nil {
@@ -63,6 +67,9 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string) (*BGDef, error
 	}
 	if sec := defmap[fmt.Sprintf("%sdef", bgname)]; len(sec) > 0 {
 		sec[0].readI32ForStage("bgclearcolor", &s.bgclearcolor[0], &s.bgclearcolor[1], &s.bgclearcolor[2])
+		if !sec[0].readI32ForStage("startlayer", &s.startlayer) {
+			s.startlayer = startlayer
+		}
 		s.sceneNumber = -1
 		sec[0].readI32ForStage("scenenumber", &s.sceneNumber)
 		sec[0].readF32ForStage("fov", &s.fov)
@@ -77,14 +84,17 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string) (*BGDef, error
 	}
 	s.sff = sff
 	s.model = model
-	s.at = ReadAnimationTable(s.sff, &s.sff.palList, lines, &i)
+	s.animTable = ReadAnimationTable(s.sff, &s.sff.palList, lines, &i)
 	var bglink *backGround
 	for _, bgsec := range defmap[bgname] {
 		if len(s.bg) > 0 && s.bg[len(s.bg)-1].positionlink {
 			bglink = s.bg[len(s.bg)-1]
 		}
-		s.bg = append(s.bg, readBackGround(bgsec, bglink,
-			s.sff, s.at, s.stageprops))
+		bg, err := readBackGround(bgsec, bglink, s.sff, s.animTable, s.stageprops, def, s.startlayer)
+		if err != nil {
+			return nil, err
+		}
+		s.bg = append(s.bg, bg)
 	}
 	bgcdef := *newBgCtrl()
 	i = 0
@@ -150,12 +160,9 @@ func (s *BGDef) getBg(id int32) (bg []*backGround) {
 func (s *BGDef) runBgCtrl(bgc *bgCtrl) {
 	switch bgc._type {
 	case BT_Anim:
-		a := s.at.get(bgc.v[0])
-		if a != nil {
-			for i := range bgc.bg {
-				bgc.bg[i].actionno = bgc.v[0]
-				bgc.bg[i].anim = a
-			}
+		animNo := bgc.v[0]
+		for i := range bgc.bg {
+			bgc.bg[i].changeAnim(animNo, s.animTable)
 		}
 	case BT_Visible:
 		for i := range bgc.bg {
@@ -163,7 +170,7 @@ func (s *BGDef) runBgCtrl(bgc *bgCtrl) {
 		}
 	case BT_Enable:
 		for i := range bgc.bg {
-			bgc.bg[i].visible, bgc.bg[i].active = bgc.v[0] != 0, bgc.v[0] != 0
+			bgc.bg[i].enabled = bgc.v[0] != 0
 		}
 	case BT_PosSet:
 		for i := range bgc.bg {
@@ -287,7 +294,16 @@ func (s *BGDef) action() {
 		}
 	}
 
-	s.bga.action()
+	// After BGCtrl mutates states, align video play/pause to "active"
+	for i := range s.bg {
+		if s.bg[i].video != nil {
+			// Apply visibility first to avoid initial audio blip at t=0 when Visible=0.
+			s.bg[i].video.SetVisible(s.bg[i].visible)
+			s.bg[i].video.SetPlaying(s.bg[i].enabled)
+		}
+	}
+
+	s.bga.action(true)
 	if s.model != nil {
 		s.model.step(1)
 	}
@@ -298,48 +314,49 @@ func (s *BGDef) action() {
 
 	link := 0
 	for i, b := range s.bg {
-		s.bg[i].bga.action()
+		s.bg[i].bga.action(b.enabled)
 		if i > 0 && b.positionlink {
 			s.bg[i].bga.offset[0] += s.bg[link].bga.sinoffset[0]
 			s.bg[i].bga.offset[1] += s.bg[link].bga.sinoffset[1]
 		} else {
 			link = i
 		}
-		if b.active {
+		if b.enabled {
 			s.bg[i].anim.Action()
 		}
 	}
 }
 
-func (s *BGDef) draw(layer int32, x, y, scl float32) {
-	// Action will only happen once per frame even though this function is called more times
-	// TODO: Doing this in layer 0 is currently necessary for it to work in screenpacks, but it might be introducing a frame of delay in layer -1
-	if layer == 0 {
+func (s *BGDef) Draw(layer int32, x, y, scl float32) {
+	// Advance BGDef exactly once per engine tick, regardless of which layer gets drawn.
+	if s.lastTick != sys.frameCounter {
 		s.action()
 	}
 	if s.model != nil && s.sceneNumber >= 0 {
-		if layer == 0 {
+		if s.lastTick != sys.frameCounter {
 			s.model.calculateTextureTransform()
 		}
 		drawFOV := s.fov * math.Pi / 180
 		outlineConst := float32(0.003 * math.Tan(float64(drawFOV)))
-		proj := mgl.Perspective(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.near, s.far)
+		proj := gfx.PerspectiveProjectionMatrix(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.near, s.far)
 		view := mgl.Translate3D(s.modelOffset[0], s.modelOffset[1], s.modelOffset[2])
 		view = view.Mul4(mgl.Scale3D(s.modelScale[0], s.modelScale[1], s.modelScale[2]))
 		s.model.draw(1, int(s.sceneNumber), int(layer), 0, s.modelOffset, proj, view, proj.Mul4(view), outlineConst)
 	}
+	s.lastTick = sys.frameCounter
 	//x, y = x/s.localscl, y/s.localscl
 	for _, b := range s.bg {
-		if b.layerno == layer && b.visible && b.anim.spr != nil {
+		if b.layerno == layer && b.visible && b.enabled && (b.anim.spr != nil || b._type == BG_Video) {
 			b.draw([...]float32{x, y}, scl, s.localscl, 1, s.scale, 0, false)
 		}
 	}
 }
 
-func (s *BGDef) reset() {
+func (s *BGDef) Reset() {
 	s.bga.clear()
 	for i := range s.bg {
 		s.bg[i].reset()
 	}
 	s.time = 0
+	s.lastTick = -1
 }

@@ -78,6 +78,7 @@ type RollbackSession struct {
 	remotePlayerHandle  ggpo.PlayerHandle
 	loopTimer           LoopTimer
 	inputs              map[int][MaxPlayerNo]InputBits
+	analogInputs        map[int][MaxPlayerNo][6]int8
 	config              RollbackProperties
 	log                 RollbackLogger
 	timestamp           string
@@ -88,13 +89,17 @@ type RollbackSession struct {
 	inRollback          bool
 }
 
-func (rs *RollbackSession) SetInput(time int32, player int, input InputBits) {
+func (rs *RollbackSession) SetInput(time int32, player int, input InputBits, axes [6]int8) {
 	if _, ok := rs.inputs[int(time)]; !ok {
 		rs.inputs[int(time)] = [MaxPlayerNo]InputBits{}
+		rs.analogInputs[int(time)] = [MaxPlayerNo][6]int8{}
 	}
 	inputArr := rs.inputs[int(time)]
+	analogInputs := rs.analogInputs[int(time)]
 	inputArr[player] = input
+	analogInputs[player] = axes
 	rs.inputs[int(time)] = inputArr
+	rs.analogInputs[int(time)] = analogInputs
 }
 
 func (rs *RollbackSession) SaveReplay() {
@@ -128,7 +133,7 @@ func (rs *RollbackSession) SaveReplay() {
 func (rs *RollbackSession) inputToBytes(time int) []byte {
 	buf := []byte{}
 	for i := 0; i < MaxSimul*2+MaxAttachedChar; i++ {
-		buf = append(buf, writeI32(int32(rs.inputs[time][i]))...)
+		buf = append(buf, writeI16(int16(rs.inputs[time][i]))...)
 	}
 	return buf
 }
@@ -151,17 +156,18 @@ func NewLoopTimer(fps uint32, framesToSpread uint32) LoopTimer {
 }
 
 func (lt *LoopTimer) OnGGPOTimeSyncEvent(framesAhead float32) {
+	lt.waitTotal = time.Duration(float32(time.Second/60) * framesAhead)
+	lt.lastAdvantage = float32(time.Second/60) * framesAhead
+
 	if sys.intro > 0 && sys.tickCount == 0 {
-		lt.waitTotal = time.Duration(float32(time.Second/60) * framesAhead)
-		lt.lastAdvantage = float32(time.Second/60) * framesAhead
-		if lt.lastAdvantage < float32(0) {
+		// Wait longer during the start of each round, allowing both players to load assets
+		if lt.lastAdvantage < 0 {
 			lt.timeWait = time.Duration(lt.lastAdvantage) / time.Duration(lt.framesToSpreadWait)
 			lt.waitCount = time.Duration(lt.framesToSpreadWait)
 		}
 	} else {
-		lt.waitTotal = time.Duration(float32(time.Second/60) * framesAhead)
-		lt.lastAdvantage = float32(time.Second/60) * framesAhead
-		lt.lastAdvantage = lt.lastAdvantage / 4
+		// Normal waiting time
+		lt.lastAdvantage /= 4
 		lt.timeWait = time.Duration(lt.lastAdvantage) / time.Duration(lt.framesToSpreadWait)
 		lt.waitCount = time.Duration(lt.framesToSpreadWait)
 	}
@@ -267,11 +273,11 @@ func (r *RollbackSession) AdvanceFrame(flags int) {
 	// Get the confirmed inputs from the GGPO backend for the frame being simulated
 	var disconnectFlags int
 	inputs, ggpoerr := r.backend.SyncInput(&disconnectFlags)
-	sys.rollback.ggpoInputs = decodeInputs(inputs)
+	sys.rollback.ggpoInputs, sys.rollback.ggpoAnalogInputs = decodeInputs(inputs)
 
 	if r.recording != nil {
-		r.SetInput(r.netTime, 0, sys.rollback.ggpoInputs[0])
-		r.SetInput(r.netTime, 1, sys.rollback.ggpoInputs[1])
+		r.SetInput(r.netTime, 0, sys.rollback.ggpoInputs[0], sys.rollback.ggpoAnalogInputs[0])
+		r.SetInput(r.netTime, 1, sys.rollback.ggpoInputs[1], sys.rollback.ggpoAnalogInputs[1])
 		r.netTime++
 	}
 
@@ -317,7 +323,6 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 			r.log.saveLogs()
 		}
 		fmt.Println("EventCodeDisconnectedFromPeer")
-		sys.rollback.currentFight.fin = true
 		sys.endMatch = true
 		disconnectMessage := fmt.Sprintf("Player %d disconnected.", info.Player)
 		r.SaveReplay()
@@ -330,7 +335,6 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 			r.log.saveLogs()
 		}
 		fmt.Println("EventCodeDesync")
-		sys.rollback.currentFight.fin = true
 		sys.endMatch = true
 		r.SaveReplay()
 		ShowInfoDialog("Desync error.\nIf the problem persists, please report it at:\nhttps://github.com/ikemen-engine/Ikemen-GO/issues.\nThank you for your patience", "Desync Error")
@@ -352,22 +356,23 @@ func NewRollbackSession(config RollbackProperties) RollbackSession {
 	r.log = NewRollbackLogger(r.timestamp)
 	r.replayBuffer = make([][MaxPlayerNo]InputBits, 0)
 	r.inputs = make(map[int][MaxPlayerNo]InputBits)
+	r.analogInputs = make(map[int][MaxPlayerNo][6]int8)
 	return r
 
 }
 
 func encodeInputs(inputs InputBits) []byte {
-	return writeI32(int32(inputs))
+	return writeI16(int16(inputs))
 }
 
 func (rs *RollbackSession) LiveChecksum() uint32 {
-	// System
+	// System variables. Check always
 	buf := writeI32(sys.randseed)
-	buf = append(buf, writeI32(sys.gameTime)...)
+	buf = append(buf, writeI32(sys.matchTime)...)
 	buf = append(buf, writeI32(sys.curRoundTime)...)
 
-	// Round start checks. Random select safeguard
-	if sys.tickCount <= 60 {
+	// Round start checks. Ensure both players have the same selection
+	if sys.roundState() == 1 {
 		// Stage
 		stageHash := crc32.ChecksumIEEE([]byte(sys.stage.name))
 		buf = binary.BigEndian.AppendUint32(buf, stageHash)
@@ -383,26 +388,31 @@ func (rs *RollbackSession) LiveChecksum() uint32 {
 		}
 
 		// CharGlobalInfo
-		for i := range sys.cgi {
-			buf = binary.BigEndian.AppendUint32(buf, uint32(sys.cgi[i].palno))
-		}
+		// Checking selected palette is a little overzealous and makes palette modules desync
+		//for i := range sys.cgi {
+		//	buf = binary.BigEndian.AppendUint32(buf, uint32(sys.cgi[i].palno))
+		//}
 	}
 
-	// Character data
-	for i := range sys.chars {
-		if len(sys.chars[i]) == 0 {
-			continue
+	// During fight checks
+	// Checking life during intros may cause trouble with Turns mode life refill
+	if sys.roundState() == 2 || sys.roundState() == 3 {
+		// Character data
+		for i := range sys.chars {
+			if len(sys.chars[i]) == 0 {
+				continue
+			}
+			c := sys.chars[i][0]
+			buf = binary.BigEndian.AppendUint32(buf, uint32(c.life))
+			buf = binary.BigEndian.AppendUint32(buf, uint32(c.redLife))
+			buf = binary.BigEndian.AppendUint32(buf, uint32(c.dizzyPoints))
+			buf = binary.BigEndian.AppendUint32(buf, uint32(c.guardPoints))
+			buf = binary.BigEndian.AppendUint32(buf, uint32(c.power))
+			buf = binary.BigEndian.AppendUint32(buf, uint32(c.animNo))
+			//buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(cc.pos[0])) // These might add float operation errors
+			//buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(cc.pos[1]))
+			//buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(cc.pos[2]))
 		}
-		c := sys.chars[i][0]
-		buf = binary.BigEndian.AppendUint32(buf, uint32(c.life))
-		buf = binary.BigEndian.AppendUint32(buf, uint32(c.redLife))
-		buf = binary.BigEndian.AppendUint32(buf, uint32(c.dizzyPoints))
-		buf = binary.BigEndian.AppendUint32(buf, uint32(c.guardPoints))
-		buf = binary.BigEndian.AppendUint32(buf, uint32(c.power))
-		buf = binary.BigEndian.AppendUint32(buf, uint32(c.animNo))
-		//buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(cc.pos[0])) // These might add float operation errors
-		//buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(cc.pos[1]))
-		//buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(cc.pos[2]))
 	}
 
 	return crc32.ChecksumIEEE(buf)
@@ -416,7 +426,7 @@ func (rs *RollbackSession) Input(time int32, player int) (input InputBits) {
 
 func (rs *RollbackSession) AnyButton() bool {
 	for i := 0; i < len(rs.inputs[len(rs.inputs)-1]); i++ {
-		if rs.Input(sys.gameTime, i)&IB_anybutton != 0 {
+		if rs.Input(sys.matchTime, i)&IB_anybutton != 0 {
 			return true
 		}
 	}
@@ -436,7 +446,8 @@ func (rs *RollbackSession) InitP1(numPlayers int, localPort int, remotePort int,
 	}
 
 	var inputBits InputBits = 0
-	var inputSize int = len(encodeInputs(inputBits))
+	var inputAxes [6]int8 = [6]int8{}
+	var inputSize int = len(encodeInputs(inputBits)) + len(inputAxes)
 
 	player := ggpo.NewLocalPlayer(20, 1)
 	player2 := ggpo.NewRemotePlayer(20, 2, remoteIp, remotePort)
@@ -484,7 +495,8 @@ func (rs *RollbackSession) InitP2(numPlayers int, localPort int, remotePort int,
 	}
 
 	var inputBits InputBits = 0
-	var inputSize int = len(encodeInputs(inputBits))
+	var inputAxes [6]int8 = [6]int8{}
+	var inputSize int = len(encodeInputs(inputBits)) + len(inputAxes)
 
 	player := ggpo.NewRemotePlayer(20, 1, remoteIp, remotePort)
 	player2 := ggpo.NewLocalPlayer(20, 2)
@@ -533,7 +545,8 @@ func (rs *RollbackSession) InitSyncTest(numPlayers int) {
 	}
 
 	var inputBits InputBits = 0
-	var inputSize int = len(encodeInputs(inputBits))
+	var inputAxes [6]int8 = [6]int8{}
+	var inputSize int = len(encodeInputs(inputBits)) + len(inputAxes)
 
 	player := ggpo.NewLocalPlayer(20, 1)
 	player2 := ggpo.NewLocalPlayer(20, 2)

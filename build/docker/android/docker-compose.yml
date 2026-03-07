@@ -1,0 +1,54 @@
+services:
+  android-build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        UBUNTU_VERSION: "22.04"
+        GO_VERSION: "1.20.14"
+        ANDROID_NDK_VERSION: "r27d"
+        #BASE_IMAGE: "${BASE_IMAGE:-public.ecr.aws/docker/library/ubuntu:22.04}"
+        BASE_IMAGE: "${BASE_IMAGE:-ubuntu:22.04}"
+    image: ikemen-go-android-builder:ubuntu-22.04
+    working_dir: /work
+    volumes:
+      # Mount the repo root (this compose file lives in build/docker/android)
+      - ../../..:/work
+      # Cache Go modules/build to speed up rebuilds
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+      # Cache Gradle to speed up APK rebuilds
+      - gradle-cache:/root/.gradle
+    environment:
+      # build.sh requires this for Android
+      ANDROID_NDK_HOME: /opt/android-ndk-r27d
+      # These are optional but match CI intent
+      CGO_ENABLED: "1"
+      GOEXPERIMENT: "arenas"
+      APP_VERSION: "${APP_VERSION:-docker-test}"
+      APP_BUILDTIME: "${APP_BUILDTIME:-2026.01.13}"
+      # Build APK automatically (default is 1, but make it explicit in compose)
+      BUILD_ANDROID_APK: "${BUILD_ANDROID_APK:-1}"
+    command: >
+      bash -lc "
+        set -euo pipefail;
+        go env -w GO111MODULE=on;
+        go mod download;
+        ./build/build.sh Android;
+        echo;
+        echo '==> Outputs:';
+        ls -lah bin/ lib/ || true;
+        echo;
+        echo '==> Sanity checks:';
+        test -f bin/libmain.so;
+        file bin/libmain.so || true;
+        (command -v readelf >/dev/null && readelf -d bin/libmain.so | sed -n 's/.*(NEEDED).*/&/p') || true;
+        echo;
+        echo '==> APK:';
+        ls -lah bin/*.apk 2>/dev/null || true;
+      "
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  gradle-cache:

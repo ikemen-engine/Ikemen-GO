@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/veandco/go-sdl2/sdl"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -16,7 +19,9 @@ var Version = "development"
 var BuildTime = "" // Set automatically by GitHub Actions
 
 func init() {
-	runtime.LockOSThread()
+	if runtime.GOOS != "android" {
+		runtime.LockOSThread()
+	}
 }
 
 // Checks if error is not null, if there is an error it displays a error dialogue box and crashes the program.
@@ -51,90 +56,159 @@ func closeLog(f *os.File) {
 }
 
 func main() {
+	realMain()
+}
 
-	exePath, err := os.Executable()
-	if err != nil {
-		fmt.Println("Error getting executable path:", err)
-	} else {
-		// Change the context for Darwin if we're in an app bundle
-		if isRunningInsideAppBundle(exePath) {
-			os.Chdir(path.Dir(exePath))
-			os.Chdir("../../../")
+func realMain() {
+	// Crash path
+	defer func() {
+		if r := recover(); r != nil {
+			handlePanic(r)
 		}
+	}()
+
+	if runtime.GOOS == "android" {
+		Logcat("Inside realMain...")
+		runtime.LockOSThread()
+		sdl.GLSetAttribute(sdl.GL_CONTEXT_PROFILE_MASK, sdl.GL_CONTEXT_PROFILE_ES)
+		sdl.GLSetAttribute(sdl.GL_CONTEXT_MAJOR_VERSION, 3)
+		sdl.GLSetAttribute(sdl.GL_CONTEXT_MINOR_VERSION, 2)
+		sdl.GLSetAttribute(sdl.GL_DOUBLEBUFFER, 1)
+		sdl.GLSetAttribute(sdl.GL_ALPHA_SIZE, 0)
+		sdl.GLSetAttribute(sdl.GL_DEPTH_SIZE, 24)
+		// sdl.SetHint("SDL_VIDEO_EXTERNAL_CONTEXT", "0")
+		// sdl.SetHint("SDL_HIDAPI_IGNORE_DEVICES", "1")
+		// sdl.SetHint("SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS", "1")
+		// sdl.SetHint(sdl.HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight")
+		// sdl.SetHint("SDL_ANDROID_TRAP_BACK_BUTTON", "1")
+		// sdl.SetHint("SDL_JOYSTICK_HIDAPI", "0")
+		// sdl.SetHint("SDL_ANDROID_SEPARATE_MOUSE_AND_TOUCH", "1")
+
+		if sys.baseDir == "" {
+			panic("FATAL: Android baseDir not set")
+		}
+
+		Logcat("sys.baseDir is: " + sys.baseDir)
+
+		// Check if the directory even exists to Go
+		if info, err := os.Stat(sys.baseDir); err != nil {
+			Logcat(fmt.Sprintf("LOG: STAT ERROR: %v\n", err))
+		} else {
+			Logcat(fmt.Sprintf("LOG: STAT OK: %s is a dir: %v\n", sys.baseDir, info.IsDir()))
+		}
+
+		// FIX 1: Explicitly initialize os.Args before processCommandLine
+		if os.Args == nil || len(os.Args) == 0 {
+			os.Args = []string{"ikemen-go"}
+		}
+
+		if err := os.Chdir(sys.baseDir); err != nil {
+			Logcat(fmt.Sprintf("LOG: CHDIR FAILED: %v\n", err))
+			// Don't panic yet, let's see if we can continue
+		} else {
+			Logcat("LOG: CHDIR SUCCESSFUL")
+		}
+
+		// Init SDL NOW
+		if err := sdl.Init(sdl.INIT_AUDIO | sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_TIMER); err != nil {
+			Logcat("LOG: SDL Init Failed: " + err.Error())
+			return
+		}
+		Logcat("LOG: SDL Init SUCCESS")
+	} else {
+		sys.baseDir = "./"
 	}
 
-	// Make save directories, if they don't exist
-	os.Mkdir("save", os.ModeSticky|0755)
-	os.Mkdir("save/replays", os.ModeSticky|0755)
-	os.Mkdir("save/logs", os.ModeSticky|0755)
+	// Handle Permissions and Directory Creation
+	permission := os.FileMode(0755)
+	if runtime.GOOS != "android" {
+		permission |= os.ModeSticky
+	}
+
+	// Create directories for ALL platforms
+	os.MkdirAll(filepath.Join(sys.baseDir, "save/replays"), permission)
+	os.MkdirAll(filepath.Join(sys.baseDir, "save/logs"), permission)
 
 	processCommandLine()
 
+	// Ensure cmdFlags exists even when there are no CLI args,
+	// since we assign defaults below.
+	if sys.cmdFlags == nil {
+		sys.cmdFlags = make(map[string]string)
+	}
+
+	// Stats file path
+	if _, ok := sys.cmdFlags["-stats"]; !ok {
+		sys.cmdFlags["-stats"] = filepath.Join(sys.baseDir, "save/stats.json")
+	}
+
 	// Try reading stats
-	if _, err := os.ReadFile("save/stats.json"); err != nil {
+	if _, err := os.ReadFile(sys.cmdFlags["-stats"]); err != nil {
 		// If there was an error reading, write an empty json file
-		f, err := os.Create("save/stats.json")
+		f, err := os.Create(sys.cmdFlags["-stats"])
 		chk(err)
 		f.Write([]byte("{}"))
 		chk(f.Close())
 	}
 
+	if runtime.GOOS == "android" {
+		sdl.InitSubSystem(sdl.INIT_JOYSTICK)
+		sdl.InitSubSystem(sdl.INIT_GAMECONTROLLER)
+		Logcat("LOG: Subsystems initialized!")
+	}
+
+	// Init the SDL LUT's
+	initLUTs()
+
 	// Config file path
-	cfgPath := "save/config.ini"
-	// If a different config file is defined in the command line parameters, use it instead
-	if _, ok := sys.cmdFlags["-config"]; ok {
-		cfgPath = sys.cmdFlags["-config"]
+	configPath := "save/config.ini"
+	if val, ok := sys.cmdFlags["-config"]; ok {
+		configPath = val
 	}
 
-	if cfg, err := loadConfig(cfgPath); err != nil {
-		chk(err)
-	} else {
-		sys.cfg = *cfg
+	// Logcat("LOG: Loading config from: " + configPath)
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		Logcat("LOG: loadConfig failed: " + err.Error())
+		// For Android, let's see exactly what failed
+		panic(err)
+	}
+	// Force to OpenGL ES 3.2 for Android
+	if runtime.GOOS == "android" {
+		cfg.Video.RenderMode = "OpenGL ES 3.2"
+	}
+	sys.cfg = *cfg
+	// Logcat("LOG: Config Loaded. System Script: " + sys.cfg.Config.System)
+
+	if sys.cfg.Debug.DumpLuaTables {
+		os.MkdirAll(filepath.Join(sys.baseDir, "debug"), permission)
 	}
 
-	//os.Mkdir("debug", os.ModeSticky|0755)
-
-	// Check if the main lua file exists.
-	if ftemp, err1 := os.Open(sys.cfg.Config.System); err1 != nil {
-		ftemp.Close()
-		var err2 = Error(
-			"Main lua file \"" + sys.cfg.Config.System + "\" error." +
-				"\n" + err1.Error(),
-		)
-		ShowErrorDialog(err2.Error())
-		panic(err2)
-	} else {
-		ftemp.Close()
+	// Check Lua file path
+	ftemp, err := os.Open(sys.cfg.Config.System)
+	if err != nil {
+		Logcat("LOG: LUA OPEN FAILED: " + err.Error())
+		panic(err)
 	}
+	ftemp.Close()
 
 	// Initialize game and create window
+	// This is where the window is born!
 	sys.luaLState = sys.init(sys.gameWidth, sys.gameHeight)
-	defer sys.shutdown()
+	//defer sys.shutdown()
 
 	// Begin processing game using its lua scripts
 	if err := sys.luaLState.DoFile(sys.cfg.Config.System); err != nil {
-		// Display error logs.
-		errorLog := createLog("Ikemen.log")
-		defer closeLog(errorLog)
-
-		// Write version and build time at the top
-		fmt.Fprintf(errorLog, "Version: %s\nBuild Time: %s\n\nError log:\n", Version, BuildTime)
-
-		// Write the rest of the log
-		fmt.Fprintln(errorLog, err)
-
-		switch err.(type) {
-		case *lua.ApiError:
-			errstr := strings.Split(err.Error(), "\n")[0]
-			if len(errstr) < 10 || errstr[len(errstr)-10:] != "<game end>" {
-				ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
-				panic(err)
-			}
-		default:
-			ShowErrorDialog(fmt.Sprintf("%s\n\nError saved to Ikemen.log", err))
-			panic(err)
+		if strings.Contains(err.Error(), "<game end>") {
+			handleExit()
+			return
 		}
+		panic(err)
 	}
+
+	// Clean exit path
+	// Just in case, because normally we'll get a Lua error first
+	handleExit()
 }
 
 // Loops through given comand line arguments and processes them for later use by the game
@@ -142,6 +216,21 @@ func processCommandLine() {
 	// If there are command line arguments
 	if len(os.Args[1:]) > 0 {
 		sys.cmdFlags = make(map[string]string)
+		// PowerShell can split an unquoted native-arg that starts with '-' at the first '.'
+		rawArgs := os.Args[1:]
+		args := make([]string, 0, len(rawArgs))
+		rPnum := regexp.MustCompile(`^-p[0-9]+$`)
+		// Only join simple ".suffix" tokens (no slashes/backslashes), to avoid breaking paths.
+		rDotSuffix := regexp.MustCompile(`^\.[A-Za-z][A-Za-z0-9]*$`)
+		for i := 0; i < len(rawArgs); i++ {
+			a := rawArgs[i]
+			if rPnum.MatchString(a) && i+1 < len(rawArgs) && rDotSuffix.MatchString(rawArgs[i+1]) {
+				args = append(args, a+rawArgs[i+1])
+				i++
+				continue
+			}
+			args = append(args, a)
+		}
 		boolFlags := map[string]bool{
 			"-windowed":       true,
 			"-togglelifebars": true,
@@ -158,7 +247,7 @@ func processCommandLine() {
 		r1, _ := regexp.Compile("^-[h%?]$")
 		r2, _ := regexp.Compile("^-")
 		// Loop through arguments
-		for _, a := range os.Args[1:] {
+		for _, a := range args {
 			// Check if the current argument 'a' is a flag (starts with '-')
 			// Check if 'a' is a number (could be negative)
 			_, err := strconv.ParseFloat(a, 64)
@@ -234,4 +323,79 @@ Debug Options:
 			sys.cmdFlags[key] = "true"
 		}
 	}
+}
+
+// Exit program without any errors
+func handleExit() {
+	sys.shutdown()
+	os.Exit(0)
+}
+
+// Always attempt to show and log error messages when crashing
+func handlePanic(r interface{}) {
+	// System snapshot
+	now := time.Now()
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+
+	// Prepare message metadata
+	version := fmt.Sprintf("Version: %s", Version)
+	buildTime := fmt.Sprintf("Build Time: %s", BuildTime)
+	platform := fmt.Sprintf("Platform: %s (%s)", runtime.GOOS, runtime.GOARCH)
+	render := gfx.GetName()
+
+	// Prepare stats
+	memory := fmt.Sprintf("RAM in Use: %v MB / OS Reserved: %v MB", mem.Alloc/1024/1024, mem.Sys/1024/1024)
+	threads := fmt.Sprintf("Active Goroutines: %d", runtime.NumGoroutine())
+
+	// Identify the crash type
+	crashType := "Fatal runtime error" // Default for unsafe crashes
+	if _, ok := r.(*lua.ApiError); ok {
+		crashType = "Engine error" // If error was caught by Lua
+	} else if _, ok := r.(error); ok {
+		crashType = "Application error" // Otherwise generic message
+	}
+
+	// Capture the error string
+	errStr := fmt.Sprint(r)
+
+	// Capture Go stack trace
+	goStack := fmt.Sprintf("Go stack traceback:\n%s", debug.Stack())
+
+	// Optional: print error to terminal
+	// We have to do this manually now because we recover() from the actual panic
+	fmt.Fprintf(os.Stderr, "Panic: %s\n\n%s\n", errStr, goStack)
+
+	// Write to log file
+	logDir := filepath.Join(sys.baseDir, "save", "logs")
+	timestamp := now.Format("2006-01-02_15-04-05")
+	logPath := filepath.Join(logDir, fmt.Sprintf("Ikemen_%s.log", timestamp))
+
+	os.MkdirAll(logDir, 0755)
+	if f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644); err == nil {
+		fmt.Fprintf(f, "%s\n%s\n%s\n%s\n%s\n%s\nTimestamp: %s\n\n%s\n\nError: %s\n\n%s",
+			version, buildTime, platform, render, memory, threads,
+			now.Format("2006-01-02 15:04:05"), crashType, errStr, goStack)
+		f.Close()
+	}
+
+	// Show popup message
+	displayErr := errStr
+	if _, ok := r.(*lua.ApiError); ok {
+		parts := strings.SplitN(errStr, "stack traceback:", 2)
+		displayErr = strings.TrimSpace(parts[0]) // Remove the Lua traceback from this one
+	}
+
+	if len(displayErr) > 1000 {
+		displayErr = displayErr[:1000] + "..."
+	}
+
+	dialogMsg := fmt.Sprintf("%s\n\n%s\n%s\n\nError: %s\n\nDetails saved to %s folder",
+		crashType, version, buildTime, displayErr, logDir)
+
+	ShowErrorDialog(dialogMsg)
+
+	// Cleanup and exit
+	sys.shutdown()
+	os.Exit(1)
 }

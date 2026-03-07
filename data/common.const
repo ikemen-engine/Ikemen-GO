@@ -272,6 +272,7 @@ MsgCounterSwitch = 421   ; Not used by default tag system
 MsgGuardBreak = 422
 MsgParry = 423
 MsgJustDefend = 424
+MsgWinClutch = 425
 
 ; Bitwise shifting
 Bit1 = 1

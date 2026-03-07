@@ -200,6 +200,26 @@ func IsNumeric(s string) bool {
 	return err == nil
 }
 
+// IsInt reports whether s is a valid base-10 integer literal (optional +/-).
+func IsInt(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if s[0] == '+' || s[0] == '-' {
+		s = s[1:]
+	}
+	if s == "" {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
 func Atoi(str string) int32 {
 	var n int64
 	str = strings.TrimSpace(str)
@@ -281,6 +301,18 @@ func Atof(str string) float64 {
 		}
 	}
 	return f
+}
+
+func Atob(str string) bool {
+	b, err := strconv.ParseBool(str)
+	if err != nil {
+		return false
+	}
+	return b
+}
+
+func Itoa(n int) string {
+	return fmt.Sprintf("%d", n)
 }
 
 func RectRotate(x, y, w, h, cx, cy, angle float32) [][2]float32 {
@@ -585,6 +617,14 @@ func SearchFile(file string, dirs []string) string {
 }
 
 func LoadFile(file *string, dirs []string, load func(string) error) error {
+	// Allow optional quotes around paths
+	*file = strings.TrimSpace(*file)
+	if len(*file) >= 2 {
+		q := (*file)[0]
+		if (q == '"' || q == '\'') && (*file)[len(*file)-1] == q {
+			*file = (*file)[1 : len(*file)-1]
+		}
+	}
 	fp := SearchFile(*file, dirs)
 	if err := load(fp); err != nil {
 		if len(dirs) > 0 {
@@ -651,7 +691,7 @@ func OldSprintf(f string, a ...interface{}) (s string) {
 			b[i] = 'd'
 		}
 		for i := len(lIdx) - 1; i >= 0; i-- {
-			b = append(b[:lIdx[i]], b[lIdx[i]+1:]...)
+			b = SliceDelete(b, lIdx[i])
 		}
 		f = string(b)
 	}
@@ -702,6 +742,7 @@ func sliceContains(s []string, str string, lower bool) bool {
 	return false
 }
 
+/*
 func sliceInsertInt(array []int, value int, index int) []int {
 	return append(array[:index], append([]int{value}, array[index:]...)...)
 }
@@ -713,6 +754,20 @@ func sliceRemoveInt(array []int, index int) []int {
 func sliceMoveInt(array []int, srcIndex int, dstIndex int) []int {
 	value := array[srcIndex]
 	return sliceInsertInt(sliceRemoveInt(array, srcIndex), value, dstIndex)
+}
+*/
+
+// Unified function for the above. Accepts any value type
+func sliceMove[T any](array []T, srcIndex int, dstIndex int) []T {
+	if srcIndex == dstIndex {
+		return array
+	}
+	// Skip bounds check. Just panic if used wrong
+	value := array[srcIndex]
+	// Remove
+	array = append(array[:srcIndex], array[srcIndex+1:]...)
+	// Insert
+	return append(array[:dstIndex], append([]T{value}, array[dstIndex:]...)...)
 }
 
 // We save an array for precise checking, and a float for triggers
@@ -964,18 +1019,27 @@ func (is IniSection) getText(name string) (str string, ok bool, err error) {
 }
 
 type Layout struct {
-	offset  [2]float32
-	facing  int8
-	vfacing int8
-	layerno int16
-	scale   [2]float32
-	angle   float32
-	xshear  float32
-	window  [4]int32
+	offset     [2]float32
+	facing     int8
+	vfacing    int8
+	layerno    int16
+	scale      [2]float32
+	rot        Rotation
+	projection Projection
+	fLength    float32
+	xshear     float32
+	window     [4]int32
 }
 
 func newLayout(ln int16) *Layout {
-	return &Layout{facing: 1, vfacing: 1, layerno: ln, scale: [...]float32{1, 1}}
+	return &Layout{
+		facing:     1,
+		vfacing:    1,
+		layerno:    ln,
+		scale:      [2]float32{1, 1},
+		projection: Projection_Orthographic,
+		fLength:    2048,
+	}
 }
 
 func ReadLayout(pre string, is IniSection, ln int16) *Layout {
@@ -1004,21 +1068,27 @@ func (l *Layout) Read(pre string, is IniSection) {
 	is.ReadI32(pre+"layerno", &ln)
 	l.layerno = I32ToI16(Min(2, ln))
 	is.ReadF32(pre+"scale", &l.scale[0], &l.scale[1])
-	is.ReadF32(pre+"angle", &l.angle)
+	is.ReadF32(pre+"angle", &l.rot.angle)
+	is.ReadF32(pre+"xangle", &l.rot.xangle)
+	is.ReadF32(pre+"yangle", &l.rot.yangle)
 	is.ReadF32(pre+"xshear", &l.xshear)
-	if is.ReadI32(pre+"window", &l.window[0], &l.window[1], &l.window[2], &l.window[3]) {
-		l.window[0] = int32(float32(l.window[0]) * float32(sys.scrrect[2]/sys.lifebarLocalcoord[0]))
-		l.window[1] = int32(float32(l.window[1]) * float32(sys.scrrect[3]/sys.lifebarLocalcoord[1]))
-		l.window[2] = int32(float32(l.window[2]) * float32(sys.scrrect[2]/sys.lifebarLocalcoord[0]))
-		l.window[3] = int32(float32(l.window[3]) * float32(sys.scrrect[3]/sys.lifebarLocalcoord[1]))
-		window := l.window
-		if window[2] < window[0] {
-			l.window[2] = window[0]
-			l.window[0] = window[2]
+	is.ReadF32(pre+"focallength", &l.fLength)
+	if str, ok := is[pre+"projection"]; ok {
+		switch strings.ToLower(strings.TrimSpace(str)) {
+		case "orthographic":
+			l.projection = Projection_Orthographic
+		case "perspective":
+			l.projection = Projection_Perspective
+		case "perspective2":
+			l.projection = Projection_Perspective2
 		}
-		if window[3] < window[1] {
-			l.window[3] = window[1]
-			l.window[1] = window[3]
+	}
+	if is.ReadI32(pre+"window", &l.window[0], &l.window[1], &l.window[2], &l.window[3]) {
+		if l.window[2] < l.window[0] {
+			l.window[2], l.window[0] = l.window[0], l.window[2]
+		}
+		if l.window[3] < l.window[1] {
+			l.window[3], l.window[1] = l.window[1], l.window[3]
 		}
 		l.window[2] -= l.window[0]
 		l.window[3] -= l.window[1]
@@ -1027,25 +1097,51 @@ func (l *Layout) Read(pre string, is IniSection) {
 	}
 }
 
+// Calculates the lifebar window local coordinates into real screen pixels,
+// taking the FightAspect ratio into account
+func (l *Layout) calcLBRect(window [4]int32) [4]int32 {
+	if window[2] == sys.scrrect[2] && window[3] == sys.scrrect[3] {
+		return sys.scrrect
+	}
+
+	baseScale := float32(sys.scrrect[2]) / float32(sys.lifebar.localcoord[0])
+	screenAspect := float32(sys.scrrect[2]) / float32(sys.scrrect[3])
+	fightAspect := sys.getFightAspect()
+	correction := fightAspect / screenAspect
+
+	x := float32(window[0]) * baseScale
+	y := (float32(window[1]) * baseScale) * correction
+	w := float32(window[2]) * baseScale
+	h := (float32(window[3]) * baseScale) * correction
+
+	return [4]int32{int32(x), int32(y), int32(w), int32(h)}
+}
+
 func (l *Layout) DrawFaceSprite(x, y float32, ln int16, s *Sprite, fx *PalFX, fscale float32, window *[4]int32) {
 	if l.layerno == ln && s != nil {
+		drawwindow := &sys.scrrect
+
+		if window != nil {
+			rect := l.calcLBRect(*window)
+			drawwindow = &rect
+		}
 		// TODO: test "phantom pixel"
 		if l.facing < 0 {
-			x += sys.lifebar.fnt_scale * sys.lifebarScale
+			x += sys.lifebar.fnt_scale * sys.lifebar.scale
 		}
 		if l.vfacing < 0 {
-			y += sys.lifebar.fnt_scale * sys.lifebarScale
+			y += sys.lifebar.fnt_scale * sys.lifebar.scale
 		}
 		if s.coldepth <= 8 && s.PalTex == nil {
-			s.PalTex = s.CachePalette(s.Pal)
+			s.PalTex = s.CachePalTex(s.Pal)
 		}
 		// Xshear offset correction
 		xshear := -l.xshear
 		xsoffset := xshear * (float32(s.Offset[1]) * l.scale[1] * fscale)
 
-		s.Draw(x+l.offset[0]*sys.lifebarScale-xsoffset, y+l.offset[1]*sys.lifebarScale,
+		s.Draw(x+l.offset[0]*sys.lifebar.scale-xsoffset, y+l.offset[1]*sys.lifebar.scale,
 			l.scale[0]*float32(l.facing)*fscale, l.scale[1]*float32(l.vfacing)*fscale,
-			xshear, Rotation{l.angle, 0, 0}, fx, window)
+			xshear, l.rot, int32(l.projection), l.fLength, fx, drawwindow)
 	}
 }
 
@@ -1055,6 +1151,16 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 		return
 	}
 	if l.layerno == ln {
+		drawwindow := &sys.scrrect
+
+		if r != nil {
+			if r == &l.window {
+				rect := l.calcLBRect(*r)
+				drawwindow = &rect
+			} else {
+				drawwindow = r
+			}
+		}
 		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale
@@ -1066,16 +1172,22 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 		xshear := -l.xshear
 		xsoffset := xshear * (float32(a.spr.Offset[1]) * l.scale[1] * scl)
 
-		a.Draw(r, x+l.offset[0]-xsoffset, y+l.offset[1]+float32(sys.gameHeight-240),
+		a.Draw(drawwindow, x+l.offset[0]-xsoffset, y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, (l.scale[0]*xscl)*float32(l.facing), (l.scale[0]*xscl)*float32(l.facing),
-			(l.scale[1]*yscl)*float32(l.vfacing), xshear, Rotation{l.angle, 0, 0},
-			float32(sys.gameWidth-320)/2, palfx, false, 1, [2]float32{1, 1}, 0, 0, 0, false)
+			(l.scale[1]*yscl)*float32(l.vfacing), xshear, l.rot,
+			float32(sys.gameWidth-320)/2, palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false)
 	}
 }
 
 func (l *Layout) DrawText(x, y, scl float32, ln int16,
 	text string, f *Fnt, b, a int32, palfx *PalFX, frgba [4]float32) {
 	if l.layerno == ln {
+		drawwindow := &sys.scrrect
+
+		if l.window != [4]int32{0, 0, 0, 0} {
+			rect := l.calcLBRect(l.window)
+			drawwindow = &rect
+		}
 		// TODO: test "phantom pixel"
 		if l.facing < 0 {
 			x += sys.lifebar.fnt_scale
@@ -1089,8 +1201,8 @@ func (l *Layout) DrawText(x, y, scl float32, ln int16,
 
 		f.Print(text, (x+l.offset[0]-xsoffset)*scl, (y+l.offset[1])*scl,
 			l.scale[0]*sys.lifebar.fnt_scale*float32(l.facing)*scl,
-			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, xshear, Rotation{l.angle, 0, 0},
-			b, a, &l.window, palfx, frgba)
+			l.scale[1]*sys.lifebar.fnt_scale*float32(l.vfacing)*scl, xshear, l.rot,
+			int32(l.projection), l.fLength, b, a, drawwindow, palfx, frgba)
 	}
 }
 
@@ -1118,7 +1230,7 @@ func (al *AnimLayout) Read(pre string, is IniSection, at AnimationTable, ln int1
 	var g, n int32
 	if is.ReadI32(pre+"spr", &g, &n) {
 		al.anim.frames = []AnimFrame{*newAnimFrame()}
-		al.anim.frames[0].Group, al.anim.frames[0].Number = I32ToI16(g), I32ToI16(n)
+		al.anim.frames[0].Group, al.anim.frames[0].Number = g, n
 		al.anim.mask = 0
 		al.lay = *newLayout(ln)
 	}
@@ -1145,6 +1257,10 @@ func (al *AnimLayout) Action() {
 	if al.anim != nil {
 		al.anim.Action()
 	}
+}
+
+func (al *AnimLayout) HasAnim() bool {
+	return al != nil && al.anim != nil && len(al.anim.frames) > 0
 }
 
 func (al *AnimLayout) Draw(x, y float32, layerno int16, scale float32) {
@@ -1235,7 +1351,7 @@ func newAnimTextSnd(sff *Sff, ln int16) *AnimTextSnd {
 }
 
 func ReadAnimTextSnd(pre string, is IniSection,
-	sff *Sff, at AnimationTable, ln int16, f []*Fnt) *AnimTextSnd {
+	sff *Sff, at AnimationTable, ln int16, f map[int]*Fnt) *AnimTextSnd {
 
 	ats := newAnimTextSnd(sff, ln)
 	ats.Read(pre, is, at, ln, f)
@@ -1243,7 +1359,7 @@ func ReadAnimTextSnd(pre string, is IniSection,
 }
 
 func (ats *AnimTextSnd) Read(pre string, is IniSection, at AnimationTable,
-	ln int16, f []*Fnt) {
+	ln int16, f map[int]*Fnt) {
 	is.ReadI32(pre+"snd", &ats.snd[0], &ats.snd[1])
 	ats.text = *readLbText(pre, is, "", ln, f, 0)
 	ats.animLayout.lay = *newLayout(ln)
@@ -1263,20 +1379,28 @@ func (ats *AnimTextSnd) Action() {
 	ats.text.step()
 }
 
-func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f []*Fnt, scale float32) {
+func (ats *AnimTextSnd) Draw(x, y float32, layerno int16, f map[int]*Fnt, scale float32) {
 	if ats.displaytime > 0 && ats.cnt > ats.displaytime {
 		return
 	}
-	if len(ats.animLayout.anim.frames) > 0 {
+
+	// Draw animation if available
+	if ats.animLayout.anim != nil && len(ats.animLayout.anim.frames) > 0 {
 		ats.animLayout.Draw(x, y, layerno, scale)
-	} else if ats.text.font[0] >= 0 && int(ats.text.font[0]) < len(f) &&
-		len(ats.text.text) > 0 {
+		return // Skip text
+	}
+
+	// Otherwise draw text
+	if ats.text.font[0] >= 0 && getFont(f, ats.text.font[0]) != nil && len(ats.text.text) > 0 {
+		ff := getFont(f, ats.text.font[0])
 		for k, v := range strings.Split(ats.text.text, "\\n") {
-			ats.text.lay.DrawText(x, y+
-				float32(k)*(float32(f[ats.text.font[0]].Size[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale+
-					float32(f[ats.text.font[0]].Spacing[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale),
-				scale, layerno, v, f[ats.text.font[0]], ats.text.font[1], ats.text.font[2], ats.text.palfx,
-				ats.text.frgba)
+			if ff == nil {
+				break
+			}
+			lineH := float32(ff.Size[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale +
+				float32(ff.Spacing[1])*ats.text.lay.scale[1]*sys.lifebar.fnt_scale
+			ats.text.lay.DrawText(x, y+float32(k)*lineH,
+				scale, layerno, v, ff, ats.text.font[1], ats.text.font[2], ats.text.palfx, ats.text.frgba)
 		}
 	}
 }
@@ -1285,34 +1409,50 @@ func (ats *AnimTextSnd) NoSound() bool {
 	return ats.snd[0] < 0
 }
 
-func (ats *AnimTextSnd) NoDisplay() bool {
-	return len(ats.animLayout.anim.frames) == 0 &&
-		(ats.text.font[0] < 0 || len(ats.text.text) == 0)
+// Check if Draw() function is worth calling
+func (ats *AnimTextSnd) HasDrawable() bool {
+	hasAnim := ats.animLayout.anim != nil && len(ats.animLayout.anim.frames) > 0
+	hasText := ats.text.font[0] >= 0 && len(ats.text.text) > 0 && getFont(sys.lifebar.fnt, ats.text.font[0]) != nil
+
+	return hasAnim || hasText
 }
 
 // In Mugen this returns true if the animation ends before "displaytime" is over
 // It seems like the current Ikemen behavior makes more sense however
 // https://github.com/ikemen-engine/Ikemen-GO/issues/1150
 func (ats *AnimTextSnd) End(dt int32, inf bool) bool {
+	anim := ats.animLayout.anim
+
+	// If displaytime is negative, rely on animation current state
 	if ats.displaytime < 0 {
-		return len(ats.animLayout.anim.frames) == 0 || ats.animLayout.anim.loopend ||
-			(inf && ats.animLayout.anim.frames[ats.animLayout.anim.curelem].Time == -1 &&
-				ats.animLayout.anim.curelem == int32(len(ats.animLayout.anim.frames)-1))
+		if anim == nil || len(anim.frames) == 0 {
+			return true
+		}
+		if anim.loopend {
+			return true
+		}
+		if inf && anim.curelem == int32(len(anim.frames)-1) && anim.frames[anim.curelem].Time == -1 {
+			return true
+		}
+		return false
 	}
+
+	// Otherwise, use displaytime
 	return dt >= ats.displaytime
 }
 
 // compareNatural compares two strings using natural order
 func compareNatural(a, b string) bool {
-	re := regexp.MustCompile(`^([a-zA-Z]+)(\d*)$`)
+	re := regexp.MustCompile(`^([a-zA-Z_]+)(\d*)$`)
 
 	// Extract prefix and numeric parts for both strings
 	aMatches := re.FindStringSubmatch(a)
 	bMatches := re.FindStringSubmatch(b)
 
-	// Index range check
-	if len(aMatches) < 3 || len(bMatches) < 3 {
-		return false
+	// If regex doesn't match, print warning and place non-matching items at the end
+	if aMatches == nil || bMatches == nil {
+		fmt.Printf("Warning: Skipping comparison for non-matching keys: '%s' vs '%s'\n", a, b)
+		return a < b // Default to lexicographic comparison to prevent panic
 	}
 
 	// Extract prefix and numeric part
@@ -1388,6 +1528,17 @@ func (zmfr *zipMemFileReader) Close() error {
 	return zmfr.zipArchive.Close()
 }
 
+// Standardizes slashes then returns the directory and filename. Necessary for Unix systems
+// https://github.com/ikemen-engine/Ikemen-GO/issues/3126
+func SplitPath(p string) (dir, file string) {
+	p = strings.ReplaceAll(p, "\\", "/")
+	idx := strings.LastIndex(p, "/")
+	if idx < 0 {
+		return "", p // Local file, no directory
+	}
+	return p[:idx+1], p[idx+1:]
+}
+
 // OpenFile opens a regular file or a file within a zip archive.
 // For zip files, it reads the entire entry into memory to ensure full io.Seeker compatibility.
 // It returns an io.ReadSeekCloser that must be closed by the caller.
@@ -1461,4 +1612,67 @@ func LowercaseNoExtension(filename string) string {
 		nameOnly = basename[0 : len(basename)-len(ext)]
 	}
 	return strings.ToLower(nameOnly)
+}
+
+// Similar to slices.delete but more thorough because it also nils/zeroes the removed item
+func SliceDelete[T any](slice []T, i int) []T {
+	if i < 0 || i >= len(slice) {
+		return slice
+	}
+	copy(slice[i:], slice[i+1:])
+	var zero T
+	slice[len(slice)-1] = zero // This only matters for pointers
+	return slice[:len(slice)-1]
+}
+
+// Nils out all elements and returns a zero-length slice while preserving the underlying capacity
+// This is better than plain [:0] because we ensure data from previous characters is GC'd
+func PointerSliceReset[T any](slice []*T) []*T {
+	// Recover the whole capacity so we can deep clean it
+	slice = slice[:cap(slice)]
+	// Clear everything
+	for i := range slice {
+		slice[i] = nil
+	}
+	// Shrink back to zero length
+	return slice[:0]
+}
+
+// Recovers a ghosted pointer from the slice capacity if available. Otherwise appends a new one
+// Effectively makes the capacity work as a pool of items
+func RecoverOrAppend[T any](slicePtr *[]*T, clearFunc func(*T), newFunc func() *T) *T {
+	slice := *slicePtr
+
+	// Try to recover ghost
+	if len(slice) < cap(slice) {
+		ghost := slice[:len(slice)+1][len(slice)]
+
+		if ghost != nil {
+			// Found a valid ghost. Reslice to recover it
+			*slicePtr = slice[:len(slice)+1]
+
+			// Clean it up for reuse
+			clearFunc(ghost)
+
+			return ghost
+		}
+	}
+
+	// Create new one and append
+	item := newFunc()
+	*slicePtr = append(*slicePtr, item)
+	return item
+}
+
+// Ensures panics in a separate goroutine are caught and logged
+// Should be used in place of "go func()"
+func SafeGo(f func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				handlePanic(r)
+			}
+		}()
+		f()
+	}()
 }

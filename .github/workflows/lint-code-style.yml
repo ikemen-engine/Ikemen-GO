@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Golang with cache
         uses: magnetikonline/action-golang-cache@v5

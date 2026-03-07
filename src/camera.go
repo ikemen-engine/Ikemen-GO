@@ -61,6 +61,7 @@ type stageCamera struct {
 	roundstart              bool
 	maxRight                float32
 	minLeft                 float32
+	autoZoom                bool
 }
 
 func newStageCamera() *stageCamera {
@@ -95,16 +96,31 @@ type Camera struct {
 	zoff                            float32
 	halfWidth                       float32
 	FollowChar                      *Char
+	LegacyZoomMin                   float32
+	LegacyZoomMax                   float32
+	ExtraBoundH                     float32
 }
 
 func newCamera() *Camera {
-	return &Camera{View: Fighting_View}
+	return &Camera{
+		View:          Fighting_View,
+		LegacyZoomMin: 5.0 / 8.0,
+		LegacyZoomMax: 1,
+	}
 }
 
 func (c *Camera) Reset() {
-	c.ZoomEnable = sys.cfg.Config.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1)
-	c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
-	c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
+	c.ZoomEnable = sys.cfg.Config.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1 || c.stageCamera.autoZoom)
+
+	if c.stageCamera.autoZoom {
+		c.boundL = float32(c.boundleft-c.startx) * c.localscl
+		c.boundR = float32(c.boundright-c.startx) * c.localscl
+	} else {
+		//MUGEN1.1zoom
+		c.boundL = float32(c.boundleft-c.startx)*c.localscl - ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
+		c.boundR = float32(c.boundright-c.startx)*c.localscl + ((1-c.zoomout)*100*c.zoomout)*(1/c.zoomout)*(1/c.zoomout)*1.6*(float32(sys.gameWidth)/320)
+	}
+
 	c.halfWidth = float32(sys.gameWidth) / 2
 	c.XMin = c.boundL - c.halfWidth/c.BaseScale()
 	c.XMax = c.boundR + c.halfWidth/c.BaseScale()
@@ -137,12 +153,32 @@ func (c *Camera) Reset() {
 	if c.verticalfollow < 0 {
 		c.ytensionenable = true
 	}
-	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL +
-		c.boundR)
-	//yminscl := float32(sys.gameHeight) / (240 - MinF(0, c.boundH))
-	c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, xminscl))
-	c.maxRight = float32(c.boundright)*c.localscl + c.halfWidth/c.zoomout
-	c.minLeft = float32(c.boundleft)*c.localscl - c.halfWidth/c.zoomout
+	xminscl := float32(sys.gameWidth) / (float32(sys.gameWidth) - c.boundL + c.boundR)
+
+	if c.stageCamera.autoZoom {
+		var boundH float32
+
+		if c.stageCamera.verticalfollow > 0 {
+			stageHeightScaled := float32(c.localcoord[1]) * c.localscl
+			boundH = MinF(0, float32(c.boundhigh)*c.localscl+float32(sys.gameHeight)+c.aspectcorrection-stageHeightScaled)
+		} else {
+			boundH = 0
+		}
+		if c.boundhigh > 0 {
+			boundH += float32(c.boundhigh) * c.localscl
+		}
+		yminscl := float32(sys.gameHeight) / (240 - MinF(0, boundH))
+		c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, MaxF(xminscl, yminscl)))
+		c.maxRight = float32(c.boundright)*c.localscl + c.halfWidth
+		c.minLeft = float32(c.boundleft)*c.localscl - c.halfWidth
+		c.zoomout = c.MinScale
+		c.ExtraBoundH = ((1 - c.zoomout) * 100) * (1 / c.zoomout) * 2.2 * (float32(sys.gameHeight) / 240)
+		c.boundhigh = c.boundhigh + int32(c.ExtraBoundH/c.localscl)
+	} else {
+		c.MinScale = MaxF(c.zoomout, MinF(c.zoomin, xminscl))
+		c.maxRight = float32(c.boundright)*c.localscl + c.halfWidth/c.zoomout
+		c.minLeft = float32(c.boundleft)*c.localscl - c.halfWidth/c.zoomout
+	}
 }
 
 func (c *Camera) Init() {
@@ -539,7 +575,7 @@ func (c *Camera) reduceYScrollSpeed(newY float32, oldY float32) float32 {
 func (c *Camera) boundY(y float32, scale float32) float32 {
 	if c.boundhighzoomdelta > 0 {
 		topBound := float32(c.boundhigh)*c.localscl - c.GroundLevel()/c.zoomout
-		boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/scale)-float32(c.boundhigh)*c.localscl)/c.boundhighzoomdelta
+		boundHigh := float32(c.boundhigh)*c.localscl + ((topBound+c.GroundLevel()/scale)-float32(c.boundhigh)*c.localscl-c.zoomanchorcorrection/scale)/c.boundhighzoomdelta
 		return MinF(MaxF(y, boundHigh), float32(c.boundlow)*c.localscl) * scale
 	} else {
 		return MinF(MaxF(y, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * scale

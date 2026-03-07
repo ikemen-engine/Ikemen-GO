@@ -1,0 +1,52 @@
+name: repro-needed (comment + close)
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"   # every 12 hours (UTC)
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          # Scope: issues with any of these labels
+          any-of-issue-labels: "repro needed,info needed"
+
+          # Comment immediately after label is present
+          days-before-issue-stale: 0
+
+          # Close 7 days after the stale mark if still no activity
+          days-before-issue-close: 7
+
+          # Prevent the action from removing "Stale" due to updates (including its own comment/label ops),
+          # which otherwise causes an unstale -> restale -> recomment loop with days-before-issue-stale: 0
+          remove-issue-stale-when-updated: false
+
+          # Use any label you prefer when “staling” (optional)
+          #stale-issue-label: "wontfix"
+
+          # Your exact comment:
+          stale-issue-message: >
+            Thanks for the report. To help us investigate, please follow our
+            [Submitting an Issue](https://github.com/ikemen-engine/Ikemen-GO/blob/develop/CONTRIBUTING.md#submit-issue)
+            guide and include a minimal reproduction and/or any additional information requested by the maintainers.
+            If the requested details aren't provided within 7 days, this issue will be automatically closed.
+
+          # Don’t add an extra comment when closing (set empty to disable)
+          close-issue-message: ""
+
+          # Keep PRs untouched by this workflow
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+
+          # Optional: exempt certain labels from this automation
+          exempt-issue-labels: ""
+
+          # Increase if you have lots of issues
+          operations-per-run: 200

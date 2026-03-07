@@ -1,8 +1,9 @@
-//go:build !js && !raw
+//go:build !raw && !android
 
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -27,14 +28,14 @@ func ShowErrorDialog(message string) {
 // TTF font loading
 func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	// Search in local directory
-	fileDir := SearchFile(filename, []string{fontfile, sys.motifDir, "", "data/", "font/"})
+	fileDir := SearchFile(filename, []string{fontfile, sys.motif.Def, "", "data/", "font/"})
 	// Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {
 		var err error
 		fileDir, err = findfont.Find(fileDir)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("failed to find ttf font %v: %w", fileDir, err))
 		}
 	}
 	// Load ttf
@@ -46,12 +47,38 @@ func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	ttf, err := gfxFont.LoadFont(fileDir, height, int(sys.gameWidth), int(sys.gameHeight))
 	if err != nil {
 		panic(err)
+		panic(fmt.Errorf("failed to load ttf font %v: %w", fileDir, err))
 	}
-	f.ttf = ttf
+	f.ttf = ttf.(Font)
 
 	// Create Ttf dummy palettes
 	f.palettes = make([][256]uint32, 1)
 	for i := 0; i < 256; i++ {
 		f.palettes[0][i] = 0
 	}
+}
+
+func selectRenderer(cfgVal string) (Renderer, FontRenderer) {
+	var gfx Renderer
+	var gfxFont FontRenderer
+
+	// Now we proceed to init the render.
+	switch cfgVal {
+	case "OpenGL 3.3":
+		gfx = &Renderer_GL33{}
+		gfxFont = &FontRenderer_GL33{}
+	case "Vulkan 1.3":
+		gfx = &Renderer_VK{}
+		gfxFont = &FontRenderer_VK{}
+	default:
+		fmt.Printf("Error: Invalid RenderMode '%s'. Defaulting to OpenGL 3.3.\n", cfgVal)
+		gfx = &Renderer_GL33{}
+		gfxFont = &FontRenderer_GL33{}
+	}
+
+	return gfx, gfxFont
+}
+
+func Logcat(s string) {
+	fmt.Println(s)
 }

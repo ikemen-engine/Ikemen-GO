@@ -13,27 +13,18 @@ Ready to use builds for Windows, macOS and Linux can be found in the [releases s
 ## Running
 Download the ZIP archive that matches your operating system and extract its contents to your preferred location.
 
-On Windows, double-click `Ikemen_GO.exe` (`Ikemen_GO_x86.exe` on 32-bit OSes).
+On Windows, double-click `Ikemen_GO.exe`.
 On macOS or Linux, double-click `Ikemen_GO.command`.
 
 ## Developing
 These instructions are for those interested in developing the Ikemen GO engine itself. Instructions for creating custom stages, fonts, characters and other resources can be found in the community forum.
 
 ### Building
-You can find instructions for building Ikemen GO on our wiki. Instructions are available for [Windows](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building,-Installing-and-Distributing#building-on-windows), [macOS](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building,-Installing-and-Distributing#building-on-macos), and [Linux](https://github.com/ikemen-engine/Ikemen-GO/wiki/Building,-Installing-and-Distributing#building-on-linux).
+For setup and platform-specific steps, see [BUILDING.md](./BUILDING.md).
+It covers Windows, Linux (including ARM64), macOS (Apple Silicon and Intel), and Android (APK via Docker).
 
 ### Debugging
-In order to run the compiled Ikemen GO executable, you will need to download the [engine dependencies](https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack) and unpack them into the Ikemen-GO source directory. After that, you can use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
-
-### Cross-compiling binaries with Docker (Linux/Windows/MacOS)
-The easiest way to compile binaries for other platforms is with Docker.
-You don't need the native development environment set to be able to build binaries if you decide to use Docker.  
-The image downloaded has all the required tools to compile Ikemen GO for all three major platforms.
-
-Install [Docker for your platform](https://www.docker.com/get-started).  
-For macOS, you can install Docker using Homebrew (`brew cask install docker`).
-
-Open a terminal, go to the Ikemen `build` directory folder and then run the script `build_docker.sh`. Look inside the script for details on how it works.
+In order to run the compiled Ikemen GO executable, you will need to download the [engine dependencies](https://github.com/ikemen-engine/Ikemen-GO-Screenpack) and unpack them into the Ikemen-GO source directory. After that, you can use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
 
 ## Troubleshooting
 If you run into any issues with Ikemen Go, you can report it on our [issue tracker](https://github.com/ikemen-engine/Ikemen-GO/issues). It is recommend to read [this page](https://github.com/ikemen-engine/Ikemen-GO/blob/develop/CONTRIBUTING.md) before submitting a bug report.
@@ -41,7 +32,7 @@ If you run into any issues with Ikemen Go, you can report it on our [issue track
 ## References
 - [The original reposity of Ikemen GO.](https://osdn.net/users/supersuehiro/pf/ikemen_go/) This project was forked from this repository due to its original author seemingly abandoning the project.
 
-- [The default motif bundled with the engine.](https://github.com/ikemen-engine/Ikemen_GO-Elecbyte-Screenpack) Note that this motif is licensed under CC-BY 3 rather than Ikemen GO's source, which is MIT.
+- [The default motif bundled with the engine.](https://github.com/ikemen-engine/Ikemen-GO-Screenpack) Note that this motif is licensed under CC-BY 3 rather than Ikemen GO's source, which is MIT.
 
 ## Name
 "Ikemen" is an acronym of:
@@ -50,6 +41,9 @@ If you run into any issues with Ikemen Go, you can report it on our [issue track
 **I**tsu made mo **K**ansei shinai **E**ien ni **M**ikansei **EN**gine
 
 ## License
-Ikemen GO's source code is available under the MIT License. Certain non-code assets are licensed under CC-BY 3.0.
+Ikemen GO engine is under the MIT License.
+Bundled screenpack assets are under Creative Commons licenses.
+See [LICENSE.txt](LICENSE.txt) for more details.
+This program statically links FFmpeg (LGPL v2.1).
 
-See [License.txt](License.txt) for more details.
+The exact corresponding source for the FFmpeg build is provided on the [release page](https://github.com/ikemen-engine/Ikemen-GO/releases/latest) as Source-code-FFmpeg.tar.gz. You may rebuild this application against a modified FFmpeg.

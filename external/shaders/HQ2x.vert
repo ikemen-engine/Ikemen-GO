@@ -1,3 +1,10 @@
+#if __VERSION__ >= 450
+layout(push_constant, std430) uniform u {
+	uniform vec2 TextureSize;
+};
+layout(location = 0) in vec2 VertCoord;
+layout(location = 0) out vec4 TexCoord[7];
+#else
 #if __VERSION__ >= 130
 #define COMPAT_VARYING out
 #define COMPAT_ATTRIBUTE in
@@ -9,9 +16,9 @@ out vec4 TexCoord[7];
 #define COMPAT_TEXTURE texture2D
 #define TexCoord gl_TexCoord
 #endif
-
 COMPAT_ATTRIBUTE vec2 VertCoord;
 uniform vec2 TextureSize;
+#endif
 
 void main() {
 	gl_Position = vec4(VertCoord, 0.0, 1.0);

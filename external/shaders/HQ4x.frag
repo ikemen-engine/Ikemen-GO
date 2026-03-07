@@ -1,3 +1,12 @@
+#if __VERSION__ >= 450
+#define COMPAT_TEXTURE texture
+layout(push_constant, std430) uniform u {
+	layout(offset = 8) uniform float CurrentTime;
+};
+layout(binding = 0) uniform sampler2D Texture;
+layout(location = 0) in vec4 TexCoord[7];
+layout(location = 0) out vec4 FragColor;
+#else
 #if __VERSION__ >= 130
 #define COMPAT_VARYING in
 #define COMPAT_TEXTURE texture
@@ -9,8 +18,9 @@ in vec4 TexCoord[7];
 #define COMPAT_TEXTURE texture2D
 #define TexCoord gl_TexCoord
 #endif
-
 uniform sampler2D Texture;
+#endif
+
 const float mx = 1.00;		// start smoothing wt.
 const float k = -1.10;		// wt. decrease factor
 const float max_w = 0.75;	// max filter weigth

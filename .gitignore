@@ -1,11 +1,13 @@
 # Dependencies
 go/*
+vendor/*
 
 # Runtime
 *.log
 *.cmd
 *.bat
-*.sh
+/*.sh
+!build/**/*.sh
 *.png
 save/*
 Ikemen_GO.exe
@@ -14,12 +16,27 @@ Ikemen_GO_MacOS
 Ikemen_GO_x86.exe
 Ikemen_GO.command
 external/script/.idea/*
+*.manifest
+resources/*
 
 # Ikemen_GO-Elecbyte-Screenpack
 ScreenpackLicense.txt
 chars/*
 data/big/*
 data/*
+!data/action.zss
+!data/common.air
+!data/common.cmd
+!data/common.const
+!data/common1.cns.zss
+!data/demo.zss
+!data/dizzy.zss
+!data/functions.zss
+!data/guardbreak.zss
+!data/score.zss
+!data/system.zss
+!data/tag.zss
+!data/training.zss
 font/*
 !font/Open_Sans/
 !font/debug.def
@@ -32,6 +49,8 @@ sound/*
 debug/*
 video/*
 
+external/mods/*
+
 # Temp
 src/lua_triggers.go
 external/script/wip/*
@@ -41,8 +60,28 @@ external/script/wip/*
 .vs/*
 .idea/*
 
+# Android build outputs (generated)
+bin/*.apk
+bin/libmain.so
+bin/libmain.h
+lib/*.so
+lib/*.so.*
+build/android-apk/
+
 # Binaries
-bin/*
+build/android-deps/
+build/libxmp-src/
+build/sdl2-src/
+build/ffmpeg-src/
+build/ffmpeg/
+build/delaylib/
+build/winres/
+
+# macOS bundle by local make
+/I.K.E.M.E.N-Go.app/
 
 # Compilation files
-src/*.syso
+*.syso
+*.exe
+*.dll
+external/script/version

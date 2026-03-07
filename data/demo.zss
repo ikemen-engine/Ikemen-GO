@@ -1,0 +1,28 @@
+#===============================================================================
+# Global states (not halted by Pause/SuperPause, no helper limitations)
+#===============================================================================
+[Statedef +1]
+
+ignoreHitPause if gameMode = "demo" && !isHelper {
+	assertSpecial{
+		flag: noLifeBarAction;
+		flag2: skipFightDisplay;
+		flag3: skipRoundDisplay;
+		flag4: skipKODisplay;
+		flag5: skipWinDisplay;
+		flag6: globalNoKO;
+	}
+	if playerNo = 1 {
+		text{
+			removetime: 1;
+			localcoord: fightScreenVar(info.localcoord.x), fightScreenVar(info.localcoord.y);
+			layerno: 2;
+			textspacing: 0, 25;
+			text: "https://ikemen-engine.github.io";
+			font: F 0;
+			bank: 0;
+			align: 0;
+			pos: fightScreenVar(info.localcoord.x) / 2, fightScreenVar(info.localcoord.y) - 48.0;
+		}
+	}
+}
