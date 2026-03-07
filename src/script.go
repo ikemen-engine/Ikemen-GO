@@ -1909,6 +1909,7 @@ func systemScriptInit(l *lua.LState) {
 			sys.replayFile.Close()
 			sys.replayFile = nil
 		}
+		sys.uiResetTokenGuard()
 		return 0
 	})
 	//luaRegister(l, "fadeInActive", func(*lua.LState) int {

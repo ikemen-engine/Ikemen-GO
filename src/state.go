@@ -283,6 +283,9 @@ func (gs *GameState) LoadState(stateID int) {
 	}
 
 	if sys.rollback.session != nil {
+		// Replay recording follows the rollback timeline.
+		// Any frames from the abandoned speculative future must be discarded before restoring the frame cursor.
+		sys.rollback.session.TruncateReplayFrom(gs.netTime)
 		sys.rollback.session.netTime = gs.netTime
 	}
 

@@ -167,16 +167,17 @@ func (rs *RollbackSystem) runFrame(s *System) bool {
 		var values [][]byte
 		disconnectFlags := 0
 		values, ggpoerr = rs.session.backend.SyncInput(&disconnectFlags)
-		rs.ggpoInputs, rs.ggpoAnalogInputs = decodeInputs(values)
-
-		// TODO: Why does this depend on the replay?
-		if rs.session.recording != nil {
-			rs.session.SetInput(rs.session.netTime, 0, rs.ggpoInputs[0], rs.ggpoAnalogInputs[0])
-			rs.session.SetInput(rs.session.netTime, 1, rs.ggpoInputs[1], rs.ggpoAnalogInputs[1])
-			rs.session.netTime++
-		}
 
 		if ggpoerr == nil {
+			rs.ggpoInputs, rs.ggpoAnalogInputs = decodeInputs(values)
+
+			// Record inputs against the rollback timeline. netTime is part of the saved state,
+			// so any confirmed re-simulation overwrites earlier speculative data for the same frame.
+			if rs.session.recording != nil {
+				rs.session.RecordReplayFrame(rs.session.netTime, rs.ggpoInputs, rs.ggpoAnalogInputs)
+				rs.session.netTime++
+			}
+
 			if !rs.simulateFrame(s) {
 				return false
 			}
