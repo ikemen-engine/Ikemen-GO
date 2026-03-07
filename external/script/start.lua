@@ -2396,7 +2396,11 @@ local function tickScreenDelay(side)
 		return false
 	end
 	local selectComplete = start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd
-	if not start.p[side].inPalMenu and (not start.p[side].selEnd or selectComplete) then
+	local canSkip = not start.p[side].inPalMenu and (
+		not start.p[side].selEnd
+		or (selectComplete and (not main.stageMenu or stageEnd))
+	)
+	if canSkip then
 		local owners = {}
 		local seen = {}
 		if main.coop and (side == 1 or gamemode('versuscoop')) then
