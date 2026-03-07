@@ -158,8 +158,6 @@ void main(void) {
 			// Mali-safe weight selection
 			vec4 w = (idx < 4) ? morphTargetWeight[0] : morphTargetWeight[1];
 
-			// Need to do this for OpenGL 2.1
-			int m = idx - (idx / 4) * 4;
 			float weight = (m == 0) ? w.x : (m == 1) ? w.y : (m == 2) ? w.z : w.w;
 
 			vec4 mSample = COMPAT_TEXTURE(morphTargetValues, xy);
