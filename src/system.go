@@ -341,6 +341,11 @@ type System struct {
 
 	// For Android support
 	baseDir string
+
+	// Session-wide sync config override for netplay/replay.
+	// Must live on System because rollback temporarily steals sys.netConnection.
+	netplayOverride SessionConfigOverride
+	sessionWarning  string
 }
 
 // Check if the application is running inside a macOS app bundle

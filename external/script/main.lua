@@ -731,7 +731,13 @@ function main.f_commandLine()
 			refresh()
 		end
 		refresh()
-		synchronize()
+		if not synchronize() then
+			replayStop()
+			exitNetPlay()
+			exitReplay()
+			print(getSessionWarning())
+			os.exit()
+		end
 		main.f_clearShuffleTables()
 		math.randomseed(sszRandom())
 		refresh()
@@ -768,6 +774,15 @@ if gameOption('Debug.DumpLuaTables') then main.f_printTable(motif, "debug/loadMo
 loadLifebar()
 main.f_loadingRefresh()
 
+local function showSessionWarning()
+	local text = getSessionWarning()
+	if text == nil or text == '' then
+		return false
+	end
+	main.f_warning(text, motif[main.group], motif[main.background])
+	return true
+end
+
 --warning display
 function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd)
 	local overlay = overlay or motif.warning_info.overlay.RectData
@@ -775,6 +790,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 	local textData = textData or motif.warning_info.text.TextSpriteData
 	local cancel_snd = cancel_snd or motif.warning_info.cancel.snd
 	local done_snd = done_snd or motif.warning_info.done.snd
+	local ret
 	textImgReset(textData)
 	textImgSetText(textData, text)
 	resetKey()
@@ -783,11 +799,13 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		if esc() or getInput(-1, sec.menu.cancel.key) then
 			esc(false)
 			sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
-			return false
+			ret = false
+			break
 		elseif getKey() ~= '' or getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, done_snd[1], done_snd[2])
 			resetKey()
-			return true
+			ret = true
+			break
 		end
 		--draw clearcolor
 		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
@@ -804,6 +822,8 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		--end loop
 		refresh()
 	end
+	resetTokenGuard()
+	return ret
 end
 
 function main.f_drawInput(textData, text, sec, background, overlay, defaultInput)
@@ -1833,16 +1853,18 @@ main.t_itemname = {
 		local doneSnd = motif[main.group].cursor.done.snd.serverconnect or motif[main.group].cursor.done.snd.default
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
 		if main.f_connect(gameOption('Netplay.IP.' .. t[item].displayname), t[item].displayname) then
-			synchronize()
-			main.f_clearShuffleTables()
-			math.randomseed(sszRandom())
-			main.f_menuSnap(motif[main.group])
-			main.f_menuItemBgAnimReset(motif[main.group])
-			main.f_fadeReset('fadein', motif[main.group])
-			main.menu.submenu.server.loop()
+			if synchronize() then
+				main.f_clearShuffleTables()
+				math.randomseed(sszRandom())
+				main.f_menuSnap(motif[main.group])
+				main.f_menuItemBgAnimReset(motif[main.group])
+				main.f_fadeReset('fadein', motif[main.group])
+				main.menu.submenu.server.loop()
+			end
 			replayStop()
 			exitNetPlay()
 			exitReplay()
+			showSessionWarning()
 		end
 		return nil
 	end,
@@ -1851,16 +1873,18 @@ main.t_itemname = {
 		local doneSnd = motif[main.group].cursor.done.snd.serverhost or motif[main.group].cursor.done.snd.default
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
 		if main.f_connect("", gameOption('Netplay.ListenPort')) then
-			synchronize()
-			main.f_clearShuffleTables()
-			math.randomseed(sszRandom())
-			main.f_menuSnap(motif[main.group])
-			main.f_menuItemBgAnimReset(motif[main.group])
-			main.f_fadeReset('fadein', motif[main.group])
-			main.menu.submenu.server.loop()
+			if synchronize() then
+				main.f_clearShuffleTables()
+				math.randomseed(sszRandom())
+				main.f_menuSnap(motif[main.group])
+				main.f_menuItemBgAnimReset(motif[main.group])
+				main.f_fadeReset('fadein', motif[main.group])
+				main.menu.submenu.server.loop()
+			end
 			replayStop()
 			exitNetPlay()
 			exitReplay()
+			showSessionWarning()
 		end
 		return nil
 	end,
@@ -2702,14 +2726,15 @@ function main.f_replay()
 			t, item = main.f_renameReplay(item, t)
 		elseif getInput(-1, motif[main.group].menu.done.key) then
 			sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
-			enterReplay(t[item].itemname)
-			synchronize()
-			main.f_clearShuffleTables()
-			math.randomseed(sszRandom())
-			main.menu.submenu.server.loop()
+			if enterReplay(t[item].itemname) and synchronize() then
+				main.f_clearShuffleTables()
+				math.randomseed(sszRandom())
+				main.menu.submenu.server.loop()
+			end
 			replayStop()
 			exitNetPlay()
 			exitReplay()
+			showSessionWarning()
 		end
 	end
 end

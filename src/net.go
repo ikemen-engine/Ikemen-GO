@@ -369,9 +369,8 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		}
 		fmt.Println("EventCodeDisconnectedFromPeer")
 		sys.endMatch = true
-		disconnectMessage := fmt.Sprintf("Player %d disconnected.", info.Player)
 		r.SaveReplay()
-		ShowInfoDialog(disconnectMessage, "Disconnection")
+		sys.sessionWarning = fmt.Sprintf(sys.motif.WarningInfo.Text.Text["disconnect"], int(info.Player))
 	case ggpo.EventCodeTimeSync:
 		fmt.Printf("EventCodeTimeSync: FramesAhead %f TimeSyncPeriodInFrames: %d\n", info.FramesAhead, info.TimeSyncPeriodInFrames)
 		r.loopTimer.OnGGPOTimeSyncEvent(info.FramesAhead)
@@ -382,7 +381,7 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		fmt.Println("EventCodeDesync")
 		sys.endMatch = true
 		r.SaveReplay()
-		ShowInfoDialog("Desync error.\nIf the problem persists, please report it at:\nhttps://github.com/ikemen-engine/Ikemen-GO/issues.\nThank you for your patience", "Desync Error")
+		sys.sessionWarning = sys.motif.WarningInfo.Text.Text["desync"]
 	case ggpo.EventCodeConnectionInterrupted:
 		fmt.Println("EventCodeconnectionInterrupted")
 	case ggpo.EventCodeConnectionResumed:

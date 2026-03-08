@@ -14,8 +14,8 @@ import (
 var defaultConfig []byte
 
 type AIrampProperties struct {
-	Start [2]int32 `ini:"start"`
-	End   [2]int32 `ini:"end"`
+	Start [2]int32 `ini:"start" sync:"runtime"`
+	End   [2]int32 `ini:"end" sync:"runtime"`
 }
 
 type KeysProperties struct {
@@ -44,101 +44,101 @@ type Config struct {
 	IniFile        *ini.File
 	DefaultOnlyIni *ini.File
 	Common         struct {
-		Air     map[string][]string `ini:"map:^(?i)Air[0-9]*$" lua:"Air"`
-		Cmd     map[string][]string `ini:"map:^(?i)Cmd[0-9]*$" lua:"Cmd"`
-		Const   map[string][]string `ini:"map:^(?i)Const[0-9]*$" lua:"Const"`
-		States  map[string][]string `ini:"map:^(?i)States[0-9]*$" lua:"States"`
-		Fx      map[string][]string `ini:"map:^(?i)Fx[0-9]*$" lua:"Fx"`
-		Modules map[string][]string `ini:"map:^(?i)Modules[0-9]*$" lua:"Modules"`
-		Lua     map[string][]string `ini:"map:^(?i)Lua[0-9]*$" lua:"Lua"`
+		Air     map[string][]string `ini:"map:^(?i)Air[0-9]*$" lua:"Air" sync:"runtime"`
+		Cmd     map[string][]string `ini:"map:^(?i)Cmd[0-9]*$" lua:"Cmd" sync:"runtime"`
+		Const   map[string][]string `ini:"map:^(?i)Const[0-9]*$" lua:"Const" sync:"runtime"`
+		States  map[string][]string `ini:"map:^(?i)States[0-9]*$" lua:"States" sync:"runtime"`
+		Fx      map[string][]string `ini:"map:^(?i)Fx[0-9]*$" lua:"Fx" sync:"runtime"`
+		Modules map[string][]string `ini:"map:^(?i)Modules[0-9]*$" lua:"Modules" sync:"runtime"`
+		Lua     map[string][]string `ini:"map:^(?i)Lua[0-9]*$" lua:"Lua" sync:"runtime"`
 	} `ini:"Common"`
 	Options struct {
-		Difficulty    int     `ini:"Difficulty"`
-		Life          float32 `ini:"Life"`
-		Time          int32   `ini:"Time"`
-		GameSpeed     int     `ini:"GameSpeed"`
-		GameSpeedStep int     `ini:"GameSpeedStep"`
+		Difficulty    int     `ini:"Difficulty" sync:"runtime"`
+		Life          float32 `ini:"Life" sync:"runtime"`
+		Time          int32   `ini:"Time" sync:"runtime"`
+		GameSpeed     int     `ini:"GameSpeed" sync:"runtime"`
+		GameSpeedStep int     `ini:"GameSpeedStep" sync:"runtime"`
 		Match         struct {
-			Wins         int32 `ini:"Wins"`
-			MaxDrawGames int32 `ini:"MaxDrawGames"`
+			Wins         int32 `ini:"Wins" sync:"runtime"`
+			MaxDrawGames int32 `ini:"MaxDrawGames" sync:"runtime"`
 		} `ini:"Match"`
-		Credits       int  `ini:"Credits"`
-		QuickContinue bool `ini:"QuickContinue"`
-		AutoGuard     bool `ini:"AutoGuard"`
-		GuardBreak    bool `ini:"GuardBreak"`
-		Dizzy         bool `ini:"Dizzy"`
-		RedLife       bool `ini:"RedLife"`
+		Credits       int  `ini:"Credits" sync:"runtime"`
+		QuickContinue bool `ini:"QuickContinue" sync:"runtime"`
+		AutoGuard     bool `ini:"AutoGuard" sync:"runtime"`
+		GuardBreak    bool `ini:"GuardBreak" sync:"runtime"`
+		Dizzy         bool `ini:"Dizzy" sync:"runtime"`
+		RedLife       bool `ini:"RedLife" sync:"runtime"`
 		Team          struct {
-			Duplicates       bool    `ini:"Duplicates"`
-			LifeShare        bool    `ini:"LifeShare"`
-			PowerShare       bool    `ini:"PowerShare"`
-			SingleVsTeamLife float32 `ini:"SingleVsTeamLife"`
+			Duplicates       bool    `ini:"Duplicates" sync:"runtime"`
+			LifeShare        bool    `ini:"LifeShare" sync:"runtime"`
+			PowerShare       bool    `ini:"PowerShare" sync:"runtime"`
+			SingleVsTeamLife float32 `ini:"SingleVsTeamLife" sync:"runtime"`
 		} `ini:"Team"`
 		Simul struct {
-			Min   int `ini:"Min"`
-			Max   int `ini:"Max"`
+			Min   int `ini:"Min" sync:"runtime"`
+			Max   int `ini:"Max" sync:"runtime"`
 			Match struct {
-				Wins int32 `ini:"Wins"`
+				Wins int32 `ini:"Wins" sync:"runtime"`
 			} `ini:"Match"`
-			LoseOnKO bool `ini:"LoseOnKO"`
+			LoseOnKO bool `ini:"LoseOnKO" sync:"runtime"`
 		} `ini:"Simul"`
 		Tag struct {
-			Min   int `ini:"Min"`
-			Max   int `ini:"Max"`
+			Min   int `ini:"Min" sync:"runtime"`
+			Max   int `ini:"Max" sync:"runtime"`
 			Match struct {
-				Wins int32 `ini:"Wins"`
+				Wins int32 `ini:"Wins" sync:"runtime"`
 			} `ini:"Match"`
-			LoseOnKO    bool    `ini:"LoseOnKO"`
-			TimeScaling float32 `ini:"TimeScaling"`
+			LoseOnKO    bool    `ini:"LoseOnKO" sync:"runtime"`
+			TimeScaling float32 `ini:"TimeScaling" sync:"runtime"`
 		} `ini:"Tag"`
 		Turns struct {
-			Min      int `ini:"Min"`
-			Max      int `ini:"Max"`
+			Min      int `ini:"Min" sync:"runtime"`
+			Max      int `ini:"Max" sync:"runtime"`
 			Recovery struct {
-				Base  float32 `ini:"Base"`
-				Bonus float32 `ini:"Bonus"`
+				Base  float32 `ini:"Base" sync:"runtime"`
+				Bonus float32 `ini:"Bonus" sync:"runtime"`
 			} `ini:"Recovery"`
 		} `ini:"Turns"`
 		Ratio struct {
 			Recovery struct {
-				Base  float32 `ini:"Base"`
-				Bonus float32 `ini:"Bonus"`
+				Base  float32 `ini:"Base" sync:"runtime"`
+				Bonus float32 `ini:"Bonus" sync:"runtime"`
 			} `ini:"Recovery"`
 			Level1 struct {
-				Attack float32 `ini:"Attack"`
-				Life   float32 `ini:"Life"`
+				Attack float32 `ini:"Attack" sync:"runtime"`
+				Life   float32 `ini:"Life" sync:"runtime"`
 			} `ini:"Level1"`
 			Level2 struct {
-				Attack float32 `ini:"Attack"`
-				Life   float32 `ini:"Life"`
+				Attack float32 `ini:"Attack" sync:"runtime"`
+				Life   float32 `ini:"Life" sync:"runtime"`
 			} `ini:"Level2"`
 			Level3 struct {
-				Attack float32 `ini:"Attack"`
-				Life   float32 `ini:"Life"`
+				Attack float32 `ini:"Attack" sync:"runtime"`
+				Life   float32 `ini:"Life" sync:"runtime"`
 			} `ini:"Level3"`
 			Level4 struct {
-				Attack float32 `ini:"Attack"`
-				Life   float32 `ini:"Life"`
+				Attack float32 `ini:"Attack" sync:"runtime"`
+				Life   float32 `ini:"Life" sync:"runtime"`
 			} `ini:"Level4"`
 		} `ini:"Ratio"`
 	} `ini:"Options"`
 	Config struct {
-		Motif             string   `ini:"Motif"`
-		Players           int      `ini:"Players"`
+		Motif             string   `ini:"Motif" sync:"startup"`
+		Players           int      `ini:"Players" sync:"startup"`
 		Language          string   `ini:"Language"`
-		AfterImageMax     int32    `ini:"AfterImageMax"`
-		ExplodMax         int      `ini:"ExplodMax"`
-		HelperMax         int32    `ini:"HelperMax"`
-		ProjectileMax     int      `ini:"ProjectileMax"`
-		PaletteMax        int      `ini:"PaletteMax"`
-		TextMax           int      `ini:"TextMax"`
+		AfterImageMax     int32    `ini:"AfterImageMax" sync:"runtime"`
+		ExplodMax         int      `ini:"ExplodMax" sync:"runtime"`
+		HelperMax         int32    `ini:"HelperMax" sync:"runtime"`
+		ProjectileMax     int      `ini:"ProjectileMax" sync:"runtime"`
+		PaletteMax        int      `ini:"PaletteMax" sync:"runtime"`
+		TextMax           int      `ini:"TextMax" sync:"runtime"`
 		TickInterpolation bool     `ini:"TickInterpolation"`
-		ZoomActive        bool     `ini:"ZoomActive"`
-		EscOpensMenu      bool     `ini:"EscOpensMenu"`
+		ZoomActive        bool     `ini:"ZoomActive" sync:"runtime"`
+		EscOpensMenu      bool     `ini:"EscOpensMenu" sync:"runtime"`
 		FirstRun          bool     `ini:"FirstRun"`
 		WindowTitle       string   `ini:"WindowTitle"`
 		WindowIcon        []string `ini:"WindowIcon"`
-		System            string   `ini:"System"`
+		System            string   `ini:"System" sync:"startup"`
 		ScreenshotFolder  string   `ini:"ScreenshotFolder"`
 		TrainingChar      string   `ini:"TrainingChar"`
 		TrainingStage     string   `ini:"TrainingStage"`
@@ -154,17 +154,17 @@ type Config struct {
 		Font                string  `ini:"Font"`
 		FontScale           float32 `ini:"FontScale"`
 		StartStage          string  `ini:"StartStage"`
-		ForceStageZoomout   float32 `ini:"ForceStageZoomout"`
-		ForceStageZoomin    float32 `ini:"ForceStageZoomin"`
-		ForceStageAutoZoom  bool    `ini:"ForceStageAutoZoom"`
+		ForceStageZoomout   float32 `ini:"ForceStageZoomout" sync:"runtime"`
+		ForceStageZoomin    float32 `ini:"ForceStageZoomin" sync:"runtime"`
+		ForceStageAutoZoom  bool    `ini:"ForceStageAutoZoom" sync:"runtime"`
 		KeepSpritesOnReload bool    `ini:"KeepSpritesOnReload"`
 		MacOSUseCommandKey  bool    `ini:"MacOSUseCommandKey"`
 		SpeedTest           int     `ini:"SpeedTest"`
 	} `ini:"Debug"`
 	Video struct {
 		RenderMode              string   `ini:"RenderMode"`
-		GameWidth               int32    `ini:"GameWidth"`
-		GameHeight              int32    `ini:"GameHeight"`
+		GameWidth               int32    `ini:"GameWidth" sync:"startup"`
+		GameHeight              int32    `ini:"GameHeight" sync:"startup"`
 		WindowWidth             int      `ini:"WindowWidth"`
 		WindowHeight            int      `ini:"WindowHeight"`
 		Framerate               int      `ini:"Framerate"`
@@ -176,8 +176,8 @@ type Config struct {
 		WindowCentered          bool     `ini:"WindowCentered"`
 		ExternalShaders         []string `ini:"ExternalShaders"`
 		WindowScaleMode         bool     `ini:"WindowScaleMode"`
-		FightAspectWidth        int32    `ini:"FightAspectWidth"`
-		FightAspectHeight       int32    `ini:"FightAspectHeight"`
+		FightAspectWidth        int32    `ini:"FightAspectWidth" sync:"startup"`
+		FightAspectHeight       int32    `ini:"FightAspectHeight" sync:"startup"`
 		KeepAspect              bool     `ini:"KeepAspect"`
 		RendererDebugMode       bool     `ini:"RendererDebugMode"`
 		EnableModel             bool     `ini:"EnableModel"`
@@ -199,9 +199,9 @@ type Config struct {
 	} `ini:"Sound"`
 	Arcade struct {
 		AI struct {
-			RandomColor   bool `ini:"RandomColor"`
-			SurvivalColor bool `ini:"SurvivalColor"`
-			Ramping       bool `ini:"Ramping"`
+			RandomColor   bool `ini:"RandomColor" sync:"runtime"`
+			SurvivalColor bool `ini:"SurvivalColor" sync:"runtime"`
+			Ramping       bool `ini:"Ramping" sync:"runtime"`
 		} `ini:"AI"`
 		//items map[string]AIrampProperties `ini:"items"`
 		Arcade struct {
@@ -219,17 +219,17 @@ type Config struct {
 	} `ini:"Arcade"`
 	Netplay struct {
 		ListenPort      string             `ini:"ListenPort"`
-		RollbackNetcode bool               `ini:"RollbackNetcode"`
+		RollbackNetcode bool               `ini:"RollbackNetcode" sync:"startup"`
 		IP              map[string]string  `ini:"IP"`
 		Rollback        RollbackProperties `ini:"Rollback"`
 	} `ini:"Netplay"`
 	Input struct {
-		ButtonAssist               bool    `ini:"ButtonAssist"`
-		SOCDResolution             int     `ini:"SOCDResolution"`
+		ButtonAssist               bool    `ini:"ButtonAssist" sync:"runtime"`
+		SOCDResolution             int     `ini:"SOCDResolution" sync:"runtime"`
 		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity"`
 		XinputTriggerSensitivity   float32 `ini:"XinputTriggerSensitivity"`
-		UiRepeatDelay              int32   `ini:"UiRepeatDelay"`
-		UiRepeatRate               int32   `ini:"UiRepeatRate"`
+		UiRepeatDelay              int32   `ini:"UiRepeatDelay" sync:"runtime"`
+		UiRepeatRate               int32   `ini:"UiRepeatRate" sync:"runtime"`
 	} `ini:"Input"`
 	Keys     map[string]*KeysProperties `ini:"map:^(?i)Keys_P[0-9]+$" lua:"Keys"`
 	Joystick map[string]*KeysProperties `ini:"map:^(?i)Joystick_P[0-9]+$" lua:"Joystick"`

@@ -1849,6 +1849,7 @@ func systemScriptInit(l *lua.LState) {
 		if sys.netConnection != nil {
 			l.RaiseError("\nConnection already established.\n")
 		}
+		sys.sessionWarning = ""
 		sys.chars = [len(sys.chars)][]*Char{}
 		sys.netConnection = NewNetConnection()
 
@@ -1874,12 +1875,27 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "enterReplay", func(*lua.LState) int {
+		sys.sessionWarning = ""
 		if sys.cfg.Video.VSync >= 0 {
 			sys.window.SetSwapInterval(1) // broken frame skipping when set to 0
 		}
 		sys.chars = [len(sys.chars)][]*Char{}
 		sys.replayFile = OpenReplayFile(strArg(l, 1))
-		return 0
+		if sys.replayFile != nil {
+			if err := sys.beginReplaySession(sys.replayFile); err != nil {
+				if sys.sessionWarning != "" {
+					sys.replayFile.Close()
+					sys.replayFile = nil
+					l.Push(lua.LBool(false))
+					return 1
+				}
+				sys.replayFile.Close()
+				sys.replayFile = nil
+				l.RaiseError(err.Error())
+			}
+		}
+		l.Push(lua.LBool(sys.replayFile != nil))
+		return 1
 	})
 	luaRegister(l, "esc", func(l *lua.LState) int {
 		if !nilArg(l, 1) {
@@ -1889,6 +1905,9 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
+		if err := sys.endSyncSessionOverride(); err != nil {
+			l.RaiseError(err.Error())
+		}
 		if sys.cfg.Netplay.RollbackNetcode {
 			if sys.rollback.session != nil {
 				sys.rollback.session.Close()
@@ -1902,6 +1921,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
+		if err := sys.endSyncSessionOverride(); err != nil {
+			l.RaiseError(err.Error())
+		}
 		if sys.cfg.Video.VSync >= 0 {
 			sys.window.SetSwapInterval(sys.cfg.Video.VSync)
 		}
@@ -2943,6 +2965,10 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "getRuntimeOS", func(l *lua.LState) int {
 		l.Push(lua.LString(runtime.GOOS))
+		return 1
+	})
+	luaRegister(l, "getSessionWarning", func(*lua.LState) int {
+		l.Push(lua.LString(sys.popSessionWarning()))
 		return 1
 	})
 	luaRegister(l, "getStageInfo", func(*lua.LState) int {
@@ -4286,6 +4312,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "replayRecord", func(*lua.LState) int {
 		if sys.netConnection != nil {
 			sys.netConnection.recording, _ = os.Create(strArg(l, 1))
+			sys.netConnection.headerWritten = false
 		}
 		return 0
 	})
@@ -4299,6 +4326,7 @@ func systemScriptInit(l *lua.LState) {
 			if sys.netConnection != nil && sys.netConnection.recording != nil {
 				sys.netConnection.recording.Close()
 				sys.netConnection.recording = nil
+				sys.netConnection.headerWritten = false
 			}
 		}
 		return 0
@@ -4328,6 +4356,10 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		sys.lifebar.sc[tn-1].scorePoints = 0
+		return 0
+	})
+	luaRegister(l, "resetTokenGuard", func(*lua.LState) int {
+		sys.uiResetTokenGuard()
 		return 0
 	})
 	luaRegister(l, "resetGameStats", func(*lua.LState) int {
@@ -5036,9 +5068,14 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "synchronize", func(*lua.LState) int {
 		if err := sys.synchronize(); err != nil {
+			if sys.sessionWarning != "" {
+				l.Push(lua.LBool(false))
+				return 1
+			}
 			l.RaiseError(err.Error())
 		}
-		return 0
+		l.Push(lua.LBool(true))
+		return 1
 	})
 	luaRegister(l, "textImgAddPos", func(*lua.LState) int {
 		ts, ok := toUserData(l, 1).(*TextSprite)
