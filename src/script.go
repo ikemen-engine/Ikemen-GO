@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -3028,20 +3029,26 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "jsonDecode", func(*lua.LState) int {
 		path := strArg(l, 1)
-
+		if data, ok := sys.readSessionJSON(path); ok {
+			lv, err := jsonToLuaValue(l, bytes.NewReader(data))
+			if err != nil {
+				l.RaiseError("jsonDecode: parse %s: %v", path, err)
+				return 0
+			}
+			l.Push(lv)
+			return 1
+		}
 		f, err := os.Open(path)
 		if err != nil {
 			l.RaiseError("jsonDecode: open %s: %v", path, err)
 			return 0
 		}
 		defer f.Close()
-
 		lv, err := jsonToLuaValue(l, f) // uses json.Decoder with UseNumber() inside
 		if err != nil {
 			l.RaiseError("jsonDecode: parse %s: %v", path, err)
 			return 0
 		}
-
 		l.Push(lv)
 		return 1
 	})
@@ -3053,7 +3060,6 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError(err.Error())
 			return 0
 		}
-
 		// Stable key order: encoding/json sorts map keys deterministically.
 		// Use pretty output; switch to json.Marshal for compact if preferred.
 		data, err := json.MarshalIndent(goVal, "", "  ")
@@ -3061,7 +3067,11 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("jsonEncode: %v", err)
 			return 0
 		}
-
+		if _, err := sys.writeSessionJSON(path, data); err != nil {
+			l.RaiseError("jsonEncode: %v", err)
+			return 0
+		}
+		// Keep the on-disk file in sync too.
 		// Ensure parent directory exists (if any)
 		dir := filepath.Dir(path)
 		if dir != "." && dir != "" {
@@ -3070,7 +3080,6 @@ func systemScriptInit(l *lua.LState) {
 				return 0
 			}
 		}
-
 		if err := os.WriteFile(path, data, 0o644); err != nil {
 			l.RaiseError("jsonEncode: write %s: %v", path, err)
 			return 0

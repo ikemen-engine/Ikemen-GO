@@ -222,6 +222,7 @@ type Config struct {
 		RollbackNetcode bool               `ini:"RollbackNetcode" sync:"startup"`
 		IP              map[string]string  `ini:"IP"`
 		Rollback        RollbackProperties `ini:"Rollback"`
+		JsonSync        []string           `ini:"JsonSync"`
 	} `ini:"Netplay"`
 	Input struct {
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"runtime"`

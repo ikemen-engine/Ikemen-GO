@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -42,19 +44,26 @@ type SyncSetting struct {
 	Value string `json:"value"`
 }
 
+type SyncJSONFile struct {
+	Path string          `json:"path"`
+	Data json.RawMessage `json:"data"`
+}
+
 type SyncHandshake struct {
-	SyncVersion        uint16        `json:"sync_version"`
-	Startup            []SyncSetting `json:"startup,omitempty"`
-	Runtime            []SyncSetting `json:"runtime,omitempty"`
-	ContentFingerprint string        `json:"content_fingerprint,omitempty"`
+	SyncVersion        uint16         `json:"sync_version"`
+	Startup            []SyncSetting  `json:"startup,omitempty"`
+	Runtime            []SyncSetting  `json:"runtime,omitempty"`
+	JSONFiles          []SyncJSONFile `json:"json_files,omitempty"`
+	ContentFingerprint string         `json:"content_fingerprint,omitempty"`
 }
 
 type ReplayHeader struct {
-	FormatVersion      uint16        `json:"format_version"`
-	SyncVersion        uint16        `json:"sync_version"`
-	Startup            []SyncSetting `json:"startup,omitempty"`
-	Runtime            []SyncSetting `json:"runtime,omitempty"`
-	ContentFingerprint string        `json:"content_fingerprint,omitempty"`
+	FormatVersion      uint16         `json:"format_version"`
+	SyncVersion        uint16         `json:"sync_version"`
+	Startup            []SyncSetting  `json:"startup,omitempty"`
+	Runtime            []SyncSetting  `json:"runtime,omitempty"`
+	JSONFiles          []SyncJSONFile `json:"json_files,omitempty"`
+	ContentFingerprint string         `json:"content_fingerprint,omitempty"`
 }
 
 type SessionConfigOverride struct {
@@ -62,7 +71,9 @@ type SessionConfigOverride struct {
 	Source             string
 	Startup            []SyncSetting
 	OriginalRuntime    []SyncSetting
+	OriginalJSONFiles  []SyncJSONFile
 	AppliedRuntime     []SyncSetting
+	AppliedJSONFiles   []SyncJSONFile
 	SyncVersion        uint16
 	ContentFingerprint string
 }
@@ -827,6 +838,7 @@ type ReplayFile struct {
 	preMatchTime int32
 	startupSettings    []SyncSetting
 	runtimeSettings    []SyncSetting
+	jsonFiles          []SyncJSONFile
 	contentFingerprint string
 	warning            string
 }
@@ -848,6 +860,7 @@ func OpenReplayFile(filename string) *ReplayFile {
 	if header != nil {
 		out.startupSettings = cloneSyncSettings(header.Startup)
 		out.runtimeSettings = cloneSyncSettings(header.Runtime)
+		out.jsonFiles = cloneSyncJSONFiles(header.JSONFiles)
 		out.contentFingerprint = header.ContentFingerprint
 		if header.SyncVersion != syncConfigVersion {
 			out.warning = fmt.Sprintf(
@@ -959,6 +972,70 @@ func cloneSyncSettings(in []SyncSetting) []SyncSetting {
 	out := make([]SyncSetting, len(in))
 	copy(out, in)
 	return out
+}
+
+func cloneSyncJSONFiles(in []SyncJSONFile) []SyncJSONFile {
+	out := make([]SyncJSONFile, len(in))
+	for i, f := range in {
+		out[i].Path = f.Path
+		out[i].Data = append(json.RawMessage(nil), f.Data...)
+	}
+	return out
+}
+
+func prettyJSON(data []byte) ([]byte, error) {
+	var v any
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func collectSyncJSONFiles(paths []string) ([]SyncJSONFile, error) {
+	list := make([]string, 0, len(paths))
+	for _, path := range paths {
+		path = strings.TrimSpace(path)
+		if path != "" {
+			list = append(list, path)
+		}
+	}
+	sort.Strings(list)
+
+	out := make([]SyncJSONFile, 0, len(list))
+	for _, path := range list {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
+		if !json.Valid(data) {
+			return nil, fmt.Errorf("%s: invalid json", path)
+		}
+		data, err = prettyJSON(data)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
+		out = append(out, SyncJSONFile{Path: path, Data: append(json.RawMessage(nil), data...)})
+	}
+	return out, nil
+}
+
+func applySyncJSONFiles(files []SyncJSONFile) error {
+	for _, f := range files {
+		data, err := prettyJSON(f.Data)
+		if err != nil {
+			return fmt.Errorf("%s: %w", f.Path, err)
+		}
+		if err := os.WriteFile(f.Path, data, 0o666); err != nil {
+			return fmt.Errorf("%s: %w", f.Path, err)
+		}
+	}
+	return nil
 }
 
 func formatSyncValue(v reflect.Value) (string, error) {
@@ -1267,6 +1344,44 @@ func validateContentFingerprint(local, remote string) error {
 	return nil
 }
 
+func normalizeSyncJSONPath(path string) string {
+	return filepath.Clean(strings.ReplaceAll(path, "\\", "/"))
+}
+
+func (s *System) syncedJSONIndex(path string) int {
+	if !s.netplayOverride.Active {
+		return -1
+	}
+	path = normalizeSyncJSONPath(path)
+	for i, f := range s.netplayOverride.AppliedJSONFiles {
+		if normalizeSyncJSONPath(f.Path) == path {
+			return i
+		}
+	}
+	return -1
+}
+
+func (s *System) readSessionJSON(path string) ([]byte, bool) {
+	i := s.syncedJSONIndex(path)
+	if i < 0 {
+		return nil, false
+	}
+	return append([]byte(nil), s.netplayOverride.AppliedJSONFiles[i].Data...), true
+}
+
+func (s *System) writeSessionJSON(path string, data []byte) (bool, error) {
+	i := s.syncedJSONIndex(path)
+	if i < 0 {
+		return false, nil
+	}
+	data, err := prettyJSON(data)
+	if err != nil {
+		return false, err
+	}
+	s.netplayOverride.AppliedJSONFiles[i].Data = append(json.RawMessage(nil), data...)
+	return true, nil
+}
+
 // -----------------------------------------------------------------------------
 // System deterministic/session lifecycle
 // -----------------------------------------------------------------------------
@@ -1283,7 +1398,7 @@ func (s *System) currentContentFingerprint() string {
 	return ""
 }
 
-func (s *System) beginSessionOverride(source string, startup, runtime []SyncSetting, contentFingerprint string) error {
+func (s *System) beginSessionOverride(source string, startup, runtime []SyncSetting, jsonFiles []SyncJSONFile, contentFingerprint string) error {
 	if s.netplayOverride.Active {
 		return nil
 	}
@@ -1291,7 +1406,18 @@ func (s *System) beginSessionOverride(source string, startup, runtime []SyncSett
 	if err != nil {
 		return err
 	}
+	jsonPaths := make([]string, 0, len(jsonFiles))
+	for _, f := range jsonFiles {
+		jsonPaths = append(jsonPaths, f.Path)
+	}
+	originalJSONFiles, err := collectSyncJSONFiles(jsonPaths)
+	if err != nil {
+		return err
+	}
 	if err := applySyncSettings(&s.cfg, runtime, source == "netplay"); err != nil {
+		return err
+	}
+	if err := applySyncJSONFiles(jsonFiles); err != nil {
 		return err
 	}
 	appliedRuntime, err := collectSyncSettings(&s.cfg, syncRuntime)
@@ -1303,12 +1429,14 @@ func (s *System) beginSessionOverride(source string, startup, runtime []SyncSett
 		Source:             source,
 		Startup:            cloneSyncSettings(startup),
 		OriginalRuntime:    originalRuntime,
+		OriginalJSONFiles:  originalJSONFiles,
 		AppliedRuntime:     cloneSyncSettings(runtime),
+		AppliedJSONFiles:   cloneSyncJSONFiles(jsonFiles),
 		SyncVersion:        syncConfigVersion,
 		ContentFingerprint: contentFingerprint,
 	}
-	log.Printf("%s sync config override started: startup=%d runtime=%d fingerprint=%q",
-		strings.Title(source), len(startup), len(runtime), contentFingerprint)
+	log.Printf("%s sync config override started: startup=%d runtime=%d json=%d fingerprint=%q",
+		strings.Title(source), len(startup), len(runtime), len(jsonFiles), contentFingerprint)
 	logSyncVerification(strings.Title(source)+" runtime override verification", runtime, appliedRuntime)
 	return nil
 }
@@ -1318,6 +1446,9 @@ func (s *System) endSyncSessionOverride() error {
 		return nil
 	}
 	source := s.netplayOverride.Source
+	if err := applySyncJSONFiles(s.netplayOverride.OriginalJSONFiles); err != nil {
+		return err
+	}
 	expected := cloneSyncSettings(s.netplayOverride.OriginalRuntime)
 	if err := applySyncSettings(&s.cfg, s.netplayOverride.OriginalRuntime, false); err != nil {
 		return err
@@ -1340,6 +1471,7 @@ func (s *System) currentReplayHeader() *ReplayHeader {
 		SyncVersion:        s.netplayOverride.SyncVersion,
 		Startup:            cloneSyncSettings(s.netplayOverride.Startup),
 		Runtime:            cloneSyncSettings(s.netplayOverride.AppliedRuntime),
+		JSONFiles:          cloneSyncJSONFiles(s.netplayOverride.AppliedJSONFiles),
 		ContentFingerprint: s.netplayOverride.ContentFingerprint,
 	}
 }
@@ -1365,15 +1497,21 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 	}
 	localFingerprint := s.currentContentFingerprint()
 
-	if nc.host {
+	var localJSONFiles []SyncJSONFile
+ 	if nc.host {
+		localJSONFiles, err = collectSyncJSONFiles(s.cfg.Netplay.JsonSync)
+		if err != nil {
+			return nil, err
+		}
 		hostPayload := SyncHandshake{
 			SyncVersion:        syncConfigVersion,
 			Startup:            localStartup,
 			Runtime:            localRuntime,
+			JSONFiles:          localJSONFiles,
 			ContentFingerprint: localFingerprint,
 		}
-		log.Printf("Netplay sync config host->peer: sending startup=%d runtime=%d fingerprint=%q",
-			len(localStartup), len(localRuntime), localFingerprint)
+		log.Printf("Netplay sync config host->peer: sending startup=%d runtime=%d json=%d fingerprint=%q",
+			len(localStartup), len(localRuntime), len(localJSONFiles), localFingerprint)
 		if err := nc.writeJSON(hostPayload); err != nil {
 			return nil, err
 		}
@@ -1382,8 +1520,8 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 		if err := nc.readJSON(&guestPayload); err != nil {
 			return nil, err
 		}
-		log.Printf("Netplay sync config peer->host ack: startup=%d runtime=%d fingerprint=%q",
-			len(guestPayload.Startup), len(guestPayload.Runtime), guestPayload.ContentFingerprint)
+		log.Printf("Netplay sync config peer->host ack: startup=%d runtime=%d json=%d fingerprint=%q",
+			len(guestPayload.Startup), len(guestPayload.Runtime), len(guestPayload.JSONFiles), guestPayload.ContentFingerprint)
 		if guestPayload.SyncVersion != syncConfigVersion {
 			return nil, Error("Sync config version mismatch")
 		}
@@ -1396,7 +1534,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 		if err := validateContentFingerprint(localFingerprint, guestPayload.ContentFingerprint); err != nil {
 			return nil, err
 		}
-		if err := s.beginSessionOverride("netplay", localStartup, localRuntime, localFingerprint); err != nil {
+		if err := s.beginSessionOverride("netplay", localStartup, localRuntime, localJSONFiles, localFingerprint); err != nil {
 			return nil, err
 		}
 		return s.currentReplayHeader(), nil
@@ -1406,8 +1544,8 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 	if err := nc.readJSON(&hostPayload); err != nil {
 		return nil, err
 	}
-	log.Printf("Netplay sync config host->peer received: startup=%d runtime=%d fingerprint=%q",
-		len(hostPayload.Startup), len(hostPayload.Runtime), hostPayload.ContentFingerprint)
+	log.Printf("Netplay sync config host->peer received: startup=%d runtime=%d json=%d fingerprint=%q",
+		len(hostPayload.Startup), len(hostPayload.Runtime), len(hostPayload.JSONFiles), hostPayload.ContentFingerprint)
 
 	guestPayload := SyncHandshake{
 		SyncVersion:        syncConfigVersion,
@@ -1445,7 +1583,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 		}
 		return nil, err
 	}
-	if err := s.beginSessionOverride("netplay", hostPayload.Startup, hostPayload.Runtime, hostPayload.ContentFingerprint); err != nil {
+	if err := s.beginSessionOverride("netplay", hostPayload.Startup, hostPayload.Runtime, hostPayload.JSONFiles, hostPayload.ContentFingerprint); err != nil {
 		return nil, err
 	}
 
@@ -1463,9 +1601,9 @@ func (s *System) beginReplaySession(rf *ReplayFile) error {
 	if rf.warning != "" {
 		log.Printf("Replay compatibility warning: %s", rf.warning)
 	}
-	log.Printf("Replay sync header loaded: startup=%d runtime=%d fingerprint=%q",
-		len(rf.startupSettings), len(rf.runtimeSettings), rf.contentFingerprint)
-	if len(rf.runtimeSettings) == 0 && len(rf.startupSettings) == 0 {
+	log.Printf("Replay sync header loaded: startup=%d runtime=%d json=%d fingerprint=%q",
+		len(rf.startupSettings), len(rf.runtimeSettings), len(rf.jsonFiles), rf.contentFingerprint)
+	if len(rf.runtimeSettings) == 0 && len(rf.startupSettings) == 0 && len(rf.jsonFiles) == 0 {
 		log.Printf("Replay sync config: no header settings to apply (legacy/best-effort replay)")
 		return nil
 	}
@@ -1479,5 +1617,5 @@ func (s *System) beginReplaySession(rf *ReplayFile) error {
 		return err
 	}
 	log.Printf("Replay startup compatibility check: OK")
- 	return s.beginSessionOverride("replay", rf.startupSettings, rf.runtimeSettings, rf.contentFingerprint)
+ 	return s.beginSessionOverride("replay", rf.startupSettings, rf.runtimeSettings, rf.jsonFiles, rf.contentFingerprint)
 }
