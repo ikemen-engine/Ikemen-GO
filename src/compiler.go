@@ -697,19 +697,19 @@ func (c *Compiler) number(token string) BytecodeValue {
 	}
 	if strings.Contains(token, ".") {
 		c.reverseOrder = false
-		return BytecodeValue{VT_Float, f}
+		return BytecodeValue{vtype: VT_Float, value: f}
 	}
 	if strings.ContainsAny(token, "Ee") {
 		return bvNone()
 	}
 	c.reverseOrder = false
 	if f > math.MaxInt32 {
-		return BytecodeValue{VT_Int, float64(math.MaxInt32)}
+		return BytecodeValue{vtype: VT_Int, value: float64(math.MaxInt32)}
 	}
 	if f < math.MinInt32 {
-		return BytecodeValue{VT_Int, float64(math.MinInt32)}
+		return BytecodeValue{vtype: VT_Int, value: float64(math.MinInt32)}
 	}
-	return BytecodeValue{VT_Int, f}
+	return BytecodeValue{vtype: VT_Int, value: f}
 }
 
 func (c *Compiler) attr(text string, hitdef bool) (int32, error) {

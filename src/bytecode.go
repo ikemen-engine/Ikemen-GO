@@ -79,6 +79,7 @@ const (
 	VT_Float
 	VT_Int
 	VT_Bool
+	VT_String //追加
 	VT_Undefined
 )
 
@@ -1036,8 +1037,9 @@ func (sp *StringPool) Add(s string) int {
 }
 
 type BytecodeValue struct {
-	vtype ValueType
-	value float64
+	vtype  ValueType
+	value  float64
+	svalue string
 }
 
 func (bv BytecodeValue) IsNone() bool {
@@ -1046,6 +1048,10 @@ func (bv BytecodeValue) IsNone() bool {
 
 func (bv BytecodeValue) IsUndefined() bool {
 	return bv.vtype == VT_Undefined || math.IsNaN(bv.value)
+}
+
+func (bv BytecodeValue) IsString() bool {
+	return bv.vtype == VT_String
 }
 
 func (bv BytecodeValue) ToF() float32 {
@@ -1091,16 +1097,16 @@ func (bv *BytecodeValue) SetF(f float32) {
 	if math.IsNaN(float64(f)) {
 		*bv = BytecodeUndefined()
 	} else {
-		*bv = BytecodeValue{VT_Float, float64(f)}
+		*bv = BytecodeValue{vtype: VT_Float, value: float64(f)}
 	}
 }
 
 func (bv *BytecodeValue) SetI(i int32) {
-	*bv = BytecodeValue{VT_Int, float64(i)}
+	*bv = BytecodeValue{vtype: VT_Int, value: float64(i)}
 }
 
 func (bv *BytecodeValue) SetI64(i int64) {
-	*bv = BytecodeValue{VT_Int, float64(i)}
+	*bv = BytecodeValue{vtype: VT_Int, value: float64(i)}
 }
 
 func (bv *BytecodeValue) SetB(b bool) {
@@ -1109,30 +1115,34 @@ func (bv *BytecodeValue) SetB(b bool) {
 }
 
 func bvNone() BytecodeValue {
-	return BytecodeValue{VT_None, 0}
+	return BytecodeValue{vtype: VT_None, value: 0}
 }
 
 func BytecodeUndefined() BytecodeValue {
-	return BytecodeValue{VT_Undefined, math.NaN()}
+	return BytecodeValue{vtype: VT_Undefined, value: math.NaN()}
 }
 
 func BytecodeFloat(f float32) BytecodeValue {
 	if math.IsNaN(float64(f)) {
 		return BytecodeUndefined() // Intercept NaN as invalid
 	}
-	return BytecodeValue{VT_Float, float64(f)}
+	return BytecodeValue{vtype: VT_Float, value: float64(f)}
 }
 
 func BytecodeInt(i int32) BytecodeValue {
-	return BytecodeValue{VT_Int, float64(i)}
+	return BytecodeValue{vtype: VT_Int, value: float64(i)}
 }
 
 func BytecodeInt64(i int64) BytecodeValue {
-	return BytecodeValue{VT_Int, float64(i)}
+	return BytecodeValue{vtype: VT_Int, value: float64(i)}
 }
 
 func BytecodeBool(b bool) BytecodeValue {
-	return BytecodeValue{VT_Bool, float64(Btoi(b))}
+	return BytecodeValue{vtype: VT_Bool, value: float64(Btoi(b))}
+}
+
+func BytecodeString(s string) BytecodeValue {
+	return BytecodeValue{vtype: VT_String, svalue: s}
 }
 
 type BytecodeStack []BytecodeValue
