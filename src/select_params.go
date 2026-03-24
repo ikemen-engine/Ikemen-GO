@@ -344,6 +344,7 @@ type GameParams struct {
 	Time                int32    `ini:"time"`
 	VsScreen            bool     `ini:"vsscreen"`
 	VictoryScreen       bool     `ini:"victoryscreen"`
+	WinScreen           bool     `ini:"winscreen"`
 	LuaCode             string   `ini:"luacode"`
 	PersistLife         bool     `ini:"persistlife"`
 	PersistMusic        bool     `ini:"persistmusic"`
@@ -370,6 +371,7 @@ func newGameParams() *GameParams {
 		AI:            -1,
 		VsScreen:      true,
 		VictoryScreen: true,
+		WinScreen:     true,
 		ocd: [3][]OverrideCharData{
 			make([]OverrideCharData, 0),
 			make([]OverrideCharData, 0),
@@ -378,12 +380,28 @@ func newGameParams() *GameParams {
 	}
 }
 
-func (p *GameParams) MusicEntries() []string {
-	return p.musicEntries
+// Seeds match-scoped defaults from the currently active motif runtime flags.
+func newGameParamsFromMotif(m *Motif) *GameParams {
+	p := newGameParams()
+	if m == nil {
+		return p
+	}
+	p.Continue = m.co.enabled
+	p.VictoryScreen = m.vi.enabled
+	p.WinScreen = m.wi.winEnabled
+	return p
+}
+
+func (p *GameParams) ResetFromMotif(m *Motif) {
+	*p = *newGameParamsFromMotif(m)
 }
 
 func (p *GameParams) Reset() {
 	*p = *newGameParams()
+}
+
+func (p *GameParams) MusicEntries() []string {
+	return p.musicEntries
 }
 
 func (p *GameParams) ensureOverride(team, member int) *OverrideCharData {
@@ -502,6 +520,10 @@ func (p *GameParams) AppendParams(entries []string) {
 		case "victoryscreen":
 			if b, ok := parseBoolLoose(val); ok {
 				p.VictoryScreen = b
+			}
+		case "winscreen":
+			if b, ok := parseBoolLoose(val); ok {
+				p.WinScreen = b
 			}
 		case "lua":
 			p.LuaCode = val

@@ -3526,10 +3526,16 @@ func (co *MotifContinue) updateCreditsText(m *Motif) {
 	co.credits = sys.credits
 }
 
+func (co *MotifContinue) enabled() bool {
+	if sys.sel.gameParams != nil {
+		return sys.sel.gameParams.Continue
+	}
+	return co.enabled
+}
+
 func (co *MotifContinue) init(m *Motif) {
-	if (!m.ContinueScreen.Enabled || !co.enabled) ||
-		(sys.winnerTeam() != 0 && sys.winnerTeam() != int32(sys.home)+1) ||
-		!sys.sel.gameParams.Continue {
+	if !m.ContinueScreen.Enabled || !co.enabled() ||
+		(sys.winnerTeam() != 0 && sys.winnerTeam() != int32(sys.home)+1) {
 		co.initialized = true
 		return
 	}
@@ -6003,11 +6009,18 @@ func (vi *MotifVictory) applyEntry(m *Motif, dst *PlayerVictoryProperties, e vic
 	}
 }
 
+func (vi *MotifVictory) enabled() bool {
+	if sys.sel.gameParams != nil {
+		return sys.sel.gameParams.VictoryScreen
+	}
+	return vi.enabled
+}
+
 func (vi *MotifVictory) init(m *Motif) {
-	if !m.VictoryScreen.Enabled || !vi.enabled || sys.winnerTeam() < 1 || (sys.winnerTeam() == 2 && !m.VictoryScreen.Cpu.Enabled) ||
-		((sys.gameMode == "versus" || sys.gameMode == "netplayversus") && !m.VictoryScreen.Vs.Enabled) ||
-		!sys.sel.gameParams.VictoryScreen {
-		vi.initialized = true
+	if !m.VictoryScreen.Enabled || !vi.enabled() || sys.winnerTeam() < 1 ||
+		(sys.winnerTeam() == 2 && !m.VictoryScreen.Cpu.Enabled) ||
+		((sys.gameMode == "versus" || sys.gameMode == "netplayversus") && !m.VictoryScreen.Vs.Enabled) {
+ 		vi.initialized = true
 		return
 	}
 	if err := sys.luaLState.DoString("hook.run('game.victory_init')"); err != nil {
@@ -6481,9 +6494,16 @@ func (wi *MotifWin) reset(m *Motif) {
 	wi.resultsKey = ""
 }
 
+func (wi *MotifWin) enabled() bool {
+	if sys.sel.gameParams != nil {
+		return sys.sel.gameParams.WinScreen
+	}
+	return wi.enabled
+}
+
 // Initialize the MotifWin based on the current game mode
 func (wi *MotifWin) init(m *Motif) {
-	if (wi.winEnabled && sys.winnerTeam() != 0 && sys.winnerTeam() != int32(sys.home)+1) ||
+	if (wi.enabled() && sys.winnerTeam() != 0 && sys.winnerTeam() != int32(sys.home)+1) ||
 		(wi.loseEnabled && (sys.winnerTeam() == 0 || sys.winnerTeam() == int32(sys.home)+1)) {
 		if err := sys.luaLState.DoString("hook.run('game.result_init')"); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.result_init", err.Error())

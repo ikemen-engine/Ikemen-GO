@@ -4561,9 +4561,9 @@ func systemScriptInit(l *lua.LState) {
 		}
 		// Always reset per-launch params; they must not leak across matches/modes.
 		if sys.sel.gameParams == nil {
-			sys.sel.gameParams = newGameParams()
+			sys.sel.gameParams = newGameParamsFromMotif(&sys.motif)
 		} else {
-			sys.sel.gameParams.Reset()
+			sys.sel.gameParams.ResetFromMotif(&sys.motif)
 		}
 		sys.sel.music = make(Music)
 		if !nilArg(l, 1) {
@@ -6090,8 +6090,8 @@ func systemScriptInit(l *lua.LState) {
 		  - `dialogue` (boolean) dialogue system
 		  - `hiscore` (boolean) hiscore screen
 		  - `losescreen` (boolean) lose screen
-		  - `versusscreen` (boolean) versus screen
-		  - `versusmatchno` (boolean) versus screen match number
+		  - `vsscreen` (boolean) versus screen
+		  - `vsmatchno` (boolean) versus screen match number
 		  - `victoryscreen` (boolean) victory screen
 		  - `winscreen` (boolean) win screen
 		  - `menu` (boolean) main menu
@@ -6112,8 +6112,8 @@ func systemScriptInit(l *lua.LState) {
 					sys.motif.hi.enabled = lua.LVAsBool(value)
 				case "losescreen":
 					sys.motif.wi.loseEnabled = lua.LVAsBool(value)
-				case "versusscreen":
-				case "versusmatchno":
+				case "vsscreen":
+				case "vsmatchno":
 				case "victoryscreen":
 					sys.motif.vi.enabled = lua.LVAsBool(value)
 				case "winscreen":
