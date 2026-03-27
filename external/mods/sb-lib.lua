@@ -37,17 +37,6 @@ function sblib.setup_config (config)
     sblib.action_names = action_names
     sblib.actions = actions
 
-
-    -- FUNCTIONALITY FOR ACTIONS BEING SENT TO SERVER REMOVED UNTIL FURTHER NOTICE
-    -- Actions sent to the server can't be functions they must be formatted like normal json data
-    -- local server_actions = {}
-    -- for name, data in pairs(actions) do
-    --    server_actions[name] = {
-    --      impact = data.impact
-    --    }
-    -- end
-
-
     -- Information that gets sent to the server
     -- Only sends the size of input and actions, since names are only needed client size
     local server_config = {
@@ -69,27 +58,31 @@ function sblib.setup_config (config)
     return httppost(config.endpoint, "application/json", json_encoded_string) 
 end
 
--- Sends ikemon go data to the server as per the contract (Decide with MO)
--- Returns
--- Needs to give the current state.
--- Calc reward based on incoming data(Where incoming data is the state data from game) and then send back
-function sblib.step (state)
-    -- If statement that checks if all game values are in the right format
 
-    -- Calculate actions based on the http call
-    adjustments = httppost(baseurl + "/step", state)
 
-    -- Enumerate over states and RE-ADD the names of variables
+-- Calculates adjustment action based on state ikemon go data sent to server
+function sblib.step (state_values_table)
+    -- Calculates reward from config. Needs previous states so doesn't run in first frame
+    local reward = sblib.reward_function(sblib.previous_state, state_values_table)
 
-    sblib.apply_adjustments(adjustments)
+    -- Sets prev state for next frame
+    sblib.previous_state = state_values_table
+
+    json_encoded_state = sblib.json.encode(state_values_table)
+
+    -- This is the real endpoint that'll be used in production, but it's disabled until connected
+    -- to rust server and instead replaced with a mock function
+    -- If we are doing it like vectors, then this should return a vector with a value in the 
+    -- correctly indexed action index. (So if dmg is 3rd action it needs to have 1 or TRUE in 4th index)
+    ---- adjustments = httppost(config.endpoint + "/step", state_values_table, reward)
+    
+    -- This applies adjustment according to the action
+    sblib.apply_adjustment(action)
 end
 
-function sblib.apply_adjustments (adjustments)
+function sblib.apply_adjustment (action)
     -- Apply the adjustments as per the config apply functions 
 end
-
-
-
 
 -- Embedded json library for encoding tables to JSON data
 sblib.json = (function()

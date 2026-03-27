@@ -1,20 +1,47 @@
-local function reward_function(state)
-    -- Example: reward based on health
-    return state.variables.health
+-- Reward: Encourages Player 1 to win by maximizing damage to Player 2 (minimizing p2 redlife)
+-- while avoiding damage to itself.
+local function reward_function(prev, curr)
+    if not prev then return 0 end
+
+    local damage_to_enemy = prev.p2redlife - curr.p2redlife
+    local damage_to_self  = prev.p1redlife - curr.p1redlife
+
+    local attack_gain = curr.p1attack - prev.p1attack
+
+    return
+        (damage_to_enemy * 5)   -- main goal
+      - (damage_to_self * 3)    -- don't die
+      + (attack_gain * 0.5)     -- encourage scaling
 end
 
 -- Example action functions
 local function increase_attack(state, value, impact)
-    state.variables.attack = state.variables.attack + (value * impact)
+    state.variables.p1attack =
+        state.variables.p1attack + (value * impact)
+end
+
+local function decrease_attack(state, value, impact)
+    state.variables.p1attack =
+        state.variables.p1attack - (value * impact)
+end
+
+local function deal_damage(state, value, impact)
+    local dmg = state.variables.p1attack * impact
+
+    state.variables.p2redlife =
+        state.variables.p2redlife - dmg
 end
 
 local function heal(state, value, impact)
-    state.variables.health = state.variables.health + (value * impact)
+    state.variables.p1redlife =
+        state.variables.p1redlife + (value * impact)
 end
 
-local function decrease_stamina(state, value, impact)
-    state.variables.stamina = state.variables.stamina - (value * impact)
+local function self_damage(state, value, impact)
+    state.variables.p1redlife =
+        state.variables.p1redlife - (value * impact)
 end
+
 
 
 return {
@@ -24,29 +51,34 @@ return {
     description = "Sample RL config",
     reward_function = reward_function,
     state = {
-        "p1life",
+        "p1redlife",
         "p1attack",
-        "p2life",
+        "p2redlife",
         "p2attack",
     },
 
     actions = {
-        attack = {
+        buff_attack = {
             application_function = increase_attack,
             impact = 2
         },
 
-        heal = {
-            application_function = heal,
-            impact = 5
+        weaken_attack = {
+            application_function = decrease_attack,
+            impact = 1
         },
 
-        rest = {
-            application_function = decrease_stamina,
+        attack = {
+            application_function = deal_damage,
             impact = 1
+        },
+
+        heal = {
+            application_function = heal,
+            impact = 2
         }
     },
-
+    
     hyperparameters = {
         learning_rate = 0.01,
         discount_factor = 0.99
