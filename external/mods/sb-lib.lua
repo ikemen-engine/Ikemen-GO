@@ -62,26 +62,34 @@ end
 
 -- Calculates adjustment action based on state ikemon go data sent to server
 function sblib.step (state_values_table)
+    -- if state_values_table == nil or sblib.previous_state == nil then return end
+
     -- Calculates reward from config. Needs previous states so doesn't run in first frame
     local reward = sblib.reward_function(sblib.previous_state, state_values_table)
 
     -- Sets prev state for next frame
     sblib.previous_state = state_values_table
 
-    json_encoded_state = sblib.json.encode(state_values_table)
+    -- json_encoded_state = sblib.json.encode(state_values_table)
 
     -- This is the real endpoint that'll be used in production, but it's disabled until connected
     -- to rust server and instead replaced with a mock function
     -- If we are doing it like vectors, then this should return a vector with a value in the 
     -- correctly indexed action index. (So if dmg is 3rd action it needs to have 1 or TRUE in 4th index)
-    ---- adjustments = httppost(config.endpoint + "/step", state_values_table, reward)
-    
+    -- json_adjustment_actions = httppost(config.endpoint + "/step", state_values_table, reward)
+    -- adjustment_actions = sblib.json.decode(json_adjustment_actions)
+    mock_adj_actions = {1, 0, 0}
+
+   -- print("TEEEST ", mock_adj_actions[1])
     -- This applies adjustment according to the action
-    sblib.apply_adjustment(action)
+    sblib.apply_adjustments(mock_adj_actions)
 end
 
-function sblib.apply_adjustment (action)
-    -- Apply the adjustments as per the config apply functions 
+
+-- Apply the adjustments as per the config apply functions 
+function sblib.apply_adjustments (adjustment_actions)
+    for index, action in pairs(sblib.config.actions) do
+    end
 end
 
 -- Embedded json library for encoding tables to JSON data

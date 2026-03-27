@@ -16,9 +16,11 @@ local function stepWithState()
     -- print("Player 1 redlife " .. redlife())
     -- print("Player 1 attack " .. attack())
 
+    p1redlife = redlife()
+    p1attack = attack()
     -- Inserts player 1 state into state
-    table.insert(state, redlife())
-    table.insert(state, attack())
+    table.insert(state, p1redlife)
+    table.insert(state, p1attack)
   end
 
   if player(2) then
@@ -27,8 +29,11 @@ local function stepWithState()
     -- print("Player 2 attack " .. attack())
 
     -- Inserts player 2 state into state
-    table.insert(state, redlife())
-    table.insert(state, attack())
+    p2redlife = redlife()
+    p2attack = attack()
+    -- Inserts player 1 state into state
+    table.insert(state, p2redlife)
+    table.insert(state, p2attack)
   end
 
   -- Prints json encoded Ikemon go state
@@ -36,7 +41,7 @@ local function stepWithState()
 
   -- Calls step from sblib with state
   -- Step doesn't work right now so it's not being called
-  -- sblib.step(state)
+  sblib.step(state)
 end
 
 hook.add("loop#watch","state", stepWithState);

@@ -14,32 +14,20 @@ local function reward_function(prev, curr)
       + (attack_gain * 0.5)     -- encourage scaling
 end
 
--- Example action functions
-local function increase_attack(state, value, impact)
+-- Example action functions all these try
+local function increase_attack(state, value)
     state.variables.p1attack =
-        state.variables.p1attack + (value * impact)
+        state.variables.p1attack + (value * 2)
 end
 
-local function decrease_attack(state, value, impact)
+local function decrease_attack(state, value)
     state.variables.p1attack =
-        state.variables.p1attack - (value * impact)
+        state.variables.p1attack - (value * 1)
 end
 
-local function deal_damage(state, value, impact)
-    local dmg = state.variables.p1attack * impact
-
-    state.variables.p2redlife =
-        state.variables.p2redlife - dmg
-end
-
-local function heal(state, value, impact)
+local function heal(state, value)
     state.variables.p1redlife =
-        state.variables.p1redlife + (value * impact)
-end
-
-local function self_damage(state, value, impact)
-    state.variables.p1redlife =
-        state.variables.p1redlife - (value * impact)
+        state.variables.p1redlife + (value * 2)
 end
 
 
@@ -60,22 +48,14 @@ return {
     actions = {
         buff_attack = {
             application_function = increase_attack,
-            impact = 2
         },
 
         weaken_attack = {
             application_function = decrease_attack,
-            impact = 1
-        },
-
-        attack = {
-            application_function = deal_damage,
-            impact = 1
         },
 
         heal = {
             application_function = heal,
-            impact = 2
         }
     },
     
