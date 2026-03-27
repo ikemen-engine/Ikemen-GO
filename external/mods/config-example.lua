@@ -23,14 +23,11 @@ return {
     endpoint = "http://localhost:3000",
     description = "Sample RL config",
     reward_function = reward_function,
-
     state = {
-        players = 2,
-        variables = {
-            health = 100,
-            attack = 10,
-            stamina = 50
-        }
+        "p1life",
+        "p1attack",
+        "p2life",
+        "p2attack",
     },
 
     actions = {

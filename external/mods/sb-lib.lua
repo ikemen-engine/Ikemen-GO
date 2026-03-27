@@ -14,68 +14,73 @@ function sblib.setup_config (config)
     sblib.reward_function = config.reward_function
 
 
-    local state = {
-        players = config.state.players,
-        variables = {}
-    }
-
-    for key, value in pairs(config.state.variables) do
-        state.variables[key] = value
+    local state = {}
+    local state_size = 0
+    for i, key in ipairs(config.state) do        
+        state[i] = key
+        state_size = state_size + 1
     end
-
 
     local actions = {}
     local action_names = {}
+    local action_size = 0
     for action_name, action_data in pairs(config.actions) do
         actions[action_name] = {
             application_function = action_data.application_function,
             impact = action_data.impact
         }
         table.insert(action_names, action_name)
+        action_size = action_size + 1
     end
-    
 
     -- Sets local action names to be used in step
     sblib.action_names = action_names
     sblib.actions = actions
 
 
+    -- FUNCTIONALITY FOR ACTIONS BEING SENT TO SERVER REMOVED UNTIL FURTHER NOTICE
     -- Actions sent to the server can't be functions they must be formatted like normal json data
-    local server_actions = {}
-    for name, data in pairs(actions) do
-        server_actions[name] = {
-            impact = data.impact
-        }
-    end
+    -- local server_actions = {}
+    -- for name, data in pairs(actions) do
+    --    server_actions[name] = {
+    --      impact = data.impact
+    --    }
+    -- end
 
 
     -- Information that gets sent to the server
+    -- Only sends the size of input and actions, since names are only needed client size
     local server_config = {
         name = config.name,
         version = config.version,
         endpoint = config.endpoint,
         description = config.description,
-        state = state,
-        actions = server_actions,
+        state_size = state_size,
+        actions_size = action_size,
         hyperparameters = config.hyperparameters
     }
 
     sblib.config = config
 
     local json_encoded_string = sblib.json.encode(server_config)
-    print(json_encoded_string)
+
+    -- print(config.endpoint)
+    -- print(json_encoded_string)
     return httppost(config.endpoint, "application/json", json_encoded_string) 
 end
-
 
 -- Sends ikemon go data to the server as per the contract (Decide with MO)
 -- Returns
 -- Needs to give the current state.
+-- Calc reward based on incoming data(Where incoming data is the state data from game) and then send back
 function sblib.step (state)
     -- If statement that checks if all game values are in the right format
 
     -- Calculate actions based on the http call
     adjustments = httppost(baseurl + "/step", state)
+
+    -- Enumerate over states and RE-ADD the names of variables
+
     sblib.apply_adjustments(adjustments)
 end
 

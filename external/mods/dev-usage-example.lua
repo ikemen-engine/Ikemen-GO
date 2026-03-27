@@ -7,6 +7,6 @@
 -- 
 local function testConfigPrint()
   local config_test_response = sblib.init("external/mods/config-example")
-  print("Server response: " .. tostring(config_test_response))
+  print("Server response: ", config_test_response)
 end
 hook.add("launchFight","test", testConfigPrint);
