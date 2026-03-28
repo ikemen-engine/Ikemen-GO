@@ -12,36 +12,28 @@ hook.add("launchFight","test", testConfigPrint);
 local function stepWithState()
   local state = {}
   if player(1) then
-    if (redlife() == 0 and attack()== 0) then return end
-    -- print("Player 1 redlife " .. redlife())
-    -- print("Player 1 attack " .. attack())
-
     p1redlife = redlife()
-    p1attack = attack()
+    p1attackmul = attackmul()
     -- Inserts player 1 state into state
-    table.insert(state, p1redlife)
-    table.insert(state, p1attack)
+    state.p1redlife = redlife()
+    state.p1attackmul  = attackmul()
   end
 
   if player(2) then
-    if (redlife() == 0 and attack()== 0) then return end
-    -- print("Player 2 redlife " .. redlife())
-    -- print("Player 2 attack " .. attack())
-
-    -- Inserts player 2 state into state
     p2redlife = redlife()
-    p2attack = attack()
+    p2attackmul = attackmul()
     -- Inserts player 1 state into state
-    table.insert(state, p2redlife)
-    table.insert(state, p2attack)
+    state.p2redlife = redlife()
+    state.p2attackmul  = attackmul()
   end
 
   -- Prints json encoded Ikemon go state
-  print("Ikemon go Players State ", sblib.json.encode(state))
-
-  -- Calls step from sblib with state
-  -- Step doesn't work right now so it's not being called
-  sblib.step(state)
+  -- Calls sblib.step and returns a changed state
+  mutated_state = sblib.step(state)
+  print("Ikemon go Players State ", sblib.json.encode(mutated_state))
+  
+  -- Applying adjustments, but idk how to set the multipliers
+  -- idk how to change values bruh..
 end
 
 hook.add("loop#watch","state", stepWithState);

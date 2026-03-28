@@ -48,11 +48,9 @@ addHotkey('l', true, false, false, true, false, 'printLife(1,6)')
 local frames = 0
 local function testPrint()
   frames = frames + 1
-  print("frame: ".. frames)
+  -- print("frame: ".. frames)
 end
 hook.add("loop#watch","test", testPrint);
-
-
 
 
 -- setGameSpeed(10000)

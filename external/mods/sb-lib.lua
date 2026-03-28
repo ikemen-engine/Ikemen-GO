@@ -21,75 +21,72 @@ function sblib.setup_config (config)
         state_size = state_size + 1
     end
 
-    local actions = {}
     local action_names = {}
     local action_size = 0
-    for action_name, action_data in pairs(config.actions) do
-        actions[action_name] = {
-            application_function = action_data.application_function,
-            impact = action_data.impact
-        }
-        table.insert(action_names, action_name)
+
+    local i = 1
+    for key, _ in pairs(config.actions) do
+        action_names[i] = key
         action_size = action_size + 1
+        i = i+1
     end
 
     -- Sets local action names to be used in step
     sblib.action_names = action_names
-    sblib.actions = actions
+    sblib.actions = config.actions
 
     -- Information that gets sent to the server
     -- Only sends the size of input and actions, since names are only needed client size
     local server_config = {
         name = config.name,
-        version = config.version,
-        endpoint = config.endpoint,
         description = config.description,
         state_size = state_size,
         actions_size = action_size,
+        action_names = action_names,
         hyperparameters = config.hyperparameters
     }
 
     sblib.config = config
 
     local json_encoded_string = sblib.json.encode(server_config)
-
-    -- print(config.endpoint)
-    -- print(json_encoded_string)
     return httppost(config.endpoint, "application/json", json_encoded_string) 
 end
 
 
 
 -- Calculates adjustment action based on state ikemon go data sent to server
-function sblib.step (state_values_table)
-    -- if state_values_table == nil or sblib.previous_state == nil then return end
+function sblib.step (current_state)
+    if current_state == nil then return end
 
     -- Calculates reward from config. Needs previous states so doesn't run in first frame
-    local reward = sblib.reward_function(sblib.previous_state, state_values_table)
+    -- The closer the player hp the better.    
+    local reward = sblib.reward_function(current_state)
 
-    -- Sets prev state for next frame
-    sblib.previous_state = state_values_table
+    json_encoded_state = sblib.json.encode(current_state)
 
-    -- json_encoded_state = sblib.json.encode(state_values_table)
-
-    -- This is the real endpoint that'll be used in production, but it's disabled until connected
-    -- to rust server and instead replaced with a mock function
-    -- If we are doing it like vectors, then this should return a vector with a value in the 
-    -- correctly indexed action index. (So if dmg is 3rd action it needs to have 1 or TRUE in 4th index)
-    -- json_adjustment_actions = httppost(config.endpoint + "/step", state_values_table, reward)
+    --json_adjustment_actions = httppost(config.endpoint + "/step", current_state, reward)
     -- adjustment_actions = sblib.json.decode(json_adjustment_actions)
-    mock_adj_actions = {1, 0, 0}
 
-   -- print("TEEEST ", mock_adj_actions[1])
-    -- This applies adjustment according to the action
-    sblib.apply_adjustments(mock_adj_actions)
+    -- 1 means increase, 0 means no change, -1 means decrease
+    -- with 2 actions being attack and heal, this would mean increasing attack for player 1
+    -- aka its {attackp1, attackp2, healp1, healp2}
+    action_activations = {1, 0}
+    current_state = sblib.apply_actions(action_activations, current_state)
+    return current_state
 end
 
 
--- Apply the adjustments as per the config apply functions 
-function sblib.apply_adjustments (adjustment_actions)
-    for index, action in pairs(sblib.config.actions) do
+-- Applies action functions as per config on the state.
+-- 1 is increase, -1 is decrease and 0 is nochange
+function sblib.apply_actions(adjustment_actions, current_state)
+    for index, value in ipairs(adjustment_actions) do
+    local action_name = sblib.action_names[index]
+    local action_function = sblib.actions[action_name]
+        if action_function then
+            action_function(current_state, value)
+        end
     end
+    return current_state
 end
 
 -- Embedded json library for encoding tables to JSON data
