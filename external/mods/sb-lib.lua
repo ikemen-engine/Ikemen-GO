@@ -62,7 +62,7 @@ function sblib.step (current_state)
     -- The closer the player hp the better.    
     local reward = sblib.reward_function(current_state)
 
-    -- UNCOMMENT TO ACTIVATE STEP ENDPOINT!!!
+    -- UNCOMMENT TO ACTIVATE STEP ENDPOINT!!! ----------------------
     -- Encodes state table to json data, gets it back and decodes back into table.
     -- payload = {}
     -- payload.state = current_state
@@ -70,12 +70,13 @@ function sblib.step (current_state)
     -- local json_encoded_state = sblib.json.encode(current_state)
     -- local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", payload)
     -- local adjustment_actions = sblib.json.decode(json_adjustment_actions)
+    --------------------------------------------    
 
     -- Step endpoint is temporarily disabled untill connected to the server
     -- This activation would as an example INCREASE attackmul for player 1
-    local action_activations = {1, 0}
+    local test_action_activations = {1, 0}
 
-    local mutated_state = sblib.apply_actions(action_activations, current_state)
+    local mutated_state = sblib.apply_actions(test_action_activations, current_state)
     return mutated_state
 end
 
