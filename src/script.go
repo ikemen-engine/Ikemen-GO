@@ -8544,4 +8544,11 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.winnerTeam()))
 		return 1
 	})
+
+	luaRegister(l, "setAttackMul", func(l *lua.LState) int {
+    if sys.debugWC != nil {
+        sys.debugWC.attackMul[0] = float32(numArg(l, 1))
+    }
+    return 0
+	})
 }
