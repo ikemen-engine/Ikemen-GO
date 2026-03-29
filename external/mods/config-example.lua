@@ -7,11 +7,11 @@ local function reward_function(current_state)
 end
 
 local function apply_attack_mul_p1 (state, value) 
-    state.p1attackmul = state.p1attackmul + (value * 2)
+    state.p1attackmul = state.p1attackmul + (value * 0.01)
 end
 
 local function apply_attack_mul_p2 (state, value) 
-    state.p2attackmul = state.p2attackmul + (value * 2)
+    state.p2attackmul = state.p2attackmul + (value * 0.01)
 end
 
 

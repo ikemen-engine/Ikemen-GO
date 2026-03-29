@@ -14,10 +14,8 @@ function sblib.setup_config (config)
     sblib.reward_function = config.reward_function
     sblib.config.endpoint = config.endpoint
 
-    local state = {}
     local state_size = 0
     for i, key in ipairs(config.state) do        
-        state[i] = key
         state_size = state_size + 1
     end
 
@@ -61,7 +59,8 @@ function sblib.step (current_state)
     -- Calculates reward from config. Needs previous states so doesn't run in first frame
     -- The closer the player hp the better.    
     local reward = sblib.reward_function(current_state)
-
+    -- print("Reward: ", reward)
+    
     -- UNCOMMENT TO ACTIVATE STEP ENDPOINT!!! ----------------------
     -- Encodes state table to json data, gets it back and decodes back into table.
     -- payload = {}
