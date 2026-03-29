@@ -8,35 +8,35 @@ end
 hook.add("launchFight","test", testConfigPrint);
 
 
--- Function that runs every frame and serves sb-lib with state variables
-local function stepWithState()
-  local state = {}
+-- Function that runs every frame and serves sb-lib with game_state variables
+local function stepWithGameState()
+  local game_state = {}
 
-  -- Insert player 1 and player 2 variables into state
+  -- Insert player 1 and player 2 variables into game_state
   if player(1) then
     p1redlife = redlife()
     p1attackmul = attackmul()
-    state.p1redlife = redlife()
-    state.p1attackmul  = attackmul()
+    game_state.p1redlife = redlife()
+    game_state.p1attackmul  = attackmul()
   end
   if player(2) then
     p2redlife = redlife()
     p2attackmul = attackmul()
-    state.p2redlife = redlife()
-    state.p2attackmul  = attackmul()
+    game_state.p2redlife = redlife()
+    game_state.p2attackmul  = attackmul()
   end
 
   
-  mutated_state = sblib.step(state)
+  local mutated_game_state = sblib.step(game_state)
   if player(1) then
-    setAttackMul(mutated_state.p1attackmul)
+    setAttackMul(mutated_game_state.p1attackmul)
   end
   if player(2) then
-    setAttackMul(mutated_state.p2attackmul)
+    setAttackMul(mutated_game_state.p2attackmul)
   end
 
-  -- print("Ikemon go Players State ", sblib.json.encode(mutated_state))
+  print("Ikemon go Players game_state ", sblib.json.encode(mutated_game_state))
 
 end
 
-hook.add("loop#watch","state", stepWithState);
+hook.add("loop#watch","state", stepWithGameState);

@@ -14,9 +14,9 @@ function sblib.setup_config (config)
     sblib.reward_function = config.reward_function
     sblib.config.endpoint = config.endpoint
 
-    local state_size = 0
-    for i, key in ipairs(config.state) do        
-        state_size = state_size + 1
+    local game_state_size = 0
+    for i, key in ipairs(config.game_state) do        
+        game_state_size = game_state_size + 1
     end
 
     local action_names = {}
@@ -38,7 +38,7 @@ function sblib.setup_config (config)
     local server_config = {
         name = config.name,
         description = config.description,
-        state_size = state_size,
+        game_state_size = game_state_size,
         actions_size = action_size,
         action_names = action_names,
         hyperparameters = config.hyperparameters
@@ -47,50 +47,69 @@ function sblib.setup_config (config)
     sblib.config = config
 
     local json_encoded_string = sblib.json.encode(server_config)
-    return httppost(config.endpoint, "application/json", json_encoded_string) 
+    return httppost(config.endpoint .. "/config", "application/json", json_encoded_string) 
 end
 
 
 
--- Calculates adjustment action based on state ikemon go data sent to server
-function sblib.step (current_state)
-    if current_state == nil then return end
+-- Calculates adjustment action based on game_state ikemon go data sent to server
+function sblib.step (current_game_state)
+    if current_game_state == nil then return end
 
-    -- Calculates reward from config. Needs previous states so doesn't run in first frame
+    -- Calculates reward from config. Needs previous game_states so doesn't run in first frame
     -- The closer the player hp the better.    
-    local reward = sblib.reward_function(current_state)
+    local reward = sblib.reward_function(current_game_state)
     -- print("Reward: ", reward)
-    
-    -- UNCOMMENT TO ACTIVATE STEP ENDPOINT!!! ----------------------
-    -- Encodes state table to json data, gets it back and decodes back into table.
-    -- payload = {}
-    -- payload.state = current_state
-    -- payload.reward = reward
-    -- local json_encoded_state = sblib.json.encode(current_state)
-    -- local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", payload)
+
+
+
+    ----------- CONNECTION TO THE SERVER STEP FUNCTION -------------------------------------
+    --- This is currently disabled, but works with server step, uncomment to activate it ---
+    --- 
+    ---     payload = {}
+    -- Server requires an array, so this converts table into array
+    -- local game_state_array = {}
+    -- for _,v in pairs(current_game_state) do
+    --     table.insert(game_state_array, v)
+    -- end
+    -- payload.name = sblib.config.name
+    -- payload.game_state = game_state_array
+    -- payload.prev_reward = reward
+    -- local json_encoded_payload = sblib.json.encode(payload)
+    -- local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", json_encoded_payload)
     -- local adjustment_actions = sblib.json.decode(json_adjustment_actions)
-    --------------------------------------------    
-
-    -- Step endpoint is temporarily disabled untill connected to the server
-    -- This activation would as an example INCREASE attackmul for player 1
+    -- local mutated_game_state = sblib.apply_actions(adjustment_actions, current_game_state)
+    -----------------------------------------------------------------------------------------
+    
+    -- Untill server step is setup. This right here just increases attackmul infinitely just to see it
+    -- work in game.
     local test_action_activations = {1, 0}
-
-    local mutated_state = sblib.apply_actions(test_action_activations, current_state)
-    return mutated_state
+    local mutated_game_state = sblib.apply_actions(test_action_activations, current_game_state)
+    
+    return mutated_game_state
 end
 
 
--- Applies action functions as per config on the state.
+-- Applies action functions as per config on the game_state.
 -- 1 is increase, -1 is decrease and 0 is nochange
-function sblib.apply_actions(adjustment_actions, current_state)
+function sblib.apply_actions(adjustment_actions, current_game_state)
     for index, value in ipairs(adjustment_actions) do
     local action_name = sblib.action_names[index]
     local action_function = sblib.actions[action_name]
         if action_function then
-            action_function(current_state, value)
+            action_function(current_game_state, value)
         end
     end
-    return current_state
+    return current_game_state
+end
+
+
+function table_to_array(tbl)
+    local arr = {}
+    for i, v in ipairs(tbl) do
+        table.insert(arr, v)
+    end
+    return arr
 end
 
 -- Embedded json library for encoding tables to JSON data
