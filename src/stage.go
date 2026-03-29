@@ -174,6 +174,15 @@ func newBackGround(sff *Sff) *backGround {
 	}
 }
 
+func normalizeStageWindow(rect *[4]int32) {
+	if rect[0] > rect[2] {
+		rect[0], rect[2] = rect[2], rect[0]
+	}
+	if rect[1] > rect[3] {
+		rect[1], rect[3] = rect[3], rect[1]
+	}
+}
+
 func readBackGround(is IniSection, link *backGround,
 	sff *Sff, at AnimationTable, sProps StageProps, def string, startlayer int32) (*backGround, error) {
 	bg := newBackGround(sff)
@@ -426,12 +435,14 @@ func readBackGround(is IniSection, link *backGround,
 	}
 	if is.readI32ForStage("window", &bg.startrect[0], &bg.startrect[1],
 		&bg.startrect[2], &bg.startrect[3]) {
+		normalizeStageWindow(&bg.startrect)
 		bg.startrect[2] = Max(0, bg.startrect[2]+1-bg.startrect[0])
 		bg.startrect[3] = Max(0, bg.startrect[3]+1-bg.startrect[1])
 		bg.notmaskwindow = 1
 	}
 	if is.readI32ForStage("maskwindow", &bg.startrect[0], &bg.startrect[1],
 		&bg.startrect[2], &bg.startrect[3]) {
+		normalizeStageWindow(&bg.startrect)
 		bg.startrect[2] = Max(0, bg.startrect[2]-bg.startrect[0])
 		bg.startrect[3] = Max(0, bg.startrect[3]-bg.startrect[1])
 		bg.notmaskwindow = 0
