@@ -12,7 +12,7 @@ end
 function sblib.setup_config (config)
     -- Only relevant client side (Such as during step function)
     sblib.reward_function = config.reward_function
-
+    sblib.config.endpoint = config.endpoint
 
     local state = {}
     local state_size = 0
@@ -62,17 +62,21 @@ function sblib.step (current_state)
     -- The closer the player hp the better.    
     local reward = sblib.reward_function(current_state)
 
-    json_encoded_state = sblib.json.encode(current_state)
+    -- UNCOMMENT TO ACTIVATE STEP ENDPOINT!!!
+    -- Encodes state table to json data, gets it back and decodes back into table.
+    -- payload = {}
+    -- payload.state = current_state
+    -- payload.reward = reward
+    -- local json_encoded_state = sblib.json.encode(current_state)
+    -- local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", payload)
+    -- local adjustment_actions = sblib.json.decode(json_adjustment_actions)
 
-    --json_adjustment_actions = httppost(config.endpoint + "/step", current_state, reward)
-    -- adjustment_actions = sblib.json.decode(json_adjustment_actions)
+    -- Step endpoint is temporarily disabled untill connected to the server
+    -- This activation would as an example INCREASE attackmul for player 1
+    local action_activations = {1, 0}
 
-    -- 1 means increase, 0 means no change, -1 means decrease
-    -- with 2 actions being attack and heal, this would mean increasing attack for player 1
-    -- aka its {attackp1, attackp2, healp1, healp2}
-    action_activations = {1, 0}
-    current_state = sblib.apply_actions(action_activations, current_state)
-    return current_state
+    local mutated_state = sblib.apply_actions(action_activations, current_state)
+    return mutated_state
 end
 
 

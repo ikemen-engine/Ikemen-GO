@@ -27,10 +27,9 @@ local function stepWithState()
     state.p2attackmul  = attackmul()
   end
 
-  -- Prints json encoded Ikemon go state
-  -- Calls sblib.step and returns a changed state
+  
   mutated_state = sblib.step(state)
-  print("Ikemon go Players State ", sblib.json.encode(mutated_state))
+  --print("Ikemon go Players State ", sblib.json.encode(mutated_state))
   
   -- Applying adjustments, but idk how to set the multipliers
   -- idk how to change values bruh..
