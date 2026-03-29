@@ -34,8 +34,7 @@ local function stepWithGameState()
   if player(2) then
     setAttackMul(mutated_game_state.p2attackmul)
   end
-
-  print("Ikemon go Players game_state ", sblib.json.encode(mutated_game_state))
+  -- print("Ikemon go Players game_state ", sblib.json.encode(mutated_game_state))
 
 end
 

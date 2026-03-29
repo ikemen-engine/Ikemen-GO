@@ -61,8 +61,7 @@ function sblib.step (current_game_state)
     local reward = sblib.reward_function(current_game_state)
     -- print("Reward: ", reward)
 
-
-
+    
     ----------- CONNECTION TO THE SERVER STEP FUNCTION -------------------------------------
     --- This is currently disabled, but works with server step, uncomment to activate it ---
     --- 
