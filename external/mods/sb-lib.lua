@@ -65,26 +65,26 @@ function sblib.step (current_game_state)
     ----------- CONNECTION TO THE SERVER STEP FUNCTION -------------------------------------
     --- This is currently disabled, but works with server step, uncomment to activate it ---
     --- 
-    -- payload = {}
-    -- -- Server requires an array, so this converts table into array
-    -- local game_state_array = {}
-    -- for _,v in pairs(current_game_state) do
-    --     table.insert(game_state_array, v)
-    -- end
-    -- payload.name = sblib.config.name
-    -- payload.game_state = game_state_array
-    -- payload.prev_reward = reward
-    -- local json_encoded_payload = sblib.json.encode(payload)
-    -- local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", json_encoded_payload)
-    -- print(json_adjustment_actions)
-    -- local adjustment_actions = sblib.json.decode(json_adjustment_actions)
-    -- local mutated_game_state = sblib.apply_actions(adjustment_actions, current_game_state)
+    payload = {}
+    -- Server requires an array, so this converts table into array
+    local game_state_array = {}
+    for _,v in pairs(current_game_state) do
+        table.insert(game_state_array, v)
+    end
+    payload.name = sblib.config.name
+    payload.game_state = game_state_array
+    payload.prev_reward = reward
+    local json_encoded_payload = sblib.json.encode(payload)
+    local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", json_encoded_payload)
+    print(json_adjustment_actions)
+    local adjustment_actions = sblib.json.decode(json_adjustment_actions)
+    local mutated_game_state = sblib.apply_actions(adjustment_actions, current_game_state)
     -----------------------------------------------------------------------------------------
     
     -- Untill server step is setup. This right here just increases attackmul infinitely just to see it
     -- work in game.
-    local test_action_activations = {1, 0}
-    local mutated_game_state = sblib.apply_actions(test_action_activations, current_game_state)
+    --local test_action_activations = {1, 0}
+    --local mutated_game_state = sblib.apply_actions(test_action_activations, current_game_state)
     
     return mutated_game_state
 end
