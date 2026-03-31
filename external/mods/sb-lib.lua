@@ -14,9 +14,11 @@ function sblib.setup_config (config)
     sblib.reward_function = config.reward_function
     sblib.config.endpoint = config.endpoint
     sblib.config.frameStepInterval = config.frameStepInterval
+    sblib.config.game_state_variables_order = config.game_state_variables_order
+    sblib.config.game_state_variables = config.game_state_variables
 
     local game_state_size = 0
-    for i, key in ipairs(config.game_state) do        
+    for i, key in ipairs(sblib.config.game_state_variables_order) do        
         game_state_size = game_state_size + 1
     end
 
@@ -52,26 +54,25 @@ function sblib.setup_config (config)
 end
 
 
-
 -- Calculates adjustment action based on game_state ikemon go data sent to server
-function sblib.step (current_game_state, frame)
+function sblib.step (frame)
+    if sblib.config == nil then return end
     if frame % sblib.config.frameStepInterval ~= 0 then
         return
     end
-    
+
+    local current_game_state = sblib.get_game_state()
 
     if current_game_state == nil then return end
 
-    -- Calculates reward from config. Needs previous game_states so doesn't run in first frame
-    -- The closer the player hp the better.    
+    -- Calculates reward from config.
     local reward = sblib.reward_function(current_game_state)
     -- print("Reward: ", reward)
 
     
     ----------- CONNECTION TO THE SERVER STEP FUNCTION -------------------------------------
-    --- This is currently disabled, but works with server step, uncomment to activate it ---
-    --- 
-    payload = {}
+    local payload = {}
+
     -- Server requires an array, so this converts table into array
     local game_state_array = {}
     for _,v in pairs(current_game_state) do
@@ -82,13 +83,14 @@ function sblib.step (current_game_state, frame)
     payload.prev_reward = reward
     local json_encoded_payload = sblib.json.encode(payload)
     local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", json_encoded_payload)
-    print(json_adjustment_actions)
     local adjustment_actions = sblib.json.decode(json_adjustment_actions)
-    local mutated_game_state = sblib.apply_actions(adjustment_actions, current_game_state)
-    -----------------------------------------------------------------------------------------
-    
-    -- Updating the state
-    return mutated_game_state
+
+    -- This temporarily sets the
+    local TEMP_ACTION = {adjustment_actions.action}
+
+    local mutated_game_state = sblib.apply_actions(TEMP_ACTION, current_game_state)
+    print("Mutated game state", print_table(mutated_game_state))
+    sblib.set_game_state(mutated_game_state)
 end
 
 
@@ -105,7 +107,40 @@ function sblib.apply_actions(adjustment_actions, current_game_state)
     return current_game_state
 end
 
+-- Builds game state based on getters from config
+-- This turns the game state into a vector since it preserves the order through the config
+function sblib.get_game_state()
+    local game_state = {}
+    for index, _ in ipairs(sblib.config.game_state_variables_order) do
+        local var_name = sblib.config.game_state_variables_order[index]
+        local config_var = sblib.config.game_state_variables[var_name]
+        local game_var_getter = config_var.get
+        local game_var = game_var_getter()
+        game_state[var_name] = game_var
+    end
+    return game_state
+end
 
+
+-- Sets variables on the game state using setters from config
+function sblib.set_game_state(new_state)
+    print_table(new_state)
+    for index, _ in ipairs(sblib.config.game_state_variables_order) do
+        local var_name = sblib.config.game_state_variables_order[index]
+        local config_var = sblib.config.game_state_variables[var_name]
+        if config_var.set == nil then
+            -- print("No setter for: ", var_name)
+        else
+            local game_var_setter = config_var.set
+            game_var_setter(new_state)
+        end
+    end
+end
+
+
+
+
+------------ HELPER FUNCTIONS ------------------------
 function table_to_array(tbl)
     local arr = {}
     for i, v in ipairs(tbl) do
@@ -113,6 +148,18 @@ function table_to_array(tbl)
     end
     return arr
 end
+
+-----------------
+function print_table(tbl)
+    if type(tbl) ~= "table" then
+        error("print_table expected table, got " .. type(tbl))
+    end
+
+    for k, v in pairs(tbl) do
+        print(tostring(k) .. " = " .. tostring(v) .. " (" .. type(v) .. ")")
+    end
+end
+----------------------
 
 -- Embedded json library for encoding tables to JSON data
 sblib.json = (function()
