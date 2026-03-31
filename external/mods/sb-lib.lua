@@ -3,6 +3,7 @@ sblib.config = {}
 sblib.reward_function = nil
 sblib.action_names = {}
 sblib.actions = {}
+local stepCounter = 0
 
 function sblib.init(config_path)
     local config = require(config_path)
@@ -16,6 +17,7 @@ function sblib.setup_config (config)
     sblib.config.frameStepInterval = config.frameStepInterval
     sblib.config.game_state_variables_order = config.game_state_variables_order
     sblib.config.game_state_variables = config.game_state_variables
+    sblib.config.print_RL_step_summary = config.print_RL_step_summary
 
     local game_state_size = 0
     for i, key in ipairs(sblib.config.game_state_variables_order) do        
@@ -65,10 +67,10 @@ function sblib.step (frame)
 
     if current_game_state == nil then return end
 
+    stepCounter = stepCounter + 1
+
     -- Calculates reward from config.
     local reward = sblib.reward_function(current_game_state)
-    -- print("Reward: ", reward)
-
     
     ----------- CONNECTION TO THE SERVER STEP FUNCTION -------------------------------------
     local payload = {}
@@ -85,12 +87,15 @@ function sblib.step (frame)
     local json_adjustment_actions = httppost(sblib.config.endpoint .. "/step", "application/json", json_encoded_payload)
     local adjustment_actions = sblib.json.decode(json_adjustment_actions)
 
-    -- This temporarily sets the
+    -- This temporarily sets the action, should be changed when server gives correct stuff
     local TEMP_ACTION = {adjustment_actions.action}
 
     local mutated_game_state = sblib.apply_actions(TEMP_ACTION, current_game_state)
-    print("Mutated game state", print_table(mutated_game_state))
     sblib.set_game_state(mutated_game_state)
+
+    if sblib.config.print_RL_step_summary == true then
+        sblib.printRLValues(current_game_state, reward, adjustment_actions, stepCounter) 
+    end
 end
 
 
@@ -124,7 +129,6 @@ end
 
 -- Sets variables on the game state using setters from config
 function sblib.set_game_state(new_state)
-    print_table(new_state)
     for index, _ in ipairs(sblib.config.game_state_variables_order) do
         local var_name = sblib.config.game_state_variables_order[index]
         local config_var = sblib.config.game_state_variables[var_name]
@@ -137,6 +141,34 @@ function sblib.set_game_state(new_state)
     end
 end
 
+
+function sblib.printRLValues(current_game_state, reward, actions, stepFrame)
+    print("-------- RL Step Summary --------")
+    print("Step: ", stepFrame)
+
+    -- Print game state
+    print("Game State:")
+    for _, var_name in ipairs(sblib.config.game_state_variables_order) do
+        local value = current_game_state[var_name]
+        print("  " .. var_name .. ": " .. tostring(value))
+    end
+
+    -- Print reward
+    if reward ~= nil then
+        print("Reward: " .. tostring(reward))
+    end
+
+    -- Print actions if provided
+    if actions ~= nil then
+        print("Actions:")
+        for index, value in ipairs(actions) do
+            local action_name = sblib.action_names[index] or ("action_" .. index)
+            print("  " .. action_name .. ": " .. tostring(value))
+        end
+    end
+
+    print("--------------------------------")
+end
 
 
 

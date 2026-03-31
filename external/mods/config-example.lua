@@ -1,12 +1,9 @@
 -- Reward encourage equal life. For balanced game
-
--- Every variable here needs a getter
 local function reward_function(current_game_state)
     local diff = math.abs(current_game_state.p1life - current_game_state.p2life)
     return ((diff-1000)/10)-50
 end
 
--- Every variable used here needs a setter
 local function apply_attack_mul_p1 (game_state, value) 
     game_state.p1attackmul = game_state.p1attackmul + (value * 0.01)
 end
@@ -37,7 +34,6 @@ local function get_p2_attackMul()
   end
 end
 
-
 local function set_p1_attackMul (game_state) 
   if player(1) then
     setAttackMul(game_state.p1attackmul)
@@ -59,6 +55,7 @@ return {
     description = "Sample RL config",
     reward_function = reward_function,
     frameStepInterval = 15,
+    print_RL_step_summary = true,
     game_state_variables_order = { "p1life", "p1attackmul", "p2life", "p2attackmul" },
     game_state_variables = {
         p1life = {
