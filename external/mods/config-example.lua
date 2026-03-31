@@ -19,6 +19,7 @@ return {
     endpoint = "http://localhost:3000",
     description = "Sample RL config",
     reward_function = reward_function,
+    frameStepInterval = 15,
     game_state = {
         "p1life",
         "p1attackmul",

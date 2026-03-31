@@ -13,6 +13,7 @@ function sblib.setup_config (config)
     -- Only relevant client side (Such as during step function)
     sblib.reward_function = config.reward_function
     sblib.config.endpoint = config.endpoint
+    sblib.config.frameStepInterval = config.frameStepInterval
 
     local game_state_size = 0
     for i, key in ipairs(config.game_state) do        
@@ -53,7 +54,12 @@ end
 
 
 -- Calculates adjustment action based on game_state ikemon go data sent to server
-function sblib.step (current_game_state)
+function sblib.step (current_game_state, frame)
+    if frame % sblib.config.frameStepInterval ~= 0 then
+        return
+    end
+    
+
     if current_game_state == nil then return end
 
     -- Calculates reward from config. Needs previous game_states so doesn't run in first frame
@@ -81,11 +87,7 @@ function sblib.step (current_game_state)
     local mutated_game_state = sblib.apply_actions(adjustment_actions, current_game_state)
     -----------------------------------------------------------------------------------------
     
-    -- Untill server step is setup. This right here just increases attackmul infinitely just to see it
-    -- work in game.
-    --local test_action_activations = {1, 0}
-    --local mutated_game_state = sblib.apply_actions(test_action_activations, current_game_state)
-    
+    -- Updating the state
     return mutated_game_state
 end
 

@@ -10,9 +10,10 @@ hook.add("launchFight","test", testConfigPrint);
 
 -- Function that runs every frame and serves sb-lib with game_state variables
 -- runs every n steps (temporarily hardcode)
-local frames = 0
-local frameInterval = 15
+local frame = 0
 local function stepWithGameState()
+  frame = frame + 1
+
   local game_state = {}
   -- Insert player 1 and player 2 variables into game_state
   if player(1) then
@@ -28,13 +29,12 @@ local function stepWithGameState()
     game_state.p2attackmul  = attackmul()
   end
 
-  frames = frames+1
-  if frames % frameInterval ~= 0 then
-    return
-  end
-  
+
   -- Run step which mutates the game state with activations from server
-  local mutated_game_state = sblib.step(game_state)
+  local mutated_game_state = sblib.step(game_state, frame)
+
+  if mutated_game_state == nil then return end
+
   if player(1) then
     setAttackMul(mutated_game_state.p1attackmul)
   end
@@ -42,7 +42,6 @@ local function stepWithGameState()
     setAttackMul(mutated_game_state.p2attackmul)
   end
   print("Ikemon go Players game_state ", sblib.json.encode(mutated_game_state))
-
 end
 
 hook.add("loop#watch","state", stepWithGameState);
