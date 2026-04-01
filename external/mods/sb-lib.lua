@@ -16,11 +16,11 @@ function sblib.setup_config (config)
     sblib.config.endpoint = config.endpoint
     sblib.config.frameStepInterval = config.frameStepInterval
     sblib.config.game_state_variables_order = config.game_state_variables_order
-    sblib.config.game_state_variables = config.game_state_variables
+    sblib.config.game_state_getters = config.game_state_getters
     sblib.config.print_RL_step_summary = config.print_RL_step_summary
 
     local game_state_size = 0
-    for i, key in ipairs(sblib.config.game_state_variables_order) do        
+    for _, _ in ipairs(sblib.config.game_state_variables_order) do        
         game_state_size = game_state_size + 1
     end
 
@@ -90,9 +90,8 @@ function sblib.step (frame)
     -- This temporarily sets the action, should be changed when server gives correct stuff
     local TEMP_ACTION = {adjustment_actions.action}
 
-    local mutated_game_state = sblib.apply_actions(TEMP_ACTION, current_game_state)
-    sblib.set_game_state(mutated_game_state)
-
+    sblib.apply_actions(TEMP_ACTION, current_game_state)
+    
     if sblib.config.print_RL_step_summary == true then
         sblib.printRLValues(current_game_state, reward, adjustment_actions, stepCounter) 
     end
@@ -109,36 +108,26 @@ function sblib.apply_actions(adjustment_actions, current_game_state)
             action_function(current_game_state, value)
         end
     end
-    return current_game_state
 end
 
 -- Builds game state based on getters from config
 -- This turns the game state into a vector since it preserves the order through the config
 function sblib.get_game_state()
+    -- for index, value in ipairs(adjustment_actions) do
+    -- local action_name = sblib.action_names[index]
+    -- local action_function = sblib.actions[action_name]
+    --     if action_function then
+    --         action_function(current_game_state, value)
+    --     end
+    -- end
+
     local game_state = {}
-    for index, _ in ipairs(sblib.config.game_state_variables_order) do
-        local var_name = sblib.config.game_state_variables_order[index]
-        local config_var = sblib.config.game_state_variables[var_name]
-        local game_var_getter = config_var.get
-        local game_var = game_var_getter()
-        game_state[var_name] = game_var
+    for index, value in ipairs(sblib.config.game_state_variables_order) do
+        local variable_name = sblib.config.game_state_variables_order[index]
+        local getter = sblib.config.game_state_getters[variable_name]
+        game_state[variable_name] = getter(variable_name)
     end
     return game_state
-end
-
-
--- Sets variables on the game state using setters from config
-function sblib.set_game_state(new_state)
-    for index, _ in ipairs(sblib.config.game_state_variables_order) do
-        local var_name = sblib.config.game_state_variables_order[index]
-        local config_var = sblib.config.game_state_variables[var_name]
-        if config_var.set == nil then
-            -- print("No setter for: ", var_name)
-        else
-            local game_var_setter = config_var.set
-            game_var_setter(new_state)
-        end
-    end
 end
 
 
