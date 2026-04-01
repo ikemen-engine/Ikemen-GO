@@ -4,7 +4,6 @@ local function reward_function(current_game_state)
     return ((diff-1000)/10)-50
 end
 
--- APply setter directly here
 local function apply_attack_mul_p1 (game_state, value) 
     game_state.p1attackmul = game_state.p1attackmul + (value * 0.01)
     if player(1) then
@@ -12,7 +11,6 @@ local function apply_attack_mul_p1 (game_state, value)
     end
 end
 
--- Apply setter directly here
 local function apply_attack_mul_p2 (game_state, value) 
     game_state.p2attackmul = game_state.p2attackmul + (value * 0.01)
     if player(2) then
