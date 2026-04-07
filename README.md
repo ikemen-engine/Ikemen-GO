@@ -1,6 +1,6 @@
-# Ikemen GO
+# Ikemen GO Sicko's mod
 
-Ikemen GO is an open source fighting game engine that supports resources from the [M.U.G.E.N](https://en.wikipedia.org/wiki/Mugen_(game_engine)) engine, written in Google’s programming language, [Go](https://go.dev/). It is a complete rewrite of a prior engine known simply as Ikemen.
+Ikemen GO is an open source fighting game engine that supports resources from the [M.U.G.E.N](https://en.wikipedia.org/wiki/Mugen_(game_engine)) engine, written in Google’s programming language, [Go](https://go.dev/). It is a complete rewrite of a prior engine known simply as Ikemen. This is a fork that aims for retrocompatibility with Mugen even if it's unreasonable. At the moment, there are still a lot of Elecbyteisms to re-implement, but skipping the intro and negative sprite groups now match how they work in Mugen.
 
 ## Features
 Ikemen GO aims for backwards-compatibility on par with M.U.G.E.N version 1.1 Beta, while simultaneously expanding on its features in a variety of ways.
