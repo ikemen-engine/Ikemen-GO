@@ -588,6 +588,13 @@ func LoadFile(file *string, dirs []string, load func(string) error) error {
 	return nil
 }
 
+func StripComment(s string) string {
+	if sc := strings.Index(s, ";"); sc >= 0 {
+		s = s[:sc]
+	}
+	return strings.TrimSpace(s)
+}
+
 // Split string on separator, and remove all
 // leading and trailing white space from each line
 func SplitAndTrim(str, sep string) (ss []string) {

@@ -747,7 +747,7 @@ func systemScriptInit(l *lua.LState) {
 		function addChar(defpath, params) end*/
 		if sc := sys.sel.AddChar(strArg(l, 1)); sc != nil {
 			if !nilArg(l, 2) {
-				entries := SplitAndTrim(strArg(l, 2), ",")
+				entries := SplitAndTrim(StripComment(strArg(l, 2)), ",")
 				if sc.scp == nil {
 					sc.scp = newSelectCharParams()
 				}
@@ -794,7 +794,7 @@ func systemScriptInit(l *lua.LState) {
 		function addStage(defpath, params) end*/
 		if ss, err := sys.sel.AddStage(strArg(l, 1)); err == nil {
 			if !nilArg(l, 2) {
-				entries := SplitAndTrim(strArg(l, 2), ",")
+				entries := SplitAndTrim(StripComment(strArg(l, 2)), ",")
 				if ss.ssp == nil {
 					ss.ssp = newSelectStageParams()
 				}
@@ -4561,7 +4561,7 @@ func systemScriptInit(l *lua.LState) {
 		}
 		sys.sel.music = make(Music)
 		if !nilArg(l, 1) {
-			entries := SplitAndTrim(strArg(l, 1), ",")
+			entries := SplitAndTrim(StripComment(strArg(l, 1)), ",")
 			sys.sel.gameParams.AppendParams(entries)
 			// Feed normalized music params to Music.
 			sys.sel.music.AppendParams(sys.sel.gameParams.MusicEntries())
