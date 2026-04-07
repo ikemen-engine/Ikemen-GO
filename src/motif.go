@@ -1550,6 +1550,7 @@ func loadMotif(def string) (*Motif, error) {
 		//AllowNestedValues: true,
 		UnparseableSections:        []string{"Infobox Text"},
 		AllowPythonMultilineValues: false,
+		PreserveSurroundedQuote: true,
 		//KeyValueDelimiters: "=:",
 		//KeyValueDelimiterOnWrite: "=",
 		//ChildSectionDelimiter: ".",

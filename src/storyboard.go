@@ -141,6 +141,7 @@ func loadStoryboard(def string) (*Storyboard, error) {
 		//AllowNestedValues: true,
 		UnparseableSections:        []string{},
 		AllowPythonMultilineValues: false,
+		PreserveSurroundedQuote: false,
 		//KeyValueDelimiters: "=:",
 		//KeyValueDelimiterOnWrite: "=",
 		//ChildSectionDelimiter: ".",

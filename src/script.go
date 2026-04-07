@@ -4095,10 +4095,23 @@ func systemScriptInit(l *lua.LState) {
 			p.RawSetString(key, t)
 			return t
 		}
+		// Requires PreserveSurroundedQuote=true when loading INI files.
+		normalizeMenuValue := func(v string) (string, bool) {
+			raw := v
+			if len(raw) >= 2 {
+				if (raw[0] == '"' && raw[len(raw)-1] == '"') ||
+					(raw[0] == '\'' && raw[len(raw)-1] == '\'') {
+					inner := raw[1 : len(raw)-1]
+					return inner, inner == ""
+				}
+			}
+			trimmed := strings.TrimSpace(raw)
+			return trimmed, trimmed == ""
+		}
+
 		isEmpty := func(v string) bool {
-			v = strings.TrimSpace(v)
-			v = strings.Trim(v, "\"")
-			return v == ""
+			_, empty := normalizeMenuValue(v)
+			return empty
 		}
 		isSpacerKey := func(name string) bool {
 			n := strings.ToLower(name)
@@ -4195,11 +4208,11 @@ func systemScriptInit(l *lua.LState) {
 			}
 
 			apply := func(rest, v string, onlyIfMissing bool) {
-				val := strings.TrimSpace(v)
+				val, empty := normalizeMenuValue(v)
 				if mode == "flat" {
 					k := strings.ReplaceAll(rest, ".", "_")
 					// Empty-valued keys disable/remove the entry (override defaults).
-					if isEmpty(val) {
+					if empty {
 						items.RawSetString(k, lua.LNil)
 						return
 					}
@@ -4215,7 +4228,7 @@ func systemScriptInit(l *lua.LState) {
 					elem, field = parts[0], parts[1]
 				}
 				// Empty disables/removes the field from the existing elem table (override defaults).
-				if isEmpty(val) {
+				if empty {
 					if t, ok := items.RawGetString(elem).(*lua.LTable); ok && t != nil {
 						t.RawSetString(field, lua.LNil)
 					}
