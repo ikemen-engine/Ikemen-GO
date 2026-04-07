@@ -714,6 +714,7 @@ local function f_commandlistData(t, str, align, col)
 		if m1 ~= '' then
 			table.insert(t_insert, {glyph = false, text = m1, align = align, col = col})
 		end
+		m2 = m2:gsub('&lt;', '<'):gsub('&gt;', '>'):gsub('&amp;', '&')
 		if not m2:match('^#[A-Za-z0-9]+$') and not m2:match('^/$') and not m2:match('^#$') then
 			table.insert(t_insert, {glyph = true, text = m2, align = align, col = col})
 		elseif m2:match('^#[A-Za-z0-9]+$') then
@@ -759,7 +760,8 @@ function menu.f_commandlistParse()
 								if pos > 1 and s:sub(pos - 1, pos - 1) == '<' then
 									return k
 								end
-								return '<' .. k .. '>'
+								local escaped = k:gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
+								return '<' .. escaped .. '>'
 							end)
 						end
 						local t = {}
