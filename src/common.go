@@ -1385,13 +1385,11 @@ func (ats *AnimTextSnd) HasDrawable() bool {
 }
 
 // In Mugen this returns true if the animation ends before "displaytime" is over
-// It seems like the current Ikemen behavior makes more sense however
+// This was intentionally changed in Ikemen
 // https://github.com/ikemen-engine/Ikemen-GO/issues/1150
 func (ats *AnimTextSnd) End(dt int32, inf bool) bool {
 	anim := ats.animLayout.anim
 
-	// If displaytime is negative, rely on animation current state
-	if ats.displaytime < 0 {
 		if anim == nil || len(anim.frames) == 0 {
 			return true
 		}
@@ -1402,7 +1400,6 @@ func (ats *AnimTextSnd) End(dt int32, inf bool) bool {
 			return true
 		}
 		return false
-	}
 
 	// Otherwise, use displaytime
 	return dt >= ats.displaytime
