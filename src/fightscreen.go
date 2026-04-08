@@ -3120,10 +3120,24 @@ func (ro *FightScreenRound) act() bool {
 		// Signal system to skip intros when shutter is about to be fully closed
 		// This ensures the intros will skip even if/when the shutter updates at a different rate than characters
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/2720
+	// Skipping the char intros should take us to the fight call, like Mugen
+	// Most games go to the round call instead, so this was changed in normal IKEMEN
 		if ro.shutterTimer == (ro.shutter_time + 1) {
 			sys.introSkipCall = true
 			ro.fadeIn.timeRemaining = 0
 		}
+         if !sys.motif.di.active && !sys.dialogueBarsFlg && sys.dialogueForce == 0 {
+		        ro.roundDisplayPhase = 2
+                ro.fightDisplayTimer = ro.callfight_time-1
+                sys.intro = 1
+		    for i, p := range sys.chars {
+			        if len(p) > 0 {
+				        sys.clearPlayerAssets(i, false)
+				        p[0].posReset()
+				        p[0].selfState(0, -1, -1, 0, "")
+                    }
+			    }
+            }
 		ro.shutterTimer--
 	}
 
@@ -3134,9 +3148,9 @@ func (ro *FightScreenRound) act() bool {
 		ro.fightDisplayPhase = 0
 		ro.roundDisplayTimer = 0
 		ro.fightDisplayTimer = 0
-	} else if (sys.intro >= 0 && !sys.tickNextFrame()) || sys.motif.di.active || ro.shutterTimer > 0 {
+	} else if (sys.intro >= 0 && !sys.tickNextFrame()) || sys.motif.di.active {
 		// Skip announcements during the middle of the round, "shuttertime" or dialogues
-		// Mugen ignores the "shuttertime" here, but that makes the round/fight announcement too abrupt
+		// Mugen ignores the "shuttertime" here, while abrupt, Yu-Toharu's characters rely on this
 		return false
 	} else {
 		// Intro
@@ -3166,13 +3180,6 @@ func (ro *FightScreenRound) canSkipPhase(phase int) bool {
 
 // Consists of round and fight calls
 func (ro *FightScreenRound) handleRoundIntro() {
-	// Previously skipping the char intros took us to the fight call, like Mugen
-	// Most games go to the round call instead so this was changed
-	//if sys.introSkipped && !sys.dialogueFlg {
-	//	ro.roundDisplayPhase = 2
-	//	ro.callFight()
-	//	sys.introSkipped = false
-	//}
 
 	// Skip round call
 	if sys.gsf(GSF_skiprounddisplay) {
