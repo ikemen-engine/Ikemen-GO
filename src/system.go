@@ -1569,16 +1569,14 @@ func (s *System) gameTime() int32 {
 }
 
 // In Mugen, RoundState 2 begins as soon as the "Fight" screen appears, before players have control
-// That causes more harm than good and is not clearly stated in the documentation, so Ikemen changes it
+// Normal Ikemen changes it but who knows what ancient character will depend on this
 func (s *System) roundState() int32 {
 	switch {
 	case sys.intro > sys.fightScreen.round.ctrl_time+1 || sys.postMatchFlg:
 		return 0
-	//case sys.fightScreen.round.current == 0:
-	case sys.intro > 0:
+	case sys.fightScreen.round.fightDisplayPhase == 0:
 		return 1
-	//case sys.intro >= 0 || sys.finishType == FT_NotYet:
-	case sys.intro == 0 || sys.finishType == FT_NotYet:
+	case sys.intro >= 0 || sys.finishType == FT_NotYet:
 		return 2
 	case sys.intro < -sys.fightScreen.round.over_waittime:
 		return 4
