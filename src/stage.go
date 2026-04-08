@@ -412,7 +412,7 @@ func readBackGround(is IniSection, link *backGround,
 		if bg.actionno < 0 && len(bg.anim.frames) > 0 {
 			group := bg.anim.frames[0].Group
 			number := bg.anim.frames[0].Number
-			if group >= 0 && number >= 0 {
+			if group != -1 && number != -1 {
 				if spr := sff.GetSprite(uint16(group), uint16(number)); spr != nil {
 					bg.anim.tile.xspacing += int32(spr.Size[0])
 					bg.anim.tile.yspacing += int32(spr.Size[1])
