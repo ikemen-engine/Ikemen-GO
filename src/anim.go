@@ -134,13 +134,14 @@ func ReadAnimFrame(line string) *AnimFrame {
 	}
 
 	// Read X scale
-	// In Mugen 1.1 a blank parameter means 0
-	// In Ikemen it means no change, like the other optional parameters
+	// In Mugen 1.1 a blank parameter means 0, unlike the other optional parameters
 	if len(ary) >= 8 {
 		if IsNumeric(ary[7]) {
 			af.Xscale = float32(Atof(ary[7]))
-		}
-	}
+	    } else {
+            af.Xscale = 0        
+        }
+    }
 
 	// Read Y scale
 	if len(ary) >= 9 {
