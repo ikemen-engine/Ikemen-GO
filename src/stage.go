@@ -851,7 +851,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 			bgc.color = bgc.color / 256
 		}
 		if is.ReadF32("hue", &bgc.hue) {
-			bgc.hue = bgc.hue / 256
+			bgc.hue = bgc.hue / 512
 		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
@@ -2058,7 +2058,7 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 				s.bgc[i].color = color / 256
 			}
 			if !math.IsNaN(float64(hue)) {
-				s.bgc[i].hue = hue / 256
+				s.bgc[i].hue = hue / 512
 			}
 			s.reload = true
 		}

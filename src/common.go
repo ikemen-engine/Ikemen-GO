@@ -1296,7 +1296,7 @@ func ReadPalFX(pre string, is IniSection, pfx *PalFX) int32 {
 		pfx.color = n / 256
 	}
 	if is.ReadF32(pre+"hue", &n) {
-		pfx.hue = n / 256
+		pfx.hue = n / 512
 	}
 	return tInit
 }

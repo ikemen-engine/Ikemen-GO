@@ -77,6 +77,12 @@ func (fa *Fade) draw() {
 	}
 }
 
+// True while the fade still has progression remaining.
+// Use this for transition/policy logic, not for drawing.
+func (fa *Fade) isTransitioning() bool {
+	return fa != nil && fa.active && fa.timeRemaining > 0 && fa.time > 0
+}
+
 func (fa *Fade) isActive() bool {
 	return fa != nil && fa.active && fa.timeRemaining >= 0 && fa.time > 0
 }
@@ -117,7 +123,7 @@ func startFadeOut(tmpl *Fade, dest *Fade, overrideBlack bool, policy FadeStartPo
 
 	// FadeStop semantics:
 	// If this is an explicit user interruption OR a fade-in is active, cut immediately.
-	if policy == FadeStop && (overrideBlack || (fi != nil && fi.isActive())) {
+	if policy == FadeStop && (overrideBlack || (fi != nil && fi.isTransitioning())) {
 		if fi != nil {
 			fi.reset()
 		}
@@ -134,7 +140,7 @@ func startFadeOut(tmpl *Fade, dest *Fade, overrideBlack bool, policy FadeStartPo
 	}
 
 	// If no fade-in is active, all policies behave the same here: start now.
-	if fi == nil || !fi.isActive() {
+	if fi == nil || !fi.isTransitioning() {
 		startFresh()
 		return
 	}

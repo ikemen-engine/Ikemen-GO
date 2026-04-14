@@ -2403,7 +2403,7 @@ func SetPalFx(obj interface{}, fVal, structVal, parent reflect.Value) {
 	palfx := newPalFX()
 	palfx.time = time
 	palfx.color = color / 256
-	palfx.hue = hue / 256
+	palfx.hue = hue / 512
 	palfx.add = add
 	palfx.mul = mul
 	if sinAdd[3] < 0 {

@@ -231,6 +231,7 @@ type Config struct {
 		XinputTriggerSensitivity   float32 `ini:"XinputTriggerSensitivity"`
 		UiRepeatDelay              int32   `ini:"UiRepeatDelay" sync:"host"`
 		UiRepeatRate               int32   `ini:"UiRepeatRate" sync:"host"`
+		PauseExitDelay             int32   `ini:"PauseExitDelay" sync:"host"`
 	} `ini:"Input"`
 	Keys     map[string]*KeysProperties `ini:"map:^(?i)Keys_P[0-9]+$" lua:"Keys"`
 	Joystick map[string]*KeysProperties `ini:"map:^(?i)Joystick_P[0-9]+$" lua:"Joystick"`

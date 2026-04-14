@@ -1453,7 +1453,7 @@ func systemScriptInit(l *lua.LState) {
 		  - `invertall` (int32): set to `1` to invert all colors
 		  - `invertblend` (int32): invert blend mode index
 		  - `color` (float32): color saturation factor (`0–256` scaled to `0.0–1.0`)
-		  - `hue` (float32): hue adjustment factor (`0–256` scaled to `0.0–1.0`)
+		  - `hue` (float32): hue adjustment factor (`0–256` scaled to `0.0–0.5`)
 		function animSetPalFX(anim, palfx) end*/
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
@@ -1554,7 +1554,7 @@ func systemScriptInit(l *lua.LState) {
 				case "color":
 					a.palfx.color = float32(lua.LVAsNumber(value)) / 256
 				case "hue":
-					a.palfx.hue = float32(lua.LVAsNumber(value)) / 256
+					a.palfx.hue = float32(lua.LVAsNumber(value)) / 512
 				default:
 					l.RaiseError("\nInvalid table key: %v\n", k)
 				}
@@ -8401,6 +8401,8 @@ func triggerFunctions(l *lua.LState) {
 			lv = lua.LNumber(c.ghv.playerid)
 		case "playerno":
 			lv = lua.LNumber(c.ghv.playerno + 1)
+		case "teamside":
+			lv = lua.LNumber(c.ghv.teamside + 1)
 		case "redlife":
 			lv = lua.LNumber(c.ghv.redlife)
 		case "score":

@@ -706,7 +706,7 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		hitflag:            int32(HF_H | HF_L | HF_A | HF_F),
 		guardflag:          0,
 		affectteam:         1,
-		teamside:           -1,
+		teamside:           -2,
 		animtype:           RA_Light,
 		air_animtype:       RA_Unknown,
 		priority:           4,
@@ -976,8 +976,8 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 		hd.maxdist[2], hd.mindist[2] = hd.snap[2], hd.snap[2]
 	}
 
-	if hd.teamside == -1 {
-		hd.teamside = c.teamside + 1
+	if hd.teamside < -1 || hd.teamside > 1 {
+		hd.teamside = c.teamside
 	}
 
 	if hd.p2clsncheck < 0 {
@@ -1110,6 +1110,7 @@ type GetHitVar struct {
 	keepstate           bool
 	standfriction       float32
 	crouchfriction      float32
+	teamside            int
 }
 
 // This is called every time the char gets hit
@@ -1133,6 +1134,7 @@ func (ghv *GetHitVar) reset(c *Char) {
 		playerno:       -2, // Because it returns with +1
 		playerid:       -1,
 		projid:         -1,
+		teamside:       -2, // See playerno
 		fall_animtype:  RA_Unknown,
 		fall_xvelocity: float32(math.NaN()),
 		fall_yvelocity: -4.5 / originLs,
@@ -1365,7 +1367,7 @@ func (ai *AfterImage) setPalColor(color int32) {
 
 func (ai *AfterImage) setPalHueShift(huesh int32) {
 	if len(ai.palfx) > 0 {
-		ai.palfx[0].eHue = (float32(Clamp(huesh, -256, 256)) / 256)
+		ai.palfx[0].eHue = (float32(Clamp(huesh, -256, 256)) / 512)
 	}
 }
 
@@ -1864,7 +1866,6 @@ func (e *Explod) setAnim() {
 		} else {
 			sys.appendToConsole(c.warn() + fmt.Sprintf("explod with ID %v called invalid action %v%v", e.id, strings.ToUpper(e.anim_ffx), e.animNo))
 		}
-		return
 	}
 	e.anim = a
 
@@ -4557,6 +4558,10 @@ func (c *Char) parent(log bool) *Char {
 	return p
 }
 
+func (c *Char) parentExist() bool {
+	return c.parent(false) != nil
+}
+
 func (c *Char) root(log bool) *Char {
 	if c.helperIndex == 0 {
 		if log {
@@ -5007,7 +5012,7 @@ func (c *Char) comboCount() int32 {
 	if c.teamside == -1 {
 		return 0
 	}
-	return sys.fightScreen.combos[c.teamside].truehits
+	return sys.fightScreen.combos[c.teamside].trueHits
 }
 
 func (c *Char) command(pn, i int) bool {
@@ -5707,48 +5712,40 @@ func (c *Char) pauseTimeTrigger() int32 {
 	return p
 }
 
-func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
+func (c *Char) projTimeTrigger(pid BytecodeValue, match func(ProjContact) bool) BytecodeValue {
 	if pid.IsUndefined() {
 		return BytecodeUndefined()
 	}
+	gi := c.gi()
 	id := pid.ToI()
-	if (id > 0 && id != c.gi().pcid) || c.gi().pctype != PC_Cancel || c.helperIndex > 0 {
+	if c.helperIndex > 0 || (id > 0 && id != gi.pcid) || !match(gi.pctype) {
 		return BytecodeInt(-1)
 	}
-	return BytecodeInt(c.gi().pctime)
+	return BytecodeInt(gi.pctime)
+}
+
+func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
+	return c.projTimeTrigger(pid, func(pc ProjContact) bool {
+		return pc == PC_Cancel
+	})
 }
 
 func (c *Char) projContactTime(pid BytecodeValue) BytecodeValue {
-	if pid.IsUndefined() {
-		return BytecodeUndefined()
-	}
-	id := pid.ToI()
-	if (id > 0 && id != c.gi().pcid) || c.gi().pctype == PC_Cancel || c.helperIndex > 0 {
-		return BytecodeInt(-1)
-	}
-	return BytecodeInt(c.gi().pctime)
+	return c.projTimeTrigger(pid, func(pc ProjContact) bool {
+		return pc != PC_Cancel
+	})
 }
 
 func (c *Char) projGuardedTime(pid BytecodeValue) BytecodeValue {
-	if pid.IsUndefined() {
-		return BytecodeUndefined()
-	}
-	id := pid.ToI()
-	if (id > 0 && id != c.gi().pcid) || c.gi().pctype != PC_Guarded || c.helperIndex > 0 {
-		return BytecodeInt(-1)
-	}
-	return BytecodeInt(c.gi().pctime)
+	return c.projTimeTrigger(pid, func(pc ProjContact) bool {
+		return pc == PC_Guarded
+	})
 }
 
 func (c *Char) projHitTime(pid BytecodeValue) BytecodeValue {
-	if pid.IsUndefined() {
-		return BytecodeUndefined()
-	}
-	id := pid.ToI()
-	if (id > 0 && id != c.gi().pcid) || c.gi().pctype != PC_Hit || c.helperIndex > 0 {
-		return BytecodeInt(-1)
-	}
-	return BytecodeInt(c.gi().pctime)
+	return c.projTimeTrigger(pid, func(pc ProjContact) bool {
+		return pc == PC_Hit
+	})
 }
 
 func (c *Char) reversalDefAttr(attr int32) bool {
@@ -7180,10 +7177,8 @@ func (c *Char) hitAdd(h int32) {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				t.receivedHits += h
+				c.addComboHits(h)
 				break
-				//if c.teamside != -1 {
-				//	sys.fightScreen.combos[c.teamside].truehits += h
-				//}
 			}
 		}
 	} else if c.teamside != -1 {
@@ -7193,11 +7188,20 @@ func (c *Char) hitAdd(h int32) {
 				// This is a bit of a workaround for backward compatibility only
 				if p[0].receivedHits != 0 || p[0].ss.moveType == MT_H {
 					p[0].receivedHits += h
-					//sys.fightScreen.combos[c.teamside].truehits += h
+					c.addComboHits(h)
 				}
 			}
 		}
 	}
+}
+
+// We track the combo separately from the enemy's received hits
+// So that if partners take turns doing hits to different enemies the combo still adds up
+func (c *Char) addComboHits(n int32) {
+	if c.teamside != 0 && c.teamside != 1 {
+		return
+	}
+	sys.fightScreen.combos[c.teamside].trueHits += n
 }
 
 // Always appends to preserve insertion order
@@ -7254,8 +7258,8 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 	p.anim = c.getSelfAnimSprite(p.animNo, p.anim_ffx, true)
 
 	if p.anim == nil && c.anim != nil {
-		// TODO: If Ikemenversion, the invalid animation probably ought to make explod disappear
-		sys.appendToConsole(c.warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.anim_ffx), p.animNo))
+		// TODO: If Ikemenversion, the invalid animation probably ought to make the projectile disappear
+		sys.appendToConsole(p.owner().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.anim_ffx), p.animNo))
 		// The Mugen fallback is to copy the character's current animation
 		p.anim = &Animation{}
 		*p.anim = *c.anim
@@ -9013,15 +9017,18 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 
 	// Perform palette remap
 	if plist.SwapPalMap(&pfx.remap) {
-		// For SFFv1, if remapping palette 1,1 remap whatever palette sprite 0,0 uses
+		// Always remap the requested source palette
+		plist.Remap(si, di)
+
+		// For SFFv1, remapping 1,1 should also remap whatever palettes sprites 0,0 and 9000,0 use
+		// TODO: Because 9000,0 is not hardcoded in Ikemen, this might create trouble for custom portraits
 		if src[0] == 1 && src[1] == 1 && c.gi().sff.header.Version[0] == 1 {
 			if spr := c.gi().sff.GetSprite(0, 0); spr != nil {
-				if spr.GetPal(&plist) != nil && spr.palidx >= 0 {
-					plist.Remap(spr.palidx, di)
-				}
+				plist.Remap(spr.palidx, di)
 			}
-		} else {
-			plist.Remap(si, di)
+			if spr := c.gi().sff.GetSprite(9000, 0); spr != nil {
+				plist.Remap(spr.palidx, di)
+			}
 		}
 
 		plist.SwapPalMap(&pfx.remap)
@@ -10517,6 +10524,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		getter.ghv.hitid = hd.id
 		getter.ghv.playerno = hd.playerno
 		getter.ghv.playerid = hd.playerid
+		getter.ghv.teamside = hd.teamside
 		getter.ghv.projid = hd.projid
 		getter.ghv.keepstate = hd.KeepState
 		getter.ghv.groundtype = hd.ground_type
@@ -10584,6 +10592,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			ghv.hitid = hd.id
 			ghv.playerno = hd.playerno
 			ghv.playerid = hd.playerid
+			ghv.teamside = hd.teamside
 			ghv.projid = hd.projid
 			ghv.xaccel = hd.xaccel * scaleratio * -byf
 			ghv.yaccel = hd.yaccel * scaleratio
@@ -10968,10 +10977,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		if (ghvset || getter.csf(CSF_gethit)) && getter.hoverIdx < 0 &&
 			!(c.hitdef.air_type == HT_None && getter.ss.stateType == ST_A || getter.ss.stateType != ST_A && c.hitdef.ground_type == HT_None) {
 			getter.receivedHits += hd.numhits
-			// receivedHits is the only source of truth
-			//if c.teamside != -1 {
-			//	sys.fightScreen.combos[c.teamside].truehits += hd.numhits
-			//}
+			c.addComboHits(hd.numhits)
 		}
 		if !math.IsNaN(float64(hd.score[0])) && !c.asf(ASF_noscore) {
 			c.scoreAdd(hd.score[0])
@@ -12854,9 +12860,8 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 			continue
 		}
 
-		if c.atktmp != 0 && c.id != getter.id && (c.hitdef.affectteam == 0 ||
-			((getter.teamside != c.hitdef.teamside-1) == (c.hitdef.affectteam > 0) && c.hitdef.teamside >= 0) ||
-			((getter.teamside != c.teamside) == (c.hitdef.affectteam > 0) && c.hitdef.teamside < 0)) {
+		if c.atktmp != 0 && c.id != getter.id &&
+			(c.hitdef.affectteam == 0 || (getter.teamside != c.hitdef.teamside) == (c.hitdef.affectteam > 0)) {
 
 			// Guard distance check
 			// Mugen uses < checks so that 0 does not trigger proximity guard at 0 distance
@@ -12983,6 +12988,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 								getter.ghv.hitid = c.hitdef.id
 								getter.ghv.playerno = c.playerNo
 								getter.ghv.playerid = c.id
+								getter.ghv.teamside = c.hitdef.teamside
 								getter.fallTime = 0
 
 								// Fall flag
@@ -13093,15 +13099,15 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 
 			// In Mugen, projectiles couldn't hit their root even with the proper affectteam
 			if i == getter.playerNo && getter.helperIndex == 0 &&
-				(getter.teamside == p.hitdef.teamside-1) && !p.platform {
+				(getter.teamside == p.hitdef.teamside) && !p.platform {
 				continue
 			}
 
 			// Teamside check
 			// Since the teamside parameter is new to Ikemen, we can make that one allow the projectile to hit the root
 			if p.hitdef.affectteam != 0 &&
-				((getter.teamside != p.hitdef.teamside-1) != (p.hitdef.affectteam > 0) ||
-					(getter.teamside == p.hitdef.teamside-1) != (p.hitdef.affectteam < 0)) {
+				((getter.teamside != p.hitdef.teamside) != (p.hitdef.affectteam > 0) ||
+					(getter.teamside == p.hitdef.teamside) != (p.hitdef.affectteam < 0)) {
 				continue
 			}
 
@@ -13173,7 +13179,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 
 			// Cancel a projectile with hitflag P
 			if getter.atktmp != 0 && (getter.hitdef.affectteam == 0 ||
-				(p.hitdef.teamside-1 != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
+				(p.hitdef.teamside != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
 				getter.hitdef.hitflag&int32(HF_P) != 0 &&
 				getter.projClsnCheck(p, 1, 2) &&
 				sys.zAxisOverlap(getter.pos[2], getter.hitdef.attack_depth[0], getter.hitdef.attack_depth[1], getter.localscl,

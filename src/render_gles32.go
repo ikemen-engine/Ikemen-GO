@@ -126,8 +126,8 @@ func (r *Renderer_GLES32) compileShader(shaderType uint32, src string) (uint32, 
 	// If your file doesn't have it, we add it here.
 	fullSrc := src
 	if !strings.HasPrefix(strings.TrimSpace(src), "#version") {
-		// Anchor to 300 es for best mobile compatibility
-		header := "#version 310 es\n"
+		// Anchor to 320 es for best feature compatibility
+		header := "#version 320 es\n"
 		fullSrc = header + src
 	}
 
@@ -299,7 +299,8 @@ func (r *Renderer_GLES32) newCubeMapTexture(widthHeight int32, mipmap bool, lowe
 
 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, t.handle)
 	for i := 0; i < 6; i++ {
-		gl.TexImage2D(uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X+i), 0, gl.RGB32F, widthHeight, widthHeight, 0, gl.RGB, gl.FLOAT, nil)
+		// https://stackoverflow.com/a/72244518 RGBA16F seems to work :), HALF_FLOAT is the type that gets us good results
+		gl.TexImage2D(uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X+i), 0, gl.RGBA16F, widthHeight, widthHeight, 0, gl.RGBA, gl.HALF_FLOAT, nil)
 	}
 
 	if mipmap {
@@ -528,9 +529,9 @@ type Renderer_GLES32 struct {
 	fbo_f         uint32
 	fbo_f_texture *Texture_GLES32
 	// Shadow Map
-	fbo_shadow               uint32
-	fbo_shadow_cube_textures [4]uint32
-	fbo_env                  uint32
+	fbo_shadow              uint32
+	fbo_shadow_cube_texture uint32
+	fbo_env                 uint32
 	// Post-processing FBOs
 	fbo_pp         []uint32
 	fbo_pp_texture []uint32
@@ -617,7 +618,7 @@ func (r *Renderer_GLES32) InitModelShader() error {
 		"tex", "morphTargetValues", "jointMatrices",
 		"normalMap", "metallicRoughnessMap", "ambientOcclusionMap", "emissionMap",
 		"lambertianEnvSampler", "GGXEnvSampler", "GGXLUT",
-		"shadowCubeMap0", "shadowCubeMap1", "shadowCubeMap2", "shadowCubeMap3",
+		"shadowCubeMap",
 	)
 
 	if r.enableShadow {
@@ -914,42 +915,52 @@ func (r *Renderer_GLES32) Init() {
 			gl.GenFramebuffers(1, &r.fbo_shadow)
 			r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
-			// create 4 separate GL_TEXTURE_CUBE_MAP textures (one per shadow caster/light)
-			gl.GenTextures(4, &r.fbo_shadow_cube_textures[0])
-			textureSerialNumber += 4
+			// create a single shadow cube texture (matching desktop now)
+			gl.GenTextures(1, &r.fbo_shadow_cube_texture)
+			textureSerialNumber++
 
-			for i := 0; i < 4; i++ {
-				// bind and allocate each cube-map's 6 faces as depth textures
-				gl.ActiveTexture(uint32(gl.TEXTURE0 + uint32(i)))
-				gl.BindTexture(gl.TEXTURE_CUBE_MAP, r.fbo_shadow_cube_textures[i])
+			// for i := 0; i < 4; i++ {
+			gl.BindTexture(gl.TEXTURE_CUBE_MAP_ARRAY, r.fbo_shadow_cube_texture)
 
-				// Allocate depth storage for each face
-				for face := 0; face < 6; face++ {
-					gl.TexImage2D(
-						uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X)+uint32(face),
-						0,
-						gl.DEPTH_COMPONENT24,
-						1024, 1024,
-						0,
-						gl.DEPTH_COMPONENT,
-						gl.UNSIGNED_INT,
-						nil,
-					)
-				}
+			gl.TexStorage3D(gl.TEXTURE_CUBE_MAP_ARRAY, 1, gl.DEPTH_COMPONENT24, 1024, 1024, 4*6)
+			gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+			gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
-				gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-				gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
-				gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-				gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-				// Note: GL_TEXTURE_WRAP_R can also be set if desired:
-				// gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE)
-			}
+			gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
+			gl.FramebufferTexture(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, r.fbo_shadow_cube_texture, 0)
+			bufs := []uint32{gl.NONE}
+			gl.DrawBuffers(1, &bufs[0])
+			gl.ReadBuffer(gl.NONE)
+
+			// Allocate depth storage for each face
+			// for face := 0; face < 6; face++ {
+			// 	gl.TexImage2D(
+			// 		uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X)+uint32(face),
+			// 		0,
+			// 		gl.DEPTH_COMPONENT24,
+			// 		1024, 1024,
+			// 		0,
+			// 		gl.DEPTH_COMPONENT,
+			// 		gl.UNSIGNED_INT,
+			// 		nil,
+			// 	)
+			// }
+
+			// gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+			// gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+			// gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+			// gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+			// Note: GL_TEXTURE_WRAP_R can also be set if desired:
+			// gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE)
+			// }
 
 			// Create (empty) FBO. We'll attach the proper cube-face when rendering each face.
-			gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
+			// gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
 			// Leave the depth attachment empty here — attach per-face with FramebufferTexture2D()
 			// Restore default framebuffer binding
-			gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+			// gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 		}
 		gl.GenFramebuffers(1, &r.fbo_env)
 	}
@@ -1445,15 +1456,19 @@ func (r *Renderer_GLES32) prepareModelPipeline(bufferIndex uint32, env *Environm
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
 	// Bind the 4 cube-map textures to the corresponding sampler uniforms/units
 	if r.enableShadow {
-		for i := 0; i < 4; i++ {
-			name := fmt.Sprintf("shadowCubeMap%d", i)
-			loc := r.modelShader.uniforms[name]
-			unit := r.modelShader.textures[name] // texture unit assigned by RegisterTextures
+		loc, unit := r.modelShader.uniforms["shadowCubeMap"], r.modelShader.textures["shadowCubeMap"]
+		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
+		gl.BindTexture(gl.TEXTURE_CUBE_MAP_ARRAY, r.fbo_shadow_cube_texture)
+		gl.Uniform1i(loc, int32(unit))
+		// for i := 0; i < 4; i++ {
+		// 	name := fmt.Sprintf("shadowCubeMap%d", i)
+		// 	loc := r.modelShader.uniforms[name]
+		// 	unit := r.modelShader.textures[name] // texture unit assigned by RegisterTextures
 
-			gl.ActiveTexture(uint32(gl.TEXTURE0 + unit))
-			gl.BindTexture(gl.TEXTURE_CUBE_MAP, r.fbo_shadow_cube_textures[i])
-			gl.Uniform1i(loc, int32(unit))
-		}
+		// 	gl.ActiveTexture(uint32(gl.TEXTURE0 + unit))
+		// 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, r.fbo_shadow_cube_textures[i])
+		// 	gl.Uniform1i(loc, int32(unit))
+		// }
 	}
 	if env != nil {
 		loc, unit := r.modelShader.uniforms["lambertianEnvSampler"], r.modelShader.textures["lambertianEnvSampler"]
@@ -2001,43 +2016,44 @@ func (r *Renderer_GLES32) SetShadowMapTexture(name string, tex Texture) {
 
 func (r *Renderer_GLES32) SetShadowFrameTexture(i uint32) {
 	// Backwards-compatible alias: treat i as combined index (light*6 + face)
-	r.SetShadowFrameCubeTexture(i)
+	gl.FramebufferTexture(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, r.fbo_shadow_cube_texture, 0)
 }
 
 func (r *Renderer_GLES32) SetShadowFrameCubeTexture(i uint32) {
-	// Interpret i as a combined index: lightIndex = i / 6, faceIndex = i % 6
-	lightIndex := int(i / 6)
-	faceIndex := int(i % 6)
+	gl.FramebufferTexture(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, r.fbo_shadow_cube_texture, 0)
+	// 	// Interpret i as a combined index: lightIndex = i / 6, faceIndex = i % 6
+	// 	lightIndex := int(i / 6)
+	// 	faceIndex := int(i % 6)
 
-	// clamp lightIndex to available range
-	if lightIndex < 0 {
-		lightIndex = 0
-	}
-	if lightIndex >= len(r.fbo_shadow_cube_textures) {
-		lightIndex = len(r.fbo_shadow_cube_textures) - 1
-	}
-	if faceIndex < 0 {
-		faceIndex = 0
-	}
-	if faceIndex > 5 {
-		faceIndex = 5
-	}
+	// 	// clamp lightIndex to available range
+	// 	if lightIndex < 0 {
+	// 		lightIndex = 0
+	// 	}
+	// 	if lightIndex >= len(r.fbo_shadow_cube_textures) {
+	// 		lightIndex = len(r.fbo_shadow_cube_textures) - 1
+	// 	}
+	// 	if faceIndex < 0 {
+	// 		faceIndex = 0
+	// 	}
+	// 	if faceIndex > 5 {
+	// 		faceIndex = 5
+	// 	}
 
-	tex := r.fbo_shadow_cube_textures[lightIndex]
+	// 	tex := r.fbo_shadow_cube_textures[lightIndex]
 
-	// Attach the requested face of the cube map as the framebuffer depth attachment.
-	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
+	// 	// Attach the requested face of the cube map as the framebuffer depth attachment.
+	// 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
 
-	target := uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X) + uint32(faceIndex)
-	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, target, tex, 0)
+	// 	target := uint32(gl.TEXTURE_CUBE_MAP_POSITIVE_X) + uint32(faceIndex)
+	// 	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, target, tex, 0)
 
-	// Make sure draw/read buffers are set appropriately (depth-only FBO)
-	bufs := []uint32{gl.NONE}
-	gl.DrawBuffers(1, &bufs[0])
-	gl.ReadBuffer(gl.NONE)
+	// 	// Make sure draw/read buffers are set appropriately (depth-only FBO)
+	// 	bufs := []uint32{gl.NONE}
+	// 	gl.DrawBuffers(1, &bufs[0])
+	// 	gl.ReadBuffer(gl.NONE)
 
-	// Clear the depth buffer for this face before rendering
-	gl.Clear(gl.DEPTH_BUFFER_BIT)
+	// // Clear the depth buffer for this face before rendering
+	// gl.Clear(gl.DEPTH_BUFFER_BIT)
 }
 
 func (r *Renderer_GLES32) SetVertexData(values ...float32) {

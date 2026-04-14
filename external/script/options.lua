@@ -256,6 +256,7 @@ options.t_itemname = {
 			--modifyGameOption('Input.XinputTriggerSensitivity', 0.5)
 			--modifyGameOption('Input.UiRepeatDelay', 30)
 			--modifyGameOption('Input.UiRepeatRate', 4)
+			--modifyGameOption('Input.PauseExitDelay', 10)
 
 			loadFightScreen(motif.files.fight)
 			setPlayers()

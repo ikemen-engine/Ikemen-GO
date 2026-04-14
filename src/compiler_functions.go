@@ -6664,12 +6664,16 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 			getHitVarSet_hittime, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "id",
-			getHitVarSet_id, VT_Int, 1, false); err != nil {
+		if err := c.paramValue(is, sc, "playerid",
+			getHitVarSet_playerid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "playerno",
 			getHitVarSet_playerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "projid",
+			getHitVarSet_projid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "redlife",
@@ -6682,6 +6686,10 @@ func (c *Compiler) getHitVarSet(is IniSection, sc *StateControllerBase, _ int8) 
 		}
 		if err := c.paramValue(is, sc, "slidetime",
 			getHitVarSet_slidetime, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "teamside",
+			getHitVarSet_teamside, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "xvel",

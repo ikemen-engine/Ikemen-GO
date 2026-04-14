@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	ggpo "github.com/assemblaj/ggpo"
+	ggpo "github.com/ikemen-engine/ggpo"
 )
 
 type RollbackSystem struct {

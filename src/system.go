@@ -2447,6 +2447,12 @@ func (s *System) action() {
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
 
+	// Update round state
+	// This is also reflected on characters (intros, win poses)
+	// It's important that this is placed after the tickFrame logic, or characters will not see every step of the sys.intro timer
+	// Update: In Mugen, the state change to win pose happens before the character code runs. It's evidence this should be placed before charList.action()
+	s.stepRoundState()
+
 	// Run "tick frame"
 	if s.tickFrame() {
 		// X axis player limits
@@ -2506,14 +2512,9 @@ func (s *System) action() {
 	// It should be placed between "tick frame" and "tick next frame"
 	s.charUpdate()
 
-	// Update round state
-	// This is also reflected on characters (intros, win poses)
-	// It's important that this is placed after the tickFrame logic, or characters will not see every step of the sys.intro timer
-	s.stepRoundState()
-
-	// Update lifebars
-	// This must happen before hit detection for accurate display
-	// Allows a combo to still end if a character is hit in the same frame where it exits movetype H
+	// Update the fight screen
+	// Lifebar and combo must update after character states but before hit detection for accurate detection
+	// So that it allows a combo to still end if a character is hit in the same frame where it exits movetype H
 	s.fightScreen.step()
 
 	if s.tickNextFrame() {
@@ -2917,6 +2918,7 @@ func (s *System) stepRoundState() {
 						p[0].unsetSCF(SCF_over_alive)
 						//if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
 						if p[0].activelyFighting() {
+							// In Mugen this ctrlSet happens in beginning of frame. More evidence all this code should run before character states
 							p[0].setCtrl(true)
 							if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) {
 								p[0].selfState(0, -1, -1, 1, "") // Nor this one
@@ -2990,19 +2992,25 @@ func (s *System) stepRoundState() {
 			if s.winwaittime > 0 {
 				if s.intro == rs4t-1 {
 					for _, p := range s.chars {
-						if len(p) > 0 {
-							// Check if this player is ready to proceed to roundstate 4
-							// Maybe the "activelyFighting()" could be replaced with an AssertSpecial flag or such to ignore the win/lose states
-							// Mugen seems to skip this anim 5 check on time overs
-							// It also seems a bit pointless to begin with because the char has already turned by the time anim 5 starts
-							if p[0].scf(SCF_over_alive) || p[0].scf(SCF_over_ko) || !p[0].activelyFighting() ||
-								(p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I && p[0].ss.stateType != ST_A && p[0].ss.stateType != ST_L && p[0].animNo != 5) {
-								continue
-							}
-							// Freeze timer if any player is not ready to proceed yet
-							s.intro = rs4t
-							break
+						if len(p) == 0 {
+							continue
 						}
+						// Check if this player is ready to proceed to roundstate 4
+						// Maybe the "activelyFighting()" could be replaced with an AssertSpecial flag or such to ignore the win/lose states
+						if !p[0].activelyFighting() {
+							continue
+						}
+						if p[0].scf(SCF_over_alive) || p[0].scf(SCF_over_ko) {
+							continue
+						}
+						// Mugen seems to skip this anim 5 check on time overs
+						// It also seems a bit pointless here to begin with because the char has already turned by the time anim 5 starts
+						if p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I && p[0].ss.stateType == ST_S && p[0].animNo != 5 {
+							continue
+						}
+						// Freeze timer if any player is not ready to proceed yet
+						s.intro = rs4t
+						break
 					}
 				}
 			}
@@ -3061,8 +3069,10 @@ func (s *System) stepRoundState() {
 					continue
 				}
 				// TODO: These changestates ought to be unhardcoded
+				// TODO: They also happen 1 frame too early compared to Mugen
 				// Mugen only checks for readiness in the RoundState 4 loop above. It doesn't care in this one and forces characters into win poses no matter what
 				// HitPause is checked here but not in the other loop. Perhaps because changing states during hitpause in Mugen isn't quite safe
+				// These selfStates should happen in beginning of frame. Previously, Ikemen had them at end of frame
 				if !p[0].scf(SCF_over_alive) && p[0].alive() && p[0].activelyFighting() && !p[0].hitPause() {
 					p[0].setSCF(SCF_over_alive)
 					if p[0].win() {
@@ -4277,6 +4287,10 @@ func (s *Select) AddChar(def string) *SelectChar {
 	}
 	if strings.ToLower(defPathFromSelect) == "dummyslot" {
 		sc.name = "dummyslot"
+		return nil
+	}
+	if strings.ToLower(defPathFromSelect) == "skipslot" {
+		sc.name = "skipslot"
 		return nil
 	}
 

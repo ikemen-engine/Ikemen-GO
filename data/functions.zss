@@ -185,7 +185,7 @@ if map(_iksys_comboCountFlag) = gameTime {
 [Function IkSys_ReceivedDamage() ret]
 let ret = 0;
 if receivedDamage != map(_iksys_receivedDamageCurr) {
-	if receivedDamage > 0 && getHitVar(playerNo) != 0 && playerId(getHitVar(playerId)),teamSide != teamSide {
+	if receivedDamage > 0 && getHitVar(teamSide) != teamSide {
 		map(_iksys_receivedDamageRet) := receivedDamage - map(_iksys_receivedDamageCurr);
 		map(_iksys_receivedDamageFlag) := gameTime;
 	}

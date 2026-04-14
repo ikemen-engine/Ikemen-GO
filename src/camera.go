@@ -285,7 +285,15 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 		newY = y / scale
 		switch c.View {
 		case Fighting_View:
+			leftestDiff := float32(0.0)
+			rightestDiff := float32(0.0)
+			if c.leftest != math.MaxFloat32 {
+				leftestDiff = c.leftest - c.prevLeftest
+			}
 
+			if c.rightest != -math.MaxFloat32 {
+				rightestDiff = c.rightest - c.prevRightest
+			}
 			c.SaveRestoreTracking()
 
 			if c.lowestcap {
@@ -446,10 +454,10 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					} else {
 						newLeft -= diff * logicScale * c.tensionvel
 					}
-					if newLeft-oldLeft > 0 && newLeft-oldLeft < c.rightestvel {
-						newLeft = Min(oldLeft+c.rightestvel, targetLeft)
-					} else if newLeft-oldLeft < 0 && newLeft-oldLeft > c.leftestvel {
-						newLeft = Max(oldLeft+c.leftestvel, targetLeft)
+					if newLeft-oldLeft > 0 && newLeft-oldLeft < Max(c.rightestvel, rightestDiff) {
+						newLeft = Min(oldLeft+Max(c.rightestvel, rightestDiff), targetLeft)
+					} else if newLeft-oldLeft < 0 && newLeft-oldLeft > Min(c.leftestvel, leftestDiff) {
+						newLeft = Max(oldLeft+Min(c.leftestvel, leftestDiff), targetLeft)
 					}
 
 					if Abs(diffRight) <= diff*logicScale*c.tensionvel {
@@ -459,10 +467,10 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 					} else {
 						newRight -= diff * logicScale * c.tensionvel
 					}
-					if newRight-oldRight > 0 && newRight-oldRight < c.rightestvel {
-						newRight = Min(oldRight+c.rightestvel, targetRight)
-					} else if newRight-oldRight < 0 && newRight-oldRight > c.leftestvel {
-						newRight = Max(oldRight+c.leftestvel, targetRight)
+					if newRight-oldRight > 0 && newRight-oldRight < Max(c.rightestvel, rightestDiff) {
+						newRight = Min(oldRight+Max(c.rightestvel, rightestDiff), targetRight)
+					} else if newRight-oldRight < 0 && newRight-oldRight > Min(c.leftestvel, leftestDiff) {
+						newRight = Max(oldRight+Min(c.leftestvel, leftestDiff), targetRight)
 					}
 				}
 			} else {

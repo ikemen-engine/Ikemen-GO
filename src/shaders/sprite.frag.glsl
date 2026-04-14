@@ -38,14 +38,28 @@
 	COMPAT_VARYING vec2 texcoord;
 #endif
 
+vec3 rgb2hsv(vec3 c)
+{
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 vec3 hue_shift(vec3 color, float dhue) {
-	float s = sin(dhue);
-	float c = cos(dhue);
-	vec3 row1 = vec3(0.167444, 0.329213, -0.496657);
-	vec3 row2 = vec3(-0.327948, 0.035669, 0.292279);
-	vec3 row3 = vec3(1.250268, -1.047561, -0.202707);
-	vec3 shifted = (color * c) + s * vec3(dot(row1, color), dot(row2, color), dot(row3, color));
-	return shifted + dot(vec3(0.299, 0.587, 0.114), color) * (1.0 - c);
+	vec3 colorhsv = rgb2hsv(color);
+	colorhsv.x = mod(colorhsv.x+dhue, 1.0);
+	return hsv2rgb(colorhsv);
 }
 
 void main(void) {

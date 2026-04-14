@@ -73,16 +73,14 @@
 		precision highp int;
 	#endif
 	#ifdef ENABLE_SHADOW
+		// Now that the shader version is 320 es we can just use the same stuff
+		uniform highp samplerCubeArray shadowCubeMap;
 		#ifdef GL_ES
-		// Avoid sampler-array dynamic indexing on GLES by declaring 4 separate samplers
-		uniform samplerCube shadowCubeMap0;
-		uniform samplerCube shadowCubeMap1;
-		uniform samplerCube shadowCubeMap2;
-		uniform samplerCube shadowCubeMap3;
+			#define COMPAT_SHADOW_MAP_TEXTURE(coords) (texture(shadowCubeMap, coords).r)
+			#define COMPAT_SHADOW_CUBE_MAP_TEXTURE(coords) (texture(shadowCubeMap, coords).r)
 		#else
-		uniform samplerCubeArray shadowCubeMap;
-		#define COMPAT_SHADOW_MAP_TEXTURE() texture(shadowCubeMap,vec4(1.0, -(xy.y*2.0-1.0),-(xy.x*2.0-1.0),index)).r
-		#define COMPAT_SHADOW_CUBE_MAP_TEXTURE() texture(shadowCubeMap,vec4(xyz,index)).r
+			#define COMPAT_SHADOW_MAP_TEXTURE() texture(shadowCubeMap,vec4(1.0, -(xy.y*2.0-1.0),-(xy.x*2.0-1.0),index)).r
+			#define COMPAT_SHADOW_CUBE_MAP_TEXTURE() texture(shadowCubeMap,vec4(xyz,index)).r
 		#endif
 		const bool useShadowMap = true;
 	#else
@@ -140,21 +138,22 @@ float DirectionalLightShadowCalculation(int index, vec4 lightSpacePos,float Ndot
 	// get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
 	float epsilon = 1.0 / 1024.0;
 	vec2 xy = vec2(clamp(projCoords.x,epsilon,1.0-epsilon),clamp(projCoords.y,epsilon,1.0-epsilon));
-	float closestDepth;
-	#if defined(GL_ES)
-		// sample using separate samplers with dynamic branch (avoids sampler array indexing)
-		vec3 coord0 = vec3(1.0, -(xy.y*2.0-1.0), -(xy.x*2.0-1.0));
-		if(index == 0) closestDepth = texture(shadowCubeMap0, coord0).r;
-		else if(index == 1) closestDepth = texture(shadowCubeMap1, coord0).r;
-		else if(index == 2) closestDepth = texture(shadowCubeMap2, coord0).r;
-		else closestDepth = texture(shadowCubeMap3, coord0).r;
+
+	#ifdef GL_ES
+		float closestDepth = COMPAT_SHADOW_MAP_TEXTURE(vec4(1.0, -(xy.y*2.0-1.0),-(xy.x*2.0-1.0),float(index)));
 	#else
-		closestDepth = COMPAT_SHADOW_MAP_TEXTURE();
+		float closestDepth = COMPAT_SHADOW_MAP_TEXTURE();
 	#endif
 	// get depth of current fragment from light's perspective
 	float currentDepth = projCoords.z;
+	
 	// check whether current frag pos is in shadow
-	float bias = shadowBias*tan(acos(NdotL));
+	#ifdef GL_ES
+		// https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
+		float bias = max(0.0005 * (1.0 - NdotL), shadowBias) * 1024.0; // and scale back on shadow map texture size
+	#else
+		float bias = shadowBias*tan(acos(NdotL));
+	#endif
 	float shadow = closestDepth-currentDepth > -bias  ? 1.0 : 0.0;
 	#else
 	float shadow = 1.0;
@@ -170,21 +169,24 @@ float SpotLightShadowCalculation(int index, vec3 pointToLight, vec4 lightSpacePo
 	}
 	float epsilon = 1.0 / 1024.0;
 	vec2 xy = vec2(clamp(lightSpacePos.x,epsilon,1.0-epsilon),clamp(lightSpacePos.y,epsilon,1.0-epsilon));
-	float closestDepth;
-	#if defined(GL_ES)
-		vec3 coord0 = vec3(1.0, -(xy.y*2.0-1.0), -(xy.x*2.0-1.0));
-		if(index == 0) closestDepth = texture(shadowCubeMap0, coord0).r;
-		else if(index == 1) closestDepth = texture(shadowCubeMap1, coord0).r;
-		else if(index == 2) closestDepth = texture(shadowCubeMap2, coord0).r;
-		else closestDepth = texture(shadowCubeMap3, coord0).r;
+
+	#ifdef GL_ES
+		float closestDepth = COMPAT_SHADOW_MAP_TEXTURE(vec4(1.0, -(xy.y*2.0-1.0),-(xy.x*2.0-1.0),float(index)));
 	#else
-		closestDepth = COMPAT_SHADOW_MAP_TEXTURE();
+		float closestDepth = COMPAT_SHADOW_MAP_TEXTURE();
 	#endif
 	// it is currently in linear range between [0,1]. Re-transform back to original value
 	closestDepth *= farPlane;
 	// get depth of current fragment from light's perspective
 	float currentDepth = length(pointToLight);
-	float bias = shadowBias*tan(acos(NdotL));
+	#ifdef GL_ES
+		// https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
+		float bias = max(0.05 * (1.0 - NdotL), shadowBias);
+		// Scale back based on far plane, texture size
+		bias = bias * (farPlane * 1024.0);
+	#else
+		float bias = shadowBias*tan(acos(NdotL));
+	#endif
 	float shadow = currentDepth-closestDepth < bias  ? 1.0 : 0.0;
 	#else
 	float shadow = 1.0;
@@ -199,21 +201,25 @@ float PointLightShadowCalculation(int index, vec3 pointToLight,float NdotL,float
 		return 1.0;
 	}
 	vec3 xyz = -pointToLight;
-	float closestDepth;
-	#if defined(GL_ES)
-		if(index == 0) closestDepth = texture(shadowCubeMap0, xyz).r;
-		else if(index == 1) closestDepth = texture(shadowCubeMap1, xyz).r;
-		else if(index == 2) closestDepth = texture(shadowCubeMap2, xyz).r;
-		else closestDepth = texture(shadowCubeMap3, xyz).r;
+
+	#ifdef GL_ES
+		float closestDepth = COMPAT_SHADOW_CUBE_MAP_TEXTURE(vec4(xyz, float(index)));
 	#else
-		closestDepth = COMPAT_SHADOW_CUBE_MAP_TEXTURE();
+		float closestDepth = COMPAT_SHADOW_CUBE_MAP_TEXTURE();
 	#endif
 	// it is currently in linear range between [0,1]. Re-transform back to original value
 	closestDepth *= farPlane;
 	// now get current linear depth as the length between the fragment and light position
 	float currentDepth = length(pointToLight);
 
-	float bias = shadowBias*tan(acos(NdotL));
+	#ifdef GL_ES
+		// https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
+		float bias = max(0.05 * (1.0 - NdotL), shadowBias);
+		// Scale back based on far plane, texture size
+		bias = bias * (farPlane * 1024.0);
+	#else
+		float bias = shadowBias*tan(acos(NdotL));
+	#endif
 
 	float shadow = currentDepth-closestDepth < bias  ? 1.0 : 0.0;
 	
@@ -465,14 +471,28 @@ vec3 pbr(vec3 worldSpacePos,vec3 v,vec3 n,vec3 albedo,float metallic,float rough
 	return color;
 }
 
-// Hue shift using unrolled matrix for GLES stability
+vec3 rgb2hsv(vec3 c)
+{
+    vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 vec3 hue_shift(vec3 color, float dhue) {
-	float s = sin(dhue);
-	float c = cos(dhue);
-	vec3 row1 = vec3(0.167444, 0.329213, -0.496657);
-	vec3 row2 = vec3(-0.327948, 0.035669, 0.292279);
-	vec3 row3 = vec3(1.250268, -1.047561, -0.202707);
-	return (color * c) + (color * s) * vec3(dot(row1, color), dot(row2, color), dot(row3, color)) + dot(vec3(0.299, 0.587, 0.114), color) * (1.0 - c);
+	vec3 colorhsv = rgb2hsv(color);
+	colorhsv.x = mod(colorhsv.x+dhue, 1.0);
+	return hsv2rgb(colorhsv);
 }
 
 void main(void) {
@@ -510,8 +530,8 @@ void main(void) {
 		}
 	}
 	
-	// PBR output (FragColor.rgb) is now LINEAR, pre-multiplied by vColor.a here.
-	FragColor.rgb *= vColor.a;
+	// PBR output (FragColor.rgb) is now LINEAR, pre-multiplied by FragColor.a here
+	FragColor.rgb *= FragColor.a; // we already multiply by vColor above
 
 	if(!enableAlpha){
 		if(FragColor.a < alphaThreshold){
@@ -523,38 +543,32 @@ void main(void) {
 		discard;
 	}
 
-	// Final Gamma Correction (Required for Vulkan path rendering to an sRGB target)
-	// This happens *after* all linear operations and re-premultiplication.
-	FragColor.rgb = pow(FragColor.rgb, vec3(1.0/2.2));
-
-	vec3 c_linear = FragColor.rgb;
+	// Gamma Correction (Required for Vulkan path rendering to an sRGB target)
+	// This happens *before* all PalFX operations, in an attempt to get results from PalFX equivalent to performing the same operations in an actual image editor.
+	vec3 c_straight = pow(FragColor.rgb, vec3(1.0/2.2));
 	float alpha = FragColor.a;
 
-	// Un-premultiply to get True Linear Color
+	// Un-premultiply to get straight-alpha color
 	if (alpha > 0.0) {
-		c_linear /= alpha;
-		c_linear = clamp(c_linear, 0.0, 1.0);
+		c_straight /= alpha;
+		c_straight = clamp(c_straight, 0.0, 1.0);
 	}
 	
-	// Convert ADD uniform from sRGB space (assuming user input) to Linear
-	// We assume 'add' is defined in sRGB space.
-	// vec3 linear_add = sign(add) * pow(abs(add), vec3(2.2));
-
-	// Apply PalFX (All math in True Linear space)
+	// Apply PalFX
 	if (hue != 0.0) {
-		c_linear = hue_shift(c_linear, hue);           
+		c_straight = hue_shift(c_straight, hue);
 	}
 	
-	// INVERSION FIX: Correctly applied on linear, un-premultiplied color
+	// INVERSION FIX: Correctly applied on un-premultiplied color
 	if (neg != 0) {
-		c_linear = vec3(1.0) - c_linear; 
+		c_straight = vec3(1.0) - c_straight; 
 	}
 	
 	// Grayscale / Add / Mult
-	c_linear = mix(c_linear, vec3((c_linear.r + c_linear.g + c_linear.b) / 3.0), gray) + add;
-	c_linear *= mult;
-	c_linear = clamp(c_linear, 0.0, 1.0);
+	c_straight = mix(c_straight, vec3((c_straight.r + c_straight.g + c_straight.b) / 3.0), gray) + add;
+	c_straight *= mult;
+	c_straight = clamp(c_straight, 0.0, 1.0);
 
 	// Re-premultiply alpha
-	FragColor.rgb = c_linear * alpha;
+	FragColor.rgb = c_straight * alpha;
 }

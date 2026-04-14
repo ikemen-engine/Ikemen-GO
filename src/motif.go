@@ -5347,7 +5347,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 			(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)
 		if cancel || (!hi.input && hi.counter == hi.endTime) {
 			if !hi.noFade {
-				startFadeOut(m.HiscoreInfo.FadeOut.FadeData, m.fadeOut, cancel, m.fadePolicy)
+				startFadeOut(m.HiscoreInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 			}
 			hi.endTimer = hi.counter + m.fadeOut.timeRemaining
 		}
@@ -6258,7 +6258,7 @@ func (vi *MotifVictory) step(m *Motif) {
 		timeUp := vi.lineFullyRendered && vi.counter >= m.VictoryScreen.Time
 
 		if userInterrupt || timeUp {
-			startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, userInterrupt, m.fadePolicy)
+			startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 			vi.endTimer = vi.counter + m.fadeOut.timeRemaining
 			//fmt.Printf("[Victory] Starting fadeout: counter=%d time=%d endTimer=%d userInterrupt=%v timeUp=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, userInterrupt, timeUp)
 		}
@@ -6757,7 +6757,7 @@ func (wi *MotifWin) step(m *Motif) {
 	if wi.endTimer == -1 {
 		cancel := sys.esc || sys.uiRawInput(wi.keyCancel, -1)
 		if cancel || wi.counter == wi.time {
-			startFadeOut(wi.fadeOut, m.fadeOut, cancel, m.fadePolicy)
+			startFadeOut(wi.fadeOut, m.fadeOut, false, m.fadePolicy)
 			wi.endTimer = wi.counter + m.fadeOut.timeRemaining
 		}
 	}

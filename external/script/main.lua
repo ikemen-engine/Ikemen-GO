@@ -2811,10 +2811,20 @@ end
 --asserts content unlock conditions
 function main.f_unlock(permanent)
 	local refreshRandom = false
+	local stats = jsonDecode(getCommandLineValue("-stats")) or {}
+	local env = setmetatable({stats = stats}, {__index = _G})
 	for group, t in pairs(main.t_unlockLua) do
 		local t_del = {}
 		for k, v in pairs(t) do
-			local bool = assert(loadstring('return ' .. v))()
+			local func, err = loadstring('return ' .. v)
+			if func == nil then
+				panicError("\nmain.t_unlockLua." .. group .. "[" .. k .. "]\n" ..
+					"Invalid Lua code: \n" .. v .. "\n" .. tostring(err) .. "\n")
+			end
+			print('return ' .. v)
+			setfenv(func, env)
+			local bool = func()
+			print(bool)
 			if type(bool) == 'boolean' then
 				if group == 'chars' then
 					if main.f_unlockChar(k, bool, false) then
@@ -2823,17 +2833,18 @@ function main.f_unlock(permanent)
 				elseif group == 'stages' then
 					main.f_unlockStage(k, bool)
 				elseif group == 'modes' then
-					--already handled via t_del cleaning
+					-- already handled via t_del cleaning
 				end
 				if bool and (permanent or group == 'modes') then
 					table.insert(t_del, k)
 				end
 			else
-				panicError("\nmain.t_unlockLua." .. group .. "[" .. k .. "]\n" .. "Following Lua code does not return boolean value: \n" .. v .. "\n")
+				panicError("\nmain.t_unlockLua." .. group .. "[" .. k .. "]\n" ..
+					"Following Lua code does not return boolean value: \n" .. v .. "\n")
 			end
 		end
-		--clean lua code that already returned true
-		for k, v in ipairs(t_del) do
+		-- clean lua code that already returned true
+		for _, v in ipairs(t_del) do
 			t[v] = nil
 		end
 	end

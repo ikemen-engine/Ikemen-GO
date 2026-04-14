@@ -99,8 +99,7 @@ menu.t_itemname = {
 		if getInput(-1, sec.menu.done.key) then
 			if menu.currentMenu[1] == menu.currentMenu[2] then
 				sndPlay(motif.Snd, sec.exit.snd[1], sec.exit.snd[2])
-				togglePause(false)
-				main.pauseMenu = false
+				menu.pauseExitDelay = gameOption('Input.PauseExitDelay')
 			else
 				sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 			end
@@ -288,14 +287,17 @@ function menu.f_createMenu(tbl, sec, bg, bool_main)
 		else
 			main.f_menuCommonDraw(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec, bg, true)
 		end
+		-- Skip everything else during pause exit delay
+		if menu.pauseExitDelay >= 0 then
+			return
+		end
 		tbl.cursorPosY, tbl.moveTxt, tbl.item = main.f_menuCommonCalc(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec, sec.cursor)
 		textImgReset(sec.title.TextSpriteData)
 		textImgSetText(sec.title.TextSpriteData, tbl.title)
 		if esc() or getInput(-1, sec.menu.cancel.key) then
 			if bool_main then
 				sndPlay(motif.Snd, sec.exit.snd[1], sec.exit.snd[2])
-				togglePause(false)
-				main.pauseMenu = false
+				menu.pauseExitDelay = gameOption('Input.PauseExitDelay')
 			else
 				sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 			end
@@ -583,6 +585,8 @@ function menu.f_init()
 	end
 end
 
+menu.pauseExitDelay = -1
+
 function menu.f_run()
 	local entry = nil
 	if menu.t_menuIndex ~= nil then
@@ -605,6 +609,17 @@ function menu.f_run()
 	end
 	--draw overlay
 	rectDraw(sec.overlay.RectData)
+	--pause exit delay
+	if menu.pauseExitDelay >= 0 then
+		if menu.pauseExitDelay > 0 then
+			menu.pauseExitDelay = menu.pauseExitDelay - 1
+		else
+			menu.pauseExitDelay = -1 --prevent retriggering at 0
+			togglePause(false)
+			main.pauseMenu = false
+			return false
+		end
+	end
 	--Button Config
 	if menu.itemname == 'keyboard' or menu.itemname == 'gamepad' then
 		if menu.itemname == 'keyboard' then
