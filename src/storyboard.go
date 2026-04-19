@@ -297,13 +297,13 @@ func loadStoryboard(def string) (*Storyboard, error) {
 		return nil, err
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
-	s.AnimTable = ReadAnimationTable(s.Sff, &s.Sff.palList, lines, &i)
+	s.AnimTable = ReadAnimationTable(s.Def, s.Sff, &s.Sff.palList, lines, &i, true)
 	i = 0
 
 	// Storyboard-specific quirk:
 	// enable phantom pixel adjustment on all storyboard animations so that
 	// frames flipped via H or V get an extra pixel of offset.
-	for _, anim := range s.AnimTable {
+	for _, anim := range s.AnimTable.anims {
 		if anim != nil {
 			anim.phantomPixel = true
 		}

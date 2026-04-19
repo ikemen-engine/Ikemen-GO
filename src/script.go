@@ -2354,12 +2354,12 @@ func systemScriptInit(l *lua.LState) {
 		sys.uiResetTokenGuard()
 		return 0
 	})
-	luaRegister(l, "fadeInActive", func(*lua.LState) int {
-		/*Check whether the global fade-in effect is active.
-		@function fadeInActive
-		@treturn boolean active `true` if a fade-in is currently running.
-		function fadeInActive() end*/
-		l.Push(lua.LBool(sys.motif.fadeIn.isActive()))
+	luaRegister(l, "fadeActive", func(*lua.LState) int {
+		/*Check whether any global motif fade is active.
+		@function fadeActive
+		@treturn boolean active `true` if fade-in or fade-out is currently running.
+		function fadeActive() end*/
+		l.Push(lua.LBool(sys.motif.fadeOut.isFading() || sys.motif.fadeIn.isFading()))
 		return 1
 	})
 	luaRegister(l, "fadeInInit", func(*lua.LState) int {
@@ -2371,16 +2371,9 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, f)
 		}
+		sys.motif.fadeOut.reset()
 		f.init(sys.motif.fadeIn, true)
 		return 0
-	})
-	luaRegister(l, "fadeOutActive", func(*lua.LState) int {
-		/*Check whether the global fade-out effect is active.
-		@function fadeOutActive
-		@treturn boolean active `true` if a fade-out is currently running.
-		function fadeOutActive() end*/
-		l.Push(lua.LBool(sys.motif.fadeOut.isActive()))
-		return 1
 	})
 	luaRegister(l, "fadeOutInit", func(*lua.LState) int {
 		/*Initialize a `Fade` object using motif fade-out settings.
@@ -2391,50 +2384,17 @@ func systemScriptInit(l *lua.LState) {
 		if !ok {
 			userDataError(l, 1, f)
 		}
+		sys.motif.fadeIn.reset()
 		f.init(sys.motif.fadeOut, false)
 		return 0
 	})
-	luaRegister(l, "fadeColor", func(l *lua.LState) int {
-		/*Draw a timed screen fade overlay.
-		@function fadeColor
-		@tparam string mode Fade mode: `"fadein"` or `"fadeout"`.
-		@tparam int32 startFrame Frame on which the fade starts.
-		@tparam float64 length Fade duration used in the alpha interpolation.
-		@tparam[opt=0] int32 r Red component. Custom color is only applied when `r`, `g`, and `b` are all provided.
-		@tparam[opt=0] int32 g Green component.
-		@tparam[opt=0] int32 b Blue component.
-		@treturn boolean active `true` while the fade is scheduled or active, `false` when finished.
-		function fadeColor(mode, startFrame, length, r, g, b) end*/
-		if int32(numArg(l, 2)) > sys.frameCounter {
-			l.Push(lua.LBool(true)) // delayed fade
-			return 1
-		}
-		frame := float64(sys.frameCounter - int32(numArg(l, 2)))
-		length := numArg(l, 3)
-		if frame > length || length <= 0 {
-			l.Push(lua.LBool(false))
-			return 1
-		}
-		r, g, b, alpha := int32(0), int32(0), int32(0), float64(0)
-		if strArg(l, 1) == "fadeout" {
-			alpha = math.Floor(float64(255) / length * frame)
-		} else if strArg(l, 1) == "fadein" {
-			alpha = math.Floor(255 - 255*(frame-1)/length)
-		}
-		alpha = float64(Clamp(alpha, 0, 255))
-		src := int32(alpha)
-		dst := 255 - src
-		if !nilArg(l, 6) {
-			r = int32(numArg(l, 4))
-			g = int32(numArg(l, 5))
-			b = int32(numArg(l, 6))
-		}
-		col := uint32(int32(b)&0xff | int32(g)&0xff<<8 | int32(r)&0xff<<16)
-		sys.luaQueueLayerDraw(2, func() {
-			FillRect(sys.scrrect, col, [2]int32{src, dst}, nil)
-		})
-		l.Push(lua.LBool(true))
-		return 1
+	luaRegister(l, "fadeSkip", func(*lua.LState) int {
+		/*Immediately stop any running global motif fade.
+		@function fadeSkip
+		function fadeSkip() end*/
+		sys.motif.fadeIn.reset()
+		sys.motif.fadeOut.reset()
+		return 0
 	})
 	luaRegister(l, "fileExists", func(l *lua.LState) int {
 		/*Test whether a file exists, after engine path resolution.
@@ -2722,6 +2682,8 @@ func systemScriptInit(l *lua.LState) {
 		function game() end*/
 		sys.luaDiscardDrawQueue()
 		sys.gameRunning = true
+		sys.motif.fadeIn.reset()
+		sys.motif.fadeOut.reset()
 		sys.endMatch = false
 
 		// Synchronize timing to prevent speed fluctuations when changing FPS (entering matches)
@@ -2952,6 +2914,8 @@ func systemScriptInit(l *lua.LState) {
 				sys.paused = false
 				sys.gameRunning = false
 				sys.clearSpriteData()
+				sys.motif.fadeIn.reset()
+				sys.motif.fadeOut.reset()
 				sys.luaDiscardDrawQueue()
 				//if !sys.skipMotifScaling() {
 				sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
@@ -3924,17 +3888,17 @@ func systemScriptInit(l *lua.LState) {
 			return 0
 		}
 		lines, i := SplitAndTrim(NormalizeNewlines(raw), "\n"), 0
-		at := ReadAnimationTable(sff, &sff.palList, lines, &i)
+		at := ReadAnimationTable(def, sff, &sff.palList, lines, &i, true)
 		// Build Lua table with NUMERIC keys (so it prints like [110] => userdata ...)
 		tbl := l.NewTable()
 		// Deterministic iteration order
-		keys := make([]int, 0, len(at))
-		for k := range at {
+		keys := make([]int, 0, len(at.anims))
+		for k := range at.anims {
 			keys = append(keys, int(k))
 		}
 		sort.Ints(keys)
 		for _, ki := range keys {
-			anim := at[int32(ki)]
+			anim := at.anims[int32(ki)]
 			if anim == nil {
 				continue
 			}
@@ -5337,16 +5301,20 @@ func systemScriptInit(l *lua.LState) {
 		sys.tickSound()
 		if !sys.frameSkip {
 			sys.luaFlushDrawQueue()
-			if sys.motif.fadeIn.isActive() {
-				sys.motif.fadeIn.step()
-				sys.motif.fadeIn.draw()
-			} else if sys.motif.fadeOut.isActive() {
-				sys.motif.fadeOut.step()
+			if sys.motif.fadeOut.isActive() {
 				sys.motif.fadeOut.draw()
+			} else if sys.motif.fadeIn.isActive() {
+				sys.motif.fadeIn.draw()
 			}
 		} else {
 			// On skipped frames, discard queued draws to avoid buildup.
 			sys.luaDiscardDrawQueue()
+		}
+		// Advance motif fades every logical UI frame, even on skipped frames.
+		if sys.motif.fadeOut.isActive() {
+			sys.motif.fadeOut.step()
+		} else if sys.motif.fadeIn.isActive() {
+			sys.motif.fadeIn.step()
 		}
 		sys.stepCommandLists()
 		if !sys.update() {
@@ -9442,6 +9410,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.rdDistZ(sys.debugWC.parent(true), sys.debugWC).ToI()))
 		return 1
 	})
+	luaRegister(l, "parentExist", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.parentExist()))
+		return 1
+	})
 	luaRegister(l, "pauseTime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.pauseTimeTrigger()))
 		return 1
@@ -9677,7 +9649,7 @@ func triggerFunctions(l *lua.LState) {
 			case "supermovetime":
 				lv = lua.LNumber(p.supermovetime)
 			case "teamside":
-				lv = lua.LNumber(p.hitdef.teamside)
+				lv = lua.LNumber(p.hitdef.teamside + 1)
 			case "time":
 				lv = lua.LNumber(p.time)
 			case "vel x":
@@ -9993,7 +9965,7 @@ func triggerFunctions(l *lua.LState) {
 		// Handle returns
 		if bg != nil {
 			switch strings.ToLower(vname) {
-			case "anim":
+			case "actionno":
 				ln = lua.LNumber(bg.actionno)
 			case "delta.x":
 				ln = lua.LNumber(bg.delta[0])
@@ -10361,15 +10333,17 @@ func triggerFunctions(l *lua.LState) {
 		var ln lua.LNumber
 		switch strings.ToLower(strArg(l, 1)) {
 		case "scale":
-			ln = lua.LNumber(sys.drawScale)
+			ln = lua.LNumber(sys.zoom.curScale)
 		case "pos.x":
-			ln = lua.LNumber(sys.zoomPosXLag)
+			ln = lua.LNumber(sys.zoom.curPos[0])
 		case "pos.y":
-			ln = lua.LNumber(sys.zoomPosYLag)
+			ln = lua.LNumber(sys.zoom.curPos[1])
 		case "lag":
-			ln = lua.LNumber(sys.zoomlag)
+			ln = lua.LNumber(sys.zoom.lag)
+		case "endlag":
+			ln = lua.LNumber(sys.zoom.endLag)
 		case "time":
-			ln = lua.LNumber(sys.enableZoomtime)
+			ln = lua.LNumber(sys.zoom.time)
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}

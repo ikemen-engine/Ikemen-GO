@@ -568,7 +568,7 @@ function menu.f_init()
 		local entry = menu.t_menuIndex[id]
 		sndPlay(motif.Snd, entry.sec.enter.snd[1], entry.sec.enter.snd[2])
 		bgReset(entry.bg.BGDef)
-		main.f_fadeReset('fadein', entry.sec)
+		fadeInInit(entry.sec.fadein.FadeData)
 		if menu[id] ~= nil and menu[id].loop ~= nil then
 			menu.currentMenu = {menu[id].loop, menu[id].loop}
 			menu.currentMenuId = id
@@ -579,7 +579,7 @@ function menu.f_init()
 	else
 		sndPlay(motif.Snd, motif.pause_menu.pause_menu.enter.snd[1], motif.pause_menu.pause_menu.enter.snd[2])
 		bgReset(motif.pausebgdef.pausebgdef.BGDef)
-		main.f_fadeReset('fadein', motif.pause_menu.pause_menu)
+		fadeInInit(motif.pause_menu.pause_menu.fadein.FadeData)
 		menu.currentMenu = {menu.menu.loop, menu.menu.loop}
 		menu.currentMenuId = 'menu'
 	end

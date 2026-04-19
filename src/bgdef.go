@@ -82,9 +82,11 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string, startlayer int
 			s.modelScale = [3]float32{scale[0], scale[1], scale[2]}
 		}
 	}
+
 	s.sff = sff
 	s.model = model
-	s.animTable = ReadAnimationTable(s.sff, &s.sff.palList, lines, &i)
+	s.animTable = ReadAnimationTable(def, s.sff, &s.sff.palList, lines, &i, true)
+
 	var bglink *backGround
 	for _, bgsec := range defmap[bgname] {
 		if len(s.bg) > 0 && s.bg[len(s.bg)-1].positionlink {

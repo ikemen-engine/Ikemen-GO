@@ -7,6 +7,8 @@ import (
 type Fade struct {
 	active        bool
 	time          int32
+	totalTime     int32
+	overlayDelay  int32
 	col           [3]int32
 	colEncoded    uint32
 	animData      *Anim
@@ -23,22 +25,40 @@ func newFade() *Fade {
 }
 
 func (fa *Fade) reset() {
-	fa.timeRemaining = fa.time
 	fa.active = false
+	fa.timeRemaining = 0
+	fa.totalTime = 0
+	fa.overlayDelay = 0
 	if fa.animData != nil {
 		fa.animData.Reset()
 	}
 }
 
-func (fa *Fade) init(fade *Fade, isFadeIn bool) {
-	if fa.time <= 1 && fa.animData != nil && fa.animData.anim != nil { // TODO: fight.def fade time is currently clamped to a minimum of 1, consider changing to 0.
-		fa.time = fa.animData.GetLength()
+func (fa *Fade) init(dest *Fade, isFadeIn bool) {
+	overlayTime := fa.time
+	animLen := int32(0)
+	if fa.animData != nil && fa.animData.anim != nil {
+		animLen = fa.animData.GetLength()
 	}
-	fa.reset()
-	fa.colEncoded = uint32(fa.col[0]&0xff<<16 | fa.col[1]&0xff<<8 | fa.col[2]&0xff)
-	fa.isFadeIn = isFadeIn
-	fa.active = true
-	*fade = *fa
+	if overlayTime <= 1 && animLen > 0 { // keep old "anim length drives fade time" behavior for time <= 1
+		overlayTime = animLen
+	}
+
+	*dest = *fa
+	dest.time = overlayTime
+	dest.totalTime = overlayTime
+	if animLen > dest.totalTime {
+		dest.totalTime = animLen
+	}
+	dest.overlayDelay = 0
+	if !isFadeIn && animLen > overlayTime {
+		// Let fadeout anim finish on the same frame as the color fade.
+		dest.overlayDelay = animLen - overlayTime
+	}
+	dest.colEncoded = uint32(dest.col[0]&0xff<<16 | dest.col[1]&0xff<<8 | dest.col[2]&0xff)
+	dest.isFadeIn = isFadeIn
+	dest.active = true
+	dest.timeRemaining = dest.totalTime
 }
 
 func (fa *Fade) step() {
@@ -59,32 +79,53 @@ func (fa *Fade) step() {
 }
 
 func (fa *Fade) drawRect(rect [4]int32, color uint32, alpha int32) {
+	alpha = int32(Clamp(alpha, int32(0), int32(255)))
 	src := alpha>>uint(Btoi(sys.clsnDisplay)) + Btoi(sys.clsnDisplay)*128
-	dst := 255 - src
+	dst := int32(255) - src
 	FillRect(rect, color, [2]int32{src, dst}, nil)
 }
 
 func (fa *Fade) draw() {
-	if !fa.active || fa.timeRemaining < 0 || fa.time <= 0 {
+	if !fa.active || fa.timeRemaining < 0 || fa.totalTime <= 0 {
 		return
 	}
 	if fa.animData != nil && fa.animData.anim != nil {
 		fa.animData.Draw(fa.animData.layerno)
-	} else if fa.isFadeIn {
-		fa.drawRect(sys.scrrect, fa.colEncoded, 256*fa.timeRemaining/fa.time)
+	}
+	if fa.time <= 0 {
+		return
+	}
+	elapsed := fa.totalTime - fa.timeRemaining - fa.overlayDelay
+	if elapsed < 0 || elapsed > fa.time {
+		return
+	}
+	if fa.isFadeIn {
+		alpha := int32(math.Floor(float64(255) - 255*float64(elapsed-1)/float64(fa.time)))
+		fa.drawRect(sys.scrrect, fa.colEncoded, alpha)
 	} else {
-		fa.drawRect(sys.scrrect, fa.colEncoded, 256*(fa.time-fa.timeRemaining)/fa.time)
+		alpha := int32(math.Floor(255 * float64(elapsed) / float64(fa.time)))
+		fa.drawRect(sys.scrrect, fa.colEncoded, alpha)
 	}
 }
 
 // True while the fade still has progression remaining.
 // Use this for transition/policy logic, not for drawing.
 func (fa *Fade) isTransitioning() bool {
-	return fa != nil && fa.active && fa.timeRemaining > 0 && fa.time > 0
+	return fa != nil && fa.isFading() && fa.timeRemaining > 0
+}
+
+// True while the color fade is scheduled or visible.
+// Unlike isActive(), this ignores any trailing anim-only time after fade-in completes.
+func (fa *Fade) isFading() bool {
+	if fa == nil || !fa.active || fa.time <= 0 {
+		return false
+	}
+	elapsed := fa.totalTime - fa.timeRemaining - fa.overlayDelay
+	return elapsed <= fa.time
 }
 
 func (fa *Fade) isActive() bool {
-	return fa != nil && fa.active && fa.timeRemaining >= 0 && fa.time > 0
+	return fa != nil && fa.active && fa.timeRemaining >= 0 && fa.totalTime > 0
 }
 
 // Policies for starting a new fade when a fade-in might be active.

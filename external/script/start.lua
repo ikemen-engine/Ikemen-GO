@@ -1694,7 +1694,7 @@ function start.f_selectMode()
 		if not start.f_selectScreen() then
 			sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 			bgReset(motif[main.background].BGDef)
-			main.f_fadeReset('fadein', motif[main.group])
+			fadeInInit(motif[main.group].fadein.FadeData)
 			playBgm({source = "motif.title", interrupt = true})
 			return
 		end
@@ -1765,7 +1765,7 @@ function start.f_selectMode()
 			end
 			if start.exit then
 				bgReset(motif[main.background].BGDef)
-				main.f_fadeReset('fadein', motif[main.group])
+				fadeInInit(motif[main.group].fadein.FadeData)
 				playBgm({source = "motif.title", interrupt = true})
 				start.exit = false
 				return
@@ -2427,7 +2427,7 @@ function start.f_selectScreen()
 		return true
 	end
 	bgReset(motif.selectbgdef.BGDef)
-	main.f_fadeReset('fadein', motif.select_info)
+	fadeInInit(motif.select_info.fadein.FadeData)
 	local fadeOutStarted = false
 	playBgm({source = "motif.select", interrupt = true})
 	start.f_resetTempData(motif.select_info, 'face')
@@ -2595,7 +2595,7 @@ function start.f_selectScreen()
 			--exit select screen
 			for _, v in ipairs(start.p[side].t_selCmd) do
 				if not start.escFlag and (esc() or (getInput(v.cmd, motif.select_info.cancel.key) and not start.p[side].inPalMenu)) then
-					main.f_fadeReset('fadeout', motif.select_info)
+					fadeOutInit(motif.select_info.fadeout.FadeData)
 					fadeOutStarted = true
 					start.escFlag = true
 				end
@@ -2649,7 +2649,7 @@ function start.f_selectScreen()
 					timerReset = true
 				end
 			elseif start.p[1].screenDelay <= 0 and start.p[2].screenDelay <= 0 and not fadeOutStarted then
-				main.f_fadeReset('fadeout', motif.select_info)
+				fadeOutInit(motif.select_info.fadeout.FadeData)
 				fadeOutStarted = true
 			end
 			--draw stage portrait
@@ -2706,10 +2706,8 @@ function start.f_selectScreen()
 		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.BGDef, 1)
-		--draw fadein / fadeout
-		main.f_fadeAnim(motif.select_info)
 		--frame transition
-		if (not main.fadeActive and main.fadeCnt <= 0) and (fadeOutStarted or start.escFlag) then
+		if not fadeActive() and (fadeOutStarted or start.escFlag) then
 			selScreenEnd = true
 			break --skip last frame rendering
 		end
@@ -2838,7 +2836,7 @@ function start.f_teamMenu(side, t)
 		--Exit during team menu
 		if not start.escFlag and (esc() or getInput(-1, motif.select_info.cancel.key)) then
 			esc(false)
-			main.f_fadeReset('fadeout', motif.select_info)
+			fadeOutInit(motif.select_info.fadeout.FadeData)
 			fadeOutStarted = true
 			start.escFlag = true
 		end
@@ -3596,7 +3594,7 @@ function start.f_selectVersus(active, t_orderSelect)
 	textImgReset(motif.vs_screen.match.TextSpriteData)
 	textImgSetText(motif.vs_screen.match.TextSpriteData, string.format(motif.vs_screen.match.text, matchNo()))
 	bgReset(motif.versusbgdef.BGDef)
-	main.f_fadeReset('fadein', motif.vs_screen)
+	fadeInInit(motif.vs_screen.fadein.FadeData)
 	local fadeOutStarted = false
 	playBgm({source = "motif.vs"})
 	start.f_resetTempData(motif.vs_screen, '')
@@ -3801,20 +3799,19 @@ function start.f_selectVersus(active, t_orderSelect)
 				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done))
 				or (done and doneKeyReady and getInput(side, motif.vs_screen.done.key))
 				) then
-				main.f_fadeReset('fadeout', motif.vs_screen)
+				fadeOutInit(motif.vs_screen.fadeout.FadeData)
 				fadeOutStarted = true
 				break
 			end
 		end
-		main.f_fadeAnim(motif.vs_screen)
 		--frame transition
 		if not escFlag and (esc() or getInput(-1, motif.vs_screen.cancel.key)) then
 			esc(false)
-			main.f_fadeReset('fadeout', motif.vs_screen)
+			fadeOutInit(motif.vs_screen.fadeout.FadeData)
 			fadeOutStarted = true
 			escFlag = true
 		end
-		if (not main.fadeActive and main.fadeCnt <= 0) and (fadeOutStarted or start.escFlag) then
+		if not fadeActive() and (fadeOutStarted or start.escFlag) then
 			clearColor(motif.versusbgdef.bgclearcolor[1], motif.versusbgdef.bgclearcolor[2], motif.versusbgdef.bgclearcolor[3])
 			break --skip last frame rendering
 		end

@@ -842,8 +842,10 @@ func LoadSndFiltered(filename string, keepItem func([2]int32) bool, max uint32) 
 			return nil, err
 		}
 		if keepItem(num) {
-			_, ok := s.table[num]
-			if !ok {
+			_, exists := s.table[num]
+			if exists {
+				LogMessage("WARNING: Duplicate sound key in %v: %v,%v (index %v ignored)", filename, num[0], num[1], i)
+			} else {
 				tmp, err := readSound(f, subFileLength)
 				if err != nil {
 					LogMessage("Sound %v,%v in %v can't be read: %v", num[0], num[1], filename, err)

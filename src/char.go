@@ -681,7 +681,7 @@ type HitDef struct {
 	StandFriction              float32
 	CrouchFriction             float32
 	KeepState                  bool
-	MissOnReversalDef          int32
+	IgnoreReversalDef          int32
 }
 
 func (hd *HitDef) reset(c *Char, proj *Projectile) {
@@ -806,7 +806,7 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		StandFriction:       float32(math.NaN()),
 		CrouchFriction:      float32(math.NaN()),
 		KeepState:           false,
-		MissOnReversalDef:   0,
+		IgnoreReversalDef:   0,
 
 		reversal_guardflag:     IErr,
 		reversal_guardflag_not: IErr,
@@ -3979,14 +3979,22 @@ func (c *Char) load(def string) error {
 	}
 
 	// Read animations
-	str = ""
+	var animFilename string
+	gi.animTable = NewAnimationTable()
+
 	if len(anim) > 0 {
 		anim_resolved := resolvePathRelativeToDef(anim)
-		if LoadFile(&anim_resolved, []string{def, "", sys.motif.Def, "data/"}, func(filename string) error {
-			var err_air error
-			str, err_air = LoadText(filename)
-			if err_air != nil {
-				return err_air
+		if err := LoadFile(&anim_resolved, []string{def, "", sys.motif.Def, "data/"}, func(filename string) error {
+			str, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+
+			animFilename = filename
+			gi.animTable.filename = filename
+
+			lines, i := SplitAndTrim(str, "\n"), 0
+			for gi.animTable.readAction(gi.sff, &gi.palettedata.palList, lines, &i, true) != nil {
 			}
 			return nil
 		}); err != nil {
@@ -3994,7 +4002,7 @@ func (c *Char) load(def string) error {
 		}
 	}
 
-	// Append common animations
+	// Read and merge common animations
 	for _, key := range SortedKeys(sys.cfg.Common.Air) {
 		for _, v := range sys.cfg.Common.Air[key] {
 			if err := LoadFile(&v, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}, func(filename string) error {
@@ -4002,7 +4010,20 @@ func (c *Char) load(def string) error {
 				if err != nil {
 					return err
 				}
-				str += "\n" + txt
+
+				// Create a temporary table for finer control and local error logging
+				tmp := NewAnimationTable()
+				tmp.filename = filename
+				lines, i := SplitAndTrim(txt, "\n"), 0
+				for tmp.readAction(gi.sff, &gi.palettedata.palList, lines, &i, true) != nil {
+				}
+
+				// Merge temporary table with the char's
+				for no, a := range tmp.anims {
+					if gi.animTable.anims[no] == nil {
+						gi.animTable.anims[no] = a
+					}
+				}
 				return nil
 			}); err != nil {
 				return err
@@ -4010,9 +4031,12 @@ func (c *Char) load(def string) error {
 		}
 	}
 
-	// Load animations
-	lines, i := SplitAndTrim(str, "\n"), 0
-	gi.animTable = ReadAnimationTable(gi.sff, &gi.palettedata.palList, lines, &i)
+	// Resolve Copy Action after all sources have been merged
+	// This only works because we didn't use ReadAnimationTable here, which would've done it per file
+	gi.animTable.resolveCopyAction()
+
+	// Final merged table keeps the main filename
+	gi.animTable.filename = animFilename
 
 	// Load sounds
 	if len(sound) > 0 {
@@ -6987,7 +7011,7 @@ func (c *Char) getAnim(n int32, ffx string) (a *Animation) {
 	}
 
 	if current_ffx != "" && current_ffx != "s" {
-		if sys.ffx[current_ffx] != nil && sys.ffx[current_ffx].animTable != nil {
+		if sys.ffx[current_ffx] != nil && sys.ffx[current_ffx].animTable.anims != nil {
 			a = sys.ffx[current_ffx].animTable.get(n)
 		}
 	} else {
@@ -10155,7 +10179,7 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 
 	// ReversalDef vs HitDef attributes check
 	if ghd.reversal_attr > 0 {
-		if c.hitdef.MissOnReversalDef > 0 {
+		if c.hitdef.IgnoreReversalDef > 0 {
 			return false
 		}
 		// Check HitDef validity
@@ -11735,13 +11759,17 @@ func (c *Char) track() {
 			charleft := c.interPos[0]*c.localscl + edgeleft*c.localscl
 			charright := c.interPos[0]*c.localscl + edgeright*c.localscl
 			canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && (c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])))
-
+			bindToCharacter := sys.playerID(c.bindToId)
 			if charleft < sys.cam.leftest {
 				sys.cam.leftest = charleft
 				if canmove {
 					sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
 				} else {
-					sys.cam.leftestvel = 0
+					if bindToCharacter != nil {
+						sys.cam.leftestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
+					} else {
+						sys.cam.leftestvel = 0
+					}
 				}
 			}
 			if charright > sys.cam.rightest {
@@ -11749,7 +11777,11 @@ func (c *Char) track() {
 				if canmove {
 					sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
 				} else {
-					sys.cam.rightestvel = 0
+					if bindToCharacter != nil {
+						sys.cam.rightestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
+					} else {
+						sys.cam.rightestvel = 0
+					}
 				}
 			}
 		}

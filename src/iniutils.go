@@ -2082,7 +2082,7 @@ func SetAnim(obj interface{}, fVal, structVal, parent reflect.Value, sffOverride
 
 	// animNew
 	var a *Anim
-	if animData, exists := animMap[anim]; exists {
+	if animData, exists := animMap.anims[anim]; exists {
 		a = NewAnim(nil, "")
 		a.anim = animData
 	} else if hasSpr {

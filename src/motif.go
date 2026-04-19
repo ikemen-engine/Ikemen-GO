@@ -1847,7 +1847,7 @@ func loadMotif(def string) (*Motif, error) {
 		return nil, err
 	}
 	lines, i := SplitAndTrim(str, "\n"), 0
-	m.AnimTable = ReadAnimationTable(m.Sff, &m.Sff.palList, lines, &i)
+	m.AnimTable = ReadAnimationTable(m.Def, m.Sff, &m.Sff.palList, lines, &i, true)
 	i = 0
 
 	m.overrideParams()

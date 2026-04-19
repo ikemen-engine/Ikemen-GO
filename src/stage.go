@@ -984,7 +984,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 	s.sff = &Sff{}
 
 	lines, i := SplitAndTrim(str, "\n"), 0
-	s.animTable = ReadAnimationTable(s.sff, &s.sff.palList, lines, &i)
+	s.animTable = ReadAnimationTable(def, s.sff, &s.sff.palList, lines, &i, true)
 	i = 0
 	defmap := make(map[string][]IniSection)
 	for i < len(lines) {
@@ -1799,30 +1799,6 @@ func (s *Stage) action() {
 
 	// Update BG elements
 	for i, b := range s.bg {
-		b.palfx.step()
-
-		// BGPalFX can step even if the stage is paused
-		if sys.bgPalFX.enable {
-			// TODO: Finish proper synthesization of bgPalFX into PalFX from bg element
-			// (Right now, bgPalFX just overrides all unique parameters from BG Elements' PalFX)
-			// for j := 0; j < 3; j++ {
-			// if sys.bgPalFX.invertall {
-			// b.palfx.eAdd[j] = -b.palfx.add[j] * (b.palfx.mul[j]/256) + 256 * (1-(b.palfx.mul[j]/256))
-			// b.palfx.eMul[j] = 256
-			// }
-			// b.palfx.eAdd[j] = int32((float32(b.palfx.eAdd[j])) * sys.bgPalFX.eColor)
-			// b.palfx.eMul[j] = int32(float32(b.palfx.eMul[j]) * sys.bgPalFX.eColor + 256*(1-sys.bgPalFX.eColor))
-			// }
-			// b.palfx.synthesize(sys.bgPalFX)
-			b.palfx.eAdd = sys.bgPalFX.eAdd
-			b.palfx.eMul = sys.bgPalFX.eMul
-			b.palfx.eColor = sys.bgPalFX.eColor
-			b.palfx.eHue = sys.bgPalFX.eHue
-			b.palfx.eInvertall = sys.bgPalFX.eInvertall
-			b.palfx.eInvertblend = sys.bgPalFX.eInvertblend
-			b.palfx.eAllowNeg = sys.bgPalFX.eAllowNeg
-		}
-
 		if canStep {
 			s.bg[i].bga.action(b.enabled)
 			if i > 0 && b.positionlink {
@@ -1847,6 +1823,38 @@ func (s *Stage) action() {
 			s.bg[i].anim.Action()
 		}
 	}
+}
+
+// Currently this function only exists so that the stage update sequence is similar to others. In the future it could run more tasks
+// Doing this allows characters to see "stageTime = 0"
+func (s *Stage) tick() {
+
+	// Update BG elements
+	for _, b := range s.bg {
+		b.palfx.step()
+
+		// BGPalFX can step even if the stage is paused
+		if sys.bgPalFX.enable {
+			// TODO: Finish proper synthesization of bgPalFX into PalFX from bg element
+			// (Right now, bgPalFX just overrides all unique parameters from BG Elements' PalFX)
+			// for j := 0; j < 3; j++ {
+			// if sys.bgPalFX.invertall {
+			// b.palfx.eAdd[j] = -b.palfx.add[j] * (b.palfx.mul[j]/256) + 256 * (1-(b.palfx.mul[j]/256))
+			// b.palfx.eMul[j] = 256
+			// }
+			// b.palfx.eAdd[j] = int32((float32(b.palfx.eAdd[j])) * sys.bgPalFX.eColor)
+			// b.palfx.eMul[j] = int32(float32(b.palfx.eMul[j]) * sys.bgPalFX.eColor + 256*(1-sys.bgPalFX.eColor))
+			// }
+			// b.palfx.synthesize(sys.bgPalFX)
+			b.palfx.eAdd = sys.bgPalFX.eAdd
+			b.palfx.eMul = sys.bgPalFX.eMul
+			b.palfx.eColor = sys.bgPalFX.eColor
+			b.palfx.eHue = sys.bgPalFX.eHue
+			b.palfx.eInvertall = sys.bgPalFX.eInvertall
+			b.palfx.eInvertblend = sys.bgPalFX.eInvertblend
+			b.palfx.eAllowNeg = sys.bgPalFX.eAllowNeg
+		}
+	}
 
 	// Update model PalFX
 	if s.model != nil {
@@ -1861,11 +1869,7 @@ func (s *Stage) action() {
 			s.model.pfx.eAllowNeg = sys.bgPalFX.eAllowNeg
 		}
 	}
-}
 
-// Currently this function only exists so that the stage update sequence is similar to others. In the future it could run more tasks
-// Doing this allows characters to see "stageTime = 0"
-func (s *Stage) tick() {
 	if s.paused() {
 		return
 	}

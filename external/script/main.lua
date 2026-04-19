@@ -296,68 +296,6 @@ function main.f_animPosDraw(a, x, y, f)
 	animUpdate(a)
 end
 
---screen fade animation
-function main.f_fadeAnim(fadeGroup)
-	--draw fade anim
-	if main.fadeCnt > 0 then
-		if fadeGroup[main.fadeType].AnimData ~= nil then
-			animDraw(fadeGroup[main.fadeType].AnimData)
-			animUpdate(fadeGroup[main.fadeType].AnimData)
-		end
-		main.fadeCnt = main.fadeCnt - 1
-	end
-	--play fade snd
-	if not main.fadeSnd then
-		sndPlay(motif.Snd, fadeGroup[main.fadeType].snd[1], fadeGroup[main.fadeType].snd[2])
-		main.fadeSnd = true
-	end
-	--draw fadein / fadeout
-	main.fadeActive = fadeColor(
-		main.fadeType,
-		main.fadeStart,
-		fadeGroup[main.fadeType].time,
-		fadeGroup[main.fadeType].col[1],
-		fadeGroup[main.fadeType].col[2],
-		fadeGroup[main.fadeType].col[3]
-	)
-end
-
---reset fade
-main.fadeActive = false
-function main.f_fadeReset(fadeType, fadeGroup)
-	main.fadeType = fadeType
-	main.fadeGroup = fadeGroup
-	main.fadeStart = getFrameCount()
-	main.fadeSnd = false
-	main.fadeCnt = 0
-	if fadeGroup[fadeType].AnimData ~= nil then
-		animReset(fadeGroup[fadeType].AnimData)
-		animUpdate(fadeGroup[fadeType].AnimData)
-		main.fadeCnt = animGetLength(fadeGroup[fadeType].AnimData) - 1
-		if fadeType == 'fadeout' and main.fadeCnt > fadeGroup[fadeType].time then
-			main.fadeStart = main.fadeStart + main.fadeCnt - fadeGroup[fadeType].time
-		end
-	end
-end
-
-function main.f_fadeSkip(controller, key)
-	if esc() or getInput(-1, motif[main.group].menu.cancel.key) then
-		-- consume the input so it doesn't also act as "back" after the fade is skipped
-		esc(false)
-		resetKey()
-		-- fast-forward fade to completion
-		main.fadeCnt = 0
-		if main.fadeGroup ~= nil and main.fadeType ~= nil
-			and main.fadeGroup[main.fadeType] ~= nil
-			and main.fadeGroup[main.fadeType].time ~= nil then
-			main.fadeStart = getFrameCount() - main.fadeGroup[main.fadeType].time - 1
-		end
-		main.fadeActive = false
-		return true
-	end
-	return false
-end
-
 --copy table content into new table
 function main.f_tableCopy(t)
 	if t == nil then
@@ -1513,6 +1451,15 @@ else
 	main.background = 'titlebgdef'
 end
 
+local function enterSyncedNetplayMenu()
+	main.f_clearShuffleTables()
+	math.randomseed(getRandom())
+	main.f_menuSnap(motif[main.group])
+	main.f_menuItemBgAnimReset(motif[main.group])
+	fadeInInit(motif[main.group].fadein.FadeData)
+	main.menu.submenu.server.loop()
+end
+
 function main.f_default()
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
@@ -1881,12 +1828,7 @@ main.t_itemname = {
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
 		if main.f_connect(gameOption('Netplay.IP.' .. t[item].displayname), t[item].displayname) then
 			if synchronize() then
-				main.f_clearShuffleTables()
-				math.randomseed(getRandom())
-				main.f_menuSnap(motif[main.group])
-				main.f_menuItemBgAnimReset(motif[main.group])
-				main.f_fadeReset('fadein', motif[main.group])
-				main.menu.submenu.server.loop()
+				enterSyncedNetplayMenu()
 			end
 			replayStop()
 			exitNetPlay()
@@ -1901,12 +1843,7 @@ main.t_itemname = {
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
 		if main.f_connect("", gameOption('Netplay.ListenPort')) then
 			if synchronize() then
-				main.f_clearShuffleTables()
-				math.randomseed(getRandom())
-				main.f_menuSnap(motif[main.group])
-				main.f_menuItemBgAnimReset(motif[main.group])
-				main.f_fadeReset('fadein', motif[main.group])
-				main.menu.submenu.server.loop()
+				enterSyncedNetplayMenu()
 			end
 			replayStop()
 			exitNetPlay()
@@ -2342,7 +2279,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				bgReset(motif[main.background].BGDef)
 				playBgm({source = "motif.title", interrupt = true})
 			end
-			main.f_fadeReset('fadein', motif[main.group])
+			fadeInInit(motif[main.group].fadein.FadeData)
 		end
 		main.menu.f = nil
 		while true do
@@ -2352,8 +2289,10 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif[main.group], motif[main.background], false)
 			end
 			-- While fading, ignore normal menu inputs, but still allow ESC / menu-cancel to skip the fade.
-			if main.fadeActive then
-				main.f_fadeSkip(-1, motif[main.group].menu.cancel.key)
+			if fadeActive() then
+				if esc() or getInput(-1, motif[main.group].menu.cancel.key) then
+					fadeSkip()
+				end
 			elseif main.menu.f ~= nil then
 				main.f_unlock(false)
 				main.menu.f()
@@ -2421,7 +2360,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					main.f_default()
 					main.menu.f = main.t_itemname.options()
 					sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
-					main.f_fadeReset('fadeout', motif[main.group])
+					fadeOutInit(motif[main.group].fadeout.FadeData)
 					resetKey()
 				elseif bool_del and getKey(motif[main.group].menu.item.delete.keycode) then
 					tbl.items = main.f_deleteIP(item, t)
@@ -2476,7 +2415,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						if main.menu.f ~= nil then
 							local doneSnd = motif[main.group].cursor.done.snd[f] or motif[main.group].cursor.done.snd.default
 							sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
-							main.f_fadeReset('fadeout', motif[main.group])
+							fadeOutInit(motif[main.group].fadeout.FadeData)
 						end
 					end
 				end
@@ -2738,21 +2677,21 @@ function main.f_replay()
 	end
 	table.insert(t, {itemname = 'back', displayname = motif.replay_info.menu.itemname.back})
 	bgReset(motif.replaybgdef.BGDef)
-	main.f_fadeReset('fadein', motif.replay_info)
+	fadeInInit(motif.replay_info.fadein.FadeData)
 	playBgm({source = "motif.replay"})
 	main.close = false
 	while true do
 		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replaybgdef, false)
 		cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replay_info.cursor)
-		if main.close and not main.fadeActive then
+		if main.close and not fadeActive() then
 			bgReset(motif[main.background].BGDef)
-			main.f_fadeReset('fadein', motif[main.group])
+			fadeInInit(motif[main.group].fadein.FadeData)
 			playBgm({source = "motif.title", interrupt = true})
 			main.close = false
 			break
 		elseif esc() or getInput(-1, motif[main.group].menu.cancel.key) or (t[item].itemname == 'back' and getInput(-1, motif[main.group].menu.done.key)) then
 			sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
-			main.f_fadeReset('fadeout', motif.replay_info)
+			fadeOutInit(motif.replay_info.fadeout.FadeData)
 			main.close = true
 		elseif getKey(motif.replay_info.menu.item.delete.keycode) then
 			t, item = main.f_deleteReplay(item, t)
@@ -2766,9 +2705,7 @@ function main.f_replay()
 		elseif getInput(-1, motif[main.group].menu.done.key) then
 			sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 			if enterReplay(t[item].itemname) and synchronize() then
-				main.f_clearShuffleTables()
-				math.randomseed(getRandom())
-				main.menu.submenu.server.loop()
+				enterSyncedNetplayMenu()
 			end
 			replayStop()
 			exitNetPlay()
@@ -2821,10 +2758,8 @@ function main.f_unlock(permanent)
 				panicError("\nmain.t_unlockLua." .. group .. "[" .. k .. "]\n" ..
 					"Invalid Lua code: \n" .. v .. "\n" .. tostring(err) .. "\n")
 			end
-			print('return ' .. v)
 			setfenv(func, env)
 			local bool = func()
-			print(bool)
 			if type(bool) == 'boolean' then
 				if group == 'chars' then
 					if main.f_unlockChar(k, bool, false) then
@@ -2918,7 +2853,7 @@ function main.f_hiscoreDisplay(itemname)
 	end
 	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 	main.f_hiscore(mode, -1)
-	--main.f_fadeReset('fadein', motif[main.group])
+	--fadeInInit(motif[main.group].fadein.FadeData)
 	playBgm({source = "motif.title", interrupt = true})
 	return true
 end
@@ -2933,7 +2868,7 @@ function main.f_attractStart()
 	local drawPress, drawInsert = true, true
 	clearColor(motif.attractbgdef.bgclearcolor[1], motif.attractbgdef.bgclearcolor[2], motif.attractbgdef.bgclearcolor[3])
 	bgReset(motif.attractbgdef.BGDef)
-	main.f_fadeReset('fadein', motif.attract_mode)
+	fadeInInit(motif.attract_mode.fadein.FadeData)
 	local fadeOutStarted = false
 	playBgm({source = "motif.title", interrupt = true})
 	local creditsCnt = getCredits()
@@ -2999,7 +2934,7 @@ function main.f_attractStart()
 			main.menu.f = main.t_itemname.options()
 			local doneSnd = motif[main.group].cursor.done.snd.options or motif[main.group].cursor.done.snd.default
 			sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
-			main.f_fadeReset('fadeout', motif[main.group])
+			fadeOutInit(motif[main.group].fadeout.FadeData)
 			fadeOutStarted = true
 			resetKey()
 			main.menu.f()
@@ -3008,20 +2943,19 @@ function main.f_attractStart()
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.attractbgdef.BGDef, 1)
 		--draw fadein / fadeout
-		if not fadeOutStarted and not main.fadeActive and ((getCredits() ~= 0 and getInput(-1, motif.attract_mode.start.press.key)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
+		if not fadeOutStarted and not fadeActive() and ((getCredits() ~= 0 and getInput(-1, motif.attract_mode.start.press.key)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
 			if getCredits() ~= 0 then
 				sndPlay(motif.Snd, motif.attract_mode.start.done.snd[1], motif.attract_mode.start.done.snd[2])
 			end
-			main.f_fadeReset('fadeout', motif.attract_mode)
+			fadeOutInit(motif.attract_mode.fadeout.FadeData)
 			fadeOutStarted = true
 		end
-		main.f_fadeAnim(motif.attract_mode)
 		--frame transition
 		if esc() --[[or getInput(-1, motif.attract_mode.menu.cancel.key)]] then
 			esc(false)
 			return false
 		end
-		if fadeOutStarted and not main.fadeActive then
+		if fadeOutStarted and not fadeActive() then
 			return getCredits() ~= 0
 		end
 		refresh()
@@ -3090,7 +3024,7 @@ function main.f_demo()
 	if #main.t_randomChars == 0 then
 		return
 	end
-	if main.fadeActive or not motif.demo_mode.enabled then
+	if fadeActive() or not motif.demo_mode.enabled then
 		demoFrameCounter = 0
 		return
 	end
@@ -3099,7 +3033,7 @@ function main.f_demo()
 		return
 	end
 	demoFrameCounter = 0
-	main.f_fadeReset('fadeout', motif[main.group])
+	fadeOutInit(motif[main.group].fadeout.FadeData)
 	main.menu.f = main.t_itemname.demo()
 end
 
@@ -3171,7 +3105,7 @@ function main.f_demoStart()
 			playBgm({source = "motif.title", interrupt = true})
 		end
 	end
-	main.f_fadeReset('fadein', motif[main.group])
+	fadeInInit(motif[main.group].fadein.FadeData)
 end
 
 --randomtest
@@ -3207,7 +3141,7 @@ function main.f_randomtest()
 		if getWinnerTeam() == -1 then
 			bgReset(motif[main.background].BGDef)
 			playBgm({source = "motif.title", interrupt = true})
-			main.f_fadeReset('fadein', motif[main.group])
+			fadeInInit(motif[main.group].fadein.FadeData)
 			break
 		end
 	end
@@ -3376,12 +3310,10 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	--   skipBG0, skipBG1         : skip bg layer 0 / 1
 	--   skipTitle                : skip drawing the title
 	--   forceInactive            : treat "selected" row as inactive (no highlight, no cursor)
-	--   skipInput                : 
 	opts = opts or {}
 	local offx = opts.offx or 0
 	local offy = opts.offy or 0
 	local forceInactive = (opts.forceInactive == true)
-	local skipInput = (opts.skipInput == true)
 
 	-- effective visible-items: treat 0 or 'unlimitedItems' as "all"
 	local visible = (m.window and m.window.visibleitems) or #t
@@ -3527,7 +3459,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		sec.boxCursorData.offsetY = targetY
 	end
 	--draw menu cursor
-	if m.boxcursor.visible and not main.fadeActive and not forceInactive then
+	if m.boxcursor.visible and not fadeActive() and not forceInactive then
 		local x1 = offx + m.pos[1] + m.boxcursor.coords[1] + (cursorPosY - 1) * m.item.spacing[1]
 		local y1 = sec.boxCursorData.offsetY
 		local w  = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
@@ -3568,14 +3500,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(sec.footer.info.TextSpriteData)
 		textImgDraw(sec.footer.version.TextSpriteData)
 	end
-	--draw fadein / fadeout
-	main.f_fadeAnim(main.fadeGroup)
 	--frame transition
-	if not skipInput then
-		if (not main.fadeActive and main.fadeCnt <= 0) and main.fadeType == 'fadeout' then
-			return --skip last frame rendering
-		end
-	end
 	if not skipClear then
 		refresh()
 	end

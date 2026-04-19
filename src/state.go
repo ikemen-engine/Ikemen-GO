@@ -570,7 +570,9 @@ func NewGameStatePool() GameStatePool {
 		},
 		animationTablePool: sync.Pool{
 			New: func() interface{} {
-				at := make(AnimationTable)
+				at := AnimationTable{
+					anims: make(map[int32]*Animation),
+				}
 				return &at
 			},
 		},

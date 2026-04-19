@@ -962,6 +962,7 @@ const (
 	OC_ex2_zoomvar_pos_x
 	OC_ex2_zoomvar_pos_y
 	OC_ex2_zoomvar_lag
+	OC_ex2_zoomvar_endlag
 	OC_ex2_zoomvar_time
 	OC_ex2_projclsnoverlap
 	OC_ex2_attackmul
@@ -3970,7 +3971,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			case OC_ex2_projvar_supermovetime:
 				sys.bcStack.PushI(p.supermovetime)
 			case OC_ex2_projvar_teamside:
-				sys.bcStack.PushI(int32(p.hitdef.teamside))
+				sys.bcStack.PushI(int32(p.hitdef.teamside) + 1)
 			case OC_ex2_projvar_time:
 				sys.bcStack.PushI(p.time)
 			case OC_ex2_projvar_vel_x:
@@ -4136,15 +4137,17 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_xshear:
 		sys.bcStack.PushF(c.xshear)
 	case OC_ex2_zoomvar_scale:
-		sys.bcStack.PushF(sys.drawScale)
+		sys.bcStack.PushF(sys.zoom.curScale)
 	case OC_ex2_zoomvar_pos_x:
-		sys.bcStack.PushF(sys.zoomPosXLag)
+		sys.bcStack.PushF(sys.zoom.curPos[0] / oc.localscl)
 	case OC_ex2_zoomvar_pos_y:
-		sys.bcStack.PushF(sys.zoomPosYLag)
+		sys.bcStack.PushF(sys.zoom.curPos[1] / oc.localscl)
 	case OC_ex2_zoomvar_lag:
-		sys.bcStack.PushF(sys.zoomlag)
+		sys.bcStack.PushF(sys.zoom.lag)
+	case OC_ex2_zoomvar_endlag:
+		sys.bcStack.PushF(sys.zoom.endLag)
 	case OC_ex2_zoomvar_time:
-		sys.bcStack.PushI(sys.enableZoomtime)
+		sys.bcStack.PushI(sys.zoom.time)
 	case OC_ex2_projclsnoverlap:
 		boxType := sys.bcStack.Pop().ToI()
 		targetID := sys.bcStack.Pop().ToI()
@@ -7305,7 +7308,7 @@ const (
 	hitDef_stand_friction
 	hitDef_crouch_friction
 	hitDef_keepstate
-	hitDef_missonreversaldef
+	hitDef_ignorereversaldef
 	hitDef_last = iota + afterImage_last + 1 - 1
 	hitDef_redirectid
 )
@@ -7335,8 +7338,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		n := exp[0].evalI(c)
 		if n < 0 || n > 2 {
 			// TODO: We should do this in more parameters
-			// This could also be more specific and use crun, but that's a minor issue
-			sys.appendToConsole(c.warn() + fmt.Sprintf("invalid HitDef teamside: %d", n))
+			// This could also be more specific and use crun, but right now adding that to runSub is more trouble than it's worth
+			sys.appendToConsole(c.warn() + fmt.Sprintf("invalid teamside: %d", n))
 		} else {
 			hd.teamside = int(n - 1)
 		}
@@ -7683,8 +7686,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		hd.CrouchFriction = exp[0].evalF(c)
 	case hitDef_keepstate:
 		hd.KeepState = exp[0].evalB(c)
-	case hitDef_missonreversaldef:
-		hd.MissOnReversalDef = Btoi(exp[0].evalB(c))
+	case hitDef_ignorereversaldef:
+		hd.IgnoreReversalDef = Btoi(exp[0].evalB(c))
 	default:
 		if isPalFXParam(paramID) {
 			palFX(sc).runSub(c, &hd.palfx, paramID, exp)
@@ -8446,15 +8449,13 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			case hitDef_teamside:
 				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					if v1 > 2 {
-						p.hitdef.teamside = 2
-					} else if v1 < 0 {
-						p.hitdef.teamside = 0
-					} else {
-						p.hitdef.teamside = int(v1)
-					}
-				})
+				if v1 < 0 || v1 > 2 {
+					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid teamside: %d", v1))
+				} else {
+					eachProj(func(p *Projectile) {
+						p.hitdef.teamside = int(v1 - 1)
+					})
+				}
 			case hitDef_id:
 				v1 := Max(0, exp[0].evalI(c))
 				eachProj(func(p *Projectile) {
@@ -11242,14 +11243,20 @@ const (
 	zoom_pos byte = iota
 	zoom_scale
 	zoom_lag
-	zoom_camerabound
+	zoom_endlag
 	zoom_time
+	zoom_camerabound
 	zoom_stagebound
 )
 
 func (sc zoom) Run(c *Char, _ []int32) bool {
+	// Defaults
 	pos := [2]float32{0, 0}
 	t := int32(1)
+	scl := float32(1)
+	lag := float32(0)
+	endlag := float32(0)
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case zoom_pos:
@@ -11258,23 +11265,44 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 				pos[1] = exp[1].evalF(c) * c.localscl
 			}
 		case zoom_scale:
-			sys.zoomScale = exp[0].evalF(c)
-		case zoom_camerabound:
-			sys.zoomCameraBound = exp[0].evalB(c)
-		case zoom_stagebound:
-			sys.zoomStageBound = exp[0].evalB(c)
+			scl = exp[0].evalF(c)
+			if scl <= 0 {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("invalid Zoom scale value: %v", scl))
+				scl = 1
+			}
 		case zoom_lag:
-			sys.zoomlag = exp[0].evalF(c)
+			lag = exp[0].evalF(c)
+			if lag < 0 || lag > 1 {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("clamped invalid Zoom lag value: %v", lag))
+				lag = Clamp(lag, float32(0), float32(1))
+			}
+		case zoom_endlag:
+			endlag = exp[0].evalF(c)
+			if endlag < 0 || endlag > 1 {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("clamped invalid Zoom endlag value: %v", endlag))
+				endlag = Clamp(endlag, float32(0), float32(1))
+			}
 		case zoom_time:
 			t = exp[0].evalI(c)
+		case zoom_camerabound:
+			sys.zoom.cameraBound = exp[0].evalB(c)
+		case zoom_stagebound:
+			sys.zoom.stageBound = exp[0].evalB(c)
 		}
 		return true
 	})
+
 	// This old calculation is both less accurate to Mugen and less intuitive to work with
-	// sys.zoomPos[0] = sys.zoomScale * pos[0]
-	sys.zoomPos[0] = pos[0]
-	sys.zoomPos[1] = pos[1]
-	sys.enableZoomtime = t
+	// sys.zoom.pos[0] = sys.zoom.scale * pos[0]
+	sys.zoom.pos = pos
+	sys.zoom.scale = scl
+	sys.zoom.lag = lag
+	sys.zoom.endLag = endlag
+	sys.zoom.time = t
+	sys.zoom.active = true
+
+	// "Current" values are not reset, for the sake of continuity between effects
+
 	return false
 }
 

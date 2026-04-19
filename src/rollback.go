@@ -220,12 +220,6 @@ func (rs *RollbackSystem) simulateFrame(s *System) bool {
 		return false
 	}
 
-	s.bgPalFX.step()
-	s.stage.action()
-
-	// If frame is ready to tick and not paused
-	//sys.stage.action()
-
 	// Update game state
 	s.action()
 
@@ -266,26 +260,6 @@ func (rs *RollbackSystem) updateEvents(s *System) bool {
 		return false
 	}
 	return true
-}
-
-func (rs *RollbackSystem) updateCamera(s *System) {
-	if !s.frameSkip {
-		scl := s.cam.Scale / s.cam.BaseScale()
-		if s.enableZoomtime > 0 {
-			if !s.debugPaused() {
-				s.zoomPosXLag += ((s.zoomPos[0] - s.zoomPosXLag) * (1 - s.zoomlag))
-				s.zoomPosYLag += ((s.zoomPos[1] - s.zoomPosYLag) * (1 - s.zoomlag))
-				s.drawScale = s.drawScale / (s.drawScale + (s.zoomScale*scl-s.drawScale)*s.zoomlag) * s.zoomScale * scl
-			}
-		} else {
-			s.zoomlag = 0
-			s.zoomPosXLag = 0
-			s.zoomPosYLag = 0
-			s.zoomScale = 1
-			s.zoomPos = [2]float32{0, 0}
-			s.drawScale = s.cam.Scale
-		}
-	}
 }
 
 func getAIInputs(player int) []byte {

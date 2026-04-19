@@ -1378,7 +1378,7 @@ options.t_itemname = {
 			if options.modified then
 				options.f_saveCfg(options.needReload)
 			end
-			main.f_fadeReset('fadeout', motif.option_info)
+			fadeOutInit(motif.option_info.fadeout.FadeData)
 			main.close = true
 			--return false
 		end
@@ -1391,7 +1391,7 @@ options.t_itemname = {
 			if options.needReload then
 				main.f_warning(motif.warning_info.text.text.noreload, motif.option_info, motif.optionbgdef)
 			end
-			main.f_fadeReset('fadeout', motif.option_info)
+			fadeOutInit(motif.option_info.fadeout.FadeData)
 			main.close = true
 			--return false
 		end
@@ -1421,7 +1421,7 @@ function options.f_createMenu(tbl, bool_main)
 		main.f_menuItemBgAnimReset(motif.option_info)
 		if bool_main then
 			bgReset(motif.optionbgdef.BGDef)
-			main.f_fadeReset('fadein', motif.option_info)
+			fadeInInit(motif.option_info.fadein.FadeData)
 			playBgm({source = "motif.option"})
 			main.close = false
 		end
@@ -1432,15 +1432,17 @@ function options.f_createMenu(tbl, bool_main)
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info, motif.optionbgdef, false)
 			end
 			-- While fading, ignore normal option-menu inputs, but still allow ESC / menu-cancel to skip the fade.
-			if main.fadeActive then
-				main.f_fadeSkip(-1, motif.option_info.menu.cancel.key)
+			if fadeActive() then
+				if esc() or getInput(-1, motif.option_info.menu.cancel.key) then
+					fadeSkip()
+				end
 			else
 				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.option_info, motif.option_info.cursor)
 				textImgReset(motif.option_info.title.TextSpriteData)
 				textImgSetText(motif.option_info.title.TextSpriteData, tbl.title)
 				if main.close then
 					bgReset(motif[main.background].BGDef)
-					main.f_fadeReset('fadein', motif[main.group])
+					fadeInInit(motif[main.group].fadein.FadeData)
 					playBgm({source = "motif.title", interrupt = true})
 					main.close = false
 					break
@@ -1453,7 +1455,7 @@ function options.f_createMenu(tbl, bool_main)
 						if options.needReload then
 							main.f_warning(motif.warning_info.text.text.noreload, motif.option_info, motif.optionbgdef)
 						end
-						main.f_fadeReset('fadeout', motif.option_info)
+						fadeOutInit(motif.option_info.fadeout.FadeData)
 						main.close = true
 					else
 						break
@@ -2448,7 +2450,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 			offx = motif.option_info.keymenu.p1.menuoffset[1],
 			offy = motif.option_info.keymenu.p1.menuoffset[2],
 			forceInactive = (side ~= 1),
-			skipBG0 = true, skipBG1 = true, skipTitle = true, skipInput = true,
+			skipBG0 = true, skipBG1 = true, skipTitle = true,
 		}
 	)
 	-- right pane (active highlight only if side == 2)
@@ -2458,7 +2460,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 			offx = motif.option_info.keymenu.p2.menuoffset[1],
 			offy = motif.option_info.keymenu.p2.menuoffset[2],
 			forceInactive = (side ~= 2),
-			skipBG0 = true, skipBG1 = true, skipTitle = true, skipInput = true,
+			skipBG0 = true, skipBG1 = true, skipTitle = true,
 		}
 	)
 	-- draw player labels on top of panels (above boxbg)

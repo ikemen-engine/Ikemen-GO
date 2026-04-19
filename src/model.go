@@ -362,9 +362,9 @@ func loadEnvironment(filepath string) (*Environment, error) {
 	env.GGXTexture = &GLTFTexture{}
 	env.GGXLUT = &GLTFTexture{}
 	if hdrImg, ok := img.(hdr.Image); ok {
-		size := img.Bounds().Max.X * img.Bounds().Max.Y * 3
-		data := make([]float32, size, size)
 		bounds := img.Bounds()
+		size := bounds.Max.X * bounds.Max.Y * 3
+		data := make([]float32, 0, size)
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
 				color := hdrImg.HDRAt(x, y)
@@ -380,7 +380,7 @@ func loadEnvironment(filepath string) (*Environment, error) {
 				return
 			}
 			lowestMipLevel := int32(4)
-			env.hdrTexture.tex = gfx.newHDRTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y))
+			env.hdrTexture.tex = gfx.newHDRTexture(int32(bounds.Max.X), int32(bounds.Max.Y))
 
 			env.hdrTexture.tex.SetPixelData(data)
 			env.cubeMapTexture.tex = gfx.newCubeMapTexture(256, true, 0)

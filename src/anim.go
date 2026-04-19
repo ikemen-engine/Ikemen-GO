@@ -1063,28 +1063,35 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	//}
 }
 
-type AnimationTable map[int32]*Animation
-
-func NewAnimationTable() AnimationTable {
-	return AnimationTable(make(map[int32]*Animation))
+type AnimationTable struct {
+	anims    map[int32]*Animation
+	filename string
 }
 
-func (at AnimationTable) readAction(sff *Sff, pal *PaletteList,
-	lines []string, i *int) *Animation {
+func NewAnimationTable() AnimationTable {
+	return AnimationTable{
+		anims: make(map[int32]*Animation),
+	}
+}
+
+func (at AnimationTable) readAction(sff *Sff, pal *PaletteList, lines []string, i *int, log bool) *Animation {
 	for *i < len(lines) {
 		no, a := ReadAction(sff, pal, lines, i)
 		if a != nil {
 			// In case of duplicate action numbers, just use the first one
 			// Even if first one is "Copy Action"
-			if existing := at[no]; existing != nil {
+			if existing := at.anims[no]; existing != nil {
+				if log {
+					LogMessage("WARNING: Duplicate action key in %v: %v (ignored)", at.filename, no)
+				}
 				return existing
 			}
 			// Store the new animation in the table.
-			at[no] = a
+			at.anims[no] = a
 			// Recursive logic until we find a non-empty animation
 			// If the current action is empty, we attempt to copy the very next action found in the file
 			for len(a.frames) == 0 && *i < len(lines) && a.copyAction < 0 {
-				if a2 := at.readAction(sff, pal, lines, i); a2 != nil {
+				if a2 := at.readAction(sff, pal, lines, i, log); a2 != nil {
 					*a = *a2
 					break
 				}
@@ -1099,16 +1106,18 @@ func (at AnimationTable) readAction(sff *Sff, pal *PaletteList,
 	return nil
 }
 
-func ReadAnimationTable(sff *Sff, pal *PaletteList, lines []string, i *int) AnimationTable {
+func ReadAnimationTable(filename string, sff *Sff, pal *PaletteList,
+	lines []string, i *int, log bool) AnimationTable {
 	at := NewAnimationTable()
-	for at.readAction(sff, pal, lines, i) != nil {
+	at.filename = filename
+	for at.readAction(sff, pal, lines, i, log) != nil {
 	}
 	at.resolveCopyAction()
 	return at
 }
 
 func (at AnimationTable) get(no int32) *Animation {
-	a := at[no]
+	a := at.anims[no]
 	if a == nil {
 		return a
 	}
@@ -1122,10 +1131,10 @@ func (at AnimationTable) resolveCopyAction() {
 	// Track actions that fail to resolve
 	var toDelete []int32
 
-	for no, a := range at {
+	for no, a := range at.anims {
 		// Limit the chain depth to 8 to prevent infinite loops from circular references
 		for loops := 0; a.copyAction >= 0 && loops < 8; loops++ {
-			target := at[a.copyAction]
+			target := at.anims[a.copyAction]
 
 			// If the target is missing or it's a self-reference, break the link to stop
 			if target == nil || target == a {
@@ -1154,7 +1163,7 @@ func (at AnimationTable) resolveCopyAction() {
 
 	// Purge the ghost animations from the table
 	for _, no := range toDelete {
-		delete(at, no)
+		delete(at.anims, no)
 	}
 }
 

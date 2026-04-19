@@ -1623,6 +1623,7 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 		return binary.Read(f, binary.LittleEndian, x)
 	}
 
+	// Load palettes
 	if s.header.Version[0] != 1 {
 		uniquePals := make(map[[2]uint16]int)
 		for i := 0; i < int(s.header.NumberOfPalettes); i++ {
@@ -1644,10 +1645,10 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 			}
 			var pal []uint32
 			var idx int
-			if old, ok := uniquePals[[...]uint16{gn_[0], gn_[1]}]; ok {
+			if old, ok := uniquePals[[2]uint16{gn_[0], gn_[1]}]; ok {
 				idx = old
 				pal = s.palList.Get(old)
-				LogMessage("%v duplicated palette: %v,%v (%v/%v)", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes)
+				LogMessage("WARNING: Duplicate palette key in %v: %v,%v (%v/%v)", filename, gn_[0], gn_[1], i+1, s.header.NumberOfPalettes)
 			} else if plSize == 0 {
 				idx = int(link)
 				pal = s.palList.Get(idx)
@@ -1660,7 +1661,7 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 				}
 				idx = i
 			}
-			uniquePals[[...]uint16{gn_[0], gn_[1]}] = idx
+			uniquePals[[2]uint16{gn_[0], gn_[1]}] = idx
 			s.palList.SetSource(i, pal)
 			s.palList.PalTable[[...]uint16{gn_[0], gn_[1]}] = idx
 			// Number of colors as specified in the SFF
@@ -1673,6 +1674,7 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 			}
 		}
 	}
+	// Load sprites
 	spriteList := make([]*Sprite, int(s.header.NumberOfSprites))
 	var prev *Sprite
 	shofs := int64(s.header.FirstSpriteHeaderOffset)
@@ -1723,10 +1725,10 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 			}
 			prev = spriteList[i]
 		}
-		if s.sprites[[...]uint16{spriteList[i].Group, spriteList[i].Number}] ==
-			nil {
-			s.sprites[[...]uint16{spriteList[i].Group, spriteList[i].Number}] =
-				spriteList[i]
+		if s.sprites[[2]uint16{spriteList[i].Group, spriteList[i].Number}] != nil {
+			LogMessage("WARNING: Duplicate sprite key in %v: %v,%v (index %v ignored)", filename, spriteList[i].Group, spriteList[i].Number, i)
+		} else {
+			s.sprites[[2]uint16{spriteList[i].Group, spriteList[i].Number}] = spriteList[i]
 		}
 		if s.header.Version[0] == 1 {
 			shofs = int64(xofs)
