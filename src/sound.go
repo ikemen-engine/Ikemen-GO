@@ -21,10 +21,9 @@ import (
 )
 
 const (
-	audioOutLen          = 2048
-	audioFrequency       = 44100
-	audioPrecision       = 4
-	audioResampleQuality = 1
+	audioOutLen    = 2048
+	audioFrequency = 44100
+	audioPrecision = 4
 )
 
 // ------------------------------------------------------------------
@@ -421,7 +420,7 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	bgm.volctrl = &effects.Volume{Streamer: streamer, Base: 2, Volume: 0, Silent: true}
 	bgm.sampleRate = format.SampleRate
 	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
-	resampler := beep.Resample(audioResampleQuality, bgm.sampleRate, dstFreq, bgm.volctrl)
+	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
 	bgm.volRestore = 0 // need this to prevent paused BGM volume from overwriting the new BGM volume
 	bgm.UpdateVolume()
@@ -634,7 +633,7 @@ func (bgm *Bgm) OpenFromStreamer(stream beep.Streamer, srcSampleRate beep.Sample
 	bgm.sampleRate = srcSampleRate
 	bgm.volctrl = &effects.Volume{Streamer: stream, Base: 2, Volume: 0, Silent: true}
 	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
-	resampler := beep.Resample(audioResampleQuality, bgm.sampleRate, dstFreq, bgm.volctrl)
+	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
 	bgm.volRestore = 0
 	bgm.UpdateVolume()
@@ -1002,7 +1001,7 @@ func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul flo
 	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / s.sfx.freqmul)
-	resampler := beep.Resample(audioResampleQuality, srcRate, dstRate, s.sfx)
+	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), srcRate, dstRate, s.sfx)
 	s.ctrl = &beep.Ctrl{Streamer: resampler}
 	s.streamer.Seek(startPosition)
 

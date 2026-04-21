@@ -810,6 +810,73 @@ func NewIniSection() IniSection {
 	return IniSection(make(map[string]string))
 }
 
+// Replaces operators like "p1|p2" and "team*" with the appropriate single prefix like "p1"
+func resolveLifebarPrefixOperators(is IniSection, targetPrefix string, prefixBase string) IniSection {
+	// Fast path if no operators are used in the first place
+	hasOperators := false
+	for k := range is {
+		if strings.ContainsRune(k, '*') || strings.ContainsRune(k, '|') {
+			hasOperators = true
+			break
+		}
+	}
+	if !hasOperators {
+		return is
+	}
+
+	// If operators are used, use a temporary INI section so we can mutate it
+	out := NewIniSection()
+
+	// Normalize input strings just in case
+	targetPrefix = strings.ToLower(strings.TrimSpace(targetPrefix))
+	prefixBase = strings.ToLower(strings.TrimSpace(prefixBase))
+	targetPrefixNoDot := strings.TrimSuffix(targetPrefix, ".")
+
+	// Wildcard selector token
+	wildcardToken := prefixBase + "*"
+
+	// Helper to check if a grouped selector applies to the target
+	matchesTarget := func(selector string) bool {
+		selector = strings.ToLower(strings.TrimSpace(selector))
+		for _, token := range strings.Split(selector, "|") {
+			token = strings.TrimSpace(token)
+			if token == targetPrefixNoDot || token == wildcardToken {
+				return true
+			}
+		}
+		return false
+	}
+
+	// Iterate original section once and decide what to do per key
+	for k, v := range is {
+		kl := strings.ToLower(strings.TrimSpace(k))
+
+		// Split at first dot
+		dot := strings.IndexByte(kl, '.')
+		if dot <= 0 {
+			// No dot present at all. Keep as-is
+			out[kl] = v
+			continue
+		}
+
+		selector := strings.ToLower(strings.TrimSpace(kl[:dot]))
+
+		switch {
+		case selector == wildcardToken:
+			// Wildcard selector ("p*" to "p1")
+			out[targetPrefix+kl[dot+1:]] = v
+		case strings.Contains(selector, "|") && matchesTarget(selector):
+			// Grouped selector ("p1|p3|p5" to "p1")
+			out[targetPrefix+kl[dot+1:]] = v
+		default:
+			// Everything else is preserved as-is
+			out[kl] = v
+		}
+	}
+
+	return out
+}
+
 func ReadIniSection(lines []string, i *int) (
 	is IniSection, name string, subname string) {
 	for ; *i < len(lines); (*i)++ {

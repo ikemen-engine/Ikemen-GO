@@ -185,18 +185,19 @@ type Config struct {
 		EnableModelShadow       bool     `ini:"EnableModelShadow"`
 	} `ini:"Video"`
 	Sound struct {
-		SampleRate        int32   `ini:"SampleRate"`
-		SoundFont         string  `ini:"SoundFont"`
-		StereoEffects     bool    `ini:"StereoEffects"`
-		PanningRange      float32 `ini:"PanningRange"`
-		WavChannels       int32   `ini:"WavChannels"`
-		MasterVolume      int     `ini:"MasterVolume"`
-		PauseMasterVolume int     `ini:"PauseMasterVolume"`
-		WavVolume         int     `ini:"WavVolume"`
-		BGMVolume         int     `ini:"BGMVolume"`
-		BGMRAMBuffer      bool    `ini:"BGMRAMBuffer"`
-		MaxBGMVolume      int     `ini:"MaxBGMVolume"`
-		AudioDucking      bool    `ini:"AudioDucking"`
+		SampleRate           int32   `ini:"SampleRate"`
+		SoundFont            string  `ini:"SoundFont"`
+		StereoEffects        bool    `ini:"StereoEffects"`
+		PanningRange         float32 `ini:"PanningRange"`
+		WavChannels          int32   `ini:"WavChannels"`
+		MasterVolume         int     `ini:"MasterVolume"`
+		PauseMasterVolume    int     `ini:"PauseMasterVolume"`
+		WavVolume            int     `ini:"WavVolume"`
+		BGMVolume            int     `ini:"BGMVolume"`
+		BGMRAMBuffer         bool    `ini:"BGMRAMBuffer"`
+		MaxBGMVolume         int     `ini:"MaxBGMVolume"`
+		AudioDucking         bool    `ini:"AudioDucking"`
+		AudioResampleQuality int     `ini:"AudioResampleQuality"`
 	} `ini:"Sound"`
 	Arcade struct {
 		AI struct {
@@ -378,6 +379,7 @@ func (c *Config) normalize() {
 	c.SetValueUpdate("Input.SOCDResolution", int(Clamp(int32(c.Input.SOCDResolution), 0, 4)))
 	c.SetValueUpdate("Input.UiRepeatDelay", int(Max(int32(c.Input.UiRepeatDelay), 0)))
 	c.SetValueUpdate("Input.UiRepeatRate", int(Max(int32(c.Input.UiRepeatRate), 1)))
+	c.SetValueUpdate("Sound.AudioResampleQuality", Clamp(c.Sound.AudioResampleQuality, 1, 16))
 	c.SetValueUpdate("Sound.MaxBGMVolume", int(Clamp(int32(c.Sound.MaxBGMVolume), 100, 250)))
 	c.SetValueUpdate("Sound.PanningRange", Clamp(c.Sound.PanningRange, 0, 100))
 	c.SetValueUpdate("Sound.PauseMasterVolume", int(Clamp(int32(c.Sound.PauseMasterVolume), 0, 100)))

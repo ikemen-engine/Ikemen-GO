@@ -53,6 +53,11 @@ func (rs *RollbackSystem) hijackRunMatch(s *System) bool {
 			panic(err)
 		}
 
+		// Desync/disconnect callbacks may request a session abort outside the normal input path.
+		if s.esc {
+			break
+		}
+
 		// Sync speculative inputs and run a speculative frame
 		running = rs.runFrame(s)
 
@@ -62,7 +67,7 @@ func (rs *RollbackSystem) hijackRunMatch(s *System) bool {
 
 		rs.session.next = rs.session.now + 1000/60
 
-		if !running {
+		if s.esc || !running {
 			break
 		}
 
@@ -71,7 +76,7 @@ func (rs *RollbackSystem) hijackRunMatch(s *System) bool {
 		//rs.session.loopTimer.usToWaitThisLoop()
 		running = s.update()
 
-		if !running {
+		if s.esc || !running {
 			break
 		}
 	}
@@ -151,6 +156,10 @@ func (rs *RollbackSystem) runFrame(s *System) bool {
 	var buffer []byte
 	var ggpoerr error
 
+	if s.esc {
+		return false
+	}
+
 	if rs.session.syncTest && rs.session.netTime == 0 {
 		if rs.session.config.DesyncTestAI {
 			buffer = getAIInputs(0)
@@ -201,7 +210,7 @@ func (rs *RollbackSystem) runFrame(s *System) bool {
 			if err != nil {
 				panic(err)
 			}
-			if !keepRunning {
+			if s.esc || !keepRunning {
 				return false
 			}
 		}
@@ -732,7 +741,9 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		fmt.Println("EventCodeDisconnectedFromPeer")
 		sys.endMatch = true
 		r.SaveReplay()
-		sys.sessionWarning = fmt.Sprintf(sys.motif.WarningInfo.Text.Text["disconnect"], int(info.Player))
+		if sys.sessionWarning == "" {
+			sys.sessionWarning = fmt.Sprintf(sys.motif.WarningInfo.Text.Text["disconnect"], int(info.Player))
+		}
 	case ggpo.EventCodeTimeSync:
 		fmt.Printf("EventCodeTimeSync: FramesAhead %f TimeSyncPeriodInFrames: %d\n", info.FramesAhead, info.TimeSyncPeriodInFrames)
 		r.loopTimer.OnGGPOTimeSyncEvent(info.FramesAhead)
@@ -741,7 +752,8 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 			r.log.saveLogs()
 		}
 		fmt.Println("EventCodeDesync")
-		sys.endMatch = true
+		log.Printf("Rollback desync detected")
+		sys.esc = true
 		r.SaveReplay()
 		sys.sessionWarning = sys.motif.WarningInfo.Text.Text["desync"]
 	case ggpo.EventCodeConnectionInterrupted:

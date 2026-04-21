@@ -183,7 +183,7 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 			bgv.videoVol = &effects.Volume{Streamer: rs, Base: 2}
 			// Resample video audio to match engine output sample rate
 			dst := beep.SampleRate(sys.cfg.Sound.SampleRate)
-			resampler := beep.Resample(audioResampleQuality, bgv.audioSampleRate, dst, bgv.videoVol)
+			resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgv.audioSampleRate, dst, bgv.videoVol)
 			bgv.videoCtrl = &beep.Ctrl{Streamer: resampler, Paused: true} // start paused until SetPlaying(true)
 
 			WithSpeakerLock(func() {

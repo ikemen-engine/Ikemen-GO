@@ -5457,6 +5457,8 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 			v = BytecodeInt(e.anim.AnimTime())
 		case OC_ex2_explodvar_spriteplayerno:
 			v = BytecodeInt(int32(e.spritePN) + 1)
+		case OC_ex2_explodvar_bindid:
+			v = BytecodeInt(e.bindId)
 		case OC_ex2_explodvar_bindtime:
 			v = BytecodeInt(e.bindtime)
 		case OC_ex2_explodvar_drawpal_group:
@@ -7201,7 +7203,7 @@ func (c *Char) hitAdd(h int32) {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil {
 				t.receivedHits += h
-				c.addComboHits(h)
+				sys.fightScreen.addComboHits(c.teamside, h)
 				break
 			}
 		}
@@ -7212,20 +7214,11 @@ func (c *Char) hitAdd(h int32) {
 				// This is a bit of a workaround for backward compatibility only
 				if p[0].receivedHits != 0 || p[0].ss.moveType == MT_H {
 					p[0].receivedHits += h
-					c.addComboHits(h)
+					sys.fightScreen.addComboHits(c.teamside, h)
 				}
 			}
 		}
 	}
-}
-
-// We track the combo separately from the enemy's received hits
-// So that if partners take turns doing hits to different enemies the combo still adds up
-func (c *Char) addComboHits(n int32) {
-	if c.teamside != 0 && c.teamside != 1 {
-		return
-	}
-	sys.fightScreen.combos[c.teamside].trueHits += n
 }
 
 // Always appends to preserve insertion order
@@ -11001,7 +10994,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		if (ghvset || getter.csf(CSF_gethit)) && getter.hoverIdx < 0 &&
 			!(c.hitdef.air_type == HT_None && getter.ss.stateType == ST_A || getter.ss.stateType != ST_A && c.hitdef.ground_type == HT_None) {
 			getter.receivedHits += hd.numhits
-			c.addComboHits(hd.numhits)
+			sys.fightScreen.addComboHits(hd.teamside, hd.numhits)
 		}
 		if !math.IsNaN(float64(hd.score[0])) && !c.asf(ASF_noscore) {
 			c.scoreAdd(hd.score[0])

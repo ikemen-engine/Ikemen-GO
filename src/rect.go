@@ -25,6 +25,9 @@ func newFade() *Fade {
 }
 
 func (fa *Fade) reset() {
+	if fa == nil {
+		return
+	}
 	fa.active = false
 	fa.timeRemaining = 0
 	fa.totalTime = 0
@@ -35,6 +38,9 @@ func (fa *Fade) reset() {
 }
 
 func (fa *Fade) init(dest *Fade, isFadeIn bool) {
+	if fa == nil || dest == nil {
+		return
+	}
 	overlayTime := fa.time
 	animLen := int32(0)
 	if fa.animData != nil && fa.animData.anim != nil {
