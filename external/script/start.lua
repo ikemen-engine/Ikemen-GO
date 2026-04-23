@@ -286,6 +286,7 @@ end
 
 --sets lifebar elements, round time, rounds to win
 function start.f_setRounds(roundTime, t_rounds)
+	setMotifElements(main.motif)
 	setFightScreenElements(main.fightscreen)
 	-- Round time
 	local frames = fightScreenVar("time.framespercount")

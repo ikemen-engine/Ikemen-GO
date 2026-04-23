@@ -660,7 +660,7 @@ func (s *Storyboard) step() {
 	if endTime > 0 {
 		fadeLen := int32(0)
 		if sceneProps.FadeOut.FadeData != nil {
-			fadeLen = sceneProps.FadeOut.FadeData.time
+			fadeLen = sceneProps.FadeOut.FadeData.duration()
 		}
 		if fadeLen > 0 {
 			startFadeAt = endTime - fadeLen

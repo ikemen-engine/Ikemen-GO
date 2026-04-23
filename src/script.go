@@ -4340,6 +4340,10 @@ func systemScriptInit(l *lua.LState) {
 			process(user, false)
 			process(defs, true)
 
+			sort.SliceStable(final, func(i, j int) bool {
+				return strings.Count(final[i], "_") < strings.Count(final[j], "_")
+			})
+
 			t := l.NewTable()
 			for _, v := range final {
 				t.Append(lua.LString(v))

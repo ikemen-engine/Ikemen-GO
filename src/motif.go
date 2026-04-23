@@ -2978,6 +2978,9 @@ func (m *Motif) step() {
 
 // drawAspectBars renders black bars when the fight aspect and motif aspect differ.
 func (m *Motif) drawAspectBars() {
+	if !sys.shouldPersistMotifAspect() {
+		return
+	}
 	fightAspect := sys.getFightAspect()
 	motifAspect := sys.getMotifAspect()
 
@@ -3028,9 +3031,28 @@ func (m *Motif) drawAspectBars() {
 	}
 }
 
+func (m *Motif) shouldScopeMotifAspect() bool {
+	if sys.cfg.Video.KeepAspect || sys.skipMotifScaling() {
+		return false
+	}
+	return (m.me.active && sys.middleOfMatch()) ||
+		m.ch.active ||
+		m.di.active ||
+		m.vi.active ||
+		m.wi.active ||
+		m.hi.active ||
+		m.co.active
+}
+
 func (m *Motif) draw(layerno int16) {
+	if m.shouldScopeMotifAspect() {
+		prev := sys.captureAspectState()
+		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+		defer sys.restoreAspectState(prev)
+	}
 	// Draw black bars if fight aspect and motif aspect differ.
-	if layerno == 1 && (!sys.middleOfMatch() || m.me.active || m.di.active) && !sys.skipMotifScaling() {
+	if layerno == 1 && sys.shouldPersistMotifAspect() &&
+		(!sys.middleOfMatch() || m.me.active || m.di.active) {
 		m.drawAspectBars()
 	}
 	if m.ch.active {
@@ -3246,8 +3268,8 @@ func (me *MotifMenu) reset(m *Motif) {
 	me.initialized = false
 	me.endTimer = -1
 	me.closeRequested = false
-	if !m.di.active && !sys.skipMotifScaling() {
-		sys.applyFightAspect()
+	if !m.di.active {
+		sys.leaveMotifAspect()
 	}
 	if err := sys.luaLState.DoString("menuReset()"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
@@ -3328,9 +3350,7 @@ func (me *MotifMenu) init(m *Motif) {
 	if !openPressed {
 		return
 	}
-	if !sys.skipMotifScaling() {
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	}
+	sys.enterMotifAspect()
 
 	if err := sys.luaLState.DoString("menuInit()"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
@@ -3401,9 +3421,7 @@ func (ch *MotifChallenger) reset(m *Motif) {
 	ch.initialized = false
 	ch.endTimer = -1
 	ch.controllerNo = -1
-	//if !sys.skipMotifScaling() {
-	//	sys.applyFightAspect()
-	//}
+	//sys.leaveMotifAspect()
 }
 
 func (ch *MotifChallenger) init(m *Motif) {
@@ -3417,9 +3435,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 	ch.controllerNo = controllerNo
-	//if !sys.skipMotifScaling() {
-	//	sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	//}
+	//sys.enterMotifAspect()
 
 	if err := sys.luaLState.DoString("hook.run('game.challenger_init')"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger_init", err.Error())
@@ -3455,7 +3471,7 @@ func (ch *MotifChallenger) step(m *Motif) {
 	sys.setGSF(GSF_nomusic)
 	sys.setGSF(GSF_timerfreeze)
 	if ch.counter == m.ChallengerInfo.Pause.Time {
-		sys.pausetime = m.ChallengerInfo.Time + m.ChallengerInfo.FadeOut.Time
+		sys.pausetime = m.ChallengerInfo.Time + m.ChallengerInfo.FadeOut.FadeData.duration()
 	}
 	if ch.counter == m.ChallengerInfo.Snd.Time {
 		m.Snd.play(m.ChallengerInfo.Snd.Snd, 100, 0, 0, 0, 0)
@@ -3531,9 +3547,7 @@ func (co *MotifContinue) reset(m *Motif) {
 	co.endTimer = -1
 	co.waitTimer = 0
 	co.showEndAnim = false
-	if !sys.skipMotifScaling() {
-		sys.applyFightAspect()
-	}
+	sys.leaveMotifAspect()
 }
 
 func (co *MotifContinue) extractAndSortKeysDescending(m *Motif) []string {
@@ -3564,9 +3578,7 @@ func (co *MotifContinue) init(m *Motif) {
 		co.initialized = true
 		return
 	}
-	if !sys.skipMotifScaling() {
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	}
+	sys.enterMotifAspect()
 	if err := sys.luaLState.DoString("hook.run('game.continue_init')"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.continue_init", err.Error())
 	}
@@ -4175,9 +4187,7 @@ func (di *MotifDialogue) reset(m *Motif) {
 		}
 	}
 
-	//if !sys.skipMotifScaling() {
-	//	sys.applyFightAspect()
-	//}
+	//sys.leaveMotifAspect()
 }
 
 func (di *MotifDialogue) clear(m *Motif) {
@@ -4197,9 +4207,7 @@ func (di *MotifDialogue) clear(m *Motif) {
 	if m.DialogueInfo.P2.Face.Active.AnimData != nil {
 		m.DialogueInfo.P2.Face.Active.AnimData.anim = nil
 	}
-	if !sys.skipMotifScaling() {
-		sys.applyFightAspect()
-	}
+	sys.leaveMotifAspect()
 }
 
 func (di *MotifDialogue) initDefaults(m *Motif) {
@@ -4296,9 +4304,7 @@ func (di *MotifDialogue) init(m *Motif, matchEnd bool) {
 	if matchEnd && sys.fightScreen.round.fadeOut.isActive() {
 		sys.fightScreen.round.fadeOut.reset()
 	}
-	if !sys.skipMotifScaling() {
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	}
+	sys.enterMotifAspect()
 
 	lines, pn, _ := di.getDialogueLines()
 	di.char = sys.chars[pn-1][0]
@@ -5804,9 +5810,7 @@ func (vi *MotifVictory) reset(m *Motif) {
 	m.VictoryScreen.WinQuote.TextSpriteData.textDelay = 0
 	vi.endTimer = -1
 	vi.clear(m)
-	if !sys.skipMotifScaling() {
-		sys.applyFightAspect()
-	}
+	sys.leaveMotifAspect()
 }
 
 func (vi *MotifVictory) clearProps(props *PlayerVictoryProperties) {
@@ -6093,9 +6097,7 @@ func (vi *MotifVictory) init(m *Motif) {
 		}
 	}
 
-	if !sys.skipMotifScaling() {
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	}
+	sys.enterMotifAspect()
 
 	//fmt.Printf("[Victory] init: enabled=%v winnerTeam=%d cpu.enabled=%v p1.num=%d p2.num=%d\n", m.VictoryScreen.Enabled, sys.winnerTeam(), m.VictoryScreen.Cpu.Enabled, m.VictoryScreen.P1.Num, m.VictoryScreen.P2.Num)
 
@@ -6534,9 +6536,7 @@ type MotifWin struct {
 func (wi *MotifWin) assignStates(p1States, p2States [4][]int32) {
 	wi.p1States = p1States
 	wi.p2States = p2States
-	if !sys.skipMotifScaling() {
-		sys.applyFightAspect()
-	}
+	sys.leaveMotifAspect()
 }
 
 func (wi *MotifWin) reset(m *Motif) {
@@ -6586,9 +6586,7 @@ func (wi *MotifWin) init(m *Motif) {
 		wi.initialized = true
 		return
 	}
-	if !sys.skipMotifScaling() {
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	}
+	sys.enterMotifAspect()
 
 	if !wi.soundsEnabled {
 		sys.clearAllSound()
@@ -6714,7 +6712,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 	wi.soundsEnabled = rs.Sounds.Enabled
 	wi.keyCancel = rs.Cancel.Key
 	wi.time = rs.Show.Time
-	wi.fadeOutTime = rs.FadeOut.Time
+	wi.fadeOutTime = rs.FadeOut.FadeData.duration()
 	wi.fadeIn = rs.FadeIn.FadeData
 	wi.fadeOut = rs.FadeOut.FadeData
 	return true
@@ -6741,7 +6739,7 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 
 	wi.keyCancel = m.WinScreen.Cancel.Key
 	wi.time = m.WinScreen.Pose.Time
-	wi.fadeOutTime = m.WinScreen.FadeOut.Time
+	wi.fadeOutTime = m.WinScreen.FadeOut.FadeData.duration()
 	wi.fadeIn = m.WinScreen.FadeIn.FadeData
 	wi.fadeOut = m.WinScreen.FadeOut.FadeData
 	return true

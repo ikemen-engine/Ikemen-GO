@@ -140,6 +140,7 @@ type bgMusic struct {
 	bgmstartposition int32
 	bgmfreqmul       float32
 	bgmloopcount     int32
+	selected         bool
 }
 
 func newBgMusic() *bgMusic {
@@ -193,6 +194,61 @@ func (m Music) Override(other Music) {
 // flattens dotted prefixes to underscore form, matching parseMusicSection.
 func normalizeMusicPrefix(prefix string) string {
 	return strings.ReplaceAll(prefix, ".", "_")
+}
+
+func musicKeyPrefix(key string) string {
+	prefix := key
+	kl := strings.ToLower(key)
+	anchors := []string{".bgmusic", ".music", ".bgm"}
+	best := -1
+	for _, a := range anchors {
+		if i := strings.LastIndex(kl, a); i > best {
+			best = i
+		}
+	}
+	if best >= 0 {
+		prefix = key[:best]
+	}
+	return normalizeMusicPrefix(prefix)
+}
+
+func (m Music) ClearSelection() {
+	for _, lst := range m {
+		for _, bg := range lst {
+			if bg != nil {
+				bg.selected = false
+			}
+		}
+	}
+}
+
+// pinSelection chooses one candidate for automatic in-match playback and keeps
+// that choice across round resets. The merged cgi music map is rebuilt every
+// round, so the flag lives on the shared source bgMusic entry.
+func (m Music) pinSelection(key string) {
+	prefix := musicKeyPrefix(key)
+	lst := m[prefix]
+	if len(lst) < 2 {
+		return
+	}
+	for _, bg := range lst {
+		if bg != nil && bg.selected {
+			m[prefix] = []*bgMusic{bg}
+			return
+		}
+	}
+	idx := int(RandI(0, int32(len(lst))-1))
+	bg := lst[idx]
+	if bg == nil {
+		return
+	}
+	for _, v := range lst {
+		if v != nil {
+			v.selected = false
+		}
+	}
+	bg.selected = true
+	m[prefix] = []*bgMusic{bg}
 }
 
 // AppendParams parses comma-separated "key=value" pairs (as passed from
@@ -294,19 +350,7 @@ func (m Music) Read(key, def string) (string, int, int, int, int, int, float32, 
 	var freqmul float32 = 1.0
 	//fmt.Printf("[music] Read: key='%s' def='%s'\n", key, def)
 	// Support dotted prefixes by only stripping a suffix when the key actually targets a music field.
-	prefix := key
-	kl := strings.ToLower(key)
-	anchors := []string{".bgmusic", ".music", ".bgm"}
-	best := -1
-	for _, a := range anchors {
-		if i := strings.LastIndex(kl, a); i > best {
-			best = i
-		}
-	}
-	if best >= 0 {
-		prefix = key[:best]
-	}
-	prefix = normalizeMusicPrefix(prefix)
+	prefix := musicKeyPrefix(key)
 	if len(m[prefix]) > 0 {
 		idx := int(RandI(0, int32(len(m[prefix]))-1))
 		bgm = SearchFile(m[prefix][idx].bgmusic, []string{def, "", "sound/"})
@@ -324,6 +368,7 @@ func (m Music) Read(key, def string) (string, int, int, int, int, int, float32, 
 
 // Play opens the chosen track in the global BGM player.
 func (m Music) Play(key, path string) bool {
+	m.pinSelection(key)
 	track, loop, volume, loopstart, loopend, startposition, freqmul, loopcount := m.Read(key, path)
 	//fmt.Printf("[music] Play: key='%s' def='%s' -> track='%s'\n", key, path, track)
 

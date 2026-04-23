@@ -706,7 +706,7 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		hitflag:            int32(HF_H | HF_L | HF_A | HF_F),
 		guardflag:          0,
 		affectteam:         1,
-		teamside:           -2,
+		teamside:           c.teamside,
 		animtype:           RA_Light,
 		air_animtype:       RA_Unknown,
 		priority:           4,
@@ -974,10 +974,6 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	}
 	if !math.IsNaN(float64(hd.snap[2])) {
 		hd.maxdist[2], hd.mindist[2] = hd.snap[2], hd.snap[2]
-	}
-
-	if hd.teamside < -1 || hd.teamside > 1 {
-		hd.teamside = c.teamside
 	}
 
 	if hd.p2clsncheck < 0 {

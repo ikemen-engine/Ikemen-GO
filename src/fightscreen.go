@@ -3128,7 +3128,7 @@ func readFightScreenRound(is IniSection,
 }
 
 func (ro *FightScreenRound) overTime() int32 {
-	return Max(ro.over_time, ro.fadeOut.time)
+	return Max(ro.over_time, ro.fadeOut.duration())
 }
 
 // Check is sys.intro timer should step

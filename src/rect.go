@@ -37,27 +37,58 @@ func (fa *Fade) reset() {
 	}
 }
 
+func (fa *Fade) animLength() int32 {
+	if fa == nil || fa.animData == nil || fa.animData.anim == nil {
+		return 0
+	}
+	return fa.animData.GetLength()
+}
+
+func (fa *Fade) colorFadeTime(animLen int32) int32 {
+	if fa == nil {
+		return 0
+	}
+	t := fa.time
+	if t == 1 && animLen > 0 {
+		t = animLen
+	}
+	if t < 0 {
+		return 0
+	}
+	return t
+}
+
+func (fa *Fade) duration() int32 {
+	if fa == nil {
+		return 0
+	}
+	animLen := fa.animLength()
+	total := fa.colorFadeTime(animLen)
+	if animLen > total {
+		total = animLen
+	}
+	return total
+}
+
 func (fa *Fade) init(dest *Fade, isFadeIn bool) {
 	if fa == nil || dest == nil {
 		return
 	}
-	overlayTime := fa.time
-	animLen := int32(0)
-	if fa.animData != nil && fa.animData.anim != nil {
-		animLen = fa.animData.GetLength()
+	animLen := fa.animLength()
+	overlayTime := fa.colorFadeTime(animLen)
+	totalTime := overlayTime
+	if animLen > totalTime {
+		totalTime = animLen
 	}
-	if overlayTime <= 1 && animLen > 0 { // keep old "anim length drives fade time" behavior for time <= 1
-		overlayTime = animLen
+	if totalTime <= 0 {
+		dest.reset()
+		return
 	}
-
 	*dest = *fa
 	dest.time = overlayTime
-	dest.totalTime = overlayTime
-	if animLen > dest.totalTime {
-		dest.totalTime = animLen
-	}
+	dest.totalTime = totalTime
 	dest.overlayDelay = 0
-	if !isFadeIn && animLen > overlayTime {
+	if !isFadeIn && overlayTime > 0 && animLen > overlayTime {
 		// Let fadeout anim finish on the same frame as the color fade.
 		dest.overlayDelay = animLen - overlayTime
 	}
@@ -65,13 +96,16 @@ func (fa *Fade) init(dest *Fade, isFadeIn bool) {
 	dest.isFadeIn = isFadeIn
 	dest.active = true
 	dest.timeRemaining = dest.totalTime
+	if dest.animData != nil {
+		dest.animData.Reset()
+	}
 }
 
 func (fa *Fade) step() {
 	if !fa.active || (sys.gameRunning && !sys.tickFrame() && !sys.motif.me.active) {
 		return
 	}
-	if fa.time == fa.timeRemaining && fa.snd[0] != -1 && fa.snd[1] != -1 {
+	if fa.timeRemaining == fa.totalTime && fa.snd[0] != -1 && fa.snd[1] != -1 {
 		sys.motif.Snd.play(fa.snd, 100, 0, 0, 0, 0)
 	}
 
@@ -114,20 +148,8 @@ func (fa *Fade) draw() {
 	}
 }
 
-// True while the fade still has progression remaining.
-// Use this for transition/policy logic, not for drawing.
-func (fa *Fade) isTransitioning() bool {
-	return fa != nil && fa.isFading() && fa.timeRemaining > 0
-}
-
-// True while the color fade is scheduled or visible.
-// Unlike isActive(), this ignores any trailing anim-only time after fade-in completes.
 func (fa *Fade) isFading() bool {
-	if fa == nil || !fa.active || fa.time <= 0 {
-		return false
-	}
-	elapsed := fa.totalTime - fa.timeRemaining - fa.overlayDelay
-	return elapsed <= fa.time
+	return fa != nil && fa.isActive() && fa.timeRemaining > 0
 }
 
 func (fa *Fade) isActive() bool {
@@ -170,7 +192,7 @@ func startFadeOut(tmpl *Fade, dest *Fade, overrideBlack bool, policy FadeStartPo
 
 	// FadeStop semantics:
 	// If this is an explicit user interruption OR a fade-in is active, cut immediately.
-	if policy == FadeStop && (overrideBlack || (fi != nil && fi.isTransitioning())) {
+	if policy == FadeStop && (overrideBlack || (fi != nil && fi.isFading())) {
 		if fi != nil {
 			fi.reset()
 		}
@@ -187,7 +209,7 @@ func startFadeOut(tmpl *Fade, dest *Fade, overrideBlack bool, policy FadeStartPo
 	}
 
 	// If no fade-in is active, all policies behave the same here: start now.
-	if fi == nil || !fi.isTransitioning() {
+	if fi == nil || !fi.isFading() {
 		startFresh()
 		return
 	}
