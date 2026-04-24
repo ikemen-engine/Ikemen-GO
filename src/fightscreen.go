@@ -3155,6 +3155,7 @@ func (ro *FightScreenRound) act() bool {
 		}
          if !sys.motif.di.active && !sys.dialogueBarsFlg && sys.dialogueForce == 0 {
 		        ro.roundDisplayPhase = 2
+            if ro.shutterTimer < ro.shutter_time {
                 ro.fightDisplayTimer = ro.callfight_time-1
                 sys.intro = 1
 		    for i, p := range sys.chars {
@@ -3165,6 +3166,7 @@ func (ro *FightScreenRound) act() bool {
                     }
 			    }
             }
+        }
 		ro.shutterTimer--
 	}
 
