@@ -447,7 +447,6 @@ var triggerMap = map[string]int{
 	"projvar":            1,
 	"rad":                1,
 	"randomrange":        1,
-	"ratiolevel":         1,
 	"receiveddamage":     1,
 	"receivedhits":       1,
 	"redlife":            1,
@@ -4619,6 +4618,8 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_gamevar_persistmusic
 		case "persistrounds":
 			opc = OC_ex2_gamevar_persistrounds
+		case "hidebars":
+			opc = OC_ex2_gamevar_hidebars
 		default:
 			return bvNone(), Error("Invalid GameVar argument: " + svname)
 		}
@@ -5031,8 +5032,6 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_ex_, OC_ex_playernoexist)
-	case "ratiolevel":
-		out.append(OC_ex_, OC_ex_ratiolevel)
 	case "receiveddamage":
 		out.append(OC_ex_, OC_ex_receiveddamage)
 	case "receivedhits":

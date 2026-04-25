@@ -228,47 +228,18 @@ end
 -- Allows hooking additional code into existing functions, from within external
 -- modules, without having to worry as much about your code being removed by
 -- engine update.
--- * hook.run(list, ...): Runs all the functions within a certain list.
---   It won't do anything if the list doesn't exist or is empty. ... is any
---   number of arguments, which will be passed to every function in the list.
--- * hook.add(list, name, function): Adds a function to a hook list with a name.
---   It will replace anything in the list with the same name.
--- * hook.stop(list, name): Removes a hook from a list, if it's not needed.
--- Currently there are only few hooks available by default:
--- * loop: global.lua 'loop' function start (called by CommonLua)
--- * loop#[gamemode]: global.lua 'loop' function, limited to the gamemode
--- * main.f_commandLine: main.lua 'f_commandLine' function (before loading)
--- * main.f_default: main.lua 'f_default' function
--- * main.t_itemname: main.lua table entries (modes configuration)
--- * main.menu.loop: main.lua menu loop function (each submenu loop start)
--- * menu.menu.loop: menu.lua menu loop function (each submenu loop start)
--- * options.menu.loop: options.lua menu loop function (each submenu loop start)
--- * launchFight: start.lua 'launchFight' function (right before match starts)
--- * start.f_selectScreen: start.lua 'f_selectScreen' function (pre layerno=1)
--- * start.f_selectVersus: start.lua 'f_selectVersus' function (pre layerno=1)
--- * start.f_selectReset: start.lua 'f_selectReset' function (before returning)
--- * game.result_init: hook executed on the 1st frame of win/results screen
--- * game.result: hook executed from 2nd frame onward on win/results screen
--- * game.victory_init: hook executed on the 1st frame of victory screen
--- * game.victory: hook executed from 2nd frame onward on victory screen
--- * game.continue_init: hook executed on the 1st frame of continue screen
--- * game.continue: hook executed at the 2nd and later frames of continue screen
--- * game.hiscore_init: hook executed on the 1st frame of hiscore screen
--- * game.hiscore: hook executed from 2nd frame onward on hiscore screen
--- * game.challenger_init: hook executed on the 1st frame of challenger screen
--- * game.challenger: hook executed from 2nd frame onward on challenger screen
--- More entry points may be added in future - let us know if your external
--- module needs to hook code in place where it's not allowed yet.
-
+-- https://github.com/ikemen-engine/Ikemen-GO/wiki/lua#hook-system
 hook = {
 	lists = {}
 }
+
 function hook.add(list, name, func)
 	if hook.lists[list] == nil then
 		hook.lists[list] = {}
 	end
 	hook.lists[list][name] = func
 end
+
 function hook.run(list, ...)
 	if hook.lists[list] then
 		for i, k in pairs(hook.lists[list]) do
@@ -276,6 +247,18 @@ function hook.run(list, ...)
 		end
 	end
 end
+
+function hook.runFirst(list, ...)
+	if hook.lists[list] then
+		for _, k in pairs(hook.lists[list]) do
+			local ret = k(...)
+			if ret ~= nil then
+				return ret
+			end
+		end
+	end
+end
+
 function hook.stop(list, name)
 	hook.lists[list][name] = nil
 end
@@ -378,6 +361,136 @@ function main.f_tableMerge(t1, t2, key)
 		end
 	end
 	return t1
+end
+
+-- Appends an itemname entry, or a whole submenu tree, to an already parsed motif menu table.
+-- Existing motif entries win: if the same itemname already exists, nothing is overwritten.
+function main.f_appendItemname(menu, parent, name, src, before)
+	local function itemnameExists(t, name)
+		name = tostring(name or '')
+		if type(t) ~= 'table' or name == 'back' or name:match('^spacer%d*$') then
+			return false
+		end
+		local pat = '_' .. main.f_escapePattern(name) .. '$'
+		local stack = { t }
+		while #stack > 0 do
+			local cur = stack[#stack]
+			stack[#stack] = nil
+
+			for k, v in pairs(cur) do
+				if type(k) == 'string' and not k:match('^__') and (k == name or k:match(pat)) then
+					return true
+				end
+
+				if type(v) == 'table' then
+					stack[#stack + 1] = v
+				end
+			end
+		end
+		return false
+	end
+
+	local function itemnameValue(src)
+		if type(src) == 'table' then
+			return src.__value
+		end
+		return src
+	end
+
+	local function itemnameOrderedKeys(src)
+		local ret, seen = {}, {}
+		if type(src.__order) == 'table' then
+			for _, k in ipairs(src.__order) do
+				if type(k) == 'string' and src[k] ~= nil and not k:match('^__') then
+					table.insert(ret, k)
+					seen[k] = true
+				end
+			end
+		end
+		local rest = {}
+		for k in pairs(src) do
+			if type(k) == 'string' and not k:match('^__') and not seen[k] then
+				table.insert(rest, k)
+			end
+		end
+		table.sort(rest)
+		for _, k in ipairs(rest) do
+			table.insert(ret, k)
+		end
+		return ret
+	end
+
+	local function insertItemnameOrder(order, key, before)
+		if type(order) ~= 'table' then
+			return
+		end
+		for _, v in ipairs(order) do
+			if v == key then
+				return
+			end
+		end
+		local pos = #order + 1
+		if before ~= nil and before ~= '' then
+			local anchor = tostring(before)
+			if not anchor:find('_', 1, true) then
+				local parent = tostring(key):match('^(.*)_')
+				if parent ~= nil and parent ~= '' then
+					anchor = parent .. '_' .. anchor
+				end
+			end
+			for i, v in ipairs(order) do
+				if v == anchor then
+					pos = i
+					break
+				end
+			end
+		end
+		table.insert(order, pos, key)
+	end
+
+	if type(menu) ~= 'table' or type(menu.itemname) ~= 'table' or type(menu.itemname_order) ~= 'table' then
+		return false
+	end
+	parent = parent or ''
+	name = tostring(name or '')
+	if name == '' or src == nil then
+		return false
+	end
+
+	-- Grouped itemname tables, used by select_info.teammenu.itemname.default.
+	if type(menu.itemname[parent]) == 'table' and type(menu.itemname_order[parent]) == 'table' then
+		if menu.itemname[parent][name] ~= nil or itemnameExists(menu.itemname, name) then
+			return false
+		end
+		local value = itemnameValue(src)
+		if value == nil then
+			return false
+		end
+		menu.itemname[parent][name] = value
+		insertItemnameOrder(menu.itemname_order[parent], name, before)
+		return true
+	end
+
+	-- Flat itemname tables, used by normal motif menus.
+	local key = name
+	if parent ~= '' then
+		key = parent .. '_' .. name
+	end
+	if menu.itemname[key] ~= nil or itemnameExists(menu.itemname, name) then
+		return false
+	end
+	local value = itemnameValue(src)
+	if value == nil then
+		return false
+	end
+	menu.itemname[key] = value
+	insertItemnameOrder(menu.itemname_order, key, before)
+	if type(src) == 'table' then
+		for _, child in ipairs(itemnameOrderedKeys(src)) do
+			main.f_appendItemname(menu, key, child, src[child])
+		end
+	end
+	return true
 end
 
 --returns bool if table contains value
@@ -574,12 +687,7 @@ function main.f_commandLine()
 			if flags['-p' .. num .. '.guardPoints'] ~= nil then
 				t[#t].override['guardpoints'] = tonumber(flags['-p' .. num .. '.guardPoints'])
 			end
-			if flags['-p' .. num .. '.lifeRatio'] ~= nil then
-				t[#t].override['liferatio'] = tonumber(flags['-p' .. num .. '.lifeRatio'])
-			end
-			if flags['-p' .. num .. '.attackRatio'] ~= nil then
-				t[#t].override['attackratio'] = tonumber(flags['-p' .. num .. '.attackRatio'])
-			end
+			hook.run("main.f_commandLine.player", t[#t], flags, num, player)
 			refresh()
 		elseif k:match('^-tmode1$') then
 			t_teamMode[1] = tonumber(v)
@@ -681,7 +789,7 @@ function main.f_commandLine()
 			})
 		end
 	end
-	hook.run("main.f_commandLine")
+	hook.run("main.f_commandLine", t, flags, t_teamMode, t_numChars, t_matchWins, t_params)
 	if flags['-ip'] ~= nil then
 		enterNetPlay(flags['-ip'])
 		while not connected() do
@@ -895,11 +1003,12 @@ function main.f_addChar(line, playable, loading, slot)
 			main.t_selChars[row] = main.f_tableMerge(main.t_selChars[row], t_info)
 			main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
 			if playable then
-				for _, v in ipairs({'intro', 'ending', 'arcadepath', 'ratiopath'}) do
+				for _, v in ipairs({'intro', 'ending', 'arcadepath'}) do
 					if main.t_selChars[row][v] ~= '' then
 						main.t_selChars[row][v] = searchFile(main.t_selChars[row][v], {main.t_selChars[row].dir, '', motif.def, 'data/'})
 					end
 				end
+				hook.run("main.f_addChar.files", main.t_selChars[row])
 				main.t_selChars[row].order = 1
 			end
 		else
@@ -1243,26 +1352,8 @@ for line in content:gmatch('[^\r\n]+') do
 			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
 				main.t_selOptions[rowName .. 'maxmatches'][i] = tonumber(c)
 			end
-		elseif lineCase:match('%.ratiomatches%s*=') then
-			local rowName, line = lineCase:match('^%s*(.-)%.ratiomatches%s*=%s*(.+)')
-			rowName = rowName:gsub('%.', '_')
-			main.t_selOptions[rowName .. 'ratiomatches'] = {}
-			for i, c in ipairs(main.f_strsplit(',', line:gsub('%s*(.-)%s*', '%1'))) do --split using "," delimiter
-				local rmin, rmax, order = c:match('^%s*([0-9]+)-?([0-9]*)%s*:%s*([0-9]+)%s*$')
-				rmin = tonumber(rmin)
-				rmax = tonumber(rmax) or rmin
-				order = tonumber(order)
-				if rmin == nil or order == nil or rmin < 1 or rmin > 4 or rmax < 1 or rmax > 4 or rmin > rmax then
-					main.f_warning(motif.warning_info.text.text.ratio, motif.title_info, motif.titlebgdef)
-					main.t_selOptions[rowName .. 'ratiomatches'] = nil
-					break
-				end
-				if rmax == '' then
-					rmax = rmin
-				end
-				table.insert(main.t_selOptions[rowName .. 'ratiomatches'], {rmin = rmin, rmax = rmax, order = order})
-			end
 		end
+		hook.run("main.selectDef.options", main.t_selOptions, lineCase)
 	elseif section == 4 then --[StoryMode]
 		local param, value = line:match('^%s*(.-)%s*=%s*(.-)%s*$')
 		if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
@@ -1358,22 +1449,13 @@ function main.f_updateSelectableStages()
 end
 main.f_updateSelectableStages()
 
---add default maxmatches / ratiomatches values if config is missing in select.def
+--add default maxmatches values if config is missing in select.def
 if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.teammaxmatches == nil then main.t_selOptions.teammaxmatches = {4, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.timeattackmaxmatches == nil then main.t_selOptions.timeattackmaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
 if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalmaxmatches = {-1, 0, 0, 0, 0, 0, 0, 0, 0, 0} end
-if main.t_selOptions.arcaderatiomatches == nil then
-	main.t_selOptions.arcaderatiomatches = {
-		{rmin = 1, rmax = 3, order = 1},
-		{rmin = 3, rmax = 3, order = 1},
-		{rmin = 2, rmax = 2, order = 1},
-		{rmin = 2, rmax = 2, order = 1},
-		{rmin = 1, rmax = 1, order = 2},
-		{rmin = 3, rmax = 3, order = 1},
-		{rmin = 1, rmax = 2, order = 3},
-	}
-end
+
+hook.run("main.selectDef.defaults", main.t_selOptions)
 
 --uppercase title
 function main.f_itemnameUpper(title, uppercase)
@@ -1532,8 +1614,8 @@ function main.f_default()
 	main.stageOrder = false --if select.def stage order param should be used
 	main.storyboard = {intro = false, ending = false, credits = false, gameover = false} --which storyboards should be active
 	main.teamMenu = {
-		{ratio = false, simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P1 side
-		{ratio = false, simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P2 side
+		{simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P1 side
+		{simul = false, single = false, tag = false, turns = false}, --which team modes should be selectable by P2 side
 	}
 	resetAILevel()
 	resetRemapInput()
@@ -1593,25 +1675,22 @@ main.t_itemname = {
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.arcade)
 			main.teamarcade = false
 		else --teamarcade
-			main.teamMenu[1].ratio = true
 			main.teamMenu[1].simul = true
 			main.teamMenu[1].single = true
 			main.teamMenu[1].tag = true
 			main.teamMenu[1].turns = true
-			main.teamMenu[2].ratio = true
 			main.teamMenu[2].simul = true
 			main.teamMenu[2].single = true
 			main.teamMenu[2].tag = true
 			main.teamMenu[2].turns = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.teamarcade)
 			main.teamarcade = true
-			
 		end
 		main.f_setCredits()
 		remapInput(1, getLastInputController())
 		remapInput(getLastInputController(), 1)
 		setGameMode('arcade')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		if start.challenger == 0 then
 			return start.f_selectMode
 		end
@@ -1633,15 +1712,16 @@ main.t_itemname = {
 		remapInput(1, getLastInputController())
 		remapInput(getLastInputController(), 1)
 		setGameMode('bonus')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--DEMO
-	['demo'] = function()
+	['demo'] = function(t, item)
+		hook.run("main.t_itemname", t, item)
 		return main.f_demoStart
 	end,
 	--FREE BATTLE (QUICK VS)
-	['freebattle'] = function()
+	['freebattle'] = function(t, item)
 		--main.fightscreen.p1score = true
 		--main.fightscreen.p2ailevel = true
 		main.motif.vsscreen = true
@@ -1650,12 +1730,10 @@ main.t_itemname = {
 		main.orderSelect[2] = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
-		main.teamMenu[1].ratio = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
 		main.teamMenu[1].tag = true
 		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -1664,7 +1742,7 @@ main.t_itemname = {
 		remapInput(1, getLastInputController())
 		remapInput(getLastInputController(), 1)
 		setGameMode('freebattle')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--JOIN (NEW ADDRESS)
@@ -1697,10 +1775,11 @@ main.t_itemname = {
 		else
 			sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
 		end
+		hook.run("main.t_itemname", t, item)
 		return t
 	end,
 	--NETPLAY SURVIVAL
-	['netplaysurvivalcoop'] = function()
+	['netplaysurvivalcoop'] = function(t, item)
 		main.aiRamp = true
 		main.charparam.ai = true
 		main.charparam.music = true
@@ -1729,18 +1808,17 @@ main.t_itemname = {
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.netplaysurvivalcoop)
 		setGameMode('netplaysurvivalcoop')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--NETPLAY CO-OP
-	['netplayteamcoop'] = function()
+	['netplayteamcoop'] = function(t, item)
 		main.aiRamp = true
 		main.charparam.ai = true
 		main.charparam.arcadepath = true
@@ -1769,7 +1847,6 @@ main.t_itemname = {
 		main.storyboard.intro = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -1777,11 +1854,11 @@ main.t_itemname = {
 		main.f_setCredits()
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.netplayteamcoop)
 		setGameMode('netplayteamcoop')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--NETPLAY VERSUS
-	['netplayversus'] = function()
+	['netplayversus'] = function(t, item)
 		main.cpuSide[2] = false
 		--main.fightscreen.p1wincount = true
 		--main.fightscreen.p2wincount = true
@@ -1791,12 +1868,10 @@ main.t_itemname = {
 		main.orderSelect[2] = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
-		main.teamMenu[1].ratio = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
 		main.teamMenu[1].tag = true
 		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -1804,28 +1879,30 @@ main.t_itemname = {
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.netplayversus)
 		setGameMode('netplayversus')
 		setHomeTeam(1)
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--OPTIONS
-	['options'] = function()
-		hook.run("main.t_itemname")
+	['options'] = function(t, item)
+		hook.run("main.t_itemname", t, item)
 		return options.menu.loop
 	end,
 	--RANDOMTEST
-	['randomtest'] = function()
+	['randomtest'] = function(t, item)
 		setGameMode('randomtest')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return main.f_randomtest
 	end,
 	--REPLAY
-	['replay'] = function()
+	['replay'] = function(t, item)
+		hook.run("main.t_itemname", t, item)
 		return main.f_replay
 	end,
 	--SERVER CONNECT
 	['serverconnect'] = function(t, item)
 		local doneSnd = motif[main.group].cursor.done.snd.serverconnect or motif[main.group].cursor.done.snd.default
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
+		hook.run("main.t_itemname", t, item)
 		if main.f_connect(gameOption('Netplay.IP.' .. t[item].displayname), t[item].displayname) then
 			if synchronize() then
 				enterSyncedNetplayMenu()
@@ -1841,6 +1918,7 @@ main.t_itemname = {
 	['serverhost'] = function(t, item)
 		local doneSnd = motif[main.group].cursor.done.snd.serverhost or motif[main.group].cursor.done.snd.default
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
+		hook.run("main.t_itemname", t, item)
 		if main.f_connect("", gameOption('Netplay.ListenPort')) then
 			if synchronize() then
 				enterSyncedNetplayMenu()
@@ -1865,11 +1943,11 @@ main.t_itemname = {
 		remapInput(1, getLastInputController())
 		remapInput(getLastInputController(), 1)
 		setGameMode(t[item].itemname)
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--SURVIVAL
-	['survival'] = function()
+	['survival'] = function(t, item)
 		main.aiRamp = true
 		main.charparam.ai = true
 		main.charparam.music = true
@@ -1898,12 +1976,10 @@ main.t_itemname = {
 		main.stageMenu = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
-		main.teamMenu[1].ratio = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
 		main.teamMenu[1].tag = true
 		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -1912,11 +1988,11 @@ main.t_itemname = {
 		remapInput(1, getLastInputController())
 		remapInput(getLastInputController(), 1)
 		setGameMode('survival')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--SURVIVAL CO-OP
-	['survivalcoop'] = function()
+	['survivalcoop'] = function(t, item)
 		main.aiRamp = true
 		main.charparam.ai = true
 		main.charparam.music = true
@@ -1946,18 +2022,17 @@ main.t_itemname = {
 		main.storyboard.gameover = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.survivalcoop)
 		setGameMode('survivalcoop')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--TEAM CO-OP
-	['teamcoop'] = function()
+	['teamcoop'] = function(t, item)
 		main.aiRamp = true
 		main.charparam.ai = true
 		main.charparam.arcadepath = true
@@ -1987,7 +2062,6 @@ main.t_itemname = {
 		main.storyboard.intro = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].tag = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -1995,11 +2069,11 @@ main.t_itemname = {
 		main.f_setCredits()
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.teamcoop)
 		setGameMode('teamcoop')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--TIME ATTACK
-	['timeattack'] = function()
+	['timeattack'] = function(t, item)
 		main.aiRamp = true
 		main.charparam.ai = true
 		main.charparam.music = true
@@ -2023,12 +2097,10 @@ main.t_itemname = {
 		main.stageOrder = true
 		main.storyboard.credits = true
 		main.storyboard.gameover = true
-		main.teamMenu[1].ratio = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
 		main.teamMenu[1].tag = true
 		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -2038,11 +2110,11 @@ main.t_itemname = {
 		remapInput(1, getLastInputController())
 		remapInput(getLastInputController(), 1)
 		setGameMode('timeattack')
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--TRAINING
-	['training'] = function()
+	['training'] = function(t, item)
 		if main.t_charDef[gameOption('Config.TrainingChar'):lower()] ~= nil then
 			main.forceChar[2] = {main.t_charDef[gameOption('Config.TrainingChar'):lower()]}
 		end
@@ -2053,7 +2125,6 @@ main.t_itemname = {
 		if gameOption('Config.TrainingStage') == '' then
 			main.stageMenu = true
 		end
-		main.teamMenu[1].ratio = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
 		main.teamMenu[1].tag = true
@@ -2068,11 +2139,8 @@ main.t_itemname = {
 		remapInput(getLastInputController(), 1)
 		setGameMode('training')
 		setHomeTeam(1)
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
-	end,
-	--TRIALS
-	['trials'] = function()
 	end,
 	--VS MODE / TEAM VERSUS
 	['versus'] = function(t, item)
@@ -2090,12 +2158,10 @@ main.t_itemname = {
 			main.teamMenu[2].single = true
 			textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versus)
 		else --teamversus
-			main.teamMenu[1].ratio = true
 			main.teamMenu[1].simul = true
 			main.teamMenu[1].single = true
 			main.teamMenu[1].tag = true
 			main.teamMenu[1].turns = true
-			main.teamMenu[2].ratio = true
 			main.teamMenu[2].simul = true
 			main.teamMenu[2].single = true
 			main.teamMenu[2].tag = true
@@ -2108,14 +2174,14 @@ main.t_itemname = {
 			setGameMode('versus')
 		end
 		setHomeTeam(1)
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		if start.challenger == 0 then
 			return start.f_selectMode
 		end
 		return nil
 	end,
 	--VERSUS CO-OP
-	['versuscoop'] = function()
+	['versuscoop'] = function(t, item)
 		main.coop = true
 		main.cpuSide[2] = false
 		--main.fightscreen.p1wincount = true
@@ -2133,11 +2199,11 @@ main.t_itemname = {
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versuscoop)
 		setGameMode('versuscoop')
 		setHomeTeam(1)
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 	--WATCH
-	['watch'] = function()
+	['watch'] = function(t, item)
 		main.cpuSide[1] = true
 		--main.fightscreen.p1ailevel = true
 		--main.fightscreen.p2ailevel = true
@@ -2145,12 +2211,10 @@ main.t_itemname = {
 		main.motif.victoryscreen = true
 		main.selectMenu[2] = true
 		main.stageMenu = true
-		main.teamMenu[1].ratio = true
 		main.teamMenu[1].simul = true
 		main.teamMenu[1].single = true
 		main.teamMenu[1].tag = true
 		main.teamMenu[1].turns = true
-		main.teamMenu[2].ratio = true
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
@@ -2160,7 +2224,7 @@ main.t_itemname = {
 		remapInput(getLastInputController(), 1)
 		setGameMode('watch')
 		setHomeTeam(1)
-		hook.run("main.t_itemname")
+		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
 	end,
 }
@@ -3085,7 +3149,7 @@ function main.f_demoStart()
 	if motif.demo_mode.fight.stopbgm then
 		stopBgm()
 	end
-	hook.run("main.t_itemname")
+	hook.run("main.t_itemname", t, item)
 	--clearColor(motif[main.background].bgclearcolor[1], motif[main.background].bgclearcolor[2], motif[main.background].bgclearcolor[3])
 	loadStart()
 	game()

@@ -1607,6 +1607,7 @@ type Explod struct {
 	scale               [2]float32
 	removeongethit      bool
 	removeonchangestate bool
+	hideonpausemenu     bool
 	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
@@ -1900,7 +1901,7 @@ func (e *Explod) update() {
 	parent := sys.playerID(e.playerId)
 	root := sys.chars[e.playerno][0]
 
-	if root.scf(SCF_disabled) {
+	if root.scf(SCF_disabled) || (e.hideonpausemenu && sys.motif.me.active) {
 		return
 	}
 
@@ -2910,10 +2911,12 @@ type CharGlobalInfo struct {
 	def                     string
 	nameLow                 string
 	displayname             string
+	defaultDisplayname      string
 	displaynameLow          string
 	author                  string
 	authorLow               string
 	lifebarname             string
+	defaultLifebarname      string
 	sff                     *Sff
 	palettedata             *Palette
 	snd                     *Snd
@@ -3364,7 +3367,6 @@ func (c *Char) enemyNearP2Clear() {
 func (c *Char) prepareNextRound() {
 	c.sysVarRangeSet(0, math.MaxInt32, 0)
 	c.sysFvarRangeSet(0, math.MaxInt32, 0)
-	atk := c.ocd().attackRatio
 	c.CharSystemVar = CharSystemVar{
 		bindToId:              -1,
 		angleDrawScale:        [2]float32{1, 1},
@@ -3373,7 +3375,7 @@ func (c *Char) prepareNextRound() {
 		sizeWidth:             [2]float32{c.baseWidthFront(), c.baseWidthBack()},
 		sizeHeight:            [2]float32{c.baseHeightTop(), c.baseHeightBottom()},
 		sizeDepth:             [2]float32{c.baseDepthTop(), c.baseDepthBottom()},
-		attackMul:             [4]float32{atk, atk, atk, atk},
+		attackMul:             [4]float32{1, 1, 1, 1},
 		fallDefenseMul:        1,
 		superDefenseMul:       1,
 		superDefenseMulBuffer: 1,
@@ -3448,12 +3450,40 @@ func (c *Char) ocd() *OverrideCharData {
 	return sys.sel.gameParams.ensureOverride(team, c.memberNo)
 }
 
+func (c *Char) applyMapOverrides() {
+	ocd := c.ocd()
+	if ocd == nil || len(ocd.maps) == 0 {
+		return
+	}
+	if c.mapArray == nil {
+		c.mapArray = make(map[string]float32)
+	}
+	for k, v := range ocd.maps {
+		c.mapArray[k] = v
+	}
+}
+
+// Restore defaults for values that ModifyPlayer can mutate and that would
+// otherwise leak when a cached root is reused as a fresh entrant.
+func (c *Char) resetCachedPlayerState() {
+	gi := c.gi()
+	gi.displayname = gi.defaultDisplayname
+	gi.lifebarname = gi.defaultLifebarname
+	gi.attackBase = gi.data.attack
+	gi.defenceBase = gi.data.defence
+	c.lifeMax = gi.data.life
+	c.powerMax = gi.data.power
+	c.dizzyPointsMax = gi.data.dizzypoints
+	c.guardPointsMax = gi.data.guardpoints
+}
+
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
 
 	// Reset global info
 	gi.def = def
 	gi.displayname, gi.lifebarname, gi.author = "", "", ""
+	gi.defaultDisplayname, gi.defaultLifebarname = "", ""
 	gi.palettedata, gi.snd, gi.quotes = nil, nil, [MaxQuotes]string{}
 	gi.animTable = NewAnimationTable()
 	gi.fnt = make(map[int]*Fnt)
@@ -3577,6 +3607,8 @@ func (c *Char) load(def string) error {
 				if gi.lifebarname, ok, _ = is.getText("lifebarname"); !ok {
 					gi.lifebarname = gi.displayname
 				}
+				gi.defaultDisplayname = gi.displayname
+				gi.defaultLifebarname = gi.lifebarname
 				gi.author, _, _ = is.getText("author")
 				gi.nameLow = strings.ToLower(c.name)
 				gi.displaynameLow = strings.ToLower(gi.displayname)
@@ -4315,9 +4347,16 @@ func (c *Char) loadFx(def string) error {
 						}
 
 						if found_path != "" {
-							if err := loadFightFx(found_path, false, false); err != nil {
+							alreadyCachedNonChar := false
+							for _, ffx := range sys.ffx {
+								if ffx != nil && !ffx.isCharFX && ffx.fileName == found_path {
+									alreadyCachedNonChar = true
+									break
+								}
+							}
+							if err := loadFightFx(found_path, true, false); err != nil {
 								LogMessage("Could not load CommonFX %s for char %s: %v", found_path, def, err)
-							} else {
+							} else if !alreadyCachedNonChar {
 								gi.fxPath = append(gi.fxPath, found_path)
 							}
 						} else {

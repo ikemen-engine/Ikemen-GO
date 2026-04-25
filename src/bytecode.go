@@ -702,7 +702,6 @@ const (
 	OC_ex_playerindexexist
 	OC_ex_playernoexist
 	OC_ex_randomrange
-	OC_ex_ratiolevel
 	OC_ex_receiveddamage
 	OC_ex_receivedhits
 	OC_ex_redlife
@@ -940,6 +939,7 @@ const (
 	OC_ex2_gamevar_persistrounds
 	OC_ex2_gamevar_persistlife
 	OC_ex2_gamevar_persistmusic
+	OC_ex2_gamevar_hidebars
 	OC_ex2_topbounddist
 	OC_ex2_topboundbodydist
 	OC_ex2_botbounddist
@@ -3261,8 +3261,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_spriteplayerno:
 		sys.bcStack.PushI(int32(c.spritePN) + 1)
 	case OC_ex_attack:
-		base := float32(c.gi().attackBase) * c.ocd().attackRatio / 100
-		sys.bcStack.PushF(base * c.attackMul[0] * 100)
+		sys.bcStack.PushF(float32(c.gi().attackBase) * c.attackMul[0])
 	case OC_ex_clsnoverlap:
 		c2 := sys.bcStack.Pop().ToI()
 		id := sys.bcStack.Pop().ToI()
@@ -3450,8 +3449,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_randomrange:
 		v2 := sys.bcStack.Pop()
 		be.random(sys.bcStack.Top(), v2)
-	case OC_ex_ratiolevel:
-		sys.bcStack.PushI(c.ocd().ratioLevel)
 	case OC_ex_receiveddamage:
 		sys.bcStack.PushI(c.receivedDmg)
 	case OC_ex_receivedhits:
@@ -4042,12 +4039,14 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.getSlowtime())
 	case OC_ex2_gamevar_superpausetime:
 		sys.bcStack.PushI(sys.supertime)
-	case OC_ex2_gamevar_persistrounds:
-		sys.bcStack.PushB(sys.sel.gameParams.PersistRounds)
 	case OC_ex2_gamevar_persistlife:
 		sys.bcStack.PushB(sys.sel.gameParams.PersistLife)
 	case OC_ex2_gamevar_persistmusic:
 		sys.bcStack.PushB(sys.sel.gameParams.PersistMusic)
+	case OC_ex2_gamevar_persistrounds:
+		sys.bcStack.PushB(sys.sel.gameParams.PersistRounds)
+	case OC_ex2_gamevar_hidebars:
+		sys.bcStack.PushB(sys.lifebarHide || sys.dialogueBarsFlg)
 	// HitByAttr
 	case OC_ex2_hitbyattr:
 		attr := be.ReadIntAt(i)
@@ -6047,6 +6046,7 @@ const (
 	explod_shadow
 	explod_removeongethit
 	explod_removeonchangestate
+	explod_hideonpausemenu
 	explod_trans
 	explod_animelem
 	explod_animelemtime
@@ -6242,6 +6242,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.removeongethit = exp[0].evalB(c)
 		case explod_removeonchangestate:
 			e.removeonchangestate = exp[0].evalB(c)
+		case explod_hideonpausemenu:
+			e.hideonpausemenu = exp[0].evalB(c)
 		case explod_trans:
 			src := Clamp(int32(exp[0].evalI(c)), 0, 255)
 			dst := Clamp(int32(exp[1].evalI(c)), 0, 255)
@@ -6761,6 +6763,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				v := exp[0].evalB(c)
 				eachExpl(func(e *Explod) {
 					e.removeonchangestate = v
+				})
+			case explod_hideonpausemenu:
+				v := exp[0].evalB(c)
+				eachExpl(func(e *Explod) {
+					e.hideonpausemenu = v
 				})
 			case explod_trans:
 				src := Clamp(int32(exp[0].evalI(c)), 0, 255)
@@ -10616,23 +10623,22 @@ func (sc attackMulSet) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	attackRatio := crun.ocd().attackRatio
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case attackMulSet_value:
 			v := exp[0].evalF(c)
-			crun.attackMul[0] = v * attackRatio
-			crun.attackMul[1] = v * attackRatio
-			crun.attackMul[2] = v * attackRatio
-			crun.attackMul[3] = v * attackRatio
+			crun.attackMul[0] = v
+			crun.attackMul[1] = v
+			crun.attackMul[2] = v
+			crun.attackMul[3] = v
 		case attackMulSet_damage:
-			crun.attackMul[0] = exp[0].evalF(c) * attackRatio
+			crun.attackMul[0] = exp[0].evalF(c)
 		case attackMulSet_redlife:
-			crun.attackMul[1] = exp[0].evalF(c) * attackRatio
+			crun.attackMul[1] = exp[0].evalF(c)
 		case attackMulSet_dizzypoints:
-			crun.attackMul[2] = exp[0].evalF(c) * attackRatio
+			crun.attackMul[2] = exp[0].evalF(c)
 		case attackMulSet_guardpoints:
-			crun.attackMul[3] = exp[0].evalF(c) * attackRatio
+			crun.attackMul[3] = exp[0].evalF(c)
 		}
 		return true
 	})

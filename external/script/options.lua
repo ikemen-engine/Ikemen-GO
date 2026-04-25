@@ -36,6 +36,7 @@ function options.f_saveCfg(reload)
 	end
 	-- Save the current configuration to 'config.ini'
 	saveGameOption(getCommandLineValue("-config"))
+	hook.run("options.save", reload)
 	-- Reload the game if the reload parameter is true
 	if reload then
 		main.f_warning(motif.warning_info.text.text.reload, motif.option_info, motif.optionbgdef)
@@ -50,14 +51,6 @@ end
 --;===========================================================
 --; LOOPS
 --;===========================================================
-function options.f_displayRatio(value)
-	local ret = options.f_precision((value - 1) * 100, '%.01f')
-	if ret >= 0 then
-		return '+' .. ret .. '%'
-	end
-	return ret .. '%'
-end
-
 local function f_switchLanguage(dir)
 	sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 	-- collect available language keys
@@ -163,16 +156,6 @@ options.t_itemname = {
 			modifyGameOption('Options.Turns.Max', 4)
 			modifyGameOption('Options.Turns.Recovery.Base', 12.5)
 			modifyGameOption('Options.Turns.Recovery.Bonus', 27.5)
-			modifyGameOption('Options.Ratio.Recovery.Base', 0)
-			modifyGameOption('Options.Ratio.Recovery.Bonus', 20)
-			modifyGameOption('Options.Ratio.Level1.Attack', 0.82)
-			modifyGameOption('Options.Ratio.Level2.Attack', 1.0)
-			modifyGameOption('Options.Ratio.Level3.Attack', 1.17)
-			modifyGameOption('Options.Ratio.Level4.Attack', 1.30)
-			modifyGameOption('Options.Ratio.Level1.Life', 0.80)
-			modifyGameOption('Options.Ratio.Level2.Life', 1.0)
-			modifyGameOption('Options.Ratio.Level3.Life', 1.17)
-			modifyGameOption('Options.Ratio.Level4.Life', 1.40)
 			--modifyGameOption('Config.Motif', "data/system.def")
 			modifyGameOption('Config.Players', 4)
 			modifyGameOption('Config.Language', "en")
@@ -268,6 +251,7 @@ options.t_itemname = {
 			updateVolume()
 			options.modified = true
 			options.needReload = true
+			hook.run("options.default")
 		end
 		return true
 	end,
@@ -1623,36 +1607,6 @@ options.t_vardisplay = {
 	['quickcontinue'] = function()
 		return options.f_boolDisplay(gameOption('Options.QuickContinue'))
 	end,
-	['ratio1attack'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level1.Attack'))
-	end,
-	['ratio1life'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level1.Life'))
-	end,
-	['ratio2attack'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level2.Attack'))
-	end,
-	['ratio2life'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level2.Life'))
-	end,
-	['ratio3attack'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level3.Attack'))
-	end,
-	['ratio3life'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level3.Life'))
-	end,
-	['ratio4attack'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level4.Attack'))
-	end,
-	['ratio4life'] = function()
-		return options.f_displayRatio(gameOption('Options.Ratio.Level4.Life'))
-	end,
-	['ratiorecoverybase'] = function()
-		return gameOption('Options.Ratio.Recovery.Base') .. '%'
-	end,
-	['ratiorecoverybonus'] = function()
-		return gameOption('Options.Ratio.Recovery.Bonus') .. '%'
-	end,
 	['redlife'] = function()
 		return options.f_boolDisplay(gameOption('Options.RedLife'))
 	end,
@@ -1832,24 +1786,6 @@ function options.f_start()
 					end
 					return true
 				end
-			end
-		-- ratio
-		elseif v:match('_ratio[1-4]+[al].-$') then
-			local ratioLevel, tmp1, tmp2 = v:match('_ratio([1-4])([al])(.-)$')
-			options.t_itemname['ratio' .. ratioLevel .. tmp1 .. tmp2] = function(t, item, cursorPosY, moveTxt)
-				local ratioKey = 'Options.Ratio.Level' .. tonumber(ratioLevel) .. '.' .. tmp1:upper() .. tmp2
-				if getInput(-1, motif.option_info.menu.add.key) then
-					sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-					modifyGameOption(ratioKey, gameOption(ratioKey) + 0.01)
-					t.items[item].vardisplay = options.f_displayRatio(gameOption(ratioKey))
-					options.modified = true
-				elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption(ratioKey) > 0.01 then
-					sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-					modifyGameOption(ratioKey, gameOption(ratioKey) - 0.01)
-					t.items[item].vardisplay = options.f_displayRatio(gameOption(ratioKey))
-					options.modified = true
-				end
-				return true
 			end
 		end
 	end

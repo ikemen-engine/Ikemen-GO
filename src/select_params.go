@@ -10,12 +10,12 @@ import (
 // -----------------------------------------------------------------------------
 
 // override key format (loadStart params)
-func parseOverrideKey(kl string) (team int, member int, field string, ok bool) {
-	parts := strings.Split(kl, ".")
-	if len(parts) != 3 {
+func parseOverrideKey(key string) (team int, member int, field string, ok bool) {
+	parts := strings.Split(strings.TrimSpace(key), ".")
+	if len(parts) < 3 {
 		return 0, 0, "", false
 	}
-	switch parts[0] {
+	switch strings.ToLower(parts[0]) {
 	case "p1":
 		team = 0
 	case "p2":
@@ -27,7 +27,20 @@ func parseOverrideKey(kl string) (team int, member int, field string, ok bool) {
 	if m <= 0 {
 		return 0, 0, "", false
 	}
-	return team, m - 1, parts[2], true
+	field = strings.TrimSpace(strings.Join(parts[2:], "."))
+	if field == "" {
+		return 0, 0, "", false
+	}
+	return team, m - 1, field, true
+}
+
+func parseMapKey(key string) (name string, ok bool) {
+	key = strings.TrimSpace(key)
+	if len(key) <= 4 || !strings.HasPrefix(strings.ToLower(key), "map.") {
+		return "", false
+	}
+	name = strings.TrimSpace(key[4:])
+	return name, name != ""
 }
 
 func parseKV(s string) (key, value string, ok bool) {
@@ -178,7 +191,6 @@ type SelectCharParams struct {
 	Order         int32    `ini:"order"`
 	OrderSurvival int32    `ini:"ordersurvival"`
 	ArcadePath    string   `ini:"arcadepath"`
-	RatioPath     string   `ini:"ratiopath"`
 	Unlock        string   `ini:"unlock"`
 	SlotSelect    string   `ini:"slotselect"`
 	SlotNext      string   `ini:"slotnext"`
@@ -255,8 +267,6 @@ func (p *SelectCharParams) AppendParams(entries []string) {
 			p.OrderSurvival = Atoi(val)
 		case "arcadepath":
 			p.ArcadePath = val
-		case "ratiopath":
-			p.RatioPath = val
 		case "unlock":
 			p.Unlock = val
 		case "select":
@@ -323,15 +333,12 @@ type OverrideCharData struct {
 	power       int32
 	dizzyPoints int32
 	guardPoints int32
-	ratioLevel  int32
-	lifeRatio   float32
-	attackRatio float32
+	maps        map[string]float32
 	existed     bool
 }
 
 func newOverrideCharData() *OverrideCharData {
-	return &OverrideCharData{life: -1, lifeMax: -1, power: -1, dizzyPoints: -1,
-		guardPoints: -1, ratioLevel: 0, lifeRatio: 1, attackRatio: 1}
+	return &OverrideCharData{life: -1, lifeMax: -1, power: -1, dizzyPoints: -1, guardPoints: -1, maps: make(map[string]float32)}
 }
 
 type GameParams struct {
@@ -429,27 +436,27 @@ func (p *GameParams) AppendParams(entries []string) {
 		}
 
 		// per-character overrides: p1.<member>.<field>=... / p2.<member>.<field>=...
-		if team, member, field, ok := parseOverrideKey(kl); ok {
+		if team, member, field, ok := parseOverrideKey(key); ok {
 			ocd := p.ensureOverride(team, member)
-			switch field {
-			case "life":
+			field = strings.TrimSpace(field)
+			fieldLower := strings.ToLower(field)
+			switch {
+			case fieldLower == "life":
 				ocd.life = int32(Atoi(val))
-			case "lifemax":
+			case fieldLower == "lifemax":
 				ocd.lifeMax = int32(Atoi(val))
-			case "power":
+			case fieldLower == "power":
 				ocd.power = int32(Atoi(val))
-			case "dizzypoints":
+			case fieldLower == "dizzypoints":
 				ocd.dizzyPoints = int32(Atoi(val))
-			case "guardpoints":
+			case fieldLower == "guardpoints":
 				ocd.guardPoints = int32(Atoi(val))
-			case "ratiolevel":
-				ocd.ratioLevel = int32(Atoi(val))
-			case "liferatio":
-				ocd.lifeRatio = float32(Atof(val))
-			case "attackratio":
-				ocd.attackRatio = float32(Atof(val))
-			case "existed":
+			case fieldLower == "existed":
 				ocd.existed, _ = parseBoolLoose(val)
+			case strings.HasPrefix(fieldLower, "map."):
+				if name, ok := parseMapKey(field); ok {
+					ocd.maps[name] = float32(Atof(val))
+				}
 			}
 			continue
 		}

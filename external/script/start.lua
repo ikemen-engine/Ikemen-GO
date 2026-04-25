@@ -25,7 +25,7 @@ local cursorDone = {}
 --; COMMON FUNCTIONS
 --;===========================================================
 --; ROSTER
---converts '.maxmatches' style table (key = order, value = max matches) to the same structure as '.ratiomatches' (key = match number, value = subtable with char num and order data)
+--converts '.maxmatches' style table (key = order, value = max matches) to key = match number, value = subtable with char num and order data
 function start.f_unifySettings(t, t_chars)
 	local ret = {}
 	for i = 1, #t do --for each order number
@@ -64,13 +64,7 @@ end
 -- external module, without conflicting with default scripts.
 start.t_makeRoster = {}
 start.t_makeRoster.arcade = function()
-	if start.p[2].ratio then --Ratio
-		if start.f_getCharData(start.p[1].t_selected[1].ref).ratiomatches ~= nil and main.t_selOptions[start.f_getCharData(start.p[1].t_selected[1].ref).ratiomatches .. '_arcaderatiomatches'] ~= nil then --custom settings exists as char param
-			return main.t_selOptions[start.f_getCharData(start.p[1].t_selected[1].ref).ratiomatches .. '_arcaderatiomatches'], main.t_orderChars
-		else --default settings
-			return main.t_selOptions.arcaderatiomatches, main.t_orderChars
-		end
-	elseif start.p[2].teamMode == 0 then --Single
+	if start.p[2].teamMode == 0 then --Single
 		if start.f_getCharData(start.p[1].t_selected[1].ref).maxmatches ~= nil and main.t_selOptions[start.f_getCharData(start.p[1].t_selected[1].ref).maxmatches .. '_arcademaxmatches'] ~= nil then --custom settings exists as char param
 			return start.f_unifySettings(main.t_selOptions[start.f_getCharData(start.p[1].t_selected[1].ref).maxmatches .. '_arcademaxmatches'], main.t_orderChars), main.t_orderChars
 		else --default settings
@@ -158,8 +152,6 @@ start.t_aiRampData = {}
 start.t_aiRampData.arcade = function()
 	if start.p[2].teamMode == 0 then --Single
 		return gameOption('Arcade.arcade.AIramp.start')[1], gameOption('Arcade.arcade.AIramp.start')[2], gameOption('Arcade.arcade.AIramp.end')[1], gameOption('Arcade.arcade.AIramp.end')[2]
-	elseif start.p[2].ratio then --Ratio
-		return gameOption('Arcade.ratio.AIramp.start')[1], gameOption('Arcade.ratio.AIramp.start')[2], gameOption('Arcade.ratio.AIramp.end')[1], gameOption('Arcade.ratio.AIramp.end')[2]
 	else --Simul / Turns / Tag
 		return gameOption('Arcade.team.AIramp.start')[1], gameOption('Arcade.team.AIramp.start')[2], gameOption('Arcade.team.AIramp.end')[1], gameOption('Arcade.team.AIramp.end')[2]
 	end
@@ -611,41 +603,6 @@ function start.f_selectPal(ref, palno)
 		end
 	end
 	panicError("\n" .. charData.name .. " palette was not selected\n")
-end
-
---returns ratio level
-local t_ratioArray = {
-	{2, 1, 1},
-	{1, 2, 1},
-	{1, 1, 2},
-	{2, 2},
-	{3, 1},
-	{1, 3},
-	{4}
-}
-function start.f_getRatio(player, ratio)
-	if player == 1 then
-		if not start.p[1].ratio and ratio == nil then
-			return nil
-		end
-		return ratio or t_ratioArray[start.p[1].numRatio][#start.p[1].t_selected + 1]
-	end
-	if not start.p[2].ratio and ratio == nil then
-		return nil
-	end
-	if ratio ~= nil then
-		return ratio
-	end
-	if not continued() and not main.selectMenu[2] and #start.p[2].t_selected == 0 then
-		if start.p[2].numChars == 3 then
-			start.p[2].numRatio = math.random(1, 3)
-		elseif start.p[2].numChars == 2 then
-			start.p[2].numRatio = math.random(4, 6)
-		else
-			start.p[2].numRatio = 7
-		end
-	end
-	return t_ratioArray[start.p[2].numRatio][#start.p[2].t_selected + 1]
 end
 
 --returns player number
@@ -1543,14 +1500,55 @@ for i = 1, motif.select_info.rows * motif.select_info.columns do
 end
 if gameOption('Debug.DumpLuaTables') then main.f_printTable(start.t_grid, 'debug/t_grid.txt') end
 
+local function updateCommon(common, add)
+	for k, values in pairs(common) do
+		if values ~= nil and #values > 0 then
+			local optionName = 'Common.' .. k:gsub('^%l', string.upper)
+			local t = gameOption(optionName)
+			if add then
+				local existing = {}
+				local changed = false
+				for _, v in ipairs(t) do
+					existing[v] = true
+				end
+				for _, v in ipairs(values) do
+					if v ~= '' and not existing[v] then
+						table.insert(t, v)
+						existing[v] = true
+						changed = true
+					end
+				end
+				if changed then
+					modifyGameOption(optionName, t)
+				end
+			else
+				local toRemove = {}
+				local changed = false
+				for _, v in ipairs(values) do
+					if v ~= '' then
+						toRemove[v] = true
+					end
+				end
+				for i = #t, 1, -1 do
+					if toRemove[t[i]] then
+						table.remove(t, i)
+						changed = true
+					end
+				end
+				if changed then
+					modifyGameOption(optionName, t)
+				end
+			end
+		end
+	end
+end
+
 -- return amount of life to recover
-local function f_lifeRecovery(lifeMax, ratioLevel)
+local function f_lifeRecovery(lifeMax, fighter)
+	local ret = hook.runFirst("start.f_lifeRecovery", lifeMax, fighter)
+	if ret ~= nil then return ret end
 	local bonus = lifeMax * gameOption('Options.Turns.Recovery.Bonus') / 100
 	local base = lifeMax * gameOption('Options.Turns.Recovery.Base') / 100
-	if ratioLevel > 0 then
-		bonus = lifeMax * gameOption('Options.Ratio.Recovery.Bonus') / 100
-		base = lifeMax * gameOption('Options.Ratio.Recovery.Base') / 100
-	end
 	return base + main.f_round(timeRemaining() / (timeRemaining() + timeElapsed()) * bonus)
 end
 
@@ -1597,7 +1595,7 @@ function start.f_matchPersistence()
 									end
 								-- or resurrect and recover character's life
 								elseif main.persistLife then
-									start.p[1].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f1.LifeMax or 0, f1.RatioLevel or 0))
+									start.p[1].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f1.LifeMax or 0, f1))
 								end
 							-- otherwise maintain character's life
 							elseif main.persistLife then
@@ -1625,7 +1623,7 @@ function start.f_matchPersistence()
 								-- if defeated
 								if f.KO and (f.Life or 0) <= 0 then
 									if main.persistLife then
-										start.p[1].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f.LifeMax or 0, f.RatioLevel or 0))
+										start.p[1].t_selected[memberIdx].life = math.max(1, f_lifeRecovery(f.LifeMax or 0, f))
 									end
 								-- otherwise maintain character's life
 								elseif main.persistLife then
@@ -1642,42 +1640,21 @@ function start.f_matchPersistence()
 end
 
 --start game
-function start.f_game(lua)
+function start.f_game(common)
 	clearColor(0, 0, 0)
-	if gameOption('Debug.DumpLuaTables') and start ~= nil then main.f_printTable(start.p, 'debug/t_p.txt') end
-	if lua ~= '' then
-		local t = gameOption('Common.Lua')
-		local ok = false
-		for _, v in ipairs(t) do
-			if v == lua then
-				ok = true
-				break
-			end
-		end
-		if not ok then
-			table.insert(t, lua)
-		end
-		modifyGameOption('Common.Lua', t)
+	if gameOption('Debug.DumpLuaTables') and start ~= nil then
+		main.f_printTable(start.p, 'debug/t_p.txt')
 	end
 	if gameMode('training') then
 		menu.f_trainingReset()
 	end
 	local winner = -1
 	winner, start.challenger = game()
-
-	if gameOption('Debug.DumpLuaTables') then main.f_printTable(getGameStats(), 'debug/t_gameStats.txt') end
-
-	main.f_restoreInput()
-	if lua ~= '' then
-		local t = gameOption('Common.Lua')
-		for i, v in ipairs(t) do
-			if v == lua then
-				table.remove(t, i)
-				break
-			end
-		end
-		modifyGameOption('Common.Lua', t)
+	if gameOption('Debug.DumpLuaTables') then
+		main.f_printTable(getGameStats(), 'debug/t_gameStats.txt')
 	end
+	main.f_restoreInput()
+	updateCommon(common, false)
 	if shutdown() then
 		clearColor(0, 0, 0)
 		os.exit()
@@ -1717,13 +1694,11 @@ function start.f_selectMode()
 		--lua file with custom arcade path detection
 		local path = main.luaPath
 		if main.charparam.arcadepath then
-			if start.p[2].ratio and start.f_getCharData(start.p[1].t_selected[1].ref).ratiopath ~= '' then
-				path = start.f_getCharData(start.p[1].t_selected[1].ref).ratiopath
-				if not main.f_fileExists(path) then
-					panicError("\n" .. start.f_getCharData(start.p[1].t_selected[1].ref).name .. " ratiopath doesn't exist: " .. path .. "\n")
-				end
-			elseif not start.p[2].ratio and start.f_getCharData(start.p[1].t_selected[1].ref).arcadepath ~= '' then
+			if start.f_getCharData(start.p[1].t_selected[1].ref).arcadepath ~= '' then
 				path = start.f_getCharData(start.p[1].t_selected[1].ref).arcadepath
+			end
+			path = hook.runFirst("start.f_selectMode.luaPath", path) or path
+			if path ~= '' and path ~= main.luaPath then
 				if not main.f_fileExists(path) then
 					panicError("\n" .. start.f_getCharData(start.p[1].t_selected[1].ref).name .. " arcadepath doesn't exist: " .. path .. "\n")
 				end
@@ -1838,7 +1813,6 @@ function start.f_selectReset(hardReset, preserveProgress)
 			start.p[side].numSimul = math.max(2, gameOption('Options.Simul.Min'))
 			start.p[side].numTag = math.max(2, gameOption('Options.Tag.Min'))
 			start.p[side].numTurns = math.max(2, gameOption('Options.Turns.Min'))
-			start.p[side].numRatio = 1
 			start.p[side].teamMenu = 1
 			start.p[side].t_cursor = {}
 			start.p[side].teamMode = 0
@@ -1849,13 +1823,13 @@ function start.f_selectReset(hardReset, preserveProgress)
 		start.p[side].numChars = 1
 		start.p[side].teamEnd = main.cpuSide[side] and (side == 2 or not main.cpuSide[1]) and main.forceChar[side] == nil
 		start.p[side].selEnd = not main.selectMenu[side]
-		start.p[side].ratio = false
 		start.p[side].t_selected = {}
 		start.p[side].t_selTemp = {}
 		start.p[side].t_selCmd = {}
 		-- Tracks how many leading Turns members are already defeated across matches.
 		-- Used by Survival Turns to skip them without removing from roster.
 		start.p[side].turnsOffset = 0
+		hook.run("start.f_selectReset.side", side, hardReset, preserveProgress, start.p[side])
 	end
 	for _, v in ipairs(start.c) do
 		v.cell = -1
@@ -1916,7 +1890,6 @@ local function applyWinnerSelectMemory(resume, winnerSide, challengerState)
 		if srcSide.numSimul ~= nil then resume.p[1].numSimul = srcSide.numSimul end
 		if srcSide.numTag ~= nil then resume.p[1].numTag = srcSide.numTag end
 		if srcSide.numTurns ~= nil then resume.p[1].numTurns = srcSide.numTurns end
-		if srcSide.numRatio ~= nil then resume.p[1].numRatio = srcSide.numRatio end
 	end
 	if challengerState.c ~= nil then
 		-- Promote the winner-side cursor slots onto the new arcade P1 slots:
@@ -1932,6 +1905,7 @@ local function applyWinnerSelectMemory(resume, winnerSide, challengerState)
 			end
 		end
 	end
+	hook.run("start.f_selectChallenger.resume", resume, winnerSide, challengerState)
 end
 
 function start.f_selectChallenger(resume)
@@ -2077,11 +2051,9 @@ function launchFight(data)
 		t.orderselect = {main.f_arg(data.p1orderselect, main.orderSelect[1]), main.f_arg(data.p2orderselect, main.orderSelect[2])}
 		t.p1char = data.p1char or {}
 		t.p1pal = data.p1pal
-		t.p1numratio = data.p1numratio or {}
 		t.p1rounds = data.p1rounds or nil
 		t.p2char = data.p2char or {}
 		t.p2pal = data.p2pal
-		t.p2numratio = data.p2numratio or {}
 		t.p2rounds = data.p2rounds or nil
 		t.exclude = data.exclude or {}
 		t.musicParams = buildMusicParams(data)
@@ -2116,8 +2088,8 @@ function launchFight(data)
 				pal = t.p1pal or start.f_selectPal(ref),
 				pn = start.f_getPlayerNo(1, #start.p[1].t_selected + 1),
 				--cursor = {},
-				ratioLevel = start.f_getRatio(1, t.p1numratio[cnt]),
 			})
+			hook.run("start.launchFight.selected", 1, #start.p[1].t_selected, start.p[1].t_selected[#start.p[1].t_selected], start.p[1], t)
 			main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
 		end
 		if #start.p[1].t_selected == 0 then
@@ -2136,8 +2108,8 @@ function launchFight(data)
 				pal = t.p2pal or start.f_selectPal(ref),
 				pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
 				--cursor = {},
-				ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
 			})
+			hook.run("start.launchFight.selected", 2, #start.p[2].t_selected, start.p[2].t_selected[#start.p[2].t_selected], start.p[2], t)
 			main.t_availableChars = start.f_excludeChar(main.t_availableChars, ref)
 			if not onlyme then onlyme = start.f_getCharData(ref).single end
 		end
@@ -2185,8 +2157,8 @@ function launchFight(data)
 					pal = start.f_selectPal(v),
 					pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
 					--cursor = {},
-					ratioLevel = start.f_getRatio(2, t.p2numratio[cnt]),
 				})
+				hook.run("start.launchFight.selected", 2, #start.p[2].t_selected, start.p[2].t_selected[#start.p[2].t_selected], start.p[2], t)
 				main.t_availableChars = start.f_excludeChar(main.t_availableChars, v)
 			end
 			-- team conversion if 'single' param is set on randomly added chars
@@ -2237,14 +2209,20 @@ function launchFight(data)
 		if winscreen and main.makeRoster and start.t_roster[matchNo() + 1] ~= nil then
 			winscreen = false
 		end
+		local common = {lua = {}}
+		if t.lua ~= '' then
+			table.insert(common.lua, t.lua)
+		end
+		-- Hooks may mutate "common" in place before loading starts.
+		hook.run("launchFight", common, t, data)
+		updateCommon(common, true)
 		start.f_selectLoading{
 			musicParams = t.musicParams,
 			continue = t.continue,
 			victoryscreen = t.victoryscreen,
 			winscreen = winscreen,
 		}
-		hook.run("launchFight")
-		start.f_game(t.lua)
+		start.f_game(common)
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		if start.exit or start.characterchange then
 			start.characterchange = false
@@ -2460,7 +2438,6 @@ function start.f_selectScreen()
 			simul  = 1,
 			turns  = 2,
 			tag    = 3,
-			ratio  = 2,
 		}
 		-- itemname_order lists exactly what to render, in the correct order
 		for _, name in ipairs(itemname_order) do
@@ -2474,6 +2451,7 @@ function start.f_selectScreen()
 				})
 			end
 		end
+		hook.run("start.selectScreen.teamMenu", side, t_teamMenu[side], params, itemname_order)
 	end
 
 	textImgReset(motif.select_info.record.TextSpriteData)
@@ -2780,7 +2758,10 @@ function start.f_teamMenu(side, t)
 				start.p[side].teamMenu = 1
 			end
 		else
-			if t[start.p[side].teamMenu].itemname == 'simul' then
+			local handled = hook.runFirst("start.f_teamMenu.input", side, t, t_cmd)
+			if handled then
+				-- handled by external module
+			elseif t[start.p[side].teamMenu].itemname == 'simul' then
 				if getInput(t_cmd, motif.select_info['p' .. side].teammenu.subtract.key) then
 					if start.p[side].numSimul > main.numSimul[1] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
@@ -2814,22 +2795,6 @@ function start.f_teamMenu(side, t)
 					if start.p[side].numTag < main.numTag[2] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTag = start.p[side].numTag + 1
-					end
-				end
-			elseif t[start.p[side].teamMenu].itemname == 'ratio' then
-				if getInput(t_cmd, motif.select_info['p' .. side].teammenu.subtract.key) and main.selectMenu[side] then
-					sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
-					if start.p[side].numRatio > 1 then
-						start.p[side].numRatio = start.p[side].numRatio - 1
-					else
-						start.p[side].numRatio = 7
-					end
-				elseif getInput(t_cmd, motif.select_info['p' .. side].teammenu.add.key) and main.selectMenu[side] then
-					sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
-					if start.p[side].numRatio < 7 then
-						start.p[side].numRatio = start.p[side].numRatio + 1
-					else
-						start.p[side].numRatio = 1
 					end
 				end
 			end
@@ -2937,8 +2902,8 @@ function start.f_teamMenu(side, t)
 						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
 					end
 				end
-			elseif itemname == 'ratio' and start.p[side].teamMenu == i and main.selectMenu[side] then
-				main.f_animPosDraw(teammenu['ratio' .. start.p[side].numRatio].icon.AnimData, x, y)
+			else
+				hook.runFirst("start.f_teamMenu.drawItemValue", side, t, i, x, y, valueCfg)
 			end
 		end
 		--Confirmed team selection
@@ -2946,7 +2911,17 @@ function start.f_teamMenu(side, t)
 			timerSelect = motif.select_info.timer.displaytime
 			start.p[1].screenDelay, start.p[2].screenDelay = 0, 0
 			sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.done.snd[1], motif.select_info['p' .. side].teammenu.done.snd[2])
-			if t[start.p[side].teamMenu].itemname == 'single' then
+			local confirmData = hook.runFirst("start.f_teamMenu.confirm", side, t, t_cmd)
+			if confirmData ~= nil then
+				local defaultMode = t[start.p[side].teamMenu].mode
+				local teamMode = confirmData.teamMode or defaultMode
+				local numChars = confirmData.numChars or start.p[side].numChars
+				for k, v in pairs(confirmData) do
+					start.p[side][k] = v
+				end
+				start.p[side].teamMode = teamMode
+				start.p[side].numChars = numChars
+			elseif t[start.p[side].teamMenu].itemname == 'single' then
 				start.p[side].teamMode = t[start.p[side].teamMenu].mode
 				start.p[side].numChars = 1
 			elseif t[start.p[side].teamMenu].itemname == 'simul' then
@@ -2958,16 +2933,6 @@ function start.f_teamMenu(side, t)
 			elseif t[start.p[side].teamMenu].itemname == 'tag' then
 				start.p[side].teamMode = t[start.p[side].teamMenu].mode
 				start.p[side].numChars = start.p[side].numTag
-			elseif t[start.p[side].teamMenu].itemname == 'ratio' then
-				start.p[side].teamMode = t[start.p[side].teamMenu].mode
-				if start.p[side].numRatio <= 3 then
-					start.p[side].numChars = 3
-				elseif start.p[side].numRatio <= 6 then
-					start.p[side].numChars = 2
-				else
-					start.p[side].numChars = 1
-				end
-				start.p[side].ratio = true
 			end
 			start.p[side].teamEnd = true
 		end
@@ -3235,7 +3200,6 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				pal = start.f_selectPal(v),
 				--pn = start.f_getPlayerNo(side, #start.p[side].t_selected + 1),
 				--cursor = = {},
-				--ratioLevel = start.f_getRatio(side),
 			})
 		end
 		start.p[side].selEnd = true
@@ -3458,8 +3422,8 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				pal = finalPal,
 				pn = start.f_getPlayerNo(side, member),
 				cursor = {start.c[player].selX, start.c[player].selY},
-				ratioLevel = start.f_getRatio(side),
 			}
+			hook.run("start.f_selectMenu.selected", side, member, start.p[side].t_selected[member], start.p[side], player)
 			if not gameOption('Options.Team.Duplicates') then
 				t_reservedChars[side][start.c[player].selRef] = true
 			end
@@ -3860,22 +3824,27 @@ function start.f_selectLoading(arg)
 				selectChar(side, v.ref, v.pal)
 				v.loading = true
 			end
-			-- fold overrideCharData() payload into loadStart() params
-			local lifeRatio, attackRatio
-			if v.ratioLevel then
-				lifeRatio = gameOption("Options.Ratio.Level" .. v.ratioLevel .. ".Life")
-				attackRatio = gameOption("Options.Ratio.Level" .. v.ratioLevel .. ".Attack")
-			end
+			hook.run("start.f_selectLoading.member", v)
 			local pfx = "p" .. side .. "." .. member .. "."
 			addParam(pfx .. "life", v.life)
 			addParam(pfx .. "lifemax", v.lifeMax)
 			addParam(pfx .. "power", v.power)
 			addParam(pfx .. "dizzypoints", v.dizzyPoints)
 			addParam(pfx .. "guardpoints", v.guardPoints)
-			addParam(pfx .. "ratiolevel", v.ratioLevel)
-			addParam(pfx .. "liferatio", v.lifeRatio or lifeRatio)
-			addParam(pfx .. "attackratio", v.attackRatio or attackRatio)
 			addParam(pfx .. "existed", v.existed)
+			if type(v.maps) == "table" then
+				for mapName, mapValue in pairs(v.maps) do
+					if type(mapName) == "string" and mapValue ~= nil then
+						local key = mapName
+						if key:sub(1, 4):lower() == "map." then
+							key = key:sub(5)
+						end
+						if key ~= "" then
+							addParam(pfx .. "map." .. key, mapValue)
+						end
+					end
+				end
+			end
 		end
 	end
 	addParam("persistlife", main.persistLife)

@@ -491,28 +491,7 @@ type PlayerSelectProperties struct {
 		Subtract struct {
 			Key []string `ini:"key"`
 		} `ini:"subtract"`
-		Item   ItemProperties `ini:"item"`
-		Ratio1 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio1"`
-		Ratio2 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio2"`
-		Ratio3 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio3"`
-		Ratio4 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio4"`
-		Ratio5 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio5"`
-		Ratio6 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio6"`
-		Ratio7 struct {
-			Icon AnimationProperties `ini:"icon"`
-		} `ini:"ratio7"`
+		Item ItemProperties `ini:"item"`
 	} `ini:"teammenu"`
 	PalMenu struct {
 		Pos  [2]float32 `ini:"pos"`
@@ -552,7 +531,6 @@ type TeamModesProperties struct {
 	Simul  string `ini:"simul"`
 	Turns  string `ini:"turns"`
 	Tag    string `ini:"tag"`
-	Ratio  string `ini:"ratio"`
 }
 
 type ValueIconVsProperties struct {
@@ -1497,7 +1475,7 @@ func reserveUserFontSlots(m *Motif) {
 	}
 }
 
-// returns a stable-sorted list of files named "system.def" located anywhere under the given root (e.g. external/mods), including nested subdirs.
+// returns a stable-sorted list of files named "+system.def" located anywhere under the given root (e.g. external/mods), including nested subdirs.
 func findExternalModSystemDefs(root string) ([]string, error) {
 	st, err := os.Stat(root)
 	if err != nil {
@@ -1519,7 +1497,7 @@ func findExternalModSystemDefs(root string) ([]string, error) {
 			return nil
 		}
 		// Match filename, case-insensitive
-		if strings.EqualFold(d.Name(), "system.def") {
+		if strings.EqualFold(d.Name(), "+system.def") {
 			out = append(out, path)
 		}
 		return nil
@@ -1570,7 +1548,7 @@ func loadMotif(def string) (*Motif, error) {
 	if err := LoadFile(&def, []string{def, "", "data/"}, func(filename string) error {
 		def = filename
 
-		// Inline-append any external/mods/**/system.def files before parsing.
+		// Inline-append any external/mods/**/+system.def files before parsing.
 		modSystemDefs, err := findExternalModSystemDefs(filepath.FromSlash("external/mods"))
 		if err != nil {
 			return fmt.Errorf("Failed to discover external mod system.def files: %w", err)
@@ -2631,13 +2609,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 			tm.Item.Cursor.AnimData,
 			tm.Value.Icon.AnimData,
 			tm.Value.Empty.Icon.AnimData,
-			tm.Ratio1.Icon.AnimData,
-			tm.Ratio2.Icon.AnimData,
-			tm.Ratio3.Icon.AnimData,
-			tm.Ratio4.Icon.AnimData,
-			tm.Ratio5.Icon.AnimData,
-			tm.Ratio6.Icon.AnimData,
-			tm.Ratio7.Icon.AnimData,
 		)
 		// Palette menu
 		pm := &ps.PalMenu

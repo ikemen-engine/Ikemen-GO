@@ -220,6 +220,7 @@ type System struct {
 	debugLastID         int32
 	soundMixer          *beep.Mixer
 	bgm                 Bgm
+	pauseVolumeApplied  bool
 	soundChannels       SoundChannels // System sounds. Lifebars etc
 	charSoundChannels   [MaxPlayerNo]SoundChannels
 	allPalFX            *PalFX
@@ -923,18 +924,34 @@ func (s *System) tickSound() {
 	// Always pause if noMusic flag set, pause master volume is 0, or freqmul is 0.
 	s.bgm.SetPaused(s.nomusic || (s.paused && s.cfg.Sound.PauseMasterVolume == 0) || (s.bgm.freqmul == 0))
 
-	// Set BGM volume if paused
-	if s.paused && s.bgm.volRestore == 0 {
-		s.bgm.volRestore = s.bgm.bgmVolume
-		s.bgm.bgmVolume = int(s.cfg.Sound.PauseMasterVolume * s.bgm.bgmVolume / 100.0)
-		s.bgm.UpdateVolume()
+	if s.paused {
+		// Apply BGM pause volume once per pause, even when the original BGM volume is 0.
+		// volRestore cannot be used as the latch because 0 is a valid volume.
+		if !s.bgm.pauseVolumeApplied {
+			s.bgm.volRestore = s.bgm.bgmVolume
+			s.bgm.bgmVolume = int(s.cfg.Sound.PauseMasterVolume * s.bgm.bgmVolume / 100.0)
+			s.bgm.UpdateVolume()
+			s.bgm.pauseVolumeApplied = true
+		}
+
+		// Run every paused tick so sounds started while paused are also softened.
+		s.pauseVolumeApplied = true
 		s.softenAllSound()
-	} else if !s.paused && s.bgm.volRestore > 0 {
-		// Restore all volume
+	} else if s.pauseVolumeApplied || s.bgm.pauseVolumeApplied {
+		s.restorePauseVolume()
+	}
+}
+
+func (s *System) restorePauseVolume() {
+	if s.bgm.pauseVolumeApplied {
 		s.bgm.bgmVolume = s.bgm.volRestore
 		s.bgm.volRestore = 0
+		s.bgm.pauseVolumeApplied = false
 		s.bgm.UpdateVolume()
+	}
+	if s.pauseVolumeApplied {
 		s.restoreAllVolume()
+		s.pauseVolumeApplied = false
 	}
 }
 
@@ -2042,10 +2059,11 @@ func (s *System) softenAllSound() {
 			ch := &s.charSoundChannels[i][j]
 
 			// Temporarily store the volume so it can be recalled later.
-			if ch.IsPlaying() && ch.sfx != nil && ch.ctrl != nil {
+			if ch.IsPlaying() && ch.sfx != nil && ch.ctrl != nil && !ch.pauseVolumeApplied {
 				ch.volResume = ch.sfx.volume
 				softVolume := ch.sfx.volume * (float32(s.cfg.Sound.PauseMasterVolume) / 100.0)
 				ch.SetVolume(softVolume)
+				ch.pauseVolumeApplied = true
 
 				// Pause if pause master volume is 0
 				if s.cfg.Sound.PauseMasterVolume == 0 {
@@ -2063,8 +2081,9 @@ func (s *System) restoreAllVolume() {
 			ch := &s.charSoundChannels[i][j]
 
 			// Restore the volume we had.
-			if ch.sfx != nil && ch.ctrl != nil {
+			if ch.sfx != nil && ch.ctrl != nil && ch.pauseVolumeApplied {
 				ch.SetVolume(ch.volResume)
+				ch.pauseVolumeApplied = false
 
 				// Unpause only those whose freqmul > 0
 				if ch.ctrl.Paused && ch.sfx.freqmul > 0 {
@@ -2135,6 +2154,7 @@ func (s *System) resetRoundState() {
 
 	s.resetFrameTime()
 
+	s.restorePauseVolume()
 	s.paused = false
 	s.introSkipCall = false
 	s.roundResetFlg = false
@@ -3790,7 +3810,7 @@ func (s *System) SetupCharRoundStart() {
 			}
 
 			// Apply life options
-			lmax *= p[0].ocd().lifeRatio * s.cfg.Options.Life / 100
+			lmax *= s.cfg.Options.Life / 100
 
 			// Adjust life by team mode
 			if p[0].teamside != -1 {
@@ -3810,9 +3830,9 @@ func (s *System) SetupCharRoundStart() {
 							if len(s.chars[j]) > 0 {
 								var charLm float32
 								if s.chars[j][0].ocd().lifeMax > 0 {
-									charLm = float32(s.chars[j][0].ocd().lifeMax) * s.chars[j][0].ocd().lifeRatio * s.cfg.Options.Life / 100
+									charLm = float32(s.chars[j][0].ocd().lifeMax) * s.cfg.Options.Life / 100
 								} else {
-									charLm = float32(s.chars[j][0].gi().data.life) * s.chars[j][0].ocd().lifeRatio * s.cfg.Options.Life / 100
+									charLm = float32(s.chars[j][0].gi().data.life) * s.cfg.Options.Life / 100
 								}
 								totalTeamLife += charLm
 								teamSize++
@@ -4150,7 +4170,6 @@ type SelectChar struct {
 	intro         string
 	ending        string
 	arcadepath    string
-	ratiopath     string
 	movelist      string
 	pal           []int32
 	pal_defaults  []int32
@@ -4529,7 +4548,6 @@ func (s *Select) AddChar(def string) *SelectChar {
 				sc.intro, _, _ = isec.getText("intro.storyboard")
 				sc.ending, _, _ = isec.getText("ending.storyboard")
 				sc.arcadepath, _, _ = isec.getText("arcadepath")
-				sc.ratiopath, _, _ = isec.getText("ratiopath")
 			}
 		}
 	}
@@ -5031,7 +5049,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 				break
 			}
 		}
-		if prefixToDecrement && !ffx.isGlobal {
+		if prefixToDecrement && ffx.isCharFX {
 			if ffx.refCount > 0 {
 				ffx.refCount--
 			}
@@ -5046,6 +5064,10 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 
 	if sameChar {
 		p = sys.chars[pn][0]
+
+		// The cached instance is being reused as a fresh entrant.
+		// Restore values that ModifyPlayer may have mutated.
+		p.resetCachedPlayerState()
 
 		// Prepare success message
 		if attached {
@@ -5129,6 +5151,11 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		selectPalno = sys.sel.selected[pn&1][memberNo][1]
 	}
 	sys.cgi[pn].palno = int32(selectPalno)
+
+	// Apply per-launch map overrides prepared from Lua/loadStart.
+	if !attached {
+		p.applyMapOverrides()
+	}
 
 	// Prepare fight screen portraits and names for Turns mode
 	if !attached {
@@ -5326,11 +5353,19 @@ func (l *Loader) load() {
 	sys.fightScreen.setScale()
 	//sys.motif.setMotifScale()
 
+	// Load any config-driven Common FX not already cached. External modules may
+	// append to Common.Fx before a match; once loaded, non-char FX are kept.
+	if err := loadCommonFightFx(sys.fightScreen.def, false); err != nil {
+		l.err = err
+		l.state = LS_Error
+		return
+	}
+
 	/*
 		// This should now be handled by loadSff()
 		sys.loadMutex.Lock()
 		for prefix, ffx := range sys.ffx {
-			if ffx.isGlobal {
+			if !ffx.isCharFX {
 				continue
 			}
 			if ffx.refCount <= 0 {

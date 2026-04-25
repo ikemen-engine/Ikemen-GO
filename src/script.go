@@ -430,22 +430,52 @@ func toLValue(l *lua.LState, v interface{}) lua.LValue {
 	}
 }
 
-func setNestedLuaKey(l *lua.LState, tbl *lua.LTable, key string, val lua.LValue) {
+func luaIniAppendOrder(l *lua.LState, tbl *lua.LTable, key string) {
+	if tbl == nil || strings.HasPrefix(key, "__") {
+		return
+	}
+	order, _ := tbl.RawGetString("__order").(*lua.LTable)
+	if order == nil {
+		order = l.NewTable()
+		tbl.RawSetString("__order", order)
+	}
+	for i := 1; i <= order.Len(); i++ {
+		if order.RawGetInt(i).String() == key {
+			return
+		}
+	}
+	order.Append(lua.LString(key))
+}
+
+func setNestedLuaKey(l *lua.LState, tbl *lua.LTable, key string, val lua.LValue, keepMeta bool) {
 	parts := strings.Split(key, ".")
 	cur := tbl
 	for i, part := range parts {
+		if keepMeta {
+			luaIniAppendOrder(l, cur, part)
+		}
 		if i == len(parts)-1 {
-			// last segment: set the value
+			// Last segment: set the value. If this key was already promoted to a
+			// table by a child key, keep the scalar value as table metadata.
+			if keepMeta {
+				if subTbl, ok := cur.RawGetString(part).(*lua.LTable); ok {
+					subTbl.RawSetString("__value", val)
+					return
+				}
+			}
 			cur.RawSetString(part, val)
 			return
 		}
-		// intermediate segment: ensure there's a table here
+		// Intermediate segment: ensure there's a table here. If a previous scalar
+		// value existed for the same key, preserve it as __value.
 		existing := cur.RawGetString(part)
 		if subTbl, ok := existing.(*lua.LTable); ok {
 			cur = subTbl
 		} else {
-			// overwrite non-table or nil with a new table
 			newTbl := l.NewTable()
+			if keepMeta && existing != lua.LNil {
+				newTbl.RawSetString("__value", existing)
+			}
 			cur.RawSetString(part, newTbl)
 			cur = newTbl
 		}
@@ -573,7 +603,7 @@ func parseIniLuaValue(l *lua.LState, raw string) lua.LValue {
 	return lua.LString(s)
 }
 
-func iniToLuaTable(l *lua.LState, f *ini.File) *lua.LTable {
+func iniToLuaTable(l *lua.LState, f *ini.File, normalizeSections bool, keepMeta bool) *lua.LTable {
 	t := l.NewTable()
 	if f == nil {
 		return t
@@ -585,15 +615,214 @@ func iniToLuaTable(l *lua.LState, f *ini.File) *lua.LTable {
 			val := parseIniLuaValue(l, k.Value())
 			if strings.Contains(name, ".") {
 				// use nested tables for dotted keys
-				setNestedLuaKey(l, secTable, name, val)
+				setNestedLuaKey(l, secTable, name, val, keepMeta)
 			} else {
-				// plain key, just set directly
-				secTable.RawSetString(name, val)
+				if keepMeta {
+					luaIniAppendOrder(l, secTable, name)
+					if subTbl, ok := secTable.RawGetString(name).(*lua.LTable); ok {
+						subTbl.RawSetString("__value", val)
+					} else {
+						secTable.RawSetString(name, val)
+					}
+				} else {
+					secTable.RawSetString(name, val)
+				}
 			}
 		}
-		t.RawSetString(normalizeSectionName(sec.Name()), secTable)
+		sectionName := strings.TrimSpace(sec.Name())
+		if normalizeSections {
+			sectionName = normalizeSectionName(sec.Name())
+		}
+		t.RawSetString(sectionName, secTable)
 	}
 	return t
+}
+
+func isLuaArrayTable(t *lua.LTable) bool {
+	if t == nil {
+		return false
+	}
+	n := t.Len()
+	if n == 0 {
+		// Treat empty tables as objects by default. This is safer for INI,
+		// where empty arrays/objects are otherwise ambiguous.
+		return false
+	}
+	isArray := true
+	t.ForEach(func(k, _ lua.LValue) {
+		if !isArray {
+			return
+		}
+		num, ok := k.(lua.LNumber)
+		if !ok {
+			isArray = false
+			return
+		}
+		f := float64(num)
+		if f < 1 || f != math.Trunc(f) || int(f) > n {
+			isArray = false
+		}
+	})
+	return isArray
+}
+
+func needsIniQuotes(s string) bool {
+	if s == "" {
+		return true
+	}
+	trimmed := strings.TrimSpace(s)
+	if trimmed != s {
+		return true
+	}
+	if strings.ContainsAny(s, ",\"'") {
+		return true
+	}
+	switch strings.ToLower(s) {
+	case "true", "false":
+		return true
+	}
+	if _, err := strconv.ParseInt(s, 0, 64); err == nil {
+		return true
+	}
+	if _, err := strconv.ParseFloat(s, 64); err == nil {
+		return true
+	}
+	return false
+}
+
+func encodeIniString(s string) string {
+	if needsIniQuotes(s) {
+		return strconv.Quote(s)
+	}
+	return s
+}
+
+func luaIniScalarString(v lua.LValue) (string, error) {
+	switch x := v.(type) {
+	case *lua.LNilType:
+		return "", nil
+	case lua.LBool:
+		if bool(x) {
+			return "true", nil
+		}
+		return "false", nil
+	case lua.LNumber:
+		f := float64(x)
+		if math.IsNaN(f) || math.IsInf(f, 0) {
+			return "", fmt.Errorf("saveIni: NaN/Inf not permitted in INI numbers")
+		}
+		f = RoundFloat(f, 6)
+		if f == math.Trunc(f) {
+			return strconv.FormatInt(int64(f), 10), nil
+		}
+		return strconv.FormatFloat(f, 'f', -1, 64), nil
+	case lua.LString:
+		return encodeIniString(string(x)), nil
+	default:
+		return "", fmt.Errorf("saveIni: unsupported INI scalar type %T", v)
+	}
+}
+
+func luaIniValueString(v lua.LValue) (string, error) {
+	if tbl, ok := v.(*lua.LTable); ok {
+		if !isLuaArrayTable(tbl) {
+			return "", fmt.Errorf("saveIni: nested non-array table must be flattened as dotted keys")
+		}
+		parts := make([]string, 0, tbl.Len())
+		for i := 1; i <= tbl.Len(); i++ {
+			s, err := luaIniScalarString(tbl.RawGetInt(i))
+			if err != nil {
+				return "", err
+			}
+			parts = append(parts, s)
+		}
+		return strings.Join(parts, ", "), nil
+	}
+	return luaIniScalarString(v)
+}
+
+func flattenLuaIniSection(tbl *lua.LTable, prefix string, out map[string]string) error {
+	if tbl == nil {
+		return nil
+	}
+	var errRet error
+	tbl.ForEach(func(k, v lua.LValue) {
+		if errRet != nil {
+			return
+		}
+		ks, ok := k.(lua.LString)
+		if !ok {
+			errRet = fmt.Errorf("saveIni: INI keys must be strings, got %T", k)
+			return
+		}
+		key := string(ks)
+		fullKey := key
+		if prefix != "" {
+			fullKey = prefix + "." + key
+		}
+		if sub, ok := v.(*lua.LTable); ok && !isLuaArrayTable(sub) {
+			if err := flattenLuaIniSection(sub, fullKey, out); err != nil {
+				errRet = err
+			}
+			return
+		}
+		s, err := luaIniValueString(v)
+		if err != nil {
+			errRet = fmt.Errorf("%v (key %q)", err, fullKey)
+			return
+		}
+		out[fullKey] = s
+	})
+	return errRet
+}
+
+func luaTableToIniFile(root *lua.LTable) (*ini.File, error) {
+	f := ini.Empty()
+	if root == nil {
+		return f, nil
+	}
+	sections := make(map[string]*lua.LTable)
+	sectionNames := make([]string, 0)
+	root.ForEach(func(k, v lua.LValue) {
+		ks, ok := k.(lua.LString)
+		if !ok {
+			return
+		}
+		secTbl, ok := v.(*lua.LTable)
+		if !ok {
+			return
+		}
+		name := strings.TrimSpace(string(ks))
+		sections[name] = secTbl
+		sectionNames = append(sectionNames, name)
+	})
+	sort.Strings(sectionNames)
+	for _, sectionName := range sectionNames {
+		secTbl := sections[sectionName]
+		iniSectionName := sectionName
+		if strings.EqualFold(sectionName, "default") {
+			iniSectionName = ini.DEFAULT_SECTION
+		}
+		sec, err := f.NewSection(iniSectionName)
+		if err != nil {
+			return nil, fmt.Errorf("saveIni: create section %q: %w", sectionName, err)
+		}
+		flat := make(map[string]string)
+		if err := flattenLuaIniSection(secTbl, "", flat); err != nil {
+			return nil, err
+		}
+		keys := make([]string, 0, len(flat))
+		for k := range flat {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			if _, err := sec.NewKey(k, flat[k]); err != nil {
+				return nil, fmt.Errorf("saveIni: create key %q in section %q: %w", k, sectionName, err)
+			}
+		}
+	}
+	return f, nil
 }
 
 func jsonToLuaValue(L *lua.LState, r io.Reader) (lua.LValue, error) {
@@ -2884,6 +3113,7 @@ func systemScriptInit(l *lua.LState) {
 					sys.statsLog.finalizeMatch()
 				}
 				// Cleanup
+				sys.restorePauseVolume()
 				sys.timerStart = 0
 				sys.timerRounds = []int32{}
 				sys.scoreStart = [2]float32{}
@@ -3036,7 +3266,6 @@ func systemScriptInit(l *lua.LState) {
 		  - `intro` (string) intro def path
 		  - `ending` (string) ending def path
 		  - `arcadepath` (string) arcade path override
-		  - `ratiopath` (string) ratio path override
 		  - `localcoord` (float32) base localcoord width
 		  - `portraitscale` (float32) scale applied to portraits
 		  - `cns_scale` (float32[]) scale values from the CNS configuration
@@ -3053,7 +3282,6 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("intro", lua.LString(c.intro))
 		tbl.RawSetString("ending", lua.LString(c.ending))
 		tbl.RawSetString("arcadepath", lua.LString(c.arcadepath))
-		tbl.RawSetString("ratiopath", lua.LString(c.ratiopath))
 		tbl.RawSetString("localcoord", lua.LNumber(c.localcoord[0]))
 		tbl.RawSetString("portraitscale", lua.LNumber(c.portraitscale))
 		subt := l.NewTable()
@@ -3973,15 +4201,27 @@ func systemScriptInit(l *lua.LState) {
 		/*Load an INI file and convert it to a nested Lua table.
 		@function loadIni
 		@tparam string filename INI file path.
+		@tparam[opt=true] boolean normalizeSections If `true`, section names are normalized:
+		  leading/trailing whitespace removed, letters lowercased, internal whitespace collapsed to `_`.
+		@tparam[opt=false] boolean keepMeta If `true`, each nested table receives an `__order` array
+		  preserving INI key order, and scalar values promoted to parent tables are preserved as `__value`.
 		@treturn table ini Table of sections; each section is a table of keys to strings.
 		  Dotted keys are converted to nested subtables.
-		function loadIni(filename) end*/
+		function loadIni(filename, normalizeSections, keepMeta) end*/
 		def := ""
 		if !nilArg(l, 1) {
 			def = strArg(l, 1)
 		}
 		if def == "" {
 			l.RaiseError("loadIniTable: expected ini filename")
+		}
+		normalizeSections := true
+		if !nilArg(l, 2) {
+			normalizeSections = boolArg(l, 2)
+		}
+		keepMeta := false
+		if !nilArg(l, 3) {
+			keepMeta = boolArg(l, 3)
 		}
 		raw, err := LoadText(def)
 		if err != nil {
@@ -3996,7 +4236,7 @@ func systemScriptInit(l *lua.LState) {
 		if err != nil {
 			l.RaiseError("\nCan't parse ini %v: %v\n", def, err.Error())
 		}
-		l.Push(iniToLuaTable(l, iniFile))
+		l.Push(iniToLuaTable(l, iniFile, normalizeSections, keepMeta))
 		return 1
 	})
 	luaRegister(l, "loadFightScreen", func(l *lua.LState) int {
@@ -4365,7 +4605,7 @@ func systemScriptInit(l *lua.LState) {
 
 			type entry struct {
 				elem     string // "default" or gamemode (e.g. "teamarcade")
-				field    string // single/simul/turns/tag/ratio
+				field    string // single/simul/turns/tag
 				disabled bool
 			}
 			collect := func(file *ini.File, sec string) (out []entry) {
@@ -5552,6 +5792,43 @@ func systemScriptInit(l *lua.LState) {
 		}
 		if err := sys.cfg.Save(path); err != nil {
 			l.RaiseError("\nsaveGameOption: %v\n", err.Error())
+		}
+		return 0
+	})
+	luaRegister(l, "saveIni", func(l *lua.LState) int {
+		/*Save a Lua table to an INI file.
+		@function saveIni
+		@tparam table iniTable Table of sections to save.
+		  Each top-level key is the section name and each value must be a table.
+		  Nested tables inside a section are flattened using dotted keys.
+		  Array-like tables are saved as comma-separated lists.
+		@tparam string filename Output INI file path.
+		function saveIni(iniTable, filename) end*/
+		tbl := tableArg(l, 1)
+		if tbl == nil {
+			l.RaiseError("saveIni: expected table as first argument")
+			return 0
+		}
+
+		def := strArg(l, 2)
+		if def == "" {
+			l.RaiseError("saveIni: expected ini filename")
+			return 0
+		}
+
+		iniFile, err := luaTableToIniFile(tbl)
+		if err != nil {
+			l.RaiseError(err.Error())
+			return 0
+		}
+
+		if dir := filepath.Dir(def); dir != "." && dir != "" {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				l.RaiseError("saveIni: mkdir %s: %v", dir, err)
+			}
+		}
+		if err := iniFile.SaveTo(def); err != nil {
+			l.RaiseError("saveIni: write %s: %v", def, err)
 		}
 		return 0
 	})
@@ -7478,8 +7755,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	// atan2 (dedicated functionality already exists in Lua)
 	luaRegister(l, "attack", func(*lua.LState) int {
-		base := float32(sys.debugWC.gi().attackBase) * sys.debugWC.ocd().attackRatio / 100
-		l.Push(lua.LNumber(base * sys.debugWC.attackMul[0] * 100))
+		l.Push(lua.LNumber(float32(sys.debugWC.gi().attackBase) * sys.debugWC.attackMul[0]))
 		return 1
 	})
 	luaRegister(l, "attackMul", func(*lua.LState) int {
@@ -8236,12 +8512,14 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.getSlowtime()))
 		case "superpausetime":
 			l.Push(lua.LNumber(sys.supertime))
+		case "persistrounds":
+			l.Push(lua.LBool(sys.sel.gameParams.PersistRounds))
 		case "persistlife":
 			l.Push(lua.LBool(sys.sel.gameParams.PersistLife))
 		case "persistmusic":
 			l.Push(lua.LBool(sys.sel.gameParams.PersistMusic))
-		case "persistrounds":
-			l.Push(lua.LBool(sys.sel.gameParams.PersistRounds))
+		case "hidebars":
+			l.Push(lua.LBool(sys.lifebarHide || sys.dialogueBarsFlg))
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -9682,10 +9960,6 @@ func triggerFunctions(l *lua.LState) {
 	// rad (dedicated functionality already exists in Lua)
 	// random (dedicated functionality already exists in Lua)
 	// randomRange (dedicated functionality already exists in Lua)
-	luaRegister(l, "ratioLevel", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.ocd().ratioLevel))
-		return 1
-	})
 	luaRegister(l, "receivedDamage", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.receivedDmg))
 		return 1

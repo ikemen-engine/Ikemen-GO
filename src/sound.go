@@ -300,19 +300,20 @@ func (b *StreamLooper) Seek(p int) error {
 // Bgm
 
 type Bgm struct {
-	filename   string
-	bgmVolume  int
-	volRestore int
-	loop       int
-	streamer   beep.StreamSeeker
-	ctrl       *beep.Ctrl
-	volctrl    *effects.Volume
-	format     string
-	freqmul    float32
-	sampleRate beep.SampleRate
-	startPos   int
-	mu         sync.Mutex
-	cancel     context.CancelFunc
+	filename           string
+	bgmVolume          int
+	volRestore         int
+	pauseVolumeApplied bool
+	loop               int
+	streamer           beep.StreamSeeker
+	ctrl               *beep.Ctrl
+	volctrl            *effects.Volume
+	format             string
+	freqmul            float32
+	sampleRate         beep.SampleRate
+	startPos           int
+	mu                 sync.Mutex
+	cancel             context.CancelFunc
 }
 
 func newBgm() *Bgm {
@@ -326,6 +327,8 @@ func (bgm *Bgm) Stop() {
 		})
 	}
 	bgm.filename = ""
+	bgm.volRestore = 0
+	bgm.pauseVolumeApplied = false
 }
 
 func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32, loopcount int) {
@@ -342,6 +345,8 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
 	bgm.freqmul = freqmul
+	bgm.volRestore = 0
+	bgm.pauseVolumeApplied = false
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
 		WithSpeakerLock(func() {
@@ -422,7 +427,12 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
-	bgm.volRestore = 0 // need this to prevent paused BGM volume from overwriting the new BGM volume
+	if sys.paused && sys.pauseVolumeApplied {
+		// A new BGM can start while the game is already paused.
+		bgm.volRestore = bgm.bgmVolume
+		bgm.bgmVolume = int(sys.cfg.Sound.PauseMasterVolume * bgm.bgmVolume / 100.0)
+		bgm.pauseVolumeApplied = true
+	}
 	bgm.UpdateVolume()
 	bgm.streamer.Seek(startPosition)
 	speaker.Play(bgm.ctrl)
@@ -614,6 +624,8 @@ func (bgm *Bgm) OpenFromStreamer(stream beep.Streamer, srcSampleRate beep.Sample
 	bgm.loop = 0
 	bgm.bgmVolume = bgmVolume
 	bgm.freqmul = 1
+	bgm.volRestore = 0
+	bgm.pauseVolumeApplied = false
 
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
@@ -635,7 +647,12 @@ func (bgm *Bgm) OpenFromStreamer(stream beep.Streamer, srcSampleRate beep.Sample
 	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
-	bgm.volRestore = 0
+	if sys.paused && sys.pauseVolumeApplied {
+		// A video-backed BGM can also be attached while pause is active.
+		bgm.volRestore = bgm.bgmVolume
+		bgm.bgmVolume = int(sys.cfg.Sound.PauseMasterVolume * bgm.bgmVolume / 100.0)
+		bgm.pauseVolumeApplied = true
+	}
 	bgm.UpdateVolume()
 	speaker.Play(bgm.ctrl)
 }
@@ -942,18 +959,19 @@ func (s *SoundEffect) Err() error {
 // SoundChannel
 
 type SoundChannel struct {
-	streamer          beep.StreamSeeker
-	sfx               *SoundEffect
-	ctrl              *beep.Ctrl
-	sound             *Sound
-	playerID          int32
-	channelNo         int32 // Logical channel assigned by char code
-	stopOnGetHit      bool
-	stopOnChangeState bool
-	group             int32
-	number            int32
-	timeStamp         int32
-	volResume         float32 // For pausing/unpausing
+	streamer           beep.StreamSeeker
+	sfx                *SoundEffect
+	ctrl               *beep.Ctrl
+	sound              *Sound
+	playerID           int32
+	channelNo          int32 // Logical channel assigned by char code
+	stopOnGetHit       bool
+	stopOnChangeState  bool
+	group              int32
+	number             int32
+	timeStamp          int32
+	volResume          float32 // For pausing/unpausing
+	pauseVolumeApplied bool
 }
 
 // The old Stop() plus more
@@ -976,6 +994,9 @@ func (s *SoundChannel) Reset() {
 	s.group = -1
 	s.number = -1
 	s.timeStamp = -1
+
+	s.volResume = 0
+	s.pauseVolumeApplied = false
 }
 
 func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul float32, loopStart, loopEnd, startPosition int) {

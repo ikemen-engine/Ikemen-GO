@@ -71,7 +71,7 @@ type FightFx struct {
 	fx_scale   float32
 	localcoord [2]int32
 	refCount   int
-	isGlobal   bool
+	isCharFX   bool
 }
 
 func newFightFx() *FightFx {
@@ -82,7 +82,26 @@ func newFightFx() *FightFx {
 	}
 }
 
-func loadFightFx(def string, isGlobal bool, isMainThread bool) error {
+func loadCommonFightFx(def string, isMainThread bool) error {
+	for _, key := range SortedKeys(sys.cfg.Common.Fx) {
+		for _, v := range sys.cfg.Common.Fx[key] {
+			if err := LoadFile(&v, []string{def, sys.motif.Def, "", "data/"},
+				func(filename string) error {
+					for _, ffx := range sys.ffx {
+						if ffx != nil && !ffx.isCharFX && ffx.fileName == filename {
+							return nil
+						}
+					}
+					return loadFightFx(filename, false, isMainThread)
+				}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 	str, err := LoadText(def)
 	if err != nil {
 		return err
@@ -113,19 +132,23 @@ func loadFightFx(def string, isGlobal bool, isMainThread bool) error {
 				if _, ok := triggerMap[prefix]; ok {
 					return Error(fmt.Sprintf("The %s prefix conflicts with an existing trigger name and cannot be used", strings.ToUpper(prefix)))
 				}
-				// Check if prefix is valid but already in use
-				// TODO: This shouldn't print a warning when just reloading everything
-				for used := range sys.ffx {
-					if prefix == used {
-						sys.appendToConsole(fmt.Sprintf("Duplicate common FX prefix found or reloaded: %s in %s", strings.ToUpper(prefix), def))
-					}
-				}
 				if ffx, ok := sys.ffx[prefix]; ok {
-					// Global FX are always enabled. Character FX increase the count
-					if !isGlobal {
+					// Char FX are the only refcounted FX. Everything else is cached once loaded and kept around.
+					if isCharFX && ffx.isCharFX {
 						if ffx.refCount < 8 {
 							ffx.refCount += 1 + int((sys.numSimul[0]+sys.numSimul[1])/2)
 						}
+					}
+					// If the same file later appears in Common.Fx, promote it to
+					// cached non-char FX instead of letting refcount cleanup remove it.
+					if !isCharFX && ffx.fileName == def {
+						ffx.isCharFX = false
+						ffx.refCount = 99999
+					}
+					if ffx.fileName != def {
+						sys.appendToConsole(fmt.Sprintf(
+							"Duplicate FightFX prefix found: %s already loaded from %s, ignoring %s",
+							strings.ToUpper(prefix), ffx.fileName, def))
 					}
 					return nil
 				}
@@ -181,11 +204,11 @@ func loadFightFx(def string, isGlobal bool, isMainThread bool) error {
 	//	sys.ffxPrefixes = append(sys.ffxPrefixes, prefix)
 	//}
 	ffx.fileName = def
-	ffx.isGlobal = isGlobal
-	if isGlobal {
-		ffx.refCount = 99999
-	} else {
+	ffx.isCharFX = isCharFX
+	if isCharFX {
 		ffx.refCount = 3 + int(sys.numSimul[0]+sys.numSimul[1])
+	} else {
+		ffx.refCount = 99999
 	}
 	sys.ffx[prefix] = ffx
 	return nil
@@ -3888,51 +3911,6 @@ func (ro *FightScreenRound) draw(layerno int16, f map[int]*Fnt) {
 	}
 }
 
-type FightScreenRatio struct {
-	pos  [2]int32
-	icon [4]AnimLayout
-	bg   AnimLayout
-	top  AnimLayout
-}
-
-func newFightScreenRatio() *FightScreenRatio {
-	return &FightScreenRatio{}
-}
-
-func readFightScreenRatio(pre string, is IniSection,
-	sff *Sff, at AnimationTable) *FightScreenRatio {
-	ra := newFightScreenRatio()
-	is.ReadI32(pre+"pos", &ra.pos[0], &ra.pos[1])
-	ra.icon[0] = ReadAnimLayout(pre+"level1.", is, sff, at, 0)
-	ra.icon[1] = ReadAnimLayout(pre+"level2.", is, sff, at, 0)
-	ra.icon[2] = ReadAnimLayout(pre+"level3.", is, sff, at, 0)
-	ra.icon[3] = ReadAnimLayout(pre+"level4.", is, sff, at, 0)
-	ra.bg = ReadAnimLayout(pre+"bg.", is, sff, at, 0)
-	return ra
-}
-
-func (ra *FightScreenRatio) step(num int32) {
-	ra.icon[num].Action()
-	ra.bg.Action()
-}
-
-func (ra *FightScreenRatio) reset() {
-	for i := range ra.icon {
-		ra.icon[i].Reset()
-	}
-	ra.bg.Reset()
-}
-
-func (ra *FightScreenRatio) bgDraw(layerno int16) {
-	ra.bg.Draw(float32(ra.pos[0])+sys.fightScreen.offsetX, float32(ra.pos[1]), layerno, sys.fightScreen.scale)
-}
-
-func (ra *FightScreenRatio) draw(layerno int16, num int32) {
-	ra.icon[num].Draw(float32(ra.pos[0])+sys.fightScreen.offsetX,
-		float32(ra.pos[1]), layerno, sys.fightScreen.scale)
-	ra.top.Draw(float32(ra.pos[0])+sys.fightScreen.offsetX, float32(ra.pos[1]), layerno, sys.fightScreen.scale)
-}
-
 type FightScreenTimer struct {
 	pos     [2]int32
 	text    FSText
@@ -4392,7 +4370,6 @@ type FightScreen struct {
 	combos        [2]*FightScreenCombo
 	actions       [2]*FightScreenAction
 	round         *FightScreenRound
-	ratios        [2]*FightScreenRatio
 	timer         *FightScreenTimer // For Time Attack and such
 	scores        [2]*FightScreenScore
 	match         *FightScreenMatch
@@ -4464,9 +4441,9 @@ func loadFightScreen(def string) (*FightScreen, error) {
 		"[tag_4p stunbar]": 7, "[tag face]": 3, "[simul_3p face]": 4,
 		"[simul_4p face]": 5, "[tag_3p face]": 6, "[tag_4p face]": 7,
 		"[tag name]": 3, "[simul_3p name]": 4, "[simul_4p name]": 5,
-		"[tag_3p name]": 6, "[tag_4p name]": 7, "[action]": -1, "[ratio]": -1,
-		"[timer]": -1, "[score]": -1, "[match]": -1, "[ailevel]": -1,
-		"[wincount]": -1, "[mode]": -1,
+		"[tag_3p name]": 6, "[tag_4p name]": 7, "[action]": -1, "[timer]": -1,
+		"[score]": -1, "[match]": -1, "[ailevel]": -1, "[wincount]": -1,
+		"[mode]": -1,
 	}
 	strc := strings.ToLower(strings.TrimSpace(str))
 	for k := range fs.missing {
@@ -4501,23 +4478,8 @@ func loadFightScreen(def string) (*FightScreen, error) {
 	sys.fightScreen.scale = fs.scale
 	sys.fightScreen.portraitScale = fs.portraitScale
 
-	// Load Common FX first
-	for _, key := range SortedKeys(sys.cfg.Common.Fx) {
-		for _, v := range sys.cfg.Common.Fx[key] {
-			if err := LoadFile(&v, []string{def, sys.motif.Def, "", "data/"}, func(filename string) error {
-				if err := loadFightFx(filename, true, true); err != nil {
-					return err
-				}
-				return nil
-			}); err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	// Prepare fight screen FightFX
 	ffx := newFightFx()
-	ffx.isGlobal = true
 
 	for lnidx < len(lines) {
 		is, name, subname := ReadIniSection(lines, &lnidx)
@@ -4611,7 +4573,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 				for i := 1; i <= fs.fx_limit; i++ {
 					if err := is.LoadFile(fmt.Sprintf("fx%v", i), []string{def, sys.motif.Def, "", "data/"},
 						func(filename string) error {
-							if err := loadFightFx(filename, true, true); err != nil {
+							if err := loadFightFx(filename, false, true); err != nil {
 								return err
 							}
 							return nil
@@ -4989,13 +4951,6 @@ func loadFightScreen(def string) (*FightScreen, error) {
 			if fs.round == nil {
 				fs.round = readFightScreenRound(is, fs.sff, fs.animTable, fs.snd, fs.fnt)
 			}
-		case "ratio":
-			if fs.ratios[0] == nil {
-				fs.ratios[0] = readFightScreenRatio("p1.", resolvedSection("p", 1), fs.sff, fs.animTable)
-			}
-			if fs.ratios[1] == nil {
-				fs.ratios[1] = readFightScreenRatio("p2.", resolvedSection("p", 2), fs.sff, fs.animTable)
-			}
 		case "timer":
 			if fs.timer == nil {
 				fs.timer = readFightScreenTimer(is, fs.sff, fs.animTable, fs.fnt)
@@ -5239,15 +5194,6 @@ func (fs *FightScreen) step() {
 	for i := range fs.actions {
 		fs.actions[i].step(fs.teamOrder[i][0])
 	}
-	// Ratio
-	for ti, tm := range sys.tmode {
-		if tm == TM_Turns {
-			rl := sys.chars[ti][0].ocd().ratioLevel
-			if rl > 0 {
-				fs.ratios[ti].step(rl - 1)
-			}
-		}
-	}
 	// Timer
 	fs.timer.step()
 	// Score
@@ -5354,9 +5300,6 @@ func (fs *FightScreen) reset() {
 		fs.actions[i].reset(fs.teamOrder[i][0])
 	}
 	fs.round.reset()
-	for i := range fs.ratios {
-		fs.ratios[i].reset()
-	}
 	fs.timer.reset()
 	for i := range fs.scores {
 		fs.scores[i].reset()
@@ -5520,17 +5463,6 @@ func (fs *FightScreen) draw(layerno int16) {
 					}
 					fs.names[layout][barpn].bgDraw(layerno)
 					fs.names[layout][barpn].draw(layerno, charpn, fs.fnt, side)
-				}
-			}
-
-			// Ratio
-			for i := 0; i < len(sys.tmode); i++ {
-				if sys.tmode[i] == TM_Turns {
-					rl := sys.chars[i][0].ocd().ratioLevel
-					if rl > 0 && !sys.chars[i][0].asf(ASF_nofacedisplay) {
-						fs.ratios[i].bgDraw(layerno)
-						fs.ratios[i].draw(layerno, rl-1)
-					}
 				}
 			}
 
