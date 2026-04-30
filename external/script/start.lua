@@ -1400,6 +1400,7 @@ function start.f_slotSelected(cell, side, cmd, player, x, y)
 	if cmd == nil then
 		return false, false
 	end
+	local original_slot = main.t_selGrid[cell].slot
 	if #main.t_selGrid[cell].chars > 0 then
 		-- select.def 'slot' parameter special keys detection
 		for _, cmdType in ipairs({'select', 'next', 'previous'}) do
@@ -2531,9 +2532,10 @@ function start.f_selectScreen()
 						member = k
 					end
 					--member selection
-					v.selectState, DrawUpdateflag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
-					if start.needUpdateDrawList == false then
-						start.needUpdateDrawList = DrawUpdateflag
+					local drawUpdateFlag
+					v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
+					if drawUpdateFlag then
+						start.needUpdateDrawList = true
 					end
 					--draw active cursor
 					if side == 2 and motif.select_info.p2.cursor.blink then
@@ -3203,7 +3205,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			})
 		end
 		start.p[side].selEnd = true
-		return 0
+		return 0, false
 	--manual selection
 	elseif not start.p[side].selEnd then
 		local pn = 2 * (member - 1) + side

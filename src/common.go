@@ -513,9 +513,9 @@ func FileExist(filename string) string {
 }
 
 // SearchFile searches for 'file' in 'dirs'.
-// 'dirs' elements can be plain directory paths or logical paths to .def files (which might be inside zips).
-// 'file' is the filename to search (e.g., "kfm.sff").
-func SearchFile(file string, dirs []string) string {
+// 'dirs' elements are lookup roots: directory paths or logical paths to files such as .def files.
+// Optional defaultDirs are subdirectories checked under each root after direct lookup, e.g. "font/" or "sound/".
+func SearchFile(file string, dirs []string, defaultDirs ...string) string {
 	file = strings.TrimSpace(file)
 	if sc := strings.Index(file, ";"); sc >= 0 {
 		file = strings.TrimSpace(file[:sc])
@@ -524,51 +524,113 @@ func SearchFile(file string, dirs []string) string {
 	if file == "" {
 		return ""
 	}
-	if isZipFull, _, _ := IsZipPath(file); isZipFull {
-		if found := FileExist(file); found != "" {
-			return found
+	hasDirPrefix := func(file, dir string) bool {
+		file = strings.ToLower(filepath.ToSlash(file))
+		dir = strings.ToLower(filepath.ToSlash(dir))
+		return strings.HasPrefix(file, dir)
+	}
+	cleanDefaultDir := func(dir string) string {
+		dir = strings.TrimSpace(filepath.ToSlash(dir))
+		dir = strings.TrimPrefix(dir, "./")
+		if dir == "" {
+			return ""
+		}
+		if !strings.HasSuffix(dir, "/") {
+			dir += "/"
+		}
+		return dir
+	}
+	addUnique := func(ss []string, s string) []string {
+		for _, v := range ss {
+			if v == s {
+				return ss
+			}
+		}
+		return append(ss, s)
+	}
+	roots := dirs
+	var defaults []string
+	for _, dir := range defaultDirs {
+		if dir = cleanDefaultDir(dir); dir != "" {
+			defaults = addUnique(defaults, dir)
 		}
 	}
-
-	if filepath.IsAbs(file) {
-		if found := FileExist(file); found != "" {
-			return found
-		}
+	if len(roots) == 0 {
+		roots = []string{""}
 	}
-
-	for _, dirCtx := range dirs {
-		dirCtx = filepath.ToSlash(dirCtx)
-		isZipCtx, zipFileCtx, pathInZipCtx := IsZipPath(dirCtx)
-
-		var candidate string
-		if isZipCtx {
-			baseDirInZip := filepath.Dir(pathInZipCtx)
+	seen := map[string]bool{}
+	try := func(candidate string) string {
+		candidate = filepath.ToSlash(candidate)
+		key := strings.ToLower(candidate)
+		if seen[key] {
+			return ""
+		}
+		seen[key] = true
+		return FileExist(candidate)
+	}
+	join := func(base, name string) string {
+		if base == "" {
+			return filepath.ToSlash(name)
+		}
+		return filepath.ToSlash(filepath.Join(base, name))
+	}
+	rootBases := func(root string) []string {
+		root = filepath.ToSlash(strings.TrimSpace(root))
+		if root == "" {
+			return []string{""}
+		}
+		if isZipCtx, zipFileCtx, pathInZipCtx := IsZipPath(root); isZipCtx {
+			baseDirInZip := filepath.ToSlash(filepath.Dir(pathInZipCtx))
 			if baseDirInZip == "." {
 				baseDirInZip = ""
 			}
-			candidate = filepath.ToSlash(filepath.Join(zipFileCtx, baseDirInZip, file))
-			if found := FileExist(candidate); found != "" {
+			return []string{join(zipFileCtx, baseDirInZip)}
+		}
+		if strings.HasSuffix(root, "/") {
+			return []string{strings.TrimSuffix(root, "/")}
+		}
+		base := filepath.ToSlash(filepath.Dir(root))
+		if base == "." {
+			base = ""
+		}
+		bases := []string{base}
+		if filepath.Ext(root) == "" {
+			bases = addUnique(bases, root)
+		}
+		return bases
+	}
+	if isZipFull, _, _ := IsZipPath(file); isZipFull {
+		if found := try(file); found != "" {
+			return found
+		}
+	}
+	if filepath.IsAbs(file) {
+		if found := try(file); found != "" {
+			return found
+		}
+	}
+	for _, root := range roots {
+		for _, base := range rootBases(root) {
+			if found := try(join(base, file)); found != "" {
 				return found
 			}
-		} else {
-			candidate = filepath.ToSlash(filepath.Join(filepath.Dir(dirCtx), file))
-			if found := FileExist(candidate); found != "" {
-				return found
-			}
-			candidate2 := filepath.ToSlash(filepath.Join(dirCtx, file))
-			if found := FileExist(candidate2); found != "" {
-				return found
+			for _, d := range defaults {
+				if hasDirPrefix(file, d) {
+					continue
+				}
+				if found := try(join(base, filepath.Join(d, file))); found != "" {
+					return found
+				}
 			}
 		}
 	}
-
-	if found := FileExist(file); found != "" {
+	if found := try(file); found != "" {
 		return found
 	}
 	return file
 }
 
-func LoadFile(file *string, dirs []string, load func(string) error) error {
+func LoadFile(file *string, dirs []string, defaultDir string, load func(string) error) error {
 	// Allow optional quotes around paths
 	*file = strings.TrimSpace(*file)
 	if len(*file) >= 2 {
@@ -577,7 +639,7 @@ func LoadFile(file *string, dirs []string, load func(string) error) error {
 			*file = (*file)[1 : len(*file)-1]
 		}
 	}
-	fp := SearchFile(*file, dirs)
+	fp := SearchFile(*file, dirs, defaultDir)
 	if err := load(fp); err != nil {
 		if len(dirs) > 0 {
 			return Error(dirs[0] + ":\n" + fp + "\n" + err.Error())
@@ -916,13 +978,13 @@ func (is IniSection) Parse(lines []string, i *int) {
 	}
 }
 
-func (is IniSection) LoadFile(name string, dirs []string,
+func (is IniSection) LoadFile(name string, dirs []string, defaultDir string,
 	load func(string) error) error {
 	str := is[name]
 	if len(str) == 0 {
 		return nil
 	}
-	return LoadFile(&str, dirs, load)
+	return LoadFile(&str, dirs, defaultDir, load)
 }
 
 func (is IniSection) ReadI32(name string, out ...*int32) bool {
@@ -1209,7 +1271,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 		a.Draw(drawwindow, x+l.offset[0]-xsoffset, y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, (l.scale[0]*xscl)*float32(l.facing), (l.scale[0]*xscl)*float32(l.facing),
 			(l.scale[1]*yscl)*float32(l.vfacing), xshear, l.rot,
-			float32(sys.gameWidth-320)/2, palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false)
+			float32(sys.gameWidth-320)/2, palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false, "", [16]float32{})
 	}
 }
 

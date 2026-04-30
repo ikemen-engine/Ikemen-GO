@@ -28,7 +28,7 @@ func ShowErrorDialog(message string) {
 // TTF font loading
 func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	// Search in local directory
-	fileDir := SearchFile(filename, []string{fontfile, sys.motif.Def, "", "data/", "font/"})
+	fileDir := SearchFile(filename, []string{fontfile, sys.motif.Def, "", "data/"}, "font/")
 	// Search in system directory
 	fp := fileDir
 	if fp = FileExist(fp); len(fp) == 0 {

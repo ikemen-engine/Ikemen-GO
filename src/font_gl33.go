@@ -25,6 +25,11 @@ type Font_GL33 struct {
 	windowHeight int
 	textures     []*TextureAtlas
 	color        color
+	palfxAdd     [3]float32
+	palfxMul     [3]float32
+	palfxGray    float32
+	palfxHue     float32
+	palfxNeg     int32
 }
 
 type FontRenderer_GL33 struct {
@@ -92,6 +97,14 @@ func (f *Font_GL33) SetColor(red float32, green float32, blue float32, alpha flo
 	f.color.a = alpha
 }
 
+func (f *Font_GL33) SetPalFX(neg bool, gray float32, add, mul [3]float32, hue float32) {
+	f.palfxAdd = add
+	f.palfxMul = mul
+	f.palfxGray = gray
+	f.palfxHue = hue
+	f.palfxNeg = int32(Btoi(neg))
+}
+
 func (f *Font_GL33) UpdateResolution(windowWidth int, windowHeight int) {
 	f.windowWidth = windowWidth
 	f.windowHeight = windowHeight
@@ -120,7 +133,8 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 	rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 	fs string, argv ...interface{}) error {
 
-	indices := []rune(fmt.Sprintf(fs, argv...))
+	text := fmt.Sprintf(fs, argv...)
+	indices := []rune(text)
 	r := gfx.(*Renderer_GL33)
 	fr := gfxFont.(*FontRenderer_GL33)
 
@@ -151,6 +165,11 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 
 	//set text color
 	r.SetUniformFSub(program.uniforms["textColor"], f.color.r, f.color.g, f.color.b, f.color.a)
+	r.SetUniformFSub(program.uniforms["palAdd"], f.palfxAdd[0], f.palfxAdd[1], f.palfxAdd[2])
+	r.SetUniformFSub(program.uniforms["palMul"], f.palfxMul[0], f.palfxMul[1], f.palfxMul[2])
+	r.SetUniformFSub(program.uniforms["palGray"], f.palfxGray)
+	r.SetUniformFSub(program.uniforms["palHue"], f.palfxHue)
+	r.SetUniformISub(program.uniforms["palNeg"], f.palfxNeg)
 
 	//set screen resolution
 	r.SetUniformFSub(program.uniforms["resolution"], float32(f.windowWidth), float32(f.windowHeight))
@@ -164,10 +183,11 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 		alignScale = yscl
 	}
 	if align == 0 {
-		x -= f.Width(alignScale, spacingXAdd, fs, argv...) * 0.5
+		x -= f.widthRunes(indices, alignScale, spacingXAdd) * 0.5
 	} else if align < 0 {
-		x -= f.Width(alignScale, spacingXAdd, fs, argv...)
+		x -= f.widthRunes(indices, alignScale, spacingXAdd)
 	}
+	needsTransform := rxadd != 0 || !rot.IsZero()
 	textureID := int32(-1)
 	spacing := spacingXAdd * xscl
 	renderedAny := false
@@ -196,7 +216,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 			// Render the current batch
 			f.renderGlyphBatch(batchVertices, uint32(textureID))
 			// Clear the batch buffers
-			batchVertices = make([]float32, 0, batchSize*6*4)
+			batchVertices = batchVertices[:0]
 		}
 		textureID = int32(ch.textureID)
 
@@ -214,12 +234,14 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 		x2, y2 := xpos, ypos
 		x3, y3 := xpos, ypos+h
 		x4, y4 := xpos+w, ypos+h
-		x1, y1, x2, y2, x3, y3, x4, y4 = transformTextQuad(
-			x1, y1, x2, y2, x3, y3, x4, y4,
-			rxadd, rot, projectionMode, fLength, rcx, rcy,
-		)
+		if needsTransform {
+			x1, y1, x2, y2, x3, y3, x4, y4 = transformTextQuad(
+				x1, y1, x2, y2, x3, y3, x4, y4,
+				rxadd, rot, projectionMode, fLength, rcx, rcy,
+			)
+		}
 
-		vertices := []float32{
+		batchVertices = append(batchVertices,
 			x1, y1, ch.uv[2], ch.uv[1],
 			x2, y2, ch.uv[0], ch.uv[1],
 			x3, y3, ch.uv[0], ch.uv[3],
@@ -227,9 +249,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 			x3, y3, ch.uv[0], ch.uv[3],
 			x4, y4, ch.uv[2], ch.uv[3],
 			x1, y1, ch.uv[2], ch.uv[1],
-		}
-		// Append glyph vertices to the batch buffer
-		batchVertices = append(batchVertices, vertices...)
+		)
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
 		x += float32((ch.advance >> 6)) * xscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 		renderedAny = true
@@ -244,6 +264,49 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 	r.DisableScissor()
 
 	return nil
+}
+
+func (f *Font_GL33) widthRunes(indices []rune, scale float32, spacingXAdd float32) float32 {
+	if len(indices) == 0 {
+		return 0
+	}
+
+	spacing := spacingXAdd * scale
+	var width float32
+	renderedAny := false
+
+	// Iterate through all characters in string
+	for i := range indices {
+
+		//get rune
+		runeIndex := indices[i]
+
+		//find rune in fontChar list
+		ch, ok := f.fontChar[runeIndex]
+
+		//load missing runes in batches of 32
+		if !ok {
+			low := runeIndex - (runeIndex % 32)
+			f.GenerateGlyphs(low, low+31)
+			ch, ok = f.fontChar[runeIndex]
+		}
+
+		//skip runes that are not in font character range
+		if !ok {
+			//fmt.Printf("%c %d\n", runeIndex, runeIndex)
+			continue
+		}
+
+		if renderedAny {
+			width += spacing
+		}
+
+		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+		width += float32(ch.advance>>6) * scale // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+		renderedAny = true
+	}
+
+	return width
 }
 
 // Helper function to render a batch of glyphs
@@ -264,50 +327,7 @@ func (r *FontRenderer_GL33) ReleaseFontPipeline() {
 
 // Width returns the width of a piece of text in pixels
 func (f *Font_GL33) Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
-
-	var width float32
-
-	indices := []rune(fmt.Sprintf(fs, argv...))
-
-	if len(indices) == 0 {
-		return 0
-	}
-
-	spacing := spacingXAdd * scale
-	renderedAny := false
-
-	// Iterate through all characters in string
-	for i := range indices {
-
-		//get rune
-		runeIndex := indices[i]
-
-		//find rune in fontChar list
-		ch, ok := f.fontChar[runeIndex]
-
-		//load missing runes in batches of 32
-		if !ok {
-			low := runeIndex & rune(32-1)
-			f.GenerateGlyphs(low, low+31)
-			ch, ok = f.fontChar[runeIndex]
-		}
-
-		//skip runes that are not in font character range
-		if !ok {
-			//fmt.Printf("%c %d\n", runeIndex, runeIndex)
-			continue
-		}
-
-		if renderedAny {
-			width += spacing
-		}
-
-		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		width += float32((ch.advance >> 6)) * scale // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
-		renderedAny = true
-	}
-
-	return width
+	return f.widthRunes([]rune(fmt.Sprintf(fs, argv...)), scale, spacingXAdd)
 }
 
 // GenerateGlyphs builds a set of textures based on a ttf files glyphs
@@ -456,6 +476,7 @@ func (r *FontRenderer_GL33) LoadTrueTypeFont(reader io.Reader, scale int32, low,
 	f.ttf = ttf
 	f.scale = scale
 	f.SetColor(1.0, 1.0, 1.0, 1.0) //set default white
+	f.SetPalFX(false, 0, [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, 0)
 	f.textures = append(f.textures, CreateTextureAtlas(256, 256, 32, true))
 
 	err = f.GenerateGlyphs(low, high)
@@ -470,5 +491,5 @@ func (r *FontRenderer_GL33) LoadTrueTypeFont(reader io.Reader, scale int32, low,
 func (r *FontRenderer_GL33) newProgram(GLSLVersion uint, vertexShaderSource, fragmentShaderSource string) {
 	shaderProgram, _ := gfx.(*Renderer_GL33).newShaderProgram(vertexShaderSource, fragmentShaderSource, "", "font shader", true)
 	r.shaderProgram = shaderProgram
-	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex")
+	r.shaderProgram.RegisterUniforms("textColor", "resolution", "tex", "palAdd", "palMul", "palGray", "palHue", "palNeg")
 }

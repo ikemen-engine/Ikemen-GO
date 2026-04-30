@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+
 	//"log"
 	"math"
 	"os"
@@ -64,6 +65,8 @@ type SystemStateVars struct {
 
 	scrrect                 [4]int32
 	gameWidth, gameHeight   int32
+	gameWidthFloat          float32 // Float forms used for precise screenpack math
+	gameHeightFloat         float32 // TODO: rework gameWidth/gameHeight as floats instead
 	widthScale, heightScale float32
 	gameEnd, frameSkip      bool
 	paused, frameStepFlag   bool
@@ -302,6 +305,7 @@ type System struct {
 	listLFunc          []*lua.LFunction
 	reloadPreserveVars [MaxPlayerNo]bool
 	charVarsBackup     map[int]CharVarBackup
+	shaderRefCount     map[string]int
 
 	statePool       GameStatePool
 	commandLists    []*CommandList
@@ -485,6 +489,7 @@ func (s *System) init(w, h int32) *lua.LState {
 
 	systemScriptInit(l)
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
+	s.shaderRefCount = make(map[string]int)
 	if runtime.GOOS != "android" {
 		// So now that we have a window we add an icon.
 		if len(s.cfg.Config.WindowIcon) > 0 {
@@ -614,17 +619,21 @@ func (s *System) setGameSize(w, h int32) {
 
 	if screenAspect > targetAspect {
 		// Screen is wider than 4:3 - scale based on height
-		s.gameWidth = int32(float32(baseHeight) * screenAspect)
+		s.gameWidthFloat = float32(baseHeight) * screenAspect
+		s.gameWidth = int32(s.gameWidthFloat)
 		s.gameHeight = baseHeight
+		s.gameHeightFloat = float32(s.gameHeight)
 	} else {
 		// Screen is taller than 4:3 - scale based on width
 		s.gameWidth = baseWidth
-		s.gameHeight = int32(float32(baseWidth) / screenAspect)
+		s.gameWidthFloat = float32(baseWidth)
+		s.gameHeightFloat = float32(baseWidth) / screenAspect
+		s.gameHeight = int32(s.gameHeightFloat)
 	}
 
 	// Update scale
-	s.widthScale = float32(s.scrrect[2]) / float32(s.gameWidth)
-	s.heightScale = float32(s.scrrect[3]) / float32(s.gameHeight)
+	s.widthScale = float32(s.scrrect[2]) / s.gameWidthFloat
+	s.heightScale = float32(s.scrrect[3]) / s.gameHeightFloat
 }
 
 // Change aspect ratio at match start
@@ -4398,7 +4407,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 			}
 		}
 
-		foundDiskPath := SearchFile(charDefPathGuess, []string{"chars/", "data/", ""})
+		foundDiskPath := SearchFile(charDefPathGuess, []string{"", "data/"}, "chars/")
 		if foundDiskPath == "" || !strings.HasSuffix(strings.ToLower(foundDiskPath), ".def") {
 			return useDummy("DEF not found")
 		}
@@ -4418,37 +4427,6 @@ func (s *Select) AddChar(def string) *SelectChar {
 		}
 		// Print full message if it's an actual read error
 		return useDummy("DEF read error: " + err.Error())
-	}
-
-	resolvePathRelativeToDef := func(pathInDefFile string) string {
-		isZipDef, zipArchiveOfDef, defSubPathInZip := IsZipPath(sc.def)
-		pathInDefFile = filepath.ToSlash(pathInDefFile)
-
-		if filepath.IsAbs(pathInDefFile) {
-			return pathInDefFile
-		}
-
-		// Check if pathInDefFile itself looks like a zip-internal path.
-		if isZipRel, _, _ := IsZipPath(pathInDefFile); isZipRel {
-			return pathInDefFile // Assume it's a correct logical path
-		}
-
-		isEngineRootRelative := strings.HasPrefix(pathInDefFile, "data/") ||
-			strings.HasPrefix(pathInDefFile, "font/") ||
-			strings.HasPrefix(pathInDefFile, "stages/")
-
-		if isZipDef {
-			if isEngineRootRelative {
-				return pathInDefFile
-			}
-			baseDirWithinZip := filepath.ToSlash(filepath.Dir(defSubPathInZip))
-			if baseDirWithinZip == "." || baseDirWithinZip == "" { // .def is at zip root
-				return filepath.ToSlash(filepath.Join(zipArchiveOfDef, pathInDefFile))
-			}
-			return filepath.ToSlash(filepath.Join(zipArchiveOfDef, baseDirWithinZip, pathInDefFile))
-		}
-
-		return pathInDefFile
 	}
 
 	var cns_orig, sprite_orig, anim_orig, movelist_orig string
@@ -4558,7 +4536,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 	}
 
 	tempSff := newSff()
-	LoadFile(&cns_orig, []string{sc.def, "", "data/"}, func(filename string) error {
+	LoadFile(&cns_orig, []string{sc.def, "", "data/"}, "", func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -4581,8 +4559,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 	})
 	// preload animations
 	if len(anim_orig) > 0 {
-		resolvedAnimPath := resolvePathRelativeToDef(anim_orig)
-		LoadFile(&resolvedAnimPath, []string{sc.def}, func(filename string) error {
+		LoadFile(&anim_orig, []string{sc.def, "", "data/"}, "", func(filename string) error {
 			str, err := LoadText(filename) // LoadText is zip-aware
 			if err != nil {
 				return err
@@ -4610,8 +4587,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 		fp = sprite_orig
 	}
 	if len(fp) > 0 {
-		resolvedSpritePath := resolvePathRelativeToDef(fp)
-		LoadFile(&resolvedSpritePath, []string{sc.def, "", "data/"}, func(file string) error {
+		LoadFile(&fp, []string{sc.def, "", "data/"}, "", func(file string) error {
 			var selPal []int32
 			var err_sff error
 			sc.sff, selPal, err_sff = preloadSff(file, true, listSpr)
@@ -4667,9 +4643,8 @@ func (s *Select) AddChar(def string) *SelectChar {
 	}
 	// read movelist
 	if len(movelist_orig) > 0 {
-		resolvedMovelistPath := resolvePathRelativeToDef(movelist_orig)
 		// Movelist is text, can be loaded now
-		LoadFile(&resolvedMovelistPath, []string{sc.def, "", "data/"}, func(filename string) error {
+		LoadFile(&movelist_orig, []string{sc.def, "", "data/"}, "", func(filename string) error {
 			sc.movelist, _ = LoadText(filename)
 			return nil
 		})
@@ -4736,7 +4711,7 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 		if !strings.HasSuffix(strings.ToLower(def), ".def") {
 			def += ".def"
 		}
-		if err := LoadFile(&def, []string{"stages/", "data/", ""}, func(file string) error {
+		if err := LoadFile(&def, []string{"", "data/"}, "stages/", func(file string) error {
 			finalDefPath = file
 			return nil
 		}); err != nil {
@@ -4747,7 +4722,7 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 
 	var lines []string
 	var err error
-	if err = LoadFile(&finalDefPath, nil, func(file string) error {
+	if err = LoadFile(&finalDefPath, nil, "", func(file string) error {
 		var str string
 		str, err = LoadText(file)
 		if err != nil {
@@ -4801,7 +4776,7 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 						key += fmt.Sprint(idx + 1) // attachedchar2, attachedchar3, attachedchar4
 					}
 
-					if err := isec.LoadFile(key, []string{def, "", sys.motif.Def, "data/"}, func(filename string) error {
+					if err := isec.LoadFile(key, []string{finalDefPath, "", "data/"}, "chars/", func(filename string) error {
 						// Ensure slice has correct length
 						for len(ss.attachedchardef) <= idx {
 							ss.attachedchardef = append(ss.attachedchardef, "")
@@ -4861,7 +4836,7 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 			}
 		}
 		// preload portion of sff file
-		LoadFile(&spr, []string{def, "", "data/"}, func(file string) error {
+		LoadFile(&spr, []string{finalDefPath, "", "data/"}, "", func(file string) error {
 			var err error
 			ss.sff, _, err = preloadSff(file, false, listSpr)
 			if err != nil {
@@ -5120,6 +5095,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 
 	// Load character
 	if !sameChar {
+		sys.cgi[pn].customShaders = nil
 		if l.err = p.load(cdef); l.err != nil {
 			sys.chars[pn] = nil
 			if attached {
@@ -5439,6 +5415,7 @@ func (l *Loader) load() {
 			return
 		}
 	}
+	sys.cleanCustomShaders()
 
 	// Flag loading state as complete
 	l.state = LS_Complete
@@ -5689,4 +5666,32 @@ func (s *System) restoreCharVars(c *Char) {
 	}
 
 	delete(s.charVarsBackup, c.playerNo)
+}
+
+func (s *System) cleanCustomShaders() {
+	activeShaders := make(map[string]bool)
+	for i := 0; i < len(s.cgi); i++ {
+		for _, sName := range s.cgi[i].customShaders {
+			activeShaders[sName] = true
+		}
+	}
+
+	for sName, count := range s.shaderRefCount {
+		if activeShaders[sName] {
+			s.shaderRefCount[sName] = 3
+		} else {
+			count--
+			if count <= 0 {
+				s.mainThreadTask <- func(name string) func() {
+					return func() {
+						gfx.UnloadCustomSpriteShader(name)
+					}
+				}(sName)
+
+				delete(s.shaderRefCount, sName)
+			} else {
+				s.shaderRefCount[sName] = count
+			}
+		}
+	}
 }

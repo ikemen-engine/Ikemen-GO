@@ -85,7 +85,7 @@ func newFightFx() *FightFx {
 func loadCommonFightFx(def string, isMainThread bool) error {
 	for _, key := range SortedKeys(sys.cfg.Common.Fx) {
 		for _, v := range sys.cfg.Common.Fx[key] {
-			if err := LoadFile(&v, []string{def, sys.motif.Def, "", "data/"},
+			if err := LoadFile(&v, []string{def, sys.motif.Def, "", "data/"}, "",
 				func(filename string) error {
 					for _, ffx := range sys.ffx {
 						if ffx != nil && !ffx.isCharFX && ffx.fileName == filename {
@@ -159,7 +159,7 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 			// Read files section
 			if files {
 				files = false
-				if is.LoadFile("sff", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("sff", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						s, err := loadSff(filename, false, isMainThread, false)
 						if err != nil {
@@ -170,7 +170,7 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 					}); err != nil {
 					return err
 				}
-				if is.LoadFile("air", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("air", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						str, err := LoadText(filename)
 						if err != nil {
@@ -182,7 +182,7 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 					}); err != nil {
 					return err
 				}
-				if is.LoadFile("snd", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("snd", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						ffx.snd, err = LoadSnd(filename)
 						return err
@@ -4518,7 +4518,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 		case "files":
 			if filesflg {
 				filesflg = false
-				if is.LoadFile("sff", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("sff", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						s, err := loadSff(filename, false, true, false)
 						if err != nil {
@@ -4529,7 +4529,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("snd", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("snd", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						s, err := LoadSnd(filename)
 						if err != nil {
@@ -4540,7 +4540,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("fightfx.sff", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("fightfx.sff", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						s, err := loadSff(filename, false, true, false)
 						if err != nil {
@@ -4551,7 +4551,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("fightfx.air", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("fightfx.air", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						str, err := LoadText(filename)
 						if err != nil {
@@ -4563,7 +4563,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 					}); err != nil {
 					return nil, err
 				}
-				if is.LoadFile("common.snd", []string{def, sys.motif.Def, "", "data/"},
+				if is.LoadFile("common.snd", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
 						ffx.snd, err = LoadSnd(filename)
 						return err
@@ -4571,7 +4571,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 					return nil, err
 				}
 				for i := 1; i <= fs.fx_limit; i++ {
-					if err := is.LoadFile(fmt.Sprintf("fx%v", i), []string{def, sys.motif.Def, "", "data/"},
+					if err := is.LoadFile(fmt.Sprintf("fx%v", i), []string{def, sys.motif.Def, "", "data/"}, "",
 						func(filename string) error {
 							if err := loadFightFx(filename, false, true); err != nil {
 								return err
@@ -4620,7 +4620,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 					if len(spec.path) == 0 {
 						continue
 					}
-					_ = LoadFile(&spec.path, []string{def, sys.motif.Def, "", "data/", "font/"},
+					_ = LoadFile(&spec.path, []string{def, sys.motif.Def, "", "data/"}, "font/",
 						func(filename string) error {
 							h := int32(-1)
 							if spec.height != 0 {
@@ -5554,7 +5554,7 @@ func readMotifFightFromDef(def string) string {
 	tmp := def
 	var fight string
 	// Use existing path resolution logic.
-	_ = LoadFile(&tmp, []string{tmp, "", "data/"}, func(filename string) error {
+	_ = LoadFile(&tmp, []string{tmp, "", "data/"}, "", func(filename string) error {
 		if filename == "" {
 			return nil
 		}
@@ -5599,7 +5599,7 @@ func (fs *FightScreen) resolvePath() {
 	if v == "" {
 		v = "fight.def"
 	}
-	resolved := SearchFile(v, []string{"", filepath.ToSlash(filepath.Dir(sys.motif.Def)) + "/", "data/"})
+	resolved := SearchFile(v, []string{sys.motif.Def, "", "data/"})
 	if FileExist(resolved) != "" {
 		fs.def = filepath.ToSlash(resolved)
 		return

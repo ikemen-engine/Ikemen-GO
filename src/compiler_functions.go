@@ -893,6 +893,9 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_syncid, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.shaderSub(is, sc, explod_shader, explod_shaderparam); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "bindid",
 		explod_bindid, VT_Int, 1, false); err != nil {
 		return err
@@ -5538,7 +5541,18 @@ func (c *Compiler) scoreAdd(is IniSection, sc *StateControllerBase, _ int8) (Sta
 	})
 	return *ret, err
 }
-
+func (c *Compiler) shaderSet(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
+	ret, err := (*shaderSet)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid", shaderSet_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.shaderSub(is, sc, shaderSet_shader, shaderSet_shaderparam); err != nil {
+			return err
+		}
+		return nil
+	})
+	return *ret, err
+}
 func (c *Compiler) storyboard(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {
 	ret, err := (*storyboard)(sc), c.stateSec(is, func() error {
 		if err := c.stateParam(is, "path", false, func(data string) error {
@@ -6963,6 +6977,55 @@ func (c *Compiler) modifyStageBG(is IniSection, sc *StateControllerBase, _ int8)
 	})
 	sys.cgi[c.playerNo].canMutateStage = true
 	return *ret, err
+}
+func (c *Compiler) shaderSub(is IniSection, sc *StateControllerBase, shaderOpCode, paramOpCode byte) error {
+	if err := c.stateParam(is, "shader", false, func(data string) error {
+		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+			return Error("Shader name not enclosed in \"")
+		}
+		shaderName := strings.ToLower(data[1 : len(data)-1])
+		sc.add(shaderOpCode, sc.beToExp(BytecodeExp(shaderName)))
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	var shaderParams []BytecodeExp
+	var paramIndices []int
+	for k, v := range is {
+		if strings.HasPrefix(strings.ToLower(k), "shaderparam.p") {
+			numStr := k[len("shaderparam.p"):]
+			idx, err := strconv.Atoi(numStr)
+			if err != nil || idx < 0 || idx > 15 {
+				return Error("Invalid shader parameter: " + k + " (must be p0 to p15)")
+			}
+
+			valStr := v
+			be, err := c.argExpression(&valStr, VT_Float)
+			if err != nil {
+				return err
+			}
+
+			paramIndices = append(paramIndices, idx)
+			shaderParams = append(shaderParams, be)
+			delete(is, k)
+		}
+	}
+
+	if len(shaderParams) > 0 {
+		var beCount BytecodeExp
+		beCount.appendValue(BytecodeInt(int32(len(shaderParams))))
+
+		allParams := []BytecodeExp{beCount}
+		for i, idx := range paramIndices {
+			var beIdx BytecodeExp
+			beIdx.appendValue(BytecodeInt(int32(idx)))
+			allParams = append(allParams, beIdx, shaderParams[i])
+		}
+		sc.add(paramOpCode, allParams)
+	}
+
+	return nil
 }
 
 func (c *Compiler) shiftInput(is IniSection, sc *StateControllerBase, _ int8) (StateController, error) {

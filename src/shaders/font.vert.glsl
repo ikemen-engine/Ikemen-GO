@@ -3,7 +3,7 @@
 	layout(location = 0) in vec2 vert;
 	layout(location = 1) in vec2 vertTexCoord;
 	layout(push_constant, std430) uniform u {
-	layout(offset = 16) vec2 resolution;
+	layout(offset = 64) vec2 resolution;
 	};
 	layout(location = 0) out vec2 fragTexCoord;
 #else

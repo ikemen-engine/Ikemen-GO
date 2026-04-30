@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 	"runtime"
+	"strings"
 	"unsafe"
 
 	gl "github.com/go-gl/gl/v3.3-core/gl"
@@ -18,11 +19,12 @@ import (
 )
 
 type ShaderProgram_GL33 struct {
-	program    uint32           // OpenGL handle
-	attributes map[string]int32 // Attribute name to location
-	uniforms   map[string]int32 // Uniform name to location
-	textures   map[string]int   // Sampler name to texture unit
-	name       string           // For debugging
+	program       uint32           // OpenGL handle
+	attributes    map[string]int32 // Attribute name to location
+	uniforms      map[string]int32 // Uniform name to location
+	textures      map[string]int   // Sampler name to texture unit
+	name          string           // For debugging
+	needsGrabPass bool
 }
 
 func (r *Renderer_GL33) newShaderProgram(vert, frag, geo, name string, crashWhenFail bool) (s *ShaderProgram_GL33, err error) {
@@ -438,6 +440,11 @@ type Renderer_GL33 struct {
 	// Shader and vertex data for primitive rendering
 	spriteShader *ShaderProgram_GL33
 	vertexBuffer uint32
+	// Custom shaders
+	customShaders   map[uint32]*ShaderProgram_GL33
+	customShaderMap map[string]uint32
+	nextShaderID    uint32
+	currentProgram  *ShaderProgram_GL33
 	// Shader and index data for 3D model rendering
 	shadowMapShader         *ShaderProgram_GL33
 	modelShader             *ShaderProgram_GL33
@@ -450,6 +457,8 @@ type Renderer_GL33 struct {
 	modelEnvVAO             uint32
 	postVAO                 uint32
 
+	grabTexture  *Texture_GL33
+	grabFbo      uint32
 	enableModel  bool
 	enableShadow bool
 	debugMode    bool
@@ -577,6 +586,11 @@ func (r *Renderer_GL33) Init() {
 	chk(gl.Init())
 	LogMessage("Using OpenGL %v (%v)", gl.GoStr(gl.GetString(gl.VERSION)), gl.GoStr(gl.GetString(gl.RENDERER)))
 
+	r.customShaders = make(map[uint32]*ShaderProgram_GL33)
+	r.customShaderMap = make(map[string]uint32)
+	r.nextShaderID = 1
+	r.currentProgram = nil
+
 	var maxSamples int32
 	gl.GetIntegerv(gl.MAX_SAMPLES, &maxSamples)
 	if sys.msaa > maxSamples {
@@ -691,6 +705,8 @@ func (r *Renderer_GL33) Init() {
 	}
 
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
+	r.grabTexture = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true).(*Texture_GL33)
+	r.grabTexture.SetData(nil)
 
 	// create a texture for r.fbo
 	gl.GenTextures(1, &r.fbo_texture)
@@ -841,6 +857,11 @@ func (r *Renderer_GL33) Init() {
 		gl.GenFramebuffers(1, &r.fbo_env)
 	}
 
+	if sys.msaa > 0 {
+		gl.GenFramebuffers(1, &r.grabFbo)
+		gl.BindFramebuffer(gl.FRAMEBUFFER, r.grabFbo)
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.grabTexture.handle, 0)
+	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
 
 	r.InitStateCache()
@@ -1839,23 +1860,23 @@ func (r *Renderer_GL33) SetUniformFvSub(loc int32, values []float32) {
 }
 
 func (r *Renderer_GL33) SetUniformI(name string, val int) {
-	loc := r.spriteShader.uniforms[name]
+	loc := r.currentProgram.uniforms[name]
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetUniformF(name string, values ...float32) {
-	loc := r.spriteShader.uniforms[name]
+	loc := r.currentProgram.uniforms[name]
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetUniformFv(name string, values []float32) {
-	loc := r.spriteShader.uniforms[name]
+	loc := r.currentProgram.uniforms[name]
 	r.SetUniformFvSub(loc, values)
 }
 
 // Caching matrices is as expensive as direct function calls
 func (r *Renderer_GL33) SetUniformMatrix(name string, value []float32) {
-	loc, ok := r.spriteShader.uniforms[name]
+	loc, ok := r.currentProgram.uniforms[name]
 	if ok && loc >= 0 {
 		gl.UniformMatrix4fv(loc, 1, false, &value[0])
 	}
@@ -2032,7 +2053,7 @@ func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int
 }
 
 func (r *Renderer_GL33) SetTexture(name string, tex Texture) {
-	r.SetTextureSub(r.spriteShader.uniforms, r.spriteShader.textures, name, tex)
+	r.SetTextureSub(r.currentProgram.uniforms, r.currentProgram.textures, name, tex)
 }
 
 func (r *Renderer_GL33) SetModelTexture(name string, tex Texture) {
@@ -2227,4 +2248,107 @@ func (r *Renderer_GL33) NewWorkerThread() bool {
 
 func (r *Renderer_GL33) SetVSync(interval int) {
 	sdl.GLSetSwapInterval(interval)
+}
+
+func (r *Renderer_GL33) LoadCustomSpriteShader(shaderName string, shaderData []byte) uint32 {
+	if id, ok := r.customShaderMap[shaderName]; ok {
+		return id
+	}
+
+	fragSource := string(shaderData)
+
+	shader, err := r.newShaderProgram(vertShader, fragSource, "", "Custom Shader: "+shaderName, false)
+	if err != nil {
+		LogMessage("[GL Error] Failed to compile custom shader %s: %v", shaderName, err)
+		return 0
+	}
+
+	shader.RegisterAttributes("position", "uv")
+	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
+		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
+		"iTime", "iResolution", "aspectRatio")
+	shader.RegisterTextures("pal", "tex", "bgl_RenderedTexture")
+
+	shader.needsGrabPass = strings.Contains(fragSource, "bgl_RenderedTexture")
+
+	id := r.nextShaderID
+	r.nextShaderID++
+	r.customShaders[id] = shader
+	r.customShaderMap[shaderName] = id
+
+	sys.appendToConsole(fmt.Sprintf("Loaded Custom Shader: %s (ID: %d, NeedsGrabPass: %v)", shaderName, id, shader.needsGrabPass))
+	return id
+}
+
+func (r *Renderer_GL33) UnloadCustomSpriteShader(shaderName string) {
+	if id, exists := r.customShaderMap[shaderName]; exists {
+		if shader, hasProg := r.customShaders[id]; hasProg {
+			gl.DeleteProgram(shader.program)
+			delete(r.customShaders, id)
+			if r.currentProgram == shader {
+				r.currentProgram = nil
+			}
+		}
+		delete(r.customShaderMap, shaderName)
+		//LogMessage("Unloaded Custom GL Shader: %s", shaderName)
+	}
+}
+
+func (r *Renderer_GL33) SetSpritePipeline(shaderName string) {
+	targetShader := r.spriteShader
+	if shaderName != "" {
+		if id, ok := r.customShaderMap[shaderName]; ok {
+			if shader, ok := r.customShaders[id]; ok {
+				targetShader = shader
+			}
+		}
+	}
+
+	if r.program != targetShader.program {
+		r.currentProgram = targetShader
+		r.ChangeProgram(targetShader.program)
+		gl.BindVertexArray(r.spriteVAO)
+	}
+}
+
+func (r *Renderer_GL33) SetCustomUniforms(params [16]float32) {
+	if r.currentProgram == nil {
+		return
+	}
+	for i := 0; i < 16; i++ {
+		loc := gl.GetUniformLocation(r.currentProgram.program, gl.Str(fmt.Sprintf("p%d\x00", i)))
+		if loc >= 0 {
+			gl.Uniform1f(loc, params[i])
+		}
+	}
+}
+
+func (r *Renderer_GL33) NeedsGrabPass() bool {
+	if r.currentProgram != nil {
+		return r.currentProgram.needsGrabPass
+	}
+	return false
+}
+
+func (r *Renderer_GL33) ResolveBackBuffer() Texture {
+	if sys.msaa > 0 {
+		gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
+		gl.BindFramebuffer(gl.DRAW_FRAMEBUFFER, r.grabFbo)
+
+		gl.BlitFramebuffer(0, 0, sys.scrrect[2], sys.scrrect[3], 0, 0, sys.scrrect[2], sys.scrrect[3], gl.COLOR_BUFFER_BIT, gl.NEAREST)
+
+		gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+		return r.grabTexture
+	}
+
+	r.SetActiveTexture0()
+	gl.BindTexture(gl.TEXTURE_2D, r.grabTexture.handle)
+
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, r.fbo)
+	gl.ReadBuffer(gl.COLOR_ATTACHMENT0)
+
+	gl.CopyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, r.grabTexture.width, r.grabTexture.height)
+
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+	return r.grabTexture
 }

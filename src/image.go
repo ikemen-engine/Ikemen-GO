@@ -640,7 +640,7 @@ func loadCharPalettes(sff *Sff, filename string, ref int) error {
 	// TODO: External .ACTs on SFFv2 without palette slots may cause color bleeding,
 	// on sprites with unique palettes if a SFFv2 with Acts is loaded by sffNew, since is a simplified utility
 	// and lacks the engine's palInfo/cgi logic to properly isolate palette remapping during rendering.
-	searchDirs := []string{c.def}
+	searchDirs := []string{c.def, "", "data/"}
 
 	// Read ACT palettes
 	for x := 0; x < len(c.pal_files) && x < len(c.pal); x++ {

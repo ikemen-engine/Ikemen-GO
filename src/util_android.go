@@ -63,7 +63,7 @@ func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	// 1. Path resolution
 	// Android paths are tricky.
 	// Attempt to find the file using the engine's SearchFile utility
-	fileDir := SearchFile(filename, []string{fontfile, sys.motif.Def, "", "data/", "font/"})
+	fileDir := SearchFile(filename, []string{fontfile, sys.motif.Def, "", "data/"}, "font/")
 
 	// 2. Android Path Correction
 	// If the path isn't absolute and doesn't exist, anchor it to the SDL storage path

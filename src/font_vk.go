@@ -6,6 +6,7 @@ import (
 	"container/list"
 	"fmt"
 	"image"
+
 	//"image/draw"
 	"io"
 	"io/ioutil"
@@ -28,6 +29,11 @@ type Font_VK struct {
 	vbo         uint32
 	program     uint32
 	color       color
+	palfxAdd    [3]float32
+	palfxMul    [3]float32
+	palfxGray   float32
+	palfxHue    float32
+	palfxNeg    float32
 	resolution  [2]float32
 	textures    []*TextureAtlas
 	descriptors []*list.Element
@@ -85,14 +91,14 @@ func (r *FontRenderer_VK) Init(rendererVk interface{}) {
 		// resolution
 		{
 			StageFlags: vk.ShaderStageFlags(vk.ShaderStageVertexBit),
-			Offset:     4 * 4,
+			Offset:     4 * 16,
 			Size:       4 * 2,
 		},
-		// textColor
+		// textColor + PalFX constants
 		{
 			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
 			Offset:     0,
-			Size:       4 * 4,
+			Size:       4 * 16,
 		},
 	}
 
@@ -508,6 +514,7 @@ func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, h
 	f.ttf = ttf
 	f.scale = scale
 	f.SetColor(1.0, 1.0, 1.0, 1.0) //set default white
+	f.SetPalFX(false, 0, [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, 0)
 	f.textures = append(f.textures, CreateTextureAtlas(256, 256, 8, true))
 	descriptorSet := r.freeDescriptors.Front()
 	r.freeDescriptors.Remove(descriptorSet)
@@ -545,6 +552,13 @@ func (f *Font_VK) SetColor(red float32, green float32, blue float32, alpha float
 	f.color.a = alpha
 	return
 }
+func (f *Font_VK) SetPalFX(neg bool, gray float32, add, mul [3]float32, hue float32) {
+	f.palfxAdd = add
+	f.palfxMul = mul
+	f.palfxGray = gray
+	f.palfxHue = hue
+	f.palfxNeg = float32(Btoi(neg))
+}
 func (f *Font_VK) UpdateResolution(windowWidth int, windowHeight int) {
 	f.resolution[0] = float32(windowWidth)
 	f.resolution[1] = float32(windowHeight)
@@ -554,10 +568,12 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 	fs string, argv ...interface{}) error {
 	r := gfx.(*Renderer_VK)
-	switchedProgram := r.VKState.currentProgram != gfxFont.(*FontRenderer_VK).program
+	switchedProgram := r.VKState.boundProgram != gfxFont.(*FontRenderer_VK).program
+	r.VKState.boundProgram = gfxFont.(*FontRenderer_VK).program
 	r.VKState.currentProgram = gfxFont.(*FontRenderer_VK).program
 
-	indices := []rune(fmt.Sprintf(fs, argv...))
+	text := fmt.Sprintf(fs, argv...)
+	indices := []rune(text)
 
 	if len(indices) == 0 {
 		return nil
@@ -605,18 +621,25 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
 	vk.CmdSetScissor(r.commandBuffers[0], 0, 1, scissors)
 	color := f.color
+	palAddGray := [4]float32{f.palfxAdd[0], f.palfxAdd[1], f.palfxAdd[2], f.palfxGray}
+	palMulHue := [4]float32{f.palfxMul[0], f.palfxMul[1], f.palfxMul[2], f.palfxHue}
+	palNegPad := [4]float32{f.palfxNeg, 0, 0, 0}
 	resolution := f.resolution
 	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 4*4, unsafe.Pointer(&color))
-	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageVertexBit), 4*4, 4*2, unsafe.Pointer(&resolution[0]))
+	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 4*4, 4*4, unsafe.Pointer(&palAddGray[0]))
+	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 8*4, 4*4, unsafe.Pointer(&palMulHue[0]))
+	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 12*4, 4*4, unsafe.Pointer(&palNegPad[0]))
+	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageVertexBit), 16*4, 4*2, unsafe.Pointer(&resolution[0]))
 	alignScale := xscl
 	if alignScale == 0 {
 		alignScale = yscl
 	}
 	if align == 0 {
-		x -= f.Width(alignScale, spacingXAdd, fs, argv...) * 0.5
+		x -= f.widthRunes(indices, alignScale, spacingXAdd) * 0.5
 	} else if align < 0 {
-		x -= f.Width(alignScale, spacingXAdd, fs, argv...)
+		x -= f.widthRunes(indices, alignScale, spacingXAdd)
 	}
+	needsTransform := rxadd != 0 || !rot.IsZero()
 	spacing := spacingXAdd * xscl
 	renderedAny := false
 	firstVertex := uint32(r.vertexBufferOffset%r.vertexBuffers[0].size) / 16
@@ -672,10 +695,12 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 		x2, y2 := xpos, ypos
 		x3, y3 := xpos, ypos+h
 		x4, y4 := xpos+w, ypos+h
-		x1, y1, x2, y2, x3, y3, x4, y4 = transformTextQuad(
-			x1, y1, x2, y2, x3, y3, x4, y4,
-			rxadd, rot, projectionMode, fLength, rcx, rcy,
-		)
+		if needsTransform {
+			x1, y1, x2, y2, x3, y3, x4, y4 = transformTextQuad(
+				x1, y1, x2, y2, x3, y3, x4, y4,
+				rxadd, rot, projectionMode, fLength, rcx, rcy,
+			)
+		}
 
 		vertexData = append(vertexData,
 			x1, f.resolution[1]-y1, ch.uv[2], ch.uv[1],
@@ -711,17 +736,14 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	}
 	return nil
 }
-func (f *Font_VK) Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
 
-	var width float32
-
-	indices := []rune(fmt.Sprintf(fs, argv...))
-
+func (f *Font_VK) widthRunes(indices []rune, scale float32, spacingXAdd float32) float32 {
 	if len(indices) == 0 {
 		return 0
 	}
 
 	spacing := spacingXAdd * scale
+	var width float32
 	renderedAny := false
 
 	// Iterate through all characters in string
@@ -735,7 +757,7 @@ func (f *Font_VK) Width(scale float32, spacingXAdd float32, fs string, argv ...i
 
 		//load missing runes in batches of 32
 		if !ok {
-			low := runeIndex & rune(32-1)
+			low := runeIndex - (runeIndex % 32)
 			f.GenerateGlyphs(low, low+31)
 			ch, ok = f.fontChar[runeIndex]
 		}
@@ -751,8 +773,12 @@ func (f *Font_VK) Width(scale float32, spacingXAdd float32, fs string, argv ...i
 		}
 
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		width += float32((ch.advance >> 6)) * scale // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+		width += float32(ch.advance>>6) * scale // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 		renderedAny = true
 	}
+
 	return width
+}
+func (f *Font_VK) Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
+	return f.widthRunes([]rune(fmt.Sprintf(fs, argv...)), scale, spacingXAdd)
 }

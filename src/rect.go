@@ -45,13 +45,10 @@ func (fa *Fade) animLength() int32 {
 }
 
 func (fa *Fade) colorFadeTime(animLen int32) int32 {
-	if fa == nil {
+	if fa == nil || animLen > 0 {
 		return 0
 	}
 	t := fa.time
-	if t == 1 && animLen > 0 {
-		t = animLen
-	}
 	if t < 0 {
 		return 0
 	}
@@ -98,6 +95,7 @@ func (fa *Fade) init(dest *Fade, isFadeIn bool) {
 	dest.timeRemaining = dest.totalTime
 	if dest.animData != nil {
 		dest.animData.Reset()
+		dest.animData.Update(false)
 	}
 }
 

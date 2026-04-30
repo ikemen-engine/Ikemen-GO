@@ -1545,7 +1545,7 @@ func loadMotif(def string) (*Motif, error) {
 	var userIniFile *ini.File
 	var defaultOnlyIni *ini.File
 
-	if err := LoadFile(&def, []string{def, "", "data/"}, func(filename string) error {
+	if err := LoadFile(&def, []string{def, "", "data/"}, "", func(filename string) error {
 		def = filename
 
 		// Inline-append any external/mods/**/+system.def files before parsing.
@@ -2324,7 +2324,7 @@ func (m *Motif) loadBgDefProperties(bgDef *BgDefProperties, bgname, spr string) 
 	if bgDef.Spr == "" || bgDef.Spr == spr || bgDef.Spr == m.Files.Spr {
 		bgDef.Sff = m.Sff
 	} else {
-		LoadFile(&bgDef.Spr, []string{bgDef.Spr, m.Def, "", "data/"}, func(filename string) error {
+		LoadFile(&bgDef.Spr, []string{bgDef.Spr, m.Def, "", "data/"}, "", func(filename string) error {
 			if filename != "" {
 				var err error
 				bgDef.Sff, err = loadSff(filename, false, true, false)
@@ -2352,7 +2352,7 @@ func (m *Motif) loadBgDefProperties(bgDef *BgDefProperties, bgname, spr string) 
 }
 
 func (m *Motif) loadFiles() {
-	LoadFile(&m.Files.Spr, []string{m.Files.Spr}, func(filename string) error {
+	LoadFile(&m.Files.Spr, []string{m.Files.Spr}, "", func(filename string) error {
 		if filename != "" {
 			var err error
 			m.Sff, err = loadSff(filename, false, true, false)
@@ -2367,7 +2367,7 @@ func (m *Motif) loadFiles() {
 	})
 	sys.keepAlive()
 
-	LoadFile(&m.Files.Glyphs, []string{m.Files.Glyphs}, func(filename string) error {
+	LoadFile(&m.Files.Glyphs, []string{m.Files.Glyphs}, "", func(filename string) error {
 		if filename != "" {
 			var err error
 			m.GlyphsSff, err = loadSff(filename, false, true, false)
@@ -2382,7 +2382,7 @@ func (m *Motif) loadFiles() {
 	})
 	sys.keepAlive()
 
-	LoadFile(&m.Files.Model, []string{m.Files.Model}, func(filename string) error {
+	LoadFile(&m.Files.Model, []string{m.Files.Model}, "", func(filename string) error {
 		if filename != "" {
 			var err error
 			m.Model, err = loadglTFModel(filename)
@@ -2455,7 +2455,7 @@ func (m *Motif) loadFiles() {
 		m.HiscoreBgDef = m.TitleBgDef
 	}
 
-	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, func(filename string) error {
+	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, "", func(filename string) error {
 		if filename != "" {
 			var err error
 			m.Snd, err = LoadSnd(filename)
@@ -2471,7 +2471,7 @@ func (m *Motif) loadFiles() {
 	sys.keepAlive()
 
 	for key, fnt := range m.Files.Font {
-		LoadFile(&fnt.Font, []string{fnt.Font}, func(filename string) error {
+		LoadFile(&fnt.Font, []string{fnt.Font}, "", func(filename string) error {
 			re := regexp.MustCompile(`\d+`)
 			i := int(Atoi(re.FindString(key)))
 
@@ -3543,6 +3543,10 @@ func (co *MotifContinue) isEnabled() bool {
 	return co.enabled
 }
 
+func (co *MotifContinue) canContinue() bool {
+	return sys.credits == -1 || sys.credits > 0
+}
+
 func (co *MotifContinue) init(m *Motif) {
 	if !m.ContinueScreen.Enabled || !co.isEnabled() ||
 		(sys.winnerTeam() != 0 && sys.winnerTeam() != int32(sys.home)+1) {
@@ -3606,13 +3610,16 @@ func (co *MotifContinue) init(m *Motif) {
 
 func (co *MotifContinue) processSelection(m *Motif, continueSelected bool) {
 	cs := m.ContinueScreen
+	if continueSelected && !co.canContinue() {
+		return
+	}
 	if continueSelected {
 		m.processStateTransitions(
 			[4][]int32{cs.P2.Yes.State, cs.P4.Yes.State, cs.P6.Yes.State, cs.P8.Yes.State},
 			[4][]int32{cs.P1.Yes.State, cs.P3.Yes.State, cs.P5.Yes.State, cs.P7.Yes.State},
 		)
 		sys.continueFlg = true
-		if sys.credits != -1 {
+		if sys.credits > 0 {
 			sys.credits--
 		}
 	} else {
@@ -3703,12 +3710,14 @@ func (co *MotifContinue) step(m *Motif) {
 				m.Snd.play(m.ContinueScreen.Move.Snd, 100, 0, 0, 0, 0)
 				co.yesSide = !co.yesSide
 			} else if sys.uiRawInput(m.ContinueScreen.Skip.Key, co.pn-1) || sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
-				m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
-				co.processSelection(m, co.yesSide)
+				if !co.yesSide || co.canContinue() {
+					m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
+					co.processSelection(m, co.yesSide)
+				}
 			}
 		} else {
 			if co.counter < m.ContinueScreen.Counter.End.SkipTime {
-				if (sys.credits == -1 || sys.credits > 0) && sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
+				if co.canContinue() && sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
 					m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
 					co.processSelection(m, true)
 				} else if sys.uiRawInput(m.ContinueScreen.Skip.Key, co.pn-1) &&

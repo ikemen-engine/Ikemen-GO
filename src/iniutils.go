@@ -2977,7 +2977,7 @@ func ensureFontIndex(fnt map[int]*Fnt, indexByKey map[string]int, baseDef string
 		fnt = make(map[int]*Fnt)
 	}
 	// Search relative to the .def plus typical font dirs.
-	resolved := SearchFile(strings.Trim(reqPath, `"`), []string{baseDef, "font/", "", "data/"})
+	resolved := SearchFile(strings.Trim(reqPath, `"`), []string{baseDef, "", "data/"}, "font/")
 	if resolved == "" {
 		resolved = reqPath
 	}

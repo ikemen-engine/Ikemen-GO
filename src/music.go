@@ -353,7 +353,7 @@ func (m Music) Read(key, def string) (string, int, int, int, int, int, float32, 
 	prefix := musicKeyPrefix(key)
 	if len(m[prefix]) > 0 {
 		idx := int(RandI(0, int32(len(m[prefix]))-1))
-		bgm = SearchFile(m[prefix][idx].bgmusic, []string{def, "", "sound/"})
+		bgm = SearchFile(m[prefix][idx].bgmusic, []string{def, "", "data/"}, "sound/")
 		//fmt.Printf("[music] Read: prefix='%s' chose idx=%d -> '%s'\n", prefix, idx, bgm)
 		loop = int(m[prefix][idx].bgmloop)
 		volume = int(m[prefix][idx].bgmvolume)

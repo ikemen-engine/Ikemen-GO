@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"container/list"
 	"embed" // Support for go:embed resources
 	"fmt"
@@ -794,11 +795,18 @@ type Renderer_VK struct {
 	memoryTypeMap                   map[vk.MemoryPropertyFlagBits]uint32
 	allocatedImageMemory            uint64
 
+	customPrograms  map[uint32]*VulkanProgramInfo
+	customShaderMap map[string]uint32
+	nextShaderID    uint32
+
+	grabTexture *Texture_VK
+
 	VKState
 }
 
 type VKState struct {
 	currentProgram                *VulkanProgramInfo
+	boundProgram                  *VulkanProgramInfo
 	currentPipeline               vk.Pipeline
 	currentShadowmMapPipeline     vk.Pipeline
 	currentSpriteTexture          VulkanSpriteTexture
@@ -1044,6 +1052,7 @@ type VulkanProgramInfo struct {
 	uniformOffsetMap     map[interface{}]uint32
 	vertShader           vk.ShaderModule
 	fragShader           vk.ShaderModule
+	needsGrabPass        bool
 }
 
 type VulkanSamplerInfo struct {
@@ -1077,6 +1086,10 @@ type VulkanSpriteProgramFragUniformBufferObject struct {
 	alpha, gray, hue              float32
 	mask                          int32
 	isFlat, isRgba, isTrapez, neg uint32
+	iTime                         float32    // 4 bytes
+	iResolution                   [2]float32 // 8 bytes
+	aspectRatio                   float32
+	_padding2                     uint32 // 4 bytes
 }
 
 type VulkanLightUniform struct {
@@ -4755,6 +4768,12 @@ func (r *Renderer_VK) Init() {
 		panic(err)
 	}
 
+	r.customPrograms = make(map[uint32]*VulkanProgramInfo)
+	r.customShaderMap = make(map[string]uint32)
+	r.nextShaderID = 1
+
+	r.grabTexture = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true).(*Texture_VK)
+
 	r.postProcessingProgram, err = r.CreateFullScreenShaderProgram(sys.externalShaders)
 	if err != nil {
 		panic(err)
@@ -5003,6 +5022,7 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 	}
 	r.renderShadowMap = false
 	r.VKState.currentProgram = nil
+	r.VKState.boundProgram = nil
 	r.vertexBufferOffset = 0
 	r.spriteProgram.uniformOffsetMap = make(map[interface{}]uint32)
 	r.spriteProgram.uniformBufferOffset = 0
@@ -5690,6 +5710,15 @@ func (r *Renderer_VK) SetUniformF(name string, values ...float32) {
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.hue = values[0]
 	case "alpha":
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.alpha = values[0]
+	case "iTime":
+		r.VKState.VulkanSpriteProgramFragUniformBufferObject.iTime = values[0]
+	case "iResolution":
+		r.VKState.VulkanSpriteProgramFragUniformBufferObject.iResolution[0] = values[0]
+		if len(values) > 1 {
+			r.VKState.VulkanSpriteProgramFragUniformBufferObject.iResolution[1] = values[1]
+		}
+	case "aspectRatio":
+		r.VKState.VulkanSpriteProgramFragUniformBufferObject.aspectRatio = values[0]
 	}
 }
 
@@ -6147,71 +6176,85 @@ func (r *Renderer_VK) SetModelIndexData(bufferIndex uint32, values ...uint32) {
 }
 
 func (r *Renderer_VK) RenderQuad() {
-	switchedProgram := r.VKState.currentProgram != r.spriteProgram
-	r.VKState.currentProgram = r.spriteProgram
-	pipelineIndex, ok := r.spriteProgram.pipelineIndexMap[r.VKState.VulkanPipelineState.VulkanBlendState]
+	targetProgram := r.VKState.currentProgram
+	if targetProgram == nil {
+		targetProgram = r.spriteProgram
+	}
+
+	switchedProgram := r.VKState.boundProgram != targetProgram
+	r.VKState.boundProgram = targetProgram
+
+	pipelineIndex, ok := targetProgram.pipelineIndexMap[r.VKState.VulkanPipelineState.VulkanBlendState]
 	if !ok {
 		panic("Pipeline not found")
 	}
-	pipeline := r.spriteProgram.pipelines[pipelineIndex]
+	pipeline := targetProgram.pipelines[pipelineIndex]
 	if switchedProgram || pipeline != r.VKState.currentPipeline {
 		r.VKState.currentPipeline = pipeline
 		vk.CmdBindPipeline(r.commandBuffers[0], vk.PipelineBindPointGraphics, pipeline)
 	}
 	if switchedProgram {
 		bufferIndex := int(r.vertexBufferOffset) / int(r.vertexBuffers[0].size)
-		if int(r.vertexBufferOffset)%int(r.vertexBuffers[0].size) == 0 {
+		if r.vertexBufferOffset > 0 && int(r.vertexBufferOffset)%int(r.vertexBuffers[0].size) == 0 {
 			bufferIndex -= 1
 		}
 		vk.CmdBindVertexBuffers(r.commandBuffers[0], 0, 1, []vk.Buffer{r.vertexBuffers[bufferIndex].buffer}, []vk.DeviceSize{0})
 	}
+
 	const m = 0x7fffffff
-	uniformBufferSize := uint32(r.spriteProgram.uniformBuffers[0].size)
-	vertOffset, ok := r.spriteProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramVertUniformBufferObject]
+	uniformBufferSize := uint32(targetProgram.uniformBuffers[0].size)
+
+	vertOffset, ok := targetProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramVertUniformBufferObject]
 	if !ok {
-		bufferIndex := r.spriteProgram.uniformBufferOffset / uniformBufferSize
-		if int(bufferIndex) >= len(r.spriteProgram.uniformBuffers) {
+		bufferIndex := targetProgram.uniformBufferOffset / uniformBufferSize
+		if int(bufferIndex) >= len(targetProgram.uniformBuffers) {
 			var uniformBuffer VulkanBuffer
 			var err error
-			uniformBuffer.size = r.spriteProgram.uniformBuffers[0].size
+			uniformBuffer.size = targetProgram.uniformBuffers[0].size
 			uniformBuffer.buffer, err = r.CreateBuffer(vk.DeviceSize(uniformBuffer.size), vk.BufferUsageFlags(vk.BufferUsageTransferSrcBit|vk.BufferUsageUniformBufferBit), (vk.MemoryPropertyHostVisibleBit | vk.MemoryPropertyHostCoherentBit), &uniformBuffer.bufferMemory)
 			if err != nil {
 				panic(err)
 			}
 			vk.MapMemory(r.device, uniformBuffer.bufferMemory, 0, vk.DeviceSize(uniformBuffer.size), 0, &uniformBuffer.data)
-			r.spriteProgram.uniformBuffers = append(r.spriteProgram.uniformBuffers, uniformBuffer)
+			targetProgram.uniformBuffers = append(targetProgram.uniformBuffers, uniformBuffer)
 		}
-		vertOffset = r.spriteProgram.uniformBufferOffset
-		r.spriteProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramVertUniformBufferObject] = vertOffset
-		vk.Memcopy(unsafe.Pointer(uintptr(r.spriteProgram.uniformBuffers[bufferIndex].data)+uintptr(vertOffset%uniformBufferSize)), (*[m]byte)(unsafe.Pointer(&r.VulkanSpriteProgramVertUniformBufferObject))[:VulkanVertUniformSize])
-		r.spriteProgram.uniformBufferOffset += r.spriteProgram.uniformSize
+		vertOffset = targetProgram.uniformBufferOffset
+		if targetProgram.uniformOffsetMap == nil {
+			targetProgram.uniformOffsetMap = make(map[interface{}]uint32)
+		}
+		targetProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramVertUniformBufferObject] = vertOffset
+		vk.Memcopy(unsafe.Pointer(uintptr(targetProgram.uniformBuffers[bufferIndex].data)+uintptr(vertOffset%uniformBufferSize)), (*[m]byte)(unsafe.Pointer(&r.VulkanSpriteProgramVertUniformBufferObject))[:VulkanVertUniformSize])
+		targetProgram.uniformBufferOffset += targetProgram.uniformSize
 	}
-	fragOffset, ok := r.spriteProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramFragUniformBufferObject]
+
+	fragOffset, ok := targetProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramFragUniformBufferObject]
 	if !ok {
-		bufferIndex := r.spriteProgram.uniformBufferOffset / uniformBufferSize
-		if int(bufferIndex) >= len(r.spriteProgram.uniformBuffers) {
+		bufferIndex := targetProgram.uniformBufferOffset / uniformBufferSize
+		if int(bufferIndex) >= len(targetProgram.uniformBuffers) {
 			var uniformBuffer VulkanBuffer
 			var err error
-			uniformBuffer.size = r.spriteProgram.uniformBuffers[0].size
+			uniformBuffer.size = targetProgram.uniformBuffers[0].size
 			uniformBuffer.buffer, err = r.CreateBuffer(vk.DeviceSize(uniformBuffer.size), vk.BufferUsageFlags(vk.BufferUsageTransferSrcBit|vk.BufferUsageUniformBufferBit), (vk.MemoryPropertyHostVisibleBit | vk.MemoryPropertyHostCoherentBit), &uniformBuffer.bufferMemory)
 			if err != nil {
 				panic(err)
 			}
 			vk.MapMemory(r.device, uniformBuffer.bufferMemory, 0, vk.DeviceSize(uniformBuffer.size), 0, &uniformBuffer.data)
-			r.spriteProgram.uniformBuffers = append(r.spriteProgram.uniformBuffers, uniformBuffer)
+			targetProgram.uniformBuffers = append(targetProgram.uniformBuffers, uniformBuffer)
 		}
-		fragOffset = r.spriteProgram.uniformBufferOffset
-		r.spriteProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramFragUniformBufferObject] = fragOffset
-		vk.Memcopy(unsafe.Pointer(uintptr(r.spriteProgram.uniformBuffers[bufferIndex].data)+uintptr(fragOffset%uniformBufferSize)), (*[m]byte)(unsafe.Pointer(&r.VulkanSpriteProgramFragUniformBufferObject))[:VulkanFragUniformSize])
-		r.spriteProgram.uniformBufferOffset += r.spriteProgram.uniformSize
+		fragOffset = targetProgram.uniformBufferOffset
+		targetProgram.uniformOffsetMap[r.VKState.VulkanSpriteProgramFragUniformBufferObject] = fragOffset
+		vk.Memcopy(unsafe.Pointer(uintptr(targetProgram.uniformBuffers[bufferIndex].data)+uintptr(fragOffset%uniformBufferSize)), (*[m]byte)(unsafe.Pointer(&r.VulkanSpriteProgramFragUniformBufferObject))[:VulkanFragUniformSize])
+		targetProgram.uniformBufferOffset += targetProgram.uniformSize
 	}
-	descriptorWrites := make([]vk.WriteDescriptorSet, 0, 4)
+
+	descriptorWrites := make([]vk.WriteDescriptorSet, 0, 5)
+
 	if switchedProgram || vertOffset != r.VKState.spriteVertUniformBufferOffset {
 		r.VKState.spriteVertUniformBufferOffset = vertOffset
 		vertUniformInfo := []vk.DescriptorBufferInfo{{
-			Buffer: r.spriteProgram.uniformBuffers[vertOffset/uniformBufferSize].buffer,
+			Buffer: targetProgram.uniformBuffers[vertOffset/uniformBufferSize].buffer,
 			Offset: vk.DeviceSize(vertOffset % uniformBufferSize),
-			Range:  vk.DeviceSize(r.spriteProgram.uniformSize),
+			Range:  vk.DeviceSize(targetProgram.uniformSize),
 		}}
 		descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
 			SType:           vk.StructureTypeWriteDescriptorSet,
@@ -6222,12 +6265,13 @@ func (r *Renderer_VK) RenderQuad() {
 			PBufferInfo:     vertUniformInfo,
 		})
 	}
+
 	if switchedProgram || fragOffset != r.VKState.spriteFragUniformBufferOffset {
 		r.VKState.spriteFragUniformBufferOffset = fragOffset
 		fragUniformInfo := []vk.DescriptorBufferInfo{{
-			Buffer: r.spriteProgram.uniformBuffers[fragOffset/uniformBufferSize].buffer,
+			Buffer: targetProgram.uniformBuffers[fragOffset/uniformBufferSize].buffer,
 			Offset: vk.DeviceSize(fragOffset % uniformBufferSize),
-			Range:  vk.DeviceSize(r.spriteProgram.uniformSize),
+			Range:  vk.DeviceSize(targetProgram.uniformSize),
 		}}
 		descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
 			SType:           vk.StructureTypeWriteDescriptorSet,
@@ -6238,6 +6282,7 @@ func (r *Renderer_VK) RenderQuad() {
 			PBufferInfo:     fragUniformInfo,
 		})
 	}
+
 	if switchedProgram || r.VKState.spriteTexture != r.currentSpriteTexture.spriteTexture {
 		r.currentSpriteTexture.spriteTexture = r.VKState.spriteTexture
 		imageInfo := []vk.DescriptorImageInfo{
@@ -6259,11 +6304,12 @@ func (r *Renderer_VK) RenderQuad() {
 			PImageInfo:      imageInfo,
 		})
 	}
+
 	// MacOS MoltenVK workaround: push constants need to be set every draw call
 	if switchedProgram || r.VKState.palTexture != r.currentSpriteTexture.palTexture || runtime.GOOS == "darwin" {
 		if switchedProgram || r.VKState.palTexture.img != r.currentSpriteTexture.palTexture.img || r.VKState.palTexture.offset[0] != r.currentSpriteTexture.palTexture.offset[0] || r.VKState.palTexture.offset[1] != r.currentSpriteTexture.palTexture.offset[1] || runtime.GOOS == "darwin" {
 			uvst := r.VKState.palTexture.uvst
-			vk.CmdPushConstants(r.commandBuffers[0], r.spriteProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 16, unsafe.Pointer(&uvst))
+			vk.CmdPushConstants(r.commandBuffers[0], targetProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 16, unsafe.Pointer(&uvst))
 		}
 		if switchedProgram || r.VKState.palTexture.img != r.currentSpriteTexture.palTexture.img {
 			palImageInfo := []vk.DescriptorImageInfo{
@@ -6284,9 +6330,30 @@ func (r *Renderer_VK) RenderQuad() {
 		}
 		r.currentSpriteTexture.palTexture = r.VKState.palTexture
 	}
-	if len(descriptorWrites) > 0 {
-		vk.CmdPushDescriptorSet(r.commandBuffers[0], vk.PipelineBindPointGraphics, r.spriteProgram.pipelineLayout, 0, uint32(len(descriptorWrites)), descriptorWrites)
+
+	// Assign the texture for GrabPass to Binding 4 (custom shader only)
+	if targetProgram != r.spriteProgram && r.grabTexture != nil {
+		grabImageInfo := []vk.DescriptorImageInfo{
+			{
+				ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
+				ImageView:   r.grabTexture.imageView,
+				Sampler:     r.spriteSamplers[0],
+			},
+		}
+		descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
+			SType:           vk.StructureTypeWriteDescriptorSet,
+			DstBinding:      4,
+			DstArrayElement: 0,
+			DescriptorCount: 1,
+			DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+			PImageInfo:      grabImageInfo,
+		})
 	}
+
+	if len(descriptorWrites) > 0 {
+		vk.CmdPushDescriptorSet(r.commandBuffers[0], vk.PipelineBindPointGraphics, targetProgram.pipelineLayout, 0, uint32(len(descriptorWrites)), descriptorWrites)
+	}
+
 	viewports := []vk.Viewport{{
 		MinDepth: 0.0,
 		MaxDepth: 1.0,
@@ -6298,10 +6365,12 @@ func (r *Renderer_VK) RenderQuad() {
 	scissors := []vk.Rect2D{r.VKState.scissor}
 	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
 	vk.CmdSetScissor(r.commandBuffers[0], 0, 1, scissors)
+
 	vk.CmdDraw(r.commandBuffers[0], 4, 1, uint32(r.vertexBufferOffset%r.vertexBuffers[0].size)/16-4, 0)
 }
 func (r *Renderer_VK) RenderElements(mode PrimitiveMode, count, offset int) {
-	switchedProgram := r.VKState.currentProgram != r.modelProgram
+	switchedProgram := r.VKState.boundProgram != r.modelProgram
+	r.VKState.boundProgram = r.modelProgram
 	r.VKState.currentProgram = r.modelProgram
 
 	r.VKState.VulkanModelPipelineState.primitiveMode = mode
@@ -7613,4 +7682,504 @@ func (r *Renderer_VK) AllocateImageMemory(img vk.Image, memoryProperty vk.Memory
 func (r *Renderer_VK) SetVSync(interval int) {
 	// We just ignore the interval here and force it on
 	r.setVSync = true
+}
+
+func (r *Renderer_VK) LoadCustomSpriteShader(shaderName string, shaderData []byte) uint32 {
+	if id, ok := r.customShaderMap[shaderName]; ok {
+		return id
+	}
+
+	needsGrabPass := bytes.Contains(shaderData, []byte("bgl_RenderedTexture"))
+
+	program, err := r.createCustomSpriteProgram(shaderData)
+	if err != nil {
+		LogMessage("[VK Error] Failed to create pipeline for custom shader %s: %v", shaderName, err)
+		return 0
+	}
+	program.needsGrabPass = needsGrabPass
+	id := r.nextShaderID
+	r.nextShaderID++
+	r.customPrograms[id] = program
+	r.customShaderMap[shaderName] = id
+	sys.appendToConsole(fmt.Sprintf("Loaded Custom VK Shader: %s (ID: %d, NeedsGrabPass: %v)", shaderName, id, needsGrabPass))
+	return id
+}
+
+func (r *Renderer_VK) UnloadCustomSpriteShader(shaderName string) {
+	if id, exists := r.customShaderMap[shaderName]; exists {
+		if program, hasProg := r.customPrograms[id]; hasProg {
+			vk.DeviceWaitIdle(r.device)
+
+			r.DestroyPipelines(program)
+			delete(r.customPrograms, id)
+
+			if r.VKState.currentProgram == program {
+				r.VKState.currentProgram = nil
+				r.VKState.boundProgram = nil
+			}
+		}
+		delete(r.customShaderMap, shaderName)
+		//LogMessage("Unloaded Custom VK Shader: %s", shaderName)
+	}
+}
+
+func (r *Renderer_VK) createCustomSpriteProgram(fragSpv []byte) (*VulkanProgramInfo, error) {
+	program := &VulkanProgramInfo{}
+	var uniformBufferMemory vk.DeviceMemory
+	var err error
+
+	minAlignment := r.minUniformBufferOffsetAlignment
+	uniformSize := uint32(Max(int(unsafe.Sizeof(VulkanSpriteProgramVertUniformBufferObject{})), int(unsafe.Sizeof(VulkanSpriteProgramFragUniformBufferObject{}))))
+	if uniformSize < minAlignment {
+		uniformSize = minAlignment
+	} else if uniformSize > minAlignment && minAlignment > 0 && uniformSize%minAlignment != 0 {
+		uniformSize = (uniformSize/minAlignment + 1) * minAlignment
+	}
+
+	program.uniformBuffers = make([]VulkanBuffer, 1)
+	program.uniformBuffers[0].size = uintptr(10000 * uniformSize)
+	program.uniformSize = uniformSize
+	program.uniformBuffers[0].buffer, err = r.CreateBuffer(vk.DeviceSize(program.uniformBuffers[0].size), vk.BufferUsageFlags(vk.BufferUsageTransferSrcBit|vk.BufferUsageUniformBufferBit), (vk.MemoryPropertyHostVisibleBit | vk.MemoryPropertyHostCoherentBit), &uniformBufferMemory)
+	if err != nil {
+		return nil, err
+	}
+	program.uniformBuffers[0].bufferMemory = uniformBufferMemory
+	var uniformData unsafe.Pointer
+	vk.MapMemory(r.device, program.uniformBuffers[0].bufferMemory, 0, vk.DeviceSize(program.uniformBuffers[0].size), 0, &uniformData)
+	program.uniformBuffers[0].data = uniformData
+
+	VertShader, err := staticFiles.ReadFile("shaders/sprite.vert.spv")
+	if err != nil {
+		return nil, err
+	}
+	VertShader2 := make([]uint32, len(VertShader)/4)
+	vk.Memcopy(unsafe.Pointer((*sliceHeader)(unsafe.Pointer(&VertShader2)).Data), VertShader)
+	vertShader, err := r.CreateShader(r.device, VertShader2)
+	if err != nil {
+		return nil, err
+	}
+	defer vk.DestroyShaderModule(r.device, vertShader, nil)
+
+	FragShader2 := make([]uint32, len(fragSpv)/4)
+	vk.Memcopy(unsafe.Pointer((*sliceHeader)(unsafe.Pointer(&FragShader2)).Data), fragSpv)
+	fragShader, err := r.CreateShader(r.device, FragShader2)
+	if err != nil {
+		return nil, err
+	}
+	defer vk.DestroyShaderModule(r.device, fragShader, nil)
+
+	shaderStages := []vk.PipelineShaderStageCreateInfo{
+		{
+			SType:  vk.StructureTypePipelineShaderStageCreateInfo,
+			Stage:  vk.ShaderStageVertexBit,
+			Module: vertShader,
+			PName:  "main\x00",
+		},
+		{
+			SType:  vk.StructureTypePipelineShaderStageCreateInfo,
+			Stage:  vk.ShaderStageFragmentBit,
+			Module: fragShader,
+			PName:  "main\x00",
+		},
+	}
+
+	// 0: Vert UBO, 1: Frag UBO, 2: Tex, 3: Pal, 4: bgl_RenderedTexture (GrabPass用)
+	samplerLayoutBinding := []vk.DescriptorSetLayoutBinding{
+		{Binding: 0, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeUniformBuffer, StageFlags: vk.ShaderStageFlags(vk.ShaderStageVertexBit)},
+		{Binding: 1, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeUniformBuffer, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 2, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 3, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 4, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // GrabPass
+	}
+	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
+		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
+		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
+		BindingCount: uint32(len(samplerLayoutBinding)),
+		PBindings:    samplerLayoutBinding,
+	}
+	var descriptorSetLayout vk.DescriptorSetLayout
+	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
+	program.descriptorSetLayouts = append(program.descriptorSetLayouts, descriptorSetLayout)
+
+	pushConstantRanges := []vk.PushConstantRange{
+		{
+			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
+			Offset:     0,
+			Size:       16 + 64, // 80 bytes
+		},
+	}
+	pipelineLayoutCreateInfo := vk.PipelineLayoutCreateInfo{
+		SType:                  vk.StructureTypePipelineLayoutCreateInfo,
+		SetLayoutCount:         1,
+		PSetLayouts:            []vk.DescriptorSetLayout{descriptorSetLayout},
+		PushConstantRangeCount: uint32(len(pushConstantRanges)),
+		PPushConstantRanges:    pushConstantRanges,
+	}
+	var pipelineLayout vk.PipelineLayout
+	vk.CreatePipelineLayout(r.device, &pipelineLayoutCreateInfo, nil, &pipelineLayout)
+	program.pipelineLayout = pipelineLayout
+
+	dynamicStates := []vk.DynamicState{
+		vk.DynamicStateViewport,
+		vk.DynamicStateScissor,
+	}
+	viewportState := vk.PipelineViewportStateCreateInfo{
+		SType:         vk.StructureTypePipelineViewportStateCreateInfo,
+		ViewportCount: 1,
+		ScissorCount:  1,
+	}
+	dynamicState := vk.PipelineDynamicStateCreateInfo{
+		SType:             vk.StructureTypePipelineDynamicStateCreateInfo,
+		DynamicStateCount: uint32(len(dynamicStates)),
+		PDynamicStates:    dynamicStates,
+	}
+	inputAssemblyState := vk.PipelineInputAssemblyStateCreateInfo{
+		SType:                  vk.StructureTypePipelineInputAssemblyStateCreateInfo,
+		Topology:               vk.PrimitiveTopologyTriangleStrip,
+		PrimitiveRestartEnable: vk.False,
+	}
+	vertexInputBindings := []vk.VertexInputBindingDescription{{
+		Binding:   0,
+		Stride:    4 * 4, // 4 = sizeof(float32)
+		InputRate: vk.VertexInputRateVertex,
+	}}
+	vertexInputAttributes := []vk.VertexInputAttributeDescription{{
+		Binding:  0,
+		Location: 0,
+		Format:   vk.FormatR32g32Sfloat,
+		Offset:   0,
+	}, {
+		Binding:  0,
+		Location: 1,
+		Format:   vk.FormatR32g32Sfloat,
+		Offset:   8,
+	}}
+	vertexInputState := vk.PipelineVertexInputStateCreateInfo{
+		SType:                           vk.StructureTypePipelineVertexInputStateCreateInfo,
+		VertexBindingDescriptionCount:   uint32(len(vertexInputBindings)),
+		PVertexBindingDescriptions:      vertexInputBindings,
+		VertexAttributeDescriptionCount: uint32(len(vertexInputAttributes)),
+		PVertexAttributeDescriptions:    vertexInputAttributes,
+	}
+	sampleMask := []vk.SampleMask{vk.SampleMask(vk.MaxUint32)}
+	msaa := sys.msaa
+	if msaa <= 0 {
+		msaa = 1
+	}
+	multisampleState := vk.PipelineMultisampleStateCreateInfo{
+		SType:                 vk.StructureTypePipelineMultisampleStateCreateInfo,
+		RasterizationSamples:  vk.SampleCountFlagBits(msaa),
+		SampleShadingEnable:   vk.False,
+		PSampleMask:           sampleMask,
+		MinSampleShading:      1,
+		AlphaToCoverageEnable: 0,
+		AlphaToOneEnable:      0,
+	}
+	rasterState := vk.PipelineRasterizationStateCreateInfo{
+		SType:                   vk.StructureTypePipelineRasterizationStateCreateInfo,
+		DepthClampEnable:        vk.False,
+		RasterizerDiscardEnable: vk.False,
+		PolygonMode:             vk.PolygonModeFill,
+		CullMode:                vk.CullModeFlags(vk.CullModeNone),
+		FrontFace:               vk.FrontFaceClockwise,
+		DepthBiasEnable:         vk.False,
+		DepthBiasConstantFactor: 0,
+		DepthBiasClamp:          0,
+		DepthBiasSlopeFactor:    0,
+		LineWidth:               1,
+	}
+	depthStencilState := vk.PipelineDepthStencilStateCreateInfo{
+		SType:             vk.StructureTypePipelineDepthStencilStateCreateInfo,
+		DepthTestEnable:   vk.False,
+		DepthWriteEnable:  vk.False,
+		StencilTestEnable: vk.False,
+	}
+	blendFunctions := []struct {
+		op  vk.BlendOp
+		src vk.BlendFactor
+		dst vk.BlendFactor
+	}{
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorOne,
+			dst: vk.BlendFactorOneMinusSrcAlpha,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorOne,
+			dst: vk.BlendFactorOne,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorOne,
+			dst: vk.BlendFactorZero,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorOne,
+			dst: vk.BlendFactorOneMinusSrcAlpha,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorOne,
+			dst: vk.BlendFactorOne,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorOne,
+			dst: vk.BlendFactorZero,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorSrcAlpha,
+			dst: vk.BlendFactorOneMinusSrcAlpha,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorSrcAlpha,
+			dst: vk.BlendFactorOne,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorSrcAlpha,
+			dst: vk.BlendFactorZero,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorSrcAlpha,
+			dst: vk.BlendFactorOneMinusSrcAlpha,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorSrcAlpha,
+			dst: vk.BlendFactorOne,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorSrcAlpha,
+			dst: vk.BlendFactorZero,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorZero,
+			dst: vk.BlendFactorOneMinusSrcAlpha,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorZero,
+			dst: vk.BlendFactorOne,
+		},
+		{
+			op:  vk.BlendOpAdd,
+			src: vk.BlendFactorZero,
+			dst: vk.BlendFactorZero,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorZero,
+			dst: vk.BlendFactorOneMinusSrcAlpha,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorZero,
+			dst: vk.BlendFactorOne,
+		},
+		{
+			op:  vk.BlendOpReverseSubtract,
+			src: vk.BlendFactorZero,
+			dst: vk.BlendFactorZero,
+		},
+	}
+	attachmentStates := make([]vk.PipelineColorBlendAttachmentState, 0, len(blendFunctions))
+	colorBlendStates := make([]vk.PipelineColorBlendStateCreateInfo, 0, len(blendFunctions))
+	pipelineCreateInfos := make([]vk.GraphicsPipelineCreateInfo, 0, len(blendFunctions))
+	pipelineIndexMap := map[interface{}]int{}
+	MapBlendEquation := func(i vk.BlendOp) BlendEquation {
+		var BlendEquationLUT = map[vk.BlendOp]BlendEquation{
+			vk.BlendOpAdd:             BlendAdd,
+			vk.BlendOpReverseSubtract: BlendReverseSubtract,
+		}
+		return BlendEquationLUT[i]
+	}
+
+	MapBlendFactor := func(i vk.BlendFactor) BlendFunc {
+		var MapBlendFactor = map[vk.BlendFactor]BlendFunc{
+			vk.BlendFactorOne:              BlendOne,
+			vk.BlendFactorZero:             BlendZero,
+			vk.BlendFactorSrcAlpha:         BlendSrcAlpha,
+			vk.BlendFactorOneMinusSrcAlpha: BlendOneMinusSrcAlpha,
+			vk.BlendFactorOneMinusDstColor: BlendOneMinusDstColor,
+			vk.BlendFactorDstColor:         BlendDstColor,
+		}
+		return MapBlendFactor[i]
+	}
+	for i := range blendFunctions {
+		attachmentStates = append(attachmentStates, vk.PipelineColorBlendAttachmentState{
+			ColorWriteMask: vk.ColorComponentFlags(
+				vk.ColorComponentRBit | vk.ColorComponentGBit |
+					vk.ColorComponentBBit | vk.ColorComponentABit,
+			),
+			BlendEnable:         vk.True,
+			SrcColorBlendFactor: blendFunctions[i].src,
+			DstColorBlendFactor: blendFunctions[i].dst,
+			ColorBlendOp:        blendFunctions[i].op,
+			SrcAlphaBlendFactor: vk.BlendFactorOne,
+			DstAlphaBlendFactor: vk.BlendFactorZero,
+			AlphaBlendOp:        vk.BlendOpAdd,
+		})
+		colorBlendStates = append(colorBlendStates, vk.PipelineColorBlendStateCreateInfo{
+			SType:           vk.StructureTypePipelineColorBlendStateCreateInfo,
+			LogicOpEnable:   vk.False,
+			LogicOp:         vk.LogicOpCopy,
+			AttachmentCount: 1,
+			PAttachments:    []vk.PipelineColorBlendAttachmentState{attachmentStates[i]},
+		})
+		pipelineCreateInfos = append(pipelineCreateInfos, vk.GraphicsPipelineCreateInfo{
+			SType:               vk.StructureTypeGraphicsPipelineCreateInfo,
+			StageCount:          2, // vert + frag
+			PStages:             shaderStages,
+			PVertexInputState:   &vertexInputState,
+			PInputAssemblyState: &inputAssemblyState,
+			PViewportState:      &viewportState,
+			PRasterizationState: &rasterState,
+			PMultisampleState:   &multisampleState,
+			PColorBlendState:    &colorBlendStates[i],
+			PDynamicState:       &dynamicState,
+			Layout:              program.pipelineLayout,
+			RenderPass:          r.mainRenderPass.renderPass,
+			PDepthStencilState:  &depthStencilState,
+		})
+		pipelineIndexMap[VulkanBlendState{
+			op:  MapBlendEquation(blendFunctions[i].op),
+			src: MapBlendFactor(blendFunctions[i].src),
+			dst: MapBlendFactor(blendFunctions[i].dst),
+		}] = i
+	}
+	pipelines := make([]vk.Pipeline, len(pipelineCreateInfos))
+	err = vk.Error(vk.CreateGraphicsPipelines(r.device,
+		r.pipelineCache, uint32(len(pipelineCreateInfos)), pipelineCreateInfos, nil, pipelines))
+	if err != nil {
+		err = fmt.Errorf("vk.CreateGraphicsPipelines failed with %s", err)
+		return nil, err
+	}
+	program.pipelines = pipelines
+
+	program.pipelineIndexMap = pipelineIndexMap
+
+	return program, nil
+}
+
+func (r *Renderer_VK) SetSpritePipeline(shaderName string) {
+	targetProgram := r.spriteProgram
+	if shaderName != "" {
+		if id, ok := r.customShaderMap[shaderName]; ok {
+			if shader, ok := r.customPrograms[id]; ok {
+				targetProgram = shader
+			}
+		}
+	}
+
+	if r.VKState.currentProgram == targetProgram {
+		return
+	}
+	r.VKState.currentProgram = targetProgram
+}
+
+func (r *Renderer_VK) SetCustomUniforms(params [16]float32) {
+	if r.VKState.currentProgram == nil {
+		return
+	}
+	vk.CmdPushConstants(r.commandBuffers[0], r.VKState.currentProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 16, 64, unsafe.Pointer(&params[0]))
+}
+
+func (r *Renderer_VK) NeedsGrabPass() bool {
+	if r.VKState.currentProgram != nil {
+		return r.VKState.currentProgram.needsGrabPass
+	}
+	return false
+}
+
+func (r *Renderer_VK) ResolveBackBuffer() Texture {
+	cmd := r.commandBuffers[0]
+
+	vk.CmdEndRenderPass(cmd)
+
+	barriers := []vk.ImageMemoryBarrier{
+		{
+			SType:         vk.StructureTypeImageMemoryBarrier,
+			OldLayout:     vk.ImageLayoutColorAttachmentOptimal,
+			NewLayout:     vk.ImageLayoutTransferSrcOptimal,
+			SrcAccessMask: vk.AccessFlags(vk.AccessColorAttachmentWriteBit),
+			DstAccessMask: vk.AccessFlags(vk.AccessTransferReadBit),
+			Image:         r.mainRenderTarget.texture.img,
+			SubresourceRange: vk.ImageSubresourceRange{
+				AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LevelCount: 1, LayerCount: 1,
+			},
+		},
+		{
+			SType:         vk.StructureTypeImageMemoryBarrier,
+			OldLayout:     vk.ImageLayoutUndefined,
+			NewLayout:     vk.ImageLayoutTransferDstOptimal,
+			SrcAccessMask: vk.AccessFlags(vk.AccessNone),
+			DstAccessMask: vk.AccessFlags(vk.AccessTransferWriteBit),
+			Image:         r.grabTexture.img,
+			SubresourceRange: vk.ImageSubresourceRange{
+				AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LevelCount: 1, LayerCount: 1,
+			},
+		},
+	}
+	vk.CmdPipelineBarrier(cmd, vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit), vk.PipelineStageFlags(vk.PipelineStageTransferBit), 0, 0, nil, 0, nil, 2, barriers)
+
+	blit := []vk.ImageBlit{{
+		SrcSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
+		SrcOffsets:     [2]vk.Offset3D{{0, 0, 0}, {int32(sys.scrrect[2]), int32(sys.scrrect[3]), 1}},
+		DstSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
+		DstOffsets:     [2]vk.Offset3D{{0, 0, 0}, {int32(sys.scrrect[2]), int32(sys.scrrect[3]), 1}},
+	}}
+	vk.CmdBlitImage(cmd, r.mainRenderTarget.texture.img, vk.ImageLayoutTransferSrcOptimal, r.grabTexture.img, vk.ImageLayoutTransferDstOptimal, 1, blit, vk.FilterNearest)
+
+	barriers2 := []vk.ImageMemoryBarrier{
+		{
+			SType:         vk.StructureTypeImageMemoryBarrier,
+			OldLayout:     vk.ImageLayoutTransferSrcOptimal,
+			NewLayout:     vk.ImageLayoutColorAttachmentOptimal,
+			SrcAccessMask: vk.AccessFlags(vk.AccessTransferReadBit),
+			DstAccessMask: vk.AccessFlags(vk.AccessColorAttachmentWriteBit),
+			Image:         r.mainRenderTarget.texture.img,
+			SubresourceRange: vk.ImageSubresourceRange{
+				AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LevelCount: 1, LayerCount: 1,
+			},
+		},
+		{
+			SType:         vk.StructureTypeImageMemoryBarrier,
+			OldLayout:     vk.ImageLayoutTransferDstOptimal,
+			NewLayout:     vk.ImageLayoutShaderReadOnlyOptimal,
+			SrcAccessMask: vk.AccessFlags(vk.AccessTransferWriteBit),
+			DstAccessMask: vk.AccessFlags(vk.AccessShaderReadBit),
+			Image:         r.grabTexture.img,
+			SubresourceRange: vk.ImageSubresourceRange{
+				AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LevelCount: 1, LayerCount: 1,
+			},
+		},
+	}
+	vk.CmdPipelineBarrier(cmd, vk.PipelineStageFlags(vk.PipelineStageTransferBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit|vk.PipelineStageColorAttachmentOutputBit), 0, 0, nil, 0, nil, 2, barriers2)
+
+	renderPassBeginInfo := vk.RenderPassBeginInfo{
+		SType:       vk.StructureTypeRenderPassBeginInfo,
+		RenderPass:  r.mainRenderPass.renderPass,
+		Framebuffer: r.mainRenderTarget.framebuffer,
+		RenderArea:  vk.Rect2D{Offset: vk.Offset2D{X: 0, Y: 0}, Extent: vk.Extent2D{Width: uint32(sys.scrrect[2]), Height: uint32(sys.scrrect[3])}},
+	}
+	vk.CmdBeginRenderPass(cmd, &renderPassBeginInfo, vk.SubpassContentsInline)
+
+	r.VKState.boundProgram = nil
+	r.VKState.currentPipeline = nil
+	r.VKState.spriteVertUniformBufferOffset = 0xFFFFFFFF
+	r.VKState.spriteFragUniformBufferOffset = 0xFFFFFFFF
+	r.VKState.modelUniformBufferOffset1 = 0xFFFFFFFF
+	r.VKState.modelUniformBufferOffset2 = 0xFFFFFFFF
+	r.currentSpriteTexture.spriteTexture = nil
+	r.currentSpriteTexture.palTexture = nil
+
+	return r.grabTexture
 }

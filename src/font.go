@@ -20,6 +20,7 @@ type FontRenderer interface {
 
 type Font interface {
 	SetColor(red float32, green float32, blue float32, alpha float32)
+	SetPalFX(neg bool, gray float32, add, mul [3]float32, hue float32)
 	UpdateResolution(windowWidth int, windowHeight int)
 	Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
 		rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
@@ -63,6 +64,7 @@ type FntCharImage struct {
 // TtfFont implements TTF font rendering on supported platforms
 type TtfFont interface {
 	SetColor(red float32, green float32, blue float32, alpha float32)
+	SetPalFX(neg bool, gray float32, add, mul [3]float32, hue float32)
 	Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
 	Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
 		rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
@@ -371,7 +373,7 @@ func loadDefInfo(f *Fnt, filename string, is IniSection, height int32) {
 }
 
 func LoadFntSff(f *Fnt, fontfile string, filename string) {
-	fileDir := SearchFile(filename, []string{fontfile, "font/", sys.motif.Def, "", "data/"})
+	fileDir := SearchFile(filename, []string{fontfile, sys.motif.Def, "", "data/"}, "font/")
 	sff, err := loadSff(fileDir, false, false, false)
 
 	if err != nil {
@@ -562,7 +564,7 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 	window *[4]int32, palfx *PalFX, frgba [4]float32) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.DrawTtf(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, align, true, window, frgba, 0)
+			f.DrawTtf(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, align, true, window, frgba, palfx, 0)
 		} else {
 			f.DrawText(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, bank, align, window, palfx, frgba[3], 0)
 		}
@@ -674,7 +676,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 
 func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 	projectionMode int32, fLength float32, align int32,
-	blend bool, window *[4]int32, frgba [4]float32, spacingXAdd float32) {
+	blend bool, window *[4]int32, frgba [4]float32, palfx *PalFX, spacingXAdd float32) {
 
 	if len(txt) == 0 {
 		return
@@ -691,6 +693,17 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 	//win := [4]int32{(*window)[0], sys.scrrect[3] - ((*window)[1] + (*window)[3]),
 	//	(*window)[2], (*window)[3]}
 
+	blendMode := TT_none
+	if frgba[3] < 1 {
+		blendMode = TT_add
+	}
+	alphaVal := int32(255 * Clamp(frgba[3], float32(0), float32(1)))
+	if palfx != nil {
+		neg, grayscale, add, mul, _, hue := palfx.getFinalPalFx(blendMode, [2]int32{alphaVal, 255 - alphaVal})
+		f.ttf.SetPalFX(neg, grayscale, add, mul, hue)
+	} else {
+		f.ttf.SetPalFX(false, 0, [3]float32{0, 0, 0}, [3]float32{1, 1, 1}, 0)
+	}
 	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3])
 	f.ttf.Printf(x, y, xscl, yscl, spacingXAdd, align, blend, *window,
 		rxadd, rot, projectionMode, fLength, x, y,
@@ -1355,8 +1368,12 @@ func (ts *TextSprite) Draw(ln int16) {
 
 		// Draw the visible line
 		if ts.fnt.Type == "truetype" {
+			var ttfPalFX *PalFX
+			if !ts.forcecolor {
+				ttfPalFX = ts.palfx
+			}
 			ts.fnt.DrawTtf(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
-				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &ts.window, ts.frgba, float32(spacingXAdd))
+				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &ts.window, ts.frgba, ttfPalFX, float32(spacingXAdd))
 		} else {
 			ts.fnt.DrawText(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
 				xshear, ts.rot, ts.projection, ts.fLength, ts.bank, ts.align, &ts.window, ts.palfx, ts.frgba[3], spacingXAdd)
