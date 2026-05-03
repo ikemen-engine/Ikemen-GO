@@ -639,7 +639,7 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	rect := bg.startrect
 
 	startrect0 := float32(rect[0]) - (pos[0])/stgscl[0]*bg.windowdelta[0] +
-		(float32(sys.gameWidth)/2/sclx - float32(bg.notmaskwindow)*(float32(sys.gameWidth)/2)*(1/lscl[0]))
+		(sys.gameWidth/2/sclx - float32(bg.notmaskwindow)*(sys.gameWidth/2)*(1/lscl[0]))
 	startrect0 *= sys.widthScale * wscl[0]
 	if !isStage && wscl[0] == 1 {
 		// Screenpacks X coordinates start from left edge of screen
@@ -703,7 +703,7 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 		// Choose render origin: top-left for screenpack/storyboard videos, center for everything else
 		var rcx float32
 		if bg._type != BG_Video || isStage {
-			rcx = sys.gameWidthFloat / 2
+			rcx = sys.gameWidth / 2
 		}
 
 		bg.anim.Draw(&rect, x-xsoffset, y, sclx, scly,
@@ -1112,7 +1112,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 	} else if s.hires {
 		s.scale[1] *= 2
 	}
-	s.localscl = float32(sys.gameWidth) / float32(s.stageCamera.localcoord[0])
+	s.localscl = sys.gameWidth / float32(s.stageCamera.localcoord[0])
 	s.stageCamera.localscl = s.localscl
 	if s.stageCamera.localcoord[0] != 320 {
 		// Update default values to new localcoord. Like characters do

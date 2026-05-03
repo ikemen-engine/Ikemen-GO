@@ -371,15 +371,15 @@ func (c *Config) normalize() {
 func (c *Config) sysSet() {
 	if _, ok := sys.cmdFlags["-width"]; ok {
 		var w, _ = strconv.ParseInt(sys.cmdFlags["-width"], 10, 32)
-		sys.gameWidth = int32(w)
+		sys.gameWidth = float32(int32(w))
 	} else {
-		sys.gameWidth = c.Video.GameWidth
+		sys.gameWidth = float32(c.Video.GameWidth)
 	}
 	if _, ok := sys.cmdFlags["-height"]; ok {
 		var h, _ = strconv.ParseInt(sys.cmdFlags["-height"], 10, 32)
-		sys.gameHeight = int32(h)
+		sys.gameHeight = float32(int32(h))
 	} else {
-		sys.gameHeight = c.Video.GameHeight
+		sys.gameHeight = float32(c.Video.GameHeight)
 	}
 	sys.msaa = c.Video.MSAA
 	stoki := func(key string) int {

@@ -194,7 +194,7 @@ func realMain() {
 
 	// Initialize game and create window
 	// This is where the window is born!
-	sys.luaLState = sys.init(sys.gameWidth, sys.gameHeight)
+	sys.luaLState = sys.init(int32(sys.gameWidth), int32(sys.gameHeight))
 	//defer sys.shutdown()
 
 	// Begin processing game using its lua scripts

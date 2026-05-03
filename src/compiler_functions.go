@@ -96,7 +96,7 @@ func (c *Compiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlName st
 		if c.zssMode {
 			return Error("Cannot mix old and new " + sctrlName + " syntaxes")
 		} else {
-			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + fmt.Sprintf(": Cannot mix old and new: "+sctrlName+" in state %v ", c.stateNo))
+			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Cannot mix old and new: "+sctrlName+" in state %v ", c.stateNo))
 		}
 	}
 
@@ -662,7 +662,7 @@ func (c *Compiler) helper(is IniSection, sc *StateControllerBase, _ int8) (State
 				if c.zssMode {
 					return Error("Helper name not enclosed in \"")
 				}
-				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + fmt.Sprintf(": Helper name not enclosed in \" : in state %v ", c.stateNo))
+				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Helper name not enclosed in \" : in state %v ", c.stateNo))
 				return nil
 			}
 			sc.add(helper_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
@@ -952,7 +952,7 @@ func (c *Compiler) explodSub(is IniSection,
 		explod_hideonpausemenu, VT_Bool, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramTrans(is, sc, "", explod_trans, true); err != nil {
+	if err := c.paramTrans(is, sc, "", explod_trans); err != nil {
 		return err
 	}
 	if err := c.palFXSub(is, sc, "palfx."); err != nil {
@@ -1583,7 +1583,7 @@ func (c *Compiler) afterImageSub(is IniSection,
 		afterImage_redirectid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramTrans(is, sc, prefix, afterImage_trans, true); err != nil {
+	if err := c.paramTrans(is, sc, prefix, afterImage_trans); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, prefix+"time",
@@ -2530,6 +2530,9 @@ func (c *Compiler) projectileSub(is IniSection, sc *StateControllerBase, ihp int
 	if err := c.afterImageSub(is, sc, ihp, "afterimage."); err != nil {
 		return err
 	}
+	if err := c.shaderSub(is, sc, projectile_shader, projectile_shaderparam); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2645,7 +2648,7 @@ func (c *Compiler) varSetOlderSub(is IniSection, sc *StateControllerBase, alread
 			if c.zssMode || !sys.ignoreMostErrors {
 				return Error(msg)
 			}
-			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + ": " + msg)
+			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + ": " + msg)
 		}
 		hasIndex = true
 		index = data
@@ -2672,7 +2675,7 @@ func (c *Compiler) varSetOlderSub(is IniSection, sc *StateControllerBase, alread
 		if c.zssMode || !sys.ignoreMostErrors {
 			return false, Error(msg)
 		}
-		sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + ": " + msg)
+		sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + ": " + msg)
 		return true, nil
 	}
 
@@ -2790,7 +2793,7 @@ func (c *Compiler) varSetSub(is IniSection, sc *StateControllerBase, scType int3
 			if c.zssMode || !sys.ignoreMostErrors {
 				return Error(msg)
 			}
-			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + ": " + msg)
+			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + ": " + msg)
 			break
 		}
 
@@ -3502,7 +3505,7 @@ func (c *Compiler) trans(is IniSection, sc *StateControllerBase, _ int8) (StateC
 			trans_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramTrans(is, sc, "", trans_trans, false); err != nil {
+		if err := c.paramTrans(is, sc, "", trans_trans); err != nil {
 			return err
 		}
 		return nil
@@ -5546,6 +5549,9 @@ func (c *Compiler) shaderSet(is IniSection, sc *StateControllerBase, _ int8) (St
 		if err := c.paramValue(is, sc, "redirectid", shaderSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "time", shaderSet_time, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.shaderSub(is, sc, shaderSet_shader, shaderSet_shaderparam); err != nil {
 			return err
 		}
@@ -6918,7 +6924,7 @@ func (c *Compiler) modifyStageBG(is IniSection, sc *StateControllerBase, _ int8)
 		if _, ok := is["trans"]; ok { // Check if "trans" exists, since you can't set "any" from within paramTrans
 			any = true
 		}
-		if err := c.paramTrans(is, sc, "", modifyStageBG_trans, false); err != nil {
+		if err := c.paramTrans(is, sc, "", modifyStageBG_trans); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "angle", false, func(data string) error {

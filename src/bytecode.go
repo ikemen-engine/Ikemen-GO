@@ -7865,6 +7865,8 @@ const (
 	projectile_projxshear
 	projectile_projprojection
 	projectile_projfocallength
+	projectile_shader
+	projectile_shaderparam
 	// projectile_platform
 	// projectile_platformwidth
 	// projectile_platformheight
@@ -8039,6 +8041,15 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.fLength = exp[0].evalF(c)
 		case projectile_projprojection:
 			p.projection = Projection(exp[0].evalI(c))
+		case projectile_shader:
+			p.shader = exp[0].evalS()
+		case projectile_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			for j := 0; j < numParams; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				p.shaderParams[idx] = val
+			}
 		// case projectile_platform:
 		// 	p.platform = exp[0].evalB(c)
 		// case projectile_platformwidth:
@@ -8457,6 +8468,24 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			case projectile_projfocallength:
 				eachProj(func(p *Projectile) {
 					p.fLength = exp[0].evalF(c)
+				})
+			case projectile_shader:
+				v1 := exp[0].evalS()
+				eachProj(func(p *Projectile) {
+					p.shader = v1
+				})
+			case projectile_shaderparam:
+				numParams := int(exp[0].evalI(c))
+				var indices []int
+				var vals []float32
+				for j := 0; j < numParams; j++ {
+					indices = append(indices, int(exp[1+j*2].evalI(c)))
+					vals = append(vals, exp[2+j*2].evalF(c))
+				}
+				eachProj(func(p *Projectile) {
+					for j := 0; j < numParams; j++ {
+						p.shaderParams[indices[j]] = vals[j]
+					}
 				})
 			case hitDef_attr:
 				v1 := exp[0].evalI(c)
@@ -12340,6 +12369,7 @@ type shaderSet StateControllerBase
 const (
 	shaderSet_shader byte = iota
 	shaderSet_shaderparam
+	shaderSet_time
 	shaderSet_redirectid
 )
 
@@ -12348,8 +12378,11 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 	if crun == nil {
 		return false
 	}
+	st := int32(1)
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
+		case shaderSet_time:
+			st = exp[0].evalI(c)
 		case shaderSet_shader:
 			crun.shader = exp[0].evalS()
 		case shaderSet_shaderparam:
@@ -12362,6 +12395,11 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	crun.shaderTime = st
+	if crun.shaderTime == 0 {
+		crun.shader = ""
+		crun.shaderParams = [16]float32{}
+	}
 	return false
 }
 

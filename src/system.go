@@ -64,9 +64,7 @@ type SystemStateVars struct {
 	envcol_time int32
 
 	scrrect                 [4]int32
-	gameWidth, gameHeight   int32
-	gameWidthFloat          float32 // Float forms used for precise screenpack math
-	gameHeightFloat         float32 // TODO: rework gameWidth/gameHeight as floats instead
+	gameWidth, gameHeight   float32
 	widthScale, heightScale float32
 	gameEnd, frameSkip      bool
 	paused, frameStepFlag   bool
@@ -356,7 +354,7 @@ type System struct {
 }
 
 type drawAspectState struct {
-	gameWidth, gameHeight   int32
+	gameWidth, gameHeight   float32
 	widthScale, heightScale float32
 }
 
@@ -619,21 +617,17 @@ func (s *System) setGameSize(w, h int32) {
 
 	if screenAspect > targetAspect {
 		// Screen is wider than 4:3 - scale based on height
-		s.gameWidthFloat = float32(baseHeight) * screenAspect
-		s.gameWidth = int32(s.gameWidthFloat)
-		s.gameHeight = baseHeight
-		s.gameHeightFloat = float32(s.gameHeight)
+		s.gameWidth = float32(baseHeight) * screenAspect
+		s.gameHeight = float32(baseHeight)
 	} else {
 		// Screen is taller than 4:3 - scale based on width
-		s.gameWidth = baseWidth
-		s.gameWidthFloat = float32(baseWidth)
-		s.gameHeightFloat = float32(baseWidth) / screenAspect
-		s.gameHeight = int32(s.gameHeightFloat)
+		s.gameWidth = float32(baseWidth)
+		s.gameHeight = float32(baseWidth) / screenAspect
 	}
 
 	// Update scale
-	s.widthScale = float32(s.scrrect[2]) / s.gameWidthFloat
-	s.heightScale = float32(s.scrrect[3]) / s.gameHeightFloat
+	s.widthScale = float32(s.scrrect[2]) / s.gameWidth
+	s.heightScale = float32(s.scrrect[3]) / s.gameHeight
 }
 
 // Change aspect ratio at match start
@@ -669,8 +663,8 @@ func (s *System) applyFightAspect() {
 
 	// Compute new game dimensions while maintaining the same base height
 	gameWidth := baseHeight * aspectGame
-	s.gameWidth = int32(gameWidth)
-	s.gameHeight = int32(baseHeight)
+	s.gameWidth = gameWidth
+	s.gameHeight = baseHeight
 
 	// Scale to fit current screen size
 	s.widthScale = float32(s.scrrect[2]) / float32(s.gameWidth)
@@ -5040,9 +5034,9 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	if sameChar {
 		p = sys.chars[pn][0]
 
-		// The cached instance is being reused as a fresh entrant.
 		// Restore values that ModifyPlayer may have mutated.
-		p.resetCachedPlayerState()
+		// TODO: Should ModifyPlayer persist or not across matches?
+		p.resetModifyPlayer()
 
 		// Prepare success message
 		if attached {
@@ -5095,7 +5089,6 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 
 	// Load character
 	if !sameChar {
-		sys.cgi[pn].customShaders = nil
 		if l.err = p.load(cdef); l.err != nil {
 			sys.chars[pn] = nil
 			if attached {
@@ -5143,7 +5136,8 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	}
 
 	// Flag "existed" just in case
-	sys.chars[pn][0].ocd().existed = true
+	// Update: This is Lua's responsibility. Enabling this flag made duplicate Turns characters misbehave
+	//sys.chars[pn][0].ocd().existed = true
 
 	return 1
 }

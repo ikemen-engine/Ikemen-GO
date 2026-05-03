@@ -788,7 +788,7 @@ func (c *Compiler) attr(text string, hitdef bool) (int32, error) {
 				//if hitdef {
 				//	flg = hitdefflg
 				//}
-				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + fmt.Sprintf(": Invalid attr value: "+a+" in state %v ", c.stateNo))
+				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Invalid attr value: "+a+" in state %v ", c.stateNo))
 				return flg, nil
 			}
 			return 0, Error("Invalid attr value: " + a)
@@ -1214,8 +1214,7 @@ func (c *Compiler) readOldProjectileID(in *string, trname string, baseLen int, o
 	invalid := func(msg string) (string, error) {
 		// Print error but proceed with ID 0
 		if sys.ignoreMostErrors {
-			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow +
-				fmt.Sprintf(": %v in state %v ", msg, c.stateNo))
+			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": %v in state %v ", msg, c.stateNo))
 			out.appendValue(BytecodeInt(0))
 			return base, nil
 		}
@@ -2833,7 +2832,7 @@ func (c *Compiler) expValue(out *BytecodeExp, in *string,
 			if c.zssMode || !sys.ignoreMostErrors {
 				return bvNone(), err
 			}
-			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + fmt.Sprintf(": HitDefAttr Missing '=' or '!=' "+" in state %v ", c.stateNo))
+			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": HitDefAttr Missing '=' or '!=' "+" in state %v ", c.stateNo))
 			out.appendValue(BytecodeBool(false))
 		}
 	case "hitdefvar":
@@ -5784,6 +5783,24 @@ func (c *Compiler) fullExpression(in *string, vt ValueType) (BytecodeExp, error)
 	return be, nil
 }
 
+func parseTriggerNumber(name string) (tn int32, isAll bool, ok bool) {
+	if !strings.HasPrefix(name, "trigger") {
+		return 0, false, false
+	}
+
+	suffix := name[7:]
+	if suffix == "all" {
+		return 0, true, true
+	}
+
+	tn, ok = readDigit(suffix)
+	if !ok || tn < 1 || tn > 65536 {
+		return 0, false, false
+	}
+
+	return tn, false, true
+}
+
 func (c *Compiler) parseSection(sctrl func(name, data string) error) (IniSection, bool, error) {
 	is := NewIniSection()
 	_type, persistent, ignorehitpause := true, true, true
@@ -5909,13 +5926,24 @@ func (c *Compiler) parseSection(sctrl func(name, data string) error) (IniSection
 		}
 
 		if len(name) > 0 {
+			_, _, isTrigger := parseTriggerNumber(name)
+
+			// Reject empty triggers
+			if isTrigger && len(data) == 0 {
+				return nil, false, Error(name + " cannot be empty")
+			}
+
+			// Reject duplicate parameters (normally off)
 			_, ok := is[name]
-			if ok && (len(name) < 7 || name[:7] != "trigger") {
+			if ok && !isTrigger {
 				if sys.ignoreMostErrors {
+					// Because duplicates are harmless and would flood the limited console space, we'll print them to the command line instead
+					LogMessage("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Duplicate '%s' parameter in state %v", name, c.stateNo))
 					continue
 				}
 				return nil, false, Error(name + " is duplicated")
 			}
+
 			if sctrl != nil {
 				switch name {
 				case "type":
@@ -5934,7 +5962,7 @@ func (c *Compiler) parseSection(sctrl func(name, data string) error) (IniSection
 					}
 					ignorehitpause = false
 				default:
-					if len(name) < 7 || name[:7] != "trigger" {
+					if !isTrigger {
 						is[name] = data
 						continue
 					}
@@ -6254,7 +6282,7 @@ func (c *Compiler) paramSpace(is IniSection, sc *StateControllerBase, id byte) e
 			if c.zssMode && !sys.ignoreMostErrors {
 				return Error("Invalid space type: " + data)
 			} else {
-				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + fmt.Sprintf(": Invalid space type: "+data+" in state %v ", c.stateNo))
+				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Invalid space type: "+data+" in state %v ", c.stateNo))
 			}
 		}
 		sc.add(id, sc.iToExp(int32(spc)))
@@ -6304,12 +6332,34 @@ func (c *Compiler) paramSaveData(is IniSection, sc *StateControllerBase, id byte
 }
 
 // Parse trans and alpha together
-func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
-	prefix string, id byte, cnsParam bool) error {
+func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase, prefix string, id byte) error {
+	// Check if we have both trans and alpha parameters
+	_, alphaExists := is[prefix+"alpha"]
+	_, transExists := is[prefix+"trans"]
 
+	// Require trans parameter before accepting alpha
+	// In Mugen this fails silently
+	if alphaExists && !transExists {
+		if c.zssMode || !sys.ignoreMostErrors {
+			return Error("alpha defined without trans type")
+		} else {
+			sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Alpha defined without trans type in state %v ", c.stateNo))
+			return nil
+		}
+	}
+
+	// Check trans type first
+	// Alpha parameter is only parsed if type exists
+	// TODO: Maybe ZSS should parse alpha even if trans is not present
 	return c.stateParam(is, prefix+"trans", false, func(data string) error {
-		if len(data) == 0 {
-			return Error("trans type not specified")
+		// Mugen tolerates blank parameters here
+		if len(strings.TrimSpace(data)) == 0 {
+			if c.zssMode || !sys.ignoreMostErrors {
+				return Error("trans type not specified")
+			} else {
+				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Blank trans type in state %v ", c.stateNo))
+				return nil
+			}
 		}
 
 		// Defaults
@@ -6341,10 +6391,10 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 			defsrc, defdst = 255, 255
 		default:
 			// In Mugen, CNS ignores invalid parameter names
-			if !cnsParam || c.zssMode || !sys.ignoreMostErrors {
+			if c.zssMode || !sys.ignoreMostErrors {
 				return Error("Invalid trans type: " + data)
 			} else {
-				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].nameLow + fmt.Sprintf(": Invalid trans type: "+data+" in state %v ", c.stateNo))
+				sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Invalid trans type: "+data+" in state %v ", c.stateNo))
 				return nil
 			}
 		}
@@ -6353,6 +6403,18 @@ func (c *Compiler) paramTrans(is IniSection, sc *StateControllerBase,
 
 		// Parse custom alpha
 		_ = c.stateParam(is, prefix+"alpha", false, func(data string) error {
+			// In Mugen, some state controllers tolerate a blank alpha and some don't
+			// In this instance, we can actually be more lenient than Mugen and always allow it in CNS, since ZSS already never allows it
+			// It's also more consistent with how Mugen handles other blank parameters
+			if len(strings.TrimSpace(data)) == 0 {
+				if c.zssMode || !sys.ignoreMostErrors {
+					return Error("alpha not specified")
+				} else {
+					sys.appendToConsole("WARNING: " + sys.cgi[c.playerNo].name + fmt.Sprintf(": Blank trans alpha in state %v ", c.stateNo))
+					return nil
+				}
+			}
+
 			vals, err := c.exprs(data, VT_Int, 2)
 			if err != nil {
 				return err
@@ -6581,52 +6643,66 @@ func cnsStringArray(arg string) ([]string, error) {
 	return fullStrArray, nil
 }
 
-// Compile a state file
+// Forwards state compiling to CNS or ZSS branches as appropriate
 func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
-	var str string
-	c.zssMode = HasExtension(filename, ".zss")
-	fnz := filename
 
-	// Load state file
-	if err := LoadFile(&filename, dirs, "", func(filename string) error {
+	// Determine type from extension
+	isZss := HasExtension(filename, ".zss")
+	var filetext string
+
+	// Load the contents of the state file
+	err := LoadFile(&filename, dirs, "", func(fname string) error {
 		var err error
-		// If this is a zss file
-		if c.zssMode {
-			b, err := LoadText(filename)
-			if err != nil {
-				return err
-			}
-			str = string(b)
-			return c.stateCompileZ(states, fnz, str, constants)
-		}
+		filetext, err = LoadText(fname)
+		return err
+	})
 
-		// Try reading as an st file
-		str, err = LoadText(filename)
-		return err
-	}); err != nil {
-		// If filename doesn't exist, see if a zss file exists
-		fnz += ".zss"
-		if err := LoadFile(&fnz, dirs, "", func(filename string) error {
-			b, err := LoadText(filename)
-			if err != nil {
-				return err
+	if err != nil {
+		// If filename doesn't exist, see if a ZSS file exists (e.g. common1.cns.zss)
+		if !isZss {
+			zssAlt := filename + ".zss"
+			err2 := LoadFile(&zssAlt, dirs, "", func(fname string) error {
+				var err2 error
+				filetext, err2 = LoadText(fname)
+				return err2
+			})
+			if err2 == nil {
+				// Successfully loaded the alternative ZSS file
+				isZss = true
+				filename = zssAlt
+				err = nil
 			}
-			str = string(b)
-			return nil
-		}); err == nil {
-			return c.stateCompileZ(states, fnz, str, constants)
 		}
-		return err
+		// Handle other errors
+		if err != nil {
+			return err
+		}
 	}
 
-	c.lines, c.i = SplitAndTrim(str, "\n"), 0
+	// Compile as ZSS
+	// Note that "negoverride" is ignored
+	if isZss {
+		return c.stateCompileZSS(states, filename, filetext, constants)
+	}
+
+	// Compile as CNS
+	return c.stateCompileCNS(states, filename, filetext, negoverride, constants)
+}
+
+func (c *Compiler) stateCompileCNS(states map[int32]StateBytecode, filename, filetext string, negoverride bool, constants map[string]float32) error {
+	// Reset ZSS mode
+	c.zssMode = false
+
+	c.lines, c.i = SplitAndTrim(filetext, "\n"), 0
 	errmes := func(err error) error {
 		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i+1, err.Error()))
 	}
+
 	// Keep a map of states that have already been found in this file
 	existInThisFile := make(map[int32]bool)
 	c.vars = make(map[string]uint8)
+
 	// Loop through state file lines
 	for ; c.i < len(c.lines); c.i++ {
 		// Find a statedef, skipping over other lines until finding one
@@ -6685,12 +6761,15 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 			// Create this sctrl and get its properties
 			c.block = newStateBlock()
 			sc := newStateControllerBase()
+
 			var scf scFunc
 			var triggerall []BytecodeExp
-			// Flag if following triggers can never be true because of triggerall = 0
-			allTerminated := false
 			var trigger [][]BytecodeExp
 			var trexist []int8
+
+			// Flag if following triggers can never be true because of triggerall = 0
+			allTerminated := false
+
 			// Parse each line of the sctrl to get triggers and settings
 			is, ihp, err := c.parseSection(func(name, data string) error {
 				switch name {
@@ -6717,66 +6796,74 @@ func (c *Compiler) stateCompile(states map[int32]StateBytecode,
 					ih := Atoi(data) != 0
 					c.block.ignorehitpause = Btoi(ih) - 2
 					c.block.ctrlsIgnorehitpause = ih
-				case "triggerall":
-					be, err := c.fullExpression(&data, VT_Bool)
-					if err != nil {
-						return err
-					}
-					// If triggerall = 0 is encountered, flag it
-					if len(be) == 2 && be[0] == OC_int8 {
-						if be[1] == 0 {
-							allTerminated = true
-						}
-					} else if !allTerminated {
-						triggerall = append(triggerall, be)
-					}
 				default:
-					// Get the trigger number
-					tn, ok := readDigit(name[7:])
-					if !ok || tn < 1 || tn > 65536 {
-						if sys.ignoreMostErrors {
+					// Handle triggers
+					if strings.HasPrefix(name, "trigger") {
+						tn, isAll, ok := parseTriggerNumber(name)
+						if !ok {
+							if !sys.ignoreMostErrors {
+								return Error("Invalid trigger name: " + name)
+							}
 							break
 						}
-						return Error("Invalid trigger name: " + name)
-					}
-					// Add more entries to the trigger collection if needed
-					if len(trigger) < int(tn) {
-						trigger = append(trigger, make([][]BytecodeExp,
-							int(tn)-len(trigger))...)
-					}
-					if len(trexist) < int(tn) {
-						trexist = append(trexist, make([]int8, int(tn)-len(trexist))...)
-					}
-					tn--
-					// Parse trigger condition into a bytecode expression
-					be, err := c.fullExpression(&data, VT_Bool)
-					if err != nil {
-						if sys.ignoreMostErrors {
-							_break := false
-							for i := 0; i < int(tn); i++ {
-								if trexist[i] == 0 {
-									_break = true
+
+						// Convert to zero-based index
+						tidx := int(tn - 1)
+
+						// Parse trigger condition into a bytecode expression
+						be, err := c.fullExpression(&data, VT_Bool)
+						if err != nil {
+							// Skip this trigger if an earlier trigger number doesn't exist
+							// e.g. skip trigger3 if trigger2 was not found
+							if sys.ignoreMostErrors && !isAll {
+								broken := false
+								for i := 0; i < tidx; i++ {
+									if trexist[i] == 0 {
+										broken = true
+										break
+									}
+								}
+								if broken {
 									break
 								}
 							}
-							if _break {
-								break
+							return err
+						}
+
+						// Handle triggerall
+						if isAll {
+							// If triggerall = 0 is encountered, flag it
+							if len(be) == 2 && be[0] == OC_int8 {
+								if be[1] == 0 {
+									allTerminated = true
+								}
+							} else if !allTerminated {
+								triggerall = append(triggerall, be)
 							}
+							break
 						}
-						return err
-					}
-					// If trigger is a constant int value
-					if len(be) == 2 && be[0] == OC_int8 {
-						// If trigger is always false (0)
-						if be[1] == 0 {
-							// trexist == -1 means this specific trigger set can never be true
-							trexist[tn] = -1
-						} else if trexist[tn] == 0 {
-							trexist[tn] = 1
+
+						// Add more entries to the trigger collection if needed
+						if len(trigger) < int(tn) {
+							trigger = append(trigger, make([][]BytecodeExp, int(tn)-len(trigger))...)
 						}
-					} else if !allTerminated && trexist[tn] >= 0 {
-						trigger[tn] = append(trigger[tn], be)
-						trexist[tn] = 1
+						if len(trexist) < int(tn) {
+							trexist = append(trexist, make([]int8, int(tn)-len(trexist))...)
+						}
+
+						// If trigger is a constant int value
+						if len(be) == 2 && be[0] == OC_int8 {
+							// If trigger is always false (0)
+							if be[1] == 0 {
+								// trexist == -1 means this specific trigger set can never be true
+								trexist[tidx] = -1
+							} else if trexist[tidx] == 0 {
+								trexist[tidx] = 1
+							}
+						} else if !allTerminated && trexist[tidx] >= 0 {
+							trigger[tidx] = append(trigger[tidx], be)
+							trexist[tidx] = 1
+						}
 					}
 				}
 				return nil
@@ -7822,8 +7909,11 @@ func (c *Compiler) stateBlock(line *string, bl *StateBlock, root bool,
 	return c.wrongClosureToken()
 }
 
-// Compile a ZSS state
-func (c *Compiler) stateCompileZ(states map[int32]StateBytecode, filename, src string, constants map[string]float32) error {
+func (c *Compiler) stateCompileZSS(states map[int32]StateBytecode, filename, filetext string, constants map[string]float32) error {
+	// Enable ZSS mode
+	// TODO: There's some overlap between this flag and sys.ignoreMostErrors
+	c.zssMode = true
+
 	// ZSS states are compiled with a lower tolerance for mistakes
 	// TODO: Either merge this with our current c.zssMode checks or drop it
 	defer func(oime bool) {
@@ -7832,7 +7922,7 @@ func (c *Compiler) stateCompileZ(states map[int32]StateBytecode, filename, src s
 	sys.ignoreMostErrors = false
 
 	c.block = nil
-	c.lines, c.i = SplitAndTrim(src, "\n"), 0
+	c.lines, c.i = SplitAndTrim(filetext, "\n"), 0
 	c.linechan = make(chan *string)
 	endchan := make(chan bool, 1)
 
@@ -8242,26 +8332,23 @@ func (c *Compiler) Compile(pn int, def string, constants map[string]float32) (ma
 	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
-			if err := c.stateCompile(states, s, []string{def, "", "data/"},
-				sys.cgi[pn].ikemenver[0] == 0 &&
-					sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+			if err := c.stateCompile(states, s, []string{def, "", sys.motif.Def, "data/"},
+				sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 				return nil, err
 			}
 		}
 	}
 	// Compile states in command file
 	if len(cmd) > 0 {
-		if err := c.stateCompile(states, cmd, []string{def, "", "data/"},
-			sys.cgi[pn].ikemenver[0] == 0 &&
-				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+		if err := c.stateCompile(states, cmd, []string{def, "", sys.motif.Def, "data/"},
+			sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
 	// Compile states in stcommon state file
 	if len(stcommon) > 0 {
-		if err := c.stateCompile(states, stcommon, []string{def, "", "data/"},
-			sys.cgi[pn].ikemenver[0] == 0 &&
-				sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
+		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motif.Def, "data/"},
+			sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
 			return nil, err
 		}
 	}
