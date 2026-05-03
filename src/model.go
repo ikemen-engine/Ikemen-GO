@@ -263,6 +263,7 @@ type Mesh struct {
 	name               string
 	morphTargetWeights GLTFAnimatableProperty // []float32
 	primitives         []*Primitive
+	extras             interface{}
 }
 
 type PrimitiveMode byte
@@ -829,6 +830,7 @@ func loadglTFModel(filepath string) (*Model, error) {
 		var mesh = &Mesh{}
 		mesh.name = m.Name
 		mesh.morphTargetWeights = GLTFAnimatableProperty{isAnimated: false, restValue: m.Weights}
+		mesh.extras = m.Extras
 		for _, p := range m.Primitives {
 			var primitive = &Primitive{}
 			primitive.boundingBox.min = [3]float32{math.MaxFloat32, math.MaxFloat32, math.MaxFloat32}
@@ -1236,6 +1238,15 @@ func loadglTFModel(filepath string) (*Model, error) {
 				node.shadowMapBias = GLTFAnimatableProperty{isAnimated: false, restValue: float32(0.0)}
 			}
 		}
+
+		// newer versions of Blender (5.1, et al.) export mesh extras in the meshes array, instead of the nodes array
+		if node.meshIndex != nil {
+			m := mdl.meshes[*n.Mesh]
+			if m.extras != nil && n.Extras == nil {
+				n.Extras = m.extras
+			}
+		}
+
 		if n.Extras != nil {
 			v, ok := n.Extras.(map[string]interface{})
 			if ok {
