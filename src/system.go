@@ -3621,7 +3621,13 @@ func (s *System) runMatch() (reload bool) {
 		s.esc = true
 	}
 	if s.netConnection != nil {
-		defer s.netConnection.Stop()
+		defer func() {
+			// Keep delay-netplay alive across Turns character swaps;
+			// stopping here can desync nc.time before the next Synchronize().
+			if s.matchOver() || s.esc || s.endMatch || s.gameEnd || s.fightLoopEnd {
+				s.netConnection.Stop()
+			}
+		}()
 	}
 
 	// Setup characters

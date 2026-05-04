@@ -1,10 +1,39 @@
 main = {}
---nClock = os.clock()
---print("Elapsed time: " .. os.clock() - nClock)
 --;===========================================================
 --; INITIALIZE DATA
 --;===========================================================
-math.randomseed(os.time())
+do
+	local RANDOM_IMAX = 2147483647 -- Go IMax / Park-Miller modulus
+	function math.random(min, max)
+		local r = getRandom()
+		-- math.random() -> float in [0, 1)
+		if min == nil then
+			return r / RANDOM_IMAX
+		end
+		-- math.random(max) -> integer in [1, max]
+		if max == nil then
+			max = min
+			min = 1
+		end
+		min = math.floor(min)
+		max = math.floor(max)
+		if max < min then
+			error("bad argument #2 to 'random' (interval is empty)", 2)
+		end
+		local range = max - min + 1
+		if range <= 0 or range > RANDOM_IMAX then
+			error("bad argument to 'random' (interval is too large)", 2)
+		end
+		-- Match Go Rand(min, max):
+		-- return min + Random() / (IMax / range + 1)
+		return min + math.floor(r / (math.floor(RANDOM_IMAX / range) + 1))
+	end
+	-- Keep deterministic engine RNG authoritative.
+	-- math.randomseed(...) is intentionally ignored because math.random uses getRandom().
+	function math.randomseed(_)
+		-- intentionally ignored
+	end
+end
 
 --;===========================================================
 --; COMMON FUNCTIONS
@@ -808,7 +837,6 @@ function main.f_commandLine()
 			os.exit()
 		end
 		main.f_clearShuffleTables()
-		math.randomseed(getRandom())
 		refresh()
 	end
 	local params = table.concat(t_params, ", ")
@@ -978,9 +1006,7 @@ function main.f_addChar(line, playable, loading, slot)
 			end
 			c = c:gsub('\\', '/')
 			c = tostring(c)
-			--nClock = os.clock()
 			addChar(c, line)
-			--print(c .. ": " .. os.clock() - nClock)
 			if c:lower() == 'skipslot' then
 				main.t_selChars[row].skip = 1
 				playable = false
@@ -1535,7 +1561,6 @@ end
 
 local function enterSyncedNetplayMenu()
 	main.f_clearShuffleTables()
-	math.randomseed(getRandom())
 	main.f_menuSnap(motif[main.group])
 	main.f_menuItemBgAnimReset(motif[main.group])
 	fadeInInit(motif[main.group].fadein.FadeData)
@@ -3127,7 +3152,7 @@ function main.f_getUniquePalette(ch, state)
 		end
 	end
 
-	local pal = available[getRandom() % #available + 1]
+	local pal = available[math.random(#available)]
 	used[pal] = true
 	state.last = {ch = ch, pal = pal}
 	return pal
