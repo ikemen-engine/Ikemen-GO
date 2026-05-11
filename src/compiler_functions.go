@@ -1931,33 +1931,6 @@ func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_fall_recovertime, VT_Int, 1, false); err != nil {
 		return err
 	}
-	sprk := func(id byte, data string) error {
-		prefix := c.getDataPrefix(&data, true)
-		return c.scAdd(sc, id, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}
-	if err := c.stateParam(is, "sparkno", false, func(data string) error {
-		return sprk(hitDef_sparkno, data)
-	}); err != nil {
-		return err
-	}
-	if err := c.paramValue(is, sc, "sparkangle",
-		hitDef_sparkangle, VT_Float, 1, false); err != nil {
-		return err
-	}
-	if err := c.stateParam(is, "guard.sparkno", false, func(data string) error {
-		return sprk(hitDef_guard_sparkno, data)
-	}); err != nil {
-		return err
-	}
-	if err := c.paramValue(is, sc, "guard.sparkangle",
-		hitDef_guard_sparkangle, VT_Float, 1, false); err != nil {
-		return err
-	}
-	if err := c.paramValue(is, sc, "sparkxy",
-		hitDef_sparkxy, VT_Float, 2, false); err != nil {
-		return err
-	}
 	if err := c.paramValue(is, sc, "down.hittime",
 		hitDef_down_hittime, VT_Int, 1, false); err != nil {
 		return err
@@ -2244,14 +2217,6 @@ func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_attack_depth, VT_Float, 2, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "sparkscale",
-		hitDef_sparkscale, VT_Float, 2, false); err != nil {
-		return err
-	}
-	if err := c.paramValue(is, sc, "guard.sparkscale",
-		hitDef_guard_sparkscale, VT_Float, 2, false); err != nil {
-		return err
-	}
 	if err := c.paramValue(is, sc, "unhittabletime",
 		hitDef_unhittabletime, VT_Int, 2, false); err != nil {
 		return err
@@ -2267,6 +2232,84 @@ func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.paramValue(is, sc, "ignorereversaldef",
 		hitDef_ignorereversaldef, VT_Bool, 1, false); err != nil {
 		return err
+	}
+	if err := c.paramValue(is, sc, "sparkxy",
+		hitDef_sparkxy, VT_Float, 2, false); err != nil {
+		return err
+	}
+
+	// Helper to add spark parameters with an optional index
+	addSparkParam := func(opcode byte, idx int, key string, vt ValueType, numValues int) error {
+		v, ok := is[key]
+		if !ok {
+			return nil
+		}
+		idxExp := BytecodeInt(int32(idx))
+		var idxBe BytecodeExp
+		idxBe.appendValue(idxExp)
+		valBes, err := c.exprs(v, vt, numValues)
+		if err != nil {
+			return err
+		}
+		all := []BytecodeExp{idxBe}
+		all = append(all, valBes...)
+		sc.add(opcode, all)
+		delete(is, key) // ZSS compiler requires consuming parameters after reading them
+		return nil
+	}
+
+	// Helper to add sparkNo parameters
+	// These are special because of the ffx string
+	addSparkNo := func(opcode byte, idx int, key string) error {
+		v, ok := is[key]
+		if !ok {
+			return nil
+		}
+		data := v
+		prefix := c.getDataPrefix(&data, true)
+		ffxExp := BytecodeExp(prefix)
+		numExp, err := c.argExpression(&data, VT_Int)
+		if err != nil {
+			return err
+		}
+		idxExp := BytecodeInt(int32(idx))
+		var idxBe BytecodeExp
+		idxBe.appendValue(idxExp)
+		sc.add(opcode, []BytecodeExp{idxBe, ffxExp, numExp})
+		delete(is, key)
+		return nil
+	}
+
+	// Process spark parameters for indices 0..7
+	for idx := 0; idx < 8; idx++ {
+		suffix := ""
+		if idx > 0 {
+			suffix = fmt.Sprintf("%d", idx+1)
+		}
+		// Hit spark number (with FFX)
+		if err := addSparkNo(hitDef_sparkno, idx, "sparkno"+suffix); err != nil {
+			return err
+		}
+		// Hit spark scale
+		if err := addSparkParam(hitDef_sparkscale, idx, "sparkscale"+suffix, VT_Float, 2); err != nil {
+			return err
+		}
+		// Hit spark angle
+		if err := addSparkParam(hitDef_sparkangle, idx, "sparkangle"+suffix, VT_Float, 1); err != nil {
+			return err
+		}
+		// Guard spark number (with FFX)
+		if err := addSparkNo(hitDef_guard_sparkno, idx, "guard.sparkno"+suffix); err != nil {
+			return err
+		}
+		// Guard spark scale
+		if err := addSparkParam(hitDef_guard_sparkscale, idx, "guard.sparkscale"+suffix, VT_Float, 2); err != nil {
+			return err
+		}
+		// Guard spark angle
+		if err := addSparkParam(hitDef_guard_sparkangle, idx, "guard.sparkangle"+suffix, VT_Float, 1); err != nil {
+			return err
+		}
 	}
 
 	return nil

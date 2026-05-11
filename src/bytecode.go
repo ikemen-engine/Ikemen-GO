@@ -4264,7 +4264,7 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 	case OC_ex3_hitdefvar_guard_shaketime:
 		sys.bcStack.PushI(c.hitdef.guard_pausetime[1])
 	case OC_ex3_hitdefvar_guard_sparkno:
-		sys.bcStack.PushI(c.hitdef.guard_sparkno)
+		sys.bcStack.PushI(c.hitdef.guard_sparkno[0]) // TODO: Maybe expand these to return the other indexes too
 	case OC_ex3_hitdefvar_guarddamage:
 		sys.bcStack.PushI(c.hitdef.guarddamage)
 	case OC_ex3_hitdefvar_guardflag:
@@ -4300,7 +4300,7 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 	case OC_ex3_hitdefvar_shaketime:
 		sys.bcStack.PushI(c.hitdef.pausetime[1])
 	case OC_ex3_hitdefvar_sparkno:
-		sys.bcStack.PushI(c.hitdef.sparkno)
+		sys.bcStack.PushI(c.hitdef.sparkno[0])
 	case OC_ex3_hitdefvar_sparkx:
 		sys.bcStack.PushF(c.hitdef.sparkxy[0] * (c.localscl / oc.localscl))
 	case OC_ex3_hitdefvar_sparky:
@@ -7495,11 +7495,13 @@ const (
 	hitDef_fall_zvelocity
 	hitDef_fall_recover
 	hitDef_fall_recovertime
+	hitDef_sparkxy
 	hitDef_sparkno
 	hitDef_sparkangle
+	hitDef_sparkscale
 	hitDef_guard_sparkno
 	hitDef_guard_sparkangle
-	hitDef_sparkxy
+	hitDef_guard_sparkscale
 	hitDef_down_hittime
 	hitDef_p1facing
 	hitDef_p1getp2facing
@@ -7562,8 +7564,6 @@ const (
 	hitDef_down_recover
 	hitDef_down_recovertime
 	hitDef_attack_depth
-	hitDef_sparkscale
-	hitDef_guard_sparkscale
 	hitDef_unhittabletime
 	hitDef_stand_friction
 	hitDef_crouch_friction
@@ -7690,20 +7690,48 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		hd.fall_recover = exp[0].evalB(c)
 	case hitDef_fall_recovertime:
 		hd.fall_recovertime = exp[0].evalI(c)
-	case hitDef_sparkno:
-		hd.sparkno_ffx = exp[0].evalS()
-		hd.sparkno = exp[1].evalI(c)
-	case hitDef_sparkangle:
-		hd.sparkangle = exp[0].evalF(c)
-	case hitDef_guard_sparkno:
-		hd.guard_sparkno_ffx = exp[0].evalS()
-		hd.guard_sparkno = exp[1].evalI(c)
-	case hitDef_guard_sparkangle:
-		hd.guard_sparkangle = exp[0].evalF(c)
 	case hitDef_sparkxy:
 		hd.sparkxy[0] = exp[0].evalF(c)
 		if len(exp) > 1 {
 			hd.sparkxy[1] = exp[1].evalF(c)
+		}
+	case hitDef_sparkno:
+		spidx := exp[0].evalI(c)
+		if spidx >= 0 && spidx < 8 {
+			hd.sparkno_ffx[spidx] = exp[1].evalS()
+			hd.sparkno[spidx] = exp[2].evalI(c)
+		}
+	case hitDef_sparkscale:
+		spidx := exp[0].evalI(c)
+		if spidx >= 0 && spidx < 8 {
+			hd.sparkscale[spidx][0] = exp[1].evalF(c)
+			if len(exp) > 2 {
+				hd.sparkscale[spidx][1] = exp[2].evalF(c)
+			}
+		}
+	case hitDef_sparkangle:
+		spidx := exp[0].evalI(c)
+		if spidx >= 0 && spidx < 8 {
+			hd.sparkangle[spidx] = exp[1].evalF(c)
+		}
+	case hitDef_guard_sparkno:
+		spidx := exp[0].evalI(c)
+		if spidx >= 0 && spidx < 8 {
+			hd.guard_sparkno_ffx[spidx] = exp[1].evalS()
+			hd.guard_sparkno[spidx] = exp[2].evalI(c)
+		}
+	case hitDef_guard_sparkscale:
+		spidx := exp[0].evalI(c)
+		if spidx >= 0 && spidx < 8 {
+			hd.guard_sparkscale[spidx][0] = exp[1].evalF(c)
+			if len(exp) > 2 {
+				hd.guard_sparkscale[spidx][1] = exp[2].evalF(c)
+			}
+		}
+	case hitDef_guard_sparkangle:
+		spidx := exp[0].evalI(c)
+		if spidx >= 0 && spidx < 8 {
+			hd.guard_sparkangle[spidx] = exp[1].evalF(c)
 		}
 	case hitDef_down_hittime:
 		hd.down_hittime = exp[0].evalI(c)
@@ -7932,16 +7960,6 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 			hd.attack_depth[1] = exp[1].evalF(c)
 		} else {
 			hd.attack_depth[1] = hd.attack_depth[0]
-		}
-	case hitDef_sparkscale:
-		hd.sparkscale[0] = exp[0].evalF(c)
-		if len(exp) > 1 {
-			hd.sparkscale[1] = exp[1].evalF(c)
-		}
-	case hitDef_guard_sparkscale:
-		hd.guard_sparkscale[0] = exp[0].evalF(c)
-		if len(exp) > 1 {
-			hd.guard_sparkscale[1] = exp[1].evalF(c)
 		}
 	case hitDef_unhittabletime:
 		hd.unhittabletime[0] = exp[0].evalI(c)
@@ -9055,37 +9073,65 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.hitdef.fall_recovertime = v1
 				})
 			case hitDef_sparkno:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalS()
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
+				spidx := exp[0].evalI(c)
+				if spidx >= 0 && spidx < 8 {
+					ffx := exp[1].evalS()
+					num := exp[2].evalI(c)
+					eachProj(func(p *Projectile) {
+						p.hitdef.sparkno_ffx[spidx] = ffx
+						p.hitdef.sparkno[spidx] = num
+					})
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.sparkno_ffx = v1
-					p.hitdef.sparkno = v2
-				})
+			case hitDef_sparkscale:
+				spidx := exp[0].evalI(c)
+				if spidx >= 0 && spidx < 8 {
+					v1 := exp[1].evalF(c)
+					v2 := exp[2].evalF(c)
+					eachProj(func(p *Projectile) {
+						p.hitdef.sparkscale[spidx][0] = v1
+						if len(exp) > 2 {
+							p.hitdef.sparkscale[spidx][1] = v2
+						}
+					})
+				}
 			case hitDef_sparkangle:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.sparkangle = v1
-				})
-			case hitDef_guard_sparkno:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalS()
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
+				spidx := exp[0].evalI(c)
+				if spidx >= 0 && spidx < 8 {
+					angle := exp[1].evalF(c)
+					eachProj(func(p *Projectile) {
+						p.hitdef.sparkangle[spidx] = angle
+					})
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_sparkno_ffx = v1
-					p.hitdef.guard_sparkno = v2
-				})
+			case hitDef_guard_sparkno:
+				spidx := exp[0].evalI(c)
+				if spidx >= 0 && spidx < 8 {
+					ffx := exp[1].evalS()
+					num := exp[2].evalI(c)
+					eachProj(func(p *Projectile) {
+						p.hitdef.guard_sparkno_ffx[spidx] = ffx
+						p.hitdef.guard_sparkno[spidx] = num
+					})
+				}
+			case hitDef_guard_sparkscale:
+				spidx := exp[0].evalI(c)
+				if spidx >= 0 && spidx < 8 {
+					v1 := exp[1].evalF(c)
+					v2 := exp[2].evalF(c)
+					eachProj(func(p *Projectile) {
+						p.hitdef.guard_sparkscale[spidx][0] = v1
+						if len(exp) > 2 {
+							p.hitdef.guard_sparkscale[spidx][1] = v2
+						}
+					})
+				}
 			case hitDef_guard_sparkangle:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_sparkangle = v1
-				})
+				spidx := exp[0].evalI(c)
+				if spidx >= 0 && spidx < 8 {
+					angle := exp[1].evalF(c)
+					eachProj(func(p *Projectile) {
+						p.hitdef.guard_sparkangle[spidx] = angle
+					})
+				}
 			case hitDef_sparkxy:
 				var v1, v2 float32
 				v1 = exp[0].evalF(c)
