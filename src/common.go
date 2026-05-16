@@ -650,6 +650,18 @@ func LoadFile(file *string, dirs []string, defaultDir string, load func(string) 
 	return nil
 }
 
+// Splits a file path into directory and filename
+// Only used for non-critical operations such as error logging
+func SplitPath(p string) (dir, file string) {
+	// Replace backslashes with forward slashes
+	p = strings.ReplaceAll(p, "\\", "/")
+	// Split at last slash
+	if i := strings.LastIndex(p, "/"); i >= 0 {
+		return p[:i+1], p[i+1:]
+	}
+	return "", p
+}
+
 func StripComment(s string) string {
 	if sc := strings.Index(s, ";"); sc >= 0 {
 		s = s[:sc]

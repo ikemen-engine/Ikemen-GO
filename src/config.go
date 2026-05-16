@@ -197,7 +197,7 @@ type Config struct {
 	Netplay struct {
 		ListenPort      string             `ini:"ListenPort"`
 		RollbackNetcode bool               `ini:"RollbackNetcode" sync:"strict"`
-		IP              map[string]string  `ini:"IP"`
+		IP              map[string]string  `ini:"IP" insensitivekeys:"false"`
 		Rollback        RollbackProperties `ini:"Rollback"`
 	} `ini:"Netplay"`
 	Input struct {

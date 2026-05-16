@@ -1567,6 +1567,26 @@ local function enterSyncedNetplayMenu()
 	main.menu.submenu.server.loop()
 end
 
+local function isValidIp(address)
+	local a, b, c, d = address:match('^(%d+)%.(%d+)%.(%d+)%.(%d+)$')
+	if a ~= nil then
+		a, b, c, d = tonumber(a), tonumber(b), tonumber(c), tonumber(d)
+		return a <= 255 and b <= 255 and c <= 255 and d <= 255
+	end
+	if address:match('^[0-9A-Fa-f:]+$') and not address:match(':::') then
+		local _, dbl = address:gsub('::', '')
+		if dbl <= 1 then
+			local parts, bad = 0, false
+			for h in address:gmatch('[^:]+') do
+				parts = parts + 1
+				if #h > 4 then bad = true break end
+			end
+			return not bad and ((dbl == 1 and parts < 8) or (dbl == 0 and parts == 8))
+		end
+	end
+	return false
+end
+
 function main.f_default()
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
@@ -1789,7 +1809,7 @@ main.t_itemname = {
 				motif[main.background],
 				motif[main.group].textinput.overlay.RectData
 			)
-			if address:match('^[0-9%.]+$') then
+			if isValidIp(address) then
 				sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 				modifyGameOption('Netplay.IP.' .. name, address)
 				table.insert(t, #t, {itemname = 'ip_' .. name, displayname = name})
@@ -1928,7 +1948,7 @@ main.t_itemname = {
 		local doneSnd = motif[main.group].cursor.done.snd.serverconnect or motif[main.group].cursor.done.snd.default
 		sndPlay(motif.Snd, doneSnd[1], doneSnd[2])
 		hook.run("main.t_itemname", t, item)
-		if main.f_connect(gameOption('Netplay.IP.' .. t[item].displayname), t[item].displayname) then
+		if main.f_connect(gameOption('Netplay.IP.' .. t[item].itemname:gsub('^ip_', '')), t[item].displayname) then
 			if synchronize() then
 				enterSyncedNetplayMenu()
 			end

@@ -986,6 +986,7 @@ const (
 	OC_ex3_helpervar_keyctrl
 	OC_ex3_helpervar_ownclsnscale
 	OC_ex3_helpervar_ownpal
+	OC_ex3_helpervar_ownprojectile
 	OC_ex3_helpervar_preserve
 	OC_ex3_spritevar_group
 	OC_ex3_spritevar_height
@@ -1907,7 +1908,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_jmp:
 			be.JumpToNext(&i)
 		case OC_player:
-			if c = sys.playerID(c.getPlayerID(int(sys.bcStack.Pop().ToI()))); c != nil {
+			pn := int(sys.bcStack.Pop().ToI())
+			if c = c.playerTrigger(pn, true); c != nil {
 				// Valid: Move past the length header and enter the block
 				i += 4
 				continue
@@ -2336,7 +2338,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_teamside:
 			sys.bcStack.PushI(int32(c.teamside) + 1)
 		case OC_time:
-			sys.bcStack.PushI(c.time())
+			sys.bcStack.PushI(c.ss.time)
 		case OC_topedge:
 			sys.bcStack.PushF(c.topEdge() * (c.localscl / oc.localscl))
 		case OC_uniqhitcount:
@@ -4305,7 +4307,7 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 	// HelperVar
 	case OC_ex3_helpervar_clsnproxy, OC_ex3_helpervar_id, OC_ex3_helpervar_helpertype,
 		OC_ex3_helpervar_keyctrl, OC_ex3_helpervar_ownclsnscale, OC_ex3_helpervar_ownpal,
-		OC_ex3_helpervar_preserve:
+		OC_ex3_helpervar_ownprojectile, OC_ex3_helpervar_preserve:
 		// If not a helper, return false immediately
 		if c.helperIndex == 0 {
 			sys.bcStack.Push(BytecodeUndefined())
@@ -4326,6 +4328,8 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushB(c.ownclsnscale)
 		case OC_ex3_helpervar_ownpal:
 			sys.bcStack.PushB(c.ownpal)
+		case OC_ex3_helpervar_ownprojectile:
+			sys.bcStack.PushB(c.ownProjectile)
 		case OC_ex3_helpervar_preserve:
 			sys.bcStack.PushB(c.preserve)
 		}
@@ -4399,14 +4403,14 @@ func (NullStateController) Run(_ *Char, _ []int32) bool {
 
 var nullStateController NullStateController
 
-type bytecodeFunction struct {
+type BytecodeFunction struct {
 	numVars int32
-	numRets int32
 	numArgs int32
+	numRets int32
 	ctrls   []StateController
 }
 
-func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
+func (bf BytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
 	sys.bcVar = sys.bcVarStack.Alloc(int(bf.numVars))
 
@@ -4445,14 +4449,15 @@ func (bf bytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	return
 }
 
-type callFunction struct {
-	//bytecodeFunction // Moved to CharGlobalInfo
-	name string
-	arg  BytecodeExp
-	ret  []uint8
+type CallFunction struct {
+	//BytecodeFunction // Moved to CharGlobalInfo
+	name    string
+	arg     BytecodeExp
+	ret     []uint8
+	numArgs int32
 }
 
-func (cf callFunction) Run(c *Char, _ []int32) (changeState bool) {
+func (cf CallFunction) Run(c *Char, _ []int32) (changeState bool) {
 	// Check if the function exists
 	// We use the functions from whatever player owns the current working state
 	bf, ok := sys.cgi[sys.workingState.playerNo].callFuncs[cf.name]
@@ -4460,6 +4465,19 @@ func (cf callFunction) Run(c *Char, _ []int32) (changeState bool) {
 	// If undefined, treat as no-op and log error
 	if !ok {
 		sys.appendToConsole(c.warn() + "called undefined function: " + cf.name)
+		return false
+	}
+
+	// Runtime argument number validation
+	// Validated on runtime because the compiler can't always know in advance what a function will look like
+	if cf.numArgs != bf.numArgs {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("function %s expected %d arguments but got %d", cf.name, bf.numArgs, cf.numArgs))
+		return false
+	}
+
+	// Runtime return number validation
+	if len(cf.ret) > 0 && int32(len(cf.ret)) != bf.numRets {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("function %s expected %d returns but got %d", cf.name, bf.numRets, len(cf.ret)))
 		return false
 	}
 
@@ -5528,6 +5546,7 @@ const (
 	helper_preserve
 	helper_standby
 	helper_ownclsnscale
+	helper_ownprojectile
 	helper_redirectid
 )
 
@@ -5648,6 +5667,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			} else {
 				h.unsetSCF(SCF_standby)
 			}
+		case helper_ownprojectile:
+			h.ownProjectile = exp[0].evalB(c)
 		}
 		return true
 	})
@@ -6050,7 +6071,7 @@ const (
 	explod_shadow
 	explod_removeongethit
 	explod_removeonchangestate
-	explod_hideonpausemenu
+	explod_hidewithbars
 	explod_trans
 	explod_animelem
 	explod_animelemtime
@@ -6248,8 +6269,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.removeongethit = exp[0].evalB(c)
 		case explod_removeonchangestate:
 			e.removeonchangestate = exp[0].evalB(c)
-		case explod_hideonpausemenu:
-			e.hideonpausemenu = exp[0].evalB(c)
+		case explod_hidewithbars:
+			e.hidewithbars = exp[0].evalB(c)
 		case explod_trans:
 			src := Clamp(int32(exp[0].evalI(c)), 0, 255)
 			dst := Clamp(int32(exp[1].evalI(c)), 0, 255)
@@ -6779,10 +6800,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				eachExpl(func(e *Explod) {
 					e.removeonchangestate = v
 				})
-			case explod_hideonpausemenu:
+			case explod_hidewithbars:
 				v := exp[0].evalB(c)
 				eachExpl(func(e *Explod) {
-					e.hideonpausemenu = v
+					e.hidewithbars = v
 				})
 			case explod_trans:
 				src := Clamp(int32(exp[0].evalI(c)), 0, 255)
@@ -11612,6 +11633,35 @@ func (sc assertInput) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	return false
+}
+
+type changeMovelist StateControllerBase
+
+const (
+	changeMovelist_value byte = iota
+	changeMovelist_redirectid
+)
+
+func (sc changeMovelist) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), changeMovelist_redirectid, "ChangeMovelist")
+	if crun == nil {
+		return false
+	}
+
+	var v int32
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case changeMovelist_value:
+			v = exp[0].evalI(c)
+		}
+		return true
+	})
+	if _, ok := crun.gi().movelists[int(v)]; !ok {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid movelist: %d", v))
+		return false
+	}
+	crun.movelist = v
 	return false
 }
 

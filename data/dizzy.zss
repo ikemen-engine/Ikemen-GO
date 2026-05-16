@@ -21,7 +21,7 @@ if parent,alive = 0 || parent,dizzy = 0 || parent,ctrl || parent,standby {
 
 # Set Explod parameters
 if time = 0 {
-	map(birdType) := randomRange(0, 5); # Bird type. Currently has no effect on gameplay
+	map(birdType) := randomRange(0, 8); # Bird type. Currently has no effect on gameplay
 	map(birdRadius) := parent,const(size.ground.back) + parent,const(size.ground.front); # Circling effect radius
 }
 
@@ -76,8 +76,8 @@ for i = 0; numExplod-1; 1 {
 	let circleHeight = cos($circleTime) * map(birdRadius) * 0.25;
 	let birdScale = (cos($circleTime) + 3) * 0.12 * ifElse($circleHeight < 0, -1, 1);
 	let fadeTime = ifElse(map(birdState) <= 0, 0, ifElse(map(birdState) >= 32, 32, map(birdState))); # Effects are faded out by code rather than animation
-	# Musical notes don't flip
-	if map(birdType) = 5 {
+	# Musical notes and Bells don't flip
+	if map(birdType) = 5 || map(birdType) = 6 {
 		let birdScale = abs($birdScale) * facing;
 	}
 	modifyExplod{

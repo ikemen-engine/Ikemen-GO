@@ -5218,7 +5218,7 @@ func (fs *FightScreen) step() {
 
 // Resets fight screen as well as prepares team mode configuration for each player
 func (fs *FightScreen) reset() {
-	var num [2]int
+	//var num [2]int
 
 	// Update team mode layout for each player
 	for ti, tm := range sys.tmode {
@@ -5245,17 +5245,22 @@ func (fs *FightScreen) reset() {
 			fs.curLayout[ti] = 0 // Single (2)
 		}
 
-		// Set maximum number of lifebars
-		if tm == TM_Simul || tm == TM_Tag {
-			num[ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
-		} else {
-			num[ti] = len(fs.lifeBars[fs.curLayout[ti]])
-		}
+		// Determine number of players in each team
+		//if tm == TM_Simul || tm == TM_Tag {
+		//	num[ti] = int(math.Min(8, float64(sys.numSimul[ti])*2))
+		//} else {
+		//	num[ti] = len(fs.lifeBars[fs.curLayout[ti]]) // TODO: Why did it check this for single/turns but not simul/tag?
+		//}
+		// Build team order by ascending player number
+		//fs.teamOrder[ti] = []int{}
+		//for i := ti; i < num[ti]; i += 2 {
+		//	fs.teamOrder[ti] = append(fs.teamOrder[ti], i)
+		//}
+	}
 
-		fs.teamOrder[ti] = []int{}
-		for i := ti; i < num[ti]; i += 2 {
-			fs.teamOrder[ti] = append(fs.teamOrder[ti], i)
-		}
+	// Rebuild order of teams
+	for side := range fs.teamOrder {
+		fs.syncTeamOrder(side)
 	}
 
 	// Reset fight screen elements
@@ -5316,24 +5321,25 @@ func (fs *FightScreen) reset() {
 	}
 }
 
+func (fs *FightScreen) visible() bool {
+	return fs.active &&
+		!sys.postMatchFlg &&
+		!sys.lifebarHide &&
+		!sys.dialogueBarsFlg &&
+		!(sys.motif.me.active && sys.motif.PauseMenu["pause_menu"].HideBars &&
+			(!sys.motif.me.closeRequested || sys.paused))
+}
+
 func (fs *FightScreen) draw(layerno int16) {
-	// Do not draw anything during victory and such screens
-	if sys.postMatchFlg {
-		return
-	}
-
-	pauseHide := sys.motif.me.active && sys.motif.PauseMenu["pause_menu"].HideBars
-
-	if !sys.lifebarHide && fs.active && !sys.dialogueBarsFlg && !pauseHide {
-		// Helper to determine whether to iterate elements forward or backward (drawing order)
-		iterationOrder := func(leaderontop bool) (int, int, int) {
-			if leaderontop {
-				return MaxSimul - 1, -1, -1
-			}
-			return 0, MaxSimul, 1
-		}
-
+	if fs.visible() {
 		if !sys.gsf(GSF_nobardisplay) && fs.bars {
+			// Helper to determine whether to iterate elements forward or backward (drawing order)
+			iterationOrder := func(leaderontop bool) (int, int, int) {
+				if leaderontop {
+					return MaxSimul - 1, -1, -1
+				}
+				return 0, MaxSimul, 1
+			}
 			// LifeBar
 			for side := 0; side < len(sys.tmode); side++ {
 				layout := fs.curLayout[side]
@@ -5525,7 +5531,7 @@ func (fs *FightScreen) draw(layerno int16) {
 		}
 	}
 
-	if fs.active {
+	if fs.active && !sys.postMatchFlg {
 		// Round
 		fs.round.draw(layerno, fs.fnt)
 	}
@@ -5728,4 +5734,21 @@ func (fs *FightScreen) addComboHits(side int, n int32) {
 		return
 	}
 	fs.combos[side].trueHits += n
+}
+
+// Update team order based on the actual character member numbers
+func (fs *FightScreen) syncTeamOrder(side int) {
+	order := make([]int, 0, MaxSimul)
+	// Collect all the members of this team
+	for pn := side; pn < MaxSimul*2; pn += 2 {
+		if len(sys.chars[pn]) > 0 {
+			order = append(order, pn)
+		}
+	}
+	// Sort them by memberNo
+	sort.Slice(order, func(i, j int) bool {
+		return sys.chars[order[i]][0].memberNo < sys.chars[order[j]][0].memberNo
+	})
+	// Save result
+	fs.teamOrder[side] = order
 }

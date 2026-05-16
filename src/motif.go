@@ -2793,7 +2793,11 @@ func (m *Motif) Save(file string) error {
 
 func (mo *Motif) processStateChange(c *Char, states []int32) bool {
 	if len(states) == 0 {
-		c.setSCF(SCF_disabled)
+		for _, ch := range sys.chars[c.playerNo] {
+			if ch != nil {
+				ch.setSCF(SCF_disabled)
+			}
+		}
 		return true
 	}
 	for _, stateNo := range states {
@@ -2802,8 +2806,12 @@ func (mo *Motif) processStateChange(c *Char, states []int32) bool {
 			return true
 		}
 		if c.selfStatenoExist(BytecodeInt(stateNo)) == BytecodeBool(true) {
-			// If the character was previously disabled, re-enable it when a valid state transition is requested.
-			c.unsetSCF(SCF_disabled)
+			// If the player slot was previously disabled, re-enable its loaded chars.
+			for _, ch := range sys.chars[c.playerNo] {
+				if ch != nil && ch.scf(SCF_disabled) {
+					ch.unsetSCF(SCF_disabled)
+				}
+			}
 			c.changeState(stateNo, -1, -1, "")
 			return true
 		}
@@ -3239,9 +3247,6 @@ func (me *MotifMenu) reset(m *Motif) {
 	me.initialized = false
 	me.endTimer = -1
 	me.closeRequested = false
-	if !m.di.active {
-		sys.leaveMotifAspect()
-	}
 	if err := sys.luaLState.DoString("menuReset()"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 	}
@@ -3284,6 +3289,9 @@ func (me *MotifMenu) requestClose(m *Motif) {
 		return
 	}
 	me.closeRequested = true
+	if !m.di.active {
+		sys.leaveMotifAspect()
+	}
 	if pm := me.pauseMenuBase(m); pm != nil {
 		startFadeOut(pm.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 	}

@@ -227,11 +227,17 @@ func (rp *RenderParams) IsValid() bool {
 func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	gfx.SetUniformMatrix("modelview", modelview[:])
 	gfx.SetUniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
+
+	// This effectively side-steps a low-level rectangle rasterization edge case,
+	// that caused visible and frequent artifacts on the diagonal.
+	// See: https://github.com/ikemen-engine/Ikemen-GO/issues/3583
+	uvBias := float32(0.000002)
+
 	gfx.SetVertexData(
-		x2, y2, 1, 1,
+		x2, y2, 1, 1-uvBias,
 		x3, y3, 1, 0,
-		x1, y1, 0, 1,
-		x4, y4, 0, 0,
+		x1, y1, uvBias, 1-uvBias,
+		x4, y4, uvBias, 0,
 	)
 
 	gfx.RenderQuad()
@@ -692,10 +698,10 @@ func renderWithBlending(
 	}
 
 	Blend := BlendAdd
-	BlendI := BlendReverseSubtract
+	BlendInv := BlendReverseSubtract
 	if invblend >= 1 {
 		Blend = BlendReverseSubtract
-		BlendI = BlendAdd
+		BlendInv = BlendAdd
 	}
 
 	src := blendAlpha[0]
@@ -711,73 +717,87 @@ func renderWithBlending(
 		dst = 0
 	}
 
+	// Helpers for invertblend
+	invertColor := func() {
+		if acolor != nil {
+			(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
+		}
+	}
+	disableNeg := func() {
+		if neg != nil {
+			*neg = false
+		}
+	}
+
+	// Proceed with the render calls
 	switch {
 	// Sub
 	case blendMode == TT_sub:
-		if src == 0 && dst == 255 {
+		switch {
+		case src == 0 && dst == 255:
 			// Fully transparent. Skip render
-		} else if src == 255 && dst == 255 {
+		case src == 255 && dst == 255:
 			// Fast path for full subtraction
-			if invblend >= 1 && acolor != nil {
-				(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
+			if invblend >= 1 {
+				invertColor()
 			}
-			if invblend == 3 && neg != nil {
-				*neg = false
+			if invblend == 3 {
+				disableNeg()
 			}
-			render(BlendI, blendSourceFactor, BlendOne, 1)
-		} else {
+			render(BlendInv, blendSourceFactor, BlendOne, 1)
+		default:
 			// Full alpha range
 			if dst < 255 {
 				render(BlendAdd, BlendZero, BlendOneMinusSrcAlpha, 1-float32(dst)/255)
 			}
 			if src > 0 {
-				if invblend >= 1 && acolor != nil {
-					(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
+				if invblend >= 1 {
+					invertColor()
 				}
-				if invblend == 3 && neg != nil {
-					*neg = false
+				if invblend == 3 {
+					disableNeg()
 				}
-				render(BlendI, blendSourceFactor, BlendOne, float32(src)/255)
+				render(BlendInv, blendSourceFactor, BlendOne, float32(src)/255)
 			}
 		}
 	// Add, None or Default
 	// None takes this path because SuperPause darkens sprites through their source alpha
 	// Default should normally not reach here, so this is only a fallback
 	default:
-		if src == 0 && dst == 255 {
+		switch {
+		case src == 0 && dst == 255:
 			// Fully transparent. Just don't render
-		} else if src == 255 && dst == 0 {
+		case src == 255 && dst == 0:
 			// Fast path for fully opaque
 			render(BlendAdd, blendSourceFactor, BlendOneMinusSrcAlpha, 1)
-		} else if src == 255 && dst == 255 {
+		case src == 255 && dst == 255:
 			// Fast path for full Add
-			if invblend >= 1 && acolor != nil {
-				(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
+			if invblend >= 1 {
+				invertColor()
 			}
-			if invblend == 3 && neg != nil {
-				*neg = false
+			if invblend == 3 {
+				disableNeg()
 			}
 			render(Blend, blendSourceFactor, BlendOne, 1)
-		} else {
+		default:
 			// AddAlpha (includes Add1)
 			if dst < 255 {
 				render(Blend, BlendZero, BlendOneMinusSrcAlpha, 1-float32(dst)/255)
 			}
 			if src > 0 {
-				if invblend >= 1 && dst >= 255 {
-					if invblend >= 2 {
-						if invblend == 3 && neg != nil {
-							*neg = false
-						}
-						if acolor != nil {
-							(*acolor)[0], (*acolor)[1], (*acolor)[2] = -acolor[0], -acolor[1], -acolor[2]
-						}
-					}
+				// TODO: Wasn't this already done at the start of the function?
+				if invblend >= 1 { // && dst >= 255 {
 					Blend = BlendReverseSubtract
 				} else {
 					Blend = BlendAdd
 				}
-				if !isrgba && (invblend >= 2 || invblend <= -1) && acolor != nil && mcolor != nil && src < 255 {
+				if invblend >= 2 { // Not 1 here. TODO: Explain why in comment
+					invertColor()
+				}
+				if invblend == 3 {
+					disableNeg()
+				}
+				if !isrgba && (invblend <= -1 || invblend >= 2) && acolor != nil && mcolor != nil && src < 255 {
 					// Sum of add components
 					gc := Abs(acolor[0]) + Abs(acolor[1]) + Abs(acolor[2])
 					v3, ml, al := Max((gc*255)-float32(dst+src), 512)/128, (float32(src) / 255), (float32(src+dst) / 255)
@@ -789,7 +809,6 @@ func renderWithBlending(
 				}
 			}
 		}
-
 	}
 }
 

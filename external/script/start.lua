@@ -1763,6 +1763,10 @@ function start.f_selectReset(hardReset, preserveProgress)
 	if not preserveProgress then
 		resetGameStats()
 		setMatchNo(1)
+		if main.elimination then
+			setWinCount(1, 0)
+			setWinCount(2, 0)
+		end
 		setConsecutiveWins(1, 0)
 		setConsecutiveWins(2, 0)
 	end
@@ -3239,6 +3243,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			start.c[player].selRef = start.f_selGrid(start.c[player].cell + 1).char_ref
 			-- temp data not existing yet
 			if start.p[side].t_selTemp[member] == nil then
+				t_portraitPriority[side] = member
 				table.insert(start.p[side].t_selTemp, {
 					ref = start.c[player].selRef,
 					cell = start.c[player].cell,

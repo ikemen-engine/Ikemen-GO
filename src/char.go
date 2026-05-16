@@ -751,7 +751,8 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		yaccel: 0.35 / originLs,
 		zaccel: 0,
 
-		p1sprpriority:       1,
+		p1sprpriority:       IErr, // 1 in Mugen
+		p2sprpriority:       IErr, // 0 in Mugen
 		p1stateno:           -1,
 		p2stateno:           -1,
 		missonoverride:      -1,
@@ -1007,6 +1008,13 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	} else if !hd.isprojectile && (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) {
 		c.juggle = hd.air_juggle
 	}
+
+	// Mugen defaults to changing p1 and p2 sprpriority, but you have to work around that more often than not
+	// The new defaults should be harmless or even beneficial, so we won't lock them behind a version check just yet
+	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	//	ifierrset(&hd.p1sprpriority, 1)
+	//	ifierrset(&hd.p2sprpriority, 0)
+	//}
 }
 
 // When a Hitdef connects, its statetype attribute will be updated to the character's current type
@@ -1592,7 +1600,7 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 type Explod struct {
 	id                  int32
 	playerno            int
-	playerId            int32
+	ownerId             int32
 	time                int32
 	postype             PosType
 	space               Space
@@ -1607,7 +1615,7 @@ type Explod struct {
 	scale               [2]float32
 	removeongethit      bool
 	removeonchangestate bool
-	hideonpausemenu     bool
+	hidewithbars        bool
 	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
@@ -1687,7 +1695,7 @@ func (e *Explod) initFromChar(c *Char) *Explod {
 	*e = Explod{
 		id:                -1,
 		playerno:          c.playerNo,
-		playerId:          c.id,
+		ownerId:           c.id,
 		animPN:            c.playerNo,
 		spritePN:          c.playerNo,
 		layerno:           c.layerNo,
@@ -1833,11 +1841,11 @@ func (e *Explod) setPos(c *Char) {
 }
 
 func (e *Explod) matchId(eid, pid int32) bool {
-	return e.id >= 0 && e.playerId == pid && (eid < 0 || e.id == eid)
+	return e.id >= 0 && e.ownerId == pid && (eid < 0 || e.id == eid)
 }
 
 func (e *Explod) setAnim() {
-	c := sys.playerID(e.playerId)
+	c := sys.playerID(e.ownerId)
 	if c == nil {
 		return
 	}
@@ -1901,10 +1909,14 @@ func (e *Explod) update() {
 		return
 	}
 
-	parent := sys.playerID(e.playerId)
+	parent := sys.playerID(e.ownerId)
 	root := sys.chars[e.playerno][0]
 
-	if root.scf(SCF_disabled) || (e.hideonpausemenu && sys.motif.me.active) {
+	if root.scf(SCF_disabled) {
+		return
+	}
+
+	if e.hidewithbars && (!sys.fightScreen.visible() || sys.gsf(GSF_nobardisplay) || !sys.fightScreen.bars) {
 		return
 	}
 
@@ -2317,6 +2329,7 @@ const (
 
 type Projectile struct {
 	playerno        int
+	ownerId         int32
 	id              int32
 	status          ProjStatus
 	hitdef          HitDef
@@ -2441,6 +2454,13 @@ func (p *Projectile) initFromChar(c *Char) *Projectile {
 		p.projection = Projection_Perspective
 	}
 
+	// Determine ownership
+	if c.canOwnProjectiles() {
+		p.ownerId = c.id
+	} else {
+		p.ownerId = sys.chars[c.playerNo][0].id
+	}
+
 	// Initialize projectile Hitdef. Must be placed after its localscl is determined
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/2087
 	p.hitdef.reset(c, p)
@@ -2502,32 +2522,32 @@ func (p *Projectile) update() {
 					if p.hitanim == -1 {
 						// Forcefully clear instead of reaching the fallback where invalid animation does nothing
 						p.anim = nil
-					} else if a := p.owner().getSelfAnimSprite(p.hitanim, p.hitanim_ffx, true); a != nil {
+					} else if a := p.root().getSelfAnimSprite(p.hitanim, p.hitanim_ffx, true); a != nil {
 						p.anim = a
 					} else {
-						sys.appendToConsole(p.owner().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.hitanim_ffx), p.hitanim))
+						sys.appendToConsole(p.warnChar().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.hitanim_ffx), p.hitanim))
 					}
 				}
 			case ProjCancel:
 				if p.cancelanim != p.animNo || p.cancelanim_ffx != p.anim_ffx {
 					if p.cancelanim == -1 {
 						p.anim = nil
-					} else if a := p.owner().getSelfAnimSprite(p.cancelanim, p.cancelanim_ffx, true); a != nil {
+					} else if a := p.root().getSelfAnimSprite(p.cancelanim, p.cancelanim_ffx, true); a != nil {
 						p.anim = a
 					} else {
-						sys.appendToConsole(p.owner().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.cancelanim_ffx), p.cancelanim))
+						sys.appendToConsole(p.warnChar().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.cancelanim_ffx), p.cancelanim))
 					}
 				}
 			case ProjRem:
 				if p.remanim != p.animNo || p.remanim_ffx != p.anim_ffx {
 					if p.remanim == -1 {
 						p.anim = nil
-					} else if a := p.owner().getSelfAnimSprite(p.remanim, p.remanim_ffx, true); a != nil {
+					} else if a := p.root().getSelfAnimSprite(p.remanim, p.remanim_ffx, true); a != nil {
 						p.anim = a
 					} else {
 						// In Mugen, if remanim is invalid the projectile will keep the current one
 						// https://github.com/ikemen-engine/Ikemen-GO/issues/2584
-						sys.appendToConsole(p.owner().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.remanim_ffx), p.remanim))
+						sys.appendToConsole(p.warnChar().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.remanim_ffx), p.remanim))
 					}
 				}
 			}
@@ -2598,12 +2618,11 @@ func (p *Projectile) update() {
 func (p *Projectile) flagProjCancel() {
 	//p.hits = -2
 	p.status = ProjCancel
-	if p.playerno >= 0 && p.playerno < len(sys.cgi) {
-		if rgi := &sys.cgi[p.playerno]; rgi != nil {
-			rgi.pctype = PC_Cancel
-			rgi.pctime = 0
-			rgi.pcid = p.id
-		}
+	owner := p.owner()
+	if owner != nil {
+		owner.pctype = PC_Cancel
+		owner.pctime = 0
+		owner.pcid = p.id
 	}
 }
 
@@ -2891,8 +2910,20 @@ func (p *Projectile) cueDraw() {
 	}
 }
 
+func (p *Projectile) root() *Char {
+	return sys.chars[p.playerno][0]
+}
+
 func (p *Projectile) owner() *Char {
-	return sys.chars[p.playerno][0] // If this is out of bounds we should crash anyway
+	return sys.playerID(p.ownerId)
+}
+
+// Used to print an error message from the owner if possible, or the root otherwise
+func (p *Projectile) warnChar() *Char {
+	if c := p.owner(); c != nil {
+		return c
+	}
+	return p.root()
 }
 
 type MoveContact int32
@@ -2916,6 +2947,44 @@ type PalInfo struct {
 	filename   string
 	exists     bool
 	selectable bool
+}
+
+func loadMovelists(def string, is IniSection) map[int]string {
+	ret := make(map[int]string)
+	load := func(idx int, file string, overwrite bool) {
+		if file == "" || idx < 0 {
+			return
+		}
+		if !overwrite {
+			if _, ok := ret[idx]; ok {
+				return
+			}
+		}
+		LoadFile(&file, []string{def, "", "data/"}, "", func(filename string) error {
+			txt, err := LoadText(filename)
+			if err != nil {
+				return err
+			}
+			ret[idx] = txt
+			return nil
+		})
+	}
+	load(0, decodeShiftJIS(is["movelist"]), true)
+	load(0, decodeShiftJIS(is["movelist0"]), false)
+	for k, v := range is {
+		kl := strings.ToLower(k)
+		if kl == "movelist" || kl == "movelist0" || !strings.HasPrefix(kl, "movelist") {
+			continue
+		}
+		idx := kl[len("movelist"):]
+		if idx != "" && IsInt(idx) {
+			load(int(Atoi(idx)), decodeShiftJIS(v), true)
+		}
+	}
+	if len(ret) == 0 {
+		return nil
+	}
+	return ret
 }
 
 type CharGlobalInfo struct {
@@ -2943,11 +3012,10 @@ type CharGlobalInfo struct {
 	velocity                CharVelocity
 	movement                CharMovement
 	states                  map[int32]StateBytecode
-	callFuncs               map[string]bytecodeFunction
+	callFuncs               map[string]BytecodeFunction
 	hitPauseToggleFlagCount int32
-	pctype                  ProjContact
-	pctime, pcid            int32
 	quotes                  [MaxQuotes]string
+	movelists               map[int]string
 	portraitscale           float32
 	constants               map[string]float32
 	remapPreset             map[string]RemapPreset
@@ -2963,10 +3031,26 @@ type CharGlobalInfo struct {
 	customShaders           []string
 }
 
-func (cgi *CharGlobalInfo) clearPCTime() {
-	cgi.pctype = PC_Hit
-	cgi.pctime = -1
-	cgi.pcid = 0
+func newCharGlobalInfo() CharGlobalInfo {
+	gi := CharGlobalInfo{
+		localcoord:    [2]int32{320, 240},
+		constants:     make(map[string]float32),
+		states:        make(map[int32]StateBytecode),
+		callFuncs:     make(map[string]BytecodeFunction),
+		animTable:     NewAnimationTable(),
+		palInfo:       make(map[int]PalInfo, sys.cfg.Config.PaletteMax),
+		fnt:           make(map[int]*Fnt),
+		quotes:        [MaxQuotes]string{},
+		movelists:     make(map[int]string),
+		remapPreset:   make(map[string]RemapPreset),
+		portraitscale: 1,
+	}
+
+	for i := 0; i < sys.cfg.Config.PaletteMax; i++ {
+		gi.palInfo[i] = PalInfo{keyMap: int32(i)}
+	}
+
+	return gi
 }
 
 // StateState contains the state variables like stateNo, prevStateNo, time, stateType, moveType, and physics of the current state.
@@ -3186,7 +3270,9 @@ type Char struct {
 	platformPosY         float32
 	groundAngle          float32
 	ownpal               bool
+	ownProjectile        bool
 	winquote             int32
+	movelist             int32
 	memberNo             int
 	selectNo             int
 	inheritJuggle        int32
@@ -3243,6 +3329,8 @@ type Char struct {
 	shader               string
 	shaderParams         [16]float32
 	shaderTime           int32
+	pctype               ProjContact
+	pctime, pcid         int32
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -3282,6 +3370,7 @@ func (c *Char) init(n int, idx int) {
 		facing:        1,
 		minus:         3,
 		winquote:      -1,
+		movelist:      0,
 		clsnBaseScale: [2]float32{1, 1},
 		clsnScaleMul:  [2]float32{1, 1},
 		clsnScale:     [2]float32{1, 1},
@@ -3341,6 +3430,9 @@ func (c *Char) clearState() {
 	}
 	c.mctype = MC_Hit
 	c.mctime = 0
+	c.pctype = PC_Hit
+	c.pctime = -1
+	c.pcid = 0
 	c.counterHit = false
 	c.hitdefContact = false
 	c.fallTime = 0
@@ -3496,33 +3588,24 @@ func (c *Char) resetModifyPlayer() {
 	c.powerMax = gi.data.power
 	c.dizzyPointsMax = gi.data.dizzypoints
 	c.guardPointsMax = gi.data.guardpoints
+	c.movelist = 0
 	// c.teamside already assigned by loadCharacter()
 }
 
 func (c *Char) load(def string) error {
 	gi := &sys.cgi[c.playerNo]
 
+	// We keep the SFF so that loadSff() can reuse it if the same character is selected/reloaded
+	oldSff := gi.sff
+
 	// Reset global info
+	*gi = newCharGlobalInfo()
+
+	// Restore SFF
+	gi.sff = oldSff
+
+	// Register DEF file
 	gi.def = def
-	gi.displayname, gi.lifebarname, gi.author = "", "", ""
-	gi.defaultDisplayname, gi.defaultLifebarname = "", ""
-	gi.palettedata, gi.snd, gi.quotes = nil, nil, [MaxQuotes]string{}
-	gi.animTable = NewAnimationTable()
-	gi.fnt = make(map[int]*Fnt)
-	gi.portraitscale = 1
-	gi.customShaders = nil
-
-	for i := 0; i < sys.cfg.Config.PaletteMax; i++ {
-		pal := gi.palInfo[i]
-		pal.keyMap = int32(i)
-		gi.palInfo[i] = pal
-	}
-
-	// We don't nil the SFF so that loadSff() can reuse it if the same character is selected/reloaded
-	//gi.sff = nil
-
-	// Default localcoord
-	gi.localcoord = [2]int32{320, 240}
 
 	// Reset DEF file maps
 	c.mapDefault = make(map[string]float32)
@@ -3636,6 +3719,7 @@ func (c *Char) load(def string) error {
 				sprite = decodeShiftJIS(is["sprite"])
 				anim = decodeShiftJIS(is["anim"])
 				sound = decodeShiftJIS(is["sound"])
+				gi.movelists = loadMovelists(def, is)
 				for i := 0; i < sys.cfg.Config.PaletteMax; i++ {
 					pal := gi.palInfo[i]
 					pal.filename = decodeShiftJIS(is[fmt.Sprintf("pal%v", i+1)])
@@ -4915,6 +4999,15 @@ func (c *Char) playerIndexTrigger(idx int32) *Char {
 	return ch
 }
 
+func (c *Char) playerTrigger(pn int, log bool) *Char {
+	idx := pn - 1
+	root := sys.getCharRoot(idx)
+	if root == nil && log {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("found no player with number: %v", pn))
+	}
+	return root
+}
+
 // Checks if a player should be considered an enemy at all for the "Enemy" and "P2" triggers, before filtering them further
 func (c *Char) isEnemyOf(e *Char) bool {
 	// Disabled players
@@ -5204,12 +5297,14 @@ func (c *Char) gameWidth() float32 {
 	return c.screenWidth() / sys.cam.Scale
 }
 
+/*
 func (c *Char) getPlayerID(pn int) int32 {
 	if pn >= 1 && pn <= len(sys.chars) && len(sys.chars[pn-1]) > 0 {
 		return sys.chars[pn-1][0].id
 	}
 	return 0
 }
+*/
 
 func (c *Char) runOrderTrigger() int32 {
 	for i, ref := range sys.charList.runOrder {
@@ -5780,16 +5875,21 @@ func (c *Char) pauseTimeTrigger() int32 {
 	return p
 }
 
+func (c *Char) canOwnProjectiles() bool {
+	return c.helperIndex == 0 || c.ownProjectile
+}
+
 func (c *Char) projTimeTrigger(pid BytecodeValue, match func(ProjContact) bool) BytecodeValue {
 	if pid.IsUndefined() {
 		return BytecodeUndefined()
 	}
-	gi := c.gi()
 	id := pid.ToI()
-	if c.helperIndex > 0 || (id > 0 && id != gi.pcid) || !match(gi.pctype) {
+
+	if !c.canOwnProjectiles() || (id > 0 && id != c.pcid) || !match(c.pctype) {
 		return BytecodeInt(-1)
 	}
-	return BytecodeInt(gi.pctime)
+
+	return BytecodeInt(c.pctime)
 }
 
 func (c *Char) projCancelTime(pid BytecodeValue) BytecodeValue {
@@ -5960,13 +6060,9 @@ func (c *Char) updateTeamOrder(team []int) {
 		sys.chars[pno][0].memberNo = i
 	}
 
-	// Update lifebar order within its bounds
+	// Update lifebar order
 	side := c.playerNo & 1
-	for i := range sys.fightScreen.teamOrder[side] {
-		if i < len(team) {
-			sys.fightScreen.teamOrder[side][i] = team[i]
-		}
-	}
+	sys.fightScreen.syncTeamOrder(side)
 }
 
 // Perform a direct order swap between the player and another team member
@@ -6064,10 +6160,6 @@ func (c *Char) changeTagLeader(nextLeaderPN int) {
 
 	// Synchronize team
 	c.updateTeamOrder(team)
-}
-
-func (c *Char) time() int32 {
-	return c.ss.time
 }
 
 func (c *Char) topEdge() float32 {
@@ -6430,8 +6522,9 @@ func (c *Char) stateChange2() bool {
 		c.ss.sb.init(c)
 		// Flag RemoveOnChangeState explods for removal
 		for i := range sys.explods[c.playerNo] {
-			if sys.explods[c.playerNo][i].playerId == c.id && sys.explods[c.playerNo][i].removeonchangestate {
-				sys.explods[c.playerNo][i].statehaschanged = true
+			e := sys.explods[c.playerNo][i]
+			if e.ownerId == c.id && e.removeonchangestate {
+				e.statehaschanged = true
 			}
 		}
 		// Stop flagged sound channels
@@ -6559,6 +6652,10 @@ func (c *Char) destroySelf(recursive, removeexplods, removetexts bool) bool {
 				child.destroySelf(recursive, removeexplods, removetexts)
 			}
 		}
+	}
+
+	if c.canOwnProjectiles() && c.numProj() > 0 {
+		sys.appendToConsole(c.warn() + "Destroyed while projectiles are active")
 	}
 
 	return true
@@ -7318,7 +7415,7 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 
 	if p.anim == nil && c.anim != nil {
 		// TODO: If Ikemenversion, the invalid animation probably ought to make the projectile disappear
-		sys.appendToConsole(p.owner().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.anim_ffx), p.animNo))
+		sys.appendToConsole(p.warnChar().warn() + fmt.Sprintf("projectile with ID %v called invalid action %v%v", p.id, strings.ToUpper(p.anim_ffx), p.animNo))
 		// The Mugen fallback is to copy the character's current animation
 		p.anim = &Animation{}
 		*p.anim = *c.anim
@@ -7373,8 +7470,8 @@ func (c *Char) projDrawPal(p *Projectile) [2]int32 {
 
 // Get multiple projectiles for ModifyProjectile, etc
 func (c *Char) getMultipleProjs(id int32, idx int, log bool) (projs []*Projectile) {
-	// Helpers cannot own projectiles
-	if c.helperIndex != 0 {
+	// Fast path for helpers that cannot own projectiles
+	if !c.canOwnProjectiles() {
 		return nil
 	}
 
@@ -7383,6 +7480,10 @@ func (c *Char) getMultipleProjs(id int32, idx int, log bool) (projs []*Projectil
 		// Filter projectiles with the specified ID
 		matchCount := 0
 		for _, p := range sys.projs[c.playerNo] {
+			// Filter by owner ID
+			if p.ownerId != c.id {
+				continue
+			}
 			if (id < 0 || p.id == id) && p.isActive() {
 				if idx >= 0 {
 					// Count the matches but only return one
@@ -7688,10 +7789,7 @@ func (c *Char) initConstants() {
 		gi.movement.down.friction_threshold *= coordRatio
 	}
 
-	// Init custom constants
-	gi.constants = make(map[string]float32)
-
-	// Init default values to ensure we have these maps
+	// Init the required custom constants with default values
 	gi.constants["default.attack.lifetopowermul"] = 0.7
 	gi.constants["super.attack.lifetopowermul"] = 0
 	gi.constants["default.gethit.lifetopowermul"] = 0.6
@@ -10593,10 +10691,12 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		} else {
 			getter.ghv._type = getter.ghv.groundtype
 		}
-		if !isProjectile {
+		if !isProjectile && hd.p1sprpriority != IErr {
 			c.sprPriority = hd.p1sprpriority
 		}
-		getter.sprPriority = hd.p2sprpriority
+		if hd.p2sprpriority != IErr {
+			getter.sprPriority = hd.p2sprpriority
+		}
 	}
 
 	// Attacker facing
@@ -11589,7 +11689,6 @@ func (c *Char) actionRun() {
 					c.changeState(52, -1, -1, "")
 				}
 			}
-			c.groundLevel = 0 // Reset only after position has been updated
 			c.setFacing(c.p1facing)
 			c.p1facing = 0
 			c.ss.time++
@@ -11597,6 +11696,13 @@ func (c *Char) actionRun() {
 				c.mctime++
 			}
 		}
+
+		// Reset groundLevel only after position has been updated
+		// Must reset even during hitpause
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3587
+		// TODO: Should it also reset during pauses? Test similar scenarios but with pause instead of hitpause
+		c.groundLevel = 0
+
 		// Commit current animation frame to memory
 		// This frame will be used for hit detection and as reference for Lua scripts (including debug info)
 		if !c.hitPause() || c.asf(ASF_animatehitpause) {
@@ -11700,8 +11806,8 @@ func (c *Char) actionRun() {
 				}
 			}
 		}
-		if c.helperIndex == 0 && c.gi().pctime >= 0 {
-			c.gi().pctime++
+		if c.canOwnProjectiles() && c.pctime >= 0 {
+			c.pctime++
 		}
 		c.makeDustSpacing++
 	}
@@ -13157,7 +13263,6 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			continue
 		}
 
-		c := sys.chars[i][0]
 		ap_projhit := false
 
 		// Save root's atktmp var so we can temporarily modify it
@@ -13170,6 +13275,14 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 
 			// Skip if projectile can't hit
 			if p.hits <= 0 {
+				continue
+			}
+
+			c := p.owner()
+
+			// Skip if owner has been destroyed
+			// In this case the projectile still travels and interacts with other projectiles, but can't interact with players
+			if c == nil {
 				continue
 			}
 
@@ -13299,14 +13412,14 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 
 						p.contactflag = true
 						if Abs(hitResult) == 1 {
-							sys.cgi[i].pctype = PC_Hit
+							c.pctype = PC_Hit
 							p.hitpause = Max(0, p.hitdef.pausetime[0]-Btoi(c.gi().mugenver[0] == 0)) // Winmugen projectiles are 1 frame short on hitpauses
 						} else {
-							sys.cgi[i].pctype = PC_Guarded
+							c.pctype = PC_Guarded
 							p.hitpause = Max(0, p.hitdef.guard_pausetime[0]-Btoi(c.gi().mugenver[0] == 0))
 						}
-						sys.cgi[i].pctime = 0
-						sys.cgi[i].pcid = p.id
+						c.pctime = 0
+						c.pcid = p.id
 					}
 					// This flag prevents multiple projectiles from the same player from hitting in the same frame
 					// In Mugen, projectiles (sctrl) give 1F of projectile invincibility to the getter instead. This timer persists during (super)pause
