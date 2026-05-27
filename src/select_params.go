@@ -352,6 +352,7 @@ type GameParams struct {
 	VsScreen            bool     `ini:"vsscreen"`
 	VictoryScreen       bool     `ini:"victoryscreen"`
 	WinScreen           bool     `ini:"winscreen"`
+	RankingCondition    bool     `ini:"rankingcondition"`
 	LuaCode             string   `ini:"luacode"`
 	PersistLife         bool     `ini:"persistlife"`
 	PersistMusic        bool     `ini:"persistmusic"`
@@ -531,6 +532,10 @@ func (p *GameParams) AppendParams(entries []string) {
 		case "winscreen":
 			if b, ok := parseBoolLoose(val); ok {
 				p.WinScreen = b
+			}
+		case "rankingcondition":
+			if b, ok := parseBoolLoose(val); ok {
+				p.RankingCondition = b
 			}
 		case "lua":
 			p.LuaCode = val

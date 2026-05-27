@@ -100,6 +100,43 @@ func newFnt() *Fnt {
 	}
 }
 
+// workaround for https://github.com/golang/freetype/issues/8
+func stripKernTable(ttf []byte) []byte {
+	if len(ttf) < 12 {
+		return ttf
+	}
+
+	offset := 0
+	if string(ttf[:4]) == "ttcf" {
+		if len(ttf) < 16 {
+			return ttf
+		}
+		offset = int(binary.BigEndian.Uint32(ttf[12:16]))
+		if offset < 0 || len(ttf)-offset < 12 {
+			return ttf
+		}
+	}
+
+	numTables := int(binary.BigEndian.Uint16(ttf[offset+4 : offset+6]))
+	tableDir := offset + 12
+	if len(ttf) < tableDir+16*numTables {
+		return ttf
+	}
+
+	out := append([]byte(nil), ttf...)
+	for i := 0; i < numTables; i++ {
+		p := tableDir + 16*i
+		if string(out[p:p+4]) == "kern" {
+			// Keep the table directory entry, but make the table empty.
+			// golang/freetype will then ignore kerning instead of failing Parse.
+			binary.BigEndian.PutUint32(out[p+12:p+16], 0)
+			break
+		}
+	}
+
+	return out
+}
+
 func loadFnt(filename string, height int32) (*Fnt, error) {
 	if HasExtension(filename, ".fnt") {
 		return loadFntV1(filename)

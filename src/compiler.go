@@ -14,7 +14,7 @@ type expFunc func(out *BytecodeExp, in *string) (BytecodeValue, error)
 
 type scFunc func(is IniSection, sc *StateControllerBase) (StateController, error)
 
-type StateCompiler struct {
+type CharCompiler struct {
 	cmdl             *CommandList
 	previousOperator string
 	reverseOrder     bool
@@ -32,8 +32,8 @@ type StateCompiler struct {
 	currentFile      string
 }
 
-func newStateCompiler() *StateCompiler {
-	c := &StateCompiler{funcs: make(map[string]BytecodeFunction)}
+func newCharCompiler() *CharCompiler {
+	c := &CharCompiler{funcs: make(map[string]BytecodeFunction)}
 	c.scmap = map[string]scFunc{
 		// Mugen state controllers
 		"afterimage":         c.afterImage,
@@ -132,6 +132,7 @@ func newStateCompiler() *StateCompiler {
 		"assertcommand":        c.assertCommand,
 		"assertinput":          c.assertInput,
 		"camera":               c.cameraCtrl,
+		"changemovelist":       c.changeMovelist,
 		"depth":                c.depth,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
@@ -481,12 +482,12 @@ var triggerMap = map[string]int{
 	"zoomvar":            1,
 }
 
-func (c *StateCompiler) tokenizer(in *string) string {
+func (c *CharCompiler) tokenizer(in *string) string {
 	return strings.ToLower(c.tokenizerCS(in))
 }
 
 // Same but case-sensitive
-func (*StateCompiler) tokenizerCS(in *string) string {
+func (*CharCompiler) tokenizerCS(in *string) string {
 	*in = strings.TrimSpace(*in)
 	if len(*in) == 0 {
 		return ""
@@ -625,7 +626,7 @@ func (*StateCompiler) tokenizerCS(in *string) string {
 	return token
 }
 
-func (*StateCompiler) isOperator(token string) int {
+func (*CharCompiler) isOperator(token string) int {
 	switch token {
 	case "", ",", ")", "]":
 		return -1
@@ -655,7 +656,7 @@ func (*StateCompiler) isOperator(token string) int {
 	return 0
 }
 
-func (c *StateCompiler) operator(in *string) error {
+func (c *CharCompiler) operator(in *string) error {
 	if len(c.previousOperator) > 0 {
 		if opp := c.isOperator(c.token); opp <= c.isOperator(c.previousOperator) {
 			if opp < 0 || ((!c.reverseOrder || c.token[0] != '(') &&
@@ -672,7 +673,7 @@ func (c *StateCompiler) operator(in *string) error {
 	return nil
 }
 
-func (c *StateCompiler) integer2(in *string) (int32, error) {
+func (c *CharCompiler) integer2(in *string) (int32, error) {
 	istr := c.token
 	c.token = c.tokenizer(in)
 	minus := istr == "-"
@@ -692,7 +693,7 @@ func (c *StateCompiler) integer2(in *string) (int32, error) {
 	return i, nil
 }
 
-func (c *StateCompiler) number(token string) BytecodeValue {
+func (c *CharCompiler) number(token string) BytecodeValue {
 	f, err := strconv.ParseFloat(token, 64)
 	if err != nil && f == 0 {
 		return bvNone()
@@ -714,7 +715,7 @@ func (c *StateCompiler) number(token string) BytecodeValue {
 	return BytecodeValue{VT_Int, f}
 }
 
-func (c *StateCompiler) attr(text string, hitdef bool) (int32, error) {
+func (c *CharCompiler) attr(text string, hitdef bool) (int32, error) {
 	flg := int32(0)
 	att := SplitAndTrim(text, ",")
 	for _, a := range att[0] {
@@ -805,7 +806,7 @@ func (c *StateCompiler) attr(text string, hitdef bool) (int32, error) {
 	return flg, nil
 }
 
-func (c *StateCompiler) trgAttr(in *string) (int32, error) {
+func (c *CharCompiler) trgAttr(in *string) (int32, error) {
 	flg := int32(0)
 	*in = c.token + *in
 	i := strings.IndexAny(*in, specialSymbols)
@@ -880,7 +881,7 @@ func (c *StateCompiler) trgAttr(in *string) (int32, error) {
 	return flg, nil
 }
 
-func (c *StateCompiler) checkOpeningParenthesis(in *string) error {
+func (c *CharCompiler) checkOpeningParenthesis(in *string) error {
 	if c.tokenizer(in) != "(" {
 		return Error("Missing '(' after " + c.token)
 	}
@@ -889,7 +890,7 @@ func (c *StateCompiler) checkOpeningParenthesis(in *string) error {
 }
 
 // Same but case-sensitive
-func (c *StateCompiler) checkOpeningParenthesisCS(in *string) error {
+func (c *CharCompiler) checkOpeningParenthesisCS(in *string) error {
 	if c.tokenizerCS(in) != "(" {
 		return Error("Missing '(' after " + c.token)
 	}
@@ -897,7 +898,7 @@ func (c *StateCompiler) checkOpeningParenthesisCS(in *string) error {
 	return nil
 }
 
-func (c *StateCompiler) checkClosingParenthesis() error {
+func (c *CharCompiler) checkClosingParenthesis() error {
 	c.reverseOrder = true
 	if c.token != ")" {
 		return Error("Missing ')' before " + c.token)
@@ -905,7 +906,7 @@ func (c *StateCompiler) checkClosingParenthesis() error {
 	return nil
 }
 
-func (c *StateCompiler) checkEquality(in *string) (not bool, err error) {
+func (c *CharCompiler) checkEquality(in *string) (not bool, err error) {
 	for {
 		c.token = c.tokenizer(in)
 		if len(c.token) > 0 {
@@ -927,7 +928,7 @@ func (c *StateCompiler) checkEquality(in *string) (not bool, err error) {
 	return
 }
 
-func (c *StateCompiler) intRange(in *string) (minop OpCode, maxop OpCode, min, max int32, err error) {
+func (c *CharCompiler) intRange(in *string) (minop OpCode, maxop OpCode, min, max int32, err error) {
 	switch c.token {
 	case "(":
 		minop = OC_gt
@@ -997,7 +998,7 @@ func (c *StateCompiler) intRange(in *string) (minop OpCode, maxop OpCode, min, m
 	return
 }
 
-func (c *StateCompiler) compareValues(_range bool, in *string) {
+func (c *CharCompiler) compareValues(_range bool, in *string) {
 	if sys.ignoreMostErrors {
 		i := 0
 		for ; i < len(*in); i++ {
@@ -1011,7 +1012,7 @@ func (c *StateCompiler) compareValues(_range bool, in *string) {
 	c.token = c.tokenizer(in)
 }
 
-func (c *StateCompiler) evaluateComparison(out *BytecodeExp, in *string,
+func (c *CharCompiler) evaluateComparison(out *BytecodeExp, in *string,
 	required bool) error {
 	comma := c.token == ","
 	if comma {
@@ -1095,7 +1096,7 @@ func (c *StateCompiler) evaluateComparison(out *BytecodeExp, in *string,
 	return nil
 }
 
-func (c *StateCompiler) oneArg(out *BytecodeExp, in *string,
+func (c *CharCompiler) oneArg(out *BytecodeExp, in *string,
 	rd, appendVal bool, defval ...BytecodeValue) (BytecodeValue, error) {
 	var be BytecodeExp
 	var bv BytecodeValue
@@ -1129,7 +1130,7 @@ func (c *StateCompiler) oneArg(out *BytecodeExp, in *string,
 
 // Read with two optional arguments
 // Currently only for IsHelper
-func (c *StateCompiler) twoOptArg(out *BytecodeExp, in *string,
+func (c *CharCompiler) twoOptArg(out *BytecodeExp, in *string,
 	rd, appendVal bool, defval ...BytecodeValue) (BytecodeValue, BytecodeValue, error) {
 
 	var be BytecodeExp
@@ -1187,7 +1188,7 @@ func (c *StateCompiler) twoOptArg(out *BytecodeExp, in *string,
 	return bv1, bv2, nil
 }
 
-func (c *StateCompiler) mathFunc(out *BytecodeExp, in *string, rd bool,
+func (c *CharCompiler) mathFunc(out *BytecodeExp, in *string, rd bool,
 	oc OpCode, f func(*BytecodeValue)) (bv BytecodeValue, err error) {
 	var be BytecodeExp
 	if bv, err = c.oneArg(&be, in, false, false); err != nil {
@@ -1205,7 +1206,7 @@ func (c *StateCompiler) mathFunc(out *BytecodeExp, in *string, rd bool,
 	return
 }
 
-func (c *StateCompiler) readOldProjectileID(in *string, trname string, baseLen int, out *BytecodeExp) (string, error) {
+func (c *CharCompiler) readOldProjectileID(in *string, trname string, baseLen int, out *BytecodeExp) (string, error) {
 	base := trname[:baseLen]
 	suffix := trname[baseLen:]
 
@@ -1250,7 +1251,7 @@ func (c *StateCompiler) readOldProjectileID(in *string, trname string, baseLen i
 }
 
 // For the first half of "x = y, > z" legacy triggers
-func (c *StateCompiler) parseOldAnimElemStyle(in *string, name string) (int32, error) {
+func (c *CharCompiler) parseOldAnimElemStyle(in *string, name string) (int32, error) {
 	if not, err := c.checkEquality(in); err != nil {
 		return 0, err
 	} else if not && !sys.ignoreMostErrors {
@@ -1268,7 +1269,7 @@ func (c *StateCompiler) parseOldAnimElemStyle(in *string, name string) (int32, e
 }
 
 // rd means Redirect
-func (c *StateCompiler) expValue(out *BytecodeExp, in *string,
+func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	rd bool) (BytecodeValue, error) {
 	c.reverseOrder, c.norange = true, false
 	bv := c.number(c.token)
@@ -5278,7 +5279,7 @@ func (c *StateCompiler) expValue(out *BytecodeExp, in *string,
 	return bv, nil
 }
 
-func (c *StateCompiler) contiguousOperator(in *string) error {
+func (c *CharCompiler) contiguousOperator(in *string) error {
 	*in = strings.TrimSpace(*in)
 	if len(*in) > 0 {
 		switch (*in)[0] {
@@ -5294,7 +5295,7 @@ func (c *StateCompiler) contiguousOperator(in *string) error {
 	return nil
 }
 
-func (c *StateCompiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expValue(out, in, false)
 	if err != nil {
 		return bvNone(), err
@@ -5344,7 +5345,7 @@ func (c *StateCompiler) expPostNot(out *BytecodeExp, in *string) (BytecodeValue,
 	return bv, nil
 }
 
-func (c *StateCompiler) expPow(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expPow(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expPostNot(out, in)
 	if err != nil {
 		return bvNone(), err
@@ -5376,7 +5377,7 @@ func (c *StateCompiler) expPow(out *BytecodeExp, in *string) (BytecodeValue, err
 	return bv, nil
 }
 
-func (c *StateCompiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expPow(out, in)
 	if err != nil {
 		return bvNone(), err
@@ -5404,7 +5405,7 @@ func (c *StateCompiler) expMldv(out *BytecodeExp, in *string) (BytecodeValue, er
 	}
 }
 
-func (c *StateCompiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expMldv(out, in)
 	if err != nil {
 		return bvNone(), err
@@ -5429,7 +5430,7 @@ func (c *StateCompiler) expAdsb(out *BytecodeExp, in *string) (BytecodeValue, er
 	}
 }
 
-func (c *StateCompiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expAdsb(out, in)
 	if err != nil {
 		return bvNone(), err
@@ -5460,7 +5461,7 @@ func (c *StateCompiler) expGrls(out *BytecodeExp, in *string) (BytecodeValue, er
 	}
 }
 
-func (c *StateCompiler) expRange(out *BytecodeExp, in *string,
+func (c *CharCompiler) expRange(out *BytecodeExp, in *string,
 	bv *BytecodeValue, opc OpCode) (bool, error) {
 	open := c.token
 	oldin := *in
@@ -5550,7 +5551,7 @@ func (c *StateCompiler) expRange(out *BytecodeExp, in *string,
 	return true, nil
 }
 
-func (c *StateCompiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	bv, err := c.expGrls(out, in)
 	if err != nil {
 		return bvNone(), err
@@ -5593,7 +5594,7 @@ func (c *StateCompiler) expEqne(out *BytecodeExp, in *string) (BytecodeValue, er
 	}
 }
 
-func (*StateCompiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
+func (*CharCompiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValue,
 	ef expFunc, opf func(v1 *BytecodeValue, v2 BytecodeValue),
 	opc OpCode) error {
 	var be BytecodeExp
@@ -5613,7 +5614,7 @@ func (*StateCompiler) expOneOpSub(out *BytecodeExp, in *string, bv *BytecodeValu
 	return nil
 }
 
-func (c *StateCompiler) expOneOp(out *BytecodeExp, in *string, ef expFunc,
+func (c *CharCompiler) expOneOp(out *BytecodeExp, in *string, ef expFunc,
 	opt string, opf func(v1 *BytecodeValue, v2 BytecodeValue),
 	opc OpCode) (BytecodeValue, error) {
 	bv, err := ef(out, in)
@@ -5635,19 +5636,19 @@ func (c *StateCompiler) expOneOp(out *BytecodeExp, in *string, ef expFunc,
 	}
 }
 
-func (c *StateCompiler) expAnd(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expAnd(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	return c.expOneOp(out, in, c.expEqne, "&", out.and, OC_and)
 }
 
-func (c *StateCompiler) expXor(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expXor(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	return c.expOneOp(out, in, c.expAnd, "^", out.xor, OC_xor)
 }
 
-func (c *StateCompiler) expOr(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expOr(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	return c.expOneOp(out, in, c.expXor, "|", out.or, OC_or)
 }
 
-func (c *StateCompiler) expBoolAnd(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expBoolAnd(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	if c.block != nil {
 		return c.expOneOp(out, in, c.expOr, "&&", out.bland, OC_bland)
 	}
@@ -5687,11 +5688,11 @@ func (c *StateCompiler) expBoolAnd(out *BytecodeExp, in *string) (BytecodeValue,
 	return bv, nil
 }
 
-func (c *StateCompiler) expBoolXor(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expBoolXor(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	return c.expOneOp(out, in, c.expBoolAnd, "^^", out.blxor, OC_blxor)
 }
 
-func (c *StateCompiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue, error) {
+func (c *CharCompiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue, error) {
 	defer func(omp string) { c.previousOperator = omp }(c.previousOperator)
 	if c.block != nil {
 		return c.expOneOp(out, in, c.expBoolXor, "||", out.blor, OC_blor)
@@ -5732,7 +5733,7 @@ func (c *StateCompiler) expBoolOr(out *BytecodeExp, in *string) (BytecodeValue, 
 	return bv, nil
 }
 
-func (c *StateCompiler) typedExp(ef expFunc, in *string,
+func (c *CharCompiler) typedExp(ef expFunc, in *string,
 	vt ValueType) (BytecodeExp, error) {
 	c.token = c.tokenizer(in)
 	var be BytecodeExp
@@ -5754,7 +5755,7 @@ func (c *StateCompiler) typedExp(ef expFunc, in *string,
 	return be, nil
 }
 
-func (c *StateCompiler) argExpression(in *string, vt ValueType) (BytecodeExp, error) {
+func (c *CharCompiler) argExpression(in *string, vt ValueType) (BytecodeExp, error) {
 	be, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
 		return nil, err
@@ -5773,7 +5774,7 @@ func (c *StateCompiler) argExpression(in *string, vt ValueType) (BytecodeExp, er
 	return be, nil
 }
 
-func (c *StateCompiler) fullExpression(in *string, vt ValueType) (BytecodeExp, error) {
+func (c *CharCompiler) fullExpression(in *string, vt ValueType) (BytecodeExp, error) {
 	be, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
 		return nil, err
@@ -5802,9 +5803,8 @@ func parseTriggerNumber(name string) (tn int32, isAll bool, ok bool) {
 	return tn, false, true
 }
 
-func (c *StateCompiler) parseSection(sctrl func(name, data string) error) (IniSection, error) {
+func (c *CharCompiler) parseSection(sctrl func(name, data string) error) (IniSection, error) {
 	is := NewIniSection()
-	var _type, persistent, ignorehitpause bool
 
 	// Placeholder var to toggle all the nonsense Mugen's compiler allowed
 	// Maybe this could be sys.ignoreMostErrors. Or something configurable
@@ -5843,6 +5843,7 @@ func (c *StateCompiler) parseSection(sctrl func(name, data string) error) (IniSe
 		if !strict {
 			fn = strings.TrimSpace(fn) // Mugen tolerates "var ("
 		}
+
 		switch strings.ToLower(fn) {
 		case "var", "fvar", "sysvar", "sysfvar", "map":
 		default:
@@ -5859,7 +5860,7 @@ func (c *StateCompiler) parseSection(sctrl func(name, data string) error) (IniSe
 				uneven--
 				if uneven == 0 {
 					end = j
-					j = len(lhs)
+					j = len(lhs) // End loop
 				}
 			}
 		}
@@ -5879,6 +5880,22 @@ func (c *StateCompiler) parseSection(sctrl func(name, data string) error) (IniSe
 
 	for ; c.i < len(c.lines); c.i++ {
 		line := strings.TrimSpace(strings.SplitN(c.lines[c.i], ";", 2)[0])
+
+		// Check for open [State] headers
+		// They end up as an invalid parameter for the previous state controller and cause both blocks to be merged
+		if !strings.Contains(line, "=") {
+			lower := strings.ToLower(line)
+			// We check if at least one bracket exists to avoid false positives like "p2stateno"
+			if strings.Contains(lower, "state") && strings.Contains(line, "[") != strings.Contains(line, "]") {
+				msg := "State header not closed"
+				if sys.ignoreMostErrors {
+					sys.appendToConsole(c.charWarn() + msg)
+				} else {
+					return nil, Error(msg)
+				}
+			}
+		}
+
 		if len(line) > 0 && line[0] == '[' {
 			c.i--
 			break
@@ -5926,74 +5943,50 @@ func (c *StateCompiler) parseSection(sctrl func(name, data string) error) (IniSe
 			}
 		}
 
-		if len(name) > 0 {
-			_, _, isTrigger := parseTriggerNumber(name)
+		// Nothing to parse here
+		if len(name) == 0 {
+			continue
+		}
 
-			// Reject empty triggers
-			if isTrigger && len(data) == 0 {
-				return nil, Error(name + " cannot be empty")
+		// Check if this line is a trigger
+		_, _, isTrigger := parseTriggerNumber(name)
+
+		// Reject empty triggers
+		if isTrigger && len(data) == 0 {
+			return nil, Error(name + " cannot be empty")
+		}
+
+		// Check for duplicate parameters
+		// This includes "type", "persistent" and "ignorehitpause"
+		if _, ok := is[name]; ok && !isTrigger {
+			msg := fmt.Sprintf("Duplicate '%s' parameter", name)
+			if sys.ignoreMostErrors {
+				// Because duplicates are harmless and would flood the limited console space, we'll print them to the command line instead
+				LogMessage(c.charWarn() + msg)
+				continue
 			}
-
 			// Reject duplicate parameters (normally off)
-			_, ok := is[name]
-			if ok && !isTrigger {
-				if sys.ignoreMostErrors {
-					// Because duplicates are harmless and would flood the limited console space, we'll print them to the command line instead
-					LogMessage(c.charWarn() + fmt.Sprintf("Duplicate '%s' parameter", name))
-					continue
-				}
-				return nil, Error(name + " is duplicated")
-			}
+			return nil, Error(msg)
+		}
 
-			if sctrl != nil {
-				switch name {
-				case "type":
-					// Ignore and log if already found
-					if _type {
-						if sys.ignoreMostErrors {
-							LogMessage(c.charWarn() + "Duplicate 'type' parameter")
-							continue
-						}
-						return nil, Error("type is duplicated")
-					}
-					// Flag as found
-					_type = true
-				case "persistent":
-					if persistent {
-						if sys.ignoreMostErrors {
-							LogMessage(c.charWarn() + "Duplicate 'persistent' parameter")
-							continue
-						}
-						return nil, Error("persistent is duplicated")
-					}
-					persistent = true
-				case "ignorehitpause":
-					if ignorehitpause {
-						if sys.ignoreMostErrors {
-							LogMessage(c.charWarn() + "Duplicate 'ignorehitpause' parameter")
-							continue
-						}
-						return nil, Error("ignorehitpause is duplicated")
-					}
-					ignorehitpause = true
-				default:
-					if !isTrigger {
-						is[name] = data
-						continue
-					}
-				}
-				if err := sctrl(name, data); err != nil {
-					return nil, err
-				}
-			} else {
-				is[name] = data
+		// Store every non‑trigger key in the section map
+		// Previously, we only stored the specific sctrl parameters
+		// However, since some sctrl's like Explod also need "ignorehitpause" saved, we might as well just save everything
+		if !isTrigger {
+			is[name] = data
+		}
+
+		// Run this sctrl's specific compiler function
+		if sctrl != nil {
+			if err := sctrl(name, data); err != nil {
+				return nil, err
 			}
 		}
 	}
 	return is, nil
 }
 
-func (c *StateCompiler) stateSec(is IniSection, f func() error) error {
+func (c *CharCompiler) stateSec(is IniSection, f func() error) error {
 	if err := f(); err != nil {
 		return err
 	}
@@ -6012,7 +6005,7 @@ func (c *StateCompiler) stateSec(is IniSection, f func() error) error {
 	return nil
 }
 
-func (c *StateCompiler) stateParam(is IniSection, name string, mandatory bool, f func(string) error) error {
+func (c *CharCompiler) stateParam(is IniSection, name string, mandatory bool, f func(string) error) error {
 	data, ok := is[name]
 	if ok {
 		if err := f(data); err != nil {
@@ -6026,7 +6019,7 @@ func (c *StateCompiler) stateParam(is IniSection, name string, mandatory bool, f
 }
 
 // Returns FX prefix from a data string while removing prefix from the data
-func (c *StateCompiler) getDataPrefix(data *string, ffxDefault bool) (prefix string) {
+func (c *CharCompiler) getDataPrefix(data *string, ffxDefault bool) (prefix string) {
 	if len(*data) > 1 {
 		str := strings.ToLower(*data)
 
@@ -6078,7 +6071,7 @@ func (c *StateCompiler) getDataPrefix(data *string, ffxDefault bool) (prefix str
 	return
 }
 
-func (c *StateCompiler) exprs(data string, vt ValueType,
+func (c *CharCompiler) exprs(data string, vt ValueType,
 	numArg int) ([]BytecodeExp, error) {
 	bes := []BytecodeExp{}
 	for n := 1; n <= numArg; n++ {
@@ -6100,7 +6093,7 @@ func (c *StateCompiler) exprs(data string, vt ValueType,
 	return bes, nil
 }
 
-func (c *StateCompiler) scAdd(sc *StateControllerBase, id byte,
+func (c *CharCompiler) scAdd(sc *StateControllerBase, id byte,
 	data string, vt ValueType, numArg int, topbe ...BytecodeExp) error {
 	bes, err := c.exprs(data, vt, numArg)
 	if err != nil {
@@ -6111,7 +6104,7 @@ func (c *StateCompiler) scAdd(sc *StateControllerBase, id byte,
 }
 
 // ParamValue adds the parameter immediately, unlike StateParam which only reads it
-func (c *StateCompiler) paramValue(is IniSection, sc *StateControllerBase,
+func (c *CharCompiler) paramValue(is IniSection, sc *StateControllerBase,
 	paramname string, id byte, vt ValueType, numArg int, mandatory bool) error {
 	found := false
 	if err := c.stateParam(is, paramname, false, func(data string) error {
@@ -6131,7 +6124,7 @@ func (c *StateCompiler) paramValue(is IniSection, sc *StateControllerBase,
 	return nil
 }
 
-func (c *StateCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
+func (c *CharCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
 		if len(data) == 0 {
 			return Error(paramName + " not specified")
@@ -6183,7 +6176,7 @@ func (c *StateCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, pa
 	})
 }
 
-func (c *StateCompiler) paramHittype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
+func (c *CharCompiler) paramHittype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
 		if len(data) == 0 {
 			return Error(paramName + " not specified")
@@ -6225,7 +6218,7 @@ func (c *StateCompiler) paramHittype(is IniSection, sc *StateControllerBase, par
 	})
 }
 
-func (c *StateCompiler) paramPostype(is IniSection, sc *StateControllerBase, id byte) error {
+func (c *CharCompiler) paramPostype(is IniSection, sc *StateControllerBase, id byte) error {
 	return c.stateParam(is, "postype", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("postype not specified")
@@ -6281,7 +6274,7 @@ func (c *StateCompiler) paramPostype(is IniSection, sc *StateControllerBase, id 
 	})
 }
 
-func (c *StateCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte) error {
+func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte) error {
 	return c.stateParam(is, "space", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("space not specified")
@@ -6305,7 +6298,7 @@ func (c *StateCompiler) paramSpace(is IniSection, sc *StateControllerBase, id by
 	})
 }
 
-func (c *StateCompiler) paramProjection(is IniSection, sc *StateControllerBase, key string, id byte) error {
+func (c *CharCompiler) paramProjection(is IniSection, sc *StateControllerBase, key string, id byte) error {
 	return c.stateParam(is, key, false, func(data string) error {
 		var proj Projection
 
@@ -6325,7 +6318,7 @@ func (c *StateCompiler) paramProjection(is IniSection, sc *StateControllerBase, 
 	})
 }
 
-func (c *StateCompiler) paramSaveData(is IniSection, sc *StateControllerBase, id byte) error {
+func (c *CharCompiler) paramSaveData(is IniSection, sc *StateControllerBase, id byte) error {
 	return c.stateParam(is, "savedata", false, func(data string) error {
 		if len(data) <= 1 {
 			return Error("savedata not specified")
@@ -6347,7 +6340,7 @@ func (c *StateCompiler) paramSaveData(is IniSection, sc *StateControllerBase, id
 }
 
 // Parse trans and alpha together
-func (c *StateCompiler) paramTrans(is IniSection, sc *StateControllerBase, prefix string, id byte) error {
+func (c *CharCompiler) paramTrans(is IniSection, sc *StateControllerBase, prefix string, id byte) error {
 	// Check if we have both trans and alpha parameters
 	_, alphaExists := is[prefix+"alpha"]
 	_, transExists := is[prefix+"trans"]
@@ -6459,7 +6452,7 @@ func (c *StateCompiler) paramTrans(is IniSection, sc *StateControllerBase, prefi
 	})
 }
 
-func (c *StateCompiler) paramClsnType(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
+func (c *CharCompiler) paramClsnType(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
 		if len(data) == 0 {
 			return Error("Clsn type not specified for " + paramName)
@@ -6483,7 +6476,7 @@ func (c *StateCompiler) paramClsnType(is IniSection, sc *StateControllerBase, pa
 }
 
 // Interprets an IniSection of statedef properties and sets them to a StateBytecode
-func (c *StateCompiler) stateDef(is IniSection, sbc *StateBytecode) error {
+func (c *CharCompiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
 		sc := newStateControllerBase()
 		if err := c.stateParam(is, "type", false, func(data string) error {
@@ -6659,7 +6652,7 @@ func cnsStringArray(arg string) ([]string, error) {
 }
 
 // Forwards state compiling to CNS or ZSS branches as appropriate
-func (c *StateCompiler) stateCompile(states map[int32]StateBytecode,
+func (c *CharCompiler) stateCompile(states map[int32]StateBytecode,
 	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
 
 	// Determine type from extension
@@ -6705,7 +6698,7 @@ func (c *StateCompiler) stateCompile(states map[int32]StateBytecode,
 	return c.stateCompileCNS(states, filename, filetext, negoverride, constants)
 }
 
-func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename, filetext string, negoverride bool, constants map[string]float32) error {
+func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename, filetext string, negoverride bool, constants map[string]float32) error {
 	// Reset ZSS mode
 	c.zssMode = false
 
@@ -6786,7 +6779,13 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 			var trexist []int8
 
 			// Flag if following triggers can never be true because of triggerall = 0
-			allTerminated := false
+			// In which case the following triggers will still be parsed but not stored
+			// Update: This was excessive optimization. It complicated the code and created false positives in error logging
+			// Just let them be compiled as no-ops
+			//allTerminated := false
+
+			// Missing trigger number only needs to be printed once
+			warnedMissingTrigger := false
 
 			// Parse each line of the sctrl to get triggers and settings
 			is, err := c.parseSection(func(name, data string) error {
@@ -6828,36 +6827,46 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 						// Convert to zero-based index
 						tidx := int(tn - 1)
 
-						// Parse trigger condition into a bytecode expression
-						be, err := c.fullExpression(&data, VT_Bool)
-						if err != nil {
-							// Skip this trigger if an earlier trigger number doesn't exist
-							// e.g. skip trigger3 if trigger2 was not found
-							if sys.ignoreMostErrors && !isAll {
-								broken := false
+						// Check if a previous trigger is missing
+						// e.g. found trigger3 but not trigger2
+						var missingIdx = -1
+						if !isAll && tn > 1 {
+							if tidx > len(trexist) {
+								missingIdx = len(trexist)
+							} else {
 								for i := 0; i < tidx; i++ {
 									if trexist[i] == 0 {
-										broken = true
+										missingIdx = i
 										break
 									}
 								}
-								if broken {
-									break
+							}
+							if missingIdx >= 0 {
+								msg := fmt.Sprintf("trigger%d declared without trigger%d", tn, missingIdx+1)
+								if sys.ignoreMostErrors {
+									if !warnedMissingTrigger {
+										sys.appendToConsole(c.charWarn() + msg)
+										warnedMissingTrigger = true
+									}
+								} else {
+									return Error(msg)
 								}
+							}
+						}
+
+						// Parse trigger conditions into a bytecode expression
+						be, err := c.fullExpression(&data, VT_Bool)
+						if err != nil {
+							// Ignore the error if it happened in a trigger that is being skipped anyway
+							if missingIdx >= 0 && sys.ignoreMostErrors {
+								break
 							}
 							return err
 						}
 
 						// Handle triggerall
 						if isAll {
-							// If triggerall = 0 is encountered, flag it
-							if len(be) == 2 && be[0] == OC_int8 {
-								if be[1] == 0 {
-									allTerminated = true
-								}
-							} else if !allTerminated {
-								triggerall = append(triggerall, be)
-							}
+							triggerall = append(triggerall, be)
 							break
 						}
 
@@ -6878,7 +6887,7 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 							} else if trexist[tidx] == 0 {
 								trexist[tidx] = 1
 							}
-						} else if !allTerminated && trexist[tidx] >= 0 {
+						} else if trexist[tidx] >= 0 {
 							trigger[tidx] = append(trigger[tidx], be)
 							trexist[tidx] = 1
 						}
@@ -6889,6 +6898,7 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 			if err != nil {
 				return errmes(err)
 			}
+
 			c.block.persistentIndex = int32(sctrl_index_counter)
 			sctrl_index_counter++
 
@@ -6899,11 +6909,14 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 				sbc.ctrlsps = make([]int32, newSize)
 				copy(sbc.ctrlsps, oldCtrlsps)
 			}
+
 			// Check that the sctrl has a valid type parameter
 			if scf == nil {
 				return errmes(Error("State controller type not specified"))
 			}
-			if len(trexist) == 0 || (!allTerminated && trexist[0] == 0) {
+
+			// trigger1 is mandatory
+			if len(trexist) == 0 || trexist[0] == 0 {
 				return errmes(Error("Missing trigger1"))
 			}
 
@@ -6914,53 +6927,49 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 				texp.append(OC_jz8, 0)
 				texp.append(OC_pop)
 			}
-			if allTerminated {
-				if len(texp) > 0 {
-					texp.appendValue(BytecodeBool(false))
+
+			// Loop over triggers
+			for i, tr := range trigger {
+				if trexist[i] == 0 {
+					break
 				}
-			} else {
-				for i, tr := range trigger {
-					if trexist[i] == 0 {
+				var te BytecodeExp
+				if trexist[i] < 0 {
+					te.append(OC_pop)
+					te.appendValue(BytecodeBool(false))
+				}
+				oldlen := len(te)
+				for j := len(tr) - 1; j >= 0; j-- {
+					tmp := tr[j]
+					if j < len(tr)-1 {
+						if len(te) > int(math.MaxUint8-1) {
+							tmp.appendI32Op(OC_jz, int32(len(te)+1))
+						} else {
+							tmp.append(OC_jz8, OpCode(len(te)+1))
+						}
+						tmp.append(OC_pop)
+					}
+					te = append(tmp, te...)
+				}
+				if len(te) == oldlen {
+					te = nil
+				}
+				if len(te) == 0 {
+					if trexist[i] > 0 {
+						if len(texp) > 0 {
+							texp.appendValue(BytecodeBool(true))
+							texp.append(OC_jmp8, 0)
+						}
 						break
 					}
-					var te BytecodeExp
-					if trexist[i] < 0 {
-						te.append(OC_pop)
-						te.appendValue(BytecodeBool(false))
+					if len(texp) > 0 && (i == len(trigger)-1 || trexist[i+1] == 0) {
+						texp.appendValue(BytecodeBool(false))
 					}
-					oldlen := len(te)
-					for j := len(tr) - 1; j >= 0; j-- {
-						tmp := tr[j]
-						if j < len(tr)-1 {
-							if len(te) > int(math.MaxUint8-1) {
-								tmp.appendI32Op(OC_jz, int32(len(te)+1))
-							} else {
-								tmp.append(OC_jz8, OpCode(len(te)+1))
-							}
-							tmp.append(OC_pop)
-						}
-						te = append(tmp, te...)
-					}
-					if len(te) == oldlen {
-						te = nil
-					}
-					if len(te) == 0 {
-						if trexist[i] > 0 {
-							if len(texp) > 0 {
-								texp.appendValue(BytecodeBool(true))
-								texp.append(OC_jmp8, 0)
-							}
-							break
-						}
-						if len(texp) > 0 && (i == len(trigger)-1 || trexist[i+1] == 0) {
-							texp.appendValue(BytecodeBool(false))
-						}
-					} else {
-						texp.append(te...)
-						if i < len(trigger)-1 && trexist[i+1] != 0 {
-							texp.append(OC_jnz8, 0)
-							texp.append(OC_pop)
-						}
+				} else {
+					texp.append(te...)
+					if i < len(trigger)-1 && trexist[i+1] != 0 {
+						texp.append(OC_jnz8, 0)
+						texp.append(OC_pop)
 					}
 				}
 			}
@@ -6976,14 +6985,12 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 			appending := true
 			if len(c.block.trigger) == 0 {
 				appending = false
-				if !allTerminated {
-					for _, te := range trexist {
-						if te >= 0 {
-							if te > 0 {
-								appending = true
-							}
-							break
+				for _, te := range trexist {
+					if te >= 0 {
+						if te > 0 {
+							appending = true
 						}
+						break
 					}
 				}
 			}
@@ -7014,14 +7021,14 @@ func (c *StateCompiler) stateCompileCNS(states map[int32]StateBytecode, filename
 	return nil
 }
 
-func (c *StateCompiler) wrongClosureToken() error {
+func (c *CharCompiler) wrongClosureToken() error {
 	if c.token == "" {
 		return Error("Missing closure token")
 	}
 	return Error("Unexpected closure token: " + c.token)
 }
 
-func (c *StateCompiler) nextLine() (string, bool) {
+func (c *CharCompiler) nextLine() (string, bool) {
 	if c.i >= len(c.lines) {
 		return "", false
 	}
@@ -7030,7 +7037,7 @@ func (c *StateCompiler) nextLine() (string, bool) {
 	return line, true
 }
 
-func (c *StateCompiler) scan(line *string) string {
+func (c *CharCompiler) scan(line *string) string {
 	for {
 		c.token = c.tokenizer(line)
 		if len(c.token) > 0 {
@@ -7047,7 +7054,7 @@ func (c *StateCompiler) scan(line *string) string {
 	return c.token
 }
 
-func (c *StateCompiler) needToken(t string) error {
+func (c *CharCompiler) needToken(t string) error {
 	if c.token != t {
 		if c.token == "" {
 			return Error("Missing token: " + t)
@@ -7057,7 +7064,7 @@ func (c *StateCompiler) needToken(t string) error {
 	return nil
 }
 
-func (c *StateCompiler) readString(line *string) (string, error) {
+func (c *CharCompiler) readString(line *string) (string, error) {
 	i := strings.Index(*line, "\"")
 	if i < 0 {
 		return "", Error("String not enclosed in \"")
@@ -7067,7 +7074,7 @@ func (c *StateCompiler) readString(line *string) (string, error) {
 	return s, nil
 }
 
-func (c *StateCompiler) readSentenceLine(line *string) (s string, assign bool,
+func (c *CharCompiler) readSentenceLine(line *string) (s string, assign bool,
 	err error) {
 	c.token = ""
 	offset := 0
@@ -7102,7 +7109,7 @@ func (c *StateCompiler) readSentenceLine(line *string) (s string, assign bool,
 	return
 }
 
-func (c *StateCompiler) readSentence(line *string) (s string, a bool, err error) {
+func (c *CharCompiler) readSentence(line *string) (s string, a bool, err error) {
 	if s, a, err = c.readSentenceLine(line); err != nil {
 		return
 	}
@@ -7122,7 +7129,7 @@ func (c *StateCompiler) readSentence(line *string) (s string, a bool, err error)
 	return strings.TrimSpace(s), a, nil
 }
 
-func (c *StateCompiler) statementEnd(line *string) error {
+func (c *CharCompiler) statementEnd(line *string) error {
 	c.token = c.tokenizer(line)
 	if len(c.token) > 0 && c.token[0] != '#' {
 		return c.wrongClosureToken()
@@ -7131,7 +7138,7 @@ func (c *StateCompiler) statementEnd(line *string) error {
 	return nil
 }
 
-func (c *StateCompiler) readKeyValue(is IniSection, end string, line *string) error {
+func (c *CharCompiler) readKeyValue(is IniSection, end string, line *string) error {
 	// Read the key (parameter name)
 	name := c.scan(line)
 	if name == "" || name == ":" {
@@ -7164,7 +7171,7 @@ func (c *StateCompiler) readKeyValue(is IniSection, end string, line *string) er
 	return nil
 }
 
-func (c *StateCompiler) varNameCheck(nm string) (err error) {
+func (c *CharCompiler) varNameCheck(nm string) (err error) {
 	if (nm[0] < 'a' || nm[0] > 'z') && nm[0] != '_' {
 		return Error("Invalid name: " + nm)
 	}
@@ -7176,7 +7183,7 @@ func (c *StateCompiler) varNameCheck(nm string) (err error) {
 	return nil
 }
 
-func (c *StateCompiler) varNames(end string, line *string) ([]string, error) {
+func (c *CharCompiler) varNames(end string, line *string) ([]string, error) {
 	names, name := []string{}, c.scan(line)
 	if name != end {
 		for {
@@ -7208,7 +7215,7 @@ func (c *StateCompiler) varNames(end string, line *string) ([]string, error) {
 	return names, nil
 }
 
-func (c *StateCompiler) inclNumVars(numVars *int32) error {
+func (c *CharCompiler) inclNumVars(numVars *int32) error {
 	*numVars++
 	if *numVars > 256 {
 		return Error("Exceeded 256 local variable limit")
@@ -7216,7 +7223,7 @@ func (c *StateCompiler) inclNumVars(numVars *int32) error {
 	return nil
 }
 
-func (c *StateCompiler) scanI32(line *string) (int32, error) {
+func (c *CharCompiler) scanI32(line *string) (int32, error) {
 	t := c.scan(line)
 	if t == "" {
 		return 0, c.wrongClosureToken()
@@ -7228,7 +7235,7 @@ func (c *StateCompiler) scanI32(line *string) (int32, error) {
 	return int32(v), err
 }
 
-func (c *StateCompiler) scanStateDef(line *string, constants map[string]float32) (int32, error) {
+func (c *CharCompiler) scanStateDef(line *string, constants map[string]float32) (int32, error) {
 	t := c.scan(line)
 	if t == "" {
 		return 0, c.wrongClosureToken()
@@ -7262,7 +7269,7 @@ func (c *StateCompiler) scanStateDef(line *string, constants map[string]float32)
 }
 
 // Sets attributes to a StateBlock, like IgnoreHitPause, Persistent
-func (c *StateCompiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateBytecode,
+func (c *CharCompiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateBytecode,
 	inheritIhp, nestedInLoop bool) error {
 	// Inherit ignorehitpause/loop attr from parent block
 	if inheritIhp {
@@ -7304,9 +7311,6 @@ func (c *StateCompiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateB
 			if err := c.needToken(")"); err != nil {
 				return err
 			}
-			if bl.persistent == 1 {
-				return Error("Persistent(1) is meaningless") // TODO: Do we really need to crash here?
-			}
 			if bl.persistent <= 0 {
 				bl.persistent = math.MaxInt32
 			}
@@ -7320,7 +7324,7 @@ func (c *StateCompiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateB
 	return nil
 }
 
-func (c *StateCompiler) subBlock(line *string, root bool,
+func (c *CharCompiler) subBlock(line *string, root bool,
 	sbc *StateBytecode, numVars *int32, inheritIhp, nestedInLoop bool) (*StateBlock, error) {
 	// Inject ignorehitpause property into functions (nil sbc)
 	if sbc == nil {
@@ -7399,7 +7403,7 @@ func (c *StateCompiler) subBlock(line *string, root bool,
 	return bl, nil
 }
 
-func (c *StateCompiler) switchBlock(line *string, bl *StateBlock,
+func (c *CharCompiler) switchBlock(line *string, bl *StateBlock,
 	sbc *StateBytecode, numVars *int32) error {
 	// In this implementation of switch, we convert the statement to an if-elseif-else chain of blocks
 	header, _, err := c.readSentence(line)
@@ -7500,7 +7504,7 @@ func (c *StateCompiler) switchBlock(line *string, bl *StateBlock,
 	return nil
 }
 
-func (c *StateCompiler) loopBlock(line *string, root bool, bl *StateBlock,
+func (c *CharCompiler) loopBlock(line *string, root bool, bl *StateBlock,
 	sbc *StateBytecode, numVars *int32) error {
 	bl.loopBlock = true
 	bl.nestedInLoop = true
@@ -7575,7 +7579,7 @@ func (c *StateCompiler) loopBlock(line *string, root bool, bl *StateBlock,
 	return nil
 }
 
-func (c *StateCompiler) callFunc(line *string, root bool, ctrls *[]StateController, ret []uint8) error {
+func (c *CharCompiler) callFunc(line *string, root bool, ctrls *[]StateController, ret []uint8) error {
 	var cf CallFunction
 
 	// Scan the function name
@@ -7649,7 +7653,7 @@ func (c *StateCompiler) callFunc(line *string, root bool, ctrls *[]StateControll
 	return nil
 }
 
-func (c *StateCompiler) letAssign(line *string, root bool,
+func (c *CharCompiler) letAssign(line *string, root bool,
 	ctrls *[]StateController, numVars *int32, names []string, endLine bool) error {
 	varis := make([]uint8, len(names))
 	for i, n := range names {
@@ -7716,7 +7720,7 @@ func (c *StateCompiler) letAssign(line *string, root bool,
 	return nil
 }
 
-func (c *StateCompiler) stateBlock(line *string, bl *StateBlock, root bool,
+func (c *CharCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 	sbc *StateBytecode, ctrls *[]StateController, numVars *int32) error {
 	c.scan(line)
 	for {
@@ -7865,7 +7869,7 @@ func (c *StateCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 	return c.wrongClosureToken()
 }
 
-func (c *StateCompiler) stateCompileZSS(states map[int32]StateBytecode, filename, filetext string, constants map[string]float32) error {
+func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename, filetext string, constants map[string]float32) error {
 	// Enable ZSS mode
 	// TODO: There's some overlap between this flag and sys.ignoreMostErrors
 	c.zssMode = true
@@ -8025,7 +8029,7 @@ func (c *StateCompiler) stateCompileZSS(states map[int32]StateBytecode, filename
 }
 
 // Compile a character definition file
-func (c *StateCompiler) Compile(pn int, def string, constants map[string]float32) (map[int32]StateBytecode, error) {
+func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32) (map[int32]StateBytecode, error) {
 	c.playerNo = pn
 	states := make(map[int32]StateBytecode)
 
@@ -8285,7 +8289,7 @@ func (c *StateCompiler) Compile(pn int, def string, constants map[string]float32
 	return states, nil
 }
 
-func (c *StateCompiler) charWarn() string {
+func (c *CharCompiler) charWarn() string {
 	// Trim path to keep message shorter
 	_, file := SplitPath(c.currentFile)
 	// c.i acts a bit different between CNS and ZSS

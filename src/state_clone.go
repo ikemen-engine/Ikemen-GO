@@ -254,10 +254,10 @@ func (ss *StateState) Clone(a *arena.Arena) (result StateState) {
 	result = *ss
 	result.ps = arena.MakeSlice[int32](a, len(ss.ps), len(ss.ps))
 	copy(result.ps, ss.ps)
-	for i := 0; i < len(ss.hitPauseExecutionToggleFlags); i++ {
-		result.hitPauseExecutionToggleFlags[i] = arena.MakeSlice[bool](a, len(ss.hitPauseExecutionToggleFlags[i]), len(ss.hitPauseExecutionToggleFlags[i]))
-		copy(result.hitPauseExecutionToggleFlags[i], ss.hitPauseExecutionToggleFlags[i])
-	}
+	//for i := 0; i < len(ss.hitPauseExecutionToggleFlags); i++ {
+	//	result.hitPauseExecutionToggleFlags[i] = arena.MakeSlice[bool](a, len(ss.hitPauseExecutionToggleFlags[i]), len(ss.hitPauseExecutionToggleFlags[i]))
+	//	copy(result.hitPauseExecutionToggleFlags[i], ss.hitPauseExecutionToggleFlags[i])
+	//}
 	result.sb = ss.sb.Clone(a)
 	return result
 }

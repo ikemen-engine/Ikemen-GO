@@ -1763,6 +1763,10 @@ function start.f_selectReset(hardReset, preserveProgress)
 	if not preserveProgress then
 		resetGameStats()
 		setMatchNo(1)
+		if main.elimination then
+			setWinCount(1, 0)
+			setWinCount(2, 0)
+		end
 		setConsecutiveWins(1, 0)
 		setConsecutiveWins(2, 0)
 	end
@@ -3108,7 +3112,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 	start.p[side].inPalMenu = true
 
 	-- accept selection
-	if getInput(cmd, motif.select_info['p' .. side].palmenu.done.key) or timerSelect == -1 then
+	if #validPals <= 1 or getInput(cmd, motif.select_info['p' .. side].palmenu.done.key) or timerSelect == -1 then
 		pal = (curIdx == maxIdx) and (start.c[player].randPalPreview or start.f_randomPal(charRef, validPals)) or validPals[curIdx]
 		st.pal, st.currentIdx = pal, curIdx
 
@@ -3138,7 +3142,10 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		end
 		selectState = 3
 		start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
-		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.done.snd[1], motif.select_info['p' .. side].palmenu.done.snd[2])
+		-- Skip sound for auto-confirmation, since we already played the select character confirmation sound
+		if #validPals > 1 then
+			sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.done.snd[1], motif.select_info['p' .. side].palmenu.done.snd[2])
+		end
 	 -- next palette
 	elseif getInput(cmd, motif.select_info['p' .. side].palmenu.next.key) then
 		curIdx = (curIdx == maxIdx) and 1 or curIdx + 1
@@ -3815,6 +3822,7 @@ function start.f_selectLoading(arg)
 	addParam("continue", t.continue)
 	addParam("victoryscreen", t.victoryscreen)
 	addParam("winscreen", t.winscreen)
+	addParam("rankingcondition", main.rankingCondition)
 	addParam("charparam.ai", main.charparam.ai)
 	addParam("charparam.arcadepath", main.charparam.arcadepath)
 	addParam("charparam.music", main.charparam.music)

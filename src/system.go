@@ -95,8 +95,6 @@ type SystemStateVars struct {
 	lastTick                float32
 	nextAddTime             float32
 	oldNextAddTime          float32
-	screenleft              float32
-	screenright             float32
 	xmin, xmax              float32
 	zmin, zmax              float32
 	winskipped              bool
@@ -2158,10 +2156,86 @@ func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
 	s.explodRunOrder = PointerSliceReset(s.explodRunOrder)
 }
 
-func (s *System) resetRoundState() {
-	s.roundBackup.Restore()
+// Select correct stage for current round
+func (s *System) handleStageSwap() bool {
+	var roundRef int32
+	if s.round == 1 {
+		s.stageLoopNo = 0
+	} else {
+		roundRef = s.round
+	}
+
+	if s.stageLoop && !s.roundResetFlg {
+		var keys []int
+		for k := range s.stageList {
+			keys = append(keys, int(k))
+		}
+		sort.Ints(keys)
+		roundRef = int32(keys[s.stageLoopNo])
+		s.stageLoopNo++
+		if s.stageLoopNo >= len(s.stageList) {
+			s.stageLoopNo = 0
+		}
+	}
+
+	swap := false
+	if _, ok := s.stageList[roundRef]; ok {
+		s.stage = s.stageList[roundRef]
+		if s.round > 1 && !s.roundResetFlg {
+			swap = true
+		}
+		if s.stage.model != nil {
+			sys.mainThreadTask <- func() {
+				gfx.SetModelVertexData(0, s.stage.model.vertexBuffer)
+				gfx.SetModelIndexData(0, s.stage.model.elementBuffer...)
+			}
+		}
+	}
+	return swap
+}
+
+func (s *System) updateMusicMaps() {
 	newMatchMusic := s.round == 1 && !s.roundResetFlg
 
+	if newMatchMusic {
+		s.stage.music.ClearSelection()
+		s.stage.si().music.ClearSelection()
+		s.sel.music.ClearSelection()
+	}
+
+	for i, p := range s.chars {
+		if len(p) == 0 {
+			continue
+		}
+		if newMatchMusic {
+			p[0].si().music.ClearSelection()
+		}
+		// Reset music map
+		s.cgi[i].music = make(Music)
+		// Append stage def file music parameters
+		s.cgi[i].music.Append(sys.stage.music)
+		// Append select.def stage music parameters
+		s.cgi[i].music.Append(sys.stage.si().music)
+		// Override with select.def char music parameters
+		useCharMusic := false
+		if sys.sel.gameParams != nil {
+			useCharMusic = sys.sel.gameParams.CharParamMusic
+		}
+		// In Versus modes, round/final/life music shouldn't override stage music; victory.music still can.
+		if useCharMusic {
+			s.cgi[i].music.Override(p[0].si().music)
+		} else if v, ok := p[0].si().music[normalizeMusicPrefix("victory")]; ok {
+			s.cgi[i].music.Override(Music{normalizeMusicPrefix("victory"): v})
+		}
+		// Override with music with launchFight parameters
+		s.cgi[i].music.Override(sys.sel.music)
+		// Debug dump of merged music.
+		s.cgi[i].music.DebugDump(fmt.Sprintf("cgi[%d].music after updateMusicMaps()", i))
+	}
+}
+
+// TODO: This function is still a bit overloaded because it's handling some selections instead of doing a pure reset
+func (s *System) resetRound() {
 	if s.sel.gameParams.PersistRounds && !s.roundResetFlg {
 		s.persistRoundCount++
 	}
@@ -2202,53 +2276,13 @@ func (s *System) resetRoundState() {
 		s.decisiveRound[i] = s.wins[i] >= s.matchWins[i]-1
 	}
 
-	var roundRef int32
-	if s.round == 1 {
-		s.stageLoopNo = 0
-	} else {
-		roundRef = s.round
-	}
-
-	if s.stageLoop && !s.roundResetFlg {
-		var keys []int
-		for k := range s.stageList {
-			keys = append(keys, int(k))
-		}
-		sort.Ints(keys)
-		roundRef = int32(keys[s.stageLoopNo])
-		s.stageLoopNo++
-		if s.stageLoopNo >= len(s.stageList) {
-			s.stageLoopNo = 0
-		}
-	}
-
-	var swap bool
-	if _, ok := s.stageList[roundRef]; ok {
-		s.stage = s.stageList[roundRef]
-		if s.round > 1 && !s.roundResetFlg {
-			swap = true
-		}
-		if s.stage.model != nil {
-			sys.mainThreadTask <- func() {
-				gfx.SetModelVertexData(0, s.stage.model.vertexBuffer)
-				gfx.SetModelIndexData(0, s.stage.model.elementBuffer...)
-			}
-		}
-	}
+	stageSwap := s.handleStageSwap()
 
 	s.cam.stageCamera = s.stage.stageCamera
 	s.cam.Init()
-	s.screenleft = float32(s.stage.screenleft) * s.stage.localscl
-	s.screenright = float32(s.stage.screenright) * s.stage.localscl
 
-	if s.stage.resetbg || swap {
+	if s.stage.resetbg || stageSwap {
 		s.stage.reset()
-	}
-	s.cam.ResetZoomdelay()
-	if newMatchMusic {
-		s.stage.music.ClearSelection()
-		s.stage.si().music.ClearSelection()
-		s.sel.music.ClearSelection()
 	}
 
 	// Reset characters
@@ -2278,31 +2312,6 @@ func (s *System) resetRoundState() {
 					[...]int32{1, 1}, [...]int32{1, s.cgi[i].palno})
 			}
 		}
-
-		if newMatchMusic {
-			p[0].si().music.ClearSelection()
-		}
-		// Reset music map
-		s.cgi[i].music = make(Music)
-		// Append stage def file music parameters
-		s.cgi[i].music.Append(sys.stage.music)
-		// Append select.def stage music parameters
-		s.cgi[i].music.Append(sys.stage.si().music)
-		// Override with select.def char music parameters
-		useCharMusic := false
-		if sys.sel.gameParams != nil {
-			useCharMusic = sys.sel.gameParams.CharParamMusic
-		}
-		// In Versus modes, round/final/life music shouldn't override stage music; victory.music still can.
-		if useCharMusic {
-			s.cgi[i].music.Override(p[0].si().music)
-		} else if v, ok := p[0].si().music[normalizeMusicPrefix("victory")]; ok {
-			s.cgi[i].music.Override(Music{normalizeMusicPrefix("victory"): v})
-		}
-		// Override with music with launchFight parameters
-		s.cgi[i].music.Override(sys.sel.music)
-		// Debug dump of merged music.
-		s.cgi[i].music.DebugDump(fmt.Sprintf("cgi[%d].music after resetRoundState", i))
 	}
 
 	// Place characters in state 5900
@@ -2322,14 +2331,14 @@ func (s *System) resetRoundState() {
 		p[0].selfState(5900, firstAnim, -1, 0, "")
 	}
 
-	// Backup must reflect the post-swap roundXdef stage, or F4 restores the prior round's stage.
-	if s.stage != nil {
-		s.roundBackup.Save()
-	}
-}
+	s.updateMusicMaps()
 
-func (s *System) resetRound() {
-	s.resetRoundState()
+	// Make a new backup reflecting the post-swap roundXdef stage, or F4 will restore the prior round's stage
+	// TODO: The fact that the reset() function needs to make a new backup shows that this function is currently overloaded
+	// Update: Save operations moved outside
+	//s.roundBackup.Save()
+
+	// Ensure main thread catches up
 	s.runMainThreadTask()
 	gfx.Await()
 }
@@ -2425,6 +2434,8 @@ func (s *System) globalCollision() {
 	s.charList.collisionDetection()
 }
 
+/*
+// This is never called
 func (s *System) posReset() {
 	for _, p := range s.chars {
 		if len(p) > 0 {
@@ -2432,6 +2443,7 @@ func (s *System) posReset() {
 		}
 	}
 }
+*/
 
 // Skip character intros on button press and play the shutter effect
 func (s *System) runIntroSkip() {
@@ -2499,6 +2511,14 @@ func (s *System) clearSpriteData() {
 	}
 }
 
+func (s *System) screenleft() float32 {
+	return float32(s.stage.screenleft) * s.stage.localscl
+}
+
+func (s *System) screenright() float32 {
+	return float32(s.stage.screenright) * s.stage.localscl
+}
+
 func (s *System) action() {
 	s.clearSpriteData()
 
@@ -2518,8 +2538,8 @@ func (s *System) action() {
 	// Run "tick frame"
 	if s.tickFrame() {
 		// X axis player limits
-		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
-		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] + float32(s.gameWidth)/s.cam.Scale - s.screenright
+		s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft()
+		s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] + float32(s.gameWidth)/s.cam.Scale - s.screenright()
 		if s.xmin > s.xmax {
 			s.xmin = (s.xmin + s.xmax) / 2
 			s.xmax = s.xmin
@@ -2593,9 +2613,8 @@ func (s *System) action() {
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 	}
 	s.cam.Update(scl, x, y)
-	s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft
-	s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] +
-		float32(s.gameWidth)/s.cam.Scale - s.screenright
+	s.xmin = s.cam.ScreenPos[0] + s.cam.Offset[0] + s.screenleft()
+	s.xmax = s.cam.ScreenPos[0] + s.cam.Offset[0] + float32(s.gameWidth)/s.cam.Scale - s.screenright()
 	if s.xmin > s.xmax {
 		s.xmin = (s.xmin + s.xmax) / 2
 		s.xmax = s.xmin
@@ -3643,13 +3662,6 @@ func (s *System) runMatch() (reload bool) {
 	// Setup characters
 	s.SetupCharRoundStart()
 
-	// Make a new backup once everything is initialized
-	s.roundBackup.Save()
-
-	if s.round == 1 {
-		s.matchBackup.Save()
-	}
-
 	// Default debug/scripts to any found char
 	s.debugWC = s.anyChar()
 	debugInput := func() {
@@ -3662,10 +3674,20 @@ func (s *System) runMatch() (reload bool) {
 		}
 	}
 
+	// Reset round state
 	s.resetRound()
 
+	// Make a first backup once everything is initialized
+	s.roundBackup.Save()
+
+	// Save round 1 backup separately
+	if s.round == 1 {
+		s.matchBackup = s.roundBackup
+	}
+
 	// Reset the clock right before entering the loop to ensure we start with a clean timeline
-	s.resetFrameTime()
+	// Handled by resetRound()
+	//s.resetFrameTime()
 
 	// Now switch to rollback if applicable
 	// TODO: More merging so we don't hijack this function at all
@@ -3718,6 +3740,7 @@ func (s *System) runMatch() (reload bool) {
 
 		if s.matchResetFlg {
 			s.matchResetFlg = false
+
 			// If a member has already been changed in Turns mode
 			// the char in memory is different from the char in the backup, so restoration with reload=0 is impossible
 			canReset := true
@@ -3727,6 +3750,7 @@ func (s *System) runMatch() (reload bool) {
 					break
 				}
 			}
+
 			if !canReset {
 				s.appendToConsole("Warning: MatchRestart with resetmatch=1 is disabled in Turns mode after character switch")
 			} else {
@@ -3741,9 +3765,10 @@ func (s *System) runMatch() (reload bool) {
 				s.statsLog.abortMatch()
 				s.statsLog.startMatch()
 
+				// Recover the round 1 backup
 				s.roundBackup = s.matchBackup
+				s.roundBackup.Restore()
 				s.resetRound()
-				s.roundResetFlg = false
 			}
 		}
 
@@ -3754,6 +3779,7 @@ func (s *System) runMatch() (reload bool) {
 					s.saveCharVars(i)
 				}
 			}
+			s.roundBackup.Restore()
 			s.resetRound()
 		}
 
@@ -3946,8 +3972,8 @@ func (s *System) runNextRound() bool {
 					p[0].redLife = p[0].life // TODO: This doesn't truly need to be hardcoded
 				}
 			}
-			s.roundBackup.Save()
 			s.resetRound()
+			s.roundBackup.Save()
 		} else {
 			// End match, or prepare for a new character in turns mode
 			for i, tm := range s.tmode {
@@ -4010,13 +4036,22 @@ func (s *System) debugModeAllowed() bool {
 	return s.cfg.Debug.AllowDebugMode
 }
 
-func (s *System) IsRollback() bool {
+// Returns true if the current frame is inside a rollback
+func (s *System) inRollback() bool {
 	if s.rollback.session != nil {
 		return s.rollback.session.inRollback
 	}
 	return false
 }
 
+func (s *System) isSpeculativeFrame() bool {
+	if s.rollback.session != nil {
+		return !s.rollback.session.inRollback
+	}
+	return false
+}
+
+// The backup to be used when F4 is pressed
 type RoundStartBackup struct {
 	charBackup    [MaxPlayerNo][]Char
 	cgiBackup     [MaxPlayerNo]CharGlobalInfo
@@ -4189,7 +4224,6 @@ type SelectChar struct {
 	intro         string
 	ending        string
 	arcadepath    string
-	movelist      string
 	pal           []int32
 	pal_defaults  []int32
 	pal_keymap    []int32
@@ -4439,7 +4473,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 		return useDummy("DEF read error: " + err.Error())
 	}
 
-	var cns_orig, sprite_orig, anim_orig, movelist_orig string
+	var cns_orig, sprite_orig, anim_orig string
 	var fnt_orig [10][2]string
 
 	lines, lnidx := SplitAndTrim(charDefContent, "\n"), 0
@@ -4499,7 +4533,6 @@ func (s *Select) AddChar(def string) *SelectChar {
 					}
 				}
 
-				movelist_orig = decodeShiftJIS(isec["movelist"])
 				for fIdx := range fnt_orig {
 					fnt_orig[fIdx][0] = isec[fmt.Sprintf("font%v", fIdx)]
 					fnt_orig[fIdx][1] = isec[fmt.Sprintf("fnt_height%v", fIdx)]
@@ -4651,15 +4684,6 @@ func (s *Select) AddChar(def string) *SelectChar {
 			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
 	}
-	// read movelist
-	if len(movelist_orig) > 0 {
-		// Movelist is text, can be loaded now
-		LoadFile(&movelist_orig, []string{sc.def, "", "data/"}, "", func(filename string) error {
-			sc.movelist, _ = LoadText(filename)
-			return nil
-		})
-	}
-
 	return sc
 }
 
@@ -5116,7 +5140,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		}
 
 		// Compile character states
-		if sys.cgi[pn].states, l.err = newStateCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
+		if sys.cgi[pn].states, l.err = newCharCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
 			sys.chars[pn] = nil
 			if attached {
 				tstr = fmt.Sprintf("WARNING: Failed to compile new attached char states: %v", cdef)

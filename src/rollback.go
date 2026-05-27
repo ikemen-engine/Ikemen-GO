@@ -199,8 +199,8 @@ func (rs *RollbackSystem) runFrame(s *System) bool {
 			defer func() {
 				if re := recover(); re != nil {
 					if rs.session.config.DesyncTest {
-						rs.session.log.updateLogs()
-						rs.session.log.saveLogs()
+						rs.session.log.updateStateLogs()
+						rs.session.log.saveStateLogs()
 						panic("RaiseDesyncError")
 					}
 				}
@@ -387,7 +387,7 @@ func (rs *RollbackSystem) anyButton() bool {
 type RollbackLogger struct {
 	filename   string
 	currentLog strings.Builder
-	logs       [(MaxSaveStates + 3) * 3]string
+	logs       [(MaxSaveStates * 2) + 3]string
 }
 
 func NewRollbackLogger(timestamp string) RollbackLogger {
@@ -395,11 +395,18 @@ func NewRollbackLogger(timestamp string) RollbackLogger {
 	return gl
 }
 
-func (g *RollbackLogger) logState(action string, stateID int, state string, checksum int) {
-	fmt.Fprintf(&g.currentLog, "State Logger: \n")
-	fmt.Fprintf(&g.currentLog, "%s state for stateID: %d\n", action, stateID)
-	fmt.Fprintf(&g.currentLog, state+"\n")
-	fmt.Fprintf(&g.currentLog, "Checksum: %d\n", checksum)
+func (g *RollbackLogger) logState(action string, stateIdx int, state *GameState) {
+	//fmt.Fprintf(&g.currentLog, "State Logger: \n")
+	fmt.Fprintf(&g.currentLog, "%s data for the state in slot %d\n", action, stateIdx)
+
+	if state.isSpeculativeFrame {
+		fmt.Fprintf(&g.currentLog, "Frame type: Speculative\n")
+	} else {
+		fmt.Fprintf(&g.currentLog, "Frame type: Confirmed\n")
+	}
+
+	fmt.Fprintf(&g.currentLog, "Checksum: %d\n", state.Checksum()) // Calls String() again. Minor issue
+	fmt.Fprintf(&g.currentLog, "%s\n", state.String())
 }
 
 func (g *RollbackLogger) Write(p []byte) (n int, err error) {
@@ -407,7 +414,8 @@ func (g *RollbackLogger) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func (g *RollbackLogger) updateLogs() {
+// Updates state logs using a ring buffer
+func (g *RollbackLogger) updateStateLogs() {
 	tmp := g.logs
 	for i := 0; i < len(g.logs)-1; i++ {
 		g.logs[i] = tmp[i+1]
@@ -416,11 +424,14 @@ func (g *RollbackLogger) updateLogs() {
 	g.currentLog.Reset()
 }
 
-func (g *RollbackLogger) saveLogs() {
-	var fullLog string
-	for i := 0; i < len(g.logs); i++ {
+func (g *RollbackLogger) saveStateLogs() {
+	// Header indicating the number of frames captured
+	fullLog := fmt.Sprintf("Writing save state data from the last %d frames.\n\n", len(g.logs))
+	// Collect all the logs in the buffer
+	for i := range g.logs {
 		fullLog += g.logs[i]
 	}
+	// Save file
 	err := os.WriteFile(g.filename, []byte(fullLog), 0666)
 	if err != nil {
 		fmt.Println(err)
@@ -610,38 +621,36 @@ func (r *RollbackSession) IsConnected() bool {
 	return r.connected
 }
 
-func (r *RollbackSession) SaveGameState(stateID int) int {
-	sys.savePool.curStateID = stateID
-	sys.rollbackStateID = stateID
-	oldest := stateID + 1%(MaxSaveStates+2)
+func (r *RollbackSession) SaveGameState(stateIdx int) int {
+	sys.savePool.curStateID = stateIdx
+	sys.rollbackStateID = stateIdx
+	oldest := stateIdx + 1%(MaxSaveStates+2)
 	if _, ok := sys.arenaSaveMap[oldest]; ok {
 		sys.arenaSaveMap[oldest].Free()
 		sys.arenaSaveMap[oldest] = nil
 		delete(sys.arenaSaveMap, oldest)
 	}
 	sys.savePool.Free(oldest)
-	if _, ok := sys.arenaSaveMap[stateID]; ok {
-		sys.arenaSaveMap[stateID].Free()
-		sys.arenaSaveMap[stateID] = nil
-		delete(sys.arenaSaveMap, stateID)
+	if _, ok := sys.arenaSaveMap[stateIdx]; ok {
+		sys.arenaSaveMap[stateIdx].Free()
+		sys.arenaSaveMap[stateIdx] = nil
+		delete(sys.arenaSaveMap, stateIdx)
 	}
-	sys.savePool.Free(stateID)
+	sys.savePool.Free(stateIdx)
 
-	r.saveStates[stateID] = sys.statePool.gameStatePool.Get().(*GameState)
-	r.saveStates[stateID].SaveState(stateID)
+	r.saveStates[stateIdx] = sys.statePool.gameStatePool.Get().(*GameState)
+	r.saveStates[stateIdx].SaveState(stateIdx)
 
 	if r.config.DesyncTest {
-		checksum := r.saveStates[stateID].Checksum()
 		if r.config.LogsEnabled {
-			r.log.logState("Saving", stateID, r.saveStates[stateID].String(), checksum)
-			r.log.updateLogs()
+			r.log.logState("Saving", stateIdx, r.saveStates[stateIdx])
+			r.log.updateStateLogs()
 		}
-		return checksum
+		return r.saveStates[stateIdx].Checksum()
 	} else {
 		if r.config.LogsEnabled {
-			checksum := r.saveStates[stateID].Checksum()
-			r.log.logState("Saving", stateID, r.saveStates[stateID].String(), checksum)
-			r.log.updateLogs()
+			r.log.logState("Saving", stateIdx, r.saveStates[stateIdx])
+			r.log.updateStateLogs()
 		}
 		return ggpo.DefaultChecksum
 	}
@@ -649,12 +658,12 @@ func (r *RollbackSession) SaveGameState(stateID int) int {
 
 var lastLoadedFrame int = -1
 
-func (r *RollbackSession) LoadGameState(stateID int) {
-	sys.loadPool.curStateID = stateID
-	if _, ok := sys.arenaLoadMap[stateID]; ok {
-		sys.arenaLoadMap[stateID].Free()
-		sys.arenaLoadMap[stateID] = nil
-		delete(sys.arenaLoadMap, stateID)
+func (r *RollbackSession) LoadGameState(stateIdx int) {
+	sys.loadPool.curStateID = stateIdx
+	if _, ok := sys.arenaLoadMap[stateIdx]; ok {
+		sys.arenaLoadMap[stateIdx].Free()
+		sys.arenaLoadMap[stateIdx] = nil
+		delete(sys.arenaLoadMap, stateIdx)
 	}
 	for sid := range sys.arenaLoadMap {
 		if sid != lastLoadedFrame {
@@ -663,18 +672,17 @@ func (r *RollbackSession) LoadGameState(stateID int) {
 			delete(sys.arenaLoadMap, sid)
 		}
 	}
-	sys.loadPool.Free(stateID)
+	sys.loadPool.Free(stateIdx)
 
-	r.saveStates[stateID].LoadState(stateID)
+	r.saveStates[stateIdx].LoadState(stateIdx)
 
 	if r.config.DesyncTest && r.config.LogsEnabled {
-		checksum := r.saveStates[stateID].Checksum()
-		r.log.logState("Loaded", stateID, r.saveStates[stateID].String(), checksum)
+		r.log.logState("Loading", stateIdx, r.saveStates[stateIdx])
 	}
 
-	sys.statePool.gameStatePool.Put(r.saveStates[stateID])
+	sys.statePool.gameStatePool.Put(r.saveStates[stateIdx])
 
-	lastLoadedFrame = stateID
+	lastLoadedFrame = stateIdx
 }
 
 // Called when the GGPO backend needs the game to simulate a single frame
@@ -705,8 +713,8 @@ func (r *RollbackSession) AdvanceFrame(flags int) {
 		defer func() {
 			if re := recover(); re != nil {
 				if r.config.DesyncTest {
-					r.log.updateLogs()
-					r.log.saveLogs()
+					r.log.updateStateLogs()
+					r.log.saveStateLogs()
 					panic("RaiseDesyncError")
 				}
 			}
@@ -736,7 +744,7 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 			return
 		}
 		if r.config.LogsEnabled {
-			r.log.saveLogs()
+			r.log.saveStateLogs()
 		}
 		fmt.Println("EventCodeDisconnectedFromPeer")
 		sys.endMatch = true
@@ -749,7 +757,7 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		r.loopTimer.OnGGPOTimeSyncEvent(info.FramesAhead)
 	case ggpo.EventCodeDesync:
 		if r.config.LogsEnabled {
-			r.log.saveLogs()
+			r.log.saveStateLogs()
 		}
 		fmt.Println("EventCodeDesync")
 		log.Printf("Rollback desync detected")
@@ -770,7 +778,7 @@ func NewRollbackSession(config RollbackProperties) RollbackSession {
 	r.handles = make([]ggpo.PlayerHandle, 2) // MaxPlayerNo
 	r.config = config
 	r.loopTimer = NewLoopTimer(60, 100)
-	r.timestamp = time.Now().Format("2006-01-02_03-04PM-05s")
+	r.timestamp = time.Now().Format("2006-01-02_15-04-05")
 	r.log = NewRollbackLogger(r.timestamp)
 	r.replayInputs = make([][REPLAY_NUM_INPUTS]InputBits, 0)
 	r.replayAnalogInputs = make([][REPLAY_NUM_INPUTS][6]int8, 0)

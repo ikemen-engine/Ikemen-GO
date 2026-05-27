@@ -5114,6 +5114,8 @@ func (fs *FightScreen) reload() error {
 	new.aiLevels[1].active = fs.aiLevels[1].active
 	new.winCounts[0].active = fs.winCounts[0].active
 	new.winCounts[1].active = fs.winCounts[1].active
+	new.winCounts[0].wins = fs.winCounts[0].wins
+	new.winCounts[1].wins = fs.winCounts[1].wins
 	new.active = fs.active
 	new.bars = fs.bars
 	new.mode = fs.mode
@@ -5312,24 +5314,25 @@ func (fs *FightScreen) reset() {
 	}
 }
 
+func (fs *FightScreen) visible() bool {
+	return fs.active &&
+		!sys.postMatchFlg &&
+		!sys.lifebarHide &&
+		!sys.dialogueBarsFlg &&
+		!(sys.motif.me.active && sys.motif.PauseMenu["pause_menu"].HideBars &&
+			(!sys.motif.me.closeRequested || sys.paused))
+}
+
 func (fs *FightScreen) draw(layerno int16) {
-	// Do not draw anything during victory and such screens
-	if sys.postMatchFlg {
-		return
-	}
-
-	pauseHide := sys.motif.me.active && sys.motif.PauseMenu["pause_menu"].HideBars
-
-	if !sys.lifebarHide && fs.active && !sys.dialogueBarsFlg && !pauseHide {
-		// Helper to determine whether to iterate elements forward or backward (drawing order)
-		iterationOrder := func(leaderontop bool) (int, int, int) {
-			if leaderontop {
-				return MaxSimul - 1, -1, -1
-			}
-			return 0, MaxSimul, 1
-		}
-
+	if fs.visible() {
 		if !sys.gsf(GSF_nobardisplay) && fs.bars {
+			// Helper to determine whether to iterate elements forward or backward (drawing order)
+			iterationOrder := func(leaderontop bool) (int, int, int) {
+				if leaderontop {
+					return MaxSimul - 1, -1, -1
+				}
+				return 0, MaxSimul, 1
+			}
 			// LifeBar
 			for side := 0; side < len(sys.tmode); side++ {
 				layout := fs.curLayout[side]
@@ -5521,7 +5524,7 @@ func (fs *FightScreen) draw(layerno int16) {
 		}
 	}
 
-	if fs.active {
+	if fs.active && !sys.postMatchFlg {
 		// Round
 		fs.round.draw(layerno, fs.fnt)
 	}

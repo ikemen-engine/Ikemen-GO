@@ -39,6 +39,11 @@ permissions:
   contents: write
 
 name: releases
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || 'nightly' }}
+  cancel-in-progress: true
+
 jobs:
   tag:
     name: prepare tag
@@ -53,7 +58,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.sha }}
+          fetch-depth: 0
 
       #- name: Get previous tag
       #  id: previousTag
@@ -89,6 +95,21 @@ jobs:
           echo "releaseTag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "releaseKind=$release_kind" >> "$GITHUB_OUTPUT"
           echo "buildTime=$(date '+%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Move nightly tag to this commit
+        if: ${{ steps.meta.outputs.releaseKind == 'nightly' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          tag="${{ steps.meta.outputs.releaseTag }}"
+
+          git fetch --force --tags origin
+          git tag -fa "$tag" "$GITHUB_SHA" -m "$tag: $GITHUB_SHA"
+          git push --force origin "refs/tags/$tag:refs/tags/$tag"
 
   build:
     name: prepare release
@@ -133,14 +154,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.sha }}
 
-      - name: Setup Golang with cache
-        uses: magnetikonline/action-golang-cache@v5
+      - name: Setup Go
+        uses: actions/setup-go@v6
         with:
-          go-version: ~1.20
-          #go-version-file: go.mod
-          #cache-key-suffix: -ikemen
+          go-version: '1.20.x'
+          cache: true
+          cache-dependency-path: |
+            go.sum
+            **/go.sum
 
       - name: Setup MSYS2 (Windows)
         if: ${{ matrix.cfg.runner_os == 'windows' }}
@@ -439,20 +462,77 @@ jobs:
           fi
           echo "Successfully prepared assets for deployment"
 
+      - name: Stage release artifacts
+        if: ${{ steps.artifacts.outputs.artifact != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-files
+
+          cp -v "${{ steps.artifacts.outputs.artifact }}" release-files/
+
+          if [ "${{ matrix.cfg.runner_os }}" = "linux" ] && \
+             [ -n "${{ steps.artifacts_ffmpeg.outputs.artifact_ffsrc }}" ]; then
+            cp -v "${{ steps.artifacts_ffmpeg.outputs.artifact_ffsrc }}" release-files/
+          fi
+
+      - name: Upload release artifacts
+        if: ${{ steps.artifacts.outputs.artifact != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.cfg.runner_os }}
+          path: release-files/*
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    needs: [tag, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List release artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          find release-assets -maxdepth 1 -type f -print -exec ls -lh {} \;
+
+      - name: Recreate nightly release metadata
+        if: ${{ needs.tag.outputs.releaseKind == 'nightly' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.IKEMEN_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # The nightly tag has already been force-moved in the prepare tag job.
+          # Delete only the GitHub Release object so GitHub republishes it with fresh metadata.
+          # Do NOT pass --cleanup-tag here, because that would delete the moved nightly tag too.
+          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes
+          fi
+
       - name: Update dev release
-        if: "${{ needs.tag.outputs.releaseKind == 'nightly' && steps.artifacts.outputs.artifact != '' }}"
+        if: ${{ needs.tag.outputs.releaseKind == 'nightly' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.IKEMEN_TOKEN }}
           allowUpdates: true
           artifactErrorsFailBuild: true
-          artifacts: "${{ steps.artifacts.outputs.artifact }}${{ matrix.cfg.runner_os == 'linux' && format(',{0}', steps.artifacts_ffmpeg.outputs.artifact_ffsrc) || '' }}"
+          artifacts: "release-assets/*"
+          commit: ${{ github.sha }}
           body: |
             The nightly release, or more precisely, the latest development version, is generated after each commit and always represents the most up-to-date iteration of the source code. It features the newest development version of the engine and screenpack files, making it ready for testing straightaway. Using it can eliminate the need to compile the source code for the latest, cutting-edge updates. However, as a consequence, it may sometimes contain regressions that were not yet discovered and/or outpace the documentation that corresponds to stable releases with version numbers like v x.x.x.
           discussionCategory: ""
           draft: false
           generateReleaseNotes: false
-          makeLatest: false
+          makeLatest: true
           name: nightly
           omitBody: false
           omitBodyDuringUpdate: false
@@ -460,7 +540,7 @@ jobs:
           omitName: false
           omitNameDuringUpdate: true
           omitPrereleaseDuringUpdate: true
-          prerelease: true
+          prerelease: false
           removeArtifacts: false
           replacesArtifacts: true
           skipIfReleaseExists: false
@@ -468,13 +548,14 @@ jobs:
           updateOnlyUnreleased: false
 
       - name: Create Release
-        if: "${{ needs.tag.outputs.releaseKind != 'nightly' && steps.artifacts.outputs.artifact != '' }}"
+        if: ${{ needs.tag.outputs.releaseKind != 'nightly' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.IKEMEN_TOKEN }}
           allowUpdates: true
           artifactErrorsFailBuild: true
-          artifacts: "${{ steps.artifacts.outputs.artifact }}${{ matrix.cfg.runner_os == 'linux' && format(',{0}', steps.artifacts_ffmpeg.outputs.artifact_ffsrc) || '' }}"
+          artifacts: "release-assets/*"
+          commit: ${{ github.sha }}
           # body: |
           #   ${{ needs.tag.outputs.changelog }}
           discussionCategory: ${{ github.event.inputs.discussionCategory }}

@@ -231,13 +231,13 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	// This effectively side-steps a low-level rectangle rasterization edge case,
 	// that caused visible and frequent artifacts on the diagonal.
 	// See: https://github.com/ikemen-engine/Ikemen-GO/issues/3583
-	uvZero := float32(0.000002)
+	uvBias := float32(0.000002)
 
 	gfx.SetVertexData(
-		x2, y2, 1, 1,
-		x3, y3, 1, uvZero,
-		x1, y1, uvZero, 1,
-		x4, y4, uvZero, uvZero,
+		x2, y2, 1, 1-uvBias,
+		x3, y3, 1, 0,
+		x1, y1, uvBias, 1-uvBias,
+		x4, y4, uvBias, 0,
 	)
 
 	gfx.RenderQuad()

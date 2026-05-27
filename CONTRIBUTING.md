@@ -52,6 +52,13 @@ Additional style or formatting rules may be introduced over time; please check e
 
 ## <a name="submit"></a> Submission Guidelines
 
+All GitHub issues, discussions, and pull requests must be written in **English**.
+Submissions in other languages may be closed or returned with a request to translate them before review.
+
+Please keep in mind that Ikemen GO is developed by volunteers. Contributors choose what to work on based on availability, interest, and project priorities, so issues, discussions, and pull requests do not guarantee acceptance, prioritization, resolution, or a specific response timeline.
+
+Maintainers may close topics that are out of scope, inactive, duplicated, not reproducible, already answered, or not planned.
+
 ### <a name="submit-issue"></a> Submitting an Issue
 
 Before submitting an issue, please check the issue tracker to see if it has already been reported. Existing reports may also contain useful workarounds.

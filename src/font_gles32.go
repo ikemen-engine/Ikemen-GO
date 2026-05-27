@@ -354,9 +354,18 @@ func (f *Font_GLES32) GenerateGlyphs(low, high rune) error {
 	for ch := low; ch <= high; ch++ {
 		char := new(character)
 
+		drawGlyph := true
 		gBnd, gAdv, ok := ttfFace.GlyphBounds(ch)
-		if ok != true {
-			return fmt.Errorf("ttf face glyphBounds error")
+		if !ok {
+			// Some fonts do not provide bounds for every requested rune. This is common for control chars.
+			// Keep loading the font and create an invisible placeholder so future lookups do not retry this glyph forever.
+			drawGlyph = false
+			if adv, advOK := ttfFace.GlyphAdvance(ch); advOK {
+				gAdv = adv
+			} else {
+				gAdv = 0
+			}
+			gBnd = f.ttf.Bounds(fixed.Int26_6(f.scale))
 		}
 
 		gh := int32((gBnd.Max.Y - gBnd.Min.Y) >> 6)
@@ -408,10 +417,23 @@ func (f *Font_GLES32) GenerateGlyphs(low, high rune) error {
 		c.SetClip(rgba.Bounds())
 		c.SetDst(rgba)
 		c.SetSrc(fg)
-		_, err := c.DrawString(string(ch), pt)
-		if err != nil {
-			Logcat(fmt.Sprintf("GLES: ERROR DRAWING STRING: %v", err.Error()))
-			return err
+		if drawGlyph {
+			if _, err := c.DrawString(string(ch), pt); err != nil {
+				// Some fonts have broken hinting bytecode. Keep full hinting for normal fonts.
+				// Retry glyph without hinting instead of failing the whole font load.
+				c2 := freetype.NewContext()
+				c2.SetDPI(72)
+				c2.SetFont(f.ttf)
+				c2.SetFontSize(float64(f.scale))
+				c2.SetHinting(font.HintingNone)
+				c2.SetClip(rgba.Bounds())
+				c2.SetDst(rgba)
+				c2.SetSrc(fg)
+				if _, err := c2.DrawString(string(ch), pt); err != nil {
+					Logcat(fmt.Sprintf("GLES: ERROR DRAWING STRING: %v", err.Error()))
+					return err
+				}
+			}
 		}
 		// Logcat(fmt.Sprintf("Char: %c | Box: %dx%d | Dot: %v | Bounds: %v\n", ch, gw, gh, pt, gBnd))
 
@@ -473,6 +495,9 @@ func (r *FontRenderer_GLES32) LoadTrueTypeFont(reader io.Reader, scale int32, lo
 
 	// Read the truetype font.
 	ttf, err := truetype.Parse(data)
+	if err != nil && err.Error() == "freetype: invalid TrueType format: bad kern table length" {
+		ttf, err = truetype.Parse(stripKernTable(data))
+	}
 	if err != nil {
 		return nil, err
 	}

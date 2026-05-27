@@ -9,98 +9,15 @@ import (
 	"time"
 )
 
-func (cs Char) String() string {
-	str := fmt.Sprintf(`Char %s 
-	RedLife             :%d 
-	Juggle              :%d 
-	Life                :%d 
-	Key                 :%d  
-	Localcoord          :%f 
-	Localscl            :%f 
-	Pos                 :%v 
-	DrawPos             :%v 
-	OldPos              :%v 
-	Vel                 :%v  
-	Facing              :%f
-	Id                  :%d
-	HelperId            :%d
-	HelperIndex         :%d
-	ParentId            :%d
-	PlayerNo            :%d
-	Teamside            :%d
-	AnimPN              :%d
-	AnimNo              :%d
-	LifeMax             :%d
-	PowerMax            :%d
-	DizzyPoints         :%d
-	GuardPoints         :%d
-	FallTime            :%d
-	ClsnScale           :%v
-	HoIdx               :%d
-	Mctime              :%d
-	Targets             :%v
-	HitdefTargets       :%v
-	Atktmp              :%d
-	Hittmp              :%d
-	Acttmp              :%d
-	Minus               :%d
-	GroundAngle          :%f
-	InheritJuggle         :%d
-	Preserve              :%d
-	Cnsvar              :%v
-	Cnsfvar             :%v
-	Offset              :%v`,
-		cs.name, cs.redLife, cs.juggle, cs.life, cs.controller, cs.localcoord,
-		cs.localscl, cs.pos, cs.interPos, cs.oldPos, cs.vel, cs.facing,
-		cs.id, cs.helperId, cs.helperIndex, cs.parentId, cs.playerNo,
-		cs.teamside, cs.animPN, cs.animNo, cs.lifeMax, cs.powerMax, cs.dizzyPoints,
-		cs.guardPoints, cs.fallTime, cs.clsnScale, cs.hoverIdx, cs.mctime, cs.targets, cs.hitdefTargets,
-		cs.atktmp, cs.hittmp, cs.acttmp, cs.minus, cs.groundAngle, cs.inheritJuggle,
-		cs.preserve, cs.cnsvar, cs.cnsfvar, cs.offset)
-	return str
-}
-
-func (gs *GameState) getID() string {
-	return strconv.Itoa(int(gs.id))
-}
-
-func (gs *GameState) Checksum() int {
-	//	buf := bytes.Buffer{}
-	//	enc := gob.NewEncoder(&buf)
-	//	err := enc.Encode(gs)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	gs.bytes = buf.Bytes()
-	gs.bytes = []byte(gs.String())
-	h := fnv.New32a()
-	h.Write(gs.bytes)
-	return int(h.Sum32())
-}
-
-func (gs *GameState) String() (str string) {
-	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d CurPlayTime: %d\n", gs.matchTime, gs.curRoundTime, gs.curPlayTime)
-	str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
-	str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
-	str += fmt.Sprintf("bcVar: %v\n", gs.bcVar)
-	str += fmt.Sprintf("workBe: %v\n", gs.workBe)
-	for i := 0; i < len(gs.charData); i++ {
-		for j := 0; j < len(gs.charData[i]); j++ {
-			str += gs.charData[i][j].String()
-			str += "\n"
-		}
-	}
-	return
-}
-
 const MaxSaveStates = 8
 
 type GameState struct {
 	// Identifiers
-	bytes []byte
-	id    int
-	saved bool
-	frame int32
+	bytes              []byte
+	id                 int
+	saved              bool
+	frame              int32
+	isSpeculativeFrame bool
 
 	SystemStateVars
 
@@ -276,6 +193,7 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.cgi = sys.cgi
 	gs.saved = true
 	gs.frame = sys.frameCounter
+	gs.isSpeculativeFrame = sys.isSpeculativeFrame()
 	gs.SystemStateVars = sys.SystemStateVars
 
 	gs.saveCharData(a, gsp)
@@ -485,6 +403,173 @@ func (gs *GameState) stageCanMutate() bool {
 	return false
 }
 
+func (gs *GameState) getID() string {
+	return strconv.Itoa(int(gs.id))
+}
+
+// Not to be confused with the live checksum. This one's for debugging
+func (gs *GameState) Checksum() int {
+	//	buf := bytes.Buffer{}
+	//	enc := gob.NewEncoder(&buf)
+	//	err := enc.Encode(gs)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//	gs.bytes = buf.Bytes()
+	gs.bytes = []byte(gs.String())
+	h := fnv.New32a()
+	h.Write(gs.bytes)
+	return int(h.Sum32())
+}
+
+// Returns some state variables as a string for debugging
+func (gs *GameState) String() (str string) {
+	// Add match data
+	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d\n", gs.matchTime, gs.curRoundTime)
+
+	// Add bytecode data
+	// TODO: Every log seems to have these empty. May not be needed
+	str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
+	str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
+	str += fmt.Sprintf("bcVar: %v\n", gs.bcVar)
+	str += fmt.Sprintf("workBe: %v\n", gs.workBe)
+
+	// Add char data
+	for i := 0; i < len(gs.charData); i++ {
+		for j := 0; j < len(gs.charData[i]); j++ {
+			str += gs.charData[i][j].String()
+			str += "\n"
+		}
+	}
+
+	return
+}
+
+// Returns char status as a string for debugging
+func (cs Char) String() string {
+	// Save button states if char has keyctrl
+	inputBufStr := "none"
+	if cs.keyctrl[0] && len(cs.cmd) > 0 && cs.cmd[0].Buffer != nil {
+		ib := cs.cmd[0].Buffer
+		inputBufStr = fmt.Sprintf(
+			"U:%d D:%d L:%d R:%d B:%d F:%d N:%d a:%d b:%d c:%d x:%d y:%d z:%d s:%d d:%d w:%d m:%d",
+			ib.Ub, ib.Db, ib.Lb, ib.Rb, ib.Bb, ib.Fb, ib.Nb,
+			ib.ab, ib.bb, ib.cb, ib.xb, ib.yb, ib.zb,
+			ib.sb, ib.db, ib.wb, ib.mb,
+		)
+	}
+
+	str := fmt.Sprintf(`Char %s
+	Controller          :%d
+	PlayerNo            :%d
+	HelperIndex         :%d
+	Life                :%d
+	RedLife             :%d
+	DizzyPoints         :%d
+	GuardPoints         :%d
+	Power               :%d
+	Localcoord          :%f
+	Localscl            :%f
+	Pos                 :%v
+	Vel                 :%v
+	Facing              :%f
+	Id                  :%d
+	HelperId            :%d
+	ParentId            :%d
+	StateNo             :%d
+	StateTime           :%d
+	AnimNo              :%d
+	Mctime              :%d
+	Targets             :%v
+	Preserve            :%t
+	MapsActive          :%d
+	CnsVar              :%v
+	CnsFvar             :%v
+	InputBuffer         :%s`,
+		cs.name, cs.controller, cs.playerNo, cs.helperIndex,
+		cs.life, cs.redLife, cs.dizzyPoints, cs.guardPoints, cs.power,
+		cs.localcoord, cs.localscl,
+		cs.pos, cs.vel, cs.facing,
+		cs.id, cs.helperId, cs.parentId,
+		cs.ss.no, cs.ss.time, cs.animNo, // Move/Statetype would require interpreting the flags so they're not worth it
+		cs.mctime, cs.targets,
+		cs.preserve,
+		len(cs.mapArray), cs.cnsvar, cs.cnsfvar, inputBufStr) // Dumping entire map is too verbose so we'll just log how many are active
+
+	return str
+}
+
+type GameStatePool struct {
+	gameStatePool           sync.Pool
+	stringIntMapPool        sync.Pool
+	hitscaleMapPool         sync.Pool
+	stringFloat32MapPool    sync.Pool
+	animationTablePool      sync.Pool
+	mapArraySlicePool       sync.Pool
+	int32CharPointerMapPool sync.Pool
+	int32int32MapPool       sync.Pool
+	int32float32MapPool     sync.Pool
+
+	animFrameSlicePool sync.Pool
+	poolObjs           map[int][]interface{}
+	curStateID         int
+}
+
+func NewGameStatePool() GameStatePool {
+	return GameStatePool{
+		gameStatePool: sync.Pool{
+			New: func() interface{} {
+				return NewGameState()
+			},
+		},
+		stringIntMapPool: sync.Pool{
+			New: func() interface{} {
+				si := make(map[string]int)
+				return &si
+			},
+		},
+		stringFloat32MapPool: sync.Pool{
+			New: func() interface{} {
+				sf := make(map[string]float32)
+				return &sf
+			},
+		},
+		animationTablePool: sync.Pool{
+			New: func() interface{} {
+				at := AnimationTable{
+					anims: make(map[int32]*Animation),
+				}
+				return &at
+			},
+		},
+		int32CharPointerMapPool: sync.Pool{
+			New: func() interface{} {
+				ic := make(map[int32]*Char)
+				return &ic
+			},
+		},
+		animFrameSlicePool: sync.Pool{
+			New: func() interface{} {
+				af := make([]AnimFrame, 0, 8)
+				return &af
+			},
+		},
+		int32int32MapPool: sync.Pool{
+			New: func() interface{} {
+				ii := make(map[int32]int32)
+				return &ii
+			},
+		},
+		int32float32MapPool: sync.Pool{
+			New: func() interface{} {
+				if3 := make(map[int32]float32)
+				return &if3
+			},
+		},
+		poolObjs: make(map[int][]interface{}),
+	}
+}
+
 func (gsp *GameStatePool) Get(item interface{}) (result interface{}) {
 	objs, ok := gsp.poolObjs[gsp.curStateID]
 	if !ok {
@@ -547,75 +632,4 @@ func (gsp *GameStatePool) Free(stateID int) {
 		}
 	}
 	delete(gsp.poolObjs, stateID)
-}
-
-func NewGameStatePool() GameStatePool {
-	return GameStatePool{
-		gameStatePool: sync.Pool{
-			New: func() interface{} {
-				return NewGameState()
-			},
-		},
-		stringIntMapPool: sync.Pool{
-			New: func() interface{} {
-				si := make(map[string]int)
-				return &si
-			},
-		},
-		stringFloat32MapPool: sync.Pool{
-			New: func() interface{} {
-				sf := make(map[string]float32)
-				return &sf
-			},
-		},
-		animationTablePool: sync.Pool{
-			New: func() interface{} {
-				at := AnimationTable{
-					anims: make(map[int32]*Animation),
-				}
-				return &at
-			},
-		},
-		int32CharPointerMapPool: sync.Pool{
-			New: func() interface{} {
-				ic := make(map[int32]*Char)
-				return &ic
-			},
-		},
-		animFrameSlicePool: sync.Pool{
-			New: func() interface{} {
-				af := make([]AnimFrame, 0, 8)
-				return &af
-			},
-		},
-		int32int32MapPool: sync.Pool{
-			New: func() interface{} {
-				ii := make(map[int32]int32)
-				return &ii
-			},
-		},
-		int32float32MapPool: sync.Pool{
-			New: func() interface{} {
-				if3 := make(map[int32]float32)
-				return &if3
-			},
-		},
-		poolObjs: make(map[int][]interface{}),
-	}
-}
-
-type GameStatePool struct {
-	gameStatePool           sync.Pool
-	stringIntMapPool        sync.Pool
-	hitscaleMapPool         sync.Pool
-	stringFloat32MapPool    sync.Pool
-	animationTablePool      sync.Pool
-	mapArraySlicePool       sync.Pool
-	int32CharPointerMapPool sync.Pool
-	int32int32MapPool       sync.Pool
-	int32float32MapPool     sync.Pool
-
-	animFrameSlicePool sync.Pool
-	poolObjs           map[int][]interface{}
-	curStateID         int
 }

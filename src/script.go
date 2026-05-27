@@ -3330,16 +3330,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(tbl)
 		return 1
 	})
-	luaRegister(l, "getCharMovelist", func(*lua.LState) int {
-		/*Get the movelist file path for a character slot.
-		@function getCharMovelist
-		@tparam int charRef 0-based character index in the select list.
-		@treturn string movelist Path or identifier of the movelist file.
-		function getCharMovelist(charRef) end*/
-		c := sys.sel.GetChar(int(numArg(l, 1)))
-		l.Push(lua.LString(c.movelist))
-		return 1
-	})
 	luaRegister(l, "getCharName", func(*lua.LState) int {
 		/*Get the display name of a character slot.
 		@function getCharName
@@ -3848,6 +3838,26 @@ func systemScriptInit(l *lua.LState) {
 			ti += v
 		}
 		l.Push(lua.LNumber(ti))
+		return 1
+	})
+	luaRegister(l, "getMovelist", func(*lua.LState) int {
+		/*[redirectable] Get the character's movelist text.
+		@function getMovelist
+		@treturn string movelist Movelist text.
+		function getMovelist() end*/
+		idx := int(sys.debugWC.movelist)
+		if idx < 0 {
+			idx = 0
+		}
+		if ml, ok := sys.debugWC.gi().movelists[idx]; ok {
+			l.Push(lua.LString(ml))
+			return 1
+		}
+		if ml, ok := sys.debugWC.gi().movelists[0]; ok {
+			l.Push(lua.LString(ml))
+			return 1
+		}
+		l.Push(lua.LString(""))
 		return 1
 	})
 	luaRegister(l, "getRandom", func(l *lua.LState) int {

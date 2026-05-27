@@ -147,12 +147,19 @@ func resultsScreenForMode(mode string) *ResultsScreenProperties {
 }
 
 func modeCleared(mode string, matches int) bool {
-	// If the selected results screen variant for this mode defines roundstowin > 0,
-	// treat it as "survival-like": cleared if P1 wins or reached roundstowin.
-	// Otherwise: cleared if P1 wins.
 	if sys.winnerTeam() == 1 {
 		return true
 	}
+
+	// Some modes require an actual clear/win before rankings can be saved.
+	// In those modes, the results-screen roundstowin value is only presentation
+	// data and must not turn a loss into a cleared run.
+	if sys.sel.gameParams.RankingCondition {
+		return false
+	}
+	// If the selected results screen variant for this mode defines roundstowin > 0,
+	// treat it as "survival-like": cleared if P1 wins or reached roundstowin.
+	// Otherwise: not cleared.
 	if rs := resultsScreenForMode(mode); rs != nil && rs.RoundsToWin > 0 {
 		return matches >= int(rs.RoundsToWin)
 	}
@@ -181,7 +188,7 @@ func rankingWouldPlace(mode string) bool {
 	tal := tallyRun()
 	cleared := modeCleared(mode, len(sys.statsLog.Matches))
 	// Ranking exceptions
-	if rType == "time" && !cleared {
+	if (rType == "time" || sys.sel.gameParams.RankingCondition) && !cleared {
 		return false
 	}
 	if rType == "score" && tal.scoreP1 == 0 {
@@ -338,7 +345,7 @@ func computeAndSaveRanking(mode string) (bool, int32) {
 	rType = strings.ToLower(strings.TrimSpace(rType))
 
 	// Ranking exceptions
-	if rType == "time" && !cleared {
+	if (rType == "time" || sys.sel.gameParams.RankingCondition) && !cleared {
 		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
 		return cleared, 0
 	}
