@@ -980,6 +980,9 @@ const (
 	OC_ex3_analog_righty
 	OC_ex3_analog_lefttrigger
 	OC_ex3_analog_righttrigger
+	OC_ex3_distoffset_x
+	OC_ex3_distoffset_y
+	OC_ex3_distoffset_z
 	OC_ex3_helpervar_clsnproxy
 	OC_ex3_helpervar_helpertype
 	OC_ex3_helpervar_id
@@ -4195,6 +4198,13 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(c.analogAxes[4])
 	case OC_ex3_analog_righttrigger:
 		sys.bcStack.PushF(c.analogAxes[5])
+	// DistOffset
+	case OC_ex3_distoffset_x:
+		sys.bcStack.PushF(c.distOffset[0] / oc.localscl) // Already in c.localscl so we only divide by oc.localscl
+	case OC_ex3_distoffset_y:
+		sys.bcStack.PushF(c.distOffset[1] / oc.localscl)
+	case OC_ex3_distoffset_z:
+		sys.bcStack.PushF(c.distOffset[2] / oc.localscl)
 	// HitDefVar
 	case OC_ex3_hitdefvar_guard_dist_width_back:
 		sys.bcStack.PushF(c.hitdef.guard_dist_x[1] * (c.localscl / oc.localscl))
@@ -11325,6 +11335,35 @@ func (sc offset) Run(c *Char, _ []int32) bool {
 			crun.offset[0] = exp[0].evalF(c) * c.localscl
 		case offset_y:
 			crun.offset[1] = exp[0].evalF(c) * c.localscl
+		}
+		return true
+	})
+	return false
+}
+
+type distOffset StateControllerBase
+
+const (
+	distOffset_x byte = iota
+	distOffset_y
+	distOffset_z
+	distOffset_redirectid
+)
+
+func (sc distOffset) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), distOffset_redirectid, "DistOffset")
+	if crun == nil {
+		return false
+	}
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case distOffset_x:
+			crun.distOffset[0] = exp[0].evalF(c) * c.localscl
+		case distOffset_y:
+			crun.distOffset[1] = exp[0].evalF(c) * c.localscl
+		case distOffset_z:
+			crun.distOffset[2] = exp[0].evalF(c) * c.localscl
 		}
 		return true
 	})

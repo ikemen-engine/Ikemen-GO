@@ -135,6 +135,7 @@ func newCharCompiler() *CharCompiler {
 		"changemovelist":       c.changeMovelist,
 		"depth":                c.depth,
 		"dialogue":             c.dialogue,
+		"distoffset":           c.distOffset,
 		"dizzypointsadd":       c.dizzyPointsAdd,
 		"dizzypointsset":       c.dizzyPointsSet,
 		"dizzyset":             c.dizzySet,
@@ -5142,6 +5143,18 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			out.append(OC_ex_, OC_ex_offset_y)
 		default:
 			return bvNone(), Error("Invalid Offset trigger argument: " + c.token)
+		}
+	case "distoffset":
+		c.token = c.tokenizer(in)
+		switch c.token {
+		case "x":
+			out.append(OC_ex3_, OC_ex3_distoffset_x)
+		case "y":
+			out.append(OC_ex3_, OC_ex3_distoffset_y)
+		case "z":
+			out.append(OC_ex3_, OC_ex3_distoffset_z)
+		default:
+			return bvNone(), Error("Invalid DistOffset trigger argument: " + c.token)
 		}
 	case "alpha":
 		c.token = c.tokenizer(in)
