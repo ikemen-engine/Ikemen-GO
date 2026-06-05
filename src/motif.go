@@ -821,10 +821,12 @@ type DemoModeProperties struct {
 	} `ini:"intro"`
 	DebugInfo bool `ini:"debuginfo"`
 	Select    struct {
-		Enabled bool `ini:"enabled"`
+		Enabled  bool  `ini:"enabled"`
+		WaitTime int32 `ini:"waittime"`
 	} `ini:"select"`
 	VsScreen struct {
-		Enabled bool `ini:"enabled"`
+		Enabled  bool  `ini:"enabled"`
+		WaitTime int32 `ini:"waittime"`
 	} `ini:"vsscreen"`
 	Cancel struct {
 		Key []string `ini:"key"`

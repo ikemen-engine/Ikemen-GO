@@ -2020,8 +2020,17 @@ main.t_itemname = {
 	end,
 	--DEMO
 	['demo'] = function(t, item)
+		main.cpuSide = {true, true}
+		main.selectMenu = {motif.demo_mode.select.enabled, motif.demo_mode.select.enabled}
+		main.teamMenu[1].single = true
+		main.teamMenu[2].single = true
+		main.orderSelect = {false, false}
+		main.motif.vsscreen = motif.demo_mode.vsscreen.enabled
+		main.fightscreen.bars = motif.demo_mode.fight.bars.display
+		main.quickContinue = true
+		setGameMode('demo')
 		hook.run("main.t_itemname", t, item)
-		return main.f_demoStart
+		return main.f_demoMode
 	end,
 	--FREE BATTLE (QUICK VS)
 	['freebattle'] = function(t, item)
@@ -3403,7 +3412,16 @@ function main.f_demo()
 	end
 	demoFrameCounter = 0
 	fadeOutInit(motif[main.group].fadeout.FadeData)
-	main.menu.f = main.t_itemname.demo()
+	main.f_default()
+	main.menu.f = main.t_itemname.demo(nil, nil)
+end
+
+function main.f_demoStart()
+	main.f_default()
+	local f = main.t_itemname.demo(nil, nil)
+	if f ~= nil then
+		f()
+	end
 end
 
 -- prevents mirrored palette in demo mode / randomtest mirror matches
@@ -3438,39 +3456,49 @@ function main.f_getUniquePalette(ch, state)
 	return pal
 end
 
-function main.f_demoStart()
-	main.f_default()
-	local palState = {}
-	setFightScreenElements({bars = motif.demo_mode.fight.bars.display})
-	setGameMode('demo')
-	for side = 1, 2 do
-		setTeamMode(side, 0, 1)
-		setCom(side, 8)
-		local ch = main.t_randomChars[math.random(1, #main.t_randomChars)]
-		local pal = main.f_getUniquePalette(ch, palState)
-		selectChar(side, ch, pal)
+function main.f_demoMode()
+	start.f_selectReset(true)
+	local interrupted = false
+	if motif.demo_mode.select.enabled then
+		interrupted = not start.f_selectScreen()
+	else
+		for side = 1, 2 do
+			local ch = main.t_randomChars[math.random(1, #main.t_randomChars)]
+			start.p[side].teamMode = 0
+			start.p[side].numChars = 1
+			start.p[side].teamEnd = true
+			start.p[side].selEnd = true
+			start.p[side].t_selected = {{
+				ref = ch,
+				pal = start.f_selectPal(ch),
+				pn = start.f_getPlayerNo(side, 1),
+			}}
+		end
 	end
-	start.f_setStage()
-	if motif.demo_mode.fight.stopbgm then
-		stopBgm()
+	if not interrupted then
+		main.f_saveBaseRemapInput()
+		interrupted = not launchFight()
 	end
-	hook.run("main.t_itemname", t, item)
-	--clearColor(motif[main.background].bgclearcolor[1], motif[main.background].bgclearcolor[2], motif[main.background].bgclearcolor[3])
-	loadStart()
-	game()
 	if not motif.attract_mode.enabled then
-		if introWaitCycles >= motif.demo_mode.intro.waitcycles then
-			main.f_hiscore("arcade", -1)
-			if motif.files.intro.storyboard ~= '' then
-				main.f_storyboard(motif.files.intro.storyboard)
+		if not interrupted then
+			if introWaitCycles >= motif.demo_mode.intro.waitcycles then
+				main.f_hiscore("arcade", -1)
+				if motif.files.intro.storyboard ~= '' then
+					main.f_storyboard(motif.files.intro.storyboard)
+				end
+				introWaitCycles = 0
+			else
+				introWaitCycles = introWaitCycles + 1
 			end
-			introWaitCycles = 0
-		else
-			introWaitCycles = introWaitCycles + 1
 		end
 		bgReset(motif[main.background].BGDef)
 		--start title BGM only if it has been interrupted
-		if motif.demo_mode.fight.stopbgm or motif.demo_mode.fight.playbgm or (introWaitCycles == 0 and motif.files.intro.storyboard ~= '') then
+		if interrupted
+			or motif.demo_mode.fight.stopbgm
+			or motif.demo_mode.fight.playbgm
+			or motif.demo_mode.select.enabled
+			or motif.demo_mode.vsscreen.enabled
+			or (introWaitCycles == 0 and motif.files.intro.storyboard ~= '') then
 			playBgm({source = "motif.title", interrupt = true})
 		end
 	end

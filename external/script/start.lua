@@ -1198,7 +1198,7 @@ function start.f_drawCursor(pn, x, y, param, done)
 	else
 		cd.slideOffset[1], cd.slideOffset[2] = 0, 0
 	end
-	if pData.cursor.tween.wrap.snap then
+	if pData.cursor.tween.wrap.snap and not gameMode('demo') then
 		local dx = cd.targetPos[1] - cd.startPos[1]
 		local dy = cd.targetPos[2] - cd.startPos[2]
 		if math.abs(dx) > motif.select_info.cell.size[1] * (motif.select_info.columns - 1) or math.abs(dy) > motif.select_info.cell.size[2] * (motif.select_info.rows - 1) then
@@ -1678,6 +1678,9 @@ function start.f_game(common)
 	end
 	if gameMode('training') then
 		menu.f_trainingReset()
+	end
+	if gameMode('demo') and motif.demo_mode.fight.stopbgm and not motif.demo_mode.fight.playbgm then
+		stopBgm()
 	end
 	local winner = -1
 	winner, start.challenger = game()
@@ -2488,8 +2491,19 @@ function start.f_selectScreen()
 	bgReset(motif.selectbgdef.BGDef)
 	fadeInInit(motif.select_info.fadein.FadeData)
 	local fadeOutStarted = false
-	playBgm({source = "motif.select", interrupt = true})
+	if not gameMode('demo') then
+		playBgm({source = "motif.select", interrupt = true})
+	end
 	start.f_resetTempData(motif.select_info, 'face')
+	if gameMode('demo') then
+		for side = 1, 2 do
+			start.p[side].teamMode = 0
+			start.p[side].numChars = 1
+			start.p[side].teamEnd = true
+			start.p[side].selEnd = false
+			start.p[side].t_selCmd = {{cmd = side, player = side, selectState = 0}}
+		end
+	end
 	f_snapCursor()
 	local stageActiveCount = 0
 	local stageActiveState = false
@@ -2544,6 +2558,9 @@ function start.f_selectScreen()
 		main.f_preloadTick(4)
 		refreshActiveFacePortraits()
 		counter = counter + 1
+		if gameMode('demo') and timerSelect ~= -1 and counter >= motif.demo_mode.select.waittime then
+			timerSelect = -1
+		end
 		--draw clearcolor
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		--draw layerno = 0 backgrounds
@@ -2661,7 +2678,11 @@ function start.f_selectScreen()
 			end
 			--exit select screen
 			for _, v in ipairs(start.p[side].t_selCmd) do
-				if not start.escFlag and (esc() or (getInput(v.cmd, motif.select_info.cancel.key) and not start.p[side].inPalMenu)) then
+				local cancel = getInput(v.cmd, motif.select_info.cancel.key) and not start.p[side].inPalMenu
+				if gameMode('demo') then
+					cancel = getInput(-1, motif.demo_mode.cancel.key)
+				end
+				if not start.escFlag and (esc() or cancel) then
 					fadeOutInit(motif.select_info.fadeout.FadeData)
 					fadeOutStarted = true
 					start.escFlag = true
@@ -3322,6 +3343,57 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 	elseif not start.p[side].selEnd then
 		local pn = 2 * (member - 1) + side
 		local pCfg = f_getMotifP(motif.select_info, pn, side)
+		if gameMode('demo') then
+			if timerSelect ~= -1 and ((start.c[player].randCnt or 0) <= 0 or start.c[player].selRef == nil) then
+				local t = {}
+				for y = 1, motif.select_info.rows do
+					for x = 1, motif.select_info.columns do
+						local c = start.t_grid[y][x]
+						if c.char_ref ~= nil and c.hidden == 0 and c.skip ~= 1 and c.char ~= 'randomselect' then
+							table.insert(t, {x = x - 1, y = y - 1, ref = c.char_ref})
+						end
+					end
+				end
+				local c = t[math.random(1, #t)]
+				start.c[player].selX = c.x
+				start.c[player].selY = c.y
+				if side == 1 then
+					local snd = start.f_getCursorData(player).random.move.snd
+					if motif.select_info.random.move.snd.cancel then
+						sndStop(motif.Snd, snd[1], snd[2])
+					end
+					sndPlay(motif.Snd, snd[1], snd[2])
+				end
+				start.c[player].cell = c.x + motif.select_info.columns * c.y
+				start.c[player].selRef = c.ref
+				start.c[player].randCnt = motif.select_info.cell.random.switchtime
+				t_portraitPriority[side] = member
+				main.f_preloadSetCharHighlight(player, c.ref)
+				if start.p[side].t_selTemp[member] == nil then
+					table.insert(start.p[side].t_selTemp, {
+						ref = c.ref,
+						cell = start.c[player].cell,
+						inRandom = false,
+						face_anim = pCfg.face.anim,
+						face_data = start.f_animGet(c.ref, side, member, pCfg.face, nil, true),
+						face2_anim = pCfg.face2.anim,
+						face2_data = start.f_animGet(c.ref, side, member, pCfg.face2, nil, true),
+					})
+				else
+					start.p[side].t_selTemp[member].ref = c.ref
+					start.p[side].t_selTemp[member].cell = start.c[player].cell
+					start.p[side].t_selTemp[member].inRandom = false
+					start.p[side].t_selTemp[member].face_anim = pCfg.face.anim
+					start.p[side].t_selTemp[member].face2_anim = pCfg.face2.anim
+					start.p[side].t_selTemp[member].face_data = start.f_animGet(c.ref, side, member, pCfg.face, nil, true)
+					start.p[side].t_selTemp[member].face2_data = start.f_animGet(c.ref, side, member, pCfg.face2, nil, true)
+				end
+				return 0, false
+			elseif timerSelect ~= -1 then
+				start.c[player].randCnt = start.c[player].randCnt - 1
+				return 0, false
+			end
+		end
 		--cell not selected yet
 		if selectState == 0 then
 			--restore cursor coordinates
@@ -3433,7 +3505,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_selTemp[member].face2_data = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2, nil, true, face2_data)
 				end
 				-- cell selected or select screen timer reached 0
-				local canConfirm = (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired
+				local canConfirm = (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired or (gameMode('demo') and timerSelect == -1)
 				if canConfirm then
 					local preloadReady = true
 					if start.c[player].selRef ~= nil then
@@ -3453,14 +3525,15 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					end
 				end
 				if canConfirm then
-					if motif.select_info.paletteselect ~= 0 then
+					local skipPalMenu = gameMode('demo') or motif.select_info.paletteselect == 0
+					if motif.select_info.paletteselect ~= 0 and not gameMode('demo') then
 						timerSelect = motif.select_info.timer.displaytime
 					end
 					sndPlay(motif.Snd, start.f_getCursorData(player).cursor.done.default.snd[1], start.f_getCursorData(player).cursor.done.default.snd[2])
-					if motif.select_info.paletteselect == 0 then
+					if skipPalMenu then
 						start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
 					end
-					if motif.select_info.paletteselect > 0 then
+					if motif.select_info.paletteselect > 0 and not gameMode('demo') then
 						resetCursorData(player, cursorActive, 'done')
 					end
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
@@ -3487,7 +3560,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local canShow2 = main.coop or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					-- primary face "done" / preview
 					if (face_anim ~= done_anim or done_spr[1] ~= -1) and canShow then
-						if motif.select_info.paletteselect == 0 and (done_anim ~= -1 or done_spr[1] ~= -1) then
+						if skipPalMenu and (done_anim ~= -1 or done_spr[1] ~= -1) then
 							setDoneAnim(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, 'face_data')
 						elseif palmenu_preview_anim ~= -1 and motif.select_info.paletteselect ~= 0 then
 							start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].palmenu.preview.snd[1], motif.select_info['p' .. side].palmenu.preview.snd[2])
@@ -3536,7 +3609,11 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 							animUpdate(start.p[side].t_selTemp[member].face2_data)
 						end
 					end
-					selectState = 1
+					if gameMode('demo') then
+						selectState = 3
+					else
+						selectState = 1
+					end
 				end
 			end
 		--selection menu
@@ -3748,6 +3825,9 @@ end
 function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	start.t_orderRemap = {{}, {}}
 	start.bgLoadStarted = false
+	if gameMode('demo') then
+		t_orderSelect = {false, false}
+	end
 	for side = 1, 2 do
 		-- populate order remap table with default values
 		for i = 1, #start.p[side].t_selected do
@@ -3784,7 +3864,9 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	bgReset(motif.versusbgdef.BGDef)
 	fadeInInit(motif.vs_screen.fadein.FadeData)
 	local fadeOutStarted = false
-	playBgm({source = "motif.vs"})
+	if not gameMode('demo') then
+		playBgm({source = "motif.vs"})
+	end
 	start.f_resetTempData(motif.vs_screen, '')
 	start.f_playWave(getStageNo(), 'stage', motif.vs_screen.stage.snd[1], motif.vs_screen.stage.snd[2])
 	local counter = 0 - motif.vs_screen.fadein.time
@@ -3803,6 +3885,10 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	local readyToLeave = not bgLoading
 	local wantSkip = false
 	local wantDone = false
+	local screenTime = motif.vs_screen.time
+	if gameMode('demo') then
+		screenTime = motif.demo_mode.vsscreen.waittime
+	end
 
 	-- Background loading: start async loader immediately.
 	if bgLoading then
@@ -3970,7 +4056,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 					t_icon[side] = true
 				end
 			end
-			counter = motif.vs_screen.time - motif.vs_screen.done.time
+			counter = screenTime - motif.vs_screen.done.time
 			done = true
 			doneKeyReady = false
 		end
@@ -4072,6 +4158,17 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
 			doneKeyReady = true
 		end
+		-- demo cancel button exits attract/demo flow to main menu
+		if gameMode('demo') and not escFlag and not fadeOutStarted and (esc() or getInput(-1, motif.demo_mode.cancel.key)) then
+			esc(false)
+			if bgLoading and loadStarted then
+				loadCancel()
+				clearSelected()
+			end
+			fadeOutInit(motif.vs_screen.fadeout.FadeData)
+			fadeOutStarted = true
+			escFlag = true
+		end
 		--draw fadein / fadeout
 		for side = 1, 2 do
 			-- Latch skip/done while background loading is still in progress.
@@ -4084,7 +4181,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 				end
 			end
 			if not fadeOutStarted and (
-				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
+				(counter >= screenTime and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
 				or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
 				or (readyToLeave and (done and doneKeyReady and (getInput(side, motif.vs_screen.done.key) or wantDone)))) then
 				fadeOutInit(motif.vs_screen.fadeout.FadeData)
