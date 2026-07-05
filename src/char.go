@@ -11551,18 +11551,19 @@ func (c *Char) actionPrepare() {
 	if c.minus != 3 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+
 	c.pauseBool = false
-	if c.cmd != nil {
-		if sys.supertime > 0 {
-			c.pauseBool = c.superMovetime == 0
-		} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
-			c.pauseBool = true
-		}
+	if sys.supertime > 0 {
+		c.pauseBool = c.superMovetime == 0
+	} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
+		c.pauseBool = true
 	}
-	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	// Due to the nature of how pauses are processed, these are needed to fix an "off by 1" error in the PauseTime trigger
 	c.prevSuperMovetime = c.superMovetime
 	c.prevPauseMovetime = c.pauseMovetime
+
+	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
+
 	if !c.pauseBool {
 		// Perform basic actions
 		if c.keyctrl[0] && c.cmd != nil && (c.helperIndex == 0 || c.controller >= 0) {
@@ -11668,6 +11669,11 @@ func (c *Char) actionPrepare() {
 		// This AssertSpecial flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
 
+		// This variable is necessary because NoStandGuard is reset before the walking instructions are checked
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1966
+		// Update: No longer strictly necessary but we'll leave it in for now
+		c.prevNoStandGuard = c.asf(ASF_nostandguard)
+
 		// The flags in this block are to be reset even during hitpause
 		// Exception for WinMugen chars, where they persisted during hitpause
 		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 || !c.hitPause() {
@@ -11677,8 +11683,10 @@ func (c *Char) actionPrepare() {
 			c.alpha = [2]int32{255, 0}
 			c.offset = [2]float32{}
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
-			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
-				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
+			// TODO: Maybe these don't need special treatment anymore either
+			// All this does right now is make IsAsserted more accurate, but that's already inaccurate in other places
+			keptflags := ASF_runfirst | ASF_runlast
+			c.assertFlag &= keptflags
 		}
 
 		// The flags below also reset during hitpause, but are new to Ikemen and don't need the exception above
@@ -11777,6 +11785,7 @@ func (c *Char) actionRun() {
 		c.minus = 0
 		c.ss.sb.run(c)
 	}
+
 	// Guarding instructions
 	c.unsetSCF(SCF_guard)
 	if ((c.scf(SCF_ctrl) || c.ss.no == 52) &&
@@ -11787,6 +11796,7 @@ func (c *Char) actionRun() {
 			c.ss.stateType == ST_A && !c.asf(ASF_noairguard)) {
 		c.setSCF(SCF_guard)
 	}
+
 	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ctrl() && (c.controller >= 0 || c.helperIndex == 0) {
@@ -12005,6 +12015,7 @@ func (c *Char) actionFinish() {
 	if c.minus < 1 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+
 	if !c.pauseBool {
 		if c.palfx != nil && c.ownpal {
 			c.palfx.step()
@@ -12013,18 +12024,18 @@ func (c *Char) actionFinish() {
 		c.ghv.frame = false
 		c.mhv.frame = false
 	}
+
 	// Reset inguarddist flag before running hit detection (where it will be updated)
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/2328
 	c.inguarddist = false
-	// This variable is necessary because NoStandGuard is reset before the walking instructions are checked
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/1966
-	c.prevNoStandGuard = c.asf(ASF_nostandguard)
-	c.unsetASF(ASF_nostandguard | ASF_nocrouchguard | ASF_noairguard)
+
 	// Save current HitFall value before hit detection
 	c.prevfallflag = c.ghv.fallflag
+
 	// Update Z scale
 	// Must be placed after posUpdate()
 	c.zScale = sys.updateZScale(c.pos[2], c.localscl)
+
 	// KO behavior
 	if !c.hitPause() && !c.pauseBool {
 		if c.alive() && c.life <= 0 && !sys.gsf(GSF_globalnoko) && !c.asf(ASF_noko) && (!c.ghv.guarded || !c.asf(ASF_noguardko)) {
@@ -12050,6 +12061,7 @@ func (c *Char) actionFinish() {
 			}
 		}
 	}
+
 	// Over flags (char is finished for the round)
 	if c.alive() && c.life > 0 && !sys.roundEnded() {
 		c.unsetSCF(SCF_over_alive | SCF_over_ko)
@@ -12057,6 +12069,7 @@ func (c *Char) actionFinish() {
 	if c.ss.no == 5150 && !c.scf(SCF_over_ko) { // Actual KO is not required in Mugen
 		c.setSCF(SCF_over_ko)
 	}
+
 	// Signal that "actionFinish" has finished
 	c.minus = 2
 }
