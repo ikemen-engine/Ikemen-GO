@@ -3004,9 +3004,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_matchover:
 		sys.bcStack.PushB(sys.matchOver())
 	case OC_ex_matchno:
-		sys.bcStack.PushI(sys.match)
+		sys.bcStack.PushI(sys.matchNo)
 	case OC_ex_roundno:
-		sys.bcStack.PushI(sys.round)
+		sys.bcStack.PushI(sys.roundNo)
 	case OC_ex_roundsexisted:
 		sys.bcStack.PushI(c.roundsExisted())
 	case OC_ex_ishometeam:

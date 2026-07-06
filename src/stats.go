@@ -151,7 +151,7 @@ func (s *StatsLog) finalizeMatch() {
 
 	// Copy outcome/tallies directly from engine state.
 	m.WinSide = sys.winTeam
-	// Last round played should be derived from what we recorded, not from sys.round math.
+	// Last round played should be derived from what we recorded, not from sys.roundNo math.
 	if len(m.Rounds) > 0 {
 		m.LastRound = m.Rounds[len(m.Rounds)-1].Index
 	} else {
@@ -242,7 +242,7 @@ func (s *StatsLog) nextRound() {
 
 	// Record the round into the current stats match.
 	// We fill timers later in finalizeMatch.
-	roundIdx := sys.round
+	roundIdx := sys.roundNo
 	roundScore := [2]int32{int32(sys.scorePoints[0]), int32(sys.scorePoints[1])}
 	s.addRound(roundIdx, 0, roundScore, fighters)
 }

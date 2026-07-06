@@ -3494,7 +3494,7 @@ func (ro *FightScreenRound) handleRoundIntro() {
 
 	// Round call
 	if ro.roundDisplayPhase < 2 {
-		roundNum := sys.round
+		roundNum := sys.roundNo
 		if sys.sel.gameParams.PersistRounds {
 			roundNum = sys.persistRoundCount
 		}
@@ -3632,11 +3632,11 @@ func (ro *FightScreenRound) handleRoundIntro() {
 // Consists of KO screen and winner messages
 func (ro *FightScreenRound) handleRoundOutro() {
 	if ro.timerActive {
-		if sys.matchTime-sys.timerCount[sys.round-1] > 0 {
-			sys.timerCount[sys.round-1] = sys.matchTime - sys.timerCount[sys.round-1]
+		if sys.matchTime-sys.timerCount[sys.roundNo-1] > 0 {
+			sys.timerCount[sys.roundNo-1] = sys.matchTime - sys.timerCount[sys.roundNo-1]
 			sys.timerRounds = append(sys.timerRounds, sys.timeElapsed())
 		} else {
-			sys.timerCount[sys.round-1] = 0
+			sys.timerCount[sys.roundNo-1] = 0
 		}
 		ro.timerActive = false
 	}
@@ -3874,7 +3874,7 @@ func (ro *FightScreenRound) draw(layerno int16, f map[int]*Fnt) {
 
 		// Check round number
 		var round_ref AnimTextSnd
-		roundNum := sys.round
+		roundNum := sys.roundNo
 		if sys.sel.gameParams.PersistRounds {
 			roundNum = sys.persistRoundCount
 		}
@@ -4390,7 +4390,7 @@ func (ma *FightScreenMatch) bgDraw(layerno int16) {
 func (ma *FightScreenMatch) draw(layerno int16, f map[int]*Fnt) {
 	if ma.active && ma.text.font[0] >= 0 && getFont(f, ma.text.font[0]) != nil {
 		text := ma.text.text
-		text = strings.Replace(text, "%s", fmt.Sprintf("%v", sys.match), 1)
+		text = strings.Replace(text, "%s", fmt.Sprintf("%v", sys.matchNo), 1)
 		ma.text.lay.DrawText(float32(ma.pos[0])+sys.fightScreen.offsetX, float32(ma.pos[1]), sys.fightScreen.scale, layerno,
 			text, getFont(f, ma.text.font[0]), ma.text.font[1], ma.text.font[2], ma.text.palfx, ma.text.frgba)
 		ma.top.Draw(float32(ma.pos[0])+sys.fightScreen.offsetX, float32(ma.pos[1]), layerno, sys.fightScreen.scale)

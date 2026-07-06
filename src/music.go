@@ -450,8 +450,8 @@ func (m Music) act() {
 		return
 	}
 	//fmt.Printf("[music] act: tickCount=%d round=%d match=%d bgmState=%d\n", sys.tickCount, sys.round, sys.match, sys.stage.bgmState)
-	if sys.tickCount == 0 && sys.round == 1 && !sys.roundResetMatchStart &&
-		(sys.match == 1 || !sys.sel.gameParams.PersistMusic || sys.stage.bgmState != BGMStateRound) {
+	if sys.tickCount == 0 && sys.roundNo == 1 && !sys.roundResetMatchStart &&
+		(sys.matchNo == 1 || !sys.sel.gameParams.PersistMusic || sys.stage.bgmState != BGMStateRound) {
 		sys.bgm.Stop()
 		sys.stage.bgmState = BGMStateIdle
 	}
@@ -472,8 +472,8 @@ func (m Music) act() {
 				sys.tickCount == 0 {
 				switch {
 				case sys.roundIsFinal() && cmusic.tryPlay("final", sys.stage.def):
-				case sys.sel.gameParams.PersistMusic && cmusic.tryPlay(fmt.Sprintf("round%d", sys.match), sys.stage.def):
-				case cmusic.tryPlay(fmt.Sprintf("round%d", sys.round), sys.stage.def):
+				case sys.sel.gameParams.PersistMusic && cmusic.tryPlay(fmt.Sprintf("round%d", sys.matchNo), sys.stage.def):
+				case cmusic.tryPlay(fmt.Sprintf("round%d", sys.roundNo), sys.stage.def):
 				case cmusic.tryPlay("", sys.stage.def):
 				}
 				sys.stage.bgmState = BGMStateRound

@@ -3178,7 +3178,7 @@ func (m *Motif) act() {
 
 		// Dialogue
 		// Normal start: right before "Fight" in round 1, or at match end.
-		introStart := sys.round == 1 && sys.intro == sys.fightScreen.round.ctrl_time
+		introStart := sys.roundNo == 1 && sys.intro == sys.fightScreen.round.ctrl_time
 		matchEndStart := sys.shouldStartMatchEndDialogue()
 		normalStart := introStart || matchEndStart
 		// Forced start: ignore normal timing.
@@ -6683,7 +6683,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 			tal := tallyRun()
 			rs.WinsText.TextSpriteData.text = m.sprintf(rs.WinsText.Text, tal.winP1, tal.loseP1)
 		}
-		if wouldPlace && rs.RoundsToWin > 0 && sys.match >= rs.RoundsToWin {
+		if wouldPlace && rs.RoundsToWin > 0 && sys.matchNo >= rs.RoundsToWin {
 			wi.assignStates(
 				[4][]int32{rs.P1.Win.State, rs.P3.Win.State, rs.P5.Win.State, rs.P7.Win.State},
 				[4][]int32{rs.P2.Win.State, rs.P4.Win.State, rs.P6.Win.State, rs.P8.Win.State},
