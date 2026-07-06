@@ -9849,7 +9849,7 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 		c.bindToId = to.id
 	}
 	// Target binds are all we need to correct with this logic.
-	// By the time this gets to the bind() method, it's going to
+	// By the time this gets to the updateBinding() method, it's going to
 	// default to setting the facing to the same as the "bindTo"
 	// facing at that point. So as weird as it may be to default
 	// to 0 here, this behavior does seem to be what MUGEN
@@ -9862,7 +9862,7 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 	}
 }
 
-func (c *Char) bind() {
+func (c *Char) updateBinding() {
 	if c.bindTime == 0 {
 		if bt := sys.playerID(c.bindToId); bt != nil {
 			if bt.hasTarget(c.id) {
@@ -9881,52 +9881,74 @@ func (c *Char) bind() {
 		}
 		return
 	}
-	if bt := sys.playerID(c.bindToId); bt != nil {
-		if bt.hasTarget(c.id) {
-			if !math.IsNaN(float64(c.bindPos[0])) {
-				c.vel[0] = c.facing * bt.facing * bt.vel[0]
-			}
-			if !math.IsNaN(float64(c.bindPos[1])) {
-				c.vel[1] = bt.vel[1]
-			}
-			if !math.IsNaN(float64(c.bindPos[2])) {
-				c.vel[2] = bt.vel[2]
-			}
-		}
-		if !math.IsNaN(float64(c.bindPos[0])) {
-			f := bt.facing
-			// We only need to correct for target binds (and snaps)
-			if Abs(c.bindFacing) == 2 {
-				f = c.bindFacing / 2
-			}
-			c.setPosX(bt.pos[0]*bt.localscl/c.localscl+f*(c.bindPos[0]+c.bindPosAdd[0]), true)
-			c.interPos[0] += bt.interPos[0] - bt.pos[0]
-			c.oldPos[0] += bt.oldPos[0] - bt.pos[0]
-			c.pushed = c.pushed || bt.pushed
-			c.ghv.xoff = 0
-		}
-		if !math.IsNaN(float64(c.bindPos[1])) {
-			c.setPosY(bt.pos[1]*bt.localscl/c.localscl+(c.bindPos[1]+c.bindPosAdd[1]), true)
-			c.interPos[1] += bt.interPos[1] - bt.pos[1]
-			c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
-			c.ghv.yoff = 0
-		}
-		if !math.IsNaN(float64(c.bindPos[2])) {
-			c.setPosZ(bt.pos[2]*bt.localscl/c.localscl+(c.bindPos[2]+c.bindPosAdd[2]), true)
-			c.interPos[2] += bt.interPos[2] - bt.pos[2]
-			c.oldPos[2] += bt.oldPos[2] - bt.pos[2]
-			c.ghv.zoff = 0
-		}
-		if Abs(c.bindFacing) == 1 {
-			if c.bindFacing > 0 {
-				c.setFacing(bt.facing)
-			} else {
-				c.setFacing(-bt.facing)
-			}
-		}
-	} else {
+
+	bt := sys.playerID(c.bindToId)
+	if bt == nil {
 		c.setBindTime(0)
 		return
+	}
+
+	// Set velocity only if this is a target bind
+	if bt.hasTarget(c.id) {
+		if !math.IsNaN(float64(c.bindPos[0])) {
+			c.vel[0] = c.facing * bt.facing * bt.vel[0]
+		}
+		if !math.IsNaN(float64(c.bindPos[1])) {
+			c.vel[1] = bt.vel[1]
+		}
+		if !math.IsNaN(float64(c.bindPos[2])) {
+			c.vel[2] = bt.vel[2]
+		}
+	}
+
+	// Do the actual binding
+	c.bindToPlayer(bt)
+}
+
+// Does the actual position binding. Extracted so it can run twice in the same frame if necessary
+func (c *Char) bindToPlayer(bt *Char) {
+	// X
+	if !math.IsNaN(float64(c.bindPos[0])) {
+		f := bt.facing
+		// We only need to correct for target binds (and snaps)
+		if Abs(c.bindFacing) == 2 {
+			f = c.bindFacing / 2
+		}
+		newX := bt.pos[0]*bt.localscl/c.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])
+		c.setPosX(newX, true)
+		c.interPos[0] += bt.interPos[0] - bt.pos[0]
+		c.oldPos[0] += bt.oldPos[0] - bt.pos[0]
+		c.pushed = c.pushed || bt.pushed
+		c.ghv.xoff = 0
+	}
+
+	// Y
+	if !math.IsNaN(float64(c.bindPos[1])) {
+		newY := bt.pos[1]*bt.localscl/c.localscl + (c.bindPos[1] + c.bindPosAdd[1])
+		c.setPosY(newY, true)
+		c.interPos[1] += bt.interPos[1] - bt.pos[1]
+		c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
+		//c.pushed = c.pushed || bt.pushed // No pushing happens on y-axis
+		c.ghv.yoff = 0
+	}
+
+	// Z
+	if !math.IsNaN(float64(c.bindPos[2])) {
+		newZ := bt.pos[2]*bt.localscl/c.localscl + (c.bindPos[2] + c.bindPosAdd[2])
+		c.setPosZ(newZ, true)
+		c.interPos[2] += bt.interPos[2] - bt.pos[2]
+		c.oldPos[2] += bt.oldPos[2] - bt.pos[2]
+		c.pushed = c.pushed || bt.pushed
+		c.ghv.zoff = 0
+	}
+
+	// Facing
+	if Abs(c.bindFacing) == 1 {
+		if c.bindFacing > 0 {
+			c.setFacing(bt.facing)
+		} else {
+			c.setFacing(-bt.facing)
+		}
 	}
 }
 
@@ -12061,7 +12083,7 @@ func (c *Char) actionRun() {
 	if !c.pauseBool {
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
-				t.bind()
+				t.updateBinding()
 			}
 		}
 	}
@@ -12202,7 +12224,7 @@ func (c *Char) update() {
 			}
 		*/
 		if !c.pause() && !c.isTargetBound() {
-			c.bind()
+			c.updateBinding()
 		}
 		if c.acttmp > 0 {
 			if c.inGuardState() {
@@ -12338,6 +12360,7 @@ func (c *Char) tick() {
 	if c.scf(SCF_disabled) {
 		return
 	}
+
 	// Step animation
 	if c.acttmp > 0 || !c.pauseBool && (!c.hitPause() || c.asf(ASF_animatehitpause)) {
 		// Update reference frame first
@@ -12352,6 +12375,8 @@ func (c *Char) tick() {
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/1550
 		c.animBackup = c.anim
 	}
+
+	// Step bindTime
 	if c.bindTime > 0 {
 		if c.isTargetBound() {
 			bt := sys.playerID(c.bindToId)
@@ -12378,6 +12403,7 @@ func (c *Char) tick() {
 			}
 		}
 	}
+
 	if c.cmd == nil {
 		if c.keyctrl[0] {
 			c.cmd = make([]CommandList, len(sys.chars))
@@ -13998,6 +14024,20 @@ func (cl *CharList) pushDetection(getter *Char) {
 	}
 }
 
+// Re-applies binding positions to players whose binding targets were pushed
+// Mugen did not do this, making helper binding more frustrating than it needed to be
+func (cl *CharList) rebindIfPushed() {
+	for _, c := range cl.runOrder {
+		if c.bindTime != 0 && c.bindToId >= 0 {
+			bt := sys.playerID(c.bindToId)
+			// If both were pushed we do nothing
+			if bt != nil && bt.pushed && !c.pushed {
+				c.bindToPlayer(bt)
+			}
+		}
+	}
+}
+
 func (cl *CharList) collisionDetection() {
 	// Temp slice for sorting
 	sortedOrder := make([]int, len(cl.runOrder))
@@ -14041,6 +14081,9 @@ func (cl *CharList) collisionDetection() {
 	for _, idx := range sortedOrder {
 		cl.pushDetection(cl.runOrder[idx])
 	}
+
+	// Rebind players if necessary
+	cl.rebindIfPushed()
 
 	// Player hit detection
 	for _, idx := range sortedOrder {
