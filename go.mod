@@ -1,6 +1,6 @@
 module github.com/ikemen-engine/Ikemen-GO
 
-go 1.20
+go 1.25.0
 
 replace github.com/gopxl/beep/v2 => github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 
@@ -21,7 +21,7 @@ require (
 	github.com/veandco/go-sdl2 v0.5.0-alpha.7.0.20250220045537-7f43f67a3a12
 	github.com/yuin/gopher-lua v1.1.0
 	golang.org/x/mobile v0.0.0-20221110043201-43a038452099
-	golang.org/x/text v0.20.0
+	golang.org/x/text v0.37.0
 	gopkg.in/ini.v1 v1.67.0
 )
 
@@ -44,6 +44,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16 // indirect
 	golang.org/x/exp v0.0.0-20220609121020-a51bd0440498
-	golang.org/x/image v0.22.0
+	golang.org/x/image v0.41.0
 	golang.org/x/sys v0.18.0
 )
