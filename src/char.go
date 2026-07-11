@@ -8331,14 +8331,18 @@ func (c *Char) targetBind(tar []int32, time int32, x, y, z float32) {
 func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 	if len(tar) > 0 {
 		if t := sys.playerID(tar[0]); t != nil {
+			// Add head/mid/foot offset
 			switch hmf {
-			case HMF_M:
-				x += t.size.mid.pos[0] * ((320 / t.localcoord) / c.localscl)
-				y += t.size.mid.pos[1] * ((320 / t.localcoord) / c.localscl)
 			case HMF_H:
 				x += t.size.head.pos[0] * ((320 / t.localcoord) / c.localscl)
 				y += t.size.head.pos[1] * ((320 / t.localcoord) / c.localscl)
+			case HMF_M:
+				x += t.size.mid.pos[0] * ((320 / t.localcoord) / c.localscl)
+				y += t.size.mid.pos[1] * ((320 / t.localcoord) / c.localscl)
+			case HMF_F:
+				// Do nothing. Feet are 0,0
 			}
+
 			if !math.IsNaN(float64(x)) {
 				c.setPosX(t.pos[0]*(t.localscl/c.localscl)+x*t.facing, true)
 			}
@@ -8348,6 +8352,8 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 			if !math.IsNaN(float64(z)) {
 				c.setPosZ(t.pos[2]*(t.localscl/c.localscl)+z, true)
 			}
+
+			// Binding to a target in reality also binds that target
 			c.targetBind(tar[:1], time,
 				c.facing*c.distX(t, c),
 				(t.pos[1]*(t.localscl/c.localscl))-(c.pos[1]*(c.localscl/t.localscl)),
@@ -9845,9 +9851,8 @@ func (c *Char) setBindTime(time int32) {
 }
 
 func (c *Char) setBindToId(to *Char, isTargetBind bool) {
-	if c.bindToId != to.id {
-		c.bindToId = to.id
-	}
+	c.bindToId = to.id
+
 	// Target binds are all we need to correct with this logic.
 	// By the time this gets to the updateBinding() method, it's going to
 	// default to setting the facing to the same as the "bindTo"
@@ -9857,6 +9862,7 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 	if c.bindFacing == 0 && isTargetBind {
 		c.bindFacing = to.facing * 2
 	}
+
 	if to.bindToId == c.id {
 		to.setBindTime(0)
 	}
@@ -12080,13 +12086,20 @@ func (c *Char) actionRun() {
 	}
 	c.xScreenBound()
 	c.zDepthBound()
+
+	// Update binding others and binding to others
+	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
 	if !c.pauseBool {
+		if !c.isTargetBound() {
+			c.updateBinding()
+		}
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
 				t.updateBinding()
 			}
 		}
 	}
+
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) - int8(Btoi(c.hitPause()))
 	// Signal that "actionRun" has finished
 	c.minus = 1
@@ -12223,9 +12236,6 @@ func (c *Char) update() {
 				return
 			}
 		*/
-		if !c.pause() && !c.isTargetBound() {
-			c.updateBinding()
-		}
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
