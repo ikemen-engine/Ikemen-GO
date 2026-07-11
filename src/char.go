@@ -13686,30 +13686,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 		gybot := (getter.pos[1] + gbox[3]) * getter.localscl
 
 		overlapY := Min(cybot, gybot) - Max(cytop, gytop)
-		if overlapY <= 0 {
-			continue
-		}
 
-		// Clamp width
-		// Mugen secretly does this for some reason
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/3164
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-			minwidth := 5.0 / c.localscl
-			if cbox[0] > -minwidth {
-				cbox[0] = -minwidth
-			}
-			if cbox[2] < minwidth {
-				cbox[2] = minwidth
-			}
-		}
-		if getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 {
-			minwidth := 5.0 / getter.localscl
-			if gbox[0] > -minwidth {
-				gbox[0] = -minwidth
-			}
-			if gbox[2] < minwidth {
-				gbox[2] = minwidth
-			}
+		// For the y-axis, an overlap of exactly 0 is also valid for pushing characters away from each other, hence '<'
+		// We don't need a "zero-height case" because the y-overlap is only used as a filter, not to calculate the push distance
+		if overlapY < 0 {
+			continue
 		}
 
 		// X-axis check
@@ -13733,25 +13714,84 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 		overlapX := Min(gxright, cxright) - Max(gxleft, cxleft)
 
-		// X-axis fail
+		// Zero width case
+		// These can also push in Mugen
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3164
+		if overlapX == 0 && (cxleft == cxright || gxleft == gxright) {
+			cHalfW := (cxright - cxleft) * 0.5
+			gHalfW := (gxright - gxleft) * 0.5
+			cCenterX := (cxright + cxleft) * 0.5
+			gCenterX := (gxright + gxleft) * 0.5
+
+			overlapX = (cHalfW + gHalfW) - Abs(cCenterX - gCenterX)
+		}
+
+		/*
+		// In addition to the normal width check, Mugen also checks overlap between an undocumented "internal width" of 5 pixels
+		// The normal and fallback width checks are not mixed with each other
+		// Update: The addition of the zero width case makes this seemingly unnecessary
 		if overlapX <= 0 {
+			// We will only do it for Mugen characters because it defeats the purpose of lowering width
+			cIsOld := c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
+			gIsOld := getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0
+			if cIsOld || gIsOld {
+				if cIsOld {
+					minwidth := 5.0 / c.localscl
+					cxleft = cposx - minwidth
+					cxright = cposx + minwidth
+				}
+				if gIsOld {
+					minwidth := 5.0 / getter.localscl
+					gxleft = gposx - minwidth
+					gxright = gposx + minwidth
+				}
+				overlapX = Min(gxright, cxright) - Max(gxleft, cxleft)
+			}
+		}
+		*/
+
+		// X-axis fail
+		// An overlap of exactly 0 is still valid because pushing may happen along the z-axis
+		if overlapX < 0 {
 			continue
 		}
 
 		// Z-axis check
 		// We don't use the zAxisCheck function because we need the actual overlap amount
-		cposz := c.pos[2] * c.localscl
-		cztop := cposz - c.sizeDepth[0]*c.localscl
-		czbot := cposz + c.sizeDepth[1]*c.localscl
+		// We'll also declare all the vars upfront but only use them if z-axis is enabled
+		var overlapZ float32
+		var cposz, cztop, czbot, gposz, gztop, gzbot float32
 
-		gposz := getter.pos[2] * getter.localscl
-		gztop := gposz - getter.sizeDepth[0]*getter.localscl
-		gzbot := gposz + getter.sizeDepth[1]*getter.localscl
+		if sys.zEnabled() {
+			cposz = c.pos[2] * c.localscl
+			cztop = cposz - c.sizeDepth[0]*c.localscl
+			czbot = cposz + c.sizeDepth[1]*c.localscl
 
-		overlapZ := Min(gzbot, czbot) - Max(gztop, cztop)
+			gposz = getter.pos[2] * getter.localscl
+			gztop = gposz - getter.sizeDepth[0]*getter.localscl
+			gzbot = gposz + getter.sizeDepth[1]*getter.localscl
+
+			overlapZ = Min(gzbot, czbot) - Max(gztop, cztop)
+
+			// Zero depth case
+			if overlapZ == 0 && (cztop == czbot || gztop == gzbot) {
+				cHalfD := (czbot - cztop) * 0.5
+				gHalfD := (gzbot - gztop) * 0.5
+				cCenterZ := (czbot + cztop) * 0.5
+				gCenterZ := (gzbot + gztop) * 0.5
+
+				overlapZ = (cHalfD + gHalfD) - Abs(cCenterZ-gCenterZ)
+			}
+		}
 
 		// Z-axis fail
-		if overlapZ <= 0 {
+		// An overlap of exactly 0 is still valid because pushing may happen along the x-axis
+		if overlapZ < 0 {
+			continue
+		}
+
+		// If players are barely touching but the pushing distance will be 0, just skip the no-op math
+		if overlapX == 0 && overlapZ == 0 {
 			continue
 		}
 
