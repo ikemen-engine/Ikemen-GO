@@ -3459,6 +3459,9 @@ type Char struct {
 	customShader         CustomShader
 	pctype               ProjContact
 	pctime, pcid         int32
+	sizeBoxBuffer        [][4]float32 // Pre-allocated slices for collision checks
+	clsn1Buffer          [][4]float32
+	clsn2Buffer          [][4]float32
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -10211,34 +10214,55 @@ func (c *Char) getAnySizeBox() *[4]float32 {
 
 // Combine current Clsn with existing modifiers
 func (c *Char) getClsn(group int32) [][4]float32 {
-	// By default, use the final displayed frame's boxes
-	charframe := c.curFrame
+	var charframe *AnimFrame
 
-	// While states are still running, use the frame that *will* be displayed instead, because of Clsn triggers
-	if c.minus < 2 && c.anim != nil {
-		charframe = c.anim.CurrentFrame()
+	// Get current animation frame if necessary
+	if group != 3 {
+		// By default, use the final displayed frame's boxes
+		charframe = c.curFrame
+
+		// While states are still running, use the frame that *will* be displayed instead, because of Clsn triggers
+		if c.minus < 2 && c.anim != nil {
+			charframe = c.anim.CurrentFrame()
+		}
 	}
 
-	var original [][4]float32
+	var final *[][4]float32
 
-	// Get current Clsn
+	// Select the reusable buffer
+	switch group {
+	case 1:
+		final = &c.clsn1Buffer
+	case 2:
+		final = &c.clsn2Buffer
+	case 3:
+		final = &c.sizeBoxBuffer
+	default:
+		return nil
+	}
+
+	// Reset the slice while keeping its capacity
+	*final = (*final)[:0]
+
+	// Copy current Clsn into the buffer
 	// Modifiers will still work even if no original boxes are found
 	switch group {
 	case 1:
 		if charframe != nil {
-			original = charframe.Clsn1
+			*final = append(*final, charframe.Clsn1...)
 		}
 	case 2:
 		if charframe != nil {
-			original = charframe.Clsn2
+			*final = append(*final, charframe.Clsn2...)
 		}
 	case 3:
-		original = [][4]float32{c.sizeToBox()}
+		*final = append(*final, c.sizeToBox())
 	}
 
+	// These allocations created a hot spot in the profile, so now we use the buffers from earlier instead
 	// Just in case, copy the slice so the original is never mutated
-	final := make([][4]float32, len(original))
-	copy(final, original)
+	//final := make([][4]float32, len(original))
+	//copy(final, original)
 
 	// Apply appropriate modifiers
 	for _, mod := range c.clsnOverrides {
@@ -10249,28 +10273,28 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 		// Helper to apply modifiers
 		// This will make it easier to add new parameters later if needed
 		modify := func(i int) {
-			final[i] = mod.rect
+			(*final)[i] = mod.rect
 		}
 
 		switch {
 		// Delete box if modifier is all 0's
 		case mod.rect == [4]float32{}:
 			if mod.index == -1 {
-				final = final[:0]
-			} else if mod.index >= 0 && mod.index < len(final) {
-				final = SliceDelete(final, mod.index)
+				*final = (*final)[:0]
+			} else if mod.index >= 0 && mod.index < len(*final) {
+				*final = SliceDelete(*final, mod.index)
 			}
 
 		// Modify all existing boxes
 		case mod.index == -1:
-			for i := range final {
+			for i := range *final {
 				modify(i)
 			}
 
 		// Add new box if modifying out of bounds
-		case mod.index >= len(final):
-			final = append(final, [4]float32{}) // append empty slot
-			modify(len(final) - 1)              // apply modifier
+		case mod.index >= len(*final):
+			*final = append(*final, [4]float32{}) // Append empty slot
+			modify(len(*final) - 1)               // Apply modifier
 
 		// Modify the specific valid index
 		default:
@@ -10289,7 +10313,7 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 	//	return final[:1]
 	//}
 
-	return final
+	return *final
 }
 
 func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {

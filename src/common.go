@@ -266,9 +266,9 @@ func Itoa(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func RectRotate(rect [4]float32, pivot [2]float32, angle float32) [][2]float32 {
+func RectRotate(rect [4]float32, pivot [2]float32, angle float32) [4][2]float32 {
 	x1, y1, x2, y2 := rect[0], rect[1], rect[2], rect[3]
-	corners := [][2]float32{
+	corners := [4][2]float32{
 		{x1, y1},
 		{x2, y1},
 		{x2, y2},
@@ -278,7 +278,7 @@ func RectRotate(rect [4]float32, pivot [2]float32, angle float32) [][2]float32 {
 	rad := angle * math.Pi / 180.0
 	s, c := Sin(rad), Cos(rad)
 
-	rotated := make([][2]float32, 4)
+	var rotated [4][2]float32
 	for i, p := range corners {
 		tx := p[0] - pivot[0]
 		ty := p[1] - pivot[1]
@@ -339,35 +339,34 @@ func RectIntersectSAT(rect1, rect2 [4]float32, pivot1, pivot2 [2]float32, angle1
 	r1 := RectRotate(rect1, pivot1, angle1)
 	r2 := RectRotate(rect2, pivot2, angle2)
 
-	// SAT overlap check
-	minOverlap := float32(math.MaxFloat32)
-
-	projectionRange := func(rect [][2]float32, nx, ny float32) (min, max float32) {
+	// SAT projection helper
+	projectionRange := func(rect [4][2]float32, nx, ny float32) (min, max float32) {
 		min = math.MaxFloat32
 		max = -math.MaxFloat32
 		for _, p := range rect {
 			proj := nx*p[0] + ny*p[1]
-			if proj < min { min = proj }
-			if proj > max { max = proj }
+			if proj < min {
+				min = proj
+			}
+			if proj > max {
+				max = proj
+			}
 		}
 		return
 	}
 
+	// Check a single axis
 	checkAxis := func(nx, ny float32) bool {
 		minA, maxA := projectionRange(r1, nx, ny)
 		minB, maxB := projectionRange(r2, nx, ny)
 		if maxA < minB || maxB < minA {
 			return false
 		}
-		overlap := Min(maxA, maxB) - Max(minA, minB)
-		if overlap < minOverlap {
-			minOverlap = overlap
-		}
 		return true
 	}
 
 	// Check axes of rect1
-	for i := 0; i < 4; i++ {
+	for i := range r1 {
 		p1 := r1[i]
 		p2 := r1[(i+1)%4]
 		if !checkAxis(p2[1]-p1[1], p1[0]-p2[0]) {
@@ -376,7 +375,7 @@ func RectIntersectSAT(rect1, rect2 [4]float32, pivot1, pivot2 [2]float32, angle1
 	}
 
 	// Check axes of rect2
-	for i := 0; i < 4; i++ {
+	for i := range r2 {
 		p1 := r2[i]
 		p2 := r2[(i+1)%4]
 		if !checkAxis(p2[1]-p1[1], p1[0]-p2[0]) {
@@ -386,10 +385,10 @@ func RectIntersectSAT(rect1, rect2 [4]float32, pivot1, pivot2 [2]float32, angle1
 
 	// If we get here, the rectangles do overlap
 	// Compute AABB of the rotated rectangles
-	getBounds := func(points [][2]float32) (minX, maxX, minY, maxY float32) {
+	getBounds := func(rect [4][2]float32) (minX, maxX, minY, maxY float32) {
 		minX, maxX = math.MaxFloat32, -math.MaxFloat32
 		minY, maxY = math.MaxFloat32, -math.MaxFloat32
-		for _, p := range points {
+		for _, p := range rect {
 			if p[0] < minX {
 				minX = p[0]
 			}
