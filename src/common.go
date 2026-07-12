@@ -266,68 +266,154 @@ func Itoa(n int) string {
 	return fmt.Sprintf("%d", n)
 }
 
-func RectRotate(x, y, w, h, cx, cy, angle float32) [][2]float32 {
-	rp := make([][2]float32, 4)
+func RectRotate(rect [4]float32, pivot [2]float32, angle float32) [][2]float32 {
+	x1, y1, x2, y2 := rect[0], rect[1], rect[2], rect[3]
 	corners := [][2]float32{
-		{x, y},
-		{x + w, y},
-		{x + w, y + h},
-		{x, y + h},
+		{x1, y1},
+		{x2, y1},
+		{x2, y2},
+		{x1, y2},
 	}
-	for i := 0; i < 4; i++ {
-		p := corners[i]
-		tx := p[0] - cx
-		ty := p[1] - cy
-		newX := Cos(angle)*tx - Sin(angle)*ty + cx
-		newY := Sin(angle)*tx + Cos(angle)*ty + cy
-		rp[i] = [2]float32{newX, newY}
+
+	rad := angle * math.Pi / 180.0
+	s, c := Sin(rad), Cos(rad)
+
+	rotated := make([][2]float32, 4)
+	for i, p := range corners {
+		tx := p[0] - pivot[0]
+		ty := p[1] - pivot[1]
+		rotated[i] = [2]float32{
+			c*tx - s*ty + pivot[0],
+			s*tx + c*ty + pivot[1],
+		}
 	}
-	return rp
+	return rotated
 }
 
-// Check if two rotated rectangles intersect.
-func RectIntersect(x1, y1, w1, h1, x2, y2, w2, h2, cx1, cy1, cx2, cy2, angle1, angle2 float32) bool {
-	rect1 := RectRotate(x1, y1, w1, h1, cx1, cy1, angle1)
-	rect2 := RectRotate(x2, y2, w2, h2, cx2, cy2, angle2)
-	projectionRange := func(rect [][2]float32, normal [2]float32) (min float32, max float32) {
+// Checks two rectangles (like Clsn) for intersection
+// TODO: Return overlap in world coordinates ([4]float32) so it can be used for more things
+func RectIntersect(rect1, rect2 [4]float32, pivot1, pivot2 [2]float32, angle1, angle2 float32) (bool, float32, float32) {
+	if angle1 == 0 && angle2 == 0 {
+		return RectIntersectAABB(rect1, rect2)
+	}
+	return RectIntersectSAT(rect1, rect2, pivot1, pivot2, angle1, angle2)
+}
+
+// Fast path for no rotation
+func RectIntersectAABB(rect1, rect2 [4]float32) (bool, float32, float32) {
+	left1, top1, right1, bottom1 := rect1[0], rect1[1], rect1[2], rect1[3]
+	left2, top2, right2, bottom2 := rect2[0], rect2[1], rect2[2], rect2[3]
+
+	// Standard AABB overlap.
+	overlapX := Min(right1, right2) - Max(left1, left2)
+	overlapY := Min(bottom1, bottom2) - Max(top1, top2)
+
+	// Zero-width case
+	// These are still a valid overlap in Mugen. A point can also intersect with a box
+	if overlapX == 0 && (left1 == right1 || left2 == right2) {
+		halfW1 := (right1 - left1) * 0.5
+		halfW2 := (right2 - left2) * 0.5
+		centerX1 := (left1 + right1) * 0.5
+		centerX2 := (left2 + right2) * 0.5
+		overlapX = (halfW1 + halfW2) - Abs(centerX1-centerX2)
+	}
+
+	// Zero‑height case
+	if overlapY == 0 && (top1 == bottom1 || top2 == bottom2) {
+		halfH1 := (bottom1 - top1) * 0.5
+		halfH2 := (bottom2 - top2) * 0.5
+		centerY1 := (top1 + bottom1) * 0.5
+		centerY2 := (top2 + bottom2) * 0.5
+		overlapY = (halfH1 + halfH2) - Abs(centerY1-centerY2)
+	}
+
+	if overlapX >= 0 && overlapY >= 0 {
+		return true, overlapX, overlapY
+	}
+
+	return false, 0, 0
+}
+
+// Slow path for rotated rectangles
+func RectIntersectSAT(rect1, rect2 [4]float32, pivot1, pivot2 [2]float32, angle1, angle2 float32) (bool, float32, float32) {
+	r1 := RectRotate(rect1, pivot1, angle1)
+	r2 := RectRotate(rect2, pivot2, angle2)
+
+	// SAT overlap check
+	minOverlap := float32(math.MaxFloat32)
+
+	projectionRange := func(rect [][2]float32, nx, ny float32) (min, max float32) {
 		min = math.MaxFloat32
 		max = -math.MaxFloat32
 		for _, p := range rect {
-			projected := normal[0]*p[0] + normal[1]*p[1]
-			if projected < min {
-				min = projected
+			proj := nx*p[0] + ny*p[1]
+			if proj < min { min = proj }
+			if proj > max { max = proj }
+		}
+		return
+	}
+
+	checkAxis := func(nx, ny float32) bool {
+		minA, maxA := projectionRange(r1, nx, ny)
+		minB, maxB := projectionRange(r2, nx, ny)
+		if maxA < minB || maxB < minA {
+			return false
+		}
+		overlap := Min(maxA, maxB) - Max(minA, minB)
+		if overlap < minOverlap {
+			minOverlap = overlap
+		}
+		return true
+	}
+
+	// Check axes of rect1
+	for i := 0; i < 4; i++ {
+		p1 := r1[i]
+		p2 := r1[(i+1)%4]
+		if !checkAxis(p2[1]-p1[1], p1[0]-p2[0]) {
+			return false, 0, 0
+		}
+	}
+
+	// Check axes of rect2
+	for i := 0; i < 4; i++ {
+		p1 := r2[i]
+		p2 := r2[(i+1)%4]
+		if !checkAxis(p2[1]-p1[1], p1[0]-p2[0]) {
+			return false, 0, 0
+		}
+	}
+
+	// If we get here, the rectangles do overlap
+	// Compute AABB of the rotated rectangles
+	getBounds := func(points [][2]float32) (minX, maxX, minY, maxY float32) {
+		minX, maxX = math.MaxFloat32, -math.MaxFloat32
+		minY, maxY = math.MaxFloat32, -math.MaxFloat32
+		for _, p := range points {
+			if p[0] < minX {
+				minX = p[0]
 			}
-			if projected > max {
-				max = projected
+			if p[0] > maxX {
+				maxX = p[0]
+			}
+			if p[1] < minY {
+				minY = p[1]
+			}
+			if p[1] > maxY {
+				maxY = p[1]
 			}
 		}
 		return
 	}
-	for i1 := 0; i1 < len(rect1); i1++ {
-		i2 := (i1 + 1) % len(rect1)
-		p1 := rect1[i1]
-		p2 := rect1[i2]
-		nx := p2[1] - p1[1]
-		ny := p1[0] - p2[0]
-		minA, maxA := projectionRange(rect1, [2]float32{nx, ny})
-		minB, maxB := projectionRange(rect2, [2]float32{nx, ny})
-		if maxA < minB || maxB < minA {
-			return false
-		}
-	}
-	for i1 := 0; i1 < len(rect2); i1++ {
-		i2 := (i1 + 1) % len(rect2)
-		p1 := rect2[i1]
-		p2 := rect2[i2]
-		nx := p2[1] - p1[1]
-		ny := p1[0] - p2[0]
-		minA, maxA := projectionRange(rect1, [2]float32{nx, ny})
-		minB, maxB := projectionRange(rect2, [2]float32{nx, ny})
-		if maxA < minB || maxB < minA {
-			return false
-		}
-	}
-	return true
+
+	minX1, maxX1, minY1, maxY1 := getBounds(r1)
+	minX2, maxX2, minY2, maxY2 := getBounds(r2)
+
+	// Return overlap as distances. TODO: Return as rectangle
+	overlapX := Min(maxX1, maxX2) - Max(minX1, minX2)
+	overlapY := Min(maxY1, maxY2) - Max(minY1, minY2)
+
+	return true, overlapX, overlapY
 }
 
 // Prevent overflow errors when converting float64 to int32

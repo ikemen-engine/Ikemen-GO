@@ -2799,16 +2799,18 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			clsn1 := p.anim.CurrentFrame().Clsn2 // Projectiles trade with their Clsn2 only
 			clsn2 := pr.anim.CurrentFrame().Clsn2
 			if clsn1 != nil && clsn2 != nil {
-				if sys.clsnOverlap(clsn1,
-					[...]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-					[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+				overlap, _, _ := sys.clsnOverlap(clsn1,
+					[2]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
+					[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 					p.facing,
 					p.clsnAngle,
 					clsn2,
-					[...]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
-					[...]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
+					[2]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
+					[2]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
 					pr.facing,
-					pr.clsnAngle) {
+					pr.clsnAngle)
+
+				if overlap {
 					// Subtract projectile hits from each other
 					p.cancelHits(pr)
 					pr.cancelHits(p)
@@ -10368,19 +10370,20 @@ func (c *Char) projClsnCheckSingle(p *Projectile, cbox, pbox int32) bool {
 		charangle = 0
 	}
 
-	return sys.clsnOverlap(
+	overlap, _, _ := sys.clsnOverlap(
 		clsn1,
-		[...]float32{p.clsnScale[0] * p.localscl * p.zScale, p.clsnScale[1] * p.localscl * p.zScale},
-		[...]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+		[2]float32{p.clsnScale[0] * p.localscl * p.zScale, p.clsnScale[1] * p.localscl * p.zScale},
+		[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 		p.facing,
 		p.clsnAngle,
 		clsn2,
 		charscale,
-		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
-			c.pos[1]*c.localscl + c.offsetY()*c.localscl},
+		[2]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl, c.pos[1]*c.localscl + c.offsetY()*c.localscl},
 		c.facing,
 		charangle,
 	)
+
+	return overlap
 }
 
 func (c *Char) projClsnOverlapTrigger(index int, targetID, boxType int32) bool {
@@ -10488,35 +10491,22 @@ func (c *Char) clsnCheckSingle(getter *Char, charbox, getterbox int32, reqcheck 
 		return false
 	}
 
-	// Exceptions for size boxes as they don't rescale or rotate
-	charscale := c.clsnScale
-	charangle := c.clsnAngle
-	if charbox == 3 {
-		charscale = [2]float32{c.localscl, c.localscl}
-		charangle = 0
-	}
-
-	getterscale := getter.clsnScale
-	getterangle := getter.clsnAngle
-	if getterbox == 3 {
-		getterscale = [2]float32{getter.localscl, getter.localscl}
-		getterangle = 0
-	}
-
-	return sys.clsnOverlap(
+	overlap, _, _ := sys.clsnOverlap(
 		clsn1,
-		charscale,
-		[...]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
+		c.clsnScale,
+		[2]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl},
 		c.facing,
-		charangle,
+		c.clsnAngle,
 		clsn2, // Getter
-		getterscale,
-		[...]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
+		getter.clsnScale,
+		[2]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl},
 		getter.facing,
-		getterangle,
+		getter.clsnAngle,
 	)
+
+	return overlap
 }
 
 func (c *Char) hitByAttrTrigger(attr int32) bool {
@@ -12838,7 +12828,7 @@ func (c *Char) cueDebugDraw() {
 			// Add size box (width * height)
 			if c.csf(CSF_playerpush) {
 				sizebox := c.getClsn(3)
-				sys.debugcsize.Add(sizebox, x, y, c.facing*c.localscl, c.localscl, 0)
+				sys.debugcsize.Add(sizebox, x, y, c.facing*c.localscl, c.localscl, angle)
 			}
 		}
 		// Add crosshair
@@ -13869,30 +13859,30 @@ func (cl *CharList) pushDetection(getter *Char) {
 			}
 		}
 
-		// Get size box
-		// We wil check overlap for the first boxes only
-		// TODO: Either check all here, or allow only one size box to exist at a time
-		cbox := c.getAnySizeBox()
-		gbox := getter.getAnySizeBox()
+		// Get size boxes
+		cboxes := c.getClsn(3) // c.getAnySizeBox()
+		gboxes := getter.getClsn(3)
 
-		if cbox == nil || gbox == nil {
+		if cboxes == nil || gboxes == nil {
 			continue
 		}
 
-		// Y-axis check
-		// Run it first because it's the fastest one
-		cytop := (c.pos[1] + cbox[1]) * c.localscl
-		cybot := (c.pos[1] + cbox[3]) * c.localscl
-		gytop := (getter.pos[1] + gbox[1]) * getter.localscl
-		gybot := (getter.pos[1] + gbox[3]) * getter.localscl
+		// Prepare clsnOverlap inputs
+		cpos := [2]float32{c.pos[0]*c.localscl, c.pos[1]*c.localscl}
+		gpos := [2]float32{getter.pos[0]*getter.localscl, getter.pos[1]*getter.localscl}
 
-		overlapY := Min(cybot, gybot) - Max(cytop, gytop)
-
-		// For the y-axis, an overlap of exactly 0 is also valid for pushing characters away from each other, hence '<'
-		// We don't need a "zero-height case" because the y-overlap is only used as a filter, not to calculate the push distance
-		if overlapY < 0 {
+		// Call clsnOverlap 
+		// It now returns the overlap area as well
+		okXY, overlapX, _ := sys.clsnOverlap(cboxes, c.clsnScale, cpos, c.facing, c.clsnAngle,
+			gboxes, getter.clsnScale, gpos, getter.facing, getter.clsnAngle)
+		if !okXY {
 			continue
 		}
+
+		// Get the first box as some logic still runs on that one
+		// TODO: More unifying
+		cbox := cboxes[0]
+		gbox := gboxes[0]
 
 		// X-axis check
 		cposx := c.pos[0] * c.localscl
@@ -13912,50 +13902,6 @@ func (cl *CharList) pushDetection(getter *Char) {
 		}
 		gxleft += gposx
 		gxright += gposx
-
-		overlapX := Min(gxright, cxright) - Max(gxleft, cxleft)
-
-		// Zero width case
-		// These can also push in Mugen
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/3164
-		if overlapX == 0 && (cxleft == cxright || gxleft == gxright) {
-			cHalfW := (cxright - cxleft) * 0.5
-			gHalfW := (gxright - gxleft) * 0.5
-			cCenterX := (cxright + cxleft) * 0.5
-			gCenterX := (gxright + gxleft) * 0.5
-
-			overlapX = (cHalfW + gHalfW) - Abs(cCenterX-gCenterX)
-		}
-
-		/*
-			// In addition to the normal width check, Mugen also checks overlap between an undocumented "internal width" of 5 pixels
-			// The normal and fallback width checks are not mixed with each other
-			// Update: The addition of the zero width case makes this seemingly unnecessary
-			if overlapX <= 0 {
-				// We will only do it for Mugen characters because it defeats the purpose of lowering width
-				cIsOld := c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
-				gIsOld := getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0
-				if cIsOld || gIsOld {
-					if cIsOld {
-						minwidth := 5.0 / c.localscl
-						cxleft = cposx - minwidth
-						cxright = cposx + minwidth
-					}
-					if gIsOld {
-						minwidth := 5.0 / getter.localscl
-						gxleft = gposx - minwidth
-						gxright = gposx + minwidth
-					}
-					overlapX = Min(gxright, cxright) - Max(gxleft, cxleft)
-				}
-			}
-		*/
-
-		// X-axis fail
-		// An overlap of exactly 0 is still valid because pushing may happen along the z-axis
-		if overlapX < 0 {
-			continue
-		}
 
 		// Z-axis check
 		// We don't use the zAxisCheck function because we need the actual overlap amount

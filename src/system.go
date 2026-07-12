@@ -2090,14 +2090,16 @@ func (s *System) zAxisOverlap(posz1, top1, bot1, localscl1, posz2, top2, bot2, l
 }
 
 func (s *System) clsnOverlap(clsn1 [][4]float32, scl1, pos1 [2]float32, facing1 float32, angle1 float32,
-	clsn2 [][4]float32, scl2, pos2 [2]float32, facing2 float32, angle2 float32) bool {
+	clsn2 [][4]float32, scl2, pos2 [2]float32, facing2 float32, angle2 float32) (bool, float32, float32) {
 
 	// Skip function if any boxes are missing
 	if clsn1 == nil || clsn2 == nil {
-		return false
+		return false, 0, 0
 	}
-	anface1 := facing1
-	anface2 := facing2
+
+	// Compute effective angles before modifying facing
+	effAngle1 := -angle1 * facing1
+	effAngle2 := -angle2 * facing2
 
 	// Flip boxes if scale < 0
 	if scl1[0] < 0 {
@@ -2117,10 +2119,11 @@ func (s *System) clsnOverlap(clsn1 [][4]float32, scl1, pos1 [2]float32, facing1 
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
-		left1 := l1 * scl1[0]
-		right1 := r1 * scl1[0]
-		top1 := clsn1[i][1] * scl1[1]
-		bottom1 := clsn1[i][3] * scl1[1]
+		left1 := l1*scl1[0] + pos1[0]
+		right1 := r1*scl1[0] + pos1[0]
+		top1 := clsn1[i][1]*scl1[1] + pos1[1]
+		bottom1 := clsn1[i][3]*scl1[1] + pos1[1]
+		rect1 := [4]float32{left1, top1, right1, bottom1}
 
 		// Loop through second set of boxes
 		for j := 0; j < len(clsn2); j++ {
@@ -2130,30 +2133,21 @@ func (s *System) clsnOverlap(clsn1 [][4]float32, scl1, pos1 [2]float32, facing1 
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			left2 := l2 * scl2[0]
-			right2 := r2 * scl2[0]
-			top2 := clsn2[j][1] * scl2[1]
-			bottom2 := clsn2[j][3] * scl2[1]
+			left2 := l2*scl2[0] + pos2[0]
+			right2 := r2*scl2[0] + pos2[0]
+			top2 := clsn2[j][1]*scl2[1] + pos2[1]
+			bottom2 := clsn2[j][3]*scl2[1] + pos2[1]
+			rect2 := [4]float32{left2, top2, right2, bottom2}
 
 			// Check for overlap
-			if angle1 != 0 || angle2 != 0 {
-				if RectIntersect(left1+pos1[0], top1+pos1[1], right1-left1, bottom1-top1,
-					left2+pos2[0], top2+pos2[1], right2-left2, bottom2-top2, pos1[0], pos1[1], pos2[0], pos2[1],
-					-Rad(angle1*anface1), -Rad(angle2*anface2)) {
-					return true
-				}
-			} else {
-				if left1+pos1[0] <= right2+pos2[0] &&
-					left2+pos2[0] <= right1+pos1[0] &&
-					top1+pos1[1] <= bottom2+pos2[1] &&
-					top2+pos2[1] <= bottom1+pos1[1] {
-					return true
-				}
+			ok, dx, dy := RectIntersect(rect1, rect2, pos1, pos2, effAngle1, effAngle2)
+			if ok {
+				return true, dx, dy
 			}
 		}
 	}
 
-	return false
+	return false, 0, 0
 }
 
 // Assign starting player ID's in a way similar to Mugen
