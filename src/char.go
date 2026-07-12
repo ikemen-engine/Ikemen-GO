@@ -3319,6 +3319,7 @@ type Char struct {
 	interPos            [3]float32 // Interpolated position. For the visuals when game and logic speed are different
 	oldPos              [3]float32
 	vel                 [3]float32
+	distOffset          [3]float32
 	facing              float32
 	fbFlip              bool
 	cnsvar              map[int32]int32
@@ -8303,7 +8304,7 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 				c.setPosZ(t.pos[2]*(t.localscl/c.localscl)+z, true)
 			}
 			c.targetBind(tar[:1], time,
-				c.facing*c.distX(t, c),
+				c.facing*c.distX(t, c, true),
 				(t.pos[1]*(t.localscl/c.localscl))-(c.pos[1]*(c.localscl/t.localscl)),
 				(t.pos[2]*(t.localscl/c.localscl))-(c.pos[2]*(c.localscl/t.localscl)))
 		}
@@ -8858,7 +8859,7 @@ func (c *Char) redLifeEnabled() bool {
 	*/
 }
 
-func (c *Char) distX(opp *Char, oc *Char) float32 {
+func (c *Char) distX(opp *Char, oc *Char, noOffset bool) float32 {
 	cpos := c.pos[0] * c.localscl
 	opos := opp.pos[0] * opp.localscl
 	// Update distance while bound. Mugen chars only
@@ -8874,6 +8875,10 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 			}
 		}
 	}
+	if !noOffset {
+		cpos += c.distOffset[0] * c.facing
+		opos += opp.distOffset[0] * opp.facing
+	}
 	dist := (opos - cpos) / oc.localscl
 	if Abs(dist) < 0.0001 {
 		dist = 0
@@ -8881,7 +8886,7 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 	return dist
 }
 
-func (c *Char) distY(opp *Char, oc *Char) float32 {
+func (c *Char) distY(opp *Char, oc *Char, noOffset bool) float32 {
 	cpos := c.pos[1] * c.localscl
 	opos := opp.pos[1] * opp.localscl
 	// Update distance while bound. Mugen chars only
@@ -8892,19 +8897,27 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 			}
 		}
 	}
+	if !noOffset {
+		cpos += c.distOffset[1]
+		opos += opp.distOffset[1]
+	}
 	return (opos - cpos) / oc.localscl
 }
 
-func (c *Char) distZ(opp *Char, oc *Char) float32 {
+func (c *Char) distZ(opp *Char, oc *Char, noOffset bool) float32 {
 	cpos := c.pos[2] * c.localscl
 	opos := opp.pos[2] * opp.localscl
+	if !noOffset {
+		cpos += c.distOffset[2]
+		opos += opp.distOffset[2]
+	}
 	return (opos - cpos) / oc.localscl
 }
 
 // In Mugen, P2BodyDist X does not account for changes in Width like Ikemen does here
 func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 	var cw, oppw float32
-	dist := c.distX(opp, oc)
+	dist := c.distX(opp, oc, true)
 
 	// Get size boxes
 	cbox := c.getAnySizeBox()
@@ -8974,7 +8987,7 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeUndefined()
 	}
-	dist := c.facing * c.distX(rd, oc)
+	dist := c.facing * c.distX(rd, oc, false)
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.stWgi().mugenver[0] != 1 {
 			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
@@ -8988,7 +9001,7 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeUndefined()
 	}
-	dist := c.distY(rd, oc)
+	dist := c.distY(rd, oc, false)
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.stWgi().mugenver[0] != 1 {
 			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
@@ -9002,7 +9015,7 @@ func (c *Char) rdDistZ(rd *Char, oc *Char) BytecodeValue {
 	if rd == nil {
 		return BytecodeUndefined()
 	}
-	dist := c.distZ(rd, oc)
+	dist := c.distZ(rd, oc, false)
 	return BytecodeFloat(dist)
 }
 
@@ -11682,6 +11695,8 @@ func (c *Char) actionPrepare() {
 		}
 
 		// The flags below also reset during hitpause, but are new to Ikemen and don't need the exception above
+		c.distOffset = [3]float32{}
+
 		// Reset Clsn modifiers
 		c.clsnScaleMul = [2]float32{1.0, 1.0}
 		c.clsnAngle = 0
@@ -12621,6 +12636,7 @@ func (c *Char) cueDebugDraw() {
 			}
 		}
 		// Add crosshair
+		sys.debugcho.Add([][4]float32{{-1, -1, 1, 1}}, x + (c.distOffset[0] * c.facing), y + c.distOffset[1], 1, 1, 0)
 		sys.debugch.Add([][4]float32{{-1, -1, 1, 1}}, x, y, 1, 1, 0)
 	}
 	// Prepare information for debug text
@@ -13240,9 +13256,9 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 				var inguardx, inguardy, inguardz bool
 
 				// Get distances
-				distX := c.distX(getter, c) * c.facing
-				distY := c.distY(getter, c)
-				distZ := c.distZ(getter, c)
+				distX := c.distX(getter, c, true) * c.facing
+				distY := c.distY(getter, c, true)
+				distZ := c.distZ(getter, c, true)
 
 				// Check X distance
 				inguardx = distX < c.hitdef.guard_dist_x[0] && distX > -c.hitdef.guard_dist_x[1]
@@ -13793,7 +13809,7 @@ func (cl *CharList) pushDetection(getter *Char) {
 			}
 
 			if pushx {
-				tmp := getter.distX(c, getter)
+				tmp := getter.distX(c, getter, false)
 				if tmp == 0 {
 					// Decide direction in which to push each player in case of a tie in position
 					// This also decides who gets to stay in the corner
@@ -14018,7 +14034,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
 
 			if valid {
 				// Factor x distance first
-				distX := c.distX(e, c) * c.facing
+				distX := c.distX(e, c, false) * c.facing
 				dist := distX
 				// If an enemy is behind the player, an extra distance buffer is added for the "P2" list
 				if p2list && distX < 0 {
@@ -14026,7 +14042,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
 				}
 				// Factor z distance if applicable
 				if sys.zEnabled() {
-					distZ := c.distZ(e, c) * 4.0
+					distZ := c.distZ(e, c, false) * 4.0
 					if p2list {
 						distZ *= 4.0
 					}

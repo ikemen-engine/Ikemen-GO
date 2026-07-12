@@ -8562,6 +8562,18 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LString(sys.debugWC.gi().displayname))
 		return 1
 	})
+	luaRegister(l, "distOffsetX", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.distOffset[0]))
+		return 1
+	})
+	luaRegister(l, "distOffsetY", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.distOffset[1]))
+		return 1
+	})
+	luaRegister(l, "distOffsetZ", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.distOffset[2]))
+		return 1
+	})
 	luaRegister(l, "dizzy", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.scf(SCF_dizzy)))
 		return 1
