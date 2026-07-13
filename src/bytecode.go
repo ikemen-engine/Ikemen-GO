@@ -6364,30 +6364,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			tt := TransType(exp[2].evalI(c))
 			e.trans = tt
 			e.alpha = [2]int32{src, dst}
-		/*case explod_trans:
-		e.alpha[0] = exp[0].evalI(c)
-		e.alpha[1] = exp[1].evalI(c)
-		sa, da := e.alpha[0], e.alpha[1]
-
-		if len(exp) >= 3 {
-			e.alpha[0] = Clamp(e.alpha[0], 0, 255)
-			e.alpha[1] = Clamp(e.alpha[1], 0, 255)
-			//if len(exp) >= 4 {
-			//	e.alpha[1] = ^e.alpha[1]
-			//} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
-
-			//Add
-			e.blendmode = 1
-			//Sub
-			if sa == 1 && da == 255 {
-				e.blendmode = 2
-			} else if sa == -1 && da == 0 {
-				e.blendmode = 0
-			}
-			if e.alpha[0] == 1 && e.alpha[1] == 255 {
-				e.alpha[0] = 0
-			}
-		}*/
 		case explod_animelem:
 			e.animelem = exp[0].evalI(c)
 		case explod_animelemtime:
@@ -6956,33 +6932,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.trans = tt
 					e.alpha = [2]int32{src, dst}
 				})
-			/*case explod_trans:
-			s, d := exp[0].evalI(c), exp[1].evalI(c)
-			blendmode := 0
-			if len(exp) >= 3 {
-				s, d = Clamp(s, 0, 255), Clamp(d, 0, 255)
-				//if len(exp) >= 4 {
-				//	d = ^d
-				//} else if s == 1 && d == 255 {
-
-				//Add
-				blendmode = 1
-				//Sub
-				if s == 1 && d == 255 {
-					blendmode = 2
-				} else if s == -1 && d == 0 {
-					blendmode = 0
-				}
-
-				if s == 1 && d == 255 {
-					s = 0
-				}
-
-			}
-			eachExpl(func(e *Explod) {
-				e.alpha = [...]int32{s, d}
-				e.blendmode = int32(blendmode)
-			})*/
 			case explod_anim:
 				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
 					apn := crun.playerNo // Default to own player number

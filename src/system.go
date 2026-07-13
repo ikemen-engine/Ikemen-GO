@@ -2081,13 +2081,16 @@ func (s *System) posZtoYoffset(zpos, localscl float32) float32 {
 // Z axis check
 // Changed to no longer check z enable constant, depends on stage now
 func (s *System) zAxisOverlap(posz1, top1, bot1, localscl1, posz2, top2, bot2, localscl2 float32) bool {
-	if s.zEnabled() {
-		if (posz1+bot1)*localscl1 < (posz2-top2)*localscl2 ||
-			(posz1-top1)*localscl1 > (posz2+bot2)*localscl2 {
-			return false
-		}
+	if !s.zEnabled() {
+		return true
 	}
-	return true
+
+	min1 := (posz1 - top1) * localscl1
+	max1 := (posz1 + bot1) * localscl1
+	min2 := (posz2 - top2) * localscl2
+	max2 := (posz2 + bot2) * localscl2
+
+	return max1 >= min2 && min1 <= max2
 }
 
 func (s *System) clsnOverlap(boxes1 []ClsnFinal, pos1 [2]float32, facing1 float32,
