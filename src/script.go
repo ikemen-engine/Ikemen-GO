@@ -3041,7 +3041,7 @@ func systemScriptInit(l *lua.LState) {
 			// Anonymous function to perform gameplay
 			fight := func() (int32, error) {
 				// Reset character list
-				if sys.round == 1 {
+				if sys.roundNo == 1 {
 					sys.charList.clear()
 				}
 
@@ -3054,7 +3054,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Build Turns teammate portraits after loading, when Lua order selection is complete.
-				if sys.round == 1 {
+				if sys.roundNo == 1 {
 					for side, tm := range sys.tmode {
 						if tm != TM_Turns {
 							continue
@@ -3091,7 +3091,7 @@ func systemScriptInit(l *lua.LState) {
 							continue
 						}
 						// Add or replace in charList
-						if sys.round == 1 {
+						if sys.roundNo == 1 {
 							sys.charList.add(c[0])
 						} else if c[0].roundsExisted() == 0 {
 							// BG-loaded Turns switching updates CharList inside activateNextTurnsFighters().
@@ -3118,7 +3118,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// If first round
-				if sys.round == 1 {
+				if sys.roundNo == 1 {
 					// Update wins, reset stage
 					sys.endMatch = false
 					sys.teamLeader = [2]int{0, 1}
@@ -6622,7 +6622,7 @@ func systemScriptInit(l *lua.LState) {
 		@function setMatchNo
 		@tparam int32 matchNo Match index/number.
 		function setMatchNo(matchNo) end*/
-		sys.match = int32(numArg(l, 1))
+		sys.matchNo = int32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setMatchWins", func(l *lua.LState) int {
@@ -9640,7 +9640,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "matchNo", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.match))
+		l.Push(lua.LNumber(sys.matchNo))
 		return 1
 	})
 	luaRegister(l, "matchOver", func(*lua.LState) int {
@@ -10351,7 +10351,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "roundNo", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.round))
+		l.Push(lua.LNumber(sys.roundNo))
 		return 1
 	})
 	luaRegister(l, "roundsExisted", func(*lua.LState) int {

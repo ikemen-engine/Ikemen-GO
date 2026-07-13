@@ -73,8 +73,8 @@ type SystemStateVars struct {
 	brightnessOld           float32
 	maxRoundTime            int32
 	curFramesPerCount       int32 // The mutatable value for the current match
-	match                   int32
-	round                   int32
+	matchNo                 int32
+	roundNo                 int32
 	intro                   int32
 	lastHitter              [2]int
 	winTeam                 int
@@ -190,7 +190,7 @@ var sys = System{
 		heightScale:         1,
 		brightness:          1,
 		maxRoundTime:        -1,
-		match:               1,
+		matchNo:             1,
 		numSimul:            [...]int32{2, 2},
 		numTurns:            [...]int32{2, 2},
 		oldNextAddTime:      1,
@@ -987,7 +987,7 @@ func (s *System) resetRemapInput() {
 }
 
 func (s *System) loaderReset() {
-	s.round, s.wins, s.roundsExisted, s.decisiveRound = 1, [2]int32{}, [2]int32{}, [2]bool{}
+	s.roundNo, s.wins, s.roundsExisted, s.decisiveRound = 1, [2]int32{}, [2]int32{}, [2]bool{}
 	s.turnsPreloadMember = [2]int{-1, -1}
 	s.loader.reset()
 }
@@ -1750,7 +1750,7 @@ func (s *System) roundStateTicks() int32 {
 
 // Check if the match consists of a single round
 func (s *System) roundIsSingle() bool {
-	return !s.sel.gameParams.PersistRounds && s.round == 1 && s.decisiveRound[0] && s.decisiveRound[1]
+	return !s.sel.gameParams.PersistRounds && s.roundNo == 1 && s.decisiveRound[0] && s.decisiveRound[1]
 }
 
 func (s *System) maxDrawsReached(team int) bool {
@@ -1765,7 +1765,7 @@ func (s *System) roundIsFinal() bool {
 		return false
 	}
 	// The first round is never already final
-	if s.round <= 1 {
+	if s.roundNo <= 1 {
 		return false
 	}
 	// Both teams must be on their decisive round
@@ -2020,7 +2020,7 @@ func (s *System) initPlayerID() {
 
 		c := sys.chars[i][0]
 
-		if sys.round == 1 || c.roundsExisted() == 0 {
+		if sys.roundNo == 1 || c.roundsExisted() == 0 {
 			// In BG-loaded Turns, promoted fighters already have a valid ID
 			if sys.cfg.Config.TurnsLoading && sys.tmode[i&1] == TM_Turns && c.id >= 0 {
 				return
@@ -2030,7 +2030,7 @@ func (s *System) initPlayerID() {
 	}
 
 	// Free some ID's in subsequent rounds
-	if sys.round > 1 {
+	if sys.roundNo > 1 {
 		sys.pruneCharId()
 	}
 
@@ -2224,10 +2224,10 @@ func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
 // Select correct stage for current round
 func (s *System) handleStageSwap() bool {
 	var roundRef int32
-	if s.round == 1 {
+	if s.roundNo == 1 {
 		s.stageLoopNo = 0
 	} else {
-		roundRef = s.round
+		roundRef = s.roundNo
 	}
 
 	if s.stageLoop && !s.roundResetFlg {
@@ -2246,7 +2246,7 @@ func (s *System) handleStageSwap() bool {
 	swap := false
 	if _, ok := s.stageList[roundRef]; ok {
 		s.stage = s.stageList[roundRef]
-		if s.round > 1 && !s.roundResetFlg {
+		if s.roundNo > 1 && !s.roundResetFlg {
 			swap = true
 		}
 		if s.stage.model != nil {
@@ -2260,7 +2260,7 @@ func (s *System) handleStageSwap() bool {
 }
 
 func (s *System) updateMusicMaps() {
-	newMatchMusic := s.round == 1 && !s.roundResetFlg
+	newMatchMusic := s.roundNo == 1 && !s.roundResetFlg
 
 	if newMatchMusic {
 		s.matchMusicSel = s.matchMusicSel[:0]
@@ -3786,7 +3786,7 @@ func (s *System) runMatch() (reload bool) {
 	s.roundBackup.Save()
 
 	// Save round 1 backup separately
-	if s.round == 1 {
+	if s.roundNo == 1 {
 		s.matchBackup = s.roundBackup
 	}
 
@@ -3871,7 +3871,7 @@ func (s *System) runMatch() (reload bool) {
 						s.saveCharVars(i)
 					}
 				}
-				s.round = 1
+				s.roundNo = 1
 				s.roundsExisted = [2]int32{}
 
 				s.statsLog.abortMatch()
@@ -4036,7 +4036,7 @@ func (s *System) SetupCharRoundStart() {
 	// Initialize each character's state
 	for i, p := range s.chars {
 		if len(p) > 0 {
-			if p[0].roundsExisted() == 0 && (s.round == 1 || s.tmode[i&1] == TM_Turns) {
+			if p[0].roundsExisted() == 0 && (s.roundNo == 1 || s.tmode[i&1] == TM_Turns) {
 				// If round 1 or a new character in Turns mode, initialize values
 				if p[0].ocd().life != -1 {
 					p[0].life = Clamp(p[0].ocd().life, 0, p[0].lifeMax)
@@ -4045,7 +4045,7 @@ func (s *System) SetupCharRoundStart() {
 					p[0].life = p[0].lifeMax
 					p[0].redLife = p[0].lifeMax
 				}
-				if s.round == 1 {
+				if s.roundNo == 1 {
 					if s.maxPowerMode {
 						p[0].power = p[0].powerMax
 					} else if p[0].ocd().power != -1 {
@@ -4075,7 +4075,7 @@ func (s *System) runNextRound() bool {
 			!(s.tmode[0] == TM_Turns && s.effectiveLoss[0]) &&
 			!(s.tmode[1] == TM_Turns && s.effectiveLoss[1]) {
 			// Prepare for the next round
-			s.round++
+			s.roundNo++
 			for i := range s.roundsExisted {
 				s.roundsExisted[i]++
 			}
@@ -4111,7 +4111,7 @@ func (s *System) runNextRound() bool {
 			// If match isn't over, presumably this is turns mode,
 			// so break to restart fight for the next character
 			if !s.matchOver() {
-				s.round++
+				s.roundNo++
 				for i := range s.roundsExisted {
 					s.roundsExisted[i]++
 				}
@@ -5714,7 +5714,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	if l.cancelRequested() || l.state == LS_Cancel || sys.gameEnd {
 		return 0
 	}
-	if attached && sys.round != 1 {
+	if attached && sys.roundNo != 1 {
 		return 1
 	}
 
@@ -6093,7 +6093,7 @@ func (l *Loader) prepareTurnsFaces(pn int, fa *FightScreenFace, nm *FightScreenN
 }
 
 func (l *Loader) loadStage() bool {
-	if sys.round == 1 {
+	if sys.roundNo == 1 {
 		if l.cancelRequested() || l.state == LS_Cancel || sys.gameEnd {
 			l.state = LS_Cancel
 			return false
@@ -6327,7 +6327,7 @@ func (l *Loader) reset() {
 	l.cancelCh = nil
 	l.cancelOnce = sync.Once{}
 	for i := range sys.cgi {
-		keepPreloadedTurnsPal := sys.cfg.Config.TurnsLoading && sys.round > 1 && sys.tmode[i&1] == TM_Turns
+		keepPreloadedTurnsPal := sys.cfg.Config.TurnsLoading && sys.roundNo > 1 && sys.tmode[i&1] == TM_Turns
 		if sys.roundsExisted[i&1] == 0 && !keepPreloadedTurnsPal {
 			sys.cgi[i].palno = -1
 		}

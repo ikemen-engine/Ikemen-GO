@@ -6500,8 +6500,14 @@ func (c *CharCompiler) getHitVarSet(is IniSection, sc *StateControllerBase) (Sta
 			getHitVarSet_animtype, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "attr",
-			getHitVarSet_attr, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "attr", false, func(data string) error {
+			attr, err := c.attr(data, false)
+			if err != nil {
+				return err
+			}
+			sc.add(getHitVarSet_attr, sc.iToExp(attr))
+			return nil
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "chainid",

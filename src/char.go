@@ -2089,7 +2089,7 @@ func (e *Explod) update() {
 			for i := range e.velocity {
 				e.velocity[i] *= e.friction[i]
 				e.velocity[i] += e.accel[i]
-				if math.Abs(float64(e.velocity[i])) < 0.1 && math.Abs(float64(e.friction[i])) < 1 {
+				if Abs(e.velocity[i]) < 0.1 && Abs(e.friction[i]) < 1 {
 					e.velocity[i] = 0
 				}
 			}
@@ -4340,7 +4340,8 @@ func (c *Char) loadPalettes() {
 
 				// Allocate space if necessary
 				gi.palettedata.palList.SetSource(targetIdx, pl)
-				gi.palettedata.palList.PalTable[[...]uint16{1, uint16(i + 1)}] = targetIdx
+				gi.palettedata.palList.PalTable[[2]uint16{1, uint16(i + 1)}] = targetIdx
+				gi.palettedata.palList.numcols[[2]uint16{1, uint16(i + 1)}] = 256 // ACT files are always 256 colors
 
 				// Redirect index 0 without destroying the unique SFFv1 palette at physical index 0
 				if tmp == 0 && i > 0 {
@@ -6013,7 +6014,7 @@ func (c *Char) roundsExisted() int32 {
 				return 0
 			}
 		}
-		return sys.round - 1
+		return sys.roundNo - 1
 	}
 	return sys.roundsExisted[c.playerNo&1]
 }
@@ -6471,14 +6472,6 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		LogMessage("Maximum ChangeState loops: %v, %v, %v -> %v -> %v", sys.changeStateNest, c.name, c.ss.prevno, c.ss.no, no)
 		return false
 	}
-	var ctrlsps_backup []int32
-	if c.hitPause() {
-		// If in hitpause, back up the current state's persistent.
-		ctrlsps_backup = make([]int32, len(c.ss.sb.ctrlsps))
-		copy(ctrlsps_backup, c.ss.sb.ctrlsps)
-	} else {
-		ctrlsps_backup = nil
-	}
 
 	c.ss.prevno = c.ss.no
 	c.ss.no = Max(0, no)
@@ -6527,7 +6520,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 
 		c.localscl = newLs
 	}
-	var ok bool
+
 	// Check if player is trying to change to a negative state.
 	if no < 0 {
 		sys.appendToConsole(c.warn() + "attempted to change to negative state")
@@ -6542,7 +6535,16 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 			LogMessage("Changed to out of bounds state number: P%v:%v", pn+1, no)
 		}
 	}
+
+	// If in hitpause, back up the current state's persistent.
+	var ctrlsps_backup []int32
+	if c.hitPause() {
+		ctrlsps_backup = make([]int32, len(c.ss.sb.ctrlsps))
+		copy(ctrlsps_backup, c.ss.sb.ctrlsps)
+	}
+
 	// Always attempt to change to the state we set to.
+	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[c.ss.no]; !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		if !sys.ignoreMostErrors {
@@ -6551,6 +6553,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ss.sb = *newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
+
 	// Reset persistent counters for this state (Ikemen chars)
 	// This used to belong to (*StateBytecode).init(), but was moved outside there
 	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
@@ -6575,6 +6578,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 			c.hitStateChangeIdx = -1
 		}
 	}
+
 	c.stchtmp = true
 	return true
 }
@@ -8975,12 +8979,12 @@ func (c *Char) rdDistX(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeUndefined()
 	}
 	dist := c.facing * c.distX(rd, oc)
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if c.stWgi().mugenver[0] != 1 {
-			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
-			dist = float32(int32(dist))
-		}
+
+	// Before Mugen 1.0, rounding down to the nearest whole number was performed.
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.stWgi().mugenver[0] != 1 {
+		dist = float32(int32(dist))
 	}
+
 	return BytecodeFloat(dist)
 }
 
@@ -8989,12 +8993,12 @@ func (c *Char) rdDistY(rd *Char, oc *Char) BytecodeValue {
 		return BytecodeUndefined()
 	}
 	dist := c.distY(rd, oc)
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if c.stWgi().mugenver[0] != 1 {
-			// Before Mugen 1.0, rounding down to the nearest whole number was performed.
-			dist = float32(int32(dist))
-		}
+
+	// Before Mugen 1.0, rounding down to the nearest whole number was performed.
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.stWgi().mugenver[0] != 1 {
+		dist = float32(int32(dist))
 	}
+
 	return BytecodeFloat(dist)
 }
 
@@ -11551,18 +11555,19 @@ func (c *Char) actionPrepare() {
 	if c.minus != 3 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+
 	c.pauseBool = false
-	if c.cmd != nil {
-		if sys.supertime > 0 {
-			c.pauseBool = c.superMovetime == 0
-		} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
-			c.pauseBool = true
-		}
+	if sys.supertime > 0 {
+		c.pauseBool = c.superMovetime == 0
+	} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
+		c.pauseBool = true
 	}
-	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
 	// Due to the nature of how pauses are processed, these are needed to fix an "off by 1" error in the PauseTime trigger
 	c.prevSuperMovetime = c.superMovetime
 	c.prevPauseMovetime = c.pauseMovetime
+
+	c.acttmp = -int8(Btoi(c.pauseBool)) * 2
+
 	if !c.pauseBool {
 		// Perform basic actions
 		if c.keyctrl[0] && c.cmd != nil && (c.helperIndex == 0 || c.controller >= 0) {
@@ -11623,7 +11628,7 @@ func (c *Char) actionPrepare() {
 					c.setCSF(CSF_playerpush)
 				}
 			}
-			// Reset player pushing priority
+			// Reset player pushing properties
 			c.pushPriority = 0
 			c.pushAffectTeam = 1
 			// HitBy timers
@@ -11668,6 +11673,11 @@ func (c *Char) actionPrepare() {
 		// This AssertSpecial flag is special in that it must always reset regardless of hitpause
 		c.unsetASF(ASF_animatehitpause)
 
+		// This variable is necessary because NoStandGuard is reset before the walking instructions are checked
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1966
+		// Update: No longer strictly necessary but we'll leave it in for now
+		c.prevNoStandGuard = c.asf(ASF_nostandguard)
+
 		// The flags in this block are to be reset even during hitpause
 		// Exception for WinMugen chars, where they persisted during hitpause
 		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 || !c.hitPause() {
@@ -11677,8 +11687,10 @@ func (c *Char) actionPrepare() {
 			c.alpha = [2]int32{255, 0}
 			c.offset = [2]float32{}
 			// Reset all AssertSpecial flags except the following, which are reset elsewhere in the code
-			c.assertFlag = (c.assertFlag&ASF_nostandguard | c.assertFlag&ASF_nocrouchguard | c.assertFlag&ASF_noairguard |
-				c.assertFlag&ASF_runfirst | c.assertFlag&ASF_runlast)
+			// TODO: Maybe these don't need special treatment anymore either
+			// All this does right now is make IsAsserted more accurate, but that's already inaccurate in other places
+			keptflags := ASF_runfirst | ASF_runlast
+			c.assertFlag &= keptflags
 		}
 
 		// The flags below also reset during hitpause, but are new to Ikemen and don't need the exception above
@@ -11777,6 +11789,7 @@ func (c *Char) actionRun() {
 		c.minus = 0
 		c.ss.sb.run(c)
 	}
+
 	// Guarding instructions
 	c.unsetSCF(SCF_guard)
 	if ((c.scf(SCF_ctrl) || c.ss.no == 52) &&
@@ -11787,6 +11800,7 @@ func (c *Char) actionRun() {
 			c.ss.stateType == ST_A && !c.asf(ASF_noairguard)) {
 		c.setSCF(SCF_guard)
 	}
+
 	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ctrl() && (c.controller >= 0 || c.helperIndex == 0) {
@@ -12005,6 +12019,7 @@ func (c *Char) actionFinish() {
 	if c.minus < 1 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+
 	if !c.pauseBool {
 		if c.palfx != nil && c.ownpal {
 			c.palfx.step()
@@ -12013,18 +12028,18 @@ func (c *Char) actionFinish() {
 		c.ghv.frame = false
 		c.mhv.frame = false
 	}
+
 	// Reset inguarddist flag before running hit detection (where it will be updated)
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/2328
 	c.inguarddist = false
-	// This variable is necessary because NoStandGuard is reset before the walking instructions are checked
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/1966
-	c.prevNoStandGuard = c.asf(ASF_nostandguard)
-	c.unsetASF(ASF_nostandguard | ASF_nocrouchguard | ASF_noairguard)
+
 	// Save current HitFall value before hit detection
 	c.prevfallflag = c.ghv.fallflag
+
 	// Update Z scale
 	// Must be placed after posUpdate()
 	c.zScale = sys.updateZScale(c.pos[2], c.localscl)
+
 	// KO behavior
 	if !c.hitPause() && !c.pauseBool {
 		if c.alive() && c.life <= 0 && !sys.gsf(GSF_globalnoko) && !c.asf(ASF_noko) && (!c.ghv.guarded || !c.asf(ASF_noguardko)) {
@@ -12050,6 +12065,7 @@ func (c *Char) actionFinish() {
 			}
 		}
 	}
+
 	// Over flags (char is finished for the round)
 	if c.alive() && c.life > 0 && !sys.roundEnded() {
 		c.unsetSCF(SCF_over_alive | SCF_over_ko)
@@ -12057,6 +12073,7 @@ func (c *Char) actionFinish() {
 	if c.ss.no == 5150 && !c.scf(SCF_over_ko) { // Actual KO is not required in Mugen
 		c.setSCF(SCF_over_ko)
 	}
+
 	// Signal that "actionFinish" has finished
 	c.minus = 2
 }
@@ -13669,30 +13686,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 		gybot := (getter.pos[1] + gbox[3]) * getter.localscl
 
 		overlapY := Min(cybot, gybot) - Max(cytop, gytop)
-		if overlapY <= 0 {
-			continue
-		}
 
-		// Clamp width
-		// Mugen secretly does this for some reason
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/3164
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-			minwidth := 5.0 / c.localscl
-			if cbox[0] > -minwidth {
-				cbox[0] = -minwidth
-			}
-			if cbox[2] < minwidth {
-				cbox[2] = minwidth
-			}
-		}
-		if getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 {
-			minwidth := 5.0 / getter.localscl
-			if gbox[0] > -minwidth {
-				gbox[0] = -minwidth
-			}
-			if gbox[2] < minwidth {
-				gbox[2] = minwidth
-			}
+		// For the y-axis, an overlap of exactly 0 is also valid for pushing characters away from each other, hence '<'
+		// We don't need a "zero-height case" because the y-overlap is only used as a filter, not to calculate the push distance
+		if overlapY < 0 {
+			continue
 		}
 
 		// X-axis check
@@ -13716,25 +13714,84 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 		overlapX := Min(gxright, cxright) - Max(gxleft, cxleft)
 
-		// X-axis fail
+		// Zero width case
+		// These can also push in Mugen
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3164
+		if overlapX == 0 && (cxleft == cxright || gxleft == gxright) {
+			cHalfW := (cxright - cxleft) * 0.5
+			gHalfW := (gxright - gxleft) * 0.5
+			cCenterX := (cxright + cxleft) * 0.5
+			gCenterX := (gxright + gxleft) * 0.5
+
+			overlapX = (cHalfW + gHalfW) - Abs(cCenterX - gCenterX)
+		}
+
+		/*
+		// In addition to the normal width check, Mugen also checks overlap between an undocumented "internal width" of 5 pixels
+		// The normal and fallback width checks are not mixed with each other
+		// Update: The addition of the zero width case makes this seemingly unnecessary
 		if overlapX <= 0 {
+			// We will only do it for Mugen characters because it defeats the purpose of lowering width
+			cIsOld := c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
+			gIsOld := getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0
+			if cIsOld || gIsOld {
+				if cIsOld {
+					minwidth := 5.0 / c.localscl
+					cxleft = cposx - minwidth
+					cxright = cposx + minwidth
+				}
+				if gIsOld {
+					minwidth := 5.0 / getter.localscl
+					gxleft = gposx - minwidth
+					gxright = gposx + minwidth
+				}
+				overlapX = Min(gxright, cxright) - Max(gxleft, cxleft)
+			}
+		}
+		*/
+
+		// X-axis fail
+		// An overlap of exactly 0 is still valid because pushing may happen along the z-axis
+		if overlapX < 0 {
 			continue
 		}
 
 		// Z-axis check
 		// We don't use the zAxisCheck function because we need the actual overlap amount
-		cposz := c.pos[2] * c.localscl
-		cztop := cposz - c.sizeDepth[0]*c.localscl
-		czbot := cposz + c.sizeDepth[1]*c.localscl
+		// We'll also declare all the vars upfront but only use them if z-axis is enabled
+		var overlapZ float32
+		var cposz, cztop, czbot, gposz, gztop, gzbot float32
 
-		gposz := getter.pos[2] * getter.localscl
-		gztop := gposz - getter.sizeDepth[0]*getter.localscl
-		gzbot := gposz + getter.sizeDepth[1]*getter.localscl
+		if sys.zEnabled() {
+			cposz = c.pos[2] * c.localscl
+			cztop = cposz - c.sizeDepth[0]*c.localscl
+			czbot = cposz + c.sizeDepth[1]*c.localscl
 
-		overlapZ := Min(gzbot, czbot) - Max(gztop, cztop)
+			gposz = getter.pos[2] * getter.localscl
+			gztop = gposz - getter.sizeDepth[0]*getter.localscl
+			gzbot = gposz + getter.sizeDepth[1]*getter.localscl
+
+			overlapZ = Min(gzbot, czbot) - Max(gztop, cztop)
+
+			// Zero depth case
+			if overlapZ == 0 && (cztop == czbot || gztop == gzbot) {
+				cHalfD := (czbot - cztop) * 0.5
+				gHalfD := (gzbot - gztop) * 0.5
+				cCenterZ := (czbot + cztop) * 0.5
+				gCenterZ := (gzbot + gztop) * 0.5
+
+				overlapZ = (cHalfD + gHalfD) - Abs(cCenterZ-gCenterZ)
+			}
+		}
 
 		// Z-axis fail
-		if overlapZ <= 0 {
+		// An overlap of exactly 0 is still valid because pushing may happen along the x-axis
+		if overlapZ < 0 {
+			continue
+		}
+
+		// If players are barely touching but the pushing distance will be 0, just skip the no-op math
+		if overlapX == 0 && overlapZ == 0 {
 			continue
 		}
 
