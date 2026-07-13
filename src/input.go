@@ -18,6 +18,7 @@ type CommandStepKey struct {
 	slash      bool
 	tilde      bool
 	dollar     bool
+	star       bool
 	chargetime int32
 }
 
@@ -761,9 +762,13 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 // Get the state of any symbol/key combination
 // An attempt was made to cache these states in a map, but computing them every time is already faster than looking up a map
 func (__ *InputBuffer) State(ck CommandStepKey) int32 {
+	// These are usually mutually exclusive, but this makes the code a bit easier to follow
+	dollar := ck.dollar && !ck.star
+	star := !ck.dollar && ck.star
+	simple := !dollar && !star
 
 	// Hold simple directions
-	if !ck.tilde && !ck.dollar {
+	if !ck.tilde && simple {
 		switch ck.key {
 
 		case CK_U:
@@ -842,64 +847,60 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		}
 	}
 
-	// This would be the proper way to do it but it breaks some legacy characters
-	// TODO: Add new symbol with this behavior
-	/*
-		// Hold dollar directions
-		if !ck.tilde && ck.dollar {
-			switch ck.key {
+	// Hold star directions
+	if !ck.tilde && star {
+		switch ck.key {
 
-			case CK_U:
-				return __.Ub
+		case CK_U:
+			return __.Ub
 
-			case CK_D:
-				return __.Db
+		case CK_D:
+			return __.Db
 
-			case CK_B:
-				return __.Bb
+		case CK_B:
+			return __.Bb
 
-			case CK_F:
-				return __.Fb
+		case CK_F:
+			return __.Fb
 
-			case CK_L:
-				return __.Lb
+		case CK_L:
+			return __.Lb
 
-			case CK_R:
-				return __.Rb
+		case CK_R:
+			return __.Rb
 
-			// What '$' seems to do in Mugen is ignore conflicting directions
-			// So it also works on diagonals. For instance, $DB is true even if you also press U or F, but DB isn't
-			case CK_UB:
-				return Min(__.Ub, __.Bb)
+		// Diagonals aren't normally used with * (or $)
+		// But for consistency, we'll make them similar to cardinals and accept adjacent directions
+		case CK_UB:
+			return Max(__.Ub, __.Bb)
 
-			case CK_UF:
-				return Min(__.Ub, __.Fb)
+		case CK_UF:
+			return Max(__.Ub, __.Fb)
 
-			case CK_DB:
-				return Min(__.Db, __.Bb)
+		case CK_DB:
+			return Max(__.Db, __.Bb)
 
-			case CK_DF:
-				return Min(__.Db, __.Fb)
+		case CK_DF:
+			return Max(__.Db, __.Fb)
 
-			case CK_UL:
-				return Min(__.Ub, __.Lb)
+		case CK_UL:
+			return Max(__.Ub, __.Lb)
 
-			case CK_UR:
-				return Min(__.Ub, __.Rb)
+		case CK_UR:
+			return Max(__.Ub, __.Rb)
 
-			case CK_DL:
-				return Min(__.Db, __.Lb)
+		case CK_DL:
+			return Max(__.Db, __.Lb)
 
-			case CK_DR:
-				return Min(__.Db, __.Rb)
+		case CK_DR:
+			return Max(__.Db, __.Rb)
 
-			}
 		}
-	*/
+	}
 
 	// Hold dollar directions
 	// The backward compatible way
-	if !ck.tilde && ck.dollar {
+	if !ck.tilde && dollar {
 		switch ck.key {
 
 		case CK_U:
@@ -978,7 +979,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 	}
 
 	// Release simple directions
-	if ck.tilde && !ck.dollar {
+	if ck.tilde && simple {
 		switch ck.key {
 		case CK_U:
 			// If already not held or still held in the previous frame. Prevents for instance UF from trigger ~U
@@ -1086,88 +1087,85 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		}
 	}
 
-	// This would be the proper way to do it but it breaks some legacy characters
-	// TODO: Add new symbol with this behavior
-	/*
-		// Release dollar directions
-		if ck.tilde && ck.dollar {
-			switch ck.key {
-			case CK_U:
-				if __.Ub < 0 || __.Up > 0 {
-					return -__.Ub
-				}
+	// Release star directions
+	if ck.tilde && star {
+		switch ck.key {
+		case CK_U:
+			if __.Ub < 0 || __.Up > 0 {
+				return -__.Ub
+			}
 
-			case CK_D:
-				if __.Db < 0 || __.Dp > 0 {
-					return -__.Db
-				}
+		case CK_D:
+			if __.Db < 0 || __.Dp > 0 {
+				return -__.Db
+			}
 
-			case CK_B:
-				if __.Bb < 0 || __.Bp > 0 {
-					return -__.Bb
-				}
+		case CK_B:
+			if __.Bb < 0 || __.Bp > 0 {
+				return -__.Bb
+			}
 
-			case CK_F:
-				if __.Fb < 0 || __.Fp > 0 {
-					return -__.Fb
-				}
+		case CK_F:
+			if __.Fb < 0 || __.Fp > 0 {
+				return -__.Fb
+			}
 
-			case CK_L:
-				if __.Lb < 0 || __.Lp > 0 {
-					return -__.Lb
-				}
+		case CK_L:
+			if __.Lb < 0 || __.Lp > 0 {
+				return -__.Lb
+			}
 
-			case CK_R:
-				if __.Rb < 0 || __.Rp > 0 {
-					return -__.Rb
-				}
+		case CK_R:
+			if __.Rb < 0 || __.Rp > 0 {
+				return -__.Rb
+			}
 
-			case CK_UB:
-				if (__.Ub < 0 || __.Up > 0) && (__.Bb < 0 || __.Bp > 0) {
-					return -Min(__.Ub, __.Bb)
-				}
+		// Diagonals trigger if either component is released
+		case CK_UB:
+			if (__.Ub < 0 || __.Up > 0) || (__.Bb < 0 || __.Bp > 0) {
+				return -Max(__.Ub, __.Bb)
+			}
 
-			case CK_UF:
-				if (__.Ub < 0 || __.Up > 0) && (__.Fb < 0 || __.Fp > 0) {
-					return -Min(__.Ub, __.Fb)
-				}
+		case CK_UF:
+			if (__.Ub < 0 || __.Up > 0) || (__.Fb < 0 || __.Fp > 0) {
+				return -Max(__.Ub, __.Fb)
+			}
 
-			case CK_DB:
-				if (__.Db < 0 || __.Dp > 0) && (__.Bb < 0 || __.Bp > 0) {
-					return -Min(__.Db, __.Bb)
-				}
+		case CK_DB:
+			if (__.Db < 0 || __.Dp > 0) || (__.Bb < 0 || __.Bp > 0) {
+				return -Max(__.Db, __.Bb)
+			}
 
-			case CK_DF:
-				if (__.Db < 0 || __.Dp > 0) && (__.Fb < 0 || __.Fp > 0) {
-					return -Min(__.Db, __.Fb)
-				}
+		case CK_DF:
+			if (__.Db < 0 || __.Dp > 0) || (__.Fb < 0 || __.Fp > 0) {
+				return -Max(__.Db, __.Fb)
+			}
 
-			case CK_UL:
-				if (__.Ub < 0 || __.Up > 0) && (__.Lb < 0 || __.Lp > 0) {
-					return -Min(__.Ub, __.Lb)
-				}
+		case CK_UL:
+			if (__.Ub < 0 || __.Up > 0) || (__.Lb < 0 || __.Lp > 0) {
+				return -Max(__.Ub, __.Lb)
+			}
 
-			case CK_UR:
-				if (__.Ub < 0 || __.Up > 0) && (__.Rb < 0 || __.Rp > 0) {
-					return -Min(__.Ub, __.Rb)
-				}
+		case CK_UR:
+			if (__.Ub < 0 || __.Up > 0) || (__.Rb < 0 || __.Rp > 0) {
+				return -Max(__.Ub, __.Rb)
+			}
 
-			case CK_DL:
-				if (__.Db < 0 || __.Dp > 0) && (__.Lb < 0 || __.Lp > 0) {
-					return -Min(__.Db, __.Lb)
-				}
+		case CK_DL:
+			if (__.Db < 0 || __.Dp > 0) || (__.Lb < 0 || __.Lp > 0) {
+				return -Max(__.Db, __.Lb)
+			}
 
-			case CK_DR:
-				if (__.Db < 0 || __.Dp > 0) && (__.Rb < 0 || __.Rp > 0) {
-					return -Min(__.Db, __.Rb)
-				}
+		case CK_DR:
+			if (__.Db < 0 || __.Dp > 0) || (__.Rb < 0 || __.Rp > 0) {
+				return -Max(__.Db, __.Rb)
 			}
 		}
-	*/
+	}
 
 	// Release dollar directions
 	// The backward compatible way
-	if ck.tilde && ck.dollar {
+	if ck.tilde && dollar {
 		switch ck.key {
 
 		case CK_U:
@@ -1263,7 +1261,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 				if __.Ub < 0 || __.Rb < 0 {
 					return -Min(__.Ub, __.Rb)
 				}
-				return Min(Abs(__.Db), Abs(__.Rb))
+				return Min(Abs(__.Db), Abs(__.Lb))
 			}
 
 		case CK_DL:
@@ -1279,7 +1277,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 				if __.Db < 0 || __.Rb < 0 {
 					return -Min(__.Db, __.Rb)
 				}
-				return Min(Abs(__.Ub), Abs(__.Rb))
+				return Min(Abs(__.Ub), Abs(__.Lb))
 			}
 		}
 
@@ -1379,7 +1377,7 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 
 	// Special $N (and ~$N) case
 	// This one somehow returns "any change" in Mugen. Since "any neutral" is useless anyway we'll just add support for that
-	if ck.dollar && ck.key == CK_N {
+	if dollar && ck.key == CK_N {
 		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb))
 	}
 
@@ -1398,8 +1396,12 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		return buf
 	}
 
-	// Hold dollar directions
-	if !ck.tilde && ck.dollar {
+	dollar := ck.dollar && !ck.star
+	star := !ck.dollar && ck.star
+	simple := !dollar && !star
+
+	// Hold dollar or star directions
+	if !ck.tilde && (dollar || star) {
 		switch ck.key {
 
 		case CK_U:
@@ -1423,8 +1425,8 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		}
 	}
 
-	// Release dollar directions
-	if ck.tilde && ck.dollar {
+	// Release dollar or star directions
+	if ck.tilde && (dollar || star) {
 		switch ck.key {
 
 		case CK_U:
@@ -1449,8 +1451,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	}
 
 	// Hold simple directions
-	// Mugen doesn't use "hold charge" but we could in the future
-	if !ck.tilde && !ck.dollar {
+	if !ck.tilde && simple {
 		switch ck.key {
 
 		case CK_U:
@@ -1529,7 +1530,7 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 	}
 
 	// Release simple directions
-	if ck.tilde && !ck.dollar {
+	if ck.tilde && simple {
 		switch ck.key {
 
 		case CK_U:
@@ -1641,9 +1642,86 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		}
 	}
 
-	// Hold sign diagonals
+	// Hold star diagonals
+	// We'll make them similar to cardinal directions and also accept adjacent directions
+	if !ck.tilde && star {
+		switch ck.key {
+
+		case CK_UB:
+			return Max(ib.Ub, ib.Bb)
+
+		case CK_UF:
+			return Max(ib.Ub, ib.Fb)
+
+		case CK_DB:
+			return Max(ib.Db, ib.Bb)
+
+		case CK_DF:
+			return Max(ib.Db, ib.Fb)
+
+		case CK_UL:
+			return Max(ib.Ub, ib.Lb)
+
+		case CK_UR:
+			return Max(ib.Ub, ib.Rb)
+
+		case CK_DL:
+			return Max(ib.Db, ib.Lb)
+
+		case CK_DR:
+			return Max(ib.Db, ib.Rb)
+		}
+	}
+
+	// Release star diagonals
+	if ck.tilde && star {
+		switch ck.key {
+
+		case CK_UB:
+			if (ib.Ub < 0 || ib.Up > 0) || (ib.Bb < 0 || ib.Bp > 0) {
+				return Max(ib.Up, ib.Bp)
+			}
+
+		case CK_UF:
+			if (ib.Ub < 0 || ib.Up > 0) || (ib.Fb < 0 || ib.Fp > 0) {
+				return Max(ib.Up, ib.Fp)
+			}
+
+		case CK_DB:
+			if (ib.Db < 0 || ib.Dp > 0) || (ib.Bb < 0 || ib.Bp > 0) {
+				return Max(ib.Dp, ib.Bp)
+			}
+
+		case CK_DF:
+			if (ib.Db < 0 || ib.Dp > 0) || (ib.Fb < 0 || ib.Fp > 0) {
+				return Max(ib.Dp, ib.Fp)
+			}
+
+		case CK_UL:
+			if (ib.Ub < 0 || ib.Up > 0) || (ib.Lb < 0 || ib.Lp > 0) {
+				return Max(ib.Up, ib.Lp)
+			}
+
+		case CK_UR:
+			if (ib.Ub < 0 || ib.Up > 0) || (ib.Rb < 0 || ib.Rp > 0) {
+				return Max(ib.Up, ib.Rp)
+			}
+
+		case CK_DL:
+			if (ib.Db < 0 || ib.Dp > 0) || (ib.Lb < 0 || ib.Lp > 0) {
+				return Max(ib.Dp, ib.Lp)
+			}
+
+		case CK_DR:
+			if (ib.Db < 0 || ib.Dp > 0) || (ib.Rb < 0 || ib.Rp > 0) {
+				return Max(ib.Dp, ib.Rp)
+			}
+		}
+	}
+
+	// Hold dollar diagonals
 	// These allow conflicts. Not very useful but is consistent with Mugen's "$" symbol
-	if !ck.tilde && ck.dollar {
+	if !ck.tilde && dollar {
 		switch ck.key {
 
 		case CK_UF:
@@ -1672,8 +1750,8 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		}
 	}
 
-	// Release sign diagonals
-	if ck.tilde && ck.dollar {
+	// Release dollar diagonals
+	if ck.tilde && dollar {
 		switch ck.key {
 
 		case CK_UF:
@@ -2102,7 +2180,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 			}
 
 			// Parse prefix symbols
-			var slash, tilde, dollar bool
+			var slash, tilde, dollar, star bool
 			var chargetime int32
 
 			getChar := func() rune {
@@ -2166,7 +2244,19 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					if dollar {
 						err = Error("Duplicate '$' symbol found")
 					}
+					if star {
+						err = Error("'$' and '*' symbols cannot be used together")
+					}
 					dollar = true
+					nextChar()
+				case '*':
+					if star {
+						err = Error("Duplicate '*' symbol found")
+					}
+					if dollar {
+						err = Error("'$' and '*' symbols cannot be used together")
+					}
+					star = true
 					nextChar()
 				default:
 					goto ParseKey // Break out of prefix loop
@@ -2228,12 +2318,22 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 						nextChar()
 					}
 				}
-				cs.keys = append(cs.keys, CommandStepKey{key: k, slash: slash, tilde: tilde, dollar: dollar, chargetime: chargetime})
+				cs.keys = append(cs.keys, CommandStepKey{
+					key: k,
+					slash: slash,
+					tilde: tilde,
+					dollar: dollar,
+					star: star,
+					chargetime: chargetime,
+				})
 				nextChar()
 			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm':
 				// Maybe too restrictive. Will make people blame poor module code on IkemenVersion characters
 				//if dollar {
 				//	err = Error("'$' symbol not supported for buttons")
+				//}
+				//if star {
+				//	err = Error("'*' symbol not supported for buttons")
 				//}
 				// Compile buttons according to remaps
 				var k CommandKey
@@ -2259,7 +2359,14 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 				case 'm':
 					k = kr.m
 				}
-				cs.keys = append(cs.keys, CommandStepKey{key: k, slash: slash, tilde: tilde, dollar: false, chargetime: chargetime})
+				cs.keys = append(cs.keys, CommandStepKey{
+					key: k,
+					slash: slash,
+					tilde: tilde,
+					dollar: false,
+					star: false,
+					chargetime: chargetime,
+				})
 				nextChar()
 			default:
 				err = Error(fmt.Sprintf("Invalid symbol '%c' found", c0))
@@ -2340,6 +2447,7 @@ func (c *Command) AutoGreaterExpand() {
 						key:    curr.keys[0].key,
 						tilde:  !curr.keys[0].tilde,
 						dollar: curr.keys[0].dollar,
+						star: curr.keys[0].star,
 					}},
 				},
 				CommandStep{
