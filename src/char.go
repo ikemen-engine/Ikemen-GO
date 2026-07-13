@@ -13723,31 +13723,31 @@ func (cl *CharList) pushDetection(getter *Char) {
 			cCenterX := (cxright + cxleft) * 0.5
 			gCenterX := (gxright + gxleft) * 0.5
 
-			overlapX = (cHalfW + gHalfW) - Abs(cCenterX - gCenterX)
+			overlapX = (cHalfW + gHalfW) - Abs(cCenterX-gCenterX)
 		}
 
 		/*
-		// In addition to the normal width check, Mugen also checks overlap between an undocumented "internal width" of 5 pixels
-		// The normal and fallback width checks are not mixed with each other
-		// Update: The addition of the zero width case makes this seemingly unnecessary
-		if overlapX <= 0 {
-			// We will only do it for Mugen characters because it defeats the purpose of lowering width
-			cIsOld := c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
-			gIsOld := getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0
-			if cIsOld || gIsOld {
-				if cIsOld {
-					minwidth := 5.0 / c.localscl
-					cxleft = cposx - minwidth
-					cxright = cposx + minwidth
+			// In addition to the normal width check, Mugen also checks overlap between an undocumented "internal width" of 5 pixels
+			// The normal and fallback width checks are not mixed with each other
+			// Update: The addition of the zero width case makes this seemingly unnecessary
+			if overlapX <= 0 {
+				// We will only do it for Mugen characters because it defeats the purpose of lowering width
+				cIsOld := c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
+				gIsOld := getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0
+				if cIsOld || gIsOld {
+					if cIsOld {
+						minwidth := 5.0 / c.localscl
+						cxleft = cposx - minwidth
+						cxright = cposx + minwidth
+					}
+					if gIsOld {
+						minwidth := 5.0 / getter.localscl
+						gxleft = gposx - minwidth
+						gxright = gposx + minwidth
+					}
+					overlapX = Min(gxright, cxright) - Max(gxleft, cxleft)
 				}
-				if gIsOld {
-					minwidth := 5.0 / getter.localscl
-					gxleft = gposx - minwidth
-					gxright = gposx + minwidth
-				}
-				overlapX = Min(gxright, cxright) - Max(gxleft, cxleft)
 			}
-		}
 		*/
 
 		// X-axis fail
