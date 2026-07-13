@@ -13468,33 +13468,29 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 			// Guard distance check
 			// Mugen uses < checks so that 0 does not trigger proximity guard at 0 distance
 			// Localcoord conversion is already built into the dist functions, so it will be skipped
-			if c.ss.moveType == MT_A {
-				var inguardx, inguardy, inguardz bool
-
+			if !getter.inguarddist && c.ss.moveType == MT_A {
 				// Get distances
 				distX := c.distX(getter, c) * c.facing
 				distY := c.distY(getter, c)
 				distZ := c.distZ(getter, c)
 
 				// Check X distance
-				inguardx = distX < c.hitdef.guard_dist_x[0] && distX > -c.hitdef.guard_dist_x[1]
+				inguardX := distX < c.hitdef.guard_dist_x[0] && distX > -c.hitdef.guard_dist_x[1]
 
 				// Check Y distance
-				if distY == 0 { // Compatibility safeguard
-					inguardy = true
-				} else {
-					inguardy = distY > -c.hitdef.guard_dist_y[0] && distY < c.hitdef.guard_dist_y[1]
+				inguardY := true
+				if distY != 0 { // Compatibility safeguard
+					inguardY = distY > -c.hitdef.guard_dist_y[0] && distY < c.hitdef.guard_dist_y[1]
 				}
 
 				// Check Z distance
-				if distZ == 0 { // Compatibility safeguard
-					inguardz = true
-				} else {
-					inguardz = distZ > -c.hitdef.guard_dist_z[0] && distZ < c.hitdef.guard_dist_z[1]
+				inguardZ := true
+				if distZ != 0 { // Compatibility safeguard
+					inguardZ = distZ > -c.hitdef.guard_dist_z[0] && distZ < c.hitdef.guard_dist_z[1]
 				}
 
 				// Set flag
-				if inguardx && inguardy && inguardz {
+				if inguardX && inguardY && inguardZ {
 					getter.inguarddist = true
 				}
 			}
@@ -13720,36 +13716,34 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 				continue
 			}
 
-			// Projectile guard distance check
+			// Check distance between projectile and enemy
 			distX := (getter.pos[0]*getter.localscl - (p.pos[0])*p.localscl) * p.facing
-			distY := (getter.pos[1]*getter.localscl - (p.pos[1])*p.localscl)
-			distZ := (getter.pos[2]*getter.localscl - (p.pos[2])*p.localscl)
 
-			if !p.platform && p.hitdef.attr > 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1445
-				var inguardx, inguardy, inguardz bool
+			// Projectile guard distance check
+			if !getter.inguarddist && p.hitdef.attr > 0 && !p.platform { // https://github.com/ikemen-engine/Ikemen-GO/issues/1445
+				distY := (getter.pos[1]*getter.localscl - (p.pos[1])*p.localscl)
+				distZ := (getter.pos[2]*getter.localscl - (p.pos[2])*p.localscl)
 
 				// Check X distance
-				inguardx = distX < p.hitdef.guard_dist_x[0]*p.localscl &&
+				inguardX := distX < p.hitdef.guard_dist_x[0]*p.localscl &&
 					distX > -p.hitdef.guard_dist_x[1]*p.localscl
 
 				// Check Y distance
-				if distY == 0 { // Compatibility safeguard
-					inguardy = true
-				} else {
-					inguardy = distY > -p.hitdef.guard_dist_y[0]*p.localscl &&
+				inguardY := true
+				if distY != 0 { // Compatibility safeguard
+					inguardY = distY > -p.hitdef.guard_dist_y[0]*p.localscl &&
 						distY < p.hitdef.guard_dist_y[1]*p.localscl
 				}
 
 				// Check Z distance
-				if distZ == 0 { // Compatibility safeguard
-					inguardz = true
-				} else {
-					inguardz = distZ > -p.hitdef.guard_dist_z[0]*p.localscl &&
+				inguardZ := true
+				if distZ != 0 { // Compatibility safeguard
+					inguardZ = distZ > -p.hitdef.guard_dist_z[0]*p.localscl &&
 						distZ < p.hitdef.guard_dist_z[1]*p.localscl
 				}
 
 				// Set flag
-				if inguardx && inguardy && inguardz {
+				if inguardX && inguardY && inguardZ {
 					getter.inguarddist = true
 				}
 			}
