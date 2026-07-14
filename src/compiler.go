@@ -2839,7 +2839,6 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			return nil
 		}
 		if err := eqne(hda); err != nil {
-			//if sys.cgi[c.playerNo].ikemenverF > 0 || !sys.ignoreMostErrors {
 			if c.zssMode || !sys.ignoreMostErrors {
 				return bvNone(), err
 			}
@@ -3778,10 +3777,16 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "info.displayname":
 			opc = OC_const_stagevar_info_displayname
 			isStr = true
-		case "info.ikemenversion":
-			opc = OC_const_stagevar_info_ikemenversion
-		case "info.mugenversion":
-			opc = OC_const_stagevar_info_mugenversion
+		case "info.ikemenversion.major":
+			opc = OC_const_stagevar_info_ikemenversion_major
+		case "info.ikemenversion.minor":
+			opc = OC_const_stagevar_info_ikemenversion_minor
+		case "info.ikemenversion.patch":
+			opc = OC_const_stagevar_info_ikemenversion_patch
+		case "info.mugenversion.major":
+			opc = OC_const_stagevar_info_mugenversion_major
+		case "info.mugenversion.minor":
+			opc = OC_const_stagevar_info_mugenversion_minor
 		case "info.name":
 			opc = OC_const_stagevar_info_name
 			isStr = true
@@ -4652,7 +4657,23 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
 	case "ikemenversion":
-		out.append(OC_ex_, OC_ex_ikemenversion)
+		if err := c.checkOpeningParenthesis(in); err != nil {
+			return bvNone(), err
+		}
+		switch c.token {
+		case "major":
+			out.append(OC_ex_, OC_ex_ikemenversion_major)
+		case "minor":
+			out.append(OC_ex_, OC_ex_ikemenversion_minor)
+		case "patch":
+			out.append(OC_ex_, OC_ex_ikemenversion_patch)
+		default:
+			return bvNone(), Error("Invalid IkemenVersion argument: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingParenthesis(); err != nil {
+			return bvNone(), err
+		}
 	case "incustomanim":
 		out.append(OC_ex_, OC_ex_incustomanim)
 	case "incustomstate":
@@ -5009,7 +5030,21 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 	case "mugenversion":
-		out.append(OC_ex_, OC_ex_mugenversion)
+		if err := c.checkOpeningParenthesis(in); err != nil {
+			return bvNone(), err
+		}
+		switch c.token {
+		case "major":
+			out.append(OC_ex_, OC_ex_mugenversion_major)
+		case "minor":
+			out.append(OC_ex_, OC_ex_mugenversion_minor)
+		default:
+			return bvNone(), Error("Invalid MugenVersion argument: " + c.token)
+		}
+		c.token = c.tokenizer(in)
+		if err := c.checkClosingParenthesis(); err != nil {
+			return bvNone(), err
+		}
 	case "numplayer":
 		out.append(OC_ex_, OC_ex_numplayer)
 	case "pausetime":
@@ -6308,7 +6343,6 @@ func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byt
 		case "screen":
 			spc = Space_screen
 		default:
-			//if sys.cgi[c.playerNo].ikemenverF > 0 && !sys.ignoreMostErrors {
 			if c.zssMode && !sys.ignoreMostErrors {
 				return Error("Invalid space type: " + data)
 			} else {
@@ -8113,25 +8147,12 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 			// Read info section for the Mugen/Ikemen version of the character
 			if info {
 				info = false
-				var ok bool
-				var str string
-				// Clear then read MugenVersion
-				sys.cgi[pn].mugenver = [2]uint16{}
-				sys.cgi[pn].mugenverF = 0
-				if str, ok = is["mugenversion"]; ok {
-					sys.cgi[pn].mugenver, sys.cgi[pn].mugenverF = ParseMugenVersion(str)
-				}
-				// Clear then read IkemenVersion
-				sys.cgi[pn].ikemenver = [3]uint16{}
-				sys.cgi[pn].ikemenverF = 0
-				if str, ok = is["ikemenversion"]; ok {
-					sys.cgi[pn].ikemenver, sys.cgi[pn].ikemenverF = ParseIkemenVersion(str)
-				}
+				// Read MugenVersion and IkemenVersion
+				sys.cgi[pn].mugenver = ParseMugenVersion(is["mugenversion"])
+				sys.cgi[pn].ikemenver = ParseIkemenVersion(is["ikemenversion"])
 				// Ikemen characters adopt Mugen 1.1 version as a safeguard
 				if sys.cgi[pn].ikemenver[0] != 0 || sys.cgi[pn].ikemenver[1] != 0 {
-					sys.cgi[pn].mugenver[0] = 1
-					sys.cgi[pn].mugenver[1] = 1
-					sys.cgi[pn].mugenverF = 1.1
+					sys.cgi[pn].mugenver = [2]uint16{1, 1}
 				}
 			}
 		case "files":

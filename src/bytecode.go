@@ -402,8 +402,11 @@ const (
 	OC_const_displayname
 	OC_const_stagevar_info_author
 	OC_const_stagevar_info_displayname
-	OC_const_stagevar_info_ikemenversion
-	OC_const_stagevar_info_mugenversion
+	OC_const_stagevar_info_ikemenversion_major
+	OC_const_stagevar_info_ikemenversion_minor
+	OC_const_stagevar_info_ikemenversion_patch
+	OC_const_stagevar_info_mugenversion_major
+	OC_const_stagevar_info_mugenversion_minor
 	OC_const_stagevar_info_name
 	OC_const_stagevar_camera_boundleft
 	OC_const_stagevar_camera_boundright
@@ -675,7 +678,9 @@ const (
 	OC_ex_movehitvar_spark_x
 	OC_ex_movehitvar_spark_y
 	OC_ex_movehitvar_uniqhit
-	OC_ex_ikemenversion
+	OC_ex_ikemenversion_major
+	OC_ex_ikemenversion_minor
+	OC_ex_ikemenversion_patch
 	OC_ex_incustomanim
 	OC_ex_incustomstate
 	OC_ex_isassertedchar
@@ -697,7 +702,8 @@ const (
 	OC_ex_lerp
 	OC_ex_memberno
 	OC_ex_movecountered
-	OC_ex_mugenversion
+	OC_ex_mugenversion_major
+	OC_ex_mugenversion_minor
 	OC_ex_pausetime
 	OC_ex_physics
 	OC_ex_playerno
@@ -2746,10 +2752,16 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_info_displayname:
 		nameStr := be.ReadPoolStringAt(i)
 		sys.bcStack.PushB(sys.stage.displaynameLow == nameStr)
-	case OC_const_stagevar_info_ikemenversion:
-		sys.bcStack.PushF(sys.stage.ikemenverF)
-	case OC_const_stagevar_info_mugenversion:
-		sys.bcStack.PushF(sys.stage.mugenverF)
+	case OC_const_stagevar_info_ikemenversion_major:
+		sys.bcStack.PushI(int32(sys.stage.ikemenver[0]))
+	case OC_const_stagevar_info_ikemenversion_minor:
+		sys.bcStack.PushI(int32(sys.stage.ikemenver[1]))
+	case OC_const_stagevar_info_ikemenversion_patch:
+		sys.bcStack.PushI(int32(sys.stage.ikemenver[2]))
+	case OC_const_stagevar_info_mugenversion_major:
+		sys.bcStack.PushI(int32(sys.stage.mugenver[0]))
+	case OC_const_stagevar_info_mugenversion_minor:
+		sys.bcStack.PushI(int32(sys.stage.mugenver[1]))
 	case OC_const_stagevar_info_name:
 		nameStr := be.ReadPoolStringAt(i)
 		sys.bcStack.PushB(sys.stage.nameLow == nameStr)
@@ -3320,8 +3332,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*sys.bcStack.Top() = c.helperIndexExist(*sys.bcStack.Top())
 	case OC_ex_hitoverridden:
 		sys.bcStack.PushB(c.hoverIdx >= 0)
-	case OC_ex_ikemenversion:
-		sys.bcStack.PushF(c.gi().ikemenverF)
+	case OC_ex_ikemenversion_major:
+		sys.bcStack.PushI(int32(c.gi().ikemenver[0]))
+	case OC_ex_ikemenversion_minor:
+		sys.bcStack.PushI(int32(c.gi().ikemenver[1]))
+	case OC_ex_ikemenversion_patch:
+		sys.bcStack.PushI(int32(c.gi().ikemenver[2]))
 	case OC_ex_incustomanim:
 		sys.bcStack.PushB(c.animPN != c.playerNo)
 	case OC_ex_incustomstate:
@@ -3438,10 +3454,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(c.memberNo) + 1)
 	case OC_ex_movecountered:
 		sys.bcStack.PushI(c.moveCountered())
-	case OC_ex_mugenversion:
-		sys.bcStack.PushF(c.gi().mugenverF)
-		// Here the version is always checked directly in the character instead of the working state
-		// This is because in a custom state this trigger will be used to know the enemy's version rather than our own
+	case OC_ex_mugenversion_major:
+		sys.bcStack.PushI(int32(c.gi().mugenver[0]))
+	case OC_ex_mugenversion_minor:
+		sys.bcStack.PushI(int32(c.gi().mugenver[1]))
 	case OC_ex_pausetime:
 		sys.bcStack.PushI(c.pauseTimeTrigger())
 	case OC_ex_physics:

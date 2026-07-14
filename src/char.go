@@ -1963,7 +1963,7 @@ func (e *Explod) update() {
 		}
 	}
 
-	oldVer := root.gi().mugenverF < 1.1
+	oldVer := root.gi().mugenver[0] != 1 || root.gi().mugenver[1] != 1
 
 	// Bind explod to parent
 	// In Mugen this only happens if the explod is not paused, hence "act"
@@ -3070,9 +3070,7 @@ type CharGlobalInfo struct {
 	palInfo                 map[int]PalInfo
 	palno                   int32
 	ikemenver               [3]uint16
-	ikemenverF              float32
 	mugenver                [2]uint16
-	mugenverF               float32
 	data                    CharData
 	velocity                CharVelocity
 	movement                CharMovement

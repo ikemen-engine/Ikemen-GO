@@ -937,9 +937,7 @@ type Stage struct {
 	constants       map[string]float32
 	partnerspacing  int32
 	ikemenver       [3]uint16
-	ikemenverF      float32
 	mugenver        [2]uint16
-	mugenverF       float32
 	reload          bool
 	stageprops      StageProps
 	model           *Model
@@ -1031,17 +1029,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		s.nameLow = strings.ToLower(s.name)
 		s.displaynameLow = strings.ToLower(s.displayname)
 		s.authorLow = strings.ToLower(s.author)
-		// Clear then read MugenVersion
-		s.mugenver = [2]uint16{}
-		s.mugenverF = 0
-		if str, ok := sec["mugenversion"]; ok {
-			s.mugenver, s.mugenverF = ParseMugenVersion(str)
-		}
-		// Clear then read IkemenVersion
-		s.ikemenver = [3]uint16{}
-		if str, ok := sec["ikemenversion"]; ok {
-			s.ikemenver, s.ikemenverF = ParseIkemenVersion(str)
-		}
+		s.mugenver = ParseMugenVersion(sec["mugenversion"])
+		s.ikemenver = ParseIkemenVersion(sec["ikemenversion"])
 		// If the MUGEN version is lower than 1.0, default to camera pixel rounding (floor)
 		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 && s.mugenver[0] != 1 {
 			s.stageprops.roundpos = true

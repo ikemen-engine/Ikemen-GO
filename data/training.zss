@@ -111,7 +111,7 @@ ignoreHitPause if gameMode = "training" {
 							}
 							if $rcv {
 								# WinMugen characters assert inputs because asserting commands directly may trigger their AI activation codes
-								if mugenVersion < 1.0 {
+								if mugenVersion(major) = 0 {
 									if gametime % 2 {
 										assertInput{flag: x; flag2: y; flag3: z}
 									} else {
