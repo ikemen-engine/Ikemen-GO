@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -589,10 +590,7 @@ func SearchFile(file string, dirs []string, defaultDirs ...string) string {
 		return FileExist(candidate)
 	}
 	join := func(base, name string) string {
-		if base == "" {
-			return filepath.ToSlash(name)
-		}
-		return filepath.ToSlash(filepath.Join(base, name))
+		return joinSearchPath(base, name)
 	}
 	rootBases := func(root string) []string {
 		root = filepath.ToSlash(strings.TrimSpace(root))
@@ -1654,6 +1652,24 @@ func (zmfr *zipMemFileReader) Seek(offset int64, whence int) (int64, error) {
 func (zmfr *zipMemFileReader) Close() error {
 	// The bytes.Reader itself doesn't need closing, but we must close the main zip archive.
 	return zmfr.zipArchive.Close()
+}
+
+// joinSearchPath joins paths used by SearchFile without allowing a relative reference to escape a zip archive.
+func joinSearchPath(base, name string) string {
+	base = filepath.ToSlash(base)
+	name = filepath.ToSlash(name)
+	if isZip, zipFile, pathInZip := IsZipPath(base); isZip {
+		inner := path.Join("/", pathInZip, strings.TrimLeft(name, "/"))
+		inner = strings.TrimPrefix(inner, "/")
+		if inner == "" || inner == "." {
+			return zipFile
+		}
+		return zipFile + "/" + inner
+	}
+	if base == "" {
+		return name
+	}
+	return filepath.ToSlash(filepath.Join(base, name))
 }
 
 // OpenFile opens a regular file or a file within a zip archive.

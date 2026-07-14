@@ -109,7 +109,13 @@ Before you submit your Pull Request (PR), please follow these guidelines:
 
 7. Submit a PR to the correct base branch on `Ikemen GO` (either `develop` or `release`).
 
-#### Reviewing a Pull Request
+#### Contributor Responsibilities
+
+Regardless of whether a contribution is self-written or AI-assisted, contributors must understand the code they submit and ensure it is testable and maintainable.
+
+Contributors are also expected to help investigate and resolve bugs or regressions introduced by their changes, including those discovered after the PR has been merged. Changes that introduce unresolved bugs or regressions may be reverted to preserve the stability of the codebase.
+
+#### Pull Request Review
 
 All PRs are subject to review by the Ikemen GO dev team, which retains the right to decline any contributions.
 
