@@ -32,19 +32,14 @@ type CharSpecialFlag uint32
 
 const (
 	CSF_angledraw CharSpecialFlag = 1 << iota
-	CSF_depth
-	CSF_depthedge
 	CSF_destroy
 	CSF_gethit
-	CSF_height
 	CSF_movecamera_x
 	CSF_movecamera_y
 	CSF_playerpush
 	CSF_posfreeze
 	CSF_screenbound
 	CSF_stagebound
-	CSF_width
-	CSF_widthedge
 )
 
 // Flags set by AssertSpecial. They are reset together every frame
@@ -3281,11 +3276,11 @@ type CharSystemVar struct {
 	layerNo               int32
 	receivedDmg           int32
 	receivedHits          int32
-	sizeWidth             [2]float32
-	edgeWidth             [2]float32
-	sizeHeight            [2]float32
-	sizeDepth             [2]float32
-	edgeDepth             [2]float32
+	widthPlayer           [2]float32 // From Width sctrl
+	widthEdge             [2]float32
+	heightPlayer          [2]float32 // From Height sctrl
+	depthPlayer           [2]float32 // From Depth sctrl
+	depthEdge             [2]float32
 	attackMul             [4]float32 // 0 Damage, 1 Red Life, 2 Dizzy Points, 3 Guard Points
 	superDefenseMul       float32
 	superDefenseMulBuffer float32
@@ -3585,7 +3580,7 @@ func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
 			if box == 1 {
 				return char.hitdef.attack_depth[0], char.hitdef.attack_depth[1]
 			}
-			return char.sizeDepth[0], char.sizeDepth[1]
+			return char.depthPlayer[0], char.depthPlayer[1]
 		}
 
 		top1, bot1 := getDepth(c, box1)
@@ -3629,9 +3624,6 @@ func (c *Char) prepareNextRound() {
 		angleDrawScale:        [2]float32{1, 1},
 		trans:                 TT_default,
 		alpha:                 [2]int32{255, 0},
-		sizeWidth:             [2]float32{c.baseWidthFront(), c.baseWidthBack()},
-		sizeHeight:            [2]float32{c.baseHeightTop(), c.baseHeightBottom()},
-		sizeDepth:             [2]float32{c.baseDepthTop(), c.baseDepthBottom()},
 		attackMul:             [4]float32{1, 1, 1, 1},
 		fallDefenseMul:        1,
 		superDefenseMul:       1,
@@ -3639,7 +3631,6 @@ func (c *Char) prepareNextRound() {
 		customDefense:         1,
 		finalDefense:          float64(c.gi().data.defence) / 100,
 	}
-	//c.updateSizeBox()
 	c.oldPos, c.interPos = c.pos, c.pos
 	if c.helperIndex == 0 {
 		if c.roundsExisted() > 0 && c.palfx != nil { // TODO: Why do we need this branch?
@@ -5312,7 +5303,7 @@ func (c *Char) backEdgeBodyDist() float32 {
 			offset = 1.0 / c.localscl
 		}
 	}
-	return c.backEdgeDist() - c.edgeWidth[1] - offset
+	return c.backEdgeDist() - c.widthEdge[1] - offset
 }
 
 func (c *Char) backEdgeDist() float32 {
@@ -5327,7 +5318,7 @@ func (c *Char) bottomEdge() float32 {
 }
 
 func (c *Char) botBoundBodyDist() float32 {
-	return c.botBoundDist() - c.edgeDepth[1]
+	return c.botBoundDist() - c.depthEdge[1]
 }
 
 func (c *Char) botBoundDist() float32 {
@@ -5450,7 +5441,7 @@ func (c *Char) frontEdgeBodyDist() float32 {
 			offset = 1.0 / c.localscl
 		}
 	}
-	return c.frontEdgeDist() - c.edgeWidth[0] - offset
+	return c.frontEdgeDist() - c.widthEdge[0] - offset
 }
 
 func (c *Char) frontEdgeDist() float32 {
@@ -6352,7 +6343,7 @@ func (c *Char) topEdge() float32 {
 }
 
 func (c *Char) topBoundBodyDist() float32 {
-	return c.topBoundDist() - c.edgeDepth[0]
+	return c.topBoundDist() - c.depthEdge[0]
 }
 
 func (c *Char) topBoundDist() float32 {
@@ -6598,19 +6589,17 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.ghv.yaccel *= lsRatio
 		c.ghv.zaccel *= lsRatio
 
-		c.sizeWidth[0] *= lsRatio
-		c.sizeWidth[1] *= lsRatio
-		c.sizeHeight[0] *= lsRatio
-		c.sizeHeight[1] *= lsRatio
-		//c.updateSizeBox()
+		c.widthPlayer[0] *= lsRatio
+		c.widthPlayer[1] *= lsRatio
+		c.heightPlayer[0] *= lsRatio
+		c.heightPlayer[1] *= lsRatio
+		c.depthPlayer[0] *= lsRatio
+		c.depthPlayer[1] *= lsRatio
 
-		c.sizeDepth[0] *= lsRatio
-		c.sizeDepth[1] *= lsRatio
-
-		c.edgeWidth[0] *= lsRatio
-		c.edgeWidth[1] *= lsRatio
-		c.edgeDepth[0] *= lsRatio
-		c.edgeDepth[1] *= lsRatio
+		c.widthEdge[0] *= lsRatio
+		c.widthEdge[1] *= lsRatio
+		c.depthEdge[0] *= lsRatio
+		c.depthEdge[1] *= lsRatio
 
 		c.bindPos[0] *= lsRatio
 		c.bindPos[1] *= lsRatio
@@ -7726,60 +7715,6 @@ func (c *Char) getSingleProj(id int32, idx int, log bool) *Projectile {
 	return nil
 }
 
-func (c *Char) baseWidthFront() float32 {
-	switch c.ss.stateType {
-	case ST_C:
-		return float32(c.size.crouchbox[2])
-	case ST_A:
-		return float32(c.size.airbox[2])
-	case ST_L:
-		return float32(c.size.downbox[2])
-	default:
-		return float32(c.size.standbox[2])
-	}
-}
-
-// Because dimensions are positive we will invert the constants here
-func (c *Char) baseWidthBack() float32 {
-	switch c.ss.stateType {
-	case ST_C:
-		return -float32(c.size.crouchbox[0])
-	case ST_A:
-		return -float32(c.size.airbox[0])
-	case ST_L:
-		return -float32(c.size.downbox[0])
-	default:
-		return -float32(c.size.standbox[0])
-	}
-}
-
-// Because dimensions are positive we will invert the constants here
-func (c *Char) baseHeightTop() float32 {
-	switch c.ss.stateType {
-	case ST_C:
-		return -float32(c.size.crouchbox[1])
-	case ST_A:
-		return -float32(c.size.airbox[1])
-	case ST_L:
-		return -float32(c.size.downbox[1])
-	default:
-		return -float32(c.size.standbox[1])
-	}
-}
-
-func (c *Char) baseHeightBottom() float32 {
-	switch c.ss.stateType {
-	case ST_C:
-		return float32(c.size.crouchbox[3])
-	case ST_A:
-		return float32(c.size.airbox[3])
-	case ST_L:
-		return float32(c.size.downbox[3])
-	default:
-		return float32(c.size.standbox[3])
-	}
-}
-
 func (c *Char) baseDepthTop() float32 {
 	return float32(c.size.depth[0])
 }
@@ -7788,6 +7723,7 @@ func (c *Char) baseDepthBottom() float32 {
 	return float32(c.size.depth[1])
 }
 
+/*
 func (c *Char) setWidth(fw, bw float32) {
 	coordRatio := (320 / c.localcoord) / c.localscl
 
@@ -7811,8 +7747,8 @@ func (c *Char) setHeight(th, bh float32) {
 func (c *Char) setDepth(td, bd float32) {
 	coordRatio := (320 / c.localcoord) / c.localscl
 
-	c.sizeDepth[0] = c.baseDepthTop()*coordRatio + td
-	c.sizeDepth[1] = c.baseDepthBottom()*coordRatio + bd
+	c.depthPlayer[0] = c.baseDepthTop()*coordRatio + td
+	c.depthPlayer[1] = c.baseDepthBottom()*coordRatio + bd
 
 	c.setCSF(CSF_depth)
 }
@@ -7828,6 +7764,7 @@ func (c *Char) setDepthEdge(tde, bde float32) {
 	c.edgeDepth[1] = bde
 	c.setCSF(CSF_depthedge)
 }
+*/
 
 func (c *Char) updateClsnScale() {
 	// Update base scale
@@ -7853,33 +7790,14 @@ func (c *Char) updateClsnScale() {
 		c.clsnBaseScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
 }
 
-/*
-// Convert size variables to a Clsn-like box
-// This box will replace width and height values in some other parts of the code
-func (c *Char) updateSizeBox() {
-	// Correct left/right and top/bottom
-	// Same behavior as Clsn boxes
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/2008
-	back := -c.sizeWidth[1]
-	front := c.sizeWidth[0]
-	if back > front {
-		back, front = front, back
+// Similar to Clsn1 and Clsn2 except localscl replaces animlocalscl
+func (c *Char) sizeBoxScale() [2]float32 {
+	baseLocalscl := 320 / float32(c.gi().localcoord[0])
+	return [2]float32{
+		c.clsnScaleMul[0] * baseLocalscl,
+		c.clsnScaleMul[1] * baseLocalscl,
 	}
-	top := -c.sizeHeight[0]
-	bottom := c.sizeHeight[1]
-	if top > bottom { // Negative sign
-		top, bottom = bottom, top
-	}
-	c.sizeBox = [4]float32{back, top, front, bottom}
 }
-*/
-
-/*
-// Returns the size box in the same format as Clsn boxes
-func (c *Char) sizeBoxToClsn() [][4]float32 {
-	return [][4]float32{c.sizeBox}
-}
-*/
 
 func (c *Char) gethitAnimtype() Reaction {
 	if c.ghv.fallflag {
@@ -9077,10 +8995,10 @@ func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
 }
 
 func (c *Char) bodyDistZ(opp *Char, oc *Char) float32 {
-	ctop := (c.pos[2] - c.sizeDepth[0]) * c.localscl
-	cbot := (c.pos[2] + c.sizeDepth[1]) * c.localscl
-	otop := (opp.pos[2] - opp.sizeDepth[0]) * opp.localscl
-	obot := (opp.pos[2] + opp.sizeDepth[1]) * opp.localscl
+	ctop := (c.pos[2] - c.depthPlayer[0]) * c.localscl
+	cbot := (c.pos[2] + c.depthPlayer[1]) * c.localscl
+	otop := (opp.pos[2] - opp.depthPlayer[0]) * opp.localscl
+	obot := (opp.pos[2] + opp.depthPlayer[1]) * opp.localscl
 
 	if cbot < otop {
 		return (otop - cbot) / oc.localscl
@@ -10038,7 +9956,7 @@ func (c *Char) xScreenBound() {
 	before := x
 
 	if c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
-		min, max := c.edgeWidth[0], -c.edgeWidth[1]
+		min, max := c.widthEdge[0], -c.widthEdge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
@@ -10060,8 +9978,8 @@ func (c *Char) zDepthBound() {
 	before := posz
 
 	if c.csf(CSF_stagebound) {
-		min := c.edgeDepth[0]
-		max := -c.edgeDepth[1]
+		min := c.depthEdge[0]
+		max := -c.depthEdge[1]
 		posz = Clamp(posz, min+sys.zmin/c.localscl, max+sys.zmax/c.localscl)
 	}
 
@@ -10073,7 +9991,7 @@ func (c *Char) zDepthBound() {
 func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 	x := c.pos[0]
 	if c.ss.stateType != ST_A {
-		min, max := c.edgeWidth[0], -c.edgeWidth[1]
+		min, max := c.widthEdge[0], -c.widthEdge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
 		}
@@ -10186,20 +10104,45 @@ func (c *Char) flattenClsnProxies() []*Char {
 	return list
 }
 
-// Return the current size as a rectangle
+// Return the size box constructed by the constants according to current state type
+func (c *Char) baseSizeBox() [4]float32 {
+	switch c.ss.stateType {
+	case ST_C:
+		return c.size.crouchbox
+	case ST_A:
+		return c.size.airbox
+	case ST_L:
+		return c.size.downbox
+	default:
+		return c.size.standbox
+	}
+}
+
+// Convert current size values (constants + modifiers) into a rectangle
 func (c *Char) sizeToBox() [4]float32 {
-	back := -c.sizeWidth[1]
-	front := c.sizeWidth[0]
+	// Get base box
+	base := c.baseSizeBox()
+	front := base[2]
+	back := base[0]
+	top := base[1]
+	bottom := base[3]
+
+	// Apply sctrl overrides
+	front += c.widthPlayer[0]
+	back -= c.widthPlayer[1]
+	top -= c.heightPlayer[0]
+	bottom += c.heightPlayer[1]
+
+	// Normalize like Clsn boxes
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/2008
 	if back > front {
 		back, front = front, back
 	}
-
-	top := -c.sizeHeight[0]
-	bottom := c.sizeHeight[1]
 	if top > bottom {
 		top, bottom = bottom, top
 	}
 
+	// Convert back to rectangle
 	return [4]float32{back, top, front, bottom}
 }
 
@@ -10427,7 +10370,7 @@ func (c *Char) projClsnOverlapTrigger(index int, targetID, boxType int32) bool {
 			if box == 1 {
 				return char.hitdef.attack_depth[0], char.hitdef.attack_depth[1]
 			}
-			return char.sizeDepth[0], char.sizeDepth[1]
+			return char.depthPlayer[0], char.depthPlayer[1]
 		}
 
 		top, bot := getDepth(target, boxType)
@@ -10746,7 +10689,7 @@ func (c *Char) hittableByChar(getter *Char, ghd *HitDef, gst StateType, proj boo
 				getter.attrCheck(c, hd, c.ss.stateType) &&
 				c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) &&
 				sys.zAxisOverlap(c.pos[2], c.hitdef.attack_depth[0], c.hitdef.attack_depth[1], c.localscl,
-					getter.pos[2], getter.sizeDepth[0], getter.sizeDepth[1], getter.localscl)
+					getter.pos[2], getter.depthPlayer[0], getter.depthPlayer[1], getter.localscl)
 		}
 	}
 
@@ -11486,15 +11429,24 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 
 		// Get reference position
 		if !isProjectile {
-			off[0] = p2.pos[0]*p2.localscl - p1.pos[0]*p1.localscl
-			if (p1.facing < 0) != (p2.facing < 0) {
-				off[0] += p2.facing * p2.sizeWidth[0] * p2.localscl
+			p2base := p2.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+			p2scale := p2.sizeBoxScale()[0] // Mugen doesn't do this, but then again size couldn't be multiplied there
+			p2sizeFront := p2base[2] * p2scale
+			p2sizeBack := -p2base[0] * p2scale
+
+			// X distance from attacker to target in attacker's facing direction
+			dist := (p2.pos[0]*p2.localscl - p1.pos[0]*p1.localscl) * p1.facing
+
+			// Determine which edge of the target to use
+			if p1.facing != p2.facing {
+				off[0] = dist - p2sizeFront
 			} else {
-				off[0] -= p2.facing * p2.sizeWidth[1] * p2.localscl
+				off[0] = dist - p2sizeBack
 			}
+
+			// Z distance
 			off[2] = p2.pos[2]*p2.localscl - p1.pos[2]*p1.localscl
 		}
-		off[0] *= p1.facing
 
 		// Apply sparkxy
 		if isProjectile {
@@ -11801,6 +11753,7 @@ func (c *Char) actionPrepare() {
 		if !c.hitPause() {
 			c.specialFlag = 0
 			c.setCSF(CSF_stagebound)
+			// Set default screenbound and playerpush
 			if c.isPlayerType() {
 				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {
 					c.setCSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)
@@ -11832,12 +11785,14 @@ func (c *Char) actionPrepare() {
 					}
 				}
 			}
+			// Step custom shader
 			if c.customShader.time > 0 {
 				c.customShader.time--
 				if c.customShader.time == 0 {
 					c.customShader = CustomShader{}
 				}
 			}
+			// Step movetime
 			if sys.supertime > 0 {
 				if c.superMovetime > 0 {
 					c.superMovetime--
@@ -11845,7 +11800,14 @@ func (c *Char) actionPrepare() {
 			} else if sys.pausetime > 0 && c.pauseMovetime > 0 {
 				c.pauseMovetime--
 			}
+			// Reset char width, height and depth modifiers
+			c.widthPlayer = [2]float32{0, 0}
+			c.heightPlayer = [2]float32{0, 0}
+			c.depthPlayer = [2]float32{0, 0}
+			c.widthEdge = [2]float32{0, 0}
+			c.depthEdge = [2]float32{0, 0}
 		}
+
 
 		// Reset input modifiers
 		c.inputFlag = 0
@@ -12008,27 +11970,6 @@ func (c *Char) actionRun() {
 		c.stateChange2()
 		c.ss.sb.run(c)
 	}
-	// Reset char width and height values
-	// TODO: Some of this code could probably be integrated with the new size box
-	if !c.hitPause() {
-		coordRatio := ((320 / c.localcoord) / c.localscl)
-		if !c.csf(CSF_width) {
-			c.sizeWidth = [2]float32{c.baseWidthFront() * coordRatio, c.baseWidthBack() * coordRatio}
-		}
-		if !c.csf(CSF_widthedge) {
-			c.edgeWidth = [2]float32{0, 0}
-		}
-		if !c.csf(CSF_height) {
-			c.sizeHeight = [2]float32{c.baseHeightTop() * coordRatio, c.baseHeightBottom() * coordRatio}
-		}
-		if !c.csf(CSF_depth) {
-			c.sizeDepth = [2]float32{c.baseDepthTop() * coordRatio, c.baseDepthBottom() * coordRatio}
-		}
-		if !c.csf(CSF_depthedge) {
-			c.edgeDepth = [2]float32{0, 0}
-		}
-	}
-	//c.updateSizeBox()
 	if !c.pauseBool {
 		if !c.hitPause() {
 			// In Mugen chars are forced to stay in state 5110 at least one frame before getting up
@@ -12278,7 +12219,7 @@ func (c *Char) track() {
 
 		// X axis
 		if c.csf(CSF_movecamera_x) && !c.scf(SCF_standby) {
-			edgeleft, edgeright := -c.edgeWidth[1], c.edgeWidth[0]
+			edgeleft, edgeright := -c.widthEdge[1], c.widthEdge[0]
 			if c.facing < 0 {
 				edgeleft, edgeright = -edgeright, -edgeleft
 			}
@@ -12851,8 +12792,9 @@ func (c *Char) cueDebugDraw() {
 
 			// Add size box (width * height)
 			if c.csf(CSF_playerpush) {
-				sizebox := c.getClsn(3)
-				sys.debugcsize.Add(sizebox, x, y, c.facing*c.localscl, c.localscl, angle)
+				sizeBox := c.getClsn(3)
+				sizeBoxScl := c.sizeBoxScale()
+				sys.debugcsize.Add(sizeBox, x, y, sizeBoxScl[0] * c.facing, sizeBoxScl[1], angle)
 			}
 		}
 		// Add crosshair
@@ -13538,7 +13480,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 						getter.pos[2], getter.hitdef.attack_depth[0], getter.hitdef.attack_depth[1], getter.localscl)
 				} else {
 					zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack_depth[0], c.hitdef.attack_depth[1], c.localscl,
-						getter.pos[2], getter.sizeDepth[0], getter.sizeDepth[1], getter.localscl)
+						getter.pos[2], getter.depthPlayer[0], getter.depthPlayer[1], getter.localscl)
 				}
 
 				// If collision OK then get the hit type and act accordingly
@@ -13820,7 +13762,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 
 				if getter.projClsnCheck(p, p.hitdef.p2clsncheck, 1) &&
 					sys.zAxisOverlap(p.pos[2], p.hitdef.attack_depth[0], p.hitdef.attack_depth[1], p.localscl,
-						getter.pos[2], getter.sizeDepth[0], getter.sizeDepth[1], getter.localscl) {
+						getter.pos[2], getter.depthPlayer[0], getter.depthPlayer[1], getter.localscl) {
 
 					if hitResult := c.hitResultCheck(getter, p); hitResult != 0 {
 
@@ -13891,8 +13833,8 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 		// Call clsnOverlap 
 		// It now returns the overlap area as well
-		okXY, overlapX, _ := sys.clsnOverlap(cboxes, c.clsnScale, cpos, c.facing, c.clsnAngle,
-			gboxes, getter.clsnScale, gpos, getter.facing, getter.clsnAngle)
+		okXY, overlapX, _ := sys.clsnOverlap(cboxes, c.sizeBoxScale(), cpos, c.facing, c.clsnAngle,
+			gboxes, getter.sizeBoxScale(), gpos, getter.facing, getter.clsnAngle)
 		if !okXY {
 			continue
 		}
@@ -13929,12 +13871,12 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 		if sys.zEnabled() {
 			cposz = c.pos[2] * c.localscl
-			cztop = cposz - c.sizeDepth[0]*c.localscl
-			czbot = cposz + c.sizeDepth[1]*c.localscl
+			cztop = cposz - c.depthPlayer[0]*c.localscl
+			czbot = cposz + c.depthPlayer[1]*c.localscl
 
 			gposz = getter.pos[2] * getter.localscl
-			gztop = gposz - getter.sizeDepth[0]*getter.localscl
-			gzbot = gposz + getter.sizeDepth[1]*getter.localscl
+			gztop = gposz - getter.depthPlayer[0]*getter.localscl
+			gzbot = gposz + getter.depthPlayer[1]*getter.localscl
 
 			overlapZ = Min(gzbot, czbot) - Max(gztop, cztop)
 

@@ -9561,22 +9561,22 @@ func (sc width) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setWidth(v1*redirscale, v2*redirscale)
+			crun.widthPlayer = [2]float32{v1*redirscale, v2*redirscale}
 		case width_edge:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setWidthEdge(v1*redirscale, v2*redirscale)
+			crun.widthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		case width_value:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setWidth(v1*redirscale, v2*redirscale)
-			crun.setWidthEdge(v1*redirscale, v2*redirscale)
+			crun.widthPlayer = [2]float32{v1*redirscale, v2*redirscale}
+			crun.widthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		}
 		return true
 	})
@@ -14532,7 +14532,7 @@ func (sc height) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setHeight(v1*redirscale, v2*redirscale)
+			crun.heightPlayer = [2]float32{v1*redirscale, v2*redirscale}
 		}
 		return true
 	})
@@ -14564,22 +14564,22 @@ func (sc depth) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setDepth(v1*redirscale, v2*redirscale)
+			crun.depthPlayer = [2]float32{v1*redirscale, v2*redirscale}
 		case depth_edge:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setDepthEdge(v1*redirscale, v2*redirscale)
+			crun.depthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		case depth_value:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setDepth(v1*redirscale, v2*redirscale)
-			crun.setDepthEdge(v1*redirscale, v2*redirscale)
+			crun.depthPlayer = [2]float32{v1*redirscale, v2*redirscale}
+			crun.depthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		}
 		return true
 	})
