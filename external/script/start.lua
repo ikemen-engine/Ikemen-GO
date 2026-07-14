@@ -13,6 +13,7 @@ start.challenger = 0
 local restoreCursor = false
 local selScreenEnd = false
 local stageEnd = false
+local stageMenuReady = false
 local stageRandom = false
 local stageListNo = 0
 local t_aiRamp = {}
@@ -1918,6 +1919,7 @@ function start.f_selectReset(hardReset, preserveProgress)
 	end
 	selScreenEnd = false
 	stageEnd = false
+	stageMenuReady = false
 	t_reservedChars = {{}, {}}
 	cursorActive = {}
 	cursorDone = {}
@@ -2814,7 +2816,12 @@ function start.f_selectScreen()
 					main.f_animPosDraw(anim, x, y)
 				end
 				if not stageEnd then
-					local canConfirmStage = (getInput(-1, motif.select_info.done.key) and not screenDelayInterrupted) or timerSelect == -1
+					-- Ignore the confirm press on the first frame the stage menu is
+					-- active: it is the same press that just completed character
+					-- selection, still readable by getInput() in this pass, and would
+					-- otherwise confirm the stage (slot 0 = random) instantly.
+					local canConfirmStage = ((stageMenuReady and getInput(-1, motif.select_info.done.key)) and not screenDelayInterrupted) or timerSelect == -1
+					stageMenuReady = true
 					if canConfirmStage then
 						local preloadReady = true
 						if stageListNo > 0 then
