@@ -7715,6 +7715,7 @@ func (c *Char) getSingleProj(id int32, idx int, log bool) *Projectile {
 	return nil
 }
 
+/*
 func (c *Char) baseDepthTop() float32 {
 	return float32(c.size.depth[0])
 }
@@ -7723,7 +7724,6 @@ func (c *Char) baseDepthBottom() float32 {
 	return float32(c.size.depth[1])
 }
 
-/*
 func (c *Char) setWidth(fw, bw float32) {
 	coordRatio := (320 / c.localcoord) / c.localscl
 
@@ -10144,6 +10144,18 @@ func (c *Char) sizeToBox() [4]float32 {
 
 	// Convert back to rectangle
 	return [4]float32{back, top, front, bottom}
+}
+
+// Returns the char's regular depth range
+func (c *Char) baseDepth() [2]float32 {
+	return [2]float32{-c.size.depth[0], c.size.depth[1]}
+}
+
+// Returns depth with modifiers
+// Not an actual box but the naming consistency makes things easier to follow
+func (c *Char) depthToBox() [2]float32 {
+	base := c.baseDepth()
+	return [2]float32{base[0] - c.depthPlayer[0], base[1] + c.depthPlayer[1]}
 }
 
 // Placeholder while we decide whether to allow multiple boxes or not
@@ -13870,13 +13882,15 @@ func (cl *CharList) pushDetection(getter *Char) {
 		var cposz, cztop, czbot, gposz, gztop, gzbot float32
 
 		if sys.zEnabled() {
+			cDepth := c.depthToBox()
 			cposz = c.pos[2] * c.localscl
-			cztop = cposz - c.depthPlayer[0]*c.localscl
-			czbot = cposz + c.depthPlayer[1]*c.localscl
+			cztop = cposz + cDepth[0] * c.localscl // TODO: Probably "baseLocalscl" like other size constants
+			czbot = cposz + cDepth[1] * c.localscl
 
+			gDepth := getter.depthToBox()
 			gposz = getter.pos[2] * getter.localscl
-			gztop = gposz - getter.depthPlayer[0]*getter.localscl
-			gzbot = gposz + getter.depthPlayer[1]*getter.localscl
+			gztop = gposz + gDepth[0] * getter.localscl
+			gzbot = gposz + gDepth[1] * getter.localscl
 
 			overlapZ = Min(gzbot, czbot) - Max(gztop, cztop)
 
