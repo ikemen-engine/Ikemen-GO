@@ -1,9 +1,12 @@
 on:
   pull_request_target:
-    branches: [ develop, release ]
+    branches: [ develop, 'release/**' ]
     types: [ opened, edited, reopened, synchronize ]
 
-permissions: write-all
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 name: conventional-release-labels
 jobs:
@@ -17,7 +20,7 @@ jobs:
           token: '${{ secrets.GITHUB_TOKEN }}'
           type_labels: >-
             {"build": "PR: build",
-            "fix": "PR: chore",
+            "chore": "PR: chore"
             "breaking": "PR: breaking",
             "docs": "PR: docs",
             "feat": "PR: feat",
