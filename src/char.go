@@ -11557,10 +11557,14 @@ func (c *Char) actionPrepare() {
 	}
 
 	c.pauseBool = false
-	if sys.supertime > 0 {
-		c.pauseBool = c.superMovetime == 0
-	} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
-		c.pauseBool = true
+	// Removing this c.cmd check makes a basic helper init incorrectly during a pause
+	// TODO: Confirm why it uses c.cmd specifically
+	if c.cmd != nil {
+		if sys.supertime > 0 {
+			c.pauseBool = c.superMovetime == 0
+		} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
+			c.pauseBool = true
+		}
 	}
 	// Due to the nature of how pauses are processed, these are needed to fix an "off by 1" error in the PauseTime trigger
 	c.prevSuperMovetime = c.superMovetime
