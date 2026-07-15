@@ -3456,6 +3456,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.moveCountered())
 	case OC_ex_mugenversion_major:
 		sys.bcStack.PushI(int32(c.gi().mugenver[0]))
+		// Here the version is always checked directly in the character instead of the working state
+		// This is because in a custom state this trigger will be used to know the enemy's version rather than our own
 	case OC_ex_mugenversion_minor:
 		sys.bcStack.PushI(int32(c.gi().mugenver[1]))
 	case OC_ex_pausetime:

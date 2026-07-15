@@ -93,28 +93,6 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Port Change
-	['portchange'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.done.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local port = main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.port,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			)
-			if tonumber(port) ~= nil then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				modifyGameOption('Netplay.ListenPort', tostring(port))
-				t.items[item].vardisplay = gameOption('Netplay.ListenPort')
-				options.modified = true
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-			end
-		end
-		return true
-	end,
 	--Default Values
 	['default'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
@@ -159,12 +137,12 @@ options.t_itemname = {
 			--modifyGameOption('Config.Motif', "data/system.def")
 			modifyGameOption('Config.Players', 4)
 			modifyGameOption('Config.Language', "en")
-			modifyGameOption('Config.AfterImageMax', 128)
-			modifyGameOption('Config.ExplodMax', 512)
-			modifyGameOption('Config.HelperMax', 56)
-			modifyGameOption('Config.ProjectileMax', 256)
-			modifyGameOption('Config.PaletteMax', 100)
-			modifyGameOption('Config.TextMax', 128)
+			--modifyGameOption('Config.AfterImageMax', 128)
+			--modifyGameOption('Config.ExplodMax', 512)
+			--modifyGameOption('Config.HelperMax', 56)
+			--modifyGameOption('Config.ProjectileMax', 256)
+			--modifyGameOption('Config.PaletteMax', 100)
+			--modifyGameOption('Config.TextMax', 128)
 			--modifyGameOption('Config.TickInterpolation', true)
 			--modifyGameOption('Config.ZoomActive', true)
 			--modifyGameOption('Config.EscOpensMenu', true)
@@ -234,6 +212,15 @@ options.t_itemname = {
 			modifyGameOption('Arcade.AI.SurvivalColor', true)
 			modifyGameOption('Arcade.AI.Ramping', true)
 			modifyGameOption('Netplay.ListenPort', "7500")
+			modifyGameOption('Netplay.RollbackNetcode', true)
+			modifyGameOption('Netplay.Rollback.FrameDelay', 2)
+			--modifyGameOption('Netplay.Rollback.DisconnectNotifyStart', 1000)
+			--modifyGameOption('Netplay.Rollback.DisconnectTimeout', 3000)
+			--modifyGameOption('Netplay.Rollback.LogsEnabled', false)
+			--modifyGameOption('Netplay.Rollback.SaveStageData', false)
+			--modifyGameOption('Netplay.Rollback.DesyncTest', false)
+			--modifyGameOption('Netplay.Rollback.DesyncTestFrames', false)
+			--modifyGameOption('Netplay.Rollback.DesyncTestAI', false)
 			--modifyGameOption('Netplay.IP.<>', "")
 			--modifyGameOption('Input.ButtonAssist', true)
 			--modifyGameOption('Input.SOCDResolution', 4)
@@ -262,12 +249,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Difficulty') < 8 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Difficulty', gameOption('Options.Difficulty') + 1)
-			t.items[item].vardisplay = gameOption('Options.Difficulty')
+			t.items[item].vardisplay = options.t_vardisplay['difficulty']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Difficulty') > 1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Difficulty', gameOption('Options.Difficulty') - 1)
-			t.items[item].vardisplay = gameOption('Options.Difficulty')
+			t.items[item].vardisplay = options.t_vardisplay['difficulty']()
 			options.modified = true
 		end
 		return true
@@ -277,12 +264,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Time') < 1000 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Time', gameOption('Options.Time') + 1)
-			t.items[item].vardisplay = gameOption('Options.Time')
+			t.items[item].vardisplay = options.t_vardisplay['roundtime']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Time') > -1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Time', gameOption('Options.Time') - 1)
-			t.items[item].vardisplay = options.f_definedDisplay(gameOption('Options.Time'), {[-1] = motif.option_info.menu.valuename.none}, gameOption('Options.Time'))
+			t.items[item].vardisplay = options.t_vardisplay['roundtime']()
 			options.modified = true
 		end
 		return true
@@ -291,10 +278,10 @@ options.t_itemname = {
 	['language'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and (main.f_tableLength(motif.languages) > 1 or motif.languages[gameOption('Config.Language')] == nil) then
 			f_switchLanguage(1)
-			t.items[item].vardisplay = motif.languages[gameOption('Config.Language')] or gameOption('Config.Language')
+			t.items[item].vardisplay = options.t_vardisplay['language']()
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and (main.f_tableLength(motif.languages) > 1 or motif.languages[gameOption('Config.Language')] == nil) then
 			f_switchLanguage(-1)
-			t.items[item].vardisplay = motif.languages[gameOption('Config.Language')] or gameOption('Config.Language')
+			t.items[item].vardisplay = options.t_vardisplay['language']()
 		end
 		return true
 	end,
@@ -303,12 +290,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Life') < 300 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Life', gameOption('Options.Life') + 10)
-			t.items[item].vardisplay = gameOption('Options.Life') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['lifemul']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Life') > 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Life', gameOption('Options.Life') - 10)
-			t.items[item].vardisplay = gameOption('Options.Life') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['lifemul']()
 			options.modified = true
 		end
 		return true
@@ -318,12 +305,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Team.SingleVsTeamLife') < 300 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Team.SingleVsTeamLife', gameOption('Options.Team.SingleVsTeamLife') + 10)
-			t.items[item].vardisplay = gameOption('Options.Team.SingleVsTeamLife') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['singlevsteamlife']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Team.SingleVsTeamLife') > 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Team.SingleVsTeamLife', gameOption('Options.Team.SingleVsTeamLife') - 10)
-			t.items[item].vardisplay = gameOption('Options.Team.SingleVsTeamLife') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['singlevsteamlife']()
 			options.modified = true
 		end
 		return true
@@ -333,12 +320,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.GameSpeed') < 9 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.GameSpeed', gameOption('Options.GameSpeed') + 1)
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.GameSpeed') == 0, motif.option_info.menu.valuename.normal, options.f_boolDisplay(gameOption('Options.GameSpeed') < 0, string.format(motif.option_info.menu.valuename.slow, 0 - gameOption('Options.GameSpeed')), string.format(motif.option_info.menu.valuename.fast, gameOption('Options.GameSpeed'))))
+			t.items[item].vardisplay = options.t_vardisplay['gamespeed']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.GameSpeed') > -9 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.GameSpeed', gameOption('Options.GameSpeed') - 1)
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.GameSpeed') == 0, motif.option_info.menu.valuename.normal, options.f_boolDisplay(gameOption('Options.GameSpeed') < 0, string.format(motif.option_info.menu.valuename.slow, 0 - gameOption('Options.GameSpeed')), string.format(motif.option_info.menu.valuename.fast, gameOption('Options.GameSpeed'))))
+			t.items[item].vardisplay = options.t_vardisplay['gamespeed']()
 			options.modified = true
 		end
 		return true
@@ -348,12 +335,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Match.Wins') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Match.Wins', gameOption('Options.Match.Wins') + 1)
-			t.items[item].vardisplay = gameOption('Options.Match.Wins')
+			t.items[item].vardisplay = options.t_vardisplay['roundsnumsingle']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Match.Wins') > 1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Match.Wins', gameOption('Options.Match.Wins') - 1)
-			t.items[item].vardisplay = gameOption('Options.Match.Wins')
+			t.items[item].vardisplay = options.t_vardisplay['roundsnumsingle']()
 			options.modified = true
 		end
 		return true
@@ -363,12 +350,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Match.MaxDrawGames') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Match.MaxDrawGames', gameOption('Options.Match.MaxDrawGames') + 1)
-			t.items[item].vardisplay = gameOption('Options.Match.MaxDrawGames')
+			t.items[item].vardisplay = options.t_vardisplay['maxdrawgames']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Match.MaxDrawGames') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Match.MaxDrawGames', gameOption('Options.Match.MaxDrawGames') - 1)
-			t.items[item].vardisplay = gameOption('Options.Match.MaxDrawGames')
+			t.items[item].vardisplay = options.t_vardisplay['maxdrawgames']()
 			options.modified = true
 		end
 		return true
@@ -378,12 +365,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Credits') < 99 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Credits', gameOption('Options.Credits') + 1)
-			t.items[item].vardisplay = gameOption('Options.Credits')
+			t.items[item].vardisplay = options.t_vardisplay['credits']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Credits') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Credits', gameOption('Options.Credits') - 1)
-			t.items[item].vardisplay = options.f_definedDisplay(gameOption('Options.Credits'), {[0] = motif.option_info.menu.valuename.disabled}, gameOption('Options.Credits'))
+			t.items[item].vardisplay = options.t_vardisplay['credits']()
 			options.modified = true
 		end
 		return true
@@ -397,7 +384,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Arcade.AI.RandomColor', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Arcade.AI.RandomColor'), motif.option_info.menu.valuename.random, motif.option_info.menu.valuename.default)
+			t.items[item].vardisplay = options.t_vardisplay['aipalette']()
 			options.modified = true
 		end
 		return true
@@ -411,7 +398,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Arcade.AI.SurvivalColor', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Arcade.AI.SurvivalColor'), motif.option_info.menu.valuename.random, motif.option_info.menu.valuename.default)
+			t.items[item].vardisplay = options.t_vardisplay['aisurvivalpalette']()
 			options.modified = true
 		end
 		return true
@@ -425,7 +412,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Arcade.AI.Ramping', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Arcade.AI.Ramping'))
+			t.items[item].vardisplay = options.t_vardisplay['airamping']()
 			options.modified = true
 		end
 		return true
@@ -439,7 +426,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.QuickContinue', true)
 				end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.QuickContinue'))
+			t.items[item].vardisplay = options.t_vardisplay['quickcontinue']()
 			options.modified = true
 		end
 		return true
@@ -453,7 +440,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.AutoGuard', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.AutoGuard'))
+			t.items[item].vardisplay = options.t_vardisplay['autoguard']()
 			options.modified = true
 		end
 		return true
@@ -467,7 +454,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.Dizzy', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.Dizzy'))
+			t.items[item].vardisplay = options.t_vardisplay['dizzy']()
 			options.modified = true
 		end
 		return true
@@ -481,7 +468,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.GuardBreak', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.GuardBreak'))
+			t.items[item].vardisplay = options.t_vardisplay['guardbreak']()
 			options.modified = true
 		end
 		return true
@@ -495,7 +482,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.RedLife', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.RedLife'))
+			t.items[item].vardisplay = options.t_vardisplay['redlife']()
 			options.modified = true
 		end
 		return true
@@ -509,7 +496,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.Team.Duplicates', true)
 				end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.Team.Duplicates'))
+			t.items[item].vardisplay = options.t_vardisplay['teamduplicates']()
 			options.modified = true
 		end
 		return true
@@ -523,7 +510,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.Team.LifeShare', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.Team.LifeShare'))
+			t.items[item].vardisplay = options.t_vardisplay['teamlifeshare']()
 			options.modified = true
 		end
 		return true
@@ -537,7 +524,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.Team.PowerShare', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.Team.PowerShare'))
+			t.items[item].vardisplay = options.t_vardisplay['teampowershare']()
 			options.modified = true
 		end
 		return true
@@ -547,12 +534,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Tag.Match.Wins') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Tag.Match.Wins', gameOption('Options.Tag.Match.Wins') + 1)
-			t.items[item].vardisplay = gameOption('Options.Tag.Match.Wins')
+			t.items[item].vardisplay = options.t_vardisplay['roundsnumtag']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Tag.Match.Wins') > 1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Tag.Match.Wins', gameOption('Options.Tag.Match.Wins') - 1)
-			t.items[item].vardisplay = gameOption('Options.Tag.Match.Wins')
+			t.items[item].vardisplay = options.t_vardisplay['roundsnumtag']()
 			options.modified = true
 		end
 		return true
@@ -566,7 +553,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.Tag.LoseOnKO', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.Tag.LoseOnKO'))
+			t.items[item].vardisplay = options.t_vardisplay['losekotag']()
 			options.modified = true
 		end
 		return true
@@ -576,12 +563,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Tag.Min') < gameOption('Options.Tag.Max') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Tag.Min', gameOption('Options.Tag.Min') + 1)
-			t.items[item].vardisplay = gameOption('Options.Tag.Min')
+			t.items[item].vardisplay = options.t_vardisplay['mintag']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Tag.Min') > 2 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Tag.Min', gameOption('Options.Tag.Min') - 1)
-			t.items[item].vardisplay = gameOption('Options.Tag.Min')
+			t.items[item].vardisplay = options.t_vardisplay['mintag']()
 			options.modified = true
 		end
 		return true
@@ -591,12 +578,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Tag.Max') < 4 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Tag.Max', gameOption('Options.Tag.Max') + 1)
-			t.items[item].vardisplay = gameOption('Options.Tag.Max')
+			t.items[item].vardisplay = options.t_vardisplay['maxtag']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Tag.Max') > gameOption('Options.Tag.Min') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Tag.Max', gameOption('Options.Tag.Max') - 1)
-			t.items[item].vardisplay = gameOption('Options.Tag.Max')
+			t.items[item].vardisplay = options.t_vardisplay['maxtag']()
 			options.modified = true
 		end
 		return true
@@ -606,12 +593,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Simul.Match.Wins') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Simul.Match.Wins', gameOption('Options.Simul.Match.Wins') + 1)
-			t.items[item].vardisplay = gameOption('Options.Simul.Match.Wins')
+			t.items[item].vardisplay = options.t_vardisplay['roundsnumsimul']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Simul.Match.Wins') > 1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Simul.Match.Wins', gameOption('Options.Simul.Match.Wins') - 1)
-			t.items[item].vardisplay = gameOption('Options.Simul.Match.Wins')
+			t.items[item].vardisplay = options.t_vardisplay['roundsnumsimul']()
 			options.modified = true
 		end
 		return true
@@ -625,7 +612,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Options.Simul.LoseOnKO', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Options.Simul.LoseOnKO'))
+			t.items[item].vardisplay = options.t_vardisplay['losekosimul']()
 			options.modified = true
 		end
 		return true
@@ -635,12 +622,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Simul.Min') < gameOption('Options.Simul.Max') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Simul.Min', gameOption('Options.Simul.Min') + 1)
-			t.items[item].vardisplay = gameOption('Options.Simul.Min')
+			t.items[item].vardisplay = options.t_vardisplay['minsimul']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Simul.Min') > 2 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Simul.Min', gameOption('Options.Simul.Min') - 1)
-			t.items[item].vardisplay = gameOption('Options.Simul.Min')
+			t.items[item].vardisplay = options.t_vardisplay['minsimul']()
 			options.modified = true
 		end
 		return true
@@ -650,12 +637,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Simul.Max') < 4 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Simul.Max', gameOption('Options.Simul.Max') + 1)
-			t.items[item].vardisplay = gameOption('Options.Simul.Max')
+			t.items[item].vardisplay = options.t_vardisplay['maxsimul']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Simul.Max') > gameOption('Options.Simul.Min') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Simul.Max', gameOption('Options.Simul.Max') - 1)
-			t.items[item].vardisplay = gameOption('Options.Simul.Max')
+			t.items[item].vardisplay = options.t_vardisplay['maxsimul']()
 			options.modified = true
 		end
 		return true
@@ -665,12 +652,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Recovery.Base') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Recovery.Base', gameOption('Options.Turns.Recovery.Base') + 0.5)
-			t.items[item].vardisplay = gameOption('Options.Turns.Recovery.Base') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['turnsrecoverybase']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Turns.Recovery.Base') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Recovery.Base', gameOption('Options.Turns.Recovery.Base') - 0.5)
-			t.items[item].vardisplay = gameOption('Options.Turns.Recovery.Base') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['turnsrecoverybase']()
 			options.modified = true
 		end
 		return true
@@ -680,12 +667,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Recovery.Bonus') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Recovery.Bonus', gameOption('Options.Turns.Recovery.Bonus') + 0.5)
-			t.items[item].vardisplay = gameOption('Options.Turns.Recovery.Bonus') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['turnsrecoverybonus']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Turns.Recovery.Bonus') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Recovery.Bonus', gameOption('Options.Turns.Recovery.Bonus') - 0.5)
-			t.items[item].vardisplay = gameOption('Options.Turns.Recovery.Bonus') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['turnsrecoverybonus']()
 			options.modified = true
 		end
 		return true
@@ -695,12 +682,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Min') < gameOption('Options.Turns.Max') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Min', gameOption('Options.Turns.Min') + 1)
-			t.items[item].vardisplay = gameOption('Options.Turns.Min')
+			t.items[item].vardisplay = options.t_vardisplay['minturns']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Turns.Min') > 1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Min', gameOption('Options.Turns.Min') - 1)
-			t.items[item].vardisplay = gameOption('Options.Turns.Min')
+			t.items[item].vardisplay = options.t_vardisplay['minturns']()
 			options.modified = true
 		end
 		return true
@@ -710,42 +697,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Max') < 8 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Max', gameOption('Options.Turns.Max') + 1)
-			t.items[item].vardisplay = gameOption('Options.Turns.Max')
+			t.items[item].vardisplay = options.t_vardisplay['maxturns']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Turns.Max') > gameOption('Options.Turns.Min') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Options.Turns.Max', gameOption('Options.Turns.Max') - 1)
-			t.items[item].vardisplay = gameOption('Options.Turns.Max')
-			options.modified = true
-		end
-		return true
-	end,
-	--Ratio Recovery Base
-	['ratiorecoverybase'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Ratio.Recovery.Base') < 100 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Options.Ratio.Recovery.Base', gameOption('Options.Ratio.Recovery.Base') + 0.5)
-			t.items[item].vardisplay = gameOption('Options.Ratio.Recovery.Base') .. '%'
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Ratio.Recovery.Base') > 0 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Options.Ratio.Recovery.Base', gameOption('Options.Ratio.Recovery.Base') - 0.5)
-			t.items[item].vardisplay = gameOption('Options.Ratio.Recovery.Base') .. '%'
-			options.modified = true
-		end
-		return true
-	end,
-	--Ratio Recovery Bonus
-	['ratiorecoverybonus'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Ratio.Recovery.Bonus') < 100 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Options.Ratio.Recovery.Bonus', gameOption('Options.Ratio.Recovery.Bonus') + 0.5)
-			t.items[item].vardisplay = gameOption('Options.Ratio.Recovery.Bonus') .. '%'
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Options.Ratio.Recovery.Bonus') > 0 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Options.Ratio.Recovery.Bonus', gameOption('Options.Ratio.Recovery.Bonus') - 0.5)
-			t.items[item].vardisplay = gameOption('Options.Ratio.Recovery.Bonus') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['maxturns']()
 			options.modified = true
 		end
 		return true
@@ -762,7 +719,7 @@ options.t_itemname = {
 				end
 			end
 			t.submenu[t.items[item].itemname].loop()
-			t.items[item].vardisplay = gameOption('Video.RenderMode')
+			t.items[item].vardisplay = options.t_vardisplay['renderer']()
 			options.modified = true
 			options.needReload = true
 		end
@@ -823,7 +780,7 @@ options.t_itemname = {
 				t_pos.selected = true
 			end
 			t.submenu[t.items[item].itemname].loop()
-			t.items[item].vardisplay = gameOption('Video.GameWidth') .. 'x' .. gameOption('Video.GameHeight')
+			t.items[item].vardisplay = options.t_vardisplay['resolution']()
 		end
 		return true
 	end,
@@ -873,7 +830,7 @@ options.t_itemname = {
 				modifyGameOption('Video.Fullscreen', true)
 			end
 			toggleFullscreen(gameOption('Video.Fullscreen'))
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Video.Fullscreen'))
+			t.items[item].vardisplay = options.t_vardisplay['fullscreen']()
 			options.modified = true
 		end
 		return true
@@ -888,7 +845,7 @@ options.t_itemname = {
 				modifyGameOption('Video.VSync', 1)
 			end
 			toggleVSync(gameOption('Video.VSync'))
-			t.items[item].vardisplay = options.f_definedDisplay(gameOption('Video.VSync'), {[1] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['vsync']()
 			options.modified = true
 		end
 		return true
@@ -902,7 +859,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Video.MSAA', gameOption('Video.MSAA') * 2)
 			end
-			t.items[item].vardisplay = gameOption('Video.MSAA') .. 'x'
+			t.items[item].vardisplay = options.t_vardisplay['msaa']()
 			options.modified = true
 			options.needReload = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Video.MSAA') > 1 then
@@ -912,7 +869,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Video.MSAA', gameOption('Video.MSAA') / 2)
 			end
-			t.items[item].vardisplay = options.f_definedDisplay(gameOption('Video.MSAA'), {[0] = motif.option_info.menu.valuename.disabled}, gameOption('Video.MSAA') .. 'x')
+			t.items[item].vardisplay = options.t_vardisplay['msaa']()
 			options.modified = true
 			options.needReload = true
 		end
@@ -1013,7 +970,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Video.KeepAspect', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Video.KeepAspect'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['keepaspect']()
 			options.modified = true
 		end
 		return true
@@ -1027,7 +984,7 @@ options.t_itemname = {
 				return true
 			end
 			t.submenu[t.items[item].itemname].loop()
-			t.items[item].vardisplay = options.f_boolDisplay(#gameOption('Video.ExternalShaders') > 0, motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['shaders']()
 			options.modified = true
 			options.needReload = true
 		end
@@ -1053,7 +1010,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Video.EnableModel', true)
 			end
-			t.items[item].vardisplay = options.f_definedDisplay(gameOption('Video.EnableModel'), {[true] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['enablemodel']()
 			options.modified = true
 			options.needReload = true
 		end
@@ -1068,7 +1025,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Video.EnableModelShadow', true)
 			end
-			t.items[item].vardisplay = options.f_definedDisplay(gameOption('Video.EnableModelShadow'), {[true] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['enablemodelshadow']()
 			options.modified = true
 			options.needReload = true
 		end
@@ -1079,13 +1036,13 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.MasterVolume') < 200 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.MasterVolume', gameOption('Sound.MasterVolume') + 1)
-			t.items[item].vardisplay = gameOption('Sound.MasterVolume') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['mastervolume']()
 			options.modified = true
 			updateVolume()
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Sound.MasterVolume') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.MasterVolume', gameOption('Sound.MasterVolume') - 1)
-			t.items[item].vardisplay = gameOption('Sound.MasterVolume')  .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['mastervolume']()
 			options.modified = true
 			updateVolume()
 		end
@@ -1096,13 +1053,13 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.BGMVolume') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.BGMVolume', gameOption('Sound.BGMVolume') + 1)
-			t.items[item].vardisplay = gameOption('Sound.BGMVolume') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['bgmvolume']()
 			options.modified = true
 			updateVolume()
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Sound.BGMVolume') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.BGMVolume', gameOption('Sound.BGMVolume') - 1)
-			t.items[item].vardisplay = gameOption('Sound.BGMVolume') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['bgmvolume']()
 			options.modified = true
 			updateVolume()
 		end
@@ -1113,12 +1070,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.WavVolume') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.WavVolume', gameOption('Sound.WavVolume') + 1)
-			t.items[item].vardisplay = gameOption('Sound.WavVolume') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['sfxvolume']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Sound.WavVolume') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.WavVolume', gameOption('Sound.WavVolume') - 1)
-			t.items[item].vardisplay = gameOption('Sound.WavVolume') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['sfxvolume']()
 			options.modified = true
 		end
 		return true
@@ -1132,7 +1089,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Sound.AudioDucking', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Sound.AudioDucking'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['audioducking']()
 			options.modified = true
 		end
 		return true
@@ -1146,7 +1103,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Sound.StereoEffects', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Sound.StereoEffects'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['stereoeffects']()
 			options.modified = true
 		end
 		return true
@@ -1156,12 +1113,12 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.PanningRange') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.PanningRange', gameOption('Sound.PanningRange') + 1)
-			t.items[item].vardisplay = gameOption('Sound.PanningRange') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['panningrange']()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Sound.PanningRange') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Sound.PanningRange', gameOption('Sound.PanningRange') - 1)
-			t.items[item].vardisplay = gameOption('Sound.PanningRange') .. '%'
+			t.items[item].vardisplay = options.t_vardisplay['panningrange']()
 			options.modified = true
 		end
 		return true
@@ -1212,13 +1169,13 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Config.Players') < 8 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Config.Players', math.min(8, gameOption('Config.Players') + 2))
-			t.items[item].vardisplay = gameOption('Config.Players')
+			t.items[item].vardisplay = options.t_vardisplay['players']()
 			setPlayers()
 			options.modified = true
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.Players') > 2 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			modifyGameOption('Config.Players', math.max(2, gameOption('Config.Players') - 2))
-			t.items[item].vardisplay = gameOption('Config.Players')
+			t.items[item].vardisplay = options.t_vardisplay['players']()
 			setPlayers()
 			options.modified = true
 		end
@@ -1233,7 +1190,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Debug.AllowDebugKeys', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Debug.AllowDebugKeys'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['debugkeys']()
 			options.modified = true
 		end
 		return true
@@ -1247,7 +1204,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Debug.AllowDebugMode', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Debug.AllowDebugMode'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['debugmode']()
 			options.modified = true
 		end
 		return true
@@ -1261,7 +1218,7 @@ options.t_itemname = {
 			else
 				modifyGameOption('Config.VsScreenLoading', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Config.VsScreenLoading'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['vsscreenloading']()
 			options.modified = true
 		end
 		return true
@@ -1275,98 +1232,58 @@ options.t_itemname = {
 			else
 				modifyGameOption('Config.TurnsLoading', true)
 			end
-			t.items[item].vardisplay = options.f_boolDisplay(gameOption('Config.TurnsLoading'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
+			t.items[item].vardisplay = options.t_vardisplay['turnsloading']()
 			options.modified = true
 		end
 		return true
 	end,
-	--HelperMax
-	['helpermax'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) then
+	--Port Change
+	['portchange'] = function(t, item, cursorPosY, moveTxt)
+		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.HelperMax', gameOption('Config.HelperMax') + 1)
-			t.items[item].vardisplay = gameOption('Config.HelperMax')
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.HelperMax') > 1 then
+			local port = main.f_drawInput(
+				motif.option_info.textinput.TextSpriteData,
+				motif.option_info.textinput.text.port,
+				motif.option_info,
+				motif.optionbgdef,
+				motif.option_info.textinput.overlay.RectData
+			)
+			if tonumber(port) ~= nil then
+				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+				modifyGameOption('Netplay.ListenPort', tostring(port))
+				t.items[item].vardisplay = options.t_vardisplay['portchange']()
+				options.modified = true
+			else
+				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
+			end
+		end
+		return true
+	end,
+	--Rollback Netcode
+	['netcode'] = function(t, item, cursorPosY, moveTxt)
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.HelperMax', gameOption('Config.HelperMax') - 1)
-			t.items[item].vardisplay = gameOption('Config.HelperMax')
+			if gameOption('Netplay.RollbackNetcode') then
+				modifyGameOption('Netplay.RollbackNetcode', false)
+			else
+				modifyGameOption('Netplay.RollbackNetcode', true)
+			end
+			t.items[item].vardisplay = options.t_vardisplay['netcode']()
 			options.modified = true
 		end
 		return true
 	end,
-	--ProjectileMax
-	['projectilemax'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) then
+	--Rollback Frame Delay
+	['framedelay'] = function(t, item, cursorPosY, moveTxt)
+		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Netplay.Rollback.FrameDelay') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.ProjectileMax', gameOption('Config.ProjectileMax') + 1)
-			t.items[item].vardisplay = gameOption('Config.ProjectileMax')
+			modifyGameOption('Netplay.Rollback.FrameDelay', gameOption('Netplay.Rollback.FrameDelay') + 1)
+			t.items[item].vardisplay = options.t_vardisplay['framedelay']()
 			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.ProjectileMax') > 1 then
+		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Netplay.Rollback.FrameDelay') > 0 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.ProjectileMax', gameOption('Config.ProjectileMax') - 1)
-			t.items[item].vardisplay = gameOption('Config.ProjectileMax')
-			options.modified = true
-		end
-		return true
-	end,
-	--ExplodMax
-	['explodmax'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.ExplodMax', gameOption('Config.ExplodMax') + 1)
-			t.items[item].vardisplay = gameOption('Config.ExplodMax')
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.ExplodMax') > 1 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.ExplodMax', gameOption('Config.ExplodMax') - 1)
-			t.items[item].vardisplay = gameOption('Config.ExplodMax')
-			options.modified = true
-		end
-		return true
-	end,
-	--AfterImageMax
-	['afterimagemax'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.AfterImageMax', gameOption('Config.AfterImageMax') + 1)
-			t.items[item].vardisplay = gameOption('Config.AfterImageMax')
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.AfterImageMax') > 1 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.AfterImageMax', gameOption('Config.AfterImageMax') - 1)
-			t.items[item].vardisplay = gameOption('Config.AfterImageMax')
-			options.modified = true
-		end
-		return true
-	end,
-	--PaletteMax
-	['palettemax'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.PaletteMax', gameOption('Config.PaletteMax') + 1)
-			t.items[item].vardisplay = gameOption('Config.PaletteMax')
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.PaletteMax') > 1 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.PaletteMax', gameOption('Config.PaletteMax') - 1)
-			t.items[item].vardisplay = gameOption('Config.PaletteMax')
-			options.modified = true
-		end
-		options.needReload = true
-		return true
-	end,
-	--TextMax
-	['textmax'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.TextMax', gameOption('Config.TextMax') + 1)
-			t.items[item].vardisplay = gameOption('Config.TextMax')
-			options.modified = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Config.TextMax') > 1 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Config.TextMax', gameOption('Config.TextMax') - 1)
-			t.items[item].vardisplay = gameOption('Config.TextMax')
+			modifyGameOption('Netplay.Rollback.FrameDelay', gameOption('Netplay.Rollback.FrameDelay') - 1)
+			t.items[item].vardisplay = options.t_vardisplay['framedelay']()
 			options.modified = true
 		end
 		return true
@@ -1494,9 +1411,6 @@ end
 -- Associative elements table storing functions returning current setting values
 -- rendered alongside menu item name. Can be appended via external module.
 options.t_vardisplay = {
-	['afterimagemax'] = function()
-		return gameOption('Config.AfterImageMax')
-	end,
 	['aipalette'] = function()
 		return options.f_boolDisplay(gameOption('Arcade.AI.RandomColor'), motif.option_info.menu.valuename.random, motif.option_info.menu.valuename.default)
 	end,
@@ -1550,9 +1464,6 @@ options.t_vardisplay = {
 	['enablemodelshadow'] = function()
 		return options.f_definedDisplay(gameOption('Video.EnableModelShadow'), {[true] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
 	end,
-	['explodmax'] = function()
-		return gameOption('Config.ExplodMax')
-	end,
 	['fullscreen'] = function()
 		return options.f_boolDisplay(gameOption('Video.Fullscreen'))
 	end,
@@ -1561,9 +1472,6 @@ options.t_vardisplay = {
 	end,
 	['guardbreak'] = function()
 		return options.f_boolDisplay(gameOption('Options.GuardBreak'))
-	end,
-	['helpermax'] = function()
-		return gameOption('Config.HelperMax')
 	end,
 	['keepaspect'] = function()
 		return options.f_boolDisplay(gameOption('Video.KeepAspect'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
@@ -1608,9 +1516,6 @@ options.t_vardisplay = {
 	['msaa'] = function()
 		return options.f_definedDisplay(gameOption('Video.MSAA'), {[0] = motif.option_info.menu.valuename.disabled}, gameOption('Video.MSAA') .. 'x')
 	end,
-	['palettemax'] = function()
-		return gameOption('Config.PaletteMax')
-	end,
 	['panningrange'] = function()
 		return gameOption('Sound.PanningRange') .. '%'
 	end,
@@ -1619,9 +1524,6 @@ options.t_vardisplay = {
 	end,
 	['portchange'] = function()
 		return gameOption('Netplay.ListenPort')
-	end,
-	['projectilemax'] = function()
-		return gameOption('Config.ProjectileMax')
 	end,
 	['quickcontinue'] = function()
 		return options.f_boolDisplay(gameOption('Options.QuickContinue'))
@@ -1674,9 +1576,6 @@ options.t_vardisplay = {
 	['teampowershare'] = function()
 		return options.f_boolDisplay(gameOption('Options.Team.PowerShare'))
 	end,
-	['textmax'] = function()
-		return gameOption('Config.TextMax')
-	end,
 	['turnsrecoverybase'] = function()
 		return gameOption('Options.Turns.Recovery.Base') .. '%'
 	end,
@@ -1687,7 +1586,13 @@ options.t_vardisplay = {
 		return options.f_definedDisplay(gameOption('Video.VSync'), {[1] = motif.option_info.menu.valuename.enabled}, motif.option_info.menu.valuename.disabled)
 	end,
 	['windowscalemode'] = function()
-		return options.f_boolDisplay(gameOption('Video.WindowScaleMode'), "Bilinear", "Nearest")
+		return options.f_boolDisplay(gameOption('Video.WindowScaleMode'), motif.option_info.menu.valuename.bilinear, motif.option_info.menu.valuename.nearest)
+	end,
+	['netcode'] = function()
+		return options.f_boolDisplay(gameOption('Netplay.RollbackNetcode'), motif.option_info.menu.valuename.rollbacknetcode, motif.option_info.menu.valuename.delaynetcode)
+	end,
+	['framedelay'] = function()
+		return gameOption('Netplay.Rollback.FrameDelay')
 	end,
 }
 
