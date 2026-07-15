@@ -1,29 +1,16 @@
 MIT License
 
 Copyright (c) 2016 Suehiro
-Copyright (c) 2018 K4thos
-Copyright (c) 2018 ShinLucho
-Copyright (c) 2018 NeatUnsou
-Copyright (c) 2019 Windblade
-Copyright (c) 2019 Dan
-Copyright (c) 2019 Kidcy
-Copyright (c) 2020 Wintermourn
-Copyright (c) 2020 Shiyo Kakuge
-Copyright (c) 2021 Kamekaze
-Copyright (c) 2021 two4teezee
-Copyright (c) 2021 Super
-Copyright (c) 2022 Eiton
-Copyright (c) 2022 Sam Hocevar
-Copyright (c) 2022 GaryCXJk
-Copyright (c) 2022 Lazin3ss
-Copyright (c) 2022 potsmugen
-Copyright (c) 2023 BwdYeti
-Copyright (c) 2023 fantasma
-Copyright (c) 2023 Wftk
-Copyright (c) 2024 wily-coyote
-Copyright (c) 2024 Jesuszilla
-Copyright (c) 2024 Kasasagi77
-Copyright (c) 2024 Jmorphman
+Copyright (c) 2018 K4thos, NeatUnsou, ShinLucho
+Copyright (c) 2019 danielporto, nckgriva, Windblade-GR01
+Copyright (c) 2020 ambonmibable, Wintermourn
+Copyright (c) 2021 Amavect, BwdYeti, Eiton, SuperFromND, two4teezee
+Copyright (c) 2022 assemblaj, GaryCXJk, Lazin3ss, potsmugen, samhocevar
+Copyright (c) 2023 RealFoobs, RollinJay, Wftk, wily-coyote
+Copyright (c) 2024 Jesuszilla, Kasasagi77, Orange-Dolphin, rakieldev
+Copyright (c) 2025 Alceris, facundocameto, leonkasovan
+Copyright (c) 2026 Kokorz
+Copyright (c) 2016-2026 Ikemen GO contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
