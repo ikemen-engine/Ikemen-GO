@@ -1,11 +1,13 @@
 on:
   workflow_dispatch:
   push:
-    branches: [ develop, release ]
+    branches: [ develop, 'release/**' ]
   #pull_request_target:
-  #  branches: [ develop, release ]
+  #  branches: [ develop, 'release/**' ]
 
-permissions: write-all
+permissions:
+  checks: write
+  contents: write
 
 name: lint-code-style
 jobs:

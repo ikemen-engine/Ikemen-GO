@@ -9319,7 +9319,17 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ikemenVersion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.gi().ikemenverF))
+		version := sys.debugWC.gi().ikemenver
+		switch strings.ToLower(strArg(l, 1)) {
+		case "major":
+			l.Push(lua.LNumber(version[0]))
+		case "minor":
+			l.Push(lua.LNumber(version[1]))
+		case "patch":
+			l.Push(lua.LNumber(version[2]))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	luaRegister(l, "inCustomAnim", func(*lua.LState) int {
@@ -9750,7 +9760,15 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "mugenVersion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.gi().mugenverF))
+		version := sys.debugWC.gi().mugenver
+		switch strings.ToLower(strArg(l, 1)) {
+		case "major":
+			l.Push(lua.LNumber(version[0]))
+		case "minor":
+			l.Push(lua.LNumber(version[1]))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	// name also returns p1Name-p8Name variants and helperName
@@ -10624,10 +10642,16 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LString(sys.stage.author))
 		case "info.displayname":
 			l.Push(lua.LString(sys.stage.displayname))
-		case "info.ikemenversion":
-			l.Push(lua.LNumber(sys.stage.ikemenverF))
-		case "info.mugenversion":
-			l.Push(lua.LNumber(sys.stage.mugenverF))
+		case "info.ikemenversion.major":
+			l.Push(lua.LNumber(sys.stage.ikemenver[0]))
+		case "info.ikemenversion.minor":
+			l.Push(lua.LNumber(sys.stage.ikemenver[1]))
+		case "info.ikemenversion.patch":
+			l.Push(lua.LNumber(sys.stage.ikemenver[2]))
+		case "info.mugenversion.major":
+			l.Push(lua.LNumber(sys.stage.mugenver[0]))
+		case "info.mugenversion.minor":
+			l.Push(lua.LNumber(sys.stage.mugenver[1]))
 		case "info.name":
 			l.Push(lua.LString(sys.stage.name))
 		case "camera.boundleft":

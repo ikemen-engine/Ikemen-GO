@@ -1,9 +1,11 @@
 on:
   pull_request_target:
-    branches: [ develop, release ]
+    branches: [ develop, 'release/**' ]
     types: [ opened, edited, reopened, synchronize ]
 
-permissions: write-all
+permissions:
+  contents: read
+  pull-requests: write
 
 name: conventional-title
 jobs:
@@ -15,7 +17,7 @@ jobs:
       - uses: morrisoncole/pr-lint-action@v1.7.1
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
-          title-regex: "^(\\bbuild|chore|docs|feat|fix|other|perf|refactor|style|test\\b\\(?[^\\)]*\\)?: .+|v?[0-9]+\\.[0-9]+\\.[0-9]+|Revert .+)"
+          title-regex: "^(?:(?:build|chore|docs|feat|fix|other|perf|refactor|style|test)(?:\\([^()]+\\))?: .+|v?[0-9]+\\.[0-9]+\\.[0-9]+(?:-rc\\.[1-9][0-9]*)?|Revert .+)$"
           on-failed-regex-fail-action: true
           on-failed-regex-create-review: true
           on-failed-regex-request-changes: false
@@ -26,6 +28,7 @@ jobs:
             The expected PR title formatting is: `<type>(<scope>): <description>`
             where `(<scope>)` declaration is optional and `<type>` must be one of the following: 
             - build: Changes that affect the build system, external dependencies, CI configuration
+            - chore: Routine maintenance that does not change engine behavior
             - docs: Documentation only changes
             - feat: A new feature
             - fix: A bug fix

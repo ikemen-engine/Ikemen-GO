@@ -4595,9 +4595,7 @@ type FightScreen struct {
 	authorLow     string
 	localcoord    [2]int32
 	ikemenver     [3]uint16
-	ikemenverF    float32
 	mugenver      [2]uint16
-	mugenverF     float32
 	offsetX       float32
 	offsetY       float32
 	scale         float32
@@ -4750,14 +4748,8 @@ func loadFightScreen(def string) (*FightScreen, error) {
 			fs.nameLow = strings.ToLower(fs.name)
 			fs.author, _, _ = is.getText("author")
 			fs.authorLow = strings.ToLower(fs.author)
-			// Read MugenVersion
-			if str, ok := is["mugenversion"]; ok {
-				fs.mugenver, fs.mugenverF = ParseMugenVersion(str)
-			}
-			// Read IkemenVersion
-			if str, ok := is["ikemenversion"]; ok {
-				fs.ikemenver, fs.ikemenverF = ParseIkemenVersion(str)
-			}
+			fs.mugenver = ParseMugenVersion(is["mugenversion"])
+			fs.ikemenver = ParseIkemenVersion(is["ikemenversion"])
 			var b bool
 			is.ReadBool("doubleres", &b)
 			if b {
