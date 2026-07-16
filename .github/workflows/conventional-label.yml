@@ -20,7 +20,7 @@ jobs:
           token: '${{ secrets.GITHUB_TOKEN }}'
           type_labels: >-
             {"build": "PR: build",
-            "chore": "PR: chore"
+            "chore": "PR: chore",
             "breaking": "PR: breaking",
             "docs": "PR: docs",
             "feat": "PR: feat",
