@@ -938,7 +938,7 @@ end
 --;===========================================================
 function main.f_commandLine()
 	setGameMode('quickvs')
-	main.pauseMenu = false
+	main.pauseMenu = getCommandLineValue("-loadmotif") ~= nil
 	setCredits(-1)
     -- No need for asynchronous loading when running from command line. Fixes race conditions with Turns teammate faces
     modifyGameOption('Config.BootLoadingMode', 0)
