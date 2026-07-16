@@ -211,7 +211,7 @@ options.t_itemname = {
 			modifyGameOption('Arcade.AI.RandomColor', false)
 			modifyGameOption('Arcade.AI.SurvivalColor', true)
 			modifyGameOption('Arcade.AI.Ramping', true)
-			modifyGameOption('Netplay.ListenPort', "7500")
+			modifyGameOption('Netplay.ListenPort', 7500)
 			modifyGameOption('Netplay.RollbackNetcode', true)
 			modifyGameOption('Netplay.Rollback.FrameDelay', 2)
 			--modifyGameOption('Netplay.Rollback.DisconnectNotifyStart', 1000)
@@ -1241,16 +1241,16 @@ options.t_itemname = {
 	['portchange'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local port = main.f_drawInput(
+			local port = tonumber(main.f_drawInput(
 				motif.option_info.textinput.TextSpriteData,
 				motif.option_info.textinput.text.port,
 				motif.option_info,
 				motif.optionbgdef,
 				motif.option_info.textinput.overlay.RectData
-			)
-			if tonumber(port) ~= nil then
+			))
+			if port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535 then
 				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				modifyGameOption('Netplay.ListenPort', tostring(port))
+				modifyGameOption('Netplay.ListenPort', port)
 				t.items[item].vardisplay = options.t_vardisplay['portchange']()
 				options.modified = true
 			else

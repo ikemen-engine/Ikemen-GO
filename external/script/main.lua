@@ -237,9 +237,6 @@ end
 if getCommandLineValue("-debug") ~= nil then
 	toggleDebugDisplay()
 end
-if getCommandLineValue("-setport") ~= nil then
-	setListenPort(getCommandLineValue("-setport"))
-end
 if getCommandLineValue("-setvolume") ~= nil and getCommandLineValue("-nosound") == nil then
 	modifyGameOption('Sound.MasterVolume', getCommandLineValue("-setvolume"))
 end
