@@ -480,13 +480,19 @@ func (m Music) act() {
 				continue
 			}
 
-			// Low Life (only team leader)
+			// Low Life
 			if sys.stage.bgmState == BGMStateRound &&
 				sys.roundState() == 2 &&
-				c.playerNo == c.teamLeader()-1 &&
-				float32(c.life)/float32(c.lifeMax) <= sys.stage.bgmratio {
-				//fmt.Printf("[music] act: low life detected for player %d, trying 'life' prefix\n", c.playerNo)
-				if cmusic.tryPlay("life", sys.stage.def) {
+				c.playerNo == c.teamLeader()-1 {
+				lowLife := true
+				for i := side; i < int(MaxSimul)*2; i += 2 {
+					if len(sys.chars[i]) > 0 && sys.chars[i][0] != nil &&
+						float32(sys.chars[i][0].life)/float32(sys.chars[i][0].lifeMax) > sys.stage.bgmratio {
+						lowLife = false
+						break
+					}
+				}
+				if lowLife && cmusic.tryPlay("life", sys.stage.def) {
 					sys.stage.bgmState = BGMStateLowLife
 					continue
 				}
