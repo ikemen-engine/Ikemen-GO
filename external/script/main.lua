@@ -237,9 +237,6 @@ end
 if getCommandLineValue("-debug") ~= nil then
 	toggleDebugDisplay()
 end
-if getCommandLineValue("-setport") ~= nil then
-	setListenPort(getCommandLineValue("-setport"))
-end
 if getCommandLineValue("-setvolume") ~= nil and getCommandLineValue("-nosound") == nil then
 	modifyGameOption('Sound.MasterVolume', getCommandLineValue("-setvolume"))
 end
@@ -941,7 +938,7 @@ end
 --;===========================================================
 function main.f_commandLine()
 	setGameMode('quickvs')
-	main.pauseMenu = false
+	main.pauseMenu = getCommandLineValue("-loadmotif") ~= nil
 	setCredits(-1)
     -- No need for asynchronous loading when running from command line. Fixes race conditions with Turns teammate faces
     modifyGameOption('Config.BootLoadingMode', 0)

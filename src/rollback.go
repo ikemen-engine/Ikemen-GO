@@ -21,14 +21,14 @@ type RollbackSystem struct {
 }
 
 type RollbackProperties struct {
-	FrameDelay            int  `ini:"FrameDelay"`
-	DisconnectNotifyStart int  `ini:"DisconnectNotifyStart"`
-	DisconnectTimeout     int  `ini:"DisconnectTimeout"`
-	LogsEnabled           bool `ini:"LogsEnabled"`
-	SaveStageData         bool `ini:"SaveStageData"`
-	DesyncTest            bool `ini:"DesyncTest"`
-	DesyncTestFrames      int  `ini:"DesyncTestFrames"`
-	DesyncTestAI          bool `ini:"DesyncTestAI"`
+	FrameDelay            int  `ini:"FrameDelay" sync:"host"`
+	DisconnectNotifyStart int  `ini:"DisconnectNotifyStart" sync:"host"`
+	DisconnectTimeout     int  `ini:"DisconnectTimeout" sync:"host"`
+	LogsEnabled           bool `ini:"LogsEnabled" sync:"host"`
+	SaveStageData         bool `ini:"SaveStageData" sync:"host"`
+	DesyncTest            bool `ini:"DesyncTest" sync:"host"`
+	DesyncTestFrames      int  `ini:"DesyncTestFrames" sync:"host"`
+	DesyncTestAI          bool `ini:"DesyncTestAI" sync:"host"`
 }
 
 // TODO: Merge with system.go

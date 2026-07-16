@@ -3515,24 +3515,6 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 				-- cell selected or select screen timer reached 0
 				local canConfirm = (slotSelected and start.f_selGrid(start.c[player].cell + 1).char ~= nil and start.f_selGrid(start.c[player].cell + 1).hidden ~= 2) or timerExpired
 				if canConfirm then
-					local preloadReady = true
-					if start.c[player].selRef ~= nil then
-						local state = getCharPreloadStatus(start.c[player].selRef)
-						preloadReady = state == 'ready'
-						if not preloadReady then
-							main.f_preloadBoostChar(start.c[player].selRef)
-						else
-							main.f_materializeCharByRef(start.c[player].selRef)
-						end
-					end
-					if not preloadReady then
-						if slotSelected then
-							sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
-						end
-						canConfirm = false
-					end
-				end
-				if canConfirm then
 					if motif.select_info.paletteselect ~= 0 then
 						timerSelect = motif.select_info.timer.displaytime
 					end
