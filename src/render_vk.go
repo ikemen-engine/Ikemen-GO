@@ -23,6 +23,11 @@ import (
 
 var vkDebug bool
 
+const (
+	vulkanInitialStagingBufferSize = 4 * 1024 * 1024
+	vulkanPaletteTextureWidth      = 256
+)
+
 //go:embed shaders/sprite.vert.spv
 //go:embed shaders/sprite.frag.spv
 //go:embed shaders/font.vert.spv
@@ -157,13 +162,13 @@ func (r *Renderer_VK) newPaletteTexture() Texture {
 		r.addPalTexture()
 	}
 	slot := r.palTexture.emptySlot.Remove(r.palTexture.emptySlot.Front()).([2]uint32)
-	t.offset = [2]int32{int32((slot[1] / r.palTexture.size) * 256), int32(slot[1] % r.palTexture.size)}
+	t.offset = [2]int32{0, int32(slot[1])}
 	t.img = r.palTexture.textures[slot[0]].img
 	t.imageView = r.palTexture.textures[slot[0]].imageView
 	t.uvst = [4]float32{
-		(float32(t.offset[0]) + 0.5) / float32(r.palTexture.size),
+		(float32(t.offset[0]) + 0.5) / float32(vulkanPaletteTextureWidth),
 		(float32(t.offset[1]) + 0.5) / float32(r.palTexture.size),
-		float32(256) / float32(r.palTexture.size),
+		float32(256) / float32(vulkanPaletteTextureWidth),
 		float32(1) / float32(r.palTexture.size),
 	}
 
@@ -1613,7 +1618,7 @@ func (r *Renderer_VK) NewVulkanDevice(appInfo *vk.ApplicationInfo, window uintpt
 	}
 	multiViewFeature.PNext = unsafe.Pointer(&dynamicRenderFeature)
 
-	if sys.cfg.Video.EnableModelShadow {
+	if sys.cfg.Video.EnableModel && sys.cfg.Video.EnableModelShadow {
 		vulkan12Features := vk.PhysicalDeviceVulkan12Features{
 			SType:                     vk.StructureTypePhysicalDeviceVulkan12Features,
 			ShaderOutputViewportIndex: vk.True,
@@ -1878,7 +1883,7 @@ func (r *Renderer_VK) addPalTexture() {
 	for i := uint32(0); i < r.palTexture.size; i++ {
 		r.palTexture.emptySlot.PushBack([2]uint32{index, uint32(i)})
 	}
-	t := &Texture_VK{int32(r.palTexture.size), int32(r.palTexture.size), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil}
+	t := &Texture_VK{vulkanPaletteTextureWidth, int32(r.palTexture.size), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil}
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), vk.FormatR8g8b8a8Unorm, 1, 1, vk.ImageUsageFlags(vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingLinear, false)
 
 	alloc, err := r.allocator.AllocateImageMemory(t.img, vk.MemoryPropertyDeviceLocalBit)
@@ -5008,7 +5013,7 @@ func (r *Renderer_VK) CreateMemoryBuffers() error {
 
 	for i := 0; i < 2; i++ {
 		var stagingBufferMemory vk.DeviceMemory
-		r.stagingBuffers[i].size = 4096 * 4096 * 4
+		r.stagingBuffers[i].size = vulkanInitialStagingBufferSize
 		r.stagingBuffers[i].buffer, err = r.CreateBuffer(vk.DeviceSize(r.stagingBuffers[i].size), vk.BufferUsageFlags(vk.BufferUsageTransferSrcBit), (vk.MemoryPropertyHostVisibleBit | vk.MemoryPropertyHostCoherentBit), &stagingBufferMemory)
 		if err != nil {
 			panic(err)
@@ -5075,7 +5080,7 @@ func (r *Renderer_VK) Init() {
 	r.firstFrame = true
 	r.allocatedImageMemory = 0
 	r.enableModel = sys.cfg.Video.EnableModel
-	r.enableShadow = sys.cfg.Video.EnableModelShadow
+	r.enableShadow = r.enableModel && sys.cfg.Video.EnableModelShadow
 	r.memoryTypeMap = make(map[vk.MemoryPropertyFlagBits]uint32)
 	r.samplers = map[VulkanSamplerInfo]vk.Sampler{}
 	r.stagingBufferFences = [2]bool{false, false}
@@ -5241,8 +5246,12 @@ func (r *Renderer_VK) Init() {
 
 	r.spriteProgram.uniformOffsetMap = map[interface{}]uint32{}
 	r.createPalTexture(2048)
-	r.shadowMapTextures = r.createShadowMapTexture(1024)
 	if r.enableModel {
+		shadowMapSize := int32(1)
+		if r.enableShadow {
+			shadowMapSize = 1024
+		}
+		r.shadowMapTextures = r.createShadowMapTexture(shadowMapSize)
 		r.modelProgram, err = r.CreateModelProgram()
 		if err != nil {
 			panic(err)
