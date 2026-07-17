@@ -1197,9 +1197,6 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 		f.Seek(offset+4, 0)
 		format := -s.rle
 
-		var rgba *image.RGBA
-		var rect image.Rectangle
-
 		if 2 <= format && format <= 4 {
 			if datasize < 4 {
 				datasize = 4
@@ -1227,24 +1224,54 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 			if ok {
 				px = pi.Pix
 			}
-		case 11, 12:
-			var ok bool = false
+		case 11:
 			isRaw = true
 
-			// Decode PNG image to RGBA
 			img, err := png.Decode(f)
 			if err != nil {
 				return err
 			}
 
-			rect = img.Bounds()
-			rgba, ok = img.(*image.RGBA)
-
-			if !ok {
-				rgba = image.NewRGBA(rect)
+			rect := img.Bounds()
+			if rgba, ok := img.(*image.RGBA); ok {
+				di := 0
+				for si := 0; si < len(rgba.Pix); si += 4 {
+					rgba.Pix[di+0] = rgba.Pix[si+0]
+					rgba.Pix[di+1] = rgba.Pix[si+1]
+					rgba.Pix[di+2] = rgba.Pix[si+2]
+					di += 3
+				}
+				s.SetRaw(rgba.Pix[:di], int32(rect.Dx()), int32(rect.Dy()), 24)
+			} else {
+				rgba := image.NewRGBA(rect)
 				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
+				s.SetRaw(rgba.Pix, int32(rect.Dx()), int32(rect.Dy()), 32)
 			}
-			s.SetRaw(rgba.Pix, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
+		case 12:
+			isRaw = true
+
+			img, err := png.Decode(f)
+			if err != nil {
+				return err
+			}
+
+			rect := img.Bounds()
+			switch src := img.(type) {
+			case *image.RGBA:
+				s.SetRaw(src.Pix, int32(rect.Dx()), int32(rect.Dy()), 32)
+			case *image.NRGBA:
+				for i := 0; i < len(src.Pix); i += 4 {
+					a := uint32(src.Pix[i+3]) * 0x101
+					src.Pix[i+0] = uint8(uint32(src.Pix[i+0]) * a / 0xff >> 8)
+					src.Pix[i+1] = uint8(uint32(src.Pix[i+1]) * a / 0xff >> 8)
+					src.Pix[i+2] = uint8(uint32(src.Pix[i+2]) * a / 0xff >> 8)
+				}
+				s.SetRaw(src.Pix, int32(rect.Dx()), int32(rect.Dy()), 32)
+			default:
+				rgba := image.NewRGBA(rect)
+				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
+				s.SetRaw(rgba.Pix, int32(rect.Dx()), int32(rect.Dy()), 32)
+			}
 		default:
 			return Error("Unknown format")
 		}
