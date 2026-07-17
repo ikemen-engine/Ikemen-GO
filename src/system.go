@@ -993,6 +993,9 @@ func (s *System) loaderReset() {
 }
 
 func (s *System) loadStart() {
+	// Backups belong to the previous match and keep its character and stage assets alive.
+	s.roundBackup = RoundStartBackup{}
+	s.matchBackup = RoundStartBackup{}
 	s.loaderReset()
 	s.loader.runTread()
 }
@@ -6307,6 +6310,14 @@ func (l *Loader) load() {
 		}
 		if l.state == LS_Cancel {
 			return
+		}
+	}
+	// Slots unused by the new match must not keep complete character asset graphs
+	// from an earlier match reachable through CharGlobalInfo.
+	for i := range sys.chars {
+		if len(sys.chars[i]) == 0 {
+			sys.cgi[i] = newCharGlobalInfo()
+			sys.cgi[i].palno = -1
 		}
 	}
 	sys.cleanCustomShaders()
