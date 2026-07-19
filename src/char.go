@@ -3454,9 +3454,7 @@ type Char struct {
 	customShader         CustomShader
 	pctype               ProjContact
 	pctime, pcid         int32
-	sizeBoxBuffer        [][4]float32 // Pre-allocated slices for collision checks
-	clsn1Buffer          [][4]float32
-	clsn2Buffer          [][4]float32
+	clsnBuffers          [3][][4]float32 // Pre-allocated slices for collision checks
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -10187,11 +10185,11 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 	// Select the reusable buffer
 	switch group {
 	case 1:
-		final = &c.clsn1Buffer
+		final = &c.clsnBuffers[0]
 	case 2:
-		final = &c.clsn2Buffer
+		final = &c.clsnBuffers[1]
 	case 3:
-		final = &c.sizeBoxBuffer
+		final = &c.clsnBuffers[2]
 	default:
 		return nil
 	}
