@@ -276,13 +276,13 @@ func (dc *DebugClsn) draw(color uint32, blendAlpha [2]int32) {
 	}
 }
 
-// OverrideClsn
+// OverrideClsn sctrl
 type ClsnOverride struct {
-	group int32
 	index int
 	rect  [4]float32
 }
 
+// TransformClsn sctrl
 type ClsnTransform struct {
 	scale [2]float32
 	angle float32
@@ -3293,7 +3293,7 @@ func (ss *StateState) clear() {
 	ss.changeStateType(ST_S)
 	ss.changeMoveType(MT_I)
 	ss.physics = ST_N
-	ss.ps = nil
+	ss.ps = ss.ps[:0]
 
 	/*
 		// Iterate over each player's hitPauseExecutionToggleFlags
@@ -3440,7 +3440,7 @@ type Char struct {
 	size           CharSize
 	//sizeBox           [4]float32
 	clsnScale           [2]float32 // The base scale before modifiers are applied
-	clsnOverrides       []ClsnOverride
+	clsnOverrides       [3][]ClsnOverride
 	clsnTransforms      [3]ClsnTransform
 	zScale              float32
 	hitdef              HitDef
@@ -10299,11 +10299,8 @@ func (c *Char) getClsn(group int32) []ClsnFinal {
 	//copy(final, original)
 
 	// Apply appropriate overrides
-	for _, mod := range c.clsnOverrides {
-		if mod.group != group {
-			continue
-		}
-
+	overrides := c.clsnOverrides[group-1]
+	for _, mod := range overrides {
 		// Helper to apply modifiers
 		// This will make it easier to add new parameters later if needed
 		modify := func(i int) {
@@ -10377,7 +10374,9 @@ func (c *Char) getClsn(group int32) []ClsnFinal {
 }
 
 func (c *Char) resetClsnModifiers() {
-	c.clsnOverrides = c.clsnOverrides[:0]
+	for i := range c.clsnOverrides {
+		c.clsnOverrides[i] = c.clsnOverrides[i][:0]
+	}
 
 	for i := range c.clsnTransforms {
 		c.clsnTransforms[i].Reset()

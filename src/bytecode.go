@@ -14961,9 +14961,9 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		case transformClsn_group:
 			group = exp[0].evalI(c)
 		case transformClsn_scale:
-			scale[0] *= exp[0].evalF(c)
+			scale[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
-				scale[1] *= exp[1].evalF(c)
+				scale[1] = exp[1].evalF(c)
 			}
 			crun.updateClsnScale()
 		case transformClsn_angle:
@@ -15479,40 +15479,54 @@ func (sc overrideClsn) Run(c *Char, _ []int32) bool {
 	redirscale := c.localscl / crun.localscl
 
 	// Default everything to 0
-	var box ClsnOverride
+	group := int32(0) // None
+	index := int(0)
+	var rect [4]float32
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case overrideClsn_group:
-			box.group = exp[0].evalI(c)
+			group = exp[0].evalI(c)
 		case overrideClsn_index:
-			box.index = int(exp[0].evalI(c))
+			index = int(exp[0].evalI(c))
 		case overrideClsn_rect:
-			box.rect[0] = exp[0].evalF(c) * redirscale
+			rect[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				box.rect[1] = exp[1].evalF(c) * redirscale
+				rect[1] = exp[1].evalF(c) * redirscale
 			}
 			if len(exp) > 2 {
-				box.rect[2] = exp[2].evalF(c) * redirscale
+				rect[2] = exp[2].evalF(c) * redirscale
 			}
 			if len(exp) > 3 {
-				box.rect[3] = exp[3].evalF(c) * redirscale
+				rect[3] = exp[3].evalF(c) * redirscale
 			}
 			// Normalize rectangle
-			if box.rect[0] > box.rect[2] {
-				box.rect[0], box.rect[2] = box.rect[2], box.rect[0]
-			}
-			if box.rect[1] > box.rect[3] {
-				box.rect[1], box.rect[3] = box.rect[3], box.rect[1]
-			}
+			rect = NormalizeRect(rect)
 		}
 		return true
 	})
 
-	if box.group == 0 {
-		crun.clsnOverrides = nil
-	} else {
-		crun.clsnOverrides = append(crun.clsnOverrides, box)
+	switch {
+	case group == 0:
+		// Reset all overrides
+		for i := range crun.clsnOverrides {
+			crun.clsnOverrides[i] = crun.clsnOverrides[i][:0]
+		}
+	case group == -1:
+		// Apply override to all three groups
+		override := ClsnOverride{index: index, rect: rect}
+		for i := range crun.clsnOverrides {
+			crun.clsnOverrides[i] = append(crun.clsnOverrides[i], override)
+		}
+	case group >= 1 && group <= 3:
+		// Apply to specific group
+		idx := group - 1
+		crun.clsnOverrides[idx] = append(crun.clsnOverrides[idx], ClsnOverride{
+			index: index,
+			rect:  rect,
+		})
+	default:
+		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in OverrideClsn", group))
 	}
 
 	return false
