@@ -201,16 +201,48 @@ func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
 	sh := float32(0)
 
 	for _, box := range boxes {
+		// Apply facing to the local rectangle: flip left/right
 		l := box.rect[0]
 		r := box.rect[2]
 		if facing < 0 {
 			l, r = -r, -l
 		}
-		w := r - l
-		h := box.rect[3] - box.rect[1]
-		offx := sw / 2
-		offy := sh
+		top := box.rect[1]
+		bottom := box.rect[3]
+
+		// Rectangle world coordinates
+		leftWorld := x + l
+		rightWorld := x + r
+		topWorld := y + top
+		bottomWorld := y + bottom
+
+		// Pivot world position
+		pivotWorldX := x + box.pivot[0]*facing
+		pivotWorldY := y + box.pivot[1]
+
+		// Convert world to screen coordinates
+		leftScreen := (leftWorld - sys.cam.Pos[0]) * sys.cam.Scale
+		rightScreen := (rightWorld - sys.cam.Pos[0]) * sys.cam.Scale
+		topScreen := (topWorld*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
+		bottomScreen := (bottomWorld*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
+		pivotScreenX := (pivotWorldX - sys.cam.Pos[0]) * sys.cam.Scale
+		pivotScreenY := (pivotWorldY*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
+
+		// Rectangle width and height
+		widthScreen := rightScreen - leftScreen
+		heightScreen := bottomScreen - topScreen
+
+		// The rectangle's top-left relative to the pivot
+		offsetX := leftScreen - pivotScreenX
+		offsetY := topScreen - pivotScreenY
+
+		// The rotation center is the pivot screen position, scaled by widthScale/heightScale
+		offX := float32(sys.gameWidth) / 2
+		offY := float32(0)
+
+		// Construct the final rectangle
 		rect := [7]float32{
+
 			l * xs,                       // [0] x position (left)
 			box.rect[1] * ys,             // [1] y position (top)
 			w * xs,                       // [2] width
@@ -219,8 +251,17 @@ func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
 			(y + offy) * sys.heightScale, // [5] rotation center y
 			box.angle * facing,           // [6] rotation angle
 
+			offsetX,                                 // left offset from pivot
+			offsetY,                                 // top offset from pivot
+			widthScreen,                             // width
+			heightScreen,                            // height
+			(offX + pivotScreenX) * sys.widthScale,  // rotation center x
+			(offY + pivotScreenY) * sys.heightScale, // rotation center y
+			box.angle * facing,                      // angle
+
 		}
 
+		// Append rectangle to list
 		dc.rects = append(dc.rects, rect)
 	}
 }
@@ -286,6 +327,7 @@ type ClsnOverride struct {
 type ClsnTransform struct {
 	scale [2]float32
 	angle float32
+	pivot [2]float32
 }
 
 func (ct *ClsnTransform) reset() {
@@ -298,6 +340,7 @@ func (ct *ClsnTransform) reset() {
 type ClsnFinal struct {
 	rect  [4]float32
 	angle float32
+	pivot [2]float32
 }
 
 type CharData struct {
@@ -2822,7 +2865,8 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 		r = NormalizeRect(r)
 		*buf = append(*buf, ClsnFinal{
 			rect:  r,
-			angle: p.clsnAngle, // raw angle (no facing applied)
+			angle: p.clsnAngle,
+			// No pivot feature
 		})
 	}
 
@@ -10354,6 +10398,8 @@ func (c *Char) getClsn(group int32) []ClsnFinal {
 		f.rect[2] *= scale[0]
 		f.rect[3] *= scale[1]
 		f.angle = ct.angle
+		f.pivot[0] = ct.pivot[0] * c.localscl
+		f.pivot[1] = ct.pivot[1] * c.localscl
 
 		// Normalize left/right and top/bottom
 		f.rect = NormalizeRect(f.rect)
@@ -10379,7 +10425,7 @@ func (c *Char) resetClsnModifiers() {
 	}
 
 	for i := range c.clsnTransforms {
-		c.clsnTransforms[i].Reset()
+		c.clsnTransforms[i].reset()
 	}
 }
 

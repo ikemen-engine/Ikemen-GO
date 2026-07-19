@@ -6744,6 +6744,11 @@ func (c *CharCompiler) transformClsn(is IniSection, sc *StateControllerBase) (St
 		}); err != nil {
 			return err
 		}
+		if err := c.stateParam(is, "pivot", false, func(data string) error {
+			return c.scAdd(sc, transformClsn_pivot, data, VT_Float, 2)
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

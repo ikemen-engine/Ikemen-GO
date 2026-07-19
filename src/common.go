@@ -292,7 +292,7 @@ func RectRotate(rect [4]float32, pivot [2]float32, angle float32) [4][2]float32 
 
 // Checks two rectangles (like Clsn) for intersection
 // TODO: Return overlap in world coordinates ([4]float32) so it can be used for more things
-func RectIntersect(rect1, rect2 [4]float32, pivot1, pivot2 [2]float32, angle1, angle2 float32) (bool, float32, float32) {
+func RectIntersect(rect1, rect2 [4]float32, angle1, angle2 float32, pivot1, pivot2 [2]float32) (bool, float32, float32) {
 	if angle1 == 0 && angle2 == 0 {
 		return RectIntersectAABB(rect1, rect2)
 	}

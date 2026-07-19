@@ -2110,6 +2110,7 @@ func (s *System) clsnOverlap(boxes1 []ClsnFinal, pos1 [2]float32, facing1 float3
 		top1 := b1.rect[1] + pos1[1]
 		bottom1 := b1.rect[3] + pos1[1]
 		rect1 := NormalizeRect([4]float32{left1, top1, right1, bottom1})
+		pivot1 := [2]float32{pos1[0] + b1.pivot[0]*facing1, pos1[1] + b1.pivot[1]}
 		// Apply facing to angle
 		angle1 := -b1.angle * facing1
 
@@ -2125,10 +2126,11 @@ func (s *System) clsnOverlap(boxes1 []ClsnFinal, pos1 [2]float32, facing1 float3
 			top2 := b2.rect[1] + pos2[1]
 			bottom2 := b2.rect[3] + pos2[1]
 			rect2 := NormalizeRect([4]float32{left2, top2, right2, bottom2})
+			pivot2 := [2]float32{pos2[0] + b2.pivot[0]*facing2, pos2[1] + b2.pivot[1]}
 			angle2 := -b2.angle * facing2
 
 			// Check for overlap
-			ok, dx, dy := RectIntersect(rect1, rect2, pos1, pos2, angle1, angle2)
+			ok, dx, dy := RectIntersect(rect1, rect2, angle1, angle2, pivot1, pivot2)
 			if ok {
 				return true, dx, dy
 			}
