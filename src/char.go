@@ -288,6 +288,11 @@ type ClsnTransform struct {
 	angle float32
 }
 
+func (ct *ClsnTransform) reset() {
+	ct.scale = [2]float32{1, 1}
+	ct.angle = 0
+}
+
 // The prepared boxes after all modifiers have been applied 
 // Note: Values are in world coordinate space and without facing applied
 type ClsnFinal struct {
@@ -10375,10 +10380,7 @@ func (c *Char) resetClsnModifiers() {
 	c.clsnOverrides = c.clsnOverrides[:0]
 
 	for i := range c.clsnTransforms {
-		c.clsnTransforms[i] = ClsnTransform{
-			scale: [2]float32{1, 1},
-			angle: 0,
-		}
+		c.clsnTransforms[i].Reset()
 	}
 }
 

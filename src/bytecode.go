@@ -14952,13 +14952,9 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	// Defaults
 	scale := [2]float32{1, 1}
 	angle := float32(0)
-	group := int32(-1)
-	// TODO: Also accept "all" parameter or so
-	// But that would imply hit detection could also run on "all" types, which needs some extra work
-	// Or maybe only this sctrl can use that keyword
+	group := int32(-1) // all
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -14977,20 +14973,26 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 	})
 
 	// Apply the transform to the appropriate group(s)
-	if group == -1 {
-		for i := 0; i < 3; i++ {
+	switch {
+	case group == 0:
+		// Reset all
+		for i := range crun.clsnTransforms {
+			crun.clsnTransforms[i].Reset()
+		}
+	case group == -1:
+		// Apply to all groups
+		for i := range crun.clsnTransforms {
 			t := &crun.clsnTransforms[i]
 			t.scale[0] *= scale[0]
 			t.scale[1] *= scale[1]
 			t.angle += angle
 		}
-	} else if group >= 1 && group <= 3 {
-		idx := group - 1
-		t := &crun.clsnTransforms[idx]
+	case group >= 1 && group <= 3:
+		t := &crun.clsnTransforms[group - 1]
 		t.scale[0] *= scale[0]
 		t.scale[1] *= scale[1]
 		t.angle += angle
-	} else {
+	default:
 		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in TransformClsn", group))
 	}
 
