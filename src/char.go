@@ -173,9 +173,15 @@ type DebugClsn struct {
 	palTex Texture // Reusable texture with the Clsn color
 }
 
-func (dc *DebugClsn) Add(clsn [][4]float32, x, y, xs, ys, angle float32) {
+func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
+	if len(boxes) == 0 {
+		return
+	}
+
+	// Apply camera transform
 	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
 	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
+
 	xs *= sys.cam.Scale
 	ys *= sys.cam.Scale
 
@@ -188,6 +194,31 @@ func (dc *DebugClsn) Add(clsn [][4]float32, x, y, xs, ys, angle float32) {
 			x,                              // [4] rotation center x, relative to screen center
 			y,                              // [5] rotation center y
 			angle,                          // [6] rotation angle
+
+	xs := sys.cam.Scale
+	ys := sys.cam.Scale
+	sw := float32(sys.gameWidth)
+	sh := float32(0)
+
+	for _, box := range boxes {
+		l := box.rect[0]
+		r := box.rect[2]
+		if facing < 0 {
+			l, r = -r, -l
+		}
+		w := r - l
+		h := box.rect[3] - box.rect[1]
+		offx := sw / 2
+		offy := sh
+		rect := [7]float32{
+			l * xs,                       // [0] x position (left)
+			box.rect[1] * ys,             // [1] y position (top)
+			w * xs,                       // [2] width
+			h * ys,                       // [3] height
+			(x + offx) * sys.widthScale,  // [4] rotation center x
+			(y + offy) * sys.heightScale, // [5] rotation center y
+			box.angle * facing,           // [6] rotation angle
+
 		}
 
 		dc.rects = append(dc.rects, rect)
@@ -250,6 +281,18 @@ type ClsnOverride struct {
 	group int32
 	index int
 	rect  [4]float32
+}
+
+type ClsnTransform struct {
+	scale [2]float32
+	angle float32
+}
+
+// The prepared boxes after all modifiers have been applied 
+// Note: Values are in world coordinate space and without facing applied
+type ClsnFinal struct {
+	rect  [4]float32
+	angle float32
 }
 
 type CharData struct {
@@ -2471,6 +2514,7 @@ type Projectile struct {
 	removeDone      bool
 	customShader    CustomShader
 	pauseBool       bool
+	clsnBuffers     [3][]ClsnFinal
 }
 
 func newProjectile() *Projectile {
@@ -2733,6 +2777,53 @@ func (p *Projectile) cancelHits(opp *Projectile) {
 	}
 }
 
+// Returns the projectile's collision boxes as []ClsnFinal, with all modifiers applied
+func (p *Projectile) getClsn(group int32) []ClsnFinal {
+	// Validate type
+	if group < 1 || group > 2 {
+		return nil
+	}
+
+	frm := p.anim.CurrentFrame()
+	if frm == nil {
+		return nil
+	}
+
+	var rects [][4]float32
+	if group == 2 {
+		rects = frm.Clsn2
+	} else {
+		rects = frm.Clsn1
+	}
+	if len(rects) == 0 {
+		return nil
+	}
+
+	// Select reusable buffer
+	buf := &p.clsnBuffers[group - 1]
+	*buf = (*buf)[:0]
+
+	// Apply projectile scale
+	scale := [2]float32{
+		p.clsnScale[0] * p.localscl * p.zScale,
+		p.clsnScale[1] * p.localscl * p.zScale,
+	}
+
+	for _, r := range rects {
+		r[0] *= scale[0]
+		r[1] *= scale[1]
+		r[2] *= scale[0]
+		r[3] *= scale[1]
+		r = NormalizeRect(r)
+		*buf = append(*buf, ClsnFinal{
+			rect:  r,
+			angle: p.clsnAngle, // raw angle (no facing applied)
+		})
+	}
+
+	return *buf
+}
+
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo, index int) {
 
@@ -2791,28 +2882,26 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 			}
 
 			// Run Clsn check
-			clsn1 := p.anim.CurrentFrame().Clsn2 // Projectiles trade with their Clsn2 only
-			clsn2 := pr.anim.CurrentFrame().Clsn2
-			if clsn1 != nil && clsn2 != nil {
-				overlap, _, _ := sys.clsnOverlap(clsn1,
-					[2]float32{p.clsnScale[0] * p.localscl, p.clsnScale[1] * p.localscl},
-					[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
-					p.facing,
-					p.clsnAngle,
-					clsn2,
-					[2]float32{pr.clsnScale[0] * pr.localscl, pr.clsnScale[1] * pr.localscl},
-					[2]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
-					pr.facing,
-					pr.clsnAngle)
-
-				if overlap {
-					// Subtract projectile hits from each other
-					p.cancelHits(pr)
-					pr.cancelHits(p)
-					// Stop entire loop when out of projectile hits
-					if p.hits < 0 {
-						break
-					}
+			boxes1 := p.getClsn(2) // Projectiles trade with their Clsn2 only
+			boxes2 := pr.getClsn(2)
+			if len(boxes1) == 0 || len(boxes2) == 0 {
+				continue
+			}
+			overlap, _, _ := sys.clsnOverlap(
+				boxes1,
+				[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+				p.facing,
+				boxes2,
+				[2]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
+				pr.facing,
+			)
+			if overlap {
+				// Subtract projectile hits from each other
+				p.cancelHits(pr)
+				pr.cancelHits(p)
+				// Stop entire loop when out of projectile hits
+				if p.hits < 0 {
+					break
 				}
 			}
 		}
@@ -2894,17 +2983,15 @@ func (p *Projectile) cueDraw() {
 	// Projectile Clsn display
 	if sys.clsnDisplay {
 		if frm := p.anim.drawFrame(); frm != nil {
-			if clsn := frm.Clsn1; clsn != nil && len(clsn) > 0 {
-				sys.debugc1hit.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl,
-					p.clsnScale[0]*p.localscl*p.facing,
-					p.clsnScale[1]*p.localscl,
-					p.clsnAngle*p.facing)
+			// Clsn1
+			boxes1 := p.getClsn(1)
+			if len(boxes1) > 0 {
+				sys.debugc1hit.Add(boxes1, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
 			}
-			if clsn := frm.Clsn2; clsn != nil && len(clsn) > 0 {
-				sys.debugc2hb.Add(clsn, p.pos[0]*p.localscl, p.pos[1]*p.localscl,
-					p.clsnScale[0]*p.localscl*p.facing,
-					p.clsnScale[1]*p.localscl,
-					p.clsnAngle*p.facing)
+			// Clsn2
+			boxes2 := p.getClsn(2)
+			if len(boxes2) > 0 {
+				sys.debugc2hb.Add(boxes2, p.pos[0]*p.localscl, p.pos[1]*p.localscl, p.facing)
 			}
 		}
 	}
@@ -3347,11 +3434,9 @@ type Char struct {
 	animlocalscl   float32
 	size           CharSize
 	//sizeBox           [4]float32
-	clsnBaseScale       [2]float32
-	clsnScaleMul        [2]float32 // From TransformClsn
-	clsnScale           [2]float32 // The final one
-	clsnAngle           float32
+	clsnScale           [2]float32 // The base scale before modifiers are applied
 	clsnOverrides       []ClsnOverride
+	clsnTransforms      [3]ClsnTransform
 	zScale              float32
 	hitdef              HitDef
 	ghv                 GetHitVar
@@ -3454,7 +3539,7 @@ type Char struct {
 	customShader         CustomShader
 	pctype               ProjContact
 	pctime, pcid         int32
-	clsnBuffers          [3][][4]float32 // Pre-allocated slices for collision checks
+	clsnBuffers          [3][]ClsnFinal // Pre-allocated slices for collision checks
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -3495,8 +3580,6 @@ func (c *Char) init(n int, idx int) {
 		minus:         3,
 		winquote:      -1,
 		movelist:      0,
-		clsnBaseScale: [2]float32{1, 1},
-		clsnScaleMul:  [2]float32{1, 1},
 		clsnScale:     [2]float32{1, 1},
 		zScale:        1,
 		//aimg:          *newAfterImage(),
@@ -7618,7 +7701,7 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 
 	// Default Clsn scale
 	if !clsnscale {
-		p.clsnScale = c.clsnBaseScale
+		p.clsnScale = c.clsnScale
 	}
 
 	// Backward compatibility
@@ -7765,36 +7848,34 @@ func (c *Char) setDepthEdge(tde, bde float32) {
 */
 
 func (c *Char) updateClsnScale() {
-	// Update base scale
+	// Determine base scale from animation owner or own size
 	if c.ownclsnscale && c.animPN == c.playerNo {
 		// Helper parameter. Use own scale instead of animation owner's
-		c.clsnBaseScale = [2]float32{c.size.xscale, c.size.yscale}
+		c.clsnScale = [2]float32{c.size.xscale, c.size.yscale}
 	} else if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
 		// Index range checks. Prevents crashing if chars don't have animations
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/1982
 		// The char's base Clsn scale is based on the animation owner's scale constants
-		c.clsnBaseScale = [2]float32{
+		c.clsnScale = [2]float32{
 			sys.chars[c.animPN][0].size.xscale,
 			sys.chars[c.animPN][0].size.yscale,
 		}
 	} else {
 		// Normally not used. Just a safeguard
-		c.clsnBaseScale = [2]float32{1.0, 1.0}
+		c.clsnScale = [2]float32{1.0, 1.0}
 	}
-	// Calculate final scale
+	// Apply animation local scale
+	c.clsnScale = [2]float32{
+		c.clsnScale[0] * c.animlocalscl,
+		c.clsnScale[1] * c.animlocalscl,
+	}
 	// Clsn and size box scale used to factor zScale here, but they shouldn't
 	// Game logic should stay the same regardless of Z scale. Only drawing scale should change
-	c.clsnScale = [2]float32{c.clsnBaseScale[0] * c.clsnScaleMul[0] * c.animlocalscl, // Facing is not used here
-		c.clsnBaseScale[1] * c.clsnScaleMul[1] * c.animlocalscl}
 }
 
 // Similar to Clsn1 and Clsn2 except localscl replaces animlocalscl
 func (c *Char) sizeBoxScale() [2]float32 {
 	baseLocalscl := 320 / float32(c.gi().localcoord[0])
-	return [2]float32{
-		c.clsnScaleMul[0] * baseLocalscl,
-		c.clsnScaleMul[1] * baseLocalscl,
-	}
+	return [2]float32{baseLocalscl, baseLocalscl}
 }
 
 func (c *Char) gethitAnimtype() Reaction {
@@ -10162,14 +10243,18 @@ func (c *Char) getAnySizeBox() *[4]float32 {
 	if len(boxes) == 0 {
 		return nil
 	}
-	return &boxes[0]
+	return &boxes[0].rect
 }
 
 // Combine current Clsn with existing modifiers
-func (c *Char) getClsn(group int32) [][4]float32 {
-	var charframe *AnimFrame
+func (c *Char) getClsn(group int32) []ClsnFinal {
+	// Validate group
+	if group < 1 || group > 3 {
+		return nil
+	}
 
 	// Get current animation frame if necessary
+	var charframe *AnimFrame
 	if group != 3 {
 		// By default, use the final displayed frame's boxes
 		charframe = c.curFrame
@@ -10180,36 +10265,27 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 		}
 	}
 
-	var final *[][4]float32
-
 	// Select the reusable buffer
-	switch group {
-	case 1:
-		final = &c.clsnBuffers[0]
-	case 2:
-		final = &c.clsnBuffers[1]
-	case 3:
-		final = &c.clsnBuffers[2]
-	default:
-		return nil
-	}
+	final := &c.clsnBuffers[group-1]
+	*final = (*final)[:0] // reset
 
-	// Reset the slice while keeping its capacity
-	*final = (*final)[:0]
-
-	// Copy current Clsn into the buffer
-	// Modifiers will still work even if no original boxes are found
+	// Copy raw boxes, converting to ClsnFinal
 	switch group {
 	case 1:
 		if charframe != nil {
-			*final = append(*final, charframe.Clsn1...)
+			for _, r := range charframe.Clsn1 {
+				*final = append(*final, ClsnFinal{rect: r, angle: 0})
+			}
 		}
 	case 2:
 		if charframe != nil {
-			*final = append(*final, charframe.Clsn2...)
+			for _, r := range charframe.Clsn2 {
+				*final = append(*final, ClsnFinal{rect: r, angle: 0})
+			}
 		}
 	case 3:
-		*final = append(*final, c.sizeToBox())
+		sizeBox := c.sizeToBox()
+		*final = append(*final, ClsnFinal{rect: sizeBox, angle: 0})
 	}
 
 	// These allocations created a hot spot in the profile, so now we use the buffers from earlier instead
@@ -10217,7 +10293,7 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 	//final := make([][4]float32, len(original))
 	//copy(final, original)
 
-	// Apply appropriate modifiers
+	// Apply appropriate overrides
 	for _, mod := range c.clsnOverrides {
 		if mod.group != group {
 			continue
@@ -10226,7 +10302,7 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 		// Helper to apply modifiers
 		// This will make it easier to add new parameters later if needed
 		modify := func(i int) {
-			(*final)[i] = mod.rect
+			(*final)[i].rect = mod.rect
 		}
 
 		switch {
@@ -10246,13 +10322,39 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 
 		// Add new box if modifying out of bounds
 		case mod.index >= len(*final):
-			*final = append(*final, [4]float32{}) // Append empty slot
-			modify(len(*final) - 1)               // Apply modifier
+			*final = append(*final, ClsnFinal{rect: mod.rect, angle: 0}) // Append empty slot
+			modify(len(*final) - 1)                                      // Apply modifier
 
 		// Modify the specific valid index
 		default:
 			modify(mod.index)
 		}
+	}
+
+	// Determine base scale for this group
+	var scale [2]float32
+	if group == 3 {
+		scale = c.sizeBoxScale()
+	} else {
+		scale = c.clsnScale
+	}
+
+	// Apply TransformClsn modifiers
+	ct := c.clsnTransforms[group-1]
+	scale[0] *= ct.scale[0]
+	scale[1] *= ct.scale[1]
+
+	// Apply scale and angle to all boxes
+	for i := range *final {
+		f := &(*final)[i]
+		f.rect[0] *= scale[0]
+		f.rect[1] *= scale[1]
+		f.rect[2] *= scale[0]
+		f.rect[3] *= scale[1]
+		f.angle = ct.angle
+
+		// Normalize left/right and top/bottom
+		f.rect = NormalizeRect(f.rect)
 	}
 
 	// Return nil if empty to make it easier to check for no boxes later
@@ -10267,6 +10369,17 @@ func (c *Char) getClsn(group int32) [][4]float32 {
 	//}
 
 	return *final
+}
+
+func (c *Char) resetClsnModifiers() {
+	c.clsnOverrides = c.clsnOverrides[:0]
+
+	for i := range c.clsnTransforms {
+		c.clsnTransforms[i] = ClsnTransform{
+			scale: [2]float32{1, 1},
+			angle: 0,
+		}
+	}
 }
 
 func (c *Char) projClsnCheck(p *Projectile, cbox, pbox int32) bool {
@@ -10324,40 +10437,28 @@ func (c *Char) projClsnCheckSingle(p *Projectile, cbox, pbox int32) bool {
 	}
 
 	// Fetch projectile boxes
-	var clsn1 [][4]float32
-
-	if pbox == 2 {
-		clsn1 = frm.Clsn2
-	} else {
-		clsn1 = frm.Clsn1
-	}
-
-	// Fetch character boxes
-	clsn2 := c.getClsn(cbox)
-
-	if len(clsn1) == 0 || len(clsn2) == 0 {
+	boxes1 := p.getClsn(pbox)
+	if len(boxes1) == 0 {
 		return false
 	}
 
-	// Exceptions for size boxes as they don't rescale or rotate
-	charscale := c.clsnScale
-	charangle := c.clsnAngle
-	if cbox == 3 {
-		charscale = [2]float32{c.localscl, c.localscl}
-		charangle = 0
+	// Fetch character boxes
+	boxes2 := c.getClsn(cbox)
+	if len(boxes2) == 0 {
+		return false
 	}
 
+	// Check for overlap
 	overlap, _, _ := sys.clsnOverlap(
-		clsn1,
-		[2]float32{p.clsnScale[0] * p.localscl * p.zScale, p.clsnScale[1] * p.localscl * p.zScale},
+		boxes1,
 		[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
 		p.facing,
-		p.clsnAngle,
-		clsn2,
-		charscale,
-		[2]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl, c.pos[1]*c.localscl + c.offsetY()*c.localscl},
+		boxes2,
+		[2]float32{
+			c.pos[0]*c.localscl + c.offsetX()*c.localscl,
+			c.pos[1]*c.localscl + c.offsetY()*c.localscl,
+		},
 		c.facing,
-		charangle,
 	)
 
 	return overlap
@@ -10461,26 +10562,26 @@ func (c *Char) clsnCheckSingle(getter *Char, charbox, getterbox int32, reqcheck 
 	}
 
 	// Fetch the box types that should collide
-	clsn1 := c.getClsn(charbox)
-	clsn2 := getter.getClsn(getterbox)
-
-	if len(clsn1) == 0 || len(clsn2) == 0 {
+	boxes1 := c.getClsn(charbox)
+	if len(boxes1) == 0 {
 		return false
 	}
 
+	boxes2 := getter.getClsn(getterbox)
+	if len(boxes2) == 0 {
+		return false
+	}
+
+	// Check for overlap
 	overlap, _, _ := sys.clsnOverlap(
-		clsn1,
-		c.clsnScale,
+		boxes1,
 		[2]float32{c.pos[0]*c.localscl + c.offsetX()*c.localscl,
 			c.pos[1]*c.localscl + c.offsetY()*c.localscl},
 		c.facing,
-		c.clsnAngle,
-		clsn2, // Getter
-		getter.clsnScale,
+		boxes2, // Getter
 		[2]float32{getter.pos[0]*getter.localscl + getter.offsetX()*getter.localscl,
 			getter.pos[1]*getter.localscl + getter.offsetY()*getter.localscl},
 		getter.facing,
-		getter.clsnAngle,
 	)
 
 	return overlap
@@ -11847,10 +11948,9 @@ func (c *Char) actionPrepare() {
 		}
 
 		// The flags below also reset during hitpause, but are new to Ikemen and don't need the exception above
-		// Reset Clsn modifiers
-		c.clsnScaleMul = [2]float32{1.0, 1.0}
-		c.clsnAngle = 0
-		c.clsnOverrides = c.clsnOverrides[:0]
+		// Reset all types of Clsn modifiers
+		// TODO: Maybe these should respect hitpause
+		c.resetClsnModifiers()
 
 		// Reset modifyShadow
 		c.shadowAnim = nil
@@ -12643,33 +12743,33 @@ func (c *Char) cueDebugDraw() {
 	// The alternative is far more dangerous: reordering globalCollision() and such functions
 	x := c.pos[0] * c.localscl
 	y := c.pos[1] * c.localscl
-	xoff := x + c.offsetX()*c.localscl
-	yoff := y + c.offsetY()*c.localscl
-	xs := c.clsnScale[0] * c.facing
-	ys := c.clsnScale[1]
-	angle := c.clsnAngle * c.facing
+	xoff := c.offsetX()*c.localscl
+	yoff := c.offsetY()*c.localscl
 	nhbtxt := ""
 
 	// Debug Clsn display
 	if sys.clsnDisplay {
 		if c.curFrame != nil {
 			// Add Clsn1
-			clsn1 := c.getClsn(1)
-			if len(clsn1) > 0 {
+			boxes1 := c.getClsn(1)
+			if len(boxes1) > 0 {
+				// Determine which debug box to use
+				var debugType *DebugClsn
 				if c.scf(SCF_standby) {
 					// Add nothing
 				} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
-					sys.debugc1rev.Add(clsn1, xoff, yoff, xs, ys, angle)
+					debugType = &sys.debugc1rev
 				} else if c.atktmp != 0 && c.hitdef.attr > 0 {
-					sys.debugc1hit.Add(clsn1, xoff, yoff, xs, ys, angle)
+					debugType = &sys.debugc1hit
 				} else {
-					sys.debugc1not.Add(clsn1, xoff, yoff, xs, ys, angle)
+					debugType = &sys.debugc1not
 				}
+				debugType.Add(boxes1, x + xoff, y + yoff, c.facing)
 			}
 
 			// Check invincibility to decide box colors
-			clsn2 := c.getClsn(2)
-			if len(clsn2) > 0 {
+			boxes2 := c.getClsn(2)
+			if len(boxes2) > 0 {
 				flags := int32(ST_SCA) | int32(AT_ALL)
 				hb, mtk := false, false
 
@@ -12717,18 +12817,20 @@ func (c *Char) cueDebugDraw() {
 				}
 
 				// Decide which debug box to add
+				var debugType *DebugClsn
 				switch {
 				case c.scf(SCF_standby):
-					sys.debugc2stb.Add(clsn2, xoff, yoff, xs, ys, angle) // Standby
+					debugType = &sys.debugc2stb // Standby
 				case mtk:
-					sys.debugc2mtk.Add(clsn2, xoff, yoff, xs, ys, angle) // Fully invincible
+					debugType = &sys.debugc2mtk // Fully invincible
 				case hb:
-					sys.debugc2hb.Add(clsn2, xoff, yoff, xs, ys, angle) // Partially invincible
+					debugType = &sys.debugc2hb // Partially invincible
 				case c.inguarddist && c.scf(SCF_guard):
-					sys.debugc2grd.Add(clsn2, xoff, yoff, xs, ys, angle) // Guarding
+					debugType = &sys.debugc2grd // Guarding
 				default:
-					sys.debugc2.Add(clsn2, xoff, yoff, xs, ys, angle) // Normal
+					debugType = &sys.debugc2 // Normal
 				}
+				debugType.Add(boxes2, x + xoff, y + yoff, c.facing)
 
 				// Add invulnerability text
 				if nhbtxt == "" {
@@ -12802,13 +12904,13 @@ func (c *Char) cueDebugDraw() {
 
 			// Add size box (width * height)
 			if c.csf(CSF_playerpush) {
-				sizeBox := c.getClsn(3)
-				sizeBoxScl := c.sizeBoxScale()
-				sys.debugcsize.Add(sizeBox, x, y, sizeBoxScl[0] * c.facing, sizeBoxScl[1], angle)
+				boxes3 := c.getClsn(3)
+				sys.debugcsize.Add(boxes3, x, y, c.facing)
 			}
 		}
 		// Add crosshair
-		sys.debugch.Add([][4]float32{{-1, -1, 1, 1}}, x, y, 1, 1, 0)
+		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
+		sys.debugch.Add(crosshair, x, y, c.facing)
 	}
 
 	// Prepare information for debug text
@@ -13843,16 +13945,15 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 		// Call clsnOverlap 
 		// It now returns the overlap area as well
-		okXY, overlapX, _ := sys.clsnOverlap(cboxes, c.sizeBoxScale(), cpos, c.facing, c.clsnAngle,
-			gboxes, getter.sizeBoxScale(), gpos, getter.facing, getter.clsnAngle)
+		okXY, overlapX, _ := sys.clsnOverlap(cboxes, cpos, c.facing, gboxes, gpos, getter.facing)
 		if !okXY {
 			continue
 		}
 
 		// Get the first box as some logic still runs on that one
 		// TODO: More unifying
-		cbox := cboxes[0]
-		gbox := gboxes[0]
+		cbox := cboxes[0].rect
+		gbox := gboxes[0].rect
 
 		// X-axis check
 		cposx := c.pos[0] * c.localscl

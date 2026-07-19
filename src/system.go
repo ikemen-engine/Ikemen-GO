@@ -2089,58 +2089,46 @@ func (s *System) zAxisOverlap(posz1, top1, bot1, localscl1, posz2, top2, bot2, l
 	return true
 }
 
-func (s *System) clsnOverlap(clsn1 [][4]float32, scl1, pos1 [2]float32, facing1 float32, angle1 float32,
-	clsn2 [][4]float32, scl2, pos2 [2]float32, facing2 float32, angle2 float32) (bool, float32, float32) {
+func (s *System) clsnOverlap(boxes1 []ClsnFinal, pos1 [2]float32, facing1 float32,
+	boxes2 []ClsnFinal, pos2 [2]float32, facing2 float32) (bool, float32, float32) {
 
 	// Skip function if any boxes are missing
-	if clsn1 == nil || clsn2 == nil {
+	if len(boxes1) == 0 || len(boxes2) == 0 {
 		return false, 0, 0
 	}
 
-	// Compute effective angles before modifying facing
-	effAngle1 := -angle1 * facing1
-	effAngle2 := -angle2 * facing2
-
-	// Flip boxes if scale < 0
-	if scl1[0] < 0 {
-		facing1 *= -1
-		scl1[0] *= -1
-	}
-	if scl2[0] < 0 {
-		facing2 *= -1
-		scl2[0] *= -1
-	}
-
 	// Loop through first set of boxes
-	for i := 0; i < len(clsn1); i++ {
-		// Calculate positions
-		l1 := clsn1[i][0]
-		r1 := clsn1[i][2]
+	for _, b1 := range boxes1 {
+		l1 := b1.rect[0]
+		r1 := b1.rect[2]
+		// Apply facing to rectangle
 		if facing1 < 0 {
 			l1, r1 = -r1, -l1
 		}
-		left1 := l1*scl1[0] + pos1[0]
-		right1 := r1*scl1[0] + pos1[0]
-		top1 := clsn1[i][1]*scl1[1] + pos1[1]
-		bottom1 := clsn1[i][3]*scl1[1] + pos1[1]
-		rect1 := [4]float32{left1, top1, right1, bottom1}
+		left1 := l1 + pos1[0]
+		right1 := r1 + pos1[0]
+		top1 := b1.rect[1] + pos1[1]
+		bottom1 := b1.rect[3] + pos1[1]
+		rect1 := NormalizeRect([4]float32{left1, top1, right1, bottom1})
+		// Apply facing to angle
+		angle1 := -b1.angle * facing1
 
 		// Loop through second set of boxes
-		for j := 0; j < len(clsn2); j++ {
-			// Calculate positions
-			l2 := clsn2[j][0]
-			r2 := clsn2[j][2]
+		for _, b2 := range boxes2 {
+			l2 := b2.rect[0]
+			r2 := b2.rect[2]
 			if facing2 < 0 {
 				l2, r2 = -r2, -l2
 			}
-			left2 := l2*scl2[0] + pos2[0]
-			right2 := r2*scl2[0] + pos2[0]
-			top2 := clsn2[j][1]*scl2[1] + pos2[1]
-			bottom2 := clsn2[j][3]*scl2[1] + pos2[1]
-			rect2 := [4]float32{left2, top2, right2, bottom2}
+			left2 := l2 + pos2[0]
+			right2 := r2 + pos2[0]
+			top2 := b2.rect[1] + pos2[1]
+			bottom2 := b2.rect[3] + pos2[1]
+			rect2 := NormalizeRect([4]float32{left2, top2, right2, bottom2})
+			angle2 := -b2.angle * facing2
 
 			// Check for overlap
-			ok, dx, dy := RectIntersect(rect1, rect2, pos1, pos2, effAngle1, effAngle2)
+			ok, dx, dy := RectIntersect(rect1, rect2, pos1, pos2, angle1, angle2)
 			if ok {
 				return true, dx, dy
 			}

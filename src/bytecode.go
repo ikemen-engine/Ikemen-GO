@@ -815,9 +815,9 @@ const (
 	OC_ex2_bgmvar_position
 	OC_ex2_bgmvar_startposition
 	OC_ex2_bgmvar_volume
-	OC_ex2_clsnvar_left
+	OC_ex2_clsnvar_back
 	OC_ex2_clsnvar_top
-	OC_ex2_clsnvar_right
+	OC_ex2_clsnvar_front
 	OC_ex2_clsnvar_bottom
 	OC_ex2_debugmode_accel
 	OC_ex2_debugmode_clsndisplay
@@ -3766,24 +3766,24 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(sys.bgm.startPos))
 	case OC_ex2_bgmvar_volume:
 		sys.bcStack.PushI(int32(sys.bgm.bgmVolume))
-	case OC_ex2_clsnvar_left, OC_ex2_clsnvar_top, OC_ex2_clsnvar_right, OC_ex2_clsnvar_bottom:
+	case OC_ex2_clsnvar_back, OC_ex2_clsnvar_top, OC_ex2_clsnvar_front, OC_ex2_clsnvar_bottom:
 		idx := int(sys.bcStack.Pop().ToI())
 		group := int32(sys.bcStack.Pop().ToI()) // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 		v := float32(math.NaN())
 		clsn := c.getClsn(group)
 		if clsn != nil && idx >= 0 && idx < len(clsn) {
 			switch opc {
-			case OC_ex2_clsnvar_left:
-				v = clsn[idx][0]
+			case OC_ex2_clsnvar_back:
+				v = clsn[idx].rect[0]
 			case OC_ex2_clsnvar_top:
-				v = clsn[idx][1]
-			case OC_ex2_clsnvar_right:
-				v = clsn[idx][2]
+				v = clsn[idx].rect[1]
+			case OC_ex2_clsnvar_front:
+				v = clsn[idx].rect[2]
 			case OC_ex2_clsnvar_bottom:
-				v = clsn[idx][3]
+				v = clsn[idx].rect[3]
 			}
 		}
-		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(v / oc.localscl)
 	case OC_ex2_debugmode_accel:
 		sys.bcStack.PushF(sys.debugAccel)
 	case OC_ex2_debugmode_clsndisplay:
@@ -14940,7 +14940,8 @@ func (sc targetAdd) Run(c *Char, _ []int32) bool {
 type transformClsn StateControllerBase
 
 const (
-	transformClsn_scale byte = iota
+	transformClsn_group byte = iota
+	transformClsn_scale
 	transformClsn_angle
 	transformClsn_redirectid
 )
@@ -14951,19 +14952,48 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	// Defaults
+	scale := [2]float32{1, 1}
+	angle := float32(0)
+	group := int32(-1)
+	// TODO: Also accept "all" parameter or so
+	// But that would imply hit detection could also run on "all" types, which needs some extra work
+	// Or maybe only this sctrl can use that keyword
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
+		case transformClsn_group:
+			group = exp[0].evalI(c)
 		case transformClsn_scale:
-			crun.clsnScaleMul[0] *= exp[0].evalF(c)
+			scale[0] *= exp[0].evalF(c)
 			if len(exp) > 1 {
-				crun.clsnScaleMul[1] *= exp[1].evalF(c)
+				scale[1] *= exp[1].evalF(c)
 			}
 			crun.updateClsnScale()
 		case transformClsn_angle:
-			crun.clsnAngle += exp[0].evalF(c)
+			angle = exp[0].evalF(c)
 		}
 		return true
 	})
+
+	// Apply the transform to the appropriate group(s)
+	if group == -1 {
+		for i := 0; i < 3; i++ {
+			t := &crun.clsnTransforms[i]
+			t.scale[0] *= scale[0]
+			t.scale[1] *= scale[1]
+			t.angle += angle
+		}
+	} else if group >= 1 && group <= 3 {
+		idx := group - 1
+		t := &crun.clsnTransforms[idx]
+		t.scale[0] *= scale[0]
+		t.scale[1] *= scale[1]
+		t.angle += angle
+	} else {
+		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in TransformClsn", group))
+	}
+
 	return false
 }
 
