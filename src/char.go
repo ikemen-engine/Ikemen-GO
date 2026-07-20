@@ -3514,6 +3514,7 @@ type Char struct {
 	downHitOffset        bool
 	koEchoTimer          int32
 	groundLevel          float32
+	prevGroundLevel      float32 // For debugging only
 	shadowAnim           *Animation
 	shadowAnimelem       int32
 	shadowColor          [3]int32
@@ -12131,10 +12132,12 @@ func (c *Char) actionRun() {
 			}
 		}
 
-		// Reset groundLevel only after position has been updated
+		// Reset groundLevel only after the next position update
+		// This makes it easier to redirect regardless of char run order
 		// Must reset even during hitpause
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/3587
 		// TODO: Should it also reset during pauses? Test similar scenarios but with pause instead of hitpause
+		c.prevGroundLevel = c.groundLevel
 		c.groundLevel = 0
 
 		// Commit current animation frame to memory
@@ -12935,6 +12938,11 @@ func (c *Char) cueDebugDraw() {
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
 		sys.debugch.Add(crosshair, x, y, c.facing)
+		// Add GroundLevel indicator
+		if c.prevGroundLevel != 0 {
+			gLevel := []ClsnFinal{{rect: [4]float32{-4, 0, 4, 1}, angle: 0}}
+			sys.debugch.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
+		}
 	}
 
 	// Prepare information for debug text
