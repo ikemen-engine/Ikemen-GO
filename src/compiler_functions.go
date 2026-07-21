@@ -3729,6 +3729,10 @@ func (c *CharCompiler) angleDraw(is IniSection, sc *StateControllerBase) (StateC
 			angleDraw_scale, VT_Float, 2, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "pivot",
+			angleDraw_pivot, VT_Float, 2, false); err != nil {
+			return err
+		}
 		return nil
 	})
 	return *ret, err

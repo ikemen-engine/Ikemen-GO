@@ -10715,6 +10715,7 @@ const (
 	angleDraw_x
 	angleDraw_y
 	angleDraw_scale
+	angleDraw_pivot
 	angleDraw_redirectid
 )
 
@@ -10736,6 +10737,11 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 			crun.angleDrawScale[0] *= exp[0].evalF(c)
 			if len(exp) > 1 {
 				crun.angleDrawScale[1] *= exp[1].evalF(c)
+			}
+		case angleDraw_pivot:
+			crun.angleDrawPivot[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				crun.angleDrawPivot[1] = exp[1].evalF(c)
 			}
 		}
 		return true

@@ -213,6 +213,7 @@ type RenderParams struct {
 	pfx            *PalFX
 	window         *[4]int32
 	rcx, rcy       float32 // Rotation center
+	rcOffset       [2]float32 // Offset for rotation center (AngleDraw pivot)
 	projectionMode int32   // Perspective projection
 	fLength        float32 // Focal length
 	xOffset        float32
@@ -340,22 +341,32 @@ func applyRotation(modelview mgl.Mat4, rp RenderParams) mgl.Mat4 {
 
 // Builds the base projection transform depending on projectionMode
 func applyProjection(modelview mgl.Mat4, rp RenderParams, n int, botdist, dy float32) mgl.Mat4 {
+	// Calculate actual rotation center
+	rotCenterX := rp.rcx + rp.rcOffset[0] + float32(n)*botdist
+	rotCenterY := rp.rcy + rp.rcOffset[1] + dy
+
 	if rp.projectionMode == 0 {
 		// No projection, just center on pivot + tile offset
-		return modelview.Mul4(mgl.Translate3D(rp.rcx+float32(n)*botdist, rp.rcy+dy, 0))
+		return modelview.Mul4(mgl.Translate3D(rotCenterX, rotCenterY, 0))
 	}
 
-	matrix := mgl.Mat4{float32(sys.scrrect[2] / 2.0), 0, 0, 0, 0, float32(sys.scrrect[3] / 2), 0, 0, 0, 0, -65535, 0, float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1}
+	matrix := mgl.Mat4{
+		float32(sys.scrrect[2] / 2.0), 0, 0, 0,
+		0, float32(sys.scrrect[3] / 2), 0, 0,
+		0, 0, -65535, 0,
+		float32(sys.scrrect[2] / 2), float32(sys.scrrect[3] / 2), 0, 1,
+	}
 
 	if rp.projectionMode == 1 {
 		modelview = modelview.Mul4(mgl.Translate3D(0, -float32(sys.scrrect[3]), rp.fLength))
 		modelview = modelview.Mul4(matrix)
 		modelview = modelview.Mul4(mgl.Frustum(-float32(sys.scrrect[2])/2/rp.fLength, float32(sys.scrrect[2])/2/rp.fLength, -float32(sys.scrrect[3])/2/rp.fLength, float32(sys.scrrect[3])/2/rp.fLength, 1.0, 65535))
 		modelview = modelview.Mul4(mgl.Translate3D(-float32(sys.scrrect[2])/2.0, float32(sys.scrrect[3])/2.0, -rp.fLength))
-		return modelview.Mul4(mgl.Translate3D(rp.rcx+float32(n)*botdist, rp.rcy+dy, 0))
+		return modelview.Mul4(mgl.Translate3D(rotCenterX, rotCenterY, 0))
 	}
 
 	if rp.projectionMode == 2 {
+		// Mode 2 uses rcx/rcy for camera position, not rotation center
 		modelview = modelview.Mul4(mgl.Translate3D(rp.rcx-float32(sys.scrrect[2])/2.0-rp.xOffset, rp.rcy-float32(sys.scrrect[3])/2.0+rp.yOffset, rp.fLength))
 		modelview = modelview.Mul4(matrix)
 		modelview = modelview.Mul4(mgl.Frustum(-float32(sys.scrrect[2])/2/rp.fLength, float32(sys.scrrect[2])/2/rp.fLength, -float32(sys.scrrect[3])/2/rp.fLength, float32(sys.scrrect[3])/2/rp.fLength, 1.0, 65535))
@@ -525,7 +536,11 @@ func renderSpriteHTile(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, w
 		if !rp.rot.IsZero() {
 			mat = applyProjection(mat, rp, int(n), botdist, dy)
 			mat = applyRotation(mat, rp)
-			mat = mat.Mul4(mgl.Translate3D(-(rp.rcx + float32(n)*botdist), -(rp.rcy + dy), 0))
+
+			rotCenterX := rp.rcx + rp.rcOffset[0] + float32(n)*botdist
+			rotCenterY := rp.rcy + rp.rcOffset[1] + dy
+
+			mat = mat.Mul4(mgl.Translate3D(-rotCenterX, -rotCenterY, 0))
 		}
 
 		drawQuads(mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
@@ -537,12 +552,14 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
 	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
 	x4, y4 := rp.x, y3
+
 	//var pers float32
 	//if Abs(rp.xts) < Abs(rp.xbs) {
 	//	pers = Abs(rp.xts) / Abs(rp.xbs)
 	//} else {
 	//	pers = Abs(rp.xbs) / Abs(rp.xts)
 	//}
+
 	if !rp.rot.IsZero() && rp.tile.xflag == 0 && rp.tile.yflag == 0 {
 		// TODO: This block makes shadows ignore their own yscale when in perspective
 		// However, when we disable it, regular shadows are scaled incorrectly even with the smallest roation
@@ -557,7 +574,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		modelview = applyProjection(modelview, rp, 0, 1, 0)
 		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
 		modelview = applyRotation(modelview, rp)
-		modelview = modelview.Mul4(mgl.Translate3D(-rp.rcx, -rp.rcy, 0))
+		modelview = modelview.Mul4(mgl.Translate3D(-(rp.rcx + rp.rcOffset[0]), -(rp.rcy + rp.rcOffset[1]), 0))
 
 		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		return
@@ -657,6 +674,7 @@ func initRenderSpriteQuad(rp *RenderParams) {
 	}
 	rp.x += rp.rcx
 	rp.rcy *= -1
+	rp.rcOffset[1] *= -1
 	if rp.ys < 0 {
 		rp.y *= -1
 	}

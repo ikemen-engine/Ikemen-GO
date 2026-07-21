@@ -3367,6 +3367,7 @@ type CharSystemVar struct {
 	projection            Projection
 	fLength               float32
 	angleDrawScale        [2]float32
+	angleDrawPivot        [2]float32
 	trans                 TransType
 	alpha                 [2]int32
 	window                [4]float32
@@ -11962,6 +11963,7 @@ func (c *Char) actionPrepare() {
 		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 || !c.hitPause() {
 			c.unsetCSF(CSF_angledraw)
 			c.angleDrawScale = [2]float32{1, 1}
+			c.angleDrawPivot = [2]float32{0, 0}
 			c.trans = TT_default
 			c.alpha = [2]int32{255, 0}
 			c.offset = [2]float32{}
@@ -13024,12 +13026,15 @@ func (c *Char) cueDraw() {
 			anglerot[2] *= -1
 		}
 		fLength = fLength * c.localscl
-		rot := c.rot
+
+		rot := c.rot // TODO: This seems unused
+		rotPivot := [2]float32{0, 0}
 
 		if c.csf(CSF_angledraw) {
 			rot.angle = anglerot[0]
 			rot.xangle = anglerot[1]
 			rot.yangle = anglerot[2]
+			rotPivot = [2]float32{c.angleDrawPivot[0]*c.localscl, c.angleDrawPivot[1]*c.localscl}
 		}
 
 		rec := sys.tickNextFrame() && c.acttmp > 0
@@ -13077,6 +13082,7 @@ func (c *Char) cueDraw() {
 		charSD.priority = c.sprPriority + int32(c.pos[2]*c.localscl)
 		charSD.under = c.asf(ASF_drawunder)
 		charSD.rot = rot
+		charSD.rotPivot = rotPivot
 		charSD.undarken = c.ignoreDarkenTime > 0
 		charSD.facing = c.facing
 		charSD.airOffsetFix = airOffsetFix
