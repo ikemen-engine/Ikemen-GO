@@ -797,6 +797,18 @@ local function drawPortraitRandom(randomCfg)
 	return false
 end
 
+local function drawPortraitSlot(slotCfg)
+	if not slotCfg then
+		return false
+	end
+	local spr = slotCfg.spr
+	if slotCfg.anim >= 0 or (spr and spr[1] >= 0 and spr[2] >= 0) then
+		main.f_animPosDraw(slotCfg.AnimData)
+		return true
+	end
+	return false
+end
+
 local function hasPortraitAnim(params)
 	return params ~= nil and params.AnimData ~= nil and ((params.anim or -1) ~= -1 or (params.spr ~= nil and params.spr[1] ~= -1))
 end
@@ -893,6 +905,29 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			end
 			if baseFace.random and drawPortraitRandom(baseFace.random) then
 				t_portraits[m].skipCurrent = true
+			end
+		end
+	end
+	-- draw slot indicator
+	for m = 1, #t_portraits do
+		local pn = 2 * (m - 1) + side
+		local pData = f_getMotifP(t, pn, side)
+
+		local baseFace = pData
+		if subname and subname ~= '' then
+			baseFace = baseFace[subname]
+		end
+		if t_portraits[m].ref ~= nil then
+			local charInfo = main.t_selChars[t_portraits[m].ref + 1]
+			if charInfo and charInfo.hasSlot then
+				-- face2 slot
+				if pData.face2.slot then
+					drawPortraitSlot(pData.face2.slot)
+				end
+				-- primary face slot
+				if baseFace.slot then
+					drawPortraitSlot(baseFace.slot)
+				end
 			end
 		end
 	end
@@ -2505,6 +2540,16 @@ function start.updateDrawList()
 						end
 					end
 					table.insert(drawList, item)
+					local grid = main.t_selGrid[cellIndex]
+					local hasMultipleChars = grid ~= nil and #grid.chars > 1
+					-- draw slot indicator
+					if hasMultipleChars and hasPortraitAnim(motif.select_info.cell.slot) then
+						local icon = getTransforms(motif.select_info.cell.slot)
+						icon.anim = motif.select_info.cell.slot.AnimData
+						icon.x = motif.select_info.pos[1] + t.x + motif.select_info.cell.slot.offset[1]
+						icon.y = motif.select_info.pos[2] + t.y + motif.select_info.cell.slot.offset[2]
+						table.insert(drawList, icon)
+					end
 				end
 			end
 		end
