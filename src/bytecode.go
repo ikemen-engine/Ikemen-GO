@@ -3535,7 +3535,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.reversalDefAttr(attr))
 	case OC_ex_angle:
 		if c.csf(CSF_angledraw) {
-			sys.bcStack.PushF(c.anglerot[0])
+			sys.bcStack.PushF(c.rot.angle)
 		} else {
 			sys.bcStack.PushF(0)
 		}
@@ -3703,13 +3703,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.outroState())
 	case OC_ex2_angle_x:
 		if c.csf(CSF_angledraw) {
-			sys.bcStack.PushF(c.anglerot[1])
+			sys.bcStack.PushF(c.rot.xangle)
 		} else {
 			sys.bcStack.PushF(0)
 		}
 	case OC_ex2_angle_y:
 		if c.csf(CSF_angledraw) {
-			sys.bcStack.PushF(c.anglerot[2])
+			sys.bcStack.PushF(c.rot.yangle)
 		} else {
 			sys.bcStack.PushF(0)
 		}
@@ -3973,11 +3973,11 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			case OC_ex2_projvar_projanim:
 				sys.bcStack.PushI(p.animNo)
 			case OC_ex2_projvar_projangle:
-				sys.bcStack.PushF(p.anglerot[0])
+				sys.bcStack.PushF(p.rot.angle)
 			case OC_ex2_projvar_projyangle:
-				sys.bcStack.PushF(p.anglerot[2])
+				sys.bcStack.PushF(p.rot.xangle)
 			case OC_ex2_projvar_projxangle:
-				sys.bcStack.PushF(p.anglerot[1])
+				sys.bcStack.PushF(p.rot.yangle)
 			case OC_ex2_projvar_projcancelanim:
 				sys.bcStack.PushI(p.cancelanim)
 			case OC_ex2_projvar_projedgebound:
@@ -6384,13 +6384,13 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_animfreeze:
 			e.animfreeze = exp[0].evalB(c)
 		case explod_angle:
-			e.anglerot[0] = exp[0].evalF(c)
-		case explod_yangle:
-			e.anglerot[2] = exp[0].evalF(c)
+			e.rot.angle = exp[0].evalF(c)
 		case explod_xangle:
-			e.anglerot[1] = exp[0].evalF(c)
+			e.rot.xangle = exp[0].evalF(c)
 		case explod_xshear:
 			e.xshear = exp[0].evalF(c)
+		case explod_yangle:
+			e.rot.yangle = exp[0].evalF(c)
 		case explod_focallength:
 			e.fLength = exp[0].evalF(c)
 		case explod_ignorehitpause:
@@ -7024,17 +7024,17 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			case explod_angle:
 				a := exp[0].evalF(c)
 				eachExpl(func(e *Explod) {
-					e.anglerot[0] = a
+					e.rot.angle = a
 				})
 			case explod_yangle:
 				ya := exp[0].evalF(c)
 				eachExpl(func(e *Explod) {
-					e.anglerot[2] = ya
+					e.rot.yangle = ya
 				})
 			case explod_xangle:
 				xa := exp[0].evalF(c)
 				eachExpl(func(e *Explod) {
-					e.anglerot[1] = xa
+					e.rot.xangle = xa
 				})
 			case explod_xshear:
 				xs := exp[0].evalF(c)
@@ -8207,11 +8207,11 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 				p.scale[1] = exp[1].evalF(c)
 			}
 		case projectile_projangle:
-			p.anglerot[0] = exp[0].evalF(c)
+			p.rot.angle = exp[0].evalF(c)
 		case projectile_projyangle:
-			p.anglerot[2] = exp[0].evalF(c)
+			p.rot.yangle = exp[0].evalF(c)
 		case projectile_projxangle:
-			p.anglerot[1] = exp[0].evalF(c)
+			p.rot.xangle = exp[0].evalF(c)
 		case projectile_offset:
 			offx = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
@@ -8639,17 +8639,17 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 			case projectile_projangle:
 				a := exp[0].evalF(c)
 				eachProj(func(p *Projectile) {
-					p.anglerot[0] = a
+					p.rot.angle = a
 				})
 			case projectile_projyangle:
 				ya := exp[0].evalF(c)
 				eachProj(func(p *Projectile) {
-					p.anglerot[2] = ya
+					p.rot.yangle = ya
 				})
 			case projectile_projxangle:
 				xa := exp[0].evalF(c)
 				eachProj(func(p *Projectile) {
-					p.anglerot[1] = xa
+					p.rot.xangle = xa
 				})
 			//case projectile_offset: // Pointless because it's only used when the projectile is created
 			case projectile_projsprpriority:
@@ -10804,11 +10804,11 @@ func (sc angleAdd) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case angleAdd_value:
-			crun.angleSet(crun.anglerot[0] + exp[0].evalF(c))
+			crun.angleSet(crun.rot.angle + exp[0].evalF(c))
 		case angleAdd_x:
-			crun.XangleSet(crun.anglerot[1] + exp[0].evalF(c))
+			crun.XangleSet(crun.rot.xangle + exp[0].evalF(c))
 		case angleAdd_y:
-			crun.YangleSet(crun.anglerot[2] + exp[0].evalF(c))
+			crun.YangleSet(crun.rot.yangle + exp[0].evalF(c))
 		}
 		return true
 	})
@@ -10844,9 +10844,9 @@ func (sc angleMul) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	crun.angleSet(crun.anglerot[0] * v1)
-	crun.XangleSet(crun.anglerot[1] * v2)
-	crun.YangleSet(crun.anglerot[2] * v3)
+	crun.angleSet(crun.rot.angle * v1)
+	crun.XangleSet(crun.rot.xangle * v2)
+	crun.YangleSet(crun.rot.yangle * v3)
 	return false
 }
 

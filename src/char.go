@@ -1689,7 +1689,6 @@ type Explod struct {
 	remappal            [2]int32
 	ignorehitpause      bool
 	rot                 Rotation
-	anglerot            [3]float32
 	xshear              float32
 	projection          Projection
 	fLength             float32
@@ -2064,9 +2063,9 @@ func (e *Explod) update() {
 				e.sprpriority = syncChar.sprPriority
 				e.scale = [2]float32{syncChar.size.xscale * syncChar.angleDrawScale[0], syncChar.size.yscale * syncChar.angleDrawScale[1]}
 				if syncChar.csf(CSF_angledraw) {
-					e.anglerot = syncChar.anglerot
+					e.rot = syncChar.rot
 				} else {
-					e.anglerot = [3]float32{0, 0, 0}
+					e.rot = Rotation{}
 				}
 				e.window = syncChar.window
 				e.xshear = syncChar.xshear
@@ -2217,6 +2216,11 @@ func (e *Explod) cueDraw() {
 
 	parent := e.parent()
 
+	facing := e.trueFacing()
+	//if e.lockSpriteFacing {
+	//	facing = -1
+	//}
+
 	var pfx *PalFX
 	if e.palfx != nil && (!e.anim.isCommonFX() || e.ownpal) {
 		pfx = e.palfx
@@ -2227,7 +2231,14 @@ func (e *Explod) cueDraw() {
 	}
 
 	alp := e.alpha
-	anglerot := e.anglerot
+
+	// TODO: Interpolation should just use the same conventions instead of merging all angles under one parameter
+	anglerot := [3]float32{e.rot.angle, e.rot.xangle, e.rot.yangle}
+	if (facing < 0) != (e.vfacing < 0) {
+		anglerot.angle *= -1
+		anglerot.yangle *= -1
+	}
+
 	fLength := e.fLength
 	scale := e.scale
 	xshear := e.xshear
@@ -2236,28 +2247,20 @@ func (e *Explod) cueDraw() {
 		e.Interpolate(&scale, &alp, &anglerot, &fLength, &xshear)
 	}
 
-	if alp[0] < 0 {
-		alp[0] = -1
+	rot := Rotation{
+		angle: anglerot[0],
+		xangle: anglerot[1],
+		yangle: anglerot[2],
 	}
 
-	facing := e.trueFacing()
-	//if e.lockSpriteFacing {
-	//	facing = -1
-	//}
-	if (facing < 0) != (e.vfacing < 0) {
-		anglerot[0] *= -1
-		anglerot[2] *= -1
+	if alp[0] < 0 {
+		alp[0] = -1
 	}
 
 	if fLength <= 0 {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-
-	rot := e.rot
-	rot.angle = anglerot[0]
-	rot.xangle = anglerot[1]
-	rot.yangle = anglerot[2]
 
 	// Set drawing position
 	drawpos := [2]float32{e.interPos[0] * e.localscl, e.interPos[1] * e.localscl}
@@ -2304,7 +2307,7 @@ func (e *Explod) cueDraw() {
 	sd.layerno = e.layerno
 	sd.priority = e.sprpriority + int32(e.interPos[2]*e.localscl)
 	sd.under = e.under
-	sd.rot = rot
+	sd.rot = anglerot
 	sd.screen = e.space == Space_screen
 	sd.undarken = parent != nil && parent.ignoreDarkenTime > 0
 	sd.facing = facing
@@ -2409,7 +2412,14 @@ func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]fl
 			// Update alpha regardless of transparency type. Let the type handle the rendering
 			(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
 		}
-		(*anglerot)[i] = e.interpolate_angle[i] + e.anglerot[i]
+		switch i {
+		case 0:
+			(*anglerot)[i] = e.interpolate_angle[i] + e.rot.angle
+		case 1:
+			(*anglerot)[i] = e.interpolate_angle[i] + e.rot.xangle
+		case 2:
+			(*anglerot)[i] = e.interpolate_angle[i] + e.rot.yangle
+		}
 	}
 	*fLength = e.interpolate_fLength[0] + e.fLength
 	*xshear = e.interpolate_xshear[0]
@@ -2423,7 +2433,14 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 				pfd.iadd[v] = pfd.add[i]
 				pfd.imul[v] = pfd.mul[i]
 			}
-			e.interpolate_angle[v] = e.anglerot[i]
+			switch v {
+			case 0:
+				e.interpolate_angle[v] = e.rot.angle
+			case 1:
+				e.interpolate_angle[v] = e.rot.xangle
+			case 2:
+				e.interpolate_angle[v] = e.rot.yangle
+			}
 			if i < 2 {
 				v = (i + (j * 2))
 				e.interpolate_pos[v] = 0
@@ -2471,7 +2488,6 @@ type Projectile struct {
 	cancelanim      int32
 	cancelanim_ffx  string
 	scale           [2]float32
-	anglerot        [3]float32
 	rot             Rotation
 	projection      Projection
 	fLength         float32
@@ -3034,22 +3050,17 @@ func (p *Projectile) cueDraw() {
 		pos = sys.drawposXYfromZ(pos, p.localscl, p.interPos[2], p.zScale)
 	}
 
-	anglerot := p.anglerot
-	fLength := p.fLength
+	rot := p.rot
+	if p.facing < 0 {
+		rot.angle *= -1
+		rot.yangle *= -1
+	}
 
+	fLength := p.fLength
 	if fLength <= 0 {
 		fLength = 2048
 	}
-
-	if p.facing < 0 {
-		anglerot[0] *= -1
-		anglerot[2] *= -1
-	}
 	fLength = fLength * p.localscl
-	rot := p.rot
-	rot.angle = anglerot[0]
-	rot.xangle = anglerot[1]
-	rot.yangle = anglerot[2]
 
 	var pwin = [4]float32{
 		p.window[0] * basescale[0],
@@ -3362,7 +3373,6 @@ type CharSystemVar struct {
 	bindFacing            float32
 	hitPauseTime          int32
 	rot                   Rotation
-	anglerot              [3]float32
 	xshear                float32
 	projection            Projection
 	fLength               float32
@@ -5837,11 +5847,11 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 		case OC_ex2_explodvar_anim:
 			v = BytecodeInt(e.animNo)
 		case OC_ex2_explodvar_angle:
-			v = BytecodeFloat(e.anglerot[0] + e.interpolate_angle[0])
+			v = BytecodeFloat(e.rot.angle + e.interpolate_angle[0])
 		case OC_ex2_explodvar_angle_x:
-			v = BytecodeFloat(e.anglerot[1] + e.interpolate_angle[1])
+			v = BytecodeFloat(e.rot.xangle + e.interpolate_angle[1])
 		case OC_ex2_explodvar_angle_y:
-			v = BytecodeFloat(e.anglerot[2] + e.interpolate_angle[2])
+			v = BytecodeFloat(e.rot.yangle + e.interpolate_angle[2])
 		case OC_ex2_explodvar_animelem:
 			v = BytecodeInt(e.anim.curelem + 1)
 		case OC_ex2_explodvar_animelemtime:
@@ -7198,7 +7208,14 @@ func (c *Char) commitExplod(i int) {
 			e.start_scale[j] = e.scale[j]
 			e.start_alpha[j] = e.alpha[j]
 		}
-		e.start_rot[j] = e.anglerot[j]
+		switch j {
+		case 0:
+			e.start_rot[j] = e.rot.angle
+		case 1:
+			e.start_rot[j] = e.rot.xangle
+		case 2:
+			e.start_rot[j] = e.rot.yangle
+		}
 	}
 
 	if e.interpolate {
@@ -7215,7 +7232,7 @@ func (c *Char) commitExplod(i int) {
 				e.alpha[j] = 255
 				//}
 			}
-			e.anglerot[j] = 0
+			e.rot = Rotation{}
 		}
 		if e.ownpal {
 			e.palfxdef.color = 1
@@ -9300,15 +9317,15 @@ func (c *Char) hitPause() bool {
 }
 
 func (c *Char) angleSet(a float32) {
-	c.anglerot[0] = a
+	c.rot.angle = a
 }
 
 func (c *Char) XangleSet(xa float32) {
-	c.anglerot[1] = xa
+	c.rot.xangle = xa
 }
 
 func (c *Char) YangleSet(ya float32) {
-	c.anglerot[2] = ya
+	c.rot.yangle = ya
 }
 
 func (c *Char) inputWait() bool {
@@ -11620,7 +11637,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				//	e.anim.start_scale[1] *= c.localscl * sparkscale[1]
 				//}
 				e.setPos(p1)
-				e.anglerot[0] = sparkangle
+				e.rot.angle = sparkangle
 				c.commitExplod(i)
 			}
 		}
@@ -13014,28 +13031,23 @@ func (c *Char) cueDraw() {
 		//	pos[1] += c.interPos[2] * c.localscl
 		//}
 
-		anglerot := c.anglerot
-		fLength := c.fLength
-
-		if fLength <= 0 {
-			fLength = 2048
-		}
-
-		if c.facing < 0 {
-			anglerot[0] *= -1
-			anglerot[2] *= -1
-		}
-		fLength = fLength * c.localscl
-
-		rot := c.rot // TODO: This seems unused
+		rot := Rotation{}
 		rotPivot := [2]float32{0, 0}
 
 		if c.csf(CSF_angledraw) {
-			rot.angle = anglerot[0]
-			rot.xangle = anglerot[1]
-			rot.yangle = anglerot[2]
+			rot = c.rot
 			rotPivot = [2]float32{c.angleDrawPivot[0]*c.localscl, c.angleDrawPivot[1]*c.localscl}
+			if c.facing < 0 {
+				rot.angle *= -1
+				rot.yangle *= -1
+			}
 		}
+
+		fLength := c.fLength
+		if fLength <= 0 {
+			fLength = 2048
+		}
+		fLength = fLength * c.localscl
 
 		rec := sys.tickNextFrame() && c.acttmp > 0
 

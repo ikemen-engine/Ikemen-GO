@@ -8005,7 +8005,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "angle", func(*lua.LState) int {
 		if sys.debugWC.csf(CSF_angledraw) {
-			l.Push(lua.LNumber(sys.debugWC.anglerot[0]))
+			l.Push(lua.LNumber(sys.debugWC.rot.angle))
 		} else {
 			l.Push(lua.LNumber(0))
 		}
@@ -8658,11 +8658,11 @@ func triggerFunctions(l *lua.LState) {
 			case "anim":
 				lv = lua.LNumber(e.animNo)
 			case "angle":
-				lv = lua.LNumber(e.anglerot[0] + e.interpolate_angle[0])
+				lv = lua.LNumber(e.rot.angle + e.interpolate_angle[0])
 			case "angle x":
-				lv = lua.LNumber(e.anglerot[1] + e.interpolate_angle[1])
+				lv = lua.LNumber(e.rot.xangle + e.interpolate_angle[1])
 			case "angle y":
-				lv = lua.LNumber(e.anglerot[2] + e.interpolate_angle[2])
+				lv = lua.LNumber(e.rot.yangle + e.interpolate_angle[2])
 			case "animelem":
 				lv = lua.LNumber(e.anim.curelem + 1)
 			case "animelemtime":
@@ -10221,11 +10221,11 @@ func triggerFunctions(l *lua.LState) {
 			case "animelem":
 				lv = lua.LNumber(p.anim.curelem + 1)
 			case "angle":
-				lv = lua.LNumber(p.anglerot[0])
+				lv = lua.LNumber(p.rot.angle)
 			case "angle x":
-				lv = lua.LNumber(p.anglerot[1])
+				lv = lua.LNumber(p.rot.xangle)
 			case "angle y":
-				lv = lua.LNumber(p.anglerot[2])
+				lv = lua.LNumber(p.rot.yangle)
 			case "attr":
 				lv = attrLStr(p.hitdef.attr) // Return string like HitDefAttr
 			case "drawpal group":
@@ -10970,7 +10970,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "xAngle", func(*lua.LState) int {
 		if sys.debugWC.csf(CSF_angledraw) {
-			l.Push(lua.LNumber(sys.debugWC.anglerot[1]))
+			l.Push(lua.LNumber(sys.debugWC.rot.xangle))
 		} else {
 			l.Push(lua.LNumber(0))
 		}
@@ -10982,7 +10982,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "yAngle", func(*lua.LState) int {
 		if sys.debugWC.csf(CSF_angledraw) {
-			l.Push(lua.LNumber(sys.debugWC.anglerot[2]))
+			l.Push(lua.LNumber(sys.debugWC.rot.yangle))
 		} else {
 			l.Push(lua.LNumber(0))
 		}
