@@ -1708,8 +1708,10 @@ type Explod struct {
 	//blendmode            int32
 	start_animelem       int32
 	start_scale          [2]float32
-	start_rot            [3]float32
 	start_alpha          [2]int32
+	start_angle          float32
+	start_xangle         float32
+	start_yangle         float32
 	start_fLength        float32
 	start_xshear         float32
 	interpolate          bool
@@ -1718,7 +1720,9 @@ type Explod struct {
 	interpolate_scale    [4]float32
 	interpolate_alpha    [4]int32
 	interpolate_pos      [6]float32
-	interpolate_angle    [6]float32
+	interpolate_angle    [2]float32
+	interpolate_xangle   [2]float32
+	interpolate_yangle   [2]float32
 	interpolate_fLength  [2]float32
 	interpolate_xshear   [2]float32
 	timestamp            int32 // Determines run order
@@ -2235,8 +2239,8 @@ func (e *Explod) cueDraw() {
 	// TODO: Interpolation should just use the same conventions instead of merging all angles under one parameter
 	anglerot := [3]float32{e.rot.angle, e.rot.xangle, e.rot.yangle}
 	if (facing < 0) != (e.vfacing < 0) {
-		anglerot.angle *= -1
-		anglerot.yangle *= -1
+		anglerot[0] *= -1
+		anglerot[2] *= -1
 	}
 
 	fLength := e.fLength
@@ -2247,12 +2251,6 @@ func (e *Explod) cueDraw() {
 		e.Interpolate(&scale, &alp, &anglerot, &fLength, &xshear)
 	}
 
-	rot := Rotation{
-		angle: anglerot[0],
-		xangle: anglerot[1],
-		yangle: anglerot[2],
-	}
-
 	if alp[0] < 0 {
 		alp[0] = -1
 	}
@@ -2261,6 +2259,13 @@ func (e *Explod) cueDraw() {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
+
+	// Convert back to a standard Rotation struct
+	rot := Rotation{
+		angle: anglerot[0],
+		xangle: anglerot[1],
+		yangle: anglerot[2],
+	}
 
 	// Set drawing position
 	drawpos := [2]float32{e.interPos[0] * e.localscl, e.interPos[1] * e.localscl}
@@ -2307,7 +2312,7 @@ func (e *Explod) cueDraw() {
 	sd.layerno = e.layerno
 	sd.priority = e.sprpriority + int32(e.interPos[2]*e.localscl)
 	sd.under = e.under
-	sd.rot = anglerot
+	sd.rot = rot
 	sd.screen = e.space == Space_screen
 	sd.undarken = parent != nil && parent.ignoreDarkenTime > 0
 	sd.facing = facing
@@ -2384,41 +2389,54 @@ func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]fl
 	if !e.pauseBool && sys.tickNextFrame() {
 		// Determine progress (inverted)
 		t := float32(e.interpolate_time[1]) / float32(e.interpolate_time[0])
-		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
-		e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
+
+		// Interpolate animelem
 		if e.interpolate_animelem[1] >= 0 {
 			elem := Ceil(Lerp(float32(e.interpolate_animelem[0]-1), float32(e.interpolate_animelem[1]), 1-t))
-
 			if e.interpolate_animelem[0] > e.interpolate_animelem[1] {
 				elem = Ceil(Lerp(float32(e.interpolate_animelem[1]-1), float32(e.interpolate_animelem[0]), t))
 			}
 			e.animelem = Clamp(elem, Min(e.interpolate_animelem[0], e.interpolate_animelem[1]), Max(e.interpolate_animelem[0], e.interpolate_animelem[1]))
 		}
+
+		// Interpolate properties with 1 value
+		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
+		e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
+		e.interpolate_angle[0] = Lerp(e.interpolate_angle[1], e.start_angle, t)
+		e.interpolate_xangle[0] = Lerp(e.interpolate_xangle[1], e.start_xangle, t)
+		e.interpolate_yangle[0] = Lerp(e.interpolate_yangle[1], e.start_yangle, t)
+
+		// Interpolate properties with 2 values
 		for i := 0; i < 3; i++ {
 			e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
 			if i < 2 {
-				e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t) //-e.start_scale[i]
-				e.interpolate_alpha[i] = Clamp(int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t)), 0, 255)
+				e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t)
+				e.interpolate_alpha[i] = int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t))
+				e.interpolate_alpha[i] = Clamp(e.interpolate_alpha[i], 0, 255)
 			}
-			e.interpolate_angle[i] = Lerp(e.interpolate_angle[i+3], e.start_rot[i], t)
 		}
+
+		// Step timer
 		if e.interpolate_time[1] > 0 {
 			e.interpolate_time[1]--
 		}
 	}
+
+	// Apply interpolated values to output parameters
 	for i := 0; i < 3; i++ {
 		if i < 2 {
 			(*scale)[i] = e.interpolate_scale[i] * e.scale[i]
 			// Update alpha regardless of transparency type. Let the type handle the rendering
 			(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
 		}
+		// Adjust angle format
 		switch i {
 		case 0:
-			(*anglerot)[i] = e.interpolate_angle[i] + e.rot.angle
+			(*anglerot)[i] = e.interpolate_angle[0] + e.rot.angle
 		case 1:
-			(*anglerot)[i] = e.interpolate_angle[i] + e.rot.xangle
+			(*anglerot)[i] = e.interpolate_xangle[0] + e.rot.xangle
 		case 2:
-			(*anglerot)[i] = e.interpolate_angle[i] + e.rot.yangle
+			(*anglerot)[i] = e.interpolate_yangle[0] + e.rot.yangle
 		}
 	}
 	*fLength = e.interpolate_fLength[0] + e.fLength
@@ -2426,35 +2444,37 @@ func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]fl
 }
 
 func (e *Explod) resetInterpolation(pfd *PalFXDef) {
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 2; j++ {
-			v := (i + (j * 3))
-			if e.ownpal {
-				pfd.iadd[v] = pfd.add[i]
-				pfd.imul[v] = pfd.mul[i]
-			}
-			switch v {
-			case 0:
-				e.interpolate_angle[v] = e.rot.angle
-			case 1:
-				e.interpolate_angle[v] = e.rot.xangle
-			case 2:
-				e.interpolate_angle[v] = e.rot.yangle
+	// PalFX
+	if e.ownpal {
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 2; j++ {
+				idx := i + j*3
+				pfd.iadd[idx] = pfd.add[i]
+				pfd.imul[idx] = pfd.mul[i]
 			}
 			if i < 2 {
-				v = (i + (j * 2))
-				e.interpolate_pos[v] = 0
-				e.interpolate_scale[v] = e.scale[i]
-				e.interpolate_alpha[v] = e.alpha[i]
-				if j == 0 && e.ownpal {
-					pfd.icolor[i] = pfd.color
-					pfd.ihue[i] = pfd.hue
-				}
+				pfd.icolor[i] = pfd.color
+				pfd.ihue[i] = pfd.hue
 			}
 		}
 	}
+
+	// 2 values
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			idx := i + j*2
+			e.interpolate_pos[idx] = 0
+			e.interpolate_scale[idx] = e.scale[i]
+			e.interpolate_alpha[idx] = e.alpha[i]
+		}
+	}
+
+	// 1 value
 	for i := 0; i < 2; i++ {
 		e.interpolate_animelem[i] = -1
+		e.interpolate_angle[i] = e.rot.angle
+		e.interpolate_xangle[i] = e.rot.xangle
+		e.interpolate_yangle[i] = e.rot.yangle
 		e.interpolate_fLength[i] = e.fLength
 		e.interpolate_xshear[i] = e.xshear
 	}
@@ -5849,9 +5869,9 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 		case OC_ex2_explodvar_angle:
 			v = BytecodeFloat(e.rot.angle + e.interpolate_angle[0])
 		case OC_ex2_explodvar_angle_x:
-			v = BytecodeFloat(e.rot.xangle + e.interpolate_angle[1])
+			v = BytecodeFloat(e.rot.xangle + e.interpolate_xangle[0])
 		case OC_ex2_explodvar_angle_y:
-			v = BytecodeFloat(e.rot.yangle + e.interpolate_angle[2])
+			v = BytecodeFloat(e.rot.yangle + e.interpolate_yangle[0])
 		case OC_ex2_explodvar_animelem:
 			v = BytecodeInt(e.anim.curelem + 1)
 		case OC_ex2_explodvar_animelemtime:
@@ -7202,19 +7222,14 @@ func (c *Char) commitExplod(i int) {
 	e.start_animelem = e.animelem
 	e.start_fLength = e.fLength
 	e.start_xshear = e.xshear
+	e.start_angle = e.rot.angle
+	e.start_xangle = e.rot.xangle
+	e.start_yangle = e.rot.yangle
 
 	for j := 0; j < 3; j++ {
 		if j < 2 {
 			e.start_scale[j] = e.scale[j]
 			e.start_alpha[j] = e.alpha[j]
-		}
-		switch j {
-		case 0:
-			e.start_rot[j] = e.rot.angle
-		case 1:
-			e.start_rot[j] = e.rot.xangle
-		case 2:
-			e.start_rot[j] = e.rot.yangle
 		}
 	}
 

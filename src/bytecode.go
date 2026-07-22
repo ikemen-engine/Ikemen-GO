@@ -6163,6 +6163,8 @@ const (
 	explod_interpolation_alpha
 	explod_interpolation_focallength
 	explod_interpolation_xshear
+	explod_interpolation_xangle
+	explod_interpolation_yangle
 	explod_interpolation_pfx_mul
 	explod_interpolation_pfx_add
 	explod_interpolation_pfx_color
@@ -6542,13 +6544,11 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 		e.interpolate_alpha[2] = Clamp(e.interpolate_alpha[2], 0, 255)
 		e.interpolate_alpha[3] = Clamp(e.interpolate_alpha[3], 0, 255)
 	case explod_interpolation_angle:
-		e.interpolate_angle[3] = exp[0].evalF(c)
-		if len(exp) > 1 {
-			e.interpolate_angle[4] = exp[1].evalF(c)
-		}
-		if len(exp) > 2 {
-			e.interpolate_angle[5] = exp[2].evalF(c)
-		}
+		e.interpolate_angle[1] = exp[0].evalF(c)
+	case explod_interpolation_xangle:
+		e.interpolate_xangle[1] = exp[0].evalF(c)
+	case explod_interpolation_yangle:
+		e.interpolate_yangle[1] = exp[0].evalF(c)
 	case explod_interpolation_focallength:
 		e.interpolate_fLength[1] = exp[0].evalF(c)
 	case explod_interpolation_xshear:
