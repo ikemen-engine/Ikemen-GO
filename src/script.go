@@ -8658,11 +8658,11 @@ func triggerFunctions(l *lua.LState) {
 			case "anim":
 				lv = lua.LNumber(e.animNo)
 			case "angle":
-				lv = lua.LNumber(e.rot.angle + e.interpolate_angle[0])
+				lv = lua.LNumber(e.rot.angle + e.interpolate_rot[0].angle)
 			case "angle x":
-				lv = lua.LNumber(e.rot.xangle + e.interpolate_xangle[0])
+				lv = lua.LNumber(e.rot.xangle + e.interpolate_rot[0].xangle)
 			case "angle y":
-				lv = lua.LNumber(e.rot.yangle + e.interpolate_yangle[0])
+				lv = lua.LNumber(e.rot.yangle + e.interpolate_rot[0].yangle)
 			case "animelem":
 				lv = lua.LNumber(e.anim.curelem + 1)
 			case "animelemtime":

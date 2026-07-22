@@ -6544,11 +6544,11 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 		e.interpolate_alpha[2] = Clamp(e.interpolate_alpha[2], 0, 255)
 		e.interpolate_alpha[3] = Clamp(e.interpolate_alpha[3], 0, 255)
 	case explod_interpolation_angle:
-		e.interpolate_angle[1] = exp[0].evalF(c)
+		e.interpolate_rot[1].angle = exp[0].evalF(c)
 	case explod_interpolation_xangle:
-		e.interpolate_xangle[1] = exp[0].evalF(c)
+		e.interpolate_rot[1].xangle = exp[0].evalF(c)
 	case explod_interpolation_yangle:
-		e.interpolate_yangle[1] = exp[0].evalF(c)
+		e.interpolate_rot[1].yangle = exp[0].evalF(c)
 	case explod_interpolation_focallength:
 		e.interpolate_fLength[1] = exp[0].evalF(c)
 	case explod_interpolation_xshear:
