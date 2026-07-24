@@ -1430,6 +1430,10 @@ function main.f_addChar(line, playable, loading, slot)
 		table.insert(main.t_selGrid, {['chars'] = {row}, ['slot'] = 1})
 	else
 		table.insert(main.t_selGrid[#main.t_selGrid].chars, row)
+		-- marks all chars using this slot
+		for _, idx in ipairs(main.t_selGrid[#main.t_selGrid].chars) do
+			main.t_selChars[idx].hasSlot = true
+		end
 	end
 	for _, v in ipairs({'next', 'previous', 'select'}) do
 		if main.t_selChars[row][v] ~= nil then
