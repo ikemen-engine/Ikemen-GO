@@ -562,7 +562,10 @@ func getViewport(srcW, srcH, dstW, dstH float64) [4]float64 {
 }
 
 func (s *System) middleOfMatch() bool {
-	return !s.fightLoopEnd && s.matchTime != 0 && !s.postMatchFlg
+	// We can't trust matchTime 0 here because it leads to some incorrect math in the first frame of a match
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3794
+	//return !s.fightLoopEnd && s.matchTime != 0 && !s.postMatchFlg
+	return s.gameRunning && !s.fightLoopEnd && !s.postMatchFlg
 }
 
 func (s *System) skipMotifScaling() bool {
