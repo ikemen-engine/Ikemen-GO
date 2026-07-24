@@ -140,6 +140,7 @@ func newCharCompiler() *CharCompiler {
 		"dizzyset":             c.dizzySet,
 		"gethitvarset":         c.getHitVarSet,
 		"groundleveloffset":    c.groundLevelOffset,
+		"guard":                c.guard,
 		"guardbreakset":        c.guardBreakSet,
 		"guardpointsadd":       c.guardPointsAdd,
 		"guardpointsset":       c.guardPointsSet,
@@ -4822,6 +4823,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noguardko))
 		case "noguardpointsdamage":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noguardpointsdamage))
+		case "noguardstate":
+			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_noguardstate))
 		case "nohardcodedkeys":
 			out.appendI64Op(OC_ex_isassertedchar, int64(ASF_nohardcodedkeys))
 		case "nohitdamage":
