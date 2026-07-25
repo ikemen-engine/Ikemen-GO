@@ -2673,6 +2673,9 @@ function start.f_selectScreen()
 			staticDrawList = start.updateDrawList()
 			start.needUpdateDrawList = false 
 		end
+		for _, item in ipairs(staticDrawList) do
+			animUpdate(item.anim)
+		end
 		batchDraw(staticDrawList)
 		--draw done cursors
 		for side = 1, 2 do
