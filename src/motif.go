@@ -2158,6 +2158,7 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			query := strings.ToLower(secPath + "." + dstKey)
 			if err := m.SetValueUpdate(query, val); err != nil {
 				//fmt.Printf("Warning: inheritance set failed for %s = %q: %v\n", query, val, err)
+				continue
 			}
 
 			// Remember only anim/spr values that were actually inherited into the destination.
