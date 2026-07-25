@@ -280,7 +280,8 @@ type System struct {
 	debugc2grd          DebugClsn
 	debugc2stb          DebugClsn
 	debugcsize          DebugClsn
-	debugch             DebugClsn
+	debugcdummy         DebugClsn
+	debugcross          DebugClsn
 	debugAccel          float32
 	clsnSpr             Sprite
 	clsnDisplay         bool
@@ -2744,7 +2745,8 @@ func (s *System) clearSpriteData() {
 	s.debugc2grd.rects = s.debugc2grd.rects[:0]
 	s.debugc2stb.rects = s.debugc2stb.rects[:0]
 	s.debugcsize.rects = s.debugcsize.rects[:0]
-	s.debugch.rects = s.debugch.rects[:0]
+	s.debugcdummy.rects = s.debugcdummy.rects[:0]
+	s.debugcross.rects = s.debugcross.rects[:0]
 	s.debugClsnText = nil
 
 	// Reset afterimage tracker
@@ -3822,8 +3824,10 @@ func (s *System) drawTop() {
 		s.debugc2stb.draw(0xff404040, alpha)
 		// Size
 		s.debugcsize.draw(0xff303030, alpha)
+		// Dummy
+		s.debugcdummy.draw(0xff400040, alpha)
 		// Crosshair
-		s.debugch.draw(0xffffffff, alpha)
+		s.debugcross.draw(0xffffffff, alpha)
 	}
 }
 

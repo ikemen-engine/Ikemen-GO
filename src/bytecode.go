@@ -15006,7 +15006,7 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 			t.angle = angle
 			t.pivot = pivot
 		}
-	case group >= 1 && group <= 3:
+	case group >= 1 && group <= 4:
 		t := &crun.clsnTransforms[group-1]
 		t.scale[0] *= scale[0]
 		t.scale[1] *= scale[1]
@@ -15538,7 +15538,7 @@ func (sc overrideClsn) Run(c *Char, _ []int32) bool {
 		for i := range crun.clsnOverrides {
 			crun.clsnOverrides[i] = append(crun.clsnOverrides[i], override)
 		}
-	case group >= 1 && group <= 3:
+	case group >= 1 && group <= 4:
 		// Apply to specific group
 		idx := group - 1
 		crun.clsnOverrides[idx] = append(crun.clsnOverrides[idx], ClsnOverride{

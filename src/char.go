@@ -2541,7 +2541,7 @@ type Projectile struct {
 	removeDone      bool
 	customShader    CustomShader
 	pauseBool       bool
-	clsnBuffers     [3][]ClsnFinal
+	clsnBuffers     [4][]ClsnFinal
 }
 
 func newProjectile() *Projectile {
@@ -3458,8 +3458,8 @@ type Char struct {
 	size           CharSize
 	//sizeBox           [4]float32
 	clsnScale           [2]float32 // The base scale before modifiers are applied
-	clsnOverrides       [3][]ClsnOverride
-	clsnTransforms      [3]ClsnTransform
+	clsnOverrides       [4][]ClsnOverride
+	clsnTransforms      [4]ClsnTransform
 	zScale              float32
 	hitdef              HitDef
 	ghv                 GetHitVar
@@ -3563,7 +3563,7 @@ type Char struct {
 	customShader         CustomShader
 	pctype               ProjContact
 	pctime, pcid         int32
-	clsnBuffers          [3][]ClsnFinal // Pre-allocated slices for collision checks
+	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -10273,7 +10273,7 @@ func (c *Char) getAnySizeBox() *[4]float32 {
 // Combine current Clsn with existing modifiers
 func (c *Char) getClsn(group int32) []ClsnFinal {
 	// Validate group
-	if group < 1 || group > 3 {
+	if group < 1 || group > 4 {
 		return nil
 	}
 
@@ -12949,13 +12949,18 @@ func (c *Char) cueDebugDraw() {
 				sys.debugcsize.Add(boxes3, x, y, c.facing)
 			}
 		}
+		// Add Dummy boxes
+		dummy := c.getClsn(4)
+		if len(dummy) > 0 {
+			sys.debugcdummy.Add(dummy, x + xoff, y + yoff, c.facing)
+		}
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
-		sys.debugch.Add(crosshair, x, y, c.facing)
+		sys.debugcross.Add(crosshair, x, y, c.facing)
 		// Add GroundLevel indicator
 		if c.prevGroundLevel != 0 {
 			gLevel := []ClsnFinal{{rect: [4]float32{-4, 0, 4, 1}, angle: 0}}
-			sys.debugch.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
+			sys.debugcross.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
 		}
 	}
 
