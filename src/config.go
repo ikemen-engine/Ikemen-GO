@@ -126,6 +126,33 @@ type Config struct {
 		GamepadMappings   string   `ini:"GamepadMappings"`
 		LegacyTime        bool     `ini:"LegacyTime" sync:"host"`
 	} `ini:"Config"`
+	// Void holds IKEMEN:VOID tiered exploit defense limits (adjustable at runtime via save/config.ini).
+	Void struct {
+		FrameBudgetMs       int   `ini:"FrameBudgetMs"`
+		MaxOpsPerFrame      int   `ini:"MaxOpsPerFrame"`
+		UltranullOpBudget   int   `ini:"UltranullOpBudget"`
+		FrostOpBudget       int   `ini:"FrostOpBudget"`
+		HelperCap           int32 `ini:"HelperCap"`
+		FrostHelperCap      int32 `ini:"FrostHelperCap"`
+		HelpersPerTick      int   `ini:"HelpersPerTick"`
+		ExplodsPerTick      int   `ini:"ExplodsPerTick"`
+		TextsPerTick        int   `ini:"TextsPerTick"`
+		FrostExplodCap      int   `ini:"FrostExplodCap"`
+		FrostTextCap        int   `ini:"FrostTextCap"`
+		YieldEveryN         int   `ini:"YieldEveryN"`
+		UltranullStateDepth int   `ini:"UltranullStateDepth"`
+		FrostGCInterval     int   `ini:"FrostGCInterval"`
+		GodModeParser       bool  `ini:"GodModeParser"`
+		DisableFrameBudget  bool  `ini:"DisableFrameBudget"`
+		BudgetLogLimit      int   `ini:"BudgetLogLimit"`
+		UnlimitedNullOps    bool  `ini:"UnlimitedNullOps"`
+		RawMode             bool  `ini:"RawMode"`
+		RawExecution        bool  `ini:"RawExecution"`
+		UnsafeBuild         bool  `ini:"UnsafeBuild"`
+		BurstMode           bool  `ini:"BurstMode"`
+		BurstOpBudget       int   `ini:"BurstOpBudget"`
+		BurstFrameCount     int   `ini:"BurstFrameCount"`
+	} `ini:"Void"`
 	Debug struct {
 		AllowDebugMode      bool    `ini:"AllowDebugMode"`
 		AllowDebugKeys      bool    `ini:"AllowDebugKeys"`

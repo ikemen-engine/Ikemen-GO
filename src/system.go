@@ -164,6 +164,7 @@ var sys = System{
 	keyState:         make(map[Key]bool),
 	loader:           *newLoader(),
 	ignoreMostErrors: true,
+	supernullMode:    false,
 	stageList:        make(map[int32]*Stage),
 	stageLocalcoords: make(map[string][2]int32),
 	commandLine:      make(chan string),
@@ -244,6 +245,13 @@ type System struct {
 	selMutex            sync.RWMutex
 	loadMutex           sync.Mutex
 	ignoreMostErrors    bool
+	supernullMode       bool
+	voidBudgetChar      *Char
+	voidMatchTickStart  time.Time
+	voidTickForced      bool
+	voidBurstEligible   bool
+	voidBurstTicksLeft  int
+	voidFrostGCAccum    int
 	stringPool          [MaxPlayerNo]StringPool
 	bcStack, bcVarStack BytecodeStack
 	bcVar               []BytecodeValue
@@ -508,6 +516,11 @@ func (s *System) init(w, h int32) *lua.LState {
 			s.window.SetIcon(s.windowMainIcon)
 			chk(err)
 		}
+		voidApplyVoidWindowChrome(s.window)
+		SafeGo(func() {
+			time.Sleep(300 * time.Millisecond)
+			voidApplyVoidWindowChrome(s.window)
+		})
 
 		// Error print?
 		SafeGo(func() {
@@ -2302,6 +2315,13 @@ func (s *System) resetRound() {
 		s.persistRoundCount++
 	}
 
+	voidP2LifeSyncReset()
+	voidExploitTriggerReset()
+	s.voidBurstTicksLeft = 0
+	if s.round == 1 {
+		voidExploitDebugReset()
+	}
+
 	s.resetFrameTime()
 
 	s.restorePauseVolume()
@@ -2470,6 +2490,7 @@ func (s *System) resetMatchData(forceDestroy bool) {
 	sys.allPalFX = newPalFX()
 	sys.bgPalFX = newPalFX()
 	sys.resetGblEffect()
+	voidShellResetMatch()
 	for i, p := range sys.chars {
 		if len(p) > 0 {
 			sys.clearPlayerAssets(i, forceDestroy)
@@ -2651,7 +2672,13 @@ func (s *System) action() {
 		}
 
 		// Run the main character logic
+		if s.supernullMode {
+			s.voidBeginMatchTick()
+		}
 		s.charList.action()
+		if s.supernullMode {
+			s.voidEndMatchTick()
+		}
 
 		// The following must be placed after char action or they will lag behind 1 frame
 		s.allPalFX.step()
@@ -3088,7 +3115,8 @@ func (s *System) stepRoundState() {
 						if p[0].activelyFighting() {
 							// In Mugen this ctrlSet happens in beginning of frame. More evidence all this code should run before character states
 							p[0].setCtrl(true)
-							if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) {
+							// Dual-mode: high-tier keeps custom intro/exploit state — no SelfState 0 yank.
+							if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) && !voidHighTierState(p[0]) {
 								p[0].selfState(0, -1, -1, 1, "") // Nor this one
 							}
 						}
@@ -3243,6 +3271,11 @@ func (s *System) stepRoundState() {
 				// HitPause is checked here but not in the other loop. Perhaps because changing states during hitpause in Mugen isn't quite safe
 				// These selfStates should happen in beginning of frame. Previously, Ikemen had them at end of frame
 				if !p[0].scf(SCF_over_alive) && p[0].alive() && p[0].activelyFighting() && !p[0].hitPause() {
+					// Dual-mode: high-tier skips win/lose/draw pose yanks — round end via Watchdog / CNS.
+					if voidHighTierState(p[0]) {
+						p[0].setSCF(SCF_over_alive)
+						continue
+					}
 					p[0].setSCF(SCF_over_alive)
 					if p[0].win() {
 						p[0].selfState(180, -1, -1, -1, "")
@@ -3269,6 +3302,7 @@ func (s *System) stepRoundState() {
 
 // Check if the round ended by KO or time over and set win types
 func (s *System) roundEndDecision() bool {
+	voidSyncKOFlagWithLife()
 	checkPerfect := func(team int) bool {
 		for i := team; i < MaxSimul*2; i += 2 {
 			if len(s.chars[i]) > 0 &&
@@ -3363,8 +3397,21 @@ func (s *System) roundEndDecision() bool {
 	// KO
 	if s.intro >= -1 && (ko[0] || ko[1]) {
 		if ko[0] && ko[1] {
-			s.finishType = FT_DKO
-			s.winTeam = -1
+			if w := voidPostmanWinTeam(); w >= 0 {
+				ko[w] = false
+			}
+		}
+		if ko[0] && ko[1] {
+			if winner := voidExploitResolveSimultaneousKO(); winner >= 0 {
+				s.finishType = FT_KO
+				s.winTeam = winner
+			} else {
+				voidExploitDebugWrite(fmt.Sprintf("%s | dko | unresolved simultaneous KO | postmanPn=%v P1 life=%v ko=%v P2 life=%v ko=%v\n",
+					time.Now().Format("2006-01-02 15:04:05.000"), voidFindPostmanPlayer(),
+					voidTeamLeaderLife(0), voidTeamLeaderKO(0), voidTeamLeaderLife(1), voidTeamLeaderKO(1)))
+				s.finishType = FT_DKO
+				s.winTeam = -1
+			}
 		} else {
 			s.finishType = FT_KO
 			s.winTeam = int(Btoi(ko[0]))
@@ -3825,8 +3872,11 @@ func (s *System) runMatch() (reload bool) {
 			break
 		}
 
-		// Update game state
+		// Update game state (match tick — see System.action for VOID deadline wrapper)
 		s.action()
+		if s.supernullMode && s.voidTickForced {
+			s.keepAlive()
+		}
 
 		debugInput()
 
@@ -4707,7 +4757,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 
 	if sc.preloadAnim != "" {
 		animPath := sc.preloadAnim
-		if err := LoadFile(&animPath, []string{sc.def}, "", func(filename string) error {
+		if err := voidLoadFilePermissive(&animPath, []string{sc.def}, "", sc.def, "anim", func(filename string) error {
 			str, err := LoadText(filename)
 			if err != nil {
 				return err
@@ -4735,7 +4785,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 	if sc.preloadSprite != "" {
 		spritePath := sc.preloadSprite
 		var selPal []int32
-		if err := LoadFile(&spritePath, []string{sc.def, "", "data/"}, "", func(file string) error {
+		if err := voidLoadFilePermissive(&spritePath, []string{sc.def, "", "data/"}, "", sc.def, "sprite", func(file string) error {
 			var err error
 			localSff, selPal, err = preloadSff(file, true, listSpr)
 			if err != nil {
@@ -4947,6 +4997,9 @@ func (s *Select) AddChar(def string) *SelectChar {
 	parts := strings.Split(def, ",")
 	defPathFromSelect := strings.TrimSpace(parts[0])
 	defPathFromSelect = filepath.ToSlash(defPathFromSelect)
+	if voidPermissiveCharLoad() {
+		defPathFromSelect = voidResolveCharDefForLoad(defPathFromSelect, -1)
+	}
 
 	// Early exits for known keywords
 	if strings.ToLower(defPathFromSelect) == "randomselect" {
@@ -4962,8 +5015,16 @@ func (s *Select) AddChar(def string) *SelectChar {
 		return nil
 	}
 
-	// Helper to set missing characters to dummy slots and (always) print a warning
+	// Helper to set missing characters to dummy slots; permissive mode keeps roster slots when possible.
 	useDummy := func(reason string) *SelectChar {
+		if voidPermissiveCharLoad() {
+			if sc := s.voidApplyPermissivePlaceholder(sc, defPathFromSelect, reason); sc != nil {
+				return sc
+			}
+			if sc.name == "skipslot" {
+				return nil
+			}
+		}
 		sc.name = "dummyslot"
 		LogMessage("Failed to add char: %v (%s)", defPathFromSelect, reason)
 		return nil
@@ -5010,7 +5071,13 @@ func (s *Select) AddChar(def string) *SelectChar {
 			candidateLogicalPath2 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip2)
 			if FileExist(candidateLogicalPath2) != "" {
 				finalDefPath = candidateLogicalPath2
-			} else {
+			} else if voidPermissiveCharLoad() {
+				finalDefPath = voidFindDefInZip(actualZipPathOnDisk)
+				if finalDefPath == "" {
+					finalDefPath = voidResolveCharDef(defPathFromSelect)
+				}
+			}
+			if finalDefPath == "" {
 				return useDummy(fmt.Sprintf("DEF in ZIP missing: %s or %s", defInZip1, defInZip2))
 			}
 		}
@@ -5027,24 +5094,40 @@ func (s *Select) AddChar(def string) *SelectChar {
 
 		foundDiskPath := SearchFile(charDefPathGuess, []string{"", "data/"}, "chars/")
 		if foundDiskPath == "" || !strings.HasSuffix(strings.ToLower(foundDiskPath), ".def") {
+			if voidPermissiveCharLoad() {
+				foundDiskPath = voidResolveCharDef(defPathFromSelect)
+			}
+		}
+		if foundDiskPath == "" || !strings.HasSuffix(strings.ToLower(foundDiskPath), ".def") {
 			return useDummy("DEF not found")
 		}
 		finalDefPath = foundDiskPath
 	}
 
 	sc.def = finalDefPath
+	if voidIsInvalidCharDefPath(sc.def) {
+		return useDummy("invalid DEF path")
+	}
 	if sc.def == "" {
 		return useDummy("Empty DEF path")
 	}
 
 	charDefContent, err := LoadText(sc.def)
 	if err != nil {
-		// Intercept simple "file not found" errors so the message isn't too long
-		if os.IsNotExist(err) {
-			return useDummy("DEF not found")
+		if voidPermissiveCharLoad() {
+			if stub := voidCreateStubDef(sc.def); stub != "" {
+				sc.def = stub
+				charDefContent, err = LoadText(sc.def)
+			}
 		}
-		// Print full message if it's an actual read error
-		return useDummy("DEF read error: " + err.Error())
+		if err != nil {
+			// Intercept simple "file not found" errors so the message isn't too long
+			if os.IsNotExist(err) {
+				return useDummy("DEF not found")
+			}
+			// Print full message if it's an actual read error
+			return useDummy("DEF read error: " + err.Error())
+		}
 	}
 
 	var cns_orig, sprite_orig, anim_orig string
@@ -5147,7 +5230,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 		}
 	}
 
-	LoadFile(&cns_orig, []string{sc.def, "", "data/"}, "", func(filename string) error {
+	_ = voidLoadFilePermissive(&cns_orig, []string{sc.def, "", "data/"}, "", sc.def, "cns", func(filename string) error {
 		str, err := LoadText(filename)
 		if err != nil {
 			return err
@@ -5171,14 +5254,17 @@ func (s *Select) AddChar(def string) *SelectChar {
 
 	// preload animations
 	if len(anim_orig) > 0 {
-		sc.preloadAnim = anim_orig
+		sc.preloadAnim = voidResolveCharAsset(anim_orig, []string{sc.def})
+		if sc.preloadAnim == "" {
+			sc.preloadAnim = anim_orig
+		}
 	}
 
 	// Try to use the "_preload.sff" file if available
 	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(sc.def, filepath.Ext(sc.def)))
-	if fp = FileExist(fp); len(fp) == 0 {
+	if fp = voidResolveCharAsset(fp, []string{sc.def, "", "data/"}); len(fp) == 0 {
 		// Fall back to normal SFF
-		fp = sprite_orig
+		fp = voidResolveCharAsset(sprite_orig, []string{sc.def, "", "data/"})
 	}
 
 	// preload portion of sff file
@@ -5193,7 +5279,14 @@ func (s *Select) AddChar(def string) *SelectChar {
 		}
 	} else {
 		if err := s.preloadCharAssets(len(s.charlist) - 1); err != nil {
-			panic(fmt.Errorf("failed to preload %v: %v", sc.def, err))
+			if voidPermissiveCharLoad() {
+				voidLogPermissiveLoad("preload", sc.def, err.Error())
+				s.voidEnsureCharPreloadStub(len(s.charlist) - 1)
+			} else if voidGodModeActive() {
+				return useDummy("preload failed: " + err.Error())
+			} else {
+				panic(fmt.Errorf("failed to preload %v: %v", sc.def, err))
+			}
 		}
 	}
 
@@ -5375,6 +5468,11 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 		s.ensureStagePreloadSlot(len(s.stagelist))
 	} else {
 		if err := s.preloadStageAssets(len(s.stagelist)); err != nil {
+			if voidGodModeActive() {
+				LogMessage("Failed to preload stage: %v (%v)", defPathFromSelect, err)
+				s.stagelist = s.stagelist[:len(s.stagelist)-1]
+				return nil, err
+			}
 			panic(fmt.Errorf("failed to preload %v: %v", def, err))
 		}
 	}
@@ -5810,6 +5908,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 			cdef = sys.sel.charlist[teamChars[memberNo]].def
 		}
 	}
+	cdef = voidResolveCharDefForLoad(cdef, pn)
 
 	for _, ffx := range sys.ffx {
 		prefixToDecrement := true
@@ -5926,6 +6025,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 			}
 			return -1
 		}
+		voidShellSnapshotPlayerCache(pn)
 	}
 
 	// Setup selected palette

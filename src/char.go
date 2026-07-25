@@ -3042,6 +3042,13 @@ type CharGlobalInfo struct {
 	ikemenverF              float32
 	mugenver                [2]uint16
 	mugenverF               float32
+	voidver                 [3]uint16
+	voidverF                float32
+	voidProfile             VoidSupernullProfile
+	supernullChar           bool
+	voidTier                VoidExploitTier
+	voidShell               bool // VoidShell.Dll beside DEF — Soulkeeper/DataController path
+	voidBufferOverflowExploit bool
 	data                    CharData
 	velocity                CharVelocity
 	movement                CharMovement
@@ -3299,8 +3306,19 @@ type Char struct {
 	p1facing             float32
 	cpucmd               int32
 	offset               [2]float32
-	stchtmp              bool
-	inguarddist          bool
+	stchtmp                 bool
+	voidFrameOps            int
+	voidFrameBudgetExceeded bool
+	voidFrameExecBroken     bool
+	voidBudgetLogCount      int
+	voidTier                VoidExploitTier
+	voidHelpersThisTick     int
+	voidExplodsThisTick     int
+	voidTextsThisTick       int
+	voidOverflowKillDone    bool
+	voidVarShadow           [256]int32
+	voidFvarShadow          [256]float32
+	inguarddist             bool
 	pushed               bool
 	hitdefContact        bool
 	atktmp               int8 // 1 hitdef can hit, 0 cannot hit, -1 other
@@ -3516,6 +3534,7 @@ func (c *Char) enemyNearP2Clear() {
 
 // Clear character variables upon a new round or creation of a new helper
 func (c *Char) prepareNextRound() {
+	c.voidOverflowKillDone = false
 	c.sysVarRangeSet(0, math.MaxInt32, 0)
 	c.sysFvarRangeSet(0, math.MaxInt32, 0)
 	c.CharSystemVar = CharSystemVar{
@@ -3646,6 +3665,7 @@ func (c *Char) resetModifyPlayer() {
 }
 
 func (c *Char) load(def string) error {
+	def = voidResolveCharDefForLoad(def, c.playerNo)
 	gi := &sys.cgi[c.playerNo]
 
 	// We keep the SFF so that loadSff() can reuse it if the same character is selected/reloaded
@@ -3759,6 +3779,15 @@ func (c *Char) load(def string) error {
 					c.localscl = 320 / c.localcoord
 				}
 				is.ReadF32("portraitscale", &gi.portraitscale)
+				gi.markSupernullFromInfo(is)
+				voidScanBundledExploitFiles(c.playerNo, def)
+				voidMarkVoidShellAtLoad(c.playerNo, def)
+				if isZip, zipPath, _ := IsZipPath(def); isZip {
+					voidZipScanAndEscalate(c.playerNo, zipPath)
+				} else if strings.HasSuffix(strings.ToLower(def), ".zip") {
+					voidZipScanAndEscalate(c.playerNo, def)
+				}
+				voidMarkPostmanAtLoad(c.playerNo, def)
 			}
 
 		case "files":
@@ -3772,6 +3801,8 @@ func (c *Char) load(def string) error {
 				sprite = decodeShiftJIS(is["sprite"])
 				anim = decodeShiftJIS(is["anim"])
 				sound = decodeShiftJIS(is["sound"])
+				voidMarkSoulabyssAtLoad(c.playerNo, def, cns)
+				voidMarkInvokerAtLoad(c.playerNo, def, is)
 				gi.movelists = loadMovelists(def, is)
 				for i := 0; i < sys.cfg.Config.PaletteMax; i++ {
 					pal := gi.palInfo[i]
@@ -3890,7 +3921,7 @@ func (c *Char) load(def string) error {
 
 	// Load constants
 	if len(cns) > 0 {
-		if err := LoadFile(&cns, []string{def, "", "data/"}, "", func(filename string) error {
+		if err := voidLoadFilePermissive(&cns, []string{def, "", "data/"}, "", def, "cns", func(filename string) error {
 			str, err := LoadText(filename)
 			if err != nil {
 				return err
@@ -4158,14 +4189,13 @@ func (c *Char) load(def string) error {
 
 	// Load SFF
 	if len(sprite) > 0 {
-		if err := LoadFile(&sprite, []string{gi.def, "", "data/"}, "", func(filename string) error {
+		_ = voidLoadFilePermissive(&sprite, []string{gi.def, "", "data/"}, "", gi.def, "sprite", func(filename string) error {
 			var err_sff error
 			gi.sff, err_sff = loadSff(filename, true, false, false) // loadSff uses OpenFile
 			return err_sff
-		}); err != nil {
-			return err
-		}
-	} else {
+		})
+	}
+	if gi.sff == nil {
 		gi.sff = newSff()
 	}
 
@@ -4190,7 +4220,7 @@ func (c *Char) load(def string) error {
 	gi.animTable = NewAnimationTable()
 
 	if len(anim) > 0 {
-		if err := LoadFile(&anim, []string{def, "", "data/"}, "", func(filename string) error {
+		if err := voidLoadFilePermissive(&anim, []string{def, "", "data/"}, "", def, "anim", func(filename string) error {
 			str, err := LoadText(filename)
 			if err != nil {
 				return err
@@ -4246,14 +4276,13 @@ func (c *Char) load(def string) error {
 
 	// Load sounds
 	if len(sound) > 0 {
-		if LoadFile(&sound, []string{def, "", "data/"}, "", func(filename string) error {
+		_ = voidLoadFilePermissive(&sound, []string{def, "", "data/"}, "", def, "sound", func(filename string) error {
 			var err error
 			gi.snd, err = LoadSnd(filename)
 			return err
-		}); err != nil {
-			return err
-		}
-	} else {
+		})
+	}
+	if gi.snd == nil {
 		gi.snd = newSnd()
 	}
 
@@ -4443,6 +4472,9 @@ func (c *Char) loadPalettes() {
 }
 
 func (c *Char) loadFx(def string) error {
+	if voidIsInvalidCharDefPath(def) {
+		return fmt.Errorf("invalid char def path: %q", def)
+	}
 	gi := c.gi()
 	gi.fxPath = []string{} // Always initialize before loading.
 
@@ -4745,20 +4777,41 @@ func (c *Char) parent(log bool) *Char {
 		return nil
 	}
 
-	// In Mugen, after the original parent has been destroyed, "parent" can still be valid if a new helper ends up occupying the same slot
-	// That is undesirable behavior however, and is probably only used by exploit characters, which already don't work correctly anyway
+	// Stock path: parent must still exist in idMap (no slot reuse).
 	p, ok := sys.charList.idMap[c.parentId]
-	if !ok {
-		if log {
-			sys.appendToConsole(c.warn() + "parent has already been destroyed")
-			if !sys.ignoreMostErrors {
-				LogMessage(c.name + " parent has already been destroyed")
-			}
-		}
-		return nil
+	if ok {
+		return p
 	}
 
-	return p
+	// Dual-mode high-tier: WinMUGEN-style parent fabrication / slot reuse.
+	// After destroy, Parent still resolves if a helper occupies the same player slot index,
+	// or if parentId is used as a fabricated helper-index into chars[pn].
+	root := sys.chars[c.playerNo][0]
+	if voidHighTier(c) || voidHighTier(root) {
+		if c.parentId >= 0 {
+			idx := int(c.parentId)
+			if idx > 0 && idx < len(sys.chars[c.playerNo]) {
+				if h := sys.chars[c.playerNo][idx]; h != nil && h.helperIndex >= 0 {
+					return h
+				}
+			}
+			if p := sys.playerID(c.parentId); p != nil {
+				return p
+			}
+		}
+		// Fabricated parent: root so Parent trigger never hard-fails for high-tier helpers.
+		if root != nil {
+			return root
+		}
+	}
+
+	if log {
+		sys.appendToConsole(c.warn() + "parent has already been destroyed")
+		if !sys.ignoreMostErrors {
+			LogMessage(c.name + " parent has already been destroyed")
+		}
+	}
+	return nil
 }
 
 func (c *Char) parentExist() bool {
@@ -5157,7 +5210,14 @@ func (c *Char) selfAnimExist(anim BytecodeValue) BytecodeValue {
 	if anim.IsUndefined() {
 		return BytecodeUndefined()
 	}
-	return BytecodeBool(c.gi().animTable.get(anim.ToI()) != nil)
+	no := anim.ToI()
+	if voidSoulabyssCompat(c) && (no == voidSoulabyssProbeAnimA || no == voidSoulabyssProbeAnimB) {
+		if c.gi().animTable.get(no) != nil {
+			return BytecodeBool(true)
+		}
+		return BytecodeBool(true)
+	}
+	return BytecodeBool(c.gi().animTable.get(no) != nil)
 }
 
 func (c *Char) animTime() int32 {
@@ -6441,6 +6501,10 @@ func (c *Char) shouldFaceP2() bool {
 }
 
 func (c *Char) stateChange1(no int32, pn int) bool {
+	if c.voidUltranullStateDepthExceeded() {
+		c.stchtmp = false
+		return false
+	}
 	if sys.changeStateNest >= MaxLoop {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after %v loops): %v -> %v -> %v", sys.changeStateNest, c.ss.prevno, c.ss.no, no))
 		LogMessage("Maximum ChangeState loops: %v, %v, %v -> %v -> %v", sys.changeStateNest, c.name, c.ss.prevno, c.ss.no, no)
@@ -6456,12 +6520,21 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 
 	c.ss.prevno = c.ss.no
-	c.ss.no = Max(0, no)
+	// Dual-mode: high-tier keeps any StateNo (negative/overflow); normals clamp ≥0.
+	if voidHighTier(c) {
+		c.ss.no = no
+	} else {
+		c.ss.no = Max(0, no)
+	}
 	c.ss.time = 0
 
 	// Local scale updates
 	// If the new state uses a different localcoord, some values need to be updated in the same frame
-	if newLs := 320 / sys.chars[pn][0].localcoord; c.localscl != newLs {
+	owner := sys.charAt(pn)
+	if owner == nil {
+		return false
+	}
+	if newLs := 320 / owner.localcoord; c.localscl != newLs {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
 		c.pos[1] *= lsRatio
@@ -6604,6 +6677,9 @@ func (c *Char) stateChange2() bool {
 }
 
 func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
+	if voidSoulabyssBlockErrorState(c, no) {
+		return
+	}
 	// This is a very specific and undocumented Mugen behavior that was probably superseded by "facep2"
 	// It serves very little purpose while negatively affecting some new Ikemen features like NoTurnTarget
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1755
@@ -6624,6 +6700,10 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 
 	if c.stateChange1(no, pn) && sys.changeStateNest == 0 && c.minus == 0 {
 		for c.stchtmp && sys.changeStateNest < MaxLoop {
+			if !c.voidTrackFrameExec("changestate_chain") {
+				c.stchtmp = false
+				break
+			}
 			c.stateChange2()
 			sys.changeStateNest++
 			if !c.ss.sb.run(c) {
@@ -6675,10 +6755,13 @@ func (c *Char) destroy() {
 	}
 
 	// Remove parent ID from children
-	// This is no longer strictly necessary but it makes extra sure the helper will never end up with a different parent
-	for _, childID := range c.children {
-		if child := sys.playerID(childID); child != nil {
-			child.parentId = -1
+	// Normals: clear so orphans never inherit a recycled parent (stability).
+	// High-tier: keep parentId for WinMUGEN-style Parent Fabrication / slot reuse.
+	if !voidHighTier(c) {
+		for _, childID := range c.children {
+			if child := sys.playerID(childID); child != nil {
+				child.parentId = -1
+			}
 		}
 	}
 	c.children = c.children[:0]
@@ -6695,7 +6778,7 @@ func (c *Char) destroy() {
 // Mugen clears the helper ID here, before fully removing the helper (c.helperID = 0)
 // We don't so that all helper triggers behave the same
 func (c *Char) destroySelf(recursive, removeexplods, removetexts bool) bool {
-	if c.helperIndex <= 0 || c.asf(ASF_nodestroyself) {
+	if c.helperIndex <= 0 || c.asf(ASF_nodestroyself) || voidShellRejectRootDestroy(c) {
 		return false
 	}
 
@@ -6726,6 +6809,9 @@ func (c *Char) destroySelf(recursive, removeexplods, removetexts bool) bool {
 
 // Make a new helper before reading the bytecode parameters
 func (c *Char) newHelper() (h *Char) {
+	if !c.voidAllowHelperSpawn() {
+		return nil
+	}
 	// Start at index 1, skipping the root
 	hidx := int(1)
 
@@ -6742,16 +6828,25 @@ func (c *Char) newHelper() (h *Char) {
 
 	// Otherwise append to the end
 	if hidx >= len(sys.chars[c.playerNo]) {
-		// Check helper limit
-		if int32(hidx) > sys.cfg.Config.HelperMax { // Do not count index 0
-			root := sys.chars[c.playerNo][0]
-			sys.appendToConsole(root.warn() + fmt.Sprintf("Reached limit of %v helpers. Helper creation skipped", sys.cfg.Config.HelperMax))
-			return
+		// Check helper limit (Frost tier uses a stricter cap)
+		effectiveMax := voidEffectiveHelperMax(c.voidEffectiveTier())
+		if int32(hidx) > effectiveMax { // Do not count index 0
+			// VoidShell: recycle oldest helper — never block Helper SCTRL.
+			if voidShellRootActive(c) {
+				h = voidShellRecycleOldestHelper(c)
+				if h == nil {
+					return nil
+				}
+			} else {
+				root := sys.chars[c.playerNo][0]
+				sys.appendToConsole(root.warn() + fmt.Sprintf("Reached limit of %v helpers. Helper creation skipped", effectiveMax))
+				return
+			}
+		} else {
+			// Add helper if allowed
+			h = newChar(c.playerNo, hidx)
+			sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 		}
-
-		// Add helper if allowed
-		h = newChar(c.playerNo, hidx)
-		sys.chars[c.playerNo] = append(sys.chars[c.playerNo], h)
 	}
 
 	// Init default helper parameters
@@ -6881,10 +6976,19 @@ func (c *Char) helperPos(pt PosType, pos [3]float32, facing int32,
 
 // Always appends to preserve insertion order
 func (c *Char) spawnExplod() (*Explod, int) {
+	if !c.voidAllowExplodSpawn() {
+		return nil, -1
+	}
 	playerExplods := &sys.explods[c.playerNo]
 
-	// Do nothing if explod limit reached
-	if len(*playerExplods) >= sys.cfg.Config.ExplodMax {
+	// Soft-cap: recycle oldest for VoidShell; skip for normals.
+	if len(*playerExplods) >= voidEffectiveExplodMax(c.voidEffectiveTier()) {
+		if voidShellRootActive(c) {
+			if e := voidShellRecycleOldestExplod(c); e != nil {
+				e.initFromChar(c)
+				return e, -1
+			}
+		}
 		return nil, -1
 	}
 
@@ -7065,10 +7169,13 @@ func (c *Char) removeExplod(id, idx int32) {
 
 // Always appends to preserve insertion order
 func (c *Char) spawnText() *TextSprite {
+	if !c.voidAllowTextSpawn() {
+		return nil
+	}
 	playerTexts := &sys.chartexts[c.playerNo]
 
 	// Do nothing if text limit reached
-	if len(*playerTexts) >= sys.cfg.Config.TextMax {
+	if len(*playerTexts) >= voidEffectiveTextMax(c.voidEffectiveTier()) {
 		return nil
 	}
 
@@ -7148,7 +7255,11 @@ func (c *Char) removeText(id, index int32) {
 // Get animation and apply sprite owner properties to it
 func (c *Char) getAnimSprite(animNo int32, animPlayerNo, spritePlayerNo int, ffx string, ownpal bool) *Animation {
 	// Get raw animation
-	a := sys.chars[animPlayerNo][0].getAnim(animNo, ffx)
+	owner := sys.charAt(animPlayerNo)
+	if owner == nil {
+		return nil
+	}
+	a := owner.getAnim(animNo, ffx)
 	if a == nil {
 		return nil
 	}
@@ -7873,6 +7984,9 @@ func (c *Char) initCnsVar() {
 }
 
 func (c *Char) varGet(i int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarRead(i, VoidVarInt)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7888,6 +8002,9 @@ func (c *Char) varGet(i int32) BytecodeValue {
 }
 
 func (c *Char) fvarGet(i int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarRead(i, VoidVarFloat)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7901,6 +8018,9 @@ func (c *Char) fvarGet(i int32) BytecodeValue {
 }
 
 func (c *Char) sysVarGet(i int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarRead(i, VoidVarSysInt)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7914,6 +8034,9 @@ func (c *Char) sysVarGet(i int32) BytecodeValue {
 }
 
 func (c *Char) sysFvarGet(i int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarRead(i, VoidVarSysFloat)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7967,6 +8090,9 @@ func (c *Char) cnsVarSet(i int32, value BytecodeValue, scType int32, varType int
 }
 
 func (c *Char) varSet(i, v int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, v, 0, VoidVarInt, false)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7977,6 +8103,9 @@ func (c *Char) varSet(i, v int32) BytecodeValue {
 }
 
 func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, 0, v, VoidVarFloat, false)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7987,6 +8116,9 @@ func (c *Char) fvarSet(i int32, v float32) BytecodeValue {
 }
 
 func (c *Char) sysVarSet(i, v int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, v, 0, VoidVarSysInt, false)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -7997,6 +8129,9 @@ func (c *Char) sysVarSet(i, v int32) BytecodeValue {
 }
 
 func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, 0, v, VoidVarSysFloat, false)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -8007,6 +8142,9 @@ func (c *Char) sysFvarSet(i int32, v float32) BytecodeValue {
 }
 
 func (c *Char) varAdd(i, v int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, v, 0, VoidVarInt, true)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("var index %v must be positive", i))
 		return BytecodeUndefined()
@@ -8021,6 +8159,9 @@ func (c *Char) varAdd(i, v int32) BytecodeValue {
 }
 
 func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, 0, v, VoidVarFloat, true)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("fvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -8035,6 +8176,9 @@ func (c *Char) fvarAdd(i int32, v float32) BytecodeValue {
 }
 
 func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, v, 0, VoidVarSysInt, true)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("sysvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -8049,6 +8193,9 @@ func (c *Char) sysVarAdd(i, v int32) BytecodeValue {
 }
 
 func (c *Char) sysFvarAdd(i int32, v float32) BytecodeValue {
+	if voidHighTier(c) {
+		return c.SupernullHandlerVarWrite(i, 0, v, VoidVarSysFloat, true)
+	}
 	if i < 0 {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("sysfvar index %v must be positive", i))
 		return BytecodeUndefined()
@@ -8104,19 +8251,19 @@ func varRangeSetSub[T int32 | float32](c *Char, m *map[int32]T, first, last int3
 }
 
 func (c *Char) varRangeSet(first, last, val int32) {
-	varRangeSetSub(c, &c.cnsvar, first, last, val)
+	voidSafeVarRangeSet(c, &c.cnsvar, first, last, val, VoidVarMaxIndex)
 }
 
 func (c *Char) fvarRangeSet(first, last int32, val float32) {
-	varRangeSetSub(c, &c.cnsfvar, first, last, val)
+	voidSafeVarRangeSet(c, &c.cnsfvar, first, last, val, VoidFvarMaxIndex)
 }
 
 func (c *Char) sysVarRangeSet(first, last, val int32) {
-	varRangeSetSub(c, &c.cnssysvar, first, last, val)
+	voidSafeVarRangeSet(c, &c.cnssysvar, first, last, val, VoidSysVarMaxIndex)
 }
 
 func (c *Char) sysFvarRangeSet(first, last int32, val float32) {
-	varRangeSetSub(c, &c.cnssysfvar, first, last, val)
+	voidSafeVarRangeSet(c, &c.cnssysfvar, first, last, val, VoidSysFvarMaxIndex)
 }
 
 func (c *Char) setFacing(f float32) {
@@ -8549,8 +8696,41 @@ func (c *Char) computeDamage(damage float64, kill, absolute bool, atkmul float32
 }
 
 func (c *Char) lifeAdd(add float64, kill, absolute bool) {
+	if actor := voidInvokerActorOnTeam(); actor != nil && actor.isEnemyOf(c) && c.helperIndex == 0 {
+		next := c.life + int32(math.Round(add))
+		if kill || next <= 0 {
+			voidInvokerApplyLifeKill(actor, c, next, "lifeAdd_sctrl")
+			return
+		}
+		voidInvokerApplyLifeKill(actor, c, next, "lifeAdd_sctrl")
+		return
+	}
+	if voidExploitRejectVictimHeal(c, c.life+int32(math.Round(add))) {
+		return
+	}
+	if voidRawExecutionActive(c) {
+		if !voidCharLifeWriteAllowed(c) {
+			return
+		}
+		c.life += int32(math.Round(add))
+		if c.life <= 0 {
+			if actor := voidSoulabyssLabActor(); actor != nil && voidSoulabyssShouldDeferKO(actor) &&
+				actor.isEnemyOf(c) && c.helperIndex == 0 {
+				voidSoulabyssStageKill(actor, c, 0, "lifeAdd_raw", "deferred raw life drain")
+				c.life = 1
+				return
+			}
+			c.setSCF(SCF_ko)
+		}
+		return
+	}
 	if add == 0 {
 		return
+	}
+	actor := voidExploitActor()
+	if actor != nil && actor != c && actor.isEnemyOf(c) && c.helperIndex == 0 {
+		voidExploitDebugLogOpponentLife(actor, c, -1, "LifeAdd", int32(add), true,
+			"lifeAdd_sctrl", fmt.Sprintf("kill=%v absolute=%v", kill, absolute))
 	}
 	if !absolute {
 		add /= c.finalDefense
@@ -8588,8 +8768,76 @@ func (c *Char) lifeAdd(add float64, kill, absolute bool) {
 	// This could be expanded in the future, as with TargetLifeAdd
 }
 
+// voidExploitResolveLifeTarget recovers LifeSet/LifeAdd when redirectid fails on cheapie chars.
+func (c *Char) voidExploitResolveLifeTarget(crun *Char, scname string, redirectID int32) *Char {
+	if crun != nil {
+		return crun
+	}
+	if !voidGodModeActiveFor(c) && !voidRawExecutionActive(c) {
+		return nil
+	}
+	opp := voidExploitPrimaryOpponent(c)
+	if opp == nil {
+		return nil
+	}
+	voidExploitDebugLogOpponentLife(c, opp, redirectID, scname, 0, true,
+		"redirect_fallback", fmt.Sprintf("invalid %s redirect resolved to P2", scname))
+	return opp
+}
+
+// voidExploitAllowOpponentLifeWrite returns true when a cheapie life kill must not be blocked.
+func voidExploitAllowOpponentLifeWrite(actor, target *Char, life int32) bool {
+	if actor != nil && voidUnsafeVMActive(actor) && actor.isEnemyOf(target) && target != nil && target.helperIndex == 0 {
+		return life <= 0
+	}
+	if (!voidGodModeActiveFor(actor) && !voidRawExecutionActive(actor)) || actor == nil || target == nil {
+		return false
+	}
+	if !actor.isEnemyOf(target) || target.helperIndex != 0 {
+		return false
+	}
+	return life <= 0
+}
+
 func (c *Char) lifeSet(life int32) {
-	if c.alive() && sys.roundNoDamage() {
+	if actor := voidInvokerActorOnTeam(); actor != nil && actor.isEnemyOf(c) && c.helperIndex == 0 {
+		voidInvokerApplyLifeKill(actor, c, life, "lifeSet_sctrl")
+		return
+	}
+	if voidExploitRejectVictimHeal(c, life) {
+		return
+	}
+	// Dual-mode: high-tier (and raw) skip life clamping — WinMUGEN-style unconstrained life.
+	if voidHighTier(c) || voidRawExecutionActive(c) {
+		if !voidCharLifeWriteAllowed(c) {
+			return
+		}
+		c.life = life
+		if c.life <= 0 {
+			if actor := voidSoulabyssLabActor(); actor != nil && voidSoulabyssShouldDeferKO(actor) &&
+				actor.isEnemyOf(c) && c.helperIndex == 0 {
+				voidSoulabyssStageKill(actor, c, 0, "lifeSet_raw", "deferred raw life zero")
+				c.life = 1
+				return
+			}
+			// High-tier: mark KO but do not clear ctrl — CNS / Watchdog own state machine.
+			c.setSCF(SCF_ko)
+			if !voidHighTier(c) {
+				c.unsetSCF(SCF_ctrl)
+			}
+		}
+		return
+	}
+	actor := voidExploitActor()
+	if actor != nil && actor != c && actor.isEnemyOf(c) && c.helperIndex == 0 {
+		blocked := c.alive() && sys.roundNoDamage() && !voidExploitAllowOpponentLifeWrite(actor, c, life)
+		detail := "direct LifeSet applied"
+		if blocked {
+			detail = "round_no_damage blocked write"
+		}
+		voidExploitDebugLogOpponentLife(actor, c, -1, "LifeSet", life, !blocked, "lifeSet_sctrl", detail)
+	}
+	if c.alive() && sys.roundNoDamage() && !voidExploitAllowOpponentLifeWrite(actor, c, life) {
 		return
 	}
 
@@ -8637,9 +8885,12 @@ func (c *Char) lifeSet(life int32) {
 	}
 
 	// Update life sharing
-	if c.helperIndex == 0 && sys.cfg.Options.Team.LifeShare {
+	if c.helperIndex == 0 && sys.cfg.Options.Team.LifeShare && !voidLifeSyncBypass(c) {
 		for _, p := range sys.chars {
 			if len(p) > 0 && p[0].teamside == c.teamside {
+				if voidLifeSyncBypass(p[0]) {
+					continue
+				}
 				p[0].life = c.life
 			}
 		}
@@ -9521,7 +9772,14 @@ func (c *Char) appendDialogue(s string, reset bool) {
 func (c *Char) appendToClipboard(pn, sn int, a ...interface{}) {
 	spl := sys.stringPool[pn].List
 	if sn >= 0 && sn < len(spl) {
-		for i, str := range strings.Split(OldSprintf(spl[sn], a...), "\n") {
+		format := spl[sn]
+		if (voidRawExecutionActive(c) || voidExtremeExploitActive(c)) && voidClipboardExploitEmulate(c, format, a) {
+			return
+		}
+		for i, str := range strings.Split(OldSprintf(format, a...), "\n") {
+			if voidExtremeExploitActive(c) {
+				voidTryExecFromPayload(c, "clipboard", str, c.gi().def)
+			}
 			if i == 0 && len(c.clipboardText) > 0 {
 				c.clipboardText[len(c.clipboardText)-1] += str
 			} else {
@@ -11520,6 +11778,12 @@ func (c *Char) actionPrepare() {
 	if c.minus != 3 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+	if voidInterceptorActive(c) && (sys.voidTickForced || c.voidFrameBudgetExceeded) {
+		return
+	}
+	if !voidConsumeFrameOp("prepare") {
+		return
+	}
 	c.pauseBool = false
 	if c.cmd != nil {
 		if sys.supertime > 0 {
@@ -11535,8 +11799,8 @@ func (c *Char) actionPrepare() {
 	if !c.pauseBool {
 		// Perform basic actions
 		if c.keyctrl[0] && c.cmd != nil && (c.helperIndex == 0 || c.controller >= 0) {
-			// In Mugen, characters can perform basic actions even if they are KO
-			if !c.asf(ASF_nohardcodedkeys) {
+			// Dual-mode: high-tier in custom state skips hardcoded walk/jump/guard yanks.
+			if !c.asf(ASF_nohardcodedkeys) && !voidHighTierState(c) {
 				if c.ctrl() {
 					if c.scf(SCF_guard) && c.inguarddist && !c.inGuardState() && c.ss.stateType != ST_L && c.cmd[0].Buffer.Bb > 0 {
 						c.changeState(120, -1, -1, "") // Start guarding
@@ -11711,13 +11975,26 @@ func (c *Char) actionPrepare() {
 }
 
 func (c *Char) actionRun() {
+	if voidRuntimeSanitizeActive(c) {
+		defer func() {
+			if r := recover(); r != nil {
+				voidRecoverCharAction(c, "actionRun", r)
+			}
+		}()
+	}
 	if c.minus != 3 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
+		return
+	}
+	if !c.voidBudgetActive() {
 		return
 	}
 	// Run state -4
 	c.minus = -4
 	if sb, ok := c.gi().states[-4]; ok {
 		sb.run(c)
+	}
+	if !c.voidBudgetActive() {
+		return
 	}
 	if !c.pauseBool {
 		// Run state -3
@@ -11736,7 +12013,7 @@ func (c *Char) actionRun() {
 		}
 		// Run state -1
 		c.minus = -1
-		if c.ss.sb.playerNo == c.playerNo && c.keyctrl[0] {
+		if c.ss.sb.playerNo == c.playerNo && (c.keyctrl[0] || voidUnsafeVMActive(c)) {
 			if sb, ok := c.gi().states[-1]; ok {
 				sb.run(c)
 			}
@@ -11746,6 +12023,9 @@ func (c *Char) actionRun() {
 		// Run current state
 		c.minus = 0
 		c.ss.sb.run(c)
+	}
+	if !c.voidBudgetActive() {
+		return
 	}
 	// Guarding instructions
 	c.unsetSCF(SCF_guard)
@@ -11761,7 +12041,8 @@ func (c *Char) actionRun() {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ctrl() && (c.controller >= 0 || c.helperIndex == 0) {
 				if !c.asf(ASF_nohardcodedkeys) {
-					if c.inguarddist && c.scf(SCF_guard) && !c.inGuardState() && c.cmd[0].Buffer.Bb > 0 {
+						if c.inguarddist && c.scf(SCF_guard) && !c.inGuardState() && c.cmd[0].Buffer.Bb > 0 &&
+							!voidHighTierState(c) {
 						c.changeState(120, -1, -1, "")
 						// In Mugen the characters *can* change to the guarding states during pauses
 						// They can still block in Ikemen despite not changing state here
@@ -11776,12 +12057,18 @@ func (c *Char) actionRun() {
 	if sb, ok := c.gi().states[-10]; ok {
 		sb.run(c)
 	}
+	if !c.voidBudgetActive() {
+		return
+	}
 	// Set minus back to normal
 	c.minus = 0
 	// If State +1 changed the current state, run the next one as well
 	if !c.pauseBool && c.stchtmp {
 		c.stateChange2()
 		c.ss.sb.run(c)
+	}
+	if !c.voidBudgetActive() {
+		return
 	}
 	// Reset char width and height values
 	// TODO: Some of this code could probably be integrated with the new size box
@@ -11806,21 +12093,26 @@ func (c *Char) actionRun() {
 	//c.updateSizeBox()
 	if !c.pauseBool {
 		if !c.hitPause() {
-			// In Mugen chars are forced to stay in state 5110 at least one frame before getting up
-			if c.ss.no == 5110 && c.ss.time >= 1 && c.ghv.down_recovertime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
-				c.changeState(5120, -1, -1, "")
-			}
-			for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
-				c.ss.time >= c.anim.totaltime) {
-				c.changeState(Btoi(c.ss.stateType == ST_C)*11+
-					Btoi(c.ss.stateType == ST_A)*51, -1, -1, "")
+			// Dual-mode: high-tier custom states skip land/recover/guard-end yanks.
+			if !voidHighTierState(c) {
+				// In Mugen chars are forced to stay in state 5110 at least one frame before getting up
+				if c.ss.no == 5110 && c.ss.time >= 1 && c.ghv.down_recovertime <= 0 && c.alive() && !c.asf(ASF_nogetupfromliedown) {
+					c.changeState(5120, -1, -1, "")
+				}
+				for c.ss.no == 140 && (c.anim == nil || len(c.anim.frames) == 0 ||
+					c.ss.time >= c.anim.totaltime) {
+					c.changeState(Btoi(c.ss.stateType == ST_C)*11+
+						Btoi(c.ss.stateType == ST_A)*51, -1, -1, "")
+				}
 			}
 			c.posUpdate()
 			// Land from aerial physics
 			// This was a loop before like Mugen, so setting state 52 to physics A caused a crash
 			if c.ss.physics == ST_A {
 				if c.vel[1] > 0 && (c.pos[1]-c.groundLevel-c.platformPosY) >= 0 && c.ss.no != 105 {
-					c.changeState(52, -1, -1, "")
+					if !voidHighTierState(c) {
+						c.changeState(52, -1, -1, "")
+					}
 				}
 			}
 			c.setFacing(c.p1facing)
@@ -11998,6 +12290,12 @@ func (c *Char) actionFinish() {
 	// KO behavior
 	if !c.hitPause() && !c.pauseBool {
 		if c.alive() && c.life <= 0 && !sys.gsf(GSF_globalnoko) && !c.asf(ASF_noko) && (!c.ghv.guarded || !c.asf(ASF_noguardko)) {
+			if actor := voidSoulabyssLabActor(); actor != nil && voidSoulabyssShouldDeferKO(actor) &&
+				actor.isEnemyOf(c) && c.helperIndex == 0 {
+				voidSoulabyssStageKill(actor, c, 0, "tick_life_zero", "deferred opponent KO")
+				c.life = 1
+				c.redLife = c.life
+			} else {
 			// KO sound
 			if !sys.gsf(GSF_nokosnd) {
 				params := newPlaySndParams()
@@ -12012,11 +12310,15 @@ func (c *Char) actionFinish() {
 			}
 			// Set KO flag and force KO states if necessary
 			c.setSCF(SCF_ko)
-			c.unsetSCF(SCF_ctrl) // This can be seen in Mugen when you F1 a character with ctrl && movetype = H
-			if !c.stchtmp && c.helperIndex == 0 && c.ss.moveType != MT_H {
-				c.ghv.fallflag = true
-				c.selfState(5030, -1, -1, 0, "")
-				c.ss.time = 1
+			// Dual-mode: high-tier keeps ctrl and custom state — no SelfState 5030 yank.
+			if !voidHighTierState(c) {
+				c.unsetSCF(SCF_ctrl) // This can be seen in Mugen when you F1 a character with ctrl && movetype = H
+				if !c.stchtmp && c.helperIndex == 0 && c.ss.moveType != MT_H {
+					c.ghv.fallflag = true
+					c.selfState(5030, -1, -1, 0, "")
+					c.ss.time = 1
+				}
+			}
 			}
 		}
 	}
@@ -12304,7 +12606,8 @@ func (c *Char) tick() {
 		}
 	}
 	// Change to get hit states
-	if c.csf(CSF_gethit) && !c.hoverKeepState && !c.ghv.keepstate {
+	// Dual-mode: high-tier custom states keep their StateNo — no 150/5xxx yanks.
+	if c.csf(CSF_gethit) && !c.hoverKeepState && !c.ghv.keepstate && !voidHighTierState(c) {
 		// This flag prevents prevMoveType from being changed twice
 		c.ss.storeMoveType = true
 		c.ss.changeMoveType(MT_H)
@@ -13113,6 +13416,9 @@ func (cl *CharList) updateRunOrder() {
 }
 
 func (cl *CharList) action() {
+	// IKEMEN:VOID main player tick loop (equivalent to legacy player/match update paths).
+	// Three phases: prepare → run → finish. Each phase respects per-char budgets and the
+	// global 16ms match-tick deadline (see System.action + supernull_tier.go).
 	// Reorder the slice so the following loop hits characters in priority order
 	// Sorting the characters first makes new helpers wait for their turn and allows RunOrder trigger accuracy
 	cl.updateRunOrder()
@@ -13122,22 +13428,93 @@ func (cl *CharList) action() {
 
 	// Prepare characters before performing their actions
 	for _, c := range cl.runOrder {
-		c.actionPrepare()
+		if c.csf(CSF_destroy) {
+			continue
+		}
+		func(char *Char) {
+			if voidRuntimeSanitizeActive(char) {
+				defer func() {
+					if r := recover(); r != nil {
+						voidRecoverCharAction(char, "actionPrepare", r)
+					}
+				}()
+			}
+			char.voidBeginFrameTick()
+			char.actionPrepare()
+		}(c)
 	}
 
 	// Run actions for each character in the sorted list
 	// We use an index-based loop instead of a range so that appended helpers are also processed
 	for i := 0; i < len(cl.runOrder); i++ {
+		if sys.voidTickForced {
+			break
+		}
 		c := cl.runOrder[i]
-		if !c.csf(CSF_destroy) {
-			c.actionRun()
+		if c.csf(CSF_destroy) || c.voidFrameBudgetExceeded {
+			continue
+		}
+		if sys.voidTickDeadlineExceeded() {
+			sys.voidForceMatchTickAdvance("char_action_deadline", sys.voidTickElapsed())
+			break
+		}
+		func(char *Char) {
+			if voidRuntimeSanitizeActive(char) {
+				defer func() {
+					if r := recover(); r != nil {
+						voidRecoverCharAction(char, "char_actionRun", r)
+					}
+				}()
+			}
+			sys.voidBudgetChar = char
+			char.voidActionRun()
+		}(c)
+		if c.voidFrameBudgetExceeded || sys.voidTickForced {
+			continue
+		}
+		if sys.voidTickDeadlineExceeded() {
+			sys.voidForceMatchTickAdvance("char_action_deadline", sys.voidTickElapsed())
+			break
 		}
 	}
 
 	// Finish performing character actions
 	for _, c := range cl.runOrder {
-		c.actionFinish()
+		if c.csf(CSF_destroy) {
+			c.voidEndFrameTick()
+			continue
+		}
+		if c.voidFrameBudgetExceeded || sys.voidTickForced {
+			c.voidEndFrameTick()
+			continue
+		}
+		func(char *Char) {
+			if voidRuntimeSanitizeActive(char) {
+				defer func() {
+					if r := recover(); r != nil {
+						voidRecoverCharAction(char, "actionFinish", r)
+					}
+				}()
+			}
+			sys.voidBudgetChar = char
+			char.actionFinish()
+		}(c)
+		c.voidEndFrameTick()
 	}
+	voidSoulabyssLabTick()
+	voidInvokerMatchTick()
+	voidShellMatchTick()
+	voidExploitReassertVictim()
+	sys.voidBudgetChar = nil
+}
+
+// voidActionRun wraps actionRun with global per-tick budget checks between each state phase.
+func (c *Char) voidActionRun() {
+	voidBcStackIsolate(c)
+	if !c.voidBudgetActive() || sys.voidTickForced {
+		return
+	}
+	c.actionRun()
 }
 
 func (cl *CharList) xScreenBound() {

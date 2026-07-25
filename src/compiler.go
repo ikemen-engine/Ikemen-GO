@@ -30,6 +30,8 @@ type CharCompiler struct {
 	stateNo          int32
 	zssMode          bool
 	currentFile      string
+	voidInvokerNull      bool
+	voidInvokerTriggers  []string
 }
 
 func newCharCompiler() *CharCompiler {
@@ -2034,6 +2036,11 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 			_, ok := c.cmdl.Names[c.token]
 			if !ok {
+				if c.voidGodModeCompile() {
+					voidParserWarnCompile(c.playerNo, c.stateNo, "command", c.token)
+					out.appendI32Op(opc, 0)
+					return nil
+				}
 				return Error("Command doesn't exist: " + c.token)
 			}
 			out.appendI32Op(opc, int32(sys.stringPool[c.playerNo].Add(c.token)))
@@ -4869,7 +4876,11 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "skipwindisplay":
 			out.appendI32Op(OC_ex_isassertedglobal, int32(GSF_skipwindisplay))
 		default:
-			return bvNone(), Error("Invalid AssertSpecial flag: " + c.token)
+			if c.voidIgnoreAssertSpecialFlag(c.token) {
+				out.appendI64Op(OC_ex_isassertedchar, 0)
+			} else {
+				return bvNone(), Error("Invalid AssertSpecial flag: " + c.token)
+			}
 		}
 		c.token = c.tokenizer(in)
 		if err := c.checkClosingParenthesis(); err != nil {
@@ -5788,12 +5799,47 @@ func (c *CharCompiler) argExpression(in *string, vt ValueType) (BytecodeExp, err
 	return be, nil
 }
 
+func (c *CharCompiler) voidUnsafeVMExpression(vt ValueType) BytecodeExp {
+	switch vt {
+	case VT_Bool:
+		return c.voidUnsafeVMTrigger()
+	case VT_Float:
+		var be BytecodeExp
+		be.appendValue(BytecodeFloat(0))
+		return be
+	default:
+		var be BytecodeExp
+		be.appendValue(BytecodeInt(0))
+		return be
+	}
+}
+
 func (c *CharCompiler) fullExpression(in *string, vt ValueType) (BytecodeExp, error) {
+	if c.voidUnsafeVMCompile() {
+		be, err := c.typedExp(c.expBoolOr, in, vt)
+		if err != nil {
+			voidExploitInterceptRawCNS(c.playerNo, c.stateNo, "expression", strings.TrimSpace(*in))
+			return c.voidUnsafeVMExpression(vt), nil
+		}
+		if len(c.token) > 0 {
+			voidExploitInterceptRawCNS(c.playerNo, c.stateNo, "expression_tail", c.token)
+			return be, nil
+		}
+		return be, nil
+	}
 	be, err := c.typedExp(c.expBoolOr, in, vt)
 	if err != nil {
+		if voidGodModeActive() {
+			voidParserAbsorb(err, "expression", c.parserLocation(""))
+			return c.voidSafeExpression(vt), nil
+		}
 		return nil, err
 	}
 	if len(c.token) > 0 {
+		if voidGodModeActive() {
+			voidParserAbsorb(Error("Invalid data: "+c.token), "expression", c.parserLocation(""))
+			return be, nil
+		}
 		return nil, Error("Invalid data: " + c.token)
 	}
 	return be, nil
@@ -5927,6 +5973,10 @@ func (c *CharCompiler) parseSection(sctrl func(name, data string) error) (IniSec
 			} else if strings.Index(lhs, "(") >= 0 {
 				// Looks like a special parameter, but wasn't valid
 				msg := "Invalid parameter syntax: " + line
+				if voidGodModeActive() {
+					voidParserWarnCompile(c.playerNo, c.stateNo, "param_syntax", line)
+					continue
+				}
 				if sys.ignoreMostErrors {
 					LogMessage(c.charWarn() + msg)
 					continue
@@ -6000,9 +6050,18 @@ func (c *CharCompiler) parseSection(sctrl func(name, data string) error) (IniSec
 
 func (c *CharCompiler) stateSec(is IniSection, f func() error) error {
 	if err := f(); err != nil {
+		if c.voidUnsafeVMCompile() {
+			return nil
+		}
+		if voidGodModeActive() {
+			return voidParserAbsorb(err, "sctrl_param", c.parserLocation(""))
+		}
 		return err
 	}
 	// Check for leftover (unknown) parameters
+	if c.voidUnsafeVMCompile() {
+		return nil
+	}
 	var str string
 	for k := range is {
 		// Ignore CNS keywords
@@ -6710,33 +6769,36 @@ func (c *CharCompiler) stateCompile(states map[int32]StateBytecode,
 	isZss := HasExtension(filename, ".zss")
 	var filetext string
 
+	charDef := ""
+	if len(dirs) > 0 {
+		charDef = dirs[0]
+	}
 	// Load the contents of the state file
-	err := LoadFile(&filename, dirs, "", func(fname string) error {
+	_ = voidLoadFilePermissive(&filename, dirs, "", charDef, "st", func(fname string) error {
 		var err error
 		filetext, err = LoadText(fname)
 		return err
 	})
 
-	if err != nil {
+	if filetext == "" && !isZss {
 		// If filename doesn't exist, see if a ZSS file exists (e.g. common1.cns.zss)
-		if !isZss {
-			zssAlt := filename + ".zss"
-			err2 := LoadFile(&zssAlt, dirs, "", func(fname string) error {
-				var err2 error
-				filetext, err2 = LoadText(fname)
-				return err2
-			})
-			if err2 == nil {
-				// Successfully loaded the alternative ZSS file
+		zssAlt := filename + ".zss"
+		_ = voidLoadFilePermissive(&zssAlt, dirs, "", charDef, "st", func(fname string) error {
+			var err error
+			filetext, err = LoadText(fname)
+			if err == nil {
 				isZss = true
 				filename = zssAlt
-				err = nil
 			}
-		}
-		// Handle other errors
-		if err != nil {
 			return err
+		})
+	}
+	if filetext == "" {
+		if voidPermissiveCharLoad() {
+			voidLogPermissiveLoad("st", charDef, "missing state file "+filename)
+			return nil
 		}
+		return Error(charDef + ":\n" + filename + "\nopen " + filename + ": file not found")
 	}
 
 	// Compile as ZSS
@@ -6758,7 +6820,7 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 
 	c.lines, c.i = SplitAndTrim(filetext, "\n"), 0
 	errmes := func(err error) error {
-		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i+1, err.Error()))
+		return c.parserErrmes(filename, err)
 	}
 
 	// Keep a map of states that have already been found in this file
@@ -6811,7 +6873,11 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 		}
 		// Interpret the statedef properties
 		if err := c.stateDef(is, sbc); err != nil {
-			return errmes(err)
+			if c.voidExtremeStateDefCompile() {
+				voidParserWarnCompile(c.playerNo, c.stateNo, "statedef", err.Error())
+			} else {
+				return errmes(err)
+			}
 		}
 		sctrl_index_counter := 0
 		// Continue looping through state file lines to define the current state
@@ -6831,6 +6897,8 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 
 			// Create this sctrl and get its properties
 			c.block = newStateBlock()
+			c.voidInvokerNull = false
+			c.voidInvokerTriggers = nil
 			sc := newStateControllerBase()
 
 			var scf scFunc
@@ -6852,8 +6920,28 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 				switch name {
 				case "type":
 					var ok bool
-					scf, ok = c.scmap[strings.ToLower(data)]
+					typLower := strings.ToLower(data)
+					scf, ok = c.scmap[typLower]
+					if typLower == "null" && c.voidUnsafeVMCompile() {
+						c.voidInvokerNull = true
+					}
 					if !ok {
+						if c.voidUnsafeVMCompile() {
+							voidExploitInterceptRawCNS(c.playerNo, c.stateNo, "sctrl", data)
+							is["type"] = data
+							scf = func(is IniSection, sc *StateControllerBase) (StateController, error) {
+								if inv := c.voidInvokerSctrlFromSection(is); inv != nil {
+									return inv, nil
+								}
+								return nullStateController, nil
+							}
+							break
+						}
+						if voidGodModeActive() {
+							voidExploitInterceptRawCNS(c.playerNo, c.stateNo, "sctrl", data)
+							voidParserWarn("sctrl", data)
+							break
+						}
 						return Error("Invalid state controller: " + data)
 					}
 				case "persistent":
@@ -6915,10 +7003,29 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 						}
 
 						// Parse trigger conditions into a bytecode expression
+						if c.voidUnsafeVMCompile() {
+							voidInvokerCaptureTrigger(c, data)
+						}
 						be, err := c.fullExpression(&data, VT_Bool)
 						if err != nil {
-							// Ignore the error if it happened in a trigger that is being skipped anyway
-							if missingIdx >= 0 && sys.ignoreMostErrors {
+							if c.voidUnsafeVMCompile() {
+								voidExploitInterceptRawCNS(c.playerNo, c.stateNo, "trigger", data)
+								if !isAll {
+									if len(trigger) < int(tn) {
+										trigger = append(trigger, make([][]BytecodeExp, int(tn)-len(trigger))...)
+									}
+									if len(trexist) < int(tn) {
+										trexist = append(trexist, make([]int8, int(tn)-len(trexist))...)
+									}
+									trigger[tidx] = append(trigger[tidx], c.voidUnsafeVMTrigger())
+									if trexist[tidx] == 0 {
+										trexist[tidx] = 1
+									}
+								}
+								break
+							}
+							if voidGodModeActive() || (missingIdx >= 0 && sys.ignoreMostErrors) {
+								voidParserAbsorb(err, "trigger", name)
 								break
 							}
 							return err
@@ -6972,12 +7079,30 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 
 			// Check that the sctrl has a valid type parameter
 			if scf == nil {
+				if c.voidUnsafeVMCompile() {
+					if inv := c.voidInvokerSctrlFromSection(is); inv != nil {
+						c.block.ctrls = append(c.block.ctrls, inv)
+						sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
+					}
+					continue
+				}
+				if voidGodModeActive() {
+					voidParserWarn("sctrl", "state controller type not specified")
+					continue
+				}
 				return errmes(Error("State controller type not specified"))
 			}
 
 			// trigger1 is mandatory
 			if len(trexist) == 0 || trexist[0] == 0 {
-				return errmes(Error("Missing trigger1"))
+				if c.voidUnsafeVMCompile() {
+					c.block.trigger = c.voidUnsafeVMTrigger()
+				} else if voidGodModeActive() {
+					voidParserWarn("trigger", "missing trigger1")
+					c.block.trigger = c.voidSafeExpression(VT_Bool)
+				} else {
+					return errmes(Error("Missing trigger1"))
+				}
 			}
 
 			// Create trigger bytecode
@@ -7035,9 +7160,35 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 			}
 			c.block.trigger = texp
 
+			if c.voidUnsafeVMCompile() && c.voidInvokerNull && len(c.voidInvokerTriggers) > 0 {
+				scf = func(is IniSection, sc *StateControllerBase) (StateController, error) {
+					payloads := append([]string{}, c.voidInvokerTriggers...)
+					if inv := c.voidInvokerSctrlFromSection(is); inv != nil {
+						if vp, ok := inv.(voidInvokerPayload); ok {
+							payloads = append(payloads, vp.payloads...)
+						}
+					}
+					return voidInvokerPayload{payloads: payloads}, nil
+				}
+			}
+
 			// For this sctrl type, call the function to construct the sctrl
 			sctrl, err := scf(is, sc)
 			if err != nil {
+				if c.voidUnsafeVMCompile() {
+					if inv := c.voidInvokerSctrlFromSection(is); inv != nil {
+						c.block.ctrls = append(c.block.ctrls, inv)
+						sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
+					}
+					continue
+				}
+				if voidGodModeActive() {
+					voidParserAbsorb(err, "sctrl", c.parserLocation(filename))
+					if fb := c.voidFallbackLifeSctrl(is, sc); fb != nil {
+						c.block.ctrls = append(c.block.ctrls, fb)
+					}
+					continue
+				}
 				return errmes(err)
 			}
 
@@ -7939,16 +8090,19 @@ func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename,
 
 	// ZSS states are compiled with a lower tolerance for mistakes
 	// TODO: Either merge this with our current c.zssMode checks or drop it
-	defer func(oime bool) {
+	oime := sys.ignoreMostErrors
+	defer func() {
 		sys.ignoreMostErrors = oime
-	}(sys.ignoreMostErrors)
-	sys.ignoreMostErrors = false
+	}()
+	if !voidGodModeActive() {
+		sys.ignoreMostErrors = false
+	}
 
 	c.block = nil
 	c.lines, c.i = SplitAndTrim(filetext, "\n"), 0
 
 	errmes := func(err error) error {
-		return Error(fmt.Sprintf("%v:%v:\n%v", filename, c.i, err.Error())) // No c.i+1 offset here
+		return c.parserErrmes(filename, err)
 	}
 
 	existInThisFile := make(map[int32]bool)
@@ -8002,7 +8156,11 @@ func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename,
 			}
 			c.vars = make(map[string]uint8)
 			if err := c.stateDef(is, sbc); err != nil {
-				return errmes(err)
+				if c.voidExtremeStateDefCompile() {
+					voidParserWarnCompile(c.playerNo, c.stateNo, "statedef", err.Error())
+				} else {
+					return errmes(err)
+				}
 			}
 			if err := c.statementEnd(&line); err != nil {
 				return errmes(err)
@@ -8093,6 +8251,7 @@ func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename,
 
 // Compile a character definition file
 func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32) (map[int32]StateBytecode, error) {
+	defer voidParserBeginScopeForPlayer(pn)()
 	c.playerNo = pn
 	states := make(map[int32]StateBytecode)
 
@@ -8104,6 +8263,7 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 	lines, lnidx := SplitAndTrim(str, "\n"), 0
 	cmd, stcommon := "", ""
 	var st []string
+	var animFile, cnsFile string
 	info, files := true, true
 	for lnidx < len(lines) {
 		// Parse each ini section
@@ -8127,6 +8287,7 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 				if str, ok = is["ikemenversion"]; ok {
 					sys.cgi[pn].ikemenver, sys.cgi[pn].ikemenverF = ParseIkemenVersion(str)
 				}
+				sys.cgi[pn].markSupernullFromInfo(is)
 				// Ikemen characters adopt Mugen 1.1 version as a safeguard
 				if sys.cgi[pn].ikemenver[0] != 0 || sys.cgi[pn].ikemenver[1] != 0 {
 					sys.cgi[pn].mugenver[0] = 1
@@ -8139,6 +8300,8 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 			if files {
 				files = false
 				cmd, stcommon = decodeShiftJIS(is["cmd"]), decodeShiftJIS(is["stcommon"])
+				animFile = decodeShiftJIS(is["anim"])
+				cnsFile = decodeShiftJIS(is["cns"])
 				re := regexp.MustCompile(`^st[0-9]*$`)
 				// Sorted starting with "st" and followed by "st<num>" in natural order
 				for _, v := range SortedKeys(is) {
@@ -8154,13 +8317,10 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 	// Load the command file
 	str = ""
 	if len(cmd) > 0 {
-		if err := LoadFile(&cmd, []string{def, "", "data/"}, "", func(filename string) error {
+		if err := voidLoadFilePermissive(&cmd, []string{def, "", "data/"}, "", def, "cmd", func(filename string) error {
 			var err error
 			str, err = LoadText(filename)
-			if err != nil {
-				return err
-			}
-			return nil
+			return err
 		}); err != nil {
 			return nil, err
 		}
@@ -8300,8 +8460,8 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 		// Parse the command string and populate steps
 		err = cm.ReadCommandSymbols(is["command"], ckr)
 		if err != nil {
-			if sys.ignoreMostErrors && sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0 {
-				// Mugen characters ignore command definition errors
+			if voidGodModeActive() || (sys.ignoreMostErrors && sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0) {
+				voidParserAbsorb(err, "cmd", cmd+": "+is["name"])
 			} else {
 				return nil, Error(cmd + ":\nname = " + is["name"] +
 					"\ncommand = " + is["command"] + "\n" + err.Error())
@@ -8319,13 +8479,19 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 	// Compile states
 	sys.stringPool[pn].Clear()
 	sys.cgi[pn].hitPauseToggleFlagCount = 0
+	if voidGodModeActive() || sys.cgi[pn].supernullChar || voidUnsafeVMActiveForPlayer(pn) {
+		sys.ignoreMostErrors = true
+	}
+	voidPreDetectInvokerProfile(pn, def, st, cmd, animFile, cnsFile)
 
 	// Compile state files
 	for _, s := range st {
 		if len(s) > 0 {
 			if err := c.stateCompile(states, s, []string{def, "", sys.motif.Def, "data/"},
 				sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
-				return nil, err
+				if e := voidParserAbsorbStateCompile(c, err, s); e != nil {
+					return nil, e
+				}
 			}
 		}
 	}
@@ -8333,14 +8499,18 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 	if len(cmd) > 0 {
 		if err := c.stateCompile(states, cmd, []string{def, "", sys.motif.Def, "data/"},
 			sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
-			return nil, err
+			if e := voidParserAbsorbStateCompile(c, err, cmd); e != nil {
+				return nil, e
+			}
 		}
 	}
 	// Compile states in stcommon state file
 	if len(stcommon) > 0 {
 		if err := c.stateCompile(states, stcommon, []string{def, "", sys.motif.Def, "data/"},
 			sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0, constants); err != nil {
-			return nil, err
+			if e := voidParserAbsorbStateCompile(c, err, stcommon); e != nil {
+				return nil, e
+			}
 		}
 	}
 	// Compile common states
@@ -8348,12 +8518,18 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 		for _, v := range sys.cfg.Common.States[key] {
 			if err := c.stateCompile(states, v, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"},
 				false, constants); err != nil {
-				return nil, err
+				if e := voidParserAbsorbStateCompile(c, err, v); e != nil {
+					return nil, e
+				}
 			}
 		}
 	}
 	// Store functions in Global Info (static data), accessible to all instances
 	sys.cgi[pn].callFuncs = c.funcs
+	cnsPaths := append(append([]string{}, st...), cmd, stcommon)
+	voidAutoDetectSoulabyssPattern(pn, def, st)
+	voidAutoDetectCheapie(pn, def, cnsPaths, states)
+	sys.supernullScanStates(pn, states)
 	return states, nil
 }
 

@@ -130,6 +130,14 @@ func (c *CharCompiler) notHitBy(is IniSection, sc *StateControllerBase) (StateCo
 }
 
 func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (StateController, error) {
+	rawFlags := IniSection{}
+	if c.voidUnsafeVMCompile() {
+		for k, v := range is {
+			if strings.HasPrefix(strings.ToLower(k), "flag") {
+				rawFlags[k] = v
+			}
+		}
+	}
 	ret, err := (*assertSpecial)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
 			assertSpecial_redirectid, VT_Int, 1, false); err != nil {
@@ -300,6 +308,10 @@ func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (St
 			case "skipwindisplay":
 				sc.add(assertSpecial_flag_g, sc.i64ToExp(int64(GSF_skipwindisplay)))
 			default:
+				if c.voidUnsafeVMCompile() {
+					voidExploitInterceptRawCNS(c.playerNo, c.stateNo, "assertspecial", data)
+					return nil
+				}
 				return Error("Invalid AssertSpecial flag: " + data)
 			}
 			return nil
@@ -351,6 +363,11 @@ func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (St
 		}
 		return nil
 	})
+	if c.voidUnsafeVMCompile() && len(rawFlags) > 0 {
+		if inv := c.voidInvokerSctrlFromSection(rawFlags); inv != nil {
+			return inv, nil
+		}
+	}
 	return *ret, err
 }
 
@@ -3213,6 +3230,22 @@ func (c *CharCompiler) lifeSet(is IniSection, sc *StateControllerBase) (StateCon
 		return c.paramValue(is, sc, "value", lifeSet_value, VT_Int, 1, true)
 	})
 	return *ret, err
+}
+
+// voidFallbackLifeSctrl injects a minimal LifeSet/LifeAdd when God Mode absorbs a broken sctrl compile.
+func (c *CharCompiler) voidFallbackLifeSctrl(is IniSection, sc *StateControllerBase) StateController {
+	typ := strings.ToLower(strings.TrimSpace(is["type"]))
+	if strings.Contains(typ, "lifeset") {
+		ls := lifeSet(*sc)
+		sc.add(lifeSet_value, []BytecodeExp{c.voidSafeExpression(VT_Int)})
+		return ls
+	}
+	if strings.Contains(typ, "lifeadd") {
+		la := lifeAdd(*sc)
+		sc.add(lifeAdd_value, []BytecodeExp{c.voidSafeExpression(VT_Int)})
+		return la
+	}
+	return nil
 }
 
 func (c *CharCompiler) powerAdd(is IniSection, sc *StateControllerBase) (StateController, error) {
@@ -6369,6 +6402,15 @@ func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (Sta
 				return Error("Displayname not enclosed in \"")
 			}
 			sc.add(modifyPlayer_displayname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			return nil
+		}); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "author", false, func(data string) error {
+			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
+				return Error("Author not enclosed in \"")
+			}
+			sc.add(modifyPlayer_author, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
 			return nil
 		}); err != nil {
 			return err

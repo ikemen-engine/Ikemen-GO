@@ -3636,11 +3636,14 @@ func (ro *FightScreenRound) handleRoundIntro() {
 // Consists of KO screen and winner messages
 func (ro *FightScreenRound) handleRoundOutro() {
 	if ro.timerActive {
-		if sys.matchTime-sys.timerCount[sys.round-1] > 0 {
-			sys.timerCount[sys.round-1] = sys.matchTime - sys.timerCount[sys.round-1]
-			sys.timerRounds = append(sys.timerRounds, sys.timeElapsed())
-		} else {
-			sys.timerCount[sys.round-1] = 0
+		ri := int(sys.round - 1)
+		if ri >= 0 && ri < len(sys.timerCount) {
+			if sys.matchTime-sys.timerCount[ri] > 0 {
+				sys.timerCount[ri] = sys.matchTime - sys.timerCount[ri]
+				sys.timerRounds = append(sys.timerRounds, sys.timeElapsed())
+			} else {
+				sys.timerCount[ri] = 0
+			}
 		}
 		ro.timerActive = false
 	}

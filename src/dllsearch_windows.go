@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"golang.org/x/sys/windows"
 )
+
+const loadWithAlteredSearchPath = 0x00000008
 
 func init() {
 	exe, err := os.Executable()
@@ -20,104 +23,195 @@ func init() {
 	exeDir := filepath.Dir(exe)
 	libDir := filepath.Join(exeDir, "lib")
 
-	// Safe modern policy.
 	_ = windows.SetDefaultDllDirectories(
 		windows.LOAD_LIBRARY_SEARCH_DEFAULT_DIRS | windows.LOAD_LIBRARY_SEARCH_USER_DIRS,
 	)
-
-	// Our preferred user dirs (priority order: exeDir, then libDir).
-	if p, err := windows.UTF16PtrFromString(exeDir); err == nil {
-		_, _ = windows.AddDllDirectory(p)
-	}
 	if p, err := windows.UTF16PtrFromString(libDir); err == nil {
 		_, _ = windows.AddDllDirectory(p)
 	}
+	if p, err := windows.UTF16PtrFromString(exeDir); err == nil {
+		_, _ = windows.AddDllDirectory(p)
+	}
 
-	// Legacy fallback: ensure libDir is on PATH (exeDir is searched by default on old loaders).
-	_ = os.Setenv("PATH", libDir+";"+os.Getenv("PATH"))
+	voidPrependPathDir(libDir)
+	voidPrependPathDir(exeDir)
 
-	// Families we require.
+	// Semicolon paths (IKEMEN;VOID): Windows splits the app dir on ';' during DLL search.
+	// Preload everything colocated in lib\ via chdir — never require avdevice (not linked).
+	if strings.Contains(exeDir, ";") {
+		voidPreloadDirectoryDLLs(libDir)
+	}
+
+	// Only SDL2 + libxmp are preloaded here. FFmpeg DLLs load on demand via PE imports.
 	wantPatterns := []string{
-		"avcodec-*.dll",
-		"avdevice-*.dll",
-		"avfilter-*.dll",
-		"avformat-*.dll",
-		"avutil-*.dll",
-		"libwinpthread-*.dll",
-		"swresample-*.dll",
-		"swscale-*.dll",
 		"libxmp*.dll",
 		"SDL2*.dll",
 	}
 
-	// Search order: exe dir -> lib dir -> Windows default dirs & PATH.
-	localOrder := []string{exeDir, libDir}
+	localOrder := []string{libDir, exeDir}
+	if strings.Contains(exeDir, ";") {
+		localOrder = []string{exeDir, libDir}
+	}
 	fallbackOrder := windowsDefaultAndPathDirs()
 
-	// Pick a concrete file for each family using the specified order.
-	chosen := make(map[string]string) // pattern -> full path
+	chosen := make(map[string]string)
 	var missing []string
-
 	for _, pat := range wantPatterns {
-		// 1) alongside exe
-		if full := firstMatchAcross(localOrder[:1], pat); full != "" {
+		if full := firstMatchAcross(localOrder, pat); full != "" {
 			chosen[pat] = full
 			continue
 		}
-		// 2) in lib\
-		if full := firstMatchAcross(localOrder[1:2], pat); full != "" {
-			chosen[pat] = full
-			continue
-		}
-		// 3) Windows default dirs & PATH
 		if full := firstMatchAcross(fallbackOrder, pat); full != "" {
 			chosen[pat] = full
 			continue
 		}
-
-		// Not found anywhere.
 		missing = append(missing, pat)
 	}
 
 	if len(missing) > 0 {
-		var where strings.Builder
-		where.WriteString("  " + exeDir + "  (exe directory)\n")
-		where.WriteString("  " + libDir + "  (lib directory)\n")
-		for _, d := range fallbackOrder {
-			where.WriteString("  " + d + "\n")
-		}
 		ShowErrorDialog(
-			"Required runtime DLLs are missing.\n\n" +
-				"Searched locations (in priority order):\n" + where.String() + "\n" +
-				"Missing families:\n  " + strings.Join(missing, "\n  "),
+			fmt.Sprintf("IKEMEN:VOID build %s\n\nRequired runtime DLLs are missing.\n\nMissing:\n  %s",
+				BuildTime, strings.Join(missing, "\n  ")),
 		)
 		os.Exit(1)
 	}
 
-	// Try to load one DLL per family, in the chosen location (local beats global).
 	var loadErrs []string
-	for _, full := range chosen {
-		_, err := windows.LoadLibraryEx(
-			full, 0,
-			windows.LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|
-				windows.LOAD_LIBRARY_SEARCH_DEFAULT_DIRS|
-				windows.LOAD_LIBRARY_SEARCH_USER_DIRS,
-		)
-		if err != nil {
+	for _, full := range sortChosenPaths(chosen) {
+		if err := voidLoadRuntimeDLL(full, exeDir, libDir); err != nil {
 			loadErrs = append(loadErrs, fmt.Sprintf("%s: %v", filepath.Base(full), err))
 		}
 	}
 	if len(loadErrs) > 0 {
 		ShowErrorDialog(
-			"Failed to load required runtime libraries.\n\n" +
-				"Errors:\n  " + strings.Join(loadErrs, "\n  ") + "\n\n" +
-				"Ensure the DLLs match your app architecture and aren’t blocked by AV/SmartScreen.",
+			fmt.Sprintf("IKEMEN:VOID build %s\n\nFailed to load required runtime libraries.\n\nErrors:\n  %s\n\n"+
+				"If the install path contains ';', keep runtime DLLs in lib\\.",
+				BuildTime, strings.Join(loadErrs, "\n  ")),
 		)
 		os.Exit(1)
 	}
 }
 
-// firstMatchAcross returns the first match for a glob pattern across dirs.
+func sortChosenPaths(chosen map[string]string) []string {
+	out := make([]string, 0, len(chosen))
+	seen := make(map[string]struct{}, len(chosen))
+	for _, full := range chosen {
+		if _, ok := seen[full]; ok {
+			continue
+		}
+		seen[full] = struct{}{}
+		out = append(out, full)
+	}
+	sort.Strings(out)
+	return out
+}
+
+func voidPathEnvEntry(dir string) string {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return ""
+	}
+	if strings.Contains(dir, ";") {
+		return `"` + dir + `"`
+	}
+	return dir
+}
+
+func voidPrependPathDir(dir string) {
+	entry := voidPathEnvEntry(dir)
+	if entry == "" {
+		return
+	}
+	_ = os.Setenv("PATH", entry+";"+os.Getenv("PATH"))
+}
+
+func voidLoadRuntimeDLL(full, exeDir, libDir string) error {
+	full = filepath.Clean(full)
+	if abs, err := filepath.Abs(full); err == nil {
+		full = abs
+	}
+	base := filepath.Base(full)
+
+	tryLoad := func(path string) error {
+		path = filepath.Clean(path)
+		if abs, err := filepath.Abs(path); err == nil {
+			path = abs
+		}
+		if _, err := windows.LoadLibraryEx(path, 0, loadWithAlteredSearchPath); err == nil {
+			return nil
+		}
+		flags := windows.LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR |
+			windows.LOAD_LIBRARY_SEARCH_DEFAULT_DIRS |
+			windows.LOAD_LIBRARY_SEARCH_USER_DIRS
+		if _, err := windows.LoadLibraryEx(path, 0, uintptr(flags)); err == nil {
+			return nil
+		}
+		dir := filepath.Dir(path)
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		if err := os.Chdir(dir); err != nil {
+			return err
+		}
+		defer os.Chdir(cwd)
+		if _, err := windows.LoadLibrary(filepath.Base(path)); err == nil {
+			return nil
+		}
+		return fmt.Errorf("The specified module could not be found")
+	}
+
+	if err := tryLoad(full); err == nil {
+		return nil
+	}
+	for _, dir := range []string{exeDir, libDir} {
+		alt := filepath.Join(dir, base)
+		if alt != full {
+			if err := tryLoad(alt); err == nil {
+				return nil
+			}
+		}
+	}
+	return fmt.Errorf("The specified module could not be found")
+}
+
+// voidPreloadDirectoryDLLs loads every DLL in dir (multi-pass). Failures are ignored.
+func voidPreloadDirectoryDLLs(dir string) {
+	dir = filepath.Clean(dir)
+	if fi, err := os.Stat(dir); err != nil || !fi.IsDir() {
+		return
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	if err := os.Chdir(dir); err != nil {
+		return
+	}
+	defer os.Chdir(cwd)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if strings.EqualFold(filepath.Ext(name), ".dll") && !strings.EqualFold(name, "avdevice-62.dll") {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	for pass := 0; pass < 8; pass++ {
+		for _, name := range names {
+			_, _ = windows.LoadLibrary(name)
+		}
+	}
+}
+
 func firstMatchAcross(dirs []string, pattern string) string {
 	for _, d := range dirs {
 		if matches, _ := filepath.Glob(filepath.Join(d, pattern)); len(matches) > 0 {
@@ -127,11 +221,9 @@ func firstMatchAcross(dirs []string, pattern string) string {
 	return ""
 }
 
-// windowsDefaultAndPathDirs returns System32, SysWOW64 (if present), and each PATH dir.
 func windowsDefaultAndPathDirs() []string {
 	var dirs []string
 
-	// SystemRoot-based directories (cover both 32- and 64-bit cases if they exist).
 	if root := os.Getenv("SystemRoot"); root != "" {
 		sys32 := filepath.Join(root, "System32")
 		if fi, err := os.Stat(sys32); err == nil && fi.IsDir() {
@@ -143,16 +235,35 @@ func windowsDefaultAndPathDirs() []string {
 		}
 	}
 
-	// Every folder on PATH.
-	for _, p := range strings.Split(os.Getenv("PATH"), ";") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			if fi, err := os.Stat(p); err == nil && fi.IsDir() {
-				dirs = append(dirs, p)
-			}
+	for _, p := range voidParsePathEnv(os.Getenv("PATH")) {
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			dirs = append(dirs, p)
 		}
 	}
 	return uniqueStrings(dirs)
+}
+
+func voidParsePathEnv(s string) []string {
+	var dirs []string
+	var cur strings.Builder
+	inQuotes := false
+	for _, r := range s {
+		switch {
+		case r == '"':
+			inQuotes = !inQuotes
+		case r == ';' && !inQuotes:
+			if d := strings.Trim(strings.TrimSpace(cur.String()), `"`); d != "" {
+				dirs = append(dirs, d)
+			}
+			cur.Reset()
+		default:
+			cur.WriteRune(r)
+		}
+	}
+	if d := strings.Trim(strings.TrimSpace(cur.String()), `"`); d != "" {
+		dirs = append(dirs, d)
+	}
+	return dirs
 }
 
 func uniqueStrings(in []string) []string {

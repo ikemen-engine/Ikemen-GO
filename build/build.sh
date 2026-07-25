@@ -42,17 +42,18 @@ ensure_go_flags_android() {
 
 ## Resolve repo root _first_ so all path defaults are stable no matter where
 ## the script is invoked from (top dir, build dir, or elsewhere).
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-# Fail fast on unsafe repo paths (MSYS2/Cygwin): only allow [A-Za-z0-9._/-]
+# Fail fast on unsafe repo paths (MSYS2/Cygwin). Legacy IKEMEN;VOID paths strip ';' before the check.
 require_safe_path() {
   case "$OSTYPE" in
 	msys|cygwin)
-	  if [[ "$REPO_ROOT" =~ [^A-Za-z0-9._/-] ]]; then
+	  local path_check="${REPO_ROOT//;/}"
+	  if [[ "$path_check" =~ [^A-Za-z0-9._/-] ]]; then
 		echo "ERROR: Repository path contains characters unsafe for MSYS2/autotools:" >&2
 		echo "  $REPO_ROOT" >&2
-		echo "Use only letters, digits, '_', '-', '.'" >&2
+		echo "Use only letters, digits, '_', '-', '.', '/'" >&2
 		echo "Tip: move to something like: C:\dev\Ikemen-GO" >&2
 		exit 1
 	  fi
@@ -1106,6 +1107,16 @@ function stage_windows_resources() {
 
 	mkdir -p src build/winres
 
+	# IKEMEN:VOID exe icon — edit external/icons/Ikemen_VOID.png (PNG or JPEG) then rebuild.
+	if [[ -f external/icons/Ikemen_VOID.png ]]; then
+		echo "==> Generating Ikemen_VOID.ico from external/icons/Ikemen_VOID.png"
+		go run tools/png2ico.go external/icons/Ikemen_VOID.png external/icons/Ikemen_VOID.ico
+	fi
+	local void_icon="Ikemen_VOID.ico"
+	if [[ ! -f external/icons/Ikemen_VOID.ico ]]; then
+		void_icon="Ikemen_Cylia_V2.ico"
+	fi
+
 	# Prepare numeric SxS version & components for VERSIONINFO
 	local SXS_VERSION
 	SXS_VERSION="$(sanitize_sxs_version "$APP_VERSION")"
@@ -1137,7 +1148,7 @@ APP_COPYRIGHT="${APP_COPYRIGHT:-(c) ${COPY_START_YEAR}-${BUILD_YEAR} Ikemen GO t
 	cat > build/winres/Ikemen_GO.rc <<EOF
 #include <windows.h>
 #include <winver.h>
-1 ICON "Ikemen_Cylia_V2.ico"
+1 ICON "${void_icon}"
 1 RT_MANIFEST "Ikemen_GO.exe.manifest"
 
 VS_VERSION_INFO VERSIONINFO
@@ -1153,10 +1164,10 @@ BEGIN
 	BEGIN
 		BLOCK "040904B0"
 		BEGIN
-			VALUE "CompanyName", "Ikemen GO\\0"
-			VALUE "FileDescription", "Ikemen GO\\0"
+			VALUE "CompanyName", "IKEMEN:VOID\\0"
+			VALUE "FileDescription", "IKEMEN:VOID\\0"
 			VALUE "FileVersion", "${SXS_VERSION}\\0"
-			VALUE "ProductName", "Ikemen GO\\0"
+			VALUE "ProductName", "IKEMEN:VOID\\0"
 			VALUE "ProductVersion", "${SXS_VERSION}\\0"
 			VALUE "OriginalFilename", "Ikemen_GO.exe\\0"
 			VALUE "InternalName", "Ikemen_GO\\0"
@@ -1189,12 +1200,42 @@ EOF
 	  -O coff -o src/rsrc_windows.syso
 }
 
+# Copy transitive FFmpeg DLL imports into lib\ so the bundle is self-contained (semicolon-safe paths).
+function bundle_ffmpeg_transitive_deps() {
+	[[ "$GOOS" != "windows" ]] && return 0
+	local dest_lib="$LIBDIR"
+	local dep_bins="/mingw64/bin"
+	command -v objdump >/dev/null 2>&1 || return 0
+	[[ -d "$dest_lib" ]] || mkdir -p "$dest_lib"
+	local changed=1 passes=0
+	while [[ $changed -eq 1 && $passes -lt 24 ]]; do
+		changed=0
+		passes=$((passes + 1))
+		for dll in "$dest_lib"/*.dll; do
+			[[ -f "$dll" ]] || continue
+			while read -r dep; do
+				dep="${dep//$'\r'/}"
+				[[ -n "$dep" ]] || continue
+				case "${dep,,}" in
+					kernel32.dll|msvcrt.dll|user32.dll|gdi32.dll|ole32.dll|oleaut32.dll|shell32.dll|ws2_32.dll|winmm.dll|avrt.dll|shlwapi.dll|bcrypt.dll|advapi32.dll|avicap32.dll)
+						continue ;;
+				esac
+				if [[ ! -f "$dest_lib/$dep" && -f "$dep_bins/$dep" ]]; then
+					cp -av "$dep_bins/$dep" "$dest_lib/"
+					changed=1
+				fi
+			done < <(objdump -p "$dll" 2>/dev/null | awk '/DLL Name:/ {print $3}')
+		done
+	done
+}
+
 # Copy FFmpeg shared libs next to produced binary for easy runtime
 function bundle_shared_libs() {
 	local dest_lib="$LIBDIR"
 	#check dest_lib first so we don't re-copy if already done (e.g. from a previous build)
 	if compgen -G "$dest_lib/*" > /dev/null 2>/dev/null; then
 		echo "==> Shared libs already bundled in $dest_lib, skipping copy (delete that directory to force re-copy)"
+		bundle_ffmpeg_transitive_deps
 		return 0
 	fi
 	mkdir -p "$dest_lib"
@@ -1208,7 +1249,10 @@ function bundle_shared_libs() {
 			/mingw64/bin/libgcc_s_seh-1.dll \
 			/mingw64/bin/libstdc++-6.dll \
 			/mingw64/bin/libxmp*.dll \
-			/mingw64/bin/SDL2*.dll ; do
+			/mingw64/bin/SDL2*.dll \
+			/mingw64/bin/libcaca-0.dll \
+			/mingw64/bin/libopenal-1.dll \
+			/mingw64/bin/zlib1.dll ; do
 			cp -av "$d" "$dest_lib/" 2>/dev/null || true
 		done
 	elif [[ -d "$FFMPEG_PREFIX/lib" && "$GOOS" != "android" ]]; then
@@ -1250,6 +1294,7 @@ function bundle_shared_libs() {
 			cp -av "${libdir_sdl2}"/libSDL2*.dylib "$dest_lib/" 2>/dev/null || true
 		fi
 	fi
+	bundle_ffmpeg_transitive_deps
 }
 
 # Determine the target OS.

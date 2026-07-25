@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"gopkg.in/ini.v1"
@@ -392,6 +393,18 @@ func NormalizeNewlines(input string) string {
 	return input
 }
 
+func decodeUTF16LE(b []byte) (string, error) {
+	if len(b)%2 != 0 {
+		b = b[:len(b)-1]
+	}
+	u16 := make([]uint16, len(b)/2)
+	for i := range u16 {
+		u16[i] = uint16(b[2*i]) | uint16(b[2*i+1])<<8
+	}
+	runes := utf16.Decode(u16)
+	return string(runes), nil
+}
+
 func LoadText(filename string) (string, error) {
 	rc, err := OpenFile(filename)
 	if err != nil {
@@ -406,6 +419,23 @@ func LoadText(filename string) (string, error) {
 
 	if len(bytes) >= 3 && bytes[0] == 0xef && bytes[1] == 0xbb && bytes[2] == 0xbf { // UTF-8 BOM
 		return string(bytes[3:]), nil
+	}
+
+	// WinMUGEN / cheapie CNS often ship UTF-16 BE BOM with ANSI body (e.g. Infinite Soulabyss system/.system).
+	if len(bytes) >= 2 && bytes[0] == 0xfe && bytes[1] == 0xff {
+		bytes = bytes[2:]
+	} else if len(bytes) >= 2 && bytes[0] == 0xff && bytes[1] == 0xfe {
+		if decoded, err := decodeUTF16LE(bytes[2:]); err == nil {
+			return decoded, nil
+		}
+		bytes = bytes[2:]
+	}
+
+	// WinMUGEN / cheapie packs often ship Shift-JIS .def files; treat as UTF-8 only when valid.
+	if !utf8.Valid(bytes) {
+		if decoded, _, err := transform.Bytes(japanese.ShiftJIS.NewDecoder(), bytes); err == nil && utf8.Valid(decoded) {
+			return string(decoded), nil
+		}
 	}
 
 	return string(bytes), nil
@@ -1658,59 +1688,22 @@ func (zmfr *zipMemFileReader) Close() error {
 
 // OpenFile opens a regular file or a file within a zip archive.
 // For zip files, it reads the entire entry into memory to ensure full io.Seeker compatibility.
+// Dual-mode: normals get safe size caps + CRC; HyperNull/high-tier get WinMUGEN-permissive extract.
 // It returns an io.ReadSeekCloser that must be closed by the caller.
 func OpenFile(filename string) (io.ReadSeekCloser, error) {
 	filename = filepath.ToSlash(filename)
 	isZip, zipFilePath, pathInZip := IsZipPath(filename)
 	if isZip {
-		zr, err := zip.OpenReader(zipFilePath)
+		rsc, err := voidZipOpenFile(zipFilePath, pathInZip)
 		if err != nil {
+			// Fallback: path may be a plain file that happens to contain ".zip/" in the name.
 			f, err2 := os.Open(filename)
 			if err2 != nil {
-				return nil, fmt.Errorf("opening zip archive %s: %w", zipFilePath, err)
+				return nil, err
 			}
 			return f, nil
 		}
-
-		if pathInZip == "" {
-			zr.Close() // Close the main archive if we're not reading a specific file from it.
-			return nil, fmt.Errorf("path inside zip archive not specified for %s", filename)
-		}
-
-		var targetFile *zip.File
-		pathInZipLower := strings.ToLower(pathInZip)
-		for _, f := range zr.File {
-			if strings.ToLower(filepath.ToSlash(f.Name)) == pathInZipLower {
-				targetFile = f
-				break
-			}
-		}
-
-		if targetFile == nil {
-			zr.Close()
-			return nil, fmt.Errorf("file '%s' not found in zip archive '%s'", pathInZip, zipFilePath)
-		}
-
-		rc, err := targetFile.Open()
-		if err != nil {
-			zr.Close()
-			return nil, fmt.Errorf("opening file '%s' in zip archive '%s': %w", pathInZip, zipFilePath, err)
-		}
-
-		// Read the entire content of the zip file entry into memory
-		fileData, err := io.ReadAll(rc)
-		rc.Close() // Close the individual file reader from the zip entry
-		if err != nil {
-			zr.Close() // Close the main zip archive on error
-			return nil, fmt.Errorf("reading file '%s' from zip archive '%s': %w", pathInZip, zipFilePath, err)
-		}
-
-		// Create a bytes.Reader from the in-memory data
-		// *bytes.Reader implements io.ReadSeeker
-		bytesReader := bytes.NewReader(fileData)
-
-		// Return our custom wrapper that closes the main zip archive
-		return &zipMemFileReader{reader: bytesReader, zipArchive: zr}, nil
+		return rsc, nil
 	}
 
 	// Not a zip path, open as a normal file

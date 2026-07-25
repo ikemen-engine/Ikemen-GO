@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"runtime"
 	"runtime/debug"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -15,10 +16,11 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-var Version = "development"
+var Version = "IKEMEN:VOID"
 var BuildTime = "" // Set automatically by GitHub Actions
 
 func init() {
+	initSupernullLayer()
 	if runtime.GOOS != "android" {
 		runtime.LockOSThread()
 	}
@@ -128,8 +130,11 @@ func realMain() {
 	// Create directories for ALL platforms
 	os.MkdirAll(filepath.Join(sys.baseDir, "save/replays"), permission)
 	os.MkdirAll(filepath.Join(sys.baseDir, "save/logs"), permission)
+	os.MkdirAll(filepath.Join(sys.baseDir, "save/profile"), permission)
 
 	processCommandLine()
+	stopCPUProfile := startCPUProfile()
+	defer stopCPUProfile()
 
 	// Ensure cmdFlags exists even when there are no CLI args,
 	// since we assign defaults below.
@@ -178,6 +183,8 @@ func realMain() {
 		cfg.Video.RenderMode = "OpenGL ES 3.2"
 	}
 	sys.cfg = *cfg
+	voidAnnounceExploitsEnabled()
+	applyVoidBetaOverrides()
 	// Logcat("LOG: Config Loaded. System Script: " + sys.cfg.Config.System)
 
 	if sys.cfg.Debug.DumpLuaTables {
@@ -300,7 +307,8 @@ Debug Options:
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
 -speed <speed>          Changes game speed setting to <speed> (-9 to 9)
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
--speedtest              Speed test (match speed x100)`
+-speedtest              Speed test (match speed x100)
+-cpuprofile <file>      Write Go CPU profile to <file> (analyze with: go tool pprof -http=:8080 <file>)`
 					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
 					fmt.Printf("I.K.E.M.E.N Command line options\n\n" + text + "\nPress ENTER to exit")
 					var s string
@@ -423,4 +431,34 @@ func handlePanic(r interface{}) {
 	// Cleanup and exit
 	sys.shutdown()
 	os.Exit(1)
+}
+
+// startCPUProfile begins Go CPU profiling when -cpuprofile <path> is passed on the command line.
+func startCPUProfile() func() {
+	if sys.cmdFlags == nil {
+		return func() {}
+	}
+	path, ok := sys.cmdFlags["-cpuprofile"]
+	if !ok || path == "" {
+		return func() {}
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
+		LogMessage("IKEMEN:VOID: cpuprofile mkdir failed: %v", err)
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		LogMessage("IKEMEN:VOID: cpuprofile create failed: %v", err)
+		return func() {}
+	}
+	if err := pprof.StartCPUProfile(f); err != nil {
+		LogMessage("IKEMEN:VOID: cpuprofile start failed: %v", err)
+		f.Close()
+		return func() {}
+	}
+	LogMessage("IKEMEN:VOID: CPU profiling active -> %s", path)
+	return func() {
+		pprof.StopCPUProfile()
+		f.Close()
+		LogMessage("IKEMEN:VOID: CPU profile saved -> %s", path)
+	}
 }

@@ -389,6 +389,9 @@ func (w *Window) pollEvents() {
 					gfx.EndFrame()
 					w.SwapBuffers()
 				}
+			} else if t.Event == sdl.WINDOWEVENT_SHOWN || t.Event == sdl.WINDOWEVENT_FOCUS_GAINED ||
+				t.Event == sdl.WINDOWEVENT_RESTORED || t.Event == sdl.WINDOWEVENT_MAXIMIZED {
+				voidApplyVoidWindowChrome(w)
 			} else if t.Event == sdl.WINDOWEVENT_CLOSE {
 				w.closeflag = true
 			}

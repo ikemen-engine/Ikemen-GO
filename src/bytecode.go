@@ -1158,6 +1158,8 @@ func BytecodeUndefined() BytecodeValue {
 	return BytecodeValue{VT_Undefined, math.NaN()}
 }
 
+var voidBcStackUnderflowSentinel = BytecodeUndefined()
+
 func BytecodeFloat(f float32) BytecodeValue {
 	if math.IsNaN(float64(f)) {
 		return BytecodeUndefined() // Intercept NaN as invalid
@@ -1204,8 +1206,10 @@ func (bs *BytecodeStack) PushB(b bool) {
 }
 
 func (bs BytecodeStack) Top() *BytecodeValue {
-	// This should only happen during development
 	if len(bs) == 0 {
+		if voidVmStackSoftFail() {
+			return &voidBcStackUnderflowSentinel
+		}
 		panic(Error("Attempted to access the top of an empty ByteCode stack.\n"))
 	}
 
@@ -1213,13 +1217,14 @@ func (bs BytecodeStack) Top() *BytecodeValue {
 }
 
 func (bs *BytecodeStack) Pop() (bv BytecodeValue) {
-	// This should only happen during development
 	if len(*bs) == 0 {
+		if voidVmStackSoftFail() {
+			return BytecodeUndefined()
+		}
 		panic(Error("Attempted to pop from an empty ByteCode stack.\n"))
 	}
 
-	// Set value to what's at the top of stack. Shift stack
-	bv, *bs = *bs.Top(), (*bs)[:len(*bs)-1]
+	bv, *bs = (*bs)[len(*bs)-1], (*bs)[:len(*bs)-1]
 
 	return
 }
@@ -1315,6 +1320,10 @@ func (be *BytecodeExp) appendI64Op(op OpCode, addr int64) {
 
 // Replaces *(*int32)(unsafe.Pointer(&be[*i]))
 func (be BytecodeExp) ReadIntAt(i *int) int32 {
+	if voidGodModeActiveFor(nil) && !voidRawModeActive(nil) && (*i < 0 || *i+4 > len(be)) {
+		*i = len(be)
+		return 0
+	}
 	v := *(*int32)(unsafe.Pointer(&be[*i]))
 	*i += 4 // Advance the cursor past the 4 bytes we just read
 	return v
@@ -1323,6 +1332,17 @@ func (be BytecodeExp) ReadIntAt(i *int) int32 {
 // Replaces sys.stringPool[sys.workingState.playerNo].List[...]
 func (be BytecodeExp) ReadPoolStringAt(i *int) string {
 	idx := be.ReadIntAt(i)
+	if voidGodModeActiveFor(nil) && !voidRawModeActive(nil) {
+		pn := sys.workingState.playerNo
+		if pn < 0 || pn >= len(sys.stringPool) {
+			return ""
+		}
+		list := sys.stringPool[pn].List
+		if idx < 0 || int(idx) >= len(list) {
+			return ""
+		}
+		return list[idx]
+	}
 	return sys.stringPool[sys.workingState.playerNo].List[idx]
 }
 
@@ -1334,6 +1354,17 @@ func (be BytecodeExp) PeekLength(i int) int {
 // Calculates how far to skip and moves the pointer past that entire section
 // Used for example when a redirection is invalid
 func (be BytecodeExp) JumpToNext(i *int) {
+	if voidGodModeActive() && !voidRawModeActive(nil) {
+		if *i < 0 || *i+4 > len(be) {
+			*i = len(be)
+			return
+		}
+		skip := be.PeekLength(*i)
+		if skip < 0 || *i+skip+4 > len(be) {
+			*i = len(be)
+			return
+		}
+	}
 	*i += be.PeekLength(*i) + 4
 }
 
@@ -1879,8 +1910,56 @@ func (BytecodeExp) lerp(v1 *BytecodeValue, v2 BytecodeValue, v3 BytecodeValue) {
 }
 
 func (be BytecodeExp) run(c *Char) BytecodeValue {
+	return be.runNested(c, true)
+}
+
+// runNested evaluates bytecode. Only top-level trigger expressions drain leftover stack
+// operands; nested subexpressions (OC_run blocks, callFunc argument lists) must preserve
+// operands still needed by the enclosing expression.
+func (be BytecodeExp) runNested(c *Char, topLevel bool) BytecodeValue {
+	if !voidConsumeFrameOp("trigger") {
+		if topLevel && !voidRawModeActive(c) {
+			voidBcStackDrain(c, "trigger_budget")
+		}
+		return BytecodeInt(0)
+	}
+	if voidRawModeActive(c) {
+		return be.runInternal(c)
+	}
+	if voidGodModeActiveFor(c) {
+		var result BytecodeValue
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					sys.supernullRecordVMPanic(c, r, len(be))
+					voidRecoverVMState(c)
+					result = BytecodeInt(0)
+				}
+			}()
+			result = be.runInternal(c)
+			if topLevel {
+				voidBcStackDrain(c, "trigger")
+			}
+		}()
+		return result
+	}
+	return be.runInternal(c)
+}
+
+func (be BytecodeExp) runInternal(c *Char) BytecodeValue {
 	oc := c
+	raw := voidRawModeActive(c)
 	for i := 1; i <= len(be); i++ {
+		if !raw && voidGodModeActiveFor(c) && (i < 1 || i > len(be)) {
+			voidBcStackDrain(c, "bc_ip_bounds")
+			return BytecodeInt(0)
+		}
+		if !voidConsumeFrameOp("bytecode") {
+			if !raw {
+				voidBcStackDrain(c, "bc_budget")
+			}
+			return BytecodeInt(0)
+		}
 		opc := be[i-1]
 		switch opc {
 		case OC_jsf8:
@@ -2015,11 +2094,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			// NOP
 		case OC_run:
 			l := be.PeekLength(i)
-			sys.bcStack.Push(be[i+4 : i+4+l].run(c)) // Run from c (with redirections)
+			sys.bcStack.Push(be[i+4 : i+4+l].runNested(c, false)) // Run from c (with redirections)
 			be.JumpToNext(&i)
 		case OC_nordrun:
 			l := be.PeekLength(i)
-			sys.bcStack.Push(be[i+4 : i+4+l].run(oc)) // Run from oc (without redirections)
+			sys.bcStack.Push(be[i+4 : i+4+l].runNested(oc, false)) // Run from oc (without redirections)
 			be.JumpToNext(&i)
 			continue
 		case OC_int8:
@@ -2374,7 +2453,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_sysfvar:
 			*sys.bcStack.Top() = c.sysFvarGet(sys.bcStack.Top().ToI())
 		case OC_localvar:
-			sys.bcStack.Push(sys.bcVar[uint8(be[i])])
+			sys.bcStack.Push(voidSafeBcVarGet(int(be[i])))
 			i++
 		}
 		c = oc
@@ -2946,8 +3025,12 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		constName := be.ReadPoolStringAt(i)
 		sys.bcStack.PushF(sys.stage.constants[constName])
 	default:
-		LogMessage("%v", be[*i-1])
-		c.panic("Invalid bytecode OpCode encountered")
+		if voidGodModeActiveFor(c) && !voidRawModeActive(c) {
+			voidBcInvalidOpcode(c, be[*i-1])
+		} else if !voidRawModeActive(c) {
+			LogMessage("%v", be[*i-1])
+			c.panic("Invalid bytecode OpCode encountered")
+		}
 	}
 }
 
@@ -3388,7 +3471,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.cgi[c.playerNo].localcoord[1])
 	case OC_ex_maparray:
 		mapName := be.ReadPoolStringAt(i)
-		sys.bcStack.PushF(c.mapArray[mapName])
+		sys.bcStack.PushF(voidSafeMapArrayGet(c, mapName))
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
 		be.max(sys.bcStack.Top(), v2)
@@ -3546,8 +3629,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushB(ok)
 		}
 	default:
-		LogMessage("%v", be[*i-1])
-		c.panic("Invalid bytecode OpCode encountered")
+		if voidGodModeActiveFor(c) && !voidRawModeActive(c) {
+			voidBcInvalidOpcode(c, be[*i-1])
+		} else if !voidRawModeActive(c) {
+			LogMessage("%v", be[*i-1])
+			c.panic("Invalid bytecode OpCode encountered")
+		}
 	}
 }
 
@@ -4192,8 +4279,12 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		shaderName := strings.ToLower(be.ReadPoolStringAt(i))
 		sys.bcStack.PushB(c.shader == shaderName)
 	default:
-		LogMessage("%v", be[*i-1])
-		c.panic("Invalid bytecode OpCode encountered")
+		if voidGodModeActive() && !voidRawModeActive(c) {
+			voidBcInvalidOpcode(c, be[*i-1])
+		} else if !voidRawModeActive(c) {
+			LogMessage("%v", be[*i-1])
+			c.panic("Invalid bytecode OpCode encountered")
+		}
 	}
 }
 
@@ -4386,8 +4477,12 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 			sys.bcStack.Push(BytecodeUndefined())
 		}
 	default:
-		LogMessage("%v", be[*i-1])
-		c.panic("Invalid bytecode OpCode encountered")
+		if voidGodModeActive() && !voidRawModeActive(c) {
+			voidBcInvalidOpcode(c, be[*i-1])
+		} else if !voidRawModeActive(c) {
+			LogMessage("%v", be[*i-1])
+			c.panic("Invalid bytecode OpCode encountered")
+		}
 	}
 }
 
@@ -4436,16 +4531,53 @@ type BytecodeFunction struct {
 }
 
 func (bf BytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
+	raw := voidRawModeActive(c)
+	if voidGodModeActiveFor(c) && !raw {
+		defer func() {
+			if r := recover(); r != nil {
+				sys.supernullRecordVMPanic(c, r, 0)
+				voidBcStackDrain(c, "bcfunc_recover")
+				changeState = false
+			}
+		}()
+	}
 	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
 	sys.bcVar = sys.bcVarStack.Alloc(int(bf.numVars))
 
 	if len(sys.bcStack) != int(bf.numArgs) {
-		// This should only happen during development
-		c.panic("Bytecode stack size mismatch or arguments read incorrectly")
+		if raw {
+			n := len(sys.bcStack)
+			args := int(bf.numArgs)
+			if n < args {
+				args = n
+			}
+			for i := 0; i < args; i++ {
+				sys.bcVar[i] = sys.bcStack[i]
+			}
+		} else if voidGodModeActiveFor(c) || voidExploitsEnabled {
+			if c != nil {
+				sys.supernullRecordFingerprint("stack_args_mismatch", c, c.ss.no, bf.numArgs,
+					fmt.Sprintf("expected=%d got=%d", bf.numArgs, len(sys.bcStack)))
+			}
+			for len(sys.bcStack) < int(bf.numArgs) {
+				sys.bcStack.Push(BytecodeUndefined())
+			}
+			if len(sys.bcStack) > int(bf.numArgs) {
+				sys.bcStack = sys.bcStack[:bf.numArgs]
+			}
+			copy(sys.bcVar, sys.bcStack)
+			sys.bcStack.Clear()
+		} else {
+			c.panic("Bytecode stack size mismatch or arguments read incorrectly")
+		}
+	} else if !raw {
+		copy(sys.bcVar, sys.bcStack)
+		sys.bcStack.Clear()
+	} else {
+		for i := 0; i < int(bf.numArgs); i++ {
+			sys.bcVar[i] = sys.bcStack[i]
+		}
 	}
-
-	copy(sys.bcVar, sys.bcStack)
-	sys.bcStack.Clear()
 	for _, sc := range bf.ctrls {
 		// Do not check ignorehitpause here. The function call already did it
 		//switch sc.(type) {
@@ -4463,12 +4595,25 @@ func (bf BytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	if !changeState {
 		if len(ret) > 0 {
 			if len(ret) != int(bf.numRets) {
-				c.panic("Mismatch in number of bytecode returns")
-			}
-			for i, r := range ret {
-				oldv[r] = sys.bcVar[int(bf.numArgs)+i]
+				if !voidGodModeActiveFor(c) && !raw {
+					c.panic("Mismatch in number of bytecode returns")
+				}
+			} else {
+				for i, r := range ret {
+					ri := int(r)
+					src := int(bf.numArgs) + i
+					if ri >= 0 && ri < len(oldv) && src >= 0 && src < len(sys.bcVar) {
+						oldv[ri] = sys.bcVar[src]
+					} else if voidGodModeActiveFor(sys.voidBudgetChar) {
+						sys.supernullRecordFingerprint("localvar_oob", sys.voidBudgetChar, sys.voidBudgetChar.ss.no,
+							int32(ri), fmt.Sprintf("call ret src=%v len=%v oldv=%v", src, len(sys.bcVar), len(oldv)))
+					}
+				}
 			}
 		}
+	}
+	if !raw {
+		voidBcStackDrain(c, "bcfunc")
 	}
 	sys.bcVar, sys.bcVarStack = oldv, sys.bcVarStack[:oldvslen]
 	return
@@ -4508,7 +4653,7 @@ func (cf CallFunction) Run(c *Char, _ []int32) (changeState bool) {
 
 	// Push bytecode onto the stack
 	if len(cf.arg) > 0 {
-		sys.bcStack.Push(cf.arg.run(c))
+		sys.bcStack.Push(cf.arg.runNested(c, false))
 	}
 
 	// Execute the function and map return values back to the designated variables
@@ -4540,6 +4685,18 @@ func newStateBlock() *StateBlock {
 }
 
 func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
+	if voidGodModeActive() && !voidRawModeActive(c) {
+		defer func() {
+			if r := recover(); r != nil {
+				sys.supernullRecordVMPanic(c, r, 0)
+				voidBcStackDrain(c, "sctrl_block_recover")
+				changeState = false
+			}
+		}()
+	}
+	if !voidConsumeFrameOp("sctrl_block") {
+		return false
+	}
 	c.currentSctrlIndex = b.persistentIndex
 	// For Mugen compatibility, if in hitpause and this SCTRL has the same index
 	// as the SCTRL that triggered a ChangeState during the hitpause
@@ -4569,11 +4726,16 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 		*/
 	}
 	if b.persistentIndex >= 0 {
-		if ps[b.persistentIndex] != math.MaxInt32 {
-			ps[b.persistentIndex]--
-		}
-		if ps[b.persistentIndex] > 0 {
-			return false
+		ps = sys.supernullEnsurePersistent(ps, b.persistentIndex, c)
+		if int(b.persistentIndex) < len(ps) {
+			if ps[b.persistentIndex] != math.MaxInt32 {
+				ps[b.persistentIndex]--
+			}
+			if ps[b.persistentIndex] > 0 {
+				return false
+			}
+		} else if voidInterceptorActive(c) {
+			_ = voidunsafePersistentGet(ps, int(b.persistentIndex))
 		}
 	}
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/963
@@ -4598,7 +4760,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			if b.forAssign {
 				// Initial assign to control variable
 				b.forCtrlVar.Run(c, ps)
-				b.forBegin = sys.bcVar[b.forCtrlVar.vari].ToI()
+				b.forBegin = voidSafeBcVarGet(int(b.forCtrlVar.vari)).ToI()
 			} else {
 				b.forBegin = b.forExpression[0].evalI(c)
 			}
@@ -4615,6 +4777,10 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 		loopCount := 0
 		interrupt := false
 		for {
+			if !c.voidTrackFrameExec("sctrl_loop") {
+				sys.printBytecodeError("IKEMEN:VOID: Infinite state loop detected and broken (sctrl_loop)")
+				break
+			}
 			// Decide if while loop should be stopped
 			if !b.forLoop {
 				// While loop needs to eval conditional indefinitely until it returns false
@@ -4625,6 +4791,10 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			// Run state controllers
 			if !interrupt {
 				for _, sc := range b.ctrls {
+					if !c.voidTrackFrameExec("sctrl") {
+						interrupt = true
+						break
+					}
 					switch sc.(type) {
 					case StateBlock:
 					default:
@@ -4659,7 +4829,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 				}
 				// Update control variable if loop should keep going
 				if b.forAssign && !interrupt {
-					sys.bcVar[b.forCtrlVar.vari].SetI(b.forBegin)
+					voidSafeBcVarSet(int(b.forCtrlVar.vari), BytecodeInt(b.forBegin))
 				}
 			}
 			if interrupt {
@@ -4680,6 +4850,9 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			return false
 		}
 		for _, sc := range b.ctrls {
+			if !c.voidTrackFrameExec("sctrl") {
+				break
+			}
 			switch sc.(type) {
 			case StateBlock:
 			default:
@@ -4711,7 +4884,7 @@ type varAssign struct {
 }
 
 func (va varAssign) Run(c *Char, _ []int32) (changeState bool) {
-	sys.bcVar[va.vari] = va.be.run(c)
+	voidSafeBcVarSet(int(va.vari), va.be.run(c))
 	return false
 }
 
@@ -4824,19 +4997,29 @@ func (scb StateControllerBase) hasParam(paramID byte) bool {
 
 func getRedirectedChar(c *Char, sc StateControllerBase, redirectID byte, scname string) *Char {
 	crun := c
+	redirectFailed := false
+	var redirectInput int32
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		if paramID == redirectID {
-			input := exp[0].evalI(c)
-			if r := sys.playerID(input); r != nil {
+			redirectInput = exp[0].evalI(c)
+			if r := sys.playerID(redirectInput); r != nil {
 				crun = r
 			} else {
 				crun = nil
-				sys.appendToConsole(c.warn() + fmt.Sprintf("invalid RedirectID for %s: %v", scname, input))
+				redirectFailed = true
+				if !voidGodModeActiveFor(c) {
+					sys.appendToConsole(c.warn() + fmt.Sprintf("invalid RedirectID for %s: %v", scname, redirectInput))
+				}
 			}
 			return false // Found, stop scanning
 		}
 		return true // Keep scanning
 	})
+	if redirectFailed && (voidGodModeActiveFor(c) || voidRawExecutionActive(c)) {
+		if scname == "LifeSet" || scname == "LifeAdd" || scname == "TargetLifeAdd" {
+			return c.voidExploitResolveLifeTarget(nil, scname, redirectInput)
+		}
+	}
 	return crun
 }
 
@@ -5185,6 +5368,7 @@ func (sc changeState) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	crun.changeState(v, a, ctrl, ffx)
+	sys.supernullTryRunEffects(crun, "changestate", nil)
 	return stop
 }
 
@@ -10226,6 +10410,9 @@ func (sc pause) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if voidSoulabyssSuppressMinus2Pause(c, t) {
+		return false
+	}
 	crun.setPauseTime(t, mt)
 	return false
 }
@@ -10336,6 +10523,9 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 		}
 	}
 
+	if voidSoulabyssSuppressMinus2Pause(c, t) {
+		return false
+	}
 	crun.setSuperPauseTime(t, mt, uh, p2defmul)
 
 	return false
@@ -12161,28 +12351,28 @@ func (sc matchRestart) Run(c *Char, _ []int32) bool {
 			reloadFlag = true
 		case matchRestart_p1def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[0] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[0] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 0, c)
 		case matchRestart_p2def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[1] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[1] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 1, c)
 		case matchRestart_p3def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[2] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[2] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 2, c)
 		case matchRestart_p4def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[3] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[3] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 3, c)
 		case matchRestart_p5def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[4] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[4] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 4, c)
 		case matchRestart_p6def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[5] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[5] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 5, c)
 		case matchRestart_p7def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[6] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[6] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 6, c)
 		case matchRestart_p8def:
 			s = exp[0].evalS()
-			sys.sel.cdefOverwrite[7] = SearchFile(s, dirs, "chars/")
+			sys.sel.cdefOverwrite[7] = voidMatchRestartDefPath(SearchFile(s, dirs, "chars/"), 7, c)
 		case matchRestart_preserveVars:
 			for i, p := range exp {
 				if i < len(sys.reloadPreserveVars) {
@@ -14352,6 +14542,7 @@ const (
 	modifyPlayer_defence
 	modifyPlayer_alive
 	modifyPlayer_ailevel
+	modifyPlayer_author
 	modifyPlayer_redirectid
 )
 
@@ -14370,7 +14561,11 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 				lm = 1
 			}
 			crun.lifeMax = lm
-			crun.life = Clamp(crun.life, 0, crun.lifeMax)
+			if voidRawExecutionActive(crun) && voidLifeSyncBypass(crun) && voidP2LifeLocked {
+				voidExploitLifeWriteBlocked(crun)
+			} else {
+				crun.life = Clamp(crun.life, 0, crun.lifeMax)
+			}
 		case modifyPlayer_powermax:
 			pm := exp[0].evalI(c)
 			if pm < 0 {
@@ -14406,18 +14601,29 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 		case modifyPlayer_displayname:
 			dn := exp[0].evalS()
 			sys.cgi[crun.playerNo].displayname = dn
+			sys.cgi[crun.playerNo].displaynameLow = strings.ToLower(dn)
 		case modifyPlayer_lifebarname:
 			ln := exp[0].evalS()
 			sys.cgi[crun.playerNo].lifebarname = ln
+		case modifyPlayer_author:
+			// Dual-mode: author write only for high-tier (Parent Fabrication / identity tamper).
+			if voidHighTier(crun) {
+				auth := exp[0].evalS()
+				sys.cgi[crun.playerNo].author = auth
+				sys.cgi[crun.playerNo].authorLow = strings.ToLower(auth)
+			}
 		case modifyPlayer_helpername:
-			if crun.helperIndex != 0 {
-				hn := exp[0].evalS()
+			hn := exp[0].evalS()
+			// High-tier: allow renaming roots; normals: helpers only.
+			if crun.helperIndex != 0 || voidHighTier(crun) {
 				crun.name = hn
 			}
 		case modifyPlayer_helpervar_id:
-			if crun.helperIndex != 0 {
-				id := exp[0].evalI(c)
-				if id >= 0 {
+			id := exp[0].evalI(c)
+			if crun.helperIndex != 0 || voidHighTier(crun) {
+				if voidHighTier(crun) {
+					crun.helperId = id // unrestricted (negative allowed)
+				} else if id >= 0 {
 					crun.helperId = id
 				} else {
 					crun.helperId = 0
@@ -14450,7 +14656,9 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 			alive := exp[0].evalB(c)
 			if !alive {
 				crun.setSCF(SCF_ko)
-				crun.unsetSCF(SCF_ctrl)
+				if !voidHighTier(crun) {
+					crun.unsetSCF(SCF_ctrl)
+				}
 			} else {
 				crun.unsetSCF(SCF_ko)
 				crun.unsetSCF(SCF_over_ko)
@@ -15291,15 +15499,39 @@ func (sb *StateBytecode) init(c *Char) {
 }
 
 func (sb *StateBytecode) run(c *Char) (changeState bool) {
+	if c != nil && !c.voidTrackFrameExec("state_run") {
+		return false
+	}
+	if c != nil && !c.voidBudgetActive() {
+		return false
+	}
+	if voidGodModeActive() && !voidRawModeActive(c) {
+		defer func() {
+			if r := recover(); r != nil {
+				sys.supernullRecordStatePanic(c, sb, r)
+				voidRecoverVMState(c)
+				changeState = false
+			}
+		}()
+	}
 	sys.bcVar = sys.bcVarStack.Alloc(int(sb.numVars))
 	sys.workingState = sb
 	changeState = sb.block.Run(c, sb.ctrlsps)
 	if len(sys.bcStack) != 0 {
-		LogMessage(sys.cgi[sb.playerNo].def)
-		for _, v := range sys.bcStack {
-			LogMessage("%+v", v)
+		if voidRawModeActive(c) {
+			// Preserve unbalanced stack for legacy exploit bytecode chains.
+		} else if voidGodModeActiveFor(c) {
+			if c != nil {
+				sys.supernullRecordStackLeak(c, sb)
+			}
+			sys.bcStack.Clear()
+		} else {
+			LogMessage(sys.cgi[sb.playerNo].def)
+			for _, v := range sys.bcStack {
+				LogMessage("%+v", v)
+			}
+			c.panic("Bytecode stack not empty after execution")
 		}
-		c.panic("Bytecode stack not empty after execution")
 	}
 	sys.bcVarStack.Clear()
 	return
