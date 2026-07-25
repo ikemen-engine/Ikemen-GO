@@ -2546,8 +2546,8 @@ function start.updateDrawList()
 					if hasMultipleChars and hasPortraitAnim(motif.select_info.cell.slot) then
 						local icon = getTransforms(motif.select_info.cell.slot)
 						icon.anim = motif.select_info.cell.slot.AnimData
-						icon.x = motif.select_info.pos[1] + t.x + motif.select_info.cell.slot.offset[1]
-						icon.y = motif.select_info.pos[2] + t.y + motif.select_info.cell.slot.offset[2]
+						icon.x = motif.select_info.pos[1] + t.x
+						icon.y = motif.select_info.pos[2] + t.y
 						table.insert(drawList, icon)
 					end
 				end
@@ -2672,6 +2672,9 @@ function start.f_selectScreen()
 		if start.needUpdateDrawList then
 			staticDrawList = start.updateDrawList()
 			start.needUpdateDrawList = false 
+		end
+		for _, item in ipairs(staticDrawList) do
+			animUpdate(item.anim)
 		end
 		batchDraw(staticDrawList)
 		--draw done cursors
