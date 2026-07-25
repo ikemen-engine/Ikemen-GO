@@ -543,13 +543,16 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 	//	pers = Abs(rp.xbs) / Abs(rp.xts)
 	//}
 	if !rp.rot.IsZero() && rp.tile.xflag == 0 && rp.tile.yflag == 0 {
-		// This block makes shadows ignore their own yscale when in perspective
-		//if rp.vs != 1 {
-		//	y1 = rp.rcy + ((rp.y - rp.ys*float32(rp.size[1])) - rp.rcy)
-		//	y2 = y1
-		//	y3 = rp.y
-		//	y4 = y3
-		//}
+		// TODO: This block makes shadows ignore their own yscale when in perspective
+		// However, when we disable it, regular shadows are scaled incorrectly even with the smallest roation
+		// So for now let's split the difference and keep the code only outside projection
+		if rp.vs != 1 && rp.projectionMode == 0 {
+			y1 = rp.rcy + ((rp.y - rp.ys*float32(rp.size[1])) - rp.rcy)
+			y2 = y1
+			y3 = rp.y
+			y4 = y3
+		}
+
 		modelview = applyProjection(modelview, rp, 0, 1, 0)
 		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
 		modelview = applyRotation(modelview, rp)
