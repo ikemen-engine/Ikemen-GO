@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -25,9 +26,11 @@ const (
 	REPLAY_NUM_INPUTS  = MaxSimul * 2
 	REPLAY_INPUT_BYTES = 2 + 6
 
-	syncConfigVersion   uint16 = 1
-	replayFormatVersion uint16 = 1
-	replayMagic                = "IKRPLCFG"
+	syncConfigVersion     uint16 = 1
+	replayFormatVersion   uint16 = 2
+	replayMagic                  = "IKRPLCFG"
+	replaySyncMagic              = "IKRPLSYN"
+	replaySyncSearchLimit        = int64(64 << 20)
 
 	netLoadingPollTimeout = time.Millisecond
 
@@ -297,8 +300,8 @@ func (nc *NetConnection) GetHostGuestRemap() (host, guest int) {
 	return
 }
 
-func (nc *NetConnection) Accept(port string) error {
-	ln, err := net.Listen("tcp", ":"+port)
+func (nc *NetConnection) Accept(port int) error {
+	ln, err := net.Listen("tcp", net.JoinHostPort("", Itoa(port)))
 	if err != nil {
 		return err
 	}
@@ -363,7 +366,7 @@ func (nc *NetConnection) Accept(port string) error {
 	return nil
 }
 
-func (nc *NetConnection) Connect(server, port string) {
+func (nc *NetConnection) Connect(server string, port int) {
 	nc.host = false
 	nc.conn = nil // Make sure this is a new connection
 	nc.remIn, nc.locIn = nc.GetHostGuestRemap()
@@ -374,7 +377,7 @@ func (nc *NetConnection) Connect(server, port string) {
 			if nc.isClosing() {
 				return
 			}
-			tempConn, err := d.Dial("tcp", server+":"+port)
+			tempConn, err := d.Dial("tcp", net.JoinHostPort(server, Itoa(port)))
 			if err != nil {
 				time.Sleep(100 * time.Millisecond)
 				continue
@@ -600,8 +603,13 @@ func (nc *NetConnection) Synchronize() error {
 
 	// Write seed and pre-match time to replay file
 	if nc.recording != nil {
-		binary.Write(nc.recording, binary.LittleEndian, &seed)
-		binary.Write(nc.recording, binary.LittleEndian, &pmTime)
+		if off, err := nc.recording.Seek(0, io.SeekCurrent); err == nil {
+			log.Printf("Replay sync write: offset=%d seed=%d pmTime=%d gameRunning=%t rollback=%t",
+				off, seed, pmTime, sys.gameRunning, sys.cfg.Netplay.RollbackNetcode)
+		}
+		if err := writeReplaySync(nc.recording, seed, pmTime); err != nil {
+			return err
+		}
 	}
 
 	// Verify connection time synchronization
@@ -702,8 +710,9 @@ func (nc *NetConnection) Synchronize() error {
 		}
 	})
 
-	// Update game state after synchronization
-	nc.Update()
+	// Update delay-netplay state after sync. Skip rollback-entry samples;
+	// replay frames are appended later from the authoritative GGPO timeline.
+	nc.update(sys.rollback.session == nil)
 
 	// Log status
 	log.Printf("Network synchronized: seed=%d pmTime=%d time=%d host=%v", seed, pmTime, nc.time, nc.host)
@@ -830,6 +839,12 @@ func (nc *NetConnection) LoadingReady() (bool, error) {
 }
 
 func (nc *NetConnection) Update() bool {
+	return nc.update(true)
+}
+
+// Advance delay-netplay by one frame. Skip recording the final sync frame before rollback,
+// since it belongs to neither the pre-match replay nor the rollback match replay.
+func (nc *NetConnection) update(recordReplay bool) bool {
 	if nc.st != NS_Stopped {
 		nc.stoppedcnt = 0
 	}
@@ -876,7 +891,7 @@ func (nc *NetConnection) Update() bool {
 				nc.buf[nc.remIn].curT = nc.time
 
 				// Write inputs to replay file
-				if nc.recording != nil {
+				if recordReplay && nc.recording != nil {
 					for i := range nc.buf {
 						ringIdx := nc.time & (NETBUF_NUM_FRAMES - 1)
 						if err := writeReplayInput(nc.recording, nc.buf[i].buf[ringIdx], nc.buf[i].axisBuf[ringIdx]); err != nil {
@@ -944,19 +959,20 @@ func readReplayHeader(f *os.File) (*ReplayHeader, error) {
 	magic := make([]byte, len(replayMagic))
 	if _, err := io.ReadFull(f, magic); err != nil {
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			_, _ = f.Seek(0, io.SeekStart)
-			return nil, nil
+			return nil, fmt.Errorf("missing replay header")
 		}
 		return nil, err
 	}
 	if string(magic) != replayMagic {
-		_, _ = f.Seek(0, io.SeekStart)
-		return nil, nil
+		return nil, fmt.Errorf("invalid replay header magic")
 	}
 
 	var version uint16
 	if err := binary.Read(f, binary.LittleEndian, &version); err != nil {
 		return nil, err
+	}
+	if version != replayFormatVersion {
+		return nil, fmt.Errorf("unsupported replay format version: %d", version)
 	}
 	var size uint32
 	if err := binary.Read(f, binary.LittleEndian, &size); err != nil {
@@ -975,6 +991,16 @@ func readReplayHeader(f *os.File) (*ReplayHeader, error) {
 	return &header, nil
 }
 
+func writeReplaySync(w io.Writer, seed, pmTime int32) error {
+	if _, err := w.Write([]byte(replaySyncMagic)); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.LittleEndian, seed); err != nil {
+		return err
+	}
+	return binary.Write(w, binary.LittleEndian, pmTime)
+}
+
 type ReplayFile struct {
 	file               *os.File
 	ibit               [REPLAY_NUM_INPUTS]InputBits
@@ -983,7 +1009,6 @@ type ReplayFile struct {
 	strictSettings     []SyncSetting
 	hostSettings       []SyncSetting
 	contentFingerprint string
-	warning            string
 }
 
 func OpenReplayFile(filename string) *ReplayFile {
@@ -1000,19 +1025,14 @@ func OpenReplayFile(filename string) *ReplayFile {
 	}
 
 	out := &ReplayFile{file: rf}
-	if header != nil {
-		out.strictSettings = cloneSyncSettings(header.Strict)
-		out.hostSettings = cloneSyncSettings(header.Host)
-		out.contentFingerprint = header.ContentFingerprint
-		if header.SyncVersion != syncConfigVersion {
-			out.warning = fmt.Sprintf(
-				"replay sync config version mismatch (replay=%d engine=%d); playback is best-effort",
-				header.SyncVersion, syncConfigVersion,
-			)
-		}
-	} else {
-		out.warning = "legacy replay without sync config header; playback is best-effort"
+	if header.SyncVersion != syncConfigVersion {
+		log.Printf("Replay sync config version mismatch: replay=%d engine=%d", header.SyncVersion, syncConfigVersion)
+		rf.Close()
+		return nil
 	}
+	out.strictSettings = cloneSyncSettings(header.Strict)
+	out.hostSettings = cloneSyncSettings(header.Host)
+	out.contentFingerprint = header.ContentFingerprint
 
 	log.Printf("Replay file opened: %s", filename)
 	return out
@@ -1054,23 +1074,80 @@ func (rf *ReplayFile) AnyButton() bool {
 	return false
 }
 
+func seekReplaySyncMarker(f *os.File) (int64, error) {
+	start, err := f.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return 0, err
+	}
+	data, err := io.ReadAll(io.LimitReader(f, replaySyncSearchLimit))
+	if err != nil {
+		_, _ = f.Seek(start, io.SeekStart)
+		return 0, err
+	}
+	idx := bytes.Index(data, []byte(replaySyncMagic))
+	if idx < 0 {
+		_, _ = f.Seek(start, io.SeekStart)
+		return 0, fmt.Errorf("replay sync marker not found from offset %d", start)
+	}
+	skipped := int64(idx)
+	_, err = f.Seek(start+skipped+int64(len(replaySyncMagic)), io.SeekStart)
+	return skipped, err
+}
+
+func (rf *ReplayFile) readReplaySync() (seed, pmTime int32, err error) {
+	if rf == nil || rf.file == nil {
+		return 0, 0, io.ErrClosedPipe
+	}
+
+	start, _ := rf.file.Seek(0, io.SeekCurrent)
+	skipped, err := seekReplaySyncMarker(rf.file)
+	if err != nil {
+		return 0, 0, err
+	}
+	if skipped > 0 {
+		log.Printf("Replay sync read: skipped %d byte(s) to recover sync marker from offset %d", skipped, start)
+	}
+
+	if err := binary.Read(rf.file, binary.LittleEndian, &seed); err != nil {
+		return 0, 0, err
+	}
+	if err := binary.Read(rf.file, binary.LittleEndian, &pmTime); err != nil {
+		return 0, 0, err
+	}
+	if off, err := rf.file.Seek(0, io.SeekCurrent); err == nil {
+		log.Printf("Replay sync read: offset=%d seed=%d pmTime=%d", off, seed, pmTime)
+	}
+	return seed, pmTime, nil
+}
+
+func (rf *ReplayFile) atReplaySyncMarker() bool {
+	if rf == nil || rf.file == nil {
+		return false
+	}
+	pos, err := rf.file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return false
+	}
+	var magic [len(replaySyncMagic)]byte
+	_, err = io.ReadFull(rf.file, magic[:])
+	_, _ = rf.file.Seek(pos, io.SeekStart)
+	return err == nil && string(magic[:]) == replaySyncMagic
+}
+
 // Read system variables from replay file
 func (rf *ReplayFile) Synchronize() {
 	if rf.file != nil {
-		// Read random seed
-		var seed int32
-		if err := binary.Read(rf.file, binary.LittleEndian, &seed); err == nil {
-			Srand(seed)
+		seed, pmTime, err := rf.readReplaySync()
+		if err != nil {
+			log.Printf("Replay synchronization failed: %v", err)
+			sys.esc = true
+			rf.Close()
+			return
 		}
-
-		// Read pre-match time
-		var pmTime int32
-		if err := binary.Read(rf.file, binary.LittleEndian, &pmTime); err == nil {
-			rf.preMatchTime = pmTime
-			// Advance first frame
-			rf.Update()
-		}
-
+		Srand(seed)
+		rf.preMatchTime = pmTime
+		sys.preMatchTime = pmTime
+		rf.Update()
 		// Log status
 		log.Printf("Replay synchronized: seed=%d pmTime=%d", seed, pmTime)
 	}
@@ -1082,6 +1159,11 @@ func (rf *ReplayFile) Update() bool {
 		sys.esc = true
 	} else {
 		if sys.oldNextAddTime > 0 {
+			if rf.atReplaySyncMarker() {
+				rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
+				rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
+				return !sys.gameEnd
+			}
 			rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
 			rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
 
@@ -1615,13 +1697,10 @@ func (s *System) beginReplaySession(rf *ReplayFile) error {
 	if rf == nil {
 		return nil
 	}
-	if rf.warning != "" {
-		log.Printf("Replay compatibility warning: %s", rf.warning)
-	}
 	log.Printf("Replay sync header loaded: strict=%d host=%d fingerprint=%q",
 		len(rf.strictSettings), len(rf.hostSettings), rf.contentFingerprint)
 	if len(rf.hostSettings) == 0 && len(rf.strictSettings) == 0 {
-		log.Printf("Replay sync config: no header settings to apply (legacy/best-effort replay)")
+		log.Printf("Replay sync config: no header settings to apply")
 		return nil
 	}
 

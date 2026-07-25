@@ -21,14 +21,14 @@ type RollbackSystem struct {
 }
 
 type RollbackProperties struct {
-	FrameDelay            int  `ini:"FrameDelay"`
-	DisconnectNotifyStart int  `ini:"DisconnectNotifyStart"`
-	DisconnectTimeout     int  `ini:"DisconnectTimeout"`
-	LogsEnabled           bool `ini:"LogsEnabled"`
-	SaveStageData         bool `ini:"SaveStageData"`
-	DesyncTest            bool `ini:"DesyncTest"`
-	DesyncTestFrames      int  `ini:"DesyncTestFrames"`
-	DesyncTestAI          bool `ini:"DesyncTestAI"`
+	FrameDelay            int  `ini:"FrameDelay" sync:"host"`
+	DisconnectNotifyStart int  `ini:"DisconnectNotifyStart" sync:"host"`
+	DisconnectTimeout     int  `ini:"DisconnectTimeout" sync:"host"`
+	LogsEnabled           bool `ini:"LogsEnabled" sync:"host"`
+	SaveStageData         bool `ini:"SaveStageData" sync:"host"`
+	DesyncTest            bool `ini:"DesyncTest" sync:"host"`
+	DesyncTestFrames      int  `ini:"DesyncTestFrames" sync:"host"`
+	DesyncTestAI          bool `ini:"DesyncTestAI" sync:"host"`
 }
 
 // TODO: Merge with system.go
@@ -134,6 +134,7 @@ func (rs *RollbackSystem) postMatchSetup() {
 	// sys.esc = true
 
 	sys.netConnection = rs.netConnection
+	rs.netConnection = nil
 	rs.session.backend.Close()
 
 	// Prep for the next match.
@@ -797,6 +798,10 @@ func (rs *RollbackSession) LiveChecksum() uint32 {
 	buf := writeI32(sys.randseed)
 	buf = append(buf, writeI32(sys.matchTime)...)
 	buf = append(buf, writeI32(sys.curRoundTime)...)
+	for i := range sys.scorePoints {
+		buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(sys.scorePoints[i]))
+		buf = binary.BigEndian.AppendUint32(buf, uint32(sys.comboCount[i]))
+	}
 
 	// Round start checks. Ensure both players have the same selection
 	if sys.roundState() == 1 {

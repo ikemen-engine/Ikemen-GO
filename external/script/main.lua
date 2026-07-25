@@ -237,9 +237,6 @@ end
 if getCommandLineValue("-debug") ~= nil then
 	toggleDebugDisplay()
 end
-if getCommandLineValue("-setport") ~= nil then
-	setListenPort(getCommandLineValue("-setport"))
-end
 if getCommandLineValue("-setvolume") ~= nil and getCommandLineValue("-nosound") == nil then
 	modifyGameOption('Sound.MasterVolume', getCommandLineValue("-setvolume"))
 end
@@ -940,11 +937,22 @@ end
 --; COMMAND LINE QUICK VS
 --;===========================================================
 function main.f_commandLine()
+	local flags = getCommandLineFlags()
+	local loadMotif = flags['-loadmotif'] ~= nil
+	if loadMotif then
+		main.f_default()
+	end
+	main.pauseMenu = loadMotif
 	setGameMode('quickvs')
-	main.pauseMenu = false
+	if loadMotif then
+		start.f_selectReset(true)
+	end
 	setCredits(-1)
-    -- No need for asynchronous loading when running from command line. Fixes race conditions with Turns teammate faces
-    modifyGameOption('Config.BootLoadingMode', 0)
+	-- No need for asynchronous loading when running from command line. Fixes race conditions with Turns teammate faces
+	modifyGameOption('Config.BootLoadingMode', 0)
+	if not loadMotif then
+		loadFightScreen()
+	end
 	local ref = #main.t_selChars
 	local t_teamMode = {0, 0}
 	local t_numChars = {0, 0}
@@ -955,14 +963,10 @@ function main.f_commandLine()
 		tag = {gameOption('Options.Tag.Match.Wins'), gameOption('Options.Tag.Match.Wins')},
 	}
 	local roundTime = gameOption('Options.Time')
-	if getCommandLineValue("-loadmotif") == nil then
-		loadFightScreen()
-	end
 	setFightScreenElements({guardbar = gameOption('Options.GuardBreak'), stunbar = gameOption('Options.Dizzy'), redlifebar = gameOption('Options.RedLife')})
 	local frames = fightScreenVar("time.framespercount")
 	local t = {}
 	local t_assignedPals = {}
-	local flags = getCommandLineFlags()
 	for k, v in pairs(flags) do
 		if k:match('^-p[0-9]+$') then
 			local num = tonumber(k:match('^-p([0-9]+)'))
@@ -1036,6 +1040,10 @@ function main.f_commandLine()
 		if t_teamMode[side] == 3 then --Tag
 			t_framesMul[side] = t_numChars[side]
 		end
+		if loadMotif then
+			start.p[side].teamMode = t_teamMode[side]
+			start.p[side].numChars = t_numChars[side]
+		end
 	end
 	--Rounds to win. Determined by enemy team mode
 	for side = 1, 2 do
@@ -1063,34 +1071,47 @@ function main.f_commandLine()
 			end
 		end
 	end
-	if main.t_stageDef[stage:lower()] == nil then
-		if addStage(stage) == 0 then
+	local stageKey = stage:lower()
+	local stageRef = main.t_stageDef[stageKey]
+	if stageRef == nil then
+		if loadMotif then
+			stageRef = start.f_getStageRef(stage)
+		else
+			if addStage(stage) == 0 then
+				panicError("\nUnable to add stage: " .. stage .. "\n")
+			end
+			stageRef = #main.t_selStages + 1
+			main.t_stageDef[stageKey] = stageRef
+		end
+		if stageRef == nil then
 			panicError("\nUnable to add stage: " .. stage .. "\n")
 		end
-		main.t_stageDef[stage:lower()] = #main.t_selStages + 1
 	end
 	clearSelected()
 	setMatchNo(1)
-	selectStage(main.t_stageDef[stage:lower()])
+	selectStage(stageRef)
 	setTeamMode(1, t_teamMode[1], t_numChars[1])
 	setTeamMode(2, t_teamMode[2], t_numChars[2])
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	local t_params = {}
 	--iterate over the table in -p order ascending
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
-		if main.t_charDef[v.character:lower()] == nil then
-			if flags['-loadmotif'] ~= nil then
-				main.f_addChar(v.character, true, true)
+		local charKey = v.character:lower()
+		local charRef = main.t_charDef[charKey]
+		if charRef == nil then
+			if loadMotif then
+				charRef = start.f_getCharRef(v.character)
 			else
 				addChar(v.character)
-				main.t_charDef[v.character:lower()] = ref
+				charRef = ref
+				main.t_charDef[charKey] = charRef
 				ref = ref + 1
 			end
 		end
-		if main.t_charDef[v.character:lower()] == nil then
+		if charRef == nil then
 			panicError("\nUnable to add character. No such file or directory: " .. v.character .. "\n")
 		end
-		selectChar(v.player, main.t_charDef[v.character:lower()], v.pal)
+		selectChar(v.player, charRef, v.pal)
 		setCom(v.num, v.ai)
 		remapInput(v.num, v.input)
 		-- fold overrides into loadStart() params (p1.<member>.<field>=...)
@@ -1098,12 +1119,9 @@ function main.f_commandLine()
 		for k2, v2 in pairs(v.override) do
 			table.insert(t_params, 'p' .. v.player .. '.' .. member .. '.' .. k2 .. '=' .. tostring(v2))
 		end
-		if start ~= nil then
-			if start.p[v.player].t_selected == nil then
-				start.p[v.player].t_selected = {}
-			end
+		if loadMotif then
 			table.insert(start.p[v.player].t_selected, {
-				ref = main.t_charDef[v.character:lower()],
+				ref = charRef,
 				pal = v.pal,
 				pn = start.f_getPlayerNo(v.player, #start.p[v.player].t_selected + 1)
 			})
@@ -1127,20 +1145,21 @@ function main.f_commandLine()
 			print(getSessionWarning())
 			os.exit()
 		end
-		main.f_clearShuffleTables()
+		if loadMotif then
+			main.f_clearShuffleTables()
+		end
 		refresh()
 	end
-	table.insert(t_params, 'pausemenu=' .. tostring(main.pauseMenu))
-	local params = table.concat(t_params, ", ")
-	if params == '' then
-		loadStart()
+	if loadMotif then
+		table.insert(t_params, 1, start.f_buildLoadStartParams())
 	else
-		loadStart(params)
+		table.insert(t_params, 'pausemenu=false')
 	end
+	loadStart(table.concat(t_params, ', '))
 	while loading() do
 		--do nothing
 	end
-	local winner = game()
+	game()
 	if flags['-log'] ~= nil then
 		main.f_printTable(getGameStats().Matches[matchNo()], flags['-log'])
 	end
@@ -1411,6 +1430,10 @@ function main.f_addChar(line, playable, loading, slot)
 		table.insert(main.t_selGrid, {['chars'] = {row}, ['slot'] = 1})
 	else
 		table.insert(main.t_selGrid[#main.t_selGrid].chars, row)
+		-- marks all chars using this slot
+		for _, idx in ipairs(main.t_selGrid[#main.t_selGrid].chars) do
+			main.t_selChars[idx].hasSlot = true
+		end
 	end
 	for _, v in ipairs({'next', 'previous', 'select'}) do
 		if main.t_selChars[row][v] ~= nil then
@@ -3085,10 +3108,13 @@ function main.f_replay()
 		elseif getKey(motif.replay_info.menu.item.rename.keycode) then
 			t, item = main.f_renameReplay(item, t)
 		elseif getInput(-1, motif[main.group].menu.done.key) then
+			main.f_waitForPreloads(true)
 			sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 			if enterReplay(t[item].itemname) and synchronize() then
+				main.replayActive = true
 				enterSyncedNetplayMenu()
 			end
+			main.replayActive = false
 			replayStop()
 			exitNetPlay()
 			exitReplay()
@@ -3530,7 +3556,7 @@ function main.f_randomtest()
 		end
 		start.f_setRounds(nil, {})
 		start.f_setStage()
-		loadStart(start.f_buildLoadStartParams({continue = main.motif.continuescreen}))
+		loadStart(start.f_buildLoadStartParams())
 		game()
 		refresh()
 		if getWinnerTeam() == -1 then
@@ -4001,8 +4027,7 @@ main.f_start()
 menu.f_start()
 options.f_start()
 
-if getCommandLineValue("-p1") ~= nil and getCommandLineValue("-p2") ~= nil then
-	main.f_default()
+if getCommandLineValue("-p1") ~= nil and getCommandLineValue("-p2") ~= nil and getCommandLineValue("-loadmotif") ~= nil then
 	main.f_commandLine()
 end
 

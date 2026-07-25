@@ -2270,8 +2270,8 @@ func (r *Renderer_GL33) LoadCustomSpriteShader(shaderName string, shaderData []b
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"iTime", "iResolution", "aspectRatio")
-	shader.RegisterTextures("pal", "tex", "bgl_RenderedTexture")
+		"iTime", "iResolution", "aspectRatio", "sTime")
+	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
 
 	shader.needsGrabPass = strings.Contains(fragSource, "bgl_RenderedTexture")
 

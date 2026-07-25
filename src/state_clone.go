@@ -109,6 +109,16 @@ func (a *Animation) Clone(ar *arena.Arena, gsp *GameStatePool) (result *Animatio
 	return
 }
 
+// CloneState copies an animation's mutable playback state while sharing its immutable frame/interpolation data.
+func (anim *Animation) CloneState(a *arena.Arena) *Animation {
+	if anim == nil {
+		return nil
+	}
+	result := arena.New[Animation](a)
+	*result = *anim
+	return result
+}
+
 func (af *AnimFrame) Clone(a *arena.Arena) (result *AnimFrame) {
 	result = arena.New[AnimFrame](a)
 	*result = *af
@@ -184,8 +194,18 @@ func (ai *AfterImage) Clone(a *arena.Arena, gsp *GameStatePool) *AfterImage {
 		return nil
 	}
 
-	result := &AfterImage{}
+	result := arena.New[AfterImage](a)
 	*result = *ai
+
+	// Allocate the slice backing arrays before replacing nested pointers.
+	if ai.imgs != nil {
+		result.imgs = arena.MakeSlice[SpriteData](a, len(ai.imgs), len(ai.imgs))
+		copy(result.imgs, ai.imgs)
+	}
+	if ai.palfx != nil {
+		result.palfx = arena.MakeSlice[*PalFX](a, len(ai.palfx), len(ai.palfx))
+		copy(result.palfx, ai.palfx)
+	}
 
 	// Deep copy Animations
 	for i := range ai.imgs {
@@ -216,6 +236,10 @@ func (e *Explod) Clone(a *arena.Arena, gsp *GameStatePool) *Explod {
 		result.anim = e.anim.Clone(a, gsp)
 	}
 
+	if e.customShader.name != "" {
+		result.customShader = e.customShader.Clone(a, gsp)
+	}
+
 	if e.palfx != nil {
 		result.palfx = e.palfx.Clone(a)
 	}
@@ -237,6 +261,10 @@ func (p *Projectile) clone(a *arena.Arena, gsp *GameStatePool) *Projectile {
 
 	if p.anim != nil {
 		result.anim = p.anim.Clone(a, gsp)
+	}
+
+	if p.customShader.name != "" {
+		result.customShader = p.customShader.Clone(a, gsp)
 	}
 
 	if p.palfx != nil {
@@ -262,6 +290,27 @@ func (ss *StateState) Clone(a *arena.Arena) (result StateState) {
 	return result
 }
 
+func cloneRemapPreset(src RemapPreset, gsp *GameStatePool) RemapPreset {
+	if src == nil {
+		return nil
+	}
+	result := *gsp.Get(src).(*RemapPreset)
+	maps.Clear(result)
+	for group, table := range src {
+		if table == nil {
+			result[group] = nil
+			continue
+		}
+		tableCopy := *gsp.Get(table).(*RemapTable)
+		maps.Clear(tableCopy)
+		for number, remap := range table {
+			tableCopy[number] = remap
+		}
+		result[group] = tableCopy
+	}
+	return result
+}
+
 func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 	result = Char{}
 	result = *c
@@ -271,6 +320,16 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 	}
 	if c.animBackup != nil {
 		result.animBackup = c.animBackup.Clone(a, gsp)
+	}
+
+	// RemapSprite mutates a nested map, and SpriteVar exposes its result to character logic.
+	// Keep each saved state isolated and make the cloned animations point at the cloned preset.
+	result.remapSpr = cloneRemapPreset(c.remapSpr, gsp)
+	if result.anim != nil {
+		result.anim.remap = result.remapSpr
+	}
+	if result.animBackup != nil {
+		result.animBackup.remap = result.remapSpr
 	}
 
 	// Since curFrame is desynced from anim's state, we must save it as well
@@ -284,7 +343,9 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 	if c.reflectAnim != nil {
 		result.reflectAnim = c.reflectAnim.Clone(a, gsp)
 	}
-
+	if c.customShader.name != "" {
+		result.customShader = c.customShader.Clone(a, gsp)
+	}
 	// TODO: Profiling shows this is hotter than it should be
 	// Maybe we ought to clear animation data from them when their timer expires
 	// Update: Done already but copying 60 PalFX's is still a problem
@@ -334,6 +395,12 @@ func (c *Char) Clone(a *arena.Arena, gsp *GameStatePool) (result Char) {
 
 	result.clipboardText = arena.MakeSlice[string](a, len(c.clipboardText), len(c.clipboardText))
 	copy(result.clipboardText, c.clipboardText)
+
+	// Dialogue controllers append to this queue, and motif dialogue can hold round/match progression.
+	if c.dialogue != nil {
+		result.dialogue = arena.MakeSlice[string](a, len(c.dialogue), len(c.dialogue))
+		copy(result.dialogue, c.dialogue)
+	}
 
 	if c.keyctrl[0] {
 		result.cmd = arena.MakeSlice[CommandList](a, len(c.cmd), len(c.cmd))
@@ -456,6 +523,11 @@ func (cl *CommandList) Clone(a *arena.Arena) (result CommandList) {
 
 	result.Buffer = arena.New[InputBuffer](a)
 	*result.Buffer = *cl.Buffer
+	if cl.Buffer.InputReader != nil {
+		// Preserve SOCD direction history in command snapshots.
+		result.Buffer.InputReader = arena.New[InputReader](a)
+		*result.Buffer.InputReader = *cl.Buffer.InputReader
+	}
 
 	result.Commands = arena.MakeSlice[[]Command](a, len(cl.Commands), len(cl.Commands))
 	for i := 0; i < len(cl.Commands); i++ {
@@ -468,44 +540,108 @@ func (cl *CommandList) Clone(a *arena.Arena) (result CommandList) {
 	return
 }
 
+type fightScreenAnimationStateCloner struct {
+	a *arena.Arena
+	// Current FightScreenRound has ~40 logic-bearing AnimTextSnd values.
+	src   [64]*Animation
+	dst   [64]*Animation
+	count int
+}
+
+func (cl *fightScreenAnimationStateCloner) clone(anim *Animation) *Animation {
+	if anim == nil {
+		return nil
+	}
+
+	for i := 0; i < cl.count; i++ {
+		if cl.src[i] == anim {
+			return cl.dst[i]
+		}
+	}
+	result := anim.CloneState(cl.a)
+	if cl.count >= len(cl.src) {
+		return result
+	}
+	cl.src[cl.count] = anim
+	cl.dst[cl.count] = result
+	cl.count++
+	return result
+}
+
+func (cl *fightScreenAnimationStateCloner) cloneAnimTextSnd(src AnimTextSnd) (result AnimTextSnd) {
+	result = src
+	result.animLayout.anim = cl.clone(src.animLayout.anim)
+	return
+}
+
+func (ro *FightScreenRound) Clone(a *arena.Arena) *FightScreenRound {
+	if ro == nil {
+		return nil
+	}
+
+	result := arena.New[FightScreenRound](a)
+	*result = *ro
+	result.fadeIn = ro.fadeIn.Clone(a)
+	result.fadeOut = ro.fadeOut.Clone(a)
+
+	// AnimTextSnd.End reads mutable Animation playback fields to advance the round/fight/KO/win phases.
+	// Purely visual top/background animations are intentionally not rollbacked.
+	cl := fightScreenAnimationStateCloner{a: a}
+	for i := range ro.round {
+		result.round[i] = cl.cloneAnimTextSnd(ro.round[i])
+	}
+	result.round_default = cl.cloneAnimTextSnd(ro.round_default)
+	result.round_single = cl.cloneAnimTextSnd(ro.round_single)
+	result.round_final = cl.cloneAnimTextSnd(ro.round_final)
+	result.fight = cl.cloneAnimTextSnd(ro.fight)
+	result.ko = cl.cloneAnimTextSnd(ro.ko)
+	result.dko = cl.cloneAnimTextSnd(ro.dko)
+	result.to = cl.cloneAnimTextSnd(ro.to)
+	result.drawgame = cl.cloneAnimTextSnd(ro.drawgame)
+	for i := range ro.win {
+		for side := range ro.win[i].text {
+			result.win[i].text[side] = cl.cloneAnimTextSnd(ro.win[i].text[side])
+			result.aiLose[i].text[side] = cl.cloneAnimTextSnd(ro.aiLose[i].text[side])
+			result.aiWin[i].text[side] = cl.cloneAnimTextSnd(ro.aiWin[i].text[side])
+		}
+	}
+
+	return result
+}
+
 func (fs *FightScreen) Clone(a *arena.Arena) (result FightScreen) {
 	result = *fs
 
-	// Round
-	if fs.round != nil {
-		result.round = &FightScreenRound{} // Shallow copy
-		*result.round = *fs.round
-		// Fade state
-		result.round.fadeIn = fs.round.fadeIn.Clone(a)
-		result.round.fadeOut = fs.round.fadeOut.Clone(a)
-	}
+	// FightScreenRound timers/phases, timerActive, shutter, fades and selected announcement playback
+	// state affect when control starts, when the round timer runs and when a round/match can finish.
+	result.round = fs.round.Clone(a)
 
-	// WinCount
-	for i := 0; i < len(fs.winCounts); i++ {
-		if fs.winCounts[i] != nil {
-			result.winCounts[i] = arena.New[FightScreenWinCount](a)
-			*result.winCounts[i] = *fs.winCounts[i]
-		}
-	}
-
-	// Combo
-	for i := 0; i < len(fs.combos); i++ {
-		if fs.combos[i] != nil {
-			result.combos[i] = arena.New[FightScreenCombo](a)
-			*result.combos[i] = *fs.combos[i]
-		}
-	}
-
-	// Score
-	for i := 0; i < len(fs.scores); i++ {
-		if fs.scores[i] != nil {
-			result.scores[i] = arena.New[FightScreenScore](a)
-			*result.scores[i] = *fs.scores[i]
-		}
-	}
-
-	// We probably don't need a deep copy of these
+	// Presentation-only state is intentionally shared across rollback snapshots.
 	/*
+		// WinCount
+		for i := 0; i < len(fs.winCounts); i++ {
+			if fs.winCounts[i] != nil {
+				result.winCounts[i] = arena.New[FightScreenWinCount](a)
+				*result.winCounts[i] = *fs.winCounts[i]
+			}
+		}
+
+		// Combo widget (ComboCount itself is in SystemStateVars)
+		for i := 0; i < len(fs.combos); i++ {
+			if fs.combos[i] != nil {
+				result.combos[i] = arena.New[FightScreenCombo](a)
+				*result.combos[i] = *fs.combos[i]
+			}
+		}
+
+		// Score widget (scorePoints itself is in SystemStateVars)
+		for i := 0; i < len(fs.scores); i++ {
+			if fs.scores[i] != nil {
+				result.scores[i] = arena.New[FightScreenScore](a)
+				*result.scores[i] = *fs.scores[i]
+			}
+		}
+
 		//UIT
 		if fs.ti != nil {
 			result.ti = arena.New[FightScreenTime](a)
@@ -589,26 +725,106 @@ func (fs *FightScreen) Clone(a *arena.Arena) (result FightScreen) {
 				*result.names[i][j] = *fs.names[i][j]
 			}
 		}
-	*/
 
-	// Action
-	for i := range result.actions {
-		if fs.actions[i] != nil {
-			result.actions[i] = arena.New[FightScreenAction](a)
+		// Action
+		for i := range result.actions {
+			if fs.actions[i] != nil {
+				result.actions[i] = arena.New[FightScreenAction](a)
+				*result.actions[i] = *fs.actions[i]
 
-			*result.actions[i] = *fs.actions[i]
-
-			if fs.actions[i].messages != nil {
-				result.actions[i].messages = arena.MakeSlice[*FSMsg](a, len(fs.actions[i].messages), len(fs.actions[i].messages))
-				for j := 0; j < len(fs.actions[i].messages); j++ {
-					result.actions[i].messages[j] = arena.New[FSMsg](a)
-					*result.actions[i].messages[j] = *fs.actions[i].messages[j]
+				if fs.actions[i].messages != nil {
+					result.actions[i].messages = arena.MakeSlice[*FSMsg](a,
+						len(fs.actions[i].messages), len(fs.actions[i].messages))
+					for j := 0; j < len(fs.actions[i].messages); j++ {
+						result.actions[i].messages[j] = arena.New[FSMsg](a)
+						*result.actions[i].messages[j] = *fs.actions[i].messages[j]
+					}
 				}
 			}
 		}
-	}
+	*/
 
 	return
+}
+
+// Background fields that are either exposed through StageBGVar or affect their future values.
+type stageRollbackBgState struct {
+	bga      bgAction
+	actionno int32
+	enabled  bool
+}
+
+// Subset that is authoritative even when character code cannot modify the stage definition.
+type stageRollbackState struct {
+	stageTime int32
+	bga       bgAction
+	bgmState  BGMState
+	bg        []stageRollbackBgState
+}
+
+func (s *Stage) CloneRollbackState(a *arena.Arena) (result stageRollbackState) {
+	if s == nil {
+		return
+	}
+
+	result.stageTime = s.stageTime
+	result.bga = s.bga
+	result.bgmState = s.bgmState
+	result.bg = arena.MakeSlice[stageRollbackBgState](a, len(s.bg), len(s.bg))
+	for i, bg := range s.bg {
+		if bg == nil {
+			continue
+		}
+		result.bg[i] = stageRollbackBgState{
+			bga:      bg.bga,
+			actionno: bg.actionno,
+			enabled:  bg.enabled,
+		}
+	}
+	return
+}
+
+func (ss *stageRollbackState) Load(s *Stage) {
+	if ss == nil || s == nil {
+		return
+	}
+
+	s.stageTime = ss.stageTime
+	s.bga = ss.bga
+	s.bgmState = ss.bgmState
+	for i := range ss.bg {
+		if i >= len(s.bg) {
+			break
+		}
+		if s.bg[i] == nil {
+			continue
+		}
+		s.bg[i].bga = ss.bg[i].bga
+		s.bg[i].actionno = ss.bg[i].actionno
+		s.bg[i].enabled = ss.bg[i].enabled
+	}
+}
+
+// cloneStageList snapshots all loaded stage definitions as one object graph.
+// Multiple roundXdef entries may alias the same Stage, so preserve pointer identity.
+func cloneStageList(a *arena.Arena, gsp *GameStatePool, src map[int32]*Stage, active *Stage) (map[int32]*Stage, *Stage) {
+	result := make(map[int32]*Stage, len(src))
+	cloned := make(map[*Stage]*Stage, len(src)+1)
+	cloneOne := func(s *Stage) *Stage {
+		if s == nil {
+			return nil
+		}
+		if c, ok := cloned[s]; ok {
+			return c
+		}
+		c := s.Clone(a, gsp)
+		cloned[s] = c
+		return c
+	}
+	for k, s := range src {
+		result[k] = cloneOne(s)
+	}
+	return result, cloneOne(active)
 }
 
 func (s *Stage) Clone(a *arena.Arena, gsp *GameStatePool) *Stage {
@@ -625,12 +841,9 @@ func (s *Stage) Clone(a *arena.Arena, gsp *GameStatePool) *Stage {
 		result.constants[k] = v
 	}
 
-	// Clone animation table
-	result.animTable = *gsp.Get(s.animTable).(*AnimationTable)
-	maps.Clear(result.animTable.anims)
-	for k, v := range s.animTable.anims {
-		result.animTable.anims[k] = v.Clone(a, gsp)
-	}
+	// Stage animation definitions are immutable after loading. Runtime BG
+	// animations are separate Animation objects cloned below.
+	result.animTable = s.animTable
 
 	// Clone backgrounds and rebuild mapping
 	bgMap := make(map[*backGround]*backGround, len(s.bg))
@@ -1042,5 +1255,16 @@ func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 		}
 	}
 
+	return result
+}
+
+func (cs *CustomShader) Clone(a *arena.Arena, gsp *GameStatePool) CustomShader {
+	result := *cs
+	if cs.tex1.Anim != nil {
+		result.tex1.Anim = cs.tex1.Anim.Clone(a, gsp)
+	}
+	if cs.tex2.Anim != nil {
+		result.tex2.Anim = cs.tex2.Anim.Clone(a, gsp)
+	}
 	return result
 }

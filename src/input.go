@@ -141,7 +141,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		if key == KeyF12 {
 			captureScreen()
 		}
-		if key == StringToKeyLUT[sys.motif.AttractMode.Credits.KeyCode] && sys.credits != -1 {
+		if !sys.netplay() && key == StringToKeyLUT[sys.motif.AttractMode.Credits.KeyCode] && sys.credits != -1 {
 			sys.credits += 1
 			sys.motif.Snd.play(sys.motif.AttractMode.Credits.Snd, 100, 0, 0, 0, 0)
 		}

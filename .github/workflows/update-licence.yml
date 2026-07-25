@@ -1,0 +1,44 @@
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+name: update-licence
+
+concurrency:
+  group: update-licence-develop
+  cancel-in-progress: false
+
+jobs:
+  update-licence:
+    name: update contributors
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out develop
+        uses: actions/checkout@v7
+        with:
+          ref: develop
+          token: ${{ secrets.IKEMEN_TOKEN }}
+
+      - name: Update LICENCE.txt
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 .github/scripts/update_licence_contributors.py
+
+      - name: Commit LICENCE.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- LICENCE.txt; then
+            echo "LICENCE.txt is already current."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add LICENCE.txt
+          git commit -m "docs: update licence contributors [skip ci]"
+          git pull --rebase origin develop
+          git push origin HEAD:develop

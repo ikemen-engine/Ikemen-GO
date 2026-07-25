@@ -417,6 +417,7 @@ type FaceProperties struct {
 	} `ini:"done"`
 	Random   AnimationProperties `ini:"random"`  // only used by [Select Info]
 	Loading  AnimationProperties `ini:"loading"` // only used by [Select Info] and [VS Screen]
+	Slot     AnimationProperties `ini:"slot"`    // only used by [Select Info]
 	Velocity [2]float32          `ini:"velocity"`
 	MaxDist  [2]float32          `ini:"maxdist"`
 	Accel    [2]float32          `ini:"accel"`
@@ -691,6 +692,7 @@ type SelectInfoProperties struct {
 			SwitchTime int32 `ini:"switchtime"`
 		} `ini:"random"`
 		MapCell map[string]*CellOverrideProperties `ini:"map:^[0-9*]+-[0-9*]+$" lua:""`
+		Slot    AnimationProperties                `ini:"slot"`
 	} `ini:"cell"`
 	P1      PlayerSelectProperties `ini:"p1"`
 	P2      PlayerSelectProperties `ini:"p2"`
@@ -2662,6 +2664,10 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		// Face.Random and Face2.Random
 		offsetAnims(ps.Face.Pos[0], ps.Face.Pos[1], ps.Face.Random.AnimData)
 		offsetAnims(ps.Face2.Pos[0], ps.Face2.Pos[1], ps.Face2.Random.AnimData)
+
+		// Face.Slot and Face2.Slot
+		offsetAnims(ps.Face.Pos[0], ps.Face.Pos[1], ps.Face.Slot.AnimData)
+		offsetAnims(ps.Face2.Pos[0], ps.Face2.Pos[1], ps.Face2.Slot.AnimData)
 	}
 
 	// Select Screen: Players
@@ -3178,7 +3184,7 @@ func (m *Motif) act() {
 
 		// Dialogue
 		// Normal start: right before "Fight" in round 1, or at match end.
-		introStart := sys.round == 1 && sys.intro == sys.fightScreen.round.ctrl_time
+		introStart := sys.roundNo == 1 && sys.intro == sys.fightScreen.round.ctrl_time
 		matchEndStart := sys.shouldStartMatchEndDialogue()
 		normalStart := introStart || matchEndStart
 		// Forced start: ignore normal timing.
@@ -6683,7 +6689,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 			tal := tallyRun()
 			rs.WinsText.TextSpriteData.text = m.sprintf(rs.WinsText.Text, tal.winP1, tal.loseP1)
 		}
-		if wouldPlace && rs.RoundsToWin > 0 && sys.match >= rs.RoundsToWin {
+		if wouldPlace && rs.RoundsToWin > 0 && sys.matchNo >= rs.RoundsToWin {
 			wi.assignStates(
 				[4][]int32{rs.P1.Win.State, rs.P3.Win.State, rs.P5.Win.State, rs.P7.Win.State},
 				[4][]int32{rs.P2.Win.State, rs.P4.Win.State, rs.P6.Win.State, rs.P8.Win.State},

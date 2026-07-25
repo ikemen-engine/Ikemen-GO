@@ -48,7 +48,11 @@ type GameState struct {
 	//debugDisplay            bool
 
 	timerRounds []int32
+	stageRef    *Stage
 	stage       *Stage
+	stageList   map[int32]*Stage
+	stageState  stageRollbackState
+	statsState  statsRollbackState
 	scoreRounds [][2]float32
 	sel         Select
 	//stringPool      [MaxPlayerNo]StringPool // Only mutated while compiling
@@ -57,7 +61,8 @@ type GameState struct {
 	// FightScreen
 	timerCount []int32
 
-	commandLists []*CommandList
+	commandLists  []*CommandList
+	matchMusicSel []*bgMusic
 
 	// Rollback
 	netTime int32
@@ -89,6 +94,8 @@ func (gs *GameState) LoadState(stateID int) {
 
 	sys.SystemStateVars = gs.SystemStateVars
 	sys.frameCounter = gs.frame
+	sys.matchMusicSel = arena.MakeSlice[*bgMusic](a, len(gs.matchMusicSel), len(gs.matchMusicSel))
+	copy(sys.matchMusicSel, gs.matchMusicSel)
 
 	gs.loadCharData(a, gsp)
 	gs.loadProjectileData(a, gsp)
@@ -103,9 +110,15 @@ func (gs *GameState) LoadState(stateID int) {
 	sys.bcVar = arena.MakeSlice[BytecodeValue](a, len(gs.bcVar), len(gs.bcVar))
 	copy(sys.bcVar, gs.bcVar)
 
-	// Only try loading the stage if it was saved
+	// Load the full stage only when character code can mutate its definition.
+	// Otherwise restore the small gameplay-visible runtime subset.
 	if gs.stage != nil {
-		sys.stage = gs.stage.Clone(a, gsp)
+		sys.stageList, sys.stage = cloneStageList(a, gsp, gs.stageList, gs.stage)
+	} else {
+		// A speculative round transition may have switched sys.stage to a different roundXdef entry.
+		// Restore the saved stage identity before applying its lightweight runtime snapshot.
+		sys.stage = gs.stageRef
+		gs.stageState.Load(sys.stage)
 	}
 
 	sys.workBe = arena.MakeSlice[BytecodeExp](a, len(gs.workBe), len(gs.workBe))
@@ -143,6 +156,7 @@ func (gs *GameState) LoadState(stateID int) {
 
 	sys.scoreRounds = arena.MakeSlice[[2]float32](a, len(gs.scoreRounds), len(gs.scoreRounds))
 	copy(sys.scoreRounds, gs.scoreRounds)
+	gs.statsState.load(&sys.statsLog)
 
 	//sys.sel = gs.sel.Clone(a)
 	// for i := 0; i < len(sys.stringPool); i++ {
@@ -195,6 +209,8 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.frame = sys.frameCounter
 	gs.isSpeculativeFrame = sys.isSpeculativeFrame()
 	gs.SystemStateVars = sys.SystemStateVars
+	gs.matchMusicSel = arena.MakeSlice[*bgMusic](a, len(sys.matchMusicSel), len(sys.matchMusicSel))
+	copy(gs.matchMusicSel, sys.matchMusicSel)
 
 	gs.saveCharData(a, gsp)
 	gs.saveProjectileData(a, gsp)
@@ -209,14 +225,22 @@ func (gs *GameState) SaveState(stateID int) {
 	gs.bcVar = arena.MakeSlice[BytecodeValue](a, len(sys.bcVar), len(sys.bcVar))
 	copy(gs.bcVar, sys.bcVar)
 
-	// We only save the stage's state if any existing characters can modify it
+	// A pooled GameState may still contain stage data from an older save.
+	gs.stageRef = sys.stage
+	gs.stage = nil
+	gs.stageList = nil
+	gs.stageState = stageRollbackState{}
+
+	// Character-controlled stage mutations need the full clone.
 	if sys.rollback.session != nil || sys.cfg.Netplay.Rollback.DesyncTestFrames > 0 {
 		if gs.stageCanMutate() || sys.cfg.Netplay.Rollback.SaveStageData {
-			gs.stage = sys.stage.Clone(a, gsp)
+			gs.stageList, gs.stage = cloneStageList(a, gsp, sys.stageList, sys.stage)
+		} else {
+			gs.stageState = sys.stage.CloneRollbackState(a)
 		}
 	} else {
 		// Save anyway if using debug keys
-		gs.stage = sys.stage.Clone(a, gsp)
+		gs.stageList, gs.stage = cloneStageList(a, gsp, sys.stageList, sys.stage)
 	}
 
 	gs.workBe = arena.MakeSlice[BytecodeExp](a, len(sys.workBe), len(sys.workBe))
@@ -248,6 +272,7 @@ func (gs *GameState) SaveState(stateID int) {
 	copy(gs.timerRounds, sys.timerRounds)
 	gs.scoreRounds = arena.MakeSlice[[2]float32](a, len(sys.scoreRounds), len(sys.scoreRounds))
 	copy(gs.scoreRounds, sys.scoreRounds)
+	gs.statsState = sys.statsLog.saveRollbackState()
 
 	//gs.sel = sys.sel.Clone(a)
 	// for i := 0; i < len(sys.stringPool); i++ {
@@ -425,7 +450,8 @@ func (gs *GameState) Checksum() int {
 // Returns some state variables as a string for debugging
 func (gs *GameState) String() (str string) {
 	// Add match data
-	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d\n", gs.matchTime, gs.curRoundTime)
+	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d ScorePoints: %v ComboCount: %v\n",
+		gs.matchTime, gs.curRoundTime, gs.scorePoints, gs.comboCount)
 
 	// Add bytecode data
 	// TODO: Every log seems to have these empty. May not be needed
@@ -509,6 +535,8 @@ type GameStatePool struct {
 	int32CharPointerMapPool sync.Pool
 	int32int32MapPool       sync.Pool
 	int32float32MapPool     sync.Pool
+	remapPresetPool         sync.Pool
+	remapTablePool          sync.Pool
 
 	animFrameSlicePool sync.Pool
 	poolObjs           map[int][]interface{}
@@ -566,16 +594,34 @@ func NewGameStatePool() GameStatePool {
 				return &if3
 			},
 		},
+		remapPresetPool: sync.Pool{
+			New: func() interface{} {
+				rp := make(RemapPreset)
+				return &rp
+			},
+		},
+		remapTablePool: sync.Pool{
+			New: func() interface{} {
+				rt := make(RemapTable)
+				return &rt
+			},
+		},
 		poolObjs: make(map[int][]interface{}),
 	}
 }
 
 func (gsp *GameStatePool) Get(item interface{}) (result interface{}) {
-	objs, ok := gsp.poolObjs[gsp.curStateID]
+	stateID := gsp.curStateID
+	objs, ok := gsp.poolObjs[stateID]
 	if !ok {
-		gsp.poolObjs[gsp.curStateID] = make([]interface{}, 0, 50)
-		objs = gsp.poolObjs[gsp.curStateID]
+		gsp.poolObjs[stateID] = make([]interface{}, 0, 50)
+		objs = gsp.poolObjs[stateID]
 	}
+
+	// A map stores a copy of a slice header, so appending only to the local variable would leave the map entry at its old length.
+	defer func() {
+		gsp.poolObjs[stateID] = objs
+	}()
 
 	switch item.(type) {
 	case (map[string]float32):
@@ -599,6 +645,12 @@ func (gsp *GameStatePool) Get(item interface{}) (result interface{}) {
 	case (map[int32]float32):
 		objs = append(objs, gsp.int32float32MapPool.Get())
 		return objs[len(objs)-1]
+	case (RemapPreset):
+		objs = append(objs, gsp.remapPresetPool.Get())
+		return objs[len(objs)-1]
+	case (RemapTable):
+		objs = append(objs, gsp.remapTablePool.Get())
+		return objs[len(objs)-1]
 	default:
 		return nil
 	}
@@ -620,6 +672,10 @@ func (gsp *GameStatePool) Put(item interface{}) {
 		gsp.int32int32MapPool.Put(item)
 	case (*map[int32]float32):
 		gsp.int32float32MapPool.Put(item)
+	case (*RemapPreset):
+		gsp.remapPresetPool.Put(item)
+	case (*RemapTable):
+		gsp.remapTablePool.Put(item)
 	default:
 	}
 }

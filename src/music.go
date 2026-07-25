@@ -4,16 +4,18 @@
 //
 // Goal
 // -----
-// Unify every place that can set BGM (screenpack/motif, stage, storyboard,
-// select.def, and Lua launch parameters) into one runtime type.
+// Normalize configured BGM sources from screenpack/motif, stage, storyboard,
+// select.def, and Lua launch parameters into one runtime type. Lua playBgm
+// may also play an explicitly supplied file directly.
 //
 // Core type
 // ---------
 // Music is a map[string][]*bgMusic keyed by a *prefix* (e.g. "", "title",
-// "round1", "life", "victory", "final", "scene1", ...). Each key holds a list
+// "round1", "life", "victory", "final", ...). Each key holds a list
 // of candidate tracks with playback options. Read() randomly picks one entry
 // for the prefix and returns the resolved file and options. Play() delegates
 // to Read() and opens the BGM.
+// Automatic in-match playback uses rollbacked matchSelection state instead.
 //
 // Where values come from (all normalized into Music struct)
 // --------------------------------------------------
@@ -26,7 +28,8 @@
 //   Stored in sys.stage.music.
 //
 // • Storyboard (per-scene bgm, declared under [Scene X])
-//   Parsed by parseMusicSection() into prefixes like "scene1", ...
+//   Each scene section is parsed into its own Scene[X].Music map.
+//   The ordinary scene BGM uses the empty prefix "".
 //   Stored in sys.storyboard.Scene[X].Music
 //
 // • select.def – character parameters (Lua addChar)
@@ -59,42 +62,35 @@
 // NOTE: select_params.go additionally supports "music=path vol loopstart loopend"
 // by expanding it into the above "<prefix>.bgm*" keys before calling AppendParams.
 //
-// Normalization of naming
-// -----------------------
-// Elecbyte used inconsistent keys across files. Both the INI loader
-// (parseMusicSection) and the runtime parameter path (AppendParams) accept
-// synonyms and normalize them into bgMusic fields:
-//
-//   bgm / bgmusic / music
-//   bgm.loop / bgmloop
-//   bgm.volume / bgmvolume
-//   bgm.loopstart / bgmloopstart
-//   bgm.loopend / bgmloopend
-//   bgm.startposition / bgmstartposition
-//   bgm.freqmul / bgmfreqmul
-//   bgm.loopcount / bgmloopcount
+// Accepted naming
+// ---------------
+// parseMusicSection accepts bgm/bgmusic and both dotted and compact option
+// names, such as bgm.loop/bgmloop and bgm.volume/bgmvolume.
+// AppendParams accepts bgmusic/music and compact bgm* option names.
 //
 // Prefix handling
 // ---------------
-// Keys may be written as "<prefix>.<field>" (e.g. "round2.bgmusic").
-// Everything before the first dot is the Music map key; the rest selects a
-// bgMusic field. When no prefix is present the empty key "" is used.
+// The last recognized ".bgmusic", ".music", or ".bgm" anchor separates the
+// prefix from the field, allowing dots inside prefixes. Prefix dots are
+// flattened to underscores. When no prefix is present the empty key "" is used.
 //
 // Resolution order (per character)
 // --------------------------------------------
 // The final playable list is computed and stored per character slot so that
-// per-character or per-stage overrides can win over defaults; custom character
-// music (or stage music coming from select.def) can override the stage's .def
-// music, and launch-time Lua must be able to override both.
+// stage parameters add candidates to the stage definition. Character and
+// launch parameters can replace corresponding candidates by index.
 
-// In resetRoundState the code does (for each sys.chars index i):
+// During resetRound(), updateMusicMaps() does the following for each non-empty
+// character slot:
 // • 1. Clear
 //   sys.cgi[i].music = make(Music)
 // • 2. Base: stage.def [Music]
 //   sys.cgi[i].music.Append(sys.stage.music)
 // • 3. select.def stage params (addStage)
 //   sys.cgi[i].music.Append(sys.stage.si().music)
-// • 4. select.def character params (addChar) – override stage
+// • 4. select.def character params (addChar)
+//   Override all prefixes when CharParamMusic is enabled;
+//   otherwise apply only the character's "victory" prefix.
 //   sys.cgi[i].music.Override(p[0].si().music)
 // • 5. launchFight params (loadStart) – last word
 //   sys.cgi[i].music.Override(sys.sel.music)
@@ -103,12 +99,13 @@
 // -----------------
 // During a match, Music.act() reacts to state and tries to play a suitable
 // prefix in this order:
-// • round start: "final" (if decisive) or "round<sys.round>"
+// • round start: "final", then optionally "round<sys.match>", then
+//   "round<sys.round>", then the empty prefix
 // • low life (team leader): "life"
 // • victory (decisive, winner alive): "victory"
-// tryPlay() checks if a prefix exists and has any defined track, then calls
-// Play. Read() randomizes among multiple entries for the prefix and resolves
-// the path using SearchFile.
+// tryPlay() checks if a prefix has a defined track, reuses or chooses its
+// rollbacked match candidate, resolves the path, and opens it when needed.
+// Generic Play() callers choose a candidate through Read().
 //
 // ----------------------------------------------------------------------------
 
@@ -140,7 +137,6 @@ type bgMusic struct {
 	bgmstartposition int32
 	bgmfreqmul       float32
 	bgmloopcount     int32
-	selected         bool
 }
 
 func newBgMusic() *bgMusic {
@@ -212,43 +208,51 @@ func musicKeyPrefix(key string) string {
 	return normalizeMusicPrefix(prefix)
 }
 
-func (m Music) ClearSelection() {
-	for _, lst := range m {
-		for _, bg := range lst {
-			if bg != nil {
-				bg.selected = false
+// matchSelection reuses or chooses an automatic match candidate.
+// Stored pointers preserve choices across overlapping source lists.
+func (m Music) matchSelection(key string) *bgMusic {
+	prefix := musicKeyPrefix(key)
+	lst := m[prefix]
+	if len(lst) == 0 {
+		return nil
+	}
+	if len(lst) == 1 {
+		return lst[0]
+	}
+
+	for _, bg := range lst {
+		if bg == nil {
+			continue
+		}
+		for _, selected := range sys.matchMusicSel {
+			if selected == bg {
+				return bg
 			}
 		}
 	}
-}
 
-// pinSelection chooses one candidate for automatic in-match playback and keeps
-// that choice across round resets. The merged cgi music map is rebuilt every
-// round, so the flag lives on the shared source bgMusic entry.
-func (m Music) pinSelection(key string) {
-	prefix := musicKeyPrefix(key)
-	lst := m[prefix]
-	if len(lst) < 2 {
-		return
-	}
-	for _, bg := range lst {
-		if bg != nil && bg.selected {
-			m[prefix] = []*bgMusic{bg}
-			return
-		}
-	}
-	idx := int(RandI(0, int32(len(lst))-1))
-	bg := lst[idx]
+	bg := lst[int(RandI(0, int32(len(lst))-1))]
 	if bg == nil {
-		return
+		return nil
 	}
-	for _, v := range lst {
-		if v != nil {
-			v.selected = false
+
+	// Drop prior choices from this list while preserving unrelated choices.
+	previous := sys.matchMusicSel
+	sys.matchMusicSel = sys.matchMusicSel[:0]
+	for _, selected := range previous {
+		belongsToList := false
+		for _, candidate := range lst {
+			if candidate == selected {
+				belongsToList = true
+				break
+			}
+		}
+		if !belongsToList {
+			sys.matchMusicSel = append(sys.matchMusicSel, selected)
 		}
 	}
-	bg.selected = true
-	m[prefix] = []*bgMusic{bg}
+	sys.matchMusicSel = append(sys.matchMusicSel, bg)
+	return bg
 }
 
 // AppendParams parses comma-separated "key=value" pairs (as passed from
@@ -368,7 +372,6 @@ func (m Music) Read(key, def string) (string, int, int, int, int, int, float32, 
 
 // Play opens the chosen track in the global BGM player.
 func (m Music) Play(key, path string) bool {
-	m.pinSelection(key)
 	track, loop, volume, loopstart, loopend, startposition, freqmul, loopcount := m.Read(key, path)
 	//fmt.Printf("[music] Play: key='%s' def='%s' -> track='%s'\n", key, path, track)
 
@@ -395,12 +398,9 @@ const (
 	BGMStateVictory                 // victory track chosen/playing
 )
 
-// tryPlay is a guarded helper used by act(): if a prefix exists and has at
-// least one non-empty entry, it delegates to Play("<prefix>.bgmusic", def).
+// tryPlay handles rollbacked automatic match music.
+// A valid track completes the transition even if it is already playing.
 func (m Music) tryPlay(key, def string) bool {
-	//if dot := strings.Index(key, "."); dot != -1 {
-	//	key = key[:dot]
-	//}
 	nkey := normalizeMusicPrefix(key)
 	lst, ok := m[nkey]
 	if !ok || len(lst) == 0 {
@@ -419,9 +419,26 @@ func (m Music) tryPlay(key, def string) bool {
 		//fmt.Printf("[music] tryPlay: prefix '%s' has no defined bgmusic entries\n", key)
 		return false
 	}
-	ok = m.Play(nkey+".bgmusic", def)
-	//fmt.Printf("[music] tryPlay: Play('%s.bgmusic') -> %v\n", key, ok)
-	return ok
+	bg := m.matchSelection(nkey)
+	if bg == nil {
+		return false
+	}
+
+	// Preserve the RandI(0, 0) call made by the old pinned Play path.
+	// This keeps existing gameplay RNG sequences unchanged.
+	_ = RandI(0, 0)
+
+	track := SearchFile(bg.bgmusic, []string{def, "", "data/"}, "sound/")
+	if track == "" {
+		return false
+	}
+	if track != sys.bgm.filename {
+		sys.bgm.Open(track, int(bg.bgmloop), int(bg.bgmvolume),
+			int(bg.bgmloopstart), int(bg.bgmloopend), int(bg.bgmstartposition),
+			bg.bgmfreqmul, int(bg.bgmloopcount))
+		sys.playBgmFlg = sys.playBgmFlg || !sys.sel.gameParams.PersistMusic
+	}
+	return true
 }
 
 // act drives in-fight music state transitions:
@@ -433,8 +450,8 @@ func (m Music) act() {
 		return
 	}
 	//fmt.Printf("[music] act: tickCount=%d round=%d match=%d bgmState=%d\n", sys.tickCount, sys.round, sys.match, sys.stage.bgmState)
-	if sys.tickCount == 0 && sys.round == 1 && !sys.roundResetMatchStart &&
-		(sys.match == 1 || !sys.sel.gameParams.PersistMusic || sys.stage.bgmState != BGMStateRound) {
+	if sys.tickCount == 0 && sys.roundNo == 1 && !sys.roundResetMatchStart &&
+		(sys.matchNo == 1 || !sys.sel.gameParams.PersistMusic || sys.stage.bgmState != BGMStateRound) {
 		sys.bgm.Stop()
 		sys.stage.bgmState = BGMStateIdle
 	}
@@ -455,21 +472,27 @@ func (m Music) act() {
 				sys.tickCount == 0 {
 				switch {
 				case sys.roundIsFinal() && cmusic.tryPlay("final", sys.stage.def):
-				case sys.sel.gameParams.PersistMusic && cmusic.tryPlay(fmt.Sprintf("round%d", sys.match), sys.stage.def):
-				case cmusic.tryPlay(fmt.Sprintf("round%d", sys.round), sys.stage.def):
+				case sys.sel.gameParams.PersistMusic && cmusic.tryPlay(fmt.Sprintf("round%d", sys.matchNo), sys.stage.def):
+				case cmusic.tryPlay(fmt.Sprintf("round%d", sys.roundNo), sys.stage.def):
 				case cmusic.tryPlay("", sys.stage.def):
 				}
 				sys.stage.bgmState = BGMStateRound
 				continue
 			}
 
-			// Low Life (only team leader)
+			// Low Life
 			if sys.stage.bgmState == BGMStateRound &&
 				sys.roundState() == 2 &&
-				c.playerNo == c.teamLeader()-1 &&
-				float32(c.life)/float32(c.lifeMax) <= sys.stage.bgmratio {
-				//fmt.Printf("[music] act: low life detected for player %d, trying 'life' prefix\n", c.playerNo)
-				if cmusic.tryPlay("life", sys.stage.def) {
+				c.playerNo == c.teamLeader()-1 {
+				lowLife := true
+				for i := side; i < int(MaxSimul)*2; i += 2 {
+					if len(sys.chars[i]) > 0 && sys.chars[i][0] != nil &&
+						float32(sys.chars[i][0].life)/float32(sys.chars[i][0].lifeMax) > sys.stage.bgmratio {
+						lowLife = false
+						break
+					}
+				}
+				if lowLife && cmusic.tryPlay("life", sys.stage.def) {
 					sys.stage.bgmState = BGMStateLowLife
 					continue
 				}

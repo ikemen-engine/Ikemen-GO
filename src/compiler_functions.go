@@ -828,25 +828,31 @@ func (c *CharCompiler) helper(is IniSection, sc *StateControllerBase) (StateCont
 			return err
 		}
 
-		// Handle the "map." parameters
-		// Must be placed after extendsmap or that operation may write over these maps
-		for k, data := range is {
-			lowK := strings.ToLower(k)
-			if strings.HasPrefix(lowK, "map.") {
-				mapKey := k[4:]
-				if mapKey == "" {
-					return Error("Empty map key in helper parameters")
-				}
-				// Compile value expression
-				mapValBes, err := c.exprs(data, VT_Float, 1)
-				if err != nil {
-					return err
-				}
-				// String hack like with most name parameters
-				mapKeyBes := sc.beToExp(BytecodeExp(mapKey))
-				sc.add(helper_map, append(mapKeyBes, mapValBes...))
-				delete(is, k)
+		// Handle the "map." parameters. Must be placed after extendsmap or that
+		// operation may write over these maps. Sort keys because parameter
+		// expressions are evaluated in the generated controller order and may
+		// consume deterministic state such as Random.
+		mapParams := make([]string, 0)
+		for k := range is {
+			if strings.HasPrefix(strings.ToLower(k), "map.") {
+				mapParams = append(mapParams, k)
 			}
+		}
+		sort.Strings(mapParams)
+		for _, k := range mapParams {
+			mapKey := k[4:]
+			if mapKey == "" {
+				return Error("Empty map key in helper parameters")
+			}
+			// Compile value expression
+			mapValBes, err := c.exprs(is[k], VT_Float, 1)
+			if err != nil {
+				return err
+			}
+			// String hack like with most name parameters
+			mapKeyBes := sc.beToExp(BytecodeExp(mapKey))
+			sc.add(helper_map, append(mapKeyBes, mapValBes...))
+			delete(is, k)
 		}
 
 		return nil
@@ -939,7 +945,10 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 		explod_syncid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.shaderSub(is, sc, explod_shader, explod_shaderparam); err != nil {
+	if err := c.paramValue(is, sc, "shadertime", explod_shadertime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.shaderSub(is, sc, explod_shader, ""); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "bindid",
@@ -2544,7 +2553,10 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 	if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
 		return err
 	}
-	if err := c.shaderSub(is, sc, projectile_shader, projectile_shaderparam); err != nil {
+	if err := c.paramValue(is, sc, "shadertime", projectile_shadertime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.shaderSub(is, sc, projectile_shader, ""); err != nil {
 		return err
 	}
 	return nil
@@ -5338,6 +5350,7 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 		}
 		return nil
 	})
+	sys.cgi[c.playerNo].canMutateStage = true
 	return *ret, err
 }
 
@@ -5357,6 +5370,7 @@ func (c *CharCompiler) modifyBGCtrl3d(is IniSection, sc *StateControllerBase) (S
 		}
 		return nil
 	})
+	sys.cgi[c.playerNo].canMutateStage = true
 	return *ret, err
 }
 
@@ -5618,7 +5632,7 @@ func (c *CharCompiler) shaderSet(is IniSection, sc *StateControllerBase) (StateC
 		if err := c.paramValue(is, sc, "time", shaderSet_time, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.shaderSub(is, sc, shaderSet_shader, shaderSet_shaderparam); err != nil {
+		if err := c.shaderSub(is, sc, shaderSet_shader, ""); err != nil {
 			return err
 		}
 		return nil
@@ -6528,8 +6542,14 @@ func (c *CharCompiler) getHitVarSet(is IniSection, sc *StateControllerBase) (Sta
 			getHitVarSet_animtype, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "attr",
-			getHitVarSet_attr, VT_Int, 1, false); err != nil {
+		if err := c.stateParam(is, "attr", false, func(data string) error {
+			attr, err := c.attr(data, false)
+			if err != nil {
+				return err
+			}
+			sc.add(getHitVarSet_attr, sc.iToExp(attr))
+			return nil
+		}); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "chainid",
@@ -6948,13 +6968,21 @@ func (c *CharCompiler) modifyStageBG(is IniSection, sc *StateControllerBase) (St
 	sys.cgi[c.playerNo].canMutateStage = true
 	return *ret, err
 }
-func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, shaderOpCode, paramOpCode byte) error {
-	if err := c.stateParam(is, "shader", false, func(data string) error {
+
+func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp byte, prefix string) error {
+	opShader := baseOp
+	opShaderParam := baseOp + 1
+	opTex1Anim := baseOp + 2
+	opTex1Spr := baseOp + 3
+	opTex2Anim := baseOp + 4
+	opTex2Spr := baseOp + 5
+
+	if err := c.stateParam(is, prefix+"shader", false, func(data string) error {
 		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 			return Error("Shader name not enclosed in \"")
 		}
 		shaderName := strings.ToLower(data[1 : len(data)-1])
-		sc.add(shaderOpCode, sc.beToExp(BytecodeExp(shaderName)))
+		sc.add(opShader, sc.beToExp(BytecodeExp(shaderName)))
 		return nil
 	}); err != nil {
 		return err
@@ -6963,8 +6991,8 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, shaderO
 	var shaderParams []BytecodeExp
 	var paramIndices []int
 	for k, v := range is {
-		if strings.HasPrefix(strings.ToLower(k), "shaderparam.p") {
-			numStr := k[len("shaderparam.p"):]
+		if strings.HasPrefix(strings.ToLower(k), prefix+"shaderparam.p") {
+			numStr := k[len(prefix+"shaderparam.p"):]
 			idx, err := strconv.Atoi(numStr)
 			if err != nil || idx < 0 || idx > 15 {
 				return Error("Invalid shader parameter: " + k + " (must be p0 to p15)")
@@ -6992,7 +7020,55 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, shaderO
 			beIdx.appendValue(BytecodeInt(int32(idx)))
 			allParams = append(allParams, beIdx, shaderParams[i])
 		}
-		sc.add(paramOpCode, allParams)
+		sc.add(opShaderParam, allParams)
+	}
+
+	// tex1.anim
+	if err := c.stateParam(is, prefix+"shadertex1.anim", false, func(data string) error {
+		be, err := c.argExpression(&data, VT_Int)
+		if err != nil {
+			return err
+		}
+		sc.add(opTex1Anim, sc.beToExp(be))
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// tex1.spr
+	if err := c.stateParam(is, prefix+"shadertex1.spr", false, func(data string) error {
+		be, err := c.exprs(data, VT_Int, 2)
+		if err != nil {
+			return err
+		}
+		sc.add(opTex1Spr, be)
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// tex2.anim
+	if err := c.stateParam(is, prefix+"shadertex2.anim", false, func(data string) error {
+		be, err := c.argExpression(&data, VT_Int)
+		if err != nil {
+			return err
+		}
+		sc.add(opTex2Anim, sc.beToExp(be))
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	// tex2.spr
+	if err := c.stateParam(is, prefix+"shadertex2.spr", false, func(data string) error {
+		be, err := c.exprs(data, VT_Int, 2)
+		if err != nil {
+			return err
+		}
+		sc.add(opTex2Spr, be)
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	return nil

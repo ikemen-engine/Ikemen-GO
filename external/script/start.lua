@@ -797,6 +797,18 @@ local function drawPortraitRandom(randomCfg)
 	return false
 end
 
+local function drawPortraitSlot(slotCfg)
+	if not slotCfg then
+		return false
+	end
+	local spr = slotCfg.spr
+	if slotCfg.anim >= 0 or (spr and spr[1] >= 0 and spr[2] >= 0) then
+		main.f_animPosDraw(slotCfg.AnimData)
+		return true
+	end
+	return false
+end
+
 local function hasPortraitAnim(params)
 	return params ~= nil and params.AnimData ~= nil and ((params.anim or -1) ~= -1 or (params.spr ~= nil and params.spr[1] ~= -1))
 end
@@ -893,6 +905,29 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			end
 			if baseFace.random and drawPortraitRandom(baseFace.random) then
 				t_portraits[m].skipCurrent = true
+			end
+		end
+	end
+	-- draw slot indicator
+	for m = 1, #t_portraits do
+		local pn = 2 * (m - 1) + side
+		local pData = f_getMotifP(t, pn, side)
+
+		local baseFace = pData
+		if subname and subname ~= '' then
+			baseFace = baseFace[subname]
+		end
+		if t_portraits[m].ref ~= nil then
+			local charInfo = main.t_selChars[t_portraits[m].ref + 1]
+			if charInfo and charInfo.hasSlot then
+				-- face2 slot
+				if pData.face2.slot then
+					drawPortraitSlot(pData.face2.slot)
+				end
+				-- primary face slot
+				if baseFace.slot then
+					drawPortraitSlot(baseFace.slot)
+				end
 			end
 		end
 	end
@@ -2126,6 +2161,12 @@ local function buildMusicParams(data)
 	return table.concat(out, ", ")
 end
 
+local function defaultQuickContinue()
+	return (not main.selectMenu[1] and not main.selectMenu[2])
+		or main.quickContinue
+		or gameOption('Options.QuickContinue')
+end
+
 function launchFight(data)
 	local data = data or {}
 	local t = {}
@@ -2139,7 +2180,7 @@ function launchFight(data)
 		t.p2teammode = start.p[2].teamMode
 		t.challenger = main.f_arg(data.challenger, false)
 		t.continue = main.f_arg(data.continue, main.motif.continuescreen)
-		t.quickcontinue = (not main.selectMenu[1] and not main.selectMenu[2]) or main.f_arg(data.quickcontinue, main.quickContinue or gameOption('Options.QuickContinue'))
+		t.quickcontinue = main.f_arg(data.quickcontinue, defaultQuickContinue())
 		t.order = data.order or 1
 		t.orderselect = {main.f_arg(data.p1orderselect, main.orderSelect[1]), main.f_arg(data.p2orderselect, main.orderSelect[2])}
 		t.p1char = data.p1char or {}
@@ -2499,6 +2540,16 @@ function start.updateDrawList()
 						end
 					end
 					table.insert(drawList, item)
+					local grid = main.t_selGrid[cellIndex]
+					local hasMultipleChars = grid ~= nil and #grid.chars > 1
+					-- draw slot indicator
+					if hasMultipleChars and hasPortraitAnim(motif.select_info.cell.slot) then
+						local icon = getTransforms(motif.select_info.cell.slot)
+						icon.anim = motif.select_info.cell.slot.AnimData
+						icon.x = motif.select_info.pos[1] + t.x + motif.select_info.cell.slot.offset[1]
+						icon.y = motif.select_info.pos[2] + t.y + motif.select_info.cell.slot.offset[2]
+						table.insert(drawList, icon)
+					end
 				end
 			end
 		end
@@ -3763,15 +3814,15 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 		end
 		parts[#parts + 1] = k .. "=" .. tostring(v)
 	end
-	addParam("continue", t.continue)
-	addParam("quickcontinue", t.quickcontinue)
+	addParam("continue", main.f_arg(t.continue, main.motif.continuescreen))
+	addParam("quickcontinue", main.f_arg(t.quickcontinue, defaultQuickContinue()))
+	addParam("vsscreen", main.f_arg(t.vsscreen, main.motif.vsscreen))
+	addParam("victoryscreen", main.f_arg(t.victoryscreen, main.motif.victoryscreen))
+	addParam("winscreen", main.f_arg(t.winscreen, main.motif.winscreen))
 	addParam("order", t.order)
 	addParam("stage", t.stage)
 	addParam("ai", t.ai)
 	addParam("time", t.roundtime or t.time)
-	addParam("vsscreen", t.vsscreen)
-	addParam("victoryscreen", t.victoryscreen)
-	addParam("winscreen", t.winscreen)
 	addParam("lua", t.lua)
 	addParam("charparam.ai", main.charparam.ai)
 	addParam("charparam.arcadepath", main.charparam.arcadepath)
@@ -4186,6 +4237,9 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 			if bgLoading and loadStarted then
 				loadCancel()
 				clearSelected()
+			end
+			if main.replayActive then
+				start.exit = true
 			end
 			fadeOutInit(motif.vs_screen.fadeout.FadeData)
 			fadeOutStarted = true

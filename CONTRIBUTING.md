@@ -6,7 +6,7 @@ As a contributor, here are the guidelines we would like you to follow:
  - [Question or Problem?](#question)
  - [Issues and Bugs](#issue)
  - [Feature Requests](#feature)
- - [Branching Strategy](#branching-strategy)
+ - [Branching and Release Strategy](#branching-strategy)
  - [Code Style Guidelines](#style)
  - [Submission Guidelines](#submit)
  - [PR Message Guidelines](#pr)
@@ -31,13 +31,27 @@ If you would like to *implement* a new feature, please consider the size of the 
 
 * **Small Features** can be crafted and directly [submitted as a Pull Request](#submit-pr).
 
-## <a name="branching-strategy"></a> Branching Strategy
+## <a name="branching-strategy"></a> Branching and Release Strategy
 
-Our project utilizes a specific branching strategy to ensure a well-organized and stable codebase. Here's an outline of how our branches are structured:
+- `develop` is the default branch for ongoing development and nightly builds.
+- `release/X.Y` is created from `develop` when `X.Y.0` enters feature freeze. It is kept for the entire `X.Y` release line, while development of the next version continues on `develop`.
+- Version tags such as `v1.0.0-rc.1`, `v1.0.0`, and `v1.0.1` are permanent.
 
-- `master`: Represents the most stable version of the code. It's updated only when a new stable release is ready, after merging and tagging the `release` branch with a version number.
-- `develop`: The active development branch where all feature branches are created and merged back into. This branch contains features that will be part of the next release cycle.
-- `release`: Created off the `develop` branch when we're ready for a new release cycle. It's reserved for preparing the release and will only receive bug fixes.
+The release process is:
+
+1. Stabilize `release/X.Y` and tag selected commits as `vX.Y.0-rc.1`, `vX.Y.0-rc.2`, and so on.
+2. Tag the approved commit as the stable `vX.Y.0` release.
+3. Keep using the same branch for compatible fixes and tag them as `vX.Y.1`, `vX.Y.2`, and so on.
+
+RCs and patch releases are tags on `release/X.Y`; they do not use separate permanent branches.
+
+Maintainers publish a version by running the `releases` workflow from the matching `release/X.Y` branch and entering its tag. Leaving the tag empty creates a disposable test build from the selected branch; pushes to `develop` update the nightly build.
+
+A fix that affects both lines should normally be merged into `develop` first and then cherry-picked with `git cherry-pick -x` through a PR to `release/X.Y`. Release-only fixes should be forward-ported when they also apply to `develop`. Do not merge the complete branches after they diverge.
+
+A fix that affects both lines should normally be merged into `develop` first. A maintainer then decides whether it should be backported and creates, or asks the original contributor to create, a PR that cherry-picks the fix with `git cherry-pick -x` into `release/X.Y`. Release-only fixes should be forward-ported when they also apply to `develop`. Do not merge the complete branches after they diverge.
+
+Only the latest stable minor release line is normally maintained. Exceptions may be announced by the maintainers.
 
 ## <a name="style"></a> Code Style Guidelines
 
@@ -81,19 +95,15 @@ Before you submit your Pull Request (PR), please follow these guidelines:
 1. Check [GitHub][pulls] for existing PRs that may be similar to your submission.
 2. Ensure there's an issue that describes your fix or the feature you're adding. Design discussions should happen before starting your work.
 3. [Fork][fork] the Ikemen GO repository.
-4. In your fork, create a new git branch from the appropriate base branch.
-- **For features and fixes in the next release cycle**: Branch off from `develop` and merge your changes back into it. These will be included in the next release cycle.
-   ```shell
-   git checkout -b my-branch-name develop
-   ```
-- **For fixes in the current release cycle**: Direct your fixes to the `release` branch, which is strictly for regression fixes and preparations for the current release.
-   ```shell
-   git checkout -b my-branch-name release
-   ```
-- **For stable release updates**: The `master` branch is read-only and updated by github maintainers exclusively for deploying new stable releases.
-   ```shell
-   git checkout -b my-branch-name master
-   ```
+4. In your fork, create a branch from the appropriate base branch.
+   - Normal features and fixes target `develop`:
+     ```shell
+     git checkout -b my-branch-name develop
+     ```
+   - Approved backports and release-specific fixes target the applicable release branch:
+     ```shell
+     git checkout -b my-branch-name release/1.0
+     ```
 
 5. Make your changes and commit them:
    
@@ -107,9 +117,15 @@ Before you submit your Pull Request (PR), please follow these guidelines:
    git push origin my-branch-name
    ```
 
-7. Submit a PR to the correct base branch on `Ikemen GO` (either `develop` or `release`).
+7. Submit the PR to the branch from which your work was created.
 
-#### Reviewing a Pull Request
+#### Contributor Responsibilities
+
+Regardless of whether a contribution is self-written or AI-assisted, contributors must understand the code they submit and ensure it is testable and maintainable.
+
+Contributors are also expected to help investigate and resolve bugs or regressions introduced by their changes, including those discovered after the PR has been merged. Changes that introduce unresolved bugs or regressions may be reverted to preserve the stability of the codebase.
+
+#### Pull Request Review
 
 All PRs are subject to review by the Ikemen GO dev team, which retains the right to decline any contributions.
 
@@ -138,13 +154,14 @@ The expected PR title formatting is:
   │       │
   │       └─⫸ Scope: Scope of changes, e.g.: input|sctrl|trigger etc. Optional, can be skipped.
   │
-  └─⫸ Type: build|docs|feat|fix|other|perf|refactor|style|test
+  └─⫸ Type: build|chore|docs|feat|fix|other|perf|refactor|style|test
 ```
 
 ### <a name="pr-type"> Type
 
 The `<type>` portion of the title must be one of the following:
 - **build**: Changes that affect the build system, external dependencies, CI configuration
+- **chore**: Routine maintenance that does not change engine behavior
 - **docs**: Documentation only changes
 - **feat**: A new feature
 - **fix**: A bug fix

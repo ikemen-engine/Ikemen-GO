@@ -227,7 +227,7 @@ type Config struct {
 		} `ini:"survival"`
 	} `ini:"Arcade"`
 	Netplay struct {
-		ListenPort      string             `ini:"ListenPort"`
+		ListenPort      int                `ini:"ListenPort"`
 		RollbackNetcode bool               `ini:"RollbackNetcode" sync:"strict"`
 		IP              map[string]string  `ini:"IP" insensitivekeys:"false"`
 		Rollback        RollbackProperties `ini:"Rollback"`
@@ -360,6 +360,7 @@ func (c *Config) normalize() {
 	c.SetValueUpdate("Options.Tag.Max", int(Clamp(int32(c.Options.Tag.Max), int32(c.Options.Tag.Min), int32(MaxSimul))))
 	c.SetValueUpdate("Options.Tag.Min", int(Clamp(int32(c.Options.Tag.Min), 2, int32(MaxSimul))))
 	c.SetValueUpdate("Video.Framerate", int(Clamp(int32(c.Video.Framerate), 1, 840)))
+	c.SetValueUpdate("Netplay.ListenPort", int(Clamp(int32(c.Netplay.ListenPort), 1, 65535)))
 
 	// Options that determine allocation sizes should not be negative
 	// Update: AfterImageMax no longer does, but it's good to keep it in mind

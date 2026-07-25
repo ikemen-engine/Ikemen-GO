@@ -4,20 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag for the new release. Use semantic versioning e.g. v1.0.0. Leave empty to only update the nightly build.'
+        description: 'Version tag (e.g. v1.0.0-rc.1). Leave empty to build the selected branch; develop builds nightly.'
         type: string
         required: false
         default: ''
-      prerelease:
-        description: 'Set as a pre-release.'
-        type: boolean
-        required: false
-        default: false
-      makeLatest:
-        description: 'Set as the latest release.'
-        type: boolean
-        required: false
-        default: true
       draft:
         description: 'Set as a draft release.'
         type: boolean
@@ -35,13 +25,12 @@ on:
         default: true
 
 permissions:
-  checks: write
   contents: write
 
 name: releases
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || 'nightly' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -53,63 +42,111 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       releaseTag: ${{ steps.meta.outputs.releaseTag }}
       releaseKind: ${{ steps.meta.outputs.releaseKind }}
+      artifactVersion: ${{ steps.meta.outputs.artifactVersion }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+      makeLatest: ${{ steps.meta.outputs.makeLatest }}
+      previousTag: ${{ steps.meta.outputs.previousTag }}
       buildTime: ${{ steps.meta.outputs.buildTime }}
-      #previousTag: ${{ steps.previousTag.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
 
-      #- name: Get previous tag
-      #  id: previousTag
-      #  uses: actions-ecosystem/action-get-latest-tag@v1
-      #  with:
-      #    semver_only: true
-
       - name: Set version
         id: meta
         shell: bash
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
         run: |
           set -euo pipefail
 
-          ref_name="${GITHUB_REF_NAME}"
+          ref_name="$GITHUB_REF_NAME"
+          input_tag="${INPUT_TAG:-}"
+          previous_tag=""
 
-          if [ "${{ github.event.inputs.tag }}" != "" ]; then
-            version="${{ github.event.inputs.tag }}"
-            release_tag="${{ github.event.inputs.tag }}"
+          if [ -n "$input_tag" ]; then
+            tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.([1-9][0-9]*))?$'
+            if [[ ! "$input_tag" =~ $tag_pattern ]]; then
+              echo "Invalid release tag: $input_tag" >&2
+              echo "Use vX.Y.Z or vX.Y.Z-rc.N." >&2
+              exit 1
+            fi
+
+            release_major="${BASH_REMATCH[1]}"
+            release_minor="${BASH_REMATCH[2]}"
+            release_patch="${BASH_REMATCH[3]}"
+            release_branch="release/${release_major}.${release_minor}"
+            if [ "$ref_name" != "$release_branch" ]; then
+              echo "Run $input_tag from the $release_branch branch." >&2
+              exit 1
+            fi
+            if git ls-remote --exit-code --tags origin "refs/tags/$input_tag" >/dev/null 2>&1; then
+              echo "Tag $input_tag already exists and will not be replaced." >&2
+              exit 1
+            fi
+
+            git fetch --force --tags origin
+            latest_stable="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -Ev -- '-' | sed -n '1p' || true)"
+            if [[ "$input_tag" == *-rc.* ]]; then
+              base_tag="${input_tag%-rc.*}"
+              previous_tag="$(git tag --list "${base_tag}-rc.*" --sort=-v:refname | sed -n '1p')"
+            fi
+            if [ -z "$previous_tag" ]; then
+              stable_pattern='v[0-9]*.[0-9]*.[0-9]*'
+              if [ "$release_patch" -gt 0 ]; then
+                stable_pattern="v${release_major}.${release_minor}.*"
+              fi
+              previous_tag="$(git tag --list "$stable_pattern" --sort=-v:refname | grep -Ev -- '-' | sed -n '1p' || true)"
+            fi
+
+            version="$input_tag"
+            release_tag="$input_tag"
+            artifact_version="$input_tag"
             release_kind="tagged"
+            if [[ "$input_tag" == *-rc.* ]]; then
+              prerelease="true"
+              make_latest="false"
+            else
+              prerelease="false"
+              if [ -z "$latest_stable" ] || [ "$(printf '%s\n%s\n' "$latest_stable" "$input_tag" | sort -V | sed -n '$p')" = "$input_tag" ]; then
+                make_latest="true"
+              else
+                make_latest="false"
+              fi
+            fi
+          elif [ "$ref_name" = "ci-test" ]; then
+            version="ci-test"
+            release_tag="ci-test"
+            artifact_version="ci-test"
+            release_kind="ci-test"
+            prerelease="true"
+            make_latest="false"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
-               [ "$ref_name" != "develop" ] && \
-               [ "$ref_name" != "ci-test" ]; then
+               [ "$ref_name" != "develop" ]; then
             version="$ref_name"
             release_tag="$ref_name"
+            artifact_version="$(printf '%s' "$ref_name" | sed 's#[^A-Za-z0-9._-]#-#g')"
             release_kind="branch"
+            prerelease="true"
+            make_latest="false"
           else
             version="nightly"
             release_tag="nightly"
+            artifact_version="nightly"
             release_kind="nightly"
+            prerelease="false"
+            make_latest="true"
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "releaseTag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "releaseKind=$release_kind" >> "$GITHUB_OUTPUT"
-          echo "buildTime=$(date '+%Y.%m.%d')" >> "$GITHUB_OUTPUT"
-
-      - name: Move nightly tag to this commit
-        if: ${{ steps.meta.outputs.releaseKind == 'nightly' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          tag="${{ steps.meta.outputs.releaseTag }}"
-
-          git fetch --force --tags origin
-          git tag -fa "$tag" "$GITHUB_SHA" -m "$tag: $GITHUB_SHA"
-          git push --force origin "refs/tags/$tag:refs/tags/$tag"
+          echo "artifactVersion=$artifact_version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "makeLatest=$make_latest" >> "$GITHUB_OUTPUT"
+          echo "previousTag=$previous_tag" >> "$GITHUB_OUTPUT"
+          echo "buildTime=$(date -u '+%Y.%m.%d')" >> "$GITHUB_OUTPUT"
 
   build:
     name: prepare release
@@ -157,7 +194,7 @@ jobs:
           ref: ${{ github.sha }}
 
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
           go-version: '1.20.x'
           cache: true
@@ -377,7 +414,7 @@ jobs:
               ARTIFACT_NAME=Ikemen_GO-dev-android.zip
               echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
             else
-              ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.releaseTag }}-android.zip
+              ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.artifactVersion }}-android.zip
               echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
             fi
             zip -r ../$ARTIFACT_NAME *
@@ -451,7 +488,7 @@ jobs:
             ARTIFACT_NAME=Ikemen_GO-dev-${{ matrix.cfg.runner_os }}.zip
             echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
           else
-            ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.releaseTag }}-${{ matrix.cfg.runner_os }}.zip
+            ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.artifactVersion }}-${{ matrix.cfg.runner_os }}.zip
             echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
           fi
           if [ "$RUNNER_OS" = "Windows" ]; then
@@ -490,6 +527,14 @@ jobs:
     needs: [tag, build]
     runs-on: ubuntu-latest
     steps:
+      - name: Check out source for rolling tag update
+        if: ${{ needs.tag.outputs.releaseKind == 'nightly' || needs.tag.outputs.releaseKind == 'ci-test' }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          path: source
+
       - name: Download release artifacts
         uses: actions/download-artifact@v8
         with:
@@ -503,75 +548,88 @@ jobs:
           set -euo pipefail
           find release-assets -maxdepth 1 -type f -print -exec ls -lh {} \;
 
-      - name: Recreate nightly release metadata
-        if: ${{ needs.tag.outputs.releaseKind == 'nightly' }}
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd release-assets && sha256sum * > SHA256SUMS.txt)
+
+      - name: Move rolling tag to this commit
+        if: ${{ needs.tag.outputs.releaseKind == 'nightly' || needs.tag.outputs.releaseKind == 'ci-test' }}
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          tag="${{ needs.tag.outputs.releaseTag }}"
+          git fetch --force --tags origin
+          git tag -fa "$tag" "$GITHUB_SHA" -m "$tag: $GITHUB_SHA"
+          git push --force origin "refs/tags/$tag:refs/tags/$tag"
+
+      - name: Recreate rolling release metadata
+        if: ${{ needs.tag.outputs.releaseKind == 'nightly' || needs.tag.outputs.releaseKind == 'ci-test' }}
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.IKEMEN_TOKEN }}
         run: |
           set -euo pipefail
 
-          # The nightly tag has already been force-moved in the prepare tag job.
-          # Delete only the GitHub Release object so GitHub republishes it with fresh metadata.
-          # Do NOT pass --cleanup-tag here, because that would delete the moved nightly tag too.
-          if gh release view nightly --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release delete nightly --repo "$GITHUB_REPOSITORY" --yes
+          # The rolling tag has already been force-moved after all builds succeeded.
+          # Delete only the GitHub Release object so it is recreated with fresh metadata.
+          # Do not use --cleanup-tag, because that would delete the moved tag too.
+          tag="${{ needs.tag.outputs.releaseTag }}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$tag" --repo "$GITHUB_REPOSITORY" --yes
           fi
 
-      - name: Update dev release
+      - name: Prepare nightly release notes
         if: ${{ needs.tag.outputs.releaseKind == 'nightly' }}
-        uses: ncipollo/release-action@v1
-        with:
-          token: ${{ secrets.IKEMEN_TOKEN }}
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          artifacts: "release-assets/*"
-          commit: ${{ github.sha }}
-          body: |
-            The nightly release, or more precisely, the latest development version, is generated after each commit and always represents the most up-to-date iteration of the source code. It features the newest development version of the engine and screenpack files, making it ready for testing straightaway. Using it can eliminate the need to compile the source code for the latest, cutting-edge updates. However, as a consequence, it may sometimes contain regressions that were not yet discovered and/or outpace the documentation that corresponds to stable releases with version numbers like v x.x.x.
-          discussionCategory: ""
-          draft: false
-          generateReleaseNotes: false
-          makeLatest: true
-          name: nightly
-          omitBody: false
-          omitBodyDuringUpdate: false
-          omitDraftDuringUpdate: true
-          omitName: false
-          omitNameDuringUpdate: true
-          omitPrereleaseDuringUpdate: true
-          prerelease: false
-          removeArtifacts: false
-          replacesArtifacts: true
-          skipIfReleaseExists: false
-          tag: nightly
-          updateOnlyUnreleased: false
+        shell: bash
+        run: |
+          cat > nightly-release.md <<'EOF'
+          The nightly release is generated after each commit to `develop` and contains the newest engine and screenpack files. It is intended for testing and may contain regressions or changes not yet covered by the stable documentation.
+          EOF
 
-      - name: Create Release
-        if: ${{ needs.tag.outputs.releaseKind != 'nightly' }}
-        uses: ncipollo/release-action@v1
+      - name: Publish release
+        uses: ncipollo/release-action@v1.21.0
         with:
           token: ${{ secrets.IKEMEN_TOKEN }}
-          allowUpdates: true
+
           artifactErrorsFailBuild: true
           artifacts: "release-assets/*"
           commit: ${{ github.sha }}
-          # body: |
-          #   ${{ needs.tag.outputs.changelog }}
-          discussionCategory: ${{ github.event.inputs.discussionCategory }}
-          draft: ${{ github.event.inputs.draft }}
-          generateReleaseNotes: ${{ needs.tag.outputs.releaseKind == 'tagged' }}
-          makeLatest: ${{ needs.tag.outputs.releaseKind == 'tagged' && github.event.inputs.makeLatest }}
-          name: ${{ needs.tag.outputs.releaseTag }}
-          omitBody: false
-          omitBodyDuringUpdate: true
-          omitDraftDuringUpdate: true
-          omitName: false
-          omitNameDuringUpdate: true
-          omitPrereleaseDuringUpdate: true
-          prerelease: ${{ needs.tag.outputs.releaseKind == 'branch' || github.event.inputs.prerelease }}
-          removeArtifacts: false
-          replacesArtifacts: true
-          skipIfReleaseExists: false
           tag: ${{ needs.tag.outputs.releaseTag }}
+          name: ${{ needs.tag.outputs.releaseTag }}
+
+          # Rolling and temporary releases may be updated.
+          # Tagged RC/stable releases are immutable.
+          allowUpdates: ${{ needs.tag.outputs.releaseKind != 'tagged' }}
+          replacesArtifacts: ${{ needs.tag.outputs.releaseKind != 'tagged' }}
+          immutableCreate: ${{ needs.tag.outputs.releaseKind == 'tagged' && !inputs.draft }}
+
+          prerelease: ${{ needs.tag.outputs.prerelease }}
+          makeLatest: ${{ needs.tag.outputs.makeLatest }}
+
+          # Only tagged releases receive automatically generated notes.
+          generateReleaseNotes: ${{ needs.tag.outputs.releaseKind == 'tagged' }}
+          generateReleaseNotesPreviousTag: ${{ needs.tag.outputs.previousTag }}
+
+          # Only rolling releases use the prepared custom body.
+          bodyFile: ${{ needs.tag.outputs.releaseKind == 'nightly' && 'nightly-release.md' || '' }}
+
+          # These settings apply only to manually dispatched temporary or
+          # versioned releases. They evaluate to empty/false for rolling builds.
+          discussionCategory: ${{ (needs.tag.outputs.releaseKind == 'branch' || needs.tag.outputs.releaseKind == 'tagged') && inputs.discussionCategory || '' }}
+          draft: ${{ (needs.tag.outputs.releaseKind == 'branch' || needs.tag.outputs.releaseKind == 'tagged') && inputs.draft }}
+
+          # Preserve manually edited rolling/temporary release metadata when
+          # updating an existing release.
+          omitBodyDuringUpdate: ${{ needs.tag.outputs.releaseKind == 'branch' }}
+          omitDraftDuringUpdate: ${{ needs.tag.outputs.releaseKind != 'tagged' }}
+          omitNameDuringUpdate: ${{ needs.tag.outputs.releaseKind != 'tagged' }}
+          omitPrereleaseDuringUpdate: ${{ needs.tag.outputs.releaseKind != 'tagged' }}
+
+          removeArtifacts: false
+          skipIfReleaseExists: false
           updateOnlyUnreleased: false

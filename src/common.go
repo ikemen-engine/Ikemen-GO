@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -619,10 +620,7 @@ func SearchFile(file string, dirs []string, defaultDirs ...string) string {
 		return FileExist(candidate)
 	}
 	join := func(base, name string) string {
-		if base == "" {
-			return filepath.ToSlash(name)
-		}
-		return filepath.ToSlash(filepath.Join(base, name))
+		return joinSearchPath(base, name)
 	}
 	rootBases := func(root string) []string {
 		root = filepath.ToSlash(strings.TrimSpace(root))
@@ -853,8 +851,7 @@ func sliceMove[T any](array []T, srcIndex int, dstIndex int) []T {
 	return append(array[:dstIndex], append([]T{value}, array[dstIndex:]...)...)
 }
 
-// We save an array for precise checking, and a float for triggers
-func ParseIkemenVersion(versionStr string) ([3]uint16, float32) {
+func ParseIkemenVersion(versionStr string) [3]uint16 {
 	var ver [3]uint16
 	parts := SplitAndTrim(versionStr, ".")
 	for i, s := range parts {
@@ -867,28 +864,11 @@ func ParseIkemenVersion(versionStr string) ([3]uint16, float32) {
 			break
 		}
 	}
-
-	// Convert into a float for triggers
-	re := regexp.MustCompile(`[^0-9.]`)
-	cleanStr := re.ReplaceAllString(versionStr, "")
-	// Keep only the first decimal point
-	strParts := strings.Split(cleanStr, ".")
-	if len(strParts) > 1 {
-		cleanStr = strParts[0] + "." + strings.Join(strParts[1:], "")
-	}
-	var verF float32
-	if result, err := strconv.ParseFloat(cleanStr, 32); err == nil {
-		verF = float32(result)
-	}
-
-	return ver, verF
+	return ver
 }
 
-func ParseMugenVersion(versionStr string) ([2]uint16, float32) {
+func ParseMugenVersion(versionStr string) [2]uint16 {
 	var ver [2]uint16
-	var verF float32
-
-	// Parse the string into the array
 	parts := SplitAndTrim(versionStr, ".")
 	for i, s := range parts {
 		if i >= len(ver) {
@@ -897,21 +877,14 @@ func ParseMugenVersion(versionStr string) ([2]uint16, float32) {
 		if v, err := strconv.ParseUint(s, 10, 16); err == nil {
 			ver[i] = uint16(v)
 		} else {
-			ver = [2]uint16{}
-			break
+			return [2]uint16{0, 5}
 		}
 	}
-
-	// Turn the array into the versions we know
-	if ver[0] == 1 && ver[1] == 1 {
-		verF = 1.1
-	} else if ver[0] == 1 && ver[1] == 0 {
-		verF = 1.0
-	} else if ver[0] != 0 {
-		verF = 0.5 // Arbitrary value
+	// Normalize everything except Mugen 1.0 and 1.1 to WinMugen.
+	if ver == [2]uint16{1, 0} || ver == [2]uint16{1, 1} {
+		return ver
 	}
-
-	return ver, verF
+	return [2]uint16{0, 5}
 }
 
 type Error string
@@ -1333,7 +1306,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 		a.Draw(drawwindow, x+l.offset[0]-xsoffset, y+l.offset[1]+float32(sys.gameHeight-240),
 			scl, scl, (l.scale[0]*xscl)*float32(l.facing), (l.scale[0]*xscl)*float32(l.facing),
 			(l.scale[1]*yscl)*float32(l.vfacing), xshear, l.rot,
-			float32(sys.gameWidth-320)/2, palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false, "", [16]float32{})
+			float32(sys.gameWidth-320)/2, palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false, CustomShaderRenderData{})
 	}
 }
 
@@ -1684,6 +1657,24 @@ func (zmfr *zipMemFileReader) Seek(offset int64, whence int) (int64, error) {
 func (zmfr *zipMemFileReader) Close() error {
 	// The bytes.Reader itself doesn't need closing, but we must close the main zip archive.
 	return zmfr.zipArchive.Close()
+}
+
+// joinSearchPath joins paths used by SearchFile without allowing a relative reference to escape a zip archive.
+func joinSearchPath(base, name string) string {
+	base = filepath.ToSlash(base)
+	name = filepath.ToSlash(name)
+	if isZip, zipFile, pathInZip := IsZipPath(base); isZip {
+		inner := path.Join("/", pathInZip, strings.TrimLeft(name, "/"))
+		inner = strings.TrimPrefix(inner, "/")
+		if inner == "" || inner == "." {
+			return zipFile
+		}
+		return zipFile + "/" + inner
+	}
+	if base == "" {
+		return name
+	}
+	return filepath.ToSlash(filepath.Join(base, name))
 }
 
 // OpenFile opens a regular file or a file within a zip archive.

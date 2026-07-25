@@ -2351,7 +2351,6 @@ type FightScreenCombo struct {
 	hidespeed    float32
 	separator    string
 	places       int32
-	trueHits     int32
 	shownHits    int32
 	shownDmg     int32
 	shownPct     float32
@@ -2471,7 +2470,7 @@ func readFightScreenCombo(pre string, is IniSection,
 	return co
 }
 
-func (co *FightScreenCombo) step(hits, damage int32, percentage float32) {
+func (co *FightScreenCombo) step(side int, hits, damage int32, percentage float32) {
 	co.bg.Action()
 	co.top.Action()
 
@@ -2482,11 +2481,9 @@ func (co *FightScreenCombo) step(hits, damage int32, percentage float32) {
 
 	// Reset team combo if no player was found getting hit
 	if hits == 0 {
-		co.trueHits = 0
+		sys.comboCount[side] = 0
 	}
-
-	// True hits are only updated by Char(). The live tally is only used for combo display behavior
-	//co.trueHits = hits
+	trueHits := sys.comboCount[side]
 
 	// Handle show/hide speed
 	if co.resttime > 0 {
@@ -2496,7 +2493,7 @@ func (co *FightScreenCombo) step(hits, damage int32, percentage float32) {
 		if Abs(co.counterX) < 1 {
 			co.counterX = 0
 		}
-	} else if co.trueHits < 2 {
+	} else if trueHits < 2 {
 		// Slide out when combo ends
 		co.counterX -= sys.fightScreen.fnt_scale * co.hidespeed * float32(sys.fightScreen.localcoord[0]) / 320
 		// Snap to starting position
@@ -2513,9 +2510,9 @@ func (co *FightScreenCombo) step(hits, damage int32, percentage float32) {
 	}
 
 	// Update if number of hits or total damage change
-	if co.trueHits >= 2 && (co.newCombo || co.shownHits != co.trueHits || co.shownDmg != damage) {
+	if trueHits >= 2 && (co.newCombo || co.shownHits != trueHits || co.shownDmg != damage) {
 		// Reset visuals when hits changed
-		if co.newCombo || co.shownHits != co.trueHits {
+		if co.newCombo || co.shownHits != trueHits {
 			co.counterShake.restart()
 			co.textShake.restart()
 			for i := range co.counter {
@@ -2528,7 +2525,7 @@ func (co *FightScreenCombo) step(hits, damage int32, percentage float32) {
 		// Time resets if either hits or damage changed
 		co.resttime = co.displaytime
 		// Update state
-		co.shownHits = co.trueHits
+		co.shownHits = trueHits
 		co.shownDmg = damage
 		co.shownPct = percentage
 		co.newCombo = false
@@ -2563,7 +2560,6 @@ func (co *FightScreenCombo) step(hits, damage int32, percentage float32) {
 func (co *FightScreenCombo) reset() {
 	co.bg.Reset()
 	co.top.Reset()
-	co.trueHits = 0
 	co.shownHits = 0
 	co.shownDmg = 0
 	co.shownPct = 0
@@ -3498,7 +3494,7 @@ func (ro *FightScreenRound) handleRoundIntro() {
 
 	// Round call
 	if ro.roundDisplayPhase < 2 {
-		roundNum := sys.round
+		roundNum := sys.roundNo
 		if sys.sel.gameParams.PersistRounds {
 			roundNum = sys.persistRoundCount
 		}
@@ -3636,7 +3632,7 @@ func (ro *FightScreenRound) handleRoundIntro() {
 // Consists of KO screen and winner messages
 func (ro *FightScreenRound) handleRoundOutro() {
 	if ro.timerActive {
-		ri := int(sys.round - 1)
+		ri := int(sys.roundNo - 1)
 		if ri >= 0 && ri < len(sys.timerCount) {
 			if sys.matchTime-sys.timerCount[ri] > 0 {
 				sys.timerCount[ri] = sys.matchTime - sys.timerCount[ri]
@@ -3737,13 +3733,13 @@ func (ro *FightScreenRound) handleRoundOutro() {
 			}
 		} else if sys.winTeam >= 0 {
 			isPlayerWin, isAiWin := false, false
-			for i := wt; i < len(sys.chars); i += 2 {
+			for i := wt; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 && sys.aiLevel[i] == 0 {
 					isPlayerWin = true
 					break
 				}
 			}
-			for i := lt; i < len(sys.chars); i += 2 {
+			for i := lt; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 && sys.aiLevel[i] == 0 {
 					isAiWin = true
 					break
@@ -3881,7 +3877,7 @@ func (ro *FightScreenRound) draw(layerno int16, f map[int]*Fnt) {
 
 		// Check round number
 		var round_ref AnimTextSnd
-		roundNum := sys.round
+		roundNum := sys.roundNo
 		if sys.sel.gameParams.PersistRounds {
 			roundNum = sys.persistRoundCount
 		}
@@ -4031,13 +4027,13 @@ func (ro *FightScreenRound) draw(layerno int16, f map[int]*Fnt) {
 			ro.drawgame_top.Draw(float32(ro.pos[0])+sys.fightScreen.offsetX, float32(ro.pos[1]), layerno, sys.fightScreen.scale)
 		} else if sys.winTeam >= 0 {
 			isPlayerWin, isAiWin := false, false
-			for i := wt; i < len(sys.chars); i += 2 {
+			for i := wt; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 && sys.aiLevel[i] == 0 {
 					isPlayerWin = true
 					break
 				}
 			}
-			for i := lt; i < len(sys.chars); i += 2 {
+			for i := lt; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 && sys.aiLevel[i] == 0 {
 					isAiWin = true
 					break
@@ -4247,18 +4243,17 @@ func (tr *FightScreenTimer) draw(layerno int16, f map[int]*Fnt) {
 }
 
 type FightScreenScore struct {
-	pos         [2]int32
-	text        FSText
-	bg          AnimLayout
-	top         AnimLayout
-	separator   [2]string
-	pad         int32
-	places      int32
-	min         float32
-	max         float32
-	scorePoints float32
-	enabled     map[string]bool
-	active      bool
+	pos       [2]int32
+	text      FSText
+	bg        AnimLayout
+	top       AnimLayout
+	separator [2]string
+	pad       int32
+	places    int32
+	min       float32
+	max       float32
+	enabled   map[string]bool
+	active    bool
 }
 
 func newFightScreenScore() *FightScreenScore {
@@ -4299,7 +4294,6 @@ func (sc *FightScreenScore) step() {
 func (sc *FightScreenScore) reset() {
 	sc.bg.Reset()
 	sc.top.Reset()
-	sc.scorePoints = 0
 }
 
 func (sc *FightScreenScore) bgDraw(layerno int16) {
@@ -4399,7 +4393,7 @@ func (ma *FightScreenMatch) bgDraw(layerno int16) {
 func (ma *FightScreenMatch) draw(layerno int16, f map[int]*Fnt) {
 	if ma.active && ma.text.font[0] >= 0 && getFont(f, ma.text.font[0]) != nil {
 		text := ma.text.text
-		text = strings.Replace(text, "%s", fmt.Sprintf("%v", sys.match), 1)
+		text = strings.Replace(text, "%s", fmt.Sprintf("%v", sys.matchNo), 1)
 		ma.text.lay.DrawText(float32(ma.pos[0])+sys.fightScreen.offsetX, float32(ma.pos[1]), sys.fightScreen.scale, layerno,
 			text, getFont(f, ma.text.font[0]), ma.text.font[1], ma.text.font[2], ma.text.palfx, ma.text.frgba)
 		ma.top.Draw(float32(ma.pos[0])+sys.fightScreen.offsetX, float32(ma.pos[1]), layerno, sys.fightScreen.scale)
@@ -4604,9 +4598,7 @@ type FightScreen struct {
 	authorLow     string
 	localcoord    [2]int32
 	ikemenver     [3]uint16
-	ikemenverF    float32
 	mugenver      [2]uint16
-	mugenverF     float32
 	offsetX       float32
 	offsetY       float32
 	scale         float32
@@ -4759,14 +4751,8 @@ func loadFightScreen(def string) (*FightScreen, error) {
 			fs.nameLow = strings.ToLower(fs.name)
 			fs.author, _, _ = is.getText("author")
 			fs.authorLow = strings.ToLower(fs.author)
-			// Read MugenVersion
-			if str, ok := is["mugenversion"]; ok {
-				fs.mugenver, fs.mugenverF = ParseMugenVersion(str)
-			}
-			// Read IkemenVersion
-			if str, ok := is["ikemenversion"]; ok {
-				fs.ikemenver, fs.ikemenverF = ParseIkemenVersion(str)
-			}
+			fs.mugenver = ParseMugenVersion(is["mugenversion"])
+			fs.ikemenver = ParseIkemenVersion(is["ikemenversion"])
 			var b bool
 			is.ReadBool("doubleres", &b)
 			if b {
@@ -5445,7 +5431,7 @@ func (fs *FightScreen) step() {
 		}
 	}
 	for i := range fs.combos {
-		fs.combos[i].step(cb[i], cd[i], cp[i]) // Combo hits, combo damage, combo damage percentage
+		fs.combos[i].step(i, cb[i], cd[i], cp[i]) // Combo hits, combo damage, combo damage percentage
 	}
 	// Action
 	for i := range fs.actions {
@@ -6019,7 +6005,7 @@ func (fs *FightScreen) addComboHits(side int, n int32) {
 	if side < 0 || side >= len(fs.combos) {
 		return
 	}
-	fs.combos[side].trueHits += n
+	sys.comboCount[side] += n
 }
 
 // Update team order based on the actual character member numbers

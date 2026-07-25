@@ -903,7 +903,7 @@ func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	rxadd float32, rot Rotation, rcx float32, pfx *PalFX, facing float32,
 	airOffsetFix [2]float32, projectionMode int32, fLength float32, color uint32,
-	isReflection bool, shader string, shaderParams [16]float32) {
+	isReflection bool, shader CustomShaderRenderData) {
 
 	// Skip blank animations
 	if a == nil || a.isBlank() {
@@ -1032,15 +1032,14 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		fLength:        fLength * sys.heightScale,
 		xOffset:        xoff * sys.widthScale,
 		yOffset:        yoff * sys.heightScale,
-		shader:         shader,
-		shaderParams:   shaderParams,
+		customShader:   shader,
 	}
 
 	RenderSprite(rp)
 }
 
 func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd float32, rot Rotation,
-	pfx *PalFX, color uint32, intensity int32, facing float32, airOffsetFix [2]float32, projectionMode int32, fLength float32, shader string, shaderParams [16]float32) {
+	pfx *PalFX, color uint32, intensity int32, facing float32, airOffsetFix [2]float32, projectionMode int32, fLength float32, shader CustomShaderRenderData) {
 
 	// Skip blank shadows
 	if a == nil || a.isBlank() {
@@ -1085,8 +1084,7 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		fLength:        fLength,
 		xOffset:        xoff,
 		yOffset:        yoff,
-		shader:         shader,
-		shaderParams:   shaderParams,
+		customShader:   shader,
 	}
 
 	// TODO: This is redundant now that rp.tint is used to colorise the shadow
@@ -1114,9 +1112,10 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 	if a.spr.coldepth <= 8 && (color != 0 || intensity > 0) {
 		if a.sff.header.Version[0] == 2 && a.sff.header.Version[2] == 1 {
 			pal, _ := a.pal(pfx)
-			if a.spr.PalTex == nil {
-				a.spr.PalTex = a.spr.CachePalTex(pal)
-			}
+			// This nil check broke the rare instance where the palette affects the shadow, such as palettes with alpha
+			//if a.spr.PalTex == nil {
+			a.spr.PalTex = a.spr.CachePalTex(pal)
+			//}
 			rp.paltex = a.spr.PalTex
 		} else {
 			rp.paltex = sys.whitePalTex
@@ -1286,8 +1285,7 @@ type SpriteData struct {
 	syncGroup    int   // Used to group syncId's in chunks before drawing
 	sortindex    int   // For faster sorting
 	under        bool
-	shader       string
-	shaderParams [16]float32
+	customShader CustomShaderRenderData
 }
 
 func newSpriteData() *SpriteData {
@@ -1451,7 +1449,7 @@ func (dl DrawList) draw(layerno int32, under bool, cameraX, cameraY, cameraScl f
 
 		s.anim.Draw(drawwindow, pos[0]-xsoffset, pos[1], cs, cs, s.scl[0], s.scl[0],
 			s.scl[1], xshear, s.rot, float32(sys.gameWidth)/2, s.pfx, s.facing,
-			s.airOffsetFix, s.projection, s.fLength, 0, false, s.shader, s.shaderParams)
+			s.airOffsetFix, s.projection, s.fLength, 0, false, s.customShader)
 
 		// Restore original animation transparency just in case
 		s.anim.transType = oldTransType
@@ -1717,7 +1715,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			sys.cam.GroundLevel()+(sys.cam.Offset[1]-shake[1])-y-(sdwPosY*yscale-offsetY)*scl,
 			scl*s.scl[0]*xscale, scl*-s.scl[1],
 			yscale, xshear, rot,
-			s.pfx, uint32(color), intensity, s.facing, s.airOffsetFix, projection, fLength, s.shader, s.shaderParams)
+			s.pfx, uint32(color), intensity, s.facing, s.airOffsetFix, projection, fLength, s.customShader)
 	}
 }
 
@@ -1988,7 +1986,7 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 			scl, scl,
 			s.scl[0]*xscale, s.scl[0]*xscale,
 			-s.scl[1]*yscale, xshear, rot, float32(sys.gameWidth)/2,
-			s.pfx, s.facing, s.airOffsetFix, projection, fLength, color, true, s.shader, s.shaderParams)
+			s.pfx, s.facing, s.airOffsetFix, projection, fLength, color, true, s.customShader)
 
 		// Restore original animation transparency just in case
 		s.anim.transType = oldTransType
@@ -2321,7 +2319,7 @@ func (a *Anim) Draw(ln int16) {
 
 	a.anim.Draw(&a.window, a.x+a.vel[0]-xsoffset+float32(sys.gameWidth-320)/2,
 		a.y+a.vel[1]+float32(sys.gameHeight-240), 1, 1, xscl, xscl, a.yscl,
-		xshear, a.rot, 0, a.palfx, a.facing, [2]float32{1, 1}, a.projection, a.fLength, 0, false, "", [16]float32{})
+		xshear, a.rot, 0, a.palfx, a.facing, [2]float32{1, 1}, a.projection, a.fLength, 0, false, CustomShaderRenderData{})
 }
 
 func (a *Anim) Reset() {

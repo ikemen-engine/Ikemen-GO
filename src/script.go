@@ -3041,7 +3041,7 @@ func systemScriptInit(l *lua.LState) {
 			// Anonymous function to perform gameplay
 			fight := func() (int32, error) {
 				// Reset character list
-				if sys.round == 1 {
+				if sys.roundNo == 1 {
 					sys.charList.clear()
 				}
 
@@ -3054,7 +3054,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Build Turns teammate portraits after loading, when Lua order selection is complete.
-				if sys.round == 1 {
+				if sys.roundNo == 1 {
 					for side, tm := range sys.tmode {
 						if tm != TM_Turns {
 							continue
@@ -3091,7 +3091,7 @@ func systemScriptInit(l *lua.LState) {
 							continue
 						}
 						// Add or replace in charList
-						if sys.round == 1 {
+						if sys.roundNo == 1 {
 							sys.charList.add(c[0])
 						} else if c[0].roundsExisted() == 0 {
 							// BG-loaded Turns switching updates CharList inside activateNextTurnsFighters().
@@ -3118,7 +3118,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// If first round
-				if sys.round == 1 {
+				if sys.roundNo == 1 {
 					// Update wins, reset stage
 					sys.endMatch = false
 					sys.teamLeader = [2]int{0, 1}
@@ -5966,7 +5966,7 @@ func systemScriptInit(l *lua.LState) {
 		if tn < 1 || tn > 2 {
 			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
-		sys.fightScreen.scores[tn-1].scorePoints = 0
+		sys.scorePoints[tn-1] = 0
 		return 0
 	})
 	luaRegister(l, "resetTokenGuard", func(*lua.LState) int {
@@ -6622,7 +6622,7 @@ func systemScriptInit(l *lua.LState) {
 		@function setMatchNo
 		@tparam int32 matchNo Match index/number.
 		function setMatchNo(matchNo) end*/
-		sys.match = int32(numArg(l, 1))
+		sys.matchNo = int32(numArg(l, 1))
 		return 0
 	})
 	luaRegister(l, "setMatchWins", func(l *lua.LState) int {
@@ -9319,7 +9319,17 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "ikemenVersion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.gi().ikemenverF))
+		version := sys.debugWC.gi().ikemenver
+		switch strings.ToLower(strArg(l, 1)) {
+		case "major":
+			l.Push(lua.LNumber(version[0]))
+		case "minor":
+			l.Push(lua.LNumber(version[1]))
+		case "patch":
+			l.Push(lua.LNumber(version[2]))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	luaRegister(l, "inCustomAnim", func(*lua.LState) int {
@@ -9640,7 +9650,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "matchNo", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.match))
+		l.Push(lua.LNumber(sys.matchNo))
 		return 1
 	})
 	luaRegister(l, "matchOver", func(*lua.LState) int {
@@ -9750,7 +9760,15 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "mugenVersion", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.gi().mugenverF))
+		version := sys.debugWC.gi().mugenver
+		switch strings.ToLower(strArg(l, 1)) {
+		case "major":
+			l.Push(lua.LNumber(version[0]))
+		case "minor":
+			l.Push(lua.LNumber(version[1]))
+		default:
+			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
+		}
 		return 1
 	})
 	// name also returns p1Name-p8Name variants and helperName
@@ -10351,7 +10369,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "roundNo", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.round))
+		l.Push(lua.LNumber(sys.roundNo))
 		return 1
 	})
 	luaRegister(l, "roundsExisted", func(*lua.LState) int {
@@ -10431,9 +10449,9 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "shader", func(l *lua.LState) int {
 		if !nilArg(l, 1) {
 			shaderName := strings.ToLower(strArg(l, 1))
-			l.Push(lua.LBool(sys.debugWC.shader == shaderName))
+			l.Push(lua.LBool(sys.debugWC.customShader.name == shaderName))
 		} else {
-			l.Push(lua.LBool(sys.debugWC.shader != ""))
+			l.Push(lua.LBool(sys.debugWC.customShader.name != ""))
 		}
 		return 1
 	})
@@ -10624,10 +10642,16 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LString(sys.stage.author))
 		case "info.displayname":
 			l.Push(lua.LString(sys.stage.displayname))
-		case "info.ikemenversion":
-			l.Push(lua.LNumber(sys.stage.ikemenverF))
-		case "info.mugenversion":
-			l.Push(lua.LNumber(sys.stage.mugenverF))
+		case "info.ikemenversion.major":
+			l.Push(lua.LNumber(sys.stage.ikemenver[0]))
+		case "info.ikemenversion.minor":
+			l.Push(lua.LNumber(sys.stage.ikemenver[1]))
+		case "info.ikemenversion.patch":
+			l.Push(lua.LNumber(sys.stage.ikemenver[2]))
+		case "info.mugenversion.major":
+			l.Push(lua.LNumber(sys.stage.mugenver[0]))
+		case "info.mugenversion.minor":
+			l.Push(lua.LNumber(sys.stage.mugenver[1]))
 		case "info.name":
 			l.Push(lua.LString(sys.stage.name))
 		case "camera.boundleft":

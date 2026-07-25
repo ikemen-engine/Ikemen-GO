@@ -217,7 +217,66 @@ type RenderParams struct {
 	xOffset        float32
 	yOffset        float32
 	shader         string
-	shaderParams   [16]float32
+	customShader   CustomShaderRenderData
+}
+
+type ShaderTexture struct {
+	AnimNo int32
+	Anim   *Animation
+	SprNo  [2]int32
+	Spr    *Sprite
+}
+
+func (st *ShaderTexture) clear() {
+	st.AnimNo = -1
+	st.Anim = nil
+	st.SprNo = [2]int32{-1, -1}
+	st.Spr = nil
+}
+
+func (st *ShaderTexture) GetTexture() Texture {
+	if st.Anim != nil {
+		if st.Anim.spr != nil {
+			return st.Anim.spr.Tex
+		}
+	} else if st.Spr != nil {
+		return st.Spr.Tex
+	}
+	return nil
+}
+
+func (st *ShaderTexture) step() {
+	if st.Anim != nil {
+		st.Anim.Action()
+		st.Anim.UpdateSprite()
+	}
+}
+
+type CustomShader struct {
+	name   string
+	params [16]float32
+	time   int32
+	sTime  float32
+	tex1   ShaderTexture
+	tex2   ShaderTexture
+}
+
+func (cs *CustomShader) clear() {
+	cs.name = ""
+	cs.params = [16]float32{}
+	cs.time = 0
+	cs.sTime = 0
+	cs.tex1.clear()
+	cs.tex2.clear()
+}
+
+type CustomShaderRenderData struct {
+	name   string
+	params [16]float32
+	time   int32
+	sTime  float32
+	tex1   Texture
+	tex2   Texture
 }
 
 func (rp *RenderParams) IsValid() bool {
@@ -632,7 +691,7 @@ func RenderSprite(rp RenderParams) {
 
 	// Heavy state change
 	// Because renderWithBlending() sometimes needs 2 passes, we'll do most of the setup outside of render()
-	gfx.SetSpritePipeline(rp.shader)
+	gfx.SetSpritePipeline(rp.customShader.name)
 
 	gfx.EnableScissor(rp.window[0], rp.window[1], rp.window[2], rp.window[3])
 
@@ -652,7 +711,7 @@ func RenderSprite(rp RenderParams) {
 		gfx.SetUniformI("isRgba", 0)
 	}
 
-	if rp.shader != "" {
+	if rp.customShader.name != "" {
 		var timeSec float32
 		if sys.middleOfMatch() {
 			timeSec = float32(sys.gameTime())
@@ -660,6 +719,7 @@ func RenderSprite(rp RenderParams) {
 			timeSec = float32(sys.frameCounter)
 		}
 		gfx.SetUniformF("iTime", timeSec/60.0)
+		gfx.SetUniformF("sTime", rp.customShader.sTime)
 		gfx.SetUniformF("iResolution", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 		aspectRatio := sys.getCurrentAspect() / sys.getFightAspect()
 		gfx.SetUniformF("aspectRatio", aspectRatio)
@@ -670,7 +730,13 @@ func RenderSprite(rp RenderParams) {
 				gfx.SetTexture("bgl_RenderedTexture", grabTex)
 			}
 		}
-		gfx.SetCustomUniforms(rp.shaderParams)
+		if rp.customShader.tex1 != nil {
+			gfx.SetTexture("tex1", rp.customShader.tex1)
+		}
+		if rp.customShader.tex2 != nil {
+			gfx.SetTexture("tex2", rp.customShader.tex2)
+		}
+		gfx.SetCustomUniforms(rp.customShader.params)
 	}
 	// Texture binding
 	gfx.SetTexture("tex", rp.tex)

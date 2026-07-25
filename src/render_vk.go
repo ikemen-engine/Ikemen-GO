@@ -1137,6 +1137,8 @@ type VulkanPalTexture struct {
 type VulkanSpriteTexture struct {
 	spriteTexture *Texture_VK
 	palTexture    *Texture_VK
+	customTex1    *Texture_VK
+	customTex2    *Texture_VK
 }
 type VulkanModelTexture struct {
 	lambertianEnvSampler *Texture_VK
@@ -1364,7 +1366,7 @@ type VulkanSpriteProgramFragUniformBufferObject struct {
 	iTime                         float32    // 4 bytes
 	iResolution                   [2]float32 // 8 bytes
 	aspectRatio                   float32
-	_padding2                     uint32 // 4 bytes
+	sTime                         float32 // 4 bytes
 }
 
 type VulkanLightUniform struct {
@@ -5442,8 +5444,12 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 	r.spriteProgram.uniformBufferOffset = 0
 	r.currentSpriteTexture.spriteTexture = r.dummyTexture
 	r.currentSpriteTexture.palTexture = r.dummyTexture
+	r.currentSpriteTexture.customTex1 = nil
+	r.currentSpriteTexture.customTex2 = nil
 	r.VKState.spriteTexture = r.dummyTexture
 	r.VKState.palTexture = r.dummyTexture
+	r.VKState.customTex1 = nil
+	r.VKState.customTex2 = nil
 	if r.modelProgram != nil {
 		r.modelProgram.uniformOffsetMap = make(map[interface{}]uint32)
 		r.modelProgram.uniformBufferOffset = 0
@@ -6167,6 +6173,8 @@ func (r *Renderer_VK) SetUniformF(name string, values ...float32) {
 		}
 	case "aspectRatio":
 		r.VKState.VulkanSpriteProgramFragUniformBufferObject.aspectRatio = values[0]
+	case "sTime":
+		r.VKState.VulkanSpriteProgramFragUniformBufferObject.sTime = values[0]
 	}
 }
 
@@ -6189,6 +6197,18 @@ func (r *Renderer_VK) SetTexture(name string, tex Texture) {
 		r.VKState.spriteTexture = tex.(*Texture_VK)
 	} else if name == "pal" {
 		r.VKState.palTexture = tex.(*Texture_VK)
+	} else if name == "tex1" {
+		if tex == nil {
+			r.VKState.customTex1 = nil
+			return
+		}
+		r.VKState.customTex1 = tex.(*Texture_VK)
+	} else if name == "tex2" {
+		if tex == nil {
+			r.VKState.customTex2 = nil
+			return
+		}
+		r.VKState.customTex2 = tex.(*Texture_VK)
 	}
 
 }
@@ -6779,12 +6799,17 @@ func (r *Renderer_VK) RenderQuad() {
 		r.currentSpriteTexture.palTexture = r.VKState.palTexture
 	}
 
-	// Assign the texture for GrabPass to Binding 4 (custom shader only)
-	if targetProgram != r.spriteProgram && r.grabTexture != nil {
+	// Assign the texture (custom shader only)
+	if targetProgram != r.spriteProgram {
+		// --- Binding 4: GrabPass ---
+		texGrab := r.grabTexture
+		if texGrab == nil {
+			texGrab = r.dummyTexture
+		}
 		grabImageInfo := []vk.DescriptorImageInfo{
 			{
 				ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
-				ImageView:   r.grabTexture.imageView,
+				ImageView:   texGrab.imageView,
 				Sampler:     r.spriteSamplers[0],
 			},
 		}
@@ -6796,6 +6821,62 @@ func (r *Renderer_VK) RenderQuad() {
 			DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
 			PImageInfo:      grabImageInfo,
 		})
+
+		// --- Binding 5: tex1 ---
+		if switchedProgram || r.VKState.customTex1 != r.currentSpriteTexture.customTex1 {
+			r.currentSpriteTexture.customTex1 = r.VKState.customTex1
+
+			tex1 := r.VKState.customTex1
+			if tex1 == nil {
+				tex1 = r.dummyTexture // 未指定時はクラッシュ防止のためダミーを送る
+			}
+			imageInfo1 := []vk.DescriptorImageInfo{
+				{
+					ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
+					ImageView:   tex1.imageView,
+					Sampler:     r.spriteSamplers[0],
+				},
+			}
+			if tex1.filter {
+				imageInfo1[0].Sampler = r.spriteSamplers[1]
+			}
+			descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
+				SType:           vk.StructureTypeWriteDescriptorSet,
+				DstBinding:      5,
+				DstArrayElement: 0,
+				DescriptorCount: 1,
+				DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+				PImageInfo:      imageInfo1,
+			})
+		}
+
+		// --- Binding 6: tex2 ---
+		if switchedProgram || r.VKState.customTex2 != r.currentSpriteTexture.customTex2 {
+			r.currentSpriteTexture.customTex2 = r.VKState.customTex2
+
+			tex2 := r.VKState.customTex2
+			if tex2 == nil {
+				tex2 = r.dummyTexture
+			}
+			imageInfo2 := []vk.DescriptorImageInfo{
+				{
+					ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
+					ImageView:   tex2.imageView,
+					Sampler:     r.spriteSamplers[0],
+				},
+			}
+			if tex2.filter {
+				imageInfo2[0].Sampler = r.spriteSamplers[1]
+			}
+			descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
+				SType:           vk.StructureTypeWriteDescriptorSet,
+				DstBinding:      6,
+				DstArrayElement: 0,
+				DescriptorCount: 1,
+				DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+				PImageInfo:      imageInfo2,
+			})
+		}
 	}
 
 	if len(descriptorWrites) > 0 {
@@ -8218,6 +8299,8 @@ func (r *Renderer_VK) createCustomSpriteProgram(fragSpv []byte) (*VulkanProgramI
 		{Binding: 2, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
 		{Binding: 3, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
 		{Binding: 4, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // GrabPass
+		{Binding: 5, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // tex1
+		{Binding: 6, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // tex2
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
@@ -8608,6 +8691,8 @@ func (r *Renderer_VK) ResolveBackBuffer() Texture {
 	r.VKState.modelUniformBufferOffset2 = 0xFFFFFFFF
 	r.currentSpriteTexture.spriteTexture = nil
 	r.currentSpriteTexture.palTexture = nil
+	r.currentSpriteTexture.customTex1 = nil
+	r.currentSpriteTexture.customTex2 = nil
 
 	return r.grabTexture
 }
