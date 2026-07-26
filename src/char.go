@@ -11563,9 +11563,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 	// Hitspark creation function
 	// This used to be called only when a hitspark is actually created, but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
 	hitspark := func(p1, p2 *Char, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
-		// Compute spark offset in relation to p1
-		var sparkP1Off [3]float32
-
+		// Compute target edge
 		p2base := p2.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
 		p2scale := p2.sizeBoxScale()[0] // Mugen doesn't do this, but then again size couldn't be multiplied there
 		p2sizeFront := p2base[2] * p2scale
@@ -11588,36 +11586,49 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			}
 		}
 
-		if isProjectile {
-			// Compute from projParentDist
-			localX := projParentDist[0] + hd.sparkxy[0]*proj.facing
-			localY := projParentDist[1] + hd.sparkxy[1]
-			localZ := projParentDist[2]
+		// Compute spark position in world space
+		var sparkWorld [3]float32
 
-			sparkP1Off[0] = (localX - edge) * p1.localscl * p1.facing
-			sparkP1Off[1] = localY * p1.localscl
-			sparkP1Off[2] = localZ * p1.localscl
+		if isProjectile {
+			// Compute projectile position relative to p1
+			projWorld := [3]float32{
+				(p1.pos[0] + projParentDist[0]) * p1.localscl,
+				(p1.pos[1] + projParentDist[1]) * p1.localscl,
+				(p1.pos[2] + projParentDist[2]) * p1.localscl,
+			}
+
+			// Move from the projectile to the target edge
+			sparkWorld[0] = p2.pos[0]*p2.localscl +
+				edge*p2.facing +
+				hd.sparkxy[0]*proj.facing*p1.localscl
+			sparkWorld[1] = projWorld[1] + hd.sparkxy[1]*p1.localscl
+			sparkWorld[2] = projWorld[2]
 		} else {
 			// Compute directly from player positions
-			// Distance from attacker to target. Y is not used
-			distX := (p2.pos[0]*p2.localscl - p1.pos[0]*p1.localscl) * p1.facing
-			distZ := p2.pos[2]*p2.localscl - p1.pos[2]*p1.localscl
-
-			sparkP1Off[0] = distX - edge - hd.sparkxy[0]*p1.localscl
-			sparkP1Off[1] = hd.sparkxy[1] * p1.localscl
-			sparkP1Off[2] = distZ
+			sparkWorld[0] = p2.pos[0]*p2.localscl +
+				edge*p2.facing -
+				hd.sparkxy[0]*p1.facing*p1.localscl
+			sparkWorld[1] = (p1.pos[1] + hd.sparkxy[1]) * p1.localscl
+			sparkWorld[2] = p2.pos[2]*p2.localscl
 		}
 
-		// Reversaldef adjustment (?)
+		// Reversaldef spark (?)
 		if c.id != p1.id {
-			sparkP1Off[1] += p1.hitdef.sparkxy[1] * c.localscl
+			sparkWorld[1] += p1.hitdef.sparkxy[1] * c.localscl
 		}
 
-		// Convert offset back to character's coordinate space
+		// Compute spark offset in relation to p1
 		p1LocalOff := [3]float32{
-			sparkP1Off[0] / p1.localscl,
-			sparkP1Off[1] / p1.localscl,
-			sparkP1Off[2] / p1.localscl,
+			(sparkWorld[0] - p1.pos[0]*p1.localscl) / p1.localscl * p1.facing,
+			(sparkWorld[1] - p1.pos[1]*p1.localscl) / p1.localscl,
+			(sparkWorld[2] - p1.pos[2]*p1.localscl) / p1.localscl,
+		}
+
+		// Compute spark offset in relation to p2. For GetHitVar only
+		p2LocalOff := [3]float32{
+			(sparkWorld[0] - p2.pos[0]*p2.localscl) / p2.localscl * p2.facing,
+			(sparkWorld[1] - p2.pos[1]*p2.localscl) / p2.localscl,
+			(sparkWorld[2] - p2.pos[2]*p2.localscl) / p2.localscl,
 		}
 
 		// Save hitspark position to MoveHitVar
@@ -11626,14 +11637,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			c.mhv.sparkxy[1] = p1LocalOff[1]
 		}
 
-		// Compute spark offset in relation to p2
-		p1World := [2]float32{p1.pos[0] * p1.localscl, p1.pos[1] * p1.localscl}
-		p2World := [2]float32{p2.pos[0] * p2.localscl, p2.pos[1] * p2.localscl}
-		sparkWorld := [2]float32{p1World[0] + sparkP1Off[0]*p1.facing, p1World[1] + sparkP1Off[1]}
-
 		// Save hitspark position to GetHitVar
-		getter.ghv.sparkxy[0] = (sparkWorld[0] - p2World[0]) / p2.localscl * p2.facing
-		getter.ghv.sparkxy[1] = (sparkWorld[1] - p2World[1]) / p2.localscl
+		getter.ghv.sparkxy[0] = p2LocalOff[0]
+		getter.ghv.sparkxy[1] = p2LocalOff[1]
 
 		// Spawn explod relatively to p1
 		if animNo >= 0 {
@@ -11645,7 +11651,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				e.sprpriority = math.MinInt32
 				e.ownpal = true
 				e.postype = PT_P1
-				e.relativePos = [3]float32{p1LocalOff[0], p1LocalOff[1], p1LocalOff[2]}
+				e.relativePos = p1LocalOff
 				e.supermovetime = -1
 				e.pausemovetime = -1
 				e.scale = [2]float32{sparkscale[0], sparkscale[1]}
