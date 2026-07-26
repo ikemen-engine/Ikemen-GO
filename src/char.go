@@ -10885,6 +10885,126 @@ func (c *Char) hittableByChar(getter *Char, ghd *HitDef, gst StateType, proj boo
 	return true
 }
 
+// Hitspark creation function
+// This used to be called only when a hitspark is actually created, but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
+// P1 is the attacker while P2 is the target here (because of ReversalDef)
+func (c *Char) hitspark(p1, p2 *Char, proj *Projectile, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
+
+	// Compute target edge
+	p2base := p2.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+	p2scale := p2.sizeBoxScale()[0] // Mugen doesn't do this, but then again size couldn't be multiplied there
+	p2sizeFront := p2base[2] * p2scale
+	p2sizeBack := -p2base[0] * p2scale
+
+	// Determine which edge of the target to use
+	// TODO: Maybe this could check which side the attack comes from instead of comparing facing
+	var p2edge float32
+	if proj != nil {
+		if proj.facing != p2.facing {
+			p2edge = p2sizeFront
+		} else {
+			p2edge = p2sizeBack
+		}
+	} else {
+		if p1.facing != p2.facing {
+			p2edge = p2sizeFront
+		} else {
+			p2edge = p2sizeBack
+		}
+	}
+
+	// Compute spark position in world space
+	var sparkWorld [3]float32
+
+	if proj != nil {
+		// Compute projectile position in world space
+		projWorld := [3]float32{
+			proj.pos[0] * proj.localscl,
+			proj.pos[1] * proj.localscl,
+			proj.pos[2] * proj.localscl,
+		}
+
+		// Move from the projectile to the target edge
+		sparkWorld[0] = projWorld[0] + p2edge*p2.facing + proj.hitdef.sparkxy[0]*proj.facing*p1.localscl
+		sparkWorld[1] = projWorld[1] + proj.hitdef.sparkxy[1]*p1.localscl
+		sparkWorld[2] = projWorld[2]
+	} else {
+		if c != p1 {
+			// ReversalDef spark offset
+			// Mugen documentation says this is an offset from the enemy's sparkxy, but in reality that is only half true
+			// The X parameter is calculated from the performer's position, while the Y parameter is indeed an offset from the enemy's sparkxy
+			// TODO: Maybe ikemenversion could adjust this one to be as documented?
+			sparkWorld[0] = (p2.pos[0] + p2.hitdef.sparkxy[0]*p2.facing) * p2.localscl
+			sparkWorld[1] = (p1.pos[1] + p1.hitdef.sparkxy[1]) * p1.localscl + p2.hitdef.sparkxy[1] * p2.localscl
+			sparkWorld[2] = p2.pos[2] * p2.localscl
+		} else {
+			// Regular HitDef
+			// X relative to target edge. Y relative to attacker
+			sparkWorld[0] = p2.pos[0]*p2.localscl + p2edge*p2.facing - p1.hitdef.sparkxy[0]*p1.facing*p1.localscl
+			sparkWorld[1] = (p1.pos[1] + p1.hitdef.sparkxy[1]) * p1.localscl
+			sparkWorld[2] = p2.pos[2] * p2.localscl
+		}
+	}
+
+	// Compute spark offset in relation to p1
+	p1LocalOff := [3]float32{
+		(sparkWorld[0] - p1.pos[0]*p1.localscl) / p1.localscl * p1.facing,
+		(sparkWorld[1] - p1.pos[1]*p1.localscl) / p1.localscl,
+		(sparkWorld[2] - p1.pos[2]*p1.localscl) / p1.localscl,
+	}
+
+	// Compute spark offset in relation to p2. For GetHitVar only
+	p2LocalOff := [3]float32{
+		(sparkWorld[0] - p2.pos[0]*p2.localscl) / p2.localscl * p2.facing,
+		(sparkWorld[1] - p2.pos[1]*p2.localscl) / p2.localscl,
+		(sparkWorld[2] - p2.pos[2]*p2.localscl) / p2.localscl,
+	}
+
+	// Save hitspark position to MoveHitVar and GetHitVar
+	var mhvChar *Char
+	var ghvChar *Char
+	if c == p1 {
+		mhvChar = p1
+		ghvChar = p2
+	} else {
+		mhvChar = p2
+		ghvChar = p1
+	}
+	if proj == nil {
+		mhvChar.mhv.sparkxy[0] = p1LocalOff[0]
+		mhvChar.mhv.sparkxy[1] = p1LocalOff[1]
+	}
+	ghvChar.ghv.sparkxy[0] = p2LocalOff[0]
+	ghvChar.ghv.sparkxy[1] = p2LocalOff[1]
+
+	// Spawn explod relatively to p1
+	if animNo >= 0 {
+		if e, i := c.spawnExplod(); e != nil {
+			//e.anim = c.getAnim(animNo, ffx)
+			e.animNo = animNo
+			e.anim_ffx = ffx
+			e.layerno = 1 // e.ontop = true
+			e.sprpriority = math.MinInt32
+			e.ownpal = true
+			e.postype = PT_P1
+			e.relativePos = p1LocalOff
+			e.supermovetime = -1
+			e.pausemovetime = -1
+			e.scale = sparkscale
+			//e.localscl = 1
+			//if ffx == "" || ffx == "s" {
+			//	e.scale = [2]float32{c.localscl * sparkscale[0], c.localscl * sparkscale[1]}
+			//} else if e.anim != nil {
+			//	e.anim.start_scale[0] *= c.localscl * sparkscale[0]
+			//	e.anim.start_scale[1] *= c.localscl * sparkscale[1]
+			//}
+			e.setPos(p1)
+			e.rot.angle = sparkangle
+			c.commitExplod(i)
+		}
+	}
+}
+
 func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) {
 
 	// Player hit check
@@ -11560,115 +11680,6 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		}
 	}
 
-	// Hitspark creation function
-	// This used to be called only when a hitspark is actually created, but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
-	hitspark := func(p1, p2 *Char, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
-		// Compute target edge
-		p2base := p2.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
-		p2scale := p2.sizeBoxScale()[0] // Mugen doesn't do this, but then again size couldn't be multiplied there
-		p2sizeFront := p2base[2] * p2scale
-		p2sizeBack := -p2base[0] * p2scale
-
-		// Determine which edge of the target to use
-		// TODO: Maybe this could check which side the attack comes from instead of comparing facing
-		var edge float32
-		if isProjectile {
-			if proj.facing != p2.facing {
-				edge = p2sizeFront
-			} else {
-				edge = p2sizeBack
-			}
-		} else {
-			if p1.facing != p2.facing {
-				edge = p2sizeFront
-			} else {
-				edge = p2sizeBack
-			}
-		}
-
-		// Compute spark position in world space
-		var sparkWorld [3]float32
-
-		if isProjectile {
-			// Compute projectile position relative to p1
-			projWorld := [3]float32{
-				(p1.pos[0] + projParentDist[0]) * p1.localscl,
-				(p1.pos[1] + projParentDist[1]) * p1.localscl,
-				(p1.pos[2] + projParentDist[2]) * p1.localscl,
-			}
-
-			// Move from the projectile to the target edge
-			sparkWorld[0] = p2.pos[0]*p2.localscl +
-				edge*p2.facing +
-				hd.sparkxy[0]*proj.facing*p1.localscl
-			sparkWorld[1] = projWorld[1] + hd.sparkxy[1]*p1.localscl
-			sparkWorld[2] = projWorld[2]
-		} else {
-			// Compute directly from player positions
-			sparkWorld[0] = p2.pos[0]*p2.localscl +
-				edge*p2.facing -
-				hd.sparkxy[0]*p1.facing*p1.localscl
-			sparkWorld[1] = (p1.pos[1] + hd.sparkxy[1]) * p1.localscl
-			sparkWorld[2] = p2.pos[2]*p2.localscl
-		}
-
-		// Reversaldef spark (?)
-		if c.id != p1.id {
-			sparkWorld[1] += p1.hitdef.sparkxy[1] * c.localscl
-		}
-
-		// Compute spark offset in relation to p1
-		p1LocalOff := [3]float32{
-			(sparkWorld[0] - p1.pos[0]*p1.localscl) / p1.localscl * p1.facing,
-			(sparkWorld[1] - p1.pos[1]*p1.localscl) / p1.localscl,
-			(sparkWorld[2] - p1.pos[2]*p1.localscl) / p1.localscl,
-		}
-
-		// Compute spark offset in relation to p2. For GetHitVar only
-		p2LocalOff := [3]float32{
-			(sparkWorld[0] - p2.pos[0]*p2.localscl) / p2.localscl * p2.facing,
-			(sparkWorld[1] - p2.pos[1]*p2.localscl) / p2.localscl,
-			(sparkWorld[2] - p2.pos[2]*p2.localscl) / p2.localscl,
-		}
-
-		// Save hitspark position to MoveHitVar
-		if !isProjectile {
-			c.mhv.sparkxy[0] = p1LocalOff[0]
-			c.mhv.sparkxy[1] = p1LocalOff[1]
-		}
-
-		// Save hitspark position to GetHitVar
-		getter.ghv.sparkxy[0] = p2LocalOff[0]
-		getter.ghv.sparkxy[1] = p2LocalOff[1]
-
-		// Spawn explod relatively to p1
-		if animNo >= 0 {
-			if e, i := c.spawnExplod(); e != nil {
-				//e.anim = c.getAnim(animNo, ffx)
-				e.animNo = animNo
-				e.anim_ffx = ffx
-				e.layerno = 1 // e.ontop = true
-				e.sprpriority = math.MinInt32
-				e.ownpal = true
-				e.postype = PT_P1
-				e.relativePos = p1LocalOff
-				e.supermovetime = -1
-				e.pausemovetime = -1
-				e.scale = [2]float32{sparkscale[0], sparkscale[1]}
-				//e.localscl = 1
-				//if ffx == "" || ffx == "s" {
-				//	e.scale = [2]float32{c.localscl * sparkscale[0], c.localscl * sparkscale[1]}
-				//} else if e.anim != nil {
-				//	e.anim.start_scale[0] *= c.localscl * sparkscale[0]
-				//	e.anim.start_scale[1] *= c.localscl * sparkscale[1]
-				//}
-				e.setPos(p1)
-				e.rot.angle = sparkangle
-				c.commitExplod(i)
-			}
-		}
-	}
-
 	// Play hit sounds and create sparks
 	if Abs(hitResult) == 1 {
 		// Spawn all defined hit sparks
@@ -11677,9 +11688,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				continue
 			}
 			if hd.reversal_attr > 0 {
-				hitspark(getter, c, hd.sparkno[i], hd.sparkno_ffx[i], hd.sparkangle[i], hd.sparkscale[i])
+				c.hitspark(getter, c, nil, hd.sparkno[i], hd.sparkno_ffx[i], hd.sparkangle[i], hd.sparkscale[i])
 			} else {
-				hitspark(c, getter, hd.sparkno[i], hd.sparkno_ffx[i], hd.sparkangle[i], hd.sparkscale[i])
+				c.hitspark(c, getter, proj, hd.sparkno[i], hd.sparkno_ffx[i], hd.sparkangle[i], hd.sparkscale[i])
 			}
 		}
 		// Play hit sound
@@ -11701,9 +11712,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				continue
 			}
 			if hd.reversal_attr > 0 {
-				hitspark(getter, c, hd.guard_sparkno[i], hd.guard_sparkno_ffx[i], hd.guard_sparkangle[i], hd.guard_sparkscale[i])
+				c.hitspark(getter, c, nil, hd.guard_sparkno[i], hd.guard_sparkno_ffx[i], hd.guard_sparkangle[i], hd.guard_sparkscale[i])
 			} else {
-				hitspark(c, getter, hd.guard_sparkno[i], hd.guard_sparkno_ffx[i], hd.guard_sparkangle[i], hd.guard_sparkscale[i])
+				c.hitspark(c, getter, proj, hd.guard_sparkno[i], hd.guard_sparkno_ffx[i], hd.guard_sparkangle[i], hd.guard_sparkscale[i])
 			}
 		}
 		// Play guard sound
