@@ -105,8 +105,8 @@ jobs:
             artifact_version="$input_tag"
             release_kind="tagged"
             if [[ "$input_tag" == *-rc.* ]]; then
-              prerelease="true"
-              make_latest="false"
+              prerelease="false"
+              make_latest="true"
             else
               prerelease="false"
               if [ -z "$latest_stable" ] || [ "$(printf '%s\n%s\n' "$latest_stable" "$input_tag" | sort -V | sed -n '$p')" = "$input_tag" ]; then
@@ -135,8 +135,8 @@ jobs:
             release_tag="nightly"
             artifact_version="nightly"
             release_kind="nightly"
-            prerelease="false"
-            make_latest="true"
+            prerelease="true"
+            make_latest="false"
           fi
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -591,6 +591,26 @@ jobs:
           The nightly release is generated after each commit to `develop` and contains the newest engine and screenpack files. It is intended for testing and may contain regressions or changes not yet covered by the stable documentation.
           EOF
 
+      - name: Prepare RC release notes
+        if: ${{ needs.tag.outputs.releaseKind == 'tagged' && needs.tag.outputs.prerelease == 'false' && contains(needs.tag.outputs.releaseTag, '-rc.') }}
+        shell: bash
+        run: |
+          cat > rc-prefix.md <<'EOF'
+          ## What is a Release Candidate?
+
+          **RC** stands for **Release Candidate**. This version has undergone testing and is considered nearly ready for the final stable release. The purpose of an RC is to identify regressions and stabilize the build before the final release.
+
+          ## How to Help Test
+
+          - **Report bugs** on the [Issues](https://github.com/ikemen-engine/Ikemen-GO/issues) page
+          - **Check if the bug existed in the previous stable release** (e.g., v0.99.0) — this helps us determine priority
+          - **Regressions** (bugs introduced since the last stable release) are blockers and receive the `regression` label
+          - Bugs that existed in previous versions are lower priority and may be deferred to future releases
+
+          ---
+
+          EOF
+
       - name: Publish release
         uses: ncipollo/release-action@v1.21.0
         with:
@@ -615,8 +635,8 @@ jobs:
           generateReleaseNotes: ${{ needs.tag.outputs.releaseKind == 'tagged' }}
           generateReleaseNotesPreviousTag: ${{ needs.tag.outputs.previousTag }}
 
-          # Only rolling releases use the prepared custom body.
-          bodyFile: ${{ needs.tag.outputs.releaseKind == 'nightly' && 'nightly-release.md' || '' }}
+          # Nightly uses custom body; RC prepends prefix to generated notes.
+          bodyFile: ${{ needs.tag.outputs.releaseKind == 'nightly' && 'nightly-release.md' || (needs.tag.outputs.releaseKind == 'tagged' && contains(needs.tag.outputs.releaseTag, '-rc.') && 'rc-prefix.md') || '' }}
 
           # These settings apply only to manually dispatched temporary or
           # versioned releases. They evaluate to empty/false for rolling builds.
