@@ -2110,11 +2110,11 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			// Skip face.random/face2.random and face.slot/face2.slot anim/spr inheritance
 			lowerDst := strings.ToLower(sp.DstPrefix)
 			if (strings.Contains(lowerDst, ".face.random.") ||
-				strings.Contains(lowerDst, ".face2.random.") || 
-				strings.Contains(lowerDst, "face.slot.") || 
+				strings.Contains(lowerDst, ".face2.random.") ||
+				strings.Contains(lowerDst, "face.slot.") ||
 				strings.Contains(lowerDst, "face2.slot.")) &&
 				(strings.EqualFold(suf, "anim") ||
-				strings.EqualFold(suf, "spr")) {
+					strings.EqualFold(suf, "spr")) {
 				continue
 			}
 			lowerFull := strings.ToLower(dstKey)
