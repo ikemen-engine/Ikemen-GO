@@ -614,6 +614,8 @@ const (
 	OC_ex_gethitvar_crouch_friction
 	OC_ex_gethitvar_keepstate
 	OC_ex_gethitvar_guardko
+	OC_ex_gethitvar_sparkx
+	OC_ex_gethitvar_sparky
 	OC_ex_ailevelf
 	OC_ex_animelemvar_alphadest
 	OC_ex_animelemvar_angle
@@ -675,8 +677,8 @@ const (
 	OC_ex_movehitvar_playerid
 	OC_ex_movehitvar_playerno
 	OC_ex_movehitvar_power
-	OC_ex_movehitvar_spark_x
-	OC_ex_movehitvar_spark_y
+	OC_ex_movehitvar_sparkx
+	OC_ex_movehitvar_sparky
 	OC_ex_movehitvar_uniqhit
 	OC_ex_ikemenversion_major
 	OC_ex_ikemenversion_minor
@@ -3234,6 +3236,10 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ghv.keepstate)
 	case OC_ex_gethitvar_guardko:
 		sys.bcStack.PushB(c.ghv.guardko)
+	case OC_ex_gethitvar_sparkx:
+		sys.bcStack.PushF(c.ghv.sparkxy[0] * (c.localscl / oc.localscl))
+	case OC_ex_gethitvar_sparky:
+		sys.bcStack.PushF(c.ghv.sparkxy[1] * (c.localscl / oc.localscl))
 	case OC_ex_gethitvar_teamside:
 		sys.bcStack.PushI(int32(c.ghv.teamside) + 1)
 	case OC_ex_ailevelf:
@@ -3430,9 +3436,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.mhv.overridden)
 	case OC_ex_movehitvar_playerno:
 		sys.bcStack.PushI(int32(c.mhv.playerno) + 1)
-	case OC_ex_movehitvar_spark_x:
+	case OC_ex_movehitvar_sparkx:
 		sys.bcStack.PushF(c.mhv.sparkxy[0] * (c.localscl / oc.localscl))
-	case OC_ex_movehitvar_spark_y:
+	case OC_ex_movehitvar_sparky:
 		sys.bcStack.PushF(c.mhv.sparkxy[1] * (c.localscl / oc.localscl))
 	case OC_ex_movehitvar_uniqhit:
 		sys.bcStack.PushI(int32(len(c.hitdefTargets)))
