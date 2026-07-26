@@ -11946,7 +11946,6 @@ func (c *Char) actionRun() {
 					//c.ghv.attr = 0
 					//c.ghv.guardflag = 0
 					c.superDefenseMul = 1
-					c.superDefenseMulBuffer = 1
 					c.fallDefenseMul = 1
 					c.ghv.fallflag = false
 					c.ghv.fallcount = 0
@@ -12235,7 +12234,11 @@ func (c *Char) update() {
 		c.hoverKeepState = false
 		// Apply buffered SuperPause p2defmul
 		if c.superDefenseMulBuffer != 1 {
-			c.superDefenseMul *= c.superDefenseMulBuffer
+			// But only if the player was already hit
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/3814
+			if c.ss.moveType == MT_H {
+				c.superDefenseMul *= c.superDefenseMulBuffer
+			}
 			c.superDefenseMulBuffer = 1
 		}
 		// Update final defense
