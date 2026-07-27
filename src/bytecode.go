@@ -672,6 +672,7 @@ const (
 	OC_ex_inputtime_w
 	OC_ex_inputtime_m
 	OC_ex_movehitvar_frame
+	OC_ex_movehitvar_cornerpush_velmul
 	OC_ex_movehitvar_cornerpush_veloff
 	OC_ex_movehitvar_overridden
 	OC_ex_movehitvar_playerid
@@ -3070,13 +3071,13 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_hittime:
 		sys.bcStack.PushI(c.ghv.hittime)
 	case OC_ex_gethitvar_stand_friction:
-		sf := c.ghv.standfriction
+		sf := c.ghv.stand_friction
 		if math.IsNaN(float64(sf)) {
 			sf = c.gi().movement.stand.friction
 		}
 		sys.bcStack.PushF(sf)
 	case OC_ex_gethitvar_crouch_friction:
-		cf := c.ghv.crouchfriction
+		cf := c.ghv.crouch_friction
 		if math.IsNaN(float64(cf)) {
 			cf = c.gi().movement.crouch.friction
 		}
@@ -3424,6 +3425,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_min:
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_movehitvar_cornerpush_velmul:
+		sys.bcStack.PushF(c.mhv.cornerpush_velmul)
 	case OC_ex_movehitvar_cornerpush_veloff:
 		sys.bcStack.PushF(c.mhv.cornerpush_veloff)
 	case OC_ex_movehitvar_frame:
@@ -7516,9 +7519,11 @@ const (
 	hitDef_air_hittime
 	hitDef_fall
 	hitDef_air_fall
+	hitDef_air_cornerpush_velmul
 	hitDef_air_cornerpush_veloff
 	hitDef_down_bounce
 	hitDef_down_velocity
+	hitDef_down_cornerpush_velmul
 	hitDef_down_cornerpush_veloff
 	hitDef_ground_hittime
 	hitDef_guard_hittime
@@ -7537,8 +7542,11 @@ const (
 	hitDef_ground_velocity_y
 	hitDef_ground_velocity_z
 	hitDef_guard_velocity
+	hitDef_ground_cornerpush_velmul
 	hitDef_ground_cornerpush_veloff
+	hitDef_guard_cornerpush_velmul
 	hitDef_guard_cornerpush_veloff
+	hitDef_airguard_cornerpush_velmul
 	hitDef_airguard_cornerpush_veloff
 	hitDef_xaccel
 	hitDef_yaccel
@@ -7752,6 +7760,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		hd.ground_fall = exp[0].evalB(c)
 	case hitDef_air_fall:
 		hd.air_fall = Btoi(exp[0].evalB(c)) // Read as bool but write as int
+	case hitDef_air_cornerpush_velmul:
+		hd.air_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_air_cornerpush_veloff:
 		hd.air_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_down_bounce:
@@ -7764,6 +7774,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		if len(exp) > 2 {
 			hd.down_velocity[2] = exp[2].evalF(c)
 		}
+	case hitDef_down_cornerpush_velmul:
+		hd.down_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_down_cornerpush_veloff:
 		hd.down_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_ground_hittime:
@@ -7856,10 +7868,16 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		if len(exp) > 2 {
 			hd.guard_velocity[2] = exp[2].evalF(c)
 		}
+	case hitDef_ground_cornerpush_velmul:
+		hd.ground_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_ground_cornerpush_veloff:
 		hd.ground_cornerpush_veloff = exp[0].evalF(c)
+	case hitDef_guard_cornerpush_velmul:
+		hd.guard_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_guard_cornerpush_veloff:
 		hd.guard_cornerpush_veloff = exp[0].evalF(c)
+	case hitDef_airguard_cornerpush_velmul:
+		hd.airguard_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_airguard_cornerpush_veloff:
 		hd.airguard_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_xaccel:
@@ -7955,9 +7973,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 			hd.unhittabletime[1] = exp[1].evalI(c)
 		}
 	case hitDef_stand_friction:
-		hd.StandFriction = exp[0].evalF(c)
+		hd.stand_friction = exp[0].evalF(c)
 	case hitDef_crouch_friction:
-		hd.CrouchFriction = exp[0].evalF(c)
+		hd.crouch_friction = exp[0].evalF(c)
 	case hitDef_keepstate:
 		hd.KeepState = exp[0].evalB(c)
 	case hitDef_ignorereversaldef:
@@ -14740,7 +14758,7 @@ const (
 	getHitVarSet_animtype
 	getHitVarSet_attr
 	getHitVarSet_chainid
-	getHitVarSet_crouchfriction
+	getHitVarSet_crouch_friction
 	getHitVarSet_ctrltime
 	getHitVarSet_damage
 	getHitVarSet_dizzypoints
@@ -14776,7 +14794,7 @@ const (
 	getHitVarSet_projid
 	getHitVarSet_redlife
 	getHitVarSet_slidetime
-	getHitVarSet_standfriction
+	getHitVarSet_stand_friction
 	getHitVarSet_teamside
 	getHitVarSet_xvel
 	getHitVarSet_yvel
@@ -14805,8 +14823,8 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.attr = exp[0].evalI(c)
 		case getHitVarSet_chainid:
 			crun.ghv.hitid = exp[0].evalI(c)
-		case getHitVarSet_crouchfriction:
-			crun.ghv.crouchfriction = exp[0].evalF(c)
+		case getHitVarSet_crouch_friction:
+			crun.ghv.crouch_friction = exp[0].evalF(c)
 		case getHitVarSet_ctrltime:
 			crun.ghv.ctrltime = exp[0].evalI(c)
 		case getHitVarSet_damage:
@@ -14875,8 +14893,8 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.redlife = exp[0].evalI(c)
 		case getHitVarSet_slidetime:
 			crun.ghv.slidetime = exp[0].evalI(c)
-		case getHitVarSet_standfriction:
-			crun.ghv.standfriction = exp[0].evalF(c)
+		case getHitVarSet_stand_friction:
+			crun.ghv.stand_friction = exp[0].evalF(c)
 		case getHitVarSet_teamside:
 			crun.ghv.teamside = int(exp[0].evalI(c)) - 1
 		case getHitVarSet_xvel:

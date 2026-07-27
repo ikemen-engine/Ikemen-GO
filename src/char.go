@@ -643,10 +643,15 @@ type HitDef struct {
 	air_velocity               [3]float32
 	airguard_velocity          [3]float32
 	ground_cornerpush_veloff   float32
+	ground_cornerpush_velmul   float32
 	air_cornerpush_veloff      float32
+	air_cornerpush_velmul      float32
 	down_cornerpush_veloff     float32
+	down_cornerpush_velmul     float32
 	guard_cornerpush_veloff    float32
+	guard_cornerpush_velmul    float32
 	airguard_cornerpush_veloff float32
+	airguard_cornerpush_velmul float32
 	air_juggle                 int32
 	p1sprpriority              int32
 	p2sprpriority              int32
@@ -717,8 +722,8 @@ type HitDef struct {
 	p2clsnrequire              int32
 	attack_depth               [2]float32
 	unhittabletime             [2]int32
-	StandFriction              float32
-	CrouchFriction             float32
+	stand_friction             float32
+	crouch_friction            float32
 	KeepState                  bool
 	IgnoreReversalDef          int32
 }
@@ -783,11 +788,17 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		down_velocity:              [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		guard_velocity:             [3]float32{float32(math.NaN()), 0, float32(math.NaN())}, // We don't want chars to be launched in Y while guarding
 		airguard_velocity:          [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
 		down_cornerpush_veloff:     float32(math.NaN()),
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()),
+
+		air_cornerpush_velmul:      float32(math.NaN()),
+		down_cornerpush_velmul:     float32(math.NaN()),
+		guard_cornerpush_velmul:    float32(math.NaN()),
+		airguard_cornerpush_velmul: float32(math.NaN()),
 
 		xaccel: 0,
 		yaccel: 0.35 / originLs,
@@ -844,8 +855,8 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		fall_envshake_mul:   1.0,
 		attack_depth:        [2]float32{c.size.attack.depth[0], c.size.attack.depth[1]},
 		unhittabletime:      [2]int32{IErr, IErr},
-		StandFriction:       float32(math.NaN()),
-		CrouchFriction:      float32(math.NaN()),
+		stand_friction:      float32(math.NaN()),
+		crouch_friction:     float32(math.NaN()),
 		KeepState:           false,
 		IgnoreReversalDef:   0,
 
@@ -864,6 +875,14 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		hd.guard_dist_x = [2]float32{c.size.proj.attack.dist.width[0], c.size.proj.attack.dist.width[1]}
 		hd.guard_dist_y = [2]float32{c.size.proj.attack.dist.height[0], c.size.proj.attack.dist.height[1]}
 		hd.guard_dist_z = [2]float32{c.size.proj.attack.dist.depth[0], c.size.proj.attack.dist.depth[1]}
+	}
+
+	// Cornerpush friction default value depends on engine version
+	// We only need to set "ground" here. Others will use "ifnanset" later
+	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+		hd.ground_cornerpush_velmul = 0.7
+	} else {
+		hd.ground_cornerpush_velmul = -1
 	}
 
 	// PalFX
@@ -970,10 +989,16 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 			ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
 		}
 	}
+
 	ifnanset(&hd.air_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
+
+	ifnanset(&hd.air_cornerpush_velmul, hd.ground_cornerpush_velmul)
+	ifnanset(&hd.down_cornerpush_velmul, hd.ground_cornerpush_velmul)
+	ifnanset(&hd.guard_cornerpush_velmul, hd.ground_cornerpush_velmul)
+	ifnanset(&hd.airguard_cornerpush_velmul, hd.ground_cornerpush_velmul)
 
 	// Super attack behaviour
 	if hd.attr&int32(AT_AH) != 0 {
@@ -1153,8 +1178,8 @@ type GetHitVar struct {
 	down_recovertime     int32
 	guardflag            int32
 	keepstate            bool
-	standfriction        float32
-	crouchfriction       float32
+	stand_friction       float32
+	crouch_friction      float32
 	teamside             int
 	sparkxy              [2]float32
 }
@@ -1186,8 +1211,8 @@ func (ghv *GetHitVar) reset(c *Char) {
 		fall_yvelocity: -4.5 / originLs,
 		fall_zvelocity: float32(math.NaN()),
 		keepstate:      false,
-		standfriction:  float32(math.NaN()),
-		crouchfriction: float32(math.NaN()),
+		stand_friction:  float32(math.NaN()),
+		crouch_friction: float32(math.NaN()),
 	}
 }
 
@@ -1317,6 +1342,7 @@ func (ho *HitOverride) clear() {
 
 type MoveHitVar struct {
 	power             int32
+	cornerpush_velmul float32
 	cornerpush_veloff float32
 	frame             bool
 	overridden        bool
@@ -9727,15 +9753,15 @@ func (c *Char) gravity() {
 }
 
 func (c *Char) getStandFriction() float32 {
-	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.standfriction)) {
-		return c.ghv.standfriction
+	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.stand_friction)) {
+		return c.ghv.stand_friction
 	}
 	return c.gi().movement.stand.friction
 }
 
 func (c *Char) getCrouchFriction() float32 {
-	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.standfriction)) {
-		return c.ghv.crouchfriction
+	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.crouch_friction)) {
+		return c.ghv.crouch_friction
 	}
 	return c.gi().movement.crouch.friction
 }
@@ -9773,10 +9799,10 @@ func (c *Char) checkCornerPush() (pushDist float32, pushMul float32) {
 			continue
 		}
 
-		// Determine friction based on enemy
-		// Mugen characters use hardcoded friction while Ikemen characters use the target's friction
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-			pushMul = 0.7
+		// Determine friction multiplier
+		// A negative value uses the target's friction
+		if c.mhv.cornerpush_velmul >= 0 {
+			pushMul = c.mhv.cornerpush_velmul
 		} else {
 			if getter.ss.stateType == ST_C || getter.ss.stateType == ST_L {
 				pushMul = getter.getCrouchFriction()
@@ -11520,8 +11546,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		getter.ghv.frame = true
 
 		// P2 Friction
-		getter.ghv.standfriction = hd.StandFriction
-		getter.ghv.crouchfriction = hd.CrouchFriction
+		getter.ghv.stand_friction = hd.stand_friction
+		getter.ghv.crouch_friction = hd.crouch_friction
 
 		// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed the remaining life
 		bnd := true
@@ -11810,10 +11836,13 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			switch getter.ss.stateType {
 			case ST_S, ST_C:
 				c.mhv.cornerpush_veloff = hd.ground_cornerpush_veloff * c.facing
+				c.mhv.cornerpush_velmul = hd.ground_cornerpush_velmul
 			case ST_A:
 				c.mhv.cornerpush_veloff = hd.air_cornerpush_veloff * c.facing
+				c.mhv.cornerpush_velmul = hd.air_cornerpush_velmul
 			case ST_L:
 				c.mhv.cornerpush_veloff = hd.down_cornerpush_veloff * c.facing
+				c.mhv.cornerpush_velmul = hd.down_cornerpush_velmul
 			}
 		}
 	}
@@ -11822,8 +11851,10 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		switch getter.ss.stateType {
 		case ST_S, ST_C:
 			c.mhv.cornerpush_veloff = hd.guard_cornerpush_veloff * c.facing
+			c.mhv.cornerpush_velmul = hd.guard_cornerpush_velmul
 		case ST_A:
 			c.mhv.cornerpush_veloff = hd.airguard_cornerpush_veloff * c.facing
+			c.mhv.cornerpush_velmul = hd.airguard_cornerpush_velmul
 		}
 	}
 	invertXvel(byf)
