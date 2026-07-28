@@ -3622,15 +3622,18 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local done_anim2 = pCfg.face2.done.anim
 					local done_spr = pCfg.face.done.spr
 					local palmenu_preview_anim = pCfg.palmenu.preview.anim
+					local palmenu_preview_spr = pCfg.palmenu.preview.spr
 					local face_anim = start.p[side].t_selTemp[member].face_anim
 					local face2_anim = start.p[side].t_selTemp[member].face2_anim
 					local canShow = main.coop or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					local canShow2 = main.coop or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					-- primary face "done" / preview
-					if (face_anim ~= done_anim or done_spr[1] ~= -1) and canShow then
-						if motif.select_info.paletteselect == 0 and (done_anim ~= -1 or done_spr[1] ~= -1) then
-							setDoneAnim(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, 'face_data')
-						elseif palmenu_preview_anim ~= -1 and motif.select_info.paletteselect ~= 0 then
+					if canShow then
+						if motif.select_info.paletteselect == 0 then
+							if (face_anim ~= done_anim or done_spr[1] ~= -1) and (done_anim ~= -1 or done_spr[1] ~= -1) then
+								setDoneAnim(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, 'face_data')
+							end
+						elseif palmenu_preview_anim ~= -1 or palmenu_preview_spr[1] ~= -1 then
 							start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].palmenu.preview.snd[1], motif.select_info['p' .. side].palmenu.preview.snd[2])
 							setDoneAnim(start.c[player].selRef, side, member, pCfg.palmenu.preview, pCfg.face, 'face_data')
 						end
