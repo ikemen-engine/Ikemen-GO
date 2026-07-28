@@ -171,6 +171,582 @@ func attrLStr(attr int32) lua.LString {
 	return lua.LString(str)
 }
 
+func (s *System) checkBreakpoints() {
+	if len(s.breakpoints) == 0 {
+		return
+	}
+	for id, bp := range s.breakpoints {
+		if !bp.Enabled {
+			continue
+		}
+		top := s.luaLState.GetTop()
+		err := s.luaLState.DoString(bp.Code)
+		if err == nil {
+			if s.luaLState.GetTop() > top {
+				val := s.luaLState.Get(-1)
+				if lua.LVAsBool(val) {
+					s.paused = true
+					fmt.Printf("IKEMEN_BP_HIT:%d:%s\n", id, bp.Code)
+				}
+			}
+		} else {
+			fmt.Println("Breakpoint Error (ID %d) code [%s]: %v\n", id, bp.Code, err)
+		}
+		s.luaLState.SetTop(top)
+	}
+}
+
+func attrToStr(attr int32) string {
+	if attr == 0 {
+		return "None"
+	}
+	str := ""
+	st := attr & int32(ST_MASK)
+	at := attr & ^int32(ST_MASK)
+
+	if st&int32(ST_S) != 0 {
+		str += "S"
+	}
+	if st&int32(ST_C) != 0 {
+		str += "C"
+	}
+	if st&int32(ST_A) != 0 {
+		str += "A"
+	}
+
+	if at != 0 {
+		str += ", "
+		if at&int32(AT_AN) != 0 {
+			str += "N"
+		}
+		if at&int32(AT_AS) != 0 {
+			str += "S"
+		}
+		if at&int32(AT_AH) != 0 {
+			str += "H"
+		}
+		if at&int32(AT_AA) != 0 {
+			str += "A"
+		}
+		if at&int32(AT_AT) != 0 {
+			str += "T"
+		}
+		if at&int32(AT_AP) != 0 {
+			str += "P"
+		}
+	}
+	return str
+}
+
+func applyPalFXProp(pfx *PalFX, name string, val float32) {
+	if pfx == nil {
+		return
+	}
+	switch name {
+	case "palfx_time":
+		pfx.time = int32(val)
+	case "palfx_color":
+		pfx.color = val / 256
+	case "palfx_hue":
+		pfx.hue = val / 256
+	case "palfx_add_r":
+		pfx.add[0] = int32(val)
+	case "palfx_add_g":
+		pfx.add[1] = int32(val)
+	case "palfx_add_b":
+		pfx.add[2] = int32(val)
+	case "palfx_mul_r":
+		pfx.mul[0] = int32(val)
+	case "palfx_mul_g":
+		pfx.mul[1] = int32(val)
+	case "palfx_mul_b":
+		pfx.mul[2] = int32(val)
+	case "palfx_sinadd_r":
+		pfx.sinadd[0] = int32(val)
+	case "palfx_sinadd_g":
+		pfx.sinadd[1] = int32(val)
+	case "palfx_sinadd_b":
+		pfx.sinadd[2] = int32(val)
+	case "palfx_sinadd_cycletime":
+		pfx.cycletime[0] = int32(val)
+	case "palfx_sinmul_r":
+		pfx.sinmul[0] = int32(val)
+	case "palfx_sinmul_g":
+		pfx.sinmul[1] = int32(val)
+	case "palfx_sinmul_b":
+		pfx.sinmul[2] = int32(val)
+	case "palfx_sinmul_cycletime":
+		pfx.cycletime[1] = int32(val)
+	case "palfx_sincolor":
+		pfx.sincolor = int32(val)
+	case "palfx_sincolor_cycletime":
+		pfx.cycletime[2] = int32(val)
+	case "palfx_sinhue":
+		pfx.sinhue = int32(val)
+	case "palfx_sinhue_cycletime":
+		pfx.cycletime[3] = int32(val)
+	case "palfx_invertall":
+		pfx.invertall = val > 0
+	case "palfx_invertblend":
+		pfx.invertblend = int32(val)
+	}
+}
+
+func applyAfterImageProp(aimg *AfterImage, name string, val float32) {
+	if aimg == nil {
+		return
+	}
+	switch name {
+	case "aimg_time":
+		aimg.time = int32(val)
+	case "aimg_length":
+		aimg.length = int32(val)
+	case "aimg_timegap":
+		aimg.timegap = int32(val)
+	case "aimg_framegap":
+		aimg.framegap = int32(val)
+	case "aimg_trans":
+		aimg.trans = TransType(int32(val))
+	case "aimg_alpha_src":
+		aimg.alpha[0] = int32(val)
+	case "aimg_alpha_dst":
+		aimg.alpha[1] = int32(val)
+	case "aimg_palcolor":
+		aimg.setPalColor(int32(val))
+	case "aimg_palhue":
+		aimg.setPalHueShift(int32(val))
+	case "aimg_palinvertall":
+		aimg.setPalInvertall(val > 0)
+	case "aimg_palinvertblend":
+		aimg.setPalInvertblend(int32(val))
+	case "aimg_palbright_r":
+		aimg.setPalBrightR(int32(val))
+	case "aimg_palbright_g":
+		aimg.setPalBrightG(int32(val))
+	case "aimg_palbright_b":
+		aimg.setPalBrightB(int32(val))
+	case "aimg_palcontrast_r":
+		aimg.setPalContrastR(int32(val))
+	case "aimg_palcontrast_g":
+		aimg.setPalContrastG(int32(val))
+	case "aimg_palcontrast_b":
+		aimg.setPalContrastB(int32(val))
+	case "aimg_palpostbright_r":
+		aimg.postbright[0] = int32(val)
+	case "aimg_palpostbright_g":
+		aimg.postbright[1] = int32(val)
+	case "aimg_palpostbright_b":
+		aimg.postbright[2] = int32(val)
+	case "aimg_paladd_r":
+		aimg.add[0] = int32(val)
+	case "aimg_paladd_g":
+		aimg.add[1] = int32(val)
+	case "aimg_paladd_b":
+		aimg.add[2] = int32(val)
+	case "aimg_palmul_r":
+		aimg.mul[0] = val
+	case "aimg_palmul_g":
+		aimg.mul[1] = val
+	case "aimg_palmul_b":
+		aimg.mul[2] = val
+	case "aimg_ignorehitpause":
+		aimg.ignorehitpause = val > 0
+	}
+}
+
+func applyCharProp(c *Char, propName string, val float32, valStr string) {
+	switch propName {
+	case "ctrl":
+		if val > 0 {
+			c.setSCF(SCF_ctrl)
+		} else {
+			c.unsetSCF(SCF_ctrl)
+		}
+	case "stateno":
+		c.changeState(int32(val), -1, -1, "")
+	case "life":
+		c.lifeSet(int32(val))
+	case "lifeMax":
+		c.lifeMax = int32(val)
+	case "power":
+		c.powerOwner().setPower(int32(val))
+	case "powerMax":
+		c.powerMax = int32(val)
+	case "dizzyPoints":
+		c.dizzyPointsSet(int32(val))
+	case "dizzyPointsMax":
+		c.dizzyPointsMax = int32(val)
+	case "guardPoints":
+		c.guardPointsSet(int32(val))
+	case "guardPointsMax":
+		c.guardPointsMax = int32(val)
+	case "redLife":
+		c.redLifeSet(int32(val))
+	case "standby":
+		if val > 0 {
+			c.setSCF(SCF_standby)
+		} else {
+			c.unsetSCF(SCF_standby)
+		}
+	case "pos_x":
+		c.pos[0] = val
+	case "pos_y":
+		c.pos[1] = val
+	case "pos_z":
+		c.pos[2] = val
+	case "vel_x":
+		c.vel[0] = val
+	case "vel_y":
+		c.vel[1] = val
+	case "vel_z":
+		c.vel[2] = val
+	case "facing":
+		c.facing = val
+	case "offset_x":
+		c.offset[0] = val
+	case "offset_y":
+		c.offset[1] = val
+	case "groundLevel":
+		c.groundLevel = val
+	case "posFreeze":
+		if val > 0 {
+			c.setCSF(CSF_posfreeze)
+		} else {
+			c.unsetCSF(CSF_posfreeze)
+		}
+	case "bindTime":
+		c.bindTime = int32(val)
+	case "bindToId":
+		c.bindToId = int32(val)
+	case "bindPos_x":
+		c.bindPos[0] = val
+	case "bindPos_y":
+		c.bindPos[1] = val
+	case "bindPos_z":
+		c.bindPos[2] = val
+	case "bindFacing":
+		c.bindFacing = val
+	case "angledraw":
+		if val > 0 {
+			c.setCSF(CSF_angledraw)
+		} else {
+			c.unsetCSF(CSF_angledraw)
+		}
+	case "xAngle":
+		c.anglerot[1] = val
+	case "yAngle":
+		c.anglerot[2] = val
+	case "angle":
+		c.anglerot[0] = val
+	case "xshear":
+		c.xshear = val
+	case "fLength":
+		c.fLength = val
+	case "angleDrawScale_x":
+		c.angleDrawScale[0] = val
+	case "angleDrawScale_y":
+		c.angleDrawScale[1] = val
+	case "zScale":
+		c.zScale = val
+	case "alpha_src":
+		c.alpha[0] = int32(val)
+	case "alpha_dst":
+		c.alpha[1] = int32(val)
+	case "sprPriority":
+		c.sprPriority = int32(val)
+	case "layerNo":
+		c.layerNo = int32(val)
+	case "trans":
+		c.trans = TransType(int32(val))
+	case "window_x":
+		c.window[0] = val
+	case "window_y":
+		c.window[1] = val
+	case "window_width":
+		c.window[2] = val
+	case "window_height":
+		c.window[3] = val
+	case "supertime":
+		sys.supertime = int32(val)
+	case "pausetime":
+		sys.pausetime = int32(val)
+	case "pauseMovetime":
+		c.pauseMovetime = int32(val)
+	case "superMovetime":
+		c.superMovetime = int32(val)
+	case "hitPauseTime":
+		c.hitPauseTime = int32(val)
+	case "airJumpCount":
+		c.airJumpCount = int32(val)
+	case "hitCount":
+		c.hitCount = int32(val)
+	case "guardCount":
+		c.guardCount = int32(val)
+	case "uniqHitCount":
+		c.uniqHitCount = int32(val)
+	case "sizeWidth_f":
+		c.sizeWidth[0] = val
+	case "sizeWidth_b":
+		c.sizeWidth[1] = val
+	case "edgeWidth_f":
+		c.edgeWidth[0] = val
+	case "edgeWidth_b":
+		c.edgeWidth[1] = val
+	case "sizeHeight_t":
+		c.sizeHeight[0] = val
+	case "sizeHeight_b":
+		c.sizeHeight[1] = val
+	case "depth":
+		if val > 0 {
+			c.setCSF(CSF_depth)
+		} else {
+			c.unsetCSF(CSF_depth)
+		}
+	case "depthEdge":
+		if val > 0 {
+			c.setCSF(CSF_depthedge)
+		} else {
+			c.unsetCSF(CSF_depthedge)
+		}
+	case "sizeDepth_t":
+		c.sizeDepth[0] = val
+	case "sizeDepth_b":
+		c.sizeDepth[1] = val
+	case "edgeDepth_t":
+		c.edgeDepth[0] = val
+	case "edgeDepth_b":
+		c.edgeDepth[1] = val
+	case "pushPriority":
+		c.pushPriority = int32(val)
+	case "pushAffectTeam":
+		c.pushAffectTeam = int32(val)
+	case "teamside":
+		c.teamside = int(val)
+	case "statetype":
+		switch valStr {
+		case "S":
+			c.ss.changeStateType(ST_S)
+		case "C":
+			c.ss.changeStateType(ST_C)
+		case "A":
+			c.ss.changeStateType(ST_A)
+		case "L":
+			c.ss.changeStateType(ST_L)
+		}
+	case "movetype":
+		switch valStr {
+		case "I":
+			c.ss.changeMoveType(MT_I)
+		case "A":
+			c.ss.changeMoveType(MT_A)
+		case "H":
+			c.ss.changeMoveType(MT_H)
+		}
+	case "physics":
+		switch valStr {
+		case "S":
+			c.ss.physics = ST_S
+		case "C":
+			c.ss.physics = ST_C
+		case "A":
+			c.ss.physics = ST_A
+		case "N":
+			c.ss.physics = ST_N
+		}
+	default:
+		applyPalFXProp(c.getPalfx(), propName, val)
+		if c.aimg != nil {
+			applyAfterImageProp(c.aimg, propName, val)
+		}
+	}
+}
+
+func applyExplodProp(e *Explod, propName string, val float32) {
+	switch propName {
+	case "time":
+		e.time = int32(val)
+	case "removetime":
+		e.removetime = int32(val)
+	case "supermovetime":
+		e.supermovetime = int32(val)
+	case "pausemovetime":
+		e.pausemovetime = int32(val)
+	case "postype":
+		e.postype = PosType(val)
+	case "space":
+		e.space = Space(val)
+	case "bindId":
+		e.bindId = int32(val)
+	case "bindtime":
+		e.bindtime = int32(val)
+	case "pos_x":
+		e.setAllPosX(val)
+	case "pos_y":
+		e.setAllPosY(val)
+	case "pos_z":
+		e.setAllPosZ(val)
+	case "facing":
+		e.facing = val
+	case "vfacing":
+		e.vfacing = val
+	case "velocity_x":
+		e.velocity[0] = val
+	case "velocity_y":
+		e.velocity[1] = val
+	case "velocity_z":
+		e.velocity[2] = val
+	case "friction_x":
+		e.friction[0] = val
+	case "friction_y":
+		e.friction[1] = val
+	case "friction_z":
+		e.friction[2] = val
+	case "accel_x":
+		e.accel[0] = val
+	case "accel_y":
+		e.accel[1] = val
+	case "accel_z":
+		e.accel[2] = val
+	case "scale_x":
+		e.scale[0] = val
+	case "scale_y":
+		e.scale[1] = val
+	case "sprpriority":
+		e.sprpriority = int32(val)
+	case "layerno":
+		e.layerno = int32(val)
+	case "animfreeze":
+		e.animfreeze = val > 0
+	case "trans":
+		e.trans = TransType(val)
+	case "alpha_src":
+		e.alpha[0] = int32(val)
+	case "alpha_dst":
+		e.alpha[1] = int32(val)
+	case "angle_x":
+		e.anglerot[1] = val
+	case "angle_y":
+		e.anglerot[2] = val
+	case "angle":
+		e.anglerot[0] = val
+	case "xshear":
+		e.xshear = val
+	case "projection":
+		e.projection = Projection(val)
+	case "fLength":
+		e.fLength = val
+	case "window_x":
+		e.window[0] = val
+	case "window_y":
+		e.window[1] = val
+	case "window_width":
+		e.window[2] = val
+	case "window_height":
+		e.window[3] = val
+	case "ignorehitpause":
+		e.ignorehitpause = val > 0
+	default:
+		applyPalFXProp(e.palfx, propName, val)
+		if e.aimg != nil {
+			applyAfterImageProp(e.aimg, propName, val)
+		}
+	}
+}
+
+func applyProjProp(p *Projectile, propName string, val float32) {
+	switch propName {
+	case "totalhits":
+		p.totalhits = int32(val)
+	case "priorityPoints":
+		p.priorityPoints = int32(val)
+	case "scale_x":
+		p.scale[0] = val
+	case "scale_y":
+		p.scale[1] = val
+	case "angle_x":
+		p.anglerot[1] = val
+	case "angle_y":
+		p.anglerot[2] = val
+	case "angle":
+		p.anglerot[0] = val
+	case "projection":
+		p.projection = Projection(val)
+	case "fLength":
+		p.fLength = val
+	case "clsnScale_x":
+		p.clsnScale[0] = val
+	case "clsnScale_y":
+		p.clsnScale[1] = val
+	case "clsnAngle":
+		p.clsnAngle = val
+	case "zScale":
+		p.zScale = val
+	case "window_x":
+		p.window[0] = val
+	case "window_y":
+		p.window[1] = val
+	case "window_width":
+		p.window[2] = val
+	case "window_height":
+		p.window[3] = val
+	case "xshear":
+		p.xshear = val
+	case "sprpriority":
+		p.sprpriority = int32(val)
+	case "layerno":
+		p.layerno = int32(val)
+	case "pos_x":
+		p.pos[0] = val
+	case "pos_y":
+		p.pos[1] = val
+	case "pos_z":
+		p.pos[2] = val
+	case "facing":
+		p.facing = val
+	case "velocity_x":
+		p.velocity[0] = val
+	case "velocity_y":
+		p.velocity[1] = val
+	case "velocity_z":
+		p.velocity[2] = val
+	case "remvelocity_x":
+		p.remvelocity[0] = val
+	case "remvelocity_y":
+		p.remvelocity[1] = val
+	case "remvelocity_z":
+		p.remvelocity[2] = val
+	case "accel_x":
+		p.accel[0] = val
+	case "accel_y":
+		p.accel[1] = val
+	case "accel_z":
+		p.accel[2] = val
+	case "velmul_x":
+		p.velmul[0] = val
+	case "velmul_y":
+		p.velmul[1] = val
+	case "velmul_z":
+		p.velmul[2] = val
+	case "removetime":
+		p.removetime = int32(val)
+	case "supermovetime":
+		p.supermovetime = int32(val)
+	case "pausemovetime":
+		p.pausemovetime = int32(val)
+	case "curmisstime":
+		p.curmisstime = int32(val)
+	case "hitpause":
+		p.hitpause = int32(val)
+	case "time":
+		p.time = int32(val)
+	default:
+		applyPalFXProp(p.palfx, propName, val)
+		if p.aimg != nil {
+			applyAfterImageProp(p.aimg, propName, val)
+		}
+	}
+}
+
 // Helper: flatten anonymous embedded structs into a parent table while
 // preserving Go struct field order.
 // Only applies to anonymous embedded fields without explicit `lua`/`ini` tags.
@@ -962,11 +1538,131 @@ func luaKeyToString(k lua.LValue) string {
 	}
 }
 
+func getShaderTable(l *lua.LState, sh *CustomShader) *lua.LTable {
+	t := l.NewTable()
+	t.RawSetString("shader_time", lua.LNumber(sh.time))
+	t.RawSetString("shader_sTime", lua.LNumber(sh.sTime))
+	t.RawSetString("shader_tex1_anim", lua.LNumber(sh.tex1.AnimNo))
+	t.RawSetString("shader_tex1_spr_group", lua.LNumber(sh.tex1.SprNo[0]))
+	t.RawSetString("shader_tex1_spr_image", lua.LNumber(sh.tex1.SprNo[1]))
+	t.RawSetString("shader_tex2_anim", lua.LNumber(sh.tex2.AnimNo))
+	t.RawSetString("shader_tex2_spr_group", lua.LNumber(sh.tex2.SprNo[0]))
+	t.RawSetString("shader_tex2_spr_image", lua.LNumber(sh.tex2.SprNo[1]))
+	t.RawSetString("shader_name", lua.LString(sh.name))
+	t.RawSetString("shader_p0", lua.LNumber(sh.params[0]))
+	t.RawSetString("shader_p1", lua.LNumber(sh.params[1]))
+	t.RawSetString("shader_p2", lua.LNumber(sh.params[2]))
+	t.RawSetString("shader_p3", lua.LNumber(sh.params[3]))
+	t.RawSetString("shader_p4", lua.LNumber(sh.params[4]))
+	t.RawSetString("shader_p5", lua.LNumber(sh.params[5]))
+	t.RawSetString("shader_p6", lua.LNumber(sh.params[6]))
+	t.RawSetString("shader_p7", lua.LNumber(sh.params[7]))
+	t.RawSetString("shader_p8", lua.LNumber(sh.params[8]))
+	t.RawSetString("shader_p9", lua.LNumber(sh.params[9]))
+	t.RawSetString("shader_p10", lua.LNumber(sh.params[10]))
+	t.RawSetString("shader_p11", lua.LNumber(sh.params[11]))
+	t.RawSetString("shader_p12", lua.LNumber(sh.params[12]))
+	t.RawSetString("shader_p13", lua.LNumber(sh.params[13]))
+	t.RawSetString("shader_p14", lua.LNumber(sh.params[14]))
+	t.RawSetString("shader_p15", lua.LNumber(sh.params[15]))
+	return t
+}
+
+func getPalFXTable(l *lua.LState, pfx *PalFX) *lua.LTable {
+	t := l.NewTable()
+	t.RawSetString("palfx_time", lua.LNumber(pfx.time))
+	t.RawSetString("palfx_color", lua.LNumber(pfx.color*256))
+	t.RawSetString("palfx_hue", lua.LNumber(pfx.hue*256))
+	t.RawSetString("palfx_add_r", lua.LNumber(pfx.add[0]))
+	t.RawSetString("palfx_add_g", lua.LNumber(pfx.add[1]))
+	t.RawSetString("palfx_add_b", lua.LNumber(pfx.add[2]))
+	t.RawSetString("palfx_mul_r", lua.LNumber(pfx.mul[0]))
+	t.RawSetString("palfx_mul_g", lua.LNumber(pfx.mul[1]))
+	t.RawSetString("palfx_mul_b", lua.LNumber(pfx.mul[2]))
+	t.RawSetString("palfx_sinadd_r", lua.LNumber(pfx.sinadd[0]))
+	t.RawSetString("palfx_sinadd_g", lua.LNumber(pfx.sinadd[1]))
+	t.RawSetString("palfx_sinadd_b", lua.LNumber(pfx.sinadd[2]))
+	t.RawSetString("palfx_sinadd_cycletime", lua.LNumber(pfx.cycletime[0]))
+	t.RawSetString("palfx_sinmul_r", lua.LNumber(pfx.sinmul[0]))
+	t.RawSetString("palfx_sinmul_g", lua.LNumber(pfx.sinmul[1]))
+	t.RawSetString("palfx_sinmul_b", lua.LNumber(pfx.sinmul[2]))
+	t.RawSetString("palfx_sinmul_cycletime", lua.LNumber(pfx.cycletime[1]))
+	t.RawSetString("palfx_sincolor", lua.LNumber(pfx.sincolor))
+	t.RawSetString("palfx_sincolor_cycletime", lua.LNumber(pfx.cycletime[2]))
+	t.RawSetString("palfx_sinhue", lua.LNumber(pfx.sinhue))
+	t.RawSetString("palfx_sinhue_cycletime", lua.LNumber(pfx.cycletime[3]))
+	t.RawSetString("palfx_invertall", lua.LBool(pfx.invertall))
+	t.RawSetString("palfx_invertblend", lua.LNumber(pfx.invertblend))
+	return t
+}
+
+func getAfterImageTable(l *lua.LState, aimg *AfterImage) *lua.LTable {
+	t := l.NewTable()
+	t.RawSetString("aimg_time", lua.LNumber(aimg.time))
+	t.RawSetString("aimg_length", lua.LNumber(aimg.length))
+	t.RawSetString("aimg_timegap", lua.LNumber(aimg.timegap))
+	t.RawSetString("aimg_framegap", lua.LNumber(aimg.framegap))
+	t.RawSetString("aimg_trans", lua.LNumber(aimg.trans))
+	t.RawSetString("aimg_alpha_src", lua.LNumber(aimg.alpha[0]))
+	t.RawSetString("aimg_alpha_dst", lua.LNumber(aimg.alpha[1]))
+	t.RawSetString("aimg_ignorehitpause", lua.LBool(aimg.ignorehitpause))
+
+	if len(aimg.palfx) > 0 && aimg.palfx[0] != nil {
+		pfx := aimg.palfx[0]
+		t.RawSetString("aimg_palcolor", lua.LNumber(pfx.eColor*256))
+		t.RawSetString("aimg_palhue", lua.LNumber(pfx.eHue*256))
+		t.RawSetString("aimg_palinvertall", lua.LBool(pfx.eInvertall))
+		t.RawSetString("aimg_palinvertblend", lua.LNumber(pfx.invertblend))
+		t.RawSetString("aimg_palbright_r", lua.LNumber(pfx.eAdd[0]))
+		t.RawSetString("aimg_palbright_g", lua.LNumber(pfx.eAdd[1]))
+		t.RawSetString("aimg_palbright_b", lua.LNumber(pfx.eAdd[2]))
+		t.RawSetString("aimg_palcontrast_r", lua.LNumber(pfx.eMul[0]))
+		t.RawSetString("aimg_palcontrast_g", lua.LNumber(pfx.eMul[1]))
+		t.RawSetString("aimg_palcontrast_b", lua.LNumber(pfx.eMul[2]))
+	} else {
+		t.RawSetString("aimg_palcolor", lua.LNumber(256))
+		t.RawSetString("aimg_palhue", lua.LNumber(0))
+		t.RawSetString("aimg_palinvertall", lua.LBool(false))
+		t.RawSetString("aimg_palinvertblend", lua.LNumber(0))
+		t.RawSetString("aimg_palbright_r", lua.LNumber(0))
+		t.RawSetString("aimg_palbright_g", lua.LNumber(0))
+		t.RawSetString("aimg_palbright_b", lua.LNumber(0))
+		t.RawSetString("aimg_palcontrast_r", lua.LNumber(256))
+		t.RawSetString("aimg_palcontrast_g", lua.LNumber(256))
+		t.RawSetString("aimg_palcontrast_b", lua.LNumber(256))
+	}
+	t.RawSetString("aimg_palpostbright_r", lua.LNumber(aimg.postbright[0]))
+	t.RawSetString("aimg_palpostbright_g", lua.LNumber(aimg.postbright[1]))
+	t.RawSetString("aimg_palpostbright_b", lua.LNumber(aimg.postbright[2]))
+	t.RawSetString("aimg_paladd_r", lua.LNumber(aimg.add[0]))
+	t.RawSetString("aimg_paladd_g", lua.LNumber(aimg.add[1]))
+	t.RawSetString("aimg_paladd_b", lua.LNumber(aimg.add[2]))
+	t.RawSetString("aimg_palmul_r", lua.LNumber(aimg.mul[0]))
+	t.RawSetString("aimg_palmul_g", lua.LNumber(aimg.mul[1]))
+	t.RawSetString("aimg_palmul_b", lua.LNumber(aimg.mul[2]))
+
+	return t
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
 	triggerRedirection(l)
 	triggerFunctions(l)
+	luaRegister(l, "addBreakpoint", func(l *lua.LState) int {
+		/*Register a Lua breakpoint condition. When the condition evaluates to true during a match, the game will automatically pause. Breakpoints only work when debugDump is enabled.
+		@function addBreakpoint
+		@tparam int id A unique identifier for the breakpoint.
+		@tparam string code Lua code string to evaluate every frame (for example "return p2Life() < 700").
+		function addBreakpoint(id, code) end*/
+		id := int(numArg(l, 1))
+		code := strArg(l, 2)
+		if sys.breakpoints == nil {
+			sys.breakpoints = make(map[int]*Breakpoint)
+		}
+		sys.breakpoints[id] = &Breakpoint{Code: code, Enabled: true}
+		return 0
+	})
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		/*Add a character definition to the select screen.
 		@function addChar
@@ -2282,6 +2978,13 @@ func systemScriptInit(l *lua.LState) {
 		sys.clearAllSound()
 		return 0
 	})
+	luaRegister(l, "clearBreakpoints", func(l *lua.LState) int {
+		/*Remove all registered breakpoints.
+		@function clearBreakpoints
+		function clearBreakpoints() end*/
+		sys.breakpoints = make(map[int]*Breakpoint)
+		return 0
+	})
 	luaRegister(l, "clearColor", func(l *lua.LState) int {
 		/*Fill the screen with a solid color (with optional alpha).
 		@function clearColor
@@ -3482,6 +4185,168 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(state.String()))
 		return 1
 	})
+	luaRegister(l, "getCharProp", func(l *lua.LState) int {
+		/*[redirectable] Get the value of a specific property from the active debug target character. can extract information that cannot be obtained with Lua  "triggers".
+		@function getCharProp
+		@tparam string propName The name of the property to retrieve (for example "targets", "cnsvar", "hitby").
+		@treturn value any|nil The property value (number, boolean, string, or table depending on the property), or nil if the property doesn't exist or no target is set.
+		function getCharProp(propName) end*/
+		vname := strArg(l, 1)
+		c := sys.debugWC
+		if c == nil {
+			l.Push(lua.LNil)
+			return 1
+		}
+		var lv lua.LValue
+		switch vname {
+		case "bindTime":
+			lv = lua.LNumber(c.bindTime)
+		case "bindToId":
+			lv = lua.LNumber(c.bindToId)
+		case "bindPos_x":
+			lv = lua.LNumber(c.bindPos[0])
+		case "bindPos_y":
+			lv = lua.LNumber(c.bindPos[1])
+		case "bindPos_z":
+			lv = lua.LNumber(c.bindPos[2])
+		case "bindFacing":
+			lv = lua.LNumber(c.bindFacing)
+		case "posFreeze":
+			lv = lua.LBool(c.csf(CSF_posfreeze))
+		case "trans":
+			lv = lua.LNumber(c.trans)
+		case "window_x":
+			lv = lua.LNumber(c.window[0])
+		case "window_y":
+			lv = lua.LNumber(c.window[1])
+		case "window_width":
+			lv = lua.LNumber(c.window[2])
+		case "window_height":
+			lv = lua.LNumber(c.window[3])
+		case "pauseMovetime":
+			lv = lua.LNumber(c.pauseMovetime)
+		case "superMovetime":
+			lv = lua.LNumber(c.superMovetime)
+		case "sizeWidth_f":
+			lv = lua.LNumber(c.sizeWidth[0])
+		case "sizeWidth_b":
+			lv = lua.LNumber(c.sizeWidth[1])
+		case "edgeWidth_f":
+			lv = lua.LNumber(c.edgeWidth[0])
+		case "edgeWidth_b":
+			lv = lua.LNumber(c.edgeWidth[1])
+		case "sizeHeight_t":
+			lv = lua.LNumber(c.sizeHeight[0])
+		case "sizeHeight_b":
+			lv = lua.LNumber(c.sizeHeight[1])
+		case "depth":
+			lv = lua.LBool(c.csf(CSF_depth))
+		case "depthEdge":
+			lv = lua.LBool(c.csf(CSF_depthedge))
+		case "sizeDepth_t":
+			lv = lua.LNumber(c.sizeDepth[0])
+		case "sizeDepth_b":
+			lv = lua.LNumber(c.sizeDepth[1])
+		case "edgeDepth_t":
+			lv = lua.LNumber(c.edgeDepth[0])
+		case "edgeDepth_b":
+			lv = lua.LNumber(c.edgeDepth[1])
+		case "pushPriority":
+			lv = lua.LNumber(c.pushPriority)
+		case "pushAffectTeam":
+			lv = lua.LNumber(c.pushAffectTeam)
+		case "helperId":
+			lv = lua.LNumber(c.helperId)
+		case "parentId":
+			lv = lua.LNumber(c.parentId)
+		case "cnsvar":
+			t := l.NewTable()
+			for k, v := range c.cnsvar {
+				t.RawSetString(fmt.Sprint(k), lua.LNumber(v))
+			}
+			lv = t
+		case "cnsfvar":
+			t := l.NewTable()
+			for k, v := range c.cnsfvar {
+				t.RawSetString(fmt.Sprint(k), lua.LNumber(v))
+			}
+			lv = t
+		case "sysvar":
+			t := l.NewTable()
+			for k, v := range c.cnssysvar {
+				t.RawSetString(fmt.Sprint(k), lua.LNumber(v))
+			}
+			lv = t
+		case "sysfvar":
+			t := l.NewTable()
+			for k, v := range c.cnssysfvar {
+				t.RawSetString(fmt.Sprint(k), lua.LNumber(v))
+			}
+			lv = t
+		case "palfx":
+			if c.palfx != nil {
+				lv = getPalFXTable(l, c.palfx)
+			} else {
+				lv = lua.LNil
+			}
+		case "afterimage":
+			if c.aimg != nil {
+				lv = getAfterImageTable(l, c.aimg)
+			} else {
+				lv = lua.LNil
+			}
+		case "shader":
+			lv = getShaderTable(l, &c.customShader)
+		case "hitby":
+			t := l.NewTable()
+			for i, hb := range c.hitby {
+				if hb.time > 0 {
+					prefix := "HitBy"
+					if hb.not {
+						prefix = "NotHitBy"
+					}
+					t.Append(lua.LString(fmt.Sprintf("%d:[%s(%s) t:%d]", i, prefix, attrToStr(hb.flag), hb.time)))
+				}
+			}
+			lv = t
+		case "hitoverride":
+			t := l.NewTable()
+			for i, ho := range c.hover {
+				if ho.time > 0 {
+					t.Append(lua.LString(fmt.Sprintf("%d:[Hover(%s)->st:%d t:%d]", i, attrToStr(ho.attr), ho.stateno, ho.time)))
+				}
+			}
+			lv = t
+		case "targets":
+			t := l.NewTable()
+			for _, v := range c.targets {
+				t.Append(lua.LNumber(v))
+			}
+			lv = t
+		case "children":
+			t := l.NewTable()
+			for _, v := range c.children {
+				t.Append(lua.LNumber(v))
+			}
+			lv = t
+		case "enemyNearList":
+			t := l.NewTable()
+			for _, v := range c.enemyNearList {
+				t.Append(lua.LNumber(v))
+			}
+			lv = t
+		case "p2EnemyList":
+			t := l.NewTable()
+			for _, v := range c.p2EnemyList {
+				t.Append(lua.LNumber(v))
+			}
+			lv = t
+		default:
+			lv = lua.LNil
+		}
+		l.Push(lv)
+		return 1
+	})
 	luaRegister(l, "getCharRandomPalette", func(*lua.LState) int {
 		/*Get a random valid palette number for a character slot.
 		@function getCharRandomPalette
@@ -3968,6 +4833,22 @@ func systemScriptInit(l *lua.LState) {
 		} else {
 			l.Push(lua.LNumber(-1))
 		}
+		return 1
+	})
+	luaRegister(l, "getMapVars", func(l *lua.LState) int {
+		/*[redirectable] Get all map variables currently set on the active debug target character.
+		@function getMapVars
+		@treturn mapVars table|nil A table containing map keys (string) and their corresponding values (float32), or nil if no debug target is set.
+		function getMapVars() end*/
+		if sys.debugWC == nil {
+			l.Push(lua.LNil)
+			return 1
+		}
+		tbl := l.NewTable()
+		for k, v := range sys.debugWC.mapArray {
+			tbl.RawSetString(k, lua.LNumber(v))
+		}
+		l.Push(tbl)
 		return 1
 	})
 	luaRegister(l, "getMatchTime", func(*lua.LState) int {
@@ -6260,6 +7141,51 @@ func systemScriptInit(l *lua.LState) {
 		sys.debugWC.setAILevel(Clamp(float32(numArg(l, 1)), 0, 8))
 		return 0
 	})
+	luaRegister(l, "setCharProp", func(l *lua.LState) int {
+		/*Set the current target character (player or helper) for debugging display.
+		@function setCharProp
+		@tparam int32 targetID The ID of the target character.
+		@tparam string propName The name of the property to modify.
+		@tparam float32 value The numeric value to set.
+		@tparam[opt] string valueStr* The string representation of the value (used for properties like "statetype" or "movetype").
+		function setCharProp(targetID, propName, value, valueStr) end*/
+		targetID := int32(numArg(l, 1))
+		propName := strArg(l, 2)
+		val := float32(numArg(l, 3))
+		valStr := ""
+		if !nilArg(l, 4) {
+			valStr = strArg(l, 4)
+		}
+		if c := sys.playerID(targetID); c != nil {
+			applyCharProp(c, propName, val, valStr)
+		}
+		return 0
+	})
+	luaRegister(l, "setCharVar", func(l *lua.LState) int {
+		/*Set or overwrite a character's vars (var, fvar, sysvar, sysfvar).
+		@function setCharVar
+		@tparam int32 targetID The ID of the target character.
+		@tparam string varType The type of variable to set ("cnsvar", "cnsfvar", "sysvar", "sysfvar").
+		@tparam int32 index The index slot of the variable.
+		@tparam float32 value The numeric value to set.
+		function setCharVar(targetID, varType, index, value) end*/
+		varType := strArg(l, 1)
+		index := int32(numArg(l, 2))
+		val := float32(numArg(l, 3))
+		if c := sys.debugWC; c != nil {
+			switch varType {
+			case "cnsvar":
+				c.varSet(index, int32(val))
+			case "cnsfvar":
+				c.fvarSet(index, val)
+			case "sysvar":
+				c.sysVarSet(index, int32(val))
+			case "sysfvar":
+				c.sysFvarSet(index, val)
+			}
+		}
+		return 0
+	})
 	luaRegister(l, "setCom", func(*lua.LState) int {
 		/*Set AI level for a specific player.
 		@function setCom
@@ -6293,6 +7219,27 @@ func systemScriptInit(l *lua.LState) {
 		function setCredits(credits) end*/
 		sys.credits = int32(numArg(l, 1))
 		return 0
+	})
+	luaRegister(l, "setDebugTarget", func(l *lua.LState) int {
+		/*Set the current target character (player or helper) for debugging display.
+		@function setDebugTarget
+		@tparam int32 targetID The ID of the character to target.
+		@treturn success boolean true if the target was found and set successfully, false otherwise.
+		function setDebugTarget(targetID) end*/
+		targetID := int32(numArg(l, 1))
+		if targetID >= 0 {
+			if targetChar := sys.playerID(targetID); targetChar != nil {
+				sys.debugWC = targetChar
+				sys.debugRef[0] = targetChar.playerNo
+				sys.debugRef[1] = targetChar.helperIndex
+				sys.debugLastID = targetChar.id
+				sys.debugDisplay = true
+				l.Push(lua.LBool(true))
+				return 1
+			}
+		}
+		l.Push(lua.LBool(false))
+		return 1
 	})
 	luaRegister(l, "setDefaultConfig", func(l *lua.LState) int {
 		/*Apply default key or joystick bindings for a player.
@@ -6339,6 +7286,30 @@ func systemScriptInit(l *lua.LState) {
 		@tparam int32 value Dizzy points value.
 		function setDizzyPoints(value) end*/
 		sys.debugWC.dizzyPointsSet(int32(numArg(l, 1)))
+		return 0
+	})
+	luaRegister(l, "setExplodProp", func(l *lua.LState) int {
+		/*Set or overwrite a specific property of an explod.
+		@function setExplodProp
+		@tparam int playerIdx The 0 based index of the player who owns the explod.
+		@tparam int itemIndex The 0 based internal array index of the explod.
+		@tparam int32 explodID The explod ID to verify the correct explod is being modified.
+		@tparam string propName The name of the property to modify.
+		@tparam float32 value The numeric value to set.
+		function setExplodProp(playerIdx, itemIndex, explodID, propName, value) end*/
+		playerIdx := int(numArg(l, 1))
+		itemIndex := int(numArg(l, 2))
+		explodID := int32(numArg(l, 3))
+		propName := strArg(l, 4)
+		val := float32(numArg(l, 5))
+		if playerIdx >= 0 && playerIdx < len(sys.explods) {
+			if itemIndex >= 0 && itemIndex < len(sys.explods[playerIdx]) {
+				e := sys.explods[playerIdx][itemIndex]
+				if e.id == explodID {
+					applyExplodProp(e, propName, val)
+				}
+			}
+		}
 		return 0
 	})
 	luaRegister(l, "setGameMode", func(*lua.LState) int {
@@ -6749,6 +7720,30 @@ func systemScriptInit(l *lua.LState) {
 		@tparam int32 power Power value.
 		function setPower(power) end*/
 		sys.debugWC.setPower(int32(numArg(l, 1)))
+		return 0
+	})
+	luaRegister(l, "setProjProp", func(l *lua.LState) int {
+		/*Set or overwrite a specific property of a projectile.
+		@function setProjProp
+		@tparam int playerIdx The 0 based index of the player who owns the projectile.
+		@tparam int itemIndex The 0 based internal array index of the projectile.
+		@tparam int32 projID The projectile ID to verify the correct projectile is being modified.
+		@tparam string propName The name of the property to modify.
+		@tparam float32 value The numeric value to set.
+		function setProjProp(playerIdx, itemIndex, projID, propName, value) end*/
+		playerIdx := int(numArg(l, 1))
+		itemIndex := int(numArg(l, 2))
+		projID := int32(numArg(l, 3))
+		propName := strArg(l, 4)
+		val := float32(numArg(l, 5))
+		if playerIdx >= 0 && playerIdx < len(sys.projs) {
+			if itemIndex >= 0 && itemIndex < len(sys.projs[playerIdx]) {
+				p := sys.projs[playerIdx][itemIndex]
+				if p.id == projID {
+					applyProjProp(p, propName, val)
+				}
+			}
+		}
 		return 0
 	})
 	luaRegister(l, "setRedLife", func(*lua.LState) int {
@@ -7520,6 +8515,19 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.Update()
+		return 0
+	})
+	luaRegister(l, "toggleBreakpoint", func(l *lua.LState) int {
+		/*Enable or disable a previously registered breakpoint.
+		@function toggleBreakpoint
+		@tparam int id The unique identifier of the breakpoint.
+		@tparam boolean enabled true to enable the breakpoint, false to disable it.
+		function toggleBreakpoint(id, enabled) end*/
+		id := int(numArg(l, 1))
+		enabled := boolArg(l, 2)
+		if bp, ok := sys.breakpoints[id]; ok {
+			bp.Enabled = enabled
+		}
 		return 0
 	})
 	luaRegister(l, "toggleClsnDisplay", func(*lua.LState) int {
@@ -8694,6 +9702,51 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(e.velocity[2])
 			case "xshear":
 				lv = lua.LNumber(e.xshear)
+
+			case "postype":
+				lv = lua.LNumber(e.postype)
+			case "space":
+				lv = lua.LNumber(e.space)
+			case "vfacing":
+				lv = lua.LNumber(e.vfacing)
+			case "animfreeze":
+				lv = lua.LBool(e.animfreeze)
+			case "trans":
+				lv = lua.LNumber(e.trans)
+			case "alpha src":
+				lv = lua.LNumber(e.alpha[0])
+			case "alpha dst":
+				lv = lua.LNumber(e.alpha[1])
+			case "projection":
+				lv = lua.LNumber(e.projection)
+			case "flength":
+				lv = lua.LNumber(e.fLength)
+			case "window x":
+				lv = lua.LNumber(e.window[0])
+			case "window y":
+				lv = lua.LNumber(e.window[1])
+			case "window width":
+				lv = lua.LNumber(e.window[2])
+			case "window height":
+				lv = lua.LNumber(e.window[3])
+			case "ignorehitpause":
+				lv = lua.LBool(e.ignorehitpause)
+			case "supermovetime":
+				lv = lua.LNumber(e.supermovetime)
+			case "palfx":
+				if e.palfx != nil {
+					lv = getPalFXTable(l, e.palfx)
+				} else {
+					lv = lua.LNil
+				}
+			case "afterimage":
+				if e.aimg != nil {
+					lv = getAfterImageTable(l, e.aimg)
+				} else {
+					lv = lua.LNil
+				}
+			case "shader":
+				lv = getShaderTable(l, &e.customShader)
 			default:
 				l.RaiseError("\nInvalid argument: %v\n", vname)
 			}
@@ -10287,6 +11340,45 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(p.velmul[2])
 			case "xshear":
 				lv = lua.LNumber(p.xshear)
+
+			case "totalhits":
+				lv = lua.LNumber(p.totalhits)
+			case "prioritypoints":
+				lv = lua.LNumber(p.priorityPoints)
+			case "projection":
+				lv = lua.LNumber(p.projection)
+			case "flength":
+				lv = lua.LNumber(p.fLength)
+			case "clsnscale x":
+				lv = lua.LNumber(p.clsnScale[0])
+			case "clsnscale y":
+				lv = lua.LNumber(p.clsnScale[1])
+			case "clsnangle":
+				lv = lua.LNumber(p.clsnAngle)
+			case "zscale":
+				lv = lua.LNumber(p.zScale)
+			case "window x":
+				lv = lua.LNumber(p.window[0])
+			case "window y":
+				lv = lua.LNumber(p.window[1])
+			case "window width":
+				lv = lua.LNumber(p.window[2])
+			case "window height":
+				lv = lua.LNumber(p.window[3])
+			case "palfx":
+				if p.palfx != nil {
+					lv = getPalFXTable(l, p.palfx)
+				} else {
+					lv = lua.LNil
+				}
+			case "afterimage":
+				if p.aimg != nil {
+					lv = getAfterImageTable(l, p.aimg)
+				} else {
+					lv = lua.LNil
+				}
+			case "shader":
+				lv = getShaderTable(l, &p.customShader)
 			default:
 				l.RaiseError("\nInvalid argument: %v\n", vname)
 			}

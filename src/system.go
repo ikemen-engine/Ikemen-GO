@@ -3,6 +3,7 @@ package main
 import (
 	"arena"
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -343,6 +344,9 @@ type System struct {
 	luaDrawPreOps   []func()
 	luaDrawLayerOps [3][]func()
 
+	debugDumpEnabled bool
+	breakpoints      map[int]*Breakpoint
+
 	// UI repeat guard: avoid firing the same token multiple times in the same frame
 
 	// UI command registry. Ensures new players get the full command set.
@@ -360,6 +364,11 @@ type System struct {
 type drawAspectState struct {
 	gameWidth, gameHeight   float32
 	widthScale, heightScale float32
+}
+
+type Breakpoint struct {
+	Code    string
+	Enabled bool
 }
 
 // Check if the application is running inside a macOS app bundle
@@ -3834,10 +3843,30 @@ func (s *System) runMatch() (reload bool) {
 			break
 		}
 
-		// Update game state
-		s.action()
+		if s.debugDumpEnabled {
+			s.checkBreakpoints()
+			luaFunc := s.luaLState.GetGlobal("__ikemen_debug_dump")
+			if luaFunc.Type() == lua.LTFunction {
+				if err := s.luaLState.CallByParam(lua.P{
+					Fn:      luaFunc,
+					NRet:    1,
+					Protect: true,
+				}); err == nil {
+					retVal := s.luaLState.Get(-1)
+					s.luaLState.Pop(1)
+					if goVal, err := luaToJsonValue(retVal, nil); err == nil {
+						if jsonBytes, err := json.Marshal(goVal); err == nil {
+							fmt.Printf("IKEMEN_DUMP:%s\n", string(jsonBytes))
+						}
+					}
+				}
+			}
+		}
 
 		debugInput()
+
+		// Update game state
+		s.action()
 
 		if !s.addFrameTime(s.turbo) {
 			if !s.eventUpdate() {
