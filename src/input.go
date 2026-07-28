@@ -132,7 +132,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		sys.esc = sys.esc ||
 			key == KeyEscape && (mk&ModCtrlAlt) == 0
 		for k, v := range sys.shortcutScripts {
-			if sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
+			if !sys.motif.me.active && sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
 				//(!sys.paused || sys.frameStepFlag || v.Pause) &&
 				(sys.cfg.Debug.AllowDebugKeys || !v.DebugKey) {
 				v.Activate = v.Activate || k.Test(key, mk)
