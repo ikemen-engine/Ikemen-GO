@@ -606,7 +606,8 @@ func (s *System) getMotifAspect() float32 {
 
 func (s *System) getCurrentAspect() float32 {
 	skip := s.skipMotifScaling()
-	if (s.postMatchFlg && skip) || (s.middleOfMatch() && (skip || (!s.motif.me.active && !s.motif.di.active))) {
+	motifAspectActive := s.shouldPersistMotifAspect() && (s.motif.me.active || s.motif.di.active)
+	if (s.postMatchFlg && skip) || (s.middleOfMatch() && !motifAspectActive) {
 		return s.getFightAspect()
 	}
 	return s.getMotifAspect()
