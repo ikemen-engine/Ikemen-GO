@@ -2140,6 +2140,7 @@ function start.f_selectChallenger(resume)
 	end
 
 	-- Resume the exact interrupted arcade fight using the original caller args.
+	resume.pendingFight.p2char = {}
 	return launchFight(resume.pendingFight)
 end
 
