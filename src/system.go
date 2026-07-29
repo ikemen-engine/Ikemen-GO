@@ -606,7 +606,8 @@ func (s *System) getMotifAspect() float32 {
 
 func (s *System) getCurrentAspect() float32 {
 	skip := s.skipMotifScaling()
-	if (s.postMatchFlg && skip) || (s.middleOfMatch() && (skip || (!s.motif.me.active && !s.motif.di.active))) {
+	motifAspectActive := s.shouldPersistMotifAspect() && (s.motif.me.active || s.motif.di.active)
+	if (s.postMatchFlg && skip) || (s.middleOfMatch() && !motifAspectActive) {
 		return s.getFightAspect()
 	}
 	return s.getMotifAspect()
@@ -727,10 +728,12 @@ func (s *System) leaveMotifAspect() {
 
 func (s *System) setGameAspect() {
 	sys.applyFightAspect()
-	if sys.stage != nil {
-		sys.stage.localscl = float32(sys.gameWidth) / float32(sys.stage.stageCamera.localcoord[0])
-		sys.stage.stageCamera.localscl = sys.stage.localscl
+	// RoundXDef stages are preloaded before the fight aspect is applied.
+	for _, stage := range sys.stageList {
+		stage.updateLocalScale(sys.gameWidth)
 	}
+	// The active stage may not be registered in stageList.
+	sys.stage.updateLocalScale(sys.gameWidth)
 	for _, p := range sys.chars {
 		if len(p) > 0 {
 			p[0].localcoord = float32(p[0].gi().localcoord[0]) / (float32(sys.gameWidth) / 320)

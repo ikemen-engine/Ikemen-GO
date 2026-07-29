@@ -3483,6 +3483,10 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 
+	if m.AttractMode.Enabled && sys.credits == 0 {
+		return
+	}
+
 	controllerNo := sys.buttonController(m.ChallengerInfo.Key)
 	if controllerNo == -1 || sys.uiControllerKey(controllerNo) == sys.uiControllerKey(0) {
 		return

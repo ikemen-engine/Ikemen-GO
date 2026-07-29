@@ -1106,8 +1106,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 	} else if s.hires {
 		s.scale[1] *= 2
 	}
-	s.localscl = sys.gameWidth / float32(s.stageCamera.localcoord[0])
-	s.stageCamera.localscl = s.localscl
+	s.updateLocalScale(sys.gameWidth)
 	if s.stageCamera.localcoord[0] != 320 {
 		// Update default values to new localcoord. Like characters do
 		coordRatio := float32(s.stageCamera.localcoord[0]) / 320
@@ -1539,6 +1538,14 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 
 	s.mainstage = maindef
 	return s, nil
+}
+
+func (s *Stage) updateLocalScale(gameWidth float32) {
+	if s == nil || s.stageCamera.localcoord[0] <= 0 {
+		return
+	}
+	s.localscl = gameWidth / float32(s.stageCamera.localcoord[0])
+	s.stageCamera.localscl = s.localscl
 }
 
 func (s *Stage) getBg(id int32) (bg []*backGround) {
