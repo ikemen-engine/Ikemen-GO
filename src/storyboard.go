@@ -467,7 +467,11 @@ func (s *Storyboard) reset() {
 			}
 			if layerProps.TextSpriteData != nil {
 				layerProps.TextSpriteData.Reset()
-				// Storyboard uses uses its own typewriter logic, so disable the internal TextSprite typing.
+				// Reset restores the full source string. Hide it until the storyboard typewriter reveals the first character.
+				if layerProps.TextDelay > 0 {
+					layerProps.TextSpriteData.text = ""
+				}
+				// Storyboard uses its own typewriter logic, so disable the internal TextSprite typing.
 				layerProps.TextSpriteData.textDelay = 0
 				// Apply layerall.pos so storyboard [layerall.pos] affects text too
 				layerProps.TextSpriteData.AddPos(sceneProps.Layerall.Pos[0], sceneProps.Layerall.Pos[1])
