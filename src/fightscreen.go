@@ -3417,6 +3417,11 @@ func (ro *FightScreenRound) overTime() int32 {
 
 // Check is sys.intro timer should step
 func (ro *FightScreenRound) act() bool {
+	// Allow a pause-menu match exit to finish the regular fight fade.
+	if sys.endMatch && ro.fadeOut.isActive() {
+		ro.fadeOut.step()
+		return false
+	}
 	// Early exits
 	if (sys.paused && !sys.frameStepFlag) || sys.gsf(GSF_roundfreeze) {
 		return false
@@ -5567,7 +5572,7 @@ func (fs *FightScreen) visible() bool {
 		!sys.lifebarHide &&
 		!(sys.dialogueHideBars || sys.motif.di.active) &&
 		!(sys.motif.me.active && sys.motif.PauseMenu["pause_menu"].HideBars &&
-			(!sys.motif.me.closeRequested || sys.paused))
+			sys.motif.me.state != ME_ClosingIn)
 }
 
 func (fs *FightScreen) draw(layerno int16) {

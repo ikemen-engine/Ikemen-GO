@@ -287,8 +287,8 @@ function menu.f_createMenu(tbl, sec, bg, bool_main)
 		else
 			main.f_menuCommonDraw(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec, bg, true)
 		end
-		-- Skip everything else during pause exit delay
-		if menu.pauseExitDelay >= 0 then
+		-- Draw during fades, but don't accept menu input until they finish.
+		if not main.pauseMenuActive or fadeActive() or menu.pauseExitDelay >= 0 then
 			return
 		end
 		tbl.cursorPosY, tbl.moveTxt, tbl.item = main.f_menuCommonCalc(t, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec, sec.cursor)
@@ -557,7 +557,6 @@ end
 menu.movelistChar = 1
 function menu.f_init()
 	esc(false)
-	togglePause(true)
 	main.pauseMenuActive = true
 	bgReset(motif.optionbgdef.BGDef)
 	local id = f_pauseMenuIdFromKey(f_pauseMenuKey(gameMode()))
@@ -568,7 +567,6 @@ function menu.f_init()
 		local entry = menu.t_menuIndex[id]
 		sndPlay(motif.Snd, entry.sec.enter.snd[1], entry.sec.enter.snd[2])
 		bgReset(entry.bg.BGDef)
-		fadeInInit(entry.sec.fadein.FadeData)
 		if menu[id] ~= nil and menu[id].loop ~= nil then
 			menu.currentMenu = {menu[id].loop, menu[id].loop}
 			menu.currentMenuId = id
@@ -579,7 +577,6 @@ function menu.f_init()
 	else
 		sndPlay(motif.Snd, motif.pause_menu.pause_menu.enter.snd[1], motif.pause_menu.pause_menu.enter.snd[2])
 		bgReset(motif.pausebgdef.pausebgdef.BGDef)
-		fadeInInit(motif.pause_menu.pause_menu.fadein.FadeData)
 		menu.currentMenu = {menu.menu.loop, menu.menu.loop}
 		menu.currentMenuId = 'menu'
 	end
@@ -614,10 +611,8 @@ function menu.f_run()
 		if menu.pauseExitDelay > 0 then
 			menu.pauseExitDelay = menu.pauseExitDelay - 1
 		else
-			menu.pauseExitDelay = -1 --prevent retriggering at 0
-			togglePause(false)
+			-- Keep the game paused. Go owns the fade-out/fade-in handoff and unpauses afterwards.
 			main.pauseMenuActive = false
-			return false
 		end
 	end
 	--Button Config
@@ -634,7 +629,11 @@ function menu.f_run()
 	else
 		menu.currentMenu[1]()
 	end
-	return main.pauseMenuActive
+	local active = main.pauseMenuActive
+	if not active then
+		menu.pauseExitDelay = -1
+	end
+	return active
 end
 
 -- Reset selection/scroll state recursively for a menu table (root + submenus)

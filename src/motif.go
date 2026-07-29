@@ -3100,7 +3100,8 @@ func (m *Motif) draw(layerno int16) {
 	}
 	// Draw black bars if fight aspect and motif aspect differ.
 	if layerno == 1 && sys.shouldPersistMotifAspect() &&
-		(!sys.middleOfMatch() || m.me.active || m.di.active) {
+		(!sys.middleOfMatch() || m.di.active ||
+			m.me.active && m.me.state != ME_OpeningOut && m.me.state != ME_ClosingIn) {
 		m.drawAspectBars()
 	}
 	if m.ch.active {
@@ -3301,21 +3302,28 @@ func (mo *Motif) sprintf(format string, args ...interface{}) string {
 	return fmt.Sprintf(fs, args...)
 }
 
+type MenuState int32
+
+const (
+	ME_OpeningOut MenuState = iota
+	ME_OpeningIn
+	ME_Open
+	ME_ClosingOut
+	ME_ClosingIn
+)
+
 type MotifMenu struct {
-	enabled        bool
-	active         bool
-	initialized    bool
-	counter        int32
-	endTimer       int32
-	closeRequested bool
-	reopenLock     bool
+	enabled     bool
+	active      bool
+	initialized bool
+	state       MenuState
+	reopenLock  bool
 }
 
 func (me *MotifMenu) reset(m *Motif) {
 	me.active = false
 	me.initialized = false
-	me.endTimer = -1
-	me.closeRequested = false
+	me.state = ME_OpeningOut
 	if err := sys.luaLState.DoString("menuReset()"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 	}
@@ -3328,19 +3336,20 @@ func (me *MotifMenu) menuOpenInputHeld(m *Motif) bool {
 		return true
 	}
 	// Also respect configured menu cancel/open bindings
-	if m != nil && m.PauseMenu != nil {
-		if pm := m.PauseMenu["pause_menu"]; pm != nil && pm.Enabled {
-			if sys.uiRawInput(pm.Menu.Cancel.Key, -1) {
-				return true
-			}
-		}
+	if pm := me.pauseMenu(m); pm != nil && pm.Enabled {
+		return sys.uiRawInput(pm.Menu.Cancel.Key, -1)
 	}
 	return false
 }
 
-func (me *MotifMenu) pauseMenuBase(m *Motif) *MenuInfoProperties {
+func (me *MotifMenu) pauseMenu(m *Motif) *MenuInfoProperties {
 	if m == nil || m.PauseMenu == nil {
 		return nil
+	}
+	if mode := strings.Join(strings.Fields(strings.ToLower(sys.gameMode)), "_"); mode != "" {
+		if pm := m.PauseMenu[mode+"_pause_menu"]; pm != nil {
+			return pm
+		}
 	}
 	if pm := m.PauseMenu["pause_menu"]; pm != nil {
 		return pm
@@ -3354,21 +3363,17 @@ func (me *MotifMenu) pauseMenuBase(m *Motif) *MenuInfoProperties {
 }
 
 func (me *MotifMenu) requestClose(m *Motif) {
-	if me.endTimer != -1 {
+	if !me.active || me.state >= ME_ClosingOut {
 		return
 	}
-	me.closeRequested = true
-	if !m.di.active {
-		sys.leaveMotifAspect()
+	if pm := me.pauseMenu(m); pm != nil {
+		pm.FadeOut.FadeData.init(m.fadeOut, false)
 	}
-	if pm := me.pauseMenuBase(m); pm != nil {
-		startFadeOut(pm.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
-	}
-	me.endTimer = me.counter + m.fadeOut.timeRemaining
+	me.state = ME_ClosingOut
 }
 
 func (me *MotifMenu) init(m *Motif) {
-	pm := me.pauseMenuBase(m)
+	pm := me.pauseMenu(m)
 	if pm == nil || !pm.Enabled || !me.enabled {
 		me.initialized = true
 		return
@@ -3399,56 +3404,74 @@ func (me *MotifMenu) init(m *Motif) {
 		sys.endMatch = true
 		return
 	}
-	// If nothing requested opening, do nothing.
 	if !openPressed {
 		return
 	}
-	sys.enterMotifAspect()
 
-	if err := sys.luaLState.DoString("menuInit()"); err != nil {
-		sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
-	}
-
-	pm.FadeIn.FadeData.init(m.fadeIn, true)
-	me.counter = 0
+	// Freeze the match first, then fade it to black before initializing the menu.
+	sys.paused = true
+	pm.FadeOut.FadeData.init(m.fadeOut, false)
 	me.active = true
 	me.initialized = true
-	me.closeRequested = false
-	me.endTimer = -1
+	me.state = ME_OpeningOut
 }
 
 func (me *MotifMenu) step(m *Motif) {
-	// Close only when requested by Lua (menuRun() returned false) or when ending the match.
-	if me.endTimer == -1 && (me.closeRequested || sys.endMatch) {
-		me.requestClose(m)
+	// Round state does not advance motif fades while the match is paused.
+	if m.fadeOut.isActive() {
+		m.fadeOut.step()
+	} else if m.fadeIn.isActive() {
+		m.fadeIn.step()
 	}
 
-	// Check if the sequence has ended
-	if me.endTimer != -1 && me.counter >= me.endTimer {
-		if m.fadeOut != nil {
-			m.fadeOut.reset()
+	pm := me.pauseMenu(m)
+	switch me.state {
+	case ME_OpeningOut:
+		if m.fadeOut.isActive() {
+			return
 		}
-		me.active = false
-		me.closeRequested = false
+		sys.enterMotifAspect()
+		if err := sys.luaLState.DoString("menuInit()"); err != nil {
+			sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
+		}
+		if pm != nil {
+			pm.FadeIn.FadeData.init(m.fadeIn, true)
+		}
+		me.state = ME_OpeningIn
+	case ME_OpeningIn:
+		if !m.fadeIn.isActive() {
+			me.state = ME_Open
+		}
+	case ME_ClosingOut:
+		if m.fadeOut.isActive() {
+			return
+		}
+		if !m.di.active {
+			sys.leaveMotifAspect()
+		}
+		if pm != nil {
+			pm.FadeIn.FadeData.init(m.fadeIn, true)
+		}
+		me.state = ME_ClosingIn
+	case ME_ClosingIn:
+		if m.fadeIn.isActive() {
+			return
+		}
 		me.reopenLock = true
 		me.reset(m)
 		sys.paused = false
-		return
 	}
-
-	// Increment counter
-	me.counter++
 }
 
 // runLua executes the pause-menu Lua loop.
 func (me *MotifMenu) runLua(m *Motif) {
-	// Once closing has started, stop running the Lua menu loop so it can't keep drawing/flickering.
-	if me.endTimer != -1 {
+	// Draw the menu during its fade-in and fade-out, but not while the match is on screen.
+	if me.state == ME_OpeningOut || me.state == ME_ClosingIn {
 		return
 	}
 	if ok, err := ExecFunc(sys.luaLState, "menuRun"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
-	} else if !ok {
+	} else if !ok && !sys.endMatch {
 		me.requestClose(m)
 	}
 }

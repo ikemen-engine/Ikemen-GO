@@ -2482,10 +2482,10 @@ func systemScriptInit(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "endMatch", func(*lua.LState) int {
-		/*Signal that the current match should end (using menu fade-out settings).
+		/*Signal that the current match should end (using fight screen fade-out settings).
 		@function endMatch
 		function endMatch() end*/
-		sys.motif.PauseMenu["pause_menu"].FadeOut.FadeData.init(sys.motif.fadeOut, false)
+		sys.fightScreen.round.fadeOut.init(sys.fightScreen.round.fadeOut, false)
 		sys.uiResetTokenGuard()
 		sys.endMatch = true
 		return 0
