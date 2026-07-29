@@ -606,7 +606,8 @@ func (s *System) getMotifAspect() float32 {
 
 func (s *System) getCurrentAspect() float32 {
 	skip := s.skipMotifScaling()
-	motifAspectActive := s.shouldPersistMotifAspect() && (s.motif.me.active || s.motif.di.active)
+	motifAspectActive := s.shouldPersistMotifAspect() && (s.motif.di.active ||
+		s.motif.me.active && s.motif.me.state != ME_OpeningOut && s.motif.me.state != ME_ClosingIn)
 	if (s.postMatchFlg && skip) || (s.middleOfMatch() && !motifAspectActive) {
 		return s.getFightAspect()
 	}
@@ -3814,7 +3815,7 @@ func (s *System) runMatch() (reload bool) {
 	}
 
 	// Loop until end of match
-	for !s.endMatch {
+	for !s.endMatch || s.fightScreen.round.fadeOut.isActive() {
 		s.frameStepFlag = false
 
 		for _, v := range s.shortcutScripts {
@@ -3926,13 +3927,6 @@ func (s *System) runMatch() (reload bool) {
 		// Exit the replay match loop before EOF can reuse the last input sample.
 		if s.replayFile != nil && s.replayFile.file == nil {
 			break
-		}
-
-		// If end match selected from menu
-		if s.endMatch {
-			if !s.motif.fadeOut.isActive() {
-				break
-			}
 		}
 
 		// If player pressed esc during netplay
