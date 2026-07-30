@@ -24,9 +24,10 @@ jobs:
           # Close 7 days after the stale mark if still no activity
           days-before-issue-close: 7
 
-          # Prevent the action from removing "Stale" due to updates (including its own comment/label ops),
-          # which otherwise causes an unstale -> restale -> recomment loop with days-before-issue-stale: 0
-          remove-issue-stale-when-updated: false
+          # The labels remain untouched and must be removed manually by a maintainer.
+          # If they remain, a later run will mark the issue stale again,
+          # post a new warning, and begin a new grace period.
+          remove-issue-stale-when-updated: true
 
           # Use any label you prefer when “staling” (optional)
           #stale-issue-label: "wontfix"
