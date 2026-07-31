@@ -2171,16 +2171,13 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 				continue
 			}
 
-			// Remember only anim/spr values that were actually inherited into the destination.
+			// Remember only values that were actually inherited into the destination.
 			// Direct destination values from system.def must keep warning on missing sprites.
-			switch strings.ToLower(suf) {
-			case "anim", "spr":
-				switch src {
-				case srcUserSrc, srcDefSrc:
-					m.inheritedKeys[query] = true
-				default:
-					delete(m.inheritedKeys, query)
-				}
+			switch src {
+			case srcUserSrc, srcDefSrc:
+				m.inheritedKeys[query] = true
+			default:
+				delete(m.inheritedKeys, query)
 			}
 
 			// If a value comes from the user INI (directly or via src), copy it into m.UserIniFile

@@ -763,13 +763,16 @@ function start.f_animGet(ref, side, member, params, velParams, loop, srcAnim)
 end
 
 --calculate portraits x pos
-local function f_portraitsXCalc(side, member, paramsSide, params, skipOffset)
+local function f_portraitsXCalc(side, member, paramsSide, params, skipOffset, offsetKey)
 	local x = paramsSide.pos[1]
 	if not skipOffset then
 		x = x + params.offset[1]
 	end
 	if paramsSide.padding then
 		return x + (2 * member - 1) * paramsSide.spacing[1] * paramsSide.num / (2 * math.min(paramsSide.num, math.max(start.p[side].numChars, #start.p[side].t_selected)))
+	end
+	if offsetKey and not motifIsInherited(offsetKey) then
+		return x
 	end
 	return x + (member - 1) * paramsSide.spacing[1]
 end
@@ -785,13 +788,13 @@ local function getParams(side, member, t, subname)
 	return paramsSide, params
 end
 
-local function drawPortraitRandom(randomCfg, side, member, paramsSide)
+local function drawPortraitRandom(randomCfg, side, member, paramsSide, offsetKey)
 	if not randomCfg then
 		return false
 	end
 	local spr = randomCfg.spr
 	if randomCfg.anim >= 0 or (spr and spr[1] >= 0 and spr[2] >= 0) then
-		local x = f_portraitsXCalc(side, member, paramsSide, randomCfg)
+		local x = f_portraitsXCalc(side, member, paramsSide, randomCfg, false, offsetKey)
 		local y = paramsSide.pos[2] + randomCfg.offset[2] + (member - 1) * paramsSide.spacing[2]
 		animSetPos(randomCfg.AnimData, x, y)
 		animDraw(randomCfg.AnimData)
@@ -801,13 +804,13 @@ local function drawPortraitRandom(randomCfg, side, member, paramsSide)
 	return false
 end
 
-local function drawPortraitSlot(slotCfg, side, member, paramsSide)
+local function drawPortraitSlot(slotCfg, side, member, paramsSide, offsetKey)
 	if not slotCfg then
 		return false
 	end
 	local spr = slotCfg.spr
 	if slotCfg.anim >= 0 or (spr and spr[1] >= 0 and spr[2] >= 0) then
-		local x = f_portraitsXCalc(side, member, paramsSide, slotCfg)
+		local x = f_portraitsXCalc(side, member, paramsSide, slotCfg, false, offsetKey)
 		local y = paramsSide.pos[2] + slotCfg.offset[2] + (member - 1) * paramsSide.spacing[2]
 		animSetPos(slotCfg.AnimData, x, y)
 		animDraw(slotCfg.AnimData)
@@ -848,13 +851,15 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	-- "next player replaces previous one" case
 	local idx = clamp(t_portraitPriority[side] or 1, 1, lastIdx)
 	local paramsSide, params = getParams(side, idx, t, subname)
+	local pn = 2 * (1 - 1) + side
+	local offsetKey = 'select_info.p' .. pn .. '.face.offset'
 	if paramsSide.num == 1 and last then
 		local v = t_portraits[idx]
 		local data, drawParams, skipOffset = getPortraitDrawData(v, side, idx, params, dataField)
 		if not v.skipCurrent and data ~= nil then
 			main.f_animPosDraw(
 				data,
-				f_portraitsXCalc(side, 1, paramsSide, drawParams, skipOffset),
+				f_portraitsXCalc(side, 1, paramsSide, drawParams, skipOffset, offsetKey),
 				paramsSide.pos[2] + (skipOffset and 0 or drawParams.offset[2])
 			)
 		end
@@ -877,11 +882,13 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 		local member = it.m
 		local paramsSide, params = getParams(side, member, t, subname)
 		local v = t_portraits[member]
+		local pn = 2 * (member - 1) + side
+		local offsetKey = 'select_info.p' .. pn .. '.face.offset'
 		local data, drawParams, skipOffset = getPortraitDrawData(v, side, member, params, dataField)
 		if member <= paramsSide.num and not v.skipCurrent and data ~= nil then
 			main.f_animPosDraw(
 				data,
-				f_portraitsXCalc(side, member, paramsSide, drawParams, skipOffset),
+				f_portraitsXCalc(side, member, paramsSide, drawParams, skipOffset, offsetKey),
 				paramsSide.pos[2] + (skipOffset and 0 or drawParams.offset[2]) + (member - 1) * paramsSide.spacing[2]
 			)
 		end
@@ -904,7 +911,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			local pn = 2 * (m - 1) + side
 			local pData = f_getMotifP(t, pn, side)
 			-- face2 layer random portrait
-			if pData.face2.random and drawPortraitRandom(pData.face2.random, side, m, paramsSide) then
+			if pData.face2.random and drawPortraitRandom(pData.face2.random, side, m, paramsSide, 'select_info.p' .. pn .. '.face2.random.offset') then
 				t_portraits[m].skipCurrent = true
 			end
 			-- primary face random portrait
@@ -912,7 +919,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			if subname and subname ~= '' then
 				baseFace = baseFace[subname]
 			end
-			if baseFace.random and drawPortraitRandom(baseFace.random, side, m, paramsSide) then
+			if baseFace.random and drawPortraitRandom(baseFace.random, side, m, paramsSide, 'select_info.p' .. pn .. '.face.random.offset') then
 				t_portraits[m].skipCurrent = true
 			end
 		end
@@ -933,11 +940,11 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			if charInfo and charInfo.hasSlot then
 				-- face2 slot
 				if pData.face2.slot then
-					drawPortraitSlot(pData.face2.slot, side, m, paramsSide)
+					drawPortraitSlot(pData.face2.slot, side, m, paramsSide, 'select_info.p' .. pn .. '.face2.slot.offset')
 				end
 				-- primary face slot
 				if baseFace.slot then
-					drawPortraitSlot(baseFace.slot, side, m, paramsSide)
+					drawPortraitSlot(baseFace.slot, side, m, paramsSide, 'select_info.p' .. pn .. '.face.slot.offset')
 				end
 			end
 		end
