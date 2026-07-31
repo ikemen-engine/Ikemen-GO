@@ -6575,14 +6575,14 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	idx := int(-1)
 	rp := [2]int32{-1, 0}
 	remap := false
-	ptexists := false
+	posTypeFound := false
 	animPN := -1
 	spritePN := -1
 
 	// Mugen chars can only modify some parameters after defining PosType
 	// Ikemen chars don't have this restriction
-	paramlock := func() bool {
-		return c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && !ptexists
+	paramLock := func() bool {
+		return c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && !posTypeFound
 	}
 
 	var expls []*Explod
@@ -6625,9 +6625,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			}
 			switch paramID {
 			case explod_postype:
-				// In Mugen many explod parameters are defaulted when not being modified
+				// In Mugen, many explod parameters are defaulted when not being modified
 				// What possibly happens in Mugen is that all parameters are read first then only applied if PosType is defined
-				if paramlock() {
+				// However that would be a worse way to do things, so we'll handle each exception instead
+				if paramLock() {
 					eachExpl(func(e *Explod) {
 						e.offset = [3]float32{0, 0, 0}
 						e.setAllPosX(e.offset[0])
@@ -6642,14 +6643,20 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						}
 						e.space = Space_none
 						// Defaulting facing too makes some explods face the wrong way
-						//if e.trueFacing() >= 0 { // See below
-						//	e.relativef = 1
-						//}
+						// But not defaulting it is the cause of https://github.com/ikemen-engine/Ikemen-GO/issues/3813
+						// TODO: Check which explods face the wrong way and why
+						if e.trueFacing() >= 0 { // See explod_facing
+							e.relativef = 1
+						}
+						// Just for documentation's sake, because this is a no-op
+						if e.vfacing >= 0 { // See explod_vfacing
+							e.vfacing = 1
+						}
 					})
 				}
 				// Flag PosType as found
 				// From this point onward, Mugen chars can modify more parameters (Ikemen chars always could)
-				ptexists = true
+				posTypeFound = true
 				// Update actual PosType
 				pt := PosType(exp[0].evalI(c))
 				eachExpl(func(e *Explod) {
@@ -6657,17 +6664,17 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			case explod_space:
 				// For some reason Mugen also requires a PosType declaration to be able to modify space
-				if !paramlock() {
+				if !paramLock() {
 					spc := Space(exp[0].evalI(c))
 					eachExpl(func(e *Explod) {
 						e.space = spc
 					})
 				}
 			case explod_facing:
-				if !paramlock() {
+				if !paramLock() {
 					rf := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
-						// There's a bug in Mugen 1.1 where an explod that is facing left can't be flipped
+						// There's a bug in Mugen where an explod that is facing left can't be flipped
 						// https://github.com/ikemen-engine/Ikemen-GO/issues/1252
 						// Ikemen chars just work as supposed to
 						if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || e.trueFacing() >= 0 {
@@ -6676,10 +6683,10 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					})
 				}
 			case explod_vfacing:
-				if !paramlock() {
+				if !paramLock() {
 					vf := exp[0].evalF(c)
 					eachExpl(func(e *Explod) {
-						// There's a bug in Mugen 1.1 where an explod that is upside down can't be flipped
+						// There's a bug in Mugen where an explod that is upside down can't be flipped
 						// Ikemen chars just work as supposed to
 						if e.vfacing >= 0 || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
 							e.vfacing = vf
@@ -6687,7 +6694,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					})
 				}
 			case explod_pos:
-				if !paramlock() {
+				if !paramLock() {
 					pos := exp[0].evalF(c) * redirscale
 					eachExpl(func(e *Explod) {
 						e.relativePos[0] = pos
@@ -6706,7 +6713,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				}
 			case explod_random:
-				if !paramlock() {
+				if !paramLock() {
 					rndx := (exp[0].evalF(c) / 2) * redirscale
 					rndx = RandF(-rndx, rndx)
 					eachExpl(func(e *Explod) {
@@ -6728,7 +6735,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				}
 			case explod_velocity:
-				if !paramlock() {
+				if !paramLock() {
 					vel := exp[0].evalF(c) * redirscale
 					eachExpl(func(e *Explod) {
 						e.velocity[0] = vel
@@ -6761,7 +6768,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.friction[2] = v3
 				})
 			case explod_accel:
-				if !paramlock() {
+				if !paramLock() {
 					accel := exp[0].evalF(c) * redirscale
 					eachExpl(func(e *Explod) {
 						e.accel[0] = accel
@@ -7150,7 +7157,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	})
 
 	// Update relative positions if postype was updated
-	if ptexists {
+	if posTypeFound {
 		eachExpl(func(e *Explod) {
 			e.setPos(crun)
 		})
