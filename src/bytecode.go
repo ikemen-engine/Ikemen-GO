@@ -3820,6 +3820,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		fallthrough
 	case OC_ex2_explodvar_animplayerno:
 		fallthrough
+	case OC_ex2_explodvar_animtime:
+		fallthrough
 	case OC_ex2_explodvar_spriteplayerno:
 		fallthrough
 	case OC_ex2_explodvar_drawpal_group:
