@@ -2107,16 +2107,6 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		for suf := range suffixes {
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
-			// Skip face.random/face2.random and face.slot/face2.slot anim/spr inheritance
-			lowerDst := strings.ToLower(sp.DstPrefix)
-			if (strings.Contains(lowerDst, ".face.random.") ||
-				strings.Contains(lowerDst, ".face2.random.") ||
-				strings.Contains(lowerDst, "face.slot.") ||
-				strings.Contains(lowerDst, "face2.slot.")) &&
-				(strings.EqualFold(suf, "anim") ||
-					strings.EqualFold(suf, "spr")) {
-				continue
-			}
 			lowerFull := strings.ToLower(dstKey)
 			if shouldSkip(lowerFull) {
 				continue
