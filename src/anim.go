@@ -2209,8 +2209,9 @@ func (a *Anim) SetWindow(window [4]float32) {
 	y := window[1] / a.localScale
 	w := (window[2] - window[0]) / a.localScale
 	h := (window[3] - window[1]) / a.localScale
-	a.window[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
-	a.window[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+	// Truncate to int32 first, like before PR #3575, to avoid an off-by-one error
+	a.window[0] = int32((x + float32(int32(sys.gameWidth)-320)/2) * sys.widthScale)
+	a.window[1] = int32((y + float32(int32(sys.gameHeight)-240)) * sys.heightScale)
 	a.window[2] = int32(w*sys.widthScale + 0.5)
 	a.window[3] = int32(h*sys.heightScale + 0.5)
 }
@@ -2317,8 +2318,14 @@ func (a *Anim) Draw(ln int16) {
 		xscl *= -1
 	}
 
-	a.anim.Draw(&a.window, a.x+a.vel[0]-xsoffset+float32(sys.gameWidth-320)/2,
-		a.y+a.vel[1]+float32(sys.gameHeight-240), 1, 1, xscl, xscl, a.yscl,
+	// Truncate to int32 first, like before PR #3575, to avoid an off-by-one error
+	// sys.gameWidth used to be an int32 before PR #3575.
+	// unfortunately that PR introduces an off-by-one error here,
+	// so we force integer divsion by casting
+	// the result of sys.gameWidth subtraction to int.
+	// we do the same thing to sys.gameHeight just in case
+	a.anim.Draw(&a.window, a.x+a.vel[0]-xsoffset+float32(int(sys.gameWidth-320)/2),
+		a.y+a.vel[1]+float32(int(sys.gameHeight-240)), 1, 1, xscl, xscl, a.yscl,
 		xshear, a.rot, 0, a.palfx, a.facing, [2]float32{1, 1}, a.projection, a.fLength, 0, false, CustomShaderRenderData{})
 }
 
