@@ -785,14 +785,14 @@ local function getParams(side, member, t, subname)
 	return paramsSide, params
 end
 
-local function drawPortraitRandom(randomCfg, side, member, paramsSide, params)
+local function drawPortraitRandom(randomCfg, side, member, paramsSide)
 	if not randomCfg then
 		return false
 	end
 	local spr = randomCfg.spr
 	if randomCfg.anim >= 0 or (spr and spr[1] >= 0 and spr[2] >= 0) then
-		local x = f_portraitsXCalc(side, member, paramsSide, params)
-		local y = paramsSide.pos[2] + params.offset[2] + (member - 1) * paramsSide.spacing[2]
+		local x = f_portraitsXCalc(side, member, paramsSide, randomCfg)
+		local y = paramsSide.pos[2] + randomCfg.offset[2] + (member - 1) * paramsSide.spacing[2]
 		animSetPos(randomCfg.AnimData, x, y)
 		animDraw(randomCfg.AnimData)
 		animUpdate(randomCfg.AnimData)
@@ -801,14 +801,14 @@ local function drawPortraitRandom(randomCfg, side, member, paramsSide, params)
 	return false
 end
 
-local function drawPortraitSlot(slotCfg, side, member, paramsSide, params)
+local function drawPortraitSlot(slotCfg, side, member, paramsSide)
 	if not slotCfg then
 		return false
 	end
 	local spr = slotCfg.spr
 	if slotCfg.anim >= 0 or (spr and spr[1] >= 0 and spr[2] >= 0) then
-		local x = f_portraitsXCalc(side, member, paramsSide, params)
-		local y = paramsSide.pos[2] + params.offset[2] + (member - 1) * paramsSide.spacing[2]
+		local x = f_portraitsXCalc(side, member, paramsSide, slotCfg)
+		local y = paramsSide.pos[2] + slotCfg.offset[2] + (member - 1) * paramsSide.spacing[2]
 		animSetPos(slotCfg.AnimData, x, y)
 		animDraw(slotCfg.AnimData)
 		animUpdate(slotCfg.AnimData)
@@ -904,7 +904,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			local pn = 2 * (m - 1) + side
 			local pData = f_getMotifP(t, pn, side)
 			-- face2 layer random portrait
-			if pData.face2.random and drawPortraitRandom(pData.face2.random, side, m, paramsSide, params) then
+			if pData.face2.random and drawPortraitRandom(pData.face2.random, side, m, paramsSide) then
 				t_portraits[m].skipCurrent = true
 			end
 			-- primary face random portrait
@@ -912,7 +912,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			if subname and subname ~= '' then
 				baseFace = baseFace[subname]
 			end
-			if baseFace.random and drawPortraitRandom(baseFace.random, side, m, paramsSide, params) then
+			if baseFace.random and drawPortraitRandom(baseFace.random, side, m, paramsSide) then
 				t_portraits[m].skipCurrent = true
 			end
 		end
@@ -933,11 +933,11 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			if charInfo and charInfo.hasSlot then
 				-- face2 slot
 				if pData.face2.slot then
-					drawPortraitSlot(pData.face2.slot, side, m, paramsSide, params)
+					drawPortraitSlot(pData.face2.slot, side, m, paramsSide)
 				end
 				-- primary face slot
 				if baseFace.slot then
-					drawPortraitSlot(baseFace.slot, side, m, paramsSide, params)
+					drawPortraitSlot(baseFace.slot, side, m, paramsSide)
 				end
 			end
 		end
@@ -3412,6 +3412,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		selectState = 0
 		st.currentIdx = nil
 		st.validPals = nil
+		start.p[side].t_selTemp[member].slotConfirmed = false
 		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.cancel.snd[1], motif.select_info['p' .. side].palmenu.cancel.snd[2])
 	end
 	-- random hotkey
