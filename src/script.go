@@ -9688,14 +9688,14 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "motifIsInherited", func(l *lua.LState) int {
-	/*Returns whether a motif value was inherited from another motif parameter.
-	@function motifIsInherited
-	@tparam string key Motif key path.
-	@treturn boolean
-	function motifIsInherited(key) end*/
-	key := strings.ToLower(l.CheckString(1))
-	l.Push(lua.LBool(sys.motif.inheritedKeys[key]))
-	return 1
+		/*Returns whether a motif value was inherited from another motif parameter.
+		@function motifIsInherited
+		@tparam string key Motif key path.
+		@treturn boolean
+		function motifIsInherited(key) end*/
+		key := strings.ToLower(l.CheckString(1))
+		l.Push(lua.LBool(sys.motif.inheritedKeys[key]))
+		return 1
 	})
 	luaRegister(l, "motifVar", func(l *lua.LState) int {
 		value, err := sys.motif.GetValue(strArg(l, 1))
