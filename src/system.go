@@ -2306,7 +2306,7 @@ func (s *System) updateMusicMaps() {
 
 // TODO: This function is still a bit overloaded because it's handling some selections instead of doing a pure reset
 func (s *System) resetRound() {
-	if s.sel.gameParams.PersistRounds && !s.roundResetFlg {
+	if s.sel.gameParams.PersistRounds && !s.roundResetFlg && !s.reloadFlg {
 		s.persistRoundCount++
 	}
 
@@ -3881,7 +3881,7 @@ func (s *System) runMatch() (reload bool) {
 				s.roundNo = 1
 				s.roundsExisted = [2]int32{}
 
-				s.statsLog.abortMatch()
+				s.statsLog.discardCurrentMatch()
 				s.statsLog.startMatch()
 
 				// Recover the round 1 backup
@@ -5671,6 +5671,7 @@ func (s *System) activateNextTurnsFighters() {
 			s.chars[src][0].memberNo != nextMember {
 			continue
 		}
+		outgoingPower := s.chars[dst][0].power
 		s.removePlayerFromCharList(dst)
 		s.removePlayerFromCharList(src)
 		oldDst, oldSrc := dst, src
@@ -5684,6 +5685,7 @@ func (s *System) activateNextTurnsFighters() {
 		s.workingChar = nil
 		s.workingState = nil
 		s.setBGTurnsSlotState(s.chars[dst], dst, true)
+		s.chars[dst][0].power = outgoingPower
 		s.setBGTurnsSlotState(s.chars[src], src, false)
 		if s.chars[dst][0].id < 0 {
 			s.chars[dst][0].id = s.newCharId()
