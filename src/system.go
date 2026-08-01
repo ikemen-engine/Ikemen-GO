@@ -2306,7 +2306,7 @@ func (s *System) updateMusicMaps() {
 
 // TODO: This function is still a bit overloaded because it's handling some selections instead of doing a pure reset
 func (s *System) resetRound() {
-	if s.sel.gameParams.PersistRounds && !s.roundResetFlg {
+	if s.sel.gameParams.PersistRounds && !s.roundResetFlg && !s.reloadFlg {
 		s.persistRoundCount++
 	}
 
@@ -3881,7 +3881,7 @@ func (s *System) runMatch() (reload bool) {
 				s.roundNo = 1
 				s.roundsExisted = [2]int32{}
 
-				s.statsLog.abortMatch()
+				s.statsLog.discardCurrentMatch()
 				s.statsLog.startMatch()
 
 				// Recover the round 1 backup

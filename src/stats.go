@@ -190,17 +190,6 @@ func (s *StatsLog) currentStatsMatch() *StatsMatch {
 	return &s.Matches[len(s.Matches)-1]
 }
 
-// abortMatch removes the most recent match if it has no rounds (e.g., hard reset before first round).
-func (s *StatsLog) abortMatch() {
-	if len(s.Matches) == 0 {
-		return
-	}
-	last := &s.Matches[len(s.Matches)-1]
-	if len(last.Rounds) == 0 {
-		s.Matches = s.Matches[:len(s.Matches)-1]
-	}
-}
-
 // discardCurrentMatch removes the most recent match, even if it already contains rounds.
 func (s *StatsLog) discardCurrentMatch() {
 	if len(s.Matches) == 0 {
