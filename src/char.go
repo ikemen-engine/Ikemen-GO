@@ -2123,15 +2123,20 @@ func (e *Explod) update() {
 }
 
 func (e *Explod) cueDraw() {
-	if e.hidewithbars && sys.shouldHideWithBars() {
-		return
-	}
 	if e.anim == nil {
 		return
 	}
+	if e.hidewithbars && sys.shouldHideWithBars() {
+		return
+	}
 
+    root := sys.chars[e.playerno][0]
 	parent := sys.playerID(e.ownerId)
 	act := e.canAct()
+
+    if root.scf(SCF_disabled) {
+        return
+    }
 
 	var pfx *PalFX
 	if e.palfx != nil && (!e.anim.isCommonFX() || e.ownpal) {
