@@ -2018,11 +2018,6 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 	defs := m.DefaultOnlyIni
 	merged := m.IniFile
 
-	isPreviewAnim := func(dstKey string) bool {
-		l := strings.ToLower(dstKey)
-		return strings.HasSuffix(l, ".palmenu.preview.anim")
-	}
-
 	get := func(f *ini.File, sec, key string) (string, bool) {
 		if f == nil {
 			return "", false
@@ -2107,6 +2102,12 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		for suf := range suffixes {
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
+			// Skip palmenu.preview anim/spr inheritance
+			lowerDst := strings.ToLower(sp.DstPrefix)
+			if strings.Contains(lowerDst, ".palmenu.preview.") &&
+				(strings.EqualFold(suf, "anim") || strings.EqualFold(suf, "spr")) {
+				continue
+			}
 			lowerFull := strings.ToLower(dstKey)
 			if shouldSkip(lowerFull) {
 				continue
@@ -2120,18 +2121,6 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 						// Nothing to inherit here; keep the existing (possibly resolved) value.
 						continue
 					}
-				}
-			}
-
-			// palmenu.preview only inherits when palmenu.preview.anim is defined
-			if isPreviewAnim(dstKey) {
-				if v, ok := get(user, sp.DstSec, dstKey); ok {
-					tv := strings.TrimSpace(v)
-					if !IsInt(tv) || Atoi(tv) < 0 {
-						continue
-					}
-				} else {
-					continue
 				}
 			}
 
