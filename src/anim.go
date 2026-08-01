@@ -1081,7 +1081,7 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		rcx:            (x + float32(sys.gameWidth)/2) * sys.widthScale,
 		rcy:            y * sys.heightScale,
 		projectionMode: projectionMode,
-		fLength:        fLength,
+		fLength:        fLength * sys.heightScale,
 		xOffset:        xoff,
 		yOffset:        yoff,
 		customShader:   shader,
