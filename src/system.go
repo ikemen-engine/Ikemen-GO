@@ -5671,6 +5671,7 @@ func (s *System) activateNextTurnsFighters() {
 			s.chars[src][0].memberNo != nextMember {
 			continue
 		}
+		outgoingPower := s.chars[dst][0].power
 		s.removePlayerFromCharList(dst)
 		s.removePlayerFromCharList(src)
 		oldDst, oldSrc := dst, src
@@ -5684,6 +5685,7 @@ func (s *System) activateNextTurnsFighters() {
 		s.workingChar = nil
 		s.workingState = nil
 		s.setBGTurnsSlotState(s.chars[dst], dst, true)
+		s.chars[dst][0].power = outgoingPower
 		s.setBGTurnsSlotState(s.chars[src], src, false)
 		if s.chars[dst][0].id < 0 {
 			s.chars[dst][0].id = s.newCharId()
