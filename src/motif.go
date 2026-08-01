@@ -2018,11 +2018,6 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 	defs := m.DefaultOnlyIni
 	merged := m.IniFile
 
-	isPreviewAnim := func(dstKey string) bool {
-		l := strings.ToLower(dstKey)
-		return strings.HasSuffix(l, ".palmenu.preview.anim")
-	}
-
 	get := func(f *ini.File, sec, key string) (string, bool) {
 		if f == nil {
 			return "", false
@@ -2107,14 +2102,10 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		for suf := range suffixes {
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
-			// Skip face.random/face2.random and face.slot/face2.slot anim/spr inheritance
+			// Skip palmenu.preview anim/spr inheritance
 			lowerDst := strings.ToLower(sp.DstPrefix)
-			if (strings.Contains(lowerDst, ".face.random.") ||
-				strings.Contains(lowerDst, ".face2.random.") ||
-				strings.Contains(lowerDst, "face.slot.") ||
-				strings.Contains(lowerDst, "face2.slot.")) &&
-				(strings.EqualFold(suf, "anim") ||
-					strings.EqualFold(suf, "spr")) {
+			if strings.Contains(lowerDst, ".palmenu.preview.") &&
+				(strings.EqualFold(suf, "anim") || strings.EqualFold(suf, "spr")) {
 				continue
 			}
 			lowerFull := strings.ToLower(dstKey)
@@ -2130,18 +2121,6 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 						// Nothing to inherit here; keep the existing (possibly resolved) value.
 						continue
 					}
-				}
-			}
-
-			// palmenu.preview only inherits when palmenu.preview.anim is defined
-			if isPreviewAnim(dstKey) {
-				if v, ok := get(user, sp.DstSec, dstKey); ok {
-					tv := strings.TrimSpace(v)
-					if !IsInt(tv) || Atoi(tv) < 0 {
-						continue
-					}
-				} else {
-					continue
 				}
 			}
 
@@ -2171,16 +2150,13 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 				continue
 			}
 
-			// Remember only anim/spr values that were actually inherited into the destination.
+			// Remember only values that were actually inherited into the destination.
 			// Direct destination values from system.def must keep warning on missing sprites.
-			switch strings.ToLower(suf) {
-			case "anim", "spr":
-				switch src {
-				case srcUserSrc, srcDefSrc:
-					m.inheritedKeys[query] = true
-				default:
-					delete(m.inheritedKeys, query)
-				}
+			switch src {
+			case srcUserSrc, srcDefSrc:
+				m.inheritedKeys[query] = true
+			default:
+				delete(m.inheritedKeys, query)
 			}
 
 			// If a value comes from the user INI (directly or via src), copy it into m.UserIniFile
