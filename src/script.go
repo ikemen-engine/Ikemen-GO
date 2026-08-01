@@ -3195,10 +3195,9 @@ func systemScriptInit(l *lua.LState) {
 				if winp, err = fight(); err != nil {
 					l.RaiseError(err.Error())
 				}
-				// Hard reset: drop the incomplete match stats and start a fresh one
+				// Hard reset: discard all stats from the abandoned attempt.
 				if winp == -2 {
-					sys.statsLog.abortMatch()
-					sys.statsLog.startMatch()
+					sys.statsLog.discardCurrentMatch()
 				}
 				// If a team won, and not going to the next character in turns mode, break
 				if winp < 0 ||
