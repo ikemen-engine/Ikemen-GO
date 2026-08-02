@@ -701,7 +701,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		rcx:            rcx,
 		rcy:            rcy,
 		projectionMode: projectionMode,
-		fLength:        fLength,
+		fLength:        fLength * sys.heightScale,
 		xOffset:        0,
 		yOffset:        0,
 	}
