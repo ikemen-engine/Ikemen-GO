@@ -848,6 +848,7 @@ end
 
 local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	local lastIdx = #t_portraits
+	local skipField = dataField == 'face2_data' and 'skipCurrentFace2' or 'skipCurrentFace'
 	-- "next player replaces previous one" case
 	local idx = clamp(t_portraitPriority[side] or 1, 1, lastIdx)
 	local paramsSide, params = getParams(side, idx, t, subname)
@@ -856,7 +857,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	if paramsSide.num == 1 and last then
 		local v = t_portraits[idx]
 		local data, drawParams, skipOffset = getPortraitDrawData(v, side, idx, params, dataField)
-		if not v.skipCurrent and data ~= nil then
+		if not v[skipField] and data ~= nil then
 			main.f_animPosDraw(
 				data,
 				f_portraitsXCalc(side, 1, paramsSide, drawParams, skipOffset, offsetKey),
@@ -885,7 +886,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 		local pn = 2 * (member - 1) + side
 		local offsetKey = 'select_info.p' .. pn .. '.face.offset'
 		local data, drawParams, skipOffset = getPortraitDrawData(v, side, member, params, dataField)
-		if member <= paramsSide.num and not v.skipCurrent and data ~= nil then
+		if member <= paramsSide.num and not v[skipField] and data ~= nil then
 			main.f_animPosDraw(
 				data,
 				f_portraitsXCalc(side, member, paramsSide, drawParams, skipOffset, offsetKey),
@@ -902,7 +903,8 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 	end
 	-- reset skip flags
 	for m = 1, #t_portraits do
-		t_portraits[m].skipCurrent = false
+		t_portraits[m].skipCurrentFace = false
+		t_portraits[m].skipCurrentFace2 = false
 	end
 	-- draw random portraits (per member; required for co-op)
 	for m = 1, #t_portraits do
@@ -912,7 +914,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			local pData = f_getMotifP(t, pn, side)
 			-- face2 layer random portrait
 			if pData.face2.random and drawPortraitRandom(pData.face2.random, side, m, paramsSide, 'select_info.p' .. pn .. '.face2.random.offset') then
-				t_portraits[m].skipCurrent = true
+				t_portraits[m].skipCurrentFace2 = true
 			end
 			-- primary face random portrait
 			local baseFace = pData
@@ -920,7 +922,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 				baseFace = baseFace[subname]
 			end
 			if baseFace.random and drawPortraitRandom(baseFace.random, side, m, paramsSide, 'select_info.p' .. pn .. '.face.random.offset') then
-				t_portraits[m].skipCurrent = true
+				t_portraits[m].skipCurrentFace = true
 			end
 		end
 	end
