@@ -934,6 +934,7 @@ type Stage struct {
 	music           Music
 	bgmState        BGMState
 	bgmratio        float32
+	bgmtrigger      int32
 	constants       map[string]float32
 	partnerspacing  int32
 	ikemenver       [3]uint16
@@ -960,6 +961,7 @@ func newStage(def string) *Stage {
 		stageCamera:    *newStageCamera(),
 		music:          make(Music),
 		bgmratio:       0.3,
+		bgmtrigger:     0,
 		constants:      make(map[string]float32),
 		partnerspacing: 25,
 	}
@@ -1258,6 +1260,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		}
 
 		sec.ReadF32("bgmratio", &s.bgmratio)
+		sec.ReadI32("bgmtrigger", &s.bgmtrigger)
 		s.music = parseMusicSection(iniFile.Section(secName))
 		s.music.DebugDump(fmt.Sprintf("Stage %s [%s]", def, secName))
 	}
