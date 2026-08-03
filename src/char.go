@@ -4387,8 +4387,13 @@ func (c *Char) loadPalettes() {
 			gi.palInfo[i] = pal
 		}
 
-		// If no ACT files were successfully loaded, remove the default [1, 1] mapping
-		if tmp == 0 {
+		if tmp > 0 {
+			// Ensure [1, 1] exists so RemapPal can use the SFFv1 base palette as source.
+			if _, ok := gi.palettedata.palList.PalTable[[...]uint16{1, 1}]; !ok {
+				gi.palettedata.palList.PalTable[[...]uint16{1, 1}] = 0
+			}
+		} else {
+			// If no ACT files were successfully loaded, remove the default [1, 1] mapping.
 			delete(gi.palettedata.palList.PalTable, [...]uint16{1, 1})
 		}
 	} else {
