@@ -1101,7 +1101,7 @@ function start.f_getCursorData(pn)
 end
 
 -- Reset cursor animation for a specific slot only
-local function resetCursorData(pn, store, param)
+local function resetCursorData(pn, param)
 	local pData = start.f_getCursorData(pn)
 	local cursorCfg = pData.cursor[param]
 	local key = start.c[pn].selX .. '-' .. start.c[pn].selY
@@ -1109,25 +1109,10 @@ local function resetCursorData(pn, store, param)
 	if cursorCfg[key] then
 		cursorParams = cursorCfg[key]
 	end
-	local src = cursorParams.AnimData
-	if not src then
-		return
-	end
-	store[pn] = store[pn] or {}
-	local cd = store[pn]
-	cd.animCache = cd.animCache or {}
-	local cache = cd.animCache[param]
-	if cache == nil or cache.src ~= src then
-		cache = {src = src, anim = animCopy(src)}
-		cd.animCache[param] = cache
-		if cache.anim then
-			animReset(cache.anim)
-			animUpdate(cache.anim)
-		end
-	end
-	if cache.anim then
-		animReset(cache.anim)
-		animUpdate(cache.anim)
+	local anim = cursorParams.AnimData
+	if anim then
+		animReset(anim)
+		animUpdate(anim)
 	end
 end
 
@@ -1294,16 +1279,6 @@ function start.f_drawCursor(pn, x, y, param, done)
 		params = pData.cursor[param][key]
 	end
 	local a = params.AnimData
-	cd.animCache = cd.animCache or {}
-	local cache = cd.animCache[param]
-	if cache == nil or cache.src ~= a then
-		cache = {src = a, anim = animCopy(a)}
-		cd.animCache[param] = cache
-		if cache.anim then
-			animReset(cache.anim)
-		end
-	end
-	a = cache.anim
 	animSetFacing(a, getCellFacing(params.facing, x, y))
 	local scale = getCellTransform(x, y, "scale", params.scale)
 	animSetScale(a, scale[1], scale[2])
@@ -1313,7 +1288,6 @@ function start.f_drawCursor(pn, x, y, param, done)
 	animSetYAngle(a, getCellTransform(x, y, "yangle", params.yangle))
 	animSetProjection(a, getCellTransform(x, y, "projection", params.projection))
 	animSetFocalLength(a, getCellTransform(x, y, "focallength", params.focallength))
-	animUpdate(a)
 	main.f_animPosDraw(a, cd.currentPos[1], cd.currentPos[2], getCellFacing(params.facing, x, y))
 end
 
@@ -3536,7 +3510,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_selTemp[member].face_anim = pCfg.face.anim
 					start.p[side].t_selTemp[member].face2_anim = pCfg.face2.anim
 					if start.f_getCursorData(player).cursor.reset then
-						resetCursorData(player, cursorActive, 'active')
+						resetCursorData(player, 'active')
 					end
 					updateAnim = true
 				end
@@ -3612,7 +3586,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 						start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
 					end
 					if motif.select_info.paletteselect > 0 then
-						resetCursorData(player, cursorActive, 'done')
+						resetCursorData(player, 'done')
 					end
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
 					start.p[side].t_selTemp[member].inRandom = false
