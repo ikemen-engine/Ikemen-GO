@@ -569,12 +569,11 @@ func (s *System) middleOfMatch() bool {
 }
 
 func (s *System) skipMotifScaling() bool {
-	var lc [2]int32
-	if (!s.middleOfMatch() && !s.postMatchFlg) || s.stage == nil {
-		lc = s.motif.Info.Localcoord
-	} else {
-		lc = s.stage.stageCamera.localcoord
+	if (s.middleOfMatch() || s.postMatchFlg) && s.stage != nil {
+		// Use the configured fight aspect instead of raw stage localcoord.
+		return s.getFightAspect() > s.getMotifAspect()
 	}
+	lc := s.motif.Info.Localcoord
 	return CalculateAspect(lc[0], lc[1]) > s.getMotifAspect()
 }
 
@@ -605,38 +604,40 @@ func (s *System) getMotifAspect() float32 {
 }
 
 func (s *System) getCurrentAspect() float32 {
-	skip := s.skipMotifScaling()
-	motifAspectActive := s.shouldPersistMotifAspect() && (s.motif.di.active ||
-		s.motif.me.active && s.motif.me.state != ME_OpeningOut && s.motif.me.state != ME_ClosingIn)
-	if (s.postMatchFlg && skip) || (s.middleOfMatch() && !motifAspectActive) {
+	if (s.postMatchFlg && s.skipMotifScaling()) ||
+		(s.middleOfMatch() && !s.shouldComposeFullResolution()) {
 		return s.getFightAspect()
 	}
 	return s.getMotifAspect()
 }
 
-func (s *System) setGameSize(w, h int32) {
-	s.scrrect[2], s.scrrect[3] = w, h
-
+func aspectStateForSize(w, h int32) drawAspectState {
 	// TODO: These ought to be system constants maybe
 	baseWidth := int32(320)
 	baseHeight := int32(240)
 
 	screenAspect := CalculateAspect(w, h)
 	targetAspect := CalculateAspect(baseWidth, baseHeight)
+	st := drawAspectState{}
 
 	if screenAspect > targetAspect {
 		// Screen is wider than 4:3 - scale based on height
-		s.gameWidth = float32(baseHeight) * screenAspect
-		s.gameHeight = float32(baseHeight)
+		st.gameWidth = float32(baseHeight) * screenAspect
+		st.gameHeight = float32(baseHeight)
 	} else {
 		// Screen is taller than 4:3 - scale based on width
-		s.gameWidth = float32(baseWidth)
-		s.gameHeight = float32(baseWidth) / screenAspect
+		st.gameWidth = float32(baseWidth)
+		st.gameHeight = float32(baseWidth) / screenAspect
 	}
 
-	// Update scale
-	s.widthScale = float32(s.scrrect[2]) / s.gameWidth
-	s.heightScale = float32(s.scrrect[3]) / s.gameHeight
+	st.widthScale = float32(w) / st.gameWidth
+	st.heightScale = float32(h) / st.gameHeight
+	return st
+}
+
+func (s *System) setGameSize(w, h int32) {
+	s.scrrect[2], s.scrrect[3] = w, h
+	s.restoreAspectState(aspectStateForSize(w, h))
 }
 
 // Change aspect ratio at match start
@@ -696,35 +697,81 @@ func (s *System) restoreAspectState(st drawAspectState) {
 	s.heightScale = st.heightScale
 }
 
+func (s *System) withAspectState(st drawAspectState, fn func()) {
+	prev := s.captureAspectState()
+	s.restoreAspectState(st)
+	defer s.restoreAspectState(prev)
+	fn()
+}
+
 func (s *System) wrapDrawWithAspectState(fn func()) func() {
 	if fn == nil {
 		return nil
 	}
 	st := s.captureAspectState()
 	return func() {
-		prev := s.captureAspectState()
-		s.restoreAspectState(st)
-		defer s.restoreAspectState(prev)
-		fn()
+		drawState := st
+		// Resolve late activation before executing a queued draw.
+		if s.shouldComposeFullResolution() {
+			drawState = aspectStateForSize(s.scrrect[2], s.scrrect[3])
+		}
+		s.withAspectState(drawState, fn)
 	}
 }
 
-func (s *System) shouldPersistMotifAspect() bool {
+func (s *System) canUseFullResolutionAspect() bool {
 	return s.cfg.Video.KeepAspect && !s.skipMotifScaling()
 }
 
-func (s *System) enterMotifAspect() {
-	if !s.shouldPersistMotifAspect() {
-		return
-	}
-	s.setGameSize(s.scrrect[2], s.scrrect[3])
+func (s *System) motifOverlayActive() bool {
+	return s.motif.di.active ||
+		s.motif.me.active && s.motif.me.state != ME_OpeningOut && s.motif.me.state != ME_ClosingIn
 }
 
-func (s *System) leaveMotifAspect() {
-	if !s.shouldPersistMotifAspect() {
-		return
+func (s *System) shouldComposeFullResolution() bool {
+	return s.canUseFullResolutionAspect() &&
+		(!s.middleOfMatch() || s.motifOverlayActive() || s.debugDisplay)
+}
+
+func (s *System) fightViewport() [4]int32 {
+	viewport := s.scrrect
+	fightAspect := s.getFightAspect()
+	motifAspect := s.getMotifAspect()
+	if fightAspect <= 0 || motifAspect <= 0 || fightAspect == motifAspect {
+		return viewport
 	}
-	s.applyFightAspect()
+
+	if fightAspect < motifAspect {
+		contentWidth := int32(float32(s.scrrect[3]) * fightAspect)
+		contentWidth = Clamp(contentWidth, int32(0), s.scrrect[2])
+		viewport[0] += (s.scrrect[2] - contentWidth) / 2
+		viewport[2] = contentWidth
+	} else {
+		contentHeight := int32(float32(s.scrrect[2]) / fightAspect)
+		contentHeight = Clamp(contentHeight, int32(0), s.scrrect[3])
+		viewport[1] += (s.scrrect[3] - contentHeight) / 2
+		viewport[3] = contentHeight
+	}
+	return viewport
+}
+
+func intersectRect(a, b [4]int32) [4]int32 {
+	x1 := Max(a[0], b[0])
+	y1 := Max(a[1], b[1])
+	x2 := Min(a[0]+a[2], b[0]+b[2])
+	y2 := Min(a[1]+a[3], b[1]+b[3])
+	if x2 <= x1 || y2 <= y1 {
+		return [4]int32{x1, y1, 0, 0}
+	}
+	return [4]int32{x1, y1, x2 - x1, y2 - y1}
+}
+
+func (s *System) fightDrawClip() ([4]int32, bool) {
+	if !s.shouldComposeFullResolution() {
+		return s.scrrect, false
+	}
+	viewport := s.fightViewport()
+	return viewport, viewport != s.scrrect
 }
 
 func (s *System) setGameAspect() {
@@ -853,6 +900,13 @@ func (s *System) await(fps int) bool {
 }
 
 func (s *System) renderFrame() {
+	// Full-resolution scaling is render-only; gameplay remains in fight space.
+	logicState := s.captureAspectState()
+	if s.shouldComposeFullResolution() {
+		s.restoreAspectState(aspectStateForSize(s.scrrect[2], s.scrrect[3]))
+	}
+	defer s.restoreAspectState(logicState)
+
 	if !s.frameSkip {
 		x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 		dx, dy, dscl := s.zoom.apply(x, y, scl)
@@ -882,7 +936,11 @@ func (s *System) renderFrame() {
 
 	// Render debug elements
 	if !s.frameSkip && s.debugDisplay {
-		s.drawDebugText()
+		// Re-mask fight-only frames before drawing full-resolution debug panels.
+		if s.middleOfMatch() && !s.motifOverlayActive() {
+			s.motif.drawAspectBars()
+		}
+		s.drawDebugText(logicState)
 	}
 }
 
@@ -3586,9 +3644,13 @@ func (s *System) draw(x, y, scl float32) {
 }
 
 func (s *System) drawCharTexts(layerno int16) {
+	var clip *[4]int32
+	if viewport, ok := s.fightDrawClip(); ok {
+		clip = &viewport
+	}
 	for _, playerTexts := range s.chartexts {
 		for _, ts := range playerTexts {
-			ts.Draw(layerno)
+			ts.draw(layerno, clip)
 		}
 	}
 }
@@ -3623,7 +3685,34 @@ func (s *System) drawTop() {
 	}
 }
 
-func (s *System) drawDebugText() {
+func (s *System) debugTextScale(st drawAspectState) (sx, sy float32) {
+	sx, sy = st.widthScale, st.heightScale
+	if s.cfg.Video.KeepAspect {
+		sx = Min(st.widthScale, st.heightScale)
+		sy = sx
+	}
+	if sx <= 0 {
+		sx = 1
+	}
+	if sy <= 0 {
+		sy = 1
+	}
+	return
+}
+
+func (s *System) drawDebugText(logicState drawAspectState) {
+	sceneState := s.captureAspectState()
+	defer s.restoreAspectState(sceneState)
+
+	// Evaluate debug data in gameplay space; only drawing uses panelState.
+	s.restoreAspectState(logicState)
+
+	panelState := sceneState
+	if !s.cfg.Video.KeepAspect || s.canUseFullResolutionAspect() {
+		panelState = aspectStateForSize(s.scrrect[2], s.scrrect[3])
+	}
+
+	debugScaleX, debugScaleY := s.debugTextScale(panelState)
 	put := func(x, y *float32, txt string) {
 		for txt != "" {
 			w, drawTxt := int32(0), ""
@@ -3637,16 +3726,18 @@ func (s *System) drawDebugText() {
 			if drawTxt == "" {
 				drawTxt, txt = txt, ""
 			}
-			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / s.heightScale
-			s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/s.widthScale,
-				s.debugFont.yscl/s.heightScale, 0, Rotation{0, 0, 0}, 0, 0, 0, 1, &s.scrrect,
-				s.debugFont.palfx, s.debugFont.frgba)
+			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / debugScaleY
+			s.withAspectState(panelState, func() {
+				s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/debugScaleX,
+					s.debugFont.yscl/debugScaleY, 0, Rotation{0, 0, 0}, 0, 0, 0, 1, &s.scrrect,
+					s.debugFont.palfx, s.debugFont.frgba)
+			})
 		}
 	}
 	if s.debugDisplay {
-		// Player Info on top of screen
-		x := (320-float32(s.gameWidth))/2 + 1
-		y := 240 - float32(s.gameHeight)
+		// Debug panels use the full game-resolution canvas.
+		x := (320-panelState.gameWidth)/2 + 1
+		y := 240 - panelState.gameHeight
 		if s.statusLFunc != nil {
 			s.debugFont.SetColor(255, 255, 255, 255)
 			for i, p := range s.chars {
@@ -3664,14 +3755,14 @@ func (s *System) drawDebugText() {
 			}
 		}
 		// Console
-		y = Max(y, 48+240-float32(s.gameHeight))
+		y = Max(y, 48+240-panelState.gameHeight)
 		s.debugFont.SetColor(255, 255, 255, 255)
 		for _, s := range s.consoleText {
 			put(&x, &y, s)
 		}
 		// Data
-		y = float32(s.gameHeight) - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/s.heightScale*
-			(float32(len(s.listLFunc))+float32(s.cfg.Debug.ClipboardRows)) - 1*s.heightScale
+		y = panelState.gameHeight - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/debugScaleY*
+			(float32(len(s.listLFunc))+float32(s.cfg.Debug.ClipboardRows)) - 1*panelState.heightScale
 		// Get debug char reference. Default to player 1 if out of bounds
 		pn := s.debugRef[0]
 		hn := s.debugRef[1]
@@ -3711,13 +3802,16 @@ func (s *System) drawDebugText() {
 			put(&x, &y, s)
 		}
 	}
+	// Collision labels remain in scene space so they track sprites.
+	s.restoreAspectState(sceneState)
+	debugScaleX, debugScaleY = s.debugTextScale(sceneState)
 	// Draw Clsn text
 	// Unlike Mugen, this is drawn separately from the Clsn boxes themselves, making debug more flexible
 	//if s.clsnDisplay {
 	for _, t := range s.debugClsnText {
 		s.debugFont.SetColor(t.r, t.g, t.b, t.a)
-		s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/s.widthScale,
-			s.debugFont.yscl/s.heightScale, 0, Rotation{0, 0, 0}, 0, 0, 0, 0, &s.scrrect,
+		s.debugFont.fnt.Print(t.text, t.x, t.y, s.debugFont.xscl/debugScaleX,
+			s.debugFont.yscl/debugScaleY, 0, Rotation{0, 0, 0}, 0, 0, 0, 0, &s.scrrect,
 			s.debugFont.palfx, s.debugFont.frgba)
 	}
 	//}
