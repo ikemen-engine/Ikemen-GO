@@ -4409,6 +4409,14 @@ func (c *Char) loadPalettes() {
 			}
 		}
 
+		// Copy duplicate palette mappings from the SFFv2.
+		plist := &gi.palettedata.palList
+		plist.duplicatePals = make(map[int][]int)
+
+		for physical, duplicates := range gi.sff.palList.duplicatePals {
+			plist.duplicatePals[physical] = append([]int(nil), duplicates...)
+		}
+
 		// Overwrite SFF palettes with ACT palettes
 		for i := 0; i < maxPal; i++ {
 			pal := gi.palInfo[i]
@@ -9364,25 +9372,8 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		// Also remap logical palettes that contain the same palette data.
 		// This handles SFFv2 sprites using a duplicated palette entry.
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/3854
-		for i := range plist.paletteMap {
-			physical := plist.paletteMap[i]
-			if physical < 0 || physical >= len(plist.palettes) {
-				continue
-			}
-			pal := plist.palettes[physical]
-			if len(pal) != len(srcPal) {
-				continue
-			}
-			same := true
-			for j := range pal {
-				if pal[j] != srcPal[j] {
-					same = false
-					break
-				}
-			}
-			if same {
-				plist.Remap(i, di)
-			}
+		for _, duplicate := range plist.duplicatePals[si] {
+			plist.Remap(duplicate, di)
 		}
 		// For SFFv1, remapping 1,1 should also remap whatever palettes sprites 0,0 and 9000,0 use
 		// TODO: Because 9000,0 is not hardcoded in Ikemen, this might create trouble for custom portraits
