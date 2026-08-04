@@ -862,6 +862,9 @@ func (s *System) renderFrame() {
 	// Lua
 	if !s.frameSkip {
 		s.luaFlushDrawQueue()
+		// Fullscreen fades are the final scene pass, after all deferred Lua UI.
+		s.fightScreen.drawFade()
+		s.motif.drawFade()
 	} else {
 		// Keep pause-menu logic responsive even when this render frame is skipped.
 		// Any queued draw ops are discarded below because this frame is not being rendered.
@@ -3577,9 +3580,6 @@ func (s *System) draw(x, y, scl float32) {
 
 	// Draw motif layer 2
 	s.motif.draw(2)
-
-	// Draw system fade/shutter over top-layer texts
-	s.fightScreen.drawFade()
 
 	// Draw motif layer 3
 	s.motif.draw(3)
