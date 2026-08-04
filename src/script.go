@@ -5058,6 +5058,16 @@ func systemScriptInit(l *lua.LState) {
 		sys.debugWC.mapSet(strArg(l, 1), float32(numArg(l, 2)), scType)
 		return 0
 	})
+	luaRegister(l, "motifIsInherited", func(l *lua.LState) int {
+		/*Returns whether a motif value was inherited from another motif parameter.
+		@function motifIsInherited
+		@tparam string key Motif key path.
+		@treturn boolean
+		function motifIsInherited(key) end*/
+		key := strings.ToLower(l.CheckString(1))
+		l.Push(lua.LBool(sys.motif.inheritedKeys[key]))
+		return 1
+	})
 	luaRegister(l, "storyboardCanceled", func(l *lua.LState) int {
 		/*Check whether the most recent storyboard was canceled by the player.
 		@function storyboardCanceled
@@ -9684,16 +9694,6 @@ func triggerFunctions(l *lua.LState) {
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
-		return 1
-	})
-	luaRegister(l, "motifIsInherited", func(l *lua.LState) int {
-		/*Returns whether a motif value was inherited from another motif parameter.
-		@function motifIsInherited
-		@tparam string key Motif key path.
-		@treturn boolean
-		function motifIsInherited(key) end*/
-		key := strings.ToLower(l.CheckString(1))
-		l.Push(lua.LBool(sys.motif.inheritedKeys[key]))
 		return 1
 	})
 	luaRegister(l, "motifVar", func(l *lua.LState) int {
