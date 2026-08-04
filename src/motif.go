@@ -3125,14 +3125,19 @@ func (m *Motif) draw(layerno int16) {
 	if m.me.active {
 		m.me.draw(m, layerno)
 	}
-	// Screen fading
-	if layerno == 3 {
-		if m.fadeOut.isActive() {
-			m.fadeOut.draw()
-		} else if m.fadeIn.isActive() {
-			m.fadeIn.draw()
-		}
+}
+
+func (m *Motif) drawFade() {
+	if m.shouldScopeMotifAspect() {
+		prev := sys.captureAspectState()
+		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+		defer sys.restoreAspectState(prev)
 	}
+	if m.fadeOut.isActive() {
+		m.fadeOut.draw()
+	} else if m.fadeIn.isActive() {
+		m.fadeIn.draw()
+ 	}
 }
 
 func (m *Motif) isDialogueSet() bool {
