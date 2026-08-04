@@ -393,11 +393,12 @@ func newPaldata() (p *Palette) {
 }
 
 type PaletteList struct {
-	palettes   [][]uint32        // The actual (unordered) palettes
-	paletteMap []int             // Logical index to actual index mapping. For remapping
-	PalTable   map[[2]uint16]int // Group/index key to original index value
-	numcols    map[[2]uint16]int
-	PalTex     []Texture
+	palettes      [][]uint32        // The actual (unordered) palettes
+	paletteMap    []int             // Logical index to actual index mapping. For remapping
+	PalTable      map[[2]uint16]int // Group/index key to original index value
+	numcols       map[[2]uint16]int
+	PalTex        []Texture
+	duplicatePals map[int][]int
 }
 
 func (pl *PaletteList) init() {
@@ -406,6 +407,7 @@ func (pl *PaletteList) init() {
 	pl.PalTable = make(map[[2]uint16]int)
 	pl.numcols = make(map[[2]uint16]int)
 	pl.PalTex = nil
+	pl.duplicatePals = make(map[int][]int)
 }
 
 func (pl *PaletteList) SetSource(i int, p []uint32) {
@@ -1964,6 +1966,11 @@ func (s *Sff) loadPalettes(f io.ReadSeeker, lofs uint32) error {
 		uniquePals[[2]uint16{gn[0], gn[1]}] = idx
 		s.palList.SetSource(i, pal)
 		s.palList.PalTable[[2]uint16{gn[0], gn[1]}] = idx
+
+		// Track SFFv2 palette entries that share the same physical palette.
+		if idx != i {
+			s.palList.duplicatePals[idx] = append(s.palList.duplicatePals[idx], i)
+		}
 		// Number of colors as specified in the SFF
 		// We'll use a length check later instead because that's more reliable
 		s.palList.numcols[[2]uint16{gn[0], gn[1]}] = int(gn[2])
