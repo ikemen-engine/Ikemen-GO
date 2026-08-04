@@ -3137,7 +3137,7 @@ func (m *Motif) drawFade() {
 		m.fadeOut.draw()
 	} else if m.fadeIn.isActive() {
 		m.fadeIn.draw()
- 	}
+	}
 }
 
 func (m *Motif) isDialogueSet() bool {
