@@ -2104,7 +2104,11 @@ func (a *Anim) Copy() *Anim {
 	newAnim.anim.totaltime = a.anim.totaltime
 	newAnim.anim.frames = a.anim.frames
 	newAnim.anim.interpolate_blend_srcalpha = a.anim.interpolate_blend_srcalpha
+	newAnim.anim.interpolate_blend_dstalpha = a.anim.interpolate_blend_dstalpha
 	newAnim.anim.interpolate_scale = a.anim.interpolate_scale
+	newAnim.anim.interpolate_blend = a.anim.interpolate_blend
+	newAnim.anim.interpolate_offset = a.anim.interpolate_offset
+	newAnim.anim.interpolate_angle = a.anim.interpolate_angle
 	newAnim.anim.mask = a.anim.mask
 	newAnim.anim.srcAlpha = a.anim.srcAlpha
 	newAnim.anim.dstAlpha = a.anim.dstAlpha

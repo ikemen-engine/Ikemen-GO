@@ -848,6 +848,7 @@ end
 
 local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	local lastIdx = #t_portraits
+	local skipField = dataField == 'face2_data' and 'skipCurrentFace2' or 'skipCurrentFace'
 	-- "next player replaces previous one" case
 	local idx = clamp(t_portraitPriority[side] or 1, 1, lastIdx)
 	local paramsSide, params = getParams(side, idx, t, subname)
@@ -856,7 +857,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	if paramsSide.num == 1 and last then
 		local v = t_portraits[idx]
 		local data, drawParams, skipOffset = getPortraitDrawData(v, side, idx, params, dataField)
-		if not v.skipCurrent and data ~= nil then
+		if not v[skipField] and data ~= nil then
 			main.f_animPosDraw(
 				data,
 				f_portraitsXCalc(side, 1, paramsSide, drawParams, skipOffset, offsetKey),
@@ -885,7 +886,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 		local pn = 2 * (member - 1) + side
 		local offsetKey = 'select_info.p' .. pn .. '.face.offset'
 		local data, drawParams, skipOffset = getPortraitDrawData(v, side, member, params, dataField)
-		if member <= paramsSide.num and not v.skipCurrent and data ~= nil then
+		if member <= paramsSide.num and not v[skipField] and data ~= nil then
 			main.f_animPosDraw(
 				data,
 				f_portraitsXCalc(side, member, paramsSide, drawParams, skipOffset, offsetKey),
@@ -902,7 +903,8 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 	end
 	-- reset skip flags
 	for m = 1, #t_portraits do
-		t_portraits[m].skipCurrent = false
+		t_portraits[m].skipCurrentFace = false
+		t_portraits[m].skipCurrentFace2 = false
 	end
 	-- draw random portraits (per member; required for co-op)
 	for m = 1, #t_portraits do
@@ -912,7 +914,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			local pData = f_getMotifP(t, pn, side)
 			-- face2 layer random portrait
 			if pData.face2.random and drawPortraitRandom(pData.face2.random, side, m, paramsSide, 'select_info.p' .. pn .. '.face2.random.offset') then
-				t_portraits[m].skipCurrent = true
+				t_portraits[m].skipCurrentFace2 = true
 			end
 			-- primary face random portrait
 			local baseFace = pData
@@ -920,7 +922,7 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 				baseFace = baseFace[subname]
 			end
 			if baseFace.random and drawPortraitRandom(baseFace.random, side, m, paramsSide, 'select_info.p' .. pn .. '.face.random.offset') then
-				t_portraits[m].skipCurrent = true
+				t_portraits[m].skipCurrentFace = true
 			end
 		end
 	end
@@ -1099,7 +1101,7 @@ function start.f_getCursorData(pn)
 end
 
 -- Reset cursor animation for a specific slot only
-local function resetCursorData(pn, store, param)
+local function resetCursorData(pn, param)
 	local pData = start.f_getCursorData(pn)
 	local cursorCfg = pData.cursor[param]
 	local key = start.c[pn].selX .. '-' .. start.c[pn].selY
@@ -1107,25 +1109,10 @@ local function resetCursorData(pn, store, param)
 	if cursorCfg[key] then
 		cursorParams = cursorCfg[key]
 	end
-	local src = cursorParams.AnimData
-	if not src then
-		return
-	end
-	store[pn] = store[pn] or {}
-	local cd = store[pn]
-	cd.animCache = cd.animCache or {}
-	local cache = cd.animCache[param]
-	if cache == nil or cache.src ~= src then
-		cache = {src = src, anim = animCopy(src)}
-		cd.animCache[param] = cache
-		if cache.anim then
-			animReset(cache.anim)
-			animUpdate(cache.anim)
-		end
-	end
-	if cache.anim then
-		animReset(cache.anim)
-		animUpdate(cache.anim)
+	local anim = cursorParams.AnimData
+	if anim then
+		animReset(anim)
+		animUpdate(anim)
 	end
 end
 
@@ -1292,16 +1279,6 @@ function start.f_drawCursor(pn, x, y, param, done)
 		params = pData.cursor[param][key]
 	end
 	local a = params.AnimData
-	cd.animCache = cd.animCache or {}
-	local cache = cd.animCache[param]
-	if cache == nil or cache.src ~= a then
-		cache = {src = a, anim = animCopy(a)}
-		cd.animCache[param] = cache
-		if cache.anim then
-			animReset(cache.anim)
-		end
-	end
-	a = cache.anim
 	animSetFacing(a, getCellFacing(params.facing, x, y))
 	local scale = getCellTransform(x, y, "scale", params.scale)
 	animSetScale(a, scale[1], scale[2])
@@ -1311,7 +1288,6 @@ function start.f_drawCursor(pn, x, y, param, done)
 	animSetYAngle(a, getCellTransform(x, y, "yangle", params.yangle))
 	animSetProjection(a, getCellTransform(x, y, "projection", params.projection))
 	animSetFocalLength(a, getCellTransform(x, y, "focallength", params.focallength))
-	animUpdate(a)
 	main.f_animPosDraw(a, cd.currentPos[1], cd.currentPos[2], getCellFacing(params.facing, x, y))
 end
 
@@ -3534,7 +3510,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_selTemp[member].face_anim = pCfg.face.anim
 					start.p[side].t_selTemp[member].face2_anim = pCfg.face2.anim
 					if start.f_getCursorData(player).cursor.reset then
-						resetCursorData(player, cursorActive, 'active')
+						resetCursorData(player, 'active')
 					end
 					updateAnim = true
 				end
@@ -3610,7 +3586,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 						start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].select.snd[1], motif.select_info['p' .. side].select.snd[2])
 					end
 					if motif.select_info.paletteselect > 0 then
-						resetCursorData(player, cursorActive, 'done')
+						resetCursorData(player, 'done')
 					end
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
 					start.p[side].t_selTemp[member].inRandom = false

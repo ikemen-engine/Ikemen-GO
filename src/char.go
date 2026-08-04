@@ -4387,8 +4387,13 @@ func (c *Char) loadPalettes() {
 			gi.palInfo[i] = pal
 		}
 
-		// If no ACT files were successfully loaded, remove the default [1, 1] mapping
-		if tmp == 0 {
+		if tmp > 0 {
+			// Ensure [1, 1] exists so RemapPal can use the SFFv1 base palette as source.
+			if _, ok := gi.palettedata.palList.PalTable[[...]uint16{1, 1}]; !ok {
+				gi.palettedata.palList.PalTable[[...]uint16{1, 1}] = 0
+			}
+		} else {
+			// If no ACT files were successfully loaded, remove the default [1, 1] mapping.
 			delete(gi.palettedata.palList.PalTable, [...]uint16{1, 1})
 		}
 	} else {
@@ -9356,6 +9361,29 @@ func (c *Char) remapPal(pfx *PalFX, src [2]int32, dst [2]int32) {
 		// Always remap the requested source palette
 		plist.Remap(si, di)
 
+		// Also remap logical palettes that contain the same palette data.
+		// This handles SFFv2 sprites using a duplicated palette entry.
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3854
+		for i := range plist.paletteMap {
+			physical := plist.paletteMap[i]
+			if physical < 0 || physical >= len(plist.palettes) {
+				continue
+			}
+			pal := plist.palettes[physical]
+			if len(pal) != len(srcPal) {
+				continue
+			}
+			same := true
+			for j := range pal {
+				if pal[j] != srcPal[j] {
+					same = false
+					break
+				}
+			}
+			if same {
+				plist.Remap(i, di)
+			}
+		}
 		// For SFFv1, remapping 1,1 should also remap whatever palettes sprites 0,0 and 9000,0 use
 		// TODO: Because 9000,0 is not hardcoded in Ikemen, this might create trouble for custom portraits
 		if src[0] == 1 && src[1] == 1 && c.gi().sff.header.Version[0] == 1 {
@@ -9420,11 +9448,15 @@ func (c *Char) getDrawPal(palIndex int) [2]int32 {
 }
 
 func (c *Char) drawPal() [2]int32 {
-	palMap := c.getPalMap()
-	if len(palMap) == 0 {
+	if c.anim == nil || c.anim.spr == nil {
 		return [2]int32{0, 0}
 	}
-	return c.getDrawPal(palMap[0])
+	palMap := c.getPalMap()
+	source := c.anim.spr.palidx
+	if source >= 0 && source < len(palMap) {
+		source = palMap[source]
+	}
+	return c.getDrawPal(source)
 }
 
 type RemapTable map[int32][2]int32

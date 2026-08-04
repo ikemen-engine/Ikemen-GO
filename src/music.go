@@ -492,7 +492,9 @@ func (m Music) act() {
 						break
 					}
 				}
-				if lowLife && cmusic.tryPlay("life", sys.stage.def) {
+				if lowLife &&
+					(sys.stage.bgmtrigger == 1 || sys.decisiveRound[(c.playerNo+1)&1]) &&
+					cmusic.tryPlay("life", sys.stage.def) {
 					sys.stage.bgmState = BGMStateLowLife
 					continue
 				}

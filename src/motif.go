@@ -2042,6 +2042,21 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		return strings.Contains(fullKeyLower, ".itemname.") || strings.Contains(fullKeyLower, ".valuename.")
 	}
 
+	shouldSkipAnimSpr := func(dstPrefix, suf string) bool {
+		// Avoid inheriting anim/spr for parameters that represent optional independent elements. 
+		if !strings.EqualFold(suf, "anim") && !strings.EqualFold(suf, "spr") {
+			return false
+		}
+
+		lowerPrefix := strings.ToLower(dstPrefix)
+		for _, prefix := range []string{".face.random.", ".face2.random.", ".face.slot.", ".face2.slot.", ".palmenu.preview."} {
+			if strings.Contains(lowerPrefix, prefix) {
+				return true
+			}
+		}
+		return false
+	}
+
 	// Ensure a section exists in the user ini when we need to mirror
 	// a user-originated inherited key into it.
 	ensureUserSection := func(name string) *ini.Section {
@@ -2106,6 +2121,9 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			lowerDst := strings.ToLower(sp.DstPrefix)
 			if strings.Contains(lowerDst, ".palmenu.preview.") &&
 				(strings.EqualFold(suf, "anim") || strings.EqualFold(suf, "spr")) {
+				continue
+			}
+			if shouldSkipAnimSpr(sp.DstPrefix, suf) {
 				continue
 			}
 			lowerFull := strings.ToLower(dstKey)
