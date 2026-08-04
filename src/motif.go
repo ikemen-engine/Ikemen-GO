@@ -2043,7 +2043,7 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 	}
 
 	shouldSkipAnimSpr := func(dstPrefix, suf string) bool {
-		// Avoid inheriting anim/spr for parameters that represent optional independent elements. 
+		// Avoid inheriting anim/spr for parameters that represent optional independent elements.
 		if !strings.EqualFold(suf, "anim") && !strings.EqualFold(suf, "spr") {
 			return false
 		}
