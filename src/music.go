@@ -378,7 +378,7 @@ func (m Music) Play(key, path string) bool {
 	if track != "" && track != sys.bgm.filename {
 		//fmt.Printf("[music] Play: opening track='%s' loop=%d vol=%d loopstart=%d loopend=%d startpos=%d freqmul=%g loopcount=%d\n", track, loop, volume, loopstart, loopend, startposition, freqmul, loopcount)
 		sys.bgm.Open(track, loop, volume, loopstart, loopend, startposition, freqmul, loopcount)
-		sys.playBgmFlg = sys.playBgmFlg || !sys.sel.gameParams.PersistMusic
+		sys.playBgmFlg = sys.gameRunning && (sys.sel.gameParams == nil || !sys.sel.gameParams.PersistMusic)
 		return true
 	}
 	if track == "" {
@@ -436,7 +436,7 @@ func (m Music) tryPlay(key, def string) bool {
 		sys.bgm.Open(track, int(bg.bgmloop), int(bg.bgmvolume),
 			int(bg.bgmloopstart), int(bg.bgmloopend), int(bg.bgmstartposition),
 			bg.bgmfreqmul, int(bg.bgmloopcount))
-		sys.playBgmFlg = sys.playBgmFlg || !sys.sel.gameParams.PersistMusic
+		sys.playBgmFlg = sys.gameRunning && (sys.sel.gameParams == nil || !sys.sel.gameParams.PersistMusic)
 	}
 	return true
 }
