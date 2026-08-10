@@ -3890,8 +3890,9 @@ func (de *MotifDemo) init(m *Motif) {
 
 	de.counter = 0
 
-	// Override lifebar fading
-	m.DemoMode.FadeIn.FadeData.init(sys.fightScreen.round.fadeIn, true)
+	sys.fightScreen.round.fadeIn.reset()
+	sys.fightScreen.round.fadeOut.reset()
+	m.DemoMode.FadeIn.FadeData.init(m.fadeIn, true)
 
 	de.active = true
 	de.initialized = true
@@ -3901,16 +3902,15 @@ func (de *MotifDemo) step(m *Motif) {
 	if de.endTimer == -1 {
 		cancel := (m.AttractMode.Enabled && sys.credits > 0) || (!m.AttractMode.Enabled && sys.uiRawInput(m.DemoMode.Cancel.Key, -1))
 		if de.counter == m.DemoMode.Fight.EndTime || cancel {
-			startFadeOut(m.DemoMode.FadeOut.FadeData, sys.fightScreen.round.fadeOut, false, m.fadePolicy)
-			de.endTimer = de.counter + sys.fightScreen.round.fadeOut.timeRemaining
+			m.fadeIn.reset()
+			startFadeOut(m.DemoMode.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
+			de.endTimer = de.counter + m.fadeOut.timeRemaining
 		}
 	}
 
 	// Check if the sequence has ended
 	if de.endTimer != -1 && de.counter >= de.endTimer {
-		if sys.fightScreen.round.fadeOut != nil {
-			sys.fightScreen.round.fadeOut.reset()
-		}
+		m.fadeOut.reset()
 		de.active = false
 		sys.endMatch = true
 		return
