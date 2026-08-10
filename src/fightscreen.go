@@ -3177,8 +3177,9 @@ func newFightScreenRound(snd *Snd) *FightScreenRound {
 	}
 }
 
-func readLbFade(pre string, is IniSection, sff *Sff, at AnimationTable) *Fade {
+func readLbFade(pre string, is IniSection, sff *Sff, at AnimationTable, snd *Snd) *Fade {
 	fp := newFade()
+	fp.sndSource = snd
 	is.ReadI32(pre+"time", &fp.time)
 	is.ReadI32(pre+"col", &fp.col[0], &fp.col[1], &fp.col[2])
 	fp.colEncoded = uint32(fp.col[0]&0xff<<16 | fp.col[1]&0xff<<8 | fp.col[2]&0xff)
@@ -3403,8 +3404,8 @@ func readFightScreenRound(is IniSection,
 	ro.winType[WT_Teammate+WT_NumTypes] = readFSBgTextSnd("p2.teammate.", is, sff, at, 0, f)
 	ro.winType[WT_Perfect+WT_NumTypes] = readFSBgTextSnd("p2.perfect.", is, sff, at, 0, f)
 	ro.winType[WT_Clutch+WT_NumTypes] = readFSBgTextSnd("p2.clutch.", is, sff, at, 0, f)
-	ro.fadeIn = readLbFade("fadein.", is, sff, at)
-	ro.fadeOut = readLbFade("fadeout.", is, sff, at)
+	ro.fadeIn = readLbFade("fadein.", is, sff, at, snd)
+	ro.fadeOut = readLbFade("fadeout.", is, sff, at, snd)
 	is.ReadI32("shutter.time", &ro.shutter_time)
 	is.ReadI32("clutch.threshold", &ro.clutch_threshold)
 	var col [3]int32

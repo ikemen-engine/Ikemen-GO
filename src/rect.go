@@ -15,6 +15,7 @@ type Fade struct {
 	isFadeIn      bool
 	timeRemaining int32
 	snd           [2]int32
+	sndSource     *Snd
 }
 
 func newFade() *Fade {
@@ -104,7 +105,13 @@ func (fa *Fade) step() {
 		return
 	}
 	if fa.timeRemaining == fa.totalTime && fa.snd[0] != -1 && fa.snd[1] != -1 {
-		sys.motif.Snd.play(fa.snd, 100, 0, 0, 0, 0)
+		snd := fa.sndSource
+		if snd == nil {
+			snd = sys.motif.Snd
+		}
+		if snd != nil {
+			snd.play(fa.snd, 100, 0, 0, 0, 0)
+		}
 	}
 
 	if fa.animData != nil {
