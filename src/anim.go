@@ -2306,17 +2306,17 @@ func (a *Anim) Update(force bool) {
 	if a.anim == nil {
 		return
 	}
-	// Advance at most once per engine frame, unless forced.
-	if !force && a.lastUpdateFrame == sys.frameCounter {
+	// Advance at most once per logical UI frame, unless forced.
+	if !force && a.lastUpdateFrame == sys.uiFrameCounter {
 		return
 	}
-	a.lastUpdateFrame = sys.frameCounter
+	a.lastUpdateFrame = sys.uiFrameCounter
 	a.palfx.step()
-	// Advance the *shared* animation timeline at most once per engine frame,
+	// Advance the *shared* animation timeline at most once per logical UI frame,
 	// even if multiple Lua userdatas reference the same *Animation.
-	if force || a.anim.lastActionFrame != sys.frameCounter {
+	if force || a.anim.lastActionFrame != sys.uiFrameCounter {
 		a.anim.Action()
-		a.anim.lastActionFrame = sys.frameCounter
+		a.anim.lastActionFrame = sys.uiFrameCounter
 	}
 	a.updateVel()
 }

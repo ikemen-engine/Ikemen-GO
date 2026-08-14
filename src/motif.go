@@ -2979,6 +2979,13 @@ func (m *Motif) reset() {
 }
 
 func (m *Motif) step() {
+	if !m.me.active && !(sys.fightScreen.round.fadeOut.isActive() || sys.fightScreen.round.fadeIn.isActive()) {
+		if m.fadeOut.isActive() {
+			m.fadeOut.step()
+		} else if m.fadeIn.isActive() {
+			m.fadeIn.step()
+		}
+	}
 	if m.me.active {
 		m.me.step(m)
 	} else if sys.escExit() {
@@ -3497,6 +3504,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 }
 
 func (ch *MotifChallenger) step(m *Motif) {
+	m.ChallengerBgDef.BGDef.step()
 	if ch.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.challenger')"); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger", err.Error())
@@ -3724,6 +3732,7 @@ func (co *MotifContinue) playCounterSounds(m *Motif) {
 }
 
 func (co *MotifContinue) step(m *Motif) {
+	m.ContinueBgDef.BGDef.step()
 	if co.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.continue')"); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.continue", err.Error())
@@ -5384,6 +5393,9 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 }
 
 func (hi *MotifHiscore) step(m *Motif) {
+	if !hi.noBgs {
+		m.HiscoreBgDef.BGDef.step()
+	}
 	if hi.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.hiscore')"); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.hiscore", err.Error())
@@ -6225,6 +6237,7 @@ func (vi *MotifVictory) init(m *Motif) {
 }
 
 func (vi *MotifVictory) step(m *Motif) {
+	m.VictoryBgDef.BGDef.step()
 	if vi.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.victory')"); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.victory", err.Error())
@@ -6787,6 +6800,13 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 
 // Process the step logic for MotifWin
 func (wi *MotifWin) step(m *Motif) {
+	if wi.resultsScreen != nil {
+		if wi.resultsBgDef != nil && wi.resultsBgDef.BGDef != nil {
+			wi.resultsBgDef.BGDef.step()
+		}
+	} else {
+		m.WinBgDef.BGDef.step()
+	}
 	if wi.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.result')"); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.result", err.Error())

@@ -96,6 +96,7 @@ type SystemStateVars struct {
 	lastTick                float32
 	nextAddTime             float32
 	oldNextAddTime          float32
+	uiFrameCounter          int32
 	xmin, xmax              float32
 	zmin, zmax              float32
 	winskipped              bool
@@ -290,6 +291,7 @@ type System struct {
 	whitePalTex         Texture
 	usePalette          bool
 	gameRunning         bool
+	escPending          bool
 
 	msaa               int32
 	externalShaders    [][][]byte
@@ -2663,6 +2665,14 @@ func (s *System) action() {
 
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
+	uiTick := s.tickFrame() || s.motif.me.active
+	if uiTick {
+		if s.escPending {
+			s.esc = true
+			s.escPending = false
+		}
+		s.uiFrameCounter++
+	}
 
 	// Update round state
 	// This is also reflected on characters (intros, win poses)
@@ -2742,7 +2752,9 @@ func (s *System) action() {
 	// Update the fight screen
 	// Lifebar and combo must update after character states but before hit detection for accurate detection
 	// So that it allows a combo to still end if a character is hit in the same frame where it exits movetype H
-	s.fightScreen.step()
+	if s.tickFrame() {
+		s.fightScreen.step()
+	}
 
 	if s.tickNextFrame() {
 		s.globalCollision() // This could perhaps happen during "tick frame" instead? Would need more testing
@@ -2790,25 +2802,25 @@ func (s *System) action() {
 	s.explodCueDraw()
 
 	// Adjust game speed
-	if s.tickNextFrame() {
+	if s.tickNextFrame() && !s.motif.me.active {
 		spd := float32(s.gameLogicSpeed()) / float32(s.gameRenderSpeed())
 
 		// KO slowdown
 		if st := s.getSlowtime(); st > 0 {
 			if !s.gsf(GSF_nokoslow) {
-				base := s.fightScreen.round.slow_speed
+				slowSpeed := s.fightScreen.round.slow_speed
 				fade := s.fightScreen.round.slow_fadetime
-				spd *= base
 				if st < fade {
 					ratio := float32(fade-st) / float32(fade)
-					spd = base + (1-base)*ratio
+					slowSpeed += (1 - slowSpeed) * ratio
 				}
+				spd *= slowSpeed
 			}
 			s.slowtime--
 		}
 
-		// Outside match or while frame stepping
-		if s.postMatchFlg || s.frameStepFlag {
+		// While frame stepping
+		if s.frameStepFlag {
 			spd = 1
 		}
 
@@ -2843,20 +2855,22 @@ func (s *System) action() {
 		}
 	}
 
-	// Update motif
-	// Needs to happen at the very end or pause toggles will get out of sync
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3080
-	s.motif.step()
+	if uiTick {
+		// Update motif
+		// Needs to happen at the very end or pause toggles will get out of sync
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3080
+		s.motif.step()
 
-	// Run motif
-	s.motif.act()
+		// Run motif
+		s.motif.act()
 
-	// Common Lua calls
-	// Needs to happens after motif update or motif inputs will lag 1 frame
-	for _, key := range SortedKeys(sys.cfg.Common.Lua) {
-		for _, v := range sys.cfg.Common.Lua[key] {
-			if err := sys.luaLState.DoString(v); err != nil {
-				sys.luaLState.RaiseError("Error executing Lua code: %s\n%v", v, err.Error())
+		// Common Lua calls
+		// Needs to happen after motif update or motif inputs will lag 1 frame
+		for _, key := range SortedKeys(sys.cfg.Common.Lua) {
+			for _, v := range sys.cfg.Common.Lua[key] {
+				if err := sys.luaLState.DoString(v); err != nil {
+					sys.luaLState.RaiseError("Error executing Lua code: %s\n%v", v, err.Error())
+				}
 			}
 		}
 	}
@@ -3125,15 +3139,6 @@ func (s *System) stepRoundState() {
 	// Freeze round state if round animations cannot advance
 	if !s.fightScreen.round.act() {
 		return
-	}
-
-	// Fading
-	if !(s.fightScreen.round.fadeOut.isActive() || s.fightScreen.round.fadeIn.isActive()) {
-		if s.motif.fadeOut.isActive() {
-			s.motif.fadeOut.step()
-		} else if s.motif.fadeIn.isActive() {
-			s.motif.fadeIn.step()
-		}
 	}
 
 	// Intros
@@ -4165,7 +4170,7 @@ func (s *System) SetupCharRoundStart() {
 }
 
 func (s *System) runNextRound() bool {
-	if s.roundOver() && !s.fightLoopEnd {
+	if s.roundOver() && !s.fightLoopEnd && (s.tickFrame() || s.motif.me.active) {
 		if s.holdPostMatchForDialogue() {
 			return true
 		}
@@ -4239,11 +4244,10 @@ func (s *System) gameLogicSpeed() int32 {
 
 func (s *System) gameRenderSpeed() int {
 	var spd int32
-	if !s.gameRunning || s.rollback.session != nil {
-		// Currently, rendering the motif above 60fps breaks many things, so we'll patch it here
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/2131
-		// Rollback is likewise locked to 60fps anyway, so we'll make it consistent here
-		// TODO: Fix both properly. Motif could interpolate. Rollback should render at Framerate but sync at Gamespeed
+	if !s.gameRunning || s.motif.me.active || s.rollback.session != nil || s.replayFile != nil {
+		// Standalone Lua screens and the Lua-driven pause menu execute one
+		// complete update-and-draw frame per call. Rollback is also fixed at 60 Hz.
+		// TODO: Rollback should render at Framerate but sync at Gamespeed
 		spd = 60
 	} else {
 		spd = int32(s.cfg.Video.Framerate)
