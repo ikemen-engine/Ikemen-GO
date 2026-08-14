@@ -129,8 +129,9 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		}
 		sys.keyState[key] = true
 		sys.keyInput = key
-		sys.esc = sys.esc ||
-			key == KeyEscape && (mk&ModCtrlAlt) == 0
+		escPressed := key == KeyEscape && (mk&ModCtrlAlt) == 0
+		sys.esc = sys.esc || escPressed
+		sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
 		for k, v := range sys.shortcutScripts {
 			if !sys.motif.me.active && sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
 				//(!sys.paused || sys.frameStepFlag || v.Pause) &&

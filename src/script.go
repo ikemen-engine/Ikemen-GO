@@ -2158,7 +2158,8 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 5) {
 			scl = float32(numArg(l, 5))
 		}
-		// BGDef.Draw mutates BGDef state (time/BGCtrl/anim). Copying BGDef makes those updates happen on the copy only. Keep a pointer to the live BGDef.
+		bg.step()
+		// Keep a pointer to the live BGDef for deferred drawing.
 		bgLocal := bg
 		layerLocal := layer
 		xLocal, yLocal, sclLocal := x, y, scl
@@ -2532,9 +2533,6 @@ func systemScriptInit(l *lua.LState) {
 		  `false` otherwise.
 		function enterReplay(path) end*/
 		sys.sessionWarning = ""
-		if sys.cfg.Video.VSync >= 0 {
-			sys.window.SetSwapInterval(1) // broken frame skipping when set to 0
-		}
 		sys.chars = [len(sys.chars)][]*Char{}
 		sys.replayFile = OpenReplayFile(strArg(l, 1))
 		if sys.replayFile != nil {
@@ -2590,9 +2588,6 @@ func systemScriptInit(l *lua.LState) {
 		function exitReplay() end*/
 		if err := sys.endSyncSessionOverride(); err != nil {
 			l.RaiseError(err.Error())
-		}
-		if sys.cfg.Video.VSync >= 0 {
-			sys.window.SetSwapInterval(sys.cfg.Video.VSync)
 		}
 		if sys.replayFile != nil {
 			sys.replayFile.Close()
@@ -2997,6 +2992,7 @@ func systemScriptInit(l *lua.LState) {
 		sys.keyInput = KeyUnknown
 		sys.luaDiscardDrawQueue()
 		sys.gameRunning = true
+		sys.escPending = false
 		sys.motif.fadeIn.reset()
 		sys.motif.fadeOut.reset()
 		sys.endMatch = false
@@ -3237,6 +3233,7 @@ func systemScriptInit(l *lua.LState) {
 			// If not restarting match
 			if winp != -2 {
 				sys.esc = false
+				sys.escPending = false
 				sys.keyInput = KeyUnknown
 				if sys.gameMode == "challenger" {
 					sys.statsLog.discardCurrentMatch()
@@ -3273,6 +3270,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				sys.paused = false
+				sys.uiFrameCounter++
 				sys.gameRunning = false
 				sys.clearSpriteData()
 				sys.motif.fadeIn.reset()
@@ -5838,6 +5836,7 @@ func systemScriptInit(l *lua.LState) {
 			sys.motif.fadeIn.step()
 		}
 		sys.stepCommandLists()
+		sys.uiFrameCounter++
 		if !sys.update() {
 			l.RaiseError("<game end>")
 		}

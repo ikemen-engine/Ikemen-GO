@@ -3437,7 +3437,7 @@ func (ro *FightScreenRound) act() bool {
 	} else if ro.fadeIn.isActive() {
 		ro.fadeIn.step()
 	}
-	if ro.shutterTimer > 0 {
+	if ro.shutterTimer > 0 && sys.tickNextFrame() {
 		// Signal system to skip intros when shutter is about to be fully closed
 		// This ensures the intros will skip even if/when the shutter updates at a different rate than characters
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/2720
@@ -3446,6 +3446,9 @@ func (ro *FightScreenRound) act() bool {
 			ro.fadeIn.timeRemaining = 0
 		}
 		ro.shutterTimer--
+	}
+	if sys.intro < 0 && !sys.tickFrame() {
+		return false
 	}
 
 	// Pre-intro
