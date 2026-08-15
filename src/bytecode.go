@@ -960,6 +960,7 @@ const (
 	OC_ex2_botbounddist
 	OC_ex2_botboundbodydist
 	OC_ex2_stagebgvar_actionno
+	OC_ex2_stagebgvar_animtime
 	OC_ex2_stagebgvar_delta_x
 	OC_ex2_stagebgvar_delta_y
 	OC_ex2_stagebgvar_id
@@ -4156,7 +4157,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_topbounddist:
 		sys.bcStack.PushF(c.topBoundDist() * (c.localscl / oc.localscl))
 	// StageBGVar
-	case OC_ex2_stagebgvar_actionno,
+	case OC_ex2_stagebgvar_actionno, OC_ex2_stagebgvar_animtime,
 		OC_ex2_stagebgvar_delta_x, OC_ex2_stagebgvar_delta_y,
 		OC_ex2_stagebgvar_id, OC_ex2_stagebgvar_layerno,
 		OC_ex2_stagebgvar_pos_x, OC_ex2_stagebgvar_pos_y,
@@ -4172,6 +4173,12 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			switch opc {
 			case OC_ex2_stagebgvar_actionno:
 				sys.bcStack.PushI(bg.actionno)
+			case OC_ex2_stagebgvar_animtime:
+				if bg.anim == nil {
+					sys.bcStack.PushI(0)
+				} else {
+					sys.bcStack.PushI(bg.anim.AnimTime())
+				}
 			case OC_ex2_stagebgvar_delta_x:
 				sys.bcStack.PushF(bg.delta[0])
 			case OC_ex2_stagebgvar_delta_y:

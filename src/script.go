@@ -10338,6 +10338,8 @@ func triggerFunctions(l *lua.LState) {
 			switch strings.ToLower(vname) {
 			case "actionno":
 				ln = lua.LNumber(bg.actionno)
+			case "animtime":
+				ln = lua.LNumber(bg.anim.AnimTime())
 			case "delta.x":
 				ln = lua.LNumber(bg.delta[0])
 			case "delta.y":
