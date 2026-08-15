@@ -277,12 +277,14 @@ jobs:
           # One LICENSES.txt for ALL platforms (including Android).
           # Must exist BEFORE Android Docker Compose runs so it is visible in the bind-mounted workspace.
           FFMPEG_REV="${FFMPEG_REV:-release/7.1}"
+          LIBVPX_REV="${LIBVPX_REV:-v1.15.2}"
 
           SCREENPACK_LIC="https://raw.githubusercontent.com/ikemen-engine/Ikemen-GO-Screenpack/master/LICENCE.txt"
 
           FFMPEG_LGPL="https://raw.githubusercontent.com/FFmpeg/FFmpeg/${FFMPEG_REV}/COPYING.LGPLv2.1"
           FFMPEG_LICENSE_MD="https://raw.githubusercontent.com/FFmpeg/FFmpeg/${FFMPEG_REV}/LICENSE.md"
           FFMPEG_CREDITS="https://raw.githubusercontent.com/FFmpeg/FFmpeg/${FFMPEG_REV}/CREDITS"
+          LIBVPX_LICENSE="https://raw.githubusercontent.com/webmproject/libvpx/${LIBVPX_REV}/LICENSE"
 
           LIBXMP_README="https://raw.githubusercontent.com/libxmp/libxmp/master/README"
           SDL2_LICENSE="https://raw.githubusercontent.com/libsdl-org/SDL/main/LICENSE.txt"
@@ -320,7 +322,14 @@ jobs:
             echo "-------------------"
             curl -fsSL "$FFMPEG_CREDITS"
             echo
-            echo "Section 4: libxmp and Notices"
+            echo "Section 4: libvpx and Notices"
+            echo "-----------------------------"
+            echo "libvpx is statically linked into the bundled FFmpeg libraries."
+            echo "Upstream: https://github.com/webmproject/libvpx"
+            echo
+            curl -fsSL "$LIBVPX_LICENSE"
+            echo
+            echo "Section 5: libxmp and Notices"
             echo "-----------------------------"
             echo "Upstream: https://github.com/libxmp/libxmp"
             echo
@@ -328,7 +337,7 @@ jobs:
             echo "-------------------------------------"
             curl -fsSL "$LIBXMP_README"
             echo
-            echo "Section 5: SDL2 and Notices"
+            echo "Section 6: SDL2 and Notices"
             echo "---------------------------"
             echo "Upstream: https://github.com/libsdl-org/SDL"
             echo

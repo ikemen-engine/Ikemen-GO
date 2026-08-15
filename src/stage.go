@@ -191,6 +191,7 @@ func readBackGround(is IniSection, link *backGround,
 	case 'V', 'v':
 		bg._type = BG_Video
 		bg.video = &bgVideo{}
+		bg.anim.mask = 0
 	case 'D', 'd':
 		bg._type = BG_Dummy
 	default:
