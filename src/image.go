@@ -1906,6 +1906,10 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]uint16]bool) (*Sff
 			}
 		}
 	}
+	// Keep the SFFv1 palettes loaded during preload available to animations using this SFF
+	if sff.header.Version[0] == 1 {
+		sff.palList = *pl
+	}
 	return sff, selPal, nil
 }
 

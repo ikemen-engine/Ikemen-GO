@@ -2412,5 +2412,8 @@ func (pa PreloadedAnims) addSprite(sff *Sff, grp, idx uint16) {
 func (pa PreloadedAnims) updateSff(sff *Sff) {
 	for _, v := range pa {
 		v.sff = sff
+		// Animations created from the temporary SFF keep their old palette pointer,
+		// so it must be updated together with the SFF.
+		v.palettedata = &sff.palList
 	}
 }
