@@ -71,6 +71,7 @@ build/android-apk/
 # Binaries
 build/android-deps/
 build/libxmp-src/
+build/libvpx-src/
 build/sdl2-src/
 build/ffmpeg-src/
 build/ffmpeg/

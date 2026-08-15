@@ -1,8 +1,8 @@
 # Building Ikemen GO
 
-Ikemen GO links against **FFmpeg** (background video: VP9/Opus/Vorbis in WebM/Matroska), **libxmp** (module music: MOD/XM/S3M/IT, etc.), and **SDL2** (windowing, input, and game controller support via go-sdl2).
+Ikemen GO links against **FFmpeg** (background video: VP8/VP9/Opus/Vorbis in WebM/Matroska), **libxmp** (module music: MOD/XM/S3M/IT, etc.), and **SDL2** (windowing, input, and game controller support via go-sdl2).
 All three must be available as development packages via **pkg-config** (`libav*`, `libxmp`, and `sdl2`).
-`build/build.sh` **auto-detects your OS** and, by default, **auto-builds a minimal FFmpeg**
+`build/build.sh` **auto-detects your OS** and, by default, **auto-builds a decoder-only libvpx and minimal FFmpeg**
 (same config as CI). You don't need system FFmpeg dev packages unless you prefer them.
 
 ---
@@ -242,8 +242,9 @@ The release CI bundles these automatically.
 ## Notes & licensing
 
 * The minimal FFmpeg we build matches CI: shared libs only; `file` protocol; Matroska/WebM demuxers;
-  VP9/Opus/Vorbis decoders and parsers; no FFmpeg CLI tools.
+  libvpx VP8/VP9 decoders (including WebM alpha), Opus/Vorbis decoders, and parsers; no FFmpeg CLI tools.
 * FFmpeg is used under **LGPL v2.1**; releases attach the corresponding source snapshot.
+* libvpx is statically linked into FFmpeg and used under its BSD-style license.
 * Ikemen GO sources are MIT; bundled screenpack assets have their own licenses.
 
 ---

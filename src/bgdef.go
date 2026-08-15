@@ -334,15 +334,21 @@ func (s *BGDef) action() {
 	}
 }
 
-func (s *BGDef) Draw(layer int32, x, y, scl float32) {
-	// Advance BGDef exactly once per engine tick, regardless of which layer gets drawn.
-	if s.lastTick != sys.frameCounter {
-		s.action()
+func (s *BGDef) step() {
+	if s.lastTick == sys.uiFrameCounter {
+		return
 	}
+	s.action()
+	if s.model != nil {
+		s.model.calculateTextureTransform()
+	}
+	s.lastTick = sys.uiFrameCounter
+}
+
+func (s *BGDef) Draw(layer int32, x, y, scl float32) {
+	// Drawing is allowed at video rate, while BG state advances at UI rate.
+	s.step()
 	if s.model != nil && s.sceneNumber >= 0 {
-		if s.lastTick != sys.frameCounter {
-			s.model.calculateTextureTransform()
-		}
 		drawFOV := s.fov * math.Pi / 180
 		outlineConst := float32(0.003 * math.Tan(float64(drawFOV)))
 		proj := gfx.PerspectiveProjectionMatrix(drawFOV, float32(sys.scrrect[2])/float32(sys.scrrect[3]), s.near, s.far)
@@ -353,7 +359,6 @@ func (s *BGDef) Draw(layer int32, x, y, scl float32) {
 		view = view.Mul4(mgl.Scale3D(s.modelScale[0], s.modelScale[1], s.modelScale[2]))
 		s.model.draw(1, int(s.sceneNumber), int(layer), 0, s.modelOffset, proj, view, proj.Mul4(view), outlineConst)
 	}
-	s.lastTick = sys.frameCounter
 	//x, y = x/s.localscl, y/s.localscl
 	for _, b := range s.bg {
 		if b.layerno == layer && b.visible && b.enabled && (b.anim.spr != nil || b._type == BG_Video) {

@@ -11,7 +11,7 @@ require (
 	github.com/go-gl/mathgl v1.0.0
 	github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 	github.com/ikemen-engine/ggpo v0.0.0-20260413180701-b08e7d27b7f2
-	github.com/ikemen-engine/reisen v0.1.10-0.20250928163542-0bb3c3392852
+	github.com/ikemen-engine/reisen v0.1.10-0.20260815114631-075900b2ba78
 	github.com/leonkasovan/gl v0.0.0-20251110213347-e04040ce71e2
 	github.com/lukegb/dds v0.0.0-20190402175749-8b7170e64003
 	github.com/qmuntal/gltf v0.24.2

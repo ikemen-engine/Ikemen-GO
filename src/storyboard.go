@@ -596,6 +596,9 @@ func (s *Storyboard) step() {
 	sys.stepCommandLists()
 	sceneKey := s.sceneKeys[s.currentSceneIndex]
 	sceneProps := s.Scene[sceneKey]
+	if sceneProps.Bg.Name != "" {
+		sceneProps.Bg.BGDef.step()
+	}
 
 	// because skip may fast-forward s.counter, we must not rely on (s.counter == 0)
 	// later in the frame. Capture scene start state up front.
