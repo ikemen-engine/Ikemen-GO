@@ -7783,6 +7783,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.anim.totaltime))
 		return 1
 	})
+	luaRegister(l, "animLoopCount", func(*lua.LState) int {
+		if sys.debugWC.anim == nil {
+			l.Push(lua.LNumber(0))
+		} else {
+			l.Push(lua.LNumber(sys.debugWC.anim.loopcount))
+		}
+		return 1
+	})
 	luaRegister(l, "animPlayerNo", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.animPN + 1))
 		return 1

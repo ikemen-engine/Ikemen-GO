@@ -1061,6 +1061,7 @@ const (
 	OC_ex3_hitdefvar_fall_xvelocity
 	OC_ex3_hitdefvar_fall_yvelocity
 	OC_ex3_hitdefvar_fall_zvelocity
+	OC_ex3_animloopcount
 )
 
 type StringPool struct {
@@ -4426,6 +4427,12 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 			}
 		} else {
 			sys.bcStack.Push(BytecodeUndefined())
+		}
+	case OC_ex3_animloopcount:
+		if c.anim == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(c.anim.loopcount)
 		}
 	default:
 		LogMessage("%v", be[*i-1])
