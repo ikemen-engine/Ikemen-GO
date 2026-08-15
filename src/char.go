@@ -182,83 +182,38 @@ func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
 	x = (x - sys.cam.Pos[0]) * sys.cam.Scale
 	y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
 
-	xs *= sys.cam.Scale
-	ys *= sys.cam.Scale
-
-	for i := 0; i < len(clsn); i++ {
-		rect := [7]float32{
-			Abs(xs) * clsn[i][0],           // [0] x position (left)
-			Abs(ys) * clsn[i][1],           // [1] y position (top)
-			xs * (clsn[i][2] - clsn[i][0]), // [2] width
-			ys * (clsn[i][3] - clsn[i][1]), // [3] height
-			x,                              // [4] rotation center x, relative to screen center
-			y,                              // [5] rotation center y
-			angle,                          // [6] rotation angle
-
 	xs := sys.cam.Scale
 	ys := sys.cam.Scale
-	sw := float32(sys.gameWidth)
-	sh := float32(0)
 
 	for _, box := range boxes {
-		// Apply facing to the local rectangle: flip left/right
-		l := box.rect[0]
-		r := box.rect[2]
-		if facing < 0 {
-			l, r = -r, -l
-		}
+		left := box.rect[0]
+		right := box.rect[2]
 		top := box.rect[1]
 		bottom := box.rect[3]
 
-		// Rectangle world coordinates
-		leftWorld := x + l
-		rightWorld := x + r
-		topWorld := y + top
-		bottomWorld := y + bottom
+		// Apply facing to the local rectangle
+		if facing < 0 {
+			left, right = -right, -left
+		}
 
-		// Pivot world position
-		pivotWorldX := x + box.pivot[0]*facing
-		pivotWorldY := y + box.pivot[1]
+		pivotX := box.pivot[0] * facing
+		pivotY := box.pivot[1]
 
-		// Convert world to screen coordinates
-		leftScreen := (leftWorld - sys.cam.Pos[0]) * sys.cam.Scale
-		rightScreen := (rightWorld - sys.cam.Pos[0]) * sys.cam.Scale
-		topScreen := (topWorld*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
-		bottomScreen := (bottomWorld*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
-		pivotScreenX := (pivotWorldX - sys.cam.Pos[0]) * sys.cam.Scale
-		pivotScreenY := (pivotWorldY*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel()
+		offsetX := left - pivotX
+		offsetY := top - pivotY
 
-		// Rectangle width and height
-		widthScreen := rightScreen - leftScreen
-		heightScreen := bottomScreen - topScreen
-
-		// The rectangle's top-left relative to the pivot
-		offsetX := leftScreen - pivotScreenX
-		offsetY := topScreen - pivotScreenY
-
-		// The rotation center is the pivot screen position, scaled by widthScale/heightScale
-		offX := float32(sys.gameWidth) / 2
-		offY := float32(0)
+		width  := right - left
+		height := bottom - top
 
 		// Construct the final rectangle
 		rect := [7]float32{
-
-			l * xs,                       // [0] x position (left)
-			box.rect[1] * ys,             // [1] y position (top)
-			w * xs,                       // [2] width
-			h * ys,                       // [3] height
-			(x + offx) * sys.widthScale,  // [4] rotation center x
-			(y + offy) * sys.heightScale, // [5] rotation center y
-			box.angle * facing,           // [6] rotation angle
-
-			offsetX,                                 // left offset from pivot
-			offsetY,                                 // top offset from pivot
-			widthScreen,                             // width
-			heightScreen,                            // height
-			(offX + pivotScreenX) * sys.widthScale,  // rotation center x
-			(offY + pivotScreenY) * sys.heightScale, // rotation center y
-			box.angle * facing,                      // angle
-
+			offsetX * xs,       // left offset from pivot
+			offsetY * ys,       // top offset from pivot
+			width * xs,         // width
+			height * ys,        // height
+			x + pivotX*xs,      // rotation center x, relative to screen center
+			y + pivotY*ys,      // rotation centre Y
+			box.angle * facing, // angle
 		}
 
 		// Append rectangle to list
