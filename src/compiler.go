@@ -3723,6 +3723,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		switch vname {
 		case "actionno":
 			opc = OC_ex2_stagebgvar_actionno
+		case "animloopcount":
+			opc = OC_ex2_stagebgvar_animloopcount
 		case "animtime":
 			opc = OC_ex2_stagebgvar_animtime
 		case "delta.x":
