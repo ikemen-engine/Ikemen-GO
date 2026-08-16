@@ -773,8 +773,7 @@ type TextSprite struct {
 	layerno        int16
 	palfx          *PalFX
 	frgba          [4]float32 // ttf fonts
-	forcecolor     bool
-	removetime     int32 // text sctrl
+	removetime     int32      // text sctrl
 	elapsedTicks   float32
 	textSpacing    [2]float32
 	textDelay      float32
@@ -949,10 +948,8 @@ func (ts *TextSprite) drawWindow() [4]int32 {
 }
 
 func (ts *TextSprite) SetColor(r, g, b, a int32) {
-	ts.forcecolor = true
 	ts.palfx.setColor(r, g, b)
-	ts.frgba = [...]float32{float32(r) / 255, float32(g) / 255,
-		float32(b) / 255, float32(a) / 255}
+	ts.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
 }
 
 func (ts *TextSprite) SetTextSpacing(xs, ys float32) {
@@ -1366,7 +1363,7 @@ func (ts *TextSprite) updateVel() {
 func (ts *TextSprite) Update() {
 	ts.elapsedTicks++
 	ts.updateVel()
-	if ts.palfx != nil && !ts.forcecolor {
+	if ts.palfx != nil {
 		ts.palfx.step()
 	}
 }
@@ -1433,12 +1430,8 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 
 		// Draw the visible line
 		if ts.fnt.Type == "truetype" {
-			var ttfPalFX *PalFX
-			if !ts.forcecolor {
-				ttfPalFX = ts.palfx
-			}
 			ts.fnt.DrawTtf(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
-				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &window, ts.frgba, ttfPalFX, float32(spacingXAdd))
+				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &window, ts.frgba, ts.palfx, float32(spacingXAdd))
 		} else {
 			ts.fnt.DrawText(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
 				xshear, ts.rot, ts.projection, ts.fLength, ts.bank, ts.align, &window, ts.palfx, ts.frgba[3], spacingXAdd)

@@ -215,13 +215,12 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 }
 
 type FSText struct {
-	font       [8]int32 // to match Lua arg count regardless
-	text       string
-	lay        Layout
-	palfx      *PalFX
-	frgba      [4]float32 // ttf fonts
-	forcecolor bool
-	pfxinit    int32
+	font    [8]int32 // to match Lua arg count regardless
+	text    string
+	lay     Layout
+	palfx   *PalFX
+	frgba   [4]float32 // ttf fonts
+	pfxinit int32
 }
 
 func newFSText(align int32) *FSText {
@@ -267,14 +266,12 @@ func readFSText(pre string, is IniSection, str string, ln int16, f map[int]*Fnt,
 }
 
 func (txt *FSText) SetColor(r, g, b, a int32) {
-	txt.forcecolor = true
 	txt.palfx.setColor(r, g, b)
-	txt.frgba = [...]float32{float32(r) / 255, float32(g) / 255,
-		float32(b) / 255, float32(a) / 255}
+	txt.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
 }
 
 func (txt *FSText) step() {
-	if txt.palfx != nil && !txt.forcecolor {
+	if txt.palfx != nil {
 		txt.palfx.step()
 	}
 }

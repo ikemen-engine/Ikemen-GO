@@ -56,23 +56,24 @@ func newPalFXDef() *PalFXDef {
 
 type PalFX struct {
 	PalFXDef
-	remap        []int
-	allowNeg     bool // Can use negative color math
-	sintime      [4]int32
-	enable       bool
-	eAllowNeg    bool
-	eInvertall   bool
-	eInvertblend int32
-	eAdd         [3]int32
-	eMul         [3]int32
-	eColor       float32
-	eHue         float32
-	eInterpolate bool
-	eiAdd        [3]int32
-	eiMul        [3]int32
-	eiColor      float32
-	eiHue        float32
-	eiTime       int32
+	remap          []int
+	allowNeg       bool // Can use negative color math
+	sintime        [4]int32
+	enable         bool
+	ignoreAllPalFX bool // TODO: Probably expose this as a parameter
+	eAllowNeg      bool
+	eInvertall     bool
+	eInvertblend   int32
+	eAdd           [3]int32
+	eMul           [3]int32
+	eColor         float32
+	eHue           float32
+	eInterpolate   bool
+	eiAdd          [3]int32
+	eiMul          [3]int32
+	eiColor        float32
+	eiHue          float32
+	eiTime         int32
 }
 
 func newPalFX() *PalFX {
@@ -92,6 +93,10 @@ func (pf *PalFX) clear() {
 }
 
 func (pf *PalFX) getSynFx(blendMode TransType, alpha [2]int32) *PalFX {
+	if pf != nil && pf.ignoreAllPalFX {
+		return pf
+	}
+
 	if pf == nil || !pf.enable {
 		if blendMode == TT_sub && sys.allPalFX.enable {
 			if pf == nil {
@@ -107,9 +112,11 @@ func (pf *PalFX) getSynFx(blendMode TransType, alpha [2]int32) *PalFX {
 			return sys.allPalFX
 		}
 	}
+
 	if !sys.allPalFX.enable {
 		return pf
 	}
+
 	synth := *pf
 	synth.synthesize(sys.allPalFX, blendMode, alpha)
 	return &synth
@@ -363,6 +370,7 @@ func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
 
 }
 
+// Sets the PalFX to render a simple solid color. Normally used by fonts
 func (pf *PalFX) setColor(r, g, b int32) {
 	rNormalized := Clamp(r, 0, 255)
 	gNormalized := Clamp(g, 0, 255)
