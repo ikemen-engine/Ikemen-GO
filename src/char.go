@@ -13997,15 +13997,20 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 	}
 }
 
-func (cl *CharList) pushDetection(getter *Char) {
-	// Stop outer loop if getter won't push
-	if !getter.csf(CSF_playerpush) || getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
+func (cl *CharList) pushDetection(c *Char) {
+	// Stop outer loop if char can't push at all
+	if !c.csf(CSF_playerpush) || c.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return
 	}
 
-	for _, c := range cl.runOrder {
-		// Stop current iteration if char won't ever push
-		if !c.csf(CSF_playerpush) || c.scf(SCF_standby) || c.scf(SCF_disabled) {
+	for _, getter := range cl.runOrder {
+		// Skip self and pairs that were already processed
+		if getter.id <= c.id {
+			continue
+		}
+
+		// Stop current iteration if getter can't push at all
+		if !getter.csf(CSF_playerpush) || getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
 			continue
 		}
 
@@ -14107,147 +14112,240 @@ func (cl *CharList) pushDetection(getter *Char) {
 			continue
 		}
 
+		// Check for Clsn2 overlap
+		// A significant difference between Mugen and commercial games is that only the former does this
+		if !c.asf(ASF_sizepushonly) && !getter.clsnCheck(c, 2, 2, false) {
+			continue
+		}
+
 		// Push characters away from each other
-		if c.asf(ASF_sizepushonly) || getter.clsnCheck(c, 2, 2, false) {
+		c.pushed, getter.pushed = true, true
 
-			c.pushed, getter.pushed = true, true
+		// Determine who gets pushed and the multipliers
+		var cFactor, gFactor float32
+		switch {
+		case c.pushPriority > getter.pushPriority:
+			cFactor = 0
+			gFactor = getter.size.pushfactor // Maybe use other character's constant?
+		case c.pushPriority < getter.pushPriority:
+			cFactor = c.size.pushfactor
+			gFactor = 0
+		default:
+			// Compare player weights and apply pushing factors
+			// Weight determines which player is pushed more. Factor determines how fast the player overlap is resolved
+			// We use the average factor so that the constant affects resolution speed without affecting who wins the struggle
+			averageFactor := (c.size.pushfactor + getter.size.pushfactor) / 2
+			totalWeight := float32(c.size.weight + getter.size.weight)
+			cFactor = averageFactor * float32(getter.size.weight) / totalWeight
+			gFactor = averageFactor * float32(c.size.weight) / totalWeight
+		}
 
-			// Determine who gets pushed and the multipliers
-			var cFactor, gFactor float32
-			switch {
-			case c.pushPriority > getter.pushPriority:
-				cFactor = 0
-				gFactor = getter.size.pushfactor // Maybe use other character's constant?
-			case c.pushPriority < getter.pushPriority:
-				cFactor = c.size.pushfactor
-				gFactor = 0
-			default:
-				// Compare player weights and apply pushing factors
-				// Weight determines which player is pushed more. Factor determines how fast the player overlap is resolved
-				// We use the average factor so that the constant affects resolution speed without affecting who wins the struggle
-				averageFactor := (c.size.pushfactor + getter.size.pushfactor) / 2
-				totalWeight := float32(c.size.weight + getter.size.weight)
-				cFactor = averageFactor * float32(getter.size.weight) / totalWeight
-				gFactor = averageFactor * float32(c.size.weight) / totalWeight
+		// Determine in which axes to push the players
+		// This needs to check both if the players have velocity or if their positions have changed
+		var pushx, pushz bool
+		if sys.zEnabled() && gposz != cposz { // If tied on Z axis we fall back to X pushing
+			// Get distances in both axes
+			distx := Abs(gposx - cposx)
+			distz := Abs(gposz - cposz)
+
+			// Check how much each axis should weigh on the decision
+			// Adjust z-distance to same scale as x-distance, since character depths are usually smaller than widths
+			xtotal := Abs(gxleft-gxright) + Abs(cxleft-cxright)
+			ztotal := Abs(gztop-gzbot) + Abs(cztop-czbot)
+			distzadj := distz
+			if ztotal != 0 {
+				distzadj = (xtotal / ztotal) * distz
 			}
 
-			// Determine in which axes to push the players
-			// This needs to check both if the players have velocity or if their positions have changed
-			var pushx, pushz bool
-			if sys.zEnabled() && gposz != cposz { // If tied on Z axis we fall back to X pushing
-				// Get distances in both axes
-				distx := Abs(gposx - cposx)
-				distz := Abs(gposz - cposz)
+			// Push farthest axis or both if distances are similar
+			similar := float32(0.75) // Ratio at which distances are considered similar. Arbitrary number. Maybe there's a better way
+			if distzadj != 0 && Abs(distx/distzadj) > similar && Abs(distx/distzadj) < (1/similar) {
+				pushx = true
+				pushz = true
+			} else if distx >= distzadj {
+				pushx = true
+			} else {
+				pushz = true
+			}
+		} else {
+			pushx = true
+		}
 
-				// Check how much each axis should weigh on the decision
-				// Adjust z-distance to same scale as x-distance, since character depths are usually smaller than widths
-				xtotal := Abs(gxleft-gxright) + Abs(cxleft-cxright)
-				ztotal := Abs(gztop-gzbot) + Abs(cztop-czbot)
-				distzadj := distz
-				if ztotal != 0 {
-					distzadj = (xtotal / ztotal) * distz
-				}
-
-				// Push farthest axis or both if distances are similar
-				similar := float32(0.75) // Ratio at which distances are considered similar. Arbitrary number. Maybe there's a better way
-				if distzadj != 0 && Abs(distx/distzadj) > similar && Abs(distx/distzadj) < (1/similar) {
-					pushx = true
-					pushz = true
-				} else if distx >= distzadj {
-					pushx = true
+		if pushx {
+			tmp := getter.distX(c, getter)
+			if tmp == 0 {
+				// Decide direction in which to push each player in case of a tie in position
+				// This also decides who gets to stay in the corner
+				// Some of these checks are similar to char run order, but this approach allows better tie break control
+				// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
+				if c.pushPriority > getter.pushPriority {
+					if c.pos[0] >= 0 {
+						tmp = 1
+					} else {
+						tmp = -1
+					}
+				} else if c.pushPriority < getter.pushPriority {
+					if getter.pos[0] >= 0 {
+						tmp = -1
+					} else {
+						tmp = 1
+					}
+				} else if c.ss.moveType == MT_H && getter.ss.moveType != MT_H {
+					tmp = -c.facing
+				} else if c.ss.moveType != MT_H && getter.ss.moveType == MT_H {
+					tmp = getter.facing
+				} else if c.ss.moveType == MT_A && getter.ss.moveType != MT_A {
+					tmp = getter.facing
+				} else if c.ss.moveType != MT_A && getter.ss.moveType == MT_A {
+					tmp = -c.facing
+				} else if c.pos[1]*c.localscl < getter.pos[1]*getter.localscl {
+					tmp = getter.facing
 				} else {
-					pushz = true
+					tmp = -c.facing
+				}
+			}
+
+			cOldPos := c.pos[0]
+			gOldPos := getter.pos[0]
+
+			cMove := overlapX * cFactor
+			gMove := overlapX * gFactor
+
+			if tmp > 0 {
+				if c.pushPriority >= getter.pushPriority {
+					getter.pos[0] -= gMove / getter.localscl
+				}
+				if c.pushPriority <= getter.pushPriority {
+					c.pos[0] += cMove / c.localscl
 				}
 			} else {
-				pushx = true
+				if c.pushPriority >= getter.pushPriority {
+					getter.pos[0] += gMove / getter.localscl
+				}
+				if c.pushPriority <= getter.pushPriority {
+					c.pos[0] -= cMove / c.localscl
+				}
 			}
 
-			if pushx {
-				tmp := getter.distX(c, getter)
-				if tmp == 0 {
-					// Decide direction in which to push each player in case of a tie in position
-					// This also decides who gets to stay in the corner
-					// Some of these checks are similar to char run order, but this approach allows better tie break control
-					// https://github.com/ikemen-engine/Ikemen-GO/issues/1426
-					if c.pushPriority > getter.pushPriority {
-						if c.pos[0] >= 0 {
-							tmp = 1
-						} else {
-							tmp = -1
+			// Clamp X positions
+			c.xScreenBound()
+			getter.xScreenBound()
+
+			// If one player is cornered, the other player's push factor determines
+			// how quickly they are pushed out of the corner.
+			if c.pushPriority == getter.pushPriority {
+				cActual := Abs(c.pos[0]-cOldPos) * c.localscl
+				gActual := Abs(getter.pos[0]-gOldPos) * getter.localscl
+				cornerEpsilon := float32(0.0001)
+
+				corneredC := cActual+cornerEpsilon < cMove
+				corneredGetter := gActual+cornerEpsilon < gMove
+
+				if corneredC && !corneredGetter {
+					// c is cornered, so getter takes the full displacement according to getter's factor.
+					target := overlapX * getter.size.pushfactor
+					extra := target - gActual
+					if extra > 0 {
+						dir := getter.pos[0] - gOldPos
+						if dir > 0 {
+							getter.pos[0] += extra / getter.localscl
+						} else if dir < 0 {
+							getter.pos[0] -= extra / getter.localscl
 						}
-					} else if c.pushPriority < getter.pushPriority {
-						if getter.pos[0] >= 0 {
-							tmp = -1
-						} else {
-							tmp = 1
+						getter.xScreenBound()
+					}
+				} else if corneredGetter && !corneredC {
+					// getter is cornered, so c takes the full displacement according to c's factor.
+					target := overlapX * c.size.pushfactor
+					extra := target - cActual
+					if extra > 0 {
+						dir := c.pos[0] - cOldPos
+						if dir > 0 {
+							c.pos[0] += extra / c.localscl
+						} else if dir < 0 {
+							c.pos[0] -= extra / c.localscl
 						}
-					} else if c.ss.moveType == MT_H && getter.ss.moveType != MT_H {
-						tmp = -c.facing
-					} else if c.ss.moveType != MT_H && getter.ss.moveType == MT_H {
-						tmp = getter.facing
-					} else if c.ss.moveType == MT_A && getter.ss.moveType != MT_A {
-						tmp = getter.facing
-					} else if c.ss.moveType != MT_A && getter.ss.moveType == MT_A {
-						tmp = -c.facing
-					} else if c.pos[1]*c.localscl < getter.pos[1]*getter.localscl {
-						tmp = getter.facing
-					} else {
-						tmp = -c.facing
+						c.xScreenBound()
 					}
 				}
-
-				if tmp > 0 {
-					if c.pushPriority >= getter.pushPriority {
-						getter.pos[0] -= overlapX * gFactor / getter.localscl
-					}
-					if c.pushPriority <= getter.pushPriority {
-						c.pos[0] += overlapX * cFactor / c.localscl
-					}
-				} else {
-					if c.pushPriority >= getter.pushPriority {
-						getter.pos[0] += overlapX * gFactor / getter.localscl
-					}
-					if c.pushPriority <= getter.pushPriority {
-						c.pos[0] -= overlapX * cFactor / c.localscl
-					}
-				}
-
-				// Clamp X positions
-				c.xScreenBound()
-				getter.xScreenBound()
-
-				// Update position interpolation
-				// TODO: Interpolation still looks wrong when framerate is above 60fps
-				c.setPosX(c.pos[0], true)
-				getter.setPosX(getter.pos[0], true)
 			}
 
-			// TODO: Z axis push might need some decision for who stays in the corner, like X axis
-			if pushz {
-				if gposz < cposz {
-					if c.pushPriority >= getter.pushPriority {
-						getter.pos[2] -= overlapZ * gFactor / getter.localscl
+			// Update position interpolation
+			// TODO: Interpolation still looks wrong when framerate is above 60fps
+			c.setPosX(c.pos[0], true)
+			getter.setPosX(getter.pos[0], true)
+		}
+
+		// TODO: Z axis push might need some decision for who stays in the corner, like X axis
+		if pushz {
+			cOldPos := c.pos[2]
+			gOldPos := getter.pos[2]
+
+			cMove := overlapZ * cFactor
+			gMove := overlapZ * gFactor
+
+			if gposz < cposz {
+				if c.pushPriority >= getter.pushPriority {
+					getter.pos[2] -= gMove / getter.localscl
+				}
+				if c.pushPriority <= getter.pushPriority {
+					c.pos[2] += cMove / c.localscl
+				}
+			} else if gposz > cposz {
+				if c.pushPriority >= getter.pushPriority {
+					getter.pos[2] += gMove / getter.localscl
+				}
+				if c.pushPriority <= getter.pushPriority {
+					c.pos[2] -= cMove / c.localscl
+				}
+			}
+
+			// Clamp Z positions
+			c.zDepthBound()
+			getter.zDepthBound()
+
+			// If one player is constrained, the other player's push factor determines
+			// how quickly they are pushed out of the boundary.
+			if c.pushPriority == getter.pushPriority {
+				cActual := Abs(c.pos[2]-cOldPos) * c.localscl
+				gActual := Abs(getter.pos[2]-gOldPos) * getter.localscl
+				cornerEpsilon := float32(0.0001)
+
+				corneredC := cActual+cornerEpsilon < cMove
+				corneredGetter := gActual+cornerEpsilon < gMove
+
+				if corneredC && !corneredGetter {
+					// c is constrained, so getter takes the full displacement according to getter's factor.
+					target := overlapZ * getter.size.pushfactor
+					extra := target - gActual
+					if extra > 0 {
+						dir := getter.pos[2] - gOldPos
+						if dir > 0 {
+							getter.pos[2] += extra / getter.localscl
+						} else if dir < 0 {
+							getter.pos[2] -= extra / getter.localscl
+						}
+						getter.zDepthBound()
 					}
-					if c.pushPriority <= getter.pushPriority {
-						c.pos[2] += overlapZ * cFactor / c.localscl
-					}
-				} else if gposz > cposz {
-					if c.pushPriority >= getter.pushPriority {
-						getter.pos[2] += overlapZ * gFactor / getter.localscl
-					}
-					if c.pushPriority <= getter.pushPriority {
-						c.pos[2] -= overlapZ * cFactor / c.localscl
+				} else if corneredGetter && !corneredC {
+					// getter is constrained, so c takes the full displacement according to c's factor.
+					target := overlapZ * c.size.pushfactor
+					extra := target - cActual
+					if extra > 0 {
+						dir := c.pos[2] - cOldPos
+						if dir > 0 {
+							c.pos[2] += extra / c.localscl
+						} else if dir < 0 {
+							c.pos[2] -= extra / c.localscl
+						}
+						c.zDepthBound()
 					}
 				}
-
-				// Clamp Z positions
-				c.zDepthBound()
-				getter.zDepthBound()
-
-				// Update position interpolation
-				c.setPosZ(c.pos[2], true)
-				getter.setPosZ(getter.pos[2], true)
 			}
+
+			// Update position interpolation
+			c.setPosZ(c.pos[2], true)
+			getter.setPosZ(getter.pos[2], true)
 		}
 	}
 }
@@ -14305,7 +14403,6 @@ func (cl *CharList) collisionDetection() {
 	// This must happen before hit detection
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1941
 	// It doesn't need to run in "sortedOrder", but it should be harmless
-	// An attempt was made to skip redundant player pair checks, but that makes chars push each other too slowly in screen corners
 	for _, idx := range sortedOrder {
 		cl.pushDetection(cl.runOrder[idx])
 	}
