@@ -215,6 +215,15 @@ ANDROID_APK_REF=main \
 docker compose -f build/docker/android/docker-compose.yml run --rm android-build
 ```
 
+Each APK gets a timestamp-based `versionCode` by default so a later build is
+recognized as an upgrade. The first build also creates a persistent debug key at
+`build/android-signing/debug.keystore`; keep a backup of that ignored file,
+because Android only accepts updates signed by the same key. You may override the
+metadata and key path with `ANDROID_VERSION_CODE`, `ANDROID_VERSION_NAME`, and
+`ANDROID_DEBUG_KEYSTORE` (the key must use the standard Android debug alias and
+password). A build made before this behavior was introduced may require one final
+uninstall before the first newly signed APK can be installed.
+
 To skip APK packaging (only build `.so` + deps):
 
 ```bash

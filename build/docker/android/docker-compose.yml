@@ -27,6 +27,9 @@ services:
       GOEXPERIMENT: "arenas"
       APP_VERSION: "${APP_VERSION:-docker-test}"
       APP_BUILDTIME: "${APP_BUILDTIME:-2026.01.13}"
+      ANDROID_VERSION_CODE: "${ANDROID_VERSION_CODE:-}"
+      ANDROID_VERSION_NAME: "${ANDROID_VERSION_NAME:-}"
+      ANDROID_DEBUG_KEYSTORE: "${ANDROID_DEBUG_KEYSTORE:-}"
       # Build APK automatically (default is 1, but make it explicit in compose)
       BUILD_ANDROID_APK: "${BUILD_ANDROID_APK:-1}"
     command: >

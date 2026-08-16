@@ -59,7 +59,8 @@ Builds the Docker image and runs the android-build container to produce:
   - lib/*.so
 
 Environment overrides (optional):
-  APP_VERSION, APP_BUILDTIME, ANDROID_APK_REPO, ANDROID_APK_REF, BUILD_ANDROID_APK
+  APP_VERSION, APP_BUILDTIME, ANDROID_VERSION_CODE, ANDROID_VERSION_NAME,
+  ANDROID_DEBUG_KEYSTORE, ANDROID_APK_REPO, ANDROID_APK_REF, BUILD_ANDROID_APK
 EOF
       exit 0
       ;;

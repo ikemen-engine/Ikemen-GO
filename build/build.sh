@@ -87,6 +87,7 @@ ANDROID_APK_REPO="${ANDROID_APK_REPO:-https://github.com/Jesuszilla/ikemen-droid
 ANDROID_APK_REF="${ANDROID_APK_REF:-main}"
 ANDROID_APK_DIR="$REPO_ROOT/$BUILDDIR/android-apk/ikemen-droid"
 ANDROID_APK_OUT="${ANDROID_APK_OUT:-$REPO_ROOT/bin/ikemen-go.apk}"
+ANDROID_APK_PATCH_DIR="$REPO_ROOT/$BUILDDIR/android/patches"
 
 # FFmpeg config
 FFMPEG_REV="${FFMPEG_REV:-release/7.1}"
@@ -100,6 +101,9 @@ FFMPEG_REBUILT=0
 # ---- App metadata (overridden by CI)
 APP_VERSION="${APP_VERSION:-nightly}"
 APP_BUILDTIME="${APP_BUILDTIME:-$(date '+%Y.%m.%d')}"
+ANDROID_VERSION_CODE="${ANDROID_VERSION_CODE:-}"
+ANDROID_VERSION_NAME="${ANDROID_VERSION_NAME:-$APP_VERSION}"
+ANDROID_DEBUG_KEYSTORE="${ANDROID_DEBUG_KEYSTORE:-$REPO_ROOT/$BUILDDIR/android-signing/debug.keystore}"
 
 # --- Always pause on Windows on exit (covers success and failure) ----------
 pause_always_windows() {
@@ -922,6 +926,75 @@ function sync_android_apk_repo() {
 	git config --system --add safe.directory "$ANDROID_APK_DIR" >/dev/null 2>&1 || true
 }
 
+function apply_android_apk_patches() {
+	[[ -d "$ANDROID_APK_PATCH_DIR" ]] || return 0
+
+	local patch
+	for patch in "$ANDROID_APK_PATCH_DIR"/*.patch; do
+		[[ -f "$patch" ]] || continue
+		if git -C "$ANDROID_APK_DIR" apply --check "$patch"; then
+			echo "==> Applying Android wrapper patch: $(basename "$patch")"
+			git -C "$ANDROID_APK_DIR" apply "$patch"
+		elif git -C "$ANDROID_APK_DIR" apply --reverse --check "$patch"; then
+			echo "==> Android wrapper patch already applied: $(basename "$patch")"
+		else
+			echo "ERROR: Android wrapper patch does not apply cleanly: $patch" >&2
+			echo "       Check ANDROID_APK_REF and refresh the patch for that wrapper revision." >&2
+			exit 1
+		fi
+	done
+}
+
+function configure_android_apk_identity() {
+	if [[ -z "$ANDROID_VERSION_CODE" ]]; then
+		# Epoch seconds are monotonic across normal successive builds and stay below
+		# Android's 2,100,000,000 versionCode limit until 2036.
+		ANDROID_VERSION_CODE="$(date -u '+%s')"
+	fi
+	if [[ ! "$ANDROID_VERSION_CODE" =~ ^[0-9]+$ ]] \
+		|| ((ANDROID_VERSION_CODE < 1 || ANDROID_VERSION_CODE > 2100000000)); then
+		echo "ERROR: ANDROID_VERSION_CODE must be an integer from 1 through 2100000000." >&2
+		exit 1
+	fi
+
+	case "$ANDROID_DEBUG_KEYSTORE" in
+		/*) ;;
+		*) ANDROID_DEBUG_KEYSTORE="$REPO_ROOT/$ANDROID_DEBUG_KEYSTORE" ;;
+	esac
+
+	if [[ ! -f "$ANDROID_DEBUG_KEYSTORE" ]]; then
+		command -v keytool >/dev/null 2>&1 || {
+			echo "ERROR: keytool is required to create the persistent Android debug keystore." >&2
+			exit 1
+		}
+		echo "==> Creating persistent Android debug keystore: $ANDROID_DEBUG_KEYSTORE"
+		(
+			umask 077
+			mkdir -p "$(dirname "$ANDROID_DEBUG_KEYSTORE")"
+			keytool -genkeypair -noprompt \
+				-keystore "$ANDROID_DEBUG_KEYSTORE" \
+				-storepass android \
+				-alias androiddebugkey \
+				-keypass android \
+				-dname "CN=Android Debug,O=Android,C=US" \
+				-keyalg RSA \
+				-keysize 2048 \
+				-validity 10000 >/dev/null
+		)
+	fi
+
+	if ! keytool -list -keystore "$ANDROID_DEBUG_KEYSTORE" -storepass android \
+		-alias androiddebugkey >/dev/null 2>&1; then
+		echo "ERROR: ANDROID_DEBUG_KEYSTORE is not a compatible Android debug keystore." >&2
+		echo "       Expected alias 'androiddebugkey' with the standard debug password." >&2
+		exit 1
+	fi
+
+	export ANDROID_VERSION_CODE ANDROID_VERSION_NAME ANDROID_DEBUG_KEYSTORE
+	echo "==> Android APK identity: versionCode=$ANDROID_VERSION_CODE versionName=$ANDROID_VERSION_NAME"
+	echo "==> Android APK signing key: $ANDROID_DEBUG_KEYSTORE"
+}
+
 function stage_android_apk_libs() {
 	local app_dir="$ANDROID_APK_DIR/app"
 	# Clean any pre-existing native libs that Gradle might pick up
@@ -987,6 +1060,8 @@ function build_android_apk() {
 
 	ensure_android_sdk_for_gradle
 	sync_android_apk_repo
+	apply_android_apk_patches
+	configure_android_apk_identity
 	ensure_android_runtime_assets
 	stage_android_apk_libs
 	stage_android_apk_assets

@@ -67,6 +67,7 @@ bin/libmain.h
 lib/*.so
 lib/*.so.*
 build/android-apk/
+build/android-signing/
 
 # Binaries
 build/android-deps/
