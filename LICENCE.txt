@@ -2,13 +2,13 @@ MIT License
 
 Copyright (c) 2016 Suehiro
 Copyright (c) 2018 K4thos, NeatUnsou, ShinLucho
-Copyright (c) 2019 danielporto, nckgriva, Windblade-GR01
-Copyright (c) 2020 ambonmibable, Wintermourn
-Copyright (c) 2021 Amavect, BwdYeti, Eiton, SuperFromND, two4teezee
-Copyright (c) 2022 assemblaj, GaryCXJk, Lazin3ss, potsmugen, samhocevar
-Copyright (c) 2023 RealFoobs, RollinJay, Wftk, wily-coyote
-Copyright (c) 2024 Jesuszilla, Kasasagi77, Orange-Dolphin, rakieldev
-Copyright (c) 2025 Alceris, facundocameto, leonkasovan
+Copyright (c) 2019 Daniel Porto, Gacel, Nikolay Griva
+Copyright (c) 2020 Wintermourn
+Copyright (c) 2021 Amavect, BwdYeti, Eiton, Super, two4teezee
+Copyright (c) 2022 fantasma, GaryCXJk, PotS, Sam Hocevar, Wreq!
+Copyright (c) 2023 Foobs, RollinJay, Wftk, wily-coyote
+Copyright (c) 2024 Jesuszilla, Kasasagi, Orange-Dolphin, Rakíel
+Copyright (c) 2025 Alceris, Kase, Leon Kasovan
 Copyright (c) 2026 Kokorz
 Copyright (c) 2016-2026 Ikemen GO contributors
 
