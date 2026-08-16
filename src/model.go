@@ -519,7 +519,7 @@ func loadglTFModel(filepath string) (*Model, error) {
 				}[s.MagFilter]
 				min, _ := map[gltf.MinFilter]TextureSamplingParam{
 					gltf.MinUndefined:            TextureSamplingFilterLinear,
-					gltf.MinNearest:              TextureSamplingFilterLinear,
+					gltf.MinNearest:              TextureSamplingFilterNearest,
 					gltf.MinLinear:               TextureSamplingFilterLinear,
 					gltf.MinNearestMipMapNearest: TextureSamplingFilterNearestMipMapNearest,
 					gltf.MinLinearMipMapNearest:  TextureSamplingFilterLinearMipMapNearest,
