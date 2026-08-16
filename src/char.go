@@ -6731,6 +6731,13 @@ func (c *Char) destroy() {
 	// Remove ID from target's GetHitVars
 	for _, tid := range c.targets {
 		if t := sys.playerID(tid); t != nil {
+			// If this target is still bound to the helper, force it to SelfState
+			// This placement is more reliable than doing it from the target
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/3766
+			if t.bindToId == c.id {
+				t.selfState(5050, -1, -1, -1, "")
+				t.gethitBindClear()
+			}
 			t.ghv.dropPlayerId(c.id)
 		}
 	}
@@ -8331,14 +8338,18 @@ func (c *Char) targetBind(tar []int32, time int32, x, y, z float32) {
 func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 	if len(tar) > 0 {
 		if t := sys.playerID(tar[0]); t != nil {
+			// Add head/mid/foot offset
 			switch hmf {
-			case HMF_M:
-				x += t.size.mid.pos[0] * ((320 / t.localcoord) / c.localscl)
-				y += t.size.mid.pos[1] * ((320 / t.localcoord) / c.localscl)
 			case HMF_H:
 				x += t.size.head.pos[0] * ((320 / t.localcoord) / c.localscl)
 				y += t.size.head.pos[1] * ((320 / t.localcoord) / c.localscl)
+			case HMF_M:
+				x += t.size.mid.pos[0] * ((320 / t.localcoord) / c.localscl)
+				y += t.size.mid.pos[1] * ((320 / t.localcoord) / c.localscl)
+			case HMF_F:
+				// Do nothing. Feet are 0,0
 			}
+
 			if !math.IsNaN(float64(x)) {
 				c.setPosX(t.pos[0]*(t.localscl/c.localscl)+x*t.facing, true)
 			}
@@ -8348,6 +8359,8 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 			if !math.IsNaN(float64(z)) {
 				c.setPosZ(t.pos[2]*(t.localscl/c.localscl)+z, true)
 			}
+
+			// Binding to a target in reality also binds that target
 			c.targetBind(tar[:1], time,
 				c.facing*c.distX(t, c),
 				(t.pos[1]*(t.localscl/c.localscl))-(c.pos[1]*(c.localscl/t.localscl)),
@@ -9845,11 +9858,10 @@ func (c *Char) setBindTime(time int32) {
 }
 
 func (c *Char) setBindToId(to *Char, isTargetBind bool) {
-	if c.bindToId != to.id {
-		c.bindToId = to.id
-	}
+	c.bindToId = to.id
+
 	// Target binds are all we need to correct with this logic.
-	// By the time this gets to the bind() method, it's going to
+	// By the time this gets to the updateBinding() method, it's going to
 	// default to setting the facing to the same as the "bindTo"
 	// facing at that point. So as weird as it may be to default
 	// to 0 here, this behavior does seem to be what MUGEN
@@ -9857,76 +9869,85 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 	if c.bindFacing == 0 && isTargetBind {
 		c.bindFacing = to.facing * 2
 	}
+
 	if to.bindToId == c.id {
 		to.setBindTime(0)
 	}
 }
 
-func (c *Char) bind() {
-	if c.bindTime == 0 {
-		if bt := sys.playerID(c.bindToId); bt != nil {
-			if bt.hasTarget(c.id) {
-				if bt.csf(CSF_destroy) {
-					sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
-					if c.ss.moveType == MT_H {
-						c.selfState(5050, -1, -1, -1, "")
-					}
-					c.setBindTime(0)
-					return
-				}
-			}
-		}
-		if c.bindToId > 0 {
-			c.setBindTime(0)
-		}
+// Updates binding position and velocity only. Time and ID handled elsewhere
+func (c *Char) updateBinding() {
+	if c.bindToId < 0 || c.bindTime == 0 {
 		return
 	}
-	if bt := sys.playerID(c.bindToId); bt != nil {
-		if bt.hasTarget(c.id) {
-			if !math.IsNaN(float64(c.bindPos[0])) {
-				c.vel[0] = c.facing * bt.facing * bt.vel[0]
-			}
-			if !math.IsNaN(float64(c.bindPos[1])) {
-				c.vel[1] = bt.vel[1]
-			}
-			if !math.IsNaN(float64(c.bindPos[2])) {
-				c.vel[2] = bt.vel[2]
-			}
-		}
+
+	bt := sys.playerID(c.bindToId)
+
+	if bt == nil {
+		return
+	}
+
+	// Copy velocity if this is a target bind
+	if bt.hasTarget(c.id) {
 		if !math.IsNaN(float64(c.bindPos[0])) {
-			f := bt.facing
-			// We only need to correct for target binds (and snaps)
-			if Abs(c.bindFacing) == 2 {
-				f = c.bindFacing / 2
-			}
-			c.setPosX(bt.pos[0]*bt.localscl/c.localscl+f*(c.bindPos[0]+c.bindPosAdd[0]), true)
-			c.interPos[0] += bt.interPos[0] - bt.pos[0]
-			c.oldPos[0] += bt.oldPos[0] - bt.pos[0]
-			c.pushed = c.pushed || bt.pushed
-			c.ghv.xoff = 0
+			c.vel[0] = c.facing * bt.facing * bt.vel[0]
 		}
 		if !math.IsNaN(float64(c.bindPos[1])) {
-			c.setPosY(bt.pos[1]*bt.localscl/c.localscl+(c.bindPos[1]+c.bindPosAdd[1]), true)
-			c.interPos[1] += bt.interPos[1] - bt.pos[1]
-			c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
-			c.ghv.yoff = 0
+			c.vel[1] = bt.vel[1]
 		}
 		if !math.IsNaN(float64(c.bindPos[2])) {
-			c.setPosZ(bt.pos[2]*bt.localscl/c.localscl+(c.bindPos[2]+c.bindPosAdd[2]), true)
-			c.interPos[2] += bt.interPos[2] - bt.pos[2]
-			c.oldPos[2] += bt.oldPos[2] - bt.pos[2]
-			c.ghv.zoff = 0
+			c.vel[2] = bt.vel[2]
 		}
-		if Abs(c.bindFacing) == 1 {
-			if c.bindFacing > 0 {
-				c.setFacing(bt.facing)
-			} else {
-				c.setFacing(-bt.facing)
-			}
+	}
+
+	// Do the actual binding
+	c.bindToPlayer(bt)
+}
+
+// Does the actual position binding. Extracted so it can run twice in the same frame if necessary
+func (c *Char) bindToPlayer(bt *Char) {
+	// X
+	if !math.IsNaN(float64(c.bindPos[0])) {
+		f := bt.facing
+		// We only need to correct for target binds (and snaps)
+		if Abs(c.bindFacing) == 2 {
+			f = c.bindFacing / 2
 		}
-	} else {
-		c.setBindTime(0)
-		return
+		newX := bt.pos[0]*bt.localscl/c.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])
+		c.setPosX(newX, true)
+		c.interPos[0] += bt.interPos[0] - bt.pos[0]
+		c.oldPos[0] += bt.oldPos[0] - bt.pos[0]
+		c.pushed = c.pushed || bt.pushed
+		c.ghv.xoff = 0
+	}
+
+	// Y
+	if !math.IsNaN(float64(c.bindPos[1])) {
+		newY := bt.pos[1]*bt.localscl/c.localscl + (c.bindPos[1] + c.bindPosAdd[1])
+		c.setPosY(newY, true)
+		c.interPos[1] += bt.interPos[1] - bt.pos[1]
+		c.oldPos[1] += bt.oldPos[1] - bt.pos[1]
+		//c.pushed = c.pushed || bt.pushed // No pushing happens on y-axis
+		c.ghv.yoff = 0
+	}
+
+	// Z
+	if !math.IsNaN(float64(c.bindPos[2])) {
+		newZ := bt.pos[2]*bt.localscl/c.localscl + (c.bindPos[2] + c.bindPosAdd[2])
+		c.setPosZ(newZ, true)
+		c.interPos[2] += bt.interPos[2] - bt.pos[2]
+		c.oldPos[2] += bt.oldPos[2] - bt.pos[2]
+		c.pushed = c.pushed || bt.pushed
+		c.ghv.zoff = 0
+	}
+
+	// Facing
+	if Abs(c.bindFacing) == 1 {
+		if c.bindFacing > 0 {
+			c.setFacing(bt.facing)
+		} else {
+			c.setFacing(-bt.facing)
+		}
 	}
 }
 
@@ -12058,13 +12079,20 @@ func (c *Char) actionRun() {
 	}
 	c.xScreenBound()
 	c.zDepthBound()
+
+	// Update binding others and binding to others
+	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
 	if !c.pauseBool {
+		if !c.isTargetBound() {
+			c.updateBinding()
+		}
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
-				t.bind()
+				t.updateBinding()
 			}
 		}
 	}
+
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) - int8(Btoi(c.hitPause()))
 	// Signal that "actionRun" has finished
 	c.minus = 1
@@ -12201,9 +12229,6 @@ func (c *Char) update() {
 				return
 			}
 		*/
-		if !c.pause() && !c.isTargetBound() {
-			c.bind()
-		}
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
@@ -12238,6 +12263,7 @@ func (c *Char) update() {
 			//	c.makeDust(0, 0, 0, 3) // Default spacing of 3
 			//}
 		}
+
 		if c.ss.moveType == MT_H {
 			// Set opposing team's First Attack flag
 			if sys.firstAttack[2] == 0 && (c.teamside == 0 || c.teamside == 1) {
@@ -12338,6 +12364,7 @@ func (c *Char) tick() {
 	if c.scf(SCF_disabled) {
 		return
 	}
+
 	// Step animation
 	if c.acttmp > 0 || !c.pauseBool && (!c.hitPause() || c.asf(ASF_animatehitpause)) {
 		// Update reference frame first
@@ -12352,22 +12379,25 @@ func (c *Char) tick() {
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/1550
 		c.animBackup = c.anim
 	}
+
+	// Step bindTime
 	if c.bindTime > 0 {
 		if c.isTargetBound() {
 			bt := sys.playerID(c.bindToId)
-			if bt == nil || bt.csf(CSF_gethit) || bt.csf(CSF_destroy) {
-				// SelfState if binder gets hit or destroys self
+			if bt == nil || bt.csf(CSF_gethit) {
+				// SelfState if binder is missing or got hit. Destroyed case handled in destroy()
 				// https://github.com/ikemen-engine/Ikemen-GO/issues/2347
 				c.selfState(5050, -1, -1, -1, "")
 				c.gethitBindClear()
 			} else if !bt.pause() {
-				//setBindTime is not used here because the CSF_destroy flag may be enabled in a frame with BindTime=0. If bindTime becomes 0, the setBindTime processing will be performed later
-				c.bindTime -= 1
-				//c.setBindTime(c.bindTime - 1)
+				// Use setBindTime so that the bind variables are cleared when the timer reaches 0
+				// Manual decrement was only needed so setBindTime() would not clear the bind for a dying helper
+				// destroy() handles that case now
+				// c.bindTime -= 1
+				c.setBindTime(c.bindTime - 1)
 			}
 		} else {
 			if !c.pause() {
-				// c.bindTime -= 1
 				c.setBindTime(c.bindTime - 1)
 				// The fix below was necessary before because bindTime should not be decremented directly but rather via setBindTime
 				// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
@@ -12378,6 +12408,7 @@ func (c *Char) tick() {
 			}
 		}
 	}
+
 	if c.cmd == nil {
 		if c.keyctrl[0] {
 			c.cmd = make([]CommandList, len(sys.chars))
@@ -13246,9 +13277,7 @@ func (cl *CharList) action() {
 	// We use an index-based loop instead of a range so that appended helpers are also processed
 	for i := 0; i < len(cl.runOrder); i++ {
 		c := cl.runOrder[i]
-		if !c.csf(CSF_destroy) {
-			c.actionRun()
-		}
+		c.actionRun()
 	}
 
 	// Finish performing character actions
@@ -13998,6 +14027,20 @@ func (cl *CharList) pushDetection(getter *Char) {
 	}
 }
 
+// Re-applies binding positions to players whose binding targets were pushed
+// Mugen did not do this, making helper binding more frustrating than it needed to be
+func (cl *CharList) rebindIfPushed() {
+	for _, c := range cl.runOrder {
+		if c.bindTime != 0 && c.bindToId >= 0 {
+			bt := sys.playerID(c.bindToId)
+			// If both were pushed we do nothing
+			if bt != nil && bt.pushed && !c.pushed {
+				c.bindToPlayer(bt)
+			}
+		}
+	}
+}
+
 func (cl *CharList) collisionDetection() {
 	// Temp slice for sorting
 	sortedOrder := make([]int, len(cl.runOrder))
@@ -14041,6 +14084,9 @@ func (cl *CharList) collisionDetection() {
 	for _, idx := range sortedOrder {
 		cl.pushDetection(cl.runOrder[idx])
 	}
+
+	// Rebind players if necessary
+	cl.rebindIfPushed()
 
 	// Player hit detection
 	for _, idx := range sortedOrder {

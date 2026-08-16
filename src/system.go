@@ -2400,7 +2400,7 @@ func (s *System) resetRound() {
 	s.lastHitter = [2]int{-1, -1}
 	s.slowtime = s.fightScreen.round.slow_time
 	s.winposetime = s.fightScreen.round.over_wintime
-	s.winwaittime = s.fightScreen.round.over_waittime + s.fightScreen.round.over_forcewintime
+	s.winwaittime = s.fightScreen.round.over_forcewintime
 	s.winskipped = false
 	s.intro = s.fightScreen.round.start_waittime + s.fightScreen.round.ctrl_time + 1
 	s.curRoundTime = s.maxRoundTime

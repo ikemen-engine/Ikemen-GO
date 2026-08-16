@@ -12640,13 +12640,12 @@ func (sc saveFile) Run(c *Char, _ []int32) bool {
 	switch savedata {
 	case 0: // Map
 		if len(exactKeys) > 0 || len(includeSubstrings) > 0 {
-			// Apply filters
+			// Apply filters in a new map
 			m := make(map[string]float32)
 			// Try exact match
+			// In this case, save the key even if it's not yet initialized
 			for _, key := range exactKeys {
-				if val, ok := crun.mapArray[key]; ok {
-					m[key] = val
-				}
+				m[key] = crun.mapArray[key] // Sets to 0 if key is missing
 			}
 			// Try "include"
 			for _, substr := range includeSubstrings {
@@ -12655,6 +12654,10 @@ func (sc saveFile) Run(c *Char, _ []int32) bool {
 						m[existingKey] = val
 					}
 				}
+			}
+			// Warn if nothing saved
+			if len(m) == 0 {
+				sys.appendToConsole(crun.warn() + "SaveFile: no maps matched filters")
 			}
 			enc.Encode(m)
 		} else {
@@ -12738,28 +12741,33 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 			return false
 		}
 		if len(exactKeys) > 0 || len(includeSubstrings) > 0 {
-			// Apply filters
-			for key, val := range loaded {
-				matched := false
+			// Helper to apply filters
+			matchesFilter := func(key string) bool {
 				// Try exact match
 				for _, ek := range exactKeys {
 					if key == ek {
-						matched = true
-						break
+						return true
 					}
 				}
 				// Try "include"
-				if !matched {
-					for _, substr := range includeSubstrings {
-						if strings.Contains(key, substr) {
-							matched = true
-							break
-						}
+				for _, substr := range includeSubstrings {
+					if strings.Contains(key, substr) {
+						return true
 					}
 				}
-				if matched {
+				return false
+			}
+			// Load filtered maps
+			loadedCount := 0
+			for key, val := range loaded {
+				if matchesFilter(key) {
 					crun.mapArray[key] = val
+					loadedCount++
 				}
+			}
+			// Warn if nothing loaded
+			if loadedCount == 0 {
+				sys.appendToConsole(crun.warn() + "LoadFile: no maps matched filters")
 			}
 		} else {
 			// Load all maps
