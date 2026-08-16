@@ -23,9 +23,25 @@ MIN_ADDITIONS = 100
 MANUAL_CONTRIBUTORS = {"Suehiro": 2016}
 EXCLUDED_LOGINS = {
     "lint-action",
-    "ppitulaj",  # K4thos' second account.
+    "ppitulaj",
 }
-
+DISPLAY_NAMES = {
+    "ambonmibable": "Wintermourn",
+    "assemblaj": "fantasma",
+    "danielporto": "Daniel Porto",
+    "facundocameto": "Kase",
+    "kasasagi77": "Kasasagi",
+    "lazin3ss": "Wreq!",
+    "leonkasovan": "Leon Kasovan",
+    "nckgriva": "Nikolay Griva",
+    "omegashironeko": "Ohmga Shironeko",
+    "potsmugen": "PotS",
+    "rakieldev": "Rakíel",
+    "realfoobs": "Foobs",
+    "samhocevar": "Sam Hocevar",
+    "superfromnd": "Super",
+    "windblade-gr01": "Gacel",
+}
 API_VERSION = "2022-11-28"
 STATS_RETRIES = 12
 STATS_RETRY_SECONDS = 5
@@ -36,6 +52,10 @@ class Contributor(TypedDict):
     commits: int
     additions: int
     first_year: int
+
+
+def display_name(login: str) -> str:
+    return DISPLAY_NAMES.get(login.casefold(), login)
 
 
 def request_json(
@@ -181,7 +201,9 @@ def generate_notice(
     manual_logins = {login.casefold() for login in MANUAL_CONTRIBUTORS}
     for contributor in included:
         if contributor["login"].casefold() not in manual_logins:
-            names_by_year[contributor["first_year"]].append(contributor["login"])
+            names_by_year[contributor["first_year"]].append(
+                display_name(contributor["login"])
+            )
 
     lines = [
         f"Copyright (c) {year} {login}"
