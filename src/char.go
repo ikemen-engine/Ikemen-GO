@@ -13900,9 +13900,11 @@ func (cl *CharList) pushDetection(getter *Char) {
 			default:
 				// Compare player weights and apply pushing factors
 				// Weight determines which player is pushed more. Factor determines how fast the player overlap is resolved
+				// We use the average factor so that the constant affects resolution speed without affecting who wins the struggle
+				averageFactor := (c.size.pushfactor + getter.size.pushfactor) / 2
 				totalWeight := float32(c.size.weight + getter.size.weight)
-				cFactor = c.size.pushfactor * float32(getter.size.weight) / totalWeight
-				gFactor = getter.size.pushfactor * float32(c.size.weight) / totalWeight
+				cFactor = averageFactor * float32(getter.size.weight) / totalWeight
+				gFactor = averageFactor * float32(c.size.weight) / totalWeight
 			}
 
 			// Determine in which axes to push the players
