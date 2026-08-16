@@ -6731,6 +6731,13 @@ func (c *Char) destroy() {
 	// Remove ID from target's GetHitVars
 	for _, tid := range c.targets {
 		if t := sys.playerID(tid); t != nil {
+			// If this target is still bound to the helper, force it to SelfState
+			// This placement is more reliable than doing it from the target
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/3766
+			if t.bindToId == c.id {
+				t.selfState(5050, -1, -1, -1, "")
+				t.gethitBindClear()
+			}
 			t.ghv.dropPlayerId(c.id)
 		}
 	}
@@ -9868,33 +9875,19 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 	}
 }
 
+// Updates binding position and velocity only. Time and ID handled elsewhere
 func (c *Char) updateBinding() {
-	if c.bindTime == 0 {
-		if bt := sys.playerID(c.bindToId); bt != nil {
-			if bt.hasTarget(c.id) {
-				if bt.csf(CSF_destroy) {
-					sys.appendToConsole(c.warn() + fmt.Sprintf("SelfState 5050, helper destroyed: %v", bt.name))
-					if c.ss.moveType == MT_H {
-						c.selfState(5050, -1, -1, -1, "")
-					}
-					c.setBindTime(0)
-					return
-				}
-			}
-		}
-		if c.bindToId > 0 {
-			c.setBindTime(0)
-		}
+	if c.bindToId < 0 || c.bindTime == 0 {
 		return
 	}
 
 	bt := sys.playerID(c.bindToId)
+
 	if bt == nil {
-		c.setBindTime(0)
 		return
 	}
 
-	// Set velocity only if this is a target bind
+	// Copy velocity if this is a target bind
 	if bt.hasTarget(c.id) {
 		if !math.IsNaN(float64(c.bindPos[0])) {
 			c.vel[0] = c.facing * bt.facing * bt.vel[0]
@@ -12270,6 +12263,7 @@ func (c *Char) update() {
 			//	c.makeDust(0, 0, 0, 3) // Default spacing of 3
 			//}
 		}
+
 		if c.ss.moveType == MT_H {
 			// Set opposing team's First Attack flag
 			if sys.firstAttack[2] == 0 && (c.teamside == 0 || c.teamside == 1) {
@@ -12390,19 +12384,20 @@ func (c *Char) tick() {
 	if c.bindTime > 0 {
 		if c.isTargetBound() {
 			bt := sys.playerID(c.bindToId)
-			if bt == nil || bt.csf(CSF_gethit) || bt.csf(CSF_destroy) {
-				// SelfState if binder gets hit or destroys self
+			if bt == nil || bt.csf(CSF_gethit) {
+				// SelfState if binder is missing or got hit. Destroyed case handled in destroy()
 				// https://github.com/ikemen-engine/Ikemen-GO/issues/2347
 				c.selfState(5050, -1, -1, -1, "")
 				c.gethitBindClear()
 			} else if !bt.pause() {
-				//setBindTime is not used here because the CSF_destroy flag may be enabled in a frame with BindTime=0. If bindTime becomes 0, the setBindTime processing will be performed later
-				c.bindTime -= 1
-				//c.setBindTime(c.bindTime - 1)
+				// Use setBindTime so that the bind variables are cleared when the timer reaches 0
+				// Manual decrement was only needed so setBindTime() would not clear the bind for a dying helper
+				// destroy() handles that case now
+				// c.bindTime -= 1
+				c.setBindTime(c.bindTime - 1)
 			}
 		} else {
 			if !c.pause() {
-				// c.bindTime -= 1
 				c.setBindTime(c.bindTime - 1)
 				// The fix below was necessary before because bindTime should not be decremented directly but rather via setBindTime
 				// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
@@ -13282,9 +13277,7 @@ func (cl *CharList) action() {
 	// We use an index-based loop instead of a range so that appended helpers are also processed
 	for i := 0; i < len(cl.runOrder); i++ {
 		c := cl.runOrder[i]
-		if !c.csf(CSF_destroy) {
-			c.actionRun()
-		}
+		c.actionRun()
 	}
 
 	// Finish performing character actions
