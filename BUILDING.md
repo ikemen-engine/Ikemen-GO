@@ -224,6 +224,13 @@ metadata and key path with `ANDROID_VERSION_CODE`, `ANDROID_VERSION_NAME`, and
 password). A build made before this behavior was introduced may require one final
 uninstall before the first newly signed APK can be installed.
 
+On first launch, the Android app can open an existing Ikemen game root or
+create `/storage/emulated/0/Ikemen-GO` with the bundled starter data. Existing
+files in the selected root are treated as user data: app launches and upgrades
+only add missing bundled assets, and never replace or remove existing files.
+This preserves custom rosters, screenpacks, characters, stages, saves, and
+configuration across APK upgrades.
+
 To skip APK packaging (only build `.so` + deps):
 
 ```bash

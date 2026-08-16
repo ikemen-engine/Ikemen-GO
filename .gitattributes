@@ -10,6 +10,7 @@
 *.yml text eol=lf
 *.py text eol=lf
 *.md text eol=lf
+build/android/patches/*.patch text eol=lf -whitespace
 Dockerfile text eol=lf
 
 # Syntax
@@ -38,4 +39,3 @@ Dockerfile text eol=lf
 *.PDF	 diff=astextplain
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
-
