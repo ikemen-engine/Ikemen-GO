@@ -9837,6 +9837,25 @@ func (c *Char) checkCornerPush() (pushDist float32, pushMul float32) {
 		// NoCornerPush only disables the effect of cornerpush. The variable still persists and friction is still applied to it
 		if !c.asf(ASF_nocornerpush) {
 			pushDist = c.mhv.cornerpush_veloff
+
+			// Try to preserve the total cornerpush distance when the target is close to but not in the corner
+			// Char processing order makes this not perfect because we can't see the exact moment the target starts moving
+			getterPos := getter.pos[0] * getter.localscl
+			getterMove := getterNextPos - getterPos
+
+			if getterNextPos > sys.xmax {
+				getterMove = sys.xmax - getterPos
+			} else if getterNextPos < sys.xmin {
+				getterMove = sys.xmin - getterPos
+			}
+
+			if Abs(getterMove) < Abs(pushDist) {
+				// Subtract target movement from this frame's cornerPush
+				pushDist -= Sign(pushDist) * Abs(getterMove)
+			} else {
+				// If target won't reach corner, just in case
+				pushDist = 0
+			}
 		}
 
 		// All checks passed so end the loop
