@@ -149,7 +149,7 @@ type Config struct {
 		GameHeight               int32    `ini:"GameHeight" sync:"strict"`
 		WindowWidth              int      `ini:"WindowWidth"`
 		WindowHeight             int      `ini:"WindowHeight"`
-		Framerate                int      `ini:"Framerate" sync:"strict"`
+		Framerate                int      `ini:"Framerate"` // TODO: test if we need strict/host here
 		VSync                    int      `ini:"VSync"`
 		Fullscreen               bool     `ini:"Fullscreen"`
 		Borderless               bool     `ini:"Borderless"`
