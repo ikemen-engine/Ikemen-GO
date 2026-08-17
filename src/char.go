@@ -13889,21 +13889,22 @@ func (cl *CharList) pushDetection(getter *Char) {
 			c.pushed, getter.pushed = true, true
 
 			// Determine who gets pushed and the multipliers
-			var cfactor, gfactor float32
+			var cFactor, gFactor float32
 			switch {
 			case c.pushPriority > getter.pushPriority:
-				cfactor = 0
-				gfactor = getter.size.pushfactor // Maybe use other character's constant?
+				cFactor = 0
+				gFactor = getter.size.pushfactor // Maybe use other character's constant?
 			case c.pushPriority < getter.pushPriority:
-				cfactor = c.size.pushfactor
-				gfactor = 0
+				cFactor = c.size.pushfactor
+				gFactor = 0
 			default:
 				// Compare player weights and apply pushing factors
 				// Weight determines which player is pushed more. Factor determines how fast the player overlap is resolved
-				cfactor = float32(getter.size.weight) / float32(c.size.weight+getter.size.weight)
-				gfactor = float32(c.size.weight) / float32(c.size.weight+getter.size.weight) * getter.size.pushfactor
-				cfactor *= c.size.pushfactor
-				gfactor *= getter.size.pushfactor
+				// We use the average factor so that the constant affects resolution speed without affecting who wins the struggle
+				averageFactor := (c.size.pushfactor + getter.size.pushfactor) / 2
+				totalWeight := float32(c.size.weight + getter.size.weight)
+				cFactor = averageFactor * float32(getter.size.weight) / totalWeight
+				gFactor = averageFactor * float32(c.size.weight) / totalWeight
 			}
 
 			// Determine in which axes to push the players
@@ -13973,17 +13974,17 @@ func (cl *CharList) pushDetection(getter *Char) {
 
 				if tmp > 0 {
 					if c.pushPriority >= getter.pushPriority {
-						getter.pos[0] -= overlapX * gfactor / getter.localscl
+						getter.pos[0] -= overlapX * gFactor / getter.localscl
 					}
 					if c.pushPriority <= getter.pushPriority {
-						c.pos[0] += overlapX * cfactor / c.localscl
+						c.pos[0] += overlapX * cFactor / c.localscl
 					}
 				} else {
 					if c.pushPriority >= getter.pushPriority {
-						getter.pos[0] += overlapX * gfactor / getter.localscl
+						getter.pos[0] += overlapX * gFactor / getter.localscl
 					}
 					if c.pushPriority <= getter.pushPriority {
-						c.pos[0] -= overlapX * cfactor / c.localscl
+						c.pos[0] -= overlapX * cFactor / c.localscl
 					}
 				}
 
@@ -14001,17 +14002,17 @@ func (cl *CharList) pushDetection(getter *Char) {
 			if pushz {
 				if gposz < cposz {
 					if c.pushPriority >= getter.pushPriority {
-						getter.pos[2] -= overlapZ * gfactor / getter.localscl
+						getter.pos[2] -= overlapZ * gFactor / getter.localscl
 					}
 					if c.pushPriority <= getter.pushPriority {
-						c.pos[2] += overlapZ * cfactor / c.localscl
+						c.pos[2] += overlapZ * cFactor / c.localscl
 					}
 				} else if gposz > cposz {
 					if c.pushPriority >= getter.pushPriority {
-						getter.pos[2] += overlapZ * gfactor / getter.localscl
+						getter.pos[2] += overlapZ * gFactor / getter.localscl
 					}
 					if c.pushPriority <= getter.pushPriority {
-						c.pos[2] -= overlapZ * cfactor / c.localscl
+						c.pos[2] -= overlapZ * cFactor / c.localscl
 					}
 				}
 

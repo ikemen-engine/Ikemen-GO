@@ -4311,6 +4311,7 @@ func systemScriptInit(l *lua.LState) {
 		@tparam[opt=1.0] float32 scale Uniform scale applied to debug text (both X and Y).
 		function loadDebugFont(filename, scale) end*/
 		ts := NewTextSprite()
+		ts.palfx.ignoreAllPalFX = true
 		f, err := loadFnt(strArg(l, 1), -1)
 		if err != nil {
 			l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
