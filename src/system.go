@@ -876,6 +876,12 @@ func (s *System) await(fps int) bool {
 		waitDuration = time.Second / time.Duration(fps)
 	}
 
+	// Rebase when the old deadline is more than one frame ahead.
+	if diff >= waitDuration+2*time.Millisecond {
+		s.redrawWait.nextTime = now
+		diff = 0
+	}
+
 	// Increment the deadline
 	s.redrawWait.nextTime = s.redrawWait.nextTime.Add(waitDuration)
 
