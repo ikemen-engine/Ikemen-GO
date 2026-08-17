@@ -3148,10 +3148,11 @@ func systemScriptInit(l *lua.LState) {
 						if !reload {
 							continue
 						}
-						if sys.cgi[i].sff != nil && !sys.cfg.Debug.KeepSpritesOnReload {
-							// removeSFFCache(sys.cgi[i].sff.filename)
+						// Drop sprites and sounds so that the cache systems won't reuse them
+						if !sys.cfg.Debug.KeepSpritesOnReload {
 							sys.cgi[i].sff = nil
 						}
+						sys.cgi[i].snd = nil
 						sys.cgi[i].customShaders = nil
 						if sys.reloadPreserveVars[i] {
 							sys.saveCharVars(i)
@@ -6856,10 +6857,6 @@ func systemScriptInit(l *lua.LState) {
 		sys.fightScreen.winCounts[tn-1].wins = int32(numArg(l, 2))
 		return 0
 	})
-	//luaRegister(l, "sffCacheDelete", func(l *lua.LState) int {
-	//	removeSFFCache(strArg(l, 1))
-	//	return 0
-	//})
 	luaRegister(l, "sffNew", func(l *lua.LState) int {
 		/*Load an SFF file or create an empty SFF.
 		@function sffNew
