@@ -1454,22 +1454,6 @@ func newSff() (s *Sff) {
 	return
 }
 
-/*
-// A simple SFF cache storing shallow copies
-type SffCacheEntry struct {
-	sffData  Sff
-	refCount int
-}
-
-var SffCache = map[string]*SffCacheEntry{}
-
-func removeSFFCache(filename string) {
-	if _, ok := SffCache[filename]; ok {
-		delete(SffCache, filename)
-	}
-}
-*/
-
 // Find an already loaded SFF we can borrow. Replaces SFF caching
 func findActiveSff(filename string) *Sff {
 	// This would be clean, but it'd make multiple instances of the same character all do a full SFF reload
@@ -1613,18 +1597,6 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 	if loadingCanceled() {
 		return nil, ErrLoadingCanceled
 	}
-
-	/*
-		SffCache[filename] = &SffCacheEntry{*s, 1}
-		runtime.SetFinalizer(s, func(s *Sff) {
-			if cached, ok := SffCache[filename]; ok {
-				cached.refCount--
-				if cached.refCount == 0 {
-					delete(SffCache, filename)
-				}
-			}
-		})
-	*/
 
 	return s, nil
 }
