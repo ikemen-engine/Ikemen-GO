@@ -569,8 +569,8 @@ func readActPalette(filename string) ([]uint32, error) {
 type Sprite struct {
 	Pal          []uint32
 	Tex          Texture
-	Group        uint16    // Group index: valid range 0–65535
-	Number       uint16    // Sprite index: valid range 0–65535
+	Group        uint16 // Group index: valid range 0–65535
+	Number       uint16 // Sprite index: valid range 0–65535
 	Size         [2]uint16
 	Offset       [2]int16
 	palidx       int
@@ -578,7 +578,7 @@ type Sprite struct {
 	coldepth     byte
 	paltemp      []uint32
 	PalTex       Texture
-	sffv1BasePal bool     // SFFv1 sprite palette duplicates the base palette
+	sffv1BasePal bool // SFFv1 sprite palette duplicates the base palette
 }
 
 func (s *Sprite) isBlank() bool {
