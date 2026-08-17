@@ -3111,6 +3111,8 @@ type FightScreenRound struct {
 	ko_sndtime        int32
 	koDisplayTimer    int32
 	koDisplayPhase    int32
+	outroStarted      bool
+	outroFrameAcc     float32
 	dko_time          int32
 	dko_sndtime       int32
 	dko_showdraw      bool
@@ -3447,6 +3449,21 @@ func (ro *FightScreenRound) act() bool {
 		}
 		ro.shutterTimer--
 	}
+	// Keep round outro animations independent of gameplay slowdown.
+	if ro.outroStarted && sys.intro < 0 && !sys.motif.di.active && ro.shutterTimer <= 0 {
+		step := float32(1)
+		if !sys.frameStepFlag {
+			step = float32(sys.gameLogicSpeed()) / float32(sys.gameRenderSpeed())
+			if sys.nextAddTime > 1 {
+				step /= sys.nextAddTime
+			}
+		}
+		ro.outroFrameAcc += step
+		for ro.outroFrameAcc >= 1 {
+			ro.handleRoundOutro()
+			ro.outroFrameAcc--
+		}
+	}
 	if sys.intro < 0 && !sys.tickFrame() {
 		return false
 	}
@@ -3469,7 +3486,10 @@ func (ro *FightScreenRound) act() bool {
 		}
 		// Outro
 		if ro.fightDisplayPhase == 2 && sys.intro < 0 && (sys.finishType != FT_NotYet || sys.curRoundTime == 0) {
-			ro.handleRoundOutro()
+			if !ro.outroStarted {
+				ro.outroStarted = true
+				ro.handleRoundOutro()
+			}
 		} else {
 			return ro.fightDisplayPhase > 0
 		}
@@ -3861,6 +3881,8 @@ func (ro *FightScreenRound) reset() {
 	ro.roundDisplayTimer = 0
 	ro.fightDisplayTimer = 0
 	ro.koDisplayTimer = 0
+	ro.outroStarted = false
+	ro.outroFrameAcc = 0
 	ro.winDisplayTimer = 0
 	ro.roundDisplayPhase = 0
 	ro.fightDisplayPhase = 0
