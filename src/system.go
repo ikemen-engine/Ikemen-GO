@@ -2665,7 +2665,7 @@ func (s *System) action() {
 
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
-	uiTick := s.tickFrame() || s.motif.me.active
+	uiTick := s.tickFrame() || s.debugPaused() || s.motif.me.active
 	if uiTick {
 		if s.escPending {
 			s.esc = true
