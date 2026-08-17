@@ -2135,8 +2135,9 @@ func (a *Anim) Copy() *Anim {
 		// Copy arrays (if not slices, this is fine as-is)
 		dst.Offset = src.Offset
 		dst.Size = src.Size
+		dst.sffv1BasePal = src.sffv1BasePal
 
-		if dst.palidx == 0 {
+		if dst.palidx == 0 || dst.sffv1BasePal {
 			dst.Pal = nil
 		} else {
 			dst.Pal = src.Pal
@@ -2412,5 +2413,8 @@ func (pa PreloadedAnims) addSprite(sff *Sff, grp, idx uint16) {
 func (pa PreloadedAnims) updateSff(sff *Sff) {
 	for _, v := range pa {
 		v.sff = sff
+		// Animations created from the temporary SFF keep their old palette pointer,
+		// so it must be updated together with the SFF.
+		v.palettedata = &sff.palList
 	}
 }
