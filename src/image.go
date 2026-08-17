@@ -567,17 +567,18 @@ func readActPalette(filename string) ([]uint32, error) {
 }
 
 type Sprite struct {
-	Pal      []uint32
-	Tex      Texture
-	Group    uint16 // Group index: valid range 0–65535
-	Number   uint16 // Sprite index: valid range 0–65535
-	Size     [2]uint16
-	Offset   [2]int16
-	palidx   int
-	rle      int
-	coldepth byte
-	paltemp  []uint32
-	PalTex   Texture
+	Pal          []uint32
+	Tex          Texture
+	Group        uint16 // Group index: valid range 0–65535
+	Number       uint16 // Sprite index: valid range 0–65535
+	Size         [2]uint16
+	Offset       [2]int16
+	palidx       int
+	rle          int
+	coldepth     byte
+	paltemp      []uint32
+	PalTex       Texture
+	sffv1BasePal bool // SFFv1 sprite palette duplicates the base palette
 }
 
 func (s *Sprite) isBlank() bool {
@@ -1848,6 +1849,23 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]uint16]bool) (*Sff
 						} else {
 							// Unique palette, keep as is
 							spriteList[i].palidx = 1
+						}
+						// Detect SFFv1 sprites that have their own entry but
+						// physically use the same palette as the base palette.
+						if spriteList[i].Pal != nil {
+							basePal := pl.Get(0)
+							if basePal != nil && len(spriteList[i].Pal) == len(basePal) {
+								sameBase := true
+								for j := range spriteList[i].Pal {
+									if spriteList[i].Pal[j] != basePal[j] {
+										sameBase = false
+										break
+									}
+								}
+								if sameBase {
+									spriteList[i].sffv1BasePal = true
+								}
+							}
 						}
 					} else if spriteList[i].coldepth <= 8 {
 						plSize = 0
