@@ -1600,6 +1600,15 @@ func systemScriptInit(l *lua.LState) {
 		palIdx := a.anim.palettedata.SelectablePalIndex(palNum)
 		if len(a.anim.palettedata.paletteMap) > 0 {
 			a.anim.palettedata.paletteMap[0] = palIdx
+			// SFFv1 may have duplicate base palettes mapped to palette 1.
+			if a.anim.sff.header.Version[0] == 1 && len(a.anim.palettedata.paletteMap) > 1 {
+				for _, spr := range a.anim.sff.sprites {
+					if spr != nil && spr.sffv1BasePal {
+						a.anim.palettedata.paletteMap[1] = palIdx
+						break
+					}
+				}
+			}
 		}
 		l.Push(newUserData(l, a))
 		return 1

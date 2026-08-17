@@ -2135,8 +2135,9 @@ func (a *Anim) Copy() *Anim {
 		// Copy arrays (if not slices, this is fine as-is)
 		dst.Offset = src.Offset
 		dst.Size = src.Size
+		dst.sffv1BasePal = src.sffv1BasePal
 
-		if dst.palidx == 0 {
+		if dst.palidx == 0 || dst.sffv1BasePal {
 			dst.Pal = nil
 		} else {
 			dst.Pal = src.Pal
