@@ -773,7 +773,7 @@ type TextSprite struct {
 	layerno        int16
 	palfx          *PalFX
 	frgba          [4]float32 // ttf fonts
-	removetime     int32 // text sctrl
+	removetime     int32      // text sctrl
 	elapsedTicks   float32
 	textSpacing    [2]float32
 	textDelay      float32

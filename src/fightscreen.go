@@ -215,12 +215,12 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 }
 
 type FSText struct {
-	font       [8]int32 // to match Lua arg count regardless
-	text       string
-	lay        Layout
-	palfx      *PalFX
-	frgba      [4]float32 // ttf fonts
-	pfxinit    int32
+	font    [8]int32 // to match Lua arg count regardless
+	text    string
+	lay     Layout
+	palfx   *PalFX
+	frgba   [4]float32 // ttf fonts
+	pfxinit int32
 }
 
 func newFSText(align int32) *FSText {

@@ -56,24 +56,24 @@ func newPalFXDef() *PalFXDef {
 
 type PalFX struct {
 	PalFXDef
-	remap        []int
-	allowNeg     bool // Can use negative color math
-	sintime      [4]int32
-	enable       bool
-    ignoreAllPalFX bool // TODO: Probably expose this as a parameter
-	eAllowNeg    bool
-	eInvertall   bool
-	eInvertblend int32
-	eAdd         [3]int32
-	eMul         [3]int32
-	eColor       float32
-	eHue         float32
-	eInterpolate bool
-	eiAdd        [3]int32
-	eiMul        [3]int32
-	eiColor      float32
-	eiHue        float32
-	eiTime       int32
+	remap          []int
+	allowNeg       bool // Can use negative color math
+	sintime        [4]int32
+	enable         bool
+	ignoreAllPalFX bool // TODO: Probably expose this as a parameter
+	eAllowNeg      bool
+	eInvertall     bool
+	eInvertblend   int32
+	eAdd           [3]int32
+	eMul           [3]int32
+	eColor         float32
+	eHue           float32
+	eInterpolate   bool
+	eiAdd          [3]int32
+	eiMul          [3]int32
+	eiColor        float32
+	eiHue          float32
+	eiTime         int32
 }
 
 func newPalFX() *PalFX {
@@ -93,9 +93,9 @@ func (pf *PalFX) clear() {
 }
 
 func (pf *PalFX) getSynFx(blendMode TransType, alpha [2]int32) *PalFX {
-    if pf != nil && pf.ignoreAllPalFX {
-        return pf
-    }
+	if pf != nil && pf.ignoreAllPalFX {
+		return pf
+	}
 
 	if pf == nil || !pf.enable {
 		if blendMode == TT_sub && sys.allPalFX.enable {
