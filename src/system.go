@@ -3257,9 +3257,9 @@ func (s *System) stepRoundState() {
 						if p[0].scf(SCF_over_alive) || p[0].scf(SCF_over_ko) {
 							continue
 						}
-						// Mugen seems to skip this anim 5 check on time overs
-						// It also seems a bit pointless here to begin with because the char has already turned by the time anim 5 starts
-						if p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I && p[0].ss.stateType == ST_S && p[0].animNo != 5 {
+						// We used to wait for players that were in animation 5 (turning) here, but that doesn't seem to be the case in Mugen
+						// https://github.com/ikemen-engine/Ikemen-GO/issues/2919
+						if p[0].scf(SCF_ctrl) && p[0].ss.moveType == MT_I && p[0].ss.stateType == ST_S {
 							continue
 						}
 						// Freeze timer if any player is not ready to proceed yet
