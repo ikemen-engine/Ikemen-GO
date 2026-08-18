@@ -376,14 +376,26 @@ func (pf *PalFX) setColor(r, g, b int32) {
 	gNormalized := Clamp(g, 0, 255)
 	bNormalized := Clamp(b, 0, 255)
 
+	// Force PalFX to always enabled
+	pf.time = -1
 	pf.enable = true
-	pf.eColor = 1
-	pf.eHue = 0
-	pf.eMul = [...]int32{
+
+	// Set the minimum parameters required to achieve intended color
+	// This allows the other PalFX parameters to still work
+	pf.mul = [3]int32{
 		256 * rNormalized >> 8,
 		256 * gNormalized >> 8,
 		256 * bNormalized >> 8,
 	}
+
+	// Save sine effects timer
+	oldSintime := pf.sintime
+
+	// Step the PalFX to update all effective values
+	pf.step()
+
+	// Restore timer to prevent advancement
+	pf.sintime = oldSintime
 }
 
 type Palette struct {
