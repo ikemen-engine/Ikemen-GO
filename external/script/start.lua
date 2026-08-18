@@ -2787,15 +2787,6 @@ function start.f_selectScreen()
 			if tickScreenDelay(side) then
 				screenDelayInterrupted = true
 			end
-			--exit select screen
-			for _, v in ipairs(start.p[side].t_selCmd) do
-				if not start.escFlag and (esc() or (getInput(v.cmd, motif.select_info.cancel.key) and not start.p[side].inPalMenu)) then
-					sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
-					fadeOutInit(motif.select_info.fadeout.FadeData)
-					fadeOutStarted = true
-					start.escFlag = true
-				end
-			end
 			if start.p[side].inPalMenu then
 				local palActive = false
 				if motif.select_info.paletteselect > 0 then
@@ -2808,6 +2799,17 @@ function start.f_selectScreen()
 				end
 				if not palActive then
 					start.p[side].inPalMenu = false
+				end
+			end
+		end
+		--exit select screen
+		for side = 1, 2 do
+			for _, v in ipairs(start.p[side].t_selCmd) do
+				if not start.escFlag and (esc() or (not start.p[side].inPalMenu and getInput(v.cmd, motif.select_info.cancel.key))) then
+					sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
+					fadeOutInit(motif.select_info.fadeout.FadeData)
+					fadeOutStarted = true
+					start.escFlag = true
 				end
 			end
 		end
