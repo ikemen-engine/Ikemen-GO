@@ -5090,18 +5090,20 @@ func systemScriptInit(l *lua.LState) {
 		@tparam string filename glTF model file path.
 		@treturn Model model Model userdata.
 		function modelNew(filename) end*/
-		if !nilArg(l, 1) {
-			mdl, err := loadglTFModel(strArg(l, 1))
-			if err != nil {
-				l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
-			}
-			sys.mainThreadTask <- func() {
-				gfx.SetModelVertexData(1, mdl.vertexBuffer)
-				gfx.SetModelIndexData(1, mdl.elementBuffer...)
-			}
-			sys.runMainThreadTask()
-			l.Push(newUserData(l, mdl))
+		if nilArg(l, 1) {
+			l.Push(lua.LNil)
+			return 1
 		}
+		mdl, err := loadglTFModel(strArg(l, 1))
+		if err != nil {
+			l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
+		}
+		sys.mainThreadTask <- func() {
+			gfx.SetModelVertexData(1, mdl.vertexBuffer)
+			gfx.SetModelIndexData(1, mdl.elementBuffer...)
+		}
+		sys.runMainThreadTask()
+		l.Push(newUserData(l, mdl))
 		return 1
 	})
 	luaRegister(l, "modifyGameOption", func(l *lua.LState) int {
@@ -9937,6 +9939,8 @@ func triggerFunctions(l *lua.LState) {
 	luaRegister(l, "p2StateNo", func(*lua.LState) int {
 		if p2 := sys.debugWC.p2(); p2 != nil {
 			l.Push(lua.LNumber(p2.ss.no))
+		} else {
+			l.Push(lua.LNumber(-1))
 		}
 		return 1
 	})
