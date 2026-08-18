@@ -948,8 +948,17 @@ func (ts *TextSprite) drawWindow() [4]int32 {
 }
 
 func (ts *TextSprite) SetColor(r, g, b, a int32) {
-	ts.palfx.setColor(r, g, b)
 	ts.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
+
+	// Sprite fonts use PalFX for color instead of frgba
+	// TTF skips PalFX here so that it won't stack with frgba
+	fnt := ts.fnt
+	if fnt == nil {
+		fnt = sys.debugFont.fnt
+	}
+	if fnt == nil || fnt.Type != "truetype" {
+		ts.palfx.setColor(r, g, b)
+	}
 }
 
 func (ts *TextSprite) SetTextSpacing(xs, ys float32) {
