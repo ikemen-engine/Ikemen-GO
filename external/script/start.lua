@@ -2587,6 +2587,19 @@ local function tickScreenDelay(side)
 	return false
 end
 
+-- Reset stage portrait animation data
+local function resetStagePortraitAnim(stageNo, subname)
+	local st = main.t_selStages[stageNo]
+	if not st then
+		return
+	end
+	local anim = st[subname]
+	if anim then
+		animReset(anim)
+		animUpdate(anim)
+	end
+end
+
 start.needUpdateDrawList = false
 function start.f_selectScreen()
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
@@ -2607,6 +2620,11 @@ function start.f_selectScreen()
 	local counter = 0 - motif.select_info.fadein.time
 	local timerReset = false
 	local stageTextData = motif.select_info.stage.active.TextSpriteData
+	local stageRef = main.t_selectableStages[stageListNo]
+
+	-- Reset stage portrait animation if it was already seen when entering the select screen
+	resetStagePortraitAnim(stageRef, 'anim_data')
+
 	-- generate team mode items table
 	for side = 1, 2 do
 		-- read display names for the current gameMode (or default)
@@ -2839,7 +2857,7 @@ function start.f_selectScreen()
 					main.f_animPosDraw(motif.select_info.stage.portrait.random.AnimData)
 				--draw stage portrait loaded from stage SFF
 				else
-					local stageRef = main.t_selectableStages[stageListNo]
+					stageRef = main.t_selectableStages[stageListNo]
 					local portrait = motif.select_info.stage.portrait
 					local anim = main.t_selStages[stageRef].anim_data
 					local loadingPortrait = false
@@ -3934,6 +3952,9 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	local readyToLeave = not bgLoading
 	local wantSkip = false
 	local wantDone = false
+	
+	-- Reset stage portrait animation if it was already seen when entering the VS screen
+	resetStagePortraitAnim(selStageNo, 'vs_anim_data')
 
 	-- Background loading: start async loader immediately.
 	if bgLoading then
