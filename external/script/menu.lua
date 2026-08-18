@@ -643,8 +643,6 @@ local function f_resetMenuState(tbl)
 	tbl.cursorPosY = 1
 	tbl.moveTxt = 0
 	tbl.item = 1
-	-- Force one-frame input refresh path used by f_createMenu
-	tbl.reset = true
 	-- Clear any "selected" flags on items (if used by custom menus)
 	if type(tbl.items) == "table" then
 		for i = 1, #tbl.items do

@@ -668,6 +668,16 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	rect[2] = int32(math.Floor(float64(startrect0 + (float32(rect[2]) * sys.widthScale * wscl[0]) - float32(rect[0]))))
 	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
 
+	// Stage BG windows are relative to the fight viewport.
+	// Offset and clip them when composing at full resolution.
+	if isStage {
+		if viewport, ok := sys.fightDrawClip(); ok {
+			rect[0] += viewport[0] - sys.scrrect[0]
+			rect[1] += viewport[1] - sys.scrrect[1]
+			rect = intersectRect(rect, viewport)
+		}
+	}
+
 	// Render background if it's within the screen area
 	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
 		if bg._type == BG_Video {
