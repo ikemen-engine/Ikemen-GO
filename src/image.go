@@ -370,32 +370,42 @@ func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
 
 }
 
-// Sets the PalFX to render a simple solid color. Normally used by fonts
-func (pf *PalFX) setColor(r, g, b int32) {
-	rNormalized := Clamp(r, 0, 255)
-	gNormalized := Clamp(g, 0, 255)
-	bNormalized := Clamp(b, 0, 255)
-
-	// Force PalFX to always enabled
-	pf.time = -1
-	pf.enable = true
-
-	// Set the minimum parameters required to achieve intended color
-	// This allows the other PalFX parameters to still work
-	pf.mul = [3]int32{
-		256 * rNormalized >> 8,
-		256 * gNormalized >> 8,
-		256 * bNormalized >> 8,
+// Returns a copy of the PalFX with font frgba applied as a base color
+// To do this perfectly correctly we'd need more shader uniforms
+// However, this should still be better than making font color parameter overwrite PalFX like before
+func (pf *PalFX) withFontRgba(frgba [4]float32) *PalFX {
+	usesColor := frgba[0] != 1.0 || frgba[1] != 1.0 || frgba[2] != 1.0
+	if !usesColor {
+		return pf
 	}
 
-	// Save sine effects timer
-	oldSintime := pf.sintime
+	var pfx *PalFX
+	if pf == nil {
+		// No existing PalFX: create a new one because RenderSprite expects a non-nil PalFX to apply color
+		pfx = newPalFX()
+	} else {
+		// Create a shallow copy of the original PalFX
+		tmp := *pf
+		pfx = &tmp
+	}
 
-	// Step the PalFX to update all effective values
-	pf.step()
+	// Force the copy to be enabled
+	pfx.enable = true
 
-	// Restore timer to prevent advancement
-	pf.sintime = oldSintime
+	// Check status of the original PalFX
+	if pf == nil || (!pf.enable && pf.time == 0) {
+		// Uninitialized or disabled: set color directly from frgba
+		pfx.eMul[0] = int32(256 * frgba[0])
+		pfx.eMul[1] = int32(256 * frgba[1])
+		pfx.eMul[2] = int32(256 * frgba[2])
+	} else {
+		// Active: stack frgba on top of existing eMul
+		pfx.eMul[0] = int32(float32(pf.eMul[0]) * frgba[0])
+		pfx.eMul[1] = int32(float32(pf.eMul[1]) * frgba[1])
+		pfx.eMul[2] = int32(float32(pf.eMul[2]) * frgba[2])
+	}
+
+	return pfx
 }
 
 type Palette struct {

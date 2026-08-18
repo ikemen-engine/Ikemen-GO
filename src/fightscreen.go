@@ -273,9 +273,9 @@ func readFSText(pre string, is IniSection, str string, ln int16, f map[int]*Fnt,
 	txt.pfxtime = txt.palfx.time
 
 	// The color parameter overrides the PalFX for sprite fonts, so it must be parsed after it
+	// Update: No longer true, but this new order is still harmless
 	if txt.font[3] >= 0 && txt.font[4] >= 0 && txt.font[5] >= 0 {
 		txt.SetColor(txt.font[3], txt.font[4], txt.font[5], txt.font[6])
-		txt.pfxtime = -1
 	}
 
 	return txt
@@ -284,10 +284,6 @@ func readFSText(pre string, is IniSection, str string, ln int16, f map[int]*Fnt,
 // Same as in TextSprite except it doesn't need debug font fallback
 func (txt *FSText) SetColor(r, g, b, a int32) {
 	txt.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
-
-	if txt.fnt != nil && txt.fnt.Type != "truetype" {
-		txt.palfx.setColor(r, g, b)
-	}
 }
 
 func (txt *FSText) step() {
@@ -3053,11 +3049,6 @@ func (ac *FightScreenAction) draw(layerno int16, f map[int]*Fnt, side int) {
 				if v.fontAlign != IErr {
 					align = v.fontAlign
 				}
-				palfx := ac.text.palfx
-
-				if v.palfx != nil {
-					palfx = v.palfx
-				}
 
 				frgba := ac.text.frgba
 				if v.fontColorSet {
@@ -3070,19 +3061,12 @@ func (ac *FightScreenAction) draw(layerno int16, f map[int]*Fnt, side int) {
 					frgba[1] = float32(g) / 255
 					frgba[2] = float32(b) / 255
 					frgba[3] = float32(a) / 255
-
-					pf := newPalFX()
-					if palfx != nil {
-						*pf = *palfx
-					}
-					pf.setColor(r, g, b)
-					palfx = pf
 				}
 
 				ac.text.lay.DrawText(x+sys.fightScreen.offsetX+float32(k)*float32(ac.spacing[0]),
 					float32(ac.pos[1])+float32(k)*float32(ac.spacing[1]),
 					sys.fightScreen.scale, layerno, v.text, ff, bank, align,
-					palfx, frgba)
+					v.palfx, frgba)
 			}
 		}
 	}
