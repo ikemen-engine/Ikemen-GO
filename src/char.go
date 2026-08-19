@@ -2510,6 +2510,12 @@ const (
 	ProjRem
 )
 
+type ProjTradeDist struct {
+	pr      *Projectile
+	dist    float32
+	sortIdx int
+}
+
 type Projectile struct {
 	playerno        int
 	ownerId         int32
@@ -2580,6 +2586,7 @@ type Projectile struct {
 	customShader    CustomShader
 	pauseBool       bool
 	clsnBuffers     [4][]ClsnFinal
+	tradeDistSorting []ProjTradeDist
 }
 
 func newProjectile() *Projectile {
@@ -2904,6 +2911,10 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 		return
 	}
 
+	// Reuse buffer: reset length, keep capacity
+	p.tradeDistSorting = p.tradeDistSorting[:0]
+
+	// Collect trade candidates
 	// Loop through all players starting from the current one
 	// Previous players are skipped to prevent checking the same projectile pairs twice
 	for i := playerNo; i < len(sys.chars) && p.hits >= 0; i++ {
@@ -2947,28 +2958,74 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 				continue
 			}
 
-			// Run Clsn check
-			boxes1 := p.getClsn(2) // Projectiles trade with their Clsn2 only
-			boxes2 := pr.getClsn(2)
-			if len(boxes1) == 0 || len(boxes2) == 0 {
-				continue
-			}
-			overlap, _, _ := sys.clsnOverlap(
-				boxes1,
-				[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
-				p.facing,
-				boxes2,
-				[2]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
-				pr.facing,
-			)
-			if overlap {
-				// Subtract projectile hits from each other
-				p.cancelHits(pr)
-				pr.cancelHits(p)
-				// Stop entire loop when out of projectile hits
-				if p.hits < 0 {
-					break
-				}
+			// Compute squared distance
+			dx := p.pos[0]*p.localscl - pr.pos[0]*pr.localscl
+			dy := p.pos[1]*p.localscl - pr.pos[1]*pr.localscl
+			dz := p.pos[2]*p.localscl - pr.pos[2]*pr.localscl
+			dist := dx*dx + dy*dy + dz*dz
+
+			// Append to list
+			p.tradeDistSorting = append(p.tradeDistSorting, ProjTradeDist{
+				pr:      pr,
+				dist:    dist,
+				sortIdx: len(p.tradeDistSorting),
+			})
+		}
+	}
+
+	// No projectiles to trade with
+	if len(p.tradeDistSorting) == 0 {
+		return
+	}
+
+	// Get Clsn boxes once for outer loop
+	// Projectiles trade with their Clsn2 only
+	boxes1 := p.getClsn(2)
+	if len(boxes1) == 0 {
+		return
+	}
+
+	// Sort candidates by distance
+	sort.Slice(p.tradeDistSorting, func(i, j int) bool {
+		if p.tradeDistSorting[i].dist != p.tradeDistSorting[j].dist {
+			return p.tradeDistSorting[i].dist < p.tradeDistSorting[j].dist
+		}
+		// Use sorting index as tiebreaker
+		return p.tradeDistSorting[i].sortIdx < p.tradeDistSorting[j].sortIdx
+	})
+
+	// Run Clsn check in the sorted order
+	for _, cand := range p.tradeDistSorting {
+		pr := cand.pr
+
+		// Re‑check active
+		if !pr.isActive() || pr.hits < 0 {
+			continue
+		}
+
+		// Get Clsn boxes of target projectile
+		boxes2 := pr.getClsn(2)
+		if len(boxes2) == 0 {
+			continue
+		}
+
+		// Check Clsn overlap
+		overlap, _, _ := sys.clsnOverlap(
+			boxes1,
+			[2]float32{p.pos[0] * p.localscl, p.pos[1] * p.localscl},
+			p.facing,
+			boxes2,
+			[2]float32{pr.pos[0] * pr.localscl, pr.pos[1] * pr.localscl},
+			pr.facing,
+		)
+		if overlap {
+			// Subtract projectile hits from each other
+			p.cancelHits(pr)
+			pr.cancelHits(p)
+			// Stop entire loop when out of projectile hits
+			// Otherwise, continue to the next projectile
+			if p.hits < 0 {
+				break
 			}
 		}
 	}
