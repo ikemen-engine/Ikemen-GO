@@ -3816,6 +3816,71 @@ func (c *Char) enemyNearP2Clear() {
 	c.p2EnemyList = c.p2EnemyList[:0]
 }
 
+// Sorts a group of enemies by distance from the first char
+func (c *Char) sortEnemiesByDistance(enemies []*Char, p2list bool) []*Char {
+	// We only need to sort if there are two or more enemies
+	if len(enemies) < 2 {
+		return enemies
+	}
+
+	// Local struct for sorting
+	type pair struct {
+		ch   *Char
+		dist float32
+	}
+
+	pairs := make([]pair, len(enemies))
+
+	// Compute distances of all enemies
+	for idx, e := range enemies {
+		// Factor x distance first
+		distX := c.distX(e, c) * c.facing
+		effectiveX := distX
+
+		// If an enemy is behind the player, an extra distance buffer is added for the "P2" list
+		// This makes the player turn less frequently when surrounded
+		// We apply it to the X component even when Z is active, so it affects the Euclidean distance
+		if p2list && distX < 0 {
+			effectiveX -= 30.0 / c.localscl
+		}
+
+		// By default the distance is just measured in x
+		sortDist := effectiveX
+
+		// Factor z distance as well if applicable
+		if sys.zEnabled() {
+			distZ := c.distZ(e, c)
+			// We'll arbitrarily give more weight to the z axis in the "P2" list, so that the player doesn't turn as easily to enemies on a different plane
+			// 4.0 is a magic number, roughly based on default x and z size ratio
+			// TODO: Calculate z weight like in distzadj in player pushing, or add a global var for x/z ratio
+			if p2list {
+				distZ *= 4.0
+			}
+			// Use hypotenuse between x and z
+			sortDist = float32(math.Hypot(float64(effectiveX), float64(distZ)))
+		}
+
+		// Save result in sorting slice
+		pairs[idx] = pair{ch: e, dist: sortDist}
+	}
+
+	// Sort by shortest absolute distance
+	sort.Slice(pairs, func(i, j int) bool {
+		if Abs(pairs[i].dist) != Abs(pairs[j].dist) {
+			return Abs(pairs[i].dist) < Abs(pairs[j].dist)
+		}
+		// Use player ID as tiebreaker (replaces sort.SliceStable)
+		return pairs[i].ch.id < pairs[j].ch.id
+	})
+
+	// Write back sorted characters
+	for i, p := range pairs {
+		enemies[i] = p.ch
+	}
+
+	return enemies
+}
+
 // Clear character variables upon a new round or creation of a new helper
 func (c *Char) prepareNextRound() {
 	c.sysVarRangeSet(0, math.MaxInt32, 0)
@@ -14557,72 +14622,45 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
 		return sys.playerID((*cache)[n])
 	}
 
-	// Local struct for sorting
-	type enemyDist struct {
-		id   int32
-		dist float32
-	}
-	pairs := make([]enemyDist, 0, MaxPlayerNo)
-
-	// Gather all valid enemies and calculate distances
+	// Gather all valid enemies
+	enemies := make([]*Char, 0, MaxPlayerNo)
 	for _, e := range cl.runOrder {
-		if e.isPlayerType() && c.isEnemyOf(e) {
-			valid := false
+		// Must be enemy and player type
+		if !e.isPlayerType() || !c.isEnemyOf(e) {
+			continue
+		}
+
+		if p2list {
 			// P2 checks for alive enemies even if they are player type helpers
 			// Checking for e.alive() here would be a bit more practical, but less consistent with Mugen and the rest of our code
-			if p2list && !e.scf(SCF_standby) && !e.scf(SCF_over_ko) {
-				valid = true
+			if e.scf(SCF_standby) || e.scf(SCF_over_ko) {
+				continue
 			}
+		} else {
 			// EnemyNear checks for dead or alive root players
-			if !p2list && e.helperIndex == 0 {
-				valid = true
-			}
-
-			if valid {
-				// Factor x distance first
-				distX := c.distX(e, c) * c.facing
-				dist := distX
-				// If an enemy is behind the player, an extra distance buffer is added for the "P2" list
-				if p2list && distX < 0 {
-					dist -= 30.0
-				}
-				// Factor z distance if applicable
-				if sys.zEnabled() {
-					distZ := c.distZ(e, c) * 4.0
-					if p2list {
-						distZ *= 4.0
-					}
-					dist = float32(math.Hypot(float64(distX), float64(distZ)))
-				}
-				// Append this enemy and their distance
-				pairs = append(pairs, enemyDist{id: e.id, dist: dist})
+			if e.helperIndex != 0 {
+				continue
 			}
 		}
+
+		enemies = append(enemies, e)
 	}
 
-	// Sort enemies by shortest absolute distance
-	sort.Slice(pairs, func(i, j int) bool {
-		di, dj := Abs(pairs[i].dist), Abs(pairs[j].dist)
-		if di != dj {
-			return di < dj
-		}
-		// Use player ID as tiebreaker (replaces sort.SliceStable)
-		return pairs[i].id < pairs[j].id
-	})
+	// Sort by distance from c
+	enemies = c.sortEnemiesByDistance(enemies, p2list)
 
-	// Rebuild the cache
+	// Update the cache
 	*cache = (*cache)[:0]
-	for _, p := range pairs {
-		*cache = append(*cache, p.id)
+	for _, e := range enemies {
+		*cache = append(*cache, e.id)
 	}
 
-	// Bounds check
-	if int(n) >= len(*cache) {
-		return nil
+	// Return the Nth enemy
+	if int(n) < len(*cache) {
+		return sys.playerID((*cache)[n])
 	}
 
-	// Return Nth enemy
-	return sys.playerID((*cache)[n])
+	return nil
 }
 
 type Platform struct {
