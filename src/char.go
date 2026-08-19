@@ -3552,6 +3552,7 @@ type Char struct {
 	animlocalscl   float32
 	size           CharSize
 	//sizeBox           [4]float32
+	clsnBaseScale       [2]float32
 	clsnScale           [2]float32 // The base scale before modifiers are applied
 	clsnOverrides       [4][]ClsnOverride
 	clsnTransforms      [4]ClsnTransform
@@ -7817,8 +7818,9 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 	}
 
 	// Default Clsn scale
+	// TODO: Some of these "c" should probably use the projectile owner instead
 	if !clsnscale {
-		p.clsnScale = c.clsnScale
+		p.clsnScale = c.clsnBaseScale
 	}
 
 	// Backward compatibility
@@ -7966,24 +7968,24 @@ func (c *Char) setDepthEdge(tde, bde float32) {
 
 func (c *Char) updateClsnScale() {
 	// Determine base scale from animation owner or own size
-	if c.ownclsnscale && c.animPN == c.playerNo {
+	if c.helperIndex != 0 && c.ownclsnscale && c.animPN == c.playerNo {
 		// Helper parameter. Use own scale instead of animation owner's
-		c.clsnScale = [2]float32{c.size.xscale, c.size.yscale}
+		c.clsnBaseScale = [2]float32{c.size.xscale, c.size.yscale}
 	} else if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
 		// Index range checks. Prevents crashing if chars don't have animations
 		// The char's base Clsn scale is based on the animation owner's scale constants
-		c.clsnScale = [2]float32{
+		c.clsnBaseScale = [2]float32{
 			sys.chars[c.animPN][0].size.xscale,
 			sys.chars[c.animPN][0].size.yscale,
 		}
 	} else {
 		// Normally not used. Just a safeguard
-		c.clsnScale = [2]float32{1.0, 1.0}
+		c.clsnBaseScale = [2]float32{1.0, 1.0}
 	}
 	// Apply animation local scale
 	c.clsnScale = [2]float32{
-		c.clsnScale[0] * c.animlocalscl,
-		c.clsnScale[1] * c.animlocalscl,
+		c.clsnBaseScale[0] * c.animlocalscl,
+		c.clsnBaseScale[1] * c.animlocalscl,
 	}
 	// Clsn and size box scale used to factor zScale here, but they shouldn't
 	// Game logic should stay the same regardless of Z scale. Only drawing scale should change
