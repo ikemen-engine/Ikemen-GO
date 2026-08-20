@@ -281,7 +281,7 @@ func readBackGround(is IniSection, link *backGround,
 				bg.anim = a
 				hasAnim = true
 			} else {
-				return nil, Error(fmt.Sprint("Missing action: %d", bg.actionno))
+				return nil, Error(fmt.Sprintf("Invalid BG action: %d", bg.actionno))
 			}
 		}
 		if hasAnim {
