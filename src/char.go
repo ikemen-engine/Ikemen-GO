@@ -3658,6 +3658,7 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
+    hitCandidates        []*Char // Reusable slice for hit detection sorting
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -13763,68 +13764,84 @@ func (cl *CharList) update() {
 }
 
 // Check player vs player hits
-func (cl *CharList) hitDetectionPlayer(getter *Char) {
-
+func (cl *CharList) hitDetectionPlayer(c *Char) {
 	// Stop outer loop if enemy is disabled
-	if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
+	if c.scf(SCF_standby) || c.scf(SCF_disabled) {
 		return
 	}
 
-	getter.unsetCSF(CSF_gethit)
+	if c.atktmp == 0 {
+		return
+	}
 
 	// This forces an enemy list cache reset every frame
 	// Has a perfomance impact and is probably not necessary in the current state of the code
 	//getter.enemyNearP2Clear()
 
-	for _, c := range cl.runOrder {
-		// Stop current iteration if this char is disabled
-		if c.scf(SCF_standby) || c.scf(SCF_disabled) {
+	// Reuse hit detection sorting slice
+	candidates := c.hitCandidates[:0]
+
+	// Iterate every other player to collect potential HitDef targets
+	for _, getter := range cl.runOrder {
+		if c == getter {
 			continue
 		}
 
-		if c.atktmp != 0 && c.id != getter.id &&
-			(c.hitdef.affectteam == 0 || (getter.teamside != c.hitdef.teamside) == (c.hitdef.affectteam > 0)) {
+		// Stop current iteration if this char is disabled
+		if getter.scf(SCF_standby) || getter.scf(SCF_disabled) {
+			continue
+		}
 
-			// Guard distance check
-			// Mugen uses < checks so that 0 does not trigger proximity guard at 0 distance
-			// Localcoord conversion is already built into the dist functions, so it will be skipped
-			if !getter.inguarddist && c.ss.moveType == MT_A {
-				// Get distances
-				distX := c.distX(getter, c) * c.facing
-				distY := c.distY(getter, c)
-				distZ := c.distZ(getter, c)
+		// AffectTeam and TeamSide checks
+		teamOk := (c.hitdef.affectteam == 0 || (getter.teamside != c.hitdef.teamside) == (c.hitdef.affectteam > 0))
+		if !teamOk {
+			continue
+		}
 
-				// Check X distance
-				inguardX := distX < c.hitdef.guard_dist_x[0] && distX > -c.hitdef.guard_dist_x[1]
+		// Guard distance check
+		// Mugen uses < checks so that 0 does not trigger proximity guard at 0 distance
+		// Localcoord conversion is already built into the dist functions, so it will be skipped
+		if !getter.inguarddist && c.ss.moveType == MT_A {
+			// Get distances
+			distX := c.distX(getter, c) * c.facing
+			distY := c.distY(getter, c)
+			distZ := c.distZ(getter, c)
 
-				// Check Y distance
-				inguardY := true
-				if distY != 0 { // Compatibility safeguard
-					inguardY = distY > -c.hitdef.guard_dist_y[0] && distY < c.hitdef.guard_dist_y[1]
-				}
+			// Check X distance
+			inguardX := distX < c.hitdef.guard_dist_x[0] && distX > -c.hitdef.guard_dist_x[1]
 
-				// Check Z distance
-				inguardZ := true
-				if distZ != 0 { // Compatibility safeguard
-					inguardZ = distZ > -c.hitdef.guard_dist_z[0] && distZ < c.hitdef.guard_dist_z[1]
-				}
-
-				// Set flag
-				if inguardX && inguardY && inguardZ {
-					getter.inguarddist = true
-				}
+			// Check Y distance
+			inguardY := true
+			if distY != 0 { // Compatibility safeguard
+				inguardY = distY > -c.hitdef.guard_dist_y[0] && distY < c.hitdef.guard_dist_y[1]
 			}
 
-			// Inherit parent's or root's juggle points
-			if c.helperIndex != 0 {
-				if c.inheritJuggle == 1 && c.parent(false) != nil {
+			// Check Z distance
+			inguardZ := true
+			if distZ != 0 { // Compatibility safeguard
+				inguardZ = distZ > -c.hitdef.guard_dist_z[0] && distZ < c.hitdef.guard_dist_z[1]
+			}
+
+			// Set flag
+			if inguardX && inguardY && inguardZ {
+				getter.inguarddist = true
+			}
+		}
+
+		// Inherit parent's or root's juggle points
+		if c.helperIndex != 0 {
+			switch c.inheritJuggle {
+			case 1:
+				if c.parent(false) != nil {
 					for _, v := range getter.ghv.targetedBy {
 						if v[0] == c.parent(false).id {
 							getter.ghv.addId(c.id, v[1])
 							break
 						}
 					}
-				} else if c.inheritJuggle == 2 && c.root(false) != nil {
+				}
+			case 2:
+				if c.root(false) != nil {
 					for _, v := range getter.ghv.targetedBy {
 						if v[0] == c.root(false).id {
 							getter.ghv.addId(c.id, v[1])
@@ -13833,152 +13850,190 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 					}
 				}
 			}
+		}
 
-			// In Mugen, you can no longer hit a standing target if you don't have enough points
-			// In Mugen, you can juggle any enemy if they're not your target yet
-			// If IkemenVersion, the rules are a little more consistent
-			canJuggle := false
-			if c.asf(ASF_nojugglecheck) ||
-				c.juggle <= getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) ||
-				(c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0) && getter.hittmp < 2 ||
-				(c.gi().ikemenver[0] == 0 && c.gi().ikemenver[1] == 0 && !c.hasTarget(getter.id)) {
-				canJuggle = true
-			}
+		// In Mugen, you can no longer hit a standing target if you don't have enough points
+		// In Mugen, you can juggle any enemy if they're not your target yet
+		// If IkemenVersion, the rules are a little more consistent
+		canJuggle := false
+		if c.asf(ASF_nojugglecheck) ||
+			c.juggle <= getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) ||
+			(c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0) && getter.hittmp < 2 ||
+			(c.gi().ikemenver[0] == 0 && c.gi().ikemenver[1] == 0 && !c.hasTarget(getter.id)) {
+			canJuggle = true
+		}
 
-			// If getter can be hit by this Hitdef
-			if canJuggle && c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
-				(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
-				getter.hittableByChar(c, &c.hitdef, c.ss.stateType, false) {
+		// If getter can't be hit by this Hitdef
+		if !canJuggle ||
+			c.hitdef.hitonce < 0 ||
+			c.hasTargetOfHitdef(getter.id) ||
+			c.hitdef.reversal_attr > 0 && getter.hasTargetOfHitdef(c.id) ||
+			!getter.hittableByChar(c, &c.hitdef, c.ss.stateType, false) {
+			continue
+		}
 
-				// Z axis check
-				// ReversalDef checks attack depth vs attack depth
-				zok := true
-				if c.hitdef.reversal_attr > 0 {
-					zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack_depth[0], c.hitdef.attack_depth[1], c.localscl,
-						getter.pos[2], getter.hitdef.attack_depth[0], getter.hitdef.attack_depth[1], getter.localscl)
-				} else {
-					zok = sys.zAxisOverlap(c.pos[2], c.hitdef.attack_depth[0], c.hitdef.attack_depth[1], c.localscl,
-						getter.pos[2], getter.depthPlayer[0], getter.depthPlayer[1], getter.localscl)
-				}
+		// Select getter Z axis range
+		// HitDef checks attack depth vs player depth
+		// ReversalDef checks attack depth vs attack depth
+		getterDepth := getter.depthPlayer
+		if c.hitdef.reversal_attr > 0 {
+			getterDepth = getter.hitdef.attack_depth
+		}
 
-				// If collision OK then get the hit type and act accordingly
-				if zok && c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) {
-					if hitResult := c.hitResultCheck(getter, nil); hitResult != 0 {
-						// Check if MoveContact should be updated
-						// Hit type None should also set MoveHit here
-						mvc := hitResult >= -1 || c.hitdef.reversal_attr > 0
+		// Z axis check
+		if !sys.zAxisOverlap(
+			c.pos[2], c.hitdef.attack_depth[0], c.hitdef.attack_depth[1], c.localscl,
+			getter.pos[2], getterDepth[0], getterDepth[1], getter.localscl,
+		) {
+			continue
+		}
 
-						// Attacker hitpauses were off by 1 frame in WinMugen. Mugen 1.0 fixed it
-						// The way this should actually happen is that WinMugen chars have 1 subtracted from their hitpause in bytecode.go
-						// But because of the order that events happen in in Ikemen, it must be fixed the other way around
-						hpFix := c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0 || c.gi().mugenver[0] == 1
+		// This attacker-defender pair is valid. Append to sorting list
+		candidates = append(candidates, getter)
+	}
 
-						if Abs(hitResult) == 1 {
-							if mvc {
-								c.mctype = MC_Hit
-								c.mctime = -1
+	// If no valid pairs for collision detection
+	if len(candidates) == 0 {
+		return
+	}
+
+	// Sort enemies by distance so the nearest valid one gets processed first
+	c.sortEnemiesByDistance(candidates, false)
+
+	// Then place enemies with ReversalDef first while preserving distance order
+	for i := 0; i < len(candidates); i++ {
+		if candidates[i].hitdef.reversal_attr <= 0 {
+			continue
+		}
+
+		for j := i; j > 0 && candidates[j-1].hitdef.reversal_attr <= 0; j-- {
+			candidates[j], candidates[j-1] = candidates[j-1], candidates[j]
+		}
+	}
+
+	// Process enemies in the sorted order
+	for _, getter := range candidates {
+		// Hitonce can change between iterations and has to be checked again
+		if c.hitdef.hitonce < 0 {
+			break
+		}
+
+		if c.clsnCheck(getter, 1, c.hitdef.p2clsncheck, true) {
+			if hitResult := c.hitResultCheck(getter, nil); hitResult != 0 {
+				// Apply hit consequences specific to player vs player
+				// Check if MoveContact should be updated
+				// Hit type None should also set MoveHit here
+				mvc := hitResult >= -1 || c.hitdef.reversal_attr > 0
+
+				// Attacker hitpauses were off by 1 frame in WinMugen. Mugen 1.0 fixed it
+				// The way this should actually happen is that WinMugen chars have 1 subtracted from their hitpause in bytecode.go
+				// But because of the order that events happen in in Ikemen, it must be fixed the other way around
+				hpFix := c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0 || c.gi().mugenver[0] == 1
+
+				if Abs(hitResult) == 1 {
+					if mvc {
+						c.mctype = MC_Hit
+						c.mctime = -1
+					}
+					// Successful ReversalDef
+					if c.hitdef.reversal_attr > 0 {
+						c.mhv.power += c.hitdef.hitgetpower
+
+						// Precompute localcoord conversion factor
+						scaleratio := c.localscl / getter.localscl
+
+						// ReversalDef seems to set an arbitrary collection of get hit variables in Mugen
+						getter.hitdef.hitflag = 0
+						getter.mctype = MC_Reversed
+						getter.mctime = -1
+						getter.hitdefContact = true
+						getter.mhv.frame = true
+						getter.mhv.playerid = c.id
+						getter.mhv.playerno = c.playerNo
+						getter.hitdef.hitonce = -1 // Neutralize Hitdef
+
+						if c.hitdef.unhittabletime[1] >= 0 {
+							getter.unhittableTime = c.hitdef.unhittabletime[1] // 1
+						}
+
+						// Clear GetHitVars while stacking those that need it
+						getter.ghv.selectiveReset(getter)
+
+						getter.ghv.attr = c.hitdef.attr
+						getter.ghv.hitid = c.hitdef.id
+						getter.ghv.playerno = c.playerNo
+						getter.ghv.playerid = c.id
+						getter.ghv.teamside = c.hitdef.teamside
+						getter.fallTime = 0
+
+						// Fall flag
+						if c.hitdef.forcenofall {
+							getter.ghv.fallflag = false
+						} else if !getter.ghv.fallflag {
+							if getter.ss.stateType == ST_A {
+								getter.ghv.fallflag = c.hitdef.air_fall != 0
+							} else {
+								getter.ghv.fallflag = c.hitdef.ground_fall
 							}
-							// Successful ReversalDef
-							if c.hitdef.reversal_attr > 0 {
-								c.mhv.power += c.hitdef.hitgetpower
+						}
 
-								// Precompute localcoord conversion factor
-								scaleratio := c.localscl / getter.localscl
+						// Fall group
+						getter.ghv.fall_animtype = c.hitdef.fall_animtype
+						getter.ghv.fall_xvelocity = c.hitdef.fall_xvelocity * scaleratio
+						getter.ghv.fall_yvelocity = c.hitdef.fall_yvelocity * scaleratio
+						getter.ghv.fall_zvelocity = c.hitdef.fall_zvelocity * scaleratio
+						getter.ghv.fall_recover = c.hitdef.fall_recover
+						getter.ghv.fall_recovertime = c.hitdef.fall_recovertime
+						getter.ghv.fall_damage = c.hitdef.fall_damage
+						getter.ghv.fall_kill = c.hitdef.fall_kill
+						getter.ghv.fall_envshake_time = c.hitdef.fall_envshake_time
+						getter.ghv.fall_envshake_freq = c.hitdef.fall_envshake_freq
+						getter.ghv.fall_envshake_ampl = int32(float32(c.hitdef.fall_envshake_ampl) * scaleratio)
+						getter.ghv.fall_envshake_phase = c.hitdef.fall_envshake_phase
+						getter.ghv.fall_envshake_mul = c.hitdef.fall_envshake_mul
+						getter.ghv.fall_envshake_dir = c.hitdef.fall_envshake_dir
 
-								// ReversalDef seems to set an arbitrary collection of get hit variables in Mugen
-								getter.hitdef.hitflag = 0
-								getter.mctype = MC_Reversed
-								getter.mctime = -1
-								getter.hitdefContact = true
-								getter.mhv.frame = true
-								getter.mhv.playerid = c.id
-								getter.mhv.playerno = c.playerNo
-								getter.hitdef.hitonce = -1 // Neutralize Hitdef
-
-								if c.hitdef.unhittabletime[1] >= 0 {
-									getter.unhittableTime = c.hitdef.unhittabletime[1] // 1
-								}
-
-								// Clear GetHitVars while stacking those that need it
-								getter.ghv.selectiveReset(getter)
-
-								getter.ghv.attr = c.hitdef.attr
-								getter.ghv.hitid = c.hitdef.id
-								getter.ghv.playerno = c.playerNo
-								getter.ghv.playerid = c.id
-								getter.ghv.teamside = c.hitdef.teamside
-								getter.fallTime = 0
-
-								// Fall flag
-								if c.hitdef.forcenofall {
-									getter.ghv.fallflag = false
-								} else if !getter.ghv.fallflag {
-									if getter.ss.stateType == ST_A {
-										getter.ghv.fallflag = c.hitdef.air_fall != 0
-									} else {
-										getter.ghv.fallflag = c.hitdef.ground_fall
-									}
-								}
-
-								// Fall group
-								getter.ghv.fall_animtype = c.hitdef.fall_animtype
-								getter.ghv.fall_xvelocity = c.hitdef.fall_xvelocity * scaleratio
-								getter.ghv.fall_yvelocity = c.hitdef.fall_yvelocity * scaleratio
-								getter.ghv.fall_zvelocity = c.hitdef.fall_zvelocity * scaleratio
-								getter.ghv.fall_recover = c.hitdef.fall_recover
-								getter.ghv.fall_recovertime = c.hitdef.fall_recovertime
-								getter.ghv.fall_damage = c.hitdef.fall_damage
-								getter.ghv.fall_kill = c.hitdef.fall_kill
-								getter.ghv.fall_envshake_time = c.hitdef.fall_envshake_time
-								getter.ghv.fall_envshake_freq = c.hitdef.fall_envshake_freq
-								getter.ghv.fall_envshake_ampl = int32(float32(c.hitdef.fall_envshake_ampl) * scaleratio)
-								getter.ghv.fall_envshake_phase = c.hitdef.fall_envshake_phase
-								getter.ghv.fall_envshake_mul = c.hitdef.fall_envshake_mul
-								getter.ghv.fall_envshake_dir = c.hitdef.fall_envshake_dir
-
-								getter.ghv.down_recover = c.hitdef.down_recover
-								if c.hitdef.down_recovertime < 0 {
-									getter.ghv.down_recovertime = getter.gi().data.liedown.time
-								} else {
-									getter.ghv.down_recovertime = c.hitdef.down_recovertime
-								}
-
-								getter.hitdefTargetsBuffer = append(getter.hitdefTargetsBuffer, c.id)
-								if getter.hittmp == 0 {
-									getter.hittmp = -1
-								}
-								if !getter.csf(CSF_gethit) {
-									getter.hitPauseTime = Max(1, c.hitdef.pausetime[1]+Btoi(hpFix))
-								}
-							}
-							if !c.csf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
-								getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
-								c.hitPauseTime = Max(1, c.hitdef.pausetime[0]+Btoi(hpFix))
-								// In Mugen, the hitpause only actually takes effect in the next frame
-								// In Mugen, despite hit type None being supposed to apply hitpause, that doesn't happen
-								// Curiously, if a HitOverride is used the hitpause will be restored
-							}
-							c.uniqHitCount++
+						getter.ghv.down_recover = c.hitdef.down_recover
+						if c.hitdef.down_recovertime < 0 {
+							getter.ghv.down_recovertime = getter.gi().data.liedown.time
 						} else {
-							if mvc {
-								c.mctype = MC_Guarded
-								c.mctime = -1
-							}
-							if !c.csf(CSF_gethit) {
-								c.hitPauseTime = Max(1, c.hitdef.guard_pausetime[0]+Btoi(hpFix))
-							}
+							getter.ghv.down_recovertime = c.hitdef.down_recovertime
 						}
-						if c.hitdef.hitonce > 0 {
-							c.hitdef.hitonce = -1
+
+						getter.hitdefTargetsBuffer = append(getter.hitdefTargetsBuffer, c.id)
+						if getter.hittmp == 0 {
+							getter.hittmp = -1
 						}
-						c.hitdefContact = true
-						c.mhv.frame = true
-						c.mhv.playerid = getter.id
-						c.mhv.playerno = getter.playerNo
-						if c.hitdef.unhittabletime[0] >= 0 {
-							c.unhittableTime = c.hitdef.unhittabletime[0]
+						if !getter.csf(CSF_gethit) {
+							getter.hitPauseTime = Max(1, c.hitdef.pausetime[1]+Btoi(hpFix))
 						}
 					}
+					if !c.csf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
+						getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
+						c.hitPauseTime = Max(1, c.hitdef.pausetime[0]+Btoi(hpFix))
+						// In Mugen, the hitpause only actually takes effect in the next frame
+						// In Mugen, despite hit type None being supposed to apply hitpause, that doesn't happen
+						// Curiously, if a HitOverride is used the hitpause will be restored
+					}
+					c.uniqHitCount++
+				} else {
+					if mvc {
+						c.mctype = MC_Guarded
+						c.mctime = -1
+					}
+					if !c.csf(CSF_gethit) {
+						c.hitPauseTime = Max(1, c.hitdef.guard_pausetime[0]+Btoi(hpFix))
+					}
+				}
+				if c.hitdef.hitonce > 0 {
+					c.hitdef.hitonce = -1
+				}
+				c.hitdefContact = true
+				c.mhv.frame = true
+				c.mhv.playerid = getter.id
+				c.mhv.playerno = getter.playerNo
+				if c.hitdef.unhittabletime[0] >= 0 {
+					c.unhittableTime = c.hitdef.unhittabletime[0]
 				}
 			}
 		}
@@ -14143,7 +14198,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 						getter.pos[2], getter.depthPlayer[0], getter.depthPlayer[1], getter.localscl) {
 
 					if hitResult := c.hitResultCheck(getter, p); hitResult != 0 {
-
+						// Apply hit consequences specific to projectile vs player
 						p.contactflag = true
 						if Abs(hitResult) == 1 {
 							c.pctype = PC_Hit
@@ -14583,6 +14638,13 @@ func (cl *CharList) collisionDetection() {
 
 	// Rebind players if necessary
 	cl.rebindIfPushed()
+
+	// Reset GetHit flag for all characters before running hit detection
+	// This used to be in hitDetectionPlayer(), but because that now iterates attackers instead of targets it needs to be outside
+	// Might be better placed in some other function. But putting it here ensures it happens at the right time
+	for _, c := range cl.runOrder {
+		c.unsetCSF(CSF_gethit)
+	}
 
 	// Player hit detection
 	for _, idx := range sortedOrder {
