@@ -2586,7 +2586,6 @@ type Projectile struct {
 	customShader    CustomShader
 	pauseBool       bool
 	clsnBuffers     [4][]ClsnFinal
-	tradeDistSorting []ProjTradeDist
 }
 
 func newProjectile() *Projectile {
@@ -2898,6 +2897,50 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 	return *buf
 }
 
+// Sorts a group of projectiles by distance from the first projectile
+func (p *Projectile) sortOthersByDistance(projectiles []*Projectile) []*Projectile {
+	// We only need to sort if there are two or more projectiles
+	if len(projectiles) < 2 {
+		return projectiles
+	}
+
+	// Local struct for sorting
+	type pair struct {
+		pr   *Projectile
+		dist float32
+	}
+
+	pairs := make([]pair, len(projectiles))
+
+	// Compute distances of all projectiles
+	for idx, pr := range projectiles {
+		// Compute squared distance
+		dx := p.pos[0]*p.localscl - pr.pos[0]*pr.localscl
+		dy := p.pos[1]*p.localscl - pr.pos[1]*pr.localscl
+		dz := p.pos[2]*p.localscl - pr.pos[2]*pr.localscl
+		dist := dx*dx + dy*dy + dz*dz
+
+		// Save result in sorting slice
+		pairs[idx] = pair{pr: pr, dist: dist}
+	}
+
+	// Sort by shortest distance
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].dist != pairs[j].dist {
+			return pairs[i].dist < pairs[j].dist
+		}
+		// Use projectile ID as tiebreaker
+		return pairs[i].pr.id < pairs[j].pr.id
+	})
+
+	// Write back sorted projectiles
+	for i, pair := range pairs {
+		projectiles[i] = pair.pr
+	}
+
+	return projectiles
+}
+
 // This function only checks if a projectile hits another projectile
 func (p *Projectile) tradeDetection(playerNo, index int) {
 
@@ -2913,7 +2956,7 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 	}
 
 	// Reuse buffer: reset length, keep capacity
-	p.tradeDistSorting = p.tradeDistSorting[:0]
+	candidates := sys.projectileTradeSort[:0]
 
 	// Collect trade candidates
 	// Loop through all players starting from the current one
@@ -2959,23 +3002,16 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 				continue
 			}
 
-			// Compute squared distance
-			dx := p.pos[0]*p.localscl - pr.pos[0]*pr.localscl
-			dy := p.pos[1]*p.localscl - pr.pos[1]*pr.localscl
-			dz := p.pos[2]*p.localscl - pr.pos[2]*pr.localscl
-			dist := dx*dx + dy*dy + dz*dz
-
-			// Append to list
-			p.tradeDistSorting = append(p.tradeDistSorting, ProjTradeDist{
-				pr:      pr,
-				dist:    dist,
-				sortIdx: len(p.tradeDistSorting),
-			})
+			// Append to sorting list
+			candidates = append(candidates, pr)
 		}
 	}
 
+	// Keep the grown backing array
+	sys.projectileTradeSort = candidates
+
 	// No projectiles to trade with
-	if len(p.tradeDistSorting) == 0 {
+	if len(candidates) == 0 {
 		return
 	}
 
@@ -2987,17 +3023,10 @@ func (p *Projectile) tradeDetection(playerNo, index int) {
 	}
 
 	// Sort candidates by distance
-	sort.Slice(p.tradeDistSorting, func(i, j int) bool {
-		if p.tradeDistSorting[i].dist != p.tradeDistSorting[j].dist {
-			return p.tradeDistSorting[i].dist < p.tradeDistSorting[j].dist
-		}
-		// Use sorting index as tiebreaker
-		return p.tradeDistSorting[i].sortIdx < p.tradeDistSorting[j].sortIdx
-	})
+	p.sortOthersByDistance(candidates)
 
 	// Run Clsn check in the sorted order
-	for _, cand := range p.tradeDistSorting {
-		pr := cand.pr
+	for _, pr := range candidates {
 
 		// Re‑check active
 		if !pr.isActive() || pr.hits < 0 {
@@ -3658,7 +3687,6 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
-    hitCandidates        []*Char // Reusable slice for hit detection sorting
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -3815,7 +3843,7 @@ func (c *Char) enemyNearP2Clear() {
 }
 
 // Sorts a group of enemies by distance from the first char
-func (c *Char) sortEnemiesByDistance(enemies []*Char, p2list bool) []*Char {
+func (c *Char) sortOthersByDistance(enemies []*Char, p2list bool) []*Char {
 	// We only need to sort if there are two or more enemies
 	if len(enemies) < 2 {
 		return enemies
@@ -13779,7 +13807,7 @@ func (cl *CharList) hitDetectionPlayer(c *Char) {
 	//getter.enemyNearP2Clear()
 
 	// Reuse hit detection sorting slice
-	candidates := c.hitCandidates[:0]
+	candidates := sys.hitDetectionSort[:0]
 
 	// Iterate every other player to collect potential HitDef targets
 	for _, getter := range cl.runOrder {
@@ -13892,13 +13920,16 @@ func (cl *CharList) hitDetectionPlayer(c *Char) {
 		candidates = append(candidates, getter)
 	}
 
+	// Keep the grown backing array
+	sys.hitDetectionSort = candidates
+
 	// If no valid pairs for collision detection
 	if len(candidates) == 0 {
 		return
 	}
 
 	// Sort enemies by distance so the nearest valid one gets processed first
-	c.sortEnemiesByDistance(candidates, false)
+	c.sortOthersByDistance(candidates, false)
 
 	// Then place enemies with ReversalDef first while preserving distance order
 	for i := 0; i < len(candidates); i++ {
@@ -14740,7 +14771,7 @@ func (cl *CharList) enemyNear(c *Char, n int32, p2list bool) *Char {
 	}
 
 	// Sort by distance from c
-	enemies = c.sortEnemiesByDistance(enemies, p2list)
+	enemies = c.sortOthersByDistance(enemies, p2list)
 
 	// Update the cache
 	*cache = (*cache)[:0]
