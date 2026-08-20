@@ -2850,6 +2850,7 @@ func (p *Projectile) cancelHits(opp *Projectile) {
 }
 
 // Returns the projectile's collision boxes as []ClsnFinal, with all modifiers applied
+// Not split into "local" and "world" at the moment, since only the world scale is ever used
 func (p *Projectile) getClsn(group int32) []ClsnFinal {
 	// Validate type
 	if group < 1 || group > 2 {
@@ -3551,9 +3552,6 @@ type Char struct {
 	localscl       float32 // Ratio between 320 and the localcoord of the current state
 	animlocalscl   float32
 	size           CharSize
-	//sizeBox           [4]float32
-	clsnBaseScale       [2]float32
-	clsnScale           [2]float32 // The base scale before modifiers are applied
 	clsnOverrides       [4][]ClsnOverride
 	clsnTransforms      [4]ClsnTransform
 	zScale              float32
@@ -3686,22 +3684,21 @@ func (c *Char) panic(msg string) {
 func (c *Char) init(n int, idx int) {
 	// Reset struct with defaults
 	*c = Char{
-		playerNo:    n,
-		helperIndex: idx,
-		controller:  n,
-		analogAxes:  [6]float32{},
-		animPN:      n,
-		id:          -1,
-		parentId:    -1,
-		hoverIdx:    -1,
-		mctype:      MC_Hit,
-		ownpal:      true,
-		facing:      1,
-		minus:       3,
-		winquote:    -1,
-		movelist:    0,
-		clsnScale:   [2]float32{1, 1},
-		zScale:      1,
+		playerNo:      n,
+		helperIndex:   idx,
+		controller:    n,
+		analogAxes:    [6]float32{},
+		animPN:        n,
+		id:            -1,
+		parentId:      -1,
+		hoverIdx:      -1,
+		mctype:        MC_Hit,
+		ownpal:        true,
+		facing:        1,
+		minus:         3,
+		winquote:      -1,
+		movelist:      0,
+		zScale:        1,
 		//aimg:          *newAfterImage(),
 		CharSystemVar: CharSystemVar{
 			superDefenseMul: 1.0,
@@ -4943,8 +4940,6 @@ func (c *Char) changeAnimEx(animNo int32, animPlayerNo int, spritePlayerNo int, 
 	}
 	c.animlocalscl = 320 / sys.chars[animOwner][0].localcoord
 
-	// Clsn scale depends on the animation owner's scale, so it must be updated
-	c.updateClsnScale()
 	// Update reference frame
 	c.updateCurFrame()
 }
@@ -7885,7 +7880,7 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 	// Default Clsn scale
 	// TODO: Some of these "c" should probably use the projectile owner instead
 	if !clsnscale {
-		p.clsnScale = c.clsnBaseScale
+		p.clsnScale = c.clsnScaleLocal()
 	}
 
 	// Backward compatibility
@@ -8031,35 +8026,38 @@ func (c *Char) setDepthEdge(tde, bde float32) {
 }
 */
 
-func (c *Char) updateClsnScale() {
-	// Determine base scale from animation owner or own size
+// The char's Clsn scale in their own coordinate space
+func (c *Char) clsnScaleLocal() [2]float32 {
+	// Helper ownclsnscale parameter uses own scale instead of animation owner's
 	if c.helperIndex != 0 && c.ownclsnscale && c.animPN == c.playerNo {
-		// Helper parameter. Use own scale instead of animation owner's
-		c.clsnBaseScale = [2]float32{c.size.xscale, c.size.yscale}
-	} else if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
-		// Index range checks. Prevents crashing if chars don't have animations
-		// The char's base Clsn scale is based on the animation owner's scale constants
-		c.clsnBaseScale = [2]float32{
-			sys.chars[c.animPN][0].size.xscale,
-			sys.chars[c.animPN][0].size.yscale,
-		}
-	} else {
-		// Normally not used. Just a safeguard
-		c.clsnBaseScale = [2]float32{1.0, 1.0}
+		return [2]float32{c.size.xscale, c.size.yscale}
 	}
-	// Apply animation local scale
-	c.clsnScale = [2]float32{
-		c.clsnBaseScale[0] * c.animlocalscl,
-		c.clsnBaseScale[1] * c.animlocalscl,
+
+	// The char's base Clsn scale is based on the animation owner's scale constants
+	// The index range checks prevent crashing if chars don't have animations
+	if c.animPN >= 0 && c.animPN < len(sys.chars) && len(sys.chars[c.animPN]) > 0 {
+		owner := sys.chars[c.animPN][0]
+		return [2]float32{owner.size.xscale, owner.size.yscale}
 	}
-	// Clsn and size box scale used to factor zScale here, but they shouldn't
-	// Game logic should stay the same regardless of Z scale. Only drawing scale should change
+
+	// Normally not reached. Just a safeguard
+	return [2]float32{1, 1}
 }
 
-// Similar to Clsn1 and Clsn2 except localscl replaces animlocalscl
-func (c *Char) sizeBoxScale() [2]float32 {
-	baseLocalscl := 320 / float32(c.gi().localcoord[0])
-	return [2]float32{baseLocalscl, baseLocalscl}
+// The char's Clsn scale in world coordinate space
+// Clsn and size box scale used to factor zScale here, but they shouldn't
+// Game logic should stay the same regardless of Z scale. Only drawing scale should change
+func (c *Char) clsnScaleWorld() [2]float32 {
+	local := c.clsnScaleLocal()
+
+	// Apply animation local scale
+	return [2]float32{local[0] * c.animlocalscl, local[1] * c.animlocalscl}
+}
+
+// Size boxes only need world scaling
+func (c *Char) sizeBoxScaleWorld() [2]float32 {
+	base := 320 / float32(c.gi().localcoord[0])
+	return [2]float32{base, base}
 }
 
 func (c *Char) gethitAnimtype() Reaction {
@@ -9206,25 +9204,28 @@ func (c *Char) distZ(opp *Char, oc *Char) float32 {
 
 // In Mugen, P2BodyDist X does not account for changes in Width like Ikemen does here
 func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
-	var cw, oppw float32
 	dist := c.distX(opp, oc)
 
 	// Get size boxes
-	cbox := c.getAnySizeBox()
-	oppbox := opp.getAnySizeBox()
+	cboxes := c.getClsnLocal(3)
+	oppboxes := opp.getClsnLocal(3)
 
 	// Normally this can only happen with OverrideClsn
 	// TODO: Decide whether to return NaN (accurate) or use distance to center axis (forgiving)
-	if cbox == nil || oppbox == nil {
+	if len(cboxes) == 0 || len(oppboxes) == 0 {
 		return float32(math.NaN())
 	}
+
+	cbox := cboxes[0].rect
+	oppbox := oppboxes[0].rect
 
 	// Char reference
 	// The player reference is always the front width but the enemy reference varies
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/2432
-	cw = cbox[2] * c.facing * (c.localscl / oc.localscl)
+	cw := cbox[2] * c.facing * (c.localscl / oc.localscl)
 
 	// Enemy reference
+	var oppw float32
 	if ((dist * c.facing) >= 0) == (c.facing != opp.facing) {
 		// Use front width
 		oppw = oppbox[2] * opp.facing * (opp.localscl / oc.localscl)
@@ -9237,12 +9238,15 @@ func (c *Char) bodyDistX(opp *Char, oc *Char) float32 {
 }
 
 func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
-	cbox := c.getAnySizeBox()
-	oppbox := opp.getAnySizeBox()
+	cboxes := c.getClsnLocal(3)
+	oppboxes := opp.getClsnLocal(3)
 
-	if cbox == nil || oppbox == nil {
+	if len(cboxes) == 0 || len(oppboxes) == 0 {
 		return float32(math.NaN())
 	}
+
+	cbox := cboxes[0].rect
+	oppbox := oppboxes[0].rect
 
 	ctop := (c.pos[1] + cbox[1]) * c.localscl
 	cbot := (c.pos[1] + cbox[3]) * c.localscl
@@ -9253,9 +9257,9 @@ func (c *Char) bodyDistY(opp *Char, oc *Char) float32 {
 		return (otop - cbot) / oc.localscl
 	} else if ctop > obot {
 		return (obot - ctop) / oc.localscl
-	} else {
-		return 0
 	}
+
+	return 0
 }
 
 func (c *Char) bodyDistZ(opp *Char, oc *Char) float32 {
@@ -10441,17 +10445,8 @@ func (c *Char) depthToBox() [2]float32 {
 	return [2]float32{base[0] - c.depthPlayer[0], base[1] + c.depthPlayer[1]}
 }
 
-// Placeholder while we decide whether to allow multiple boxes or not
-func (c *Char) getAnySizeBox() *[4]float32 {
-	boxes := c.getClsn(3)
-	if len(boxes) == 0 {
-		return nil
-	}
-	return &boxes[0].rect
-}
-
-// Combine current Clsn with existing modifiers
-func (c *Char) getClsn(group int32) []ClsnFinal {
+// Internal helper to just get the boxes without any char or world scaling
+func (c *Char) getClsnUnscaled(group int32) []ClsnFinal {
 	// Validate group
 	if group < 1 || group > 4 {
 		return nil
@@ -10459,72 +10454,103 @@ func (c *Char) getClsn(group int32) []ClsnFinal {
 
 	// Get current animation frame if necessary
 	var charframe *AnimFrame
-	if group != 3 {
+	if group == 1 || group == 2 {
 		// By default, use the final displayed frame's boxes
 		charframe = c.curFrame
 
-		// While states are still running, use the frame that *will* be displayed instead, because of Clsn triggers
+		// While states are still running, use the frame that *will* be displayed instead,
+		// because of Clsn triggers
 		if c.minus < 2 && c.anim != nil {
 			charframe = c.anim.CurrentFrame()
 		}
 	}
 
 	// Select the reusable buffer
-	final := &c.clsnBuffers[group-1]
-	*final = (*final)[:0] // reset
+	buffer := &c.clsnBuffers[group-1]
+	*buffer = (*buffer)[:0] // reset
 
 	// Copy raw boxes, converting to ClsnFinal
 	switch group {
 	case 1:
 		if charframe != nil {
 			for _, r := range charframe.Clsn1 {
-				*final = append(*final, ClsnFinal{rect: r, angle: 0})
+				*buffer = append(*buffer, ClsnFinal{rect: r})
 			}
 		}
 	case 2:
 		if charframe != nil {
 			for _, r := range charframe.Clsn2 {
-				*final = append(*final, ClsnFinal{rect: r, angle: 0})
+				*buffer = append(*buffer, ClsnFinal{rect: r})
 			}
 		}
 	case 3:
 		sizeBox := c.sizeToBox()
-		*final = append(*final, ClsnFinal{rect: sizeBox, angle: 0})
+		*buffer = append(*buffer, ClsnFinal{rect: sizeBox})
 	}
 
-	// These allocations created a hot spot in the profile, so now we use the buffers from earlier instead
-	// Just in case, copy the slice so the original is never mutated
-	//final := make([][4]float32, len(original))
-	//copy(final, original)
+	// Return nil if empty to make it easier to check for no boxes later
+	//if len(buffer) == 0 {
+	//	return nil
+	//}
+
+	// Only one size box allowed
+	// TODO: Decision between this or allowing multiple ones (with push code using the first or all of them)
+	//if group == 3 {
+	//	return buffer[:1]
+	//}
+
+	return *buffer
+}
+
+// Return boxes with char scaling
+func (c *Char) getClsnLocal(group int32) []ClsnFinal {
+	boxes := c.getClsnUnscaled(group)
+	if len(boxes) == 0 {
+		return boxes
+	}
+
+	// Apply character scale to the original boxes only (Clsn1/2)
+	// Size boxes are already ready at this point
+	if group == 1 || group == 2 {
+		s := c.clsnScaleLocal()
+		for i := range boxes {
+			b := &boxes[i]
+			b.rect[0] *= s[0]
+			b.rect[1] *= s[1]
+			b.rect[2] *= s[0]
+			b.rect[3] *= s[1]
+		}
+	}
 
 	// Apply appropriate overrides
+	// Note: This must happen after char scaling is applied. We want the override to be absolute
 	overrides := c.clsnOverrides[group-1]
 	for _, mod := range overrides {
 		// Helper to apply modifiers
 		// This will make it easier to add new parameters later if needed
 		modify := func(i int) {
-			(*final)[i].rect = mod.rect
+			boxes[i].rect = mod.rect
 		}
 
 		switch {
 		// Delete box if modifier is all 0's
 		case mod.rect == [4]float32{}:
 			if mod.index == -1 {
-				*final = (*final)[:0]
-			} else if mod.index >= 0 && mod.index < len(*final) {
-				*final = SliceDelete(*final, mod.index)
+				boxes = boxes[:0]
+			} else if mod.index >= 0 && mod.index < len(boxes) {
+				boxes = SliceDelete(boxes, mod.index)
 			}
 
 		// Modify all existing boxes
 		case mod.index == -1:
-			for i := range *final {
+			for i := range boxes {
 				modify(i)
 			}
 
 		// Add new box if modifying out of bounds
-		case mod.index >= len(*final):
-			*final = append(*final, ClsnFinal{rect: mod.rect, angle: 0}) // Append empty slot
-			modify(len(*final) - 1)                                      // Apply modifier
+		case mod.index >= len(boxes):
+			boxes = append(boxes, ClsnFinal{rect: mod.rect}) // Append empty slot
+			modify(len(boxes) - 1)                           // Apply modifier
 
 		// Modify the specific valid index
 		default:
@@ -10532,46 +10558,49 @@ func (c *Char) getClsn(group int32) []ClsnFinal {
 		}
 	}
 
-	// Determine base scale for this group
-	var scale [2]float32
-	if group == 3 {
-		scale = c.sizeBoxScale()
-	} else {
-		scale = c.clsnScale
-	}
-
 	// Apply TransformClsn modifiers
 	ct := c.clsnTransforms[group-1]
-	scale[0] *= ct.scale[0]
-	scale[1] *= ct.scale[1]
-
-	// Apply scale and angle to all boxes
-	for i := range *final {
-		f := &(*final)[i]
-		f.rect[0] *= scale[0]
-		f.rect[1] *= scale[1]
-		f.rect[2] *= scale[0]
-		f.rect[3] *= scale[1]
-		f.angle = ct.angle
-		f.pivot[0] = ct.pivot[0] * c.localscl
-		f.pivot[1] = ct.pivot[1] * c.localscl
+	for i := range boxes {
+		b := &boxes[i]
+		b.rect[0] *= ct.scale[0]
+		b.rect[1] *= ct.scale[1]
+		b.rect[2] *= ct.scale[0]
+		b.rect[3] *= ct.scale[1]
+		b.angle = ct.angle
+		b.pivot[0] = ct.pivot[0] * c.localscl
+		b.pivot[1] = ct.pivot[1] * c.localscl
 
 		// Normalize left/right and top/bottom
-		f.rect = NormalizeRect(f.rect)
+		b.rect = NormalizeRect(b.rect)
 	}
 
-	// Return nil if empty to make it easier to check for no boxes later
-	//if len(final) == 0 {
-	//	return nil
-	//}
+	return boxes
+}
 
-	// Only one size box allowed
-	// TODO: Decision between this or allowing multiple ones (with push code using the first or all of them)
-	//if group == 3 {
-	//	return final[:1]
-	//}
+// Return boxes in the final world scaling
+func (c *Char) getClsnWorld(group int32) []ClsnFinal {
+	// Get boxes with char scaling already applied
+	boxes := c.getClsnLocal(group)
+	if len(boxes) == 0 {
+		return boxes
+	}
 
-	return *final
+	// Apply the remaining conversion from char space into world space
+	var conv [2]float32
+	if group == 3 {
+		conv = c.sizeBoxScaleWorld()
+	} else {
+		conv = [2]float32{c.animlocalscl, c.animlocalscl}
+	}
+
+	for i := range boxes {
+		b := &boxes[i]
+		b.rect[0] *= conv[0]
+		b.rect[1] *= conv[1]
+		b.rect[2] *= conv[0]
+		b.rect[3] *= conv[1]
+	}
+	return boxes
 }
 
 func (c *Char) resetClsnModifiers() {
@@ -10633,7 +10662,7 @@ func (c *Char) projClsnCheckSingle(p *Projectile, cbox, pbox int32) bool {
 	// Required boxes not found
 	reqtype := p.hitdef.p2clsnrequire
 	if reqtype > 0 {
-		if (reqtype == 1 || reqtype == 2) && len(c.getClsn(reqtype)) == 0 {
+		if (reqtype == 1 || reqtype == 2) && len(c.getClsnWorld(reqtype)) == 0 {
 			return false
 		}
 	}
@@ -10645,7 +10674,7 @@ func (c *Char) projClsnCheckSingle(p *Projectile, cbox, pbox int32) bool {
 	}
 
 	// Fetch character boxes
-	boxes2 := c.getClsn(cbox)
+	boxes2 := c.getClsnWorld(cbox)
 	if len(boxes2) == 0 {
 		return false
 	}
@@ -10758,18 +10787,18 @@ func (c *Char) clsnCheckSingle(getter *Char, charbox, getterbox int32, reqcheck 
 	// Only Hitdef and Reversaldef do this check
 	reqtype := c.hitdef.p2clsnrequire
 	if reqtype > 0 {
-		if (reqtype == 1 || reqtype == 2) && len(getter.getClsn(reqtype)) == 0 {
+		if (reqtype == 1 || reqtype == 2) && len(getter.getClsnWorld(reqtype)) == 0 {
 			return false
 		}
 	}
 
 	// Fetch the box types that should collide
-	boxes1 := c.getClsn(charbox)
+	boxes1 := c.getClsnWorld(charbox)
 	if len(boxes1) == 0 {
 		return false
 	}
 
-	boxes2 := getter.getClsn(getterbox)
+	boxes2 := getter.getClsnWorld(getterbox)
 	if len(boxes2) == 0 {
 		return false
 	}
@@ -11060,12 +11089,14 @@ func (c *Char) hittableByChar(getter *Char, ghd *HitDef, gst StateType, proj boo
 }
 
 // Hitspark creation function
-// This used to be called only when a hitspark is actually created, but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
-func (c *Char) hitspark(getter *Char, proj *Projectile, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
+// This used to be called only when a hitspark is actually created,
+// but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
+func (c *Char) hitspark(getter *Char, proj *Projectile,
+	animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
 
 	// Compute target edges
-	getterBase := getter.baseSizeBox()      // Ignore width/height modifiers. Maybe we shouldn't?
-	getterScale := getter.sizeBoxScale()[0] // Used to convert the box to world coordinate space
+	getterBase := getter.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+	getterScale := getter.sizeBoxScaleWorld()[0] // Used to convert the box to world coordinate space
 	getterFront := getterBase[2] * getterScale
 	getterBack := -getterBase[0] * getterScale
 
@@ -12977,7 +13008,7 @@ func (c *Char) cueDebugDraw() {
 	if sys.clsnDisplay {
 		if c.curFrame != nil {
 			// Add Clsn1
-			boxes1 := c.getClsn(1)
+			boxes1 := c.getClsnWorld(1)
 			if len(boxes1) > 0 {
 				// Determine which debug box to use
 				var debugType *DebugClsn
@@ -12994,7 +13025,7 @@ func (c *Char) cueDebugDraw() {
 			}
 
 			// Check invincibility to decide box colors
-			boxes2 := c.getClsn(2)
+			boxes2 := c.getClsnWorld(2)
 			if len(boxes2) > 0 {
 				flags := int32(ST_SCA) | int32(AT_ALL)
 				hb, mtk := false, false
@@ -13130,12 +13161,12 @@ func (c *Char) cueDebugDraw() {
 
 			// Add size box (width * height)
 			if c.csf(CSF_playerpush) {
-				boxes3 := c.getClsn(3)
+				boxes3 := c.getClsnWorld(3)
 				sys.debugcsize.Add(boxes3, x, y, c.facing)
 			}
 		}
 		// Add Dummy boxes
-		dummy := c.getClsn(4)
+		dummy := c.getClsnWorld(4)
 		if len(dummy) > 0 {
 			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing)
 		}
@@ -14172,8 +14203,8 @@ func (cl *CharList) pushDetection(c *Char) {
 		}
 
 		// Get size boxes
-		cboxes := c.getClsn(3) // c.getAnySizeBox()
-		gboxes := getter.getClsn(3)
+		cboxes := c.getClsnWorld(3) // c.getAnySizeBox()
+		gboxes := getter.getClsnWorld(3)
 
 		if cboxes == nil || gboxes == nil {
 			continue
