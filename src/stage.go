@@ -433,13 +433,14 @@ func readBackGround(is IniSection, link *backGround,
 			}
 		}
 	}
-	if is.readI32ForStage("window", &bg.startrect[0], &bg.startrect[1],
+	// Unusually, Mugen only accepts these when they do have at least 4 values
+	if is.readI32ForStageMinLength("window", &bg.startrect[0], &bg.startrect[1],
 		&bg.startrect[2], &bg.startrect[3]) {
 		bg.startrect[2] = Max(0, bg.startrect[2]+1-bg.startrect[0])
 		bg.startrect[3] = Max(0, bg.startrect[3]+1-bg.startrect[1])
 		bg.notmaskwindow = 1
 	}
-	if is.readI32ForStage("maskwindow", &bg.startrect[0], &bg.startrect[1],
+	if is.readI32ForStageMinLength("maskwindow", &bg.startrect[0], &bg.startrect[1],
 		&bg.startrect[2], &bg.startrect[3]) {
 		bg.startrect[2] = Max(0, bg.startrect[2]-bg.startrect[0])
 		bg.startrect[3] = Max(0, bg.startrect[3]-bg.startrect[1])
@@ -1394,6 +1395,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 			}
 		}
 		sec.readF32ForStage("offset", &s.sdw.offset[0], &s.sdw.offset[1])
+		// TODO: This should probably require 4 values
 		sec.readF32ForStage("window", &s.sdw.window[0], &s.sdw.window[1], &s.sdw.window[2], &s.sdw.window[3])
 		sec.ReadF32("ydelta", &s.sdw.ydelta)
 		// Shadow group warnings
@@ -1436,6 +1438,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 			}
 		}
 		sec.readF32ForStage("offset", &s.reflection.offset[0], &s.reflection.offset[1])
+		// TODO: This should probably require 4 values
 		sec.readF32ForStage("window", &s.reflection.window[0], &s.reflection.window[1], &s.reflection.window[2], &s.reflection.window[3])
 		sec.ReadF32("ydelta", &s.reflection.ydelta)
 	}
