@@ -1059,6 +1059,29 @@ func (is IniSection) readI32ForStage(name string, out ...*int32) bool {
 	return true
 }
 
+// This version only accepts the parameter if it has enough values
+func (is IniSection) readI32ForStageMinLength(name string, out ...*int32) bool {
+	str := is[name]
+	if len(str) == 0 {
+		return false
+	}
+	parts := strings.Split(is[name], ",")
+	// Also reject empty values
+	n := 0
+	for _, p := range parts {
+		if strings.TrimSpace(p) != "" {
+			n++
+		}
+	}
+	// Mugen is still lenient when it's being strict and won't reject parameters with excessive values
+	if n < len(out) {
+		LogMessage("WARNING: '%s' expected at least %d values but found only %d", name, len(out), n)
+		return false
+	}
+	// Use the normal path after validation
+	return is.readI32ForStage(name, out...)
+}
+
 func (is IniSection) readF32ForStage(name string, out ...*float32) bool {
 	str := is[name]
 	if len(str) == 0 {
