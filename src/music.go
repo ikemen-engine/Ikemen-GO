@@ -165,25 +165,13 @@ func (m Music) Append(other Music) {
 	}
 }
 
-// Override applies element-wise replacement per prefix (by index). If the
-// overriding list is longer, it extends the target. Use when raising
-// priority (e.g. char select params over stage lists, or launchFight over all).
+// Override replaces candidate lists per prefix. Use when raising priority
+// (e.g. char select params over stage lists, or launchFight over all).
 func (m Music) Override(other Music) {
 	//fmt.Printf("[music] Override: applying %d prefix(es) onto %d existing\n", len(other), len(m))
 	for key, otherList := range other {
 		//fmt.Printf("[music] Override: prefix '%s' (%d candidate(s))\n", key, len(otherList))
-		if mList, exists := m[key]; exists {
-			for i, otherBg := range otherList {
-				if i < len(mList) {
-					mList[i] = otherBg
-				} else {
-					mList = append(mList, otherBg)
-				}
-			}
-			m[key] = mList
-		} else {
-			m[key] = otherList
-		}
+		m[key] = otherList
 	}
 }
 
