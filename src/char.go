@@ -1964,9 +1964,11 @@ func (e *Explod) update() {
 
 	act := e.canAct()
 
-	if sys.tickFrame() {
+	// Explods aren't removed while they are paused
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3889
+	if act && sys.tickFrame() {
 		if e.removetime >= 0 && e.time >= e.removetime ||
-			act && e.removetime <= -2 && e.anim.loopend {
+			e.removetime <= -2 && e.anim.loopend {
 			e.id, e.anim = IErr, nil
 			return
 		}
