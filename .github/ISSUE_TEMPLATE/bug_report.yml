@@ -1,6 +1,11 @@
 name: 🐛 Bug Report
 description: Create a bug report to help us improve
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Please report only **one bug per issue**.
+
   - type: textarea
     id: what-happened
     attributes:
@@ -44,7 +49,7 @@ body:
     id: version
     attributes:
       label: Engine Version (or source code date)
-      placeholder: v0.98.2
+      placeholder: v1.0.0
     validations:
       required: true
 
