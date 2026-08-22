@@ -839,6 +839,7 @@ const (
 	OC_ex2_explodvar_anim
 	OC_ex2_explodvar_animelem
 	OC_ex2_explodvar_animelemtime
+	OC_ex2_explodvar_animloopcount
 	OC_ex2_explodvar_animplayerno
 	OC_ex2_explodvar_animtime
 	OC_ex2_explodvar_spriteplayerno
@@ -3844,6 +3845,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_animelem:
 		fallthrough
 	case OC_ex2_explodvar_animelemtime:
+		fallthrough
+	case OC_ex2_explodvar_animloopcount:
 		fallthrough
 	case OC_ex2_explodvar_animplayerno:
 		fallthrough

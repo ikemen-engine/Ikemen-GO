@@ -6040,6 +6040,8 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 			v = BytecodeInt(e.anim.curelem + 1)
 		case OC_ex2_explodvar_animelemtime:
 			v = BytecodeInt(e.anim.curelemtime)
+		case OC_ex2_explodvar_animloopcount:
+			v = BytecodeInt(e.anim.loopcount)
 		case OC_ex2_explodvar_animplayerno:
 			v = BytecodeInt(int32(e.animPN) + 1)
 		case OC_ex2_explodvar_animtime:

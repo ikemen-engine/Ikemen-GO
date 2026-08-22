@@ -2434,6 +2434,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_explodvar_animelem
 		case "animelemtime":
 			opc = OC_ex2_explodvar_animelemtime
+		case "animloopcount":
+			opc = OC_ex2_explodvar_animloopcount
 		case "animplayerno":
 			opc = OC_ex2_explodvar_animplayerno
 		case "animtime":
