@@ -2923,6 +2923,12 @@ func (s *System) projectilePrune(pn int) {
 
 // Update all explods for all players
 func (s *System) explodUpdate() {
+	// Checking for pause here fixes explods travelling too far while game is paused
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1729
+	if s.paused && !s.frameStepFlag {
+		return
+	}
+
 	// Update each explod in storage order
 	for i := range s.explods {
 		for _, e := range s.explods[i] {
