@@ -77,6 +77,8 @@ Maintainers may close topics that are out of scope, inactive, duplicated, not re
 
 Before submitting an issue, please check the issue tracker to see if it has already been reported. Existing reports may also contain useful workarounds.
 
+Please report only **one bug per issue**. Issues containing multiple unrelated bugs may be closed by a maintainer or by a pull request that fixes only one of them.
+
 Test your content with the [nightly development release][nightly] and the [latest release][latest], as the problem may already be fixed. Note that only the most recent release is supported.
 
 To resolve bugs, we must be able to reproduce them. A minimal reproduction is essential:
