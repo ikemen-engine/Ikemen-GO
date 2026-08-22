@@ -3594,9 +3594,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	(*i)++
 	opc := be[*i-1]
-	correctScale := false
-	camOff := float32(0)
-	camCorrected := false
 	switch opc {
 	case OC_ex2_envshakevar_time:
 		sys.bcStack.PushI(sys.envShake.curTime)
@@ -3815,115 +3812,113 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.drawPal()[0])
 	case OC_ex2_drawpal_index:
 		sys.bcStack.PushI(c.drawPal()[1])
-	// BEGIN FALLTHROUGH (explodvar)
-	case OC_ex2_explodvar_vel_x:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_vel_y:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_vel_z:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_accel_x:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_accel_y:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_accel_z:
-		correctScale = true
-		fallthrough
-	case OC_ex2_explodvar_friction_x:
-		fallthrough
-	case OC_ex2_explodvar_friction_y:
-		fallthrough
-	case OC_ex2_explodvar_friction_z:
-		fallthrough
-	case OC_ex2_explodvar_anim:
-		fallthrough
-	case OC_ex2_explodvar_animelem:
-		fallthrough
-	case OC_ex2_explodvar_animelemtime:
-		fallthrough
-	case OC_ex2_explodvar_animloopcount:
-		fallthrough
-	case OC_ex2_explodvar_animplayerno:
-		fallthrough
-	case OC_ex2_explodvar_animtime:
-		fallthrough
-	case OC_ex2_explodvar_spriteplayerno:
-		fallthrough
-	case OC_ex2_explodvar_drawpal_group:
-		fallthrough
-	case OC_ex2_explodvar_drawpal_index:
-		fallthrough
-	case OC_ex2_explodvar_removetime:
-		fallthrough
-	case OC_ex2_explodvar_pausemovetime:
-		fallthrough
-	case OC_ex2_explodvar_sprpriority:
-		fallthrough
-	case OC_ex2_explodvar_layerno:
-		fallthrough
-	case OC_ex2_explodvar_id:
-		fallthrough
-	case OC_ex2_explodvar_ignorehitpause:
-		fallthrough
-	case OC_ex2_explodvar_bindid:
-		fallthrough
-	case OC_ex2_explodvar_bindtime:
-		fallthrough
-	case OC_ex2_explodvar_time:
-		fallthrough
-	case OC_ex2_explodvar_facing:
-		fallthrough
-	case OC_ex2_explodvar_scale_x:
-		fallthrough
-	case OC_ex2_explodvar_scale_y:
-		fallthrough
-	case OC_ex2_explodvar_angle:
-		fallthrough
-	case OC_ex2_explodvar_angle_x:
-		fallthrough
-	case OC_ex2_explodvar_angle_y:
-		camCorrected = true // gotta do this
-		fallthrough
-	case OC_ex2_explodvar_xshear:
-		fallthrough
-		// END FALLTHROUGH (explodvar)
-	case OC_ex2_explodvar_pos_x:
-		if !camCorrected {
-			camOff = sys.cam.Pos[0] / c.localscl
-			camCorrected = true
-			correctScale = true
-		}
-		fallthrough
-	case OC_ex2_explodvar_pos_y:
-		if !camCorrected {
-			camCorrected = true
-			correctScale = true
-		}
-		idx := sys.bcStack.Pop()
-		id := sys.bcStack.Pop()
-		v := c.explodVar(id, idx, opc)
-		if correctScale {
-			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) - camOff)
+	// ExplodVar
+	case OC_ex2_explodvar_accel_x, OC_ex2_explodvar_accel_y, OC_ex2_explodvar_accel_z,
+		OC_ex2_explodvar_anim, OC_ex2_explodvar_animelem,
+		OC_ex2_explodvar_animelemtime, OC_ex2_explodvar_animloopcount,
+		OC_ex2_explodvar_animplayerno, OC_ex2_explodvar_animtime,
+		OC_ex2_explodvar_angle, OC_ex2_explodvar_angle_x, OC_ex2_explodvar_angle_y,
+		OC_ex2_explodvar_bindid, OC_ex2_explodvar_bindtime,
+		OC_ex2_explodvar_drawpal_group, OC_ex2_explodvar_drawpal_index, OC_ex2_explodvar_facing,
+		OC_ex2_explodvar_friction_x, OC_ex2_explodvar_friction_y, OC_ex2_explodvar_friction_z,
+		OC_ex2_explodvar_id, OC_ex2_explodvar_ignorehitpause,
+		OC_ex2_explodvar_layerno, OC_ex2_explodvar_pausemovetime,
+		OC_ex2_explodvar_pos_x, OC_ex2_explodvar_pos_y, OC_ex2_explodvar_pos_z,
+		OC_ex2_explodvar_removetime,
+		OC_ex2_explodvar_scale_x, OC_ex2_explodvar_scale_y,
+		OC_ex2_explodvar_sprpriority, OC_ex2_explodvar_time,
+		OC_ex2_explodvar_vel_x, OC_ex2_explodvar_vel_y, OC_ex2_explodvar_vel_z,
+		OC_ex2_explodvar_xshear:
+
+		// Common Inputs
+		idx := int(sys.bcStack.Pop().ToI())
+		id := sys.bcStack.Pop().ToI()
+
+		// Find explod
+		e := c.getSingleExplod(id, idx, true)
+
+		// Handle Output
+		if e != nil {
+			switch opc {
+			case OC_ex2_explodvar_accel_x:
+				sys.bcStack.PushF(e.accel[0] * c.localscl / oc.localscl)
+			case OC_ex2_explodvar_accel_y:
+				sys.bcStack.PushF(e.accel[1] * c.localscl / oc.localscl)
+			case OC_ex2_explodvar_accel_z:
+				sys.bcStack.PushF(e.accel[2] * c.localscl / oc.localscl)
+			case OC_ex2_explodvar_anim:
+				sys.bcStack.PushI(e.animNo)
+			case OC_ex2_explodvar_animelem:
+				sys.bcStack.PushI(e.anim.curelem + 1)
+			case OC_ex2_explodvar_animelemtime:
+				sys.bcStack.PushI(e.anim.curelemtime)
+			case OC_ex2_explodvar_animloopcount:
+				sys.bcStack.PushI(e.anim.loopcount)
+			case OC_ex2_explodvar_animplayerno:
+				sys.bcStack.PushI(int32(e.animPN) + 1)
+			case OC_ex2_explodvar_animtime:
+				sys.bcStack.PushI(e.anim.AnimTime())
+			case OC_ex2_explodvar_angle:
+				sys.bcStack.PushF(e.rot.angle + e.interpolate_rot[0].angle)
+			case OC_ex2_explodvar_angle_x:
+				sys.bcStack.PushF(e.rot.xangle + e.interpolate_rot[0].xangle)
+			case OC_ex2_explodvar_angle_y:
+				sys.bcStack.PushF(e.rot.yangle + e.interpolate_rot[0].yangle)
+			case OC_ex2_explodvar_bindid:
+				sys.bcStack.PushI(e.bindId)
+			case OC_ex2_explodvar_bindtime:
+				sys.bcStack.PushI(e.bindtime)
+			case OC_ex2_explodvar_drawpal_group:
+				sys.bcStack.PushI(c.explodDrawPal(e)[0])
+			case OC_ex2_explodvar_drawpal_index:
+				sys.bcStack.PushI(c.explodDrawPal(e)[1])
+			case OC_ex2_explodvar_facing:
+				sys.bcStack.PushI(int32(e.trueFacing()))
+			case OC_ex2_explodvar_friction_x:
+				sys.bcStack.PushF(e.friction[0])
+			case OC_ex2_explodvar_friction_y:
+				sys.bcStack.PushF(e.friction[1])
+			case OC_ex2_explodvar_friction_z:
+				sys.bcStack.PushF(e.friction[2])
+			case OC_ex2_explodvar_id:
+				sys.bcStack.PushI(e.id)
+			case OC_ex2_explodvar_ignorehitpause:
+				sys.bcStack.PushB(e.ignorehitpause)
+			case OC_ex2_explodvar_layerno:
+				sys.bcStack.PushI(e.layerno)
+			case OC_ex2_explodvar_pausemovetime:
+				sys.bcStack.PushI(e.pausemovetime)
+			case OC_ex2_explodvar_pos_x:
+				eposx := e.pos[0]+e.offset[0]+e.relativePos[0]+e.interpolate_pos[0]
+				camOff := sys.cam.Pos[0] / oc.localscl
+				sys.bcStack.PushF(eposx*c.localscl/oc.localscl - camOff)
+			case OC_ex2_explodvar_pos_y:
+				eposy := e.pos[1]+e.offset[1]+e.relativePos[1]+e.interpolate_pos[1]
+				sys.bcStack.PushF(eposy*c.localscl/oc.localscl)
+			case OC_ex2_explodvar_pos_z:
+				eposz := e.pos[2]+e.offset[2]+e.relativePos[2]+e.interpolate_pos[2]
+				sys.bcStack.PushF(eposz*c.localscl/oc.localscl)
+			case OC_ex2_explodvar_removetime:
+				sys.bcStack.PushI(e.removetime)
+			case OC_ex2_explodvar_scale_x:
+				sys.bcStack.PushF(e.scale[0] * e.interpolate_scale[0])
+			case OC_ex2_explodvar_scale_y:
+				sys.bcStack.PushF(e.scale[1] * e.interpolate_scale[1])
+			case OC_ex2_explodvar_sprpriority:
+				sys.bcStack.PushI(e.sprpriority)
+			case OC_ex2_explodvar_time:
+				sys.bcStack.PushI(e.time)
+			case OC_ex2_explodvar_vel_x:
+				sys.bcStack.PushF(e.velocity[0] * c.localscl / oc.localscl)
+			case OC_ex2_explodvar_vel_y:
+				sys.bcStack.PushF(e.velocity[1] * c.localscl / oc.localscl)
+			case OC_ex2_explodvar_vel_z:
+				sys.bcStack.PushF(e.velocity[2] * c.localscl / oc.localscl)
+			case OC_ex2_explodvar_xshear:
+				sys.bcStack.PushF(e.xshear)
+			}
 		} else {
-			sys.bcStack.Push(v)
-		}
-	case OC_ex2_explodvar_pos_z:
-		if !camCorrected {
-			camCorrected = true
-			correctScale = true
-		}
-		idx := sys.bcStack.Pop()
-		id := sys.bcStack.Pop()
-		v := c.explodVar(id, idx, opc)
-		if correctScale {
-			sys.bcStack.PushF(v.ToF()*(c.localscl/oc.localscl) - camOff)
-		} else {
-			sys.bcStack.Push(v)
+			sys.bcStack.Push(BytecodeUndefined())
 		}
 	// ProjVar
 	case OC_ex2_projvar_accel_x, OC_ex2_projvar_accel_y, OC_ex2_projvar_accel_z,
