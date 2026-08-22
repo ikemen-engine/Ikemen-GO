@@ -1360,10 +1360,6 @@ func (s *Sprite) reloadTexture() {
 	s.Tex = tex
 	s.Tex.SetData(s.rawData)
 	s.needsReload = false
-	if vkDebug {
-		LogMessage("[VRAM] reloaded hard-evicted texture for sprite %d,%d (%dx%d, depth %d)",
-			s.Group, s.Number, s.Size[0], s.Size[1], s.rawDepth)
-	}
 }
 
 func (s *Sprite) Draw(x, y, xscale, yscale float32, rxadd float32, rot Rotation, projectionMode int32, fLength float32, fx *PalFX, window *[4]int32) {
