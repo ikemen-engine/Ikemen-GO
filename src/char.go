@@ -10174,14 +10174,23 @@ func (c *Char) bindToPlayer(bt *Char) {
 }
 
 func (c *Char) trackableByCamera() bool {
-	return sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar
+	if c.scf(SCF_standby) {
+		return false
+	}
+	if sys.cam.View == Fighting_View {
+		return true
+	}
+	if sys.cam.View == Follow_View && c == sys.cam.FollowChar {
+		return true
+	}
+	return false
 }
 
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
 	before := x
 
-	if c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if c.trackableByCamera() && c.csf(CSF_screenbound) {
 		min, max := c.widthEdge[0], -c.widthEdge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -12516,58 +12525,59 @@ func (c *Char) actionFinish() {
 }
 
 func (c *Char) track() {
-	if c.trackableByCamera() {
+	if !c.trackableByCamera() {
+		return
+	}
 
-		// This doesn't seem necessary currently. Handled by xScreenBound()
-		//if !sys.cam.roundstart && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
-		//	c.interPos[0] = Clamp(c.interPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
-		//}
+	// This doesn't seem necessary currently. Handled by xScreenBound()
+	//if !sys.cam.roundstart && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+	//	c.interPos[0] = Clamp(c.interPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
+	//}
 
-		// X axis
-		if c.csf(CSF_movecamera_x) && !c.scf(SCF_standby) {
-			edgeleft, edgeright := -c.widthEdge[1], c.widthEdge[0]
-			if c.facing < 0 {
-				edgeleft, edgeright = -edgeright, -edgeleft
-			}
+	// X axis
+	if c.csf(CSF_movecamera_x) {
+		edgeleft, edgeright := -c.widthEdge[1], c.widthEdge[0]
+		if c.facing < 0 {
+			edgeleft, edgeright = -edgeright, -edgeleft
+		}
 
-			charleft := c.interPos[0]*c.localscl + edgeleft*c.localscl
-			charright := c.interPos[0]*c.localscl + edgeright*c.localscl
-			canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && (c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])))
-			bindToCharacter := sys.playerID(c.bindToId)
-			if charleft < sys.cam.leftest {
-				sys.cam.leftest = charleft
-				if canmove {
-					sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
+		charleft := c.interPos[0]*c.localscl + edgeleft*c.localscl
+		charright := c.interPos[0]*c.localscl + edgeright*c.localscl
+		canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && (c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])))
+		bindToCharacter := sys.playerID(c.bindToId)
+		if charleft < sys.cam.leftest {
+			sys.cam.leftest = charleft
+			if canmove {
+				sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
+			} else {
+				if bindToCharacter != nil {
+					sys.cam.leftestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
 				} else {
-					if bindToCharacter != nil {
-						sys.cam.leftestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
-					} else {
-						sys.cam.leftestvel = 0
-					}
-				}
-			}
-			if charright > sys.cam.rightest {
-				sys.cam.rightest = charright
-				if canmove {
-					sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
-				} else {
-					if bindToCharacter != nil {
-						sys.cam.rightestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
-					} else {
-						sys.cam.rightestvel = 0
-					}
+					sys.cam.leftestvel = 0
 				}
 			}
 		}
-
-		// Y axis
-		if c.csf(CSF_movecamera_y) && !c.scf(SCF_standby) && !math.IsInf(float64(c.pos[1]), 0) {
-			sys.cam.highest = Min(c.interPos[1]*c.localscl, sys.cam.highest)
-			sys.cam.lowest = Max(c.interPos[1]*c.localscl, sys.cam.lowest)
-			//sys.cam.Pos[1] = 0 // This doesn't seem necessary in the current state of the code
-			// Mugen ignores characters that have infinite position
-			// https://github.com/ikemen-engine/Ikemen-GO/issues/1917
+		if charright > sys.cam.rightest {
+			sys.cam.rightest = charright
+			if canmove {
+				sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
+			} else {
+				if bindToCharacter != nil {
+					sys.cam.rightestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
+				} else {
+					sys.cam.rightestvel = 0
+				}
+			}
 		}
+	}
+
+	// Y axis
+	if c.csf(CSF_movecamera_y) && !math.IsInf(float64(c.pos[1]), 0) {
+		sys.cam.highest = Min(c.interPos[1]*c.localscl, sys.cam.highest)
+		sys.cam.lowest = Max(c.interPos[1]*c.localscl, sys.cam.lowest)
+		//sys.cam.Pos[1] = 0 // This doesn't seem necessary in the current state of the code
+		// Mugen ignores characters that have infinite position
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1917
 	}
 }
 
