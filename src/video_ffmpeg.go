@@ -468,7 +468,12 @@ func (bgv *bgVideo) Tick() error {
 		w := int32(rect.Dx())
 		h := int32(rect.Dy())
 		if bgv.texture == nil || w != bgv.texture.GetWidth() || h != bgv.texture.GetHeight() {
-			bgv.texture = gfx.newTexture(w, h, 32, true)
+			tex, err := gfx.newTexture(w, h, 32, true)
+			if err != nil {
+				LogMessage("[VRAM] failed to create video texture: " + err.Error() + "\n")
+				return nil
+			}
+			bgv.texture = tex
 		}
 		bgv.texture.SetData(frame.Pix)
 		bgv.lastFrame = frame
@@ -479,7 +484,12 @@ func (bgv *bgVideo) Tick() error {
 			w := int32(rect.Dx())
 			h := int32(rect.Dy())
 			if bgv.texture == nil || w != bgv.texture.GetWidth() || h != bgv.texture.GetHeight() {
-				bgv.texture = gfx.newTexture(w, h, 32, true)
+				tex, err := gfx.newTexture(w, h, 32, true)
+				if err != nil {
+					LogMessage("[VRAM] failed to create video texture: " + err.Error() + "\n")
+					return nil
+				}
+				bgv.texture = tex
 			}
 			bgv.texture.SetData(bgv.lastFrame.Pix)
 		}
