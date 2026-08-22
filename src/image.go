@@ -609,6 +609,11 @@ type Sprite struct {
 	paltemp      []uint32
 	PalTex       Texture
 	sffv1BasePal bool // SFFv1 sprite palette duplicates the base palette
+	// VRAM eviction reload support (Vulkan renderer only).
+	needsReload bool   // set when the texture has been hard-evicted and must be recreated (Vulkan only)
+	rawData     []byte // original pixel data for texture recreation after hard eviction (Vulkan only)
+	rawDepth    int32  // color depth of rawData (8 for indexed, 24/32 for RGB/RGBA) (Vulkan only)
+	rawFilter   bool   // bilinear filter setting for rawData texture (Vulkan only)
 }
 
 func (s *Sprite) isBlank() bool {
@@ -809,15 +814,37 @@ func (s *Sprite) SetPxl(px []byte) {
 	if int64(len(px)) != int64(s.Size[0])*int64(s.Size[1]) {
 		return
 	}
+	// Store raw data for potential hard-eviction reload (Vulkan renderer only).
+	s.rawData = make([]byte, len(px))
+	copy(s.rawData, px)
+	s.rawDepth = 8
+	s.rawFilter = false
+	s.needsReload = false
 	sys.mainThreadTask <- func() {
-		s.Tex = gfx.newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
+		tex, err := gfx.newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
+		if err != nil {
+			LogMessage("[VRAM] SetPxl newTexture failed: %v", err)
+			return
+		}
+		s.Tex = tex
 		s.Tex.SetData(px)
 	}
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
+	// Store raw data for potential hard-eviction reload (Vulkan renderer only).
+	s.rawData = make([]byte, len(data))
+	copy(s.rawData, data)
+	s.rawDepth = sprDepth
+	s.rawFilter = sys.cfg.Video.RGBSpriteBilinearFilter
+	s.needsReload = false
 	sys.mainThreadTask <- func() {
-		s.Tex = gfx.newTexture(sprWidth, sprHeight, sprDepth, sys.cfg.Video.RGBSpriteBilinearFilter)
+		tex, err := gfx.newTexture(sprWidth, sprHeight, sprDepth, sys.cfg.Video.RGBSpriteBilinearFilter)
+		if err != nil {
+			LogMessage("[VRAM] SetRaw newTexture failed: %v", err)
+			return
+		}
+		s.Tex = tex
 		s.Tex.SetData(data)
 	}
 }
@@ -1318,7 +1345,36 @@ func (s *Sprite) CachePalTex(pal []uint32) Texture {
 	return s.PalTex
 }
 
+// reloadTexture recreates the sprite's texture from rawData after a hard eviction.
+// Called from Draw() when needsReload is true and rawData is available.
+// Vulkan renderer only: this is part of the VRAM fallback system.
+func (s *Sprite) reloadTexture() {
+	if len(s.rawData) == 0 {
+		return
+	}
+	tex, err := gfx.newTexture(int32(s.Size[0]), int32(s.Size[1]), s.rawDepth, s.rawFilter)
+	if err != nil {
+		LogMessage("[VRAM] reloadTexture newTexture failed for sprite %d,%d: %v", s.Group, s.Number, err)
+		return
+	}
+	s.Tex = tex
+	s.Tex.SetData(s.rawData)
+	s.needsReload = false
+	if vkDebug {
+		LogMessage("[VRAM] reloaded hard-evicted texture for sprite %d,%d (%dx%d, depth %d)",
+			s.Group, s.Number, s.Size[0], s.Size[1], s.rawDepth)
+	}
+}
+
 func (s *Sprite) Draw(x, y, xscale, yscale float32, rxadd float32, rot Rotation, projectionMode int32, fLength float32, fx *PalFX, window *[4]int32) {
+	// Reload texture if it was hard-evicted (Vulkan renderer only).
+	if s.needsReload && len(s.rawData) > 0 {
+		s.reloadTexture()
+	}
+	if s.Tex == nil {
+		return
+	}
+
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
 	var rcx, rcy float32
