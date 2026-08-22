@@ -13129,6 +13129,10 @@ func (cl *CharList) commandUpdate() {
 	for i, p := range sys.chars {
 		if len(p) > 0 {
 			root := p[0]
+			// The async Turns loader keeps its standby root disabled while populating command lists.
+			if root.scf(SCF_disabled) {
+				continue
+			}
 			// Select a random command for AI cheating
 			// The way this only allows one command to be cheated at a time may be the cause of issue #2022
 			cheat := int32(-1)
