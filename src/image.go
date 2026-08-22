@@ -370,20 +370,42 @@ func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
 
 }
 
-// Sets the PalFX to render a simple solid color. Normally used by fonts
-func (pf *PalFX) setColor(r, g, b int32) {
-	rNormalized := Clamp(r, 0, 255)
-	gNormalized := Clamp(g, 0, 255)
-	bNormalized := Clamp(b, 0, 255)
-
-	pf.enable = true
-	pf.eColor = 1
-	pf.eHue = 0
-	pf.eMul = [...]int32{
-		256 * rNormalized >> 8,
-		256 * gNormalized >> 8,
-		256 * bNormalized >> 8,
+// Returns a copy of the PalFX with font frgba applied as a base color
+// To do this perfectly correctly we'd need more shader uniforms
+// However, this should still be better than making font color parameter overwrite PalFX like before
+func (pf *PalFX) withFontRgba(frgba [4]float32) *PalFX {
+	usesColor := frgba[0] != 1.0 || frgba[1] != 1.0 || frgba[2] != 1.0
+	if !usesColor {
+		return pf
 	}
+
+	var pfx *PalFX
+	if pf == nil {
+		// No existing PalFX: create a new one because RenderSprite expects a non-nil PalFX to apply color
+		pfx = newPalFX()
+	} else {
+		// Create a shallow copy of the original PalFX
+		tmp := *pf
+		pfx = &tmp
+	}
+
+	// Force the copy to be enabled
+	pfx.enable = true
+
+	// Check status of the original PalFX
+	if pf == nil || (!pf.enable && pf.time == 0) {
+		// Uninitialized or disabled: set color directly from frgba
+		pfx.eMul[0] = int32(256 * frgba[0])
+		pfx.eMul[1] = int32(256 * frgba[1])
+		pfx.eMul[2] = int32(256 * frgba[2])
+	} else {
+		// Active: stack frgba on top of existing eMul
+		pfx.eMul[0] = int32(float32(pf.eMul[0]) * frgba[0])
+		pfx.eMul[1] = int32(float32(pf.eMul[1]) * frgba[1])
+		pfx.eMul[2] = int32(float32(pf.eMul[2]) * frgba[2])
+	}
+
+	return pfx
 }
 
 type Palette struct {
@@ -1454,22 +1476,6 @@ func newSff() (s *Sff) {
 	return
 }
 
-/*
-// A simple SFF cache storing shallow copies
-type SffCacheEntry struct {
-	sffData  Sff
-	refCount int
-}
-
-var SffCache = map[string]*SffCacheEntry{}
-
-func removeSFFCache(filename string) {
-	if _, ok := SffCache[filename]; ok {
-		delete(SffCache, filename)
-	}
-}
-*/
-
 // Find an already loaded SFF we can borrow. Replaces SFF caching
 func findActiveSff(filename string) *Sff {
 	// This would be clean, but it'd make multiple instances of the same character all do a full SFF reload
@@ -1613,18 +1619,6 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 	if loadingCanceled() {
 		return nil, ErrLoadingCanceled
 	}
-
-	/*
-		SffCache[filename] = &SffCacheEntry{*s, 1}
-		runtime.SetFinalizer(s, func(s *Sff) {
-			if cached, ok := SffCache[filename]; ok {
-				cached.refCount--
-				if cached.refCount == 0 {
-					delete(SffCache, filename)
-				}
-			}
-		})
-	*/
 
 	return s, nil
 }

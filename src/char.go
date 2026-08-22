@@ -1964,9 +1964,11 @@ func (e *Explod) update() {
 
 	act := e.canAct()
 
-	if sys.tickFrame() {
+	// Explods aren't removed while they are paused
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3889
+	if act && sys.tickFrame() {
 		if e.removetime >= 0 && e.time >= e.removetime ||
-			act && e.removetime <= -2 && e.anim.loopend {
+			e.removetime <= -2 && e.anim.loopend {
 			e.id, e.anim = IErr, nil
 			return
 		}
@@ -8572,7 +8574,7 @@ func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
 					if c.csf(CSF_gethit) {
 						t.selfState(5050, -1, -1, -1, "")
 					}
-					t.setBindTime(0)
+					t.resetBind()
 				}
 				t.ghv.dropPlayerId(c.id)
 			}
@@ -9850,11 +9852,17 @@ func (c *Char) targetAddSctrl(id int32) {
 }
 
 func (c *Char) setBindTime(time int32) {
-	c.bindTime = time
 	if time == 0 {
-		c.bindToId = -1
-		c.bindFacing = 0
+		c.resetBind()
+		return
 	}
+	c.bindTime = time
+}
+
+func (c *Char) resetBind() {
+	c.bindTime = 0
+	c.bindToId = -1
+	c.bindFacing = 0
 }
 
 func (c *Char) setBindToId(to *Char, isTargetBind bool) {
@@ -9870,13 +9878,22 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 		c.bindFacing = to.facing * 2
 	}
 
+	// Prevent mutual binding
 	if to.bindToId == c.id {
-		to.setBindTime(0)
+		to.resetBind()
 	}
 }
 
-// Updates binding position and velocity only. Time and ID handled elsewhere
 func (c *Char) updateBinding() {
+	// Clear leftover bindToId
+	// This clears TargetBind and thus getHitVar(isbound)
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
+	// TODO: Maybe there's a way to merge all the bind code instead of treating helper and target binds so differently
+	if c.bindTime == 0 && c.bindToId > 0 {
+		c.resetBind()
+	}
+
+	// If no bind is active
 	if c.bindToId < 0 || c.bindTime == 0 {
 		return
 	}
@@ -9884,6 +9901,7 @@ func (c *Char) updateBinding() {
 	bt := sys.playerID(c.bindToId)
 
 	if bt == nil {
+		c.resetBind()
 		return
 	}
 
@@ -10007,7 +10025,7 @@ func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 
 func (c *Char) gethitBindClear() {
 	if c.isTargetBound() {
-		c.setBindTime(0)
+		c.resetBind()
 	}
 }
 
@@ -10952,7 +10970,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			}
 		}
 		if getter.bindToId == c.id {
-			getter.setBindTime(0)
+			getter.resetBind()
 		}
 		if hd.KeepState && ghvset {
 			getter.ghv.keepstate = hd.KeepState
@@ -11204,7 +11222,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 					getter.bindPos[2] = float32(math.NaN())
 				}
 			} else if getter.bindToId == c.id {
-				getter.setBindTime(0)
+				getter.resetBind()
 			}
 			// Save other gethitvars that don't directly affect gameplay
 			ghv.ground_velocity[0] = hd.ground_velocity[0] * scaleratio * -byf
@@ -12390,21 +12408,19 @@ func (c *Char) tick() {
 				c.selfState(5050, -1, -1, -1, "")
 				c.gethitBindClear()
 			} else if !bt.pause() {
-				// Use setBindTime so that the bind variables are cleared when the timer reaches 0
-				// Manual decrement was only needed so setBindTime() would not clear the bind for a dying helper
-				// destroy() handles that case now
-				// c.bindTime -= 1
-				c.setBindTime(c.bindTime - 1)
+				// We step the timer but don't clear the bind yet, because that makes getHitVar(isbound) clear too soon
+				// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
+				c.bindTime--
 			}
 		} else {
 			if !c.pause() {
-				c.setBindTime(c.bindTime - 1)
-				// The fix below was necessary before because bindTime should not be decremented directly but rather via setBindTime
+				c.bindTime--
+				// Unlike TargetBind, we clear this one immediately
 				// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
 				// This must not run for target binds so that they end the same time as MUGEN's do.
-				//if c.bindToId > 0 {
-				//	c.setBindTime(c.bindTime)
-				//}
+				if c.bindTime == 0 {
+					c.resetBind()
+				}
 			}
 		}
 	}

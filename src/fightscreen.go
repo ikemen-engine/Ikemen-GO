@@ -216,18 +216,19 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 
 type FSText struct {
 	font    [8]int32 // to match Lua arg count regardless
+	fnt     *Fnt
 	text    string
 	lay     Layout
 	palfx   *PalFX
 	frgba   [4]float32 // ttf fonts
-	pfxinit int32
+	pfxtime int32
 }
 
-func newFSText(align int32) *FSText {
+func newFSText() *FSText {
 	return &FSText{
-		font:  [...]int32{-1, 0, align, 255, 255, 255, 255, -1},
+		font:  [8]int32{-1, 0, 0, -1, -1, -1, 255, -1},
 		palfx: newPalFX(),
-		frgba: [...]float32{1.0, 1.0, 1.0, 1.0},
+		frgba: [4]float32{1.0, 1.0, 1.0, 1.0},
 	}
 }
 
@@ -243,30 +244,45 @@ func getFont(f map[int]*Fnt, idx int32) *Fnt {
 }
 
 func readFSText(pre string, is IniSection, str string, ln int16, f map[int]*Fnt, align int32) *FSText {
-	txt := newFSText(align)
+	txt := newFSText()
+	txt.font[2] = align
 
-	txt.font[3], txt.font[4], txt.font[5], txt.font[6], txt.font[7] = -1, -1, -1, 255, -1
 	is.ReadI32(pre+"font", &txt.font[0], &txt.font[1], &txt.font[2],
 		&txt.font[3], &txt.font[4], &txt.font[5], &txt.font[6], &txt.font[7])
-	if txt.font[0] >= 0 && getFont(f, txt.font[0]) == nil {
-		LogMessage("Undefined font %v referenced by fight screen parameter: %v", txt.font[0], pre+"font")
-		txt.font[0] = -1
+
+	// Retrieve font from map once and save the pointer
+	if txt.font[0] >= 0 {
+		txt.fnt = getFont(f, txt.font[0])
+		if txt.fnt == nil {
+			LogMessage("Undefined font %v referenced by fight screen parameter: %v", txt.font[0], pre+"font")
+			txt.font[0] = -1
+		}
 	}
+
 	if _, ok := is[pre+"text"]; ok {
 		txt.text, _, _ = is.getText(pre + "text")
 	} else {
 		txt.text = str
 	}
+
 	txt.lay = *ReadLayout(pre, is, ln)
+
+	ReadPalFX(pre+"palfx.", is, txt.palfx)
+
+	// Save the PalFX's initial time for later resetting
+	txt.pfxtime = txt.palfx.time
+
+	// The color parameter overrides the PalFX for sprite fonts, so it must be parsed after it
+	// Update: No longer true, but this new order is still harmless
 	if txt.font[3] >= 0 && txt.font[4] >= 0 && txt.font[5] >= 0 {
 		txt.SetColor(txt.font[3], txt.font[4], txt.font[5], txt.font[6])
 	}
-	txt.pfxinit = ReadPalFX(pre+"palfx.", is, txt.palfx)
+
 	return txt
 }
 
+// Same as in TextSprite except it doesn't need debug font fallback
 func (txt *FSText) SetColor(r, g, b, a int32) {
-	txt.palfx.setColor(r, g, b)
 	txt.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
 }
 
@@ -277,7 +293,7 @@ func (txt *FSText) step() {
 }
 
 func (txt *FSText) resetTxtPfx() {
-	txt.palfx.time = txt.pfxinit
+	txt.palfx.time = txt.pfxtime
 }
 
 type FSBgTextSnd struct {
@@ -333,10 +349,9 @@ func (bts *FSBgTextSnd) bgDraw(layerno int16) {
 }
 
 func (bts *FSBgTextSnd) draw(layerno int16, f map[int]*Fnt) {
-	if bts.timer > bts.time && bts.timer <= bts.time+bts.displaytime &&
-		bts.text.font[0] >= 0 && getFont(f, bts.text.font[0]) != nil {
+	if bts.timer > bts.time && bts.timer <= bts.time+bts.displaytime && bts.text.fnt != nil {
 		bts.text.lay.DrawText(float32(bts.pos[0])+sys.fightScreen.offsetX, float32(bts.pos[1]), sys.fightScreen.scale, layerno,
-			bts.text.text, getFont(f, bts.text.font[0]), bts.text.font[1], bts.text.font[2], bts.text.palfx, bts.text.frgba)
+			bts.text.text, bts.text.fnt, bts.text.font[1], bts.text.font[2], bts.text.palfx, bts.text.frgba)
 	}
 }
 
@@ -729,7 +744,7 @@ func (lb *LifeBar) draw(layerno int16, charpn int, lbr *LifeBar, f map[int]*Fnt)
 		lb.red[rv].lay.DrawAnim(&rr, float32(lb.pos[0])+sys.fightScreen.offsetX, float32(lb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale, rxs, rys,
 			layerno, lb.red[rv].anim, lb.red[rv].palfx)
 
-		if lb.red_value[0].font[0] >= 0 && getFont(f, lb.red_value[0].font[0]) != nil {
+		if lb.red_value[0].fnt != nil {
 			// Multiple red_value fonts according to redval
 			var rv2 int32
 			for k := range lb.red_value {
@@ -744,7 +759,7 @@ func (lb *LifeBar) draw(layerno int16, charpn int, lbr *LifeBar, f map[int]*Fnt)
 				float32(lb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale,
 				layerno,
 				text,
-				getFont(f, lb.red_value[rv2].font[0]),
+				lb.red_value[rv2].fnt,
 				lb.red_value[rv2].font[1],
 				lb.red_value[rv2].font[2],
 				lb.red_value[rv2].palfx,
@@ -774,7 +789,7 @@ func (lb *LifeBar) draw(layerno int16, charpn int, lbr *LifeBar, f map[int]*Fnt)
 	lb.shift.lay.DrawAnim(&lr, float32(lb.pos[0])+sys.fightScreen.offsetX, float32(lb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale, lxs, lys,
 		layerno, lb.shift.anim, lb.shift.palfx)
 
-	if lb.value[0].font[0] >= 0 && getFont(f, lb.value[0].font[0]) != nil {
+	if lb.value[0].fnt != nil {
 		// Multiple value fonts according to life value
 		var fv2 int32
 		for k := range lb.value {
@@ -789,7 +804,7 @@ func (lb *LifeBar) draw(layerno int16, charpn int, lbr *LifeBar, f map[int]*Fnt)
 			float32(lb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale,
 			layerno,
 			text,
-			getFont(f, lb.value[fv2].font[0]),
+			lb.value[fv2].fnt,
 			lb.value[fv2].font[1],
 			lb.value[fv2].font[2],
 			lb.value[fv2].palfx,
@@ -1156,7 +1171,7 @@ func (pb *PowerBar) draw(layerno int16, charpn int, pbr *PowerBar, f map[int]*Fn
 		layerno, pb.shift.anim, pb.shift.palfx)
 
 	// Powerbar text.
-	if pb.counter[0].font[0] >= 0 && getFont(f, pb.counter[0].font[0]) != nil {
+	if pb.counter[0].fnt != nil {
 		// Multiple counter fonts according to powerbar level
 		cv := resolvePBKey(pb.counter, pbval, refChar.powerMax)
 
@@ -1166,7 +1181,7 @@ func (pb *PowerBar) draw(layerno int16, charpn int, pbr *PowerBar, f map[int]*Fn
 			sys.fightScreen.scale,
 			layerno,
 			strings.Replace(pb.counter[cv].text, "%i", fmt.Sprintf("%v", pbval/pb.counter_rounding), 1),
-			getFont(f, pb.counter[cv].font[0]),
+			pb.counter[cv].fnt,
 			pb.counter[cv].font[1],
 			pb.counter[cv].font[2],
 			pb.counter[cv].palfx,
@@ -1175,7 +1190,7 @@ func (pb *PowerBar) draw(layerno int16, charpn int, pbr *PowerBar, f map[int]*Fn
 	}
 
 	// Per-level powerbar text.
-	if pb.value[0].font[0] >= 0 && getFont(f, pb.value[0].font[0]) != nil {
+	if pb.value[0].fnt != nil {
 		// Multiple value fonts according to powerbar level
 		cv2 := resolvePBKey(pb.counter, pbval, refChar.powerMax)
 		text := strings.Replace(pb.value[cv2].text, "%d", fmt.Sprintf("%v", pbval/pb.value_rounding), 1)
@@ -1187,7 +1202,7 @@ func (pb *PowerBar) draw(layerno int16, charpn int, pbr *PowerBar, f map[int]*Fn
 			sys.fightScreen.scale,
 			layerno,
 			text,
-			getFont(f, pb.value[cv2].font[0]),
+			pb.value[cv2].fnt,
 			pb.value[cv2].font[1],
 			pb.value[cv2].font[2],
 			pb.value[cv2].palfx,
@@ -1414,7 +1429,7 @@ func (gb *GuardBar) draw(layerno int16, charpn int, gbr *GuardBar, f map[int]*Fn
 	gb.shift.lay.DrawAnim(&pr, float32(gb.pos[0])+sys.fightScreen.offsetX, float32(gb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale, pxs, pys,
 		layerno, gb.shift.anim, gb.shift.palfx)
 
-	if gb.value[0].font[0] >= 0 && getFont(f, gb.value[0].font[0]) != nil {
+	if gb.value[0].fnt != nil {
 		// Multiple value fonts according to guardbar points
 		var mv2 int32
 		for k := range gb.value {
@@ -1430,7 +1445,7 @@ func (gb *GuardBar) draw(layerno int16, charpn int, gbr *GuardBar, f map[int]*Fn
 			sys.fightScreen.scale,
 			layerno,
 			text,
-			getFont(f, gb.value[mv2].font[0]),
+			gb.value[mv2].fnt,
 			gb.value[mv2].font[1],
 			gb.value[mv2].font[2],
 			gb.value[mv2].palfx,
@@ -1660,7 +1675,7 @@ func (sb *StunBar) draw(layerno int16, charpn int, sbr *StunBar, f map[int]*Fnt)
 	sb.shift.lay.DrawAnim(&pr, float32(sb.pos[0])+sys.fightScreen.offsetX, float32(sb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale, pxs, pys,
 		layerno, sb.shift.anim, sb.shift.palfx)
 
-	if sb.value[0].font[0] >= 0 && getFont(f, sb.value[0].font[0]) != nil {
+	if sb.value[0].fnt != nil {
 		// Multiple value fonts according to stunbar points
 		var mv2 int32
 		for k := range sb.value {
@@ -1676,7 +1691,7 @@ func (sb *StunBar) draw(layerno int16, charpn int, sbr *StunBar, f map[int]*Fnt)
 			sys.fightScreen.scale,
 			layerno,
 			text,
-			getFont(f, sb.value[mv2].font[0]),
+			sb.value[mv2].fnt,
 			sb.value[mv2].font[1],
 			sb.value[mv2].font[2],
 			sb.value[mv2].palfx,
@@ -2032,9 +2047,9 @@ func (nm *FightScreenName) bgDraw(layerno int16) {
 }
 
 func (nm *FightScreenName) draw(layerno int16, charpn int, f map[int]*Fnt, side int) {
-	if nm.name.font[0] >= 0 && getFont(f, nm.name.font[0]) != nil {
+	if nm.name.fnt != nil {
 		nm.name.lay.DrawText((float32(nm.pos[0]) + sys.fightScreen.offsetX), float32(nm.pos[1]), sys.fightScreen.scale, layerno,
-			sys.cgi[charpn].lifebarname, getFont(f, nm.name.font[0]), nm.name.font[1], nm.name.font[2], nm.name.palfx, nm.name.frgba)
+			sys.cgi[charpn].lifebarname, nm.name.fnt, nm.name.font[1], nm.name.font[2], nm.name.palfx, nm.name.frgba)
 	}
 
 	nm.top.Draw(float32(nm.pos[0])+sys.fightScreen.offsetX, float32(nm.pos[1]), layerno, sys.fightScreen.scale)
@@ -2075,9 +2090,9 @@ func (nm *FightScreenName) drawTeammates(layerno int16, f map[int]*Fnt, side int
 		nm.teammate_bg.Draw((x + sys.fightScreen.offsetX), y, layerno, sys.fightScreen.scale)
 
 		// Draw pre-compiled name text
-		if nm.teammate_name.font[0] >= 0 && getFont(f, nm.teammate_name.font[0]) != nil {
+		if nm.teammate_name.fnt != nil {
 			nm.teammate_name.lay.DrawText((x + sys.fightScreen.offsetX), y, sys.fightScreen.scale, layerno,
-				nm.teammate_name_strings[i], getFont(f, nm.teammate_name.font[0]),
+				nm.teammate_name_strings[i], nm.teammate_name.fnt,
 				nm.teammate_name.font[1], nm.teammate_name.font[2], nm.teammate_name.palfx, nm.teammate_name.frgba)
 		}
 
@@ -2200,10 +2215,10 @@ func (wi *FightScreenWinIcon) draw(layerno int16, f map[int]*Fnt, side int) {
 
 	if len(wi.wins) > int(wi.useiconupto) {
 		// Use the generic win count icon if icon limit exceeded
-		if wi.counter.font[0] >= 0 && getFont(f, wi.counter.font[0]) != nil {
+		if wi.counter.fnt != nil {
 			wi.counter.lay.DrawText(float32(wi.pos[0])+sys.fightScreen.offsetX, float32(wi.pos[1]), sys.fightScreen.scale,
 				layerno, strings.Replace(wi.counter.text, "%i", fmt.Sprintf("%v", len(wi.wins)), 1),
-				getFont(f, wi.counter.font[0]), wi.counter.font[1], wi.counter.font[2], wi.counter.palfx, wi.counter.frgba)
+				wi.counter.fnt, wi.counter.font[1], wi.counter.font[2], wi.counter.palfx, wi.counter.frgba)
 		}
 	} else {
 		// Use the specific win type icons
@@ -2305,8 +2320,7 @@ func (ti *FightScreenTime) bgDraw(layerno int16) {
 }
 
 func (ti *FightScreenTime) draw(layerno int16, f map[int]*Fnt) {
-	if sys.curFramesPerCount > 0 &&
-		ti.counter[0].font[0] >= 0 && getFont(f, ti.counter[0].font[0]) != nil {
+	if sys.curFramesPerCount > 0 && ti.counter[0].fnt != nil {
 		var timeval int32 = -1
 		time := "o"
 		if sys.curRoundTime >= 0 {
@@ -2334,7 +2348,7 @@ func (ti *FightScreenTime) draw(layerno int16, f map[int]*Fnt) {
 		}
 		ti.activeIdx = tv
 		ti.counter[tv].lay.DrawText(float32(ti.pos[0])+sys.fightScreen.offsetX, float32(ti.pos[1]), sys.fightScreen.scale, layerno,
-			time, getFont(f, ti.counter[tv].font[0]), ti.counter[tv].font[1], ti.counter[tv].font[2], ti.counter[tv].palfx,
+			time, ti.counter[tv].fnt, ti.counter[tv].font[1], ti.counter[tv].font[2], ti.counter[tv].palfx,
 			ti.counter[tv].frgba)
 	}
 	ti.top.Draw(float32(ti.pos[0])+sys.fightScreen.offsetX, float32(ti.pos[1]), layerno, sys.fightScreen.scale)
@@ -2603,11 +2617,9 @@ func (co *FightScreenCombo) draw(layerno int16, f map[int]*Fnt, side int) {
 			x += co.counterX
 		}
 		// Apply autoalign
-		if co.counter[cv].font[0] >= 0 && co.autoalign {
-			if ff := getFont(f, co.counter[cv].font[0]); ff != nil {
-				x += float32(ff.TextWidth(counter, co.counter[cv].font[1], 0)) *
-					co.counter[cv].lay.scale[0] * sys.fightScreen.fnt_scale
-			}
+		if co.autoalign && co.counter[cv].fnt != nil {
+			x += float32(co.counter[cv].fnt.TextWidth(counter, co.counter[cv].font[1], 0)) *
+				co.counter[cv].lay.scale[0] * sys.fightScreen.fnt_scale
 		}
 	} else {
 		if co.start_x <= 0 {
@@ -2623,7 +2635,7 @@ func (co *FightScreenCombo) draw(layerno int16, f map[int]*Fnt, side int) {
 	var textBlockWidth float32
 	var lineHeight float32
 	var lines []string
-	if co.text[tv].font[0] >= 0 && getFont(f, co.text[tv].font[0]) != nil {
+	if co.text[tv].fnt != nil {
 		// Replace operator with current combo hits
 		text := strings.Replace(co.text[tv].text, "%i", fmt.Sprintf("%v", co.shownHits), 1)
 		// Replace operator with current combo damage
@@ -2647,8 +2659,8 @@ func (co *FightScreenCombo) draw(layerno int16, f map[int]*Fnt, side int) {
 		lines = strings.Split(text, "\\n")
 
 		// Compute text block dimensions
-		ffText = getFont(f, co.text[tv].font[0])
-		if ffText != nil {
+		ffText = co.text[tv].fnt
+		if ffText := co.text[tv].fnt; ffText != nil {
 			lineHeight = float32(ffText.Size[1])*co.text[tv].lay.scale[1]*sys.fightScreen.fnt_scale +
 				float32(ffText.Spacing[1])*co.text[tv].lay.scale[1]*sys.fightScreen.fnt_scale
 			for _, line := range lines {
@@ -2684,11 +2696,11 @@ func (co *FightScreenCombo) draw(layerno int16, f map[int]*Fnt, side int) {
 	}
 
 	// Counter
-	if co.counter[cv].font[0] >= 0 && getFont(f, co.counter[cv].font[0]) != nil {
+	if co.counter[cv].fnt != nil {
 		// Apply autoalign
 		var counterShift float32
 		if side == 0 && co.autoalign {
-			if ff := getFont(f, co.counter[cv].font[0]); ff != nil {
+			if ff := co.counter[cv].fnt; ff != nil {
 				counterShift = float32(ff.TextWidth(counter, co.counter[cv].font[1], 0)) *
 					co.counter[cv].lay.scale[0] * sys.fightScreen.fnt_scale
 			}
@@ -2706,7 +2718,7 @@ func (co *FightScreenCombo) draw(layerno int16, f map[int]*Fnt, side int) {
 		finalScale := shakeScale * sys.fightScreen.scale
 
 		co.counter[cv].lay.DrawText(drawX, drawY, finalScale, layerno,
-			counter, getFont(f, co.counter[cv].font[0]), co.counter[cv].font[1], co.counter[cv].font[2],
+			counter, co.counter[cv].fnt, co.counter[cv].font[1], co.counter[cv].font[2],
 			co.counter[cv].palfx, co.counter[cv].frgba)
 	}
 
@@ -3037,11 +3049,6 @@ func (ac *FightScreenAction) draw(layerno int16, f map[int]*Fnt, side int) {
 				if v.fontAlign != IErr {
 					align = v.fontAlign
 				}
-				palfx := ac.text.palfx
-
-				if v.palfx != nil {
-					palfx = v.palfx
-				}
 
 				frgba := ac.text.frgba
 				if v.fontColorSet {
@@ -3054,19 +3061,12 @@ func (ac *FightScreenAction) draw(layerno int16, f map[int]*Fnt, side int) {
 					frgba[1] = float32(g) / 255
 					frgba[2] = float32(b) / 255
 					frgba[3] = float32(a) / 255
-
-					pf := newPalFX()
-					if palfx != nil {
-						*pf = *palfx
-					}
-					pf.setColor(r, g, b)
-					palfx = pf
 				}
 
 				ac.text.lay.DrawText(x+sys.fightScreen.offsetX+float32(k)*float32(ac.spacing[0]),
 					float32(ac.pos[1])+float32(k)*float32(ac.spacing[1]),
 					sys.fightScreen.scale, layerno, v.text, ff, bank, align,
-					palfx, frgba)
+					v.palfx, frgba)
 			}
 		}
 	}
@@ -4244,8 +4244,7 @@ func (tr *FightScreenTimer) bgDraw(layerno int16) {
 }
 
 func (tr *FightScreenTimer) draw(layerno int16, f map[int]*Fnt) {
-	if tr.active && sys.curFramesPerCount > 0 &&
-		tr.text.font[0] >= 0 && getFont(f, tr.text.font[0]) != nil {
+	if tr.active && sys.curFramesPerCount > 0 && tr.text.fnt != nil {
 		text := tr.text.text
 		totalSec := float64(sys.timeTotal()) / 60
 		h := math.Floor(totalSec / 3600)
@@ -4266,7 +4265,7 @@ func (tr *FightScreenTimer) draw(layerno int16, f map[int]*Fnt) {
 		text = strings.Replace(text, "%s", ss, 1)
 		text = strings.Replace(text, "%x", xs, 1)
 		tr.text.lay.DrawText(float32(tr.pos[0])+sys.fightScreen.offsetX, float32(tr.pos[1]), sys.fightScreen.scale, layerno,
-			text, getFont(f, tr.text.font[0]), tr.text.font[1], tr.text.font[2], tr.text.palfx, tr.text.frgba)
+			text, tr.text.fnt, tr.text.font[1], tr.text.font[2], tr.text.palfx, tr.text.frgba)
 		tr.top.Draw(float32(tr.pos[0])+sys.fightScreen.offsetX, float32(tr.pos[1]), layerno, sys.fightScreen.scale)
 	}
 }
@@ -4332,7 +4331,7 @@ func (sc *FightScreenScore) bgDraw(layerno int16) {
 }
 
 func (sc *FightScreenScore) draw(layerno int16, f map[int]*Fnt, side int) {
-	if sc.active && sc.text.font[0] >= 0 && getFont(f, sc.text.font[0]) != nil {
+	if sc.active && sc.text.fnt != nil {
 		text := sc.text.text
 		total := sys.chars[side][0].scoreTotal()
 		if total == 0 && sc.pad == 0 {
@@ -4365,7 +4364,7 @@ func (sc *FightScreenScore) draw(layerno int16, f map[int]*Fnt, side int) {
 		// replace %s with formatted string
 		text = strings.Replace(text, "%s", s[0]+ds+s[1], 1)
 		sc.text.lay.DrawText(float32(sc.pos[0])+sys.fightScreen.offsetX, float32(sc.pos[1]), sys.fightScreen.scale, layerno,
-			text, getFont(f, sc.text.font[0]), sc.text.font[1], sc.text.font[2], sc.text.palfx, sc.text.frgba)
+			text, sc.text.fnt, sc.text.font[1], sc.text.font[2], sc.text.palfx, sc.text.frgba)
 		sc.top.Draw(float32(sc.pos[0])+sys.fightScreen.offsetX, float32(sc.pos[1]), layerno, sys.fightScreen.scale)
 	}
 }
@@ -4420,11 +4419,11 @@ func (ma *FightScreenMatch) bgDraw(layerno int16) {
 }
 
 func (ma *FightScreenMatch) draw(layerno int16, f map[int]*Fnt) {
-	if ma.active && ma.text.font[0] >= 0 && getFont(f, ma.text.font[0]) != nil {
+	if ma.active && ma.text.fnt != nil {
 		text := ma.text.text
 		text = strings.Replace(text, "%s", fmt.Sprintf("%v", sys.matchNo), 1)
 		ma.text.lay.DrawText(float32(ma.pos[0])+sys.fightScreen.offsetX, float32(ma.pos[1]), sys.fightScreen.scale, layerno,
-			text, getFont(f, ma.text.font[0]), ma.text.font[1], ma.text.font[2], ma.text.palfx, ma.text.frgba)
+			text, ma.text.fnt, ma.text.font[1], ma.text.font[2], ma.text.palfx, ma.text.frgba)
 		ma.top.Draw(float32(ma.pos[0])+sys.fightScreen.offsetX, float32(ma.pos[1]), layerno, sys.fightScreen.scale)
 	}
 }
@@ -4483,7 +4482,7 @@ func (ai *FightScreenAiLevel) bgDraw(layerno int16) {
 }
 
 func (ai *FightScreenAiLevel) draw(layerno int16, f map[int]*Fnt, ailv float32) {
-	if ai.active && ailv > 0 && ai.text.font[0] >= 0 && getFont(f, ai.text.font[0]) != nil {
+	if ai.active && ailv > 0 && ai.text.fnt != nil {
 		text := ai.text.text
 		// split float value
 		s := strings.Split(fmt.Sprintf("%f", ailv), ".")
@@ -4502,7 +4501,7 @@ func (ai *FightScreenAiLevel) draw(layerno int16, f map[int]*Fnt, ailv float32) 
 		p := ailv / 8 * 100
 		text = strings.Replace(text, "%p", fmt.Sprintf("%.0f", p), 1)
 		ai.text.lay.DrawText(float32(ai.pos[0])+sys.fightScreen.offsetX, float32(ai.pos[1]), sys.fightScreen.scale, layerno,
-			text, getFont(f, ai.text.font[0]), ai.text.font[1], ai.text.font[2], ai.text.palfx, ai.text.frgba)
+			text, ai.text.fnt, ai.text.font[1], ai.text.font[2], ai.text.palfx, ai.text.frgba)
 		ai.top.Draw(float32(ai.pos[0])+sys.fightScreen.offsetX, float32(ai.pos[1]), layerno, sys.fightScreen.scale)
 	}
 }
@@ -4558,13 +4557,14 @@ func (wc *FightScreenWinCount) bgDraw(layerno int16) {
 }
 
 func (wc *FightScreenWinCount) draw(layerno int16, f map[int]*Fnt, side int) {
-	if wc.active && wc.text.font[0] >= 0 && getFont(f, wc.text.font[0]) != nil {
-		text := wc.text.text
-		text = strings.Replace(text, "%s", fmt.Sprintf("%v", wc.wins), 1)
-		wc.text.lay.DrawText(float32(wc.pos[0])+sys.fightScreen.offsetX, float32(wc.pos[1]), sys.fightScreen.scale, layerno,
-			text, getFont(f, wc.text.font[0]), wc.text.font[1], wc.text.font[2], wc.text.palfx, wc.text.frgba)
-		wc.top.Draw(float32(wc.pos[0])+sys.fightScreen.offsetX, float32(wc.pos[1]), layerno, sys.fightScreen.scale)
+	if !wc.active || wc.text.fnt == nil {
+		return
 	}
+	text := wc.text.text
+	text = strings.Replace(text, "%s", fmt.Sprintf("%v", wc.wins), 1)
+	wc.text.lay.DrawText(float32(wc.pos[0])+sys.fightScreen.offsetX, float32(wc.pos[1]), sys.fightScreen.scale, layerno,
+		text, wc.text.fnt, wc.text.font[1], wc.text.font[2], wc.text.palfx, wc.text.frgba)
+	wc.top.Draw(float32(wc.pos[0])+sys.fightScreen.offsetX, float32(wc.pos[1]), layerno, sys.fightScreen.scale)
 }
 
 type FightScreenMode struct {
@@ -4612,9 +4612,9 @@ func (mo *FightScreenMode) bgDraw(layerno int16) {
 }
 
 func (mo *FightScreenMode) draw(layerno int16, f map[int]*Fnt) {
-	if sys.fightScreen.mode && mo.text.font[0] >= 0 && getFont(f, mo.text.font[0]) != nil {
+	if sys.fightScreen.mode && mo.text.fnt != nil {
 		mo.text.lay.DrawText(float32(mo.pos[0])+sys.fightScreen.offsetX, float32(mo.pos[1]), sys.fightScreen.scale, layerno,
-			mo.text.text, getFont(f, mo.text.font[0]), mo.text.font[1], mo.text.font[2], mo.text.palfx, mo.text.frgba)
+			mo.text.text, mo.text.fnt, mo.text.font[1], mo.text.font[2], mo.text.palfx, mo.text.frgba)
 		mo.top.Draw(float32(mo.pos[0])+sys.fightScreen.offsetX, float32(mo.pos[1]), layerno, sys.fightScreen.scale)
 	}
 }
