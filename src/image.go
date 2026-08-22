@@ -428,7 +428,7 @@ func (pf *PalFX) withStacked(extra *PalFX, blendMode TransType, alpha [2]int32) 
 	return &out
 }
 
-// Returns a copy of the PalFX with font frgba applied as a base color
+// Returns a copy of the PalFX with a base color stacked on top
 // To do this perfectly correctly we'd need more shader uniforms
 // However, this should still be better than making font color parameter overwrite PalFX like before
 func (pf *PalFX) withStackedColor(r, g, b float32) *PalFX {
