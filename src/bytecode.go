@@ -3800,17 +3800,23 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_vel_y:
 		correctScale = true
 		fallthrough
+	case OC_ex2_explodvar_vel_z:
+		correctScale = true
+		fallthrough
 	case OC_ex2_explodvar_accel_x:
 		correctScale = true
 		fallthrough
 	case OC_ex2_explodvar_accel_y:
 		correctScale = true
 		fallthrough
-	case OC_ex2_explodvar_friction_x:
+	case OC_ex2_explodvar_accel_z:
 		correctScale = true
 		fallthrough
+	case OC_ex2_explodvar_friction_x:
+		fallthrough
 	case OC_ex2_explodvar_friction_y:
-		correctScale = true
+		fallthrough
+	case OC_ex2_explodvar_friction_z:
 		fallthrough
 	case OC_ex2_explodvar_anim:
 		fallthrough
