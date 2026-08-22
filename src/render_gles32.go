@@ -824,8 +824,8 @@ func (r *Renderer_GLES32) Init() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
-	r.grabTexture, _ = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
-	r.grabTexture = r.grabTexture.(*Texture_GLES32)
+	grabTex, _ := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
+	r.grabTexture = grabTex.(*Texture_GLES32)
 	r.grabTexture.SetData(nil)
 
 	// create a texture for r.fbo
@@ -897,8 +897,8 @@ func (r *Renderer_GLES32) Init() {
 	}
 	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
 	if sys.msaa > 0 {
-		r.fbo_f_texture, _ = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, false)
-		r.fbo_f_texture = r.fbo_f_texture.(*Texture_GLES32)
+		fboTex, _ := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, false)
+		r.fbo_f_texture = fboTex.(*Texture_GLES32)
 		r.fbo_f_texture.SetData(nil)
 	} else {
 		//r.rbo_depth = gl.CreateRenderbuffer()
