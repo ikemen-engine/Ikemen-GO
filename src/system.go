@@ -6494,16 +6494,30 @@ func (l *Loader) load() {
 }
 
 func (l *Loader) reset() {
-	if l.state != LS_NotYet {
+	// Already idle
+	if l.state == LS_NotYet {
+		return
+	}
+
+	if l.state == LS_Loading {
 		// Ensure the loader goroutine gets a cooperative cancel signal.
 		l.requestCancel()
 		l.state = LS_Cancel
 		<-l.loadExit
-		l.state = LS_NotYet
+	} else {
+		// Loader already stopped
+		// Don't wait on loadExit because that can hang if nothing is left to receive
+		select {
+		case <-l.loadExit:
+		default:
+		}
 	}
+	l.state = LS_NotYet
 	l.err = nil
 	l.cancelCh = nil
 	l.cancelOnce = sync.Once{}
+
+	// Drop palette selections from a cancelled load
 	for i := range sys.cgi {
 		keepPreloadedTurnsPal := sys.cfg.Config.TurnsLoading && sys.roundNo > 1 && sys.tmode[i&1] == TM_Turns
 		if sys.roundsExisted[i&1] == 0 && !keepPreloadedTurnsPal {
