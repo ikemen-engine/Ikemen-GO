@@ -1023,7 +1023,8 @@ func (s *System) tickSound() {
 	}
 
 	// Always pause if noMusic flag set, pause master volume is 0, or freqmul is 0.
-	s.bgm.SetPaused(s.nomusic || (s.paused && s.cfg.Sound.PauseMasterVolume == 0) || (s.bgm.freqmul == 0))
+	bgmPause := s.nomusic || (s.paused && s.cfg.Sound.PauseMasterVolume == 0) || s.bgm.freqmul == 0 || s.motifPauseMusic()
+	s.bgm.SetPaused(bgmPause)
 
 	if s.paused {
 		// Apply BGM pause volume once per pause, even when the original BGM volume is 0.
@@ -2494,6 +2495,30 @@ func (s *System) debugPaused() bool {
 	return s.paused && !s.frameStepFlag && s.oldTickCount < s.tickCount
 }
 
+func (s *System) motifPauseGame() bool {
+	// Menu is open
+	if s.motif.me.active {
+		return true
+	}
+	// Challenger screen triggered
+	// TODO: Maybe this should always pause instead of having a "time" parameter
+	if s.motif.ch.active && s.motif.ch.counter >= s.motif.ChallengerInfo.Pause.Time {
+		return true
+	}
+	return false
+}
+
+func (s *System) matchPaused() bool {
+	return s.debugPaused() || s.motifPauseGame()
+}
+
+func (s *System) motifPauseMusic() bool {
+	if s.motif.ch.active && s.motif.ch.counter >= s.motif.ChallengerInfo.Pause.Time {
+		return true
+	}
+	return false
+}
+
 // "Tick frames" are the frames where most of the game logic happens
 func (s *System) tickFrame() bool {
 	return (!s.paused || s.frameStepFlag) && s.oldTickCount < s.tickCount
@@ -2518,6 +2543,10 @@ func (s *System) tickInterpolation() float32 {
 		return Clamp(progress, 0, 1)
 	}
 	return 1
+}
+
+func (s *System) uiTick() bool {
+	return s.tickFrame() || s.debugPaused() || s.motif.me.active || s.motif.ch.active
 }
 
 func (s *System) addFrameTime(t float32) bool {
@@ -2666,19 +2695,18 @@ func (s *System) screenright() float32 {
 	return float32(s.stage.screenright) * s.stage.localscl
 }
 
+// Core game logic. Chars, stage, projectiles, etc
+// The part that can rewind and fast forward during rollbacks
 func (s *System) action() {
+	if s.matchPaused() {
+		return
+	}
+
+	// TODO: This and all "cueDraw" could also be separated from action()
 	s.clearSpriteData()
 
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
-	uiTick := s.tickFrame() || s.debugPaused() || s.motif.me.active
-	if uiTick {
-		if s.escPending {
-			s.esc = true
-			s.escPending = false
-		}
-		s.uiFrameCounter++
-	}
 
 	// Update round state
 	// This is also reflected on characters (intros, win poses)
@@ -2861,28 +2889,37 @@ func (s *System) action() {
 		}
 	}
 
-	if uiTick {
-		// Update motif
-		// Needs to happen at the very end or pause toggles will get out of sync
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/3080
-		s.motif.step()
+	return
+}
 
-		// Run motif
-		s.motif.act()
+func (s *System) uiAction() {
+	if !s.uiTick() {
+		return
+	}
 
-		// Common Lua calls
-		// Needs to happen after motif update or motif inputs will lag 1 frame
-		for _, key := range SortedKeys(sys.cfg.Common.Lua) {
-			for _, v := range sys.cfg.Common.Lua[key] {
-				if err := sys.luaLState.DoString(v); err != nil {
-					sys.luaLState.RaiseError("Error executing Lua code: %s\n%v", v, err.Error())
-				}
+	if s.escPending {
+		s.esc = true
+		s.escPending = false
+	}
+	s.uiFrameCounter++
+
+	// Step motif
+	// Needs to happen at the very end or pause toggles will get out of sync
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3080
+	s.motif.step()
+
+	// Run motif
+	s.motif.act()
+
+	// Common Lua calls
+	// Needs to happen after motif update or motif inputs will lag 1 frame
+	for _, key := range SortedKeys(sys.cfg.Common.Lua) {
+		for _, v := range sys.cfg.Common.Lua[key] {
+			if err := sys.luaLState.DoString(v); err != nil {
+				sys.luaLState.RaiseError("Error executing Lua code: %s\n%v", v, err.Error())
 			}
 		}
 	}
-
-	s.tickSound()
-	return
 }
 
 // Update all projectiles for all players
@@ -2925,9 +2962,10 @@ func (s *System) projectilePrune(pn int) {
 func (s *System) explodUpdate() {
 	// Checking for pause here fixes explods travelling too far while game is paused
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1729
-	if s.paused && !s.frameStepFlag {
-		return
-	}
+	// Update: this fix is no longer necessary after the sys.action()/sys.uiAction() refactor
+	//if s.paused && !s.frameStepFlag {
+	//	return
+	//}
 
 	// Update each explod in storage order
 	for i := range s.explods {
@@ -3834,6 +3872,18 @@ func (s *System) drawDebugText(logicState drawAspectState) {
 	//}
 }
 
+func (s *System) keepMatchRunning() bool {
+	// Match still in progress
+	if !s.endMatch {
+		return true
+	}
+	// Match ended, but fightscreen fade still needs time to complete
+	if s.fightScreen.round.fadeOut.isActive() {
+		return true
+	}
+	return false
+}
+
 // Starts and runs gameplay
 // Called to start each match, on hard reset with shift+F4,
 // and at the start of any round where a new character tags in for turns mode
@@ -3926,7 +3976,7 @@ func (s *System) runMatch() (reload bool) {
 	}
 
 	// Loop until end of match
-	for !s.endMatch || s.fightScreen.round.fadeOut.isActive() {
+	for s.keepMatchRunning() {
 		s.frameStepFlag = false
 
 		for _, v := range s.shortcutScripts {
@@ -3954,6 +4004,12 @@ func (s *System) runMatch() (reload bool) {
 
 		// Update game state
 		s.action()
+
+		// Update motif
+		s.uiAction()
+
+		// Step sounds after both the core game and motif have updated
+		s.tickSound()
 
 		debugInput()
 
@@ -4031,7 +4087,7 @@ func (s *System) runMatch() (reload bool) {
 			break
 		}
 
-		if s.endMatch && !s.fightScreen.round.fadeOut.isActive() {
+		if !s.keepMatchRunning() {
 			break
 		}
 

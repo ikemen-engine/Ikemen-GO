@@ -1909,12 +1909,6 @@ func (e *Explod) setAnimElem() {
 }
 
 func (e *Explod) canAct() bool {
-	// Challenger screen also pauses the explod
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3684
-	if sys.motif.ch.active && sys.pausetime > 0 {
-		return false
-	}
-
 	// Determine pause state
 	paused := false
 	if sys.supertime > 0 {
