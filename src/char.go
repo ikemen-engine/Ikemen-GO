@@ -7082,19 +7082,26 @@ func (c *Char) commitExplod(i int) {
 	// Init "ownpal" PalFX and RemapPal
 	// Note: Must be placed after setting up interpolation
 	if e.ownpal {
-		if !e.anim.isCommonFX() {
+		// Give the explod its own independent PalFX
+		e.palfx = newPalFX()
+
+		// Load the sctrl parameters into it
+		e.palfx.PalFXDef = e.palfxdef
+
+		// Handle RemapPal
+		if e.anim.isCommonFX() {
+			e.palfx.remap = nil
+		} else {
 			// Keep parent's remapped palette while resetting PalFX
 			parentRemap := make([]int, len(c.getPalfx().remap))
 			copy(parentRemap, c.getPalfx().remap)
-			e.palfx = newPalFX()
 			e.palfx.remap = parentRemap
-			e.palfx.PalFXDef = e.palfxdef
 			c.forceRemapPal(e.palfx, e.remappal)
-		} else {
-			e.palfx = newPalFX()
-			e.palfx.PalFXDef = e.palfxdef
-			e.palfx.remap = nil
 		}
+
+		// Update the PalFX immediately without advancing timers
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1693
+		e.palfx.refresh()
 	}
 
 	// Explod ready
