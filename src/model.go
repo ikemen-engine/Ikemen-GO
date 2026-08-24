@@ -380,34 +380,13 @@ func loadEnvironment(filepath string) (*Environment, error) {
 				return
 			}
 			lowestMipLevel := int32(4)
-			var err error
-			env.hdrTexture.tex, err = gfx.newHDRTexture(int32(bounds.Max.X), int32(bounds.Max.Y))
-			if err != nil {
-				LogMessage("[VRAM] newHDRTexture failed: %v", err)
-				return
-			}
+			env.hdrTexture.tex = gfx.newHDRTexture(int32(bounds.Max.X), int32(bounds.Max.Y))
 
 			env.hdrTexture.tex.SetPixelData(data)
-			env.cubeMapTexture.tex, err = gfx.newCubeMapTexture(256, true, 0)
-			if err != nil {
-				LogMessage("[VRAM] newCubeMapTexture failed: %v", err)
-				return
-			}
-			env.lambertianTexture.tex, err = gfx.newCubeMapTexture(256, false, 0)
-			if err != nil {
-				LogMessage("[VRAM] newCubeMapTexture failed: %v", err)
-				return
-			}
-			env.GGXTexture.tex, err = gfx.newCubeMapTexture(256, true, lowestMipLevel)
-			if err != nil {
-				LogMessage("[VRAM] newCubeMapTexture failed: %v", err)
-				return
-			}
-			env.GGXLUT.tex, err = gfx.newDataTexture(1024, 1024)
-			if err != nil {
-				LogMessage("[VRAM] newDataTexture failed: %v", err)
-				return
-			}
+			env.cubeMapTexture.tex = gfx.newCubeMapTexture(256, true, 0)
+			env.lambertianTexture.tex = gfx.newCubeMapTexture(256, false, 0)
+			env.GGXTexture.tex = gfx.newCubeMapTexture(256, true, lowestMipLevel)
+			env.GGXLUT.tex = gfx.newDataTexture(1024, 1024)
 
 			gfx.RenderCubeMap(env.hdrTexture.tex, env.cubeMapTexture.tex)
 			gfx.RenderFilteredCubeMap(0, env.cubeMapTexture.tex, env.lambertianTexture.tex, 0, env.lambertianSampleCount, 0)
@@ -562,12 +541,7 @@ func loadglTFModel(filepath string) (*Model, error) {
 				rgba := image.NewRGBA(img.Bounds())
 				draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
 				sys.mainThreadTask <- func() {
-					var err error
-					texture.tex, err = gfx.newModelTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
-					if err != nil {
-						LogMessage("[VRAM] newModelTexture failed: %v", err)
-						return
-					}
+					texture.tex = gfx.newModelTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
 					texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
 				}
 				textureMap[[2]int32{int32(*t.Source), int32(*t.Sampler)}] = texture
@@ -586,12 +560,7 @@ func loadglTFModel(filepath string) (*Model, error) {
 				rgba := image.NewRGBA(img.Bounds())
 				draw.Draw(rgba, img.Bounds(), img, img.Bounds().Min, draw.Src)
 				sys.mainThreadTask <- func() {
-					var err error
-					texture.tex, err = gfx.newModelTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
-					if err != nil {
-						LogMessage("[VRAM] newModelTexture failed: %v", err)
-						return
-					}
+					texture.tex = gfx.newModelTexture(int32(img.Bounds().Max.X), int32(img.Bounds().Max.Y), 32, false)
 					texture.tex.SetDataG(rgba.Pix, mag, min, wrapS, wrapT)
 				}
 				textureMap[[2]int32{int32(*t.Source), -1}] = texture
@@ -1206,11 +1175,7 @@ func loadglTFModel(filepath string) (*Model, error) {
 				primitive.morphTargetTexture = &GLTFTexture{}
 				sys.mainThreadTask <- func() {
 					dimension := int(math.Ceil(math.Pow(float64(8*primitive.numVertices), 0.5)))
-					var err error
-					primitive.morphTargetTexture.tex, err = gfx.newDataTexture(int32(dimension), int32(dimension))
-					if err != nil {
-						LogMessage("[VRAM] newDataTexture (morphTarget) failed: %v", err)
-					}
+					primitive.morphTargetTexture.tex = gfx.newDataTexture(int32(dimension), int32(dimension))
 					//primitive.morphTargetTexture.tex.SetPixelData(targetBuffer)
 				}
 			}
@@ -1465,12 +1430,7 @@ func loadglTFModel(filepath string) (*Model, error) {
 
 		skin.texture = &GLTFTexture{}
 		sys.mainThreadTask <- func() {
-			tex, err := gfx.newDataTexture(6, int32(len(skin.joints)))
-			if err != nil {
-				LogMessage("[VRAM] failed to create skin texture: " + err.Error() + "\n")
-				return
-			}
-			skin.texture.tex = tex
+			skin.texture.tex = gfx.newDataTexture(6, int32(len(skin.joints)))
 		}
 
 		mdl.skins = append(mdl.skins, skin)

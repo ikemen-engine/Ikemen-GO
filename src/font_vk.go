@@ -466,9 +466,7 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 		for uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix); !ok; uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix) {
 			textureIndex += 1
 			if textureIndex >= len(f.textures) {
-				newAtlas := CreateTextureAtlas(256, 256, 8, true)
-				newAtlas.texture.MarkNonSwappable()
-				f.textures = append(f.textures, newAtlas)
+				f.textures = append(f.textures, CreateTextureAtlas(256, 256, 8, true))
 				descriptorSet := gfxFont.(*FontRenderer_VK).freeDescriptors.Front()
 				gfxFont.(*FontRenderer_VK).freeDescriptors.Remove(descriptorSet)
 				f.descriptors = append(f.descriptors, descriptorSet)
@@ -540,7 +538,6 @@ func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, h
 	f.SetColor(1.0, 1.0, 1.0, 1.0) //set default white
 	f.SetPalFX(NewShaderPalFX())
 	f.textures = append(f.textures, CreateTextureAtlas(256, 256, 8, true))
-	f.textures[len(f.textures)-1].texture.MarkNonSwappable()
 	descriptorSet := r.freeDescriptors.Front()
 	r.freeDescriptors.Remove(descriptorSet)
 	f.descriptors = append(f.descriptors, descriptorSet)
