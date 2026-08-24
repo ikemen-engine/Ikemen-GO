@@ -250,24 +250,35 @@ func (l *StreamLooper) Stream(samples [][2]float64) (n int, ok bool) {
 	if l.err != nil {
 		return 0, false
 	}
+
+	// Fast path for no loop
+	if l.loopcount == 0 {
+		return l.s.Stream(samples)
+	}
+
+	// Slow path for looping
 	for len(samples) > 0 {
 		toStream := len(samples)
-		if l.loopcount != 0 {
-			samplesUntilEnd := l.loopend - l.s.Position()
-			if samplesUntilEnd <= 0 {
-				// End of loop, reset the position and decrease the loop count.
-				if l.loopcount > 0 {
-					l.loopcount--
-				}
-				if err := l.s.Seek(l.loopstart); err != nil {
-					l.err = err
-					return n, true
-				}
-				continue
+		samplesUntilEnd := l.loopend - l.s.Position()
+		if samplesUntilEnd <= 0 {
+			// End of loop. Stop if no repeats remain
+			if l.loopcount == 0 {
+				return n, false
 			}
-			// Stream only up to the end of the loop.
-			toStream = Min(samplesUntilEnd, toStream)
+			// Otherwise, consume one repeat for finite loops
+			if l.loopcount > 0 {
+				l.loopcount--
+			}
+			// Reset to the loop start
+			if err := l.s.Seek(l.loopstart); err != nil {
+				l.err = err
+				return n, true
+			}
+			continue
 		}
+
+		// Stream only up to the end of the loop.
+		toStream = Min(samplesUntilEnd, toStream)
 
 		sn, sok := l.s.Stream(samples[:toStream])
 		n += sn
@@ -277,6 +288,7 @@ func (l *StreamLooper) Stream(samples [][2]float64) (n int, ok bool) {
 		}
 		samples = samples[sn:]
 	}
+
 	return n, true
 }
 
@@ -928,9 +940,16 @@ type SoundEffect struct {
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
+	applyPan := sys.cfg.Sound.StereoEffects && (s.x != nil || s.pan != 0)
+
+	// Fast path when no effects need to be applied
+	if s.volume == 256 && !applyPan {
+		return s.streamer.Stream(samples)
+	}
+
 	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
 	lv, rv := s.volume, s.volume
-	if sys.cfg.Sound.StereoEffects && (s.x != nil || s.pan != 0) {
+	if applyPan {
 		// Use the camera viewport for panning, not the playable area
 		//screen := sys.xmax - sys.xmin
 		leftEdge := sys.cam.ScreenPos[0] + sys.cam.Offset[0]
@@ -956,10 +975,14 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 	}
 
 	n, ok = s.streamer.Stream(samples)
+
+	lf := float64(lv) / 256
+	rf := float64(rv) / 256
 	for i := range samples[:n] {
-		samples[i][0] *= float64(lv / 256)
-		samples[i][1] *= float64(rv / 256)
+		samples[i][0] *= lf
+		samples[i][1] *= rf
 	}
+
 	return n, ok
 }
 
