@@ -126,6 +126,23 @@ func Abs[T int | int32 | int64 | float32 | float64](val T) (res T) {
 }
 
 func Pow(x, y float32) float32 {
+	// Fast path for the hottest cases
+	switch y {
+	case 0:
+		return 1
+	case 1:
+		return x
+	case 2:
+		return x * x
+	case 3:
+		p := float64(x)
+		return float32(p * p * p)
+	case 4:
+		p := float64(x)
+		p *= p
+		return float32(p * p)
+	}
+	// General-purpose fallback
 	return float32(math.Pow(float64(x), float64(y)))
 }
 
