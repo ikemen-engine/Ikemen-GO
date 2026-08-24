@@ -35,6 +35,8 @@ type FontRenderer_GL33 struct {
 }
 
 func (r *FontRenderer_GL33) Init(renderer interface{}) {
+	mr := gfx.(*Renderer_GL33)
+
 	// Configure the default font vertex and fragment shaders
 	r.newProgram(150, vertexFontShader, fragmentFontShader)
 
@@ -44,8 +46,8 @@ func (r *FontRenderer_GL33) Init(renderer interface{}) {
 	// Configure VAO/VBO for texture quads
 	gl.GenVertexArrays(1, &r.vao)
 	gl.GenBuffers(1, &r.vbo)
-	gl.BindVertexArray(r.vao)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
+	mr.bindVertexArray(r.vao)
+	mr.bindBuffer(gl.ARRAY_BUFFER, r.vbo)
 
 	// Pre-allocate for maximum batch size
 	gl.BufferData(gl.ARRAY_BUFFER, MaxFontBatchSize*6*4*4, nil, gl.DYNAMIC_DRAW)
@@ -60,8 +62,8 @@ func (r *FontRenderer_GL33) Init(renderer interface{}) {
 	gl.VertexAttribPointer(tLoc, 2, gl.FLOAT, false, 4*4, gl.PtrOffset(2*4))
 
 	// Unbind for safety
-	gl.BindVertexArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	mr.bindVertexArray(0)
+	mr.bindBuffer(gl.ARRAY_BUFFER, 0)
 }
 
 // LoadFont loads the specified font at the given scale.
@@ -113,10 +115,10 @@ func (r *FontRenderer_GL33) SetFontPipeline() {
 	mr.ChangeProgram(r.shaderProgram.program)
 
 	// Bind VAO
-	gl.BindVertexArray(r.vao)
+	mr.bindVertexArray(r.vao)
 
 	// We need to bind VBO here as well
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vbo)
+	mr.bindBuffer(gl.ARRAY_BUFFER, r.vbo)
 }
 
 // Printf draws a string to the screen, takes a list of arguments like printf
@@ -169,7 +171,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 	r.SetUniformFSub(program.uniforms["resolution"], float32(f.windowWidth), float32(f.windowHeight))
 
 	gl.ActiveTexture(gl.TEXTURE0)
-	//gl.BindVertexArray(gfxFont.(*FontRenderer_GL33).vao)
+	//mr.bindVertexArray(gfxFont.(*FontRenderer_GL33).vao)
 
 	//calculate alignment position
 	alignScale := xscl
@@ -307,7 +309,8 @@ func (f *Font_GL33) widthRunes(indices []rune, scale float32, spacingXAdd float3
 func (f *Font_GL33) renderGlyphBatch(vertices []float32, textureID uint32) {
 	fr := gfxFont.(*FontRenderer_GL33)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, fr.vbo)
+	mr := gfx.(*Renderer_GL33)
+	mr.bindBuffer(gl.ARRAY_BUFFER, fr.vbo)
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertices)*4, gl.Ptr(vertices))
 
 	gl.BindTexture(gl.TEXTURE_2D, textureID)
@@ -315,8 +318,9 @@ func (f *Font_GL33) renderGlyphBatch(vertices []float32, textureID uint32) {
 }
 
 func (r *FontRenderer_GL33) ReleaseFontPipeline() {
-	gl.BindVertexArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	mr := gfx.(*Renderer_GL33)
+	mr.bindVertexArray(0)
+	mr.bindBuffer(gl.ARRAY_BUFFER, 0)
 }
 
 // Width returns the width of a piece of text in pixels
