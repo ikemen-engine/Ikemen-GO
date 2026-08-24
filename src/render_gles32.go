@@ -563,6 +563,7 @@ type Renderer_GLES32 struct {
 	modelVAO                uint32
 	modelEnvVAO             uint32
 	postVAO                 uint32
+	vertexScratch           []byte
 
 	enableModel  bool
 	enableShadow bool
@@ -738,6 +739,11 @@ func (r *Renderer_GLES32) Init() {
 
 	gl.GenBuffers(1, &r.postVertBuffer)
 	Logcat("GLES: PostVertBuffer Generated")
+
+	// Pre-size to 64 bytes (one quad) so later uploads of the same size stay cheap
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, 64, nil, gl.DYNAMIC_DRAW)
+	r.vertexScratch = make([]byte, 64)
 
 	// Initialize post-processing vertex buffer
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
@@ -2083,9 +2089,27 @@ func (r *Renderer_GLES32) SetShadowFrameCubeTexture(i uint32) {
 }
 
 func (r *Renderer_GLES32) SetVertexData(values ...float32) {
-	data := f32.Bytes(binary.LittleEndian, values...)
+	need := len(values) * 4
+
+	// Adjust scratch buffer size if necessary
+	if cap(r.vertexScratch) < need {
+		r.vertexScratch = make([]byte, need)
+	} else {
+		r.vertexScratch = r.vertexScratch[:need]
+	}
+
+	// Write into scratch buffer
+	for i, v := range values {
+		binary.LittleEndian.PutUint32(r.vertexScratch[i*4:], math.Float32bits(v))
+	}
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
+
+	if need > 0 {
+		gl.BufferData(gl.ARRAY_BUFFER, need, unsafe.Pointer(&r.vertexScratch[0]), gl.DYNAMIC_DRAW)
+	} else {
+		gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.DYNAMIC_DRAW)
+	}
 }
 
 func (r *Renderer_GLES32) SetModelVertexData(bufferIndex uint32, values []byte) {

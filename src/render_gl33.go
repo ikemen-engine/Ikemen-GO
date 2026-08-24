@@ -461,6 +461,7 @@ type Renderer_GL33 struct {
 	modelVAO                uint32
 	modelEnvVAO             uint32
 	postVAO                 uint32
+	vertexScratch           []byte
 
 	grabTexture  *Texture_GL33
 	grabFbo      uint32
@@ -628,6 +629,11 @@ func (r *Renderer_GL33) Init() {
 	gl.GenBuffers(2, &r.modelVertexBuffer[0])
 	gl.GenBuffers(2, &r.modelIndexBuffer[0])
 	gl.GenBuffers(1, &r.postVertBuffer)
+
+	// Pre-size to 64 bytes (one quad) so later uploads of the same size stay cheap
+	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, 64, nil, gl.DYNAMIC_DRAW)
+	r.vertexScratch = make([]byte, 64)
 
 	// Initialize post-processing vertex buffer
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
@@ -2084,11 +2090,31 @@ func (r *Renderer_GL33) SetShadowFrameCubeTexture(i uint32) {
 }
 
 func (r *Renderer_GL33) SetVertexData(values ...float32) {
-	data := f32.Bytes(binary.LittleEndian, values...)
+	need := len(values) * 4
+
+	// Adjust scratch buffer size if necessary
+	if cap(r.vertexScratch) < need {
+		r.vertexScratch = make([]byte, need)
+	} else {
+		r.vertexScratch = r.vertexScratch[:need]
+	}
+
+	// Write into scratch buffer
+	for i, v := range values {
+		binary.LittleEndian.PutUint32(r.vertexScratch[i*4:], math.Float32bits(v))
+	}
+
 	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
-	// STREAM_DRAW was attempted here, but some users might be havign trouble with it
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3292
+
+	if need > 0 {
+		gl.BufferData(gl.ARRAY_BUFFER, need, unsafe.Pointer(&r.vertexScratch[0]), gl.DYNAMIC_DRAW)
+	} else {
+		gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.DYNAMIC_DRAW)
+	}
+
+	// DYNAMIC_DRAW is used because the buffer contents are updated frequently.
+	// STREAM_DRAW was tried previously and caused issues for some users
+	// (https://github.com/ikemen-engine/Ikemen-GO/issues/3292)
 }
 
 func (r *Renderer_GL33) SetModelVertexData(bufferIndex uint32, values []byte) {
