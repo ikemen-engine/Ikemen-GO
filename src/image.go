@@ -924,7 +924,8 @@ func (s *Sprite) RlePcxDecode(rle []byte) (p []byte) {
 }
 
 func (s *Sprite) read(f io.ReadSeeker, sh *SffHeader, offset int64, datasize uint32,
-	nextSubheader uint32, prev *Sprite, pl *PaletteList) error {
+	nextSubheader uint32, prev *Sprite, pl *PaletteList, isCharFirstSprite bool) error {
+
 	read := func(x interface{}) error {
 		return binary.Read(f, binary.LittleEndian, x)
 	}
@@ -936,59 +937,90 @@ func (s *Sprite) read(f io.ReadSeeker, sh *SffHeader, offset int64, datasize uin
 	if err := s.readPcxHeader(f, offset); err != nil {
 		return err
 	}
-	pcxHeaderStart := offset
-	pcxDataStart := pcxHeaderStart + 128
+	pcxDataStart := offset + 128
 
-	var blockEnd int64
-	if int64(nextSubheader) > offset {
-		blockEnd = int64(nextSubheader)
+	var px []byte
+	var paletteOffset int64
+
+	if isCharFirstSprite {
+		// Preserve legacy SFFv1 handling for the character's 0,0 sprite
+		if int64(nextSubheader) > offset {
+			datasize = nextSubheader - uint32(offset)
+		}
+
+		rleSize := int64(datasize) - 128
+		if rleSize < 0 {
+			rleSize = 0
+		}
+
+		px = make([]byte, rleSize)
+		f.Seek(pcxDataStart, io.SeekStart)
+
+		if err := read(px); err != nil {
+			return err
+		}
+
+		paletteOffset = offset + int64(datasize) - 768
 	} else {
-		blockEnd = offset + int64(datasize)
-	}
+		// Use the padding-safe handling for regular SFFv1 sprites
+		var blockEnd int64
+		if int64(nextSubheader) > offset {
+			blockEnd = int64(nextSubheader)
+		} else {
+			blockEnd = offset + int64(datasize)
+		}
 
-	paletteOffset := int64(-1)
-	if !paletteSame {
-		// If new palette, search for PCX 0x0C marker to skip padding
-		var b [1]byte
-		scanStart := blockEnd - 769
-		scanLimit := pcxDataStart
+		if paletteSame {
+			paletteOffset = blockEnd
+		} else {
+			var b [1]byte
+			paletteOffset = -1
 
-		for pos := scanStart; pos >= scanLimit; pos-- {
-			f.Seek(pos, 0)
-			f.Read(b[:])
-			if b[0] == 0x0C {
-				paletteOffset = pos
-				break
+			for pos := blockEnd - 769; pos >= pcxDataStart; pos-- {
+				f.Seek(pos, io.SeekStart)
+
+				if _, err := f.Read(b[:]); err != nil {
+					return err
+				}
+
+				if b[0] == 0x0C {
+					paletteOffset = pos
+					break
+				}
+			}
+
+			if paletteOffset < 0 {
+				paletteOffset = blockEnd - 769
 			}
 		}
-		if paletteOffset == -1 {
-			paletteOffset = blockEnd - 769
+
+		rleSize := paletteOffset - pcxDataStart
+		if rleSize < 0 {
+			rleSize = 0
 		}
-	} else {
-		paletteOffset = blockEnd
-	}
-	// RLE size is distance between PCX data start and palette marker. This removes padding
-	rleSize := paletteOffset - pcxDataStart
-	if rleSize < 0 {
-		rleSize = 0
+
+		px = make([]byte, rleSize)
+		f.Seek(pcxDataStart, io.SeekStart)
+
+		if err := read(px); err != nil {
+			return err
+		}
 	}
 
-	px := make([]byte, rleSize)
-	f.Seek(pcxDataStart, 0)
-	if err := read(px); err != nil {
-		return err
-	}
 	if paletteSame {
-		if prev != nil {
-			s.palidx = prev.palidx
-		}
+		s.palidx = prev.palidx
 		if s.palidx < 0 {
 			s.palidx, _ = pl.NewPal()
 		}
 	} else {
 		var pal []uint32
 		s.palidx, pal = pl.NewPal()
-		f.Seek(paletteOffset+1, 0) // Skip marker
+		f.Seek(paletteOffset, io.SeekStart)
+		// The regular path finds the 0x0C marker, while the legacy
+		// character path points directly at the palette
+		if !isCharFirstSprite {
+			f.Seek(1, io.SeekCurrent)
+		}
 		var rgb [3]byte
 		for i := range pal {
 			if err := read(rgb[:]); err != nil {
@@ -1582,8 +1614,9 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 		} else {
 			switch s.header.Version[0] {
 			case 1:
+				isCharFirstSprite := char && (prev == nil ||spriteList[i].Group == 0 && spriteList[i].Number == 0)
 				if err := spriteList[i].read(f, &s.header, shofs+32, size,
-					xofs, prev, &s.palList); err != nil {
+					xofs, prev, &s.palList, isCharFirstSprite); err != nil {
 					return nil, err
 				}
 				if isActPal {
@@ -1667,15 +1700,12 @@ func readSffv1Palette(f io.ReadSeeker, read func(interface{}) error, offset int6
 			return nil, err
 		}
 
-		alpha := byte(255)
+		var alpha = byte(255)
 		if i == 0 {
 			alpha = 0
 		}
 
-		pal[i] = uint32(alpha)<<24 |
-			uint32(rgb[2])<<16 |
-			uint32(rgb[1])<<8 |
-			uint32(rgb[0])
+		pal[i] = uint32(alpha)<<24 | uint32(rgb[2])<<16 | uint32(rgb[1])<<8 | uint32(rgb[0])
 	}
 
 	return pal, nil
@@ -1800,8 +1830,9 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]uint16]bool) (*Sff
 						var err error
 						switch sff.header.Version[0] {
 						case 1:
-							err = spriteList[base].read(
-								f, &sff.header, headerShofs32[base], bsize, bxofs, prev, pl)
+							isCharFirstSprite := char && (prev == nil ||spriteList[base].Group == 0 && spriteList[base].Number == 0)
+							err = spriteList[base].read(f, &sff.header, headerShofs32[base], bsize, 
+								bxofs, prev, pl, isCharFirstSprite)
 						case 2:
 							err = spriteList[base].readV2(f, int64(bxofs), bsize)
 						}
@@ -1819,7 +1850,9 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]uint16]bool) (*Sff
 			} else {
 				switch sff.header.Version[0] {
 				case 1:
-					if err := spriteList[i].read(f, &sff.header, int64(shofs+32), size, xofs, prev, pl); err != nil {
+					isCharFirstSprite := char && (prev == nil ||spriteList[i].Group == 0 && spriteList[i].Number == 0)
+					if err := spriteList[i].read(f, &sff.header, int64(shofs+32), size, 
+						xofs, prev, pl, isCharFirstSprite); err != nil {
 						return nil, nil, err
 					}
 				case 2:
