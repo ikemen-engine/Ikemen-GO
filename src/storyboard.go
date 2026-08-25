@@ -111,7 +111,7 @@ type Storyboard struct {
 		DisableCancel  bool `ini:"disablecancel"`
 		WaitForLoading bool `ini:"waitforloading"`
 	} `ini:"scenedef"`
-	Scene         map[string]*SceneProperties `ini:"map:^(?i)scene_?[0-9]+$" lua:"scene"`
+	Scene         map[string]*SceneProperties `ini:"map:^(?i)scene(_.*)?$" lua:"scene"`
 	fntIndexByKey map[string]int
 	//enabled		   bool
 	active            bool
@@ -188,10 +188,10 @@ func loadStoryboard(def string) (*Storyboard, error) {
 		var baseSecs, langSecs []secPair
 		curLang := SelectedLanguage()
 
-		// We only care about [Info], [SceneDef], and [Scene N] (case-insensitive, language prefix allowed).
+		// We only care about [Info], [SceneDef], and [Scene...] (case-insensitive, language prefix allowed).
 		interesting := func(logical string) bool {
 			l := strings.ToLower(logical)
-			return l == "info" || l == "scenedef" || strings.HasPrefix(l, "scene ")
+			return l == "info" || l == "scenedef" || l == "scene" || strings.HasPrefix(l, "scene ")
 		}
 
 		for _, s := range src.Sections() {
@@ -218,7 +218,7 @@ func loadStoryboard(def string) (*Storyboard, error) {
 
 		// one pass over a slice of sections; inject scene carry-over inside that pass only
 		process := func(list []secPair) error {
-			// carry-over across consecutive [Scene N] sections within THIS pass
+			// carry-over across consecutive [Scene] sections within THIS pass
 			var clearcolor, clearalpha, clearlayerno, layerallpos string
 
 			for _, sp := range list {
@@ -226,7 +226,8 @@ func loadStoryboard(def string) (*Storyboard, error) {
 				sectionName := sp.name // logical (no lang prefix)
 
 				// Inject carry-over keys for scenes (so missing ones inherit within THIS pass)
-				if strings.HasPrefix(strings.ToLower(sectionName), "scene ") {
+				l := strings.ToLower(sectionName)
+				if l == "scene" || strings.HasPrefix(l, "scene ") {
 					keysToCheck := map[string]*string{
 						"clearcolor":   &clearcolor,
 						"clearalpha":   &clearalpha,
@@ -311,10 +312,18 @@ func loadStoryboard(def string) (*Storyboard, error) {
 
 	s.populateDataPointers()
 
-	for scene, sceneProps := range s.Scene {
-		sceneName := strings.Replace(scene, "scene_", "scene ", 1)
-		sceneProps.Music = parseMusicSection(pickLangSectionMerged(iniFile, sceneName))
-		sceneProps.Music.DebugDump(fmt.Sprintf("Storyboard %s [%s]", def, sceneName))
+	for _, section := range userIniFile.Sections() {
+		_, sceneName, hasLang := splitLangPrefix(section.Name())
+		l := strings.ToLower(sceneName)
+		if hasLang || (l != "scene" && !strings.HasPrefix(l, "scene ")) {
+			continue
+		}
+		sceneKey := strings.ToLower(strings.ReplaceAll(sceneName, " ", "_"))
+		if sceneProps := s.Scene[sceneKey]; sceneProps != nil {
+			s.sceneKeys = append(s.sceneKeys, sceneKey)
+			sceneProps.Music = parseMusicSection(pickLangSectionMerged(iniFile, sceneName))
+			sceneProps.Music.DebugDump(fmt.Sprintf("Storyboard %s [%s]", def, sceneName))
+		}
 	}
 
 	return &s, nil
@@ -585,7 +594,6 @@ func (s *Storyboard) init() {
 	//	co.initialized = true
 	//	return
 	//}
-	s.sceneKeys = SortedKeys(s.Scene)
 	s.reset()
 	s.counter = 0
 	s.active = true
