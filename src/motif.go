@@ -1371,37 +1371,22 @@ func hasUserKey(iniFile *ini.File, section, key string) bool {
 func preprocessINIContent(input string) string {
 	// go-ini rejects malformed empty quoted values like """, so collapse quote-only garbage to an empty string.
 	input = regexp.MustCompile(`(?m)^([ \t]*[^;\r\n\[\]=][^=\r\n]*=[ \t]*)"{3,}([ \t]*(?:;.*)?$)`).ReplaceAllString(input, `${1}""${2}`)
-	// Define a regex to find the [Infobox Text] section
-	infoboxRegex := regexp.MustCompile(`(?is)\[\s*infobox\s+text\s*\]\s*\n(.*?)(\n\s*\[|$)`)
-	// Extract the content of [Infobox Text]
-	matches := infoboxRegex.FindStringSubmatch(input)
-	if len(matches) < 3 {
-		// If the section is not found, return the original input
-		return input
-	}
-	infoboxTextContent := matches[1]
-	// Process the extracted text
-	processedText := strings.TrimSpace(infoboxTextContent)
-	processedText = strings.ReplaceAll(processedText, "\n", `\n`)
-	// Resolve first two %s placeholders to Version and BuildTime
-	processedText = strings.Replace(processedText, "%s", Version, 1)
-	processedText = strings.Replace(processedText, "%s", BuildTime, 1)
-	// Create the new text.text line with an added newline at the end
-	newTextLine := fmt.Sprintf("\ttext.text = %s\n\n", processedText)
-	// Remove the [Infobox Text] section from the input
-	output := infoboxRegex.ReplaceAllString(input, "$2")
-	// Define a regex to find the [InfoBox] section header
-	infoBoxHeaderRegex := regexp.MustCompile(`(?im)(^\[(?i:infobox)\]\s*\n)`)
-	// Insert the new text.text line right after the [InfoBox] header.
-	if infoBoxHeaderRegex.MatchString(output) {
-		output = infoBoxHeaderRegex.ReplaceAllString(output, "${1}"+newTextLine)
-	} else {
-		if !strings.HasSuffix(output, "\n") {
-			output += "\n"
+	// Convert raw Infobox Text sections to regular localized InfoBox sections.
+	infoboxRegex := regexp.MustCompile(`(?is)\[\s*((?:[a-z]{2}\.)?)infobox\s+text\s*\][ \t]*(?:[;#][^\n]*)?\n(.*?)(\n\s*\[|$)`)
+	for {
+		match := infoboxRegex.FindStringSubmatchIndex(input)
+		if match == nil {
+			break
 		}
-		output += "[InfoBox]\n" + newTextLine
+		langPrefix := input[match[2]:match[3]]
+		processedText := strings.TrimSpace(input[match[4]:match[5]])
+		processedText = strings.ReplaceAll(processedText, "\n", `\n`)
+		processedText = strings.Replace(processedText, "%s", Version, 1)
+		processedText = strings.Replace(processedText, "%s", BuildTime, 1)
+		replacement := fmt.Sprintf("[%sInfoBox]\n\ttext.text = %s\n", langPrefix, processedText)
+		input = input[:match[0]] + replacement + input[match[6]:]
 	}
-	return output
+	return input
 }
 
 // applyCustomDefaults injects custom defaults.
