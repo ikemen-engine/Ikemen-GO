@@ -1614,7 +1614,7 @@ func loadSff(filename string, char bool, isMainThread bool, isActPal bool) (*Sff
 		} else {
 			switch s.header.Version[0] {
 			case 1:
-				isCharFirstSprite := char && (prev == nil ||spriteList[i].Group == 0 && spriteList[i].Number == 0)
+				isCharFirstSprite := char && (prev == nil || spriteList[i].Group == 0 && spriteList[i].Number == 0)
 				if err := spriteList[i].read(f, &s.header, shofs+32, size,
 					xofs, prev, &s.palList, isCharFirstSprite); err != nil {
 					return nil, err
@@ -1830,8 +1830,8 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]uint16]bool) (*Sff
 						var err error
 						switch sff.header.Version[0] {
 						case 1:
-							isCharFirstSprite := char && (prev == nil ||spriteList[base].Group == 0 && spriteList[base].Number == 0)
-							err = spriteList[base].read(f, &sff.header, headerShofs32[base], bsize, 
+							isCharFirstSprite := char && (prev == nil || spriteList[base].Group == 0 && spriteList[base].Number == 0)
+							err = spriteList[base].read(f, &sff.header, headerShofs32[base], bsize,
 								bxofs, prev, pl, isCharFirstSprite)
 						case 2:
 							err = spriteList[base].readV2(f, int64(bxofs), bsize)
@@ -1850,8 +1850,8 @@ func preloadSff(filename string, char bool, preloadSpr map[[2]uint16]bool) (*Sff
 			} else {
 				switch sff.header.Version[0] {
 				case 1:
-					isCharFirstSprite := char && (prev == nil ||spriteList[i].Group == 0 && spriteList[i].Number == 0)
-					if err := spriteList[i].read(f, &sff.header, int64(shofs+32), size, 
+					isCharFirstSprite := char && (prev == nil || spriteList[i].Group == 0 && spriteList[i].Number == 0)
+					if err := spriteList[i].read(f, &sff.header, int64(shofs+32), size,
 						xofs, prev, pl, isCharFirstSprite); err != nil {
 						return nil, nil, err
 					}
