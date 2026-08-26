@@ -1613,7 +1613,6 @@ type Explod struct {
 	removeongethit      bool
 	removeonchangestate bool
 	hidewithbars        bool
-	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
 	friction            [3]float32
@@ -1929,10 +1928,14 @@ func (e *Explod) canAct() bool {
 	return act
 }
 
+func (e *Explod) flagForRemoval() {
+	e.id = IErr
+	e.anim = nil
+}
+
 func (e *Explod) update() {
 	if e.id == IErr || e.anim == nil {
-		e.id = IErr
-		e.anim = nil
+		e.flagForRemoval()
 		return
 	}
 
@@ -1944,16 +1947,11 @@ func (e *Explod) update() {
 	parent := e.parent()
 
 	// Remove on get hit
-	if sys.tickNextFrame() && e.removeongethit &&
-		parent != nil && parent.csf(CSF_gethit) && !parent.inGuardState() {
-		e.id, e.anim = IErr, nil
-		return
-	}
-
-	// Remove on ChangeState
-	if sys.tickNextFrame() && e.removeonchangestate && e.statehaschanged {
-		e.id, e.anim = IErr, nil
-		return
+	if sys.tickNextFrame() {
+		if e.removeongethit && parent != nil && parent.csf(CSF_gethit) && !parent.inGuardState() {
+			e.flagForRemoval()
+			return
+		}
 	}
 
 	act := e.canAct()
@@ -1961,9 +1959,8 @@ func (e *Explod) update() {
 	// Explods aren't removed while they are paused
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/3889
 	if act && sys.tickFrame() {
-		if e.removetime >= 0 && e.time >= e.removetime ||
-			e.removetime <= -2 && e.anim.loopend {
-			e.id, e.anim = IErr, nil
+		if e.removetime >= 0 && e.time >= e.removetime || e.removetime <= -2 && e.anim.loopend {
+			e.flagForRemoval()
 			return
 		}
 	}
@@ -6650,11 +6647,11 @@ func (c *Char) persistentChangeStateHitpauseCorrection(sbc *StateBytecode) {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
-		// Flag RemoveOnChangeState explods for removal
+		// Execute explod removeOnChangeState
 		for i := range sys.explods[c.playerNo] {
 			e := sys.explods[c.playerNo][i]
 			if e.ownerId == c.id && e.removeonchangestate {
-				e.statehaschanged = true
+				e.flagForRemoval()
 			}
 		}
 		// Stop flagged sound channels
