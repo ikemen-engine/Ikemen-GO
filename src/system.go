@@ -2750,6 +2750,10 @@ func (s *System) action() {
 		}
 
 		// Start pause timers
+		// In Mugen, this seems to happen in the same frame the pause is called, after all chars run
+		// Explod pausing behavior backs it up, since they pause immediately in the same frame
+		// But the screen darkening only happens in the next frame and thus lasts 1 frame shorter than expected
+		// Ikemen's way is a bit more consistent, but causes https://github.com/ikemen-engine/Ikemen-GO/issues/3889
 		if s.supertimebuffer < 0 {
 			s.supertimebuffer = ^s.supertimebuffer
 			s.supertime = s.supertimebuffer
