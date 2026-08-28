@@ -12135,9 +12135,12 @@ func (c *Char) actionRun() {
 	// Update binding others and binding to others
 	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
 	if !c.pauseBool {
-		if !c.isTargetBound() {
-			c.updateBinding()
-		}
+		// This placement causes timing issues
+		// Maybe what needs to happen is actionRun() updates all binds related to this player
+		// That is, call updateBinding() for this player and the ones that are bound to it
+		//if !c.isTargetBound() {
+		//	c.updateBinding()
+		//}
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
 				t.updateBinding()
@@ -12281,6 +12284,12 @@ func (c *Char) update() {
 				return
 			}
 		*/
+		// At the moment player binding must be handled differently between targets and helpers, or timing issues arise
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3915
+		// TODO: Better integration
+		if !c.pauseBool && !c.isTargetBound() {
+			c.updateBinding()
+		}
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
