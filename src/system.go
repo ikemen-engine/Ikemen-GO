@@ -4038,7 +4038,7 @@ func (s *System) runMatch() (reload bool) {
 	// Now switch to rollback if applicable
 	// TODO: More merging so we don't hijack this function at all
 	if s.rollback.session != nil || s.cfg.Netplay.Rollback.DesyncTestFrames > 0 {
-		return s.rollback.hijackRunMatch(s)
+		return s.rollback.hijackRunMatch()
 	}
 
 	// Loop until end of match
