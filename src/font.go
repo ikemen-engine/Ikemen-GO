@@ -290,8 +290,8 @@ func loadFntV1(filename string) (*Fnt, error) {
 						} else {
 							fci.w = f.Size[0]
 						}
+						ofs += f.Size[0]
 					}
-					ofs += f.Size[0]
 				}
 			}
 		case "def":
