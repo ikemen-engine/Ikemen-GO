@@ -275,40 +275,77 @@ func (pf *PalFX) interpolationUpdate() {
 	pf.eHue = pf.eiHue + pf.hue
 }
 
-func (pf *PalFX) step() {
+// Updates the effective values. Does not step timers
+// Explods need this separation because they appear at tickFrame() but their PalFX only updates at tickNextFrame()
+func (pf *PalFX) refresh() {
 	pf.enable = pf.time != 0
-	if pf.enable {
-		pf.eInterpolate = pf.interpolate
-		if pf.eInterpolate {
-			pf.interpolationUpdate()
-		} else {
-			pf.eMul = pf.mul
-			pf.eAdd = pf.add
-			pf.eColor = pf.color
-			pf.eHue = pf.hue
+	if !pf.enable {
+		return
+	}
+
+	pf.eInterpolate = pf.interpolate
+
+	if pf.eInterpolate {
+		// Calculate interpolated values
+		t := float32(0)
+		if pf.itime > 0 {
+			t = float32(pf.eiTime) / float32(pf.itime)
 		}
-		pf.eInvertall = pf.invertall
-		if pf.invertblend <= -2 && pf.eInvertall {
-			pf.eInvertblend = 3
-		} else {
-			pf.eInvertblend = pf.invertblend
+		for i := 0; i < 3; i++ {
+			pf.eiMul[i] = int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
+			pf.eMul[i]  = int32(float32(pf.eiMul[i]) * float32(pf.mul[i]) / 256)
+			pf.eiAdd[i] = int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t))
+			pf.eAdd[i]  = pf.eiAdd[i] + pf.add[i]
 		}
-		pf.eAllowNeg = pf.allowNeg
-		pf.sinAdd(&pf.eAdd)
-		pf.sinMul(&pf.eMul)
-		pf.sinColor(&pf.eColor)
-		pf.sinHueshift(&pf.eHue)
-		if sys.tickFrame() {
-			for i := 0; i < 4; i++ {
-				if pf.cycletime[i] > 0 {
-					pf.sintime[i] = (pf.sintime[i] + 1) % pf.cycletime[i]
-				}
-			}
-			if pf.time > 0 {
-				pf.time--
-			}
+		pf.eiColor = Lerp(pf.icolor[1], pf.icolor[0], t)
+		pf.eColor  = pf.eiColor * pf.color
+		pf.eiHue   = Lerp(pf.ihue[1], pf.ihue[0], t)
+		pf.eHue    = pf.eiHue + pf.hue
+	} else {
+		// Static values
+		pf.eMul   = pf.mul
+		pf.eAdd   = pf.add
+		pf.eColor = pf.color
+		pf.eHue   = pf.hue
+	}
+
+	pf.eAllowNeg = pf.allowNeg
+	pf.eInvertall = pf.invertall
+	if pf.invertblend <= -2 && pf.eInvertall {
+		pf.eInvertblend = 3
+	} else {
+		pf.eInvertblend = pf.invertblend
+	}
+
+	// Sin effects
+	pf.sinAdd(&pf.eAdd)
+	pf.sinMul(&pf.eMul)
+	pf.sinColor(&pf.eColor)
+	pf.sinHueshift(&pf.eHue)
+}
+
+// Only responsible for stepping the timers
+func (pf *PalFX) tickTimers() {
+	if !pf.enable || !sys.tickFrame() {
+		return
+	}
+	for i := 0; i < 4; i++ {
+		if pf.cycletime[i] > 0 {
+			pf.sintime[i] = (pf.sintime[i] + 1) % pf.cycletime[i]
 		}
 	}
+	if pf.eInterpolate && pf.eiTime < pf.itime {
+		pf.eiTime++
+	}
+	if pf.time > 0 {
+		pf.time--
+	}
+}
+
+// The main PalFX update call
+func (pf *PalFX) step() {
+	pf.refresh()
+	pf.tickTimers()
 }
 
 func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {

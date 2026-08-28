@@ -1613,7 +1613,6 @@ type Explod struct {
 	removeongethit      bool
 	removeonchangestate bool
 	hidewithbars        bool
-	statehaschanged     bool
 	removetime          int32
 	velocity            [3]float32
 	friction            [3]float32
@@ -1675,6 +1674,7 @@ type Explod struct {
 	interpolate_xshear   [2]float32
 	timestamp            int32 // Determines run order
 	sortindex            int   // For faster run order sorting
+	pauseBool            bool
 
 	customShader CustomShader
 }
@@ -1908,14 +1908,11 @@ func (e *Explod) setAnimElem() {
 	}
 }
 
-func (e *Explod) canAct() bool {
-	// Challenger screen also pauses the explod
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3684
-	if sys.motif.ch.active && sys.pausetime > 0 {
-		return false
-	}
-
-	// Determine pause state
+func (e *Explod) pauseStatus() bool {
+	// Check system pauses
+	// There's a difference here in how Ikemen and Mugen handle pauses
+	// In Mugen, explods will be paused in the same frame the pause is called
+	// In Ikemen, they still move during that frame like characters do, which arguably makes more sense
 	paused := false
 	if sys.supertime > 0 {
 		paused = (e.supermovetime >= 0 && e.time >= e.supermovetime) || e.supermovetime < -2
@@ -1925,20 +1922,25 @@ func (e *Explod) canAct() bool {
 
 	act := !paused
 
-	// Apply ignorehitpause
+	// Check ignorehitpause
+	// Unlike projectiles, an explod's hitpause seems to act the same as a full pause
 	if act && !e.ignorehitpause {
 		if parent := e.parent(); parent != nil {
 			act = parent.acttmp%2 >= 0
 		}
 	}
 
-	return act
+	return !act
+}
+
+func (e *Explod) flagForRemoval() {
+	e.id = IErr
+	e.anim = nil
 }
 
 func (e *Explod) update() {
 	if e.id == IErr || e.anim == nil {
-		e.id = IErr
-		e.anim = nil
+		e.flagForRemoval()
 		return
 	}
 
@@ -1946,56 +1948,60 @@ func (e *Explod) update() {
 		return
 	}
 
-	// Fetch parent once. It's a more expensive operation than root()
-	parent := e.parent()
-
-	// Remove on get hit
-	if sys.tickNextFrame() && e.removeongethit &&
-		parent != nil && parent.csf(CSF_gethit) && !parent.inGuardState() {
-		e.id, e.anim = IErr, nil
-		return
-	}
-
-	// Remove on ChangeState
-	if sys.tickNextFrame() && e.removeonchangestate && e.statehaschanged {
-		e.id, e.anim = IErr, nil
-		return
-	}
-
-	act := e.canAct()
-
-	// Explods aren't removed while they are paused
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3889
-	if act && sys.tickFrame() {
+	// Remove time
+	// Removed during tickFrame() or a removetime of 0 would still be drawn during slow game speeds
+	// Note: e.update() runs on sys.tickNextFrame(), so sys.tickFrame() can only be true starting from the explod's second frame
+	if sys.tickFrame() {
 		if e.removetime >= 0 && e.time >= e.removetime ||
 			e.removetime <= -2 && e.anim.loopend {
-			e.id, e.anim = IErr, nil
+			e.flagForRemoval()
 			return
 		}
 	}
 
+	// Remove on get hit
+	// Parent() should only be fetched once per function. It's a more expensive operation than root()
+	if sys.tickNextFrame() {
+		if e.removeongethit {
+			if parent := e.parent(); parent != nil {
+				if parent.csf(CSF_gethit) && !parent.inGuardState() {
+					e.flagForRemoval()
+					return
+				}
+			}
+		}
+	}
+
+	// Update the paused state
+	// This used to be checked on every function call, which meant the same frame could have two values
+	if sys.tickNextFrame() {
+		e.pauseBool = e.pauseStatus()
+	}
+
 	oldVer := e.root().gi().mugenver[0] != 1 || e.root().gi().mugenver[1] != 1
 
-	// Bind explod to parent
-	// In Mugen this only happens if the explod is not paused, hence "act"
-	if act && e.bindtime != 0 &&
-		(e.space == Space_stage || (e.space == Space_screen && (e.postype <= PT_P2 || oldVer))) {
-		if bindchar := sys.playerID(e.bindId); bindchar != nil {
-			e.pos[0] = bindchar.interPos[0]*bindchar.localscl/e.localscl + bindchar.offsetX()*bindchar.localscl/e.localscl
-			e.pos[1] = bindchar.interPos[1]*bindchar.localscl/e.localscl + bindchar.offsetY()*bindchar.localscl/e.localscl
-			e.pos[2] = bindchar.interPos[2] * bindchar.localscl / e.localscl
+	if !e.pauseBool {
+		// Bind explod to player
+		// In Mugen, this only happens while the explod is not paused
+		if e.bindtime != 0 &&
+			(e.space == Space_stage || (e.space == Space_screen && (e.postype <= PT_P2 || oldVer))) {
+			if bindchar := sys.playerID(e.bindId); bindchar != nil {
+				e.pos[0] = bindchar.interPos[0]*bindchar.localscl/e.localscl + bindchar.offsetX()*bindchar.localscl/e.localscl
+				e.pos[1] = bindchar.interPos[1]*bindchar.localscl/e.localscl + bindchar.offsetY()*bindchar.localscl/e.localscl
+				e.pos[2] = bindchar.interPos[2] * bindchar.localscl / e.localscl
+			} else {
+				// Doesn't seem necessary to do this, since MUGEN 1.1 seems to carry bindtime even if
+				// you change bindId to something that doesn't point to any character
+				// e.bindtime = 0
+				// e.setAllPosX(e.pos[0])
+				// e.setAllPosY(e.pos[1])
+			}
 		} else {
-			// Doesn't seem necessary to do this, since MUGEN 1.1 seems to carry bindtime even if
-			// you change bindId to something that doesn't point to any character
-			// e.bindtime = 0
-			// e.setAllPosX(e.pos[0])
-			// e.setAllPosY(e.pos[1])
-		}
-	} else {
-		// Explod position interpolation
-		spd := sys.tickInterpolation()
-		for i := range e.pos {
-			e.pos[i] = e.newPos[i] - (e.newPos[i]-e.oldPos[i])*(1-spd)
+			// Interpolate position
+			spd := sys.tickInterpolation()
+			for i := range e.pos {
+				e.pos[i] = e.newPos[i] - (e.newPos[i]-e.oldPos[i])*(1-spd)
+			}
 		}
 	}
 
@@ -2056,7 +2062,8 @@ func (e *Explod) update() {
 		}
 	}
 
-	if sys.tickFrame() && act {
+	// TODO: Gating UpdateSprite() during pauses makes it go out of sync with the animation data
+	if !e.pauseBool && sys.tickFrame() {
 		e.anim.UpdateSprite()
 	}
 
@@ -2068,35 +2075,45 @@ func (e *Explod) update() {
 		e.pos[2] + e.offset[2] + off[2] + e.interpolate_pos[2],
 	}
 
-	if sys.tickNextFrame() {
+	//if e.space == Space_screen && e.bindtime == 0 {
+	//	if e.space <= Space_none {
+	//		switch e.postype {
+	//		case PT_Left:
+	//			for i := range e.pos {
+	//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+	//			}
+	//		case PT_Right:
+	//			e.pos[0] = sys.cam.ScreenPos[0] +
+	//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
+	//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
+	//		}
+	//	} else if e.space == Space_screen {
+	//		for i := range e.pos {
+	//			e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
+	//		}
+	//	}
+	//}
 
-		//if e.space == Space_screen && e.bindtime == 0 {
-		//	if e.space <= Space_none {
-		//		switch e.postype {
-		//		case PT_Left:
-		//			for i := range e.pos {
-		//				e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
-		//			}
-		//		case PT_Right:
-		//			e.pos[0] = sys.cam.ScreenPos[0] +
-		//				(float32(sys.gameWidth)+e.offset[0])/sys.cam.Scale
-		//			e.pos[1] = sys.cam.ScreenPos[1] + e.offset[1]/sys.cam.Scale
-		//		}
-		//	} else if e.space == Space_screen {
-		//		for i := range e.pos {
-		//			e.pos[i] = sys.cam.ScreenPos[i] + e.offset[i]/sys.cam.Scale
-		//		}
-		//	}
-		//}
-
-		if act {
+	if !e.pauseBool {
+		// Step timers
+		if sys.tickFrame() {
+			e.time++
+			// In Mugen, bindTime uses a regular stepping timer, while movetime uses "e.time" comparison
+			if e.bindtime > 0 {
+				e.bindtime--
+			}
+		}
+		if sys.tickNextFrame() {
+			// Update PalFX
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
+
 			e.oldPos = e.pos
 			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing
 			e.newPos[1] = e.pos[1] + e.velocity[1]
 			e.newPos[2] = e.pos[2] + e.velocity[2]
+
 			for i := range e.velocity {
 				e.velocity[i] *= e.friction[i]
 				e.velocity[i] += e.accel[i]
@@ -2104,16 +2121,15 @@ func (e *Explod) update() {
 					e.velocity[i] = 0
 				}
 			}
+
 			eleminterpolate := e.interpolate && e.interpolate_time[1] > 0 && e.interpolate_animelem[1] >= 0
 			if e.animfreeze || eleminterpolate {
 				e.setAnimElem()
 			} else {
 				e.anim.Action()
 			}
-			e.time++
-			if e.bindtime > 0 {
-				e.bindtime--
-			}
+
+			// Update shader effects
 			if e.customShader.name != "" {
 				e.customShader.sTime++
 				e.customShader.tex1.step()
@@ -2125,11 +2141,14 @@ func (e *Explod) update() {
 					e.customShader.clear()
 				}
 			}
-		} else {
-			e.setAllPosX(e.pos[0])
-			e.setAllPosY(e.pos[1])
-			e.setAllPosZ(e.pos[2])
 		}
+	}
+
+	// Freeze position while paused
+	if e.pauseBool && sys.tickNextFrame() {
+		e.setAllPosX(e.pos[0])
+		e.setAllPosY(e.pos[1])
+		e.setAllPosZ(e.pos[2])
 	}
 }
 
@@ -2145,7 +2164,6 @@ func (e *Explod) cueDraw() {
 	}
 
 	parent := e.parent()
-	act := e.canAct()
 
 	var pfx *PalFX
 	if e.palfx != nil && (!e.anim.isCommonFX() || e.ownpal) {
@@ -2163,7 +2181,7 @@ func (e *Explod) cueDraw() {
 	xshear := e.xshear
 
 	if e.interpolate {
-		e.Interpolate(act, &scale, &alp, &anglerot, &fLength, &xshear)
+		e.Interpolate(&scale, &alp, &anglerot, &fLength, &xshear)
 	}
 
 	if alp[0] < 0 {
@@ -2259,7 +2277,7 @@ func (e *Explod) cueDraw() {
 	// Record afterimage
 	if e.aimg != nil {
 		if e.aimg.isActive() {
-			e.aimg.recAndCue(sd, e.playerno, sys.tickNextFrame() && act,
+			e.aimg.recAndCue(sd, e.playerno, sys.tickNextFrame() && !e.pauseBool,
 				sys.tickNextFrame() && e.ignorehitpause && (e.supermovetime != 0 || e.pausemovetime != 0))
 		} else {
 			e.aimg = nil
@@ -2307,8 +2325,9 @@ func (e *Explod) cueDraw() {
 	}
 }
 
-func (e *Explod) Interpolate(act bool, scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32, xshear *float32) {
-	if sys.tickNextFrame() && act {
+func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32, xshear *float32) {
+	if !e.pauseBool && sys.tickNextFrame() {
+		// Determine progress (inverted)
 		t := float32(e.interpolate_time[1]) / float32(e.interpolate_time[0])
 		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
 		e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
@@ -2454,6 +2473,7 @@ type Projectile struct {
 	time            int32
 	removeDone      bool
 	customShader    CustomShader
+	pauseBool       bool
 }
 
 func newProjectile() *Projectile {
@@ -2538,7 +2558,7 @@ func (p *Projectile) isActive() bool {
 	return p.status == ProjActive
 }
 
-func (p *Projectile) paused() bool {
+func (p *Projectile) pauseStatus() bool {
 	if sys.supertime > 0 {
 		if p.supermovetime == 0 || p.supermovetime < -1 {
 			return true
@@ -2556,8 +2576,14 @@ func (p *Projectile) update() {
 		return
 	}
 
+	// Update the paused state
+	// This used to be checked on every function call, which meant the same frame could have two values
+	if sys.tickNextFrame() {
+		p.pauseBool = p.pauseStatus()
+	}
+
 	// Check projectile removal conditions
-	if sys.tickFrame() && !p.paused() && p.hitpause == 0 {
+	if sys.tickFrame() && !p.pauseBool && p.hitpause == 0 {
 		// Check if timer has expired or boundaries were reached
 		if p.status == ProjActive {
 			if p.removetime == 0 ||
@@ -2647,7 +2673,7 @@ func (p *Projectile) update() {
 		}
 	}
 
-	if p.paused() || p.hitpause > 0 || p.freezeflag {
+	if p.pauseBool || p.hitpause > 0 || p.freezeflag {
 		p.setAllPos(p.pos)
 		// There's a minor issue here where a projectile will lag behind one frame relative to Mugen if created during a pause
 	} else {
@@ -2815,7 +2841,7 @@ func (p *Projectile) tick() {
 		p.hitdef.air_juggle = 0
 	}
 
-	if !p.paused() {
+	if !p.pauseBool {
 		if p.hitpause <= 0 {
 			p.time++ // Only used in ProjVar currently
 			if p.removetime > 0 {
@@ -2858,8 +2884,11 @@ func (p *Projectile) cueDraw() {
 		return
 	}
 
-	notpause := p.hitpause <= 0 && !p.paused()
-	if notpause && sys.tickFrame() {
+	isPaused := p.hitpause > 0 || p.pauseBool
+
+	// TODO: Gating UpdateSprite() during pauses makes it go out of sync with the animation data
+	// In the case of projectiles this can be seen with Clsn display
+	if !isPaused && sys.tickFrame() {
 		p.anim.UpdateSprite()
 	}
 
@@ -2881,10 +2910,8 @@ func (p *Projectile) cueDraw() {
 		}
 	}
 
-	if sys.tickNextFrame() && (notpause || !p.paused()) {
-		if notpause {
-			p.anim.Action() // TODO: Placing this in cueDraw is a bit unusual. Confirm if it's right
-		}
+	if sys.tickNextFrame() && !isPaused {
+		p.anim.Action() // TODO: Placing this in cueDraw is a bit unusual. Confirm if it's right
 	}
 
 	// Set position
@@ -2967,7 +2994,7 @@ func (p *Projectile) cueDraw() {
 	// Record afterimage
 	if p.aimg != nil {
 		if p.aimg.isActive() {
-			p.aimg.recAndCue(sd, p.playerno, sys.tickNextFrame() && notpause, false)
+			p.aimg.recAndCue(sd, p.playerno, sys.tickNextFrame() && !isPaused, false)
 		} else {
 			p.aimg = nil
 		}
@@ -6656,11 +6683,11 @@ func (c *Char) persistentChangeStateHitpauseCorrection(sbc *StateBytecode) {
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
 		c.ss.sb.init(c)
-		// Flag RemoveOnChangeState explods for removal
+		// Execute explod removeOnChangeState
 		for i := range sys.explods[c.playerNo] {
 			e := sys.explods[c.playerNo][i]
 			if e.ownerId == c.id && e.removeonchangestate {
-				e.statehaschanged = true
+				e.flagForRemoval()
 			}
 		}
 		// Stop flagged sound channels
@@ -7088,19 +7115,26 @@ func (c *Char) commitExplod(i int) {
 	// Init "ownpal" PalFX and RemapPal
 	// Note: Must be placed after setting up interpolation
 	if e.ownpal {
-		if !e.anim.isCommonFX() {
+		// Give the explod its own independent PalFX
+		e.palfx = newPalFX()
+
+		// Load the sctrl parameters into it
+		e.palfx.PalFXDef = e.palfxdef
+
+		// Handle RemapPal
+		if e.anim.isCommonFX() {
+			e.palfx.remap = nil
+		} else {
 			// Keep parent's remapped palette while resetting PalFX
 			parentRemap := make([]int, len(c.getPalfx().remap))
 			copy(parentRemap, c.getPalfx().remap)
-			e.palfx = newPalFX()
 			e.palfx.remap = parentRemap
-			e.palfx.PalFXDef = e.palfxdef
 			c.forceRemapPal(e.palfx, e.remappal)
-		} else {
-			e.palfx = newPalFX()
-			e.palfx.PalFXDef = e.palfxdef
-			e.palfx.remap = nil
 		}
+
+		// Update the PalFX immediately without advancing timers
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1693
+		e.palfx.refresh()
 	}
 
 	// Explod ready
@@ -12101,9 +12135,12 @@ func (c *Char) actionRun() {
 	// Update binding others and binding to others
 	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
 	if !c.pauseBool {
-		if !c.isTargetBound() {
-			c.updateBinding()
-		}
+		// This placement causes timing issues
+		// Maybe what needs to happen is actionRun() updates all binds related to this player
+		// That is, call updateBinding() for this player and the ones that are bound to it
+		//if !c.isTargetBound() {
+		//	c.updateBinding()
+		//}
 		for _, tid := range c.targets {
 			if t := sys.playerID(tid); t != nil && t.bindToId == c.id {
 				t.updateBinding()
@@ -12247,6 +12284,12 @@ func (c *Char) update() {
 				return
 			}
 		*/
+		// At the moment player binding must be handled differently between targets and helpers, or timing issues arise
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3915
+		// TODO: Better integration
+		if !c.pauseBool && !c.isTargetBound() {
+			c.updateBinding()
+		}
 		if c.acttmp > 0 {
 			if c.inGuardState() {
 				c.setSCF(SCF_guard)
