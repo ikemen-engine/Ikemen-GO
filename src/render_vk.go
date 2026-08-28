@@ -57,6 +57,7 @@ type Texture_VK struct {
 	hostBackingBuffer   []byte           // holds pixel data when texture is swapped out to host RAM
 	hostVisibleUploaded bool             // tracks whether HOST_VISIBLE texture has been uploaded (for barrier layout choice)
 	nonSwappable        bool             // true for textures that must stay in DEVICE_LOCAL (font atlas, render targets, etc.)
+	needsReload         bool             // set when evicted; TouchTexture recreates from hostBackingBuffer
 }
 
 // MarkNonSwappable marks a texture as ineligible for VRAM swap-out.
@@ -77,7 +78,7 @@ func (t *Texture_VK) SampledLayout() vk.ImageLayout {
 }
 
 func (r *Renderer_VK) newTexture(width, height, depth int32, filter bool) (Texture, error) {
-	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, false)
 
@@ -119,7 +120,7 @@ func (r *Renderer_VK) newTexture(width, height, depth int32, filter bool) (Textu
 }
 
 func (r *Renderer_VK) newModelTexture(width, height, depth int32, filter bool) (Texture, error) {
-	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.mipLevels = uint32(math.Floor(math.Log2(float64(Max(int(width), int(height))))) + 1)
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, false)
@@ -159,7 +160,7 @@ func (r *Renderer_VK) newModelTexture(width, height, depth int32, filter bool) (
 }
 
 func (r *Renderer_VK) newDataTexture(width, height int32) (Texture, error) {
-	t := &Texture_VK{width, height, 32 * 4, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{width, height, 32 * 4, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageColorAttachmentBit|vk.ImageUsageSampledBit|vk.ImageUsageTransferDstBit), 1, vk.ImageTilingOptimal, false)
 
@@ -208,7 +209,7 @@ func (r *Renderer_VK) newHDRTexture(width, height int32) (Texture, error) {
 	return t, nil
 }
 func (r *Renderer_VK) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) (Texture, error) {
-	t := &Texture_VK{widthHeight, widthHeight, 128, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{widthHeight, widthHeight, 128, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	if mipmap {
 		t.mipLevels = uint32(math.Floor(math.Log2(float64(widthHeight)))+1) - uint32(lowestMipLevel)
 		t.sampler = r.GetSampler(VulkanSamplerInfo{TextureSamplingFilterLinear, TextureSamplingFilterLinearMipMapLinear, TextureSamplingWrapClampToEdge, TextureSamplingWrapClampToEdge})
@@ -253,7 +254,7 @@ func (r *Renderer_VK) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMi
 }
 
 func (r *Renderer_VK) newPaletteTexture() Texture {
-	t := &Texture_VK{256, 1, 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{256, 1, 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	if r.palTexture.emptySlot.Len() == 0 {
 		r.addPalTexture()
 	}
@@ -280,7 +281,7 @@ func (r *Renderer_VK) newPaletteTexture() Texture {
 }
 
 func (r *Renderer_VK) newDummyCubeMapTexture() (*Texture_VK, error) {
-	t := &Texture_VK{1, 1, 8, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{1, 1, 8, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 6, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, true)
 
@@ -1486,9 +1487,9 @@ type TextureResidency int
 
 const (
 	ResidentDeviceLocal TextureResidency = iota // texture data is in GPU device-local memory
-	ResidentHostVisible                         // texture data has been evicted to host RAM
-	ResidentSwappedOut                          // texture data is not in host RAM either (fully evicted)
-	ResidentEvicted                             // same as SwappedOut, kept for clarity in state transitions
+	ResidentHostVisible                         // texture data has been moved to host-visible GPU memory
+	ResidentSwappedOut                          // GPU resources destroyed, data in hostBackingBuffer (swap path)
+	ResidentEvicted                             // GPU resources destroyed, data in hostBackingBuffer, needsReload set (eviction path)
 )
 
 type VulkanResourceType int
@@ -2171,7 +2172,7 @@ func (r *Renderer_VK) CreateRenderTarget(renderpass vk.RenderPass, width, height
 }
 
 func (r *Renderer_VK) CreateRenderTargetTexture(width, height uint32, numSamples int32, main bool) *Texture_VK {
-	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	usage := vk.ImageUsageFlags(vk.ImageUsageColorAttachmentBit | vk.ImageUsageTransferSrcBit)
 	if !main {
 		usage = usage | vk.ImageUsageFlags(vk.ImageUsageSampledBit) | vk.ImageUsageFlags(vk.ImageUsageTransferDstBit)
@@ -2195,7 +2196,7 @@ func (r *Renderer_VK) CreateRenderTargetTexture(width, height uint32, numSamples
 }
 
 func (r *Renderer_VK) CreateRenderTargetDepthTexture(width, height uint32, numSamples int32) *Texture_VK {
-	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	usage := vk.ImageUsageFlags(vk.ImageUsageDepthStencilAttachmentBit)
 	if numSamples > 1 {
 		usage = usage | vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit)
@@ -2271,7 +2272,7 @@ func (r *Renderer_VK) addPalTexture() {
 	for i := uint32(0); i < r.palTexture.size; i++ {
 		r.palTexture.emptySlot.PushBack([2]uint32{index, uint32(i)})
 	}
-	t := &Texture_VK{int32(r.palTexture.size), int32(r.palTexture.size), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{int32(r.palTexture.size), int32(r.palTexture.size), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), vk.FormatR8g8b8a8Unorm, 1, 1, vk.ImageUsageFlags(vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingLinear, false)
 
 	alloc, err := r.allocator.AllocateImageMemory(t.img, vk.MemoryPropertyDeviceLocalBit)
@@ -2311,7 +2312,7 @@ func (r *Renderer_VK) addPalTexture() {
 	r.EndSingleTimeCommands(commandBuffer)
 }
 func (r *Renderer_VK) createShadowMapTexture(widthHeight int32) *Texture_VK {
-	t := &Texture_VK{widthHeight, widthHeight, 96, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false}
+	t := &Texture_VK{widthHeight, widthHeight, 96, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	t.sampler = r.GetSampler(VulkanSamplerInfo{TextureSamplingFilterNearest, TextureSamplingFilterNearest, TextureSamplingWrapClampToEdge, TextureSamplingWrapClampToEdge})
 	format := vk.FormatD32Sfloat
 	t.img = r.CreateImage(uint32(widthHeight), uint32(widthHeight), format, 1, 6*4, vk.ImageUsageFlags(vk.ImageUsageDepthStencilAttachmentBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, true)
@@ -5764,12 +5765,48 @@ func (r *Renderer_VK) destroyOrDeferImageResources(lastUsedFrame uint64, img vk.
 
 // TouchTexture updates the texture's last-used frame and promotes it back to
 // DEVICE_LOCAL if it was swapped out or residing in HOST_VISIBLE memory.
-// Swappable textures are swapped in via SwapInTexture. Evicted textures
-// (not in swappableTextures) are also handled — SwapInTexture returns an error
-// for ResidentEvicted, but we still try so that ResidentSwappedOut textures
-// that were removed from swappableTextures (after soft eviction) can be restored.
+// For evicted textures (needsReload=true), it recreates the texture from
+// hostBackingBuffer data, restoring GPU resources in-place.
 func (r *Renderer_VK) TouchTexture(t *Texture_VK) {
 	t.lastUsedFrame = r.currentFrameNumber
+
+	// Hard-evicted texture: recreate from hostBackingBuffer.
+	if t.needsReload && t.residency == ResidentEvicted && len(t.hostBackingBuffer) > 0 {
+		newTex, err := r.newTexture(t.width, t.height, t.depth, t.filter)
+		if err != nil {
+			LogMessage("[VRAM] TouchTexture reload failed for %dx%d texture: %v", t.width, t.height, err)
+			return
+		}
+		vkTex := newTex.(*Texture_VK)
+		vkTex.SetData(t.hostBackingBuffer)
+		// Transfer identity fields from the evicted texture.
+		vkTex.sampler = t.sampler
+		vkTex.offset = t.offset
+		vkTex.uvst = t.uvst
+		// Remove the new (temporary) texture from swappableTextures —
+		// it will be replaced by the evicted pointer after struct copy.
+		delete(r.swappableTextures, vkTex)
+		// Remove the evicted texture from swappableTextures (if still present).
+		delete(r.swappableTextures, t)
+		// Copy all fields of the new texture into the evicted struct.
+		// This preserves the pointer identity — all external references
+		// (e.g. Sprite.Tex holding *Texture_VK) see the updated state.
+		// After the copy, vkTex's fields are stale (pointing to resources
+		// now owned by t). Clear them to prevent the finalizer from
+		// double-freeing Vulkan resources.
+		vkTex.img = vk.NullImage
+		vkTex.imageView = vk.NullImageView
+		vkTex.sampler = vk.NullSampler
+		vkTex.allocation = nil
+		runtime.SetFinalizer(vkTex, nil)
+		*t = *vkTex
+		// Register the (now-restored) texture in swappableTextures.
+		if !t.nonSwappable {
+			r.swappableTextures[t] = true
+		}
+		return
+	}
+
 	if t.residency != ResidentDeviceLocal {
 		_ = r.SwapInTexture(t)
 	}

@@ -305,8 +305,7 @@ func (r *Renderer_VK) SwapOutTextures(budgetBytes vk.DeviceSize) error {
 // so it is eligible for future swap-out.
 //
 // Returns nil if the texture is already ResidentDeviceLocal (no-op).
-// Returns an error for ResidentEvicted textures (hard-evicted — must be reloaded
-// from disk, handled by the image.go reload mechanism).
+// Returns an error for ResidentEvicted textures (handled by TouchTexture reload).
 // Returns an error if DEVICE_LOCAL allocation fails (texture stays in current state).
 func (r *Renderer_VK) SwapInTexture(t *Texture_VK) error {
 	switch t.residency {
@@ -315,7 +314,7 @@ func (r *Renderer_VK) SwapInTexture(t *Texture_VK) error {
 		return nil
 
 	case ResidentEvicted:
-		return fmt.Errorf("SwapInTexture: texture is hard-evicted, must be reloaded from disk")
+		return fmt.Errorf("SwapInTexture: texture is evicted, handled by TouchTexture reload")
 
 	case ResidentHostVisible, ResidentSwappedOut:
 		// Delegate to the existing transition helper.
@@ -361,46 +360,39 @@ func (r *Renderer_VK) SwapInTexture(t *Texture_VK) error {
 	}
 }
 
-// EvictTexture performs a hard or soft eviction of a texture from GPU memory.
-//
-// Soft eviction (hard=false): moves texture data to hostBackingBuffer and destroys
-// GPU resources, setting residency to ResidentSwappedOut. The texture can be
-// restored via SwapInTexture.
-//
-// Hard eviction (hard=true): additionally frees hostBackingBuffer and sets
-// residency to ResidentEvicted. The texture must be reloaded from disk
-// (via the image.go reload mechanism) before it can be used again.
+// EvictTexture evicts a texture from GPU memory. The texture's pixel data
+// is preserved in hostBackingBuffer and residency is set to ResidentEvicted.
+// TouchTexture will recreate the texture from hostBackingBuffer when it is
+// next accessed.
 //
 // Returns an error if the texture is not in swappableTextures (render targets,
 // depth buffers, shadow maps, and palette textures are not evictable).
-func (r *Renderer_VK) EvictTexture(t *Texture_VK, hard bool) error {
+func (r *Renderer_VK) EvictTexture(t *Texture_VK) error {
 	if t.nonSwappable || !r.swappableTextures[t] {
 		return fmt.Errorf("EvictTexture: texture is not swappable (render target, depth buffer, shadow map, or palette)")
 	}
 
 	switch t.residency {
 	case ResidentDeviceLocal:
-		if err := r.evictDeviceLocal(t, hard); err != nil {
+		if err := r.evictDeviceLocal(t); err != nil {
 			return err
 		}
 
 	case ResidentHostVisible:
-		if err := r.evictHostVisible(t, hard); err != nil {
+		if err := r.evictHostVisible(t); err != nil {
 			return err
 		}
 
 	case ResidentSwappedOut:
-		if hard {
-			t.hostBackingBuffer = nil
-			t.residency = ResidentEvicted
-			if vkDebug {
-				LogMessage("[VRAM] hard-evict texture %dx%d (was SwappedOut)", t.width, t.height)
-			}
+		// Already have hostBackingBuffer — just mark as evicted.
+		t.residency = ResidentEvicted
+		t.needsReload = true
+		if vkDebug {
+			LogMessage("[VRAM] evict texture %dx%d (was SwappedOut)", t.width, t.height)
 		}
-		// Soft eviction of already-swapped-out texture is a no-op.
 
 	case ResidentEvicted:
-		// Already hard-evicted — no-op.
+		// Already evicted — no-op.
 
 	default:
 		return fmt.Errorf("EvictTexture: unknown residency state %d", t.residency)
@@ -414,7 +406,7 @@ func (r *Renderer_VK) EvictTexture(t *Texture_VK, hard bool) error {
 
 // evictDeviceLocal reads back DEVICE_LOCAL texture data into hostBackingBuffer
 // via a staging buffer, then destroys GPU resources.
-func (r *Renderer_VK) evictDeviceLocal(t *Texture_VK, hard bool) error {
+func (r *Renderer_VK) evictDeviceLocal(t *Texture_VK) error {
 	if t.img == nil || t.allocation == nil {
 		return fmt.Errorf("evictDeviceLocal: texture has nil GPU resources")
 	}
@@ -545,37 +537,28 @@ func (r *Renderer_VK) evictDeviceLocal(t *Texture_VK, hard bool) error {
 	t.imageView = nil
 	t.allocation = nil
 
-	if hard {
-		t.hostBackingBuffer = nil
-		t.residency = ResidentEvicted
-		if vkDebug {
-			LogMessage("[VRAM] hard-evict texture %dx%d (was DeviceLocal)", t.width, t.height)
-		}
-	} else {
-		t.residency = ResidentSwappedOut
-		if vkDebug {
-			LogMessage("[VRAM] soft-evict texture %dx%d (was DeviceLocal, %d bytes to host)", t.width, t.height, totalSize)
-		}
+	// hostBackingBuffer is kept alive for TouchTexture reload.
+	t.residency = ResidentEvicted
+	t.needsReload = true
+	if vkDebug {
+		LogMessage("[VRAM] evict texture %dx%d (was DeviceLocal, %d bytes to host)", t.width, t.height, totalSize)
 	}
 
 	return nil
 }
 
 // evictHostVisible delegates to TransitionToSwappedOut for the copy-and-destroy,
-// then optionally frees hostBackingBuffer for hard eviction.
-func (r *Renderer_VK) evictHostVisible(t *Texture_VK, hard bool) error {
+// then marks the texture as evicted.
+func (r *Renderer_VK) evictHostVisible(t *Texture_VK) error {
 	if err := r.TransitionToSwappedOut(t); err != nil {
 		return fmt.Errorf("evictHostVisible: %w", err)
 	}
 
-	if hard {
-		t.hostBackingBuffer = nil
-		t.residency = ResidentEvicted
-		if vkDebug {
-			LogMessage("[VRAM] hard-evict texture %dx%d (was HostVisible)", t.width, t.height)
-		}
-	} else if vkDebug {
-		LogMessage("[VRAM] soft-evict texture %dx%d (was HostVisible)", t.width, t.height)
+	// hostBackingBuffer is already populated by TransitionToSwappedOut.
+	t.residency = ResidentEvicted
+	t.needsReload = true
+	if vkDebug {
+		LogMessage("[VRAM] evict texture %dx%d (was HostVisible)", t.width, t.height)
 	}
 
 	return nil
