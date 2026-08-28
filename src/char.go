@@ -1923,6 +1923,7 @@ func (e *Explod) pauseStatus() bool {
 	act := !paused
 
 	// Check ignorehitpause
+	// Unlike projectiles, an explod's hitpause seems to act the same as a full pause
 	if act && !e.ignorehitpause {
 		if parent := e.parent(); parent != nil {
 			act = parent.acttmp%2 >= 0
@@ -2472,6 +2473,7 @@ type Projectile struct {
 	time            int32
 	removeDone      bool
 	customShader    CustomShader
+	pauseBool       bool
 }
 
 func newProjectile() *Projectile {
@@ -2556,7 +2558,7 @@ func (p *Projectile) isActive() bool {
 	return p.status == ProjActive
 }
 
-func (p *Projectile) paused() bool {
+func (p *Projectile) pauseStatus() bool {
 	if sys.supertime > 0 {
 		if p.supermovetime == 0 || p.supermovetime < -1 {
 			return true
@@ -2574,9 +2576,14 @@ func (p *Projectile) update() {
 		return
 	}
 
+	// Update the paused state
+	// This used to be checked on every function call, which meant the same frame could have two values
+	if sys.tickNextFrame() {
+		p.pauseBool = p.pauseStatus()
+	}
+
 	// Check projectile removal conditions
-	// TODO: p.paused() should probably only be checked in one place, like explods
-	if sys.tickFrame() && !p.paused() && p.hitpause == 0 {
+	if sys.tickFrame() && !p.pauseBool && p.hitpause == 0 {
 		// Check if timer has expired or boundaries were reached
 		if p.status == ProjActive {
 			if p.removetime == 0 ||
@@ -2666,7 +2673,7 @@ func (p *Projectile) update() {
 		}
 	}
 
-	if p.paused() || p.hitpause > 0 || p.freezeflag {
+	if p.pauseBool || p.hitpause > 0 || p.freezeflag {
 		p.setAllPos(p.pos)
 		// There's a minor issue here where a projectile will lag behind one frame relative to Mugen if created during a pause
 	} else {
@@ -2834,7 +2841,7 @@ func (p *Projectile) tick() {
 		p.hitdef.air_juggle = 0
 	}
 
-	if !p.paused() {
+	if !p.pauseBool {
 		if p.hitpause <= 0 {
 			p.time++ // Only used in ProjVar currently
 			if p.removetime > 0 {
@@ -2877,10 +2884,11 @@ func (p *Projectile) cueDraw() {
 		return
 	}
 
+	isPaused := p.hitpause > 0 || p.pauseBool
+
 	// TODO: Gating UpdateSprite() during pauses makes it go out of sync with the animation data
 	// In the case of projectiles this can be seen with Clsn display
-	notpause := p.hitpause <= 0 && !p.paused()
-	if notpause && sys.tickFrame() {
+	if !isPaused && sys.tickFrame() {
 		p.anim.UpdateSprite()
 	}
 
@@ -2902,10 +2910,8 @@ func (p *Projectile) cueDraw() {
 		}
 	}
 
-	if sys.tickNextFrame() && (notpause || !p.paused()) {
-		if notpause {
-			p.anim.Action() // TODO: Placing this in cueDraw is a bit unusual. Confirm if it's right
-		}
+	if sys.tickNextFrame() && !isPaused {
+		p.anim.Action() // TODO: Placing this in cueDraw is a bit unusual. Confirm if it's right
 	}
 
 	// Set position
@@ -2988,7 +2994,7 @@ func (p *Projectile) cueDraw() {
 	// Record afterimage
 	if p.aimg != nil {
 		if p.aimg.isActive() {
-			p.aimg.recAndCue(sd, p.playerno, sys.tickNextFrame() && notpause, false)
+			p.aimg.recAndCue(sd, p.playerno, sys.tickNextFrame() && !isPaused, false)
 		} else {
 			p.aimg = nil
 		}
