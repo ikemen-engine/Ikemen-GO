@@ -21,6 +21,8 @@ Do not open issues for general support questions as we want to keep GitHub issue
 If you find a bug, you can help us by [submitting an issue](#submit-issue) to our [GitHub Repository][github].
 Even better, you can [submit a Pull Request](#submit-pr) with a fix.
 
+A difference from M.U.G.E.N is not necessarily a bug. Some behavior may intentionally differ rather than reproduce M.U.G.E.N bugs or quirks.
+
 ## <a name="feature"></a> Missing a Feature?
 
 You can *request* a new feature by [starting a discussion](#discussions) about it in our GitHub Repository.
