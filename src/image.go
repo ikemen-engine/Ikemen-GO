@@ -293,20 +293,20 @@ func (pf *PalFX) refresh() {
 		}
 		for i := 0; i < 3; i++ {
 			pf.eiMul[i] = int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
-			pf.eMul[i]  = int32(float32(pf.eiMul[i]) * float32(pf.mul[i]) / 256)
+			pf.eMul[i] = int32(float32(pf.eiMul[i]) * float32(pf.mul[i]) / 256)
 			pf.eiAdd[i] = int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t))
-			pf.eAdd[i]  = pf.eiAdd[i] + pf.add[i]
+			pf.eAdd[i] = pf.eiAdd[i] + pf.add[i]
 		}
 		pf.eiColor = Lerp(pf.icolor[1], pf.icolor[0], t)
-		pf.eColor  = pf.eiColor * pf.color
-		pf.eiHue   = Lerp(pf.ihue[1], pf.ihue[0], t)
-		pf.eHue    = pf.eiHue + pf.hue
+		pf.eColor = pf.eiColor * pf.color
+		pf.eiHue = Lerp(pf.ihue[1], pf.ihue[0], t)
+		pf.eHue = pf.eiHue + pf.hue
 	} else {
 		// Static values
-		pf.eMul   = pf.mul
-		pf.eAdd   = pf.add
+		pf.eMul = pf.mul
+		pf.eAdd = pf.add
 		pf.eColor = pf.color
-		pf.eHue   = pf.hue
+		pf.eHue = pf.hue
 	}
 
 	pf.eAllowNeg = pf.allowNeg
