@@ -23,7 +23,7 @@ import (
 //
 // Returns nil on success (even if no textures were swapped). Returns an error
 // only on catastrophic failure that prevents further operation.
-func (r *Renderer_VK) SwapOutTextures(budgetBytes vk.DeviceSize) error {
+func (r *Renderer_VK) SwapOutTextures(budgetBytes vk.DeviceSize) (vk.DeviceSize, error) {
 	// Collect swappable textures into a slice for sorting.
 	textures := make([]*Texture_VK, 0, len(r.swappableTextures))
 	for t := range r.swappableTextures {
@@ -97,7 +97,15 @@ func (r *Renderer_VK) SwapOutTextures(budgetBytes vk.DeviceSize) error {
 		if err != nil {
 			vk.DestroyImage(r.device, newImg, nil)
 			if vkDebug {
-				LogMessage("[VRAM] swap-out: HOST_VISIBLE allocation failed for %dx%d texture: %v", t.width, t.height, err)
+				LogMessage("[VRAM] swap-out: HOST_VISIBLE allocation failed for %dx%d texture, evicting instead: %v", t.width, t.height, err)
+			}
+			// HOST_VISIBLE memory is also exhausted — evict the texture entirely.
+			// This destroys all GPU resources and keeps pixel data in hostBackingBuffer
+			// for later TouchTexture reload.
+			if evictErr := r.EvictTexture(t); evictErr != nil {
+				if vkDebug {
+					LogMessage("[VRAM] eviction also failed for %dx%d texture: %v", t.width, t.height, evictErr)
+				}
 			}
 			continue
 		}
@@ -115,7 +123,7 @@ func (r *Renderer_VK) SwapOutTextures(budgetBytes vk.DeviceSize) error {
 
 	// If no textures to swap, return early — no GPU work needed.
 	if len(swaps) == 0 {
-		return nil
+		return 0, nil
 	}
 
 	// PASS 2: GPU — batch all copy operations into a single command buffer.
@@ -290,7 +298,7 @@ func (r *Renderer_VK) SwapOutTextures(budgetBytes vk.DeviceSize) error {
 		freedBytes += s.oldSize
 	}
 
-	return nil
+	return freedBytes, nil
 }
 
 // SwapInTexture transitions a texture back to DEVICE_LOCAL memory.
@@ -368,8 +376,8 @@ func (r *Renderer_VK) SwapInTexture(t *Texture_VK) error {
 // Returns an error if the texture is not in swappableTextures (render targets,
 // depth buffers, shadow maps, and palette textures are not evictable).
 func (r *Renderer_VK) EvictTexture(t *Texture_VK) error {
-	if t.nonSwappable || !r.swappableTextures[t] {
-		return fmt.Errorf("EvictTexture: texture is not swappable (render target, depth buffer, shadow map, or palette)")
+	if t.nonSwappable {
+		return fmt.Errorf("EvictTexture: texture is not evictable (render target, depth buffer, shadow map, or palette)")
 	}
 
 	switch t.residency {
@@ -749,11 +757,64 @@ func (r *Renderer_VK) CheckMemoryBudgetAndSwap() {
 			usagePercent, r.vramSwapThresholdPercent, budgetTarget)
 	}
 
-	if err := r.SwapOutTextures(budgetTarget); err != nil {
+	freedBySwap, err := r.SwapOutTextures(budgetTarget)
+	if err != nil {
 		if vkDebug {
 			LogMessage("[VRAM] SwapOutTextures failed: %v", err)
 		}
 	}
 
+	// If SwapOutTextures didn't free enough (HOST_VISIBLE also exhausted),
+	// fall through to full eviction for the coldest remaining textures.
+	if freedBySwap < budgetTarget {
+		r.evictColdestTextures(budgetTarget - freedBySwap)
+	}
+
 	r.lastSwapFrame = r.currentFrameNumber
+}
+
+// evictColdestTextures evicts the coldest swappable textures (destroying all
+// GPU resources, keeping data in hostBackingBuffer for TouchTexture reload)
+// until the estimated freed bytes meet or exceed the budget.
+// Only textures still in swappableTextures (DEVICE_LOCAL, not yet swapped)
+// are eligible — HOST_VISIBLE textures are no longer in the map.
+func (r *Renderer_VK) evictColdestTextures(budgetBytes vk.DeviceSize) {
+	textures := make([]*Texture_VK, 0, len(r.swappableTextures))
+	for t := range r.swappableTextures {
+		if t.nonSwappable {
+			continue
+		}
+		// Skip textures used in the current frame.
+		if t.lastUsedFrame == r.currentFrameNumber {
+			continue
+		}
+		// Skip textures with no GPU resources (already evicted).
+		if t.residency == ResidentEvicted {
+			continue
+		}
+		textures = append(textures, t)
+	}
+
+	// Sort by lastUsedFrame ascending (coldest first).
+	sort.Slice(textures, func(i, j int) bool {
+		return textures[i].lastUsedFrame < textures[j].lastUsedFrame
+	})
+
+	var freedBytes vk.DeviceSize
+	for _, t := range textures {
+		if freedBytes >= budgetBytes {
+			break
+		}
+		estimatedSize := t.allocation.size
+		if err := r.EvictTexture(t); err != nil {
+			if vkDebug {
+				LogMessage("[VRAM] eviction failed for %dx%d texture: %v", t.width, t.height, err)
+			}
+			continue
+		}
+		freedBytes += estimatedSize
+		if vkDebug {
+			LogMessage("[VRAM] evicted %dx%d texture, freed ~%d bytes (total evicted: %d)", t.width, t.height, estimatedSize, freedBytes)
+		}
+	}
 }
