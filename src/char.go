@@ -1949,7 +1949,8 @@ func (e *Explod) update() {
 	}
 
 	// Remove time
-	// Removed during tickFrame() or a removetime of 0 would still be drawn during slow game speeds
+	// Using tickNextFrame() makes explods created when "numexplod=0" with "removetime=1" never have visible gaps in slow game speeds
+	// Which is inconsistent with normal game speeds and Mugen itself
 	// Note: e.update() runs on sys.tickNextFrame(), so sys.tickFrame() can only be true starting from the explod's second frame
 	if sys.tickFrame() {
 		if e.removetime >= 0 && e.time >= e.removetime ||
@@ -2063,6 +2064,7 @@ func (e *Explod) update() {
 	}
 
 	// TODO: Gating UpdateSprite() during pauses makes it go out of sync with the animation data
+	// This is also oddly one of the few updates that happen in tickFrame(), which may be wrong. But chars and projectiles do the same
 	if !e.pauseBool && sys.tickFrame() {
 		e.anim.UpdateSprite()
 	}
@@ -2095,15 +2097,15 @@ func (e *Explod) update() {
 	//}
 
 	if !e.pauseBool {
-		// Step timers
-		if sys.tickFrame() {
+		if sys.tickNextFrame() {
+			// Step timers
+			// Stepping in tickFrame() instead makes them act funny during slow game speeds
 			e.time++
 			// In Mugen, bindTime uses a regular stepping timer, while movetime uses "e.time" comparison
 			if e.bindtime > 0 {
 				e.bindtime--
 			}
-		}
-		if sys.tickNextFrame() {
+
 			// Update PalFX
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
