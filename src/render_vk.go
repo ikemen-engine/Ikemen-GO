@@ -1854,14 +1854,52 @@ func (r *Renderer_VK) DebugInfo() string {
 		sb.WriteString(fmt.Sprintf("Suballocated image allocations: %d (%.2f MB)\n", suballocCount, float64(suballocBytes)/(1024*1024)))
 		sb.WriteString(fmt.Sprintf("Total tracked image memory: %.2f MB\n", float64(dedicatedBytes+suballocBytes)/(1024*1024)))
 
-		// Usage ratio vs device-local heap
+		// Usage ratio vs device-local heap — only count DEVICE_LOCAL allocations.
+		var deviceLocalTracked int64
+		for _, alloc := range a.allocations {
+			if alloc.isDeviceLocal {
+				if alloc.dedicated {
+					deviceLocalTracked += int64(alloc.size)
+				} else {
+					// Suballocated: count proportional share of block memory.
+					deviceLocalTracked += int64(alloc.size)
+				}
+			}
+		}
 		if r.deviceLocalHeapSize > 0 {
-			usageRatio := float64(dedicatedBytes+int64(totalBlockUsed)) / float64(r.deviceLocalHeapSize) * 100
+			usageRatio := float64(deviceLocalTracked) / float64(r.deviceLocalHeapSize) * 100
 			sb.WriteString(fmt.Sprintf("Device-local heap usage (tracked): %.1f%%\n", usageRatio))
 		}
 
 		a.mu.Unlock()
 	}
+
+	// VRAM residency stats: count swappable textures by residency state.
+	var deviceLocalCount, hostVisibleCount, swappedOutCount, evictedCount int
+	var deviceLocalBytes, hostVisibleBytes vk.DeviceSize
+	for t := range r.swappableTextures {
+		switch t.residency {
+		case ResidentDeviceLocal:
+			deviceLocalCount++
+			if t.allocation != nil {
+				deviceLocalBytes += t.allocation.size
+			}
+		case ResidentHostVisible:
+			hostVisibleCount++
+			if t.allocation != nil {
+				hostVisibleBytes += t.allocation.size
+			}
+		case ResidentSwappedOut:
+			swappedOutCount++
+		case ResidentEvicted:
+			evictedCount++
+		}
+	}
+	sb.WriteString("=== VRAM Residency ===\n")
+	sb.WriteString(fmt.Sprintf("  DEVICE_LOCAL: %d textures (%.2f MB)\n", deviceLocalCount, float64(deviceLocalBytes)/(1024*1024)))
+	sb.WriteString(fmt.Sprintf("  HOST_VISIBLE: %d textures (%.2f MB)\n", hostVisibleCount, float64(hostVisibleBytes)/(1024*1024)))
+	sb.WriteString(fmt.Sprintf("  Swapped out (host RAM): %d textures\n", swappedOutCount))
+	sb.WriteString(fmt.Sprintf("  Evicted (host RAM only): %d textures\n", evictedCount))
 
 	return sb.String()
 }
