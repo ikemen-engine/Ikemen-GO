@@ -2592,20 +2592,27 @@ func (s *System) motifPauseMusic() bool {
 }
 
 // "Tick frames" are the frames where most of the game logic happens
+// Under normal game speed (60 logical frames rendered at 60fps) tickFrame() and tickNextFrame() happen simultaneously
 func (s *System) tickFrame() bool {
 	return (!s.paused || s.frameStepFlag) && s.oldTickCount < s.tickCount
 }
 
-// "Tick next frame" is right after the "tick frame"
+// "Tick next frame" is right before the "tick frame" that starts the next logical frame
+// So the name essentially means "tick happens in next frame"
+// It's the end of the current logical frame. Like a boundary between 2 interpolated frames
+// It is the final rendered frame where a char's state time is still the old value
 // Where for instance the collision detections happen
+// Maybe tickFinalFrame() would be a better name
 func (s *System) tickNextFrame() bool {
 	return int(s.tickCountF+s.nextAddTime) > s.tickCount &&
 		(!s.paused || s.frameStepFlag || s.oldTickCount >= s.tickCount)
 }
 
-// This divides a frame into fractions for the purpose of drawing position interpolation
+// Returns interpolation progress between two tickFrame()'s
+// It divides the logical frame into fractions for the purpose of drawing position interpolation
 func (s *System) tickInterpolation() float32 {
 	// Always synchronize here
+	// Because the final rendered frame for this logical frame should be 100% progress
 	if s.tickNextFrame() {
 		return 1
 	}
@@ -2642,6 +2649,7 @@ func (s *System) addFrameTime(t float32) bool {
 }
 
 func (s *System) resetFrameTime() {
+	// oldTickCount is set to -1 so that tickFrame() returns true on the very first frame
 	s.tickCount, s.oldTickCount, s.tickCountF, s.lastTick = 0, -1, 0, 0
 	s.nextAddTime, s.oldNextAddTime = 1, 1
 

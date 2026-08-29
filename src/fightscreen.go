@@ -1101,7 +1101,7 @@ func (pb *PowerBar) step(charpn int, pbr *PowerBar, snd *Snd) {
 	pbr.prevLevel = level
 	pbr.prevPower = pbval
 
-	// Multiple front elements
+	// Multiple bg0 elements
 	fv1 := resolvePBKey(pb.bg0, pbval, refChar.powerMax)
 	pb.bg0[fv1].Action()
 
