@@ -1577,18 +1577,43 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 	if ai.restgap <= 0 {
 		img := &ai.imgs[ai.imgidx]
 
-		// Start from a shallow copy
+		// Shallow copy the original SpriteData
+		// Reuse the already allocated afterimage animation if it exists
+		oldAnim := img.anim
 		*img = *sd
+		img.anim = oldAnim
 
 		// Clear sync parameters so the sprite won't try to sync with the present
 		img.syncId = 0
 
-		// Deep copy the animation
+		// Snapshot the animation's fields that are relevant for drawing
 		if sd.anim != nil {
-			img.anim = &Animation{}
+			// Reuse existing Animation if present. Otherwise allocate once
+			if img.anim == nil {
+				img.anim = &Animation{}
+			}
+
+			// Shallow copy the original animation
+			// Reuse the already allocated afterimage sprite if it exists
+			oldSpr := img.anim.spr
 			*img.anim = *sd.anim
+			img.anim.spr = oldSpr
+
+			// Afterimage animations never step
+			// So drop the live-playback data so state cloning doesn't have to deep-copy it later
+			img.anim.interpolate_offset = nil
+			img.anim.interpolate_scale = nil
+			img.anim.interpolate_angle = nil
+			img.anim.interpolate_blend = nil
+
+			// Handle the sprite
 			if sd.anim.spr != nil {
-				img.anim.spr = newSprite()
+				// Only allocate a new sprite if necessary
+				if img.anim.spr == nil {
+					img.anim.spr = newSprite()
+				}
+
+				// Shallow copy of live sprite
 				*img.anim.spr = *sd.anim.spr
 
 				// Apply palette baking logic
@@ -1601,7 +1626,20 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 					img.anim.spr.Pal = sd.anim.spr.GetPal(&sd.anim.sff.palList)
 					sd.anim.sff.palList.SwapPalMap(&sd.pfx.remap)
 				}
+			} else {
+				img.anim.spr = nil
 			}
+
+			// Keep only the current frame instead of the full frame list
+			// Use a fresh slice to avoid mutating the source animation's frames.
+			if int(sd.anim.drawidx) < len(sd.anim.frames) {
+				img.anim.frames = []AnimFrame{sd.anim.frames[sd.anim.drawidx]}
+			} else {
+				img.anim.frames = nil
+			}
+			// Reindex the single frame to 0
+			img.anim.drawidx = 0
+			img.anim.curelem = 0
 		} else {
 			img.anim = nil
 		}
@@ -1609,7 +1647,12 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 		// Apply AfterImage specific overrides
 		img.priority = sd.priority - 2 // Starting afterimage sprpriority offset
 
-		ai.imgidx = (ai.imgidx + 1) % int32(len(ai.imgs))
+		// Advance ring buffer index
+		ai.imgidx++
+		if ai.imgidx >= int32(len(ai.imgs)) {
+			ai.imgidx = 0
+		}
+
 		ai.reccount++
 		ai.restgap = ai.timegap
 	}
