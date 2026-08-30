@@ -4575,12 +4575,15 @@ func (cf CallFunction) Run(c *Char, _ []int32) (changeState bool) {
 	return bf.run(c, cf.ret)
 }
 
+// StateBlock is essentially an if/while/for block
+// In CNS, one StateBlock has at most one StateController
+// In ZSS, one StateBlock's trigger can have many
 type StateBlock struct {
 	// Basic block fields
 	persistent          int32
 	persistentIndex     int32
-	ignorehitpause      int32
-	ctrlsIgnorehitpause bool
+	ignorehitpause      bool // Applies to the block itself (ignoreHitPause if {})
+	ctrlsIgnorehitpause bool // Applies to the inner sctrl's that don't have their own ihp (ignoreHitPause if { ... })
 	trigger             BytecodeExp
 	elseBlock           *StateBlock
 	ctrls               []StateController
@@ -4596,7 +4599,7 @@ type StateBlock struct {
 }
 
 func newStateBlock() *StateBlock {
-	return &StateBlock{persistent: 1, persistentIndex: -1, ignorehitpause: -2}
+	return &StateBlock{persistent: 1, persistentIndex: -1, ignorehitpause: false}
 }
 
 func (b *StateBlock) Run(c *Char, ps []int32) (changeState bool) {
@@ -4611,8 +4614,8 @@ func (b *StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 
 	// Check if the character is currently in a hit pause
 	if c.hitPause() {
-		// If ignorehitpause is less than -1, do not proceed with this controller
-		if b.ignorehitpause < -1 {
+		// If ignorehitpause is false, do not proceed with this controller
+		if !b.ignorehitpause {
 			return false
 		}
 		/* https://github.com/ikemen-engine/Ikemen-GO/issues/2360

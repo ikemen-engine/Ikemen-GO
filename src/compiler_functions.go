@@ -461,12 +461,15 @@ func (c *CharCompiler) changeStateSub(is IniSection,
 		changeState_readplayerid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if c.block != nil && c.stateNo >= 0 && c.block.ignorehitpause == -1 {
+
+	// None of this is still used
+	//if c.block != nil && c.stateNo >= 0 && c.block.ignorehitpause == -1 {
 		// Assign a unique index to ignorehitpause for this controller
-		c.block.ignorehitpause = sys.cgi[c.playerNo].hitPauseToggleFlagCount
+		//c.block.ignorehitpause = sys.cgi[c.playerNo].hitPauseToggleFlagCount
 		// Increment the count of hitPauseExecutionToggleFlags
 		//sys.cgi[c.playerNo].hitPauseToggleFlagCount++
-	}
+	//}
+
 	return nil
 }
 
@@ -516,10 +519,12 @@ func (c *CharCompiler) tagIn(is IniSection, sc *StateControllerBase) (StateContr
 		}
 		return nil
 	})
+
 	//if c.block != nil && c.block.ignorehitpause == -1 {
 	//	c.block.ignorehitpause = sys.cgi[c.playerNo].hitPauseToggleFlagCount
 	//	sys.cgi[c.playerNo].hitPauseToggleFlagCount++
 	//}
+
 	return *ret, err
 }
 
@@ -546,10 +551,12 @@ func (c *CharCompiler) tagOut(is IniSection, sc *StateControllerBase) (StateCont
 		}
 		return nil
 	})
+
 	//if c.block != nil && c.block.ignorehitpause == -1 {
 	//	c.block.ignorehitpause = sys.cgi[c.playerNo].hitPauseToggleFlagCount
 	//	sys.cgi[c.playerNo].hitPauseToggleFlagCount++
 	//}
+
 	return *ret, err
 }
 
