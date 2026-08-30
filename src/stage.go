@@ -618,7 +618,14 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	// The previous linear formula caused noticeable vertical scaling differences
 	// at certain camera positions, especially at 4:3 resolutions.
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1054
-	ys := (1/((bg.yscalestart/100)/bgscl+bg.yscaledelta/100*(pos[1]-positiveBoundhigh)))*bg.scalestart[1] + ys2
+	ysdelta := bg.yscalestart + bg.yscaledelta*(pos[1]-positiveBoundhigh)
+
+	// Prevent yscaledelta from flipping the sign of yscalestart
+	if bg.yscalestart*ysdelta < 0 {
+		ysdelta = -ysdelta
+	}
+
+	ys := (100/ysdelta)*bg.scalestart[1]*bgscl + ys2
 	xs := bg.scaledelta[0] * pos[0] * bg.delta[0] * bgscl / stgscl[0]
 	x *= bgscl
 
