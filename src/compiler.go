@@ -7114,9 +7114,10 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]*StateBytecode, filename
 				}
 			}
 			if appending {
-				// If the trigger is always true
-				if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
-					c.block.ignorehitpause < -1 {
+				// If the trigger is always true and persistent, just skip the wrapper block entirely
+				// This will allow it to be executed faster later
+				//if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
+				if len(c.block.trigger) == 0 && c.block.persistent == 1 && c.block.ignorehitpause < -1 {
 					if _, ok := sctrl.(NullStateController); !ok {
 						sbc.block.ctrls = append(sbc.block.ctrls, sctrl)
 					}
