@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"math"
 	"runtime"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -348,17 +349,39 @@ func attachController(deviceIndex int) {
 }
 
 func (w *Window) UpdateDebugFPS() {
+	// Capture current tick and ticks-per-second
 	now := sdl.GetPerformanceCounter()
-	freq := float32(sdl.GetPerformanceFrequency())
-	diff := float32(now - sys.gameFPSprevcount)
+	freq := float64(sdl.GetPerformanceFrequency())
 
-	if diff > 0 {
-		instantFPS := freq / diff
-		// Use an EMA to apply smoothing
-		sys.gameFPS = (sys.gameFPS * 0.95) + (float32(instantFPS) * 0.05)
+	// The first call has no previous time, so just remember "now" and wait
+	if sys.gameFPSprevcount == 0 {
+		sys.gameFPSprevcount = now
+		return
 	}
 
+	// Time since we last updated the FPS
+	dt := float64(now-sys.gameFPSprevcount) / freq
 	sys.gameFPSprevcount = now
+	if dt <= 0 {
+		return
+	}
+
+	// What this one interval was worth, with no smoothing
+	instant := float32(1.0 / dt)
+
+	// Smooth the value over about the last second
+	// More time passed: trust the new reading more
+	const tau = 1.0 / 3.0
+	a := float32(1 - math.Exp(-dt/tau))
+
+	// The average starts from the instant value
+	if sys.gameFPS <= 0 {
+		sys.gameFPS = instant
+		return
+	}
+
+	// Mix the new reading into the displayed average
+	sys.gameFPS += (instant - sys.gameFPS) * a
 }
 
 func (w *Window) pollEvents() {
