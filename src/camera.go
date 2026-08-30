@@ -88,7 +88,6 @@ const (
 type Camera struct {
 	stageCamera
 	View                            CameraView
-	ZoomEnable                      bool
 	Pos, ScreenPos, Offset          [2]float32
 	XMin, XMax                      float32
 	Scale, MinScale                 float32
@@ -110,8 +109,6 @@ func newCamera() *Camera {
 }
 
 func (c *Camera) Reset() {
-	c.ZoomEnable = sys.cfg.Config.ZoomActive && (c.stageCamera.zoomin != 1 || c.stageCamera.zoomout != 1 || c.stageCamera.autoZoom)
-
 	if c.stageCamera.autoZoom {
 		c.boundL = float32(c.boundleft-c.startx) * c.localscl
 		c.boundR = float32(c.boundright-c.startx) * c.localscl
@@ -255,7 +252,7 @@ func (c *Camera) Update(scl, x, y float32) {
 }
 
 func (c *Camera) ScaleBound(scl, sclmul float32) float32 {
-	if c.ZoomEnable {
+	if c.zoomEnabled() {
 		if sys.debugPaused() {
 			sclmul = 1
 		} else if sys.turbo < 1 {
@@ -603,4 +600,8 @@ func (c *Camera) boundY(y float32, scale float32) float32 {
 	} else {
 		return Min(Max(y, float32(c.boundhigh)*c.localscl), float32(c.boundlow)*c.localscl) * scale
 	}
+}
+
+func (c *Camera) zoomEnabled() bool {
+	return sys.cfg.Config.ZoomActive && (c.zoomin != 1 || c.zoomout != 1 || c.autoZoom)
 }

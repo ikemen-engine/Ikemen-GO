@@ -1944,12 +1944,18 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 		}
 	}
 	pos[0] += ofs[0] / scl2
-	if !sys.cam.ZoomEnable {
-		for i, p := range pos {
-			pos[i] = float32(math.Ceil(float64(p - 0.5)))
-		}
-	}
+
+	// Mugen doesn't seem to do this sort of snapping
+	// Perhaps this was trying to emulate Winmugen's low resolution
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/2878
+	//if !sys.cam.zoomEnabled() {
+	//	for i, p := range pos {
+	//		pos[i] = float32(math.Ceil(float64(p - 0.5)))
+	//	}
+	//}
+
 	s.drawModel(pos, ofs[1], scl, layer)
+
 	for _, b := range s.bg {
 		// Draw only when visible and enabled.
 		if b.layerno == layer && b.visible && b.enabled && (b.anim.spr != nil || b._type == BG_Video) {
