@@ -4789,10 +4789,15 @@ func (lc LoopContinue) Run(c *Char, _ []int32) (stop bool) {
 	return true
 }
 
-type StateControllerBase []byte
+type scParam struct {
+	id  byte
+	exp []BytecodeExp
+}
+
+type StateControllerBase []scParam
 
 func newStateControllerBase() *StateControllerBase {
-	return (*StateControllerBase)(&[]byte{})
+	return &StateControllerBase{}
 }
 
 func (StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
@@ -4834,15 +4839,26 @@ func (StateControllerBase) bToExp(i bool) (exp []BytecodeExp) {
 }
 
 func (scb *StateControllerBase) add(paramID byte, exp []BytecodeExp) {
+	*scb = append(*scb, scParam{id: paramID, exp: exp})
+
+	/*
 	*scb = append(*scb, paramID, byte(len(exp)))
 	for _, e := range exp {
 		l := int32(len(e))
 		*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
 		*scb = append(*scb, *(*[]byte)(unsafe.Pointer(&e))...)
 	}
+	*/
 }
 
-func (scb StateControllerBase) run(c *Char, f func(byte, []BytecodeExp) bool) {
+func (scb StateControllerBase) run(c *Char, visit func(paramID byte, exp []BytecodeExp) bool) {
+	for _, param := range scb {
+		if !visit(param.id, param.exp) {
+			break
+		}
+	}
+
+	/*
 	for i := 0; i < len(scb); {
 		id := scb[i]
 		i++
@@ -4863,9 +4879,18 @@ func (scb StateControllerBase) run(c *Char, f func(byte, []BytecodeExp) bool) {
 			break
 		}
 	}
+	*/
 }
 
 func (scb StateControllerBase) hasParam(paramID byte) bool {
+	for _, param := range scb {
+		if param.id == paramID {
+			return true
+		}
+	}
+	return false
+
+	/*
 	for i := 0; i < len(scb); {
 		id := scb[i]
 		i++
@@ -4880,6 +4905,7 @@ func (scb StateControllerBase) hasParam(paramID byte) bool {
 		}
 	}
 	return false
+	*/
 }
 
 func getRedirectedChar(c *Char, sc StateControllerBase, redirectID byte, scname string) *Char {
