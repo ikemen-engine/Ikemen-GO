@@ -2807,7 +2807,7 @@ func (s *System) action() {
 		s.runIntroSkip()
 	}
 
-	if !s.cam.ZoomEnable {
+	if !s.cam.zoomEnabled() {
 		// Lower the precision to prevent errors in Pos X.
 		x = float32(math.Ceil(float64(x)*4-0.5) / 4)
 	}
