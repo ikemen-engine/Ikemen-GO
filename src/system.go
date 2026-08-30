@@ -5873,7 +5873,12 @@ func (s *System) remapCharSlotRefs(chars []*Char, oldSlot, newSlot int) {
 			continue
 		}
 		ch.playerNo = newSlot
-		ch.ss.sb.playerNo = newSlot
+		if ch.ss.sb.playerNo != newSlot {
+			// May be shared, so never write through it. Swap in a copy
+			fixed := *ch.ss.sb
+			fixed.playerNo = newSlot
+			ch.ss.sb = &fixed
+		}
 		if ch.controller == oldSlot {
 			ch.controller = newSlot
 		} else if ch.controller == oldCPU {
@@ -5903,8 +5908,10 @@ func (s *System) rebindCgiStateOwners(pn int) {
 	for _, k := range keys {
 		sb := s.cgi[pn].states[k]
 		if sb.playerNo != pn {
-			sb.playerNo = pn
-			s.cgi[pn].states[k] = sb
+			// May be shared with a live "c.ss.sb". Swap in a copy, don't mutate
+			fixed := *sb
+			fixed.playerNo = pn
+			s.cgi[pn].states[k] = &fixed
 		}
 	}
 }

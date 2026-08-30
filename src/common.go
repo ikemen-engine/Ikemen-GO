@@ -1856,6 +1856,14 @@ func SliceDelete[T any](slice []T, i int) []T {
 	return slice[:len(slice)-1]
 }
 
+// Backport of slices.Grow for Go 1.20
+func SliceGrow[T any](slice []T, n int) []T {
+	if n -= cap(slice) - len(slice); n > 0 {
+		slice = append(slice[:cap(slice)], make([]T, n)...)[:len(slice)]
+	}
+	return slice
+}
+
 // Nils out all elements and returns a zero-length slice while preserving the underlying capacity
 // This is better than plain [:0] because we ensure data from previous characters is GC'd
 func PointerSliceReset[T any](slice []*T) []*T {

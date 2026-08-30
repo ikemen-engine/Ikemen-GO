@@ -385,7 +385,7 @@ func (gs *GameState) loadCharData(a *arena.Arena, gsp *GameStatePool) {
 	// Set workingChar and debugWC to the first char we find, just in case
 	if c := sys.anyChar(); c != nil {
 		sys.workingChar = c
-		sys.workingState = &c.ss.sb
+		sys.workingState = c.ss.sb
 		sys.debugWC = c
 	}
 

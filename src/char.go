@@ -3417,7 +3417,7 @@ type CharGlobalInfo struct {
 	data                    CharData
 	velocity                CharVelocity
 	movement                CharMovement
-	states                  map[int32]StateBytecode
+	states                  map[int32]*StateBytecode
 	callFuncs               map[string]BytecodeFunction
 	hitPauseToggleFlagCount int32
 	quotes                  [MaxQuotes]string
@@ -3441,7 +3441,7 @@ func newCharGlobalInfo() CharGlobalInfo {
 	gi := CharGlobalInfo{
 		localcoord:    [2]int32{320, 240},
 		constants:     make(map[string]float32),
-		states:        make(map[int32]StateBytecode),
+		states:        make(map[int32]*StateBytecode),
 		callFuncs:     make(map[string]BytecodeFunction),
 		animTable:     NewAnimationTable(),
 		palInfo:       make(map[int]PalInfo, sys.cfg.Config.PaletteMax),
@@ -3466,11 +3466,11 @@ type StateState struct {
 	moveType      MoveType
 	prevMoveType  MoveType
 	storeMoveType bool
-	physics       StateType
-	ps            []int32
-	no, prevno    int32
-	time          int32
-	sb            StateBytecode
+	physics StateType
+	ps         []int32 // Persistent counters. Reused during ChangeState
+	no, prevno int32
+	time       int32
+	sb         *StateBytecode
 	//hitPauseExecutionToggleFlags [MaxPlayerNo][]bool // Flags if an sctrl runs during a hit pause on the current tick.
 }
 
@@ -3509,7 +3509,7 @@ func (ss *StateState) clear() {
 
 	ss.no, ss.prevno = 0, 0
 	ss.time = 0
-	ss.sb = StateBytecode{}
+	ss.sb = &StateBytecode{}
 }
 
 /*
@@ -3754,7 +3754,7 @@ func (c *Char) warn() string {
 }
 
 func (c *Char) panic(msg string) {
-	st := &c.ss.sb
+	st := c.ss.sb
 	if sys.workingState != st {
 		st = sys.workingState
 	}
@@ -6875,52 +6875,51 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 	}
 
 	// If in hitpause, back up the current state's persistent.
-	var ctrlsps_backup []int32
-	if c.hitPause() {
-		ctrlsps_backup = make([]int32, len(c.ss.sb.ctrlsps))
-		copy(ctrlsps_backup, c.ss.sb.ctrlsps)
-	}
+	//var ctrlsps_backup []int32
+	//if c.hitPause() {
+	//	ctrlsps_backup = make([]int32, len(c.ss.sb.ctrlsps))
+	//	copy(ctrlsps_backup, c.ss.sb.ctrlsps)
+	//}
 
 	// Always attempt to change to the state we set to.
+	// "c.ss.sb" is read-only past this point. Only "c.ss.ps" may be mutated.
 	var ok bool
 	if c.ss.sb, ok = sys.cgi[pn].states[c.ss.no]; !ok {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("changed to invalid state %v (from state %v)", no, c.ss.prevno))
 		if !sys.ignoreMostErrors {
 			LogMessage("Invalid state: P%v:%v", pn+1, no)
 		}
-		c.ss.sb = *newStateBytecode(pn)
+		c.ss.sb = newStateBytecode(pn)
 		c.ss.sb.stateType, c.ss.sb.moveType, c.ss.sb.physics = ST_U, MT_U, ST_U
 	}
 
-	// Reset persistent counters for this state (Ikemen chars)
-	// This used to belong to (*StateBytecode).init(), but was moved outside there
-	// due to a MUGEN 1.1 problem where persistent was not getting reset until the end
-	// of a hitpause when attempting to change state during the hitpause.
-	// Ikemenver chars aren't affected by this.
-	if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-		c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
-	} else {
-		// Reset persistent counters for this state (MUGEN chars)
-		if c.hitPause() && ctrlsps_backup != nil {
-			// If changing state during hitpause, restore (carry over) persistent from the before state
-			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
-			copy(c.ss.sb.ctrlsps, ctrlsps_backup)
-			// Apply special persistent counter behavior for state changes during hitpause
-			c.persistentChangeStateHitpauseCorrection(&c.ss.sb)
+	// Size "ps" for the new state, reusing its capacity when possible
+	n := len(c.ss.sb.ctrlsps)
+	if cap(c.ss.ps) < n {
+		// Note: recovered capacity is left unzeroed, so it can carry stale values
+		// Unverified against Mugen. Might need zeroing the recovered capacity
+		c.ss.ps = SliceGrow(c.ss.ps, n-len(c.ss.ps))
+	}
+	c.ss.ps = c.ss.ps[:n]
 
-			// Get the index of the currently executing SCTRL block
-			c.hitStateChangeIdx = c.currentSctrlIndex
-		} else {
-			// If not in hitpause, reset persistent
-			c.ss.sb.ctrlsps = make([]int32, len(c.ss.sb.ctrlsps))
-			c.hitStateChangeIdx = -1
+	// Ikemen characters reset persistent counters immediately, as one would expect
+	// Mugen characters replicate a bug where the counters are only reset outside of hitpause
+	// So, for them, the reset is deferred to tick()
+	if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || !c.hitPause() {
+		for i := range c.ss.ps {
+			c.ss.ps[i] = 0
 		}
+		c.hitStateChangeIdx = -1
+	} else {
+		c.hitStateChangeIdx = c.currentSctrlIndex
 	}
 
 	c.stchtmp = true
 	return true
 }
 
+// We now just reuse the same "persistent" slice instead, which is exponentially faster
+/*
 // Correction process to reproduce MUGEN's persistent behavior
 // This is called during a ChangeState while in hitpause
 func (c *Char) persistentChangeStateHitpauseCorrection(sbc *StateBytecode) {
@@ -6946,6 +6945,7 @@ func (c *Char) persistentChangeStateHitpauseCorrection(sbc *StateBytecode) {
 		}
 	}
 }
+*/
 
 func (c *Char) stateChange2() bool {
 	if c.stchtmp && !c.hitPause() {
@@ -12972,8 +12972,8 @@ func (c *Char) tick() {
 				if c.hitStateChangeIdx != -1 {
 					// For Mugen compatibility, the persistent is reset when the hitpause ends during ChangeState
 					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-						for i := range c.ss.sb.ctrlsps {
-							c.ss.sb.ctrlsps[i] = 0
+						for i := range c.ss.ps {
+							c.ss.ps[i] = 0
 						}
 					}
 					c.hitStateChangeIdx = -1

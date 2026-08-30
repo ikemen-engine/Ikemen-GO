@@ -156,6 +156,8 @@ func (sp StringPool) Clone(a *arena.Arena, gsp *GameStatePool) (result StringPoo
 }
 */
 
+// StateBlock no longer needs Clone(). The pointer is shared across states
+/*
 func (b *StateBlock) Clone(a *arena.Arena) (result StateBlock) {
 	result = *b
 	result.trigger = arena.MakeSlice[OpCode](a, len(b.trigger), len(b.trigger))
@@ -188,6 +190,7 @@ func (sb *StateBytecode) Clone(a *arena.Arena) (result StateBytecode) {
 	result.block = sb.block.Clone(a)
 	return result
 }
+*/
 
 func (ghv *GetHitVar) Clone(a *arena.Arena) (result *GetHitVar) {
 	result = arena.New[GetHitVar](a)
@@ -295,11 +298,15 @@ func (ss *StateState) Clone(a *arena.Arena) (result StateState) {
 	result = *ss
 	result.ps = arena.MakeSlice[int32](a, len(ss.ps), len(ss.ps))
 	copy(result.ps, ss.ps)
+
 	//for i := 0; i < len(ss.hitPauseExecutionToggleFlags); i++ {
 	//	result.hitPauseExecutionToggleFlags[i] = arena.MakeSlice[bool](a, len(ss.hitPauseExecutionToggleFlags[i]), len(ss.hitPauseExecutionToggleFlags[i]))
 	//	copy(result.hitPauseExecutionToggleFlags[i], ss.hitPauseExecutionToggleFlags[i])
 	//}
-	result.sb = ss.sb.Clone(a)
+
+	// ss.sb is shared, read-only, and never mutated. Safe to share, not clone
+	result.sb = ss.sb
+
 	return result
 }
 
