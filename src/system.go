@@ -4012,6 +4012,17 @@ func (s *System) runMatch() (reload bool) {
 		// Update motif
 		s.uiAction()
 
+		// Patch: Pause stage videos while game is paused
+		// This is necessary for the time being because videos are paused in the stage's action() and pauses now just skip that entirely
+		// TODO: Do this right. Maybe have videos use a "keep playing" signal instead of manually pausing
+		if s.matchPaused() && s.stage != nil {
+			for _, b := range s.stage.bg {
+				if b != nil && b._type == BG_Video && b.video != nil {
+					b.video.SetPlaying(false)
+				}
+			}
+		}
+
 		// Step sounds after both the core game and motif have updated
 		s.tickSound()
 
