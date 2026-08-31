@@ -853,6 +853,16 @@ func (s *Sprite) SetPxl(px []byte) {
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
+	if sprDepth == 32 {
+		// Normalize fully transparent RGBA pixels to prevent their RGB values from bleeding into visible pixels
+		for i := 0; i+3 < len(data); i += 4 {
+			if data[i+3] == 0 {
+				data[i] = 0
+				data[i+1] = 0
+				data[i+2] = 0
+			}
+		}
+	}
 	sys.mainThreadTask <- func() {
 		s.Tex = gfx.newTexture(sprWidth, sprHeight, sprDepth, sys.cfg.Video.RGBSpriteBilinearFilter)
 		s.Tex.SetData(data)
