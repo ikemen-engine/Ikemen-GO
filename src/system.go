@@ -1074,6 +1074,59 @@ func (s *System) loadStart() {
 	s.loader.runTread()
 }
 
+// Release char FFX belonging to reloading slots so that they can be reloaded without hitting cache
+func (s *System) releaseReloadingCharFx() {
+	s.loadMutex.Lock()
+	defer s.loadMutex.Unlock()
+
+	// Fast path
+	// Nothing to release if no char FFX is loaded at all
+	hasCharFfx := false
+	for _, ffx := range s.ffx {
+		if ffx != nil && ffx.isCharFX {
+			hasCharFfx = true
+			break
+		}
+	}
+	if !hasCharFfx {
+		return
+	}
+
+	// Check each reloading slot
+	// MatchRestart sctrl can reload only specific chars
+	// We don't want to release FFX that will still be needed
+	for i, reload := range s.reloadCharSlot {
+		if !reload {
+			continue
+		}
+		for _, fxPath := range s.cgi[i].fxPath {
+			stillNeeded := false
+			for j := range s.cgi {
+				if s.reloadCharSlot[j] {
+					continue // Reloading slots don't count as still needing it
+				}
+				for _, otherPath := range s.cgi[j].fxPath {
+					if otherPath == fxPath {
+						stillNeeded = true
+						break
+					}
+				}
+				if stillNeeded {
+					break
+				}
+			}
+			if stillNeeded {
+				continue
+			}
+			for prefix, ffx := range s.ffx {
+				if ffx != nil && ffx.isCharFX && ffx.fileName == fxPath {
+					delete(s.ffx, prefix)
+				}
+			}
+		}
+	}
+}
+
 // Drop everything that might have been partially produced by the pre-match async loader.
 func (s *System) dropCanceledLoadData() {
 	for {
@@ -6368,22 +6421,17 @@ func (l *Loader) load() {
 		}
 	}
 
-	/*
-		// This should now be handled by loadSff()
-		sys.loadMutex.Lock()
-		for prefix, ffx := range sys.ffx {
-			if !ffx.isCharFX {
-				continue
-			}
-			if ffx.refCount <= 0 {
-				if ffx.sff != nil {
-					removeSFFCache(ffx.sff.filename)
-				}
-				delete(sys.ffx, prefix)
-			}
+	// Release char FFX that are no longer needed
+	sys.loadMutex.Lock()
+	for prefix, ffx := range sys.ffx {
+		if ffx == nil || !ffx.isCharFX {
+			continue
 		}
-		sys.loadMutex.Unlock()
-	*/
+		if ffx.refCount <= 0 {
+			delete(sys.ffx, prefix)
+		}
+	}
+	sys.loadMutex.Unlock()
 
 	playerSlotsEnd := len(sys.chars) - MaxAttachedChar
 	charDone, stageDone := make([]bool, len(sys.chars)), stagedTurns

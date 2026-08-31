@@ -3144,6 +3144,12 @@ func systemScriptInit(l *lua.LState) {
 				// Match loop
 				if sys.runMatch() {
 					// Match is restarting
+					for _, reload := range sys.reloadCharSlot {
+						if reload {
+							sys.releaseReloadingCharFx()
+							break
+						}
+					}
 					for i, reload := range sys.reloadCharSlot {
 						if !reload {
 							continue
