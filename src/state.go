@@ -452,6 +452,25 @@ func (gs *GameState) String() (str string) {
 	// Add match data
 	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d ScorePoints: %v ComboCount: %v\n",
 		gs.matchTime, gs.curRoundTime, gs.scorePoints, gs.comboCount)
+	str += fmt.Sprintf("RoundState RoundNo:%d Intro:%d WinSkipped:%t WinPoseTime:%d WinWaitTime:%d FinishType:%v SpecialFlag:0x%08x Wins:%v EffectiveLoss:%v SlowTime:%d WinTeam:%d\n",
+		gs.roundNo, gs.intro, gs.winskipped, gs.winposetime, gs.winwaittime, gs.finishType,
+		uint32(gs.specialFlag), gs.wins, gs.effectiveLoss, gs.slowtime, gs.winTeam)
+
+	if round := gs.fightScreen.round; round != nil {
+		fadeoutActive := false
+		fadeoutRemain := int32(0)
+		if round.fadeOut != nil {
+			fadeoutActive = round.fadeOut.isActive()
+			fadeoutRemain = round.fadeOut.timeRemaining
+		}
+		str += fmt.Sprintf("RoundUI Round:%d/%d Fight:%d/%d KO:%d/%d Win:%d/%d TimerActive:%t OutroStarted:%t OutroFrameAcc:%v Shutter:%d FadeOutActive:%t FadeOutRemaining:%d\n",
+			round.roundDisplayPhase, round.roundDisplayTimer,
+			round.fightDisplayPhase, round.fightDisplayTimer,
+			round.koDisplayPhase, round.koDisplayTimer,
+			round.winDisplayPhase, round.winDisplayTimer,
+			round.timerActive, round.outroStarted, round.outroFrameAcc,
+			round.shutterTimer, fadeoutActive, fadeoutRemain)
+	}
 
 	// Add bytecode data
 	// TODO: Every log seems to have these empty. May not be needed

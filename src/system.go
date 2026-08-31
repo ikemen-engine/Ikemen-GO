@@ -3320,8 +3320,17 @@ func (s *System) stepRoundState() {
 		}
 
 		// Check if player skipped win pose time
-		if !s.winskipped && s.winposetime < 0 && s.anyButton() &&
-			!s.gsf(GSF_roundnotskip) && !matchEndDialoguePending {
+		skipCandidate := !s.winskipped && s.winposetime < 0
+		anyButton := false
+		if skipCandidate {
+			anyButton = s.anyButton()
+		}
+		roundnotskip := s.gsf(GSF_roundnotskip)
+		skipEligible := skipCandidate && anyButton && !roundnotskip && !matchEndDialoguePending
+		if s.rollback.session != nil && s.rollback.session.config.LogsEnabled {
+			s.rollback.session.log.logRoundSkipCheck(fadeoutStart, anyButton, roundnotskip, skipEligible, matchEndDialoguePending)
+		}
+		if skipEligible {
 			s.intro = Min(s.intro, fadeoutStart)
 			s.winskipped = true
 		}
@@ -4306,8 +4315,16 @@ func (s *System) SetupCharRoundStart() {
 }
 
 func (s *System) runNextRound() bool {
-	if s.roundOver() && !s.fightLoopEnd && (s.tickFrame() || s.motif.me.active) {
-		if s.holdPostMatchForDialogue() {
+	roundOver := s.roundOver()
+	tickFrame := s.tickFrame()
+	motifEndActive := s.motif.me.active
+	canAdvance := roundOver && !s.fightLoopEnd && (tickFrame || motifEndActive)
+	holdPostMatch := canAdvance && s.holdPostMatchForDialogue()
+	if s.rollback.session != nil && s.rollback.session.config.LogsEnabled && s.intro < 0 {
+		s.rollback.session.log.logRoundAdvanceCheck(roundOver, tickFrame, motifEndActive, s.fightLoopEnd, holdPostMatch, canAdvance)
+	}
+	if canAdvance {
+		if holdPostMatch {
 			return true
 		}
 		s.clearAllSound()

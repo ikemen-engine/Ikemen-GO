@@ -410,6 +410,47 @@ func (g *RollbackLogger) logState(action string, stateIdx int, state *GameState)
 	fmt.Fprintf(&g.currentLog, "%s\n", state.String())
 }
 
+func (g *RollbackLogger) logRoundSkipCheck(fadeoutStart int32, anyButton, roundnotskip, skipEligible, matchEndDialogue bool) {
+	if sys.rollback.session == nil || !sys.rollback.session.config.LogsEnabled {
+		return
+	}
+	var inputs [2]InputBits
+	copy(inputs[:], sys.rollback.ggpoInputs)
+	fadeoutActive := false
+	fadeoutRemain := int32(0)
+	if sys.fightScreen.round != nil && sys.fightScreen.round.fadeOut != nil {
+		fadeoutActive = sys.fightScreen.round.fadeOut.isActive()
+		fadeoutRemain = sys.fightScreen.round.fadeOut.timeRemaining
+	}
+	fmt.Fprintf(&g.currentLog,
+		"RoundSkipCheck MatchTime:%d InRollback:%t RoundState:%d Inputs:[%d/0x%04x %d/0x%04x] "+
+			"Intro:%d WinPoseTime:%d WinWaitTime:%d WinSkipped:%t AnyButton:%t "+
+			"RoundNotSkip:%t RoundNotOver:%t MatchEndDialogue:%t FadeoutStart:%d "+
+			"FadeOutActive:%t FadeOutRemaining:%d SkipEligible:%t\n",
+		sys.matchTime, sys.inRollback(), sys.roundState(),
+		int16(inputs[0]), uint16(inputs[0]), int16(inputs[1]), uint16(inputs[1]),
+		sys.intro, sys.winposetime, sys.winwaittime, sys.winskipped, anyButton,
+		roundnotskip, sys.gsf(GSF_roundnotover), matchEndDialogue, fadeoutStart,
+		fadeoutActive, fadeoutRemain, skipEligible)
+}
+
+func (g *RollbackLogger) logRoundAdvanceCheck(roundOver, tickFrame, motifEndActive, fightLoopEnd, holdPostMatch, canAdvance bool) {
+	if sys.rollback.session == nil || !sys.rollback.session.config.LogsEnabled {
+		return
+	}
+	fmt.Fprintf(&g.currentLog,
+		"RoundAdvanceCheck MatchTime:%d InRollback:%t RoundState:%d Intro:%d "+
+			"RoundOver:%t TickFrame:%t MotifEndActive:%t FightLoopEnd:%t "+
+			"HoldPostMatch:%t CanAdvance:%t "+
+			"TickCount:%d OldTickCount:%d TickCountF:%v NextAddTime:%v "+
+			"FrameStep:%t Paused:%t RoundFreeze:%t DialogueActive:%t\n",
+		sys.matchTime, sys.inRollback(), sys.roundState(), sys.intro,
+		roundOver, tickFrame, motifEndActive, fightLoopEnd, holdPostMatch, canAdvance,
+		sys.tickCount, sys.oldTickCount, sys.tickCountF, sys.nextAddTime,
+		sys.frameStepFlag, sys.paused, sys.gsf(GSF_roundfreeze),
+		sys.motif.di.active)
+}
+
 func (g *RollbackLogger) Write(p []byte) (n int, err error) {
 	g.currentLog.WriteString(string(p))
 	return len(p), nil
@@ -801,6 +842,36 @@ func (rs *RollbackSession) LiveChecksum() uint32 {
 	for i := range sys.scorePoints {
 		buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(sys.scorePoints[i]))
 		buf = binary.BigEndian.AppendUint32(buf, uint32(sys.comboCount[i]))
+	}
+	// Round-transition state.
+	appendBool := func(value bool) {
+		if value {
+			buf = append(buf, 1)
+		} else {
+			buf = append(buf, 0)
+		}
+	}
+	buf = append(buf, writeI32(sys.roundNo)...)
+	buf = append(buf, writeI32(sys.intro)...)
+	appendBool(sys.winskipped)
+	buf = append(buf, writeI32(sys.winposetime)...)
+	buf = append(buf, writeI32(sys.winwaittime)...)
+	buf = append(buf, writeI32(int32(sys.finishType))...)
+	buf = binary.BigEndian.AppendUint32(buf, uint32(sys.specialFlag))
+	buf = append(buf, writeI32(int32(sys.winTeam))...)
+	for i := range sys.wins {
+		buf = append(buf, writeI32(sys.wins[i])...)
+		appendBool(sys.effectiveLoss[i])
+	}
+	buf = append(buf, writeI32(sys.slowtime)...)
+
+	if sys.fightScreen.round != nil && sys.fightScreen.round.fadeOut != nil {
+		fadeOut := sys.fightScreen.round.fadeOut
+		appendBool(fadeOut.isActive())
+		buf = append(buf, writeI32(fadeOut.timeRemaining)...)
+	} else {
+		appendBool(false)
+		buf = append(buf, writeI32(0)...)
 	}
 
 	// Round start checks. Ensure both players have the same selection
