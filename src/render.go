@@ -85,6 +85,7 @@ type Renderer interface {
 	SetModelIndexData(bufferIndex uint32, values ...uint32)
 
 	RenderQuad()
+	RenderQuadBatch(vertexCount int32)
 	RenderElements(mode PrimitiveMode, count, offset int)
 	RenderShadowMapElements(mode PrimitiveMode, count, offset int)
 	RenderCubeMap(envTexture Texture, cubeTexture Texture)
@@ -143,6 +144,12 @@ var gfxFont FontRenderer
 
 // Counter for unique texture cache serial numbers
 var textureSerialNumber uint64
+
+// Reusable buffers for batched sprite vertices (quads)
+var (
+	quadVertexScratch []float32
+	tileScratch       []float32
+)
 
 // Blend constants
 type BlendFunc int
@@ -411,7 +418,7 @@ func transformTextQuad(x1, y1, x2, y2, x3, y3, x4, y4, rxadd float32,
 	toTextSpace := func(x, y float32) (float32, float32) {
 		return x / sx, (screenH - y) / sy
 	}
-	transformPoint := func(modelview mgl.Mat4, x, y float32) (float32, float32) {
+	transformPointPersp := func(modelview mgl.Mat4, x, y float32) (float32, float32) {
 		v := modelview.Mul4x1(mgl.Vec4{x, y, 0, 1})
 		if v.W() != 0 {
 			invW := 1 / v.W()
@@ -450,10 +457,10 @@ func transformTextQuad(x1, y1, x2, y2, x3, y3, x4, y4, rxadd float32,
 		modelview = applyRotation(modelview, rp)
 		modelview = modelview.Mul4(mgl.Translate3D(-rp.rcx, -rp.rcy, 0))
 
-		blx, bly = transformPoint(modelview, blx, bly)
-		brx, bry = transformPoint(modelview, brx, bry)
-		trx, try = transformPoint(modelview, trx, try)
-		tlx, tly = transformPoint(modelview, tlx, tly)
+		blx, bly = transformPointPersp(modelview, blx, bly)
+		brx, bry = transformPointPersp(modelview, brx, bry)
+		trx, try = transformPointPersp(modelview, trx, try)
+		tlx, tly = transformPointPersp(modelview, tlx, tly)
 	} else {
 		if rp.rxadd != 0 {
 			// Match the unrotated sprite path by shifting the bottom edge
@@ -475,8 +482,39 @@ func transformTextQuad(x1, y1, x2, y2, x3, y3, x4, y4, rxadd float32,
 	return x1, y1, x2, y2, x3, y3, x4, y4
 }
 
-// Render a quad with optional horizontal tiling
-func renderSpriteHTile(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, width float32, rp RenderParams) {
+// Helper to transform a point by a 4x4 matrix
+func transformPoint(mat mgl.Mat4, x, y float32) (float32, float32) {
+	v := mat.Mul4x1(mgl.Vec4{x, y, 0, 1})
+	return v[0], v[1]
+}
+
+// Helper to append a quad as two triangles to the batch
+func appendTransformedQuadTriangles(batch []float32, mat mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) []float32 {
+	uvBias := float32(0.000002)
+	p2x, p2y := transformPoint(mat, x2, y2)
+	p3x, p3y := transformPoint(mat, x3, y3)
+	p1x, p1y := transformPoint(mat, x1, y1)
+	p4x, p4y := transformPoint(mat, x4, y4)
+
+	// Vertices are laid out in triangle strip order, matching the single quad order
+	if len(batch) > 0 {
+		lastX, lastY, lastU, lastV := batch[len(batch)-4], batch[len(batch)-3], batch[len(batch)-2], batch[len(batch)-1]
+		batch = append(batch, lastX, lastY, lastU, lastV)
+		batch = append(batch, p2x, p2y, 1, 1-uvBias)
+	}
+
+	batch = append(batch,
+		p2x, p2y, 1, 1-uvBias,
+		p3x, p3y, 1, 0,
+		p1x, p1y, uvBias, 1-uvBias,
+		p4x, p4y, uvBias, 0,
+	)
+
+	return batch
+}
+
+// Draws or accumulates every visible horizontal tile of one row
+func emitHTiles(batch *[]float32, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, width float32, rp RenderParams) {
 	//            p3
 	//    p4 o-----o-----o- - -o
 	//      /      |      \     ` .
@@ -526,10 +564,19 @@ func renderSpriteHTile(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, w
 		}
 	}
 
-	// Draw all quads in one loop
+	// Read the caller's current slice value into a local copy
+	var b []float32
+	if batch != nil {
+		b = *batch
+	}
+
+	// Collect or draw all quads in one loop
 	for n := left; n < right; n++ {
 		x1d, x2d := x1+float32(n)*botdist, x2+float32(n)*botdist
 		x3d, x4d := x3+float32(n)*topdist, x4+float32(n)*topdist
+
+		// This tile's modelview, applying projection/rotation around its own pivot
+		// when the sprite is rotated.
 		mat := modelview
 		if !rp.rot.IsZero() {
 			mat = applyProjection(mat, rp, int(n), botdist, dy)
@@ -541,48 +588,33 @@ func renderSpriteHTile(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4, dy, w
 			mat = mat.Mul4(mgl.Translate3D(-rotCenterX, -rotCenterY, 0))
 		}
 
-		drawQuads(mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+		if batch != nil {
+			// Append verts to batch draw later
+			b = appendTransformedQuadTriangles(b, mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+		} else {
+			// Draw each tile immediately
+			drawQuads(mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+		}
+	}
+
+	// Write the possibly regrown slice back into the caller's variable
+	if batch != nil {
+		*batch = b
 	}
 }
 
-func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
-	x1, y1 := rp.x, rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
-	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
-	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
-	x4, y4 := rp.x, y3
-
-	//var pers float32
-	//if Abs(rp.xts) < Abs(rp.xbs) {
-	//	pers = Abs(rp.xts) / Abs(rp.xbs)
-	//} else {
-	//	pers = Abs(rp.xbs) / Abs(rp.xts)
-	//}
-
-	if !rp.rot.IsZero() && rp.tile.xflag == 0 && rp.tile.yflag == 0 {
-		// TODO: This block makes shadows ignore their own yscale when in perspective
-		// However, when we disable it, regular shadows are scaled incorrectly even with the smallest roation
-		// So for now let's split the difference and keep the code only outside projection
-		if rp.vs != 1 && rp.projectionMode == 0 {
-			y1 = rp.rcy + ((rp.y - rp.ys*float32(rp.size[1])) - rp.rcy)
-			y2 = y1
-			y3 = rp.y
-			y4 = y3
-		}
-
-		modelview = applyProjection(modelview, rp, 0, 1, 0)
-		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
-		modelview = applyRotation(modelview, rp)
-		modelview = modelview.Mul4(mgl.Translate3D(-(rp.rcx + rp.rcOffset[0]), -(rp.rcy + rp.rcOffset[1]), 0))
-
-		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
-		return
-	}
+// Drives the Y-tiling loops and emits each visible row through emitHTiles
+// batch is nil for immediate draws, otherwise it is the vertex scratch being grown
+func emitTiles(batch *[]float32, modelview mgl.Mat4, rp RenderParams, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	if rp.tile.yflag == 1 && rp.xbs != 0 {
 		x1 += rp.rxadd * rp.ys * float32(rp.size[1])
 		x2 = x1 + rp.xbs*float32(rp.size[0])
 		x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d := x1, y1, x2, y2, x3, y3, x4, y4
 		n := 0
-		var xy []float32
+
+		// Clear scratch buffer
+		xy := tileScratch[:0]
+
 		for {
 			x1d, y1d = x4d, y4d+rp.ys*rp.vs*((float32(rp.tile.yspacing)+float32(rp.size[1]))/rp.yas-float32(rp.size[1]))
 			x2d, y2d = x3d, y1d
@@ -603,6 +635,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 			n += 1
 			xy = append(xy, x1d, x2d, x3d, x4d, y1d, y2d, y3d, y4d)
 		}
+
 		for {
 			if len(xy) == 0 {
 				break
@@ -610,10 +643,14 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 			x1d, x2d, x3d, x4d, y1d, y2d, y3d, y4d, xy = xy[len(xy)-8], xy[len(xy)-7], xy[len(xy)-6], xy[len(xy)-5], xy[len(xy)-4], xy[len(xy)-3], xy[len(xy)-2], xy[len(xy)-1], xy[:len(xy)-8]
 			if (0 > y1d || 0 > y4d) &&
 				(y1d > float32(-sys.scrrect[3]) || y4d > float32(-sys.scrrect[3])) {
-				renderSpriteHTile(modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, y1d-y1, float32(rp.size[0]), rp)
+				emitHTiles(batch, modelview, x1d, y1d, x2d, y2d, x3d, y3d, x4d, y4d, y1d-y1, float32(rp.size[0]), rp)
 			}
 		}
+
+		// Update scratch buffer with new capacity
+		tileScratch = xy
 	}
+
 	if rp.tile.yflag == 0 || rp.xts != 0 {
 		x1 += rp.rxadd * rp.ys * float32(rp.size[1])
 		x2 = x1 + rp.xbs*float32(rp.size[0])
@@ -629,7 +666,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 			}
 			if (0 > y1 || 0 > y4) &&
 				(y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-				renderSpriteHTile(modelview, x1, y1, x2, y2, x3, y3, x4, y4, y1-oy, float32(rp.size[0]), rp)
+				emitHTiles(batch, modelview, x1, y1, x2, y2, x3, y3, x4, y4, y1-oy, float32(rp.size[0]), rp)
 			}
 			if rp.tile.yflag != 1 && n != 0 {
 				n--
@@ -646,6 +683,84 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 				break
 			}
 			y1 = y2
+		}
+	}
+}
+
+// TODO: There's some redundancy between all the quad drawing functions right now
+func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
+	x1, y1 := rp.x, rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
+	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
+	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
+	x4, y4 := rp.x, y3
+
+	tiled := rp.tile.xflag != 0 || rp.tile.yflag != 0
+	trapez := Abs(Abs(rp.xts)-Abs(rp.xbs)) > 0.001
+	rotated := !rp.rot.IsZero()
+
+	switch {
+	case tiled && trapez:
+		// Trapezoids (e.g. parallax floors) draw immediately because they cannot be batched at the moment
+		emitTiles(nil, modelview, rp, x1, y1, x2, y2, x3, y3, x4, y4)
+
+	case tiled:
+		// Rectangular tiles bake vertices then batch render later
+		// Clear scratch buffer
+		batch := quadVertexScratch[:0]
+		emitTiles(&batch, modelview, rp, x1, y1, x2, y2, x3, y3, x4, y4)
+
+		if len(batch) > 0 {
+			// Vertices are already transformed, so use identity matrix
+			identity := mgl.Ident4()
+			gfx.SetUniformMatrix("modelview", identity[:])
+			gfx.SetUniformF("x1x2x4x3", 0, 0, 0, 0)
+			gfx.SetVertexData(batch...)
+			gfx.RenderQuadBatch(int32(len(batch) / 4)) // 4 floats per vertex
+		}
+
+		// Update scratch buffer with new capacity
+		quadVertexScratch = batch
+
+	case rotated:
+		// Non-tiled, rotated: single quad with full transform
+		// TODO: This block makes shadows ignore their own yscale when in perspective
+		// However, when we disable it, regular shadows are scaled incorrectly even with the smallest roation
+		// So for now let's split the difference and keep the code only outside projection
+		if rp.vs != 1 && rp.projectionMode == 0 {
+			y1 = rp.rcy + ((rp.y - rp.ys*float32(rp.size[1])) - rp.rcy)
+			y2 = y1
+			y3 = rp.y
+			y4 = y3
+		}
+
+		modelview = applyProjection(modelview, rp, 0, 1, 0)
+		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
+		modelview = applyRotation(modelview, rp)
+		modelview = modelview.Mul4(mgl.Translate3D(-(rp.rcx + rp.rcOffset[0]), -(rp.rcy + rp.rcOffset[1]), 0))
+		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
+
+	default:
+		// Non-tiled, not rotated: shear must be baked into coordinates directly since no
+		// rotation matrix runs - matches the tiled path's handling
+		if rp.rxadd != 0 {
+			x1 += rp.rxadd * rp.ys * float32(rp.size[1])
+			x2 = x1 + rp.xbs*float32(rp.size[0])
+		}
+
+		// Trapezoid convergence adjustment, same as emitHTiles does per row
+		// No-op for rectangles (topdist == botdist), but required for parallax
+		topdist := (x3 - x4) / rp.xas
+		botdist := (x2 - x1) / rp.xas
+		if Abs(topdist) >= 0.01 {
+			db := (x4 - rp.rcx) * (botdist - topdist) / Abs(topdist)
+			x1 += db
+			x2 += db
+		}
+
+		// Skip the draw call entirely if this quad is fully above or fully below the visible
+		// screen range - matches the tiled path's vertical visibility culling
+		if (0 > y1 || 0 > y4) && (y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
+			drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
 		}
 	}
 }

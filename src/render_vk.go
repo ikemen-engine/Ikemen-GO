@@ -7506,7 +7506,7 @@ func (r *Renderer_VK) SetModelIndexData(bufferIndex uint32, values ...uint32) {
 	vk.FreeMemory(r.device, stagingBufferMemory, nil)
 }
 
-func (r *Renderer_VK) RenderQuad() {
+func (r *Renderer_VK) RenderQuadSetup() uint32 {
 	targetProgram := r.VKState.currentProgram
 	if targetProgram == nil {
 		targetProgram = r.spriteProgram
@@ -7761,8 +7761,23 @@ func (r *Renderer_VK) RenderQuad() {
 	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
 	vk.CmdSetScissor(r.commandBuffers[0], 0, 1, scissors)
 
-	vk.CmdDraw(r.commandBuffers[0], 4, 1, uint32(r.vertexBufferOffset%r.vertexBuffers[0].size)/16-4, 0)
+	//vk.CmdDraw(r.commandBuffers[0], 4, 1, uint32(r.vertexBufferOffset%r.vertexBuffers[0].size)/16-4, 0)
+	return uint32(r.vertexBufferOffset%r.vertexBuffers[0].size) / 16
 }
+
+func (r *Renderer_VK) RenderQuad() {
+	startVertex := r.RenderQuadSetup()
+	vk.CmdDraw(r.commandBuffers[0], 4, 1, startVertex-4, 0)
+}
+
+func (r *Renderer_VK) RenderQuadBatch(vertexCount int32) {
+	if vertexCount <= 0 {
+		return
+	}
+	startVertex := r.RenderQuadSetup()
+	vk.CmdDraw(r.commandBuffers[0], uint32(vertexCount), 1, startVertex-uint32(vertexCount), 0)
+}
+
 func (r *Renderer_VK) RenderElements(mode PrimitiveMode, count, offset int) {
 	switchedProgram := r.VKState.boundProgram != r.modelProgram
 	r.VKState.boundProgram = r.modelProgram

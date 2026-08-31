@@ -2134,6 +2134,10 @@ func (r *Renderer_GLES32) RenderQuad() {
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 }
 
+func (r *Renderer_GLES32) RenderQuadBatch(vertexCount int32) {
+	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, vertexCount)
+}
+
 func (r *Renderer_GLES32) RenderElements(mode PrimitiveMode, count, offset int) {
 	gl.DrawElementsWithOffset(r.MapPrimitiveMode(mode), int32(count), gl.UNSIGNED_INT, uintptr(offset))
 }
