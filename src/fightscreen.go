@@ -5381,10 +5381,23 @@ func loadFightScreen(def string) (*FightScreen, error) {
 }
 
 func (fs *FightScreen) reload() error {
+	// Unload common FX belonging to FightScreen so the reloaded ones won't hit the cache mechanism
+	sys.loadMutex.Lock()
+	for prefix, ffx := range sys.ffx {
+		if ffx == nil || ffx.isCharFX {
+			continue
+		}
+		delete(sys.ffx, prefix)
+	}
+	sys.loadMutex.Unlock()
+
+	// Load the new instance
 	new, err := loadFightScreen(fs.def)
 	if err != nil {
 		return err
 	}
+
+	// Restore some variables from the old instance
 	new.time.framespercount = fs.time.framespercount
 	//new.round.match_wins = fs.round.match_wins
 	//new.round.match_maxdrawgames = fs.round.match_maxdrawgames
