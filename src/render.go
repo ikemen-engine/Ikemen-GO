@@ -142,9 +142,6 @@ var vertexFontShader string
 var gfx Renderer
 var gfxFont FontRenderer
 
-// Counter for unique texture cache serial numbers
-var textureSerialNumber uint64
-
 // Reusable buffers for batched sprite vertices (quads)
 var (
 	quadVertexScratch []float32
@@ -1333,7 +1330,7 @@ func (ta *TextureAtlas) FindPlaceToInsert(width, height int32) (int32, int32, bo
 }
 
 func (ta *TextureAtlas) Resize(width, height int32) {
-	if width < ta.width || height < ta.height {
+	if width < ta.width {
 		panic("New width cannot be smaller than old width")
 	}
 	if height < ta.height {

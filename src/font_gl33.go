@@ -170,7 +170,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 	//set screen resolution
 	r.SetUniformFSub(program.uniforms["resolution"], float32(f.windowWidth), float32(f.windowHeight))
 
-	gl.ActiveTexture(gl.TEXTURE0)
+	// No explicit unit 0 activation needed anymore
 	//mr.bindVertexArray(gfxFont.(*FontRenderer_GL33).vao)
 
 	//calculate alignment position
@@ -313,7 +313,8 @@ func (f *Font_GL33) renderGlyphBatch(vertices []float32, textureID uint32) {
 	mr.bindBuffer(gl.ARRAY_BUFFER, fr.vbo)
 	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertices)*4, gl.Ptr(vertices))
 
-	gl.BindTexture(gl.TEXTURE_2D, textureID)
+	// Sampling bind, safe to skip if this atlas is already bound
+	mr.bindTextureToUnit(0, gl.TEXTURE_2D, nil, textureID)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
 }
 
@@ -473,7 +474,7 @@ func (f *Font_GL33) GenerateGlyphs(low, high rune) error {
 		f.fontChar[ch] = char
 	}
 
-	gl.BindTexture(gl.TEXTURE_2D, 0)
+	gfx.(*Renderer_GL33).bindTextureToUnit(0, gl.TEXTURE_2D, nil, 0)
 	return nil
 }
 
