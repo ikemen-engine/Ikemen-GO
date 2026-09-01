@@ -134,7 +134,7 @@ type backGround struct {
 	layerno               int32
 	autoresizeparallax    bool
 	autoresizeparallaxSet bool
-	notmaskwindow         int32
+	hasMaskwindow         bool
 	startrect             [4]int32
 	windowdelta           [2]float32
 	scalestart            [2]float32
@@ -434,17 +434,11 @@ func readBackGround(is IniSection, link *backGround,
 		}
 	}
 	// Unusually, Mugen only accepts these when they do have at least 4 values
-	if is.readI32ForStageMinLength("window", &bg.startrect[0], &bg.startrect[1],
-		&bg.startrect[2], &bg.startrect[3]) {
-		bg.startrect[2] = Max(0, bg.startrect[2]+1-bg.startrect[0])
-		bg.startrect[3] = Max(0, bg.startrect[3]+1-bg.startrect[1])
-		bg.notmaskwindow = 1
-	}
+	is.readI32ForStageMinLength("window", &bg.startrect[0], &bg.startrect[1],
+		&bg.startrect[2], &bg.startrect[3])
 	if is.readI32ForStageMinLength("maskwindow", &bg.startrect[0], &bg.startrect[1],
 		&bg.startrect[2], &bg.startrect[3]) {
-		bg.startrect[2] = Max(0, bg.startrect[2]-bg.startrect[0])
-		bg.startrect[3] = Max(0, bg.startrect[3]-bg.startrect[1])
-		bg.notmaskwindow = 0
+		bg.hasMaskwindow = true
 	}
 	is.readF32ForStage("windowdelta", &bg.windowdelta[0], &bg.windowdelta[1])
 	is.ReadI32("id", &bg.id)
@@ -653,14 +647,27 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 		}
 	}
 
-	// Calculate window top left corner position
-	rect := bg.startrect
+	// Convert the window's raw (x1,y1,x2,y2) corners into (x1,y1,width,height)
+	// With "window" (x2,y2) is inclusive, but with "maskwindow" it's exclusive
+	rect := NormalizeRect(bg.startrect)
+	if !bg.hasMaskwindow {
+		rect[2] = Max(0, rect[2]-rect[0]+1)
+		rect[3] = Max(0, rect[3]-rect[1]+1)
+	} else {
+		rect[2] = Max(0, rect[2]-rect[0])
+		rect[3] = Max(0, rect[3]-rect[1])
+	}
 
-	startrect0 := float32(rect[0]) - (pos[0])/stgscl[0]*bg.windowdelta[0] +
-		(sys.gameWidth/2/sclx - float32(bg.notmaskwindow)*(sys.gameWidth/2)*(1/lscl[0]))
+	// "window" is relative to top-left of screen. "maskwindow" to top-center
+	startrect0 := float32(rect[0]) - pos[0]/stgscl[0]*bg.windowdelta[0] + sys.gameWidth/2/sclx
+	if !bg.hasMaskwindow {
+		startrect0 -= sys.gameWidth / 2 / lscl[0]
+	}
+
 	startrect0 *= sys.widthScale * wscl[0]
+
+	// Motif x coordinates start from left edge of screen
 	if !isStage && wscl[0] == 1 {
-		// Screenpacks X coordinates start from left edge of screen
 		startrect0 += float32(sys.gameWidth-320) / 2 * sys.widthScale
 	}
 
@@ -728,7 +735,7 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 			xsoffset /= bg.rot.angle
 		}
 
-		// Choose render origin: top-left for screenpack/storyboard videos, center for everything else
+		// Choose render origin: top-left for motif/storyboard videos, center for everything else
 		var rcx float32
 		if bg._type != BG_Video || isStage {
 			rcx = sys.gameWidth / 2
