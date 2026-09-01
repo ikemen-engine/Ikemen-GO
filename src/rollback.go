@@ -843,36 +843,6 @@ func (rs *RollbackSession) LiveChecksum() uint32 {
 		buf = binary.BigEndian.AppendUint32(buf, math.Float32bits(sys.scorePoints[i]))
 		buf = binary.BigEndian.AppendUint32(buf, uint32(sys.comboCount[i]))
 	}
-	// Round-transition state.
-	appendBool := func(value bool) {
-		if value {
-			buf = append(buf, 1)
-		} else {
-			buf = append(buf, 0)
-		}
-	}
-	buf = append(buf, writeI32(sys.roundNo)...)
-	buf = append(buf, writeI32(sys.intro)...)
-	appendBool(sys.winskipped)
-	buf = append(buf, writeI32(sys.winposetime)...)
-	buf = append(buf, writeI32(sys.winwaittime)...)
-	buf = append(buf, writeI32(int32(sys.finishType))...)
-	buf = binary.BigEndian.AppendUint32(buf, uint32(sys.specialFlag))
-	buf = append(buf, writeI32(int32(sys.winTeam))...)
-	for i := range sys.wins {
-		buf = append(buf, writeI32(sys.wins[i])...)
-		appendBool(sys.effectiveLoss[i])
-	}
-	buf = append(buf, writeI32(sys.slowtime)...)
-
-	if sys.fightScreen.round != nil && sys.fightScreen.round.fadeOut != nil {
-		fadeOut := sys.fightScreen.round.fadeOut
-		appendBool(fadeOut.isActive())
-		buf = append(buf, writeI32(fadeOut.timeRemaining)...)
-	} else {
-		appendBool(false)
-		buf = append(buf, writeI32(0)...)
-	}
 
 	// Round start checks. Ensure both players have the same selection
 	if sys.roundState() == 1 {
