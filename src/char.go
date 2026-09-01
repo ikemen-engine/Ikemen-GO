@@ -3574,6 +3574,23 @@ func (c *Char) clsnOverlapTrigger(box1, pid, box2 int32) bool {
 	if getter == nil {
 		return false
 	}
+	if sys.zEnabled() {
+		// Select Z depth according to collision box type
+		getDepth := func(char *Char, box int32) (float32, float32) {
+			if box == 1 {
+				return char.hitdef.attack_depth[0], char.hitdef.attack_depth[1]
+			}
+			return char.sizeDepth[0], char.sizeDepth[1]
+		}
+
+		top1, bot1 := getDepth(c, box1)
+		top2, bot2 := getDepth(getter, box2)
+
+		if !sys.zAxisOverlap(c.pos[2], top1, bot1, c.localscl, getter.pos[2], top2, bot2, getter.localscl) {
+			return false
+		}
+	}
+
 	return c.clsnCheck(getter, box1, box2, false)
 }
 
@@ -10373,6 +10390,23 @@ func (c *Char) projClsnOverlapTrigger(index int, targetID, boxType int32) bool {
 	target := sys.playerID(targetID)
 	if target == nil {
 		return false
+	}
+
+	if sys.zEnabled() {
+		// Select Z depth according to collision box type
+		getDepth := func(char *Char, box int32) (float32, float32) {
+			if box == 1 {
+				return char.hitdef.attack_depth[0], char.hitdef.attack_depth[1]
+			}
+			return char.sizeDepth[0], char.sizeDepth[1]
+		}
+
+		top, bot := getDepth(target, boxType)
+
+		if !sys.zAxisOverlap(proj.pos[2], proj.hitdef.attack_depth[0], proj.hitdef.attack_depth[1], proj.localscl,
+			target.pos[2], top, bot, target.localscl) {
+			return false
+		}
 	}
 
 	return target.projClsnCheck(proj, boxType, 1) || target.projClsnCheck(proj, boxType, 2)
