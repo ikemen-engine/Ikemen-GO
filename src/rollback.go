@@ -45,6 +45,7 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 	var running bool
 
 	// Loop until end of match
+	// Not "sys.keepMatchRunning()" because rollback loop ends earlier than local loop
 	for !sys.endMatch {
 		rs.session.now = time.Now().UnixMilli()
 		err := rs.session.backend.Idle(
@@ -70,6 +71,8 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 		if sys.esc || !running {
 			break
 		}
+
+		sys.tickSound()
 
 		sys.renderFrame()
 
@@ -232,6 +235,9 @@ func (rs *RollbackSystem) simulateFrame() bool {
 
 	// Update game state
 	sys.action()
+
+	// Update motif state
+	sys.uiAction()
 
 	// if rs.handleFlags() {
 	//	return true
