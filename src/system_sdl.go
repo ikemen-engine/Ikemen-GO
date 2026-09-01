@@ -16,6 +16,7 @@ type Window struct {
 	x, y, w, h int
 	fullscreen bool
 	closeflag  bool
+	focused    bool
 }
 
 func (s *System) newWindow(w, h int) (*Window, error) {
@@ -149,7 +150,17 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		input.controllerstate[i] = &ControllerState{Buttons: make(map[sdl.GameControllerButton]byte)}
 	}
 
-	return &Window{window, s.cfg.Config.WindowTitle, int(x), int(y), w, h, fullscreen, false}, nil
+	return &Window{
+		Window:     window,
+		title:      s.cfg.Config.WindowTitle,
+		x:          int(x),
+		y:          int(y),
+		w:          w,
+		h:          h,
+		fullscreen: fullscreen,
+		closeflag:  false,
+		focused:    true,
+	}, nil
 }
 
 func (w *Window) SwapBuffers() {
@@ -406,14 +417,19 @@ func (w *Window) pollEvents() {
 				OnKeyReleased(t.Keysym.Sym, t.Keysym.Mod)
 			}
 		case sdl.WindowEvent:
-			if t.Event == sdl.WINDOWEVENT_EXPOSED {
+			switch t.Event {
+			case sdl.WINDOWEVENT_EXPOSED:
 				renderName := gfx.GetName()
 				if renderName == "OpenGL 3.3" {
 					gfx.EndFrame()
 					w.SwapBuffers()
 				}
-			} else if t.Event == sdl.WINDOWEVENT_CLOSE {
+			case sdl.WINDOWEVENT_CLOSE:
 				w.closeflag = true
+			case sdl.WINDOWEVENT_FOCUS_GAINED:
+				w.focused = true
+			case sdl.WINDOWEVENT_FOCUS_LOST:
+				w.focused = false
 			}
 		case sdl.TextInputEvent:
 			if len(t.Text) > 0 {
@@ -436,6 +452,10 @@ func (w *Window) pollEvents() {
 
 func (w *Window) shouldClose() bool {
 	return w.closeflag
+}
+
+func (w *Window) Focused() bool {
+	return w.focused
 }
 
 func (w *Window) Close() {

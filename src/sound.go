@@ -49,8 +49,11 @@ func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 	if n.streamer == nil || len(samples) <= 0 {
 		return 0, false
 	}
+
 	s, ok = n.streamer.Stream(samples)
+
 	wavVolumeMul := 0.5 * (float64(sys.cfg.Sound.WavVolume) * float64(sys.cfg.Sound.MasterVolume) * 0.0001)
+
 	for i := range samples[:s] {
 		if sys.cfg.Sound.AudioDucking {
 			lmul := n.l.process(n.mul, &samples[i][0])
@@ -65,6 +68,7 @@ func (n *Normalizer) Stream(samples [][2]float64) (s int, ok bool) {
 			n.r.process(wavVolumeMul, &samples[i][1])
 		}
 	}
+
 	return s, ok
 }
 
@@ -319,8 +323,6 @@ func (b *StreamLooper) Seek(p int) error {
 type Bgm struct {
 	filename           string
 	bgmVolume          int
-	volRestore         int
-	pauseVolumeApplied bool
 	loop               int
 	streamer           beep.StreamSeeker
 	ctrl               *beep.Ctrl
@@ -344,8 +346,6 @@ func (bgm *Bgm) Stop() {
 		})
 	}
 	bgm.filename = ""
-	bgm.volRestore = 0
-	bgm.pauseVolumeApplied = false
 }
 
 func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd, startPosition int, freqmul float32, loopcount int) {
@@ -362,8 +362,6 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	bgm.loop = loop
 	bgm.bgmVolume = bgmVolume
 	bgm.freqmul = freqmul
-	bgm.volRestore = 0
-	bgm.pauseVolumeApplied = false
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
 		WithSpeakerLock(func() {
@@ -444,12 +442,6 @@ func (bgm *Bgm) Open(filename string, loop, bgmVolume, bgmLoopStart, bgmLoopEnd,
 	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
-	if sys.paused && sys.pauseVolumeApplied {
-		// A new BGM can start while the game is already paused.
-		bgm.volRestore = bgm.bgmVolume
-		bgm.bgmVolume = int(sys.cfg.Sound.PauseMasterVolume * bgm.bgmVolume / 100.0)
-		bgm.pauseVolumeApplied = true
-	}
 	bgm.UpdateVolume()
 	bgm.streamer.Seek(startPosition)
 	speaker.Play(bgm.ctrl)
@@ -582,6 +574,7 @@ func (bgm *Bgm) UpdateVolume() {
 	if bgm.volctrl == nil {
 		return
 	}
+
 	// TODO: Throw a debug warning if this triggers
 	if bgm.bgmVolume > sys.cfg.Sound.MaxBGMVolume {
 		LogMessage("WARNING: BGM volume set beyond expected range (value: %v). Clamped to MaxBgmVolume", bgm.bgmVolume)
@@ -590,13 +583,20 @@ func (bgm *Bgm) UpdateVolume() {
 
 	// NOTE: This is what we're going to do, no matter the complaints, because BGMVolume is handled differently
 	// than WAV volume anyway.  We've had problems changing this in the past so it's best to keep it as-is.
-	volume := -5 + float64(sys.cfg.Sound.BGMVolume)*0.06*(float64(sys.cfg.Sound.MasterVolume)/100)*(float64(bgm.bgmVolume)/100)
+	volume := -5 + float64(sys.cfg.Sound.BGMVolume)*0.06*(float64(sys.cfg.Sound.MasterVolume)/100)*
+		(float64(bgm.bgmVolume)/100)*(float64(sys.pauseFocusVolume)/100)
 
 	// clamp to 1
 	if volume >= 1 {
 		volume = 1
 	}
 	silent := volume <= -5
+
+	// This now runs every tick, so avoid the speaker lock when nothing actually changes
+	if bgm.volctrl.Volume == volume && bgm.volctrl.Silent == silent {
+		return
+	}
+
 	WithSpeakerLock(func() {
 		bgm.volctrl.Volume = volume
 		bgm.volctrl.Silent = silent
@@ -641,8 +641,6 @@ func (bgm *Bgm) OpenFromStreamer(stream beep.Streamer, srcSampleRate beep.Sample
 	bgm.loop = 0
 	bgm.bgmVolume = bgmVolume
 	bgm.freqmul = 1
-	bgm.volRestore = 0
-	bgm.pauseVolumeApplied = false
 
 	// Starve the current music streamer
 	if bgm.ctrl != nil {
@@ -664,12 +662,6 @@ func (bgm *Bgm) OpenFromStreamer(stream beep.Streamer, srcSampleRate beep.Sample
 	dstFreq := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / bgm.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), bgm.sampleRate, dstFreq, bgm.volctrl)
 	bgm.ctrl = &beep.Ctrl{Streamer: resampler}
-	if sys.paused && sys.pauseVolumeApplied {
-		// A video-backed BGM can also be attached while pause is active.
-		bgm.volRestore = bgm.bgmVolume
-		bgm.bgmVolume = int(sys.cfg.Sound.PauseMasterVolume * bgm.bgmVolume / 100.0)
-		bgm.pauseVolumeApplied = true
-	}
 	bgm.UpdateVolume()
 	speaker.Play(bgm.ctrl)
 }
@@ -935,6 +927,7 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
 type SoundEffect struct {
 	streamer beep.Streamer
 	volume   float32
+	duckMul  float32
 	localscl float32
 	pan      float32
 	x        *float32
@@ -948,12 +941,12 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 	applyPan := sys.cfg.Sound.StereoEffects && (s.x != nil || s.pan != 0)
 
 	// Fast path when no effects need to be applied
-	if s.volume == 256 && !applyPan {
+	if s.volume == 256 && s.duckMul == 1 && !applyPan {
 		return s.streamer.Stream(samples)
 	}
 
 	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
-	lv, rv := s.volume, s.volume
+	lv, rv := s.volume*s.duckMul, s.volume*s.duckMul
 	if applyPan {
 		// Use the camera viewport for panning, not the playable area
 		//screen := sys.xmax - sys.xmin
@@ -975,8 +968,8 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 
 		sc := sys.cfg.Sound.PanningRange / 100
 		of := (100 - sys.cfg.Sound.PanningRange) / 200
-		lv = Clamp(s.volume*2*(r*sc+of), 0, 512)
-		rv = Clamp(s.volume*2*((1-r)*sc+of), 0, 512)
+		lv = Clamp(s.volume*s.duckMul*2*(r*sc+of), 0, 512)
+		rv = Clamp(s.volume*s.duckMul*2*((1-r)*sc+of), 0, 512)
 	}
 
 	n, ok = s.streamer.Stream(samples)
@@ -1010,8 +1003,6 @@ type SoundChannel struct {
 	group              int32
 	number             int32
 	timeStamp          int32
-	volResume          float32 // For pausing/unpausing
-	pauseVolumeApplied bool
 	keepOnMatchEnd     bool
 }
 
@@ -1035,9 +1026,6 @@ func (s *SoundChannel) Reset() {
 	s.group = -1
 	s.number = -1
 	s.timeStamp = -1
-
-	s.volResume = 0
-	s.pauseVolumeApplied = false
 	s.keepOnMatchEnd = false
 }
 
@@ -1061,7 +1049,7 @@ func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul flo
 
 	// going to continue using our streamLooper which is now modified from beep.Loop2
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256, priority: 0, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, duckMul: 1, priority: 0, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / s.sfx.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), srcRate, dstRate, s.sfx)
@@ -1376,6 +1364,23 @@ func (s *SoundChannels) Tick() {
 			if v.streamer.Position() >= v.sound.length && v.sfx.loop != -1 { // End of sound
 				v.Reset()
 			}
+		}
+	}
+}
+
+// TODO: Maybe name these duck methods/vars with something specifically related to pause and loss of focus
+func (s *SoundChannels) Duck(duckMul float32, freeze bool) {
+	channels := *s
+	for i := range channels {
+		ch := &channels[i]
+		if !ch.IsPlaying() || ch.ctrl == nil || ch.sfx == nil {
+			continue
+		}
+		ch.sfx.duckMul = duckMul
+		if freeze {
+			ch.SetPaused(true)
+		} else if ch.ctrl.Paused && ch.sfx.freqmul > 0 {
+			ch.SetPaused(false)
 		}
 	}
 }

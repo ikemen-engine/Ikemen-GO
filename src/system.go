@@ -160,6 +160,7 @@ var sys = System{
 	soundMixer: &beep.Mixer{},
 	videoMixer: &beep.Mixer{},
 	bgm:        *newBgm(),
+	pauseFocusVolume: 100,
 	//soundChannels: newSoundChannels(16), // Lazy allocation in Request()
 	allPalFX: newPalFX(),
 	bgPalFX:  newPalFX(),
@@ -227,7 +228,10 @@ type System struct {
 	videoMixer          *beep.Mixer
 	bgm                 Bgm
 	matchMusicSel       []*bgMusic
-	pauseVolumeApplied  bool
+	pauseFocusVolume    int // Live combined pause/focus loss volume
+	focusMuted          bool
+	duckingFlag         bool // Whether charSoundChannels currently carry a non-1 duckMul
+	motifDuckingFlag    bool // Whether soundChannels currently carry a non-1 duckMul
 	soundChannels       SoundChannels // System sounds. Lifebars etc
 	charSoundChannels   [MaxPlayerNo]SoundChannels
 	allPalFX            *PalFX
@@ -1035,38 +1039,49 @@ func (s *System) tickSound() {
 		}
 	}
 
-	// Always pause if noMusic flag set, pause master volume is 0, or freqmul is 0.
-	bgmPause := s.nomusic || (s.paused && s.cfg.Sound.PauseMasterVolume == 0) || s.bgm.freqmul == 0 || s.motifPauseMusic()
-	s.bgm.SetPaused(bgmPause)
-
-	if s.paused {
-		// Apply BGM pause volume once per pause, even when the original BGM volume is 0.
-		// volRestore cannot be used as the latch because 0 is a valid volume.
-		if !s.bgm.pauseVolumeApplied {
-			s.bgm.volRestore = s.bgm.bgmVolume
-			s.bgm.bgmVolume = int(s.cfg.Sound.PauseMasterVolume * s.bgm.bgmVolume / 100.0)
-			s.bgm.UpdateVolume()
-			s.bgm.pauseVolumeApplied = true
-		}
-
-		// Run every paused tick so sounds started while paused are also softened.
-		s.pauseVolumeApplied = true
-		s.softenAllSound()
-	} else if s.pauseVolumeApplied || s.bgm.pauseVolumeApplied {
-		s.restorePauseVolume()
-	}
+	s.applyPauseFocusVolume()
 }
 
-func (s *System) restorePauseVolume() {
-	if s.bgm.pauseVolumeApplied {
-		s.bgm.bgmVolume = s.bgm.volRestore
-		s.bgm.volRestore = 0
-		s.bgm.pauseVolumeApplied = false
-		s.bgm.UpdateVolume()
+func (s *System) applyPauseFocusVolume() {
+	// The window losing focus applies its own volume percentage, independent of the pause menu
+	s.focusMuted = s.cfg.Sound.FocusLossVolume < 100 && s.window != nil && !s.window.Focused()
+
+	// Check pause and focus loss volume levels
+	// If both are active at once, the quieter one wins
+	s.pauseFocusVolume = 100
+	if s.paused {
+		s.pauseFocusVolume = Min(s.pauseFocusVolume, s.cfg.Sound.PauseMasterVolume)
 	}
-	if s.pauseVolumeApplied {
-		s.restoreAllVolume()
-		s.pauseVolumeApplied = false
+	if s.focusMuted {
+		s.pauseFocusVolume = Min(s.pauseFocusVolume, s.cfg.Sound.FocusLossVolume)
+	}
+
+	pauseSilence := s.paused && s.cfg.Sound.PauseMasterVolume == 0
+
+	bgmPause := s.nomusic || pauseSilence || s.bgm.freqmul == 0 || s.motifPauseMusic()
+	s.bgm.SetPaused(bgmPause)
+	s.bgm.UpdateVolume()
+
+	// Update char sounds
+	ducking := s.pauseFocusVolume < 100
+	if ducking || s.duckingFlag {
+		duckMul := float32(s.pauseFocusVolume) / 100
+		for i := range s.charSoundChannels {
+			s.charSoundChannels[i].Duck(duckMul, pauseSilence)
+		}
+		s.duckingFlag = ducking
+	}
+
+	// Update system sounds
+	// TODO: FightScreen sounds should probably respect pauses unlike motif sounds
+	focusVolume := 100
+	if s.focusMuted {
+		focusVolume = s.cfg.Sound.FocusLossVolume
+	}
+	motifDucking := focusVolume < 100
+	if motifDucking || s.motifDuckingFlag {
+		s.soundChannels.Duck(float32(focusVolume)/100, false)
+		s.motifDuckingFlag = motifDucking
 	}
 }
 
@@ -2268,47 +2283,6 @@ func (s *System) stopAllCharSounds() {
 	}
 }
 
-func (s *System) softenAllSound() {
-	for i := range s.charSoundChannels {
-		for j := range s.charSoundChannels[i] {
-			ch := &s.charSoundChannels[i][j]
-
-			// Temporarily store the volume so it can be recalled later.
-			if ch.IsPlaying() && ch.sfx != nil && ch.ctrl != nil && !ch.pauseVolumeApplied {
-				ch.volResume = ch.sfx.volume
-				softVolume := ch.sfx.volume * (float32(s.cfg.Sound.PauseMasterVolume) / 100.0)
-				ch.SetVolume(softVolume)
-				ch.pauseVolumeApplied = true
-
-				// Pause if pause master volume is 0
-				if s.cfg.Sound.PauseMasterVolume == 0 {
-					ch.SetPaused(true)
-				}
-			}
-		}
-	}
-	// Don't pause motif sounds
-}
-
-func (s *System) restoreAllVolume() {
-	for i := range s.charSoundChannels {
-		for j := range s.charSoundChannels[i] {
-			ch := &s.charSoundChannels[i][j]
-
-			// Restore the volume we had.
-			if ch.sfx != nil && ch.ctrl != nil && ch.pauseVolumeApplied {
-				ch.SetVolume(ch.volResume)
-				ch.pauseVolumeApplied = false
-
-				// Unpause only those whose freqmul > 0
-				if ch.ctrl.Paused && ch.sfx.freqmul > 0 {
-					ch.SetPaused(false)
-				}
-			}
-		}
-	}
-}
-
 func (s *System) clearMatchSound() {
 	// Only explicitly marked sounds may outlive the match.
 	for i := range s.soundChannels {
@@ -2454,8 +2428,8 @@ func (s *System) resetRound() {
 
 	s.resetFrameTime()
 
-	s.restorePauseVolume()
 	s.paused = false
+	s.applyPauseFocusVolume()
 	s.introSkipCall = false
 	s.roundResetFlg = false
 	s.reloadFlg, s.reloadStageFlg, s.reloadFightScreenFlg = false, false, false
