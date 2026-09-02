@@ -1370,6 +1370,21 @@ function start.f_clearTimeText(text, totalSec)
 	return text:gsub('%%h', h):gsub('%%m', m):gsub('%%s', s):gsub('%%x', x)
 end
 
+local function getCharDefByName(name)
+	-- First, try the direct key
+	if main.t_charDef[name] ~= nil then
+		return main.t_charDef[name]
+	end
+	-- Search by the .def filename
+	for charDef, charIndex in pairs(main.t_charDef) do
+		local defName = charDef:match('([^/\\]+)%.def$')
+		if defName ~= nil and defName:lower() == name:lower() then
+			return charIndex
+		end
+	end
+	return nil
+end
+
 --returns formatted record text table
 function start.f_getRecordText()
 	local text = motif.select_info.record.text[gameMode()]
@@ -1389,8 +1404,9 @@ function start.f_getRecordText()
 	text = text:gsub('%%r', tostring(t.win))
 	--char name
 	local name = '?' --in case character being removed from roster
-	if main.t_charDef[t.chars[1]] ~= nil then
-		name = start.f_getCharData(main.t_charDef[t.chars[1]]).name
+	local charDef = getCharDefByName(t.chars[1])
+	if charDef ~= nil then
+		name = start.f_getCharData(charDef).name
 	end
 	text = text:gsub('%%c', name)
 	--player name
