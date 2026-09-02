@@ -915,19 +915,7 @@ func (s *System) renderFrame() {
 	}
 	defer s.restoreAspectState(logicState)
 
-	if !s.frameSkip {
-		x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
-		dx, dy, dscl := s.zoom.apply(x, y, scl)
-		s.draw(dx, dy, dscl)
-	}
-
-	// Lua
-	if !s.frameSkip {
-		s.luaFlushDrawQueue()
-		// Fullscreen fades are the final scene pass, after all deferred Lua UI.
-		s.fightScreen.drawFade()
-		s.motif.drawFade()
-	} else {
+	if s.frameSkip {
 		// Keep pause-menu logic responsive even when this render frame is skipped.
 		// Any queued draw ops are discarded below because this frame is not being rendered.
 		if s.motif.me.active {
@@ -935,15 +923,24 @@ func (s *System) renderFrame() {
 		}
 		// On skipped frames, discard queued draws to avoid buildup.
 		s.luaDiscardDrawQueue()
+		return
 	}
+
+	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
+	dx, dy, dscl := s.zoom.apply(x, y, scl)
+	s.draw(dx, dy, dscl)
+
+	// Lua
+	s.luaFlushDrawQueue()
+	// Fullscreen fades are the final scene pass, after all deferred Lua UI.
+	s.fightScreen.drawFade()
+	s.motif.drawFade()
 
 	// Render top elements
-	if !s.frameSkip {
-		s.drawTop()
-	}
+	s.drawTop()
 
 	// Render debug elements
-	if !s.frameSkip && s.debugDisplay {
+	if s.debugDisplay {
 		// Re-mask fight-only frames before drawing full-resolution debug panels.
 		if s.middleOfMatch() && !s.motifOverlayActive() {
 			s.motif.drawAspectBars()
@@ -2740,6 +2737,26 @@ func (s *System) clearSpriteData() {
 	}
 }
 
+// Centralized call of every cueDraw()
+func (s *System) cueDraw() {
+	// No need to cue when we won't render
+	if s.frameSkip {
+		return
+	}
+
+	// Start fresh each frame
+	s.clearSpriteData()
+
+	for i := range s.projs {
+		for _, p := range s.projs[i] {
+			p.cueDraw()
+		}
+	}
+
+	s.charList.cueDraw()
+	s.explodCueDraw()
+}
+
 func (s *System) screenleft() float32 {
 	return float32(s.stage.screenleft) * s.stage.localscl
 }
@@ -2754,9 +2771,6 @@ func (s *System) action() {
 	if s.matchPaused() {
 		return
 	}
-
-	// TODO: This and all "cueDraw" could also be separated from action()
-	s.clearSpriteData()
 
 	var x, y, scl float32 = s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale / s.cam.BaseScale()
 	s.cam.ResetTracking()
@@ -2879,18 +2893,9 @@ func (s *System) action() {
 	}
 	s.charList.xScreenBound()
 
-	for i := range s.projs {
-		for _, p := range s.projs[i] {
-			p.cueDraw()
-		}
-	}
-
-	s.charList.cueDraw()
-
 	// Note: Explod update must happen after hit detection. Because hit sparks are also explods
 	s.explodUpdate()
 	s.charTextsUpdate()
-	s.explodCueDraw()
 
 	// Adjust game speed
 	if s.tickNextFrame() && !s.motif.me.active {
@@ -4168,7 +4173,8 @@ func (s *System) runMatch() (reload bool) {
 			break
 		}
 
-		// Render frame
+		// Cue sprites, then render
+		s.cueDraw()
 		s.renderFrame()
 
 		// Update system. Break if update returns false (engine shutdown).
