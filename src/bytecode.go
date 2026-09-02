@@ -10400,6 +10400,29 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type guard StateControllerBase
+
+const (
+	guard_guardflag byte = iota
+	guard_redirectid
+)
+
+func (sc guard) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), guard_redirectid, "Guard")
+	if crun == nil {
+		return false
+	}
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case guard_guardflag:
+			crun.guardflag = exp[0].evalI(c)
+		}
+		return true
+	})
+	return false
+}
+
 type pause StateControllerBase
 
 const (

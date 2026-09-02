@@ -87,6 +87,7 @@ const (
 	ASF_noguarddamage
 	ASF_noguardko
 	ASF_noguardpointsdamage
+	ASF_noguardstate
 	ASF_nohardcodedkeys
 	ASF_nohitdamage
 	ASF_noinput
@@ -3253,6 +3254,7 @@ type CharSystemVar struct {
 	assertFlag            AssertSpecialFlag
 	hitCount              int32
 	guardCount            int32
+	guardflag             int32
 	uniqHitCount          int32
 	pauseMovetime         int32
 	superMovetime         int32
@@ -10841,7 +10843,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 	// Check if the enemy can guard this attack
 	// Unguardable flag also affects projectiles
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/2367
-	canguard := !c.asf(ASF_unguardable) && getter.scf(SCF_guard) &&
+	canguard := !c.asf(ASF_unguardable) && (getter.scf(SCF_guard) || getter.guardflag != 0) &&
 		(!getter.csf(CSF_gethit) || getter.ghv.guarded)
 
 	// Automatically choose high or low in case of auto guard
@@ -10863,9 +10865,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 	// If enemy is guarding the correct way, "hitResult" is set to "guard" (2)
 	if canguard {
 		// Guardflag checks
-		if hd.guardflag&int32(HF_H) != 0 && getter.ss.stateType == ST_S ||
+		if hd.guardflag&getter.guardflag != 0 || (hd.guardflag&int32(HF_H) != 0 && getter.ss.stateType == ST_S ||
 			hd.guardflag&int32(HF_L) != 0 && getter.ss.stateType == ST_C ||
-			hd.guardflag&int32(HF_A) != 0 && getter.ss.stateType == ST_A { // Statetype L is left out here
+			hd.guardflag&int32(HF_A) != 0 && getter.ss.stateType == ST_A) { // Statetype L is left out here
 			// Switch kill flag to guard if attempting to guard correctly
 			getter.ghv.kill = hd.guard_kill
 			// We only switch to guard behavior if the enemy can survive guarding the attack
@@ -11739,7 +11741,7 @@ func (c *Char) actionPrepare() {
 			// In Mugen, characters can perform basic actions even if they are KO
 			if !c.asf(ASF_nohardcodedkeys) {
 				if c.ctrl() {
-					if c.scf(SCF_guard) && c.inguarddist && !c.inGuardState() && c.ss.stateType != ST_L && c.cmd[0].Buffer.Bb > 0 {
+					if !c.asf(ASF_noguardstate) && c.scf(SCF_guard) && c.inguarddist && !c.inGuardState() && c.ss.stateType != ST_L && c.cmd[0].Buffer.Bb > 0 {
 						c.changeState(120, -1, -1, "") // Start guarding
 					} else if !c.asf(ASF_nojump) && c.ss.stateType == ST_S && c.cmd[0].Buffer.Ub > 0 &&
 						(!(sys.intro < 0 && sys.intro > -sys.fightScreen.round.over_waittime) || c.asf(ASF_postroundinput)) {
@@ -11921,6 +11923,7 @@ func (c *Char) actionRun() {
 	if c.minus != 3 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+	c.guardflag = 0
 	// Run state -4
 	c.minus = -4
 	if sb, ok := c.gi().states[-4]; ok {
@@ -11969,7 +11972,7 @@ func (c *Char) actionRun() {
 	if !c.pauseBool {
 		if c.keyctrl[0] && c.cmd != nil {
 			if c.ctrl() && (c.controller >= 0 || c.helperIndex == 0) {
-				if !c.asf(ASF_nohardcodedkeys) {
+				if !c.asf(ASF_nohardcodedkeys) && !c.asf(ASF_noguardstate) {
 					if c.inguarddist && c.scf(SCF_guard) && !c.inGuardState() && c.cmd[0].Buffer.Bb > 0 {
 						c.changeState(120, -1, -1, "")
 						// In Mugen the characters *can* change to the guarding states during pauses
@@ -12544,7 +12547,6 @@ func (c *Char) tick() {
 	if c.csf(CSF_gethit) && !c.hoverKeepState && !c.ghv.keepstate {
 		// This flag prevents prevMoveType from being changed twice
 		c.ss.storeMoveType = true
-		c.ss.changeMoveType(MT_H)
 		//if c.hitPauseTime > 0 {
 		//	c.ss.clearHitPauseExecutionToggleFlags()
 		//}
@@ -12572,15 +12574,19 @@ func (c *Char) tick() {
 			}
 		} else if c.ghv.guarded &&
 			(c.ghv.damage < c.life || sys.gsf(GSF_globalnoko) || c.asf(ASF_noko) || c.asf(ASF_noguardko)) {
-			switch c.ss.stateType {
-			// All of these state changes remove ctrl from the char
-			// Guarding is not affected by P2getP1state
-			case ST_S:
-				c.selfState(150, -1, -1, 0, "")
-			case ST_C:
-				c.selfState(152, -1, -1, 0, "")
-			default:
-				c.selfState(154, -1, -1, 0, "")
+			if c.asf(ASF_noguardstate) {
+				c.ss.storeMoveType = false
+			} else {
+				switch c.ss.stateType {
+				// All of these state changes remove ctrl from the char
+				// Guarding is not affected by P2getP1state
+				case ST_S:
+					c.selfState(150, -1, -1, 0, "")
+				case ST_C:
+					c.selfState(152, -1, -1, 0, "")
+				default:
+					c.selfState(154, -1, -1, 0, "")
+				}
 			}
 		} else if c.ss.stateType == ST_L && c.pos[1] == 0 {
 			c.changeStateEx(5080, pn, -1, 0, "")
@@ -12606,6 +12612,9 @@ func (c *Char) tick() {
 			default:
 				c.changeStateEx(5020, pn, -1, 0, "")
 			}
+		}
+		if c.ss.storeMoveType {
+			c.ss.changeMoveType(MT_H)
 		}
 		// Prepare down get hit offset
 		if c.ss.stateType == ST_L && c.pos[1] == 0 && c.ghv.yvel != 0 {
@@ -12740,7 +12749,7 @@ func (c *Char) cueDebugDraw() {
 					sys.debugc2mtk.Add(clsn2, xoff, yoff, xs, ys, angle) // Fully invincible
 				case hb:
 					sys.debugc2hb.Add(clsn2, xoff, yoff, xs, ys, angle) // Partially invincible
-				case c.inguarddist && c.scf(SCF_guard):
+				case (c.inguarddist && c.scf(SCF_guard)) || c.guardflag != 0:
 					sys.debugc2grd.Add(clsn2, xoff, yoff, xs, ys, angle) // Guarding
 				default:
 					sys.debugc2.Add(clsn2, xoff, yoff, xs, ys, angle) // Normal

@@ -9488,6 +9488,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_noguardko)))
 		case "noguardpointsdamage":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_noguardpointsdamage)))
+		case "noguardstate":
+			l.Push(lua.LBool(sys.debugWC.asf(ASF_noguardstate)))
 		case "nohardcodedkeys":
 			l.Push(lua.LBool(sys.debugWC.asf(ASF_nohardcodedkeys)))
 		case "nohitdamage":
