@@ -12425,6 +12425,7 @@ func (c *Char) update() {
 		}
 		c.finalDefense = float64(((float32(c.gi().defenceBase) * customDefense * c.superDefenseMul * c.fallDefenseMul) / 100))
 	}
+
 	// Update position interpolation
 	if c.acttmp > 0 {
 		spd := sys.tickInterpolation()
@@ -12437,6 +12438,7 @@ func (c *Char) update() {
 			}
 		}
 	}
+
 	// KO sound echo
 	if c.koEchoTimer > 0 {
 		if !c.scf(SCF_ko) || sys.gsf(GSF_nokosnd) {
@@ -12453,6 +12455,19 @@ func (c *Char) update() {
 			}
 			c.koEchoTimer++
 		}
+	}
+
+	if sys.tickNextFrame() {
+		// Reset interpolation reference position
+		c.oldPos = c.pos
+		//c.dustOldPos = c.pos // We need this one separated because PosAdd and such change oldPos
+
+		// Reset pushed flag
+		// This flag is used to prevent position interpolation when chars push each other
+		c.pushed = false
+
+		// Signal that all tasks have finished
+		c.minus = 3
 	}
 }
 
@@ -12651,13 +12666,14 @@ func (c *Char) tick() {
 			c.ghv.down_recovertime -= RandI(1, (c.ghv.down_recovertime+1)/2)
 		}
 	}
-	// Reset pushed flag
-	// This flag is apparently used to prevent position interpolation when chars push each other
-	c.pushed = false
 }
 
 // Prepare collision boxes and debug text for drawing
 func (c *Char) cueDebugDraw() {
+	// Known issue: positions and player pushing resolve on different tick conditions,
+	// so Clsn can briefly draw a "moved but not pushed" overlap at slow game speeds
+	// Using oldPos here would fix it, but it's also a bit of a hack and the issue is harmless
+	// The alternative is far more dangerous: reordering globalCollision() and such functions
 	x := c.pos[0] * c.localscl
 	y := c.pos[1] * c.localscl
 	xoff := x + c.offsetX()*c.localscl
@@ -12666,6 +12682,7 @@ func (c *Char) cueDebugDraw() {
 	ys := c.clsnScale[1]
 	angle := c.clsnAngle * c.facing
 	nhbtxt := ""
+
 	// Debug Clsn display
 	if sys.clsnDisplay {
 		if c.curFrame != nil {
@@ -12825,6 +12842,7 @@ func (c *Char) cueDebugDraw() {
 		// Add crosshair
 		sys.debugch.Add([][4]float32{{-1, -1, 1, 1}}, x, y, 1, 1, 0)
 	}
+
 	// Prepare information for debug text
 	if sys.debugDisplay {
 		// Add debug Clsn text
@@ -13116,12 +13134,6 @@ func (c *Char) cueDraw() {
 				sys.reflectionList.add(rs)
 			}
 		}
-	}
-	if sys.tickNextFrame() {
-		// Signal that all tasks have finished
-		c.minus = 3
-		c.oldPos = c.pos
-		//c.dustOldPos = c.pos // We need this one separated because PosAdd and such change oldPos
 	}
 }
 
