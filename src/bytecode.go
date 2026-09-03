@@ -79,6 +79,7 @@ const (
 	VT_Float
 	VT_Int
 	VT_Bool
+	VT_String
 	VT_Undefined
 )
 
@@ -101,6 +102,7 @@ const (
 	OC_int
 	OC_int64
 	OC_float
+	OC_string
 	OC_pop
 	OC_dup
 	OC_swap
@@ -1070,8 +1072,9 @@ const (
 )
 
 type StringPool struct {
-	List []string
-	Map  map[string]int
+	List    []string
+	ListLow []string // Lowercase list to avoid doing that work during runtime
+	Map     map[string]int
 }
 
 func NewStringPool() *StringPool {
@@ -1079,7 +1082,7 @@ func NewStringPool() *StringPool {
 }
 
 func (sp *StringPool) Clear() {
-	sp.List, sp.Map = nil, make(map[string]int)
+	sp.List, sp.ListLow, sp.Map = nil, nil, make(map[string]int)
 }
 
 func (sp *StringPool) Add(s string) int {
@@ -1087,6 +1090,7 @@ func (sp *StringPool) Add(s string) int {
 	if !ok {
 		i = len(sp.List)
 		sp.List = append(sp.List, s)
+		sp.ListLow = append(sp.ListLow, strings.ToLower(s))
 		sp.Map[s] = i
 	}
 	return i
@@ -1106,29 +1110,38 @@ func (bv BytecodeValue) IsUndefined() bool {
 }
 
 func (bv BytecodeValue) ToF() float32 {
-	if bv.IsUndefined() {
-		// Returning NaN here would destroy any math expression where the value was found
+	if bv.IsUndefined() || bv.vtype == VT_String {
+		// Returning NaN here for Undefined would destroy any math expression around it
+		// Strings have no numeric value, so math just treats them as 0
 		return 0
 	}
 	return float32(bv.value)
 }
 
 func (bv BytecodeValue) ToI() int32 {
-	if bv.IsUndefined() {
+	if bv.IsUndefined() || bv.vtype == VT_String {
 		return 0
 	}
 	return int32(bv.value)
 }
 
 func (bv BytecodeValue) ToI64() int64 {
-	if bv.IsUndefined() {
+	if bv.IsUndefined() || bv.vtype == VT_String {
 		return 0
 	}
 	return int64(bv.value)
 }
 
 func (bv BytecodeValue) ToB() bool {
-	if bv.IsUndefined() || bv.value == 0 {
+	if bv.IsUndefined() {
+		return false
+	}
+	// A string always counts as true if it's defined
+	// TODO: Strings being both int 0 and bool true is a bit against Mugen conventions
+	if bv.vtype == VT_String {
+		return true
+	}
+	if bv.value == 0 {
 		return false
 	}
 	return true
@@ -1138,10 +1151,40 @@ func (bv BytecodeValue) ToAny() interface{} {
 	if bv.IsUndefined() {
 		return UndefinedFormatter{} // Uses our custom fmt.Formatter
 	}
+	if bv.vtype == VT_String {
+		return bv.ToS()
+	}
 	if bv.vtype == VT_Float {
 		return bv.ToF()
 	}
 	return bv.ToI()
+}
+
+// Looks up a VT_String's actual text in the string pool
+func (bv BytecodeValue) ToS() string {
+	if bv.vtype != VT_String {
+		return ""
+	}
+	idx := int(bv.value)
+	pool := sys.stringPool[sys.workingState.playerNo].List
+	if idx < 0 || idx >= len(pool) {
+		return ""
+	}
+	return pool[idx]
+}
+
+// Same as ToS but lowercased
+// Used when comparing strings to eaach other
+func (bv BytecodeValue) toLowS() string {
+	if bv.vtype != VT_String {
+		return ""
+	}
+	idx := int(bv.value)
+	pool := sys.stringPool[sys.workingState.playerNo].ListLow
+	if idx < 0 || idx >= len(pool) {
+		return ""
+	}
+	return pool[idx]
 }
 
 func (bv *BytecodeValue) SetF(f float32) {
@@ -1192,6 +1235,12 @@ func BytecodeBool(b bool) BytecodeValue {
 	return BytecodeValue{VT_Bool, float64(Btoi(b))}
 }
 
+// Stores case-sensitive string in the pool and returns a value pointing to it
+func BytecodeString(s string) BytecodeValue {
+	idx := sys.stringPool[sys.workingState.playerNo].Add(s)
+	return BytecodeValue{VT_String, float64(idx)}
+}
+
 type BytecodeStack []BytecodeValue
 
 func (bs *BytecodeStack) Clear() {
@@ -1216,6 +1265,10 @@ func (bs *BytecodeStack) PushF(f float32) {
 
 func (bs *BytecodeStack) PushB(b bool) {
 	bs.Push(BytecodeBool(b))
+}
+
+func (bs *BytecodeStack) PushS(s string) {
+	bs.Push(BytecodeString(s))
 }
 
 func (bs BytecodeStack) Top() *BytecodeValue {
@@ -1303,6 +1356,12 @@ func (be *BytecodeExp) appendValue(bv BytecodeValue) (ok bool) {
 		be.append(OC_float)
 		f := float32(math.NaN())
 		be.append((*(*[4]OpCode)(unsafe.Pointer(&f)))[:]...)
+	case VT_String:
+		// TODO: not used or tested yet
+		// Should work like the other cases. Needs double checking once something actually calls this with a string
+		be.append(OC_string)
+		idx := int32(bv.value)
+		be.append((*(*[4]OpCode)(unsafe.Pointer(&idx)))[:]...)
 	default:
 		return false
 	}
@@ -1338,7 +1397,13 @@ func (be BytecodeExp) ReadIntAt(i *int) int32 {
 // Replaces sys.stringPool[sys.workingState.playerNo].List[...]
 func (be BytecodeExp) ReadPoolStringAt(i *int) string {
 	idx := be.ReadIntAt(i)
-	return sys.stringPool[sys.workingState.playerNo].List[idx]
+	pool := sys.stringPool[sys.workingState.playerNo].List
+	if idx < 0 || int(idx) >= len(pool) {
+		// Shouldn't happen, but fail quietly instead of crashing the game
+		LogMessage("Invalid string pool index: %d (pool size %d)", idx, len(pool))
+		return ""
+	}
+	return pool[idx]
 }
 
 // Reads the expression length header at the current pointer
@@ -1595,7 +1660,17 @@ func (BytecodeExp) eq(v1 *BytecodeValue, v2 BytecodeValue) {
 	//	*v1 = BytecodeUndefined()
 	//	return
 	//}
-	if ValueType(Min(int32(v1.vtype), int32(v2.vtype))) == VT_Float {
+	// A string only equals another string with the same text
+	if v1.vtype == VT_String || v2.vtype == VT_String {
+		if v1.vtype != VT_String || v2.vtype != VT_String {
+			v1.SetB(false)
+			return
+		}
+		// Compare case-insensitively, like Mugen did
+		v1.SetB(v1.toLowS() == v2.toLowS())
+		return
+	}
+	if v1.vtype != VT_None && v2.vtype != VT_None && (v1.vtype == VT_Float || v2.vtype == VT_Float) {
 		v1.SetB(v1.ToF() == v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() == v2.ToI())
@@ -1607,7 +1682,15 @@ func (BytecodeExp) ne(v1 *BytecodeValue, v2 BytecodeValue) {
 	//	*v1 = BytecodeUndefined()
 	//	return
 	//}
-	if ValueType(Min(int32(v1.vtype), int32(v2.vtype))) == VT_Float {
+	if v1.vtype == VT_String || v2.vtype == VT_String {
+		if v1.vtype != VT_String || v2.vtype != VT_String {
+			v1.SetB(true)
+			return
+		}
+		v1.SetB(v1.toLowS() != v2.toLowS())
+		return
+	}
+	if v1.vtype != VT_None && v2.vtype != VT_None && (v1.vtype == VT_Float || v2.vtype == VT_Float) {
 		v1.SetB(v1.ToF() != v2.ToF())
 	} else {
 		v1.SetB(v1.ToI() != v2.ToI())
@@ -2062,6 +2145,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			flo := Float32frombytes(arr)
 			sys.bcStack.PushF(flo)
 			i += 4
+		case OC_string:
+			sys.bcStack.PushS(be.ReadPoolStringAt(&i))
 		case OC_neg:
 			be.neg(sys.bcStack.Top())
 		case OC_not:
@@ -2725,49 +2810,60 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_movement_down_friction_threshold:
 		sys.bcStack.PushF(c.gi().movement.down.friction_threshold * ((320 / c.localcoord) / oc.localscl))
 	case OC_const_authorname:
-		authStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(c.gi().authorLow == authStr)
+		sys.bcStack.PushS(c.gi().author)
 	case OC_const_displayname:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(c.gi().displaynameLow == nameStr)
+		sys.bcStack.PushS(c.gi().displayname)
 	case OC_const_name:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(c.gi().nameLow == nameStr)
+		sys.bcStack.PushS(c.gi().name)
 	case OC_const_p2name:
-		p2 := c.p2()
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p2 != nil && p2.gi().nameLow == nameStr) // These return true or false. Never "undefined"
+		// In Mugen, these return true or false. Never undefined
+		// In Ikemen, this works right now because undefined vs string always compares as false in eq/ne
+		if p2 := c.p2(); p2 != nil {
+			sys.bcStack.PushS(p2.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_const_p3name:
-		p3 := c.partner(0, false)
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p3 != nil && p3.gi().nameLow == nameStr)
+		if p3 := c.partner(0, false); p3 != nil {
+			sys.bcStack.PushS(p3.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_const_p4name:
-		p4 := sys.charList.enemyNear(c, 1, true)
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p4 != nil && p4.gi().nameLow == nameStr)
+		if p4 := sys.charList.enemyNear(c, 1, true); p4 != nil {
+			sys.bcStack.PushS(p4.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_const_p5name:
-		p5 := c.partner(1, false)
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p5 != nil && p5.gi().nameLow == nameStr)
+		if p5 := c.partner(1, false); p5 != nil {
+			sys.bcStack.PushS(p5.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_const_p6name:
-		p6 := sys.charList.enemyNear(c, 2, true)
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p6 != nil && p6.gi().nameLow == nameStr)
+		if p6 := sys.charList.enemyNear(c, 2, true); p6 != nil {
+			sys.bcStack.PushS(p6.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_const_p7name:
-		p7 := c.partner(2, false)
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p7 != nil && p7.gi().nameLow == nameStr)
+		if p7 := c.partner(2, false); p7 != nil {
+			sys.bcStack.PushS(p7.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_const_p8name:
-		p8 := sys.charList.enemyNear(c, 3, true)
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(p8 != nil && p8.gi().nameLow == nameStr)
+		if p8 := sys.charList.enemyNear(c, 3, true); p8 != nil {
+			sys.bcStack.PushS(p8.gi().name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	// StageVar
 	case OC_const_stagevar_info_author:
-		authStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(sys.stage.authorLow == authStr)
+		sys.bcStack.PushS(sys.stage.author)
 	case OC_const_stagevar_info_displayname:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(sys.stage.displaynameLow == nameStr)
+		sys.bcStack.PushS(sys.stage.displayname)
 	case OC_const_stagevar_info_ikemenversion_major:
 		sys.bcStack.PushI(int32(sys.stage.ikemenver[0]))
 	case OC_const_stagevar_info_ikemenversion_minor:
@@ -2779,8 +2875,7 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 	case OC_const_stagevar_info_mugenversion_minor:
 		sys.bcStack.PushI(int32(sys.stage.mugenver[1]))
 	case OC_const_stagevar_info_name:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(sys.stage.nameLow == nameStr)
+		sys.bcStack.PushS(sys.stage.name)
 	case OC_const_stagevar_camera_autocenter:
 		sys.bcStack.PushB(sys.stage.stageCamera.autocenter)
 	case OC_const_stagevar_camera_boundleft:
@@ -3335,8 +3430,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_float:
 		*sys.bcStack.Top() = BytecodeFloat(sys.bcStack.Top().ToF())
 	case OC_ex_gamemode:
-		modeStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(strings.ToLower(sys.gameMode) == modeStr)
+		sys.bcStack.PushS(sys.gameMode)
 	case OC_ex_groundangle:
 		sys.bcStack.PushF(c.groundAngle)
 	case OC_ex_guardbreak:
@@ -3345,11 +3439,14 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.guardPoints)
 	case OC_ex_guardpointsmax:
 		sys.bcStack.PushI(c.guardPointsMax)
-	case OC_ex_helpername:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(c.helperIndex != 0 && strings.ToLower(c.name) == nameStr)
 	case OC_ex_helperindexexist:
 		*sys.bcStack.Top() = c.helperIndexExist(*sys.bcStack.Top())
+	case OC_ex_helpername:
+		if c.helperIndex != 0 {
+			sys.bcStack.PushS(c.name)
+		} else {
+			sys.bcStack.Push(BytecodeUndefined())
+		}
 	case OC_ex_hitoverridden:
 		sys.bcStack.PushB(c.hoverIdx >= 0)
 	case OC_ex_ikemenversion_major:
@@ -3612,15 +3709,13 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_index:
 		sys.bcStack.PushI(c.indexTrigger())
 	case OC_ex2_fightscreenvar_info_author:
-		authStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(sys.fightScreen.authorLow == authStr)
+		sys.bcStack.PushS(sys.fightScreen.author)
 	case OC_ex2_fightscreenvar_info_localcoord_x:
 		sys.bcStack.PushI(sys.fightScreen.localcoord[0])
 	case OC_ex2_fightscreenvar_info_localcoord_y:
 		sys.bcStack.PushI(sys.fightScreen.localcoord[1])
 	case OC_ex2_fightscreenvar_info_name:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(sys.fightScreen.nameLow == nameStr)
+		sys.bcStack.PushS(sys.fightScreen.name)
 	case OC_ex2_fightscreenvar_round_ctrl_time:
 		sys.bcStack.PushI(sys.fightScreen.round.ctrl_time)
 	case OC_ex2_fightscreenvar_round_over_hittime:
@@ -3726,8 +3821,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			sys.bcStack.PushF(0)
 		}
 	case OC_ex2_bgmvar_filename:
-		nameStr := be.ReadPoolStringAt(i)
-		sys.bcStack.PushB(sys.bgm.filename == nameStr)
+		sys.bcStack.PushS(sys.bgm.filename)
 	case OC_ex2_bgmvar_freqmul:
 		sys.bcStack.PushF(sys.bgm.freqmul)
 	case OC_ex2_bgmvar_length:
@@ -4243,8 +4337,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_parentexist:
 		sys.bcStack.PushB(c.parentExist())
 	case OC_ex2_shader:
-		shaderName := strings.ToLower(be.ReadPoolStringAt(i))
-		sys.bcStack.PushB(c.customShader.name == shaderName)
+		sys.bcStack.PushS(c.customShader.name)
 	default:
 		LogMessage("%v", be[*i-1])
 		c.panic("Invalid bytecode OpCode encountered")

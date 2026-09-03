@@ -1363,17 +1363,6 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}
 		return nil
 	}
-	nameSub := func(opct, opc OpCode) error {
-		return eqne(func() error {
-			if err := text(); err != nil {
-				return err
-			}
-			out.append(opct)
-			out.appendI32Op(opc, int32(sys.stringPool[c.playerNo].Add(
-				strings.ToLower(c.token))))
-			return nil
-		})
-	}
 	// Parses a flag. Returns flag and error.
 	flagSub := func() (int32, error) {
 		flg := int32(0)
@@ -1418,6 +1407,16 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	var be BytecodeExp
 	var opc OpCode
 	var err error
+	// A quoted string like "Ikemen"
+	// Kept as typed, since it might need to print and eq/ne already compares case-insensitively
+	if c.token == "\"" {
+		if err := text(); err != nil {
+			return bvNone(), err
+		}
+		out.appendI32Op(OC_string, int32(sys.stringPool[c.playerNo].Add(c.token)))
+		c.token = c.tokenizer(in)
+		return bvNone(), nil
+	}
 	switch c.token {
 	case "":
 		// Because empty parameter values are not parsed at all, we don't need to ignore them here
@@ -1835,9 +1834,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "animtime":
 		out.append(OC_animtime)
 	case "authorname":
-		if err := nameSub(OC_const_, OC_const_authorname); err != nil {
-			return bvNone(), err
-		}
+		out.append(OC_const_, OC_const_authorname)
 	case "backedge":
 		out.append(OC_backedge)
 	case "backedgebodydist":
@@ -1854,12 +1851,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingParenthesis(); err != nil {
 			return bvNone(), err
 		}
-		isStr := false
 		switch vname {
 		case "filename":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_filename
-			isStr = true
 		case "length":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_length
@@ -1887,14 +1882,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error("Invalid BGMVar argument: " + vname)
 		}
-		if isStr {
-			if err := nameSub(opct, opc); err != nil {
-				return bvNone(), err
-			}
-		} else {
-			out.append(opct)
-			out.append(opc)
-		}
+		out.append(opct)
+		out.append(opc)
 	case "bottomedge":
 		out.append(OC_bottomedge)
 	case "botboundbodydist":
@@ -2030,6 +2019,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		be1.append(OC_ex2_, opc)
 		out.append(be1...)
 	case "command", "selfcommand":
+		// These still work the same as in Mugen. They don't actually push strings
 		opc := OC_command
 		if c.token == "selfcommand" {
 			out.append(OC_ex_)
@@ -2359,9 +2349,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "ctrl":
 		out.append(OC_ctrl)
 	case "displayname":
-		if err := nameSub(OC_const_, OC_const_displayname); err != nil {
-			return bvNone(), err
-		}
+		out.append(OC_const_, OC_const_displayname)
 	case "drawgame":
 		out.append(OC_ex_, OC_ex_drawgame)
 	case "drawpal":
@@ -3056,6 +3044,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "movereversed":
 		out.append(OC_movereversed)
 	case "movetype", "p2movetype", "prevmovetype":
+		// Flag triggers still require a comparison. They don't push strings containing the flags
 		trname := c.token
 		if err := eqne2(func(not bool) error {
 			if len(c.token) == 0 {
@@ -3182,9 +3171,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "p8name":
 			opc = OC_const_p8name
 		}
-		if err := nameSub(OC_const_, opc); err != nil {
-			return bvNone(), err
-		}
+		out.append(OC_const_, opc)
 	case "numenemy":
 		out.append(OC_numenemy)
 	case "numexplod":
@@ -3782,14 +3769,11 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingParenthesis(); err != nil {
 			return bvNone(), err
 		}
-		isStr := false
 		switch svname {
 		case "info.author":
 			opc = OC_const_stagevar_info_author
-			isStr = true
 		case "info.displayname":
 			opc = OC_const_stagevar_info_displayname
-			isStr = true
 		case "info.ikemenversion.major":
 			opc = OC_const_stagevar_info_ikemenversion_major
 		case "info.ikemenversion.minor":
@@ -3802,7 +3786,6 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_info_mugenversion_minor
 		case "info.name":
 			opc = OC_const_stagevar_info_name
-			isStr = true
 		case "camera.boundleft":
 			opc = OC_const_stagevar_camera_boundleft
 		case "camera.boundright":
@@ -3946,14 +3929,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error("Invalid StageVar argument: " + svname)
 		}
-		if isStr {
-			if err := nameSub(OC_const_, opc); err != nil {
-				return bvNone(), err
-			}
-		} else {
-			out.append(OC_const_)
-			out.append(opc)
-		}
+		out.append(OC_const_)
+		out.append(opc)
 	case "teammode":
 		if err := eqne(func() error {
 			if len(c.token) == 0 {
@@ -4573,18 +4550,15 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkClosingParenthesis(); err != nil {
 			return bvNone(), err
 		}
-		isStr := false
 		switch fsvname {
 		case "info.author":
 			opc = OC_ex2_fightscreenvar_info_author
-			isStr = true
 		case "info.localcoord.x":
 			opc = OC_ex2_fightscreenvar_info_localcoord_x
 		case "info.localcoord.y":
 			opc = OC_ex2_fightscreenvar_info_localcoord_y
 		case "info.name":
 			opc = OC_ex2_fightscreenvar_info_name
-			isStr = true
 		case "round.ctrl.time":
 			opc = OC_ex2_fightscreenvar_round_ctrl_time
 		case "round.over.hittime":
@@ -4606,22 +4580,14 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		default:
 			return bvNone(), Error("Invalid FightScreenVar argument: " + fsvname)
 		}
-		if isStr {
-			if err := nameSub(OC_ex2_, opc); err != nil {
-				return bvNone(), err
-			}
-		} else {
-			out.append(OC_ex2_)
-			out.append(opc)
-		}
+		out.append(OC_ex2_)
+		out.append(opc)
 	case "fighttime":
 		out.append(OC_ex_, OC_ex_fighttime)
 	case "firstattack":
 		out.append(OC_ex_, OC_ex_firstattack)
 	case "gamemode":
-		if err := nameSub(OC_ex_, OC_ex_gamemode); err != nil {
-			return bvNone(), err
-		}
+		out.append(OC_ex_, OC_ex_gamemode)
 	case "gamevar":
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
@@ -4664,9 +4630,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	case "guardpointsmax":
 		out.append(OC_ex_, OC_ex_guardpointsmax)
 	case "helpername":
-		if err := nameSub(OC_ex_, OC_ex_helpername); err != nil {
-			return bvNone(), err
-		}
+		out.append(OC_ex_, OC_ex_helpername)
 	case "hitoverridden":
 		out.append(OC_ex_, OC_ex_hitoverridden)
 	case "ikemenversion":
@@ -5115,9 +5079,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}
 		out.append(OC_ex_, OC_ex_selfstatenoexist)
 	case "shader":
-		if err := nameSub(OC_ex2_, OC_ex2_shader); err != nil {
-			return bvNone(), err
-		}
+		out.append(OC_ex2_, OC_ex2_shader)
 	case "spritevar":
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
@@ -8363,7 +8325,8 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 		c.cmdl.Add(*cm)
 	}
 
-	// Compile states
+	// Reset string pool
+	// String values will stay valid for as long as this character stays loaded
 	sys.stringPool[pn].Clear()
 	//sys.cgi[pn].hitPauseToggleFlagCount = 0
 
