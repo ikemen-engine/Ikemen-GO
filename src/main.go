@@ -180,6 +180,16 @@ func realMain() {
 	sys.cfg = *cfg
 	// Logcat("LOG: Config Loaded. System Script: " + sys.cfg.Config.System)
 
+	if _, ok := sys.cmdFlags["-debugdump"]; ok {
+		if sys.cfg.Debug.AllowDebugMode {
+			sys.debugDumpEnabled = true
+			sys.breakpoints = make(map[int]*Breakpoint)
+			Logcat("Debug dump mode enabled.\n")
+		} else {
+			Logcat("Debug dump not started because AllowDebugMode is false\n")
+		}
+	}
+
 	if sys.cfg.Debug.DumpLuaTables {
 		os.MkdirAll(filepath.Join(sys.baseDir, "debug"), permission)
 	}
@@ -239,6 +249,7 @@ func processCommandLine() {
 			"-nojoy":          true,
 			"-nomusic":        true,
 			"-nosound":        true,
+			"-debugdump":      true,
 		}
 		key := ""
 		player := 1
@@ -292,6 +303,7 @@ Quick VS Options:
 -ip <hostip>            Connect to <hostip> for netplay; leave blank for host
 	
 Debug Options:
+-debugdump              Enables to output a predefined Lua function (__ikemen_debug_dump) to stdout.
 -nojoy                  Disables joysticks
 -nomusic                Disables music
 -nosound                Disables all sound effects and music
@@ -299,6 +311,7 @@ Debug Options:
 -maxpowermode           Enables auto-refill of Power bars
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
 -speed <speed>          Changes game speed setting to <speed> (-9 to 9)
+-framerate              Changes game framerate setting to <framerate>
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
 					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")
