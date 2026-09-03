@@ -3011,10 +3011,6 @@ func systemScriptInit(l *lua.LState) {
 
 				for i, c := range sys.chars {
 					if len(c) > 0 {
-						// Skip BG-loaded Turns mode chars so CharList bookkeeping doesn't try to replace nonexistent entries on later rounds.
-						if sys.cfg.Config.TurnsLoading && sys.tmode[i&1] == TM_Turns && c[0].teamside == -1 {
-							continue
-						}
 						// Add or replace in charList
 						if sys.roundNo == 1 {
 							sys.charList.add(c[0])

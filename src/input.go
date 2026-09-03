@@ -2358,10 +2358,10 @@ func (c *Command) AutoGreaterExpand() {
 
 // Regress some Ikemen features that may break legacy characters
 // To keep branching to a minimum, we ought to only fix cases that prevent a move from coming out at all
-func (c *Command) ApplyBackwardCompatibility(pn int) {
+func (c *Command) ApplyBackwardCompatibility(charName string) {
 	// Helper to log any changes
 	doPrint := func(msg string) {
-		fullMsg := fmt.Sprintf("WARNING: Player %s: command '%s' compatibility: ", sys.cgi[pn].name, c.name) + msg
+		fullMsg := fmt.Sprintf("WARNING: Player %s: command '%s' compatibility: ", charName, c.name) + msg
 		// Print to both places because these characters tend to flood the console with other bugs
 		sys.appendToConsole(fullMsg)
 		LogMessage(fullMsg)
