@@ -72,8 +72,9 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 			break
 		}
 
+		// These are outside runFrame(), so they won't be needlessly executed during a rollback
 		sys.tickSound()
-
+		sys.cueDraw()
 		sys.renderFrame()
 
 		//rs.session.loopTimer.usToWaitThisLoop()
