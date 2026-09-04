@@ -1354,8 +1354,11 @@ func (BytecodeExp) neg(v *BytecodeValue) {
 	}
 }
 
+// Bitwise not
+// Documented in Mugen but just crashes all versions when executing
 func (BytecodeExp) not(v *BytecodeValue) {
-	// The opposite of undefined is still undefined
+	// We have no way to check what happens here in Mugen
+	// Not that it matters much, since Mugen chars couldn't use this operator before
 	//if v.IsUndefined() {
 	//	return
 	//}
@@ -1363,9 +1366,13 @@ func (BytecodeExp) not(v *BytecodeValue) {
 }
 
 func (BytecodeExp) blnot(v *BytecodeValue) {
-	//if v.IsUndefined() {
-	//	return
-	//}
+	// Note: !Undefined in Mugen is true
+	// That doesn't make any sense, so we won't replicate it until it's strictly necessary
+	// Because of how ranges are compiled in Ikemen, preserving Undefined is also necessary for "Undefined != range"
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3949
+	if v.IsUndefined() {
+		return
+	}
 	v.SetB(!v.ToB())
 }
 
