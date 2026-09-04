@@ -58,6 +58,22 @@ def display_name(login: str) -> str:
     return DISPLAY_NAMES.get(login.casefold(), login)
 
 
+def merge_contributors(contributors: list[Contributor]) -> list[Contributor]:
+    merged: dict[str, Contributor] = {}
+    for contributor in contributors:
+        login = display_name(contributor["login"])
+        key = login.casefold()
+        if key not in merged:
+            merged[key] = {**contributor, "login": login}
+        else:
+            merged[key]["commits"] += contributor["commits"]
+            merged[key]["additions"] += contributor["additions"]
+            merged[key]["first_year"] = min(
+                merged[key]["first_year"], contributor["first_year"]
+            )
+    return list(merged.values())
+
+
 def request_json(
     token: str,
     url: str,
@@ -195,6 +211,7 @@ def qualifies(contributor: Contributor) -> bool:
 def generate_notice(
     contributors: list[Contributor],
 ) -> tuple[str, list[Contributor], list[Contributor]]:
+    contributors = merge_contributors(contributors)
     included = [contributor for contributor in contributors if qualifies(contributor)]
     skipped = [contributor for contributor in contributors if not qualifies(contributor)]
     names_by_year: dict[int, list[str]] = defaultdict(list)
