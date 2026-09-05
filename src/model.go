@@ -1843,7 +1843,9 @@ func drawNode(mdl *Model, scene *Scene, layerNumber int, defaultLayerNumber int,
 		alpha = [2]int32{255, 0}
 	}
 
-	spfx := mdl.pfx.getFinalPalFx(blendMode, alpha)
+	// Apply BGPalFX, then AllPalFX
+	stackedPfx := mdl.pfx.withStacked(sys.bgPalFX, blendMode, alpha)
+	spfx := stackedPfx.getFinalPalFx(blendMode, alpha)
 
 	blendEq := BlendAdd
 	src := BlendOne

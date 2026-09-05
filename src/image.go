@@ -407,6 +407,27 @@ func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
 
 }
 
+// Returns a copy of the PalFX with another one stacked on top
+// Used so a BG's own PalFX and a global BGPalFX can stack
+func (pf *PalFX) withStacked(extra *PalFX, blendMode TransType, alpha [2]int32) *PalFX {
+	// No extra. Do nothing
+	if extra == nil || !extra.enable {
+		return pf
+	}
+
+	var out PalFX
+	if pf != nil && pf.enable {
+		// Stack both
+		out = *pf
+		out.synthesize(extra, blendMode, alpha)
+	} else {
+		// Use extra only
+		out = *extra
+	}
+
+	return &out
+}
+
 // Returns a copy of the PalFX with font frgba applied as a base color
 // To do this perfectly correctly we'd need more shader uniforms
 // However, this should still be better than making font color parameter overwrite PalFX like before

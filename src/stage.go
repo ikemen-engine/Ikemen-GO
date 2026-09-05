@@ -741,11 +741,14 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 			rcx = sys.gameWidth / 2
 		}
 
+		stackedPfx := bg.palfx.withStacked(sys.bgPalFX, bg.anim.transType,
+			[2]int32{int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)})
+
 		bg.anim.Draw(&rect, x-xsoffset, y, sclx, scly,
 			bg.xscale[0]*bgscl*(scalestartX+xs)*xs3,
 			xbs*bgscl*(scalestartX+xs)*xs3,
 			ys*ys3, xras*x/(Abs(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1]-bg.xshear,
-			bg.rot, rcx, bg.palfx, 1, [2]float32{1, 1}, int32(bg.projection), bg.fLength, 0, false, CustomShaderRenderData{})
+			bg.rot, rcx, stackedPfx, 1, [2]float32{1, 1}, int32(bg.projection), bg.fLength, 0, false, CustomShaderRenderData{})
 	}
 }
 
@@ -1864,50 +1867,20 @@ func (s *Stage) action() {
 // Currently this function only exists so that the stage update sequence is similar to others. In the future it could run more tasks
 // Doing this allows characters to see "stageTime = 0"
 func (s *Stage) tick() {
+	if s.paused() {
+		return
+	}
 
 	// Update BG elements
+	// These are from the stage BG's own PalFX, so we'll make them respect stage pause
 	for _, b := range s.bg {
 		b.palfx.step()
-
-		// BGPalFX can step even if the stage is paused
-		if sys.bgPalFX.enable {
-			// TODO: Finish proper synthesization of bgPalFX into PalFX from bg element
-			// (Right now, bgPalFX just overrides all unique parameters from BG Elements' PalFX)
-			// for j := 0; j < 3; j++ {
-			// if sys.bgPalFX.invertall {
-			// b.palfx.eAdd[j] = -b.palfx.add[j] * (b.palfx.mul[j]/256) + 256 * (1-(b.palfx.mul[j]/256))
-			// b.palfx.eMul[j] = 256
-			// }
-			// b.palfx.eAdd[j] = int32((float32(b.palfx.eAdd[j])) * sys.bgPalFX.eColor)
-			// b.palfx.eMul[j] = int32(float32(b.palfx.eMul[j]) * sys.bgPalFX.eColor + 256*(1-sys.bgPalFX.eColor))
-			// }
-			// b.palfx.synthesize(sys.bgPalFX)
-			b.palfx.eAdd = sys.bgPalFX.eAdd
-			b.palfx.eMul = sys.bgPalFX.eMul
-			b.palfx.eColor = sys.bgPalFX.eColor
-			b.palfx.eHue = sys.bgPalFX.eHue
-			b.palfx.eInvertall = sys.bgPalFX.eInvertall
-			b.palfx.eInvertblend = sys.bgPalFX.eInvertblend
-			b.palfx.eAllowNeg = sys.bgPalFX.eAllowNeg
-		}
 	}
 
 	// Update model PalFX
+	// This seems to be unused right now. But it can still stack with BGPalFX later
 	if s.model != nil {
 		s.model.pfx.step()
-		if sys.bgPalFX.enable {
-			s.model.pfx.eAdd = sys.bgPalFX.eAdd
-			s.model.pfx.eMul = sys.bgPalFX.eMul
-			s.model.pfx.eColor = sys.bgPalFX.eColor
-			s.model.pfx.eHue = sys.bgPalFX.eHue
-			s.model.pfx.eInvertall = sys.bgPalFX.eInvertall
-			s.model.pfx.eInvertblend = sys.bgPalFX.eInvertblend
-			s.model.pfx.eAllowNeg = sys.bgPalFX.eAllowNeg
-		}
-	}
-
-	if s.paused() {
-		return
 	}
 
 	// Stage time must be incremented after updating BGCtrl's
