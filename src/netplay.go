@@ -255,6 +255,11 @@ func (nc *NetConnection) Close() {
 		close(nc.recvEnd)
 		nc.recvEnd = nil
 	}
+	if nc.recording != nil {
+		nc.recording.Close()
+		nc.recording = nil
+		nc.headerWritten = false
+	}
 	nc.conn = nil
 	nc.uiInputDebounced = false
 }
