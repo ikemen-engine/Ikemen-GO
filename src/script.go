@@ -5914,12 +5914,11 @@ func systemScriptInit(l *lua.LState) {
 				sys.rollback.session.recording.Close()
 				sys.rollback.session.recording = nil
 			}
-		} else {
-			if sys.netConnection != nil && sys.netConnection.recording != nil {
-				sys.netConnection.recording.Close()
-				sys.netConnection.recording = nil
-				sys.netConnection.headerWritten = false
-			}
+		}
+		if sys.netConnection != nil && sys.netConnection.recording != nil {
+			sys.netConnection.recording.Close()
+			sys.netConnection.recording = nil
+			sys.netConnection.headerWritten = false
 		}
 		return 0
 	})
