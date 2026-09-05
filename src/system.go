@@ -1600,6 +1600,14 @@ func (s *System) netplay() bool {
 	return s.rollback.session != nil || s.netConnection != nil || s.replayFile != nil
 }
 
+func (s *System) usesRollbackMatch() bool {
+	if s.replayFile != nil {
+		return false
+	}
+	return s.rollback.session != nil ||
+		(s.netConnection == nil && s.cfg.Netplay.Rollback.DesyncTestFrames > 0)
+}
+
 func (s *System) escExit() bool {
 	return s.esc && (!s.sel.gameParams.PauseMenu || !s.cfg.Config.EscOpensMenu ||
 		(s.motif.AttractMode.Enabled && s.credits == 0))
@@ -4031,7 +4039,7 @@ func (s *System) runMatch() (reload bool) {
 
 	if s.cfg.Config.TurnsLoading {
 		s.startNextTurnsPreload()
-		if (s.rollback.session != nil || s.cfg.Netplay.Rollback.DesyncTestFrames > 0) && !s.finishTurnsPreloadForRollback() {
+		if s.usesRollbackMatch() && !s.finishTurnsPreloadForRollback() {
 			return false
 		}
 	}
@@ -4042,7 +4050,7 @@ func (s *System) runMatch() (reload bool) {
 
 	// Now switch to rollback if applicable
 	// TODO: More merging so we don't hijack this function at all
-	if s.rollback.session != nil || s.cfg.Netplay.Rollback.DesyncTestFrames > 0 {
+	if s.usesRollbackMatch() {
 		return s.rollback.hijackRunMatch()
 	}
 
