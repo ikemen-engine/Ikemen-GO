@@ -95,82 +95,6 @@ func userDataError(l *lua.LState, argi int, udtype interface{}) {
 	l.RaiseError("\nArgument %v is not a userdata of type: %T\n", argi, udtype)
 }
 
-// Converts a hitflag to a LString.
-// Previously in hitdefvar, moved here
-// for reusability in gethitvar
-func flagLStr(flag int32) lua.LString {
-	str := ""
-	if flag&int32(HF_H) != 0 {
-		str += "H"
-	}
-	if flag&int32(HF_L) != 0 {
-		str += "L"
-	}
-	if flag&int32(HF_A) != 0 {
-		str += "A"
-	}
-	if flag&int32(HF_F) != 0 {
-		str += "F"
-	}
-	if flag&int32(HF_D) != 0 {
-		str += "D"
-	}
-	if flag&int32(HF_P) != 0 {
-		str += "P"
-	}
-	if flag&int32(HF_MNS) != 0 {
-		str += "-"
-	}
-	if flag&int32(HF_PLS) != 0 {
-		str += "+"
-	}
-	return lua.LString(str)
-}
-
-// Converts an attr (statetype, attacktype) to a LString.
-// Used in gethitvar("attr.flag").
-func attrLStr(attr int32) lua.LString {
-	str := ""
-	if attr == 0 {
-		return lua.LString(str)
-	} // no attr? return an empty string
-	st := attr & int32(ST_MASK)  // state type
-	at := attr & ^int32(ST_MASK) // attack type (everything that's not statetype)
-	// flag1
-	if st&int32(ST_S) != 0 {
-		str += "S"
-	}
-	if st&int32(ST_C) != 0 {
-		str += "C"
-	}
-	if st&int32(ST_A) != 0 {
-		str += "A"
-	}
-	str += ", "
-	// first char
-	if at&int32(AT_AN) != 0 {
-		str += "N"
-	}
-	if at&int32(AT_AS) != 0 {
-		str += "S"
-	}
-	if at&int32(AT_AH) != 0 {
-		str += "H"
-	}
-	// second char
-	if at&int32(AT_AA) != 0 {
-		str += "A"
-	}
-	if at&int32(AT_AT) != 0 {
-		str += "T"
-	}
-	if at&int32(AT_AP) != 0 {
-		str += "P"
-	}
-
-	return lua.LString(str)
-}
-
 // Helper: flatten anonymous embedded structs into a parent table while
 // preserving Go struct field order.
 // Only applies to anonymous embedded fields without explicit `lua`/`ini` tags.
@@ -8695,7 +8619,7 @@ func triggerFunctions(l *lua.LState) {
 		case "fall.envshake.decay":
 			lv = lua.LNumber(c.ghv.fall_envshake_decay)
 		case "attr":
-			lv = attrLStr(c.ghv.attr)
+			lv = lua.LString(attrString(c.ghv.attr))
 		case "dizzypoints":
 			lv = lua.LNumber(c.ghv.dizzypoints)
 		case "guardpoints":
@@ -8761,7 +8685,7 @@ func triggerFunctions(l *lua.LState) {
 		case "down.recover":
 			lv = lua.LBool(c.ghv.down_recover)
 		case "guardflag":
-			lv = flagLStr(c.ghv.guardflag)
+			lv = lua.LString(flagString(c.ghv.guardflag))
 		case "keepstate":
 			lv = lua.LBool(c.ghv.keepstate)
 		case "projid":
@@ -8903,11 +8827,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "hitDefAttr", func(*lua.LState) int {
-		if sys.debugWC.ss.moveType == MT_A {
-			l.Push(attrLStr(sys.debugWC.hitdef.attr))
-		} else {
-			l.Push(lua.LString(""))
-		}
+		l.Push(lua.LString(attrString(sys.debugWC.hitdef.attr)))
 		return 1
 	})
 	luaRegister(l, "hitDefVar", func(*lua.LState) int {
@@ -8934,7 +8854,7 @@ func triggerFunctions(l *lua.LState) {
 		case "guarddamage":
 			l.Push(lua.LNumber(c.hitdef.guarddamage))
 		case "guardflag":
-			l.Push(flagLStr(c.hitdef.guardflag))
+			l.Push(lua.LString(flagString(c.hitdef.guardflag)))
 		case "guardsound.group":
 			l.Push(lua.LNumber(c.hitdef.guardsound[0]))
 		case "guardsound.number":
@@ -8942,7 +8862,7 @@ func triggerFunctions(l *lua.LState) {
 		case "hitdamage":
 			l.Push(lua.LNumber(c.hitdef.hitdamage))
 		case "hitflag":
-			l.Push(flagLStr(c.hitdef.hitflag))
+			l.Push(lua.LString(flagString(c.hitdef.hitflag)))
 		case "hitsound.group":
 			l.Push(lua.LNumber(c.hitdef.hitsound[0]))
 		case "hitsound.number":
@@ -9489,15 +9409,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "moveType", func(*lua.LState) int {
-		var s string
-		switch sys.debugWC.ss.moveType {
-		case MT_I:
-			s = "I"
-		case MT_A:
-			s = "A"
-		case MT_H:
-			s = "H"
-		}
+		s := sys.debugWC.ss.moveType.TriggerValue()
 		l.Push(lua.LString(s))
 		return 1
 	})
@@ -9644,15 +9556,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "p2MoveType", func(*lua.LState) int {
 		if p2 := sys.debugWC.p2(); p2 != nil {
-			var s string
-			switch p2.ss.moveType {
-			case MT_I:
-				s = "I"
-			case MT_A:
-				s = "A"
-			case MT_H:
-				s = "H"
-			}
+			s := p2.ss.moveType.TriggerValue()
 			l.Push(lua.LString(s))
 		} else {
 			l.Push(lua.LString(""))
@@ -9669,17 +9573,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "p2StateType", func(*lua.LState) int {
 		if p2 := sys.debugWC.p2(); p2 != nil {
-			var s string
-			switch p2.ss.stateType {
-			case ST_S:
-				s = "S"
-			case ST_C:
-				s = "C"
-			case ST_A:
-				s = "A"
-			case ST_L:
-				s = "L"
-			}
+			s := p2.ss.stateType.TriggerValue()
 			l.Push(lua.LString(s))
 		} else {
 			l.Push(lua.LString(""))
@@ -9784,17 +9678,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "physics", func(*lua.LState) int {
-		var s string
-		switch sys.debugWC.ss.physics {
-		case ST_S:
-			s = "S"
-		case ST_C:
-			s = "C"
-		case ST_A:
-			s = "A"
-		case ST_N:
-			s = "N"
-		}
+		s := sys.debugWC.ss.physics.TriggerValue()
 		l.Push(lua.LString(s))
 		return 1
 	})
@@ -9842,15 +9726,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "prevMoveType", func(*lua.LState) int {
-		var s string
-		switch sys.debugWC.ss.prevMoveType {
-		case MT_I:
-			s = "I"
-		case MT_A:
-			s = "A"
-		case MT_H:
-			s = "H"
-		}
+		s := sys.debugWC.ss.prevMoveType.TriggerValue()
 		l.Push(lua.LString(s))
 		return 1
 	})
@@ -9859,17 +9735,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "prevStateType", func(*lua.LState) int {
-		var s string
-		switch sys.debugWC.ss.prevStateType {
-		case ST_S:
-			s = "S"
-		case ST_C:
-			s = "C"
-		case ST_A:
-			s = "A"
-		case ST_L:
-			s = "L"
-		}
+		s := sys.debugWC.ss.prevStateType.TriggerValue()
 		l.Push(lua.LString(s))
 		return 1
 	})
@@ -9944,7 +9810,7 @@ func triggerFunctions(l *lua.LState) {
 			case "angle y":
 				lv = lua.LNumber(p.rot.yangle)
 			case "attr":
-				lv = attrLStr(p.hitdef.attr) // Return string like HitDefAttr
+				lv = lua.LString(attrString(p.hitdef.attr)) // Return string like HitDefAttr
 			case "drawpal group":
 				lv = lua.LNumber(sys.debugWC.projDrawPal(p)[0])
 			case "drawpal index":
@@ -9952,11 +9818,11 @@ func triggerFunctions(l *lua.LState) {
 			case "facing":
 				lv = lua.LNumber(p.facing)
 			case "guardflag":
-				lv = flagLStr(p.hitdef.guardflag) // Return string like HitDefVar
+				lv = lua.LString(flagString(p.hitdef.guardflag)) // Return string like HitDefVar
 			case "highbound":
 				lv = lua.LNumber(p.heightbound[1])
 			case "hitflag":
-				lv = flagLStr(p.hitdef.hitflag) // Return string like HitDefVar
+				lv = lua.LString(flagString(p.hitdef.hitflag)) // Return string like HitDefVar
 			case "lowbound":
 				lv = lua.LNumber(p.heightbound[0])
 			case "pausemovetime":
@@ -10054,45 +9920,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "reversalDefAttr", func(*lua.LState) int {
-		attr, str := sys.debugWC.hitdef.reversal_attr, ""
-		if sys.debugWC.ss.moveType == MT_A {
-			if attr&int32(ST_S) != 0 {
-				str += "S"
-			}
-			if attr&int32(ST_C) != 0 {
-				str += "C"
-			}
-			if attr&int32(ST_A) != 0 {
-				str += "A"
-			}
-			if attr&int32(AT_NA) != 0 {
-				str += ", NA"
-			}
-			if attr&int32(AT_NT) != 0 {
-				str += ", NT"
-			}
-			if attr&int32(AT_NP) != 0 {
-				str += ", NP"
-			}
-			if attr&int32(AT_SA) != 0 {
-				str += ", SA"
-			}
-			if attr&int32(AT_ST) != 0 {
-				str += ", ST"
-			}
-			if attr&int32(AT_SP) != 0 {
-				str += ", SP"
-			}
-			if attr&int32(AT_HA) != 0 {
-				str += ", HA"
-			}
-			if attr&int32(AT_HT) != 0 {
-				str += ", HT"
-			}
-			if attr&int32(AT_HP) != 0 {
-				str += ", HP"
-			}
-		}
+		str := attrString(sys.debugWC.hitdef.reversal_attr &^ (-1 << 31))
 		l.Push(lua.LString(str))
 		return 1
 	})
@@ -10564,17 +10392,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "stateType", func(*lua.LState) int {
-		var s string
-		switch sys.debugWC.ss.stateType {
-		case ST_S:
-			s = "S"
-		case ST_C:
-			s = "C"
-		case ST_A:
-			s = "A"
-		case ST_L:
-			s = "L"
-		}
+		s := sys.debugWC.ss.stateType.TriggerValue()
 		l.Push(lua.LString(s))
 		return 1
 	})
@@ -10591,17 +10409,7 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "teamMode", func(*lua.LState) int {
-		var s string
-		switch sys.tmode[sys.debugWC.playerNo&1] {
-		case TM_Single:
-			s = "single"
-		case TM_Simul:
-			s = "simul"
-		case TM_Turns:
-			s = "turns"
-		case TM_Tag:
-			s = "tag"
-		}
+		s := sys.tmode[sys.debugWC.playerNo&1].TriggerValue()
 		l.Push(lua.LString(s))
 		return 1
 	})

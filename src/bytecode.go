@@ -28,6 +28,23 @@ const (
 	ST_SCA  = ST_S | ST_C | ST_A
 )
 
+// What the triggers actually returns when used bare (without baked flag comparsion)
+func (st StateType) TriggerValue() string {
+	switch st {
+	case ST_S:
+		return "S"
+	case ST_C:
+		return "C"
+	case ST_A:
+		return "A"
+	case ST_L:
+		return "L"
+	case ST_N:
+		return "N"
+	}
+	return ""
+}
+
 type AttackType int32
 
 const (
@@ -49,6 +66,79 @@ const (
 	AT_AH  = AT_HA | AT_HT | AT_HP
 )
 
+// Built once to avoid redundant work
+var attackTypeStrings = [9]struct {
+	bit   AttackType
+	label string
+}{
+	{AT_NA, "NA"}, {AT_NT, "NT"}, {AT_NP, "NP"},
+	{AT_SA, "SA"}, {AT_ST, "ST"}, {AT_SP, "SP"},
+	{AT_HA, "HA"}, {AT_HT, "HT"}, {AT_HP, "HP"},
+}
+
+// Converts a combined attr value (statetype + attacktype) into the readable form used in scripts, e.g. "SCA, NA"
+func attrString(attr int32) string {
+	if attr == 0 {
+		return "" // Return an empty string if without attributes
+	}
+
+	// Used to avoid reallocating and copying on every concatenation
+	var b strings.Builder
+
+	st := attr & int32(ST_MASK)  // StateType
+	at := attr & ^int32(ST_MASK) // AttackType
+
+	if st&int32(ST_S) != 0 {
+		b.WriteString("S")
+	}
+	if st&int32(ST_C) != 0 {
+		b.WriteString("C")
+	}
+	if st&int32(ST_A) != 0 {
+		b.WriteString("A")
+	}
+
+	// Add each individual attribute to the string
+	for _, pair := range attackTypeStrings {
+		if at&int32(pair.bit) != 0 {
+			b.WriteString(", ")
+			b.WriteString(pair.label)
+		}
+	}
+
+	return b.String()
+}
+
+// Converts a HitFlag combination into the readable form used in scripts, e.g. "HAD-"
+func flagString(flag int32) string {
+	var b strings.Builder
+	if flag&int32(HF_H) != 0 {
+		b.WriteString("H")
+	}
+	if flag&int32(HF_L) != 0 {
+		b.WriteString("L")
+	}
+	if flag&int32(HF_A) != 0 {
+		b.WriteString("A")
+	}
+	if flag&int32(HF_F) != 0 {
+		b.WriteString("F")
+	}
+	if flag&int32(HF_D) != 0 {
+		b.WriteString("D")
+	}
+	if flag&int32(HF_P) != 0 {
+		b.WriteString("P")
+	}
+	if flag&int32(HF_MNS) != 0 {
+		b.WriteString("-")
+	}
+	if flag&int32(HF_PLS) != 0 {
+		b.WriteString("+")
+	}
+	return b.String()
+}
+
 type MoveType int32
 
 const (
@@ -57,6 +147,18 @@ const (
 	MT_A
 	MT_U
 )
+
+func (mt MoveType) TriggerValue() string {
+	switch mt {
+	case MT_I:
+		return "I"
+	case MT_A:
+		return "A"
+	case MT_H:
+		return "H"
+	}
+	return ""
+}
 
 type HitFlag int32
 
@@ -1136,10 +1238,9 @@ func (bv BytecodeValue) ToB() bool {
 	if bv.IsUndefined() {
 		return false
 	}
-	// A string always counts as true if it's defined
-	// TODO: Strings being both int 0 and bool true is a bit against Mugen conventions
+	// A string is always false, matching how ToF/ToI already treat any string as 0
 	if bv.vtype == VT_String {
-		return true
+		return false
 	}
 	if bv.value == 0 {
 		return false
@@ -2337,7 +2438,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.hitCount)
 		case OC_hitdefattr:
 			attr := be.ReadIntAt(&i)
-			sys.bcStack.PushB(c.hitDefAttr(attr))
+			if attr == -1 {
+				sys.bcStack.PushS(attrString(c.hitdef.attr))
+			} else {
+				sys.bcStack.PushB(c.hitDefAttr(attr))
+			}
 		case OC_hitfall:
 			sys.bcStack.PushB(c.ghv.fallflag)
 		case OC_hitover:
@@ -2376,7 +2481,11 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_movereversed:
 			sys.bcStack.PushI(c.moveReversed())
 		case OC_movetype:
-			sys.bcStack.PushB(c.ss.moveType == MoveType(be[i])<<15)
+			if be[i] == 0 {
+				sys.bcStack.PushS(c.ss.moveType.TriggerValue())
+			} else {
+				sys.bcStack.PushB(c.ss.moveType == MoveType(be[i])<<15)
+			}
 			i++
 		case OC_numenemy:
 			sys.bcStack.PushI(c.numEnemy())
@@ -2439,10 +2548,20 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_stateno:
 			sys.bcStack.PushI(c.ss.no)
 		case OC_statetype:
-			sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
+			if be[i] == 0 {
+				sys.bcStack.PushS(c.ss.stateType.TriggerValue())
+			} else {
+				sys.bcStack.PushB(c.ss.stateType == StateType(be[i]))
+			}
 			i++
 		case OC_teammode:
-			if c.teamside == -1 {
+			if be[i] == 255 {
+				if c.teamside == -1 {
+					sys.bcStack.PushS(TM_Single.TriggerValue())
+				} else {
+					sys.bcStack.PushS(sys.tmode[c.playerNo&1].TriggerValue())
+				}
+			} else if c.teamside == -1 {
 				sys.bcStack.PushB(TM_Single == TeamMode(be[i]))
 			} else {
 				sys.bcStack.PushB(sys.tmode[c.playerNo&1] == TeamMode(be[i]))
@@ -3264,7 +3383,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_attr:
 		// same as c.hitDefAttr()
 		attr := be.ReadIntAt(i)
-		sys.bcStack.PushB(c.ghv.testAttr(attr))
+		if attr == -1 {
+			sys.bcStack.PushS(attrString(c.ghv.attr &^ (-1 << 31)))
+		} else {
+			sys.bcStack.PushB(c.ghv.testAttr(attr))
+		}
 	case OC_ex_gethitvar_dizzypoints:
 		sys.bcStack.PushI(c.ghv.dizzypoints)
 	case OC_ex_gethitvar_guardpoints:
@@ -3331,9 +3454,13 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ghv.down_recover)
 	case OC_ex_gethitvar_guardflag:
 		attr := be.ReadIntAt(i)
-		sys.bcStack.PushB(
-			c.ghv.guardflag&attr != 0,
-		)
+		if attr == -1 {
+			sys.bcStack.PushS(flagString(c.ghv.guardflag))
+		} else {
+			sys.bcStack.PushB(
+				c.ghv.guardflag&attr != 0,
+			)
+		}
 	case OC_ex_gethitvar_keepstate:
 		sys.bcStack.PushB(c.ghv.keepstate)
 	case OC_ex_gethitvar_guardko:
@@ -3582,7 +3709,11 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_pausetime:
 		sys.bcStack.PushI(c.pauseTimeTrigger())
 	case OC_ex_physics:
-		sys.bcStack.PushB(c.ss.physics == StateType(be[*i]))
+		if be[*i] == 0 {
+			sys.bcStack.PushS(c.ss.physics.TriggerValue())
+		} else {
+			sys.bcStack.PushB(c.ss.physics == StateType(be[*i]))
+		}
 		*i++
 	case OC_ex_playerno:
 		sys.bcStack.PushI(int32(c.playerNo) + 1)
@@ -3637,14 +3768,26 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_prevanim:
 		sys.bcStack.PushI(c.prevAnimNo)
 	case OC_ex_prevmovetype:
-		sys.bcStack.PushB(c.ss.prevMoveType == MoveType(be[*i])<<15)
+		if be[*i] == 0 {
+			sys.bcStack.PushS(c.ss.prevMoveType.TriggerValue())
+		} else {
+			sys.bcStack.PushB(c.ss.prevMoveType == MoveType(be[*i])<<15)
+		}
 		*i++
 	case OC_ex_prevstatetype:
-		sys.bcStack.PushB(c.ss.prevStateType == StateType(be[*i]))
+		if be[*i] == 0 {
+			sys.bcStack.PushS(c.ss.prevStateType.TriggerValue())
+		} else {
+			sys.bcStack.PushB(c.ss.prevStateType == StateType(be[*i]))
+		}
 		*i++
 	case OC_ex_reversaldefattr:
 		attr := be.ReadIntAt(i)
-		sys.bcStack.PushB(c.reversalDefAttr(attr))
+		if attr == -1 {
+			sys.bcStack.PushS(attrString(c.hitdef.reversal_attr &^ (-1 << 31)))
+		} else {
+			sys.bcStack.PushB(c.reversalDefAttr(attr))
+		}
 	case OC_ex_angle:
 		if c.csf(CSF_angledraw) {
 			sys.bcStack.PushF(c.rot.angle)
@@ -4383,9 +4526,13 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.hitdef.guarddamage)
 	case OC_ex3_hitdefvar_guardflag:
 		attr := be.ReadIntAt(i)
-		sys.bcStack.PushB(
-			c.hitdef.guardflag&attr != 0,
-		)
+		if attr == -1 {
+			sys.bcStack.PushS(flagString(c.hitdef.guardflag))
+		} else {
+			sys.bcStack.PushB(
+				c.hitdef.guardflag&attr != 0,
+			)
+		}
 	case OC_ex3_hitdefvar_guardsound_group:
 		sys.bcStack.PushI(c.hitdef.guardsound[0])
 	case OC_ex3_hitdefvar_guardsound_number:
@@ -4394,9 +4541,13 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.hitdef.hitdamage)
 	case OC_ex3_hitdefvar_hitflag:
 		attr := be.ReadIntAt(i)
-		sys.bcStack.PushB(
-			c.hitdef.hitflag&attr != 0,
-		)
+		if attr == -1 {
+			sys.bcStack.PushS(flagString(c.hitdef.hitflag))
+		} else {
+			sys.bcStack.PushB(
+				c.hitdef.hitflag&attr != 0,
+			)
+		}
 	case OC_ex3_hitdefvar_hitsound_group:
 		sys.bcStack.PushI(c.hitdef.hitsound[0])
 	case OC_ex3_hitdefvar_hitsound_number:

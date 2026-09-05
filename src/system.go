@@ -214,6 +214,20 @@ const (
 	TM_LAST = TM_Tag
 )
 
+func (tm TeamMode) TriggerValue() string {
+	switch tm {
+	case TM_Single:
+		return "single"
+	case TM_Simul:
+		return "simul"
+	case TM_Turns:
+		return "turns"
+	case TM_Tag:
+		return "tag"
+	}
+	return ""
+}
+
 // System struct, holds most of the data that is accessed globally through the program.
 type System struct {
 	SystemStateVars
