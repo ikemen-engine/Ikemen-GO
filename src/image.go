@@ -868,7 +868,12 @@ func (s *Sprite) SetPxl(px []byte) {
 		return
 	}
 	sys.mainThreadTask <- func() {
-		s.Tex = gfx.newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
+		tex, err := gfx.newTexture(int32(s.Size[0]), int32(s.Size[1]), 8, false)
+		if err != nil {
+			LogMessage("[VRAM] SetPxl newTexture failed: %v", err)
+			return
+		}
+		s.Tex = tex
 		s.Tex.SetData(px)
 	}
 }
@@ -885,7 +890,12 @@ func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth i
 		}
 	}
 	sys.mainThreadTask <- func() {
-		s.Tex = gfx.newTexture(sprWidth, sprHeight, sprDepth, sys.cfg.Video.RGBSpriteBilinearFilter)
+		tex, err := gfx.newTexture(sprWidth, sprHeight, sprDepth, sys.cfg.Video.RGBSpriteBilinearFilter)
+		if err != nil {
+			LogMessage("[VRAM] SetRaw newTexture failed: %v", err)
+			return
+		}
+		s.Tex = tex
 		s.Tex.SetData(data)
 	}
 }
@@ -1419,6 +1429,10 @@ func (s *Sprite) CachePalTex(pal []uint32) Texture {
 }
 
 func (s *Sprite) Draw(x, y, xscale, yscale float32, rxadd float32, rot Rotation, projectionMode int32, fLength float32, fx *PalFX, window *[4]int32) {
+	if s.Tex == nil {
+		return
+	}
+
 	x += float32(sys.gameWidth-320)/2 - xscale*float32(s.Offset[0])
 	y += float32(sys.gameHeight-240) - yscale*float32(s.Offset[1])
 	var rcx, rcy float32
