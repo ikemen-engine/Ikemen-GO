@@ -282,7 +282,7 @@ func (rs *RollbackSystem) updateEvents() bool {
 func getAIInputs(player int) []byte {
 	var ib InputBits
 	ib.SetInputAI(player)
-	return writeI32(int32(ib))
+	return append(encodeInputs(ib), make([]byte, 6)...)
 }
 
 func (ib *InputBits) SetInputAI(in int) {
