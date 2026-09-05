@@ -2852,7 +2852,7 @@ func (s *System) action() {
 
 		// The following must be placed after char action or they will lag behind 1 frame
 		s.allPalFX.step()
-		s.bgPalFX.step()
+		s.bgPalFX.step() // In Mugen, it steps even while the stage is paused
 		s.envShake.update()
 		s.zoom.update()
 		s.nomusic = s.gsf(GSF_nomusic) && !sys.postMatchFlg
