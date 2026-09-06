@@ -2490,7 +2490,7 @@ func (co *FightScreenCombo) step(side int, hits, damage int32, percentage float3
 	co.top.Action()
 
 	// Allows a new identical combo to still retrigger later
-	if hits < 2 && co.shownHits >= 2 {
+	if hits < 1 && co.shownHits >= 1 {
 		co.newCombo = true
 	}
 
@@ -2508,7 +2508,7 @@ func (co *FightScreenCombo) step(side int, hits, damage int32, percentage float3
 		if Abs(co.counterX) < 1 {
 			co.counterX = 0
 		}
-	} else if trueHits < 2 {
+	} else if trueHits < 1 {
 		// Slide out when combo ends
 		co.counterX -= sys.fightScreen.fnt_scale * co.hidespeed * float32(sys.fightScreen.localcoord[0]) / 320
 		// Snap to starting position
@@ -2525,7 +2525,7 @@ func (co *FightScreenCombo) step(side int, hits, damage int32, percentage float3
 	}
 
 	// Update if number of hits or total damage change
-	if trueHits >= 2 && (co.newCombo || co.shownHits != trueHits || co.shownDmg != damage) {
+	if trueHits >= 1 && (co.newCombo || co.shownHits != trueHits || co.shownDmg != damage) {
 		// Reset visuals when hits changed
 		if co.newCombo || co.shownHits != trueHits {
 			co.counterShake.restart()
