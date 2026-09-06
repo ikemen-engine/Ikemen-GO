@@ -6378,9 +6378,9 @@ func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
-		case bgPalFX_id:
+		case bgPalFX_id: // Deprecated
 			bgid = exp[0].evalI(c)
-		case bgPalFX_index:
+		case bgPalFX_index: // Deprecated
 			bgidx = int(exp[0].evalI(c))
 		default:
 			// Parse PalFX parameters
@@ -6399,6 +6399,7 @@ func (sc bgPalFX) Run(c *Char, _ []int32) bool {
 		sys.bgPalFX.invertblend = -3
 	} else {
 		// Apply to specific elements
+		// Deprecated. Feature moved to ModifyStageBG, since this is actually a modifier
 		backgrounds := c.getMultipleStageBg(bgid, bgidx, true)
 		for _, bg := range backgrounds {
 			bg.palfx.clear()
@@ -15316,7 +15317,7 @@ func (sc transformSprite) Run(c *Char, _ []int32) bool {
 type modifyStageBG StateControllerBase
 
 const (
-	modifyStageBG_id byte = iota
+	modifyStageBG_id byte = iota + palFX_last + 1
 	modifyStageBG_index
 	modifyStageBG_actionno
 	modifyStageBG_angle
@@ -15479,6 +15480,12 @@ func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 				eachBg(func(bg *backGround) {
 					bg.projection = val
 				})
+			default:
+				if isPalFXParam(paramID) {
+					eachBg(func(bg *backGround) {
+						palFX(sc).runSub(c, &bg.palfx.PalFXDef, paramID, exp)
+					})
+				}
 			}
 		}
 		return true
