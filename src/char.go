@@ -13080,67 +13080,70 @@ func (c *Char) cueDebugDraw() {
 					if mtk {
 						nhbtxt = "Invincible"
 					} else if hb {
+						// Avoids reallocating and copying on every concatenation
+						var b strings.Builder
 						// Statetype
 						if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
 							if flags&int32(ST_S) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(ST_C) == 0 {
-								nhbtxt += "C"
+								b.WriteString("C")
 							}
 							if flags&int32(ST_A) == 0 {
-								nhbtxt += "A"
+								b.WriteString("A")
 							}
-							nhbtxt += " Any"
+							b.WriteString(" Any")
 						}
 						// Attack
 						if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_HA) == 0 {
-							if nhbtxt != "" {
-								nhbtxt += ", "
+							if b.Len() > 0 {
+								b.WriteString(", ")
 							}
 							if flags&int32(AT_NA) == 0 {
-								nhbtxt += "N"
+								b.WriteString("N")
 							}
 							if flags&int32(AT_SA) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(AT_HA) == 0 {
-								nhbtxt += "H"
+								b.WriteString("H")
 							}
-							nhbtxt += " Atk"
+							b.WriteString(" Atk")
 						}
 						// Throw
 						if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_HT) == 0 {
-							if nhbtxt != "" {
-								nhbtxt += ", "
+							if b.Len() > 0 {
+								b.WriteString(", ")
 							}
 							if flags&int32(AT_NT) == 0 {
-								nhbtxt += "N"
+								b.WriteString("N")
 							}
 							if flags&int32(AT_ST) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(AT_HT) == 0 {
-								nhbtxt += "H"
+								b.WriteString("H")
 							}
-							nhbtxt += " Thr"
+							b.WriteString(" Thr")
 						}
 						// Projectile
 						if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_HP) == 0 {
-							if nhbtxt != "" {
-								nhbtxt += ", "
+							if b.Len() > 0 {
+								b.WriteString(", ")
 							}
 							if flags&int32(AT_NP) == 0 {
-								nhbtxt += "N"
+								b.WriteString("N")
 							}
 							if flags&int32(AT_SP) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(AT_HP) == 0 {
-								nhbtxt += "H"
+								b.WriteString("H")
 							}
-							nhbtxt += " Prj"
+							b.WriteString(" Prj")
 						}
+						nhbtxt = b.String()
 					}
 				}
 			}
