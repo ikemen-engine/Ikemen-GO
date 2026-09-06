@@ -431,8 +431,8 @@ func (pf *PalFX) withStacked(extra *PalFX, blendMode TransType, alpha [2]int32) 
 // Returns a copy of the PalFX with font frgba applied as a base color
 // To do this perfectly correctly we'd need more shader uniforms
 // However, this should still be better than making font color parameter overwrite PalFX like before
-func (pf *PalFX) withFontRgba(frgba [4]float32) *PalFX {
-	usesColor := frgba[0] != 1.0 || frgba[1] != 1.0 || frgba[2] != 1.0
+func (pf *PalFX) withStackedColor(r, g, b float32) *PalFX {
+	usesColor := r != 1.0 || g != 1.0 || b != 1.0
 	if !usesColor {
 		return pf
 	}
@@ -452,15 +452,19 @@ func (pf *PalFX) withFontRgba(frgba [4]float32) *PalFX {
 
 	// Check status of the original PalFX
 	if pf == nil || (!pf.enable && pf.time == 0) {
-		// Uninitialized or disabled: set color directly from frgba
-		pfx.eMul[0] = int32(256 * frgba[0])
-		pfx.eMul[1] = int32(256 * frgba[1])
-		pfx.eMul[2] = int32(256 * frgba[2])
+		// Uninitialized or disabled: set color directly from RGB
+		pfx.eMul[0] = int32(256 * r)
+		pfx.eMul[1] = int32(256 * g)
+		pfx.eMul[2] = int32(256 * b)
+		// eColor defaults to 0 in this case, resulting in grayscale
+		// Set to 1 so the sprite's own colors are multiplied instead of overridden
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3956
+		pfx.eColor = 1
 	} else {
-		// Active: stack frgba on top of existing eMul
-		pfx.eMul[0] = int32(float32(pf.eMul[0]) * frgba[0])
-		pfx.eMul[1] = int32(float32(pf.eMul[1]) * frgba[1])
-		pfx.eMul[2] = int32(float32(pf.eMul[2]) * frgba[2])
+		// Active: stack RGB on top of existing eMul
+		pfx.eMul[0] = int32(float32(pf.eMul[0]) * r)
+		pfx.eMul[1] = int32(float32(pf.eMul[1]) * g)
+		pfx.eMul[2] = int32(float32(pf.eMul[2]) * b)
 	}
 
 	return pfx

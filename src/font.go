@@ -679,7 +679,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 	}
 
 	// Sprite fonts can't use frgba like TTF can, so we will leverage PalFX.mul to apply color
-	pfxCopy := palfx.withFontRgba(frgba)
+	pfxCopy := palfx.withStackedColor(frgba[0], frgba[1], frgba[2])
 
 	// Initialize common render parameters
 	rp := RenderParams{
