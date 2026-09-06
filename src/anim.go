@@ -1171,8 +1171,6 @@ func (at AnimationTable) readAction(sff *Sff, pal *PaletteList, lines []string, 
 				}
 				return existing
 			}
-			// Store the new animation in the table.
-			at.anims[no] = a
 			// Recursive logic until we find a non-empty animation
 			// If the current action is empty, we attempt to copy the very next action found in the file
 			logged := false
@@ -1187,6 +1185,8 @@ func (at AnimationTable) readAction(sff *Sff, pal *PaletteList, lines []string, 
 				}
 				(*i)++
 			}
+			// Store only now that the animation is fully resolved or confirmed empty
+			at.anims[no] = a
 			return a
 		} else {
 			// No action found on this line, advance to the next one
