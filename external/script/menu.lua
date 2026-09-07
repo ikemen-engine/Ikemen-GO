@@ -554,6 +554,18 @@ function menu.f_trainingReset()
 	setAILevel(0)
 end
 
+hook.add('loop#training', 'trainingSettings', function()
+	if not roundStart() then return end
+	player(2)
+	setAILevel(menu.dummycontrol == 2 and menu.ailevel or 0)
+	mapSet('_iksys_trainingDummyControl', menu.dummycontrol - 1)
+	mapSet('_iksys_trainingDummyMode', menu.dummymode - 1)
+	mapSet('_iksys_trainingGuardMode', menu.guardmode - 1)
+	mapSet('_iksys_trainingFallRecovery', menu.fallrecovery - 1)
+	mapSet('_iksys_trainingDistance', menu.distance - 1)
+	mapSet('_iksys_trainingButtonJam', menu.buttonjam - 1)
+end)
+
 menu.movelistChar = 1
 function menu.f_init()
 	esc(false)
