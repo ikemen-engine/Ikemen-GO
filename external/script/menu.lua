@@ -921,7 +921,11 @@ function menu.f_commandlistRender(sec, t)
 				--render text
 				else
 					textImgReset(sec.movelist.text.TextSpriteData)
-					textImgSetAlign(sec.movelist.text.TextSpriteData, v.align)
+					local align = v.align
+					if align == 0 and lengthOffset ~= 0 then
+						align = 1
+					end
+					textImgSetAlign(sec.movelist.text.TextSpriteData, align)
 					textImgSetColor(
 						sec.movelist.text.TextSpriteData,
 						v.col.r or sec.movelist.text.font[4],
@@ -940,7 +944,7 @@ function menu.f_commandlistRender(sec, t)
 						width = textImgGetTextWidth(sec.movelist.text.TextSpriteData, v.text) * sec.movelist.text.scale[1] + sec.movelist.text.spacing[1]
 					end
 				end
-				if v.align == 0 then
+				if v.align == 0 and not v.glyph and lengthOffset == 0 then
 					lengthOffset = lengthOffset + width / 2
 				elseif v.align == -1 then
 					lengthOffset = lengthOffset - width
