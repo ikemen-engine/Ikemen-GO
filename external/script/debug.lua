@@ -36,7 +36,7 @@ addHotkey('F2', true, false, false, false, true, 'kill(1,1); kill(3,1); kill(5,1
 addHotkey('F2', false, false, true, false, true, 'kill(2,1); kill(4,1); kill(6,1); kill(8,1)')
 addHotkey('F3', false, false, false, false, true, 'powMax(1); powMax(2)')
 addHotkey('F3', true, false, true, false, true, 'toggleMaxPowerMode()')
-addHotkey('F4', false, false, false, false, true, 'resetRound(); closeMenu(); trainingReset()')
+addHotkey('F4', false, false, false, false, true, 'resetRound(); closeMenu()')
 addHotkey('F4', false, false, true, false, true, 'reload(); closeMenu(); trainingReset()')
 addHotkey('F5', false, false, false, false, true, 'setTime(0)')
 addHotkey('F8', false, false, false, false, true, 'clearConsole()')

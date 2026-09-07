@@ -62,13 +62,7 @@ ignoreHitPause if gameMode = "training" {
 		if roundState = 0 {
 			# Round start reset
 			map(_iksys_trainingAirJumpNum) := 0;
-			map(_iksys_trainingButtonJam) := 0;
 			map(_iksys_trainingDirection) := 0;
-			map(_iksys_trainingDistance) := 0;
-			map(_iksys_trainingDummyControl) := 0;
-			map(_iksys_trainingDummyMode) := 0;
-			map(_iksys_trainingFallRecovery) := 0;
-			map(_iksys_trainingGuardMode) := 0;
 		}
 		if roundState = 2 {
 			# Dummy Control: Cooperative
