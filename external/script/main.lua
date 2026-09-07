@@ -2347,6 +2347,7 @@ main.t_itemname = {
 		--main.fightscreen.p2ailevel = true
 		main.makeRoster = true
 		main.motif.hiscore = true
+		main.motif.losescreen = true
 		main.motif.winscreen = true
 		main.matchWins.draw = {0, 0}
 		main.matchWins.simul = {1, 1}
