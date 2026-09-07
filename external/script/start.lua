@@ -2229,9 +2229,13 @@ function launchFight(data)
 			end
 			cnt = cnt + 1
 			local ref = start.f_getCharRef(v)
+			local pal = t.p1pal
+			if type(pal) == 'table' then
+				pal = pal[cnt]
+			end
 			table.insert(start.p[1].t_selected, {
 				ref = ref,
-				pal = t.p1pal or start.f_selectPal(ref),
+				pal = pal or start.f_selectPal(ref),
 				pn = start.f_getPlayerNo(1, #start.p[1].t_selected + 1),
 				--cursor = {},
 			})
@@ -2249,9 +2253,13 @@ function launchFight(data)
 		for _, v in main.f_sortKeys(t.p2char) do
 			cnt = cnt + 1
 			local ref = start.f_getCharRef(v)
+			local pal = t.p2pal
+			if type(pal) == 'table' then
+				pal = pal[cnt]
+			end
 			table.insert(start.p[2].t_selected, {
 				ref = ref,
-				pal = t.p2pal or start.f_selectPal(ref),
+				pal = pal or start.f_selectPal(ref),
 				pn = start.f_getPlayerNo(2, #start.p[2].t_selected + 1),
 				--cursor = {},
 			})
