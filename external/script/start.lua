@@ -3431,6 +3431,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		selectState = 0
 		st.currentIdx = nil
 		st.validPals = nil
+		t_reservedChars[side][charRef] = nil
 		start.p[side].t_selTemp[member].slotConfirmed = false
 		sndPlay(motif.Snd, motif.select_info['p' .. side].palmenu.cancel.snd[1], motif.select_info['p' .. side].palmenu.cancel.snd[2])
 	end
@@ -3627,6 +3628,9 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_selTemp[member].pal = main.f_btnPalNo(cmd)
 					start.p[side].t_selTemp[member].inRandom = false
 					start.p[side].t_selTemp[member].slotConfirmed = true
+					if not gameOption('Options.Team.Duplicates') then
+						t_reservedChars[side][start.c[player].selRef] = true
+					end
 					if start.p[side].t_selTemp[member].pal == nil or start.p[side].t_selTemp[member].pal == 0 then
 						start.p[side].t_selTemp[member].pal = 1
 					end
