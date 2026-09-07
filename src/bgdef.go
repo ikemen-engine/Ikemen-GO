@@ -312,7 +312,7 @@ func (s *BGDef) action() {
 
 	s.bga.action(true)
 	if s.model != nil {
-		s.model.step(1)
+		s.model.step()
 	}
 
 	// Global time must be incremented after updating BGCtrl

@@ -2701,12 +2701,12 @@ func (anim *GLTFAnimation) toggle(enabled bool) {
 	}
 }
 
-func (model *Model) step(turbo float32) {
+func (model *Model) step() {
 	for _, anim := range model.animations {
 		if anim.enabled == false {
 			continue
 		}
-		anim.time += turbo / 60
+		anim.time += 1.0 / 60.0
 		for anim.time >= anim.duration && anim.duration > 0 && (anim.loopCount < 0 || anim.loop < anim.loopCount) {
 			anim.time -= anim.duration
 			anim.loop += 1
