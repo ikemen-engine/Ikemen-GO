@@ -142,10 +142,12 @@ var vertexFontShader string
 var gfx Renderer
 var gfxFont FontRenderer
 
-// Reusable buffers for batched sprite vertices (quads)
+// Pre-allocated CPU-side scratch buffers reused to avoid allocations in the render hot path
 var (
 	quadVertexScratch []float32
 	tileScratch       []float32
+	quadDrawScratch   [16]float32
+	rectDrawScratch   [16]float32
 )
 
 // Blend constants
@@ -299,13 +301,14 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	// See: https://github.com/ikemen-engine/Ikemen-GO/issues/3583
 	uvBias := float32(0.000002)
 
-	gfx.SetVertexData(
+	quadDrawScratch = [16]float32{
 		x2, y2, 1, 1-uvBias,
 		x3, y3, 1, 0,
 		x1, y1, uvBias, 1-uvBias,
 		x4, y4, uvBias, 0,
-	)
+	}
 
+	gfx.SetVertexData(quadDrawScratch[:]...)
 	gfx.RenderQuad()
 }
 
@@ -1096,12 +1099,13 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 	gfx.SetSpritePipeline("")
 
 	// Set geometry
-	gfx.SetVertexData(
+	rectDrawScratch = [16]float32{
 		x2, y2, 1, 1,
 		x2, y1, 1, 0,
 		x1, y2, 0, 1,
 		x1, y1, 0, 0,
-	)
+	}
+	gfx.SetVertexData(rectDrawScratch[:]...)
 
 	// Static uniforms
 	gfx.SetUniformMatrix("modelview", modelview[:])
