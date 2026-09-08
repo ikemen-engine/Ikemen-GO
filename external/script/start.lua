@@ -2714,44 +2714,6 @@ function start.f_selectScreen()
 			animUpdate(item.anim)
 		end
 		batchDraw(staticDrawList)
-		--draw done cursors
-		for side = 1, 2 do
-			local persist = motif.select_info['p' .. side].cursor.persist 
-			local totalSelected = #start.p[side].t_selected
-			local drawnCells = {} -- Track drawn cells to avoid duplicates
-			for k, v in pairs(start.p[side].t_selected) do
-				if v.cursor ~= nil then
-					--get cell coordinates
-					local x = v.cursor[1]
-					local y = v.cursor[2]
-					local t = start.t_grid[y + 1][x + 1]
-					--retrieve proper cell coordinates in case of random selection
-					--TODO: doesn't work with slot feature
-					--if (t.char == 'randomselect' or t.hidden == 3) --[[and not gameOption('Options.Team.Duplicates')]] then
-					--	x = start.f_getCharData(v.ref).col - 1
-					--	y = start.f_getCharData(v.ref).row - 1
-					--	t = start.t_grid[y + 1][x + 1]
-					--end
-					--render only if cell is not hidden
-					if t.hidden ~= 1 and t.hidden ~= 2 then
-						local shouldDraw = false
-						if main.coop or persist then
-							shouldDraw = true
-						end
-						if start.p[side].selEnd and k == totalSelected then
-							shouldDraw = true
-						end
-						if shouldDraw then
-							local cellKey = x .. ',' .. y
-							if not drawnCells[cellKey] then
-								start.f_drawCursor(v.pn, x, y, 'done', true)
-								drawnCells[cellKey] = true
-							end
-						end
-					end
-				end
-			end
-		end
 		--team and select menu
 		if blinkCount < motif.select_info.p2.cursor.switchtime then
 			blinkCount = blinkCount + 1
@@ -2811,6 +2773,42 @@ function start.f_selectScreen()
 						end
 						if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 and not start.c[v.player].blink then
 							start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, cursorState, false)
+						end
+					end
+				end
+			end
+			--draw done cursors
+			local persist = motif.select_info['p' .. side].cursor.persist
+			local totalSelected = #start.p[side].t_selected
+			local drawnCells = {} -- Track drawn cells to avoid duplicates
+			for k, v in pairs(start.p[side].t_selected) do
+				if v.cursor ~= nil then
+					--get cell coordinates
+					local x = v.cursor[1]
+					local y = v.cursor[2]
+					local t = start.t_grid[y + 1][x + 1]
+					--retrieve proper cell coordinates in case of random selection
+					--TODO: doesn't work with slot feature
+					--if (t.char == 'randomselect' or t.hidden == 3) --[[and not gameOption('Options.Team.Duplicates')]] then
+					--	x = start.f_getCharData(v.ref).col - 1
+					--	y = start.f_getCharData(v.ref).row - 1
+					--	t = start.t_grid[y + 1][x + 1]
+					--end
+					--render only if cell is not hidden
+					if t.hidden ~= 1 and t.hidden ~= 2 then
+						local shouldDraw = false
+						if main.coop or persist then
+							shouldDraw = true
+						end
+						if start.p[side].selEnd and k == totalSelected then
+							shouldDraw = true
+						end
+						if shouldDraw then
+							local cellKey = x .. ',' .. y
+							if not drawnCells[cellKey] then
+								start.f_drawCursor(v.pn, x, y, 'done', true)
+								drawnCells[cellKey] = true
+							end
 						end
 					end
 				end
