@@ -6154,12 +6154,13 @@ func (c *Char) selfStatenoExist(stateno BytecodeValue) BytecodeValue {
 // https://github.com/ikemen-engine/Ikemen-GO/issues/1996
 func (c *Char) stageFrontEdgeDist() float32 {
 	corner := float32(0)
+	camStart := float32(sys.cam.startx) * sys.cam.localscl
 	if c.facing < 0 {
-		corner = Max(sys.cam.XMin/c.localscl+sys.screenleft()/c.localscl,
+		corner = Max((sys.cam.XMin+camStart)/c.localscl+sys.screenleft()/c.localscl,
 			sys.stage.leftbound*sys.stage.localscl/c.localscl)
 		return c.pos[0] - corner
 	} else {
-		corner = Min(sys.cam.XMax/c.localscl-sys.screenright()/c.localscl,
+		corner = Min((sys.cam.XMax+camStart)/c.localscl-sys.screenright()/c.localscl,
 			sys.stage.rightbound*sys.stage.localscl/c.localscl)
 		return corner - c.pos[0]
 	}
@@ -6167,12 +6168,13 @@ func (c *Char) stageFrontEdgeDist() float32 {
 
 func (c *Char) stageBackEdgeDist() float32 {
 	corner := float32(0)
+	camStart := float32(sys.cam.startx) * sys.cam.localscl
 	if c.facing < 0 {
-		corner = Min(sys.cam.XMax/c.localscl-sys.screenright()/c.localscl,
+		corner = Min((sys.cam.XMax+camStart)/c.localscl-sys.screenright()/c.localscl,
 			sys.stage.rightbound*sys.stage.localscl/c.localscl)
 		return corner - c.pos[0]
 	} else {
-		corner = Max(sys.cam.XMin/c.localscl+sys.screenleft()/c.localscl,
+		corner = Max((sys.cam.XMin+camStart)/c.localscl+sys.screenleft()/c.localscl,
 			sys.stage.leftbound*sys.stage.localscl/c.localscl)
 		return c.pos[0] - corner
 	}
