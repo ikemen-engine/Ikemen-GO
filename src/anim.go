@@ -829,30 +829,43 @@ func (a *Animation) Action() {
 
 // Convert animation transparency to RenderParams transparency
 func (a *Animation) alphaToBlend() (blendMode TransType, blendAlpha [2]int32) {
-	var sa, da byte
+	var sa, da int32
 
 	blendMode = a.transType
 
 	if blendMode == TT_default {
 		blendMode = a.curtrans
-		sa = byte(a.interpolate_blend_srcalpha)
-		da = byte(a.interpolate_blend_dstalpha)
+		sa = int32(a.interpolate_blend_srcalpha)
+		da = int32(a.interpolate_blend_dstalpha)
 	} else {
-		sa = byte(a.srcAlpha)
-		da = byte(a.dstAlpha)
+		sa = int32(a.srcAlpha)
+		da = int32(a.dstAlpha)
 	}
 
 	// Fallback: Make sure blend mode is not default
 	if blendMode == TT_default {
 		blendMode = TT_none
-		sa = byte(255)
-		da = byte(0)
+		sa = 255
+		da = 0
+	}
+
+	// Mugen's alpha range is 0-256, but Ikemen's renderer uses a more conventional 0-255
+	// Adjust "src + dst = 256" to be the same as if 255
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3125
+	if sa+da == 256 {
+		da = 255 - sa
 	}
 
 	// Apply system brightness
-	sa = byte(float32(sa) * sys.brightness)
+	sa = int32(float32(sa) * sys.brightness)
 
-	blendAlpha = [2]int32{int32(sa), int32(da)}
+	// Clamp values just in case
+	// Apparently Mugen doesn't clamp here. Or at least not the source
+	// But implementing that would require changes all over the code. And no use cases have been found
+	sa = Clamp(sa, 0, 255)
+	da = Clamp(da, 0, 255)
+
+	blendAlpha = [2]int32{sa, da}
 
 	return
 }
