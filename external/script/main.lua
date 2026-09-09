@@ -3986,7 +3986,11 @@ end
 local t_modules = {}
 for _, v in ipairs(getDirectoryFiles('external/mods')) do
 	if v:lower():match('%.([^%.\\/]-)$') == 'lua' then
-		table.insert(t_modules, v)
+		local fileName = v:match("[^/\\]+$") or v
+		-- Lua files prefixed with '-' are excluded from autoloading
+		if not fileName:match("^%-") then
+			table.insert(t_modules, v)
+		end
 	end
 end
 

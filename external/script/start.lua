@@ -2714,9 +2714,71 @@ function start.f_selectScreen()
 			animUpdate(item.anim)
 		end
 		batchDraw(staticDrawList)
-		--draw done cursors
+		--team and select menu
+		if blinkCount < motif.select_info.p2.cursor.switchtime then
+			blinkCount = blinkCount + 1
+		else
+			blinkCount = 0
+		end
+		local screenDelayInterrupted = false
 		for side = 1, 2 do
-			local persist = motif.select_info['p' .. side].cursor.persist 
+			if not start.p[side].teamEnd then
+				start.f_teamMenu(side, t_teamMenu[side])
+			elseif not start.p[side].selEnd then
+				--for each player with active controls
+				for k, v in ipairs(start.p[side].t_selCmd) do
+					local member = main.f_tableLength(start.p[side].t_selected) + k
+					local activeMember = true
+					if main.coop and (side == 1 or gameMode('versuscoop')) then
+						member = k
+						if motif.select_info.coopqueue then
+							activeMember = (k == main.f_tableLength(start.p[side].t_selected) + 1)
+						end
+					end
+					--member selection
+					local drawUpdateFlag
+					if activeMember then
+						v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
+					end
+					if drawUpdateFlag then
+						start.needUpdateDrawList = true
+					end
+					--draw active cursor
+					if activeMember then
+						if side == 2 and motif.select_info.p2.cursor.blink then
+							local sameCell = false
+							for _, v2 in ipairs(start.p[1].t_selCmd) do							
+								if start.c[v.player].cell == start.c[v2.player].cell and v.selectState == 0 and v2.selectState == 0 then
+									if blinkCount == 0 then
+										start.c[v.player].blink = not start.c[v.player].blink
+									end
+									sameCell = true
+									break
+								end
+							end
+							if not sameCell then
+								start.c[v.player].blink = false
+							end
+						end
+						local cursorState = 'active'
+						if v.selectState > 0 and motif.select_info.paletteselect > 0 then
+							local cursorData = motif.select_info['p' .. side].cursor
+							if cursorData.preview and cursorData.preview.default and 
+							(cursorData.preview.default.anim ~= -1 or cursorData.preview.default.spr[1] ~= -1) then
+							--cursorState when palmenu is active
+								cursorState = 'preview'
+							else
+								cursorState = 'done'
+							end
+						end
+						if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 and not start.c[v.player].blink then
+							start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, cursorState, false)
+						end
+					end
+				end
+			end
+			--draw done cursors
+			local persist = motif.select_info['p' .. side].cursor.persist
 			local totalSelected = #start.p[side].t_selected
 			local drawnCells = {} -- Track drawn cells to avoid duplicates
 			for k, v in pairs(start.p[side].t_selected) do
@@ -2748,62 +2810,6 @@ function start.f_selectScreen()
 								drawnCells[cellKey] = true
 							end
 						end
-					end
-				end
-			end
-		end
-		--team and select menu
-		if blinkCount < motif.select_info.p2.cursor.switchtime then
-			blinkCount = blinkCount + 1
-		else
-			blinkCount = 0
-		end
-		local screenDelayInterrupted = false
-		for side = 1, 2 do
-			if not start.p[side].teamEnd then
-				start.f_teamMenu(side, t_teamMenu[side])
-			elseif not start.p[side].selEnd then
-				--for each player with active controls
-				for k, v in ipairs(start.p[side].t_selCmd) do
-					local member = main.f_tableLength(start.p[side].t_selected) + k
-					if main.coop and (side == 1 or gameMode('versuscoop')) then
-						member = k
-					end
-					--member selection
-					local drawUpdateFlag
-					v.selectState, drawUpdateFlag = start.f_selectMenu(side, v.cmd, v.player, member, v.selectState)
-					if drawUpdateFlag then
-						start.needUpdateDrawList = true
-					end
-					--draw active cursor
-					if side == 2 and motif.select_info.p2.cursor.blink then
-						local sameCell = false
-						for _, v2 in ipairs(start.p[1].t_selCmd) do							
-							if start.c[v.player].cell == start.c[v2.player].cell and v.selectState == 0 and v2.selectState == 0 then
-								if blinkCount == 0 then
-									start.c[v.player].blink = not start.c[v.player].blink
-								end
-								sameCell = true
-								break
-							end
-						end
-						if not sameCell then
-							start.c[v.player].blink = false
-						end
-					end
-					local cursorState = 'active'
-					if v.selectState > 0 and motif.select_info.paletteselect > 0 then
-						local cursorData = motif.select_info['p' .. side].cursor
-						if cursorData.preview and cursorData.preview.default and 
-						(cursorData.preview.default.anim ~= -1 or cursorData.preview.default.spr[1] ~= -1) then
-						--cursorState when palmenu is active
-							cursorState = 'preview'
-						else
-							cursorState = 'done'
-						end
-					end
-					if v.selectState < 4 and start.f_selGrid(start.c[v.player].cell + 1).hidden ~= 1 and not start.c[v.player].blink then
-						start.f_drawCursor(v.player, start.c[v.player].selX, start.c[v.player].selY, cursorState, false)
 					end
 				end
 			end
