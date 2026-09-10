@@ -1099,7 +1099,7 @@ function build() {
 		if [[ "$GOOS" == "linux" ]]; then
 			export CGO_LDFLAGS="${deps_libs} -lpthread -lm -ldl -lz -Wl,-rpath,\$ORIGIN -Wl,-rpath,\$ORIGIN/lib ${CGO_LDFLAGS:-}"
 		elif [[ "$GOOS" == "darwin" ]]; then
-			export CGO_LDFLAGS="${deps_libs} ${CGO_LDFLAGS:-} -Wl,-rpath,@executable_path -Wl,-rpath,@executable_path/../Frameworks"
+			export CGO_LDFLAGS="${deps_libs} ${CGO_LDFLAGS:-} -Wl,-rpath,@executable_path/../lib -Wl,-rpath,@executable_path/../Frameworks"
 		fi		
 	fi
 
@@ -1121,6 +1121,7 @@ function build() {
 
 	# bundle libs
 	bundle_shared_libs
+	fix_macos_dylib_paths
 
 	# For Android, optionally build the APK via ikemen-droid
 	build_android_apk
@@ -1319,29 +1320,55 @@ function bundle_shared_libs() {
 				[[ -f "$d" ]] && { mvk="$d"; break; }
 			done
 		fi
-		[[ -n "$mvk" ]] && cp -av "$mvk" "$dest_lib/" 2>/dev/null || true
+		[[ -n "$mvk" ]] && cp -Lfv "$mvk" "$dest_lib/" 2>/dev/null || true
 	fi
 	# Android specific bundling
 	if [[ "$GOOS" == "android" ]]; then
 		echo "==> Bundling Android dependencies from $ANDROID_DEPS_PATH..."
 		cp -av "$ANDROID_DEPS_PATH"/lib/*.so* "$dest_lib/" 2>/dev/null || true
 	fi
-	# Always try to bundle libxmp for portable runtime on Linux/macOS.
+	# Always try to bundle libxmp and SDL for portable runtime on Linux/macOS.
 	# (Windows and Android were handled above.)
 	if [[ "$GOOS" != "windows" && "$GOOS" != "android" ]]; then
 		# Prefer pkg-config to locate the correct lib directory.
-		local pc libdir libdir_sdl2
+		local pc libdir libdir_sdl2 libdir_sdl3
 		pc="${PKG_CONFIG:-pkg-config}"
 		libdir="$($pc --variable=libdir libxmp 2>/dev/null || true)"
 		if [[ -n "$libdir" && -d "$libdir" ]]; then
 			cp -av "${libdir}"/libxmp*.so*   "$dest_lib/" 2>/dev/null || true
-			cp -av "${libdir}"/libxmp*.dylib "$dest_lib/" 2>/dev/null || true
+			cp -Lfv "${libdir}"/libxmp*.dylib "$dest_lib/" 2>/dev/null || true
 		fi
 		libdir_sdl2="$($pc --variable=libdir sdl2 2>/dev/null || true)"
 		if [[ -n "$libdir_sdl2" && -d "$libdir_sdl2" ]]; then
 			cp -av "${libdir_sdl2}"/libSDL2*.so*   "$dest_lib/" 2>/dev/null || true
-			cp -av "${libdir_sdl2}"/libSDL2*.dylib "$dest_lib/" 2>/dev/null || true
+			cp -Lfv "${libdir_sdl2}"/libSDL2*.dylib "$dest_lib/" 2>/dev/null || true
 		fi
+		# Homebrew's SDL2 compatibility library loads SDL3 at runtime.
+		libdir_sdl3="$($pc --variable=libdir sdl3 2>/dev/null || true)"
+		if [[ -n "$libdir_sdl3" && -d "$libdir_sdl3" ]]; then
+			cp -Lfv "${libdir_sdl3}"/libSDL3*.dylib "$dest_lib/" 2>/dev/null || true
+		fi
+	fi
+}
+
+# Use bundled libraries instead of Homebrew paths in the macOS binary.
+function fix_macos_dylib_paths() {
+	[[ "$GOOS" != "darwin" ]] && return 0
+
+	local binary="$OUTDIR/$binName"
+	local dependency dependencies filename changed=0
+	dependencies="$(otool -L "$binary" | awk 'NR > 1 { sub(/^[[:space:]]+/, ""); sub(/ \(compatibility version.*$/, ""); print }')"
+	while IFS= read -r dependency; do
+		filename="${dependency##*/}"
+		if [[ -n "$dependency" && "$dependency" != @* && -e "$LIBDIR/$filename" ]]; then
+			install_name_tool -change "$dependency" "@rpath/$filename" "$binary"
+			changed=1
+		fi
+	done <<< "$dependencies"
+
+	# install_name_tool invalidates the ad-hoc signature required on Apple Silicon.
+	if ((changed)); then
+		codesign --force --sign - "$binary"
 	fi
 }
 
