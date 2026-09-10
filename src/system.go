@@ -3916,18 +3916,20 @@ func (s *System) drawDebugText(logicState drawAspectState) {
 					s.debugFont.SetColor(255, 255, 255, 255)
 				}
 				top := s.luaLState.GetTop()
+				var text lua.LString
 				if s.luaLState.CallByParam(lua.P{Fn: f, NRet: 1,
 					Protect: true}) == nil {
-					s, ok := s.luaLState.Get(-1).(lua.LString)
-					if ok && len(s) > 0 {
-						if i == 1 && (sys.debugWC == nil || sys.debugWC.csf(CSF_destroy)) { // TODO: A nil check this late would still crash
-							put(&x, &y, string(s)+" disabled")
-							break
-						}
-						put(&x, &y, string(s))
-					}
+					text, _ = s.luaLState.Get(-1).(lua.LString)
 				}
+				// Restore the stack before the destroyed helper branch can break.
 				s.luaLState.SetTop(top)
+				if len(text) > 0 {
+					if i == 1 && (sys.debugWC == nil || sys.debugWC.csf(CSF_destroy)) {
+						put(&x, &y, string(text)+" disabled")
+						break
+					}
+					put(&x, &y, string(text))
+				}
 			}
 		}
 		// Clipboard
