@@ -158,6 +158,7 @@ type SystemStateVars struct {
 // Do not create more than 1.
 var sys = System{
 	soundMixer: &beep.Mixer{},
+	videoMixer: &beep.Mixer{},
 	bgm:        *newBgm(),
 	//soundChannels: newSoundChannels(16), // Lazy allocation in Request()
 	allPalFX: newPalFX(),
@@ -223,6 +224,7 @@ type System struct {
 	debugRef            [2]int // player number, helper index
 	debugLastID         int32
 	soundMixer          *beep.Mixer
+	videoMixer          *beep.Mixer
 	bgm                 Bgm
 	matchMusicSel       []*bgMusic
 	pauseVolumeApplied  bool
@@ -473,6 +475,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	speaker = &SDLSpeaker{}
 	speaker.Init(beep.SampleRate(sys.cfg.Sound.SampleRate), audioOutLen)
 	speaker.Play(NewNormalizer(s.soundMixer))
+	speaker.Play(s.videoMixer)
 	l := lua.NewState()
 	l.Options.IncludeGoStackTrace = true
 	l.OpenLibs()
@@ -1016,6 +1019,16 @@ func (s *System) tickSound() {
 	if !s.noCharSoundFlg {
 		for i := range sys.charSoundChannels {
 			sys.charSoundChannels[i].Tick()
+		}
+	}
+
+	// Stage video audio follows character muting, including post-match sounds.enabled.
+	if s.stage != nil {
+		for _, b := range s.stage.bg {
+			if b != nil && b.video != nil {
+				b.video.muted = s.noCharSoundFlg || s.nomusic
+				b.video.updateAudioVolume()
+			}
 		}
 	}
 
@@ -2323,7 +2336,10 @@ func (s *System) clearMatchSound() {
 
 func (s *System) clearAllSound() {
 	s.soundChannels.StopAll()
-	s.soundMixer.Clear()
+	WithSpeakerLock(func() {
+		s.soundMixer.Clear()
+		s.videoMixer.Clear()
+	})
 	s.clearMatchSound()
 }
 

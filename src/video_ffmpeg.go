@@ -38,6 +38,7 @@ type bgVideo struct {
 	flag            BgVideoScaleFilter
 	playing         bool
 	visible         bool
+	muted           bool
 	videoCtrl       *beep.Ctrl
 	videoVol        *effects.Volume
 	audioSampleRate beep.SampleRate
@@ -206,7 +207,7 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 	if len(audioStreams) > 0 {
 		if err := audioStreams[0].Open(); err == nil {
 			bgv.audioStream = audioStreams[0]
-			// Build an independent chain mixed into sys.soundMixer
+			// Bypass WAV normalization: video audio uses BGM/master volume only.
 			bgv.audioSampleRate = beep.SampleRate(audioStreams[0].SampleRate())
 			rs := &reisenAudioStreamer{ch: bgv.audioBuffer}
 			bgv.videoVol = &effects.Volume{Streamer: rs, Base: 2}
@@ -216,7 +217,7 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 			bgv.videoCtrl = &beep.Ctrl{Streamer: resampler, Paused: true} // start paused until SetPlaying(true)
 
 			WithSpeakerLock(func() {
-				sys.soundMixer.Add(bgv.videoCtrl)
+				sys.videoMixer.Add(bgv.videoCtrl)
 			})
 
 			bgv.inMixer = true
@@ -490,6 +491,8 @@ func (bgv *bgVideo) Tick() error {
 
 // SetPlaying toggles decode/audio production and (re)anchors the pacing clock.
 func (bgv *bgVideo) SetPlaying(on bool) {
+	// Refresh even when playback state is unchanged (e.g. volume menu changes).
+	bgv.updateAudioVolume()
 	// If the decode goroutine has already exited (EOF or Close), do not try to
 	// "resume" a dead stream (can happen on pause/unpause or BGCtrl toggles).
 	if bgv.done != nil {
@@ -512,7 +515,7 @@ func (bgv *bgVideo) SetPlaying(on bool) {
 		// Ensure we're attached to the mixer (it may have been cleared).
 		if bgv.videoCtrl != nil && !bgv.inMixer {
 			WithSpeakerLock(func() {
-				sys.soundMixer.Add(bgv.videoCtrl)
+				sys.videoMixer.Add(bgv.videoCtrl)
 			})
 			bgv.inMixer = true
 		}
@@ -706,20 +709,23 @@ func (bgv *bgVideo) updateAudioVolume() {
 		return
 	}
 	// Match BGM.UpdateVolume logic:
+	volume := Min(bgv.volume, sys.cfg.Sound.MaxBGMVolume)
 	vol := -5 + float64(sys.cfg.Sound.BGMVolume)*0.06*
 		(float64(sys.cfg.Sound.MasterVolume)/100.0)*
-		(float64(bgv.volume)/100.0)
+		(float64(volume)/100.0)
 	if vol >= 1 {
 		vol = 1
 	}
-	silent := vol <= -5
+	_, noMusic := sys.cmdFlags["-nomusic"]
+	_, noSound := sys.cmdFlags["-nosound"]
+	silent := vol <= -5 || bgv.muted || !bgv.visible || noMusic || noSound
 	WithSpeakerLock(func() {
 		bgv.videoVol.Volume = vol
 		bgv.videoVol.Silent = silent
 	})
 }
 
-// MixerCleared should be called when sys.soundMixer.Clear() is executed,
+// MixerCleared should be called when sys.videoMixer.Clear() is executed,
 // so the next SetPlaying(true) can re-attach this stream.
 func (bgv *bgVideo) MixerCleared() {
 	bgv.inMixer = false
