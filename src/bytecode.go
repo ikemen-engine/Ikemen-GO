@@ -10653,7 +10653,7 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 		case stateTypeSet_statetype:
 			crun.ss.changeStateType(StateType(exp[0].evalI(c)))
 		case stateTypeSet_movetype:
-			crun.ss.changeMoveType(MoveType(exp[0].evalI(c)))
+			crun.changeMoveType(MoveType(exp[0].evalI(c)), true)
 		case stateTypeSet_physics:
 			crun.ss.physics = StateType(exp[0].evalI(c))
 		}
@@ -15532,10 +15532,7 @@ func (sb *StateBytecode) init(c *Char) {
 
 	// MoveType
 	if sb.moveType != MT_U {
-		if !c.ss.storeMoveType {
-			c.ss.prevMoveType = c.ss.moveType
-		}
-		c.ss.moveType = sb.moveType
+		c.changeMoveType(sb.moveType, !c.ss.storeMoveType)
 	}
 	c.ss.storeMoveType = false
 
