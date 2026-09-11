@@ -460,7 +460,7 @@ function varAndroid() {
 	export ANDROID_DEPS_PATH="$REPO_ROOT/build/android-deps"
 	# Force pkg-config to ONLY look at the Android libraries
 	export PKG_CONFIG_LIBDIR="$ANDROID_DEPS_PATH/lib/pkgconfig"
-	export PKG_CONFIG_SYSROOT_DIR="$ANDROID_DEPS_PATH"
+	unset PKG_CONFIG_SYSROOT_DIR
 	# Ensure we don't pick up host libraries by clearing this
 	export PKG_CONFIG_PATH=""
 	binName="libmain.so"
@@ -652,6 +652,21 @@ function build_ffmpeg() {
 	} > BUILDINFO.txt
 
 	./configure "${configure_args[@]}"
+
+	# By default FFmpeg only warns when an explicitly requested external decoder cannot be built.
+	if ! grep -q '^#define CONFIG_LIBVPX_VP8_DECODER 1' config_components.h ||
+	   ! grep -q '^#define CONFIG_LIBVPX_VP9_DECODER 1' config_components.h; then
+		echo "ERROR: FFmpeg configured without the required libvpx VP8/VP9 decoders." >&2
+		echo "libvpx pkg-config flags:" >&2
+		"${PKG_CONFIG:-pkg-config}" --cflags --libs vpx >&2 || true
+		echo "Relevant FFmpeg configure diagnostics:" >&2
+		grep -E \
+			'libvpx_vp[89]_decoder|vpx_codec_vp[89]_dx|ERROR|error:' \
+			ffbuild/config.log >&2 || true
+		popd >/dev/null
+		return 1
+	fi
+
 	echo "==> Configure complete. Starting make..."
 	make -j"$(getconf _NPROCESSORS_ONLN || echo 2)"
 	echo "==> Build complete. Installing..."
