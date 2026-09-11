@@ -920,6 +920,7 @@ const (
 	OC_ex2_bgmvar_loopend
 	OC_ex2_bgmvar_loopstart
 	OC_ex2_bgmvar_position
+	OC_ex2_bgmvar_samplerate
 	OC_ex2_bgmvar_startposition
 	OC_ex2_bgmvar_volume
 	OC_ex2_clsnvar_back
@@ -1035,6 +1036,7 @@ const (
 	OC_ex2_soundvar_pan
 	OC_ex2_soundvar_position
 	OC_ex2_soundvar_priority
+	OC_ex2_soundvar_samplerate
 	OC_ex2_soundvar_startposition
 	OC_ex2_soundvar_volumescale
 	OC_ex2_fightscreenstate_fightdisplay
@@ -4011,6 +4013,12 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushI(int32(sys.bgm.streamer.Position()))
 		}
+	case OC_ex2_bgmvar_samplerate:
+		if sys.bgm.streamer == nil {
+			sys.bcStack.PushF(0)
+		} else {
+			sys.bcStack.PushF(float32(sys.bgm.sampleRate))
+		}
 	case OC_ex2_bgmvar_startposition:
 		sys.bcStack.PushI(int32(sys.bgm.startPos))
 	case OC_ex2_bgmvar_volume:
@@ -4378,6 +4386,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_soundvar_position:
 		fallthrough
 	case OC_ex2_soundvar_priority:
+		fallthrough
+	case OC_ex2_soundvar_samplerate:
 		fallthrough
 	case OC_ex2_soundvar_startposition:
 		fallthrough

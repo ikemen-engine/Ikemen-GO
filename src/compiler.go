@@ -1883,6 +1883,9 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "filename":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_filename
+		case "freqmul":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_freqmul
 		case "length":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_length
@@ -1901,6 +1904,9 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "position":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_position
+		case "samplerate":
+			opct = OC_ex2_
+			opc = OC_ex2_bgmvar_samplerate
 		case "startposition":
 			opct = OC_ex2_
 			opc = OC_ex2_bgmvar_startposition
@@ -3747,6 +3753,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_soundvar_position
 		case "priority":
 			opc = OC_ex2_soundvar_priority
+		case "samplerate":
+			opc = OC_ex2_soundvar_samplerate
 		case "startposition":
 			opc = OC_ex2_soundvar_startposition
 		case "volumescale":

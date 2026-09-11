@@ -7777,6 +7777,8 @@ func triggerFunctions(l *lua.LState) {
 					}
 				case "position":
 					ln = lua.LNumber(int32(sys.bgm.streamer.Position()))
+				case "samplerate":
+					ln = lua.LNumber(float32(sys.bgm.sampleRate))
 				case "startposition":
 					ln = lua.LNumber(int32(sys.bgm.startPos))
 				case "volume":
@@ -10103,6 +10105,8 @@ func triggerFunctions(l *lua.LState) {
 				}
 			case "priority":
 				lv = lua.LNumber(ch.sfx.priority)
+			case "samplerate":
+				lv = lua.LNumber(float32(ch.sound.format.SampleRate))
 			case "startposition":
 				lv = lua.LNumber(ch.sfx.startPos)
 			case "volumescale":

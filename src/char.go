@@ -6138,6 +6138,11 @@ func (c *Char) soundVar(chid BytecodeValue, vtype OpCode) BytecodeValue {
 			return BytecodeInt(ch.sfx.priority)
 		}
 		return BytecodeInt(0)
+	case OC_ex2_soundvar_samplerate:
+		if ch != nil && ch.sound != nil {
+			return BytecodeFloat(float32(ch.sound.format.SampleRate))
+		}
+		return BytecodeFloat(0)
 	case OC_ex2_soundvar_startposition:
 		if ch != nil && ch.sfx != nil {
 			return BytecodeInt64(int64(ch.sfx.startPos))
