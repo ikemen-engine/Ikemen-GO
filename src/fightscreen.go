@@ -2406,7 +2406,12 @@ func readFightScreenCombo(pre string, is IniSection,
 	if side == 1 {
 		// Mugen 1.0 implementation reuses Winmugen code where both sides shared the same values
 		if pre == "team2." {
-			co.start_x = float32(sys.fightScreen.localcoord[0]) - co.start_x
+			startX := co.start_x
+			co.start_x = float32(sys.fightScreen.localcoord[0]) - startX
+			// Keep movement enabled when start.x is inside a wider localcoord.
+			if co.start_x >= 0 {
+				co.start_x = Min(float32(co.pos[0])-startX, 0)
+			}
 		} else {
 			co.pos[0] = sys.fightScreen.localcoord[0] - co.pos[0]
 		}
@@ -2957,7 +2962,12 @@ func readFightScreenAction(pre string, is IniSection, f map[int]*Fnt) *FightScre
 	is.ReadI32(pre+"spacing", &ac.spacing[0], &ac.spacing[1])
 	is.ReadF32(pre+"start.x", &ac.start_x)
 	if pre == "team2." {
-		ac.start_x = float32(sys.fightScreen.localcoord[0]) - ac.start_x
+		startX := ac.start_x
+		ac.start_x = float32(sys.fightScreen.localcoord[0]) - startX
+		// Keep movement enabled when start.x is inside a wider localcoord.
+		if ac.start_x >= 0 {
+			ac.start_x = Min(float32(ac.pos[0])-startX, 0)
+		}
 	}
 	ac.text = *readFSText(pre+"text.", is, "", 2, f, 0)
 	is.ReadI32(pre+"displaytime", &ac.displaytime)
