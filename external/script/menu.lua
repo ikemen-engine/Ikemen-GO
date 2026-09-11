@@ -247,7 +247,6 @@ menu.t_itemname = {
 			endMatch()
 			start.characterchange = true
 			main.pauseMenuActive = false
-			start.f_selectReset(false)
 			return false
 		end
 		return true
