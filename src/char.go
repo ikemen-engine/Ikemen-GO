@@ -3200,6 +3200,7 @@ func (ss *StateState) changeStateType(t StateType) {
 
 func (ss *StateState) changeMoveType(t MoveType) {
 	ss.prevMoveType = ss.moveType
+	ss.cancelPendingMoveType()
 	ss.moveType = t
 }
 func (ss *StateState) deferMoveTypeChange(t MoveType) {
@@ -3236,7 +3237,6 @@ func (c *Char) changeMoveType(t MoveType, updatePrev bool) {
 
 func (ss *StateState) clear() {
 	ss.deferMoveType = false
-	ss.cancelPendingMoveType()
 	ss.changeStateType(ST_S)
 	ss.changeMoveType(MT_I)
 	ss.physics = ST_N
@@ -11018,7 +11018,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				if !hd.KeepState && getter.stateChange1(hd.p2stateno, pn) {
 					// In Mugen, using p2stateno forces movetype to H
 					// https://github.com/ikemen-engine/Ikemen-GO/issues/2466
-					getter.changeMoveType(MT_H, true)
+					getter.ss.changeMoveType(MT_H)
 					getter.setCtrl(false)
 					p2s = true
 					getter.hoverIdx = -1
@@ -12621,7 +12621,7 @@ func (c *Char) tick() {
 	if c.csf(CSF_gethit) && !c.hoverKeepState && !c.ghv.keepstate {
 		// This flag prevents prevMoveType from being changed twice
 		c.ss.storeMoveType = true
-		c.changeMoveType(MT_H, true)
+		c.ss.changeMoveType(MT_H)
 		//if c.hitPauseTime > 0 {
 		//	c.ss.clearHitPauseExecutionToggleFlags()
 		//}

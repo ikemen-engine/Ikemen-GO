@@ -10653,7 +10653,7 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 		case stateTypeSet_statetype:
 			crun.ss.changeStateType(StateType(exp[0].evalI(c)))
 		case stateTypeSet_movetype:
-			crun.changeMoveType(MoveType(exp[0].evalI(c)), true)
+			crun.ss.changeMoveType(MoveType(exp[0].evalI(c)))
 		case stateTypeSet_physics:
 			crun.ss.physics = StateType(exp[0].evalI(c))
 		}
