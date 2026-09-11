@@ -1977,6 +1977,9 @@ func (fa *FightScreenFace) drawTeammates(layerno int16) {
 		fa.teammate_face_lay.DrawFaceSprite((x+sys.fightScreen.offsetX)*sys.fightScreen.scale, y*sys.fightScreen.scale, layerno,
 			fa.teammate_face[i], pfx, fa.teammate_scale[i]*sys.fightScreen.portraitScale, &fa.teammate_face_lay.window)
 
+		// Draw top layer
+		fa.teammate_top.Draw((x + sys.fightScreen.offsetX), y, layerno, sys.fightScreen.scale)
+
 		// Draw KO layer
 		if i < fa.numko {
 			fa.teammate_ko.Draw((x + sys.fightScreen.offsetX), y, layerno, sys.fightScreen.scale)
