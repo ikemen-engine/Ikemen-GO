@@ -528,7 +528,7 @@ func (bg *backGround) changeAnim(animNo int32, table AnimationTable) {
 }
 
 func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
-	stgscl [2]float32, shakeY float32, isStage bool) {
+	stgscl [2]float32, shakeY float32, isStage bool, overdrawClip [4]int32) {
 
 	// Handle parallax scaling (type = 2)
 	scalestartX := bg.scalestart[0]
@@ -687,14 +687,22 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	rect[2] = int32(math.Floor(float64(startrect0 + (float32(rect[2]) * sys.widthScale * wscl[0]) - float32(rect[0]))))
 	rect[3] = int32(math.Floor(float64(startrect1 + (float32(rect[3]) * sys.heightScale * wscl[1]) - float32(rect[1]))))
 
-	// Stage BG windows are relative to the fight viewport.
-	// Offset and clip them when composing at full resolution.
+	// Extra considerations for stage windows
 	if isStage {
-		if viewport, ok := sys.fightDrawClip(); ok {
+		// Apply overdraw
+		// Before shifting the windows for the viewport
+		rect = intersectRect(rect, overdrawClip)
+
+		// Stage BG windows are relative to the fight viewport.
+		// Offset and clip them when composing at full resolution.
+		viewport, _ := sys.fightDrawClip()
+		if viewport != sys.scrrect {
 			rect[0] += viewport[0] - sys.scrrect[0]
 			rect[1] += viewport[1] - sys.scrrect[1]
-			rect = intersectRect(rect, viewport)
 		}
+
+		// Intersect viewport
+		rect = intersectRect(rect, viewport)
 	}
 
 	// Render background if it's within the screen area
@@ -1216,7 +1224,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		sec.ReadI32("floortension", &s.stageCamera.floortension)
 		sec.ReadI32("tension", &s.stageCamera.tension)
 		sec.ReadF32("tensionvel", &s.stageCamera.tensionvel)
-		sec.ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh) // TODO: not implemented
+		sec.ReadI32("overdrawhigh", &s.stageCamera.overdrawhigh)
 		sec.ReadI32("overdrawlow", &s.stageCamera.overdrawlow)
 		sec.ReadI32("cuthigh", &s.stageCamera.cuthigh)
 		sec.ReadI32("cutlow", &s.stageCamera.cutlow)
@@ -1560,6 +1568,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 			s.bgc = append(s.bgc, *bgc)
 		}
 	}
+
 	link, zlink := 0, -1
 	for i, b := range s.bg {
 		if b.positionlink && i > 0 {
@@ -1893,9 +1902,12 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	if s.hires {
 		bgscl = 0.5
 	}
-	ofs := sys.envShake.getOffset()
-	pos := [...]float32{x, y}
+	shake := sys.envShake.getOffset()
+	pos := [2]float32{x, y}
 	scl2 := s.localscl * scl
+
+	// Add shake to render position
+	pos[0] += shake[0] / scl2
 
 	// This code makes the background scroll faster when surpassing boundhigh with the camera pushed down
 	// through floortension and boundlow. MUGEN 1.1 doesn't look like it does this, so it was commented.
@@ -1909,6 +1921,8 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	// pos[1] = float32(s.stageCamera.boundhigh) - extraBoundH/s.localscl
 	// }
 
+	// This whole block seems to have been compensating for the missing overdraw feature
+	/*
 	if ofs[1] != 0 && s.stageCamera.verticalfollow > 0 {
 		if ofs[1] < 0 {
 			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
@@ -1932,7 +1946,7 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 			}
 		}
 	}
-	pos[0] += ofs[0] / scl2
+	*/
 
 	// Mugen doesn't seem to do this sort of snapping
 	// Perhaps this was trying to emulate Winmugen's low resolution
@@ -1943,14 +1957,29 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	//	}
 	//}
 
+	// Compute overdraw clipping
+	// Must run even when overdraw is 0, so that the shake alone can still crop
+	// TODO: This works for EnvShake, which is the main use case
+	// But it hasn't yet been tested for "Overdraw pixels will also be used when the screen aspect is taller than the stage aspect"
+	odh := Max(0, float32(s.stageCamera.overdrawhigh)) * s.localscl
+	odl := Max(0, float32(s.stageCamera.overdrawlow)) * s.localscl
+	topOver := int32(Floor(Max(0, -odh - shake[1]) * sys.heightScale)) // Needs "shake" because the window itself shakes
+	botOver := int32(Ceil(Max(0, -odl + shake[1]) * sys.heightScale))
+	overdrawClip := [4]int32{
+		sys.scrrect[0],
+		sys.scrrect[1] + topOver,
+		sys.scrrect[2],
+		sys.scrrect[3] - topOver - botOver,
+	}
+
 	// Draw model
-	s.drawModel(pos, ofs[1], scl, layer)
+	s.drawModel(pos, shake[1], scl, layer)
 
 	// Draw BG's
 	for _, b := range s.bg {
 		// Draw only when visible and enabled.
 		if b.layerno == layer && b.visible && b.enabled && (b.anim.spr != nil || b._type == BG_Video) {
-			b.draw(pos, scl, bgscl, s.localscl, s.scale, ofs[1], true)
+			b.draw(pos, scl, bgscl, s.localscl, s.scale, shake[1], true, overdrawClip)
 		}
 	}
 }
