@@ -150,10 +150,41 @@ func premultiplyVideoFrame(frame *image.RGBA) {
 
 func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf BgVideoScaleFilter, loop bool) error {
 	// fmt.Println("Opening media file:", filename)
-	m, err := reisen.NewMedia(filename)
+	f, err := OpenFile(filename)
 	if err != nil {
 		return err
 	}
+	m, err := reisen.NewMediaFromReader(f)
+	if err != nil {
+		f.Close()
+		return fmt.Errorf("opening video %s: %w", filename, err)
+	}
+	cleanup := func() {
+		if bgv.videoStream != nil {
+			bgv.videoStream.Close()
+			bgv.videoStream = nil
+		}
+		if bgv.audioStream != nil {
+			bgv.audioStream.Close()
+			bgv.audioStream = nil
+		}
+		m.CloseDecode()
+		m.Close()
+		bgv.media = nil
+		f.Close()
+		if bgv.videoCtrl != nil {
+			WithSpeakerLock(func() {
+				bgv.videoCtrl.Streamer = nil
+			})
+		}
+		bgv.inMixer = false
+	}
+	opened := false
+	defer func() {
+		if !opened {
+			cleanup()
+		}
+	}()
 
 	//bgv.describe()
 
@@ -183,7 +214,8 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 		return fmt.Errorf("No decodable video streams in %s (check codecs in your FFmpeg build)", filename)
 	}
 
-	err = videoStreams[0].Open()
+	bgv.videoStream = videoStreams[0]
+	err = bgv.videoStream.Open()
 	if err != nil {
 		return err
 	}
@@ -200,13 +232,12 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 			}
 		}
 	}
-	bgv.videoStream = videoStreams[0]
 
 	// Try to open the first audio stream, if any
 	audioStreams := bgv.media.AudioStreams()
 	if len(audioStreams) > 0 {
+		bgv.audioStream = audioStreams[0]
 		if err := audioStreams[0].Open(); err == nil {
-			bgv.audioStream = audioStreams[0]
 			// Bypass WAV normalization: video audio uses BGM/master volume only.
 			bgv.audioSampleRate = beep.SampleRate(audioStreams[0].SampleRate())
 			rs := &reisenAudioStreamer{ch: bgv.audioBuffer}
@@ -239,6 +270,7 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 	bgv.haveBasePTS = false
 
 	// Decode loop. When EOF is reached and loop==true, rewind to t=0 and continue.
+	opened = true
 	SafeGo(func() {
 		defer close(bgv.done)
 		for {
@@ -290,20 +322,7 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 		}
 	finish:
 		// Cleanup only when we actually finish (i.e., not looping forever).
-		bgv.videoStream.Close()
-		if bgv.audioStream != nil {
-			bgv.audioStream.Close()
-		}
-		if bgv.media != nil {
-			bgv.media.CloseDecode()
-		}
-		// Detach from mixer
-		if bgv.videoCtrl != nil {
-			WithSpeakerLock(func() {
-				bgv.videoCtrl.Streamer = nil
-			})
-		}
-		bgv.inMixer = false
+		cleanup()
 		close(bgv.frameBuffer)
 		close(bgv.audioBuffer)
 		close(bgv.errs)
