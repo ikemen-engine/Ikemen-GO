@@ -5841,7 +5841,7 @@ func (fs *FightScreen) setScale() {
 	calcScale := float32(viewport[2]) / localW
 	calcOffsetX := (float32(viewport43[2]) - localW*calcScale) / 2
 
-	fs.offsetX = float32(calcOffsetX * calcScale)
+	fs.offsetX = calcOffsetX / calcScale
 	fs.scale = 320.0 / float32(viewport43[2]) * calcScale
 	fs.portraitScale = localW / float32(viewport43[2]) * calcScale
 }
