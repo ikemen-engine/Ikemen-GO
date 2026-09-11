@@ -160,7 +160,8 @@ var sys = System{
 	soundMixer:       &beep.Mixer{},
 	videoMixer:       &beep.Mixer{},
 	bgm:              *newBgm(),
-	pauseFocusVolume: 100,
+	pauseSoundVolume: 100,
+	focusSoundVolume: 100,
 	//soundChannels: newSoundChannels(16), // Lazy allocation in Request()
 	allPalFX: newPalFX(),
 	bgPalFX:  newPalFX(),
@@ -242,7 +243,8 @@ type System struct {
 	videoMixer          *beep.Mixer
 	bgm                 Bgm
 	matchMusicSel       []*bgMusic
-	pauseFocusVolume    int // Live combined pause/focus loss volume
+	pauseSoundVolume    int
+	focusSoundVolume    int
 	focusMuted          bool
 	duckingFlag         bool          // Whether charSoundChannels currently carry a non-1 duckMul
 	motifDuckingFlag    bool          // Whether soundChannels currently carry a non-1 duckMul
@@ -1059,6 +1061,8 @@ func (s *System) tickSound() {
 		}
 	}
 
+	s.applyPauseFocusVolume()
+
 	// Stage video audio follows character muting, including post-match sounds.enabled.
 	if s.stage != nil {
 		for _, b := range s.stage.bg {
@@ -1068,8 +1072,6 @@ func (s *System) tickSound() {
 			}
 		}
 	}
-
-	s.applyPauseFocusVolume()
 }
 
 func (s *System) applyPauseFocusVolume() {
@@ -1078,24 +1080,24 @@ func (s *System) applyPauseFocusVolume() {
 
 	// Check pause and focus loss volume levels
 	// If both are active at once, the quieter one wins
-	s.pauseFocusVolume = 100
-	if s.paused {
-		s.pauseFocusVolume = Min(s.pauseFocusVolume, s.cfg.Sound.PauseMasterVolume)
+	s.pauseSoundVolume = 100
+	if s.matchPaused() {
+		s.pauseSoundVolume = Min(s.pauseSoundVolume, s.cfg.Sound.PauseMasterVolume)
 	}
 	if s.focusMuted {
-		s.pauseFocusVolume = Min(s.pauseFocusVolume, s.cfg.Sound.FocusLossVolume)
+		s.pauseSoundVolume = Min(s.pauseSoundVolume, s.cfg.Sound.FocusLossVolume)
 	}
 
-	pauseSilence := s.paused && s.cfg.Sound.PauseMasterVolume == 0
+	pauseSilence := s.matchPaused() && s.cfg.Sound.PauseMasterVolume == 0
 
 	bgmPause := s.nomusic || pauseSilence || s.bgm.freqmul == 0 || s.motifPauseMusic()
 	s.bgm.SetPaused(bgmPause)
 	s.bgm.UpdateVolume()
 
 	// Update char sounds
-	ducking := s.pauseFocusVolume < 100
+	ducking := s.pauseSoundVolume < 100
 	if ducking || s.duckingFlag {
-		duckMul := float32(s.pauseFocusVolume) / 100
+		duckMul := float32(s.pauseSoundVolume) / 100
 		for i := range s.charSoundChannels {
 			s.charSoundChannels[i].Duck(duckMul, pauseSilence)
 		}
@@ -1104,13 +1106,13 @@ func (s *System) applyPauseFocusVolume() {
 
 	// Update system sounds
 	// TODO: FightScreen sounds should probably respect pauses unlike motif sounds
-	focusVolume := 100
+	s.focusSoundVolume = 100
 	if s.focusMuted {
-		focusVolume = s.cfg.Sound.FocusLossVolume
+		s.focusSoundVolume = s.cfg.Sound.FocusLossVolume
 	}
-	motifDucking := focusVolume < 100
+	motifDucking := s.focusSoundVolume < 100
 	if motifDucking || s.motifDuckingFlag {
-		s.soundChannels.Duck(float32(focusVolume)/100, false)
+		s.soundChannels.Duck(float32(s.focusSoundVolume)/100, false)
 		s.motifDuckingFlag = motifDucking
 	}
 }

@@ -741,7 +741,8 @@ func (bgv *bgVideo) updateAudioVolume() {
 	volume := Min(bgv.volume, sys.cfg.Sound.MaxBGMVolume)
 	vol := -5 + float64(sys.cfg.Sound.BGMVolume)*0.06*
 		(float64(sys.cfg.Sound.MasterVolume)/100.0)*
-		(float64(volume)/100.0)
+		(float64(volume)/100.0)*
+		(float64(sys.focusSoundVolume)/100.0)
 	if vol >= 1 {
 		vol = 1
 	}
