@@ -48,6 +48,7 @@ stages/*
 sound/*
 debug/*
 video/*
+work/*
 
 external/mods/*
 
