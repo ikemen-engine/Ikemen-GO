@@ -968,7 +968,7 @@ func (s *System) renderFrame() {
 	}
 
 	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
-	dx, dy, dscl := s.zoom.apply(x, y, scl)
+	dx, dy, dscl := s.zoom.computeCamera(x, y, scl)
 	s.draw(dx, dy, dscl)
 
 	// Lua
@@ -6822,6 +6822,8 @@ type ZoomEffect struct {
 	curPos      [2]float32 // Current values with lag
 	cameraBound bool
 	stageBound  bool
+	resultPos   [2]float32 // Results from the last camera computation, so screenPos doesn't need to redo it
+	resultScale float32
 }
 
 func (z *ZoomEffect) reset() {
@@ -6835,6 +6837,8 @@ func (z *ZoomEffect) reset() {
 	z.endLag = 0
 	z.cameraBound = true
 	z.stageBound = true
+	z.resultPos = [2]float32{0, 0}
+	z.resultScale = 1
 }
 
 // Step the zoom variables
@@ -6897,40 +6901,55 @@ func (z *ZoomEffect) update() {
 	}
 }
 
-// Apply current zoom to sys.draw() parameters
-func (z *ZoomEffect) apply(x, y, scl float32) (dx, dy, dscl float32) {
+// Compute the camera position and scale used for sys.draw()
+func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 	dx, dy, dscl = x, y, scl
 
 	if !z.active {
+		z.resultPos, z.resultScale = [2]float32{dx, dy}, dscl
 		return
 	}
 
 	finalScale := z.curScale * scl
+	halfHeight := float32(sys.gameHeight) / 2
 
 	// Apply position limits
-	// The camera shifts by pos directly, independent of scale
+	// The camera shifts by pos directly, regardless of scale
 	if z.stageBound {
 		dscl = Max(sys.cam.MinScale, finalScale/sys.cam.BaseScale())
 
 		if z.cameraBound {
 			zoomedViewWidth := float32(sys.gameWidth) / finalScale
-			minCamX := x - (sys.cam.halfWidth/scl - zoomedViewWidth/2)
-			maxCamX := x + (sys.cam.halfWidth/scl - zoomedViewWidth/2)
+			windowHalfWidth := Max(0, sys.cam.halfWidth/scl-zoomedViewWidth/2)
+			minCamX := x - windowHalfWidth
+			maxCamX := x + windowHalfWidth
 			dx = Clamp(x+z.curPos[0], minCamX, maxCamX)
+
+			zoomedViewHeight := float32(sys.gameHeight) / finalScale
+			windowHalfHeight := Max(0, halfHeight/scl-zoomedViewHeight/2)
+			z.curPos[1] = Clamp(z.curPos[1], -windowHalfHeight, windowHalfHeight)
 		} else {
 			dx = x + z.curPos[0]
 		}
 
 		dx = sys.cam.XBound(dscl, dx)
+
+		// Keep smoothing continuous with what was actually visible, not the unclamped target
+		z.curPos[0] = dx - x
 	} else {
 		dscl = finalScale / sys.cam.BaseScale()
 		dx = x + z.curPos[0]
 	}
 
 	// Anchor the zoom to the center of the screen
-	centerRef := sys.cam.GroundLevel() + sys.cam.Offset[1] - float32(sys.gameHeight)/2
+	centerRef := sys.cam.GroundLevel() + sys.cam.Offset[1] - halfHeight
 	dy = centerRef + dscl*((y-centerRef)/scl+z.curPos[1])
 
+	if z.stageBound {
+		dy = sys.cam.YBound(dscl, dy)
+	}
+
+	z.resultPos, z.resultScale = [2]float32{dx, dy}, dscl
 	return
 }
 

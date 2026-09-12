@@ -6352,16 +6352,14 @@ func (c *Char) roundsWon() int32 {
 // But we need them to do more or less the same for backward compatibility
 // Perhaps Ikemen could have some new trigger that did return the rendering position of the chars
 func (c *Char) screenPosX() float32 {
-	zoomedHalfWidth := sys.cam.halfWidth / (sys.cam.Scale * sys.zoom.curScale)
-	camLeft := sys.cam.Pos[0] - zoomedHalfWidth - sys.cam.Offset[0]
+	scaledOffset := sys.cam.Offset[0] / sys.zoom.resultScale
+	camLeft := sys.zoom.resultPos[0] - scaledOffset - sys.cam.halfWidth
 	return c.pos[0]*c.localscl - camLeft
 }
 
 func (c *Char) screenPosY() float32 {
-	scl := sys.cam.Scale / sys.cam.BaseScale()
-	groundTerm := sys.cam.GroundLevel() - (sys.gameHeight-240)*scl
-	zoomedGroundTerm := groundTerm / (sys.cam.Scale * sys.zoom.curScale)
-	camTop := sys.cam.Pos[1] - zoomedGroundTerm - sys.cam.Offset[1]
+	groundRef := sys.cam.GroundLevel() + sys.cam.Offset[1]
+	camTop := (sys.zoom.resultPos[1] - groundRef) / sys.zoom.resultScale
 	return c.pos[1]*c.localscl - camTop
 }
 

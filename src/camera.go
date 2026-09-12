@@ -276,6 +276,11 @@ func (c *Camera) XBound(scl, x float32) float32 {
 		c.boundR+c.halfWidth-c.halfWidth/scl)
 }
 
+// Doesn't account for boundhighzoomdelta
+func (c *Camera) YBound(scl, y float32) float32 {
+	return Clamp(y, c.boundH*scl, c.boundLo*scl)
+}
+
 func (c *Camera) BaseScale() float32 {
 	return c.ztopscale
 }
