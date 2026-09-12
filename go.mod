@@ -5,7 +5,7 @@ go 1.20
 replace github.com/gopxl/beep/v2 => github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 
 require (
-	github.com/Eiton/vulkan v0.0.0-20251125114215-6585a2a8590b
+	github.com/Eiton/vulkan v0.0.0-20260815135700-bd01199ad8e7
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
 	github.com/go-gl/mathgl v1.0.0
