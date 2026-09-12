@@ -6348,15 +6348,21 @@ func (c *Char) roundsWon() int32 {
 	return sys.wins[c.playerNo&1]
 }
 
-// TODO: These are supposed to be affected by zoom camera shifting
-// In Mugen 1.1 they don't work properly when zoom scale is actually used
-// Perhaps in Ikemen they could return the final rendering position of the chars
+// In Mugen 1.1, these don't work seem to work quite right when zoom scale is actually used
+// But we need them to do more or less the same for backward compatibility
+// Perhaps Ikemen could have some new trigger that did return the rendering position of the chars
 func (c *Char) screenPosX() float32 {
-	return (c.pos[0]*c.localscl - sys.cam.ScreenPos[0]) // * sys.cam.Scale
+	zoomedHalfWidth := sys.cam.halfWidth / (sys.cam.Scale * sys.zoom.curScale)
+	camLeft := sys.cam.Pos[0] - zoomedHalfWidth - sys.cam.Offset[0]
+	return c.pos[0]*c.localscl - camLeft
 }
 
 func (c *Char) screenPosY() float32 {
-	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
+	scl := sys.cam.Scale / sys.cam.BaseScale()
+	groundTerm := sys.cam.GroundLevel() - (sys.gameHeight-240)*scl
+	zoomedGroundTerm := groundTerm / (sys.cam.Scale * sys.zoom.curScale)
+	camTop := sys.cam.Pos[1] + sys.zoom.curPos[1]/scl - zoomedGroundTerm - sys.cam.Offset[1]
+	return c.pos[1]*c.localscl - camTop
 }
 
 func (c *Char) screenHeight() float32 {
