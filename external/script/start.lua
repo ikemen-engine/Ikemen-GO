@@ -2380,6 +2380,9 @@ function launchFight(data)
 		start.f_game(common)
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
 		if start.exit or start.characterchange then
+			if start.characterchange then
+				start.f_selectReset(false)
+			end
 			start.characterchange = false
 			break
 		-- here comes a new challenger

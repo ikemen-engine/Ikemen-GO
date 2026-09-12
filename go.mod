@@ -5,13 +5,13 @@ go 1.20
 replace github.com/gopxl/beep/v2 => github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 
 require (
-	github.com/Eiton/vulkan v0.0.0-20251125114215-6585a2a8590b
+	github.com/Eiton/vulkan v0.0.0-20260815135700-bd01199ad8e7
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
 	github.com/go-gl/mathgl v1.0.0
 	github.com/gopxl/beep/v2 v2.1.1-0.20240921133731-defe79638e99
 	github.com/ikemen-engine/ggpo v0.0.0-20260413180701-b08e7d27b7f2
-	github.com/ikemen-engine/reisen v0.1.10-0.20260815114631-075900b2ba78
+	github.com/ikemen-engine/reisen v0.1.10-0.20260911210321-7972c2bbc957
 	github.com/leonkasovan/gl v0.0.0-20251110213347-e04040ce71e2
 	github.com/lukegb/dds v0.0.0-20190402175749-8b7170e64003
 	github.com/qmuntal/gltf v0.24.2

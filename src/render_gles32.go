@@ -250,23 +250,24 @@ func (r *Renderer_GLES32) generateTexture(width, height, depth int32, filter boo
 }
 
 // Creates a generic texture
-func (r *Renderer_GLES32) newTexture(width, height, depth int32, filter bool) Texture {
+func (r *Renderer_GLES32) newTexture(width, height, depth int32, filter bool) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(width, height, depth, filter)
 
-	return t
+	return t, nil
 }
 
 func (r *Renderer_GLES32) newPaletteTexture() Texture {
-	return r.newTexture(256, 1, 32, false)
+	t, _ := r.newTexture(256, 1, 32, false)
+	return t
 }
 
-func (r *Renderer_GLES32) newModelTexture(width, height, depth int32, filter bool) Texture {
+func (r *Renderer_GLES32) newModelTexture(width, height, depth int32, filter bool) (Texture, error) {
 	return r.newTexture(width, height, depth, filter)
 }
 
-func (r *Renderer_GLES32) newDataTexture(width, height int32) Texture {
+func (r *Renderer_GLES32) newDataTexture(width, height int32) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(width, height, 32, false)
@@ -276,10 +277,10 @@ func (r *Renderer_GLES32) newDataTexture(width, height int32) Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	return t
+	return t, nil
 }
 
-func (r *Renderer_GLES32) newHDRTexture(width, height int32) Texture {
+func (r *Renderer_GLES32) newHDRTexture(width, height int32) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(width, height, 24, false)
@@ -289,10 +290,10 @@ func (r *Renderer_GLES32) newHDRTexture(width, height int32) Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
-	return t
+	return t, nil
 }
 
-func (r *Renderer_GLES32) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) Texture {
+func (r *Renderer_GLES32) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(widthHeight, widthHeight, 24, false)
@@ -313,7 +314,7 @@ func (r *Renderer_GLES32) newCubeMapTexture(widthHeight int32, mipmap bool, lowe
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	return t
+	return t, nil
 }
 
 // Bind a texture and upload texel data to it
@@ -464,6 +465,10 @@ func (t *Texture_GLES32) SetRGBPixelData(data []float32) {
 // Return whether texture has a valid handle
 func (t *Texture_GLES32) IsValid() bool {
 	return t.width != 0 && t.height != 0 && t.handle != 0
+}
+
+func (t *Texture_GLES32) MarkNonSwappable() {
+	// No-op: GLES32 renderer does not have VRAM swap-out
 }
 
 func (t *Texture_GLES32) GetWidth() int32 {
@@ -819,7 +824,8 @@ func (r *Renderer_GLES32) Init() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
-	r.grabTexture = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true).(*Texture_GLES32)
+	grabTex, _ := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
+	r.grabTexture = grabTex.(*Texture_GLES32)
 	r.grabTexture.SetData(nil)
 
 	// create a texture for r.fbo
@@ -891,7 +897,8 @@ func (r *Renderer_GLES32) Init() {
 	}
 	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
 	if sys.msaa > 0 {
-		r.fbo_f_texture = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, false).(*Texture_GLES32)
+		fboTex, _ := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, false)
+		r.fbo_f_texture = fboTex.(*Texture_GLES32)
 		r.fbo_f_texture.SetData(nil)
 	} else {
 		//r.rbo_depth = gl.CreateRenderbuffer()
