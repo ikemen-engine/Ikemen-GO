@@ -6908,6 +6908,7 @@ func (z *ZoomEffect) apply(x, y, scl float32) (dx, dy, dscl float32) {
 	finalScale := z.curScale * scl
 
 	// Apply position limits
+	// The camera shifts by pos directly, independent of scale
 	if z.stageBound {
 		dscl = Max(sys.cam.MinScale, finalScale/sys.cam.BaseScale())
 
@@ -6915,19 +6916,20 @@ func (z *ZoomEffect) apply(x, y, scl float32) (dx, dy, dscl float32) {
 			zoomedViewWidth := float32(sys.gameWidth) / finalScale
 			minCamX := x - (sys.cam.halfWidth/scl - zoomedViewWidth/2)
 			maxCamX := x + (sys.cam.halfWidth/scl - zoomedViewWidth/2)
-			intermediateTargetX := x + z.curPos[0]/scl
-			dx = Clamp(intermediateTargetX, minCamX, maxCamX)
+			dx = Clamp(x+z.curPos[0], minCamX, maxCamX)
 		} else {
-			dx = x + z.curPos[0]/scl
+			dx = x + z.curPos[0]
 		}
 
 		dx = sys.cam.XBound(dscl, dx)
 	} else {
 		dscl = finalScale / sys.cam.BaseScale()
-		dx = x + z.curPos[0]/scl
+		dx = x + z.curPos[0]
 	}
 
-	dy = y + z.curPos[1]/scl
+	// Anchor the zoom to the center of the screen
+	centerRef := sys.cam.GroundLevel() + sys.cam.Offset[1] - float32(sys.gameHeight)/2
+	dy = centerRef + dscl*((y-centerRef)/scl+z.curPos[1])
 
 	return
 }

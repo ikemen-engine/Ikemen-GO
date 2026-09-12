@@ -6361,7 +6361,7 @@ func (c *Char) screenPosY() float32 {
 	scl := sys.cam.Scale / sys.cam.BaseScale()
 	groundTerm := sys.cam.GroundLevel() - (sys.gameHeight-240)*scl
 	zoomedGroundTerm := groundTerm / (sys.cam.Scale * sys.zoom.curScale)
-	camTop := sys.cam.Pos[1] + sys.zoom.curPos[1]/scl - zoomedGroundTerm - sys.cam.Offset[1]
+	camTop := sys.cam.Pos[1] - zoomedGroundTerm - sys.cam.Offset[1]
 	return c.pos[1]*c.localscl - camTop
 }
 
