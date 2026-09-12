@@ -6883,15 +6883,14 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	idx := int(-1)
 	rp := [2]int32{-1, 0}
 	remap := false
-	posTypeFound := false
 	animPN := -1
 	spritePN := -1
 
 	// Mugen chars can only modify some parameters after defining PosType
 	// Ikemen chars don't have this restriction
-	paramLock := func() bool {
-		return c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && !posTypeFound
-	}
+	hasIkemenVer := c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0
+	posTypeFound := StateControllerBase(sc).hasParam(explod_postype)
+	paramLock := !hasIkemenVer && !posTypeFound
 
 	var expls []*Explod
 	eachExpl := func(f func(e *Explod)) {
@@ -6920,8 +6919,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			return true // Already handled. Avoid default
 		default:
 			if len(expls) == 0 {
-				logMissing := c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0
-				expls = crun.getMultipleExplods(eid, idx, logMissing)
+				expls = crun.getMultipleExplods(eid, idx, hasIkemenVer)
 				if len(expls) == 0 {
 					return false
 				}
@@ -6936,7 +6934,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				// In Mugen, many explod parameters are defaulted when not being modified
 				// What possibly happens in Mugen is that all parameters are read first then only applied if PosType is defined
 				// However that would be a worse way to do things, so we'll handle each exception instead
-				if paramLock() {
+				if paramLock {
+					// Check if facing is defined so we don't flip it twice
+					// https://github.com/ikemen-engine/Ikemen-GO/issues/3994
+					facingFound := StateControllerBase(sc).hasParam(explod_facing)
+
 					eachExpl(func(e *Explod) {
 						e.offset = [3]float32{0, 0, 0}
 						e.setAllPosX(e.offset[0])
@@ -6953,7 +6955,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						// Defaulting facing too makes some explods face the wrong way
 						// But not defaulting it is the cause of https://github.com/ikemen-engine/Ikemen-GO/issues/3813
 						// TODO: Check which explods face the wrong way and why
-						if e.trueFacing() >= 0 { // See explod_facing
+						if !facingFound && e.trueFacing() >= 0 { // See explod_facing
 							e.relativef = 1
 						}
 						// Just for documentation's sake, because this is a no-op
@@ -6962,9 +6964,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						}
 					})
 				}
-				// Flag PosType as found
-				// From this point onward, Mugen chars can modify more parameters (Ikemen chars always could)
-				posTypeFound = true
 				// Update actual PosType
 				pt := PosType(exp[0].evalI(c))
 				eachExpl(func(e *Explod) {
@@ -6972,37 +6971,47 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				})
 			case explod_space:
 				// For some reason Mugen also requires a PosType declaration to be able to modify space
-				if !paramLock() {
+				if !paramLock {
 					spc := Space(exp[0].evalI(c))
 					eachExpl(func(e *Explod) {
 						e.space = spc
 					})
 				}
 			case explod_facing:
-				if !paramLock() {
+				if !paramLock {
 					rf := exp[0].evalF(c)
+					if rf < 0 { // Same clamping as creation
+						rf = -1
+					} else {
+						rf = 1
+					}
 					eachExpl(func(e *Explod) {
 						// There's a bug in Mugen where an explod that is facing left can't be flipped
 						// https://github.com/ikemen-engine/Ikemen-GO/issues/1252
 						// Ikemen chars just work as supposed to
-						if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || e.trueFacing() >= 0 {
+						if hasIkemenVer || e.trueFacing() >= 0 {
 							e.relativef = rf
 						}
 					})
 				}
 			case explod_vfacing:
-				if !paramLock() {
+				if !paramLock {
 					vf := exp[0].evalF(c)
+					if vf < 0 { // Same clamping as creation
+						vf = -1
+					} else {
+						vf = 1
+					}
 					eachExpl(func(e *Explod) {
 						// There's a bug in Mugen where an explod that is upside down can't be flipped
 						// Ikemen chars just work as supposed to
-						if e.vfacing >= 0 || c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
+						if hasIkemenVer || e.vfacing >= 0 {
 							e.vfacing = vf
 						}
 					})
 				}
 			case explod_pos:
-				if !paramLock() {
+				if !paramLock {
 					pos := exp[0].evalF(c) * redirscale
 					eachExpl(func(e *Explod) {
 						e.relativePos[0] = pos
@@ -7021,7 +7030,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				}
 			case explod_random:
-				if !paramLock() {
+				if !paramLock {
 					rndx := (exp[0].evalF(c) / 2) * redirscale
 					rndx = RandF(-rndx, rndx)
 					eachExpl(func(e *Explod) {
@@ -7043,7 +7052,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				}
 			case explod_velocity:
-				if !paramLock() {
+				if !paramLock {
 					vel := exp[0].evalF(c) * redirscale
 					eachExpl(func(e *Explod) {
 						e.velocity[0] = vel
@@ -7076,7 +7085,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.friction[2] = v3
 				})
 			case explod_accel:
-				if !paramLock() {
+				if !paramLock {
 					accel := exp[0].evalF(c) * redirscale
 					eachExpl(func(e *Explod) {
 						e.accel[0] = accel
@@ -7235,7 +7244,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.alpha = [2]int32{src, dst}
 				})
 			case explod_anim:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
+				if hasIkemenVer { // You could not modify this one in Mugen
 					apn := crun.playerNo // Default to own player number
 					spn := crun.playerNo
 					if animPN >= 0 {
@@ -7407,22 +7416,20 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					}
 				})
 			case explod_interpolation:
-				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 {
-					interpolation := exp[0].evalB(c)
-					eachExpl(func(e *Explod) {
-						if e.interpolate != interpolation && e.interpolate_time[0] > 0 {
-							e.interpolate_animelem[0] = e.start_animelem
-							e.interpolate_animelem[1] = e.interpolate_animelem[2]
-							if e.ownpal {
-								pfd := e.palfx
-								pfd.interpolate = interpolation
-								pfd.itime = e.interpolate_time[0]
-							}
-							e.interpolate_time[1] = e.interpolate_time[0]
-							e.interpolate = interpolation
+				interpolation := exp[0].evalB(c)
+				eachExpl(func(e *Explod) {
+					if e.interpolate != interpolation && e.interpolate_time[0] > 0 {
+						e.interpolate_animelem[0] = e.start_animelem
+						e.interpolate_animelem[1] = e.interpolate_animelem[2]
+						if e.ownpal {
+							pfd := e.palfx
+							pfd.interpolate = interpolation
+							pfd.itime = e.interpolate_time[0]
 						}
-					})
-				}
+						e.interpolate_time[1] = e.interpolate_time[0]
+						e.interpolate = interpolation
+					}
+				})
 			default:
 				switch {
 				case isPalFXParam(paramID):
