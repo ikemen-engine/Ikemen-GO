@@ -3178,16 +3178,19 @@ func newCharGlobalInfo() CharGlobalInfo {
 
 // StateState contains the state variables like stateNo, prevStateNo, time, stateType, moveType, and physics of the current state.
 type StateState struct {
-	stateType     StateType
-	prevStateType StateType
-	moveType      MoveType
-	prevMoveType  MoveType
-	storeMoveType bool
-	physics       StateType
-	ps            []int32
-	no, prevno    int32
-	time          int32
-	sb            StateBytecode
+	stateType       StateType
+	prevStateType   StateType
+	moveType        MoveType
+	prevMoveType    MoveType
+	storeMoveType   bool
+	pendingMoveType MoveType
+	moveTypePending bool
+	deferMoveType   bool
+	physics         StateType
+	ps              []int32
+	no, prevno      int32
+	time            int32
+	sb              StateBytecode
 	//hitPauseExecutionToggleFlags [MaxPlayerNo][]bool // Flags if an sctrl runs during a hit pause on the current tick.
 }
 
@@ -3198,10 +3201,43 @@ func (ss *StateState) changeStateType(t StateType) {
 
 func (ss *StateState) changeMoveType(t MoveType) {
 	ss.prevMoveType = ss.moveType
+	ss.cancelPendingMoveType()
 	ss.moveType = t
+}
+func (ss *StateState) deferMoveTypeChange(t MoveType) {
+	ss.pendingMoveType = t
+	ss.moveTypePending = true
+}
+
+func (ss *StateState) cancelPendingMoveType() {
+	ss.pendingMoveType = MT_U
+	ss.moveTypePending = false
+}
+
+func (ss *StateState) commitPendingMoveType() {
+	if !ss.moveTypePending {
+		return
+	}
+	ss.moveType = ss.pendingMoveType
+	ss.cancelPendingMoveType()
+}
+
+// changeMoveType applies runtime MoveType changes. During the recovery frame,
+// H -> I is deferred when control is restored after negative states have run
+func (c *Char) changeMoveType(t MoveType, updatePrev bool) {
+	if updatePrev {
+		c.ss.prevMoveType = c.ss.moveType
+	}
+	if c.ss.deferMoveType && c.ss.moveType == MT_H && t == MT_I && c.scf(SCF_ctrl) {
+		c.ss.deferMoveTypeChange(t)
+		return
+	}
+	c.ss.cancelPendingMoveType()
+	c.ss.moveType = t
 }
 
 func (ss *StateState) clear() {
+	ss.deferMoveType = false
 	ss.changeStateType(ST_S)
 	ss.changeMoveType(MT_I)
 	ss.physics = ST_N
@@ -6565,6 +6601,12 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after %v loops): %v -> %v -> %v", sys.changeStateNest, c.ss.prevno, c.ss.no, no))
 		LogMessage("Maximum ChangeState loops: %v, %v, %v -> %v -> %v", sys.changeStateNest, c.name, c.ss.prevno, c.ss.no, no)
 		return false
+	}
+
+	// A state change outside the deferred recovery phase supersedes any
+	// H -> I transition that was waiting for the next tick.
+	if !c.ss.deferMoveType {
+		c.ss.cancelPendingMoveType()
 	}
 
 	c.ss.prevno = c.ss.no
@@ -11178,10 +11220,6 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				if ghv.hittime < 0 {
 					ghv.hittime = 0
 				}
-				// This compensates for characters being able to guard one frame sooner in Ikemen than in Mugen
-				if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && ghv.hittime > 0 {
-					ghv.hittime += 1
-				}
 				if getterInCombo {
 					ghv.hitcount++
 				} else {
@@ -11325,6 +11363,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		if !p2s && !getter.csf(CSF_gethit) {
 			getter.stchtmp = false
 		}
+		// A new hit supersedes a deferred recovery transition
+		getter.ss.cancelPendingMoveType()
 		// Flag enemy as getting hit
 		getter.setCSF(CSF_gethit)
 		getter.ghv.frame = true
@@ -11925,6 +11965,11 @@ func (c *Char) actionRun() {
 	if c.minus != 3 || c.csf(CSF_destroy) || c.scf(SCF_disabled) {
 		return
 	}
+	// Deferred MoveType changes are only armed after negative states have run.
+	c.ss.deferMoveType = false
+	ctrlAtCurrentStart := c.scf(SCF_ctrl)
+	stateAtCurrentStart := c.ss.no
+
 	c.guardflag = 0
 	// Run state -4
 	c.minus = -4
@@ -11955,6 +12000,12 @@ func (c *Char) actionRun() {
 		}
 		// Change into buffered state
 		c.stateChange2()
+
+		//  If a character is still uncontrollable and in MoveType H here, defer a later H -> I transition
+		ctrlAtCurrentStart = c.scf(SCF_ctrl)
+		stateAtCurrentStart = c.ss.no
+		c.ss.deferMoveType = c.ss.moveType == MT_H && !ctrlAtCurrentStart
+
 		// Run current state
 		c.minus = 0
 		c.ss.sb.run(c)
@@ -11962,7 +12013,15 @@ func (c *Char) actionRun() {
 
 	// Guarding instructions
 	c.unsetSCF(SCF_guard)
-	if ((c.scf(SCF_ctrl) || c.ss.no == 52) &&
+	guardCtrl := c.scf(SCF_ctrl)
+	landingGuard := c.ss.no == 52
+	if !c.pauseBool {
+		// Control acquired by Current State cannot retroactively make this frame
+		// guardable. Control lost by Current State must also be respected.
+		guardCtrl = ctrlAtCurrentStart && c.scf(SCF_ctrl)
+		landingGuard = landingGuard || stateAtCurrentStart == 52 && c.scf(SCF_ctrl)
+	}
+	if ((guardCtrl || landingGuard) &&
 		c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 		(c.cmd[0].Buffer.Bb > 0 || c.asf(ASF_autoguard)) &&
 		(c.ss.stateType == ST_S && !c.asf(ASF_nostandguard) ||
@@ -12126,10 +12185,9 @@ func (c *Char) actionRun() {
 					c.ghv.down_recovertime = c.gi().data.liedown.time
 					// Mugen specifically resets this one for some reason
 					c.ghv.fall_envshake_time = 0
-					// In Mugen, when returning to idle, characters cannot act until the next frame
-					// To account for this, combos in Mugen linger one frame longer than they normally would in a fighting game
-					// Ikemen's "fake combo" code used to replicate this behavior
-					// After guarding was adjusted so that chars could guard when returning to idle, the fake combo code became obsolete
+					// In Mugen, when returning to idle, characters cannot act until the next frame.
+					// Ikemen keeps MoveType H through that recovery frame, so hit and combo data
+					// remain valid until the character actually gets an input opportunity.
 					// https://github.com/ikemen-engine/Ikemen-GO/issues/597
 					//if c.comboExtraFrameWindow <= 0 {
 					//	c.fakeReceivedHits = 0
@@ -12190,6 +12248,8 @@ func (c *Char) actionRun() {
 	}
 
 	c.acttmp += int8(Btoi(!c.pause() && !c.hitPause())) - int8(Btoi(c.hitPause()))
+	// State changes after this point are outside the recovery deferral phase
+	c.ss.deferMoveType = false
 	// Signal that "actionRun" has finished
 	c.minus = 1
 }
@@ -13329,6 +13389,10 @@ func (cl *CharList) commandUpdate() {
 }
 
 func (cl *CharList) updateRunOrder() {
+	// Commit deferred MoveType changes before using MoveType to determine run order.
+	for _, c := range cl.runOrder {
+		c.ss.commitPendingMoveType()
+	}
 	// Decide priority of each player
 	getPriority := func(c *Char) int {
 		// Any character with runfirst flag

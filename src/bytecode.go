@@ -15555,10 +15555,7 @@ func (sb *StateBytecode) init(c *Char) {
 
 	// MoveType
 	if sb.moveType != MT_U {
-		if !c.ss.storeMoveType {
-			c.ss.prevMoveType = c.ss.moveType
-		}
-		c.ss.moveType = sb.moveType
+		c.changeMoveType(sb.moveType, !c.ss.storeMoveType)
 	}
 	c.ss.storeMoveType = false
 
