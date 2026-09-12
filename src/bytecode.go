@@ -6722,9 +6722,9 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_shaderparam:
 			numParams := int(exp[0].evalI(c))
 			for j := 0; j < numParams; j++ {
-				idx := int(exp[1+j*2].evalI(c))
+				spidx := int(exp[1+j*2].evalI(c))
 				val := exp[2+j*2].evalF(c)
-				e.customShader.params[idx] = val
+				e.customShader.params[spidx] = val
 			}
 		case explod_shader_tex1_anim:
 			animNo := exp[0].evalI(c)
@@ -6889,535 +6889,504 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	// Mugen chars can only modify some parameters after defining PosType
 	// Ikemen chars don't have this restriction
 	hasIkemenVer := c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0
-	posTypeFound := StateControllerBase(sc).hasParam(explod_postype)
-	paramLock := !hasIkemenVer && !posTypeFound
+	postypeSet := StateControllerBase(sc).hasParam(explod_postype)
+	paramLock := !hasIkemenVer && !postypeSet
 
-	var expls []*Explod
-	eachExpl := func(f func(e *Explod)) {
-		for _, e := range expls {
-			f(e)
+	// First parameter pass just reads ID and index so we can check for matching explods
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case explod_id:
+			eid = exp[0].evalI(c)
+		case modifyexplod_index:
+			idx = int(exp[0].evalI(c))
 		}
+		return true
+	})
+
+	// Fetch the explods we are going to modify
+	expls := crun.getMultipleExplods(eid, idx, hasIkemenVer)
+	if len(expls) == 0 {
+		return false
 	}
+
+	// Every explod write is collected here and only committed once all of them have been read
+	modifiers := make([]func(*Explod), 0, len(StateControllerBase(sc)))
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
-		case explod_animplayerno:
-			animPN = int(exp[0].evalI(c)) - 1
-		case explod_spriteplayerno:
-			spritePN = int(exp[0].evalI(c)) - 1
+		case explod_id:
+			return true
+		case modifyexplod_index:
+			return true
+		case modifyexplod_redirectid:
+			return true // Already handled. Avoid default
 		case explod_remappal:
 			rp[0] = exp[0].evalI(c)
 			if len(exp) > 1 {
 				rp[1] = exp[1].evalI(c)
 			}
 			remap = true
-		case explod_id:
-			eid = exp[0].evalI(c)
-		case modifyexplod_index:
-			idx = int(exp[0].evalI(c))
-		case modifyexplod_redirectid:
-			return true // Already handled. Avoid default
-		default:
-			if len(expls) == 0 {
-				expls = crun.getMultipleExplods(eid, idx, hasIkemenVer)
-				if len(expls) == 0 {
-					return false
+		case explod_postype:
+			pt := PosType(exp[0].evalI(c))
+			modifiers = append(modifiers, func(e *Explod) {
+				e.postype = pt
+			})
+		case explod_space:
+			// For some reason Mugen also requires a PosType declaration to be able to modify space
+			if !paramLock {
+				spc := Space(exp[0].evalI(c))
+				modifiers = append(modifiers, func(e *Explod) {
+					e.space = spc
+				})
+			}
+		case explod_facing:
+			if !paramLock {
+				rf := exp[0].evalF(c)
+				if rf < 0 { // Same clamping as creation
+					rf = -1
+				} else {
+					rf = 1
 				}
-				eachExpl(func(e *Explod) {
-					if e.ownpal && remap {
-						crun.remapPal(e.palfx, [...]int32{1, 1}, rp)
+				modifiers = append(modifiers, func(e *Explod) {
+					// There's a bug in Mugen where an explod that is facing left can't be flipped
+					// https://github.com/ikemen-engine/Ikemen-GO/issues/1252
+					// Ikemen chars just work as supposed to
+					if hasIkemenVer || e.trueFacing() >= 0 {
+						e.relativef = rf
 					}
 				})
 			}
-			switch paramID {
-			case explod_postype:
-				// In Mugen, many explod parameters are defaulted when not being modified
-				// What possibly happens in Mugen is that all parameters are read first then only applied if PosType is defined
-				// However that would be a worse way to do things, so we'll handle each exception instead
-				if paramLock {
-					// Check if facing is defined so we don't flip it twice
-					// https://github.com/ikemen-engine/Ikemen-GO/issues/3994
-					facingFound := StateControllerBase(sc).hasParam(explod_facing)
-
-					eachExpl(func(e *Explod) {
-						e.offset = [3]float32{0, 0, 0}
-						e.setAllPosX(e.offset[0])
-						e.setAllPosY(e.offset[1])
-						e.setAllPosZ(e.offset[2])
-						e.relativePos = [3]float32{0, 0, 0}
-						e.velocity = [3]float32{0, 0, 0}
-						e.accel = [3]float32{0, 0, 0}
-						e.bindId = -2
-						if e.bindtime == 0 {
-							e.bindtime = 1
-						}
-						e.space = Space_none
-						// Defaulting facing too makes some explods face the wrong way
-						// But not defaulting it is the cause of https://github.com/ikemen-engine/Ikemen-GO/issues/3813
-						// TODO: Check which explods face the wrong way and why
-						if !facingFound && e.trueFacing() >= 0 { // See explod_facing
-							e.relativef = 1
-						}
-						// Just for documentation's sake, because this is a no-op
-						if e.vfacing >= 0 { // See explod_vfacing
-							e.vfacing = 1
-						}
-					})
-				}
-				// Update actual PosType
-				pt := PosType(exp[0].evalI(c))
-				eachExpl(func(e *Explod) {
-					e.postype = pt
-				})
-			case explod_space:
-				// For some reason Mugen also requires a PosType declaration to be able to modify space
-				if !paramLock {
-					spc := Space(exp[0].evalI(c))
-					eachExpl(func(e *Explod) {
-						e.space = spc
-					})
-				}
-			case explod_facing:
-				if !paramLock {
-					rf := exp[0].evalF(c)
-					if rf < 0 { // Same clamping as creation
-						rf = -1
-					} else {
-						rf = 1
-					}
-					eachExpl(func(e *Explod) {
-						// There's a bug in Mugen where an explod that is facing left can't be flipped
-						// https://github.com/ikemen-engine/Ikemen-GO/issues/1252
-						// Ikemen chars just work as supposed to
-						if hasIkemenVer || e.trueFacing() >= 0 {
-							e.relativef = rf
-						}
-					})
-				}
-			case explod_vfacing:
-				if !paramLock {
-					vf := exp[0].evalF(c)
-					if vf < 0 { // Same clamping as creation
-						vf = -1
-					} else {
-						vf = 1
-					}
-					eachExpl(func(e *Explod) {
-						// There's a bug in Mugen where an explod that is upside down can't be flipped
-						// Ikemen chars just work as supposed to
-						if hasIkemenVer || e.vfacing >= 0 {
-							e.vfacing = vf
-						}
-					})
-				}
-			case explod_pos:
-				if !paramLock {
-					pos := exp[0].evalF(c) * redirscale
-					eachExpl(func(e *Explod) {
-						e.relativePos[0] = pos
-					})
-					if len(exp) > 1 {
-						pos := exp[1].evalF(c) * redirscale
-						eachExpl(func(e *Explod) {
-							e.relativePos[1] = pos
-						})
-						if len(exp) > 2 {
-							pos := exp[2].evalF(c) * redirscale
-							eachExpl(func(e *Explod) {
-								e.relativePos[2] = pos
-							})
-						}
-					}
-				}
-			case explod_random:
-				if !paramLock {
-					rndx := (exp[0].evalF(c) / 2) * redirscale
-					rndx = RandF(-rndx, rndx)
-					eachExpl(func(e *Explod) {
-						e.relativePos[0] += rndx
-					})
-					if len(exp) > 1 {
-						rndy := (exp[1].evalF(c) / 2) * redirscale
-						rndy = RandF(-rndy, rndy)
-						eachExpl(func(e *Explod) {
-							e.relativePos[1] += rndy
-						})
-						if len(exp) > 2 {
-							rndz := (exp[2].evalF(c) / 2) * redirscale
-							rndz = RandF(-rndz, rndz)
-							eachExpl(func(e *Explod) {
-								e.relativePos[2] += rndz
-							})
-						}
-					}
-				}
-			case explod_velocity:
-				if !paramLock {
-					vel := exp[0].evalF(c) * redirscale
-					eachExpl(func(e *Explod) {
-						e.velocity[0] = vel
-					})
-					if len(exp) > 1 {
-						vel := exp[1].evalF(c) * redirscale
-						eachExpl(func(e *Explod) {
-							e.velocity[1] = vel
-						})
-						if len(exp) > 2 {
-							vel := exp[2].evalF(c) * redirscale
-							eachExpl(func(e *Explod) {
-								e.velocity[2] = vel
-							})
-						}
-					}
-				}
-			case explod_friction:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachExpl(func(e *Explod) {
-					e.friction[0] = v1
-					e.friction[1] = v2
-					e.friction[2] = v3
-				})
-			case explod_accel:
-				if !paramLock {
-					accel := exp[0].evalF(c) * redirscale
-					eachExpl(func(e *Explod) {
-						e.accel[0] = accel
-					})
-					if len(exp) > 1 {
-						accel := exp[1].evalF(c) * redirscale
-						eachExpl(func(e *Explod) {
-							e.accel[1] = accel
-						})
-						if len(exp) > 2 {
-							accel := exp[2].evalF(c) * redirscale
-							eachExpl(func(e *Explod) {
-								e.accel[2] = accel
-							})
-						}
-					}
-				}
-			case explod_scale:
-				x := exp[0].evalF(c)
-				eachExpl(func(e *Explod) {
-					e.scale[0] = x
-				})
-				if len(exp) > 1 {
-					y := exp[1].evalF(c)
-					eachExpl(func(e *Explod) {
-						e.scale[1] = y
-					})
-				}
-			case explod_bindtime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.bindtime = t
-					// Bindtime fix (update bindtime according to current explod time)
-					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
-						e.bindtime = e.time + t
-					}
-					e.setAllPosX(e.pos[0])
-					e.setAllPosY(e.pos[1])
-					e.setAllPosZ(e.pos[2])
-				})
-			case explod_removetime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.removetime = t
-					// Removetime fix (update removetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
-						e.removetime = e.time + t
-					}
-				})
-			case explod_supermove:
-				if exp[0].evalB(c) {
-					eachExpl(func(e *Explod) {
-						e.supermovetime = -1
-					})
+		case explod_vfacing:
+			if !paramLock {
+				vf := exp[0].evalF(c)
+				if vf < 0 { // Same clamping as creation
+					vf = -1
 				} else {
-					eachExpl(func(e *Explod) {
-						e.supermovetime = 0
-					})
+					vf = 1
 				}
-			case explod_supermovetime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.supermovetime = t
-					// Supermovetime fix (update supermovetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
-						e.supermovetime = e.time + t
+				modifiers = append(modifiers, func(e *Explod) {
+					// There's a bug in Mugen where an explod that is upside down can't be flipped
+					// Ikemen chars just work as supposed to
+					if hasIkemenVer || e.vfacing >= 0 {
+						e.vfacing = vf
 					}
 				})
-			case explod_pausemovetime:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.pausemovetime = t
-					// Pausemovetime fix (update pausemovetime according to current explod time)
-					if (crun.stWgi().ikemenver[0] != 0 || crun.stWgi().ikemenver[1] != 0) && t > 0 {
-						e.pausemovetime = e.time + t
-					}
-				})
-			case explod_sprpriority:
-				t := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.sprpriority = t
-				})
-			case explod_layerno:
-				l := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					if l > 0 {
-						e.layerno = 1
-					} else if l < 0 {
-						e.layerno = -1
-					} else {
-						e.layerno = 0
-					}
-				})
-			case explod_ontop:
-				// At this point we'd better not change the explod's position in the slice like when the explod is created
-				v := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					if v {
-						e.ontop = true
-						e.layerno = 1
-						e.sprpriority = 0
-					} else if e.ontop {
-						e.ontop = false
-						e.layerno = 0
-					}
-				})
-			case explod_under:
-				if exp[0].evalB(c) {
-					eachExpl(func(e *Explod) {
-						e.under = exp[0].evalB(c)
-					})
-				}
-			case explod_shadow:
-				r := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.shadow[0] = r
+			}
+		case explod_pos:
+			if !paramLock {
+				x := exp[0].evalF(c) * redirscale
+				modifiers = append(modifiers, func(e *Explod) {
+					e.relativePos[0] = x
 				})
 				if len(exp) > 1 {
-					g := exp[1].evalI(c)
-					eachExpl(func(e *Explod) {
-						e.shadow[1] = g
-					})
-					if len(exp) > 2 {
-						b := exp[2].evalI(c)
-						eachExpl(func(e *Explod) {
-							e.shadow[2] = b
-						})
-					}
-				}
-			case explod_reflection:
-				v := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.reflection = v
-				})
-			case explod_removeongethit:
-				v := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.removeongethit = v
-				})
-			case explod_removeonchangestate:
-				v := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.removeonchangestate = v
-				})
-			case explod_hidewithbars:
-				v := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.hidewithbars = v
-				})
-			case explod_trans:
-				src := Clamp(int32(exp[0].evalI(c)), 0, 255)
-				dst := Clamp(int32(exp[1].evalI(c)), 0, 255)
-				tt := TransType(exp[2].evalI(c))
-				eachExpl(func(e *Explod) {
-					e.trans = tt
-					e.alpha = [2]int32{src, dst}
-				})
-			case explod_anim:
-				if hasIkemenVer { // You could not modify this one in Mugen
-					apn := crun.playerNo // Default to own player number
-					spn := crun.playerNo
-					if animPN >= 0 {
-						apn = animPN
-					}
-					if spritePN >= 0 {
-						spn = spritePN
-					}
-					animNo := exp[1].evalI(c)
-					ffx := exp[0].evalS()
-
-					eachExpl(func(e *Explod) {
-						e.animNo = animNo
-						e.anim_ffx = ffx
-						e.animelem = 1
-						e.animelemtime = 0
-						e.animPN = apn
-						e.spritePN = spn
-						e.setAnim()
-						e.setAnimElem()
+					y := exp[1].evalF(c) * redirscale
+					modifiers = append(modifiers, func(e *Explod) {
+						e.relativePos[1] = y
 					})
 				}
-			case explod_animelem:
-				v1 := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.animelem = v1
+				if len(exp) > 2 {
+					z := exp[2].evalF(c) * redirscale
+					modifiers = append(modifiers, func(e *Explod) {
+						e.relativePos[2] = z
+					})
+				}
+			}
+		case explod_random:
+			if !paramLock {
+				rndx := (exp[0].evalF(c) / 2) * redirscale
+				rndx = RandF(-rndx, rndx)
+				modifiers = append(modifiers, func(e *Explod) {
+					e.relativePos[0] += rndx
+				})
+				if len(exp) > 1 {
+					rndy := (exp[1].evalF(c) / 2) * redirscale
+					rndy = RandF(-rndy, rndy)
+					modifiers = append(modifiers, func(e *Explod) {
+						e.relativePos[1] += rndy
+					})
+				}
+				if len(exp) > 2 {
+					rndz := (exp[2].evalF(c) / 2) * redirscale
+					rndz = RandF(-rndz, rndz)
+					modifiers = append(modifiers, func(e *Explod) {
+						e.relativePos[2] += rndz
+					})
+				}
+			}
+		case explod_velocity:
+			if !paramLock {
+				vx := exp[0].evalF(c) * redirscale
+				modifiers = append(modifiers, func(e *Explod) {
+					e.velocity[0] = vx
+				})
+				if len(exp) > 1 {
+					vy := exp[1].evalF(c) * redirscale
+					modifiers = append(modifiers, func(e *Explod) {
+						e.velocity[1] = vy
+					})
+				}
+				if len(exp) > 2 {
+					vz := exp[2].evalF(c) * redirscale
+					modifiers = append(modifiers, func(e *Explod) {
+						e.velocity[2] = vz
+					})
+				}
+			}
+		case explod_friction:
+			v1 := exp[0].evalF(c)
+			var v2, v3 float32
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
+				}
+			}
+			modifiers = append(modifiers, func(e *Explod) {
+				e.friction[0] = v1
+				e.friction[1] = v2
+				e.friction[2] = v3
+			})
+		case explod_accel:
+			if !paramLock {
+				ax := exp[0].evalF(c) * redirscale
+				modifiers = append(modifiers, func(e *Explod) {
+					e.accel[0] = ax
+				})
+				if len(exp) > 1 {
+					ay := exp[1].evalF(c) * redirscale
+					modifiers = append(modifiers, func(e *Explod) {
+						e.accel[1] = ay
+					})
+				}
+				if len(exp) > 2 {
+					az := exp[2].evalF(c) * redirscale
+					modifiers = append(modifiers, func(e *Explod) {
+						e.accel[2] = az
+					})
+				}
+			}
+		case explod_scale:
+			x := exp[0].evalF(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.scale[0] = x
+			})
+			if len(exp) > 1 {
+				y := exp[1].evalF(c)
+				modifiers = append(modifiers, func(e *Explod) {
+					e.scale[1] = y
+				})
+			}
+		case explod_bindtime:
+			t := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.bindtime = t
+				// Bindtime fix (update bindtime according to current explod time)
+				// TODO: These should probably be explicit instead of hardcoded to version
+				if hasIkemenVer && t > 0 {
+					e.bindtime = e.time + t
+				}
+				e.setAllPosX(e.pos[0])
+				e.setAllPosY(e.pos[1])
+				e.setAllPosZ(e.pos[2])
+			})
+		case explod_removetime:
+			t := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.removetime = t
+				// Removetime fix (update removetime according to current explod time)
+				if hasIkemenVer && t > 0 {
+					e.removetime = e.time + t
+				}
+			})
+		case explod_supermove:
+			sv := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				if sv {
+					e.supermovetime = -1
+				} else {
+					e.supermovetime = 0
+				}
+			})
+		case explod_supermovetime:
+			t := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.supermovetime = t
+				// Supermovetime fix (update supermovetime according to current explod time)
+				if hasIkemenVer && t > 0 {
+					e.supermovetime = e.time + t
+				}
+			})
+		case explod_pausemovetime:
+			t := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.pausemovetime = t
+				// Pausemovetime fix (update pausemovetime according to current explod time)
+				if hasIkemenVer && t > 0 {
+					e.pausemovetime = e.time + t
+				}
+			})
+		case explod_sprpriority:
+			t := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.sprpriority = t
+			})
+		case explod_layerno:
+			l := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				if l > 0 {
+					e.layerno = 1
+				} else if l < 0 {
+					e.layerno = -1
+				} else {
+					e.layerno = 0
+				}
+			})
+		case explod_ontop:
+			// At this point we'd better not change the explod's position in the slice like when the explod is created
+			v := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				if v {
+					e.ontop = true
+					e.layerno = 1
+					e.sprpriority = 0
+				} else if e.ontop {
+					e.ontop = false
+					e.layerno = 0
+				}
+			})
+		case explod_under:
+			// Mugen evaluates this expression twice when the value is true. Deliberately not replicated
+			v := exp[0].evalB(c)
+			if v {
+				modifiers = append(modifiers, func(e *Explod) {
+					e.under = v
+				})
+			}
+		case explod_shadow:
+			r := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.shadow[0] = r
+			})
+			if len(exp) > 1 {
+				g := exp[1].evalI(c)
+				modifiers = append(modifiers, func(e *Explod) {
+					e.shadow[1] = g
+				})
+			}
+			if len(exp) > 2 {
+				b := exp[2].evalI(c)
+				modifiers = append(modifiers, func(e *Explod) {
+					e.shadow[2] = b
+				})
+			}
+		case explod_reflection:
+			v := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.reflection = v
+			})
+		case explod_removeongethit:
+			v := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.removeongethit = v
+			})
+		case explod_removeonchangestate:
+			v := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.removeonchangestate = v
+			})
+		case explod_hidewithbars:
+			v := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.hidewithbars = v
+			})
+		case explod_trans:
+			src := Clamp(int32(exp[0].evalI(c)), 0, 255)
+			dst := Clamp(int32(exp[1].evalI(c)), 0, 255)
+			tt := TransType(exp[2].evalI(c))
+			modifiers = append(modifiers, func(e *Explod) {
+				e.trans = tt
+				e.alpha = [2]int32{src, dst}
+			})
+		case explod_animplayerno:
+			animPN = int(exp[0].evalI(c)) - 1
+		case explod_spriteplayerno:
+			spritePN = int(exp[0].evalI(c)) - 1
+		case explod_anim:
+			// You could not modify this one in Mugen
+			if hasIkemenVer {
+				apn := crun.playerNo // Default to own player number
+				spn := crun.playerNo
+				if animPN >= 0 {
+					apn = animPN
+				}
+				if spritePN >= 0 {
+					spn = spritePN
+				}
+				animNo := exp[1].evalI(c)
+				ffx := exp[0].evalS()
+				modifiers = append(modifiers, func(e *Explod) {
+					e.animNo = animNo
+					e.anim_ffx = ffx
+					e.animelem = 1
 					e.animelemtime = 0
-					e.interpolate_animelem[1] = -1
-					if e.anim != nil {
-						e.anim.Action() // This being in this place can cause a nil animation crash
-					}
+					e.animPN = apn
+					e.spritePN = spn
+					e.setAnim()
 					e.setAnimElem()
 				})
-			case explod_animelemtime:
-				v1 := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					//e.interpolate_animelem[1] = -1 // TODO: Check animelemtime and interpolation interaction
-					e.animelemtime = v1
-					e.setAnimElem()
-				})
-			case explod_animfreeze:
-				animfreeze := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.animfreeze = animfreeze
-				})
-			case explod_angle:
-				a := exp[0].evalF(c)
-				eachExpl(func(e *Explod) {
-					e.rot.angle = a
-				})
-			case explod_yangle:
-				ya := exp[0].evalF(c)
-				eachExpl(func(e *Explod) {
-					e.rot.yangle = ya
-				})
-			case explod_xangle:
-				xa := exp[0].evalF(c)
-				eachExpl(func(e *Explod) {
-					e.rot.xangle = xa
-				})
-			case explod_xshear:
-				xs := exp[0].evalF(c)
-				eachExpl(func(e *Explod) {
-					e.xshear = xs
-				})
-			case explod_projection:
-				eachExpl(func(e *Explod) {
-					e.projection = Projection(exp[0].evalI(c))
-				})
-			case explod_focallength:
-				eachExpl(func(e *Explod) {
-					e.fLength = exp[0].evalF(c)
-				})
-			case explod_window:
-				if len(exp) >= 4 {
-					eachExpl(func(e *Explod) {
-						e.window[0] = exp[0].evalF(c) * redirscale
-						e.window[1] = exp[1].evalF(c) * redirscale
-						e.window[2] = exp[2].evalF(c) * redirscale
-						e.window[3] = exp[3].evalF(c) * redirscale
-					})
-				} else {
-					sys.appendToConsole(crun.warn() + "invalid explod window")
+			}
+		case explod_animelem:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.animelem = v1
+				e.animelemtime = 0
+				e.interpolate_animelem[1] = -1
+				if e.anim != nil {
+					e.anim.Action() // This being in this place can cause a nil animation crash
 				}
-			case explod_ignorehitpause:
-				ihp := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.ignorehitpause = ihp
+				e.setAnimElem()
+			})
+		case explod_animelemtime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				//e.interpolate_animelem[1] = -1 // TODO: Check animelemtime and interpolation interaction
+				e.animelemtime = v1
+				e.setAnimElem()
+			})
+		case explod_animfreeze:
+			animfreeze := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.animfreeze = animfreeze
+			})
+		case explod_angle:
+			a := exp[0].evalF(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.rot.angle = a
+			})
+		case explod_yangle:
+			ya := exp[0].evalF(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.rot.yangle = ya
+			})
+		case explod_xangle:
+			xa := exp[0].evalF(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.rot.xangle = xa
+			})
+		case explod_xshear:
+			xs := exp[0].evalF(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.xshear = xs
+			})
+		case explod_projection:
+			modifiers = append(modifiers, func(e *Explod) {
+				e.projection = Projection(exp[0].evalI(c))
+			})
+		case explod_focallength:
+			modifiers = append(modifiers, func(e *Explod) {
+				e.fLength = exp[0].evalF(c)
+			})
+		case explod_window:
+			if len(exp) >= 4 {
+				modifiers = append(modifiers, func(e *Explod) {
+					e.window[0] = exp[0].evalF(c) * redirscale
+					e.window[1] = exp[1].evalF(c) * redirscale
+					e.window[2] = exp[2].evalF(c) * redirscale
+					e.window[3] = exp[3].evalF(c) * redirscale
 				})
-			case explod_bindid:
-				bId := exp[0].evalI(c)
-				if bId == -1 {
-					bId = crun.id
+			} else {
+				sys.appendToConsole(crun.warn() + "invalid explod window")
+			}
+		case explod_ignorehitpause:
+			ihp := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.ignorehitpause = ihp
+			})
+		case explod_bindid:
+			bId := exp[0].evalI(c)
+			if bId == -1 {
+				bId = crun.id
+			}
+			modifiers = append(modifiers, func(e *Explod) {
+				e.setBind(bId)
+			})
+		case explod_synclayer:
+			sl := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.syncLayer = sl
+			})
+		case explod_syncid:
+			sId := exp[0].evalI(c)
+			if sId == -1 {
+				sId = crun.id
+			}
+			modifiers = append(modifiers, func(e *Explod) {
+				e.syncId = sId
+			})
+		case explod_syncparams:
+			sp := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.syncParams = sp
+			})
+		case explod_shader:
+			s := exp[0].evalS()
+			modifiers = append(modifiers, func(e *Explod) { 
+				e.customShader.name = s
+			})
+		case explod_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			for j := 0; j < numParams; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				modifiers = append(modifiers, func(e *Explod) {
+					e.customShader.params[idx] = val
+				})
+			}
+		case explod_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.tex1.AnimNo = animNo
+				e.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+				if e.customShader.tex1.Anim != nil {
+					e.customShader.tex1.Anim.Reset()
 				}
-				eachExpl(func(e *Explod) {
-					e.setBind(bId)
-				})
-			case explod_synclayer:
-				sl := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.syncLayer = sl
-				})
-			case explod_syncid:
-				sId := exp[0].evalI(c)
-				if sId == -1 {
-					sId = crun.id
+			})
+		case explod_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.tex1.SprNo = [2]int32{g, n}
+				e.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+			})
+		case explod_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.tex2.AnimNo = animNo
+				e.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+				if e.customShader.tex2.Anim != nil {
+					e.customShader.tex2.Anim.Reset()
 				}
-				eachExpl(func(e *Explod) {
-					e.syncId = sId
-				})
-			case explod_syncparams:
-				sp := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
-					e.syncParams = sp
-				})
-			case explod_shader:
-				s := exp[0].evalS()
-				eachExpl(func(e *Explod) {
-					e.customShader.name = s
-				})
-			case explod_shaderparam:
-				numParams := int(exp[0].evalI(c))
-				for j := 0; j < numParams; j++ {
-					idx := int(exp[1+j*2].evalI(c))
-					val := exp[2+j*2].evalF(c)
-
-					eachExpl(func(e *Explod) {
-						e.customShader.params[idx] = val
-					})
+			})
+		case explod_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.tex2.SprNo = [2]int32{g, n}
+				e.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+			})
+		case explod_shadertime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.time = v1
+				if e.customShader.time == 0 {
+					e.customShader.clear()
 				}
-			case explod_shader_tex1_anim:
-				animNo := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.customShader.tex1.AnimNo = animNo
-					e.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
-					if e.customShader.tex1.Anim != nil {
-						e.customShader.tex1.Anim.Reset()
-					}
-				})
-			case explod_shader_tex1_spr:
-				g := exp[0].evalI(c)
-				n := exp[1].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.customShader.tex1.SprNo = [2]int32{g, n}
-					e.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
-				})
-			case explod_shader_tex2_anim:
-				animNo := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.customShader.tex2.AnimNo = animNo
-					e.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
-					if e.customShader.tex2.Anim != nil {
-						e.customShader.tex2.Anim.Reset()
-					}
-				})
-			case explod_shader_tex2_spr:
-				g := exp[0].evalI(c)
-				n := exp[1].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.customShader.tex2.SprNo = [2]int32{g, n}
-					e.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
-				})
-			case explod_shadertime:
-				v1 := exp[0].evalI(c)
-				eachExpl(func(e *Explod) {
-					e.customShader.time = v1
-					if e.customShader.time == 0 {
-						e.customShader.clear()
-					}
-				})
-			case explod_interpolation:
+			})
+		case explod_interpolation:
+			// You could not modify this one in Mugen
+			if hasIkemenVer {
 				interpolation := exp[0].evalB(c)
-				eachExpl(func(e *Explod) {
+				modifiers = append(modifiers, func(e *Explod) {
 					if e.interpolate != interpolation && e.interpolate_time[0] > 0 {
 						e.interpolate_animelem[0] = e.start_animelem
 						e.interpolate_animelem[1] = e.interpolate_animelem[2]
@@ -7430,40 +7399,89 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 						e.interpolate = interpolation
 					}
 				})
-			default:
-				switch {
-				case isPalFXParam(paramID):
-					eachExpl(func(e *Explod) {
-						if e.ownpal {
-							palFX(sc).runSub(c, &e.palfx.PalFXDef, paramID, exp)
-						}
-					})
-				case isAfterImageParam(paramID):
-					eachExpl(func(e *Explod) {
-						if e.aimg == nil { // Can update existing afterimage
-							e.aimg = newAfterImage()
-						}
-						afterImage(sc).runSub(c, crun, e.aimg, paramID, exp)
-					})
-				}
+			}
+		default:
+			switch {
+			case isPalFXParam(paramID):
+				// runSub evaluates and applies in one step, so it must run per explod
+				// at commit time to keep the same evaluation count as before
+				modifiers = append(modifiers, func(e *Explod) {
+					if e.ownpal {
+						palFX(sc).runSub(c, &e.palfx.PalFXDef, paramID, exp)
+					}
+				})
+			case isAfterImageParam(paramID):
+				modifiers = append(modifiers, func(e *Explod) {
+					if e.aimg == nil { // Can update existing afterimage
+						e.aimg = newAfterImage()
+					}
+					afterImage(sc).runSub(c, crun, e.aimg, paramID, exp)
+				})
 			}
 		}
 		return true
 	})
 
+	// RemapPal applies before any parameter
+	// TODO: Might not be needed anymore. Just preserving original order here
+	for _, e := range expls {
+		if e.ownpal && remap {
+			crun.remapPal(e.palfx, [...]int32{1, 1}, rp)
+		}
+	}
+
+	// In Mugen, many explod parameters are defaulted when not being modified
+	// What possibly happens in Mugen is that all parameters are read first then only applied if PosType is defined
+	// However that would be a worse way to do things, so we'll handle each exception instead
+	if !hasIkemenVer && postypeSet {
+		// Check if facing is defined, so we don't end up flipping it twice
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/3994
+		facingSet := StateControllerBase(sc).hasParam(explod_facing)
+		for _, e := range expls {
+			e.offset = [3]float32{0, 0, 0}
+			e.setAllPosX(e.offset[0])
+			e.setAllPosY(e.offset[1])
+			e.setAllPosZ(e.offset[2])
+			e.relativePos = [3]float32{0, 0, 0}
+			e.velocity = [3]float32{0, 0, 0}
+			e.accel = [3]float32{0, 0, 0}
+			e.bindId = -2
+			if e.bindtime == 0 {
+				e.bindtime = 1
+			}
+			e.space = Space_none
+			// Facing is also defaulted
+			// https://github.com/ikemen-engine/Ikemen-GO/issues/3813
+			if !facingSet && e.trueFacing() >= 0 { // See explod_facing
+				e.relativef = 1
+			}
+			// Just for documentation's sake, because this is a no-op
+			if e.vfacing >= 0 { // See explod_vfacing
+				e.vfacing = 1
+			}
+		}
+	}
+
+	// Commit all parameters in the order they were compiled in
+	for _, modify := range modifiers {
+		for _, e := range expls {
+			modify(e)
+		}
+	}
+
 	// Update relative positions if postype was updated
-	if posTypeFound {
-		eachExpl(func(e *Explod) {
+	if postypeSet {
+		for _, e := range expls {
 			e.setPos(crun)
-		})
+		}
 	}
 
 	// Update AfterImage PalFX
-	eachExpl(func(e *Explod) {
+	for _, e := range expls {
 		if e.aimg != nil && e.aimg.time != 0 && e.aimg.needsetup {
 			e.aimg.setup(crun)
 		}
-	})
+	}
 
 	return false
 }
