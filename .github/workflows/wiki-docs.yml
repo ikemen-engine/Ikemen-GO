@@ -1,0 +1,71 @@
+name: Wiki documentation
+
+on:
+  pull_request_target:
+    branches: [ develop, 'release/**' ]
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - labeled
+      - unlabeled
+      - ready_for_review
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  wiki-docs:
+    name: Wiki documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check wiki documentation
+        uses: actions/github-script@v9
+        env:
+          COMMENT_BODY: |
+            <!-- wiki-docs-required -->
+            @AUTHOR@ this PR requires a wiki update before it can be merged.
+
+            Please:
+            - update the relevant wiki page(s);
+            - mark newly added features with **`(nightly build only)` directly in the relevant heading**;
+            - reply here with the wiki page link(s) when finished.
+
+            A maintainer will review the documentation and remove the blocking label when it is ready.
+        with:
+          script: |
+            const label = 'docs-needed';
+            const pr = context.payload.pull_request;
+
+            const docsRequired = pr.labels.some(
+              item => item.name === label
+            );
+
+            // Notify the contributor only when the label is added.
+            if (
+              context.payload.action === 'labeled' &&
+              context.payload.label?.name === label
+            ) {
+              const body = process.env.COMMENT_BODY.replace(
+                '@AUTHOR@',
+                '@' + pr.user.login
+              );
+
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: pr.number,
+                body
+              });
+            }
+
+            // This job is the merge gate.
+            if (docsRequired) {
+              core.setFailed(
+                'Wiki documentation is required before this PR can be merged.'
+              );
+            } else {
+              core.info('No outstanding wiki documentation requirement.');
+            }

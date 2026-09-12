@@ -133,6 +133,18 @@ Contributors are also expected to help investigate and resolve bugs or regressio
 
 All PRs are subject to review by the Ikemen GO dev team, which retains the right to decline any contributions.
 
+##### Wiki Documentation
+
+A maintainer may apply the `docs-needed` label when a PR introduces changes that need to be documented on the [wiki][wiki].
+
+Before the PR can be merged:
+
+- update the relevant wiki page(s);
+- mark newly added features with **`(nightly build only)` directly in the relevant heading**;
+- reply to the PR with links to the updated wiki page(s).
+
+A maintainer will review the documentation and remove the blocking label when it is ready.
+
 #### Addressing Review Feedback
 
 If changes are requested:
