@@ -478,6 +478,18 @@ jobs:
                 Ikemen-GO-Screenpack/video \
                 deploy/
 
+          # Keep work/README.md loose, but pack the editable sources.
+          mkdir -p deploy/work
+          mv Ikemen-GO-Screenpack/work/README.md deploy/work/
+          (
+            cd Ikemen-GO-Screenpack/work
+            if [ "$RUNNER_OS" = "Windows" ]; then
+              "/c/Program Files/7-Zip/7z.exe" a -tzip -mx=9 ../../deploy/work/work.zip .
+            else
+              zip -9 -r ../../deploy/work/work.zip .
+            fi
+          )
+
           # 3) Include readme
           cp README.md deploy/
 
