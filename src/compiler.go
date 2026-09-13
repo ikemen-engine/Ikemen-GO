@@ -101,6 +101,7 @@ func newCharCompiler() *CharCompiler {
 		"removeexplod":       c.removeExplod,
 		"removetext":         c.removeText,
 		"reversaldef":        c.reversalDef,
+		"runstate":           c.runState,
 		"screenbound":        c.screenBound,
 		"selfstate":          c.selfState,
 		"sndpan":             c.sndPan,

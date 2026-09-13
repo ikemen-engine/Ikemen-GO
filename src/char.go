@@ -3675,6 +3675,7 @@ type Char struct {
 	hittmp               int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
 	acttmp               int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
 	minus                int8 // Essentially the current negative state
+	runStateNest         int32 // RunState recursion depth. Per char, because that's what it measures
 	platformPosY         float32
 	groundAngle          float32
 	ownpal               bool
@@ -3739,7 +3740,8 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
-	stillLoading         bool           // Compiler safeguard
+	stillLoading         bool // Compiler safeguard
+	prevCtrl             bool
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -6995,6 +6997,60 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 
 func (c *Char) changeState(no, anim, ctrl int32, ffx string) {
 	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl, ffx)
+}
+
+// Runs another state's code without leaving the current state
+// StateNo, Time and the persistent counters all keep belonging to the current state
+func (c *Char) runState(no int32, pn int) {
+	if c.runStateNest >= MaxLoop {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after %v loops): ran state %v from state %v", c.runStateNest, no, c.ss.no))
+		LogMessage("Maximum RunState loops: %v, %v, %v -> %v", c.runStateNest, c.name, c.ss.no, no)
+		return
+	}
+
+	if pn < 0 || pn >= len(sys.cgi) {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to run a state of invalid player number %v", pn+1))
+		return
+	}
+
+	sb, ok := sys.cgi[pn].states[no]
+	if !ok {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to run invalid state %v (from state %v)", no, c.ss.no))
+		if !sys.ignoreMostErrors {
+			LogMessage("Invalid state: P%v:%v", pn+1, no)
+		}
+		return
+	}
+
+	// Save the calling state's context
+	oldMinus, oldWs := c.minus, sys.workingState
+	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
+
+	// Negative states run at their own phase, so that a ChangeState inside them buffers like it does in actionRun
+	// TODO: Maybe this isn't necessary
+	if no == -10 {
+		c.minus = -4
+	} else if no < 0 {
+		c.minus = int8(no)
+	}
+
+	// Tracking the number of runStates prevents infinite loops, much like ChangeState
+	c.runStateNest++
+
+	// Execute the actual state bytecode
+	sb.run(c)
+
+	// Restore context
+	sys.bcVar, sys.bcVarStack = oldv, sys.bcVarStack[:oldvslen]
+	sys.workingState, c.minus = oldWs, oldMinus
+
+	// Flush buffered ChangeState here so it lands at the phase that called this, instead of waiting for the next one
+	if c.minus == 0 && c.stateChange2() {
+		c.ss.sb.run(c)
+	}
+
+	// Decreased only after the flush, so that a state reached through it is still counted
+	c.runStateNest--
 }
 
 func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {

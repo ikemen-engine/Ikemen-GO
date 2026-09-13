@@ -6084,6 +6084,39 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type runState StateControllerBase
+
+const (
+	runState_value byte = iota
+	runState_playerno
+	runState_redirectid
+)
+
+func (sc runState) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), runState_redirectid, "RunState")
+	if crun == nil {
+		return false
+	}
+
+	var v int32 = math.MinInt32
+	pn := crun.playerNo
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case runState_value:
+			v = exp[0].evalI(c)
+		case runState_playerno:
+			pn = int(exp[0].evalI(c)) - 1
+		}
+		return true
+	})
+
+	if v != math.MinInt32 {
+		crun.runState(v, pn)
+	}
+	return false
+}
+
 type posSet StateControllerBase
 
 const (
