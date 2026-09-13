@@ -56,7 +56,6 @@ func newPalFXDef() *PalFXDef {
 
 type PalFX struct {
 	PalFXDef
-	remap          []int
 	allowNeg       bool // Can use negative color math
 	sintime        [4]int32
 	enable         bool
@@ -69,11 +68,8 @@ type PalFX struct {
 	eColor         float32
 	eHue           float32
 	eInterpolate   bool
-	eiAdd          [3]int32
-	eiMul          [3]int32
-	eiColor        float32
-	eiHue          float32
 	eiTime         int32
+	remap          []int // TODO: This isn't color math so it probably should be in a different struct
 }
 
 func newPalFX() *PalFX {
@@ -92,36 +88,26 @@ func (pf *PalFX) clear() {
 	pf.clearWithNeg(false)
 }
 
-func (pf *PalFX) getSynFx(blendMode TransType, alpha [2]int32) *PalFX {
-	if pf != nil && pf.ignoreAllPalFX {
-		return pf
-	}
-
-	if pf == nil || !pf.enable {
-		if blendMode == TT_sub && sys.allPalFX.enable {
-			if pf == nil {
-				pf = newPalFX()
-			}
-			pf.clear()
-			pf.enable = true
-			pf.eMul = pf.mul
-			pf.eAdd = pf.add
-			pf.eColor = pf.color
-			pf.eHue = pf.hue
-		} else {
-			return sys.allPalFX
-		}
-	}
-
-	if !sys.allPalFX.enable {
-		return pf
-	}
-
-	synth := *pf
-	synth.synthesize(sys.allPalFX, blendMode, alpha)
-	return &synth
+// The identity transform. Leaves colors untouched
+func identityPalFX() PalFX {
+	p := PalFX{PalFXDef: *newPalFXDef()}
+	p.enable = true
+	p.eMul = p.mul
+	p.eColor = p.color
+	return p
 }
 
+// Returns the effect as a plain value, ready to compose
+func (pf *PalFX) sample() PalFX {
+	// An effect that isn't running samples as the identity, so its stale effective values can never escape
+	if pf == nil || !pf.enable {
+		return identityPalFX()
+	}
+	return *pf
+}
+
+// Dead code. Both call sites are commented out
+/*
 func (pf *PalFX) getFxPal(blendMode TransType, pal []uint32, neg bool) []uint32 {
 	p := pf.getSynFx(blendMode, [2]int32{0, 0})
 	if !p.enable {
@@ -173,34 +159,49 @@ func (pf *PalFX) getFxPal(blendMode TransType, pal []uint32, neg bool) []uint32 
 	}
 	return sys.workpal
 }
+*/
 
-func (pf *PalFX) getFinalPalFx(blendMode TransType, alpha [2]int32) (state ShaderPalFX) {
-	p := pf.getSynFx(blendMode, alpha)
+// Evaluates the effect, and AllPalFX on top of it, into the transform the renderer consumes
+func (pf *PalFX) getFinalPalFx(blendMode TransType, alpha [2]int32) ShaderPalFX {
+	own := pf.sample()
 
-	if !p.enable {
-		state.neg = false
-		state.gray = 0
-		state.add = [3]float32{0, 0, 0}
-		state.mult = [3]float32{1, 1, 1}
-		state.hue = 0
-		state.invblend = 0
-		return
+	if pf != nil && pf.ignoreAllPalFX {
+		return own.toShader(blendMode)
 	}
 
-	state.neg = p.eInvertall
-	state.gray = 1 - p.eColor
-	state.invblend = p.eInvertblend
-	state.hue = p.eHue
+	// With no effect of our own, AllPalFX applies directly
+	// TODO: Sub composes instead, which differs in invblend. Looks accidental
+	if (pf == nil || !pf.enable) && blendMode != TT_sub {
+		all := sys.allPalFX.sample()
+		return all.toShader(blendMode)
+	}
+
+	// Only needed because stacked() isn't a no-op under Sub. See its TODO
+	if !sys.allPalFX.enable {
+		return own.toShader(blendMode)
+	}
+
+	all := sys.allPalFX.sample()
+	combined := own.stacked(all, blendMode, alpha)
+	return combined.toShader(blendMode)
+}
+
+// Converts the effective values into shader uniforms
+func (pf PalFX) toShader(blendMode TransType) (state ShaderPalFX) {
+	state.neg = pf.eInvertall
+	state.gray = 1 - pf.eColor
+	state.invblend = pf.eInvertblend
+	state.hue = pf.eHue
 
 	// Determine if we use negative color math based on blendMode
-	useNeg := blendMode == TT_sub && p.eAllowNeg
+	useNeg := blendMode == TT_sub && pf.eAllowNeg
 
-	for i, v := range p.eAdd {
+	for i, v := range pf.eAdd {
 		state.add[i] = float32(v) / 255
 		if useNeg {
-			state.mult[i] = float32(p.eMul[(i+1)%3]+p.eMul[(i+2)%3]) / 512
+			state.mult[i] = float32(pf.eMul[(i+1)%3]+pf.eMul[(i+2)%3]) / 512
 		} else {
-			state.mult[i] = float32(p.eMul[i]) / 256
+			state.mult[i] = float32(pf.eMul[i]) / 256
 		}
 	}
 	return
@@ -258,6 +259,9 @@ func (pf *PalFX) sinHueshift(color *float32) {
 	}
 }
 
+// Dead code. Never called, and duplicated the interpolate branch of refresh()
+// Note the ei* scratch fields it used no longer exist, so this won't compile as-is
+/*
 func (pf *PalFX) interpolationUpdate() {
 	if pf.eiTime < pf.itime {
 		pf.eiTime++
@@ -274,6 +278,7 @@ func (pf *PalFX) interpolationUpdate() {
 	pf.eiHue = Lerp(pf.ihue[1], pf.ihue[0], t)
 	pf.eHue = pf.eiHue + pf.hue
 }
+*/
 
 // Updates the effective values. Does not step timers
 // Explods need this separation because they appear at tickFrame() but their PalFX only updates at tickNextFrame()
@@ -292,15 +297,13 @@ func (pf *PalFX) refresh() {
 			t = float32(pf.eiTime) / float32(pf.itime)
 		}
 		for i := 0; i < 3; i++ {
-			pf.eiMul[i] = int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
-			pf.eMul[i] = int32(float32(pf.eiMul[i]) * float32(pf.mul[i]) / 256)
-			pf.eiAdd[i] = int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t))
-			pf.eAdd[i] = pf.eiAdd[i] + pf.add[i]
+			iMul := int32(Lerp(float32(pf.imul[i+3]), float32(pf.imul[i]), t))
+			pf.eMul[i] = int32(float32(iMul) * float32(pf.mul[i]) / 256)
+			iAdd := int32(Lerp(float32(pf.iadd[i+3]), float32(pf.iadd[i]), t))
+			pf.eAdd[i] = iAdd + pf.add[i]
 		}
-		pf.eiColor = Lerp(pf.icolor[1], pf.icolor[0], t)
-		pf.eColor = pf.eiColor * pf.color
-		pf.eiHue = Lerp(pf.ihue[1], pf.ihue[0], t)
-		pf.eHue = pf.eiHue + pf.hue
+		pf.eColor = Lerp(pf.icolor[1], pf.icolor[0], t) * pf.color
+		pf.eHue = Lerp(pf.ihue[1], pf.ihue[0], t) + pf.hue
 	} else {
 		// Static values
 		pf.eMul = pf.mul
@@ -348,7 +351,10 @@ func (pf *PalFX) step() {
 	pf.tickTimers()
 }
 
-func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
+// Composes two effects. The receiver is applied first
+// TODO: Stacking the identity should be a no-op, but isn't under Sub, which forces callers to guard
+func (base PalFX) stacked(extra PalFX, blendMode TransType, alpha [2]int32) PalFX {
+	pf, pfx := base, extra
 	if blendMode == TT_sub {
 		for i, a := range pfx.eAdd {
 			pf.eAdd[i] = Clamp(pf.eAdd[i]-Abs(a), 0, 255)
@@ -405,25 +411,25 @@ func (pf *PalFX) synthesize(pfx *PalFX, blendMode TransType, alpha [2]int32) {
 		}
 	}
 
+	return pf
 }
 
 // Returns a copy of the PalFX with another one stacked on top
 // Used so a BG's own PalFX and a global BGPalFX can stack
 func (pf *PalFX) withStacked(extra *PalFX, blendMode TransType, alpha [2]int32) *PalFX {
 	// No extra. Do nothing
+	// Only needed because stacked() isn't a no-op under Sub. See its TODO
 	if extra == nil || !extra.enable {
 		return pf
 	}
-
-	var out PalFX
-	if pf != nil && pf.enable {
-		// Stack both
-		out = *pf
-		out.synthesize(extra, blendMode, alpha)
-	} else {
-		// Use extra only
-		out = *extra
+	if pf == nil || !pf.enable {
+		out := *extra
+		return &out
 	}
+
+	base := pf.sample()
+	top := extra.sample()
+	out := base.stacked(top, blendMode, alpha)
 
 	return &out
 }
@@ -432,42 +438,19 @@ func (pf *PalFX) withStacked(extra *PalFX, blendMode TransType, alpha [2]int32) 
 // To do this perfectly correctly we'd need more shader uniforms
 // However, this should still be better than making font color parameter overwrite PalFX like before
 func (pf *PalFX) withStackedColor(r, g, b float32) *PalFX {
-	usesColor := r != 1.0 || g != 1.0 || b != 1.0
-	if !usesColor {
+	if r == 1.0 && g == 1.0 && b == 1.0 {
 		return pf
 	}
 
-	var pfx *PalFX
-	if pf == nil {
-		// No existing PalFX: create a new one because RenderSprite expects a non-nil PalFX to apply color
-		pfx = newPalFX()
-	} else {
-		// Create a shallow copy of the original PalFX
-		tmp := *pf
-		pfx = &tmp
-	}
+	// Check current state
+	out := pf.sample()
 
-	// Force the copy to be enabled
-	pfx.enable = true
+	// Stack RGB on top of eMul
+	out.eMul[0] = int32(float32(out.eMul[0]) * r)
+	out.eMul[1] = int32(float32(out.eMul[1]) * g)
+	out.eMul[2] = int32(float32(out.eMul[2]) * b)
 
-	// Check status of the original PalFX
-	if pf == nil || (!pf.enable && pf.time == 0) {
-		// Uninitialized or disabled: set color directly from RGB
-		pfx.eMul[0] = int32(256 * r)
-		pfx.eMul[1] = int32(256 * g)
-		pfx.eMul[2] = int32(256 * b)
-		// eColor defaults to 0 in this case, resulting in grayscale
-		// Set to 1 so the sprite's own colors are multiplied instead of overridden
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/3956
-		pfx.eColor = 1
-	} else {
-		// Active: stack RGB on top of existing eMul
-		pfx.eMul[0] = int32(float32(pf.eMul[0]) * r)
-		pfx.eMul[1] = int32(float32(pf.eMul[1]) * g)
-		pfx.eMul[2] = int32(float32(pf.eMul[2]) * b)
-	}
-
-	return pfx
+	return &out
 }
 
 type Palette struct {

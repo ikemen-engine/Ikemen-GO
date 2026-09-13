@@ -802,14 +802,7 @@ func RenderSprite(rp RenderParams) {
 	initRenderSpriteQuad(&rp)
 
 	// PalFX and color setup
-	spfx := ShaderPalFX{
-		neg:      false,
-		add:      [3]float32{0, 0, 0},
-		mult:     [3]float32{1, 1, 1},
-		gray:     0,
-		hue:      0,
-		invblend: 0,
-	}
+	spfx := NewShaderPalFX()
 	if rp.pfx != nil {
 		spfx = rp.pfx.getFinalPalFx(rp.blendMode, rp.blendAlpha)
 	}
@@ -1077,17 +1070,8 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 	b := float32(color&0xff) / 255
 
 	// PalFX setup
-	spfx := ShaderPalFX{
-		neg:      false,
-		add:      [3]float32{0, 0, 0},
-		mult:     [3]float32{1, 1, 1},
-		gray:     0,
-		hue:      0,
-		invblend: 0,
-	}
-
 	// This call is safe even if fx is nil. Defaults to just AllPalFX
-	spfx = fx.getFinalPalFx(TT_add, alpha)
+	spfx := fx.getFinalPalFx(TT_add, alpha)
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := gfx.OrthographicProjectionMatrix(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
