@@ -34,24 +34,22 @@ if (stateNo = const(StateAirGetHit_fallRecoveryOnGround) || stateNo = const(Stat
 [Function IkSys_Reversal() ret]
 let ret = 0;
 if map(_iksys_reversalLastCall) != gameTime {
-	map(_iksys_reversalFrame2) := map(_iksys_reversalFrame1);
 	map(_iksys_reversalFrame1) := map(_iksys_reversalFrame0);
 	if (moveType = H && !hitOverridden) || stateNo = const(StateDownedGetHit_gettingUp) {
+		# Is in a hit state
 		map(_iksys_reversalFrame0) := 2;
 	} else if stateNo = [1000, 4999] && moveType != H && !inCustomState {
+		# Is performing a special or hyper move
 		map(_iksys_reversalFrame0) := 1;
 	} else {
+		# Reset
 		map(_iksys_reversalFrame0) := 0;
 	}
 	map(_iksys_reversalLastCall) := gameTime;
 }
-if map(_iksys_reversalFlag) = 0 || map(_iksys_reversalFlag) = gameTime {
-	if map(_iksys_reversalFrame2) = 2 && (map(_iksys_reversalFrame1) = 1 || map(_iksys_reversalFrame0) = 1) {
-		let ret = 1;
-		map(_iksys_reversalFlag) := gameTime;
-	}
-} else if map(_iksys_reversalFrame1) != 1 && map(_iksys_reversalFrame0) != 1 {
-	map(_iksys_reversalFlag) := 0;
+if map(_iksys_reversalFrame1) = 2 && map(_iksys_reversalFrame0) = 1 {
+	# Was in a hit state last frame, but is attacking this frame
+	let ret = 1;
 }
 
 # Parry
