@@ -9010,6 +9010,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LBool(sys.debugWC.inguarddist))
 		return 1
 	})
+	luaRegister(l, "inRunState", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.inRunState))
+		return 1
+	})
 	luaRegister(l, "inputTime", func(l *lua.LState) int {
 		key := strArg(l, 1)
 		var ln lua.LNumber

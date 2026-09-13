@@ -3676,6 +3676,7 @@ type Char struct {
 	acttmp               int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
 	minus                int8 // Essentially the current negative state
 	runStateNest         int32 // RunState recursion depth. Per char, because that's what it measures
+	inRunState           bool  // Whether the code running right now is a state being run by RunState
 	platformPosY         float32
 	groundAngle          float32
 	ownpal               bool
@@ -7034,11 +7035,17 @@ func (c *Char) runState(no int32, pn int) {
 		c.minus = int8(no)
 	}
 
+	// Flag for trigger
+	oldInRun := c.inRunState
+	c.inRunState = true
+
 	// Tracking the number of runStates prevents infinite loops, much like ChangeState
 	c.runStateNest++
 
 	// Execute the actual state bytecode
 	sb.run(c)
+
+	c.inRunState = oldInRun
 
 	// Restore context
 	sys.bcVar, sys.bcVarStack = oldv, sys.bcVarStack[:oldvslen]

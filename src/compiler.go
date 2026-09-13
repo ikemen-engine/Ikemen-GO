@@ -412,6 +412,7 @@ var triggerMap = map[string]int{
 	"incustomstate":      1,
 	"index":              1,
 	"inputtime":          1,
+	"inrunstate":         1,
 	"introstate":         1,
 	"isasserted":         1,
 	"ishost":             1,
@@ -4813,6 +4814,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_incustomanim)
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
+	case "inrunstate":
+		out.append(OC_ex3_, OC_ex3_inrunstate)
 	case "inputtime":
 		if err := c.checkOpeningParenthesisCS(in); err != nil {
 			return bvNone(), err
