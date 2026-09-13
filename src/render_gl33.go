@@ -209,7 +209,7 @@ func (r *Renderer_GL33) generateTexture(width, height, depth int32, filter bool)
 }
 
 // Creates a generic texture
-func (r *Renderer_GL33) newTexture(width, height, depth int32, filter bool) Texture {
+func (r *Renderer_GL33) newTexture(width, height, depth int32, filter bool) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(width, height, depth, filter)
@@ -219,18 +219,19 @@ func (r *Renderer_GL33) newTexture(width, height, depth int32, filter bool) Text
 	gl.TexImage2D(gl.TEXTURE_2D, 0, int32(format), width, height, 0, format, gl.UNSIGNED_BYTE, nil)
 	gl.BindTexture(gl.TEXTURE_2D, 0)
 
-	return t
+	return t, nil
 }
 
 func (r *Renderer_GL33) newPaletteTexture() Texture {
-	return r.newTexture(256, 1, 32, false)
+	t, _ := r.newTexture(256, 1, 32, false)
+	return t
 }
 
-func (r *Renderer_GL33) newModelTexture(width, height, depth int32, filter bool) Texture {
+func (r *Renderer_GL33) newModelTexture(width, height, depth int32, filter bool) (Texture, error) {
 	return r.newTexture(width, height, depth, filter)
 }
 
-func (r *Renderer_GL33) newDataTexture(width, height int32) Texture {
+func (r *Renderer_GL33) newDataTexture(width, height int32) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(width, height, 128, false)
@@ -240,10 +241,10 @@ func (r *Renderer_GL33) newDataTexture(width, height int32) Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	return t
+	return t, nil
 }
 
-func (r *Renderer_GL33) newHDRTexture(width, height int32) Texture {
+func (r *Renderer_GL33) newHDRTexture(width, height int32) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(width, height, 128, false)
@@ -253,10 +254,10 @@ func (r *Renderer_GL33) newHDRTexture(width, height int32) Texture {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
-	return t
+	return t, nil
 }
 
-func (r *Renderer_GL33) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) Texture {
+func (r *Renderer_GL33) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) (Texture, error) {
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
 
 	t := r.generateTexture(widthHeight, widthHeight, 24, false)
@@ -276,7 +277,7 @@ func (r *Renderer_GL33) newCubeMapTexture(widthHeight int32, mipmap bool, lowest
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 	gl.TexParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-	return t
+	return t, nil
 }
 
 // Bind a texture and upload texel data to it
@@ -378,6 +379,10 @@ func (t *Texture_GL33) SetPixelData(data []float32) {
 
 func (t Texture_GL33) CopyData(src *Texture) {
 
+}
+
+func (t Texture_GL33) MarkNonSwappable() {
+	// No-op: GL33 renderer does not have VRAM swap-out
 }
 
 // Return whether texture has a valid handle
@@ -709,7 +714,8 @@ func (r *Renderer_GL33) Init() {
 	}
 
 	r.SetActiveTexture0() //gl.ActiveTexture(gl.TEXTURE0)
-	r.grabTexture = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true).(*Texture_GL33)
+	grabTex, _ := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
+	r.grabTexture = grabTex.(*Texture_GL33)
 	r.grabTexture.SetData(nil)
 
 	// create a texture for r.fbo
@@ -800,7 +806,8 @@ func (r *Renderer_GL33) Init() {
 	}
 	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
 	if sys.msaa > 0 {
-		r.fbo_f_texture = r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, false).(*Texture_GL33)
+		fboTex, _ := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, false)
+		r.fbo_f_texture = fboTex.(*Texture_GL33)
 		r.fbo_f_texture.SetData(nil)
 	} else {
 		//r.rbo_depth = gl.CreateRenderbuffer()
