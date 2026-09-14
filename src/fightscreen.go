@@ -841,6 +841,7 @@ type PowerBar struct {
 	prevLevel        int32
 	prevPower        int32
 	levelbars        bool
+	levelbarsPersist bool
 	scalefill        bool
 	leaderontop      bool
 }
@@ -969,6 +970,7 @@ func readPowerBar(pre string, is IniSection, sff *Sff, at AnimationTable, f map[
 	}
 
 	is.ReadBool(pre+"levelbars", &pb.levelbars)
+	is.ReadBool(pre+"levelbars.persist", &pb.levelbarsPersist)
 	is.ReadBool(pre+"scalefill", &pb.scalefill)
 	is.ReadBool("leaderontop", &pb.leaderontop)
 
@@ -1064,7 +1066,13 @@ func (pb *PowerBar) step(charpn int, pbr *PowerBar, snd *Snd) {
 
 	// Multiple front elements
 	fv2 := resolvePBKey(pb.front, pbval, refChar.powerMax)
-	pb.front[fv2].Action()
+	if pb.levelbarsPersist {
+		for _, front := range pb.front {
+			front.Action()
+		}
+	} else {
+		pb.front[fv2].Action()
+	}
 
 	pb.shift.Action()
 
@@ -1164,6 +1172,13 @@ func (pb *PowerBar) draw(layerno int16, charpn int, pbr *PowerBar, f map[int]*Fn
 
 	// Multiple front elements
 	fv := resolvePBKey(pb.front, pbval, refChar.powerMax)
+	if pb.levelbarsPersist && level > 0 {
+		previousLevelPower := level*1000 - 1
+		previousFront := resolvePBKey(pb.front, previousLevelPower, refChar.powerMax)
+		previousRect := getBarClipRect(1)
+		pb.front[previousFront].lay.DrawAnim(&previousRect, float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale, 1, 1,
+			layerno, pb.front[previousFront].anim, pb.front[previousFront].palfx)
+	}
 	pb.front[fv].lay.DrawAnim(&pr, float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, sys.fightScreen.scale, pxs, pys,
 		layerno, pb.front[fv].anim, pb.front[fv].palfx)
 
