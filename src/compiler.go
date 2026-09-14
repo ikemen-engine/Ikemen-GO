@@ -7921,13 +7921,13 @@ func (c *CharCompiler) letAssign(line *string, root bool,
 			return err
 		}
 	default:
-		otk := c.token
+		// Push the token back rather than rejoining with " ", which breaks strings
+		*line = c.token + *line
 		expr, _, err := c.readSentence(line)
 		if err != nil {
 			return err
 		}
-		expr = otk + " " + expr
-		otk = c.token
+		otk := c.token
 		for i, n := range names {
 			var be BytecodeExp
 			if i < len(names)-1 {
@@ -8084,13 +8084,13 @@ func (c *CharCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			} else {
-				otk := c.token
+				// Same push-back as letAssign
+				*line = c.token + *line
 				expr, assign, err := c.readSentence(line)
 				if err != nil {
 					return err
 				}
-				expr = otk + " " + expr
-				otk = c.token
+				otk := c.token
 				if stex, err := c.fullExpression(&expr, VT_Undefined); err != nil {
 					return err
 				} else {
