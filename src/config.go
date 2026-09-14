@@ -204,6 +204,8 @@ type Config struct {
 	} `ini:"Arcade"`
 	Netplay struct {
 		ListenPort      int                `ini:"ListenPort"`
+		SyncTimeout     int                `ini:"SyncTimeout" sync:"host"`
+		LoadingTimeout  int                `ini:"LoadingTimeout" sync:"host"`
 		RollbackNetcode bool               `ini:"RollbackNetcode" sync:"strict"`
 		IP              map[string]string  `ini:"IP" insensitivekeys:"false"`
 		Rollback        RollbackProperties `ini:"Rollback"`
