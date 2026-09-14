@@ -27,7 +27,7 @@ jobs:
         env:
           COMMENT_BODY: |
             <!-- wiki-docs-required -->
-            @AUTHOR@ this PR requires a wiki update before it can be merged.
+            @AUTHOR@ this PR is approved but requires a wiki update before it can be merged.
 
             Please:
             - update the relevant wiki page(s);
