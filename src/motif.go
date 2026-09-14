@@ -1284,8 +1284,11 @@ type HiscoreInfoProperties struct {
 }
 
 type WarningInfoProperties struct {
-	Title   TextProperties    `ini:"title"`
-	Text    TextMapProperties `ini:"text"`
+	Title TextProperties `ini:"title"`
+	Text  struct {
+		TextMapProperties
+		TextWrap string `ini:"textwrap" default:"w"`
+	} `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
 	Cancel  struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`

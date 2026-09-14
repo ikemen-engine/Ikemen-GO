@@ -4372,6 +4372,11 @@ function start.f_selectLoading(arg)
 			if not loading() then
 				netReady = netLoadingReady()
 			end
+			if esc() then
+				loadCancel()
+				clearSelected()
+				return false
+			end
 			clearColor(0, 0, 0)
 			main.f_animPosDraw(motif.vs_screen.loading.wait.AnimData)
 			textImgDraw(motif.vs_screen.loading.wait.TextSpriteData)
