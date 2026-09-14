@@ -4249,15 +4249,29 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		if not done and motif.vs_screen.timer.count ~= -1 and timerActive and counter >= 0 then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen.timer)
 		end
+		-- done key
+		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
+			doneKeyReady = true
+		end
 		-- Background loading status
 		readyToLeave = not bgLoading
 		if bgLoading and loadStarted then
+			-- Latch leave input before netLoadingReady(), because the loading handshake stops the pre-match net input stream.
+			for side = 1, 2 do
+				if not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
+					wantSkip = true
+				end
+				if done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
+					wantDone = true
+				end
+			end
+			local leaveRequested = (counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done)) or wantSkip or wantDone
 			local localDone = not loading()
-			if localDone and not netReady then
+			if localDone and leaveRequested and not netReady then
 				netReady = netLoadingReady()
 			end
 			readyToLeave = localDone and netReady
-			if not readyToLeave then
+			if not localDone then
 				main.f_animPosDraw(motif.vs_screen.loading.AnimData)
 				textImgDraw(motif.vs_screen.loading.TextSpriteData)
 			else
@@ -4269,21 +4283,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		bgDraw(motif.versusbgdef.BGDef, 1)
 		-- hook
 		hook.run("start.f_selectVersus")
-		-- done key
-		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
-			doneKeyReady = true
-		end
 		--draw fadein / fadeout
 		for side = 1, 2 do
-			-- Latch skip/done while background loading is still in progress.
-			if bgLoading and loadStarted and not readyToLeave then
-				if not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
-					wantSkip = true
-				end
-				if done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
-					wantDone = true
-				end
-			end
 			if not fadeOutStarted and (
 				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
 				or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
