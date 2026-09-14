@@ -135,7 +135,7 @@ All PRs are subject to review by the Ikemen GO dev team, which retains the right
 
 ##### Wiki Documentation
 
-A maintainer may apply the `docs-needed` label when a PR introduces changes that need to be documented on the [wiki][wiki].
+A maintainer may apply the `docs-needed` label when a PR is approved but introduces changes that need to be documented on the [wiki][wiki].
 
 Before the PR can be merged:
 
