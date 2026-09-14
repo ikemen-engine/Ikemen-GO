@@ -8599,7 +8599,7 @@ func triggerFunctions(l *lua.LState) {
 		case "fall.recover":
 			lv = lua.LBool(c.ghv.fall_recover)
 		case "fall.time":
-			lv = lua.LNumber(c.fallTime)
+			lv = lua.LNumber(c.ghv.fall_time)
 		case "fall.recovertime":
 			lv = lua.LNumber(c.ghv.fall_recovertime)
 		case "fall.kill":

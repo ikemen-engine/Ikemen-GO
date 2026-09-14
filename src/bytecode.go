@@ -3360,7 +3360,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_fall_recover:
 		sys.bcStack.PushB(c.ghv.fall_recover)
 	case OC_ex_gethitvar_fall_time:
-		sys.bcStack.PushI(c.fallTime)
+		sys.bcStack.PushI(c.ghv.fall_time)
 	case OC_ex_gethitvar_fall_recovertime:
 		sys.bcStack.PushI(c.ghv.fall_recovertime)
 	case OC_ex_gethitvar_fall_kill:
