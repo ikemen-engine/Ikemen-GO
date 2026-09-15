@@ -5422,6 +5422,10 @@ func (c *CharCompiler) modifyBgm(is IniSection, sc *StateControllerBase) (StateC
 			modifyBgm_loopend, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "loopcount",
+			modifyBgm_loopcount, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "freqmul",
 			modifyBgm_freqmul, VT_Float, 1, false); err != nil {
 			return err
