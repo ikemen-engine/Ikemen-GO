@@ -232,8 +232,6 @@ func (c *CharCompiler) assertSpecial(is IniSection, sc *StateControllerBase) (St
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noguardko)))
 			case "noguardpointsdamage":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noguardpointsdamage)))
-			case "noguardstate":
-				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_noguardstate)))
 			case "nohardcodedkeys":
 				sc.add(assertSpecial_flag, sc.i64ToExp(int64(ASF_nohardcodedkeys)))
 			case "nohitdamage":
@@ -3425,22 +3423,6 @@ func (c *CharCompiler) hitOverride(is IniSection, sc *StateControllerBase) (Stat
 	return *ret, err
 }
 
-func (c *CharCompiler) guard(is IniSection, sc *StateControllerBase) (StateController, error) {
-	ret, err := (*guard)(sc), c.stateSec(is, func() error {
-		if err := c.paramValue(is, sc, "redirectid",
-			guard_redirectid, VT_Int, 1, false); err != nil {
-			return err
-		}
-		if err := c.stateParam(is, "guardflag", true, func(data string) error {
-			return c.parseHitFlag(sc, guard_guardflag, data)
-		}); err != nil {
-			return err
-		}
-		return nil
-	})
-	return *ret, err
-}
-
 func (c *CharCompiler) pause(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*pause)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
@@ -5438,6 +5420,10 @@ func (c *CharCompiler) modifyBgm(is IniSection, sc *StateControllerBase) (StateC
 		}
 		if err := c.paramValue(is, sc, "loopend",
 			modifyBgm_loopend, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "loopcount",
+			modifyBgm_loopcount, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "freqmul",

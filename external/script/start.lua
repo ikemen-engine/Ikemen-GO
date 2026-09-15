@@ -3399,7 +3399,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		local done_spr = pCfg.face.done.spr
 		local preview_anim = pCfg.palmenu.preview.anim
 		if done_anim ~= preview_anim or done_spr[1] ~= -1 then
-			if (st.face_anim ~= done_anim or done_spr[1] ~= -1) and (main.coop or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
+			if (st.face_anim ~= done_anim or done_spr[1] ~= -1) and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 				local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, false, st.face_data)
 				if a then
 					st.face_data = start.loadPalettes(a, charRef, pal)
@@ -3411,7 +3411,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 
 		-- face2 "done" anim after pal confirmation
 		local done_anim2 = pCfg.face2.done.anim
-		if st.face2_anim ~= done_anim2 and (main.coop or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
+		if st.face2_anim ~= done_anim2 and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 			local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2.done, pCfg.face2, false, st.face2_data)
 			if a then
 				st.face2_data = start.loadPalettes(a, charRef, pal)
@@ -3667,8 +3667,8 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local palmenu_preview_spr = pCfg.palmenu.preview.spr
 					local face_anim = start.p[side].t_selTemp[member].face_anim
 					local face2_anim = start.p[side].t_selTemp[member].face2_anim
-					local canShow = main.coop or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
-					local canShow2 = main.coop or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local canShow = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					-- primary face "done" / preview
 					if canShow then
 						if motif.select_info.paletteselect == 0 then
@@ -4249,15 +4249,29 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		if not done and motif.vs_screen.timer.count ~= -1 and timerActive and counter >= 0 then
 			timerCount, timerActive = main.f_drawTimer(timerCount, motif.vs_screen.timer)
 		end
+		-- done key
+		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
+			doneKeyReady = true
+		end
 		-- Background loading status
 		readyToLeave = not bgLoading
 		if bgLoading and loadStarted then
+			-- Latch leave input before netLoadingReady(), because the loading handshake stops the pre-match net input stream.
+			for side = 1, 2 do
+				if not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
+					wantSkip = true
+				end
+				if done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
+					wantDone = true
+				end
+			end
+			local leaveRequested = (counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done)) or wantSkip or wantDone
 			local localDone = not loading()
-			if localDone and not netReady then
+			if localDone and leaveRequested and not netReady then
 				netReady = netLoadingReady()
 			end
 			readyToLeave = localDone and netReady
-			if not readyToLeave then
+			if not localDone then
 				main.f_animPosDraw(motif.vs_screen.loading.AnimData)
 				textImgDraw(motif.vs_screen.loading.TextSpriteData)
 			else
@@ -4269,21 +4283,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		bgDraw(motif.versusbgdef.BGDef, 1)
 		-- hook
 		hook.run("start.f_selectVersus")
-		-- done key
-		if done and not doneKeyReady and not getInput(-1, motif.vs_screen.done.key) then
-			doneKeyReady = true
-		end
 		--draw fadein / fadeout
 		for side = 1, 2 do
-			-- Latch skip/done while background loading is still in progress.
-			if bgLoading and loadStarted and not readyToLeave then
-				if not main.cpuSide[side] and getInput(side, motif.vs_screen.skip.key) then
-					wantSkip = true
-				end
-				if done and doneKeyReady and getInput(side, motif.vs_screen.done.key) then
-					wantDone = true
-				end
-			end
 			if not fadeOutStarted and (
 				(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
 				or (readyToLeave and (not main.cpuSide[side] and (getInput(side, motif.vs_screen.skip.key) or wantSkip)))
