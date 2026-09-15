@@ -1350,6 +1350,35 @@ func BytecodeString(s string) BytecodeValue {
 	return BytecodeValue{VT_String, float64(idx)}
 }
 
+// Map values hold resolved text instead of a string pool index
+// Because maps are written across chars, survive rollback, and get saved to disk
+// None of which a per-player pool index would survive
+// This struct is exported so that Save/LoadFile gob can serialize it
+type MapValue struct {
+	Type ValueType
+	Num  float64
+	Str  string
+}
+
+// Numeric types pass through as-is, so map(x) divides and compares the same way
+// the same literal would anywhere else in an expression
+func MapValueOf(bv BytecodeValue) MapValue {
+	if bv.vtype == VT_String {
+		return MapValue{Type: VT_String, Str: bv.ToS()}
+	}
+	return MapValue{Type: bv.vtype, Num: bv.value}
+}
+
+func (mv MapValue) ToBV() BytecodeValue {
+	switch mv.Type {
+	case VT_String:
+		return BytecodeString(mv.Str) // Re-interns into the reading char's pool
+	case VT_None:
+		return BytecodeFloat(0) // Unset keys still read as 0, as they did before
+	}
+	return BytecodeValue{mv.Type, mv.Num}
+}
+
 type BytecodeStack []BytecodeValue
 
 func (bs *BytecodeStack) Clear() {
@@ -2653,7 +2682,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.sysFvarAdd(vno, val)
 	case OC_st_map:
-		val := sys.bcStack.Pop().ToF()
+		val := sys.bcStack.Pop()
 		mapName := be.ReadPoolStringAt(i)
 		sys.bcStack.Push(c.mapSet(mapName, val, 0))
 	}
@@ -3656,7 +3685,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.cgi[c.playerNo].localcoord[1])
 	case OC_ex_maparray:
 		mapName := be.ReadPoolStringAt(i)
-		sys.bcStack.PushF(c.mapArray[mapName])
+		sys.bcStack.Push(c.mapArray[mapName].ToBV())
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
 		be.max(sys.bcStack.Top(), v2)
@@ -6053,7 +6082,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			h.ownProjectile = exp[0].evalB(c)
 		case helper_map:
 			mapKey := exp[0].evalS()
-			h.mapArray[mapKey] = exp[1].evalF(c)
+			h.mapArray[mapKey] = MapValueOf(exp[1].run(c))
 		}
 		return true
 	})
@@ -12655,14 +12684,14 @@ func (sc mapSet) Run(c *Char, _ []int32) bool {
 	}
 
 	var s string
-	var value float32
+	var value BytecodeValue
 	var scType int32
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case mapSet_mapArray:
 			s = exp[0].evalS()
 		case mapSet_value:
-			value = exp[0].evalF(c)
+			value = exp[0].run(c)
 		case mapSet_sctrltype:
 			scType = exp[0].evalI(c)
 		}
@@ -13016,7 +13045,7 @@ func (sc saveFile) Run(c *Char, _ []int32) bool {
 	case 0: // Map
 		if len(exactKeys) > 0 || len(includeSubstrings) > 0 {
 			// Apply filters in a new map
-			m := make(map[string]float32)
+			m := make(map[string]MapValue)
 			// Try exact match
 			// In this case, save the key even if it's not yet initialized
 			for _, key := range exactKeys {
@@ -13110,7 +13139,7 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 
 	switch fileSavedata {
 	case 0: // Map
-		var loaded map[string]float32
+		var loaded map[string]MapValue
 		if err := dec.Decode(&loaded); err != nil {
 			sys.appendToConsole(crun.warn() + "LoadFile: cannot read map data")
 			return false

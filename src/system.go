@@ -4517,7 +4517,7 @@ func (bk *RoundStartBackup) Save() {
 			for k, v := range c.cnsfvar {
 				bkup.cnsfvar[k] = v
 			}
-			bkup.mapArray = make(map[string]float32, len(c.mapArray))
+			bkup.mapArray = make(map[string]MapValue, len(c.mapArray))
 			for k, v := range c.mapArray {
 				bkup.mapArray[k] = v
 			}
@@ -4612,7 +4612,7 @@ func (bk *RoundStartBackup) Restore() {
 			}
 
 			// Restore maps
-			c.mapArray = make(map[string]float32, len(bkup.mapArray))
+			c.mapArray = make(map[string]MapValue, len(bkup.mapArray))
 			for k, v := range bkup.mapArray {
 				c.mapArray[k] = v
 			}
@@ -6976,7 +6976,7 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 type CharVarBackup struct {
 	cnsvar   map[int32]int32
 	cnsfvar  map[int32]float32
-	mapArray map[string]float32
+	mapArray map[string]MapValue
 }
 
 func (s *System) saveCharVars(pn int) {
@@ -6988,7 +6988,7 @@ func (s *System) saveCharVars(pn int) {
 	bk := CharVarBackup{
 		cnsvar:   make(map[int32]int32),
 		cnsfvar:  make(map[int32]float32),
-		mapArray: make(map[string]float32),
+		mapArray: make(map[string]MapValue),
 	}
 
 	for k, v := range c.cnsvar {
@@ -7016,7 +7016,7 @@ func (s *System) restoreCharVars(c *Char) {
 	for k, v := range bk.cnsfvar {
 		c.cnsfvar[k] = v
 	}
-	c.mapArray = make(map[string]float32, len(bk.mapArray))
+	c.mapArray = make(map[string]MapValue, len(bk.mapArray))
 	for k, v := range bk.mapArray {
 		c.mapArray[k] = v
 	}

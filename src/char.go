@@ -3689,8 +3689,8 @@ type Char struct {
 	selectNo             int
 	inheritJuggle        int32
 	inheritChannels      int32
-	mapArray             map[string]float32
-	mapDefault           map[string]float32
+	mapArray             map[string]MapValue
+	mapDefault           map[string]MapValue
 	remapSpr             RemapPreset
 	clipboardText        []string
 	dialogue             []string
@@ -4058,10 +4058,11 @@ func (c *Char) applyMapOverrides() {
 		return
 	}
 	if c.mapArray == nil {
-		c.mapArray = make(map[string]float32)
+		c.mapArray = make(map[string]MapValue)
 	}
 	for k, v := range ocd.maps {
-		c.mapArray[k] = v
+		// Override data is numeric, same as the DEF defaults
+		c.mapArray[k] = MapValue{Type: VT_Float, Num: float64(v)}
 	}
 }
 
@@ -4094,7 +4095,7 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	gi.def = def
 
 	// Reset DEF file maps
-	c.mapDefault = make(map[string]float32)
+	c.mapDefault = make(map[string]MapValue)
 
 	if err := c.loadFx(def, gi); err != nil {
 		LogMessage("Error loading FX for %s: %v", def, err)
@@ -4244,7 +4245,7 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				mapArray = false
 
 				for key, value := range is {
-					c.mapDefault[key] = float32(Atof(value))
+					c.mapDefault[key] = MapValue{Type: VT_Float, Num: Atof(value)}
 				}
 			}
 		case "shaders":
@@ -9787,75 +9788,95 @@ func (c *Char) remapSpritePreset(preset string) {
 }
 
 // MapSet() sets a map to a specific value. Used for both sctrl and assignment forms
-func (c *Char) mapSet(s string, Value float32, scType int32) BytecodeValue {
+func (c *Char) mapSet(s string, value BytecodeValue, scType int32) BytecodeValue {
 	if s == "" {
 		return BytecodeUndefined()
 	}
+	mv := MapValueOf(value)
+	c.mapSetValue(s, mv, scType)
+	return mv.ToBV() // Returns what a read of the key would give, so assignment stays usable in expressions
+}
+
+// Takes an already resolved value, so callers outside state execution (Lua, motif)
+// don't have to touch the string pool
+func (c *Char) mapSetValue(s string, mv MapValue, scType int32) {
+	if s == "" {
+		return
+	}
 	key := strings.ToLower(s)
-	switch scType {
-	case 0: // MapSet
-		c.mapArray[key] = Value
-	case 1: // MapAdd
-		c.mapArray[key] += Value
-	case 2: // ParentMapSet
-		if p := c.parent(true); p != nil {
-			p.mapArray[key] = Value
+
+	set := func(m map[string]MapValue) {
+		m[key] = mv
+	}
+	// String operations don't exist yet, so any add touching one is a no-op
+	add := func(m map[string]MapValue) {
+		old := m[key]
+		if mv.Type == VT_String || old.Type == VT_String {
+			sys.appendToConsole(c.warn() + "MapAdd: cannot add string values")
+			return
 		}
-	case 3: // ParentMapAdd
-		if p := c.parent(true); p != nil {
-			p.mapArray[key] += Value
-		}
-	case 4: // RootMapSet
-		if r := c.root(true); r != nil {
-			r.mapArray[key] = Value
-		}
-	case 5: // RootMapAdd
-		if r := c.root(true); r != nil {
-			r.mapArray[key] += Value
-		}
-	case 6: // TeamMapSet
+		// Defer to the engine's own add so int/float promotion matches expressions
+		sum := old.ToBV()
+		BytecodeExp{}.add(&sum, mv.ToBV())
+		m[key] = MapValueOf(sum)
+	}
+
+	// Applies set or add to every char on this char's team
+	applyTeam := func(f func(map[string]MapValue)) {
 		if c.teamside == -1 {
 			for i := MaxSimul * 2; i < MaxPlayerNo; i += 1 {
 				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] = Value
+					f(sys.chars[i][0].mapArray)
 				}
 			}
 		} else {
 			for i := c.teamside; i < MaxSimul*2; i += 2 {
 				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] = Value
-				}
-			}
-		}
-	case 7: // TeamMapAdd
-		if c.teamside == -1 {
-			for i := MaxSimul * 2; i < MaxPlayerNo; i += 1 {
-				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] += Value
-				}
-			}
-		} else {
-			for i := c.teamside; i < MaxSimul*2; i += 2 {
-				if len(sys.chars[i]) > 0 {
-					sys.chars[i][0].mapArray[key] += Value
+					f(sys.chars[i][0].mapArray)
 				}
 			}
 		}
 	}
-	return BytecodeFloat(Value) // We also return the value because map assignment can be used in expressions
+
+	switch scType {
+	case 0: // MapSet
+		set(c.mapArray)
+	case 1: // MapAdd
+		add(c.mapArray)
+	case 2: // ParentMapSet
+		if p := c.parent(true); p != nil {
+			set(p.mapArray)
+		}
+	case 3: // ParentMapAdd
+		if p := c.parent(true); p != nil {
+			add(p.mapArray)
+		}
+	case 4: // RootMapSet
+		if r := c.root(true); r != nil {
+			set(r.mapArray)
+		}
+	case 5: // RootMapAdd
+		if r := c.root(true); r != nil {
+			add(r.mapArray)
+		}
+	case 6: // TeamMapSet
+		applyTeam(set)
+	case 7: // TeamMapAdd
+		applyTeam(add)
+	}
 }
 
 // Used to init, fully reset or partially reset the map array
 func (c *Char) mapReset(exclude []string) {
 	// Initialize mapArray if nil
 	if c.mapArray == nil {
-		c.mapArray = make(map[string]float32)
+		c.mapArray = make(map[string]MapValue)
 	}
 
 	// Fast path for full reset
 	// Just remake the map and populate with defaults
 	if len(exclude) == 0 {
-		c.mapArray = make(map[string]float32)
+		c.mapArray = make(map[string]MapValue)
 		for k, v := range c.mapDefault {
 			c.mapArray[k] = v
 		}

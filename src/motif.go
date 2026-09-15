@@ -4801,8 +4801,17 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 				return true
 			}
 			mapName, ok1 := token.value[0].(string)
-			mapVal, ok2 := token.value[1].(float32)
-			if !ok1 || !ok2 {
+			if !ok1 {
+				return false
+			}
+			// Typed from the token: numeric values stay numeric, strings are stored as text
+			var mv MapValue
+			switch v := token.value[1].(type) {
+			case float32:
+				mv = MapValue{Type: VT_Float, Num: float64(v)}
+			case string:
+				mv = MapValue{Type: VT_String, Str: v}
+			default:
 				return false
 			}
 			mapOp := int32(0)
@@ -4811,7 +4820,7 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 					mapOp = 1
 				}
 			}
-			sys.chars[token.pn-1][0].mapSet(mapName, mapVal, mapOp)
+			sys.chars[token.pn-1][0].mapSetValue(mapName, mv, mapOp)
 		}
 		return true
 	default:

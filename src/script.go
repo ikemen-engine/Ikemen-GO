@@ -4836,14 +4836,21 @@ func systemScriptInit(l *lua.LState) {
 		/*[redirectable] Set the character's map value.
 		@function mapSet
 		@tparam string name Map name to modify.
-		@tparam float32 value Map value to set.
+		@tparam number|string value Map value to set.
 		@tparam[opt] string mapType Map operation type. `"add"` adds to the existing value,
 		  anything else replaces it.*/
 		var scType int32
 		if !nilArg(l, 3) && strArg(l, 3) == "add" {
 			scType = 1
 		}
-		sys.debugWC.mapSet(strArg(l, 1), float32(numArg(l, 2)), scType)
+		// Typed from the Lua value: numbers stay numeric, anything else is text
+		var mv MapValue
+		if num, ok := l.Get(2).(lua.LNumber); ok {
+			mv = MapValue{Type: VT_Float, Num: float64(num)}
+		} else {
+			mv = MapValue{Type: VT_String, Str: strArg(l, 2)}
+		}
+		sys.debugWC.mapSetValue(strArg(l, 1), mv, scType)
 		return 0
 	})
 	luaRegister(l, "motifIsInherited", func(l *lua.LState) int {
@@ -9313,7 +9320,12 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.debugWC.mapArray[strings.ToLower(strArg(l, 1))]))
+		mv := sys.debugWC.mapArray[strings.ToLower(strArg(l, 1))]
+		if mv.Type == VT_String {
+			l.Push(lua.LString(mv.Str))
+		} else {
+			l.Push(lua.LNumber(mv.Num))
+		}
 		return 1
 	})
 	luaRegister(l, "matchNo", func(*lua.LState) int {
