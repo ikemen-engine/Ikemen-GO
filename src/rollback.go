@@ -731,6 +731,9 @@ func (r *RollbackSession) LoadGameState(stateIdx int) {
 
 	sys.statePool.gameStatePool.Put(r.saveStates[stateIdx])
 
+	// Drop the entry alongside the Put, or a later Get can hand out a stale state
+	delete(r.saveStates, stateIdx)
+
 	lastLoadedFrame = stateIdx
 }
 
