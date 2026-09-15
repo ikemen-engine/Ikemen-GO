@@ -343,68 +343,22 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 			if size < 0 {
 				break
 			}
-			var clsn [][4]float32
-			if line[4] == '1' {
-				// Clsn1
-				clsn1 = make([][4]float32, size)
-				clsn = clsn1
-				if len(line) >= 12 && line[5:12] == "default" {
+			clsnType := line[4]
+			isDefault := len(line) >= 12 && line[5:12] == "default"
+			switch clsnType {
+			case '1':
+				clsn1 = readClsn(lines, i, clsnType, size)
+				if isDefault {
 					clsn1d = clsn1
 				}
 				def1 = false
-			} else if line[4] == '2' {
-				// Clsn2
-				clsn2 = make([][4]float32, size)
-				clsn = clsn2
-				if len(line) >= 12 && line[5:12] == "default" {
+			case '2':
+				clsn2 = readClsn(lines, i, clsnType, size)
+				if isDefault {
 					clsn2d = clsn2
 				}
 				def2 = false
-			} else {
-				break
 			}
-			if size == 0 {
-				break
-			}
-			// Move past the "Clsn:" line to the first rectangle line
-			(*i)++
-			// Read exactly 'size' number rectangle lines
-			// TODO: Mugen seems less strict about this
-			for n := int32(0); n < size && *i < len(lines); {
-				line := strings.ToLower(strings.TrimSpace(
-					strings.SplitN(lines[*i], ";", 2)[0]))
-				if len(line) == 0 {
-					(*i)++
-					continue // Skip blank lines
-				}
-				// Stop if we encounter a line that doesn't start with "clsn"
-				if len(line) < 4 || line[:4] != "clsn" {
-					break
-				}
-				// Extract the coordinates after "="
-				ii := strings.Index(line, "=")
-				if ii < 0 {
-					break
-				}
-				ary := strings.Split(line[ii+1:], ",")
-				if len(ary) < 4 {
-					break
-				}
-				l, t, r, b := Atoi(ary[0]), Atoi(ary[1]), Atoi(ary[2]), Atoi(ary[3])
-				// Normalize rectangle
-				if l > r {
-					l, r = r, l
-				}
-				if t > b {
-					t, b = b, t
-				}
-				clsn[n][0], clsn[n][1], clsn[n][2], clsn[n][3] =
-					float32(l), float32(t), float32(r), float32(b)
-				n++
-				(*i)++
-			}
-			// Back up one step to avoid skipping the line after the last rectangle
-			(*i)--
 		}
 	}
 
@@ -435,6 +389,103 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 		}
 	}
 	return a, err
+}
+
+func readClsn(lines []string, i *int, clsnType byte, size int32) ([][4]float32, error) {
+	clsn := make([][4]float32, size)
+	if size == 0 {
+		return clsn, nil
+	}
+	filled := make([]bool, size)
+
+	// Move past the "Clsn:" line to the first rectangle line
+	(*i)++
+
+	// Read exactly 'size' number rectangle lines
+	count := int32(0)
+	for count < size && *i < len(lines) {
+		rline := strings.ToLower(strings.TrimSpace(
+			strings.SplitN(lines[*i], ";", 2)[0]))
+		if len(rline) == 0 {
+			(*i)++
+			continue // Skip blank lines
+		}
+		// Stop if we encounter a line that doesn't start with "clsn"
+		if len(rline) < 4 || rline[:4] != "clsn" {
+			break
+		}
+		// Find the coordinate assignment
+		eqIdx := strings.Index(rline, "=")
+		if eqIdx < 0 {
+			break
+		}
+		// Optional [n] between the type and "="
+		boxIdx := int32(-1)
+		if brStart := strings.Index(rline, "["); brStart >= 0 && brStart < eqIdx {
+			if brEnd := strings.Index(rline[brStart:], "]"); brEnd > 0 {
+				idxStr := strings.TrimSpace(rline[brStart+1 : brStart+brEnd])
+				valid := idxStr != ""
+				for k := 0; valid && k < len(idxStr); k++ {
+					if idxStr[k] < '0' || idxStr[k] > '9' {
+						valid = false
+					}
+				}
+				if valid {
+					boxIdx = int32(Atoi(idxStr))
+				}
+			}
+		}
+		// If the index couldn't be honored (absent, out-of-range, or repeated),
+		// fall back to the first free slot so the box isn't silently lost.
+		if boxIdx < 0 || boxIdx >= size || filled[boxIdx] {
+			requested := boxIdx
+			boxIdx = -1
+			for k := int32(0); k < size; k++ {
+				if !filled[k] {
+					boxIdx = k
+					break
+				}
+			}
+			if boxIdx < 0 {
+				// Cannot fire given count < size and filled having
+				// exactly count true entries, but keep as a safety net.
+				LogMessage("WARNING: Clsn[%v] no free slot (size %v); box dropped",
+					clsnType, size)
+				(*i)++
+				continue
+			}
+			if requested >= 0 {
+				ac.warnf("line %v: Clsn%v[%v] index is duplicate or out of range; placed in slot [%v]",
+					lineNo, string(clsnType), requested, boxIdx)
+			}
+		}
+		// Extract the coordinates after "="
+		ary := strings.Split(rline[eqIdx+1:], ",")
+		if len(ary) < 4 {
+			break
+		}
+		clsn[boxIdx] = NormalizeRect([4]float32{
+			float32(Atoi(ary[0])),
+			float32(Atoi(ary[1])),
+			float32(Atoi(ary[2])),
+			float32(Atoi(ary[3])),
+		})
+		filled[boxIdx] = true
+		count++
+		(*i)++
+	}
+
+	// Back up one step to avoid skipping the line after the last rectangle
+	(*i)--
+
+	// Warn if size doesn't match found boxes
+	// Mugen crashes here
+	if count != size {
+		return clsn, Error(fmt.Sprintf(
+			"Clsn%v: declared %v boxes but only %v found", string(clsnType), size, count))
+	}
+
+	return clsn, nil
 }
 
 func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a *Animation, err error) {
