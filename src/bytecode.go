@@ -5292,6 +5292,8 @@ type hitBy StateControllerBase
 
 const (
 	hitBy_attr byte = iota
+	hitBy_clsn_group
+	hitBy_clsn_index
 	hitBy_playerid
 	hitBy_playerno
 	hitBy_slot
@@ -5307,8 +5309,10 @@ func (sc hitBy) runSub(c *Char, crun *Char, not bool) {
 	pno := int(-1)
 	pid := int32(-1)
 	stk := false
+	cgrp := int32(-1)
+	cidx := int32(-1)
 
-	set := func(slot int, attr, time int32, pno int, pid int32, stk bool) {
+	set := func(slot int, attr, time int32, pno int, pid int32, stk bool, cgrp, cidx int32) {
 		if slot < 0 {
 			return
 		} else if slot >= len(crun.hitby) {
@@ -5320,6 +5324,8 @@ func (sc hitBy) runSub(c *Char, crun *Char, not bool) {
 		crun.hitby[slot].playerno = pno - 1
 		crun.hitby[slot].playerid = pid
 		crun.hitby[slot].stack = stk
+		crun.hitby[slot].clsn_group = cgrp
+		crun.hitby[slot].clsn_index = cidx
 	}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
@@ -5336,11 +5342,15 @@ func (sc hitBy) runSub(c *Char, crun *Char, not bool) {
 			pid = exp[0].evalI(c)
 		case hitBy_stack:
 			stk = exp[0].evalB(c)
+		case hitBy_clsn_group:
+			cgrp = exp[0].evalI(c)
+		case hitBy_clsn_index:
+			cidx = exp[0].evalI(c)
 		}
 		return true
 	})
 
-	set(slot, attr, time, pno, pid, stk)
+	set(slot, attr, time, pno, pid, stk, cgrp, cidx)
 }
 
 func (sc hitBy) Run(c *Char, _ []int32) bool {
@@ -8279,19 +8289,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 			hd.score[1] = exp[1].evalF(c)
 		}
 	case hitDef_p2clsncheck:
-		v := exp[0].evalI(c)
-		if v == 0 || v == 1 || v == 2 || v == 3 {
-			hd.p2clsncheck = v
-		} else {
-			hd.p2clsncheck = -1
-		}
+		hd.p2clsncheck = exp[0].evalI(c)
 	case hitDef_p2clsnrequire:
-		v := exp[0].evalI(c)
-		if v == 1 || v == 2 || v == 3 {
-			hd.p2clsnrequire = v
-		} else {
-			hd.p2clsnrequire = 0
-		}
+		hd.p2clsnrequire = exp[0].evalI(c)
 	case hitDef_down_recover:
 		hd.down_recover = exp[0].evalB(c)
 	case hitDef_down_recovertime:
@@ -9845,22 +9845,14 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					p.hitdef.score[1] = v2
 				})
 			case hitDef_p2clsncheck:
-				v1 := exp[0].evalI(c)
+				v := exp[0].evalI(c)
 				eachProj(func(p *Projectile) {
-					if v1 == 0 || v1 == 1 || v1 == 2 || v1 == 3 {
-						p.hitdef.p2clsncheck = v1
-					} else {
-						p.hitdef.p2clsncheck = -1
-					}
+					p.hitdef.p2clsncheck = v
 				})
 			case hitDef_p2clsnrequire:
-				v1 := exp[0].evalI(c)
+				v := exp[0].evalI(c)
 				eachProj(func(p *Projectile) {
-					if v1 == 1 || v1 == 2 || v1 == 3 {
-						p.hitdef.p2clsnrequire = v1
-					} else {
-						p.hitdef.p2clsnrequire = 0
-					}
+					p.hitdef.p2clsnrequire = v
 				})
 			case hitDef_down_recover:
 				v1 := exp[0].evalB(c)

@@ -56,6 +56,19 @@ func (c *CharCompiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlNam
 	}); err != nil {
 		return err
 	}
+	if _, ok := is["clsn.group"]; ok {
+		new = true
+	}
+	if err := c.paramClsnType(is, sc, "clsn.group", hitBy_clsn_group); err != nil {
+		return err
+	}
+	if err := c.stateParam(is, "clsn.index", false, func(data string) error {
+		new = true
+		c.scAdd(sc, hitBy_clsn_index, data, VT_Int, 1)
+		return nil
+	}); err != nil {
+		return err
+	}
 
 	// Shared parameters
 	if err := c.paramValue(is, sc, "time", hitBy_time, VT_Int, 1, false); err != nil {
@@ -92,6 +105,8 @@ func (c *CharCompiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlNam
 	}
 
 	// Cannot mix old and new syntax
+	// Technically, we could allow value with clsn.group for instance, but it's better to start clean with the new syntax
+	// TODO: Perhaps only blocking value + attr/slot would make this function a bit cleaner
 	if old && new {
 		msg := "Cannot mix old and new syntaxes in " + sctrlName
 		if c.zssMode {
