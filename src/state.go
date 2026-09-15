@@ -450,8 +450,10 @@ func (gs *GameState) Checksum() int {
 // Returns some state variables as a string for debugging
 func (gs *GameState) String() (str string) {
 	// Add match data
-	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d ScorePoints: %v ComboCount: %v\n",
-		gs.matchTime, gs.curRoundTime, gs.scorePoints, gs.comboCount)
+	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d RandSeed: %d\n",
+		gs.matchTime, gs.curRoundTime, gs.randseed)
+	str = fmt.Sprintf("ScorePoints: %v ComboCount: %v\n",
+		gs.scorePoints, gs.comboCount)
 	str += fmt.Sprintf("RoundState RoundNo:%d Intro:%d WinSkipped:%t WinPoseTime:%d WinWaitTime:%d FinishType:%v SpecialFlag:0x%08x Wins:%v EffectiveLoss:%v SlowTime:%d WinTeam:%d\n",
 		gs.roundNo, gs.intro, gs.winskipped, gs.winposetime, gs.winwaittime, gs.finishType,
 		uint32(gs.specialFlag), gs.wins, gs.effectiveLoss, gs.slowtime, gs.winTeam)
