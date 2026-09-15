@@ -276,14 +276,34 @@ func (c *Camera) XBound(scl, x float32) float32 {
 		c.boundR+c.halfWidth-c.halfWidth/scl)
 }
 
+// Lowest scale whose view still fits inside the playable area
+// For Zoom stageBound parameter
+func (c *Camera) MinZoomScale() float32 {
+	w := float32(sys.gameWidth)
+	h := float32(sys.gameHeight)
+	above := c.GroundLevel()
+	below := h - above
+
+	// Total playable area, measured between the visible edges at the bound limits
+	playableWidth := (c.boundR + c.halfWidth) - (c.boundL - c.halfWidth)
+	playableHeight := (c.boundLo + below) - (c.boundH - above)
+
+	return Max(w/playableWidth, h/playableHeight)
+}
+
 // Doesn't account for boundhighzoomdelta
 func (c *Camera) YBound(scl, y float32) float32 {
-	return Clamp(y, c.boundH*scl, c.boundLo*scl)
+	above := c.GroundLevel()
+	below := float32(sys.gameHeight) - above
+	return Clamp(y,
+		c.boundH-above+above/scl,
+		c.boundLo+below-below/scl)
 }
 
 func (c *Camera) BaseScale() float32 {
 	return c.ztopscale
 }
+
 
 func (c *Camera) GroundLevel() float32 {
 	return c.zoff - c.aspectcorrection - c.zoomanchorcorrection
