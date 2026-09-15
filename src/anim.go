@@ -250,6 +250,8 @@ type Animation struct {
 	copyAction                 int32
 	warnMissing                bool
 	loopcount                  int32
+	filename                   string
+	actionNumber               int32
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
@@ -272,8 +274,10 @@ func newAnimation(sff *Sff, pal *PaletteList) *Animation {
 	}
 }
 
-func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animation, error) {
+func ReadAnimation(sff *Sff, pal *PaletteList, filename string, animNo int32, log bool, lines []string, i *int) (*Animation, error) {
 	a := newAnimation(sff, pal)
+	a.filename = filename
+	a.actionNumber = animNo
 
 	a.mask = 0
 	ols := int32(0)
@@ -304,9 +308,11 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 		var af *AnimFrame
 		af, lerr := ReadAnimFrame(line)
 
-		// Use a local error to prevent overwriting the outer one with nil
+		// Use a local error to prevent overwriting the outer one with nil.
+		// Tag with file/action/line so callers don't have to.
 		if lerr != nil {
-			err = lerr
+			err = Error(fmt.Sprintf("%v, action %v, line %v: %v",
+				filename, animNo, *i+1, lerr.Error()))
 		}
 
 		switch {
@@ -347,13 +353,19 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 			isDefault := len(line) >= 12 && line[5:12] == "default"
 			switch clsnType {
 			case '1':
-				clsn1 = readClsn(lines, i, clsnType, size)
+				clsn1, lerr = readClsn(lines, i, clsnType, size, filename, animNo, log)
+				if lerr != nil {
+					err = lerr
+				}
 				if isDefault {
 					clsn1d = clsn1
 				}
 				def1 = false
 			case '2':
-				clsn2 = readClsn(lines, i, clsnType, size)
+				clsn2, lerr = readClsn(lines, i, clsnType, size, filename, animNo, log)
+				if lerr != nil {
+					err = lerr
+				}
 				if isDefault {
 					clsn2d = clsn2
 				}
@@ -391,12 +403,15 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 	return a, err
 }
 
-func readClsn(lines []string, i *int, clsnType byte, size int32) ([][4]float32, error) {
+func readClsn(lines []string, i *int, clsnType byte, size int32, filename string, animNo int32, log bool) ([][4]float32, error) {
 	clsn := make([][4]float32, size)
 	if size == 0 {
 		return clsn, nil
 	}
 	filled := make([]bool, size)
+
+	// 1-based line number of the "Clsn1:" / "Clsn2:" header
+	lineNo := *i + 1
 
 	// Move past the "Clsn:" line to the first rectangle line
 	(*i)++
@@ -449,14 +464,18 @@ func readClsn(lines []string, i *int, clsnType byte, size int32) ([][4]float32, 
 			if boxIdx < 0 {
 				// Cannot fire given count < size and filled having
 				// exactly count true entries, but keep as a safety net.
-				LogMessage("WARNING: Clsn[%v] no free slot (size %v); box dropped",
-					clsnType, size)
+				if log {
+					LogMessage("WARNING: %v, action %v, line %v: Clsn[%v] no free slot (size %v); box dropped",
+						filename, animNo, lineNo, clsnType, size)
+				}
 				(*i)++
 				continue
 			}
 			if requested >= 0 {
-				ac.warnf("line %v: Clsn%v[%v] index is duplicate or out of range; placed in slot [%v]",
-					lineNo, string(clsnType), requested, boxIdx)
+				if log {
+					LogMessage("WARNING: %v, action %v, line %v: Clsn%v[%v] index is duplicate or out of range; placed in slot [%v]",
+						filename, animNo, lineNo, string(clsnType), requested, boxIdx)
+				}
 			}
 		}
 		// Extract the coordinates after "="
@@ -482,13 +501,13 @@ func readClsn(lines []string, i *int, clsnType byte, size int32) ([][4]float32, 
 	// Mugen crashes here
 	if count != size {
 		return clsn, Error(fmt.Sprintf(
-			"Clsn%v: declared %v boxes but only %v found", string(clsnType), size, count))
+			"%v, action %v, line %v: Clsn%v: declared %v boxes but only %v found", filename, animNo, lineNo, string(clsnType), size, count))
 	}
 
 	return clsn, nil
 }
 
-func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a *Animation, err error) {
+func ReadAction(sff *Sff, pal *PaletteList, filename string, log bool, lines []string, i *int) (no int32, a *Animation, err error) {
 	var name, subname string
 	for ; *i < len(lines); (*i)++ {
 		name, subname = SectionName(lines[*i])
@@ -509,7 +528,7 @@ func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a
 	(*i)++
 
 	no = Atoi(subname[spi+1:])
-	a, err = ReadAnimation(sff, pal, lines, i)
+	a, err = ReadAnimation(sff, pal, filename, no, log, lines, i)
 
 	return
 }
@@ -746,7 +765,7 @@ func (a *Animation) UpdateSprite() {
 						a.sff.debugMissing = make(map[[2]uint16]bool)
 					}
 					if !a.sff.debugMissing[key] {
-						LogMessage("WARNING: Animation missing sprite %v,%v from %v", group, number, a.sff.filename)
+						LogMessage("WARNING: %v, action %v: missing sprite %v,%v", a.filename, a.actionNumber, group, number)
 						a.sff.debugMissing[key] = true
 					}
 				}
@@ -1235,10 +1254,11 @@ func NewAnimationTable() AnimationTable {
 
 func (at AnimationTable) readAction(sff *Sff, pal *PaletteList, lines []string, i *int, log bool) *Animation {
 	for *i < len(lines) {
-		no, a, err := ReadAction(sff, pal, lines, i)
-		// Animation errors do not crash Mugen. But we can log them
+		no, a, err := ReadAction(sff, pal, at.filename, log, lines, i)
+		// Animation errors do not crash Mugen. But we can log them.
+		// The error itself already carries file, action, and line context.
 		if log && err != nil {
-			LogMessage("WARNING: Action %v in %v: %v", no, at.filename, err.Error())
+			LogMessage("WARNING: %v", err.Error())
 		}
 		if a != nil {
 			// In case of duplicate action numbers, just use the first one
@@ -1254,7 +1274,7 @@ func (at AnimationTable) readAction(sff *Sff, pal *PaletteList, lines []string, 
 			logged := false
 			for len(a.frames) == 0 && *i < len(lines) && a.copyAction < 0 {
 				if !logged && log {
-					LogMessage("WARNING: Action %v in %v has no valid frames", no, at.filename)
+					LogMessage("WARNING: %v, action %v: no valid frames", at.filename, no)
 					logged = true
 				}
 				if a2 := at.readAction(sff, pal, lines, i, log); a2 != nil {
@@ -2132,7 +2152,7 @@ func NewAnim(sff *Sff, action string) *Anim {
 	}
 	if action != "" {
 		lines, i := SplitAndTrim(action, "\n"), 0
-		a.anim, _ = ReadAnimation(sff, &sff.palList, lines, &i)
+		a.anim, _ = ReadAnimation(sff, &sff.palList, "", -1, true, lines, &i)
 		if len(a.anim.frames) == 0 {
 			return nil
 		}
