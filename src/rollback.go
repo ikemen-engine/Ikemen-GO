@@ -24,7 +24,8 @@ type RollbackProperties struct {
 	FrameDelay            int  `ini:"FrameDelay" sync:"host"`
 	DisconnectNotifyStart int  `ini:"DisconnectNotifyStart" sync:"host"`
 	DisconnectTimeout     int  `ini:"DisconnectTimeout" sync:"host"`
-	LogsEnabled           bool `ini:"LogsEnabled" sync:"host"`
+	StateLogsEnabled      bool `ini:"StateLogsEnabled" sync:"host"`
+	GgpoLogsEnabled       bool `ini:"GgpoLogsEnabled" sync:"host"`
 	SaveStageData         bool `ini:"SaveStageData" sync:"host"`
 	DesyncTest            bool `ini:"DesyncTest" sync:"host"`
 	DesyncTestFrames      int  `ini:"DesyncTestFrames" sync:"host"`
@@ -419,7 +420,7 @@ func (g *RollbackLogger) logState(action string, stateIdx int, state *GameState)
 }
 
 func (g *RollbackLogger) logRoundSkipCheck(fadeoutStart int32, anyButton, roundnotskip, skipEligible, matchEndDialogue bool) {
-	if sys.rollback.session == nil || !sys.rollback.session.config.LogsEnabled {
+	if sys.rollback.session == nil || !sys.rollback.session.config.StateLogsEnabled {
 		return
 	}
 	var inputs [2]InputBits
@@ -443,7 +444,7 @@ func (g *RollbackLogger) logRoundSkipCheck(fadeoutStart int32, anyButton, roundn
 }
 
 func (g *RollbackLogger) logRoundAdvanceCheck(roundOver, tickFrame, motifEndActive, fightLoopEnd, holdPostMatch, canAdvance bool) {
-	if sys.rollback.session == nil || !sys.rollback.session.config.LogsEnabled {
+	if sys.rollback.session == nil || !sys.rollback.session.config.StateLogsEnabled {
 		return
 	}
 	fmt.Fprintf(&g.currentLog,
@@ -693,13 +694,13 @@ func (r *RollbackSession) SaveGameState(stateIdx int) int {
 	r.saveStates[stateIdx].SaveState(stateIdx)
 
 	if r.config.DesyncTest {
-		if r.config.LogsEnabled {
+		if r.config.StateLogsEnabled {
 			r.log.logState("Saving", stateIdx, r.saveStates[stateIdx])
 			r.log.updateStateLogs()
 		}
 		return r.saveStates[stateIdx].Checksum()
 	} else {
-		if r.config.LogsEnabled {
+		if r.config.StateLogsEnabled {
 			r.log.logState("Saving", stateIdx, r.saveStates[stateIdx])
 			r.log.updateStateLogs()
 		}
@@ -727,7 +728,7 @@ func (r *RollbackSession) LoadGameState(stateIdx int) {
 
 	r.saveStates[stateIdx].LoadState(stateIdx)
 
-	if r.config.DesyncTest && r.config.LogsEnabled {
+	if r.config.DesyncTest && r.config.StateLogsEnabled {
 		r.log.logState("Loading", stateIdx, r.saveStates[stateIdx])
 	}
 
@@ -797,7 +798,7 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		if sys.postMatchFlg {
 			return
 		}
-		if r.config.LogsEnabled {
+		if r.config.StateLogsEnabled {
 			r.log.saveStateLogs()
 		}
 		fmt.Println("EventCodeDisconnectedFromPeer")
@@ -810,7 +811,7 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		fmt.Printf("EventCodeTimeSync: FramesAhead %f TimeSyncPeriodInFrames: %d\n", info.FramesAhead, info.TimeSyncPeriodInFrames)
 		r.loopTimer.OnGGPOTimeSyncEvent(info.FramesAhead)
 	case ggpo.EventCodeDesync:
-		if r.config.LogsEnabled {
+		if r.config.StateLogsEnabled {
 			r.log.saveStateLogs()
 		}
 		fmt.Println("EventCodeDesync")
@@ -919,7 +920,7 @@ func (rs *RollbackSession) AnyButton() bool {
 }
 
 func (rs *RollbackSession) InitP1(numPlayers int, localPort int, remotePort int, remoteIp string) {
-	if rs.config.LogsEnabled {
+	if rs.config.GgpoLogsEnabled {
 		logFileName := fmt.Sprintf("save/logs/Rollback-%s.log", rs.timestamp)
 		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0666)
 		if err != nil {
@@ -968,7 +969,7 @@ func (rs *RollbackSession) InitP1(numPlayers int, localPort int, remotePort int,
 }
 
 func (rs *RollbackSession) InitP2(numPlayers int, localPort int, remotePort int, remoteIp string) {
-	if rs.config.LogsEnabled {
+	if rs.config.GgpoLogsEnabled {
 		logFileName := fmt.Sprintf("save/logs/Rollback-%s.log", rs.timestamp)
 		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0666)
 		if err != nil {
@@ -1018,7 +1019,7 @@ func (rs *RollbackSession) InitP2(numPlayers int, localPort int, remotePort int,
 
 func (rs *RollbackSession) InitSyncTest(numPlayers int) {
 	rs.syncTest = true
-	if rs.config.LogsEnabled {
+	if rs.config.GgpoLogsEnabled {
 		logFileName := fmt.Sprintf("save/logs/Rollback-Desync-Test-%s.log", rs.timestamp)
 		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0666)
 		if err != nil {
