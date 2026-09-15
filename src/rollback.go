@@ -392,10 +392,11 @@ func (rs *RollbackSystem) anyButton() bool {
 	return false
 }
 
+// Logs are sized for the worst case scenario, where every frame of the buffer carries a max rollback
 type RollbackLogger struct {
 	filename   string
 	currentLog strings.Builder
-	logs       [(MaxSaveStates * 2) + 3]string
+	logs       [(MaxSaveStates + 2) * (MaxSaveStates + 1)]string
 }
 
 func NewRollbackLogger(timestamp string) RollbackLogger {
@@ -413,6 +414,7 @@ func (g *RollbackLogger) logState(action string, stateIdx int, state *GameState)
 		fmt.Fprintf(&g.currentLog, "Frame type: Confirmed\n")
 	}
 
+	fmt.Fprintf(&g.currentLog, "RandSeed: %d\n", sys.randseed)
 	fmt.Fprintf(&g.currentLog, "Checksum: %d\n", state.Checksum()) // Calls String() again. Minor issue
 	fmt.Fprintf(&g.currentLog, "%s\n", state.String())
 }
@@ -474,8 +476,9 @@ func (g *RollbackLogger) updateStateLogs() {
 }
 
 func (g *RollbackLogger) saveStateLogs() {
-	// Header indicating the number of frames captured
-	fullLog := fmt.Sprintf("Writing save state data from the last %d frames.\n\n", len(g.logs))
+	// Header indicating the number of entries captured
+	// Each save and each load writes one, so this is not quite a frame count
+	fullLog := fmt.Sprintf("Writing save state data from the last %d entries.\n\n", len(g.logs))
 	// Collect all the logs in the buffer
 	for i := range g.logs {
 		fullLog += g.logs[i]
