@@ -1076,8 +1076,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 	s.sff = &Sff{}
 
 	lines, i := SplitAndTrim(str, "\n"), 0
-	s.animTable = ReadAnimationTable(def, s.sff, &s.sff.palList, lines, &i, true)
-	i = 0
+	s.animTable = ReadAnimationTable(def, s.sff, &s.sff.palList, str, true)
+
 	defmap := make(map[string][]IniSection)
 	for i < len(lines) {
 		is, name, _ := ReadIniSection(lines, &i)

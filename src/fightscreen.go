@@ -176,8 +176,7 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 						if err != nil {
 							return err
 						}
-						lines, i := SplitAndTrim(str, "\n"), 0
-						ffx.animTable = ReadAnimationTable(filename, ffx.sff, &ffx.sff.palList, lines, &i, true)
+						ffx.animTable = ReadAnimationTable(filename, ffx.sff, &ffx.sff.palList, str, true)
 						return nil
 					}); err != nil {
 					return err
@@ -4857,9 +4856,9 @@ func loadFightScreen(def string) (*FightScreen, error) {
 		}
 	}
 
+	fs.animTable = ReadAnimationTable(def, fs.sff, &fs.sff.palList, str, true)
+
 	lines, lnidx := SplitAndTrim(str, "\n"), 0
-	fs.animTable = ReadAnimationTable(def, fs.sff, &fs.sff.palList, lines, &lnidx, true)
-	lnidx = 0
 	filesflg := true
 
 	// Pre-scan [info] to initialize fight screen localcoord/scale before any FightFX load
@@ -4953,8 +4952,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 						if err != nil {
 							return err
 						}
-						lines, i := SplitAndTrim(str, "\n"), 0
-						ffx.animTable = ReadAnimationTable(filename, ffx.sff, &ffx.sff.palList, lines, &i, true)
+						ffx.animTable = ReadAnimationTable(filename, ffx.sff, &ffx.sff.palList, str, true)
 						return nil
 					}); err != nil {
 					return nil, err

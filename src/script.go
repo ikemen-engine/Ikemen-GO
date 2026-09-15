@@ -4078,8 +4078,7 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nCan't load anim table %v: %v\n", def, err.Error())
 			return 0
 		}
-		lines, i := SplitAndTrim(NormalizeNewlines(raw), "\n"), 0
-		at := ReadAnimationTable(def, sff, &sff.palList, lines, &i, true)
+		at := ReadAnimationTable(def, sff, &sff.palList, NormalizeNewlines(raw), true)
 		// Build Lua table with NUMERIC keys (so it prints like [110] => userdata ...)
 		tbl := l.NewTable()
 		// Deterministic iteration order

@@ -527,9 +527,7 @@ func loadStoryboard(def string) (*Storyboard, error) {
 
 	s.loadFiles()
 
-	lines, i := SplitAndTrim(userText, "\n"), 0
-	s.AnimTable = ReadAnimationTable(s.Def, s.Sff, &s.Sff.palList, lines, &i, true)
-	i = 0
+	s.AnimTable = ReadAnimationTable(s.Def, s.Sff, &s.Sff.palList, userText, true)
 
 	// Storyboard-specific quirk:
 	// enable phantom pixel adjustment on all storyboard animations so that

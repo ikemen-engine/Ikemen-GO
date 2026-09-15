@@ -1832,9 +1832,7 @@ func loadMotif(def string) (*Motif, error) {
 	m.loadFiles()
 	sys.keepAlive()
 
-	lines, i := SplitAndTrim(motifText, "\n"), 0
-	m.AnimTable = ReadAnimationTable(m.Def, m.Sff, &m.Sff.palList, lines, &i, true)
-	i = 0
+	m.AnimTable = ReadAnimationTable(m.Def, m.Sff, &m.Sff.palList, motifText, true)
 
 	m.overrideParams()
 	m.fixLocalcoordOverrides()
