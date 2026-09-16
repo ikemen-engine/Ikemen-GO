@@ -74,6 +74,7 @@ BUILDDIR="build"
 DELAYLIB_DIR="$BUILDDIR/delaylib"
 FFMPEG_SRCDIR="$BUILDDIR/ffmpeg-src"
 LIBVPX_SRCDIR="$BUILDDIR/libvpx-src"
+SDL2_SRCDIR="$BUILDDIR/sdl2-src"
 
 # Screenpack assets
 SCREENPACK_REPO="${SCREENPACK_REPO:-https://github.com/ikemen-engine/Ikemen-GO-Screenpack.git}"
@@ -96,6 +97,12 @@ BUILD_FFMPEG="${BUILD_FFMPEG:-auto}"   # auto|yes|no
 LIBVPX_REV="${LIBVPX_REV:-v1.15.2}"
 LIBVPX_PREFIX="${LIBVPX_PREFIX:-$FFMPEG_PREFIX}"
 FFMPEG_REBUILT=0
+
+# SDL2 config. Defaults to "no": only release builds need it, to avoid pinning the
+# archive to the runner's glibc. Local builds should use system SDL2.
+SDL2_REV="${SDL2_REV:-release-2.32.10}"
+SDL2_PREFIX="${SDL2_PREFIX:-$REPO_ROOT/$BUILDDIR/sdl2}"
+BUILD_SDL2="${BUILD_SDL2:-no}"   # yes|no
 
 # ---- App metadata (overridden by CI)
 APP_VERSION="${APP_VERSION:-nightly}"
@@ -212,7 +219,8 @@ check_deps() {
 			if ((${#missing[@]})); then
 				echo "ERROR: Missing tools: ${missing[*]}" >&2
 				echo "Install (Debian/Ubuntu):" >&2
-				echo "  sudo apt update && sudo apt install -y golang-go git pkg-config make nasm yasm build-essential libxmp-dev libsdl2-dev" >&2
+				echo "  sudo apt update && sudo apt install -y git pkg-config make nasm yasm build-essential libxmp-dev libsdl2-dev" >&2
+				echo "Go 1.27+ is required; distro 'golang-go' is usually too old. Get it from https://go.dev/dl/" >&2
 				exit 1
 			fi
 		;;
@@ -220,6 +228,54 @@ check_deps() {
 }
 
 # Ensure SDL2 (via pkg-config) is available
+function build_sdl2() {
+	if [[ -f "$SDL2_PREFIX/lib/pkgconfig/sdl2.pc" ]]; then
+		export PKG_CONFIG_PATH="$SDL2_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+		return 0
+	fi
+
+	echo "==> Building SDL2 $SDL2_REV to $SDL2_PREFIX"
+	if [[ ! -d "$SDL2_SRCDIR/.git" ]]; then
+		rm -rf "$SDL2_SRCDIR"
+		git clone --depth=1 -b "$SDL2_REV" https://github.com/libsdl-org/SDL.git "$SDL2_SRCDIR"
+	fi
+
+	local build_dir="$SDL2_SRCDIR/build-$GOOS-${GOARCH:-amd64}"
+	rm -rf "$build_dir"
+	cmake -S "$SDL2_SRCDIR" -B "$build_dir" -G Ninja \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX="$SDL2_PREFIX" \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DCMAKE_C_FLAGS="${CFLAGS:-}" \
+		-DSDL_SHARED=ON -DSDL_STATIC=OFF -DSDL_TEST=OFF \
+		-DSDL_X11=ON -DSDL_WAYLAND=ON -DSDL_ALSA=ON -DSDL_PULSEAUDIO=ON \
+		-DSDL_OPENGL=ON -DSDL_OPENGLES=ON -DSDL_VULKAN=ON \
+		-DHAVE_STRLCPY=0 -DHAVE_STRLCAT=0 -DHAVE_WCSLCPY=0 -DHAVE_WCSLCAT=0
+	cmake --build "$build_dir" --parallel
+	cmake --install "$build_dir"
+
+	# Fail loudly rather than shipping an SDL2 with no video/audio backend.
+	local pc="${PKG_CONFIG:-pkg-config}"
+	export PKG_CONFIG_PATH="$SDL2_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+	if ! $pc --exists sdl2; then
+		echo "ERROR: built SDL2 but sdl2.pc is missing in $SDL2_PREFIX" >&2
+		exit 1
+	fi
+	local so
+	so="$(ls "$SDL2_PREFIX"/lib/libSDL2-2.0.so.0.* 2>/dev/null | head -1)"
+	if [[ -z "$so" ]]; then
+		echo "ERROR: built SDL2 but no libSDL2-2.0.so.0.* in $SDL2_PREFIX/lib" >&2
+		exit 1
+	fi
+	for sym in SDL_CreateWindow SDL_OpenAudioDevice SDL_GL_CreateContext; do
+		if ! nm -D --defined-only "$so" 2>/dev/null | grep -q " $sym$"; then
+			echo "ERROR: built SDL2 is missing $sym (a subsystem failed to configure)" >&2
+			exit 1
+		fi
+	done
+	echo "==> SDL2 built: $so"
+}
+
 require_sdl2() {
 	local pc="${PKG_CONFIG:-pkg-config}"
 	if ! $pc --exists sdl2 2>/dev/null; then
@@ -309,6 +365,19 @@ function main() {
 
 	# Enable arenas (required for rollback)
 	export GOEXPERIMENT=arenas
+
+	# Keep glibc symbol versions low on Linux so release binaries and the FFmpeg
+	# libs we ship run on distros older than the build host. See the header for why
+	# it only remaps __isoc23_* and not everything.
+	if [[ "$(tolower "${targetOS}")" != "android" ]] && [[ "$(uname -s)" == "Linux" ]]; then
+		local glibc_hdr="$PWD/build/glibc_compat.h"
+		if [[ -f "$glibc_hdr" ]]; then
+			export CFLAGS="${CFLAGS:-} -include $glibc_hdr"
+			export CXXFLAGS="${CXXFLAGS:-} -include $glibc_hdr"
+			export CGO_CFLAGS="${CGO_CFLAGS:-} -include $glibc_hdr"
+			export CGO_CXXFLAGS="${CGO_CXXFLAGS:-} -include $glibc_hdr"
+		fi
+	fi
 
 	# Decide output location:
 	# - Non-macOS: binary in top-level (.) and runtime libs in ./lib
@@ -1104,6 +1173,10 @@ function build() {
 		export PKG_CONFIG="${PKG_CONFIG:-pkg-config}"
 		# Ensure libxmp is present
 		require_libxmp
+		# Build SDL2 ourselves only when asked (release builds); else use the system one.
+		if [[ "$BUILD_SDL2" == "yes" && "$GOOS" == "linux" ]]; then
+			build_sdl2
+		fi
 		# Ensure SDL2 is present
 		require_sdl2
 		# Pull dependency flags from pkg-config (FFmpeg + libxmp + SDL2)

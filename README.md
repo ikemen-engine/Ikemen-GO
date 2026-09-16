@@ -17,6 +17,19 @@ Refer to [our wiki](https://github.com/ikemen-engine/Ikemen-GO/wiki) to see a co
 ## Installing
 Ready-to-use builds are available in the [releases section](https://github.com/ikemen-engine/Ikemen-GO/releases). Stable releases use tags such as `v1.0.0`, while release candidates use tags such as `v1.0.0-rc.1` and are marked as pre-releases. [Nightly builds](https://github.com/ikemen-engine/Ikemen-GO/releases/tag/nightly) are updated after each commit to `develop` and may be less stable.
 
+### System requirements
+| Platform | Minimum |
+|---|---|
+| Windows | Windows 10 (64-bit) |
+| macOS | macOS 13 Ventura (Apple Silicon) |
+| Linux | x86-64 with glibc 2.35+, e.g. Ubuntu 22.04, Debian 12, Fedora 36 |
+| Android | Android 14 (API 34, arm64) |
+
+A GPU supporting OpenGL 3.3, OpenGL ES 3.2 or Vulkan is required.
+
+> Windows 7/8 and 32-bit Windows are no longer supported; use an older release if
+> you need them. Intel macOS builds are not currently published.
+
 ## Running
 Download the ZIP archive that matches your operating system and extract its contents to your preferred location.
 
