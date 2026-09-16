@@ -7,3 +7,24 @@ updates:
       day: "friday"
       time: "06:00"
       timezone: "Europe/Zurich"
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "06:00"
+      timezone: "Europe/Zurich"
+    open-pull-requests-limit: 5
+    groups:
+      # golang.org/x/* modules move together and are usually safe as a batch.
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+    ignore:
+      # Pinned by commit hash to ikemen-engine forks; bumped deliberately via
+      # the dependency-bump procedure, not by dependabot.
+      - dependency-name: "github.com/ikemen-engine/*"
+      # go-sdl2 is pinned to a pre-release pseudo-version that is newer than the
+      # latest tag (v0.4.x); dependabot would "bump" it backwards.
+      - dependency-name: "github.com/veandco/go-sdl2"

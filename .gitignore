@@ -74,6 +74,7 @@ build/android-deps/
 build/libxmp-src/
 build/libvpx-src/
 build/sdl2-src/
+build/sdl2/
 build/ffmpeg-src/
 build/ffmpeg/
 build/delaylib/
