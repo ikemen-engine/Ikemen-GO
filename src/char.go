@@ -202,7 +202,7 @@ func (dc *DebugClsn) Add(boxes []ClsnFinal, x, y, facing float32) {
 		offsetX := left - pivotX
 		offsetY := top - pivotY
 
-		width  := right - left
+		width := right - left
 		height := bottom - top
 
 		// Construct the final rectangle
@@ -290,7 +290,7 @@ func (ct *ClsnTransform) reset() {
 	ct.angle = 0
 }
 
-// The prepared boxes after all modifiers have been applied 
+// The prepared boxes after all modifiers have been applied
 // Note: Values are in world coordinate space and without facing applied
 type ClsnFinal struct {
 	rect  [4]float32
@@ -2803,7 +2803,7 @@ func (p *Projectile) getClsn(group int32) []ClsnFinal {
 	}
 
 	// Select reusable buffer
-	buf := &p.clsnBuffers[group - 1]
+	buf := &p.clsnBuffers[group-1]
 	*buf = (*buf)[:0]
 
 	// Apply projectile scale
@@ -3570,22 +3570,22 @@ func (c *Char) panic(msg string) {
 func (c *Char) init(n int, idx int) {
 	// Reset struct with defaults
 	*c = Char{
-		playerNo:      n,
-		helperIndex:   idx,
-		controller:    n,
-		analogAxes:    [6]float32{},
-		animPN:        n,
-		id:            -1,
-		parentId:      -1,
-		hoverIdx:      -1,
-		mctype:        MC_Hit,
-		ownpal:        true,
-		facing:        1,
-		minus:         3,
-		winquote:      -1,
-		movelist:      0,
-		clsnScale:     [2]float32{1, 1},
-		zScale:        1,
+		playerNo:    n,
+		helperIndex: idx,
+		controller:  n,
+		analogAxes:  [6]float32{},
+		animPN:      n,
+		id:          -1,
+		parentId:    -1,
+		hoverIdx:    -1,
+		mctype:      MC_Hit,
+		ownpal:      true,
+		facing:      1,
+		minus:       3,
+		winquote:    -1,
+		movelist:    0,
+		clsnScale:   [2]float32{1, 1},
+		zScale:      1,
 		//aimg:          *newAfterImage(),
 		CharSystemVar: CharSystemVar{
 			superDefenseMul: 1.0,
@@ -11542,7 +11542,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 
 		// Get reference position
 		if !isProjectile {
-			p2base := p2.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+			p2base := p2.baseSizeBox()      // Ignore width/height modifiers. Maybe we shouldn't?
 			p2scale := p2.sizeBoxScale()[0] // Mugen doesn't do this, but then again size couldn't be multiplied there
 			p2sizeFront := p2base[2] * p2scale
 			p2sizeBack := -p2base[0] * p2scale
@@ -11920,7 +11920,6 @@ func (c *Char) actionPrepare() {
 			c.widthEdge = [2]float32{0, 0}
 			c.depthEdge = [2]float32{0, 0}
 		}
-
 
 		// Reset input modifiers
 		c.inputFlag = 0
@@ -12745,8 +12744,8 @@ func (c *Char) cueDebugDraw() {
 	// The alternative is far more dangerous: reordering globalCollision() and such functions
 	x := c.pos[0] * c.localscl
 	y := c.pos[1] * c.localscl
-	xoff := c.offsetX()*c.localscl
-	yoff := c.offsetY()*c.localscl
+	xoff := c.offsetX() * c.localscl
+	yoff := c.offsetY() * c.localscl
 	nhbtxt := ""
 
 	// Debug Clsn display
@@ -12766,7 +12765,7 @@ func (c *Char) cueDebugDraw() {
 				} else {
 					debugType = &sys.debugc1not
 				}
-				debugType.Add(boxes1, x + xoff, y + yoff, c.facing)
+				debugType.Add(boxes1, x+xoff, y+yoff, c.facing)
 			}
 
 			// Check invincibility to decide box colors
@@ -12832,7 +12831,7 @@ func (c *Char) cueDebugDraw() {
 				default:
 					debugType = &sys.debugc2 // Normal
 				}
-				debugType.Add(boxes2, x + xoff, y + yoff, c.facing)
+				debugType.Add(boxes2, x+xoff, y+yoff, c.facing)
 
 				// Add invulnerability text
 				if nhbtxt == "" {
@@ -13942,10 +13941,10 @@ func (cl *CharList) pushDetection(getter *Char) {
 		}
 
 		// Prepare clsnOverlap inputs
-		cpos := [2]float32{c.pos[0]*c.localscl, c.pos[1]*c.localscl}
-		gpos := [2]float32{getter.pos[0]*getter.localscl, getter.pos[1]*getter.localscl}
+		cpos := [2]float32{c.pos[0] * c.localscl, c.pos[1] * c.localscl}
+		gpos := [2]float32{getter.pos[0] * getter.localscl, getter.pos[1] * getter.localscl}
 
-		// Call clsnOverlap 
+		// Call clsnOverlap
 		// It now returns the overlap area as well
 		okXY, overlapX, _ := sys.clsnOverlap(cboxes, cpos, c.facing, gboxes, gpos, getter.facing)
 		if !okXY {
@@ -13985,13 +13984,13 @@ func (cl *CharList) pushDetection(getter *Char) {
 		if sys.zEnabled() {
 			cDepth := c.depthToBox()
 			cposz = c.pos[2] * c.localscl
-			cztop = cposz + cDepth[0] * c.localscl // TODO: Probably "baseLocalscl" like other size constants
-			czbot = cposz + cDepth[1] * c.localscl
+			cztop = cposz + cDepth[0]*c.localscl // TODO: Probably "baseLocalscl" like other size constants
+			czbot = cposz + cDepth[1]*c.localscl
 
 			gDepth := getter.depthToBox()
 			gposz = getter.pos[2] * getter.localscl
-			gztop = gposz + gDepth[0] * getter.localscl
-			gzbot = gposz + gDepth[1] * getter.localscl
+			gztop = gposz + gDepth[0]*getter.localscl
+			gzbot = gposz + gDepth[1]*getter.localscl
 
 			overlapZ = Min(gzbot, czbot) - Max(gztop, cztop)
 
