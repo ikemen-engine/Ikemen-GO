@@ -4018,6 +4018,7 @@ func (s *System) runMatch() (reload bool) {
 	if err := s.synchronize(); err != nil {
 		LogMessage(err.Error())
 		s.esc = true
+		return false
 	}
 	if s.netConnection != nil {
 		defer func() {

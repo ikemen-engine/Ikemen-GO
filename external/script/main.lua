@@ -249,6 +249,12 @@ end
 if getCommandLineValue("-height") ~= nil then 
 	modifyGameOption('Video.GameHeight', getCommandLineValue("-height"))
 end
+if getCommandLineValue("-tcpport") ~= nil then
+	modifyGameOption('Netplay.ListenPort', getCommandLineValue("-tcpport"))
+end
+if getCommandLineValue("-udpport") ~= nil then
+	modifyGameOption('Netplay.Rollback.Port', getCommandLineValue("-udpport"))
+end
 
 -- Lua Hook System
 -- Allows hooking additional code into existing functions, from within external

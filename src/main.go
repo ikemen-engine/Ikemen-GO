@@ -271,7 +271,8 @@ func processCommandLine() {
 -width <num>            Sets game width
 -height <num>           Sets game height
 -setvolume <num>        Sets master volume to <num> (0-100)
--setport <num>          Overrides port number
+-tcpport <num>          Overrides host TCP port number
+-udpport <num>          Overrides rollback UDP port number
 	
 Quick VS Options:
 -p<n> <playername>      Loads player n, eg. -p3 kfm
