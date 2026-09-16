@@ -815,9 +815,9 @@ const (
 	OC_ex2_bgmvar_position
 	OC_ex2_bgmvar_startposition
 	OC_ex2_bgmvar_volume
-	OC_ex2_clsnvar_left
+	OC_ex2_clsnvar_back
 	OC_ex2_clsnvar_top
-	OC_ex2_clsnvar_right
+	OC_ex2_clsnvar_front
 	OC_ex2_clsnvar_bottom
 	OC_ex2_debugmode_accel
 	OC_ex2_debugmode_clsndisplay
@@ -3766,24 +3766,24 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32(sys.bgm.startPos))
 	case OC_ex2_bgmvar_volume:
 		sys.bcStack.PushI(int32(sys.bgm.bgmVolume))
-	case OC_ex2_clsnvar_left, OC_ex2_clsnvar_top, OC_ex2_clsnvar_right, OC_ex2_clsnvar_bottom:
+	case OC_ex2_clsnvar_back, OC_ex2_clsnvar_top, OC_ex2_clsnvar_front, OC_ex2_clsnvar_bottom:
 		idx := int(sys.bcStack.Pop().ToI())
 		group := int32(sys.bcStack.Pop().ToI()) // DON'T ASK WHY BUT 0 CAUSES ERRORS, 3 DOES NOT
 		v := float32(math.NaN())
 		clsn := c.getClsn(group)
 		if clsn != nil && idx >= 0 && idx < len(clsn) {
 			switch opc {
-			case OC_ex2_clsnvar_left:
-				v = clsn[idx][0]
+			case OC_ex2_clsnvar_back:
+				v = clsn[idx].rect[0]
 			case OC_ex2_clsnvar_top:
-				v = clsn[idx][1]
-			case OC_ex2_clsnvar_right:
-				v = clsn[idx][2]
+				v = clsn[idx].rect[1]
+			case OC_ex2_clsnvar_front:
+				v = clsn[idx].rect[2]
 			case OC_ex2_clsnvar_bottom:
-				v = clsn[idx][3]
+				v = clsn[idx].rect[3]
 			}
 		}
-		sys.bcStack.PushF(v * (c.localscl / oc.localscl))
+		sys.bcStack.PushF(v / oc.localscl)
 	case OC_ex2_debugmode_accel:
 		sys.bcStack.PushF(sys.debugAccel)
 	case OC_ex2_debugmode_clsndisplay:
@@ -9561,22 +9561,22 @@ func (sc width) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setWidth(v1*redirscale, v2*redirscale)
+			crun.widthPlayer = [2]float32{v1*redirscale, v2*redirscale}
 		case width_edge:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setWidthEdge(v1*redirscale, v2*redirscale)
+			crun.widthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		case width_value:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setWidth(v1*redirscale, v2*redirscale)
-			crun.setWidthEdge(v1*redirscale, v2*redirscale)
+			crun.widthPlayer = [2]float32{v1*redirscale, v2*redirscale}
+			crun.widthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		}
 		return true
 	})
@@ -14532,7 +14532,7 @@ func (sc height) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setHeight(v1*redirscale, v2*redirscale)
+			crun.heightPlayer = [2]float32{v1*redirscale, v2*redirscale}
 		}
 		return true
 	})
@@ -14564,22 +14564,22 @@ func (sc depth) Run(c *Char, _ []int32) bool {
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setDepth(v1*redirscale, v2*redirscale)
+			crun.depthPlayer = [2]float32{v1*redirscale, v2*redirscale}
 		case depth_edge:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setDepthEdge(v1*redirscale, v2*redirscale)
+			crun.depthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		case depth_value:
 			var v1, v2 float32
 			v1 = exp[0].evalF(c)
 			if len(exp) > 1 {
 				v2 = exp[1].evalF(c)
 			}
-			crun.setDepth(v1*redirscale, v2*redirscale)
-			crun.setDepthEdge(v1*redirscale, v2*redirscale)
+			crun.depthPlayer = [2]float32{v1*redirscale, v2*redirscale}
+			crun.depthEdge = [2]float32{v1*redirscale, v2*redirscale}
 		}
 		return true
 	})
@@ -14940,8 +14940,10 @@ func (sc targetAdd) Run(c *Char, _ []int32) bool {
 type transformClsn StateControllerBase
 
 const (
-	transformClsn_scale byte = iota
+	transformClsn_group byte = iota
+	transformClsn_scale
 	transformClsn_angle
+	transformClsn_pivot
 	transformClsn_redirectid
 )
 
@@ -14951,19 +14953,57 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	scale := [2]float32{1, 1}
+	angle := float32(0)
+	group := int32(-1) // all
+	pivot := [2]float32{0, 0}
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
+		case transformClsn_group:
+			group = exp[0].evalI(c)
 		case transformClsn_scale:
-			crun.clsnScaleMul[0] *= exp[0].evalF(c)
+			scale[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
-				crun.clsnScaleMul[1] *= exp[1].evalF(c)
+				scale[1] = exp[1].evalF(c)
 			}
-			crun.updateClsnScale()
 		case transformClsn_angle:
-			crun.clsnAngle += exp[0].evalF(c)
+			angle = exp[0].evalF(c)
+		case transformClsn_pivot:
+			pivot[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				pivot[1] = exp[1].evalF(c)
+			}
 		}
 		return true
 	})
+
+	// Apply the transform to the appropriate group(s)
+	switch {
+	case group == 0:
+		// Reset all
+		for i := range crun.clsnTransforms {
+			crun.clsnTransforms[i].reset()
+		}
+	case group == -1:
+		// Apply to all groups
+		for i := range crun.clsnTransforms {
+			t := &crun.clsnTransforms[i]
+			t.scale[0] *= scale[0]
+			t.scale[1] *= scale[1]
+			t.angle = angle
+			t.pivot = pivot
+		}
+	case group >= 1 && group <= 3:
+		t := &crun.clsnTransforms[group - 1]
+		t.scale[0] *= scale[0]
+		t.scale[1] *= scale[1]
+		t.angle = angle
+		t.pivot = pivot
+	default:
+		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in TransformClsn", group))
+	}
+
 	return false
 }
 
@@ -15447,40 +15487,54 @@ func (sc overrideClsn) Run(c *Char, _ []int32) bool {
 	redirscale := c.localscl / crun.localscl
 
 	// Default everything to 0
-	var box ClsnOverride
+	group := int32(0) // None
+	index := int(0)
+	var rect [4]float32
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case overrideClsn_group:
-			box.group = exp[0].evalI(c)
+			group = exp[0].evalI(c)
 		case overrideClsn_index:
-			box.index = int(exp[0].evalI(c))
+			index = int(exp[0].evalI(c))
 		case overrideClsn_rect:
-			box.rect[0] = exp[0].evalF(c) * redirscale
+			rect[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				box.rect[1] = exp[1].evalF(c) * redirscale
+				rect[1] = exp[1].evalF(c) * redirscale
 			}
 			if len(exp) > 2 {
-				box.rect[2] = exp[2].evalF(c) * redirscale
+				rect[2] = exp[2].evalF(c) * redirscale
 			}
 			if len(exp) > 3 {
-				box.rect[3] = exp[3].evalF(c) * redirscale
+				rect[3] = exp[3].evalF(c) * redirscale
 			}
 			// Normalize rectangle
-			if box.rect[0] > box.rect[2] {
-				box.rect[0], box.rect[2] = box.rect[2], box.rect[0]
-			}
-			if box.rect[1] > box.rect[3] {
-				box.rect[1], box.rect[3] = box.rect[3], box.rect[1]
-			}
+			rect = NormalizeRect(rect)
 		}
 		return true
 	})
 
-	if box.group == 0 {
-		crun.clsnOverrides = nil
-	} else {
-		crun.clsnOverrides = append(crun.clsnOverrides, box)
+	switch {
+	case group == 0:
+		// Reset all overrides
+		for i := range crun.clsnOverrides {
+			crun.clsnOverrides[i] = crun.clsnOverrides[i][:0]
+		}
+	case group == -1:
+		// Apply override to all three groups
+		override := ClsnOverride{index: index, rect: rect}
+		for i := range crun.clsnOverrides {
+			crun.clsnOverrides[i] = append(crun.clsnOverrides[i], override)
+		}
+	case group >= 1 && group <= 3:
+		// Apply to specific group
+		idx := group - 1
+		crun.clsnOverrides[idx] = append(crun.clsnOverrides[idx], ClsnOverride{
+			index: index,
+			rect:  rect,
+		})
+	default:
+		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in OverrideClsn", group))
 	}
 
 	return false

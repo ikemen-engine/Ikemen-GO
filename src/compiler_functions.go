@@ -6731,21 +6731,23 @@ func (c *CharCompiler) transformClsn(is IniSection, sc *StateControllerBase) (St
 			transformClsn_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		any := false
+		if err := c.paramClsnType(is, sc, "group", transformClsn_group); err != nil {
+			return err
+		}
 		if err := c.stateParam(is, "scale", false, func(data string) error {
-			any = true
 			return c.scAdd(sc, transformClsn_scale, data, VT_Float, 2)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "angle", false, func(data string) error {
-			any = true
 			return c.scAdd(sc, transformClsn_angle, data, VT_Float, 1)
 		}); err != nil {
 			return err
 		}
-		if !any {
-			return Error("Must specify at least one TransformClsn parameter")
+		if err := c.stateParam(is, "pivot", false, func(data string) error {
+			return c.scAdd(sc, transformClsn_pivot, data, VT_Float, 2)
+		}); err != nil {
+			return err
 		}
 		return nil
 	})

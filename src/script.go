@@ -8228,17 +8228,17 @@ func triggerFunctions(l *lua.LState) {
 			case "clsn1":
 				clsn := sys.debugWC.getClsn(1)
 				if clsn != nil && idx >= 0 && idx < len(clsn) {
-					v = lua.LNumber(clsn[idx][offset])
+					v = lua.LNumber(clsn[idx].rect[offset])
 				}
 			case "clsn2":
 				clsn := sys.debugWC.getClsn(2)
 				if clsn != nil && idx >= 0 && idx < len(clsn) {
-					v = lua.LNumber(clsn[idx][offset])
+					v = lua.LNumber(clsn[idx].rect[offset])
 				}
 			case "size":
 				clsn := sys.debugWC.getClsn(3)
 				if clsn != nil && len(clsn) > 0 {
-					v = lua.LNumber(clsn[idx][offset])
+					v = lua.LNumber(clsn[idx].rect[offset])
 				}
 			}
 		}
