@@ -4,12 +4,12 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        UBUNTU_VERSION: "22.04"
-        GO_VERSION: "1.20.14"
+        UBUNTU_VERSION: "24.04"
+        GO_VERSION: "1.27.1"
         ANDROID_NDK_VERSION: "r27d"
-        #BASE_IMAGE: "${BASE_IMAGE:-public.ecr.aws/docker/library/ubuntu:22.04}"
-        BASE_IMAGE: "${BASE_IMAGE:-ubuntu:22.04}"
-    image: ikemen-go-android-builder:ubuntu-22.04
+        #BASE_IMAGE: "${BASE_IMAGE:-public.ecr.aws/docker/library/ubuntu:24.04}"
+        BASE_IMAGE: "${BASE_IMAGE:-ubuntu:24.04}"
+    image: ikemen-go-android-builder:ubuntu-24.04
     working_dir: /work
     volumes:
       # Mount the repo root (this compose file lives in build/docker/android)

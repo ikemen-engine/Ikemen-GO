@@ -1,10 +1,10 @@
-ARG UBUNTU_VERSION=22.04
+ARG UBUNTU_VERSION=24.04
 # Default uses Docker Hub; override BASE_IMAGE to use another registry (e.g. ECR Public)
-ARG BASE_IMAGE=ubuntu:22.04
+ARG BASE_IMAGE=ubuntu:24.04
 FROM ${BASE_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG GO_VERSION=1.20.14
+ARG GO_VERSION=1.27.1
 ARG ANDROID_NDK_VERSION=r27d
 ARG ANDROID_NDK_ZIP=android-ndk-${ANDROID_NDK_VERSION}-linux.zip
 ARG ANDROID_NDK_URL=https://dl.google.com/android/repository/${ANDROID_NDK_ZIP}
@@ -31,7 +31,7 @@ RUN set -eux; \
   ); \
   rm -rf /var/lib/apt/lists/*
 
-# Go (match CI's ~1.20)
+# Go (match CI's ~1.27)
 RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tgz \
   && rm -rf /usr/local/go \
   && tar -C /usr/local -xzf /tmp/go.tgz \

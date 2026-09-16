@@ -5,6 +5,35 @@ All three must be available as development packages via **pkg-config** (`libav*`
 `build/build.sh` **auto-detects your OS** and, by default, **auto-builds a decoder-only libvpx and minimal FFmpeg**
 (same config as CI). You don't need system FFmpeg dev packages unless you prefer them.
 
+## Go version requirement
+
+Ikemen GO requires **Go 1.27 or newer** (`go.mod` declares `go 1.27.0`; CI builds with 1.27.x).
+
+The engine also needs the **arenas** experiment for rollback netcode state cloning.
+`build/build.sh` exports `GOEXPERIMENT=arenas` for you; if you invoke `go build`
+directly you must set it yourself, or `src` will fail to compile with an error
+about the `arena` import.
+
+> **Distro Go packages are usually too old.** Ubuntu 24.04's `golang-go` is 1.22
+> and Debian 12's is 1.19. Install an official toolchain from
+> <https://go.dev/dl/> (or a channel that tracks upstream, e.g. `snap install go
+> --classic`) rather than `apt install golang-go`.
+
+## What the builds require at runtime
+
+See [README.md](./README.md#system-requirements) for the user-facing table.
+
+- **Windows 10 / macOS 13** are Go 1.27's own minimums. `releases.yml` pins the
+  macOS deployment target to 13.0 so it does not follow the runner's SDK.
+- **Linux glibc 2.35** comes from `libavutil` (`hypot@GLIBC_2.35`).
+  `build/glibc_compat.h` remaps glibc 2.38's `__isoc23_*` and `fmod` aliases, and
+  release builds set `BUILD_SDL2=yes` so SDL2 is not taken from the runner
+  (Ubuntu's needs 2.38). The workflow prints the measured floor of every shipped
+  ELF; check the build log rather than assuming.
+
+Local builds use system SDL2 (`BUILD_SDL2` defaults to `no`), so they match your
+distro. The floors above apply to the published archives.
+
 ---
 
 ## Windows (MSYS2 / MINGW64)
@@ -67,9 +96,12 @@ BUILD_FFMPEG=no ./build/build.sh Win64   # or Win32
 
 ### Dependencies (Debian/Ubuntu)
 
+Install Go 1.27+ from <https://go.dev/dl/> (see "Go version requirement" above),
+then the C toolchain and libraries:
+
 ```bash
 sudo apt update && sudo apt install -y \
-  golang-go git pkg-config make nasm yasm build-essential \
+  git pkg-config make nasm yasm build-essential \
   libxmp-dev libsdl2-dev
 ```
 
