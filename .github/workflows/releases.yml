@@ -41,6 +41,7 @@ jobs:
     outputs:
       version: ${{ steps.meta.outputs.version }}
       releaseTag: ${{ steps.meta.outputs.releaseTag }}
+      releaseName: ${{ steps.meta.outputs.releaseName }}
       releaseKind: ${{ steps.meta.outputs.releaseKind }}
       artifactVersion: ${{ steps.meta.outputs.artifactVersion }}
       prerelease: ${{ steps.meta.outputs.prerelease }}
@@ -64,6 +65,7 @@ jobs:
           ref_name="$GITHUB_REF_NAME"
           input_tag="${INPUT_TAG:-}"
           previous_tag=""
+          release_name=""
 
           if [ -n "$input_tag" ]; then
             tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-rc\.([1-9][0-9]*))?$'
@@ -146,8 +148,10 @@ jobs:
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
                [ "$ref_name" != "develop" ]; then
             version="$ref_name"
-            release_tag="$ref_name"
             artifact_version="$(printf '%s' "$ref_name" | sed 's#[^A-Za-z0-9._-]#-#g')"
+            # Prefix the tag so it can never collide with the branch it was built from.
+            release_tag="branch-$artifact_version"
+            release_name="$ref_name"
             release_kind="branch"
             prerelease="true"
             make_latest="false"
@@ -162,6 +166,7 @@ jobs:
 
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "releaseTag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "releaseName=${release_name:-$release_tag}" >> "$GITHUB_OUTPUT"
           echo "releaseKind=$release_kind" >> "$GITHUB_OUTPUT"
           echo "artifactVersion=$artifact_version" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
@@ -693,7 +698,7 @@ jobs:
           artifacts: "release-assets/*"
           commit: ${{ github.sha }}
           tag: ${{ needs.tag.outputs.releaseTag }}
-          name: ${{ needs.tag.outputs.releaseTag }}
+          name: ${{ needs.tag.outputs.releaseName }}
 
           # Rolling and temporary releases may be updated.
           # Tagged RC/stable releases are immutable.
