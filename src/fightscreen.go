@@ -442,9 +442,9 @@ type LifeBar struct {
 	pos         [2]int32
 	range_x     [2]int32
 	range_y     [2]int32
-	bg0         AnimLayout
-	bg1         AnimLayout
-	bg2         AnimLayout
+	bg0         map[float32]*AnimLayout
+	bg1         map[float32]*AnimLayout
+	bg2         map[float32]*AnimLayout
 	top         AnimLayout
 	mid         AnimLayout
 	red         map[int32]*AnimLayout
@@ -474,6 +474,9 @@ func newLifeBar() *LifeBar {
 		oldlife:    1,
 		midlife:    1,
 		midlifeMin: 1,
+		bg0:        make(map[float32]*AnimLayout),
+		bg1:        make(map[float32]*AnimLayout),
+		bg2:        make(map[float32]*AnimLayout),
 		red:        make(map[int32]*AnimLayout),
 		front:      make(map[float32]*AnimLayout),
 		value:      make(map[int32]*FSText),
@@ -492,16 +495,24 @@ func readLifeBar(pre string, is IniSection, sff *Sff, at AnimationTable, f map[i
 	is.ReadI32(pre+"range.x", &lb.range_x[0], &lb.range_x[1])
 	is.ReadI32(pre+"range.y", &lb.range_y[0], &lb.range_y[1])
 
+	// Multiple value layouts
+	lb.bg0 = readMultipleValuesF(pre, "bg0", is, sff, at)
+	lb.bg1 = readMultipleValuesF(pre, "bg1", is, sff, at)
+	lb.bg2 = readMultipleValuesF(pre, "bg2", is, sff, at)
+	for name, layouts := range map[string]map[float32]*AnimLayout{"bg0": lb.bg0, "bg1": lb.bg1, "bg2": lb.bg2} {
+		if _, ok := layouts[0]; !ok {
+			tmp := ReadAnimLayout(pre+name+".", is, sff, at, 0)
+			layouts[0] = &tmp
+		}
+	}
+
 	// Single value layouts
-	lb.bg0 = ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
-	lb.bg1 = ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
-	lb.bg2 = ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
 	lb.top = ReadAnimLayout(pre+"top.", is, sff, at, 0)
 	lb.mid = ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	lb.shift = ReadAnimLayout(pre+"shift.", is, sff, at, 0)
 	lb.warn = ReadAnimLayout(pre+"warn.", is, sff, at, 0)
 
-	// Multiple value layouts
+	// Multiple value layouts (again)
 	lb.front = readMultipleValuesF(pre, "front", is, sff, at)
 	if _, ok := lb.front[0]; !ok { // Set a value for 0 if it's missing
 		tmp := ReadAnimLayout(pre+"front.", is, sff, at, 0)
@@ -592,9 +603,27 @@ func (lb *LifeBar) step(charpn int, lbr *LifeBar) {
 		lbr.midlife += (mlmin - lbr.midlife) / 2
 	}
 
-	lb.bg0.Action()
-	lb.bg1.Action()
-	lb.bg2.Action()
+	var bv float32
+	for k := range lb.bg0 {
+		if k > bv && life >= k/100 {
+			bv = k
+		}
+	}
+	lb.bg0[bv].Action()
+	bv = 0
+	for k := range lb.bg1 {
+		if k > bv && life >= k/100 {
+			bv = k
+		}
+	}
+	lb.bg1[bv].Action()
+	bv = 0
+	for k := range lb.bg2 {
+		if k > bv && life >= k/100 {
+			bv = k
+		}
+	}
+	lb.bg2[bv].Action()
 	lb.top.Action()
 	lb.mid.Action()
 	// Multiple front elements - red life
@@ -640,9 +669,11 @@ func (lb *LifeBar) step(charpn int, lbr *LifeBar) {
 }
 
 func (lb *LifeBar) reset() {
-	lb.bg0.Reset()
-	lb.bg1.Reset()
-	lb.bg2.Reset()
+	for _, layouts := range []map[int32]*AnimLayout{lb.bg0, lb.bg1, lb.bg2} {
+		for i := range layouts {
+			layouts[i].Reset()
+		}
+	}
 	lb.top.Reset()
 	lb.mid.Reset()
 	for i := range lb.front {
@@ -661,10 +692,17 @@ func (lb *LifeBar) reset() {
 	lb.warn.Reset()
 }
 
-func (lb *LifeBar) bgDraw(layerno int16) {
-	lb.bg0.Draw(float32(lb.pos[0])+sys.fightScreen.offsetX, float32(lb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	lb.bg1.Draw(float32(lb.pos[0])+sys.fightScreen.offsetX, float32(lb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	lb.bg2.Draw(float32(lb.pos[0])+sys.fightScreen.offsetX, float32(lb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+func (lb *LifeBar) bgDraw(layerno int16, charpn int) {
+	life := float32(sys.chars[charpn][0].life) / float32(sys.chars[charpn][0].lifeMax)
+	for _, layouts := range []map[float32]*AnimLayout{lb.bg0, lb.bg1, lb.bg2} {
+		var bv float32
+		for k := range layouts {
+			if k > bv && life >= k/100 {
+				bv = k
+			}
+		}
+		layouts[bv].Draw(float32(lb.pos[0])+sys.fightScreen.offsetX, float32(lb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	}
 }
 
 func (lb *LifeBar) draw(layerno int16, charpn int, lbr *LifeBar, f map[int]*Fnt) {
@@ -824,8 +862,8 @@ type PowerBar struct {
 	range_x          [2]int32
 	range_y          [2]int32
 	bg0              map[int32]*AnimLayout
-	bg1              AnimLayout
-	bg2              AnimLayout
+	bg1              map[int32]*AnimLayout
+	bg2              map[int32]*AnimLayout
 	top              AnimLayout
 	mid              AnimLayout
 	front            map[int32]*AnimLayout
@@ -849,6 +887,8 @@ func newPowerBar() *PowerBar {
 	newBar := &PowerBar{
 		front:            make(map[int32]*AnimLayout),
 		bg0:              make(map[int32]*AnimLayout),
+		bg1:              make(map[int32]*AnimLayout),
+		bg2:              make(map[int32]*AnimLayout),
 		counter:          make(map[int32]*FSText),
 		counter_rounding: 1000,
 		value:            make(map[int32]*FSText),
@@ -922,8 +962,16 @@ func readPowerBar(pre string, is IniSection, sff *Sff, at AnimationTable, f map[
 		pb.bg0[0] = &tmp
 	}
 
-	pb.bg1 = ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
-	pb.bg2 = ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
+	pb.bg1 = readMultipeAnimLayouts("bg1")
+	if _, ok := pb.bg1[0]; !ok {
+		tmp := ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
+		pb.bg1[0] = &tmp
+	}
+	pb.bg2 = readMultipeAnimLayouts("bg2")
+	if _, ok := pb.bg2[0]; !ok {
+		tmp := ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
+		pb.bg2[0] = &tmp
+	}
 	pb.mid = ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	pb.top = ReadAnimLayout(pre+"top.", is, sff, at, 0)
 
@@ -1057,14 +1105,16 @@ func (pb *PowerBar) step(charpn int, pbr *PowerBar, snd *Snd) {
 	fv1 := resolvePBKey(pb.bg0, pbval, refChar.powerMax)
 	pb.bg0[fv1].Action()
 
-	pb.bg1.Action()
-	pb.bg2.Action()
+	fv2 := resolvePBKey(pb.bg1, pbval, refChar.powerMax)
+	pb.bg1[fv2].Action()
+	fv3 := resolvePBKey(pb.bg2, pbval, refChar.powerMax)
+	pb.bg2[fv3].Action()
 	pb.top.Action()
 	pb.mid.Action()
 
 	// Multiple front elements
-	fv2 := resolvePBKey(pb.front, pbval, refChar.powerMax)
-	pb.front[fv2].Action()
+	fv4 := resolvePBKey(pb.front, pbval, refChar.powerMax)
+	pb.front[fv4].Action()
 
 	pb.shift.Action()
 
@@ -1081,8 +1131,12 @@ func (pb *PowerBar) reset() {
 	for i := range pb.bg0 {
 		pb.bg0[i].Reset()
 	}
-	pb.bg1.Reset()
-	pb.bg2.Reset()
+	for i := range pb.bg1 {
+		pb.bg1[i].Reset()
+	}
+	for i := range pb.bg2 {
+		pb.bg2[i].Reset()
+	}
 	pb.top.Reset()
 	pb.mid.Reset()
 	for i := range pb.front {
@@ -1100,8 +1154,10 @@ func (pb *PowerBar) bgDraw(layerno int16, charpn int) {
 	refChar := sys.chars[charpn][0]
 	fv := resolvePBKey(pb.bg0, pbval, refChar.powerMax)
 	pb.bg0[fv].Draw(float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	pb.bg1.Draw(float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	pb.bg2.Draw(float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	fv1 := resolvePBKey(pb.bg1, pbval, refChar.powerMax)
+	pb.bg1[fv1].Draw(float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	fv2 := resolvePBKey(pb.bg2, pbval, refChar.powerMax)
+	pb.bg2[fv2].Draw(float32(pb.pos[0])+sys.fightScreen.offsetX, float32(pb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
 }
 
 func (pb *PowerBar) draw(layerno int16, charpn int, pbr *PowerBar, f map[int]*Fnt) {
@@ -1216,9 +1272,9 @@ type GuardBar struct {
 	pos         [2]int32
 	range_x     [2]int32
 	range_y     [2]int32
-	bg0         AnimLayout
-	bg1         AnimLayout
-	bg2         AnimLayout
+	bg0         map[float32]*AnimLayout
+	bg1         map[float32]*AnimLayout
+	bg2         map[float32]*AnimLayout
 	top         AnimLayout
 	mid         AnimLayout
 	warn        AnimLayout
@@ -1235,6 +1291,9 @@ type GuardBar struct {
 
 func newGuardBar() (gb *GuardBar) {
 	gb = &GuardBar{
+		bg0:   make(map[float32]*AnimLayout),
+		bg1:   make(map[float32]*AnimLayout),
+		bg2:   make(map[float32]*AnimLayout),
 		front: make(map[float32]*AnimLayout),
 		value: make(map[int32]*FSText),
 	}
@@ -1249,9 +1308,15 @@ func readGuardBar(pre string, is IniSection,
 	is.ReadI32(pre+"range.x", &gb.range_x[0], &gb.range_x[1])
 	is.ReadI32(pre+"range.y", &gb.range_y[0], &gb.range_y[1])
 
-	gb.bg0 = ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
-	gb.bg1 = ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
-	gb.bg2 = ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
+	gb.bg0 = readMultipleValuesF(pre, "bg0", is, sff, at)
+	gb.bg1 = readMultipleValuesF(pre, "bg1", is, sff, at)
+	gb.bg2 = readMultipleValuesF(pre, "bg2", is, sff, at)
+	for name, layouts := range map[string]map[float32]*AnimLayout{"bg0": gb.bg0, "bg1": gb.bg1, "bg2": gb.bg2} {
+		if _, ok := layouts[0]; !ok {
+			tmp := ReadAnimLayout(pre+name+".", is, sff, at, 0)
+			layouts[0] = &tmp
+		}
+	}
 	gb.mid = ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	gb.top = ReadAnimLayout(pre+"top.", is, sff, at, 0)
 
@@ -1298,9 +1363,15 @@ func (gb *GuardBar) step(charpn int, gbr *GuardBar, snd *Snd) {
 	if gbr.midpower < gbr.midpowerMin {
 		gbr.midpower = gbr.midpowerMin
 	}
-	gb.bg0.Action()
-	gb.bg1.Action()
-	gb.bg2.Action()
+	for _, layouts := range []map[float32]*AnimLayout{gb.bg0, gb.bg1, gb.bg2} {
+		var bv float32
+		for k := range layouts {
+			if k > bv && points >= k/100 {
+				bv = k
+			}
+		}
+		layouts[bv].Action()
+	}
 	gb.top.Action()
 	gb.mid.Action()
 
@@ -1327,9 +1398,11 @@ func (gb *GuardBar) step(charpn int, gbr *GuardBar, snd *Snd) {
 }
 
 func (gb *GuardBar) reset() {
-	gb.bg0.Reset()
-	gb.bg1.Reset()
-	gb.bg2.Reset()
+	for _, layouts := range []map[float32]*AnimLayout{gb.bg0, gb.bg1, gb.bg2} {
+		for i := range layouts {
+			layouts[i].Reset()
+		}
+	}
 	gb.top.Reset()
 	gb.mid.Reset()
 	for _, v := range gb.front {
@@ -1344,15 +1417,25 @@ func (gb *GuardBar) reset() {
 	gb.warn.Reset()
 }
 
-func (gb *GuardBar) bgDraw(layerno int16) {
+func (gb *GuardBar) bgDraw(layerno int16, charpn int) {
 	// Handled in outer loop
 	//if !sys.fightScreen.guardbar {
 	//	return
 	//}
 
-	gb.bg0.Draw(float32(gb.pos[0])+sys.fightScreen.offsetX, float32(gb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	gb.bg1.Draw(float32(gb.pos[0])+sys.fightScreen.offsetX, float32(gb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	gb.bg2.Draw(float32(gb.pos[0])+sys.fightScreen.offsetX, float32(gb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	points := float32(sys.chars[charpn][0].guardPoints) / float32(sys.chars[charpn][0].guardPointsMax)
+	if gb.invertfill {
+		points = 1 - points
+	}
+	for _, layouts := range []map[float32]*AnimLayout{gb.bg0, gb.bg1, gb.bg2} {
+		var bv float32
+		for k := range layouts {
+			if k > bv && points >= k/100 {
+				bv = k
+			}
+		}
+		layouts[bv].Draw(float32(gb.pos[0])+sys.fightScreen.offsetX, float32(gb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	}
 }
 
 func (gb *GuardBar) draw(layerno int16, charpn int, gbr *GuardBar, f map[int]*Fnt) {
@@ -1464,9 +1547,9 @@ type StunBar struct {
 	pos         [2]int32
 	range_x     [2]int32
 	range_y     [2]int32
-	bg0         AnimLayout
-	bg1         AnimLayout
-	bg2         AnimLayout
+	bg0         map[float32]*AnimLayout
+	bg1         map[float32]*AnimLayout
+	bg2         map[float32]*AnimLayout
 	top         AnimLayout
 	mid         AnimLayout
 	warn_range  [2]int32
@@ -1483,6 +1566,9 @@ type StunBar struct {
 
 func newStunBar() (sb *StunBar) {
 	sb = &StunBar{
+		bg0:   make(map[float32]*AnimLayout),
+		bg1:   make(map[float32]*AnimLayout),
+		bg2:   make(map[float32]*AnimLayout),
 		front: make(map[float32]*AnimLayout),
 		value: make(map[int32]*FSText),
 	}
@@ -1497,9 +1583,15 @@ func readStunBar(pre string, is IniSection,
 	is.ReadI32(pre+"range.x", &sb.range_x[0], &sb.range_x[1])
 	is.ReadI32(pre+"range.y", &sb.range_y[0], &sb.range_y[1])
 
-	sb.bg0 = ReadAnimLayout(pre+"bg0.", is, sff, at, 0)
-	sb.bg1 = ReadAnimLayout(pre+"bg1.", is, sff, at, 0)
-	sb.bg2 = ReadAnimLayout(pre+"bg2.", is, sff, at, 0)
+	sb.bg0 = readMultipleValuesF(pre, "bg0", is, sff, at)
+	sb.bg1 = readMultipleValuesF(pre, "bg1", is, sff, at)
+	sb.bg2 = readMultipleValuesF(pre, "bg2", is, sff, at)
+	for name, layouts := range map[string]map[float32]*AnimLayout{"bg0": sb.bg0, "bg1": sb.bg1, "bg2": sb.bg2} {
+		if _, ok := layouts[0]; !ok {
+			tmp := ReadAnimLayout(pre+name+".", is, sff, at, 0)
+			layouts[0] = &tmp
+		}
+	}
 	sb.mid = ReadAnimLayout(pre+"mid.", is, sff, at, 0)
 	sb.top = ReadAnimLayout(pre+"top.", is, sff, at, 0)
 
@@ -1546,9 +1638,15 @@ func (sb *StunBar) step(charpn int, sbr *StunBar, snd *Snd) {
 	if sbr.midpower < sbr.midpowerMin {
 		sbr.midpower = sbr.midpowerMin
 	}
-	sb.bg0.Action()
-	sb.bg1.Action()
-	sb.bg2.Action()
+	for _, layouts := range []map[float32]*AnimLayout{sb.bg0, sb.bg1, sb.bg2} {
+		var bv float32
+		for k := range layouts {
+			if k > bv && points >= k/100 {
+				bv = k
+			}
+		}
+		layouts[bv].Action()
+	}
 	sb.top.Action()
 	sb.mid.Action()
 	// Multiple front elements
@@ -1573,9 +1671,11 @@ func (sb *StunBar) step(charpn int, sbr *StunBar, snd *Snd) {
 }
 
 func (sb *StunBar) reset() {
-	sb.bg0.Reset()
-	sb.bg1.Reset()
-	sb.bg2.Reset()
+	for _, layouts := range []map[float32]*AnimLayout{sb.bg0, sb.bg1, sb.bg2} {
+		for i := range layouts {
+			layouts[i].Reset()
+		}
+	}
 	sb.top.Reset()
 	sb.mid.Reset()
 	for i := range sb.front {
@@ -1590,15 +1690,25 @@ func (sb *StunBar) reset() {
 	sb.warn.Reset()
 }
 
-func (sb *StunBar) bgDraw(layerno int16) {
+func (sb *StunBar) bgDraw(layerno int16, charpn int) {
 	// Handled in outer loop
 	//if !sys.fightScreen.stunbar {
 	//	return
 	//}
 
-	sb.bg0.Draw(float32(sb.pos[0])+sys.fightScreen.offsetX, float32(sb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	sb.bg1.Draw(float32(sb.pos[0])+sys.fightScreen.offsetX, float32(sb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
-	sb.bg2.Draw(float32(sb.pos[0])+sys.fightScreen.offsetX, float32(sb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	points := float32(sys.chars[charpn][0].dizzyPoints) / float32(sys.chars[charpn][0].dizzyPointsMax)
+	if sb.invertfill {
+		points = 1 - points
+	}
+	for _, layouts := range []map[float32]*AnimLayout{sb.bg0, sb.bg1, sb.bg2} {
+		var bv float32
+		for k := range layouts {
+			if k > bv && points >= k/100 {
+				bv = k
+			}
+		}
+		layouts[bv].Draw(float32(sb.pos[0])+sys.fightScreen.offsetX, float32(sb.pos[1])+sys.fightScreen.offsetY, layerno, sys.fightScreen.scale)
+	}
 }
 
 func (sb *StunBar) draw(layerno int16, charpn int, sbr *StunBar, f map[int]*Fnt) {
@@ -5653,7 +5763,7 @@ func (fs *FightScreen) draw(layerno int16) {
 					if c.asf(ASF_nolifebardisplay) {
 						continue
 					}
-					fs.lifeBars[layout][barpn].bgDraw(layerno)
+					fs.lifeBars[layout][barpn].bgDraw(layerno, barpn)
 					fs.lifeBars[layout][barpn].draw(layerno, charpn, fs.lifeBars[layout][charpn], fs.fnt)
 				}
 			}
@@ -5697,7 +5807,7 @@ func (fs *FightScreen) draw(layerno int16) {
 					if !c.guardBreakEnabled() || c.asf(ASF_noguardbardisplay) {
 						continue
 					}
-					fs.guardBars[layout][barpn].bgDraw(layerno)
+					fs.guardBars[layout][barpn].bgDraw(layerno, barpn)
 					fs.guardBars[layout][barpn].draw(layerno, charpn, fs.guardBars[layout][charpn], fs.fnt)
 				}
 			}
@@ -5717,7 +5827,7 @@ func (fs *FightScreen) draw(layerno int16) {
 					if !c.dizzyEnabled() || c.asf(ASF_nostunbardisplay) {
 						continue
 					}
-					fs.stunBars[layout][barpn].bgDraw(layerno)
+					fs.stunBars[layout][barpn].bgDraw(layerno, barpn)
 					fs.stunBars[layout][barpn].draw(layerno, charpn, fs.stunBars[layout][charpn], fs.fnt)
 				}
 			}
