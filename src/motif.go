@@ -1284,7 +1284,7 @@ type HiscoreInfoProperties struct {
 }
 
 type WarningInfoProperties struct {
-	Title   TextProperties    `ini:"title"`
+	Title TextProperties `ini:"title"`
 	Text  struct {
 		TextMapProperties
 		TextWrap string `ini:"textwrap" default:"w"`
