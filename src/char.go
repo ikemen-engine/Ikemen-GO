@@ -750,6 +750,7 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		air_animtype:       RA_Unknown,
 		priority:           4,
 		prioritytype:       TT_Hit,
+
 		sparkno:            c.gi().data.sparkno,
 		sparkno_ffx:        "f",
 		sparkangle:         0,
@@ -758,12 +759,14 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		guard_sparkno_ffx:  "f",
 		guard_sparkangle:   0,
 		guard_sparkscale:   [2]float32{1, 1},
+
 		hitsound:           [2]int32{-1, 0},
 		hitsound_channel:   c.gi().data.hitsound_channel,
 		hitsound_ffx:       "f",
 		guardsound:         [2]int32{-1, 0},
 		guardsound_channel: c.gi().data.guardsound_channel,
 		guardsound_ffx:     "f",
+
 		ground_type:        HT_High,
 		air_type:           HT_Unknown,
 		air_hittime:        20,
@@ -1153,6 +1156,7 @@ type GetHitVar struct {
 	standfriction        float32
 	crouchfriction       float32
 	teamside             int
+	sparkxy              [2]float32
 }
 
 // This is called every time the char gets hit
@@ -1680,7 +1684,6 @@ type Explod struct {
 	remappal            [2]int32
 	ignorehitpause      bool
 	rot                 Rotation
-	anglerot            [3]float32
 	xshear              float32
 	projection          Projection
 	fLength             float32
@@ -1700,8 +1703,8 @@ type Explod struct {
 	//blendmode            int32
 	start_animelem       int32
 	start_scale          [2]float32
-	start_rot            [3]float32
 	start_alpha          [2]int32
+	start_rot            Rotation
 	start_fLength        float32
 	start_xshear         float32
 	interpolate          bool
@@ -1710,7 +1713,7 @@ type Explod struct {
 	interpolate_scale    [4]float32
 	interpolate_alpha    [4]int32
 	interpolate_pos      [6]float32
-	interpolate_angle    [6]float32
+	interpolate_rot      [2]Rotation
 	interpolate_fLength  [2]float32
 	interpolate_xshear   [2]float32
 	timestamp            int32 // Determines run order
@@ -2055,9 +2058,9 @@ func (e *Explod) update() {
 				e.sprpriority = syncChar.sprPriority
 				e.scale = [2]float32{syncChar.size.xscale * syncChar.angleDrawScale[0], syncChar.size.yscale * syncChar.angleDrawScale[1]}
 				if syncChar.csf(CSF_angledraw) {
-					e.anglerot = syncChar.anglerot
+					e.rot = syncChar.rot
 				} else {
-					e.anglerot = [3]float32{0, 0, 0}
+					e.rot = Rotation{}
 				}
 				e.window = syncChar.window
 				e.xshear = syncChar.xshear
@@ -2208,6 +2211,11 @@ func (e *Explod) cueDraw() {
 
 	parent := e.parent()
 
+	facing := e.trueFacing()
+	//if e.lockSpriteFacing {
+	//	facing = -1
+	//}
+
 	var pfx *PalFX
 	if e.palfx != nil && (!e.anim.isCommonFX() || e.ownpal) {
 		pfx = e.palfx
@@ -2218,37 +2226,30 @@ func (e *Explod) cueDraw() {
 	}
 
 	alp := e.alpha
-	anglerot := e.anglerot
+
+	// TODO: Interpolation should just use the same conventions instead of merging all angles under one parameter
+	rot := e.rot
+	if (facing < 0) != (e.vfacing < 0) {
+		rot.angle *= -1
+		rot.yangle *= -1
+	}
+
 	fLength := e.fLength
 	scale := e.scale
 	xshear := e.xshear
 
 	if e.interpolate {
-		e.Interpolate(&scale, &alp, &anglerot, &fLength, &xshear)
+		e.Interpolate(&scale, &alp, &rot, &fLength, &xshear)
 	}
 
 	if alp[0] < 0 {
 		alp[0] = -1
 	}
 
-	facing := e.trueFacing()
-	//if e.lockSpriteFacing {
-	//	facing = -1
-	//}
-	if (facing < 0) != (e.vfacing < 0) {
-		anglerot[0] *= -1
-		anglerot[2] *= -1
-	}
-
 	if fLength <= 0 {
 		fLength = 2048
 	}
 	fLength = fLength * e.localscl
-
-	rot := e.rot
-	rot.angle = anglerot[0]
-	rot.xangle = anglerot[1]
-	rot.yangle = anglerot[2]
 
 	// Set drawing position
 	drawpos := [2]float32{e.interPos[0] * e.localscl, e.interPos[1] * e.localscl}
@@ -2368,67 +2369,91 @@ func (e *Explod) cueDraw() {
 	}
 }
 
-func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, anglerot *[3]float32, fLength *float32, xshear *float32) {
+func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, rot *Rotation, fLength *float32, xshear *float32) {
 	if !e.pauseBool && sys.tickNextFrame() {
 		// Determine progress (inverted)
 		t := float32(e.interpolate_time[1]) / float32(e.interpolate_time[0])
-		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
-		e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
+
+		// Interpolate animelem
 		if e.interpolate_animelem[1] >= 0 {
 			elem := Ceil(Lerp(float32(e.interpolate_animelem[0]-1), float32(e.interpolate_animelem[1]), 1-t))
-
 			if e.interpolate_animelem[0] > e.interpolate_animelem[1] {
 				elem = Ceil(Lerp(float32(e.interpolate_animelem[1]-1), float32(e.interpolate_animelem[0]), t))
 			}
 			e.animelem = Clamp(elem, Min(e.interpolate_animelem[0], e.interpolate_animelem[1]), Max(e.interpolate_animelem[0], e.interpolate_animelem[1]))
 		}
+
+		// Interpolate properties with 1 value
+		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
+		e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
+		e.interpolate_rot[0].angle = Lerp(e.interpolate_rot[1].angle, e.start_rot.angle, t)
+		e.interpolate_rot[0].xangle = Lerp(e.interpolate_rot[1].xangle, e.start_rot.xangle, t)
+		e.interpolate_rot[0].yangle = Lerp(e.interpolate_rot[1].yangle, e.start_rot.yangle, t)
+
+		// Interpolate properties with 2 values
+		for i := 0; i < 2; i++ {
+			e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t)
+			// Interpolate alpha, then clamp
+			e.interpolate_alpha[i] = int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t))
+			e.interpolate_alpha[i] = Clamp(e.interpolate_alpha[i], 0, 255)
+		}
+
+		// Interpolate properties with 3 values
 		for i := 0; i < 3; i++ {
 			e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
-			if i < 2 {
-				e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t) //-e.start_scale[i]
-				e.interpolate_alpha[i] = Clamp(int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t)), 0, 255)
-			}
-			e.interpolate_angle[i] = Lerp(e.interpolate_angle[i+3], e.start_rot[i], t)
 		}
+
+		// Step timer
 		if e.interpolate_time[1] > 0 {
 			e.interpolate_time[1]--
 		}
 	}
+
+	// Apply interpolated values to output parameters
 	for i := 0; i < 3; i++ {
 		if i < 2 {
 			(*scale)[i] = e.interpolate_scale[i] * e.scale[i]
 			// Update alpha regardless of transparency type. Let the type handle the rendering
 			(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
 		}
-		(*anglerot)[i] = e.interpolate_angle[i] + e.anglerot[i]
 	}
+	rot.angle = e.interpolate_rot[0].angle + e.rot.angle
+	rot.xangle = e.interpolate_rot[0].xangle + e.rot.xangle
+	rot.yangle = e.interpolate_rot[0].yangle + e.rot.yangle
 	*fLength = e.interpolate_fLength[0] + e.fLength
 	*xshear = e.interpolate_xshear[0]
 }
 
 func (e *Explod) resetInterpolation(pfd *PalFXDef) {
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 2; j++ {
-			v := (i + (j * 3))
-			if e.ownpal {
-				pfd.iadd[v] = pfd.add[i]
-				pfd.imul[v] = pfd.mul[i]
+	// PalFX
+	if e.ownpal {
+		for i := 0; i < 3; i++ {
+			for j := 0; j < 2; j++ {
+				idx := i + j*3
+				pfd.iadd[idx] = pfd.add[i]
+				pfd.imul[idx] = pfd.mul[i]
 			}
-			e.interpolate_angle[v] = e.anglerot[i]
 			if i < 2 {
-				v = (i + (j * 2))
-				e.interpolate_pos[v] = 0
-				e.interpolate_scale[v] = e.scale[i]
-				e.interpolate_alpha[v] = e.alpha[i]
-				if j == 0 && e.ownpal {
-					pfd.icolor[i] = pfd.color
-					pfd.ihue[i] = pfd.hue
-				}
+				pfd.icolor[i] = pfd.color
+				pfd.ihue[i] = pfd.hue
 			}
 		}
 	}
+
+	// 2 values
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 2; j++ {
+			idx := i + j*2
+			e.interpolate_pos[idx] = 0
+			e.interpolate_scale[idx] = e.scale[i]
+			e.interpolate_alpha[idx] = e.alpha[i]
+		}
+	}
+
+	// 1 value
 	for i := 0; i < 2; i++ {
 		e.interpolate_animelem[i] = -1
+		e.interpolate_rot[i] = e.rot
 		e.interpolate_fLength[i] = e.fLength
 		e.interpolate_xshear[i] = e.xshear
 	}
@@ -2462,7 +2487,6 @@ type Projectile struct {
 	cancelanim      int32
 	cancelanim_ffx  string
 	scale           [2]float32
-	anglerot        [3]float32
 	rot             Rotation
 	projection      Projection
 	fLength         float32
@@ -3025,22 +3049,17 @@ func (p *Projectile) cueDraw() {
 		pos = sys.drawposXYfromZ(pos, p.localscl, p.interPos[2], p.zScale)
 	}
 
-	anglerot := p.anglerot
-	fLength := p.fLength
+	rot := p.rot
+	if p.facing < 0 {
+		rot.angle *= -1
+		rot.yangle *= -1
+	}
 
+	fLength := p.fLength
 	if fLength <= 0 {
 		fLength = 2048
 	}
-
-	if p.facing < 0 {
-		anglerot[0] *= -1
-		anglerot[2] *= -1
-	}
 	fLength = fLength * p.localscl
-	rot := p.rot
-	rot.angle = anglerot[0]
-	rot.xangle = anglerot[1]
-	rot.yangle = anglerot[2]
 
 	var pwin = [4]float32{
 		p.window[0] * basescale[0],
@@ -3353,11 +3372,11 @@ type CharSystemVar struct {
 	bindFacing            float32
 	hitPauseTime          int32
 	rot                   Rotation
-	anglerot              [3]float32
 	xshear                float32
 	projection            Projection
 	fLength               float32
 	angleDrawScale        [2]float32
+	angleDrawPivot        [2]float32
 	trans                 TransType
 	alpha                 [2]int32
 	window                [4]float32
@@ -3505,6 +3524,7 @@ type Char struct {
 	downHitOffset        bool
 	koEchoTimer          int32
 	groundLevel          float32
+	prevGroundLevel      float32 // For debugging only
 	shadowAnim           *Animation
 	shadowAnimelem       int32
 	shadowColor          [3]int32
@@ -5826,11 +5846,11 @@ func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) Byt
 		case OC_ex2_explodvar_anim:
 			v = BytecodeInt(e.animNo)
 		case OC_ex2_explodvar_angle:
-			v = BytecodeFloat(e.anglerot[0] + e.interpolate_angle[0])
+			v = BytecodeFloat(e.rot.angle + e.interpolate_rot[0].angle)
 		case OC_ex2_explodvar_angle_x:
-			v = BytecodeFloat(e.anglerot[1] + e.interpolate_angle[1])
+			v = BytecodeFloat(e.rot.xangle + e.interpolate_rot[0].xangle)
 		case OC_ex2_explodvar_angle_y:
-			v = BytecodeFloat(e.anglerot[2] + e.interpolate_angle[2])
+			v = BytecodeFloat(e.rot.yangle + e.interpolate_rot[0].yangle)
 		case OC_ex2_explodvar_animelem:
 			v = BytecodeInt(e.anim.curelem + 1)
 		case OC_ex2_explodvar_animelemtime:
@@ -7181,13 +7201,13 @@ func (c *Char) commitExplod(i int) {
 	e.start_animelem = e.animelem
 	e.start_fLength = e.fLength
 	e.start_xshear = e.xshear
+	e.start_rot = e.rot
 
 	for j := 0; j < 3; j++ {
 		if j < 2 {
 			e.start_scale[j] = e.scale[j]
 			e.start_alpha[j] = e.alpha[j]
 		}
-		e.start_rot[j] = e.anglerot[j]
 	}
 
 	if e.interpolate {
@@ -7204,7 +7224,7 @@ func (c *Char) commitExplod(i int) {
 				e.alpha[j] = 255
 				//}
 			}
-			e.anglerot[j] = 0
+			e.rot = Rotation{}
 		}
 		if e.ownpal {
 			e.palfxdef.color = 1
@@ -9289,15 +9309,15 @@ func (c *Char) hitPause() bool {
 }
 
 func (c *Char) angleSet(a float32) {
-	c.anglerot[0] = a
+	c.rot.angle = a
 }
 
 func (c *Char) XangleSet(xa float32) {
-	c.anglerot[1] = xa
+	c.rot.xangle = xa
 }
 
 func (c *Char) YangleSet(ya float32) {
-	c.anglerot[2] = ya
+	c.rot.yangle = ya
 }
 
 func (c *Char) inputWait() bool {
@@ -10859,12 +10879,114 @@ func (c *Char) hittableByChar(getter *Char, ghd *HitDef, gst StateType, proj boo
 	return true
 }
 
+// Hitspark creation function
+// This used to be called only when a hitspark is actually created, but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
+func (c *Char) hitspark(getter *Char, proj *Projectile, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
+
+	// Compute target edges
+	getterBase := getter.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+	getterScale := getter.sizeBoxScale()[0] // Used to convert the box to world coordinate space
+	getterFront := getterBase[2] * getterScale
+	getterBack := -getterBase[0] * getterScale
+
+	// Determine which edge of the target to use
+	// TODO: Maybe this could check which side the attack comes from instead of comparing facing
+	var getterEdge float32
+	if proj != nil {
+		if proj.facing != getter.facing {
+			getterEdge = getterFront
+		} else {
+			getterEdge = getterBack
+		}
+	} else {
+		if c.facing != getter.facing {
+			getterEdge = getterFront
+		} else {
+			getterEdge = getterBack
+		}
+	}
+
+	// Compute spark position in world space
+	var sparkWorld [3]float32
+
+	if proj != nil {
+		sparkWorld[0] = getter.pos[0]*getter.localscl + getterEdge*getter.facing - proj.hitdef.sparkxy[0]*proj.facing*proj.localscl
+		sparkWorld[1] = (proj.pos[1] + proj.hitdef.sparkxy[1]) * proj.localscl
+		sparkWorld[2] = getter.pos[2]*getter.localscl
+	} else {
+		if c.hitdef.reversal_attr > 0 {
+			// ReversalDef spark offset
+			// Mugen documentation says this is an offset from the enemy's sparkxy, but in reality that is only half true
+			// The X parameter is calculated from the performer's position, while the Y parameter is indeed an offset from the enemy's sparkxy
+			// TODO: Maybe ikemenversion could adjust this one to be as documented?
+			sparkWorld[0] = (c.pos[0] + c.hitdef.sparkxy[0]*c.facing) * c.localscl
+			sparkWorld[1] = (getter.pos[1] + getter.hitdef.sparkxy[1]) * getter.localscl + c.hitdef.sparkxy[1] * c.localscl
+			sparkWorld[2] = c.pos[2] * c.localscl
+		} else {
+			// Regular HitDef
+			// X relative to target edge. Y relative to attacker
+			sparkWorld[0] = getter.pos[0]*getter.localscl + getterEdge*getter.facing - c.hitdef.sparkxy[0]*c.facing*c.localscl
+			sparkWorld[1] = (c.pos[1] + c.hitdef.sparkxy[1]) * c.localscl
+			sparkWorld[2] = getter.pos[2] * getter.localscl
+		}
+	}
+
+	// Compute spark offset in relation to c
+	cLocalOff := [3]float32{
+		(sparkWorld[0] - c.pos[0]*c.localscl) / c.localscl * c.facing,
+		(sparkWorld[1] - c.pos[1]*c.localscl) / c.localscl,
+		(sparkWorld[2] - c.pos[2]*c.localscl) / c.localscl,
+	}
+
+	// Compute spark offset in relation to getter. For GetHitVar only
+	getterLocalOff := [3]float32{
+		(sparkWorld[0] - getter.pos[0]*getter.localscl) / getter.localscl * getter.facing,
+		(sparkWorld[1] - getter.pos[1]*getter.localscl) / getter.localscl,
+		(sparkWorld[2] - getter.pos[2]*getter.localscl) / getter.localscl,
+	}
+
+	// Save hitspark position to MoveHitVar and GetHitVar
+	if proj == nil {
+		c.mhv.sparkxy[0] = cLocalOff[0]
+		c.mhv.sparkxy[1] = cLocalOff[1]
+	}
+	getter.ghv.sparkxy[0] = getterLocalOff[0]
+	getter.ghv.sparkxy[1] = getterLocalOff[1]
+
+	// Spawn explod relatively to c
+	if animNo >= 0 {
+		if e, i := c.spawnExplod(); e != nil {
+			//e.anim = c.getAnim(animNo, ffx)
+			e.animNo = animNo
+			e.anim_ffx = ffx
+			e.layerno = 1 // e.ontop = true
+			e.sprpriority = math.MinInt32
+			e.ownpal = true
+			e.postype = PT_P1
+			e.relativePos = cLocalOff
+			e.supermovetime = -1
+			e.pausemovetime = -1
+			e.scale = sparkscale
+			//e.localscl = 1
+			//if ffx == "" || ffx == "s" {
+			//	e.scale = [2]float32{c.localscl * sparkscale[0], c.localscl * sparkscale[1]}
+			//} else if e.anim != nil {
+			//	e.anim.start_scale[0] *= c.localscl * sparkscale[0]
+			//	e.anim.start_scale[1] *= c.localscl * sparkscale[1]
+			//}
+			e.setPos(c)
+			e.rot.angle = sparkangle
+			c.commitExplod(i)
+		}
+	}
+}
+
 func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) {
 
 	// Player hit check
 	hd := &c.hitdef
 	attackMul := &c.attackMul
-	posDiff := [3]float32{0, 0, 0}
+	projParentDist := [3]float32{0, 0, 0}
 	isProjectile := false
 
 	// Projectile hit check
@@ -10873,7 +10995,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		attackMul = &proj.parentAttackMul
 		isProjectile = true
 
-		posDiff = [3]float32{
+		projParentDist = [3]float32{
 			proj.pos[0] - c.pos[0]*(c.localscl/proj.localscl),
 			proj.pos[1] - c.pos[1]*(c.localscl/proj.localscl),
 			proj.pos[2] - c.pos[2]*(c.localscl/proj.localscl),
@@ -11279,9 +11401,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			// When Snap is defined, Min and Max distances are set to Snap
 			byPos := c.pos
 			if isProjectile {
-				byPos[0] += posDiff[0]
-				byPos[1] += posDiff[1]
-				byPos[2] += posDiff[2]
+				byPos[0] += projParentDist[0]
+				byPos[1] += projParentDist[1]
+				byPos[2] += projParentDist[2]
 			}
 			snap := [...]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())}
 			// MinDist X
@@ -11534,94 +11656,11 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		}
 	}
 
-	// Hitspark creation function
-	// This used to be called only when a hitspark is actually created, but with the addition of the MoveHitVar trigger it became useful to save the offset at all times
-	hitspark := func(p1, p2 *Char, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
-		// This is mostly for offset in projectiles
-		off := posDiff
-
-		// Get reference position
-		if !isProjectile {
-			p2base := p2.baseSizeBox()      // Ignore width/height modifiers. Maybe we shouldn't?
-			p2scale := p2.sizeBoxScale()[0] // Mugen doesn't do this, but then again size couldn't be multiplied there
-			p2sizeFront := p2base[2] * p2scale
-			p2sizeBack := -p2base[0] * p2scale
-
-			// X distance from attacker to target in attacker's facing direction
-			dist := (p2.pos[0]*p2.localscl - p1.pos[0]*p1.localscl) * p1.facing
-
-			// Determine which edge of the target to use
-			if p1.facing != p2.facing {
-				off[0] = dist - p2sizeFront
-			} else {
-				off[0] = dist - p2sizeBack
-			}
-
-			// Z distance
-			off[2] = p2.pos[2]*p2.localscl - p1.pos[2]*p1.localscl
-		}
-
-		// Apply sparkxy
-		if isProjectile {
-			off[0] *= c.localscl
-			off[1] *= c.localscl
-			off[2] *= c.localscl
-			off[0] += hd.sparkxy[0] * proj.facing * p1.facing * c.localscl
-		} else {
-			off[0] -= hd.sparkxy[0] * c.localscl
-		}
-		off[1] += hd.sparkxy[1] * c.localscl
-
-		// Reversaldef spark (?)
-		if c.id != p1.id {
-			off[1] += p1.hitdef.sparkxy[1] * c.localscl
-		}
-
-		// Convert offset back to character's coordinate space
-		for i := range off {
-			off[i] /= c.localscl
-		}
-
-		// Save hitspark position to MoveHitVar
-		if !isProjectile {
-			c.mhv.sparkxy[0] = off[0]
-			c.mhv.sparkxy[1] = off[1]
-		}
-
-		if animNo >= 0 {
-			if e, i := c.spawnExplod(); e != nil {
-				//e.anim = c.getAnim(animNo, ffx)
-				e.animNo = animNo
-				e.anim_ffx = ffx
-				e.layerno = 1 // e.ontop = true
-				e.sprpriority = math.MinInt32
-				e.ownpal = true
-				e.postype = PT_P1
-				e.relativePos = [3]float32{off[0], off[1], off[2]}
-				e.supermovetime = -1
-				e.pausemovetime = -1
-				e.scale = [2]float32{sparkscale[0], sparkscale[1]}
-				//e.localscl = 1
-				//if ffx == "" || ffx == "s" {
-				//	e.scale = [2]float32{c.localscl * sparkscale[0], c.localscl * sparkscale[1]}
-				//} else if e.anim != nil {
-				//	e.anim.start_scale[0] *= c.localscl * sparkscale[0]
-				//	e.anim.start_scale[1] *= c.localscl * sparkscale[1]
-				//}
-				e.setPos(p1)
-				e.anglerot[0] = sparkangle
-				c.commitExplod(i)
-			}
-		}
-	}
-
-	// Play hit sounds and sparks
+	// Play hit sounds and create sparks
 	if Abs(hitResult) == 1 {
-		if hd.reversal_attr > 0 {
-			hitspark(getter, c, hd.sparkno, hd.sparkno_ffx, hd.sparkangle, hd.sparkscale)
-		} else {
-			hitspark(c, getter, hd.sparkno, hd.sparkno_ffx, hd.sparkangle, hd.sparkscale)
-		}
+		// Spawn hit spark
+		c.hitspark(getter, proj, hd.sparkno, hd.sparkno_ffx, hd.sparkangle, hd.sparkscale)
+		// Play hit sound
 		if hd.hitsound[0] >= 0 && hd.hitsound[1] >= 0 {
 			params := newPlaySndParams()
 			params.ffx = hd.hitsound_ffx
@@ -11634,11 +11673,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			c.playSound(params)
 		}
 	} else {
-		if hd.reversal_attr > 0 {
-			hitspark(getter, c, hd.guard_sparkno, hd.guard_sparkno_ffx, hd.guard_sparkangle, hd.guard_sparkscale)
-		} else {
-			hitspark(c, getter, hd.guard_sparkno, hd.guard_sparkno_ffx, hd.guard_sparkangle, hd.guard_sparkscale)
-		}
+		// Spawn guard spark
+		c.hitspark(getter, proj, hd.guard_sparkno, hd.guard_sparkno_ffx, hd.guard_sparkangle, hd.guard_sparkscale)
+		// Play guard sound
 		if hd.guardsound[0] >= 0 && hd.guardsound[1] >= 0 {
 			params := newPlaySndParams()
 			params.ffx = hd.guardsound_ffx
@@ -11938,6 +11975,7 @@ func (c *Char) actionPrepare() {
 		if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 || c.stWgi().mugenver[0] == 1 || !c.hitPause() {
 			c.unsetCSF(CSF_angledraw)
 			c.angleDrawScale = [2]float32{1, 1}
+			c.angleDrawPivot = [2]float32{0, 0}
 			c.trans = TT_default
 			c.alpha = [2]int32{255, 0}
 			c.offset = [2]float32{}
@@ -12108,10 +12146,12 @@ func (c *Char) actionRun() {
 			}
 		}
 
-		// Reset groundLevel only after position has been updated
+		// Reset groundLevel only after the next position update
+		// This makes it easier to redirect regardless of char run order
 		// Must reset even during hitpause
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/3587
 		// TODO: Should it also reset during pauses? Test similar scenarios but with pause instead of hitpause
+		c.prevGroundLevel = c.groundLevel
 		c.groundLevel = 0
 
 		// Commit current animation frame to memory
@@ -12912,6 +12952,11 @@ func (c *Char) cueDebugDraw() {
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
 		sys.debugch.Add(crosshair, x, y, c.facing)
+		// Add GroundLevel indicator
+		if c.prevGroundLevel != 0 {
+			gLevel := []ClsnFinal{{rect: [4]float32{-4, 0, 4, 1}, angle: 0}}
+			sys.debugch.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
+		}
 	}
 
 	// Prepare information for debug text
@@ -12981,25 +13026,23 @@ func (c *Char) cueDraw() {
 		//	pos[1] += c.interPos[2] * c.localscl
 		//}
 
-		anglerot := c.anglerot
-		fLength := c.fLength
+		rot := Rotation{}
+		rotPivot := [2]float32{0, 0}
 
+		if c.csf(CSF_angledraw) {
+			rot = c.rot
+			rotPivot = [2]float32{c.angleDrawPivot[0]*c.localscl, c.angleDrawPivot[1]*c.localscl}
+			if c.facing < 0 {
+				rot.angle *= -1
+				rot.yangle *= -1
+			}
+		}
+
+		fLength := c.fLength
 		if fLength <= 0 {
 			fLength = 2048
 		}
-
-		if c.facing < 0 {
-			anglerot[0] *= -1
-			anglerot[2] *= -1
-		}
 		fLength = fLength * c.localscl
-		rot := c.rot
-
-		if c.csf(CSF_angledraw) {
-			rot.angle = anglerot[0]
-			rot.xangle = anglerot[1]
-			rot.yangle = anglerot[2]
-		}
 
 		rec := sys.tickNextFrame() && c.acttmp > 0
 
@@ -13046,6 +13089,7 @@ func (c *Char) cueDraw() {
 		charSD.priority = c.sprPriority + int32(c.pos[2]*c.localscl)
 		charSD.under = c.asf(ASF_drawunder)
 		charSD.rot = rot
+		charSD.rotPivot = rotPivot
 		charSD.undarken = c.ignoreDarkenTime > 0
 		charSD.facing = c.facing
 		charSD.airOffsetFix = airOffsetFix

@@ -2734,6 +2734,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex_gethitvar_guardko
 		case "teamside":
 			opc = OC_ex_gethitvar_teamside
+		case "sparkx":
+			opc = OC_ex_gethitvar_sparkx
+		case "sparky":
+			opc = OC_ex_gethitvar_sparky
 		default:
 			return bvNone(), Error("Invalid GetHitVar argument: " + c.token)
 		}
@@ -5009,9 +5013,9 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		case "power":
 			out.append(OC_ex_movehitvar_power)
 		case "sparkx":
-			out.append(OC_ex_movehitvar_spark_x)
+			out.append(OC_ex_movehitvar_sparkx)
 		case "sparky":
-			out.append(OC_ex_movehitvar_spark_y)
+			out.append(OC_ex_movehitvar_sparky)
 		case "uniqhit":
 			out.append(OC_ex_movehitvar_uniqhit)
 		default:

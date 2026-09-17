@@ -914,7 +914,7 @@ func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 }
 
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
-	rxadd float32, rot Rotation, rcx float32, pfx *PalFX, facing float32,
+	rxadd float32, rot Rotation, rcx float32, rotPivot [2]float32, pfx *PalFX, facing float32,
 	airOffsetFix [2]float32, projectionMode int32, fLength float32, color uint32,
 	isReflection bool, shader CustomShaderRenderData) {
 
@@ -998,14 +998,19 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 				y -= float32(int(y/space)) * space
 			}
 		}
-		rcx, rcy = rcx*sys.widthScale, 0
+		rcx = rcx*sys.widthScale
+		rcy = 0
 		x = -x + Abs(xs)*float32(a.spr.Offset[0])
 		y = -y + Abs(ys)*float32(a.spr.Offset[1])
 	} else {
-		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
-		x, y = Abs(xs)*float32(a.spr.Offset[0]), Abs(ys)*float32(a.spr.Offset[1])
+		rcx = (x + rcx) * sys.widthScale
+		rcy = y * sys.heightScale
+		x = Abs(xs) * float32(a.spr.Offset[0])
+		y = Abs(ys) * float32(a.spr.Offset[1])
 		fLength *= ycs
 	}
+
+    rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
 
 	blendMode, blendAlpha := a.alphaToBlend()
 
@@ -1041,6 +1046,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		window:         window,
 		rcx:            rcx,
 		rcy:            rcy,
+		rcOffset:       rcOffset,
 		projectionMode: projectionMode,
 		fLength:        fLength * sys.heightScale,
 		xOffset:        xoff * sys.widthScale,
@@ -1051,7 +1057,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	RenderSprite(rp)
 }
 
-func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd float32, rot Rotation,
+func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd float32, rot Rotation, rotPivot [2]float32,
 	pfx *PalFX, color uint32, intensity int32, facing float32, airOffsetFix [2]float32, projectionMode int32, fLength float32, shader CustomShaderRenderData) {
 
 	// Skip blank shadows
@@ -1069,6 +1075,8 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 
 	x += xoff
 	y += yoff
+
+	rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
 
 	rp := RenderParams{
 		tex:            a.spr.Tex,
@@ -1093,6 +1101,7 @@ func (a *Animation) ShadowDraw(window *[4]int32, x, y, xscl, yscl, vscl, rxadd f
 		window:         window,
 		rcx:            (x + float32(sys.gameWidth)/2) * sys.widthScale,
 		rcy:            y * sys.heightScale,
+		rcOffset:       rcOffset,
 		projectionMode: projectionMode,
 		fLength:        fLength * sys.heightScale,
 		xOffset:        xoff,
@@ -1285,6 +1294,7 @@ type SpriteData struct {
 	layerno      int32
 	priority     int32
 	rot          Rotation
+	rotPivot     [2]float32
 	screen       bool
 	undarken     bool // Ignore SuperPause "darken"
 	facing       float32
@@ -1466,7 +1476,7 @@ func (dl DrawList) draw(layerno int32, under bool, cameraX, cameraY, cameraScl f
 		}
 
 		s.anim.Draw(drawwindow, pos[0]-xsoffset, pos[1], cs, cs, s.scl[0], s.scl[0],
-			s.scl[1], xshear, s.rot, float32(sys.gameWidth)/2, s.pfx, s.facing,
+			s.scl[1], xshear, s.rot, float32(sys.gameWidth)/2, s.rotPivot, s.pfx, s.facing,
 			s.airOffsetFix, s.projection, s.fLength, 0, false, s.customShader)
 
 		// Restore original animation transparency just in case
@@ -1677,6 +1687,11 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			offsetX += (-s.pos[1] + s.groundLevel) * xshear * Sign(yscale)
 		}
 
+		// Scale rotation pivot by the reflection's base scale
+		// Y is multiplied by -1 because a y-scale of 1 means inverted
+		// TODO: It's slightly off. Might need a correction similar to "xrotoff"
+		sdwRotPivot := [2]float32{s.rotPivot[0] * xscale, s.rotPivot[1] * yscale * -1}
+
 		var projection int32
 		if s.shadowProjection != -1 {
 			projection = int32(s.shadowProjection)
@@ -1732,7 +1747,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			(sys.cam.Offset[0]-shake[0])-((x-s.pos[0]-offsetX)*scl),
 			sys.cam.GroundLevel()+(sys.cam.Offset[1]-shake[1])-y-(sdwPosY*yscale-offsetY)*scl,
 			scl*s.scl[0]*xscale, scl*-s.scl[1],
-			yscale, xshear, rot,
+			yscale, xshear, rot, sdwRotPivot,
 			s.pfx, uint32(color), intensity, s.facing, s.airOffsetFix, projection, fLength, s.customShader)
 	}
 }
@@ -1947,6 +1962,9 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 			offsetX += (-s.pos[1] + s.groundLevel) * xshear * Sign(yscale)
 		}
 
+		// Scale rotation pivot by the reflection's base scale
+		refRotPivot := [2]float32{s.rotPivot[0] * xscale, s.rotPivot[1] * yscale * -1}
+
 		var projection int32
 		if s.reflectProjection != -1 {
 			projection = int32(s.reflectProjection)
@@ -2003,7 +2021,7 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-shake[1])/scl-y/scl-(refPosY*yscale-offsetY),
 			scl, scl,
 			s.scl[0]*xscale, s.scl[0]*xscale,
-			-s.scl[1]*yscale, xshear, rot, float32(sys.gameWidth)/2,
+			-s.scl[1]*yscale, xshear, rot, float32(sys.gameWidth)/2, refRotPivot,
 			s.pfx, s.facing, s.airOffsetFix, projection, fLength, color, true, s.customShader)
 
 		// Restore original animation transparency just in case
@@ -2361,7 +2379,8 @@ func (a *Anim) Draw(ln int16) {
 	window := a.drawWindow()
 	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+float32(int(sys.gameWidth-320)/2),
 		a.y+a.vel[1]+float32(int(sys.gameHeight-240)), 1, 1, xscl, xscl, a.yscl,
-		xshear, a.rot, 0, a.palfx, a.facing, [2]float32{1, 1}, a.projection, a.fLength, 0, false, CustomShaderRenderData{})
+		xshear, a.rot, 0, [2]float32{0, 0}, a.palfx, a.facing, [2]float32{1, 1},
+		a.projection, a.fLength, 0, false, CustomShaderRenderData{})
 }
 
 func (a *Anim) Reset() {

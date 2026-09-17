@@ -1086,7 +1086,15 @@ func (c *CharCompiler) explodInterpolate(is IniSection,
 		return err
 	}
 	if err := c.paramValue(is, sc, "interpolation.angle",
-		explod_interpolation_angle, VT_Float, 3, false); err != nil {
+		explod_interpolation_angle, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.xangle",
+		explod_interpolation_xangle, VT_Float, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "interpolation.yangle",
+		explod_interpolation_yangle, VT_Float, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "interpolation.alpha",
@@ -3684,6 +3692,10 @@ func (c *CharCompiler) angleDraw(is IniSection, sc *StateControllerBase) (StateC
 		}
 		if err := c.paramValue(is, sc, "scale",
 			angleDraw_scale, VT_Float, 2, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "pivot",
+			angleDraw_pivot, VT_Float, 2, false); err != nil {
 			return err
 		}
 		return nil
