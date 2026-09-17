@@ -1,7 +1,6 @@
 package main
 
 import (
-	"archive/zip"
 	"bytes"
 	"encoding/base64"
 	"encoding/binary"
@@ -12,10 +11,7 @@ import (
 	"image/draw"
 	_ "image/jpeg"
 	"io"
-	"io/fs"
 	"math"
-	"os"
-	"path"
 	"strconv"
 	"strings"
 
@@ -425,53 +421,33 @@ func loadEnvironment(filepath string) (*Environment, error) {
 func loadglTFModel(filepath string) (*Model, error) {
 	mdl := &Model{offset: [3]float32{0, 0, 0}, rotation: [3]float32{0, 0, 0}, scale: [3]float32{1, 1, 1}}
 
-	isZip, zipPath, pathInZip := IsZipPath(filepath)
-
-	var doc *gltf.Document
-	var err error
-
-	if isZip {
-		// Handle resources within a ZIP file
-		zipReader, errOpen := zip.OpenReader(zipPath)
-		if errOpen != nil {
-			return nil, fmt.Errorf("Failed to open ZIP archive '%s': %w", zipPath, errOpen)
-		}
-		defer zipReader.Close()
-
-		var fsys fs.FS = &zipReader.Reader // The zip.Reader implements fs.FS for resource resolution within the archive
-
-		// Open the GLB/glTF file from within the zip
-		glbFile, errOpen := fsys.Open(pathInZip)
-		if errOpen != nil {
-			return nil, fmt.Errorf("Failed to open GLB file '%s' in ZIP '%s': %w", pathInZip, zipPath, errOpen)
-		}
-		defer glbFile.Close()
-
-		// Create a new decoder with the file stream and the zip archive as the file system
-		decoder := gltf.NewDecoderFS(glbFile, fsys)
-		doc = new(gltf.Document)
-		if err = decoder.Decode(doc); err != nil {
-			return nil, fmt.Errorf("failed to decode gltf from zip '%s': %w", filepath, err)
-		}
-	} else {
-		// Handle resources from the standard file system
-		f, errOpen := OpenFile(filepath) // Use IKEMEN GO's file abstraction to handle case-insensitivity etc.
-		if errOpen != nil {
-			return nil, errOpen
-		}
-		defer f.Close()
-
-		// Use the directory of the file as the file system for resolving relative resources
-		fsm := os.DirFS(path.Dir(filepath))
-		decoder := gltf.NewDecoderFS(f, fsm)
-		doc = new(gltf.Document)
-		if err = decoder.Decode(doc); err != nil {
-			return nil, fmt.Errorf("failed to decode gltf from file '%s': %w", filepath, err)
-		}
+	f, err := OpenFile(filepath)
+	if err != nil {
+		return nil, err
 	}
+	defer f.Close()
 
-	if doc == nil {
-		return nil, fmt.Errorf("gltf document is nil after decoding for path: %s", filepath)
+	// Decode embedded data first; resolve external buffers through the shared file helpers.
+	doc := new(gltf.Document)
+	if err := gltf.NewDecoder(f).Decode(doc); err != nil {
+		return nil, fmt.Errorf("failed to decode gltf from file '%s': %w", filepath, err)
+	}
+	for _, buffer := range doc.Buffers {
+		if buffer.URI == "" || buffer.IsEmbeddedResource() {
+			continue
+		}
+		uri := buffer.URI
+		if err := LoadFile(&uri, []string{filepath}, "", func(filename string) error {
+			f, err := OpenFile(filename)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+			buffer.Data, err = io.ReadAll(io.LimitReader(f, int64(buffer.ByteLength)))
+			return err
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	var images = make([]image.Image, 0, len(doc.Images))
