@@ -608,14 +608,14 @@ type HitDef struct {
 	guarddamage                int32
 	pausetime                  [2]int32
 	guard_pausetime            [2]int32
-	sparkno                    [8]int32
-	sparkno_ffx                [8]string
-	sparkangle                 [8]float32
-	sparkscale                 [8][2]float32
-	guard_sparkno              [8]int32
-	guard_sparkno_ffx          [8]string
-	guard_sparkangle           [8]float32
-	guard_sparkscale           [8][2]float32
+	sparkno                    int32
+	sparkno_ffx                string
+	sparkangle                 float32
+	sparkscale                 [2]float32
+	guard_sparkno              int32
+	guard_sparkno_ffx          string
+	guard_sparkangle           float32
+	guard_sparkscale           [2]float32
 	sparkxy                    [2]float32
 	hitsound                   [2]int32
 	hitsound_channel           int32
@@ -751,12 +751,22 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		priority:           4,
 		prioritytype:       TT_Hit,
 
+		sparkno:            c.gi().data.sparkno,
+		sparkno_ffx:        "f",
+		sparkangle:         0,
+		sparkscale:         [2]float32{1, 1},
+		guard_sparkno:      c.gi().data.guard.sparkno,
+		guard_sparkno_ffx:  "f",
+		guard_sparkangle:   0,
+		guard_sparkscale:   [2]float32{1, 1},
+
 		hitsound:           [2]int32{-1, 0},
 		hitsound_channel:   c.gi().data.hitsound_channel,
 		hitsound_ffx:       "f",
 		guardsound:         [2]int32{-1, 0},
 		guardsound_channel: c.gi().data.guardsound_channel,
 		guardsound_ffx:     "f",
+
 		ground_type:        HT_High,
 		air_type:           HT_Unknown,
 		air_hittime:        20,
@@ -842,22 +852,6 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		reversal_guardflag:     IErr,
 		reversal_guardflag_not: IErr,
 	}
-
-	// Reset sparks
-	for i := 0; i < 8; i++ {
-		hd.sparkno[i] = -1
-		hd.sparkno_ffx[i] = "f"
-		hd.sparkangle[i] = 0
-		hd.sparkscale[i] = [2]float32{1, 1}
-		hd.guard_sparkno[i] = -1
-		hd.guard_sparkno_ffx[i] = "f"
-		hd.guard_sparkangle[i] = 0
-		hd.guard_sparkscale[i] = [2]float32{1, 1}
-	}
-
-	// Set defaults for the first spark
-	hd.sparkno[0] = c.gi().data.sparkno
-	hd.guard_sparkno[0] = c.gi().data.guard.sparkno
 
 	// Clear the char's HitDef targets
 	if proj == nil {
@@ -11664,13 +11658,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 
 	// Play hit sounds and create sparks
 	if Abs(hitResult) == 1 {
-		// Spawn all defined hit sparks
-		for i := range hd.sparkno {
-			if hd.sparkno[i] < 0 {
-				continue
-			}
-			c.hitspark(getter, proj, hd.sparkno[i], hd.sparkno_ffx[i], hd.sparkangle[i], hd.sparkscale[i])
-		}
+		// Spawn hit spark
+		c.hitspark(getter, proj, hd.sparkno, hd.sparkno_ffx, hd.sparkangle, hd.sparkscale)
 		// Play hit sound
 		if hd.hitsound[0] >= 0 && hd.hitsound[1] >= 0 {
 			params := newPlaySndParams()
@@ -11684,13 +11673,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			c.playSound(params)
 		}
 	} else {
-		// Spawn all defined guard sparks
-		for i := range hd.guard_sparkno {
-			if hd.guard_sparkno[i] < 0 {
-				continue
-			}
-			c.hitspark(getter, proj, hd.guard_sparkno[i], hd.guard_sparkno_ffx[i], hd.guard_sparkangle[i], hd.guard_sparkscale[i])
-		}
+		// Spawn guard spark
+		c.hitspark(getter, proj, hd.guard_sparkno, hd.guard_sparkno_ffx, hd.guard_sparkangle, hd.guard_sparkscale)
 		// Play guard sound
 		if hd.guardsound[0] >= 0 && hd.guardsound[1] >= 0 {
 			params := newPlaySndParams()

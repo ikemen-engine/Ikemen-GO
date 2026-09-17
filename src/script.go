@@ -9215,7 +9215,7 @@ func triggerFunctions(l *lua.LState) {
 		case "guard.shaketime":
 			l.Push(lua.LNumber(c.hitdef.guard_pausetime[1]))
 		case "guard.sparkno":
-			l.Push(lua.LNumber(c.hitdef.guard_sparkno[0]))
+			l.Push(lua.LNumber(c.hitdef.guard_sparkno))
 		case "guarddamage":
 			l.Push(lua.LNumber(c.hitdef.guarddamage))
 		case "guardflag":
@@ -9245,7 +9245,7 @@ func triggerFunctions(l *lua.LState) {
 		case "shaketime":
 			l.Push(lua.LNumber(c.hitdef.pausetime[1]))
 		case "sparkno":
-			l.Push(lua.LNumber(c.hitdef.sparkno[0]))
+			l.Push(lua.LNumber(c.hitdef.sparkno))
 		case "sparkx":
 			l.Push(lua.LNumber(c.hitdef.sparkxy[0]))
 		case "sparky":
