@@ -242,7 +242,7 @@ menu.t_itemname = {
 	--Character Change
 	['characterchange'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
-			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
+			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
 			--togglePause(false)
 			endMatch()
 			start.characterchange = true
@@ -254,7 +254,7 @@ menu.t_itemname = {
 	--Exit
 	['exit'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
-			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
+			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
 			--togglePause(false)
 			endMatch()
 			start.exit = true

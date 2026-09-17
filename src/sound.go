@@ -889,9 +889,9 @@ func (s *Snd) Get(gn [2]int32) *Sound {
 	return s.table[gn]
 }
 
-func (s *Snd) play(gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int) bool {
+func (s *Snd) play(gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int, keepOnMatchEnd ...bool) bool {
 	sound := s.Get(gn)
-	return sys.soundChannels.Play(sound, gn[0], gn[1], volumescale, pan, loopstart, loopend, startposition)
+	return sys.soundChannels.Play(sound, gn[0], gn[1], volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd...)
 }
 
 func (s *Snd) stop(gn [2]int32) {
@@ -984,6 +984,7 @@ type SoundChannel struct {
 	timeStamp          int32
 	volResume          float32 // For pausing/unpausing
 	pauseVolumeApplied bool
+	keepOnMatchEnd     bool
 }
 
 // The old Stop() plus more
@@ -1009,6 +1010,7 @@ func (s *SoundChannel) Reset() {
 
 	s.volResume = 0
 	s.pauseVolumeApplied = false
+	s.keepOnMatchEnd = false
 }
 
 func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul float32, loopStart, loopEnd, startPosition int) {
@@ -1290,7 +1292,7 @@ func (s *SoundChannels) Get(pid int32, ch int32) *SoundChannel {
 	return nil
 }
 
-func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan float32, loopStart, loopEnd, startPosition int) bool {
+func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan float32, loopStart, loopEnd, startPosition int, keepOnMatchEnd ...bool) bool {
 	if sound == nil {
 		return false
 	}
@@ -1299,6 +1301,7 @@ func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan
 		return false
 	}
 	c.Play(sound, group, number, 0, 1.0, loopStart, loopEnd, startPosition)
+	c.keepOnMatchEnd = len(keepOnMatchEnd) > 0 && keepOnMatchEnd[0]
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 0, nil)
 	return true
