@@ -6926,7 +6926,8 @@ func systemScriptInit(l *lua.LState) {
 		@tparam[opt=0] int loopstart Loop start position.
 		@tparam[opt=0] int loopend Loop end position.
 		@tparam[opt=0] int startposition Start position.
-		function sndPlay(snd, group, number, volumescale, pan, loopstart, loopend, startposition) end*/
+		@tparam[opt=false] boolean keepOnMatchEnd Let this playback finish across the next match-exit cleanup. Explicit sound stops still apply.
+		function sndPlay(snd, group, number, volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd) end*/
 		s, ok := toUserData(l, 1).(*Snd)
 		if !ok {
 			userDataError(l, 1, s)
@@ -6949,7 +6950,11 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 8) {
 			startposition = int(numArg(l, 8))
 		}
-		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale, pan, loopstart, loopend, startposition)
+		keepOnMatchEnd := false
+		if !nilArg(l, 9) {
+			keepOnMatchEnd = boolArg(l, 9)
+		}
+		s.play([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))}, volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd)
 		return 0
 	})
 	luaRegister(l, "sndPlaying", func(*lua.LState) int {

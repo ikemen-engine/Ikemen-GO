@@ -2320,6 +2320,14 @@ func (s *System) restoreAllVolume() {
 }
 
 func (s *System) clearMatchSound() {
+	// Only explicitly marked sounds may outlive the match.
+	for i := range s.soundChannels {
+		ch := &s.soundChannels[i]
+		if !ch.keepOnMatchEnd {
+			ch.Reset()
+		}
+		ch.keepOnMatchEnd = false
+	}
 	s.clearAllCharSounds()
 	// Quiesce stage videos so no background decoding continues while mixer is empty,
 	// and mark them as detached so SetPlaying(true) can re-attach next frame.
