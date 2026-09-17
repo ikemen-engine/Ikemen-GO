@@ -212,10 +212,10 @@ type RenderParams struct {
 	mask           int32 // Mask for transparency
 	pfx            *PalFX
 	window         *[4]int32
-	rcx, rcy       float32 // Rotation center
+	rcx, rcy       float32    // Rotation center
 	rcOffset       [2]float32 // Offset for rotation center (AngleDraw pivot)
-	projectionMode int32   // Perspective projection
-	fLength        float32 // Focal length
+	projectionMode int32      // Perspective projection
+	fLength        float32    // Focal length
 	xOffset        float32
 	yOffset        float32
 	shader         string

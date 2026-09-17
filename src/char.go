@@ -737,28 +737,28 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 	}
 
 	*hd = HitDef{
-		isprojectile:       proj != nil,
-		statePN:            -1,
-		playerno:           -1,
-		playerid:           -1,
-		projid:             -1,
-		hitflag:            int32(HF_H | HF_L | HF_A | HF_F),
-		guardflag:          0,
-		affectteam:         1,
-		teamside:           c.teamside,
-		animtype:           RA_Light,
-		air_animtype:       RA_Unknown,
-		priority:           4,
-		prioritytype:       TT_Hit,
+		isprojectile: proj != nil,
+		statePN:      -1,
+		playerno:     -1,
+		playerid:     -1,
+		projid:       -1,
+		hitflag:      int32(HF_H | HF_L | HF_A | HF_F),
+		guardflag:    0,
+		affectteam:   1,
+		teamside:     c.teamside,
+		animtype:     RA_Light,
+		air_animtype: RA_Unknown,
+		priority:     4,
+		prioritytype: TT_Hit,
 
-		sparkno:            c.gi().data.sparkno,
-		sparkno_ffx:        "f",
-		sparkangle:         0,
-		sparkscale:         [2]float32{1, 1},
-		guard_sparkno:      c.gi().data.guard.sparkno,
-		guard_sparkno_ffx:  "f",
-		guard_sparkangle:   0,
-		guard_sparkscale:   [2]float32{1, 1},
+		sparkno:           c.gi().data.sparkno,
+		sparkno_ffx:       "f",
+		sparkangle:        0,
+		sparkscale:        [2]float32{1, 1},
+		guard_sparkno:     c.gi().data.guard.sparkno,
+		guard_sparkno_ffx: "f",
+		guard_sparkangle:  0,
+		guard_sparkscale:  [2]float32{1, 1},
 
 		hitsound:           [2]int32{-1, 0},
 		hitsound_channel:   c.gi().data.hitsound_channel,
@@ -767,10 +767,10 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		guardsound_channel: c.gi().data.guardsound_channel,
 		guardsound_ffx:     "f",
 
-		ground_type:        HT_High,
-		air_type:           HT_Unknown,
-		air_hittime:        20,
-		down_hittime:       20, // Not documented in Mugen docs
+		ground_type:  HT_High,
+		air_type:     HT_Unknown,
+		air_hittime:  20,
+		down_hittime: 20, // Not documented in Mugen docs
 
 		guard_pausetime:   [2]int32{IErr, IErr},
 		guard_hittime:     IErr,
@@ -10884,7 +10884,7 @@ func (c *Char) hittableByChar(getter *Char, ghd *HitDef, gst StateType, proj boo
 func (c *Char) hitspark(getter *Char, proj *Projectile, animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
 
 	// Compute target edges
-	getterBase := getter.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+	getterBase := getter.baseSizeBox()      // Ignore width/height modifiers. Maybe we shouldn't?
 	getterScale := getter.sizeBoxScale()[0] // Used to convert the box to world coordinate space
 	getterFront := getterBase[2] * getterScale
 	getterBack := -getterBase[0] * getterScale
@@ -10912,7 +10912,7 @@ func (c *Char) hitspark(getter *Char, proj *Projectile, animNo int32, ffx string
 	if proj != nil {
 		sparkWorld[0] = getter.pos[0]*getter.localscl + getterEdge*getter.facing - proj.hitdef.sparkxy[0]*proj.facing*proj.localscl
 		sparkWorld[1] = (proj.pos[1] + proj.hitdef.sparkxy[1]) * proj.localscl
-		sparkWorld[2] = getter.pos[2]*getter.localscl
+		sparkWorld[2] = getter.pos[2] * getter.localscl
 	} else {
 		if c.hitdef.reversal_attr > 0 {
 			// ReversalDef spark offset
@@ -10920,7 +10920,7 @@ func (c *Char) hitspark(getter *Char, proj *Projectile, animNo int32, ffx string
 			// The X parameter is calculated from the performer's position, while the Y parameter is indeed an offset from the enemy's sparkxy
 			// TODO: Maybe ikemenversion could adjust this one to be as documented?
 			sparkWorld[0] = (c.pos[0] + c.hitdef.sparkxy[0]*c.facing) * c.localscl
-			sparkWorld[1] = (getter.pos[1] + getter.hitdef.sparkxy[1]) * getter.localscl + c.hitdef.sparkxy[1] * c.localscl
+			sparkWorld[1] = (getter.pos[1]+getter.hitdef.sparkxy[1])*getter.localscl + c.hitdef.sparkxy[1]*c.localscl
 			sparkWorld[2] = c.pos[2] * c.localscl
 		} else {
 			// Regular HitDef
@@ -13031,7 +13031,7 @@ func (c *Char) cueDraw() {
 
 		if c.csf(CSF_angledraw) {
 			rot = c.rot
-			rotPivot = [2]float32{c.angleDrawPivot[0]*c.localscl, c.angleDrawPivot[1]*c.localscl}
+			rotPivot = [2]float32{c.angleDrawPivot[0] * c.localscl, c.angleDrawPivot[1] * c.localscl}
 			if c.facing < 0 {
 				rot.angle *= -1
 				rot.yangle *= -1

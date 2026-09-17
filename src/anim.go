@@ -998,7 +998,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 				y -= float32(int(y/space)) * space
 			}
 		}
-		rcx = rcx*sys.widthScale
+		rcx = rcx * sys.widthScale
 		rcy = 0
 		x = -x + Abs(xs)*float32(a.spr.Offset[0])
 		y = -y + Abs(ys)*float32(a.spr.Offset[1])
@@ -1010,7 +1010,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		fLength *= ycs
 	}
 
-    rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
+	rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
 
 	blendMode, blendAlpha := a.alphaToBlend()
 
