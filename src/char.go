@@ -1509,42 +1509,47 @@ func (ai *AfterImage) setPalContrastB(mulb int32) {
 }
 
 // Set up every frame in advance
+// Bytecode already validated the parameters at this point, so we can grab them directly
 func (ai *AfterImage) setup(c *Char) {
-	// Check if length is allowed
-	if ai.length < 0 {
-		sys.appendToConsole(c.warn() + "AfterImage length must be positive")
-		ai.length = 0
-	}
-	if ai.length > MaxAimgLength {
-		sys.appendToConsole(c.warn() + fmt.Sprintf("AfterImage length exceeds the maximum of %v", MaxAimgLength))
-		ai.length = MaxAimgLength
-	}
-
-	need := int(ai.length)
-	if need <= 0 {
+	if ai.length <= 0 {
 		return
 	}
 
+	// Determine size to use for the image ring buffer
+	// Mugen's buffer holds exactly "length" frames, so the last slot can't be sampled without wrapping into the first
+	// Ikemen uses one extra slot so that all intended afterimages are visible
+	ringSize := int(ai.length)+1
+	if c.stOgi().ikemenver[0] == 0 && c.stOgi().ikemenver[1] == 0 {
+		ringSize = int(ai.length)
+	}
+
 	// Resize image buffer
-	if len(ai.imgs) < need {
-		ai.imgs = append(ai.imgs, make([]SpriteData, need-len(ai.imgs))...)
+	if len(ai.imgs) < ringSize {
+		ai.imgs = append(ai.imgs, make([]SpriteData, ringSize-len(ai.imgs))...)
 	} else {
-		ai.imgs = ai.imgs[:need]
+		ai.imgs = ai.imgs[:ringSize]
 	}
 
 	// Clamp imgidx in case AfterImage was modified while live
 	// Only ModifyExplod/Projectile can this. Char always rebuilds afterimages
 	ai.imgidx = Clamp(ai.imgidx, 0, int32(len(ai.imgs))-1)
 
+	// PalFX is indexed by visible afterimage index, not by the same buffer slots
+	// So we only need to allocate for what will be visible
+	pfxsize := int(ai.length) / int(ai.framegap)
+	if pfxsize < 1 {
+		pfxsize = 1
+	}
+
 	// Resize PalFX buffer
-	if len(ai.palfx) < need {
+	if len(ai.palfx) < pfxsize {
 		base := ai.palfx[0]
-		for len(ai.palfx) < need {
+		for len(ai.palfx) < pfxsize {
 			p := *base
 			ai.palfx = append(ai.palfx, &p)
 		}
 	} else {
-		ai.palfx = ai.palfx[:need]
+		ai.palfx = ai.palfx[:pfxsize]
 	}
 
 	// Setup PalFX
@@ -1676,22 +1681,53 @@ func (ai *AfterImage) isActive() bool {
 }
 
 func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause bool) {
-	// Mugen wastes a slot on the current (0th) frame
-	// Ikemen deliberately doesn't, so the afterimage length can turn out 1 frame longer than in Mugen
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/1053
-	usable := Min(ai.reccount, int32(len(ai.imgs)), ai.length)
-	end := (usable / ai.framegap) * ai.framegap
+	cgi := sys.chars[playerNo][0].stOgi()
+	oldVer := cgi.ikemenver[0] == 0 && cgi.ikemenver[1] == 0
 
-	// Cue afterimage frames from the history buffer at every framegap interval
-	for i := ai.framegap; i <= end; i += ai.framegap {
-		// Respect AfterImageMax
+	ringsize := int32(len(ai.imgs))
+	if ringsize <= 0 || ai.framegap <= 0 {
+		return
+	}
+
+	// Record first
+	if rec || (hitpause && ai.ignorehitpause) {
+		ai.recAfterImg(sd, hitpause)
+	}
+
+	// Usable past frames
+	// Mugen samples one entry closer to the current frame, so its images appear sooner and fewer of them fit in the buffer
+	// For instance, "length=12, framegap=3" results in 3 images at ticks 2, 5 and 8
+	// Mugen characters reproduce this off by 1 bug
+	// Ikemen characters just works as expected and have images at ticks 3, 6, 9 and 12
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1053
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1227
+	usable := Min(ai.reccount-1, ai.length)
+	if oldVer {
+		usable = Min(ai.reccount, ai.length-1)
+	}
+	if usable < 0 {
+		usable = 0
+	}
+	maxSteps := usable / ai.framegap
+
+	for step := int32(0); step < maxSteps; step++ {
 		if sys.afterImageCount[playerNo] >= sys.cfg.Config.AfterImageMax {
 			break
 		}
 
-		// Retrieve history
-		ringsize := int32(len(ai.imgs))
-		img := &ai.imgs[(ai.imgidx-i+ringsize)%ringsize]
+		// Offset from the newest history entry, in recorded frames
+		i := (step + 1) * ai.framegap
+
+		idx := ai.imgidx - i - 1
+		if oldVer {
+			// Mugen samples one slot closer to the current frame
+			idx++
+		}
+		idx %= ringsize
+		if idx < 0 {
+			idx += ringsize
+		}
+		img := &ai.imgs[idx]
 
 		// Avoid layering the afterimage on top of the char
 		if img.priority >= sd.priority {
@@ -1699,8 +1735,7 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 		}
 
 		if ai.time < 0 || (ai.timecount/ai.timegap-i) < (ai.time-2)/ai.timegap+1 {
-			step := i/ai.framegap - 1
-			if step < 0 || step >= int32(len(ai.palfx)) {
+			if step >= int32(len(ai.palfx)) {
 				continue
 			}
 
@@ -1723,14 +1758,6 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 
 			// Note: Afterimages don't cast shadows or reflections
 		}
-	}
-
-	// Moving this block before the loop would fix https://github.com/ikemen-engine/Ikemen-GO/issues/1227
-	// But that is less efficient because then "framegap = 1" afterimages would duplicate the current frame of the character
-	// Ikemen's way is also truer to Mugen's documentation:
-	// "The character's frames are stored in a history buffer, and are displayed *after a delay* as afterimages."
-	if rec || hitpause && ai.ignorehitpause {
-		ai.recAfterImg(sd, hitpause)
 	}
 }
 

@@ -7689,11 +7689,28 @@ func (sc afterImage) runSub(c, crun *Char, ai *AfterImage, paramID byte, exp []B
 	case afterImage_time:
 		ai.time = exp[0].evalI(c)
 	case afterImage_length:
-		ai.length = exp[0].evalI(c)
+		v := exp[0].evalI(c)
+		if v < 0 {
+			sys.appendToConsole(crun.warn() + "AfterImage length must be positive")
+		} else if v > MaxAimgLength {
+			sys.appendToConsole(crun.warn() + fmt.Sprintf("AfterImage length exceeds the maximum of %v", MaxAimgLength))
+			v = MaxAimgLength
+		}
+		ai.length = v
 	case afterImage_timegap:
-		ai.timegap = Max(1, exp[0].evalI(c))
+		v := exp[0].evalI(c)
+		if v < 1 {
+			sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid AfterImage timegap: %d", v))
+		} else {
+			ai.timegap = v
+		}
 	case afterImage_framegap:
-		ai.framegap = exp[0].evalI(c)
+		v := exp[0].evalI(c)
+		if v < 1 {
+			sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid AfterImage framegap: %d", v))
+		} else {
+			ai.framegap = v
+		}
 	case afterImage_palcolor:
 		ai.setPalColor(exp[0].evalI(c))
 	case afterImage_palhue:
