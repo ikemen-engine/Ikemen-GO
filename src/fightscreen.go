@@ -669,7 +669,7 @@ func (lb *LifeBar) step(charpn int, lbr *LifeBar) {
 }
 
 func (lb *LifeBar) reset() {
-	for _, layouts := range []map[int32]*AnimLayout{lb.bg0, lb.bg1, lb.bg2} {
+	for _, layouts := range []map[float32]*AnimLayout{lb.bg0, lb.bg1, lb.bg2} {
 		for i := range layouts {
 			layouts[i].Reset()
 		}
