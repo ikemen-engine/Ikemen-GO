@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - src/script.go
-      - build/wiki/generate_script_wiki.py
+      - .github/scripts/generate_script_wiki.py
       - .github/workflows/update-script-wiki.yml
   workflow_dispatch:
 
@@ -49,7 +49,7 @@ jobs:
 
       - name: Update Lua wiki page
         run: |
-          python build/wiki/generate_script_wiki.py \
+          python .github/scripts/generate_script_wiki.py \
             --source src/script.go \
             --wiki-page "wiki/${WIKI_PAGE}"
 

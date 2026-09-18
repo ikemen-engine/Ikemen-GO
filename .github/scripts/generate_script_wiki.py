@@ -7,8 +7,11 @@ Patches the existing wiki page in place:
 - Trigger Redirection names from triggerRedirection()
 - Trigger Functions names from triggerFunctions()
 
+Function signatures are synthesised from the `@function` name and the ordered
+`@tparam` tags.
+
 Example:
-    python3 build/wiki/generate_script_wiki.py \
+    python3 .github/scripts/generate_script_wiki.py \
       --source src/script.go \
       --wiki-page wiki/Lua.md
 """
@@ -74,7 +77,6 @@ class DelimiterError(ValueError):
 
 
 REGISTER_NAME_RE = re.compile(r'luaRegister\s*\(\s*l\s*,\s*"([^"]+)"\s*,', re.S)
-SIGNATURE_RE = re.compile(r'function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\((.*?)\)\s*end', re.S)
 TAG_RE = re.compile(r'^@(?P<tag>[A-Za-z_][A-Za-z0-9_]*)(?:\[(?P<modifier>[^\]]+)\])?\s+(?P<rest>.*)$')
 
 
@@ -359,11 +361,11 @@ def parse_registered_function(call_text: str) -> RegisteredFunction:
 
     raw_docblock = docblock_match.group(1)
     entry.docblock = raw_docblock
-    summary, signature, params, returns = parse_docblock(raw_docblock)
+    summary, func_name, params, returns = parse_docblock(raw_docblock)
     entry.summary = summary
-    entry.signature = signature
     entry.params = params
     entry.returns = returns
+    entry.signature = build_signature(func_name or name, params)
     return entry
 
 
@@ -373,7 +375,7 @@ def parse_docblock(docblock: str) -> Tuple[str, Optional[str], List[ParamDoc], L
 
     summary_lines: List[str] = []
     tag_lines: List[str] = []
-    signature: Optional[str] = None
+    func_name: Optional[str] = None
     current_tag: Optional[str] = None
 
     for raw_line, line in zip(lines, cleaned_lines):
@@ -384,10 +386,6 @@ def parse_docblock(docblock: str) -> Tuple[str, Optional[str], List[ParamDoc], L
                     summary_lines.append("")
             else:
                 current_tag += "\n"
-            continue
-
-        if line.startswith("function ") and line.endswith(" end"):
-            signature = line[len("function ") : -len(" end")].strip()
             continue
 
         if line.startswith("@"):
@@ -446,15 +444,18 @@ def parse_docblock(docblock: str) -> Tuple[str, Optional[str], List[ParamDoc], L
                     description=description,
                 )
             )
-        elif tag.tag == "function" and signature is None:
-            signature = tag.raw
+        elif tag.tag == "function" and func_name is None:
+            func_name = normalize_inline_text(tag.raw)
 
-    if signature is None:
-        sig_match = SIGNATURE_RE.search(docblock)
-        if sig_match:
-            signature = f"{sig_match.group(1)}({normalize_inline_text(sig_match.group(2))})"
+    return summary, func_name, params, returns
 
-    return summary, signature, params, returns
+
+def build_signature(func_name: Optional[str], params: List[ParamDoc]) -> Optional[str]:
+    """Synthesise a Lua usage line from the @function name and @tparam order."""
+    if not func_name:
+        return None
+    names = [param.name for param in params if param.name]
+    return f"{func_name}({', '.join(names)})"
 
 
 def split_param_doc(raw: str) -> Tuple[str, str, str]:
