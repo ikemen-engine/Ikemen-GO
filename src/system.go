@@ -358,6 +358,9 @@ type System struct {
 
 	// screenshot deferral
 	isTakingScreenshot bool
+	screenshotInFlight bool
+	screenshotSize     [2]int
+	screenshotFile     string
 
 	// keepAlive profiling (debug only)
 	keepAliveProfile bool
@@ -877,10 +880,25 @@ func (s *System) await(fps int) bool {
 			gfx.Await()
 		}
 		s.window.UpdateDebugFPS()
-		if s.isTakingScreenshot {
-			defer captureScreen()
-			s.isTakingScreenshot = false
+
+		if s.screenshotInFlight || s.isTakingScreenshot {
+			defer func() {
+				if s.screenshotInFlight {
+					size, file := s.screenshotSize, s.screenshotFile
+					data := make([]uint8, 4*size[0]*size[1])
+					if gfx.FinishScreenshot(data, size[0], size[1]) {
+						s.screenshotInFlight = false
+						SafeGo(func() { saveScreenshot(data, size[0], size[1], file) })
+					}
+				}
+				if s.isTakingScreenshot && !s.screenshotInFlight {
+					s.isTakingScreenshot = false
+					requestScreenshot()
+					s.screenshotInFlight = true
+				}
+			}()
 		}
+
 		// Begin the next frame after events have been processed. Do not clear
 		// the screen if network input is present.
 		defer gfx.BeginFrame(sys.netConnection == nil)

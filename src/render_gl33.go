@@ -500,6 +500,9 @@ type Renderer_GL33 struct {
 	modelEnvVAO             uint32
 	postVAO                 uint32
 	vertexBufferCapacity    int
+	capturePBO              uint32 // For async screenshots
+	capturePBOSize          int
+	capturePending          bool
 
 	grabTexture  *Texture_GL33
 	grabFbo      uint32
@@ -1831,6 +1834,37 @@ func (r *Renderer_GL33) ReadPixels(data []uint8, width, height int) {
 	// a single spot in order to prevent the blank screenshot bug on single digit FPS
 	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
 	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(&data[0]))
+}
+
+func (r *Renderer_GL33) BeginScreenshot(width, height int) {
+	if r.capturePBO == 0 {
+		gl.GenBuffers(1, &r.capturePBO)
+	}
+	r.bindBuffer(gl.PIXEL_PACK_BUFFER, r.capturePBO)
+	size := 4 * width * height
+	if r.capturePBOSize != size {
+		gl.BufferData(gl.PIXEL_PACK_BUFFER, size, nil, gl.STREAM_READ)
+		r.capturePBOSize = size
+	}
+	gl.BindFramebuffer(gl.READ_FRAMEBUFFER, 0)
+	// with a PBO bound, the last arg is an offset into the buffer, not a pointer
+	gl.ReadPixels(0, 0, int32(width), int32(height), gl.RGBA, gl.UNSIGNED_BYTE, unsafe.Pointer(nil))
+	r.bindBuffer(gl.PIXEL_PACK_BUFFER, 0)
+	r.capturePending = true
+}
+
+func (r *Renderer_GL33) FinishScreenshot(data []uint8, width, height int) bool {
+	if !r.capturePending || len(data) < 4*width*height {
+		return false
+	}
+	r.bindBuffer(gl.PIXEL_PACK_BUFFER, r.capturePBO)
+	if p := gl.MapBuffer(gl.PIXEL_PACK_BUFFER, gl.READ_ONLY); p != nil {
+		copy(data, (*[1 << 30]byte)(p)[:4*width*height])
+		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
+	}
+	r.bindBuffer(gl.PIXEL_PACK_BUFFER, 0)
+	r.capturePending = false
+	return true
 }
 
 func (r *Renderer_GL33) EnableScissor(x, y, width, height int32) {

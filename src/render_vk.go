@@ -7384,7 +7384,8 @@ func (r *Renderer_VK) ReleaseModelPipeline() {
 
 func (r *Renderer_VK) ReadPixels(data []uint8, width, height int) {
 	//Make sure the rendering is finished
-	vk.WaitForFences(r.device, 1, r.fences[:1], vk.True, 10*1000*1000*1000)
+	//vk.WaitForFences(r.device, 1, r.fences[:1], vk.True, 10*1000*1000*1000)
+	vk.QueueWaitIdle(r.queue)
 	cmd := r.BeginSingleTimeCommands()
 
 	// Create intermediate image with optimal tiling for blitting
@@ -7532,6 +7533,15 @@ func (r *Renderer_VK) ReadPixels(data []uint8, width, height int) {
 	vk.FreeMemory(r.device, stagingBufferMemory, nil)
 	vk.DestroyImage(r.device, intermediateImg, nil)
 	r.allocator.FreeImageAllocation(intermediateImg, intermediateAlloc)
+}
+
+func (r *Renderer_VK) BeginScreenshot(width, height int) {
+	// Do nothing. Only GL needs this split
+}
+
+func (r *Renderer_VK) FinishScreenshot(data []uint8, width, height int) bool {
+	r.ReadPixels(data, width, height)
+	return true
 }
 
 func (r *Renderer_VK) EnableScissor(x, y, width, height int32) {

@@ -140,7 +140,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 			}
 		}
 		if key == KeyF12 {
-			captureScreen()
+			sys.isTakingScreenshot = true
 		}
 		if !sys.netplay() && key == StringToKeyLUT[sys.motif.AttractMode.Credits.KeyCode] && sys.credits != -1 {
 			sys.credits += 1

@@ -2256,24 +2256,9 @@ func (s *Sff) cloneSpriteWithPal(g, n uint16, pl *PaletteList) *Sprite {
 	return &osp
 }
 
-func captureScreen() {
-	width, height := sys.window.GetSize()
-	pixdata := make([]uint8, 4*width*height)
-	img := image.NewNRGBA(image.Rect(0, 0, width, height))
-	gfx.ReadPixels(pixdata, width, height)
-	for i := 0; i < 4*width*height; i++ {
-		j := i
-		if gfx.GetName() != "Vulkan 1.3.239" {
-			var x, y int
-			x = i % (width * 4)
-			y = i / (width * 4)
-			j = x + (height-1-y)*width*4
-		}
-		if i%4 == 3 {
-			pixdata[i] = 255 // Set the alpha value to 255
-		}
-		img.Pix[j] = pixdata[i]
-	}
+func requestScreenshot() {
+	var size [2]int
+	size[0], size[1] = sys.window.GetSize()
 
 	// Sanitize WindowTitle for use in filenames
 	re := regexp.MustCompile(`[<>:"/\\|?*]`)
@@ -2284,14 +2269,54 @@ func captureScreen() {
 		safeTitle = "ikemen"
 	}
 
+	filename := ""
 	for i := sys.captureNum; i < 999; i++ {
-		filename := fmt.Sprintf("%s%s%03d.png", sys.cfg.Config.ScreenshotFolder, safeTitle, i)
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			file, _ := os.Create(filename)
-			defer file.Close()
-			png.Encode(file, img)
-			sys.captureNum = i
+		candidate := fmt.Sprintf("%s%s%03d.png", sys.cfg.Config.ScreenshotFolder, safeTitle, i)
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			sys.captureNum = i + 1
+			filename = candidate
 			break
 		}
 	}
+	if filename == "" {
+		return
+	}
+
+	sys.screenshotSize = size
+	sys.screenshotFile = filename
+	gfx.BeginScreenshot(size[0], size[1])
+}
+
+// Worker goroutine. No GL calls, no sys.captureNum access.
+func saveScreenshot(data []uint8, width, height int, filename string) {
+	img := image.NewNRGBA(image.Rect(0, 0, width, height))
+
+	// GL returns rows bottom-up; Go images are top-down
+	// Vulkan hands back top-down already, so it doesn't need the flip
+	rowBytes := width * 4
+	if gfx.GetName() == "Vulkan 1.3.239" {
+		copy(img.Pix, data)
+	} else {
+		for y := 0; y < height; y++ {
+			src := data[(height-1-y)*rowBytes : (height-y)*rowBytes]
+			dst := img.Pix[y*rowBytes : (y+1)*rowBytes]
+			copy(dst, src)
+		}
+	}
+
+	// Force the alpha channel opaque in a single linear pass
+	// Previously this loop ran for each pixel on screen
+	for i := 3; i < len(img.Pix); i += 4 {
+		img.Pix[i] = 255
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		LogMessage("Screenshot save failed: %v", err)
+		return
+	}
+	if err := png.Encode(file, img); err != nil {
+		LogMessage("Screenshot encode failed: %v", err)
+	}
+	file.Close()
 }

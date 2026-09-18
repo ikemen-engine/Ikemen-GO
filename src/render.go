@@ -58,6 +58,9 @@ type Renderer interface {
 	newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) (t Texture, err error)
 
 	ReadPixels(data []uint8, width, height int)
+	BeginScreenshot(width, height int)
+	FinishScreenshot(data []uint8, width, height int) bool
+
 	EnableScissor(x, y, width, height int32)
 	DisableScissor()
 
