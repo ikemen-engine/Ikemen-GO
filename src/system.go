@@ -280,7 +280,8 @@ type System struct {
 	debugc2grd          DebugClsn
 	debugc2stb          DebugClsn
 	debugcsize          DebugClsn
-	debugch             DebugClsn
+	debugcdummy         DebugClsn
+	debugcross          DebugClsn
 	debugAccel          float32
 	clsnSpr             Sprite
 	clsnDisplay         bool
@@ -2080,13 +2081,16 @@ func (s *System) posZtoYoffset(zpos, localscl float32) float32 {
 // Z axis check
 // Changed to no longer check z enable constant, depends on stage now
 func (s *System) zAxisOverlap(posz1, top1, bot1, localscl1, posz2, top2, bot2, localscl2 float32) bool {
-	if s.zEnabled() {
-		if (posz1+bot1)*localscl1 < (posz2-top2)*localscl2 ||
-			(posz1-top1)*localscl1 > (posz2+bot2)*localscl2 {
-			return false
-		}
+	if !s.zEnabled() {
+		return true
 	}
-	return true
+
+	min1 := (posz1 - top1) * localscl1
+	max1 := (posz1 + bot1) * localscl1
+	min2 := (posz2 - top2) * localscl2
+	max2 := (posz2 + bot2) * localscl2
+
+	return max1 >= min2 && min1 <= max2
 }
 
 func (s *System) clsnOverlap(boxes1 []ClsnFinal, pos1 [2]float32, facing1 float32,
@@ -2744,7 +2748,8 @@ func (s *System) clearSpriteData() {
 	s.debugc2grd.rects = s.debugc2grd.rects[:0]
 	s.debugc2stb.rects = s.debugc2stb.rects[:0]
 	s.debugcsize.rects = s.debugcsize.rects[:0]
-	s.debugch.rects = s.debugch.rects[:0]
+	s.debugcdummy.rects = s.debugcdummy.rects[:0]
+	s.debugcross.rects = s.debugcross.rects[:0]
 	s.debugClsnText = nil
 
 	// Reset afterimage tracker
@@ -3822,8 +3827,10 @@ func (s *System) drawTop() {
 		s.debugc2stb.draw(0xff404040, alpha)
 		// Size
 		s.debugcsize.draw(0xff303030, alpha)
+		// Dummy
+		s.debugcdummy.draw(0xff400040, alpha)
 		// Crosshair
-		s.debugch.draw(0xffffffff, alpha)
+		s.debugcross.draw(0xffffffff, alpha)
 	}
 }
 

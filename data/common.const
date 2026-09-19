@@ -16,8 +16,9 @@ Input.FBFlipEnemyDistance = -1      ; Positive value inverts B and F inputs when
 Input.PauseOnHitPause = 1           ; 1 makes commands be buffered during hit pause. Deprecated. See command parameters
 
 ; Backward compatibility toggles
-Default.LegacyGameDistanceSpec = 1  ; 1 prevents GameWidth/GameHeight from being affected by stage zoom for mugenversion 1.0 chars
-Default.LegacyFallYVelYAccel = 0    ; 1 sets HitDef's fall.yvelocity and yaccel defaults to fixed values, ignoring chars localcoord scaling.
+Legacy.GameDistanceSpec = 1         ; 1 prevents GameWidth/GameHeight from being affected by stage zoom for mugenversion 1.0 chars
+Legacy.FallYVelYAccel = 0           ; 1 sets HitDef's fall.yvelocity and yaccel defaults to fixed values, ignoring chars localcoord scaling.
+Legacy.CornerPushDefaults = -1      ; 0 for Ikemen GO cornerpush defaults. 1 for Mugen defaults. -1 depending on the character's engine version.
 
 ; Rules
 Default.Attack.LifeToPowerMul = 0.7 ; multiplier for power the attacker gets when a normal/special attack successfully hits (overridden by getpower HitDef option)

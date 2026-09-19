@@ -7783,6 +7783,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.anim.totaltime))
 		return 1
 	})
+	luaRegister(l, "animLoopCount", func(*lua.LState) int {
+		if sys.debugWC.anim == nil {
+			l.Push(lua.LNumber(0))
+		} else {
+			l.Push(lua.LNumber(sys.debugWC.anim.loopcount))
+		}
+		return 1
+	})
 	luaRegister(l, "animPlayerNo", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.animPN + 1))
 		return 1
@@ -8604,13 +8612,13 @@ func triggerFunctions(l *lua.LState) {
 		case "hittime":
 			lv = lua.LNumber(c.ghv.hittime)
 		case "stand.friction":
-			sf := c.ghv.standfriction
+			sf := c.ghv.stand_friction
 			if math.IsNaN(float64(sf)) {
 				sf = c.gi().movement.stand.friction
 			}
 			lv = lua.LNumber(sf)
 		case "crouch.friction":
-			cf := c.ghv.crouchfriction
+			cf := c.ghv.crouch_friction
 			if math.IsNaN(float64(cf)) {
 				cf = c.gi().movement.crouch.friction
 			}
@@ -9451,6 +9459,8 @@ func triggerFunctions(l *lua.LState) {
 		c := sys.debugWC
 		var lv lua.LValue
 		switch strings.ToLower(strArg(l, 1)) {
+		case "cornerpush.velmul":
+			lv = lua.LNumber(c.mhv.cornerpush_velmul)
 		case "cornerpush.veloff":
 			lv = lua.LNumber(c.mhv.cornerpush_veloff)
 		case "frame":
@@ -10328,6 +10338,10 @@ func triggerFunctions(l *lua.LState) {
 			switch strings.ToLower(vname) {
 			case "actionno":
 				ln = lua.LNumber(bg.actionno)
+			case "animloopcount":
+				ln = lua.LNumber(bg.anim.loopcount)
+			case "animtime":
+				ln = lua.LNumber(bg.anim.AnimTime())
 			case "delta.x":
 				ln = lua.LNumber(bg.delta[0])
 			case "delta.y":

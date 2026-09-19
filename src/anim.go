@@ -249,6 +249,7 @@ type Animation struct {
 	phantomPixel               bool
 	copyAction                 int32
 	warnMissing                bool
+	loopcount                  int32
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
@@ -465,7 +466,9 @@ func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a
 func (a *Animation) Reset() {
 	a.curelem, a.drawidx = 0, 0
 	a.curelemtime, a.curtime = 0, 0
-	a.newframe, a.loopend = true, false
+	a.newframe = true
+	a.loopend = false
+	a.loopcount = 0
 	a.spr = nil
 }
 
@@ -611,6 +614,7 @@ func (a *Animation) SetAnimElem(elem, elemtime int32) {
 
 	a.newframe = true
 	a.loopend = false
+	a.loopcount = 0
 	a.UpdateSprite()
 
 	a.curtime = 0 // Used within AnimElemTime, so must be set to 0 first
@@ -820,6 +824,7 @@ func (a *Animation) Action() {
 	}
 	if a.totaltime != -1 && a.curtime >= a.totaltime {
 		a.curtime = a.totaltime - a.looptime
+		a.loopcount++
 	}
 	a.curtime++
 	if a.totaltime != -1 && a.curtime >= a.totaltime {

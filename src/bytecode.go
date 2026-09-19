@@ -672,6 +672,7 @@ const (
 	OC_ex_inputtime_w
 	OC_ex_inputtime_m
 	OC_ex_movehitvar_frame
+	OC_ex_movehitvar_cornerpush_velmul
 	OC_ex_movehitvar_cornerpush_veloff
 	OC_ex_movehitvar_overridden
 	OC_ex_movehitvar_playerid
@@ -959,6 +960,8 @@ const (
 	OC_ex2_botbounddist
 	OC_ex2_botboundbodydist
 	OC_ex2_stagebgvar_actionno
+	OC_ex2_stagebgvar_animloopcount
+	OC_ex2_stagebgvar_animtime
 	OC_ex2_stagebgvar_delta_x
 	OC_ex2_stagebgvar_delta_y
 	OC_ex2_stagebgvar_id
@@ -1060,6 +1063,7 @@ const (
 	OC_ex3_hitdefvar_fall_xvelocity
 	OC_ex3_hitdefvar_fall_yvelocity
 	OC_ex3_hitdefvar_fall_zvelocity
+	OC_ex3_animloopcount
 )
 
 type StringPool struct {
@@ -2226,7 +2230,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 0 &&
-				c.gi().constants["default.legacygamedistancespec"] == 1 {
+				c.gi().constants["legacy.gamedistancespec"] == 1 {
 				sys.bcStack.PushF(c.screenHeight())
 			} else {
 				sys.bcStack.PushF(c.gameHeight())
@@ -2236,7 +2240,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_gamewidth:
 			// Optional exception preventing GameWidth from being affected by stage zoom.
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 0 &&
-				c.gi().constants["default.legacygamedistancespec"] == 1 {
+				c.gi().constants["legacy.gamedistancespec"] == 1 {
 				sys.bcStack.PushF(c.screenWidth())
 			} else {
 				sys.bcStack.PushF(c.gameWidth())
@@ -3070,13 +3074,13 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_hittime:
 		sys.bcStack.PushI(c.ghv.hittime)
 	case OC_ex_gethitvar_stand_friction:
-		sf := c.ghv.standfriction
+		sf := c.ghv.stand_friction
 		if math.IsNaN(float64(sf)) {
 			sf = c.gi().movement.stand.friction
 		}
 		sys.bcStack.PushF(sf)
 	case OC_ex_gethitvar_crouch_friction:
-		cf := c.ghv.crouchfriction
+		cf := c.ghv.crouch_friction
 		if math.IsNaN(float64(cf)) {
 			cf = c.gi().movement.crouch.friction
 		}
@@ -3424,6 +3428,8 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_min:
 		v2 := sys.bcStack.Pop()
 		be.min(sys.bcStack.Top(), v2)
+	case OC_ex_movehitvar_cornerpush_velmul:
+		sys.bcStack.PushF(c.mhv.cornerpush_velmul)
 	case OC_ex_movehitvar_cornerpush_veloff:
 		sys.bcStack.PushF(c.mhv.cornerpush_veloff)
 	case OC_ex_movehitvar_frame:
@@ -4152,7 +4158,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_topbounddist:
 		sys.bcStack.PushF(c.topBoundDist() * (c.localscl / oc.localscl))
 	// StageBGVar
-	case OC_ex2_stagebgvar_actionno,
+	case OC_ex2_stagebgvar_actionno, OC_ex2_stagebgvar_animloopcount, OC_ex2_stagebgvar_animtime,
 		OC_ex2_stagebgvar_delta_x, OC_ex2_stagebgvar_delta_y,
 		OC_ex2_stagebgvar_id, OC_ex2_stagebgvar_layerno,
 		OC_ex2_stagebgvar_pos_x, OC_ex2_stagebgvar_pos_y,
@@ -4168,6 +4174,10 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			switch opc {
 			case OC_ex2_stagebgvar_actionno:
 				sys.bcStack.PushI(bg.actionno)
+			case OC_ex2_stagebgvar_animloopcount:
+				sys.bcStack.PushI(bg.anim.loopcount)
+			case OC_ex2_stagebgvar_animtime:
+				sys.bcStack.PushI(bg.anim.AnimTime())
 			case OC_ex2_stagebgvar_delta_x:
 				sys.bcStack.PushF(bg.delta[0])
 			case OC_ex2_stagebgvar_delta_y:
@@ -4423,6 +4433,12 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 			}
 		} else {
 			sys.bcStack.Push(BytecodeUndefined())
+		}
+	case OC_ex3_animloopcount:
+		if c.anim == nil {
+			sys.bcStack.PushI(0)
+		} else {
+			sys.bcStack.PushI(c.anim.loopcount)
 		}
 	default:
 		LogMessage("%v", be[*i-1])
@@ -6361,30 +6377,6 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			tt := TransType(exp[2].evalI(c))
 			e.trans = tt
 			e.alpha = [2]int32{src, dst}
-		/*case explod_trans:
-		e.alpha[0] = exp[0].evalI(c)
-		e.alpha[1] = exp[1].evalI(c)
-		sa, da := e.alpha[0], e.alpha[1]
-
-		if len(exp) >= 3 {
-			e.alpha[0] = Clamp(e.alpha[0], 0, 255)
-			e.alpha[1] = Clamp(e.alpha[1], 0, 255)
-			//if len(exp) >= 4 {
-			//	e.alpha[1] = ^e.alpha[1]
-			//} else if e.alpha[0] == 1 && e.alpha[1] == 255 {
-
-			//Add
-			e.blendmode = 1
-			//Sub
-			if sa == 1 && da == 255 {
-				e.blendmode = 2
-			} else if sa == -1 && da == 0 {
-				e.blendmode = 0
-			}
-			if e.alpha[0] == 1 && e.alpha[1] == 255 {
-				e.alpha[0] = 0
-			}
-		}*/
 		case explod_animelem:
 			e.animelem = exp[0].evalI(c)
 		case explod_animelemtime:
@@ -6953,33 +6945,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 					e.trans = tt
 					e.alpha = [2]int32{src, dst}
 				})
-			/*case explod_trans:
-			s, d := exp[0].evalI(c), exp[1].evalI(c)
-			blendmode := 0
-			if len(exp) >= 3 {
-				s, d = Clamp(s, 0, 255), Clamp(d, 0, 255)
-				//if len(exp) >= 4 {
-				//	d = ^d
-				//} else if s == 1 && d == 255 {
-
-				//Add
-				blendmode = 1
-				//Sub
-				if s == 1 && d == 255 {
-					blendmode = 2
-				} else if s == -1 && d == 0 {
-					blendmode = 0
-				}
-
-				if s == 1 && d == 255 {
-					s = 0
-				}
-
-			}
-			eachExpl(func(e *Explod) {
-				e.alpha = [...]int32{s, d}
-				e.blendmode = int32(blendmode)
-			})*/
 			case explod_anim:
 				if c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0 { // You could not modify this one in Mugen
 					apn := crun.playerNo // Default to own player number
@@ -7516,9 +7481,11 @@ const (
 	hitDef_air_hittime
 	hitDef_fall
 	hitDef_air_fall
+	hitDef_air_cornerpush_velmul
 	hitDef_air_cornerpush_veloff
 	hitDef_down_bounce
 	hitDef_down_velocity
+	hitDef_down_cornerpush_velmul
 	hitDef_down_cornerpush_veloff
 	hitDef_ground_hittime
 	hitDef_guard_hittime
@@ -7537,8 +7504,11 @@ const (
 	hitDef_ground_velocity_y
 	hitDef_ground_velocity_z
 	hitDef_guard_velocity
+	hitDef_ground_cornerpush_velmul
 	hitDef_ground_cornerpush_veloff
+	hitDef_guard_cornerpush_velmul
 	hitDef_guard_cornerpush_veloff
+	hitDef_airguard_cornerpush_velmul
 	hitDef_airguard_cornerpush_veloff
 	hitDef_xaccel
 	hitDef_yaccel
@@ -7752,6 +7722,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		hd.ground_fall = exp[0].evalB(c)
 	case hitDef_air_fall:
 		hd.air_fall = Btoi(exp[0].evalB(c)) // Read as bool but write as int
+	case hitDef_air_cornerpush_velmul:
+		hd.air_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_air_cornerpush_veloff:
 		hd.air_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_down_bounce:
@@ -7764,6 +7736,8 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		if len(exp) > 2 {
 			hd.down_velocity[2] = exp[2].evalF(c)
 		}
+	case hitDef_down_cornerpush_velmul:
+		hd.down_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_down_cornerpush_veloff:
 		hd.down_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_ground_hittime:
@@ -7856,10 +7830,16 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 		if len(exp) > 2 {
 			hd.guard_velocity[2] = exp[2].evalF(c)
 		}
+	case hitDef_ground_cornerpush_velmul:
+		hd.ground_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_ground_cornerpush_veloff:
 		hd.ground_cornerpush_veloff = exp[0].evalF(c)
+	case hitDef_guard_cornerpush_velmul:
+		hd.guard_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_guard_cornerpush_veloff:
 		hd.guard_cornerpush_veloff = exp[0].evalF(c)
+	case hitDef_airguard_cornerpush_velmul:
+		hd.airguard_cornerpush_velmul = exp[0].evalF(c)
 	case hitDef_airguard_cornerpush_veloff:
 		hd.airguard_cornerpush_veloff = exp[0].evalF(c)
 	case hitDef_xaccel:
@@ -7955,9 +7935,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 			hd.unhittabletime[1] = exp[1].evalI(c)
 		}
 	case hitDef_stand_friction:
-		hd.StandFriction = exp[0].evalF(c)
+		hd.stand_friction = exp[0].evalF(c)
 	case hitDef_crouch_friction:
-		hd.CrouchFriction = exp[0].evalF(c)
+		hd.crouch_friction = exp[0].evalF(c)
 	case hitDef_keepstate:
 		hd.KeepState = exp[0].evalB(c)
 	case hitDef_ignorereversaldef:
@@ -14740,7 +14720,7 @@ const (
 	getHitVarSet_animtype
 	getHitVarSet_attr
 	getHitVarSet_chainid
-	getHitVarSet_crouchfriction
+	getHitVarSet_crouch_friction
 	getHitVarSet_ctrltime
 	getHitVarSet_damage
 	getHitVarSet_dizzypoints
@@ -14776,7 +14756,7 @@ const (
 	getHitVarSet_projid
 	getHitVarSet_redlife
 	getHitVarSet_slidetime
-	getHitVarSet_standfriction
+	getHitVarSet_stand_friction
 	getHitVarSet_teamside
 	getHitVarSet_xvel
 	getHitVarSet_yvel
@@ -14805,8 +14785,8 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.attr = exp[0].evalI(c)
 		case getHitVarSet_chainid:
 			crun.ghv.hitid = exp[0].evalI(c)
-		case getHitVarSet_crouchfriction:
-			crun.ghv.crouchfriction = exp[0].evalF(c)
+		case getHitVarSet_crouch_friction:
+			crun.ghv.crouch_friction = exp[0].evalF(c)
 		case getHitVarSet_ctrltime:
 			crun.ghv.ctrltime = exp[0].evalI(c)
 		case getHitVarSet_damage:
@@ -14875,8 +14855,8 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 			crun.ghv.redlife = exp[0].evalI(c)
 		case getHitVarSet_slidetime:
 			crun.ghv.slidetime = exp[0].evalI(c)
-		case getHitVarSet_standfriction:
-			crun.ghv.standfriction = exp[0].evalF(c)
+		case getHitVarSet_stand_friction:
+			crun.ghv.stand_friction = exp[0].evalF(c)
 		case getHitVarSet_teamside:
 			crun.ghv.teamside = int(exp[0].evalI(c)) - 1
 		case getHitVarSet_xvel:
@@ -15006,7 +14986,7 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 			t.angle = angle
 			t.pivot = pivot
 		}
-	case group >= 1 && group <= 3:
+	case group >= 1 && group <= 4:
 		t := &crun.clsnTransforms[group-1]
 		t.scale[0] *= scale[0]
 		t.scale[1] *= scale[1]
@@ -15538,7 +15518,7 @@ func (sc overrideClsn) Run(c *Char, _ []int32) bool {
 		for i := range crun.clsnOverrides {
 			crun.clsnOverrides[i] = append(crun.clsnOverrides[i], override)
 		}
-	case group >= 1 && group <= 3:
+	case group >= 1 && group <= 4:
 		// Apply to specific group
 		idx := group - 1
 		crun.clsnOverrides[idx] = append(crun.clsnOverrides[idx], ClsnOverride{

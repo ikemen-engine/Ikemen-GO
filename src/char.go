@@ -643,10 +643,15 @@ type HitDef struct {
 	air_velocity               [3]float32
 	airguard_velocity          [3]float32
 	ground_cornerpush_veloff   float32
+	ground_cornerpush_velmul   float32
 	air_cornerpush_veloff      float32
+	air_cornerpush_velmul      float32
 	down_cornerpush_veloff     float32
+	down_cornerpush_velmul     float32
 	guard_cornerpush_veloff    float32
+	guard_cornerpush_velmul    float32
 	airguard_cornerpush_veloff float32
+	airguard_cornerpush_velmul float32
 	air_juggle                 int32
 	p1sprpriority              int32
 	p2sprpriority              int32
@@ -717,15 +722,15 @@ type HitDef struct {
 	p2clsnrequire              int32
 	attack_depth               [2]float32
 	unhittabletime             [2]int32
-	StandFriction              float32
-	CrouchFriction             float32
+	stand_friction             float32
+	crouch_friction            float32
 	KeepState                  bool
 	IgnoreReversalDef          int32
 }
 
 func (hd *HitDef) reset(c *Char, proj *Projectile) {
 	var originLs float32
-	if c.gi().constants["default.legacyfallyvelyaccel"] == 1 {
+	if c.gi().constants["legacy.fallyvelyaccel"] == 1 {
 		originLs = 1
 	} else {
 		// Convert local scale back to 4:3 in order to keep values consistent in widescreen
@@ -783,11 +788,18 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		down_velocity:              [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 		guard_velocity:             [3]float32{float32(math.NaN()), 0, float32(math.NaN())}, // We don't want chars to be launched in Y while guarding
 		airguard_velocity:          [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
 		down_cornerpush_veloff:     float32(math.NaN()),
 		guard_cornerpush_veloff:    float32(math.NaN()),
 		airguard_cornerpush_veloff: float32(math.NaN()),
+
+		ground_cornerpush_velmul:   float32(math.NaN()), // Not strictly necessary, but keeps all defaults together in finalizeParams
+		air_cornerpush_velmul:      float32(math.NaN()),
+		down_cornerpush_velmul:     float32(math.NaN()),
+		guard_cornerpush_velmul:    float32(math.NaN()),
+		airguard_cornerpush_velmul: float32(math.NaN()),
 
 		xaccel: 0,
 		yaccel: 0.35 / originLs,
@@ -844,8 +856,8 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		fall_envshake_mul:   1.0,
 		attack_depth:        [2]float32{c.size.attack.depth[0], c.size.attack.depth[1]},
 		unhittabletime:      [2]int32{IErr, IErr},
-		StandFriction:       float32(math.NaN()),
-		CrouchFriction:      float32(math.NaN()),
+		stand_friction:      float32(math.NaN()),
+		crouch_friction:     float32(math.NaN()),
 		KeepState:           false,
 		IgnoreReversalDef:   0,
 
@@ -887,6 +899,9 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 		hd.playerid = c.id
 	}
 
+	// Grab global info from working state
+	gi := c.stWgi()
+
 	if hd.attr&^int32(ST_MASK) == 0 {
 		hd.attr = 0
 	}
@@ -921,7 +936,7 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 
 	// In Mugen this one acts diferent from the documentation
 	// Ikemen characters follow the documentation since it makes more sense
-	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	if gi.ikemenver[0] == 0 && gi.ikemenver[1] == 0 {
 		ifierrset(&hd.guard_hittime, hd.ground_slidetime)
 	} else {
 		ifierrset(&hd.guard_hittime, hd.ground_hittime)
@@ -960,48 +975,70 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 
 	ifierrset(&hd.air_fall, Btoi(hd.ground_fall))
 
-	// Cornerpush defaults to same as respective velocities if character has Ikemenversion, instead of Mugen magic numbers
-	if hd.attr&int32(ST_A) != 0 {
-		ifnanset(&hd.ground_cornerpush_veloff, 0)
-	} else {
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity[0]*1.3)
-		} else {
-			ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
-		}
+	// Check which cornerpush defaults to use
+	legacyCornerpush := false
+	switch lcpd, ok := gi.constants["legacy.cornerpushdefaults"]; {
+	case !ok, lcpd < 0:
+		legacyCornerpush = gi.ikemenver[0] == 0 && gi.ikemenver[1] == 0
+	case lcpd > 0:
+		legacyCornerpush = true
 	}
+
+	// Use Mugen's arbitrary values or just inherit ground.velocity 1:1
+	if legacyCornerpush {
+		if hd.attr&int32(ST_A) != 0 {
+			ifnanset(&hd.ground_cornerpush_veloff, 0)
+		} else {
+			ifnanset(&hd.ground_cornerpush_veloff, hd.guard_velocity[0]*1.3)
+		}
+	} else {
+		ifnanset(&hd.ground_cornerpush_veloff, hd.ground_velocity[0])
+	}
+
 	ifnanset(&hd.air_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.down_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.guard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 	ifnanset(&hd.airguard_cornerpush_veloff, hd.ground_cornerpush_veloff)
 
+	// Use Mugen's arbitrary value or modern target-based friction
+	if legacyCornerpush {
+		ifnanset(&hd.ground_cornerpush_velmul, 0.7)
+	} else {
+		ifnanset(&hd.ground_cornerpush_velmul, -1)
+	}
+
+	ifnanset(&hd.air_cornerpush_velmul, hd.ground_cornerpush_velmul)
+	ifnanset(&hd.down_cornerpush_velmul, hd.ground_cornerpush_velmul)
+	ifnanset(&hd.guard_cornerpush_velmul, hd.ground_cornerpush_velmul)
+	ifnanset(&hd.airguard_cornerpush_velmul, hd.ground_cornerpush_velmul)
+
 	// Super attack behaviour
 	if hd.attr&int32(AT_AH) != 0 {
 		ifierrset(&hd.hitgetpower,
-			int32(c.gi().constants["super.attack.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.attack.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.hitgivepower,
-			int32(c.gi().constants["super.gethit.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
-			int32(c.gi().constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
-			int32(c.gi().constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.hitredlife,
-			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.lifetoredlifemul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardredlife,
-			int32(c.gi().constants["super.lifetoredlifemul"]*float32(hd.guarddamage)))
+			int32(gi.constants["super.lifetoredlifemul"]*float32(hd.guarddamage)))
 	} else {
 		ifierrset(&hd.hitgetpower,
-			int32(c.gi().constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.hitgivepower,
-			int32(c.gi().constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
-			int32(c.gi().constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
-			int32(c.gi().constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.hitredlife,
-			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.lifetoredlifemul"]*float32(hd.hitdamage)))
 		ifierrset(&hd.guardredlife,
-			int32(c.gi().constants["default.lifetoredlifemul"]*float32(hd.guarddamage)))
+			int32(gi.constants["default.lifetoredlifemul"]*float32(hd.guarddamage)))
 	}
 
 	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
@@ -1045,7 +1082,7 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	// Ikemen characters can use it to update their StateDef juggle points
 	if hd.air_juggle == IErr {
 		hd.air_juggle = 0
-	} else if !hd.isprojectile && (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0) {
+	} else if !hd.isprojectile && (gi.ikemenver[0] != 0 || gi.ikemenver[1] != 0) {
 		c.juggle = hd.air_juggle
 	}
 
@@ -1153,8 +1190,8 @@ type GetHitVar struct {
 	down_recovertime     int32
 	guardflag            int32
 	keepstate            bool
-	standfriction        float32
-	crouchfriction       float32
+	stand_friction       float32
+	crouch_friction      float32
 	teamside             int
 	sparkxy              [2]float32
 }
@@ -1163,7 +1200,7 @@ type GetHitVar struct {
 // When returning to idle each ghv has its own reset behavior
 func (ghv *GetHitVar) reset(c *Char) {
 	var originLs float32
-	if c.gi().constants["default.legacyfallyvelyaccel"] == 1 {
+	if c.gi().constants["legacy.fallyvelyaccel"] == 1 {
 		originLs = 1
 	} else {
 		// Convert local scale back to 4:3 in order to keep values consistent in widescreen
@@ -1186,8 +1223,8 @@ func (ghv *GetHitVar) reset(c *Char) {
 		fall_yvelocity: -4.5 / originLs,
 		fall_zvelocity: float32(math.NaN()),
 		keepstate:      false,
-		standfriction:  float32(math.NaN()),
-		crouchfriction: float32(math.NaN()),
+		stand_friction:  float32(math.NaN()),
+		crouch_friction: float32(math.NaN()),
 	}
 }
 
@@ -1317,6 +1354,7 @@ func (ho *HitOverride) clear() {
 
 type MoveHitVar struct {
 	power             int32
+	cornerpush_velmul float32
 	cornerpush_veloff float32
 	frame             bool
 	overridden        bool
@@ -1697,10 +1735,8 @@ type Explod struct {
 	syncLayer           int32
 	syncId              int32
 	aimg                *AfterImage
-	//lockSpriteFacing     bool
 	localscl   float32
 	localcoord float32
-	//blendmode            int32
 	start_animelem       int32
 	start_scale          [2]float32
 	start_alpha          [2]int32
@@ -2212,9 +2248,6 @@ func (e *Explod) cueDraw() {
 	parent := e.parent()
 
 	facing := e.trueFacing()
-	//if e.lockSpriteFacing {
-	//	facing = -1
-	//}
 
 	var pfx *PalFX
 	if e.palfx != nil && (!e.anim.isCommonFX() || e.ownpal) {
@@ -2460,7 +2493,12 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 }
 
 func (e *Explod) trueFacing() float32 {
-	return e.facing * e.relativef
+	// return e.facing * e.relativef
+	// This new way is a bit more robust
+	if (e.facing < 0) != (e.relativef < 0) {
+		return -1
+	}
+	return 1
 }
 
 type ProjStatus int32
@@ -2541,7 +2579,7 @@ type Projectile struct {
 	removeDone      bool
 	customShader    CustomShader
 	pauseBool       bool
-	clsnBuffers     [3][]ClsnFinal
+	clsnBuffers     [4][]ClsnFinal
 }
 
 func newProjectile() *Projectile {
@@ -3458,8 +3496,8 @@ type Char struct {
 	size           CharSize
 	//sizeBox           [4]float32
 	clsnScale           [2]float32 // The base scale before modifiers are applied
-	clsnOverrides       [3][]ClsnOverride
-	clsnTransforms      [3]ClsnTransform
+	clsnOverrides       [4][]ClsnOverride
+	clsnTransforms      [4]ClsnTransform
 	zScale              float32
 	hitdef              HitDef
 	ghv                 GetHitVar
@@ -3563,7 +3601,7 @@ type Char struct {
 	customShader         CustomShader
 	pctype               ProjContact
 	pctime, pcid         int32
-	clsnBuffers          [3][]ClsnFinal // Pre-allocated slices for collision checks
+	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -6886,6 +6924,7 @@ func (c *Char) destroy() {
 			if t.bindToId == c.id {
 				t.selfState(5050, -1, -1, -1, "")
 				t.gethitBindClear()
+				sys.appendToConsole(t.warn() + fmt.Sprintf("SelfState from being bound to destroyed helper: %v", c.name))
 			}
 			t.ghv.dropPlayerId(c.id)
 		}
@@ -7219,10 +7258,7 @@ func (c *Char) commitExplod(i int) {
 			}
 			if j < 2 {
 				e.scale[j] = 1
-				//if e.blendmode == 1 {
-				//if e.trans == TT_add { // Any add?
 				e.alpha[j] = 255
-				//}
 			}
 			e.rot = Rotation{}
 		}
@@ -8019,8 +8055,9 @@ func (c *Char) initConstants() {
 	gi.constants["super.lifetodizzypointsmul"] = 0
 	gi.constants["default.lifetoredlifemul"] = 0.75
 	gi.constants["super.lifetoredlifemul"] = 0.75
-	gi.constants["default.legacygamedistancespec"] = 0
-	gi.constants["default.legacyfallyvelyaccel"] = 0
+	gi.constants["legacy.gamedistancespec"] = 0
+	gi.constants["legacy.fallyvelyaccel"] = 0
+	gi.constants["legacy.cornerpushdefaults"] = -1
 	//gi.constants["default.ignoredefeatedenemies"] = 0
 	gi.constants["input.pauseonhitpause"] = 1
 	gi.constants["input.fbflipenemydistance"] = -1
@@ -9727,15 +9764,15 @@ func (c *Char) gravity() {
 }
 
 func (c *Char) getStandFriction() float32 {
-	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.standfriction)) {
-		return c.ghv.standfriction
+	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.stand_friction)) {
+		return c.ghv.stand_friction
 	}
 	return c.gi().movement.stand.friction
 }
 
 func (c *Char) getCrouchFriction() float32 {
-	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.standfriction)) {
-		return c.ghv.crouchfriction
+	if c.ss.moveType == MT_H && !math.IsNaN(float64(c.ghv.crouch_friction)) {
+		return c.ghv.crouch_friction
 	}
 	return c.gi().movement.crouch.friction
 }
@@ -9773,16 +9810,16 @@ func (c *Char) checkCornerPush() (pushDist float32, pushMul float32) {
 			continue
 		}
 
-		// Determine friction based on enemy
-		// Mugen characters use hardcoded friction while Ikemen characters use the target's friction
-		if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-			pushMul = 0.7
-		} else {
+		// Determine friction multiplier
+		// A negative value uses the target's friction
+		if c.mhv.cornerpush_velmul < 0 {
 			if getter.ss.stateType == ST_C || getter.ss.stateType == ST_L {
 				pushMul = getter.getCrouchFriction()
 			} else {
 				pushMul = getter.getStandFriction()
 			}
+		} else {
+			pushMul = c.mhv.cornerpush_velmul
 		}
 
 		// Apply cornerpush only if the target is cornered and actually confined to the screen
@@ -10273,7 +10310,7 @@ func (c *Char) getAnySizeBox() *[4]float32 {
 // Combine current Clsn with existing modifiers
 func (c *Char) getClsn(group int32) []ClsnFinal {
 	// Validate group
-	if group < 1 || group > 3 {
+	if group < 1 || group > 4 {
 		return nil
 	}
 
@@ -11520,8 +11557,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		getter.ghv.frame = true
 
 		// P2 Friction
-		getter.ghv.standfriction = hd.StandFriction
-		getter.ghv.crouchfriction = hd.CrouchFriction
+		getter.ghv.stand_friction = hd.stand_friction
+		getter.ghv.crouch_friction = hd.crouch_friction
 
 		// In Mugen, having any HitOverride active allows GetHitVar Damage to exceed the remaining life
 		bnd := true
@@ -11810,10 +11847,13 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			switch getter.ss.stateType {
 			case ST_S, ST_C:
 				c.mhv.cornerpush_veloff = hd.ground_cornerpush_veloff * c.facing
+				c.mhv.cornerpush_velmul = hd.ground_cornerpush_velmul
 			case ST_A:
 				c.mhv.cornerpush_veloff = hd.air_cornerpush_veloff * c.facing
+				c.mhv.cornerpush_velmul = hd.air_cornerpush_velmul
 			case ST_L:
 				c.mhv.cornerpush_veloff = hd.down_cornerpush_veloff * c.facing
+				c.mhv.cornerpush_velmul = hd.down_cornerpush_velmul
 			}
 		}
 	}
@@ -11822,8 +11862,10 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 		switch getter.ss.stateType {
 		case ST_S, ST_C:
 			c.mhv.cornerpush_veloff = hd.guard_cornerpush_veloff * c.facing
+			c.mhv.cornerpush_velmul = hd.guard_cornerpush_velmul
 		case ST_A:
 			c.mhv.cornerpush_veloff = hd.airguard_cornerpush_veloff * c.facing
+			c.mhv.cornerpush_velmul = hd.airguard_cornerpush_velmul
 		}
 	}
 	invertXvel(byf)
@@ -12949,13 +12991,18 @@ func (c *Char) cueDebugDraw() {
 				sys.debugcsize.Add(boxes3, x, y, c.facing)
 			}
 		}
+		// Add Dummy boxes
+		dummy := c.getClsn(4)
+		if len(dummy) > 0 {
+			sys.debugcdummy.Add(dummy, x + xoff, y + yoff, c.facing)
+		}
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
-		sys.debugch.Add(crosshair, x, y, c.facing)
+		sys.debugcross.Add(crosshair, x, y, c.facing)
 		// Add GroundLevel indicator
 		if c.prevGroundLevel != 0 {
-			gLevel := []ClsnFinal{{rect: [4]float32{-4, 0, 4, 1}, angle: 0}}
-			sys.debugch.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
+			gLevel := []ClsnFinal{{rect: [4]float32{-2, 0, 2, 1}, angle: 0}}
+			sys.debugcross.Add(gLevel, x, c.prevGroundLevel*c.localscl, c.facing)
 		}
 	}
 
@@ -13594,8 +13641,8 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 				}
 			}
 
+			// Inherit parent's or root's juggle points
 			if c.helperIndex != 0 {
-				// Inherit parent's or root's juggle points
 				if c.inheritJuggle == 1 && c.parent(false) != nil {
 					for _, v := range getter.ghv.targetedBy {
 						if v[0] == c.parent(false).id {
@@ -13616,16 +13663,16 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 			// In Mugen, you can no longer hit a standing target if you don't have enough points
 			// In Mugen, you can juggle any enemy if they're not your target yet
 			// If IkemenVersion, the rules are a little more consistent
-			canjuggle := false
+			canJuggle := false
 			if c.asf(ASF_nojugglecheck) ||
 				c.juggle <= getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) ||
 				(c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0) && getter.hittmp < 2 ||
 				(c.gi().ikemenver[0] == 0 && c.gi().ikemenver[1] == 0 && !c.hasTarget(getter.id)) {
-				canjuggle = true
+				canJuggle = true
 			}
 
 			// If getter can be hit by this Hitdef
-			if canjuggle && c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
+			if canJuggle && c.hitdef.hitonce >= 0 && !c.hasTargetOfHitdef(getter.id) &&
 				(c.hitdef.reversal_attr <= 0 || !getter.hasTargetOfHitdef(c.id)) &&
 				getter.hittableByChar(c, &c.hitdef, c.ss.stateType, false) {
 
@@ -13650,7 +13697,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 						// Attacker hitpauses were off by 1 frame in WinMugen. Mugen 1.0 fixed it
 						// The way this should actually happen is that WinMugen chars have 1 subtracted from their hitpause in bytecode.go
 						// But because of the order that events happen in in Ikemen, it must be fixed the other way around
-						hpfix := c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0 || c.gi().mugenver[0] == 1
+						hpFix := c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0 || c.gi().mugenver[0] == 1
 
 						if Abs(hitResult) == 1 {
 							if mvc {
@@ -13727,12 +13774,12 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 									getter.hittmp = -1
 								}
 								if !getter.csf(CSF_gethit) {
-									getter.hitPauseTime = Max(1, c.hitdef.pausetime[1]+Btoi(hpfix))
+									getter.hitPauseTime = Max(1, c.hitdef.pausetime[1]+Btoi(hpFix))
 								}
 							}
 							if !c.csf(CSF_gethit) && (getter.ss.stateType == ST_A && c.hitdef.air_type != HT_None ||
 								getter.ss.stateType != ST_A && c.hitdef.ground_type != HT_None) {
-								c.hitPauseTime = Max(1, c.hitdef.pausetime[0]+Btoi(hpfix))
+								c.hitPauseTime = Max(1, c.hitdef.pausetime[0]+Btoi(hpFix))
 								// In Mugen, the hitpause only actually takes effect in the next frame
 								// In Mugen, despite hit type None being supposed to apply hitpause, that doesn't happen
 								// Curiously, if a HitOverride is used the hitpause will be restored
@@ -13744,7 +13791,7 @@ func (cl *CharList) hitDetectionPlayer(getter *Char) {
 								c.mctime = -1
 							}
 							if !c.csf(CSF_gethit) {
-								c.hitPauseTime = Max(1, c.hitdef.guard_pausetime[0]+Btoi(hpfix))
+								c.hitPauseTime = Max(1, c.hitdef.guard_pausetime[0]+Btoi(hpFix))
 							}
 						}
 						if c.hitdef.hitonce > 0 {
@@ -13898,14 +13945,14 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			// Projectile juggling is a little different from player juggling
 			// In Mugen, they check juggle points even if the enemy is not yet a target or even falling at all
 			// IkemenVersion once again makes the logic more consistent
-			canjuggle := false
+			canJuggle := false
 			if c.asf(ASF_nojugglecheck) ||
 				(c.gi().ikemenver[0] != 0 || c.gi().ikemenver[1] != 0) && getter.hittmp < 2 ||
 				p.hitdef.air_juggle <= getter.ghv.getJuggle(c.id, c.gi().data.airjuggle) {
-				canjuggle = true
+				canJuggle = true
 			}
 
-			if canjuggle && !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
+			if canJuggle && !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
 				(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 				(p.hitpause <= 0 || p.contactflag) && p.curmisstime <= 0 && p.hitdef.hitonce >= 0 &&
 				getter.hittableByChar(c, &p.hitdef, ST_N, true) {

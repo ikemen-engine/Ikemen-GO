@@ -364,12 +364,10 @@ var triggerMap = map[string]int{
 	"alpha":              1,
 	"analog":             1,
 	"angle":              1,
-	"xangle":             1,
-	"yangle":             1,
 	"animelemvar":        1,
 	"animlength":         1,
+	"animloopcount":      1,
 	"animplayerno":       1,
-	"spriteplayerno":     1,
 	"atan2":              1,
 	"attack":             1,
 	"attackmul":          1,
@@ -404,8 +402,8 @@ var triggerMap = map[string]int{
 	"guardpoints":        1,
 	"guardpointsmax":     1,
 	"helperindexexist":   1,
-	"helpervar":          1,
 	"helpername":         1,
+	"helpervar":          1,
 	"hitoverridden":      1,
 	"ikemenversion":      1,
 	"incustomanim":       1,
@@ -463,6 +461,7 @@ var triggerMap = map[string]int{
 	"shader":             1,
 	"sign":               1,
 	"soundvar":           1,
+	"spriteplayerno":     1,
 	"spritevar":          1,
 	"sprpriority":        1,
 	"stagebackedgedist":  1,
@@ -478,7 +477,9 @@ var triggerMap = map[string]int{
 	"winclutch":          1,
 	"winhyper":           1,
 	"winspecial":         1,
+	"xangle":             1,
 	"xshear":             1,
+	"yangle":             1,
 	"zoomvar":            1,
 }
 
@@ -1829,6 +1830,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			return bvNone(), err
 		}
 		out.append(OC_animexist)
+	case "animloopcount":
+		out.append(OC_ex3_, OC_ex3_animloopcount)
 	case "animtime":
 		out.append(OC_animtime)
 	case "authorname":
@@ -1924,6 +1927,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			bv1 = BytecodeInt(2)
 		case "size":
 			bv1 = BytecodeInt(3)
+		case "dummy":
+			bv1 = BytecodeInt(4)
 		default:
 			return bvNone(), Error("Invalid collision box type: " + c1type)
 		}
@@ -1975,6 +1980,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			bv1 = BytecodeInt(2)
 		case "size":
 			bv1 = BytecodeInt(3)
+		case "dummy":
+			bv1 = BytecodeInt(4)
 		default:
 			return bvNone(), Error(fmt.Sprintf("Invalid Clsn type: %s", ctype))
 		}
@@ -3716,6 +3723,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		switch vname {
 		case "actionno":
 			opc = OC_ex2_stagebgvar_actionno
+		case "animloopcount":
+			opc = OC_ex2_stagebgvar_animloopcount
+		case "animtime":
+			opc = OC_ex2_stagebgvar_animtime
 		case "delta.x":
 			opc = OC_ex2_stagebgvar_delta_x
 		case "delta.y":
@@ -6532,6 +6543,8 @@ func (c *CharCompiler) paramClsnType(is IniSection, sc *StateControllerBase, par
 			box = 2
 		case "size":
 			box = 3
+		case "dummy":
+			box = 4
 		default:
 			return Error("Invalid Clsn type for " + paramName + ": " + data)
 		}
