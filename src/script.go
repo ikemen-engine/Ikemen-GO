@@ -7942,17 +7942,17 @@ func triggerFunctions(l *lua.LState) {
 		getClsnCoord := func(offset int) {
 			switch c {
 			case "clsn1":
-				clsn := sys.debugWC.getClsn(1)
+				clsn := sys.debugWC.getClsnLocal(1)
 				if clsn != nil && idx >= 0 && idx < len(clsn) {
 					v = lua.LNumber(clsn[idx].rect[offset])
 				}
 			case "clsn2":
-				clsn := sys.debugWC.getClsn(2)
+				clsn := sys.debugWC.getClsnLocal(2)
 				if clsn != nil && idx >= 0 && idx < len(clsn) {
 					v = lua.LNumber(clsn[idx].rect[offset])
 				}
 			case "size":
-				clsn := sys.debugWC.getClsn(3)
+				clsn := sys.debugWC.getClsnLocal(3)
 				if clsn != nil && len(clsn) > 0 {
 					v = lua.LNumber(clsn[idx].rect[offset])
 				}
