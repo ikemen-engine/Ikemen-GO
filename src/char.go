@@ -3545,42 +3545,42 @@ type ForceFeedbackParams struct {
 }
 
 type Char struct {
-	name           string
-	palfx          *PalFX
-	anim           *Animation
-	animBackup     *Animation
-	curFrame       *AnimFrame
-	cmd            []CommandList
-	ss             StateState
-	controller     int
-	playerNo       int // Location in sys.chars[]
-	helperIndex    int // Location in sys.chars[][]
-	id             int32
-	helperId       int32
-	parentId       int32
-	teamside       int
-	keyctrl        [4]bool
-	helperType     int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
-	isclsnproxy    bool
-	animPN         int
-	spritePN       int
-	animNo         int32
-	prevAnimNo     int32
-	life           int32
-	lifeMax        int32
-	power          int32
-	powerMax       int32
-	dizzyPoints    int32
-	dizzyPointsMax int32
-	guardPoints    int32
-	guardPointsMax int32
-	redLife        int32
-	juggle         int32
-	fallTime       int32
-	localcoord     float32 // Char localcoord[0] scaled to game resolution
-	localscl       float32 // Ratio between 320 and the localcoord of the current state
-	animlocalscl   float32
-	size           CharSize
+	name                string
+	palfx               *PalFX
+	anim                *Animation
+	animBackup          *Animation
+	curFrame            *AnimFrame
+	cmd                 []CommandList
+	ss                  StateState
+	controller          int
+	playerNo            int // Location in sys.chars[]
+	helperIndex         int // Location in sys.chars[][]
+	id                  int32
+	helperId            int32
+	parentId            int32
+	teamside            int
+	keyctrl             [4]bool
+	helperType          int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
+	isclsnproxy         bool
+	animPN              int
+	spritePN            int
+	animNo              int32
+	prevAnimNo          int32
+	life                int32
+	lifeMax             int32
+	power               int32
+	powerMax            int32
+	dizzyPoints         int32
+	dizzyPointsMax      int32
+	guardPoints         int32
+	guardPointsMax      int32
+	redLife             int32
+	juggle              int32
+	fallTime            int32
+	localcoord          float32 // Char localcoord[0] scaled to game resolution
+	localscl            float32 // Ratio between 320 and the localcoord of the current state
+	animlocalscl        float32
+	size                CharSize
 	clsnOverrides       [4][]ClsnOverride
 	clsnTransforms      [4]ClsnTransform
 	zScale              float32
@@ -3713,21 +3713,21 @@ func (c *Char) panic(msg string) {
 func (c *Char) init(n int, idx int) {
 	// Reset struct with defaults
 	*c = Char{
-		playerNo:      n,
-		helperIndex:   idx,
-		controller:    n,
-		analogAxes:    [6]float32{},
-		animPN:        n,
-		id:            -1,
-		parentId:      -1,
-		hoverIdx:      -1,
-		mctype:        MC_Hit,
-		ownpal:        true,
-		facing:        1,
-		minus:         3,
-		winquote:      -1,
-		movelist:      0,
-		zScale:        1,
+		playerNo:    n,
+		helperIndex: idx,
+		controller:  n,
+		analogAxes:  [6]float32{},
+		animPN:      n,
+		id:          -1,
+		parentId:    -1,
+		hoverIdx:    -1,
+		mctype:      MC_Hit,
+		ownpal:      true,
+		facing:      1,
+		minus:       3,
+		winquote:    -1,
+		movelist:    0,
+		zScale:      1,
 		//aimg:          *newAfterImage(),
 		CharSystemVar: CharSystemVar{
 			superDefenseMul: 1.0,
@@ -11124,7 +11124,7 @@ func (c *Char) hitspark(getter *Char, proj *Projectile,
 	animNo int32, ffx string, sparkangle float32, sparkscale [2]float32) {
 
 	// Compute target edges
-	getterBase := getter.baseSizeBox() // Ignore width/height modifiers. Maybe we shouldn't?
+	getterBase := getter.baseSizeBox()           // Ignore width/height modifiers. Maybe we shouldn't?
 	getterScale := getter.sizeBoxScaleWorld()[0] // Used to convert the box to world coordinate space
 	getterFront := getterBase[2] * getterScale
 	getterBack := -getterBase[0] * getterScale
