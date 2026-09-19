@@ -783,11 +783,11 @@ func (hd *HitDef) reset(c *Char, proj *Projectile) {
 		guard_ctrltime:    IErr,
 		airguard_ctrltime: IErr,
 
-		ground_velocity:            [3]float32{0, 0, 0},
-		air_velocity:               [3]float32{0, 0, 0},
-		down_velocity:              [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
-		guard_velocity:             [3]float32{float32(math.NaN()), 0, float32(math.NaN())}, // We don't want chars to be launched in Y while guarding
-		airguard_velocity:          [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		ground_velocity:   [3]float32{0, 0, 0},
+		air_velocity:      [3]float32{0, 0, 0},
+		down_velocity:     [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
+		guard_velocity:    [3]float32{float32(math.NaN()), 0, float32(math.NaN())}, // We don't want chars to be launched in Y while guarding
+		airguard_velocity: [3]float32{float32(math.NaN()), float32(math.NaN()), float32(math.NaN())},
 
 		ground_cornerpush_veloff:   float32(math.NaN()),
 		air_cornerpush_veloff:      float32(math.NaN()),
@@ -1208,21 +1208,21 @@ func (ghv *GetHitVar) reset(c *Char) {
 	}
 
 	*ghv = GetHitVar{
-		hittime:        -1,
-		yaccel:         0.35 / originLs,
-		xoff:           ghv.xoff,
-		yoff:           ghv.yoff,
-		zoff:           ghv.zoff,
-		hitid:          -1,
-		playerno:       -2, // Because it returns with +1
-		playerid:       -1,
-		projid:         -1,
-		teamside:       -2, // See playerno
-		fall_animtype:  RA_Unknown,
-		fall_xvelocity: float32(math.NaN()),
-		fall_yvelocity: -4.5 / originLs,
-		fall_zvelocity: float32(math.NaN()),
-		keepstate:      false,
+		hittime:         -1,
+		yaccel:          0.35 / originLs,
+		xoff:            ghv.xoff,
+		yoff:            ghv.yoff,
+		zoff:            ghv.zoff,
+		hitid:           -1,
+		playerno:        -2, // Because it returns with +1
+		playerid:        -1,
+		projid:          -1,
+		teamside:        -2, // See playerno
+		fall_animtype:   RA_Unknown,
+		fall_xvelocity:  float32(math.NaN()),
+		fall_yvelocity:  -4.5 / originLs,
+		fall_zvelocity:  float32(math.NaN()),
+		keepstate:       false,
 		stand_friction:  float32(math.NaN()),
 		crouch_friction: float32(math.NaN()),
 	}
@@ -1678,65 +1678,65 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 }
 
 type Explod struct {
-	id                  int32
-	playerno            int
-	ownerId             int32
-	time                int32
-	postype             PosType
-	space               Space
-	bindId              int32
-	bindtime            int32
-	pos                 [3]float32
-	relativePos         [3]float32
-	offset              [3]float32
-	relativef           float32
-	facing              float32
-	vfacing             float32
-	scale               [2]float32
-	removeongethit      bool
-	removeonchangestate bool
-	hidewithbars        bool
-	removetime          int32
-	velocity            [3]float32
-	friction            [3]float32
-	accel               [3]float32
-	sprpriority         int32
-	layerno             int32
-	shadow              [3]int32
-	reflection          int32
-	supermovetime       int32
-	pausemovetime       int32
-	anim                *Animation
-	animNo              int32
-	anim_ffx            string
-	animPN              int
-	spritePN            int
-	animelem            int32
-	animelemtime        int32
-	animfreeze          bool
-	ontop               bool // Legacy compatibility
-	under               bool
-	trans               TransType
-	alpha               [2]int32
-	ownpal              bool
-	remappal            [2]int32
-	ignorehitpause      bool
-	rot                 Rotation
-	xshear              float32
-	projection          Projection
-	fLength             float32
-	oldPos              [3]float32
-	newPos              [3]float32
-	interPos            [3]float32
-	palfx               *PalFX
-	palfxdef            PalFXDef
-	window              [4]float32
-	syncParams          bool
-	syncLayer           int32
-	syncId              int32
-	aimg                *AfterImage
-	localscl   float32
-	localcoord float32
+	id                   int32
+	playerno             int
+	ownerId              int32
+	time                 int32
+	postype              PosType
+	space                Space
+	bindId               int32
+	bindtime             int32
+	pos                  [3]float32
+	relativePos          [3]float32
+	offset               [3]float32
+	relativef            float32
+	facing               float32
+	vfacing              float32
+	scale                [2]float32
+	removeongethit       bool
+	removeonchangestate  bool
+	hidewithbars         bool
+	removetime           int32
+	velocity             [3]float32
+	friction             [3]float32
+	accel                [3]float32
+	sprpriority          int32
+	layerno              int32
+	shadow               [3]int32
+	reflection           int32
+	supermovetime        int32
+	pausemovetime        int32
+	anim                 *Animation
+	animNo               int32
+	anim_ffx             string
+	animPN               int
+	spritePN             int
+	animelem             int32
+	animelemtime         int32
+	animfreeze           bool
+	ontop                bool // Legacy compatibility
+	under                bool
+	trans                TransType
+	alpha                [2]int32
+	ownpal               bool
+	remappal             [2]int32
+	ignorehitpause       bool
+	rot                  Rotation
+	xshear               float32
+	projection           Projection
+	fLength              float32
+	oldPos               [3]float32
+	newPos               [3]float32
+	interPos             [3]float32
+	palfx                *PalFX
+	palfxdef             PalFXDef
+	window               [4]float32
+	syncParams           bool
+	syncLayer            int32
+	syncId               int32
+	aimg                 *AfterImage
+	localscl             float32
+	localcoord           float32
 	start_animelem       int32
 	start_scale          [2]float32
 	start_alpha          [2]int32
@@ -12994,7 +12994,7 @@ func (c *Char) cueDebugDraw() {
 		// Add Dummy boxes
 		dummy := c.getClsn(4)
 		if len(dummy) > 0 {
-			sys.debugcdummy.Add(dummy, x + xoff, y + yoff, c.facing)
+			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing)
 		}
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
