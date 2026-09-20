@@ -208,6 +208,8 @@ options.t_itemname = {
 			modifyGameOption('Sound.BGMVolume', 80)
 			--modifyGameOption('Sound.MaxBGMVolume', 100)
 			modifyGameOption('Sound.AudioDucking', false)	
+			--modifyGameOption('Sound.BGMRAMBuffer', true)	
+			--modifyGameOption('Sound.AudioResampleQuality', 4)	
 			modifyGameOption('Arcade.AI.RandomColor', false)
 			modifyGameOption('Arcade.AI.SurvivalColor', true)
 			modifyGameOption('Arcade.AI.Ramping', true)

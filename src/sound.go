@@ -10,14 +10,14 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gopxl/beep/v2"
-	"github.com/gopxl/beep/v2/effects"
+	"github.com/ikemen-engine/beep/v2"
+	"github.com/ikemen-engine/beep/v2/effects"
 
-	"github.com/gopxl/beep/v2/flac"
-	"github.com/gopxl/beep/v2/midi"
-	"github.com/gopxl/beep/v2/mp3"
-	"github.com/gopxl/beep/v2/vorbis"
-	"github.com/gopxl/beep/v2/wav"
+	"github.com/ikemen-engine/beep/v2/flac"
+	"github.com/ikemen-engine/beep/v2/midi"
+	"github.com/ikemen-engine/beep/v2/mp3"
+	"github.com/ikemen-engine/beep/v2/vorbis"
+	"github.com/ikemen-engine/beep/v2/wav"
 )
 
 const (
