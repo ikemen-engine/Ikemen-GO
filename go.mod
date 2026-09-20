@@ -8,7 +8,7 @@ require (
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
 	github.com/go-gl/mathgl v1.0.0
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
-	github.com/gopxl/beep/v2 v2.1.1
+	github.com/ikemen-engine/beep/v2 v2.1.2-0.20260920031044-d7bdc24ec9d2
 	github.com/ikemen-engine/ggpo v0.0.0-20260914163559-279d7303151f
 	github.com/ikemen-engine/reisen v0.1.10-0.20260911210321-7972c2bbc957
 	github.com/leonkasovan/gl v0.0.0-20251110213347-e04040ce71e2

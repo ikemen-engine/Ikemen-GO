@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gopxl/beep/v2"
-	"github.com/gopxl/beep/v2/effects"
+	"github.com/ikemen-engine/beep/v2"
+	"github.com/ikemen-engine/beep/v2/effects"
 	"github.com/ikemen-engine/reisen"
 )
 

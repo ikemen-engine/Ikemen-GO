@@ -19,7 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gopxl/beep/v2"
+	"github.com/ikemen-engine/beep/v2"
 
 	//glfont "github.com/ikemen-engine/glfont"
 	lua "github.com/yuin/gopher-lua"
