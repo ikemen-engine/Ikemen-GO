@@ -2274,6 +2274,10 @@ func (e *Explod) update() {
 			if e.palfx != nil && e.ownpal {
 				e.palfx.step()
 			}
+			// Update interpolation. Don't apply values yet
+			if e.interpolate {
+				e.stepInterpolation()
+			}
 
 			e.oldPos = e.pos
 			e.newPos[0] = e.pos[0] + e.velocity[0]*e.facing
@@ -2316,6 +2320,12 @@ func (e *Explod) update() {
 		e.setAllPosY(e.pos[1])
 		e.setAllPosZ(e.pos[2])
 	}
+
+	// PalFX and Explod interpolation state advance on the tickFrame() phase,
+	// which is the phase used by PalFX.tickTimers().
+	if !e.pauseBool && sys.tickFrame() {
+
+	}
 }
 
 func (e *Explod) cueDraw() {
@@ -2343,15 +2353,24 @@ func (e *Explod) cueDraw() {
 	}
 
 	alp := e.alpha
-
 	rot := e.rot
-
 	fLength := e.fLength
 	scale := e.scale
 	xshear := e.xshear
 
+	// Apply the interpolation state. No mutation while drawing like before
 	if e.interpolate {
-		e.Interpolate(&scale, &alp, &rot, &fLength, &xshear)
+		for i := 0; i < 2; i++ {
+			scale[i] *= e.interpolate_scale[i]
+			alp[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+		}
+
+		rot.angle += e.interpolate_rot[0].angle
+		rot.xangle += e.interpolate_rot[0].xangle
+		rot.yangle += e.interpolate_rot[0].yangle
+
+		fLength += e.interpolate_fLength[0]
+		xshear += e.interpolate_xshear[0]
 	}
 
 	// Facing must be applied after interpolation
@@ -2487,59 +2506,46 @@ func (e *Explod) cueDraw() {
 	}
 }
 
-func (e *Explod) Interpolate(scale *[2]float32, alpha *[2]int32, rot *Rotation, fLength *float32, xshear *float32) {
-	if !e.pauseBool && sys.tickNextFrame() {
-		// Determine progress (inverted)
-		t := float32(e.interpolate_time[1]) / float32(e.interpolate_time[0])
-
-		// Interpolate animelem
-		if e.interpolate_animelem[1] >= 0 {
-			elem := Ceil(Lerp(float32(e.interpolate_animelem[0]-1), float32(e.interpolate_animelem[1]), 1-t))
-			if e.interpolate_animelem[0] > e.interpolate_animelem[1] {
-				elem = Ceil(Lerp(float32(e.interpolate_animelem[1]-1), float32(e.interpolate_animelem[0]), t))
-			}
-			e.animelem = Clamp(elem, Min(e.interpolate_animelem[0], e.interpolate_animelem[1]), Max(e.interpolate_animelem[0], e.interpolate_animelem[1]))
-		}
-
-		// Interpolate properties with 1 value
-		e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
-		e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
-		e.interpolate_rot[0].angle = Lerp(e.interpolate_rot[1].angle, e.start_rot.angle, t)
-		e.interpolate_rot[0].xangle = Lerp(e.interpolate_rot[1].xangle, e.start_rot.xangle, t)
-		e.interpolate_rot[0].yangle = Lerp(e.interpolate_rot[1].yangle, e.start_rot.yangle, t)
-
-		// Interpolate properties with 2 values
-		for i := 0; i < 2; i++ {
-			e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t)
-			// Interpolate alpha, then clamp
-			e.interpolate_alpha[i] = int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t))
-			e.interpolate_alpha[i] = Clamp(e.interpolate_alpha[i], 0, 255)
-		}
-
-		// Interpolate properties with 3 values
-		for i := 0; i < 3; i++ {
-			e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
-		}
-
-		// Step timer
-		if e.interpolate_time[1] > 0 {
-			e.interpolate_time[1]--
-		}
+func (e *Explod) stepInterpolation() {
+	if e.interpolate_time[0] <= 0 {
+		return
 	}
 
-	// Apply interpolated values to output parameters
+	// Determine progress (inverted)
+	t := float32(e.interpolate_time[1]) / float32(e.interpolate_time[0])
+
+	// Interpolate animelem
+	if e.interpolate_animelem[1] >= 0 {
+		elem := Ceil(Lerp(float32(e.interpolate_animelem[0]-1), float32(e.interpolate_animelem[1]), 1-t))
+		if e.interpolate_animelem[0] > e.interpolate_animelem[1] {
+			elem = Ceil(Lerp(float32(e.interpolate_animelem[1]-1), float32(e.interpolate_animelem[0]), t))
+		}
+		e.animelem = Clamp(elem, Min(e.interpolate_animelem[0], e.interpolate_animelem[1]), Max(e.interpolate_animelem[0], e.interpolate_animelem[1]))
+	}
+
+	// Interpolate properties with 1 value
+	e.interpolate_fLength[0] = Lerp(e.interpolate_fLength[1], e.start_fLength, t)
+	e.interpolate_xshear[0] = Lerp(e.interpolate_xshear[1], e.start_xshear, t)
+	e.interpolate_rot[0].angle = Lerp(e.interpolate_rot[1].angle, e.start_rot.angle, t)
+	e.interpolate_rot[0].xangle = Lerp(e.interpolate_rot[1].xangle, e.start_rot.xangle, t)
+	e.interpolate_rot[0].yangle = Lerp(e.interpolate_rot[1].yangle, e.start_rot.yangle, t)
+
+	// Interpolate properties with 2 values
+	for i := 0; i < 2; i++ {
+		e.interpolate_scale[i] = Lerp(e.interpolate_scale[i+2], e.start_scale[i], t)
+		e.interpolate_alpha[i] = int32(Lerp(float32(e.interpolate_alpha[i+2]), float32(e.start_alpha[i]), t))
+		e.interpolate_alpha[i] = Clamp(e.interpolate_alpha[i], 0, 255)
+	}
+
+	// Interpolate properties with 3 values
 	for i := 0; i < 3; i++ {
-		if i < 2 {
-			(*scale)[i] = e.interpolate_scale[i] * e.scale[i]
-			// Update alpha regardless of transparency type. Let the type handle the rendering
-			(*alpha)[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
-		}
+		e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
 	}
-	rot.angle = e.interpolate_rot[0].angle + e.rot.angle
-	rot.xangle = e.interpolate_rot[0].xangle + e.rot.xangle
-	rot.yangle = e.interpolate_rot[0].yangle + e.rot.yangle
-	*fLength = e.interpolate_fLength[0] + e.fLength
-	*xshear = e.interpolate_xshear[0]
+
+	// Step timer
+	if e.interpolate_time[1] > 0 {
+		e.interpolate_time[1]--
+	}
 }
 
 func (e *Explod) resetInterpolation(pfd *PalFXDef) {

@@ -329,7 +329,9 @@ func (pf *PalFX) refresh() {
 
 // Only responsible for stepping the timers
 func (pf *PalFX) tickTimers() {
-	if !pf.enable || !sys.tickFrame() {
+	// The caller decides if tickFrame is correct or not
+	//if !pf.enable || !sys.tickFrame() {
+	if !pf.enable {
 		return
 	}
 	for i := 0; i < 4; i++ {
