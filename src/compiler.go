@@ -6774,8 +6774,7 @@ func (c *CharCompiler) paramStringList(is IniSection, sc *StateControllerBase, p
 			if err != nil {
 				return Error("Invalid quoted string: " + part)
 			}
-			be := BytecodeExp(unquoted)
-			allBe = append(allBe, be)
+			allBe = append(allBe, c.stringToExp(unquoted)...)
 		}
 		if len(allBe) > 0 {
 			sc.add(opcode, allBe)

@@ -678,7 +678,7 @@ func (c *CharCompiler) helper(is IniSection, sc *StateControllerBase) (StateCont
 				sys.appendToConsole(c.charWarn() + "Helper name not enclosed in \"")
 				return nil
 			}
-			sc.add(helper_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(helper_name, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -843,7 +843,7 @@ func (c *CharCompiler) helper(is IniSection, sc *StateControllerBase) (StateCont
 				return err
 			}
 			// String hack like with most name parameters
-			mapKeyBes := sc.beToExp(BytecodeExp(mapKey))
+			mapKeyBes := c.stringToExp(mapKey)
 			sc.add(helper_map, append(mapKeyBes, mapValBes...))
 			delete(is, k)
 		}
@@ -4386,20 +4386,12 @@ func (c *CharCompiler) forceFeedback(is IniSection, sc *StateControllerBase) (St
 			if data[0] == '"' {
 				data = data[1 : len(data)-1]
 			}
-			var wf int32
 			switch strings.ToLower(data) {
-			case "sine":
-				wf = 0
-			case "square":
-				wf = 1
-			case "sinesquare":
-				wf = 2
-			case "off":
-				wf = -1
+			case "sine", "square", "sinesquare", "off":
 			default:
 				return Error("Invalid waveform: " + data)
 			}
-			sc.add(forceFeedback_waveform, sc.iToExp(wf))
+			sc.add(forceFeedback_waveform, c.stringToExp(strings.ToLower(data)))
 			return nil
 		}); err != nil {
 			return err
@@ -4585,7 +4577,7 @@ func (c *CharCompiler) dialogue(is IniSection, sc *StateControllerBase) (StateCo
 				if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 					return Error("Not enclosed in \"")
 				}
-				sc.add(dialogue_text, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+				sc.add(dialogue_text, c.stringToExp(data[1:len(data)-1]))
 				return nil
 			}); err != nil {
 				return err
@@ -4709,7 +4701,7 @@ func (c *CharCompiler) lifebarAction(is IniSection, sc *StateControllerBase) (St
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Text not enclosed in \"")
 			}
-			sc.add(lifebarAction_text, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(lifebarAction_text, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -4867,7 +4859,7 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 
 		// Only add the bytecode if both are OK
 		if len(mapName) > 0 && len(value) > 0 {
-			sc.add(mapSet_mapArray, sc.beToExp(BytecodeExp(mapName)))
+			sc.add(mapSet_mapArray, c.stringToExp(mapName))
 			if err := c.scAdd(sc, mapSet_value, value, VT_Float, 1); err != nil {
 				return err
 			}
@@ -4985,7 +4977,7 @@ func (c *CharCompiler) mapReset(is IniSection, sc *StateControllerBase) (StateCo
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Exclude not enclosed in \"")
 			}
-			sc.add(mapReset_exclude, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(mapReset_exclude, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}
 
@@ -5020,7 +5012,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Stagedef not enclosed in \"")
 			}
-			sc.add(matchRestart_stagedef, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_stagedef, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5029,7 +5021,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P1def not enclosed in \"")
 			}
-			sc.add(matchRestart_p1def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p1def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5038,7 +5030,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P2def not enclosed in \"")
 			}
-			sc.add(matchRestart_p2def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p2def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5047,7 +5039,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P3def not enclosed in \"")
 			}
-			sc.add(matchRestart_p3def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p3def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5056,7 +5048,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P4def not enclosed in \"")
 			}
-			sc.add(matchRestart_p4def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p4def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5065,7 +5057,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P5def not enclosed in \"")
 			}
-			sc.add(matchRestart_p5def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p5def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5074,7 +5066,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P6def not enclosed in \"")
 			}
-			sc.add(matchRestart_p6def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p6def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5083,7 +5075,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P7def not enclosed in \"")
 			}
-			sc.add(matchRestart_p7def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p7def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5092,7 +5084,7 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("P8def not enclosed in \"")
 			}
-			sc.add(matchRestart_p8def, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(matchRestart_p8def, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5188,7 +5180,7 @@ func (c *CharCompiler) playBgm(is IniSection, sc *StateControllerBase) (StateCon
 				return Error("Invalid source: " + parts[0])
 			}
 			// Send 2 values: number (MusicSource) + remaining string
-			sc.add(playBgm_source, append(sc.iToExp(int32(ms)), sc.beToExp(BytecodeExp(rest))...))
+			sc.add(playBgm_source, append(sc.iToExp(int32(ms)), c.stringToExp(rest)...))
 			return nil
 		}); err != nil {
 			return err
@@ -5197,7 +5189,7 @@ func (c *CharCompiler) playBgm(is IniSection, sc *StateControllerBase) (StateCon
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("BGM not enclosed in \"")
 			}
-			sc.add(playBgm_bgm, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(playBgm_bgm, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5480,7 +5472,7 @@ func (c *CharCompiler) remapSprite(is IniSection, sc *StateControllerBase) (Stat
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Preset not enclosed in \"")
 			}
-			sc.add(remapSprite_preset, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(remapSprite_preset, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5532,7 +5524,7 @@ func (c *CharCompiler) saveLoadFileSub(is IniSection, sc *StateControllerBase) e
 		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 			return Error("Path not enclosed in \"")
 		}
-		sc.add(saveFile_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+		sc.add(saveFile_path, c.stringToExp(data[1:len(data)-1]))
 		return nil
 	}); err != nil {
 		return err
@@ -5635,7 +5627,7 @@ func (c *CharCompiler) storyboard(is IniSection, sc *StateControllerBase) (State
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Not enclosed in \"")
 			}
-			sc.add(storyboard_path, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(storyboard_path, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -5955,7 +5947,7 @@ func (c *CharCompiler) createPlatform(is IniSection, sc *StateControllerBase) (S
 						"\n" + "Value provided: [" + data + "]",
 					)
 				}
-				sc.add(helper_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+				sc.add(helper_name, c.stringToExp(data[1:len(data)-1]))
 				return nil
 			},
 		); err != nil {
@@ -6468,7 +6460,7 @@ func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Displayname not enclosed in \"")
 			}
-			sc.add(modifyPlayer_displayname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(modifyPlayer_displayname, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -6477,7 +6469,7 @@ func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Lifebarname not enclosed in \"")
 			}
-			sc.add(modifyPlayer_lifebarname, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(modifyPlayer_lifebarname, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -6486,7 +6478,7 @@ func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (Sta
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Helpername not enclosed in \"")
 			}
-			sc.add(modifyPlayer_helpername, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(modifyPlayer_helpername, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -6558,7 +6550,7 @@ func (c *CharCompiler) assertCommand(is IniSection, sc *StateControllerBase) (St
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Command name not enclosed in \"")
 			}
-			sc.add(assertCommand_name, sc.beToExp(BytecodeExp(data[1:len(data)-1])))
+			sc.add(assertCommand_name, c.stringToExp(data[1:len(data)-1]))
 			return nil
 		}); err != nil {
 			return err
@@ -7032,7 +7024,7 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 			return Error("Shader name not enclosed in \"")
 		}
 		shaderName := strings.ToLower(data[1 : len(data)-1])
-		sc.add(opShader, sc.beToExp(BytecodeExp(shaderName)))
+		sc.add(opShader, c.stringToExp(shaderName))
 		return nil
 	}); err != nil {
 		return err
