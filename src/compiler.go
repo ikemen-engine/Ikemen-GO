@@ -6282,6 +6282,56 @@ func (c *CharCompiler) getDataPrefix(data *string, ffxDefault bool) (prefix stri
 	return
 }
 
+// Builds an expression that pushes a pooled string constant
+func (c *CharCompiler) stringToExp(s string) []BytecodeExp {
+	be := BytecodeExp{}
+	be.appendI32Op(OC_string, int32(sys.stringPool[c.playerNo].Add(s)))
+	return []BytecodeExp{be}
+}
+
+// Handles parameters with FX prefixes
+func (c *CharCompiler) paramPrefixValue(is IniSection, sc *StateControllerBase,
+	name string, id byte, numArg int, mandatory, ffxDefault bool) error {
+	return c.stateParam(is, name, mandatory, func(data string) error {
+		// Legacy syntax: a lexically stripped prefix means the rest is purely numeric
+		// anim = F 40
+		length := len(data)
+		prefix := c.getDataPrefix(&data, ffxDefault)
+		if len(data) < length {
+			return c.scAdd(sc, id, data, VT_Int, numArg, c.stringToExp(prefix)...)
+		}
+		// Try the whole value as numeric arguments without a prefix
+		// anim = 40
+		bes, err := c.exprs(data, VT_Int, numArg)
+		if err == nil {
+			def := ""
+			if ffxDefault {
+				def = "f"
+			}
+			sc.add(id, append(c.stringToExp(def), bes...))
+			return nil
+		}
+		// Dynamic prefix: a string expression followed by a comma and the numeric arguments
+		// anim = "F", 40 or anim = [string expression], 40
+		rest := data
+		c.token = c.tokenizer(&rest)
+		var sbe BytecodeExp
+		bv, err2 := c.expBoolOr(&sbe, &rest)
+		if err2 != nil || c.token != "," || (!bv.IsNone() && bv.vtype != VT_String) {
+			return err // Keep the legacy error message for values that aren't string-prefixed
+		}
+		if !bv.IsNone() {
+			sbe.appendValue(bv)
+		}
+		bes, err = c.exprs(rest, VT_Int, numArg)
+		if err != nil {
+			return err
+		}
+		sc.add(id, append([]BytecodeExp{sbe}, bes...))
+		return nil
+	})
+}
+
 func (c *CharCompiler) exprs(data string, vt ValueType,
 	numArg int) ([]BytecodeExp, error) {
 	bes := []BytecodeExp{}
@@ -6849,11 +6899,7 @@ func (c *CharCompiler) stateDef(is IniSection, sbc *StateBytecode) error {
 			stateDef_velset, VT_Float, 3, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "anim", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, stateDef_anim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "anim", stateDef_anim, 1, false, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "ctrl",

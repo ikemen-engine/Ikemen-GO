@@ -375,11 +375,7 @@ func (c *CharCompiler) playSnd(is IniSection, sc *StateControllerBase) (StateCon
 			playSnd_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "value", true, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, playSnd_value, data, VT_Int, 2,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "value", playSnd_value, 2, true, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "channel",
@@ -461,11 +457,7 @@ func (c *CharCompiler) changeStateSub(is IniSection,
 		changeState_ctrl, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "anim", false, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		return c.scAdd(sc, changeState_anim, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "anim", changeState_anim, 1, false, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "continue",
@@ -624,11 +616,7 @@ func (c *CharCompiler) changeAnimSub(is IniSection,
 		changeAnim_elemtime, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "value", true, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		return c.scAdd(sc, changeAnim_value, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "value", changeAnim_value, 1, true, false); err != nil {
 		return err
 	}
 	return nil
@@ -1062,11 +1050,7 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 		explod_spriteplayerno, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "anim",
-		false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, explod_anim, data, VT_Int, 1, sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "anim", explod_anim, 1, false, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "animelem",
@@ -1231,14 +1215,7 @@ func (c *CharCompiler) gameMakeAnim(is IniSection, sc *StateControllerBase) (Sta
 		}
 
 		// Previously, Ikemen accepted either "value" or "anim" here. Turns out Mugen only accepts "value"
-		anim := func(data string) error {
-			prefix := c.getDataPrefix(&data, true)
-			return c.scAdd(sc, gameMakeAnim_anim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}
-		if err := c.stateParam(is, "value", false, func(data string) error {
-			return anim(data)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "value", gameMakeAnim_anim, 1, false, true); err != nil {
 			return err
 		}
 
@@ -1333,11 +1310,7 @@ func (c *CharCompiler) modifyShadow(is IniSection, sc *StateControllerBase) (Sta
 			modifyShadow_spriteplayerno, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "anim", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, modifyShadow_anim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "anim", modifyShadow_anim, 1, false, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "animelem",
@@ -1415,11 +1388,7 @@ func (c *CharCompiler) modifyReflection(is IniSection, sc *StateControllerBase) 
 			modifyReflection_spriteplayerno, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "anim", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, modifyReflection_anim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "anim", modifyReflection_anim, 1, false, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "animelem",
@@ -1865,22 +1834,14 @@ func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_numhits, VT_Int, 1, false); err != nil {
 		return err
 	}
-	hsnd := func(id byte, data string) error {
-		prefix := c.getDataPrefix(&data, true)
-		return c.scAdd(sc, id, data, VT_Int, 2, sc.beToExp(BytecodeExp(prefix))...)
-	}
-	if err := c.stateParam(is, "hitsound", false, func(data string) error {
-		return hsnd(hitDef_hitsound, data)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "hitsound", hitDef_hitsound, 2, false, true); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "hitsound.channel",
 		hitDef_hitsound_channel, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "guardsound", false, func(data string) error {
-		return hsnd(hitDef_guardsound, data)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "guardsound", hitDef_guardsound, 2, false, true); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "guardsound.channel",
@@ -1981,23 +1942,14 @@ func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 		hitDef_fall_recovertime, VT_Int, 1, false); err != nil {
 		return err
 	}
-	sprk := func(id byte, data string) error {
-		prefix := c.getDataPrefix(&data, true)
-		return c.scAdd(sc, id, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}
-	if err := c.stateParam(is, "sparkno", false, func(data string) error {
-		return sprk(hitDef_sparkno, data)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "sparkno", hitDef_sparkno, 1, false, true); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "sparkangle",
 		hitDef_sparkangle, VT_Float, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "guard.sparkno", false, func(data string) error {
-		return sprk(hitDef_guard_sparkno, data)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "guard.sparkno", hitDef_guard_sparkno, 1, false, true); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "guard.sparkangle",
@@ -2470,25 +2422,13 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 		projectile_projpriority, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "projhitanim", false, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		return c.scAdd(sc, projectile_projhitanim, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "projhitanim", projectile_projhitanim, 1, false, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "projremanim", false, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		return c.scAdd(sc, projectile_projremanim, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "projremanim", projectile_projremanim, 1, false, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "projcancelanim", false, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		return c.scAdd(sc, projectile_projcancelanim, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "projcancelanim", projectile_projcancelanim, 1, false, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "velocity",
@@ -2580,11 +2520,7 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 		projectile_projdepthbound, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "projanim", false, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		return c.scAdd(sc, projectile_projanim, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "projanim", projectile_projanim, 1, false, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "supermovetime",
@@ -3550,11 +3486,7 @@ func (c *CharCompiler) superPause(is IniSection, sc *StateControllerBase) (State
 			superPause_brightness, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "anim", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, true)
-			return c.scAdd(sc, superPause_anim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "anim", superPause_anim, 1, false, true); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "pos",
@@ -3573,11 +3505,7 @@ func (c *CharCompiler) superPause(is IniSection, sc *StateControllerBase) (State
 			superPause_unhittable, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "sound", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, true)
-			return c.scAdd(sc, superPause_sound, data, VT_Int, 2,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "sound", superPause_sound, 2, false, true); err != nil {
 			return err
 		}
 		return nil
@@ -4768,25 +4696,13 @@ func (c *CharCompiler) lifebarAction(is IniSection, sc *StateControllerBase) (St
 			lifebarAction_time, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "anim", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, lifebarAction_anim, data, VT_Int, 1,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "anim", lifebarAction_anim, 1, false, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "spr", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, lifebarAction_spr, data, VT_Int, 2,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "spr", lifebarAction_spr, 2, false, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "snd", false, func(data string) error {
-			prefix := c.getDataPrefix(&data, false)
-			return c.scAdd(sc, lifebarAction_snd, data, VT_Int, 2,
-				sc.beToExp(BytecodeExp(prefix))...)
-		}); err != nil {
+		if err := c.paramPrefixValue(is, sc, "snd", lifebarAction_snd, 2, false, false); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "text", false, func(data string) error {
@@ -5880,15 +5796,7 @@ func (c *CharCompiler) textSub(is IniSection, sc *StateControllerBase) error {
 	}); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "font", false, func(data string) error {
-		prefix := c.getDataPrefix(&data, false)
-		// Only "f" (lifebar) or "m" (motif) are meaningful for Text/ModifyText.
-		if prefix != "f" && prefix != "m" {
-			prefix = ""
-		}
-		return c.scAdd(sc, text_font, data, VT_Int, 1,
-			sc.beToExp(BytecodeExp(prefix))...)
-	}); err != nil {
+	if err := c.paramPrefixValue(is, sc, "font", text_font, 1, false, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "localcoord",
