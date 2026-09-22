@@ -358,14 +358,14 @@ type InfoBoxProperties struct {
 type CellOverrideProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Spacing     [2]float32 `ini:"spacing"`
-	Facing      int32      `ini:"facing" default:"1"`
+	Facing      int32      `ini:"facing"`
 	Skip        bool       `ini:"skip"`
 	Scale       [2]float32 `ini:"scale"`
 	XShear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
 	YAngle      float32    `ini:"yangle"`
-	Projection  string     `ini:"projection" default:"orthographic"`
+	Projection  string     `ini:"projection"`
 	FocalLength float32    `ini:"focallength"`
 }
 
@@ -1835,6 +1835,7 @@ func loadMotif(def string) (*Motif, error) {
 
 	m.overrideParams()
 	m.fixLocalcoordOverrides()
+	m.inheritCursorCellOverrides()
 	m.applyGlyphDefaultsFromMovelist()
 	m.populateDataPointers()
 	m.applyPostParsePosAdjustments()
@@ -2322,6 +2323,76 @@ func (m *Motif) overrideParams() {
 	}
 
 	m.mergeWithInheritance(specs)
+}
+
+// Propagate p<n>.cursor.<state> parameters into their per cell "<col>-<row>" variants (wildcards included)
+func (m *Motif) inheritCursorCellOverrides() {
+	if m == nil || m.IniFile == nil {
+		return
+	}
+	sec, err := m.IniFile.GetSection("Select Info")
+	if err != nil || sec == nil {
+		return
+	}
+	re := regexp.MustCompile(`(?i)^(p[1-8]\.cursor\.(?:active|done|preview))\.([0-9*]+-[0-9*]+)\.(.+)$`)
+	variants := map[string]map[string]map[string]bool{}
+	for _, k := range sec.Keys() {
+		mt := re.FindStringSubmatch(k.Name())
+		if mt == nil {
+			continue
+		}
+		state, cell, param := strings.ToLower(mt[1]), strings.ToLower(mt[2]), strings.ToLower(mt[3])
+		if variants[state] == nil {
+			variants[state] = map[string]map[string]bool{}
+		}
+		if variants[state][cell] == nil {
+			variants[state][cell] = map[string]bool{}
+		}
+		variants[state][cell][param] = true
+	}
+	si := reflect.ValueOf(&m.SelectInfo).Elem()
+	for state, cells := range variants {
+		mapVal := si
+		for _, part := range strings.Split(state, ".") {
+			fieldVal, _, found := findFieldByINITag(mapVal, part)
+			if !found {
+				mapVal = reflect.Value{}
+				break
+			}
+			mapVal = fieldVal
+		}
+		if !mapVal.IsValid() || mapVal.Kind() != reflect.Map ||
+			mapVal.Type().Elem().Kind() != reflect.Ptr {
+			continue
+		}
+		def := mapVal.MapIndex(reflect.ValueOf("default"))
+		if !def.IsValid() || def.IsNil() {
+			continue
+		}
+		for _, key := range mapVal.MapKeys() {
+			params := cells[strings.ToLower(key.String())]
+			if params == nil {
+				continue
+			}
+			cur := mapVal.MapIndex(key)
+			if !cur.IsValid() || cur.IsNil() {
+				continue
+			}
+			merged := reflect.New(mapVal.Type().Elem().Elem())
+			merged.Elem().Set(def.Elem())
+			for param := range params {
+				if i := strings.Index(param, "."); i >= 0 {
+					param = param[:i]
+				}
+				dst, _, ok := findFieldByINITag(merged.Elem(), param)
+				src, _, found := findFieldByINITag(cur.Elem(), param)
+				if ok && found {
+					dst.Set(src)
+				}
+			}
+			mapVal.SetMapIndex(key, merged)
+		}
+	}
 }
 
 func (m *Motif) customPauseMenuSections() []string {

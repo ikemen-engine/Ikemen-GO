@@ -1100,15 +1100,20 @@ function start.f_getCursorData(pn)
 	return motif.select_info['p' .. ((pn - 1) % 2 + 1)]
 end
 
+-- Returns the '<col>-<row>' entry matching the cell, falling back to wildcards
+-- Nil coordinates match nothing, which is how cell transformations are skipped
+local function getOverride(t, col, row)
+	if t == nil or col == nil or row == nil then
+		return nil
+	end
+	return t[col .. '-' .. row] or t[col .. '-*'] or t['*-' .. row] or t['*-*']
+end
+
 -- Reset cursor animation for a specific slot only
 local function resetCursorData(pn, param)
 	local pData = start.f_getCursorData(pn)
 	local cursorCfg = pData.cursor[param]
-	local key = start.c[pn].selX .. '-' .. start.c[pn].selY
-	local cursorParams = cursorCfg.default
-	if cursorCfg[key] then
-		cursorParams = cursorCfg[key]
-	end
+	local cursorParams = getOverride(cursorCfg, start.c[pn].selX, start.c[pn].selY) or cursorCfg.default
 	local anim = cursorParams.AnimData
 	if anim then
 		animReset(anim)
@@ -1130,23 +1135,7 @@ local function cursorTween(val, target, factor)
 end
 
 local function getCellOverride(col, row)
-    local cells = motif.select_info.cell
-    local exact = col .. '-' .. row
-	local colWild = col .. '-*'
-	local rowWild = '*-' .. row
-    if cells[exact] then 
-		return cells[exact] 
-	end
-    if cells[colWild] then 
-		return cells[colWild] 
-	end
-    if cells[rowWild] then 
-		return cells[rowWild] 
-	end
-    if cells['*-*'] then 
-		return cells['*-*'] 
-	end
-    return nil
+	return getOverride(motif.select_info.cell, col, row)
 end
 
 function getCellFacing(default, col, row)
@@ -1273,22 +1262,25 @@ function start.f_drawCursor(pn, x, y, param, done)
 	cd.currentPos[1] = cd.targetPos[1] + cd.slideOffset[1]
 	cd.currentPos[2] = cd.targetPos[2] + cd.slideOffset[2]
 	-- draw
-	local params = pData.cursor[param].default
-	local key = x .. '-' .. y
-	if pData.cursor[param][key] ~= nil then
-		params = pData.cursor[param][key]
+	-- per cell cursor variant fully defines the cursor on its cell, so cell transformations apply to cursors that have no variant there
+	local variant = getOverride(pData.cursor[param], x, y)
+	local params = variant or pData.cursor[param].default
+	local cx, cy
+	if variant == nil then
+		cx, cy = x, y
 	end
 	local a = params.AnimData
-	animSetFacing(a, getCellFacing(params.facing, x, y))
-	local scale = getCellTransform(x, y, "scale", params.scale)
+	local facing = getCellFacing(params.facing, cx, cy)
+	animSetFacing(a, facing)
+	local scale = getCellTransform(cx, cy, "scale", params.scale)
 	animSetScale(a, scale[1], scale[2])
-	animSetXShear(a, getCellTransform(x, y, "xshear", params.xshear))
-	animSetAngle(a, getCellTransform(x, y, "angle", params.angle))
-	animSetXAngle(a, getCellTransform(x, y, "xangle", params.xangle))
-	animSetYAngle(a, getCellTransform(x, y, "yangle", params.yangle))
-	animSetProjection(a, getCellTransform(x, y, "projection", params.projection))
-	animSetFocalLength(a, getCellTransform(x, y, "focallength", params.focallength))
-	main.f_animPosDraw(a, cd.currentPos[1], cd.currentPos[2], getCellFacing(params.facing, x, y))
+	animSetXShear(a, getCellTransform(cx, cy, "xshear", params.xshear))
+	animSetAngle(a, getCellTransform(cx, cy, "angle", params.angle))
+	animSetXAngle(a, getCellTransform(cx, cy, "xangle", params.xangle))
+	animSetYAngle(a, getCellTransform(cx, cy, "yangle", params.yangle))
+	animSetProjection(a, getCellTransform(cx, cy, "projection", params.projection))
+	animSetFocalLength(a, getCellTransform(cx, cy, "focallength", params.focallength))
+	main.f_animPosDraw(a, cd.currentPos[1], cd.currentPos[2], facing)
 end
 
 -- snaps the cursor instantly to its target cell
