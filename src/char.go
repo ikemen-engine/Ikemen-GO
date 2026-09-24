@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"sort"
 	"strings"
@@ -4303,35 +4302,37 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 					lanShaders = false
 				}
 				shaders = false
-				isVulkan := strings.HasPrefix(gfx.GetName(), "Vulkan")
 
 				for key, val := range is {
-					shaderPath := val
-					shaderAlias := key
+					sys.loadCustomShaderFile(gi.customShaders, key, val, []string{def, "", "data/"})
+				}
+			}
+		}
+	}
 
-					if isVulkan {
-						if !strings.HasSuffix(strings.ToLower(shaderPath), ".spv") {
-							shaderPath += ".spv"
+	// Merge common shaders. The char's own shaders take priority
+	for _, key := range SortedKeys(sys.cfg.Common.Shaders) {
+		for _, v := range sys.cfg.Common.Shaders[key] {
+			if err := LoadFile(&v, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}, "", func(filename string) error {
+				str, err := LoadText(filename)
+				if err != nil {
+					return err
+				}
+				lines, i := SplitAndTrim(str, "\n"), 0
+				for i < len(lines) {
+					is, name, _ := ReadIniSection(lines, &i)
+					if name != "shaders" {
+						continue
+					}
+					for sName, path := range is {
+						if _, ok := gi.customShaders[sName]; !ok {
+							sys.loadCustomShaderFile(gi.customShaders, sName, path, []string{filename, "", "data/"})
 						}
 					}
-
-					LoadFile(&shaderPath, []string{def, "", "data/"}, "", func(filename string) error {
-						f, err := OpenFile(filename)
-						if err != nil {
-							LogMessage("Failed to open shader file '%s': %v", filename, err)
-							return err
-						}
-						defer f.Close()
-						shaderData, err := io.ReadAll(f)
-						if err != nil {
-							LogMessage("Failed to read shader file '%s': %v", filename, err)
-							return err
-						}
-
-						sys.loadCustomShader(gi.customShaders, shaderAlias, filename, shaderData)
-						return nil
-					})
 				}
+				return nil
+			}); err != nil {
+				return err
 			}
 		}
 	}

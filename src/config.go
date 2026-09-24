@@ -49,6 +49,7 @@ type Config struct {
 		Const   map[string][]string `ini:"map:^(?i)Const[0-9]*$" lua:"Const" sync:"host"`
 		States  map[string][]string `ini:"map:^(?i)States[0-9]*$" lua:"States" sync:"host"`
 		Fx      map[string][]string `ini:"map:^(?i)Fx[0-9]*$" lua:"Fx" sync:"host"`
+		Shaders map[string][]string `ini:"map:^(?i)Shaders[0-9]*$" lua:"Shaders" sync:"host"`
 		Modules map[string][]string `ini:"map:^(?i)Modules[0-9]*$" lua:"Modules" sync:"host"`
 		Lua     map[string][]string `ini:"map:^(?i)Lua[0-9]*$" lua:"Lua" sync:"host"`
 	} `ini:"Common"`

@@ -7053,6 +7053,28 @@ func (s *System) loadCustomShader(shaders map[string]string, name, filename stri
 	}
 }
 
+// Loads a shader file listed in a [Shaders] section (char, common etc)
+func (s *System) loadCustomShaderFile(shaders map[string]string, name, path string, dirs []string) {
+	if strings.HasPrefix(gfx.GetName(), "Vulkan") && !strings.HasSuffix(strings.ToLower(path), ".spv") {
+		path += ".spv"
+	}
+	LoadFile(&path, dirs, "", func(filename string) error {
+		f, err := OpenFile(filename)
+		if err != nil {
+			LogMessage("Failed to open shader file '%s': %v", filename, err)
+			return err
+		}
+		defer f.Close()
+		data, err := io.ReadAll(f)
+		if err != nil {
+			LogMessage("Failed to read shader file '%s': %v", filename, err)
+			return err
+		}
+		s.loadCustomShader(shaders, name, filename, data)
+		return nil
+	})
+}
+
 // Checks if any char is using a shader, including Turns preloads that aren't in sys.cgi yet
 func (s *System) isCustomShaderActive(key string) bool {
 	// TODO: Check stage shader maps here when stages support custom shaders
