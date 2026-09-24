@@ -6583,6 +6583,7 @@ const (
 	explod_shader_tex1_spr
 	explod_shader_tex2_anim
 	explod_shader_tex2_spr
+	explod_shader_playerno
 	explod_shadertime
 	explod_last = iota + palFX_last + afterImage_last + 1 - 1
 	explod_redirectid
@@ -6595,6 +6596,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
+	shaderPN := crun.ss.sb.playerNo
 
 	e, i := crun.spawnExplod()
 	if e == nil {
@@ -6806,11 +6808,13 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			}
 		case explod_shader:
 			shader := exp[0].evalSLower(c)
-			if shader == "" || sys.isValidCustomShader(shader) {
-				e.customShader.name = shader
+			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
+				e.customShader.name, e.customShader.key = shader, key
 			} else {
-				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid explod shader name: %s", shader))
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid explod shader: %s (playerNo: %v)", shader, shaderPN+1))
 			}
+		case explod_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
 		case explod_shaderparam:
 			numParams := int(exp[0].evalI(c))
 			for j := 0; j < numParams; j++ {
@@ -6977,6 +6981,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 	remap := false
 	animPN := -1
 	spritePN := -1
+	shaderPN := crun.ss.sb.playerNo
 
 	// Mugen chars can only modify some parameters after defining PosType
 	// Ikemen chars don't have this restriction
@@ -7422,9 +7427,15 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			})
 		case explod_shader:
 			s := exp[0].evalSLower(c)
-			modifiers = append(modifiers, func(e *Explod) {
-				e.customShader.name = s
-			})
+			if key, ok := sys.resolveCharShader(shaderPN, s); ok {
+				modifiers = append(modifiers, func(e *Explod) {
+					e.customShader.name, e.customShader.key = s, key
+				})
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid explod shader: %s (playerNo: %v)", s, shaderPN+1))
+			}
+		case explod_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
 		case explod_shaderparam:
 			numParams := int(exp[0].evalI(c))
 			for j := 0; j < numParams; j++ {
@@ -8483,6 +8494,7 @@ const (
 	projectile_shader_tex1_spr
 	projectile_shader_tex2_anim
 	projectile_shader_tex2_spr
+	projectile_shader_playerno
 	projectile_shadertime
 	// projectile_platform
 	// projectile_platformwidth
@@ -8501,6 +8513,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
+	shaderPN := crun.ss.sb.playerNo
 	var p *Projectile
 	pt := PT_P1
 	var offx, offy, offz float32 = 0, 0, 0
@@ -8662,7 +8675,14 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		case projectile_projprojection:
 			p.projection = Projection(exp[0].evalI(c))
 		case projectile_shader:
-			p.customShader.name = exp[0].evalSLower(c)
+			shader := exp[0].evalSLower(c)
+			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
+				p.customShader.name, p.customShader.key = shader, key
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid projectile shader: %s (playerNo: %v)", shader, shaderPN+1))
+			}
+		case projectile_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
 		case projectile_shaderparam:
 			numParams := int(exp[0].evalI(c))
 			for j := 0; j < numParams; j++ {
@@ -8836,6 +8856,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 	}
 
 	redirscale := c.localscl / crun.localscl
+	shaderPN := crun.ss.sb.playerNo
 	mpid := int32(-1)
 	mpidx := int(-1)
 
@@ -9144,9 +9165,15 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				})
 			case projectile_shader:
 				v1 := exp[0].evalSLower(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.name = v1
-				})
+				if key, ok := sys.resolveCharShader(shaderPN, v1); ok {
+					eachProj(func(p *Projectile) {
+						p.customShader.name, p.customShader.key = v1, key
+					})
+				} else {
+					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid projectile shader: %s (playerNo: %v)", v1, shaderPN+1))
+				}
+			case projectile_shader_playerno:
+				shaderPN = int(exp[0].evalI(c)) - 1
 			case projectile_shaderparam:
 				numParams := int(exp[0].evalI(c))
 				var indices []int
@@ -13266,6 +13293,7 @@ const (
 	shaderSet_tex1_spr
 	shaderSet_tex2_anim
 	shaderSet_tex2_spr
+	shaderSet_playerno
 	shaderSet_time
 	shaderSet_redirectid
 )
@@ -13275,18 +13303,23 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 	if crun == nil {
 		return false
 	}
+
 	st := int32(1)
+	shaderPN := crun.ss.sb.playerNo
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case shaderSet_time:
 			st = exp[0].evalI(c)
 		case shaderSet_shader:
 			shader := exp[0].evalSLower(c)
-			if shader == "" || sys.isValidCustomShader(shader) {
-				crun.customShader.name = shader
+			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
+				crun.customShader.name, crun.customShader.key = shader, key
 			} else {
-				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid shader name: %s", shader))
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid shader: %s (playerNo: %v)", shader, shaderPN+1))
 			}
+		case shaderSet_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
 		case shaderSet_shaderparam:
 			numParams := int(exp[0].evalI(c))
 			for j := 0; j < numParams; j++ {
@@ -13322,10 +13355,12 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+
 	crun.customShader.time = st
 	if crun.customShader.time == 0 {
 		crun.customShader.clear()
 	}
+
 	return false
 }
 

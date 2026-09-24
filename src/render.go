@@ -264,7 +264,8 @@ func (st *ShaderTexture) step() {
 }
 
 type CustomShader struct {
-	name   string
+	name   string // The name chars use to refer to the shader
+	key    string // Engine-wide shader key made from its unique path
 	params [16]float32
 	time   int32
 	sTime  float32
@@ -274,6 +275,7 @@ type CustomShader struct {
 
 func (cs *CustomShader) clear() {
 	cs.name = ""
+	cs.key = ""
 	cs.params = [16]float32{}
 	cs.time = 0
 	cs.sTime = 0
