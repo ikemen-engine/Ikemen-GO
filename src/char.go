@@ -1396,6 +1396,7 @@ type AfterImage struct {
 	alpha          [2]int32
 	palfx          []*PalFX
 	imgs           []SpriteData // []aimgImage
+	drawbuf        []SpriteData // Reused draw copies, to avoid allocating every frame
 	imgidx         int32
 	restgap        int32
 	reccount       int32
@@ -1604,8 +1605,9 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 			}
 
 			// Shallow copy the original animation
-			// Reuse the already allocated afterimage sprite if it exists
+			// Reuse the already allocated afterimage sprite and frame buffer if they exist
 			oldSpr := img.anim.spr
+			oldFrames := img.anim.frames
 			*img.anim = *sd.anim
 			img.anim.spr = oldSpr
 
@@ -1640,10 +1642,13 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 				img.anim.spr = nil
 			}
 
-			// Keep only the current frame instead of the full frame list
-			// Use a fresh slice to avoid mutating the source animation's frames.
-			if int(sd.anim.drawidx) < len(sd.anim.frames) {
-				img.anim.frames = []AnimFrame{sd.anim.frames[sd.anim.drawidx]}
+			// Keep only the current frame, reusing the old buffer
+			// Drop Clsn since afterimages don't use it. Makes state saving cheaper
+			di := int(sd.anim.drawidx)
+			if di >= 0 && di < len(sd.anim.frames) {
+				img.anim.frames = append(oldFrames[:0], sd.anim.frames[di])
+				img.anim.frames[0].Clsn1 = nil
+				img.anim.frames[0].Clsn2 = nil
 			} else {
 				img.anim.frames = nil
 			}
@@ -1687,6 +1692,11 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 	ringsize := int32(len(ai.imgs))
 	if ringsize <= 0 || ai.framegap <= 0 {
 		return
+	}
+
+	// One draw slot per afterimage. Empty after a rollback load
+	if len(ai.drawbuf) < len(ai.palfx) {
+		ai.drawbuf = make([]SpriteData, len(ai.palfx))
 	}
 
 	// Record first
@@ -1742,7 +1752,9 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 			ai.palfx[step].remap = sd.pfx.remap
 
 			// Prepare AfterImage sprite data
-			imgsd := *img
+			// Reuse the draw slot. Safe since the sprite list is rebuilt every frame
+			imgsd := &ai.drawbuf[step]
+			*imgsd = *img
 
 			// Apply the dynamic effects
 			imgsd.pfx = ai.palfx[step]
@@ -1751,7 +1763,7 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 			imgsd.priority = img.priority - step // Afterimages decrease in sprpriority over time
 
 			// Add to list
-			sys.spriteList.add(&imgsd)
+			sys.spriteList.add(imgsd)
 
 			// Track number of afterimage sprites used by this player
 			sys.afterImageCount[playerNo]++
