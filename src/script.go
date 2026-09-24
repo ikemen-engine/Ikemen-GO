@@ -2940,8 +2940,11 @@ func systemScriptInit(l *lua.LState) {
 							sys.charList.add(c[0])
 						} else if c[0].roundsExisted() == 0 {
 							// BG-loaded Turns switching updates CharList inside activateNextTurnsFighters().
-							if !(sys.cfg.Config.TurnsLoading && sys.tmode[i&1] == TM_Turns) && !sys.charList.replace(c[0], i, 0) {
-								panic(fmt.Errorf("failed to replace player: %v", i))
+							if !(sys.cfg.Config.TurnsLoading && sys.tmode[i&1] == TM_Turns) {
+								// Wipe the outgoing root and its helpers from CharList, then add the incoming root
+								// This is safer than the old replace()
+								sys.removePlayerFromCharList(i)
+								sys.charList.add(c[0])
 							}
 						}
 
@@ -2961,6 +2964,9 @@ func systemScriptInit(l *lua.LState) {
 						}
 					}
 				}
+
+				// Verify CharList still matches sys.chars after the previous block
+				sys.charList.audit()
 
 				// If first round
 				if sys.roundNo == 1 {

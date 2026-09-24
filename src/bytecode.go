@@ -1536,11 +1536,12 @@ func (be BytecodeExp) ReadIntAt(i *int) int32 {
 func (be BytecodeExp) ReadPoolStringAt(i *int) string {
 	idx := be.ReadIntAt(i)
 	pool := sys.stringPool[sys.workingState.playerNo].List
-	if idx < 0 || int(idx) >= len(pool) {
-		// Shouldn't happen, but fail quietly instead of crashing the game
-		LogMessage("Invalid string pool index: %d (pool size %d)", idx, len(pool))
-		return ""
-	}
+	// It's better to crash loudly here
+	//if idx < 0 || int(idx) >= len(pool) {
+	//	// Shouldn't happen, but fail quietly instead of crashing the game
+	//	LogMessage("Invalid string pool index: %d (pool size %d)", idx, len(pool))
+	//	return ""
+	//}
 	return pool[idx]
 }
 

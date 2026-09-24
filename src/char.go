@@ -13734,6 +13734,7 @@ func (cl *CharList) delete(dc *Char) {
 	// However not reusing it creates a more predictable drawing order
 }
 
+/*
 func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
 	// Find the old character occupying the slot
 	// We cannot look at sys.chars directly because that has already been updated to the new char
@@ -13753,6 +13754,75 @@ func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
 	}
 
 	return false
+}
+*/
+
+func (cl *CharList) audit() {
+	// Neither list may contain duplicates
+	inCreation := make(map[*Char]bool, len(cl.creationOrder))
+	for _, c := range cl.creationOrder {
+		if inCreation[c] {
+			panic(Error("CharList.creationOrder contains a duplicate char"))
+		}
+		inCreation[c] = true
+	}
+	inRun := make(map[*Char]bool, len(cl.runOrder))
+	for _, c := range cl.runOrder {
+		if inRun[c] {
+			panic(Error("CharList.runOrder contains a duplicate char"))
+		}
+		inRun[c] = true
+	}
+
+	// Both lists must hold the exact same chars
+	if len(cl.creationOrder) != len(cl.runOrder) {
+		panic(Error("CharList.creationOrder and runOrder lengths differ"))
+	}
+	for _, c := range cl.creationOrder {
+		if !inRun[c] {
+			panic(Error("CharList.creationOrder contains a char missing from runOrder"))
+		}
+	}
+	for _, c := range cl.runOrder {
+		if !inCreation[c] {
+			panic(Error("CharList.runOrder contains a char missing from creationOrder"))
+		}
+	}
+
+	// No two chars may share an ID
+	ids := make(map[int32]bool, len(cl.creationOrder))
+	for _, c := range cl.creationOrder {
+		if ids[c.id] {
+			panic(Error(fmt.Sprintf("CharList contains duplicate char ID %d (%s)", c.id, c.name)))
+		}
+		ids[c.id] = true
+	}
+
+	// idMap must mirror creationOrder exactly
+	if len(cl.idMap) != len(cl.creationOrder) {
+		panic(Error("CharList.idMap and creationOrder lengths differ"))
+	}
+	for _, c := range cl.creationOrder {
+		if cl.idMap[c.id] != c {
+			panic(Error(fmt.Sprintf("CharList.idMap entry mismatch (id: %d, name: %s)", c.id, c.name)))
+		}
+	}
+
+	// Every char must still exist in its player's sys.chars slot
+	for _, c := range cl.creationOrder {
+		found := false
+		if c.playerNo >= 0 && c.playerNo < len(sys.chars) {
+			for _, pc := range sys.chars[c.playerNo] {
+				if pc == c {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			panic(Error(fmt.Sprintf("CharList contains char missing from sys.chars (playerNo: %d, helperIndex: %d, id: %d, name: %s)", c.playerNo, c.helperIndex, c.id, c.name)))
+		}
+	}
 }
 
 func (cl *CharList) commandUpdate() {
