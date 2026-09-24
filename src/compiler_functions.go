@@ -958,15 +958,16 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 		explod_syncid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "shadertime", explod_shadertime, VT_Int, 1, false); err != nil {
-		return err
-	}
 	// shader.playerno should be placed before shader
 	if err := c.paramValue(is, sc, "shader.playerno", explod_shader_playerno, VT_Int, 1, false); err != nil {
 		return err
 	}
 	// TODO: The other shader parameters should also use the "shader." prefix
 	if err := c.shaderSub(is, sc, explod_shader, ""); err != nil {
+		return err
+	}
+	// shadertime should be placed after shader, since changing shader resets it
+	if err := c.paramValue(is, sc, "shadertime", explod_shadertime, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "bindid",
@@ -2547,15 +2548,16 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 	if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
 		return err
 	}
-	if err := c.paramValue(is, sc, "shadertime", projectile_shadertime, VT_Int, 1, false); err != nil {
-		return err
-	}
 	// shader.playerno should be placed before shader
 	if err := c.paramValue(is, sc, "shader.playerno", projectile_shader_playerno, VT_Int, 1, false); err != nil {
 		return err
 	}
 	// TODO: The other shader parameters should also use the "shader." prefix
 	if err := c.shaderSub(is, sc, projectile_shader, ""); err != nil {
+		return err
+	}
+	// shadertime should be placed after shader, since changing shader resets it
+	if err := c.paramValue(is, sc, "shadertime", projectile_shadertime, VT_Int, 1, false); err != nil {
 		return err
 	}
 	return nil

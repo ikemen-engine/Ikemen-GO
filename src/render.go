@@ -273,6 +273,14 @@ type CustomShader struct {
 	tex2   ShaderTexture
 }
 
+// Switching to a different shader drops the previous one's params, textures and elapsed time
+func (cs *CustomShader) set(name, key string) {
+	if key != cs.key {
+		cs.clear()
+	}
+	cs.name, cs.key = name, key
+}
+
 func (cs *CustomShader) clear() {
 	cs.name = ""
 	cs.key = ""

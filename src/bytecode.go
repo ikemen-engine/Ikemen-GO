@@ -6809,7 +6809,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 		case explod_shader:
 			shader := exp[0].evalSLower(c)
 			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
-				e.customShader.name, e.customShader.key = shader, key
+				e.customShader.set(shader, key)
 			} else {
 				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid explod shader: %s (playerNo: %v)", shader, shaderPN+1))
 			}
@@ -7429,7 +7429,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			s := exp[0].evalSLower(c)
 			if key, ok := sys.resolveCharShader(shaderPN, s); ok {
 				modifiers = append(modifiers, func(e *Explod) {
-					e.customShader.name, e.customShader.key = s, key
+					e.customShader.set(s, key)
 				})
 			} else {
 				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid explod shader: %s (playerNo: %v)", s, shaderPN+1))
@@ -8677,7 +8677,7 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 		case projectile_shader:
 			shader := exp[0].evalSLower(c)
 			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
-				p.customShader.name, p.customShader.key = shader, key
+				p.customShader.set(shader, key)
 			} else {
 				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid projectile shader: %s (playerNo: %v)", shader, shaderPN+1))
 			}
@@ -9167,7 +9167,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				v1 := exp[0].evalSLower(c)
 				if key, ok := sys.resolveCharShader(shaderPN, v1); ok {
 					eachProj(func(p *Projectile) {
-						p.customShader.name, p.customShader.key = v1, key
+						p.customShader.set(v1, key)
 					})
 				} else {
 					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid projectile shader: %s (playerNo: %v)", v1, shaderPN+1))
@@ -13314,7 +13314,7 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 		case shaderSet_shader:
 			shader := exp[0].evalSLower(c)
 			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
-				crun.customShader.name, crun.customShader.key = shader, key
+				crun.customShader.set(shader, key)
 			} else {
 				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid shader: %s (playerNo: %v)", shader, shaderPN+1))
 			}
