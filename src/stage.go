@@ -1896,6 +1896,7 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	ofs := sys.envShake.getOffset()
 	pos := [...]float32{x, y}
 	scl2 := s.localscl * scl
+
 	// This code makes the background scroll faster when surpassing boundhigh with the camera pushed down
 	// through floortension and boundlow. MUGEN 1.1 doesn't look like it does this, so it was commented.
 	// var extraBoundH float32
@@ -1907,6 +1908,7 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	// extraBoundH*scl
 	// pos[1] = float32(s.stageCamera.boundhigh) - extraBoundH/s.localscl
 	// }
+
 	if ofs[1] != 0 && s.stageCamera.verticalfollow > 0 {
 		if ofs[1] < 0 {
 			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
@@ -1941,8 +1943,10 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	//	}
 	//}
 
+	// Draw model
 	s.drawModel(pos, ofs[1], scl, layer)
 
+	// Draw BG's
 	for _, b := range s.bg {
 		// Draw only when visible and enabled.
 		if b.layerno == layer && b.visible && b.enabled && (b.anim.spr != nil || b._type == BG_Video) {

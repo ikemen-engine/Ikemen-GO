@@ -309,31 +309,29 @@ func applyRotation(modelview mgl.Mat4, rp RenderParams) mgl.Mat4 {
 	aspectGame := sys.getCurrentAspect()
 	aspectWindow := float32(sys.scrrect[2]) / float32(sys.scrrect[3])
 
-	rotMatrix := func() mgl.Mat4 {
-		return mgl.Rotate3DX(-rp.rot.xangle * math.Pi / 180.0).
-			Mul3(mgl.Rotate3DY(rp.rot.yangle * math.Pi / 180.0)).
-			Mul3(mgl.Rotate3DZ(rp.rot.angle * math.Pi / 180.0)).
-			Mat4()
-	}
+	rotMatrix := mgl.Rotate3DX(-rp.rot.xangle * math.Pi / 180.0).
+		Mul3(mgl.Rotate3DY(rp.rot.yangle * math.Pi / 180.0)).
+		Mul3(mgl.Rotate3DZ(rp.rot.angle * math.Pi / 180.0)).
+		Mat4()
 
 	if Abs(aspectGame-aspectWindow) > 0.01 {
 		if aspectWindow > aspectGame {
 			// Window wider: normalize X
 			scaleX := aspectWindow / aspectGame
 			modelview = modelview.Mul4(mgl.Scale3D(scaleX, rp.vs, 1)) // pre-scale
-			modelview = modelview.Mul4(rotMatrix())                   // rotate
+			modelview = modelview.Mul4(rotMatrix)                     // rotate
 			modelview = modelview.Mul4(mgl.Scale3D(1/scaleX, 1, 1))   // restore
 		} else {
 			// Window taller: normalize Y
 			scaleY := aspectGame / aspectWindow
 			modelview = modelview.Mul4(mgl.Scale3D(1, scaleY*rp.vs, 1))
-			modelview = modelview.Mul4(rotMatrix())
+			modelview = modelview.Mul4(rotMatrix)
 			modelview = modelview.Mul4(mgl.Scale3D(1, 1/scaleY, 1))
 		}
 	} else {
 		// Same aspect: simple rotation
 		modelview = modelview.Mul4(mgl.Scale3D(1, rp.vs, 1))
-		modelview = modelview.Mul4(rotMatrix())
+		modelview = modelview.Mul4(rotMatrix)
 	}
 
 	return modelview

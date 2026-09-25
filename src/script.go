@@ -8773,6 +8773,10 @@ func triggerFunctions(l *lua.LState) {
 			lv = lua.LNumber(c.ghv.projid)
 		case "guardko":
 			lv = lua.LBool(c.ghv.guardko)
+		case "sparkx":
+			lv = lua.LNumber(c.ghv.sparkxy[0])
+		case "sparky":
+			lv = lua.LNumber(c.ghv.sparkxy[1])
 		default:
 			l.RaiseError("\nInvalid argument: %v\n", strArg(l, 1))
 		}
@@ -10288,6 +10292,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lv)
 		return 1
 	})
+	luaRegister(l, "spritePlayerNo", func(*lua.LState) int {
+		l.Push(lua.LNumber(sys.debugWC.spritePN + 1))
+		return 1
+	})
 	luaRegister(l, "spriteVar", func(l *lua.LState) int {
 		vname := strings.ToLower(strArg(l, 1))
 		var lv lua.LValue
@@ -10338,6 +10346,10 @@ func triggerFunctions(l *lua.LState) {
 			switch strings.ToLower(vname) {
 			case "actionno":
 				ln = lua.LNumber(bg.actionno)
+			case "animelem":
+				ln = lua.LNumber(bg.anim.curelem)
+			case "animelemtime":
+				ln = lua.LNumber(bg.anim.curelemtime)
 			case "animloopcount":
 				ln = lua.LNumber(bg.anim.loopcount)
 			case "animtime":

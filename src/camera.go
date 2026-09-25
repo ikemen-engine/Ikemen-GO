@@ -58,7 +58,7 @@ type stageCamera struct {
 	prevRightest            float32
 	leftestvel              float32
 	rightestvel             float32
-	snapToTarget            bool
+	skipSmoothing           bool
 	maxRight                float32
 	minLeft                 float32
 	autoZoom                bool
@@ -188,7 +188,7 @@ func (c *Camera) Init() {
 	c.zoomindelaytime = c.zoomindelay
 
 	// We want the camera to just snap to place the first time it moves
-	c.snapToTarget = true
+	c.skipSmoothing = true
 
 	// Set screen position immediately so that char triggers and postype will be correct in the first frame of the round
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/3600
@@ -392,7 +392,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				verticalfollow := Max(c.verticalfollow, 0.0) + (targetScale-c.zoomout)*Max(c.verticalfollowzoomdelta, 0.0)
 				targetY := (c.highest + float32(c.floortension)*c.localscl) * verticalfollow
 
-				if c.snapToTarget {
+				if c.skipSmoothing {
 					ywithoutbound = targetY
 					newY = ywithoutbound
 				} else {
@@ -424,7 +424,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				newY = c.ywithoutbound
 				targetY := c.GroundLevel()/targetScale + (c.highest - float32(c.tensionhigh)*c.localscl)
 
-				if c.snapToTarget {
+				if c.skipSmoothing {
 					newY = targetY
 				} else {
 					diff := float32(sys.gameWidth) / 320 * 2.5
@@ -447,7 +447,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			newLeft, newRight := oldLeft, oldRight
 			logicScale := 60.0 / float32(sys.gameLogicSpeed())
 
-			if c.snapToTarget {
+			if c.skipSmoothing {
 				newLeft, newRight = targetLeft, targetRight
 			} else {
 				diff := float32(sys.gameWidth) / 3200
@@ -503,7 +503,7 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 		}
 	}
 
-	c.snapToTarget = false
+	c.skipSmoothing = false
 	return
 }
 

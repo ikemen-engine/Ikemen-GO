@@ -461,6 +461,7 @@ type Renderer_GL33 struct {
 	modelVAO                uint32
 	modelEnvVAO             uint32
 	postVAO                 uint32
+	vertexScratch           []byte
 
 	grabTexture  *Texture_GL33
 	grabFbo      uint32
@@ -497,6 +498,8 @@ type GL33State struct {
 	useJoint0           bool
 	useJoint1           bool
 	useOutlineAttribute bool
+	boundBuffers            map[uint32]uint32
+	currentVAO              uint32
 }
 
 func (r *Renderer_GL33) GetName() string {
@@ -575,8 +578,8 @@ func (r *Renderer_GL33) InitModelShader() error {
 	r.cubemapFilteringShader.RegisterTextures("cubeMap")
 
 	// Configure modelEnvVAO
-	gl.BindVertexArray(r.modelEnvVAO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	r.bindVertexArray(r.modelEnvVAO)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 
 	if loc, ok := r.cubemapFilteringShader.attributes["VertCoord"]; ok && loc >= 0 {
 		gl.EnableVertexAttribArray(uint32(loc))
@@ -584,7 +587,7 @@ func (r *Renderer_GL33) InitModelShader() error {
 	}
 
 	// Unbind for safety
-	gl.BindVertexArray(0)
+	r.bindVertexArray(0)
 
 	return nil
 }
@@ -594,6 +597,8 @@ func (r *Renderer_GL33) InitModelShader() error {
 func (r *Renderer_GL33) Init() {
 	chk(gl.Init())
 	LogMessage("Using OpenGL %v (%v)", gl.GoStr(gl.GetString(gl.VERSION)), gl.GoStr(gl.GetString(gl.RENDERER)))
+
+	r.InitStateCache()
 
 	r.customShaders = make(map[uint32]*ShaderProgram_GL33)
 	r.customShaderMap = make(map[string]uint32)
@@ -629,12 +634,17 @@ func (r *Renderer_GL33) Init() {
 	gl.GenBuffers(2, &r.modelIndexBuffer[0])
 	gl.GenBuffers(1, &r.postVertBuffer)
 
+	// Pre-size to 64 bytes (one quad) so later uploads of the same size stay cheap
+	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	gl.BufferData(gl.ARRAY_BUFFER, 64, nil, gl.DYNAMIC_DRAW)
+	r.vertexScratch = make([]byte, 64)
+
 	// Initialize post-processing vertex buffer
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(postVertData), unsafe.Pointer(&postVertData[0]), gl.STATIC_DRAW)
 
 	// Unbind for safety
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	r.bindBuffer(gl.ARRAY_BUFFER, 0)
 
 	// Sprite shader
 	r.spriteShader, _ = r.newShaderProgram(vertShader, fragShader, "", "Main Shader", true)
@@ -644,8 +654,8 @@ func (r *Renderer_GL33) Init() {
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Configure spriteVAO
-	gl.BindVertexArray(r.spriteVAO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	r.bindVertexArray(r.spriteVAO)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 
 	locPos := r.spriteShader.attributes["position"]
 	gl.EnableVertexAttribArray(uint32(locPos))
@@ -656,7 +666,7 @@ func (r *Renderer_GL33) Init() {
 	gl.VertexAttribPointerWithOffset(uint32(locUV), 2, gl.FLOAT, false, 16, 8)
 
 	// Unbind for safety
-	gl.BindVertexArray(0)
+	r.bindVertexArray(0)
 
 	if r.enableModel {
 		if err := r.InitModelShader(); err != nil {
@@ -671,8 +681,8 @@ func (r *Renderer_GL33) Init() {
 	r.postShaderSelect = make([]*ShaderProgram_GL33, len(sys.cfg.Video.ExternalShaders)+1)
 
 	// Configure postVAO
-	gl.BindVertexArray(r.postVAO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	r.bindVertexArray(r.postVAO)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
 
 	// External Shaders
 	for i := 0; i < len(sys.cfg.Video.ExternalShaders); i++ {
@@ -703,8 +713,8 @@ func (r *Renderer_GL33) Init() {
 	r.postShaderSelect[len(r.postShaderSelect)-1] = identShader
 
 	// Unbind for safety
-	gl.BindVertexArray(0)
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
+	r.bindVertexArray(0)
+	r.bindBuffer(gl.ARRAY_BUFFER, 0)
 
 	// Toggle MSAA first
 	if sys.msaa > 0 {
@@ -874,8 +884,6 @@ func (r *Renderer_GL33) Init() {
 		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.grabTexture.handle, 0)
 	}
 	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
-
-	r.InitStateCache()
 }
 
 func (r *Renderer_GL33) Close() {
@@ -919,6 +927,9 @@ func (r *Renderer_GL33) InitStateCache() {
 	r.uniformF2Cache = make(map[uint32][2]float32, 32)
 	r.uniformF3Cache = make(map[uint32][3]float32, 32)
 	r.uniformF4Cache = make(map[uint32][4]float32, 32)
+
+	// Initialize bound buffer cache
+	r.boundBuffers = make(map[uint32]uint32)
 }
 
 func (r *Renderer_GL33) EnableDebug() {
@@ -1074,7 +1085,7 @@ func (r *Renderer_GL33) IsShadowEnabled() bool {
 }
 
 func (r *Renderer_GL33) BeginFrame(clearColor bool) {
-	//gl.BindVertexArray(r.vao)
+	//r.bindVertexArray(r.vao)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
 	if clearColor {
@@ -1134,7 +1145,7 @@ func (r *Renderer_GL33) EndFrame() {
 
 		// tell GL to use our vertex array object
 		// this'll be where our quad is stored
-		gl.BindVertexArray(r.postVAO)
+		r.bindVertexArray(r.postVAO)
 
 		// this is here because it is undefined
 		// behavior to write to the same FBO
@@ -1348,18 +1359,18 @@ func (r *Renderer_GL33) SetPipeline() {
 
 	r.ChangeProgram(r.spriteShader.program)
 
-	gl.BindVertexArray(r.spriteVAO)
+	r.bindVertexArray(r.spriteVAO)
 }
 
 func (r *Renderer_GL33) ReleasePipeline() {
-	gl.BindVertexArray(0)
+	r.bindVertexArray(0)
 	//r.DisableBlending()
 }
 
 func (r *Renderer_GL33) prepareShadowMapPipeline(bufferIndex uint32) {
 	r.ChangeProgram(r.shadowMapShader.program)
 
-	gl.BindVertexArray(r.modelVAO)
+	r.bindVertexArray(r.modelVAO)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
 
 	gl.Viewport(0, 0, 1024, 1024)
@@ -1372,8 +1383,8 @@ func (r *Renderer_GL33) prepareShadowMapPipeline(bufferIndex uint32) {
 	r.SetFrontFace(r.invertFrontFace)
 	r.SetCullFace(r.doubleSided)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
+	r.bindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
+	r.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
 
 	//gl.FramebufferTexture(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, r.fbo_shadow_cube_texture, 0) // Handled in Init()
 	gl.Clear(gl.DEPTH_BUFFER_BIT)
@@ -1508,7 +1519,7 @@ func (r *Renderer_GL33) ReleaseShadowPipeline() {
 func (r *Renderer_GL33) prepareModelPipeline(bufferIndex uint32, env *Environment) {
 	r.ChangeProgram(r.modelShader.program)
 
-	gl.BindVertexArray(r.modelVAO)
+	r.bindVertexArray(r.modelVAO)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
@@ -1523,8 +1534,8 @@ func (r *Renderer_GL33) prepareModelPipeline(bufferIndex uint32, env *Environmen
 	r.SetFrontFace(r.invertFrontFace)
 	r.SetCullFace(r.doubleSided)
 
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
+	r.bindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
+	r.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
 	if r.enableShadow {
 		loc, unit := r.modelShader.uniforms["shadowCubeMap"], r.modelShader.textures["shadowCubeMap"]
 		gl.ActiveTexture((uint32(gl.TEXTURE0 + unit)))
@@ -2084,15 +2095,35 @@ func (r *Renderer_GL33) SetShadowFrameCubeTexture(i uint32) {
 }
 
 func (r *Renderer_GL33) SetVertexData(values ...float32) {
-	data := f32.Bytes(binary.LittleEndian, values...)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
-	// STREAM_DRAW was attempted here, but some users might be havign trouble with it
-	// https://github.com/ikemen-engine/Ikemen-GO/issues/3292
+	need := len(values) * 4
+
+	// Adjust scratch buffer size if necessary
+	if cap(r.vertexScratch) < need {
+		r.vertexScratch = make([]byte, need)
+	} else {
+		r.vertexScratch = r.vertexScratch[:need]
+	}
+
+	// Write into scratch buffer
+	for i, v := range values {
+		binary.LittleEndian.PutUint32(r.vertexScratch[i*4:], math.Float32bits(v))
+	}
+
+	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+
+	if need > 0 {
+		gl.BufferData(gl.ARRAY_BUFFER, need, unsafe.Pointer(&r.vertexScratch[0]), gl.DYNAMIC_DRAW)
+	} else {
+		gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.DYNAMIC_DRAW)
+	}
+
+	// DYNAMIC_DRAW is used because the buffer contents are updated frequently.
+	// STREAM_DRAW was tried previously and caused issues for some users
+	// (https://github.com/ikemen-engine/Ikemen-GO/issues/3292)
 }
 
 func (r *Renderer_GL33) SetModelVertexData(bufferIndex uint32, values []byte) {
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
+	r.bindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
 	gl.BufferData(gl.ARRAY_BUFFER, len(values), unsafe.Pointer(&values[0]), gl.STATIC_DRAW)
 }
 
@@ -2100,7 +2131,7 @@ func (r *Renderer_GL33) SetModelIndexData(bufferIndex uint32, values ...uint32) 
 	data := new(bytes.Buffer)
 	binary.Write(data, binary.LittleEndian, values)
 
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
+	r.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, r.modelIndexBuffer[bufferIndex])
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(values)*4, unsafe.Pointer(&data.Bytes()[0]), gl.STATIC_DRAW)
 }
 
@@ -2123,12 +2154,12 @@ func (r *Renderer_GL33) RenderCubeMap(envTex Texture, cubeTex Texture) {
 
 	r.ChangeProgram(r.panoramaToCubeMapShader.program)
 
-	gl.BindVertexArray(r.modelEnvVAO)
+	r.bindVertexArray(r.modelEnvVAO)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_env)
 	gl.Viewport(0, 0, textureSize, textureSize)
 
 	data := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
 
 	loc, unit := r.panoramaToCubeMapShader.uniforms["panorama"], r.panoramaToCubeMapShader.textures["panorama"]
@@ -2146,7 +2177,7 @@ func (r *Renderer_GL33) RenderCubeMap(envTex Texture, cubeTex Texture) {
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	}
 
-	gl.BindVertexArray(0)
+	r.bindVertexArray(0)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.BindTexture(gl.TEXTURE_CUBE_MAP, cubeTexture.handle)
 	gl.GenerateMipmap(gl.TEXTURE_CUBE_MAP)
@@ -2160,12 +2191,12 @@ func (r *Renderer_GL33) RenderFilteredCubeMap(distribution int32, cubeTex Textur
 
 	r.ChangeProgram(r.cubemapFilteringShader.program)
 
-	gl.BindVertexArray(r.modelEnvVAO)
+	r.bindVertexArray(r.modelEnvVAO)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_env)
 	gl.Viewport(0, 0, currentTextureSize, currentTextureSize)
 
 	data := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
 
 	loc, unit := r.cubemapFilteringShader.uniforms["cubeMap"], r.cubemapFilteringShader.textures["cubeMap"]
@@ -2195,7 +2226,7 @@ func (r *Renderer_GL33) RenderFilteredCubeMap(distribution int32, cubeTex Textur
 		gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 	}
 
-	gl.BindVertexArray(0)
+	r.bindVertexArray(0)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 }
 
@@ -2206,12 +2237,12 @@ func (r *Renderer_GL33) RenderLUT(distribution int32, cubeTex Texture, lutTex Te
 
 	r.ChangeProgram(r.cubemapFilteringShader.program)
 
-	gl.BindVertexArray(r.modelEnvVAO)
+	r.bindVertexArray(r.modelEnvVAO)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_env)
 	gl.Viewport(0, 0, textureSize, textureSize)
 
 	data := f32.Bytes(binary.LittleEndian, -1, -1, 1, -1, -1, 1, 1, 1)
-	gl.BindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 	gl.BufferData(gl.ARRAY_BUFFER, len(data), unsafe.Pointer(&data[0]), gl.STATIC_DRAW)
 
 	loc, unit := r.cubemapFilteringShader.uniforms["cubeMap"], r.cubemapFilteringShader.textures["cubeMap"]
@@ -2240,7 +2271,7 @@ func (r *Renderer_GL33) RenderLUT(distribution int32, cubeTex Texture, lutTex Te
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	gl.DrawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-	gl.BindVertexArray(0)
+	r.bindVertexArray(0)
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 }
 
@@ -2318,7 +2349,7 @@ func (r *Renderer_GL33) SetSpritePipeline(shaderName string) {
 	if r.program != targetShader.program {
 		r.currentProgram = targetShader
 		r.ChangeProgram(targetShader.program)
-		gl.BindVertexArray(r.spriteVAO)
+		r.bindVertexArray(r.spriteVAO)
 	}
 }
 
@@ -2362,4 +2393,26 @@ func (r *Renderer_GL33) ResolveBackBuffer() Texture {
 
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	return r.grabTexture
+}
+
+func (r *Renderer_GL33) bindBuffer(target, buffer uint32) {
+	// Already bound. Skip
+	if r.boundBuffers[target] == buffer {
+		return
+	}
+	// Bind and update cache
+	gl.BindBuffer(target, buffer)
+	r.boundBuffers[target] = buffer
+}
+
+func (r *Renderer_GL33) bindVertexArray(vao uint32) {
+	if r.currentVAO == vao {
+		return
+	}
+	gl.BindVertexArray(vao)
+	r.currentVAO = vao
+	// Invalidate buffer cache
+	if r.boundBuffers != nil {
+		delete(r.boundBuffers, gl.ELEMENT_ARRAY_BUFFER)
+	}
 }

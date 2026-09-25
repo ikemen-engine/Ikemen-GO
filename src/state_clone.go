@@ -94,17 +94,23 @@ func (a *Animation) Clone(ar *arena.Arena, gsp *GameStatePool) (result *Animatio
 		result.frames = append(result.frames, *a.frames[i].Clone(ar))
 	}
 
-	result.interpolate_offset = arena.MakeSlice[int32](ar, len(a.interpolate_offset), len(a.interpolate_offset))
-	copy(result.interpolate_offset, a.interpolate_offset)
-
-	result.interpolate_scale = arena.MakeSlice[int32](ar, len(a.interpolate_scale), len(a.interpolate_scale))
-	copy(result.interpolate_scale, a.interpolate_scale)
-
-	result.interpolate_angle = arena.MakeSlice[int32](ar, len(a.interpolate_angle), len(a.interpolate_angle))
-	copy(result.interpolate_angle, a.interpolate_angle)
-
-	result.interpolate_blend = arena.MakeSlice[int32](ar, len(a.interpolate_blend), len(a.interpolate_blend))
-	copy(result.interpolate_blend, a.interpolate_blend)
+	// Normally only afterimages have these as nil, but it's still worth avoiding the work whenever possible
+	if a.interpolate_offset != nil {
+		result.interpolate_offset = arena.MakeSlice[int32](ar, len(a.interpolate_offset), len(a.interpolate_offset))
+		copy(result.interpolate_offset, a.interpolate_offset)
+	}
+	if a.interpolate_scale != nil {
+		result.interpolate_scale = arena.MakeSlice[int32](ar, len(a.interpolate_scale), len(a.interpolate_scale))
+		copy(result.interpolate_scale, a.interpolate_scale)
+	}
+	if a.interpolate_angle != nil {
+		result.interpolate_angle = arena.MakeSlice[int32](ar, len(a.interpolate_angle), len(a.interpolate_angle))
+		copy(result.interpolate_angle, a.interpolate_angle)
+	}
+	if a.interpolate_blend != nil {
+		result.interpolate_blend = arena.MakeSlice[int32](ar, len(a.interpolate_blend), len(a.interpolate_blend))
+		copy(result.interpolate_blend, a.interpolate_blend)
+	}
 
 	return
 }
@@ -122,10 +128,16 @@ func (anim *Animation) CloneState(a *arena.Arena) *Animation {
 func (af *AnimFrame) Clone(a *arena.Arena) (result *AnimFrame) {
 	result = arena.New[AnimFrame](a)
 	*result = *af
-	result.Clsn1 = arena.MakeSlice[[4]float32](a, len(af.Clsn1), len(af.Clsn1))
-	copy(result.Clsn1, af.Clsn1)
-	result.Clsn2 = arena.MakeSlice[[4]float32](a, len(af.Clsn2), len(af.Clsn2))
-	copy(result.Clsn2, af.Clsn2)
+
+	if af.Clsn1 != nil {
+		result.Clsn1 = arena.MakeSlice[[4]float32](a, len(af.Clsn1), len(af.Clsn1))
+		copy(result.Clsn1, af.Clsn1)
+	}
+	if af.Clsn2 != nil {
+		result.Clsn2 = arena.MakeSlice[[4]float32](a, len(af.Clsn2), len(af.Clsn2))
+		copy(result.Clsn2, af.Clsn2)
+	}
+
 	return
 }
 
@@ -208,6 +220,7 @@ func (ai *AfterImage) Clone(a *arena.Arena, gsp *GameStatePool) *AfterImage {
 	}
 
 	// Deep copy Animations
+	// Afterimages use stripped down animations, so this will be a bit faster than normal
 	for i := range ai.imgs {
 		if ai.imgs[i].anim != nil {
 			result.imgs[i].anim = ai.imgs[i].anim.Clone(a, gsp)

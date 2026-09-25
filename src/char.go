@@ -1577,18 +1577,43 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 	if ai.restgap <= 0 {
 		img := &ai.imgs[ai.imgidx]
 
-		// Start from a shallow copy
+		// Shallow copy the original SpriteData
+		// Reuse the already allocated afterimage animation if it exists
+		oldAnim := img.anim
 		*img = *sd
+		img.anim = oldAnim
 
 		// Clear sync parameters so the sprite won't try to sync with the present
 		img.syncId = 0
 
-		// Deep copy the animation
+		// Snapshot the animation's fields that are relevant for drawing
 		if sd.anim != nil {
-			img.anim = &Animation{}
+			// Reuse existing Animation if present. Otherwise allocate once
+			if img.anim == nil {
+				img.anim = &Animation{}
+			}
+
+			// Shallow copy the original animation
+			// Reuse the already allocated afterimage sprite if it exists
+			oldSpr := img.anim.spr
 			*img.anim = *sd.anim
+			img.anim.spr = oldSpr
+
+			// Afterimage animations never step
+			// So drop the live-playback data so state cloning doesn't have to deep-copy it later
+			img.anim.interpolate_offset = nil
+			img.anim.interpolate_scale = nil
+			img.anim.interpolate_angle = nil
+			img.anim.interpolate_blend = nil
+
+			// Handle the sprite
 			if sd.anim.spr != nil {
-				img.anim.spr = newSprite()
+				// Only allocate a new sprite if necessary
+				if img.anim.spr == nil {
+					img.anim.spr = newSprite()
+				}
+
+				// Shallow copy of live sprite
 				*img.anim.spr = *sd.anim.spr
 
 				// Apply palette baking logic
@@ -1601,7 +1626,20 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 					img.anim.spr.Pal = sd.anim.spr.GetPal(&sd.anim.sff.palList)
 					sd.anim.sff.palList.SwapPalMap(&sd.pfx.remap)
 				}
+			} else {
+				img.anim.spr = nil
 			}
+
+			// Keep only the current frame instead of the full frame list
+			// Use a fresh slice to avoid mutating the source animation's frames.
+			if int(sd.anim.drawidx) < len(sd.anim.frames) {
+				img.anim.frames = []AnimFrame{sd.anim.frames[sd.anim.drawidx]}
+			} else {
+				img.anim.frames = nil
+			}
+			// Reindex the single frame to 0
+			img.anim.drawidx = 0
+			img.anim.curelem = 0
 		} else {
 			img.anim = nil
 		}
@@ -1609,7 +1647,12 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 		// Apply AfterImage specific overrides
 		img.priority = sd.priority - 2 // Starting afterimage sprpriority offset
 
-		ai.imgidx = (ai.imgidx + 1) % int32(len(ai.imgs))
+		// Advance ring buffer index
+		ai.imgidx++
+		if ai.imgidx >= int32(len(ai.imgs)) {
+			ai.imgidx = 0
+		}
+
 		ai.reccount++
 		ai.restgap = ai.timegap
 	}
@@ -1628,8 +1671,13 @@ func (ai *AfterImage) isActive() bool {
 }
 
 func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause bool) {
-	end := (Min(Min(ai.reccount, int32(len(ai.imgs))), ai.length) / ai.framegap) * ai.framegap
+	// Mugen wastes a slot on the current (0th) frame
+	// Ikemen deliberately doesn't, so the afterimage length can turn out 1 frame longer than in Mugen
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/1053
+	usable := Min(ai.reccount, int32(len(ai.imgs)), ai.length)
+	end := (usable / ai.framegap) * ai.framegap
 
+	// Cue afterimage frames from the history buffer at every framegap interval
 	for i := ai.framegap; i <= end; i += ai.framegap {
 		// Respect AfterImageMax
 		if sys.afterImageCount[playerNo] >= sys.cfg.Config.AfterImageMax {
@@ -1672,6 +1720,10 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 		}
 	}
 
+	// Moving this block before the loop would fix https://github.com/ikemen-engine/Ikemen-GO/issues/1227
+	// But that is less efficient because then "framegap = 1" afterimages would duplicate the current frame of the character
+	// Ikemen's way is also truer to Mugen's documentation:
+	// "The character's frames are stored in a history buffer, and are displayed *after a delay* as afterimages."
 	if rec || hitpause && ai.ignorehitpause {
 		ai.recAfterImg(sd, hitpause)
 	}
@@ -3600,9 +3652,9 @@ type Char struct {
 	enemyNearList       []int32 // Enemies retrieved by EnemyNear
 	p2EnemyList         []int32 // Enemies retrieved by P2, P4, P6 and P8
 	p2EnemyBackup       int32   // Backup of last valid P2 enemy
-	pos                 [3]float32
+	pos                 [3]float32 // The true position
 	interPos            [3]float32 // Interpolated position. For the visuals when game and logic speed are different
-	oldPos              [3]float32
+	oldPos              [3]float32 // The previous position from where interpolation started
 	vel                 [3]float32
 	facing              float32
 	fbFlip              bool
@@ -6008,96 +6060,6 @@ func (c *Char) numText(textid BytecodeValue) BytecodeValue {
 	total := int32(len(texts))
 
 	return BytecodeInt(total)
-}
-
-func (c *Char) explodVar(eid BytecodeValue, idx BytecodeValue, vtype OpCode) BytecodeValue {
-	if eid.IsUndefined() {
-		return BytecodeUndefined()
-	}
-	var id = eid.ToI()
-	var i = int(idx.ToI())
-	var v BytecodeValue
-
-	e := c.getSingleExplod(id, i, true)
-
-	if e != nil {
-		switch vtype {
-		case OC_ex2_explodvar_accel_x:
-			v = BytecodeFloat(e.accel[0])
-		case OC_ex2_explodvar_accel_y:
-			v = BytecodeFloat(e.accel[1])
-		case OC_ex2_explodvar_accel_z:
-			v = BytecodeFloat(e.accel[2])
-		case OC_ex2_explodvar_anim:
-			v = BytecodeInt(e.animNo)
-		case OC_ex2_explodvar_angle:
-			v = BytecodeFloat(e.rot.angle + e.interpolate_rot[0].angle)
-		case OC_ex2_explodvar_angle_x:
-			v = BytecodeFloat(e.rot.xangle + e.interpolate_rot[0].xangle)
-		case OC_ex2_explodvar_angle_y:
-			v = BytecodeFloat(e.rot.yangle + e.interpolate_rot[0].yangle)
-		case OC_ex2_explodvar_animelem:
-			v = BytecodeInt(e.anim.curelem + 1)
-		case OC_ex2_explodvar_animelemtime:
-			v = BytecodeInt(e.anim.curelemtime)
-		case OC_ex2_explodvar_animplayerno:
-			v = BytecodeInt(int32(e.animPN) + 1)
-		case OC_ex2_explodvar_animtime:
-			v = BytecodeInt(e.anim.AnimTime())
-		case OC_ex2_explodvar_spriteplayerno:
-			v = BytecodeInt(int32(e.spritePN) + 1)
-		case OC_ex2_explodvar_bindid:
-			v = BytecodeInt(e.bindId)
-		case OC_ex2_explodvar_bindtime:
-			v = BytecodeInt(e.bindtime)
-		case OC_ex2_explodvar_drawpal_group:
-			v = BytecodeInt(c.explodDrawPal(e)[0])
-		case OC_ex2_explodvar_drawpal_index:
-			v = BytecodeInt(c.explodDrawPal(e)[1])
-		case OC_ex2_explodvar_facing:
-			v = BytecodeInt(int32(e.trueFacing()))
-		case OC_ex2_explodvar_friction_x:
-			v = BytecodeFloat(e.friction[0])
-		case OC_ex2_explodvar_friction_y:
-			v = BytecodeFloat(e.friction[1])
-		case OC_ex2_explodvar_friction_z:
-			v = BytecodeFloat(e.friction[2])
-		case OC_ex2_explodvar_id:
-			v = BytecodeInt(e.id)
-		case OC_ex2_explodvar_ignorehitpause:
-			v = BytecodeBool(e.ignorehitpause)
-		case OC_ex2_explodvar_layerno:
-			v = BytecodeInt(e.layerno)
-		case OC_ex2_explodvar_pausemovetime:
-			v = BytecodeInt(e.pausemovetime)
-		case OC_ex2_explodvar_pos_x:
-			v = BytecodeFloat(e.pos[0] + e.offset[0] + e.relativePos[0] + e.interpolate_pos[0])
-		case OC_ex2_explodvar_pos_y:
-			v = BytecodeFloat(e.pos[1] + e.offset[1] + e.relativePos[1] + e.interpolate_pos[1])
-		case OC_ex2_explodvar_pos_z:
-			v = BytecodeFloat(e.pos[2] + e.offset[2] + e.relativePos[2] + e.interpolate_pos[2])
-		case OC_ex2_explodvar_removetime:
-			v = BytecodeInt(e.removetime)
-		case OC_ex2_explodvar_scale_x:
-			v = BytecodeFloat(e.scale[0] * e.interpolate_scale[0])
-		case OC_ex2_explodvar_scale_y:
-			v = BytecodeFloat(e.scale[1] * e.interpolate_scale[1])
-		case OC_ex2_explodvar_sprpriority:
-			v = BytecodeInt(e.sprpriority)
-		case OC_ex2_explodvar_time:
-			v = BytecodeInt(e.time)
-		case OC_ex2_explodvar_vel_x:
-			v = BytecodeFloat(e.velocity[0])
-		case OC_ex2_explodvar_vel_y:
-			v = BytecodeFloat(e.velocity[1])
-		case OC_ex2_explodvar_vel_z:
-			v = BytecodeFloat(e.velocity[2])
-		case OC_ex2_explodvar_xshear:
-			v = BytecodeFloat(e.xshear)
-		}
-	}
-
-	return v
 }
 
 func (c *Char) soundVar(chid BytecodeValue, vtype OpCode) BytecodeValue {
@@ -10264,14 +10226,23 @@ func (c *Char) bindToPlayer(bt *Char) {
 }
 
 func (c *Char) trackableByCamera() bool {
-	return sys.cam.View == Fighting_View || sys.cam.View == Follow_View && c == sys.cam.FollowChar
+	if c.scf(SCF_standby) {
+		return false
+	}
+	if sys.cam.View == Fighting_View {
+		return true
+	}
+	if sys.cam.View == Follow_View && c == sys.cam.FollowChar {
+		return true
+	}
+	return false
 }
 
 func (c *Char) xScreenBound() {
 	x := c.pos[0]
 	before := x
 
-	if c.trackableByCamera() && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+	if c.trackableByCamera() && c.csf(CSF_screenbound) {
 		min, max := c.widthEdge[0], -c.widthEdge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -11542,6 +11513,9 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				ghv.p2getp1state = hd.p2getp1state
 				ghv.forcestand = hd.forcestand != 0
 				ghv.forcecrouch = hd.forcecrouch != 0
+
+				// For some reason Mugen only resets this one on hit
+				// TODO: That seems unnecessary and changing it would allow this to be inside ghv as well
 				getter.fallTime = 0
 
 				if hd.unhittabletime[1] >= 0 {
@@ -12606,58 +12580,59 @@ func (c *Char) actionFinish() {
 }
 
 func (c *Char) track() {
-	if c.trackableByCamera() {
+	if !c.trackableByCamera() {
+		return
+	}
 
-		// This doesn't seem necessary currently. Handled by xScreenBound()
-		//if !sys.cam.roundstart && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
-		//	c.interPos[0] = Clamp(c.interPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
-		//}
+	// This doesn't seem necessary currently. Handled by xScreenBound()
+	//if !sys.cam.roundstart && c.csf(CSF_screenbound) && !c.scf(SCF_standby) {
+	//	c.interPos[0] = Clamp(c.interPos[0], min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
+	//}
 
-		// X axis
-		if c.csf(CSF_movecamera_x) && !c.scf(SCF_standby) {
-			edgeleft, edgeright := -c.widthEdge[1], c.widthEdge[0]
-			if c.facing < 0 {
-				edgeleft, edgeright = -edgeright, -edgeleft
-			}
+	// X axis
+	if c.csf(CSF_movecamera_x) {
+		edgeleft, edgeright := -c.widthEdge[1], c.widthEdge[0]
+		if c.facing < 0 {
+			edgeleft, edgeright = -edgeright, -edgeleft
+		}
 
-			charleft := c.interPos[0]*c.localscl + edgeleft*c.localscl
-			charright := c.interPos[0]*c.localscl + edgeright*c.localscl
-			canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && (c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])))
-			bindToCharacter := sys.playerID(c.bindToId)
-			if charleft < sys.cam.leftest {
-				sys.cam.leftest = charleft
-				if canmove {
-					sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
+		charleft := c.interPos[0]*c.localscl + edgeleft*c.localscl
+		charright := c.interPos[0]*c.localscl + edgeright*c.localscl
+		canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && (c.bindTime == 0 || math.IsNaN(float64(c.bindPos[0])))
+		bindToCharacter := sys.playerID(c.bindToId)
+		if charleft < sys.cam.leftest {
+			sys.cam.leftest = charleft
+			if canmove {
+				sys.cam.leftestvel = c.vel[0] * c.localscl * c.facing
+			} else {
+				if bindToCharacter != nil {
+					sys.cam.leftestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
 				} else {
-					if bindToCharacter != nil {
-						sys.cam.leftestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
-					} else {
-						sys.cam.leftestvel = 0
-					}
-				}
-			}
-			if charright > sys.cam.rightest {
-				sys.cam.rightest = charright
-				if canmove {
-					sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
-				} else {
-					if bindToCharacter != nil {
-						sys.cam.rightestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
-					} else {
-						sys.cam.rightestvel = 0
-					}
+					sys.cam.leftestvel = 0
 				}
 			}
 		}
-
-		// Y axis
-		if c.csf(CSF_movecamera_y) && !c.scf(SCF_standby) && !math.IsInf(float64(c.pos[1]), 0) {
-			sys.cam.highest = Min(c.interPos[1]*c.localscl, sys.cam.highest)
-			sys.cam.lowest = Max(c.interPos[1]*c.localscl, sys.cam.lowest)
-			//sys.cam.Pos[1] = 0 // This doesn't seem necessary in the current state of the code
-			// Mugen ignores characters that have infinite position
-			// https://github.com/ikemen-engine/Ikemen-GO/issues/1917
+		if charright > sys.cam.rightest {
+			sys.cam.rightest = charright
+			if canmove {
+				sys.cam.rightestvel = c.vel[0] * c.localscl * c.facing
+			} else {
+				if bindToCharacter != nil {
+					sys.cam.rightestvel = bindToCharacter.vel[0] * bindToCharacter.localscl * bindToCharacter.facing
+				} else {
+					sys.cam.rightestvel = 0
+				}
+			}
 		}
+	}
+
+	// Y axis
+	if c.csf(CSF_movecamera_y) && !math.IsInf(float64(c.pos[1]), 0) {
+		sys.cam.highest = Min(c.interPos[1]*c.localscl, sys.cam.highest)
+		sys.cam.lowest = Max(c.interPos[1]*c.localscl, sys.cam.lowest)
+		//sys.cam.Pos[1] = 0 // This doesn't seem necessary in the current state of the code
+		// Mugen ignores characters that have infinite position
+		// https://github.com/ikemen-engine/Ikemen-GO/issues/1917
 	}
 }
 
@@ -13599,84 +13574,85 @@ func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
 func (cl *CharList) commandUpdate() {
 	// Iterate players
 	for i, p := range sys.chars {
-		if len(p) > 0 {
-			root := p[0]
-			// The async Turns loader keeps its standby root disabled while populating command lists.
-			if root.scf(SCF_disabled) {
+		if len(p) == 0 {
+			continue
+		}
+		root := p[0]
+		// The async Turns loader keeps its standby root disabled while populating command lists.
+		if root.scf(SCF_disabled) {
+			continue
+		}
+		// Select a random command for AI cheating
+		// The way this only allows one command to be cheated at a time may be the cause of issue #2022
+		cheat := int32(-1)
+		if root.controller < 0 {
+			if sys.roundState() == 2 && RandF32(0, sys.aiLevel[i]/2+32) > 32 { // TODO: Balance AI scaling
+				cheat = Rand(0, int32(len(root.cmd[root.ss.sb.playerNo].Commands))-1)
+			}
+		}
+		// Iterate root and helpers
+		for _, c := range p {
+			act := true
+			if sys.supertime > 0 {
+				act = c.superMovetime != 0
+			} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
+				act = false
+			}
+			// Auto turning check for the root
+			// Having this here makes B and F inputs reverse the same instant the character turns
+			if act && c.helperIndex == 0 && (c.scf(SCF_ctrl) || sys.roundState() > 2) &&
+				(c.ss.no == 0 || c.ss.no == 11 || c.ss.no == 20 ||
+					c.ss.no == 52 && (c.animTime() == 0 || (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0))) {
+				c.autoTurn()
+			}
+
+			// Update Forward/Back flipping flag
+			c.updateFBFlip()
+
+			// Safety guard: prevent indexing cmd slices when they may be empty.
+			if len(c.cmd) == 0 || (c.helperIndex > 0 && len(root.cmd) == 0) {
 				continue
 			}
-			// Select a random command for AI cheating
-			// The way this only allows one command to be cheated at a time may be the cause of issue #2022
-			cheat := int32(-1)
-			if root.controller < 0 {
-				if sys.roundState() == 2 && RandF32(0, sys.aiLevel[i]/2+32) > 32 { // TODO: Balance AI scaling
-					cheat = Rand(0, int32(len(root.cmd[root.ss.sb.playerNo].Commands))-1)
-				}
-			}
-			// Iterate root and helpers
-			for _, c := range p {
-				act := true
-				if sys.supertime > 0 {
-					act = c.superMovetime != 0
-				} else if sys.pausetime > 0 && c.pauseMovetime == 0 {
-					act = false
-				}
-				// Auto turning check for the root
-				// Having this here makes B and F inputs reverse the same instant the character turns
-				if act && c.helperIndex == 0 && (c.scf(SCF_ctrl) || sys.roundState() > 2) &&
-					(c.ss.no == 0 || c.ss.no == 11 || c.ss.no == 20 ||
-						c.ss.no == 52 && (c.animTime() == 0 || (c.stWgi().ikemenver[0] != 0 || c.stWgi().ikemenver[1] != 0))) {
-					c.autoTurn()
-				}
-
-				// Update Forward/Back flipping flag
-				c.updateFBFlip()
-
-				// Safety guard: prevent indexing cmd slices when they may be empty.
-				if len(c.cmd) == 0 || (c.helperIndex > 0 && len(root.cmd) == 0) {
+			if (c.helperIndex == 0 || c.helperIndex > 0 && &c.cmd[0] != &root.cmd[0]) &&
+				c.cmd[0].InputUpdate(c, c.controller) {
+				// Clear input buffers and skip the rest of the loop
+				// This used to apply only to the root, but that caused some issues with helper-based custom input systems
+				if c.inputWait() || c.asf(ASF_noinput) {
+					for i := range c.cmd {
+						c.cmd[i].BufReset()
+					}
 					continue
 				}
-				if (c.helperIndex == 0 || c.helperIndex > 0 && &c.cmd[0] != &root.cmd[0]) &&
-					c.cmd[0].InputUpdate(c, c.controller) {
-					// Clear input buffers and skip the rest of the loop
-					// This used to apply only to the root, but that caused some issues with helper-based custom input systems
-					if c.inputWait() || c.asf(ASF_noinput) {
-						for i := range c.cmd {
-							c.cmd[i].BufReset()
-						}
-						continue
+				hpbuf := false
+				pausebuf := false
+				winbuf := false
+				// Buffer during hitpause
+				if c.hitPause() && c.gi().constants["input.pauseonhitpause"] != 0 { // TODO: Deprecated constant
+					hpbuf = true
+					// In Winmugen, commands were buffered for one extra frame after hitpause (but not after Pause/SuperPause)
+					// This was fixed in Mugen 1.0
+					if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.stWgi().mugenver[0] != 1 {
+						winbuf = true
 					}
-					hpbuf := false
-					pausebuf := false
-					winbuf := false
-					// Buffer during hitpause
-					if c.hitPause() && c.gi().constants["input.pauseonhitpause"] != 0 { // TODO: Deprecated constant
-						hpbuf = true
-						// In Winmugen, commands were buffered for one extra frame after hitpause (but not after Pause/SuperPause)
-						// This was fixed in Mugen 1.0
-						if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 && c.stWgi().mugenver[0] != 1 {
-							winbuf = true
-						}
-					}
-					// Buffer during Pause and SuperPause
-					if sys.supertime > 0 {
-						if !act && sys.supertime <= sys.superendcmdbuftime {
-							pausebuf = true
-						}
-					} else if sys.pausetime > 0 {
-						if !act && sys.pausetime <= sys.pauseendcmdbuftime {
-							pausebuf = true
-						}
-					}
-					// Update commands
-					for i := range c.cmd {
-						extratime := Btoi(hpbuf || pausebuf) + Btoi(winbuf)
-						helperbug := c.helperIndex != 0 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
-						c.cmd[i].Step(c.controller < 0, helperbug, hpbuf, pausebuf, extratime)
-					}
-					// Enable AI cheated command
-					c.cpucmd = cheat
 				}
+				// Buffer during Pause and SuperPause
+				if sys.supertime > 0 {
+					if !act && sys.supertime <= sys.superendcmdbuftime {
+						pausebuf = true
+					}
+				} else if sys.pausetime > 0 {
+					if !act && sys.pausetime <= sys.pauseendcmdbuftime {
+						pausebuf = true
+					}
+				}
+				// Update commands
+				for i := range c.cmd {
+					extratime := Btoi(hpbuf || pausebuf) + Btoi(winbuf)
+					helperbug := c.helperIndex != 0 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0
+					c.cmd[i].Step(c.controller < 0, helperbug, hpbuf, pausebuf, extratime)
+				}
+				// Enable AI cheated command
+				c.cpucmd = cheat
 			}
 		}
 	}
@@ -14531,7 +14507,6 @@ func (cl *CharList) pushDetection(c *Char) {
 			}
 
 			// Update position interpolation
-			// TODO: Interpolation still looks wrong when framerate is above 60fps
 			c.setPosX(c.pos[0], true)
 			getter.setPosX(getter.pos[0], true)
 		}
