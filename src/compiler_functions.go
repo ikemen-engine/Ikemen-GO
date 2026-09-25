@@ -958,16 +958,13 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 		explod_syncid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	// shader.playerno should be placed before shader
 	if err := c.paramValue(is, sc, "shader.playerno", explod_shader_playerno, VT_Int, 1, false); err != nil {
 		return err
 	}
-	// TODO: The other shader parameters should also use the "shader." prefix
-	if err := c.shaderSub(is, sc, explod_shader, ""); err != nil {
+	if err := c.shaderSub(is, sc, explod_shader, "shader."); err != nil {
 		return err
 	}
-	// shadertime should be placed after shader, since changing shader resets it
-	if err := c.paramValue(is, sc, "shadertime", explod_shadertime, VT_Int, 1, false); err != nil {
+	if err := c.paramValue(is, sc, "shader.time", explod_shadertime, VT_Int, 1, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "bindid",
@@ -2548,16 +2545,13 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 	if err := c.afterImageSub(is, sc, "afterimage."); err != nil {
 		return err
 	}
-	// shader.playerno should be placed before shader
 	if err := c.paramValue(is, sc, "shader.playerno", projectile_shader_playerno, VT_Int, 1, false); err != nil {
 		return err
 	}
-	// TODO: The other shader parameters should also use the "shader." prefix
-	if err := c.shaderSub(is, sc, projectile_shader, ""); err != nil {
+	if err := c.shaderSub(is, sc, projectile_shader, "shader."); err != nil {
 		return err
 	}
-	// shadertime should be placed after shader, since changing shader resets it
-	if err := c.paramValue(is, sc, "shadertime", projectile_shadertime, VT_Int, 1, false); err != nil {
+	if err := c.paramValue(is, sc, "shader.time", projectile_shadertime, VT_Int, 1, false); err != nil {
 		return err
 	}
 	return nil
@@ -5594,14 +5588,15 @@ func (c *CharCompiler) shaderSet(is IniSection, sc *StateControllerBase) (StateC
 		if err := c.paramValue(is, sc, "redirectid", shaderSet_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "time", shaderSet_time, VT_Int, 1, false); err != nil {
-			return err
-		}
-		// playerno should be placed before shader
+		// playerno should be placed before name
 		if err := c.paramValue(is, sc, "playerno", shaderSet_playerno, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.shaderSub(is, sc, shaderSet_shader, ""); err != nil {
+			return err
+		}
+		// time should be placed after name, since changing shader resets it
+		if err := c.paramValue(is, sc, "time", shaderSet_time, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return nil
@@ -7035,7 +7030,7 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	opTex2Anim := baseOp + 4
 	opTex2Spr := baseOp + 5
 
-	if err := c.stateParam(is, prefix+"shader", false, func(data string) error {
+	if err := c.stateParam(is, prefix+"name", false, func(data string) error {
 		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 			return Error("Shader name not enclosed in \"")
 		}
@@ -7049,11 +7044,15 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	var shaderParams []BytecodeExp
 	var paramIndices []int
 	for k, v := range is {
-		if strings.HasPrefix(strings.ToLower(k), prefix+"shaderparam.p") {
-			numStr := k[len(prefix+"shaderparam.p"):]
+		if strings.HasPrefix(strings.ToLower(k), prefix+"param") {
+			numStr := k[len(prefix+"param"):]
+			// Keys like "params" are left to the regular unknown parameter handling
+			if numStr == "" || strings.Trim(numStr, "0123456789") != "" {
+				continue
+			}
 			idx, err := strconv.Atoi(numStr)
-			if err != nil || idx < 0 || idx > 15 {
-				return Error("Invalid shader parameter: " + k + " (must be p0 to p15)")
+			if err != nil || idx > 15 {
+				return Error("Invalid shader parameter: " + k + " (must be param0 to param15)")
 			}
 
 			valStr := v
@@ -7082,7 +7081,7 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	}
 
 	// tex1.anim
-	if err := c.stateParam(is, prefix+"shadertex1.anim", false, func(data string) error {
+	if err := c.stateParam(is, prefix+"tex1.anim", false, func(data string) error {
 		be, err := c.argExpression(&data, VT_Int)
 		if err != nil {
 			return err
@@ -7094,7 +7093,7 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	}
 
 	// tex1.spr
-	if err := c.stateParam(is, prefix+"shadertex1.spr", false, func(data string) error {
+	if err := c.stateParam(is, prefix+"tex1.spr", false, func(data string) error {
 		be, err := c.exprs(data, VT_Int, 2)
 		if err != nil {
 			return err
@@ -7106,7 +7105,7 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	}
 
 	// tex2.anim
-	if err := c.stateParam(is, prefix+"shadertex2.anim", false, func(data string) error {
+	if err := c.stateParam(is, prefix+"tex2.anim", false, func(data string) error {
 		be, err := c.argExpression(&data, VT_Int)
 		if err != nil {
 			return err
@@ -7118,7 +7117,7 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	}
 
 	// tex2.spr
-	if err := c.stateParam(is, prefix+"shadertex2.spr", false, func(data string) error {
+	if err := c.stateParam(is, prefix+"tex2.spr", false, func(data string) error {
 		be, err := c.exprs(data, VT_Int, 2)
 		if err != nil {
 			return err
