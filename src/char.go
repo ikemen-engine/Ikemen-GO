@@ -3649,9 +3649,9 @@ type Char struct {
 	targets             []int32
 	hitdefTargets       []int32
 	hitdefTargetsBuffer []int32
-	enemyNearList       []int32 // Enemies retrieved by EnemyNear
-	p2EnemyList         []int32 // Enemies retrieved by P2, P4, P6 and P8
-	p2EnemyBackup       int32   // Backup of last valid P2 enemy
+	enemyNearList       []int32    // Enemies retrieved by EnemyNear
+	p2EnemyList         []int32    // Enemies retrieved by P2, P4, P6 and P8
+	p2EnemyBackup       int32      // Backup of last valid P2 enemy
 	pos                 [3]float32 // The true position
 	interPos            [3]float32 // Interpolated position. For the visuals when game and logic speed are different
 	oldPos              [3]float32 // The previous position from where interpolation started

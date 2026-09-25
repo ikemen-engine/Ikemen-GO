@@ -498,8 +498,8 @@ type GL33State struct {
 	useJoint0           bool
 	useJoint1           bool
 	useOutlineAttribute bool
-	boundBuffers            map[uint32]uint32
-	currentVAO              uint32
+	boundBuffers        map[uint32]uint32
+	currentVAO          uint32
 }
 
 func (r *Renderer_GL33) GetName() string {

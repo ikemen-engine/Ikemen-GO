@@ -3889,15 +3889,15 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			case OC_ex2_explodvar_pausemovetime:
 				sys.bcStack.PushI(e.pausemovetime)
 			case OC_ex2_explodvar_pos_x:
-				eposx := e.pos[0]+e.offset[0]+e.relativePos[0]+e.interpolate_pos[0]
+				eposx := e.pos[0] + e.offset[0] + e.relativePos[0] + e.interpolate_pos[0]
 				camOff := sys.cam.Pos[0] / oc.localscl
 				sys.bcStack.PushF(eposx*c.localscl/oc.localscl - camOff)
 			case OC_ex2_explodvar_pos_y:
-				eposy := e.pos[1]+e.offset[1]+e.relativePos[1]+e.interpolate_pos[1]
-				sys.bcStack.PushF(eposy*c.localscl/oc.localscl)
+				eposy := e.pos[1] + e.offset[1] + e.relativePos[1] + e.interpolate_pos[1]
+				sys.bcStack.PushF(eposy * c.localscl / oc.localscl)
 			case OC_ex2_explodvar_pos_z:
-				eposz := e.pos[2]+e.offset[2]+e.relativePos[2]+e.interpolate_pos[2]
-				sys.bcStack.PushF(eposz*c.localscl/oc.localscl)
+				eposz := e.pos[2] + e.offset[2] + e.relativePos[2] + e.interpolate_pos[2]
+				sys.bcStack.PushF(eposz * c.localscl / oc.localscl)
 			case OC_ex2_explodvar_removetime:
 				sys.bcStack.PushI(e.removetime)
 			case OC_ex2_explodvar_scale_x:
