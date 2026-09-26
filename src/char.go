@@ -281,14 +281,10 @@ type ClsnOverride struct {
 
 // TransformClsn sctrl
 type ClsnTransform struct {
+	index int
 	scale [2]float32
 	angle float32
 	pivot [2]float32
-}
-
-func (ct *ClsnTransform) reset() {
-	ct.scale = [2]float32{1, 1}
-	ct.angle = 0
 }
 
 // The prepared boxes after all modifiers have been applied
@@ -3688,7 +3684,7 @@ type Char struct {
 	animlocalscl        float32
 	size                CharSize
 	clsnOverrides       [4][]ClsnOverride
-	clsnTransforms      [4]ClsnTransform
+	clsnTransforms      [4][]ClsnTransform
 	zScale              float32
 	hitdef              HitDef
 	ghv                 GetHitVar
@@ -10640,14 +10636,14 @@ func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 		switch {
 		// Delete box if modifier is all 0's
 		case mod.rect == [4]float32{}:
-			if mod.index == -1 {
+			if mod.index < 0 {
 				boxes = boxes[:0]
-			} else if mod.index >= 0 && mod.index < len(boxes) {
+			} else if mod.index < len(boxes) {
 				boxes = SliceDelete(boxes, mod.index)
 			}
 
 		// Modify all existing boxes
-		case mod.index == -1:
+		case mod.index < 0:
 			for i := range boxes {
 				modify(i)
 			}
@@ -10664,19 +10660,30 @@ func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 	}
 
 	// Apply TransformClsn modifiers
-	ct := c.clsnTransforms[group-1]
-	for i := range boxes {
-		b := &boxes[i]
-		b.rect[0] *= ct.scale[0]
-		b.rect[1] *= ct.scale[1]
-		b.rect[2] *= ct.scale[0]
-		b.rect[3] *= ct.scale[1]
-		b.angle = ct.angle
-		b.pivot[0] = ct.pivot[0] * c.localscl
-		b.pivot[1] = ct.pivot[1] * c.localscl
+	for _, ct := range c.clsnTransforms[group-1] {
+		transform := func(b *ClsnFinal) {
+			b.rect[0] *= ct.scale[0]
+			b.rect[1] *= ct.scale[1]
+			b.rect[2] *= ct.scale[0]
+			b.rect[3] *= ct.scale[1]
+			b.angle = ct.angle
+			b.pivot[0] = ct.pivot[0] * c.localscl
+			b.pivot[1] = ct.pivot[1] * c.localscl
+		}
 
-		// Normalize left/right and top/bottom
-		b.rect = NormalizeRect(b.rect)
+		switch {
+		case ct.index < 0: // All boxes
+			for i := range boxes {
+				transform(&boxes[i])
+			}
+		case ct.index < len(boxes): // Just this index
+			transform(&boxes[ct.index])
+		}
+	}
+
+	// Normalize left/right and top/bottom
+	for i := range boxes {
+		boxes[i].rect = NormalizeRect(boxes[i].rect)
 	}
 
 	return boxes
@@ -10714,7 +10721,7 @@ func (c *Char) resetClsnModifiers() {
 	}
 
 	for i := range c.clsnTransforms {
-		c.clsnTransforms[i].reset()
+		c.clsnTransforms[i] = c.clsnTransforms[i][:0]
 	}
 }
 

@@ -15592,6 +15592,7 @@ type transformClsn StateControllerBase
 
 const (
 	transformClsn_group byte = iota
+	transformClsn_index
 	transformClsn_scale
 	transformClsn_angle
 	transformClsn_pivot
@@ -15604,15 +15605,20 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	redirscale := c.localscl / crun.localscl
+
 	scale := [2]float32{1, 1}
 	angle := float32(0)
 	group := int32(-1) // all
+	index := int(-1)   // all
 	pivot := [2]float32{0, 0}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case transformClsn_group:
 			group = exp[0].evalI(c)
+		case transformClsn_index:
+			index = int(exp[0].evalI(c))
 		case transformClsn_scale:
 			scale[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
@@ -15621,36 +15627,31 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		case transformClsn_angle:
 			angle = exp[0].evalF(c)
 		case transformClsn_pivot:
-			pivot[0] = exp[0].evalF(c)
+			pivot[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				pivot[1] = exp[1].evalF(c)
+				pivot[1] = exp[1].evalF(c) * redirscale
 			}
 		}
 		return true
 	})
+
+	transform := ClsnTransform{index, scale, angle, pivot}
 
 	// Apply the transform to the appropriate group(s)
 	switch {
 	case group == 0:
 		// Reset all
 		for i := range crun.clsnTransforms {
-			crun.clsnTransforms[i].reset()
+			crun.clsnTransforms[i] = crun.clsnTransforms[i][:0]
 		}
 	case group == -1:
 		// Apply to all groups
 		for i := range crun.clsnTransforms {
-			t := &crun.clsnTransforms[i]
-			t.scale[0] *= scale[0]
-			t.scale[1] *= scale[1]
-			t.angle = angle
-			t.pivot = pivot
+			crun.clsnTransforms[i] = append(crun.clsnTransforms[i], transform)
 		}
 	case group >= 1 && group <= 4:
-		t := &crun.clsnTransforms[group-1]
-		t.scale[0] *= scale[0]
-		t.scale[1] *= scale[1]
-		t.angle = angle
-		t.pivot = pivot
+		idx := group - 1
+		crun.clsnTransforms[idx] = append(crun.clsnTransforms[idx], transform)
 	default:
 		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in TransformClsn", group))
 	}
