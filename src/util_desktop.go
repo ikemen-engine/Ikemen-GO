@@ -25,6 +25,11 @@ func ShowErrorDialog(message string) {
 	dialog.Message(message).Title("I.K.E.M.E.N Error").Error()
 }
 
+// Returns true if the user chose to retry
+func ShowRetryDialog(message string) bool {
+	return dialog.Message("%s", message).Title("I.K.E.M.E.N RetryLoadOnError").YesNo()
+}
+
 // TTF font loading
 func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	// Search in local directory

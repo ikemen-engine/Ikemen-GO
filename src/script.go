@@ -2854,10 +2854,18 @@ func systemScriptInit(l *lua.LState) {
 		// Synchronize timing to prevent speed fluctuations when changing FPS (entering matches)
 		sys.resetFrameTime()
 
-		load := func() error {
+		load := func(allowRetry bool) error {
 			sys.loader.runTread()
 			for sys.loader.state != LS_Complete {
 				if sys.loader.state == LS_Error {
+					// Let users fix the file and retry without exiting Ikemen
+					// Not in netplay (would desync) or for TurnsLoading background preloads
+					if allowRetry && sys.cfg.Debug.RetryLoadOnError && sys.loader.err != nil && !sys.netplay() && !sys.turnsPreloadActive() &&
+						ShowRetryDialog(retryLoadMessage(sys.loader.err)) {
+						sys.loader.retryAfterError()
+						sys.loader.runTread()
+						continue
+					}
 					return sys.loader.err
 				} else if sys.loader.state == LS_Cancel {
 					return nil
@@ -2895,7 +2903,7 @@ func systemScriptInit(l *lua.LState) {
 				}
 
 				// Load characters and stage
-				if err := load(); err != nil {
+				if err := load(true); err != nil {
 					return -1, err
 				}
 				if sys.loader.state == LS_Cancel {
@@ -3082,7 +3090,7 @@ func systemScriptInit(l *lua.LState) {
 					// The next Turns member is loaded in the background during the previous round.
 					// If the round ended before that load finished, wait here before promotion.
 					if sys.loader.state != LS_NotYet && sys.loader.state != LS_Complete {
-						if err := load(); err != nil {
+						if err := load(false); err != nil { // Never retry loading
 							l.RaiseError(err.Error())
 						}
 					}
@@ -10582,4 +10590,10 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(ln)
 		return 1
 	})
+}
+
+// Builds the retry prompt shown when RetryLoadOnError is enabled
+func retryLoadMessage(err error) string {
+	return strings.TrimSpace(err.Error()) + "\n\nThe file could not be loaded because of the error above.\n" +
+		"This error may be recoverable. Have you fixed the file and want to retry?"
 }
