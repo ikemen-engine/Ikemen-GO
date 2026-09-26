@@ -5013,11 +5013,14 @@ func (s *Select) preloadWorkerLoop() {
 					err = s.preloadStageAssets(ref)
 				}
 
-				s.preloadMu.Lock()
-
+				// Panic before relocking, otherwise the main thread deadlocks on preloadMu and never shows the error
 				if err != nil {
 					panic(fmt.Sprintf("Preloading error: %s", err))
-				} else if kind == "char" {
+				}
+
+				s.preloadMu.Lock()
+
+				if kind == "char" {
 					s.charPreload[ref].State = PS_Ready
 				} else {
 					s.stagePreload[ref-1].State = PS_Ready
