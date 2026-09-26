@@ -321,18 +321,18 @@ func (b *StreamLooper) Seek(p int) error {
 // Bgm
 
 type Bgm struct {
-	filename           string
-	bgmVolume          int
-	loop               int
-	streamer           beep.StreamSeeker
-	ctrl               *beep.Ctrl
-	volctrl            *effects.Volume
-	format             string
-	freqmul            float32
-	sampleRate         beep.SampleRate
-	startPos           int
-	mu                 sync.Mutex
-	cancel             context.CancelFunc
+	filename   string
+	bgmVolume  int
+	loop       int
+	streamer   beep.StreamSeeker
+	ctrl       *beep.Ctrl
+	volctrl    *effects.Volume
+	format     string
+	freqmul    float32
+	sampleRate beep.SampleRate
+	startPos   int
+	mu         sync.Mutex
+	cancel     context.CancelFunc
 }
 
 func newBgm() *Bgm {
@@ -992,18 +992,18 @@ func (s *SoundEffect) Err() error {
 // SoundChannel
 
 type SoundChannel struct {
-	streamer           beep.StreamSeeker
-	sfx                *SoundEffect
-	ctrl               *beep.Ctrl
-	sound              *Sound
-	playerID           int32
-	channelNo          int32 // Logical channel assigned by char code
-	stopOnGetHit       bool
-	stopOnChangeState  bool
-	group              int32
-	number             int32
-	timeStamp          int32
-	keepOnMatchEnd     bool
+	streamer          beep.StreamSeeker
+	sfx               *SoundEffect
+	ctrl              *beep.Ctrl
+	sound             *Sound
+	playerID          int32
+	channelNo         int32 // Logical channel assigned by char code
+	stopOnGetHit      bool
+	stopOnChangeState bool
+	group             int32
+	number            int32
+	timeStamp         int32
+	keepOnMatchEnd    bool
 }
 
 // The old Stop() plus more

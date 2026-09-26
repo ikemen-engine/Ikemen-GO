@@ -464,10 +464,10 @@ func (c *CharCompiler) changeStateSub(is IniSection,
 
 	// None of this is still used
 	//if c.block != nil && c.stateNo >= 0 && c.block.ignorehitpause == -1 {
-		// Assign a unique index to ignorehitpause for this controller
-		//c.block.ignorehitpause = sys.cgi[c.playerNo].hitPauseToggleFlagCount
-		// Increment the count of hitPauseExecutionToggleFlags
-		//sys.cgi[c.playerNo].hitPauseToggleFlagCount++
+	// Assign a unique index to ignorehitpause for this controller
+	//c.block.ignorehitpause = sys.cgi[c.playerNo].hitPauseToggleFlagCount
+	// Increment the count of hitPauseExecutionToggleFlags
+	//sys.cgi[c.playerNo].hitPauseToggleFlagCount++
 	//}
 
 	return nil

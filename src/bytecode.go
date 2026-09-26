@@ -4845,12 +4845,12 @@ func (scb *StateControllerBase) add(paramID byte, exp []BytecodeExp) {
 	*scb = append(*scb, scParam{id: paramID, exp: exp})
 
 	/*
-	*scb = append(*scb, paramID, byte(len(exp)))
-	for _, e := range exp {
-		l := int32(len(e))
-		*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
-		*scb = append(*scb, *(*[]byte)(unsafe.Pointer(&e))...)
-	}
+		*scb = append(*scb, paramID, byte(len(exp)))
+		for _, e := range exp {
+			l := int32(len(e))
+			*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
+			*scb = append(*scb, *(*[]byte)(unsafe.Pointer(&e))...)
+		}
 	*/
 }
 
@@ -4862,26 +4862,26 @@ func (scb StateControllerBase) run(c *Char, visit func(paramID byte, exp []Bytec
 	}
 
 	/*
-	for i := 0; i < len(scb); {
-		id := scb[i]
-		i++
-		n := scb[i]
-		i++
-		if cap(sys.workBe) < int(n) {
-			sys.workBe = make([]BytecodeExp, n)
-		} else {
-			sys.workBe = sys.workBe[:n]
+		for i := 0; i < len(scb); {
+			id := scb[i]
+			i++
+			n := scb[i]
+			i++
+			if cap(sys.workBe) < int(n) {
+				sys.workBe = make([]BytecodeExp, n)
+			} else {
+				sys.workBe = sys.workBe[:n]
+			}
+			for m := 0; m < int(n); m++ {
+				l := *(*int32)(unsafe.Pointer(&scb[i]))
+				i += 4
+				sys.workBe[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb)))[i : i+int(l)]
+				i += int(l)
+			}
+			if !f(id, sys.workBe) {
+				break
+			}
 		}
-		for m := 0; m < int(n); m++ {
-			l := *(*int32)(unsafe.Pointer(&scb[i]))
-			i += 4
-			sys.workBe[m] = (*(*BytecodeExp)(unsafe.Pointer(&scb)))[i : i+int(l)]
-			i += int(l)
-		}
-		if !f(id, sys.workBe) {
-			break
-		}
-	}
 	*/
 }
 
@@ -4894,20 +4894,20 @@ func (scb StateControllerBase) hasParam(paramID byte) bool {
 	return false
 
 	/*
-	for i := 0; i < len(scb); {
-		id := scb[i]
-		i++
-		n := scb[i]
-		i++
-		for m := 0; m < int(n); m++ {
-			l := *(*int32)(unsafe.Pointer(&scb[i]))
-			i += 4 + int(l)
+		for i := 0; i < len(scb); {
+			id := scb[i]
+			i++
+			n := scb[i]
+			i++
+			for m := 0; m < int(n); m++ {
+				l := *(*int32)(unsafe.Pointer(&scb[i]))
+				i += 4 + int(l)
+			}
+			if id == paramID {
+				return true
+			}
 		}
-		if id == paramID {
-			return true
-		}
-	}
-	return false
+		return false
 	*/
 }
 

@@ -3396,44 +3396,44 @@ func loadMovelists(def string, is IniSection) map[int]string {
 }
 
 type CharGlobalInfo struct {
-	def                     string
-	name                    string
-	nameLow                 string
-	displayname             string
-	defaultDisplayname      string
-	displaynameLow          string
-	author                  string
-	authorLow               string
-	lifebarname             string
-	defaultLifebarname      string
-	sff                     *Sff
-	palettedata             *Palette
-	snd                     *Snd
-	animTable               AnimationTable
-	palInfo                 map[int]PalInfo
-	palno                   int32
-	ikemenver               [3]uint16
-	mugenver                [2]uint16
-	data                    CharData
-	velocity                CharVelocity
-	movement                CharMovement
-	states                  map[int32]*StateBytecode
-	callFuncs               map[string]BytecodeFunction
-	quotes                  [MaxQuotes]string
-	movelists               map[int]string
-	portraitscale           float32
-	constants               map[string]float32
-	remapPreset             map[string]RemapPreset
-	remappedpal             [2]int32
-	localcoord              [2]int32
-	fnt                     map[int]*Fnt
-	fightfxPrefix           string
-	fxPath                  []string
-	music                   Music
-	attackBase              int32
-	defenceBase             int32
-	canMutateStage          bool // Determines if the stage should be included in save states
-	customShaders           []string
+	def                string
+	name               string
+	nameLow            string
+	displayname        string
+	defaultDisplayname string
+	displaynameLow     string
+	author             string
+	authorLow          string
+	lifebarname        string
+	defaultLifebarname string
+	sff                *Sff
+	palettedata        *Palette
+	snd                *Snd
+	animTable          AnimationTable
+	palInfo            map[int]PalInfo
+	palno              int32
+	ikemenver          [3]uint16
+	mugenver           [2]uint16
+	data               CharData
+	velocity           CharVelocity
+	movement           CharMovement
+	states             map[int32]*StateBytecode
+	callFuncs          map[string]BytecodeFunction
+	quotes             [MaxQuotes]string
+	movelists          map[int]string
+	portraitscale      float32
+	constants          map[string]float32
+	remapPreset        map[string]RemapPreset
+	remappedpal        [2]int32
+	localcoord         [2]int32
+	fnt                map[int]*Fnt
+	fightfxPrefix      string
+	fxPath             []string
+	music              Music
+	attackBase         int32
+	defenceBase        int32
+	canMutateStage     bool // Determines if the stage should be included in save states
+	customShaders      []string
 	//hitPauseToggleFlagCount int32
 }
 
@@ -3466,11 +3466,11 @@ type StateState struct {
 	moveType      MoveType
 	prevMoveType  MoveType
 	storeMoveType bool
-	physics StateType
-	ps         []int32 // Persistent counters. Reused during ChangeState
-	no, prevno int32
-	time       int32
-	sb         *StateBytecode
+	physics       StateType
+	ps            []int32 // Persistent counters. Reused during ChangeState
+	no, prevno    int32
+	time          int32
+	sb            *StateBytecode
 	//hitPauseExecutionToggleFlags [MaxPlayerNo][]bool // Flags if an sctrl runs during a hit pause on the current tick.
 }
 
