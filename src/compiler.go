@@ -6762,7 +6762,7 @@ func cnsStringArray(arg string) ([]string, error) {
 }
 
 // Forwards state compiling to CNS or ZSS branches as appropriate
-func (c *CharCompiler) stateCompile(states map[int32]StateBytecode,
+func (c *CharCompiler) stateCompile(states map[int32]*StateBytecode,
 	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
 
 	// Determine type from extension
@@ -6808,7 +6808,7 @@ func (c *CharCompiler) stateCompile(states map[int32]StateBytecode,
 	return c.stateCompileCNS(states, filename, filetext, negoverride, constants)
 }
 
-func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename, filetext string, negoverride bool, constants map[string]float32) error {
+func (c *CharCompiler) stateCompileCNS(states map[int32]*StateBytecode, filename, filetext string, negoverride bool, constants map[string]float32) error {
 	// Reset ZSS mode
 	c.zssMode = false
 
@@ -6865,8 +6865,8 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 			return errmes(err)
 		}
 		sbc := newStateBytecode(c.playerNo)
-		if _, ok := states[c.stateNo]; ok && c.stateNo < 0 {
-			*sbc = states[c.stateNo]
+		if old, ok := states[c.stateNo]; ok && c.stateNo < 0 {
+			*sbc = *old
 		}
 		// Interpret the statedef properties
 		if err := c.stateDef(is, sbc); err != nil {
@@ -6930,7 +6930,7 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 					}
 				case "ignorehitpause":
 					ih := Atoi(data) != 0
-					c.block.ignorehitpause = Btoi(ih) - 2
+					c.block.ignorehitpause = ih
 					c.block.ctrlsIgnorehitpause = ih
 				default:
 					// Handle triggers
@@ -7114,9 +7114,10 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 				}
 			}
 			if appending {
-				// If the trigger is always true
-				if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
-					c.block.ignorehitpause < -1 {
+				// If the trigger is always true and persistent, just skip the wrapper block entirely
+				// This will allow it to be executed faster later
+				//if len(c.block.trigger) == 0 && c.block.persistentIndex < 0 &&
+				if len(c.block.trigger) == 0 && c.block.persistent == 1 && !c.block.ignorehitpause {
 					if _, ok := sctrl.(NullStateController); !ok {
 						sbc.block.ctrls = append(sbc.block.ctrls, sctrl)
 					}
@@ -7124,9 +7125,9 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 					if _, ok := sctrl.(NullStateController); !ok {
 						c.block.ctrls = append(c.block.ctrls, sctrl)
 					}
-					sbc.block.ctrls = append(sbc.block.ctrls, *c.block)
-					if c.block.ignorehitpause >= -1 {
-						sbc.block.ignorehitpause = -1
+					sbc.block.ctrls = append(sbc.block.ctrls, c.block)
+					if c.block.ignorehitpause {
+						sbc.block.ignorehitpause = true
 					}
 				}
 			}
@@ -7134,7 +7135,7 @@ func (c *CharCompiler) stateCompileCNS(states map[int32]StateBytecode, filename,
 
 		// Skip appending if already declared. Exception for negative states present in CommonStates and files belonging to char flagged with ikemenversion
 		if _, ok := states[c.stateNo]; !ok || (!negoverride && c.stateNo < 0) {
-			states[c.stateNo] = *sbc
+			states[c.stateNo] = sbc
 		}
 	}
 	return nil
@@ -7392,7 +7393,7 @@ func (c *CharCompiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateBy
 	inheritIhp, nestedInLoop bool) error {
 	// Inherit ignorehitpause/loop attr from parent block
 	if inheritIhp {
-		bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
+		bl.ignorehitpause, bl.ctrlsIgnorehitpause = true, true
 		// Avoid re-reading ignorehitpause
 		if c.token == "ignorehitpause" {
 			c.scan(line)
@@ -7402,10 +7403,10 @@ func (c *CharCompiler) blockAttribSet(line *string, bl *StateBlock, sbc *StateBy
 	for {
 		switch c.token {
 		case "ignorehitpause":
-			if bl.ignorehitpause >= -1 {
+			if bl.ignorehitpause {
 				return c.wrongClosureToken()
 			}
-			bl.ignorehitpause, bl.ctrlsIgnorehitpause = -1, true
+			bl.ignorehitpause, bl.ctrlsIgnorehitpause = true, true
 			c.scan(line)
 			continue
 		case "persistent":
@@ -7515,8 +7516,8 @@ func (c *CharCompiler) subBlock(line *string, root bool,
 			sbc, numVars, inheritIhp || bl.ctrlsIgnorehitpause, nestedInLoop); err != nil {
 			return nil, err
 		}
-		if bl.elseBlock.ignorehitpause >= -1 {
-			bl.ignorehitpause = -1
+		if bl.elseBlock.ignorehitpause {
+			bl.ignorehitpause = true
 		}
 	}
 	return bl, nil
@@ -7615,10 +7616,10 @@ func (c *CharCompiler) switchBlock(line *string, bl *StateBlock,
 	if sbl, err := readNextCase(nil); err != nil {
 		return err
 	} else {
-		if bl != nil && sbl.ignorehitpause >= -1 {
-			bl.ignorehitpause = -1
+		if bl != nil && sbl.ignorehitpause {
+			bl.ignorehitpause = true
 		}
-		bl.ctrls = append(bl.ctrls, *sbl)
+		bl.ctrls = append(bl.ctrls, sbl)
 	}
 	return nil
 }
@@ -7862,10 +7863,10 @@ func (c *CharCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 				bl != nil && bl.ctrlsIgnorehitpause, bl != nil && bl.nestedInLoop); err != nil {
 				return err
 			} else {
-				if bl != nil && sbl.ignorehitpause >= -1 {
-					bl.ignorehitpause = -1
+				if bl != nil && sbl.ignorehitpause {
+					bl.ignorehitpause = true
 				}
-				*ctrls = append(*ctrls, *sbl)
+				*ctrls = append(*ctrls, sbl)
 			}
 			continue
 		case "call":
@@ -7988,7 +7989,7 @@ func (c *CharCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 	return c.wrongClosureToken()
 }
 
-func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename, filetext string, constants map[string]float32) error {
+func (c *CharCompiler) stateCompileZSS(states map[int32]*StateBytecode, filename, filetext string, constants map[string]float32) error {
 	// Enable ZSS mode
 	// TODO: There's some overlap between this flag and sys.ignoreMostErrors
 	c.zssMode = true
@@ -8056,8 +8057,8 @@ func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename,
 				}
 			}
 			sbc := newStateBytecode(c.playerNo)
-			if _, ok := states[c.stateNo]; ok && c.stateNo < 0 {
-				*sbc = states[c.stateNo]
+			if old, ok := states[c.stateNo]; ok && c.stateNo < 0 {
+				*sbc = *old
 			}
 			c.vars = make(map[string]uint8)
 			if err := c.stateDef(is, sbc); err != nil {
@@ -8071,7 +8072,7 @@ func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename,
 				return errmes(err)
 			}
 			if _, ok := states[c.stateNo]; !ok || c.stateNo < 0 {
-				states[c.stateNo] = *sbc
+				states[c.stateNo] = sbc
 			}
 		case "function":
 			name := c.scan(&line)
@@ -8151,9 +8152,9 @@ func (c *CharCompiler) stateCompileZSS(states map[int32]StateBytecode, filename,
 }
 
 // Compile a character definition file
-func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32) (map[int32]StateBytecode, error) {
+func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32) (map[int32]*StateBytecode, error) {
 	c.playerNo = pn
-	states := make(map[int32]StateBytecode)
+	states := make(map[int32]*StateBytecode)
 
 	// Load initial data from definition file
 	str, err := LoadText(def)
@@ -8364,7 +8365,7 @@ func (c *CharCompiler) Compile(pn int, def string, constants map[string]float32)
 
 	// Compile states
 	sys.stringPool[pn].Clear()
-	sys.cgi[pn].hitPauseToggleFlagCount = 0
+	//sys.cgi[pn].hitPauseToggleFlagCount = 0
 
 	// Compile state files
 	for _, s := range st {

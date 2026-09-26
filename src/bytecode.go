@@ -4509,7 +4509,7 @@ func (bf BytecodeFunction) run(c *Char, ret []uint8) (changeState bool) {
 	for _, sc := range bf.ctrls {
 		// Do not check ignorehitpause here. The function call already did it
 		//switch sc.(type) {
-		//case StateBlock:
+		//case *StateBlock:
 		//default:
 		//	if c.hitPause() {
 		//		continue
@@ -4575,12 +4575,15 @@ func (cf CallFunction) Run(c *Char, _ []int32) (changeState bool) {
 	return bf.run(c, cf.ret)
 }
 
+// StateBlock is essentially an if/while/for block
+// In CNS, one StateBlock has at most one StateController
+// In ZSS, one StateBlock's trigger can have many
 type StateBlock struct {
 	// Basic block fields
 	persistent          int32
 	persistentIndex     int32
-	ignorehitpause      int32
-	ctrlsIgnorehitpause bool
+	ignorehitpause      bool // Applies to the block itself (ignoreHitPause if {})
+	ctrlsIgnorehitpause bool // Applies to the inner sctrl's that don't have their own ihp (ignoreHitPause if { ... })
 	trigger             BytecodeExp
 	elseBlock           *StateBlock
 	ctrls               []StateController
@@ -4596,10 +4599,10 @@ type StateBlock struct {
 }
 
 func newStateBlock() *StateBlock {
-	return &StateBlock{persistent: 1, persistentIndex: -1, ignorehitpause: -2}
+	return &StateBlock{persistent: 1, persistentIndex: -1, ignorehitpause: false}
 }
 
-func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
+func (b *StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 	c.currentSctrlIndex = b.persistentIndex
 	// For Mugen compatibility, if in hitpause and this SCTRL has the same index
 	// as the SCTRL that triggered a ChangeState during the hitpause
@@ -4611,8 +4614,8 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 
 	// Check if the character is currently in a hit pause
 	if c.hitPause() {
-		// If ignorehitpause is less than -1, do not proceed with this controller
-		if b.ignorehitpause < -1 {
+		// If ignorehitpause is false, do not proceed with this controller
+		if !b.ignorehitpause {
 			return false
 		}
 		/* https://github.com/ikemen-engine/Ikemen-GO/issues/2360
@@ -4686,7 +4689,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 			if !interrupt {
 				for _, sc := range b.ctrls {
 					switch sc.(type) {
-					case StateBlock:
+					case *StateBlock:
 					default:
 						if !b.ctrlsIgnorehitpause && c.hitPause() {
 							continue
@@ -4741,7 +4744,7 @@ func (b StateBlock) Run(c *Char, ps []int32) (changeState bool) {
 		}
 		for _, sc := range b.ctrls {
 			switch sc.(type) {
-			case StateBlock:
+			case *StateBlock:
 			default:
 				if !b.ctrlsIgnorehitpause && c.hitPause() {
 					continue
@@ -4789,10 +4792,15 @@ func (lc LoopContinue) Run(c *Char, _ []int32) (stop bool) {
 	return true
 }
 
-type StateControllerBase []byte
+type scParam struct {
+	id  byte
+	exp []BytecodeExp
+}
+
+type StateControllerBase []scParam
 
 func newStateControllerBase() *StateControllerBase {
-	return (*StateControllerBase)(&[]byte{})
+	return &StateControllerBase{}
 }
 
 func (StateControllerBase) beToExp(be ...BytecodeExp) []BytecodeExp {
@@ -4834,15 +4842,26 @@ func (StateControllerBase) bToExp(i bool) (exp []BytecodeExp) {
 }
 
 func (scb *StateControllerBase) add(paramID byte, exp []BytecodeExp) {
+	*scb = append(*scb, scParam{id: paramID, exp: exp})
+
+	/*
 	*scb = append(*scb, paramID, byte(len(exp)))
 	for _, e := range exp {
 		l := int32(len(e))
 		*scb = append(*scb, (*(*[4]byte)(unsafe.Pointer(&l)))[:]...)
 		*scb = append(*scb, *(*[]byte)(unsafe.Pointer(&e))...)
 	}
+	*/
 }
 
-func (scb StateControllerBase) run(c *Char, f func(byte, []BytecodeExp) bool) {
+func (scb StateControllerBase) run(c *Char, visit func(paramID byte, exp []BytecodeExp) bool) {
+	for _, param := range scb {
+		if !visit(param.id, param.exp) {
+			break
+		}
+	}
+
+	/*
 	for i := 0; i < len(scb); {
 		id := scb[i]
 		i++
@@ -4863,9 +4882,18 @@ func (scb StateControllerBase) run(c *Char, f func(byte, []BytecodeExp) bool) {
 			break
 		}
 	}
+	*/
 }
 
 func (scb StateControllerBase) hasParam(paramID byte) bool {
+	for _, param := range scb {
+		if param.id == paramID {
+			return true
+		}
+	}
+	return false
+
+	/*
 	for i := 0; i < len(scb); {
 		id := scb[i]
 		i++
@@ -4880,6 +4908,7 @@ func (scb StateControllerBase) hasParam(paramID byte) bool {
 		}
 	}
 	return false
+	*/
 }
 
 func getRedirectedChar(c *Char, sc StateControllerBase, redirectID byte, scname string) *Char {
@@ -15621,9 +15650,15 @@ func (sb *StateBytecode) init(c *Char) {
 }
 
 func (sb *StateBytecode) run(c *Char) (changeState bool) {
+	// sb == c.ss.sb picks c.ss.ps (normal state) vs sb.ctrlsps (negative state)
+	// TODO: Maybe this could be better
+	ctrlsps := sb.ctrlsps
+	if sb == c.ss.sb {
+		ctrlsps = c.ss.ps
+	}
 	sys.bcVar = sys.bcVarStack.Alloc(int(sb.numVars))
 	sys.workingState = sb
-	changeState = sb.block.Run(c, sb.ctrlsps)
+	changeState = sb.block.Run(c, ctrlsps)
 	if len(sys.bcStack) != 0 {
 		LogMessage(sys.cgi[sb.playerNo].def)
 		for _, v := range sys.bcStack {
