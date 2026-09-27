@@ -263,6 +263,43 @@ If you need changes in that wrapper, fork it and point the build to your fork vi
 
 ---
 
+## iOS / iPadOS (IPA, macOS only)
+
+This builds the engine **and** produces an unsigned **IPA** from the
+[ikemen-ios](https://github.com/Jesuszilla/ikemen-ios) Xcode wrapper.
+
+### Requirements
+
+* macOS with Xcode 26 or newer
+* Go 1.27+ and Homebrew: `brew install pkg-config git nasm`
+
+All other dependencies (FFmpeg, libxmp, SDL2, MoltenVK) are built or downloaded for the device automatically.
+
+### Build (from repo root)
+
+```bash
+./build/build.sh iOS
+# or
+make ios-ipa
+```
+
+### Outputs
+
+* `bin/ikemen-go.ipa` (unsigned IPA, see [Running](./README.md#running))
+* `bin/libikemen.a` and `bin/libikemen.h` (engine static library + header)
+* `build/ios-app/ikemen-ios` (cloned wrapper project, ready to open in Xcode)
+
+To run it straight from Xcode instead, open `build/ios-app/ikemen-ios/I.K.E.M.E.N-Go.xcodeproj`,
+choose your team under *Signing & Capabilities*, and press Run with your device connected.
+Simulator builds are not supported.
+
+### Customizing the iOS wrapper
+
+Same as Android: fork `ikemen-ios` and point the build to it with `IOS_APP_REPO` and
+`IOS_APP_REF`, or set `IOS_WRAPPER_DIR` to use an existing local checkout in place.
+
+---
+
 ## Assets required to run (desktop builds)
 
 Place these folders **next to the executable or app bundle**:
@@ -273,7 +310,7 @@ The release CI bundles these automatically.
 
 ## Notes & licensing
 
-* The minimal FFmpeg we build matches CI: shared libs only; `file` protocol; Matroska/WebM demuxers;
+* The minimal FFmpeg we build matches CI: shared libs (static on iOS, where apps cannot ship their own dylibs); `file` protocol; Matroska/WebM demuxers;
   libvpx VP8/VP9 decoders (including WebM alpha), Opus/Vorbis decoders, and parsers; no FFmpeg CLI tools.
 * FFmpeg is used under **LGPL v2.1**; releases attach the corresponding source snapshot.
 * libvpx is statically linked into FFmpeg and used under its BSD-style license.

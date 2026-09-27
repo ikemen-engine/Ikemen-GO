@@ -11,7 +11,7 @@ package main
 // THIS IS THE KEY: A C constructor.
 // This runs when the .framework is loaded, BEFORE Go starts itself up.
 __attribute__((constructor))
-static void prepare_go_runtime() {
+static void prepare_go_runtime(void) {
     // cgocheck=0: Stop Go from scanning memory pointers (prevents possible crashes)
     // scavenge=off: Stop the background memory reclaimer thread
     setenv("GODEBUG", "asyncpreemptoff=1,cgocheck=0", 1);

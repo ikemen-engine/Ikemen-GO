@@ -1,5 +1,3 @@
-//go:build !kinc
-
 package main
 
 import (
