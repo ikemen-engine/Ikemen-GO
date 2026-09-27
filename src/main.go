@@ -115,13 +115,38 @@ func realMain() {
 			return
 		}
 		Logcat("LOG: SDL Init SUCCESS")
+	} else if runtime.GOOS == "ios" {
+		Logcat("Inside realMain...")
+		runtime.LockOSThread()
+		if sys.baseDir == "" {
+			panic("FATAL: iOS baseDir not set")
+		}
+		Logcat("sys.baseDir is: " + sys.baseDir)
+
+		if err := os.Chdir(sys.baseDir); err != nil {
+			Logcat(fmt.Sprintf("LOG: CHDIR FAILED: %v\n", err))
+			// Don't panic yet, let's see if we can continue
+		} else {
+			Logcat("LOG: CHDIR SUCCESSFUL")
+		}
+
+		// Set the orientation hints (all must be supported)
+		setOrientationHints()
+
+		// Init SDL NOW
+		if err := sdl.Init(sdl.INIT_AUDIO | sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_TIMER | sdl.INIT_JOYSTICK | sdl.INIT_GAMECONTROLLER); err != nil {
+			Logcat("LOG: SDL Init Failed: " + err.Error())
+			return
+		}
+		Logcat("LOG: SDL Init SUCCESS")
+
 	} else {
 		sys.baseDir = "./"
 	}
 
 	// Handle Permissions and Directory Creation
 	permission := os.FileMode(0755)
-	if runtime.GOOS != "android" {
+	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
 		permission |= os.ModeSticky
 	}
 
@@ -173,9 +198,9 @@ func realMain() {
 		// For Android, let's see exactly what failed
 		panic(err)
 	}
-	// Force to OpenGL ES 3.2 for Android
-	if runtime.GOOS == "android" {
-		cfg.Video.RenderMode = "OpenGL ES 3.2"
+	// Force to Vulkan 1.3 for iOS
+	if runtime.GOOS == "ios" {
+		cfg.Video.RenderMode = "Vulkan 1.3"
 	}
 	sys.cfg = *cfg
 	// Logcat("LOG: Config Loaded. System Script: " + sys.cfg.Config.System)

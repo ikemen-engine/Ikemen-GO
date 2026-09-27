@@ -176,6 +176,8 @@ options.t_itemname = {
 			local runtimeOS = getRuntimeOS()
 			if runtimeOS == 'android' then
 				modifyGameOption('Video.RenderMode', 'OpenGL ES 3.2')
+			elseif runtimeOS == 'ios' then
+				modifyGameOption('Video.RenderMode', 'Vulkan 1.3')
 			else
 				modifyGameOption('Video.RenderMode', "OpenGL 3.3")
 			end
@@ -1818,7 +1820,9 @@ function options.f_start()
 	local runtimeOS = getRuntimeOS()
 	local excluded = {gles32 = true}
 	if runtimeOS == 'android' then
-		excluded = {keyboard = true, gl33 = true, vk13 = true}
+		excluded = {keyboard = true, gl33 = true}
+	elseif runtimeOS == 'ios' then
+		excluded = {keyboard = true, gl33 = true, gles32 = true}
 	end
 	main.f_pruneMenu(options.menu, excluded)
 	main.f_prunePointers(options.t_vardisplayPointers, excluded)

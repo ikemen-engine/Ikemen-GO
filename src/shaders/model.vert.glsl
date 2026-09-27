@@ -200,12 +200,14 @@ void main(void) {
 			bitangent = cross(normal, tangent) * (useTangent?tangentIn.w:0.0);
 		}
 		vec4 tmp2 = model * pos;
-		if(outlineAttribute.w > 0.0){
-			vec3 p = normalize(mat3(normalMatrix) * outlineAttribute.xyz)*outlineAttribute.w*meshOutline*length(cameraPosition-tmp2.xyz);
-			tmp2.xyz += p;
-		}else{
-			vec3 p = normal*meshOutline*length(cameraPosition-tmp2.xyz);
-			tmp2.xyz += p;
+		if (meshOutline != 0.0) {
+			if(outlineAttribute.w > 0.0){
+				vec3 p = normalize(mat3(normalMatrix) * outlineAttribute.xyz)*outlineAttribute.w*meshOutline*length(cameraPosition-tmp2.xyz);
+				tmp2.xyz += p;
+			}else{
+				vec3 p = normal*meshOutline*length(cameraPosition-tmp2.xyz);
+				tmp2.xyz += p;
+			}
 		}
 
 		gl_Position = projection * view * tmp2;

@@ -412,7 +412,7 @@ func (s *System) init(w, h int32) *lua.LState {
 		}
 	}
 
-	if runtime.GOOS != "android" {
+	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
 		exePath, err := os.Executable()
 		if err != nil {
 			fmt.Println("Error getting executable path:", err)
@@ -853,7 +853,7 @@ func (s *System) keepAlive() {
 }
 
 func (s *System) await(fps int) bool {
-	if !s.frameSkip {
+	if !s.frameSkip && !s.window.renderingPaused {
 		// Render the finished frame
 		gfx.EndFrame()
 		if gfx.GetName()[:6] == "OpenGL" {

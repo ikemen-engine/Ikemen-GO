@@ -148,12 +148,9 @@ float DirectionalLightShadowCalculation(int index, vec4 lightSpacePos,float Ndot
 	float currentDepth = projCoords.z;
 	
 	// check whether current frag pos is in shadow
-	#ifdef GL_ES
-		// https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
-		float bias = max(0.0005 * (1.0 - NdotL), shadowBias) * 1024.0; // and scale back on shadow map texture size
-	#else
-		float bias = shadowBias*tan(acos(NdotL));
-	#endif
+	float slope = sqrt(1.0 - (NdotL * NdotL)) / max(NdotL, 0.0001); // avoid DIVIDE BY 0 caused by trig
+	float bias = max(shadowBias, 0.0005) * clamp(slope, 0.0, 5.0);
+	bias = clamp(bias, 0.0005, 0.01);
 	float shadow = closestDepth-currentDepth > -bias  ? 1.0 : 0.0;
 	#else
 	float shadow = 1.0;
@@ -179,14 +176,10 @@ float SpotLightShadowCalculation(int index, vec3 pointToLight, vec4 lightSpacePo
 	closestDepth *= farPlane;
 	// get depth of current fragment from light's perspective
 	float currentDepth = length(pointToLight);
-	#ifdef GL_ES
-		// https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
-		float bias = max(0.05 * (1.0 - NdotL), shadowBias);
-		// Scale back based on far plane, texture size
-		bias = bias * (farPlane * 1024.0);
-	#else
-		float bias = shadowBias*tan(acos(NdotL));
-	#endif
+	float slope = sqrt(1.0 - (NdotL * NdotL)) / max(NdotL, 0.0001); // avoid DIVIDE BY 0 caused by trig
+	float bias = max(shadowBias, 0.0005) * clamp(slope, 0.0, 5.0);
+	bias *= max(farPlane, 1.0) * 0.001; // fix farPlane==0 too
+	bias = clamp(bias, 0.001, max(farPlane, 1.0) * 0.01);
 	float shadow = currentDepth-closestDepth < bias  ? 1.0 : 0.0;
 	#else
 	float shadow = 1.0;
@@ -212,14 +205,9 @@ float PointLightShadowCalculation(int index, vec3 pointToLight,float NdotL,float
 	// now get current linear depth as the length between the fragment and light position
 	float currentDepth = length(pointToLight);
 
-	#ifdef GL_ES
-		// https://learnopengl.com/Advanced-Lighting/Shadows/Shadow-Mapping
-		float bias = max(0.05 * (1.0 - NdotL), shadowBias);
-		// Scale back based on far plane, texture size
-		bias = bias * (farPlane * 1024.0);
-	#else
-		float bias = shadowBias*tan(acos(NdotL));
-	#endif
+	float slope = sqrt(1.0 - (NdotL * NdotL)) / max(NdotL, 0.0001); // avoid DIVIDE BY 0 caused by trig
+	float bias = max(shadowBias, 0.0005) * clamp(slope, 0.0, 5.0);
+	bias = clamp(bias, 0.0005, 0.01);
 
 	float shadow = currentDepth-closestDepth < bias  ? 1.0 : 0.0;
 	
