@@ -1,4 +1,4 @@
-//go:build !kinc
+//go:build
 
 package main
 
