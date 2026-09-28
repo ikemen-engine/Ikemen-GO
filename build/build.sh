@@ -91,6 +91,18 @@ ANDROID_APK_OUT="${ANDROID_APK_OUT:-$REPO_ROOT/bin/ikemen-go.apk}"
 
 # iOS IPA packaging (ikemen-ios)
 BUILD_IOS_IPA="${BUILD_IOS_IPA:-1}"  # 1=yes, 0=no
+# IOS_WRAPPER_DIR: an existing ikemen-ios checkout, used in place (for opening it in Xcode).
+# If unset, IOS_APP_REPO@IOS_APP_REF is freshly cloned into build/ios-app/ikemen-ios.
+IOS_APP_REPO="${IOS_APP_REPO:-https://github.com/Jesuszilla/ikemen-ios.git}"
+IOS_APP_REF="${IOS_APP_REF:-main}"
+IOS_WRAPPER_DIR="${IOS_WRAPPER_DIR:-}"
+IOS_MIN_VERSION="${IOS_MIN_VERSION:-17.0}"
+IOS_IPA_OUT="${IOS_IPA_OUT:-$REPO_ROOT/bin/ikemen-go.ipa}"
+# CFBundleShortVersionString / CFBundleVersion of the app. Apple requires up to three
+# dot-separated integers, so vX.Y.Z tags map to X.Y.Z; other builds keep the wrapper's value.
+IOS_APP_VERSION="${IOS_APP_VERSION:-}"
+IOS_BUILD_NUMBER="${IOS_BUILD_NUMBER:-}"
+MOLTENVK_REV="${MOLTENVK_REV:-v1.4.2}"
 
 # FFmpeg config
 FFMPEG_REV="${FFMPEG_REV:-release/7.1}"
@@ -542,8 +554,12 @@ function varAndroid() {
 	binName="libmain.so"
 }
 function variOS() {
+	if [[ "$OSTYPE" != darwin* ]]; then
+		echo "ERROR: the iOS target must be built on macOS with Xcode installed." >&2
+		exit 1
+	fi
 	local sdk="iphoneos"
-	local min_ios_version="17.0"
+	local min_ios_version="$IOS_MIN_VERSION"
 
 	export GOOS=ios
 	export GOARCH=arm64
@@ -556,8 +572,12 @@ function variOS() {
 	export RANLIB="$(xcrun --sdk "$sdk" --find ranlib)"
 	export STRIP="$(xcrun --sdk "$sdk" --find strip)"
 
-	# TODO: make generic
-	export IOS_CFLAGS="-I$(brew --prefix vulkan-headers)/include -I$(brew --prefix molten-vk)/include -target arm64-apple-ios${min_ios_version} -isysroot $SDKROOT"
+	export IOS_DEPS_PATH="$REPO_ROOT/build/ios-deps"
+	mkdir -p "$IOS_DEPS_PATH/lib/pkgconfig" "$IOS_DEPS_PATH/include"
+
+	# No Vulkan/MoltenVK headers needed here: github.com/Eiton/vulkan bundles its own
+	# and resolves MoltenVK via dlsym. MoltenVK is only linked by the Xcode app.
+	export IOS_CFLAGS="-I$IOS_DEPS_PATH/include -target arm64-apple-ios${min_ios_version} -isysroot $SDKROOT"
 	export IOS_LDFLAGS="-target arm64-apple-ios${min_ios_version} -isysroot $SDKROOT"
 
 	# Apple targets
@@ -565,13 +585,12 @@ function variOS() {
 	export CGO_CXXFLAGS="$IOS_CFLAGS"
 	export CGO_LDFLAGS="$IOS_LDFLAGS"
 
-	export IOS_DEPS_PATH="$REPO_ROOT/build/ios-deps"
-	mkdir -p "$IOS_DEPS_PATH/lib/pkgconfig"
-
 	# Ensure we don't pick up host libraries by clearing this
 	export PKG_CONFIG_PATH=""
 	export PKG_CONFIG_LIBDIR="$IOS_DEPS_PATH/lib/pkgconfig"
-	export PKG_CONFIG_SYSROOT_DIR="$SDKROOT"
+	# Our .pc files already hold absolute paths; a sysroot prefix would break them
+	# (build_ffmpeg cleared it, but skips that when FFmpeg is cached).
+	export PKG_CONFIG_SYSROOT_DIR=""
 
 	binName="libikemen.a"
 }
@@ -692,6 +711,8 @@ function build_ffmpeg() {
 	local ffmpeg_pc="$FFMPEG_PREFIX/lib/pkgconfig/libavcodec.pc"
 	if [[ "$GOOS" == "android" ]]; then
 		ffmpeg_pc="$ANDROID_DEPS_PATH/lib/pkgconfig/libavcodec.pc"
+	elif [[ "$GOOS" == "ios" ]]; then
+		ffmpeg_pc="$IOS_DEPS_PATH/lib/pkgconfig/libavcodec.pc"
 	fi
 	if [[ -f "$ffmpeg_pc" && -f "$FFMPEG_SRCDIR/config_components.h" ]] &&
 		grep -q '^#define CONFIG_LIBVPX_VP8_DECODER 1' "$FFMPEG_SRCDIR/config_components.h" &&
@@ -833,6 +854,8 @@ function build_ffmpeg() {
 	local pcdir="$FFMPEG_PREFIX/lib/pkgconfig"
 	if [[ "$GOOS" == "android" ]]; then
 		pcdir="$ANDROID_DEPS_PATH/lib/pkgconfig"
+	elif [[ "$GOOS" == "ios" ]]; then
+		pcdir="$IOS_DEPS_PATH/lib/pkgconfig"
 	fi
 	echo "==> FFmpeg pkg-config files installed to: $pcdir"
 	ls -l "$pcdir" || true
@@ -1012,14 +1035,14 @@ ensure_screenpack() {
 	git config --system --add safe.directory "$SCREENPACK_DIR" >/dev/null 2>&1 || true
 }
 
-ensure_android_runtime_assets() {
-	[[ "$GOOS" != "android" ]] && return 0
+ensure_mobile_runtime_assets() {
+	[[ "$GOOS" != "android" && "$GOOS" != "ios" ]] && return 0
 
-	# The Android APK must ship with the same runtime assets as desktop releases.
+	# The APK/IPA must ship with the same runtime assets as desktop releases.
 	# If the engine repo doesn't contain them (CI), pull from the Elecbyte screenpack.
 	ensure_screenpack
 
-	# external/gamecontrollerdb.txt (referenced by Android manifest)
+	# external/gamecontrollerdb.txt (referenced by the wrapper manifests)
 	local db="$REPO_ROOT/external/gamecontrollerdb.txt"
 	if [[ ! -f "$db" ]]; then
 		echo "==> Downloading SDL GameController DB..."
@@ -1028,7 +1051,7 @@ ensure_android_runtime_assets() {
 			"$db"
 	fi
 
-	# data/system.base.def (referenced by Android manifest)
+	# data/system.base.def (referenced by the wrapper manifests)
 	local sys="$REPO_ROOT/data/system.base.def"
 	if [[ ! -f "$sys" ]]; then
 		echo "==> Generating data/system.base.def from src/resources/defaultMotif.ini..."
@@ -1177,17 +1200,26 @@ function stage_android_apk_assets() {
 		exit 1
 	fi
 
-	echo "==> Staging assets into: $assets_dir (from $manifest)"
-	local screenpack="$SCREENPACK_DIR"
 	# Remove everything except manifest.txt so the APK content matches your engine tree
 	find "$assets_dir" -mindepth 1 -maxdepth 1 ! -name "manifest.txt" -exec rm -rf {} + 2>/dev/null || true
+
+	stage_manifest_assets "$manifest" "$assets_dir"
+}
+
+# Copy every path listed in a wrapper manifest (ikemen-droid / ikemen-ios) into dest_dir.
+# Paths are resolved against the engine repo first, then the Elecbyte screenpack clone.
+function stage_manifest_assets() {
+	local manifest="$1" dest_dir="$2"
+	local screenpack="$SCREENPACK_DIR"
+
+	echo "==> Staging assets into: $dest_dir (from $manifest)"
 
 	# manifest.txt is whitespace-separated (often a single long line)
 	local p src dst
 	while read -r p; do
 		[[ -z "$p" ]] && continue
 		src="$REPO_ROOT/$p"
-		dst="$assets_dir/$p"
+		dst="$dest_dir/$p"
 
 		# If not present in the engine repo, fall back to the Elecbyte screenpack clone.
 		if [[ ! -e "$src" && -n "$screenpack" && -e "$screenpack/$p" ]]; then
@@ -1200,6 +1232,9 @@ function stage_android_apk_assets() {
 		elif [[ -f "$src" ]]; then
 			mkdir -p "$(dirname "$dst")"
 			cp -a "$src" "$dst"
+		elif [[ "$p" == */ ]]; then
+			# Trailing slash = directory the engine expects to exist, even if empty.
+			mkdir -p "$dst"
 		else
 			# If your tree doesn't include some optional paths from manifest, just warn.
 			echo "WARNING: Asset path missing in Ikemen-GO tree: $p" >&2
@@ -1213,7 +1248,7 @@ function build_android_apk() {
 
 	ensure_android_sdk_for_gradle
 	sync_android_apk_repo
-	ensure_android_runtime_assets
+	ensure_mobile_runtime_assets
 	stage_android_apk_libs
 	stage_android_apk_assets
 
@@ -1295,7 +1330,7 @@ function build_libxmp_ios() {
         -DCMAKE_SYSTEM_NAME=iOS \
         -DCMAKE_OSX_SYSROOT=iphoneos \
         -DCMAKE_OSX_ARCHITECTURES=arm64 \
-        -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET="$IOS_MIN_VERSION" \
         -DCMAKE_C_COMPILER="$CC" \
         -DCMAKE_INSTALL_PREFIX="$prefix" \
         -DBUILD_STATIC=ON \
@@ -1315,6 +1350,157 @@ function build_libxmp_ios() {
     popd >/dev/null
 
     ensure_pkg_config_path
+}
+
+# Run xcodebuild without the cross-compile environment exported by variOS, so
+# Xcode picks its own toolchain and SDK for the target it is building.
+function xcodebuild_clean() {
+	env -u CC -u CXX -u AR -u RANLIB -u STRIP -u SDKROOT \
+		-u CFLAGS -u CXXFLAGS -u LDFLAGS \
+		-u PKG_CONFIG_PATH -u PKG_CONFIG_LIBDIR -u PKG_CONFIG_SYSROOT_DIR \
+		xcodebuild "$@"
+}
+
+# Resolve the ikemen-ios Xcode wrapper. IOS_WRAPPER_DIR (if set) is used in place;
+# otherwise IOS_APP_REPO@IOS_APP_REF is cloned into build/ios-app/ikemen-ios.
+function sync_ios_app_repo() {
+	if [[ -n "$IOS_WRAPPER_DIR" ]]; then
+		if [[ ! -d "$IOS_WRAPPER_DIR/I.K.E.M.E.N-Go.xcodeproj" ]]; then
+			echo "ERROR: IOS_WRAPPER_DIR is not an ikemen-ios checkout: $IOS_WRAPPER_DIR" >&2
+			exit 1
+		fi
+		IOS_WRAPPER_DIR="$(cd "$IOS_WRAPPER_DIR" && pwd -P)"
+		echo "==> Using local ikemen-ios checkout in-place: $IOS_WRAPPER_DIR"
+		return 0
+	fi
+
+	IOS_WRAPPER_DIR="$REPO_ROOT/$BUILDDIR/ios-app/ikemen-ios"
+	mkdir -p "$(dirname "$IOS_WRAPPER_DIR")"
+	if [[ ! -d "$IOS_WRAPPER_DIR/.git" ]]; then
+		rm -rf "$IOS_WRAPPER_DIR"
+		echo "==> Cloning ikemen-ios: $IOS_APP_REPO ($IOS_APP_REF) -> $IOS_WRAPPER_DIR"
+		git clone --depth=1 -b "$IOS_APP_REF" "$IOS_APP_REPO" "$IOS_WRAPPER_DIR"
+	else
+		echo "==> Updating ikemen-ios in $IOS_WRAPPER_DIR ($IOS_APP_REF)"
+		( cd "$IOS_WRAPPER_DIR" \
+			&& git fetch --depth=1 origin "$IOS_APP_REF" \
+			&& git checkout -f FETCH_HEAD )
+	fi
+}
+
+# SDL2.xcframework for the wrapper. Built from source ($SDL2_REV) because SDL2
+# releases do not ship an iOS binary. Skipped when the wrapper already has one.
+function ensure_ios_sdl2_framework() {
+	local xcfw="$IOS_WRAPPER_DIR/Frameworks/SDL2.xcframework"
+	if [[ -f "$xcfw/ios-arm64/SDL2.framework/Headers/SDL.h" ]]; then
+		echo "==> Found SDL2.xcframework in $IOS_WRAPPER_DIR/Frameworks"
+		return 0
+	fi
+
+	echo "==> Building SDL2 $SDL2_REV xcframework for iOS"
+	if [[ ! -d "$SDL2_SRCDIR/.git" ]]; then
+		rm -rf "$SDL2_SRCDIR"
+		git clone --depth=1 -b "$SDL2_REV" https://github.com/libsdl-org/SDL.git "$SDL2_SRCDIR"
+	fi
+
+	local archive="$REPO_ROOT/$BUILDDIR/ios-app/SDL2-iphoneos.xcarchive"
+	rm -rf "$archive"
+	xcodebuild_clean archive \
+		-project "$SDL2_SRCDIR/Xcode/SDL/SDL.xcodeproj" \
+		-scheme Framework-iOS \
+		-destination 'generic/platform=iOS' \
+		-archivePath "$archive" \
+		BUILD_LIBRARY_FOR_DISTRIBUTION=YES SKIP_INSTALL=NO \
+		IPHONEOS_DEPLOYMENT_TARGET="$IOS_MIN_VERSION" \
+		CODE_SIGNING_ALLOWED=NO
+
+	mkdir -p "$(dirname "$xcfw")"
+	rm -rf "$xcfw"
+	xcodebuild_clean -create-xcframework \
+		-framework "$archive/Products/Library/Frameworks/SDL2.framework" \
+		-output "$xcfw"
+	if [[ ! -f "$xcfw/ios-arm64/SDL2.framework/Headers/SDL.h" ]]; then
+		echo "ERROR: SDL2.xcframework has no ios-arm64 slice: $xcfw" >&2
+		exit 1
+	fi
+}
+
+# MoltenVK.xcframework (dynamic) for the wrapper, from the pinned Khronos release.
+function ensure_ios_moltenvk_framework() {
+	local xcfw="$IOS_WRAPPER_DIR/Frameworks/MoltenVK.xcframework"
+	if [[ -d "$xcfw/ios-arm64/MoltenVK.framework" ]]; then
+		echo "==> Found MoltenVK.xcframework in $IOS_WRAPPER_DIR/Frameworks"
+		return 0
+	fi
+
+	echo "==> Downloading MoltenVK $MOLTENVK_REV for iOS"
+	local work="$REPO_ROOT/$BUILDDIR/ios-app/moltenvk"
+	rm -rf "$work"
+	mkdir -p "$work"
+	download_file \
+		"https://github.com/KhronosGroup/MoltenVK/releases/download/$MOLTENVK_REV/MoltenVK-ios.tar" \
+		"$work/MoltenVK-ios.tar"
+	tar -xf "$work/MoltenVK-ios.tar" -C "$work"
+
+	mkdir -p "$(dirname "$xcfw")"
+	rm -rf "$xcfw"
+	cp -R "$work/MoltenVK/MoltenVK/dynamic/MoltenVK.xcframework" "$xcfw"
+	rm -rf "$work"
+}
+
+# Package the wrapper into an unsigned IPA. Users sign it themselves when
+# sideloading (Apple requires a per-user signature outside the App Store).
+function build_ios_ipa() {
+	[[ "$GOOS" != "ios" ]] && return 0
+	[[ "$BUILD_IOS_IPA" == "0" ]] && { echo "==> BUILD_IOS_IPA=0: skipping IPA build"; return 0; }
+
+	ensure_mobile_runtime_assets
+
+	# DefaultAssets.zip: manifest.txt plus every path it lists, all at the zip root.
+	local assets_dir="$IOS_WRAPPER_DIR/DefaultAssets"
+	local manifest="$assets_dir/manifest.txt"
+	if [[ ! -f "$manifest" ]]; then
+		echo "ERROR: ikemen-ios manifest not found at: $manifest" >&2
+		exit 1
+	fi
+	find "$assets_dir" -mindepth 1 -maxdepth 1 ! -name "manifest.txt" -exec rm -rf {} + 2>/dev/null || true
+	stage_manifest_assets "$manifest" "$assets_dir"
+	rm -f "$IOS_WRAPPER_DIR/DefaultAssets.zip"
+	( cd "$assets_dir" && zip -qr -X "$IOS_WRAPPER_DIR/DefaultAssets.zip" . )
+
+	local out="$REPO_ROOT/$BUILDDIR/ios-app/out"
+	rm -rf "$out"
+
+	local version_args=()
+	local app_version="$IOS_APP_VERSION"
+	if [[ -z "$app_version" && "$APP_VERSION" =~ ^v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+		app_version="${BASH_REMATCH[1]}"
+	fi
+	[[ -n "$app_version" ]] && version_args+=("MARKETING_VERSION=$app_version")
+	[[ -n "$IOS_BUILD_NUMBER" ]] && version_args+=("CURRENT_PROJECT_VERSION=$IOS_BUILD_NUMBER")
+
+	echo "==> Building IPA with xcodebuild (unsigned)..."
+	xcodebuild_clean archive \
+		-project "$IOS_WRAPPER_DIR/I.K.E.M.E.N-Go.xcodeproj" \
+		-scheme I.K.E.M.E.N-Go \
+		-configuration Release \
+		-destination 'generic/platform=iOS' \
+		-derivedDataPath "$out/DerivedData" \
+		-archivePath "$out/ikemen.xcarchive" \
+		IPHONEOS_DEPLOYMENT_TARGET="$IOS_MIN_VERSION" \
+		${version_args[@]+"${version_args[@]}"} \
+		CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM=""
+
+	local app="$out/ikemen.xcarchive/Products/Applications/I.K.E.M.E.N-Go.app"
+	if [[ ! -d "$app" ]]; then
+		echo "ERROR: xcodebuild finished but app not found at: $app" >&2
+		exit 1
+	fi
+	mkdir -p "$out/ipa/Payload" "$(dirname "$IOS_IPA_OUT")"
+	cp -R "$app" "$out/ipa/Payload/"
+	rm -f "$IOS_IPA_OUT"
+	( cd "$out/ipa" && zip -qry "$IOS_IPA_OUT" Payload )
+	echo "==> IPA ready: $IOS_IPA_OUT"
 }
 
 function maybe_build_ffmpeg() {
@@ -1388,6 +1574,10 @@ function build() {
 		export CGO_LDFLAGS="${deps_libs} ${CGO_LDFLAGS:-} -lGLESv2 -lOpenSLES -llog -Wl,-z,max-page-size=16384"
 	elif [[ "$GOOS" == "ios" ]]; then
 		# MANUALLY define flags for iOS to avoid pkg-config errors
+		# The wrapper supplies SDL2 (headers for cgo) and SDLWindowFix.h, so it must exist first.
+		sync_ios_app_repo
+		ensure_ios_sdl2_framework
+		ensure_ios_moltenvk_framework
 		prepare_ios_deps
 		create_sdl2_pc
 		export CGO_CFLAGS="-DSDL_MAIN_HANDLED -I${IOS_WRAPPER_DIR}/Frameworks/SDL2.xcframework/ios-arm64/SDL2.framework/Headers -I${IOS_WRAPPER_DIR}/I.K.E.M.E.N-Go ${CGO_CFLAGS:-}"
@@ -1441,14 +1631,14 @@ function build() {
 	else
 		# Fix iOS header
 		headerName="${binName%.a}.h"
-		sed -i '' 's/#include "SDL.h"/#include <SDL2\/SDL.h>/g' "$OUTDIR/$headerName"
+		sed_inplace 's/#include "SDL.h"/#include <SDL2\/SDL.h>/g' "$OUTDIR/$headerName"
 
 		# Copy the headers and libs to the wrapper dir
 		cp "$IOS_DEPS_PATH/lib"/*.a "$IOS_WRAPPER_DIR/"
 		cp "$OUTDIR/$headerName" "$IOS_WRAPPER_DIR/"
 		cp "$OUTDIR/$binName" "$IOS_WRAPPER_DIR/"
 		echo "==> Copied libs to wrapper dir: $IOS_WRAPPER_DIR/"
-		#build_ios_ipa
+		build_ios_ipa
 	fi
 
 	# For Android, optionally build the APK via ikemen-droid

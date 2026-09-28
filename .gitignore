@@ -72,6 +72,7 @@ build/android-apk/
 # iOS and macOS build outputs (generated)
 bin/libikemen.h
 bin/libikemen.a
+bin/*.ipa
 lib/*.dylib
 
 # macOS System Files
@@ -80,6 +81,7 @@ lib/*.dylib
 # Binaries
 build/android-deps/
 build/ios-deps/
+build/ios-app/
 build/libxmp-src/
 build/libvpx-src/
 build/sdl2-src/

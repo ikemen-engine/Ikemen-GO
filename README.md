@@ -24,6 +24,7 @@ Ready-to-use builds are available in the [releases section](https://github.com/i
 | macOS | macOS 13 Ventura (Apple Silicon) |
 | Linux | x86-64 with glibc 2.35+, e.g. Ubuntu 22.04, Debian 12, Fedora 36 |
 | Android | Android 14 (API 34, arm64) |
+| iOS / iPadOS | iOS 17 (arm64 device; no simulator) |
 
 A GPU supporting OpenGL 3.3, OpenGL ES 3.2 or Vulkan is required.
 
@@ -35,13 +36,15 @@ Download the ZIP archive that matches your operating system and extract its cont
 
 On Windows, double-click `Ikemen_GO.exe`.
 On macOS or Linux, double-click `Ikemen_GO.command`.
+On Android, install `ikemen-go.apk` from the Android archive.
+On iOS / iPadOS, sideload `Ikemen_GO-<version>-ios.ipa` with [AltStore](https://altstore.io/) / [SideStore](https://sidestore.io/) (for updates, add the `altstore-source.json` link from the same release as a source) or [Sideloadly](https://sideloadly.io/), which sign it with your Apple ID. Free Apple IDs require refreshing the app every 7 days. Jailbroken and [TrollStore](https://github.com/opa334/TrollStore) devices can install it directly.
 
 ## Developing
 These instructions are for those interested in developing the Ikemen GO engine itself. Instructions for creating custom stages, fonts, characters and other resources can be found in the community forum.
 
 ### Building
 For setup and platform-specific steps, see [BUILDING.md](./BUILDING.md).
-It covers Windows, Linux, macOS, and Android.
+It covers Windows, Linux, macOS, Android, and iOS.
 
 ### Debugging
 In order to run the compiled Ikemen GO executable, you will need to download the [engine dependencies](https://github.com/ikemen-engine/Ikemen-GO-Screenpack) and unpack them into the Ikemen-GO source directory. After that, you can use [Goland](https://www.jetbrains.com/go/) or [Visual Studio Code](https://code.visualstudio.com/) to debug.
@@ -64,6 +67,6 @@ If you run into any issues with Ikemen Go, you can report it on our [issue track
 Ikemen GO engine is under the MIT License.
 Bundled screenpack assets are under Creative Commons licenses.
 See [LICENCE.txt](LICENCE.txt) for more details.
-This program dynamically links FFmpeg (LGPL v2.1).
+This program dynamically links FFmpeg (LGPL v2.1); the iOS build links it statically, and the full source of the engine and the iOS app is public so it can be relinked.
 
 The exact corresponding source for the FFmpeg build is provided on the [release page](https://github.com/ikemen-engine/Ikemen-GO/releases/latest) as `src_ffmpeg.tar.gz`. You may rebuild this application against a modified FFmpeg.

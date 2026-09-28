@@ -207,6 +207,13 @@ jobs:
             goarch: arm64
             bin: ikemen-go.apk
             build_target: Android
+          - runner_os: ios
+            # The ikemen-ios Xcode project needs Xcode 26 (default on macos-26).
+            os: macos-26
+            goos: ios
+            goarch: arm64
+            bin: ikemen-go.ipa
+            build_target: iOS
     runs-on: ${{ matrix.cfg.os }}
     steps:
       - uses: actions/checkout@v7
@@ -242,6 +249,8 @@ jobs:
             mingw-w64-x86_64-yasm
             mingw-w64-x86_64-libxmp
       - name: Prepare Vulkan SDK
+        # iOS uses the headers bundled with the Vulkan bindings and MoltenVK from its release.
+        if: ${{ matrix.cfg.runner_os != 'ios' }}
         uses: humbletim/setup-vulkan-sdk@v1.2.1
         with:
           vulkan-query-version: 1.4.304.1
@@ -258,16 +267,26 @@ jobs:
               libdrm-dev libgbm-dev libdecor-0-dev libibus-1.0-dev
           fi
           if [ "$RUNNER_OS" = "macOS" ]; then
+            # iOS builds libxmp/FFmpeg/SDL2 for the device and takes MoltenVK from
+            # its release, so it only needs the host tools.
+            if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+              pkgs="pkg-config git nasm"
+            else
+              pkgs="pkg-config git nasm libxmp sdl2 molten-vk"
+            fi
             # Avoid update, disable analytics, prefer taps over API, and retry.
             export HOMEBREW_NO_ANALYTICS=1
             export HOMEBREW_NO_AUTO_UPDATE=1
             export HOMEBREW_NO_INSTALL_FROM_API=1
             brew update-reset || true
-            ( brew install --quiet pkg-config git nasm libxmp sdl2 molten-vk ) || (
+            ( brew install --quiet $pkgs ) || (
               echo "First attempt failed; retrying with API mode..." >&2
               unset HOMEBREW_NO_INSTALL_FROM_API
-              brew install --quiet pkg-config git nasm libxmp sdl2 molten-vk
+              brew install --quiet $pkgs
             )
+          fi
+          if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+            xcodebuild -version
           fi
 
       - name: Generate LICENSES.txt
@@ -307,7 +326,13 @@ jobs:
             echo
             echo "Section 3: FFmpeg (LGPL v2.1) and Notices"
             echo "-----------------------------------------"
-            echo "This program dynamically links FFmpeg under the GNU Lesser General Public License v2.1."
+            if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+              echo "This program statically links FFmpeg under the GNU Lesser General Public License v2.1."
+              echo "The complete source of Ikemen GO and of the iOS app (ikemen-ios) is public, so the"
+              echo "application can be rebuilt and relinked against a modified FFmpeg."
+            else
+              echo "This program dynamically links FFmpeg under the GNU Lesser General Public License v2.1."
+            fi
             echo "The exact corresponding FFmpeg source is attached to the release page as:"
             echo "  src_ffmpeg.tar.gz"
             echo
@@ -348,6 +373,34 @@ jobs:
             echo
           } > LICENSES.txt
 
+          if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+            # Same defaults build.sh uses, so the notices match what gets bundled.
+            bdef() { python3 -c 'import re,sys;print(re.search(r"^%s=\"\$\{%s:-(.*?)\}\"" % (sys.argv[1],sys.argv[1]), open("build/build.sh").read(), re.M).group(1))' "$1"; }
+            ios_repo="$(bdef IOS_APP_REPO)"; ios_repo="${ios_repo#https://github.com/}"; ios_repo="${ios_repo%.git}"
+            ios_ref="$(bdef IOS_APP_REF)"
+            mvk_rev="$(bdef MOLTENVK_REV)"
+            ios_raw="https://raw.githubusercontent.com/${ios_repo}/${ios_ref}"
+            zip_rev="$(curl -fsSL "$ios_raw/I.K.E.M.E.N-Go.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" \
+              | python3 -c 'import json,sys;print(next(p["state"]["revision"] for p in json.load(sys.stdin)["pins"] if p["identity"]=="ziparchive"))')"
+            {
+              echo
+              echo "Section 7: iOS app components"
+              echo "-----------------------------"
+              echo "7.1 ikemen-ios wrapper (https://github.com/${ios_repo}):"
+              echo
+              curl -fsSL "$ios_raw/LICENSE.txt"
+              echo
+              echo "7.2 MoltenVK ${mvk_rev} (https://github.com/KhronosGroup/MoltenVK):"
+              echo
+              curl -fsSL "https://raw.githubusercontent.com/KhronosGroup/MoltenVK/${mvk_rev}/LICENSE"
+              echo
+              echo "7.3 ZipArchive (https://github.com/ZipArchive/ZipArchive):"
+              echo
+              curl -fsSL "https://raw.githubusercontent.com/ZipArchive/ZipArchive/${zip_rev}/LICENSE.txt"
+              echo
+            } >> LICENSES.txt
+          fi
+
       - name: Build (POSIX)
         if: ${{ runner.os != 'Windows' && matrix.cfg.runner_os != 'android' }}
         shell: bash
@@ -361,6 +414,8 @@ jobs:
           GOEXPERIMENT: "arenas"
           APP_VERSION: ${{ needs.tag.outputs.version }}
           APP_BUILDTIME: ${{ needs.tag.outputs.buildTime }}
+          # iOS: monotonically increasing CFBundleVersion so AltStore/SideStore detect updates.
+          IOS_BUILD_NUMBER: ${{ github.run_number }}
         run: |
           # Pin the deployment target: cgo means external linking, so ld64 writes
           # LC_BUILD_VERSION and honours MACOSX_DEPLOYMENT_TARGET (Go's -macos does not).
@@ -371,11 +426,19 @@ jobs:
           go env -w GO111MODULE=on
           go mod download
           ./build/build.sh ${{ matrix.cfg.build_target }}
-          if [ "$RUNNER_OS" = "macOS" ]; then
+          if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+            test -f bin/libikemen.a
+            test -f "bin/${{ matrix.cfg.bin }}"
+            ls -lah bin/
+            echo "==> iOS minimum version recorded in app:"
+            unzip -p "bin/${{ matrix.cfg.bin }}" 'Payload/*.app/Info.plist' > /tmp/ios-Info.plist
+            /usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' /tmp/ios-Info.plist
+          fi
+          if [ "${{ matrix.cfg.runner_os }}" = "macos" ]; then
             make appbundle BINNAME=bin/${{ matrix.cfg.bin }}
           fi
           # Report the minimum OS actually recorded in the built binary.
-          if [ "$RUNNER_OS" = "macOS" ]; then
+          if [ "${{ matrix.cfg.runner_os }}" = "macos" ]; then
             echo "==> macOS minimum version recorded in binary:"
             otool -l "bin/${{ matrix.cfg.bin }}" 2>/dev/null \
               | awk '/LC_BUILD_VERSION/{f=1} f&&/minos/{print "  minos "$2; exit}' \
@@ -476,6 +539,30 @@ jobs:
             fi
             zip -r ../$ARTIFACT_NAME *
             echo "Successfully prepared Android assets for deployment"
+            exit 0
+          fi
+
+          if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+            # Shipped as a bare IPA (like other sideloaded iOS apps): AltStore/SideStore
+            # install directly from its URL. README and LICENSES.txt are inside the app.
+            echo "==> Preparing iOS release artifact"
+            if [ "${{ needs.tag.outputs.releaseKind }}" = "nightly" ]; then
+              ARTIFACT_NAME=Ikemen_GO-dev-ios.ipa
+            else
+              ARTIFACT_NAME=Ikemen_GO-${{ needs.tag.outputs.artifactVersion }}-ios.ipa
+            fi
+            cp -v "bin/${{ matrix.cfg.bin }}" "$ARTIFACT_NAME"
+            echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
+            release_tag="${{ needs.tag.outputs.releaseTag }}"
+            python3 .github/scripts/generate_altstore_source.py \
+              --ipa "$ARTIFACT_NAME" \
+              --download-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}/${ARTIFACT_NAME}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --kind "${{ needs.tag.outputs.releaseKind }}" \
+              --release-tag "$release_tag" \
+              --output altstore-source.json
+            echo "Successfully prepared iOS assets for deployment"
             exit 0
           fi
 
@@ -580,6 +667,10 @@ jobs:
 
           if [ "${{ matrix.cfg.runner_os }}" = "linux" ]; then
             cp -v work.zip release-files/
+          fi
+
+          if [ "${{ matrix.cfg.runner_os }}" = "ios" ]; then
+            cp -v altstore-source.json release-files/
           fi
 
       - name: Upload release artifacts
