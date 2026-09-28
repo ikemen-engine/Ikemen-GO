@@ -89,6 +89,9 @@ ANDROID_APK_REF="${ANDROID_APK_REF:-main}"
 ANDROID_APK_DIR="$REPO_ROOT/$BUILDDIR/android-apk/ikemen-droid"
 ANDROID_APK_OUT="${ANDROID_APK_OUT:-$REPO_ROOT/bin/ikemen-go.apk}"
 
+# iOS IPA packaging (ikemen-ios)
+BUILD_IOS_IPA="${BUILD_IOS_IPA:-1}"  # 1=yes, 0=no
+
 # FFmpeg config
 FFMPEG_REV="${FFMPEG_REV:-release/7.1}"
 # Always default to build/ffmpeg under the repo root (absolute path).
@@ -445,9 +448,13 @@ function main() {
 			varAndroid
 			build
 		;;
+		[iI][oO][sS])
+			variOS
+			build
+		;;
 		*)
 			echo "Unknown target: ${targetOS}"
-			echo "Valid targets: Win64 Win32 MacOS MacOSARM Linux LinuxARM"
+			echo "Valid targets: Win64 Win32 MacOS MacOSARM Linux LinuxARM Android iOS"
 			exit 1
 		;;
 	esac
@@ -534,6 +541,40 @@ function varAndroid() {
 	export PKG_CONFIG_PATH=""
 	binName="libmain.so"
 }
+function variOS() {
+	local sdk="iphoneos"
+	local min_ios_version="17.0"
+
+	export GOOS=ios
+	export GOARCH=arm64
+	export CGO_ENABLED=1
+
+	export SDKROOT="$(xcrun --sdk "$sdk" --show-sdk-path)"
+	export CC="$(xcrun --sdk "$sdk" --find clang)"
+	export CXX="$(xcrun --sdk "$sdk" --find clang++)"
+	export AR="$(xcrun --sdk "$sdk" --find ar)"
+	export RANLIB="$(xcrun --sdk "$sdk" --find ranlib)"
+	export STRIP="$(xcrun --sdk "$sdk" --find strip)"
+
+	# TODO: make generic
+	export IOS_CFLAGS="-I$(brew --prefix vulkan-headers)/include -I$(brew --prefix molten-vk)/include -target arm64-apple-ios${min_ios_version} -isysroot $SDKROOT"
+	export IOS_LDFLAGS="-target arm64-apple-ios${min_ios_version} -isysroot $SDKROOT"
+
+	# Apple targets
+	export CGO_CFLAGS="$IOS_CFLAGS"
+	export CGO_CXXFLAGS="$IOS_CFLAGS"
+	export CGO_LDFLAGS="$IOS_LDFLAGS"
+
+	export IOS_DEPS_PATH="$REPO_ROOT/build/ios-deps"
+	mkdir -p "$IOS_DEPS_PATH/lib/pkgconfig"
+
+	# Ensure we don't pick up host libraries by clearing this
+	export PKG_CONFIG_PATH=""
+	export PKG_CONFIG_LIBDIR="$IOS_DEPS_PATH/lib/pkgconfig"
+	export PKG_CONFIG_SYSROOT_DIR="$SDKROOT"
+
+	binName="libikemen.a"
+}
 
 # --- FFmpeg detection / build ---
 function have_ffmpeg_pc() {
@@ -560,6 +601,8 @@ function build_libvpx() {
 	local prefix="$LIBVPX_PREFIX"
 	if [[ "$GOOS" == "android" ]]; then
 		prefix="$ANDROID_DEPS_PATH"
+	elif [[ "$GOOS" == "ios" ]]; then
+		prefix="$IOS_DEPS_PATH"
 	fi
 
 	if [[ -f "$prefix/lib/pkgconfig/vpx.pc" ]]; then
@@ -586,6 +629,7 @@ function build_libvpx() {
 		linux/amd64) target="x86_64-linux-gcc" ;;
 		linux/arm64) target="arm64-linux-gcc" ;;
 		android/arm64) target="arm64-android-gcc" ;;
+		ios/arm64) target="arm64-darwin-gcc" ;;
 		*)
 			echo "ERROR: Unsupported libvpx target: $GOOS/$arch" >&2
 			return 1
@@ -613,6 +657,16 @@ function build_libvpx() {
 		CC="$CC" CXX="$CXX" \
 			AR="$TOOLCHAIN/bin/llvm-ar" LD="$CC" STRIP="$TOOLCHAIN/bin/llvm-strip" \
 			../configure "${configure_args[@]}"
+	elif [[ "$GOOS" == "ios" ]]; then
+		CFLAGS="${IOS_CFLAGS} ${CFLAGS:-}" \
+		CXXFLAGS="${IOS_CFLAGS} ${CXXFLAGS:-}" \
+		LDFLAGS="${IOS_LDFLAGS} ${LDFLAGS:-}" \
+		CC="$CC" \
+		CXX="$CXX" \
+		AR="$AR" \
+		RANLIB="$RANLIB" \
+		STRIP="$STRIP" \
+		../configure "${configure_args[@]}"
 	else
 		CC="${CC:-cc}" CXX="${CXX:-c++}" ../configure "${configure_args[@]}"
 	fi
@@ -687,6 +741,40 @@ function build_ffmpeg() {
 			"--enable-parser=vp8,vp9,opus,vorbis"
 			"--enable-jni" "--enable-mediacodec"
 			"--pkg-config=$(which pkg-config)"
+		)
+	elif [[ "$GOOS" == "ios" ]]; then
+		local prefix="$IOS_DEPS_PATH"
+		export PKG_CONFIG_SYSROOT_DIR=""
+		export PKG_CONFIG_PATH="$prefix/lib/pkgconfig:$PKG_CONFIG_PATH"
+
+    	local configure_args=(
+			"--prefix=$prefix"
+			"--enable-cross-compile"
+			"--target-os=darwin"
+			"--arch=arm64"
+			"--cc=$CC"
+			"--cxx=$CXX"
+			"--ar=$AR"
+			"--ranlib=$RANLIB"
+			"--strip=$STRIP"
+
+        	"--extra-cflags=$IOS_CFLAGS -I$prefix/include"
+			"--extra-ldflags=$IOS_LDFLAGS -L$prefix/lib"
+
+        	"--pkg-config=$(command -v pkg-config)"
+			"--pkg-config-flags=--static"
+
+        	"--enable-static" "--disable-shared"
+			"--disable-gpl" "--disable-nonfree"
+			"--disable-debug" "--disable-doc" "--disable-programs" "--disable-everything"
+			"--disable-autodetect"
+        	"--enable-avformat" "--enable-avcodec" "--enable-avutil" "--enable-swresample" "--enable-swscale"
+			"--enable-avfilter" "--enable-filter=buffer,buffersink,format,scale,pad,crop"
+			"--enable-libvpx"
+			"--enable-protocol=file"
+			"--enable-demuxer=matroska,webm"
+			"--enable-decoder=libvpx_vp8,libvpx_vp9,opus,vorbis"
+			"--enable-parser=vp8,vp9,opus,vorbis"
 		)
 	else
 		local configure_args=(
@@ -839,6 +927,60 @@ Libs:
 Cflags:
 EOF
 	fi
+}
+
+function create_sdl2_pc() {
+    local pc_dir="$IOS_DEPS_PATH/lib/pkgconfig"
+    local sdl2_pc="$pc_dir/sdl2.pc"
+
+    local sdl2_framework="$IOS_WRAPPER_DIR/Frameworks/SDL2.xcframework/ios-arm64/SDL2.framework"
+    local sdl2_headers="$sdl2_framework/Headers"
+    local sdl2_include="$IOS_DEPS_PATH/include"
+
+    echo "==> Preparing SDL2 headers for iOS..."
+
+    if [[ ! -d "$sdl2_framework" ]]; then
+        echo "ERROR: SDL2 framework not found:"
+        echo "       $sdl2_framework"
+        return 1
+    fi
+
+    if [[ ! -f "$sdl2_headers/SDL.h" ]]; then
+        echo "ERROR: SDL2 headers not found:"
+        echo "       $sdl2_headers"
+        return 1
+    fi
+
+    # SDL headers use includes such as:
+    #   #include <SDL2/SDL_main.h>
+	
+    # Therefore the include root must contain:
+    #   $IOS_DEPS_PATH/include/SDL2/SDL_main.h
+    rm -rf "$sdl2_include/SDL2"
+    mkdir -p "$sdl2_include/SDL2"
+
+    cp -R "$sdl2_headers/." "$sdl2_include/SDL2/"
+
+    echo "==> Creating sdl2.pc for iOS..."
+
+    mkdir -p "$pc_dir"
+
+	if [[ ! -f "$sdl2_pc" ]]; then
+    	cat > "$sdl2_pc" <<EOF
+prefix=$sdl2_framework
+includedir=$sdl2_include
+frameworkdir=\${prefix}/..
+
+Name: SDL2
+Description: SDL2 for iOS
+Version: 2.0.0
+Libs: -F\${frameworkdir} -framework SDL2
+Cflags: -I\${includedir}
+EOF
+	fi
+
+    echo "==> SDL2 pkg-config file:"
+    cat "$sdl2_pc"
 }
 
 download_file() {
@@ -1099,6 +1241,82 @@ function build_android_apk() {
 	popd >/dev/null
 }
 
+function prepare_ios_deps() {
+	[[ "$GOOS" != "ios" ]] && return 0
+	build_libxmp_ios
+	build_ffmpeg
+
+    export CGO_CFLAGS="-I$IOS_DEPS_PATH/include ${CGO_CFLAGS:-}"
+    export CGO_LDFLAGS="
+        -L$IOS_DEPS_PATH/lib
+		-Wl,-force_load,$IOS_DEPS_PATH/lib/libvpx.a
+        -lxmp
+        -lavfilter
+        -lswscale
+        -lswresample
+        -lavformat
+        -lavcodec
+        -lavutil
+        -lvpx
+        -lm
+        -lz
+        -framework AudioToolbox
+        -framework AVFoundation
+        ${CGO_LDFLAGS:-}
+    "
+}
+
+function build_libxmp_ios() {
+    local src="$BUILDDIR/libxmp-src"
+    local build_dir="$src/build-ios"
+    local prefix="$IOS_DEPS_PATH"
+
+    if [[ -f "$prefix/lib/libxmp.a" ]]; then
+        echo "==> Found existing iOS libxmp in $prefix"
+        ensure_pkg_config_path
+        return 0
+    fi
+
+    if [[ ! -d "$src/.git" ]]; then
+        rm -rf "$src"
+        echo "==> Cloning LibXMP..."
+        git clone https://github.com/libxmp/libxmp.git "$src"
+    else
+        echo "==> LibXMP sources already exist in $src"
+    fi
+
+    echo "==> Building LibXMP for iOS..."
+
+    rm -rf "$build_dir"
+    mkdir -p "$build_dir"
+    pushd "$build_dir" >/dev/null
+
+    cmake .. \
+        -DCMAKE_SYSTEM_NAME=iOS \
+        -DCMAKE_OSX_SYSROOT=iphoneos \
+        -DCMAKE_OSX_ARCHITECTURES=arm64 \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=17.0 \
+        -DCMAKE_C_COMPILER="$CC" \
+        -DCMAKE_INSTALL_PREFIX="$prefix" \
+        -DBUILD_STATIC=ON \
+        -DBUILD_SHARED=OFF \
+        -DBUILD_TESTING=OFF \
+        -DENABLE_TESTS=OFF
+
+    echo "==> Configure complete. Starting make..."
+    cmake --build . --parallel "$(getconf _NPROCESSORS_ONLN || echo 2)"
+
+    echo "==> Build complete. Installing..."
+    cmake --install .
+
+    echo "==> LibXMP files installed to: $prefix"
+    ls -l "$prefix/lib/libxmp.a" || true
+
+    popd >/dev/null
+
+    ensure_pkg_config_path
+}
+
 function maybe_build_ffmpeg() {
 	case "$BUILD_FFMPEG" in
 		yes)
@@ -1168,6 +1386,11 @@ function build() {
 		local deps_libs="-L$ANDROID_DEPS_PATH/lib -lSDL2 -lxmp -lavformat -lavcodec -lavutil -lswscale -lswresample -lavfilter"
 		# Link against Android system libraries (GLES, OpenSLES, log)
 		export CGO_LDFLAGS="${deps_libs} ${CGO_LDFLAGS:-} -lGLESv2 -lOpenSLES -llog -Wl,-z,max-page-size=16384"
+	elif [[ "$GOOS" == "ios" ]]; then
+		# MANUALLY define flags for iOS to avoid pkg-config errors
+		prepare_ios_deps
+		create_sdl2_pc
+		export CGO_CFLAGS="-DSDL_MAIN_HANDLED -I${IOS_WRAPPER_DIR}/Frameworks/SDL2.xcframework/ios-arm64/SDL2.framework/Headers -I${IOS_WRAPPER_DIR}/I.K.E.M.E.N-Go ${CGO_CFLAGS:-}"
 	else
 		maybe_build_ffmpeg
 		export PKG_CONFIG="${PKG_CONFIG:-pkg-config}"
@@ -1201,6 +1424,10 @@ function build() {
 		go build -buildmode=c-shared -trimpath -v -tags=android,gles2 \
 		-ldflags="-s -w -X 'main.Version=${APP_VERSION}' -X 'main.BuildTime=${APP_BUILDTIME}' -X 'runtime.godebugDefault=asyncpreemptoff=1,sigaltstack=0'" \
 		-o "$OUTDIR/$binName" ./src
+	elif [[ "$GOOS" == "ios" ]]; then
+		go build -buildmode=c-archive -trimpath -v -tags=ios \
+		-ldflags="-s -w -X 'main.Version=${APP_VERSION}' -X 'main.BuildTime=${APP_BUILDTIME}'" \
+		-o "$OUTDIR/$binName" ./src
 	else
 		go build -trimpath -v \
 		-ldflags "-s -w -X 'main.Version=${APP_VERSION}' -X 'main.BuildTime=${APP_BUILDTIME}'" \
@@ -1208,8 +1435,21 @@ function build() {
 	fi
 
 	# bundle libs
-	bundle_shared_libs
-	fix_macos_dylib_paths
+	if [[ "$GOOS" != "ios" ]]; then
+		bundle_shared_libs
+		fix_macos_dylib_paths
+	else
+		# Fix iOS header
+		headerName="${binName%.a}.h"
+		sed -i '' 's/#include "SDL.h"/#include <SDL2\/SDL.h>/g' "$OUTDIR/$headerName"
+
+		# Copy the headers and libs to the wrapper dir
+		cp "$IOS_DEPS_PATH/lib"/*.a "$IOS_WRAPPER_DIR/"
+		cp "$OUTDIR/$headerName" "$IOS_WRAPPER_DIR/"
+		cp "$OUTDIR/$binName" "$IOS_WRAPPER_DIR/"
+		echo "==> Copied libs to wrapper dir: $IOS_WRAPPER_DIR/"
+		#build_ios_ipa
+	fi
 
 	# For Android, optionally build the APK via ikemen-droid
 	build_android_apk

@@ -12,11 +12,12 @@ import (
 
 type Window struct {
 	*sdl.Window
-	title      string
-	x, y, w, h int
-	fullscreen bool
-	closeflag  bool
-	focused    bool
+	title           string
+	x, y, w, h      int
+	fullscreen      bool
+	closeflag       bool
+	focused         bool
+	renderingPaused bool // for Android Activity resume behavior
 }
 
 func (s *System) newWindow(w, h int) (*Window, error) {
@@ -27,6 +28,14 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	var fullscreen bool
 
 	if runtime.GOOS == "android" {
+		// Get the proper flag for the window type we need to create
+		renderName := gfx.GetName()
+		var windowFlags sdl.WindowFlags
+		if renderName == "OpenGL ES 3.2" {
+			windowFlags |= sdl.WINDOW_OPENGL
+		} else {
+			windowFlags |= sdl.WINDOW_VULKAN
+		}
 		// On Android, we MUST use 0,0 or SDL ignores it anyway,
 		// but flags are the critical part.
 		window, err = sdl.CreateWindow(
@@ -34,9 +43,23 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 			sdl.WINDOWPOS_UNDEFINED,
 			sdl.WINDOWPOS_UNDEFINED,
 			0, 0, // Android ignores these and uses screen size
-			sdl.WINDOW_SHOWN|sdl.WINDOW_OPENGL|sdl.WINDOW_FULLSCREEN,
+			sdl.WINDOW_SHOWN|windowFlags|sdl.WINDOW_FULLSCREEN,
 		)
 
+		if err != nil {
+			return nil, fmt.Errorf("failed to create window: %w", err)
+		}
+		fullscreen = true
+	} else if runtime.GOOS == "ios" {
+		// Once again on iOS, flags are the critical part.
+		mode, err := sdl.GetDesktopDisplayMode(0)
+		window, err = sdl.CreateWindow(
+			s.cfg.Config.WindowTitle,
+			sdl.WINDOWPOS_UNDEFINED,
+			sdl.WINDOWPOS_UNDEFINED,
+			mode.W, mode.H,
+			sdl.WINDOW_SHOWN|sdl.WINDOW_VULKAN|sdl.WINDOW_FULLSCREEN|sdl.WINDOW_ALLOW_HIGHDPI|sdl.WINDOW_BORDERLESS,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
 		}
@@ -46,25 +69,15 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		var windowFlags sdl.WindowFlags = sdl.WINDOW_INPUT_FOCUS
 
 		// 1. INITIALIZATION & HINTS
-		if runtime.GOOS == "android" {
-			// Android ignores these anyway, but WINDOW_FULLSCREEN is the safest anchor
-			windowFlags |= sdl.WINDOW_FULLSCREEN | sdl.WINDOW_SHOWN
-		} else {
-			chk(sdl.Init(sdl.INIT_AUDIO | sdl.INIT_VIDEO | sdl.INIT_JOYSTICK | sdl.INIT_EVENTS | sdl.INIT_GAMECONTROLLER | sdl.INIT_HAPTIC | sdl.INIT_TIMER))
-		}
+		chk(sdl.Init(sdl.INIT_AUDIO | sdl.INIT_VIDEO | sdl.INIT_JOYSTICK | sdl.INIT_EVENTS | sdl.INIT_GAMECONTROLLER | sdl.INIT_HAPTIC | sdl.INIT_TIMER))
 
 		// 2. DISPLAY MODE (The Crash Point)
 		var desktopW, desktopH int32
-		if runtime.GOOS != "android" {
-			mode, err := sdl.GetDesktopDisplayMode(0)
-			if err != nil {
-				return nil, fmt.Errorf("failed to obtain primary monitor")
-			}
-			desktopW, desktopH = mode.W, mode.H
-		} else {
-			// On Android, we don't query the desktop. We let SDL fill the window to the surface.
-			desktopW, desktopH = w2, h2
+		mode, err := sdl.GetDesktopDisplayMode(0)
+		if err != nil {
+			return nil, fmt.Errorf("failed to obtain primary monitor")
 		}
+		desktopW, desktopH = mode.W, mode.H
 
 		// 3. CALCULATION
 		_, forceWindowed := sys.cmdFlags["-windowed"]
@@ -75,9 +88,7 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 			w2, h2 = int32(sys.cfg.Video.WindowWidth), int32(sys.cfg.Video.WindowHeight)
 		}
 
-		if runtime.GOOS != "android" {
-			x, y = (desktopW-w2)/2, (desktopH-h2)/2
-		}
+		x, y = (desktopW-w2)/2, (desktopH-h2)/2
 
 		// 4. RENDERER PROFILE SETUP
 		renderName := gfx.GetName()
@@ -104,25 +115,17 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		}
 
 		// 5. WINDOW CREATION
-		if runtime.GOOS != "android" {
-			if fullscreen {
-				windowFlags |= sdl.WINDOW_FULLSCREEN_DESKTOP
-			}
-			windowFlags |= sdl.WINDOW_SHOWN
-			if !s.cfg.Video.Borderless {
-				windowFlags |= sdl.WINDOW_RESIZABLE
-			} else {
-				windowFlags |= sdl.WINDOW_BORDERLESS
-			}
+		if fullscreen {
+			windowFlags |= sdl.WINDOW_FULLSCREEN_DESKTOP
+		}
+		windowFlags |= sdl.WINDOW_SHOWN
+		if !s.cfg.Video.Borderless {
+			windowFlags |= sdl.WINDOW_RESIZABLE
+		} else {
+			windowFlags |= sdl.WINDOW_BORDERLESS
 		}
 
-		// On Android, use 0,0 for pos and allow SDL to resize w2/h2 to match the device screen
-		posX, posY := x, y
-		if runtime.GOOS == "android" {
-			posX, posY = 0, 0
-		}
-
-		window, err = sdl.CreateWindow(s.cfg.Config.WindowTitle, posX, posY, w2, h2, windowFlags)
+		window, err = sdl.CreateWindow(s.cfg.Config.WindowTitle, x, y, w2, h2, windowFlags)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create window: %w", err)
 		}
@@ -151,15 +154,16 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 	}
 
 	return &Window{
-		Window:     window,
-		title:      s.cfg.Config.WindowTitle,
-		x:          int(x),
-		y:          int(y),
-		w:          w,
-		h:          h,
-		fullscreen: fullscreen,
-		closeflag:  false,
-		focused:    true,
+		Window:          window,
+		title:           s.cfg.Config.WindowTitle,
+		x:               int(x),
+		y:               int(y),
+		w:               w,
+		h:               h,
+		fullscreen:      fullscreen,
+		closeflag:       false,
+		focused:         true,
+		renderingPaused: false,
 	}, nil
 }
 
@@ -217,7 +221,7 @@ func (w *Window) GetSize() (int, int) {
 // Calculates a position and size for the viewport to fill the window while centered (see render_gl.go)
 // Returns x, y, width, height respectively
 func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
-	winWidth, winHeight := w.GetSize()
+	winWidth, winHeight := w.GetDrawablePixelSize() //w.GetSize()
 
 	// If aspect ratio should not be kept, just return full window
 	if !sys.cfg.Video.KeepAspect {
@@ -398,6 +402,21 @@ func (w *Window) UpdateDebugFPS() {
 func (w *Window) pollEvents() {
 	for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
 		switch t := event.(type) {
+		case sdl.CommonEvent:
+			// Android Vulkan behavior (Activity background/resume)
+			switch t.Type {
+			case sdl.APP_WILLENTERBACKGROUND:
+			case sdl.APP_DIDENTERBACKGROUND:
+				if rvk, ok := gfx.(*Renderer_VK); ok {
+					rvk.Await()
+					w.renderingPaused = true
+				}
+			case sdl.APP_DIDENTERFOREGROUND:
+				if rvk, ok := gfx.(*Renderer_VK); ok {
+					rvk.RecreateSurfaceAndSwapchain()
+					rvk.surfaceLost = false
+				}
+			}
 		case sdl.ControllerAxisEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {

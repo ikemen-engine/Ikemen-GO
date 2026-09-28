@@ -69,8 +69,17 @@ lib/*.so
 lib/*.so.*
 build/android-apk/
 
+# iOS and macOS build outputs (generated)
+bin/libikemen.h
+bin/libikemen.a
+lib/*.dylib
+
+# macOS System Files
+.DS_Store
+
 # Binaries
 build/android-deps/
+build/ios-deps/
 build/libxmp-src/
 build/libvpx-src/
 build/sdl2-src/

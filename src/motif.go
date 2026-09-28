@@ -2875,26 +2875,28 @@ func (m *Motif) drawLoading() {
 	ts.Reset()
 
 	sys.mainThreadTask <- func() {
-		// End previous frame
-		gfx.EndFrame()
+		if !sys.window.renderingPaused {
+			// End previous frame
+			gfx.EndFrame()
 
-		// Start a one-off frame
-		gfx.BeginFrame(true)
+			// Start a one-off frame
+			gfx.BeginFrame(true)
 
-		FillRect(sys.scrrect, 0x000000, [2]int32{255, 0}, nil)
+			FillRect(sys.scrrect, 0x000000, [2]int32{255, 0}, nil)
 
-		ts.Draw(ts.layerno)
+			ts.Draw(ts.layerno)
 
-		// Submit and present
-		gfx.EndFrame()
-		if strings.HasPrefix(gfx.GetName(), "OpenGL") {
-			sys.window.SwapBuffers()
-		} else {
-			gfx.Await()
+			// Submit and present
+			gfx.EndFrame()
+			if strings.HasPrefix(gfx.GetName(), "OpenGL") {
+				sys.window.SwapBuffers()
+			} else {
+				gfx.Await()
+			}
+
+			// Prepare a fresh frame for whatever comes next (no clear)
+			gfx.BeginFrame(false)
 		}
-
-		// Prepare a fresh frame for whatever comes next (no clear)
-		gfx.BeginFrame(false)
 	}
 	sys.runMainThreadTask()
 }

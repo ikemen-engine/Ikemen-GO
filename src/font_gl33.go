@@ -1,10 +1,11 @@
-//go:build !android
+//go:build !android && !ios
 
 package main
 
 import (
 	"fmt"
 	"image"
+
 	//"image/draw"
 	"io"
 	"io/ioutil"

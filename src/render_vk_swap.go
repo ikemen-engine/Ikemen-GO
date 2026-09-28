@@ -1,4 +1,4 @@
-//go:build !kinc && !android
+//go:build !kinc
 
 package main
 
@@ -419,7 +419,8 @@ func (r *Renderer_VK) evictDeviceLocal(t *Texture_VK) error {
 		return fmt.Errorf("evictDeviceLocal: texture has nil GPU resources")
 	}
 
-	bytesPerPixel := uint32(t.depth / 8)
+	format := t.MapInternalFormat(Max(t.depth, 8))
+	bytesPerPixel := vkFormatBytesPerPixel(format)
 	totalSize := int(t.width) * int(t.height) * int(bytesPerPixel)
 
 	// Create a staging buffer for read-back.
@@ -647,7 +648,7 @@ func (r *Renderer_VK) swapInAsHostVisible(t *Texture_VK) error {
 	}, &subresourceLayout)
 
 	rowPitch := int(subresourceLayout.RowPitch)
-	bytesPerPixel := uint32(t.depth / 8)
+	bytesPerPixel := vkFormatBytesPerPixel(format)
 	rowSize := int(t.width) * int(bytesPerPixel)
 	srcSlice := t.hostBackingBuffer
 

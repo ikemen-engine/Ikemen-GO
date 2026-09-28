@@ -3,7 +3,7 @@ module github.com/ikemen-engine/Ikemen-GO
 go 1.27.0
 
 require (
-	github.com/Eiton/vulkan v0.0.0-20260815135700-bd01199ad8e7
+	github.com/Eiton/vulkan v0.0.0-20260924123253-b670409ed96a
 	github.com/flopp/go-findfont v0.1.0
 	github.com/go-gl/gl v0.0.0-20231021071112-07e5d0ea2e71
 	github.com/go-gl/mathgl v1.0.0
