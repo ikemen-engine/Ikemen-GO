@@ -23,7 +23,7 @@ Ready-to-use builds are available in the [releases section](https://github.com/i
 | Windows | Windows 10 (64-bit) |
 | macOS | macOS 13 Ventura (Apple Silicon) |
 | Linux | x86-64 with glibc 2.35+, e.g. Ubuntu 22.04, Debian 12, Fedora 36 |
-| Android | Android 14 (API 34, arm64) |
+| Android | Android 13 (API 33, arm64) |
 | iOS / iPadOS | iOS 17 (arm64 device; no simulator) |
 
 A GPU supporting OpenGL 3.3, OpenGL ES 3.2 or Vulkan is required.
