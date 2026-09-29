@@ -9,12 +9,15 @@ type stageCamera struct {
 	boundright              int32
 	boundhigh               int32
 	boundlow                int32
+	zboundtop               int32
+	zboundbot               int32
 	verticalfollow          float32
 	floortension            int32
 	tensionhigh             int32
 	tensionlow              int32
 	lowestcap               bool
 	tension                 int32
+	ztension                int32
 	tensionvel              float32
 	overdrawhigh            int32 // TODO: left and right, probably. Because EnvShake has angles now
 	overdrawlow             int32
@@ -48,8 +51,13 @@ type stageCamera struct {
 	aspectcorrection        float32
 	zoomanchorcorrection    float32
 	ywithoutbound           float32
+	zwithoutbound           float32
 	highest                 float32
 	prevHighest             float32
+	zfrontest               float32
+	prevZfrontest           float32
+	zbackest                float32
+	prevZbackest            float32
 	lowest                  float32
 	prevLowest              float32
 	leftest                 float32
@@ -192,6 +200,7 @@ func (c *Camera) Init() {
 	c.Pos[0] = float32(c.startx) * c.localscl
 	c.Pos[1] = float32(c.starty) * c.localscl
 	c.ywithoutbound = c.Pos[1]
+	c.zwithoutbound = 0
 	c.zoomindelaytime = c.zoomindelay
 
 	// We want the camera to just snap to place the first time it moves
@@ -207,6 +216,8 @@ func (c *Camera) ResetTracking() {
 	c.rightest = -math.MaxFloat32
 	c.highest = math.MaxFloat32
 	c.lowest = -math.MaxFloat32
+	c.zfrontest = math.MaxFloat32
+	c.zbackest = -math.MaxFloat32
 	c.leftestvel = 0
 	c.rightestvel = 0
 }
@@ -246,6 +257,17 @@ func (c *Camera) SaveRestoreTracking() {
 		c.rightest = c.prevRightest
 	} else {
 		c.prevRightest = c.rightest
+	}
+
+	if c.zfrontest == math.MaxFloat32 {
+		c.zfrontest = c.prevZfrontest
+	} else {
+		c.prevZfrontest = c.zfrontest
+	}
+	if c.zbackest == -math.MaxFloat32 {
+		c.zbackest = c.prevZbackest
+	} else {
+		c.prevZbackest = c.zbackest
 	}
 }
 
@@ -417,8 +439,38 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			targetX := (targetLeft + targetRight) / 2
 			targetScale := Min(c.halfWidth*2/(targetRight-targetLeft), maxScale)
 
+			// Calculate the Z camera offset from the tracked Z positions
+			ztension := Max(0, float32(c.ztension)*c.localscl)
+			zTop := sys.zmin + ztension
+			zBottom := sys.zmax - ztension
+			zFront := c.zfrontest * c.localscl
+			zBack := c.zbackest * c.localscl
+			botBound := zBack - zBottom
+			topBound := zFront - zTop
+
+			var zCameraOffset float32
+			base := float32(0)
+			if c.depthtoscreen != 0 {
+				base = c.zwithoutbound / c.depthtoscreen
+			}
+			if c.zautocenter {
+				base = (zFront + zBack) / 2
+			}
+			if botBound <= topBound {
+				zCameraOffset = Clamp(base, botBound, topBound)
+			} else {
+				zCameraOffset = (botBound + topBound) / 2
+			}
+
+			// Limit Z camera offset to the configured bounds
+			zCameraOffset = Max(zCameraOffset, float32(c.zboundtop)*c.localscl)
+			zCameraOffset = Min(zCameraOffset, float32(c.zboundbot)*c.localscl)
+			zCameraOffset *= c.depthtoscreen
+
 			if !c.ytensionenable {
 				//newY = c.ywithoutbound
+				// Remove the previous Z offset before calculating the new Y position
+				newY -= c.zwithoutbound / scale
 				ywithoutbound := c.ywithoutbound
 				verticalfollow := Max(c.verticalfollow, 0.0) + (targetScale-c.zoomout)*Max(c.verticalfollowzoomdelta, 0.0)
 				targetY := (c.highest + float32(c.floortension)*c.localscl) * verticalfollow
@@ -447,7 +499,16 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 				}
 				c.ywithoutbound = ywithoutbound
 			} else {
-				targetScale = Min(Min(Max(float32(sys.gameHeight)/((c.lowest+float32(c.tensionlow)*c.localscl)-(c.highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), c.zoomin), targetScale)
+				// Account for the Z range when calculating the target scale
+				zSoft := c.zoomin
+				if ztension > 0 {
+					t := Clamp((Max(0, botBound-topBound))/(2*ztension), 0, 1)
+					zSoft = c.zoomin + (c.zoomout-c.zoomin)*t
+				}
+				zSpan := (zBack - zFront + 2*ztension) * c.depthtoscreen
+				zFit := Max(Min(float32(sys.gameHeight)/zSpan, c.zoomin), c.zoomout)
+				zMaxScale := Min(zFit, zSoft)
+				targetScale = Min(Min(Min(Max(float32(sys.gameHeight)/((c.lowest+float32(c.tensionlow)*c.localscl)-(c.highest-float32(c.tensionhigh)*c.localscl)), c.zoomout), c.zoomin), zMaxScale), targetScale)
 				targetX = Min(Max(targetX, float32(c.boundleft)*c.localscl-c.halfWidth*(1/c.zoomout-1/targetScale)), float32(c.boundright)*c.localscl+c.halfWidth*(1/c.zoomout-1/targetScale))
 				targetLeft = targetX - c.halfWidth/targetScale
 				targetRight = targetX + c.halfWidth/targetScale
@@ -522,6 +583,26 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			newY = c.reduceYScrollSpeed(newY, y)
 			newY = c.boundY(newY, newScale)
 
+			newZ := c.zwithoutbound
+			if c.skipSmoothing {
+				newZ = zCameraOffset
+			} else {
+				diff := float32(sys.gameWidth) / 320 * 2.5
+				for i := 0; i < 3; i++ {
+					newZ = (newZ + zCameraOffset) * .5
+					if Abs(zCameraOffset-newZ) < diff {
+						newZ = zCameraOffset
+						break
+					} else if zCameraOffset-newZ > diff {
+						newZ = newZ + diff
+					} else {
+						newZ = newZ - diff
+					}
+				}
+			}
+
+			c.zwithoutbound = newZ
+			newY += newZ
 		case Follow_View:
 			newX = c.FollowChar.pos[0]
 			newY = c.FollowChar.pos[1] * Pow(c.verticalfollow, Min(1, 1/Pow(c.Scale, 4)))
