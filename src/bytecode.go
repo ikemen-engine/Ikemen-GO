@@ -516,11 +516,14 @@ const (
 	OC_const_stagevar_camera_boundright
 	OC_const_stagevar_camera_boundhigh
 	OC_const_stagevar_camera_boundlow
+	OC_const_stagevar_camera_zboundtop
+	OC_const_stagevar_camera_zboundbot
 	OC_const_stagevar_camera_verticalfollow
 	OC_const_stagevar_camera_floortension
 	OC_const_stagevar_camera_tensionhigh
 	OC_const_stagevar_camera_tensionlow
 	OC_const_stagevar_camera_tension
+	OC_const_stagevar_camera_ztension
 	OC_const_stagevar_camera_tensionvel
 	OC_const_stagevar_camera_cuthigh
 	OC_const_stagevar_camera_cutlow
@@ -14683,11 +14686,14 @@ const (
 	modifyStageVar_camera_boundright
 	modifyStageVar_camera_boundhigh
 	modifyStageVar_camera_boundlow
+	modifyStageVar_camera_zboundtop
+	modifyStageVar_camera_zboundbot
 	modifyStageVar_camera_verticalfollow
 	modifyStageVar_camera_floortension
 	modifyStageVar_camera_tensionhigh
 	modifyStageVar_camera_tensionlow
 	modifyStageVar_camera_tension
+	modifyStageVar_camera_ztension
 	modifyStageVar_camera_tensionvel
 	modifyStageVar_camera_cuthigh
 	modifyStageVar_camera_cutlow
@@ -14777,6 +14783,12 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_camera_boundlow:
 			s.stageCamera.boundlow = int32(exp[0].evalF(c) * scaleratio)
 			shouldResetCamera = true
+		case modifyStageVar_camera_zboundtop:
+			s.stageCamera.zboundtop = int32(exp[0].evalF(c) * scaleratio)
+			shouldResetCamera = true
+		case modifyStageVar_camera_zboundbot:
+			s.stageCamera.zboundbot = int32(exp[0].evalF(c) * scaleratio)
+			shouldResetCamera = true
 		case modifyStageVar_camera_verticalfollow:
 			s.stageCamera.verticalfollow = exp[0].evalF(c)
 			shouldResetCamera = true
@@ -14794,6 +14806,9 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			shouldResetCamera = true
 		case modifyStageVar_camera_tension:
 			s.stageCamera.tension = int32(exp[0].evalF(c) * scaleratio)
+			shouldResetCamera = true
+		case modifyStageVar_camera_ztension:
+			s.stageCamera.ztension = int32(exp[0].evalF(c) * scaleratio)
 			shouldResetCamera = true
 		case modifyStageVar_camera_tensionvel:
 			s.stageCamera.tensionvel = exp[0].evalF(c)

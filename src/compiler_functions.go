@@ -6102,6 +6102,14 @@ func (c *CharCompiler) modifyStageVar(is IniSection, sc *StateControllerBase) (S
 			modifyStageVar_camera_boundlow, VT_Int, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "camera.zboundtop",
+			modifyStageVar_camera_zboundtop, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.zboundbot",
+			modifyStageVar_camera_zboundbot, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "camera.verticalfollow",
 			modifyStageVar_camera_verticalfollow, VT_Float, 1, false); err != nil {
 			return err
@@ -6120,6 +6128,10 @@ func (c *CharCompiler) modifyStageVar(is IniSection, sc *StateControllerBase) (S
 		}
 		if err := c.paramValue(is, sc, "camera.tension",
 			modifyStageVar_camera_tension, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.ztension",
+			modifyStageVar_camera_ztension, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "camera.tensionvel",

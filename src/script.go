@@ -10255,6 +10255,10 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.stageCamera.boundhigh))
 		case "camera.boundlow":
 			l.Push(lua.LNumber(sys.stage.stageCamera.boundlow))
+		case "camera.zboundtop":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zboundtop))
+		case "camera.zboundbot":
+			l.Push(lua.LNumber(sys.stage.stageCamera.zboundbot))
 		case "camera.verticalfollow":
 			l.Push(lua.LNumber(sys.stage.stageCamera.verticalfollow))
 		case "camera.floortension":
@@ -10265,6 +10269,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.stageCamera.tensionlow))
 		case "camera.tension":
 			l.Push(lua.LNumber(sys.stage.stageCamera.tension))
+		case "camera.ztension":
+			l.Push(lua.LNumber(sys.stage.stageCamera.ztension))
 		case "camera.tensionvel":
 			l.Push(lua.LNumber(sys.stage.stageCamera.tensionvel))
 		case "camera.cuthigh":
