@@ -6736,6 +6736,7 @@ func (c *Char) playSound(params *PlaySndParams) {
 			pan *= c.facing
 		}
 		ch.SetPan(pan, params.localScale, params.xPos)
+		ch.SetPaused(false)
 	}
 }
 

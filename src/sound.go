@@ -1055,7 +1055,8 @@ func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul flo
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / s.sfx.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), srcRate, dstRate, s.sfx)
-	s.ctrl = &beep.Ctrl{Streamer: resampler}
+	// Start paused so callers can configure volume and pan before playback begins.
+	s.ctrl = &beep.Ctrl{Streamer: resampler, Paused: true}
 	s.streamer.Seek(startPosition)
 
 	WithSpeakerLock(func() {
@@ -1325,6 +1326,7 @@ func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan
 	c.keepOnMatchEnd = len(keepOnMatchEnd) > 0 && keepOnMatchEnd[0]
 	c.SetVolume(float32(volumescale * 64 / 25))
 	c.SetPan(pan, 1, nil)
+	c.SetPaused(false)
 	return true
 }
 
