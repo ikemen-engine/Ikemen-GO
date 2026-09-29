@@ -10489,7 +10489,7 @@ func triggerFunctions(l *lua.LState) {
 		case "scaling.topscale":
 			l.Push(lua.LNumber(sys.stage.stageCamera.ztopscale))
 		case "scaling.botscale":
-			l.Push(lua.LNumber(sys.stage.stageCamera.ztopscale))
+			l.Push(lua.LNumber(sys.stage.stageCamera.zbotscale))
 		case "bound.screenleft":
 			l.Push(lua.LNumber(sys.stage.screenleft))
 		case "bound.screenright":
