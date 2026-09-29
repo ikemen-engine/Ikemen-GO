@@ -11380,9 +11380,12 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
+	if x != nil {
+		pan *= crun.facing
+	}
 	// TODO: Check if Mugen allowed negative (all) channels here. Ikemen didn't
 	for _, s := range crun.getOwnChannels(ch) {
-		s.SetPan(pan*crun.facing, crun.localscl, x)
+		s.SetPan(pan, crun.localscl, x)
 	}
 
 	return false
@@ -13345,11 +13348,6 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 		if !prioritySet {
 			pri = snd.sfx.priority
 		}
-		if !panSet {
-			p = snd.sfx.pan
-			ls = snd.sfx.localscl
-			x = snd.sfx.x
-		}
 
 		// Now set the values if they're different
 		if snd.sfx.freqmul != fr {
@@ -13371,8 +13369,12 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 				snd.SetLoopPoints(loopstart, loopend)
 			}
 		}
-		if p != snd.sfx.pan || ls != snd.sfx.localscl || x != snd.sfx.x {
-			snd.SetPan(p*crun.facing, ls, x)
+		if panSet {
+			pan := p
+			if x != nil {
+				pan *= crun.facing
+			}
+			snd.SetPan(pan, ls, x)
 		}
 		if vo != snd.sfx.volume {
 			snd.SetVolume(vo)

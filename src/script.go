@@ -5341,7 +5341,7 @@ func systemScriptInit(l *lua.LState) {
 		@tparam[opt=false] boolean lowpriority If `true`, sound can be overridden by higher-priority sounds.
 		@tparam[opt=1.0] float32 freqmul Frequency multiplier (pitch).
 		@tparam[opt=false] boolean loop If `true`, sound loops (ignored if `loopcount` is non-zero).
-		@tparam[opt=0.0] float32 pan Stereo panning (engine-specific range, usually -1.0 to 1.0).
+		@tparam[opt=0.0] float32 pan Offset from the character; negative is backward, positive is forward.
 		@tparam[opt=0] int32 priority Priority level (higher plays over lower).
 		@tparam[opt=0] int loopstart Loop start position.
 		@tparam[opt=0] int loopend Loop end position.
@@ -6678,7 +6678,7 @@ func systemScriptInit(l *lua.LState) {
 		@tparam int32 group Sound group number.
 		@tparam int32 number Sound number within the group.
 		@tparam[opt=100] int32 volumescale Volume scale (percent).
-		@tparam[opt=0.0] float32 pan Stereo panning (engine-specific range).
+		@tparam[opt=0.0] float32 pan Offset from screen center; negative is left, positive is right.
 		@tparam[opt=0] int loopstart Loop start position.
 		@tparam[opt=0] int loopend Loop end position.
 		@tparam[opt=0] int startposition Start position.

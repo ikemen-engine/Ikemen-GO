@@ -6731,7 +6731,11 @@ func (c *Char) playSound(params *PlaySndParams) {
 
 		ch.stopOnGetHit = params.stopOnGetHit
 		ch.stopOnChangeState = params.stopOnChangeState
-		ch.SetPan(params.pan*c.facing, params.localScale, params.xPos)
+		pan := params.pan
+		if params.xPos != nil {
+			pan *= c.facing
+		}
+		ch.SetPan(pan, params.localScale, params.xPos)
 	}
 }
 

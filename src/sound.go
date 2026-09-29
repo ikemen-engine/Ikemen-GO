@@ -963,7 +963,7 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 			r = ((rightEdge - s.localscl**s.x) - s.pan) / screenWidth
 		} else {
 			// Absolute pan: treat pan as an offset from center of screen
-			r = ((rightEdge-leftEdge)/2 - s.pan) / screenWidth
+			r = 0.5 - s.pan/sys.gameWidth
 		}
 
 		sc := sys.cfg.Sound.PanningRange / 100
@@ -1084,7 +1084,10 @@ func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
 	if s.ctrl != nil {
 		s.sfx.localscl = ls
 		s.sfx.x = x
-		s.sfx.pan = p * ls
+		if x != nil {
+			p *= ls
+		}
+		s.sfx.pan = p
 	}
 }
 
@@ -1319,7 +1322,7 @@ func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan
 	c.Play(sound, group, number, 0, 1.0, loopStart, loopEnd, startPosition)
 	c.keepOnMatchEnd = len(keepOnMatchEnd) > 0 && keepOnMatchEnd[0]
 	c.SetVolume(float32(volumescale * 64 / 25))
-	c.SetPan(pan, 0, nil)
+	c.SetPan(pan, 1, nil)
 	return true
 }
 
