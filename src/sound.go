@@ -966,8 +966,10 @@ func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
 			r = 0.5 - s.pan/sys.gameWidth
 		}
 
-		sc := sys.cfg.Sound.PanningRange / 100
-		of := (100 - sys.cfg.Sound.PanningRange) / 200
+		r = Clamp(r, 0, 1)
+		strength := Clamp(sys.cfg.Sound.PanningRange, 0, 100)
+		sc := strength / 100
+		of := (100 - strength) / 200
 		lv = Clamp(s.volume*s.duckMul*2*(r*sc+of), 0, 512)
 		rv = Clamp(s.volume*s.duckMul*2*((1-r)*sc+of), 0, 512)
 	}
