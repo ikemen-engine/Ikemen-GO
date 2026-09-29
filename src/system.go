@@ -917,6 +917,18 @@ func (s *System) await(fps int) bool {
 	return !s.gameEnd
 }
 
+func (s *System) soundPanView() (view soundPanView) {
+	view.width = s.gameWidth
+	if s.cam.Scale <= 0 {
+		return
+	}
+
+	screenWidth := s.gameWidth / s.cam.Scale
+	view.x = s.cam.ScreenPos[0] + s.cam.Offset[0] + screenWidth/2
+	view.scale = s.cam.Scale
+	return
+}
+
 func (s *System) renderFrame() {
 	// Full-resolution scaling is render-only; gameplay remains in fight space.
 	logicState := s.captureAspectState()
@@ -1022,10 +1034,11 @@ func (s *System) update() bool {
 }
 
 func (s *System) tickSound() {
-	s.soundChannels.Tick()
+	view := s.soundPanView()
+	s.soundChannels.Tick(view)
 	if !s.noCharSoundFlg {
 		for i := range sys.charSoundChannels {
-			sys.charSoundChannels[i].Tick()
+			sys.charSoundChannels[i].Tick(view)
 		}
 	}
 

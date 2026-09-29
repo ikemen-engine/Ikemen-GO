@@ -5351,7 +5351,7 @@ func systemScriptInit(l *lua.LState) {
 		@tparam[opt=false] boolean stopOnChangeState If `true`, stop this sound when the character changes state.*/
 
 		params := newPlaySndParams()
-		params.xPos = &sys.debugWC.pos[0]
+		params.sourceID = sys.debugWC.id
 		params.localScale = sys.debugWC.localscl
 
 		var lp bool

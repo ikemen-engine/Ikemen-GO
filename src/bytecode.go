@@ -5164,7 +5164,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 
 	params := newPlaySndParams()
 	params.localScale = crun.localscl
-	params.xPos = &crun.pos[0]
+	params.sourceID = crun.id
 	params.log = true
 
 	var vscaleflg bool
@@ -5189,7 +5189,7 @@ func (sc playSnd) Run(c *Char, _ []int32) bool {
 		case playSnd_pan:
 			params.pan = exp[0].evalF(c)
 		case playSnd_abspan:
-			params.xPos = nil
+			params.sourceID = -1
 			params.localScale = 1
 			params.pan = exp[0].evalF(c)
 		case playSnd_volume:
@@ -11365,7 +11365,7 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	x := &crun.pos[0]
+	sourceID, ls := crun.id, crun.localscl
 	ch, pan := int32(-1), float32(0)
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -11375,17 +11375,14 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 			pan = exp[0].evalF(c)
 		case sndPan_abspan:
 			pan = exp[0].evalF(c)
-			x = nil
+			sourceID, ls = -1, 1
 		}
 		return true
 	})
 
-	if x != nil {
-		pan *= crun.facing
-	}
 	// TODO: Check if Mugen allowed negative (all) channels here. Ikemen didn't
 	for _, s := range crun.getOwnChannels(ch) {
-		s.SetPan(pan, crun.localscl, x)
+		s.SetPan(pan, ls, sourceID)
 	}
 
 	return false
@@ -13263,7 +13260,7 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	x := &crun.pos[0]
+	sourceID := crun.id
 	ls := crun.localscl
 	var ch, pri int32 = -1, 0
 	var stopgh, stopcs int32 = -1, -1 // Undefined bools
@@ -13280,7 +13277,7 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 			p = exp[0].evalF(c)
 			panSet = true
 		case modifySnd_abspan:
-			x = nil
+			sourceID = -1
 			ls = 1
 			p = exp[0].evalF(c)
 			panSet = true
@@ -13370,11 +13367,7 @@ func (sc modifySnd) Run(c *Char, _ []int32) bool {
 			}
 		}
 		if panSet {
-			pan := p
-			if x != nil {
-				pan *= crun.facing
-			}
-			snd.SetPan(pan, ls, x)
+			snd.SetPan(p, ls, sourceID)
 		}
 		if vo != snd.sfx.volume {
 			snd.SetVolume(vo)
