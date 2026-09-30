@@ -4134,20 +4134,24 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 				for k, v in ipairs(t_order[side]) do
 					start.t_orderRemap[side][k] = v
 				end
-				-- update spr/anim data
-				for member, v in ipairs(start.p[side].t_selected) do
+				-- rebuild portrait data using final order positions
+				for member, srcMember in ipairs(start.t_orderRemap[side]) do
+					local v = start.p[side].t_selected[srcMember]
+					local portrait = start.p[side].t_selTemp[srcMember]
 					local pn = 2 * (member - 1) + side
 					local pCfg = f_getMotifP(motif.vs_screen, pn, side)
-					-- primary face "done" anim
-					local done_anim = pCfg.done.anim
-					if done_anim ~= -1 and start.p[side].t_selTemp[member].face_anim ~= done_anim then
-						start.p[side].t_selTemp[member].face_data = start.f_animGet(v.ref, side, member, pCfg.done, pCfg, false, start.p[side].t_selTemp[member].face_data)
+					local faceCfg = pCfg
+					if pCfg.done.anim ~= -1 or pCfg.done.spr[1] ~= -1 then
+						faceCfg = pCfg.done
 					end
-					-- face2 "done" anim
-					local done_anim2 = pCfg.face2.done.anim
-					if done_anim2 ~= -1 and start.p[side].t_selTemp[member].face2_anim ~= done_anim2 then
-						start.p[side].t_selTemp[member].face2_data = start.f_animGet(v.ref, side, member, pCfg.face2.done, pCfg.face2, false, start.p[side].t_selTemp[member].face2_data)
+					portrait.face_anim = faceCfg.anim
+					portrait.face_data = start.f_animGet(v.ref, side, srcMember, faceCfg, pCfg, false, portrait.face_data)
+					local face2Cfg = pCfg.face2
+					if pCfg.face2.done.anim ~= -1 or pCfg.face2.done.spr[1] ~= -1 then
+						face2Cfg = pCfg.face2.done
 					end
+					portrait.face2_anim = face2Cfg.anim
+					portrait.face2_data = start.f_animGet(v.ref, side, srcMember, face2Cfg, pCfg.face2, false, portrait.face2_data)
 				end
 				if t_orderSelect[side] then
 					t_icon[side] = true
