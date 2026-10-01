@@ -1615,8 +1615,15 @@ for line in content:gmatch('[^\r\n]+') do
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
 		elseif line:match('%S') then
-			main.f_addChar(line, true, true, slot)
-			if not slot then
+			if slot then
+				for _, entry in ipairs(main.f_strsplit('|', line)) do
+					entry = entry:match('^%s*(.-)%s*$')
+					if entry ~= '' then
+						main.f_addChar(entry, true, true, true)
+					end
+				end
+			else
+				main.f_addChar(line, true, true, false)
 				csCell = csCell + 1
 			end
 		end
