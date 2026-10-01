@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"sync"
+	"sync/atomic"
 
 	"github.com/ikemen-engine/beep/v2"
 	"github.com/ikemen-engine/beep/v2/effects"
@@ -922,15 +923,69 @@ func loadFromSnd(filename string, g, s int32, max uint32) (*Sound, error) {
 }
 
 // ------------------------------------------------------------------
+// Sound panning
+
+// Describes the rendered scene in game units, before pixel scaling.
+type soundPanView struct {
+	x, scale, width float32
+}
+
+func (v soundPanView) pan(x, strength float32) float32 {
+	if v.width <= 0 || v.scale <= 0 {
+		return 0
+	}
+	return soundPanPosition((x-v.x)*v.scale*2/v.width, strength)
+}
+
+// Clamp the position before applying strength so off-screen sounds still respect PanningRange.
+func soundPanPosition(position, strength float32) float32 {
+	return Clamp(position, float32(-1), float32(1)) * Clamp(strength, float32(0), float32(100)) / 100
+}
+
+// Applies a coherent gain snapshot without reading mutable game state.
+type soundPanner struct {
+	streamer beep.Streamer
+	request  atomic.Uint64 // one coherent (pan, gain) snapshot; float32 bit pairs
+}
+
+func (p *soundPanner) set(pan, gain float32) {
+	pan = Clamp(pan, float32(-1), float32(1))
+	gain = Clamp(gain, float32(0), float32(2))
+	p.request.Store(uint64(math.Float32bits(pan))<<32 | uint64(math.Float32bits(gain)))
+}
+
+func (p *soundPanner) Stream(samples [][2]float64) (int, bool) {
+	n, ok := p.streamer.Stream(samples)
+	if n == 0 {
+		return n, ok
+	}
+
+	request := p.request.Load()
+	pan := math.Float32frombits(uint32(request >> 32))
+	gain := math.Float32frombits(uint32(request))
+	lv, rv := min(gain*(1-pan), 2), min(gain*(1+pan), 2)
+
+	for i := range samples[:n] {
+		samples[i][0] *= float64(lv)
+		samples[i][1] *= float64(rv)
+	}
+	return n, ok
+}
+
+func (p *soundPanner) Err() error { return p.streamer.Err() }
+
+// ------------------------------------------------------------------
 // SoundEffect (handles volume and panning)
 
 type SoundEffect struct {
 	streamer beep.Streamer
+	panner   *soundPanner
 	volume   float32
 	duckMul  float32
-	localscl float32
 	pan      float32
-	x        *float32
+	sourceID int32   // -1: absolute screen pan; otherwise resolve the emitter each tick
+	sourceX  float32 // Last known world position, retained if the emitter disappears
+	lastPan  float32
 	priority int32
 	loop     int32
 	freqmul  float32
@@ -938,54 +993,39 @@ type SoundEffect struct {
 }
 
 func (s *SoundEffect) Stream(samples [][2]float64) (n int, ok bool) {
-	applyPan := sys.cfg.Sound.StereoEffects && (s.x != nil || s.pan != 0)
-
-	// Fast path when no effects need to be applied
-	if s.volume == 256 && s.duckMul == 1 && !applyPan {
-		return s.streamer.Stream(samples)
-	}
-
-	// TODO: Test mugen panning in relation to PanningWidth and zoom settings
-	lv, rv := s.volume*s.duckMul, s.volume*s.duckMul
-	if applyPan {
-		// Use the camera viewport for panning, not the playable area
-		//screen := sys.xmax - sys.xmin
-		leftEdge := sys.cam.ScreenPos[0] + sys.cam.Offset[0]
-		screenWidth := float32(sys.gameWidth) / sys.cam.Scale
-		rightEdge := leftEdge + screenWidth
-
-		// Position ratio, where 0 is all the way right and 1 is all the way left
-		var r float32
-
-		// Determine panning position
-		if s.x != nil {
-			// Pan: pan based on the sound's position relative to the screen edges
-			r = ((rightEdge - s.localscl**s.x) - s.pan) / screenWidth
-		} else {
-			// Absolute pan: treat pan as an offset from center of screen
-			r = ((rightEdge-leftEdge)/2 - s.pan) / screenWidth
-		}
-
-		sc := sys.cfg.Sound.PanningRange / 100
-		of := (100 - sys.cfg.Sound.PanningRange) / 200
-		lv = Clamp(s.volume*s.duckMul*2*(r*sc+of), 0, 512)
-		rv = Clamp(s.volume*s.duckMul*2*((1-r)*sc+of), 0, 512)
-	}
-
-	n, ok = s.streamer.Stream(samples)
-
-	lf := float64(lv) / 256
-	rf := float64(rv) / 256
-	for i := range samples[:n] {
-		samples[i][0] *= lf
-		samples[i][1] *= rf
-	}
-
-	return n, ok
+	return s.panner.Stream(samples)
 }
 
 func (s *SoundEffect) Err() error {
-	return s.streamer.Err()
+	return s.panner.Err()
+}
+
+func (s *SoundEffect) publishGains() {
+	s.panner.set(s.lastPan, s.volume*s.duckMul/256)
+}
+
+// updatePan runs on the game thread. The audio thread sees only a numeric
+// snapshot, never a character pointer, camera, or stage.
+func (s *SoundEffect) updatePan(view soundPanView) {
+	x := s.pan
+	if s.sourceID >= 0 {
+		if c := sys.playerID(s.sourceID); c != nil {
+			s.sourceX = c.pos[0] * c.localscl
+		}
+		x += s.sourceX
+		s.lastPan = view.pan(x, sys.cfg.Sound.PanningRange)
+	} else {
+		s.lastPan = 0
+		if view.width > 0 {
+			s.lastPan = soundPanPosition(2*x/view.width, sys.cfg.Sound.PanningRange)
+		}
+	}
+
+	if !sys.cfg.Sound.StereoEffects {
+		s.lastPan = 0
+	}
+
+	s.publishGains()
 }
 
 // ------------------------------------------------------------------
@@ -1049,11 +1089,14 @@ func (s *SoundChannel) Play(sound *Sound, group, number, loop int32, freqmul flo
 
 	// going to continue using our streamLooper which is now modified from beep.Loop2
 	looper := newStreamLooper(s.streamer, loopCount, loopStart, loopEnd)
-	s.sfx = &SoundEffect{streamer: looper, volume: 256, duckMul: 1, priority: 0, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
+	s.sfx = &SoundEffect{streamer: looper, volume: 256, duckMul: 1, sourceID: -1, priority: 0, loop: int32(loopCount), freqmul: freqmul, startPos: startPosition}
+	s.sfx.panner = &soundPanner{streamer: looper}
+	s.sfx.publishGains()
 	srcRate := s.sound.format.SampleRate
 	dstRate := beep.SampleRate(float32(sys.cfg.Sound.SampleRate) / s.sfx.freqmul)
 	resampler := beep.Resample(Clamp(sys.cfg.Sound.AudioResampleQuality, 1, 16), srcRate, dstRate, s.sfx)
-	s.ctrl = &beep.Ctrl{Streamer: resampler}
+	// Start paused so callers can configure volume and pan before playback begins.
+	s.ctrl = &beep.Ctrl{Streamer: resampler, Paused: true}
 	s.streamer.Seek(startPosition)
 
 	WithSpeakerLock(func() {
@@ -1076,15 +1119,22 @@ func (s *SoundChannel) SetPaused(pause bool) {
 
 func (s *SoundChannel) SetVolume(vol float32) {
 	if s.ctrl != nil {
-		s.sfx.volume = Clamp(vol, 0, 512)
+		s.sfx.volume = Clamp(vol, float32(0), float32(512))
+		s.sfx.publishGains()
 	}
 }
 
-func (s *SoundChannel) SetPan(p, ls float32, x *float32) {
+func (s *SoundChannel) SetPan(p, ls float32, sourceID int32) {
 	if s.ctrl != nil {
-		s.sfx.localscl = ls
-		s.sfx.x = x
-		s.sfx.pan = p * ls
+		if sourceID >= 0 {
+			p *= ls
+			if c := sys.playerID(sourceID); c != nil {
+				p *= c.facing
+			}
+		}
+		s.sfx.sourceID = sourceID
+		s.sfx.pan = p
+		s.sfx.updatePan(sys.soundPanView())
 	}
 }
 
@@ -1319,7 +1369,8 @@ func (s *SoundChannels) Play(sound *Sound, group, number, volumescale int32, pan
 	c.Play(sound, group, number, 0, 1.0, loopStart, loopEnd, startPosition)
 	c.keepOnMatchEnd = len(keepOnMatchEnd) > 0 && keepOnMatchEnd[0]
 	c.SetVolume(float32(volumescale * 64 / 25))
-	c.SetPan(pan, 0, nil)
+	c.SetPan(pan, 1, -1)
+	c.SetPaused(false)
 	return true
 }
 
@@ -1356,13 +1407,15 @@ func (s *SoundChannels) StopAll() {
 	}
 }
 
-func (s *SoundChannels) Tick() {
+func (s *SoundChannels) Tick(view soundPanView) {
 	channels := *s
 	for i := range channels {
 		v := &channels[i]
 		if v.IsPlaying() {
 			if v.streamer.Position() >= v.sound.length && v.sfx.loop != -1 { // End of sound
 				v.Reset()
+			} else {
+				v.sfx.updatePan(view)
 			}
 		}
 	}
@@ -1377,6 +1430,7 @@ func (s *SoundChannels) Duck(duckMul float32, freeze bool) {
 			continue
 		}
 		ch.sfx.duckMul = duckMul
+		ch.sfx.publishGains()
 		if freeze {
 			ch.SetPaused(true)
 		} else if ch.ctrl.Paused && ch.sfx.freqmul > 0 {
@@ -1393,7 +1447,7 @@ type PlaySndParams struct {
 	channel           int32
 	volume            int32
 	pan               float32
-	xPos              *float32
+	sourceID          int32
 	localScale        float32
 	freqMul           float32
 	lowPriority       bool
@@ -1414,5 +1468,6 @@ func newPlaySndParams() *PlaySndParams {
 		volume:     100,
 		freqMul:    1.0,
 		localScale: 1.0,
+		sourceID:   -1,
 	}
 }

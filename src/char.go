@@ -6731,7 +6731,8 @@ func (c *Char) playSound(params *PlaySndParams) {
 
 		ch.stopOnGetHit = params.stopOnGetHit
 		ch.stopOnChangeState = params.stopOnChangeState
-		ch.SetPan(params.pan*c.facing, params.localScale, params.xPos)
+		ch.SetPan(params.pan, params.localScale, params.sourceID)
+		ch.SetPaused(false)
 	}
 }
 
@@ -11882,7 +11883,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			params.number = hd.hitsound[1]
 			params.channel = hd.hitsound_channel
 			params.localScale = getter.localscl
-			params.xPos = &getter.pos[0]
+			params.sourceID = getter.id
 			params.log = true
 			c.playSound(params)
 		}
@@ -11897,7 +11898,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			params.number = hd.guardsound[1]
 			params.channel = hd.guardsound_channel
 			params.localScale = getter.localscl
-			params.xPos = &getter.pos[0]
+			params.sourceID = getter.id
 			params.log = true
 			c.playSound(params)
 		}
@@ -12549,7 +12550,7 @@ func (c *Char) actionFinish() {
 				params := newPlaySndParams()
 				params.group = 11
 				params.localScale = c.localscl
-				params.xPos = &c.pos[0]
+				params.sourceID = c.id
 				c.playSound(params)
 				// Start echo timer
 				if c.gi().data.ko.echo != 0 {
@@ -12778,7 +12779,7 @@ func (c *Char) update() {
 				params.group = 11
 				params.volume = vol
 				params.localScale = c.localscl
-				params.xPos = &c.pos[0]
+				params.sourceID = c.id
 				c.playSound(params)
 			}
 			c.koEchoTimer++

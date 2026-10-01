@@ -4723,7 +4723,7 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 			}
 			params := newPlaySndParams()
 			c := sys.chars[token.pn-1][0]
-			params.xPos = &c.pos[0]
+			params.sourceID = c.id
 			params.localScale = c.localscl
 			params.log = false
 
