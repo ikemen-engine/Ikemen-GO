@@ -19,6 +19,7 @@ type stageCamera struct {
 	tension                 int32
 	ztension                int32
 	tensionvel              float32
+	ztensionvel             float32
 	overdrawhigh            int32 // TODO: left and right, probably. Because EnvShake has angles now
 	overdrawlow             int32
 	cuthigh                 int32
@@ -36,6 +37,7 @@ type stageCamera struct {
 	zoomout                 float32
 	ytensionenable          bool
 	autocenter              bool
+	zautocenter             bool
 	zoomanchor              bool
 	boundhighzoomdelta      float32
 	verticalfollowzoomdelta float32
@@ -78,7 +80,8 @@ func newStageCamera() *stageCamera {
 		localscl:       sys.gameWidth / 320,
 		verticalfollow: 0.2,
 		ytensionenable: false,
-		tensionhigh:    0, tensionlow: 0,
+		tensionhigh:    0, 
+		ztensionvel: 1, tensionlow: 0,
 		tension:    50,
 		tensionvel: 1,
 		cuthigh:    0, cutlow: math.MinInt32,
@@ -162,6 +165,7 @@ func (c *Camera) Reset() {
 	c.boundLo = float32(Max(c.boundhigh, c.boundlow)) * c.localscl
 	c.boundlow = Max(c.boundhigh, c.boundlow)
 	c.tensionvel = Max(Min(c.tensionvel, 20), 0)
+	c.ztensionvel = Max(Min(c.ztensionvel, 20), 0)
 	if c.verticalfollow < 0 {
 		c.ytensionenable = true
 	}
@@ -587,16 +591,13 @@ func (c *Camera) action(x, y, scale float32, pause bool) (newX, newY, newScale f
 			if c.skipSmoothing {
 				newZ = zCameraOffset
 			} else {
-				diff := float32(sys.gameWidth) / 320 * 2.5
+				diff := float32(sys.gameWidth) / 3200
+				blend := Clamp(0.05*c.ztensionvel, 0, 1)
 				for i := 0; i < 3; i++ {
-					newZ = (newZ + zCameraOffset) * .5
+					newZ = newZ + (zCameraOffset-newZ)*blend
 					if Abs(zCameraOffset-newZ) < diff {
 						newZ = zCameraOffset
 						break
-					} else if zCameraOffset-newZ > diff {
-						newZ = newZ + diff
-					} else {
-						newZ = newZ - diff
 					}
 				}
 			}
