@@ -5469,16 +5469,9 @@ func (s *Select) AddChar(def string) *SelectChar {
 		sc.preloadAnim = anim_orig
 	}
 
-	// Try to use the "_preload.sff" file if available
-	fp := fmt.Sprintf("%v_preload.sff", strings.TrimSuffix(sc.def, filepath.Ext(sc.def)))
-	if fp = FileExist(fp); len(fp) == 0 {
-		// Fall back to normal SFF
-		fp = sprite_orig
-	}
-
 	// preload portion of sff file
-	if len(fp) > 0 {
-		sc.preloadSprite = fp
+	if len(sprite_orig) > 0 {
+		sc.preloadSprite = sprite_orig
 	}
 	if sys.cfg.Config.BootLoadingMode > 0 {
 		sc.sff = newSff()

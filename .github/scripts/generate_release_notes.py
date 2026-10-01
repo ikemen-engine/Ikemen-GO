@@ -148,7 +148,7 @@ def resolve_pull_requests(token, owner, name, shas):
             fields.append(
                 'c%d: object(oid: "%s") { ... on Commit { '
                 "associatedPullRequests(first: 1) { nodes { "
-                "number title url labels(first: 20) { nodes { name } } "
+                "number title labels(first: 20) { nodes { name } } "
                 "author { login } } } } }" % (index, sha)
             )
         query = "query { repository(owner: \"%s\", name: \"%s\") { %s } }" % (
@@ -168,7 +168,6 @@ def resolve_pull_requests(token, owner, name, shas):
             resolved[sha] = {
                 "number": pull["number"],
                 "title": pull["title"],
-                "url": pull["url"],
                 "labels": [l["name"] for l in
                            (pull.get("labels", {}).get("nodes") or [])],
                 "author": author,
@@ -214,8 +213,8 @@ def render(buckets, categories, repo, previous_tag, tag):
             continue
         lines.append("## " + category["title"])
         for pull in sorted(entries, key=lambda p: p["number"]):
-            lines.append("* %s by @%s in %s" % (
-                pull["title"], pull["author"], pull["url"]))
+            lines.append("* %s by @%s in [#%d](https://github.com/%s/pull/%d)" % (
+                pull["title"], pull["author"], pull["number"], repo, pull["number"]))
         lines.append("")
 
     if previous_tag and tag:
