@@ -478,6 +478,9 @@ type PlayerSelectProperties struct {
 			Key []string `ini:"key"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
+		Cancel struct {
+			Key []string `ini:"key"`
+		} `ini:"cancel"`
 		Next struct {
 			Key []string `ini:"key"`
 		} `ini:"next"`
