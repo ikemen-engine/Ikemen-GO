@@ -1596,19 +1596,33 @@ for line in content:gmatch('[^\r\n]+') do
 			csRow = math.floor(csCell / motif.select_info.columns) + 1
 			cellKey = (csCol - 1) .. '-' .. (csRow - 1)
 		end
-		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
-			table.insert(t_addExluded, line)
-		elseif lineCase:match('^%s*slot%s*=%s*{%s*$') then --start of the 'multiple chars in one slot' assignment
+		local slotStart = lineCase:match('^%s*slot%s*=%s*{%s*()')
+		if slotStart ~= nil then
 			table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
 			slot = true
-		elseif slot and lineCase:match('^%s*}%s*$') then --end of 'multiple chars in one slot' assignment
-			slot = false
-			csCell = csCell + 1
-		else
+			line = line:sub(slotStart)
+			lineCase = line:lower()
+		end
+		local slotEnd = false
+		if slot then
+			local slotLine = line:match('^(.-)%s*}%s*$')
+			if slotLine ~= nil then
+				line = slotLine
+				lineCase = line:lower()
+				slotEnd = true
+			end
+		end
+		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
+			table.insert(t_addExluded, line)
+		elseif line:match('%S') then
 			main.f_addChar(line, true, true, slot)
 			if not slot then
 				csCell = csCell + 1
 			end
+		end
+		if slotEnd then
+			slot = false
+			csCell = csCell + 1
 		end
 	elseif section == 2 then --[ExtraStages]
 		--store 'unlock' param and get rid of everything that follows it
