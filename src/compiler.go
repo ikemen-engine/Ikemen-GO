@@ -268,6 +268,7 @@ var triggerMap = map[string]int{
 	"hitbyattr":         1,
 	"hitcount":          1,
 	"hitdefattr":        1,
+	"hitdefvar":         1,
 	"hitfall":           1,
 	"hitover":           1,
 	"hitpausetime":      1,
@@ -1433,6 +1434,21 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 		}
 		return flg, nil
+	}
+
+	// The right side of a flag comparison can be a bare literal or the same thing quoted
+	// Unwrap quotes so both parse identically
+	flagRHS := func() error {
+		if c.token == "\"" {
+			return text()
+		}
+		return nil
+	}
+
+	// A trigger on the right is an expression rather than a malformed literal like "1" or "BLAH"
+	isTriggerCall := func() bool {
+		_, ok := triggerMap[c.token]
+		return ok
 	}
 
 	var be1, be2, be3 BytecodeExp
@@ -2791,8 +2807,18 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			peekTok := c.tokenizer(in)
 			*in = savedIn
 			if peekTok == "=" || peekTok == "!=" {
+				savedToken := c.token
+				// Set when the right side is a trigger call, which is compared as a string rather than parsed as an attr
+				isExpr := false
 				hda := func(not bool) error {
+					if err := flagRHS(); err != nil {
+						return err
+					}
 					if attr, err := c.trgAttr(in); err != nil {
+						if !isTriggerCall() {
+							return err
+						}
+						isExpr = true
 						return err
 					} else {
 						out.append(OC_ex_)
@@ -2804,6 +2830,15 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 					return nil
 				}
 				if err := eqne(hda); err != nil {
+					if isExpr {
+						// The right side is a trigger call rather than an attr literal
+						// Restore the input so the '=' is handled as a normal comparison, and compare the string form against it
+						*in = savedIn
+						c.token = savedToken
+						out.append(OC_ex_)
+						out.appendI32Op(opc, -1)
+						break
+					}
 					return bvNone(), err
 				}
 			} else {
@@ -2817,8 +2852,18 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			peekTok := c.tokenizer(in)
 			*in = savedIn
 			if peekTok == "=" || peekTok == "!=" {
+				savedToken := c.token
+				// Set when the right side is a trigger call, which is compared as a string rather than parsed as a flag
+				isExpr := false
 				hgf := func(not bool) error {
+					if err := flagRHS(); err != nil {
+						return err
+					}
 					if flg, err := flagSub(); err != nil {
+						if !isTriggerCall() {
+							return err
+						}
+						isExpr = true
 						return err
 					} else {
 						out.append(OC_ex_)
@@ -2830,6 +2875,15 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 					return nil
 				}
 				if err := eqne(hgf); err != nil {
+					if isExpr {
+						// The right side is a trigger call rather than a flag literal
+						// Restore the input so the '=' is handled as a normal comparison, and compare the string form against it
+						*in = savedIn
+						c.token = savedToken
+						out.append(OC_ex_)
+						out.appendI32Op(opc, -1)
+						break
+					}
 					return bvNone(), err
 				}
 			} else {
@@ -2900,9 +2954,19 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		peekTok := c.tokenizer(in)
 		*in = savedIn
 		if peekTok == "=" || peekTok == "!=" {
+			savedToken := c.token
+			// Set when the right side is a trigger call, which is compared as a string rather than parsed as an attr
+			isExpr := false
 			hda := func(not bool) error {
+				if err := flagRHS(); err != nil {
+					return err
+				}
 				// Case 1: valid comparison
 				if attr, err := c.trgAttr(in); err != nil {
+					if !isTriggerCall() {
+						return err
+					}
+					isExpr = true
 					return err
 				} else {
 					out.appendI32Op(OC_hitdefattr, attr)
@@ -2913,6 +2977,14 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				return nil
 			}
 			if err := eqne(hda); err != nil {
+				if isExpr {
+					// The right side is a trigger call rather than an attr literal
+					// Restore the input so the '=' is handled as a normal comparison, and compare the string form against it
+					*in = savedIn
+					c.token = savedToken
+					out.appendI32Op(OC_hitdefattr, -1)
+					break
+				}
 				// Case 2: malformed attr string
 				// We need to tolerate this case in CNS for the sake of backward compatibility
 				if c.zssMode || !sys.ignoreMostErrors {
@@ -3050,8 +3122,18 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			peekTok := c.tokenizer(in)
 			*in = savedIn
 			if peekTok == "=" || peekTok == "!=" {
+				savedToken := c.token
+				// Set when the right side is a trigger call, which is compared as a string rather than parsed as a flag
+				isExpr := false
 				if err := eqne(func(not bool) error {
+					if err := flagRHS(); err != nil {
+						return err
+					}
 					if flg, err := flagSub(); err != nil {
+						if !isTriggerCall() {
+							return err
+						}
+						isExpr = true
 						return err
 					} else {
 						out.append(OC_ex3_)
@@ -3062,6 +3144,15 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 						return nil
 					}
 				}); err != nil {
+					if isExpr {
+						// The right side is a trigger call rather than a flag literal
+						// Restore the input so the '=' is handled as a normal comparison, and compare the string form against it
+						*in = savedIn
+						c.token = savedToken
+						out.append(OC_ex3_)
+						out.appendI32Op(opc, -1)
+						break
+					}
 					return bvNone(), err
 				}
 			} else {
@@ -3627,7 +3718,13 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			peekTok := c.tokenizer(in)
 			*in = savedIn
 			if peekTok == "=" || peekTok == "!=" {
+				savedToken := c.token
+				// Set when the right side is a trigger call, which is compared as a string rather than parsed as a flag
+				isExpr := false
 				if err := eqne(func(not bool) error {
+					if err := flagRHS(); err != nil {
+						return err
+					}
 					var flg int32
 					var err error
 					if opc == OC_ex2_projvar_attr {
@@ -3637,6 +3734,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 					}
 
 					if err != nil {
+						if !isTriggerCall() {
+							return err
+						}
+						isExpr = true
 						return err
 					}
 					// Negation is applied with OC_blnot after the opcode, like HitDefAttr,
@@ -3645,7 +3746,14 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 					bv3 = BytecodeInt(flg)
 					return nil
 				}); err != nil {
-					return bvNone(), err
+					if !isExpr {
+						return bvNone(), err
+					}
+					// The right side is a trigger call rather than a flag literal
+					// Restore the input so the '=' is handled as a normal comparison, and compare the string form against it
+					*in = savedIn
+					c.token = savedToken
+					bv3 = BytecodeInt(-1)
 				}
 			} else {
 				// No comparison. Push the current flag as a string
@@ -3677,8 +3785,18 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		peekTok := c.tokenizer(in)
 		*in = savedIn
 		if peekTok == "=" || peekTok == "!=" {
+			savedToken := c.token
+			// Set when the right side is a trigger call, which is compared as a string rather than parsed as an attr
+			isExpr := false
 			hda := func(not bool) error {
+				if err := flagRHS(); err != nil {
+					return err
+				}
 				if attr, err := c.trgAttr(in); err != nil {
+					if !isTriggerCall() {
+						return err
+					}
+					isExpr = true
 					return err
 				} else {
 					out.append(OC_ex_)
@@ -3690,6 +3808,15 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				return nil
 			}
 			if err := eqne(hda); err != nil {
+				if isExpr {
+					// The right side is a trigger call rather than an attr literal
+					// Restore the input so the '=' is handled as a normal comparison, and compare the string form against it
+					*in = savedIn
+					c.token = savedToken
+					out.append(OC_ex_)
+					out.appendI32Op(OC_ex_reversaldefattr, -1)
+					break
+				}
 				return bvNone(), err
 			}
 		} else {
