@@ -410,7 +410,7 @@ func (cs *CharSize) init() {
 	cs.mid.pos = [...]float32{-5, -60}
 	cs.shadowoffset = 0
 	cs.draw.offset = [...]float32{0, 0}
-	cs.depth = [...]float32{3, 3}
+	cs.depth = [...]float32{4, 4}
 	cs.attack.depth = [...]float32{4, 4}
 	cs.weight = 100
 	cs.pushfactor = 1
