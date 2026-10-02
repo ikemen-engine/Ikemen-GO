@@ -937,9 +937,9 @@ func (v soundPanView) pan(x, strength float32) float32 {
 	return soundPanPosition((x-v.x)*v.scale*2/v.width, strength)
 }
 
-// Clamp the position before applying strength so off-screen sounds still respect PanningRange.
+// Apply PanningRange as the panning strength at the screen edge.
 func soundPanPosition(position, strength float32) float32 {
-	return Clamp(position, float32(-1), float32(1)) * Clamp(strength, float32(0), float32(100)) / 100
+	return position * Clamp(strength, float32(0), float32(100)) / 100
 }
 
 // Applies a coherent gain snapshot without reading mutable game state.
