@@ -302,9 +302,9 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	uvBias := float32(0.000002)
 
 	quadDrawScratch = [16]float32{
-		x2, y2, 1, 1-uvBias,
+		x2, y2, 1, 1 - uvBias,
 		x3, y3, 1, 0,
-		x1, y1, uvBias, 1-uvBias,
+		x1, y1, uvBias, 1 - uvBias,
 		x4, y4, uvBias, 0,
 	}
 

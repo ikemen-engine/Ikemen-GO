@@ -1923,29 +1923,29 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 
 	// This whole block seems to have been compensating for the missing overdraw feature
 	/*
-	if ofs[1] != 0 && s.stageCamera.verticalfollow > 0 {
-		if ofs[1] < 0 {
-			tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
-			if scl > 1 {
-				tmp += (sys.cam.GroundLevel() + float32(sys.gameHeight-240)) * (1/scl - 1)
+		if ofs[1] != 0 && s.stageCamera.verticalfollow > 0 {
+			if ofs[1] < 0 {
+				tmp := (float32(s.stageCamera.boundhigh) - pos[1]) * scl2
+				if scl > 1 {
+					tmp += (sys.cam.GroundLevel() + float32(sys.gameHeight-240)) * (1/scl - 1)
+				} else {
+					tmp += float32(sys.gameHeight) * (1/scl - 1)
+				}
+				if tmp >= 0 {
+				} else if ofs[1] < tmp {
+					ofs[1] -= tmp
+					pos[1] += tmp / scl2
+				} else {
+					pos[1] += ofs[1] / scl2
+					ofs[1] = 0
+				}
 			} else {
-				tmp += float32(sys.gameHeight) * (1/scl - 1)
-			}
-			if tmp >= 0 {
-			} else if ofs[1] < tmp {
-				ofs[1] -= tmp
-				pos[1] += tmp / scl2
-			} else {
-				pos[1] += ofs[1] / scl2
-				ofs[1] = 0
-			}
-		} else {
-			if -ofs[1] >= pos[1]*scl2 {
-				pos[1] += ofs[1] / scl2
-				ofs[1] = 0
+				if -ofs[1] >= pos[1]*scl2 {
+					pos[1] += ofs[1] / scl2
+					ofs[1] = 0
+				}
 			}
 		}
-	}
 	*/
 
 	// Mugen doesn't seem to do this sort of snapping
@@ -1963,8 +1963,8 @@ func (s *Stage) draw(layer int32, x, y, scl float32) {
 	// But it hasn't yet been tested for "Overdraw pixels will also be used when the screen aspect is taller than the stage aspect"
 	odh := Max(0, float32(s.stageCamera.overdrawhigh)) * s.localscl
 	odl := Max(0, float32(s.stageCamera.overdrawlow)) * s.localscl
-	topOver := int32(Floor(Max(0, -odh - shake[1]) * sys.heightScale)) // Needs "shake" because the window itself shakes
-	botOver := int32(Ceil(Max(0, -odl + shake[1]) * sys.heightScale))
+	topOver := int32(Floor(Max(0, -odh-shake[1]) * sys.heightScale)) // Needs "shake" because the window itself shakes
+	botOver := int32(Ceil(Max(0, -odl+shake[1]) * sys.heightScale))
 	overdrawClip := [4]int32{
 		sys.scrrect[0],
 		sys.scrrect[1] + topOver,

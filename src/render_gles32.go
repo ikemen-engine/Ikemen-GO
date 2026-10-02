@@ -2124,7 +2124,6 @@ func (r *Renderer_GLES32) SetVertexData(values ...float32) {
 	}
 }
 
-
 func (r *Renderer_GLES32) SetModelVertexData(bufferIndex uint32, values []byte) {
 	r.bindBuffer(gl.ARRAY_BUFFER, r.modelVertexBuffer[bufferIndex])
 	gl.BufferData(gl.ARRAY_BUFFER, len(values), unsafe.Pointer(&values[0]), gl.STATIC_DRAW)

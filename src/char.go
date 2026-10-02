@@ -3739,7 +3739,7 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
-	stillLoading         bool // Compiler safeguard
+	stillLoading         bool           // Compiler safeguard
 	//soundChannels        SoundChannels // Moved to system
 }
 

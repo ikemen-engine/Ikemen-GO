@@ -66,20 +66,20 @@ type stageCamera struct {
 
 func newStageCamera() *stageCamera {
 	return &stageCamera{
-		localcoord: [2]int32{320, 240},
-		localscl: sys.gameWidth / 320,
+		localcoord:     [2]int32{320, 240},
+		localscl:       sys.gameWidth / 320,
 		verticalfollow: 0.2,
 		ytensionenable: false,
-		tensionhigh: 0, tensionlow: 0,
-		tension: 50,
+		tensionhigh:    0, tensionlow: 0,
+		tension:    50,
 		tensionvel: 1,
-		cuthigh: 0, cutlow: math.MinInt32,
+		cuthigh:    0, cutlow: math.MinInt32,
 		startzoom: 1, zoomout: 1, zoomin: 1,
 		zoomindelay: 0, zoominspeed: 1, zoomoutspeed: 1,
 		topz: 0, botz: 0, ztopscale: 1, zbotscale: 1, depthtoscreen: 1,
 		fov: 40, yshift: 0, far: 10000, near: 0.1,
-		yscrollspeed: 1,
-		boundhighzoomdelta: 0,
+		yscrollspeed:            1,
+		boundhighzoomdelta:      0,
 		verticalfollowzoomdelta: 0,
 	}
 }
