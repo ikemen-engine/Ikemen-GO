@@ -15109,6 +15109,39 @@ func (sc depth) Run(c *Char, _ []int32) bool {
 	return false
 }
 
+type depthBound StateControllerBase
+
+const (
+	depthBound_value byte = iota
+	depthBound_movecamera
+	depthBound_redirectid
+)
+
+func (sc depthBound) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), depthBound_redirectid, "DepthBound")
+	if crun == nil {
+		return false
+	}
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case depthBound_value:
+			if exp[0].evalB(c) {
+				crun.setCSF(CSF_depthbound)
+			} else {
+				crun.unsetCSF(CSF_depthbound)
+			}
+		case depthBound_movecamera:
+			if exp[0].evalB(c) {
+				crun.setCSF(CSF_movecamera_z)
+			} else {
+				crun.unsetCSF(CSF_movecamera_z)
+			}
+		}
+		return true
+	})
+	return false
+}
+
 type modifyPlayer StateControllerBase
 
 const (

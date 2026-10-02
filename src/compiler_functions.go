@@ -6476,6 +6476,37 @@ func (c *CharCompiler) depth(is IniSection, sc *StateControllerBase) (StateContr
 	return *ret, err
 }
 
+func (c *CharCompiler) depthBound(is IniSection, sc *StateControllerBase) (StateController, error) {
+	ret, err := (*depthBound)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			depthBound_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		b := false
+		if err := c.stateParam(is, "value", false, func(data string) error {
+			b = true
+			return c.scAdd(sc, depthBound_value, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(depthBound_value, sc.iToExp(0))
+		}
+		b = false
+		if err := c.stateParam(is, "movecamera", false, func(data string) error {
+			b = true
+			return c.scAdd(sc, depthBound_movecamera, data, VT_Bool, 1)
+		}); err != nil {
+			return err
+		}
+		if !b {
+			sc.add(depthBound_movecamera, sc.iToExp(0))
+		}
+		return nil
+	})
+	return *ret, err
+}
+
 func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*modifyPlayer)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",

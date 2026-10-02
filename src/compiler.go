@@ -136,6 +136,7 @@ func newCharCompiler() *CharCompiler {
 		"camera":               c.cameraCtrl,
 		"changemovelist":       c.changeMovelist,
 		"depth":                c.depth,
+		"depthbound":           c.depthBound,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
 		"dizzypointsset":       c.dizzyPointsSet,

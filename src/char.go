@@ -41,6 +41,7 @@ const (
 	CSF_posfreeze
 	CSF_screenbound
 	CSF_stagebound
+	CSF_depthbound
 )
 
 // Flags set by AssertSpecial. They are reset together every frame
@@ -10315,6 +10316,9 @@ func (c *Char) xScreenBound() {
 }
 
 func (c *Char) zDepthBound() {
+	if !c.csf(CSF_depthbound) {
+		return
+	}
 	posz := c.pos[2]
 	before := posz
 
@@ -12179,7 +12183,7 @@ func (c *Char) actionPrepare() {
 			// Set default screenbound and playerpush
 			if c.isPlayerType() {
 				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {
-					c.setCSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y | CSF_movecamera_z)
+					c.setCSF(CSF_screenbound | CSF_depthbound | CSF_movecamera_x | CSF_movecamera_y | CSF_movecamera_z)
 				}
 				if sys.roundState() > 0 && sys.roundState() < 4 && (c.alive() || c.numPartner() == 0) {
 					c.setCSF(CSF_playerpush)
