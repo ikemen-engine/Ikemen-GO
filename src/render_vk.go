@@ -365,7 +365,9 @@ func (r *Renderer_VK) uploadHostVisibleData(t *Texture_VK, data []byte, x, y, wi
 	}
 
 	// Issue pipeline barrier for layout transition
+	r.poolMutex.Lock()
 	commandBuffer := r.BeginSingleTimeCommands()
+	r.poolMutex.Unlock()
 	oldLayout := vk.ImageLayoutPreinitialized
 	if t.hostVisibleUploaded {
 		oldLayout = vk.ImageLayoutGeneral
@@ -388,7 +390,9 @@ func (r *Renderer_VK) uploadHostVisibleData(t *Texture_VK, data []byte, x, y, wi
 		},
 	}
 	vk.CmdPipelineBarrier(commandBuffer, vk.PipelineStageFlags(vk.PipelineStageHostBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), 0, 0, nil, 0, nil, 1, []vk.ImageMemoryBarrier{barrier})
+	r.poolMutex.Lock()
 	r.EndSingleTimeCommands(commandBuffer)
+	r.poolMutex.Unlock()
 	t.hostVisibleUploaded = true
 }
 
@@ -818,21 +822,88 @@ func (t *Texture_VK) SetDataG(textureData []byte, mag, min, ws, wt TextureSampli
 		gfx.(*Renderer_VK).tempCommands = append(gfx.(*Renderer_VK).tempCommands, commandBuffer)
 	}
 }
+
+// modified from golang float16 package by x448 (MIT License)
+// so we don't need a whole dependency just for Android/iOS texture support
+func f32ToF16bits(f32 float32) uint16 {
+	u32 := math.Float32bits(f32)
+	// Translated from Rust to Go by Montgomery Edwards⁴⁴⁸ (github.com/x448).
+	// All 4294967296 conversions with this were confirmed to be correct by x448.
+	// Original Rust implementation is by Kathryn Long (github.com/starkat99) with MIT license.
+
+	sign := u32 & 0x80000000
+	exp := u32 & 0x7f800000
+	coef := u32 & 0x007fffff
+
+	if exp == 0x7f800000 {
+		// NaN or Infinity
+		nanBit := uint32(0)
+		if coef != 0 {
+			nanBit = uint32(0x0200)
+		}
+		return uint16((sign >> 16) | uint32(0x7c00) | nanBit | (coef >> 13))
+	}
+
+	halfSign := sign >> 16
+
+	unbiasedExp := int32(exp>>23) - 127
+	halfExp := unbiasedExp + 15
+
+	if halfExp >= 0x1f {
+		return uint16(halfSign | uint32(0x7c00))
+	}
+
+	if halfExp <= 0 {
+		if 14-halfExp > 24 {
+			return uint16(halfSign)
+		}
+		c := coef | uint32(0x00800000)
+		halfCoef := c >> uint32(14-halfExp)
+		roundBit := uint32(1) << uint32(13-halfExp)
+		if (c&roundBit) != 0 && (c&(3*roundBit-1)) != 0 {
+			halfCoef++
+		}
+		return uint16(halfSign | halfCoef)
+	}
+
+	uHalfExp := uint32(halfExp) << 10
+	halfCoef := coef >> 13
+	roundBit := uint32(0x00001000)
+	if (coef&roundBit) != 0 && (coef&(3*roundBit-1)) != 0 {
+		return uint16((halfSign | uHalfExp | halfCoef) + 1)
+	}
+	return uint16(halfSign | uHalfExp | halfCoef)
+}
+
 func (t *Texture_VK) SetPixelData(textureData []float32) {
 	if t.depth == 96 {
 		textureData = gfx.(*Renderer_VK).rgbToRGBA(textureData)
 	}
-	size := uint32(len(textureData) * 4)
+
+	var src []byte
+	// If the format is half float (mobile), we need to convert the data
+	if t.MapInternalFormat(Max(t.depth, 8)) == vk.FormatR16g16b16a16Sfloat {
+		halves := make([]uint16, len(textureData))
+		for i, f := range textureData {
+			halves[i] = f32ToF16bits(f)
+		}
+		if len(halves) > 0 {
+			src = unsafe.Slice((*byte)(unsafe.Pointer(&halves[0])), len(halves)*2)
+		}
+	} else if len(textureData) > 0 {
+		src = unsafe.Slice((*byte)(unsafe.Pointer(&textureData[0])), len(textureData)*4)
+	}
+	size := uint32(len(src))
+
 	const m = 0x7fffffff
 
 	// Direct-write path for HOST_VISIBLE textures
 	if t.residency == ResidentHostVisible {
-		byteData := (*[m]byte)(unsafe.Pointer((*sliceHeader)(unsafe.Pointer(&textureData)).Data))[:size]
-		gfx.(*Renderer_VK).uploadHostVisibleData(t, byteData, 0, 0, t.width, t.height, 0)
+		gfx.(*Renderer_VK).uploadHostVisibleData(t, src, 0, 0, t.width, t.height, 0)
 		return
 	}
 
-	bufferOffset := gfx.(*Renderer_VK).CopyToStagingBuffer(size, (*[m]byte)(unsafe.Pointer((*sliceHeader)(unsafe.Pointer(&textureData)).Data))[:size])
+	bufferOffset := gfx.(*Renderer_VK).CopyToStagingBuffer(size, src)
 
 	imageExtent := vk.Extent3D{
 		Width:  uint32(t.width),
@@ -1486,6 +1557,8 @@ type Renderer_VK struct {
 	hasPushDescriptors  bool
 	surfaceLost         bool
 	frameOpen           bool
+	shadowPassActive    bool
+	shadowCmdRecorded   bool
 	droidDescriptorPool vk.DescriptorPool
 	droidBindingState   map[*VulkanProgramInfo]map[uint32]vk.WriteDescriptorSet
 	poolMutex           sync.Mutex // serializes access to droidDescriptorPool/droidBindingState/r.commandPools[0]
@@ -2069,6 +2142,20 @@ func (r *Renderer_VK) NewVulkanDevice(appInfo *vk.ApplicationInfo) error {
 		"VK_KHR_swapchain\x00",
 	}
 
+	// Required for some targets to function (Android is strict)
+	hasDR := r.hasDeviceExtension("VK_KHR_dynamic_rendering")
+	hasSync2 := r.hasDeviceExtension("VK_KHR_synchronization2")
+	hasMV := r.hasDeviceExtension("VK_KHR_multiview")
+	if hasDR {
+		deviceExtensions = append(deviceExtensions, "VK_KHR_dynamic_rendering\x00")
+	}
+	if hasSync2 {
+		deviceExtensions = append(deviceExtensions, "VK_KHR_synchronization2\x00")
+	}
+	if hasMV {
+		deviceExtensions = append(deviceExtensions, "VK_KHR_multiview\x00")
+	}
+
 	// Only enable push descriptors if we can on this hardware (Android in particular usually doesn't support this)
 	if r.hasDeviceExtension("VK_KHR_push_descriptor") {
 		deviceExtensions = append(deviceExtensions, "VK_KHR_push_descriptor\x00")
@@ -2089,46 +2176,66 @@ func (r *Renderer_VK) NewVulkanDevice(appInfo *vk.ApplicationInfo) error {
 		PpEnabledExtensionNames: deviceExtensions,
 	}
 
-	sync2 := vk.PhysicalDeviceSynchronization2Features{
-		SType:            vk.StructureTypePhysicalDeviceSynchronization2Features,
-		Synchronization2: vk.True,
-	}
-	deviceCreateInfo.PNext = unsafe.Pointer(&sync2)
-	multiViewFeature := vk.PhysicalDeviceMultiviewFeatures{
-		SType:     vk.StructureTypePhysicalDeviceMultiviewFeatures,
-		Multiview: vk.True,
-	}
-	sync2.PNext = unsafe.Pointer(&multiViewFeature)
+	// just some pointer wizardry for dynamic feature enabling
+	var lastPNext *unsafe.Pointer = &deviceCreateInfo.PNext
 
-	dynamicRenderFeature := vk.PhysicalDeviceDynamicRenderingFeatures{
-		SType:            vk.StructureTypePhysicalDeviceDynamicRenderingFeatures,
-		DynamicRendering: vk.True,
+	var sync2 vk.PhysicalDeviceSynchronization2Features
+	if hasSync2 {
+		sync2 = vk.PhysicalDeviceSynchronization2Features{
+			SType:            vk.StructureTypePhysicalDeviceSynchronization2Features,
+			Synchronization2: vk.True,
+		}
+		*lastPNext = unsafe.Pointer(&sync2)
+		lastPNext = &sync2.PNext
 	}
-	multiViewFeature.PNext = unsafe.Pointer(&dynamicRenderFeature)
+	var multiViewFeature vk.PhysicalDeviceMultiviewFeatures
+	if hasMV {
+		multiViewFeature = vk.PhysicalDeviceMultiviewFeatures{
+			SType:     vk.StructureTypePhysicalDeviceMultiviewFeatures,
+			Multiview: vk.True,
+		}
+		*lastPNext = unsafe.Pointer(&multiViewFeature)
+		lastPNext = &multiViewFeature.PNext
+	}
 
-	if sys.cfg.Video.EnableModelShadow {
-		vulkan12Features := vk.PhysicalDeviceVulkan12Features{
+	var dynamicRenderFeature vk.PhysicalDeviceDynamicRenderingFeatures
+	if hasDR {
+		dynamicRenderFeature = vk.PhysicalDeviceDynamicRenderingFeatures{
+			SType:            vk.StructureTypePhysicalDeviceDynamicRenderingFeatures,
+			DynamicRendering: vk.True,
+		}
+		*lastPNext = unsafe.Pointer(&dynamicRenderFeature)
+		lastPNext = &dynamicRenderFeature.PNext
+	}
+
+	// Find out what features we CAN support for broader mobile compatibility
+	var supportedFeats vk.PhysicalDeviceFeatures
+	vk.GetPhysicalDeviceFeatures(r.gpuDevices[r.gpuIndex], &supportedFeats)
+
+	var enabledFeats vk.PhysicalDeviceFeatures
+	if r.maxAnisotropy > 0 && supportedFeats.SamplerAnisotropy == vk.True {
+		enabledFeats.SamplerAnisotropy = vk.True
+	}
+	if sys.cfg.Video.EnableModel && supportedFeats.ImageCubeArray == vk.True {
+		enabledFeats.ImageCubeArray = vk.True
+	}
+
+	// It's apparently best to not enable this on Android (fix Retroid Pocket 6 crash)
+	var vulkan12Features vk.PhysicalDeviceVulkan12Features
+	if sys.cfg.Video.EnableModelShadow && runtime.GOOS != "android" {
+		vulkan12Features = vk.PhysicalDeviceVulkan12Features{
 			SType:                     vk.StructureTypePhysicalDeviceVulkan12Features,
 			ShaderOutputViewportIndex: vk.True,
 			ShaderOutputLayer:         vk.True,
 		}
-		dynamicRenderFeature.PNext = unsafe.Pointer(&vulkan12Features)
+		*lastPNext = unsafe.Pointer(&vulkan12Features)
+		lastPNext = &vulkan12Features.PNext
 	}
 	if vkDebug && r.checkValidationLayerSupport() {
 		deviceCreateInfo.EnabledLayerCount = uint32(len(vk_validationLayers))
 		deviceCreateInfo.PpEnabledLayerNames = vk_validationLayers
 	}
-	deviceCreateInfo.PEnabledFeatures = []vk.PhysicalDeviceFeatures{}
-	if r.maxAnisotropy > 0 {
-		deviceCreateInfo.PEnabledFeatures = append(deviceCreateInfo.PEnabledFeatures, vk.PhysicalDeviceFeatures{SamplerAnisotropy: vk.True})
-	}
-	if sys.cfg.Video.EnableModel {
-		if len(deviceCreateInfo.PEnabledFeatures) > 0 {
-			deviceCreateInfo.PEnabledFeatures[0].ImageCubeArray = vk.True
-		} else {
-			deviceCreateInfo.PEnabledFeatures = append(deviceCreateInfo.PEnabledFeatures, vk.PhysicalDeviceFeatures{ImageCubeArray: vk.True})
-		}
-	}
+	deviceCreateInfo.PEnabledFeatures = []vk.PhysicalDeviceFeatures{enabledFeats}
 	var device vk.Device
 	err = vk.Error(vk.CreateDevice(r.gpuDevices[r.gpuIndex], deviceCreateInfo, nil, &device))
 	if err != nil {
@@ -2142,13 +2249,13 @@ func (r *Renderer_VK) NewVulkanDevice(appInfo *vk.ApplicationInfo) error {
 		// Fallback behavior
 		if !r.hasPushDescriptors {
 			poolSizes := []vk.DescriptorPoolSize{
-				{Type: vk.DescriptorTypeUniformBuffer, DescriptorCount: 2048 * 4},         // TODO: just pulled these outta nowhere
-				{Type: vk.DescriptorTypeCombinedImageSampler, DescriptorCount: 2048 * 12}, // TODO: just pulled these outta nowhere
+				{Type: vk.DescriptorTypeUniformBuffer, DescriptorCount: 4096 * 4},         // TODO: just pulled these outta nowhere
+				{Type: vk.DescriptorTypeCombinedImageSampler, DescriptorCount: 4096 * 12}, // TODO: just pulled these outta nowhere
 			}
 
 			poolInfo := vk.DescriptorPoolCreateInfo{
 				SType:         vk.StructureTypeDescriptorPoolCreateInfo,
-				MaxSets:       1024, // TODO: just pulled this outta nowhere
+				MaxSets:       4096, // TODO: just pulled this outta nowhere
 				PoolSizeCount: uint32(len(poolSizes)),
 				PPoolSizes:    poolSizes,
 			}
@@ -2454,7 +2561,9 @@ func (r *Renderer_VK) addPalTexture() {
 		}
 	})
 
+	r.poolMutex.Lock()
 	commandBuffer := r.BeginSingleTimeCommands()
+	r.poolMutex.Unlock()
 	barrier := vk.ImageMemoryBarrier{
 		SType:               vk.StructureTypeImageMemoryBarrier,
 		OldLayout:           vk.ImageLayoutUndefined,
@@ -2473,7 +2582,9 @@ func (r *Renderer_VK) addPalTexture() {
 		},
 	}
 	vk.CmdPipelineBarrier(commandBuffer, vk.PipelineStageFlags(vk.PipelineStageTopOfPipeBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), 0, 0, nil, 0, nil, 1, []vk.ImageMemoryBarrier{barrier})
+	r.poolMutex.Lock()
 	r.EndSingleTimeCommands(commandBuffer)
+	r.poolMutex.Unlock()
 }
 func (r *Renderer_VK) createShadowMapTexture(widthHeight int32) *Texture_VK {
 	t := &Texture_VK{widthHeight, widthHeight, 96, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
@@ -2588,8 +2699,17 @@ func (r *Renderer_VK) CreateSwapchain(oldSwapChain vk.Swapchain) error {
 
 	//surfaceCapabilities.Deref()
 	imageExtent := surfaceCapabilities.CurrentExtent
+
+	// Fix Retroid Pocket 6 view
+	var preTransform vk.SurfaceTransformFlagBits
+	if runtime.GOOS == "android" {
+		preTransform = vk.SurfaceTransformFlagBits(vk.SurfaceTransformIdentityBit)
+	} else {
+		preTransform = surfaceCapabilities.CurrentTransform
+	}
+
 	// only do this if the reported size is settable; otherwise use the current extent (Mobile view fix)
-	if imageExtent.Width == 0xFFFFFFFF || imageExtent.Height == 0xFFFFFFFF {
+	if imageExtent.Width == 0xFFFFFFFF || imageExtent.Height == 0xFFFFFFFF || runtime.GOOS == "android" {
 		width, height := sys.window.GetDrawablePixelSize()
 		imageExtent.Width = uint32(width)
 		imageExtent.Height = uint32(height)
@@ -2616,7 +2736,7 @@ func (r *Renderer_VK) CreateSwapchain(oldSwapChain vk.Swapchain) error {
 		ImageColorSpace: formats[chosenFormat].ColorSpace,
 		ImageExtent:     imageExtent,
 		ImageUsage:      vk.ImageUsageFlags(vk.ImageUsageColorAttachmentBit | vk.ImageUsageTransferSrcBit),
-		PreTransform:    surfaceCapabilities.CurrentTransform,
+		PreTransform:    preTransform,
 
 		ImageArrayLayers:      1,
 		ImageSharingMode:      vk.SharingModeExclusive,
@@ -3047,9 +3167,11 @@ func (r *Renderer_VK) CreateSpriteProgram() (*VulkanProgramInfo, error) {
 
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: 4,
 		PBindings:    samplerLayoutBinding,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -3421,9 +3543,11 @@ func (r *Renderer_VK) CreateShadowMapProgram() (*VulkanProgramInfo, error) {
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: uint32(len(uniformBindings0)),
 		PBindings:    uniformBindings0,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -3627,7 +3751,7 @@ func (r *Renderer_VK) GetShadowMapPipeline(state *VulkanShadowMapPipelineState) 
 			vertexBindingIndex += 1
 		} else {
 			vertexInputAttributes = append(vertexInputAttributes, vk.VertexInputAttributeDescription{
-				Binding:  1,
+				Binding:  0,
 				Location: location,
 				Format:   format,
 				Offset:   0,
@@ -3941,9 +4065,11 @@ func (r *Renderer_VK) CreateModelProgram() (*VulkanProgramInfo, error) {
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: uint32(len(uniformBindings0)),
 		PBindings:    uniformBindings0,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -4145,7 +4271,7 @@ func (r *Renderer_VK) GetModelPipeline(state *VulkanPipelineState) vk.Pipeline {
 			vertexBindingIndex += 1
 		} else {
 			vertexInputAttributes = append(vertexInputAttributes, vk.VertexInputAttributeDescription{
-				Binding:  1,
+				Binding:  0,
 				Location: location,
 				Format:   format,
 				Offset:   0,
@@ -4593,9 +4719,11 @@ func (r *Renderer_VK) CreatePanoramaToCubeMapProgram() (*VulkanProgramInfo, erro
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: 1,
 		PBindings:    samplerLayoutBinding,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -4832,9 +4960,11 @@ func (r *Renderer_VK) CreateCubemapFilteringProgram() (*VulkanProgramInfo, error
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: 1,
 		PBindings:    samplerLayoutBinding,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -5080,9 +5210,11 @@ func (r *Renderer_VK) CreateLutProgram() (*VulkanProgramInfo, error) {
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: 1,
 		PBindings:    samplerLayoutBinding,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -6306,7 +6438,9 @@ func (r *Renderer_VK) transitionSwappedOutToDeviceLocal(t *Texture_VK) error {
 	// Swap-in is synchronous — the caller expects the texture to be ready after this call.
 	stagingOffset := r.CopyToStagingBuffer(uint32(len(t.hostBackingBuffer)), t.hostBackingBuffer)
 
+	r.poolMutex.Lock()
 	commandBuffer := r.BeginSingleTimeCommands()
+	r.poolMutex.Unlock()
 
 	// Transition image layout: Undefined → TransferDstOptimal
 	barrier := vk.ImageMemoryBarrier{
@@ -6368,7 +6502,9 @@ func (r *Renderer_VK) transitionSwappedOutToDeviceLocal(t *Texture_VK) error {
 	}
 	vk.CmdPipelineBarrier(commandBuffer, vk.PipelineStageFlags(vk.PipelineStageTransferBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), 0, 0, nil, 0, nil, 1, []vk.ImageMemoryBarrier{barrier2})
 
+	r.poolMutex.Lock()
 	r.EndSingleTimeCommands(commandBuffer)
+	r.poolMutex.Unlock()
 
 	// Create image view
 	t.imageView = r.CreateImageView(t.img, format, 0, t.mipLevels, layerCount, cube)
@@ -6402,7 +6538,9 @@ func (r *Renderer_VK) transitionHostVisibleToDeviceLocal(t *Texture_VK) error {
 	}
 
 	// Copy from HOST_VISIBLE to DEVICE_LOCAL via vk.CmdCopyImage
+	r.poolMutex.Lock()
 	commandBuffer := r.BeginSingleTimeCommands()
+	r.poolMutex.Unlock()
 
 	// Transition source (HOST_VISIBLE) to TransferSrcOptimal
 	// The HOST_VISIBLE image (LINEAR tiling) is in GENERAL layout after uploadHostVisibleData.
@@ -6490,7 +6628,9 @@ func (r *Renderer_VK) transitionHostVisibleToDeviceLocal(t *Texture_VK) error {
 	}
 	vk.CmdPipelineBarrier(commandBuffer, vk.PipelineStageFlags(vk.PipelineStageTransferBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), 0, 0, nil, 0, nil, 1, []vk.ImageMemoryBarrier{shaderBarrier})
 
+	r.poolMutex.Lock()
 	r.EndSingleTimeCommands(commandBuffer)
+	r.poolMutex.Unlock()
 
 	// Destroy old HOST_VISIBLE resources. If the texture hasn't been used in
 	// the last 2 frames, the GPU is done — destroy immediately. Otherwise, defer.
@@ -6570,7 +6710,7 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 		vk.MaxUint64, r.semaphores[0], vk.NullFence, &r.swapchains[0].currentImageIndex)
 	if res != vk.Success {
 		if res == vk.ErrorOutOfDate || res == vk.Suboptimal {
-			if res == vk.Suboptimal && runtime.GOOS != "ios" {
+			if res == vk.Suboptimal && runtime.GOOS != "ios" && runtime.GOOS != "android" {
 				LogMessage("[INFO] recreate swapchain")
 				r.RecreateSwapchain()
 				res = vk.AcquireNextImage(r.device, r.swapchains[0].swapchain,
@@ -6704,6 +6844,9 @@ func (r *Renderer_VK) EndFrame() {
 	// prevent Activity wakeup crash (Android)
 	if !r.frameOpen {
 		return
+	}
+	if r.renderShadowMap {
+		r.waitGroup.Wait() // let the shadow map worker finish while the frame is still open
 	}
 	r.frameOpen = false
 	defer r.surfaceMutex.Unlock()
@@ -6941,12 +7084,17 @@ func (r *Renderer_VK) EndFrame() {
 	vk.EndCommandBuffer(r.commandBuffers[0])
 
 	var submitCommands []vk.CommandBuffer
-	if r.renderShadowMap {
-		r.waitGroup.Wait()
+	// Shadow rendering is typically done in another thread
+	if r.renderShadowMap && r.shadowCmdRecorded {
+		r.waitGroup.Wait() // wait for the shadow rendering to finish
 		submitCommands = []vk.CommandBuffer{r.commandBuffers[1], r.commandBuffers[0]}
 	} else {
+		if r.renderShadowMap {
+			r.waitGroup.Wait() // wait for the shadow rendering to finish
+		}
 		submitCommands = r.commandBuffers[:1]
 	}
+	r.shadowCmdRecorded = false
 
 	submitInfo := []vk.SubmitInfo{{
 		SType:                vk.StructureTypeSubmitInfo,
@@ -6978,8 +7126,8 @@ func (r *Renderer_VK) EndFrame() {
 	res := vk.QueuePresent(r.queue, &presentInfo)
 	if res != vk.Success {
 		if res == vk.ErrorOutOfDate || res == vk.Suboptimal {
-			if res == vk.Suboptimal && runtime.GOOS == "ios" {
-				Logcat("[INFO] suboptimal surface, ignoring")
+			if res == vk.Suboptimal && (runtime.GOOS == "ios" || runtime.GOOS == "android") {
+				LogMessage("[INFO] suboptimal surface, ignoring")
 			} else {
 				LogMessage("[INFO] recreate swapchain")
 				r.RecreateSwapchain()
@@ -7084,6 +7232,7 @@ func (r *Renderer_VK) prepareShadowMapPipeline(bufferIndex uint32) {
 		PDepthAttachment:     depthAttachmentInfos,
 	}
 	vk.CmdBeginRendering(r.commandBuffers[1], &renderInfo)
+	r.shadowPassActive = true
 
 	vk.CmdBindIndexBuffer(r.commandBuffers[1], r.modelIndexBuffers[bufferIndex].buffer, 0, vk.IndexTypeUint32)
 	r.VKState.modelVertexBufferIndex = bufferIndex
@@ -7116,6 +7265,11 @@ func (r *Renderer_VK) setShadowMapPipeline(doubleSided, invertFrontFace, useUV, 
 }
 
 func (r *Renderer_VK) ReleaseShadowPipeline() {
+	defer r.waitGroup.Done()
+	if !r.shadowPassActive {
+		return
+	}
+	r.shadowPassActive = false
 	vk.CmdEndRendering(r.commandBuffers[1])
 	barriers := []vk.ImageMemoryBarrier{
 		{
@@ -7138,7 +7292,7 @@ func (r *Renderer_VK) ReleaseShadowPipeline() {
 	}
 	vk.CmdPipelineBarrier(r.commandBuffers[1], vk.PipelineStageFlags(vk.PipelineStageLateFragmentTestsBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), 0, 0, nil, 0, nil, uint32(len(barriers)), barriers)
 	vk.EndCommandBuffer(r.commandBuffers[1])
-	r.waitGroup.Done()
+	r.shadowCmdRecorded = true
 }
 func (r *Renderer_VK) prepareModelPipeline(bufferIndex uint32, env *Environment) {
 	// prevent Activity wakeup crash (Android)
@@ -7940,14 +8094,18 @@ func (r *Renderer_VK) SetModelVertexData(bufferIndex uint32, values []byte) {
 	var stagingData unsafe.Pointer
 	vk.MapMemory(r.device, stagingBufferMemory, 0, vk.DeviceSize(len(values)), 0, &stagingData)
 	vk.Memcopy(stagingData, values)
+	r.poolMutex.Lock()
 	cmd := r.BeginSingleTimeCommands()
+	r.poolMutex.Unlock()
 	bufferCopy := []vk.BufferCopy{{
 		SrcOffset: 0,
 		DstOffset: 0,
 		Size:      vk.DeviceSize(len(values)),
 	}}
 	vk.CmdCopyBuffer(cmd, stagingBuffer, r.modelVertexBuffers[bufferIndex].buffer, 1, bufferCopy)
+	r.poolMutex.Lock()
 	r.EndSingleTimeCommands(cmd)
+	r.poolMutex.Unlock()
 	vk.UnmapMemory(r.device, stagingBufferMemory)
 	vk.DestroyBuffer(r.device, stagingBuffer, nil)
 	vk.FreeMemory(r.device, stagingBufferMemory, nil)
@@ -7975,14 +8133,18 @@ func (r *Renderer_VK) SetModelIndexData(bufferIndex uint32, values ...uint32) {
 	vk.MapMemory(r.device, stagingBufferMemory, 0, vk.DeviceSize(r.modelIndexBuffers[bufferIndex].size), 0, &stagingData)
 	const m = 0x7fffffff
 	vk.Memcopy(stagingData, (*[m]byte)(unsafe.Pointer((*sliceHeader)(unsafe.Pointer(&values)).Data))[:r.modelIndexBuffers[bufferIndex].size])
+	r.poolMutex.Lock()
 	cmd := r.BeginSingleTimeCommands()
+	r.poolMutex.Unlock()
 	bufferCopy := []vk.BufferCopy{{
 		SrcOffset: 0,
 		DstOffset: 0,
 		Size:      vk.DeviceSize(r.modelIndexBuffers[bufferIndex].size),
 	}}
 	vk.CmdCopyBuffer(cmd, stagingBuffer, r.modelIndexBuffers[bufferIndex].buffer, 1, bufferCopy)
+	r.poolMutex.Lock()
 	r.EndSingleTimeCommands(cmd)
+	r.poolMutex.Unlock()
 	vk.UnmapMemory(r.device, stagingBufferMemory)
 	vk.DestroyBuffer(r.device, stagingBuffer, nil)
 	vk.FreeMemory(r.device, stagingBufferMemory, nil)
