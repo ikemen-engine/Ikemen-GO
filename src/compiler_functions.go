@@ -6138,6 +6138,10 @@ func (c *CharCompiler) modifyStageVar(is IniSection, sc *StateControllerBase) (S
 			modifyStageVar_camera_tensionvel, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "camera.ztensionvel",
+			modifyStageVar_camera_ztensionvel, VT_Float, 1, false); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "camera.cuthigh",
 			modifyStageVar_camera_cuthigh, VT_Int, 1, false); err != nil {
 			return err
@@ -6180,6 +6184,10 @@ func (c *CharCompiler) modifyStageVar(is IniSection, sc *StateControllerBase) (S
 		}
 		if err := c.paramValue(is, sc, "camera.autocenter",
 			modifyStageVar_camera_autocenter, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "camera.zautocenter",
+			modifyStageVar_camera_zautocenter, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "camera.lowestcap",

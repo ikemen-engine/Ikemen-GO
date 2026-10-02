@@ -3970,6 +3970,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_ztension
 		case "camera.tensionvel":
 			opc = OC_const_stagevar_camera_tensionvel
+		case "camera.ztensionvel":
+			opc = OC_const_stagevar_camera_ztensionvel
 		case "camera.cuthigh":
 			opc = OC_const_stagevar_camera_cuthigh
 		case "camera.cutlow":
@@ -3992,6 +3994,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_ytension_enable
 		case "camera.autocenter":
 			opc = OC_const_stagevar_camera_autocenter
+		case "camera.zautocenter":
+			opc = OC_const_stagevar_camera_zautocenter
 		case "camera.lowestcap":
 			opc = OC_const_stagevar_camera_lowestcap
 		case "playerinfo.leftbound":
