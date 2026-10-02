@@ -3739,6 +3739,7 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
+	stillLoading         bool // Compiler safeguard
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -4002,6 +4003,10 @@ func (c *Char) prepareNextRound() {
 
 // Return Char Global Info normally
 func (c *Char) gi() *CharGlobalInfo {
+	// Compiler safeguard, since we're still building CGI at that point
+	if c.stillLoading {
+		panic(fmt.Sprintf("gi() called on char %v (pn %v) while it's still loading", c.name, c.playerNo))
+	}
 	return &sys.cgi[c.playerNo]
 }
 
@@ -4029,23 +4034,10 @@ func (c *Char) si() *SelectChar {
 	return &sys.sel.charlist[c.selectNo]
 }
 
-func (c *Char) bgLoadedTurnsRoot() bool {
-	return sys.cfg.Config.TurnsLoading &&
-		c.helperIndex == 0 &&
-		c.playerNo >= 0 &&
-		c.playerNo < MaxSimul*2 &&
-		sys.tmode[c.playerNo&1] == TM_Turns
-}
-
 func (c *Char) ocd() *OverrideCharData {
 	team := c.teamside
-	if c.teamside == -1 {
-		// BG-loaded Turns roots are hidden from gameplay with teamside -1, but their per-member overrides still belong to their real side.
-		if c.bgLoadedTurnsRoot() {
-			team = c.playerNo & 1
-		} else {
-			team = 2
-		}
+	if team == -1 {
+		team = 2
 	}
 	if team < 0 || team > 2 || c.memberNo < 0 {
 		return newOverrideCharData()
@@ -4084,9 +4076,7 @@ func (c *Char) resetModifyPlayer() {
 	// c.teamside already assigned by loadCharacter()
 }
 
-func (c *Char) load(def string) error {
-	gi := &sys.cgi[c.playerNo]
-
+func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	// We keep the SFF so that loadSff() can reuse it if the same character is selected/reloaded
 	oldSff := gi.sff
 
@@ -4102,7 +4092,7 @@ func (c *Char) load(def string) error {
 	// Reset DEF file maps
 	c.mapDefault = make(map[string]float32)
 
-	if err := c.loadFx(def); err != nil {
+	if err := c.loadFx(def, gi); err != nil {
 		LogMessage("Error loading FX for %s: %v", def, err)
 	}
 
@@ -4301,7 +4291,7 @@ func (c *Char) load(def string) error {
 	c.mapReset(nil)
 
 	// Set constants to defaults
-	c.initConstants()
+	c.initConstants(gi)
 
 	// Load common constants
 	for _, key := range SortedKeys(sys.cfg.Common.Const) {
@@ -4459,13 +4449,13 @@ func (c *Char) load(def string) error {
 						is.ReadF32("jump.back", &gi.velocity.jump.back)
 						is.ReadF32("jump.fwd", &gi.velocity.jump.fwd)
 						// Running and air jumps default to regular jump velocities
-						c.gi().velocity.runjump.back[0] = c.gi().velocity.jump.back
-						c.gi().velocity.runjump.back[1] = c.gi().velocity.jump.neu[1]
-						c.gi().velocity.runjump.fwd[0] = c.gi().velocity.jump.fwd
-						c.gi().velocity.runjump.fwd[1] = c.gi().velocity.jump.neu[1]
-						c.gi().velocity.airjump.neu = c.gi().velocity.jump.neu
-						c.gi().velocity.airjump.back = c.gi().velocity.jump.back
-						c.gi().velocity.airjump.fwd = c.gi().velocity.jump.fwd
+						gi.velocity.runjump.back[0] = gi.velocity.jump.back
+						gi.velocity.runjump.back[1] = gi.velocity.jump.neu[1]
+						gi.velocity.runjump.fwd[0] = gi.velocity.jump.fwd
+						gi.velocity.runjump.fwd[1] = gi.velocity.jump.neu[1]
+						gi.velocity.airjump.neu = gi.velocity.jump.neu
+						gi.velocity.airjump.back = gi.velocity.jump.back
+						gi.velocity.airjump.fwd = gi.velocity.jump.fwd
 						is.ReadF32("runjump.back",
 							&gi.velocity.runjump.back[0], &gi.velocity.runjump.back[1])
 						is.ReadF32("runjump.fwd",
@@ -4895,8 +4885,7 @@ func (c *Char) loadPalettes() {
 	gi.remappedpal = [2]int32{1, gi.palno}
 }
 
-func (c *Char) loadFx(def string) error {
-	gi := c.gi()
+func (c *Char) loadFx(def string, gi *CharGlobalInfo) error {
 	gi.fxPath = []string{} // Always initialize before loading.
 
 	charDefContent, err := LoadText(def)
@@ -6342,13 +6331,6 @@ func (c *Char) rightEdge() float32 {
 
 func (c *Char) roundsExisted() int32 {
 	if c.teamside == -1 {
-		// BG-loaded Turns keeps inactive team members resident as standby players. //They must still initialize like fresh entrants until their turn actually comes.
-		if c.bgLoadedTurnsRoot() && c.memberNo >= 0 {
-			team := c.playerNo & 1
-			if int32(c.memberNo) >= sys.wins[team^1] {
-				return 0
-			}
-		}
 		return sys.roundNo - 1
 	}
 	return sys.roundsExisted[c.playerNo&1]
@@ -8070,8 +8052,7 @@ func (c *Char) isTargetBound() bool {
 	return c.ghv.idMatch(c.bindToId)
 }
 
-func (c *Char) initConstants() {
-	gi := c.gi()
+func (c *Char) initConstants(gi *CharGlobalInfo) {
 	gi.data.init()
 	gi.attackBase = 100
 	gi.defenceBase = 100
@@ -8081,7 +8062,7 @@ func (c *Char) initConstants() {
 	gi.movement.init()
 
 	// Scale defaults to the character's own localcoord
-	coordRatio := float32(c.gi().localcoord[0]) / 320
+	coordRatio := float32(gi.localcoord[0]) / 320
 
 	if coordRatio != 1 {
 		// Size
@@ -13099,67 +13080,70 @@ func (c *Char) cueDebugDraw() {
 					if mtk {
 						nhbtxt = "Invincible"
 					} else if hb {
+						// Avoids reallocating and copying on every concatenation
+						var b strings.Builder
 						// Statetype
 						if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
 							if flags&int32(ST_S) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(ST_C) == 0 {
-								nhbtxt += "C"
+								b.WriteString("C")
 							}
 							if flags&int32(ST_A) == 0 {
-								nhbtxt += "A"
+								b.WriteString("A")
 							}
-							nhbtxt += " Any"
+							b.WriteString(" Any")
 						}
 						// Attack
 						if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_HA) == 0 {
-							if nhbtxt != "" {
-								nhbtxt += ", "
+							if b.Len() > 0 {
+								b.WriteString(", ")
 							}
 							if flags&int32(AT_NA) == 0 {
-								nhbtxt += "N"
+								b.WriteString("N")
 							}
 							if flags&int32(AT_SA) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(AT_HA) == 0 {
-								nhbtxt += "H"
+								b.WriteString("H")
 							}
-							nhbtxt += " Atk"
+							b.WriteString(" Atk")
 						}
 						// Throw
 						if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_HT) == 0 {
-							if nhbtxt != "" {
-								nhbtxt += ", "
+							if b.Len() > 0 {
+								b.WriteString(", ")
 							}
 							if flags&int32(AT_NT) == 0 {
-								nhbtxt += "N"
+								b.WriteString("N")
 							}
 							if flags&int32(AT_ST) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(AT_HT) == 0 {
-								nhbtxt += "H"
+								b.WriteString("H")
 							}
-							nhbtxt += " Thr"
+							b.WriteString(" Thr")
 						}
 						// Projectile
 						if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_HP) == 0 {
-							if nhbtxt != "" {
-								nhbtxt += ", "
+							if b.Len() > 0 {
+								b.WriteString(", ")
 							}
 							if flags&int32(AT_NP) == 0 {
-								nhbtxt += "N"
+								b.WriteString("N")
 							}
 							if flags&int32(AT_SP) == 0 {
-								nhbtxt += "S"
+								b.WriteString("S")
 							}
 							if flags&int32(AT_HP) == 0 {
-								nhbtxt += "H"
+								b.WriteString("H")
 							}
-							nhbtxt += " Prj"
+							b.WriteString(" Prj")
 						}
+						nhbtxt = b.String()
 					}
 				}
 			}
@@ -13580,6 +13564,7 @@ func (cl *CharList) commandUpdate() {
 		}
 		root := p[0]
 		// The async Turns loader keeps its standby root disabled while populating command lists.
+		// Update: No longer necessary. And Mugen doesn't do it. But also harmless
 		if root.scf(SCF_disabled) {
 			continue
 		}

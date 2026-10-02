@@ -6963,7 +6963,11 @@ func (c *CharCompiler) modifyStageBG(is IniSection, sc *StateControllerBase) (St
 				return err
 			}
 		}
+		if err := c.palFXSub(is, sc, ""); err != nil {
+			return err
+		}
 		if !any {
+			// This doesn't account for PalFX at the moment. Non-issue
 			return Error("Must specify at least one ModifyStageBG parameter")
 		}
 		return nil

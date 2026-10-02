@@ -160,7 +160,8 @@ var sys = System{
 	soundMixer:       &beep.Mixer{},
 	videoMixer:       &beep.Mixer{},
 	bgm:              *newBgm(),
-	pauseFocusVolume: 100,
+	pauseSoundVolume: 100,
+	focusSoundVolume: 100,
 	//soundChannels: newSoundChannels(16), // Lazy allocation in Request()
 	allPalFX: newPalFX(),
 	bgPalFX:  newPalFX(),
@@ -214,6 +215,20 @@ const (
 	TM_LAST = TM_Tag
 )
 
+func (tm TeamMode) TriggerValue() string {
+	switch tm {
+	case TM_Single:
+		return "single"
+	case TM_Simul:
+		return "simul"
+	case TM_Turns:
+		return "turns"
+	case TM_Tag:
+		return "tag"
+	}
+	return ""
+}
+
 // System struct, holds most of the data that is accessed globally through the program.
 type System struct {
 	SystemStateVars
@@ -228,7 +243,8 @@ type System struct {
 	videoMixer          *beep.Mixer
 	bgm                 Bgm
 	matchMusicSel       []*bgMusic
-	pauseFocusVolume    int // Live combined pause/focus loss volume
+	pauseSoundVolume    int
+	focusSoundVolume    int
 	focusMuted          bool
 	duckingFlag         bool          // Whether charSoundChannels currently carry a non-1 duckMul
 	motifDuckingFlag    bool          // Whether soundChannels currently carry a non-1 duckMul
@@ -251,9 +267,12 @@ type System struct {
 	chars               [MaxPlayerNo][]*Char
 	charList            CharList
 	cgi                 [MaxPlayerNo]CharGlobalInfo
-	turnsPreloadMember  [2]int // -1 = none; otherwise selected Turns member index to load into side+2
 	selMutex            sync.RWMutex
 	loadMutex           sync.Mutex
+	turnsPreloadMember  [2]int // -1 = none; otherwise selected Turns member index to load into side+2
+	preloadedChars      [2]*Char
+	preloadedCgi        [2]CharGlobalInfo
+	preloadedCharsMutex sync.Mutex
 	ignoreMostErrors    bool
 	stringPool          [MaxPlayerNo]StringPool
 	bcStack, bcVarStack BytecodeStack
@@ -1042,6 +1061,8 @@ func (s *System) tickSound() {
 		}
 	}
 
+	s.applyPauseFocusVolume()
+
 	// Stage video audio follows character muting, including post-match sounds.enabled.
 	if s.stage != nil {
 		for _, b := range s.stage.bg {
@@ -1051,8 +1072,6 @@ func (s *System) tickSound() {
 			}
 		}
 	}
-
-	s.applyPauseFocusVolume()
 }
 
 func (s *System) applyPauseFocusVolume() {
@@ -1061,24 +1080,24 @@ func (s *System) applyPauseFocusVolume() {
 
 	// Check pause and focus loss volume levels
 	// If both are active at once, the quieter one wins
-	s.pauseFocusVolume = 100
-	if s.paused {
-		s.pauseFocusVolume = Min(s.pauseFocusVolume, s.cfg.Sound.PauseMasterVolume)
+	s.pauseSoundVolume = 100
+	if s.matchPaused() {
+		s.pauseSoundVolume = Min(s.pauseSoundVolume, s.cfg.Sound.PauseMasterVolume)
 	}
 	if s.focusMuted {
-		s.pauseFocusVolume = Min(s.pauseFocusVolume, s.cfg.Sound.FocusLossVolume)
+		s.pauseSoundVolume = Min(s.pauseSoundVolume, s.cfg.Sound.FocusLossVolume)
 	}
 
-	pauseSilence := s.paused && s.cfg.Sound.PauseMasterVolume == 0
+	pauseSilence := s.matchPaused() && s.cfg.Sound.PauseMasterVolume == 0
 
 	bgmPause := s.nomusic || pauseSilence || s.bgm.freqmul == 0 || s.motifPauseMusic()
 	s.bgm.SetPaused(bgmPause)
 	s.bgm.UpdateVolume()
 
 	// Update char sounds
-	ducking := s.pauseFocusVolume < 100
+	ducking := s.pauseSoundVolume < 100
 	if ducking || s.duckingFlag {
-		duckMul := float32(s.pauseFocusVolume) / 100
+		duckMul := float32(s.pauseSoundVolume) / 100
 		for i := range s.charSoundChannels {
 			s.charSoundChannels[i].Duck(duckMul, pauseSilence)
 		}
@@ -1087,13 +1106,13 @@ func (s *System) applyPauseFocusVolume() {
 
 	// Update system sounds
 	// TODO: FightScreen sounds should probably respect pauses unlike motif sounds
-	focusVolume := 100
+	s.focusSoundVolume = 100
 	if s.focusMuted {
-		focusVolume = s.cfg.Sound.FocusLossVolume
+		s.focusSoundVolume = s.cfg.Sound.FocusLossVolume
 	}
-	motifDucking := focusVolume < 100
+	motifDucking := s.focusSoundVolume < 100
 	if motifDucking || s.motifDuckingFlag {
-		s.soundChannels.Duck(float32(focusVolume)/100, false)
+		s.soundChannels.Duck(float32(s.focusSoundVolume)/100, false)
 		s.motifDuckingFlag = motifDucking
 	}
 }
@@ -4169,11 +4188,6 @@ func (s *System) runMatch() (reload bool) {
 
 		// F4 pressed to reset round
 		if s.roundResetFlg && !s.postMatchFlg {
-			restartTurnsPreload := s.turnsPreloadActive()
-			if restartTurnsPreload {
-				// Restore and the background loader both write the standby character slots
-				s.loader.reset()
-			}
 			for i := 0; i < MaxPlayerNo; i++ {
 				if s.reloadPreserveVars[i] {
 					s.saveCharVars(i)
@@ -4181,9 +4195,6 @@ func (s *System) runMatch() (reload bool) {
 			}
 			s.roundBackup.Restore()
 			s.resetRound()
-			if restartTurnsPreload {
-				s.startNextTurnsPreload()
-			}
 		}
 
 		// Shift+F4 pressed to restart match
@@ -4548,7 +4559,7 @@ func (bk *RoundStartBackup) Restore() {
 			continue
 		}
 
-		// Staged Turns preload can create standby P3/P4 after roundBackup.Save()
+		// Wipe empty slots just in case
 		if len(bk.charBackup[i]) == 0 {
 			sys.clearPlayerAssets(i, true)
 			sys.removePlayerFromCharList(i)
@@ -5788,10 +5799,10 @@ func (s *System) startNextTurnsPreload() {
 		if member <= 0 || member >= int(s.numTurns[team]) || member >= len(s.sel.selected[team]) {
 			continue
 		}
-		pn := team + 2 // one hidden standby slot per Turns side
-		if len(s.chars[pn]) > 0 && s.chars[pn][0] != nil &&
-			s.chars[pn][0].memberNo == member &&
-			s.chars[pn][0].selectNo == s.sel.selected[team][member][0] {
+		// Desired member is already fully preloaded and waiting to be promoted
+		if sb, _ := s.getPreloadedCharAndCgi(team); sb != nil &&
+			sb.memberNo == member &&
+			sb.selectNo == s.sel.selected[team][member][0] {
 			continue
 		}
 		next[team] = member
@@ -5817,8 +5828,7 @@ func (s *System) startNextTurnsPreload() {
 	}
 }
 
-// Rollback snapshots must not race the asynchronous Turns loader. The loader mutates
-// character slots and compilation globals that are not safe to update between save/load.
+// Blocks until this peer's loader settles, so all rollback peers promote on the same frame
 func (s *System) finishTurnsPreloadForRollback() bool {
 	if !s.turnsPreloadActive() {
 		return true
@@ -5912,35 +5922,46 @@ func (s *System) removePlayerFromCharList(pn int) {
 	}
 }
 
-func (s *System) setBGTurnsSlotState(chars []*Char, slot int, active bool) {
+// These are the safe ways to access preloading chars, since a separate goroutine compiles them
+func (s *System) getPreloadedCharAndCgi(team int) (*Char, CharGlobalInfo) {
+	s.preloadedCharsMutex.Lock()
+	defer s.preloadedCharsMutex.Unlock()
+	return s.preloadedChars[team], s.preloadedCgi[team]
+}
+
+func (s *System) setPreloadedChar(team int, c *Char, gi CharGlobalInfo) {
+	s.preloadedCharsMutex.Lock()
+	defer s.preloadedCharsMutex.Unlock()
+	s.preloadedChars[team] = c
+	s.preloadedCgi[team] = gi
+}
+
+func (s *System) clearPreloadedChars() {
+	s.preloadedCharsMutex.Lock()
+	defer s.preloadedCharsMutex.Unlock()
+	s.preloadedChars = [2]*Char{}
+	s.preloadedCgi = [2]CharGlobalInfo{}
+}
+
+func (s *System) activateTurnsSlot(chars []*Char, slot int) {
 	team := slot & 1
 	for _, ch := range chars {
 		if ch == nil {
 			continue
 		}
-		if active {
-			ch.teamside = team
-			ch.unsetSCF(SCF_disabled)
-			ch.unsetSCF(SCF_standby)
-			if ch.helperIndex == 0 {
-				ch.controller = slot
-				if s.aiLevel[slot] != 0 {
-					ch.controller ^= -1
-				}
-				// Defensive: the real round initialization will run next, but
-				// never let a promoted preloaded fighter enter as already dead.
-				if ch.life <= 0 {
-					ch.life = Max(1, ch.lifeMax)
-					ch.redLife = ch.life
-				}
+		ch.teamside = team
+		ch.unsetSCF(SCF_disabled)
+		ch.unsetSCF(SCF_standby)
+		if ch.helperIndex == 0 {
+			ch.controller = slot
+			if s.aiLevel[slot] != 0 {
+				ch.controller ^= -1
 			}
-		} else {
-			ch.teamside = -1
-			ch.setSCF(SCF_disabled)
-			ch.setSCF(SCF_standby)
-			ch.setCtrl(false)
-			if ch.helperIndex == 0 {
-				ch.controller = slot
+			// Defensive: the real round initialization will run next, but
+			// never let a promoted preloaded fighter enter as already dead.
+			if ch.life <= 0 {
+				ch.life = Max(1, ch.lifeMax)
+				ch.redLife = ch.life
 			}
 		}
 	}
@@ -5952,35 +5973,37 @@ func (s *System) activateNextTurnsFighters() {
 		if s.tmode[team] != TM_Turns || !s.effectiveLoss[team] {
 			continue
 		}
+
 		nextMember := int(s.wins[team^1])
 		if nextMember < 0 || nextMember >= int(s.numTurns[team]) {
 			continue
 		}
+
+		// Incoming fighter comes from the standby holder, never from sys.chars
+		incoming, incomingCgi := s.getPreloadedCharAndCgi(team)
+		if incoming == nil || incoming.memberNo != nextMember {
+			continue
+		}
+
 		dst := team
-		src := team + 2
+		src := team + 2 // slot incoming was compiled under while on standby
 		if src < 0 || src >= MaxSimul*2 {
 			continue
 		}
-		if len(s.chars[src]) == 0 || s.chars[src][0] == nil ||
-			s.chars[src][0].memberNo != nextMember {
-			continue
-		}
+
 		outgoingPower := s.chars[dst][0].power
 		s.removePlayerFromCharList(dst)
-		s.removePlayerFromCharList(src)
-		oldDst, oldSrc := dst, src
-		s.chars[dst], s.chars[src] = s.chars[src], s.chars[dst]
-		s.cgi[dst], s.cgi[src] = s.cgi[src], s.cgi[dst]
-		s.stringPool[dst], s.stringPool[src] = s.stringPool[src], s.stringPool[dst]
-		s.remapCharSlotRefs(s.chars[dst], oldSrc, dst)
-		s.remapCharSlotRefs(s.chars[src], oldDst, src)
+		s.removePlayerFromCharList(src) // defensive: src should already be empty going into this
+		s.chars[dst] = []*Char{incoming}
+		s.setPreloadedChar(team, nil, CharGlobalInfo{})
+		s.cgi[dst] = incomingCgi
+		s.stringPool[dst] = s.stringPool[src]
+		s.remapCharSlotRefs(s.chars[dst], src, dst)
 		s.rebindCgiStateOwners(dst)
-		s.rebindCgiStateOwners(src)
 		s.workingChar = nil
 		s.workingState = nil
-		s.setBGTurnsSlotState(s.chars[dst], dst, true)
+		s.activateTurnsSlot(s.chars[dst], dst)
 		s.chars[dst][0].power = outgoingPower
-		s.setBGTurnsSlotState(s.chars[src], src, false)
 		if s.chars[dst][0].id < 0 {
 			s.chars[dst][0].id = s.newCharId()
 		}
@@ -5989,7 +6012,11 @@ func (s *System) activateNextTurnsFighters() {
 				s.charList.add(ch)
 			}
 		}
-		s.charList.enemyNearChanged = true
+
+		// Outgoing player is discarded, matching regular Turns behavior
+		s.chars[src] = nil
+		s.cgi[src] = CharGlobalInfo{}
+		s.stringPool[src] = *NewStringPool()
 	}
 }
 
@@ -6007,9 +6034,24 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	teamSel := make([][2]int, len(sys.sel.selected[team]))
 	copy(teamSel, sys.sel.selected[team])
 	sys.selMutex.RUnlock()
+
+	// True only for a background Turns preload, never for the active slot itself. Stable for the
+	// whole call: nothing else can touch turnsPreloadMember while this loader goroutine is running
+	// (see startNextTurnsPreload's own state==LS_Loading guard).
+	turnsLoading := !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading
+	preloading := turnsLoading && sys.turnsPreloadActive()
+
+	// Don't write directly to sys.cgi during a background Turns preload
+	loadingGi := newCharGlobalInfo()
+	gi := &sys.cgi[pn]
+	if preloading {
+		gi = &loadingGi
+	}
+
 	if l.cancelRequested() || l.state == LS_Cancel || sys.gameEnd {
 		return 0
 	}
+
 	if attached && sys.roundNo != 1 {
 		return 1
 	}
@@ -6041,12 +6083,12 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		if memberNo >= nsel {
 			return 0
 		}
-		if sys.turnsPreloadActive() &&
-			len(sys.chars[pn]) > 0 &&
-			sys.chars[pn][0] != nil &&
-			sys.chars[pn][0].memberNo == memberNo &&
-			sys.chars[pn][0].selectNo == teamSel[memberNo][0] {
-			return 1
+		if sys.turnsPreloadActive() {
+			if sb, _ := sys.getPreloadedCharAndCgi(team); sb != nil &&
+				sb.memberNo == memberNo &&
+				sb.selectNo == teamSel[memberNo][0] {
+				return 1
+			}
 		}
 	} else if !attached && sys.roundsExisted[team] > 0 {
 		return 1
@@ -6113,12 +6155,12 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	defer func() {
 		sys.loadTime(tnow, tstr, false, true)
 		// Mugen compatibility mode indicator
-		if sys.cgi[pn].ikemenver[0] == 0 && sys.cgi[pn].ikemenver[1] == 0 {
-			if sys.cgi[pn].mugenver[0] == 1 && sys.cgi[pn].mugenver[1] == 1 {
+		if gi.ikemenver[0] == 0 && gi.ikemenver[1] == 0 {
+			if gi.mugenver[0] == 1 && gi.mugenver[1] == 1 {
 				sys.appendToConsole("Using Mugen 1.1 compatibility mode.")
-			} else if sys.cgi[pn].mugenver[0] == 1 && sys.cgi[pn].mugenver[1] == 0 {
+			} else if gi.mugenver[0] == 1 && gi.mugenver[1] == 0 {
 				sys.appendToConsole("Using Mugen 1.0 compatibility mode.")
-			} else if sys.cgi[pn].mugenver[0] != 1 {
+			} else if gi.mugenver[0] != 1 {
 				sys.appendToConsole("Using WinMugen compatibility mode.")
 			} else {
 				sys.appendToConsole("Character with unknown engine version.")
@@ -6221,25 +6263,22 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		p.teamside = p.playerNo & 1
 	}
 
-	// Commit character to system
-	sys.chars[pn] = make([]*Char, 1)
-	sys.chars[pn][0] = p
-	if !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading {
-		sys.setBGTurnsSlotState(sys.chars[pn], pn, pn < 2 && !sys.turnsPreloadActive())
-	}
-
 	// Load character
+	// Kept off sys.chars until fully loaded and compiled
 	if !sameChar {
+		p.stillLoading = true
+		defer func() {
+			p.stillLoading = false
+		}()
+
 		if l.cancelRequested() || l.state == LS_Cancel || sys.gameEnd {
 			return 0
 		}
-		if l.err = p.load(cdef); l.err != nil {
+		if l.err = p.load(cdef, gi); l.err != nil {
 			if errors.Is(l.err, ErrLoadingCanceled) {
-				sys.chars[pn] = nil
 				l.state = LS_Cancel
 				return 0
 			}
-			sys.chars[pn] = nil
 			if attached {
 				tstr = fmt.Sprintf("WARNING: Failed to load new attached char: %v", cdef)
 			} else {
@@ -6248,14 +6287,12 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 			return -1
 		}
 		if l.cancelRequested() || l.state == LS_Cancel || sys.gameEnd {
-			sys.chars[pn] = nil
 			l.state = LS_Cancel
 			return 0
 		}
 
 		// Compile character states
-		if sys.cgi[pn].states, l.err = newCharCompiler().Compile(p.playerNo, cdef, p.gi().constants); l.err != nil {
-			sys.chars[pn] = nil
+		if gi.states, l.err = newCharCompiler().Compile(p, cdef, gi); l.err != nil {
 			if attached {
 				tstr = fmt.Sprintf("WARNING: Failed to compile new attached char states: %v", cdef)
 			} else {
@@ -6266,6 +6303,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	}
 
 	// Setup selected palette
+	// Must happen before the commit below
 	selectPalno := 1
 	if pal, ok := sys.sel.palOverwrite[pn]; ok && pal > 0 {
 		selectPalno = pal
@@ -6273,7 +6311,21 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		// Get palette number from select screen choice
 		selectPalno = teamSel[memberNo][1]
 	}
-	sys.cgi[pn].palno = int32(selectPalno)
+	gi.palno = int32(selectPalno)
+
+	// Commit character now that loading and compiling both succeeded
+	if turnsLoading {
+		if preloading {
+			// Not live yet, so it goes into the standby holder instead of sys.chars
+			sys.setPreloadedChar(team, p, loadingGi)
+		} else {
+			// This is the active slot (0 or 1), not a background preload
+			sys.chars[pn] = []*Char{p}
+			sys.activateTurnsSlot(sys.chars[pn], pn)
+		}
+	} else {
+		sys.chars[pn] = []*Char{p}
+	}
 
 	// Apply per-launch map overrides prepared from Lua/loadStart.
 	if !attached {
@@ -6622,17 +6674,16 @@ func (l *Loader) load() {
 }
 
 func (l *Loader) reset() {
-	// Already idle
-	if l.state == LS_NotYet {
+	switch l.state {
+	case LS_NotYet:
+		// Already idle
 		return
-	}
-
-	if l.state == LS_Loading {
-		// Ensure the loader goroutine gets a cooperative cancel signal.
+	case LS_Loading:
+		// Ensure the loader goroutine gets a cooperative cancel signal
 		l.requestCancel()
 		l.state = LS_Cancel
 		<-l.loadExit
-	} else {
+	default:
 		// Loader already stopped
 		// Don't wait on loadExit because that can hang if nothing is left to receive
 		select {
@@ -6640,10 +6691,14 @@ func (l *Loader) reset() {
 		default:
 		}
 	}
+
 	l.state = LS_NotYet
 	l.err = nil
 	l.cancelCh = nil
 	l.cancelOnce = sync.Once{}
+
+	// The loader goroutine is guaranteed stopped by this point, so it's safe to clear whatever it produced
+	sys.clearPreloadedChars()
 
 	// Drop palette selections from a cancelled load
 	for i := range sys.cgi {

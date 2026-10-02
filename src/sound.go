@@ -585,7 +585,7 @@ func (bgm *Bgm) UpdateVolume() {
 	// NOTE: This is what we're going to do, no matter the complaints, because BGMVolume is handled differently
 	// than WAV volume anyway.  We've had problems changing this in the past so it's best to keep it as-is.
 	volume := -5 + float64(sys.cfg.Sound.BGMVolume)*0.06*(float64(sys.cfg.Sound.MasterVolume)/100)*
-		(float64(bgm.bgmVolume)/100)*(float64(sys.pauseFocusVolume)/100)
+		(float64(bgm.bgmVolume)/100)*(float64(sys.pauseSoundVolume)/100)
 
 	// clamp to 1
 	if volume >= 1 {

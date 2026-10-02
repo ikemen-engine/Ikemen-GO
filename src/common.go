@@ -1402,7 +1402,7 @@ func (l *Layout) DrawAnim(r *[4]int32, x, y, scl, xscl, yscl float32, ln int16, 
 			scl, scl, (l.scale[0]*xscl)*float32(l.facing), (l.scale[0]*xscl)*float32(l.facing),
 			(l.scale[1]*yscl)*float32(l.vfacing), xshear, l.rot,
 			float32(sys.gameWidth-320)/2, [2]float32{0, 0},
-			palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, 0, false, CustomShaderRenderData{})
+			palfx, 1, [2]float32{1, 1}, int32(l.projection), l.fLength, false, CustomShaderRenderData{})
 	}
 }
 

@@ -920,7 +920,7 @@ func (a *Animation) drawSub1(angle, facing float32) (h, v, agl float32) {
 
 func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	rxadd float32, rot Rotation, rcx float32, rotPivot [2]float32, pfx *PalFX, facing float32,
-	airOffsetFix [2]float32, projectionMode int32, fLength float32, color uint32,
+	airOffsetFix [2]float32, projectionMode int32, fLength float32,
 	isReflection bool, shader CustomShaderRenderData) {
 
 	// Skip blank animations
@@ -1043,7 +1043,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		xas:            h,
 		yas:            v,
 		rot:            rot,
-		tint:           color,
+		tint:           0,
 		blendMode:      blendMode,
 		blendAlpha:     blendAlpha,
 		mask:           int32(a.mask),
@@ -1482,7 +1482,7 @@ func (dl DrawList) draw(layerno int32, under bool, cameraX, cameraY, cameraScl f
 
 		s.anim.Draw(drawwindow, pos[0]-xsoffset, pos[1], cs, cs, s.scl[0], s.scl[0],
 			s.scl[1], xshear, s.rot, float32(sys.gameWidth)/2, s.rotPivot, s.pfx, s.facing,
-			s.airOffsetFix, s.projection, s.fLength, 0, false, s.customShader)
+			s.airOffsetFix, s.projection, s.fLength, false, s.customShader)
 
 		// Restore original animation transparency just in case
 		s.anim.transType = oldTransType
@@ -2021,13 +2021,19 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 			drawwindow = &window
 		}
 
+		// Leverage PalFX to apply the reflection color
+		r := float32((color>>16)&0xff) / 255.0
+		g := float32((color>>8)&0xff) / 255.0
+		b := float32(color&0xff) / 255.0
+		pfxCopy := s.pfx.withStackedColor(r, g, b)
+
 		s.anim.Draw(drawwindow,
 			(sys.cam.Offset[0]-shake[0])/scl-(x-s.pos[0]-offsetX),
 			(sys.cam.GroundLevel()+sys.cam.Offset[1]-shake[1])/scl-y/scl-(refPosY*yscale-offsetY),
 			scl, scl,
 			s.scl[0]*xscale, s.scl[0]*xscale,
 			-s.scl[1]*yscale, xshear, rot, float32(sys.gameWidth)/2, refRotPivot,
-			s.pfx, s.facing, s.airOffsetFix, projection, fLength, color, true, s.customShader)
+			pfxCopy, s.facing, s.airOffsetFix, projection, fLength, true, s.customShader)
 
 		// Restore original animation transparency just in case
 		s.anim.transType = oldTransType
@@ -2385,7 +2391,7 @@ func (a *Anim) Draw(ln int16) {
 	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+float32(int(sys.gameWidth-320)/2),
 		a.y+a.vel[1]+float32(int(sys.gameHeight-240)), 1, 1, xscl, xscl, a.yscl,
 		xshear, a.rot, 0, [2]float32{0, 0}, a.palfx, a.facing, [2]float32{1, 1},
-		a.projection, a.fLength, 0, false, CustomShaderRenderData{})
+		a.projection, a.fLength, false, CustomShaderRenderData{})
 }
 
 func (a *Anim) Reset() {
