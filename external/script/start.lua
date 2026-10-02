@@ -2937,6 +2937,19 @@ function start.f_selectScreen()
 		if not start.escFlag and esc() then
 			exitSelectScreen()
 		elseif not start.escFlag and not fadeOutStarted
+			and not (start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd) then
+			for side = 2, 1, -1 do
+				if start.p[side].selEnd and start.p[side].teamEnd then
+					for k, v in ipairs(start.p[side].t_selCmd) do
+						if getInput(v.cmd, motif.select_info.cancel.key) and cancelSelectMember(side, k) then
+							timerSelect = motif.select_info.timer.displaytime
+							sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
+							break
+						end
+					end
+				end
+			end
+		elseif not start.escFlag and not fadeOutStarted
 			and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			if main.stageMenu and stageEnd and getInput(-1, motif.select_info.cancel.key) then
 				stageEnd = false
