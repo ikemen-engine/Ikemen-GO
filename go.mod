@@ -10,7 +10,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/ikemen-engine/beep/v2 v2.1.2-0.20260920031044-d7bdc24ec9d2
 	github.com/ikemen-engine/ggpo v0.0.0-20260914163559-279d7303151f
-	github.com/ikemen-engine/reisen v0.1.10-0.20260911210321-7972c2bbc957
+	github.com/ikemen-engine/reisen v0.1.10-0.20261002224432-3a7df23d0df2
 	github.com/leonkasovan/gl v0.0.0-20251110213347-e04040ce71e2
 	github.com/lukegb/dds v0.0.0-20190402175749-8b7170e64003
 	github.com/mdouchement/hdr v0.2.4
