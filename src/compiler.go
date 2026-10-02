@@ -3621,27 +3621,35 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}
 
 		bv3 := BytecodeInt(0)
+		negate := false
 		if isFlag {
-			if err := eqne(func(not bool) error {
-				var flg int32
-				var err error
-				if opc == OC_ex2_projvar_attr {
-					flg, err = c.trgAttr(in) // Parses "SCA, AP"
-				} else {
-					flg, err = flagSub() // Parses "HLA"
-				}
+			savedIn := *in
+			peekTok := c.tokenizer(in)
+			*in = savedIn
+			if peekTok == "=" || peekTok == "!=" {
+				if err := eqne(func(not bool) error {
+					var flg int32
+					var err error
+					if opc == OC_ex2_projvar_attr {
+						flg, err = c.trgAttr(in) // Parses "SCA, AP"
+					} else {
+						flg, err = flagSub() // Parses "HLA"
+					}
 
-				if err != nil {
-					return err
-				}
-				if not {
-					bv3 = BytecodeInt(^flg)
-				} else {
+					if err != nil {
+						return err
+					}
+					// Negation is applied with OC_blnot after the opcode, like HitDefAttr,
+					// so the flag stays a real mask and can't collide with the -1 sentinel
+					negate = not
 					bv3 = BytecodeInt(flg)
+					return nil
+				}); err != nil {
+					return bvNone(), err
 				}
-				return nil
-			}); err != nil {
-				return bvNone(), err
+			} else {
+				// No comparison. Push the current flag as a string
+				bv3 = BytecodeInt(-1)
 			}
 		}
 
@@ -3659,6 +3667,9 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		// rd out.appendI32Op(OC_nordrun, int32(len(be1)))
 		be1.append(OC_ex2_, opc)
 		out.append(be1...)
+		if negate {
+			out.append(OC_blnot)
+		}
 	case "random":
 		out.append(OC_random)
 	case "reversaldefattr":

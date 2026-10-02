@@ -4246,13 +4246,28 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			case OC_ex2_projvar_facing:
 				sys.bcStack.PushF(p.facing)
 			case OC_ex2_projvar_guardflag:
-				sys.bcStack.PushB(p.hitdef.guardflag&flg.ToI() != 0)
+				attr := flg.ToI()
+				if attr == -1 {
+					sys.bcStack.PushS(flagString(p.hitdef.guardflag))
+				} else {
+					sys.bcStack.PushB(p.hitdef.guardflag&attr != 0)
+				}
 			case OC_ex2_projvar_highbound:
 				sys.bcStack.PushI(int32(float32(p.heightbound[1]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_hitflag:
-				sys.bcStack.PushB(p.hitdef.hitflag&flg.ToI() != 0)
+				attr := flg.ToI()
+				if attr == -1 {
+					sys.bcStack.PushS(flagString(p.hitdef.hitflag))
+				} else {
+					sys.bcStack.PushB(p.hitdef.hitflag&attr != 0)
+				}
 			case OC_ex2_projvar_attr:
-				sys.bcStack.PushB(p.hitdef.testAttr(flg.ToI()))
+				attr := flg.ToI()
+				if attr == -1 {
+					sys.bcStack.PushS(attrString(p.hitdef.attr))
+				} else {
+					sys.bcStack.PushB(p.hitdef.testAttr(attr))
+				}
 			case OC_ex2_projvar_lowbound:
 				sys.bcStack.PushI(int32(float32(p.heightbound[0]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_pausemovetime:
