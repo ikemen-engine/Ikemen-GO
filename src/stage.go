@@ -780,7 +780,7 @@ func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl flo
 			facing = Sign(transform.scale[0])
 			bg.rot.angle *= facing
 			bg.rot.yangle *= facing
-		}		
+		}
 
 		stackedPfx := bg.palfx.withStacked(sys.bgPalFX, bg.anim.transType,
 			[2]int32{int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)})

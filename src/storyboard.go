@@ -1152,7 +1152,7 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 			ts.y = ts.y*ys + transform.offset[1]
 			if ts.fnt == nil || ts.fnt.Type != "truetype" {
 				ts.y -= sys.gameHeight - 240
- 			}
+			}
 			ts.xscl *= xs
 			ts.yscl *= ys
 			ts.rot.angle *= Sign(xs)
