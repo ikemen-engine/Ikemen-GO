@@ -3598,41 +3598,41 @@ type ForceFeedbackParams struct {
 }
 
 type Char struct {
-	name           string
-	palfx          *PalFX
-	anim           *Animation
-	animBackup     *Animation
-	curFrame       *AnimFrame
-	cmd            []CommandList
-	ss             StateState
-	controller     int
-	playerNo       int // Location in sys.chars[]
-	helperIndex    int // Location in sys.chars[][]
-	id             int32
-	helperId       int32
-	parentId       int32
-	teamside       int
-	keyctrl        [4]bool
-	helperType     int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
-	isclsnproxy    bool
-	animPN         int
-	spritePN       int
-	animNo         int32
-	prevAnimNo     int32
-	life           int32
-	lifeMax        int32
-	power          int32
-	powerMax       int32
-	dizzyPoints    int32
-	dizzyPointsMax int32
-	guardPoints    int32
-	guardPointsMax int32
-	redLife        int32
-	juggle         int32
-	localcoord     float32 // Char localcoord[0] scaled to game resolution
-	localscl       float32 // Ratio between 320 and the localcoord of the current state
-	animlocalscl   float32
-	size           CharSize
+	name                string
+	palfx               *PalFX
+	anim                *Animation
+	animBackup          *Animation
+	curFrame            *AnimFrame
+	cmd                 []CommandList
+	ss                  StateState
+	controller          int
+	playerNo            int // Location in sys.chars[]
+	helperIndex         int // Location in sys.chars[][]
+	id                  int32
+	helperId            int32
+	parentId            int32
+	teamside            int
+	keyctrl             [4]bool
+	helperType          int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
+	isclsnproxy         bool
+	animPN              int
+	spritePN            int
+	animNo              int32
+	prevAnimNo          int32
+	life                int32
+	lifeMax             int32
+	power               int32
+	powerMax            int32
+	dizzyPoints         int32
+	dizzyPointsMax      int32
+	guardPoints         int32
+	guardPointsMax      int32
+	redLife             int32
+	juggle              int32
+	localcoord          float32 // Char localcoord[0] scaled to game resolution
+	localscl            float32 // Ratio between 320 and the localcoord of the current state
+	animlocalscl        float32
+	size                CharSize
 	clsnOverrides       [4][]ClsnOverride
 	clsnTransforms      [4]ClsnTransform
 	zScale              float32
@@ -3671,10 +3671,10 @@ type Char struct {
 	inguarddist          bool
 	pushed               bool
 	hitdefContact        bool
-	atktmp               int8 // 1 hitdef can hit, 0 cannot hit, -1 other
-	hittmp               int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
-	acttmp               int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
-	minus                int8 // Essentially the current negative state
+	atktmp               int8  // 1 hitdef can hit, 0 cannot hit, -1 other
+	hittmp               int8  // 0 idle, 1 being hit, 2 falling, -1 reversaldef
+	acttmp               int8  // 1 unpaused, 0 default, -1 hitpause, -2 pause
+	minus                int8  // Essentially the current negative state
 	runStateNest         int32 // RunState recursion depth. Per char, because that's what it measures
 	inRunState           bool  // Whether the code running right now is a state being run by RunState
 	platformPosY         float32
@@ -3741,7 +3741,7 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
-	stillLoading         bool // Compiler safeguard
+	stillLoading         bool           // Compiler safeguard
 	prevCtrl             bool
 	//soundChannels        SoundChannels // Moved to system
 }
