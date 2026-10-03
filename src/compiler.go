@@ -136,6 +136,7 @@ func newCharCompiler() *CharCompiler {
 		"camera":               c.cameraCtrl,
 		"changemovelist":       c.changeMovelist,
 		"depth":                c.depth,
+		"depthbound":           c.depthBound,
 		"dialogue":             c.dialogue,
 		"dizzypointsadd":       c.dizzyPointsAdd,
 		"dizzypointsset":       c.dizzyPointsSet,
@@ -3951,6 +3952,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_boundhigh
 		case "camera.boundlow":
 			opc = OC_const_stagevar_camera_boundlow
+		case "camera.zboundtop":
+			opc = OC_const_stagevar_camera_zboundtop
+		case "camera.zboundbot":
+			opc = OC_const_stagevar_camera_zboundbot
 		case "camera.verticalfollow":
 			opc = OC_const_stagevar_camera_verticalfollow
 		case "camera.floortension":
@@ -3961,8 +3966,12 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_tensionlow
 		case "camera.tension":
 			opc = OC_const_stagevar_camera_tension
+		case "camera.ztension":
+			opc = OC_const_stagevar_camera_ztension
 		case "camera.tensionvel":
 			opc = OC_const_stagevar_camera_tensionvel
+		case "camera.ztensionvel":
+			opc = OC_const_stagevar_camera_ztensionvel
 		case "camera.cuthigh":
 			opc = OC_const_stagevar_camera_cuthigh
 		case "camera.cutlow":
@@ -3985,6 +3994,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_camera_ytension_enable
 		case "camera.autocenter":
 			opc = OC_const_stagevar_camera_autocenter
+		case "camera.zautocenter":
+			opc = OC_const_stagevar_camera_zautocenter
 		case "camera.lowestcap":
 			opc = OC_const_stagevar_camera_lowestcap
 		case "playerinfo.leftbound":

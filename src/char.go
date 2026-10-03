@@ -36,10 +36,12 @@ const (
 	CSF_gethit
 	CSF_movecamera_x
 	CSF_movecamera_y
+	CSF_movecamera_z
 	CSF_playerpush
 	CSF_posfreeze
 	CSF_screenbound
 	CSF_stagebound
+	CSF_depthbound
 )
 
 // Flags set by AssertSpecial. They are reset together every frame
@@ -408,7 +410,7 @@ func (cs *CharSize) init() {
 	cs.mid.pos = [...]float32{-5, -60}
 	cs.shadowoffset = 0
 	cs.draw.offset = [...]float32{0, 0}
-	cs.depth = [...]float32{3, 3}
+	cs.depth = [...]float32{4, 4}
 	cs.attack.depth = [...]float32{4, 4}
 	cs.weight = 100
 	cs.pushfactor = 1
@@ -10314,6 +10316,9 @@ func (c *Char) xScreenBound() {
 }
 
 func (c *Char) zDepthBound() {
+	if !c.csf(CSF_depthbound) {
+		return
+	}
 	posz := c.pos[2]
 	before := posz
 
@@ -12178,7 +12183,7 @@ func (c *Char) actionPrepare() {
 			// Set default screenbound and playerpush
 			if c.isPlayerType() {
 				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {
-					c.setCSF(CSF_screenbound | CSF_movecamera_x | CSF_movecamera_y)
+					c.setCSF(CSF_screenbound | CSF_depthbound | CSF_movecamera_x | CSF_movecamera_y | CSF_movecamera_z)
 				}
 				if sys.roundState() > 0 && sys.roundState() < 4 && (c.alive() || c.numPartner() == 0) {
 					c.setCSF(CSF_playerpush)
@@ -12688,6 +12693,11 @@ func (c *Char) track() {
 		//sys.cam.Pos[1] = 0 // This doesn't seem necessary in the current state of the code
 		// Mugen ignores characters that have infinite position
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/1917
+	}
+	// Z axis
+	if c.csf(CSF_movecamera_z) && !math.IsInf(float64(c.pos[2]), 0) {
+		sys.cam.zfrontest = Min(c.interPos[2]*c.localscl, sys.cam.zfrontest)
+		sys.cam.zbackest = Max(c.interPos[2]*c.localscl, sys.cam.zbackest)
 	}
 }
 

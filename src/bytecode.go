@@ -516,12 +516,16 @@ const (
 	OC_const_stagevar_camera_boundright
 	OC_const_stagevar_camera_boundhigh
 	OC_const_stagevar_camera_boundlow
+	OC_const_stagevar_camera_zboundtop
+	OC_const_stagevar_camera_zboundbot
 	OC_const_stagevar_camera_verticalfollow
 	OC_const_stagevar_camera_floortension
 	OC_const_stagevar_camera_tensionhigh
 	OC_const_stagevar_camera_tensionlow
 	OC_const_stagevar_camera_tension
+	OC_const_stagevar_camera_ztension
 	OC_const_stagevar_camera_tensionvel
+	OC_const_stagevar_camera_ztensionvel
 	OC_const_stagevar_camera_cuthigh
 	OC_const_stagevar_camera_cutlow
 	OC_const_stagevar_camera_startzoom
@@ -533,6 +537,7 @@ const (
 	OC_const_stagevar_camera_yscrollspeed
 	OC_const_stagevar_camera_ytension_enable
 	OC_const_stagevar_camera_autocenter
+	OC_const_stagevar_camera_zautocenter
 	OC_const_stagevar_camera_lowestcap
 	OC_const_stagevar_playerinfo_leftbound
 	OC_const_stagevar_playerinfo_rightbound
@@ -14683,12 +14688,16 @@ const (
 	modifyStageVar_camera_boundright
 	modifyStageVar_camera_boundhigh
 	modifyStageVar_camera_boundlow
+	modifyStageVar_camera_zboundtop
+	modifyStageVar_camera_zboundbot
 	modifyStageVar_camera_verticalfollow
 	modifyStageVar_camera_floortension
 	modifyStageVar_camera_tensionhigh
 	modifyStageVar_camera_tensionlow
 	modifyStageVar_camera_tension
+	modifyStageVar_camera_ztension
 	modifyStageVar_camera_tensionvel
+	modifyStageVar_camera_ztensionvel
 	modifyStageVar_camera_cuthigh
 	modifyStageVar_camera_cutlow
 	modifyStageVar_camera_startzoom
@@ -14700,6 +14709,7 @@ const (
 	modifyStageVar_camera_yscrollspeed
 	modifyStageVar_camera_ytension_enable
 	modifyStageVar_camera_autocenter
+	modifyStageVar_camera_zautocenter
 	modifyStageVar_camera_lowestcap
 	modifyStageVar_playerinfo_leftbound
 	modifyStageVar_playerinfo_rightbound
@@ -14765,6 +14775,9 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_camera_autocenter:
 			s.stageCamera.autocenter = exp[0].evalB(c)
 			shouldResetCamera = true
+		case modifyStageVar_camera_zautocenter:
+			s.stageCamera.zautocenter = exp[0].evalB(c)
+			shouldResetCamera = true
 		case modifyStageVar_camera_boundleft:
 			s.stageCamera.boundleft = int32(exp[0].evalF(c) * scaleratio)
 			shouldResetCamera = true
@@ -14776,6 +14789,12 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			shouldResetCamera = true
 		case modifyStageVar_camera_boundlow:
 			s.stageCamera.boundlow = int32(exp[0].evalF(c) * scaleratio)
+			shouldResetCamera = true
+		case modifyStageVar_camera_zboundtop:
+			s.stageCamera.zboundtop = int32(exp[0].evalF(c) * scaleratio)
+			shouldResetCamera = true
+		case modifyStageVar_camera_zboundbot:
+			s.stageCamera.zboundbot = int32(exp[0].evalF(c) * scaleratio)
 			shouldResetCamera = true
 		case modifyStageVar_camera_verticalfollow:
 			s.stageCamera.verticalfollow = exp[0].evalF(c)
@@ -14795,8 +14814,14 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		case modifyStageVar_camera_tension:
 			s.stageCamera.tension = int32(exp[0].evalF(c) * scaleratio)
 			shouldResetCamera = true
+		case modifyStageVar_camera_ztension:
+			s.stageCamera.ztension = int32(exp[0].evalF(c) * scaleratio)
+			shouldResetCamera = true
 		case modifyStageVar_camera_tensionvel:
 			s.stageCamera.tensionvel = exp[0].evalF(c)
+			shouldResetCamera = true
+		case modifyStageVar_camera_ztensionvel:
+			s.stageCamera.ztensionvel = exp[0].evalF(c)
 			shouldResetCamera = true
 		case modifyStageVar_camera_cuthigh:
 			s.stageCamera.cuthigh = int32(exp[0].evalF(c) * scaleratio)
@@ -15088,6 +15113,39 @@ func (sc depth) Run(c *Char, _ []int32) bool {
 			}
 			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
 			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
+		}
+		return true
+	})
+	return false
+}
+
+type depthBound StateControllerBase
+
+const (
+	depthBound_value byte = iota
+	depthBound_movecamera
+	depthBound_redirectid
+)
+
+func (sc depthBound) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), depthBound_redirectid, "DepthBound")
+	if crun == nil {
+		return false
+	}
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case depthBound_value:
+			if exp[0].evalB(c) {
+				crun.setCSF(CSF_depthbound)
+			} else {
+				crun.unsetCSF(CSF_depthbound)
+			}
+		case depthBound_movecamera:
+			if exp[0].evalB(c) {
+				crun.setCSF(CSF_movecamera_z)
+			} else {
+				crun.unsetCSF(CSF_movecamera_z)
+			}
 		}
 		return true
 	})
