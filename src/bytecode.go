@@ -7330,7 +7330,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			})
 		case explod_shader:
 			s := exp[0].evalS()
-			modifiers = append(modifiers, func(e *Explod) { 
+			modifiers = append(modifiers, func(e *Explod) {
 				e.customShader.name = s
 			})
 		case explod_shaderparam:

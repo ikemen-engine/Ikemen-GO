@@ -304,7 +304,6 @@ func (c *Camera) BaseScale() float32 {
 	return c.ztopscale
 }
 
-
 func (c *Camera) GroundLevel() float32 {
 	return c.zoff - c.aspectcorrection - c.zoomanchorcorrection
 }
