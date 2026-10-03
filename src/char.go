@@ -6138,6 +6138,11 @@ func (c *Char) soundVar(chid BytecodeValue, vtype OpCode) BytecodeValue {
 			return BytecodeInt(ch.sfx.priority)
 		}
 		return BytecodeInt(0)
+	case OC_ex2_soundvar_samplerate:
+		if ch != nil && ch.sound != nil {
+			return BytecodeFloat(float32(ch.sound.format.SampleRate))
+		}
+		return BytecodeFloat(0)
 	case OC_ex2_soundvar_startposition:
 		if ch != nil && ch.sfx != nil {
 			return BytecodeInt64(int64(ch.sfx.startPos))
@@ -6343,15 +6348,19 @@ func (c *Char) roundsWon() int32 {
 	return sys.wins[c.playerNo&1]
 }
 
-// TODO: These are supposed to be affected by zoom camera shifting
-// In Mugen 1.1 they don't work properly when zoom scale is actually used
-// Perhaps in Ikemen they could return the final rendering position of the chars
+// In Mugen 1.1, these don't work seem to work quite right when zoom scale is actually used
+// But we need them to do more or less the same for backward compatibility
+// Perhaps Ikemen could have some new trigger that did return the rendering position of the chars
 func (c *Char) screenPosX() float32 {
-	return (c.pos[0]*c.localscl - sys.cam.ScreenPos[0]) // * sys.cam.Scale
+	scaledOffset := sys.cam.Offset[0] / sys.zoom.resultScale
+	camLeft := sys.zoom.resultPos[0] - scaledOffset - sys.cam.halfWidth
+	return c.pos[0]*c.localscl - camLeft
 }
 
 func (c *Char) screenPosY() float32 {
-	return (c.pos[1]*c.localscl - sys.cam.ScreenPos[1]) // * sys.cam.Scale
+	groundRef := sys.cam.GroundLevel() + sys.cam.Offset[1]
+	camTop := (sys.zoom.resultPos[1] - groundRef) / sys.zoom.resultScale
+	return c.pos[1]*c.localscl - camTop
 }
 
 func (c *Char) screenHeight() float32 {

@@ -1398,13 +1398,14 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 			s.sdw.intensity = Clamp(tmp, 0, 255)
 		}
 		var r, g, b int32
-		sec.readI32ForStage("color", &r, &g, &b)
-		r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+		if sec.readI32ForStage("color", &r, &g, &b) {
+			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+			s.sdw.color = uint32(r<<16 | g<<8 | b)
+		}
 		// Disable color parameter specifically in Mugen 1.1 stages
 		if s.ikemenver[0] == 0 && s.ikemenver[1] == 0 && s.mugenver[0] == 1 && s.mugenver[1] == 1 {
-			r, g, b = 0, 0, 0
+			s.sdw.color = 0
 		}
-		s.sdw.color = uint32(r<<16 | g<<8 | b)
 		sec.ReadF32("xscale", &s.sdw.xscale)
 		sec.ReadF32("yscale", &s.sdw.yscale)
 		sec.readI32ForStage("fade.range", &s.sdw.fadeend, &s.sdw.fadebgn)
@@ -1435,16 +1436,16 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 
 	// Reflection group
 	if sec, _ := getSection("reflection"); sec != nil {
-		s.reflection.color = 0xFFFFFF
 		var tmp int32
 		//sec.ReadBool("reflect", &reflect) // This parameter is documented in Mugen but doesn't do anything
 		if sec.ReadI32("intensity", &tmp) {
 			s.reflection.intensity = Clamp(tmp, 0, 255)
 		}
-		var r, g, b int32 = 0, 0, 0
-		sec.readI32ForStage("color", &r, &g, &b)
-		r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
-		s.reflection.color = uint32(r<<16 | g<<8 | b)
+		var r, g, b int32
+		if sec.readI32ForStage("color", &r, &g, &b) {
+			r, g, b = Clamp(r, 0, 255), Clamp(g, 0, 255), Clamp(b, 0, 255)
+			s.reflection.color = uint32(r<<16 | g<<8 | b)
+		}
 		if sec.ReadI32("layerno", &tmp) {
 			s.reflection.layerno = Clamp(tmp, -1, 0)
 		}
