@@ -3113,6 +3113,7 @@ func systemScriptInit(l *lua.LState) {
 					sys.bgm.Stop()
 					sys.playBgmFlg = false
 				}
+				sys.matchStoryboards.destroy()
 				sys.clearMatchSound()
 				sys.allPalFX = newPalFX()
 				sys.bgPalFX = newPalFX()

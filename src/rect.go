@@ -179,6 +179,10 @@ const (
 // - overrideBlack: treat caller as a user interruption and force immediate cut for FadeStop.
 // - policy: controls how an in-progress fade-in is handled.
 func startFadeOut(tmpl *Fade, dest *Fade, overrideBlack bool, policy FadeStartPolicy) {
+	startFadeOutFrom(tmpl, dest, sys.motif.fadeIn, overrideBlack, policy)
+}
+
+func startFadeOutFrom(tmpl, dest, fi *Fade, overrideBlack bool, policy FadeStartPolicy) {
 	if tmpl == nil || dest == nil {
 		return
 	}
@@ -193,7 +197,6 @@ func startFadeOut(tmpl *Fade, dest *Fade, overrideBlack bool, policy FadeStartPo
 		tmp.animData = nil
 		use = &tmp
 	}
-	fi := sys.motif.fadeIn
 
 	// FadeStop semantics:
 	// If this is an explicit user interruption OR a fade-in is active, cut immediately.

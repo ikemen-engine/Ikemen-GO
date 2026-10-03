@@ -967,17 +967,25 @@ func cloneTextSprite(a *arena.Arena, ts *TextSprite) *TextSprite {
 	return dst
 }
 
+// CloneState shares loaded assets but preserves all mutable playback state.
+func (anim *Anim) CloneState(a *arena.Arena) *Anim {
+	if anim == nil {
+		return nil
+	}
+	result := arena.New[Anim](a)
+	*result = *anim
+	result.anim = anim.anim.CloneState(a)
+	result.palfx = anim.palfx.Clone(a)
+	return result
+}
+
 func (fa *Fade) Clone(a *arena.Arena) *Fade {
 	if fa == nil {
 		return nil
 	}
 	result := arena.New[Fade](a)
 	*result = *fa
-	// Avoid sharing animation state between saved states.
-	if fa.animData != nil {
-		// Anim has Copy() in the codebase and is already used for UI anim duplication.
-		result.animData = fa.animData.Copy()
-	}
+	result.animData = fa.animData.CloneState(a)
 	return result
 }
 
@@ -1175,10 +1183,19 @@ func cloneMusicMapShallow(a *arena.Arena, src Music) Music {
 	return dst
 }
 
+func cloneStoryboards(a *arena.Arena, src []*Storyboard) []*Storyboard {
+	result := arena.MakeSlice[*Storyboard](a, len(src), len(src))
+	for i, s := range src {
+		cloned := s.Clone(a)
+		result[i] = &cloned
+	}
+	return result
+}
+
 // Storyboard.Clone:
 // - Only meant to be used when storyboard is active (caller gates it).
-// - Deep-copies runtime-mutated per-layer state (Anim/Text + typewriter fields).
-// - Keeps static resources shared (IniFile/Sff/Snd/Fnt/Model/At/etc).
+// - Deep-copies runtime-mutated layers, backgrounds and fades.
+// - Keeps static resources and video decoders shared.
 // - Rebuilds derived dialogue queue so pointers point into the cloned layer maps.
 func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 	if s == nil {
@@ -1187,6 +1204,8 @@ func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 
 	// Shallow copy keeps static resources shared.
 	result = *s
+	result.fadeIn = s.fadeIn.Clone(a)
+	result.fadeOut = s.fadeOut.Clone(a)
 
 	// sceneKeys is mutated/rebuilt; don't alias.
 	if s.sceneKeys != nil {
@@ -1208,6 +1227,8 @@ func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 
 			nsp := &SceneProperties{}
 			*nsp = *sp
+			nsp.FadeIn.FadeData = sp.FadeIn.FadeData.Clone(a)
+			nsp.FadeOut.FadeData = sp.FadeOut.FadeData.Clone(a)
 
 			// Layer map (runtime state lives here)
 			if sp.Layer != nil {
@@ -1222,9 +1243,7 @@ func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 					*nlp = *lp
 
 					// Anim runtime state must not be shared across saved states.
-					if lp.AnimData != nil {
-						nlp.AnimData = lp.AnimData.Copy()
-					}
+					nlp.AnimData = lp.AnimData.CloneState(a)
 
 					// TextSprite runtime state must not be shared across saved states.
 					nlp.TextSpriteData = cloneTextSprite(a, lp.TextSpriteData)
@@ -1252,9 +1271,7 @@ func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 			nsp.Music = cloneMusicMapShallow(a, sp.Music)
 
 			if sp.Bg.BGDef != nil {
-				nbg := &BGDef{}
-				*nbg = *sp.Bg.BGDef
-				nsp.Bg.BGDef = nbg
+				nsp.Bg.BGDef = sp.Bg.BGDef.Clone(a)
 			}
 
 			result.Scene[sceneKey] = nsp
@@ -1277,6 +1294,29 @@ func (s *Storyboard) Clone(a *arena.Arena) (result Storyboard) {
 		}
 	}
 
+	return result
+}
+
+func (s *BGDef) Clone(a *arena.Arena) *BGDef {
+	result := &BGDef{}
+	*result = *s
+	bgMap := make(map[*backGround]*backGround, len(s.bg))
+	result.bg = arena.MakeSlice[*backGround](a, len(s.bg), len(s.bg))
+	for i, bg := range s.bg {
+		cloned := *bg
+		cloned.anim = bg.anim.CloneState(a)
+		cloned.palfx = bg.palfx.Clone(a)
+		result.bg[i] = &cloned
+		bgMap[bg] = &cloned
+	}
+	result.bgc = arena.MakeSlice[bgCtrl](a, len(s.bgc), len(s.bgc))
+	for i, bgc := range s.bgc {
+		result.bgc[i] = bgc
+		result.bgc[i].bg = arena.MakeSlice[*backGround](a, len(bgc.bg), len(bgc.bg))
+		for j, bg := range bgc.bg {
+			result.bgc[i].bg[j] = bgMap[bg]
+		}
+	}
 	return result
 }
 

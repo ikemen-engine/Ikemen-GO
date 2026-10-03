@@ -35,13 +35,15 @@ type GameState struct {
 	bcVar               []BytecodeValue
 	workBe              []BytecodeExp
 
-	workpal        []uint32
-	keyConfig      []KeyConfig
-	joystickConfig []KeyConfig
-	fightScreen    FightScreen
-	motif          Motif
-	storyboard     Storyboard
-	cgi            [MaxPlayerNo]CharGlobalInfo
+	workpal          []uint32
+	keyConfig        []KeyConfig
+	joystickConfig   []KeyConfig
+	fightScreen      FightScreen
+	motif            Motif
+	storyboard       Storyboard
+	matchStoryboards []*Storyboard
+	storyboardArena  *arena.Arena
+	cgi              [MaxPlayerNo]CharGlobalInfo
 
 	//accel                   float32
 	//clsnDisplay             bool
@@ -148,6 +150,9 @@ func (gs *GameState) LoadState(stateID int) {
 		sys.storyboard.dialogueLayers = nil
 		sys.storyboard.dialoguePos = 0
 	}
+	sys.matchStoryboards.clear(-1)
+	// Restore playback state without replacing the retained decoder set.
+	sys.matchStoryboards.instances = cloneStoryboards(a, gs.matchStoryboards)
 
 	sys.cgi = gs.cgi
 
@@ -267,6 +272,8 @@ func (gs *GameState) SaveState(stateID int) {
 		gs.storyboard = Storyboard{}
 		gs.storyboard.active = false
 	}
+	gs.matchStoryboards = cloneStoryboards(a, sys.matchStoryboards.instances)
+	gs.storyboardArena = a
 
 	gs.timerRounds = arena.MakeSlice[int32](a, len(sys.timerRounds), len(sys.timerRounds))
 	copy(gs.timerRounds, sys.timerRounds)

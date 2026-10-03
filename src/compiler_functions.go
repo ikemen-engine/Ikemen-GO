@@ -874,7 +874,7 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.paramPostype(is, sc, explod_postype); err != nil {
 		return err
 	}
-	if err := c.paramSpace(is, sc, explod_space); err != nil {
+	if err := c.paramSpace(is, sc, explod_space, false); err != nil {
 		return err
 	}
 	if err := c.paramValue(is, sc, "facing",
@@ -5649,9 +5649,38 @@ func (c *CharCompiler) shaderSet(is IniSection, sc *StateControllerBase) (StateC
 	})
 	return *ret, err
 }
+
+func (c *CharCompiler) storyboardSub(is IniSection, sc *StateControllerBase) error {
+	if err := c.paramValue(is, sc, "id", storyboard_id, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramSpace(is, sc, storyboard_space, true); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "pos", storyboard_pos, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "scale", storyboard_scale, VT_Float, 2, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "facing", storyboard_facing, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "bindid", storyboard_bindid, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "bindtime", storyboard_bindtime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *CharCompiler) storyboard(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*storyboard)(sc), c.stateSec(is, func() error {
-		if err := c.stateParam(is, "path", false, func(data string) error {
+		if err := c.paramValue(is, sc, "redirectid", storyboard_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.stateParam(is, "path", true, func(data string) error {
 			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
 				return Error("Not enclosed in \"")
 			}
@@ -5660,7 +5689,27 @@ func (c *CharCompiler) storyboard(is IniSection, sc *StateControllerBase) (State
 		}); err != nil {
 			return err
 		}
-		return nil
+		return c.storyboardSub(is, sc)
+	})
+	return *ret, err
+}
+
+func (c *CharCompiler) modifyStoryboard(is IniSection, sc *StateControllerBase) (StateController, error) {
+	ret, err := (*modifyStoryboard)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid", modifyStoryboard_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.storyboardSub(is, sc)
+	})
+	return *ret, err
+}
+
+func (c *CharCompiler) removeStoryboard(is IniSection, sc *StateControllerBase) (StateController, error) {
+	ret, err := (*removeStoryboard)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid", removeStoryboard_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "id", removeStoryboard_id, VT_Int, 1, false)
 	})
 	return *ret, err
 }

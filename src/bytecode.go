@@ -13207,22 +13207,193 @@ type storyboard StateControllerBase
 
 const (
 	storyboard_path byte = iota
+	storyboard_id
+	storyboard_space
+	storyboard_pos
+	storyboard_scale
+	storyboard_facing
+	storyboard_bindid
+	storyboard_bindtime
+	storyboard_redirectid
 )
 
 func (sc storyboard) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), storyboard_redirectid, "Storyboard")
+	if crun == nil {
+		return false
+	}
+	var s *Storyboard
+	var sid int32
+	p := storyboardPlacement{
+		space:    Space_none,
+		scale:    [2]float32{1, 1},
+		facing:   1,
+		bindID:   -2,
+		bindtime: 1,
+	}
 	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
 		switch id {
 		case storyboard_path:
-			path := exp[0].evalS()
-			s, err := loadStoryboard(path)
+			path := SearchFile(exp[0].evalS(), []string{crun.gi().def, ""})
+			var err error
+			s, err = loadStoryboard(path)
 			if err != nil {
 				panic(err)
 			}
-			sys.storyboard = *s
-			sys.storyboard.init()
+		case storyboard_id:
+			sid = Max(0, exp[0].evalI(c))
+		case storyboard_space:
+			p.space = Space(exp[0].evalI(c))
+		case storyboard_pos:
+			for i, v := range exp {
+				p.offset[i] = v.evalF(c) * c.localscl
+			}
+		case storyboard_scale:
+			p.scale[0] = exp[0].evalF(c)
+			if len(exp) > 1 {
+				p.scale[1] = exp[1].evalF(c)
+			}
+		case storyboard_facing:
+			if exp[0].evalI(c) < 0 {
+				p.facing = -1
+			} else {
+				p.facing = 1
+			}
+		case storyboard_bindid:
+			p.bindID = exp[0].evalI(c)
+			if p.bindID == -1 {
+				p.bindID = crun.id
+			}
+		case storyboard_bindtime:
+			p.bindtime = Max(-1, exp[0].evalI(c))
 		}
 		return true
 	})
+	if s != nil {
+		s.inMatch, s.id, s.ownerID, s.playerNo = true, sid, crun.id, crun.playerNo
+		s.fadeIn, s.fadeOut = newFade(), newFade()
+		if p.space != Space_stage || p.bindID < 0 {
+			p.bindID, p.bindtime = -2, 0
+		}
+		s.placement = p
+		s.init()
+		sys.matchStoryboards.add(s)
+	}
+	return false
+}
+
+type modifyStoryboard storyboard
+
+const (
+	modifyStoryboard_redirectid = iota + storyboard_redirectid + 1
+)
+
+func (sc modifyStoryboard) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), modifyStoryboard_redirectid, "ModifyStoryboard")
+	if crun == nil {
+		return false
+	}
+	sid := int32(-1)
+	selected := false
+	var storyboards []*Storyboard
+	selectStoryboards := func() {
+		if selected {
+			return
+		}
+		selected = true
+		for _, s := range sys.matchStoryboards.instances {
+			if s.ownerID == crun.id && (sid < 0 || s.id == sid) {
+				storyboards = append(storyboards, s)
+			}
+		}
+	}
+	eachStoryboard := func(f func(*Storyboard)) {
+		selectStoryboards()
+		for _, s := range storyboards {
+			f(s)
+		}
+	}
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case storyboard_id:
+			sid = exp[0].evalI(c)
+		case modifyStoryboard_redirectid:
+			return true
+		case storyboard_space:
+			space := Space(exp[0].evalI(c))
+			eachStoryboard(func(s *Storyboard) {
+				s.placement.space = space
+			})
+		case storyboard_pos:
+			x := exp[0].evalF(c) * c.localscl
+			eachStoryboard(func(s *Storyboard) {
+				s.placement.offset[0] = x
+			})
+			if len(exp) > 1 {
+				y := exp[1].evalF(c) * c.localscl
+				eachStoryboard(func(s *Storyboard) {
+					s.placement.offset[1] = y
+				})
+			}
+		case storyboard_scale:
+			x := exp[0].evalF(c)
+			eachStoryboard(func(s *Storyboard) {
+				s.placement.scale[0] = x
+			})
+			if len(exp) > 1 {
+				y := exp[1].evalF(c)
+				eachStoryboard(func(s *Storyboard) {
+					s.placement.scale[1] = y
+				})
+			}
+		case storyboard_facing:
+			facing := float32(1)
+			if exp[0].evalI(c) < 0 {
+				facing = -1
+			}
+			eachStoryboard(func(s *Storyboard) {
+				s.placement.facing = facing
+			})
+		case storyboard_bindid:
+			bindID := exp[0].evalI(c)
+			if bindID == -1 {
+				bindID = crun.id
+			}
+			eachStoryboard(func(s *Storyboard) {
+				s.placement.bindID = bindID
+			})
+		case storyboard_bindtime:
+			bindtime := Max(-1, exp[0].evalI(c))
+			eachStoryboard(func(s *Storyboard) {
+				s.placement.bindtime = bindtime
+			})
+		}
+		return true
+	})
+	return false
+}
+
+type removeStoryboard StateControllerBase
+
+const (
+	removeStoryboard_id byte = iota
+	removeStoryboard_redirectid
+)
+
+func (sc removeStoryboard) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), removeStoryboard_redirectid, "RemoveStoryboard")
+	if crun == nil {
+		return false
+	}
+	sid := int32(-1)
+	StateControllerBase(sc).run(c, func(id byte, exp []BytecodeExp) bool {
+		if id == removeStoryboard_id {
+			sid = exp[0].evalI(c)
+		}
+		return true
+	})
+	sys.matchStoryboards.remove(crun.id, sid)
 	return false
 }
 

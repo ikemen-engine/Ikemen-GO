@@ -3126,6 +3126,8 @@ func (m *Motif) shouldScopeMotifAspect() bool {
 }
 
 func (m *Motif) draw(layerno int16) {
+	// Match effects use the fight viewport, even when motif overlays change aspect.
+	sys.matchStoryboards.draw(layerno)
 	if m.shouldScopeMotifAspect() {
 		prev := sys.captureAspectState()
 		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
@@ -3166,6 +3168,7 @@ func (m *Motif) draw(layerno int16) {
 }
 
 func (m *Motif) drawFade() {
+	sys.matchStoryboards.drawFade()
 	if m.shouldScopeMotifAspect() {
 		prev := sys.captureAspectState()
 		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
