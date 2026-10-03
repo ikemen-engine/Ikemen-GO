@@ -1039,6 +1039,16 @@ func assignField(structPtr interface{}, parts []queryPart, value interface{}, ba
 		if v.Kind() == reflect.Struct {
 			fieldVal, fieldType, found := findFieldByINITag(v, part.name)
 			if found {
+				if part.index != nil {
+					if fieldVal.Kind() != reflect.Array && fieldVal.Kind() != reflect.Slice {
+						return true, fmt.Errorf("field '%s' is not an array or slice", part.name)
+					}
+					idx, err := strconv.Atoi(*part.index)
+					if err != nil || idx < 0 || idx >= fieldVal.Len() {
+						return true, fmt.Errorf("invalid index '%s' for field '%s'", *part.index, part.name)
+					}
+					return true, setFieldValue(fieldVal.Index(idx), value, "", strings.Join(extractNames(parts), "."), "", baseDef)
+				}
 				// If the matched field is a MAP and we're at the final token, assign to the map["default"] element.
 				if fieldVal.Kind() == reflect.Map {
 					if fieldVal.IsNil() {
