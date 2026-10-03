@@ -167,8 +167,8 @@ func (p *storyboardPlacement) transform() *bgDrawTransform {
 	pos := [2]float32{p.pos[0] + p.offset[0], p.pos[1] + p.offset[1]}
 	scl := float32(1)
 	if p.space == Space_stage {
-		x, y, zoom := sys.zoom.apply(sys.cam.Pos[0], sys.cam.Pos[1], sys.cam.Scale/sys.cam.BaseScale())
-		scl = zoom * sys.cam.BaseScale()
+		x, y := sys.zoom.resultPos[0], sys.zoom.resultPos[1]
+		scl = sys.zoom.resultScale * sys.cam.BaseScale()
 		shake := sys.envShake.getOffset()
 		pos[0] = sys.gameWidth/2 + sys.cam.Offset[0] - shake[0] + (pos[0]-x)*scl
 		pos[1] = sys.cam.GroundLevel() + sys.cam.Offset[1] - shake[1] - y + pos[1]*scl
