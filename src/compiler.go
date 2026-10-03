@@ -165,6 +165,7 @@ func newCharCompiler() *CharCompiler {
 		"modifysnd":            c.modifySnd,
 		"modifystagebg":        c.modifyStageBG,
 		"modifystagevar":       c.modifyStageVar,
+		"modifystoryboard":     c.modifyStoryboard,
 		"modifytext":           c.modifyText,
 		"overrideclsn":         c.overrideClsn,
 		"parentmapadd":         c.parentMapAdd,
@@ -174,6 +175,7 @@ func newCharCompiler() *CharCompiler {
 		"redlifeadd":           c.redLifeAdd,
 		"redlifeset":           c.redLifeSet,
 		"remapsprite":          c.remapSprite,
+		"removestoryboard":     c.removeStoryboard,
 		"rootmapadd":           c.rootMapAdd,
 		"rootmapset":           c.rootMapSet,
 		"rootvaradd":           c.rootVarAdd,
@@ -6472,13 +6474,21 @@ func (c *CharCompiler) paramPostype(is IniSection, sc *StateControllerBase, id b
 	})
 }
 
-func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte) error {
+func (c *CharCompiler) paramSpace(is IniSection, sc *StateControllerBase, id byte, allowNone bool) error {
 	return c.stateParam(is, "space", false, func(data string) error {
 		if len(data) == 0 {
 			return Error("space not specified")
 		}
 		var spc Space
 		switch strings.ToLower(data) {
+		case "none":
+			if allowNone {
+				spc = Space_none
+			} else if c.zssMode && !sys.ignoreMostErrors {
+				return Error("Invalid space type: " + data)
+			} else {
+				sys.appendToConsole(c.charWarn() + "Invalid space type: " + data)
+			}
 		case "stage":
 			spc = Space_stage
 		case "screen":

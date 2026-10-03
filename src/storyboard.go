@@ -127,6 +127,236 @@ type Storyboard struct {
 	dialoguePos       int                // current layer index into dialogueLayers
 	netReady          bool
 	loadEnding        bool
+	inMatch           bool
+	id                int32
+	ownerID           int32
+	playerNo          int
+	placement         storyboardPlacement
+	fadeIn            *Fade
+	fadeOut           *Fade
+}
+
+type storyboardPlacement struct {
+	space    Space
+	pos      [2]float32
+	offset   [2]float32
+	scale    [2]float32
+	facing   float32
+	bindID   int32
+	bindtime int32
+}
+
+func (p *storyboardPlacement) update() {
+	// Like Explods, resolve binding after character updates and expire it on game ticks.
+	if p.space == Space_stage && p.bindID >= 0 && p.bindtime != 0 {
+		if c := sys.playerID(p.bindID); c != nil {
+			p.pos = [2]float32{(c.interPos[0] + c.offsetX()) * c.localscl, (c.interPos[1] + c.offsetY()) * c.localscl}
+		}
+		if p.bindtime > 0 && sys.tickNextFrame() {
+			p.bindtime--
+		}
+	}
+}
+
+func (p *storyboardPlacement) transform() *bgDrawTransform {
+	// Preserve the standard storyboard rendering without applying
+	// placement, camera transforms or fight viewport offsets.
+	if p.space == Space_none {
+		return &bgDrawTransform{space: Space_none}
+	}
+	pos := [2]float32{p.pos[0] + p.offset[0], p.pos[1] + p.offset[1]}
+	scl := float32(1)
+	if p.space == Space_stage {
+		x, y, zoom := sys.zoom.apply(sys.cam.Pos[0], sys.cam.Pos[1], sys.cam.Scale/sys.cam.BaseScale())
+		scl = zoom * sys.cam.BaseScale()
+		shake := sys.envShake.getOffset()
+		pos[0] = sys.gameWidth/2 + sys.cam.Offset[0] - shake[0] + (pos[0]-x)*scl
+		pos[1] = sys.cam.GroundLevel() + sys.cam.Offset[1] - shake[1] - y + pos[1]*scl
+	} else if viewport, ok := sys.fightDrawClip(); ok {
+		pos[0] += float32(viewport[0]-sys.scrrect[0]) / sys.widthScale
+		pos[1] += float32(viewport[1]-sys.scrrect[1]) / sys.heightScale
+	}
+	return &bgDrawTransform{
+		space:  p.space,
+		offset: pos,
+		scale:  [2]float32{scl * p.facing * p.scale[0], scl * p.scale[1]},
+	}
+}
+
+func (s *Storyboard) fades() (*Fade, *Fade) {
+	if s.inMatch {
+		return s.fadeIn, s.fadeOut
+	}
+	return sys.motif.fadeIn, sys.motif.fadeOut
+}
+
+// Pausing preserves the decoders shared with saved states.
+func (s *Storyboard) stopVideos() {
+	for _, scene := range s.Scene {
+		if scene.Bg.BGDef != nil {
+			for _, bg := range scene.Bg.BGDef.bg {
+				if bg.video != nil {
+					bg.video.SetPlaying(false)
+					bg.video.SetVisible(false)
+				}
+			}
+		}
+	}
+}
+
+type StoryboardManager struct {
+	instances []*Storyboard
+	// Shared decoders stay open while active instances or saved states need them.
+	// This set is not part of rollback snapshots.
+	retainedVideos map[*bgVideo]struct{}
+}
+
+func (m *StoryboardManager) add(s *Storyboard) {
+	for _, scene := range s.Scene {
+		if scene.Bg.BGDef != nil {
+			for _, bg := range scene.Bg.BGDef.bg {
+				if bg.video != nil {
+					if m.retainedVideos == nil {
+						m.retainedVideos = make(map[*bgVideo]struct{})
+					}
+					m.retainedVideos[bg.video] = struct{}{}
+				}
+			}
+		}
+	}
+	m.instances = append(m.instances, s)
+}
+
+func (m *StoryboardManager) update() {
+	for _, s := range m.instances {
+		s.placement.update()
+	}
+}
+
+func (m *StoryboardManager) step() {
+	defer m.pruneVideos()
+	if sys.matchPaused() {
+		// Freeze decoding without hiding or draining the displayed video frame.
+		for video := range m.retainedVideos {
+			video.SetPlaying(false)
+		}
+		return
+	}
+	active := m.instances[:0]
+	for _, s := range m.instances {
+		if s.fadeOut.isActive() {
+			s.fadeOut.step()
+		} else if s.fadeIn.isActive() {
+			s.fadeIn.step()
+		}
+		s.step()
+		if s.active {
+			active = append(active, s)
+		} else {
+			s.stopVideos()
+		}
+	}
+	clear(m.instances[len(active):])
+	m.instances = active
+}
+
+func (m *StoryboardManager) draw(layerno int16) {
+	for _, s := range m.instances {
+		s.draw(layerno)
+	}
+}
+
+func (m *StoryboardManager) drawFade() {
+	for _, s := range m.instances {
+		if s.fadeOut.isActive() {
+			s.fadeOut.draw()
+		} else if s.fadeIn.isActive() {
+			s.fadeIn.draw()
+		}
+	}
+}
+
+func (m *StoryboardManager) remove(ownerID, id int32) {
+	active := m.instances[:0]
+	for _, s := range m.instances {
+		if s.ownerID == ownerID && (id < 0 || s.id == id) {
+			s.active = false
+			s.stopVideos()
+		} else {
+			active = append(active, s)
+		}
+	}
+	clear(m.instances[len(active):])
+	m.instances = active
+}
+
+func (m *StoryboardManager) clear(playerNo int) {
+	active := m.instances[:0]
+	for _, sb := range m.instances {
+		if playerNo < 0 || sb.playerNo == playerNo {
+			sb.stopVideos()
+		} else {
+			active = append(active, sb)
+		}
+	}
+	clear(m.instances[len(active):])
+	m.instances = active
+}
+
+func (m *StoryboardManager) clearSound() {
+	for video := range m.retainedVideos {
+		video.SetPlaying(false)
+		video.SetVisible(false)
+		video.MixerCleared()
+	}
+}
+
+func (m *StoryboardManager) destroy() {
+	m.clear(-1)
+	for video := range m.retainedVideos {
+		video.Close()
+	}
+	m.retainedVideos = nil
+}
+
+func (m *StoryboardManager) pruneVideos() {
+	if len(m.retainedVideos) == 0 {
+		return
+	}
+	live := make(map[*bgVideo]struct{})
+	mark := func(storyboards []*Storyboard) {
+		for _, s := range storyboards {
+			for _, scene := range s.Scene {
+				if scene.Bg.BGDef != nil {
+					for _, bg := range scene.Bg.BGDef.bg {
+						if bg.video != nil {
+							live[bg.video] = struct{}{}
+						}
+					}
+				}
+			}
+		}
+	}
+	mark(m.instances)
+	markSaved := func(gs *GameState, stateID int) {
+		// Rollback can leave stale entries after freeing or replacing a save arena.
+		// Never follow their storyboard pointers unless the arena still belongs to them.
+		if gs != nil && gs.saved && gs.storyboardArena == sys.arenaSaveMap[stateID] {
+			mark(gs.matchStoryboards)
+		}
+	}
+	markSaved(sys.saveState, 0)
+	if sys.rollback.session != nil {
+		for stateID, gs := range sys.rollback.session.saveStates {
+			markSaved(gs, stateID)
+		}
+	}
+	for video := range m.retainedVideos {
+		if _, ok := live[video]; !ok {
+			video.Close()
+			delete(m.retainedVideos, video)
+		}
+	}
 }
 
 // loadStoryboard loads and parses the INI file into a struct.
@@ -601,7 +831,14 @@ func (s *Storyboard) init() {
 }
 
 func (s *Storyboard) step() {
-	sys.stepCommandLists()
+	if s.currentSceneIndex < 0 || s.currentSceneIndex >= len(s.sceneKeys) {
+		s.active = false
+		return
+	}
+	fadeIn, fadeOut := s.fades()
+	if !s.inMatch {
+		sys.stepCommandLists()
+	}
 	sceneKey := s.sceneKeys[s.currentSceneIndex]
 	sceneProps := s.Scene[sceneKey]
 	if sceneProps.Bg.Name != "" {
@@ -707,8 +944,8 @@ func (s *Storyboard) step() {
 				}
 			}
 			if s.netReady && !s.canceled {
-				startFadeOut(sceneProps.FadeOut.FadeData, sys.motif.fadeOut, false, s.fadePolicy)
-				s.endTimer = s.counter + sys.motif.fadeOut.timeRemaining
+				startFadeOutFrom(sceneProps.FadeOut.FadeData, fadeOut, fadeIn, false, s.fadePolicy)
+				s.endTimer = s.counter + fadeOut.timeRemaining
 				s.loadEnding = true
 			}
 		}
@@ -728,8 +965,8 @@ func (s *Storyboard) step() {
 
 	if s.endTimer == -1 && (reachedEndTime || s.canceled || skipAdvancesScene) {
 		userInterrupt := s.canceled || skipAdvancesScene
-		startFadeOut(sceneProps.FadeOut.FadeData, sys.motif.fadeOut, userInterrupt, s.fadePolicy)
-		s.endTimer = s.counter + sys.motif.fadeOut.timeRemaining
+		startFadeOutFrom(sceneProps.FadeOut.FadeData, fadeOut, fadeIn, userInterrupt, s.fadePolicy)
+		s.endTimer = s.counter + fadeOut.timeRemaining
 	}
 
 	// Run "scene start" init even if skip fast-forwarded s.counter this frame.
@@ -737,7 +974,7 @@ func (s *Storyboard) step() {
 		if ok := sceneProps.Music.Play("", s.Def); ok {
 			s.musicPlaying = true
 		}
-		sceneProps.FadeIn.FadeData.init(sys.motif.fadeIn, true)
+		sceneProps.FadeIn.FadeData.init(fadeIn, true)
 	}
 
 	if s.Snd != nil {
@@ -791,8 +1028,11 @@ func (s *Storyboard) step() {
 	// Only leave the storyboard once the fade-out has finished.
 	if s.endTimer != -1 && s.counter >= s.endTimer {
 		// Ensure no leftover storyboard fade decks bleed into the next screen.
-		if sys.motif.fadeOut != nil {
-			sys.motif.fadeOut.reset()
+		if fadeOut != nil {
+			fadeOut.reset()
+		}
+		if s.inMatch {
+			s.stopVideos()
 		}
 		// Loading storyboard: once we started the auto-fade, finish immediately after fadeout.
 		if s.loadEnding {
@@ -830,7 +1070,7 @@ func (s *Storyboard) step() {
 		// Start the next scene's fade-in immediately (same step) so there is no gap frame.
 		nextKey := s.sceneKeys[s.currentSceneIndex]
 		if nextProps, ok := s.Scene[nextKey]; ok && nextProps.FadeIn.FadeData != nil {
-			nextProps.FadeIn.FadeData.init(sys.motif.fadeIn, true)
+			nextProps.FadeIn.FadeData.init(fadeIn, true)
 		}
 		return
 	}
@@ -839,8 +1079,15 @@ func (s *Storyboard) step() {
 }
 
 func (s *Storyboard) draw(layerno int16) {
+	if s.currentSceneIndex < 0 || s.currentSceneIndex >= len(s.sceneKeys) {
+		return
+	}
 	sceneKey := s.sceneKeys[s.currentSceneIndex]
 	sceneProps := s.Scene[sceneKey]
+	var transform *bgDrawTransform
+	if s.inMatch {
+		transform = s.placement.transform()
+	}
 
 	if sceneProps.ClearColor[0] >= 0 {
 		sceneProps.RectData.Draw(layerno)
@@ -850,7 +1097,7 @@ func (s *Storyboard) draw(layerno int16) {
 		//if sceneProps.Bg.BgClearColor[0] >= 0 {
 		//	sceneProps.Bg.RectData.Draw(layerno)
 		//}
-		sceneProps.Bg.BGDef.Draw(int32(layerno), 0, 0, 1)
+		sceneProps.Bg.BGDef.draw(int32(layerno), 0, 0, 1, transform)
 	}
 
 	for _, key := range SortedKeys(sceneProps.Layer) {
@@ -858,12 +1105,65 @@ func (s *Storyboard) draw(layerno int16) {
 		// Draw only within the layer's actual time window.
 		// (Pre-start drawing is intentionally disallowed to prevent overlap when skipping.)
 		if s.counter >= layerProps.StartTime && (s.counter < layerProps.EndTime || layerProps.EndTime <= 0) {
-			if layerProps.AnimData != nil {
-				layerProps.AnimData.Draw(layerno)
-			}
-			if layerProps.TextSpriteData != nil && layerProps.Text != "" {
-				layerProps.TextSpriteData.Draw(layerno)
-			}
+			layerProps.draw(layerno, sceneProps.Layerall.Pos, transform)
 		}
+	}
+}
+
+func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDrawTransform) {
+	applyTransform := transform != nil && transform.space != Space_none
+	localScl := 2 * sys.cam.halfWidth / float32(lp.Localcoord[0])
+	// Draw copies so changing position or camera space never restarts playback.
+	if lp.AnimData != nil {
+		a := *lp.AnimData
+		a.SetPos(lp.Offset[0]+pos[0], lp.Offset[1]+pos[1])
+		a.SetScale(lp.Scale[0], lp.Scale[1])
+		a.facing = float32(lp.Facing)
+		a.layerno = lp.Layerno
+		a.rot.angle, a.rot.xangle, a.rot.yangle = lp.Angle, lp.XAngle, lp.YAngle
+		a.xshear, a.fLength = lp.Xshear, lp.Focallength
+		if applyTransform {
+			xs, ys := localScl*a.localScale*transform.scale[0], localScl*a.localScale*transform.scale[1]
+			a.x = (a.x-float32(a.offsetX))*xs + transform.offset[0] - float32(int(sys.gameWidth-320)/2)
+			a.y = a.y*ys + transform.offset[1] - float32(int(sys.gameHeight-240))
+			a.xscl *= Abs(xs)
+			a.yscl *= ys
+			a.facing *= Sign(xs)
+			a.rot.angle *= Sign(xs)
+			a.rot.yangle *= Sign(xs)
+			a.xshear *= Sign(xs)
+			a.vel[0] *= xs
+			a.vel[1] *= ys
+			a.window = transform.window(lp.Window, [2]float32{localScl, localScl})
+			a.windowInit = [4]float32{}
+		}
+		a.Draw(layerno)
+	}
+	if lp.TextSpriteData != nil && lp.Text != "" {
+		ts := *lp.TextSpriteData
+		ts.SetPos(lp.Offset[0]+pos[0], lp.Offset[1]+pos[1])
+		ts.SetScale(lp.Scale[0], lp.Scale[1])
+		ts.layerno = lp.Layerno
+		ts.rot.angle, ts.rot.xangle, ts.rot.yangle = lp.Angle, lp.XAngle, lp.YAngle
+		ts.xshear, ts.fLength = lp.Xshear, lp.Focallength
+		if applyTransform {
+			xs, ys := localScl/ts.localScale*transform.scale[0], localScl/ts.localScale*transform.scale[1]
+			ts.x = (ts.x-float32(ts.offsetX))*xs + transform.offset[0] - (sys.gameWidth-320)/2
+			ts.y = ts.y*ys + transform.offset[1]
+			if ts.fnt == nil || ts.fnt.Type != "truetype" {
+				ts.y -= sys.gameHeight - 240
+ 			}
+			ts.xscl *= xs
+			ts.yscl *= ys
+			ts.rot.angle *= Sign(xs)
+			ts.rot.yangle *= Sign(xs)
+			ts.xshear *= Sign(xs)
+			ts.vel[0] *= xs
+			ts.vel[1] *= ys
+			ts.localScale *= xs
+			ts.window = transform.window(lp.TextWindow, [2]float32{localScl, localScl})
+			ts.windowInit = [4]float32{}
+		}
+		ts.Draw(layerno)
 	}
 }

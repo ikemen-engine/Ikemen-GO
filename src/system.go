@@ -255,6 +255,7 @@ type System struct {
 	fightScreen         FightScreen
 	motif               Motif
 	storyboard          Storyboard
+	matchStoryboards    StoryboardManager
 	cfg                 Config
 	ffx                 map[string]*FightFx
 	sel                 Select
@@ -2316,6 +2317,7 @@ func (s *System) stopAllCharSounds() {
 }
 
 func (s *System) clearMatchSound() {
+	s.matchStoryboards.clearSound()
 	// Only explicitly marked sounds may outlive the match.
 	for i := range s.soundChannels {
 		ch := &s.soundChannels[i]
@@ -2349,6 +2351,7 @@ func (s *System) clearAllSound() {
 
 // Remove the player's explods, projectiles and (optionally) helpers as well as stopping their sounds
 func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
+	s.matchStoryboards.clear(pn)
 	if len(s.chars[pn]) > 0 {
 		// These aren't "assets" but we'll do it here
 		for _, c := range s.chars[pn] {
@@ -2937,6 +2940,7 @@ func (s *System) action() {
 	// Note: Explod update must happen after hit detection. Because hit sparks are also explods
 	s.explodUpdate()
 	s.charTextsUpdate()
+	s.matchStoryboards.update()
 
 	// Adjust game speed
 	if s.tickNextFrame() && !s.motif.me.active {
@@ -3013,6 +3017,8 @@ func (s *System) uiAction() {
 
 	// Run motif
 	s.motif.act()
+
+	s.matchStoryboards.step()
 
 	// Common Lua calls
 	// Needs to happen after motif update or motif inputs will lag 1 frame

@@ -529,7 +529,13 @@ func (bg *backGround) changeAnim(animNo int32, table AnimationTable) {
 
 func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 	stgscl [2]float32, shakeY float32, isStage bool, overdrawClip [4]int32) {
+	bg.drawTransformed(pos, drawscl, bgscl, stglscl, stgscl, shakeY, isStage, overdrawClip, nil)
+}
 
+func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl float32,
+	stgscl [2]float32, shakeY float32, isStage bool, overdrawClip [4]int32, transform *bgDrawTransform) {
+
+	applyTransform := transform != nil && transform.space != Space_none
 	// Handle parallax scaling (type = 2)
 	scalestartX := bg.scalestart[0]
 	if bg._type == BG_Parallax && (bg.width[0] != 0 || bg.width[1] != 0) && bg.anim.spr != nil {
@@ -629,8 +635,10 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 		y = y*bgscl + ((zoff-shakeY)/scly-zoff)/stglscl/stgscl[1]
 		y -= sys.cam.aspectcorrection / (scly * stglscl * stgscl[1])
 		y -= (sys.cam.zoomanchorcorrection / (scly * stglscl * stgscl[1])) * Yzoomdelta
-	} else {
+	} else if !applyTransform {
 		y = y*bgscl + ((float32(sys.gameHeight)-shakeY)/stglscl/scly-240)/stgscl[1]
+	} else {
+		y *= bgscl
 	}
 
 	// Final scaling factors
@@ -704,6 +712,15 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 		// Intersect viewport
 		rect = intersectRect(rect, viewport)
 	}
+	if applyTransform {
+		window := bg.startrect
+		if !bg.hasMaskwindow {
+			window = NormalizeRect(window)
+			window[2]++
+			window[3]++
+		}
+		rect = transform.window(window, [2]float32{bgscl * lscl[0], bgscl * lscl[1]})
+	}
 
 	// Render background if it's within the screen area
 	if rect[0] < sys.scrrect[2] && rect[1] < sys.scrrect[3] && rect[0]+rect[2] > 0 && rect[1]+rect[3] > 0 {
@@ -711,7 +728,9 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 			if bg.video == nil {
 				return
 			}
-			bg.video.Tick()
+			if transform == nil || !sys.matchPaused() {
+				bg.video.Tick()
+			}
 			if bg.video.texture == nil {
 				return
 			}
@@ -745,18 +764,32 @@ func (bg backGround) draw(pos [2]float32, drawscl, bgscl, stglscl float32,
 
 		// Choose render origin: top-left for motif/storyboard videos, center for everything else
 		var rcx float32
+		drawX, drawY, facing := x-xsoffset, y, float32(1)
 		if bg._type != BG_Video || isStage {
 			rcx = sys.gameWidth / 2
 		}
+		if applyTransform {
+			rcx = 0
+			sclx *= transform.scale[0]
+			scly *= transform.scale[1]
+			if sclx == 0 || scly == 0 {
+				return
+			}
+			drawX += transform.offset[0] / sclx
+			drawY += transform.offset[1] / scly
+			facing = Sign(transform.scale[0])
+			bg.rot.angle *= facing
+			bg.rot.yangle *= facing
+		}		
 
 		stackedPfx := bg.palfx.withStacked(sys.bgPalFX, bg.anim.transType,
 			[2]int32{int32(bg.anim.srcAlpha), int32(bg.anim.dstAlpha)})
 
-		bg.anim.Draw(&rect, x-xsoffset, y, sclx, scly,
+		bg.anim.Draw(&rect, drawX, drawY, sclx, scly,
 			bg.xscale[0]*bgscl*(scalestartX+xs)*xs3,
 			xbs*bgscl*(scalestartX+xs)*xs3,
 			ys*ys3, xras*x/(Abs(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*sclx_recip*bg.scalestart[1]-bg.xshear,
-			bg.rot, rcx, [2]float32{0, 0}, stackedPfx, 1, [2]float32{1, 1}, int32(bg.projection), bg.fLength, false, CustomShaderRenderData{})
+			bg.rot, rcx, [2]float32{0, 0}, stackedPfx, facing, [2]float32{1, 1}, int32(bg.projection), bg.fLength, false, CustomShaderRenderData{})
 	}
 }
 

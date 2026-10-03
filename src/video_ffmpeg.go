@@ -294,7 +294,7 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 			if bgv.loop {
 				// Prefer rewinding the VIDEO stream to keep A/V in sync per reisen docs.
 				if err := bgv.videoStream.Rewind(0); err != nil {
-					bgv.errs <- fmt.Errorf("loop rewind video failed: %v", err)
+					bgv.reportError(fmt.Errorf("loop rewind video failed: %v", err))
 					break
 				}
 				// Optional: also rewind audio if present; safe no-op if demux-only.
@@ -326,6 +326,13 @@ func (bgv *bgVideo) Open(filename string, volume int, sm BgVideoScaleMode, sf Bg
 		close(bgv.frameBuffer)
 		close(bgv.audioBuffer)
 		close(bgv.errs)
+		select {
+		case <-bgv.quit:
+			// A canceled video will never consume its remaining buffered data.
+			drainFrames(bgv.frameBuffer)
+			drainAudio(bgv.audioBuffer)
+		default:
+		}
 	})
 
 	return nil
@@ -366,6 +373,13 @@ func (bgv *bgVideo) describe() error {
 	return nil
 }
 
+func (bgv *bgVideo) reportError(err error) {
+	select {
+	case bgv.errs <- err:
+	case <-bgv.quit:
+	}
+}
+
 func (bgv *bgVideo) processPacket() bool {
 	if bgv.media == nil {
 		// No media yet; nothing to do.
@@ -373,7 +387,7 @@ func (bgv *bgVideo) processPacket() bool {
 	}
 	packet, gotPacket, err := bgv.media.ReadPacket()
 	if err != nil {
-		bgv.errs <- err
+		bgv.reportError(err)
 	}
 
 	if !gotPacket {
@@ -386,7 +400,7 @@ func (bgv *bgVideo) processPacket() bool {
 		vf, gotFrame, err := s.ReadVideoFrame()
 
 		if err != nil {
-			bgv.errs <- err
+			bgv.reportError(err)
 		}
 
 		// Keep decoding even if this packet didn't yield a frame.
@@ -406,15 +420,23 @@ func (bgv *bgVideo) processPacket() bool {
 				sleepUntil := bgv.startWall.Add(elapsed)
 				d := time.Until(sleepUntil)
 				if d > 0 {
-					time.Sleep(d)
+					timer := time.NewTimer(d)
+					select {
+					case <-timer.C:
+					case <-bgv.quit:
+						timer.Stop()
+						return true
+					}
 				}
 			}
 			// Deliver only when visible; while hidden we still pace timers but drop frames.
 			if bgv.visible {
 				frame := vf.Image()
 				premultiplyVideoFrame(frame)
-				bgv.frameBuffer <- frame
-				bgv.lastFrame = frame // remember last for sticky reupload
+				select {
+				case bgv.frameBuffer <- frame:
+				case <-bgv.quit:
+				}
 			}
 		}
 
@@ -429,7 +451,7 @@ func (bgv *bgVideo) processPacket() bool {
 		s := bgv.media.Streams()[packet.StreamIndex()].(*reisen.AudioStream)
 		af, gotFrame, err := s.ReadAudioFrame()
 		if err != nil {
-			bgv.errs <- err
+			bgv.reportError(err)
 		}
 		if gotFrame && af != nil {
 			raw := af.Data()
@@ -494,6 +516,8 @@ func (bgv *bgVideo) Tick() error {
 				return nil
 			}
 			bgv.texture = tex
+			// Video textures are transient; the renderer's swap cache must not retain them.
+			bgv.texture.MarkNonSwappable()
 		}
 		bgv.texture.SetData(frame.Pix)
 		bgv.lastFrame = frame
@@ -510,6 +534,7 @@ func (bgv *bgVideo) Tick() error {
 					return nil
 				}
 				bgv.texture = tex
+				bgv.texture.MarkNonSwappable()
 			}
 			bgv.texture.SetData(bgv.lastFrame.Pix)
 		}
@@ -766,14 +791,17 @@ func (bgv *bgVideo) Close() {
 	// Quiesce producers and renderer first.
 	bgv.SetPlaying(false)
 	bgv.SetVisible(false)
-	// If already closed, return.
-	select {
-	case <-bgv.done:
-		return
-	default:
-	}
 	// Signal goroutine to exit; cleanup happens there.
 	if bgv.quit != nil {
-		close(bgv.quit)
+		select {
+		case <-bgv.quit:
+		default:
+			close(bgv.quit)
+		}
 	}
+	// Also release presentation data when decoding already ended at EOF.
+	bgv.texture = nil
+	bgv.lastFrame = nil
+	drainFrames(bgv.frameBuffer)
+	drainAudio(bgv.audioBuffer)
 }

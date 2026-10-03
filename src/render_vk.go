@@ -63,6 +63,9 @@ type Texture_VK struct {
 // SwapOutTextures also checks this flag as defense-in-depth.
 func (t *Texture_VK) MarkNonSwappable() {
 	t.nonSwappable = true
+	if r, ok := gfx.(*Renderer_VK); ok {
+		delete(r.swappableTextures, t)
+	}
 }
 
 // SampledLayout returns the correct image layout for shader sampling.
