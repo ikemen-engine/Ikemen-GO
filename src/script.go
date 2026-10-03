@@ -8599,7 +8599,7 @@ func triggerFunctions(l *lua.LState) {
 		case "fall.recover":
 			lv = lua.LBool(c.ghv.fall_recover)
 		case "fall.time":
-			lv = lua.LNumber(c.fallTime)
+			lv = lua.LNumber(c.ghv.fall_time)
 		case "fall.recovertime":
 			lv = lua.LNumber(c.ghv.fall_recovertime)
 		case "fall.kill":
@@ -9008,6 +9008,10 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "inGuardDist", func(*lua.LState) int {
 		l.Push(lua.LBool(sys.debugWC.inguarddist))
+		return 1
+	})
+	luaRegister(l, "inRunState", func(*lua.LState) int {
+		l.Push(lua.LBool(sys.debugWC.inRunState))
 		return 1
 	})
 	luaRegister(l, "inputTime", func(l *lua.LState) int {

@@ -861,6 +861,26 @@ func (c *CharCompiler) ctrlSet(is IniSection, sc *StateControllerBase) (StateCon
 	return *ret, err
 }
 
+func (c *CharCompiler) runState(is IniSection, sc *StateControllerBase) (StateController, error) {
+	// State +1 needs a special case, since internally it's state -10
+	// Only the literal form is translated. Inside an expression, like "ifelse(x, +1, 200)", it still means state 1
+	if v, ok := is["value"]; ok && strings.Join(strings.Fields(v), "") == "+1" {
+		is["value"] = "-10"
+	}
+	ret, err := (*runState)(sc), c.stateSec(is, func() error {
+		if err := c.paramValue(is, sc, "redirectid",
+			runState_redirectid, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "playerno",
+			runState_playerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		return c.paramValue(is, sc, "value", runState_value, VT_Int, 1, true)
+	})
+	return *ret, err
+}
+
 func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.paramValue(is, sc, "remappal",
 		explod_remappal, VT_Int, 2, false); err != nil {

@@ -1173,6 +1173,7 @@ const (
 	OC_ex3_hitdefvar_fall_yvelocity
 	OC_ex3_hitdefvar_fall_zvelocity
 	OC_ex3_animloopcount
+	OC_ex3_inrunstate
 )
 
 type StringPool struct {
@@ -3359,7 +3360,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_fall_recover:
 		sys.bcStack.PushB(c.ghv.fall_recover)
 	case OC_ex_gethitvar_fall_time:
-		sys.bcStack.PushI(c.fallTime)
+		sys.bcStack.PushI(c.ghv.fall_time)
 	case OC_ex_gethitvar_fall_recovertime:
 		sys.bcStack.PushI(c.ghv.fall_recovertime)
 	case OC_ex_gethitvar_fall_kill:
@@ -4699,6 +4700,8 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		} else {
 			sys.bcStack.PushI(c.anim.loopcount)
 		}
+	case OC_ex3_inrunstate:
+		sys.bcStack.PushB(c.inRunState)
 	default:
 		LogMessage("%v", be[*i-1])
 		c.panic("Invalid bytecode OpCode encountered")
@@ -6081,6 +6084,39 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	return false
+}
+
+type runState StateControllerBase
+
+const (
+	runState_value byte = iota
+	runState_playerno
+	runState_redirectid
+)
+
+func (sc runState) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), runState_redirectid, "RunState")
+	if crun == nil {
+		return false
+	}
+
+	var v int32 = math.MinInt32
+	pn := crun.playerNo
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case runState_value:
+			v = exp[0].evalI(c)
+		case runState_playerno:
+			pn = int(exp[0].evalI(c)) - 1
+		}
+		return true
+	})
+
+	if v != math.MinInt32 {
+		crun.runState(v, pn)
+	}
 	return false
 }
 

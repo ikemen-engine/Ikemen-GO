@@ -1145,6 +1145,7 @@ type GetHitVar struct {
 	fall_xvelocity       float32
 	fall_yvelocity       float32
 	fall_zvelocity       float32
+	fall_time            int32
 	fall_recover         bool
 	fall_recovertime     int32
 	fall_damage          int32
@@ -3597,42 +3598,41 @@ type ForceFeedbackParams struct {
 }
 
 type Char struct {
-	name                string
-	palfx               *PalFX
-	anim                *Animation
-	animBackup          *Animation
-	curFrame            *AnimFrame
-	cmd                 []CommandList
-	ss                  StateState
-	controller          int
-	playerNo            int // Location in sys.chars[]
-	helperIndex         int // Location in sys.chars[][]
-	id                  int32
-	helperId            int32
-	parentId            int32
-	teamside            int
-	keyctrl             [4]bool
-	helperType          int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
-	isclsnproxy         bool
-	animPN              int
-	spritePN            int
-	animNo              int32
-	prevAnimNo          int32
-	life                int32
-	lifeMax             int32
-	power               int32
-	powerMax            int32
-	dizzyPoints         int32
-	dizzyPointsMax      int32
-	guardPoints         int32
-	guardPointsMax      int32
-	redLife             int32
-	juggle              int32
-	fallTime            int32
-	localcoord          float32 // Char localcoord[0] scaled to game resolution
-	localscl            float32 // Ratio between 320 and the localcoord of the current state
-	animlocalscl        float32
-	size                CharSize
+	name           string
+	palfx          *PalFX
+	anim           *Animation
+	animBackup     *Animation
+	curFrame       *AnimFrame
+	cmd            []CommandList
+	ss             StateState
+	controller     int
+	playerNo       int // Location in sys.chars[]
+	helperIndex    int // Location in sys.chars[][]
+	id             int32
+	helperId       int32
+	parentId       int32
+	teamside       int
+	keyctrl        [4]bool
+	helperType     int32 // 0 root, 1 normal, 2 player, 3 projectile (dummied)
+	isclsnproxy    bool
+	animPN         int
+	spritePN       int
+	animNo         int32
+	prevAnimNo     int32
+	life           int32
+	lifeMax        int32
+	power          int32
+	powerMax       int32
+	dizzyPoints    int32
+	dizzyPointsMax int32
+	guardPoints    int32
+	guardPointsMax int32
+	redLife        int32
+	juggle         int32
+	localcoord     float32 // Char localcoord[0] scaled to game resolution
+	localscl       float32 // Ratio between 320 and the localcoord of the current state
+	animlocalscl   float32
+	size           CharSize
 	clsnOverrides       [4][]ClsnOverride
 	clsnTransforms      [4]ClsnTransform
 	zScale              float32
@@ -3675,6 +3675,8 @@ type Char struct {
 	hittmp               int8 // 0 idle, 1 being hit, 2 falling, -1 reversaldef
 	acttmp               int8 // 1 unpaused, 0 default, -1 hitpause, -2 pause
 	minus                int8 // Essentially the current negative state
+	runStateNest         int32 // RunState recursion depth. Per char, because that's what it measures
+	inRunState           bool  // Whether the code running right now is a state being run by RunState
 	platformPosY         float32
 	groundAngle          float32
 	ownpal               bool
@@ -3739,7 +3741,8 @@ type Char struct {
 	pctype               ProjContact
 	pctime, pcid         int32
 	clsnBuffers          [4][]ClsnFinal // Pre-allocated slices for collision checks
-	stillLoading         bool           // Compiler safeguard
+	stillLoading         bool // Compiler safeguard
+	prevCtrl             bool
 	//soundChannels        SoundChannels // Moved to system
 }
 
@@ -3841,7 +3844,6 @@ func (c *Char) clearState() {
 	c.pcid = 0
 	c.counterHit = false
 	c.hitdefContact = false
-	c.fallTime = 0
 	c.makeDustSpacing = 0
 	c.hitStateChangeIdx = -1
 	c.pushAffectTeam = 1
@@ -5657,7 +5659,7 @@ func (c *Char) botBoundDist() float32 {
 }
 
 func (c *Char) canRecover() bool {
-	return c.ghv.fall_recover && c.fallTime >= c.ghv.fall_recovertime
+	return c.ghv.fall_recover && c.ghv.fall_time >= c.ghv.fall_recovertime
 }
 
 func (c *Char) comboCount() int32 {
@@ -6995,6 +6997,66 @@ func (c *Char) changeStateEx(no int32, pn int, anim, ctrl int32, ffx string) {
 
 func (c *Char) changeState(no, anim, ctrl int32, ffx string) {
 	c.changeStateEx(no, c.ss.sb.playerNo, anim, ctrl, ffx)
+}
+
+// Runs another state's code without leaving the current state
+// StateNo, Time and the persistent counters all keep belonging to the current state
+func (c *Char) runState(no int32, pn int) {
+	if c.runStateNest >= MaxLoop {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("state machine stuck in loop (stopped after %v loops): ran state %v from state %v", c.runStateNest, no, c.ss.no))
+		LogMessage("Maximum RunState loops: %v, %v, %v -> %v", c.runStateNest, c.name, c.ss.no, no)
+		return
+	}
+
+	if pn < 0 || pn >= len(sys.cgi) {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to run a state of invalid player number %v", pn+1))
+		return
+	}
+
+	sb, ok := sys.cgi[pn].states[no]
+	if !ok {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("attempted to run invalid state %v (from state %v)", no, c.ss.no))
+		if !sys.ignoreMostErrors {
+			LogMessage("Invalid state: P%v:%v", pn+1, no)
+		}
+		return
+	}
+
+	// Save the calling state's context
+	oldMinus, oldWs := c.minus, sys.workingState
+	oldv, oldvslen := sys.bcVar, len(sys.bcVarStack)
+
+	// Negative states run at their own phase, so that a ChangeState inside them buffers like it does in actionRun
+	// TODO: Maybe this isn't necessary
+	if no == -10 {
+		c.minus = -4
+	} else if no < 0 {
+		c.minus = int8(no)
+	}
+
+	// Flag for trigger
+	oldInRun := c.inRunState
+	c.inRunState = true
+
+	// Tracking the number of runStates prevents infinite loops, much like ChangeState
+	c.runStateNest++
+
+	// Execute the actual state bytecode
+	sb.run(c)
+
+	c.inRunState = oldInRun
+
+	// Restore context
+	sys.bcVar, sys.bcVarStack = oldv, sys.bcVarStack[:oldvslen]
+	sys.workingState, c.minus = oldWs, oldMinus
+
+	// Flush buffered ChangeState here so it lands at the phase that called this, instead of waiting for the next one
+	if c.minus == 0 && c.stateChange2() {
+		c.ss.sb.run(c)
+	}
+
+	// Decreased only after the flush, so that a state reached through it is still counted
+	c.runStateNest--
 }
 
 func (c *Char) selfState(no, anim, readplayerid, ctrl int32, ffx string) {
@@ -11506,8 +11568,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				ghv.forcecrouch = hd.forcecrouch != 0
 
 				// For some reason Mugen only resets this one on hit
-				// TODO: That seems unnecessary and changing it would allow this to be inside ghv as well
-				getter.fallTime = 0
+				// Ikemen resets it either on guard or hit, which is more consistent with the others
+				//getter.fallTime = 0
 
 				if hd.unhittabletime[1] >= 0 {
 					getter.unhittableTime = hd.unhittabletime[1]
@@ -12411,7 +12473,9 @@ func (c *Char) actionRun() {
 					c.ghv.hitshaketime--
 				}
 				if c.ghv.fallflag {
-					c.fallTime++
+					// In Mugen, this one steps even during hitshake
+					// Which seems wrong. But it's used in the canRecover trigger, so changing it would be a breaking change
+					c.ghv.fall_time++
 				}
 			} else {
 				if c.hittmp > 0 {
@@ -13966,7 +14030,7 @@ func (cl *CharList) hitDetectionPlayer(c *Char) {
 						getter.ghv.playerno = c.playerNo
 						getter.ghv.playerid = c.id
 						getter.ghv.teamside = c.hitdef.teamside
-						getter.fallTime = 0
+						getter.ghv.fall_time = 0
 
 						// Fall flag
 						if c.hitdef.forcenofall {

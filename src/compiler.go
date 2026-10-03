@@ -101,6 +101,7 @@ func newCharCompiler() *CharCompiler {
 		"removeexplod":       c.removeExplod,
 		"removetext":         c.removeText,
 		"reversaldef":        c.reversalDef,
+		"runstate":           c.runState,
 		"screenbound":        c.screenBound,
 		"selfstate":          c.selfState,
 		"sndpan":             c.sndPan,
@@ -411,6 +412,7 @@ var triggerMap = map[string]int{
 	"incustomstate":      1,
 	"index":              1,
 	"inputtime":          1,
+	"inrunstate":         1,
 	"introstate":         1,
 	"isasserted":         1,
 	"ishost":             1,
@@ -4812,6 +4814,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_ex_, OC_ex_incustomanim)
 	case "incustomstate":
 		out.append(OC_ex_, OC_ex_incustomstate)
+	case "inrunstate":
+		out.append(OC_ex3_, OC_ex3_inrunstate)
 	case "inputtime":
 		if err := c.checkOpeningParenthesisCS(in); err != nil {
 			return bvNone(), err
@@ -7917,13 +7921,13 @@ func (c *CharCompiler) letAssign(line *string, root bool,
 			return err
 		}
 	default:
-		otk := c.token
+		// Push the token back rather than rejoining with " ", which breaks strings
+		*line = c.token + *line
 		expr, _, err := c.readSentence(line)
 		if err != nil {
 			return err
 		}
-		expr = otk + " " + expr
-		otk = c.token
+		otk := c.token
 		for i, n := range names {
 			var be BytecodeExp
 			if i < len(names)-1 {
@@ -8080,13 +8084,13 @@ func (c *CharCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 				c.scan(line)
 				continue
 			} else {
-				otk := c.token
+				// Same push-back as letAssign
+				*line = c.token + *line
 				expr, assign, err := c.readSentence(line)
 				if err != nil {
 					return err
 				}
-				expr = otk + " " + expr
-				otk = c.token
+				otk := c.token
 				if stex, err := c.fullExpression(&expr, VT_Undefined); err != nil {
 					return err
 				} else {
