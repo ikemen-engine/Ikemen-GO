@@ -1231,6 +1231,49 @@ func (is IniSection) readF32CsvForStage(name string) (ary []float32) {
 	return
 }
 
+// ReadAutoType reads a scalar INI value as a string, int32, or float32.
+// The bool reports whether the key exists; unquoted non-numeric values are invalid.
+func (is IniSection) ReadAutoType(name string) (any, bool, error) {
+	raw, ok := is[name]
+	if !ok {
+		return nil, false, nil
+	}
+
+	// Helper to print shared error
+	invalidValue := func() error {
+		return Error(fmt.Sprintf("%q value must be a quoted string or number", name))
+	}
+
+	// Get raw value
+	s := strings.TrimSpace(raw)
+
+	// Try string
+	if strings.ContainsRune(s, '"') {
+		if len(s) < 2 || s[0] != '"' || s[len(s)-1] != '"' {
+			return nil, true, invalidValue()
+		}
+		unquoted, err := strconv.Unquote(s)
+		if err != nil {
+			return nil, true, invalidValue()
+		}
+		return unquoted, true, nil
+	}
+
+	// Try int
+	if IsInt(s) {
+		return Atoi(s), true, nil
+	}
+
+	// Try float
+	// Parse like the compiler so a value compares equal to the same CNS literal.
+	if f, err := strconv.ParseFloat(s, 32); err == nil {
+		return float32(f), true, nil
+	}
+
+	// Invalid value
+	return nil, true, invalidValue()
+}
+
 func (is IniSection) getText(name string) (str string, ok bool, err error) {
 	str, ok = is[name]
 	if !ok {

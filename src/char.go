@@ -4292,8 +4292,25 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				}
 				mapArray = false
 
-				for key, value := range is {
-					c.mapDefault[key] = MapValue{Type: VT_Float, Num: Atof(value)}
+				// Handle maps according to their inferred type
+				for key := range is {
+					value, ok, err := is.ReadAutoType(key)
+					if err != nil {
+						return err
+					}
+					if !ok {
+						continue
+					}
+					switch value := value.(type) {
+					case string:
+						c.mapDefault[key] = MapValue{Type: VT_String, Str: value}
+					case int32:
+						c.mapDefault[key] = MapValue{Type: VT_Int, Num: float64(value)}
+					case float32:
+						c.mapDefault[key] = MapValue{Type: VT_Float, Num: float64(value)}
+					default:
+						return Error(fmt.Sprintf("unsupported auto-typed value for map key %q", key))
+					}
 				}
 			}
 		case "shaders":
