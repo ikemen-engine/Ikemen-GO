@@ -4046,7 +4046,7 @@ func (s *System) runMatch() (reload bool) {
 		for i, p := range s.chars {
 			if len(p) > 0 {
 				forceDestroy := s.matchOver() ||
-					(s.tmode[i&1] == TM_Turns && p[0].teamside != -1 && p[0].life <= 0)
+					(s.tmode[i&1] == TM_Turns && p[0].teamside != -1 && s.effectiveLoss[i&1])
 				s.clearPlayerAssets(i, forceDestroy)
 			}
 		}

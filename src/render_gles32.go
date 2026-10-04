@@ -1776,7 +1776,11 @@ func (r *Renderer_GLES32) FinishScreenshot(data []uint8, width, height int) bool
 		return false
 	}
 	r.bindBuffer(gl.PIXEL_PACK_BUFFER, r.capturePBO)
-	if p := gl.MapBuffer(gl.PIXEL_PACK_BUFFER, gl.READ_ONLY); p != nil {
+
+	// This is invalid in GLES32
+	//if p := gl.MapBuffer(gl.PIXEL_PACK_BUFFER, gl.READ_ONLY); p != nil {
+
+	if p := gl.MapBufferRange(gl.PIXEL_PACK_BUFFER, 0, 4*width*height, gl.MAP_READ_BIT); p != nil {
 		copy(data, (*[1 << 30]byte)(p)[:4*width*height])
 		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
 	}

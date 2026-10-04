@@ -1396,6 +1396,7 @@ type AfterImage struct {
 	alpha          [2]int32
 	palfx          []*PalFX
 	imgs           []SpriteData // []aimgImage
+	drawbuf        []SpriteData // Reused draw copies, to avoid allocating every frame
 	imgidx         int32
 	restgap        int32
 	reccount       int32
@@ -1604,8 +1605,9 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 			}
 
 			// Shallow copy the original animation
-			// Reuse the already allocated afterimage sprite if it exists
+			// Reuse the already allocated afterimage sprite and frame buffer if they exist
 			oldSpr := img.anim.spr
+			oldFrames := img.anim.frames
 			*img.anim = *sd.anim
 			img.anim.spr = oldSpr
 
@@ -1640,10 +1642,13 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 				img.anim.spr = nil
 			}
 
-			// Keep only the current frame instead of the full frame list
-			// Use a fresh slice to avoid mutating the source animation's frames.
-			if int(sd.anim.drawidx) < len(sd.anim.frames) {
-				img.anim.frames = []AnimFrame{sd.anim.frames[sd.anim.drawidx]}
+			// Keep only the current frame, reusing the old buffer
+			// Drop Clsn since afterimages don't use it. Makes state saving cheaper
+			di := int(sd.anim.drawidx)
+			if di >= 0 && di < len(sd.anim.frames) {
+				img.anim.frames = append(oldFrames[:0], sd.anim.frames[di])
+				img.anim.frames[0].Clsn1 = nil
+				img.anim.frames[0].Clsn2 = nil
 			} else {
 				img.anim.frames = nil
 			}
@@ -1687,6 +1692,11 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 	ringsize := int32(len(ai.imgs))
 	if ringsize <= 0 || ai.framegap <= 0 {
 		return
+	}
+
+	// One draw slot per afterimage. Empty after a rollback load
+	if len(ai.drawbuf) < len(ai.palfx) {
+		ai.drawbuf = make([]SpriteData, len(ai.palfx))
 	}
 
 	// Record first
@@ -1742,7 +1752,9 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 			ai.palfx[step].remap = sd.pfx.remap
 
 			// Prepare AfterImage sprite data
-			imgsd := *img
+			// Reuse the draw slot. Safe since the sprite list is rebuilt every frame
+			imgsd := &ai.drawbuf[step]
+			*imgsd = *img
 
 			// Apply the dynamic effects
 			imgsd.pfx = ai.palfx[step]
@@ -1751,7 +1763,7 @@ func (ai *AfterImage) recAndCue(sd *SpriteData, playerNo int, rec bool, hitpause
 			imgsd.priority = img.priority - step // Afterimages decrease in sprpriority over time
 
 			// Add to list
-			sys.spriteList.add(&imgsd)
+			sys.spriteList.add(imgsd)
 
 			// Track number of afterimage sprites used by this player
 			sys.afterImageCount[playerNo]++
@@ -13734,6 +13746,7 @@ func (cl *CharList) delete(dc *Char) {
 	// However not reusing it creates a more predictable drawing order
 }
 
+/*
 func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
 	// Find the old character occupying the slot
 	// We cannot look at sys.chars directly because that has already been updated to the new char
@@ -13753,6 +13766,75 @@ func (cl *CharList) replace(newChar *Char, pn, idx int) bool {
 	}
 
 	return false
+}
+*/
+
+func (cl *CharList) audit() {
+	// Neither list may contain duplicates
+	inCreation := make(map[*Char]bool, len(cl.creationOrder))
+	for _, c := range cl.creationOrder {
+		if inCreation[c] {
+			panic(Error("CharList.creationOrder contains a duplicate char"))
+		}
+		inCreation[c] = true
+	}
+	inRun := make(map[*Char]bool, len(cl.runOrder))
+	for _, c := range cl.runOrder {
+		if inRun[c] {
+			panic(Error("CharList.runOrder contains a duplicate char"))
+		}
+		inRun[c] = true
+	}
+
+	// Both lists must hold the exact same chars
+	if len(cl.creationOrder) != len(cl.runOrder) {
+		panic(Error("CharList.creationOrder and runOrder lengths differ"))
+	}
+	for _, c := range cl.creationOrder {
+		if !inRun[c] {
+			panic(Error("CharList.creationOrder contains a char missing from runOrder"))
+		}
+	}
+	for _, c := range cl.runOrder {
+		if !inCreation[c] {
+			panic(Error("CharList.runOrder contains a char missing from creationOrder"))
+		}
+	}
+
+	// No two chars may share an ID
+	ids := make(map[int32]bool, len(cl.creationOrder))
+	for _, c := range cl.creationOrder {
+		if ids[c.id] {
+			panic(Error(fmt.Sprintf("CharList contains duplicate char ID %d (%s)", c.id, c.name)))
+		}
+		ids[c.id] = true
+	}
+
+	// idMap must mirror creationOrder exactly
+	if len(cl.idMap) != len(cl.creationOrder) {
+		panic(Error("CharList.idMap and creationOrder lengths differ"))
+	}
+	for _, c := range cl.creationOrder {
+		if cl.idMap[c.id] != c {
+			panic(Error(fmt.Sprintf("CharList.idMap entry mismatch (id: %d, name: %s)", c.id, c.name)))
+		}
+	}
+
+	// Every char must still exist in its player's sys.chars slot
+	for _, c := range cl.creationOrder {
+		found := false
+		if c.playerNo >= 0 && c.playerNo < len(sys.chars) {
+			for _, pc := range sys.chars[c.playerNo] {
+				if pc == c {
+					found = true
+					break
+				}
+			}
+		}
+		if !found {
+			panic(Error(fmt.Sprintf("CharList contains char missing from sys.chars (playerNo: %d, helperIndex: %d, id: %d, name: %s)", c.playerNo, c.helperIndex, c.id, c.name)))
+		}
+	}
 }
 
 func (cl *CharList) commandUpdate() {

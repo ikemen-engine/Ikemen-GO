@@ -89,7 +89,7 @@ func (a *Animation) Clone(gsp *GameStatePool) (result *Animation) {
 	result.frames = *gsp.Get(a.frames).(*[]AnimFrame)
 	result.frames = result.frames[:0]
 	for i := 0; i < len(a.frames); i++ {
-		result.frames = append(result.frames, *a.frames[i].Clone())
+		result.frames = append(result.frames, a.frames[i].Clone())
 	}
 
 	// Normally only afterimages have these as nil, but it's still worth avoiding the work whenever possible
@@ -123,9 +123,9 @@ func (anim *Animation) CloneState() *Animation {
 	return result
 }
 
-func (af *AnimFrame) Clone() (result *AnimFrame) {
-	result = new(AnimFrame)
-	*result = *af
+// Returns a value to avoid an allocation when stored in a slice
+func (af *AnimFrame) Clone() (result AnimFrame) {
+	result = *af
 
 	if af.Clsn1 != nil {
 		result.Clsn1 = make([][4]float32, len(af.Clsn1), len(af.Clsn1))
@@ -210,6 +210,9 @@ func (ai *AfterImage) Clone(gsp *GameStatePool) *AfterImage {
 	result := new(AfterImage)
 	*result = *ai
 
+	// Draw buffer isn't game state
+	result.drawbuf = nil
+
 	// Allocate the slice backing arrays before replacing nested pointers.
 	if ai.imgs != nil {
 		result.imgs = make([]SpriteData, len(ai.imgs), len(ai.imgs))
@@ -225,6 +228,11 @@ func (ai *AfterImage) Clone(gsp *GameStatePool) *AfterImage {
 	for i := range ai.imgs {
 		if ai.imgs[i].anim != nil {
 			result.imgs[i].anim = ai.imgs[i].anim.Clone(gsp)
+			// Copy the sprite to prevent aliasing, since afterimages modify their sprites
+			if ai.imgs[i].anim.spr != nil {
+				spr := *ai.imgs[i].anim.spr
+				result.imgs[i].anim.spr = &spr
+			}
 		}
 	}
 
@@ -352,7 +360,8 @@ func (c *Char) Clone(gsp *GameStatePool) (result Char) {
 
 	// Since curFrame is desynced from anim's state, we must save it as well
 	if c.curFrame != nil {
-		result.curFrame = c.curFrame.Clone()
+		frame := c.curFrame.Clone()
+		result.curFrame = &frame
 	}
 
 	if c.shadowAnim != nil {
