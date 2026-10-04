@@ -10606,7 +10606,11 @@ func (c *Char) getClsnUnscaled(group int32) []ClsnFinal {
 // Return boxes with char scaling
 func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 	boxes := c.getClsnUnscaled(group)
-	if len(boxes) == 0 {
+	overrides := c.clsnOverrides[group-1]
+
+	// Only exit early if overrides can't add boxes either
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/4084
+	if len(boxes) == 0 && len(overrides) == 0 {
 		return boxes
 	}
 
@@ -10625,7 +10629,6 @@ func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 
 	// Apply appropriate overrides
 	// Note: This must happen after char scaling is applied. We want the override to be absolute
-	overrides := c.clsnOverrides[group-1]
 	for _, mod := range overrides {
 		// Helper to apply modifiers
 		// This will make it easier to add new parameters later if needed
