@@ -1327,12 +1327,12 @@ func (ghv *GetHitVar) testAttr(attr int32) bool {
 }
 
 type HitBy struct {
-	flag     int32
-	time     int32
-	not      bool
-	playerid int32
-	playerno int
-	stack     bool
+	flag       int32
+	time       int32
+	not        bool
+	playerid   int32
+	playerno   int
+	stack      bool
 	clsn_group int32
 	clsn_index int32
 }
@@ -1518,7 +1518,7 @@ func (ai *AfterImage) setup(c *Char) {
 	// Determine size to use for the image ring buffer
 	// Mugen's buffer holds exactly "length" frames, so the last slot can't be sampled without wrapping into the first
 	// Ikemen uses one extra slot so that all intended afterimages are visible
-	ringSize := int(ai.length)+1
+	ringSize := int(ai.length) + 1
 	if c.stOgi().ikemenver[0] == 0 && c.stOgi().ikemenver[1] == 0 {
 		ringSize = int(ai.length)
 	}
@@ -13266,7 +13266,7 @@ func (c *Char) cueDebugDraw() {
 				// Color each box by its own invincibility
 				for i := range boxes2 {
 					bhb, bmtk, _, _ := c.debugHitByState(2, int32(i))
-					pick(bhb, bmtk).Add(boxes2[i:i+1], x + xoff, y + yoff, c.facing)
+					pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing)
 				}
 
 				// The text only cares about the global state. The colors will specify which boxes can be hit

@@ -1785,7 +1785,6 @@ func (r *Renderer_GLES32) FinishScreenshot(data []uint8, width, height int) bool
 	return true
 }
 
-
 func (r *Renderer_GLES32) EnableScissor(x, y, width, height int32) {
 	// Flip Y to OpenGL convention
 	realY := sys.scrrect[3] - (y + height)
