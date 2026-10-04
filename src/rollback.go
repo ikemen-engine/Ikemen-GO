@@ -713,17 +713,10 @@ func (r *RollbackSession) SaveGameState(stateIdx int) int {
 	sys.savePool.curStateID = stateIdx
 	sys.rollbackStateID = stateIdx
 	oldest := (stateIdx + 1) % (MaxSaveStates + 2)
-	if _, ok := sys.arenaSaveMap[oldest]; ok {
-		sys.arenaSaveMap[oldest].Free()
-		sys.arenaSaveMap[oldest] = nil
-		delete(sys.arenaSaveMap, oldest)
-	}
+	// These slots are no longer restorable; drop their snapshots before freeing pooled data.
+	delete(r.saveStates, oldest)
+	delete(r.saveStates, stateIdx)
 	sys.savePool.Free(oldest)
-	if _, ok := sys.arenaSaveMap[stateIdx]; ok {
-		sys.arenaSaveMap[stateIdx].Free()
-		sys.arenaSaveMap[stateIdx] = nil
-		delete(sys.arenaSaveMap, stateIdx)
-	}
 	sys.savePool.Free(stateIdx)
 
 	r.saveStates[stateIdx] = sys.statePool.gameStatePool.Get().(*GameState)
@@ -744,22 +737,8 @@ func (r *RollbackSession) SaveGameState(stateIdx int) int {
 	}
 }
 
-var lastLoadedFrame int = -1
-
 func (r *RollbackSession) LoadGameState(stateIdx int) {
 	sys.loadPool.curStateID = stateIdx
-	if _, ok := sys.arenaLoadMap[stateIdx]; ok {
-		sys.arenaLoadMap[stateIdx].Free()
-		sys.arenaLoadMap[stateIdx] = nil
-		delete(sys.arenaLoadMap, stateIdx)
-	}
-	for sid := range sys.arenaLoadMap {
-		if sid != lastLoadedFrame {
-			sys.arenaLoadMap[sid].Free()
-			sys.arenaLoadMap[sid] = nil
-			delete(sys.arenaLoadMap, sid)
-		}
-	}
 	sys.loadPool.Free(stateIdx)
 
 	r.saveStates[stateIdx].LoadState(stateIdx)
@@ -768,12 +747,9 @@ func (r *RollbackSession) LoadGameState(stateIdx int) {
 		r.log.logState("Loading", stateIdx, r.saveStates[stateIdx])
 	}
 
+	// Drop the entry alongside the Put, or a later Get can hand out a GameState this map still points at
 	sys.statePool.gameStatePool.Put(r.saveStates[stateIdx])
-
-	// Drop the entry alongside the Put, or a later Get can hand out a stale state
 	delete(r.saveStates, stateIdx)
-
-	lastLoadedFrame = stateIdx
 }
 
 // Called when the GGPO backend needs the game to simulate a single frame

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"arena"
 	"bufio"
 	"errors"
 	"fmt"
@@ -181,8 +180,6 @@ var sys = System{
 	savePool:         NewGameStatePool(),
 	loadPool:         NewGameStatePool(),
 	commandLists:     make([]*CommandList, 0),
-	arenaSaveMap:     make(map[int]*arena.Arena),
-	arenaLoadMap:     make(map[int]*arena.Arena),
 	debugAccel:       1, // TODO: We probably shouldn't rely on this being initialized to 1
 	charVarsBackup:   make(map[int]CharVarBackup),
 	SystemStateVars: SystemStateVars{
@@ -342,8 +339,6 @@ type System struct {
 
 	statePool       GameStatePool
 	commandLists    []*CommandList
-	arenaSaveMap    map[int]*arena.Arena
-	arenaLoadMap    map[int]*arena.Arena
 	rollbackStateID int
 	savePool        GameStatePool
 	loadPool        GameStatePool
@@ -363,6 +358,9 @@ type System struct {
 
 	// screenshot deferral
 	isTakingScreenshot bool
+	screenshotInFlight bool
+	screenshotSize     [2]int
+	screenshotFile     string
 
 	// keepAlive profiling (debug only)
 	keepAliveProfile bool
@@ -882,10 +880,25 @@ func (s *System) await(fps int) bool {
 			gfx.Await()
 		}
 		s.window.UpdateDebugFPS()
-		if s.isTakingScreenshot {
-			defer captureScreen()
-			s.isTakingScreenshot = false
+
+		if s.screenshotInFlight || s.isTakingScreenshot {
+			defer func() {
+				if s.screenshotInFlight {
+					size, file := s.screenshotSize, s.screenshotFile
+					data := make([]uint8, 4*size[0]*size[1])
+					if gfx.FinishScreenshot(data, size[0], size[1]) {
+						s.screenshotInFlight = false
+						SafeGo(func() { saveScreenshot(data, size[0], size[1], file) })
+					}
+				}
+				if s.isTakingScreenshot && !s.screenshotInFlight {
+					s.isTakingScreenshot = false
+					requestScreenshot()
+					s.screenshotInFlight = true
+				}
+			}()
 		}
+
 		// Begin the next frame after events have been processed. Do not clear
 		// the screen if network input is present.
 		defer gfx.BeginFrame(sys.netConnection == nil)
@@ -4517,7 +4530,7 @@ func (bk *RoundStartBackup) Save() {
 			for k, v := range c.cnsfvar {
 				bkup.cnsfvar[k] = v
 			}
-			bkup.mapArray = make(map[string]float32, len(c.mapArray))
+			bkup.mapArray = make(map[string]MapValue, len(c.mapArray))
 			for k, v := range c.mapArray {
 				bkup.mapArray[k] = v
 			}
@@ -4612,7 +4625,7 @@ func (bk *RoundStartBackup) Restore() {
 			}
 
 			// Restore maps
-			c.mapArray = make(map[string]float32, len(bkup.mapArray))
+			c.mapArray = make(map[string]MapValue, len(bkup.mapArray))
 			for k, v := range bkup.mapArray {
 				c.mapArray[k] = v
 			}
@@ -5037,8 +5050,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 			if err != nil {
 				return err
 			}
-			lines, lnidx := SplitAndTrim(str, "\n"), 0
-			at := ReadAnimationTable(sc.def, tempSff, &tempSff.palList, lines, &lnidx, false)
+			at := ReadAnimationTable(sc.def, tempSff, &tempSff.palList, str, false)
 			for vAnim := range s.charAnimPreload {
 				if animation := at.get(vAnim); animation != nil {
 					localAnims.addAnim(animation, vAnim)
@@ -5133,14 +5145,14 @@ func (s *Select) preloadStageAssets(ref int) error {
 		return nil
 	}
 	ss := s.stagelist[ref-1]
-	lines := []string{}
+	defText := ""
 	defPath := ss.def
 	if err := LoadFile(&defPath, nil, "", func(file string) error {
 		str, err := LoadText(file)
 		if err != nil {
 			return err
 		}
-		lines = SplitAndTrim(str, "\n")
+		defText = str
 		return nil
 	}); err != nil {
 		return err
@@ -5153,8 +5165,7 @@ func (s *Select) preloadStageAssets(ref int) error {
 	}
 
 	tempSff := newSff()
-	atidx := 0
-	at := ReadAnimationTable(ss.def, tempSff, &tempSff.palList, lines, &atidx, false)
+	at := ReadAnimationTable(ss.def, tempSff, &tempSff.palList, defText, false)
 	for v := range s.stageAnimPreload {
 		if anim := at.get(v); anim != nil {
 			localAnims.addAnim(anim, v)
@@ -6976,7 +6987,7 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 type CharVarBackup struct {
 	cnsvar   map[int32]int32
 	cnsfvar  map[int32]float32
-	mapArray map[string]float32
+	mapArray map[string]MapValue
 }
 
 func (s *System) saveCharVars(pn int) {
@@ -6988,7 +6999,7 @@ func (s *System) saveCharVars(pn int) {
 	bk := CharVarBackup{
 		cnsvar:   make(map[int32]int32),
 		cnsfvar:  make(map[int32]float32),
-		mapArray: make(map[string]float32),
+		mapArray: make(map[string]MapValue),
 	}
 
 	for k, v := range c.cnsvar {
@@ -7016,7 +7027,7 @@ func (s *System) restoreCharVars(c *Char) {
 	for k, v := range bk.cnsfvar {
 		c.cnsfvar[k] = v
 	}
-	c.mapArray = make(map[string]float32, len(bk.mapArray))
+	c.mapArray = make(map[string]MapValue, len(bk.mapArray))
 	for k, v := range bk.mapArray {
 		c.mapArray[k] = v
 	}

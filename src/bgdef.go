@@ -62,7 +62,6 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string, startlayer int
 			defmap[name] = append(defmap[name], is)
 		}
 	}
-	i = 0
 	if sec := defmap["info"]; len(sec) > 0 {
 		sec[0].readI32ForStage("localcoord", &s.localcoord[0], &s.localcoord[1])
 	}
@@ -90,7 +89,7 @@ func loadBGDef(sff *Sff, model *Model, def string, bgname string, startlayer int
 
 	s.sff = sff
 	s.model = model
-	s.animTable = ReadAnimationTable(def, s.sff, &s.sff.palList, lines, &i, true)
+	s.animTable = ReadAnimationTable(def, s.sff, &s.sff.palList, str, true)
 
 	var bglink *backGround
 	for _, bgsec := range defmap[bgname] {

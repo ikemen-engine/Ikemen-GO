@@ -250,6 +250,8 @@ type Animation struct {
 	copyAction                 int32
 	warnMissing                bool
 	loopcount                  int32
+	filename                   string
+	actionNumber               int32
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
@@ -272,8 +274,72 @@ func newAnimation(sff *Sff, pal *PaletteList) *Animation {
 	}
 }
 
-func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animation, error) {
-	a := newAnimation(sff, pal)
+type AnimCompiler struct {
+	sff       *Sff
+	pal       *PaletteList
+	at        AnimationTable
+	seen      map[int32]bool // Actions found in the file being compiled, for duplicate checks
+	lines     []string
+	i         int // Line index
+	filename  string
+	mainFile  string // First file compiled, in case common animations are used
+	animNo    int32
+	log       bool
+	finalized bool
+}
+
+func newAnimCompiler(sff *Sff, pal *PaletteList, log bool) *AnimCompiler {
+	return &AnimCompiler{
+		sff:  sff,
+		pal:  pal,
+		at:   NewAnimationTable(),
+		seen: make(map[int32]bool),
+		log:  log,
+	}
+}
+
+func (ac *AnimCompiler) warnf(format string, args ...interface{}) {
+	if !ac.log {
+		return
+	}
+	LogMessage("WARNING: %v, action %v: %v", ac.filename, ac.animNo, fmt.Sprintf(format, args...))
+}
+
+func (ac *AnimCompiler) errorf(line int, format string, args ...interface{}) error {
+	return Error(fmt.Sprintf("%v, action %v, line %v: %v",
+		ac.filename, ac.animNo, line, fmt.Sprintf(format, args...)))
+}
+
+// Parses every action in one source
+func (ac *AnimCompiler) compileText(filename, text string) {
+	// The resolved table shares its map with the caller, so compiling again would mutate it
+	if ac.finalized {
+		LogMessage("WARNING: %v compiled after the table was resolved (ignored)", filename)
+		return
+	}
+	ac.filename = filename
+	if ac.mainFile == "" {
+		ac.mainFile = filename
+	}
+	ac.seen = make(map[int32]bool)
+	ac.lines, ac.i = SplitAndTrim(text, "\n"), 0
+	for ac.compileAction() != nil {
+	}
+}
+
+// Finalizes the table, resolving Copy Action across every compiled file
+// The compiler is spent afterwards and must not compile anything else
+func (ac *AnimCompiler) finalize() AnimationTable {
+	ac.at.resolveCopyAction()
+	ac.at.filename = ac.mainFile
+	ac.finalized = true
+	return ac.at
+}
+
+func (ac *AnimCompiler) readAnimation() (*Animation, error) {
+	a := newAnimation(ac.sff, ac.pal)
+	a.filename = ac.filename
+	a.actionNumber = ac.animNo
 
 	a.mask = 0
 	ols := int32(0)
@@ -281,12 +347,12 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 	var clsn1, clsn1d, clsn2, clsn2d [][4]float32
 	def1, def2 := true, true
 
-	for ; *i < len(lines); (*i)++ {
-		if len(lines[*i]) > 0 && lines[*i][0] == '[' {
+	for ; ac.i < len(ac.lines); ac.i++ {
+		if len(ac.lines[ac.i]) > 0 && ac.lines[ac.i][0] == '[' {
 			break
 		}
 		line := strings.ToLower(strings.TrimSpace(
-			strings.SplitN(lines[*i], ";", 2)[0]))
+			strings.SplitN(ac.lines[ac.i], ";", 2)[0]))
 
 		// Copy Action
 		if len(line) >= 12 && line[:12] == "copy action " { // Trailing space here
@@ -304,9 +370,10 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 		var af *AnimFrame
 		af, lerr := ReadAnimFrame(line)
 
-		// Use a local error to prevent overwriting the outer one with nil
+		// Use a local error to prevent overwriting the outer one with nil.
+		// Tag with file/action/line so callers don't have to.
 		if lerr != nil {
-			err = lerr
+			err = ac.errorf(ac.i+1, "%v", lerr.Error())
 		}
 
 		switch {
@@ -343,68 +410,28 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 			if size < 0 {
 				break
 			}
-			var clsn [][4]float32
-			if line[4] == '1' {
-				// Clsn1
-				clsn1 = make([][4]float32, size)
-				clsn = clsn1
-				if len(line) >= 12 && line[5:12] == "default" {
+			clsnType := line[4]
+			isDefault := len(line) >= 12 && line[5:12] == "default"
+			switch clsnType {
+			case '1':
+				clsn1, lerr = ac.readClsn(clsnType, size)
+				if lerr != nil {
+					err = lerr
+				}
+				if isDefault {
 					clsn1d = clsn1
 				}
 				def1 = false
-			} else if line[4] == '2' {
-				// Clsn2
-				clsn2 = make([][4]float32, size)
-				clsn = clsn2
-				if len(line) >= 12 && line[5:12] == "default" {
+			case '2':
+				clsn2, lerr = ac.readClsn(clsnType, size)
+				if lerr != nil {
+					err = lerr
+				}
+				if isDefault {
 					clsn2d = clsn2
 				}
 				def2 = false
-			} else {
-				break
 			}
-			if size == 0 {
-				break
-			}
-			// Move past the "Clsn:" line to the first rectangle line
-			(*i)++
-			// Read exactly 'size' number rectangle lines
-			// TODO: Mugen seems less strict about this
-			for n := int32(0); n < size && *i < len(lines); {
-				line := strings.ToLower(strings.TrimSpace(
-					strings.SplitN(lines[*i], ";", 2)[0]))
-				if len(line) == 0 {
-					(*i)++
-					continue // Skip blank lines
-				}
-				// Stop if we encounter a line that doesn't start with "clsn"
-				if len(line) < 4 || line[:4] != "clsn" {
-					break
-				}
-				// Extract the coordinates after "="
-				ii := strings.Index(line, "=")
-				if ii < 0 {
-					break
-				}
-				ary := strings.Split(line[ii+1:], ",")
-				if len(ary) < 4 {
-					break
-				}
-				l, t, r, b := Atoi(ary[0]), Atoi(ary[1]), Atoi(ary[2]), Atoi(ary[3])
-				// Normalize rectangle
-				if l > r {
-					l, r = r, l
-				}
-				if t > b {
-					t, b = b, t
-				}
-				clsn[n][0], clsn[n][1], clsn[n][2], clsn[n][3] =
-					float32(l), float32(t), float32(r), float32(b)
-				n++
-				(*i)++
-			}
-			// Back up one step to avoid skipping the line after the last rectangle
-			(*i)--
 		}
 	}
 
@@ -437,10 +464,109 @@ func ReadAnimation(sff *Sff, pal *PaletteList, lines []string, i *int) (*Animati
 	return a, err
 }
 
-func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a *Animation, err error) {
+func (ac *AnimCompiler) readClsn(clsnType byte, size int32) ([][4]float32, error) {
+	clsn := make([][4]float32, size)
+	if size == 0 {
+		return clsn, nil
+	}
+	filled := make([]bool, size)
+
+	// 1-based line number of the "Clsn1:" / "Clsn2:" header
+	lineNo := ac.i + 1
+
+	// Move past the "Clsn:" line to the first rectangle line
+	ac.i++
+
+	// Read exactly 'size' number rectangle lines
+	count := int32(0)
+	for count < size && ac.i < len(ac.lines) {
+		rline := strings.ToLower(strings.TrimSpace(
+			strings.SplitN(ac.lines[ac.i], ";", 2)[0]))
+		if len(rline) == 0 {
+			ac.i++
+			continue // Skip blank lines
+		}
+		// Stop if we encounter a line that doesn't start with "clsn"
+		if len(rline) < 4 || rline[:4] != "clsn" {
+			break
+		}
+		// Find the coordinate assignment
+		eqIdx := strings.Index(rline, "=")
+		if eqIdx < 0 {
+			break
+		}
+		// Optional [n] between the type and "="
+		boxIdx := int32(-1)
+		if brStart := strings.Index(rline, "["); brStart >= 0 && brStart < eqIdx {
+			if brEnd := strings.Index(rline[brStart:], "]"); brEnd > 0 {
+				idxStr := strings.TrimSpace(rline[brStart+1 : brStart+brEnd])
+				valid := idxStr != ""
+				for k := 0; valid && k < len(idxStr); k++ {
+					if idxStr[k] < '0' || idxStr[k] > '9' {
+						valid = false
+					}
+				}
+				if valid {
+					boxIdx = int32(Atoi(idxStr))
+				}
+			}
+		}
+		// If the index couldn't be honored (absent, out-of-range, or repeated),
+		// fall back to the first free slot so the box isn't silently lost.
+		if boxIdx < 0 || boxIdx >= size || filled[boxIdx] {
+			requested := boxIdx
+			boxIdx = -1
+			for k := int32(0); k < size; k++ {
+				if !filled[k] {
+					boxIdx = k
+					break
+				}
+			}
+			if boxIdx < 0 {
+				// Impossible to reach, but kept as a safety net
+				ac.warnf("line %v: Clsn%v no free slot (size %v); box dropped",
+					lineNo, string(clsnType), size)
+				ac.i++
+				continue
+			}
+			if requested >= 0 {
+				ac.warnf("line %v: Clsn%v[%v] index is duplicate or out of range; placed in slot [%v]",
+					lineNo, string(clsnType), requested, boxIdx)
+			}
+		}
+		// Extract the coordinates after "="
+		ary := strings.Split(rline[eqIdx+1:], ",")
+		if len(ary) < 4 {
+			break
+		}
+		clsn[boxIdx] = NormalizeRect([4]float32{
+			float32(Atoi(ary[0])),
+			float32(Atoi(ary[1])),
+			float32(Atoi(ary[2])),
+			float32(Atoi(ary[3])),
+		})
+		filled[boxIdx] = true
+		count++
+		ac.i++
+	}
+
+	// Back up one step to avoid skipping the line after the last rectangle
+	ac.i--
+
+	// Warn if size doesn't match found boxes
+	// Mugen crashes here
+	if count != size {
+		return clsn, ac.errorf(lineNo, "Clsn%v: declared %v boxes but only %v found",
+			string(clsnType), size, count)
+	}
+
+	return clsn, nil
+}
+
+func (ac *AnimCompiler) readAction() (no int32, a *Animation, err error) {
 	var name, subname string
-	for ; *i < len(lines); (*i)++ {
-		name, subname = SectionName(lines[*i])
+	for ; ac.i < len(ac.lines); ac.i++ {
+		name, subname = SectionName(ac.lines[ac.i])
 		if len(name) > 0 {
 			break
 		}
@@ -455,10 +581,11 @@ func ReadAction(sff *Sff, pal *PaletteList, lines []string, i *int) (no int32, a
 	if strings.ToLower(subname[:spi+1]) != "action " {
 		return
 	}
-	(*i)++
+	ac.i++
 
 	no = Atoi(subname[spi+1:])
-	a, err = ReadAnimation(sff, pal, lines, i)
+	ac.animNo = no
+	a, err = ac.readAnimation()
 
 	return
 }
@@ -695,7 +822,7 @@ func (a *Animation) UpdateSprite() {
 						a.sff.debugMissing = make(map[[2]uint16]bool)
 					}
 					if !a.sff.debugMissing[key] {
-						LogMessage("WARNING: Animation missing sprite %v,%v from %v", group, number, a.sff.filename)
+						LogMessage("WARNING: %v, action %v: missing sprite %v,%v", a.filename, a.actionNumber, group, number)
 						a.sff.debugMissing[key] = true
 					}
 				}
@@ -1182,60 +1309,59 @@ func NewAnimationTable() AnimationTable {
 	}
 }
 
-func (at AnimationTable) readAction(sff *Sff, pal *PaletteList, lines []string, i *int, log bool) *Animation {
-	for *i < len(lines) {
-		no, a, err := ReadAction(sff, pal, lines, i)
+// Reads the next action and stores it, keeping the first of any duplicates
+func (ac *AnimCompiler) compileAction() *Animation {
+	for ac.i < len(ac.lines) {
+		outerNo := ac.animNo
+		no, a, err := ac.readAction()
+		ac.animNo = outerNo
 		// Animation errors do not crash Mugen. But we can log them
-		if log && err != nil {
-			LogMessage("WARNING: Action %v in %v: %v", no, at.filename, err.Error())
+		if ac.log && err != nil {
+			LogMessage("WARNING: %v", err.Error())
 		}
 		if a != nil {
 			// In case of duplicate action numbers, just use the first one
 			// Even if first one is "Copy Action"
-			if existing := at.anims[no]; existing != nil {
-				if log {
-					LogMessage("WARNING: Duplicate action key in %v: %v (ignored)", at.filename, no)
+			if existing := ac.at.anims[no]; existing != nil {
+				if ac.log && ac.seen[no] {
+					LogMessage("WARNING: Duplicate action key in %v: %v (ignored)", ac.filename, no)
 				}
+				ac.seen[no] = true
 				return existing
 			}
 			// Recursive logic until we find a non-empty animation
 			// If the current action is empty, we attempt to copy the very next action found in the file
 			logged := false
-			for len(a.frames) == 0 && *i < len(lines) && a.copyAction < 0 {
-				if !logged && log {
-					LogMessage("WARNING: Action %v in %v has no valid frames", no, at.filename)
+			for len(a.frames) == 0 && ac.i < len(ac.lines) && a.copyAction < 0 {
+				if !logged && ac.log {
+					LogMessage("WARNING: %v, action %v: no valid frames", ac.filename, no)
 					logged = true
 				}
-				if a2 := at.readAction(sff, pal, lines, i, log); a2 != nil {
+				if a2 := ac.compileAction(); a2 != nil {
 					*a = *a2
 					break
 				}
-				(*i)++
+				ac.i++
 			}
 			// Store only now that the animation is fully resolved or confirmed empty
-			at.anims[no] = a
+			ac.at.anims[no] = a
+			ac.seen[no] = true
 			return a
 		} else {
 			// No action found on this line, advance to the next one
-			(*i)++
+			ac.i++
 		}
 	}
 	return nil
 }
 
+// Single file shortcut. Use AnimCompiler directly to merge several sources
 func ReadAnimationTable(filename string, sff *Sff,
-	pal *PaletteList, lines []string, i *int, log bool) AnimationTable {
+	pal *PaletteList, text string, log bool) AnimationTable {
 
-	at := NewAnimationTable()
-	at.filename = filename
-
-	// Continue reading actions until none are left
-	for at.readAction(sff, pal, lines, i, log) != nil {
-	}
-
-	at.resolveCopyAction()
-
-	return at
+	ac := newAnimCompiler(sff, pal, log)
+	ac.compileText(filename, text)
+	return ac.finalize()
 }
 
 func (at AnimationTable) get(no int32) *Animation {
@@ -2080,8 +2206,9 @@ func NewAnim(sff *Sff, action string) *Anim {
 		lastUpdateFrame: -1,
 	}
 	if action != "" {
-		lines, i := SplitAndTrim(action, "\n"), 0
-		a.anim, _ = ReadAnimation(sff, &sff.palList, lines, &i)
+		ac := newAnimCompiler(sff, &sff.palList, true)
+		ac.lines, ac.animNo = SplitAndTrim(action, "\n"), -1
+		a.anim, _ = ac.readAnimation()
 		if len(a.anim.frames) == 0 {
 			return nil
 		}
@@ -2143,7 +2270,7 @@ func (a *Anim) Copy() *Anim {
 	newAnim.fLength = a.fLength
 	newAnim.palfx = a.palfx
 	newAnim.lastUpdateFrame = -1
-	// Copy current animation state (timing, loop, interpolation, etc.)
+	// Copy current animation state (timing, loop, interpolation, etac.)
 	newAnim.anim.looptime = a.anim.looptime
 	newAnim.anim.loopstart = a.anim.loopstart
 	newAnim.anim.curtime = a.anim.curtime

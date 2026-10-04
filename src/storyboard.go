@@ -338,17 +338,17 @@ func (m *StoryboardManager) pruneVideos() {
 		}
 	}
 	mark(m.instances)
-	markSaved := func(gs *GameState, stateID int) {
-		// Rollback can leave stale entries after freeing or replacing a save arena.
-		// Never follow their storyboard pointers unless the arena still belongs to them.
-		if gs != nil && gs.saved && gs.storyboardArena == sys.arenaSaveMap[stateID] {
+	markSaved := func(gs *GameState) {
+		// Expired rollback snapshots are removed when their pool slots are freed.
+		// Only restorable storyboards need to keep their videos alive.
+		if gs != nil && gs.saved {
 			mark(gs.matchStoryboards)
 		}
 	}
-	markSaved(sys.saveState, 0)
+	markSaved(sys.saveState)
 	if sys.rollback.session != nil {
-		for stateID, gs := range sys.rollback.session.saveStates {
-			markSaved(gs, stateID)
+		for _, gs := range sys.rollback.session.saveStates {
+			markSaved(gs)
 		}
 	}
 	for video := range m.retainedVideos {
@@ -527,9 +527,7 @@ func loadStoryboard(def string) (*Storyboard, error) {
 
 	s.loadFiles()
 
-	lines, i := SplitAndTrim(userText, "\n"), 0
-	s.AnimTable = ReadAnimationTable(s.Def, s.Sff, &s.Sff.palList, lines, &i, true)
-	i = 0
+	s.AnimTable = ReadAnimationTable(s.Def, s.Sff, &s.Sff.palList, userText, true)
 
 	// Storyboard-specific quirk:
 	// enable phantom pixel adjustment on all storyboard animations so that
