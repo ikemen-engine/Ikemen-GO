@@ -344,6 +344,26 @@ const (
 
 var inputFields = [...]string{"up", "down", "left", "right", "a", "b", "c", "x", "y", "z", "start", "d", "w", "menu"}
 
+// Maps a motif key token (direction/button, analog alias, optional "/" prefix)
+// to its inputFields name; other tokens pass through unchanged.
+func motifKeyField(token string) string {
+	switch strings.TrimPrefix(token, "/") {
+	case "U", "LS_Y-":
+		return "up"
+	case "D", "LS_Y+":
+		return "down"
+	case "L", "B", "LS_X-":
+		return "left"
+	case "R", "F", "LS_X+":
+		return "right"
+	case "s":
+		return "start"
+	case "m":
+		return "menu"
+	}
+	return strings.TrimPrefix(token, "/")
+}
+
 // Returns the profile bindings in button order (see ButtonIndex).
 func profileTokens(p *KeysProperties) [14]string {
 	return [14]string{p.Up, p.Down, p.Left, p.Right, p.A, p.B, p.C, p.X, p.Y, p.Z, p.Start, p.D, p.W, p.Menu}

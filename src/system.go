@@ -1343,6 +1343,32 @@ func (s *System) clearCommandBuffers() {
 	s.uiResetTokenGuard()
 }
 
+// Routes player slots (P1-P8) to the participants on each side.
+func (s *System) applyParticipantsToSlots() {
+	for i, p := range s.inputs.participantsBySlot(len(s.inputRemap)) {
+		s.inputRemap[i] = p
+	}
+	s.clearCommandBuffers()
+}
+
+// Back to menu mode: releases all sides, keeps only the menu input source and drops disconnected ones.
+func (s *System) inputMenu() {
+	s.inputs.ClaimLocked = false
+	s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+	if src := s.inputs.inputSource(s.inputs.MenuSource); src != nil && src.Connected {
+		_, _ = s.inputs.claim(src.ID, TS_None)
+	}
+	live := s.inputs.Sources[:0]
+	for _, src := range s.inputs.Sources {
+		if src.Connected {
+			live = append(live, src)
+		}
+	}
+	s.inputs.Sources = live
+	s.resetRemapInput()
+	s.clearCommandBuffers()
+}
+
 // 0-based index of the side running the mode.
 func (s *System) runSideIndex() int { return int(s.runSide) }
 

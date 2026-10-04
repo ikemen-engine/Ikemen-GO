@@ -1293,6 +1293,84 @@ type WarningInfoProperties struct {
 	} `ini:"done"`
 }
 
+// A side-select column row. Text maps accept a per-source-kind override,
+// e.g. keyboard.text, falling back to text.
+// unassigned: base = row, active = row of the input source last used.
+// p1/p2: base = empty side (CPU), active = assigned row, done = ready row,
+// done.active = ready row of the input source last used.
+type SideSelectItemColumn struct {
+	TextMapProperties
+	Bg     AnimationProperties `ini:"bg"`
+	Active struct {
+		TextMapProperties
+		Bg AnimationProperties `ini:"bg"`
+	} `ini:"active"`
+	Done struct {
+		TextMapProperties
+		Bg     AnimationProperties `ini:"bg"`
+		Active struct {
+			TextMapProperties
+			Bg AnimationProperties `ini:"bg"`
+		} `ini:"active"`
+	} `ini:"done"`
+}
+
+type SideSelectInfoProperties struct {
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Pos     [2]float32        `ini:"pos"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		AnimationTextProperties
+		Unassigned AnimationTextProperties `ini:"unassigned"`
+		P1         AnimationTextProperties `ini:"p1"`
+		P2         AnimationTextProperties `ini:"p2"`
+	} `ini:"title"`
+	Item struct {
+		Offset     [2]float32           `ini:"offset"`
+		Spacing    [2]float32           `ini:"spacing"`
+		Unassigned SideSelectItemColumn `ini:"unassigned"`
+		P1         SideSelectItemColumn `ini:"p1"`
+		P2         SideSelectItemColumn `ini:"p2"`
+	} `ini:"item"`
+	Side struct {
+		Previous struct {
+			Key []string `ini:"key"`
+		} `ini:"previous"`
+		Next struct {
+			Key []string `ini:"key"`
+		} `ini:"next"`
+	} `ini:"side"`
+	Profile struct {
+		Previous struct {
+			Key []string `ini:"key"`
+		} `ini:"previous"`
+		Next struct {
+			Key []string `ini:"key"`
+		} `ini:"next"`
+		Edit struct {
+			Key []string `ini:"key"`
+		} `ini:"edit"`
+	} `ini:"profile"`
+	Move struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Key []string `ini:"key"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Key []string `ini:"key"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Invalid struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"invalid"`
+	Window struct {
+		VisibleItems int32 `ini:"visibleitems"`
+	} `ini:"window"`
+}
+
 type Motif struct {
 	IniFile         *ini.File
 	UserIniFile     *ini.File
@@ -1311,6 +1389,8 @@ type Motif struct {
 	TitleInfo       TitleInfoProperties                 `ini:"title_info"`
 	TitleBgDef      BgDefProperties                     `ini:"titlebgdef"`
 	InfoBox         InfoBoxProperties                   `ini:"infobox"`
+	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
+	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
 	SelectInfo      SelectInfoProperties                `ini:"select_info"`
 	SelectBgDef     BgDefProperties                     `ini:"selectbgdef"`
 	VsScreen        VsScreenProperties                  `ini:"vs_screen"`
@@ -1724,7 +1804,7 @@ func loadMotif(def string) (*Motif, error) {
 				goto nextSection
 			}
 			for _, p := range []string{
-				"titlebg", "selectbg", "versusbg", "continuebg",
+				"titlebg", "selectbg", "sideselectbg", "versusbg", "continuebg",
 				"victorybg", "winbg",
 				"optionbg", "replaybg", "attractbg",
 				"challengerbg", "hiscorebg",
@@ -2296,6 +2376,10 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Hiscore Info", SrcPrefix: "item.result.", DstSec: "Hiscore Info", DstPrefix: "item.result.active2."},
 		{SrcSec: "Hiscore Info", SrcPrefix: "item.name.", DstSec: "Hiscore Info", DstPrefix: "item.name.active."},
 		{SrcSec: "Hiscore Info", SrcPrefix: "item.name.", DstSec: "Hiscore Info", DstPrefix: "item.name.active2."},
+		// [Side Select Info]
+		{SrcSec: "Side Select Info", SrcPrefix: "item.unassigned.", DstSec: "Side Select Info", DstPrefix: "item.unassigned.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p1.", DstSec: "Side Select Info", DstPrefix: "item.p1.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p2.", DstSec: "Side Select Info", DstPrefix: "item.p2.active."},
 	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
 	for _, sec := range m.customPauseMenuSections() {
@@ -2563,6 +2647,11 @@ func (m *Motif) loadFiles() {
 		m.loadBgDefProperties(&m.HiscoreBgDef, "hiscorebg", m.Files.Spr)
 	} else {
 		m.HiscoreBgDef = m.TitleBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SideSelectBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SideSelectBgDef, "sideselectbg", m.Files.Spr)
+	} else {
+		m.SideSelectBgDef = m.OptionBgDef
 	}
 
 	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, "", func(filename string) error {
@@ -3541,11 +3630,37 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 
-	controllerNo := sys.buttonController(m.ChallengerInfo.Key)
-	if controllerNo == -1 || sys.uiControllerKey(controllerNo) == sys.uiControllerKey(0) {
+	if sys.netplay() {
 		return
 	}
-	ch.controllerNo = controllerNo
+	source := 0
+	for _, src := range sys.inputs.Sources {
+		if !src.Connected || sys.inputs.owner(src.ID) >= 0 || sys.keyboardConflict(src.ID) {
+			continue
+		}
+		// Read the free source directly. Menu press edges last one render frame
+		// and may expire before the next match UI tick, especially during slow motion.
+		state := sys.inputSourceState(src)
+		for _, key := range m.ChallengerInfo.Key {
+			key = motifKeyField(key)
+			for i, field := range inputFields {
+				if field == key && state[i] {
+					source = src.ID
+					break
+				}
+			}
+			if source != 0 {
+				break
+			}
+		}
+		if source != 0 {
+			break
+		}
+	}
+	if source == 0 {
+		return
+	}
+	ch.controllerNo = source - 1
 
 	if err := sys.luaLState.DoString("hook.run('game.challenger_init')"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger_init", err.Error())
@@ -3562,7 +3677,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 	m.ChallengerInfo.Bg.AnimData.Reset()
 
 	m.ChallengerInfo.FadeIn.FadeData.init(m.fadeIn, true)
-	ch.counter = 0
+	ch.counter, ch.endTimer = 0, -1
 	ch.active = true
 	ch.initialized = true
 }
@@ -3574,7 +3689,7 @@ func (ch *MotifChallenger) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger", err.Error())
 		}
 	}
-	if ch.endTimer == -1 && ch.counter == m.ChallengerInfo.Time {
+	if ch.endTimer == -1 && ch.counter >= m.ChallengerInfo.Time {
 		startFadeOut(m.ChallengerInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 		ch.endTimer = ch.counter + m.fadeOut.timeRemaining
 	}

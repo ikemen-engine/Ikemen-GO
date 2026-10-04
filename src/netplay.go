@@ -197,6 +197,8 @@ type NetConnection struct {
 }
 
 func NewNetConnection() *NetConnection {
+	sys.inputMenu()
+	sys.inputs.ClaimLocked = true
 	nc := &NetConnection{
 		st:      NS_Stop,
 		sendEnd: make(chan bool, 1),
