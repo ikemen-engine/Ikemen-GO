@@ -38,9 +38,9 @@ func defKey(p string) string {
 }
 
 func selectedCharKeys() []string {
-	// side 0 (P1) selection; fall back to empty
+	// Characters of the side running the mode
 	var out []string
-	for _, slot := range sys.sel.selected[0] {
+	for _, slot := range sys.sel.selected[sys.runSideIndex()] {
 		cn := slot[0]
 		if cn >= 0 && cn < len(sys.sel.charlist) {
 			out = append(out, defKey(sys.sel.charlist[cn].def))
@@ -64,6 +64,10 @@ func tallyRun() runTally {
 	matches := sys.statsLog.Matches
 	lastIdx := len(matches) - 1
 	for i, m := range matches {
+		side := m.RunSide
+		if side < 0 || side > 1 {
+			side = 0
+		}
 		// If the last match isn't finalized yet derive its values from live engine state.
 		useLive := false
 		if i == lastIdx && (sys.postMatchFlg || sys.matchOver()) && m.MatchTime == 0 && len(m.Rounds) > 0 {
@@ -76,6 +80,7 @@ func tallyRun() runTally {
 			scoreP1   int
 		)
 		if useLive {
+			side = sys.runSideIndex()
 			// Match time from current engine timers
 			var total int32
 			for _, v := range sys.timerRounds {
@@ -84,27 +89,27 @@ func tallyRun() runTally {
 			matchTime = total
 			// Outcome from current engine state
 			winSide = sys.winTeam
-			p2Wins = sys.wins[1]
+			p2Wins = sys.wins[1-side]
 			// Total score from current engine state (same as StatsLog.finalizeMatch)
 			sc0 := int32(0)
 			if len(sys.scoreStart) > 0 {
-				sc0 = int32(sys.scoreStart[0])
+				sc0 = int32(sys.scoreStart[side])
 			}
 			for _, v := range sys.scoreRounds {
 				if len(v) > 0 {
-					sc0 += int32(v[0])
+					sc0 += int32(v[side])
 				}
 			}
 			scoreP1 = int(sc0)
 		} else {
 			matchTime = m.MatchTime
 			winSide = m.WinSide
-			p2Wins = m.Wins[1]
-			scoreP1 = int(m.TotalScore[0])
+			p2Wins = m.Wins[1-side]
+			scoreP1 = int(m.TotalScore[side])
 		}
 		t.timeTicks += matchTime
 		switch winSide {
-		case 0: // P1 won
+		case side: // Player running the mode won
 			t.winP1++
 			// ConsecutiveWins semantics:
 			// - increments only if opponent won 0 rounds in this match
@@ -114,7 +119,7 @@ func tallyRun() runTally {
 			} else {
 				consec = 0
 			}
-		case 1: // P2 won
+		case 1 - side: // Opponent won
 			t.loseP1++
 			consec = 0
 		default:
@@ -147,7 +152,7 @@ func resultsScreenForMode(mode string) *ResultsScreenProperties {
 }
 
 func modeCleared(mode string, matches int) bool {
-	if sys.winnerTeam() == 1 {
+	if sys.winnerTeam() == int32(sys.runSideIndex()+1) {
 		return true
 	}
 
@@ -249,7 +254,7 @@ func rankingWouldPlace(mode string) bool {
 		Consecutive: tal.consecP1,
 		Name:        "",
 		Chars:       selectedCharKeys(),
-		Tmode:       int32(sys.tmode[0]),
+		Tmode:       int32(sys.tmode[sys.runSideIndex()]),
 		AILevel:     int32(sys.cfg.Options.Difficulty),
 	}
 	entries = append(entries, newE)
@@ -393,7 +398,7 @@ func computeAndSaveRanking(mode string) (bool, int32) {
 		Consecutive: tal.consecP1,
 		Name:        "",
 		Chars:       selectedCharKeys(),
-		Tmode:       int32(sys.tmode[0]),
+		Tmode:       int32(sys.tmode[sys.runSideIndex()]),
 		AILevel:     int32(sys.cfg.Options.Difficulty),
 	}
 	entries = append(entries, newE)

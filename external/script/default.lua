@@ -5,7 +5,7 @@ if not main.makeRoster then
 end
 
 if main.storyboard.intro and matchNo() == 1 and not continued() then
-	launchStoryboard(start.f_getCharData(start.p[1].t_selected[1].ref).intro)
+	launchStoryboard(start.f_getCharData(start.p[main.runSide].t_selected[1].ref).intro)
 end
 
 for i = matchNo(), #start.t_roster do
@@ -21,7 +21,7 @@ for i = matchNo(), #start.t_roster do
 end
 
 if main.storyboard.ending then
-	if not launchStoryboard(start.f_getCharData(start.p[1].t_selected[1].ref).ending) and motif.default_ending.enabled then
+	if not launchStoryboard(start.f_getCharData(start.p[main.runSide].t_selected[1].ref).ending) and motif.default_ending.enabled then
 		launchStoryboard(motif.default_ending.storyboard)
 	end
 end

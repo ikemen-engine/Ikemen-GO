@@ -265,6 +265,7 @@ type System struct {
 	replayFile          *ReplayFile
 	keyConfig           []KeyConfig
 	inputs              InputAssignment
+	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
 	charList            CharList
@@ -1341,6 +1342,9 @@ func (s *System) clearCommandBuffers() {
 	}
 	s.uiResetTokenGuard()
 }
+
+// 0-based index of the side running the mode.
+func (s *System) runSideIndex() int { return int(s.runSide) }
 
 // True if this keyboard profile shares keys with a profile another participant is using.
 func (s *System) keyboardConflict(source int) bool {

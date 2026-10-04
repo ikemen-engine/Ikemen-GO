@@ -6580,19 +6580,19 @@ func systemScriptInit(l *lua.LState) {
 		if _, ok := sys.fightScreen.match.enabled[sys.gameMode]; ok {
 			sys.fightScreen.match.active = sys.fightScreen.match.enabled[sys.gameMode]
 		}
-		for _, v := range sys.fightScreen.aiLevels {
-			if _, ok := v.enabled[sys.gameMode]; ok {
-				v.active = v.enabled[sys.gameMode]
+		for side, v := range sys.fightScreen.aiLevels {
+			if enabled, ok := sys.fightScreen.aiLevels[side^sys.runSideIndex()].enabled[sys.gameMode]; ok {
+				v.active = enabled
 			}
 		}
-		for _, v := range sys.fightScreen.scores {
-			if _, ok := v.enabled[sys.gameMode]; ok {
-				v.active = v.enabled[sys.gameMode]
+		for side, v := range sys.fightScreen.scores {
+			if enabled, ok := sys.fightScreen.scores[side^sys.runSideIndex()].enabled[sys.gameMode]; ok {
+				v.active = enabled
 			}
 		}
-		for _, v := range sys.fightScreen.winCounts {
-			if _, ok := v.enabled[sys.gameMode]; ok {
-				v.active = v.enabled[sys.gameMode]
+		for side, v := range sys.fightScreen.winCounts {
+			if enabled, ok := sys.fightScreen.winCounts[side^sys.runSideIndex()].enabled[sys.gameMode]; ok {
+				v.active = enabled
 			}
 		}
 		if _, ok := sys.fightScreen.timer.enabled[sys.gameMode]; ok {
@@ -6728,6 +6728,17 @@ func systemScriptInit(l *lua.LState) {
 			t += sys.curFramesPerCount - 1
 		}
 		sys.maxRoundTime = t
+		return 0
+	})
+	luaRegister(l, "setRunSide", func(l *lua.LState) int {
+		/*Set the side running the mode.
+		@function setRunSide
+		@tparam int side Team side (`1` or `2`).*/
+		side := int(numArg(l, 1))
+		if side < 1 || side > 2 {
+			l.RaiseError("invalid run side: %d", side)
+		}
+		sys.runSide = int32(side - 1)
 		return 0
 	})
 	luaRegister(l, "setTeamMode", func(*lua.LState) int {
