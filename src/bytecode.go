@@ -12515,14 +12515,14 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	if crun.controller >= 0 && sys.inputRemap[crun.controller] < len(sys.ffbparams) {
+	if crun.controller >= 0 && crun.controller < len(sys.inputRemap) && sys.inputRemap[crun.controller] >= 0 && sys.inputRemap[crun.controller] < len(sys.ffbparams) {
 		joy := sys.inputRemap[crun.controller]
 		if newAPI { // New API: just rumble straight away on the ultimately redirected character
 			input.RumbleController(joy, lo, hi, time)
 		} else { // Old API: fill out FFB params
 			// Do a final redirect to P2 if self not defined
 			if !self {
-				if crun = crun.p2(); crun == nil {
+				if crun = crun.p2(); crun == nil || crun.controller < 0 || crun.controller >= len(sys.inputRemap) {
 					return false
 				}
 				joy = sys.inputRemap[crun.controller]

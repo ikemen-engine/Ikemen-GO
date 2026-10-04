@@ -19,7 +19,8 @@ type AIrampProperties struct {
 }
 
 type KeysProperties struct {
-	Joystick int    `ini:"Joystick"`
+	Name     string `ini:"Name"`
+	Kind     string `ini:"Kind"`
 	Up       string `ini:"up"`
 	Down     string `ini:"down"`
 	Left     string `ini:"left"`
@@ -34,7 +35,6 @@ type KeysProperties struct {
 	D        string `ini:"d"`
 	W        string `ini:"w"`
 	Menu     string `ini:"menu"`
-	GUID     string `ini:"GUID"`
 	RumbleOn bool   `ini:"RumbleOn"`
 }
 
@@ -214,6 +214,8 @@ type Config struct {
 		Rollback        RollbackProperties `ini:"Rollback"`
 	} `ini:"Netplay"`
 	Input struct {
+		ControllerProfile map[string]string `ini:"ControllerProfile"`
+
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
 		SOCDResolution             int     `ini:"SOCDResolution" sync:"host"`
 		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity"`
@@ -222,8 +224,7 @@ type Config struct {
 		UiRepeatRate               int32   `ini:"UiRepeatRate" sync:"host"`
 		PauseExitDelay             int32   `ini:"PauseExitDelay" sync:"host"`
 	} `ini:"Input"`
-	Keys     map[string]*KeysProperties `ini:"map:^(?i)Keys_P[0-9]+$" lua:"Keys"`
-	Joystick map[string]*KeysProperties `ini:"map:^(?i)Joystick_P[0-9]+$" lua:"Joystick"`
+	InputProfile map[string]*KeysProperties `ini:"map:^(?i)InputProfile_[a-z0-9_]+$" lua:"InputProfile"`
 }
 
 // Loads and parses the INI file into a Config struct.
@@ -318,6 +319,12 @@ func loadConfig(def string) (*Config, error) {
 
 	c.IniFile = iniFile
 	c.DefaultOnlyIni = defaultOnlyIni
+	c.retainInputProfiles(userIniFile)
+	for id, profile := range c.InputProfile {
+		if err := c.saveInputProfile(id, profile); err != nil {
+			return nil, err
+		}
+	}
 	c.normalize()
 	c.sysSet()
 	c.Save(def)
@@ -405,60 +412,177 @@ func (c *Config) sysSet() {
 		sys.gameHeight = float32(c.Video.GameHeight)
 	}
 	sys.msaa = c.Video.MSAA
-	stoki := func(key string) int {
-		return int(StringToKey(key))
+	c.loadInputProfiles()
+}
+
+// Updates the profile and its existing INI section. Disk writes still use Config.Save.
+func (c *Config) saveInputProfile(id string, p *KeysProperties) error {
+	id = strings.ToLower(id)
+	if !strings.HasPrefix(id, "inputprofile_") {
+		return fmt.Errorf("invalid profile ID")
 	}
-	for i := 1; i <= c.Config.Players; i++ {
-		if kc, ok := c.Keys[fmt.Sprintf("keys_p%d", i)]; ok {
-			newKeyConfig := KeyConfig{
-				Joy:      kc.Joystick,
-				GUID:     kc.GUID,
-				dU:       stoki(kc.Up),
-				dD:       stoki(kc.Down),
-				dL:       stoki(kc.Left),
-				dR:       stoki(kc.Right),
-				bA:       stoki(kc.A),
-				bB:       stoki(kc.B),
-				bC:       stoki(kc.C),
-				bX:       stoki(kc.X),
-				bY:       stoki(kc.Y),
-				bZ:       stoki(kc.Z),
-				bS:       stoki(kc.Start),
-				bD:       stoki(kc.D),
-				bW:       stoki(kc.W),
-				bM:       stoki(kc.Menu),
-				rumbleOn: kc.RumbleOn,
-			}
-			sys.keyConfig = append(sys.keyConfig, newKeyConfig)
-		} else {
-			sys.keyConfig = append(sys.keyConfig, KeyConfig{Joy: -1})
+	var section *ini.Section
+	for _, sec := range c.IniFile.Sections() {
+		if strings.ToLower(strings.ReplaceAll(sec.Name(), " ", "_")) == id {
+			section = sec
+			break
 		}
-		if _, ok := sys.cmdFlags["-nojoy"]; !ok {
-			if kc, ok := c.Joystick[fmt.Sprintf("joystick_p%d", i)]; ok {
-				newKeyConfig := KeyConfig{
-					Joy:      kc.Joystick,
-					GUID:     kc.GUID,
-					dU:       StringToButtonLUT[kc.Up],
-					dD:       StringToButtonLUT[kc.Down],
-					dL:       StringToButtonLUT[kc.Left],
-					dR:       StringToButtonLUT[kc.Right],
-					bA:       StringToButtonLUT[kc.A],
-					bB:       StringToButtonLUT[kc.B],
-					bC:       StringToButtonLUT[kc.C],
-					bX:       StringToButtonLUT[kc.X],
-					bY:       StringToButtonLUT[kc.Y],
-					bZ:       StringToButtonLUT[kc.Z],
-					bS:       StringToButtonLUT[kc.Start],
-					bD:       StringToButtonLUT[kc.D],
-					bW:       StringToButtonLUT[kc.W],
-					bM:       StringToButtonLUT[kc.Menu],
-					rumbleOn: kc.RumbleOn,
-				}
-				sys.joystickConfig = append(sys.joystickConfig, newKeyConfig)
+	}
+	if section == nil {
+		var err error
+		section, err = c.IniFile.NewSection("InputProfile_" + strings.TrimPrefix(id, "inputprofile_"))
+		if err != nil {
+			return err
+		}
+	}
+	section.Key("Kind").SetValue(p.Kind)
+	section.Key("Name").SetValue(p.Name)
+	for i, token := range profileTokens(p) {
+		section.Key(inputFields[i]).SetValue(token)
+	}
+	section.Key("RumbleOn").SetValue(strconv.FormatBool(p.RumbleOn))
+	profile := *p
+	c.InputProfile[id] = &profile
+	return nil
+}
+
+// Adds a profile with a unique ID and display name. A name already in use is
+// renamed with copyName, where %s is the original name, then numbered if needed.
+func (c *Config) addInputProfile(p *KeysProperties, copyName string) (string, error) {
+	id := ""
+	for n := 1; ; n++ {
+		id = fmt.Sprintf("inputprofile_custom%d", n)
+		if _, exists := c.InputProfile[id]; !exists {
+			break
+		}
+	}
+	if c.inputProfileNameUsed(p.Name) {
+		base := strings.TrimSpace(strings.ReplaceAll(copyName, "%s", p.Name))
+		if base == "" {
+			base = p.Name
+		}
+		p.Name = base
+		for n := 2; c.inputProfileNameUsed(p.Name); n++ {
+			p.Name = fmt.Sprintf("%s %d", base, n)
+		}
+	}
+	return id, c.saveInputProfile(id, p)
+}
+
+func (c *Config) inputProfileNameUsed(name string) bool {
+	for _, profile := range c.InputProfile {
+		if strings.EqualFold(profile.Name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// A controller's preferred profile is separate from profile compatibility.
+// Write only this preference to disk; unrelated unsaved Options edits stay pending.
+func (c *Config) rememberControllerProfile(guid, id string) error {
+	guid = strings.ToLower(guid)
+	if guid == "" || c.Input.ControllerProfile[guid] == id {
+		return nil
+	}
+	if err := c.SetValueUpdate("Input.ControllerProfile."+guid, id); err != nil {
+		return err
+	}
+	disk, _, err := LoadINIFile(c.Def, ini.LoadOptions{SkipUnrecognizableLines: true})
+	if err != nil {
+		return err
+	}
+	// A newly created profile is saved by the normal Options save operation,
+	// together with this preference. Do not persist a reference before its profile.
+	for _, section := range disk.Sections() {
+		if strings.EqualFold(strings.ReplaceAll(section.Name(), " ", "_"), id) {
+			disk.Section("Input").Key("ControllerProfile." + guid).SetValue(id)
+			return SaveINI(disk, c.Def)
+		}
+	}
+	return nil
+}
+
+func (c *Config) removeInputProfile(id string) {
+	delete(c.InputProfile, id)
+	for guid, profile := range c.Input.ControllerProfile {
+		if profile == id {
+			c.SetValueUpdate("Input.ControllerProfile."+guid, nil)
+		}
+	}
+	for _, sec := range c.IniFile.Sections() {
+		if strings.ToLower(strings.ReplaceAll(sec.Name(), " ", "_")) == id {
+			c.IniFile.DeleteSection(sec.Name())
+		}
+	}
+}
+
+// Once profiles have been saved, their section list is authoritative. Otherwise
+// deleted default profiles would be added again on every launch.
+func (c *Config) retainInputProfiles(user *ini.File) {
+	if user == nil {
+		return
+	}
+	ids := make(map[string]bool)
+	for _, sec := range user.Sections() {
+		id := strings.ToLower(strings.ReplaceAll(sec.Name(), " ", "_"))
+		if _, ok := c.InputProfile[id]; ok {
+			ids[id] = true
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	for id := range c.InputProfile {
+		if !ids[id] {
+			c.removeInputProfile(id)
+		}
+	}
+}
+
+// Builds the key configs from the input profiles and adds a source for each keyboard profile.
+// Profiles keep their config.ini section order; new profiles are appended.
+func (c *Config) loadInputProfiles() {
+	sys.keyConfig = nil
+	for _, sec := range c.IniFile.Sections() {
+		id := strings.ToLower(strings.ReplaceAll(sec.Name(), " ", "_"))
+		p := c.InputProfile[id]
+		if p == nil || (p.Kind != "keyboard" && p.Kind != "gamepad") {
+			continue
+		}
+		kc := KeyConfig{ID: id, Joy: -1, rumbleOn: p.RumbleOn}
+		if p.Kind == "gamepad" {
+			kc.Joy = 0
+		}
+		var bindings [14]int
+		for i, token := range profileTokens(p) {
+			if kc.Joy < 0 {
+				bindings[i] = int(StringToKey(token))
 			} else {
-				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{Joy: i - 1})
+				bindings[i] = 25
+				if b, ok := StringToButtonLUT[token]; ok {
+					bindings[i] = b
+				}
 			}
 		}
+		kc.set(bindings)
+		sys.keyConfig = append(sys.keyConfig, kc)
+		if p.Kind == "keyboard" {
+			found := false
+			for _, src := range sys.inputs.Sources {
+				if src.Joy == -1 && src.Profile == id {
+					src.Name = p.Name
+					found = true
+					break
+				}
+			}
+			if !found {
+				sys.inputs.addInputSource(-1, p.Name, "", id)
+			}
+		}
+	}
+	if sys.inputs.Participants == nil {
+		sys.inputs.Participants = make([]InputParticipant, MaxSimul*2)
 	}
 }
 

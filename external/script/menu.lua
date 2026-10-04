@@ -177,21 +177,12 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Key Config
-	['keyboard'] = function(t, item, cursorPosY, moveTxt, sec)
+	--Button Config (the active source's profile)
+	['menuinput'] = function(t, item, cursorPosY, moveTxt, sec, bg)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			options.f_keyCfgInit('Keys', t.submenu[t.items[item].itemname].title)
-			menu.itemname = t.items[item].itemname
-		end
-		return true
-	end,
-	--Joystick Config
-	['gamepad'] = function(t, item, cursorPosY, moveTxt, sec)
-		if getInput(-1, sec.menu.done.key) then
-			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			options.f_keyCfgInit('Joystick', t.submenu[t.items[item].itemname].title)
-			menu.itemname = t.items[item].itemname
+			options.f_inputCfg(nil, nil, bg)
+			menu.itemname = 'inputconfig'
 		end
 		return true
 	end,
@@ -199,11 +190,7 @@ menu.t_itemname = {
 	['inputdefault'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			options.f_keyDefault()
-			options.f_setKeyConfig('Keys')
-			if getCommandLineValue("-nojoy") == nil then
-				options.f_setKeyConfig('Joystick')
-			end
+			inputDefaults()
 			options.f_saveCfg(false)
 		end
 		return true
@@ -306,7 +293,7 @@ function menu.f_createMenu(tbl, sec, bg, bool_main)
 			menu.currentMenu[1] = menu.currentMenu[2]
 			return
 		elseif menu.t_itemname[t[tbl.item].itemname] ~= nil then
-			if not menu.t_itemname[t[tbl.item].itemname](tbl, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec) then
+			if not menu.t_itemname[t[tbl.item].itemname](tbl, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec, bg) then
 				return
 			end
 		elseif getInput(-1, sec.menu.done.key) then
@@ -315,7 +302,7 @@ function menu.f_createMenu(tbl, sec, bg, bool_main)
 				sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
 				menu.currentMenu[1] = tbl.submenu[f].loop
 				main.f_menuSnap(sec)
-			elseif not menu.t_itemname[f](tbl, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec) then
+			elseif not menu.t_itemname[f](tbl, tbl.item, tbl.cursorPosY, tbl.moveTxt, sec, bg) then
 				return
 			end
 		end
@@ -569,7 +556,6 @@ menu.movelistChar = 1
 function menu.f_init()
 	esc(false)
 	main.pauseMenuActive = true
-	bgReset(motif.optionbgdef.BGDef)
 	local id = f_pauseMenuIdFromKey(f_pauseMenuKey(gameMode()))
 	if id == '' or menu.t_menuIndex == nil or menu.t_menuIndex[id] == nil then
 		id = 'menu'
@@ -626,12 +612,12 @@ function menu.f_run()
 			main.pauseMenuActive = false
 		end
 	end
-	--Button Config
-	if menu.itemname == 'keyboard' or menu.itemname == 'gamepad' then
-		if menu.itemname == 'keyboard' then
-			options.f_keyCfg('Keys', menu.itemname, bg, true)
-		else
-			options.f_keyCfg('Joystick', menu.itemname, bg, true)
+	--Input configuration uses the active pause background and the overlay above.
+	if menu.itemname == 'inputconfig' then
+		if options.inputContext == nil or not options.f_inputConfigFrame(options.inputContext) then
+			options.inputContext = nil
+			options.f_saveCfg(false)
+			menu.itemname = ''
 		end
 	--Command List
 	elseif menu.itemname == 'commandlist' then
@@ -672,6 +658,11 @@ end
 
 function menu.f_reset()
 	-- exit any special screens rendered by menu.f_run()
+	if options.inputContext ~= nil then
+		options.inputContext.closed = true
+		options.f_inputConfigFrame(options.inputContext)
+		options.inputContext = nil
+	end
 	menu.itemname = ''
 	-- Reset movelist selector (command list screen)
 	menu.movelistChar = 1

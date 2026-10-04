@@ -1140,12 +1140,8 @@ options.t_itemname = {
 	['keyboard'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-			options.f_keyCfgInit('Keys', t.submenu[t.items[item].itemname].title)
-			while true do
-				if not options.f_keyCfg('Keys', t.items[item].itemname, motif.optionbgdef, false) then
-					break
-				end
-			end
+			options.f_inputCfg('keyboard', t.submenu[t.items[item].itemname])
+			textImgSetText(motif.option_info.title.TextSpriteData, t.title)
 		end
 		return true
 	end,
@@ -1154,12 +1150,8 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
 			if getCommandLineValue("-nojoy") == nil then
-				options.f_keyCfgInit('Joystick', t.submenu[t.items[item].itemname].title)
-				while true do
-					if not options.f_keyCfg('Joystick', t.items[item].itemname, motif.optionbgdef, false) then
-						break
-					end
-				end
+				options.f_inputCfg('gamepad', t.submenu[t.items[item].itemname])
+				textImgSetText(motif.option_info.title.TextSpriteData, t.title)
 			end
 		end
 		return true
@@ -1168,11 +1160,7 @@ options.t_itemname = {
 	['inputdefault'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-			options.f_keyDefault()
-			options.f_setKeyConfig('Keys')
-			if getCommandLineValue("-nojoy") == nil then
-				options.f_setKeyConfig('Joystick')
-			end
+			inputDefaults()
 			options.modified = true
 		end
 		return true
@@ -1363,14 +1351,20 @@ options.t_itemname = {
 
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
-	return function()
+	local cursorPosY, moveTxt, item = 1, 0, 1
+	local initialized = false
+	return function(context)
 		hook.run("options.menu.loop")
-		local cursorPosY = 1
-		local moveTxt = 0
-		local item = 1
+		if not initialized or context == nil then
+			cursorPosY, moveTxt, item = 1, 0, 1
+			main.f_menuSnap(motif.option_info)
+			main.f_menuItemBgAnimReset(motif.option_info)
+			initialized = true
+		end
 		local t = tbl.items
-		main.f_menuSnap(motif.option_info)
-		main.f_menuItemBgAnimReset(motif.option_info)
+		if #t == 0 then
+			return false
+		end
 		if bool_main then
 			bgReset(motif.optionbgdef.BGDef)
 			fadeInInit(motif.option_info.fadein.FadeData)
@@ -1378,20 +1372,40 @@ function options.f_createMenu(tbl, bool_main)
 			main.close = false
 		end
 		while true do
-			if tbl.reset then
+			if tbl.inputMenu ~= nil and tbl.inputMenu.finished then
+				break
+			end
+			if tbl.inputSource ~= nil and tbl.inputSource.kind == 'gamepad' and not getJoystickPresent(tbl.inputSource.joy) then
+				break
+			end
+			textImgReset(motif.option_info.title.TextSpriteData)
+			textImgSetText(motif.option_info.title.TextSpriteData, tbl.title)
+			if tbl.inputFocus ~= nil then
+				-- Forced movement uses the same cursor and scrolling rules as normal navigation.
+				while item ~= tbl.inputFocus do
+					local direction = -1
+					if item < tbl.inputFocus then
+						direction = 1
+					end
+					cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.option_info, motif.option_info.cursor, direction)
+				end
+				tbl.inputFocus = nil
+			end
+			if tbl.reset and context == nil then
 				tbl.reset = false
 			else
-				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info, motif.optionbgdef, false)
+				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info,
+					context and context.background or motif.optionbgdef, context ~= nil)
 			end
 			-- While fading, ignore normal option-menu inputs, but still allow ESC / menu-cancel to skip the fade.
-			if fadeActive() then
+			if context ~= nil and (context.capture ~= nil or context.popup ~= nil or context.skipInput) then
+				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.option_info, motif.option_info.cursor, 0)
+			elseif fadeActive() then
 				if esc() or getInput(-1, motif.option_info.menu.cancel.key) then
 					fadeSkip()
 				end
 			else
 				cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.option_info, motif.option_info.cursor)
-				textImgReset(motif.option_info.title.TextSpriteData)
-				textImgSetText(motif.option_info.title.TextSpriteData, tbl.title)
 				if main.close then
 					bgReset(motif[main.background].BGDef)
 					fadeInInit(motif[main.group].fadein.FadeData)
@@ -1412,6 +1426,12 @@ function options.f_createMenu(tbl, bool_main)
 					else
 						break
 					end
+				elseif tbl.inputSource ~= nil and getKey('F1') then
+					options.f_inputConfigAll(tbl)
+				elseif tbl == tbl.inputMenu and getInput(-1, motif.option_info.menu.save.key) then
+					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+					tbl.finished = true
+					break
 				elseif options.t_itemname[t[item].itemname] ~= nil then
 					if not options.t_itemname[t[item].itemname](tbl, item, cursorPosY, moveTxt) then
 						break
@@ -1420,7 +1440,12 @@ function options.f_createMenu(tbl, bool_main)
 					local f = t[item].itemname
 					if tbl.submenu[f].loop ~= nil then
 						sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-						tbl.submenu[f].loop()
+						if context ~= nil then
+							table.insert(context.parents, tbl)
+							context.current = tbl.submenu[f]
+						else
+							tbl.submenu[f].loop()
+						end
 						main.f_menuSnap(motif.option_info)
 						main.f_menuItemBgAnimReset(motif.option_info)
 					elseif not options.t_itemname[f](tbl, item, cursorPosY, moveTxt) then
@@ -1428,7 +1453,12 @@ function options.f_createMenu(tbl, bool_main)
 					end
 				end
 			end
+			if context ~= nil then
+				return true
+			end
 		end
+		initialized = false
+		return false
 	end
 end
 
@@ -1587,9 +1617,6 @@ options.t_vardisplay = {
 	['roundtime'] = function()
 		return options.f_definedDisplay(gameOption('Options.Time'), {[-1] = motif.option_info.menu.valuename.none}, gameOption('Options.Time'))
 	end,
-	['rumble'] = function(player)
-		return options.f_boolDisplay(gameOption('Joystick_P' .. player .. '.RumbleOn'))
-	end,
 	['sfxvolume'] = function()
 		return gameOption('Sound.WavVolume') .. '%'
 	end,
@@ -1636,11 +1663,8 @@ options.t_vardisplay = {
 
 -- Returns setting value rendered alongside menu item name (calls appropriate
 -- function from t_vardisplay table)
-function options.f_vardisplay(itemname, player)
+function options.f_vardisplay(itemname)
 	if options.t_vardisplay[itemname] ~= nil then
-		if itemname == 'rumble' then
-			return options.t_vardisplay[itemname](player)
-		end
 		return options.t_vardisplay[itemname]()
 	end
 	return ''
@@ -1794,7 +1818,7 @@ function options.f_start()
 							itemname = c,
 							displayname = motif.option_info.menu.itemname[suffix],
 							paramname = suffix,
-							vardisplay = c == 'rumble' and options.f_vardisplay(c, i) or options.f_vardisplay(c),
+							vardisplay = options.f_vardisplay(c),
 							selected = false,
 						})
 						table.insert(options.t_vardisplayPointers, options.menu.items[#options.menu.items])
@@ -1846,33 +1870,6 @@ function options.f_start()
 	for _, v in pairs(motif.option_info.menu.item.active.bg) do
 		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
 	end
-	-- Keymenu windows
-	-- The first entry in t_keyCfg is a "spacer" row. We want that row to sit *above* the visible clipping area.
-	-- To do that we keep the same window height, but slide the window down by one row of keymenu item spacing.
-	-- Only the Y offset matters here (X uses full screen width).
-	local keyWinOffsetY = motif.option_info.keymenu.p1.menuoffset[2] + motif.option_info.keymenu.item.spacing[2]
-	local kw = main.f_menuWindow(motif.option_info.keymenu, {0, keyWinOffsetY})
-	-- keep the window shifted down, but crop one row at the bottom
-	kw[4] = kw[4] - motif.option_info.keymenu.item.spacing[2]
-	-- base / selected label text
-	textImgSetWindow(motif.option_info.keymenu.item.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	textImgSetWindow(motif.option_info.keymenu.item.selected.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	-- value text (normal / active / conflict)
-	textImgSetWindow(motif.option_info.keymenu.item.value.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	textImgSetWindow(motif.option_info.keymenu.item.value.active.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	textImgSetWindow(motif.option_info.keymenu.item.value.conflict.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	textImgSetWindow(motif.option_info.keymenu.item.info.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	textImgSetWindow(motif.option_info.keymenu.item.info.active.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	-- selected / active label variants
-	textImgSetWindow(motif.option_info.keymenu.item.selected.active.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	textImgSetWindow(motif.option_info.keymenu.item.active.TextSpriteData, kw[1], kw[2], kw[3], kw[4])
-	-- item backgrounds share the same clipping window
-	for _, v in pairs(motif.option_info.keymenu.item.bg) do
-		animSetWindow(v.AnimData, kw[1], kw[2], kw[3], kw[4])
-	end
-	for _, v in pairs(motif.option_info.keymenu.item.active.bg) do
-		animSetWindow(v.AnimData, kw[1], kw[2], kw[3], kw[4])
-	end
 	-- log
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt') end
 end
@@ -1880,504 +1877,597 @@ end
 --;===========================================================
 --; KEY SETTINGS
 --;===========================================================
-local t_keyCfg = {}
-table.insert(t_keyCfg, {itemname = 'spacer', displayname = '-', paramname = 'spacer'})
-for _, v in ipairs(motif.option_info.keymenu.itemname_order or {}) do
-	if isUIKeyAction(v) or v == "configall" then
-		table.insert(t_keyCfg, {itemname = v, displayname = motif.option_info.keymenu.itemname[v] or '', paramname = v, infodisplay = ''})
-	end
+local t_profileFields = {'up', 'down', 'left', 'right', 'a', 'b', 'c', 'x', 'y', 'z', 'start', 'd', 'w', 'menu'}
+local t_profileButtons = {}
+for _, field in ipairs(t_profileFields) do
+	t_profileButtons[field] = true
 end
-table.insert(t_keyCfg, {itemname = 'page', displayname = '', paramname = 'page', infodisplay = ''})
 
--- find the index of the "Config all" row
-local configall_start = 2
-for i, row in ipairs(t_keyCfg) do
-	if row.itemname == 'configall' then
-		configall_start = i
-		break
-	end
-end
--- initial selection: keep it on the Config all row
-local cursorPosY = configall_start
-local item = configall_start
-local item_start = configall_start
-local captureActive = false
-local captureMode = nil
-local key = ''
-local t_keyList = {}
-local t_conflict = {}
-local t_savedConfig = {}
-local btnReleased = false
-local player = 1
-local side = 1
-local btn = ''
-local joyNum = 0
-
--- which actions we save / restore per player
-local t_keyCfgFields = {
-	'Joystick', 'up', 'down', 'left', 'right',
-	'a', 'b', 'c', 'x', 'y', 'z',
-	'start', 'd', 'w', 'menu', 'GUID',
-}
-
-local t_btnEnabled = {}
-for _, row in ipairs(t_keyCfg) do
-	if isUIKeyAction(row.itemname) then
-		t_btnEnabled[row.itemname] = true
+local function findInputItem(tbl, name)
+	for i, row in ipairs(tbl.items) do
+		if row.itemname == name then
+			return row, tbl.submenu[row.itemname], tbl, i
+		end
+		local sub = tbl.submenu[row.itemname]
+		if sub ~= nil then
+			local row, menu, parent, item = findInputItem(sub, name)
+			if row ~= nil then
+				return row, menu, parent, item
+			end
+		end
 	end
 end
 
--- Restore saved key config for a single player from t_savedConfig
-local function f_restoreKeyConfigPlayer(cfgType, pn)
-	local saved = t_savedConfig[pn]
-	if not saved then
+local function inputPopup(context, text, getValue, onClose)
+	local sec = motif.option_info
+	context.popup = main.f_warning(text, sec, context.background, nil, sec.title.TextSpriteData, nil,
+		sec.cancel.snd, sec.cursor.done.snd, getValue, true)
+	context.onClose = onClose
+end
+
+-- Expand the profile placeholder in place, retaining the order the motif declares.
+local function populateInputMenu(tbl, kind, selected)
+	for i = #tbl.items, 1, -1 do
+		local row = tbl.items[i]
+		if row.itemname == 'profile' then
+			table.remove(tbl.items, i)
+			local entries = inputSources()
+			if selected ~= nil then
+				entries = inputProfiles(selected.id)
+			end
+			for j = #entries, 1, -1 do
+				local data = entries[j]
+				local source = selected or data
+				if source.connected and source.kind == kind then
+					local entry = main.f_tableCopy(row)
+					entry.source = source
+					entry.profile = nil
+					if selected ~= nil then
+						entry.profile = data.id
+					end
+					entry.displayname = string.format(row.displayname, data.name)
+					entry.vardisplay = nil
+					entry.selected = data.selected or false
+					table.insert(tbl.items, i, entry)
+				end
+			end
+		elseif tbl.submenu[row.itemname] ~= nil then
+			if row.itemname == 'profiles' and selected ~= nil then
+				row.vardisplay = inputProfile(selected.id).name
+			end
+			populateInputMenu(tbl.submenu[row.itemname], kind, selected)
+		end
+	end
+	for i, row in ipairs(tbl.items) do
+		if row.selected then
+			tbl.inputFocus = i
+			break
+		end
+	end
+	tbl.loop = options.f_createMenu(tbl, false)
+end
+
+local function updateProfileMenu(tbl, root, source, values)
+	if tbl.inputMenu == nil then
+		tbl.loop = options.f_createMenu(tbl, false)
+	end
+	tbl.inputContext = root.inputContext
+	tbl.inputSource = source
+	tbl.inputMenu = root
+	for _, row in ipairs(tbl.items) do
+		local field = row.itemname
+		row.vardisplay = values[field]
+		if field == 'rumble' then
+			row.vardisplay = options.f_boolDisplay(values.rumble)
+		elseif field == 'configall' then
+			row.infodisplay = string.format(motif.option_info.menu.valuename.f, 1)
+		end
+	end
+	for _, sub in pairs(tbl.submenu) do
+		updateProfileMenu(sub, root, source, values)
+	end
+end
+
+local function applyProfile(tbl, values, copy)
+	local sec = motif.option_info
+	if not inputSaveProfile(tbl.inputSource.id, values.name, values, values.rumble, copy or false, sec.menu.valuename.copy) then
+		inputPopup(tbl.inputContext, sec.textinput.text.profilesave)
+		return false
+	end
+	options.modified = true
+	local values = inputProfile(tbl.inputSource.id)
+	local root = tbl.inputMenu
+	root.title = main.f_itemnameUpper(values.name, sec.menu.title.uppercase)
+	updateProfileMenu(root, root, tbl.inputSource, values)
+	return true
+end
+
+local function cancelProfile(root)
+	if root.previousProfile == nil then
+		applyProfile(root, root.savedBindings)
 		return
 	end
-	for _, field in ipairs(t_keyCfgFields) do
-		local oldVal = saved[field]
-		if oldVal ~= nil then
-			modifyGameOption(string.format('%s_P%d.%s', cfgType, pn, field), oldVal)
-		end
+	inputDeleteProfile(root.inputSource.id)
+	if root.previousProfile ~= '' then
+		inputSetProfile(root.inputSource.id, root.previousProfile)
 	end
 end
 
-function options.f_keyDefault()
-	for i = 1, gameOption('Config.Players') do
-		setDefaultConfig('Keys', i, t_btnEnabled)
-		setDefaultConfig('Joystick', i, t_btnEnabled)
+function options.f_inputConfigFrame(context)
+	local sec = motif.option_info
+	-- Tracks whether this frame rendered a menu, so the caller only flushes a
+	-- frame that drew something (the closing frame may only clear the screen).
+	local drew = false
+	if not context.pause then
+		local bg = context.background
+		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
 	end
-	resetRemapInput()
-end
-
-if gameOption('Config.FirstRun') then
-	options.f_keyDefault()
-end
-
-function options.f_keyCfgReset(cfgType)
-	t_keyList = {}
-	for i = 1, gameOption('Config.Players') do
-		local c = gameOption(cfgType .. '_P' .. i)
-		if t_keyList[c.Joystick] == nil then
-			t_keyList[c.Joystick] = {} --creates subtable for each controller (1 for all keyboard configs, new one for each gamepad)
-			t_conflict[c.Joystick] = false --set default conflict flag for each controller
+	if not context.closed and context.popup ~= nil then
+		-- The popup overlays the options screen, so draw that background behind it
+		-- instead of leaving the cleared (black) frame.
+		if not context.pause and context.background ~= nil then
+			bgDraw(context.background.BGDef, 0)
+			bgDraw(context.background.BGDef, 1)
 		end
-		for k, v in ipairs(t_keyCfg) do
-			if t_btnEnabled[v.itemname] then
-				local btn = c[v.itemname]
-				t_keyCfg[k]['vardisplay' .. i] = btn
-				if btn ~= tostring(motif.option_info.menu.valuename.nokey) then --if button is not disabled
-					t_keyList[c.Joystick][btn] = (t_keyList[c.Joystick][btn] or 0) + 1
+		local finished, value = context.popup()
+		if not finished then
+			return true
+		end
+		local onClose = context.onClose
+		context.popup, context.onClose = nil, nil
+		context.skipInput = true
+		if onClose ~= nil then
+			onClose(value)
+		end
+	end
+	local source = context.source or (context.current and context.current.inputSource)
+	if source ~= nil and source.kind == 'gamepad' and not getJoystickPresent(source.joy) then
+		context.closed = true
+	end
+	if not context.closed and context.current ~= nil then
+		drew = true
+		if context.capture ~= nil then
+			options.f_inputCapture(context)
+		end
+		local tbl = context.current
+		tbl.inputContext = context
+		if not tbl.loop(context) then
+			if tbl == tbl.inputMenu and not tbl.finished and (tbl.inputSource.kind ~= 'gamepad' or getJoystickPresent(tbl.inputSource.joy)) then
+				cancelProfile(tbl)
+			end
+			if tbl.inputMenu ~= nil and (tbl == tbl.inputMenu or tbl.inputMenu.finished) then
+				context.current, context.parents = nil, {}
+				if context.openPicker ~= nil then
+					context.openPicker()
 				end
-			elseif v.itemname == 'rumble' then
-				t_keyCfg[k]['vardisplay' .. i] = options.f_boolDisplay(c.RumbleOn)
+			else
+				context.current = table.remove(context.parents)
 			end
-		end
-	end
-end
-
-function options.f_setKeyConfig(cfgType)
-	for i = 1, gameOption('Config.Players') do
-		local c = gameOption(cfgType .. '_P' .. i)
-		setKeyConfig(i, c.Joystick, {c.up, c.down, c.left, c.right, c.a, c.b, c.c, c.x, c.y, c.z, c.start, c.d, c.w, c.menu})
-	end
-end
-
-function options.f_keyCfgInit(cfgType, title)
-	resetKey()
-	cursorPosY = configall_start
-	item = configall_start
-	item_start = configall_start
-	captureMode = nil
-	captureActive = false
-	key = ''
-	t_conflict = {}
-	t_savedConfig = {}
-	for i = 1, gameOption('Config.Players') do
-		table.insert(t_savedConfig, gameOption(cfgType .. '_P' .. i))
-	end
-	btnReleased = false
-	player = 1
-	side = 1
-	btn = ''
-	textImgReset(motif.option_info.title.TextSpriteData)
-	textImgSetText(motif.option_info.title.TextSpriteData, title)
-	options.f_keyCfgReset(cfgType)
-	joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-end
-
-function options.f_keyCfg(cfgType, controller, bg, skipClear)
-	local t = t_keyCfg
-	local side_before = side
-	-- Dynamically add/remove the "Rumble" option based on type
-	if motif.option_info.keymenu.itemname.rumble ~= nil then
-		if cfgType ~= 'Joystick' then
-			for k,v in ipairs(t) do
-				if t[k].itemname == 'rumble' then
-					table.remove(t, k)
-					break
-				end
-			end
-		else
-			local found = false
-			for k,v in ipairs(t) do
-				if t[k].itemname == 'rumble' then
-					found = true
-					break
-				end
-			end
-			if not found then
-				table.insert(t, #t, {itemname = 'rumble', displayname = motif.option_info.keymenu.itemname.rumble, paramname = 'rumble', infodisplay = ''})
-				options.f_keyCfgReset(cfgType)
-			end
-		end
-	end
-	local moveTxt = 0
-	local forcedDir = nil
-	-- Config all / single-button capture
-	if captureActive then
-		-- esc while capturing (cancel)
-		if esc() --[[or getInput(-1, motif.option_info.menu.cancel.key)]] then
-			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
+			context.closed = context.current == nil
+			main.f_menuSnap(sec)
+			main.f_menuItemBgAnimReset(sec)
+			resetTokenGuard()
 			esc(false)
-			for i = 1, gameOption('Config.Players') do
-				if i == player then
-					f_restoreKeyConfigPlayer(cfgType, i)
-				end
-			end
-			options.f_setKeyConfig(cfgType)
-			options.f_keyCfgReset(cfgType)
-			-- on cancel, Config all should always return to the Config all row, while single-button capture should keep the row it started from
-			local resetIndex
-			if captureMode == 'all' then
-				resetIndex = configall_start
-			else
-				resetIndex = item_start
-			end
-			captureMode = nil
-			captureActive = false
-			item = resetIndex
-			cursorPosY = resetIndex
-		-- unbind key
-		elseif getKey(motif.option_info.keymenu.unbind.keycode) then
-			key = '__UNBIND__'
-		--keyboard key detection
-		elseif cfgType == 'Keys' then
-			key = getKey()
-		--gamepad key detection
-		else
-			local tmp = getJoystickKey(joyNum)
-			local guid = getJoystickGUID(joyNum)
-
-			-- Fix the joystick index so that configs are preserved between boots
-			if gameOption(cfgType .. '_P' .. player .. '.GUID') ~= guid and guid ~= '' then
-				modifyGameOption(cfgType .. '_P' .. player .. '.GUID', guid)
-				options.modified = true
-			end
-
-			if tmp == '' then
-				btnReleased = true
-			elseif btnReleased then
-				key = tmp
-				btnReleased = false
-			end
 		end
-		-- while Config all is active we lock menu movement by default
-		forcedDir = 0
-		--other keyboard or gamepad key
-		if key ~= '' and key ~= 'nil' then
-			if key == '__UNBIND__' then
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-				--decrease old button count
-				if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
-					t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
-				else
-					t_keyList[joyNum][btn] = nil
-				end
-				--update vardisplay / config data
-				t[item]['vardisplay' .. player] = motif.option_info.menu.valuename.nokey
-				modifyGameOption(cfgType .. '_P' .. player .. '.' .. t[item].itemname, tostring(motif.option_info.menu.valuename.nokey))
-				options.modified = true
-			elseif cfgType == 'Keys' or (cfgType == 'Joystick' and key ~= 'nil') then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				--decrease old button count
-				if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
-					t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
-				else
-					t_keyList[joyNum][btn] = nil
-				end
-				--remove previous button assignment if already set
-				for k, v in ipairs(t) do
-					if v['vardisplay' .. player] == key then
-						v['vardisplay' .. player] = tostring(motif.option_info.menu.valuename.nokey)
-						modifyGameOption(cfgType .. '_P' .. player .. '.' .. v.itemname, tostring(motif.option_info.menu.valuename.nokey))
-						if t_keyList[joyNum][key] ~= nil and t_keyList[joyNum][key] > 1 then
-							t_keyList[joyNum][key] = t_keyList[joyNum][key] - 1
-						else
-							t_keyList[joyNum][key] = nil
-						end
-					end
-				end
-				--increase new button count
-				if t_keyList[joyNum][key] == nil then
-					t_keyList[joyNum][key] = 1
-				else
-					t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
-				end
-				--update vardisplay / config data
-				t[item]['vardisplay' .. player] = key
-				modifyGameOption(cfgType .. '_P' .. player .. '.' .. t[item].itemname, key)
-				options.modified = true
-			end
-			if captureMode == 'all' then
-				-- decide what to do next: move down or finish Config all
-				local nextIndex = item + 1
-				local nextRow = t[nextIndex]
-				if nextRow == nil or nextRow.itemname == 'page' or nextRow.itemname == 'rumble' then
-					-- reached end sentinel, stop Config all and reset selection
-					item = configall_start
-					cursorPosY = configall_start
-					captureActive = false
-					captureMode = nil
-					options.f_setKeyConfig(cfgType)
-					forcedDir = 0 -- keep cursor where we reset it
-				else
-					-- continue Config all: simulate one "down" press so scrolling / wrapping is handled by common menu code
-					forcedDir = 1
-				end
-			else
-				-- single-button capture: finish after one assignment, keep current scroll / cursor
-				captureActive = false
-				captureMode = nil
-				options.f_setKeyConfig(cfgType)
-				forcedDir = 0
-			end
-			key = ''
+	end
+	context.skipInput = false
+	if context.closed then
+		if context.previousSource ~= nil then
+			inputConfigSource(context.previousSource)
 		end
-		if t_btnEnabled[t[item].itemname] then
-			btn = gameOption(cfgType .. '_P' .. player .. '.' .. t[item].itemname)
-		end
+		main.f_menuSnap(sec)
+		main.f_menuItemBgAnimReset(sec)
 		resetKey()
+		resetTokenGuard()
+		esc(false)
+		return false, drew
+	end
+	return true
+end
+
+local function runInputConfig(context)
+	resetKey()
+	resetTokenGuard()
+	if context.pause then
+		options.inputContext = context
 	else
-		key = getKey()
-		--back
-		if esc() or getInput(-1, motif.option_info.menu.cancel.key) or (t[item].itemname == 'page' and (side == 1 or gameOption('Config.Players') <= 2) and getInput(-1, motif.option_info.keymenu.done.key)) then
-			if t_conflict[joyNum] then
-				if not main.f_warning(motif.warning_info.text.text.keys, motif.option_info, motif.optionbgdef) then
-					for i = 1, gameOption('Config.Players') do
-						f_restoreKeyConfigPlayer(cfgType, i)
-					end
-					options.f_setKeyConfig(cfgType)
-					menu.itemname = ''
-					return false
-				end
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-				options.f_setKeyConfig(cfgType)
-				menu.itemname = ''
-				return false
+		local continue, drew = options.f_inputConfigFrame(context)
+		while continue do
+			refresh()
+			continue, drew = options.f_inputConfigFrame(context)
+		end
+		-- Flush the final editor frame on its own only if it drew a menu, so it is
+		-- not composited with the options menu, without presenting a blank frame.
+		if drew then
+			refresh()
+		end
+	end
+end
+
+function options.f_editProfile(source, template, context, newProfile)
+	if template == nil then
+		local row, picker = findInputItem(options.menu, source.kind)
+		if picker ~= nil then
+			row, template = findInputItem(picker, 'profile')
+		end
+	end
+	if template == nil then
+		return
+	end
+	local ownContext = context == nil
+	context = context or {background = motif.optionbgdef, parents = {}}
+	local tbl = main.f_tableCopy(template)
+	if source.kind == 'keyboard' then
+		main.f_pruneMenu(tbl, {keyboardrumble = true, gamepadrumble = true})
+	end
+	-- A profile made by New Profile is already a separate copy.
+	if newProfile then
+		main.f_pruneMenu(tbl, {savecopy = true})
+	end
+	local values = inputProfile(source.id)
+	tbl.title = main.f_itemnameUpper(values.name, motif.option_info.menu.title.uppercase)
+	tbl.savedBindings = main.f_tableCopy(values)
+	tbl.inputContext = context
+	updateProfileMenu(tbl, tbl, source, values)
+	context.current, context.parents = tbl, {}
+	-- Capture targets the edited source; menu navigation keeps the source that opened it.
+	local menuSource = source.id
+	if not ownContext then
+		menuSource = inputMenuSource()
+		if context.source ~= nil then
+			menuSource = context.source.id
+		end
+	end
+	local previousSource = inputConfigSource(menuSource)
+	if context.previousSource == nil then
+		context.previousSource = previousSource
+	end
+	resetKey()
+	resetTokenGuard()
+	if ownContext then
+		bgReset(motif.optionbgdef.BGDef)
+		runInputConfig(context)
+	end
+end
+
+local function startInputCapture(tbl, item, all)
+	local root = tbl.inputMenu
+	local entries, seen = {}, {}
+	local temporary = 0
+	local function collect(menu)
+		for i, row in ipairs(menu.items) do
+			local field = row.itemname
+			if t_profileButtons[field] then
+				seen[field] = true
+				table.insert(entries, {menu = menu, item = i, field = field})
+			elseif menu.submenu[row.itemname] ~= nil then
+				collect(menu.submenu[row.itemname])
 			end
-		--switch page
-		elseif gameOption('Config.Players') > 2 and ((t[item].itemname == 'page' and side == 2 and getInput(-1, motif.option_info.keymenu.done.key)) or key == 'TAB') then
+		end
+	end
+	if all then
+		collect(root)
+		-- Config all also covers bindings whose normal menu row the motif hides.
+		for _, field in ipairs(t_profileFields) do
+			if not seen[field] then
+				table.insert(root.items, {itemname = field, displayname = field, paramname = ''})
+				table.insert(entries, {menu = root, item = #root.items, field = field})
+				temporary = temporary + 1
+			end
+		end
+	else
+		entries = {{menu = tbl, item = item, field = tbl.items[item].itemname}}
+	end
+	if #entries == 0 then
+		return
+	end
+	tbl.inputContext.capture = {
+		root = root, entries = entries, index = 1, released = false, temporary = temporary,
+		values = inputProfile(tbl.inputSource.id), menu = tbl, item = item,
+	}
+	resetKey()
+	resetTokenGuard()
+end
+
+function options.f_inputConfigAll(tbl)
+	local row, sub, menu, item = findInputItem(tbl.inputMenu, 'configall')
+	if row ~= nil then
+		menu.inputContext = tbl.inputContext
+		if menu == tbl.inputMenu then
+			tbl.inputContext.parents = {}
+		end
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		startInputCapture(menu, item, true)
+	end
+	resetKey()
+end
+
+function options.f_inputCapture(context)
+	local sec = motif.option_info
+	local capture = context.capture
+	local root, source = capture.root, capture.root.inputSource
+	local entry = capture.entries[capture.index]
+	local finished = false
+	if esc() then
+		-- Esc drops this capture only.
+		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+		esc(false)
+		finished = true
+	else
+		local token = ''
+		if getKey(sec.unbind.keycode) then
+			token = '-'
+		elseif source.kind == 'keyboard' then
+			token = getKey()
+		else
+			local key = getJoystickKey(source.joy)
+			if key == '' then
+				capture.released = true
+			elseif capture.released then
+				token = key
+				capture.released = false
+			end
+		end
+		if token ~= '' and token ~= 'nil' then
+			for _, field in ipairs(t_profileFields) do
+				if capture.values[field] == token then
+					capture.values[field] = '-'
+				end
+			end
+			capture.values[entry.field] = token
+			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
+			capture.index = capture.index + 1
+			if capture.index > #capture.entries then
+				applyProfile(root, capture.values)
+				finished = true
+			end
+		end
+	end
+	resetKey()
+	if finished then
+		for i = 1, capture.temporary do
+			table.remove(root.items)
+		end
+		updateProfileMenu(root, root, source, inputProfile(source.id))
+		context.current, context.capture = capture.menu, nil
+		context.skipInput = true
+		capture.menu.inputFocus = capture.item
+		resetTokenGuard()
+	else
+		updateProfileMenu(root, root, source, capture.values)
+		entry = capture.entries[capture.index]
+		context.current = entry.menu
+		entry.menu.inputFocus = entry.item
+		entry.menu.items[entry.item].vardisplay = sec.menu.valuename.presskey
+	end
+end
+
+-- Input editor handlers. One handler serves both kinds: it reads the source
+-- from the menu it is given.
+options.t_itemname.configall = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		options.f_inputConfigAll(t)
+	end
+	return true
+end
+
+for _, field in ipairs(t_profileFields) do
+	options.t_itemname[field] = function(t, item)
+		local values = inputProfile(t.inputSource.id)
+		if getKey(motif.option_info.unbind.keycode) or getInput(-1, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			player = player + 2
-			if player > gameOption('Config.Players') then
-				player = side
-			else
-				side = main.f_playerSide(player)
-			end
-			joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-		--move right
-		elseif getInput(-1, motif.option_info.menu.add.key) and player + 1 <= gameOption('Config.Players') then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			player = player + 1
-			side = main.f_playerSide(player)
-			joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-		--move left
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and player - 1 >= 1 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			player = player - 1
-			side = main.f_playerSide(player)
-			joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-		--Config all
-		elseif t[item].itemname == 'configall' or key:match('^F[0-9]+$') then
-			local pn = key:match('^F([0-9]+)$')
-			if pn ~= nil then
-				pn = tonumber(pn)
-				key = ''
-			end
-			if getInput(-1, motif.option_info.keymenu.done.key) or (pn ~= nil and pn >= 1 and pn <= gameOption('Config.Players')) then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				if pn ~= nil then
-					player = pn
-					side = main.f_playerSide(player)
-					joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-				end
-				if cfgType == 'Joystick' and getJoystickPresent(joyNum) == false then
-					main.f_warning(motif.warning_info.text.text.pad, motif.option_info, motif.optionbgdef)
-					item = configall_start
-					cursorPosY = configall_start
-				else
-					-- start "Config all" capture
-					captureMode = 'all'
-					item = configall_start + 1
-					cursorPosY = configall_start + 1
-					btnReleased = false
-					captureActive = true
-				end
-			end
-		-- Single-button assignment
-		elseif t_btnEnabled[t[item].itemname] and getInput(-1, motif.option_info.keymenu.done.key) then
-			if cfgType == 'Joystick' and getJoystickPresent(joyNum) == false then
-				-- same behaviour as Config all when no gamepad is connected
-				main.f_warning(motif.warning_info.text.text.pad, motif.option_info, motif.optionbgdef)
-				item = configall_start
-				cursorPosY = configall_start
-			else
-				-- enter capture mode but only for this single row
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				-- item_start remembers which row started this single-button capture;
-				item_start = item
-				btnReleased = false
-				captureMode = 'single'
-				captureActive = true
-				-- preload current button for this action (used by configall logic)
-				if t_btnEnabled[t[item].itemname] then
-					btn = gameOption(cfgType .. '_P' .. player .. '.' .. t[item].itemname)
-				else
-					btn = ''
-				end
-			end
-		-- Rumble toggle
-		elseif t[item].itemname == 'rumble' then
-			if getInput(-1, motif.option_info.keymenu.done.key) then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				local rgo = cfgType .. '_P' .. player .. '.RumbleOn'
-				local rumble = gameOption(rgo)
-				modifyGameOption(rgo, not rumble)
-				options.f_keyCfgReset(cfgType)
-				options.modified = true
-			end
+			values[field] = '-'
+			applyProfile(t, values)
+		elseif getInput(-1, motif.option_info.menu.done.key) then
+			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+			startInputCapture(t, item, false)
 		end
 		resetKey()
+		return true
 	end
+end
 
-	-- Reset active background animation when switching side
-	if side_before ~= side and t ~= nil and t[item] ~= nil then
-		local bgTable = motif.option_info.keymenu.item.active.bg
-		if bgTable ~= nil then
-			local params = bgTable[t[item].paramname] or bgTable.default
-			if params ~= nil and params.AnimData ~= nil then
-				animReset(params.AnimData)
-				animUpdate(params.AnimData)
+options.t_itemname.rumble = function(t, item)
+	if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+		local values = inputProfile(t.inputSource.id)
+		values.rumble = not values.rumble
+		applyProfile(t, values)
+	end
+	return true
+end
+
+local function profileName(tbl, copy)
+	local sec, context = motif.option_info, tbl.inputContext
+	local values = inputProfile(tbl.inputSource.id)
+	context.popup = main.f_drawInput(sec.textinput.TextSpriteData, sec.textinput.text.profilename,
+		sec, context.background, sec.textinput.overlay.RectData, values.name, true)
+	context.onClose = function(name)
+		if name ~= '' then
+			values.name = name
+			if copy then
+				-- The copy takes the edits; the original profile keeps its saved state.
+				local root = tbl.inputMenu
+				if applyProfile(tbl, root.savedBindings) and applyProfile(tbl, values, true) then
+					root.finished = true
+				end
+			else
+				applyProfile(tbl, values)
 			end
 		end
+		esc(false)
 	end
+end
 
-	-- standard / forced menu movement (up/down)
-	-- When Config all is active, movement is driven by forcedDir (0 = locked, 1 = down).
-	cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.option_info.keymenu, motif.option_info.cursor, forcedDir)
-	-- recompute current-player conflict flag (used on exit)
-	t_conflict[joyNum] = false
-	local curVal = nil
-	for i = 1, #t do
-		curVal = t[i]['vardisplay' .. player]
-		if curVal ~= nil then
-			local cnt = t_keyList[joyNum][tostring(curVal)]
-			if cnt ~= nil and cnt > 1 then
-				t_conflict[joyNum] = true
+options.t_itemname.renameprofile = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		profileName(t, false)
+	end
+	return true
+end
+
+options.t_itemname.savecopy = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		profileName(t, true)
+	end
+	return true
+end
+
+options.t_itemname.deleteprofile = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		if inputDeleteProfile(t.inputSource.id) then
+			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+			options.modified = true
+			t.inputMenu.finished = true
+			return false
+		end
+		inputPopup(t.inputContext, motif.option_info.textinput.text.profiledelete)
+	end
+	return true
+end
+
+options.t_itemname.save = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		t.inputMenu.finished = true
+		return false
+	end
+	return true
+end
+
+options.t_itemname.cancel = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
+		cancelProfile(t.inputMenu)
+		t.inputMenu.finished = true
+		return false
+	end
+	return true
+end
+
+options.t_itemname.newprofile = function(t, item)
+	local sec, context = motif.option_info, t.inputContext
+	if getInput(-1, sec.menu.done.key) then
+		local source = context.source
+		local menuSource = inputMenuSource()
+		if source ~= nil then
+			menuSource = source.id
+		else
+			-- Keyboard layouts have separate sources. Keep the existing one intact,
+			-- preferring the one navigating the menu.
+			for _, entry in ipairs(inputSources()) do
+				if entry.connected and entry.kind == context.kind then
+					if source == nil or entry.id == menuSource then
+						source = entry
+					end
+				end
+			end
+		end
+		if source == nil then
+			return true
+		end
+		local previous = inputConfigSource(menuSource)
+		if context.previousSource == nil then
+			context.previousSource = previous
+		end
+		local id = inputNewProfile(source.id)
+		if id == 0 then
+			inputPopup(context, sec.textinput.text.profilesave)
+			return true
+		end
+		sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
+		options.modified = true
+		for _, entry in ipairs(inputSources()) do
+			if entry.id == id then
+				options.f_editProfile(entry, nil, context, true)
+				context.current.previousProfile = previous
 				break
 			end
 		end
 	end
-	if not skipClear then
-		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
+	return true
+end
+
+options.t_itemname.profile = function(t, item)
+	local sec = motif.option_info
+	if getInput(-1, sec.menu.done.key) then
+		local row = t.items[item]
+		if row.profile ~= nil and not inputSetProfile(row.source.id, row.profile) then
+			sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+			return true
+		end
+		sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
+		options.f_editProfile(row.source, t.submenu[row.itemname], t.inputContext)
 	end
-	--draw layerno = 0 backgrounds
-	bgDraw(bg.BGDef, 0)
-	--draw title
-	textImgDraw(motif.option_info.title.TextSpriteData)
-	-- Build per-pane item arrays with correct vardisplay/infodisplay and conflict flags
-	local function buildPaneItems(pane)
-		local pn = pane + player - side
-		local joy = gameOption(cfgType .. '_P' .. pn .. '.Joystick')
-		local list = {}
-		for i = 1, #t do
-			local base = t[i]
-			local row = {
-				itemname    = base.itemname,
-				displayname = base.displayname,
-				paramname   = base.paramname,
-				selected    = base.selected,
-				vardisplay  = base['vardisplay' .. pn],
-				infodisplay = base.infodisplay,
-			}
-			-- contextual labels
-			if base.itemname == 'configall' then
-				row.infodisplay = string.format(motif.option_info.menu.valuename.f, pane + player - side)
-			elseif base.itemname == 'page' then
-				if pane == 1 then
-					row.displayname = motif.option_info.keymenu.itemname.back
-					row.infodisplay = motif.option_info.menu.valuename.esc
-				else
-					if gameOption('Config.Players') > 2 then
-						row.displayname = motif.option_info.keymenu.itemname.page
-						row.infodisplay = motif.option_info.menu.valuename.page
-					else
-						row.displayname = motif.option_info.keymenu.itemname.back
-						row.infodisplay = motif.option_info.menu.valuename.esc
+	return true
+end
+
+function options.f_inputCfg(kind, template, background)
+	local sec = motif.option_info
+	if main.pauseMenuActive then
+		-- The menu already knows who opened Button Config; edit that source directly.
+		for _, source in ipairs(inputSources()) do
+			if source.id == inputMenuSource() then
+				local context = {background = background or motif.optionbgdef, pause = true, parents = {}}
+				options.f_editProfile(source, nil, context)
+				runInputConfig(context)
+				return
+			end
+		end
+		return
+	end
+	if template == nil then
+		local row
+		row, template = findInputItem(options.menu, kind)
+	end
+	if template == nil then
+		return
+	end
+	local context = {kind = kind, background = background or motif.optionbgdef, pause = main.pauseMenuActive, parents = {}}
+	local function openMenu(selected)
+		if selected ~= nil and context.previousSource == nil then
+			context.previousSource = inputConfigSource(selected.id)
+		elseif selected == nil and context.previousSource ~= nil then
+			inputConfigSource(context.previousSource)
+		end
+		local tbl = main.f_tableCopy(template)
+		if selected ~= nil then
+			tbl.title = main.f_itemnameUpper(selected.name, sec.menu.title.uppercase)
+		end
+		populateInputMenu(tbl, kind, selected)
+		context.current, context.source = tbl, selected
+		-- Rebuild after editing so renamed, copied and deleted profiles stay current.
+		context.openPicker = function() openMenu(selected) end
+	end
+	if kind == 'gamepad' then
+		textImgReset(sec.title.TextSpriteData)
+		textImgSetText(sec.title.TextSpriteData, template.title)
+		local released = false
+		inputPopup(context, sec.textinput.text.gamepad, function()
+			local token, joy = getJoystickKey()
+			if token == '' then
+				released = true
+			elseif released then
+				for _, source in ipairs(inputSources()) do
+					-- getJoystickKey returns a 1-based index; inputSources uses SDL's 0-based index.
+					if source.connected and source.kind == 'gamepad' and source.joy == joy - 1 then
+						return source
 					end
 				end
 			end
-			-- custom vardisplay when single-button capture is waiting for input on this row
-			if captureMode == 'single' and captureActive and pn == player and i == item and t_btnEnabled[base.itemname] then
-				row.vardisplay = tostring(motif.option_info.menu.valuename.presskey)
+		end, function(source)
+			if source then
+				openMenu(source)
+			else
+				context.closed = true
 			end
-			-- conflict marker per pane
-			if row.vardisplay ~= nil then
-				local cnt = t_keyList[joy][tostring(row.vardisplay)]
-				row.conflict = (cnt ~= nil and cnt > 1) or false
-			end
-			table.insert(list, row)
-		end
-		return list
+		end)
+	else
+		openMenu()
 	end
-	local leftItems  = buildPaneItems(1)
-	local rightItems = buildPaneItems(2)
-	-- left pane (active highlight only if side == 1)
-	main.f_menuCommonDraw(
-		leftItems, item, cursorPosY, moveTxt, motif.option_info.keymenu, bg, true,
-		{
-			offx = motif.option_info.keymenu.p1.menuoffset[1],
-			offy = motif.option_info.keymenu.p1.menuoffset[2],
-			forceInactive = (side ~= 1),
-			skipBG0 = true, skipBG1 = true, skipTitle = true,
-		}
-	)
-	-- right pane (active highlight only if side == 2)
-	main.f_menuCommonDraw(
-		rightItems, item, cursorPosY, moveTxt, motif.option_info.keymenu, bg, true,
-		{
-			offx = motif.option_info.keymenu.p2.menuoffset[1],
-			offy = motif.option_info.keymenu.p2.menuoffset[2],
-			forceInactive = (side ~= 2),
-			skipBG0 = true, skipBG1 = true, skipTitle = true,
-		}
-	)
-	-- draw player labels on top of panels (above boxbg)
-	for i = 1, 2 do
-		textImgReset(motif.option_info.keymenu['p' .. i].playerno.TextSpriteData)
-		textImgSetText(
-			motif.option_info.keymenu['p' .. i].playerno.TextSpriteData,
-			string.format(motif.option_info.keymenu['p' .. i].playerno.text, i + player - side)
-		)
-		textImgDraw(motif.option_info.keymenu['p' .. i].playerno.TextSpriteData)
-	end
-	--draw layerno = 1 backgrounds
-	bgDraw(bg.BGDef, 1)
-	if not skipClear then
-		refresh()
-	end
-	return true
+	runInputConfig(context)
 end
 
 return options

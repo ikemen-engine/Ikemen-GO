@@ -134,6 +134,10 @@ type SystemStateVars struct {
 	keyString           string
 	lastInputController int
 	uiLastInputToken    string
+	uiInputSource       int // source navigating the configuration menu
+	uiInputConfig       KeyConfig
+	uiInputBindings     [14]string // bindings used by menu hints during editing
+	uiInputHeld         [14]int32
 	uiConsumeInputFrame int32
 	uiRepeatToken       string
 	uiRepeatController  int
@@ -260,7 +264,7 @@ type System struct {
 	netConnection       *NetConnection
 	replayFile          *ReplayFile
 	keyConfig           []KeyConfig
-	joystickConfig      []KeyConfig
+	inputs              InputAssignment
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
 	charList            CharList
@@ -1015,41 +1019,6 @@ func (s *System) update() bool {
 		s.preMatchTime = s.frameCounter
 	}
 
-	// Correct the joystick mappings (macOS)
-	for i := 0; i < len(sys.joystickConfig); i++ {
-		if runtime.GOOS == "darwin" && !sys.joystickConfig[i].isInitialized {
-			joyS := i
-			if joyS < len(sys.joystickConfig) {
-				if input.IsJoystickPresent(joyS) {
-					guid := input.GetJoystickGUID(joyS)
-
-					// Correct the inner config
-					if sys.joystickConfig[joyS].GUID != guid && !sys.joystickConfig[joyS].isInitialized {
-						// Swap those that don't match
-						for i := 0; i < len(sys.joystickConfig); i++ {
-							if i != joyS && sys.joystickConfig[i].GUID == guid {
-								sys.joystickConfig[joyS].swap(&sys.joystickConfig[i])
-								logicalPlayerA := sys.joystickConfig[joyS].Joy
-								logicalPlayerB := sys.joystickConfig[i].Joy
-								sys.inputRemap[logicalPlayerA] = joyS
-								sys.inputRemap[logicalPlayerB] = i
-								// cs := *input.controllerstate[joyS]
-								// *input.controllerstate[joyS] = *input.controllerstate[i]
-								// *input.controllerstate[i] = cs
-								// c := input.controllers[joyS]
-								// input.controllers[joyS] = input.controllers[i]
-								// input.controllers[i] = c
-								// fmt.Printf("system.go: inputremap[%v] = %v, inputRemap[%v] = %v\n", joyS, sys.inputRemap[joyS], i, sys.inputRemap[i])
-								// fmt.Printf("system.go: %v, Joy = %v, RealJoy = %v, GUID = %v\n", input.GetJoystickGUID(joyS), joyS, sys.joystickConfig[joyS].Joy, guid)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	if s.replayFile != nil {
 		if s.anyHardButton() {
 			s.await(s.gameRenderSpeed() * 4)
@@ -1136,6 +1105,276 @@ func (s *System) resetRemapInput() {
 	for i := range s.inputRemap {
 		s.inputRemap[i] = i
 	}
+}
+
+// Returns the bindings of an input source's profile, with its joystick index filled in.
+func (s *System) inputSourceConfig(src *InputSource) (KeyConfig, bool) {
+	if src != nil && src.Connected {
+		for _, p := range s.keyConfig {
+			if p.ID == src.Profile {
+				p.Joy = src.Joy
+				return p, true
+			}
+		}
+	}
+	return KeyConfig{}, false
+}
+
+// Returns the bindings used by participant n.
+func (s *System) participantConfig(n int) (KeyConfig, bool) {
+	if n < 0 || n >= len(s.inputs.Participants) {
+		return KeyConfig{}, false
+	}
+	return s.inputSourceConfig(s.inputs.inputSource(s.inputs.Participants[n].Source))
+}
+
+// Returns the joystick index of participant n, or -1 for keyboard / none.
+func (s *System) participantJoystick(n int) int {
+	if kc, ok := s.participantConfig(n); ok {
+		return kc.Joy
+	}
+	return -1
+}
+
+// Returns which buttons are held on an input source right now.
+func (s *System) inputSourceState(src *InputSource) [14]bool {
+	if kc, ok := s.inputSourceConfig(src); ok {
+		if kc.Joy < 0 {
+			return GetKeyboardState(kc)
+		}
+		return GetJoystickState(kc)
+	}
+	return [14]bool{}
+}
+
+// Returns the profiles an input source can use: keyboard profiles for keyboards,
+// all gamepad profiles for gamepads. SDL has already normalized their controls.
+func (s *System) compatibleProfiles(src *InputSource) []string {
+	var ids []string
+	if src == nil {
+		return ids
+	}
+	for _, kc := range s.keyConfig {
+		if (src.Joy < 0) != (kc.Joy < 0) {
+			continue
+		}
+		ids = append(ids, kc.ID)
+	}
+	return ids
+}
+
+// Remember a choice per controller GUID without restricting who can use it.
+func (s *System) rememberInputProfile(src *InputSource) {
+	if src.Joy >= 0 {
+		if err := s.cfg.rememberControllerProfile(src.GUID, src.Profile); err != nil {
+			LogMessage("Unable to remember controller profile: %v", err)
+		}
+	}
+}
+
+// Selects a compatible gamepad profile without changing its participant or side.
+func (s *System) setInputProfile(source int, profile string) bool {
+	src := s.inputs.inputSource(source)
+	if src == nil || !src.Connected || src.Joy < 0 {
+		return false
+	}
+	for _, id := range s.compatibleProfiles(src) {
+		if id != profile {
+			continue
+		}
+		if src.Profile != id {
+			src.Profile = id
+			if owner := s.inputs.owner(source); owner >= 0 {
+				s.inputs.setReady(src.ID, false)
+			}
+			s.clearCommandBuffers()
+		}
+		src.ProfileChosen = true
+		s.rememberInputProfile(src)
+		return true
+	}
+	return false
+}
+
+// Adds a newly connected gamepad as an input source.
+func (s *System) attachGamepad(joy int) {
+	if _, disabled := s.cmdFlags["-nojoy"]; disabled {
+		return
+	}
+	for _, src := range s.inputs.Sources {
+		if src.Joy == joy && src.Connected {
+			return
+		}
+	}
+	guid := input.GetJoystickGUID(joy)
+	// Revive a matching disconnected source so a reconnected controller keeps its
+	// participant and starts working again, in menus and during a match. Prefer the
+	// same slot, then fall back to the controller GUID when the slot changed.
+	var revive *InputSource
+	for _, src := range s.inputs.Sources {
+		if src.Connected || src.Joy < 0 {
+			continue
+		}
+		if src.Joy == joy {
+			revive = src
+			break
+		}
+		if revive == nil && src.GUID == guid {
+			revive = src
+		}
+	}
+	if revive != nil {
+		revive.Joy = joy
+		revive.Name = input.GetJoystickName(joy)
+		revive.GUID = guid
+		revive.Connected = true
+		revive.held = [14]int32{}
+		revive.pressed = [14]bool{}
+		s.clearCommandBuffers()
+		return
+	}
+	src := s.inputs.addInputSource(joy, input.GetJoystickName(joy), guid, "inputprofile_gamepad")
+	// The original default profile can be deleted when another gamepad profile exists.
+	if s.cfg.InputProfile[src.Profile] == nil {
+		if profiles := s.compatibleProfiles(src); len(profiles) > 0 {
+			src.Profile = profiles[0]
+		}
+	}
+	// Use the profile last chosen for this controller model.
+	preferred := strings.ToLower(s.cfg.Input.ControllerProfile[strings.ToLower(src.GUID)])
+	for _, id := range s.compatibleProfiles(src) {
+		if id == preferred {
+			src.Profile = id
+			break
+		}
+	}
+}
+
+// Marks a gamepad as disconnected. Its participant keeps waiting for a reconnect.
+func (s *System) detachGamepad(joy int) {
+	for _, src := range s.inputs.Sources {
+		if src.Joy == joy && src.Connected {
+			src.Connected = false
+			src.held = [14]int32{}
+			src.pressed = [14]bool{}
+		}
+	}
+}
+
+// Updates press/hold state of every input source for menus. This is local only,
+// it is not part of rollback state or netplay packets.
+func (s *System) pollInputSources() {
+	if s.inputs.frame == s.frameCounter {
+		return
+	}
+	s.inputs.frame = s.frameCounter
+	// Configuration keeps using the bindings that opened its menu. Capture and
+	// gameplay still read the edited profile, so clearing a binding cannot lock
+	// the player out of the editor or change its menu hints midway through a row.
+	if s.uiInputSource != 0 {
+		var state [14]bool
+		if src := s.inputs.inputSource(s.uiInputSource); src != nil && src.Connected {
+			kc := s.uiInputConfig
+			kc.Joy = src.Joy
+			if kc.Joy < 0 {
+				state = GetKeyboardState(kc)
+			} else {
+				state = GetJoystickState(kc)
+				// The fixed d-pad, left stick, Start and Back only stand in for
+				// unbound controls, matching the menu hints.
+				for i, held := range input.GetJoystickMenuState(kc.Joy) {
+					if token := s.uiInputBindings[i]; token == "" || token == "-" {
+						state[i] = state[i] || held
+					}
+				}
+			}
+		}
+		for i, held := range state {
+			if held {
+				s.uiInputHeld[i]++
+			} else {
+				s.uiInputHeld[i] = 0
+			}
+		}
+	}
+	for _, src := range s.inputs.Sources {
+		state := s.inputSourceState(src)
+		if src.Connected && src.Joy >= 0 {
+			// A gamepad also works the menus with its d-pad, left stick, Start
+			// and Back, whatever the profile binds them to.
+			for i, held := range input.GetJoystickMenuState(src.Joy) {
+				state[i] = state[i] || held
+			}
+		}
+		active := false
+		for i, held := range state {
+			src.pressed[i] = held && src.held[i] == 0
+			if held {
+				src.held[i]++
+			} else {
+				src.held[i] = 0
+			}
+			active = active || src.pressed[i]
+		}
+		if active && !s.inputs.ClaimLocked && !s.netplay() && s.inputs.owner(src.ID) < 0 {
+			_, _ = s.inputs.claim(src.ID, TS_None)
+		}
+	}
+}
+
+// Clears command buffers so inputs from before an assignment change don't carry over.
+func (s *System) clearCommandBuffers() {
+	for _, cl := range s.commandLists {
+		if cl != nil {
+			cl.BufReset()
+		}
+	}
+	if !s.netplay() {
+		for _, chars := range s.chars {
+			if len(chars) == 0 || chars[0] == nil {
+				continue
+			}
+			for i := range chars[0].cmd {
+				chars[0].cmd[i].BufReset()
+			}
+		}
+	}
+	s.uiResetTokenGuard()
+}
+
+// True if this keyboard profile shares keys with a profile another participant is using.
+func (s *System) keyboardConflict(source int) bool {
+	src := s.inputs.inputSource(source)
+	kc, ok := s.inputSourceConfig(src)
+	if !ok || src.Joy >= 0 {
+		return false
+	}
+	return s.keyboardProfileConflict(source, s.cfg.InputProfile[kc.ID])
+}
+
+// Same as keyboardConflict, but checks the given profile instead of the source's current one.
+func (s *System) keyboardProfileConflict(source int, profile *KeysProperties) bool {
+	keys := profileTokens(profile)
+	for i, p := range s.inputs.Participants {
+		if p.Source == source || p.Source == 0 {
+			continue
+		}
+		other, ok := s.participantConfig(i)
+		if !ok || other.Joy >= 0 {
+			continue
+		}
+		for _, k := range keys {
+			if StringToKey(k) == KeyUnknown {
+				continue
+			}
+			for _, q := range profileTokens(s.cfg.InputProfile[other.ID]) {
+				if StringToKey(k) == StringToKey(q) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (s *System) loaderReset() {
@@ -1257,47 +1496,18 @@ func (s *System) synchronize() error {
 	return nil
 }
 
-/*
 func (s *System) anyHardButton() bool {
-	for _, kc := range s.keyConfig {
-		if kc.a() || kc.b() || kc.c() || kc.x() || kc.y() || kc.z() {
-			return true
+	for _, src := range s.inputs.Sources {
+		if s.inputs.ClaimLocked && s.replayFile == nil && s.inputs.owner(src.ID) < 0 {
+			continue
 		}
-	}
-	for _, kc := range s.joystickConfig {
-		if kc.a() || kc.b() || kc.c() || kc.x() || kc.y() || kc.z() {
-			return true
-		}
-	}
-	return false
-}
-*/
-
-// Joysticks were already refactored to be polled less times, but having these functions still makes them be polled twice as often during intros/outros
-// We're already polling them about 10 times less so that should be enough anyway
-// In Mugen, intro/outro skipping only happens on button press, not button hold
-func (s *System) anyHardButton() bool {
-	// Button indices for a, b, c, x, y, z
-	hardButtonIdx := []int{4, 5, 6, 7, 8, 9}
-
-	for _, kc := range s.keyConfig {
-		buttons := GetKeyboardState(kc)
-		for _, idx := range hardButtonIdx {
-			if buttons[idx] {
+		buttons := s.inputSourceState(src)
+		for i := BI_A; i <= BI_Z; i++ {
+			if buttons[i] {
 				return true
 			}
 		}
 	}
-
-	for _, kc := range s.joystickConfig {
-		buttons := GetJoystickState(kc)
-		for _, idx := range hardButtonIdx {
-			if buttons[idx] {
-				return true
-			}
-		}
-	}
-
 	return false
 }
 
@@ -1326,6 +1536,7 @@ func (s *System) buttonController(btns []string) int {
 }
 
 func (s *System) stepCommandLists() {
+	s.pollInputSources()
 	for i, cl := range s.commandLists {
 		if cl == nil || cl.Buffer == nil {
 			continue
@@ -1461,7 +1672,7 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 			// Raw axis tokens (LS_*/RS_*/LT/RT) when used directly in Lua.
 			// LS axis directions are handled above as D/U/B/F aliases.
 			// Other axis tokens are treated as "held" here.
-			if !trigger && isAxisToken(tok) && cl.IsControllerButtonPressed(tok, i) {
+			if !trigger && i >= 0 && isAxisToken(tok) && cl.IsControllerButtonPressed(tok, i) {
 				trigger = true
 			}
 			if trigger {
@@ -1472,12 +1683,35 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 				if s.uiConsumeTokenThisFrame(controllerKey, tok) {
 					continue
 				}
-				s.lastInputController = controllerKey
+				if i >= 0 {
+					s.lastInputController = controllerKey
+				}
+				if !s.netplay() && controllerKey >= 0 && controllerKey < len(s.inputs.Participants) {
+					s.inputs.MenuSource = s.inputs.Participants[controllerKey].Source
+				}
 				s.uiLastInputToken = tok
 				return true
 			}
 		}
 		return false
+	}
+	if s.uiInputSource != 0 {
+		s.pollInputSources()
+		src := s.inputs.inputSource(s.uiInputSource)
+		if src == nil || !src.Connected {
+			return false
+		}
+		// Configuration also works for an unassigned source on the side screen.
+		// Reuse normal menu repeat/consume handling without claiming a player slot.
+		state := s.uiInputHeld
+		buffer := InputBuffer{
+			Ub: state[BI_PU], Db: state[BI_PD],
+			Lb: state[BI_PL], Bb: state[BI_PL], Rb: state[BI_PR], Fb: state[BI_PR],
+			ab: state[BI_A], bb: state[BI_B], cb: state[BI_C],
+			xb: state[BI_X], yb: state[BI_Y], zb: state[BI_Z],
+			sb: state[BI_S], db: state[BI_D], wb: state[BI_W], mb: state[BI_M],
+		}
+		return checkOne(-src.ID-1, &CommandList{Buffer: &buffer})
 	}
 	if controllerIdx >= 0 {
 		if controllerIdx < len(s.commandLists) {
@@ -1505,86 +1739,6 @@ func (s *System) uiIsKeyAction(name string) bool {
 	default:
 		return false
 	}
-}
-
-func (s *System) uiDefaultTokens(pn int, joystick bool) []string {
-	defaultNoKey := s.cfg.DefaultOnlyIni.Section("Keys_P3").Key("menu").String()
-	sectionName := "Keys_P3"
-	if pn == 1 || pn == 2 {
-		sectionName = "Keys_P" + Itoa(pn)
-	}
-	if joystick {
-		sectionName = "Joystick_P1"
-	}
-	get := func(k string) string {
-		v := s.cfg.DefaultOnlyIni.Section(sectionName).Key(k).String()
-		if v == defaultNoKey {
-			return s.motif.OptionInfo.Menu.Valuename["nokey"]
-		}
-		return v
-	}
-	return []string{
-		get("up"), get("down"), get("left"), get("right"),
-		get("a"), get("b"), get("c"),
-		get("x"), get("y"), get("z"),
-		get("start"), get("d"), get("w"), get("menu"),
-	}
-}
-
-func (s *System) uiSetConfigDefaults(pn int, joystick bool, enabled map[string]bool) {
-	if pn < 1 {
-		return
-	}
-	var (
-		kc     *KeyConfig
-		base   string
-		joyVal int
-		toInt  func(string) int
-	)
-	if joystick {
-		if pn > len(s.joystickConfig) {
-			return
-		}
-		joyVal = pn - 1
-		kc = &s.joystickConfig[pn-1]
-		base = fmt.Sprintf("Joystick_P%d.", pn)
-		toInt = func(tok string) int { return int(StringToButtonLUT[tok]) }
-	} else {
-		if pn > len(s.keyConfig) {
-			return
-		}
-		joyVal = -1
-		kc = &s.keyConfig[pn-1]
-		base = fmt.Sprintf("Keys_P%d.", pn)
-		toInt = func(tok string) int { return int(StringToKey(tok)) }
-	}
-	kc.Joy = joyVal
-	kc.GUID = ""
-	kc.rumbleOn = false
-	// Build & apply tokens (respect enabled set).
-	def := s.uiDefaultTokens(pn, joystick)
-	var uiPlayerFields = [...]string{
-		"up", "down", "left", "right",
-		"a", "b", "c",
-		"x", "y", "z",
-		"start", "d", "w", "menu",
-	}
-	var v [len(uiPlayerFields)]int
-	for i, f := range uiPlayerFields {
-		tok := def[i]
-		if enabled != nil && !enabled[f] {
-			tok = s.motif.OptionInfo.Menu.Valuename["nokey"]
-		}
-		v[i] = toInt(tok)
-		_ = s.cfg.SetValueUpdate(base+f, tok)
-	}
-	kc.set(v)
-	_ = s.cfg.SetValueUpdate(base+"Joystick", joyVal)
-	_ = s.cfg.SetValueUpdate(base+"GUID", "")
-	if joystick {
-		_ = s.cfg.SetValueUpdate(base+"RumbleOn", false)
-	}
-	s.uiResetTokenGuard()
 }
 
 func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {

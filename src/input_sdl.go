@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
-	"encoding/hex"
 	"math"
 	"os"
 	"runtime"
@@ -209,7 +207,7 @@ func initLUTs() {
 		22:                                       "RS_X-",
 		23:                                       "RS_X+",
 		24:                                       "RS_Y+",
-		25:                                       "Not used",
+		25:                                       "-", // unbound, shown as menu.valuename.nokey
 	}
 
 	// Explicitly allocate the maps here
@@ -275,7 +273,7 @@ func (input *Input) GetMaxJoystickCount() int {
 }
 
 func (input *Input) IsJoystickPresent(joy int) bool {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return false
 	}
 	if input.controllers[joy] == nil {
@@ -285,14 +283,14 @@ func (input *Input) IsJoystickPresent(joy int) bool {
 }
 
 func (input *Input) GetJoystickName(joy int) string {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return ""
 	}
 	return input.controllers[joy].Name()
 }
 
 func (input *Input) GetJoystickAxes(joy int) [6]float32 {
-	if joy < 0 || joy >= len(input.controllerstate) {
+	if joy < 0 || joy >= len(input.controllerstate) || input.controllerstate[joy] == nil {
 		return [6]float32{0, 0, 0, 0, 0, 0}
 	}
 	axes := NormalizeAxes(&input.controllerstate[joy].Axes)
@@ -300,7 +298,7 @@ func (input *Input) GetJoystickAxes(joy int) [6]float32 {
 }
 
 func (input *Input) GetJoystickButtons(joy int) []byte {
-	if joy < 0 || joy >= len(input.controllerstate) {
+	if joy < 0 || joy >= len(input.controllerstate) || input.controllerstate[joy] == nil {
 		return []byte{}
 	}
 	buttons := make([]byte, len(buttonOrder))
@@ -310,37 +308,63 @@ func (input *Input) GetJoystickButtons(joy int) []byte {
 	return buttons
 }
 
+// Reports which menu controls a gamepad is pressing right now, as button
+// indexes. Menus accept the d-pad, the left stick, Start and Back whatever the
+// profile binds them to, so these are read straight from the controller.
+func (input *Input) GetJoystickMenuState(joy int) [14]bool {
+	var state [14]bool
+	if joy < 0 || joy >= len(input.controllerstate) || input.controllerstate[joy] == nil {
+		return state
+	}
+	axes := NormalizeAxes(&input.controllerstate[joy].Axes)
+	buttons := input.controllerstate[joy].Buttons
+	deadzone := sys.cfg.Input.ControllerStickSensitivity
+	stickX, stickY := axes[sdl.CONTROLLER_AXIS_LEFTX], axes[sdl.CONTROLLER_AXIS_LEFTY]
+	state[BI_PU] = buttons[sdl.CONTROLLER_BUTTON_DPAD_UP] != 0 || stickY < -deadzone
+	state[BI_PD] = buttons[sdl.CONTROLLER_BUTTON_DPAD_DOWN] != 0 || stickY > deadzone
+	state[BI_PL] = buttons[sdl.CONTROLLER_BUTTON_DPAD_LEFT] != 0 || stickX < -deadzone
+	state[BI_PR] = buttons[sdl.CONTROLLER_BUTTON_DPAD_RIGHT] != 0 || stickX > deadzone
+	state[BI_S] = buttons[sdl.CONTROLLER_BUTTON_START] != 0
+	state[BI_M] = buttons[sdl.CONTROLLER_BUTTON_BACK] != 0
+	return state
+}
+
 func (input *Input) GetJoystickPath(joy int) string {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return ""
 	}
 	return input.controllers[joy].Path()
 }
 
 func (input *Input) GetJoystickGUID(joy int) string {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return ""
 	}
-	pid := uint16(input.controllers[joy].Product())
-	pv := uint16(input.controllers[joy].ProductVersion())
-	vid := uint16(input.controllers[joy].Vendor())
-	guid := make([]byte, 16)
-
-	guid[0] = 0x03
-	binary.LittleEndian.PutUint16(guid[4:6], vid)
-	binary.LittleEndian.PutUint16(guid[8:10], pid)
-	binary.LittleEndian.PutUint16(guid[12:14], pv)
-	s := hex.EncodeToString(guid[:])
-	return s
+	return sdl.JoystickGetGUIDString(input.controllers[joy].Joystick().GUID())
 }
 
-func (input *Input) RumbleController(joy int, lo, hi uint16, ticks uint32) {
-	if joy < 0 || joy >= len(input.controllers) || joy >= len(sys.joystickConfig) {
+func (input *Input) RumbleController(participant int, lo, hi uint16, ticks uint32) {
+	if sys.replayFile != nil {
+		return
+	}
+	nc := sys.netConnection
+	if sys.rollback.session != nil {
+		nc = sys.rollback.netConnection
+	}
+	if nc != nil {
+		if participant != nc.locIn {
+			return
+		}
+		participant = 0
+	}
+	kc, ok := sys.participantConfig(participant)
+	joy := kc.Joy
+	if !ok || !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
 		return
 	}
 
 	// Only if Rumble Enabled for this config
-	if input.controllerstate[joy].HasRumble && sys.joystickConfig[joy].rumbleOn {
+	if input.controllerstate[joy].HasRumble && kc.rumbleOn {
 		gls := sys.gameLogicSpeed()
 
 		if gls > 0 && sys.turbo > 0 {

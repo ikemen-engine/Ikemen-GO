@@ -3991,6 +3991,402 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.winnerTeam()))
 		return 1
 	})
+	luaRegister(l, "inputProfiles", func(l *lua.LState) int {
+		/*List the compatible binding profiles for a connected gamepad.
+		@function inputProfiles
+		@tparam int sourceId Input source ID.
+		@treturn table profiles Array of tables with `id`, `name` and `selected` fields.*/
+		out := l.NewTable()
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src != nil && src.Connected && src.Joy >= 0 {
+			for _, id := range sys.compatibleProfiles(src) {
+				out.Append(toLValue(l, map[string]interface{}{
+					"id":       id,
+					"name":     sys.cfg.InputProfile[id].Name,
+					"selected": id == src.Profile,
+				}))
+			}
+		}
+		l.Push(out)
+		return 1
+	})
+	luaRegister(l, "inputSetProfile", func(l *lua.LState) int {
+		/*Select a compatible profile for a gamepad, leaving participant ownership unchanged.
+		@function inputSetProfile
+		@tparam int sourceId Input source ID.
+		@tparam string profileId Profile ID returned by `inputProfiles`.
+		@treturn boolean success `false` if the source or profile is unavailable or incompatible.*/
+		l.Push(lua.LBool(sys.setInputProfile(int(numArg(l, 1)), strArg(l, 2))))
+		return 1
+	})
+	luaRegister(l, "inputCycleProfile", func(l *lua.LState) int {
+		/*Switch a gamepad to the previous/next compatible binding profile.
+		@function inputCycleProfile
+		@tparam int sourceId Input source ID.
+		@tparam int direction `-1` for previous, `1` for next.
+		@treturn boolean changed `true` only if a different profile was selected.*/
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		changed := false
+		if src != nil && src.Connected && src.Joy >= 0 {
+			ids := sys.compatibleProfiles(src)
+			for i, id := range ids {
+				if id == src.Profile && len(ids) > 1 {
+					next := i + 1
+					if numArg(l, 2) < 0 {
+						next = i - 1
+					}
+					if next < 0 {
+						next = len(ids) - 1
+					} else if next >= len(ids) {
+						next = 0
+					}
+					changed = sys.setInputProfile(src.ID, ids[next])
+					break
+				}
+			}
+		}
+		l.Push(lua.LBool(changed))
+		return 1
+	})
+	luaRegister(l, "inputDeleteProfile", func(l *lua.LState) int {
+		/*Delete an input source's current profile from the runtime configuration.
+		  Disk writes use the normal Options save. Gamepads switch to a compatible profile.
+		@function inputDeleteProfile
+		@tparam int sourceId Input source ID.
+		@treturn boolean success `false` for the last keyboard profile, the last
+		  gamepad profile, or a keyboard profile in use by an active local participant.*/
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src == nil || sys.cfg.InputProfile[src.Profile] == nil {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		id := src.Profile
+		profile := sys.cfg.InputProfile[id]
+		remaining := 0
+		for otherID, p := range sys.cfg.InputProfile {
+			if otherID != id && p.Kind == profile.Kind {
+				remaining++
+			}
+		}
+		if remaining == 0 {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		for _, source := range sys.inputs.Sources {
+			if source.Profile == id && source.Joy < 0 && sys.inputs.ClaimLocked && sys.inputs.owner(source.ID) >= 0 {
+				l.Push(lua.LBool(false))
+				return 1
+			}
+		}
+		for i := len(sys.inputs.Sources) - 1; i >= 0; i-- {
+			source := sys.inputs.Sources[i]
+			if source.Profile != id {
+				continue
+			}
+			if source.Joy < 0 {
+				if owner := sys.inputs.owner(source.ID); owner >= 0 {
+					sys.inputs.Participants[owner] = InputParticipant{}
+				}
+				if sys.inputs.MenuSource == source.ID {
+					sys.inputs.MenuSource = 0
+				}
+				sys.inputs.Sources = append(sys.inputs.Sources[:i], sys.inputs.Sources[i+1:]...)
+			} else {
+				for _, replacement := range sys.compatibleProfiles(source) {
+					if replacement != id {
+						source.Profile = replacement
+						source.ProfileChosen = true
+						sys.rememberInputProfile(source)
+						break
+					}
+				}
+			}
+		}
+		sys.cfg.removeInputProfile(id)
+		sys.cfg.loadInputProfiles()
+		sys.clearCommandBuffers()
+		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputDefaults", func(l *lua.LState) int {
+		/*Restore all binding profiles to their default definitions.
+		@function inputDefaults*/
+		for _, sec := range sys.cfg.DefaultOnlyIni.Sections() {
+			if !strings.HasPrefix(strings.ToLower(sec.Name()), "inputprofile_") {
+				continue
+			}
+			var p KeysProperties
+			if err := sec.MapTo(&p); err == nil {
+				_ = sys.cfg.saveInputProfile(strings.ToLower(sec.Name()), &p)
+			}
+		}
+		sys.cfg.loadInputProfiles()
+		sys.clearCommandBuffers()
+		return 0
+	})
+	luaRegister(l, "inputMenuSource", func(l *lua.LState) int {
+		/*Get the input source that last operated a menu.
+		@function inputMenuSource
+		@treturn int sourceId Runtime input source ID.*/
+		id := sys.inputs.MenuSource
+		if sys.netplay() && len(sys.inputs.Participants) > 0 {
+			id = sys.inputs.Participants[0].Source
+		}
+		l.Push(lua.LNumber(id))
+		return 1
+	})
+	luaRegister(l, "inputConfigSource", func(l *lua.LState) int {
+		/*Use a snapshot of this source's bindings for configuration-menu navigation.
+		  Reusing the same source keeps the snapshot until the source changes or is reset to 0.
+		  Profile edits and participant ownership remain independent of menu navigation.
+		@function inputConfigSource
+		@tparam int sourceId Input source ID, or `0` for normal menu input.
+		@treturn int previousSource Previous source override; restore it when the editor closes.*/
+		previous := sys.uiInputSource
+		source := int(numArg(l, 1))
+		if source != previous {
+			sys.uiInputSource = source
+			sys.uiInputConfig = KeyConfig{}
+			sys.uiInputBindings = [14]string{}
+			sys.uiInputHeld = [14]int32{}
+			if src := sys.inputs.inputSource(source); src != nil {
+				if kc, ok := sys.inputSourceConfig(src); ok {
+					sys.uiInputConfig = kc
+					sys.uiInputBindings = profileTokens(sys.cfg.InputProfile[src.Profile])
+					sys.uiInputHeld = src.held
+				}
+			}
+		}
+		sys.uiResetTokenGuard()
+		l.Push(lua.LNumber(previous))
+		return 1
+	})
+	luaRegister(l, "inputProfile", func(l *lua.LState) int {
+		/*Get the binding profile currently used by an input source.
+		@function inputProfile
+		@tparam int sourceId Input source ID.
+		@treturn table|nil profile Table with `name`, `rumble` and one binding token per button
+		  (`up`, `down`, ..., `menu`), or `nil` if unavailable.*/
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src == nil {
+			l.Push(lua.LNil)
+			return 1
+		}
+		p := sys.cfg.InputProfile[src.Profile]
+		if p == nil {
+			l.Push(lua.LNil)
+			return 1
+		}
+		values := map[string]interface{}{"name": p.Name, "rumble": p.RumbleOn}
+		for i, token := range profileTokens(p) {
+			values[inputFields[i]] = token
+		}
+		l.Push(toLValue(l, values))
+		return 1
+	})
+	luaRegister(l, "inputNewProfile", func(l *lua.LState) int {
+		/*Create an empty profile of the source's kind and open a source for it.
+		  Keyboard profiles get a new source; gamepads select the new profile.
+		  Existing keyboard layouts and participant ownership are unchanged.
+		@function inputNewProfile
+		@tparam int sourceId Source supplying the keyboard/gamepad kind.
+		@tparam string name Profile name; `%i` is replaced by the first number not in use.
+		@tparam string copyName Name used if `name` is already taken; `%s` is replaced by `name`.
+		@treturn int sourceId New keyboard source or existing gamepad source, or 0 on failure.*/
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		name := strings.TrimSpace(strArg(l, 2))
+		if src == nil || !src.Connected || name == "" {
+			l.Push(lua.LNumber(0))
+			return 1
+		}
+		p := KeysProperties{Name: name, Kind: "keyboard"}
+		if src.Joy >= 0 {
+			p.Kind = "gamepad"
+		}
+		// Without %i, addInputProfile renames a duplicate name with copyName.
+		for n := 1; strings.Contains(name, "%i"); n++ {
+			if p.Name = strings.ReplaceAll(name, "%i", strconv.Itoa(n)); !sys.cfg.inputProfileNameUsed(p.Name) {
+				break
+			}
+		}
+		for _, field := range inputFields {
+			if err := SetValue(&p, field, "-"); err != nil {
+				l.RaiseError("%v", err)
+			}
+		}
+		id, err := sys.cfg.addInputProfile(&p, strArg(l, 3))
+		if err != nil {
+			l.RaiseError("%v", err)
+		}
+		if src.Joy < 0 {
+			src = sys.inputs.addInputSource(-1, p.Name, "", id)
+		} else {
+			src.Profile, src.ProfileChosen = id, true
+			sys.rememberInputProfile(src)
+		}
+		sys.cfg.loadInputProfiles()
+		sys.clearCommandBuffers()
+		l.Push(lua.LNumber(src.ID))
+		return 1
+	})
+	luaRegister(l, "inputSaveProfile", func(l *lua.LState) int {
+		/*Update the active profile and runtime configuration. Options saving writes it to disk.
+		@function inputSaveProfile
+		@tparam int sourceId Input source ID.
+		@tparam string name Profile display name.
+		@tparam table mapping Binding token per button (`up`, `down`, ..., `menu`);
+		  invalid or missing tokens become `"-"` (unbound).
+		@tparam boolean rumble Enable rumble for the profile.
+		@tparam boolean copy Save as a new custom profile instead of overwriting.
+		@tparam string copyName Name used only when the copy name is already taken; `%s` is replaced by `name`.
+		@treturn boolean success `false` if the source is unavailable, the name is empty,
+		  or the keyboard profile overlaps another participant.*/
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src == nil || !src.Connected || sys.cfg.InputProfile[src.Profile] == nil {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		p := *sys.cfg.InputProfile[src.Profile]
+		name := strings.TrimSpace(strArg(l, 2))
+		if name == "" {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		p.Name = name
+		id := src.Profile
+		mapping := tableArg(l, 3)
+		for _, field := range inputFields {
+			token := lua.LVAsString(mapping.RawGetString(field))
+			if token == "" {
+				token = "-"
+			}
+			if src.Joy >= 0 {
+				if _, ok := StringToButtonLUT[token]; !ok {
+					token = "-"
+				}
+			} else if StringToKey(token) == KeyUnknown {
+				token = "-"
+			}
+			if err := SetValue(&p, field, token); err != nil {
+				l.RaiseError("%v", err)
+			}
+		}
+		if src.Joy < 0 && sys.inputs.ClaimLocked && sys.inputs.owner(src.ID) >= 0 && sys.keyboardProfileConflict(src.ID, &p) {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		p.RumbleOn = boolArg(l, 4)
+		var err error
+		if boolArg(l, 5) {
+			id, err = sys.cfg.addInputProfile(&p, strArg(l, 6))
+		} else {
+			err = sys.cfg.saveInputProfile(id, &p)
+		}
+		if err != nil {
+			l.RaiseError("%v", err)
+		}
+		src.Profile, src.ProfileChosen = id, true
+		sys.rememberInputProfile(src)
+		sys.cfg.loadInputProfiles()
+		sys.clearCommandBuffers()
+		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputSourcePressed", func(l *lua.LState) int {
+		/*Check whether any configured button was newly pressed on an input source this frame.
+		@function inputSourcePressed
+		@tparam int sourceId Input source ID.
+		@tparam string|table buttons Button name or list of names. Accepts source names (`up`, `down`,
+		  `left`, `right`, `a`, `b`, `c`, `x`, `y`, `z`, `start`, `d`, `w`, `menu`) and
+		  motif key tokens (`U`, `D`, `L`, `R`, `B`, `F`, `s`, `m`).
+		@treturn boolean pressed `true` only on the frame a button was pressed.*/
+		sys.pollInputSources()
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		var buttons []string
+		switch value := l.Get(2).(type) {
+		case lua.LString:
+			buttons = append(buttons, string(value))
+		case *lua.LTable:
+			value.ForEach(func(_ lua.LValue, value lua.LValue) {
+				if button, ok := value.(lua.LString); ok {
+					buttons = append(buttons, string(button))
+				}
+			})
+		}
+		pressed := false
+		if src != nil && src.Connected {
+			for _, button := range buttons {
+				switch button {
+				case "U", "LS_Y-":
+					button = "up"
+				case "D", "LS_Y+":
+					button = "down"
+				case "L", "B", "LS_X-":
+					button = "left"
+				case "R", "F", "LS_X+":
+					button = "right"
+				case "s":
+					button = "start"
+				case "m":
+					button = "menu"
+				}
+				for i, field := range inputFields {
+					if field == button && src.pressed[i] {
+						pressed = true
+						break
+					}
+				}
+				if pressed {
+					break
+				}
+			}
+		}
+		l.Push(lua.LBool(pressed))
+		return 1
+	})
+	luaRegister(l, "inputSources", func(l *lua.LState) int {
+		/*List connected input sources and disconnected sources still owned by a participant.
+		@function inputSources
+		@treturn table sources Array of tables with fields: `id` (only valid while the game runs), `name`,
+		  `kind` (`"keyboard"` or `"gamepad"`), `joy`, `profile`, `profileName`, `connected`,
+		  `participant` (1-based, `0` if unassigned), `side` (`0`/`1`/`2`), `ready`.*/
+		sys.pollInputSources()
+		out := l.NewTable()
+		for _, src := range sys.inputs.Sources {
+			owner := sys.inputs.owner(src.ID)
+			if !src.Connected && owner < 0 {
+				continue
+			}
+			p := InputParticipant{}
+			if owner >= 0 {
+				p = sys.inputs.Participants[owner]
+			}
+			kind := "gamepad"
+			if src.Joy < 0 {
+				kind = "keyboard"
+			}
+			name := src.Profile
+			if profile := sys.cfg.InputProfile[src.Profile]; profile != nil {
+				name = profile.Name
+			}
+			out.Append(toLValue(l, map[string]interface{}{
+				"id":          src.ID,
+				"name":        src.Name,
+				"kind":        kind,
+				"joy":         src.Joy,
+				"profile":     src.Profile,
+				"profileName": name,
+				"connected":   src.Connected,
+				"participant": owner + 1,
+				"order":       p.joined,
+				"readyOrder":  p.confirmed,
+				"side":        p.Side,
+				"ready":       p.Ready,
+			}))
+		}
+		l.Push(out)
+		return 1
+	})
 	luaRegister(l, "isUIKeyAction", func(l *lua.LState) int {
 		/*Check whether a UI action name is currently active.
 		@function isUIKeyAction
@@ -4510,7 +4906,7 @@ func systemScriptInit(l *lua.LState) {
 			defs := collect(sys.motif.IniFile, sec)
 
 			seenFlat := map[string]bool{}     // exact items we've added (e.g. "menuversus_back")
-			seenBase := map[string]bool{}     // leafs seen among added items (e.g. "arcade", "survival")
+			seenBase := map[string]bool{}     // leafs the user motif placed (e.g. "arcade", "survival")
 			disabledFlat := map[string]bool{} // exact items disabled
 			disabledBase := map[string]bool{} // leaf/suffix disabled via any user empty assignment
 
@@ -4562,12 +4958,16 @@ func systemScriptInit(l *lua.LState) {
 					if seenFlat[e.flat] {
 						continue
 					}
-					// For defaults, suppress items whose leaf was already added from user entries (or earlier), but do not suppress back or spacer*
+					// A user entry moves an item, so drop the default placing of the same
+					// leaf. Defaults may reuse a leaf across submenus, so only user
+					// entries suppress. back and spacer* repeat by design.
 					if isDefault && e.base != "back" && !isSpacerKey(e.base) && seenBase[e.base] {
 						continue
 					}
 					seenFlat[e.flat] = true
-					seenBase[e.base] = true
+					if !isDefault {
+						seenBase[e.base] = true
+					}
 					final = append(final, e.flat)
 				}
 			}
@@ -4746,8 +5146,6 @@ func systemScriptInit(l *lua.LState) {
 			populateItemName(src, path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(src, path, "menu.itemname.", lTable)
 		}
-		populateItemName("Option Info", []string{"option_info", "keymenu"}, "keymenu.itemname.", "flat", lTable)
-		buildFlatOrder("Option Info", []string{"option_info", "keymenu"}, "keymenu.itemname.", lTable)
 		populateItemName("Select Info", []string{"select_info", "teammenu"}, "teammenu.itemname.", "team", lTable)
 		buildTeamOrder("Select Info", []string{"select_info", "teammenu"}, lTable)
 
@@ -5635,10 +6033,10 @@ func systemScriptInit(l *lua.LState) {
 		/*Remap logical player input to another player slot.
 		@function remapInput
 		@tparam int32 srcPlayer Source player number (1-based).
-		@tparam int32 dstPlayer Destination player number (1-based).*/
+		@tparam int32 dstPlayer Local participant or synchronized input channel (1-based); 0 disables input.*/
 		src, dst := int(numArg(l, 1)), int(numArg(l, 2))
 		if src < 1 || src > len(sys.inputRemap) ||
-			dst < 1 || dst > len(sys.inputRemap) {
+			dst < 0 || dst > len(sys.inputRemap) {
 			l.RaiseError("\nInvalid player number: %v, %v\n", src, dst)
 		}
 		sys.inputRemap[src-1] = dst - 1
@@ -6046,44 +6444,6 @@ func systemScriptInit(l *lua.LState) {
 		sys.credits = int32(numArg(l, 1))
 		return 0
 	})
-	luaRegister(l, "setDefaultConfig", func(l *lua.LState) int {
-		/*Apply default key or joystick bindings for a player.
-		@function setDefaultConfig
-		@tparam string configType Configuration type: `"Keys"` or `"Joystick"`.
-		@tparam int playerNo Player number (1-based).
-		@tparam[opt] table enabled Optional table limiting which bindings are set.
-		  Can be either:
-		  - an array-like table of binding names, or
-		  - a map-like table `{bindingName = true, ...}`.*/
-		cfgType := strArg(l, 1)
-		pn := int(numArg(l, 2))
-		var enabled map[string]bool
-		if !nilArg(l, 3) {
-			enabled = make(map[string]bool, 16)
-			tableArg(l, 3).ForEach(func(k, v lua.LValue) {
-				// map-style: enabled["up"]=true
-				if ks, ok := k.(lua.LString); ok {
-					if lua.LVAsBool(v) {
-						enabled[string(ks)] = true
-					}
-					return
-				}
-				// array-style: {"up","down",...}
-				if vs, ok := v.(lua.LString); ok {
-					enabled[string(vs)] = true
-				}
-			})
-		}
-		switch cfgType {
-		case "Keys":
-			sys.uiSetConfigDefaults(pn, false, enabled)
-		case "Joystick":
-			sys.uiSetConfigDefaults(pn, true, enabled)
-		default:
-			l.RaiseError("\nInvalid config type: %v\n", cfgType)
-		}
-		return 0
-	})
 	luaRegister(l, "setDizzyPoints", func(*lua.LState) int {
 		/*[redirectable] Set the character's dizzy points.
 		@function setDizzyPoints
@@ -6135,91 +6495,6 @@ func systemScriptInit(l *lua.LState) {
 			l.RaiseError("\nInvalid team side: %v\n", tn)
 		}
 		sys.home = tn - 1
-		return 0
-	})
-	luaRegister(l, "setKeyConfig", func(l *lua.LState) int {
-		/*Configure keyboard or joystick bindings for a player.
-		@function setKeyConfig
-		@tparam int playerNo Player number (1-based).
-		@tparam int controllerId Input config target selector: `-1` updates keyboard bindings,
-		  any value `>= 0` updates joystick bindings.
-		@tparam table mapping Table mapping button indices (`1`–`14`) to key/button names (string).*/
-		pn := int(numArg(l, 1))
-		joy := int(numArg(l, 2))
-		if pn < 1 || (joy == -1 && pn > len(sys.keyConfig)) || (joy >= 0 && pn > len(sys.joystickConfig)) {
-			l.RaiseError("\nInvalid player number: %v\n", pn)
-		}
-		if joy < -1 || joy > len(sys.joystickConfig) {
-			l.RaiseError("\nInvalid controller number: %v\n", joy)
-		}
-		tableArg(l, 3).ForEach(func(key, value lua.LValue) {
-			if joy == -1 {
-				btn := int(StringToKey(lua.LVAsString(value)))
-				switch int(lua.LVAsNumber(key)) {
-				case 1:
-					sys.keyConfig[pn-1].dU = btn
-				case 2:
-					sys.keyConfig[pn-1].dD = btn
-				case 3:
-					sys.keyConfig[pn-1].dL = btn
-				case 4:
-					sys.keyConfig[pn-1].dR = btn
-				case 5:
-					sys.keyConfig[pn-1].bA = btn
-				case 6:
-					sys.keyConfig[pn-1].bB = btn
-				case 7:
-					sys.keyConfig[pn-1].bC = btn
-				case 8:
-					sys.keyConfig[pn-1].bX = btn
-				case 9:
-					sys.keyConfig[pn-1].bY = btn
-				case 10:
-					sys.keyConfig[pn-1].bZ = btn
-				case 11:
-					sys.keyConfig[pn-1].bS = btn
-				case 12:
-					sys.keyConfig[pn-1].bD = btn
-				case 13:
-					sys.keyConfig[pn-1].bW = btn
-				case 14:
-					sys.keyConfig[pn-1].bM = btn
-				}
-			} else {
-				btn := StringToButtonLUT[lua.LVAsString(value)]
-				switch int(lua.LVAsNumber(key)) {
-				case 1:
-					sys.joystickConfig[pn-1].dU = btn
-				case 2:
-					sys.joystickConfig[pn-1].dD = btn
-				case 3:
-					sys.joystickConfig[pn-1].dL = btn
-				case 4:
-					sys.joystickConfig[pn-1].dR = btn
-				case 5:
-					sys.joystickConfig[pn-1].bA = btn
-				case 6:
-					sys.joystickConfig[pn-1].bB = btn
-				case 7:
-					sys.joystickConfig[pn-1].bC = btn
-				case 8:
-					sys.joystickConfig[pn-1].bX = btn
-				case 9:
-					sys.joystickConfig[pn-1].bY = btn
-				case 10:
-					sys.joystickConfig[pn-1].bZ = btn
-				case 11:
-					sys.joystickConfig[pn-1].bS = btn
-				case 12:
-					sys.joystickConfig[pn-1].bD = btn
-				case 13:
-					sys.joystickConfig[pn-1].bW = btn
-				case 14:
-					sys.joystickConfig[pn-1].bM = btn
-				}
-			}
-		})
-		sys.uiResetTokenGuard()
 		return 0
 	})
 	luaRegister(l, "setLastInputController", func(l *lua.LState) int {
@@ -6423,58 +6698,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "setPlayers", func(l *lua.LState) int {
-		/*Resize player input configuration data to match `config.Players`.
-		@function setPlayers*/
-		total := sys.cfg.Config.Players
-		if err := sys.uiEnsureCommandLists(total); err != nil {
-			l.RaiseError("\nuiEnsureCommandLists: %v\n", err.Error())
+		if err := sys.uiEnsureCommandLists(MaxSimul * 2); err != nil {
+			l.RaiseError("%v", err)
 		}
-		// Resize sys.keyConfig
-		if len(sys.keyConfig) > total {
-			sys.keyConfig = sys.keyConfig[:total]
-		} else {
-			for i := len(sys.keyConfig); i < total; i++ {
-				sys.keyConfig = append(sys.keyConfig, KeyConfig{})
-			}
-		}
-		// Cleanup sys.cfg.Keys
-		for key := range sys.cfg.Keys {
-			var num int
-			if _, err := fmt.Sscanf(key, "keys_p%d", &num); err != nil || num > total {
-				delete(sys.cfg.Keys, key)
-				sys.cfg.IniFile.DeleteSection(fmt.Sprintf("Keys_P%d", num))
-			}
-		}
-		// Resize sys.joystickConfig
-		if len(sys.joystickConfig) > total {
-			sys.joystickConfig = sys.joystickConfig[:total]
-		} else {
-			for i := len(sys.joystickConfig); i < total; i++ {
-				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{})
-			}
-		}
-		// Cleanup sys.cfg.Joystick
-		for key := range sys.cfg.Joystick {
-			var num int
-			if _, err := fmt.Sscanf(key, "joystick_p%d", &num); err != nil || num > total {
-				delete(sys.cfg.Joystick, key)
-				sys.cfg.IniFile.DeleteSection(fmt.Sprintf("Joystick_P%d", num))
-			}
-		}
-		// Defaults for newly added players
-		_, noJoy := sys.cmdFlags["-nojoy"]
-		for pn := 1; pn <= total; pn++ {
-			// Keyboard: apply defaults only if Keys_Pn section is missing.
-			if kp, ok := sys.cfg.Keys[fmt.Sprintf("keys_p%d", pn)]; !ok || kp == nil {
-				sys.uiSetConfigDefaults(pn, false, nil)
-			}
-			if !noJoy {
-				if jp, ok := sys.cfg.Joystick[fmt.Sprintf("joystick_p%d", pn)]; !ok || jp == nil {
-					sys.uiSetConfigDefaults(pn, true, nil)
-				}
-			}
-		}
-		sys.uiResetTokenGuard()
 		return 0
 	})
 	luaRegister(l, "setPower", func(*lua.LState) int {
