@@ -58,7 +58,7 @@ ignoreHitPause if gameMode = "training" {
 		assertSpecial{flag: skipRoundDisplay; flag2: skipFightDisplay}
 	}
 	# Dummy code
-	if teamSide = 2 && !isHelper {
+	if map(_iksys_trainingDummy) = 1 && !isHelper {
 		if roundState = 0 {
 			# Round start reset
 			map(_iksys_trainingAirJumpNum) := 0;

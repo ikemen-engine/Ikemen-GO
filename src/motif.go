@@ -3702,7 +3702,7 @@ func (co *MotifContinue) init(m *Motif) {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.continue_init", err.Error())
 	}
 
-	co.pn = 1 // TODO: Initialize pn appropriately
+	co.pn = sys.runSideIndex() + 1
 
 	// Extract and sort keys in descending order
 	co.counts = co.extractAndSortKeysDescending(m)
@@ -5542,7 +5542,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 
 			// Handle name glyph entry while input is active
 			if hi.input {
-				controller := -1 // TODO: proper controller
+				controller := sys.runSideIndex()
 				maxLen := initialsWidth(m.HiscoreInfo.Item.Name.Text["default"])
 				glyphCount := len(m.HiscoreInfo.Glyphs)
 				// Previous glyph
@@ -6201,7 +6201,7 @@ func (vi *MotifVictory) isEnabled() bool {
 
 func (vi *MotifVictory) init(m *Motif) {
 	if !m.VictoryScreen.Enabled || !vi.isEnabled() || sys.winnerTeam() < 1 ||
-		(sys.winnerTeam() == 2 && !m.VictoryScreen.Cpu.Enabled) ||
+		(sys.aiLevel[sys.winnerTeam()-1] > 0 && !m.VictoryScreen.Cpu.Enabled) ||
 		((sys.gameMode == "versus" || sys.gameMode == "netplayversus") && !m.VictoryScreen.Vs.Enabled) {
 		vi.initialized = true
 		return
@@ -6667,6 +6667,9 @@ type MotifWin struct {
 
 // Assign state data to MotifWin
 func (wi *MotifWin) assignStates(p1States, p2States [4][]int32) {
+	if sys.runSideIndex() == 1 {
+		p1States, p2States = p2States, p1States
+	}
 	wi.p1States = p1States
 	wi.p2States = p2States
 }
@@ -6808,11 +6811,11 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 			// Total score for P1 side:
 			sc := int32(0)
 			if len(sys.scoreStart) > 0 {
-				sc = int32(sys.scoreStart[0])
+				sc = int32(sys.scoreStart[sys.runSideIndex()])
 			}
 			for _, v := range sys.scoreRounds {
 				if len(v) > 0 {
-					sc += int32(v[0])
+					sc += int32(v[sys.runSideIndex()])
 				}
 			}
 			rs.WinsText.TextSpriteData.text = fmt.Sprintf(fs, sc)
@@ -6851,7 +6854,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 
 // Handle win screen mode initialization
 func (wi *MotifWin) initWinScreen(m *Motif) bool {
-	if sys.home != 1 || !m.WinScreen.Enabled {
+	if !m.WinScreen.Enabled {
 		return false
 	}
 

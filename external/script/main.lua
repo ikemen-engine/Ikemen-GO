@@ -85,7 +85,7 @@ function main.f_restoreInput()
 	end
 	resetRemapInput()
 	-- Restore to the base mapping captured at the mode start.
-	for i = 1, gameOption('Config.Players') do
+	for i = 1, 8 do
 		local v = main.t_baseRemapInput[i] or i
 		if i ~= v then
 			remapInput(i, v)
@@ -96,7 +96,7 @@ end
 -- capture current remap state as the "base" mapping restored after each match
 function main.f_saveBaseRemapInput()
 	main.t_baseRemapInput = {}
-	for i = 1, gameOption('Config.Players') do
+	for i = 1, 8 do
 		main.t_baseRemapInput[i] = getRemapInput(i)
 	end
 end
@@ -1933,6 +1933,12 @@ local function isValidIp(address)
 end
 
 function main.f_default()
+	main.runSide, main.opponentSide = 1, 2
+	main.sideSelectDone = false
+	main.sideInputSources = {{}, {}}
+	main.lockedSelection = {}
+	main.lockedTeamMode = false
+	setRunSide(1)
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
 		ai = false,

@@ -116,13 +116,13 @@ menu.t_itemname = {
 		local ok, name = menu.f_valueChanged(t.items[item], sec)
 		if ok then
 			if name == 'cooperative' or name == 'manual' then
-				player(2)
+				player(main.opponentSide)
 				setAILevel(0)
 			elseif name == 'ai' then
-				player(2)
+				player(main.opponentSide)
 				setAILevel(menu.ailevel)
 			end
-			player(2)
+			player(main.opponentSide)
 			mapSet('_iksys_trainingDummyControl', menu.dummycontrol - 1)
 		end
 		return true
@@ -131,7 +131,7 @@ menu.t_itemname = {
 	['ailevel'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			if menu.t_valuename.dummycontrol[menu.dummycontrol or 1].itemname == 'ai' then
-				player(2)
+				player(main.opponentSide)
 				setAILevel(menu.ailevel)
 			end
 		end
@@ -140,7 +140,7 @@ menu.t_itemname = {
 	--Dummy Mode
 	['dummymode'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
-			player(2)
+			player(main.opponentSide)
 			mapSet('_iksys_trainingDummyMode', menu.dummymode - 1)
 		end
 		return true
@@ -148,7 +148,7 @@ menu.t_itemname = {
 	--Guard Mode
 	['guardmode'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
-			player(2)
+			player(main.opponentSide)
 			mapSet('_iksys_trainingGuardMode', menu.guardmode - 1)
 		end
 		return true
@@ -156,7 +156,7 @@ menu.t_itemname = {
 	--Fall Recovery
 	['fallrecovery'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
-			player(2)
+			player(main.opponentSide)
 			mapSet('_iksys_trainingFallRecovery', menu.fallrecovery - 1)
 		end
 		return true
@@ -164,7 +164,7 @@ menu.t_itemname = {
 	--Distance
 	['distance'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
-			player(2)
+			player(main.opponentSide)
 			mapSet('_iksys_trainingDistance', menu.distance - 1)
 		end
 		return true
@@ -172,7 +172,7 @@ menu.t_itemname = {
 	--Button Jam
 	['buttonjam'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
-			player(2)
+			player(main.opponentSide)
 			mapSet('_iksys_trainingButtonJam', menu.buttonjam - 1)
 		end
 		return true
@@ -536,13 +536,14 @@ function menu.f_trainingReset()
 	for _, v in ipairs(menu.t_vardisplayPointers) do
 		v.vardisplay = menu.f_vardisplay(v.itemname)
 	end
-	player(2)
+	player(main.opponentSide)
 	setAILevel(0)
 end
 
 hook.add('loop#training', 'trainingSettings', function()
 	if not roundStart() then return end
-	player(2)
+	player(main.opponentSide)
+	mapSet('_iksys_trainingDummy', 1)
 	setAILevel(menu.dummycontrol == 2 and menu.ailevel or 0)
 	mapSet('_iksys_trainingDummyControl', menu.dummycontrol - 1)
 	mapSet('_iksys_trainingDummyMode', menu.dummymode - 1)
