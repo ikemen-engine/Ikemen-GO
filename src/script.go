@@ -2435,32 +2435,42 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
 		/*Exit netplay mode and close any active netplay connection.
 		@function exitNetPlay*/
-		if err := sys.endSyncSessionOverride(); err != nil {
-			l.RaiseError(err.Error())
+		err := sys.endSyncSessionOverride()
+		if sys.rollback.session != nil {
+			sys.rollback.session.Close()
+			sys.rollback.session = nil
 		}
-		if sys.cfg.Netplay.RollbackNetcode {
-			if sys.rollback.session != nil {
-				sys.rollback.session.Close()
-				sys.rollback.session = nil
-			}
+		if sys.rollback.netConnection != nil {
+			sys.rollback.netConnection.end()
+			sys.rollback.netConnection = nil
 		}
 		if sys.netConnection != nil {
 			sys.netConnection.end()
 			sys.netConnection = nil
+		}
+		// Return to local menu input after closing the session.
+		if !sys.netplay() {
+			sys.inputMenu()
+		}
+		if err != nil {
+			l.RaiseError(err.Error())
 		}
 		return 0
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
 		/*Exit replay mode and restore normal video settings.
 		@function exitReplay*/
-		if err := sys.endSyncSessionOverride(); err != nil {
-			l.RaiseError(err.Error())
-		}
+		err := sys.endSyncSessionOverride()
 		if sys.replayFile != nil {
 			sys.replayFile.Close()
 			sys.replayFile = nil
 		}
-		sys.uiResetTokenGuard()
+		if !sys.netplay() {
+			sys.inputMenu()
+		}
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
 		return 0
 	})
 	luaRegister(l, "fadeNew", func(*lua.LState) int {
@@ -3991,6 +4001,60 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.winnerTeam()))
 		return 1
 	})
+	luaRegister(l, "inputAutoAssign", func(l *lua.LState) int {
+		/*Assign local inputs without displaying side selection.
+		@function inputAutoAssign
+		@tparam int sourceId Input source that opened the mode.
+		@tparam int minimum Minimum total number of human participants.
+		@tparam int maximum Maximum human participants per side.
+		@tparam boolean versus Assign both sides instead of keeping players together.
+		@treturn boolean success Enough independent inputs were assigned.*/
+		ok := !sys.netplay() && sys.assignAutomaticInputs(int(numArg(l, 1)),
+			Max(1, int(numArg(l, 2))), Clamp(int(numArg(l, 3)), 1, MaxSimul), boolArg(l, 4))
+		l.Push(lua.LBool(ok))
+		return 1
+	})
+	luaRegister(l, "inputBegin", func(l *lua.LState) int {
+		/*Start side select for a mode: releases all players and stops menus from claiming input sources.
+		@function inputBegin
+		@treturn int sourceId Input source that opened the mode (`0` if unknown).*/
+		sys.inputs.ClaimLocked = true
+		sys.inputs.sharedSources = nil
+		sys.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+		sys.applyParticipantsToSlots()
+		l.Push(lua.LNumber(sys.inputs.MenuSource))
+		return 1
+	})
+	luaRegister(l, "inputClaim", func(l *lua.LState) int {
+		/*Assign an input source to a participant on a team side.
+		@function inputClaim
+		@tparam int sourceId Input source ID (see `inputGetSources`).
+		@tparam int side `1` for left, `2` for right, `0` to release the source.
+		@treturn boolean success `false` if the source is unavailable, all positions are taken,
+		  or the keyboard profile overlaps another participant.*/
+		source, side := int(numArg(l, 1)), TeamSide(numArg(l, 2))
+		if side == TS_None {
+			if i := sys.inputs.owner(source); i >= 0 {
+				delete(sys.inputs.sharedSources, i)
+				sys.inputs.Participants[i] = InputParticipant{}
+			}
+			l.Push(lua.LBool(true))
+			return 1
+		}
+		if sys.keyboardConflict(source) {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		_, err := sys.inputs.claim(source, side)
+		l.Push(lua.LBool(err == nil))
+		return 1
+	})
+	luaRegister(l, "inputCommit", func(l *lua.LState) int {
+		/*Apply current participant sides to gameplay player slots and clear input buffers.
+		@function inputCommit*/
+		sys.applyParticipantsToSlots()
+		return 0
+	})
 	luaRegister(l, "inputCycleProfile", func(l *lua.LState) int {
 		/*Switch a gamepad to the previous/next compatible binding profile.
 		@function inputCycleProfile
@@ -4138,7 +4202,10 @@ func systemScriptInit(l *lua.LState) {
 		@function inputGetSources
 		@treturn table sources Array of tables with fields: `id` (only valid while the game runs), `name`,
 		  `kind` (`"keyboard"` or `"gamepad"`), `joy`, `profile`, `profileName`, `connected`,
-		  `participant` (1-based, `0` if unassigned), `side` (`0`/`1`/`2`), `ready`.*/
+		  `participant` (1-based, `0` if unassigned), `side` (`0`/`1`/`2`), `ready`,
+		  `order` (join order), `readyOrder` (confirmation order),
+		  `primary` (main source of its participant), `available` (any owned source is connected),
+		  `conflict` (keyboard bindings overlap another participant).*/
 		sys.pollInputSources()
 		out := l.NewTable()
 		for _, src := range sys.inputs.Sources {
@@ -4166,15 +4233,47 @@ func systemScriptInit(l *lua.LState) {
 				"profile":     src.Profile,
 				"profileName": name,
 				"connected":   src.Connected,
+				"primary":     owner < 0 || p.Source == src.ID,
+				"available":   owner < 0 || sys.inputs.participantConnected(owner),
 				"participant": owner + 1,
 				"order":       p.joined,
 				"readyOrder":  p.confirmed,
 				"side":        p.Side,
 				"ready":       p.Ready,
+				"conflict":    sys.keyboardConflict(src.ID),
 			}))
 		}
 		l.Push(out)
 		return 1
+	})
+	luaRegister(l, "inputKeepSide", func(l *lua.LState) int {
+		/*Release every participant that is not on the given side.
+		@function inputKeepSide
+		@tparam int side Team side to keep (`1` or `2`).*/
+		side := TeamSide(numArg(l, 1))
+		for i, p := range sys.inputs.Participants {
+			if p.Side != side {
+				delete(sys.inputs.sharedSources, i)
+				sys.inputs.Participants[i] = InputParticipant{}
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "inputLocalSession", func(l *lua.LState) int {
+		/*Check whether side select and reconnecting are handled locally (not in netplay).
+		@function inputLocalSession
+		@treturn boolean local `true` if not in a netplay session.*/
+		l.Push(lua.LBool(!sys.netplay()))
+		return 1
+	})
+	luaRegister(l, "inputMenu", func(l *lua.LState) int {
+		/*Go back to menu mode: releases all players, so any input source can control the menus again.
+		  Does nothing during netplay.
+		@function inputMenu*/
+		if !sys.netplay() {
+			sys.inputMenu()
+		}
+		return 0
 	})
 	luaRegister(l, "inputNewProfile", func(l *lua.LState) int {
 		/*Create an empty profile of the source's kind. Keyboards get a new source,
@@ -4333,6 +4432,14 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(sys.setInputProfile(int(numArg(l, 1)), strArg(l, 2))))
 		return 1
 	})
+	luaRegister(l, "inputSetReady", func(l *lua.LState) int {
+		/*Set the ready state of the participant owning an input source.
+		@function inputSetReady
+		@tparam int sourceId Input source ID.
+		@tparam boolean ready Ready state.*/
+		sys.inputs.setReady(int(numArg(l, 1)), boolArg(l, 2))
+		return 0
+	})
 	luaRegister(l, "inputSourcePressed", func(l *lua.LState) int {
 		/*Check whether any configured button was newly pressed on an input source this frame.
 		@function inputSourcePressed
@@ -4357,20 +4464,7 @@ func systemScriptInit(l *lua.LState) {
 		pressed := false
 		if src != nil && src.Connected {
 			for _, button := range buttons {
-				switch button {
-				case "U", "LS_Y-":
-					button = "up"
-				case "D", "LS_Y+":
-					button = "down"
-				case "L", "B", "LS_X-":
-					button = "left"
-				case "R", "F", "LS_X+":
-					button = "right"
-				case "s":
-					button = "start"
-				case "m":
-					button = "menu"
-				}
+				button = motifKeyField(button)
 				for i, field := range inputFields {
 					if field == button && src.pressed[i] {
 						pressed = true

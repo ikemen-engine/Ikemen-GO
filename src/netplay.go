@@ -26,7 +26,7 @@ const (
 	REPLAY_NUM_INPUTS  = MaxSimul * 2
 	REPLAY_INPUT_BYTES = 2 + 6
 
-	syncConfigVersion     uint16 = 1
+	syncConfigVersion     uint16 = 2
 	replayFormatVersion   uint16 = 2
 	replayMagic                  = "IKRPLCFG"
 	replaySyncMagic              = "IKRPLSYN"
@@ -197,6 +197,8 @@ type NetConnection struct {
 }
 
 func NewNetConnection() *NetConnection {
+	sys.inputMenu()
+	sys.inputs.ClaimLocked = true
 	nc := &NetConnection{
 		st:      NS_Stop,
 		sendEnd: make(chan bool, 1),
