@@ -2847,7 +2847,7 @@ func (r *Renderer_VK) RecreateSurfaceAndSwapchain() {
 		imageInfo := []vk.DescriptorImageInfo{{
 			Sampler:     r.spriteSamplers[i],
 			ImageView:   r.renderTargets[i].texture.imageView,
-			ImageLayout: vk.ImageLayoutGeneral, // MUST be general
+			ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
 		}}
 
 		writeDS := []vk.WriteDescriptorSet{{
@@ -2908,7 +2908,7 @@ func (r *Renderer_VK) RecreateSwapchain() {
 		imageInfo := []vk.DescriptorImageInfo{{
 			Sampler:     r.spriteSamplers[i],
 			ImageView:   r.renderTargets[i].texture.imageView,
-			ImageLayout: vk.ImageLayoutGeneral, // MUST be general
+			ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
 		}}
 
 		writeDS := []vk.WriteDescriptorSet{{
@@ -3008,12 +3008,23 @@ func (r *Renderer_VK) CreatePostProcessingRenderPass(sweapchain *VulkanSwapchain
 		ColorAttachmentCount: 1,
 		PColorAttachments:    colorAttachments,
 	}}
+	subpassDependencies := []vk.SubpassDependency{{
+		SrcSubpass:      vk.SubpassExternal,
+		DstSubpass:      0,
+		SrcStageMask:    vk.PipelineStageFlags(vk.PipelineStageAllGraphicsBit),
+		DstStageMask:    vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit),
+		SrcAccessMask:   vk.AccessFlags(vk.AccessColorAttachmentWriteBit | vk.AccessShaderWriteBit),
+		DstAccessMask:   vk.AccessFlags(vk.AccessColorAttachmentWriteBit),
+		DependencyFlags: 0,
+	}}
 	renderPassCreateInfo := vk.RenderPassCreateInfo{
 		SType:           vk.StructureTypeRenderPassCreateInfo,
 		AttachmentCount: 1,
 		PAttachments:    attachmentDescriptions,
 		SubpassCount:    1,
 		PSubpasses:      subpassDescriptions,
+		DependencyCount: 1,
+		PDependencies:   subpassDependencies,
 	}
 	renderInfo := &VulkanRenderInfo{}
 	err := vk.Error(vk.CreateRenderPass(r.device, &renderPassCreateInfo, nil, &renderInfo.renderPass))
@@ -3046,9 +3057,9 @@ func (r *Renderer_VK) CreateSwapchainRenderPass(sweapchain *VulkanSwapchainInfo)
 	subpassDependencies := []vk.SubpassDependency{{
 		SrcSubpass:      vk.SubpassExternal,
 		DstSubpass:      0,
-		SrcStageMask:    vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit),
+		SrcStageMask:    vk.PipelineStageFlags(vk.PipelineStageAllGraphicsBit),
 		DstStageMask:    vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit),
-		SrcAccessMask:   vk.AccessFlags(vk.AccessColorAttachmentWriteBit | vk.AccessShaderReadBit),
+		SrcAccessMask:   vk.AccessFlags(vk.AccessColorAttachmentWriteBit | vk.AccessShaderWriteBit),
 		DstAccessMask:   vk.AccessFlags(vk.AccessColorAttachmentWriteBit),
 		DependencyFlags: 0,
 	}}
@@ -5704,16 +5715,13 @@ func (r *Renderer_VK) CreateSyncObjects() error {
 		err = fmt.Errorf("vk.CreateFence failed with %s", err)
 		return err
 	}
-	r.semaphores = make([]vk.Semaphore, 2)
-	err = vk.Error(vk.CreateSemaphore(r.device, &semaphoreCreateInfo, nil, &r.semaphores[0]))
-	if err != nil {
-		err = fmt.Errorf("vk.CreateSemaphore failed with %s", err)
-		return err
-	}
-	err = vk.Error(vk.CreateSemaphore(r.device, &semaphoreCreateInfo, nil, &r.semaphores[1]))
-	if err != nil {
-		err = fmt.Errorf("vk.CreateSemaphore failed with %s", err)
-		return err
+	r.semaphores = make([]vk.Semaphore, r.swapchains[0].imageCount+1)
+	for i := range len(r.semaphores) {
+		err = vk.Error(vk.CreateSemaphore(r.device, &semaphoreCreateInfo, nil, &r.semaphores[i]))
+		if err != nil {
+			err = fmt.Errorf("vk.CreateSemaphore failed with %s", err)
+			return err
+		}
 	}
 	return nil
 }
@@ -5987,7 +5995,7 @@ func (r *Renderer_VK) Init() {
 	r.enableShadow = sys.cfg.Video.EnableModelShadow
 	r.memoryTypeMap = make(map[vk.MemoryPropertyFlagBits]uint32)
 	r.samplers = map[VulkanSamplerInfo]vk.Sampler{}
-	r.stagingBufferFences = [2]bool{false, false}
+	r.stagingBufferFences = [2]bool{true, true}
 	r.stagingBufferIndex = 0
 	r.stagingBufferOffset = 0
 	r.stagingImageCopyRegions = make(map[vk.Image][]vk.BufferImageCopy)
@@ -7106,7 +7114,7 @@ func (r *Renderer_VK) EndFrame() {
 		PWaitDstStageMask:    []vk.PipelineStageFlags{vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit)},
 		CommandBufferCount:   uint32(len(submitCommands)),
 		PCommandBuffers:      submitCommands,
-		PSignalSemaphores:    r.semaphores[1:2], // Render done semaphore
+		PSignalSemaphores:    r.semaphores[r.swapchains[0].currentImageIndex+1 : r.swapchains[0].currentImageIndex+2], // Render done semaphore
 		SignalSemaphoreCount: 1,
 	}}
 
@@ -7120,7 +7128,7 @@ func (r *Renderer_VK) EndFrame() {
 	presentInfo := vk.PresentInfo{
 		SType:              vk.StructureTypePresentInfo,
 		WaitSemaphoreCount: 1,
-		PWaitSemaphores:    r.semaphores[1:2], // Render done semaphore
+		PWaitSemaphores:    r.semaphores[r.swapchains[0].currentImageIndex+1 : r.swapchains[0].currentImageIndex+2], // Render done semaphore
 		SwapchainCount:     1,
 		PSwapchains:        []vk.Swapchain{r.swapchains[0].swapchain},
 		PImageIndices:      imageIndices,
