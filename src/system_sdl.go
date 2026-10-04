@@ -361,6 +361,7 @@ func attachController(deviceIndex int) {
 	input.controllers[slot] = controller
 	resetControllerState(slot)
 	input.controllerstate[slot].HasRumble = controller.HasRumble()
+	sys.attachGamepad(slot)
 }
 
 func (w *Window) UpdateDebugFPS() {
@@ -420,7 +421,9 @@ func (w *Window) pollEvents() {
 		case sdl.ControllerAxisEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
-				input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+				if int(t.Axis) < len(input.controllerstate[idx].Axes) {
+					input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+				}
 			}
 		case sdl.ControllerButtonEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
@@ -460,6 +463,7 @@ func (w *Window) pollEvents() {
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
 				if controller := input.controllers[idx]; controller != nil {
+					sys.detachGamepad(idx)
 					controller.Close()
 					input.controllers[idx] = nil // Clear the reference
 					resetControllerState(idx)
@@ -467,6 +471,7 @@ func (w *Window) pollEvents() {
 			}
 		}
 	}
+	sys.pollInputSources()
 }
 
 func (w *Window) shouldClose() bool {

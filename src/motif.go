@@ -287,7 +287,7 @@ type MenuProperties struct {
 			TextProperties
 			Bg map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
 		} `ini:"active"`
-		Selected struct { // not used by [Title Info], [Option Info].keymenu, [Replay Info], [Attract Mode]
+		Selected struct { // not used by [Title Info], [Replay Info], [Attract Mode]
 			TextProperties
 			Active TextProperties `ini:"active"`
 		} `ini:"selected"`
@@ -340,11 +340,14 @@ type MenuProperties struct {
 	Done struct {
 		Key []string `ini:"key"`
 	} `ini:"done"`
-	Hiscore struct { // not used by [Option Info], [Option Info].keymenu, [Replay Info], [Pause Menu]
+	Save struct { // only used by [Option Info] profile editor
+		Key []string `ini:"key"`
+	} `ini:"save"`
+	Hiscore struct { // not used by [Option Info], [Replay Info], [Pause Menu]
 		Key []string `ini:"key"`
 	} `ini:"hiscore"`
-	Unlock    map[string]string `ini:"unlock"`    // not used by [Option Info].keymenu, [Replay Info], [Pause Menu]
-	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Option Info].keymenu, [Replay Info], [Pause Menu], [Attract Mode]
+	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
+	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
 	Itemname  map[string]string `ini:"itemname"`
 }
 
@@ -1041,20 +1044,9 @@ type OptionInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	TextInput TextInputProperties `ini:"textinput"`
-	KeyMenu   struct {
-		P1 struct {
-			MenuOffset [2]float32     `ini:"menuoffset"`
-			Playerno   TextProperties `ini:"playerno"`
-		} `ini:"p1"`
-		P2 struct {
-			MenuOffset [2]float32     `ini:"menuoffset"`
-			Playerno   TextProperties `ini:"playerno"`
-		} `ini:"p2"`
-		Unbind struct {
-			KeyCode string `ini:"keycode"`
-		} `ini:"unbind"`
-		MenuProperties
-	} `ini:"keymenu"`
+	Unbind    struct {
+		KeyCode string `ini:"keycode"`
+	} `ini:"unbind"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
 }
 
@@ -1989,7 +1981,7 @@ func (m *Motif) fixLocalcoordOverrides() {
 // when menu.uselocalcoord is enabled in a section.
 
 // InheritSpec describes how to inherit keys from one prefix to another inside the given INI sections.
-// Example: srcSec="Option Info", srcPrefix="menu.", dstSec="Option Info", dstPrefix="keymenu.menu."
+// Example: srcSec="Select Info", srcPrefix="p1.face.", dstSec="Select Info", dstPrefix="p1.face.done."
 type InheritSpec struct {
 	SrcSec    string
 	SrcPrefix string
@@ -2222,8 +2214,6 @@ func (m *Motif) overrideParams() {
 	specs := []InheritSpec{
 		// [Title Info]
 		{SrcSec: "Title Info", SrcPrefix: "loading.", DstSec: "Title Info", DstPrefix: "loading.wait."},
-		// [Option Info]
-		{SrcSec: "Option Info", SrcPrefix: "menu.", DstSec: "Option Info", DstPrefix: "keymenu."},
 		// [Select Info]
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.face.done."},
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.face.random."},
@@ -2765,7 +2755,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		&m.OptionInfo.Menu,
 		&m.ReplayInfo.Menu,
 		&m.AttractMode.Menu,
-		&m.OptionInfo.KeyMenu.MenuProperties,
 	} {
 		shiftMenu(me)
 	}
@@ -2775,13 +2764,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 				shiftMenu(&pm.Menu)
 			}
 		}
-	}
-
-	// KeyMenu
-	{
-		km := &m.OptionInfo.KeyMenu
-		textSetPos(km.P1.Playerno.TextSpriteData, km.Pos[0]+km.P1.MenuOffset[0], km.Pos[1]+km.P1.MenuOffset[1])
-		textSetPos(km.P2.Playerno.TextSpriteData, km.Pos[0]+km.P2.MenuOffset[0], km.Pos[1]+km.P2.MenuOffset[1])
 	}
 
 	// Movelists (all pause menus)

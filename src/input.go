@@ -279,11 +279,10 @@ type CommandSpec struct {
 }
 
 type KeyConfig struct {
+	ID                                                     string
 	Joy                                                    int
 	dU, dD, dL, dR, bA, bB, bC, bX, bY, bZ, bS, bD, bW, bM int
-	isInitialized                                          bool
 	rumbleOn                                               bool
-	GUID                                                   string
 }
 
 func (kc *KeyConfig) set(v [14]int) {
@@ -301,59 +300,6 @@ func (kc *KeyConfig) set(v [14]int) {
 	kc.bD = v[11]
 	kc.bW = v[12]
 	kc.bM = v[13]
-}
-
-func (kc *KeyConfig) swap(kc2 *KeyConfig) {
-	joy := kc.Joy
-	// dD := kc.dD
-	// dL := kc.dL
-	// dR := kc.dR
-	// dU := kc.dU
-	// bA := kc.bA
-	// bB := kc.bB
-	// bC := kc.bC
-	// bD := kc.bD
-	// bW := kc.bW
-	// bX := kc.bX
-	// bY := kc.bY
-	// bZ := kc.bZ
-	// bM := kc.bM
-	// bS := kc.bS
-
-	kc.Joy = kc2.Joy
-	// kc.dD = kc2.dD
-	// kc.dL = kc2.dL
-	// kc.dR = kc2.dR
-	// kc.dU = kc2.dU
-	// kc.bA = kc2.bA
-	// kc.bB = kc2.bB
-	// kc.bC = kc2.bC
-	// kc.bD = kc2.bD
-	// kc.bW = kc2.bW
-	// kc.bX = kc2.bX
-	// kc.bY = kc2.bY
-	// kc.bZ = kc2.bZ
-	// kc.bM = kc2.bM
-	// kc.bS = kc2.bS
-
-	kc2.Joy = joy
-	// kc2.dD = dD
-	// kc2.dL = dL
-	// kc2.dR = dR
-	// kc2.dU = dU
-	// kc2.bA = bA
-	// kc2.bB = bB
-	// kc2.bC = bC
-	// kc2.bD = bD
-	// kc2.bW = bW
-	// kc2.bX = bX
-	// kc2.bY = bY
-	// kc2.bZ = bZ
-	// kc2.bM = bM
-	// kc2.bS = bS
-
-	kc.isInitialized = true
-	kc2.isInitialized = true
 }
 
 type InputBits int16
@@ -396,7 +342,13 @@ const (
 	BI_M
 )
 
-// Save local inputs as input bits to send or record
+var inputFields = [...]string{"up", "down", "left", "right", "a", "b", "c", "x", "y", "z", "start", "d", "w", "menu"}
+
+// Returns the profile bindings in button order (see ButtonIndex).
+func profileTokens(p *KeysProperties) [14]string {
+	return [14]string{p.Up, p.Down, p.Left, p.Right, p.A, p.B, p.C, p.X, p.Y, p.Z, p.Start, p.D, p.W, p.Menu}
+}
+
 // A connected gamepad or a keyboard profile. IDs are never reused while the game runs.
 type InputSource struct {
 	ID                       int
@@ -602,33 +554,18 @@ func (ir *InputReader) Reset() {
 }
 
 func (ir *InputReader) LocalInput(in int) [14]bool {
-	// Keyboard
-	var keyIn [14]bool
-	if in < len(sys.keyConfig) {
-		keyIn = GetKeyboardState(sys.keyConfig[in])
+	var state [14]bool
+	if kc, ok := sys.participantConfig(in); ok {
+		if kc.Joy < 0 {
+			state = GetKeyboardState(kc)
+		} else {
+			state = GetJoystickState(kc)
+		}
 	}
-
-	// Joystick
-	var joyIn [14]bool
-	if in < len(sys.joystickConfig) {
-		joyIn = GetJoystickState(sys.joystickConfig[in])
-	}
-
-	// Merge both
-	U := keyIn[0] || joyIn[0]
-	D := keyIn[1] || joyIn[1]
-	L := keyIn[2] || joyIn[2]
-	R := keyIn[3] || joyIn[3]
-	a := keyIn[4] || joyIn[4]
-	b := keyIn[5] || joyIn[5]
-	c := keyIn[6] || joyIn[6]
-	x := keyIn[7] || joyIn[7]
-	y := keyIn[8] || joyIn[8]
-	z := keyIn[9] || joyIn[9]
-	s := keyIn[10] || joyIn[10]
-	d := keyIn[11] || joyIn[11]
-	w := keyIn[12] || joyIn[12]
-	m := keyIn[13] || joyIn[13]
+	U, D, L, R := state[BI_PU], state[BI_PD], state[BI_PL], state[BI_PR]
+	a, b, c := state[BI_A], state[BI_B], state[BI_C]
+	x, y, z := state[BI_X], state[BI_Y], state[BI_Z]
+	s, d, w, m := state[BI_S], state[BI_D], state[BI_W], state[BI_M]
 
 	// Apply button assist
 	// Checked locally so that network inputs are processed before being sent
@@ -641,18 +578,10 @@ func (ir *InputReader) LocalInput(in int) [14]bool {
 }
 
 func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
-	if in < 0 || in >= len(sys.joystickConfig) {
+	joy := sys.participantJoystick(in)
+	if !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
 		return [6]int8{}
 	}
-
-	joy := sys.joystickConfig[in].Joy
-	if joy < 0 || joy >= len(input.controllerstate) {
-		return [6]int8{}
-	}
-	if input.controllerstate[joy] == nil {
-		return [6]int8{}
-	}
-
 	return input.controllerstate[joy].Axes
 }
 
@@ -2973,14 +2902,8 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 				in := sys.inputRemap[controller] // remapped input index/config
 				buttons = cl.Buffer.InputReader.LocalInput(in)
 				// Keep analog axes in sync with the same remap used for digital inputs
-				if in >= 0 && in < len(sys.joystickConfig) &&
-					sys.joystickConfig[in].Joy >= 0 &&
-					sys.joystickConfig[in].Joy < input.GetMaxJoystickCount() &&
-					input.IsJoystickPresent(sys.joystickConfig[in].Joy) {
-					axes = input.GetJoystickAxes(sys.joystickConfig[in].Joy)
-				} else {
-					axes = [6]float32{0, 0, 0, 0, 0, 0}
-				}
+				rawAxes := cl.Buffer.InputReader.LocalAnalogInput(in)
+				axes = NormalizeAxes(&rawAxes)
 			}
 		}
 	}
@@ -3261,24 +3184,13 @@ func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int
 		return false
 	}
 	idx, ok := StringToButtonLUT[token]
-	if !ok || idx == 25 { // "Not used"
+	if !ok || idx == 25 { // unbound
 		return false
 	}
 	// Resolve controllerIdx -> physical joystick index
-	joyIdx := controllerIdx
-	if controllerIdx >= 0 {
-		in := controllerIdx
-		if controllerIdx < len(sys.inputRemap) {
-			m := sys.inputRemap[controllerIdx]
-			if m >= 0 {
-				in = m
-			}
-		}
-		if in >= 0 && in < len(sys.joystickConfig) && sys.joystickConfig[in].Joy >= 0 {
-			joyIdx = sys.joystickConfig[in].Joy
-		} else {
-			joyIdx = in
-		}
+	joyIdx := -1
+	if controllerIdx >= 0 && controllerIdx < len(sys.inputRemap) {
+		joyIdx = sys.participantJoystick(sys.inputRemap[controllerIdx])
 	}
 
 	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() || !input.IsJoystickPresent(joyIdx) {

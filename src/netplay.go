@@ -571,14 +571,14 @@ func (nc *NetConnection) readJSON(v interface{}) error {
 
 // Gameplay-facing netplay API
 func (nc *NetConnection) readNetInput(i int) [14]bool {
-	if i >= 0 && i < len(nc.buf) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(nc.buf) {
 		return nc.buf[sys.inputRemap[i]].readNetBuffer()
 	}
 	return [14]bool{}
 }
 
 func (nc *NetConnection) readNetInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(nc.buf) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(nc.buf) {
 		return nc.buf[sys.inputRemap[i]].readNetBufferAnalog()
 	}
 	return [6]int8{}
@@ -1157,14 +1157,14 @@ func (rf *ReplayFile) Close() {
 
 // Read input buttons from replay input
 func (rf *ReplayFile) readReplayInput(i int) [14]bool {
-	if i >= 0 && i < len(rf.ibit) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.ibit) {
 		return rf.ibit[sys.inputRemap[i]].BitsToKeys()
 	}
 	return [14]bool{}
 }
 
 func (rf *ReplayFile) readReplayInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(rf.ibit) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.ibit) {
 		remap := sys.inputRemap[i] // we'll be using this a lot
 
 		// New replay file, read in the axes too
