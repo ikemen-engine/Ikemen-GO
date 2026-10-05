@@ -94,7 +94,6 @@ void main(void) {
 			if (mask == -1) c.a = 1.0;
 			neg_base *= c.a;
 			final_add *= c.a;
-			final_mul.rgb *= alpha;
 		} else {
 			// Palette lookup
 			#if __VERSION__ >= 450
