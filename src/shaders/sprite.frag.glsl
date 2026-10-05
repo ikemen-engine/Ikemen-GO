@@ -91,7 +91,10 @@ void main(void) {
 
 		// Select with or without palette
 		if (isRgba) {
-			if (mask == -1) c.a = 1.0;
+			if (mask == -1) {
+				c.rgb *= c.a;
+				c.a = 1.0;
+			}
 			neg_base *= c.a;
 			final_add *= c.a;
 		} else {
