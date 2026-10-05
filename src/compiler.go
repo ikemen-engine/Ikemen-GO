@@ -6785,6 +6785,14 @@ func (c *CharCompiler) paramStringList(is IniSection, sc *StateControllerBase, p
 
 // Interprets an IniSection of statedef properties and sets them to a StateBytecode
 func (c *CharCompiler) stateDef(is IniSection, sbc *StateBytecode) error {
+	// Negative states are never entered, so their header is unused
+	// CNS ignores it like Mugen does. ZSS rejects it
+	if c.stateNo < 0 {
+		if c.zssMode && len(is) > 0 {
+			return Error("Negative states cannot have StateDef parameters")
+		}
+		return nil
+	}
 	return c.stateSec(is, func() error {
 		sc := newStateControllerBase()
 		if err := c.stateParam(is, "type", false, func(data string) error {

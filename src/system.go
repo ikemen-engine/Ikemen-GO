@@ -335,7 +335,7 @@ type System struct {
 	listLFunc          []*lua.LFunction
 	reloadPreserveVars [MaxPlayerNo]bool
 	charVarsBackup     map[int]CharVarBackup
-	shaderRefCount     map[string]int
+	loadedCustomShaders map[string]bool
 
 	statePool       GameStatePool
 	commandLists    []*CommandList
@@ -521,7 +521,7 @@ func (s *System) init(w, h int32) *lua.LState {
 
 	systemScriptInit(l)
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
-	s.shaderRefCount = make(map[string]int)
+	s.loadedCustomShaders = make(map[string]bool)
 	if runtime.GOOS != "android" {
 		// So now that we have a window we add an icon.
 		if len(s.cfg.Config.WindowIcon) > 0 {
@@ -5013,11 +5013,14 @@ func (s *Select) preloadWorkerLoop() {
 					err = s.preloadStageAssets(ref)
 				}
 
-				s.preloadMu.Lock()
-
+				// Panic before relocking, otherwise the main thread deadlocks on preloadMu and never shows the error
 				if err != nil {
 					panic(fmt.Sprintf("Preloading error: %s", err))
-				} else if kind == "char" {
+				}
+
+				s.preloadMu.Lock()
+
+				if kind == "char" {
 					s.charPreload[ref].State = PS_Ready
 				} else {
 					s.stagePreload[ref-1].State = PS_Ready
@@ -6666,6 +6669,7 @@ func (l *Loader) load() {
 					if !charDone[j] {
 						sys.chars[j] = nil
 						sys.cgi[j].states = nil
+						sys.cgi[j].customShaders = nil
 						//sys.cgi[j].hitPauseToggleFlagCount = 0
 						charDone[j] = true
 					}
@@ -7035,37 +7039,90 @@ func (s *System) restoreCharVars(c *Char) {
 	delete(s.charVarsBackup, c.playerNo)
 }
 
-func (s *System) isValidCustomShader(name string) bool {
-	if _, ok := sys.shaderRefCount[name]; ok {
-		return true
+// Loads a shader and maps its name in the asset's shader map (char, stage etc) to an engine-wide key
+// Keys come from the file path, so different assets can reuse names without overriding each other
+func (s *System) loadCustomShader(shaders map[string]string, name, filename string, data []byte) {
+	key := filepath.ToSlash(filepath.Clean(filename))
+	// Like SND, reuse the shader if something else is using it. Otherwise recompile so file edits are picked up
+	reuse := s.isCustomShaderActive(key)
+	shaders[name] = key
+	s.loadedCustomShaders[key] = true
+	if reuse {
+		return
+	}
+	s.mainThreadTask <- func() {
+		gfx.UnloadCustomSpriteShader(key)
+		gfx.LoadCustomSpriteShader(key, data)
+	}
+}
+
+// Loads a shader file listed in a [Shaders] section (char, common etc)
+func (s *System) loadCustomShaderFile(shaders map[string]string, name, path string, dirs []string) {
+	if strings.HasPrefix(gfx.GetName(), "Vulkan") && !strings.HasSuffix(strings.ToLower(path), ".spv") {
+		path += ".spv"
+	}
+	LoadFile(&path, dirs, "", func(filename string) error {
+		f, err := OpenFile(filename)
+		if err != nil {
+			LogMessage("Failed to open shader file '%s': %v", filename, err)
+			return err
+		}
+		defer f.Close()
+		data, err := io.ReadAll(f)
+		if err != nil {
+			LogMessage("Failed to read shader file '%s': %v", filename, err)
+			return err
+		}
+		s.loadCustomShader(shaders, name, filename, data)
+		return nil
+	})
+}
+
+// Checks if any char is using a shader, including Turns preloads that aren't in sys.cgi yet
+func (s *System) isCustomShaderActive(key string) bool {
+	// TODO: Check stage shader maps here when stages support custom shaders
+	for i := range s.cgi {
+		for _, k := range s.cgi[i].customShaders {
+			if k == key {
+				return true
+			}
+		}
+	}
+	s.preloadedCharsMutex.Lock()
+	defer s.preloadedCharsMutex.Unlock()
+	for i := range s.preloadedCgi {
+		for _, k := range s.preloadedCgi[i].customShaders {
+			if k == key {
+				return true
+			}
+		}
 	}
 	return false
 }
 
-func (s *System) cleanCustomShaders() {
-	activeShaders := make(map[string]bool)
-	for i := 0; i < len(s.cgi); i++ {
-		for _, sName := range s.cgi[i].customShaders {
-			activeShaders[sName] = true
-		}
+// Resolves a shader name from player pn's shaders into an engine key
+// An empty name is valid and means no shader. A player that doesn't exist has no shaders
+func (s *System) resolveCharShader(pn int, name string) (string, bool) {
+	if name == "" {
+		return "", true
 	}
+	if pn < 0 || pn >= len(s.chars) || len(s.chars[pn]) == 0 {
+		return "", false
+	}
+	key, ok := s.cgi[pn].customShaders[name]
+	return key, ok
+}
 
-	for sName, count := range s.shaderRefCount {
-		if activeShaders[sName] {
-			s.shaderRefCount[sName] = 3
-		} else {
-			count--
-			if count <= 0 {
-				s.mainThreadTask <- func(name string) func() {
-					return func() {
-						gfx.UnloadCustomSpriteShader(name)
-					}
-				}(sName)
+func (s *System) cleanCustomShaders() {
+	for sName := range s.loadedCustomShaders {
+		if !s.isCustomShaderActive(sName) {
+			s.mainThreadTask <- func(name string) func() {
+				return func() {
+					gfx.UnloadCustomSpriteShader(name)
+				}
+			}(sName)
 
-				delete(s.shaderRefCount, sName)
-			} else {
-				s.shaderRefCount[sName] = count
-			}
+			delete(s.loadedCustomShaders, sName)
 		}
 	}
 }

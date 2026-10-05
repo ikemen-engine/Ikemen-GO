@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"math"
 	"sort"
 	"strings"
@@ -2316,11 +2315,12 @@ func (e *Explod) update() {
 				e.customShader.sTime++
 				e.customShader.tex1.step()
 				e.customShader.tex2.step()
-				if e.customShader.time > 0 {
-					e.customShader.time--
-				}
+
+				// Check expiry before stepping, so the shader lasts the full time
 				if e.customShader.time == 0 {
 					e.customShader.clear()
+				} else if e.customShader.time > 0 {
+					e.customShader.time--
 				}
 			}
 		}
@@ -2454,7 +2454,7 @@ func (e *Explod) cueDraw() {
 	sd.window = ewin
 	sd.xshear = xshear
 	sd.customShader = CustomShaderRenderData{
-		name:   e.customShader.name,
+		name:   e.customShader.key,
 		params: e.customShader.params,
 		time:   e.customShader.time,
 		sTime:  e.customShader.sTime,
@@ -3200,15 +3200,18 @@ func (p *Projectile) tick() {
 			if p.pausemovetime > 0 {
 				p.pausemovetime--
 			}
+
+			// Update shader effects
 			if p.customShader.name != "" {
 				p.customShader.sTime++
 				p.customShader.tex1.step()
 				p.customShader.tex2.step()
-				if p.customShader.time > 0 {
-					p.customShader.time--
-				}
+
+				// Check expiry before stepping, so the shader lasts the full time
 				if p.customShader.time == 0 {
 					p.customShader.clear()
+				} else if p.customShader.time > 0 {
+					p.customShader.time--
 				}
 			}
 			p.freezeflag = false
@@ -3317,7 +3320,7 @@ func (p *Projectile) cueDraw() {
 	sd.window = pwin
 	sd.xshear = p.xshear
 	sd.customShader = CustomShaderRenderData{
-		name:   p.customShader.name,
+		name:   p.customShader.key,
 		params: p.customShader.params,
 		time:   p.customShader.time,
 		sTime:  p.customShader.sTime,
@@ -3484,7 +3487,7 @@ type CharGlobalInfo struct {
 	attackBase         int32
 	defenceBase        int32
 	canMutateStage     bool // Determines if the stage should be included in save states
-	customShaders      []string
+	customShaders      map[string]string
 	//hitPauseToggleFlagCount int32
 }
 
@@ -3500,6 +3503,7 @@ func newCharGlobalInfo() CharGlobalInfo {
 		quotes:        [MaxQuotes]string{},
 		movelists:     make(map[int]string),
 		remapPreset:   make(map[string]RemapPreset),
+		customShaders: make(map[string]string),
 		portraitscale: 1,
 	}
 
@@ -4302,40 +4306,37 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 					lanShaders = false
 				}
 				shaders = false
-				isVulkan := strings.HasPrefix(gfx.GetName(), "Vulkan")
 
 				for key, val := range is {
-					shaderPath := val
-					shaderAlias := key
+					sys.loadCustomShaderFile(gi.customShaders, key, val, []string{def, "", "data/"})
+				}
+			}
+		}
+	}
 
-					if isVulkan {
-						if !strings.HasSuffix(strings.ToLower(shaderPath), ".spv") {
-							shaderPath += ".spv"
+	// Merge common shaders. The char's own shaders take priority
+	for _, key := range SortedKeys(sys.cfg.Common.Shaders) {
+		for _, v := range sys.cfg.Common.Shaders[key] {
+			if err := LoadFile(&v, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}, "", func(filename string) error {
+				str, err := LoadText(filename)
+				if err != nil {
+					return err
+				}
+				lines, i := SplitAndTrim(str, "\n"), 0
+				for i < len(lines) {
+					is, name, _ := ReadIniSection(lines, &i)
+					if name != "shaders" {
+						continue
+					}
+					for sName, path := range is {
+						if _, ok := gi.customShaders[sName]; !ok {
+							sys.loadCustomShaderFile(gi.customShaders, sName, path, []string{filename, "", "data/"})
 						}
 					}
-
-					gi.customShaders = append(gi.customShaders, shaderAlias)
-
-					LoadFile(&shaderPath, []string{def, "", "data/"}, "", func(filename string) error {
-						f, err := OpenFile(filename)
-						if err != nil {
-							LogMessage("Failed to open shader file '%s': %v", filename, err)
-							return err
-						}
-						defer f.Close()
-						shaderData, err := io.ReadAll(f)
-						if err != nil {
-							LogMessage("Failed to read shader file '%s': %v", filename, err)
-							return err
-						}
-
-						sys.mainThreadTask <- func() {
-							sys.shaderRefCount[shaderAlias] = 3
-							gfx.LoadCustomSpriteShader(shaderAlias, shaderData)
-						}
-						return nil
-					})
 				}
+				return nil
+			}); err != nil {
+				return err
 			}
 		}
 	}
@@ -12320,8 +12321,11 @@ func (c *Char) actionPrepare() {
 			// Step custom shader
 			if c.customShader.time > 0 {
 				c.customShader.time--
+				// Clear immediately, unlike explods, due to different update order
+				// TODO: All of them could just use a customShader.step() function
+				// But that would make an eventual shaderVar(time) trigger less accurate
 				if c.customShader.time == 0 {
-					c.customShader = CustomShader{}
+					c.customShader.clear()
 				}
 			}
 			// Step movetime
@@ -13519,7 +13523,7 @@ func (c *Char) cueDraw() {
 		charSD.xshear = c.xshear
 		charSD.window = cwin
 		charSD.customShader = CustomShaderRenderData{
-			name:   c.customShader.name,
+			name:   c.customShader.key,
 			params: c.customShader.params,
 			time:   c.customShader.time,
 			sTime:  c.customShader.sTime,
