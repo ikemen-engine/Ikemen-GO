@@ -586,7 +586,7 @@ type Renderer_GLES32 struct {
 	modelVAO                uint32
 	modelEnvVAO             uint32
 	postVAO                 uint32
-	vertexBufferCapacity    int
+	vertexScratch           []byte
 	capturePBO              uint32 // For async screenshots
 	capturePBOSize          int
 	capturePending          bool
@@ -770,10 +770,10 @@ func (r *Renderer_GLES32) Init() {
 	gl.GenBuffers(1, &r.postVertBuffer)
 	Logcat("GLES: PostVertBuffer Generated")
 
-	// Pre-size a large persistent buffer; uploads use BufferSubData (no realloc)
-	r.vertexBufferCapacity = 1024 * 1024
+	// Pre-size to 64 bytes (one quad) so later uploads of the same size stay cheap
 	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, r.vertexBufferCapacity, nil, gl.DYNAMIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, 64, nil, gl.DYNAMIC_DRAW)
+	r.vertexScratch = make([]byte, 64)
 
 	// Initialize post-processing vertex buffer
 	r.bindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
@@ -1082,10 +1082,6 @@ func (r *Renderer_GLES32) IsShadowEnabled() bool {
 }
 
 func (r *Renderer_GLES32) BeginFrame(clearColor bool) {
-	// Orphan the sprite vertex buffer once per frame
-	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
-	gl.BufferData(gl.ARRAY_BUFFER, r.vertexBufferCapacity, nil, gl.DYNAMIC_DRAW)
-
 	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
 	gl.Viewport(0, 0, sys.scrrect[2], sys.scrrect[3])
 	if clearColor {
@@ -2146,19 +2142,27 @@ func (r *Renderer_GLES32) SetShadowFrameCubeTexture(i uint32) {
 
 func (r *Renderer_GLES32) SetVertexData(values ...float32) {
 	need := len(values) * 4
-	if need == 0 {
-		return
+
+	// Adjust scratch buffer size if necessary
+	if cap(r.vertexScratch) < need {
+		r.vertexScratch = make([]byte, need)
+	} else {
+		r.vertexScratch = r.vertexScratch[:need]
+	}
+
+	// Write into scratch buffer
+	for i, v := range values {
+		binary.LittleEndian.PutUint32(r.vertexScratch[i*4:], math.Float32bits(v))
 	}
 
 	r.bindBuffer(gl.ARRAY_BUFFER, r.vertexBuffer)
 
-	// Upload into existing storage
-	if need <= r.vertexBufferCapacity {
-		gl.BufferSubData(gl.ARRAY_BUFFER, 0, need, gl.Ptr(values))
+	// Upload the new data as a fresh buffer
+	// So this draw doesn't overwrite vertices that earlier draws may still be reading
+	if need > 0 {
+		gl.BufferData(gl.ARRAY_BUFFER, need, unsafe.Pointer(&r.vertexScratch[0]), gl.DYNAMIC_DRAW)
 	} else {
-		// Grew too large: realloc once, then continue with SubData
-		gl.BufferData(gl.ARRAY_BUFFER, need, gl.Ptr(values), gl.DYNAMIC_DRAW)
-		r.vertexBufferCapacity = need
+		gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.DYNAMIC_DRAW)
 	}
 }
 
