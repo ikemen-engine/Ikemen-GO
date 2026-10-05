@@ -319,22 +319,22 @@ type System struct {
 	hitDetectionSort    []*Char
 	projectileTradeSort []*Projectile
 
-	msaa               int32
-	externalShaders    [][][]byte
-	windowMainIcon     []image.Image
-	frameCounter       int32
-	captureNum         int
-	timerRounds        []int32
-	scoreRounds        [][2]float32
-	statsLog           StatsLog
-	maxPowerMode       bool
-	debugClsnText      []DebugClsnText
-	consoleText        []string
-	luaLState          *lua.LState
-	statusLFunc        *lua.LFunction
-	listLFunc          []*lua.LFunction
-	reloadPreserveVars [MaxPlayerNo]bool
-	charVarsBackup     map[int]CharVarBackup
+	msaa                int32
+	externalShaders     [][][]byte
+	windowMainIcon      []image.Image
+	frameCounter        int32
+	captureNum          int
+	timerRounds         []int32
+	scoreRounds         [][2]float32
+	statsLog            StatsLog
+	maxPowerMode        bool
+	debugClsnText       []DebugClsnText
+	consoleText         []string
+	luaLState           *lua.LState
+	statusLFunc         *lua.LFunction
+	listLFunc           []*lua.LFunction
+	reloadPreserveVars  [MaxPlayerNo]bool
+	charVarsBackup      map[int]CharVarBackup
 	loadedCustomShaders map[string]bool
 
 	statePool       GameStatePool
