@@ -2453,7 +2453,7 @@ func (e *Explod) cueDraw() {
 		name:   e.customShader.key,
 		params: e.customShader.params,
 		time:   e.customShader.time,
-		sTime:  e.customShader.sTime,
+		sTime:  e.customShader.interpolatedSTime(!e.pauseBool),
 		tex1:   e.customShader.tex1.GetTexture(),
 		tex2:   e.customShader.tex2.GetTexture(),
 	}
@@ -3319,7 +3319,7 @@ func (p *Projectile) cueDraw() {
 		name:   p.customShader.key,
 		params: p.customShader.params,
 		time:   p.customShader.time,
-		sTime:  p.customShader.sTime,
+		sTime:  p.customShader.interpolatedSTime(!p.pauseBool && p.hitpause <= 0),
 		tex1:   p.customShader.tex1.GetTexture(),
 		tex2:   p.customShader.tex2.GetTexture(),
 	}
@@ -13553,7 +13553,7 @@ func (c *Char) cueDraw() {
 			name:   c.customShader.key,
 			params: c.customShader.params,
 			time:   c.customShader.time,
-			sTime:  c.customShader.sTime,
+			sTime:  c.customShader.interpolatedSTime(c.acttmp > 0),
 			tex1:   c.customShader.tex1.GetTexture(),
 			tex2:   c.customShader.tex2.GetTexture(),
 		}

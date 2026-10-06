@@ -300,6 +300,14 @@ type CustomShaderRenderData struct {
 	tex2   Texture
 }
 
+func (cs *CustomShader) interpolatedSTime(act bool) float32 {
+	// Interpolate only while the object can act
+	if act && cs.sTime > 0 {
+		return cs.sTime - (1 - sys.tickInterpolation())
+	}
+	return cs.sTime
+}
+
 func (rp *RenderParams) IsValid() bool {
 	return rp.tex != nil && rp.tex.IsValid() && rp.size[0] != 0 && rp.size[1] != 0 &&
 		IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
@@ -855,7 +863,11 @@ func RenderSprite(rp RenderParams) {
 	if rp.customShader.name != "" {
 		var timeSec float32
 		if sys.middleOfMatch() {
-			timeSec = float32(sys.gameTime())
+			// Global shader time is interpolated between game ticks
+			timeSec = float32(sys.gameTime()) - (1 - sys.tickInterpolation())
+			if timeSec < 0 {
+				timeSec = 0
+			}
 		} else {
 			timeSec = float32(sys.frameCounter)
 		}
