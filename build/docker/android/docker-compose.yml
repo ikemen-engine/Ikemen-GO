@@ -24,7 +24,6 @@ services:
       ANDROID_NDK_HOME: /opt/android-ndk-r27d
       # These are optional but match CI intent
       CGO_ENABLED: "1"
-      GOEXPERIMENT: "arenas"
       APP_VERSION: "${APP_VERSION:-docker-test}"
       APP_BUILDTIME: "${APP_BUILDTIME:-2026.01.13}"
       # Build APK automatically (default is 1, but make it explicit in compose)
