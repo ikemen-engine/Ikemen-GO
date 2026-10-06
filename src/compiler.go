@@ -2969,7 +2969,12 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		savedIn := *in
 		peekTok := c.tokenizer(in)
 		*in = savedIn
-		if peekTok == "=" || peekTok == "!=" {
+
+		// Mugen tolerated a lot of malformed expressions for this trigger
+		allowWrongHDA := !c.zssMode && sys.ignoreMostErrors &&
+			peekTok != "" && peekTok != ")" && peekTok != "," && c.isOperator(peekTok) == 0
+
+		if peekTok == "=" || peekTok == "!=" || allowWrongHDA {
 			savedToken := c.token
 			// Set when the right side is a trigger call, which is compared as a string rather than parsed as an attr
 			isExpr := false
