@@ -308,6 +308,17 @@ func (cs *CustomShader) interpolatedSTime(act bool) float32 {
 	return cs.sTime
 }
 
+func (cs *CustomShader) renderData(act bool) CustomShaderRenderData {
+	return CustomShaderRenderData{
+		name:   cs.key,
+		params: cs.params,
+		time:   cs.time,
+		sTime:  cs.interpolatedSTime(act),
+		tex1:   cs.tex1.GetTexture(),
+		tex2:   cs.tex2.GetTexture(),
+	}
+}
+
 func (rp *RenderParams) IsValid() bool {
 	return rp.tex != nil && rp.tex.IsValid() && rp.size[0] != 0 && rp.size[1] != 0 &&
 		IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)

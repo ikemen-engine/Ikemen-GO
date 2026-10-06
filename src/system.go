@@ -7089,9 +7089,38 @@ func (s *System) loadCustomShaderFile(shaders map[string]string, name, path stri
 	})
 }
 
+// Merges the common [Shaders] into an asset's shader map. The asset's own shaders take priority
+func (s *System) loadCommonShaders(shaders map[string]string, dirs []string) error {
+	for _, key := range SortedKeys(s.cfg.Common.Shaders) {
+		for _, v := range s.cfg.Common.Shaders[key] {
+			if err := LoadFile(&v, dirs, "", func(filename string) error {
+				str, err := LoadText(filename)
+				if err != nil {
+					return err
+				}
+				lines, i := SplitAndTrim(str, "\n"), 0
+				for i < len(lines) {
+					is, name, _ := ReadIniSection(lines, &i)
+					if name != "shaders" {
+						continue
+					}
+					for sName, path := range is {
+						if _, ok := shaders[sName]; !ok {
+							s.loadCustomShaderFile(shaders, sName, path, []string{filename, "", "data/"})
+						}
+					}
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // Checks if any char is using a shader, including Turns preloads that aren't in sys.cgi yet
 func (s *System) isCustomShaderActive(key string) bool {
-	// TODO: Check stage shader maps here when stages support custom shaders
 	for i := range s.cgi {
 		for _, k := range s.cgi[i].customShaders {
 			if k == key {
@@ -7101,6 +7130,18 @@ func (s *System) isCustomShaderActive(key string) bool {
 	}
 	s.preloadedCharsMutex.Lock()
 	defer s.preloadedCharsMutex.Unlock()
+
+	for _, st := range s.stageList {
+		if st == nil {
+			continue
+		}
+		for _, k := range st.customShaders {
+			if k == key {
+				return true
+			}
+		}
+	}
+
 	for i := range s.preloadedCgi {
 		for _, k := range s.preloadedCgi[i].customShaders {
 			if k == key {

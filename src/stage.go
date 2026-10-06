@@ -37,6 +37,7 @@ const (
 	BT_SinY
 	BT_VelSet
 	BT_VelAdd
+	BT_ShaderSet
 )
 
 type bgAction struct {
@@ -148,6 +149,8 @@ type backGround struct {
 	fLength               float32
 	projection            Projection
 	xshear                float32
+	customShader          CustomShader
+	customShaderSet       bool
 }
 
 func newBackGround(sff *Sff) *backGround {
@@ -803,7 +806,12 @@ func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl flo
 		xbs*bgscl*(scalestartX+xs)*xs3,
 		ys*ys3, xShear,
 		bg.rot, rcx, [2]float32{0, 0}, stackedPfx, facing, [2]float32{1, 1},
-		int32(bg.projection), bg.fLength, false, CustomShaderRenderData{})
+		int32(bg.projection), bg.fLength, false, bg.customShader.renderData(bg.enabled && !sys.stage.paused()))
+}
+
+type bgShaderTex struct {
+	animNo int32
+	sprNo  [2]int32 // -1 = unset
 }
 
 type bgCtrl struct {
@@ -831,14 +839,26 @@ type bgCtrl struct {
 	positionlink bool
 	idx          int
 	sctrlid      int32
+	shaderName   string
+	shaderParams [16]float32
+	shaderTex    [2]bgShaderTex
 }
 
 func newBgCtrl() *bgCtrl {
-	return &bgCtrl{
+	bgc := &bgCtrl{
 		looptime: -1,
 		x:        float32(math.NaN()),
 		y:        float32(math.NaN()),
 	}
+
+	for i := range bgc.shaderTex {
+		bgc.shaderTex[i] = bgShaderTex{
+			animNo: -1,
+			sprNo:  [2]int32{-1, -1},
+		}
+	}
+
+	return bgc
 }
 
 func (bgc *bgCtrl) read(is IniSection, idx int) error {
@@ -846,6 +866,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 	xy := false
 	srcdst := false
 	palfx := false
+	shader := false
 	data := strings.ToLower(is["type"])
 	switch data {
 	case "anim":
@@ -882,6 +903,9 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		// Default values for RemapPal
 		bgc.src = [2]int32{-1, 0}
 		bgc.dst = [2]int32{-1, 0}
+	case "shaderset":
+		bgc._type = BT_ShaderSet
+		shader = true
 	case "sinx":
 		bgc._type = BT_SinX
 	case "siny":
@@ -944,6 +968,18 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		}
 		if is.ReadF32("hue", &bgc.hue) {
 			bgc.hue = bgc.hue / 512
+		}
+	} else if shader {
+		name, _, _ := is.getText("name")
+		bgc.shaderName = strings.ToLower(name)
+		for i := range bgc.shaderParams {
+			is.ReadF32(fmt.Sprintf("param%d", i), &bgc.shaderParams[i])
+		}
+		for n := range bgc.shaderTex {
+			t := &bgc.shaderTex[n]
+			prefix := fmt.Sprintf("tex%d.", n+1)
+			is.ReadI32(prefix+"anim", &t.animNo)
+			is.readI32ForStage(prefix+"spr", &t.sprNo[0], &t.sprNo[1])
 		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
@@ -1031,6 +1067,7 @@ type Stage struct {
 	model           *Model
 	topbound        float32
 	botbound        float32
+	customShaders   map[string]string
 }
 
 func newStage(def string) *Stage {
@@ -1050,6 +1087,7 @@ func newStage(def string) *Stage {
 		bgmratio:       0.3,
 		bgmtrigger:     0,
 		constants:      make(map[string]TypedValue),
+		customShaders:  make(map[string]string),
 		partnerspacing: 25,
 	}
 	s.sdw.intensity = 128
@@ -1442,6 +1480,17 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		}
 	}
 
+	// Shaders group
+	if sec, _ := getSection("shaders"); sec != nil {
+		for key, val := range sec {
+			sys.loadCustomShaderFile(s.customShaders, key, val, []string{def, "", "data/"})
+		}
+	}
+	// Common Shaders
+	if err := sys.loadCommonShaders(s.customShaders, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}); err != nil {
+		return nil, err
+	}
+
 	// Shadow group
 	if sec, _ := getSection("shadow"); sec != nil {
 		var tmp int32
@@ -1680,6 +1729,25 @@ func (s *Stage) get3DAnim(id uint32) (anims []*GLTFAnimation) {
 	return
 }
 
+func (s *Stage) setShaderTex(st *ShaderTexture, def bgShaderTex) {
+	switch {
+	case def.animNo >= 0:
+		if st.AnimNo != def.animNo {
+			st.clear()
+			st.AnimNo = def.animNo
+			st.Anim = s.animTable.get(def.animNo)
+		}
+	case def.sprNo[0] >= 0:
+		if st.SprNo != def.sprNo {
+			st.clear()
+			st.SprNo = def.sprNo
+			st.Spr = s.sff.GetSprite(uint16(def.sprNo[0]), uint16(def.sprNo[1]))
+		}
+	default:
+		st.clear()
+	}
+}
+
 // This essentially replaces the old timeline struct
 func (s *Stage) bgCtrlAction() {
 	for i := range s.bgc {
@@ -1806,6 +1874,19 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			}
 			s.sff.palList.Remap(si, di)
 		}
+	case BT_ShaderSet:
+		key := ""
+		if bgc.shaderName != "" {
+			key = s.customShaders[bgc.shaderName]
+		}
+		for i := range bgc.bg {
+			bg := bgc.bg[i]
+			bg.customShader.set(bgc.shaderName, key)
+			bg.customShader.params = bgc.shaderParams
+			s.setShaderTex(&bg.customShader.tex1, bgc.shaderTex[0])
+			s.setShaderTex(&bg.customShader.tex2, bgc.shaderTex[1])
+			bg.customShaderSet = true
+		}
 	case BT_SinX, BT_SinY:
 		ii := Btoi(bgc._type == BT_SinY)
 		if bgc.v[0] == 0 {
@@ -1878,7 +1959,16 @@ func (s *Stage) action() {
 
 	// Update animations and controllers
 	if canStep {
+		// Shaders last only while some BGCtrl keeps applying them
+		for _, b := range s.bg {
+			b.customShaderSet = false
+		}
 		s.bgCtrlAction()
+		for _, b := range s.bg {
+			if !b.customShaderSet && b.customShader.name != "" {
+				b.customShader.clear()
+			}
+		}
 		s.bga.action(true)
 
 		if s.model != nil {
@@ -1921,6 +2011,11 @@ func (s *Stage) action() {
 
 		if b.enabled && canStep {
 			s.bg[i].anim.Action()
+			if b.customShader.name != "" {
+				s.bg[i].customShader.sTime++
+				s.bg[i].customShader.tex1.step()
+				s.bg[i].customShader.tex2.step()
+			}
 		}
 	}
 }
@@ -2042,6 +2137,7 @@ func (s *Stage) reset() {
 	s.bga.clear()
 	for i := range s.bg {
 		s.bg[i].reset()
+		s.bg[i].customShader.clear()
 		// Ensure videos start paused, then rewind.
 		if s.bg[i]._type == BG_Video && s.bg[i].video != nil {
 			s.bg[i].video.SetPlaying(false)

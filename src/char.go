@@ -4312,30 +4312,8 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	}
 
 	// Merge common shaders. The char's own shaders take priority
-	for _, key := range SortedKeys(sys.cfg.Common.Shaders) {
-		for _, v := range sys.cfg.Common.Shaders[key] {
-			if err := LoadFile(&v, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}, "", func(filename string) error {
-				str, err := LoadText(filename)
-				if err != nil {
-					return err
-				}
-				lines, i := SplitAndTrim(str, "\n"), 0
-				for i < len(lines) {
-					is, name, _ := ReadIniSection(lines, &i)
-					if name != "shaders" {
-						continue
-					}
-					for sName, path := range is {
-						if _, ok := gi.customShaders[sName]; !ok {
-							sys.loadCustomShaderFile(gi.customShaders, sName, path, []string{filename, "", "data/"})
-						}
-					}
-				}
-				return nil
-			}); err != nil {
-				return err
-			}
-		}
+	if err := sys.loadCommonShaders(gi.customShaders, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}); err != nil {
+		return err
 	}
 
 	// Reset maps in order to upload the freshly loaded defaults
