@@ -2077,18 +2077,32 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		// These still work the same as in Mugen. They don't actually push strings
 		opc := OC_command
 		if c.token == "selfcommand" {
-			out.append(OC_ex_)
-			opc = OC_ex_selfcommand
+			opc = OC_selfcommand
 		}
 		if err := eqne(func(not bool) error {
-			if err := text(); err != nil {
-				return err
+			if c.token == "\"" {
+				if err := text(); err != nil {
+					return err
+				}
+				if _, ok := c.cmdl.Names[c.token]; !ok {
+					return Error("Command doesn't exist: " + c.token)
+				}
+				out.appendI32Op(OC_string, int32(sys.stringPool[c.playerNo].Add(c.token)))
+				c.token = c.tokenizer(in)
+			} else {
+				// Evaluate dynamic names at runtime, where map and local var values are available
+				var be BytecodeExp
+				bv, err := c.expGrls(&be, in)
+				if err != nil {
+					return err
+				}
+				if !bv.IsNone() && bv.vtype != VT_String {
+					return Error(`Not enclosed in "`)
+				}
+				out.append(be...)
+				out.appendValue(bv)
 			}
-			_, ok := c.cmdl.Names[c.token]
-			if !ok {
-				return Error("Command doesn't exist: " + c.token)
-			}
-			out.appendI32Op(opc, int32(sys.stringPool[c.playerNo].Add(c.token)))
+			out.append(opc)
 			if not {
 				out.append(OC_blnot)
 			}
@@ -2096,6 +2110,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
+		// The command comparison already read the next token, so don't skip an outer operator
+		return bvNone(), nil
 	case "const":
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
