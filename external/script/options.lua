@@ -1349,6 +1349,31 @@ options.t_itemname = {
 	end,
 }
 
+-- Rows that show a value but open a list or text prompt instead of changing it.
+options.t_hintDefault = {
+	aspectratio = true,
+	renderer = true,
+	resolution = true,
+	shaders = true,
+	portchange = true,
+	rollbackport = true,
+}
+
+-- Picks the hint for an Options row.
+function options.f_hintContext(row)
+	if row.hintContext ~= nil then
+		return row.hintContext
+	end
+	local name = row.itemname
+	if options.t_hintDefault[name] then
+		return 'default'
+	end
+	if options.t_vardisplay[name] ~= nil then
+		return 'adjust'
+	end
+	return 'default'
+end
+
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	local cursorPosY, moveTxt, item = 1, 0, 1
@@ -1394,8 +1419,16 @@ function options.f_createMenu(tbl, bool_main)
 			if tbl.reset and context == nil then
 				tbl.reset = false
 			else
+				local hintContext = options.f_hintContext(t[item])
+				if context ~= nil and context.capture ~= nil then
+					hintContext = 'capture'
+				end
+				local menuBackground = motif.optionbgdef
+				if context ~= nil and context.background ~= nil then
+					menuBackground = context.background
+				end
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info,
-					context and context.background or motif.optionbgdef, context ~= nil)
+					menuBackground, context ~= nil, {hintContext = hintContext})
 			end
 			-- While fading, ignore normal option-menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if context ~= nil and (context.capture ~= nil or context.popup ~= nil or context.skipInput) then
@@ -1898,10 +1931,10 @@ local function findInputItem(tbl, name)
 	end
 end
 
-local function inputPopup(context, text, getValue, onClose)
+local function inputPopup(context, text, getValue, onClose, hintContext)
 	local sec = motif.option_info
 	context.popup = main.f_warning(text, sec, context.background, nil, sec.title.TextSpriteData, nil,
-		sec.cancel.snd, sec.cursor.done.snd, getValue, true)
+		sec.cancel.snd, sec.cursor.done.snd, getValue, true, hintContext)
 	context.onClose = onClose
 end
 
@@ -1957,10 +1990,21 @@ local function updateProfileMenu(tbl, root, source, values)
 	for _, row in ipairs(tbl.items) do
 		local field = row.itemname
 		row.vardisplay = values[field]
+		if values[field] == '-' then
+			row.vardisplay = motif.option_info.menu.valuename.nokey
+		end
+		row.glyphSource = source.id
+		row.hintContext = 'profile'
+		if t_profileButtons[field] then
+			row.hintContext = 'binding'
+		elseif field == 'rumble' then
+			row.hintContext = 'profilechange'
+		end
+		if t_profileButtons[field] and motif.option_info.useglyphs and values[field] ~= '-' then
+			row.vardisplay = '<binding:' .. values[field] .. '>'
+		end
 		if field == 'rumble' then
 			row.vardisplay = options.f_boolDisplay(values.rumble)
-		elseif field == 'configall' then
-			row.infodisplay = string.format(motif.option_info.menu.valuename.f, 1)
 		end
 	end
 	for _, sub in pairs(tbl.submenu) do
