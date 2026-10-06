@@ -1198,7 +1198,7 @@ local function showSessionWarning()
 end
 
 --warning display
-function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd, getValue, frameOnly)
+function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd, getValue, frameOnly, hintContext)
 	local overlay = overlay or motif.warning_info.overlay.RectData
 	local titleData = titleData or motif.warning_info.title.TextSpriteData
 	local textData = textData or motif.warning_info.text.TextSpriteData
@@ -1244,6 +1244,24 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		textImgDraw(titleData)
 		--draw text
 		textImgDraw(textData)
+		-- the infobox reuses this screen, and capture mode waits for a button
+		local hint = motif.warning_info.hint
+		if hintContext ~= nil then
+			hint = sec.textinput.hint
+		end
+		if textData == motif.infobox.text.TextSpriteData then
+			hint = motif.infobox.hint
+		end
+		local context = 'default'
+		if hintContext ~= nil then
+			context = hintContext
+		elseif getValue ~= nil then
+			context = 'capture'
+		end
+		main.f_hintDraw(hint, context, nil, nil, nil, {
+			['menu.done'] = sec.menu.done.key,
+			['menu.cancel'] = sec.menu.cancel.key,
+		})
 		--draw layerno = 1 backgrounds
 		bgDraw(background.BGDef, 1)
 		--tick preload
@@ -1297,6 +1315,7 @@ function main.f_drawInput(textData, text, sec, background, overlay, defaultInput
 		textImgSetText(textData, text)
 		textImgAddText(textData, '\\n\\n' .. input)
 		textImgDraw(textData)
+		main.f_hintDraw(sec.textinput.hint)
 		--draw layerno = 1 backgrounds
 		bgDraw(background.BGDef, 1)
 		--tick preload
@@ -1825,13 +1844,26 @@ if main.t_selOptions.survivalmaxmatches == nil then main.t_selOptions.survivalma
 
 hook.run("main.selectDef.defaults", main.t_selOptions)
 
+-- applies a text change to everything except inline glyph tags, which are case sensitive
+function main.f_textTransform(text, transform)
+	local parts = {}
+	local pos = 1
+	for first, tag, last in text:gmatch('()(<[^<>]+>)()') do
+		table.insert(parts, transform(text:sub(pos, first - 1)))
+		table.insert(parts, tag)
+		pos = last
+	end
+	table.insert(parts, transform(text:sub(pos)))
+	return table.concat(parts)
+end
+
 --uppercase title
 function main.f_itemnameUpper(title, uppercase)
 	if title == nil then
 		return ''
 	end
 	if uppercase then
-		return title:upper()
+		return main.f_textTransform(title, string.upper)
 	end
 	return title
 end
@@ -2767,7 +2799,14 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 			if tbl.reset then
 				tbl.reset = false
 			else
-				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif[main.group], motif[main.background], false)
+				local hintContext = nil
+				if bool_del and t[item].itemname:match('^ip_') then
+					hintContext = 'delete'
+				elseif main.f_hiscoreMode(t[item].itemname) ~= nil then
+					hintContext = 'hiscore'
+				end
+				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif[main.group], motif[main.background], false,
+					{hintContext = hintContext})
 			end
 			-- While fading, ignore normal menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if fadeActive() then
@@ -3164,7 +3203,17 @@ function main.f_replay()
 	playBgm({source = "motif.replay"})
 	main.close = false
 	while true do
-		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replaybgdef, false)
+		local hintContext = nil
+		if t[item].itemname:match('%.replay$') then
+			hintContext = 'replay'
+		end
+		main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replaybgdef, false, {
+			hintContext = hintContext,
+			hintActions = {
+				['menu.done'] = motif[main.group].menu.done.key,
+				['menu.cancel'] = motif[main.group].menu.cancel.key,
+			},
+		})
 		cursorPosY, moveTxt, item = main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, motif.replay_info, motif.replay_info.cursor)
 		if main.close and not fadeActive() then
 			bgReset(motif[main.background].BGDef)
@@ -3223,6 +3272,7 @@ function main.f_connect(server, str)
 		textImgReset(motif.title_info.connecting.TextSpriteData)
 		textImgSetText(motif.title_info.connecting.TextSpriteData, txt)
 		textImgDraw(motif.title_info.connecting.TextSpriteData)
+		main.f_hintDraw(motif.title_info.hint, 'connecting')
 		--draw layerno = 1 backgrounds
 		bgDraw(motif[main.background].BGDef, 1)
 		refresh()
@@ -3327,13 +3377,20 @@ end
 main.t_hiscoreMap = {
 	teamarcade = 'arcade',
 }
-function main.f_hiscoreDisplay(itemname)
+
+function main.f_hiscoreMode(itemname)
 	local stats = jsonDecode(getCommandLineValue("-stats"))
 	local mode = main.t_hiscoreMap[itemname] or itemname
-	if not motif.hiscore_info.enabled or stats.modes == nil or stats.modes[mode] == nil or stats.modes[mode].ranking == nil then
-		return false
+	if motif.hiscore_info.enabled and #motif[main.group].menu.hiscore.key > 0
+		and stats.modes ~= nil and stats.modes[mode] ~= nil and stats.modes[mode].ranking ~= nil then
+		return mode
 	end
-	if not getInput(-1, motif[main.group].menu.hiscore.key) then
+	return nil
+end
+
+function main.f_hiscoreDisplay(itemname)
+	local mode = main.f_hiscoreMode(itemname)
+	if mode == nil or not getInput(-1, motif[main.group].menu.hiscore.key) then
 		return false
 	end
 	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
@@ -3427,6 +3484,11 @@ function main.f_attractStart()
 		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.attractbgdef.BGDef, 1)
+		local hintContext = 'start'
+		if getCredits() == 0 then
+			hintContext = 'insert'
+		end
+		main.f_hintDraw(motif.attract_mode.hint, hintContext)
 		--draw fadein / fadeout
 		if not fadeOutStarted and not fadeActive() and ((getCredits() ~= 0 and getInput(-1, motif.attract_mode.start.press.key)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
 			if getCredits() ~= 0 then
@@ -3801,6 +3863,42 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 	return cursorPosY, moveTxt, item
 end
 
+-- Draws a menu hint, for example "A: Select  B: Back"
+function main.f_hintDraw(hint, context, values, source, side, actions)
+	if hint == nil then
+		return
+	end
+	main.f_animPosDraw(hint.bg.AnimData)
+	textImgReset(hint.TextSpriteData)
+	if source ~= nil then
+		textImgSetGlyphSource(hint.TextSpriteData, source)
+	end
+	local text = hint.text[context or 'default'] or hint.text.default or ''
+	if actions ~= nil then
+		-- Shared popups use the caller's menu keys, not the Warning Info section.
+		text = text:gsub('<action:([^>]+)>', function(name)
+			if actions[name] == nil then
+				return '<action:' .. name .. '>'
+			end
+			local glyphs = {}
+			for _, key in ipairs(actions[name]) do
+				table.insert(glyphs, '<input:' .. key .. '>')
+			end
+			return table.concat(glyphs)
+		end)
+	end
+	if side ~= nil then
+		-- The same human can select a CPU team with that team's menu keys.
+		text = text:gsub('<action:player%.', '<action:p' .. side .. '.')
+		text = text:gsub(',player%.', ',p' .. side .. '.')
+	end
+	if values ~= nil then
+		text = main.f_formatBySpec(text, values)
+	end
+	textImgSetText(hint.TextSpriteData, text)
+	textImgDraw(hint.TextSpriteData)
+end
+
 --common menu draw
 function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear, opts)
 	main.f_preloadTick(2)
@@ -3889,6 +3987,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		end
 		textImgReset(labelSprite)
 		textImgAddPos(labelSprite, posX, posY)
+		textImgSetGlyphSource(labelSprite, itemData.glyphSource or 0)
 		textImgSetText(labelSprite, displayname)
 		textImgDraw(labelSprite)
 		-- value / info sprites
@@ -3897,12 +3996,14 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 				local spr = m.item.value.conflict.TextSpriteData
 				textImgReset(spr)
 				textImgAddPos(spr, posX, posY)
+				textImgSetGlyphSource(spr, itemData.glyphSource or 0)
 				textImgSetText(spr, itemData.vardisplay)
 				textImgDraw(spr)
 			else
 				local spr = isActive and m.item.value.active.TextSpriteData or m.item.value.TextSpriteData
 				textImgReset(spr)
 				textImgAddPos(spr, posX, posY)
+				textImgSetGlyphSource(spr, itemData.glyphSource or 0)
 				textImgSetText(spr, itemData.vardisplay)
 				textImgDraw(spr)
 			end
@@ -4000,6 +4101,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(sec.footer.info.TextSpriteData)
 		textImgDraw(sec.footer.version.TextSpriteData)
 	end
+	main.f_hintDraw(opts.hint or sec.hint, opts.hintContext, nil, nil, nil, opts.hintActions)
 	--frame transition
 	if not skipClear then
 		refresh()

@@ -2086,6 +2086,28 @@ function start.f_selectReset(hardReset, preserveProgress)
 	hook.run("start.f_selectReset")
 end
 
+-- Keep the last active local input source if it can still act, otherwise use the first pending one.
+-- Online, inputPlayerSource excludes the remote command lists.
+function start.f_pendingHint(choices)
+	local active = inputActiveSource()
+	local first = nil
+	for _, choice in ipairs(choices) do
+		choice.source = inputPlayerSource(choice.cmd)
+		choice.disconnected = inputPlayerDisconnected(choice.cmd)
+		if choice.source ~= 0 then
+			first = first or choice
+			if choice.source == active then
+				return choice
+			end
+		elseif choice.disconnected then
+			-- A pending player whose controller is unplugged still needs a hint,
+			-- so keep it as a fallback even though it has no live source.
+			first = first or choice
+		end
+	end
+	return first
+end
+
 -- Which command list should drive menu navigation for a given side.
 function start.f_menuCmd(side)
 	if main.cpuSide[side] then
@@ -3169,6 +3191,40 @@ function start.f_selectScreen()
 		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.BGDef, 1)
+		local choices = {}
+		for side, p in ipairs(start.p) do
+			if not p.teamEnd then
+				table.insert(choices, {cmd = start.f_menuCmd(side), context = 'team', side = side})
+			elseif not p.selEnd then
+				for k, selection in ipairs(p.t_selCmd) do
+					local active = not main.coop or (side ~= main.runSide and not gameMode('versuscoop'))
+						or not motif.select_info.coopqueue or k == #p.t_selected + 1
+					if active and selection.selectState < 3 then
+						local hintContext = 'default'
+						if selection.selectState == 1 then
+							hintContext = 'palette'
+						end
+						table.insert(choices, {cmd = selection.cmd, context = hintContext, side = side})
+					end
+				end
+			end
+		end
+		if start.p[1].teamEnd and start.p[2].teamEnd and start.p[1].selEnd and start.p[2].selEnd then
+			local hintContext = 'done'
+			if main.stageMenu and not stageEnd then
+				hintContext = 'stage'
+			end
+			main.f_hintDraw(motif.select_info.hint, hintContext)
+		else
+			local choice = start.f_pendingHint(choices)
+			if choice ~= nil then
+				if choice.disconnected then
+					main.f_hintDraw(motif.select_info.hint, 'disconnected')
+				else
+					main.f_hintDraw(motif.select_info.hint, choice.context, nil, choice.source, choice.side)
+				end
+			end
+		end
 		--frame transition
 		if not fadeActive() and (fadeOutStarted or start.escFlag) then
 			selScreenEnd = true
@@ -4498,6 +4554,53 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.versusbgdef.BGDef, 1)
+		local hint = motif.vs_screen.hint
+		local hintContext = 'default'
+		local buttons = {}
+		local source = nil
+		local orderSide = nil
+		-- A disconnected human side gets the disconnected hint on any versus state,
+		-- including the default screen in modes without order select (e.g. arcade).
+		-- Co-op sides check every member slot, not just the lead.
+		local disconnected = false
+		for side = 1, 2 do
+			if not main.cpuSide[side] then
+				for member = 1, #start.p[side].t_selected do
+					if inputPlayerDisconnected(2 * (member - 1) + side) then
+						disconnected = true
+					end
+				end
+			end
+		end
+		if disconnected then
+			hintContext = 'disconnected'
+		elseif not done then
+			local choices = {}
+			for side = 1, 2 do
+				if t_orderSelect[side] and not main.cpuSide[side] and #start.p[side].t_selected - #t_order[side] > 1 then
+					table.insert(choices, {cmd = side, side = side})
+				end
+			end
+			local choice = start.f_pendingHint(choices)
+			if choice ~= nil then
+				local side = choice.side
+				source = choice.source
+				hintContext = 'order'
+				orderSide = side
+				-- Show every available order button.
+				local seen = {}
+				for member = 1, #start.p[side].t_selected do
+					local pCfg = f_getMotifP(motif.vs_screen, 2 * (member - 1) + side, side)
+					for _, key in ipairs(pCfg.key) do
+						if not seen[key] then
+							seen[key] = true
+							table.insert(buttons, '<input:' .. key .. '>')
+						end
+					end
+				end
+			end
+		end
+		main.f_hintDraw(hint, hintContext, {s = table.concat(buttons)}, source, orderSide)
 		-- hook
 		hook.run("start.f_selectVersus")
 		--draw fadein / fadeout
@@ -4709,6 +4812,7 @@ function start.f_sideSelectEnd()
 		end
 	end
 	bgDraw(motif.sideselectbgdef.BGDef, 1)
+	main.f_hintDraw(sec.hint)
 	refresh()
 end
 
@@ -4953,6 +5057,7 @@ function start.f_sideSelect()
 		local s = start.f_sideSelectBegin()
 		-- columns: 1 = team 1, 2 = unassigned, 3 = team 2
 		local columns = {{}, {}, {}}
+		local active = inputActiveSource()
 		for _, source in ipairs(inputSources()) do
 			if canSelect(source, counts) then
 				local col = 2
@@ -4996,12 +5101,12 @@ function start.f_sideSelect()
 				-- the ready row of the input source last used.
 				local style = column
 				if col == 2 then
-					if source.id == focus then
+					if source.id == active then
 						style = column.active
 					end
 				elseif source.ready then
 					style = column.done
-					if source.id == focus then
+					if source.id == active then
 						style = column.done.active
 					end
 				else

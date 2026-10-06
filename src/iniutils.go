@@ -2348,6 +2348,8 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 	// textImgSetFriction
 	ts.friction = friction
 
+	// Only motif text may contain inline glyph tags.
+	_, ts.glyphs = obj.(*Motif)
 	fVal.Set(reflect.ValueOf(ts))
 }
 
@@ -2735,6 +2737,11 @@ func PopulateDataPointers(obj interface{}, rootLocalcoord [2]int32) {
 				if kind == reflect.Ptr && fVal.Type().AssignableTo(textSpritePtrType) {
 					if fVal.IsNil() && fVal.CanSet() {
 						SetTextSprite(obj, fVal, v, parent)
+						// Remember the screen, so <action:...> tags can read that screen's key settings first.
+						ts := fVal.Interface().(*TextSprite)
+						if ts.glyphs {
+							ts.glyphSection = strings.SplitN(path, ".", 2)[0]
+						}
 					}
 					continue
 				}

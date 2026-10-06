@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode/utf8"
 )
@@ -763,6 +765,12 @@ type TextSprite struct {
 	ownerid        int32
 	id             int32
 	text, textInit string
+	glyphs         bool // motif / Lua text may contain inline input glyphs
+	glyphSection   string
+	glyphSource    int // zero follows the last active menu input source
+	glyphScale     [2]float32
+	glyphOffset    [2]float32
+	glyphSpacing   *float32 // nil uses the font spacing
 	template       string
 	params         []interface{}
 	fnt            *Fnt
@@ -815,6 +823,7 @@ func (ts *TextSprite) loadDefaults() {
 	prm := ts.params[:0]
 
 	*ts = TextSprite{
+		glyphScale: [2]float32{1, 1},
 		id:         -1,
 		align:      1,
 		xscl:       1,
@@ -987,7 +996,20 @@ func (ts *TextSprite) IsFullyTyped() bool {
 	if ts.textDelay <= 0 {
 		return true // There's no partial logic
 	}
-	if int32(len(ts.text)) <= int32(ts.elapsedTicks/ts.textDelay) {
+	length := len(ts.text)
+	if ts.glyphs && strings.Contains(ts.text, "<") {
+		length = 0
+		text := ts.decodeEscapes(strings.ReplaceAll(ts.text, "\t", "    "))
+		for _, line := range strings.Split(text, "\n") {
+			for _, run := range ts.glyphRuns(line) {
+				length += utf8.RuneCountInString(run.text)
+				if run.anim != nil {
+					length++
+				}
+			}
+		}
+	}
+	if int32(length) <= int32(ts.elapsedTicks/ts.textDelay) {
 		return true
 	}
 	return false
@@ -996,6 +1018,9 @@ func (ts *TextSprite) IsFullyTyped() bool {
 func (ts *TextSprite) TextWidth(txt string) int32 {
 	if ts.fnt == nil {
 		return 0
+	}
+	if ts.glyphs && strings.Contains(txt, "<") {
+		return int32(math.Round(float64(ts.glyphTextWidth(ts.glyphRuns(txt)))))
 	}
 	spacingXAdd := int32(math.Round(float64(ts.textSpacing[0])))
 	return ts.fnt.TextWidth(txt, ts.bank, spacingXAdd)
@@ -1412,6 +1437,10 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 	// We do this first so that length checks are accurate
 	text := strings.ReplaceAll(ts.text, "\t", "    ")
 	text = ts.decodeEscapes(text)
+	if ts.glyphs && strings.Contains(text, "<") {
+		ts.drawGlyphText(text, window)
+		return
+	}
 
 	maxChars := int32(len(text))
 
@@ -1467,7 +1496,325 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 	}
 }
 
+// A piece of text, or a single inline glyph sprite.
+type glyphRun struct {
+	text string
+	anim *Animation
+}
+
+// Input names refer directly to [Glyphs]. Controller overrides change only
+// the group and any image numbers that differ from the base gamepad artwork.
+func (ts *TextSprite) bindingGlyph(token string, keyboard bool) []glyphRun {
+	m := &sys.motif
+	name := "keyboard." + token
+	if !keyboard {
+		name = "gamepad." + token
+		if base := m.glyph(name); base != nil {
+			src := sys.glyphSource(ts.glyphSource)
+			controller := input.GlyphController(src, &m.ControllerGlyphs)
+			for _, kind := range []string{controller, "generic"} {
+				if variant := m.ControllerGlyphs.Controller[kind]; variant != nil {
+					group, index := base.Spr[0], base.Spr[1]
+					if variant.Group >= 0 {
+						group = variant.Group
+					}
+					// Respect SDL's label/position preference when Nintendo artwork is used.
+					if (kind == "switch" || kind == "switch2") && input.GlyphSwapNintendo() {
+						swapped := map[string]string{"A": "B", "B": "A", "X": "Y", "Y": "X"}[token]
+						if g := m.glyph("gamepad." + swapped); g != nil {
+							index = g.Spr[1]
+						}
+					}
+					if value, ok := variant.Gamepad[token]; ok {
+						index = value
+					}
+					if a := m.glyphAnimation(group, index); a != nil {
+						return []glyphRun{{anim: a}}
+					}
+				}
+			}
+		}
+	}
+	if a := m.namedGlyph(name); a != nil {
+		return []glyphRun{{anim: a}}
+	}
+	return []glyphRun{{text: token}}
+}
+
+func (ts *TextSprite) inputGlyph(key string) []glyphRun {
+	field := key
+	switch key {
+	case "U":
+		field = "up"
+	case "D":
+		field = "down"
+	case "L", "B":
+		field = "left"
+	case "R", "F":
+		field = "right"
+	case "s":
+		field = "start"
+	case "m":
+		field = "menu"
+	}
+	src := sys.glyphSource(ts.glyphSource)
+	if src != nil {
+		if p := sys.cfg.InputProfile[src.Profile]; p != nil {
+			for i, name := range inputFields {
+				if field == name {
+					token := profileTokens(p)[i]
+					if ts.glyphSource == 0 && src.ID == sys.uiInputSource {
+						token = sys.uiInputBindings[i]
+					}
+					if (token == "" || token == "-") && src.Joy >= 0 &&
+						sys.uiInputSource == src.ID && ts.glyphSection == "option_info" {
+						// Empty profiles still use SDL's fixed controls in the editor.
+						token = map[string]string{
+							"up": "DP_U", "down": "DP_D", "left": "DP_L", "right": "DP_R",
+							"start": "START", "menu": "BACK",
+						}[field]
+					}
+					if token == "" || token == "-" {
+						return nil
+					}
+					return ts.bindingGlyph(token, src.Joy < 0)
+				}
+			}
+		}
+	}
+	return []glyphRun{{text: key}}
+}
+
+// Reads a motif setting for an <action:...> or <keycode:...> tag, preferring the
+// screen this text belongs to. player.* means the side of the active player.
+func (ts *TextSprite) glyphAction(path, suffix string) (interface{}, error) {
+	if strings.HasPrefix(path, "player.") {
+		side := TS_Left
+		if src := sys.glyphSource(ts.glyphSource); src != nil {
+			if owner := sys.inputs.owner(src.ID); owner >= 0 && sys.inputs.Participants[owner].Side != TS_None {
+				side = sys.inputs.Participants[owner].Side
+			}
+		}
+		nc := sys.netConnection
+		if sys.rollback.session != nil {
+			nc = sys.rollback.netConnection
+		}
+		if nc != nil {
+			side = TeamSide(nc.locIn%2 + 1)
+		}
+		path = fmt.Sprintf("p%d.%s", side, strings.TrimPrefix(path, "player."))
+	}
+	if ts.glyphSection != "" {
+		if value, err := GetValue(&sys.motif, ts.glyphSection+"."+path+"."+suffix); err == nil {
+			return value, nil
+		}
+	}
+	return GetValue(&sys.motif, path+"."+suffix)
+}
+
+// Turns one <...> tag into a glyph or its text fallback. Reports whether the tag
+// was recognized, so unknown tags stay in the text as written.
+func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
+	// Nothing to look up before a motif is loaded.
+	if sys.motif.IniFile == nil {
+		return nil, false
+	}
+	if strings.HasPrefix(tag, "input:") {
+		return ts.inputGlyph(strings.TrimPrefix(tag, "input:")), true
+	}
+	if strings.HasPrefix(tag, "key:") {
+		return ts.bindingGlyph(strings.TrimPrefix(tag, "key:"), true), true
+	}
+	if strings.HasPrefix(tag, "keycode:") {
+		if value, err := ts.glyphAction(strings.TrimPrefix(tag, "keycode:"), "keycode"); err == nil {
+			if key, ok := value.(string); ok {
+				return ts.bindingGlyph(key, true), true
+			}
+		}
+	}
+	if strings.HasPrefix(tag, "binding:") {
+		src := sys.glyphSource(ts.glyphSource)
+		return ts.bindingGlyph(strings.TrimPrefix(tag, "binding:"), src == nil || src.Joy < 0), true
+	}
+	if strings.HasPrefix(tag, "action:") {
+		paths := strings.Split(strings.TrimPrefix(tag, "action:"), ",")
+		var keys []string
+		for _, path := range paths {
+			value, err := ts.glyphAction(strings.TrimSpace(path), "key")
+			actionKeys, ok := value.([]string)
+			if err != nil || !ok {
+				return nil, false
+			}
+			keys = append(keys, actionKeys...)
+		}
+		if len(paths) > 1 {
+			order := map[string]int{"U": 0, "D": 1, "L": 2, "B": 2, "R": 3, "F": 3}
+			sort.SliceStable(keys, func(i, j int) bool {
+				a, aok := order[keys[i]]
+				b, bok := order[keys[j]]
+				return aok && (!bok || a < b)
+			})
+		}
+		var runs []glyphRun
+		for _, key := range keys {
+			runs = append(runs, ts.inputGlyph(key)...)
+		}
+		return runs, true
+	}
+	if a := sys.motif.namedGlyph(tag); a != nil {
+		return []glyphRun{{anim: a}}, true
+	}
+	return nil, false
+}
+
+// Splits a line into plain text and glyph tags, merging adjacent text pieces so
+// font spacing and kerning are not affected by how the text was written.
+func (ts *TextSprite) glyphRuns(text string) []glyphRun {
+	var runs []glyphRun
+	appendRuns := func(parts ...glyphRun) {
+		for _, part := range parts {
+			if part.anim == nil && part.text == "" {
+				continue
+			}
+			if n := len(runs); n > 0 && runs[n-1].anim == nil && part.anim == nil {
+				runs[n-1].text += part.text
+			} else {
+				runs = append(runs, part)
+			}
+		}
+	}
+	for len(text) > 0 {
+		start := strings.IndexByte(text, '<')
+		if start < 0 {
+			appendRuns(glyphRun{text: text})
+			break
+		}
+		end := strings.IndexByte(text[start:], '>')
+		if end < 0 {
+			appendRuns(glyphRun{text: text})
+			break
+		}
+		end += start
+		if g, ok := ts.resolveGlyph(text[start+1 : end]); ok {
+			if start > 0 {
+				appendRuns(glyphRun{text: text[:start]})
+			}
+			appendRuns(g...)
+		} else {
+			appendRuns(glyphRun{text: text[:end+1]})
+		}
+		text = text[end+1:]
+	}
+	return runs
+}
+
+// Width of a glyph scaled to the font height, in text units.
+func (ts *TextSprite) glyphWidth(a *Animation) float32 {
+	if a == nil || a.spr == nil || a.spr.Size[1] == 0 || ts.xscl == 0 {
+		return 0
+	}
+	return float32(ts.fnt.Size[1]) * float32(a.spr.Size[0]) / float32(a.spr.Size[1]) * ts.glyphScale[0] * ts.yscl / ts.xscl
+}
+
+// Spacing between runs is the same as between font characters. Command lists
+// can override it for glyphs with their existing glyphs.spacing setting.
+func (ts *TextSprite) glyphRunSpacing(run glyphRun) float32 {
+	if run.anim != nil && ts.glyphSpacing != nil {
+		return *ts.glyphSpacing
+	}
+	spacing := float32(math.Round(float64(ts.textSpacing[0])))
+	if ts.fnt.Type != "truetype" {
+		spacing += float32(ts.fnt.Spacing[0])
+	}
+	return spacing
+}
+
+func (ts *TextSprite) glyphTextWidth(runs []glyphRun) float32 {
+	var width float32
+	spacing := int32(math.Round(float64(ts.textSpacing[0])))
+	for i, run := range runs {
+		if i > 0 {
+			width += ts.glyphRunSpacing(runs[i-1])
+		}
+		width += ts.glyphWidth(run.anim) + float32(ts.fnt.TextWidth(run.text, ts.bank, spacing))
+	}
+	return width
+}
+
+// Draws text with inline glyphs, using the font's baseline, scaling, alignment
+// and clipping. Glyph animations are copied before drawing, because the same
+// glyph can appear in several rows with a different alpha.
+func (ts *TextSprite) drawGlyphText(text string, window [4]int32) {
+	if ts.xscl == 0 || ts.yscl == 0 {
+		return
+	}
+	// Number of characters still to draw, for the typewriter effect.
+	remaining := math.MaxInt
+	if ts.textDelay > 0 {
+		remaining = int((ts.elapsedTicks + ts.textDelay) / ts.textDelay)
+	}
+	spacing := int32(math.Round(float64(ts.textSpacing[0])))
+	for i, line := range strings.Split(text, "\n") {
+		runs := ts.glyphRuns(line)
+		x, y := ts.x+ts.vel[0], ts.y+ts.vel[1]+float32(i)*(float32(ts.fnt.Size[1])+float32(ts.fnt.Spacing[1])+ts.textSpacing[1])*ts.yscl
+		width := ts.glyphTextWidth(runs) * ts.xscl
+		if ts.align == 0 {
+			x -= width / 2
+		} else if ts.align == -1 {
+			x -= width - ts.localScale
+		}
+		for n, run := range runs {
+			if remaining <= 0 {
+				return
+			}
+			if n > 0 {
+				x += ts.glyphRunSpacing(runs[n-1]) * ts.xscl
+			}
+			if run.anim != nil && run.anim.spr != nil {
+				a := *run.anim
+				scale := float32(ts.fnt.Size[1]) * ts.yscl / float32(a.spr.Size[1])
+				xs, ys := scale*ts.glyphScale[0], scale*ts.glyphScale[1]
+				a.transType = TT_add
+				a.srcAlpha = int16(255 * Clamp(ts.frgba[3], float32(0), float32(1)))
+				a.dstAlpha = 255 - a.srcAlpha
+				// Bitmap text occupies y - Size.Y + 1 through y + 1 (DrawText).
+				// Align the glyph's bottom to that baseline, independent of its SFF axes.
+				baseline := float32(0)
+				if ts.fnt.Type != "truetype" {
+					baseline = float32(ts.fnt.offset[1]+1) * ts.yscl
+				}
+				xpos := x + float32(ts.fnt.offset[0])*ts.xscl + float32(a.spr.Offset[0])*xs + ts.glyphOffset[0]*ts.localScale
+				ypos := y + baseline + float32(int32(a.spr.Offset[1])-int32(a.spr.Size[1]))*ys + ts.glyphOffset[1]*ts.localScale
+				xpos += ts.xshear * float32(a.spr.Offset[1]) * ys
+				a.Draw(&window, xpos+float32(int(sys.gameWidth-320)/2), ypos+float32(int(sys.gameHeight-240)),
+					1, 1, xs, xs, ys, -ts.xshear, ts.rot, 0, [2]float32{}, ts.palfx, 1, [2]float32{1, 1}, ts.projection, ts.fLength, false, CustomShaderRenderData{})
+				x += ts.glyphWidth(run.anim) * ts.xscl
+				remaining--
+			}
+			if run.text != "" && remaining > 0 {
+				runes := []rune(run.text)
+				if len(runes) > remaining {
+					runes = runes[:remaining]
+				}
+				visible := string(runes)
+				xpos := x + ts.xshear*float32(ts.fnt.offset[1])*ts.yscl
+				if ts.fnt.Type == "truetype" {
+					ts.fnt.DrawTtf(visible, xpos, y, ts.xscl, ts.yscl, -ts.xshear, ts.rot, ts.projection, ts.fLength, 1, true, &window, ts.frgba, ts.palfx, float32(spacing), ts.customShader.renderData(true))
+				} else {
+					ts.fnt.DrawText(visible, xpos, y, ts.xscl, ts.yscl, -ts.xshear, ts.rot, ts.projection, ts.fLength, ts.bank, 1, &window, ts.frgba, ts.palfx, spacing, ts.customShader.renderData(true))
+				}
+				x += float32(ts.fnt.TextWidth(visible, ts.bank, spacing)) * ts.xscl
+				remaining -= utf8.RuneCountInString(visible)
+			}
+		}
+	}
+}
+
 func (ts *TextSprite) Reset() {
+	ts.glyphSource = 0
+	ts.glyphScale = [2]float32{1, 1}
+	ts.glyphOffset = [2]float32{}
+	ts.glyphSpacing = nil
 	ts.SetPos(ts.offsetInit[0], ts.offsetInit[1])
 	ts.SetScale(ts.scaleInit[0], ts.scaleInit[1])
 	ts.SetWindow(ts.windowInit)

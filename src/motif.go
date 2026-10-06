@@ -274,6 +274,22 @@ type GlyphProperties struct {
 	Size       [2]int32 `lua:"Size"`
 }
 
+type ControllerGlyphsProperties struct {
+	Controller map[string]*ControllerGlyphProperties `ini:"controller"`
+	GUID       map[string]string                     `ini:"guid" literal:"true"`
+	Name       map[string]string                     `ini:"name" literal:"true"`
+}
+
+type ControllerGlyphProperties struct {
+	Gamepad map[string]int32 `ini:"gamepad" insensitivekeys:"false"`
+	Group   int32            `ini:"group" default:"-1"`
+}
+
+type HintProperties struct {
+	TextMapProperties
+	Bg AnimationProperties `ini:"bg"`
+}
+
 type MenuProperties struct {
 	Pos   [2]float32      `ini:"pos" default:"1000,900"`
 	Tween TweenProperties `ini:"tween"`
@@ -356,6 +372,7 @@ type InfoBoxProperties struct {
 	Text    TextProperties    `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
 	KeyCode string            `ini:"keycode"`
+	Hint    HintProperties    `ini:"hint"`
 }
 
 type CellOverrideProperties struct {
@@ -630,6 +647,7 @@ type TextInputProperties struct {
 	Paste struct {
 		KeyCode string `ini:"keycode"`
 	} `ini:"paste"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type TitleInfoProperties struct {
@@ -664,6 +682,7 @@ type TitleInfoProperties struct {
 		Overlay OverlayProperties `ini:"overlay"`
 	} `ini:"connecting"`
 	TextInput TextInputProperties `ini:"textinput"`
+	Hint      HintProperties      `ini:"hint"`
 }
 
 type SelectInfoProperties struct {
@@ -769,6 +788,7 @@ type SelectInfoProperties struct {
 	Timer         TimerProperties `ini:"timer"`
 	PaletteSelect int32           `ini:"paletteselect"`
 	CoopQueue     bool            `ini:"coopqueue" default:"false"`
+	Hint          HintProperties  `ini:"hint"`
 }
 
 type VsScreenProperties struct {
@@ -814,6 +834,7 @@ type VsScreenProperties struct {
 		Wait       AnimationTextProperties `ini:"wait"`
 		Storyboard string                  `ini:"storyboard" lookup:"def,,data/"`
 	} `ini:"loading"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type DemoModeProperties struct {
@@ -909,6 +930,7 @@ type ContinueScreenProperties struct {
 		MapCounts map[string]*ContinueCounterProperties `ini:"map:^[0-9]+$" lua:""`
 		End       ContinueCounterProperties             `ini:"end"`
 	} `ini:"counter"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type StoryboardProperties struct {
@@ -953,14 +975,15 @@ type VictoryScreenProperties struct {
 	Cancel struct {
 		Key []string `ini:"key"`
 	} `ini:"cancel"`
-	P1 PlayerVictoryProperties `ini:"p1"`
-	P2 PlayerVictoryProperties `ini:"p2"`
-	P3 PlayerVictoryProperties `ini:"p3"`
-	P4 PlayerVictoryProperties `ini:"p4"`
-	P5 PlayerVictoryProperties `ini:"p5"`
-	P6 PlayerVictoryProperties `ini:"p6"`
-	P7 PlayerVictoryProperties `ini:"p7"`
-	P8 PlayerVictoryProperties `ini:"p8"`
+	P1   PlayerVictoryProperties `ini:"p1"`
+	P2   PlayerVictoryProperties `ini:"p2"`
+	P3   PlayerVictoryProperties `ini:"p3"`
+	P4   PlayerVictoryProperties `ini:"p4"`
+	P5   PlayerVictoryProperties `ini:"p5"`
+	P6   PlayerVictoryProperties `ini:"p6"`
+	P7   PlayerVictoryProperties `ini:"p7"`
+	P8   PlayerVictoryProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type WinScreenProperties struct {
@@ -985,14 +1008,15 @@ type WinScreenProperties struct {
 	Cancel  struct {
 		Key []string `ini:"key"`
 	} `ini:"cancel"`
-	P1 PlayerResultsProperties `ini:"p1"`
-	P2 PlayerResultsProperties `ini:"p2"`
-	P3 PlayerResultsProperties `ini:"p3"`
-	P4 PlayerResultsProperties `ini:"p4"`
-	P5 PlayerResultsProperties `ini:"p5"`
-	P6 PlayerResultsProperties `ini:"p6"`
-	P7 PlayerResultsProperties `ini:"p7"`
-	P8 PlayerResultsProperties `ini:"p8"`
+	P1   PlayerResultsProperties `ini:"p1"`
+	P2   PlayerResultsProperties `ini:"p2"`
+	P3   PlayerResultsProperties `ini:"p3"`
+	P4   PlayerResultsProperties `ini:"p4"`
+	P5   PlayerResultsProperties `ini:"p5"`
+	P6   PlayerResultsProperties `ini:"p6"`
+	P7   PlayerResultsProperties `ini:"p7"`
+	P8   PlayerResultsProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type ResultsScreenProperties struct {
@@ -1017,14 +1041,15 @@ type ResultsScreenProperties struct {
 	Cancel  struct {
 		Key []string `ini:"key"`
 	} `ini:"cancel"`
-	P1 PlayerResultsProperties `ini:"p1"`
-	P2 PlayerResultsProperties `ini:"p2"`
-	P3 PlayerResultsProperties `ini:"p3"`
-	P4 PlayerResultsProperties `ini:"p4"`
-	P5 PlayerResultsProperties `ini:"p5"`
-	P6 PlayerResultsProperties `ini:"p6"`
-	P7 PlayerResultsProperties `ini:"p7"`
-	P8 PlayerResultsProperties `ini:"p8"`
+	P1   PlayerResultsProperties `ini:"p1"`
+	P2   PlayerResultsProperties `ini:"p2"`
+	P3   PlayerResultsProperties `ini:"p3"`
+	P4   PlayerResultsProperties `ini:"p4"`
+	P5   PlayerResultsProperties `ini:"p5"`
+	P6   PlayerResultsProperties `ini:"p6"`
+	P7   PlayerResultsProperties `ini:"p7"`
+	P8   PlayerResultsProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type OptionInfoProperties struct {
@@ -1044,10 +1069,12 @@ type OptionInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	TextInput TextInputProperties `ini:"textinput"`
+	UseGlyphs bool                `ini:"useglyphs"`
 	Unbind    struct {
 		KeyCode string `ini:"keycode"`
 	} `ini:"unbind"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
+	Hint     HintProperties    `ini:"hint"`
 }
 
 type ReplayInfoProperties struct {
@@ -1066,6 +1093,7 @@ type ReplayInfoProperties struct {
 	Cancel struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type MovelistGlyphsProperties struct {
@@ -1125,7 +1153,9 @@ type MenuInfoProperties struct {
 			Down AnimationProperties `ini:"down"`
 		} `ini:"arrow"`
 		Itemname map[string]string `ini:"itemname"`
+		Hint     HintProperties    `ini:"hint"`
 	} `ini:"movelist"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type AttractModeProperties struct {
@@ -1177,6 +1207,7 @@ type AttractModeProperties struct {
 		} `ini:"press"`
 		Timer TimerProperties `ini:"timer"`
 	} `ini:"start"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type ChallengerInfoProperties struct {
@@ -1215,8 +1246,9 @@ type DialogueInfoProperties struct {
 	Cancel struct {
 		Key []string `ini:"key"`
 	} `ini:"cancel"`
-	P1 PlayerDialogueProperties `ini:"p1"`
-	P2 PlayerDialogueProperties `ini:"p2"`
+	P1   PlayerDialogueProperties `ini:"p1"`
+	P2   PlayerDialogueProperties `ini:"p2"`
+	Hint HintProperties           `ini:"hint"`
 }
 
 type HiscoreInfoProperties struct {
@@ -1275,7 +1307,8 @@ type HiscoreInfoProperties struct {
 	Move struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
-	Glyphs []string `ini:"glyphs"`
+	Glyphs []string       `ini:"glyphs"`
+	Hint   HintProperties `ini:"hint"`
 }
 
 type WarningInfoProperties struct {
@@ -1291,6 +1324,7 @@ type WarningInfoProperties struct {
 	Done struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
+	Hint HintProperties `ini:"hint"`
 }
 
 // A side-select column row. Text maps accept a per-source-kind override,
@@ -1369,72 +1403,75 @@ type SideSelectInfoProperties struct {
 	Window struct {
 		VisibleItems int32 `ini:"visibleitems"`
 	} `ini:"window"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type Motif struct {
-	IniFile         *ini.File
-	UserIniFile     *ini.File
-	DefaultOnlyIni  *ini.File
-	AnimTable       AnimationTable
-	Sff             *Sff
-	Snd             *Snd
-	Fnt             map[int]*Fnt
-	GlyphsSff       *Sff
-	Model           *Model
-	Music           Music
-	Def             string                              `ini:"def"`
-	Info            InfoProperties                      `ini:"info"`
-	Files           FilesProperties                     `ini:"files"`
-	Languages       map[string]string                   `ini:"languages"`
-	TitleInfo       TitleInfoProperties                 `ini:"title_info"`
-	TitleBgDef      BgDefProperties                     `ini:"titlebgdef"`
-	InfoBox         InfoBoxProperties                   `ini:"infobox"`
-	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
-	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
-	SelectInfo      SelectInfoProperties                `ini:"select_info"`
-	SelectBgDef     BgDefProperties                     `ini:"selectbgdef"`
-	VsScreen        VsScreenProperties                  `ini:"vs_screen"`
-	VersusBgDef     BgDefProperties                     `ini:"versusbgdef"`
-	DemoMode        DemoModeProperties                  `ini:"demo_mode"`
-	ContinueScreen  ContinueScreenProperties            `ini:"continue_screen"`
-	ContinueBgDef   BgDefProperties                     `ini:"continuebgdef"`
-	GameOverScreen  StoryboardProperties                `ini:"game_over_screen"`
-	VictoryScreen   VictoryScreenProperties             `ini:"victory_screen"`
-	VictoryBgDef    BgDefProperties                     `ini:"victorybgdef"`
-	WinScreen       WinScreenProperties                 `ini:"win_screen"`
-	WinBgDef        BgDefProperties                     `ini:"winbgdef"`
-	DefaultEnding   StoryboardProperties                `ini:"default_ending"`
-	EndCredits      StoryboardProperties                `ini:"end_credits"`
-	ResultsScreen   map[string]*ResultsScreenProperties `ini:"map:^(?i).+results.*screen$" lua:"results_screen"`
-	ResultsBgDef    map[string]*BgDefProperties         `ini:"map:^(?i).+resultsbgdef$" lua:"resultsbgdef"`
-	OptionInfo      OptionInfoProperties                `ini:"option_info"`
-	OptionBgDef     BgDefProperties                     `ini:"optionbgdef"`
-	ReplayInfo      ReplayInfoProperties                `ini:"replay_info"`
-	ReplayBgDef     BgDefProperties                     `ini:"replaybgdef"`
-	PauseMenu       map[string]*MenuInfoProperties      `ini:"map:^(?i).*pause.*menu$" lua:"pause_menu"`
-	PauseBgDef      map[string]*BgDefProperties         `ini:"map:^(?i).*pausebgdef$" lua:"pausebgdef"`
-	AttractMode     AttractModeProperties               `ini:"attract_mode"`
-	AttractBgDef    BgDefProperties                     `ini:"attractbgdef"`
-	ChallengerInfo  ChallengerInfoProperties            `ini:"challenger_info"`
-	ChallengerBgDef BgDefProperties                     `ini:"challengerbgdef"`
-	DialogueInfo    DialogueInfoProperties              `ini:"dialogue_info"`
-	HiscoreInfo     HiscoreInfoProperties               `ini:"hiscore_info"`
-	HiscoreBgDef    BgDefProperties                     `ini:"hiscorebgdef"`
-	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
-	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
-	fntIndexByKey   map[string]int                      // filepath|height -> index
-	inheritedKeys   map[string]bool                     // normalized .anim/.spr paths assigned by overrideParams inheritance
-	ch              MotifChallenger
-	co              MotifContinue
-	de              MotifDemo
-	di              MotifDialogue
-	vi              MotifVictory
-	wi              MotifWin
-	hi              MotifHiscore
-	me              MotifMenu
-	fadeIn          *Fade
-	fadeOut         *Fade
-	fadePolicy      FadeStartPolicy
+	IniFile          *ini.File
+	UserIniFile      *ini.File
+	DefaultOnlyIni   *ini.File
+	AnimTable        AnimationTable
+	Sff              *Sff
+	Snd              *Snd
+	Fnt              map[int]*Fnt
+	GlyphAnimations  map[[2]int32]*Animation
+	GlyphsSff        *Sff
+	Model            *Model
+	Music            Music
+	Def              string                              `ini:"def"`
+	Info             InfoProperties                      `ini:"info"`
+	Files            FilesProperties                     `ini:"files"`
+	Languages        map[string]string                   `ini:"languages"`
+	TitleInfo        TitleInfoProperties                 `ini:"title_info"`
+	TitleBgDef       BgDefProperties                     `ini:"titlebgdef"`
+	InfoBox          InfoBoxProperties                   `ini:"infobox"`
+	SideSelectInfo   SideSelectInfoProperties            `ini:"side_select_info"`
+	SideSelectBgDef  BgDefProperties                     `ini:"sideselectbgdef"`
+	SelectInfo       SelectInfoProperties                `ini:"select_info"`
+	SelectBgDef      BgDefProperties                     `ini:"selectbgdef"`
+	VsScreen         VsScreenProperties                  `ini:"vs_screen"`
+	VersusBgDef      BgDefProperties                     `ini:"versusbgdef"`
+	DemoMode         DemoModeProperties                  `ini:"demo_mode"`
+	ContinueScreen   ContinueScreenProperties            `ini:"continue_screen"`
+	ContinueBgDef    BgDefProperties                     `ini:"continuebgdef"`
+	GameOverScreen   StoryboardProperties                `ini:"game_over_screen"`
+	VictoryScreen    VictoryScreenProperties             `ini:"victory_screen"`
+	VictoryBgDef     BgDefProperties                     `ini:"victorybgdef"`
+	WinScreen        WinScreenProperties                 `ini:"win_screen"`
+	WinBgDef         BgDefProperties                     `ini:"winbgdef"`
+	DefaultEnding    StoryboardProperties                `ini:"default_ending"`
+	EndCredits       StoryboardProperties                `ini:"end_credits"`
+	ResultsScreen    map[string]*ResultsScreenProperties `ini:"map:^(?i).+results.*screen$" lua:"results_screen"`
+	ResultsBgDef     map[string]*BgDefProperties         `ini:"map:^(?i).+resultsbgdef$" lua:"resultsbgdef"`
+	OptionInfo       OptionInfoProperties                `ini:"option_info"`
+	OptionBgDef      BgDefProperties                     `ini:"optionbgdef"`
+	ReplayInfo       ReplayInfoProperties                `ini:"replay_info"`
+	ReplayBgDef      BgDefProperties                     `ini:"replaybgdef"`
+	PauseMenu        map[string]*MenuInfoProperties      `ini:"map:^(?i).*pause.*menu$" lua:"pause_menu"`
+	PauseBgDef       map[string]*BgDefProperties         `ini:"map:^(?i).*pausebgdef$" lua:"pausebgdef"`
+	AttractMode      AttractModeProperties               `ini:"attract_mode"`
+	AttractBgDef     BgDefProperties                     `ini:"attractbgdef"`
+	ChallengerInfo   ChallengerInfoProperties            `ini:"challenger_info"`
+	ChallengerBgDef  BgDefProperties                     `ini:"challengerbgdef"`
+	DialogueInfo     DialogueInfoProperties              `ini:"dialogue_info"`
+	HiscoreInfo      HiscoreInfoProperties               `ini:"hiscore_info"`
+	HiscoreBgDef     BgDefProperties                     `ini:"hiscorebgdef"`
+	WarningInfo      WarningInfoProperties               `ini:"warning_info"`
+	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
+	Glyphs           map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
+	fntIndexByKey    map[string]int                      // filepath|height -> index
+	inheritedKeys    map[string]bool                     // normalized .anim/.spr paths assigned by overrideParams inheritance
+	ch               MotifChallenger
+	co               MotifContinue
+	de               MotifDemo
+	di               MotifDialogue
+	vi               MotifVictory
+	wi               MotifWin
+	hi               MotifHiscore
+	me               MotifMenu
+	fadeIn           *Fade
+	fadeOut          *Fade
+	fadePolicy       FadeStartPolicy
 }
 
 // hasUserKey returns true if the given key exists in `section` of the INI.
@@ -1919,7 +1956,65 @@ func loadMotif(def string) (*Motif, error) {
 	return &m, nil
 }
 
-// Propagates movelist.glyphs defaults
+// Draws the hint for the given situation, falling back to the default text.
+func (h *HintProperties) Draw(layerno int16, context string) {
+	if h == nil {
+		return
+	}
+	if h.Bg.AnimData != nil && h.Bg.Layerno == layerno {
+		h.Bg.AnimData.Update(false)
+		h.Bg.AnimData.Draw(layerno)
+	}
+	if h.TextSpriteData != nil {
+		text, ok := h.Text[context]
+		if !ok {
+			text = h.Text["default"]
+		}
+		h.TextSpriteData.text = text
+		h.TextSpriteData.Draw(layerno)
+	}
+}
+
+// Returns a cached one-frame animation for a glyph sprite. Built the same way as
+// the motif's other single sprites, see SetAnim.
+func (m *Motif) glyphAnimation(group, index int32) *Animation {
+	if m.GlyphsSff == nil || group < 0 || group > math.MaxUint16 || index < 0 || index > math.MaxUint16 {
+		return nil
+	}
+	key := [2]int32{group, index}
+	if a := m.GlyphAnimations[key]; a != nil {
+		return a
+	}
+	sprite := m.GlyphsSff.GetSprite(uint16(group), uint16(index))
+	if sprite == nil || sprite.Size[0] == 0 || sprite.Size[1] == 0 {
+		return nil
+	}
+	if m.GlyphAnimations == nil {
+		m.GlyphAnimations = make(map[[2]int32]*Animation)
+	}
+	a := NewAnim(m.GlyphsSff, fmt.Sprintf("%d,%d, 0,0, -1", group, index)).anim
+	a.UpdateSprite()
+	m.GlyphAnimations[key] = a
+	return a
+}
+
+// Looks up a glyph by name, accepting both <name> and name.
+func (m *Motif) glyph(name string) *GlyphProperties {
+	name = strings.TrimSuffix(strings.TrimPrefix(name, "<"), ">")
+	if g := m.Glyphs["<"+name+">"]; g != nil {
+		return g
+	}
+	return m.Glyphs[name] // Existing command-list glyphs, e.g. <_U> and <^A>.
+}
+
+func (m *Motif) namedGlyph(name string) *Animation {
+	if g := m.glyph(name); g != nil {
+		return m.glyphAnimation(g.Spr[0], g.Spr[1])
+	}
+	return nil
+}
+
+// Propagates movelist.glyphs defaults.
 func (m *Motif) applyGlyphDefaultsFromMovelist() {
 	if m == nil {
 		return
@@ -4059,6 +4154,13 @@ func (co *MotifContinue) draw(m *Motif, layerno int16) {
 	if layerno == 2 {
 		m.ContinueBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	if !co.selected {
+		context := "default"
+		if !m.ContinueScreen.LegacyMode.Enabled {
+			context = "arcade"
+		}
+		m.ContinueScreen.Hint.Draw(layerno, context)
+	}
 }
 
 type MotifDemo struct {
@@ -5214,6 +5316,7 @@ func (di *MotifDialogue) draw(m *Motif, layerno int16) {
 	} else if di.activeSide == 2 {
 		m.DialogueInfo.P2.Active.AnimData.Draw(layerno)
 	}
+	m.DialogueInfo.Hint.Draw(layerno, "default")
 }
 
 type MotifHiscore struct {
@@ -5801,6 +5904,11 @@ func (hi *MotifHiscore) draw(m *Motif, layerno int16) {
 	if !hi.noBgs && layerno == 2 {
 		m.HiscoreBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	context := "default"
+	if hi.input {
+		context = "input"
+	}
+	m.HiscoreInfo.Hint.Draw(layerno, context)
 }
 
 func (hi *MotifHiscore) finalizeAndSave() {
@@ -6585,6 +6693,7 @@ func (vi *MotifVictory) draw(m *Motif, layerno int16) {
 	if layerno == 2 {
 		m.VictoryBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	m.VictoryScreen.Hint.Draw(layerno, "default")
 }
 
 // buildSingleFrameFromSFF creates a 1-frame Animation from a raw sprite (grp, idx).
@@ -7064,6 +7173,7 @@ func (wi *MotifWin) draw(m *Motif, layerno int16) {
 		if bg != nil && bg.BGDef != nil && layerno == 2 {
 			bg.BGDef.Draw(int32(layerno), 0, 0, 1)
 		}
+		rs.Hint.Draw(layerno, "default")
 		return
 	}
 	// Fallback: normal win screen.
@@ -7085,4 +7195,5 @@ func (wi *MotifWin) draw(m *Motif, layerno int16) {
 			m.WinBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 		}
 	}
+	m.WinScreen.Hint.Draw(layerno, "default")
 }

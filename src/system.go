@@ -134,6 +134,7 @@ type SystemStateVars struct {
 	keyString           string
 	lastInputController int
 	uiLastInputToken    string
+	uiGlyphSource       int // last accepted menu input; independent of profile editing
 	uiInputSource       int // source navigating the configuration menu
 	uiInputConfig       KeyConfig
 	uiInputBindings     [14]string // bindings used by menu hints during editing
@@ -1597,6 +1598,126 @@ func (s *System) uiRepeatShouldFire(held int32) bool {
 	return (held-(1+s.cfg.Input.UiRepeatDelay))%s.cfg.Input.UiRepeatRate == 0
 }
 
+// Remembers which input source the player last used in a menu, so hints can show
+// its buttons. Only accepted input counts, otherwise a resting gamepad stick
+// would take the hints away from the keyboard.
+func (s *System) noteGlyphInput(source int) {
+	if src := s.inputs.inputSource(source); src != nil && src.Connected {
+		s.uiGlyphSource = source
+	}
+}
+
+// Same for keyboard keys, which are read without going through an input source.
+// Prefers the keyboard profile that binds the key.
+func (s *System) noteKeyboardGlyphInput(key string) {
+	// Esc is a global shortcut, even when the player is using a gamepad.
+	if key == "" || key == "ESCAPE" {
+		return
+	}
+	if src := s.inputs.inputSource(s.uiGlyphSource); src != nil && src.Connected && src.Joy < 0 {
+		return
+	}
+	var keyboard *InputSource
+	for _, src := range s.inputs.Sources {
+		if !src.Connected || src.Joy >= 0 {
+			continue
+		}
+		if keyboard == nil {
+			keyboard = src
+		}
+		if p := s.cfg.InputProfile[src.Profile]; p != nil {
+			for _, token := range profileTokens(p) {
+				if token == key {
+					s.uiGlyphSource = src.ID
+					return
+				}
+			}
+		}
+	}
+	if keyboard != nil {
+		s.uiGlyphSource = keyboard.ID
+	}
+}
+
+// The local connection always reads participant zero, even when it plays on the
+// right. Remote commands must not choose a local controller's hint artwork.
+func (s *System) hintPlayerSource(slot int) *InputSource {
+	nc := s.netConnection
+	if s.rollback.session != nil {
+		nc = s.rollback.netConnection
+	}
+	participant := slot
+	if nc != nil {
+		if slot != nc.locIn {
+			return nil
+		}
+		participant = 0
+	} else if slot >= 0 && slot < len(s.inputRemap) {
+		participant = s.inputRemap[slot]
+	}
+	if participant >= 0 && participant < len(s.inputs.Participants) {
+		if src := s.inputs.inputSource(s.inputs.Participants[participant].Source); src != nil && src.Connected {
+			return src
+		}
+	}
+	return nil
+}
+
+// Reports whether a player slot's participant has an input source assigned but
+// disconnected, so hints can show a disconnected message instead of a blank or
+// misleading one.
+func (s *System) hintPlayerDisconnected(slot int) bool {
+	nc := s.netConnection
+	if s.rollback.session != nil {
+		nc = s.rollback.netConnection
+	}
+	participant := slot
+	if nc != nil {
+		if slot != nc.locIn {
+			return false
+		}
+		participant = 0
+	} else if slot >= 0 && slot < len(s.inputRemap) {
+		participant = s.inputRemap[slot]
+	}
+	if participant < 0 || participant >= len(s.inputs.Participants) {
+		return false
+	}
+	id := s.inputs.Participants[participant].Source
+	if id == 0 {
+		return false
+	}
+	src := s.inputs.inputSource(id)
+	return src != nil && !src.Connected
+}
+
+// Returns the input source whose buttons hints should show.
+func (s *System) glyphSource(source int) *InputSource {
+	// A caller can ask for one specific source, for example the profile being
+	// edited. Never fall back to another source in that case.
+	if source != 0 {
+		return s.inputs.inputSource(source)
+	}
+	// Profile editing accepts only this source, even before its first input.
+	if s.uiInputSource != 0 {
+		return s.inputs.inputSource(s.uiInputSource)
+	}
+	if s.onlineSession() && len(s.inputs.Participants) > 0 {
+		return s.inputs.inputSource(s.inputs.Participants[0].Source)
+	}
+	for _, id := range []int{s.uiGlyphSource, s.inputs.MenuSource} {
+		if src := s.inputs.inputSource(id); src != nil && src.Connected {
+			return src
+		}
+	}
+	for _, src := range s.inputs.Sources {
+		if src.Connected {
+			return src
+		}
+	}
+	return nil
+}
+
 func (s *System) uiControllerKey(controllerIdx int) int {
 	if controllerIdx < 0 {
 		return controllerIdx
@@ -1627,6 +1748,28 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 			return false
 		}
 		controllerKey := s.uiControllerKey(i)
+		// Observe new presses only from the participant this getInput check uses.
+		// A controller not assigned to a match slot must not steal pause-menu hints.
+		if s.uiInputSource != 0 {
+			// Button configuration checks just its editing source and cached bindings.
+			for _, held := range s.uiInputHeld {
+				if held == 1 {
+					s.noteGlyphInput(s.uiInputSource)
+					break
+				}
+			}
+		} else if controllerKey >= 0 && controllerKey < len(s.inputs.Participants) {
+			source := s.inputs.Participants[controllerKey].Source
+			s.pollInputSources()
+			if src := s.inputs.inputSource(source); src != nil {
+				for _, pressed := range src.pressed {
+					if pressed {
+						s.noteGlyphInput(source)
+						break
+					}
+				}
+			}
+		}
 
 		// True for raw controller axis tokens (LS_*, RS_*, LT/RT).
 		// Used when a screenpack uses e.g. getInput(pn, "LS_Y+") directly.
@@ -1718,6 +1861,11 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 				}
 				if !s.netplay() && controllerKey >= 0 && controllerKey < len(s.inputs.Participants) {
 					s.inputs.MenuSource = s.inputs.Participants[controllerKey].Source
+				}
+				if s.uiInputSource != 0 {
+					s.noteGlyphInput(s.uiInputSource)
+				} else if controllerKey >= 0 && controllerKey < len(s.inputs.Participants) {
+					s.noteGlyphInput(s.inputs.Participants[controllerKey].Source)
 				}
 				s.uiLastInputToken = tok
 				return true
@@ -1856,6 +2004,11 @@ func (s *System) uiEnsureCommandLists(total int) error {
 		}
 	}
 	return nil
+}
+
+// True during an online match (netplay or rollback), unlike netplay() which also covers replays.
+func (s *System) onlineSession() bool {
+	return s.netConnection != nil || s.rollback.session != nil
 }
 
 func (s *System) netplay() bool {

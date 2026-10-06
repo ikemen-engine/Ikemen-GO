@@ -2429,6 +2429,9 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 1) {
 			sys.esc = boolArg(l, 1)
 		}
+		if sys.esc && nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput("ESCAPE")
+		}
 		l.Push(lua.LBool(sys.esc))
 		return 1
 	})
@@ -3670,6 +3673,12 @@ func systemScriptInit(l *lua.LState) {
 				l.RaiseError("\nInvalid argument: %v\n", key)
 				return 0
 			}
+			if v == 1 {
+				controller := sys.uiControllerKey(controllerIdx)
+				if controller >= 0 && controller < len(sys.inputs.Participants) {
+					sys.noteGlyphInput(sys.inputs.Participants[controller].Source)
+				}
+			}
 			// 0 if < 0, otherwise 1+
 			if v < 0 {
 				return 0
@@ -3735,6 +3744,14 @@ func systemScriptInit(l *lua.LState) {
 		}
 
 		s, joy := getJoystickKey(controllerIdx)
+		if s != "" {
+			for _, src := range sys.inputs.Sources {
+				if src.Connected && src.Joy == joy {
+					sys.noteGlyphInput(src.ID)
+					break
+				}
+			}
+		}
 
 		l.Push(lua.LString(s))
 		if s != "" {
@@ -3772,6 +3789,7 @@ func systemScriptInit(l *lua.LState) {
 			s = KeyToString(sys.keyInput)
 		}
 		if nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 			l.Push(lua.LString(s))
 			//sys.keyInput = KeyUnknown
 			return 1
@@ -3779,6 +3797,9 @@ func systemScriptInit(l *lua.LState) {
 			//sys.keyInput = KeyUnknown
 			l.Push(lua.LBool(false))
 			return 1
+		}
+		if s == strArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 		}
 		l.Push(lua.LBool(s == strArg(l, 1)))
 		return 1
@@ -3791,6 +3812,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != KeyUnknown {
 			s = sys.keyString
+			sys.noteKeyboardGlyphInput(KeyToString(sys.keyInput))
 		}
 		l.Push(lua.LString(s))
 		return 1
@@ -4403,8 +4425,54 @@ func systemScriptInit(l *lua.LState) {
 				}
 			}
 		}
+		if pressed {
+			sys.noteGlyphInput(src.ID)
+		}
 		l.Push(lua.LBool(pressed))
 		return 1
+	})
+	luaRegister(l, "inputPlayerSource", func(l *lua.LState) int {
+		/*Return the local input source for a gameplay/menu player slot.
+		@function inputPlayerSource
+		@tparam int player 1-based slot.
+		@treturn int sourceId Zero for remote players or unavailable sources.*/
+		id := 0
+		if src := sys.hintPlayerSource(int(numArg(l, 1)) - 1); src != nil {
+			id = src.ID
+		}
+		l.Push(lua.LNumber(id))
+		return 1
+	})
+	luaRegister(l, "inputPlayerDisconnected", func(l *lua.LState) int {
+		/*Report whether a player slot's input source is assigned but disconnected.
+		@function inputPlayerDisconnected
+		@tparam int player 1-based slot.
+		@treturn boolean disconnected `true` only when the slot owns input sources and none are connected.*/
+		l.Push(lua.LBool(sys.hintPlayerDisconnected(int(numArg(l, 1)) - 1)))
+		return 1
+	})
+	luaRegister(l, "inputActiveSource", func(l *lua.LState) int {
+		/*Get the source whose menu input was used last, with its current side.
+		@function inputActiveSource
+		@treturn int sourceId Runtime source ID, or zero if no source is available.
+		@treturn int side Team side (0 unassigned, 1 left, 2 right).*/
+		id, side := 0, TS_None
+		if src := sys.glyphSource(0); src != nil {
+			id = src.ID
+			if owner := sys.inputs.owner(id); owner >= 0 {
+				side = sys.inputs.Participants[owner].Side
+			}
+		}
+		nc := sys.netConnection
+		if sys.rollback.session != nil {
+			nc = sys.rollback.netConnection
+		}
+		if nc != nil {
+			side = TeamSide(nc.locIn%2 + 1)
+		}
+		l.Push(lua.LNumber(id))
+		l.Push(lua.LNumber(side))
+		return 2
 	})
 	luaRegister(l, "inputSources", func(l *lua.LState) int {
 		/*List connected input sources and disconnected sources still owned by a participant.
@@ -7117,7 +7185,9 @@ func systemScriptInit(l *lua.LState) {
 		/*Create a new empty text sprite.
 		@function textImgNew
 		@treturn TextSprite ts Newly created text sprite userdata.*/
-		l.Push(newUserData(l, NewTextSprite()))
+		ts := NewTextSprite()
+		ts.glyphs = true
+		l.Push(newUserData(l, ts))
 		return 1
 	})
 	luaRegister(l, "textImgReset", func(*lua.LState) int {
@@ -7382,6 +7452,40 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.SetScale(float32(numArg(l, 2)), float32(numArg(l, 3)))
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphSource", func(*lua.LState) int {
+		/*Select the source used by <input:...> and <binding:...> in this text sprite.
+		@function textImgSetGlyphSource
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam int sourceId Runtime source ID; zero follows the last menu input.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphSource = int(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphStyle", func(*lua.LState) int {
+		/*Set inline glyph scale and offset relative to the text's font height.
+		@function textImgSetGlyphStyle
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam number scaleX Horizontal glyph scale.
+		@tparam number scaleY Vertical glyph scale.
+		@tparam number offsetX Horizontal glyph offset.
+		@tparam number offsetY Vertical glyph offset.
+		@tparam[opt] number spacing Horizontal space after a glyph, in font units; defaults to font spacing.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphScale = [2]float32{float32(numArg(l, 2)), float32(numArg(l, 3))}
+		ts.glyphOffset = [2]float32{float32(numArg(l, 4)), float32(numArg(l, 5))}
+		ts.glyphSpacing = nil
+		if !nilArg(l, 6) {
+			spacing := float32(numArg(l, 6))
+			ts.glyphSpacing = &spacing
+		}
 		return 0
 	})
 	luaRegister(l, "textImgSetText", func(*lua.LState) int {
