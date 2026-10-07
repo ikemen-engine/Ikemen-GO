@@ -97,6 +97,10 @@ func ShowErrorDialog(message string) {
 	Logcat(fmt.Sprintf("CRITICAL ERROR: %s", message))
 }
 
+func ShowRetryDialog(message string) bool {
+	return false
+}
+
 //export SDL_main
 func SDL_main(argc C.int, argv **C.char) C.int {
 	runtime.LockOSThread()
