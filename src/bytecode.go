@@ -1350,11 +1350,11 @@ func BytecodeString(s string) BytecodeValue {
 	return BytecodeValue{VT_String, float64(idx)}
 }
 
-// Map values hold resolved text instead of a string pool index
-// Because maps are written across chars, survive rollback, and get saved to disk
-// None of which a per-player pool index would survive
+// Typed values hold resolved text instead of a string pool index
+// Since they cross chars, survive rollback and get saved to disk
 // This struct is exported so that Save/LoadFile gob can serialize it
-type MapValue struct {
+// Used for both maps and custom constants, since they are both auto-typed now
+type TypedValue struct {
 	Type ValueType
 	Num  float64
 	Str  string
@@ -1362,14 +1362,14 @@ type MapValue struct {
 
 // Numeric types pass through as-is, so map(x) divides and compares the same way
 // the same literal would anywhere else in an expression
-func MapValueOf(bv BytecodeValue) MapValue {
+func TypedValueOf(bv BytecodeValue) TypedValue {
 	if bv.vtype == VT_String {
-		return MapValue{Type: VT_String, Str: bv.ToS()}
+		return TypedValue{Type: VT_String, Str: bv.ToS()}
 	}
-	return MapValue{Type: bv.vtype, Num: bv.value}
+	return TypedValue{Type: bv.vtype, Num: bv.value}
 }
 
-func (mv MapValue) ToBV() BytecodeValue {
+func (mv TypedValue) ToBV() BytecodeValue {
 	switch mv.Type {
 	case VT_String:
 		return BytecodeString(mv.Str) // Re-interns into the reading char's pool
@@ -1377,6 +1377,11 @@ func (mv MapValue) ToBV() BytecodeValue {
 		return BytecodeFloat(0) // Unset keys still read as 0, as they did before
 	}
 	return BytecodeValue{mv.Type, mv.Num}
+}
+
+// Returns the numeric value for direct use by engine code
+func (mv TypedValue) ToF() float32 {
+	return float32(mv.Num)
 }
 
 type BytecodeStack []BytecodeValue
@@ -2464,7 +2469,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_gameheight:
 			// Optional exception preventing GameHeight from being affected by stage zoom.
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 0 &&
-				c.gi().constants["legacy.gamedistancespec"] == 1 {
+				c.gi().constants["legacy.gamedistancespec"].ToF() == 1 {
 				sys.bcStack.PushF(c.screenHeight())
 			} else {
 				sys.bcStack.PushF(c.gameHeight())
@@ -2474,7 +2479,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_gamewidth:
 			// Optional exception preventing GameWidth from being affected by stage zoom.
 			if c.stWgi().mugenver[0] == 1 && c.stWgi().mugenver[1] == 0 &&
-				c.gi().constants["legacy.gamedistancespec"] == 1 {
+				c.gi().constants["legacy.gamedistancespec"].ToF() == 1 {
 				sys.bcStack.PushF(c.screenWidth())
 			} else {
 				sys.bcStack.PushF(c.gameWidth())
@@ -3228,10 +3233,10 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		}
 	case OC_const_constants:
 		constName := be.ReadPoolStringAt(i)
-		sys.bcStack.PushF(c.gi().constants[constName])
+		sys.bcStack.Push(c.gi().constants[constName].ToBV())
 	case OC_const_stage_constants:
 		constName := be.ReadPoolStringAt(i)
-		sys.bcStack.PushF(sys.stage.constants[constName])
+		sys.bcStack.Push(sys.stage.constants[constName].ToBV())
 	default:
 		LogMessage("%v", be[*i-1])
 		c.panic("Invalid bytecode OpCode encountered")
@@ -6117,7 +6122,7 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 			h.ownProjectile = exp[0].evalB(c)
 		case helper_map:
 			mapKey := exp[0].evalS(c)
-			h.mapArray[mapKey] = MapValueOf(exp[1].run(c))
+			h.mapArray[mapKey] = TypedValueOf(exp[1].run(c))
 		}
 		return true
 	})
@@ -10904,7 +10909,7 @@ func (sc superPause) Run(c *Char, _ []int32) bool {
 	sys.superbrightness = 0.5 // Darken used to be 128/256
 	sys.superpausebg = true
 	sys.superendcmdbuftime = 0
-	p2defmul := crun.gi().constants["super.targetdefencemul"]
+	p2defmul := crun.gi().constants["super.targetdefencemul"].ToF()
 
 	// Default super FX
 	fx_anim := int32(100)
@@ -13106,7 +13111,7 @@ func (sc saveFile) Run(c *Char, _ []int32) bool {
 	case 0: // Map
 		if len(exactKeys) > 0 || len(includeSubstrings) > 0 {
 			// Apply filters in a new map
-			m := make(map[string]MapValue)
+			m := make(map[string]TypedValue)
 			// Try exact match
 			// In this case, save the key even if it's not yet initialized
 			for _, key := range exactKeys {
@@ -13200,7 +13205,7 @@ func (sc loadFile) Run(c *Char, _ []int32) bool {
 
 	switch fileSavedata {
 	case 0: // Map
-		var loaded map[string]MapValue
+		var loaded map[string]TypedValue
 		if err := dec.Decode(&loaded); err != nil {
 			sys.appendToConsole(crun.warn() + "LoadFile: cannot read map data")
 			return false

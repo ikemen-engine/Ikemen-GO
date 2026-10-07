@@ -7124,7 +7124,7 @@ func cnsStringArray(arg string) ([]string, error) {
 
 // Forwards state compiling to CNS or ZSS branches as appropriate
 func (c *CharCompiler) stateCompile(states map[int32]*StateBytecode,
-	filename string, dirs []string, negoverride bool, constants map[string]float32) error {
+	filename string, dirs []string, negoverride bool, constants map[string]TypedValue) error {
 
 	// Determine type from extension
 	isZss := HasExtension(filename, ".zss")
@@ -7169,7 +7169,7 @@ func (c *CharCompiler) stateCompile(states map[int32]*StateBytecode,
 	return c.stateCompileCNS(states, filename, filetext, negoverride, constants)
 }
 
-func (c *CharCompiler) stateCompileCNS(states map[int32]*StateBytecode, filename, filetext string, negoverride bool, constants map[string]float32) error {
+func (c *CharCompiler) stateCompileCNS(states map[int32]*StateBytecode, filename, filetext string, negoverride bool, constants map[string]TypedValue) error {
 	// Reset ZSS mode
 	c.zssMode = false
 
@@ -7716,7 +7716,7 @@ func (c *CharCompiler) scanI32(line *string) (int32, error) {
 	return int32(v), err
 }
 
-func (c *CharCompiler) scanStateDef(line *string, constants map[string]float32) (int32, error) {
+func (c *CharCompiler) scanStateDef(line *string, constants map[string]TypedValue) (int32, error) {
 	t := c.scan(line)
 	if t == "" {
 		return 0, c.wrongClosureToken()
@@ -7730,8 +7730,10 @@ func (c *CharCompiler) scanStateDef(line *string, constants map[string]float32) 
 		v, ok := constants[k]
 		if !ok {
 			err = Error(fmt.Sprintf("StateDef constant not found: %v", k))
+		} else if v.Type != VT_Int {
+			err = Error(fmt.Sprintf("StateDef constant is not an integer: %v", k))
 		}
-		return int32(v), err
+		return int32(v.ToF()), err
 	}
 	// Special +1 case
 	if t == "+" {
@@ -8350,7 +8352,7 @@ func (c *CharCompiler) stateBlock(line *string, bl *StateBlock, root bool,
 	return c.wrongClosureToken()
 }
 
-func (c *CharCompiler) stateCompileZSS(states map[int32]*StateBytecode, filename, filetext string, constants map[string]float32) error {
+func (c *CharCompiler) stateCompileZSS(states map[int32]*StateBytecode, filename, filetext string, constants map[string]TypedValue) error {
 	// Enable ZSS mode
 	// TODO: There's some overlap between this flag and sys.ignoreMostErrors
 	c.zssMode = true

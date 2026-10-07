@@ -1274,6 +1274,29 @@ func (is IniSection) ReadAutoType(name string) (any, bool, error) {
 	return nil, true, invalidValue()
 }
 
+func (is IniSection) ReadAutoTypeMap(dst map[string]TypedValue, kind string) error {
+	for key := range is {
+		value, ok, err := is.ReadAutoType(key)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		switch value := value.(type) {
+		case string:
+			dst[key] = TypedValue{Type: VT_String, Str: value}
+		case int32:
+			dst[key] = TypedValue{Type: VT_Int, Num: float64(value)}
+		case float32:
+			dst[key] = TypedValue{Type: VT_Float, Num: float64(value)}
+		default:
+			return Error(fmt.Sprintf("unsupported auto-typed value for %s key %q", kind, key))
+		}
+	}
+	return nil
+}
+
 func (is IniSection) getText(name string) (str string, ok bool, err error) {
 	str, ok = is[name]
 	if !ok {

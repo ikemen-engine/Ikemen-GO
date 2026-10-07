@@ -727,7 +727,7 @@ type HitDef struct {
 
 func (hd *HitDef) reset(c *Char, proj *Projectile) {
 	var originLs float32
-	if c.gi().constants["legacy.fallyvelyaccel"] == 1 {
+	if c.gi().constants["legacy.fallyvelyaccel"].ToF() == 1 {
 		originLs = 1
 	} else {
 		// Convert local scale back to 4:3 in order to keep values consistent in widescreen
@@ -975,9 +975,9 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	// Check which cornerpush defaults to use
 	legacyCornerpush := false
 	switch lcpd, ok := gi.constants["legacy.cornerpushdefaults"]; {
-	case !ok, lcpd < 0:
+	case !ok, lcpd.ToF() < 0:
 		legacyCornerpush = gi.ikemenver[0] == 0 && gi.ikemenver[1] == 0
-	case lcpd > 0:
+	case lcpd.ToF() > 0:
 		legacyCornerpush = true
 	}
 
@@ -1012,30 +1012,30 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	// Super attack behaviour
 	if hd.attr&int32(AT_AH) != 0 {
 		ifierrset(&hd.hitgetpower,
-			int32(gi.constants["super.attack.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.attack.lifetopowermul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.hitgivepower,
-			int32(gi.constants["super.gethit.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.gethit.lifetopowermul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
-			int32(gi.constants["super.lifetodizzypointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.lifetodizzypointsmul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
-			int32(gi.constants["super.lifetoguardpointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.lifetoguardpointsmul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.hitredlife,
-			int32(gi.constants["super.lifetoredlifemul"]*float32(hd.hitdamage)))
+			int32(gi.constants["super.lifetoredlifemul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.guardredlife,
-			int32(gi.constants["super.lifetoredlifemul"]*float32(hd.guarddamage)))
+			int32(gi.constants["super.lifetoredlifemul"].ToF()*float32(hd.guarddamage)))
 	} else {
 		ifierrset(&hd.hitgetpower,
-			int32(gi.constants["default.attack.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.attack.lifetopowermul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.hitgivepower,
-			int32(gi.constants["default.gethit.lifetopowermul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.gethit.lifetopowermul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.dizzypoints,
-			int32(gi.constants["default.lifetodizzypointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.lifetodizzypointsmul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.guardpoints,
-			int32(gi.constants["default.lifetoguardpointsmul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.lifetoguardpointsmul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.hitredlife,
-			int32(gi.constants["default.lifetoredlifemul"]*float32(hd.hitdamage)))
+			int32(gi.constants["default.lifetoredlifemul"].ToF()*float32(hd.hitdamage)))
 		ifierrset(&hd.guardredlife,
-			int32(gi.constants["default.lifetoredlifemul"]*float32(hd.guarddamage)))
+			int32(gi.constants["default.lifetoredlifemul"].ToF()*float32(hd.guarddamage)))
 	}
 
 	ifierrset(&hd.guardgetpower, int32(float32(hd.hitgetpower)*0.5))
@@ -1198,7 +1198,7 @@ type GetHitVar struct {
 // When returning to idle each ghv has its own reset behavior
 func (ghv *GetHitVar) reset(c *Char) {
 	var originLs float32
-	if c.gi().constants["legacy.fallyvelyaccel"] == 1 {
+	if c.gi().constants["legacy.fallyvelyaccel"].ToF() == 1 {
 		originLs = 1
 	} else {
 		// Convert local scale back to 4:3 in order to keep values consistent in widescreen
@@ -3472,7 +3472,7 @@ type CharGlobalInfo struct {
 	quotes             [MaxQuotes]string
 	movelists          map[int]string
 	portraitscale      float32
-	constants          map[string]float32
+	constants          map[string]TypedValue
 	remapPreset        map[string]RemapPreset
 	remappedpal        [2]int32
 	localcoord         [2]int32
@@ -3490,7 +3490,7 @@ type CharGlobalInfo struct {
 func newCharGlobalInfo() CharGlobalInfo {
 	gi := CharGlobalInfo{
 		localcoord:    [2]int32{320, 240},
-		constants:     make(map[string]float32),
+		constants:     make(map[string]TypedValue),
 		states:        make(map[int32]*StateBytecode),
 		callFuncs:     make(map[string]BytecodeFunction),
 		animTable:     NewAnimationTable(),
@@ -3737,8 +3737,8 @@ type Char struct {
 	selectNo             int
 	inheritJuggle        int32
 	inheritChannels      int32
-	mapArray             map[string]MapValue
-	mapDefault           map[string]MapValue
+	mapArray             map[string]TypedValue
+	mapDefault           map[string]TypedValue
 	remapSpr             RemapPreset
 	clipboardText        []string
 	dialogue             []string
@@ -4106,11 +4106,11 @@ func (c *Char) applyMapOverrides() {
 		return
 	}
 	if c.mapArray == nil {
-		c.mapArray = make(map[string]MapValue)
+		c.mapArray = make(map[string]TypedValue)
 	}
 	for k, v := range ocd.maps {
 		// Override data is numeric, same as the DEF defaults
-		c.mapArray[k] = MapValue{Type: VT_Float, Num: float64(v)}
+		c.mapArray[k] = TypedValue{Type: VT_Float, Num: float64(v)}
 	}
 }
 
@@ -4143,7 +4143,7 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	gi.def = def
 
 	// Reset DEF file maps
-	c.mapDefault = make(map[string]MapValue)
+	c.mapDefault = make(map[string]TypedValue)
 
 	if err := c.loadFx(def, gi); err != nil {
 		LogMessage("Error loading FX for %s: %v", def, err)
@@ -4293,24 +4293,8 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				mapArray = false
 
 				// Handle maps according to their inferred type
-				for key := range is {
-					value, ok, err := is.ReadAutoType(key)
-					if err != nil {
-						return err
-					}
-					if !ok {
-						continue
-					}
-					switch value := value.(type) {
-					case string:
-						c.mapDefault[key] = MapValue{Type: VT_String, Str: value}
-					case int32:
-						c.mapDefault[key] = MapValue{Type: VT_Int, Num: float64(value)}
-					case float32:
-						c.mapDefault[key] = MapValue{Type: VT_Float, Num: float64(value)}
-					default:
-						return Error(fmt.Sprintf("unsupported auto-typed value for map key %q", key))
-					}
+				if err := is.ReadAutoTypeMap(c.mapDefault, "map"); err != nil {
+					return err
 				}
 			}
 		case "shaders":
@@ -4370,8 +4354,8 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				}
 				lines, i := SplitAndTrim(str, "\n"), 0
 				is, _, _ := ReadIniSection(lines, &i)
-				for key, value := range is {
-					gi.constants[key] = float32(Atof(value))
+				if err := is.ReadAutoTypeMap(gi.constants, "constant"); err != nil {
+					return err
 				}
 				return nil
 			}); err != nil {
@@ -4621,8 +4605,8 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				case "constants":
 					if constants {
 						constants = false
-						for key, value := range is {
-							gi.constants[key] = float32(Atof(value))
+						if err := is.ReadAutoTypeMap(gi.constants, "constant"); err != nil {
+							return err
 						}
 					}
 				case "remappreset ":
@@ -6790,7 +6774,7 @@ func (c *Char) autoTurn() {
 // Flag if B and F directions should reverse, i.e. respectively use R and L
 // In Mugen this is hardcoded to be based on facing
 func (c *Char) updateFBFlip() {
-	setting := c.gi().constants["input.fbflipenemydistance"]
+	setting := c.gi().constants["input.fbflipenemydistance"].ToF()
 
 	// Default behavior
 	c.fbFlip = c.facing < 0
@@ -8252,23 +8236,23 @@ func (c *Char) initConstants(gi *CharGlobalInfo) {
 	}
 
 	// Init the required custom constants with default values
-	gi.constants["default.attack.lifetopowermul"] = 0.7
-	gi.constants["super.attack.lifetopowermul"] = 0
-	gi.constants["default.gethit.lifetopowermul"] = 0.6
-	gi.constants["super.gethit.lifetopowermul"] = 0.6
-	gi.constants["super.targetdefencemul"] = 1.5
-	gi.constants["default.lifetoguardpointsmul"] = 1.5
-	gi.constants["super.lifetoguardpointsmul"] = -0.33
-	gi.constants["default.lifetodizzypointsmul"] = 1.8
-	gi.constants["super.lifetodizzypointsmul"] = 0
-	gi.constants["default.lifetoredlifemul"] = 0.75
-	gi.constants["super.lifetoredlifemul"] = 0.75
-	gi.constants["legacy.gamedistancespec"] = 0
-	gi.constants["legacy.fallyvelyaccel"] = 0
-	gi.constants["legacy.cornerpushdefaults"] = -1
+	gi.constants["default.attack.lifetopowermul"] = TypedValue{Type: VT_Float, Num: 0.7}
+	gi.constants["super.attack.lifetopowermul"] = TypedValue{Type: VT_Float, Num: 0}
+	gi.constants["default.gethit.lifetopowermul"] = TypedValue{Type: VT_Float, Num: 0.6}
+	gi.constants["super.gethit.lifetopowermul"] = TypedValue{Type: VT_Float, Num: 0.6}
+	gi.constants["super.targetdefencemul"] = TypedValue{Type: VT_Float, Num: 1.5}
+	gi.constants["default.lifetoguardpointsmul"] = TypedValue{Type: VT_Float, Num: 1.5}
+	gi.constants["super.lifetoguardpointsmul"] = TypedValue{Type: VT_Float, Num: -0.33}
+	gi.constants["default.lifetodizzypointsmul"] = TypedValue{Type: VT_Float, Num: 1.8}
+	gi.constants["super.lifetodizzypointsmul"] = TypedValue{Type: VT_Float, Num: 0}
+	gi.constants["default.lifetoredlifemul"] = TypedValue{Type: VT_Float, Num: 0.75}
+	gi.constants["super.lifetoredlifemul"] = TypedValue{Type: VT_Float, Num: 0.75}
+	gi.constants["legacy.gamedistancespec"] = TypedValue{Type: VT_Int, Num: 0}
+	gi.constants["legacy.fallyvelyaccel"] = TypedValue{Type: VT_Float, Num: 0}
+	gi.constants["legacy.cornerpushdefaults"] = TypedValue{Type: VT_Float, Num: -1}
 	//gi.constants["default.ignoredefeatedenemies"] = 0
-	gi.constants["input.pauseonhitpause"] = 1
-	gi.constants["input.fbflipenemydistance"] = -1
+	gi.constants["input.pauseonhitpause"] = TypedValue{Type: VT_Int, Num: 1}
+	gi.constants["input.fbflipenemydistance"] = TypedValue{Type: VT_Float, Num: -1}
 }
 
 func (c *Char) initCnsVar() {
@@ -8711,17 +8695,17 @@ func (c *Char) targetLifeAdd(tar []int32, add int32, kill, absolute, dizzy, redl
 			// Subtract red life
 			if redlife {
 				if t.ghv.attr&int32(AT_AH) != 0 {
-					t.redLifeAdd(-dmg*float64(c.gi().constants["super.lifetoredlifemul"]), true)
+					t.redLifeAdd(-dmg*float64(c.gi().constants["super.lifetoredlifemul"].ToF()), true)
 				} else {
-					t.redLifeAdd(-dmg*float64(c.gi().constants["default.lifetoredlifemul"]), true)
+					t.redLifeAdd(-dmg*float64(c.gi().constants["default.lifetoredlifemul"].ToF()), true)
 				}
 			}
 			// Subtract dizzy points
 			if dizzy && !t.scf(SCF_dizzy) && !t.asf(ASF_nodizzypointsdamage) {
 				if t.ghv.attr&int32(AT_AH) != 0 {
-					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["super.lifetodizzypointsmul"]), true)
+					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["super.lifetodizzypointsmul"].ToF()), true)
 				} else {
-					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["default.lifetodizzypointsmul"]), true)
+					t.dizzyPointsAdd(-dmg*float64(c.gi().constants["default.lifetodizzypointsmul"].ToF()), true)
 				}
 			}
 			t.ghv.kill = kill
@@ -9831,24 +9815,24 @@ func (c *Char) mapSet(s string, value BytecodeValue, scType int32) BytecodeValue
 	if s == "" {
 		return BytecodeUndefined()
 	}
-	mv := MapValueOf(value)
+	mv := TypedValueOf(value)
 	c.mapSetValue(s, mv, scType)
 	return mv.ToBV() // Returns what a read of the key would give, so assignment stays usable in expressions
 }
 
 // Takes an already resolved value, so callers outside state execution (Lua, motif)
 // don't have to touch the string pool
-func (c *Char) mapSetValue(s string, mv MapValue, scType int32) {
+func (c *Char) mapSetValue(s string, mv TypedValue, scType int32) {
 	if s == "" {
 		return
 	}
 	key := strings.ToLower(s)
 
-	set := func(m map[string]MapValue) {
+	set := func(m map[string]TypedValue) {
 		m[key] = mv
 	}
 	// String operations don't exist yet, so any add touching one is a no-op
-	add := func(m map[string]MapValue) {
+	add := func(m map[string]TypedValue) {
 		old := m[key]
 		if mv.Type == VT_String || old.Type == VT_String {
 			sys.appendToConsole(c.warn() + "MapAdd: cannot add string values")
@@ -9857,11 +9841,11 @@ func (c *Char) mapSetValue(s string, mv MapValue, scType int32) {
 		// Defer to the engine's own add so int/float promotion matches expressions
 		sum := old.ToBV()
 		BytecodeExp{}.add(&sum, mv.ToBV())
-		m[key] = MapValueOf(sum)
+		m[key] = TypedValueOf(sum)
 	}
 
 	// Applies set or add to every char on this char's team
-	applyTeam := func(f func(map[string]MapValue)) {
+	applyTeam := func(f func(map[string]TypedValue)) {
 		if c.teamside == -1 {
 			for i := MaxSimul * 2; i < MaxPlayerNo; i += 1 {
 				if len(sys.chars[i]) > 0 {
@@ -9909,13 +9893,13 @@ func (c *Char) mapSetValue(s string, mv MapValue, scType int32) {
 func (c *Char) mapReset(exclude []string) {
 	// Initialize mapArray if nil
 	if c.mapArray == nil {
-		c.mapArray = make(map[string]MapValue)
+		c.mapArray = make(map[string]TypedValue)
 	}
 
 	// Fast path for full reset
 	// Just remake the map and populate with defaults
 	if len(exclude) == 0 {
-		c.mapArray = make(map[string]MapValue)
+		c.mapArray = make(map[string]TypedValue)
 		for k, v := range c.mapDefault {
 			c.mapArray[k] = v
 		}
@@ -13929,7 +13913,7 @@ func (cl *CharList) commandUpdate() {
 				pausebuf := false
 				winbuf := false
 				// Buffer during hitpause
-				if c.hitPause() && c.gi().constants["input.pauseonhitpause"] != 0 { // TODO: Deprecated constant
+				if c.hitPause() && c.gi().constants["input.pauseonhitpause"].ToF() != 0 { // TODO: Deprecated constant
 					hpbuf = true
 					// In Winmugen, commands were buffered for one extra frame after hitpause (but not after Pause/SuperPause)
 					// This was fixed in Mugen 1.0

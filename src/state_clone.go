@@ -470,7 +470,7 @@ func (c *Char) Clone(gsp *GameStatePool) (result Char) {
 		result.cnssysfvar[k] = v
 	}
 
-	result.mapArray = *gsp.Get(c.mapArray).(*map[string]MapValue)
+	result.mapArray = *gsp.Get(c.mapArray).(*map[string]TypedValue)
 	maps.Clear(result.mapArray)
 	for k, v := range c.mapArray {
 		result.mapArray[k] = v
@@ -868,7 +868,7 @@ func (s *Stage) Clone(gsp *GameStatePool) *Stage {
 	copy(result.attachedchardef, s.attachedchardef)
 
 	// Clone constants
-	result.constants = make(map[string]float32, len(s.constants))
+	result.constants = make(map[string]TypedValue, len(s.constants))
 	for k, v := range s.constants {
 		result.constants[k] = v
 	}
