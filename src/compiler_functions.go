@@ -4628,13 +4628,8 @@ func (c *CharCompiler) dialogue(is IniSection, sc *StateControllerBase) (StateCo
 		}
 		sort.Ints(keys)
 		for _, key := range keys {
-			if err := c.stateParam(is, fmt.Sprintf("text%v", key), false, func(data string) error {
-				if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-					return Error("Not enclosed in \"")
-				}
-				sc.add(dialogue_text, c.stringToExp(data[1:len(data)-1]))
-				return nil
-			}); err != nil {
+			if err := c.paramValue(is, sc, fmt.Sprintf("text%v", key),
+				dialogue_text, VT_String, 1, false); err != nil {
 				return err
 			}
 		}
@@ -4752,13 +4747,8 @@ func (c *CharCompiler) lifebarAction(is IniSection, sc *StateControllerBase) (St
 		if err := c.paramPrefixValue(is, sc, "snd", lifebarAction_snd, 2, false, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "text", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Text not enclosed in \"")
-			}
-			sc.add(lifebarAction_text, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "text",
+			lifebarAction_text, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "font.no",
@@ -5029,11 +5019,7 @@ func (c *CharCompiler) mapReset(is IniSection, sc *StateControllerBase) (StateCo
 		}
 
 		addExclude := func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Exclude not enclosed in \"")
-			}
-			sc.add(mapReset_exclude, c.stringToExp(data[1:len(data)-1]))
-			return nil
+			return c.scAdd(sc, mapReset_exclude, data, VT_String, 1)
 		}
 
 		// Exclude
@@ -5063,85 +5049,40 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			matchRestart_reload, VT_Bool, MaxPlayerNo, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "stagedef", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Stagedef not enclosed in \"")
-			}
-			sc.add(matchRestart_stagedef, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "stagedef",
+			matchRestart_stagedef, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p1def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P1def not enclosed in \"")
-			}
-			sc.add(matchRestart_p1def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p1def",
+			matchRestart_p1def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p2def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P2def not enclosed in \"")
-			}
-			sc.add(matchRestart_p2def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p2def",
+			matchRestart_p2def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p3def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P3def not enclosed in \"")
-			}
-			sc.add(matchRestart_p3def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p3def",
+			matchRestart_p3def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p4def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P4def not enclosed in \"")
-			}
-			sc.add(matchRestart_p4def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p4def",
+			matchRestart_p4def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p5def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P5def not enclosed in \"")
-			}
-			sc.add(matchRestart_p5def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p5def",
+			matchRestart_p5def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p6def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P6def not enclosed in \"")
-			}
-			sc.add(matchRestart_p6def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p6def",
+			matchRestart_p6def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p7def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P7def not enclosed in \"")
-			}
-			sc.add(matchRestart_p7def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p7def",
+			matchRestart_p7def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p8def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P8def not enclosed in \"")
-			}
-			sc.add(matchRestart_p8def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p8def",
+			matchRestart_p8def, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "preservevars",
@@ -5240,13 +5181,8 @@ func (c *CharCompiler) playBgm(is IniSection, sc *StateControllerBase) (StateCon
 		}); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "bgm", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("BGM not enclosed in \"")
-			}
-			sc.add(playBgm_bgm, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "bgm",
+			playBgm_bgm, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "volume",
@@ -5526,13 +5462,8 @@ func (c *CharCompiler) remapSprite(is IniSection, sc *StateControllerBase) (Stat
 			remapSprite_reset, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "preset", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Preset not enclosed in \"")
-			}
-			sc.add(remapSprite_preset, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "preset",
+			remapSprite_preset, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "source",
@@ -5578,13 +5509,8 @@ func (c *CharCompiler) saveLoadFileSub(is IniSection, sc *StateControllerBase) e
 	if err := c.paramValue(is, sc, "redirectid", saveFile_redirectid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "path", true, func(data string) error {
-		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-			return Error("Path not enclosed in \"")
-		}
-		sc.add(saveFile_path, c.stringToExp(data[1:len(data)-1]))
-		return nil
-	}); err != nil {
+	if err := c.paramValue(is, sc, "path",
+		saveFile_path, VT_String, 1, true); err != nil {
 		return err
 	}
 	if err := c.paramSaveData(is, sc, saveFile_savedata); err != nil {
@@ -5695,13 +5621,8 @@ func (c *CharCompiler) storyboard(is IniSection, sc *StateControllerBase) (State
 		if err := c.paramValue(is, sc, "redirectid", storyboard_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "path", true, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
-			}
-			sc.add(storyboard_path, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "path",
+			storyboard_path, VT_String, 1, true); err != nil {
 			return err
 		}
 		return c.storyboardSub(is, sc)
@@ -6018,19 +5939,9 @@ func (c *CharCompiler) createPlatform(is IniSection, sc *StateControllerBase) (S
 			return err
 		}
 
-		// Here we check if the string is enclosed in quotes.
-		// (Because CNS has no real string support)
-		if err = c.stateParam(
-			is, "name", false,
-			func(data string) error {
-				if data[0] != '"' || data[len(data)-1] != '"' {
-					return Error(`[name] value in [createPlatform] not enclosed in quotation marks.` +
-						"\n" + "Value provided: [" + data + "]",
-					)
-				}
-				sc.add(helper_name, c.stringToExp(data[1:len(data)-1]))
-				return nil
-			},
+		if err = c.paramValue(
+			is, sc, "name",
+			helper_name, VT_String, 1, false,
 		); err != nil {
 			return err
 		}
@@ -6543,31 +6454,16 @@ func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (Sta
 			modifyPlayer_teamside, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "displayname", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Displayname not enclosed in \"")
-			}
-			sc.add(modifyPlayer_displayname, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "displayname",
+			modifyPlayer_displayname, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "lifebarname", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Lifebarname not enclosed in \"")
-			}
-			sc.add(modifyPlayer_lifebarname, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "lifebarname",
+			modifyPlayer_lifebarname, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "helpername", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Helpername not enclosed in \"")
-			}
-			sc.add(modifyPlayer_helpername, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "helpername",
+			modifyPlayer_helpername, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "helpervar.id",
@@ -6633,13 +6529,8 @@ func (c *CharCompiler) assertCommand(is IniSection, sc *StateControllerBase) (St
 			assertCommand_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "name", true, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Command name not enclosed in \"")
-			}
-			sc.add(assertCommand_name, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "name",
+			assertCommand_name, VT_String, 1, true); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "buffer.time",
@@ -7110,14 +7001,8 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	opTex2Anim := baseOp + 4
 	opTex2Spr := baseOp + 5
 
-	if err := c.stateParam(is, prefix+"name", false, func(data string) error {
-		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-			return Error("Shader name not enclosed in \"")
-		}
-		shaderName := strings.ToLower(data[1 : len(data)-1])
-		sc.add(opShader, c.stringToExp(shaderName))
-		return nil
-	}); err != nil {
+	if err := c.paramValue(is, sc, prefix+"name",
+		opShader, VT_String, 1, false); err != nil {
 		return err
 	}
 

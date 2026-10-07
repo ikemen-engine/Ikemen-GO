@@ -6112,6 +6112,10 @@ func (c *CharCompiler) typedExp(ef expFunc, in *string,
 		return nil, err
 	}
 	if !bv.IsNone() {
+		// Constant numbers can't stand in for strings. Runtime values are still unchecked
+		if vt == VT_String && bv.vtype != VT_String {
+			return nil, Error("Expected a string expression")
+		}
 		switch vt {
 		case VT_Float:
 			bv.SetF(bv.ToF())
