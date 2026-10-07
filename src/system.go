@@ -295,6 +295,7 @@ type System struct {
 	debugc1hit          DebugClsn
 	debugc1rev          DebugClsn
 	debugc1not          DebugClsn
+	debugc1stb          DebugClsn
 	debugc2             DebugClsn
 	debugc2hb           DebugClsn
 	debugc2mtk          DebugClsn
@@ -2778,6 +2779,7 @@ func (s *System) clearSpriteData() {
 	s.debugc1hit.rects = s.debugc1hit.rects[:0]
 	s.debugc1rev.rects = s.debugc1rev.rects[:0]
 	s.debugc1not.rects = s.debugc1not.rects[:0]
+	s.debugc1stb.rects = s.debugc1stb.rects[:0]
 	s.debugc2.rects = s.debugc2.rects[:0]
 	s.debugc2hb.rects = s.debugc2hb.rects[:0]
 	s.debugc2mtk.rects = s.debugc2mtk.rects[:0]
@@ -3854,6 +3856,8 @@ func (s *System) drawTop() {
 		s.debugc1rev.draw(0xff0040c0, alpha)
 		// Clsn1 Inactive
 		s.debugc1not.draw(0xff000080, alpha)
+		// Clsn1 Standby
+		s.debugc1stb.draw(0xff404040, alpha)
 		// Clsn2
 		s.debugc2.draw(0xffff0000, alpha)
 		// Clsn2 HitBy
