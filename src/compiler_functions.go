@@ -671,15 +671,21 @@ func (c *CharCompiler) helper(is IniSection, sc *StateControllerBase) (StateCont
 			return err
 		}
 		if err := c.stateParam(is, "name", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				if c.zssMode {
-					return Error("Helper name not enclosed in \"")
-				}
-				sys.appendToConsole(c.charWarn() + "Helper name not enclosed in \"")
+			// Regular path for correct syntax
+			err := c.scAdd(sc, helper_name, data, VT_String, 1)
+			if err == nil {
 				return nil
 			}
-			sc.add(helper_name, c.stringToExp(data[1:len(data)-1]))
-			return nil
+			// Legacy loose syntax
+			// Mugen treats a value it can't parse as a plain string, stripping quotes only when they come as a pair
+			if !c.zssMode && sys.ignoreMostErrors {
+				if len(data) >= 2 && data[0] == '"' && data[len(data)-1] == '"' {
+					data = data[1 : len(data)-1]
+				}
+				sc.add(helper_name, c.stringToExp(data))
+				return nil
+			}
+			return err
 		}); err != nil {
 			return err
 		}
