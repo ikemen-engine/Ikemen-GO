@@ -830,6 +830,10 @@ function main.f_materializeStagePortrait(stageNo)
 end
 
 function main.f_preloadTick(limit)
+	-- Check new raw devices in the common Lua UI frame path, not only row menus.
+	if options ~= nil and options.f_unrecognizedControllerPrompt ~= nil then
+		options.f_unrecognizedControllerPrompt()
+	end
 	if gameOption('Config.BootLoadingMode') == 0 then
 		return
 	end
@@ -1205,6 +1209,9 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 	local cancel_snd = cancel_snd or motif.warning_info.cancel.snd
 	local done_snd = done_snd or motif.warning_info.done.snd
 	textImgReset(textData)
+	if textData == motif.warning_info.text.TextSpriteData then
+		textImgSetTextWrap(textData, motif.warning_info.text.textwrap == 'w' or motif.warning_info.text.textwrap == '1')
+	end
 	textImgSetText(textData, text)
 	resetKey()
 	esc(false)

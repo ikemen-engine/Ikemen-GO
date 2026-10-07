@@ -2046,7 +2046,7 @@ function options.f_inputConfigFrame(context)
 		local bg = context.background
 		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
 	end
-	if not context.closed and context.popup ~= nil then
+	while not context.closed and context.popup ~= nil do
 		-- The popup overlays the options screen, so draw that background behind it
 		-- instead of leaving the cleared (black) frame.
 		if not context.pause and context.background ~= nil then
@@ -2065,8 +2065,19 @@ function options.f_inputConfigFrame(context)
 		end
 	end
 	local source = context.source or (context.current and context.current.inputSource)
-	if source ~= nil and source.kind == 'gamepad' and not getJoystickPresent(source.joy) then
+	if context.device ~= nil then
+		if gamepadMappingDevice(context.device.instance) == nil then
+			context.closed = true
+		end
+	elseif source ~= nil and source.kind == 'gamepad' and not getJoystickPresent(source.joy) then
 		context.closed = true
+	end
+	if not context.closed and context.mapping ~= nil then
+		options.f_gamepadMappingFrame(context)
+		if not context.closed then
+			context.skipInput = false
+			return true
+		end
 	end
 	if not context.closed and context.current ~= nil then
 		drew = true
@@ -2096,6 +2107,7 @@ function options.f_inputConfigFrame(context)
 	end
 	context.skipInput = false
 	if context.closed then
+		gamepadMappingCancel()
 		if context.previousSource ~= nil then
 			inputConfigSource(context.previousSource)
 		end
@@ -2104,12 +2116,14 @@ function options.f_inputConfigFrame(context)
 		resetKey()
 		resetTokenGuard()
 		esc(false)
+		options.editingInput = false
 		return false, drew
 	end
 	return true
 end
 
 local function runInputConfig(context)
+	options.editingInput = true
 	resetKey()
 	resetTokenGuard()
 	if context.pause then
@@ -2126,6 +2140,7 @@ local function runInputConfig(context)
 			refresh()
 		end
 	end
+	if not context.pause then options.editingInput = false end
 end
 
 function options.f_editProfile(source, template, context, newProfile)
@@ -2286,6 +2301,164 @@ function options.f_inputCapture(context)
 	end
 end
 
+-- Leave the mapping screen.
+local function gamepadMappingClose(context, finish)
+	if context.pause then
+		finish()
+		return
+	end
+	fadeOutInit(motif.mapping_info.fadeout.FadeData)
+	context.mapping.finish = function()
+		finish()
+		fadeInInit(motif.option_info.fadein.FadeData)
+	end
+end
+
+-- Calibration has its own [Mapping Info] screen and [MappingBgDef] background.
+-- In a match it keeps the pause background, like the rest of Button Config.
+-- Keyboard controls remain usable even when the pad has no working SDL mapping.
+function options.f_gamepadMapping(context, device, testOnly)
+	if not device or not gamepadMappingBegin(device.instance) then
+		context.closed = true
+		return
+	end
+	local previous = inputConfigSource(0)
+	if context.previousSource == nil then
+		context.previousSource = previous
+	end
+	context.device = device
+	context.mapping = {device = device, name = device.name,
+		index = testOnly and 0 or 1, testOnly = testOnly or false}
+	if not context.pause then
+		bgReset(motif.mappingbgdef.BGDef)
+		fadeInInit(motif.mapping_info.fadein.FadeData)
+	end
+	if not device.recognized and not testOnly then
+		local sec = motif.option_info
+		context.popup = main.f_drawInput(sec.textinput.TextSpriteData, sec.textinput.text.gamepadname,
+			sec, context.background, sec.textinput.overlay.RectData, device.name, true)
+		context.onClose = function(name)
+			if name == '' then
+				gamepadMappingCancel()
+				context.closed = true
+			else
+				context.mapping.name = name
+				-- The pad sat idle while it was named: record its resting axes again.
+				gamepadMappingCalibrate()
+			end
+		end
+	end
+	resetKey()
+	resetTokenGuard()
+end
+
+function options.f_gamepadMappingFrame(context)
+	local sec = motif.option_info
+	local cfg, mapping = motif.mapping_info, context.mapping
+	local background = context.background
+	if not context.pause then
+		background = motif.mappingbgdef
+		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+	end
+	local name = cfg.order[mapping.index]
+	local control = cfg.control[name]
+	local state = 'default'
+	if mapping.testOnly then
+		state = 'test'
+	elseif mapping.index > #cfg.order then
+		state = 'save'
+	end
+	local pressed = {}
+	if mapping.index == 0 then
+		pressed = gamepadMappingState()
+	end
+	local rear = control ~= nil and control.rear
+	for key, held in pairs(pressed) do
+		if held and cfg.control[key] ~= nil and cfg.control[key].rear then
+			rear = true
+		end
+	end
+	bgDraw(background.BGDef, 0)
+	rectDraw(cfg.overlay.RectData)
+	textImgReset(cfg.title.TextSpriteData)
+	textImgSetText(cfg.title.TextSpriteData, main.f_itemnameUpper(mapping.name, cfg.title.uppercase))
+	textImgDraw(cfg.title.TextSpriteData)
+	if rear then
+		main.f_animPosDraw(cfg.back.AnimData)
+		main.f_animPosDraw(cfg.rotate.AnimData)
+	else
+		main.f_animPosDraw(cfg.front.AnimData)
+	end
+	for _, key in ipairs(cfg.order) do
+		local art = cfg.control[key]
+		if art ~= nil and (key == name or (pressed[key] and art.rear == rear)) then
+			main.f_animPosDraw(art.AnimData)
+		end
+	end
+	local label = name or ''
+	if control ~= nil and control.text ~= nil then
+		label = control.text
+	end
+	textImgReset(cfg.prompt.TextSpriteData)
+	textImgSetText(cfg.prompt.TextSpriteData, main.f_formatBySpec(cfg.prompt.text[state], {
+		s = label, i = mapping.index,
+	}))
+	textImgDraw(cfg.prompt.TextSpriteData)
+	bgDraw(background.BGDef, 1)
+	main.f_hintDraw(cfg.hint, state, nil, mapping.device.id)
+	if mapping.finish ~= nil then
+		if not fadeActive() then
+			mapping.finish()
+		end
+		return
+	end
+	if context.skipInput or fadeActive() then
+		return
+	end
+	-- Test mode never captures or saves a mapping.
+	if esc() then
+		gamepadMappingCancel()
+		sndPlay(motif.Snd, cfg.cancel.snd[1], cfg.cancel.snd[2])
+		esc(false)
+		gamepadMappingClose(context, function()
+			context.mapping = nil
+			context.closed = not mapping.device.recognized and not mapping.testOnly
+			if not context.closed then
+				inputConfigSource(mapping.device.id)
+			end
+		end)
+	elseif mapping.testOnly then
+		-- Read-only test mode: inputs only highlight the controller diagram.
+	elseif getKey(cfg.previous.keycode) and mapping.index > 1 then
+		mapping.index = mapping.index - 1
+		sndPlay(motif.Snd, cfg.move.snd[1], cfg.move.snd[2])
+	elseif state == 'save' and getKey(cfg.confirm.keycode) then
+		local message = gamepadMappingSave(mapping.name)
+		if message == '' then
+			sndPlay(motif.Snd, cfg.done.snd[1], cfg.done.snd[2])
+			gamepadMappingClose(context, function()
+				context.mapping = nil
+				if context.openDevice ~= nil then
+					context.openDevice(gamepadMappingDevice(mapping.device.instance))
+				end
+			end)
+		else
+			inputPopup(context, main.f_formatBySpec(sec.textinput.text.gamepadmappingfailed, {s = message}))
+		end
+	elseif name ~= nil then
+		local skip = getKey(cfg.skip.keycode)
+		if skip or gamepadMappingCapture(name) ~= '' then
+			if skip then
+				gamepadMappingSkip(name)
+			end
+			mapping.index = mapping.index + 1
+			sndPlay(motif.Snd, cfg.done.snd[1], cfg.done.snd[2])
+		end
+	end
+	resetKey()
+	resetTokenGuard()
+end
+
 -- Input editor handlers. One handler serves both kinds: it reads the source
 -- from the menu it is given.
 options.t_itemname.configall = function(t, item)
@@ -2391,6 +2564,29 @@ options.t_itemname.cancel = function(t, item)
 	return true
 end
 
+options.t_itemname.calibrate = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		local context, sec = t.inputContext, motif.option_info
+		inputPopup(context, sec.textinput.text.gamepadcalibrate, nil, function(accepted)
+			if accepted then options.f_gamepadMapping(context, context.device) end
+		end, 'confirm')
+	end
+	return true
+end
+
+options.t_itemname.checkinput = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		local context, source = t.inputContext, t.inputSource
+		for _, device in ipairs(gamepadMappingDevices()) do
+			if device.joy == source.joy and device.recognized then
+				options.f_gamepadMapping(context, device, true)
+				break
+			end
+		end
+	end
+	return true
+end
+
 options.t_itemname.newprofile = function(t, item)
 	local sec, context = motif.option_info, t.inputContext
 	if getInput(-1, sec.menu.done.key) then
@@ -2416,7 +2612,19 @@ options.t_itemname.newprofile = function(t, item)
 		if context.previousSource == nil then
 			context.previousSource = previous
 		end
-		local id = inputNewProfile(source.id)
+		local name = sec.menu.valuename.keyboardprofile
+		if source.kind == 'gamepad' then
+			name = sec.menu.valuename.gamepadprofile
+		end
+		local previous = ''
+		if source.kind == 'gamepad' then
+			for _, entry in ipairs(inputSources()) do
+				if entry.id == source.id then
+					previous = entry.profile
+				end
+			end
+		end
+		local id = inputNewProfile(source.id, name, sec.menu.valuename.copy)
 		if id == 0 then
 			inputPopup(context, sec.textinput.text.profilesave)
 			return true
@@ -2471,9 +2679,15 @@ function options.f_inputCfg(kind, template, background)
 	end
 	local context = {kind = kind, background = background or motif.optionbgdef, pause = main.pauseMenuActive, parents = {}}
 	local function openMenu(selected)
-		if selected ~= nil and context.previousSource == nil then
-			context.previousSource = inputConfigSource(selected.id)
-		elseif selected == nil and context.previousSource ~= nil then
+		-- Select the navigating source again, so bindings saved or chosen in the
+		-- profile editor take effect in this menu.
+		local previous = inputConfigSource(0)
+		if context.previousSource == nil then
+			context.previousSource = previous
+		end
+		if selected ~= nil then
+			inputConfigSource(selected.id)
+		else
 			inputConfigSource(context.previousSource)
 		end
 		local tbl = main.f_tableCopy(template)
@@ -2485,33 +2699,83 @@ function options.f_inputCfg(kind, template, background)
 		-- Rebuild after editing so renamed, copied and deleted profiles stay current.
 		context.openPicker = function() openMenu(selected) end
 	end
+	context.openDevice = function(device)
+		context.device = device
+		openMenu(device)
+	end
 	if kind == 'gamepad' then
 		textImgReset(sec.title.TextSpriteData)
 		textImgSetText(sec.title.TextSpriteData, template.title)
 		local released = false
 		inputPopup(context, sec.textinput.text.gamepad, function()
-			local token, joy = getJoystickKey()
-			if token == '' then
+			local instance = getJoystickRawId()
+			if instance == nil then
 				released = true
 			elseif released then
-				for _, source in ipairs(inputSources()) do
-					-- getJoystickKey returns a 1-based index; inputSources uses SDL's 0-based index.
-					if source.connected and source.kind == 'gamepad' and source.joy == joy - 1 then
-						return source
+				local device = gamepadMappingDevice(instance)
+				-- The controller's own cancel button backs out, instead of being
+				-- read as the button that picks a device to configure.
+				if device ~= nil and device.recognized then
+					local profile = inputProfile(device.id)
+					if profile ~= nil and getJoystickKey(device.joy) == profile.menu then
+						return false
 					end
 				end
+				return device
 			end
-		end, function(source)
-			if source then
-				openMenu(source)
-			else
+		end, function(device)
+			if not device then
 				context.closed = true
+			elseif device.recognized then
+				context.openDevice(device)
+			else
+				-- An unmapped pad cannot navigate a profile picker yet.
+				context.device = device
+				inputPopup(context, sec.textinput.text.gamepadunrecognized, nil, function(accepted)
+					if accepted then
+						options.f_gamepadMapping(context, device)
+					else
+						context.closed = true
+					end
+				end, 'confirm')
 			end
 		end)
 	else
 		openMenu()
 	end
 	runInputConfig(context)
+end
+
+-- Prompt once per physical connection. A canceled prompt is not retried until
+-- the pad is disconnected and reconnected. This is called by normal Lua menus.
+local t_unknownPrompted = {}
+function options.f_unrecognizedControllerPrompt()
+	if options.promptingUnknown or options.editingInput then return end
+	local connected = {}
+	local first = nil
+	for _, device in ipairs(gamepadMappingDevices()) do
+		connected[device.instance] = true
+		if not device.recognized and not t_unknownPrompted[device.instance] and first == nil then
+			first = device
+		end
+	end
+	for instance in pairs(t_unknownPrompted) do
+		if not connected[instance] then t_unknownPrompted[instance] = nil end
+	end
+	if first == nil then return end
+	t_unknownPrompted[first.instance] = true
+	options.promptingUnknown = true
+	local sec = motif.option_info
+	local accepted = main.f_warning(sec.textinput.text.gamepadunrecognized,
+		sec, motif.optionbgdef, nil, nil, nil, nil, nil, nil, nil, 'confirm')
+	if accepted and gamepadMappingDevice(first.instance) ~= nil then
+		local context = {background = motif.optionbgdef, parents = {}, device = first}
+		options.f_gamepadMapping(context, first)
+		runInputConfig(context)
+	end
+	options.promptingUnknown = false
+	resetKey()
+	resetTokenGuard()
 end
 
 return options

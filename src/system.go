@@ -448,9 +448,9 @@ func (s *System) init(w, h int32) *lua.LState {
 				os.Chdir("../../../")
 			}
 		}
-		// Update the gamepad mappings with user mappings, if present.
-		input.UpdateGamepadMappings(sys.cfg.Config.GamepadMappings)
 	}
+	// The same SDL mapping file is used by external tools and the in-game editor.
+	input.UpdateGamepadMappings(sys.cfg.Config.GamepadMappings)
 
 	// Loading of external shader data.
 	// We need to do this before the render initialization at "gfx.Init()"

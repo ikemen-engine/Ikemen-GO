@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -15,7 +18,43 @@ type ControllerState struct {
 	HasRumble bool
 }
 
+// A controller mapping being edited. It stays a draft until it is saved, and it
+// only describes the SDL layer: gameplay profiles and player ownership are
+// separate.
+type GamepadMapping struct {
+	Instance   sdl.JoystickID
+	Name       string
+	Recognized bool
+	Original   string
+	Bindings   map[string]string
+	neutral    []int32
+	control    string
+	pending    string
+	armed      bool
+}
+
+const (
+	// Raw axis range is -32768..32767. An axis has to move about a quarter of
+	// the way to count as moved, and half way to be taken as the binding, so a
+	// noisy stick cannot bind itself.
+	gamepadMappingAxisMoved = 8000
+	gamepadMappingAxisBind  = 16000
+)
+
+// The SDL controls the setup screen walks through, in order. The four sticks
+// are captured one direction at a time, so split axes and digital sticks work.
+var gamepadMappingControls = []string{
+	"a", "b", "x", "y", "dpup", "dpdown", "dpleft", "dpright",
+	"leftshoulder", "rightshoulder", "lefttrigger", "righttrigger",
+	"back", "start", "guide", "leftstick", "rightstick",
+	"leftxnegative", "leftxpositive", "leftynegative", "leftypositive",
+	"rightxnegative", "rightxpositive", "rightynegative", "rightypositive", "misc1",
+	"paddle1", "paddle2", "paddle3", "paddle4", "touchpad",
+}
+
 type Input struct {
+	rawJoysticks    map[sdl.JoystickID]*sdl.Joystick
+	mapping         *GamepadMapping
 	controllers     [MaxPlayerNo]*sdl.GameController
 	controllerstate [MaxPlayerNo]*ControllerState
 }
@@ -311,8 +350,375 @@ func (input *Input) UpdateGamepadMappings(path string) {
 	}
 	lines := strings.Split(string(b), "\n")
 	for _, line := range lines {
-		sdl.GameControllerAddMapping(line)
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") && gamepadMappingPlatform(line) {
+			sdl.GameControllerAddMapping(line)
+		}
 	}
+}
+
+// Reports whether a database line applies to this operating system. The
+// database holds entries for every platform, and SDL adds one line at a time.
+func gamepadMappingPlatform(line string) bool {
+	fields := strings.Split(line, ",")
+	for _, field := range fields[Min(2, len(fields)):] {
+		if strings.HasPrefix(field, "platform:") {
+			return strings.TrimPrefix(field, "platform:") == sdl.GetPlatform()
+		}
+	}
+	return true
+}
+
+// Replaces the mapping database in one step, keeping its permissions.
+func writeGamepadMappings(path string, contents []byte, mode os.FileMode) error {
+	file, err := os.CreateTemp(filepath.Dir(path), ".gamecontrollerdb-*")
+	if err != nil {
+		return err
+	}
+	temporary := file.Name()
+	defer os.Remove(temporary)
+	if _, err = file.Write(contents); err == nil {
+		err = file.Chmod(mode)
+	}
+	if err == nil {
+		err = file.Sync()
+	}
+	closeErr := file.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	return os.Rename(temporary, path)
+}
+
+// Returns the raw joystick with a button held down, so a controller SDL does not
+// recognise can still be detected. Instance IDs last until it is unplugged.
+func (input *Input) GetJoystickRawId() int {
+	ids := make([]int, 0, len(input.rawJoysticks))
+	for id := range input.rawJoysticks {
+		ids = append(ids, int(id))
+	}
+	sort.Ints(ids)
+	for _, id := range ids {
+		joy := input.rawJoysticks[sdl.JoystickID(id)]
+		if !joy.Attached() {
+			continue
+		}
+		for button := 0; button < joy.NumButtons(); button++ {
+			if joy.Button(button) != 0 {
+				return id
+			}
+		}
+	}
+	return -1
+}
+
+// Describes a raw joystick for the setup screen: its name, the gamepad slot it
+// occupies once SDL recognises it, and -1 for an unrecognised one.
+func (input *Input) GetJoystickRawInfo(instance int) (name string, slot int, ok bool) {
+	id := sdl.JoystickID(instance)
+	joy := input.rawJoysticks[id]
+	if joy == nil || !joy.Attached() {
+		return "", -1, false
+	}
+	slot = findControllerIndex(id)
+	if slot >= 0 {
+		return input.controllers[slot].Name(), slot, true
+	}
+	return joy.Name(), slot, true
+}
+
+// Starts a mapping draft for a raw joystick, replacing any draft in progress.
+func (input *Input) BeginGamepadMapping(instance int) bool {
+	m := &GamepadMapping{Instance: sdl.JoystickID(instance), Bindings: make(map[string]string)}
+	joy := m.joystick()
+	if joy == nil {
+		return false
+	}
+	m.Name = joy.Name()
+	if slot := findControllerIndex(m.Instance); slot >= 0 {
+		m.Recognized = true
+		m.Name = input.controllers[slot].Name()
+		m.Original = input.controllers[slot].Mapping()
+	}
+	input.mapping = m
+	m.calibrate()
+	return true
+}
+
+// Current normalized controls for the setup screen's controller test. Reading
+// them together allows several buttons, directions and triggers to light up.
+func (m *GamepadMapping) state() map[string]bool {
+	state := make(map[string]bool)
+	if m == nil || m.joystick() == nil {
+		return state
+	}
+	slot := findControllerIndex(m.Instance)
+	if slot < 0 {
+		return state
+	}
+	controller := input.controllers[slot]
+	for _, name := range gamepadMappingControls {
+		button := sdl.GameControllerGetButtonFromString(name)
+		if button != sdl.CONTROLLER_BUTTON_INVALID {
+			state[name] = controller.Button(button) != 0
+			continue
+		}
+		axisName := strings.TrimSuffix(strings.TrimSuffix(name, "negative"), "positive")
+		axis := sdl.GameControllerGetAxisFromString(axisName)
+		if axis == sdl.CONTROLLER_AXIS_INVALID {
+			continue
+		}
+		value := int32(controller.Axis(axis))
+		if strings.HasSuffix(name, "negative") {
+			state[name] = value < -gamepadMappingAxisMoved
+		} else {
+			state[name] = value > gamepadMappingAxisMoved
+		}
+	}
+	return state
+}
+
+// Opens a joystick without waiting for SDL to recognise it, so a pad with no
+// database entry can still be set up.
+func (in *Input) openRawJoystick(index int) {
+	if _, disabled := sys.cmdFlags["-nojoy"]; disabled {
+		return
+	}
+	id := sdl.JoystickGetDeviceInstanceID(index)
+	if id < 0 || in.rawJoysticks[id] != nil {
+		return
+	}
+	if joy := sdl.JoystickOpen(index); joy != nil {
+		if in.rawJoysticks == nil {
+			in.rawJoysticks = make(map[sdl.JoystickID]*sdl.Joystick)
+		}
+		in.rawJoysticks[id] = joy
+	}
+}
+
+// The joystick being mapped, or nil once it is unplugged.
+func (m *GamepadMapping) joystick() *sdl.Joystick {
+	if m != nil {
+		if joy := input.rawJoysticks[m.Instance]; joy != nil && joy.Attached() {
+			return joy
+		}
+	}
+	return nil
+}
+
+// Records where the axes rest, so a resting trigger is not read as pressed.
+func (m *GamepadMapping) calibrate() {
+	if joy := m.joystick(); joy != nil {
+		m.neutral = make([]int32, joy.NumAxes())
+		for i := range m.neutral {
+			m.neutral[i] = int32(joy.Axis(i))
+		}
+	}
+	m.control, m.pending, m.armed = "", "", false
+}
+
+// Watches the raw buttons, hats and axes for the control being configured and
+// returns its binding once the player releases everything again. Waiting for
+// the release stops one press from filling in two controls.
+func (m *GamepadMapping) capture(control string) string {
+	joy := m.joystick()
+	if joy == nil {
+		return ""
+	}
+	valid := false
+	for _, name := range gamepadMappingControls {
+		valid = valid || control == name
+	}
+	if !valid {
+		return ""
+	}
+	if control != m.control {
+		m.control, m.pending, m.armed = control, "", false
+	}
+	stick := strings.HasSuffix(control, "negative") || strings.HasSuffix(control, "positive")
+	trigger := control == "lefttrigger" || control == "righttrigger"
+	neutral, candidate := true, ""
+	for i := 0; i < joy.NumButtons(); i++ {
+		if joy.Button(i) != 0 {
+			neutral = false
+			if candidate == "" {
+				candidate = fmt.Sprintf("b%d", i)
+			}
+		}
+	}
+	for i := 0; i < joy.NumHats(); i++ {
+		hat := joy.Hat(sdl.JoystickHat(i))
+		if hat != 0 {
+			neutral = false
+			// Diagonals are ambiguous. Wait for a single cardinal direction.
+			if candidate == "" && hat&(hat-1) == 0 {
+				candidate = fmt.Sprintf("h%d.%d", i, hat)
+			}
+		}
+	}
+	var strongest int32
+	for i, rest := range m.neutral {
+		delta := int32(joy.Axis(i)) - rest
+		magnitude := Abs(delta)
+		if magnitude > gamepadMappingAxisMoved {
+			neutral = false
+		}
+		if magnitude <= gamepadMappingAxisBind || magnitude <= strongest {
+			continue
+		}
+		strongest = magnitude
+		if candidate != "" && !stick && !trigger {
+			continue
+		}
+		// An axis resting at an endpoint is a trigger, so bind its full range.
+		if Abs(rest) > gamepadMappingAxisBind {
+			candidate = fmt.Sprintf("a%d", i)
+			if delta < 0 {
+				candidate += "~"
+			}
+		} else if delta > 0 {
+			candidate = fmt.Sprintf("+a%d", i)
+		} else {
+			candidate = fmt.Sprintf("-a%d", i)
+		}
+	}
+	if neutral {
+		m.armed = true
+		if m.pending != "" {
+			binding := m.pending
+			m.Bindings[control] = binding
+			m.pending = ""
+			return binding
+		}
+	} else if m.armed && m.pending == "" && candidate != "" {
+		m.pending = candidate
+	}
+	return ""
+}
+
+// Appends the finished mapping to the database, applies it right away, and
+// restores the file if SDL rejects it.
+func (m *GamepadMapping) save(name string) error {
+	joy := m.joystick()
+	if joy == nil {
+		return fmt.Errorf("controller disconnected")
+	}
+	if m.Recognized {
+		name = m.Name
+	}
+	name = strings.TrimSpace(name)
+	if name == "" || strings.ContainsAny(name, ",\r\n") {
+		return fmt.Errorf("enter a controller name without commas or line breaks")
+	}
+	if len(m.Bindings) == 0 {
+		return fmt.Errorf("assign at least one control before saving")
+	}
+	// SDL handles the GUID checksum itself. Keep the physical GUID intact,
+	// as entries produced by external mapping tools do.
+	fields := []string{sdl.JoystickGetGUIDString(joy.GUID()), name}
+	for _, control := range gamepadMappingControls {
+		binding := m.Bindings[control]
+		if binding == "" {
+			continue
+		}
+		output := control
+		if strings.HasSuffix(control, "negative") {
+			output = "-" + strings.TrimSuffix(control, "negative")
+		} else if strings.HasSuffix(control, "positive") {
+			output = "+" + strings.TrimSuffix(control, "positive")
+		}
+		fields = append(fields, output+":"+binding)
+	}
+	// Retain SDL's controller type on an override.
+	for _, field := range strings.Split(m.Original, ",") {
+		if strings.HasPrefix(field, "type:") {
+			fields = append(fields, field)
+		}
+	}
+	fields = append(fields, "platform:"+sdl.GetPlatform(), "")
+	line := strings.Join(fields, ",")
+	path := sys.cfg.Config.GamepadMappings
+	if path == "" {
+		return fmt.Errorf("Config.GamepadMappings has no file path")
+	}
+	old, err := os.ReadFile(path)
+	existed := err == nil
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	mode := os.FileMode(0644)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	}
+	contents := append([]byte(nil), old...)
+	if len(contents) > 0 && contents[len(contents)-1] != '\n' {
+		contents = append(contents, '\n')
+	}
+	contents = append(contents, []byte(line+"\n")...)
+	if err := writeGamepadMappings(path, contents, mode); err != nil {
+		return err
+	}
+	var mappingErr error
+	if sdl.GameControllerAddMapping(line) < 0 {
+		mappingErr = sdl.GetError()
+	}
+	if mappingErr != nil {
+		var restoreErr error
+		if existed {
+			restoreErr = writeGamepadMappings(path, old, mode)
+		} else {
+			restoreErr = os.Remove(path)
+		}
+		if restoreErr != nil {
+			return fmt.Errorf("SDL: %v; unable to restore mapping file: %v", mappingErr, restoreErr)
+		}
+		return fmt.Errorf("SDL: %v", mappingErr)
+	}
+	// A previously unknown pad is now usable. Existing sources keep their IDs,
+	// profiles and participant ownership; also update identical connected pads.
+	for i := 0; i < sdl.NumJoysticks(); i++ {
+		id := sdl.JoystickGetDeviceInstanceID(i)
+		if slot := findControllerIndex(id); slot >= 0 {
+			controller := input.controllers[slot]
+			if controller.Joystick().GUID() != joy.GUID() {
+				continue
+			}
+			// A new hardware-specific entry may replace an automatic SDL mapping.
+			// Reopen it in the same slot so the current instance uses the new entry.
+			controller.Close()
+			input.controllers[slot] = sdl.GameControllerOpen(i)
+			if input.controllers[slot] == nil {
+				sys.detachGamepad(slot)
+				return fmt.Errorf("mapping saved; reconnect controller: %v", sdl.GetError())
+			}
+		} else {
+			attachController(i)
+		}
+	}
+	for i, controller := range input.controllers {
+		if controller == nil {
+			continue
+		}
+		resetControllerState(i)
+		state := input.controllerstate[i]
+		state.HasRumble = controller.HasRumble()
+		for axis := range state.Axes {
+			state.Axes[axis] = convertI16toI8(controller.Axis(sdl.GameControllerAxis(axis)))
+		}
+		for _, button := range buttonOrder {
+			state.Buttons[button] = controller.Button(button)
+		}
+		for _, source := range sys.inputs.Sources {
+			if source.Connected && source.Joy == i {
+				source.Name = controller.Name()
+			}
+		}
+	}
+	sys.clearCommandBuffers()
+	return nil
 }
 
 func (input *Input) GetMaxJoystickCount() int {
