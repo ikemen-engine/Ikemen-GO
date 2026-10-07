@@ -2163,8 +2163,31 @@ func (s *Stage) warn() string {
 	return fmt.Sprintf("%v: WARNING: Stage %v: ", sys.tickCount, s.name)
 }
 
+type modifyBGCtrlShader struct {
+	nameSet bool
+	name    string
+	params  [16]float32 // NaN = unchanged
+	tex     [2]struct {
+		animNo int32    // IErr = unchanged
+		sprNo  [2]int32 // IErr = unchanged
+	}
+}
+
+func (s *Stage) newModifyBGCtrlShader() modifyBGCtrlShader {
+	var m modifyBGCtrlShader
+	for i := range m.params {
+		m.params[i] = float32(math.NaN())
+	}
+	for i := range m.tex {
+		m.tex[i].animNo = IErr
+		m.tex[i].sprNo = [2]int32{IErr, IErr}
+	}
+	return m
+}
+
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
-	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, invall int32, invblend int32, color float32, hue float32) {
+	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, invall int32, invblend int32, color float32, hue float32,
+	shader modifyBGCtrlShader) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
 			if t[0] != IErr {
@@ -2259,6 +2282,24 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if !math.IsNaN(float64(hue)) {
 				s.bgc[i].hue = hue / 512
+			}
+			if shader.nameSet {
+				s.bgc[i].shaderName = shader.name
+			}
+			for j := range shader.params {
+				if !math.IsNaN(float64(shader.params[j])) {
+					s.bgc[i].shaderParams[j] = shader.params[j]
+				}
+			}
+			for n := range shader.tex {
+				if shader.tex[n].animNo != IErr {
+					s.bgc[i].shaderTex[n].animNo = shader.tex[n].animNo
+				}
+				for k := 0; k < 2; k++ {
+					if shader.tex[n].sprNo[k] != IErr {
+						s.bgc[i].shaderTex[n].sprNo[k] = shader.tex[n].sprNo[k]
+					}
+				}
 			}
 			s.reload = true
 		}

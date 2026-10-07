@@ -5309,6 +5309,9 @@ func (c *CharCompiler) modifyBGCtrl(is IniSection, sc *StateControllerBase) (Sta
 			modifyBGCtrl_hue, VT_Float, 1, false); err != nil {
 			return err
 		}
+		if err := c.shaderSub(is, sc, modifyBGCtrl_shader, "shader."); err != nil {
+			return err
+		}
 		return nil
 	})
 	sys.cgi[c.playerNo].canMutateStage = true

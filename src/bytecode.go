@@ -13596,6 +13596,12 @@ const (
 	modifyBGCtrl_invertblend
 	modifyBGCtrl_color
 	modifyBGCtrl_hue
+	modifyBGCtrl_shader
+	modifyBGCtrl_shaderparam
+	modifyBGCtrl_tex1anim
+	modifyBGCtrl_tex1spr
+	modifyBGCtrl_tex2anim
+	modifyBGCtrl_tex2spr
 )
 
 func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
@@ -13608,6 +13614,7 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 	sinadd, sinmul := [4]int32{IErr, IErr, IErr, IErr}, [4]int32{IErr, IErr, IErr, IErr}
 	sincolor, sinhue := [2]int32{IErr, IErr}, [2]int32{IErr, IErr}
 	invall, invblend, color, hue := IErr, IErr, float32(math.NaN()), float32(math.NaN())
+	shader := sys.stage.newModifyBGCtrlShader()
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -13699,10 +13706,31 @@ func (sc modifyBGCtrl) Run(c *Char, _ []int32) bool {
 			color = exp[0].evalF(c)
 		case modifyBGCtrl_hue:
 			hue = exp[0].evalF(c)
+		case modifyBGCtrl_shader:
+			shader.nameSet = true
+			shader.name = exp[0].evalSLower(c)
+		case modifyBGCtrl_shaderparam:
+			n := int(exp[0].evalI(c))
+			for j := 0; j < n; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				if idx >= 0 && idx < len(shader.params) {
+					shader.params[idx] = exp[2+j*2].evalF(c)
+				}
+			}
+		case modifyBGCtrl_tex1anim:
+			shader.tex[0].animNo = exp[0].evalI(c)
+		case modifyBGCtrl_tex1spr:
+			shader.tex[0].sprNo[0] = exp[0].evalI(c)
+			shader.tex[0].sprNo[1] = exp[1].evalI(c)
+		case modifyBGCtrl_tex2anim:
+			shader.tex[1].animNo = exp[0].evalI(c)
+		case modifyBGCtrl_tex2spr:
+			shader.tex[1].sprNo[0] = exp[0].evalI(c)
+			shader.tex[1].sprNo[1] = exp[1].evalI(c)
 		}
 		return true
 	})
-	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, invall, invblend, color, hue)
+	sys.stage.modifyBGCtrl(cid, t, v, x, y, src, dst, add, mul, sinadd, sinmul, sincolor, sinhue, invall, invblend, color, hue, shader)
 	return false
 }
 
