@@ -2845,6 +2845,15 @@ function start.f_selectScreen()
 				})
 			end
 		end
+		-- A single participant on a co-op side picks one character in Single mode.
+		-- Larger sides keep their independent Simul/Tag choice and exact joined count.
+		if main.sideSelectDone and main.coop and not main.cpuSide[side] and #main.sideInputSources[side] == 1 then
+			t_teamMenu[side] = {{
+				itemname = 'single',
+				displayname = params.single or motif.select_info.teammenu.itemname.default.single,
+				mode = 0,
+			}}
+		end
 		hook.run("start.selectScreen.teamMenu", side, t_teamMenu[side], params, itemname_order)
 	end
 

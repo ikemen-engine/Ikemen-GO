@@ -2622,8 +2622,8 @@ main.t_itemname = {
 		--main.fightscreen.p2wincount = true
 		main.motif.vsscreen = true
 		main.motif.victoryscreen = true
-		main.numSimul = {2, math.min(4, math.max(2, math.ceil(gameOption('Config.Players') / 2)))}
-		main.numTag = {2, math.min(4, math.max(2, math.ceil(gameOption('Config.Players') / 2)))}
+		main.numSimul = {1, math.min(4, gameOption('Config.Players') - 1)}
+		main.numTag = {1, math.min(4, gameOption('Config.Players') - 1)}
 		main.selectMenu[2] = true
 		main.stageMenu = true
 		main.teamMenu[1].simul = true
@@ -3015,7 +3015,7 @@ function main.f_start()
 			elseif c == 'storymode' and #main.t_selStoryMode == 0 then --skip story mode if there are no story arc declared
 				t_skipGroup[c] = true
 				break
-			elseif c == 'versuscoop' and gameOption('Config.Players') < 4 then --skip versus coop if there are not enough players
+			elseif c == 'versuscoop' and gameOption('Config.Players') < 2 then --skip versus coop if there are not enough players
 				t_skipGroup[c] = true
 				break
 			end
