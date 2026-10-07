@@ -14273,6 +14273,14 @@ const (
 	text_xshear
 	text_hidewithbars
 	text_id
+	text_shader
+	text_shaderparam
+	text_shader_tex1_anim
+	text_shader_tex1_spr
+	text_shader_tex2_anim
+	text_shader_tex2_spr
+	text_shader_playerno
+	text_shadertime
 	text_last = iota + palFX_last + 1 - 1
 	text_redirectid
 )
@@ -14283,10 +14291,15 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	shaderPN := crun.ss.sb.playerNo
+
 	ts := crun.spawnText()
 	if ts == nil {
 		return false
 	}
+
+	ts.id = 0
+	var shaderTime int32 = -1
 
 	// Default to the same localcoord as the character that owns the code
 	ts.SetLocalcoordChar(c.gi().localcoord) // Not crun here
@@ -14418,6 +14431,49 @@ func (sc text) Run(c *Char, _ []int32) bool {
 			ts.hidewithbars = exp[0].evalB(c)
 		case text_id:
 			ts.id = exp[0].evalI(c)
+		case text_shader:
+			shader := exp[0].evalSLower(c)
+			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
+				ts.customShader.set(shader, key)
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid text shader: %s (playerNo: %v)", shader, shaderPN+1))
+			}
+		case text_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
+		case text_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			for j := 0; j < numParams; j++ {
+				spidx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				ts.customShader.params[spidx] = val
+			}
+		case text_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			ts.customShader.tex1.AnimNo = animNo
+			ts.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+			if ts.customShader.tex1.Anim != nil {
+				ts.customShader.tex1.Anim.Reset()
+			}
+		case text_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			ts.customShader.tex1.SprNo = [2]int32{g, n}
+			ts.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+
+		case text_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			ts.customShader.tex2.AnimNo = animNo
+			ts.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+			if ts.customShader.tex2.Anim != nil {
+				ts.customShader.tex2.Anim.Reset()
+			}
+		case text_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			ts.customShader.tex2.SprNo = [2]int32{g, n}
+			ts.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+		case text_shadertime:
+			shaderTime = exp[0].evalI(c)
 		case text_redirectid:
 			return true // Already handled. Avoid default
 		default:
@@ -14448,6 +14504,13 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		ts.text = OldSprintf("%v", ts.params...)
 	}
 
+	if ts.customShader.name != "" {
+		ts.customShader.time = shaderTime
+		if ts.customShader.time == 0 {
+			ts.customShader.clear()
+		}
+	}
+
 	return false
 }
 
@@ -14466,6 +14529,7 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 
 	tid := int32(-1)
 	idx := int(-1)
+	shaderPN := crun.ss.sb.playerNo
 
 	var texts []*TextSprite
 	eachText := func(f func(ts *TextSprite)) {
@@ -14695,6 +14759,66 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 				v := exp[0].evalB(c)
 				eachText(func(ts *TextSprite) {
 					ts.hidewithbars = v
+				})
+			case text_shader:
+				s := exp[0].evalSLower(c)
+				if key, ok := sys.resolveCharShader(shaderPN, s); ok {
+					eachText(func(ts *TextSprite) {
+						ts.customShader.set(s, key)
+					})
+				} else {
+					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid text shader: %s (playerNo: %v)", s, shaderPN+1))
+				}
+			case text_shader_playerno:
+				shaderPN = int(exp[0].evalI(c)) - 1
+			case text_shaderparam:
+				numParams := int(exp[0].evalI(c))
+				for j := 0; j < numParams; j++ {
+					idx := int(exp[1+j*2].evalI(c))
+					val := exp[2+j*2].evalF(c)
+					eachText(func(ts *TextSprite) {
+						ts.customShader.params[idx] = val
+					})
+				}
+			case text_shader_tex1_anim:
+				animNo := exp[0].evalI(c)
+				eachText(func(ts *TextSprite) {
+					ts.customShader.tex1.AnimNo = animNo
+					ts.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+					if ts.customShader.tex1.Anim != nil {
+						ts.customShader.tex1.Anim.Reset()
+					}
+				})
+			case text_shader_tex1_spr:
+				g := exp[0].evalI(c)
+				n := exp[1].evalI(c)
+				eachText(func(ts *TextSprite) {
+					ts.customShader.tex1.SprNo = [2]int32{g, n}
+					ts.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+				})
+			case text_shader_tex2_anim:
+				animNo := exp[0].evalI(c)
+				eachText(func(ts *TextSprite) {
+					ts.customShader.tex2.AnimNo = animNo
+					ts.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+					if ts.customShader.tex2.Anim != nil {
+						ts.customShader.tex2.Anim.Reset()
+					}
+				})
+			case text_shader_tex2_spr:
+				g := exp[0].evalI(c)
+				n := exp[1].evalI(c)
+				eachText(func(ts *TextSprite) {
+					ts.customShader.tex2.SprNo = [2]int32{g, n}
+					ts.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+				})
+			case text_shadertime:
+				v1 := exp[0].evalI(c)
+				eachText(func(ts *TextSprite) {
+					ts.customShader.time = v1
+					if ts.customShader.time == 0 {
+						ts.customShader.clear()
+					}
 				})
 			default:
 				if isPalFXParam(paramID) {

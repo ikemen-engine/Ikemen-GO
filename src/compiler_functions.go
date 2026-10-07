@@ -5855,6 +5855,15 @@ func (c *CharCompiler) textSub(is IniSection, sc *StateControllerBase) error {
 		text_scale, VT_Float, 2, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "shader.playerno", text_shader_playerno, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.shaderSub(is, sc, text_shader, "shader."); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "shader.time", text_shadertime, VT_Int, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "angle",
 		text_angle, VT_Float, 1, false); err != nil {
 		return err
