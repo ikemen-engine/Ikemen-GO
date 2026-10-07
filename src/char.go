@@ -2449,14 +2449,7 @@ func (e *Explod) cueDraw() {
 	sd.fLength = fLength
 	sd.window = ewin
 	sd.xshear = xshear
-	sd.customShader = CustomShaderRenderData{
-		name:   e.customShader.key,
-		params: e.customShader.params,
-		time:   e.customShader.time,
-		sTime:  e.customShader.interpolatedSTime(!e.pauseBool),
-		tex1:   e.customShader.tex1.GetTexture(),
-		tex2:   e.customShader.tex2.GetTexture(),
-	}
+	sd.customShader = e.customShader.renderData(!e.pauseBool)
 
 	if e.syncId > 0 {
 		sd.syncId = e.syncId
@@ -3315,14 +3308,7 @@ func (p *Projectile) cueDraw() {
 	sd.fLength = fLength
 	sd.window = pwin
 	sd.xshear = p.xshear
-	sd.customShader = CustomShaderRenderData{
-		name:   p.customShader.key,
-		params: p.customShader.params,
-		time:   p.customShader.time,
-		sTime:  p.customShader.interpolatedSTime(!p.pauseBool && p.hitpause <= 0),
-		tex1:   p.customShader.tex1.GetTexture(),
-		tex2:   p.customShader.tex2.GetTexture(),
-	}
+	sd.customShader = p.customShader.renderData(!p.pauseBool && p.hitpause <= 0)
 
 	// Add sprite to the appropriate layer's drawlist
 	sys.spriteList.add(sd)
@@ -13515,14 +13501,7 @@ func (c *Char) cueDraw() {
 		charSD.fLength = fLength
 		charSD.xshear = c.xshear
 		charSD.window = cwin
-		charSD.customShader = CustomShaderRenderData{
-			name:   c.customShader.key,
-			params: c.customShader.params,
-			time:   c.customShader.time,
-			sTime:  c.customShader.interpolatedSTime(c.acttmp > 0),
-			tex1:   c.customShader.tex1.GetTexture(),
-			tex2:   c.customShader.tex2.GetTexture(),
-		}
+		charSD.customShader = c.customShader.renderData(c.acttmp > 0)
 
 		if c.enableSyncId {
 			charSD.syncId = c.id
