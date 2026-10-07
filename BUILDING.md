@@ -9,11 +9,6 @@ All three must be available as development packages via **pkg-config** (`libav*`
 
 Ikemen GO requires **Go 1.27 or newer** (`go.mod` declares `go 1.27.0`; CI builds with 1.27.x).
 
-The engine also needs the **arenas** experiment for rollback netcode state cloning.
-`build/build.sh` exports `GOEXPERIMENT=arenas` for you; if you invoke `go build`
-directly you must set it yourself, or `src` will fail to compile with an error
-about the `arena` import.
-
 > **Distro Go packages are usually too old.** Ubuntu 24.04's `golang-go` is 1.22
 > and Debian 12's is 1.19. Install an official toolchain from
 > <https://go.dev/dl/> (or a channel that tracks upstream, e.g. `snap install go

@@ -2576,9 +2576,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_screenheight:
 			sys.bcStack.PushF(c.screenHeight())
 		case OC_screenpos_x:
-			sys.bcStack.PushF(c.screenPosX() / oc.localscl)
+			sys.bcStack.PushF(c.screenPosX() * (c.localscl / oc.localscl))
 		case OC_screenpos_y:
-			sys.bcStack.PushF(c.screenPosY() / oc.localscl)
+			sys.bcStack.PushF(c.screenPosY() * (c.localscl / oc.localscl))
 		case OC_screenwidth:
 			sys.bcStack.PushF(c.screenWidth())
 		case OC_selfanimexist:
@@ -4246,13 +4246,28 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 			case OC_ex2_projvar_facing:
 				sys.bcStack.PushF(p.facing)
 			case OC_ex2_projvar_guardflag:
-				sys.bcStack.PushB(p.hitdef.guardflag&flg.ToI() != 0)
+				attr := flg.ToI()
+				if attr == -1 {
+					sys.bcStack.PushS(flagString(p.hitdef.guardflag))
+				} else {
+					sys.bcStack.PushB(p.hitdef.guardflag&attr != 0)
+				}
 			case OC_ex2_projvar_highbound:
 				sys.bcStack.PushI(int32(float32(p.heightbound[1]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_hitflag:
-				sys.bcStack.PushB(p.hitdef.hitflag&flg.ToI() != 0)
+				attr := flg.ToI()
+				if attr == -1 {
+					sys.bcStack.PushS(flagString(p.hitdef.hitflag))
+				} else {
+					sys.bcStack.PushB(p.hitdef.hitflag&attr != 0)
+				}
 			case OC_ex2_projvar_attr:
-				sys.bcStack.PushB(p.hitdef.testAttr(flg.ToI()))
+				attr := flg.ToI()
+				if attr == -1 {
+					sys.bcStack.PushS(attrString(p.hitdef.attr))
+				} else {
+					sys.bcStack.PushB(p.hitdef.testAttr(attr))
+				}
 			case OC_ex2_projvar_lowbound:
 				sys.bcStack.PushI(int32(float32(p.heightbound[0]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_pausemovetime:
@@ -15592,6 +15607,7 @@ type transformClsn StateControllerBase
 
 const (
 	transformClsn_group byte = iota
+	transformClsn_index
 	transformClsn_scale
 	transformClsn_angle
 	transformClsn_pivot
@@ -15604,15 +15620,20 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	redirscale := c.localscl / crun.localscl
+
 	scale := [2]float32{1, 1}
 	angle := float32(0)
 	group := int32(-1) // all
+	index := int(-1)   // all
 	pivot := [2]float32{0, 0}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case transformClsn_group:
 			group = exp[0].evalI(c)
+		case transformClsn_index:
+			index = int(exp[0].evalI(c))
 		case transformClsn_scale:
 			scale[0] = exp[0].evalF(c)
 			if len(exp) > 1 {
@@ -15621,36 +15642,31 @@ func (sc transformClsn) Run(c *Char, _ []int32) bool {
 		case transformClsn_angle:
 			angle = exp[0].evalF(c)
 		case transformClsn_pivot:
-			pivot[0] = exp[0].evalF(c)
+			pivot[0] = exp[0].evalF(c) * redirscale
 			if len(exp) > 1 {
-				pivot[1] = exp[1].evalF(c)
+				pivot[1] = exp[1].evalF(c) * redirscale
 			}
 		}
 		return true
 	})
+
+	transform := ClsnTransform{index, scale, angle, pivot}
 
 	// Apply the transform to the appropriate group(s)
 	switch {
 	case group == 0:
 		// Reset all
 		for i := range crun.clsnTransforms {
-			crun.clsnTransforms[i].reset()
+			crun.clsnTransforms[i] = crun.clsnTransforms[i][:0]
 		}
 	case group == -1:
 		// Apply to all groups
 		for i := range crun.clsnTransforms {
-			t := &crun.clsnTransforms[i]
-			t.scale[0] *= scale[0]
-			t.scale[1] *= scale[1]
-			t.angle = angle
-			t.pivot = pivot
+			crun.clsnTransforms[i] = append(crun.clsnTransforms[i], transform)
 		}
 	case group >= 1 && group <= 4:
-		t := &crun.clsnTransforms[group-1]
-		t.scale[0] *= scale[0]
-		t.scale[1] *= scale[1]
-		t.angle = angle
-		t.pivot = pivot
+		idx := group - 1
+		crun.clsnTransforms[idx] = append(crun.clsnTransforms[idx], transform)
 	default:
 		sys.appendToConsole(crun.warn() + fmt.Sprintf("Invalid group %d in TransformClsn", group))
 	}

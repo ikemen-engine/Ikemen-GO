@@ -6819,6 +6819,10 @@ func (c *CharCompiler) transformClsn(is IniSection, sc *StateControllerBase) (St
 		if err := c.paramClsnType(is, sc, "group", transformClsn_group); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "index",
+			transformClsn_index, VT_Int, 1, false); err != nil {
+			return err
+		}
 		if err := c.stateParam(is, "scale", false, func(data string) error {
 			return c.scAdd(sc, transformClsn_scale, data, VT_Float, 2)
 		}); err != nil {

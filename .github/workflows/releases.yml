@@ -411,7 +411,6 @@ jobs:
           GOOS: ${{ matrix.cfg.goos }}
           GOARCH: ${{ matrix.cfg.goarch }}
           CGO_ENABLED: "1"
-          GOEXPERIMENT: "arenas"
           APP_VERSION: ${{ needs.tag.outputs.version }}
           APP_BUILDTIME: ${{ needs.tag.outputs.buildTime }}
           # iOS: monotonically increasing CFBundleVersion so AltStore/SideStore detect updates.
@@ -487,7 +486,6 @@ jobs:
           GOOS: ${{ matrix.cfg.goos }}
           GOARCH: ${{ matrix.cfg.goarch }}
           CGO_ENABLED: "1"
-          GOEXPERIMENT: "arenas"
           APP_VERSION: ${{ needs.tag.outputs.version }}
           APP_BUILDTIME: ${{ needs.tag.outputs.buildTime }}
         run: |

@@ -2344,7 +2344,7 @@ func (s *System) clearMatchSound() {
 	// and mark them as detached so SetPlaying(true) can re-attach next frame.
 	if s.stage != nil {
 		for _, b := range s.stage.bg {
-			if b != nil && b._type == BG_Video {
+			if b != nil && b._type == BG_Video && b.video != nil {
 				b.video.SetPlaying(false)
 				b.video.SetVisible(false)
 				b.video.MixerCleared()
@@ -6728,6 +6728,13 @@ func (l *Loader) reset() {
 			sys.cgi[i].palno = -1
 		}
 	}
+}
+
+// Waits for a failed load to exit, then resets the loader so it can run again
+// Files are read from disk again, so fixes made in the meantime are picked up
+func (l *Loader) retryAfterError() {
+	<-l.loadExit
+	l.reset()
 }
 
 func (l *Loader) runTread() bool {

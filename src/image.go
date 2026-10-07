@@ -1329,7 +1329,6 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 		f.Seek(offset+4, 0)
 		format := -s.rle
 
-		var rgba *image.RGBA
 		var rect image.Rectangle
 
 		if 2 <= format && format <= 4 {
@@ -1360,23 +1359,19 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 				px = pi.Pix
 			}
 		case 11, 12:
-			var ok bool = false
 			isRaw = true
 
 			// Decode PNG image to RGBA
+			// Preserve straight alpha because image.RGBA stores premultiplied color
 			img, err := png.Decode(f)
 			if err != nil {
 				return err
 			}
 
 			rect = img.Bounds()
-			rgba, ok = img.(*image.RGBA)
-
-			if !ok {
-				rgba = image.NewRGBA(rect)
-				draw.Draw(rgba, rect, img, rect.Min, draw.Src)
-			}
-			s.SetRaw(rgba.Pix, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
+			nrgba := image.NewNRGBA(rect)
+			draw.Draw(nrgba, rect, img, rect.Min, draw.Src)
+			s.SetRaw(nrgba.Pix, int32(rect.Max.X-rect.Min.X), int32(rect.Max.Y-rect.Min.Y), 32)
 		default:
 			return Error("Unknown format")
 		}

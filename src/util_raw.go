@@ -29,6 +29,11 @@ func ShowErrorDialog(message string) {
 	print("I.K.E.M.E.N Error\n\n" + message)
 }
 
+// No interactive dialog here, so never retry
+func ShowRetryDialog(message string) bool {
+	return false
+}
+
 // TTF font loading stub
 func LoadFntTtf(f *Fnt, fontfile string, filename string, height int32) {
 	panic(Error("TrueType fonts are not supported on this platform"))

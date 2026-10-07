@@ -378,9 +378,6 @@ function main() {
 	# Enable CGO.
 	export CGO_ENABLED=1
 
-	# Enable arenas (required for rollback)
-	export GOEXPERIMENT=arenas
-
 	# Keep glibc symbol versions low on Linux so release binaries and the FFmpeg
 	# libs we ship run on distros older than the build host. See the header for why
 	# it only remaps __isoc23_* and not everything.

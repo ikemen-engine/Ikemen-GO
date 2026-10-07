@@ -281,14 +281,10 @@ type ClsnOverride struct {
 
 // TransformClsn sctrl
 type ClsnTransform struct {
+	index int
 	scale [2]float32
 	angle float32
 	pivot [2]float32
-}
-
-func (ct *ClsnTransform) reset() {
-	ct.scale = [2]float32{1, 1}
-	ct.angle = 0
 }
 
 // The prepared boxes after all modifiers have been applied
@@ -3688,7 +3684,7 @@ type Char struct {
 	animlocalscl        float32
 	size                CharSize
 	clsnOverrides       [4][]ClsnOverride
-	clsnTransforms      [4]ClsnTransform
+	clsnTransforms      [4][]ClsnTransform
 	zScale              float32
 	hitdef              HitDef
 	ghv                 GetHitVar
@@ -4296,8 +4292,25 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				}
 				mapArray = false
 
-				for key, value := range is {
-					c.mapDefault[key] = MapValue{Type: VT_Float, Num: Atof(value)}
+				// Handle maps according to their inferred type
+				for key := range is {
+					value, ok, err := is.ReadAutoType(key)
+					if err != nil {
+						return err
+					}
+					if !ok {
+						continue
+					}
+					switch value := value.(type) {
+					case string:
+						c.mapDefault[key] = MapValue{Type: VT_String, Str: value}
+					case int32:
+						c.mapDefault[key] = MapValue{Type: VT_Int, Num: float64(value)}
+					case float32:
+						c.mapDefault[key] = MapValue{Type: VT_Float, Num: float64(value)}
+					default:
+						return Error(fmt.Sprintf("unsupported auto-typed value for map key %q", key))
+					}
 				}
 			}
 		case "shaders":
@@ -6384,14 +6397,14 @@ func (c *Char) roundsWon() int32 {
 // Perhaps Ikemen could have some new trigger that did return the rendering position of the chars
 func (c *Char) screenPosX() float32 {
 	scaledOffset := sys.cam.Offset[0] / sys.zoom.resultScale
-	camLeft := sys.zoom.resultPos[0] - scaledOffset - sys.cam.halfWidth
-	return c.pos[0]*c.localscl - camLeft
+	camLeft := sys.zoom.resultPos[0] - scaledOffset - sys.cam.halfWidth/sys.zoom.resultScale
+	return c.pos[0] - camLeft/c.localscl
 }
 
 func (c *Char) screenPosY() float32 {
 	groundRef := sys.cam.GroundLevel() + sys.cam.Offset[1]
 	camTop := (sys.zoom.resultPos[1] - groundRef) / sys.zoom.resultScale
-	return c.pos[1]*c.localscl - camTop
+	return c.pos[1] - camTop/c.localscl
 }
 
 func (c *Char) screenHeight() float32 {
@@ -10610,7 +10623,11 @@ func (c *Char) getClsnUnscaled(group int32) []ClsnFinal {
 // Return boxes with char scaling
 func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 	boxes := c.getClsnUnscaled(group)
-	if len(boxes) == 0 {
+	overrides := c.clsnOverrides[group-1]
+
+	// Only exit early if overrides can't add boxes either
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/4084
+	if len(boxes) == 0 && len(overrides) == 0 {
 		return boxes
 	}
 
@@ -10629,7 +10646,6 @@ func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 
 	// Apply appropriate overrides
 	// Note: This must happen after char scaling is applied. We want the override to be absolute
-	overrides := c.clsnOverrides[group-1]
 	for _, mod := range overrides {
 		// Helper to apply modifiers
 		// This will make it easier to add new parameters later if needed
@@ -10640,14 +10656,14 @@ func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 		switch {
 		// Delete box if modifier is all 0's
 		case mod.rect == [4]float32{}:
-			if mod.index == -1 {
+			if mod.index < 0 {
 				boxes = boxes[:0]
-			} else if mod.index >= 0 && mod.index < len(boxes) {
+			} else if mod.index < len(boxes) {
 				boxes = SliceDelete(boxes, mod.index)
 			}
 
 		// Modify all existing boxes
-		case mod.index == -1:
+		case mod.index < 0:
 			for i := range boxes {
 				modify(i)
 			}
@@ -10664,19 +10680,30 @@ func (c *Char) getClsnLocal(group int32) []ClsnFinal {
 	}
 
 	// Apply TransformClsn modifiers
-	ct := c.clsnTransforms[group-1]
-	for i := range boxes {
-		b := &boxes[i]
-		b.rect[0] *= ct.scale[0]
-		b.rect[1] *= ct.scale[1]
-		b.rect[2] *= ct.scale[0]
-		b.rect[3] *= ct.scale[1]
-		b.angle = ct.angle
-		b.pivot[0] = ct.pivot[0] * c.localscl
-		b.pivot[1] = ct.pivot[1] * c.localscl
+	for _, ct := range c.clsnTransforms[group-1] {
+		transform := func(b *ClsnFinal) {
+			b.rect[0] *= ct.scale[0]
+			b.rect[1] *= ct.scale[1]
+			b.rect[2] *= ct.scale[0]
+			b.rect[3] *= ct.scale[1]
+			b.angle = ct.angle
+			b.pivot[0] = ct.pivot[0] * c.localscl
+			b.pivot[1] = ct.pivot[1] * c.localscl
+		}
 
-		// Normalize left/right and top/bottom
-		b.rect = NormalizeRect(b.rect)
+		switch {
+		case ct.index < 0: // All boxes
+			for i := range boxes {
+				transform(&boxes[i])
+			}
+		case ct.index < len(boxes): // Just this index
+			transform(&boxes[ct.index])
+		}
+	}
+
+	// Normalize left/right and top/bottom
+	for i := range boxes {
+		boxes[i].rect = NormalizeRect(boxes[i].rect)
 	}
 
 	return boxes
@@ -10714,7 +10741,7 @@ func (c *Char) resetClsnModifiers() {
 	}
 
 	for i := range c.clsnTransforms {
-		c.clsnTransforms[i].reset()
+		c.clsnTransforms[i] = c.clsnTransforms[i][:0]
 	}
 }
 

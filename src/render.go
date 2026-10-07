@@ -900,20 +900,17 @@ func RenderSprite(rp RenderParams) {
 		renderSpriteQuad(modelview, rp)
 	}
 
-	renderWithBlending(renderPass, rp.blendMode, rp.blendAlpha, rp.paltex != nil, &spfx, rp.paltex == nil)
+	renderWithBlending(renderPass, rp.blendMode, rp.blendAlpha, &spfx, rp.paltex == nil)
 
 	gfx.DisableScissor()
 }
 
 func renderWithBlending(
 	render func(eq BlendEquation, src, dst BlendFunc, a float32),
-	blendMode TransType, blendAlpha [2]int32, correctAlpha bool,
+	blendMode TransType, blendAlpha [2]int32,
 	spfx *ShaderPalFX, isrgba bool) {
 
 	blendSourceFactor := BlendSrcAlpha
-	if !correctAlpha {
-		blendSourceFactor = BlendOne
-	}
 
 	Blend := BlendAdd
 	BlendInv := BlendReverseSubtract
@@ -1068,7 +1065,8 @@ func renderWithBlending(
 					v3, ml, al := Max(255*(gc-(src+dst)), 512)/128, src, src+dst
 					rM, gM, bM := spfx.mult[0]*ml, spfx.mult[1]*ml, spfx.mult[2]*ml
 					spfx.mult[0], spfx.mult[1], spfx.mult[2] = rM, gM, bM
-					render(Blend, blendSourceFactor, BlendOne, al*Pow(v3, 3))
+					// Keep this factor bounded so palette alpha still scales the add pass.
+					render(Blend, blendSourceFactor, BlendOne, Clamp(al*Pow(v3, 3), 0, 1))
 				} else {
 					render(Blend, blendSourceFactor, BlendOne, src)
 				}
@@ -1130,7 +1128,7 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 		gfx.RenderQuad()
 	}
 
-	renderWithBlending(renderPass, TT_add, alpha, true, &spfx, true)
+	renderWithBlending(renderPass, TT_add, alpha, &spfx, true)
 }
 
 type TextureAtlas struct {

@@ -422,6 +422,11 @@ func (c *Char) Clone(gsp *GameStatePool) (result Char) {
 		copy(result.clsnOverrides[i], c.clsnOverrides[i])
 	}
 
+	for i := range c.clsnTransforms {
+		result.clsnTransforms[i] = make([]ClsnTransform, len(c.clsnTransforms[i]))
+		copy(result.clsnTransforms[i], c.clsnTransforms[i])
+	}
+
 	result.clipboardText = make([]string, len(c.clipboardText), len(c.clipboardText))
 	copy(result.clipboardText, c.clipboardText)
 
