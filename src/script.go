@@ -3169,6 +3169,136 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 	})
+	luaRegister(l, "gamepadMappingBegin", func(l *lua.LState) int {
+		/*Start mapping a controller that SDL does not recognise, or re-map one it does.
+		@function gamepadMappingBegin
+		@tparam int instance Raw joystick instance from `getJoystickRawId`.
+		@treturn boolean success `false` if that joystick is gone.*/
+		l.Push(lua.LBool(input.BeginGamepadMapping(int(numArg(l, 1)))))
+		return 1
+	})
+	luaRegister(l, "gamepadMappingCalibrate", func(l *lua.LState) int {
+		/*Record the resting axis positions and clear the current step.
+		@function gamepadMappingCalibrate*/
+		if input.mapping != nil {
+			input.mapping.calibrate()
+		}
+		return 0
+	})
+	luaRegister(l, "gamepadMappingCancel", func(l *lua.LState) int {
+		/*Discard the mapping being edited, including its name.
+		@function gamepadMappingCancel*/
+		input.mapping = nil
+		return 0
+	})
+	luaRegister(l, "gamepadMappingCapture", func(l *lua.LState) int {
+		/*Watch for the control being configured. Call once per frame.
+		@function gamepadMappingCapture
+		@tparam string control SDL control name, for example `a` or `leftxnegative`.
+		@treturn string binding The captured binding, or `""` while still waiting.*/
+		binding := ""
+		if input.mapping != nil {
+			binding = input.mapping.capture(strArg(l, 1))
+		}
+		l.Push(lua.LString(binding))
+		return 1
+	})
+	luaRegister(l, "gamepadMappingGetDevice", func(l *lua.LState) int {
+		/*Get details of a raw joystick for the setup screen.
+		@function gamepadMappingGetDevice
+		@tparam int instance Raw joystick instance from `getJoystickRawId`.
+		@treturn table|nil device Table with `instance`, `name`, `joy`, `id`, `kind`,
+		  `connected` and `recognized`, or `nil` if the joystick is gone.*/
+		instance := int(numArg(l, 1))
+		name, slot, ok := input.GetJoystickRawInfo(instance)
+		if !ok {
+			return 0
+		}
+		out := l.NewTable()
+		out.RawSetString("instance", lua.LNumber(instance))
+		out.RawSetString("name", lua.LString(name))
+		out.RawSetString("joy", lua.LNumber(slot))
+		out.RawSetString("id", lua.LNumber(0))
+		out.RawSetString("kind", lua.LString("gamepad"))
+		out.RawSetString("connected", lua.LBool(true))
+		out.RawSetString("recognized", lua.LBool(slot >= 0))
+		for _, source := range sys.inputs.Sources {
+			if source.Connected && source.Joy == slot && slot >= 0 {
+				out.RawSetString("id", lua.LNumber(source.ID))
+				break
+			}
+		}
+		l.Push(out)
+		return 1
+	})
+	luaRegister(l, "gamepadMappingGetDevices", func(l *lua.LState) int {
+		/*List raw joysticks, including controllers SDL does not recognise yet.
+		@function gamepadMappingGetDevices
+		@treturn table devices Array of tables with `instance`, `name`, `joy`, `kind`, `connected`,
+		  `recognized` and `id` (input source ID, only for recognised controllers) fields.*/
+		ids := make([]int, 0, len(input.rawJoysticks))
+		for id := range input.rawJoysticks {
+			ids = append(ids, int(id))
+		}
+		sort.Ints(ids)
+		result := l.NewTable()
+		for _, instance := range ids {
+			name, joy, ok := input.GetJoystickRawInfo(instance)
+			if !ok {
+				continue
+			}
+			device := l.NewTable()
+			device.RawSetString("instance", lua.LNumber(instance))
+			device.RawSetString("name", lua.LString(name))
+			device.RawSetString("joy", lua.LNumber(joy))
+			device.RawSetString("recognized", lua.LBool(joy >= 0))
+			device.RawSetString("kind", lua.LString("gamepad"))
+			device.RawSetString("connected", lua.LTrue)
+			for _, src := range sys.inputs.Sources {
+				if joy >= 0 && src.Connected && src.Joy == joy {
+					device.RawSetString("id", lua.LNumber(src.ID))
+					break
+				}
+			}
+			result.Append(device)
+		}
+		l.Push(result)
+		return 1
+	})
+	luaRegister(l, "gamepadMappingGetState", func(l *lua.LState) int {
+		/*Read every currently active normalized control on the controller being set up.
+		@function gamepadMappingGetState
+		@treturn table state SDL control names mapped to booleans.*/
+		l.Push(toLValue(l, input.mapping.state()))
+		return 1
+	})
+	luaRegister(l, "gamepadMappingSave", func(l *lua.LState) int {
+		/*Save the mapping to the controller database and apply it right away.
+		@function gamepadMappingSave
+		@tparam string name Controller name, ignored for a recognised controller.
+		@treturn string error Empty on success, otherwise the reason it failed.*/
+		message := "controller disconnected"
+		if m := input.mapping; m != nil {
+			if err := m.save(strArg(l, 1)); err != nil {
+				message = err.Error()
+			} else {
+				input.mapping = nil
+				message = ""
+			}
+		}
+		l.Push(lua.LString(message))
+		return 1
+	})
+	luaRegister(l, "gamepadMappingSkip", func(l *lua.LState) int {
+		/*Leave a control unmapped and clear the current step.
+		@function gamepadMappingSkip
+		@tparam string control SDL control name.*/
+		if m := input.mapping; m != nil {
+			delete(m.Bindings, strArg(l, 1))
+			m.control, m.pending, m.armed = "", "", false
+		}
+		return 0
+	})
 	luaRegister(l, "gameRunning", func(l *lua.LState) int {
 		/*Check whether a match is currently running.
 		@function gameRunning
@@ -3787,6 +3917,18 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(input.IsJoystickPresent(int(numArg(l, 1)))))
 		return 1
 	})
+	luaRegister(l, "getJoystickRawId", func(l *lua.LState) int {
+		/*Get the raw joystick with a button held down, so an unrecognised controller
+		  can be detected. Instances last until the controller is unplugged.
+		@function getJoystickRawId
+		@treturn int|nil instance Raw joystick instance, or `nil` if none is pressed.*/
+		id := input.GetJoystickRawId()
+		if id < 0 {
+			return 0
+		}
+		l.Push(lua.LNumber(id))
+		return 1
+	})
 	luaRegister(l, "getKey", func(*lua.LState) int {
 		/*Query or compare the last pressed key.
 		@function getKey
@@ -4178,11 +4320,7 @@ func systemScriptInit(l *lua.LState) {
 				side = sys.inputs.Participants[owner].Side
 			}
 		}
-		nc := sys.netConnection
-		if sys.rollback.session != nil {
-			nc = sys.rollback.netConnection
-		}
-		if nc != nil {
+		if nc := sys.inputConnection(); nc != nil {
 			side = TeamSide(nc.locIn%2 + 1)
 		}
 		l.Push(lua.LNumber(id))

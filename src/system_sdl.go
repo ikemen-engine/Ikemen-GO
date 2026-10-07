@@ -342,6 +342,10 @@ func findFreeControllerSlot() int {
 
 // Open the SDL device index and attach it to the first available slot.
 func attachController(deviceIndex int) {
+	input.openRawJoystick(deviceIndex)
+	if findControllerIndex(sdl.JoystickGetDeviceInstanceID(deviceIndex)) >= 0 {
+		return
+	}
 	controller := sdl.GameControllerOpen(deviceIndex)
 	if controller == nil {
 		return
@@ -460,6 +464,10 @@ func (w *Window) pollEvents() {
 		case sdl.JoyDeviceAddedEvent:
 			attachController(int(t.Which))
 		case sdl.JoyDeviceRemovedEvent:
+			if joy := input.rawJoysticks[t.Which]; joy != nil {
+				joy.Close()
+				delete(input.rawJoysticks, t.Which)
+			}
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
 				if controller := input.controllers[idx]; controller != nil {
