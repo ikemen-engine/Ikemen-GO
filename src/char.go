@@ -11488,10 +11488,11 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 			if ho.guardflag_not != IErr && (ho.guardflag_not&hd.guardflag != 0 && !c.asf(ASF_unguardable)) {
 				continue
 			}
-			// Miss if using p1stateno or p2stateno and HitOverride together
-			// In Mugen, it misses even if the enemy guards // && Abs(hitResult) == 1
-			if hd.missonoverride == 1 ||
-				(hd.missonoverride == -1 && !isProjectile && (hd.p1stateno >= 0 || hd.p2stateno >= 0)) {
+			// Mugen was very aggressive in preventing p1/p2stateno and HitOverride interactions, by making attacks miss
+			// In Ikemen we will only make the interaction miss when necessary
+			// Reversals bypass invincibility, so HitOverride is the only way to make grab reversals miss
+			reversalGrab := hd.reversal_attr > 0 && hd.p2stateno >= 0
+			if hd.missonoverride > 0 || (hd.missonoverride < 0 && reversalGrab) {
 				return 0
 			}
 			// Set flags
@@ -11668,9 +11669,11 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile) (hitResult int32) 
 				ghv.guarded = false
 				ghv.hitshaketime = Max(0, hd.pausetime[1])
 				ghv.slidetime = hd.ground_slidetime
-				ghv.p2getp1state = hd.p2getp1state
 				ghv.forcestand = hd.forcestand != 0
 				ghv.forcecrouch = hd.forcecrouch != 0
+
+				// Overridden hits skip p2stateno, so don't mark them as p2getp1state
+				ghv.p2getp1state = hd.p2getp1state && !c.mhv.overridden
 
 				// For some reason Mugen only resets this one on hit
 				// Ikemen resets it either on guard or hit, which is more consistent with the others
