@@ -139,6 +139,48 @@ func flagString(flag int32) string {
 	return b.String()
 }
 
+func hitFlagMask(s string) int32 {
+	var flag int32
+	for _, c := range s {
+		switch c {
+		case 'H', 'h':
+			flag |= int32(HF_H)
+		case 'L', 'l':
+			flag |= int32(HF_L)
+		case 'M', 'm':
+			flag |= int32(HF_H | HF_L)
+		case 'A', 'a':
+			flag |= int32(HF_A)
+		case 'F', 'f':
+			flag |= int32(HF_F)
+		case 'D', 'd':
+			flag |= int32(HF_D)
+		case 'P', 'p':
+			flag |= int32(HF_P)
+		case '-':
+			flag |= int32(HF_MNS)
+		case '+':
+			flag |= int32(HF_PLS)
+		}
+	}
+	return flag
+}
+
+// Evaluates either the legacy integer mask or dynamic flag string used by HitDef and projectile HitDef.
+func evalHitFlag(exp []BytecodeExp, c *Char) int32 {
+	// Legacy integer mask is a single expression
+	// A second expression marks the dynamic string form
+	if len(exp) < 2 {
+		return exp[0].evalI(c)
+	}
+	v := exp[0].run(c)
+	if v.vtype != VT_String {
+		sys.appendToConsole(c.warn() + "Expression did not evaluate to a string")
+		return 0
+	}
+	return hitFlagMask(v.ToS())
+}
+
 type MoveType int32
 
 const (
@@ -8097,9 +8139,9 @@ func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 	case hitDef_attr:
 		hd.attr = exp[0].evalI(c)
 	case hitDef_guardflag:
-		hd.guardflag = exp[0].evalI(c)
+		hd.guardflag = evalHitFlag(exp, c)
 	case hitDef_hitflag:
-		hd.hitflag = exp[0].evalI(c)
+		hd.hitflag = evalHitFlag(exp, c)
 	case hitDef_ground_type:
 		hd.ground_type = HitType(exp[0].evalI(c))
 	case hitDef_air_type:
@@ -8539,9 +8581,9 @@ func (sc reversalDef) Run(c *Char, _ []int32) bool {
 		case reversalDef_reversal_attr:
 			crun.hitdef.reversal_attr = exp[0].evalI(c)
 		case reversalDef_reversal_guardflag:
-			crun.hitdef.reversal_guardflag = exp[0].evalI(c)
+			crun.hitdef.reversal_guardflag = evalHitFlag(exp, c)
 		case reversalDef_reversal_guardflag_not:
-			crun.hitdef.reversal_guardflag_not = exp[0].evalI(c)
+			crun.hitdef.reversal_guardflag_not = evalHitFlag(exp, c)
 		case reversalDef_redirectid:
 			return true // Already handled. Avoid runSub
 		default:
@@ -8945,9 +8987,9 @@ func (sc modifyReversalDef) Run(c *Char, _ []int32) bool {
 		case modifyReversalDef_reversal_attr:
 			crun.hitdef.reversal_attr = exp[0].evalI(c)
 		case modifyReversalDef_reversal_guardflag:
-			crun.hitdef.reversal_guardflag = exp[0].evalI(c)
+			crun.hitdef.reversal_guardflag = evalHitFlag(exp, c)
 		case modifyReversalDef_reversal_guardflag_not:
-			crun.hitdef.reversal_guardflag_not = exp[0].evalI(c)
+			crun.hitdef.reversal_guardflag_not = evalHitFlag(exp, c)
 		case modifyReversalDef_redirectid:
 			return true // Already handled. Avoid default
 		default:
@@ -9370,12 +9412,12 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				p.hitdef.attr = v1
 			})
 		case hitDef_guardflag:
-			v1 := exp[0].evalI(c)
+			v1 := evalHitFlag(exp, c)
 			modifiers = append(modifiers, func(p *Projectile) {
 				p.hitdef.guardflag = v1
 			})
 		case hitDef_hitflag:
-			v1 := exp[0].evalI(c)
+			v1 := evalHitFlag(exp, c)
 			modifiers = append(modifiers, func(p *Projectile) {
 				p.hitdef.hitflag = v1
 			})
@@ -10942,9 +10984,9 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 		case hitOverride_keepstate:
 			ks = exp[0].evalB(c) // Shouldn't be used together with StateNo but no need to block it either
 		case hitOverride_guardflag:
-			gf = exp[0].evalI(c)
+			gf = evalHitFlag(exp, c)
 		case hitOverride_guardflag_not:
-			gfn = exp[0].evalI(c)
+			gfn = evalHitFlag(exp, c)
 		}
 		return true
 	})
