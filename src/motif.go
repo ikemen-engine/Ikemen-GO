@@ -1393,6 +1393,7 @@ type SideSelectItemColumn struct {
 }
 
 type SideSelectInfoProperties struct {
+	Enabled bool              `ini:"enabled"`
 	FadeIn  FadeProperties    `ini:"fadein"`
 	FadeOut FadeProperties    `ini:"fadeout"`
 	Pos     [2]float32        `ini:"pos"`

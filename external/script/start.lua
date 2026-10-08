@@ -1827,7 +1827,7 @@ end
 function start.f_sideInputSources(side)
 	local ret = {}
 	for _, source in ipairs(inputSources()) do
-		if source.participant > 0 and source.side == side then
+		if source.primary and source.participant > 0 and source.side == side then
 			table.insert(ret, source)
 		end
 	end
@@ -4860,6 +4860,35 @@ function start.f_sideSelect()
 			end
 		end
 		maxPerSide = math.min(maxPerSide, maxPlayers)
+	end
+	if not sec.enabled then
+		-- Every human-controlled side requires its own participant.
+		local minimum = minPerSide * (versus and 2 or 1)
+		local maximum = maxPerSide
+		-- Optional co-op needs side selection to opt in extra players. With that
+		-- screen disabled, keep a single human participant and normal team menus.
+		local humanSide = main.cpuSide[1] and 2 or 1
+		if main.coop and not versus and main.teamMenu[humanSide].single then
+			maximum = 1
+		end
+		if not inputAutoAssign(initiator, minimum, maximum, versus) then
+			inputMenu()
+			main.f_warning(motif.warning_info.text.text.inputcount, motif[main.group], motif[main.background])
+			return false
+		end
+		start.f_setRunSide(1)
+		for side = 1, 2 do
+			main.sideInputSources[side] = start.f_sideInputSources(side)
+			if versus then
+				main.cpuSide[side] = #main.sideInputSources[side] == 0
+			end
+		end
+		if versus and main.cpuSide[main.opponentSide] then
+			setHomeTeam(main.opponentSide)
+		end
+		inputCommit()
+		main.f_saveBaseRemapInput()
+		return true
 	end
 	local done = nil -- nil: choosing, true: continue, false: cancel
 	local function exitSideSelect()

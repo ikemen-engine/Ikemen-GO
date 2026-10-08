@@ -396,13 +396,14 @@ type InputParticipant struct {
 }
 
 type InputAssignment struct {
-	Sources      []*InputSource
-	Participants []InputParticipant
-	ClaimLocked  bool // no automatic claiming (side select or netplay)
-	MenuSource   int
-	nextID       int
-	nextOrder    int
-	frame        int32
+	Sources       []*InputSource
+	Participants  []InputParticipant
+	ClaimLocked   bool // no automatic claiming (side select or netplay)
+	MenuSource    int
+	sharedSources map[int][]int // Optional local sharing; primary source remains in Participants.
+	nextID        int
+	nextOrder     int
+	frame         int32
 }
 
 // Returns the input source with this ID, or nil.
@@ -423,12 +424,35 @@ func (a *InputAssignment) addInputSource(joy int, name, guid, profile string) *I
 	return d
 }
 
-// Returns the index of the participant using this input source, or -1.
+// Sources currently driving a participant. Normal side selection uses one;
+// automatic assignment and explicit quick-versus sharing may use several.
+func (a *InputAssignment) participantSources(participant int) []int {
+	if participant < 0 || participant >= len(a.Participants) || a.Participants[participant].Source == 0 {
+		return nil
+	}
+	if ids := a.sharedSources[participant]; len(ids) > 0 {
+		return ids
+	}
+	return []int{a.Participants[participant].Source}
+}
+
+func (a *InputAssignment) participantConnected(participant int) bool {
+	for _, id := range a.participantSources(participant) {
+		if src := a.inputSource(id); src != nil && src.Connected {
+			return true
+		}
+	}
+	return false
+}
+
+// Shared sources belong to the same human, including for challenger detection.
 func (a *InputAssignment) owner(source int) int {
 	if source != 0 {
-		for i, p := range a.Participants {
-			if p.Source == source {
-				return i
+		for i := range a.Participants {
+			for _, id := range a.participantSources(i) {
+				if id == source {
+					return i
+				}
 			}
 		}
 	}
@@ -454,6 +478,7 @@ func (a *InputAssignment) claim(source int, side TeamSide) (int, error) {
 	if i < 0 {
 		return -1, fmt.Errorf("all participant positions are occupied")
 	}
+	delete(a.sharedSources, i)
 	a.nextOrder++
 	a.Participants[i] = InputParticipant{Source: source, Side: side, joined: a.nextOrder}
 	return i, nil
@@ -575,11 +600,9 @@ func (ir *InputReader) Reset() {
 
 func (ir *InputReader) LocalInput(in int) [14]bool {
 	var state [14]bool
-	if kc, ok := sys.participantConfig(in); ok {
-		if kc.Joy < 0 {
-			state = GetKeyboardState(kc)
-		} else {
-			state = GetJoystickState(kc)
+	for _, id := range sys.inputs.participantSources(in) {
+		for button, down := range sys.inputSourceState(sys.inputs.inputSource(id)) {
+			state[button] = state[button] || down
 		}
 	}
 	U, D, L, R := state[BI_PU], state[BI_PD], state[BI_PL], state[BI_PR]
@@ -598,11 +621,17 @@ func (ir *InputReader) LocalInput(in int) [14]bool {
 }
 
 func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
-	joy := sys.participantJoystick(in)
-	if !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
-		return [6]int8{}
+	var axes [6]int8
+	for _, joy := range sys.participantJoysticks(in) {
+		if input.IsJoystickPresent(joy) && input.controllerstate[joy] != nil {
+			for i, value := range input.controllerstate[joy].Axes {
+				if Abs(int32(value)) > Abs(int32(axes[i])) {
+					axes[i] = value
+				}
+			}
+		}
 	}
-	return input.controllerstate[joy].Axes
+	return axes
 }
 
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
@@ -3207,12 +3236,17 @@ func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int
 	if !ok || idx == 25 { // unbound
 		return false
 	}
-	// Resolve controllerIdx -> physical joystick index
-	joyIdx := -1
 	if controllerIdx >= 0 && controllerIdx < len(sys.inputRemap) {
-		joyIdx = sys.participantJoystick(sys.inputRemap[controllerIdx])
+		for _, joy := range sys.participantJoysticks(sys.inputRemap[controllerIdx]) {
+			if joystickTokenPressed(token, idx, joy) {
+				return true
+			}
+		}
 	}
+	return false
+}
 
+func joystickTokenPressed(token string, idx, joyIdx int) bool {
 	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() || !input.IsJoystickPresent(joyIdx) {
 		return false
 	}

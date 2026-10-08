@@ -1104,6 +1104,11 @@ function main.f_commandLine()
 	setTeamMode(2, t_teamMode[2], t_numChars[2])
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	local t_params = {}
+	-- Quick versus has no side select, so assign inputs as if it were disabled:
+	-- one human per side, before remapInput below gives each character its side's controls.
+	if flags['-ip'] == nil then
+		inputAutoAssign(inputBegin(), 1, 1, true)
+	end
 	--iterate over the table in -p order ascending
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		local charKey = v.character:lower()

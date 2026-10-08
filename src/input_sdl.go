@@ -810,9 +810,16 @@ func (input *Input) RumbleController(participant int, lo, hi uint16, ticks uint3
 		}
 		participant = 0
 	}
-	kc, ok := sys.participantConfig(participant)
+	for _, id := range sys.inputs.participantSources(participant) {
+		if kc, found := sys.inputSourceConfig(sys.inputs.inputSource(id)); found {
+			input.rumbleConfig(kc, lo, hi, ticks)
+		}
+	}
+}
+
+func (input *Input) rumbleConfig(kc KeyConfig, lo, hi uint16, ticks uint32) {
 	joy := kc.Joy
-	if !ok || !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
+	if !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
 		return
 	}
 

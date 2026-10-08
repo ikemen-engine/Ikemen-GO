@@ -3804,7 +3804,7 @@ func systemScriptInit(l *lua.LState) {
 			if v == 1 {
 				controller := sys.uiControllerKey(controllerIdx)
 				if controller >= 0 && controller < len(sys.inputs.Participants) {
-					sys.noteGlyphInput(sys.inputs.Participants[controller].Source)
+					sys.noteGlyphInput(sys.participantMenuSource(controller))
 				}
 			}
 			// 0 if < 0, otherwise 1+
@@ -4181,9 +4181,23 @@ func systemScriptInit(l *lua.LState) {
 		@function inputBegin
 		@treturn int sourceId Input source that opened the mode (`0` if unknown).*/
 		sys.inputs.ClaimLocked = true
+		sys.inputs.sharedSources = nil
 		sys.inputs.Participants = make([]InputParticipant, MaxSimul*2)
 		sys.applyParticipantsToSlots()
 		l.Push(lua.LNumber(sys.inputs.MenuSource))
+		return 1
+	})
+	luaRegister(l, "inputAutoAssign", func(l *lua.LState) int {
+		/*Assign local inputs without displaying side selection.
+		@function inputAutoAssign
+		@tparam int sourceId Input source that opened the mode.
+		@tparam int minimum Minimum total number of human participants.
+		@tparam int maximum Maximum human participants per side.
+		@tparam boolean versus Assign both sides instead of keeping players together.
+		@treturn boolean success Enough independent inputs were assigned.*/
+		ok := !sys.netplay() && sys.assignAutomaticInputs(int(numArg(l, 1)),
+			Max(1, int(numArg(l, 2))), Clamp(int(numArg(l, 3)), 1, MaxSimul), boolArg(l, 4))
+		l.Push(lua.LBool(ok))
 		return 1
 	})
 	luaRegister(l, "inputClaim", func(l *lua.LState) int {
@@ -4196,6 +4210,7 @@ func systemScriptInit(l *lua.LState) {
 		source, side := int(numArg(l, 1)), TeamSide(numArg(l, 2))
 		if side == TS_None {
 			if i := sys.inputs.owner(source); i >= 0 {
+				delete(sys.inputs.sharedSources, i)
 				sys.inputs.Participants[i] = InputParticipant{}
 			}
 			l.Push(lua.LBool(true))
@@ -4364,6 +4379,7 @@ func systemScriptInit(l *lua.LState) {
 		side := TeamSide(numArg(l, 1))
 		for i, p := range sys.inputs.Participants {
 			if p.Side != side {
+				delete(sys.inputs.sharedSources, i)
 				sys.inputs.Participants[i] = InputParticipant{}
 			}
 		}
@@ -4621,6 +4637,7 @@ func systemScriptInit(l *lua.LState) {
 		  `kind` (`"keyboard"` or `"gamepad"`), `joy`, `profile`, `profileName`, `connected`,
 		  `participant` (1-based, `0` if unassigned), `side` (`0`/`1`/`2`), `ready`,
 		  `order` (join order), `readyOrder` (confirmation order),
+		  `primary` (main source of its participant), `available` (any owned source is connected),
 		  `conflict` (keyboard bindings overlap another participant).*/
 		sys.pollInputSources()
 		out := l.NewTable()
@@ -4649,6 +4666,8 @@ func systemScriptInit(l *lua.LState) {
 				"profile":     src.Profile,
 				"profileName": name,
 				"connected":   src.Connected,
+				"primary":     owner < 0 || p.Source == src.ID,
+				"available":   owner < 0 || sys.inputs.participantConnected(owner),
 				"participant": owner + 1,
 				"order":       p.joined,
 				"readyOrder":  p.confirmed,
