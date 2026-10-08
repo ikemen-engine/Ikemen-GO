@@ -869,13 +869,22 @@ func (s *Sprite) SetPxl(px []byte) {
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
 	if sprDepth == 32 {
-		// Normalize fully transparent RGBA pixels to prevent their RGB values from bleeding into visible pixels
+		// Convert straight RGBA to premultiplied, which the renderer expects
+		// This also lets bilinear filtering blend sprite edges correctly
+		// Fully transparent pixels are zeroed so their RGB can't bleed into visible pixels
 		for i := 0; i+3 < len(data); i += 4 {
-			if data[i+3] == 0 {
-				data[i] = 0
-				data[i+1] = 0
-				data[i+2] = 0
+			a := data[i+3]
+			if a == 255 {
+				continue
 			}
+			if a == 0 {
+				data[i], data[i+1], data[i+2] = 0, 0, 0
+				continue
+			}
+			// Matches Go's color.NRGBA to color.RGBA conversion
+			data[i] = uint8((uint32(data[i]) * 0x101 * uint32(a) / 0xff) >> 8)
+			data[i+1] = uint8((uint32(data[i+1]) * 0x101 * uint32(a) / 0xff) >> 8)
+			data[i+2] = uint8((uint32(data[i+2]) * 0x101 * uint32(a) / 0xff) >> 8)
 		}
 	}
 	sys.mainThreadTask <- func() {
@@ -1361,8 +1370,7 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 		case 11, 12:
 			isRaw = true
 
-			// Decode PNG image to RGBA
-			// Preserve straight alpha because image.RGBA stores premultiplied color
+			// Decode PNG image to straight RGBA, which SetRaw() premultiplies for the renderer
 			img, err := png.Decode(f)
 			if err != nil {
 				return err

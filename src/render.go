@@ -912,17 +912,22 @@ func RenderSprite(rp RenderParams) {
 		renderSpriteQuad(modelview, rp)
 	}
 
-	renderWithBlending(renderPass, rp.blendMode, rp.blendAlpha, &spfx, rp.paltex == nil)
+	renderWithBlending(renderPass, rp.blendMode, rp.blendAlpha, rp.paltex == nil, &spfx, rp.paltex == nil)
 
 	gfx.DisableScissor()
 }
 
 func renderWithBlending(
 	render func(eq BlendEquation, src, dst BlendFunc, a float32),
-	blendMode TransType, blendAlpha [2]int32,
+	blendMode TransType, blendAlpha [2]int32, premultiplied bool,
 	spfx *ShaderPalFX, isrgba bool) {
 
+	// Premultiplied data has alpha baked into its color, so the source factor must not re-apply it
+	// Paletted sprites and flat fills are straight, so they do need it
 	blendSourceFactor := BlendSrcAlpha
+	if premultiplied {
+		blendSourceFactor = BlendOne
+	}
 
 	Blend := BlendAdd
 	BlendInv := BlendReverseSubtract
@@ -1140,7 +1145,7 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 		gfx.RenderQuad()
 	}
 
-	renderWithBlending(renderPass, TT_add, alpha, &spfx, true)
+	renderWithBlending(renderPass, TT_add, alpha, false, &spfx, true)
 }
 
 type TextureAtlas struct {
