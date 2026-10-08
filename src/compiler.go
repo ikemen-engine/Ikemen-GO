@@ -724,11 +724,21 @@ func (c *CharCompiler) number(token string) BytecodeValue {
 }
 
 func (c *CharCompiler) attr(text string, hitdef bool) (int32, error) {
+	// Compile-time literals follow the parser's CNS/ZSS error-tolerance settings
+	strict := c.zssMode || !sys.ignoreMostErrors
+	return attrMask(text, hitdef, strict, func(message string) {
+		sys.appendToConsole(c.charWarn() + message)
+	})
+}
+
+func attrMask(text string, hitdef, strict bool, warn func(string)) (int32, error) {
 	flg := int32(0)
 	att := SplitAndTrim(text, ",")
 	for _, a := range att[0] {
 		switch a {
 		case 'S', 's':
+			// For HitDefs only one state type flag is accepted (last one wins)
+			// TODO: Mugen doesn't seem to do this. Ikemen also probably doesn't need this strictness at all
 			if hitdef {
 				flg = int32(ST_S)
 			} else {
@@ -747,7 +757,7 @@ func (c *CharCompiler) attr(text string, hitdef bool) (int32, error) {
 				flg |= int32(ST_A)
 			}
 		default:
-			if sys.ignoreMostErrors && a < 128 && (a < 'A' || a > 'Z') &&
+			if !strict && a < 128 && (a < 'A' || a > 'Z') &&
 				(a < 'a' || a > 'z') {
 				return flg, nil
 			}
@@ -757,7 +767,7 @@ func (c *CharCompiler) attr(text string, hitdef bool) (int32, error) {
 	//hitdefflg := flg
 	for _, a := range att[1:] {
 		l := len(a)
-		if sys.ignoreMostErrors && l >= 2 {
+		if !strict && l >= 2 {
 			a = strings.TrimSpace(a[:2])
 		}
 		switch strings.ToLower(a) {
@@ -792,11 +802,13 @@ func (c *CharCompiler) attr(text string, hitdef bool) (int32, error) {
 		case "h", "a":
 			flg |= int32(AT_HA | AT_HT | AT_HP)
 		default:
-			if sys.ignoreMostErrors {
+			if !strict {
 				//if hitdef {
 				//	flg = hitdefflg
 				//}
-				sys.appendToConsole(c.charWarn() + "Invalid attr value: " + a)
+				if warn != nil {
+					warn("Invalid attr value: " + a)
+				}
 				return flg, nil
 			}
 			return 0, Error("Invalid attr value: " + a)

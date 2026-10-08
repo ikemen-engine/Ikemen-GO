@@ -169,16 +169,36 @@ func hitFlagMask(s string) int32 {
 // Evaluates either the legacy integer mask or dynamic flag string used by HitDef and projectile HitDef.
 func evalHitFlag(exp []BytecodeExp, c *Char) int32 {
 	// Legacy integer mask is a single expression
-	// A second expression marks the dynamic string form
 	if len(exp) < 2 {
 		return exp[0].evalI(c)
 	}
+	// A second expression marks the dynamic string form
 	v := exp[0].run(c)
 	if v.vtype != VT_String {
 		sys.appendToConsole(c.warn() + "Expression did not evaluate to a string")
 		return 0
 	}
 	return hitFlagMask(v.ToS())
+}
+
+func evalAttr(exp []BytecodeExp, c *Char, hitdef bool) int32 {
+	// Legacy attr flags are a single expression
+	if len(exp) < 2 {
+		return exp[0].evalI(c)
+	}
+	// A second expression marks the dynamic string form
+	v := exp[0].run(c)
+	if v.vtype != VT_String {
+		sys.appendToConsole(c.warn() + "Expression did not evaluate to a string")
+		return 0
+	}
+	// Runtime expression results are always validated strictly
+	mask, err := attrMask(v.ToS(), hitdef, true, nil)
+	if err != nil {
+		sys.appendToConsole(c.warn() + err.Error())
+		return 0
+	}
+	return mask
 }
 
 type MoveType int32
@@ -5420,7 +5440,7 @@ func (sc hitBy) runSub(c *Char, crun *Char, not bool) {
 		case hitBy_slot:
 			slot = int(Max(0, exp[0].evalI(c)))
 		case hitBy_attr:
-			attr = exp[0].evalI(c)
+			attr = evalAttr(exp, c, false)
 		case hitBy_playerno:
 			pno = int(exp[0].evalI(c))
 		case hitBy_playerid:
@@ -8137,7 +8157,7 @@ const (
 func (sc hitDef) runSub(c *Char, hd *HitDef, paramID byte, exp []BytecodeExp) {
 	switch paramID {
 	case hitDef_attr:
-		hd.attr = exp[0].evalI(c)
+		hd.attr = evalAttr(exp, c, true)
 	case hitDef_guardflag:
 		hd.guardflag = evalHitFlag(exp, c)
 	case hitDef_hitflag:
@@ -8579,7 +8599,7 @@ func (sc reversalDef) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case reversalDef_reversal_attr:
-			crun.hitdef.reversal_attr = exp[0].evalI(c)
+			crun.hitdef.reversal_attr = evalAttr(exp, c, false)
 		case reversalDef_reversal_guardflag:
 			crun.hitdef.reversal_guardflag = evalHitFlag(exp, c)
 		case reversalDef_reversal_guardflag_not:
@@ -8985,7 +9005,7 @@ func (sc modifyReversalDef) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case modifyReversalDef_reversal_attr:
-			crun.hitdef.reversal_attr = exp[0].evalI(c)
+			crun.hitdef.reversal_attr = evalAttr(exp, c, false)
 		case modifyReversalDef_reversal_guardflag:
 			crun.hitdef.reversal_guardflag = evalHitFlag(exp, c)
 		case modifyReversalDef_reversal_guardflag_not:
@@ -9407,7 +9427,7 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				p.customShader.afterimage = v1
 			})
 		case hitDef_attr:
-			v1 := exp[0].evalI(c)
+			v1 := evalAttr(exp, c, true)
 			modifiers = append(modifiers, func(p *Projectile) {
 				p.hitdef.attr = v1
 			})
@@ -10964,7 +10984,7 @@ func (sc hitOverride) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case hitOverride_attr:
-			at = exp[0].evalI(c)
+			at = evalAttr(exp, c, false)
 		case hitOverride_slot:
 			sl = Max(0, exp[0].evalI(c))
 			if sl > 7 {
@@ -15870,7 +15890,7 @@ func (sc getHitVarSet) Run(c *Char, _ []int32) bool {
 		case getHitVarSet_animtype:
 			crun.ghv.animtype = Reaction(exp[0].evalI(c))
 		case getHitVarSet_attr:
-			crun.ghv.attr = exp[0].evalI(c)
+			crun.ghv.attr = evalAttr(exp, c, false)
 		case getHitVarSet_chainid:
 			crun.ghv.hitid = exp[0].evalI(c)
 		case getHitVarSet_crouch_friction:

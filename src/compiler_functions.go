@@ -12,25 +12,20 @@ import (
 // This file contains the parsing code for the function in ZSS and CNS, also called State Controllers.
 
 func (c *CharCompiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlName string) error {
-	attr := int32(-1)
 	var err error
 	var any, new, old bool
 
 	// New syntax with attr and slots
 	if err = c.stateParam(is, "attr", false, func(data string) error {
 		any, new = true, true
-		attr, err = c.attr(data, false)
-		if err != nil {
-			return err
-		}
-		sc.add(hitBy_attr, sc.iToExp(attr))
-		return nil // When running a "sub" function we can't just return sc.add
+		return c.parseAttrExpression(sc, hitBy_attr, data, false)
 	}); err != nil {
 		return err
 	}
 	if err := c.stateParam(is, "playerno", false, func(data string) error {
 		any, new = true, true
 		c.scAdd(sc, hitBy_playerno, data, VT_Int, 1)
+		// When running a "sub" function we can't just return sc.add
 		return nil
 	}); err != nil {
 		return err
@@ -79,26 +74,16 @@ func (c *CharCompiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlNam
 	// Must be placed after time
 	if err = c.stateParam(is, "value", false, func(data string) error {
 		any, old = true, true
-		attr, err = c.attr(data, false)
-		if err != nil {
-			return err
-		}
 		sc.add(hitBy_slot, sc.iToExp(0))
-		sc.add(hitBy_attr, sc.iToExp(attr))
-		return nil
+		return c.parseAttrExpression(sc, hitBy_attr, data, false)
 	}); err != nil {
 		return err
 	}
 	if !any { // In Mugen if both values are used then value2 will be ignored
 		if err = c.stateParam(is, "value2", false, func(data string) error {
 			any, old = true, true
-			attr, err = c.attr(data, false)
-			if err != nil {
-				return err
-			}
 			sc.add(hitBy_slot, sc.iToExp(1))
-			sc.add(hitBy_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, hitBy_attr, data, false)
 		}); err != nil {
 			return err
 		}
@@ -1737,6 +1722,28 @@ func (c *CharCompiler) afterImageTime(is IniSection, sc *StateControllerBase) (S
 	return *ret, err
 }
 
+func (c *CharCompiler) parseAttrExpression(sc *StateControllerBase, id byte, data string, hitdef bool) error {
+	// Parse literals strictly first, before trying to compile the value as a string expression
+	if attr, err := attrMask(data, hitdef, true, nil); err == nil {
+		sc.add(id, sc.iToExp(attr))
+		return nil
+	}
+	rest := data
+	cc := *c
+	be, err := cc.fullExpression(&rest, VT_String)
+	if err != nil {
+		attr, parseErr := c.attr(data, hitdef)
+		if parseErr != nil {
+			return parseErr
+		}
+		sc.add(id, sc.iToExp(attr))
+		return nil
+	}
+	// A second expression marks a dynamic string attr
+	sc.add(id, []BytecodeExp{be, sc.iToExp(1)[0]})
+	return nil
+}
+
 func (c *CharCompiler) parseHitFlag(sc *StateControllerBase, id byte, data string) error {
 	sc.add(id, sc.iToExp(hitFlagMask(data)))
 	return nil
@@ -1764,12 +1771,7 @@ func (c *CharCompiler) parseHitFlagExpression(sc *StateControllerBase, id byte, 
 
 func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.stateParam(is, "attr", false, func(data string) error {
-		attr, err := c.attr(data, true)
-		if err != nil {
-			return err
-		}
-		sc.add(hitDef_attr, sc.iToExp(attr))
-		return nil
+		return c.parseAttrExpression(sc, hitDef_attr, data, true)
 	}); err != nil {
 		return err
 	}
@@ -2358,22 +2360,20 @@ func (c *CharCompiler) modifyHitDef(is IniSection, sc *StateControllerBase) (Sta
 
 func (c *CharCompiler) reversalDef(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
-		attr := int32(-1)
 		var err error
 		if err = c.paramValue(is, sc, "redirectid",
 			reversalDef_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		attrSet := false
 		if err = c.stateParam(is, "reversal.attr", false, func(data string) error {
-			attr, err = c.attr(data, false)
-			return err
+			attrSet = true
+			return c.parseAttrExpression(sc, reversalDef_reversal_attr, data, false)
 		}); err != nil {
 			return err
 		}
-		if attr == -1 {
+		if !attrSet {
 			return Error("ReversalDef reversal.attr not specified")
-		} else {
-			sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
 		}
 		if err := c.stateParam(is, "reversal.guardflag", false, func(data string) error {
 			return c.parseHitFlagExpression(sc, reversalDef_reversal_guardflag, data)
@@ -2398,12 +2398,7 @@ func (c *CharCompiler) modifyReversalDef(is IniSection, sc *StateControllerBase)
 			return err
 		}
 		if err = c.stateParam(is, "reversal.attr", false, func(data string) error {
-			attr, err := c.attr(data, true)
-			if err != nil {
-				return err
-			}
-			sc.add(modifyReversalDef_reversal_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, modifyReversalDef_reversal_attr, data, false)
 		}); err != nil {
 			return err
 		}
@@ -3433,12 +3428,7 @@ func (c *CharCompiler) hitOverride(is IniSection, sc *StateControllerBase) (Stat
 			return err
 		}
 		if err := c.stateParam(is, "attr", false, func(data string) error {
-			attr, err := c.attr(data, false)
-			if err != nil {
-				return err
-			}
-			sc.add(hitOverride_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, hitOverride_attr, data, false)
 		}); err != nil {
 			return err
 		}
@@ -6554,12 +6544,7 @@ func (c *CharCompiler) getHitVarSet(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		if err := c.stateParam(is, "attr", false, func(data string) error {
-			attr, err := c.attr(data, false)
-			if err != nil {
-				return err
-			}
-			sc.add(getHitVarSet_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, getHitVarSet_attr, data, false)
 		}); err != nil {
 			return err
 		}
