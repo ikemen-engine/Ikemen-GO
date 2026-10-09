@@ -2453,7 +2453,7 @@ func (e *Explod) cueDraw() {
 		name:   e.customShader.key,
 		params: e.customShader.params,
 		time:   e.customShader.time,
-		sTime:  e.customShader.sTime,
+		sTime:  e.customShader.interpolatedSTime(!e.pauseBool),
 		tex1:   e.customShader.tex1.GetTexture(),
 		tex2:   e.customShader.tex2.GetTexture(),
 	}
@@ -3319,7 +3319,7 @@ func (p *Projectile) cueDraw() {
 		name:   p.customShader.key,
 		params: p.customShader.params,
 		time:   p.customShader.time,
-		sTime:  p.customShader.sTime,
+		sTime:  p.customShader.interpolatedSTime(!p.pauseBool && p.hitpause <= 0),
 		tex1:   p.customShader.tex1.GetTexture(),
 		tex2:   p.customShader.tex2.GetTexture(),
 	}
@@ -13262,148 +13262,152 @@ func (c *Char) cueDebugDraw() {
 
 	// Debug Clsn display
 	if sys.clsnDisplay {
-		if c.curFrame != nil {
-			// Add Clsn1
-			boxes1 := c.getClsnWorld(1)
-			if len(boxes1) > 0 {
-				// Determine which debug box to use
-				var debugType *DebugClsn
-				if c.scf(SCF_standby) {
-					// Add nothing
-				} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
-					debugType = &sys.debugc1rev
-				} else if c.atktmp != 0 && c.hitdef.attr > 0 {
-					debugType = &sys.debugc1hit
-				} else {
-					debugType = &sys.debugc1not
-				}
+		// Add Clsn1
+		boxes1 := c.getClsnWorld(1)
+		if len(boxes1) > 0 {
+			// Determine which debug box to use
+			var debugType *DebugClsn
+			if c.scf(SCF_standby) {
+				debugType = &sys.debugc1stb
+			} else if c.atktmp != 0 && c.hitdef.reversal_attr > 0 {
+				debugType = &sys.debugc1rev
+			} else if c.atktmp != 0 && c.hitdef.attr > 0 {
+				debugType = &sys.debugc1hit
+			} else {
+				debugType = &sys.debugc1not
+			}
+			if debugType != nil {
 				debugType.Add(boxes1, x+xoff, y+yoff, c.facing)
 			}
+		}
 
-			// Check invincibility to decide box colors
-			boxes2 := c.getClsnWorld(2)
-			if len(boxes2) > 0 {
-				// The debug text is determined by the char's global state, not every single HitBy slot properties
-				hb, mtk, txt, flags := c.debugHitByState(-1, -1)
-				nhbtxt = txt
+		// Add Clsn2
+		// Check invincibility to decide box colors
+		boxes2 := c.getClsnWorld(2)
+		if len(boxes2) > 0 {
+			// The debug text is determined by the char's global state, not every single HitBy slot properties
+			hb, mtk, txt, flags := c.debugHitByState(-1, -1)
+			nhbtxt = txt
 
-				// Decide which debug box to use for one box's invincibility
-				pick := func(inv, full bool) *DebugClsn {
-					switch {
-					case c.scf(SCF_standby):
-						return &sys.debugc2stb // Standby
-					case full:
-						return &sys.debugc2mtk // Fully invincible
-					case inv:
-						return &sys.debugc2hb // Partially invincible
-					case c.inguarddist && c.scf(SCF_guard):
-						return &sys.debugc2grd // Guarding
-						// Mugen does not check inguarddist here
-						// This shows that the inner workings of its SCF_guard are different from ours
-						// Maybe it is flagged during hit detection, much like inguarddist. Which isn't necessarily better
-					default:
-						return &sys.debugc2 // Normal
-					}
-				}
-
-				// Color each box by its own invincibility
-				for i := range boxes2 {
-					bhb, bmtk, _, _ := c.debugHitByState(2, int32(i))
-					pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing)
-				}
-
-				// The text only cares about the global state. The colors will specify which boxes can be hit
-				if c.hasBoxHitBy() {
-					nhbtxt = "Clsn-specific"
-				}
-
-				// Add invulnerability text
-				if nhbtxt == "" {
-					if mtk {
-						nhbtxt = "Invincible"
-					} else if hb {
-						// Avoids reallocating and copying on every concatenation
-						var b strings.Builder
-						// Statetype
-						if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
-							if flags&int32(ST_S) == 0 {
-								b.WriteString("S")
-							}
-							if flags&int32(ST_C) == 0 {
-								b.WriteString("C")
-							}
-							if flags&int32(ST_A) == 0 {
-								b.WriteString("A")
-							}
-							b.WriteString(" Any")
-						}
-						// Attack
-						if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_HA) == 0 {
-							if b.Len() > 0 {
-								b.WriteString(", ")
-							}
-							if flags&int32(AT_NA) == 0 {
-								b.WriteString("N")
-							}
-							if flags&int32(AT_SA) == 0 {
-								b.WriteString("S")
-							}
-							if flags&int32(AT_HA) == 0 {
-								b.WriteString("H")
-							}
-							b.WriteString(" Atk")
-						}
-						// Throw
-						if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_HT) == 0 {
-							if b.Len() > 0 {
-								b.WriteString(", ")
-							}
-							if flags&int32(AT_NT) == 0 {
-								b.WriteString("N")
-							}
-							if flags&int32(AT_ST) == 0 {
-								b.WriteString("S")
-							}
-							if flags&int32(AT_HT) == 0 {
-								b.WriteString("H")
-							}
-							b.WriteString(" Thr")
-						}
-						// Projectile
-						if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_HP) == 0 {
-							if b.Len() > 0 {
-								b.WriteString(", ")
-							}
-							if flags&int32(AT_NP) == 0 {
-								b.WriteString("N")
-							}
-							if flags&int32(AT_SP) == 0 {
-								b.WriteString("S")
-							}
-							if flags&int32(AT_HP) == 0 {
-								b.WriteString("H")
-							}
-							b.WriteString(" Prj")
-						}
-						nhbtxt = b.String()
-					}
+			// Decide which debug box to use for one box's invincibility
+			pick := func(inv, full bool) *DebugClsn {
+				switch {
+				case c.scf(SCF_standby):
+					return &sys.debugc2stb // Standby
+				case full:
+					return &sys.debugc2mtk // Fully invincible
+				case inv:
+					return &sys.debugc2hb // Partially invincible
+				case c.inguarddist && c.scf(SCF_guard):
+					return &sys.debugc2grd // Guarding
+					// Mugen does not check inguarddist here
+					// This shows that the inner workings of its SCF_guard are different from ours
+					// Maybe it is flagged during hit detection, much like inguarddist. Which isn't necessarily better
+				default:
+					return &sys.debugc2 // Normal
 				}
 			}
 
-			// Add size box (width * height)
-			if c.csf(CSF_playerpush) {
-				boxes3 := c.getClsnWorld(3)
-				sys.debugcsize.Add(boxes3, x, y, c.facing)
+			// Color each box by its own invincibility
+			for i := range boxes2 {
+				bhb, bmtk, _, _ := c.debugHitByState(2, int32(i))
+				pick(bhb, bmtk).Add(boxes2[i:i+1], x+xoff, y+yoff, c.facing)
+			}
+
+			// The text only cares about the global state. The colors will specify which boxes can be hit
+			if c.hasBoxHitBy() {
+				nhbtxt = "Clsn-specific"
+			}
+
+			// Add invulnerability text
+			if nhbtxt == "" {
+				if mtk {
+					nhbtxt = "Invincible"
+				} else if hb {
+					// Avoids reallocating and copying on every concatenation
+					var b strings.Builder
+					// Statetype
+					if flags&int32(ST_S) == 0 || flags&int32(ST_C) == 0 || flags&int32(ST_A) == 0 {
+						if flags&int32(ST_S) == 0 {
+							b.WriteString("S")
+						}
+						if flags&int32(ST_C) == 0 {
+							b.WriteString("C")
+						}
+						if flags&int32(ST_A) == 0 {
+							b.WriteString("A")
+						}
+						b.WriteString(" Any")
+					}
+					// Attack
+					if flags&int32(AT_NA) == 0 || flags&int32(AT_SA) == 0 || flags&int32(AT_HA) == 0 {
+						if b.Len() > 0 {
+							b.WriteString(", ")
+						}
+						if flags&int32(AT_NA) == 0 {
+							b.WriteString("N")
+						}
+						if flags&int32(AT_SA) == 0 {
+							b.WriteString("S")
+						}
+						if flags&int32(AT_HA) == 0 {
+							b.WriteString("H")
+						}
+						b.WriteString(" Atk")
+					}
+					// Throw
+					if flags&int32(AT_NT) == 0 || flags&int32(AT_ST) == 0 || flags&int32(AT_HT) == 0 {
+						if b.Len() > 0 {
+							b.WriteString(", ")
+						}
+						if flags&int32(AT_NT) == 0 {
+							b.WriteString("N")
+						}
+						if flags&int32(AT_ST) == 0 {
+							b.WriteString("S")
+						}
+						if flags&int32(AT_HT) == 0 {
+							b.WriteString("H")
+						}
+						b.WriteString(" Thr")
+					}
+					// Projectile
+					if flags&int32(AT_NP) == 0 || flags&int32(AT_SP) == 0 || flags&int32(AT_HP) == 0 {
+						if b.Len() > 0 {
+							b.WriteString(", ")
+						}
+						if flags&int32(AT_NP) == 0 {
+							b.WriteString("N")
+						}
+						if flags&int32(AT_SP) == 0 {
+							b.WriteString("S")
+						}
+						if flags&int32(AT_HP) == 0 {
+							b.WriteString("H")
+						}
+						b.WriteString(" Prj")
+					}
+					nhbtxt = b.String()
+				}
 			}
 		}
+
+		// Add size box (width * height)
+		if c.csf(CSF_playerpush) {
+			boxes3 := c.getClsnWorld(3)
+			sys.debugcsize.Add(boxes3, x, y, c.facing)
+		}
+
 		// Add Dummy boxes
 		dummy := c.getClsnWorld(4)
 		if len(dummy) > 0 {
 			sys.debugcdummy.Add(dummy, x+xoff, y+yoff, c.facing)
 		}
+
 		// Add crosshair
 		crosshair := []ClsnFinal{{rect: [4]float32{-1, -1, 1, 1}, angle: 0}}
 		sys.debugcross.Add(crosshair, x, y, c.facing)
+
 		// Add GroundLevel indicator
 		if c.prevGroundLevel != 0 {
 			gLevel := []ClsnFinal{{rect: [4]float32{-2, 0, 2, 1}, angle: 0}}
@@ -13553,7 +13557,7 @@ func (c *Char) cueDraw() {
 			name:   c.customShader.key,
 			params: c.customShader.params,
 			time:   c.customShader.time,
-			sTime:  c.customShader.sTime,
+			sTime:  c.customShader.interpolatedSTime(c.acttmp > 0),
 			tex1:   c.customShader.tex1.GetTexture(),
 			tex2:   c.customShader.tex2.GetTexture(),
 		}

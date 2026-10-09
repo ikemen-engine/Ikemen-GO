@@ -263,6 +263,7 @@ const (
 	OC_movetype
 	OC_ctrl
 	OC_command
+	OC_selfcommand
 	OC_random
 	OC_pos_x
 	OC_pos_y
@@ -854,7 +855,6 @@ const (
 	OC_ex_offset_y
 	OC_ex_alpha_s
 	OC_ex_alpha_d
-	OC_ex_selfcommand
 )
 const (
 	OC_ex2_envshakevar_time OpCode = iota
@@ -2425,25 +2425,32 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_canrecover:
 			sys.bcStack.PushB(c.canRecover())
 		case OC_command:
-			if c.cmd == nil {
-				sys.bcStack.PushB(false)
-				i += 4 // Advance cursor anyway
-			} else {
-				cmdName := be.ReadPoolStringAt(&i) // In be.run() "i" is a value
+			cmdName := sys.bcStack.Pop()
+			ok := false
+			// Only string operands can resolve to command names
+			if c.cmd != nil && cmdName.vtype == VT_String {
 				redir := c.playerNo
 				pno := c.playerNo
 				// For a Mugen character, the command position is checked in the redirecting char
 				// Recovery command is an exception in that its position is always checked in the final char
 				// Note: In Mugen, a character running a negative state will use its own engine version but the localcoord and commands of the state owner
 				// The commands part is not fully recreated at the moment, but no issues have come out of it so far
-				if cmdName != "recovery" && oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
+				if cmdName.ToS() != "recovery" && oc.stWgi().ikemenver[0] == 0 && oc.stWgi().ikemenver[1] == 0 {
 					redir = oc.ss.sb.playerNo
 					pno = c.ss.sb.playerNo
 				}
-				cmdPos, ok := c.cmd[redir].Names[cmdName]
-				ok = ok && c.command(pno, cmdPos)
-				sys.bcStack.PushB(ok)
+				cmdPos, found := c.cmd[redir].Names[cmdName.ToS()]
+				ok = found && c.command(pno, cmdPos)
 			}
+			sys.bcStack.PushB(ok)
+		case OC_selfcommand:
+			cmdName := sys.bcStack.Pop()
+			ok := false
+			if c.cmd != nil && cmdName.vtype == VT_String {
+				cmdPos, found := c.cmd[sys.workingState.playerNo].Names[cmdName.ToS()]
+				ok = found && c.command(sys.workingState.playerNo, cmdPos)
+			}
+			sys.bcStack.PushB(ok)
 		case OC_ctrl:
 			sys.bcStack.PushB(c.ctrl())
 		case OC_facing:
@@ -3854,15 +3861,6 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.alpha[0])
 	case OC_ex_alpha_d:
 		sys.bcStack.PushI(c.alpha[1])
-	case OC_ex_selfcommand:
-		if c.cmd == nil {
-			sys.bcStack.PushB(false)
-		} else {
-			cmdStr := be.ReadPoolStringAt(i)
-			cmd, ok := c.cmd[sys.workingState.playerNo].Names[cmdStr]
-			ok = ok && c.command(sys.workingState.playerNo, cmd)
-			sys.bcStack.PushB(ok)
-		}
 	default:
 		LogMessage("%v", be[*i-1])
 		c.panic("Invalid bytecode OpCode encountered")
