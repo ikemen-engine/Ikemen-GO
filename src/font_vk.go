@@ -20,17 +20,18 @@ import (
 )
 
 type Font_VK struct {
-	fontChar    map[rune]*character
-	ttf         *truetype.Font
-	scale       int32
-	vao         uint32
-	vbo         uint32
-	program     uint32
-	color       color
-	shaderPalFX ShaderPalFX
-	resolution  [2]float32
-	textures    []*TextureAtlas
-	descriptors []*list.Element
+	fontChar     map[rune]*character
+	ttf          *truetype.Font
+	scale        int32
+	vao          uint32
+	vbo          uint32
+	program      uint32
+	color        color
+	shaderPalFX  ShaderPalFX
+	resolution   [2]float32
+	textures     []*TextureAtlas
+	descriptors  []*list.Element
+	customShader CustomShaderRenderData
 }
 
 type FontRenderer_VK struct {
@@ -38,6 +39,7 @@ type FontRenderer_VK struct {
 	program         *VulkanProgramInfo
 	descriptorPools []vk.DescriptorPool
 	freeDescriptors list.List
+	coveragePalTex  Texture
 }
 
 func (r *FontRenderer_VK) Init(rendererVk interface{}) {
@@ -580,6 +582,10 @@ func (f *Font_VK) SetPalFX(state ShaderPalFX) {
 	f.shaderPalFX = state
 }
 
+func (f *Font_VK) SetCustomShader(shader CustomShaderRenderData) {
+	f.customShader = shader
+}
+
 func (f *Font_VK) UpdateResolution(windowWidth int, windowHeight int) {
 	f.resolution[0] = float32(windowWidth)
 	f.resolution[1] = float32(windowHeight)
@@ -589,6 +595,16 @@ func (f *Font_VK) UpdateResolution(windowWidth int, windowHeight int) {
 func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
 	rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 	fs string, argv ...interface{}) error {
+	if f.customShader.name != "" {
+		r := gfx.(*Renderer_VK)
+		if id, ok := r.customShaderMap[f.customShader.name]; ok {
+			if _, ok := r.customPrograms[id]; ok {
+				return f.printfCustom(x, y, xscl, yscl, spacingXAdd, align, blend, window,
+					rxadd, rot, projectionMode, fLength, rcx, rcy, fs, argv...)
+			}
+		}
+	}
+
 	r := gfx.(*Renderer_VK)
 	switchedProgram := r.VKState.boundProgram != gfxFont.(*FontRenderer_VK).program
 	r.VKState.boundProgram = gfxFont.(*FontRenderer_VK).program
@@ -756,6 +772,133 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	if numVerticesToDraw > 0 {
 		vk.CmdDraw(r.commandBuffers[0], numVerticesToDraw, 1, firstVertex, 0)
 	}
+	return nil
+}
+
+// printfCustom draws text through the sprite pipeline using a custom shader, instead of the font pipeline
+func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32,
+	blend bool, window [4]int32, rxadd float32, rot Rotation, projectionMode int32, fLength float32,
+	rcx, rcy float32, fs string, argv ...interface{}) error {
+
+	text := fmt.Sprintf(fs, argv...)
+	indices := []rune(text)
+	if len(indices) == 0 {
+		return nil
+	}
+
+	// Palette that turns the atlas coverage (index 0-255) into white with that alpha
+	fr := gfxFont.(*FontRenderer_VK)
+	if fr.coveragePalTex == nil {
+		pal := make([]uint32, 256)
+		for i := range pal {
+			pal[i] = 0x00FFFFFF | uint32(i)<<24
+		}
+		fr.coveragePalTex = NewTextureFromPalette(pal)
+	}
+
+	// Must come before anything that depends on the current program (e.g. the param push constants)
+	gfx.SetSpritePipeline(f.customShader.name)
+
+	if blend {
+		gfx.EnableBlending(BlendAdd, BlendSrcAlpha, BlendOneMinusSrcAlpha)
+	} else {
+		gfx.DisableBlending()
+	}
+	gfx.EnableScissor(window[0], window[1], window[2], window[3])
+
+	// Same projection as the GL branch: origin at the top, Y going down
+	resW, resH := float32(f.resolution[0]), float32(f.resolution[1])
+	proj := gfx.OrthographicProjectionMatrix(0, resW, resH, 0, -1, 1)
+	identity := [16]float32{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+	gfx.SetUniformMatrix("projection", proj[:])
+	gfx.SetUniformMatrix("modelview", identity[:])
+	gfx.SetUniformF("x1x2x4x3", 0, 0, 0, 0)
+
+	gfx.SetUniformI("isFlat", 0)
+	gfx.SetUniformI("isRgba", 0) // Atlas is 8-bit: go through the palette path
+	gfx.SetTexture("pal", fr.coveragePalTex)
+	gfx.SetUniformI("mask", 0)
+	gfx.SetUniformI("isTrapez", 0)
+	gfx.SetUniformI("neg", int(Btoi(f.shaderPalFX.neg)))
+	gfx.SetUniformF("alpha", f.color.a)
+	gfx.SetUniformFv("add", f.shaderPalFX.add[:])
+	mult := [3]float32{
+		f.shaderPalFX.mult[0] * f.color.r,
+		f.shaderPalFX.mult[1] * f.color.g,
+		f.shaderPalFX.mult[2] * f.color.b,
+	}
+	gfx.SetUniformFv("mult", mult[:])
+	gfx.SetUniformF("gray", f.shaderPalFX.gray)
+	gfx.SetUniformF("hue", f.shaderPalFX.hue)
+	gfx.SetUniformFv("tint", []float32{0, 0, 0, 0})
+	f.customShader.setUniforms()
+
+	alignScale := xscl
+	if alignScale == 0 {
+		alignScale = yscl
+	}
+	if align == 0 {
+		x -= f.widthRunes(indices, alignScale, spacingXAdd) * 0.5
+	} else if align < 0 {
+		x -= f.widthRunes(indices, alignScale, spacingXAdd)
+	}
+	needsTransform := rxadd != 0 || !rot.IsZero()
+	spacing := spacingXAdd * xscl
+	renderedAny := false
+	lastAtlas := -1
+
+	for _, runeIndex := range indices {
+		ch, ok := f.fontChar[runeIndex]
+		if !ok {
+			low := runeIndex - (runeIndex % 32)
+			f.GenerateGlyphs(low, low+31)
+			ch, ok = f.fontChar[runeIndex]
+		}
+		if !ok {
+			continue
+		}
+
+		if renderedAny {
+			x += spacing
+		}
+
+		xpos := x + float32(ch.bearingH)*xscl
+		ypos := y - float32(ch.height-ch.bearingV)*yscl
+		gw := float32(ch.width) * xscl
+		gh := float32(ch.height) * yscl
+
+		x1, y1 := xpos+gw, ypos
+		x2, y2 := xpos, ypos
+		x3, y3 := xpos, ypos+gh
+		x4, y4 := xpos+gw, ypos+gh
+		if needsTransform {
+			x1, y1, x2, y2, x3, y3, x4, y4 = transformTextQuad(
+				x1, y1, x2, y2, x3, y3, x4, y4,
+				rxadd, rot, projectionMode, fLength, rcx, rcy,
+			)
+		}
+
+		// Only rebind the atlas when it changes
+		if int(ch.textureID) != lastAtlas {
+			gfx.SetTexture("tex", f.textures[ch.textureID].texture)
+			lastAtlas = int(ch.textureID)
+		}
+
+		// Triangle strip: top-left, top-right, bottom-left, bottom-right
+		verts := [16]float32{
+			x2, y2, ch.uv[0], ch.uv[1],
+			x1, y1, ch.uv[2], ch.uv[1],
+			x3, y3, ch.uv[0], ch.uv[3],
+			x4, y4, ch.uv[2], ch.uv[3],
+		}
+		gfx.SetVertexData(verts[:]...)
+		gfx.RenderQuad()
+
+		x += float32(ch.advance>>6) * xscl
+		renderedAny = true
+	}
+
+	gfx.DisableScissor()
 	return nil
 }
 
