@@ -276,14 +276,23 @@ type GlyphProperties struct {
 }
 
 type ControllerGlyphsProperties struct {
+	// Name of the entry that leaves the set to the device.
+	Automatic  string                                `ini:"automatic" default:"Automatic"`
 	Controller map[string]*ControllerGlyphProperties `ini:"controller"`
 	GUID       map[string]string                     `ini:"guid" literal:"true"`
 	Name       map[string]string                     `ini:"name" literal:"true"`
 }
 
 type ControllerGlyphProperties struct {
+	// Input source kind the set belongs to: gamepad or keyboard.
+	Type string `ini:"type" default:"gamepad"`
+	// Overrides by binding token, for the buttons or keys the device reports.
 	Gamepad map[string]int32 `ini:"gamepad" insensitivekeys:"false"`
+	Key     map[string]int32 `ini:"key" insensitivekeys:"false"`
 	Group   int32            `ini:"group" default:"-1"`
+	// Artwork and name shown when choosing a set by hand.
+	Icon  int32  `ini:"icon" default:"-1"`
+	Label string `ini:"label"`
 }
 
 type HintProperties struct {
@@ -2089,13 +2098,32 @@ func (h *HintProperties) Draw(layerno int16, context string) {
 		h.Bg.AnimData.Draw(layerno)
 	}
 	if h.TextSpriteData != nil {
-		text, ok := h.Text[context]
-		if !ok {
-			text = h.Text["default"]
-		}
-		h.TextSpriteData.text = text
+		h.TextSpriteData.text = h.text(context, h.TextSpriteData.glyphSource)
 		h.TextSpriteData.Draw(layerno)
 	}
+}
+
+// Text for a hint context. glyph.<set>.<context> replaces <context> while the
+// input source shown uses that glyph set; glyph.<set> stands for the default
+// context only.
+func (h *HintProperties) text(context string, source int) string {
+	if context == "" {
+		context = "default"
+	}
+	if src := sys.glyphSource(source); src != nil {
+		set := "glyph." + input.GlyphController(src, &sys.motif.ControllerGlyphs)
+		name := set + "." + context
+		if context == "default" {
+			name = set
+		}
+		if text, ok := h.Text[name]; ok {
+			return text
+		}
+	}
+	if text, ok := h.Text[context]; ok {
+		return text
+	}
+	return h.Text["default"]
 }
 
 // Returns a cached one-frame animation for a glyph sprite. Built the same way as
@@ -2122,6 +2150,48 @@ func (m *Motif) glyphAnimation(group, index int32) *Animation {
 }
 
 // Looks up a glyph by name, accepting both <name> and name.
+// Input source kind a glyph set belongs to.
+func glyphSourceType(src *InputSource) string {
+	if src != nil && src.Joy < 0 {
+		return "keyboard"
+	}
+	return "gamepad"
+}
+
+// Glyph sets of this input source kind that a player can choose by hand, by
+// name. Sets without a label exist only for automatic detection. Map order is
+// random, so the names are sorted to keep the list stable between runs.
+func (m *Motif) glyphSets(kind string) []string {
+	var sets []string
+	for id, set := range m.ControllerGlyphs.Controller {
+		if set != nil && set.Label != "" && strings.EqualFold(set.Type, kind) {
+			sets = append(sets, id)
+		}
+	}
+	sort.Strings(sets)
+	return sets
+}
+
+// Artwork representing a whole glyph set, for lists and controller names.
+func (m *Motif) glyphSetIcon(set string) *Animation {
+	variant := m.ControllerGlyphs.Controller[set]
+	if variant == nil || variant.Icon < 0 {
+		return nil
+	}
+	group := variant.Group
+	if group < 0 {
+		// Sets without a group of their own use the base artwork of their kind.
+		base := m.glyph("gamepad.A")
+		if strings.EqualFold(variant.Type, "keyboard") {
+			base = m.glyph("keyboard.a")
+		}
+		if base != nil {
+			group = base.Spr[0]
+		}
+	}
+	return m.glyphAnimation(group, variant.Icon)
+}
+
 func (m *Motif) glyph(name string) *GlyphProperties {
 	name = strings.TrimSuffix(strings.TrimPrefix(name, "<"), ">")
 	if g := m.Glyphs["<"+name+">"]; g != nil {

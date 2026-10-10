@@ -85,7 +85,20 @@ var input Input
 // SDL knows the type of the common controllers after applying gamecontrollerdb
 // mappings. The motif can match on GUID or controller name for the rest.
 func (in *Input) GlyphController(src *InputSource, glyphs *ControllerGlyphsProperties) string {
-	if src == nil || src.Joy < 0 || !in.IsJoystickPresent(src.Joy) {
+	if src == nil {
+		return "generic"
+	}
+	// A set chosen for this device wins. An unknown name falls through to
+	// detection, which also covers a set the current motif does not define.
+	if chosen := strings.ToLower(sys.cfg.Input.ControllerGlyphs[glyphPreferenceKey(src)]); chosen != "" {
+		if set := glyphs.Controller[chosen]; set != nil && strings.EqualFold(set.Type, glyphSourceType(src)) {
+			return chosen
+		}
+	}
+	if src.Joy < 0 {
+		return "keyboard"
+	}
+	if !in.IsJoystickPresent(src.Joy) {
 		return "generic"
 	}
 	if controller := glyphs.GUID[strings.ToLower(src.GUID)]; controller != "" {

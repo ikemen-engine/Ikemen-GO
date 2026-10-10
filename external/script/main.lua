@@ -3834,7 +3834,12 @@ function main.f_hintDraw(hint, context, values, source, side, actions)
 	if source ~= nil then
 		textImgSetGlyphSource(hint.TextSpriteData, source)
 	end
-	local text = hint.text[context or 'default'] or hint.text.default or ''
+	context = context or 'default'
+	-- glyph.<set>.<context> replaces <context> while the input source shown uses
+	-- that glyph set; glyph.<set> stands for the default context only.
+	local set = 'glyph.' .. inputGlyphSet(source or 0)
+	local text = hint.text[context == 'default' and set or set .. '.' .. context]
+		or hint.text[context] or hint.text.default or ''
 	if actions ~= nil then
 		-- Shared popups use the caller's menu keys, not the Warning Info section.
 		text = text:gsub('<action:([^>]+)>', function(name)

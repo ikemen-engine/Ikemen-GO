@@ -215,6 +215,7 @@ type Config struct {
 	} `ini:"Netplay"`
 	Input struct {
 		ControllerProfile map[string]string `ini:"ControllerProfile"`
+		ControllerGlyphs  map[string]string `ini:"ControllerGlyphs"`
 
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
 		SOCDResolution             int     `ini:"SOCDResolution" sync:"host"`
@@ -478,6 +479,61 @@ func (c *Config) inputProfileNameUsed(name string) bool {
 	return false
 }
 
+// Key identifying a source for per-device preferences: the controller GUID for
+// a gamepad, or the profile ID for a keyboard.
+func glyphPreferenceKey(src *InputSource) string {
+	if src == nil {
+		return ""
+	}
+	if src.Joy < 0 {
+		return strings.ToLower(src.Profile)
+	}
+	return strings.ToLower(src.GUID)
+}
+
+// Remembers the glyph set chosen for one device. Writing only this preference
+// leaves unrelated unsaved Options edits pending, like the profile preference.
+func (c *Config) rememberControllerGlyphs(src *InputSource, set string) error {
+	key := glyphPreferenceKey(src)
+	if key == "" {
+		return nil
+	}
+	if c.Input.ControllerGlyphs[key] == set {
+		return nil
+	}
+	var value interface{} = set
+	if set == "" {
+		value = nil
+	}
+	if err := c.SetValueUpdate("Input.ControllerGlyphs."+key, value); err != nil {
+		return err
+	}
+	disk, _, err := LoadINIFile(c.Def, ini.LoadOptions{SkipUnrecognizableLines: true})
+	if err != nil {
+		return err
+	}
+	if set == "" {
+		disk.Section("Input").DeleteKey("ControllerGlyphs." + key)
+		return SaveINI(disk, c.Def)
+	}
+	// A keyboard key names a profile section. The normal Options save writes a
+	// new profile, so do not persist a reference before its section exists.
+	if src.Joy < 0 {
+		found := false
+		for _, section := range disk.Sections() {
+			if strings.EqualFold(strings.ReplaceAll(section.Name(), " ", "_"), key) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+	}
+	disk.Section("Input").Key("ControllerGlyphs." + key).SetValue(set)
+	return SaveINI(disk, c.Def)
+}
+
 // A controller's preferred profile is separate from profile compatibility.
 // Write only this preference to disk; unrelated unsaved Options edits stay pending.
 func (c *Config) rememberControllerProfile(guid, id string) error {
@@ -505,6 +561,9 @@ func (c *Config) rememberControllerProfile(guid, id string) error {
 
 func (c *Config) removeInputProfile(id string) {
 	delete(c.InputProfile, id)
+	if c.Input.ControllerGlyphs[id] != "" {
+		c.SetValueUpdate("Input.ControllerGlyphs."+id, nil)
+	}
 	for guid, profile := range c.Input.ControllerProfile {
 		if profile == id {
 			c.SetValueUpdate("Input.ControllerProfile."+guid, nil)

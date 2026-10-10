@@ -1969,6 +1969,14 @@ local function updateProfileMenu(tbl, root, source, values)
 		end
 		if field == 'rumble' then
 			row.vardisplay = options.f_boolDisplay(values.rumble)
+		elseif field == 'glyphs' then
+			row.hintContext = 'profilechange'
+			for _, set in ipairs(inputGlyphSets(source.id)) do
+				if set.selected then
+					row.vardisplay = set.glyph .. ' ' .. set.name
+					break
+				end
+			end
 		end
 	end
 	for _, sub in pairs(tbl.submenu) do
@@ -2446,6 +2454,34 @@ for _, field in ipairs(t_profileFields) do
 		resetKey()
 		return true
 	end
+end
+
+options.t_itemname.glyphs = function(t, item)
+	local step = 0
+	if getInput(-1, motif.option_info.menu.add.key) then
+		step = 1
+	elseif getInput(-1, motif.option_info.menu.subtract.key) then
+		step = -1
+	end
+	if step ~= 0 then
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+		local sets = inputGlyphSets(t.inputSource.id)
+		local current = 1
+		for i, set in ipairs(sets) do
+			if set.selected then
+				current = i
+				break
+			end
+		end
+		local chosen = sets[(current - 1 + step) % #sets + 1]
+		-- The set belongs to the device rather than the bindings, so it is saved
+		-- straight away and Cancel does not undo it.
+		if inputSetGlyphSet(t.inputSource.id, chosen.id) then
+			local root = t.inputMenu
+			updateProfileMenu(root, root, t.inputSource, inputProfile(t.inputSource.id))
+		end
+	end
+	return true
 end
 
 options.t_itemname.rumble = function(t, item)

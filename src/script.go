@@ -4485,6 +4485,76 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(out)
 		return 1
 	})
+	luaRegister(l, "inputGlyphSets", func(l *lua.LState) int {
+		/*List the glyph sets that can be chosen for an input source.
+		@function inputGlyphSets
+		@tparam int sourceId Input source ID.
+		@treturn table sets Array of tables with `id`, `name`, `glyph` (a text tag
+		  drawing the set's icon), `selected` and `automatic` (no set chosen, so the
+		  device decides) fields. The first entry is always the automatic one.*/
+		out := l.NewTable()
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src == nil {
+			l.Push(out)
+			return 1
+		}
+		chosen := strings.ToLower(sys.cfg.Input.ControllerGlyphs[glyphPreferenceKey(src)])
+		add := func(id, name string, automatic bool) {
+			// The automatic entry shows whatever the device resolves to now.
+			glyph := "<glyph:" + id + ">"
+			if automatic {
+				glyph = "<glyph>"
+			}
+			out.Append(toLValue(l, map[string]interface{}{
+				"id":        id,
+				"name":      name,
+				"glyph":     glyph,
+				"selected":  id == chosen,
+				"automatic": automatic,
+			}))
+		}
+		add("", sys.motif.ControllerGlyphs.Automatic, true)
+		for _, id := range sys.motif.glyphSets(glyphSourceType(src)) {
+			add(id, sys.motif.ControllerGlyphs.Controller[id].Label, false)
+		}
+		l.Push(out)
+		return 1
+	})
+	luaRegister(l, "inputGlyphSet", func(l *lua.LState) int {
+		/*Return the glyph set an input source currently uses.
+		@function inputGlyphSet
+		@tparam[opt=0] int sourceId Input source ID, or `0` for the source the UI shows glyphs for.
+		@treturn string set Glyph set name, for example `"ps5"`, or an empty string without a source.*/
+		id := 0
+		if !nilArg(l, 1) {
+			id = int(numArg(l, 1))
+		}
+		src := sys.glyphSource(id)
+		if src == nil {
+			l.Push(lua.LString(""))
+			return 1
+		}
+		l.Push(lua.LString(input.GlyphController(src, &sys.motif.ControllerGlyphs)))
+		return 1
+	})
+	luaRegister(l, "inputSetGlyphSet", func(l *lua.LState) int {
+		/*Choose the glyph set of an input source's profile.
+		@function inputSetGlyphSet
+		@tparam int sourceId Input source ID.
+		@tparam string set Glyph set name, or an empty string to detect it from the device.
+		@treturn boolean success `true` if the choice was saved.*/
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src == nil {
+			l.Push(lua.LBool(false))
+			return 1
+		}
+		err := sys.cfg.rememberControllerGlyphs(src, strings.ToLower(strArg(l, 2)))
+		if err != nil {
+			LogMessage("Unable to remember controller glyphs: %v", err)
+		}
+		l.Push(lua.LBool(err == nil))
+		return 1
+	})
 	luaRegister(l, "inputReady", func(l *lua.LState) int {
 		/*Set the ready state of the participant owning an input source.
 		@function inputReady
