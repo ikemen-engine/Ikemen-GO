@@ -8382,6 +8382,8 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(e.velocity[2])
 			case "xshear":
 				lv = lua.LNumber(e.xshear)
+			case "shader":
+				lv = lua.LString(e.customShader.name)
 			default:
 				l.RaiseError("\nInvalid argument: %v\n", vname)
 			}
@@ -9934,6 +9936,8 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(p.velmul[2])
 			case "xshear":
 				lv = lua.LNumber(p.xshear)
+			case "shader":
+				lv = lua.LString(p.customShader.name)
 			default:
 				l.RaiseError("\nInvalid argument: %v\n", vname)
 			}

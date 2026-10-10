@@ -979,6 +979,7 @@ const (
 	OC_ex2_explodvar_vel_y
 	OC_ex2_explodvar_vel_z
 	OC_ex2_explodvar_xshear
+	OC_ex2_explodvar_shader
 	OC_ex2_projvar_accel_x
 	OC_ex2_projvar_accel_y
 	OC_ex2_projvar_accel_z
@@ -1031,6 +1032,7 @@ const (
 	OC_ex2_projvar_velmul_x
 	OC_ex2_projvar_velmul_y
 	OC_ex2_projvar_velmul_z
+	OC_ex2_projvar_projshader
 	OC_ex2_hitbyattr
 	OC_ex2_soundvar_group
 	OC_ex2_soundvar_number
@@ -4118,7 +4120,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		OC_ex2_explodvar_scale_x, OC_ex2_explodvar_scale_y,
 		OC_ex2_explodvar_sprpriority, OC_ex2_explodvar_time,
 		OC_ex2_explodvar_vel_x, OC_ex2_explodvar_vel_y, OC_ex2_explodvar_vel_z,
-		OC_ex2_explodvar_xshear:
+		OC_ex2_explodvar_xshear, OC_ex2_explodvar_shader:
 
 		// Common Inputs
 		idx := int(sys.bcStack.Pop().ToI())
@@ -4206,6 +4208,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushF(e.velocity[2] * c.localscl / oc.localscl)
 			case OC_ex2_explodvar_xshear:
 				sys.bcStack.PushF(e.xshear)
+			case OC_ex2_explodvar_shader:
+				sys.bcStack.PushS(e.customShader.name)
 			}
 		} else {
 			sys.bcStack.Push(BytecodeUndefined())
@@ -4227,7 +4231,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		OC_ex2_projvar_projyangle, OC_ex2_projvar_remvelocity_x, OC_ex2_projvar_remvelocity_y,
 		OC_ex2_projvar_remvelocity_z, OC_ex2_projvar_supermovetime, OC_ex2_projvar_teamside,
 		OC_ex2_projvar_time, OC_ex2_projvar_vel_x, OC_ex2_projvar_vel_y,
-		OC_ex2_projvar_vel_z, OC_ex2_projvar_velmul_x, OC_ex2_projvar_velmul_y, OC_ex2_projvar_velmul_z:
+		OC_ex2_projvar_vel_z, OC_ex2_projvar_velmul_x, OC_ex2_projvar_velmul_y, OC_ex2_projvar_velmul_z,
+		OC_ex2_projvar_projshader:
 
 		// Common Inputs
 		flg := sys.bcStack.Pop()
@@ -4359,6 +4364,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushF(p.velmul[1])
 			case OC_ex2_projvar_velmul_z:
 				sys.bcStack.PushF(p.velmul[2])
+			case OC_ex2_projvar_projshader:
+				sys.bcStack.PushS(p.customShader.name)
 			}
 		} else {
 			sys.bcStack.Push(BytecodeUndefined())

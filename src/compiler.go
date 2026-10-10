@@ -2580,6 +2580,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 		case "xshear":
 			opc = OC_ex2_explodvar_xshear
+		case "shader":
+			opc = OC_ex2_explodvar_shader
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid ExplodVar angle argument: %s", vname))
 		}
@@ -3721,6 +3723,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 		case "xshear":
 			opc = OC_ex2_projvar_projxshear
+		case "shader":
+			opc = OC_ex2_projvar_projshader
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid ProjVar argument: %s", vname))
 		}
