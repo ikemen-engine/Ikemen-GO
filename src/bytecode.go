@@ -7004,12 +7004,12 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 type modifyExplod explod
 
 const (
-	modifyexplod_redirectid = iota + explod_last + 1
-	modifyexplod_index
+	modifyExplod_redirectid = iota + explod_last + 1
+	modifyExplod_index
 )
 
 func (sc modifyExplod) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), modifyexplod_redirectid, "ModifyExplod")
+	crun := getRedirectedChar(c, StateControllerBase(sc), modifyExplod_redirectid, "ModifyExplod")
 	if crun == nil {
 		return false
 	}
@@ -7034,7 +7034,7 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 		switch paramID {
 		case explod_id:
 			eid = exp[0].evalI(c)
-		case modifyexplod_index:
+		case modifyExplod_index:
 			idx = int(exp[0].evalI(c))
 		}
 		return true
@@ -7053,9 +7053,9 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 		switch paramID {
 		case explod_id:
 			return true
-		case modifyexplod_index:
+		case modifyExplod_index:
 			return true
-		case modifyexplod_redirectid:
+		case modifyExplod_redirectid:
 			return true // Already handled. Avoid default
 		case explod_remappal:
 			rp[0] = exp[0].evalI(c)
@@ -8977,1111 +8977,1122 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 	mpid := int32(-1)
 	mpidx := int(-1)
 
-	var projs []*Projectile
-	eachProj := func(f func(p *Projectile)) {
-		for _, p := range projs {
-			f(p)
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case modifyProjectile_id:
+			mpid = exp[0].evalI(c)
+		case modifyProjectile_index:
+			mpidx = int(exp[0].evalI(c))
 		}
+		return true
+	})
+
+	if crun.helperIndex != 0 {
+		return false
 	}
+
+	// Fetch the projectiles we are going to modify
+	projs := crun.getMultipleProjs(mpid, mpidx, true)
+	if len(projs) == 0 {
+		return false
+	}
+
+	// Every projectile write is collected here and only committed once all of them have been read
+	modifiers := make([]func(*Projectile), 0, len(StateControllerBase(sc)))
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case modifyProjectile_id: // ID's to modify
-			mpid = exp[0].evalI(c)
+			return true
 		case modifyProjectile_index: // index to modify
-			mpidx = int(exp[0].evalI(c))
+			return true
 		case modifyProjectile_redirectid:
 			return true // Already handled. Avoid default
-		default:
-			if crun.helperIndex != 0 {
-				return false
-			}
-			if len(projs) == 0 {
-				projs = crun.getMultipleProjs(mpid, mpidx, true)
-				if len(projs) == 0 {
-					return false
-				}
-			}
-			switch paramID {
-			case projectile_projid:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.id = v1
+		case projectile_projid:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.id = v1
+			})
+		case projectile_projremove:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.remove = v1
+			})
+		case projectile_projremovetime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.removetime = v1
+			})
+		case projectile_projshadow:
+			r := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.shadow[0] = r
+			})
+			if len(exp) > 1 {
+				g := exp[1].evalI(c)
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.shadow[1] = g
 				})
-			case projectile_projremove:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.remove = v1
-				})
-			case projectile_projremovetime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.removetime = v1
-				})
-			case projectile_projshadow:
-				r := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.shadow[0] = r
-				})
-				if len(exp) > 1 {
-					g := exp[1].evalI(c)
-					eachProj(func(p *Projectile) {
-						p.shadow[1] = g
+				if len(exp) > 2 {
+					b := exp[2].evalI(c)
+					modifiers = append(modifiers, func(p *Projectile) {
+						p.shadow[2] = b
 					})
-					if len(exp) > 2 {
-						b := exp[2].evalI(c)
-						eachProj(func(p *Projectile) {
-							p.shadow[2] = b
-						})
-					}
 				}
-			case projectile_projreflection:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.reflection = v1
-				})
-			case projectile_projmisstime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.misstime = v1
-				})
-			case projectile_projhits:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hits = v1
-				})
-			case projectile_projpriority:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.priority = v1
-					p.priorityPoints = p.priority
-				})
-			case projectile_projhitanim:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
+			}
+		case projectile_projreflection:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.reflection = v1
+			})
+		case projectile_projmisstime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.misstime = v1
+			})
+		case projectile_projhits:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hits = v1
+			})
+		case projectile_projpriority:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.priority = v1
+				p.priorityPoints = p.priority
+			})
+		case projectile_projhitanim:
+			var v1 string
+			var v2 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitanim_ffx = v1
+				p.hitanim = v2
+			})
+		case projectile_projremanim:
+			var v1 string
+			var v2 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = Max(-2, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.remanim_ffx = v1
+				p.remanim = v2
+			})
+		case projectile_projcancelanim:
+			var v1 string
+			var v2 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = Max(-1, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.cancelanim_ffx = v1
+				p.cancelanim = v2
+			})
+		case projectile_velocity:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.hitanim_ffx = v1
-					p.hitanim = v2
-				})
-			case projectile_projremanim:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = Max(-2, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.velocity[0] = v1 * redirscale
+				p.velocity[1] = v2 * redirscale
+				p.velocity[2] = v3 * redirscale
+			})
+		case projectile_velmul:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.remanim_ffx = v1
-					p.remanim = v2
-				})
-			case projectile_projcancelanim:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = Max(-1, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.velmul[0] = v1
+				p.velmul[1] = v2
+				p.velmul[2] = v3
+			})
+		case projectile_remvelocity:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.cancelanim_ffx = v1
-					p.cancelanim = v2
-				})
-			case projectile_velocity:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.remvelocity[0] = v1 * redirscale
+				p.remvelocity[1] = v2 * redirscale
+				p.remvelocity[2] = v3 * redirscale
+			})
+		case projectile_accel:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.velocity[0] = v1 * redirscale
-					p.velocity[1] = v2 * redirscale
-					p.velocity[2] = v3 * redirscale
-				})
-			case projectile_velmul:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.velmul[0] = v1
-					p.velmul[1] = v2
-					p.velmul[2] = v3
-				})
-			case projectile_remvelocity:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.remvelocity[0] = v1 * redirscale
-					p.remvelocity[1] = v2 * redirscale
-					p.remvelocity[2] = v3 * redirscale
-				})
-			case projectile_accel:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.accel[0] = v1 * redirscale
-					p.accel[1] = v2 * redirscale
-					p.accel[2] = v3 * redirscale
-				})
-			case projectile_projscale:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.scale[0] = v1
-					p.scale[1] = v2
-				})
-			case projectile_projangle:
-				a := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.rot.angle = a
-				})
-			case projectile_projyangle:
-				ya := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.rot.yangle = ya
-				})
-			case projectile_projxangle:
-				xa := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.rot.xangle = xa
-				})
-			//case projectile_offset: // Pointless because it's only used when the projectile is created
-			case projectile_projsprpriority:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.sprpriority = v1
-				})
-			case projectile_projlayerno:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					if v1 > 0 {
-						p.layerno = 1
-					} else if v1 < 0 {
-						p.layerno = -1
-					} else {
-						p.layerno = 0
-					}
-				})
-			case projectile_projstagebound:
-				v1 := int32(float32(exp[0].evalI(c)) * redirscale)
-				eachProj(func(p *Projectile) {
-					p.stagebound = v1
-				})
-			case projectile_projedgebound:
-				v1 := int32(float32(exp[0].evalI(c)) * redirscale)
-				eachProj(func(p *Projectile) {
-					p.edgebound = v1
-				})
-			case projectile_projheightbound:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.heightbound[0] = int32(v1 * redirscale)
-					p.heightbound[1] = int32(v2 * redirscale)
-				})
-			case projectile_projdepthbound:
-				v1 := int32(float32(exp[0].evalI(c)) * redirscale)
-				eachProj(func(p *Projectile) {
-					p.depthbound = v1
-				})
-			case projectile_projanim:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-				}
-				eachProj(func(p *Projectile) {
-					if p.animNo != v2 || p.anim_ffx != v1 { // TODO: This isn't required for chars, so maybe it shouldn't be here either
-						p.anim_ffx = v1
-						p.animNo = v2                               // If animation is invalid the projectile will be destroyed, so we can update this either way
-						p.anim = crun.getAnim(p.animNo, p.anim_ffx) // need to change anim ref too
-					}
-				})
-			case projectile_supermovetime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.supermovetime = v1
-					if p.supermovetime >= 0 {
-						p.supermovetime = Max(p.supermovetime, p.supermovetime+1)
-					}
-				})
-			case projectile_pausemovetime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.pausemovetime = v1
-					if p.pausemovetime >= 0 {
-						p.pausemovetime = Max(p.pausemovetime, p.pausemovetime+1)
-					}
-				})
-			//case projectile_ownpal: // TODO: Test these later. May cause issues
-			//case projectile_remappal:
-			case projectile_projclsnscale:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.clsnScale[0] = v1
-					p.clsnScale[1] = v2
-				})
-			case projectile_projclsnangle:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.clsnAngle = v1
-				})
-			case projectile_projwindow:
-				v1 := exp[0].evalF(c) * redirscale
-				v2 := exp[1].evalF(c) * redirscale
-				v3 := exp[2].evalF(c) * redirscale
-				v4 := exp[3].evalF(c) * redirscale
-				eachProj(func(p *Projectile) {
-					p.window = [4]float32{v1, v2, v3, v4}
-				})
-			case projectile_projxshear:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.xshear = v1
-				})
-			case projectile_projprojection:
-				eachProj(func(p *Projectile) {
-					p.projection = Projection(exp[0].evalI(c))
-				})
-			case projectile_projfocallength:
-				eachProj(func(p *Projectile) {
-					p.fLength = exp[0].evalF(c)
-				})
-			case projectile_shader:
-				v1 := exp[0].evalSLower(c)
-				if key, ok := sys.resolveCharShader(shaderPN, v1); ok {
-					eachProj(func(p *Projectile) {
-						p.customShader.set(v1, key)
-					})
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.accel[0] = v1 * redirscale
+				p.accel[1] = v2 * redirscale
+				p.accel[2] = v3 * redirscale
+			})
+		case projectile_projscale:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.scale[0] = v1
+				p.scale[1] = v2
+			})
+		case projectile_projangle:
+			a := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.rot.angle = a
+			})
+		case projectile_projyangle:
+			ya := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.rot.yangle = ya
+			})
+		case projectile_projxangle:
+			xa := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.rot.xangle = xa
+			})
+		//case projectile_offset: // Pointless because it's only used when the projectile is created
+		case projectile_projsprpriority:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.sprpriority = v1
+			})
+		case projectile_projlayerno:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				if v1 > 0 {
+					p.layerno = 1
+				} else if v1 < 0 {
+					p.layerno = -1
 				} else {
-					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid projectile shader: %s (playerNo: %v)", v1, shaderPN+1))
+					p.layerno = 0
 				}
-			case projectile_shader_playerno:
-				shaderPN = int(exp[0].evalI(c)) - 1
-			case projectile_shaderparam:
-				numParams := int(exp[0].evalI(c))
-				var indices []int
-				var vals []float32
+			})
+		case projectile_projstagebound:
+			v1 := int32(float32(exp[0].evalI(c)) * redirscale)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.stagebound = v1
+			})
+		case projectile_projedgebound:
+			v1 := int32(float32(exp[0].evalI(c)) * redirscale)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.edgebound = v1
+			})
+		case projectile_projheightbound:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.heightbound[0] = int32(v1 * redirscale)
+				p.heightbound[1] = int32(v2 * redirscale)
+			})
+		case projectile_projdepthbound:
+			v1 := int32(float32(exp[0].evalI(c)) * redirscale)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.depthbound = v1
+			})
+		case projectile_projanim:
+			var v1 string
+			var v2 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				if p.animNo != v2 || p.anim_ffx != v1 { // TODO: This isn't required for chars, so maybe it shouldn't be here either
+					p.anim_ffx = v1
+					p.animNo = v2                               // If animation is invalid the projectile will be destroyed, so we can update this either way
+					p.anim = crun.getAnim(p.animNo, p.anim_ffx) // need to change anim ref too
+				}
+			})
+		case projectile_supermovetime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.supermovetime = v1
+				if p.supermovetime >= 0 {
+					p.supermovetime = Max(p.supermovetime, p.supermovetime+1)
+				}
+			})
+		case projectile_pausemovetime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.pausemovetime = v1
+				if p.pausemovetime >= 0 {
+					p.pausemovetime = Max(p.pausemovetime, p.pausemovetime+1)
+				}
+			})
+		//case projectile_ownpal: // TODO: Test these later. May cause issues
+		//case projectile_remappal:
+		case projectile_projclsnscale:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.clsnScale[0] = v1
+				p.clsnScale[1] = v2
+			})
+		case projectile_projclsnangle:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.clsnAngle = v1
+			})
+		case projectile_projwindow:
+			v1 := exp[0].evalF(c) * redirscale
+			v2 := exp[1].evalF(c) * redirscale
+			v3 := exp[2].evalF(c) * redirscale
+			v4 := exp[3].evalF(c) * redirscale
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.window = [4]float32{v1, v2, v3, v4}
+			})
+		case projectile_projxshear:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.xshear = v1
+			})
+		case projectile_projprojection:
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.projection = Projection(exp[0].evalI(c))
+			})
+		case projectile_projfocallength:
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.fLength = exp[0].evalF(c)
+			})
+		case projectile_shader:
+			v1 := exp[0].evalSLower(c)
+			if key, ok := sys.resolveCharShader(shaderPN, v1); ok {
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.customShader.set(v1, key)
+				})
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid projectile shader: %s (playerNo: %v)", v1, shaderPN+1))
+			}
+		case projectile_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
+		case projectile_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			var indices []int
+			var vals []float32
+			for j := 0; j < numParams; j++ {
+				indices = append(indices, int(exp[1+j*2].evalI(c)))
+				vals = append(vals, exp[2+j*2].evalF(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
 				for j := 0; j < numParams; j++ {
-					indices = append(indices, int(exp[1+j*2].evalI(c)))
-					vals = append(vals, exp[2+j*2].evalF(c))
+					p.customShader.params[indices[j]] = vals[j]
 				}
-				eachProj(func(p *Projectile) {
-					for j := 0; j < numParams; j++ {
-						p.customShader.params[indices[j]] = vals[j]
-					}
-				})
-			case projectile_shader_tex1_anim:
-				animNo := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.tex1.AnimNo = animNo
-					p.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
-					if p.customShader.tex1.Anim != nil {
-						p.customShader.tex1.Anim.Reset()
-					}
-				})
-			case projectile_shader_tex1_spr:
-				g := exp[0].evalI(c)
-				n := exp[1].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.tex1.SprNo = [2]int32{g, n}
-					p.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
-				})
-			case projectile_shader_tex2_anim:
-				animNo := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.tex2.AnimNo = animNo
-					p.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
-					if p.customShader.tex2.Anim != nil {
-						p.customShader.tex2.Anim.Reset()
-					}
-				})
-			case projectile_shader_tex2_spr:
-				g := exp[0].evalI(c)
-				n := exp[1].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.tex2.SprNo = [2]int32{g, n}
-					p.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
-				})
-			case projectile_shadertime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.time = v1
-					if p.customShader.time == 0 {
-						p.customShader.clear()
-					}
-				})
-			case projectile_shader_shadow:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.shadow = v1
-				})
-			case projectile_shader_reflection:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.reflection = v1
-				})
-			case projectile_shader_afterimage:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.customShader.afterimage = v1
-				})
-			case hitDef_attr:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.attr = v1
-				})
-			case hitDef_guardflag:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guardflag = v1
-				})
-			case hitDef_hitflag:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitflag = v1
-				})
-			case hitDef_ground_type:
-				v1 := HitType(exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_type = v1
-				})
-			case hitDef_air_type:
-				v1 := HitType(exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.air_type = v1
-				})
-			case hitDef_animtype:
-				v1 := Reaction(exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.animtype = v1
-				})
-			case hitDef_air_animtype:
-				v1 := Reaction(exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.air_animtype = v1
-				})
-			case hitDef_fall_animtype:
-				v1 := Reaction(exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_animtype = v1
-				})
-			case hitDef_affectteam:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.affectteam = v1
-				})
-			case hitDef_teamside:
-				v1 := exp[0].evalI(c)
-				if v1 < 0 || v1 > 2 {
-					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid teamside: %d", v1))
-				} else {
-					eachProj(func(p *Projectile) {
-						p.hitdef.teamside = int(v1 - 1)
-					})
+			})
+		case projectile_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.tex1.AnimNo = animNo
+				p.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+				if p.customShader.tex1.Anim != nil {
+					p.customShader.tex1.Anim.Reset()
 				}
-			case hitDef_id:
-				v1 := Max(0, exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.id = v1
+			})
+		case projectile_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.tex1.SprNo = [2]int32{g, n}
+				p.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+			})
+		case projectile_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.tex2.AnimNo = animNo
+				p.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+				if p.customShader.tex2.Anim != nil {
+					p.customShader.tex2.Anim.Reset()
+				}
+			})
+		case projectile_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.tex2.SprNo = [2]int32{g, n}
+				p.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+			})
+		case projectile_shadertime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.time = v1
+				if p.customShader.time == 0 {
+					p.customShader.clear()
+				}
+			})
+		case projectile_shader_shadow:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.shadow = v1
+			})
+		case projectile_shader_reflection:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.reflection = v1
+			})
+		case projectile_shader_afterimage:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.customShader.afterimage = v1
+			})
+		case hitDef_attr:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.attr = v1
+			})
+		case hitDef_guardflag:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guardflag = v1
+			})
+		case hitDef_hitflag:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitflag = v1
+			})
+		case hitDef_ground_type:
+			v1 := HitType(exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_type = v1
+			})
+		case hitDef_air_type:
+			v1 := HitType(exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.air_type = v1
+			})
+		case hitDef_animtype:
+			v1 := Reaction(exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.animtype = v1
+			})
+		case hitDef_air_animtype:
+			v1 := Reaction(exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.air_animtype = v1
+			})
+		case hitDef_fall_animtype:
+			v1 := Reaction(exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_animtype = v1
+			})
+		case hitDef_affectteam:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.affectteam = v1
+			})
+		case hitDef_teamside:
+			v1 := exp[0].evalI(c)
+			if v1 < 0 || v1 > 2 {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid teamside: %d", v1))
+			} else {
+				modifiers = append(modifiers, func(p *Projectile) {
+					p.hitdef.teamside = int(v1 - 1)
 				})
-			case hitDef_chainid:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.chainid = v1
-				})
-			case hitDef_nochainid:
-				val := make([]int32, int(math.Min(8, float64(len(exp)))))
+			}
+		case hitDef_id:
+			v1 := Max(0, exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.id = v1
+			})
+		case hitDef_chainid:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.chainid = v1
+			})
+		case hitDef_nochainid:
+			val := make([]int32, int(math.Min(8, float64(len(exp)))))
+			for i := 0; i < len(val); i++ {
+				val[i] = exp[i].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
 				for i := 0; i < len(val); i++ {
-					val[i] = exp[i].evalI(c)
+					p.hitdef.nochainid[i] = val[i]
 				}
-				eachProj(func(p *Projectile) {
-					for i := 0; i < len(val); i++ {
-						p.hitdef.nochainid[i] = val[i]
-					}
-				})
-			case hitDef_kill:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.kill = v1
-				})
-			case hitDef_guard_kill:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_kill = v1
-				})
-			case hitDef_fall_kill:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_kill = v1
-				})
-			case hitDef_hitonce:
-				v1 := Btoi(exp[0].evalB(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitonce = v1
-				})
-			case hitDef_air_juggle:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.air_juggle = v1
-				})
-			case hitDef_getpower:
-				var v1, v2 int32
-				v1 = Max(IErr+1, exp[0].evalI(c))
-				if len(exp) > 1 {
-					v2 = Max(IErr+1, exp[1].evalI(c))
+			})
+		case hitDef_kill:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.kill = v1
+			})
+		case hitDef_guard_kill:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_kill = v1
+			})
+		case hitDef_fall_kill:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_kill = v1
+			})
+		case hitDef_hitonce:
+			v1 := Btoi(exp[0].evalB(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitonce = v1
+			})
+		case hitDef_air_juggle:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.air_juggle = v1
+			})
+		case hitDef_getpower:
+			var v1, v2 int32
+			v1 = Max(IErr+1, exp[0].evalI(c))
+			if len(exp) > 1 {
+				v2 = Max(IErr+1, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitgetpower = v1
+				p.hitdef.guardgetpower = v2
+			})
+		case hitDef_damage:
+			var v1, v2 int32
+			v1 = exp[0].evalI(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitdamage = v1
+				p.hitdef.guarddamage = v2
+			})
+		case hitDef_givepower:
+			var v1, v2 int32
+			v1 = Max(IErr+1, exp[0].evalI(c))
+			if len(exp) > 1 {
+				v2 = Max(IErr+1, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitgivepower = v1
+				p.hitdef.guardgivepower = v2
+			})
+		case hitDef_numhits:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.numhits = v1
+			})
+		case hitDef_hitsound:
+			var v1 string
+			var v2, v3 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalI(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitgetpower = v1
-					p.hitdef.guardgetpower = v2
-				})
-			case hitDef_damage:
-				var v1, v2 int32
-				v1 = exp[0].evalI(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitsound_ffx = v1
+				p.hitdef.hitsound[0] = v2
+				p.hitdef.hitsound[1] = v3
+			})
+		case hitDef_hitsound_channel:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitsound_channel = v1
+			})
+		case hitDef_guardsound:
+			var v1 string
+			var v2, v3 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalI(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitdamage = v1
-					p.hitdef.guarddamage = v2
-				})
-			case hitDef_givepower:
-				var v1, v2 int32
-				v1 = Max(IErr+1, exp[0].evalI(c))
-				if len(exp) > 1 {
-					v2 = Max(IErr+1, exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guardsound_ffx = v1
+				p.hitdef.guardsound[0] = v2
+				p.hitdef.guardsound[1] = v3
+			})
+		case hitDef_guardsound_channel:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guardsound_channel = v1
+			})
+		case hitDef_priority:
+			var v1 int32
+			var v2 TradeType
+			v1 = exp[0].evalI(c)
+			if len(exp) > 1 {
+				v2 = TradeType(exp[1].evalI(c))
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.priority = v1
+				p.hitdef.prioritytype = v2
+			})
+		case hitDef_p1stateno:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p1stateno = v1
+			})
+		case hitDef_p2stateno:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p2stateno = v1
+				p.hitdef.p2getp1state = true
+			})
+		case hitDef_p2getp1state:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p2getp1state = v1
+			})
+		//case hitDef_p1sprpriority:
+		//	p.hitdef.p1sprpriority = exp[0].evalI(c)
+		case hitDef_p2sprpriority:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p2sprpriority = v1
+			})
+		case hitDef_forcestand:
+			v1 := Btoi(exp[0].evalB(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.forcestand = v1
+			})
+		case hitDef_forcecrouch:
+			v1 := Btoi(exp[0].evalB(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.forcecrouch = v1
+			})
+		case hitDef_forcenofall:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.forcenofall = v1
+			})
+		case hitDef_fall_damage:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_damage = v1
+			})
+		case hitDef_fall_xvelocity:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_xvelocity = v1
+			})
+		case hitDef_fall_yvelocity:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_yvelocity = v1
+			})
+		case hitDef_fall_zvelocity:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_zvelocity = v1
+			})
+		case hitDef_fall_recover:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_recover = v1
+			})
+		case hitDef_fall_recovertime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_recovertime = v1
+			})
+		case hitDef_sparkno:
+			var v1 string
+			var v2 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.sparkno_ffx = v1
+				p.hitdef.sparkno = v2
+			})
+		case hitDef_sparkangle:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.sparkangle = v1
+			})
+		case hitDef_guard_sparkno:
+			var v1 string
+			var v2 int32
+			v1 = exp[0].evalSLower(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_sparkno_ffx = v1
+				p.hitdef.guard_sparkno = v2
+			})
+		case hitDef_guard_sparkangle:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_sparkangle = v1
+			})
+		case hitDef_sparkxy:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.sparkxy[0] = v1
+				p.hitdef.sparkxy[1] = v2
+			})
+		case hitDef_down_hittime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.down_hittime = v1
+			})
+		//case hitDef_p1facing: // Doesn't work for projectiles
+		//	p.hitdef.p1facing = exp[0].evalI(c)
+		//case hitDef_p1getp2facing: // Doesn't work for projectiles
+		case hitDef_mindist:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitgivepower = v1
-					p.hitdef.guardgivepower = v2
-				})
-			case hitDef_numhits:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.numhits = v1
-				})
-			case hitDef_hitsound:
-				var v1 string
-				var v2, v3 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalI(c)
-					}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.mindist[0] = v1
+				p.hitdef.mindist[1] = v2
+				p.hitdef.mindist[2] = v3
+			})
+		case hitDef_maxdist:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitsound_ffx = v1
-					p.hitdef.hitsound[0] = v2
-					p.hitdef.hitsound[1] = v3
-				})
-			case hitDef_hitsound_channel:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitsound_channel = v1
-				})
-			case hitDef_guardsound:
-				var v1 string
-				var v2, v3 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalI(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.guardsound_ffx = v1
-					p.hitdef.guardsound[0] = v2
-					p.hitdef.guardsound[1] = v3
-				})
-			case hitDef_guardsound_channel:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guardsound_channel = v1
-				})
-			case hitDef_priority:
-				var v1 int32
-				var v2 TradeType
-				v1 = exp[0].evalI(c)
-				if len(exp) > 1 {
-					v2 = TradeType(exp[1].evalI(c))
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.priority = v1
-					p.hitdef.prioritytype = v2
-				})
-			case hitDef_p1stateno:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p1stateno = v1
-				})
-			case hitDef_p2stateno:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p2stateno = v1
-					p.hitdef.p2getp1state = true
-				})
-			case hitDef_p2getp1state:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p2getp1state = v1
-				})
-			//case hitDef_p1sprpriority:
-			//	p.hitdef.p1sprpriority = exp[0].evalI(c)
-			case hitDef_p2sprpriority:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p2sprpriority = v1
-				})
-			case hitDef_forcestand:
-				v1 := Btoi(exp[0].evalB(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.forcestand = v1
-				})
-			case hitDef_forcecrouch:
-				v1 := Btoi(exp[0].evalB(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.forcecrouch = v1
-				})
-			case hitDef_forcenofall:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.forcenofall = v1
-				})
-			case hitDef_fall_damage:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_damage = v1
-				})
-			case hitDef_fall_xvelocity:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_xvelocity = v1
-				})
-			case hitDef_fall_yvelocity:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_yvelocity = v1
-				})
-			case hitDef_fall_zvelocity:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_zvelocity = v1
-				})
-			case hitDef_fall_recover:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_recover = v1
-				})
-			case hitDef_fall_recovertime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_recovertime = v1
-				})
-			case hitDef_sparkno:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.sparkno_ffx = v1
-					p.hitdef.sparkno = v2
-				})
-			case hitDef_sparkangle:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.sparkangle = v1
-				})
-			case hitDef_guard_sparkno:
-				var v1 string
-				var v2 int32
-				v1 = exp[0].evalSLower(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_sparkno_ffx = v1
-					p.hitdef.guard_sparkno = v2
-				})
-			case hitDef_guard_sparkangle:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_sparkangle = v1
-				})
-			case hitDef_sparkxy:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.sparkxy[0] = v1
-					p.hitdef.sparkxy[1] = v2
-				})
-			case hitDef_down_hittime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.down_hittime = v1
-				})
-			//case hitDef_p1facing: // Doesn't work for projectiles
-			//	p.hitdef.p1facing = exp[0].evalI(c)
-			//case hitDef_p1getp2facing: // Doesn't work for projectiles
-			case hitDef_mindist:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.mindist[0] = v1
-					p.hitdef.mindist[1] = v2
-					p.hitdef.mindist[2] = v3
-				})
-			case hitDef_maxdist:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.maxdist[0] = v1
-					p.hitdef.maxdist[1] = v2
-					p.hitdef.maxdist[2] = v3
-				})
-			case hitDef_snap:
-				var v1, v2, v3 float32
-				var v4 int32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-						if len(exp) > 3 {
-							v4 = exp[2].evalI(c)
-						}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.maxdist[0] = v1
+				p.hitdef.maxdist[1] = v2
+				p.hitdef.maxdist[2] = v3
+			})
+		case hitDef_snap:
+			var v1, v2, v3 float32
+			var v4 int32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
+					if len(exp) > 3 {
+						v4 = exp[2].evalI(c)
 					}
 				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.snap[0] = v1
-					p.hitdef.snap[1] = v2
-					p.hitdef.snap[2] = v3
-					p.hitdef.snaptime = v4
-				})
-			case hitDef_p2facing:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p2facing = v1
-				})
-			case hitDef_air_hittime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.air_hittime = v1
-				})
-			case hitDef_fall:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_fall = v1
-				})
-			case hitDef_air_fall:
-				v1 := Btoi(exp[0].evalB(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.air_fall = v1
-				})
-			//case hitDef_air_cornerpush_veloff:
-			//	p.hitdef.air_cornerpush_veloff = exp[0].evalF(c)
-			case hitDef_down_bounce:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.down_bounce = v1
-				})
-			case hitDef_down_velocity:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.snap[0] = v1
+				p.hitdef.snap[1] = v2
+				p.hitdef.snap[2] = v3
+				p.hitdef.snaptime = v4
+			})
+		case hitDef_p2facing:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p2facing = v1
+			})
+		case hitDef_air_hittime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.air_hittime = v1
+			})
+		case hitDef_fall:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_fall = v1
+			})
+		case hitDef_air_fall:
+			v1 := Btoi(exp[0].evalB(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.air_fall = v1
+			})
+		//case hitDef_air_cornerpush_veloff:
+		//	p.hitdef.air_cornerpush_veloff = exp[0].evalF(c)
+		case hitDef_down_bounce:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.down_bounce = v1
+			})
+		case hitDef_down_velocity:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
+				}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.down_velocity[0] = v1
+				p.hitdef.down_velocity[1] = v2
+				p.hitdef.down_velocity[2] = v3
+			})
+		//case hitDef_down_cornerpush_veloff:
+		//	p.hitdef.down_cornerpush_veloff = exp[0].evalF(c)
+		case hitDef_ground_hittime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_hittime = v1
+			})
+		case hitDef_guard_hittime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_hittime = v1
+			})
+		case hitDef_guard_dist_x:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				if v1 >= 0 {
+					p.hitdef.guard_dist_x[0] = v1
+				}
+				if v2 >= 0 {
+					p.hitdef.guard_dist_x[1] = v2
+				}
+			})
+		case hitDef_guard_dist_y:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				if v1 >= 0 {
+					p.hitdef.guard_dist_y[0] = v1
+				}
+				if v2 >= 0 {
+					p.hitdef.guard_dist_y[1] = v2
+				}
+			})
+		case hitDef_guard_dist_z:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				if v1 >= 0 {
+					p.hitdef.guard_dist_z[0] = v1
+				}
+				if v2 >= 0 {
+					p.hitdef.guard_dist_z[1] = v2
+				}
+			})
+		case hitDef_pausetime:
+			var v1, v2 int32
+			v1 = exp[0].evalI(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.pausetime[0] = v1
+				p.hitdef.pausetime[1] = v2
+			})
+		case hitDef_guard_pausetime:
+			var v1, v2 int32
+			v1 = exp[0].evalI(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_pausetime[0] = v1
+				p.hitdef.guard_pausetime[1] = v2
+			})
+		case hitDef_air_velocity:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
+				}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.air_velocity[0] = v1
+				p.hitdef.air_velocity[1] = v2
+				p.hitdef.air_velocity[2] = v3
+			})
+		case hitDef_airguard_velocity:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
+				}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.airguard_velocity[0] = v1
+				p.hitdef.airguard_velocity[1] = v2
+				p.hitdef.airguard_velocity[2] = v3
+			})
+		case hitDef_ground_slidetime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_slidetime = v1
+			})
+		case hitDef_guard_slidetime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_slidetime = v1
+			})
+		case hitDef_guard_ctrltime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_ctrltime = v1
+			})
+		case hitDef_airguard_ctrltime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.airguard_ctrltime = v1
+			})
+		case hitDef_ground_velocity_x:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_velocity[0] = v1
+			})
+		case hitDef_ground_velocity_y:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_velocity[1] = v1
+			})
+		case hitDef_ground_velocity_z:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.ground_velocity[2] = v1
+			})
+		case hitDef_guard_velocity:
+			var v1, v2, v3 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+				if len(exp) > 2 {
+					v3 = exp[2].evalF(c)
+				}
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guard_velocity[0] = v1
+				p.hitdef.guard_velocity[1] = v2
+				p.hitdef.guard_velocity[2] = v3
+			})
+		//case hitDef_ground_cornerpush_veloff:
+		//	p.hitdef.ground_cornerpush_veloff = exp[0].evalF(c)
+		//case hitDef_guard_cornerpush_veloff:
+		//	p.hitdef.guard_cornerpush_veloff = exp[0].evalF(c)
+		//case hitDef_airguard_cornerpush_veloff:
+		//	p.hitdef.airguard_cornerpush_veloff = exp[0].evalF(c)
+		case hitDef_xaccel:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.xaccel = v1
+			})
+		case hitDef_yaccel:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.yaccel = v1
+			})
+		case hitDef_zaccel:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.zaccel = v1
+			})
+		case hitDef_envshake_time:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_time = v1
+			})
+		case hitDef_envshake_freq:
+			v1 := Max(0, exp[0].evalF(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_freq = v1
+			})
+		case hitDef_envshake_phase:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_phase = v1
+			})
+		case hitDef_envshake_ampl:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_ampl = v1
+			})
+		case hitDef_envshake_mul:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_mul = v1
+			})
+		case hitDef_envshake_dir:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_dir = v1
+			})
+		case hitDef_envshake_diradd:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_diradd = v1
+			})
+		case hitDef_envshake_decay:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.envshake_decay = v1
+			})
+		case hitDef_fall_envshake_time:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_time = v1
+			})
+		case hitDef_fall_envshake_freq:
+			v1 := Max(0, exp[0].evalF(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_freq = v1
+			})
+		case hitDef_fall_envshake_phase:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_phase = v1
+			})
+		case hitDef_fall_envshake_ampl:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_ampl = v1
+			})
+		case hitDef_fall_envshake_mul:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_mul = v1
+			})
+		case hitDef_fall_envshake_dir:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_dir = v1
+			})
+		case hitDef_fall_envshake_diradd:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_diradd = v1
+			})
+		case hitDef_fall_envshake_decay:
+			v1 := exp[0].evalF(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.fall_envshake_decay = v1
+			})
+		case hitDef_dizzypoints:
+			v1 := Max(IErr+1, exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.dizzypoints = v1
+			})
+		case hitDef_guardpoints:
+			v1 := Max(IErr+1, exp[0].evalI(c))
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.guardpoints = v1
+			})
+		case hitDef_redlife:
+			var v1, v2 int32
+			v1 = Max(IErr+1, exp[0].evalI(c))
+			if len(exp) > 1 {
+				v2 = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.hitredlife = v1
+				p.hitdef.guardredlife = v2
+			})
+		case hitDef_score:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.score[0] = v1
+				p.hitdef.score[1] = v2
+			})
+		case hitDef_p2clsncheck:
+			v := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p2clsncheck = v
+			})
+		case hitDef_p2clsnrequire:
+			v := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.p2clsnrequire = v
+			})
+		case hitDef_down_recover:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.down_recover = v1
+			})
+		case hitDef_down_recovertime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.down_recovertime = v1
+			})
+		case hitDef_attack_depth:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(p *Projectile) {
+				p.hitdef.attack_depth[0] = v1
+				p.hitdef.attack_depth[1] = v2
+			})
+		default:
+			if isAfterImageParam(paramID) {
+				modifiers = append(modifiers, func(p *Projectile) {
+					if p.aimg == nil {
+						p.aimg = newAfterImage()
 					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.down_velocity[0] = v1
-					p.hitdef.down_velocity[1] = v2
-					p.hitdef.down_velocity[2] = v3
+					afterImage(sc).runSub(c, crun, p.aimg, paramID, exp)
 				})
-			//case hitDef_down_cornerpush_veloff:
-			//	p.hitdef.down_cornerpush_veloff = exp[0].evalF(c)
-			case hitDef_ground_hittime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_hittime = v1
-				})
-			case hitDef_guard_hittime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_hittime = v1
-				})
-			case hitDef_guard_dist_x:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					if v1 >= 0 {
-						p.hitdef.guard_dist_x[0] = v1
-					}
-					if v2 >= 0 {
-						p.hitdef.guard_dist_x[1] = v2
-					}
-				})
-			case hitDef_guard_dist_y:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					if v1 >= 0 {
-						p.hitdef.guard_dist_y[0] = v1
-					}
-					if v2 >= 0 {
-						p.hitdef.guard_dist_y[1] = v2
-					}
-				})
-			case hitDef_guard_dist_z:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					if v1 >= 0 {
-						p.hitdef.guard_dist_z[0] = v1
-					}
-					if v2 >= 0 {
-						p.hitdef.guard_dist_z[1] = v2
-					}
-				})
-			case hitDef_pausetime:
-				var v1, v2 int32
-				v1 = exp[0].evalI(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.pausetime[0] = v1
-					p.hitdef.pausetime[1] = v2
-				})
-			case hitDef_guard_pausetime:
-				var v1, v2 int32
-				v1 = exp[0].evalI(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_pausetime[0] = v1
-					p.hitdef.guard_pausetime[1] = v2
-				})
-			case hitDef_air_velocity:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.air_velocity[0] = v1
-					p.hitdef.air_velocity[1] = v2
-					p.hitdef.air_velocity[2] = v3
-				})
-			case hitDef_airguard_velocity:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.airguard_velocity[0] = v1
-					p.hitdef.airguard_velocity[1] = v2
-					p.hitdef.airguard_velocity[2] = v3
-				})
-			case hitDef_ground_slidetime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_slidetime = v1
-				})
-			case hitDef_guard_slidetime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_slidetime = v1
-				})
-			case hitDef_guard_ctrltime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_ctrltime = v1
-				})
-			case hitDef_airguard_ctrltime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.airguard_ctrltime = v1
-				})
-			case hitDef_ground_velocity_x:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_velocity[0] = v1
-				})
-			case hitDef_ground_velocity_y:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_velocity[1] = v1
-				})
-			case hitDef_ground_velocity_z:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.ground_velocity[2] = v1
-				})
-			case hitDef_guard_velocity:
-				var v1, v2, v3 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-					if len(exp) > 2 {
-						v3 = exp[2].evalF(c)
-					}
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.guard_velocity[0] = v1
-					p.hitdef.guard_velocity[1] = v2
-					p.hitdef.guard_velocity[2] = v3
-				})
-			//case hitDef_ground_cornerpush_veloff:
-			//	p.hitdef.ground_cornerpush_veloff = exp[0].evalF(c)
-			//case hitDef_guard_cornerpush_veloff:
-			//	p.hitdef.guard_cornerpush_veloff = exp[0].evalF(c)
-			//case hitDef_airguard_cornerpush_veloff:
-			//	p.hitdef.airguard_cornerpush_veloff = exp[0].evalF(c)
-			case hitDef_xaccel:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.xaccel = v1
-				})
-			case hitDef_yaccel:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.yaccel = v1
-				})
-			case hitDef_zaccel:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.zaccel = v1
-				})
-			case hitDef_envshake_time:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_time = v1
-				})
-			case hitDef_envshake_freq:
-				v1 := Max(0, exp[0].evalF(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_freq = v1
-				})
-			case hitDef_envshake_phase:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_phase = v1
-				})
-			case hitDef_envshake_ampl:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_ampl = v1
-				})
-			case hitDef_envshake_mul:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_mul = v1
-				})
-			case hitDef_envshake_dir:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_dir = v1
-				})
-			case hitDef_envshake_diradd:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_diradd = v1
-				})
-			case hitDef_envshake_decay:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.envshake_decay = v1
-				})
-			case hitDef_fall_envshake_time:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_time = v1
-				})
-			case hitDef_fall_envshake_freq:
-				v1 := Max(0, exp[0].evalF(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_freq = v1
-				})
-			case hitDef_fall_envshake_phase:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_phase = v1
-				})
-			case hitDef_fall_envshake_ampl:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_ampl = v1
-				})
-			case hitDef_fall_envshake_mul:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_mul = v1
-				})
-			case hitDef_fall_envshake_dir:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_dir = v1
-				})
-			case hitDef_fall_envshake_diradd:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_diradd = v1
-				})
-			case hitDef_fall_envshake_decay:
-				v1 := exp[0].evalF(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.fall_envshake_decay = v1
-				})
-			case hitDef_dizzypoints:
-				v1 := Max(IErr+1, exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.dizzypoints = v1
-				})
-			case hitDef_guardpoints:
-				v1 := Max(IErr+1, exp[0].evalI(c))
-				eachProj(func(p *Projectile) {
-					p.hitdef.guardpoints = v1
-				})
-			case hitDef_redlife:
-				var v1, v2 int32
-				v1 = Max(IErr+1, exp[0].evalI(c))
-				if len(exp) > 1 {
-					v2 = exp[1].evalI(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.hitredlife = v1
-					p.hitdef.guardredlife = v2
-				})
-			case hitDef_score:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.score[0] = v1
-					p.hitdef.score[1] = v2
-				})
-			case hitDef_p2clsncheck:
-				v := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p2clsncheck = v
-				})
-			case hitDef_p2clsnrequire:
-				v := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.p2clsnrequire = v
-				})
-			case hitDef_down_recover:
-				v1 := exp[0].evalB(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.down_recover = v1
-				})
-			case hitDef_down_recovertime:
-				v1 := exp[0].evalI(c)
-				eachProj(func(p *Projectile) {
-					p.hitdef.down_recovertime = v1
-				})
-			case hitDef_attack_depth:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachProj(func(p *Projectile) {
-					p.hitdef.attack_depth[0] = v1
-					p.hitdef.attack_depth[1] = v2
-				})
-			default:
-				if isAfterImageParam(paramID) {
-					eachProj(func(p *Projectile) {
-						if p.aimg == nil {
-							p.aimg = newAfterImage()
-						}
-						afterImage(sc).runSub(c, crun, p.aimg, paramID, exp)
-					})
-				}
 			}
 		}
 		return true
 	})
 
+	// Commit all parameters in the order they were compiled in
+	for _, modify := range modifiers {
+		for _, p := range projs {
+			modify(p)
+		}
+	}
+
 	// Update AfterImage PalFX
-	eachProj(func(p *Projectile) {
+	for _, p := range projs {
 		if p.aimg != nil && p.aimg.time != 0 && p.aimg.needsetup {
 			p.aimg.setup(crun)
 		}
-	})
+	}
 
 	return false
 }
@@ -14640,12 +14651,12 @@ func (sc text) Run(c *Char, _ []int32) bool {
 type modifyText text
 
 const (
-	modifytext_redirectid = iota + text_last + 1
-	modifytext_index
+	modifyText_redirectid = iota + text_last + 1
+	modifyText_index
 )
 
 func (sc modifyText) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), modifytext_redirectid, "ModifyText")
+	crun := getRedirectedChar(c, StateControllerBase(sc), modifyText_redirectid, "ModifyText")
 	if crun == nil {
 		return false
 	}
@@ -14654,305 +14665,316 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 	idx := int(-1)
 	shaderPN := crun.ss.sb.playerNo
 
-	var texts []*TextSprite
-	eachText := func(f func(ts *TextSprite)) {
-		for _, ts := range texts {
-			f(ts)
-		}
-	}
-
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case text_id:
 			tid = exp[0].evalI(c)
-		case modifytext_index:
+		case modifyText_index:
 			idx = int(exp[0].evalI(c))
-		case modifytext_redirectid:
+		}
+		return true
+	})
+
+	// Fetch the texts we are going to modify
+	texts := crun.getMultipleTexts(tid, idx, true)
+	if len(texts) == 0 {
+		return false
+	}
+
+	// Every text write is collected here and only committed once all of them have been read
+	modifiers := make([]func(*TextSprite), 0, len(StateControllerBase(sc)))
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case text_id:
 			return true
-		default:
-			if len(texts) == 0 {
-				texts = crun.getMultipleTexts(tid, idx, true)
-				if len(texts) == 0 {
-					return false
+		case modifyText_index:
+			return true
+		case modifyText_redirectid:
+			return true // Already handled. Avoid default
+		case text_removetime:
+			rt := exp[0].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.removetime = rt
+			})
+		case text_layerno:
+			l := int16(exp[0].evalI(c))
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.layerno = l
+			})
+		case text_params:
+			params := make([]interface{}, 0, len(exp))
+			for _, e := range exp {
+				params = append(params, e.run(c).ToAny())
+			}
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.params = params
+				if ts.template != "" {
+					ts.text = OldSprintf(ts.template, ts.params...)
+				}
+			})
+		case text_text:
+			sn := int(exp[0].evalI(c))
+			spl := sys.stringPool[sys.workingState.playerNo].List
+			if sn >= 0 && sn < len(spl) {
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.template = spl[sn]
+					ts.text = OldSprintf(ts.template, ts.params...)
+				})
+			}
+		case text_font:
+			// TODO: Needs same scaling fixes as plain Text
+			fnt := int(exp[1].evalI(c))
+			fflg := exp[0].evalSLower(c)
+			fntList := crun.gi().fnt
+
+			switch fflg {
+			case "f":
+				fntList = sys.fightScreen.fnt
+			case "m":
+				fntList = sys.motif.Fnt
+			}
+
+			if fnt >= 0 {
+				if f := fntList[fnt]; f != nil {
+					modifiers = append(modifiers, func(ts *TextSprite) {
+						ts.fnt = f
+						switch fflg {
+						case "f":
+							ts.scaleRatio = float32(c.gi().localcoord[0]) / float32(sys.fightScreen.localcoord[0])
+						case "m":
+							ts.scaleRatio = float32(c.gi().localcoord[0]) / float32(sys.motif.Info.Localcoord[0])
+						default:
+							ts.scaleRatio = 1
+						}
+					})
 				}
 			}
-			switch paramID {
-			case text_removetime:
-				rt := exp[0].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.removetime = rt
+		case text_localcoord:
+			// TODO: Needs same scaling fixes as plain Text
+			var lcx, lcy int32
+			lcx = exp[0].evalI(c)
+			if len(exp) > 1 {
+				lcy = exp[1].evalI(c)
+			}
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.SetLocalcoordChar([2]int32{lcx, lcy})
+			})
+		case text_bank:
+			b := exp[0].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.bank = b
+			})
+		case text_align:
+			a := exp[0].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.align = a
+			})
+		case text_textspacing:
+			xs := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.textSpacing[0] = xs
+			})
+			if len(exp) > 1 {
+				ys := exp[1].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.textSpacing[1] = ys
 				})
-			case text_layerno:
-				l := int16(exp[0].evalI(c))
-				eachText(func(ts *TextSprite) {
-					ts.layerno = l
+			}
+		case text_textdelay:
+			td := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.textDelay = td
+			})
+		case text_pos:
+			x := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.x = x*ts.localScale + float32(ts.offsetX)
+			})
+			if len(exp) > 1 {
+				y := exp[1].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.y = y * ts.localScale
 				})
-			case text_params:
-				params := make([]interface{}, 0, len(exp))
-				for _, e := range exp {
-					params = append(params, e.run(c).ToAny())
-				}
-				eachText(func(ts *TextSprite) {
-					ts.params = params
-					if ts.template != "" {
-						ts.text = OldSprintf(ts.template, ts.params...)
-					}
+			}
+		case text_velocity:
+			velx := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.xvel = velx * ts.localScale
+			})
+			if len(exp) > 1 {
+				vely := exp[1].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.yvel = vely * ts.localScale
 				})
-			case text_text:
-				sn := int(exp[0].evalI(c))
-				spl := sys.stringPool[sys.workingState.playerNo].List
-				if sn >= 0 && sn < len(spl) {
-					eachText(func(ts *TextSprite) {
-						ts.template = spl[sn]
-						ts.text = OldSprintf(ts.template, ts.params...)
-					})
-				}
-			case text_font:
-				// TODO: Needs same scaling fixes as plain Text
-				fnt := int(exp[1].evalI(c))
-				fflg := exp[0].evalSLower(c)
-				fntList := crun.gi().fnt
-
-				switch fflg {
-				case "f":
-					fntList = sys.fightScreen.fnt
-				case "m":
-					fntList = sys.motif.Fnt
-				}
-
-				if fnt >= 0 {
-					if f := fntList[fnt]; f != nil {
-						eachText(func(ts *TextSprite) {
-							ts.fnt = f
-							switch fflg {
-							case "f":
-								ts.scaleRatio = float32(c.gi().localcoord[0]) / float32(sys.fightScreen.localcoord[0])
-							case "m":
-								ts.scaleRatio = float32(c.gi().localcoord[0]) / float32(sys.motif.Info.Localcoord[0])
-							default:
-								ts.scaleRatio = 1
-							}
-						})
-					}
-				}
-			case text_localcoord:
-				// TODO: Needs same scaling fixes as plain Text
-				var lcx, lcy int32
-				lcx = exp[0].evalI(c)
-				if len(exp) > 1 {
-					lcy = exp[1].evalI(c)
-				}
-				eachText(func(ts *TextSprite) {
-					ts.SetLocalcoordChar([2]int32{lcx, lcy})
+			}
+		case text_maxdist:
+			xmaxdist := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.maxDist[0] = xmaxdist * ts.localScale
+			})
+			if len(exp) > 1 {
+				ymaxdist := exp[1].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.maxDist[1] = ymaxdist * ts.localScale
 				})
-			case text_bank:
-				b := exp[0].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.bank = b
+			}
+		case text_friction:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.friction[0] = v1
+				ts.friction[1] = v2
+			})
+		case text_accel:
+			ax := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.accel[0] = ax * ts.localScale
+			})
+			if len(exp) > 1 {
+				ay := exp[1].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.accel[1] = ay * ts.localScale
 				})
-			case text_align:
-				a := exp[0].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.align = a
+			}
+		case text_angle:
+			a := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.rot.angle = a
+			})
+		case text_xangle:
+			a := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.rot.xangle = a
+			})
+		case text_yangle:
+			a := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.rot.yangle = a
+			})
+		case text_projection:
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.projection = exp[0].evalI(c)
+			})
+		case text_focallength:
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.fLength = exp[0].evalF(c)
+			})
+		case text_scale:
+			x := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.xscl = x * ts.localScale * ts.scaleRatio
+			})
+			if len(exp) > 1 {
+				y := exp[1].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.yscl = y * ts.localScale * ts.scaleRatio
 				})
-			case text_textspacing:
-				xs := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.textSpacing[0] = xs
-				})
-				if len(exp) > 1 {
-					ys := exp[1].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.textSpacing[1] = ys
-					})
-				}
-			case text_textdelay:
-				td := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.textDelay = td
-				})
-			case text_pos:
-				x := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.x = x*ts.localScale + float32(ts.offsetX)
-				})
-				if len(exp) > 1 {
-					y := exp[1].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.y = y * ts.localScale
-					})
-				}
-			case text_velocity:
-				velx := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.xvel = velx * ts.localScale
-				})
-				if len(exp) > 1 {
-					vely := exp[1].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.yvel = vely * ts.localScale
-					})
-				}
-			case text_maxdist:
-				xmaxdist := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.maxDist[0] = xmaxdist * ts.localScale
-				})
-				if len(exp) > 1 {
-					ymaxdist := exp[1].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.maxDist[1] = ymaxdist * ts.localScale
-					})
-				}
-			case text_friction:
-				var v1, v2 float32
-				v1 = exp[0].evalF(c)
-				if len(exp) > 1 {
-					v2 = exp[1].evalF(c)
-				}
-				eachText(func(ts *TextSprite) {
-					ts.friction[0] = v1
-					ts.friction[1] = v2
-				})
-			case text_accel:
-				ax := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.accel[0] = ax * ts.localScale
-				})
-				if len(exp) > 1 {
-					ay := exp[1].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.accel[1] = ay * ts.localScale
-					})
-				}
-			case text_angle:
-				a := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.rot.angle = a
-				})
-			case text_xangle:
-				a := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.rot.xangle = a
-				})
-			case text_yangle:
-				a := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.rot.yangle = a
-				})
-			case text_projection:
-				eachText(func(ts *TextSprite) {
-					ts.projection = exp[0].evalI(c)
-				})
-			case text_focallength:
-				eachText(func(ts *TextSprite) {
-					ts.fLength = exp[0].evalF(c)
-				})
-			case text_scale:
-				x := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.xscl = x * ts.localScale * ts.scaleRatio
-				})
-				if len(exp) > 1 {
-					y := exp[1].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.yscl = y * ts.localScale * ts.scaleRatio
-					})
-				}
-			case text_color:
-				var r, g, b, a int32 = exp[0].evalI(c), 255, 255, 255
-				if len(exp) > 1 {
-					g = exp[1].evalI(c)
-					if len(exp) > 2 {
-						b = exp[2].evalI(c)
-						if len(exp) > 3 {
-							a = exp[3].evalI(c)
-						}
+			}
+		case text_color:
+			var r, g, b, a int32 = exp[0].evalI(c), 255, 255, 255
+			if len(exp) > 1 {
+				g = exp[1].evalI(c)
+				if len(exp) > 2 {
+					b = exp[2].evalI(c)
+					if len(exp) > 3 {
+						a = exp[3].evalI(c)
 					}
 				}
-				eachText(func(ts *TextSprite) {
-					ts.SetColor(r, g, b, a)
+			}
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.SetColor(r, g, b, a)
+			})
+		case text_xshear:
+			xs := exp[0].evalF(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.xshear = xs
+			})
+		case text_hidewithbars:
+			v := exp[0].evalB(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.hidewithbars = v
+			})
+		case text_shader:
+			s := exp[0].evalSLower(c)
+			if key, ok := sys.resolveCharShader(shaderPN, s); ok {
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.customShader.set(s, key)
 				})
-			case text_xshear:
-				xs := exp[0].evalF(c)
-				eachText(func(ts *TextSprite) {
-					ts.xshear = xs
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid text shader: %s (playerNo: %v)", s, shaderPN+1))
+			}
+		case text_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
+		case text_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			for j := 0; j < numParams; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					ts.customShader.params[idx] = val
 				})
-			case text_hidewithbars:
-				v := exp[0].evalB(c)
-				eachText(func(ts *TextSprite) {
-					ts.hidewithbars = v
-				})
-			case text_shader:
-				s := exp[0].evalSLower(c)
-				if key, ok := sys.resolveCharShader(shaderPN, s); ok {
-					eachText(func(ts *TextSprite) {
-						ts.customShader.set(s, key)
-					})
-				} else {
-					sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid text shader: %s (playerNo: %v)", s, shaderPN+1))
+			}
+		case text_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.customShader.tex1.AnimNo = animNo
+				ts.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+				if ts.customShader.tex1.Anim != nil {
+					ts.customShader.tex1.Anim.Reset()
 				}
-			case text_shader_playerno:
-				shaderPN = int(exp[0].evalI(c)) - 1
-			case text_shaderparam:
-				numParams := int(exp[0].evalI(c))
-				for j := 0; j < numParams; j++ {
-					idx := int(exp[1+j*2].evalI(c))
-					val := exp[2+j*2].evalF(c)
-					eachText(func(ts *TextSprite) {
-						ts.customShader.params[idx] = val
-					})
+			})
+		case text_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.customShader.tex1.SprNo = [2]int32{g, n}
+				ts.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+			})
+		case text_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.customShader.tex2.AnimNo = animNo
+				ts.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+				if ts.customShader.tex2.Anim != nil {
+					ts.customShader.tex2.Anim.Reset()
 				}
-			case text_shader_tex1_anim:
-				animNo := exp[0].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.customShader.tex1.AnimNo = animNo
-					ts.customShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
-					if ts.customShader.tex1.Anim != nil {
-						ts.customShader.tex1.Anim.Reset()
-					}
-				})
-			case text_shader_tex1_spr:
-				g := exp[0].evalI(c)
-				n := exp[1].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.customShader.tex1.SprNo = [2]int32{g, n}
-					ts.customShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
-				})
-			case text_shader_tex2_anim:
-				animNo := exp[0].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.customShader.tex2.AnimNo = animNo
-					ts.customShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
-					if ts.customShader.tex2.Anim != nil {
-						ts.customShader.tex2.Anim.Reset()
-					}
-				})
-			case text_shader_tex2_spr:
-				g := exp[0].evalI(c)
-				n := exp[1].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.customShader.tex2.SprNo = [2]int32{g, n}
-					ts.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
-				})
-			case text_shadertime:
-				v1 := exp[0].evalI(c)
-				eachText(func(ts *TextSprite) {
-					ts.customShader.time = v1
-					if ts.customShader.time == 0 {
-						ts.customShader.clear()
-					}
-				})
-			default:
-				if isPalFXParam(paramID) {
-					eachText(func(ts *TextSprite) {
-						palFX(sc).runSub(c, &ts.palfx.PalFXDef, paramID, exp)
-					})
+			})
+		case text_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.customShader.tex2.SprNo = [2]int32{g, n}
+				ts.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+			})
+		case text_shadertime:
+			v1 := exp[0].evalI(c)
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.customShader.time = v1
+				if ts.customShader.time == 0 {
+					ts.customShader.clear()
 				}
+			})
+		default:
+			if isPalFXParam(paramID) {
+				modifiers = append(modifiers, func(ts *TextSprite) {
+					palFX(sc).runSub(c, &ts.palfx.PalFXDef, paramID, exp)
+				})
 			}
 		}
 		return true
 	})
+
+	// Commit all parameters in the order they were compiled in
+	for _, modify := range modifiers {
+		for _, ts := range texts {
+			modify(ts)
+		}
+	}
+
 	return false
 }
 

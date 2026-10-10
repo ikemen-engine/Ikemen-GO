@@ -1193,11 +1193,11 @@ func (c *CharCompiler) explod(is IniSection, sc *StateControllerBase) (StateCont
 func (c *CharCompiler) modifyExplod(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*modifyExplod)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
-			modifyexplod_redirectid, VT_Int, 1, false); err != nil {
+			modifyExplod_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "index",
-			modifyexplod_index, VT_Int, 1, false); err != nil {
+			modifyExplod_index, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.explodSub(is, sc); err != nil {
@@ -5967,11 +5967,11 @@ func (c *CharCompiler) text(is IniSection, sc *StateControllerBase) (StateContro
 func (c *CharCompiler) modifyText(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*modifyText)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
-			modifytext_redirectid, VT_Int, 1, false); err != nil {
+			modifyText_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "index",
-			modifytext_index, VT_Int, 1, false); err != nil {
+			modifyText_index, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return c.textSub(is, sc)
