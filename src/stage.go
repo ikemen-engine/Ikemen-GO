@@ -1866,6 +1866,9 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
 			bgc.bg[i].palfx.hue = bgc.hue
+			// The effect only lasts one tick. The BG's PalFX is stepped every tick,
+			// so it expires as soon as the BGCtrl stops reapplying it
+			bgc.bg[i].palfx.time = 1
 		}
 	case BT_PosSet:
 		for i := range bgc.bg {
