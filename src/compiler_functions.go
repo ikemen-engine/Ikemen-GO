@@ -4796,6 +4796,7 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
 		assign := false
 		var mapParam, mapName, value string
+		var nameExp []BytecodeExp // For string expressions used as name
 
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
@@ -4839,16 +4840,15 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 				mapParam = data
 
 				// CNS: See if map parameter is INI-style or if it's an assign
+				// Only when it starts with "map", since a string expression may contain "="
 				ia := strings.Index(mapParam, "=")
-				if ia > 0 {
+				if ia > 0 && strings.HasPrefix(strings.ToLower(mapParam), "map") {
 					if strings.ToLower(SplitAndTrim(mapParam, "=")[0]) == "map" {
 						mapParam = strings.TrimSpace(mapParam[ia+1:])
 					} else {
 						mapParam = strings.TrimSpace(mapParam[3:])
 						assign = true
 					}
-				} else if !strings.HasPrefix(mapParam, "\"") {
-					return Error("Missing '='")
 				}
 				return nil
 			}); err != nil {
@@ -4881,10 +4881,18 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 						return err
 					}
 					if b {
-						if len(mapParam) < 2 || mapParam[0] != '"' || mapParam[len(mapParam)-1] != '"' {
-							return Error("Not enclosed in \"")
+						bes, err := c.exprs(mapParam, VT_String, 1)
+						if err != nil {
+							return err
 						}
-						mapName = mapParam[1 : len(mapParam)-1]
+						nameExp = bes
+						// Constant names can still be checked for emptiness below
+						if be := bes[0]; len(be) == 5 && be[0] == OC_string {
+							i := 1
+							mapName = sys.stringPool[c.playerNo].List[be.ReadIntAt(&i)]
+						} else {
+							mapName = mapParam
+						}
 					}
 				}
 			}
@@ -4908,7 +4916,10 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 
 		// Only add the bytecode if both are OK
 		if len(mapName) > 0 && len(value) > 0 {
-			sc.add(mapSet_mapArray, c.stringToExp(mapName))
+			if nameExp == nil {
+				nameExp = c.stringToExp(mapName)
+			}
+			sc.add(mapSet_mapArray, nameExp)
 			if err := c.scAdd(sc, mapSet_value, value, VT_Float, 1); err != nil {
 				return err
 			}
