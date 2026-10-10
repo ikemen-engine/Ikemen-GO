@@ -12464,11 +12464,12 @@ func (sc forceFeedback) Run(c *Char, _ []int32) bool {
 		switch paramID {
 		case forceFeedback_waveform:
 			// We're just gonna use this to hack the parameters in
-			wf := exp[0].evalS(c)
+			wf := exp[0].evalSLower(c)
 			switch wf {
 			case "off":
 				waveform = waveform_off
 			default:
+				sys.appendToConsole(c.warn() + "Invalid waveform: " + wf)
 				fallthrough
 			case "sine":
 				waveform = waveform_sine

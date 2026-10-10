@@ -4422,18 +4422,35 @@ func (c *CharCompiler) forceFeedback(is IniSection, sc *StateControllerBase) (St
 			return err
 		}
 		if err := c.stateParam(is, "waveform", false, func(data string) error {
+			isValidWaveform := func(s string) bool {
+				switch s {
+				case "sine", "square", "sinesquare", "off":
+					return true
+				}
+				return false
+			}
+			data = strings.TrimSpace(data)
 			if len(data) == 0 {
 				return Error("waveform not specified")
 			}
-			if data[0] == '"' {
-				data = data[1 : len(data)-1]
+			// Legacy syntax: bare keyword
+			if kw := strings.ToLower(data); isValidWaveform(kw) {
+				sc.add(forceFeedback_waveform, c.stringToExp(kw))
+				return nil
 			}
-			switch strings.ToLower(data) {
-			case "sine", "square", "sinesquare", "off":
-			default:
-				return Error("Invalid waveform: " + data)
+			bes, err := c.exprs(data, VT_String, 1)
+			if err != nil {
+				return err
 			}
-			sc.add(forceFeedback_waveform, c.stringToExp(strings.ToLower(data)))
+			// Constant strings can be validated now. Dynamic ones are checked at runtime
+			if be := bes[0]; len(be) == 5 && be[0] == OC_string {
+				i := 1
+				s := sys.stringPool[c.playerNo].List[be.ReadIntAt(&i)]
+				if !isValidWaveform(strings.ToLower(s)) {
+					return Error("Invalid waveform: " + s)
+				}
+			}
+			sc.add(forceFeedback_waveform, bes)
 			return nil
 		}); err != nil {
 			return err
@@ -5928,7 +5945,7 @@ func (c *CharCompiler) createPlatform(is IniSection, sc *StateControllerBase) (S
 
 		if err = c.paramValue(
 			is, sc, "name",
-			helper_name, VT_String, 1, false,
+			createPlatform_name, VT_String, 1, false,
 		); err != nil {
 			return err
 		}
