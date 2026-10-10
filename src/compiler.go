@@ -6956,65 +6956,31 @@ func (c *CharCompiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
 		sc := newStateControllerBase()
 		if err := c.stateParam(is, "type", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("statetype not specified")
+			v, be, err := c.typeExpression(data, "statetype", "SCALUscalu", stateTypeValue)
+			if err != nil {
+				return err
 			}
-			switch strings.ToLower(data)[0] {
-			case 's':
-				sbc.stateType = ST_S
-			case 'c':
-				sbc.stateType = ST_C
-			case 'a':
-				sbc.stateType = ST_A
-			case 'l':
-				sbc.stateType = ST_L
-			case 'u':
-				sbc.stateType = ST_U
-			default:
-				return Error("Invalid statetype: " + data)
-			}
+			sbc.stateType, sbc.stateTypeExp = StateType(v), be
 			return nil
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "movetype", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("movetype not specified")
+			v, be, err := c.typeExpression(data, "movetype", "IAHUiahu", moveTypeValue)
+			if err != nil {
+				return err
 			}
-			switch strings.ToLower(data)[0] {
-			case 'i':
-				sbc.moveType = MT_I
-			case 'a':
-				sbc.moveType = MT_A
-			case 'h':
-				sbc.moveType = MT_H
-			case 'u':
-				sbc.moveType = MT_U
-			default:
-				return Error("Invalid movetype: " + data)
-			}
+			sbc.moveType, sbc.moveTypeExp = MoveType(v), be
 			return nil
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "physics", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("physics not specified")
+			v, be, err := c.typeExpression(data, "physics type", "SCANUscanu", physicsTypeValue)
+			if err != nil {
+				return err
 			}
-			switch strings.ToLower(data)[0] {
-			case 's':
-				sbc.physics = ST_S
-			case 'c':
-				sbc.physics = ST_C
-			case 'a':
-				sbc.physics = ST_A
-			case 'n':
-				sbc.physics = ST_N
-			case 'u':
-				sbc.physics = ST_U
-			default:
-				return Error("Invalid physics type: " + data)
-			}
+			sbc.physics, sbc.physicsExp = StateType(v), be
 			return nil
 		}); err != nil {
 			return err

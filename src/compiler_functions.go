@@ -3602,19 +3602,19 @@ func (c *CharCompiler) playerPush(is IniSection, sc *StateControllerBase) (State
 }
 
 // Bare letters are the legacy syntax. Anything else is a string expression
-func (c *CharCompiler) parseTypeExpression(sc *StateControllerBase, id byte, data, name, validLetters string,
-	conv func(string) (int32, bool)) error {
+// Returns either a constant or, if dynamic, a non-nil expression
+func (c *CharCompiler) typeExpression(data, name, validLetters string,
+	conv func(string) (int32, bool)) (int32, BytecodeExp, error) {
 	data = strings.TrimSpace(data)
 	if len(data) == 0 {
-		return Error(name + " not specified")
+		return 0, nil, Error(name + " not specified")
 	}
-	legacy := func() error {
+	legacy := func() (int32, BytecodeExp, error) {
 		v, ok := conv(data)
 		if !ok {
-			return Error("Invalid " + name + ": " + data)
+			return 0, nil, Error("Invalid " + name + ": " + data)
 		}
-		sc.add(id, sc.iToExp(v))
-		return nil
+		return v, nil, nil
 	}
 	// Try the conventional syntax first, so expressions can't shadow it
 	if strings.Trim(data, validLetters) == "" {
@@ -3625,14 +3625,28 @@ func (c *CharCompiler) parseTypeExpression(sc *StateControllerBase, id byte, dat
 	cc := *c
 	be, err := cc.fullExpression(&rest, VT_String)
 	if err == nil {
-		sc.add(id, []BytecodeExp{be, sc.iToExp(1)[0]})
-		return nil
+		return 0, be, nil
 	}
 	// Mugen only reads the first letter, so tolerate trailing garbage in CNS
 	if !c.zssMode && sys.ignoreMostErrors {
 		return legacy()
 	}
-	return err
+	return 0, nil, err
+}
+
+func (c *CharCompiler) parseTypeExpression(sc *StateControllerBase, id byte, data, name, validLetters string,
+	conv func(string) (int32, bool)) error {
+	v, be, err := c.typeExpression(data, name, validLetters, conv)
+	if err != nil {
+		return err
+	}
+	if be != nil {
+		// A second expression marks the dynamic string form
+		sc.add(id, []BytecodeExp{be, sc.iToExp(1)[0]})
+	} else {
+		sc.add(id, sc.iToExp(v))
+	}
+	return nil
 }
 
 func (c *CharCompiler) stateTypeSet(is IniSection, sc *StateControllerBase) (StateController, error) {
@@ -3642,7 +3656,7 @@ func (c *CharCompiler) stateTypeSet(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		statetype := func(data string) error {
-			return c.parseTypeExpression(sc, stateTypeSet_statetype, data, "statetype", "SCALscal", stateTypeValue)
+			return c.parseTypeExpression(sc, stateTypeSet_statetype, data, "statetype", "SCALUscalu", stateTypeValue)
 		}
 		b := false
 		if err := c.stateParam(is, "statetype", false, func(data string) error {
@@ -3659,12 +3673,12 @@ func (c *CharCompiler) stateTypeSet(is IniSection, sc *StateControllerBase) (Sta
 			}
 		}
 		if err := c.stateParam(is, "movetype", false, func(data string) error {
-			return c.parseTypeExpression(sc, stateTypeSet_movetype, data, "movetype", "IAHiah", moveTypeValue)
+			return c.parseTypeExpression(sc, stateTypeSet_movetype, data, "movetype", "IAHUiahu", moveTypeValue)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "physics", false, func(data string) error {
-			return c.parseTypeExpression(sc, stateTypeSet_physics, data, "physics type", "SCANscan", physicsTypeValue)
+			return c.parseTypeExpression(sc, stateTypeSet_physics, data, "physics type", "SCANUscanu", physicsTypeValue)
 		}); err != nil {
 			return err
 		}

@@ -11337,6 +11337,8 @@ func stateTypeValue(s string) (int32, bool) {
 		return int32(ST_A), true
 	case 'l':
 		return int32(ST_L), true
+	case 'u':
+		return int32(ST_U), true
 	}
 	return 0, false
 }
@@ -11352,6 +11354,8 @@ func moveTypeValue(s string) (int32, bool) {
 		return int32(MT_A), true
 	case 'h':
 		return int32(MT_H), true
+	case 'u':
+		return int32(MT_U), true
 	}
 	return 0, false
 }
@@ -11369,6 +11373,8 @@ func physicsTypeValue(s string) (int32, bool) {
 		return int32(ST_A), true
 	case 'n':
 		return int32(ST_N), true
+	case 'u':
+		return int32(ST_U), true
 	}
 	return 0, false
 }
@@ -11379,7 +11385,11 @@ func evalTypeExp(exp []BytecodeExp, c *Char, name string, conv func(string) (int
 	if len(exp) < 2 {
 		return exp[0].evalI(c), true
 	}
-	v := exp[0].run(c)
+	return evalTypeString(exp[0], c, name, conv)
+}
+
+func evalTypeString(be BytecodeExp, c *Char, name string, conv func(string) (int32, bool)) (int32, bool) {
+	v := be.run(c)
 	if v.vtype != VT_String {
 		sys.appendToConsole(c.warn() + "Expression did not evaluate to a string")
 		return 0, false
@@ -11401,15 +11411,23 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 		switch paramID {
 		case stateTypeSet_statetype:
 			if v, ok := evalTypeExp(exp, c, "statetype", stateTypeValue); ok {
-				crun.ss.changeStateType(StateType(v))
+				// Mugen didn't allow using U (unchanged)
+				// But we have no reason to forbid it and it makes code a little cleaner
+				if StateType(v) != ST_U {
+					crun.ss.changeStateType(StateType(v))
+				}
 			}
 		case stateTypeSet_movetype:
 			if v, ok := evalTypeExp(exp, c, "movetype", moveTypeValue); ok {
-				crun.ss.changeMoveType(MoveType(v))
+				if MoveType(v) != MT_U {
+					crun.ss.changeMoveType(MoveType(v))
+				}
 			}
 		case stateTypeSet_physics:
 			if v, ok := evalTypeExp(exp, c, "physics type", physicsTypeValue); ok {
-				crun.ss.physics = StateType(v)
+				if StateType(v) != ST_U {
+					crun.ss.physics = StateType(v)
+				}
 			}
 		}
 		return true
@@ -16986,8 +17004,11 @@ func (sc mapReset) Run(c *Char, _ []int32) bool {
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType
+	stateTypeExp BytecodeExp // Dynamic string form of stateType. Nil when constant
 	moveType  MoveType
+	moveTypeExp  BytecodeExp
 	physics   StateType
+	physicsExp   BytecodeExp
 	playerNo  int
 	stateDef  stateDef
 	block     StateBlock
@@ -17008,23 +17029,49 @@ func newStateBytecode(pn int) *StateBytecode {
 }
 
 func (sb *StateBytecode) init(c *Char) {
+	// Set before evaluating type expressions, since they may read the string pool
+	sys.workingState = sb
+
+	// Invalid dynamic types leave the current one unchanged
+	stateType, moveType, physics := sb.stateType, sb.moveType, sb.physics
+
+	// Check if these were provided as expressions
+	if sb.stateTypeExp != nil {
+		stateType = ST_U
+		if v, ok := evalTypeString(sb.stateTypeExp, c, "statetype", stateTypeValue); ok {
+			stateType = StateType(v)
+		}
+	}
+	if sb.moveTypeExp != nil {
+		moveType = MT_U
+		if v, ok := evalTypeString(sb.moveTypeExp, c, "movetype", moveTypeValue); ok {
+			moveType = MoveType(v)
+		}
+	}
+	if sb.physicsExp != nil {
+		physics = ST_U
+		if v, ok := evalTypeString(sb.physicsExp, c, "physics type", physicsTypeValue); ok {
+			physics = StateType(v)
+		}
+	}
+
 	// StateType
-	if sb.stateType != ST_U {
-		c.ss.changeStateType(sb.stateType)
+	if stateType != ST_U {
+		c.ss.changeStateType(stateType)
 	}
 
 	// MoveType
-	if sb.moveType != MT_U {
+	if moveType != MT_U {
 		if !c.ss.storeMoveType {
 			c.ss.prevMoveType = c.ss.moveType
 		}
-		c.ss.moveType = sb.moveType
+		c.ss.moveType = moveType
 	}
 	c.ss.storeMoveType = false
 
 	// Physics
-	if sb.physics != ST_U {
-		c.ss.physics = sb.physics
+	if physics != ST_U {
+		c.ss.physics = physics
 	}
 
 	// Reset juggle points
@@ -17034,7 +17081,6 @@ func (sb *StateBytecode) init(c *Char) {
 	}
 
 	// Rest of StateDef
-	sys.workingState = sb
 	sb.stateDef.Run(c)
 }
 
