@@ -4231,6 +4231,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_shadow_offset_x
 		case "shadow.offset.y":
 			opc = OC_const_stagevar_shadow_offset_y
+		case "shadow.shader":
+			opc = OC_const_stagevar_shadow_shader
 		case "reflection.intensity":
 			opc = OC_const_stagevar_reflection_intensity
 		case "reflection.yscale":
@@ -4253,6 +4255,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_const_stagevar_reflection_color_g
 		case "reflection.color.b":
 			opc = OC_const_stagevar_reflection_color_b
+		case "reflection.shader":
+			opc = OC_const_stagevar_reflection_shader
 		default:
 			return bvNone(), Error("Invalid StageVar argument: " + svname)
 		}

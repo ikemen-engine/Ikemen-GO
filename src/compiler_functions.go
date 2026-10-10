@@ -6338,6 +6338,9 @@ func (c *CharCompiler) modifyStageVar(is IniSection, sc *StateControllerBase) (S
 			modifyStageVar_shadow_window, VT_Float, 4, false); err != nil {
 			return err
 		}
+		if err := c.shaderSub(is, sc, modifyStageVar_shadow_shader, "shadow.shader."); err != nil {
+			return err
+		}
 		if err := c.paramValue(is, sc, "reflection.intensity",
 			modifyStageVar_reflection_intensity, VT_Int, 1, false); err != nil {
 			return err
@@ -6388,6 +6391,9 @@ func (c *CharCompiler) modifyStageVar(is IniSection, sc *StateControllerBase) (S
 		}
 		if err := c.paramValue(is, sc, "reflection.window",
 			modifyStageVar_reflection_window, VT_Float, 4, false); err != nil {
+			return err
+		}
+		if err := c.shaderSub(is, sc, modifyStageVar_reflection_shader, "reflection.shader."); err != nil {
 			return err
 		}
 		return nil

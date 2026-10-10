@@ -577,6 +577,7 @@ const (
 	OC_const_stagevar_shadow_xshear
 	OC_const_stagevar_shadow_offset_x
 	OC_const_stagevar_shadow_offset_y
+	OC_const_stagevar_shadow_shader
 	OC_const_stagevar_reflection_intensity
 	OC_const_stagevar_reflection_ydelta
 	OC_const_stagevar_reflection_yscale
@@ -588,6 +589,7 @@ const (
 	OC_const_stagevar_reflection_color_r
 	OC_const_stagevar_reflection_color_g
 	OC_const_stagevar_reflection_color_b
+	OC_const_stagevar_reflection_shader
 	OC_const_gameoption
 	OC_const_motifvar
 	OC_const_constants
@@ -3163,6 +3165,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushF(sys.stage.sdw.offset[0] * sys.stage.localscl / oc.localscl)
 	case OC_const_stagevar_shadow_offset_y:
 		sys.bcStack.PushF(sys.stage.sdw.offset[1] * sys.stage.localscl / oc.localscl)
+	case OC_const_stagevar_shadow_shader:
+		sys.bcStack.PushS(sys.stage.sdw.shader.name)
 	case OC_const_stagevar_reflection_intensity:
 		sys.bcStack.PushI(sys.stage.reflection.intensity)
 	case OC_const_stagevar_reflection_yscale:
@@ -3185,6 +3189,8 @@ func (be BytecodeExp) run_const(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(int32((sys.stage.reflection.color & 0xFF00) >> 8))
 	case OC_const_stagevar_reflection_color_b:
 		sys.bcStack.PushI(int32(sys.stage.reflection.color & 0xFF))
+	case OC_const_stagevar_reflection_shader:
+		sys.bcStack.PushS(sys.stage.reflection.shader.name)
 	case OC_const_gameoption:
 		optStr := be.ReadPoolStringAt(i)
 		value, err := sys.cfg.GetValue(optStr)
@@ -15113,6 +15119,12 @@ const (
 	modifyStageVar_shadow_xshear
 	modifyStageVar_shadow_offset
 	modifyStageVar_shadow_window
+	modifyStageVar_shadow_shader
+	modifyStageVar_shadow_shaderparam
+	modifyStageVar_shadow_shader_tex1_anim
+	modifyStageVar_shadow_shader_tex1_spr
+	modifyStageVar_shadow_shader_tex2_anim
+	modifyStageVar_shadow_shader_tex2_spr
 	modifyStageVar_reflection_intensity
 	modifyStageVar_reflection_yscale
 	modifyStageVar_reflection_ydelta
@@ -15126,12 +15138,20 @@ const (
 	modifyStageVar_reflection_color
 	modifyStageVar_reflection_offset
 	modifyStageVar_reflection_window
+	modifyStageVar_reflection_shader
+	modifyStageVar_reflection_shaderparam
+	modifyStageVar_reflection_shader_tex1_anim
+	modifyStageVar_reflection_shader_tex1_spr
+	modifyStageVar_reflection_shader_tex2_anim
+	modifyStageVar_reflection_shader_tex2_spr
 )
 
 func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 	//crun := c RedirectID is pointless when modifying a stage
 	s := sys.stage
 	shouldResetCamera := false
+	shadowShaderChanged := false
+	reflectionShaderChanged := false
 	scaleratio := c.localscl / s.localscl
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
@@ -15316,6 +15336,32 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			} else {
 				sys.appendToConsole(c.warn() + "invalid shadow.window")
 			}
+		case modifyStageVar_shadow_shader:
+			s.sdw.shaderName = exp[0].evalSLower(c)
+			shadowShaderChanged = true
+		case modifyStageVar_shadow_shaderparam:
+			n := int(exp[0].evalI(c))
+			for j := 0; j < n; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				s.sdw.shaderParams[idx] = exp[2+j*2].evalF(c)
+			}
+			shadowShaderChanged = true
+		case modifyStageVar_shadow_shader_tex1_anim:
+			s.sdw.shaderTex[0].animNo = exp[0].evalI(c)
+			s.sdw.shaderTex[0].sprNo = [2]int32{-1, -1}
+			shadowShaderChanged = true
+		case modifyStageVar_shadow_shader_tex1_spr:
+			s.sdw.shaderTex[0].sprNo = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			s.sdw.shaderTex[0].animNo = -1
+			shadowShaderChanged = true
+		case modifyStageVar_shadow_shader_tex2_anim:
+			s.sdw.shaderTex[1].animNo = exp[0].evalI(c)
+			s.sdw.shaderTex[1].sprNo = [2]int32{-1, -1}
+			shadowShaderChanged = true
+		case modifyStageVar_shadow_shader_tex2_spr:
+			s.sdw.shaderTex[1].sprNo = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			s.sdw.shaderTex[1].animNo = -1
+			shadowShaderChanged = true
 		// Reflection group
 		case modifyStageVar_reflection_intensity:
 			s.reflection.intensity = Clamp(exp[0].evalI(c), 0, 255)
@@ -15364,9 +15410,41 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 			} else {
 				sys.appendToConsole(c.warn() + "invalid reflection.window")
 			}
+		case modifyStageVar_reflection_shader:
+			s.reflection.shaderName = exp[0].evalSLower(c)
+			reflectionShaderChanged = true
+		case modifyStageVar_reflection_shaderparam:
+			n := int(exp[0].evalI(c))
+			for j := 0; j < n; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				s.reflection.shaderParams[idx] = exp[2+j*2].evalF(c)
+			}
+			reflectionShaderChanged = true
+		case modifyStageVar_reflection_shader_tex1_anim:
+			s.reflection.shaderTex[0].animNo = exp[0].evalI(c)
+			s.reflection.shaderTex[0].sprNo = [2]int32{-1, -1}
+			reflectionShaderChanged = true
+		case modifyStageVar_reflection_shader_tex1_spr:
+			s.reflection.shaderTex[0].sprNo = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			s.reflection.shaderTex[0].animNo = -1
+			reflectionShaderChanged = true
+		case modifyStageVar_reflection_shader_tex2_anim:
+			s.reflection.shaderTex[1].animNo = exp[0].evalI(c)
+			s.reflection.shaderTex[1].sprNo = [2]int32{-1, -1}
+			reflectionShaderChanged = true
+		case modifyStageVar_reflection_shader_tex2_spr:
+			s.reflection.shaderTex[1].sprNo = [2]int32{exp[0].evalI(c), exp[1].evalI(c)}
+			s.reflection.shaderTex[1].animNo = -1
+			reflectionShaderChanged = true
 		}
 		return true
 	})
+	if shadowShaderChanged {
+		sys.stage.applyShadowShader(&s.sdw)
+	}
+	if reflectionShaderChanged {
+		sys.stage.applyShadowShader(&s.reflection)
+	}
 	s.reload = true // Stage will have to be reloaded if it's re-selected
 	if shouldResetCamera {
 		sys.cam.stageCamera = s.stageCamera

@@ -2202,7 +2202,9 @@ func (s *Stage) reset() {
 	if s.model != nil {
 		s.model.reset()
 	}
+	s.sdw.shader.clear()
 	s.applyShadowShader(&s.sdw)
+	s.reflection.shader.clear()
 	s.applyShadowShader(&s.reflection)
 	// No need to reset BGCtrl at the moment. Tied to stagetime
 }
