@@ -11323,6 +11323,74 @@ const (
 	stateTypeSet_redirectid
 )
 
+// Type strings only use their first letter, like in Mugen
+func stateTypeValue(s string) (int32, bool) {
+	if s = strings.TrimSpace(s); s == "" {
+		return 0, false
+	}
+	switch strings.ToLower(s)[0] {
+	case 's':
+		return int32(ST_S), true
+	case 'c':
+		return int32(ST_C), true
+	case 'a':
+		return int32(ST_A), true
+	case 'l':
+		return int32(ST_L), true
+	}
+	return 0, false
+}
+
+func moveTypeValue(s string) (int32, bool) {
+	if s = strings.TrimSpace(s); s == "" {
+		return 0, false
+	}
+	switch strings.ToLower(s)[0] {
+	case 'i':
+		return int32(MT_I), true
+	case 'a':
+		return int32(MT_A), true
+	case 'h':
+		return int32(MT_H), true
+	}
+	return 0, false
+}
+
+func physicsTypeValue(s string) (int32, bool) {
+	if s = strings.TrimSpace(s); s == "" {
+		return 0, false
+	}
+	switch strings.ToLower(s)[0] {
+	case 's':
+		return int32(ST_S), true
+	case 'c':
+		return int32(ST_C), true
+	case 'a':
+		return int32(ST_A), true
+	case 'n':
+		return int32(ST_N), true
+	}
+	return 0, false
+}
+
+// Evaluates either a constant type or a dynamic type string
+// A second expression marks the dynamic string form
+func evalTypeExp(exp []BytecodeExp, c *Char, name string, conv func(string) (int32, bool)) (int32, bool) {
+	if len(exp) < 2 {
+		return exp[0].evalI(c), true
+	}
+	v := exp[0].run(c)
+	if v.vtype != VT_String {
+		sys.appendToConsole(c.warn() + "Expression did not evaluate to a string")
+		return 0, false
+	}
+	t, ok := conv(v.ToS())
+	if !ok {
+		sys.appendToConsole(c.warn() + "Invalid " + name + ": " + v.ToS())
+	}
+	return t, ok
+}
+
 func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 	crun := getRedirectedChar(c, StateControllerBase(sc), stateTypeSet_redirectid, "StateTypeSet")
 	if crun == nil {
@@ -11332,11 +11400,17 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case stateTypeSet_statetype:
-			crun.ss.changeStateType(StateType(exp[0].evalI(c)))
+			if v, ok := evalTypeExp(exp, c, "statetype", stateTypeValue); ok {
+				crun.ss.changeStateType(StateType(v))
+			}
 		case stateTypeSet_movetype:
-			crun.ss.changeMoveType(MoveType(exp[0].evalI(c)))
+			if v, ok := evalTypeExp(exp, c, "movetype", moveTypeValue); ok {
+				crun.ss.changeMoveType(MoveType(v))
+			}
 		case stateTypeSet_physics:
-			crun.ss.physics = StateType(exp[0].evalI(c))
+			if v, ok := evalTypeExp(exp, c, "physics type", physicsTypeValue); ok {
+				crun.ss.physics = StateType(v)
+			}
 		}
 		return true
 	})
