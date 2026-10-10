@@ -997,20 +997,54 @@ func (bgc *bgCtrl) yEnable() bool {
 }
 
 type stageShadow struct {
-	intensity  int32
-	color      uint32
-	xscale     float32
-	yscale     float32
-	fadeend    int32
-	fadebgn    int32
-	xshear     float32
-	rot        Rotation
-	fLength    float32
-	projection Projection
-	offset     [2]float32
-	window     [4]float32
-	ydelta     float32
-	layerno    int32
+	intensity    int32
+	color        uint32
+	xscale       float32
+	yscale       float32
+	fadeend      int32
+	fadebgn      int32
+	xshear       float32
+	rot          Rotation
+	fLength      float32
+	projection   Projection
+	offset       [2]float32
+	window       [4]float32
+	ydelta       float32
+	layerno      int32
+	shaderName   string
+	shaderParams [16]float32
+	shaderTex    [2]bgShaderTex
+	shader       CustomShader
+}
+
+func (sh *stageShadow) readShader(sec IniSection) {
+	if name, ok, _ := sec.getText("shader.name"); ok {
+		sh.shaderName = strings.ToLower(name)
+	}
+	for i := range sh.shaderParams {
+		sec.ReadF32(fmt.Sprintf("shader.param%d", i), &sh.shaderParams[i])
+	}
+	for n := range sh.shaderTex {
+		prefix := fmt.Sprintf("shader.tex%d.", n+1)
+		sec.ReadI32(prefix+"anim", &sh.shaderTex[n].animNo)
+		sec.readI32ForStage(prefix+"spr", &sh.shaderTex[n].sprNo[0], &sh.shaderTex[n].sprNo[1])
+	}
+}
+
+// Builds the live shader of a shadow or reflection from its definition
+func (s *Stage) applyShadowShader(sh *stageShadow) {
+	if sh.shaderName == "" {
+		return
+	}
+	key, ok := s.customShaders[sh.shaderName]
+	if !ok {
+		sys.appendToConsole(s.warn() + "invalid shader: " + sh.shaderName)
+		return
+	}
+	sh.shader.set(sh.shaderName, key)
+	sh.shader.params = sh.shaderParams
+	s.setShaderTex(&sh.shader.tex1, sh.shaderTex[0])
+	s.setShaderTex(&sh.shader.tex2, sh.shaderTex[1])
 }
 
 type stagePlayer struct {
@@ -1070,6 +1104,10 @@ type Stage struct {
 	customShaders   map[string]string
 }
 
+func newShadowShaderTex() bgShaderTex {
+	return bgShaderTex{animNo: -1, sprNo: [2]int32{-1, -1}}
+}
+
 func newStage(def string) *Stage {
 	s := &Stage{
 		def:            def,
@@ -1102,6 +1140,11 @@ func newStage(def string) *Stage {
 	s.p[0].startx = -70
 	s.p[1].startx = 70
 	s.stageprops = newStageProps()
+	for _, sh := range []*stageShadow{&s.sdw, &s.reflection} {
+		for i := range sh.shaderTex {
+			sh.shaderTex[i] = newShadowShaderTex()
+		}
+	}
 	return s
 }
 
@@ -1532,6 +1575,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		if s.sdw.fadeend > s.sdw.fadebgn {
 			sys.appendToConsole(s.warn() + "Shadow fade.range defined incorrectly")
 		}
+		// Shadow shader
+		s.sdw.readShader(sec)
 	}
 
 	// Reflection group
@@ -1571,6 +1616,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		// TODO: This should probably require 4 values
 		sec.readF32ForStage("window", &s.reflection.window[0], &s.reflection.window[1], &s.reflection.window[2], &s.reflection.window[3])
 		sec.ReadF32("ydelta", &s.reflection.ydelta)
+		// Reflection shader
+		s.reflection.readShader(sec)
 	}
 
 	// BG group
@@ -1969,6 +2016,14 @@ func (s *Stage) action() {
 				b.customShader.clear()
 			}
 		}
+		// Stage shadow and reflection shaders last for the whole stage
+		for _, sh := range []*stageShadow{&s.sdw, &s.reflection} {
+			if sh.shader.name != "" {
+				sh.shader.sTime++
+				sh.shader.tex1.step()
+				sh.shader.tex2.step()
+			}
+		}
 		s.bga.action(true)
 
 		if s.model != nil {
@@ -2147,6 +2202,8 @@ func (s *Stage) reset() {
 	if s.model != nil {
 		s.model.reset()
 	}
+	s.applyShadowShader(&s.sdw)
+	s.applyShadowShader(&s.reflection)
 	// No need to reset BGCtrl at the moment. Tied to stagetime
 }
 

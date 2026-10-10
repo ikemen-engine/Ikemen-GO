@@ -6603,6 +6603,8 @@ const (
 	explod_shader_tex2_spr
 	explod_shader_playerno
 	explod_shadertime
+	explod_shader_shadow
+	explod_shader_reflection
 	explod_last = iota + palFX_last + afterImage_last + 1 - 1
 	explod_redirectid
 )
@@ -6867,6 +6869,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
 		case explod_shadertime:
 			shaderTime = exp[0].evalI(c)
+		case explod_shader_shadow:
+			e.customShader.shadow = exp[0].evalB(c)
+		case explod_shader_reflection:
+			e.customShader.reflection = exp[0].evalB(c)
 		case explod_redirectid:
 			return true // Already handled. Avoid default
 		default:
@@ -7502,6 +7508,16 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				if e.customShader.time == 0 {
 					e.customShader.clear()
 				}
+			})
+		case explod_shader_shadow:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.shadow = v1
+			})
+		case explod_shader_reflection:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.reflection = v1
 			})
 		case explod_interpolation:
 			// You could not modify this one in Mugen
@@ -8514,6 +8530,8 @@ const (
 	projectile_shader_tex2_spr
 	projectile_shader_playerno
 	projectile_shadertime
+	projectile_shader_shadow
+	projectile_shader_reflection
 	// projectile_platform
 	// projectile_platformwidth
 	// projectile_platformheight
@@ -8735,6 +8753,10 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
 		case projectile_shadertime:
 			shaderTime = exp[0].evalI(c)
+		case projectile_shader_shadow:
+			p.customShader.shadow = exp[0].evalB(c)
+		case projectile_shader_reflection:
+			p.customShader.reflection = exp[0].evalB(c)
 		// case projectile_platform:
 		// 	p.platform = exp[0].evalB(c)
 		// case projectile_platformwidth:
@@ -9244,6 +9266,16 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 					if p.customShader.time == 0 {
 						p.customShader.clear()
 					}
+				})
+			case projectile_shader_shadow:
+				v1 := exp[0].evalB(c)
+				eachProj(func(p *Projectile) {
+					p.customShader.shadow = v1
+				})
+			case projectile_shader_reflection:
+				v1 := exp[0].evalB(c)
+				eachProj(func(p *Projectile) {
+					p.customShader.reflection = v1
 				})
 			case hitDef_attr:
 				v1 := exp[0].evalI(c)
@@ -13313,6 +13345,8 @@ const (
 	shaderSet_tex2_spr
 	shaderSet_playerno
 	shaderSet_time
+	shaderSet_shadow
+	shaderSet_reflection
 	shaderSet_redirectid
 )
 
@@ -13370,6 +13404,10 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 			n := exp[1].evalI(c)
 			crun.customShader.tex2.SprNo = [2]int32{g, n}
 			crun.customShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+		case shaderSet_shadow:
+			crun.customShader.shadow = exp[0].evalB(c)
+		case shaderSet_reflection:
+			crun.customShader.reflection = exp[0].evalB(c)
 		}
 		return true
 	})
@@ -16069,6 +16107,14 @@ const (
 	modifyShadow_xshear
 	modifyShadow_yangle
 	modifyShadow_yscale
+	modifyShadow_shader
+	modifyShadow_shaderparam
+	modifyShadow_shader_tex1_anim
+	modifyShadow_shader_tex1_spr
+	modifyShadow_shader_tex2_anim
+	modifyShadow_shader_tex2_spr
+	modifyShadow_shader_playerno
+	modifyShadow_shader_time
 	modifyShadow_redirectid
 )
 
@@ -16081,6 +16127,8 @@ func (sc modifyShadow) Run(c *Char, _ []int32) bool {
 	redirscale := c.localscl / crun.localscl
 	animPN := -1
 	spritePN := -1
+	st := int32(1)
+	shaderPN := crun.ss.sb.playerNo
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -16143,9 +16191,59 @@ func (sc modifyShadow) Run(c *Char, _ []int32) bool {
 			crun.shadowfLength = exp[0].evalF(c)
 		case modifyShadow_projection:
 			crun.shadowProjection = Projection(exp[0].evalI(c))
+		case modifyShadow_shader_time:
+			st = exp[0].evalI(c)
+		case modifyShadow_shader:
+			shader := exp[0].evalSLower(c)
+			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
+				crun.shadowShader.set(shader, key)
+				crun.shadowShaderSet = true
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid shader: %s (playerNo: %v)", shader, shaderPN+1))
+			}
+		case modifyShadow_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
+		case modifyShadow_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			for j := 0; j < numParams; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				crun.shadowShader.params[idx] = val
+			}
+		case modifyShadow_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			crun.shadowShader.tex1.AnimNo = animNo
+			crun.shadowShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+			if crun.shadowShader.tex1.Anim != nil {
+				crun.shadowShader.tex1.Anim.Reset()
+			}
+		case modifyShadow_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			crun.shadowShader.tex1.SprNo = [2]int32{g, n}
+			crun.shadowShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+
+		case modifyShadow_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			crun.shadowShader.tex2.AnimNo = animNo
+			crun.shadowShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+			if crun.shadowShader.tex2.Anim != nil {
+				crun.shadowShader.tex2.Anim.Reset()
+			}
+		case modifyShadow_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			crun.shadowShader.tex2.SprNo = [2]int32{g, n}
+			crun.shadowShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
 		}
 		return true
 	})
+
+	crun.shadowShader.time = st
+	if crun.shadowShader.time == 0 {
+		crun.shadowShader.clear()
+	}
+
 	return false
 }
 
@@ -16169,6 +16267,14 @@ const (
 	modifyReflection_yangle
 	modifyReflection_focallength
 	modifyReflection_projection
+	modifyReflection_shader
+	modifyReflection_shaderparam
+	modifyReflection_shader_tex1_anim
+	modifyReflection_shader_tex1_spr
+	modifyReflection_shader_tex2_anim
+	modifyReflection_shader_tex2_spr
+	modifyReflection_shader_playerno
+	modifyReflection_shader_time
 	modifyReflection_redirectid
 )
 
@@ -16181,6 +16287,8 @@ func (sc modifyReflection) Run(c *Char, _ []int32) bool {
 	redirscale := c.localscl / crun.localscl
 	animPN := -1
 	spritePN := -1
+	st := int32(1)
+	shaderPN := crun.ss.sb.playerNo
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -16243,9 +16351,58 @@ func (sc modifyReflection) Run(c *Char, _ []int32) bool {
 			crun.reflectfLength = exp[0].evalF(c)
 		case modifyReflection_projection:
 			crun.reflectProjection = Projection(exp[0].evalI(c))
+		case modifyReflection_shader_time:
+			st = exp[0].evalI(c)
+		case modifyReflection_shader:
+			shader := exp[0].evalSLower(c)
+			if key, ok := sys.resolveCharShader(shaderPN, shader); ok {
+				crun.reflectShader.set(shader, key)
+				crun.reflectShaderSet = true
+			} else {
+				sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid shader: %s (playerNo: %v)", shader, shaderPN+1))
+			}
+		case modifyReflection_shader_playerno:
+			shaderPN = int(exp[0].evalI(c)) - 1
+		case modifyReflection_shaderparam:
+			numParams := int(exp[0].evalI(c))
+			for j := 0; j < numParams; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				crun.reflectShader.params[idx] = val
+			}
+		case modifyReflection_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			crun.reflectShader.tex1.AnimNo = animNo
+			crun.reflectShader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+			if crun.reflectShader.tex1.Anim != nil {
+				crun.reflectShader.tex1.Anim.Reset()
+			}
+		case modifyReflection_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			crun.reflectShader.tex1.SprNo = [2]int32{g, n}
+			crun.reflectShader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+
+		case modifyReflection_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			crun.reflectShader.tex2.AnimNo = animNo
+			crun.reflectShader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+			if crun.reflectShader.tex2.Anim != nil {
+				crun.reflectShader.tex2.Anim.Reset()
+			}
+		case modifyReflection_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			crun.reflectShader.tex2.SprNo = [2]int32{g, n}
+			crun.reflectShader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
 		}
 		return true
 	})
+
+	crun.reflectShader.time = st
+	if crun.reflectShader.time == 0 {
+		crun.reflectShader.clear()
+	}
 	return false
 }
 

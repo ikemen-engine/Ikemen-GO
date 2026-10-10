@@ -973,6 +973,12 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.paramValue(is, sc, "shader.time", explod_shadertime, VT_Int, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "shader.shadow", explod_shader_shadow, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "shader.reflection", explod_shader_reflection, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "bindid",
 		explod_bindid, VT_Int, 1, false); err != nil {
 		return err
@@ -1378,6 +1384,15 @@ func (c *CharCompiler) modifyShadow(is IniSection, sc *StateControllerBase) (Sta
 			modifyShadow_projection); err != nil {
 			return err
 		}
+		if err := c.paramValue(is, sc, "shader.playerno", modifyShadow_shader_playerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.shaderSub(is, sc, modifyShadow_shader, "shader."); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shader.time", modifyShadow_shader_time, VT_Int, 1, false); err != nil {
+			return err
+		}
 		return c.posSetSub(is, sc)
 	})
 	return *ret, err
@@ -1454,6 +1469,15 @@ func (c *CharCompiler) modifyReflection(is IniSection, sc *StateControllerBase) 
 		}
 		if err := c.paramProjection(is, sc, "projection",
 			modifyReflection_projection); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shader.playerno", modifyReflection_shader_playerno, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.shaderSub(is, sc, modifyReflection_shader, "shader."); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shader.time", modifyReflection_shader_time, VT_Int, 1, false); err != nil {
 			return err
 		}
 		return c.posSetSub(is, sc)
@@ -2558,6 +2582,12 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 		return err
 	}
 	if err := c.paramValue(is, sc, "shader.time", projectile_shadertime, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "shader.shadow", projectile_shader_shadow, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "shader.reflection", projectile_shader_reflection, VT_Bool, 1, false); err != nil {
 		return err
 	}
 	return nil
@@ -5606,6 +5636,12 @@ func (c *CharCompiler) shaderSet(is IniSection, sc *StateControllerBase) (StateC
 		}
 		// time should be placed after name, since changing shader resets it
 		if err := c.paramValue(is, sc, "time", shaderSet_time, VT_Int, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "shadow", shaderSet_shadow, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "reflection", shaderSet_reflection, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil

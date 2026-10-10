@@ -1635,6 +1635,8 @@ type ShadowSprite struct {
 	shadowRot           Rotation
 	shadowProjection    int32
 	shadowfLength       float32
+	shadowShader        CustomShaderRenderData
+	shadowInherit       bool
 }
 
 func newShadowSprite() *ShadowSprite {
@@ -1644,6 +1646,7 @@ func newShadowSprite() *ShadowSprite {
 		shadowIntensity:     -1,
 		shadowKeeptransform: true,
 		shadowProjection:    -1,
+		shadowInherit:       true,
 	}
 }
 
@@ -1841,6 +1844,15 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			fLength = s.fLength
 		}
 
+		var shader CustomShaderRenderData
+		if s.shadowShader.name != "" {
+			shader = s.shadowShader
+		} else if s.shadowInherit && s.customShader.name != "" {
+			shader = s.customShader
+		} else if sys.stage.sdw.shader.name != "" {
+			shader = sys.stage.sdw.shader.renderData(!sys.stage.paused())
+		}
+
 		drawwindow := &sys.scrrect
 
 		// TODO: If the char has an active window sctrl, shadows should also be affected, in addition to the stage window
@@ -1879,7 +1891,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 			sys.cam.GroundLevel()+(sys.cam.Offset[1]-shake[1])-y-(sdwPosY*yscale-offsetY)*scl,
 			scl*s.scl[0]*xscale, scl*-s.scl[1],
 			yscale, xshear, rot, sdwRotPivot,
-			s.pfx, uint32(color), intensity, s.facing, s.airOffsetFix, projection, fLength, s.customShader)
+			s.pfx, uint32(color), intensity, s.facing, s.airOffsetFix, projection, fLength, shader)
 	}
 }
 
@@ -1897,6 +1909,8 @@ type ReflectionSprite struct {
 	reflectRot           Rotation
 	reflectProjection    int32
 	reflectfLength       float32
+	reflectShader        CustomShaderRenderData
+	reflectInherit       bool
 }
 
 func newReflectionSprite() *ReflectionSprite {
@@ -1905,6 +1919,7 @@ func newReflectionSprite() *ReflectionSprite {
 		reflectIntensity:     -1,
 		reflectKeeptransform: true,
 		reflectProjection:    -1,
+		reflectInherit:       true,
 	}
 }
 
@@ -2114,6 +2129,15 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 			fLength = s.fLength
 		}
 
+		var shader CustomShaderRenderData
+		if s.reflectShader.name != "" {
+			shader = s.reflectShader
+		} else if s.reflectInherit && s.customShader.name != "" {
+			shader = s.customShader
+		} else if sys.stage.reflection.shader.name != "" {
+			shader = sys.stage.reflection.shader.renderData(!sys.stage.paused())
+		}
+
 		drawwindow := &sys.scrrect
 
 		// TODO: If the char has an active window sctrl, reflections should also be affected, in addition to the stage window
@@ -2159,7 +2183,7 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 			scl, scl,
 			s.scl[0]*xscale, s.scl[0]*xscale,
 			-s.scl[1]*yscale, xshear, rot, float32(sys.gameWidth)/2, refRotPivot,
-			pfxCopy, s.facing, s.airOffsetFix, projection, fLength, true, s.customShader)
+			pfxCopy, s.facing, s.airOffsetFix, projection, fLength, true, shader)
 
 		// Restore original animation transparency just in case
 		s.anim.transType = oldTransType

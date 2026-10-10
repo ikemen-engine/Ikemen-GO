@@ -2487,6 +2487,7 @@ func (e *Explod) cueDraw() {
 		ss.shadowAlpha = sdwalp
 		ss.shadowOffset = [2]float32{0, sys.stage.sdw.yscale*drawZoff + drawZoff}
 		ss.groundLevel = drawZoff
+		ss.shadowInherit = e.customShader.shadow
 
 		// Add shadow to list
 		sys.shadowList.add(ss)
@@ -2501,6 +2502,7 @@ func (e *Explod) cueDraw() {
 		rs.SpriteData = sd
 		rs.reflectOffset = [2]float32{0, sys.stage.reflection.yscale*drawZoff + drawZoff}
 		rs.groundLevel = drawZoff
+		rs.reflectInherit = e.customShader.reflection
 
 		// Add reflection to list
 		sys.reflectionList.add(rs)
@@ -3335,6 +3337,7 @@ func (p *Projectile) cueDraw() {
 		ss.shadowColor = sdwclr
 		ss.shadowOffset = [2]float32{0, sys.stage.sdw.yscale*drawZoff + drawZoff}
 		ss.groundLevel = drawZoff
+		ss.shadowInherit = p.customShader.shadow
 
 		// Add shadow to list
 		sys.shadowList.add(ss)
@@ -3347,6 +3350,7 @@ func (p *Projectile) cueDraw() {
 		rs.SpriteData = sd
 		rs.reflectOffset = [2]float32{0, sys.stage.reflection.yscale*drawZoff + drawZoff}
 		rs.groundLevel = drawZoff
+		rs.reflectInherit = p.customShader.reflection
 
 		// Add reflection to list
 		sys.reflectionList.add(rs)
@@ -3751,6 +3755,8 @@ type Char struct {
 	shadowRot            Rotation
 	shadowProjection     Projection
 	shadowfLength        float32
+	shadowShader         CustomShader
+	shadowShaderSet      bool
 	reflectAnim          *Animation
 	reflectAnimelem      int32
 	reflectColor         [3]int32
@@ -3764,6 +3770,8 @@ type Char struct {
 	reflectRot           Rotation
 	reflectProjection    Projection
 	reflectfLength       float32
+	reflectShader        CustomShader
+	reflectShaderSet     bool
 	ownclsnscale         bool
 	pushPriority         int32
 	pushAffectTeam       int32
@@ -12365,6 +12373,7 @@ func (c *Char) actionPrepare() {
 		c.shadowRot = Rotation{0, 0, 0}
 		c.shadowProjection = -1
 		c.shadowfLength = 0
+		c.shadowShaderSet = false
 
 		// Reset modifyReflection
 		c.reflectAnim = nil
@@ -12379,6 +12388,7 @@ func (c *Char) actionPrepare() {
 		c.reflectRot = Rotation{0, 0, 0}
 		c.reflectProjection = -1
 		c.reflectfLength = 0
+		c.reflectShaderSet = false
 
 		// Reset TransformSprite
 		c.window = [4]float32{}
@@ -12824,10 +12834,18 @@ func (c *Char) update() {
 					c.ghv.zoff = 0
 				}
 			}
-			if c.customShader.name != "" {
-				c.customShader.sTime++
-				c.customShader.tex1.step()
-				c.customShader.tex2.step()
+			if !c.shadowShaderSet {
+				c.shadowShader.clear()
+			}
+			if !c.reflectShaderSet {
+				c.reflectShader.clear()
+			}
+			for _, cs := range []*CustomShader{&c.customShader, &c.shadowShader, &c.reflectShader} {
+				if cs.name != "" {
+					cs.sTime++
+					cs.tex1.step()
+					cs.tex2.step()
+				}
 			}
 			// Engine dust effects
 			// Moved to system.zss
@@ -13591,6 +13609,11 @@ func (c *Char) cueDraw() {
 				}
 				ss.shadowfLength = c.shadowfLength
 
+				// TODO: Stacking shaders instead of overriding them?
+				if c.shadowShader.name != "" {
+					ss.shadowShader = c.shadowShader.renderData(c.acttmp > 0)
+				}
+				ss.shadowInherit = c.customShader.shadow
 				// Add shadow to list
 				sys.shadowList.add(ss)
 
@@ -13641,6 +13664,11 @@ func (c *Char) cueDraw() {
 					rs.reflectProjection = int32(c.reflectProjection)
 				}
 				rs.reflectfLength = c.reflectfLength
+
+				if c.reflectShader.name != "" {
+					rs.reflectShader = c.reflectShader.renderData(c.acttmp > 0)
+				}
+				rs.reflectInherit = c.customShader.reflection
 
 				// Add reflection to list
 				sys.reflectionList.add(rs)

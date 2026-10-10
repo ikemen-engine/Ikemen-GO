@@ -264,13 +264,15 @@ func (st *ShaderTexture) step() {
 }
 
 type CustomShader struct {
-	name   string // The name chars use to refer to the shader
-	key    string // Engine-wide shader key made from its unique path
-	params [16]float32
-	time   int32
-	sTime  float32
-	tex1   ShaderTexture
-	tex2   ShaderTexture
+	name       string // The name chars use to refer to the shader
+	key        string // Engine-wide shader key made from its unique path
+	params     [16]float32
+	time       int32
+	sTime      float32
+	tex1       ShaderTexture
+	tex2       ShaderTexture
+	shadow     bool
+	reflection bool
 }
 
 // Switching to a different shader drops the previous one's params, textures and elapsed time
@@ -289,6 +291,8 @@ func (cs *CustomShader) clear() {
 	cs.sTime = 0
 	cs.tex1.clear()
 	cs.tex2.clear()
+	cs.shadow = true
+	cs.reflection = true
 }
 
 type CustomShaderRenderData struct {
