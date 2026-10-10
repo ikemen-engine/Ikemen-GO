@@ -273,6 +273,7 @@ type CustomShader struct {
 	tex2       ShaderTexture
 	shadow     bool
 	reflection bool
+	afterimage bool
 }
 
 // Switching to a different shader drops the previous one's params, textures and elapsed time
@@ -293,6 +294,7 @@ func (cs *CustomShader) clear() {
 	cs.tex2.clear()
 	cs.shadow = true
 	cs.reflection = true
+	cs.afterimage = true
 }
 
 type CustomShaderRenderData struct {

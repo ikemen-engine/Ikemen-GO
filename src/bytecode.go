@@ -6605,6 +6605,7 @@ const (
 	explod_shadertime
 	explod_shader_shadow
 	explod_shader_reflection
+	explod_shader_afterimage
 	explod_last = iota + palFX_last + afterImage_last + 1 - 1
 	explod_redirectid
 )
@@ -6873,6 +6874,8 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 			e.customShader.shadow = exp[0].evalB(c)
 		case explod_shader_reflection:
 			e.customShader.reflection = exp[0].evalB(c)
+		case explod_shader_afterimage:
+			e.customShader.afterimage = exp[0].evalB(c)
 		case explod_redirectid:
 			return true // Already handled. Avoid default
 		default:
@@ -7519,6 +7522,11 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			modifiers = append(modifiers, func(e *Explod) {
 				e.customShader.reflection = v1
 			})
+		case explod_shader_afterimage:
+			v1 := exp[0].evalB(c)
+			modifiers = append(modifiers, func(e *Explod) {
+				e.customShader.afterimage = v1
+			})
 		case explod_interpolation:
 			// You could not modify this one in Mugen
 			if hasIkemenVer {
@@ -7714,6 +7722,13 @@ const (
 	afterImage_paladd
 	afterImage_palmul
 	afterImage_ignorehitpause
+	afterImage_shader
+	afterImage_shaderparam
+	afterImage_shader_tex1_anim
+	afterImage_shader_tex1_spr
+	afterImage_shader_tex2_anim
+	afterImage_shader_tex2_spr
+	afterImage_shader_playerno
 	afterImage_last = iota + palFX_last + 1 - 1
 	afterImage_redirectid
 )
@@ -7721,7 +7736,10 @@ const (
 func (sc afterImage) runSub(c, crun *Char, ai *AfterImage, paramID byte, exp []BytecodeExp) {
 	// Flag to run setup
 	// This avoids setting up the afterimage repeatedly when for instance an explod is modified
-	ai.needsetup = true
+	// Shader parameters don't change the PalFX, so they don't need a new setup
+	if paramID < afterImage_shader || paramID > afterImage_shader_playerno {
+		ai.needsetup = true
+	}
 
 	switch paramID {
 	case afterImage_trans:
@@ -7818,6 +7836,49 @@ func (sc afterImage) runSub(c, crun *Char, ai *AfterImage, paramID byte, exp []B
 		}
 	case afterImage_ignorehitpause:
 		ai.ignorehitpause = exp[0].evalB(c)
+	case afterImage_shader_playerno:
+		ai.shaderPN = int(exp[0].evalI(c)) - 1
+	case afterImage_shader:
+		name := exp[0].evalSLower(c)
+		pn := ai.shaderPN
+		if pn < 0 {
+			pn = crun.ss.sb.playerNo
+		}
+		if key, ok := sys.resolveCharShader(pn, name); ok {
+			ai.shader.set(name, key)
+		} else {
+			sys.appendToConsole(crun.warn() + fmt.Sprintf("invalid AfterImage shader: %s (playerNo: %v)", name, pn+1))
+		}
+	case afterImage_shaderparam:
+		n := int(exp[0].evalI(c))
+		for j := 0; j < n; j++ {
+			idx := int(exp[1+j*2].evalI(c))
+			ai.shader.params[idx] = exp[2+j*2].evalF(c)
+		}
+	case afterImage_shader_tex1_anim:
+		animNo := exp[0].evalI(c)
+		ai.shader.tex1.AnimNo = animNo
+		ai.shader.tex1.Anim = crun.getSelfAnimSprite(animNo, "", true)
+		if ai.shader.tex1.Anim != nil {
+			ai.shader.tex1.Anim.Reset()
+		}
+	case afterImage_shader_tex1_spr:
+		g := exp[0].evalI(c)
+		n := exp[1].evalI(c)
+		ai.shader.tex1.SprNo = [2]int32{g, n}
+		ai.shader.tex1.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
+	case afterImage_shader_tex2_anim:
+		animNo := exp[0].evalI(c)
+		ai.shader.tex2.AnimNo = animNo
+		ai.shader.tex2.Anim = crun.getSelfAnimSprite(animNo, "", true)
+		if ai.shader.tex2.Anim != nil {
+			ai.shader.tex2.Anim.Reset()
+		}
+	case afterImage_shader_tex2_spr:
+		g := exp[0].evalI(c)
+		n := exp[1].evalI(c)
+		ai.shader.tex2.SprNo = [2]int32{g, n}
+		ai.shader.tex2.Spr = crun.gi().sff.GetSprite(uint16(g), uint16(n))
 	}
 }
 
@@ -8532,6 +8593,7 @@ const (
 	projectile_shadertime
 	projectile_shader_shadow
 	projectile_shader_reflection
+	projectile_shader_afterimage
 	// projectile_platform
 	// projectile_platformwidth
 	// projectile_platformheight
@@ -8757,6 +8819,8 @@ func (sc projectile) Run(c *Char, _ []int32) bool {
 			p.customShader.shadow = exp[0].evalB(c)
 		case projectile_shader_reflection:
 			p.customShader.reflection = exp[0].evalB(c)
+		case projectile_shader_afterimage:
+			p.customShader.afterimage = exp[0].evalB(c)
 		// case projectile_platform:
 		// 	p.platform = exp[0].evalB(c)
 		// case projectile_platformwidth:
@@ -9276,6 +9340,11 @@ func (sc modifyProjectile) Run(c *Char, _ []int32) bool {
 				v1 := exp[0].evalB(c)
 				eachProj(func(p *Projectile) {
 					p.customShader.reflection = v1
+				})
+			case projectile_shader_afterimage:
+				v1 := exp[0].evalB(c)
+				eachProj(func(p *Projectile) {
+					p.customShader.afterimage = v1
 				})
 			case hitDef_attr:
 				v1 := exp[0].evalI(c)
@@ -13347,6 +13416,7 @@ const (
 	shaderSet_time
 	shaderSet_shadow
 	shaderSet_reflection
+	shaderSet_afterimage
 	shaderSet_redirectid
 )
 
@@ -13408,6 +13478,8 @@ func (sc shaderSet) Run(c *Char, _ []int32) bool {
 			crun.customShader.shadow = exp[0].evalB(c)
 		case shaderSet_reflection:
 			crun.customShader.reflection = exp[0].evalB(c)
+		case shaderSet_afterimage:
+			crun.customShader.afterimage = exp[0].evalB(c)
 		}
 		return true
 	})

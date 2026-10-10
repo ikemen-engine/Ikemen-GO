@@ -979,6 +979,9 @@ func (c *CharCompiler) explodSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.paramValue(is, sc, "shader.reflection", explod_shader_reflection, VT_Bool, 1, false); err != nil {
 		return err
 	}
+	if err := c.paramValue(is, sc, "shader.afterimage", explod_shader_afterimage, VT_Bool, 1, false); err != nil {
+		return err
+	}
 	if err := c.paramValue(is, sc, "bindid",
 		explod_bindid, VT_Int, 1, false); err != nil {
 		return err
@@ -1686,6 +1689,13 @@ func (c *CharCompiler) afterImageSub(is IniSection, sc *StateControllerBase, pre
 	}
 	if err := c.paramValue(is, sc, prefix+"ignorehitpause",
 		afterImage_ignorehitpause, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, prefix+"shader.playerno",
+		afterImage_shader_playerno, VT_Int, 1, false); err != nil {
+		return err
+	}
+	if err := c.shaderSub(is, sc, afterImage_shader, prefix+"shader."); err != nil {
 		return err
 	}
 	return nil
@@ -2588,6 +2598,9 @@ func (c *CharCompiler) projectileSub(is IniSection, sc *StateControllerBase) err
 		return err
 	}
 	if err := c.paramValue(is, sc, "shader.reflection", projectile_shader_reflection, VT_Bool, 1, false); err != nil {
+		return err
+	}
+	if err := c.paramValue(is, sc, "shader.afterimage", projectile_shader_afterimage, VT_Bool, 1, false); err != nil {
 		return err
 	}
 	return nil
@@ -5642,6 +5655,9 @@ func (c *CharCompiler) shaderSet(is IniSection, sc *StateControllerBase) (StateC
 			return err
 		}
 		if err := c.paramValue(is, sc, "reflection", shaderSet_reflection, VT_Bool, 1, false); err != nil {
+			return err
+		}
+		if err := c.paramValue(is, sc, "afterimage", shaderSet_afterimage, VT_Bool, 1, false); err != nil {
 			return err
 		}
 		return nil

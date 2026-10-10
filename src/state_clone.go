@@ -223,6 +223,17 @@ func (ai *AfterImage) Clone(gsp *GameStatePool) *AfterImage {
 		copy(result.palfx, ai.palfx)
 	}
 
+	// Deep copy Shaders
+	if ai.shader.name != "" {
+		result.shader = ai.shader.Clone(gsp)
+	}
+	if ai.shader.tex1.Anim != nil {
+		result.shader.tex1.Anim = ai.shader.tex1.Anim.Clone(gsp)
+	}
+	if ai.shader.tex2.Anim != nil {
+		result.shader.tex2.Anim = ai.shader.tex2.Anim.Clone(gsp)
+	}
+
 	// Deep copy Animations
 	// Afterimages use stripped down animations, so this will be a bit faster than normal
 	for i := range ai.imgs {

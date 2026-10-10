@@ -1399,6 +1399,9 @@ type AfterImage struct {
 	priority       int32
 	ignorehitpause bool
 	needsetup      bool
+	shader         CustomShader // Own shader. Replaces the one inherited from the sprite data
+	shaderPN       int
+	shaderInherit  bool
 }
 
 func newAfterImage() *AfterImage {
@@ -1440,6 +1443,7 @@ func newAfterImage() *AfterImage {
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
 		ai.palfx[0].eMul = [...]int32{120, 120, 220}
 	}
+	ai.shaderInherit = true
 
 	return ai
 }
@@ -1588,7 +1592,12 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 		oldAnim := img.anim
 		*img = *sd
 		img.anim = oldAnim
-
+		if !ai.shaderInherit {
+			img.customShader = CustomShaderRenderData{}
+		}
+		if ai.shader.name != "" {
+			img.customShader = ai.shader.renderData(false) // Own shader wins over the inherited one
+		}
 		// Clear sync parameters so the sprite won't try to sync with the present
 		img.syncId = 0
 
@@ -1669,6 +1678,11 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 
 	ai.restgap--
 	ai.timecount++
+	if ai.shader.name != "" {
+		ai.shader.sTime++
+		ai.shader.tex1.step()
+		ai.shader.tex2.step()
+	}
 }
 
 func (ai *AfterImage) isActive() bool {
@@ -2459,6 +2473,7 @@ func (e *Explod) cueDraw() {
 	// Record afterimage
 	if e.aimg != nil {
 		if e.aimg.isActive() {
+			e.aimg.shaderInherit = e.customShader.afterimage
 			e.aimg.recAndCue(sd, e.playerno, sys.tickNextFrame() && !e.pauseBool,
 				sys.tickNextFrame() && e.ignorehitpause && (e.supermovetime != 0 || e.pausemovetime != 0))
 		} else {
@@ -3318,6 +3333,7 @@ func (p *Projectile) cueDraw() {
 	// Record afterimage
 	if p.aimg != nil {
 		if p.aimg.isActive() {
+			p.aimg.shaderInherit = p.customShader.afterimage
 			p.aimg.recAndCue(sd, p.playerno, sys.tickNextFrame() && !isPaused, false)
 		} else {
 			p.aimg = nil
@@ -13529,6 +13545,7 @@ func (c *Char) cueDraw() {
 		// Record afterimage
 		if c.aimg != nil {
 			if c.aimg.isActive() {
+				c.aimg.shaderInherit = c.customShader.afterimage
 				c.aimg.recAndCue(charSD, c.playerNo, rec, sys.tickNextFrame() && c.hitPause())
 			} else {
 				c.aimg = nil
