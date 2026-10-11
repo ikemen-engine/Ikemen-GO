@@ -4803,12 +4803,12 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 				return false
 			}
 			// Typed from the token: numeric values stay numeric, strings are stored as text
-			var mv MapValue
+			var mv TypedValue
 			switch v := token.value[1].(type) {
 			case float32:
-				mv = MapValue{Type: VT_Float, Num: float64(v)}
+				mv = TypedValue{Type: VT_Float, Num: float64(v)}
 			case string:
-				mv = MapValue{Type: VT_String, Str: v}
+				mv = TypedValue{Type: VT_String, Str: v}
 			default:
 				return false
 			}

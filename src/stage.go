@@ -1022,7 +1022,7 @@ type Stage struct {
 	bgmState        BGMState
 	bgmratio        float32
 	bgmtrigger      int32
-	constants       map[string]float32
+	constants       map[string]TypedValue
 	partnerspacing  int32
 	ikemenver       [3]uint16
 	mugenver        [2]uint16
@@ -1049,7 +1049,7 @@ func newStage(def string) *Stage {
 		music:          make(Music),
 		bgmratio:       0.3,
 		bgmtrigger:     0,
-		constants:      make(map[string]float32),
+		constants:      make(map[string]TypedValue),
 		partnerspacing: 25,
 	}
 	s.sdw.intensity = 128
@@ -1210,8 +1210,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 
 	// Constants group
 	if sec, _ := getSection("constants"); sec != nil {
-		for key, value := range sec {
-			s.constants[key] = float32(Atof(value))
+		if err := sec.ReadAutoTypeMap(s.constants, "constant"); err != nil {
+			return nil, err
 		}
 	}
 

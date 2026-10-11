@@ -4857,11 +4857,11 @@ func systemScriptInit(l *lua.LState) {
 			scType = 1
 		}
 		// Typed from the Lua value: numbers stay numeric, anything else is text
-		var mv MapValue
+		var mv TypedValue
 		if num, ok := l.Get(2).(lua.LNumber); ok {
-			mv = MapValue{Type: VT_Float, Num: float64(num)}
+			mv = TypedValue{Type: VT_Float, Num: float64(num)}
 		} else {
-			mv = MapValue{Type: VT_String, Str: strArg(l, 2)}
+			mv = TypedValue{Type: VT_String, Str: strArg(l, 2)}
 		}
 		sys.debugWC.mapSetValue(strArg(l, 1), mv, scType)
 		return 0
@@ -7927,7 +7927,7 @@ func triggerFunctions(l *lua.LState) {
 	})
 	luaRegister(l, "const", func(*lua.LState) int {
 		c := sys.debugWC
-		var ln lua.LNumber
+		var ln lua.LValue
 		switch strings.ToLower(strArg(l, 1)) {
 		case "data.life":
 			ln = lua.LNumber(c.gi().data.life)
@@ -8185,7 +8185,12 @@ func triggerFunctions(l *lua.LState) {
 		case "movement.down.friction.threshold":
 			ln = lua.LNumber(c.gi().movement.down.friction_threshold)
 		default:
-			ln = lua.LNumber(c.gi().constants[strings.ToLower(strArg(l, 1))])
+			mv := c.gi().constants[strings.ToLower(strArg(l, 1))]
+			if mv.Type == VT_String {
+				ln = lua.LString(mv.Str)
+			} else {
+				ln = lua.LNumber(mv.Num)
+			}
 		}
 		l.Push(ln)
 		return 1
@@ -10243,7 +10248,12 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "stageConst", func(*lua.LState) int {
-		l.Push(lua.LNumber(sys.stage.constants[strings.ToLower(strArg(l, 1))]))
+		mv := sys.stage.constants[strings.ToLower(strArg(l, 1))]
+		if mv.Type == VT_String {
+			l.Push(lua.LString(mv.Str))
+		} else {
+			l.Push(lua.LNumber(mv.Num))
+		}
 		return 1
 	})
 	luaRegister(l, "stageFrontEdgeDist", func(*lua.LState) int {

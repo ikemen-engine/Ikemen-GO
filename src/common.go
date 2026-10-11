@@ -198,12 +198,17 @@ func Atoi(str string) int32 {
 		} else {
 			a = str
 		}
+		// Negative side allows one more (-2147483648 is a valid int32)
+		limit := int64(math.MaxInt32)
+		if str[0] == '-' {
+			limit++
+		}
 		for i := range a {
 			if a[i] < '0' || '9' < a[i] {
 				break
 			}
 			n = n*10 + int64(a[i]-'0')
-			if n > 2147483647 {
+			if n > limit {
 				sys.appendToConsole(fmt.Sprintf("WARNING: Atoi conversion outside int32 range: %v", a[:i+1]))
 				LogMessage("Atoi conversion outside int32 range: %v", a[:i+1])
 				if str[0] == '-' {
@@ -1272,6 +1277,29 @@ func (is IniSection) ReadAutoType(name string) (any, bool, error) {
 
 	// Invalid value
 	return nil, true, invalidValue()
+}
+
+func (is IniSection) ReadAutoTypeMap(dst map[string]TypedValue, kind string) error {
+	for key := range is {
+		value, ok, err := is.ReadAutoType(key)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			continue
+		}
+		switch value := value.(type) {
+		case string:
+			dst[key] = TypedValue{Type: VT_String, Str: value}
+		case int32:
+			dst[key] = TypedValue{Type: VT_Int, Num: float64(value)}
+		case float32:
+			dst[key] = TypedValue{Type: VT_Float, Num: float64(value)}
+		default:
+			return Error(fmt.Sprintf("unsupported auto-typed value for %s key %q", kind, key))
+		}
+	}
+	return nil
 }
 
 func (is IniSection) getText(name string) (str string, ok bool, err error) {

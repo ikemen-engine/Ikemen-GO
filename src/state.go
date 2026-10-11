@@ -549,8 +549,7 @@ func (cs Char) String() string {
 type GameStatePool struct {
 	gameStatePool           sync.Pool
 	stringIntMapPool        sync.Pool
-	hitscaleMapPool         sync.Pool
-	stringMapValueMapPool   sync.Pool
+	stringTypedValueMapPool sync.Pool
 	animationTablePool      sync.Pool
 	mapArraySlicePool       sync.Pool
 	int32CharPointerMapPool sync.Pool
@@ -577,9 +576,9 @@ func NewGameStatePool() GameStatePool {
 				return &si
 			},
 		},
-		stringMapValueMapPool: sync.Pool{
+		stringTypedValueMapPool: sync.Pool{
 			New: func() interface{} {
-				sm := make(map[string]MapValue)
+				sm := make(map[string]TypedValue)
 				return &sm
 			},
 		},
@@ -645,8 +644,8 @@ func (gsp *GameStatePool) Get(item interface{}) (result interface{}) {
 	}()
 
 	switch item.(type) {
-	case (map[string]MapValue):
-		objs = append(objs, gsp.stringMapValueMapPool.Get())
+	case (map[string]TypedValue):
+		objs = append(objs, gsp.stringTypedValueMapPool.Get())
 		return objs[len(objs)-1]
 	case (map[string]int):
 		objs = append(objs, gsp.stringIntMapPool.Get())
@@ -679,8 +678,8 @@ func (gsp *GameStatePool) Get(item interface{}) (result interface{}) {
 
 func (gsp *GameStatePool) Put(item interface{}) {
 	switch item.(type) {
-	case (*map[string]MapValue):
-		gsp.stringMapValueMapPool.Put(item)
+	case (*map[string]TypedValue):
+		gsp.stringTypedValueMapPool.Put(item)
 	case (*map[string]int):
 		gsp.stringIntMapPool.Put(item)
 	case (*AnimationTable):
