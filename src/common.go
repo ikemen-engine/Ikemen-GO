@@ -198,12 +198,17 @@ func Atoi(str string) int32 {
 		} else {
 			a = str
 		}
+		// Negative side allows one more (-2147483648 is a valid int32)
+		limit := int64(math.MaxInt32)
+		if str[0] == '-' {
+			limit++
+		}
 		for i := range a {
 			if a[i] < '0' || '9' < a[i] {
 				break
 			}
 			n = n*10 + int64(a[i]-'0')
-			if n > 2147483647 {
+			if n > limit {
 				sys.appendToConsole(fmt.Sprintf("WARNING: Atoi conversion outside int32 range: %v", a[:i+1]))
 				LogMessage("Atoi conversion outside int32 range: %v", a[:i+1])
 				if str[0] == '-' {
