@@ -6500,6 +6500,47 @@ func (c *CharCompiler) paramValue(is IniSection, sc *StateControllerBase,
 	return nil
 }
 
+// This path tolerates gibberish in CNS. Only for parameters confirmed to do the same in Mugen
+// https://github.com/ikemen-engine/Ikemen-GO/issues/4099
+func (c *CharCompiler) paramValueLoose(is IniSection, sc *StateControllerBase,
+	paramname string, id byte, vt ValueType, numArg int, mandatory bool) error {
+	// Try parsing normally
+	err := c.paramValue(is, sc, paramname, id, vt, numArg, mandatory)
+
+	// ZSS pushes the error immediately like usual
+	if err == nil || c.zssMode || !sys.ignoreMostErrors {
+		return err
+	}
+
+	// CNS falls back to the raw text
+	// This second pass relies on stateParam keeping the key when parsing fails
+	data, ok := is[paramname]
+	if !ok {
+		return err
+	}
+	delete(is, paramname)
+	str := strings.TrimSpace(data)
+
+	// String params keep the text as is
+	// Valid quoted strings were already parsed in the normal path, so this only strips the outer pair from partly quoted text
+	if vt == VT_String {
+		if len(str) >= 2 && str[0] == '"' && str[len(str)-1] == '"' {
+			str = str[1 : len(str)-1]
+		}
+		sc.add(id, c.stringToExp(str))
+		return nil
+	}
+
+	// Other types ignore the value with a warning and keep their default
+	// Storing the string would read as 0/false and override that default
+	sys.appendToConsole(c.charWarn() + paramname + " = " + str + ", ignored")
+	if mandatory {
+		return err
+	}
+
+	return nil
+}
+
 func (c *CharCompiler) paramAnimtype(is IniSection, sc *StateControllerBase, paramName string, id byte) error {
 	return c.stateParam(is, paramName, false, func(data string) error {
 		if len(data) == 0 {
