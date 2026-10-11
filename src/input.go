@@ -2319,11 +2319,11 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					}
 				}
 				cs.keys = append(cs.keys, CommandStepKey{
-					key: k,
-					slash: slash,
-					tilde: tilde,
-					dollar: dollar,
-					star: star,
+					key:        k,
+					slash:      slash,
+					tilde:      tilde,
+					dollar:     dollar,
+					star:       star,
 					chargetime: chargetime,
 				})
 				nextChar()
@@ -2360,11 +2360,11 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					k = kr.m
 				}
 				cs.keys = append(cs.keys, CommandStepKey{
-					key: k,
-					slash: slash,
-					tilde: tilde,
-					dollar: false,
-					star: false,
+					key:        k,
+					slash:      slash,
+					tilde:      tilde,
+					dollar:     false,
+					star:       false,
 					chargetime: chargetime,
 				})
 				nextChar()
@@ -2447,7 +2447,7 @@ func (c *Command) AutoGreaterExpand() {
 						key:    curr.keys[0].key,
 						tilde:  !curr.keys[0].tilde,
 						dollar: curr.keys[0].dollar,
-						star: curr.keys[0].star,
+						star:   curr.keys[0].star,
 					}},
 				},
 				CommandStep{
