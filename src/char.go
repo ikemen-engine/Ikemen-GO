@@ -7927,6 +7927,7 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 		*p.anim = *c.anim
 		p.anim.SetAnimElem(1, 0)
 		p.animNo = c.animNo
+		p.anim_ffx = c.animFfx
 	}
 
 	// Save total hits for later use
