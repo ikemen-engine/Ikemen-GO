@@ -84,6 +84,13 @@ end
 
 -- Associative elements table storing functions controlling behaviour of each
 -- option screen item. Can be appended via external module.
+--Render mode values as stored in the configuration.
+options.t_renderModes = {
+	gles32 = 'OpenGL ES 3.2',
+	gl33 = 'OpenGL 3.3',
+	vk13 = 'Vulkan 1.3',
+}
+
 options.t_itemname = {
 	--Back
 	['back'] = function(t, item, cursorPosY, moveTxt)
@@ -383,7 +390,7 @@ options.t_itemname = {
 	end,
 	--Arcade Palette
 	['aipalette'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Arcade.AI.RandomColor') then
 				modifyGameOption('Arcade.AI.RandomColor', false)
@@ -397,7 +404,7 @@ options.t_itemname = {
 	end,
 	--Survival Palette
 	['aisurvivalpalette'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Arcade.AI.SurvivalColor') then
 				modifyGameOption('Arcade.AI.SurvivalColor', false)
@@ -411,7 +418,7 @@ options.t_itemname = {
 	end,
 	--AI Ramping
 	['airamping'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Arcade.AI.Ramping') then
 				modifyGameOption('Arcade.AI.Ramping', false)
@@ -425,7 +432,7 @@ options.t_itemname = {
 	end,
 	--Quick Continue
 	['quickcontinue'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.QuickContinue') then
 				modifyGameOption('Options.QuickContinue', false)
@@ -439,7 +446,7 @@ options.t_itemname = {
 	end,
 	--Auto-Guard
 	['autoguard'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.AutoGuard') then
 				modifyGameOption('Options.AutoGuard', false)
@@ -453,7 +460,7 @@ options.t_itemname = {
 	end,
 	--Dizzy
 	['dizzy'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.Dizzy') then
 				modifyGameOption('Options.Dizzy', false)
@@ -467,7 +474,7 @@ options.t_itemname = {
 	end,
 	--Guard Break
 	['guardbreak'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.GuardBreak') then
 				modifyGameOption('Options.GuardBreak', false)
@@ -481,7 +488,7 @@ options.t_itemname = {
 	end,
 	--Red Life
 	['redlife'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.RedLife') then
 				modifyGameOption('Options.RedLife', false)
@@ -495,7 +502,7 @@ options.t_itemname = {
 	end,
 	--Team Duplicates
 	['teamduplicates'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.Team.Duplicates') then
 				modifyGameOption('Options.Team.Duplicates', false)
@@ -509,7 +516,7 @@ options.t_itemname = {
 	end,
 	--Team Life Share
 	['teamlifeshare'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.Team.LifeShare') then
 				modifyGameOption('Options.Team.LifeShare', false)
@@ -523,7 +530,7 @@ options.t_itemname = {
 	end,
 	--Team Power Share
 	['teampowershare'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.Team.PowerShare') then
 				modifyGameOption('Options.Team.PowerShare', false)
@@ -552,7 +559,7 @@ options.t_itemname = {
 	end,
 	--Partner KOed Lose
 	['losekotag'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.Tag.LoseOnKO') then
 				modifyGameOption('Options.Tag.LoseOnKO', false)
@@ -611,7 +618,7 @@ options.t_itemname = {
 	end,
 	--Simul Player KOed Lose
 	['losekosimul'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Options.Simul.LoseOnKO') then
 				modifyGameOption('Options.Simul.LoseOnKO', false)
@@ -715,10 +722,10 @@ options.t_itemname = {
 	end,
 	--Renderer (submenu)
 	['renderer'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			for k, v in ipairs(t.submenu[t.items[item].itemname].items) do
-				if gameOption('Video.RenderMode') == v.itemname then
+				if gameOption('Video.RenderMode') == options.t_renderModes[v.itemname] then
 					v.selected = true
 				else
 					v.selected = false
@@ -735,7 +742,7 @@ options.t_itemname = {
 	['gles32'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', "OpenGL ES 3.2")
+			modifyGameOption('Video.RenderMode', options.t_renderModes.gles32)
 			options.modified = true
 			options.needReload = true
 			return false
@@ -746,7 +753,7 @@ options.t_itemname = {
 	['gl33'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', "OpenGL 3.3")
+			modifyGameOption('Video.RenderMode', options.t_renderModes.gl33)
 			options.modified = true
 			options.needReload = true
 			return false
@@ -757,7 +764,7 @@ options.t_itemname = {
 	['vk13'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', "Vulkan 1.3")
+			modifyGameOption('Video.RenderMode', options.t_renderModes.vk13)
 			options.modified = true
 			options.needReload = true
 			return false
@@ -766,7 +773,7 @@ options.t_itemname = {
 	end,
 	--Resolution (submenu)
 	['resolution'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			local t_pos = {}
 			local ok = false
@@ -828,7 +835,7 @@ options.t_itemname = {
 	end,
 	--Fullscreen
 	['fullscreen'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Video.Fullscreen') then
 				modifyGameOption('Video.Fullscreen', false)
@@ -843,7 +850,7 @@ options.t_itemname = {
 	end,
 	--VSync
 	['vsync'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Video.VSync') == 1 then
 				modifyGameOption('Video.VSync', 0)
@@ -883,7 +890,7 @@ options.t_itemname = {
 	end,
 	--Window scaling mode
 	['windowscalemode'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Video.WindowScaleMode') then
 				modifyGameOption('Video.WindowScaleMode', false)
@@ -897,7 +904,7 @@ options.t_itemname = {
 	end,
 	-- Match Aspect Ratio (submenu)
 	['aspectratio'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			local t_pos = {}
 			local ok = false
@@ -969,7 +976,7 @@ options.t_itemname = {
 	end,
 	--Keep Aspect Ratio
 	['keepaspect'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Video.KeepAspect') then
 				modifyGameOption('Video.KeepAspect', false)
@@ -983,7 +990,7 @@ options.t_itemname = {
 	end,
 	--Shaders (submenu)
 	['shaders'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if #options.t_shaders == 0 then
 				main.f_warning(motif.warning_info.text.text.shaders, motif.option_info, motif.optionbgdef)
@@ -1009,7 +1016,7 @@ options.t_itemname = {
 	end,
 	--Enable Model
 	['enablemodel'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Video.EnableModel') then
 				modifyGameOption('Video.EnableModel', false)
@@ -1024,7 +1031,7 @@ options.t_itemname = {
 	end,
 	--Enable Model Shadow
 	['enablemodelshadow'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Video.EnableModelShadow') then
 				modifyGameOption('Video.EnableModelShadow', false)
@@ -1088,7 +1095,7 @@ options.t_itemname = {
 	end,
 	--Audio Ducking
 	['audioducking'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Sound.AudioDucking') then
 				modifyGameOption('Sound.AudioDucking', false)
@@ -1102,7 +1109,7 @@ options.t_itemname = {
 	end,
 	--Stereo Effects
 	['stereoeffects'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Sound.StereoEffects') then
 				modifyGameOption('Sound.StereoEffects', false)
@@ -1189,7 +1196,7 @@ options.t_itemname = {
 	end,
 	--Debug Keys
 	['debugkeys'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Debug.AllowDebugKeys') then
 				modifyGameOption('Debug.AllowDebugKeys', false)
@@ -1203,7 +1210,7 @@ options.t_itemname = {
 	end,
 	--Debug Mode
 	['debugmode'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Debug.AllowDebugMode') then
 				modifyGameOption('Debug.AllowDebugMode', false)
@@ -1217,7 +1224,7 @@ options.t_itemname = {
 	end,
 	--Background Loading
 	['vsscreenloading'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Config.VsScreenLoading') then
 				modifyGameOption('Config.VsScreenLoading', false)
@@ -1231,7 +1238,7 @@ options.t_itemname = {
 	end,
 	--Turns Preloading
 	['turnsloading'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Config.TurnsLoading') then
 				modifyGameOption('Config.TurnsLoading', false)
@@ -1245,7 +1252,7 @@ options.t_itemname = {
 	end,
 	--Rollback Netcode
 	['netcode'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			if gameOption('Netplay.RollbackNetcode') then
 				modifyGameOption('Netplay.RollbackNetcode', false)

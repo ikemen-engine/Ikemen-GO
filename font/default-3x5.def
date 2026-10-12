@@ -12,11 +12,11 @@ name = "System"
 ; This is a bitmap font
 Type = bitmap
 ; Size of font: width, height.  Width is used for spaces.
-Size = 3,6
+Size = 3,5
 ; Spacing between font glyphs: width, height.
-Spacing = 1,0
+Spacing = 1,1
 ; Drawing offset: x, y.
-Offset = 0,-1
+Offset = 0,0
 ; Filename of the sff containing the glyphs.
 File = default-3x5.sff
 

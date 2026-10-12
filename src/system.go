@@ -2648,7 +2648,7 @@ func (s *System) tickInterpolation() float32 {
 }
 
 func (s *System) uiTick() bool {
-	return s.tickFrame() || s.debugPaused() || s.motif.me.active || s.motif.ch.active
+	return s.tickFrame() || s.debugPaused() || s.motif.me.active
 }
 
 func (s *System) addFrameTime(t float32) bool {
