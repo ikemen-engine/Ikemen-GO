@@ -373,6 +373,7 @@ var triggerMap = map[string]int{
 	"animelemvar":        1,
 	"animlength":         1,
 	"animloopcount":      1,
+	"animprefix":         1,
 	"animplayerno":       1,
 	"atan2":              1,
 	"attack":             1,
@@ -1995,6 +1996,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_animexist)
 	case "animloopcount":
 		out.append(OC_ex3_, OC_ex3_animloopcount)
+	case "animprefix":
+		out.append(OC_ex3_, OC_ex3_animprefix)
 	case "animtime":
 		out.append(OC_animtime)
 	case "authorname":

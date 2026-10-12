@@ -1270,6 +1270,7 @@ const (
 	OC_ex3_hitdefvar_fall_yvelocity
 	OC_ex3_hitdefvar_fall_zvelocity
 	OC_ex3_animloopcount
+	OC_ex3_animprefix
 	OC_ex3_inrunstate
 )
 
@@ -4879,6 +4880,13 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 			}
 		} else {
 			sys.bcStack.Push(BytecodeUndefined())
+		}
+	case OC_ex3_animprefix:
+		if c.animFfx == "" {
+			// Replace empty with "s" here. It's more robust than ensuring empty prefixes are always "s"
+			sys.bcStack.PushS("s")
+		} else {
+			sys.bcStack.PushS(c.animFfx)
 		}
 	case OC_ex3_animloopcount:
 		if c.anim == nil {

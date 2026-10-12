@@ -7735,6 +7735,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.animPN + 1))
 		return 1
 	})
+	luaRegister(l, "animPrefix", func(*lua.LState) int {
+		if sys.debugWC.animFfx == "" {
+			l.Push(lua.LString("s"))
+		} else {
+			l.Push(lua.LString(sys.debugWC.animFfx))
+		}
+		return 1
+	})
 	luaRegister(l, "animTime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.animTime()))
 		return 1
