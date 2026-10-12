@@ -1143,7 +1143,7 @@ func (s *System) participantJoystick(n int) int {
 func (s *System) participantJoysticks(n int) []int {
 	var joys []int
 	for _, id := range s.inputs.participantSources(n) {
-		if src := s.inputs.inputSource(id); src != nil && src.Connected && src.Joy >= 0 {
+		if src := s.inputs.inputSource(id); src != nil && src.Connected && !src.blocked && src.Joy >= 0 {
 			joys = append(joys, src.Joy)
 		}
 	}
@@ -1263,13 +1263,42 @@ func (s *System) participantMenuSource(participant int) int {
 
 // Returns which buttons are held on an input source right now.
 func (s *System) inputSourceState(src *InputSource) [14]bool {
+	var state [14]bool
 	if kc, ok := s.inputSourceConfig(src); ok {
 		if kc.Joy < 0 {
-			return GetKeyboardState(kc)
+			state = GetKeyboardState(kc)
+		} else {
+			state = GetJoystickState(kc)
 		}
-		return GetJoystickState(kc)
 	}
-	return [14]bool{}
+	if src != nil && src.blocked {
+		// Release once the digital menu controls are up; a resting analog trigger
+		// bound to a profile button must not keep the source blocked.
+		held := false
+		if src.Connected && src.Joy >= 0 {
+			for _, down := range input.GetJoystickMenuState(src.Joy) {
+				held = held || down
+			}
+		} else {
+			for _, down := range state {
+				held = held || down
+			}
+		}
+		if held {
+			return [14]bool{}
+		}
+		src.blocked = false
+	}
+	return state
+}
+
+// Keep a closing press out of the next screen and gameplay.
+func (s *System) blockInputSource(src *InputSource) {
+	if src != nil {
+		src.blocked = true
+		src.held = [14]int32{}
+		src.pressed = [14]bool{}
+	}
 }
 
 // Returns the profiles an input source can use: keyboard profiles for keyboards,
@@ -1398,7 +1427,7 @@ func (s *System) pollInputSources() {
 	// the player out of the editor or change its menu hints midway through a row.
 	if s.uiInputSource != 0 {
 		var state [14]bool
-		if src := s.inputs.inputSource(s.uiInputSource); src != nil && src.Connected {
+		if src := s.inputs.inputSource(s.uiInputSource); src != nil && src.Connected && !src.blocked {
 			kc := s.uiInputConfig
 			kc.Joy = src.Joy
 			if kc.Joy < 0 {
@@ -1424,7 +1453,7 @@ func (s *System) pollInputSources() {
 	}
 	for _, src := range s.inputs.Sources {
 		state := s.inputSourceState(src)
-		if src.Connected && src.Joy >= 0 {
+		if src.Connected && !src.blocked && src.Joy >= 0 {
 			// A gamepad also works the menus with its d-pad, left stick, Start
 			// and Back, whatever the profile binds them to.
 			for i, held := range input.GetJoystickMenuState(src.Joy) {
