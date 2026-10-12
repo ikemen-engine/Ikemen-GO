@@ -790,6 +790,7 @@ type InputSource struct {
 	Joy                      int
 	Name, GUID, Profile      string
 	Connected, ProfileChosen bool
+	blocked                  bool
 	held                     [14]int32
 	pressed                  [14]bool
 }
@@ -3351,6 +3352,9 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 		buttons = sys.replayFile.readReplayInput(controller)
 		rawAxes := sys.replayFile.readReplayInputAnalog(controller)
 		axes = NormalizeAxes(&rawAxes)
+	} else if char == nil && sys.netConnection != nil && !sys.netConnection.IsConnected() {
+		// The connection-wait menu still reads local controls until the peer has connected.
+		buttons = cl.Buffer.InputReader.LocalInput(controller)
 	} else if sys.netConnection != nil {
 		buttons = sys.netConnection.readNetInput(controller)
 		rawAxes := sys.netConnection.readNetInputAnalog(controller)

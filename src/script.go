@@ -2438,6 +2438,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
 		/*Exit netplay mode and close any active netplay connection.
 		@function exitNetPlay*/
+		waiting := sys.netConnection != nil && sys.netConnection.st == NS_Stop
 		err := sys.endSyncSessionOverride()
 		if sys.rollback.session != nil {
 			sys.rollback.session.Close()
@@ -2450,6 +2451,27 @@ func systemScriptInit(l *lua.LState) {
 		if sys.netConnection != nil {
 			sys.netConnection.end()
 			sys.netConnection = nil
+		}
+		if waiting {
+			// Block only sources pressing a menu control, so the cancel press is
+			// not read in the menu while idle sources (resting axes) keep working.
+			for _, source := range sys.inputs.Sources {
+				pressing := false
+				if source.Connected && source.Joy >= 0 {
+					for _, down := range input.GetJoystickMenuState(source.Joy) {
+						pressing = pressing || down
+					}
+				} else if kc, ok := sys.inputSourceConfig(source); ok {
+					for _, down := range GetKeyboardState(kc) {
+						pressing = pressing || down
+					}
+				}
+				if pressing {
+					sys.blockInputSource(source)
+				}
+			}
+			sys.keyInput = KeyUnknown
+			sys.esc, sys.escPending = false, false
 		}
 		// Return to local menu input after closing the session.
 		if !sys.netplay() {
