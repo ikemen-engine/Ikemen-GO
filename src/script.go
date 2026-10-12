@@ -2530,6 +2530,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
 		/*Exit netplay mode and close any active netplay connection.
 		@function exitNetPlay*/
+		waiting := sys.netConnection != nil && sys.netConnection.st == NS_Stop
 		err := sys.endSyncSessionOverride()
 		if sys.rollback.session != nil {
 			sys.rollback.session.Close()
@@ -2542,6 +2543,21 @@ func systemScriptInit(l *lua.LState) {
 		if sys.netConnection != nil {
 			sys.netConnection.end()
 			sys.netConnection = nil
+		}
+		if waiting {
+			// Block only devices still pressing a menu control, so the cancel press
+			// isn't read again by the menu. Idle devices (resting sticks) keep working.
+			for _, device := range sys.inputs.Devices {
+				f := sys.deviceFrame(device)
+				for vc := VirtualControl(0); vc < VC_Count; vc++ {
+					if f.held(vc) {
+						sys.blockDevice(device)
+						break
+					}
+				}
+			}
+			sys.keyInput = KeyUnknown
+			sys.esc, sys.escPending = false, false
 		}
 		// Return to local menu input after closing the session.
 		if !sys.netplay() {

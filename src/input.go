@@ -3606,6 +3606,9 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 		}
 		if sys.replayFile != nil {
 			frame, setup = sys.replayFile.readReplayInput(controller), sys.channelSetup(channel)
+		} else if char == nil && sys.netConnection != nil && !sys.netConnection.IsConnected() {
+			// The connection-wait menu still reads local controls until the peer has connected.
+			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
 		} else if sys.netConnection != nil {
 			frame, setup = sys.netConnection.readNetInput(controller), sys.channelSetup(channel)
 		} else if sys.rollback.session != nil {
