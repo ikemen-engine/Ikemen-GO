@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -375,7 +376,169 @@ const (
 	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M
 )
 
+// Positions in the [14]bool button arrays, in the same order as InputBits.
+type ButtonIndex int
+
+const (
+	BI_PU ButtonIndex = iota
+	BI_PD
+	BI_PL
+	BI_PR
+	BI_A
+	BI_B
+	BI_C
+	BI_X
+	BI_Y
+	BI_Z
+	BI_S
+	BI_D
+	BI_W
+	BI_M
+)
+
 // Save local inputs as input bits to send or record
+// A connected gamepad or a keyboard profile. IDs are never reused while the game runs.
+type InputSource struct {
+	ID                       int
+	Joy                      int
+	Name, GUID, Profile      string
+	Connected, ProfileChosen bool
+	held                     [14]int32
+	pressed                  [14]bool
+}
+
+type TeamSide int
+
+const (
+	TS_None TeamSide = iota
+	TS_Left
+	TS_Right
+)
+
+type InputParticipant struct {
+	Source    int
+	Side      TeamSide
+	Ready     bool
+	joined    int
+	confirmed int
+}
+
+type InputAssignment struct {
+	Sources      []*InputSource
+	Participants []InputParticipant
+	ClaimLocked  bool // no automatic claiming (side select or netplay)
+	MenuSource   int
+	nextID       int
+	nextOrder    int
+	frame        int32
+}
+
+// Returns the input source with this ID, or nil.
+func (a *InputAssignment) inputSource(id int) *InputSource {
+	for _, src := range a.Sources {
+		if src.ID == id {
+			return src
+		}
+	}
+	return nil
+}
+
+// Adds a new input source with a fresh ID.
+func (a *InputAssignment) addInputSource(joy int, name, guid, profile string) *InputSource {
+	a.nextID++
+	d := &InputSource{ID: a.nextID, Joy: joy, Name: name, GUID: guid, Profile: profile, Connected: true}
+	a.Sources = append(a.Sources, d)
+	return d
+}
+
+// Returns the index of the participant using this input source, or -1.
+func (a *InputAssignment) owner(source int) int {
+	if source != 0 {
+		for i, p := range a.Participants {
+			if p.Source == source {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// Puts an input source on a side. Reuses its participant if it has one,
+// otherwise takes the first free participant. Returns the participant index.
+func (a *InputAssignment) claim(source int, side TeamSide) (int, error) {
+	src := a.inputSource(source)
+	if src == nil || !src.Connected || side < TS_None || side > TS_Right {
+		return -1, fmt.Errorf("input source is unavailable")
+	}
+	i := a.owner(source)
+	if i < 0 {
+		for n, p := range a.Participants {
+			if p.Source == 0 {
+				i = n
+				break
+			}
+		}
+	}
+	if i < 0 {
+		return -1, fmt.Errorf("all participant positions are occupied")
+	}
+	a.nextOrder++
+	a.Participants[i] = InputParticipant{Source: source, Side: side, joined: a.nextOrder}
+	return i, nil
+}
+
+// Keeps confirmed players in confirmation order, followed by players still choosing.
+func (a *InputAssignment) setReady(source int, ready bool) {
+	if i := a.owner(source); i >= 0 {
+		p := &a.Participants[i]
+		if ready && !p.Ready {
+			a.nextOrder++
+			p.confirmed = a.nextOrder
+		} else if !ready {
+			p.confirmed = 0
+		}
+		p.Ready = ready
+	}
+}
+
+// Returns ready participants in confirmation order, then other participants in join order.
+func (a *InputAssignment) participantsOnSide(side TeamSide) []int {
+	var out []int
+	for i, p := range a.Participants {
+		if p.Source != 0 && p.Side == side {
+			out = append(out, i)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		left, right := a.Participants[out[i]], a.Participants[out[j]]
+		if left.Ready != right.Ready {
+			return left.Ready
+		}
+		if left.Ready {
+			return left.confirmed < right.confirmed
+		}
+		return left.joined < right.joined
+	})
+	return out
+}
+
+// Maps player slots to participants. Odd slots (P1, P3...) are team 1, even slots are team 2.
+func (a *InputAssignment) participantsBySlot(slots int) []int {
+	out := make([]int, slots)
+	for i := range out {
+		out[i] = -1
+	}
+	for side := TS_Left; side <= TS_Right; side++ {
+		for member, participant := range a.participantsOnSide(side) {
+			slot := int(side-TS_Left) + member*2
+			if slot < slots {
+				out[slot] = participant
+			}
+		}
+	}
+	return out
+}
+
 func (ibit *InputBits) KeysToBits(buttons [14]bool) {
 	*ibit = InputBits(Btoi(buttons[0]) |
 		Btoi(buttons[1])<<1 |
