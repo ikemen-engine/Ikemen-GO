@@ -3042,7 +3042,8 @@ func (m *Motif) reset() {
 }
 
 func (m *Motif) step() {
-	if !m.me.active && !(sys.fightScreen.round.fadeOut.isActive() || sys.fightScreen.round.fadeIn.isActive()) {
+	if !m.me.active && (!sys.paused || sys.frameStepFlag) &&
+		!(sys.fightScreen.round.fadeOut.isActive() || sys.fightScreen.round.fadeIn.isActive()) {
 		if m.fadeOut.isActive() {
 			m.fadeOut.step()
 		} else if m.fadeIn.isActive() {
