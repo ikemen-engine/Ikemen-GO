@@ -201,6 +201,32 @@ func evalAttr(exp []BytecodeExp, c *Char, hitdef bool) int32 {
 	return mask
 }
 
+// Converts the string attr operand of a trigger. Invalid values give 0, which never matches
+func evalTriggerAttr(c *Char, v BytecodeValue) int32 {
+	if v.vtype != VT_String {
+		return 0
+	}
+	attr, err := attrMask(v.ToS(), false, true, nil)
+	if err != nil {
+		sys.appendToConsole(c.warn() + err.Error())
+		return 0
+	}
+	return attr
+}
+
+// Converts the string hitflag operand of a trigger. Invalid values give 0, which never matches
+func evalTriggerHitFlag(c *Char, v BytecodeValue) int32 {
+	if v.vtype != VT_String {
+		return 0
+	}
+	str := v.ToS()
+	if strings.Trim(str, "HLMAFDPhlmafdp+-") != "" {
+		sys.appendToConsole(c.warn() + "Invalid flag: " + str)
+		return 0
+	}
+	return hitFlagMask(str)
+}
+
 type MoveType int32
 
 const (
@@ -2554,6 +2580,9 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushI(c.hitCount)
 		case OC_hitdefattr:
 			attr := be.ReadIntAt(&i)
+			if attr == -2 { // String value on the stack
+				attr = evalTriggerAttr(c, sys.bcStack.Pop())
+			}
 			if attr == -1 {
 				sys.bcStack.PushS(attrString(c.hitdef.attr))
 			} else {
@@ -3503,6 +3532,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_attr:
 		// same as c.hitDefAttr()
 		attr := be.ReadIntAt(i)
+		if attr == -2 { // String value on the stack
+			attr = evalTriggerAttr(c, sys.bcStack.Pop())
+		}
 		if attr == -1 {
 			sys.bcStack.PushS(attrString(c.ghv.attr &^ (-1 << 31)))
 		} else {
@@ -3574,6 +3606,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushB(c.ghv.down_recover)
 	case OC_ex_gethitvar_guardflag:
 		attr := be.ReadIntAt(i)
+		if attr == -2 { // String value on the stack
+			attr = evalTriggerHitFlag(c, sys.bcStack.Pop())
+		}
 		if attr == -1 {
 			sys.bcStack.PushS(flagString(c.ghv.guardflag))
 		} else {
@@ -3903,6 +3938,9 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		*i++
 	case OC_ex_reversaldefattr:
 		attr := be.ReadIntAt(i)
+		if attr == -2 { // String value on the stack
+			attr = evalTriggerAttr(c, sys.bcStack.Pop())
+		}
 		if attr == -1 {
 			sys.bcStack.PushS(attrString(c.hitdef.reversal_attr &^ (-1 << 31)))
 		} else {
@@ -4298,6 +4336,11 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 
 		// Common Inputs
 		flg := sys.bcStack.Pop()
+		// -2 means the string value is below it
+		var stringFlag BytecodeValue
+		if flg.ToI() == -2 {
+			stringFlag = sys.bcStack.Pop()
+		}
 		idx := int(sys.bcStack.Pop().ToI())
 		id := sys.bcStack.Pop().ToI()
 
@@ -4323,6 +4366,9 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushF(p.facing)
 			case OC_ex2_projvar_guardflag:
 				attr := flg.ToI()
+				if attr == -2 { // String flag popped above
+					attr = evalTriggerHitFlag(c, stringFlag)
+				}
 				if attr == -1 {
 					sys.bcStack.PushS(flagString(p.hitdef.guardflag))
 				} else {
@@ -4332,6 +4378,9 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushI(int32(float32(p.heightbound[1]) * p.localscl / oc.localscl))
 			case OC_ex2_projvar_hitflag:
 				attr := flg.ToI()
+				if attr == -2 { // String flag popped above
+					attr = evalTriggerHitFlag(c, stringFlag)
+				}
 				if attr == -1 {
 					sys.bcStack.PushS(flagString(p.hitdef.hitflag))
 				} else {
@@ -4339,6 +4388,9 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				}
 			case OC_ex2_projvar_attr:
 				attr := flg.ToI()
+				if attr == -2 { // String flag popped above
+					attr = evalTriggerAttr(c, stringFlag)
+				}
 				if attr == -1 {
 					sys.bcStack.PushS(attrString(p.hitdef.attr))
 				} else {
@@ -4665,6 +4717,9 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.hitdef.guarddamage)
 	case OC_ex3_hitdefvar_guardflag:
 		attr := be.ReadIntAt(i)
+		if attr == -2 { // String value on the stack
+			attr = evalTriggerHitFlag(c, sys.bcStack.Pop())
+		}
 		if attr == -1 {
 			sys.bcStack.PushS(flagString(c.hitdef.guardflag))
 		} else {
@@ -4680,6 +4735,9 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(c.hitdef.hitdamage)
 	case OC_ex3_hitdefvar_hitflag:
 		attr := be.ReadIntAt(i)
+		if attr == -2 { // String value on the stack
+			attr = evalTriggerHitFlag(c, sys.bcStack.Pop())
+		}
 		if attr == -1 {
 			sys.bcStack.PushS(flagString(c.hitdef.hitflag))
 		} else {
