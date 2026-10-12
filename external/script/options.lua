@@ -84,6 +84,13 @@ end
 
 -- Associative elements table storing functions controlling behaviour of each
 -- option screen item. Can be appended via external module.
+--Render mode values as stored in the configuration.
+options.t_renderModes = {
+	gles32 = 'OpenGL ES 3.2',
+	gl33 = 'OpenGL 3.3',
+	vk13 = 'Vulkan 1.3',
+}
+
 options.t_itemname = {
 	--Back
 	['back'] = function(t, item, cursorPosY, moveTxt)
@@ -715,10 +722,10 @@ options.t_itemname = {
 	end,
 	--Renderer (submenu)
 	['renderer'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key, motif.option_info.menu.done.key) then
+		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			for k, v in ipairs(t.submenu[t.items[item].itemname].items) do
-				if gameOption('Video.RenderMode') == v.itemname then
+				if gameOption('Video.RenderMode') == options.t_renderModes[v.itemname] then
 					v.selected = true
 				else
 					v.selected = false
@@ -735,7 +742,7 @@ options.t_itemname = {
 	['gles32'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', "OpenGL ES 3.2")
+			modifyGameOption('Video.RenderMode', options.t_renderModes.gles32)
 			options.modified = true
 			options.needReload = true
 			return false
@@ -746,7 +753,7 @@ options.t_itemname = {
 	['gl33'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', "OpenGL 3.3")
+			modifyGameOption('Video.RenderMode', options.t_renderModes.gl33)
 			options.modified = true
 			options.needReload = true
 			return false
@@ -757,7 +764,7 @@ options.t_itemname = {
 	['vk13'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', "Vulkan 1.3")
+			modifyGameOption('Video.RenderMode', options.t_renderModes.vk13)
 			options.modified = true
 			options.needReload = true
 			return false
