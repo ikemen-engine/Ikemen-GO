@@ -1422,31 +1422,31 @@ func applyCustomDefaults(m *Motif, iniFile *ini.File) {
 	h := int(m.Info.Localcoord[1])
 	sec = "Title Info"
 
-	// loading.offset = (W - 1 - 10*H/320, H - 8)
+	// loading.offset
 	if !hasUserKey(iniFile, sec, "loading.offset") {
 		x := w - 1 - (10*h)/320
-		y := h - 8
+		y := h - 6
 		_ = SetValue(m, "title_info.loading.offset", fmt.Sprintf("%d, %d", x, y))
 	}
 
-	// footer.title.offset = (2*W/320, H)
+	// footer.title.offset
 	if !hasUserKey(iniFile, sec, "footer.title.offset") {
 		x := (2 * w) / 320
-		y := h
+		y := h - 2
 		_ = SetValue(m, "title_info.footer.title.offset", fmt.Sprintf("%d, %d", x, y))
 	}
 
-	// footer.info.offset = (W/2, H)
+	// footer.info.offset
 	if !hasUserKey(iniFile, sec, "footer.info.offset") {
 		x := w / 2
-		y := h
+		y := h - 2
 		_ = SetValue(m, "title_info.footer.info.offset", fmt.Sprintf("%d, %d", x, y))
 	}
 
-	// footer.version.offset = (W - 1 - 2*W/320, H)
+	// footer.version.offset
 	if !hasUserKey(iniFile, sec, "footer.version.offset") {
 		x := w - 1 - (2*w)/320
-		y := h
+		y := h - 2
 		_ = SetValue(m, "title_info.footer.version.offset", fmt.Sprintf("%d, %d", x, y))
 	}
 
@@ -1455,7 +1455,7 @@ func applyCustomDefaults(m *Motif, iniFile *ini.File) {
 		_ = SetValue(m, "title_info.footer.version.text", fmt.Sprintf("%s - %s", Version, BuildTime))
 	}
 
-	// footer.overlay.window = (0, H - 7, W, H)
+	// footer.overlay.window
 	if !hasUserKey(iniFile, sec, "footer.overlay.window") {
 		x1, y1, x2, y2 := 0, h-7, w, h
 		_ = SetValue(m, "title_info.footer.overlay.window", fmt.Sprintf("%d, %d, %d, %d", x1, y1, x2, y2))
