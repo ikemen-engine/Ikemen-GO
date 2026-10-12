@@ -1215,7 +1215,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 			sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
 			ret = false
 			break
-		elseif getKey() ~= '' or getInput(-1, sec.menu.done.key) then
+		elseif getKey() ~= '' or getInput(-1, {'U', 'D', 'L', 'R', 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}) then
 			sndPlay(motif.Snd, done_snd[1], done_snd[2])
 			resetKey()
 			ret = true
