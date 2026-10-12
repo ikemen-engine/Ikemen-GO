@@ -303,7 +303,7 @@ type MenuProperties struct {
 		Delete struct { // only used by [Title Info], [Replay Info]
 			KeyCode string `ini:"keycode"`
 		} `ini:"delete"`
-		Rename struct { // only used by [Replay Info]
+		Rename struct { // only used by [Title Info], [Replay Info]
 			KeyCode string `ini:"keycode"`
 		} `ini:"rename"`
 	} `ini:"item"`

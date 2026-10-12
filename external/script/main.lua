@@ -2601,6 +2601,30 @@ main.t_itemname.teamarcade = main.t_itemname.arcade
 main.t_itemname.teamversus = main.t_itemname.versus
 if gameOption('Debug.DumpLuaTables') then main.f_printTable(main.t_itemname, 'debug/t_mainItemname.txt') end
 
+function main.f_editIP(item, t)
+	if not t[item].itemname:match('^ip_') then
+		return t
+	end
+	local name = t[item].itemname:gsub('^ip_', '')
+	sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
+	local address = main.f_drawInput(
+		motif[main.group].textinput.TextSpriteData,
+		motif[main.group].textinput.text.address,
+		motif[main.group],
+		motif[main.background],
+		motif[main.group].textinput.overlay.RectData,
+		gameOption('Netplay.IP.' .. name)
+	)
+	if not isValidIp(address) then
+		sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+		return t
+	end
+	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
+	modifyGameOption('Netplay.IP.' .. name, address)
+	saveGameOption(getCommandLineValue("-config"))
+	return t
+end
+
 function main.f_deleteIP(item, t)
 	if t[item].itemname:match('^ip_') then
 		sndPlay(motif.Snd, motif.title_info.cancel.snd[1], motif.title_info.cancel.snd[2])
@@ -2797,6 +2821,8 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					resetKey()
 				elseif bool_del and getKey(motif[main.group].menu.item.delete.keycode) then
 					tbl.items = main.f_deleteIP(item, t)
+				elseif bool_del and getKey(motif[main.group].menu.item.rename.keycode) then
+					tbl.items = main.f_editIP(item, t)
 				elseif main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
 				elseif getInput(-1, motif[main.group].menu.done.key) then
