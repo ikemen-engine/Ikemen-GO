@@ -9354,7 +9354,11 @@ func triggerFunctions(l *lua.LState) {
 		return 1
 	})
 	luaRegister(l, "map", func(*lua.LState) int {
-		mv := sys.debugWC.mapArray[strings.ToLower(strArg(l, 1))]
+		name := strings.ToLower(strArg(l, 1))
+		if !nilArg(l, 2) {
+			name = sys.debugWC.mapIndexedKey(name, int32(numArg(l, 2)))
+		}
+		mv := sys.debugWC.mapArray[name]
 		if mv.Type == VT_String {
 			l.Push(lua.LString(mv.Str))
 		} else {

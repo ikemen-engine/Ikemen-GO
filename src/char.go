@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -9799,6 +9800,21 @@ func (c *Char) remapSpritePreset(preset string) {
 			c.remapSprite(src, dst)
 		}
 	}
+}
+
+// Indexed maps are plain map entries, e.g. map(foo, 3) is stored as "foo[3]"
+// Built here instead of in expressions so the key never enters the string pool
+func (c *Char) mapIndexedKey(name string, index int32) string {
+	// An empty key reads as unset and is ignored by sets
+	if index < 0 {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("map index cannot be negative: %v", index))
+		return ""
+	}
+	// Index 0 is the same as no index. Like Helper(id) is same as Helper(id, 0), etc
+	if index == 0 {
+		return name
+	}
+	return name + "[" + strconv.Itoa(int(index)) + "]"
 }
 
 // MapSet() sets a map to a specific value. Used for both sctrl and assignment forms

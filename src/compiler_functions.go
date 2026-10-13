@@ -4779,7 +4779,13 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
 		assign := false
 		var mapParam, mapName, value string
-		var nameExp []BytecodeExp // For string expressions used as name
+
+		// For string expressions used as name
+		var nameExp []BytecodeExp
+
+		// Index for indexed maps, as text or already parsed along with the name
+		var index string
+		var indexExp []BytecodeExp
 
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
@@ -4808,6 +4814,15 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 			mapName = strings.TrimSpace(mapKey[len("map(") : len(mapKey)-1])
 			value = is[mapKey]
 			delete(is, mapKey)
+
+			// map(x, i) = y. Names can't contain commas, so the first one starts the index
+			if ic := strings.Index(mapName, ","); ic >= 0 {
+				index = strings.TrimSpace(mapName[ic+1:])
+				mapName = strings.TrimSpace(mapName[:ic])
+				if index == "" {
+					return Error("Missing map index")
+				}
+			}
 
 			if mapName == "" {
 				return Error("Missing map name")
@@ -4845,6 +4860,17 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 					}
 					mapName = c.token
 					c.token = c.tokenizer(&mapParam)
+					// map = map(x, i) := y
+					if c.token == "," {
+						c.token = c.tokenizer(&mapParam)
+						var be BytecodeExp
+						iv, err := c.expBoolOr(&be, &mapParam)
+						if err != nil {
+							return err
+						}
+						be.appendValue(iv)
+						indexExp = []BytecodeExp{be}
+					}
 					if err := c.checkClosingParenthesis(); err != nil {
 						return err
 					}
@@ -4859,6 +4885,12 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 					if err := c.stateParam(is, "value", false, func(data string) error {
 						b = true
 						value = data
+						return nil
+					}); err != nil {
+						return err
+					}
+					if err := c.stateParam(is, "index", false, func(data string) error {
+						index = data
 						return nil
 					}); err != nil {
 						return err
@@ -4905,6 +4937,13 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 			sc.add(mapSet_mapArray, nameExp)
 			if err := c.scAdd(sc, mapSet_value, value, VT_Float, 1); err != nil {
 				return err
+			}
+			if indexExp != nil {
+				sc.add(mapSet_index, indexExp)
+			} else if index != "" {
+				if err := c.scAdd(sc, mapSet_index, index, VT_Int, 1); err != nil {
+					return err
+				}
 			}
 		}
 

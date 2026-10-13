@@ -693,6 +693,7 @@ const (
 	OC_st_sysvaradd
 	OC_st_sysfvaradd
 	OC_st_map
+	OC_st_mapindexed
 )
 const (
 	OC_ex_p2dist_x OpCode = iota
@@ -892,7 +893,8 @@ const (
 	OC_ex_jugglepoints
 	OC_ex_localcoord_x
 	OC_ex_localcoord_y
-	OC_ex_maparray
+	OC_ex_map
+	OC_ex_mapindexed
 	OC_ex_max
 	OC_ex_min
 	OC_ex_numplayer
@@ -2806,6 +2808,11 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 		val := sys.bcStack.Pop()
 		mapName := be.readMapKey(i)
 		sys.bcStack.Push(c.mapSet(mapName, val, 0))
+	case OC_st_mapindexed:
+		val := sys.bcStack.Pop()
+		index := sys.bcStack.Pop().ToI()
+		mapName := c.mapIndexedKey(be.readMapKey(i), index)
+		sys.bcStack.Push(c.mapSet(mapName, val, 0))
 	}
 }
 
@@ -3814,8 +3821,12 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 		sys.bcStack.PushI(sys.cgi[c.playerNo].localcoord[0])
 	case OC_ex_localcoord_y:
 		sys.bcStack.PushI(sys.cgi[c.playerNo].localcoord[1])
-	case OC_ex_maparray:
+	case OC_ex_map:
 		mapName := be.readMapKey(i)
+		sys.bcStack.Push(c.mapArray[mapName].ToBV())
+	case OC_ex_mapindexed:
+		index := sys.bcStack.Pop().ToI()
+		mapName := c.mapIndexedKey(be.readMapKey(i), index)
 		sys.bcStack.Push(c.mapArray[mapName].ToBV())
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
@@ -13111,6 +13122,7 @@ const (
 	mapSet_sctrltype
 	mapSet_value
 	mapSet_redirectid
+	mapSet_index
 )
 
 func (sc mapSet) Run(c *Char, _ []int32) bool {
@@ -13121,11 +13133,15 @@ func (sc mapSet) Run(c *Char, _ []int32) bool {
 
 	var s string
 	var value BytecodeValue
-	var scType int32
+	var scType, index int32
+	hasIndex := false
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case mapSet_mapArray:
 			s = exp[0].evalS(c)
+		case mapSet_index:
+			index = exp[0].evalI(c)
+			hasIndex = true
 		case mapSet_value:
 			value = exp[0].run(c)
 		case mapSet_sctrltype:
@@ -13133,6 +13149,9 @@ func (sc mapSet) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
+	if hasIndex {
+		s = c.mapIndexedKey(s, index)
+	}
 	crun.mapSet(s, value, scType)
 	return false
 }

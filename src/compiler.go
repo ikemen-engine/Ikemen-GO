@@ -5201,8 +5201,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		savedIn := *in
 		c.token = c.tokenizer(in)
 		// A quote starts a string and "$" starts a local variable, so neither is a name
-		// Anything other than ")" after the key means the expression continues
-		if key == "\"" || strings.HasPrefix(key, "$") || c.token != ")" {
+		// Anything other than ")" or an index after the key means the expression continues
+		if key == "\"" || strings.HasPrefix(key, "$") || (c.token != ")" && c.token != ",") {
 			c.token, *in = key, savedIn
 			kv, err := c.expBoolOr(&keyExp, in)
 			if err != nil {
@@ -5221,6 +5221,16 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				keyExp = nil
 			}
 		}
+		// map(name, index) reads one element of an indexed map
+		var indexExp BytecodeExp
+		if c.token == "," {
+			c.token = c.tokenizer(in)
+			iv, err := c.expBoolOr(&indexExp, in)
+			if err != nil {
+				return bvNone(), err
+			}
+			indexExp.appendValue(iv)
+		}
 		if err := c.checkClosingParenthesis(); err != nil {
 			return bvNone(), err
 		}
@@ -5236,6 +5246,15 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				out.appendI32Op(OC_nordrun, int32(len(keyExp)))
 			}
 			out.append(keyExp...)
+		}
+		// The index also belongs to the caller. It's pushed after the key and before any := value
+		stOp, exOp := OC_st_map, OC_ex_map
+		if indexExp != nil {
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(indexExp)))
+			}
+			out.append(indexExp...)
+			stOp, exOp = OC_st_mapindexed, OC_ex_mapindexed
 		}
 		c.token = c.tokenizer(in)
 		// Map assignment with := operator
@@ -5254,10 +5273,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(be2...)
 			out.append(OC_st_)
-			out.appendI32Op(OC_st_map, keyIdx)
+			out.appendI32Op(stOp, keyIdx)
 		} else {
 			out.append(OC_ex_)
-			out.appendI32Op(OC_ex_maparray, keyIdx)
+			out.appendI32Op(exOp, keyIdx)
 		}
 		return bvNone(), nil
 	case "memberno":
