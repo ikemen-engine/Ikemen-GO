@@ -37,6 +37,7 @@ const (
 	BT_SinY
 	BT_VelSet
 	BT_VelAdd
+	BT_ShaderSet
 )
 
 type bgAction struct {
@@ -148,6 +149,8 @@ type backGround struct {
 	fLength               float32
 	projection            Projection
 	xshear                float32
+	customShader          CustomShader
+	customShaderSet       bool
 }
 
 func newBackGround(sff *Sff) *backGround {
@@ -803,7 +806,12 @@ func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl flo
 		xbs*bgscl*(scalestartX+xs)*xs3,
 		ys*ys3, xShear,
 		bg.rot, rcx, [2]float32{0, 0}, stackedPfx, facing, [2]float32{1, 1},
-		int32(bg.projection), bg.fLength, false, CustomShaderRenderData{})
+		int32(bg.projection), bg.fLength, false, bg.customShader.renderData(bg.enabled && !sys.stage.paused()))
+}
+
+type bgShaderTex struct {
+	animNo int32
+	sprNo  [2]int32 // -1 = unset
 }
 
 type bgCtrl struct {
@@ -831,14 +839,26 @@ type bgCtrl struct {
 	positionlink bool
 	idx          int
 	sctrlid      int32
+	shaderName   string
+	shaderParams [16]float32
+	shaderTex    [2]bgShaderTex
 }
 
 func newBgCtrl() *bgCtrl {
-	return &bgCtrl{
+	bgc := &bgCtrl{
 		looptime: -1,
 		x:        float32(math.NaN()),
 		y:        float32(math.NaN()),
 	}
+
+	for i := range bgc.shaderTex {
+		bgc.shaderTex[i] = bgShaderTex{
+			animNo: -1,
+			sprNo:  [2]int32{-1, -1},
+		}
+	}
+
+	return bgc
 }
 
 func (bgc *bgCtrl) read(is IniSection, idx int) error {
@@ -846,6 +866,7 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 	xy := false
 	srcdst := false
 	palfx := false
+	shader := false
 	data := strings.ToLower(is["type"])
 	switch data {
 	case "anim":
@@ -882,6 +903,9 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		// Default values for RemapPal
 		bgc.src = [2]int32{-1, 0}
 		bgc.dst = [2]int32{-1, 0}
+	case "shaderset":
+		bgc._type = BT_ShaderSet
+		shader = true
 	case "sinx":
 		bgc._type = BT_SinX
 	case "siny":
@@ -945,6 +969,18 @@ func (bgc *bgCtrl) read(is IniSection, idx int) error {
 		if is.ReadF32("hue", &bgc.hue) {
 			bgc.hue = bgc.hue / 512
 		}
+	} else if shader {
+		name, _, _ := is.getText("name")
+		bgc.shaderName = strings.ToLower(name)
+		for i := range bgc.shaderParams {
+			is.ReadF32(fmt.Sprintf("param%d", i), &bgc.shaderParams[i])
+		}
+		for n := range bgc.shaderTex {
+			t := &bgc.shaderTex[n]
+			prefix := fmt.Sprintf("tex%d.", n+1)
+			is.ReadI32(prefix+"anim", &t.animNo)
+			is.readI32ForStage(prefix+"spr", &t.sprNo[0], &t.sprNo[1])
+		}
 	} else if is.ReadF32("value", &bgc.x) {
 		is.readI32ForStage("value", &bgc.v[0], &bgc.v[1], &bgc.v[2])
 	}
@@ -961,20 +997,54 @@ func (bgc *bgCtrl) yEnable() bool {
 }
 
 type stageShadow struct {
-	intensity  int32
-	color      uint32
-	xscale     float32
-	yscale     float32
-	fadeend    int32
-	fadebgn    int32
-	xshear     float32
-	rot        Rotation
-	fLength    float32
-	projection Projection
-	offset     [2]float32
-	window     [4]float32
-	ydelta     float32
-	layerno    int32
+	intensity    int32
+	color        uint32
+	xscale       float32
+	yscale       float32
+	fadeend      int32
+	fadebgn      int32
+	xshear       float32
+	rot          Rotation
+	fLength      float32
+	projection   Projection
+	offset       [2]float32
+	window       [4]float32
+	ydelta       float32
+	layerno      int32
+	shaderName   string
+	shaderParams [16]float32
+	shaderTex    [2]bgShaderTex
+	shader       CustomShader
+}
+
+func (sh *stageShadow) readShader(sec IniSection) {
+	if name, ok, _ := sec.getText("shader.name"); ok {
+		sh.shaderName = strings.ToLower(name)
+	}
+	for i := range sh.shaderParams {
+		sec.ReadF32(fmt.Sprintf("shader.param%d", i), &sh.shaderParams[i])
+	}
+	for n := range sh.shaderTex {
+		prefix := fmt.Sprintf("shader.tex%d.", n+1)
+		sec.ReadI32(prefix+"anim", &sh.shaderTex[n].animNo)
+		sec.readI32ForStage(prefix+"spr", &sh.shaderTex[n].sprNo[0], &sh.shaderTex[n].sprNo[1])
+	}
+}
+
+// Builds the live shader of a shadow or reflection from its definition
+func (s *Stage) applyShadowShader(sh *stageShadow) {
+	if sh.shaderName == "" {
+		return
+	}
+	key, ok := s.customShaders[sh.shaderName]
+	if !ok {
+		sys.appendToConsole(s.warn() + "invalid shader: " + sh.shaderName)
+		return
+	}
+	sh.shader.set(sh.shaderName, key)
+	sh.shader.params = sh.shaderParams
+	s.setShaderTex(&sh.shader.tex1, sh.shaderTex[0])
+	s.setShaderTex(&sh.shader.tex2, sh.shaderTex[1])
 }
 
 type stagePlayer struct {
@@ -1031,6 +1101,11 @@ type Stage struct {
 	model           *Model
 	topbound        float32
 	botbound        float32
+	customShaders   map[string]string
+}
+
+func newShadowShaderTex() bgShaderTex {
+	return bgShaderTex{animNo: -1, sprNo: [2]int32{-1, -1}}
 }
 
 func newStage(def string) *Stage {
@@ -1050,6 +1125,7 @@ func newStage(def string) *Stage {
 		bgmratio:       0.3,
 		bgmtrigger:     0,
 		constants:      make(map[string]TypedValue),
+		customShaders:  make(map[string]string),
 		partnerspacing: 25,
 	}
 	s.sdw.intensity = 128
@@ -1064,6 +1140,11 @@ func newStage(def string) *Stage {
 	s.p[0].startx = -70
 	s.p[1].startx = 70
 	s.stageprops = newStageProps()
+	for _, sh := range []*stageShadow{&s.sdw, &s.reflection} {
+		for i := range sh.shaderTex {
+			sh.shaderTex[i] = newShadowShaderTex()
+		}
+	}
 	return s
 }
 
@@ -1442,6 +1523,17 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		}
 	}
 
+	// Shaders group
+	if sec, _ := getSection("shaders"); sec != nil {
+		for key, val := range sec {
+			sys.loadCustomShaderFile(s.customShaders, key, val, []string{def, "", "data/"})
+		}
+	}
+	// Common Shaders
+	if err := sys.loadCommonShaders(s.customShaders, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}); err != nil {
+		return nil, err
+	}
+
 	// Shadow group
 	if sec, _ := getSection("shadow"); sec != nil {
 		var tmp int32
@@ -1483,6 +1575,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		if s.sdw.fadeend > s.sdw.fadebgn {
 			sys.appendToConsole(s.warn() + "Shadow fade.range defined incorrectly")
 		}
+		// Shadow shader
+		s.sdw.readShader(sec)
 	}
 
 	// Reflection group
@@ -1522,6 +1616,8 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 		// TODO: This should probably require 4 values
 		sec.readF32ForStage("window", &s.reflection.window[0], &s.reflection.window[1], &s.reflection.window[2], &s.reflection.window[3])
 		sec.ReadF32("ydelta", &s.reflection.ydelta)
+		// Reflection shader
+		s.reflection.readShader(sec)
 	}
 
 	// BG group
@@ -1680,6 +1776,25 @@ func (s *Stage) get3DAnim(id uint32) (anims []*GLTFAnimation) {
 	return
 }
 
+func (s *Stage) setShaderTex(st *ShaderTexture, def bgShaderTex) {
+	switch {
+	case def.animNo >= 0:
+		if st.AnimNo != def.animNo {
+			st.clear()
+			st.AnimNo = def.animNo
+			st.Anim = s.animTable.get(def.animNo)
+		}
+	case def.sprNo[0] >= 0:
+		if st.SprNo != def.sprNo {
+			st.clear()
+			st.SprNo = def.sprNo
+			st.Spr = s.sff.GetSprite(uint16(def.sprNo[0]), uint16(def.sprNo[1]))
+		}
+	default:
+		st.clear()
+	}
+}
+
 // This essentially replaces the old timeline struct
 func (s *Stage) bgCtrlAction() {
 	for i := range s.bgc {
@@ -1751,6 +1866,9 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 			bgc.bg[i].palfx.invertblend = bgc.invblend
 			bgc.bg[i].palfx.color = bgc.color
 			bgc.bg[i].palfx.hue = bgc.hue
+			// The effect only lasts one tick. The BG's PalFX is stepped every tick,
+			// so it expires as soon as the BGCtrl stops reapplying it
+			bgc.bg[i].palfx.time = 1
 		}
 	case BT_PosSet:
 		for i := range bgc.bg {
@@ -1805,6 +1923,19 @@ func (s *Stage) runBgCtrl(bgc *bgCtrl) {
 				}
 			}
 			s.sff.palList.Remap(si, di)
+		}
+	case BT_ShaderSet:
+		key := ""
+		if bgc.shaderName != "" {
+			key = s.customShaders[bgc.shaderName]
+		}
+		for i := range bgc.bg {
+			bg := bgc.bg[i]
+			bg.customShader.set(bgc.shaderName, key)
+			bg.customShader.params = bgc.shaderParams
+			s.setShaderTex(&bg.customShader.tex1, bgc.shaderTex[0])
+			s.setShaderTex(&bg.customShader.tex2, bgc.shaderTex[1])
+			bg.customShaderSet = true
 		}
 	case BT_SinX, BT_SinY:
 		ii := Btoi(bgc._type == BT_SinY)
@@ -1878,7 +2009,24 @@ func (s *Stage) action() {
 
 	// Update animations and controllers
 	if canStep {
+		// Shaders last only while some BGCtrl keeps applying them
+		for _, b := range s.bg {
+			b.customShaderSet = false
+		}
 		s.bgCtrlAction()
+		for _, b := range s.bg {
+			if !b.customShaderSet && b.customShader.name != "" {
+				b.customShader.clear()
+			}
+		}
+		// Stage shadow and reflection shaders last for the whole stage
+		for _, sh := range []*stageShadow{&s.sdw, &s.reflection} {
+			if sh.shader.name != "" {
+				sh.shader.sTime++
+				sh.shader.tex1.step()
+				sh.shader.tex2.step()
+			}
+		}
 		s.bga.action(true)
 
 		if s.model != nil {
@@ -1921,6 +2069,11 @@ func (s *Stage) action() {
 
 		if b.enabled && canStep {
 			s.bg[i].anim.Action()
+			if b.customShader.name != "" {
+				s.bg[i].customShader.sTime++
+				s.bg[i].customShader.tex1.step()
+				s.bg[i].customShader.tex2.step()
+			}
 		}
 	}
 }
@@ -2042,6 +2195,7 @@ func (s *Stage) reset() {
 	s.bga.clear()
 	for i := range s.bg {
 		s.bg[i].reset()
+		s.bg[i].customShader.clear()
 		// Ensure videos start paused, then rewind.
 		if s.bg[i]._type == BG_Video && s.bg[i].video != nil {
 			s.bg[i].video.SetPlaying(false)
@@ -2051,6 +2205,10 @@ func (s *Stage) reset() {
 	if s.model != nil {
 		s.model.reset()
 	}
+	s.sdw.shader.clear()
+	s.applyShadowShader(&s.sdw)
+	s.reflection.shader.clear()
+	s.applyShadowShader(&s.reflection)
 	// No need to reset BGCtrl at the moment. Tied to stagetime
 }
 
@@ -2067,8 +2225,31 @@ func (s *Stage) warn() string {
 	return fmt.Sprintf("%v: WARNING: Stage %v: ", sys.tickCount, s.name)
 }
 
+type modifyBGCtrlShader struct {
+	nameSet bool
+	name    string
+	params  [16]float32 // NaN = unchanged
+	tex     [2]struct {
+		animNo int32    // IErr = unchanged
+		sprNo  [2]int32 // IErr = unchanged
+	}
+}
+
+func (s *Stage) newModifyBGCtrlShader() modifyBGCtrlShader {
+	var m modifyBGCtrlShader
+	for i := range m.params {
+		m.params[i] = float32(math.NaN())
+	}
+	for i := range m.tex {
+		m.tex[i].animNo = IErr
+		m.tex[i].sprNo = [2]int32{IErr, IErr}
+	}
+	return m
+}
+
 func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]int32,
-	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, invall int32, invblend int32, color float32, hue float32) {
+	add, mul [3]int32, sinadd [4]int32, sinmul [4]int32, sincolor [2]int32, sinhue [2]int32, invall int32, invblend int32, color float32, hue float32,
+	shader modifyBGCtrlShader) {
 	for i := range s.bgc {
 		if id == s.bgc[i].sctrlid {
 			if t[0] != IErr {
@@ -2163,6 +2344,24 @@ func (s *Stage) modifyBGCtrl(id int32, t, v [3]int32, x, y float32, src, dst [2]
 			}
 			if !math.IsNaN(float64(hue)) {
 				s.bgc[i].hue = hue / 512
+			}
+			if shader.nameSet {
+				s.bgc[i].shaderName = shader.name
+			}
+			for j := range shader.params {
+				if !math.IsNaN(float64(shader.params[j])) {
+					s.bgc[i].shaderParams[j] = shader.params[j]
+				}
+			}
+			for n := range shader.tex {
+				if shader.tex[n].animNo != IErr {
+					s.bgc[i].shaderTex[n].animNo = shader.tex[n].animNo
+				}
+				for k := 0; k < 2; k++ {
+					if shader.tex[n].sprNo[k] != IErr {
+						s.bgc[i].shaderTex[n].sprNo[k] = shader.tex[n].sprNo[k]
+					}
+				}
 			}
 			s.reload = true
 		}

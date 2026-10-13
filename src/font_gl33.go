@@ -27,6 +27,7 @@ type Font_GL33 struct {
 	textures     []*TextureAtlas
 	color        color
 	shaderPalFX  ShaderPalFX
+	customShader CustomShaderRenderData
 }
 
 type FontRenderer_GL33 struct {
@@ -100,6 +101,10 @@ func (f *Font_GL33) SetPalFX(state ShaderPalFX) {
 	f.shaderPalFX = state
 }
 
+func (f *Font_GL33) SetCustomShader(shader CustomShaderRenderData) {
+	f.customShader = shader
+}
+
 func (f *Font_GL33) UpdateResolution(windowWidth int, windowHeight int) {
 	f.windowWidth = windowWidth
 	f.windowHeight = windowHeight
@@ -138,8 +143,25 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 	}
 
 	// Activate corresponding render state
-	fr.SetFontPipeline()
 	program := fr.shaderProgram
+	custom := false
+	if f.customShader.name != "" {
+		if id, ok := r.customShaderMap[f.customShader.name]; ok {
+			if shader, ok := r.customShaders[id]; ok {
+				program = shader
+				custom = true
+			}
+		}
+	}
+	if custom {
+		// Like SetFontPipeline, but with the custom program. The glyph data lives in the font's VAO and VBO
+		r.currentProgram = program
+		r.ChangeProgram(program.program)
+		r.bindVertexArray(fr.vao)
+		r.bindBuffer(gl.ARRAY_BUFFER, fr.vbo)
+	} else {
+		fr.SetFontPipeline()
+	}
 
 	// Buffer to store vertex data for multiple glyphs
 	batchSize := Min(MaxFontBatchSize, int32(len(indices)))
@@ -155,21 +177,48 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 	//restrict drawing to a certain part of the window
 	r.EnableScissor(window[0], window[1], window[2], window[3])
 
-	// Set texture location
-	r.SetUniformISub(program.uniforms["tex"], 0)
+	// Setup Custom Shader
+	if custom {
+		w, h := float32(f.windowWidth), float32(f.windowHeight)
+		proj := gfx.OrthographicProjectionMatrix(0, w, h, 0, -1, 1)
+		identity := []float32{1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1}
+		r.SetUniformMatrix("projection", proj[:])
+		r.SetUniformMatrix("modelview", identity)
 
-	//set text color
-	r.SetUniformFSub(program.uniforms["textColor"], f.color.r, f.color.g, f.color.b, f.color.a)
+		r.SetUniformISub(program.uniforms["tex"], 0) // Glyph atlas stays on unit 0
+		r.SetUniformI("isFlat", 0)
+		r.SetUniformI("isRgba", 1)
+		r.SetUniformI("mask", 0)
+		r.SetUniformI("isTrapez", 0)
+		r.SetUniformI("neg", int(Btoi(f.shaderPalFX.neg)))
+		r.SetUniformF("alpha", f.color.a)
+		r.SetUniformFv("add", f.shaderPalFX.add[:])
+		mult := []float32{f.shaderPalFX.mult[0] * f.color.r, f.shaderPalFX.mult[1] * f.color.g, f.shaderPalFX.mult[2] * f.color.b}
+		r.SetUniformFv("mult", mult)
+		r.SetUniformF("gray", f.shaderPalFX.gray)
+		r.SetUniformF("hue", f.shaderPalFX.hue)
+		r.SetUniformFv("tint", []float32{0, 0, 0, 0})
 
-	// Set PalFX uniforms
-	r.SetUniformFSub(program.uniforms["palAdd"], f.shaderPalFX.add[0], f.shaderPalFX.add[1], f.shaderPalFX.add[2])
-	r.SetUniformFSub(program.uniforms["palMul"], f.shaderPalFX.mult[0], f.shaderPalFX.mult[1], f.shaderPalFX.mult[2])
-	r.SetUniformFSub(program.uniforms["palGray"], f.shaderPalFX.gray)
-	r.SetUniformFSub(program.uniforms["palHue"], f.shaderPalFX.hue)
-	r.SetUniformISub(program.uniforms["palNeg"], int32(Btoi(f.shaderPalFX.neg)))
+		// Same engine-provided values RenderSprite gives custom shaders
+		f.customShader.setUniforms()
+		r.SetCustomUniforms(f.customShader.params)
+	} else {
+		// Set texture location
+		r.SetUniformISub(program.uniforms["tex"], 0)
 
-	//set screen resolution
-	r.SetUniformFSub(program.uniforms["resolution"], float32(f.windowWidth), float32(f.windowHeight))
+		//set text color
+		r.SetUniformFSub(program.uniforms["textColor"], f.color.r, f.color.g, f.color.b, f.color.a)
+
+		// Set PalFX uniforms
+		r.SetUniformFSub(program.uniforms["palAdd"], f.shaderPalFX.add[0], f.shaderPalFX.add[1], f.shaderPalFX.add[2])
+		r.SetUniformFSub(program.uniforms["palMul"], f.shaderPalFX.mult[0], f.shaderPalFX.mult[1], f.shaderPalFX.mult[2])
+		r.SetUniformFSub(program.uniforms["palGray"], f.shaderPalFX.gray)
+		r.SetUniformFSub(program.uniforms["palHue"], f.shaderPalFX.hue)
+		r.SetUniformISub(program.uniforms["palNeg"], int32(Btoi(f.shaderPalFX.neg)))
+
+		//set screen resolution
+		r.SetUniformFSub(program.uniforms["resolution"], float32(f.windowWidth), float32(f.windowHeight))
+	}
 
 	// No explicit unit 0 activation needed anymore
 	//mr.bindVertexArray(gfxFont.(*FontRenderer_GL33).vao)

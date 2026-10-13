@@ -8382,6 +8382,8 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(e.velocity[2])
 			case "xshear":
 				lv = lua.LNumber(e.xshear)
+			case "shader":
+				lv = lua.LString(e.customShader.name)
 			default:
 				l.RaiseError("\nInvalid argument: %v\n", vname)
 			}
@@ -9934,6 +9936,8 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(p.velmul[2])
 			case "xshear":
 				lv = lua.LNumber(p.xshear)
+			case "shader":
+				lv = lua.LString(p.customShader.name)
 			default:
 				l.RaiseError("\nInvalid argument: %v\n", vname)
 			}
@@ -10410,6 +10414,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(sys.stage.sdw.offset[0]))
 		case "shadow.offset.y":
 			l.Push(lua.LNumber(sys.stage.sdw.offset[1]))
+		case "shadow.shader":
+			l.Push(lua.LString(sys.stage.sdw.shader.name))
 		case "reflection.intensity":
 			l.Push(lua.LNumber(sys.stage.reflection.intensity))
 		case "reflection.yscale":
@@ -10432,6 +10438,8 @@ func triggerFunctions(l *lua.LState) {
 			l.Push(lua.LNumber(int32((sys.stage.reflection.color & 0xFF00) >> 8)))
 		case "reflection.color.b":
 			l.Push(lua.LNumber(int32(sys.stage.reflection.color & 0xFF)))
+		case "reflection.shader":
+			l.Push(lua.LString(sys.stage.reflection.shader.name))
 		default:
 			l.Push(lua.LString(""))
 		}

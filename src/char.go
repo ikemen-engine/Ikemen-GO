@@ -1399,6 +1399,9 @@ type AfterImage struct {
 	priority       int32
 	ignorehitpause bool
 	needsetup      bool
+	shader         CustomShader // Own shader. Replaces the one inherited from the sprite data
+	shaderPN       int
+	shaderInherit  bool
 }
 
 func newAfterImage() *AfterImage {
@@ -1440,6 +1443,7 @@ func newAfterImage() *AfterImage {
 		ai.palfx[0].eAdd = [...]int32{30, 30, 30}
 		ai.palfx[0].eMul = [...]int32{120, 120, 220}
 	}
+	ai.shaderInherit = true
 
 	return ai
 }
@@ -1588,7 +1592,12 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 		oldAnim := img.anim
 		*img = *sd
 		img.anim = oldAnim
-
+		if !ai.shaderInherit {
+			img.customShader = CustomShaderRenderData{}
+		}
+		if ai.shader.name != "" {
+			img.customShader = ai.shader.renderData(false) // Own shader wins over the inherited one
+		}
 		// Clear sync parameters so the sprite won't try to sync with the present
 		img.syncId = 0
 
@@ -1669,6 +1678,11 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 
 	ai.restgap--
 	ai.timecount++
+	if ai.shader.name != "" {
+		ai.shader.sTime++
+		ai.shader.tex1.step()
+		ai.shader.tex2.step()
+	}
 }
 
 func (ai *AfterImage) isActive() bool {
@@ -2449,14 +2463,7 @@ func (e *Explod) cueDraw() {
 	sd.fLength = fLength
 	sd.window = ewin
 	sd.xshear = xshear
-	sd.customShader = CustomShaderRenderData{
-		name:   e.customShader.key,
-		params: e.customShader.params,
-		time:   e.customShader.time,
-		sTime:  e.customShader.interpolatedSTime(!e.pauseBool),
-		tex1:   e.customShader.tex1.GetTexture(),
-		tex2:   e.customShader.tex2.GetTexture(),
-	}
+	sd.customShader = e.customShader.renderData(!e.pauseBool)
 
 	if e.syncId > 0 {
 		sd.syncId = e.syncId
@@ -2466,6 +2473,7 @@ func (e *Explod) cueDraw() {
 	// Record afterimage
 	if e.aimg != nil {
 		if e.aimg.isActive() {
+			e.aimg.shaderInherit = e.customShader.afterimage
 			e.aimg.recAndCue(sd, e.playerno, sys.tickNextFrame() && !e.pauseBool,
 				sys.tickNextFrame() && e.ignorehitpause && (e.supermovetime != 0 || e.pausemovetime != 0))
 		} else {
@@ -2494,6 +2502,7 @@ func (e *Explod) cueDraw() {
 		ss.shadowAlpha = sdwalp
 		ss.shadowOffset = [2]float32{0, sys.stage.sdw.yscale*drawZoff + drawZoff}
 		ss.groundLevel = drawZoff
+		ss.shadowInherit = e.customShader.shadow
 
 		// Add shadow to list
 		sys.shadowList.add(ss)
@@ -2508,6 +2517,7 @@ func (e *Explod) cueDraw() {
 		rs.SpriteData = sd
 		rs.reflectOffset = [2]float32{0, sys.stage.reflection.yscale*drawZoff + drawZoff}
 		rs.groundLevel = drawZoff
+		rs.reflectInherit = e.customShader.reflection
 
 		// Add reflection to list
 		sys.reflectionList.add(rs)
@@ -3315,14 +3325,7 @@ func (p *Projectile) cueDraw() {
 	sd.fLength = fLength
 	sd.window = pwin
 	sd.xshear = p.xshear
-	sd.customShader = CustomShaderRenderData{
-		name:   p.customShader.key,
-		params: p.customShader.params,
-		time:   p.customShader.time,
-		sTime:  p.customShader.interpolatedSTime(!p.pauseBool && p.hitpause <= 0),
-		tex1:   p.customShader.tex1.GetTexture(),
-		tex2:   p.customShader.tex2.GetTexture(),
-	}
+	sd.customShader = p.customShader.renderData(!p.pauseBool && p.hitpause <= 0)
 
 	// Add sprite to the appropriate layer's drawlist
 	sys.spriteList.add(sd)
@@ -3330,6 +3333,7 @@ func (p *Projectile) cueDraw() {
 	// Record afterimage
 	if p.aimg != nil {
 		if p.aimg.isActive() {
+			p.aimg.shaderInherit = p.customShader.afterimage
 			p.aimg.recAndCue(sd, p.playerno, sys.tickNextFrame() && !isPaused, false)
 		} else {
 			p.aimg = nil
@@ -3349,6 +3353,7 @@ func (p *Projectile) cueDraw() {
 		ss.shadowColor = sdwclr
 		ss.shadowOffset = [2]float32{0, sys.stage.sdw.yscale*drawZoff + drawZoff}
 		ss.groundLevel = drawZoff
+		ss.shadowInherit = p.customShader.shadow
 
 		// Add shadow to list
 		sys.shadowList.add(ss)
@@ -3361,6 +3366,7 @@ func (p *Projectile) cueDraw() {
 		rs.SpriteData = sd
 		rs.reflectOffset = [2]float32{0, sys.stage.reflection.yscale*drawZoff + drawZoff}
 		rs.groundLevel = drawZoff
+		rs.reflectInherit = p.customShader.reflection
 
 		// Add reflection to list
 		sys.reflectionList.add(rs)
@@ -3765,6 +3771,8 @@ type Char struct {
 	shadowRot            Rotation
 	shadowProjection     Projection
 	shadowfLength        float32
+	shadowShader         CustomShader
+	shadowShaderSet      bool
 	reflectAnim          *Animation
 	reflectAnimelem      int32
 	reflectColor         [3]int32
@@ -3778,6 +3786,8 @@ type Char struct {
 	reflectRot           Rotation
 	reflectProjection    Projection
 	reflectfLength       float32
+	reflectShader        CustomShader
+	reflectShaderSet     bool
 	ownclsnscale         bool
 	pushPriority         int32
 	pushAffectTeam       int32
@@ -4312,30 +4322,8 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	}
 
 	// Merge common shaders. The char's own shaders take priority
-	for _, key := range SortedKeys(sys.cfg.Common.Shaders) {
-		for _, v := range sys.cfg.Common.Shaders[key] {
-			if err := LoadFile(&v, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}, "", func(filename string) error {
-				str, err := LoadText(filename)
-				if err != nil {
-					return err
-				}
-				lines, i := SplitAndTrim(str, "\n"), 0
-				for i < len(lines) {
-					is, name, _ := ReadIniSection(lines, &i)
-					if name != "shaders" {
-						continue
-					}
-					for sName, path := range is {
-						if _, ok := gi.customShaders[sName]; !ok {
-							sys.loadCustomShaderFile(gi.customShaders, sName, path, []string{filename, "", "data/"})
-						}
-					}
-				}
-				return nil
-			}); err != nil {
-				return err
-			}
-		}
+	if err := sys.loadCommonShaders(gi.customShaders, []string{def, sys.motif.Def, sys.fightScreen.def, "", "data/"}); err != nil {
+		return err
 	}
 
 	// Reset maps in order to upload the freshly loaded defaults
@@ -12401,6 +12389,7 @@ func (c *Char) actionPrepare() {
 		c.shadowRot = Rotation{0, 0, 0}
 		c.shadowProjection = -1
 		c.shadowfLength = 0
+		c.shadowShaderSet = false
 
 		// Reset modifyReflection
 		c.reflectAnim = nil
@@ -12415,6 +12404,7 @@ func (c *Char) actionPrepare() {
 		c.reflectRot = Rotation{0, 0, 0}
 		c.reflectProjection = -1
 		c.reflectfLength = 0
+		c.reflectShaderSet = false
 
 		// Reset TransformSprite
 		c.window = [4]float32{}
@@ -12860,10 +12850,18 @@ func (c *Char) update() {
 					c.ghv.zoff = 0
 				}
 			}
-			if c.customShader.name != "" {
-				c.customShader.sTime++
-				c.customShader.tex1.step()
-				c.customShader.tex2.step()
+			if !c.shadowShaderSet {
+				c.shadowShader.clear()
+			}
+			if !c.reflectShaderSet {
+				c.reflectShader.clear()
+			}
+			for _, cs := range []*CustomShader{&c.customShader, &c.shadowShader, &c.reflectShader} {
+				if cs.name != "" {
+					cs.sTime++
+					cs.tex1.step()
+					cs.tex2.step()
+				}
 			}
 			// Engine dust effects
 			// Moved to system.zss
@@ -13537,14 +13535,7 @@ func (c *Char) cueDraw() {
 		charSD.fLength = fLength
 		charSD.xshear = c.xshear
 		charSD.window = cwin
-		charSD.customShader = CustomShaderRenderData{
-			name:   c.customShader.key,
-			params: c.customShader.params,
-			time:   c.customShader.time,
-			sTime:  c.customShader.interpolatedSTime(c.acttmp > 0),
-			tex1:   c.customShader.tex1.GetTexture(),
-			tex2:   c.customShader.tex2.GetTexture(),
-		}
+		charSD.customShader = c.customShader.renderData(c.acttmp > 0)
 
 		if c.enableSyncId {
 			charSD.syncId = c.id
@@ -13554,6 +13545,7 @@ func (c *Char) cueDraw() {
 		// Record afterimage
 		if c.aimg != nil {
 			if c.aimg.isActive() {
+				c.aimg.shaderInherit = c.customShader.afterimage
 				c.aimg.recAndCue(charSD, c.playerNo, rec, sys.tickNextFrame() && c.hitPause())
 			} else {
 				c.aimg = nil
@@ -13634,6 +13626,11 @@ func (c *Char) cueDraw() {
 				}
 				ss.shadowfLength = c.shadowfLength
 
+				// TODO: Stacking shaders instead of overriding them?
+				if c.shadowShader.name != "" {
+					ss.shadowShader = c.shadowShader.renderData(c.acttmp > 0)
+				}
+				ss.shadowInherit = c.customShader.shadow
 				// Add shadow to list
 				sys.shadowList.add(ss)
 
@@ -13684,6 +13681,11 @@ func (c *Char) cueDraw() {
 					rs.reflectProjection = int32(c.reflectProjection)
 				}
 				rs.reflectfLength = c.reflectfLength
+
+				if c.reflectShader.name != "" {
+					rs.reflectShader = c.reflectShader.renderData(c.acttmp > 0)
+				}
+				rs.reflectInherit = c.customShader.reflection
 
 				// Add reflection to list
 				sys.reflectionList.add(rs)

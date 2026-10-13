@@ -26,6 +26,7 @@ type Font interface {
 		rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 		fs string, argv ...interface{}) error
 	Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
+	SetCustomShader(shader CustomShaderRenderData)
 }
 
 type character struct {
@@ -70,6 +71,7 @@ type TtfFont interface {
 		rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 		fs string, argv ...interface{}) error
 	UpdateResolution(windowWidth int, windowHeight int)
+	SetCustomShader(shader CustomShaderRenderData)
 }
 
 // Fnt is a interface for basic font information
@@ -601,9 +603,9 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 	window *[4]int32, palfx *PalFX, frgba [4]float32) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.DrawTtf(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, align, true, window, frgba, palfx, 0)
+			f.DrawTtf(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, align, true, window, frgba, palfx, 0, CustomShaderRenderData{})
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, bank, align, window, frgba, palfx, 0)
+			f.DrawText(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, bank, align, window, frgba, palfx, 0, CustomShaderRenderData{})
 		}
 	}
 }
@@ -611,7 +613,7 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 // DrawText prints on screen a specified text with the current font sprites
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 	rot Rotation, projectionMode int32, fLength float32, bank, align int32, window *[4]int32,
-	frgba [4]float32, palfx *PalFX, spacingXAdd int32) {
+	frgba [4]float32, palfx *PalFX, spacingXAdd int32, shader CustomShaderRenderData) {
 
 	if len(txt) == 0 || xscl == 0 || yscl == 0 {
 		return
@@ -709,6 +711,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		fLength:        fLength * sys.heightScale,
 		xOffset:        0,
 		yOffset:        0,
+		customShader:   shader,
 	}
 
 	for _, c := range txt {
@@ -718,7 +721,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 
 func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 	projectionMode int32, fLength float32, align int32,
-	blend bool, window *[4]int32, frgba [4]float32, palfx *PalFX, spacingXAdd float32) {
+	blend bool, window *[4]int32, frgba [4]float32, palfx *PalFX, spacingXAdd float32, shader CustomShaderRenderData) {
 
 	if len(txt) == 0 {
 		return
@@ -749,7 +752,7 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 		spfx = NewShaderPalFX()
 	}
 	f.ttf.SetPalFX(spfx)
-
+	f.ttf.SetCustomShader(shader)
 	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3])
 	f.ttf.Printf(x, y, xscl, yscl, spacingXAdd, align, blend, *window,
 		rxadd, rot, projectionMode, fLength, x, y,
@@ -793,6 +796,7 @@ type TextSprite struct {
 	scaleInit    [2]float32
 	windowInit   [4]float32
 	velocityInit [2]float32
+	customShader CustomShader
 }
 
 func NewTextSprite() *TextSprite {
@@ -832,6 +836,7 @@ func (ts *TextSprite) loadDefaults() {
 		ts.palfx = pfx
 	}
 	ts.palfx.clear()
+	ts.customShader.clear()
 }
 
 // Creates a shallow copy with independent palette mapping
@@ -1370,6 +1375,19 @@ func (ts *TextSprite) Update() {
 	if ts.palfx != nil {
 		ts.palfx.step()
 	}
+
+	// Shader time and animation
+	if ts.customShader.time > 0 {
+		ts.customShader.time--
+		if ts.customShader.time == 0 {
+			ts.customShader.clear()
+		}
+	}
+	if ts.customShader.name != "" {
+		ts.customShader.sTime++
+		ts.customShader.tex1.step()
+		ts.customShader.tex2.step()
+	}
 }
 
 func (ts *TextSprite) Draw(ln int16) {
@@ -1436,10 +1454,10 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 		// Draw the visible line
 		if ts.fnt.Type == "truetype" {
 			ts.fnt.DrawTtf(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
-				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &window, ts.frgba, ts.palfx, float32(spacingXAdd))
+				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &window, ts.frgba, ts.palfx, float32(spacingXAdd), ts.customShader.renderData(true))
 		} else {
 			ts.fnt.DrawText(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
-				xshear, ts.rot, ts.projection, ts.fLength, ts.bank, ts.align, &window, ts.frgba, ts.palfx, spacingXAdd)
+				xshear, ts.rot, ts.projection, ts.fLength, ts.bank, ts.align, &window, ts.frgba, ts.palfx, spacingXAdd, ts.customShader.renderData(true))
 		}
 
 		totalCharsShown += charsToShow

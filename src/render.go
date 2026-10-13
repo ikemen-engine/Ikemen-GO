@@ -264,13 +264,16 @@ func (st *ShaderTexture) step() {
 }
 
 type CustomShader struct {
-	name   string // The name chars use to refer to the shader
-	key    string // Engine-wide shader key made from its unique path
-	params [16]float32
-	time   int32
-	sTime  float32
-	tex1   ShaderTexture
-	tex2   ShaderTexture
+	name       string // The name chars use to refer to the shader
+	key        string // Engine-wide shader key made from its unique path
+	params     [16]float32
+	time       int32
+	sTime      float32
+	tex1       ShaderTexture
+	tex2       ShaderTexture
+	shadow     bool
+	reflection bool
+	afterimage bool
 }
 
 // Switching to a different shader drops the previous one's params, textures and elapsed time
@@ -289,6 +292,9 @@ func (cs *CustomShader) clear() {
 	cs.sTime = 0
 	cs.tex1.clear()
 	cs.tex2.clear()
+	cs.shadow = true
+	cs.reflection = true
+	cs.afterimage = true
 }
 
 type CustomShaderRenderData struct {
@@ -306,6 +312,41 @@ func (cs *CustomShader) interpolatedSTime(act bool) float32 {
 		return cs.sTime - (1 - sys.tickInterpolation())
 	}
 	return cs.sTime
+}
+
+func (cs *CustomShader) renderData(act bool) CustomShaderRenderData {
+	return CustomShaderRenderData{
+		name:   cs.key,
+		params: cs.params,
+		time:   cs.time,
+		sTime:  cs.interpolatedSTime(act),
+		tex1:   cs.tex1.GetTexture(),
+		tex2:   cs.tex2.GetTexture(),
+	}
+}
+
+func (cs CustomShaderRenderData) setUniforms() {
+	var timeSec float32
+	if sys.middleOfMatch() {
+		// Global shader time is interpolated between game ticks
+		timeSec = float32(sys.gameTime()) - (1 - sys.tickInterpolation())
+		if timeSec < 0 {
+			timeSec = 0
+		}
+	} else {
+		timeSec = float32(sys.frameCounter)
+	}
+	gfx.SetUniformF("iTime", timeSec/60.0)
+	gfx.SetUniformF("sTime", cs.sTime)
+	gfx.SetUniformF("iResolution", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	gfx.SetUniformF("aspectRatio", sys.getCurrentAspect()/sys.getFightAspect())
+	if cs.tex1 != nil {
+		gfx.SetTexture("tex1", cs.tex1)
+	}
+	if cs.tex2 != nil {
+		gfx.SetTexture("tex2", cs.tex2)
+	}
+	gfx.SetCustomUniforms(cs.params)
 }
 
 func (rp *RenderParams) IsValid() bool {
@@ -861,35 +902,13 @@ func RenderSprite(rp RenderParams) {
 	}
 
 	if rp.customShader.name != "" {
-		var timeSec float32
-		if sys.middleOfMatch() {
-			// Global shader time is interpolated between game ticks
-			timeSec = float32(sys.gameTime()) - (1 - sys.tickInterpolation())
-			if timeSec < 0 {
-				timeSec = 0
-			}
-		} else {
-			timeSec = float32(sys.frameCounter)
-		}
-		gfx.SetUniformF("iTime", timeSec/60.0)
-		gfx.SetUniformF("sTime", rp.customShader.sTime)
-		gfx.SetUniformF("iResolution", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
-		aspectRatio := sys.getCurrentAspect() / sys.getFightAspect()
-		gfx.SetUniformF("aspectRatio", aspectRatio)
-
+		rp.customShader.setUniforms()
 		if gfx.NeedsGrabPass() {
 			grabTex := gfx.ResolveBackBuffer()
 			if grabTex != nil {
 				gfx.SetTexture("bgl_RenderedTexture", grabTex)
 			}
 		}
-		if rp.customShader.tex1 != nil {
-			gfx.SetTexture("tex1", rp.customShader.tex1)
-		}
-		if rp.customShader.tex2 != nil {
-			gfx.SetTexture("tex2", rp.customShader.tex2)
-		}
-		gfx.SetCustomUniforms(rp.customShader.params)
 	}
 	// Texture binding
 	gfx.SetTexture("tex", rp.tex)
