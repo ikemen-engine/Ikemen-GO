@@ -1469,7 +1469,7 @@ func (mv TypedValue) ToBV() BytecodeValue {
 	case VT_String:
 		return BytecodeString(mv.Str) // Re-interns into the reading char's pool
 	case VT_None:
-		return BytecodeFloat(0) // Unset keys still read as 0, as they did before
+		return BytecodeInt(0) // Unset keys read as int 0, like var()
 	}
 	return BytecodeValue{mv.Type, mv.Num}
 }
