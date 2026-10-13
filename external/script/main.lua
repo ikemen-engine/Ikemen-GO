@@ -4073,10 +4073,58 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(sec.footer.version.TextSpriteData)
 	end
 	main.f_hintDraw(opts.hint or sec.hint, opts.hintContext, nil, nil, nil, opts.hintActions)
+	-- Description of the highlighted item, keyed by its paramname.
+	main.f_menuItemHintDraw(m.hint, t[item])
 	--frame transition
 	if not skipClear then
 		refresh()
 	end
+end
+
+-- Draws a menu item's description. Tries the full item path, then the item name, then
+-- "<parent>_item" for list rows, with the parent as a full path or its leaf. %s becomes the item's name.
+function main.f_menuItemHintDraw(hint, item)
+	if hint == nil or item == nil or hint.text == nil then
+		return
+	end
+	local text = nil
+	if item.paramname ~= nil and item.paramname ~= '' then
+		text = hint.text[item.paramname]
+	end
+	if text == nil and item.itemname ~= nil then
+		text = hint.text[item.itemname]
+	end
+	if text == nil and item.paramname ~= nil and item.paramname ~= '' then
+		-- Dynamic list rows (shaders, profiles) share one "<parent>_item" entry.
+		-- Walk the path up by "_" so filenames containing "_" still resolve.
+		local parents = {}
+		local parent = item.paramname:match('^(.+)_[^_]+$')
+		while parent ~= nil do
+			table.insert(parents, parent)
+			parent = parent:match('^(.+)_[^_]+$')
+		end
+		-- Full parent paths win, then the same paths with leading parts dropped, down to the leaf.
+		for _, p in ipairs(parents) do
+			text = text or hint.text[p .. '_item']
+		end
+		for _, p in ipairs(parents) do
+			local tail = p:match('^[^_]+_(.+)$')
+			while text == nil and tail ~= nil do
+				text = hint.text[tail .. '_item']
+				tail = tail:match('^[^_]+_(.+)$')
+			end
+		end
+	end
+	if text == nil then
+		return
+	end
+	if item.displayname ~= nil and text:find('%%s') ~= nil then
+		text = string.format(text, item.displayname)
+	end
+	main.f_animPosDraw(hint.bg.AnimData)
+	textImgReset(hint.TextSpriteData)
+	textImgSetText(hint.TextSpriteData, tostring(text):gsub('\\n', '\n'))
+	textImgDraw(hint.TextSpriteData)
 end
 
 --force menu to snap, boxcursor snaps if enabled
