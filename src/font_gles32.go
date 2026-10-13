@@ -197,7 +197,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		r.SetUniformFv("tint", []float32{0, 0, 0, 0})
 
 		// Same engine-provided values RenderSprite gives custom shaders
-		f.customShasder.setUniforms()
+		f.customShader.setUniforms()
 		r.SetCustomUniforms(f.customShader.params)
 	} else {
 		// Set texture location
