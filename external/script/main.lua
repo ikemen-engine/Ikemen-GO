@@ -2805,19 +2805,24 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				end
 				local cancelInputTime = getInputTime(-1, motif[main.group].menu.cancel.key)
 				if esc() or cancelInputTime > 0 then
-					if not bool_main then
-						sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
-					elseif not esc() and t[item].itemname ~= 'exit' then
-						--menu key moves cursor to exit without exiting the game
-						for i = 1, #t do
-							if t[i].itemname == 'exit' then
-								sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
-								item = i
-								cursorPosY = math.min(item, motif[main.group].menu.window.visibleitems)
-								if cursorPosY >= motif[main.group].menu.window.visibleitems then
-									moveTxt = (item - motif[main.group].menu.window.visibleitems) * motif[main.group].menu.item.spacing[2]
+					-- Only a fresh press (or Esc) backs out or moves to Exit, so one
+					-- held cancel cannot ripple through several menus up to Exit.
+					local fresh = esc() or cancelInputTime == 1
+					if fresh then
+						if not bool_main then
+							sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+						elseif not esc() and t[item].itemname ~= 'exit' then
+							--menu key moves cursor to exit without exiting the game
+							for i = 1, #t do
+								if t[i].itemname == 'exit' then
+									sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+									item = i
+									cursorPosY = math.min(item, motif[main.group].menu.window.visibleitems)
+									if cursorPosY >= motif[main.group].menu.window.visibleitems then
+										moveTxt = (item - motif[main.group].menu.window.visibleitems) * motif[main.group].menu.item.spacing[2]
+									end
+									break
 								end
-								break
 							end
 						end
 					end
@@ -2832,7 +2837,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 							motif.infobox.text.TextSpriteData
 						)
 					end
-					if not bool_main or esc() then
+					if fresh and (not bool_main or esc()) then
 						break
 					end
 				elseif bool_f1 and (getKey(motif.infobox.keycode) or gameOption('Config.FirstRun')) then
