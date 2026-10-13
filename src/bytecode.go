@@ -1645,6 +1645,16 @@ func (be BytecodeExp) ReadPoolStringAt(i *int) string {
 	return pool[idx]
 }
 
+// Reads a map key operand. -1 means a string expression already pushed the key
+func (be BytecodeExp) readMapKey(i *int) string {
+	idx := be.ReadIntAt(i)
+	if idx == -1 {
+		// Map names are case-insensitive. toLowS uses the pool's lowercase list instead of lowercasing every frame
+		return sys.bcStack.Pop().toLowS()
+	}
+	return sys.stringPool[sys.workingState.playerNo].List[idx]
+}
+
 // Reads the expression length header at the current pointer
 func (be BytecodeExp) PeekLength(i int) int {
 	return int(*(*int32)(unsafe.Pointer(&be[i])))
@@ -2794,7 +2804,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 		*sys.bcStack.Top() = c.sysFvarAdd(vno, val)
 	case OC_st_map:
 		val := sys.bcStack.Pop()
-		mapName := be.ReadPoolStringAt(i)
+		mapName := be.readMapKey(i)
 		sys.bcStack.Push(c.mapSet(mapName, val, 0))
 	}
 }
@@ -3805,7 +3815,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_localcoord_y:
 		sys.bcStack.PushI(sys.cgi[c.playerNo].localcoord[1])
 	case OC_ex_maparray:
-		mapName := be.ReadPoolStringAt(i)
+		mapName := be.readMapKey(i)
 		sys.bcStack.Push(c.mapArray[mapName].ToBV())
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()

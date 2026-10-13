@@ -5192,10 +5192,50 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
 		}
-		var m string = c.token
+		// map(name) with a single name is a literal key, as before
+		// Anything else is a string expression, e.g. map("name"), map($name) or map(ifelse(...))
+		// So map(ifelse) is the same as map("ifelse") but not map(ifelse(...))
+		key := c.token
+		var keyExp BytecodeExp
+		// Read the token after the key, and go back if the key turns out to be an expression
+		savedIn := *in
 		c.token = c.tokenizer(in)
+		// A quote starts a string and "$" starts a local variable, so neither is a name
+		// Anything other than ")" after the key means the expression continues
+		if key == "\"" || strings.HasPrefix(key, "$") || c.token != ")" {
+			c.token, *in = key, savedIn
+			kv, err := c.expBoolOr(&keyExp, in)
+			if err != nil {
+				return bvNone(), err
+			}
+			// Constant numbers can't be keys. Runtime values are still unchecked
+			if !kv.IsNone() && kv.vtype != VT_String {
+				return bvNone(), Error("Expected a string expression")
+			}
+			keyExp.appendValue(kv)
+			// Constant keys are resolved now, the same as a single name
+			// A lone OC_string with its 4 byte index means the key is a plain quoted string
+			if len(keyExp) == 5 && keyExp[0] == OC_string {
+				i := 1
+				key = sys.stringPool[c.playerNo].List[keyExp.ReadIntAt(&i)]
+				keyExp = nil
+			}
+		}
 		if err := c.checkClosingParenthesis(); err != nil {
 			return bvNone(), err
+		}
+		// Literal keys are stored lowercase in the string pool, as before
+		// For expressions, -1 tells the opcode to take the key from the stack instead
+		keyIdx := int32(-1)
+		if keyExp == nil {
+			keyIdx = int32(sys.stringPool[c.playerNo].Add(strings.ToLower(key)))
+		} else {
+			// The key belongs to the caller, not the redirect target
+			// It's pushed before any := value, so the opcode pops the value first
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(keyExp)))
+			}
+			out.append(keyExp...)
 		}
 		c.token = c.tokenizer(in)
 		// Map assignment with := operator
@@ -5214,10 +5254,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(be2...)
 			out.append(OC_st_)
-			out.appendI32Op(OC_st_map, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+			out.appendI32Op(OC_st_map, keyIdx)
 		} else {
 			out.append(OC_ex_)
-			out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+			out.appendI32Op(OC_ex_maparray, keyIdx)
 		}
 		return bvNone(), nil
 	case "memberno":
