@@ -6673,7 +6673,7 @@ func (c *CharCompiler) getHitVarSet(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		if err := c.paramValue(is, sc, "hitcount",
-			getHitVarSet_hittime, VT_Int, 1, false); err != nil {
+			getHitVarSet_hitcount, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "hitshaketime",
