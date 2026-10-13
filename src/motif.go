@@ -644,20 +644,100 @@ type PlayerDialogueProperties struct {
 }
 
 type TextInputProperties struct {
+	Text map[string]string `ini:"text" keyfirst:"true"`
+}
+
+type KeyboardKeyProperties struct {
 	TextMapProperties
-	Overlay OverlayProperties `ini:"overlay"`
-	Confirm struct {
+	Bg struct {
+		AnimationProperties
+		Col      [3]int32 `ini:"col"`
+		Alpha    [2]int32 `ini:"alpha" default:"255,0"`
+		RectData *Rect
+	} `ini:"bg"`
+}
+
+type KeyboardInfoProperties struct {
+	Pos       [2]float32        `ini:"pos"`
+	MaxLength int               `ini:"maxlength" default:"256"`
+	Layout    map[string]string `ini:"layout"`
+	Overlay   OverlayProperties `ini:"overlay"`
+	// Unlike menu.boxbg (sized from boxcursor.coords), this box is auto-fitted
+	// around the whole generated key grid; coords only pads it (left,top,right,bottom).
+	BoxBg struct {
+		BoxBgProperties
+		Coords [4]int32 `ini:"coords"`
+	} `ini:"boxbg"`
+	Title TextProperties `ini:"title"`
+	Timer TextProperties `ini:"timer"`
+	Text  struct {
+		TextProperties
+		Bg     OverlayProperties `ini:"bg"`
+		Cursor TextProperties    `ini:"cursor"`
+	} `ini:"text"`
+	Key struct {
+		KeyboardKeyProperties
+		Size    [2]float32            `ini:"size"`
+		Spacing [2]float32            `ini:"spacing"`
+		Width   map[string]float32    `ini:"width"`
+		Active  KeyboardKeyProperties `ini:"active"`
+		Pressed KeyboardKeyProperties `ini:"pressed"`
+	} `ini:"key"`
+	Up struct {
 		Action []string `ini:"action"`
-	} `ini:"confirm"`
-	Trim struct {
+	} `ini:"up"`
+	Down struct {
 		Action []string `ini:"action"`
-	} `ini:"trim"`
-	Truncate struct {
+	} `ini:"down"`
+	Left struct {
 		Action []string `ini:"action"`
-	} `ini:"truncate"`
+	} `ini:"left"`
+	Right struct {
+		Action []string `ini:"action"`
+	} `ini:"right"`
+	Select struct {
+		Action []string `ini:"action"`
+	} `ini:"select"`
+	Backspace struct {
+		Action []string `ini:"action"`
+	} `ini:"backspace"`
+	Delete struct {
+		Action []string `ini:"action"`
+	} `ini:"delete"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Done struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Shift struct {
+		Action []string `ini:"action"`
+	} `ini:"shift"`
+	Page struct {
+		Action []string `ini:"action"`
+	} `ini:"page"`
+	Cursor struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+		Start struct {
+			Action []string `ini:"action"`
+		} `ini:"start"`
+		End struct {
+			Action []string `ini:"action"`
+		} `ini:"end"`
+	} `ini:"cursor"`
 	Paste struct {
 		Action []string `ini:"action"`
 	} `ini:"paste"`
+	Move  struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
 	Hint HintProperties `ini:"hint"`
 }
 
@@ -1327,7 +1407,10 @@ type DialogueInfoProperties struct {
 }
 
 type HiscoreInfoProperties struct {
-	Enabled bool              `ini:"enabled"`
+	Enabled bool `ini:"enabled"`
+	ArcadeInput struct {
+		Enabled bool `ini:"enabled"`
+	} `ini:"arcadeinput"`
 	FadeIn  FadeProperties    `ini:"fadein"`
 	FadeOut FadeProperties    `ini:"fadeout"`
 	Time    int32             `ini:"time"`
@@ -1364,13 +1447,7 @@ type HiscoreInfoProperties struct {
 		Width        int32 `ini:"width"`
 	} `ini:"window"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Next    struct {
-		Action []string `ini:"action"`
-	} `ini:"next"`
-	Previous struct {
-		Action []string `ini:"action"`
-	} `ini:"previous"`
-	Done struct {
+	Done    struct {
 		Action []string `ini:"action"`
 		Snd  [2]int32 `ini:"snd" default:"-1,0"`
 		Time int32    `ini:"time"`
@@ -1378,6 +1455,16 @@ type HiscoreInfoProperties struct {
 	Cancel struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
+	TextInput struct {
+		Text      string `ini:"text"`
+		MaxLength int    `ini:"maxlength" default:"3"`
+	} `ini:"textinput"`
+	Next struct {
+		Action []string `ini:"action"`
+	} `ini:"next"`
+	Previous struct {
+		Action []string `ini:"action"`
+	} `ini:"previous"`
 	Move struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
@@ -1533,6 +1620,8 @@ type Motif struct {
 	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
 	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
 	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
+	KeyboardInfo    KeyboardInfoProperties              `ini:"keyboard_info"`
+	KeyboardBgDef   BgDefProperties                     `ini:"keyboardbgdef"`
 	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
@@ -2871,6 +2960,11 @@ func (m *Motif) loadFiles() {
 	} else {
 		m.SideSelectBgDef = m.OptionBgDef
 	}
+	if _, err := m.UserIniFile.GetSection("KeyboardBgDef"); err == nil {
+		m.loadBgDefProperties(&m.KeyboardBgDef, "keyboardbg", m.Files.Spr)
+	} else {
+		m.KeyboardBgDef = m.OptionBgDef
+	}
 
 	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, "", func(filename string) error {
 		if filename != "" {
@@ -3308,6 +3402,7 @@ func (mo *Motif) processStateTransitionsBySide(p1States, p2States [4][]int32) {
 }
 
 func (m *Motif) reset() {
+	sys.textInput.finish(false)
 	if m.IniFile == nil {
 		return
 	}
@@ -5456,6 +5551,128 @@ func (di *MotifDialogue) draw(m *Motif, layerno int16) {
 	m.DialogueInfo.Hint.draw(layerno, "default")
 }
 
+// Draw after scene fades in both refresh() and renderFrame(). All keyboard
+// elements use motif coordinates, including when opened over a paused match.
+func (t *TextInput) draw() {
+	if !t.active {
+		return
+	}
+	k := &sys.motif.KeyboardInfo
+	previous := sys.captureAspectState()
+	if sys.canUseFullResolutionAspect() {
+		sys.restoreAspectState(aspectStateForSize(sys.scrrect[2], sys.scrrect[3]))
+	} else {
+		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+	}
+	defer sys.restoreAspectState(previous)
+	if k.Text.Bg.RectData != nil {
+		sys.window.SetTextInputRect(k.Text.Bg.RectData.drawWindow())
+	}
+	for _, style := range []*KeyboardKeyProperties{&k.Key.KeyboardKeyProperties, &k.Key.Active, &k.Key.Pressed} {
+		if style.Bg.AnimData != nil {
+			style.Bg.AnimData.Update(false)
+		}
+	}
+	// Fit the box background around the whole key grid.
+	var boxFit [4]float32
+	hasBox := len(t.keys) > 0 && k.BoxBg.RectData != nil
+	if hasBox {
+		boxFit = t.keys[0].rect
+		for _, key := range t.keys {
+			boxFit[0] = Min(boxFit[0], key.rect[0])
+			boxFit[1] = Min(boxFit[1], key.rect[1])
+			boxFit[2] = Max(boxFit[2], key.rect[2])
+			boxFit[3] = Max(boxFit[3], key.rect[3])
+		}
+		// coords pads the fitted box outward: left, top, right, bottom.
+		boxFit[0] -= float32(k.BoxBg.Coords[0])
+		boxFit[1] -= float32(k.BoxBg.Coords[1])
+		boxFit[2] += float32(k.BoxBg.Coords[2])
+		boxFit[3] += float32(k.BoxBg.Coords[3])
+	}
+	for layer := int16(0); layer <= 2; layer++ {
+		k.Overlay.RectData.Draw(layer)
+		if hasBox {
+			box := *k.BoxBg.RectData
+			box.SetWindow(boxFit)
+			box.Draw(layer)
+		}
+		k.Text.Bg.RectData.Draw(layer)
+		if title := k.Title.TextSpriteData; title != nil {
+			title.text = t.title
+			title.Draw(layer)
+		}
+		if timer := k.Timer.TextSpriteData; timer != nil && t.time >= 0 {
+			timer.text = fmt.Sprintf(sys.motif.replaceFormatSpecifiers(k.Timer.Text), t.time)
+			timer.Draw(layer)
+		}
+		for i, key := range t.keys {
+			style := &k.Key.KeyboardKeyProperties
+			if i == t.selected {
+				style = &k.Key.Active
+			}
+			if i == t.pressed {
+				style = &k.Key.Pressed
+			}
+			r := key.rect
+			if style.Bg.Anim >= 0 || style.Bg.Spr[0] >= 0 {
+				if a := style.Bg.AnimData.Copy(); a != nil {
+					a.SetPos(r[0]+style.Bg.Offset[0], r[1]+style.Bg.Offset[1])
+					a.Draw(layer)
+				}
+			} else if style.Bg.RectData != nil {
+				bg := *style.Bg.RectData
+				bg.SetWindow(r)
+				bg.Draw(layer)
+			}
+			if ts := style.TextSpriteData.Copy(); ts != nil {
+				name := strings.Trim(key.text, "{}")
+				label, ok := k.Key.Text[name]
+				if !ok {
+					label, ok = textInputCharacters[name]
+					if !ok {
+						label = key.text
+					}
+				}
+				ts.text = label
+				ts.AddPos((r[0]+r[2])/2, (r[1]+r[3])/2)
+				ts.Draw(layer)
+			}
+		}
+		t.drawValue(layer)
+		context := "default"
+		if t.keyboard {
+			context = "keyboard"
+		}
+		k.Hint.draw(layer, context)
+	}
+}
+
+func (t *TextInput) drawValue(layer int16) {
+	k := &sys.motif.KeyboardInfo
+	ts := k.Text.TextSpriteData.Copy()
+	if ts == nil {
+		return
+	}
+	ts.glyphs, ts.literal = false, true
+	width := float32(k.Text.Window[2] - k.Text.Window[0])
+	if width <= 0 {
+		width = float32(k.Text.Localcoord[0]) - k.Text.Offset[0]*2
+	}
+	scale := ts.xscl / ts.localScale
+	t.scroll = Min(t.scroll, t.cursor)
+	for t.scroll < t.cursor && float32(ts.TextWidth(string(t.value[t.scroll:t.cursor])))*scale > width-8 {
+		t.scroll++
+	}
+	before := string(t.value[t.scroll:t.cursor])
+	ts.text = before + t.composition + string(t.value[t.cursor:])
+	ts.Draw(layer)
+	if cursor := k.Text.Cursor.TextSpriteData.Copy(); cursor != nil {
+		cursor.AddPos(k.Text.Offset[0]+float32(ts.TextWidth(before))*scale, k.Text.Offset[1])
+		cursor.Draw(layer)
+	}
+}
+
 type MotifHiscore struct {
 	enabled     bool
 	active      bool
@@ -5480,8 +5697,9 @@ type MotifHiscore struct {
 	nameUseActive2    bool
 
 	// Name entry & timer
+	controller  int   // controller index entering the name
+	letters     []int // 1-based indices into glyphs, for arcade entry
 	input       bool  // true while entering name
-	letters     []int // 1-based indices into glyph list
 	timerCount  int32 // remaining displayed timer count
 	timerFrames int32 // frames left until next decrement
 	haveSaved   bool  // true once we've persisted the entered name
@@ -5510,8 +5728,13 @@ type rankingRow struct {
 }
 
 func (hi *MotifHiscore) reset(m *Motif) {
+	if hi.input {
+		sys.textInput.finish(false)
+	}
 	hi.active = false
 	hi.initialized = false
+	hi.controller = 0
+	hi.letters = nil
 	hi.endTimer = -1
 	hi.counter = 0
 	hi.place = 0
@@ -5524,7 +5747,6 @@ func (hi *MotifHiscore) reset(m *Motif) {
 	hi.rankUseActive2, hi.resultUseActive2, hi.nameUseActive2 = false, false, false
 	hi.rows = nil
 	hi.input = false
-	hi.letters = nil
 	hi.timerCount = 0
 	hi.timerFrames = 0
 	hi.haveSaved = false
@@ -5567,10 +5789,6 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 	hi.noBgs = noBgs
 	hi.noOverlay = noOverlay
 	hi.input = (place > 0)
-	if hi.input {
-		// Start with one letter selected
-		hi.letters = []int{1}
-	}
 
 	// Timer setup (only matters during input)
 	hi.timerCount = m.HiscoreInfo.Timer.Count
@@ -5744,16 +5962,8 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 				)))
 				rowYBase := baseY + itemOffY + stepY*float32(i)
 				ts.SetPos(rowXBase+m.HiscoreInfo.Item.Name.Offset[0], rowYBase+m.HiscoreInfo.Item.Name.Offset[1])
-				// If highlighted & input, start with glyph-based editable text; else use row.name from stats
-				if hi.input && int(hi.place-1) == i {
-					row.name = "" // TODO: this shouldn't be needed if we're appending new row
-					name := buildNameFromLetters(m, hi.letters)
-					fs := m.replaceFormatSpecifiers(m.HiscoreInfo.Item.Name.Text["default"])
-					ts.text = fmt.Sprintf(fs, name)
-				} else {
-					fs := m.replaceFormatSpecifiers(m.HiscoreInfo.Item.Name.Text["default"])
-					ts.text = fmt.Sprintf(fs, row.name)
-				}
+				fs := m.replaceFormatSpecifiers(m.HiscoreInfo.Item.Name.Text["default"])
+				ts.text = fmt.Sprintf(fs, row.name)
 				if m.HiscoreInfo.Item.Name.Uppercase {
 					ts.text = strings.ToUpper(ts.text)
 				}
@@ -5776,18 +5986,11 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 		}
 	}
 
-	// Initialize timer TextSprite (position & first value)
-	if m.HiscoreInfo.Timer.TextSpriteData != nil {
-		m.HiscoreInfo.Timer.TextSpriteData.Reset()
-		m.HiscoreInfo.Timer.TextSpriteData.AddPos(m.HiscoreInfo.Pos[0], m.HiscoreInfo.Pos[1])
-		ts := m.HiscoreInfo.Timer.Text
-		ts = m.replaceFormatSpecifiers(ts)
-		if hi.input && hi.timerCount >= 0 && m.HiscoreInfo.Timer.Count != -1 {
-			m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, hi.timerCount)
-		} else {
-			// Leave text as-is if timer disabled
-			m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, 0)
-		}
+	// Arcade entry shows the countdown on this screen instead of the keyboard.
+	if ts := m.HiscoreInfo.Timer.TextSpriteData; ts != nil {
+		ts.Reset()
+		ts.AddPos(m.HiscoreInfo.Pos[0], m.HiscoreInfo.Pos[1])
+		ts.text = fmt.Sprintf(m.replaceFormatSpecifiers(m.HiscoreInfo.Timer.Text), hi.timerCount)
 	}
 
 	m.HiscoreBgDef.BGDef.Reset()
@@ -5823,6 +6026,24 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 	//hi.counter = 0
 	hi.active = true
 	hi.initialized = true
+	hi.controller = sys.runSideIndex()
+	if hi.input && int(hi.place) <= len(hi.rows) {
+		if m.HiscoreInfo.ArcadeInput.Enabled {
+			hi.letters = []int{1}
+			m.setRowName(&hi.rows[hi.place-1], hi.arcadeName(m))
+		} else {
+			device := sys.participantMenuDevice(sys.inputRemap[hi.controller])
+			if err := sys.textInput.open(m.HiscoreInfo.TextInput.Text,
+				hi.rows[hi.place-1].name, m.HiscoreInfo.TextInput.MaxLength, device); err != nil {
+				LogMessage("Unable to open name entry: %v", err)
+				hi.input = false
+			} else {
+				sys.textInput.time = hi.timerCount
+			}
+		}
+	} else {
+		hi.input = false
+	}
 }
 
 func (hi *MotifHiscore) step(m *Motif) {
@@ -5836,8 +6057,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 	}
 	// Begin fade-out on cancel or when time elapses.
 	if hi.endTimer == -1 {
-		cancel := sys.esc ||
-			(!hi.input && sys.menuAction(m.HiscoreInfo.Done.Action, -1)) ||
+		cancel := !hi.input && (sys.esc || sys.menuAction(m.HiscoreInfo.Done.Action, -1)) ||
 			(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)
 		if cancel || (!hi.input && hi.counter == hi.endTime) {
 			if !hi.noFade {
@@ -5879,76 +6099,38 @@ func (hi *MotifHiscore) step(m *Motif) {
 					}
 					hi.timerFrames = m.HiscoreInfo.Timer.Framespercount
 				}
-				// Update timer text each step
-				if m.HiscoreInfo.Timer.TextSpriteData != nil {
-					ts := m.HiscoreInfo.Timer.Text
-					ts = m.replaceFormatSpecifiers(ts)
-					m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, hi.timerCount)
+				if m.HiscoreInfo.ArcadeInput.Enabled {
+					if ts := m.HiscoreInfo.Timer.TextSpriteData; ts != nil {
+						ts.text = fmt.Sprintf(m.replaceFormatSpecifiers(m.HiscoreInfo.Timer.Text), hi.timerCount)
+					}
+				} else {
+					sys.textInput.time = hi.timerCount
 				}
-				// When time runs out, auto-finish input
 				if hi.timerCount <= 0 {
-					m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-					hi.input = false
-					// Give a short tail
-					hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
-					hi.finalizeAndSave()
+					if m.HiscoreInfo.ArcadeInput.Enabled {
+						m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+						hi.finishInput(m)
+					} else {
+						sys.textInput.finish(true)
+					}
 				}
 			}
-
-			// Handle name glyph entry while input is active
-			if hi.input {
-				controller := sys.runSideIndex()
-				maxLen := initialsWidth(m.HiscoreInfo.Item.Name.Text["default"])
-				glyphCount := len(m.HiscoreInfo.Glyphs)
-				// Previous glyph
-				if sys.menuAction(m.HiscoreInfo.Previous.Action, controller) {
-					m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
-					if len(hi.letters) == 0 {
-						hi.letters = []int{1}
-					} else {
-						last := len(hi.letters) - 1
-						hi.letters[last]--
-						if hi.letters[last] <= 0 {
-							hi.letters[last] = glyphCount
+			if hi.input && m.HiscoreInfo.ArcadeInput.Enabled {
+				hi.stepArcadeInput(m, row)
+			} else if hi.input {
+				sys.textInput.step()
+				m.setRowName(row, string(sys.textInput.value))
+				if !sys.textInput.active {
+					hi.input = false
+					hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+					if sys.textInput.closedByAction {
+						sound := m.KeyboardInfo.Cancel.Snd
+						if sys.textInput.accepted {
+							sound = m.KeyboardInfo.Done.Snd
 						}
+						m.Snd.play(sound, 100, 0, 0, 0, 0)
 					}
-					updateRowNameFromLetters(m, row, hi.letters)
-					// Next glyph
-				} else if sys.menuAction(m.HiscoreInfo.Next.Action, controller) {
-					m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
-					if len(hi.letters) == 0 {
-						hi.letters = []int{1}
-					} else {
-						last := len(hi.letters) - 1
-						hi.letters[last]++
-						if hi.letters[last] > glyphCount {
-							hi.letters[last] = 1
-						}
-					}
-					updateRowNameFromLetters(m, row, hi.letters)
-					// Confirm / Add / Backspace
-				} else if sys.menuAction(m.HiscoreInfo.Done.Action, controller) {
-					// Current glyph meaning
-					curGlyph := currentGlyph(m, hi.letters)
-					if curGlyph == "<" {
-						// Backspace
-						m.Snd.play(m.HiscoreInfo.Cancel.Snd, 100, 0, 0, 0, 0)
-						if len(hi.letters) > 1 {
-							hi.letters = hi.letters[:len(hi.letters)-1]
-						} else {
-							hi.letters = []int{1}
-						}
-						updateRowNameFromLetters(m, row, hi.letters)
-					} else if len(hi.letters) < maxLen {
-						m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-						lastIdx := hi.letters[len(hi.letters)-1]
-						hi.letters = append(hi.letters, lastIdx)
-						updateRowNameFromLetters(m, row, hi.letters)
-					} else {
-						// Finalize
-						m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-						hi.input = false
-						hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+					if sys.textInput.accepted {
 						hi.finalizeAndSave()
 					}
 				}
@@ -5967,6 +6149,76 @@ func (hi *MotifHiscore) step(m *Motif) {
 	}
 
 	hi.counter++
+}
+
+// Arcade name entry for cabinets without a keyboard: up/down change the letter,
+// a button accepts it. "<" deletes, ">" adds a space.
+func (hi *MotifHiscore) stepArcadeInput(m *Motif, row *rankingRow) {
+	count := len(m.HiscoreInfo.Glyphs)
+	if count == 0 {
+		return
+	}
+	if len(hi.letters) == 0 {
+		hi.letters = []int{1}
+	}
+	last := len(hi.letters) - 1
+	switch {
+	case sys.menuAction(m.HiscoreInfo.Previous.Action, hi.controller):
+		m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
+		hi.letters[last]--
+		if hi.letters[last] <= 0 {
+			hi.letters[last] = count
+		}
+	case sys.menuAction(m.HiscoreInfo.Next.Action, hi.controller):
+		m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
+		hi.letters[last]++
+		if hi.letters[last] > count {
+			hi.letters[last] = 1
+		}
+	case sys.menuAction(m.HiscoreInfo.Done.Action, hi.controller):
+		if m.HiscoreInfo.Glyphs[hi.letters[last]-1] == "<" {
+			m.Snd.play(m.HiscoreInfo.Cancel.Snd, 100, 0, 0, 0, 0)
+			if len(hi.letters) > 1 {
+				hi.letters = hi.letters[:last]
+			} else {
+				hi.letters[0] = 1
+			}
+		} else if len(hi.letters) < m.HiscoreInfo.TextInput.MaxLength {
+			m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+			hi.letters = append(hi.letters, hi.letters[last])
+		} else {
+			m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+			m.setRowName(row, hi.arcadeName(m))
+			hi.finishInput(m)
+			return
+		}
+	default:
+		return
+	}
+	m.setRowName(row, hi.arcadeName(m))
+}
+
+// Turns the selected glyph indices into the name being entered.
+func (hi *MotifHiscore) arcadeName(m *Motif) string {
+	var name strings.Builder
+	for _, index := range hi.letters {
+		if index <= 0 || index > len(m.HiscoreInfo.Glyphs) {
+			continue
+		}
+		glyph := m.HiscoreInfo.Glyphs[index-1]
+		if glyph == ">" {
+			glyph = " "
+		}
+		name.WriteString(glyph)
+	}
+	return name.String()
+}
+
+// Ends name entry and gives the screen a short tail before it closes.
+func (hi *MotifHiscore) finishInput(m *Motif) {
+	hi.input = false
+	hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+	hi.finalizeAndSave()
 }
 
 func (hi *MotifHiscore) draw(m *Motif, layerno int16) {
@@ -6033,16 +6285,18 @@ func (hi *MotifHiscore) draw(m *Motif, layerno int16) {
 		}
 	}
 
-	// Timer (only when enabled & during input)
-	if m.HiscoreInfo.Timer.Count != -1 && hi.input && m.HiscoreInfo.Timer.TextSpriteData != nil {
-		m.HiscoreInfo.Timer.TextSpriteData.Draw(layerno)
-	}
 	// Top background
 	if !hi.noBgs && layerno == 2 {
 		m.HiscoreBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	if hi.input && m.HiscoreInfo.ArcadeInput.Enabled && m.HiscoreInfo.Timer.Count != -1 {
+		m.HiscoreInfo.Timer.TextSpriteData.Draw(layerno)
+	}
 	context := "default"
 	if hi.input {
+		if !m.HiscoreInfo.ArcadeInput.Enabled {
+			return
+		}
 		context = "input"
 	}
 	m.HiscoreInfo.Hint.draw(layerno, context)
@@ -6210,49 +6464,8 @@ func parseRankingRows(path, mode string) []rankingRow {
 	return out
 }
 
-func initialsWidth(fmtStr string) int {
-	// Extract %<N>s (default 3)
-	re := regexp.MustCompile(`%([0-9]+)s`)
-	m := re.FindStringSubmatch(fmtStr)
-	if len(m) >= 2 {
-		if n := Atoi(m[1]); n > 0 {
-			return int(n)
-		}
-	}
-	return 3
-}
-
-// currentGlyph returns current glyph character for the active letter slot.
-func currentGlyph(mo *Motif, letters []int) string {
-	if len(letters) == 0 {
-		return ""
-	}
-	idx := letters[len(letters)-1] // 1-based
-	if idx <= 0 || idx > len(mo.HiscoreInfo.Glyphs) {
-		return ""
-	}
-	return mo.HiscoreInfo.Glyphs[idx-1]
-}
-
-// buildNameFromLetters converts indices into the configured glyph table.
-func buildNameFromLetters(mo *Motif, letters []int) string {
-	var b strings.Builder
-	for _, i := range letters {
-		if i <= 0 || i > len(mo.HiscoreInfo.Glyphs) {
-			continue
-		}
-		ch := mo.HiscoreInfo.Glyphs[i-1]
-		if ch == ">" {
-			ch = " "
-		}
-		b.WriteString(ch)
-	}
-	return b.String()
-}
-
-// updateRowNameFromLetters updates row text sprites (normal + active variants) from letters.
-func updateRowNameFromLetters(mo *Motif, row *rankingRow, letters []int) {
-	name := buildNameFromLetters(mo, letters)
+// Refresh the ranking row while the shared keyboard edits its name.
+func (mo *Motif) setRowName(row *rankingRow, name string) {
 	if mo.HiscoreInfo.Item.Name.Uppercase {
 		name = strings.ToUpper(name)
 	}

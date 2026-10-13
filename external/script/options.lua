@@ -800,33 +800,19 @@ options.t_itemname = {
 	['customres'] = function(t, item, cursorPosY, moveTxt)
 		if getAction(-1, motif.option_info.menu.done.action) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local reswidth = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.reswidth,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if reswidth ~= nil then
-				sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-				local resheight = tonumber(main.f_drawInput(
-					motif.option_info.textinput.TextSpriteData,
-					motif.option_info.textinput.text.resheight,
-					motif.option_info,
-					motif.optionbgdef,
-					motif.option_info.textinput.overlay.RectData
-				))
-				if resheight ~= nil then
+			local reswidth = tonumber(main.f_drawInput(motif.option_info.textinput.text.reswidth))
+			local validWidth = reswidth ~= nil and reswidth > 0 and reswidth == math.floor(reswidth)
+			main.f_inputSound(validWidth)
+			if validWidth then
+				local resheight = tonumber(main.f_drawInput(motif.option_info.textinput.text.resheight))
+				local validHeight = resheight ~= nil and resheight > 0 and resheight == math.floor(resheight)
+				main.f_inputSound(validHeight)
+				if validHeight then
 					modifyGameOption('Video.GameWidth', reswidth)
 					modifyGameOption('Video.GameHeight', resheight)
-					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
 					options.modified = true
 					options.needReload = true
-				else
-					sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 				end
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 			return false
 		end
@@ -941,33 +927,19 @@ options.t_itemname = {
 	['customaspect'] = function(t, item, cursorPosY, moveTxt)
 		if getAction(-1, motif.option_info.menu.done.action) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local aspectwidth = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.aspectwidth,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if aspectwidth ~= nil and aspectwidth > 0 then
-				sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-				local aspectheight = tonumber(main.f_drawInput(
-					motif.option_info.textinput.TextSpriteData,
-					motif.option_info.textinput.text.aspectheight,
-					motif.option_info,
-					motif.optionbgdef,
-					motif.option_info.textinput.overlay.RectData
-				))
-				if aspectheight ~= nil and aspectheight > 0 then
+			local aspectwidth = tonumber(main.f_drawInput(motif.option_info.textinput.text.aspectwidth))
+			local validWidth = aspectwidth ~= nil and aspectwidth > 0
+			main.f_inputSound(validWidth)
+			if validWidth then
+				local aspectheight = tonumber(main.f_drawInput(motif.option_info.textinput.text.aspectheight))
+				local validHeight = aspectheight ~= nil and aspectheight > 0
+				main.f_inputSound(validHeight)
+				if validHeight then
 					modifyGameOption('Video.FightAspectWidth', aspectwidth)
 					modifyGameOption('Video.FightAspectHeight', aspectheight)
-					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
 					options.modified = true
 					options.needReload = true
-				else
-					sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 				end
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 			return false
 		end
@@ -1261,20 +1233,13 @@ options.t_itemname = {
 	['portchange'] = function(t, item, cursorPosY, moveTxt)
 		if getAction(-1, motif.option_info.menu.done.action) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local port = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.port,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535 then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+			local port = tonumber(main.f_drawInput(motif.option_info.textinput.text.port))
+			local valid = port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535
+			main.f_inputSound(valid)
+			if valid then
 				modifyGameOption('Netplay.ListenPort', port)
 				t.items[item].vardisplay = options.t_vardisplay['portchange']()
 				options.modified = true
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 		end
 		return true
@@ -1283,20 +1248,13 @@ options.t_itemname = {
 	['rollbackport'] = function(t, item, cursorPosY, moveTxt)
 		if getAction(-1, motif.option_info.menu.done.action) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local port = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.port,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535 then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+			local port = tonumber(main.f_drawInput(motif.option_info.textinput.text.port))
+			local valid = port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535
+			main.f_inputSound(valid)
+			if valid then
 				modifyGameOption('Netplay.Rollback.Port', port)
 				t.items[item].vardisplay = options.t_vardisplay['rollbackport']()
 				options.modified = true
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 		end
 		return true
@@ -2148,6 +2106,7 @@ function options.f_inputConfigFrame(context)
 	end
 	context.skipInput = false
 	if context.closed then
+		textInputCancel()
 		main.f_menuSnap(sec)
 		main.f_menuItemBgAnimReset(sec)
 		resetKey()
@@ -2659,8 +2618,7 @@ end
 -- Renames the setup. One this device doesn't own is copied first.
 local function setupName(tbl)
 	local sec, context, root = motif.option_info, tbl.inputContext, tbl.inputMenu
-	context.popup = main.f_drawInput(sec.textinput.TextSpriteData, sec.textinput.text.setupname,
-		sec, context.background, sec.textinput.overlay.RectData, root.draft.name, true)
+	context.popup = main.f_drawInput(sec.textinput.text.setupname, root.draft.name, true)
 	context.onClose = function(name)
 		esc(false)
 		if name == '' or name == root.draft.name then
