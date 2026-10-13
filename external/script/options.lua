@@ -2425,6 +2425,7 @@ function options.f_inputCapture(context)
 				ownSetup(root)
 			end
 			root.draft[entry.field] = token
+			entry.menu.items[entry.item].warn = taken and 'keytaken' or nil
 			local snd = taken and sec.cancel.snd or sec.cursor.done.snd
 			sndPlay(motif.Snd, snd[1], snd[2])
 			capture.index = capture.index + 1

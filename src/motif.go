@@ -376,6 +376,7 @@ type MenuProperties struct {
 	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
 	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
 	Itemname  map[string]string `ini:"itemname"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type InfoBoxProperties struct {
@@ -2666,6 +2667,7 @@ func (m *Motif) overrideParams() {
 		// [Option Info]
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.", DstSec: "Option Info", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.active.", DstSec: "Option Info", DstPrefix: "menu.item.selected.active."},
+		{SrcSec: "Option Info", SrcPrefix: "menu.hint.", DstSec: "Option Info", DstPrefix: "menu.hint.warn."},
 		// [Mapping Info]
 		{SrcSec: "Mapping Info", SrcPrefix: "hint.", DstSec: "Mapping Info", DstPrefix: "hint.warn."},
 		// [Pause Menu]
