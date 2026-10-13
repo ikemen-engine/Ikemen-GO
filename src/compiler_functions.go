@@ -4935,7 +4935,8 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 				nameExp = c.stringToExp(mapName)
 			}
 			sc.add(mapSet_mapArray, nameExp)
-			if err := c.scAdd(sc, mapSet_value, value, VT_Float, 1); err != nil {
+			// VT_None keeps the value's own type, since maps are auto-typed
+			if err := c.scAdd(sc, mapSet_value, value, VT_None, 1); err != nil {
 				return err
 			}
 			if indexExp != nil {
