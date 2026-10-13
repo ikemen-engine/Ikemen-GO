@@ -767,7 +767,8 @@ type TextSprite struct {
 	text, textInit string
 	glyphs         bool // motif / Lua text may contain inline input glyphs
 	glyphSection   string
-	glyphSource    int // zero follows the last active menu input source
+	literal        bool // user-entered text has no motif escapes or glyph tags
+	glyphSource    int  // zero follows the last active menu input source
 	glyphScale     [2]float32
 	glyphOffset    [2]float32
 	glyphSpacing   *float32 // nil uses the font spacing
@@ -1062,6 +1063,9 @@ func (ts *TextSprite) getLineLength(windowWrap bool) int32 {
 }
 
 func (ts *TextSprite) decodeEscapes(text string) string {
+	if ts.literal {
+		return text
+	}
 	return strings.ReplaceAll(text, "\\n", "\n")
 }
 
@@ -1563,11 +1567,14 @@ func (ts *TextSprite) inputGlyph(key string) []glyphRun {
 			for i, name := range inputFields {
 				if field == name {
 					token := profileTokens(p)[i]
-					if ts.glyphSource == 0 && src.ID == sys.uiInputSource {
+					if ts.glyphSource == 0 && sys.textInput.active && src.ID == sys.textInput.source {
+						token = sys.textInput.bindings[i]
+					} else if ts.glyphSource == 0 && src.ID == sys.uiInputSource {
 						token = sys.uiInputBindings[i]
 					}
 					if (token == "" || token == "-") && src.Joy >= 0 &&
-						sys.uiInputSource == src.ID && ts.glyphSection == "option_info" {
+						(sys.uiInputSource == src.ID || sys.textInput.active && sys.textInput.source == src.ID) &&
+						(ts.glyphSection == "option_info" || ts.glyphSection == "keyboard_info") {
 						// Empty profiles still use SDL's fixed controls in the editor.
 						token = map[string]string{
 							"up": "DP_U", "down": "DP_D", "left": "DP_L", "right": "DP_R",
