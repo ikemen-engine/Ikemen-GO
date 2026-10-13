@@ -4102,10 +4102,50 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(sec.footer.version.TextSpriteData)
 	end
 	main.f_hintDraw(opts.hint or sec.hint, opts.hintContext, nil, nil, nil, opts.hintActions)
+	-- Description of the highlighted item, keyed by its paramname.
+	main.f_menuItemHintDraw(m.hint, t[item])
 	--frame transition
 	if not skipClear then
 		refresh()
 	end
+end
+
+-- Draws the description hint for a single menu item. Looks up the full itemname
+-- path first, then the leaf itemname, then the parent submenu path plus "_item"
+-- for dynamic list rows. A %s in the text is replaced with the item's display name.
+function main.f_menuItemHintDraw(hint, item)
+	if hint == nil or item == nil or hint.text == nil then
+		return
+	end
+	local text = nil
+	if item.paramname ~= nil and item.paramname ~= '' then
+		text = hint.text[item.paramname]
+	end
+	if text == nil and item.itemname ~= nil then
+		text = hint.text[item.itemname]
+	end
+	if text == nil and item.paramname ~= nil and item.paramname ~= '' then
+		-- Dynamic list rows (shaders, profiles) share one "<parent>_item" entry.
+		-- Walk the path up by "_" so filenames containing "_" still resolve.
+		local parent = item.paramname
+		while text == nil do
+			parent = parent:match('^(.+)_[^_]+$')
+			if parent == nil then
+				break
+			end
+			text = hint.text[parent .. '_item']
+		end
+	end
+	if text == nil then
+		return
+	end
+	if item.displayname ~= nil and text:find('%%s') ~= nil then
+		text = string.format(text, item.displayname)
+	end
+	main.f_animPosDraw(hint.bg.AnimData)
+	textImgReset(hint.TextSpriteData)
+	textImgSetText(hint.TextSpriteData, tostring(text):gsub('\\n', '\n'))
+	textImgDraw(hint.TextSpriteData)
 end
 
 --force menu to snap, boxcursor snaps if enabled

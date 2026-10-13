@@ -4975,6 +4975,30 @@ func systemScriptInit(l *lua.LState) {
 			eachIniKeys(sys.motif.UserIniFile, sec, pref, func(r, v string) { apply(r, v, false) })
 		}
 
+		// Flatten menu.hint.text.<path> keys (dots -> underscores) into the
+		// menu.hint.text subtable, so lookups match an item's paramname.
+		populateHint := func(sec string, path []string, root *lua.LTable) {
+			dst := getTbl(root, append(append([]string{}, path...), "hint"))
+			if dst == nil {
+				return
+			}
+			// Replace any generically parsed text table (which keys by last part
+			// only) with one keyed by the full flattened path.
+			text := l.NewTable()
+			dst.RawSetString("text", text)
+			apply := func(rest, v string) {
+				val, empty := normalizeMenuValue(v)
+				k := strings.ReplaceAll(rest, ".", "_")
+				if empty {
+					text.RawSetString(k, lua.LNil)
+					return
+				}
+				text.RawSetString(k, lua.LString(val))
+			}
+			eachIniKeys(defIni, sec, "menu.hint.text.", func(r, v string) { apply(r, v) })
+			eachIniKeys(sys.motif.UserIniFile, sec, "menu.hint.text.", func(r, v string) { apply(r, v) })
+		}
+
 		// order for flat itemname.*
 		buildFlatOrder := func(sec string, path []string, pref string, root *lua.LTable) {
 			dst := getTbl(root, path)
@@ -5265,6 +5289,7 @@ func systemScriptInit(l *lua.LState) {
 		for _, s := range mi {
 			populateItemName(s.sec, s.path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(s.sec, s.path, "menu.itemname.", lTable)
+			populateHint(s.sec, s.path, lTable)
 		}
 		// Handle every derived [* Pause Menu]
 		for _, sec := range customPauseMenuSections(sys.motif.IniFile) {
@@ -5278,6 +5303,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 			populateItemName(src, path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(src, path, "menu.itemname.", lTable)
+			populateHint(src, path, lTable)
 		}
 		populateItemName("Select Info", []string{"select_info", "teammenu"}, "teammenu.itemname.", "team", lTable)
 		buildTeamOrder("Select Info", []string{"select_info", "teammenu"}, lTable)

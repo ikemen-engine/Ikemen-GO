@@ -365,6 +365,7 @@ type MenuProperties struct {
 	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
 	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
 	Itemname  map[string]string `ini:"itemname"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type InfoBoxProperties struct {
