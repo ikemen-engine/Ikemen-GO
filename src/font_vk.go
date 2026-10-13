@@ -831,6 +831,12 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 	gfx.SetUniformF("gray", f.shaderPalFX.gray)
 	gfx.SetUniformF("hue", f.shaderPalFX.hue)
 	gfx.SetUniformFv("tint", []float32{0, 0, 0, 0})
+	if f.customShader.tex1 != nil {
+		gfx.SetTexture("tex1", f.customShader.tex1)
+	}
+	if f.customShader.tex2 != nil {
+		gfx.SetTexture("tex2", f.customShader.tex2)
+	}
 	f.customShader.setUniforms()
 
 	alignScale := xscl

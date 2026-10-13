@@ -340,12 +340,6 @@ func (cs CustomShaderRenderData) setUniforms() {
 	gfx.SetUniformF("sTime", cs.sTime)
 	gfx.SetUniformF("iResolution", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
 	gfx.SetUniformF("aspectRatio", sys.getCurrentAspect()/sys.getFightAspect())
-	if cs.tex1 != nil {
-		gfx.SetTexture("tex1", cs.tex1)
-	}
-	if cs.tex2 != nil {
-		gfx.SetTexture("tex2", cs.tex2)
-	}
 	gfx.SetCustomUniforms(cs.params)
 }
 
@@ -902,13 +896,19 @@ func RenderSprite(rp RenderParams) {
 	}
 
 	if rp.customShader.name != "" {
-		rp.customShader.setUniforms()
 		if gfx.NeedsGrabPass() {
 			grabTex := gfx.ResolveBackBuffer()
 			if grabTex != nil {
 				gfx.SetTexture("bgl_RenderedTexture", grabTex)
 			}
 		}
+		if rp.customShader.tex1 != nil {
+			gfx.SetTexture("tex1", rp.customShader.tex1)
+		}
+		if rp.customShader.tex2 != nil {
+			gfx.SetTexture("tex2", rp.customShader.tex2)
+		}
+		rp.customShader.setUniforms()
 	}
 	// Texture binding
 	gfx.SetTexture("tex", rp.tex)
