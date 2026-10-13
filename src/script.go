@@ -2851,11 +2851,11 @@ func systemScriptInit(l *lua.LState) {
 		@treturn int32 winSide Winning side index (`1` or `2`), `0` for draw, `-1` if the game was ended externally.
 		@treturn[opt] int controllerNo 1-based controller index of the challenger player interrupting `arcade` mode.*/
 		defer func() {
+			sys.textInput.finish(false)
 			if sys.loader.state == LS_Loading {
 				sys.loader.reset()
 			}
 		}()
-		sys.keyString = ""
 		sys.keyInput = KeyUnknown
 		sys.luaDiscardDrawQueue()
 		sys.gameRunning = true
@@ -3819,11 +3819,9 @@ func systemScriptInit(l *lua.LState) {
 					sys.noteGlyphInput(sys.participantMenuSource(controller))
 				}
 			}
-			// 0 if < 0, otherwise 1+
-			if v < 0 {
+			// Held for v frames. A cleared buffer reads 0 and is not a press.
+			if v <= 0 {
 				return 0
-			} else if v == 0 {
-				return 1
 			}
 			return v
 		}
@@ -3954,19 +3952,6 @@ func systemScriptInit(l *lua.LState) {
 			sys.noteKeyboardGlyphInput(s)
 		}
 		l.Push(lua.LBool(s == strArg(l, 1)))
-		return 1
-	})
-	luaRegister(l, "getKeyText", func(*lua.LState) int {
-		/*Get the last input text associated with the current key event.
-		@function getKeyText
-		@treturn string text If the last key was Insert, returns the clipboard contents,
-		  otherwise returns the textual representation of the last key press. Empty string if none.*/
-		s := ""
-		if sys.keyInput != KeyUnknown {
-			s = sys.keyString
-			sys.noteKeyboardGlyphInput(KeyToString(sys.keyInput))
-		}
-		l.Push(lua.LString(s))
 		return 1
 	})
 	luaRegister(l, "getLastInputController", func(l *lua.LState) int {
@@ -4423,6 +4408,21 @@ func systemScriptInit(l *lua.LState) {
 			values[inputFields[i]] = token
 		}
 		l.Push(toLValue(l, values))
+		return 1
+	})
+	luaRegister(l, "inputGetProfileName", func(l *lua.LState) int {
+		/*Resolve a profile name pattern without creating anything.
+		@function inputGetProfileName
+		@tparam string name Profile name; `%i` is replaced by the first number not in use.
+		@treturn string name Resolved name.*/
+		name := strArg(l, 1)
+		for n := 1; strings.Contains(name, "%i"); n++ {
+			if resolved := strings.ReplaceAll(name, "%i", strconv.Itoa(n)); !sys.cfg.inputProfileNameUsed(resolved) {
+				name = resolved
+				break
+			}
+		}
+		l.Push(lua.LString(name))
 		return 1
 	})
 	luaRegister(l, "inputGetProfiles", func(l *lua.LState) int {
@@ -6368,6 +6368,7 @@ func systemScriptInit(l *lua.LState) {
 			} else if sys.motif.fadeIn.isActive() {
 				sys.motif.fadeIn.draw()
 			}
+			sys.textInput.draw()
 		} else {
 			// On skipped frames, discard queued draws to avoid buildup.
 			sys.luaDiscardDrawQueue()
@@ -6468,10 +6469,9 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "resetKey", func(*lua.LState) int {
-		/*Clear the last captured key and text input.
+		/*Clear the last captured key.
 		@function resetKey*/
 		sys.keyInput = KeyUnknown
-		sys.keyString = ""
 		return 0
 	})
 	luaRegister(l, "resetMatchData", func(*lua.LState) int {
@@ -7873,6 +7873,43 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.Update()
+		return 0
+	})
+	luaRegister(l, "textInputCancel", func(l *lua.LState) int {
+		/*Cancel text entry when its owning screen closes.
+		@function textInputCancel*/
+		sys.textInput.finish(false)
+		return 0
+	})
+	luaRegister(l, "textInputPoll", func(l *lua.LState) int {
+		/*Advance text entry once per frame. Drawing uses the normal render loop.
+		@function textInputPoll
+		@treturn boolean finished Session has closed.
+		@treturn string value Current text (initial text on cancellation).
+		@treturn boolean accepted True only on confirmation; empty text may be confirmed.*/
+		sys.textInput.step()
+		l.Push(lua.LBool(!sys.textInput.active))
+		l.Push(lua.LString(string(sys.textInput.value)))
+		l.Push(lua.LBool(sys.textInput.accepted))
+		return 3
+	})
+	luaRegister(l, "textInputStart", func(l *lua.LState) int {
+		/*Open the shared modal keyboard. Poll until finished; only one session may be open.
+		@function textInputStart
+		@tparam string title Prompt text.
+		@tparam[opt=""] string value Initial text.
+		@tparam[opt=0] int maxlength Code point limit; 0 uses Keyboard Info.
+		*/
+		value, maximum := "", 0
+		if !nilArg(l, 2) {
+			value = strArg(l, 2)
+		}
+		if !nilArg(l, 3) {
+			maximum = int(numArg(l, 3))
+		}
+		if err := sys.textInput.open(strArg(l, 1), value, maximum, 0); err != nil {
+			l.RaiseError("%v", err)
+		}
 		return 0
 	})
 	luaRegister(l, "toggleClsnDisplay", func(*lua.LState) int {

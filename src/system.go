@@ -132,7 +132,6 @@ type SystemStateVars struct {
 	playBgmFlg       bool
 
 	keyInput            Key
-	keyString           string
 	lastInputController int
 	uiLastInputToken    string
 	uiGlyphSource       int // last accepted menu input; independent of profile editing
@@ -235,7 +234,6 @@ func (tm TeamMode) TriggerValue() string {
 // System struct, holds most of the data that is accessed globally through the program.
 type System struct {
 	SystemStateVars
-
 	window              *Window
 	redrawWait          struct{ nextTime, lastDraw time.Time }
 	debugFont           *TextSprite
@@ -267,6 +265,7 @@ type System struct {
 	replayFile          *ReplayFile
 	keyConfig           []KeyConfig
 	inputs              InputAssignment
+	textInput           TextInput
 	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
@@ -1014,6 +1013,7 @@ func (s *System) renderFrame() {
 		}
 		s.drawDebugText(logicState)
 	}
+	s.textInput.draw()
 }
 
 func (s *System) update() bool {
@@ -1444,7 +1444,7 @@ func (s *System) pollInputSources() {
 			}
 			active = active || src.pressed[i]
 		}
-		if active && s.uiInputSource == 0 && !s.inputs.ClaimLocked && !s.netplay() && s.inputs.owner(src.ID) < 0 {
+		if active && s.uiInputSource == 0 && !s.textInput.active && !s.textInput.release && !s.inputs.ClaimLocked && !s.netplay() && s.inputs.owner(src.ID) < 0 {
 			_, _ = s.inputs.claim(src.ID, TS_None)
 		}
 	}
@@ -1657,6 +1657,9 @@ func (s *System) synchronize() error {
 }
 
 func (s *System) anyHardButton() bool {
+	if s.textInput.active || s.textInput.release {
+		return false
+	}
 	for _, src := range s.inputs.Sources {
 		if s.inputs.ClaimLocked && s.replayFile == nil && s.inputs.owner(src.ID) < 0 {
 			continue
@@ -1811,6 +1814,18 @@ func (s *System) glyphSource(source int) *InputSource {
 	if source != 0 {
 		return s.inputs.inputSource(source)
 	}
+	if s.textInput.active {
+		if !s.textInput.keyboard {
+			if src := s.inputs.inputSource(s.textInput.source); src != nil && src.Connected {
+				return src
+			}
+		}
+		for _, src := range s.inputs.Sources {
+			if src.Connected && src.Joy < 0 {
+				return src
+			}
+		}
+	}
 	// Profile editing accepts only this source, even before its first input.
 	if s.uiInputSource != 0 {
 		return s.inputs.inputSource(s.uiInputSource)
@@ -1856,6 +1871,9 @@ func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
 // Supported keys: B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m
 // D/U/B/F also recognize LS axis tokens: D -> LS_Y+, U -> LS_Y-, B -> LS_X-, F -> LS_X+.
 func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
+	if s.textInput.active || s.textInput.release {
+		return false
+	}
 	checkOne := func(i int, cl *CommandList) bool {
 		if cl == nil || cl.Buffer == nil {
 			return false
@@ -3077,7 +3095,7 @@ func (s *System) motifPauseGame() bool {
 }
 
 func (s *System) matchPaused() bool {
-	return s.debugPaused() || s.motifPauseGame()
+	return s.debugPaused() || s.motifPauseGame() || s.textInput.active && !s.netplay()
 }
 
 func (s *System) motifPauseMusic() bool {

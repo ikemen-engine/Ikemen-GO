@@ -1258,9 +1258,6 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		textImgDraw(textData)
 		-- the infobox reuses this screen, and capture mode waits for a button
 		local hint = motif.warning_info.hint
-		if hintContext ~= nil then
-			hint = sec.textinput.hint
-		end
 		if textData == motif.infobox.text.TextSpriteData then
 			hint = motif.infobox.hint
 		end
@@ -1293,55 +1290,39 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 	end
 end
 
-function main.f_drawInput(textData, text, sec, background, overlay, defaultInput, frameOnly)
-	local input = defaultInput or ''
-	resetKey()
+function main.f_inputSound(accepted)
+	local sound = accepted and motif.keyboard_info.done.snd or motif.keyboard_info.cancel.snd
+	sndPlay(motif.Snd, sound[1], sound[2])
+end
+
+-- The engine owns text editing and draws the same keyboard over Lua and native screens.
+function main.f_drawInput(text, defaultInput, frameOnly)
+	textInputStart(text, defaultInput or '')
+	if not frameOnly and not gameRunning() then
+		bgReset(motif.keyboardbgdef.BGDef)
+	end
 	local function drawFrame()
-		if esc() or getKey(sec.textinput.confirm.keycode) then
-			if esc() then
-				input = ''
-			end
+		local finished, value, accepted = textInputPoll()
+		if finished then
 			resetKey()
 			resetTokenGuard()
-			return true, input
-		elseif getKey(sec.textinput.trim.keycode) then
-			input = input:sub(2)
-		elseif getKey(sec.textinput.truncate.keycode) then
-			input = input:sub(1, -2)
-		elseif getKey(sec.textinput.paste.keycode) then
-			input = input .. getClipboardString()
-		else
-			input = input .. getKeyText()
+			return true, accepted and value or '', accepted
 		end
-		resetKey()
-		--draw clearcolor
-		if not frameOnly then
-			clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		-- Standalone keyboard screens draw their own background outside a match.
+		-- Popups (frameOnly) overlay another screen, and a match keeps its own scene.
+		if not frameOnly and not gameRunning() then
+			local bg = motif.keyboardbgdef
+			clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
+			bgDraw(bg.BGDef, 0)
+			bgDraw(bg.BGDef, 1)
 		end
-		--draw layerno = 0 backgrounds
-		bgDraw(background.BGDef, 0)
-		--draw overlay
-		rectDraw(overlay)
-		--draw text
-		textImgReset(textData)
-		textImgSetText(textData, text)
-		textImgAddText(textData, '\\n\\n' .. input)
-		textImgDraw(textData)
-		main.f_hintDraw(sec.textinput.hint)
-		--draw layerno = 1 backgrounds
-		bgDraw(background.BGDef, 1)
-		--tick preload
 		main.f_preloadTick(2)
 		return false
 	end
-	if frameOnly then
-		return drawFrame
-	end
+	if frameOnly then return drawFrame end
 	while true do
 		local finished, value = drawFrame()
-		if finished then
-			return value
-		end
+		if finished then return value end
 		refresh()
 	end
 end
@@ -2188,32 +2169,17 @@ main.t_itemname = {
 	--JOIN (NEW ADDRESS)
 	['joinadd'] = function(t, item)
 		sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
-		local name = main.f_drawInput(
-			motif[main.group].textinput.TextSpriteData,
-			motif[main.group].textinput.text.name,
-			motif[main.group],
-			motif[main.background],
-			motif[main.group].textinput.overlay.RectData
-		)
+		local name = main.f_drawInput(motif[main.group].textinput.text.name)
+		main.f_inputSound(name ~= '')
 		if name ~= '' then
-			sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
-			local address = main.f_drawInput(
-				motif[main.group].textinput.TextSpriteData,
-				motif[main.group].textinput.text.address,
-				motif[main.group],
-				motif[main.background],
-				motif[main.group].textinput.overlay.RectData
-			)
-			if isValidIp(address) then
-				sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
+			local address = main.f_drawInput(motif[main.group].textinput.text.address)
+			local valid = isValidIp(address)
+			main.f_inputSound(valid)
+			if valid then
 				modifyGameOption('Netplay.IP.' .. name, address)
 				table.insert(t, #t, {itemname = 'ip_' .. name, displayname = name})
 				saveGameOption(getCommandLineValue("-config"))
-			else
-				sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
 			end
-		else
-			sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
 		end
 		hook.run("main.t_itemname", t, item)
 		return t
@@ -2675,19 +2641,13 @@ function main.f_editIP(item, t)
 	end
 	local name = t[item].itemname:gsub('^ip_', '')
 	sndPlay(motif.Snd, motif[main.group].cursor.move.snd[1], motif[main.group].cursor.move.snd[2])
-	local address = main.f_drawInput(
-		motif[main.group].textinput.TextSpriteData,
-		motif[main.group].textinput.text.address,
-		motif[main.group],
-		motif[main.background],
-		motif[main.group].textinput.overlay.RectData,
-		gameOption('Netplay.IP.' .. name)
-	)
-	if not isValidIp(address) then
-		sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+	local address = main.f_drawInput(motif[main.group].textinput.text.address,
+		gameOption('Netplay.IP.' .. name))
+	local valid = isValidIp(address)
+	main.f_inputSound(valid)
+	if not valid then
 		return t
 	end
-	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 	modifyGameOption('Netplay.IP.' .. name, address)
 	saveGameOption(getCommandLineValue("-config"))
 	return t
@@ -3144,36 +3104,29 @@ function main.f_renameReplay(item, t)
 		return t, item
 	end
 	sndPlay(motif.Snd, motif.replay_info.cursor.move.snd[1], motif.replay_info.cursor.move.snd[2])
-	local newName = main.f_drawInput(
-		motif.title_info.textinput.TextSpriteData,
-		motif.title_info.textinput.text.replay,
-		motif.title_info,
-		motif.replaybgdef,
-		motif.title_info.textinput.overlay.RectData,
-		oldName
-	)
+	local newName = main.f_drawInput(motif.title_info.textinput.text.replay, oldName)
 	newName = (newName or ''):match('^%s*(.-)%s*$')
 	newName = newName:gsub('%.[Rr][Ee][Pp][Ll][Aa][Yy]$', '')
 	if newName == '' or newName == oldName then
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
 	if newName:match('[\\/:%*%?"<>|]') then
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
 	local newFile = oldPath .. newName .. '.' .. ext
 	if main.f_fileExists(newFile) then
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
 	local ok, err = os.rename(t[item].itemname, newFile)
 	if not ok then
 		print('Unable to rename replay: ' .. t[item].itemname .. ' -> ' .. newFile .. (err and ' (' .. tostring(err) .. ')' or ''))
-		sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
+		main.f_inputSound(false)
 		return t, item
 	end
-	sndPlay(motif.Snd, motif.replay_info.cursor.done.snd[1], motif.replay_info.cursor.done.snd[2])
+	main.f_inputSound(true)
 	t[item].itemname = newFile
 	t[item].displayname = newName
 	return t, item

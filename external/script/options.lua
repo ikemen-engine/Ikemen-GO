@@ -801,33 +801,19 @@ options.t_itemname = {
 	['customres'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local reswidth = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.reswidth,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if reswidth ~= nil then
-				sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-				local resheight = tonumber(main.f_drawInput(
-					motif.option_info.textinput.TextSpriteData,
-					motif.option_info.textinput.text.resheight,
-					motif.option_info,
-					motif.optionbgdef,
-					motif.option_info.textinput.overlay.RectData
-				))
-				if resheight ~= nil then
+			local reswidth = tonumber(main.f_drawInput(motif.option_info.textinput.text.reswidth))
+			local validWidth = reswidth ~= nil and reswidth > 0 and reswidth == math.floor(reswidth)
+			main.f_inputSound(validWidth)
+			if validWidth then
+				local resheight = tonumber(main.f_drawInput(motif.option_info.textinput.text.resheight))
+				local validHeight = resheight ~= nil and resheight > 0 and resheight == math.floor(resheight)
+				main.f_inputSound(validHeight)
+				if validHeight then
 					modifyGameOption('Video.GameWidth', reswidth)
 					modifyGameOption('Video.GameHeight', resheight)
-					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
 					options.modified = true
 					options.needReload = true
-				else
-					sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 				end
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 			return false
 		end
@@ -942,33 +928,19 @@ options.t_itemname = {
 	['customaspect'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local aspectwidth = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.aspectwidth,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if aspectwidth ~= nil and aspectwidth > 0 then
-				sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-				local aspectheight = tonumber(main.f_drawInput(
-					motif.option_info.textinput.TextSpriteData,
-					motif.option_info.textinput.text.aspectheight,
-					motif.option_info,
-					motif.optionbgdef,
-					motif.option_info.textinput.overlay.RectData
-				))
-				if aspectheight ~= nil and aspectheight > 0 then
+			local aspectwidth = tonumber(main.f_drawInput(motif.option_info.textinput.text.aspectwidth))
+			local validWidth = aspectwidth ~= nil and aspectwidth > 0
+			main.f_inputSound(validWidth)
+			if validWidth then
+				local aspectheight = tonumber(main.f_drawInput(motif.option_info.textinput.text.aspectheight))
+				local validHeight = aspectheight ~= nil and aspectheight > 0
+				main.f_inputSound(validHeight)
+				if validHeight then
 					modifyGameOption('Video.FightAspectWidth', aspectwidth)
 					modifyGameOption('Video.FightAspectHeight', aspectheight)
-					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
 					options.modified = true
 					options.needReload = true
-				else
-					sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 				end
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 			return false
 		end
@@ -1256,20 +1228,13 @@ options.t_itemname = {
 	['portchange'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local port = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.port,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535 then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+			local port = tonumber(main.f_drawInput(motif.option_info.textinput.text.port))
+			local valid = port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535
+			main.f_inputSound(valid)
+			if valid then
 				modifyGameOption('Netplay.ListenPort', port)
 				t.items[item].vardisplay = options.t_vardisplay['portchange']()
 				options.modified = true
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 		end
 		return true
@@ -1278,20 +1243,13 @@ options.t_itemname = {
 	['rollbackport'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			local port = tonumber(main.f_drawInput(
-				motif.option_info.textinput.TextSpriteData,
-				motif.option_info.textinput.text.port,
-				motif.option_info,
-				motif.optionbgdef,
-				motif.option_info.textinput.overlay.RectData
-			))
-			if port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535 then
-				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+			local port = tonumber(main.f_drawInput(motif.option_info.textinput.text.port))
+			local valid = port ~= nil and port == math.floor(port) and port >= 1 and port <= 65535
+			main.f_inputSound(valid)
+			if valid then
 				modifyGameOption('Netplay.Rollback.Port', port)
 				t.items[item].vardisplay = options.t_vardisplay['rollbackport']()
 				options.modified = true
-			else
-				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 			end
 		end
 		return true
@@ -2115,6 +2073,7 @@ function options.f_inputConfigFrame(context)
 	end
 	context.skipInput = false
 	if context.closed then
+		textInputCancel()
 		gamepadMappingCancel()
 		if context.previousSource ~= nil then
 			inputSetConfigSource(context.previousSource)
@@ -2341,9 +2300,9 @@ function options.f_gamepadMapping(context, device, testOnly)
 	end
 	if not device.recognized and not testOnly then
 		local sec = motif.option_info
-		context.popup = main.f_drawInput(sec.textinput.TextSpriteData, sec.textinput.text.gamepadname,
-			sec, context.background, sec.textinput.overlay.RectData, device.name, true)
+		context.popup = main.f_drawInput(sec.textinput.text.gamepadname, device.name, true)
 		context.onClose = function(name)
+			main.f_inputSound(name ~= '')
 			if name == '' then
 				gamepadMappingCancel()
 				context.closed = true
@@ -2531,9 +2490,9 @@ end
 local function profileName(tbl, copy)
 	local sec, context = motif.option_info, tbl.inputContext
 	local values = inputGetProfile(tbl.inputSource.id)
-	context.popup = main.f_drawInput(sec.textinput.TextSpriteData, sec.textinput.text.profilename,
-		sec, context.background, sec.textinput.overlay.RectData, values.name, true)
+	context.popup = main.f_drawInput(sec.textinput.text.profilename, values.name, true)
 	context.onClose = function(name)
+		local saved = false
 		if name ~= '' then
 			values.name = name
 			if copy then
@@ -2541,18 +2500,20 @@ local function profileName(tbl, copy)
 				local root = tbl.inputMenu
 				if applyProfile(tbl, root.savedBindings) and applyProfile(tbl, values, true) then
 					root.finished = true
+					saved = true
 				end
 			else
-				applyProfile(tbl, values)
+				saved = applyProfile(tbl, values)
 			end
 		end
+		main.f_inputSound(saved)
 		esc(false)
 	end
 end
 
 options.t_itemname.renameprofile = function(t, item)
 	if getInput(-1, motif.option_info.menu.done.key) then
-		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 		profileName(t, false)
 	end
 	return true
@@ -2560,7 +2521,7 @@ end
 
 options.t_itemname.savecopy = function(t, item)
 	if getInput(-1, motif.option_info.menu.done.key) then
-		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 		profileName(t, true)
 	end
 	return true
@@ -2650,26 +2611,38 @@ options.t_itemname.newprofile = function(t, item)
 		if source.kind == 'gamepad' then
 			name = sec.menu.valuename.gamepadprofile
 		end
-		local previous = ''
+		-- A gamepad keeps its current profile until the new one is confirmed.
+		local profile = ''
 		if source.kind == 'gamepad' then
 			for _, entry in ipairs(inputGetSources()) do
 				if entry.id == source.id then
-					previous = entry.profile
+					profile = entry.profile
 				end
 			end
 		end
-		local id = inputNewProfile(source.id, name, sec.menu.valuename.copy)
-		if id == 0 then
-			inputPopup(context, sec.textinput.text.profilesave)
-			return true
-		end
-		sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-		options.modified = true
-		for _, entry in ipairs(inputGetSources()) do
-			if entry.id == id then
-				options.f_editProfile(entry, nil, context, true)
-				context.current.previousProfile = previous
-				break
+		-- Name the profile before opening its editor.
+		context.popup = main.f_drawInput(sec.textinput.text.profilename,
+			inputGetProfileName(name), true)
+		context.onClose = function(value)
+			esc(false)
+			if value == '' then
+				main.f_inputSound(false)
+				return
+			end
+			local id = inputNewProfile(source.id, value, sec.menu.valuename.copy)
+			if id == 0 then
+				main.f_inputSound(false)
+				inputPopup(context, sec.textinput.text.profilesave)
+				return
+			end
+			main.f_inputSound(true)
+			options.modified = true
+			for _, entry in ipairs(inputGetSources()) do
+				if entry.id == id then
+					options.f_editProfile(entry, nil, context, true)
+					context.current.previousProfile = profile
+					break
+				end
 			end
 		end
 	end

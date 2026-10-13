@@ -252,6 +252,15 @@ func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
 	return x, y, resizedWidth, resizedHeight
 }
 
+// Convert drawable pixels to SDL window coordinates for the IME candidate window.
+func (w *Window) SetTextInputRect(bounds [4]int32) {
+	width, height := w.Window.GetSize()
+	sx := float32(width) / float32(sys.scrrect[2])
+	sy := float32(height) / float32(sys.scrrect[3])
+	sdl.SetTextInputRect(&sdl.Rect{X: int32(float32(bounds[0]) * sx), Y: int32(float32(bounds[1]) * sy),
+		W: int32(float32(bounds[2]) * sx), H: int32(float32(bounds[3]) * sy)})
+}
+
 func (w *Window) GetClipboardString() string {
 	s, err := sdl.GetClipboardText()
 	if err != nil {
@@ -458,8 +467,15 @@ func (w *Window) pollEvents() {
 				w.focused = false
 			}
 		case sdl.TextInputEvent:
-			if len(t.Text) > 0 {
-				OnTextEntered(t.Text)
+			if sys.textInput.active {
+				sys.textInput.keyboard = true
+				sys.textInput.composition = ""
+				sys.textInput.insert(t.Text)
+			}
+		case sdl.TextEditingEvent:
+			if sys.textInput.active {
+				sys.textInput.keyboard = true
+				sys.textInput.composition = t.Text
 			}
 		case sdl.JoyDeviceAddedEvent:
 			attachController(int(t.Which))
@@ -480,6 +496,7 @@ func (w *Window) pollEvents() {
 		}
 	}
 	sys.pollInputSources()
+	sys.textInput.releaseInputs()
 }
 
 func (w *Window) shouldClose() bool {

@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/veandco/go-sdl2/sdl"
 )
@@ -118,13 +119,20 @@ func OnKeyReleased(key Key, mk ModifierKey) {
 		// sys.keyInput is used as an edge-triggered "new key press" signal for Lua (getKey()).
 		if sys.keyInput == key {
 			sys.keyInput = KeyUnknown
-			sys.keyString = ""
 		}
 	}
 }
 
 func OnKeyPressed(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
+		if sys.textInput.active || sys.textInput.release {
+			repeat := sys.keyState[key]
+			sys.keyState[key] = true
+			if sys.textInput.active {
+				sys.textInput.key(key, repeat)
+			}
+			return
+		}
 		// Treat sys.keyInput as edge-triggered. Ignore repeats.
 		if sys.keyState[key] {
 			return
@@ -162,8 +170,415 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 	}
 }
 
-func OnTextEntered(s string) {
-	sys.keyString = s
+// TextInput is local modal UI, shared by Lua menus and native motif screens.
+// Its buffer and cursor count Unicode code points, never UTF-8 bytes.
+type TextInput struct {
+	active, accepted, release   bool
+	closedByAction              bool
+	keyboard, shifted, symbols  bool
+	title, initial, composition string
+	value                       []rune
+	cursor, scroll, maximum     int
+	source                      int
+	controls                    KeyConfig
+	bindings                    [14]string
+	held                        [14]int32
+	waitRelease                 bool
+	frame                       int32
+	time                        int32 // -1 unless the caller supplies a countdown.
+	selected, pressed           int
+	keys                        []TextInputKey
+}
+
+type TextInputKey struct {
+	text string
+	row  int
+	rect [4]float32
+}
+
+// These characters need names in layouts because INI uses them as separators.
+var textInputCharacters = map[string]string{"pipe": "|", "hash": "#", "semicolon": ";"}
+
+func (t *TextInput) open(title, value string, maximum, source int) error {
+	if t.active {
+		return fmt.Errorf("text input is already open")
+	}
+	src := sys.glyphSource(source)
+	*t = TextInput{active: true, keyboard: true, title: title, initial: value,
+		maximum: maximum, frame: -1, time: -1, pressed: -1, waitRelease: true}
+	if maximum <= 0 {
+		t.maximum = Max(1, sys.motif.KeyboardInfo.MaxLength)
+	}
+	t.insert(value)
+	t.initial = string(t.value)
+	if src != nil && src.Joy >= 0 {
+		t.useSource(src)
+	}
+	t.layout()
+	k := &sys.motif.KeyboardInfo
+	for _, a := range []*Anim{k.Key.Bg.AnimData, k.Key.Active.Bg.AnimData, k.Key.Pressed.Bg.AnimData, k.Hint.Bg.AnimData} {
+		if a != nil {
+			a.Reset()
+		}
+	}
+	sys.keyInput = KeyUnknown
+	sys.esc, sys.escPending = false, false
+	sys.clearCommandBuffers()
+	sdl.StartTextInput()
+	return nil
+}
+
+func (t *TextInput) useSource(src *InputSource) {
+	t.source, t.keyboard = src.ID, false
+	t.controls, _ = sys.inputSourceConfig(src)
+	t.bindings = profileTokens(sys.cfg.InputProfile[src.Profile])
+	if src.ID == sys.uiInputSource {
+		t.controls, t.bindings = sys.uiInputConfig, sys.uiInputBindings
+	}
+}
+
+func (t *TextInput) finish(accepted bool) {
+	if !t.active {
+		return
+	}
+	t.active, t.accepted, t.release = false, accepted, true
+	t.composition = ""
+	if !accepted {
+		t.value = []rune(t.initial)
+	}
+	sdl.StopTextInput()
+	sys.keyInput = KeyUnknown
+	sys.esc, sys.escPending = false, false
+	sys.clearCommandBuffers()
+	// Block the opening source so the closing press is not read by the parent
+	// menu after this returns; it unblocks itself on release.
+	if src := sys.inputs.inputSource(t.source); src != nil {
+		sys.blockInputSource(src)
+	}
+}
+
+// Keep the closing press out of the parent menu, including when held for several frames.
+func (t *TextInput) releaseInputs() {
+	if !t.release {
+		return
+	}
+	for _, down := range sys.keyState {
+		if down {
+			return
+		}
+	}
+	if src := sys.inputs.inputSource(t.source); src != nil && src.Connected {
+		for _, down := range t.controllerState(src) {
+			if down {
+				return
+			}
+		}
+	}
+	t.release = false
+	sys.clearCommandBuffers()
+}
+
+func (t *TextInput) insert(value string) bool {
+	var text []rune
+	for _, r := range value {
+		if !unicode.IsControl(r) && r != '\u2028' && r != '\u2029' {
+			text = append(text, r)
+		}
+	}
+	available := Max(0, t.maximum-len(t.value))
+	complete := len(text) <= available
+	if !complete {
+		text = text[:available]
+	}
+	if len(text) == 0 {
+		return false
+	}
+	valueRunes := append([]rune(nil), t.value[:t.cursor]...)
+	valueRunes = append(valueRunes, text...)
+	t.value = append(valueRunes, t.value[t.cursor:]...)
+	t.cursor += len(text)
+	return complete
+}
+
+func (t *TextInput) action(action string, playSound bool) {
+	sound := sys.motif.KeyboardInfo.Done.Snd
+	switch action {
+	case "done":
+		t.finish(true)
+		t.closedByAction = true
+	case "cancel":
+		t.finish(false)
+		t.closedByAction = true
+	case "backspace":
+		if t.cursor > 0 {
+			t.value = append(t.value[:t.cursor-1], t.value[t.cursor:]...)
+			t.cursor--
+		}
+		sound = sys.motif.KeyboardInfo.Cancel.Snd
+	case "delete":
+		if t.cursor < len(t.value) {
+			t.value = append(t.value[:t.cursor], t.value[t.cursor+1:]...)
+		}
+		sound = sys.motif.KeyboardInfo.Cancel.Snd
+	case "previous":
+		t.cursor = Max(0, t.cursor-1)
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "next":
+		t.cursor = Min(len(t.value), t.cursor+1)
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "start":
+		t.cursor = 0
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "end":
+		t.cursor = len(t.value)
+		sound = sys.motif.KeyboardInfo.Move.Snd
+	case "shift":
+		t.shifted = !t.shifted
+		t.layout()
+	case "page":
+		t.symbols = !t.symbols
+		t.layout()
+	case "space":
+		if !t.insert(" ") {
+			sound = sys.motif.KeyboardInfo.Cancel.Snd
+		}
+	case "paste":
+		if !t.insert(sys.window.GetClipboardString()) {
+			sound = sys.motif.KeyboardInfo.Cancel.Snd
+		}
+	default:
+		if character, ok := textInputCharacters[action]; ok {
+			action = character
+		}
+		if !t.insert(action) {
+			sound = sys.motif.KeyboardInfo.Cancel.Snd
+		}
+	}
+	// The owner handles closing sounds after validating the input; physical
+	// keyboard editing never plays selection sounds.
+	if !playSound || action == "done" || action == "cancel" {
+		return
+	}
+	sys.motif.Snd.play(sound, 100, 0, 0, 0, 0)
+}
+
+// SDL text commits and editing keys have separate paths. A typed letter must
+// never also activate the engine action bound to that physical key.
+func (t *TextInput) key(key Key, repeat bool) {
+	k := &sys.motif.KeyboardInfo
+	t.keyboard = true
+	// Let the IME handle its own editing keys until its text is committed.
+	if t.composition != "" {
+		return
+	}
+	for _, entry := range []struct {
+		keycode, action string
+		repeat          bool
+	}{
+		{k.Done.KeyCode, "done", false}, {k.Cancel.KeyCode, "cancel", false},
+		{k.Backspace.KeyCode, "backspace", true}, {k.Delete.KeyCode, "delete", true},
+		{k.Shift.KeyCode, "shift", false}, {k.Page.KeyCode, "page", false},
+		{k.Paste.KeyCode, "paste", false},
+		{k.Cursor.Previous.KeyCode, "previous", true}, {k.Cursor.Next.KeyCode, "next", true},
+		{k.Cursor.Start.KeyCode, "start", false}, {k.Cursor.End.KeyCode, "end", false},
+	} {
+		if entry.keycode != "" && StringToKey(entry.keycode) == key {
+			if !repeat || entry.repeat {
+				t.action(entry.action, false)
+			}
+			return
+		}
+	}
+}
+
+func (t *TextInput) controllerState(src *InputSource) [14]bool {
+	kc := t.controls
+	kc.Joy = src.Joy
+	state := GetJoystickState(kc)
+	for i, down := range input.GetJoystickMenuState(src.Joy) {
+		if t.bindings[i] == "" || t.bindings[i] == "-" {
+			state[i] = state[i] || down
+		}
+	}
+	return state
+}
+
+func (t *TextInput) button(keys []string, repeat bool) bool {
+	names := [...]string{"U", "D", "L", "R", "a", "b", "c", "x", "y", "z", "s", "d", "w", "m"}
+	for _, key := range keys {
+		if key == "B" {
+			key = "L"
+		} else if key == "F" {
+			key = "R"
+		}
+		for i, name := range names {
+			if key == name && (t.held[i] == 1 || repeat && sys.uiRepeatShouldFire(t.held[i])) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Handles one frame of on-screen keyboard input.
+func (t *TextInput) step() {
+	if !t.active || t.frame == sys.frameCounter {
+		return
+	}
+	t.frame, t.pressed = sys.frameCounter, -1
+	src := sys.inputs.inputSource(t.source)
+	if t.source != 0 && (src == nil || !src.Connected) {
+		t.finish(false)
+		return
+	}
+	if src == nil || !src.Connected {
+		// A keyboard-opened session may be picked up by the first gamepad used.
+		for _, candidate := range sys.inputs.Sources {
+			if !candidate.Connected || candidate.Joy < 0 {
+				continue
+			}
+			for _, down := range sys.inputSourceState(candidate) {
+				if down {
+					t.useSource(candidate)
+					t.held = [14]int32{}
+					t.waitRelease = true
+					src = candidate
+					break
+				}
+			}
+			if src != nil && src.Connected {
+				break
+			}
+		}
+	}
+	if src == nil || !src.Connected || src.Joy < 0 {
+		return
+	}
+	state := t.controllerState(src)
+	if t.waitRelease {
+		for _, down := range state {
+			if down {
+				return
+			}
+		}
+		t.waitRelease = false
+	}
+	for i, down := range state {
+		if down {
+			t.held[i]++
+		} else {
+			t.held[i] = 0
+		}
+	}
+	k := &sys.motif.KeyboardInfo
+	for _, entry := range []struct {
+		keys   []string
+		action string
+	}{
+		{k.Cancel.Key, "cancel"}, {k.Done.Key, "done"},
+		{k.Backspace.Key, "backspace"}, {k.Delete.Key, "delete"},
+		{k.Shift.Key, "shift"}, {k.Page.Key, "page"}, {k.Paste.Key, "paste"},
+		{k.Cursor.Previous.Key, "previous"}, {k.Cursor.Next.Key, "next"},
+		{k.Cursor.Start.Key, "start"}, {k.Cursor.End.Key, "end"},
+	} {
+		repeat := entry.action == "backspace" || entry.action == "delete" || entry.action == "previous" || entry.action == "next"
+		if t.button(entry.keys, repeat) {
+			t.keyboard = false
+			t.action(entry.action, true)
+			return
+		}
+	}
+	if t.button(k.Up.Key, true) {
+		t.move(0, -1)
+	} else if t.button(k.Down.Key, true) {
+		t.move(0, 1)
+	} else if t.button(k.Left.Key, true) {
+		t.move(-1, 0)
+	} else if t.button(k.Right.Key, true) {
+		t.move(1, 0)
+	} else if len(t.keys) > 0 && t.button(k.Select.Key, false) {
+		t.keyboard, t.pressed = false, t.selected
+		key := t.keys[t.selected].text
+		if strings.HasPrefix(key, "{") && strings.HasSuffix(key, "}") {
+			t.action(key[1:len(key)-1], true)
+		} else {
+			sound := k.Done.Snd
+			if !t.insert(key) {
+				sound = k.Cancel.Snd
+			}
+			sys.motif.Snd.play(sound, 100, 0, 0, 0, 0)
+		}
+	}
+}
+
+// Builds the key grid for the current layout (lower or upper case).
+func (t *TextInput) layout() {
+	k := &sys.motif.KeyboardInfo
+	name := "lower"
+	if t.shifted {
+		name = "upper"
+	}
+	if t.symbols {
+		name = "symbols"
+		if t.shifted {
+			name = "symbolsupper"
+		}
+	}
+	t.keys = nil
+	for row, text := range strings.Split(k.Layout[name], "|") {
+		x, y := k.Pos[0], k.Pos[1]+float32(row)*(k.Key.Size[1]+k.Key.Spacing[1])
+		for _, key := range strings.Fields(text) {
+			width := k.Key.Width[strings.Trim(key, "{}")]
+			if width <= 0 {
+				width = 1
+			}
+			width = width*k.Key.Size[0] + (width-1)*k.Key.Spacing[0]
+			t.keys = append(t.keys, TextInputKey{key, row, [4]float32{x, y, x + width, y + k.Key.Size[1]}})
+			x += width + k.Key.Spacing[0]
+		}
+	}
+	t.selected = Max(0, Min(t.selected, len(t.keys)-1))
+}
+
+func (t *TextInput) move(dx, dy int) {
+	if len(t.keys) == 0 {
+		return
+	}
+	current := t.keys[t.selected]
+	row := current.row
+	if dy != 0 {
+		rows := t.keys[len(t.keys)-1].row + 1
+		row = (row + dy + rows) % rows
+	}
+	var candidates []int
+	for i, key := range t.keys {
+		if key.row == row {
+			candidates = append(candidates, i)
+		}
+	}
+	if len(candidates) == 0 {
+		return
+	}
+	if dx != 0 {
+		for i, index := range candidates {
+			if index == t.selected {
+				t.selected = candidates[(i+dx+len(candidates))%len(candidates)]
+				break
+			}
+		}
+	} else {
+		center := (current.rect[0] + current.rect[2]) / 2
+		distance := float32(math.MaxFloat32)
+		for _, index := range candidates {
+			r := t.keys[index].rect
+			d := Abs((r[0]+r[2])/2 - center)
+			if d < distance {
+				distance, t.selected = d, index
+			}
+		}
+	}
+	t.keyboard = false
+	sys.motif.Snd.play(sys.motif.KeyboardInfo.Move.Snd, 100, 0, 0, 0, 0)
 }
 
 // Return the state of all keyboard keys for a player

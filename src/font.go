@@ -768,7 +768,8 @@ type TextSprite struct {
 	text, textInit string
 	glyphs         bool // motif / Lua text may contain inline input glyphs
 	glyphSection   string
-	glyphSource    int // zero follows the last active menu input source
+	literal        bool // user-entered text has no motif escapes or glyph tags
+	glyphSource    int  // zero follows the last active menu input source
 	glyphScale     [2]float32
 	glyphOffset    [2]float32
 	glyphSpacing   *float32 // nil uses the font spacing
@@ -1003,7 +1004,7 @@ func (ts *TextSprite) IsFullyTyped() bool {
 		return true // There's no partial logic
 	}
 	length := len(ts.text)
-	if ts.glyphs && strings.Contains(ts.text, "<") {
+	if ts.glyphs && !ts.literal && strings.Contains(ts.text, "<") {
 		length = 0
 		text := ts.decodeEscapes(strings.ReplaceAll(ts.text, "\t", "    "))
 		for _, line := range strings.Split(text, "\n") {
@@ -1025,7 +1026,7 @@ func (ts *TextSprite) TextWidth(txt string) int32 {
 	if ts.fnt == nil {
 		return 0
 	}
-	if ts.glyphs && strings.Contains(txt, "<") {
+	if ts.glyphs && !ts.literal && strings.Contains(txt, "<") {
 		return int32(math.Round(float64(ts.glyphTextWidth(ts.glyphRuns(txt)))))
 	}
 	spacingXAdd := int32(math.Round(float64(ts.textSpacing[0])))
@@ -1068,6 +1069,9 @@ func (ts *TextSprite) getLineLength(windowWrap bool) int32 {
 }
 
 func (ts *TextSprite) decodeEscapes(text string) string {
+	if ts.literal {
+		return text
+	}
 	return strings.ReplaceAll(text, "\\n", "\n")
 }
 
@@ -1441,7 +1445,7 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 	// We do this first so that length checks are accurate
 	text := strings.ReplaceAll(ts.text, "\t", "    ")
 	text = ts.decodeEscapes(text)
-	if ts.glyphs && strings.Contains(text, "<") {
+	if ts.glyphs && !ts.literal && strings.Contains(text, "<") {
 		ts.drawGlyphText(text, window)
 		return
 	}
@@ -1589,11 +1593,14 @@ func (ts *TextSprite) inputGlyph(key string) []glyphRun {
 			for i, name := range inputFields {
 				if field == name {
 					token := profileTokens(p)[i]
-					if ts.glyphSource == 0 && src.ID == sys.uiInputSource {
+					if ts.glyphSource == 0 && sys.textInput.active && src.ID == sys.textInput.source {
+						token = sys.textInput.bindings[i]
+					} else if ts.glyphSource == 0 && src.ID == sys.uiInputSource {
 						token = sys.uiInputBindings[i]
 					}
 					if (token == "" || token == "-") && src.Joy >= 0 &&
-						sys.uiInputSource == src.ID && ts.glyphSection == "option_info" {
+						(sys.uiInputSource == src.ID || sys.textInput.active && sys.textInput.source == src.ID) &&
+						(ts.glyphSection == "option_info" || ts.glyphSection == "keyboard_info") {
 						// Empty profiles still use SDL's fixed controls in the editor.
 						token = map[string]string{
 							"up": "DP_U", "down": "DP_D", "left": "DP_L", "right": "DP_R",
