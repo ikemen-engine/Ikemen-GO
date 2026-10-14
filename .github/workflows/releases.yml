@@ -23,6 +23,11 @@ on:
         type: boolean
         required: false
         default: true
+      screenpackBranch:
+        description: 'Ikemen-GO-Screenpack branch to bundle. Leave empty for master.'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -299,7 +304,8 @@ jobs:
           FFMPEG_REV="${FFMPEG_REV:-release/7.1}"
           LIBVPX_REV="${LIBVPX_REV:-v1.15.2}"
 
-          SCREENPACK_LIC="https://raw.githubusercontent.com/ikemen-engine/Ikemen-GO-Screenpack/master/LICENCE.txt"
+          SCREENPACK_BRANCH="${{ github.event.inputs.screenpackBranch || 'master' }}"
+          SCREENPACK_LIC="https://raw.githubusercontent.com/ikemen-engine/Ikemen-GO-Screenpack/${SCREENPACK_BRANCH}/LICENCE.txt"
 
           FFMPEG_LGPL="https://raw.githubusercontent.com/FFmpeg/FFmpeg/${FFMPEG_REV}/COPYING.LGPLv2.1"
           FFMPEG_LICENSE_MD="https://raw.githubusercontent.com/FFmpeg/FFmpeg/${FFMPEG_REV}/LICENSE.md"
@@ -580,7 +586,8 @@ jobs:
           fi
 
           # 2) Bring in runtime assets
-          git clone https://github.com/ikemen-engine/Ikemen-GO-Screenpack.git
+          SCREENPACK_BRANCH="${{ github.event.inputs.screenpackBranch || 'master' }}"
+          git clone --branch "$SCREENPACK_BRANCH" --single-branch https://github.com/ikemen-engine/Ikemen-GO-Screenpack.git
           cp -r data font external \
                 Ikemen-GO-Screenpack/chars \
                 Ikemen-GO-Screenpack/data \
