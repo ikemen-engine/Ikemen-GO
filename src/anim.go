@@ -1636,7 +1636,7 @@ type ShadowSprite struct {
 	shadowProjection    int32
 	shadowfLength       float32
 	shadowShader        CustomShaderRenderData
-	shadowInherit       bool
+	inheritShader       bool
 }
 
 func newShadowSprite() *ShadowSprite {
@@ -1646,7 +1646,7 @@ func newShadowSprite() *ShadowSprite {
 		shadowIntensity:     -1,
 		shadowKeeptransform: true,
 		shadowProjection:    -1,
-		shadowInherit:       true,
+		inheritShader:       true,
 	}
 }
 
@@ -1847,7 +1847,7 @@ func (sl ShadowList) draw(x, y, scl float32) {
 		var shader CustomShaderRenderData
 		if s.shadowShader.name != "" {
 			shader = s.shadowShader
-		} else if s.shadowInherit && s.customShader.name != "" {
+		} else if s.inheritShader && s.customShader.name != "" {
 			shader = s.customShader
 		} else if sys.stage.sdw.shader.name != "" {
 			shader = sys.stage.sdw.shader.renderData(!sys.stage.paused())
@@ -1910,7 +1910,7 @@ type ReflectionSprite struct {
 	reflectProjection    int32
 	reflectfLength       float32
 	reflectShader        CustomShaderRenderData
-	reflectInherit       bool
+	inheritShader        bool
 }
 
 func newReflectionSprite() *ReflectionSprite {
@@ -1919,7 +1919,7 @@ func newReflectionSprite() *ReflectionSprite {
 		reflectIntensity:     -1,
 		reflectKeeptransform: true,
 		reflectProjection:    -1,
-		reflectInherit:       true,
+		inheritShader:        true,
 	}
 }
 
@@ -2132,7 +2132,7 @@ func (rl ReflectionList) draw(x, y, scl float32) {
 		var shader CustomShaderRenderData
 		if s.reflectShader.name != "" {
 			shader = s.reflectShader
-		} else if s.reflectInherit && s.customShader.name != "" {
+		} else if s.inheritShader && s.customShader.name != "" {
 			shader = s.customShader
 		} else if sys.stage.reflection.shader.name != "" {
 			shader = sys.stage.reflection.shader.renderData(!sys.stage.paused())
