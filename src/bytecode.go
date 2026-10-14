@@ -15590,10 +15590,10 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if shadowShaderChanged {
-		sys.stage.applyShadowShader(&s.sdw)
+		s.applyShaderDef(&s.sdw.stageShaderDef, &s.sdw.shader)
 	}
 	if reflectionShaderChanged {
-		sys.stage.applyShadowShader(&s.reflection)
+		s.applyShaderDef(&s.reflection.stageShaderDef, &s.reflection.shader)
 	}
 	s.reload = true // Stage will have to be reloaded if it's re-selected
 	if shouldResetCamera {
@@ -16232,6 +16232,12 @@ const (
 	modifyStageBG_xshear
 	modifyStageBG_focallength
 	modifyStageBG_projection
+	modifyStageBG_shader
+	modifyStageBG_shaderparam
+	modifyStageBG_shader_tex1_anim
+	modifyStageBG_shader_tex1_spr
+	modifyStageBG_shader_tex2_anim
+	modifyStageBG_shader_tex2_spr
 )
 
 func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
@@ -16373,6 +16379,47 @@ func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 				val := Projection(exp[0].evalI(c))
 				eachBg(func(bg *backGround) {
 					bg.projection = val
+				})
+			case modifyStageBG_shader:
+				name := exp[0].evalSLower(c)
+				key, ok := sys.stage.customShaders[name]
+				if ok || name == "" {
+					eachBg(func(bg *backGround) {
+						bg.customShader.set(name, key)
+					})
+				} else {
+					sys.appendToConsole(c.warn() + fmt.Sprintf("invalid stage shader: %s", name))
+				}
+			case modifyStageBG_shaderparam:
+				n := int(exp[0].evalI(c))
+				for j := 0; j < n; j++ {
+					idx := int(exp[1+j*2].evalI(c))
+					val := exp[2+j*2].evalF(c)
+					eachBg(func(bg *backGround) {
+						bg.customShader.params[idx] = val
+					})
+				}
+			case modifyStageBG_shader_tex1_anim:
+				animNo := exp[0].evalI(c)
+				eachBg(func(bg *backGround) {
+					sys.stage.setShaderTex(&bg.customShader.tex1, bgShaderTex{animNo: animNo, sprNo: [2]int32{-1, -1}})
+				})
+			case modifyStageBG_shader_tex1_spr:
+				g := exp[0].evalI(c)
+				n := exp[1].evalI(c)
+				eachBg(func(bg *backGround) {
+					sys.stage.setShaderTex(&bg.customShader.tex1, bgShaderTex{animNo: -1, sprNo: [2]int32{g, n}})
+				})
+			case modifyStageBG_shader_tex2_anim:
+				animNo := exp[0].evalI(c)
+				eachBg(func(bg *backGround) {
+					sys.stage.setShaderTex(&bg.customShader.tex2, bgShaderTex{animNo: animNo, sprNo: [2]int32{-1, -1}})
+				})
+			case modifyStageBG_shader_tex2_spr:
+				g := exp[0].evalI(c)
+				n := exp[1].evalI(c)
+				eachBg(func(bg *backGround) {
+					sys.stage.setShaderTex(&bg.customShader.tex2, bgShaderTex{animNo: -1, sprNo: [2]int32{g, n}})
 				})
 			default:
 				if isPalFXParam(paramID) {
