@@ -15590,10 +15590,10 @@ func (sc modifyStageVar) Run(c *Char, _ []int32) bool {
 		return true
 	})
 	if shadowShaderChanged {
-		sys.stage.applyShadowShader(&s.sdw)
+		s.applyShaderDef(&s.sdw.stageShaderDef, &s.sdw.shader)
 	}
 	if reflectionShaderChanged {
-		sys.stage.applyShadowShader(&s.reflection)
+		s.applyShaderDef(&s.reflection.stageShaderDef, &s.reflection.shader)
 	}
 	s.reload = true // Stage will have to be reloaded if it's re-selected
 	if shouldResetCamera {
@@ -16232,19 +16232,17 @@ const (
 	modifyStageBG_xshear
 	modifyStageBG_focallength
 	modifyStageBG_projection
+	modifyStageBG_shader
+	modifyStageBG_shaderparam
+	modifyStageBG_shader_tex1_anim
+	modifyStageBG_shader_tex1_spr
+	modifyStageBG_shader_tex2_anim
+	modifyStageBG_shader_tex2_spr
 )
 
 func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 	bgid := int32(-1)
 	bgidx := int(-1)
-
-	// Helper function to modify each BG
-	var backgrounds []*backGround
-	eachBg := func(f func(bg *backGround)) {
-		for _, bg := range backgrounds {
-			f(bg)
-		}
-	}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -16252,138 +16250,192 @@ func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 			bgid = exp[0].evalI(c)
 		case modifyStageBG_index:
 			bgidx = int(exp[0].evalI(c))
-		default:
-			// Get BG's to modify
-			if len(backgrounds) == 0 {
-				backgrounds = c.getMultipleStageBg(bgid, bgidx, true)
-				if len(backgrounds) == 0 {
-					return false
+		}
+		return true
+	})
+
+	// Fetch the BGs we are going to modify
+	backgrounds := c.getMultipleStageBg(bgid, bgidx, true)
+	if len(backgrounds) == 0 {
+		return true
+	}
+
+	// Every BG write is collected here and only committed once all of them have been read
+	modifiers := make([]func(*backGround), 0, len(StateControllerBase(sc)))
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		// Start modifying
+		switch paramID {
+		case modifyStageBG_actionno:
+			animNo := exp[0].evalI(c)
+			// Getting an animation first and then applying it to multiple objects can cause shared pointer issues
+			// a := sys.stage.animTable.get(val)
+			modifiers = append(modifiers, func(bg *backGround) {
+				if bg._type == BG_Anim {
+					bg.changeAnim(animNo, sys.stage.animTable)
+					bg.anim.Action() // This step is necessary because stages update before characters
 				}
+			})
+		case modifyStageBG_angle:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.rot.angle = val
+			})
+		case modifyStageBG_xangle:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.rot.xangle = val
+			})
+		case modifyStageBG_yangle:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.rot.yangle = val
+			})
+		case modifyStageBG_delta_x:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.delta[0] = val
+			})
+		case modifyStageBG_delta_y:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.delta[1] = val
+			})
+		case modifyStageBG_layerno:
+			val := exp[0].evalI(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.layerno = val
+			})
+		case modifyStageBG_pos_x:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.bga.pos[0] = val
+			})
+		case modifyStageBG_pos_y:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.bga.pos[1] = val
+			})
+		case modifyStageBG_spriteno:
+			gr := exp[0].evalI(c)
+			im := exp[1].evalI(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				if bg._type == BG_Normal {
+					bg.anim.frames = []AnimFrame{*newAnimFrame()}
+					bg.anim.frames[0].Group = gr
+					bg.anim.frames[0].Number = im
+				}
+			})
+		case modifyStageBG_start_x:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.start[0] = val
+			})
+		case modifyStageBG_start_y:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.start[1] = val
+			})
+		case modifyStageBG_scalestart:
+			sclx := exp[0].evalF(c)
+			scly := exp[1].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.scalestart[0] = sclx
+				bg.scalestart[1] = scly
+			})
+		case modifyStageBG_trans:
+			src := Clamp(int32(exp[0].evalI(c)), 0, 255)
+			dst := Clamp(int32(exp[1].evalI(c)), 0, 255)
+			tt := TransType(exp[2].evalI(c))
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.anim.mask = 0
+				bg.anim.transType = tt
+				bg.anim.srcAlpha = int16(src)
+				bg.anim.dstAlpha = int16(dst)
+			})
+		case modifyStageBG_velocity_x:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.bga.vel[0] = val
+			})
+		case modifyStageBG_velocity_y:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.bga.vel[1] = val
+			})
+		case modifyStageBG_xshear:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.xshear = val
+			})
+		case modifyStageBG_focallength:
+			val := exp[0].evalF(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.fLength = val
+			})
+		case modifyStageBG_projection:
+			val := Projection(exp[0].evalI(c))
+			modifiers = append(modifiers, func(bg *backGround) {
+				bg.projection = val
+			})
+		case modifyStageBG_shader:
+			name := exp[0].evalSLower(c)
+			key, ok := sys.stage.customShaders[name]
+			if ok || name == "" {
+				modifiers = append(modifiers, func(bg *backGround) {
+					bg.customShader.set(name, key)
+				})
+			} else {
+				sys.appendToConsole(c.warn() + fmt.Sprintf("invalid stage shader: %s", name))
 			}
-			// Start modifying
-			switch paramID {
-			case modifyStageBG_actionno:
-				animNo := exp[0].evalI(c)
-				// Getting an animation first and then applying it to multiple objects can cause shared pointer issues
-				// a := sys.stage.animTable.get(val)
-				eachBg(func(bg *backGround) {
-					if bg._type == BG_Anim {
-						bg.changeAnim(animNo, sys.stage.animTable)
-						bg.anim.Action() // This step is necessary because stages update before characters
-					}
+		case modifyStageBG_shaderparam:
+			n := int(exp[0].evalI(c))
+			for j := 0; j < n; j++ {
+				idx := int(exp[1+j*2].evalI(c))
+				val := exp[2+j*2].evalF(c)
+				modifiers = append(modifiers, func(bg *backGround) {
+					bg.customShader.params[idx] = val
 				})
-			case modifyStageBG_angle:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.rot.angle = val
+			}
+		case modifyStageBG_shader_tex1_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				sys.stage.setShaderTex(&bg.customShader.tex1, bgShaderTex{animNo: animNo, sprNo: [2]int32{-1, -1}})
+			})
+		case modifyStageBG_shader_tex1_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				sys.stage.setShaderTex(&bg.customShader.tex1, bgShaderTex{animNo: -1, sprNo: [2]int32{g, n}})
+			})
+		case modifyStageBG_shader_tex2_anim:
+			animNo := exp[0].evalI(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				sys.stage.setShaderTex(&bg.customShader.tex2, bgShaderTex{animNo: animNo, sprNo: [2]int32{-1, -1}})
+			})
+		case modifyStageBG_shader_tex2_spr:
+			g := exp[0].evalI(c)
+			n := exp[1].evalI(c)
+			modifiers = append(modifiers, func(bg *backGround) {
+				sys.stage.setShaderTex(&bg.customShader.tex2, bgShaderTex{animNo: -1, sprNo: [2]int32{g, n}})
+			})
+		default:
+			if isPalFXParam(paramID) {
+				modifiers = append(modifiers, func(bg *backGround) {
+					palFX(sc).runSub(c, &bg.palfx.PalFXDef, paramID, exp)
 				})
-			case modifyStageBG_xangle:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.rot.xangle = val
-				})
-			case modifyStageBG_yangle:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.rot.yangle = val
-				})
-			case modifyStageBG_delta_x:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.delta[0] = val
-				})
-			case modifyStageBG_delta_y:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.delta[1] = val
-				})
-			case modifyStageBG_layerno:
-				val := exp[0].evalI(c)
-				eachBg(func(bg *backGround) {
-					bg.layerno = val
-				})
-			case modifyStageBG_pos_x:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.bga.pos[0] = val
-				})
-			case modifyStageBG_pos_y:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.bga.pos[1] = val
-				})
-			case modifyStageBG_spriteno:
-				gr := exp[0].evalI(c)
-				im := exp[1].evalI(c)
-				eachBg(func(bg *backGround) {
-					if bg._type == BG_Normal {
-						bg.anim.frames = []AnimFrame{*newAnimFrame()}
-						bg.anim.frames[0].Group = gr
-						bg.anim.frames[0].Number = im
-					}
-				})
-			case modifyStageBG_start_x:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.start[0] = val
-				})
-			case modifyStageBG_start_y:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.start[1] = val
-				})
-			case modifyStageBG_scalestart:
-				sclx := exp[0].evalF(c)
-				scly := exp[1].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.scalestart[0] = sclx
-					bg.scalestart[1] = scly
-				})
-			case modifyStageBG_trans:
-				src := Clamp(int32(exp[0].evalI(c)), 0, 255)
-				dst := Clamp(int32(exp[1].evalI(c)), 0, 255)
-				tt := TransType(exp[2].evalI(c))
-				eachBg(func(bg *backGround) {
-					bg.anim.mask = 0
-					bg.anim.transType = tt
-					bg.anim.srcAlpha = int16(src)
-					bg.anim.dstAlpha = int16(dst)
-				})
-			case modifyStageBG_velocity_x:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.bga.vel[0] = val
-				})
-			case modifyStageBG_velocity_y:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.bga.vel[1] = val
-				})
-			case modifyStageBG_xshear:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.xshear = val
-				})
-			case modifyStageBG_focallength:
-				val := exp[0].evalF(c)
-				eachBg(func(bg *backGround) {
-					bg.fLength = val
-				})
-			case modifyStageBG_projection:
-				val := Projection(exp[0].evalI(c))
-				eachBg(func(bg *backGround) {
-					bg.projection = val
-				})
-			default:
-				if isPalFXParam(paramID) {
-					eachBg(func(bg *backGround) {
-						palFX(sc).runSub(c, &bg.palfx.PalFXDef, paramID, exp)
-					})
-				}
 			}
 		}
 		return true
 	})
+
+	// Commit all parameters in the order they were compiled in
+	for _, modify := range modifiers {
+		for _, bg := range backgrounds {
+			modify(bg)
+		}
+	}
+
 	return false
 }
 

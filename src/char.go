@@ -2502,7 +2502,7 @@ func (e *Explod) cueDraw() {
 		ss.shadowAlpha = sdwalp
 		ss.shadowOffset = [2]float32{0, sys.stage.sdw.yscale*drawZoff + drawZoff}
 		ss.groundLevel = drawZoff
-		ss.shadowInherit = e.customShader.shadow
+		ss.inheritShader = e.customShader.shadow
 
 		// Add shadow to list
 		sys.shadowList.add(ss)
@@ -2517,7 +2517,7 @@ func (e *Explod) cueDraw() {
 		rs.SpriteData = sd
 		rs.reflectOffset = [2]float32{0, sys.stage.reflection.yscale*drawZoff + drawZoff}
 		rs.groundLevel = drawZoff
-		rs.reflectInherit = e.customShader.reflection
+		rs.inheritShader = e.customShader.reflection
 
 		// Add reflection to list
 		sys.reflectionList.add(rs)
@@ -3353,7 +3353,7 @@ func (p *Projectile) cueDraw() {
 		ss.shadowColor = sdwclr
 		ss.shadowOffset = [2]float32{0, sys.stage.sdw.yscale*drawZoff + drawZoff}
 		ss.groundLevel = drawZoff
-		ss.shadowInherit = p.customShader.shadow
+		ss.inheritShader = p.customShader.shadow
 
 		// Add shadow to list
 		sys.shadowList.add(ss)
@@ -3366,7 +3366,7 @@ func (p *Projectile) cueDraw() {
 		rs.SpriteData = sd
 		rs.reflectOffset = [2]float32{0, sys.stage.reflection.yscale*drawZoff + drawZoff}
 		rs.groundLevel = drawZoff
-		rs.reflectInherit = p.customShader.reflection
+		rs.inheritShader = p.customShader.reflection
 
 		// Add reflection to list
 		sys.reflectionList.add(rs)
@@ -13630,7 +13630,7 @@ func (c *Char) cueDraw() {
 				if c.shadowShader.name != "" {
 					ss.shadowShader = c.shadowShader.renderData(c.acttmp > 0)
 				}
-				ss.shadowInherit = c.customShader.shadow
+				ss.inheritShader = c.customShader.shadow
 				// Add shadow to list
 				sys.shadowList.add(ss)
 
@@ -13685,7 +13685,7 @@ func (c *Char) cueDraw() {
 				if c.reflectShader.name != "" {
 					rs.reflectShader = c.reflectShader.renderData(c.acttmp > 0)
 				}
-				rs.reflectInherit = c.customShader.reflection
+				rs.inheritShader = c.customShader.reflection
 
 				// Add reflection to list
 				sys.reflectionList.add(rs)

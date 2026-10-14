@@ -200,8 +200,13 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 		r.SetUniformFv("tint", []float32{0, 0, 0, 0})
 
 		// Same engine-provided values RenderSprite gives custom shaders
+		if f.customShader.tex1 != nil {
+			gfx.SetTexture("tex1", f.customShader.tex1)
+		}
+		if f.customShader.tex2 != nil {
+			gfx.SetTexture("tex2", f.customShader.tex2)
+		}
 		f.customShader.setUniforms()
-		r.SetCustomUniforms(f.customShader.params)
 	} else {
 		// Set texture location
 		r.SetUniformISub(program.uniforms["tex"], 0)
