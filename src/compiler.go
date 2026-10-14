@@ -2195,6 +2195,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_selfcommand
 		}
 		if err := eqne(func(not bool) error {
+			var nameExp BytecodeExp
 			if c.token == "\"" {
 				if err := text(); err != nil {
 					return err
@@ -2202,21 +2203,24 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				if _, ok := c.cmdl.Names[c.token]; !ok {
 					return Error("Command doesn't exist: " + c.token)
 				}
-				out.appendI32Op(OC_string, int32(sys.stringPool[c.playerNo].Add(c.token)))
+				nameExp.appendI32Op(OC_string, int32(sys.stringPool[c.playerNo].Add(c.token)))
 				c.token = c.tokenizer(in)
 			} else {
 				// Evaluate dynamic names at runtime, where map and local var values are available
-				var be BytecodeExp
-				bv, err := c.expGrls(&be, in)
+				bv, err := c.expGrls(&nameExp, in)
 				if err != nil {
 					return err
 				}
 				if !bv.IsNone() && bv.vtype != VT_String {
 					return Error(`Not enclosed in "`)
 				}
-				out.append(be...)
-				out.appendValue(bv)
+				nameExp.appendValue(bv)
 			}
+			// The name belongs to the caller. nordrun also keeps the redirect alive for the command opcode
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(nameExp)))
+			}
+			out.append(nameExp...)
 			out.append(opc)
 			if not {
 				out.append(OC_blnot)
