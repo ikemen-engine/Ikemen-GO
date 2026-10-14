@@ -12,25 +12,20 @@ import (
 // This file contains the parsing code for the function in ZSS and CNS, also called State Controllers.
 
 func (c *CharCompiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlName string) error {
-	attr := int32(-1)
 	var err error
 	var any, new, old bool
 
 	// New syntax with attr and slots
 	if err = c.stateParam(is, "attr", false, func(data string) error {
 		any, new = true, true
-		attr, err = c.attr(data, false)
-		if err != nil {
-			return err
-		}
-		sc.add(hitBy_attr, sc.iToExp(attr))
-		return nil // When running a "sub" function we can't just return sc.add
+		return c.parseAttrExpression(sc, hitBy_attr, data, false)
 	}); err != nil {
 		return err
 	}
 	if err := c.stateParam(is, "playerno", false, func(data string) error {
 		any, new = true, true
 		c.scAdd(sc, hitBy_playerno, data, VT_Int, 1)
+		// When running a "sub" function we can't just return sc.add
 		return nil
 	}); err != nil {
 		return err
@@ -79,26 +74,16 @@ func (c *CharCompiler) hitBySub(is IniSection, sc *StateControllerBase, sctrlNam
 	// Must be placed after time
 	if err = c.stateParam(is, "value", false, func(data string) error {
 		any, old = true, true
-		attr, err = c.attr(data, false)
-		if err != nil {
-			return err
-		}
 		sc.add(hitBy_slot, sc.iToExp(0))
-		sc.add(hitBy_attr, sc.iToExp(attr))
-		return nil
+		return c.parseAttrExpression(sc, hitBy_attr, data, false)
 	}); err != nil {
 		return err
 	}
 	if !any { // In Mugen if both values are used then value2 will be ignored
 		if err = c.stateParam(is, "value2", false, func(data string) error {
 			any, old = true, true
-			attr, err = c.attr(data, false)
-			if err != nil {
-				return err
-			}
 			sc.add(hitBy_slot, sc.iToExp(1))
-			sc.add(hitBy_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, hitBy_attr, data, false)
 		}); err != nil {
 			return err
 		}
@@ -670,23 +655,7 @@ func (c *CharCompiler) helper(is IniSection, sc *StateControllerBase) (StateCont
 			helper_clsnproxy, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "name", false, func(data string) error {
-			// Regular path for correct syntax
-			err := c.scAdd(sc, helper_name, data, VT_String, 1)
-			if err == nil {
-				return nil
-			}
-			// Legacy loose syntax
-			// Mugen treats a value it can't parse as a plain string, stripping quotes only when they come as a pair
-			if !c.zssMode && sys.ignoreMostErrors {
-				if len(data) >= 2 && data[0] == '"' && data[len(data)-1] == '"' {
-					data = data[1 : len(data)-1]
-				}
-				sc.add(helper_name, c.stringToExp(data))
-				return nil
-			}
-			return err
-		}); err != nil {
+		if err := c.paramValueLoose(is, sc, "name", helper_name, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramPostype(is, sc, helper_postype); err != nil {
@@ -1737,52 +1706,66 @@ func (c *CharCompiler) afterImageTime(is IniSection, sc *StateControllerBase) (S
 	return *ret, err
 }
 
-func (c *CharCompiler) parseHitFlag(sc *StateControllerBase, id byte, data string) error {
-	var flg int32
-	for _, c := range data {
-		switch c {
-		case 'H', 'h':
-			flg |= int32(HF_H)
-		case 'L', 'l':
-			flg |= int32(HF_L)
-		case 'M', 'm':
-			flg |= int32(HF_H | HF_L)
-		case 'A', 'a':
-			flg |= int32(HF_A)
-		case 'F', 'f':
-			flg |= int32(HF_F)
-		case 'D', 'd':
-			flg |= int32(HF_D)
-		case 'P', 'p':
-			flg |= int32(HF_P)
-		case '-':
-			flg |= int32(HF_MNS)
-		case '+':
-			flg |= int32(HF_PLS)
-		}
+func (c *CharCompiler) parseAttrExpression(sc *StateControllerBase, id byte, data string, hitdef bool) error {
+	// Parse literals strictly first, before trying to compile the value as a string expression
+	if attr, err := attrMask(data, hitdef, true, nil); err == nil {
+		sc.add(id, sc.iToExp(attr))
+		return nil
 	}
-	sc.add(id, sc.iToExp(flg))
+	rest := data
+	cc := *c
+	be, err := cc.fullExpression(&rest, VT_String)
+	if err != nil {
+		attr, parseErr := c.attr(data, hitdef)
+		if parseErr != nil {
+			return parseErr
+		}
+		sc.add(id, sc.iToExp(attr))
+		return nil
+	}
+	// A second expression marks a dynamic string attr
+	sc.add(id, []BytecodeExp{be, sc.iToExp(1)[0]})
 	return nil
+}
+
+func (c *CharCompiler) parseHitFlag(sc *StateControllerBase, id byte, data string) error {
+	sc.add(id, sc.iToExp(hitFlagMask(data)))
+	return nil
+}
+
+func (c *CharCompiler) parseHitFlagExpression(sc *StateControllerBase, id byte, data string) error {
+	// Try the conventional syntax first, so expressions can't shadow them
+	if strings.Trim(data, "HLMAFDPhlmafdp+- \t") == "" {
+		return c.parseHitFlag(sc, id, data)
+	}
+	// Look for a string expression
+	rest := data
+	cc := *c
+	be, err := cc.fullExpression(&rest, VT_String)
+	if err == nil {
+		sc.add(id, []BytecodeExp{be, sc.iToExp(1)[0]})
+		return nil
+	}
+	// Try the conventional flags again in case a bad flag bypassed the first check
+	if !c.zssMode && sys.ignoreMostErrors {
+		return c.parseHitFlag(sc, id, data)
+	}
+	return err
 }
 
 func (c *CharCompiler) hitDefSub(is IniSection, sc *StateControllerBase) error {
 	if err := c.stateParam(is, "attr", false, func(data string) error {
-		attr, err := c.attr(data, true)
-		if err != nil {
-			return err
-		}
-		sc.add(hitDef_attr, sc.iToExp(attr))
-		return nil
+		return c.parseAttrExpression(sc, hitDef_attr, data, true)
 	}); err != nil {
 		return err
 	}
 	if err := c.stateParam(is, "guardflag", false, func(data string) error {
-		return c.parseHitFlag(sc, hitDef_guardflag, data)
+		return c.parseHitFlagExpression(sc, hitDef_guardflag, data)
 	}); err != nil {
 		return err
 	}
 	if err := c.stateParam(is, "hitflag", false, func(data string) error {
-		return c.parseHitFlag(sc, hitDef_hitflag, data)
+		return c.parseHitFlagExpression(sc, hitDef_hitflag, data)
 	}); err != nil {
 		return err
 	}
@@ -2361,30 +2344,28 @@ func (c *CharCompiler) modifyHitDef(is IniSection, sc *StateControllerBase) (Sta
 
 func (c *CharCompiler) reversalDef(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*reversalDef)(sc), c.stateSec(is, func() error {
-		attr := int32(-1)
 		var err error
 		if err = c.paramValue(is, sc, "redirectid",
 			reversalDef_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
+		attrSet := false
 		if err = c.stateParam(is, "reversal.attr", false, func(data string) error {
-			attr, err = c.attr(data, false)
-			return err
+			attrSet = true
+			return c.parseAttrExpression(sc, reversalDef_reversal_attr, data, false)
 		}); err != nil {
 			return err
 		}
-		if attr == -1 {
+		if !attrSet {
 			return Error("ReversalDef reversal.attr not specified")
-		} else {
-			sc.add(reversalDef_reversal_attr, sc.iToExp(attr))
 		}
 		if err := c.stateParam(is, "reversal.guardflag", false, func(data string) error {
-			return c.parseHitFlag(sc, reversalDef_reversal_guardflag, data)
+			return c.parseHitFlagExpression(sc, reversalDef_reversal_guardflag, data)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "reversal.guardflag.not", false, func(data string) error {
-			return c.parseHitFlag(sc, reversalDef_reversal_guardflag_not, data)
+			return c.parseHitFlagExpression(sc, reversalDef_reversal_guardflag_not, data)
 		}); err != nil {
 			return err
 		}
@@ -2401,22 +2382,17 @@ func (c *CharCompiler) modifyReversalDef(is IniSection, sc *StateControllerBase)
 			return err
 		}
 		if err = c.stateParam(is, "reversal.attr", false, func(data string) error {
-			attr, err := c.attr(data, true)
-			if err != nil {
-				return err
-			}
-			sc.add(modifyReversalDef_reversal_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, modifyReversalDef_reversal_attr, data, false)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "reversal.guardflag", false, func(data string) error {
-			return c.parseHitFlag(sc, modifyReversalDef_reversal_guardflag, data)
+			return c.parseHitFlagExpression(sc, modifyReversalDef_reversal_guardflag, data)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "reversal.guardflag.not", false, func(data string) error {
-			return c.parseHitFlag(sc, modifyReversalDef_reversal_guardflag_not, data)
+			return c.parseHitFlagExpression(sc, modifyReversalDef_reversal_guardflag_not, data)
 		}); err != nil {
 			return err
 		}
@@ -3436,12 +3412,7 @@ func (c *CharCompiler) hitOverride(is IniSection, sc *StateControllerBase) (Stat
 			return err
 		}
 		if err := c.stateParam(is, "attr", false, func(data string) error {
-			attr, err := c.attr(data, false)
-			if err != nil {
-				return err
-			}
-			sc.add(hitOverride_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, hitOverride_attr, data, false)
 		}); err != nil {
 			return err
 		}
@@ -3470,12 +3441,12 @@ func (c *CharCompiler) hitOverride(is IniSection, sc *StateControllerBase) (Stat
 			return err
 		}
 		if err := c.stateParam(is, "guardflag", false, func(data string) error {
-			return c.parseHitFlag(sc, hitOverride_guardflag, data)
+			return c.parseHitFlagExpression(sc, hitOverride_guardflag, data)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "guardflag.not", false, func(data string) error {
-			return c.parseHitFlag(sc, hitOverride_guardflag_not, data)
+			return c.parseHitFlagExpression(sc, hitOverride_guardflag_not, data)
 		}); err != nil {
 			return err
 		}
@@ -3521,15 +3492,15 @@ func (c *CharCompiler) superPause(is IniSection, sc *StateControllerBase) (State
 			superPause_time, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "movetime",
+		if err := c.paramValueLoose(is, sc, "movetime",
 			superPause_movetime, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "pausebg",
+		if err := c.paramValueLoose(is, sc, "pausebg",
 			superPause_pausebg, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if err := c.paramValue(is, sc, "endcmdbuftime",
+		if err := c.paramValueLoose(is, sc, "endcmdbuftime",
 			superPause_endcmdbuftime, VT_Int, 1, false); err != nil {
 			return err
 		}
@@ -4435,18 +4406,35 @@ func (c *CharCompiler) forceFeedback(is IniSection, sc *StateControllerBase) (St
 			return err
 		}
 		if err := c.stateParam(is, "waveform", false, func(data string) error {
+			isValidWaveform := func(s string) bool {
+				switch s {
+				case "sine", "square", "sinesquare", "off":
+					return true
+				}
+				return false
+			}
+			data = strings.TrimSpace(data)
 			if len(data) == 0 {
 				return Error("waveform not specified")
 			}
-			if data[0] == '"' {
-				data = data[1 : len(data)-1]
+			// Legacy syntax: bare keyword
+			if kw := strings.ToLower(data); isValidWaveform(kw) {
+				sc.add(forceFeedback_waveform, c.stringToExp(kw))
+				return nil
 			}
-			switch strings.ToLower(data) {
-			case "sine", "square", "sinesquare", "off":
-			default:
-				return Error("Invalid waveform: " + data)
+			bes, err := c.exprs(data, VT_String, 1)
+			if err != nil {
+				return err
 			}
-			sc.add(forceFeedback_waveform, c.stringToExp(strings.ToLower(data)))
+			// Constant strings can be validated now. Dynamic ones are checked at runtime
+			if be := bes[0]; len(be) == 5 && be[0] == OC_string {
+				i := 1
+				s := sys.stringPool[c.playerNo].List[be.ReadIntAt(&i)]
+				if !isValidWaveform(strings.ToLower(s)) {
+					return Error("Invalid waveform: " + s)
+				}
+			}
+			sc.add(forceFeedback_waveform, bes)
 			return nil
 		}); err != nil {
 			return err
@@ -4628,13 +4616,8 @@ func (c *CharCompiler) dialogue(is IniSection, sc *StateControllerBase) (StateCo
 		}
 		sort.Ints(keys)
 		for _, key := range keys {
-			if err := c.stateParam(is, fmt.Sprintf("text%v", key), false, func(data string) error {
-				if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-					return Error("Not enclosed in \"")
-				}
-				sc.add(dialogue_text, c.stringToExp(data[1:len(data)-1]))
-				return nil
-			}); err != nil {
+			if err := c.paramValue(is, sc, fmt.Sprintf("text%v", key),
+				dialogue_text, VT_String, 1, false); err != nil {
 				return err
 			}
 		}
@@ -4752,13 +4735,8 @@ func (c *CharCompiler) lifebarAction(is IniSection, sc *StateControllerBase) (St
 		if err := c.paramPrefixValue(is, sc, "snd", lifebarAction_snd, 2, false, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "text", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Text not enclosed in \"")
-			}
-			sc.add(lifebarAction_text, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "text",
+			lifebarAction_text, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "font.no",
@@ -4802,6 +4780,7 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 	err := c.stateSec(is, func() error {
 		assign := false
 		var mapParam, mapName, value string
+		var nameExp []BytecodeExp // For string expressions used as name
 
 		if err := c.paramValue(is, sc, "redirectid",
 			mapSet_redirectid, VT_Int, 1, false); err != nil {
@@ -4845,16 +4824,15 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 				mapParam = data
 
 				// CNS: See if map parameter is INI-style or if it's an assign
+				// Only when it starts with "map", since a string expression may contain "="
 				ia := strings.Index(mapParam, "=")
-				if ia > 0 {
+				if ia > 0 && strings.HasPrefix(strings.ToLower(mapParam), "map") {
 					if strings.ToLower(SplitAndTrim(mapParam, "=")[0]) == "map" {
 						mapParam = strings.TrimSpace(mapParam[ia+1:])
 					} else {
 						mapParam = strings.TrimSpace(mapParam[3:])
 						assign = true
 					}
-				} else if !strings.HasPrefix(mapParam, "\"") {
-					return Error("Missing '='")
 				}
 				return nil
 			}); err != nil {
@@ -4887,10 +4865,18 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 						return err
 					}
 					if b {
-						if len(mapParam) < 2 || mapParam[0] != '"' || mapParam[len(mapParam)-1] != '"' {
-							return Error("Not enclosed in \"")
+						bes, err := c.exprs(mapParam, VT_String, 1)
+						if err != nil {
+							return err
 						}
-						mapName = mapParam[1 : len(mapParam)-1]
+						nameExp = bes
+						// Constant names can still be checked for emptiness below
+						if be := bes[0]; len(be) == 5 && be[0] == OC_string {
+							i := 1
+							mapName = sys.stringPool[c.playerNo].List[be.ReadIntAt(&i)]
+						} else {
+							mapName = mapParam
+						}
 					}
 				}
 			}
@@ -4914,7 +4900,10 @@ func (c *CharCompiler) mapSetSub(is IniSection, sc *StateControllerBase) error {
 
 		// Only add the bytecode if both are OK
 		if len(mapName) > 0 && len(value) > 0 {
-			sc.add(mapSet_mapArray, c.stringToExp(mapName))
+			if nameExp == nil {
+				nameExp = c.stringToExp(mapName)
+			}
+			sc.add(mapSet_mapArray, nameExp)
 			if err := c.scAdd(sc, mapSet_value, value, VT_Float, 1); err != nil {
 				return err
 			}
@@ -5029,11 +5018,7 @@ func (c *CharCompiler) mapReset(is IniSection, sc *StateControllerBase) (StateCo
 		}
 
 		addExclude := func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Exclude not enclosed in \"")
-			}
-			sc.add(mapReset_exclude, c.stringToExp(data[1:len(data)-1]))
-			return nil
+			return c.scAdd(sc, mapReset_exclude, data, VT_String, 1)
 		}
 
 		// Exclude
@@ -5063,85 +5048,40 @@ func (c *CharCompiler) matchRestart(is IniSection, sc *StateControllerBase) (Sta
 			matchRestart_reload, VT_Bool, MaxPlayerNo, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "stagedef", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Stagedef not enclosed in \"")
-			}
-			sc.add(matchRestart_stagedef, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "stagedef",
+			matchRestart_stagedef, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p1def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P1def not enclosed in \"")
-			}
-			sc.add(matchRestart_p1def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p1def",
+			matchRestart_p1def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p2def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P2def not enclosed in \"")
-			}
-			sc.add(matchRestart_p2def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p2def",
+			matchRestart_p2def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p3def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P3def not enclosed in \"")
-			}
-			sc.add(matchRestart_p3def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p3def",
+			matchRestart_p3def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p4def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P4def not enclosed in \"")
-			}
-			sc.add(matchRestart_p4def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p4def",
+			matchRestart_p4def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p5def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P5def not enclosed in \"")
-			}
-			sc.add(matchRestart_p5def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p5def",
+			matchRestart_p5def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p6def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P6def not enclosed in \"")
-			}
-			sc.add(matchRestart_p6def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p6def",
+			matchRestart_p6def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p7def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P7def not enclosed in \"")
-			}
-			sc.add(matchRestart_p7def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p7def",
+			matchRestart_p7def, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "p8def", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("P8def not enclosed in \"")
-			}
-			sc.add(matchRestart_p8def, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "p8def",
+			matchRestart_p8def, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "preservevars",
@@ -5240,13 +5180,8 @@ func (c *CharCompiler) playBgm(is IniSection, sc *StateControllerBase) (StateCon
 		}); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "bgm", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("BGM not enclosed in \"")
-			}
-			sc.add(playBgm_bgm, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "bgm",
+			playBgm_bgm, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "volume",
@@ -5526,13 +5461,8 @@ func (c *CharCompiler) remapSprite(is IniSection, sc *StateControllerBase) (Stat
 			remapSprite_reset, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "preset", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Preset not enclosed in \"")
-			}
-			sc.add(remapSprite_preset, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "preset",
+			remapSprite_preset, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "source",
@@ -5578,13 +5508,8 @@ func (c *CharCompiler) saveLoadFileSub(is IniSection, sc *StateControllerBase) e
 	if err := c.paramValue(is, sc, "redirectid", saveFile_redirectid, VT_Int, 1, false); err != nil {
 		return err
 	}
-	if err := c.stateParam(is, "path", true, func(data string) error {
-		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-			return Error("Path not enclosed in \"")
-		}
-		sc.add(saveFile_path, c.stringToExp(data[1:len(data)-1]))
-		return nil
-	}); err != nil {
+	if err := c.paramValue(is, sc, "path",
+		saveFile_path, VT_String, 1, true); err != nil {
 		return err
 	}
 	if err := c.paramSaveData(is, sc, saveFile_savedata); err != nil {
@@ -5695,13 +5620,8 @@ func (c *CharCompiler) storyboard(is IniSection, sc *StateControllerBase) (State
 		if err := c.paramValue(is, sc, "redirectid", storyboard_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "path", true, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Not enclosed in \"")
-			}
-			sc.add(storyboard_path, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "path",
+			storyboard_path, VT_String, 1, true); err != nil {
 			return err
 		}
 		return c.storyboardSub(is, sc)
@@ -6018,19 +5938,9 @@ func (c *CharCompiler) createPlatform(is IniSection, sc *StateControllerBase) (S
 			return err
 		}
 
-		// Here we check if the string is enclosed in quotes.
-		// (Because CNS has no real string support)
-		if err = c.stateParam(
-			is, "name", false,
-			func(data string) error {
-				if data[0] != '"' || data[len(data)-1] != '"' {
-					return Error(`[name] value in [createPlatform] not enclosed in quotation marks.` +
-						"\n" + "Value provided: [" + data + "]",
-					)
-				}
-				sc.add(helper_name, c.stringToExp(data[1:len(data)-1]))
-				return nil
-			},
+		if err = c.paramValue(
+			is, sc, "name",
+			createPlatform_name, VT_String, 1, false,
 		); err != nil {
 			return err
 		}
@@ -6543,31 +6453,16 @@ func (c *CharCompiler) modifyPlayer(is IniSection, sc *StateControllerBase) (Sta
 			modifyPlayer_teamside, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "displayname", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Displayname not enclosed in \"")
-			}
-			sc.add(modifyPlayer_displayname, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "displayname",
+			modifyPlayer_displayname, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "lifebarname", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Lifebarname not enclosed in \"")
-			}
-			sc.add(modifyPlayer_lifebarname, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "lifebarname",
+			modifyPlayer_lifebarname, VT_String, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "helpername", false, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Helpername not enclosed in \"")
-			}
-			sc.add(modifyPlayer_helpername, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "helpername",
+			modifyPlayer_helpername, VT_String, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "helpervar.id",
@@ -6633,13 +6528,8 @@ func (c *CharCompiler) assertCommand(is IniSection, sc *StateControllerBase) (St
 			assertCommand_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		if err := c.stateParam(is, "name", true, func(data string) error {
-			if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-				return Error("Command name not enclosed in \"")
-			}
-			sc.add(assertCommand_name, c.stringToExp(data[1:len(data)-1]))
-			return nil
-		}); err != nil {
+		if err := c.paramValue(is, sc, "name",
+			assertCommand_name, VT_String, 1, true); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "buffer.time",
@@ -6666,12 +6556,7 @@ func (c *CharCompiler) getHitVarSet(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		if err := c.stateParam(is, "attr", false, func(data string) error {
-			attr, err := c.attr(data, false)
-			if err != nil {
-				return err
-			}
-			sc.add(getHitVarSet_attr, sc.iToExp(attr))
-			return nil
+			return c.parseAttrExpression(sc, getHitVarSet_attr, data, false)
 		}); err != nil {
 			return err
 		}
@@ -6788,7 +6673,7 @@ func (c *CharCompiler) getHitVarSet(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		if err := c.paramValue(is, sc, "hitcount",
-			getHitVarSet_hittime, VT_Int, 1, false); err != nil {
+			getHitVarSet_hitcount, VT_Int, 1, false); err != nil {
 			return err
 		}
 		if err := c.paramValue(is, sc, "hitshaketime",
@@ -7110,14 +6995,8 @@ func (c *CharCompiler) shaderSub(is IniSection, sc *StateControllerBase, baseOp 
 	opTex2Anim := baseOp + 4
 	opTex2Spr := baseOp + 5
 
-	if err := c.stateParam(is, prefix+"name", false, func(data string) error {
-		if len(data) < 2 || data[0] != '"' || data[len(data)-1] != '"' {
-			return Error("Shader name not enclosed in \"")
-		}
-		shaderName := strings.ToLower(data[1 : len(data)-1])
-		sc.add(opShader, c.stringToExp(shaderName))
-		return nil
-	}); err != nil {
+	if err := c.paramValue(is, sc, prefix+"name",
+		opShader, VT_String, 1, false); err != nil {
 		return err
 	}
 
