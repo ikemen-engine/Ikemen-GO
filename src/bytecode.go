@@ -296,9 +296,9 @@ const (
 	OC_pop
 	OC_dup
 	OC_swap
-	OC_run
-	OC_nordrun
-	OC_jsf8
+	OC_run_redir
+	OC_run_caller
+	OC_jud8
 	OC_jmp8
 	OC_jz8
 	OC_jnz8
@@ -320,10 +320,10 @@ const (
 	OC_bland
 	OC_blxor
 	OC_blor
-	OC_not
-	OC_and
-	OC_xor
-	OC_or
+	OC_bwnot
+	OC_bwand
+	OC_bwxor
+	OC_bwor
 	OC_add
 	OC_sub
 	OC_mul
@@ -441,7 +441,7 @@ const (
 	OC_stateowner
 	OC_rdreset
 	OC_const_
-	OC_st_
+	OC_assign_
 	OC_ex_
 	OC_ex2_
 	OC_ex3_
@@ -684,16 +684,16 @@ const (
 	OC_const_stage_constants
 )
 const (
-	OC_st_var OpCode = iota // OpCodes for var assignment with :=
-	OC_st_fvar
-	OC_st_sysvar
-	OC_st_sysfvar
-	OC_st_varadd // These 4 are unused. Perhaps placeholders for eventual ++ and -- operators
-	OC_st_fvaradd
-	OC_st_sysvaradd
-	OC_st_sysfvaradd
-	OC_st_map
-	OC_st_mapindexed
+	OC_assign_var OpCode = iota // OpCodes for var assignment with :=
+	OC_assign_fvar
+	OC_assign_sysvar
+	OC_assign_sysfvar
+	OC_assign_varadd // These 4 are unused. Perhaps placeholders for eventual ++ and -- operators
+	OC_assign_fvaradd
+	OC_assign_sysvaradd
+	OC_assign_sysfvaradd
+	OC_assign_map
+	OC_assign_mapindexed // Separate opcodes so that the plain case stays fast
 )
 const (
 	OC_ex_p2dist_x OpCode = iota
@@ -1681,7 +1681,7 @@ func (BytecodeExp) neg(v *BytecodeValue) {
 
 // Bitwise not
 // Documented in Mugen but just crashes all versions when executing
-func (BytecodeExp) not(v *BytecodeValue) {
+func (BytecodeExp) bwnot(v *BytecodeValue) {
 	// We have no way to check what happens here in Mugen
 	// Not that it matters much, since Mugen chars couldn't use this operator before
 	//if v.IsUndefined() {
@@ -1948,7 +1948,7 @@ func (BytecodeExp) ne(v1 *BytecodeValue, v2 BytecodeValue) {
 	}
 }
 
-func (BytecodeExp) and(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) bwand(v1 *BytecodeValue, v2 BytecodeValue) {
 	// TODO: Ikemen characters could probably use these commented out logic branches instead of arbitrarily handling what "undefined" means
 	//if v1.IsUndefined() || v2.IsUndefined() {
 	//	*v1 = BytecodeUndefined()
@@ -1957,7 +1957,7 @@ func (BytecodeExp) and(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(v1.ToI() & v2.ToI())
 }
 
-func (BytecodeExp) xor(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) bwxor(v1 *BytecodeValue, v2 BytecodeValue) {
 	// XOR always requires both operands to be known
 	//if v1.IsUndefined() || v2.IsUndefined() {
 	//	*v1 = BytecodeUndefined()
@@ -1966,7 +1966,7 @@ func (BytecodeExp) xor(v1 *BytecodeValue, v2 BytecodeValue) {
 	v1.SetI(v1.ToI() ^ v2.ToI())
 }
 
-func (BytecodeExp) or(v1 *BytecodeValue, v2 BytecodeValue) {
+func (BytecodeExp) bwor(v1 *BytecodeValue, v2 BytecodeValue) {
 	// If one is undefined, use short-circuiting logic
 	//if v1.IsUndefined() || v2.IsUndefined() {
 	//	switch {
@@ -2239,7 +2239,7 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 	for i := 1; i <= len(be); i++ {
 		opc := be[i-1]
 		switch opc {
-		case OC_jsf8:
+		case OC_jud8:
 			if sys.bcStack.Top().IsUndefined() {
 				if be[i] == 0 {
 					i = len(be)
@@ -2368,14 +2368,19 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.Push(BytecodeUndefined())
 			be.JumpToNext(&i)
 		case OC_rdreset:
-			// NOP
-		case OC_run:
+			// Reset the current redirection
+			// A redirect only lasts one opcode, so this empty case ends it
+		case OC_run_redir:
 			l := be.PeekLength(i)
-			sys.bcStack.Push(be[i+4 : i+4+l].run(c)) // Run from c (with redirections)
+			// Evaluate block as the redirect target. No continue, so the redirect ends after it
+			// Ex: "parent, cond(alive, life, 0)" reads both alive and life from parent
+			sys.bcStack.Push(be[i+4 : i+4+l].run(c))
 			be.JumpToNext(&i)
-		case OC_nordrun:
+		case OC_run_caller:
 			l := be.PeekLength(i)
-			sys.bcStack.Push(be[i+4 : i+4+l].run(oc)) // Run from oc (without redirections)
+			// Evaluate operand as the caller. The continue keeps the active redirect for the next opcode
+			// Ex: "parent, command = map(cmd)" reads map(cmd) from the caller, then checks parent's command
+			sys.bcStack.Push(be[i+4 : i+4+l].run(oc))
 			be.JumpToNext(&i)
 			continue
 		case OC_int8:
@@ -2400,8 +2405,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushS(be.ReadPoolStringAt(&i))
 		case OC_neg:
 			be.neg(sys.bcStack.Top())
-		case OC_not:
-			be.not(sys.bcStack.Top())
+		case OC_bwnot:
+			be.bwnot(sys.bcStack.Top())
 		case OC_blnot:
 			be.blnot(sys.bcStack.Top())
 		case OC_pow:
@@ -2444,15 +2449,15 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 		case OC_ne:
 			v2 := sys.bcStack.Pop()
 			be.ne(sys.bcStack.Top(), v2)
-		case OC_and:
+		case OC_bwand:
 			v2 := sys.bcStack.Pop()
-			be.and(sys.bcStack.Top(), v2)
-		case OC_xor:
+			be.bwand(sys.bcStack.Top(), v2)
+		case OC_bwxor:
 			v2 := sys.bcStack.Pop()
-			be.xor(sys.bcStack.Top(), v2)
-		case OC_or:
+			be.bwxor(sys.bcStack.Top(), v2)
+		case OC_bwor:
 			v2 := sys.bcStack.Pop()
-			be.or(sys.bcStack.Top(), v2)
+			be.bwor(sys.bcStack.Top(), v2)
 		case OC_bland:
 			v2 := sys.bcStack.Pop()
 			be.bland(sys.bcStack.Top(), v2)
@@ -2741,8 +2746,8 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 			sys.bcStack.PushF(c.vel[1] * (c.localscl / oc.localscl))
 		case OC_vel_z:
 			sys.bcStack.PushF(c.vel[2] * (c.localscl / oc.localscl))
-		case OC_st_:
-			be.run_st(c, &i)
+		case OC_assign_:
+			be.run_assign(c, &i)
 		case OC_const_:
 			be.run_const(c, &i, oc)
 		case OC_ex_:
@@ -2768,47 +2773,47 @@ func (be BytecodeExp) run(c *Char) BytecodeValue {
 	return sys.bcStack.Pop()
 }
 
-func (be BytecodeExp) run_st(c *Char, i *int) {
+func (be BytecodeExp) run_assign(c *Char, i *int) {
 	(*i)++
 	opc := be[*i-1]
 	switch opc {
-	case OC_st_var:
+	case OC_assign_var:
 		val := sys.bcStack.Pop().ToI()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.varSet(vno, val)
-	case OC_st_fvar:
+	case OC_assign_fvar:
 		val := sys.bcStack.Pop().ToF()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.fvarSet(vno, val)
-	case OC_st_sysvar:
+	case OC_assign_sysvar:
 		val := sys.bcStack.Pop().ToI()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.sysVarSet(vno, val)
-	case OC_st_sysfvar:
+	case OC_assign_sysfvar:
 		val := sys.bcStack.Pop().ToF()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.sysFvarSet(vno, val)
-	case OC_st_varadd:
+	case OC_assign_varadd:
 		val := sys.bcStack.Pop().ToI()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.varAdd(vno, val)
-	case OC_st_fvaradd:
+	case OC_assign_fvaradd:
 		val := sys.bcStack.Pop().ToF()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.fvarAdd(vno, val)
-	case OC_st_sysvaradd:
+	case OC_assign_sysvaradd:
 		val := sys.bcStack.Pop().ToI()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.sysVarAdd(vno, val)
-	case OC_st_sysfvaradd:
+	case OC_assign_sysfvaradd:
 		val := sys.bcStack.Pop().ToF()
 		vno := sys.bcStack.Top().ToI()
 		*sys.bcStack.Top() = c.sysFvarAdd(vno, val)
-	case OC_st_map:
+	case OC_assign_map:
 		val := sys.bcStack.Pop()
 		mapName := be.readMapKey(i)
 		sys.bcStack.Push(c.mapSet(mapName, val, 0))
-	case OC_st_mapindexed:
+	case OC_assign_mapindexed:
 		val := sys.bcStack.Pop()
 		index := sys.bcStack.Pop().ToI()
 		mapName := c.mapIndexedKey(be.readMapKey(i), index)
