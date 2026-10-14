@@ -1030,21 +1030,21 @@ func (bgc *bgCtrl) yEnable() bool {
 
 type stageShadow struct {
 	stageShaderDef
-	intensity    int32
-	color        uint32
-	xscale       float32
-	yscale       float32
-	fadeend      int32
-	fadebgn      int32
-	xshear       float32
-	rot          Rotation
-	fLength      float32
-	projection   Projection
-	offset       [2]float32
-	window       [4]float32
-	ydelta       float32
-	layerno      int32
-	shader       CustomShader
+	intensity  int32
+	color      uint32
+	xscale     float32
+	yscale     float32
+	fadeend    int32
+	fadebgn    int32
+	xshear     float32
+	rot        Rotation
+	fLength    float32
+	projection Projection
+	offset     [2]float32
+	window     [4]float32
+	ydelta     float32
+	layerno    int32
+	shader     CustomShader
 }
 
 // Makes the CustomShader match its definition. Keeps the elapsed time if the shader didn't change
