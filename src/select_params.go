@@ -193,8 +193,6 @@ type SelectCharParams struct {
 	ArcadePath    string   `ini:"arcadepath"`
 	Unlock        string   `ini:"unlock"`
 	SlotSelect    string   `ini:"slotselect"`
-	SlotNext      string   `ini:"slotnext"`
-	SlotPrevious  string   `ini:"slotprevious"`
 	Raw           []string `ini:"raw"`
 }
 
@@ -271,10 +269,6 @@ func (p *SelectCharParams) AppendParams(entries []string) {
 			p.Unlock = val
 		case "select":
 			p.SlotSelect = val
-		case "next":
-			p.SlotNext = val
-		case "previous":
-			p.SlotPrevious = val
 		}
 	}
 }

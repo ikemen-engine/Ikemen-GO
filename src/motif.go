@@ -795,7 +795,15 @@ type SelectInfoProperties struct {
 			SwitchTime int32 `ini:"switchtime"`
 		} `ini:"random"`
 		MapCell map[string]*CellOverrideProperties `ini:"map:^[0-9*]+-[0-9*]+$" lua:""`
-		Slot    AnimationProperties                `ini:"slot"`
+		Slot    struct {
+			AnimationProperties
+			Next struct {
+				Key []string `ini:"key"`
+			} `ini:"next"`
+			Previous struct {
+				Key []string `ini:"key"`
+			} `ini:"previous"`
+		} `ini:"slot"`
 	} `ini:"cell"`
 	P1      PlayerSelectProperties `ini:"p1"`
 	P2      PlayerSelectProperties `ini:"p2"`
@@ -843,6 +851,20 @@ type SelectInfoProperties struct {
 			Random                          AnimationProperties `ini:"random"`
 			Loading                         AnimationProperties `ini:"loading"`
 		} `ini:"portrait"`
+		Previous struct {
+			Key []string `ini:"key"`
+		} `ini:"previous"`
+		Next struct {
+			Key []string `ini:"key"`
+		} `ini:"next"`
+		Skip struct {
+			Previous struct {
+				Key []string `ini:"key"`
+			} `ini:"previous"`
+			Next struct {
+				Key []string `ini:"key"`
+			} `ini:"next"`
+		} `ini:"skip"`
 	} `ini:"stage"`
 	Done struct {
 		Key []string `ini:"key"`
