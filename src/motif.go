@@ -60,6 +60,10 @@ type InfoProperties struct {
 	Localcoord    [2]int32 `ini:"localcoord" default:"320,240"`
 }
 
+type MouseProperties struct {
+	Enabled bool `ini:"enabled" default:"true"`
+}
+
 type FontProperties struct {
 	Font    string    `ini:"" lua:"font" lookup:"def,font/,,data/"`
 	Height  int32     `ini:"height" default:"-1"`
@@ -359,24 +363,31 @@ type MenuProperties struct {
 	} `ini:"title"`
 	Next struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"next"`
 	Previous struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"previous"`
 	Add struct { // only used by [Option Info], [Pause Menu], [Training Pause Menu]
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"add"`
 	Subtract struct { // only used by [Option Info], [Pause Menu], [Training Pause Menu]
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"subtract"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 	Done struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"done"`
 	Hiscore struct { // not used by [Option Info], [Replay Info], [Pause Menu]
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"hiscore"`
 	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
 	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
@@ -513,22 +524,28 @@ type PlayerSelectProperties struct {
 		} `ini:"value"`
 		Done struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
 		Cancel struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"cancel"`
 		Next struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"next"`
 		Previous struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"previous"`
 		Add struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"add"`
 		Subtract struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"subtract"`
 		Item ItemProperties `ini:"item"`
 	} `ini:"teammenu"`
@@ -536,16 +553,20 @@ type PlayerSelectProperties struct {
 		Pos  [2]float32 `ini:"pos"`
 		Next struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"next"`
 		Previous struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"previous"`
 		Done struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
 		Cancel struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"cancel"`
 		Random struct {
@@ -581,6 +602,7 @@ type PlayerVsProperties struct {
 	FaceProperties
 	Face2 FaceProperties `ini:"face2"`
 	Key   []string       `ini:"key"`
+	Mouse []string       `ini:"mouse"`
 	Name  struct {
 		TextProperties
 		Pos     [2]float32 `ini:"pos"`
@@ -655,6 +677,7 @@ type TextInputProperties struct {
 
 type KeyboardActionProperties struct {
 	Key     []string `ini:"key"`
+	Mouse []string `ini:"mouse"`
 	KeyCode string   `ini:"keycode"`
 }
 
@@ -696,18 +719,23 @@ type KeyboardInfoProperties struct {
 	} `ini:"key"`
 	Up struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"up"`
 	Down struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"down"`
 	Left struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"left"`
 	Right struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"right"`
 	Select struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"select"`
 	Backspace KeyboardActionProperties `ini:"backspace"`
 	Delete    KeyboardActionProperties `ini:"delete"`
@@ -805,9 +833,11 @@ type SelectInfoProperties struct {
 			AnimationProperties
 			Next struct {
 				Key []string `ini:"key"`
+				Mouse []string `ini:"mouse"`
 			} `ini:"next"`
 			Previous struct {
 				Key []string `ini:"key"`
+				Mouse []string `ini:"mouse"`
 			} `ini:"previous"`
 		} `ini:"slot"`
 	} `ini:"cell"`
@@ -859,24 +889,30 @@ type SelectInfoProperties struct {
 		} `ini:"portrait"`
 		Previous struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"previous"`
 		Next struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"next"`
 		Skip struct {
 			Previous struct {
 				Key []string `ini:"key"`
+				Mouse []string `ini:"mouse"`
 			} `ini:"previous"`
 			Next struct {
 				Key []string `ini:"key"`
+				Mouse []string `ini:"mouse"`
 			} `ini:"next"`
 		} `ini:"skip"`
 	} `ini:"stage"`
 	Done struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"done"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	Portrait struct {
@@ -916,13 +952,16 @@ type VsScreenProperties struct {
 	Timer TimerProperties    `ini:"timer"`
 	Done  struct {
 		Key  []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Time int32    `ini:"time"`
 	} `ini:"done"`
 	Skip struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"skip"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 	Stage struct {
 		Pos [2]float32 `ini:"pos"`
@@ -970,6 +1009,7 @@ type DemoModeProperties struct {
 	} `ini:"vsscreen"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 }
 
@@ -1003,6 +1043,7 @@ type ContinueScreenProperties struct {
 	} `ini:"gameover"`
 	Move struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
 	Cancel struct {
@@ -1010,10 +1051,12 @@ type ContinueScreenProperties struct {
 	} `ini:"cancel"`
 	Done struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
 	Skip struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"skip"`
 	Overlay OverlayProperties        `ini:"overlay"`
 	P1      PlayerContinueProperties `ini:"p1"`
@@ -1077,9 +1120,11 @@ type VictoryScreenProperties struct {
 	Overlay OverlayProperties `ini:"overlay"`
 	Skip    struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"skip"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 	P1 PlayerVictoryProperties `ini:"p1"`
 	P2 PlayerVictoryProperties `ini:"p2"`
@@ -1113,6 +1158,7 @@ type WinScreenProperties struct {
 	Overlay OverlayProperties `ini:"overlay"`
 	Cancel  struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
@@ -1146,6 +1192,7 @@ type ResultsScreenProperties struct {
 	Overlay OverlayProperties `ini:"overlay"`
 	Cancel  struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
@@ -1186,16 +1233,20 @@ type MappingInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
 	Cancel struct {
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	Confirm struct {
 		KeyCode string `ini:"keycode"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"confirm"`
 	Skip struct {
 		KeyCode string `ini:"keycode"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"skip"`
 	Previous struct {
 		KeyCode string `ini:"keycode"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"previous"`
 }
 
@@ -1342,6 +1393,7 @@ type AttractModeProperties struct {
 			TextProperties
 			Blinktime int32    `ini:"blinktime"`
 			Key       []string `ini:"key"`
+			Mouse  []string `ini:"mouse"`
 		} `ini:"press"`
 		Timer TimerProperties `ini:"timer"`
 	} `ini:"start"`
@@ -1380,9 +1432,11 @@ type DialogueInfoProperties struct {
 	SkipTime   int32 `ini:"skiptime"`
 	Skip       struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"skip"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"cancel"`
 	P1 PlayerDialogueProperties `ini:"p1"`
 	P2 PlayerDialogueProperties `ini:"p2"`
@@ -1432,11 +1486,13 @@ type HiscoreInfoProperties struct {
 	Overlay OverlayProperties `ini:"overlay"`
 	Done    struct {
 		Key  []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd  [2]int32 `ini:"snd" default:"-1,0"`
 		Time int32    `ini:"time"`
 	} `ini:"done"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	TextInput struct {
@@ -1445,9 +1501,11 @@ type HiscoreInfoProperties struct {
 	} `ini:"textinput"`
 	Next struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"next"`
 	Previous struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 	} `ini:"previous"`
 	Move struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
@@ -1513,20 +1571,25 @@ type SideSelectInfoProperties struct {
 	Side struct {
 		Previous struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"previous"`
 		Next struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"next"`
 	} `ini:"side"`
 	Profile struct {
 		Previous struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"previous"`
 		Next struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"next"`
 		Edit struct {
 			Key []string `ini:"key"`
+			Mouse []string `ini:"mouse"`
 		} `ini:"edit"`
 	} `ini:"profile"`
 	Move struct {
@@ -1534,10 +1597,12 @@ type SideSelectInfoProperties struct {
 	} `ini:"move"`
 	Done struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
 	Cancel struct {
 		Key []string `ini:"key"`
+		Mouse []string `ini:"mouse"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	Invalid struct {
@@ -1564,6 +1629,7 @@ type Motif struct {
 	Music           Music
 	Def             string                              `ini:"def"`
 	Info            InfoProperties                      `ini:"info"`
+	Mouse           MouseProperties                     `ini:"mouse"`
 	Files           FilesProperties                     `ini:"files"`
 	Languages       map[string]string                   `ini:"languages"`
 	TitleInfo       TitleInfoProperties                 `ini:"title_info"`
@@ -2119,18 +2185,27 @@ func (h *HintProperties) Draw(layerno int16, context string) {
 	}
 }
 
-// Hint text: glyph.<pack>.<context> while the shown source uses that pack, else <context>.
+// Hint text: mouse.<context> while using the mouse, then glyph.<pack>.<context>
+// for the shown glyph pack, then <context>.
 func (h *HintProperties) text(context string, source int) string {
 	if context == "" {
 		context = "default"
 	}
-	if src := sys.glyphSource(source); src != nil {
-		set := "glyph." + input.GlyphController(src, &sys.motif.ControllerGlyphs)
-		name := set + "." + context
+	variant := func(prefix string) (string, bool) {
+		name := prefix + "." + context
 		if context == "default" {
-			name = set
+			name = prefix
 		}
-		if text, ok := h.Text[name]; ok {
+		text, ok := h.Text[name]
+		return text, ok
+	}
+	if sys.mouse.enabled() && sys.mouse.active {
+		if text, ok := variant("mouse"); ok {
+			return text
+		}
+	}
+	if src := sys.glyphSource(source); src != nil {
+		if text, ok := variant("glyph." + input.GlyphController(src, &sys.motif.ControllerGlyphs)); ok {
 			return text
 		}
 	}
@@ -3486,7 +3561,8 @@ func (m *Motif) drawBezel() {
 
 		// The bezel starts at the window's top left, without motif offsets.
 		xoffset := -float32(a.offsetX)
-		a.drawWithOffset(xoffset, 0, a.drawWindowWithOffset(xoffset, 0))
+		window := a.drawWindowWithOffset(xoffset, 0)
+		a.anim.draw(a.drawParamsWithOffset(xoffset, 0, window))
 	})
 }
 
@@ -4222,6 +4298,9 @@ func (co *MotifContinue) playCounterSounds(m *Motif) {
 }
 
 func (co *MotifContinue) step(m *Motif) {
+	sys.mouse.action(m.ContinueScreen.Skip.Mouse, m.ContinueScreen.Skip.Key, co.pn-1)
+	sys.mouse.action(m.ContinueScreen.Done.Mouse, m.ContinueScreen.Done.Key, co.pn-1)
+	sys.mouse.action(m.ContinueScreen.Move.Mouse, m.ContinueScreen.Move.Key, co.pn-1)
 	m.ContinueBgDef.BGDef.step()
 	if co.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.continue')"); err != nil {
@@ -4405,6 +4484,9 @@ func (de *MotifDemo) init(m *Motif) {
 }
 
 func (de *MotifDemo) step(m *Motif) {
+	if !m.AttractMode.Enabled {
+		sys.mouse.action(m.DemoMode.Cancel.Mouse, m.DemoMode.Cancel.Key, -1)
+	}
 	if de.endTimer == -1 {
 		cancel := (m.AttractMode.Enabled && sys.credits > 0) || (!m.AttractMode.Enabled && sys.uiRawInput(m.DemoMode.Cancel.Key, -1))
 		if de.counter == m.DemoMode.Fight.EndTime || cancel {
@@ -5240,6 +5322,8 @@ func (di *MotifDialogue) applyToken(m *Motif, line *DialogueParsedLine, token Di
 
 // step processes dialogue state each frame, handling timing, skipping, cancel, wrapping, etc.
 func (di *MotifDialogue) step(m *Motif) {
+	sys.mouse.action(m.DialogueInfo.Cancel.Mouse, m.DialogueInfo.Cancel.Key, -1)
+	sys.mouse.action(m.DialogueInfo.Skip.Mouse, m.DialogueInfo.Skip.Key, -1)
 	// If we have no lines, do nothing
 	if len(di.parsed) == 0 {
 		di.finish(m)
@@ -6022,6 +6106,10 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 }
 
 func (hi *MotifHiscore) step(m *Motif) {
+	if !hi.input {
+		sys.mouse.action(m.HiscoreInfo.Cancel.Mouse, m.HiscoreInfo.Cancel.Key, -1)
+		sys.mouse.action(m.HiscoreInfo.Done.Mouse, m.HiscoreInfo.Done.Key, -1)
+	}
 	if !hi.noBgs {
 		m.HiscoreBgDef.BGDef.step()
 	}
@@ -6130,6 +6218,10 @@ func (hi *MotifHiscore) step(m *Motif) {
 // Arcade name entry for cabinets without a keyboard: up/down change the letter,
 // a button accepts it. "<" deletes, ">" adds a space.
 func (hi *MotifHiscore) stepArcadeInput(m *Motif, row *rankingRow) {
+	sys.mouse.action(m.HiscoreInfo.Cancel.Mouse, m.HiscoreInfo.Cancel.Key, hi.controller)
+	sys.mouse.action(m.HiscoreInfo.Done.Mouse, m.HiscoreInfo.Done.Key, hi.controller)
+	sys.mouse.action(m.HiscoreInfo.Previous.Mouse, m.HiscoreInfo.Previous.Key, hi.controller)
+	sys.mouse.action(m.HiscoreInfo.Next.Mouse, m.HiscoreInfo.Next.Key, hi.controller)
 	count := len(m.HiscoreInfo.Glyphs)
 	if count == 0 {
 		return
@@ -6864,6 +6956,8 @@ func (vi *MotifVictory) init(m *Motif) {
 }
 
 func (vi *MotifVictory) step(m *Motif) {
+	sys.mouse.action(m.VictoryScreen.Cancel.Mouse, m.VictoryScreen.Cancel.Key, -1)
+	sys.mouse.action(m.VictoryScreen.Skip.Mouse, m.VictoryScreen.Skip.Key, -1)
 	m.VictoryBgDef.BGDef.step()
 	if vi.counter > 0 {
 		if err := sys.luaLState.DoString("hook.run('game.victory')"); err != nil {
@@ -7204,6 +7298,7 @@ type MotifWin struct {
 	fadeOutTime   int32
 	time          int32
 	keyCancel     []string
+	mouseCancel []string
 	p1States      [4][]int32
 	p2States      [4][]int32
 	stateTime     int32
@@ -7395,6 +7490,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 	wi.stateTime = rs.State.Time
 	wi.soundsEnabled = rs.Sounds.Enabled
 	wi.keyCancel = rs.Cancel.Key
+	wi.mouseCancel = rs.Cancel.Mouse
 	wi.time = rs.Show.Time
 	wi.fadeOutTime = rs.FadeOut.FadeData.duration()
 	wi.fadeIn = rs.FadeIn.FadeData
@@ -7422,6 +7518,7 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 	wi.soundsEnabled = m.WinScreen.Sounds.Enabled
 
 	wi.keyCancel = m.WinScreen.Cancel.Key
+	wi.mouseCancel = m.WinScreen.Cancel.Mouse
 	wi.time = m.WinScreen.Pose.Time
 	wi.fadeOutTime = m.WinScreen.FadeOut.FadeData.duration()
 	wi.fadeIn = m.WinScreen.FadeIn.FadeData
@@ -7431,6 +7528,7 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 
 // Process the step logic for MotifWin
 func (wi *MotifWin) step(m *Motif) {
+	sys.mouse.action(wi.mouseCancel, wi.keyCancel, -1)
 	if wi.resultsScreen != nil {
 		if wi.resultsBgDef != nil && wi.resultsBgDef.BGDef != nil {
 			wi.resultsBgDef.BGDef.step()

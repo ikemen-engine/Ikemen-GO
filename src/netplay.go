@@ -147,6 +147,7 @@ func (nb *NetBuffer) reset(time int32) {
 func (nb *NetBuffer) writeNetBuffer(in int) {
 	if nb.inpT-nb.curT < NETBUF_NUM_FRAMES {
 		nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)].KeysToBits(nb.InputReader.LocalInput(in))
+		nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)] |= sys.mouse.netInput(nb)
 		nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = nb.InputReader.LocalAnalogInput(in)
 		nb.inpT++
 	}

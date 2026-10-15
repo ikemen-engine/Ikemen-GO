@@ -470,6 +470,10 @@ func (t *Texture_GL33) GetUV() [4]float32 {
 	return t.uvst
 }
 
+func (t *Texture_GL33) GetFilter() bool {
+	return t.filter
+}
+
 func (t *Texture_GL33) MapInternalFormat(i int32) uint32 {
 	var InternalFormatLUT = map[int32]uint32{
 		8:   gl.RED,

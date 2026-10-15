@@ -272,6 +272,7 @@ type System struct {
 	keyConfig           []KeyConfig
 	inputs              InputAssignment
 	textInput           TextInput
+	mouse               MouseInput
 	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
@@ -1183,6 +1184,10 @@ func (s *System) soundPanView() (view soundPanView) {
 }
 
 func (s *System) renderFrame() {
+	// Pause-menu Lua reads input while drawing, after uiAction has run.
+	if s.motif.me.active {
+		defer s.mouse.reset()
+	}
 	// Full-resolution scaling is render-only; gameplay remains in fight space.
 	logicState := s.captureAspectState()
 	// Draw the fight in the same place whether or not a menu is open.
@@ -1966,6 +1971,9 @@ func (s *System) stepCommandLists() {
 
 // Avoid immediate UI token reuse right after defaults/config/player changes.
 func (s *System) uiResetTokenGuard() {
+	s.mouse.reset()
+	s.mouse.netKeys = nil
+	s.mouse.netSession = nil
 	s.uiConsumeInputFrame = s.frameCounter + 1
 	s.uiLastInputToken = ""
 	s.lastInputController = -1
@@ -1988,6 +1996,19 @@ func (s *System) uiRepeatShouldFire(held int32) bool {
 func (s *System) noteGlyphInput(source int) {
 	if src := s.inputs.inputSource(source); src != nil && src.Connected {
 		s.uiGlyphSource = source
+		// Online mouse choices return as normal synchronized buttons. Only a
+		// physical input should switch their hint back to controller artwork.
+		if s.mouse.active && s.netConnection != nil && !s.gameRunning {
+			for _, down := range s.inputSourceState(src) {
+				if down {
+					s.mouse.active = false
+					s.mouse.netKeys = nil
+					break
+				}
+			}
+			return
+		}
+		s.mouse.active = false
 	}
 }
 
@@ -1998,6 +2019,7 @@ func (s *System) noteKeyboardGlyphInput(key string) {
 	if key == "" || key == "ESCAPE" {
 		return
 	}
+	s.mouse.active = false
 	if src := s.inputs.inputSource(s.uiGlyphSource); src != nil && src.Connected && src.Joy < 0 {
 		return
 	}
@@ -2126,6 +2148,9 @@ func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
 func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 	if s.textInput.active || s.textInput.release {
 		return false
+	}
+	if s.mouse.input(btns, controllerIdx) {
+		return true
 	}
 	checkOne := func(i int, cl *CommandList) bool {
 		if cl == nil || cl.Buffer == nil {
@@ -3762,6 +3787,11 @@ func (s *System) uiAction() {
 	if !s.uiTick() {
 		return
 	}
+	defer func() {
+		if !s.motif.me.active {
+			s.mouse.reset()
+		}
+	}()
 
 	if s.escPending {
 		s.esc = true

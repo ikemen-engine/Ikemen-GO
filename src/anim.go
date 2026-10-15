@@ -1049,10 +1049,19 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	rxadd float32, rot Rotation, rcx float32, rotPivot [2]float32, pfx *PalFX, facing float32,
 	airOffsetFix [2]float32, projectionMode int32, fLength float32,
 	isReflection bool, shader CustomShaderRenderData) {
+	a.draw(a.drawParams(window, x, y, xcs, ycs, xs, xbs, ys, rxadd, rot, rcx,
+		rotPivot, pfx, facing, airOffsetFix, projectionMode, fLength, isReflection, shader))
+}
+
+// Share the sprite geometry with UI hit detection, before palette or GPU work.
+func (a *Animation) drawParams(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
+	rxadd float32, rot Rotation, rcx float32, rotPivot [2]float32, pfx *PalFX, facing float32,
+	airOffsetFix [2]float32, projectionMode int32, fLength float32,
+	isReflection bool, shader CustomShaderRenderData) RenderParams {
 
 	// Skip blank animations
-	if a == nil || a.isBlank() {
-		return
+	if a == nil || a.isBlank() || a.spr == nil {
+		return RenderParams{}
 	}
 
 	// Determine animation angle. Invert for reflection
@@ -1144,20 +1153,8 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 
 	rcOffset := [2]float32{rotPivot[0] * sys.widthScale, rotPivot[1] * sys.heightScale}
 
-	blendMode, blendAlpha := a.alphaToBlend()
-
-	var paltex Texture
-	if !a.isVideo {
-		var pal []uint32
-		pal, paltex = a.pal(pfx)
-		if a.spr.coldepth <= 8 && paltex == nil {
-			paltex = a.spr.CachePalTex(pal)
-		}
-	}
-
 	rp := RenderParams{
 		tex:            a.spr.Tex,
-		paltex:         paltex,
 		size:           a.spr.Size,
 		x:              x * sys.widthScale,
 		y:              y * sys.heightScale,
@@ -1171,8 +1168,6 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		yas:            v,
 		rot:            rot,
 		tint:           0,
-		blendMode:      blendMode,
-		blendAlpha:     blendAlpha,
 		mask:           int32(a.mask),
 		pfx:            pfx,
 		window:         window,
@@ -1186,6 +1181,21 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		customShader:   shader,
 	}
 
+	return rp
+}
+
+func (a *Animation) draw(rp RenderParams) {
+	if rp.tex == nil {
+		return
+	}
+	rp.blendMode, rp.blendAlpha = a.alphaToBlend()
+	if !a.isVideo {
+		pal, paltex := a.pal(rp.pfx)
+		if a.spr.coldepth <= 8 && paltex == nil {
+			paltex = a.spr.CachePalTex(pal)
+		}
+		rp.paltex = paltex
+	}
 	RenderSprite(rp)
 }
 
@@ -2323,6 +2333,7 @@ func (a *Anim) Copy() *Anim {
 		dst.Tex = src.Tex
 		dst.palidx = src.palidx
 		dst.coldepth = src.coldepth
+		dst.hitPixels = src.hitPixels
 		// Copy arrays (if not slices, this is fine as-is)
 		dst.Offset = src.Offset
 		dst.Size = src.Size
@@ -2526,12 +2537,19 @@ func (a *Anim) Draw(ln int16) {
 	if sys.frameSkip || a == nil || a.anim == nil || a.layerno != ln {
 		return
 	}
+	a.anim.draw(a.drawParams())
+}
+
+func (a *Anim) drawParams() RenderParams {
+	if a == nil || a.anim == nil {
+		return RenderParams{}
+	}
 	// Keep the original integer offsets for motif elements.
-	a.drawWithOffset(float32(int(sys.gameWidth-320)/2),
+	return a.drawParamsWithOffset(float32(int(sys.gameWidth-320)/2),
 		float32(int(sys.gameHeight-240)), a.drawWindow())
 }
 
-func (a *Anim) drawWithOffset(xoffset, yoffset float32, window [4]int32) {
+func (a *Anim) drawParamsWithOffset(xoffset, yoffset float32, window [4]int32) RenderParams {
 	// Xshear offset correction
 	xshear := -a.xshear
 	var xsoffset float32
@@ -2545,7 +2563,7 @@ func (a *Anim) drawWithOffset(xoffset, yoffset float32, window [4]int32) {
 		xscl *= -1
 	}
 
-	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+xoffset,
+	return a.anim.drawParams(&window, a.x+a.vel[0]-xsoffset+xoffset,
 		a.y+a.vel[1]+yoffset, 1, 1, xscl, xscl, a.yscl,
 		xshear, a.rot, 0, [2]float32{0, 0}, a.palfx, a.facing, [2]float32{1, 1},
 		a.projection, a.fLength, false, CustomShaderRenderData{})

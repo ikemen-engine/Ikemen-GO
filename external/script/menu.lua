@@ -805,6 +805,15 @@ function menu.f_commandlistRender(sec, t)
 	end
 	local maxFirst = math.max(1, #cmdList - visible + 1)
 	t.tbl.movelistLine = math.max(1, math.min(t.tbl.movelistLine, maxFirst))
+	if not fadeActive() and #cmdList > visible then
+		if t.tbl.movelistLine > 1 and mouseOver(sec.movelist.arrow.up.AnimData) then
+			mouseGetInput(sec.menu.done.mouse, sec.menu.previous.key)
+		elseif t.tbl.movelistLine < maxFirst and mouseOver(sec.movelist.arrow.down.AnimData) then
+			mouseGetInput(sec.menu.done.mouse, sec.menu.next.key)
+		end
+	end
+	main.f_mouseActions(nil, sec.menu.cancel, sec.menu.done, sec.menu.previous, sec.menu.next)
+	main.f_mouseActions(nil, sec.menu.subtract, sec.menu.add)
 	if esc() or getInput(-1, sec.menu.cancel.key, sec.menu.done.key) then
 		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 		menu.itemname = ''

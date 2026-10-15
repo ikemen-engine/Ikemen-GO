@@ -296,7 +296,7 @@ function hook.stop(list, name)
 end
 
 --animDraw at specified coordinates
-function main.f_animPosDraw(a, x, y, f)
+function main.f_animPosDraw(a, x, y, f, capture)
 	if a == nil then
 		return
 	end
@@ -307,8 +307,9 @@ function main.f_animPosDraw(a, x, y, f)
 	if f ~= nil then
 		animSetFacing(a, f)
 	end
-	animDraw(a)
+	local drawn = animDraw(a, nil, capture == true)
 	animUpdate(a)
+	return drawn
 end
 
 --copy table content into new table
@@ -1221,6 +1222,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 	resetKey()
 	esc(false)
 	local function drawFrame()
+		main.f_mouseActions(nil, sec.menu.cancel, getValue == nil and sec.menu.done or nil)
 		if esc() or getInput(-1, sec.menu.cancel.key) then
 			esc(false)
 			sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
@@ -1270,6 +1272,8 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		main.f_hintDraw(hint, context, nil, nil, nil, {
 			['menu.done'] = sec.menu.done.key,
 			['menu.cancel'] = sec.menu.cancel.key,
+			['menu.done.mouse'] = sec.menu.done.mouse,
+			['menu.cancel.mouse'] = sec.menu.cancel.mouse,
 		})
 		--draw layerno = 1 backgrounds
 		bgDraw(background.BGDef, 1)
@@ -3224,8 +3228,8 @@ end
 function main.f_chooseNetplayInput()
 	local sec = motif[main.group]
 	local controls = {menu = {
-		cancel = {key = {}},
-		done = {key = {}},
+		cancel = {key = {}, mouse = sec.menu.cancel.mouse},
+		done = {key = {}, mouse = {}},
 	}}
 	local buttons = {'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}
 	local firstFrame = true
@@ -3233,6 +3237,7 @@ function main.f_chooseNetplayInput()
 		nil, nil, nil, nil, nil, function()
 			-- Wait for a fresh press after drawing the prompt.
 			if firstFrame then firstFrame = false; return nil end
+			if mouseGetInput(sec.menu.cancel.mouse) then return false end
 			for _, candidate in ipairs(inputGetSources()) do
 				if candidate.connected and inputSourcePressed(candidate.id, buttons) then
 					return candidate.id
@@ -3248,6 +3253,7 @@ function main.f_connect(server, str)
 	end
 	enterNetPlay(server)
 	while not connected() do
+		main.f_mouseActions(nil, motif.title_info.menu.cancel)
 		if esc() or getInput(-1, motif.title_info.menu.cancel.key) then
 			sndPlay(motif.Snd, motif.title_info.cancel.snd[1], motif.title_info.cancel.snd[2])
 			exitNetPlay()
@@ -3413,6 +3419,7 @@ function main.f_attractStart()
 		counter = counter + 1
 		--draw layerno = 0 backgrounds
 		bgDraw(motif.attractbgdef.BGDef, 0)
+		main.f_mouseActions(nil, getCredits() ~= 0 and motif.attract_mode.start.press or nil)
 		--draw text
 		if getCredits() ~= 0 then
 			if motif.attract_mode.start.press.blinktime > 0 and not fadeOutStarted then
@@ -3493,7 +3500,7 @@ function main.f_attractStart()
 			fadeOutStarted = true
 		end
 		--frame transition
-		if esc() --[[or getInput(-1, motif.attract_mode.menu.cancel.key)]] then
+		if esc() or mouseGetInput(motif.attract_mode.menu.cancel.mouse) then
 			esc(false)
 			return false
 		end
@@ -3715,6 +3722,99 @@ local function f_tweenStep(val, target, factor)
 	return newVal
 end
 
+-- Screens without menu rows forward only the active actions' mouse bindings.
+function main.f_mouseActions(player, ...)
+	if fadeActive() then
+		return
+	end
+	for i = 1, select('#', ...) do
+		local action = select(i, ...)
+		if action ~= nil and #action.key > 0 and mouseGetInput(action.mouse, action.key, player or -1) then
+			return
+		end
+	end
+end
+
+-- Backgrounds use their own clipping, transforms and transparency. Pick the frontmost hit,
+-- with drawing order breaking ties within a render layer.
+function main.f_menuMouseBg(backgrounds)
+	local target = nil
+	for i = #backgrounds, 1, -1 do
+		local bg = backgrounds[i]
+		if (target == nil or bg.layerno > target.layerno) and mouseOver(bg.anim, true) then
+			target = bg
+		end
+	end
+	return target and target.item
+end
+
+-- Hit the positions that were actually drawn, including scroll/cursor tweens.
+function main.f_menuMouse(t, item, sec)
+	local data, m = sec.mouseData, sec.menu or sec
+	if fadeActive() then
+		return nil
+	end
+	if mouseGetInput(m.cancel.mouse, data ~= nil and data.items == t and data.cancel or m.cancel.key) then
+		return nil
+	end
+	if data == nil or data.items ~= t then
+		return nil
+	end
+	for _, action in ipairs({m.hiscore, m.subtract, m.add}) do
+		if #action.key > 0 and mouseGetInput(action.mouse, action.key) then
+			return nil
+		end
+	end
+	for _, arrow in ipairs({{'up', m.previous.key}, {'down', m.next.key}}) do
+		if data[arrow[1]] and mouseOver(m.arrow[arrow[1]].AnimData) and mouseGetInput(m.done.mouse, arrow[2]) then
+			return nil
+		end
+	end
+	if mouseGetInput(m.previous.mouse, m.previous.key) or mouseGetInput(m.next.mouse, m.next.key) then
+		return nil
+	end
+	local function over(bounds)
+		return bounds ~= nil and mouseOver(m.boxcursor.RectData, bounds[1], bounds[2], bounds[3], bounds[4], m.item.TextSpriteData)
+	end
+	-- Item artwork is a fallback after every cursor rectangle.
+	local clicked = nil
+	if over(data.rows[item]) then
+		clicked = item
+	else
+		for i = 1, #t do
+			if over(data.rows[i]) then
+				clicked = i
+				break
+			end
+		end
+	end
+	if clicked == nil then
+		clicked = main.f_menuMouseBg(data.backgrounds)
+	end
+	if clicked == item then
+		local keys = data.done
+		-- Value rows: left click increases. Subtract/add mouse buttons are handled above.
+		if data.adjust then
+			keys = data.add
+		end
+		mouseGetInput(m.done.mouse, keys)
+		return nil
+	end
+	if clicked ~= nil and mouseGetInput(m.done.mouse) then
+		if inputLocalSession() then return clicked end
+		local direction = clicked > item and 1 or -1
+		local keys = direction > 0 and m.next.key or m.previous.key
+		if #keys == 0 then return nil end
+		local route = {}
+		for i = item + direction, clicked, direction do
+			if not t[i].itemname:match('^spacer%d*$') then
+				table.insert(route, keys[1])
+			end
+		end
+		mouseSetInput(route)
+	end
+end
+
 --common menu calculations
 function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, forcedDir)
 	local m = sec.menu or sec
@@ -3743,8 +3843,16 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 	end
 	-- movement: forcedDir: 1 = next (down), -1 = previous (up), 0/nil = no forced move
 	local moveDir = 0
+	local clicked = nil
+	if forcedDir == nil then
+		clicked = main.f_menuMouse(t, item, sec)
+	end
 	if forcedDir ~= nil then
 		moveDir = forcedDir
+	elseif clicked ~= nil then
+		cursorPosY = math.max(1, math.min(visible, cursorPosY + clicked - item))
+		item = clicked
+		sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
 	elseif getInput(-1, m.next.key) then
 		moveDir = 1
 	elseif getInput(-1, m.previous.key) then
@@ -3869,27 +3977,38 @@ function main.f_hintDraw(hint, context, values, source, side, actions)
 		textImgSetGlyphSource(hint.TextSpriteData, source)
 	end
 	context = context or 'default'
-	-- Hint text: glyph.<pack>.<context> while the shown source uses that pack, else <context>.
-	local set = 'glyph.' .. inputGetGlyphPack(source or 0)
-	local text = hint.text[context == 'default' and set or set .. '.' .. context]
+	-- Hint text: mouse.<context> while using the mouse, then glyph.<pack>.<context>
+	-- for the shown glyph pack, then <context>.
+	local function variant(prefix)
+		return hint.text[context == 'default' and prefix or prefix .. '.' .. context]
+	end
+	local text = (mouseActive() and variant('mouse')) or variant('glyph.' .. inputGetGlyphPack(source or 0))
 		or hint.text[context] or hint.text.default or ''
 	if actions ~= nil then
-		-- Shared popups use the caller's menu keys, not the Warning Info section.
-		text = text:gsub('<action:([^>]+)>', function(name)
-			if actions[name] == nil then
-				return '<action:' .. name .. '>'
-			end
-			local glyphs = {}
-			for _, key in ipairs(actions[name]) do
-				table.insert(glyphs, '<input:' .. key .. '>')
-			end
-			return table.concat(glyphs)
-		end)
+		-- Shared popups use the caller's bindings, not the Warning Info section.
+		for _, binding in ipairs({{'action', 'input:', ''}, {'mouse', 'mouse:', '.mouse'}}) do
+			text = text:gsub('<' .. binding[1] .. ':([^>]+)>', function(name)
+				local keys = actions[name .. binding[3]]
+				if keys == nil then
+					return '<' .. binding[1] .. ':' .. name .. '>'
+				end
+				local glyphs = {}
+				for _, key in ipairs(keys) do
+					if binding[1] == 'mouse' then
+						key = key:upper()
+					end
+					table.insert(glyphs, '<' .. binding[2] .. key .. '>')
+				end
+				return table.concat(glyphs)
+			end)
+		end
 	end
 	if side ~= nil then
 		-- The same human can select a CPU team with that team's menu keys.
 		text = text:gsub('<action:player%.', '<action:p' .. side .. '.')
 		text = text:gsub(',player%.', ',p' .. side .. '.')
+		text = text:gsub('<mouse:player%.', '<mouse:p' .. side .. '.')
+		text = text:gsub('<mouse:player>', '<mouse:p' .. side .. '>')
 	end
 	if values ~= nil then
 		text = main.f_formatBySpec(text, values)
@@ -3911,6 +4030,14 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	local offx = opts.offx or 0
 	local offy = opts.offy or 0
 	local forceInactive = (opts.forceInactive == true)
+	local actions = opts.hintActions or {}
+	sec.mouseData = {
+		items = t, rows = {}, backgrounds = {}, adjust = opts.hintContext == 'adjust',
+		done = actions['menu.done'] or m.done.key,
+		cancel = actions['menu.cancel'] or m.cancel.key,
+		add = actions['menu.add'] or m.add.key,
+		subtract = actions['menu.subtract'] or m.subtract.key,
+	}
 
 	-- effective visible-items: treat 0 or 'unlimitedItems' as "all"
 	local visible = (m.window and m.window.visibleitems) or #t
@@ -3966,6 +4093,13 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		-- shared position
 		local posX = offx + (i - 1) * m.item.spacing[1]
 		local posY = offy + (i - 1) * m.item.spacing[2] - moveTxt
+		if not forceInactive and not itemData.itemname:match('^spacer%d*$') then
+			local c = m.boxcursor.coords
+			sec.mouseData.rows[i] = {
+				m.pos[1] + posX + c[1], m.pos[2] + posY + c[2],
+				m.pos[1] + posX + c[3] + 1, m.pos[2] + posY + c[4] + 1,
+			}
+		end
 		-- background params
 		local bgTable = isActive and m.item.active.bg or m.item.bg
 		local params = bgTable[itemData.paramname] or bgTable.default
@@ -3976,7 +4110,11 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 			bgPosX = bgPosX + (i - 1) * bgTable.default.spacing[1]
 			bgPosY = bgPosY + (i - 1) * bgTable.default.spacing[2] - moveTxt
 		end
-		main.f_animPosDraw(params.AnimData, bgPosX, bgPosY)
+		-- Keep the queued position even when several rows share one animation.
+		local drawn = main.f_animPosDraw(params.AnimData, bgPosX, bgPosY, nil, sec.mouseData.rows[i] ~= nil)
+		if drawn ~= nil then
+			table.insert(sec.mouseData.backgrounds, {item = i, anim = drawn, layerno = params.layerno})
+		end
 		-- text sprite for label
 		local labelSprite
 		if itemData.selected then
@@ -4067,6 +4205,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		rectSetWindow(m.boxcursor.RectData, x1, y1, x1 + w, y1 + h)
 		rectUpdate(m.boxcursor.RectData)
 		rectDraw(m.boxcursor.RectData)
+		sec.mouseData.rows[item] = {x1, y1, x1 + w, y1 + h}
 	end
 	--draw scroll arrows
 	if #t > visible then
@@ -4075,12 +4214,14 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 			animAddPos(m.arrow.up.AnimData, offx, offy)
 			animUpdate(m.arrow.up.AnimData)
 			animDraw(m.arrow.up.AnimData)
+			sec.mouseData.up = not forceInactive
 		end
 		if item >= cursorPosY and item + visible - cursorPosY < #t then
 			animReset(m.arrow.down.AnimData, {'pos'})
 			animAddPos(m.arrow.down.AnimData, offx, offy)
 			animUpdate(m.arrow.down.AnimData)
 			animDraw(m.arrow.down.AnimData)
+			sec.mouseData.down = not forceInactive
 		end
 	end
 	--draw credits text

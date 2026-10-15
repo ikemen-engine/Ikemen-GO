@@ -902,6 +902,15 @@ local function getPortraitDrawData(v, side, member, params, dataField)
 	return data, drawParams, drawParams == params.loading
 end
 
+local function addMouseOrderTarget(t, side, member, anim)
+	if t == motif.vs_screen and start.mouseOrderTargets ~= nil and anim ~= nil
+		and not main.cpuSide[side] and inputGetPlayerSource(side) ~= 0
+		and not start.p[side].t_selected[member].loading and mouseOver(anim) then
+		-- Check the current sprite while it still has this member's draw position.
+		table.insert(start.mouseOrderTargets, {side = side, member = member})
+	end
+end
+
 local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 	local lastIdx = #t_portraits
 	local skipField = dataField == 'face2_data' and 'skipCurrentFace2' or 'skipCurrentFace'
@@ -919,6 +928,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 				f_portraitsXCalc(side, 1, paramsSide, drawParams, skipOffset, offsetKey),
 				paramsSide.pos[2] + (skipOffset and 0 or drawParams.offset[2])
 			)
+			addMouseOrderTarget(t, side, idx, data)
 		end
 		-- we're done for this layer in this mode
 		return
@@ -948,6 +958,7 @@ local function drawPortraitLayer(t_portraits, side, t, subname, last, dataField)
 				f_portraitsXCalc(side, member, paramsSide, drawParams, skipOffset, offsetKey),
 				paramsSide.pos[2] + (skipOffset and 0 or drawParams.offset[2]) + (member - 1) * paramsSide.spacing[2]
 			)
+			addMouseOrderTarget(t, side, member, data)
 		end
 	end
 end
@@ -1029,15 +1040,22 @@ function start.f_drawPortraits(t_portraits, side, t, subname, last, iconDone)
 			f_portraitsXCalc(side, member, paramsSide, params),
 			paramsSide.pos[2] + params.offset[2] + (member - 1) * paramsSide.spacing[2]
 		)
+		addMouseOrderTarget(t, side, member, animData)
 	end
 end
 
 --returns correct cell position after moving the cursor
-function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
+function start.f_cellMovement(selX, selY, cmd, side, snd, dir, preview)
 	local tmpX = selX
 	local tmpY = selY
 	local found = false
-	if getInput(cmd, motif.select_info.cell.up.key) or dir == 'U' then
+	local function pressed(name, direction)
+		if preview ~= nil then
+			return preview == direction
+		end
+		return getInput(cmd, motif.select_info.cell[name].key) or dir == direction
+	end
+	if pressed('up', 'U') then
 		for i = 1, motif.select_info.rows do
 			selY = selY - 1
 			if selY < 0 then
@@ -1058,7 +1076,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 				break
 			end
 		end
-	elseif getInput(cmd, motif.select_info.cell.down.key) or dir == 'D' then
+	elseif pressed('down', 'D') then
 		for i = 1, motif.select_info.rows do
 			selY = selY + 1
 			if selY >= motif.select_info.rows then
@@ -1079,7 +1097,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 				break
 			end
 		end
-	elseif getInput(cmd, motif.select_info.cell.left.key) or dir == 'B' then
+	elseif pressed('left', 'B') then
 		if dir ~= nil then
 			found, selX = start.f_searchEmptyBoxes(selX, selY, side, -1)
 		else
@@ -1097,7 +1115,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 				end
 			end
 		end
-	elseif getInput(cmd, motif.select_info.cell.right.key) or dir == 'F' then
+	elseif pressed('right', 'F') then
 		if dir ~= nil then
 			found, selX = start.f_searchEmptyBoxes(selX, selY, side, 1)
 		else
@@ -1117,7 +1135,7 @@ function start.f_cellMovement(selX, selY, cmd, side, snd, dir)
 		end
 	end
 	if (tmpX ~= selX or tmpY ~= selY) then
-		if dir == nil then
+		if dir == nil and preview == nil then
 			sndPlay(motif.Snd, snd[1], snd[2])
 		end
 	end
@@ -2575,6 +2593,8 @@ function start.updateDrawList()
 				local charData = start.f_selGrid(cellIndex)
 				local function getTransforms(base)
 					return {
+						cell        = cellIndex,
+						layerno     = base.layerno,
 						facing      = getCellFacing(base.facing, c, r),
 						scale       = getCellTransform(c, r, "scale", base.scale),
 						xshear      = getCellTransform(c, r, "xshear", base.xshear),
@@ -2791,6 +2811,103 @@ function start.f_slotCell(player)
 	return grid ~= nil and #grid.chars > 1
 end
 
+-- Pending local selections are shared by the hint and the mouse. A remote
+-- player's cursor is never chosen by inputGetPlayerSource / f_pendingHint.
+function start.f_selectChoices()
+	local choices = {}
+	for side, p in ipairs(start.p) do
+		if not p.teamEnd then
+			table.insert(choices, {cmd = start.f_menuCmd(side), context = 'team', side = side})
+		elseif not p.selEnd then
+			for k, selection in ipairs(p.t_selCmd) do
+				local active = not main.coop or (side ~= main.runSide and not gameMode('versuscoop'))
+					or not motif.select_info.coopqueue or k == #p.t_selected + 1
+				if active and selection.selectState < 3 then
+					local context = selection.selectState == 1 and 'palette' or 'default'
+					if context == 'default' and start.f_slotCell(selection.player) then
+						context = 'slot'
+					end
+					table.insert(choices, {cmd = selection.cmd, context = context, side = side})
+				end
+			end
+		end
+	end
+	return choices
+end
+
+-- Netplay already synchronizes menu buttons. Find a route using the same grid
+-- movement rules, then send those presses instead of changing only our cursor.
+function start.f_mouseCellPath(player, side, x, y)
+	local cursor = start.c[player]
+	local queue = {{x = cursor.selX, y = cursor.selY, keys = {}}}
+	local seen = {[cursor.selY * motif.select_info.columns + cursor.selX] = true}
+	local index = 1
+	while queue[index] ~= nil do
+		local cell = queue[index]
+		if cell.x == x and cell.y == y then
+			return cell.keys
+		end
+		for _, direction in ipairs({{'up', 'U'}, {'down', 'D'}, {'left', 'B'}, {'right', 'F'}}) do
+			local keys = motif.select_info.cell[direction[1]].key
+			if #keys > 0 then
+				local nx, ny = start.f_cellMovement(cell.x, cell.y, nil, side, nil, nil, direction[2])
+				local id = ny * motif.select_info.columns + nx
+				if not seen[id] then
+					seen[id] = true
+					local path = main.f_tableCopy(cell.keys)
+					table.insert(path, keys[1])
+					table.insert(queue, {x = nx, y = ny, keys = path})
+				end
+			end
+		end
+		index = index + 1
+	end
+	return {}
+end
+
+function start.f_mouseCharacter(side, cmd, player)
+	if fadeActive() or start.mouseChoice == nil or start.mouseChoice.disconnected
+		or start.mouseChoice.cmd ~= cmd or start.mouseChoice.side ~= side then
+		return false
+	end
+	local sec = motif.select_info
+	if not mouseGetInput(sec.done.mouse) then
+		return false
+	end
+	-- The frontmost hit follows drawing order within each layer. Reuse the
+	-- batchDraw records so scale, spacing and projection match the artwork.
+	local target = nil
+	for i = #start.mouseCells, 1, -1 do
+		local item = start.mouseCells[i]
+		local data = start.f_selGrid(item.cell)
+		local available = data.char ~= nil and data.hidden ~= 1 and data.hidden ~= 2
+		if available and (target == nil or item.layerno > target.layerno) and mouseOver(item) then
+			target = item
+		end
+	end
+	if target == nil then
+		return false
+	end
+	local data = start.f_selGrid(target.cell)
+	if not gameOption('Options.Team.Duplicates') and t_reservedChars[side][data.char_ref] and data.char ~= 'randomselect' then
+		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+		return false
+	end
+	local x, y = (target.cell - 1) % sec.columns, math.floor((target.cell - 1) / sec.columns)
+	local cursor = start.c[player]
+	local confirm = cursor.selX == x and cursor.selY == y
+	if not inputLocalSession() then
+		mouseSetInput(confirm and {sec.done.key[1]} or start.f_mouseCellPath(player, side, x, y), cmd)
+		return false
+	end
+	if not confirm then
+		cursor.selX, cursor.selY = x, y
+		local snd = start.f_getCursorData(player).cursor.move.snd
+		sndPlay(motif.Snd, snd[1], snd[2])
+	end
+	return confirm
+end
+
 function start.f_selectScreen()
 	if (not main.selectMenu[1] and not main.selectMenu[2]) or selScreenEnd then
 		return true
@@ -2871,6 +2988,26 @@ function start.f_selectScreen()
 	start.needUpdateDrawList = false
 
 	while not selScreenEnd do
+		start.mouseChoice = start.f_pendingHint(start.f_selectChoices())
+		local choice = start.mouseChoice
+		if choice == nil then
+			local stage = main.stageMenu and not stageEnd and motif.select_info.stage or nil
+			main.f_mouseActions(nil, motif.select_info.cancel, motif.select_info.done,
+				stage and stage.previous, stage and stage.next,
+				stage and stage.skip.previous, stage and stage.skip.next)
+		elseif not choice.disconnected and choice.context == 'palette' then
+			local pal = motif.select_info['p' .. choice.side].palmenu
+			main.f_mouseActions(choice.cmd, pal.cancel, pal.done, pal.previous, pal.next)
+		elseif not choice.disconnected and choice.context == 'slot' then
+			local slot = motif.select_info.cell.slot
+			main.f_mouseActions(choice.cmd, motif.select_info.cancel, slot.previous, slot.next)
+		elseif not choice.disconnected then
+			local action = motif.select_info.cancel
+			if choice.context == 'team' then
+				action = motif.select_info['p' .. choice.side].teammenu.cancel
+			end
+			main.f_mouseActions(choice.cmd, action)
+		end
 		main.f_preloadTick(4)
 		refreshActiveFacePortraits()
 		counter = counter + 1
@@ -2894,6 +3031,7 @@ function start.f_selectScreen()
 		for _, item in ipairs(staticDrawList) do
 			animUpdate(item.anim)
 		end
+		start.mouseCells = staticDrawList
 		batchDraw(staticDrawList)
 		--team and select menu
 		if blinkCount < motif.select_info.p2.cursor.switchtime then
@@ -3206,26 +3344,7 @@ function start.f_selectScreen()
 		hook.run("start.f_selectScreen")
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.selectbgdef.BGDef, 1)
-		local choices = {}
-		for side, p in ipairs(start.p) do
-			if not p.teamEnd then
-				table.insert(choices, {cmd = start.f_menuCmd(side), context = 'team', side = side})
-			elseif not p.selEnd then
-				for k, selection in ipairs(p.t_selCmd) do
-					local active = not main.coop or (side ~= main.runSide and not gameMode('versuscoop'))
-						or not motif.select_info.coopqueue or k == #p.t_selected + 1
-					if active and selection.selectState < 3 then
-						local hintContext = 'default'
-						if selection.selectState == 1 then
-							hintContext = 'palette'
-						elseif start.f_slotCell(selection.player) then
-							hintContext = 'slot'
-						end
-						table.insert(choices, {cmd = selection.cmd, context = hintContext, side = side})
-					end
-				end
-			end
-		end
+		local choices = start.f_selectChoices()
 		if start.p[1].teamEnd and start.p[2].teamEnd and start.p[1].selEnd and start.p[2].selEnd then
 			local hintContext = 'done'
 			if main.stageMenu and not stageEnd then
@@ -3301,6 +3420,12 @@ function start.f_teamMenu(side, t)
 			t_cmd = {start.f_menuCmd(side)}
 		end
 		--Calculate team cursor position
+		local mouseEnabled = not fadeActive() and start.mouseChoice ~= nil
+			and not start.mouseChoice.disconnected and start.mouseChoice.side == side
+		if mouseEnabled then
+			local menu = motif.select_info['p' .. side].teammenu
+			main.f_mouseActions(t_cmd[1], menu.subtract, menu.add, menu.previous, menu.next)
+		end
 		if start.p[side].teamMenu > #t then
 			start.p[side].teamMenu = 1
 		end
@@ -3395,12 +3520,15 @@ function start.f_teamMenu(side, t)
 		local spacingX, spacingY = itemCfg.spacing[1], itemCfg.spacing[2]
 		local uppercase = itemCfg.uppercase
 		local gm = gameMode()
+		local mouseTarget = nil
+		local mouseBackgrounds = {}
 		for i = 1, #t do
 			local x = (i - 1) * spacingX
 			local y = (i - 1) * spacingY
 			local itemname = t[i].itemname
 			local itemText = main.f_itemnameUpper(t[i].displayname, uppercase)
 			local textData = itemCfg.TextSpriteData
+			local bgTable = teammenu.bg
 			--Draw team items
 			if i == start.p[side].teamMenu then
 				if t_teamActiveCount[side] < itemCfg.active.switchtime then --delay change
@@ -3413,24 +3541,20 @@ function start.f_teamMenu(side, t)
 					end
 					t_teamActiveCount[side] = 0
 				end
-				--Draw team active item background
-				if teammenu.active.bg[gm .. '-' .. itemname] ~= nil then
-					main.f_animPosDraw(teammenu.active.bg[gm .. '-' .. itemname].AnimData)
-				elseif teammenu.active.bg[itemname] ~= nil then
-					main.f_animPosDraw(teammenu.active.bg[itemname].AnimData)
-				end
+				bgTable = teammenu.active.bg
 				--Draw team active item font
 				if t_teamActiveState[side] then
 					textData = itemCfg.active2.TextSpriteData
 				else
 					textData = itemCfg.active.TextSpriteData
 				end
-			else
-				--Draw team not active item background
-				if teammenu.bg[gm .. '-' .. itemname] ~= nil then
-					main.f_animPosDraw(teammenu.bg[gm .. '-' .. itemname].AnimData)
-				elseif teammenu.bg[itemname] ~= nil then
-					main.f_animPosDraw(teammenu.bg[itemname].AnimData)
+			end
+			--Draw the item background, including any game-mode-specific override.
+			local params = bgTable[gm .. '-' .. itemname] or bgTable[itemname]
+			if params ~= nil then
+				local drawn = main.f_animPosDraw(params.AnimData, nil, nil, nil, mouseEnabled)
+				if drawn ~= nil then
+					table.insert(mouseBackgrounds, {item = i, anim = drawn, layerno = params.layerno})
 				end
 			end
 			--Draw item font
@@ -3438,39 +3562,67 @@ function start.f_teamMenu(side, t)
 			textImgAddPos(textData, x, y)
 			textImgSetText(textData, itemText)
 			textImgDraw(textData)
-			--Draw team icons
+			-- Keep the existing text/icon hit order; backgrounds are a fallback.
+			if mouseEnabled and mouseTarget == nil and mouseOver(textData) then
+				mouseTarget = {item = i}
+			end
+			--Draw team icons; clicking an icon chooses both the mode and its count.
+			local field, limits
 			if itemname == 'simul' then
-				for j = 1, numSimul[2] do
-					local vx = x + (j - 1) * valueCfg.spacing[1]
-					local vy = y + (j - 1) * valueCfg.spacing[2]
-					if j <= start.p[side].numSimul then
-						main.f_animPosDraw(valueCfg.icon.AnimData, vx, vy)
-					else
-						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
-					end
-				end
+				field, limits = 'numSimul', numSimul
 			elseif itemname == 'turns' then
-				for j = 1, main.numTurns[2] do
-					local vx = x + (j - 1) * valueCfg.spacing[1]
-					local vy = y + (j - 1) * valueCfg.spacing[2]
-					if j <= start.p[side].numTurns then
-						main.f_animPosDraw(valueCfg.icon.AnimData, vx, vy)
-					else
-						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
-					end
-				end
+				field, limits = 'numTurns', main.numTurns
 			elseif itemname == 'tag' then
-				for j = 1, numTag[2] do
+				field, limits = 'numTag', numTag
+			end
+			if field ~= nil then
+				for j = 1, limits[2] do
 					local vx = x + (j - 1) * valueCfg.spacing[1]
 					local vy = y + (j - 1) * valueCfg.spacing[2]
-					if j <= start.p[side].numTag then
-						main.f_animPosDraw(valueCfg.icon.AnimData, vx, vy)
-					else
-						main.f_animPosDraw(valueCfg.empty.icon.AnimData, vx, vy)
+					local current = start.p[side][field]
+					local icon = j <= current and valueCfg.icon.AnimData or valueCfg.empty.icon.AnimData
+					main.f_animPosDraw(icon, vx, vy)
+					if mouseEnabled and j >= limits[1] and mouseTarget == nil and mouseOver(icon) then
+						mouseTarget = {item = i, field = field, count = j}
 					end
 				end
 			else
 				hook.runFirst("start.f_teamMenu.drawItemValue", side, t, i, x, y, valueCfg)
+			end
+		end
+		-- Check backgrounds only when no text or count icon was hit.
+		if mouseTarget == nil then
+			local bgItem = main.f_menuMouseBg(mouseBackgrounds)
+			if bgItem ~= nil then
+				mouseTarget = {item = bgItem}
+			end
+		end
+		if mouseTarget ~= nil and mouseGetInput(teammenu.done.mouse) then
+			local i, field, count = mouseTarget.item, mouseTarget.field, mouseTarget.count
+			if field == nil and i == start.p[side].teamMenu then
+				mouseSetInput({teammenu.done.key[1]}, t_cmd[1])
+			elseif inputLocalSession() then
+				start.p[side].teamMenu = i
+				local sound = teammenu.move.snd
+				if field ~= nil then
+					start.p[side][field] = count
+					sound = teammenu.value.snd
+				end
+				sndPlay(motif.Snd, sound[1], sound[2])
+			else
+				local keys = {}
+				local direction = i > start.p[side].teamMenu and teammenu.next.key or teammenu.previous.key
+				for n = 1, math.abs(i - start.p[side].teamMenu) do
+					table.insert(keys, direction[1])
+				end
+				if field ~= nil then
+					local current = start.p[side][field]
+					direction = count > current and teammenu.add.key or teammenu.subtract.key
+					for n = 1, math.abs(count - current) do
+						table.insert(keys, direction[1])
+					end
+				end
+				mouseSetInput(keys, t_cmd[1])
 			end
 		end
 		--Confirmed team selection
@@ -3806,6 +3958,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					start.p[side].t_cursor[member] = nil
 				end
 			end
+			local mouseConfirm = start.f_mouseCharacter(side, cmd, player)
 			--calculate current position
 			start.c[player].selX, start.c[player].selY = start.f_cellMovement(start.c[player].selX, start.c[player].selY, cmd, side, start.f_getCursorData(player).cursor.move.snd)
 			start.c[player].cell = start.c[player].selX + motif.select_info.columns * start.c[player].selY
@@ -3827,6 +3980,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 			else
 				local updateAnim = false
 				local slotSelected,slotChanged = start.f_slotSelected(start.c[player].cell + 1, side, cmd, player, start.c[player].selX, start.c[player].selY)
+				slotSelected = slotSelected or mouseConfirm
 				local timerExpired = motif.select_info.timer.count ~= -1 and timerSelect == -1
 				needUpdateDrawList = slotChanged
 				local velCopy = false
@@ -4278,6 +4432,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 	local readyToLeave = not bgLoading
 	local wantSkip = false
 	local wantDone = false
+	local mouseOrder = nil
+	start.mouseOrderTargets = {}
 	
 	-- Reset stage portrait animation if it was already seen when entering the VS screen
 	resetStagePortraitAnim(selStageNo, 'vs_anim_data')
@@ -4327,6 +4483,15 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 	end
 	while true do
+		if not fadeActive() then
+			if mouseOrder ~= nil then
+				-- Use the same order input as a controller, including online synchronization.
+				mouseSetInput(mouseOrder.key, mouseOrder.side)
+			end
+			main.f_mouseActions(nil, motif.vs_screen.cancel, done and motif.vs_screen.done or motif.vs_screen.skip)
+		end
+		mouseOrder = nil
+		start.mouseOrderTargets = {}
 		main.f_preloadTick(4)
 		local snd = false
 		-- CPU order select: randomize first, then selectChar() using randomized slot order
@@ -4471,19 +4636,27 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 				for i = 1, math.min(#start.p[side].t_selected, motif.vs_screen['p' .. side].num) do
 					local pn = 2 * (i - 1) + side
 					local pCfg = f_getMotifP(motif.vs_screen, pn, side)
+					local icon = pCfg.value.icon.AnimData
 					if i > #t_order[side] and #start.p[side].t_selected > #t_order[side] then
-						main.f_animPosDraw(
-							pCfg.value.empty.icon.AnimData,
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
-						)
-					else
-						main.f_animPosDraw(
-							pCfg.value.icon.AnimData,
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
-							(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
-						)
+						icon = pCfg.value.empty.icon.AnimData
 					end
+					main.f_animPosDraw(
+						icon,
+						(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[1],
+						(i - 1) * motif.vs_screen['p' .. side].value.icon.spacing[2]
+					)
+					addMouseOrderTarget(motif.vs_screen, side, i, icon)
+				end
+			end
+		end
+		if not done and not fadeActive() then
+			-- Resolve overlapping targets from the last drawn to the first.
+			for i = #start.mouseOrderTargets, 1, -1 do
+				local target = start.mouseOrderTargets[i]
+				local cfg = f_getMotifP(motif.vs_screen, 2 * (target.member - 1) + target.side, target.side)
+				if t_orderSelect[target.side] and #cfg.key > 0 and mouseGetInput(cfg.mouse) then
+					mouseOrder = {key = {cfg.key[1]}, side = target.side}
+					break
 				end
 			end
 		end
@@ -4653,6 +4826,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 		end
 		refresh()
 	end
+	start.mouseOrderTargets = nil
 	esc(escFlag) --force Esc detection
 	return not escFlag
 end
@@ -4916,7 +5090,8 @@ function start.f_sideSelect()
 		end
 	end
 	local firstSide = nil -- side picked by the player who opened the mode (or the first one to join)
-	local focus = nil -- input source used last, kept visible when the list scrolls
+	local focus = initiator -- input source used last, kept visible when the list scrolls
+	local mouseSource, mouseKeys, mouseSide = nil, nil, nil
 	local top = {1, 1, 1} -- first visible row in each column
 	-- returns true if the input source is allowed to move to newSide (1 = team 1, 2 = team 2, 0 = unassigned)
 	local function canJoinSide(source, newSide, counts)
@@ -4935,7 +5110,11 @@ function start.f_sideSelect()
 			return false
 		end
 		-- A mode with one human side keeps all participants together, including training.
-		if not versus and counts[3 - newSide] > 0 then
+		local opposite = counts[3 - newSide]
+		if source.side == 3 - newSide then
+			opposite = opposite - 1
+		end
+		if not versus and opposite > 0 then
 			return false
 		end
 		return true
@@ -4975,24 +5154,29 @@ function start.f_sideSelect()
 		if done == nil and not fadeActive() then
 			for _, source in ipairs(inputGetSources()) do
 				if source.connected and canSelect(source, counts) then
+					local function pressed(keys)
+						return (source.id == mouseSource and keys == mouseKeys) or inputSourcePressed(source.id, keys)
+					end
 					for _, key in ipairs({sec.profile.previous.key, sec.profile.next.key, sec.profile.edit.key, sec.side.previous.key, sec.side.next.key, sec.done.key, sec.cancel.key}) do
-						if inputSourcePressed(source.id, key) then
+						if pressed(key) then
 							focus = source.id
 						end
 					end
 					-- left/right moves one step towards that side, menu goes back to unassigned
 					local newSide = nil
-					if inputSourcePressed(source.id, sec.side.previous.key) then
+					if source.id == mouseSource and mouseSide ~= nil then
+						newSide = mouseSide
+					elseif pressed(sec.side.previous.key) then
 						newSide = 1
 						if source.side == 2 then
 							newSide = 0
 						end
-					elseif inputSourcePressed(source.id, sec.side.next.key) then
+					elseif pressed(sec.side.next.key) then
 						newSide = 2
 						if source.side == 1 then
 							newSide = 0
 						end
-					elseif inputSourcePressed(source.id, sec.cancel.key) then
+					elseif pressed(sec.cancel.key) then
 						-- menu on an unassigned input source leaves the screen
 						if source.side == 0 then
 							exitSideSelect()
@@ -5009,17 +5193,17 @@ function start.f_sideSelect()
 						else
 							playInvalid()
 						end
-					elseif inputSourcePressed(source.id, sec.profile.edit.key) then
+					elseif pressed(sec.profile.edit.key) then
 						inputSetReady(source.id, false)
 						sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
 						options.f_editProfile(source)
 						start.f_sideSelectReset()
 						break
-					elseif inputSourcePressed(source.id, sec.profile.previous.key) then
+					elseif pressed(sec.profile.previous.key) then
 						cycleProfile(source, -1)
-					elseif inputSourcePressed(source.id, sec.profile.next.key) then
+					elseif pressed(sec.profile.next.key) then
 						cycleProfile(source, 1)
-					elseif inputSourcePressed(source.id, sec.done.key) then
+					elseif pressed(sec.done.key) then
 						if source.side == 0 then
 							-- In two-human-side modes, default to the less populated side.
 							-- Ties go left; manual choices go through canJoinSide.
@@ -5100,10 +5284,15 @@ function start.f_sideSelect()
 			end
 		end
 		-- draw
+		mouseSource, mouseKeys, mouseSide = nil, nil, nil
+		local mouseEnabled = done == nil and not fadeActive()
 		local s = start.f_sideSelectBegin()
 		-- columns: 1 = team 1, 2 = unassigned, 3 = team 2
 		local columns = {{}, {}, {}}
 		local active = inputGetActiveSource()
+		if mouseActive() and focus ~= nil then
+			active = focus
+		end
 		for _, source in ipairs(inputGetSources()) do
 			if canSelect(source, counts) then
 				local col = 2
@@ -5121,6 +5310,10 @@ function start.f_sideSelect()
 		end
 		for _, name in ipairs(t_sideColumns) do
 			start.f_sideSelectText(s.title[name], s.title[name].text, s.pos[1], s.pos[2])
+		end
+		if mouseEnabled and mouseGetInput(s.cancel.mouse) then
+			mouseSource, mouseKeys = active, s.cancel.key
+			mouseEnabled = false
 		end
 		local visible = math.max(1, s.window.visibleitems)
 		for col, list in ipairs(columns) do
@@ -5160,6 +5353,50 @@ function start.f_sideSelect()
 				start.f_sideSelectText(style, name,
 					s.pos[1] + s.item.offset[1] + (i - top[col]) * s.item.spacing[1],
 					s.pos[2] + s.item.offset[2] + (i - top[col]) * s.item.spacing[2], source.id)
+				if mouseEnabled and (mouseOver(style.TextSpriteData) or mouseOver(style.bg.AnimData)) and mouseGetInput(s.done.mouse) then
+					if active == source.id then
+						mouseSource, mouseKeys = source.id, s.done.key
+					else
+						focus = source.id
+						sndPlay(motif.Snd, s.move.snd[1], s.move.snd[2])
+					end
+					mouseEnabled = false
+				end
+			end
+		end
+		if mouseEnabled then
+			for _, action in ipairs({s.profile.previous, s.profile.next, s.profile.edit}) do
+				if mouseGetInput(action.mouse) then
+					mouseSource, mouseKeys = active, action.key
+					mouseEnabled = false
+					break
+				end
+			end
+		end
+		if mouseEnabled then
+			-- Split the space between headings in the motif's local coordinates.
+			-- Match the renderer's aspect-preserving scale and horizontal centering.
+			local function coordScale(lc)
+				local scale = math.min(lc[1] / 320, lc[2] / 240)
+				return scale, -math.floor(math.floor(lc[1] / scale - 320) / 2)
+			end
+			local lc = motif.info.localcoord
+			local scale, offset = coordScale(lc)
+			local centers, tops = {}, {}
+			for col, name in ipairs(t_sideColumns) do
+				local title = s.title[name]
+				local titleScale, titleOffset = coordScale(title.localcoord)
+				centers[col] = ((s.pos[1] + title.offset[1]) / titleScale + titleOffset - offset) * scale
+				tops[col] = (s.pos[2] + title.offset[2] - s.item.spacing[2] / 2) / titleScale * scale
+			end
+			for col, name in ipairs(t_sideColumns) do
+				local left = col == 1 and 0 or (centers[col - 1] + centers[col]) / 2
+				local right = col == 3 and lc[1] or (centers[col] + centers[col + 1]) / 2
+				local action = col == 1 and s.side.previous or col == 3 and s.side.next or s.done
+				if mouseOver(left, tops[col], right, lc[2], lc[1], lc[2]) and mouseGetInput(action.mouse) then
+					mouseSource, mouseSide = active, col == 1 and 1 or col == 3 and 2 or 0
+					break
+				end
 			end
 		end
 		-- A side with no input source shows its base style.

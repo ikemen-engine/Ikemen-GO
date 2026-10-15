@@ -18,6 +18,7 @@ type Texture interface {
 	GetWidth() int32
 	GetHeight() int32
 	GetUV() [4]float32
+	GetFilter() bool
 	CopyData(src *Texture)
 	MarkNonSwappable()
 }
@@ -361,6 +362,11 @@ func (rp *RenderParams) IsValid() bool {
 		IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
+// This side-steps a rectangle rasterization edge case on the diagonal.
+// Shared with mouse sampling so it uses the same texture coordinates.
+// See: https://github.com/ikemen-engine/Ikemen-GO/issues/3583
+const spriteUVBias float32 = 0.000002
+
 func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst [4]float32, isTrapez bool) {
 	gfx.SetUniformMatrix("modelview", modelview[:])
 	if isTrapez {
@@ -373,16 +379,11 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst 
 		gfx.SetUniformF("x1x2x4x3", 0, 0, 0, 0)
 	}
 
-	// This effectively side-steps a low-level rectangle rasterization edge case,
-	// that caused visible and frequent artifacts on the diagonal.
-	// See: https://github.com/ikemen-engine/Ikemen-GO/issues/3583
-	uvBias := float32(0.000002)
-
 	quadDrawScratch = [16]float32{
-		x2, y2, uvst[2], uvst[3] - uvBias,
+		x2, y2, uvst[2], uvst[3] - spriteUVBias,
 		x3, y3, uvst[2], uvst[1],
-		x1, y1, uvBias + uvst[0], uvst[3] - uvBias,
-		x4, y4, uvBias + uvst[0], uvst[1],
+		x1, y1, spriteUVBias + uvst[0], uvst[3] - spriteUVBias,
+		x4, y4, spriteUVBias + uvst[0], uvst[1],
 	}
 
 	gfx.SetVertexData(quadDrawScratch[:]...)
@@ -567,7 +568,6 @@ func transformPoint(mat mgl.Mat4, x, y float32) (float32, float32) {
 
 // Helper to append a quad as two triangles to the batch
 func appendTransformedQuadTriangles(batch []float32, mat mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst [4]float32) []float32 {
-	uvBias := float32(0.000002)
 	p2x, p2y := transformPoint(mat, x2, y2)
 	p3x, p3y := transformPoint(mat, x3, y3)
 	p1x, p1y := transformPoint(mat, x1, y1)
@@ -577,14 +577,14 @@ func appendTransformedQuadTriangles(batch []float32, mat mgl.Mat4, x1, y1, x2, y
 	if len(batch) > 0 {
 		lastX, lastY, lastU, lastV := batch[len(batch)-4], batch[len(batch)-3], batch[len(batch)-2], batch[len(batch)-1]
 		batch = append(batch, lastX, lastY, lastU, lastV)
-		batch = append(batch, p2x, p2y, 1, 1-uvBias)
+		batch = append(batch, p2x, p2y, 1, 1-spriteUVBias)
 	}
 
 	batch = append(batch,
-		p2x, p2y, uvst[2], uvst[3]-uvBias,
+		p2x, p2y, uvst[2], uvst[3]-spriteUVBias,
 		p3x, p3y, uvst[2], uvst[1],
-		p1x, p1y, uvBias+uvst[0], uvst[3]-uvBias,
-		p4x, p4y, uvBias+uvst[0], uvst[1],
+		p1x, p1y, spriteUVBias+uvst[0], uvst[3]-spriteUVBias,
+		p4x, p4y, spriteUVBias+uvst[0], uvst[1],
 	)
 
 	return batch
@@ -799,7 +799,25 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		// Update scratch buffer with new capacity
 		quadVertexScratch = batch
 
-	case rotated:
+	default:
+		modelview, quad := spriteQuad(modelview, rp)
+		// Match the tiled path's vertical visibility culling for unrotated sprites.
+		if rotated || (0 > quad[0][1] || 0 > quad[3][1]) &&
+			(quad[0][1] > float32(-sys.scrrect[3]) || quad[3][1] > float32(-sys.scrrect[3])) {
+			drawQuads(modelview, quad[0][0], quad[0][1], quad[1][0], quad[1][1],
+				quad[2][0], quad[2][1], quad[3][0], quad[3][1], rp.tex.GetUV(), trapez)
+		}
+	}
+}
+
+// Geometry for a single sprite, shared by rendering and mouse hit detection.
+// Call initRenderSpriteQuad first, just as RenderSprite does.
+func spriteQuad(modelview mgl.Mat4, rp RenderParams) (mgl.Mat4, [4][2]float32) {
+	x1, y1 := rp.x, rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
+	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
+	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
+	x4, y4 := rp.x, y3
+	if !rp.rot.IsZero() {
 		// Non-tiled, rotated: single quad with full transform
 		// TODO: This block makes shadows ignore their own yscale when in perspective
 		// However, when we disable it, regular shadows are scaled incorrectly even with the smallest roation
@@ -815,9 +833,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
 		modelview = applyRotation(modelview, rp)
 		modelview = modelview.Mul4(mgl.Translate3D(-(rp.rcx + rp.rcOffset[0]), -(rp.rcy + rp.rcOffset[1]), 0))
-		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4, rp.tex.GetUV(), trapez)
-
-	default:
+	} else {
 		// Non-tiled, not rotated: shear must be baked into coordinates directly since no
 		// rotation matrix runs - matches the tiled path's handling
 		if rp.rxadd != 0 {
@@ -835,12 +851,8 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 			x2 += db
 		}
 
-		// Skip the draw call entirely if this quad is fully above or fully below the visible
-		// screen range - matches the tiled path's vertical visibility culling
-		if (0 > y1 || 0 > y4) && (y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-			drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4, rp.tex.GetUV(), trapez)
-		}
 	}
+	return modelview, [4][2]float32{{x1, y1}, {x2, y2}, {x3, y3}, {x4, y4}}
 }
 
 func initRenderSpriteQuad(rp *RenderParams) {

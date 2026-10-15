@@ -617,6 +617,29 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 	}
 }
 
+// Position a bitmap text line before alignment, including its rotation pivot.
+func (f *Fnt) textPosition(x, y, xscl, yscl float32, rot Rotation) (float32, float32, float32, float32) {
+	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
+
+	var rcx, rcy float32
+
+	if rot.IsZero() {
+		if xscl < 0 {
+			x *= -1
+		}
+		if yscl < 0 {
+			y *= -1
+		}
+		rcx, rcy = rcx*sys.widthScale, 0
+	} else {
+		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
+		x, y = Abs(xscl)*float32(f.offset[0]), Abs(yscl)*float32(f.offset[1])
+	}
+
+	return x, y, rcx, rcy
+}
+
 // DrawText prints on screen a specified text with the current font sprites
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 	rot Rotation, projectionMode int32, fLength float32, bank, align int32, window *[4]int32,
@@ -642,23 +665,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		}
 	}
 
-	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
-	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
-
-	var rcx, rcy float32
-
-	if rot.IsZero() {
-		if xscl < 0 {
-			x *= -1
-		}
-		if yscl < 0 {
-			y *= -1
-		}
-		rcx, rcy = rcx*sys.widthScale, 0
-	} else {
-		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
-		x, y = Abs(xscl)*float32(f.offset[0]), Abs(yscl)*float32(f.offset[1])
-	}
+	x, y, rcx, rcy := f.textPosition(x, y, xscl, yscl, rot)
 
 	if align == 0 {
 		x -= float32(f.TextWidth(txt, bank, spacingXAdd)) * xscl * 0.5
@@ -1631,7 +1638,7 @@ func (ts *TextSprite) inputGlyph(key string) []glyphRun {
 // Reads a motif setting for an <action:...> or <keycode:...> tag, preferring the
 // screen this text belongs to. player.* means the side of the active player.
 func (ts *TextSprite) glyphAction(path, suffix string) (interface{}, error) {
-	if strings.HasPrefix(path, "player.") {
+	if path == "player" || strings.HasPrefix(path, "player.") {
 		side := TS_Left
 		if src := sys.glyphSource(ts.glyphSource); src != nil {
 			if owner := sys.inputs.owner(src.ID); owner >= 0 && sys.inputs.Participants[owner].Side != TS_None {
@@ -1645,7 +1652,7 @@ func (ts *TextSprite) glyphAction(path, suffix string) (interface{}, error) {
 		if nc != nil {
 			side = TeamSide(nc.locIn%2 + 1)
 		}
-		path = fmt.Sprintf("p%d.%s", side, strings.TrimPrefix(path, "player."))
+		path = fmt.Sprintf("p%d%s", side, strings.TrimPrefix(path, "player"))
 	}
 	if ts.glyphSection != "" {
 		if value, err := GetValue(&sys.motif, ts.glyphSection+"."+path+"."+suffix); err == nil {
@@ -1653,6 +1660,22 @@ func (ts *TextSprite) glyphAction(path, suffix string) (interface{}, error) {
 		}
 	}
 	return GetValue(&sys.motif, path+"."+suffix)
+}
+
+// Mouse button names accepted in mouse parameters, as opposed to action paths.
+func isMouseButtonName(name string) bool {
+	switch strings.ToUpper(name) {
+	case "LEFT", "RIGHT", "MIDDLE", "X1", "X2", "WHEELUP", "WHEELDOWN", "WHEELLEFT", "WHEELRIGHT":
+		return true
+	}
+	return false
+}
+
+func (ts *TextSprite) mouseGlyph(key string) []glyphRun {
+	if a := sys.motif.namedGlyph("mouse." + strings.ToUpper(key)); a != nil {
+		return []glyphRun{{anim: a}}
+	}
+	return []glyphRun{{text: key}}
 }
 
 // Turns one <...> tag into a glyph or its text fallback. Reports whether the tag
@@ -1668,6 +1691,23 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 	if strings.HasPrefix(tag, "key:") {
 		return ts.bindingGlyph(strings.TrimPrefix(tag, "key:"), true), true
 	}
+	// <mouse:LEFT> draws one mouse button; <mouse:menu.done> draws the buttons
+	// bound to that action's mouse parameter.
+	if strings.HasPrefix(tag, "mouse:") {
+		name := strings.TrimPrefix(tag, "mouse:")
+		if isMouseButtonName(name) {
+			return ts.mouseGlyph(name), true
+		}
+		value, err := ts.glyphAction(name, "mouse")
+		if keys, ok := value.([]string); err == nil && ok {
+			var runs []glyphRun
+			for _, key := range keys {
+				runs = append(runs, ts.mouseGlyph(key)...)
+			}
+			return runs, true
+		}
+		return ts.mouseGlyph(name), true
+	}
 	if strings.HasPrefix(tag, "keycode:") {
 		if value, err := ts.glyphAction(strings.TrimPrefix(tag, "keycode:"), "keycode"); err == nil {
 			if key, ok := value.(string); ok {
@@ -1678,6 +1718,12 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 	// <glyph> draws the icon of this source's glyph pack; <glyph:name> a given pack.
 	if tag == "glyph" || strings.HasPrefix(tag, "glyph:") {
 		set := strings.TrimPrefix(strings.TrimPrefix(tag, "glyph"), ":")
+		if set == "mouse" || set == "" && ts.glyphSource == 0 && sys.mouse.enabled() && sys.mouse.active {
+			if a := sys.motif.namedGlyph("mouse"); a != nil {
+				return []glyphRun{{anim: a}}, true
+			}
+			return nil, true
+		}
 		if set == "" {
 			src := sys.glyphSource(ts.glyphSource)
 			set = input.GlyphController(src, &sys.motif.ControllerGlyphs)

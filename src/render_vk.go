@@ -1253,6 +1253,10 @@ func (t *Texture_VK) ShouldPushDescriptor(current *Texture_VK, switchedProgram b
 	return switchedProgram || currentImg != img
 }
 
+func (t *Texture_VK) GetFilter() bool {
+	return t.filter
+}
+
 func (t *Texture_VK) MapInternalFormat(i int32) vk.Format {
 	var InternalFormatLUT = map[int32]vk.Format{
 		8:  vk.FormatR8Unorm,
