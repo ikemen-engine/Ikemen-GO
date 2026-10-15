@@ -219,6 +219,39 @@ func tagKeyFirstMap(sf reflect.StructField) bool {
 	return v == "true" || v == "1" || v == "yes"
 }
 
+// keyFirstParts rewrites a key-first query at parts[i], where parts[i] is not a
+// field of v. "<key>.<mapField>[...]" becomes "<mapField>.<key>[...]". With join,
+// a map field that is the last token also takes every segment before it as one
+// dotted key, so "mouse.team.text" becomes "text" with key "mouse.team".
+func keyFirstParts(v reflect.Value, parts []queryPart, i int, join bool) ([]queryPart, bool) {
+	isKeyFirst := func(name string) bool {
+		fv, sf, ok := findFieldByINITag(v, name)
+		return ok && fv.Kind() == reflect.Map && fv.Type().Key().Kind() == reflect.String && tagKeyFirstMap(sf)
+	}
+	if i+1 >= len(parts) {
+		return nil, false
+	}
+	j := i + 1
+	if !isKeyFirst(parts[j].name) {
+		if !join {
+			return nil, false
+		}
+		j = len(parts) - 1
+		if j <= i+1 || !isKeyFirst(parts[j].name) {
+			return nil, false
+		}
+	}
+	names := make([]string, 0, j-i)
+	for k := i; k < j; k++ {
+		names = append(names, parts[k].name)
+	}
+	out := make([]queryPart, 0, len(parts)-(j-i)+1)
+	out = append(out, parts[:i]...)
+	out = append(out, parts[j], queryPart{name: strings.Join(names, ".")})
+	out = append(out, parts[j+1:]...)
+	return out, true
+}
+
 // returns true if root has a top-level ini:"<sec>" field with `literal:"yes"`.
 func isLiteralSectionFor(root interface{}, sec string) bool {
 	v := reflect.ValueOf(root)
@@ -1328,16 +1361,8 @@ func assignField(structPtr interface{}, parts []queryPart, value interface{}, ba
 
 			// Handle key-first map fields:
 			// rewrite "<key>.<mapField>[...]" to "<mapField>.<key>[...]" when the map field has `keyfirst:"true"`.
-			if i+1 < len(parts) {
-				if fieldValMap, sfMap, foundMap := findFieldByINITag(v, parts[i+1].name); foundMap &&
-					fieldValMap.Kind() == reflect.Map &&
-					fieldValMap.Type().Key().Kind() == reflect.String &&
-					tagKeyFirstMap(sfMap) {
-					newParts := make([]queryPart, len(parts))
-					copy(newParts, parts)
-					newParts[i], newParts[i+1] = newParts[i+1], newParts[i]
-					return assignField(structPtr, newParts, value, baseDef)
-				}
+			if newParts, ok := keyFirstParts(v, parts, i, true); ok {
+				return assignField(structPtr, newParts, value, baseDef)
 			}
 
 			return fmt.Errorf("field '%s' not found as struct or map field", part.name)
@@ -1519,14 +1544,9 @@ func updateINIFile(obj interface{}, iniFile *ini.File, query string, value strin
 				// Key-first map syntax support:
 				// If the next token names a map field tagged `keyfirst:"true"`, swap and retry.
 				// Example: "<key>.text" -> "text.<key>" (but generalized to any tagged map field).
-				if i+1 < len(parts) {
-					if fvMap, sfMap, ok := findFieldByINITag(currentValue, parts[i+1].name); ok &&
-						fvMap.Kind() == reflect.Map &&
-						fvMap.Type().Key().Kind() == reflect.String &&
-						tagKeyFirstMap(sfMap) {
-						parts[i], parts[i+1] = parts[i+1], parts[i]
-						continue
-					}
+				if newParts, ok := keyFirstParts(currentValue, parts, i, false); ok {
+					parts = newParts
+					continue
 				}
 				// Not a direct field -> check if it's a direct map field with the same tag
 				mapFieldVal, _, mapFound := findMapFieldWithTag(currentValue, part.name)
@@ -1730,15 +1750,10 @@ func GetValue(structPtr interface{}, query string) (interface{}, error) {
 				} else {
 					// Key-first map syntax support (read path):
 					// If the next token names a map field tagged `keyfirst:"true"`, swap and retry.
-					if i+1 < len(parts) {
-						if fvMap, sfMap, ok := findFieldByINITag(current, parts[i+1].name); ok &&
-							fvMap.Kind() == reflect.Map &&
-							fvMap.Type().Key().Kind() == reflect.String &&
-							tagKeyFirstMap(sfMap) {
-							parts[i], parts[i+1] = parts[i+1], parts[i]
-							i--
-							continue
-						}
+					if newParts, ok := keyFirstParts(current, parts, i, true); ok {
+						parts = newParts
+						i--
+						continue
 					}
 					return nil, fmt.Errorf("field '%s' not found in struct or pattern map for query '%s'", part.name, query)
 				}
