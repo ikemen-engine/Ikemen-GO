@@ -1143,6 +1143,7 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 			a.vel[0] *= xs
 			a.vel[1] *= ys
 			a.window = transform.window(lp.Window, [2]float32{localScl, localScl})
+			a.windowDefault = false // The storyboard supplies a transformed clip.
 			a.windowInit = [4]float32{}
 		}
 		a.Draw(layerno)
@@ -1170,6 +1171,7 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 			ts.vel[1] *= ys
 			ts.localScale *= xs
 			ts.window = transform.window(lp.TextWindow, [2]float32{localScl, localScl})
+			ts.windowDefault = false // The storyboard supplies a transformed clip.
 			ts.windowInit = [4]float32{}
 		}
 		ts.Draw(layerno)

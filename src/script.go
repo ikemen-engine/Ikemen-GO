@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -1963,6 +1964,20 @@ func systemScriptInit(l *lua.LState) {
 		}
 		a.Update(force)
 		return 0
+	})
+	luaRegister(l, "applyVideoSettings", func(l *lua.LState) int {
+		/*Apply the current Video options without restarting.
+		@function applyVideoSettings
+		@treturn boolean success `true` if every change was applied.
+		@treturn string|nil error Reason the settings could not be applied.*/
+		if err := sys.applyVideoSettings(); err != nil {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+		l.Push(lua.LTrue)
+		l.Push(lua.LNil)
+		return 2
 	})
 	luaRegister(l, "batchDraw", func(*lua.LState) int {
 		/*Queue drawing of many animations in one call.
@@ -4449,9 +4464,54 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(changed))
 		return 1
 	})
+	// A profile reset uses the shipped defaultConfig.ini, not hardcoded Lua bindings.
+	// Custom profiles have no shipped definition: clear their buttons in place.
+	luaRegister(l, "inputProfileDefaults", func(l *lua.LState) int {
+		src := sys.inputs.inputSource(int(numArg(l, 1)))
+		if src == nil {
+			return 0
+		}
+		current := sys.cfg.InputProfile[src.Profile]
+		if current == nil {
+			return 0
+		}
+		p := *current
+		defaults := false
+		for _, sec := range sys.cfg.DefaultOnlyIni.Sections() {
+			if strings.EqualFold(strings.ReplaceAll(sec.Name(), " ", "_"), src.Profile) {
+				var shipped KeysProperties
+				if sec.MapTo(&shipped) == nil {
+					p, defaults = shipped, true
+				}
+				break
+			}
+		}
+		if !defaults {
+			for _, field := range inputFields {
+				_ = SetValue(&p, field, "-")
+			}
+			p.RumbleOn = false
+		}
+		values := map[string]interface{}{"name": p.Name, "rumble": p.RumbleOn}
+		for i, token := range profileTokens(&p) {
+			values[inputFields[i]] = token
+		}
+		l.Push(toLValue(l, values))
+		return 1
+	})
 	luaRegister(l, "inputDefaults", func(l *lua.LState) int {
 		/*Restore all binding profiles to their default definitions.
 		@function inputDefaults*/
+		// Remove custom profiles and any removed shipped profiles' stale runtime
+		// state before reconstructing the shipped set. SDL mappings are separate.
+		for id := range sys.cfg.InputProfile {
+			sys.cfg.removeInputProfile(id)
+		}
+		for i := len(sys.inputs.Sources) - 1; i >= 0; i-- {
+			if sys.inputs.Sources[i].Joy < 0 {
+				sys.inputs.Sources = append(sys.inputs.Sources[:i], sys.inputs.Sources[i+1:]...)
+			}
+		}
 		for _, sec := range sys.cfg.DefaultOnlyIni.Sections() {
 			if !strings.HasPrefix(strings.ToLower(sec.Name()), "inputprofile_") {
 				continue
@@ -4459,6 +4519,17 @@ func systemScriptInit(l *lua.LState) {
 			var p KeysProperties
 			if err := sec.MapTo(&p); err == nil {
 				_ = sys.cfg.saveInputProfile(strings.ToLower(sec.Name()), &p)
+			}
+		}
+		for _, src := range sys.inputs.Sources {
+			if src.Joy >= 0 && sys.cfg.InputProfile[src.Profile] == nil {
+				for _, sec := range sys.cfg.DefaultOnlyIni.Sections() {
+					id := strings.ToLower(strings.ReplaceAll(sec.Name(), " ", "_"))
+					if p := sys.cfg.InputProfile[id]; p != nil && p.Kind == "gamepad" {
+						src.Profile = id
+						break
+					}
+				}
 			}
 		}
 		sys.cfg.loadInputProfiles()
@@ -6699,6 +6770,35 @@ func systemScriptInit(l *lua.LState) {
 		/*Reset the UI input token guard.
 		@function resetTokenGuard*/
 		sys.uiResetTokenGuard()
+		return 0
+	})
+	luaRegister(l, "restartGame", func(l *lua.LState) int {
+		/*Start a new engine process with the same arguments, then exit this one.
+		  Used when the renderer changes. Not available on Android or iOS.
+		@function restartGame
+		@treturn boolean success `false` if the new process could not start.
+		@treturn string|nil error Reason the restart failed.*/
+		if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString("restarting is not supported on this platform"))
+			return 2
+		}
+		exe, err := os.Executable()
+		if err == nil {
+			cmd := exec.Command(exe, os.Args[1:]...)
+			cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+			// Config, motif and shader paths are relative to the working directory.
+			cmd.Dir, err = os.Getwd()
+			if err == nil {
+				err = cmd.Start()
+			}
+		}
+		if err != nil {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+		handleExit()
 		return 0
 	})
 	luaRegister(l, "roundOver", func(*lua.LState) int {
@@ -9307,6 +9407,23 @@ func triggerFunctions(l *lua.LState) {
 		} else {
 			l.Push(lua.LString(sys.gameMode))
 		}
+		return 1
+	})
+	// Read a shipped setting without touching the current config or config.ini.
+	luaRegister(l, "gameOptionDefault", func(l *lua.LState) int {
+		path := strings.SplitN(strArg(l, 1), ".", 2)
+		if len(path) != 2 {
+			return 0
+		}
+		section, err := sys.cfg.DefaultOnlyIni.GetSection(path[0])
+		if err != nil {
+			return 0
+		}
+		key, err := section.GetKey(path[1])
+		if err != nil {
+			return 0
+		}
+		l.Push(lua.LString(key.Value()))
 		return 1
 	})
 	luaRegister(l, "gameOption", func(l *lua.LState) int {

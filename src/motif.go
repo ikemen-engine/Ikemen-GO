@@ -376,10 +376,6 @@ type MenuProperties struct {
 		Key      []string `ini:"key"`
 		KeyMouse []string `ini:"keymouse"`
 	} `ini:"done"`
-	Save struct { // only used by [Option Info] profile editor
-		Key      []string `ini:"key"`
-		KeyMouse []string `ini:"keymouse"`
-	} `ini:"save"`
 	Hiscore struct { // not used by [Option Info], [Replay Info], [Pause Menu]
 		Key      []string `ini:"key"`
 		KeyMouse []string `ini:"keymouse"`

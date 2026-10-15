@@ -925,6 +925,199 @@ func (r *Renderer_GL33) Init() {
 func (r *Renderer_GL33) Close() {
 }
 
+// Reallocates the screen-sized render targets. Game textures, shaders and the
+// GL context are kept.
+func (r *Renderer_GL33) ResizeRenderTargets(width, height, samples int32) error {
+	if width <= 0 || height <= 0 {
+		return fmt.Errorf("invalid rendering resolution %dx%d", width, height)
+	}
+	var maxSamples int32
+	gl.GetIntegerv(gl.MAX_SAMPLES, &maxSamples)
+	if samples > maxSamples {
+		return fmt.Errorf("MSAA %d exceeds the device limit of %d", samples, maxSamples)
+	}
+	if samples < 0 || samples&(samples-1) != 0 || samples == 1 || samples > 32 {
+		return fmt.Errorf("unsupported MSAA sample count %d", samples)
+	}
+	r.Await()
+	if samples > 0 {
+		gl.Enable(gl.MULTISAMPLE)
+	} else {
+		gl.Disable(gl.MULTISAMPLE)
+	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	// A GL texture cannot change between 2D and multisample targets, so the
+	// main color texture is recreated.
+	if r.fbo_texture != 0 {
+		gl.DeleteTextures(1, &r.fbo_texture)
+	}
+	gl.GenTextures(1, &r.fbo_texture)
+	target := uint32(gl.TEXTURE_2D)
+	if samples > 0 {
+		target = gl.TEXTURE_2D_MULTISAMPLE
+		r.bindTextureToUnitForced(0, target, nil, r.fbo_texture)
+		gl.TexImage2DMultisample(gl.TEXTURE_2D_MULTISAMPLE, samples, gl.RGBA8, width, height, true)
+	} else {
+		r.bindTextureToUnitForced(0, target, nil, r.fbo_texture)
+		gl.TexParameteri(target, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameteri(target, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.TexImage2D(target, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	}
+	r.bindTextureToUnitForced(0, target, nil, 0)
+
+	for _, t := range r.fbo_pp_texture {
+		r.bindTextureToUnitForced(0, gl.TEXTURE_2D, nil, t)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8_SNORM, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+	}
+	r.bindTextureToUnitForced(0, gl.TEXTURE_2D, nil, 0)
+
+	gl.BindRenderbuffer(gl.RENDERBUFFER, r.rbo_depth)
+	if samples > 0 {
+		gl.RenderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.DEPTH_COMPONENT16, width, height)
+	} else {
+		gl.RenderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height)
+	}
+	gl.BindRenderbuffer(gl.RENDERBUFFER, 0)
+
+	// Resize the grab texture in place; other code keeps a pointer to it.
+	if r.grabTexture != nil {
+		r.grabTexture.width, r.grabTexture.height = width, height
+		r.bindTextureToUnitForced(0, gl.TEXTURE_2D, r.grabTexture, 0)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+		r.bindTextureToUnitForced(0, gl.TEXTURE_2D, nil, 0)
+	}
+	if samples > 0 {
+		if r.fbo_f_texture == nil {
+			tex, err := r.newTexture(width, height, 32, false)
+			if err != nil {
+				return err
+			}
+			r.fbo_f_texture = tex.(*Texture_GL33)
+		}
+		r.fbo_f_texture.width, r.fbo_f_texture.height = width, height
+		r.bindTextureToUnitForced(0, gl.TEXTURE_2D, r.fbo_f_texture, 0)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, nil)
+		r.bindTextureToUnitForced(0, gl.TEXTURE_2D, nil, 0)
+		if r.fbo_f == 0 {
+			gl.GenFramebuffers(1, &r.fbo_f)
+		}
+		gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_f)
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.fbo_f_texture.handle, 0)
+	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo)
+	gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, target, r.fbo_texture, 0)
+	gl.FramebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.rbo_depth)
+	if status := gl.CheckFramebufferStatus(gl.FRAMEBUFFER); status != gl.FRAMEBUFFER_COMPLETE {
+		gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+		return fmt.Errorf("framebuffer incomplete: 0x%x", status)
+	}
+	if samples > 0 {
+		if r.grabFbo == 0 {
+			gl.GenFramebuffers(1, &r.grabFbo)
+		}
+		gl.BindFramebuffer(gl.FRAMEBUFFER, r.grabFbo)
+		gl.FramebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.grabTexture.handle, 0)
+	}
+	gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	return nil
+}
+
+// Replaces the post-processing shaders. Nothing changes if one fails to compile.
+func (r *Renderer_GL33) ReloadPostShaders(src [][][]byte) error {
+	if len(src) != 2 || len(src[0]) != len(src[1]) {
+		return fmt.Errorf("invalid post shader chain")
+	}
+	fresh := make([]*ShaderProgram_GL33, 0, len(src[0])+1)
+	cleanup := func() {
+		for _, p := range fresh {
+			gl.DeleteProgram(p.program)
+		}
+	}
+	for i := range src[0] {
+		p, err := r.newShaderProgram(string(src[0][i])+"\x00", string(src[1][i])+"\x00", "", fmt.Sprintf("Postprocess Shader #%d", i), false)
+		if err != nil {
+			cleanup()
+			return fmt.Errorf("post shader %d: %w", i+1, err)
+		}
+		p.RegisterAttributes("VertCoord")
+		p.RegisterUniforms("Texture_GL33", "TextureSize", "CurrentTime")
+		fresh = append(fresh, p)
+	}
+	// The identity shader stays as the last pass.
+	identity := r.postShaderSelect[len(r.postShaderSelect)-1]
+	r.bindVertexArray(r.postVAO)
+	r.bindBuffer(gl.ARRAY_BUFFER, r.postVertBuffer)
+	for _, p := range fresh {
+		if loc := p.attributes["VertCoord"]; loc >= 0 {
+			gl.EnableVertexAttribArray(uint32(loc))
+			gl.VertexAttribPointer(uint32(loc), 2, gl.FLOAT, false, 0, nil)
+		}
+	}
+	r.bindVertexArray(0)
+	r.bindBuffer(gl.ARRAY_BUFFER, 0)
+	for _, p := range r.postShaderSelect[:len(r.postShaderSelect)-1] {
+		gl.DeleteProgram(p.program)
+	}
+	r.postShaderSelect = append(fresh, identity)
+	// The cached program may have been deleted.
+	r.currentProgram = nil
+	r.ChangeProgram(0)
+	return nil
+}
+
+// Turns 3D model and shadow rendering on or off. Loaded models are kept;
+// shaders are only rebuilt when models get enabled or shadows change.
+func (r *Renderer_GL33) SetModelOptions(model, shadow bool) error {
+	if !model {
+		r.enableModel = false
+		r.enableShadow = shadow
+		return nil
+	}
+	if r.enableModel && r.modelShader != nil && r.enableShadow == shadow {
+		return nil
+	}
+	oldModel, oldShadow := r.enableModel, r.enableShadow
+	oldModelShader := r.modelShader
+	oldShadowShader := r.shadowMapShader
+	oldPanorama := r.panoramaToCubeMapShader
+	oldFiltering := r.cubemapFilteringShader
+	r.enableModel, r.enableShadow = true, shadow
+	if err := r.InitModelShader(); err != nil {
+		r.enableModel, r.enableShadow = oldModel, oldShadow
+		r.modelShader, r.shadowMapShader = oldModelShader, oldShadowShader
+		r.panoramaToCubeMapShader, r.cubemapFilteringShader = oldPanorama, oldFiltering
+		return err
+	}
+	for _, p := range []*ShaderProgram_GL33{oldModelShader, oldShadowShader, oldPanorama, oldFiltering} {
+		if p != nil {
+			gl.DeleteProgram(p.program)
+		}
+	}
+	if !shadow {
+		r.shadowMapShader = nil
+	}
+	r.ChangeProgram(0)
+	if r.fbo_env == 0 {
+		gl.GenFramebuffers(1, &r.fbo_env)
+	}
+	if shadow && r.fbo_shadow == 0 {
+		gl.GenFramebuffers(1, &r.fbo_shadow)
+		gl.GenTextures(1, &r.fbo_shadow_cube_texture)
+		r.bindTextureToUnitForced(0, gl.TEXTURE_CUBE_MAP_ARRAY_ARB, nil, r.fbo_shadow_cube_texture)
+		gl.TexStorage3D(gl.TEXTURE_CUBE_MAP_ARRAY_ARB, 1, gl.DEPTH_COMPONENT24, 1024, 1024, 4*6)
+		gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY_ARB, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY_ARB, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+		gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY_ARB, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+		gl.TexParameteri(gl.TEXTURE_CUBE_MAP_ARRAY_ARB, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+		gl.BindFramebuffer(gl.FRAMEBUFFER, r.fbo_shadow)
+		gl.FramebufferTexture(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, r.fbo_shadow_cube_texture, 0)
+		gl.DrawBuffer(gl.NONE)
+		gl.ReadBuffer(gl.NONE)
+		gl.BindFramebuffer(gl.FRAMEBUFFER, 0)
+	}
+	return nil
+}
+
 func (r *Renderer_GL33) InitStateCache() {
 	// Match standard OpenGL hardware defaults
 	r.program = 0

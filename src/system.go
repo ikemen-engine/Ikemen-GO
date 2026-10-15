@@ -13,6 +13,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -234,6 +235,7 @@ func (tm TeamMode) TriggerValue() string {
 type System struct {
 	SystemStateVars
 	window              *Window
+	appliedVideo        VideoState
 	redrawWait          struct{ nextTime, lastDraw time.Time }
 	debugFont           *TextSprite
 	debugDisplay        bool
@@ -452,51 +454,15 @@ func (s *System) init(w, h int32) *lua.LState {
 	// The same SDL mapping file is used by external tools and the in-game editor.
 	input.UpdateGamepadMappings(sys.cfg.Config.GamepadMappings)
 
-	// Loading of external shader data.
-	// We need to do this before the render initialization at "gfx.Init()"
-	if len(s.cfg.Video.ExternalShaders) > 0 {
-		// First we initialize arrays.
-		s.externalShaders = make([][][]byte, 2)
-		s.externalShaders[0] = make([][]byte, len(s.cfg.Video.ExternalShaders))
-		s.externalShaders[1] = make([][]byte, len(s.cfg.Video.ExternalShaders))
-
-		// Then we load.
-		for i, shaderLocation := range s.cfg.Video.ExternalShaders {
-			// Create names.
-			shaderLocation = strings.Replace(shaderLocation, "\\", "/", -1)
-
-			if strings.HasPrefix(renderName, "OpenGL") {
-				// Load vert shaders.
-				s.externalShaders[0][i], err = os.ReadFile(shaderLocation + ".vert")
-				if err != nil {
-					chk(err)
-				}
-
-				// Load frag shaders.
-				s.externalShaders[1][i], err = os.ReadFile(shaderLocation + ".frag")
-				if err != nil {
-					chk(err)
-				}
-			} else if strings.HasPrefix(renderName, "Vulkan") {
-				// Load spv shaders
-				s.externalShaders[0][i], err = os.ReadFile(shaderLocation + ".vert.spv")
-				if err != nil {
-					chk(err)
-				}
-
-				s.externalShaders[1][i], err = os.ReadFile(shaderLocation + ".frag.spv")
-				if err != nil {
-					chk(err)
-				}
-			}
-		}
-	}
-	// PS: The "\x00" is what is know as Null Terminator.
+	// Post-processing shaders must be loaded before gfx.Init().
+	s.externalShaders, err = readPostShaders(s.cfg.Video.ExternalShaders, renderName)
+	chk(err)
 
 	// Init renderer
 	Logcat("Check B: Initializing GFX")
 	gfx.Init()
 	s.window.SetSwapInterval(s.cfg.Video.VSync) // VSync must be set after Init(), or our config.ini will be ignored
+	s.appliedVideo = s.currentVideoState()
 
 	Logcat("Check C: Initializing GFX Font")
 	gfxFont.Init(gfx)
@@ -675,6 +641,131 @@ func aspectStateForSize(w, h int32) drawAspectState {
 func (s *System) setGameSize(w, h int32) {
 	s.scrrect[2], s.scrrect[3] = w, h
 	s.restoreAspectState(aspectStateForSize(w, h))
+}
+
+// Video settings currently applied to the renderer and window.
+type VideoState struct {
+	renderer                    string
+	gameWidth, gameHeight       int32
+	windowWidth, windowHeight   int
+	fullscreen, borderless      bool
+	vsync                       int
+	msaa                        int32
+	modelEnabled, shadowEnabled bool
+	shaders                     []string
+}
+
+// Returns the windowed SDL size. A zero window dimension means
+// follow the corresponding internal game dimension (the config default).
+func videoWindowSize(gameWidth, gameHeight int32, windowWidth, windowHeight int) (int, int) {
+	if windowWidth == 0 {
+		windowWidth = int(gameWidth)
+	}
+	if windowHeight == 0 {
+		windowHeight = int(gameHeight)
+	}
+	return windowWidth, windowHeight
+}
+
+// Video settings as the renderer and window run them now.
+func (s *System) currentVideoState() VideoState {
+	v := s.cfg.Video
+	return VideoState{
+		renderer:  gfx.GetName(),
+		gameWidth: v.GameWidth, gameHeight: v.GameHeight,
+		windowWidth: v.WindowWidth, windowHeight: v.WindowHeight,
+		fullscreen: s.window.fullscreen, borderless: v.Borderless,
+		vsync: v.VSync, msaa: s.msaa,
+		modelEnabled: gfx.IsModelEnabled(), shadowEnabled: gfx.IsShadowEnabled(),
+		shaders: append([]string(nil), v.ExternalShaders...),
+	}
+}
+
+// Reads the vertex and fragment files of each post-processing shader.
+// Vulkan uses the compiled .spv files.
+func readPostShaders(names []string, renderer string) ([][][]byte, error) {
+	ext := ""
+	if strings.HasPrefix(renderer, "Vulkan") {
+		ext = ".spv"
+	}
+	sources := make([][][]byte, 2)
+	for _, name := range names {
+		path := strings.ReplaceAll(name, "\\", "/")
+		for i, kind := range []string{".vert", ".frag"} {
+			data, err := os.ReadFile(path + kind + ext)
+			if err != nil {
+				return nil, fmt.Errorf("read post shader %q: %w", path+kind+ext, err)
+			}
+			sources[i] = append(sources[i], data)
+		}
+	}
+	return sources, nil
+}
+
+// Applies changed video settings without restarting. Only screen-sized render
+// targets, post shaders, model pipelines and the window are rebuilt; loaded
+// assets and the Lua state stay as they are. Call between frames.
+func (s *System) applyVideoSettings() error {
+	v := s.cfg.Video
+	a := s.appliedVideo
+	if !strings.HasPrefix(a.renderer, v.RenderMode) {
+		return fmt.Errorf("changing the renderer requires a restart")
+	}
+	if v.GameWidth <= 0 || v.GameHeight <= 0 {
+		return fmt.Errorf("internal resolution must be positive")
+	}
+	if v.WindowWidth < 0 || v.WindowHeight < 0 {
+		return fmt.Errorf("window dimensions cannot be negative")
+	}
+	if v.MSAA != a.msaa && strings.HasPrefix(a.renderer, "Vulkan") {
+		return fmt.Errorf("changing MSAA requires a restart with Vulkan")
+	}
+	if v.EnableModel != a.modelEnabled || v.EnableModelShadow != a.shadowEnabled {
+		if err := gfx.SetModelOptions(v.EnableModel, v.EnableModelShadow); err != nil {
+			return fmt.Errorf("update 3D rendering: %w", err)
+		}
+		// Record each applied step, so a later failure only restores what changed.
+		s.appliedVideo.modelEnabled = v.EnableModel
+		s.appliedVideo.shadowEnabled = v.EnableModelShadow
+	}
+	if v.GameWidth != a.gameWidth || v.GameHeight != a.gameHeight || v.MSAA != a.msaa {
+		if err := gfx.ResizeRenderTargets(v.GameWidth, v.GameHeight, v.MSAA); err != nil {
+			return fmt.Errorf("resize render targets: %w", err)
+		}
+		s.setGameSize(v.GameWidth, v.GameHeight)
+		s.msaa = v.MSAA
+		s.appliedVideo.gameWidth, s.appliedVideo.gameHeight = v.GameWidth, v.GameHeight
+		s.appliedVideo.msaa = v.MSAA
+	}
+	if !slices.Equal(v.ExternalShaders, a.shaders) {
+		sources, err := readPostShaders(v.ExternalShaders, gfx.GetName())
+		if err != nil {
+			return err
+		}
+		if err := gfx.ReloadPostShaders(sources); err != nil {
+			return err
+		}
+		s.externalShaders = sources
+		s.appliedVideo.shaders = append([]string(nil), v.ExternalShaders...)
+	}
+	w, h := videoWindowSize(v.GameWidth, v.GameHeight, v.WindowWidth, v.WindowHeight)
+	oldW, oldH := videoWindowSize(a.gameWidth, a.gameHeight, a.windowWidth, a.windowHeight)
+	if w != oldW || h != oldH {
+		s.window.ResizeWindowed(w, h)
+	}
+	if v.Borderless != a.borderless && !s.window.fullscreen {
+		s.window.Window.SetBordered(!v.Borderless)
+	}
+	if v.Fullscreen != s.window.fullscreen {
+		if _, forceWindowed := s.cmdFlags["-windowed"]; !forceWindowed {
+			s.window.toggleFullscreen()
+		}
+	}
+	if v.VSync != a.vsync {
+		s.window.SetSwapInterval(v.VSync)
+	}
+	s.appliedVideo = s.currentVideoState()
+	return nil
 }
 
 // Change aspect ratio at match start
