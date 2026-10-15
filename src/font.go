@@ -801,6 +801,7 @@ type TextSprite struct {
 	friction       [2]float32
 	maxDist        [2]float32
 	hidewithbars   bool
+	windowDefault  bool // The clip follows sys.scrrect if no window was authored.
 	// initial, unscaled values
 	offsetInit   [2]float32
 	scaleInit    [2]float32
@@ -843,6 +844,7 @@ func (ts *TextSprite) loadDefaults() {
 		scaleInit:  [2]float32{1.0, 1.0},
 	}
 	ts.glyphScaleInit = ts.glyphScale
+	ts.windowDefault = true
 
 	ts.params = prm
 
@@ -943,10 +945,14 @@ func (ts *TextSprite) SetWindow(window [4]float32) {
 		return
 	}
 	ts.windowInit = window
+	ts.windowDefault = false
 	ts.window = ts.drawWindow()
 }
 
 func (ts *TextSprite) drawWindow() [4]int32 {
+	if ts.windowDefault {
+		return sys.scrrect
+	}
 	if ts.windowInit == [4]float32{0, 0, 0, 0} {
 		return ts.window
 	}
@@ -1078,7 +1084,7 @@ func (ts *TextSprite) decodeEscapes(text string) string {
 // wrapText wraps the fullLine text based on the typedLen and other parameters
 func (ts *TextSprite) wrapText(fullLine string, typedLen int) {
 	// If typedLen <= 0, nothing to display
-	if ts.fnt == nil || ts.window[2] <= 0 {
+	if ts.fnt == nil || ts.drawWindow()[2] <= 0 {
 		return
 	}
 	// If typing hasn't started yet, make sure nothing is shown.

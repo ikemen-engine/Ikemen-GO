@@ -375,9 +375,6 @@ type MenuProperties struct {
 	Done struct {
 		Key []string `ini:"key"`
 	} `ini:"done"`
-	Save struct { // only used by [Option Info] profile editor
-		Key []string `ini:"key"`
-	} `ini:"save"`
 	Hiscore struct { // not used by [Option Info], [Replay Info], [Pause Menu]
 		Key []string `ini:"key"`
 	} `ini:"hiscore"`

@@ -33,6 +33,9 @@ type Renderer interface {
 	DebugInfo() string
 	Init()
 	Close()
+	ResizeRenderTargets(width, height, samples int32) error
+	ReloadPostShaders(sources [][][]byte) error
+	SetModelOptions(model, shadow bool) error
 	BeginFrame(clearColor bool)
 	EndFrame()
 	Await()

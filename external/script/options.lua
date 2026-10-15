@@ -3,7 +3,6 @@ local options = {}
 --; COMMON
 --;===========================================================
 options.modified = false
-options.needReload = false
 
 --return string depending on bool
 function options.f_boolDisplay(bool, t, f)
@@ -26,9 +25,89 @@ function options.f_precision(v, decimal)
 	return tonumber(string.format(decimal, v))
 end
 
+-- Video options that are applied without restarting.
+local t_videoOptions = {
+	'GameWidth', 'GameHeight', 'WindowWidth', 'WindowHeight', 'Fullscreen',
+	'Borderless', 'VSync', 'MSAA', 'ExternalShaders', 'WindowScaleMode',
+	'FightAspectWidth', 'FightAspectHeight', 'KeepAspect', 'EnableModel',
+	'EnableModelShadow',
+}
+
+-- Returns a copy of the current video options.
+function options.f_videoSnapshot()
+	local t = {}
+	for _, name in ipairs(t_videoOptions) do
+		local value = gameOption('Video.' .. name)
+		if type(value) == 'table' then
+			value = main.f_tableCopy(value)
+		end
+		t['Video.' .. name] = value
+	end
+	return t
+end
+
+local function f_videoWarning(text, err)
+	main.f_warning(main.f_formatBySpec(text, {s = tostring(err)}), motif.option_info, motif.optionbgdef)
+end
+
+-- Puts the given video options back and applies them.
+local function f_restoreVideo(values)
+	for name, value in pairs(values) do
+		modifyGameOption(name, value)
+	end
+	local ok, err = applyVideoSettings()
+	if not ok then
+		f_videoWarning(motif.warning_info.text.text.videorestore, err)
+	end
+	return ok
+end
+
+-- Applies the edited video options, restoring the previous ones if that fails
+-- or, with confirm, if the player does not keep the change.
+function options.f_finishVideo(previous, confirm)
+	local ok, err = applyVideoSettings()
+	if not ok then
+		f_restoreVideo(previous)
+		f_videoWarning(motif.warning_info.text.text.videoapply, err)
+		return false
+	end
+	if confirm and not main.f_warning(motif.warning_info.text.text.videokeep,
+		motif.option_info, motif.optionbgdef, nil, nil, nil, nil,
+		motif.option_info.cursor.done.snd, nil, nil, 'confirm') then
+		f_restoreVideo(previous)
+		return false
+	end
+	options.modified = true
+	return true
+end
+
+-- Sets and applies video options.
+function options.f_applyVideo(changes, confirm)
+	local previous = options.f_videoSnapshot()
+	for name, value in pairs(changes) do
+		modifyGameOption(name, value)
+	end
+	return options.f_finishVideo(previous, confirm)
+end
+
+-- Choosing a resolution changes both the internal game size and the windowed SDL size.
+function options.f_applyResolution(width, height)
+	return options.f_applyVideo({
+		['Video.GameWidth'] = width, ['Video.GameHeight'] = height,
+		['Video.WindowWidth'] = 0, ['Video.WindowHeight'] = 0,
+	}, true)
+end
+
 --- Save the current configuration to the config file and handle common file modifications
 local t_commonFilesOriginal = gameOption('Common')
 function options.f_saveCfg(reload)
+	if not reload then
+		local ok, err = applyVideoSettings()
+		if not ok then
+			f_videoWarning(motif.warning_info.text.text.videoapply, err)
+			return false
+		end
+	end
 	-- Restore the original content of the common files
 	local t_commonFiles = gameOption('Common')
 	for _, k in ipairs({'Air', 'Cmd', 'Const', 'States', 'Fx', 'Modules', 'Lua'}) do
@@ -37,51 +116,193 @@ function options.f_saveCfg(reload)
 	-- Save the current configuration to 'config.ini'
 	saveGameOption(getCommandLineValue("-config"))
 	hook.run("options.save", reload)
-	-- Reload the game if the reload parameter is true
+	-- Options that need a restart, such as the renderer, restart the game.
+	-- Only called with reload on desktop, see f_restartOption.
 	if reload then
-		main.f_warning(motif.warning_info.text.text.reload, motif.option_info, motif.optionbgdef)
-		os.exit()
+		local ok, err = restartGame()
+		if not ok then
+			f_videoWarning(motif.warning_info.text.text.restart, err)
+			return false
+		end
 	end
 	-- Reapply modified common file arrays after saving
 	for _, k in ipairs({'Air', 'Cmd', 'Const', 'States', 'Fx', 'Modules', 'Lua'}) do
 		modifyGameOption('Common.' .. k, t_commonFiles[k][k:lower()] or {})
 	end
+	options.modified = false
+	options.savedVideo = options.f_videoSnapshot()
+	return true
+end
+
+-- Only settings exposed in Options participate in screen-wide restore/default.
+-- Profiles and SDL controller mappings have their own reset paths.
+options.t_editableOptions = {
+	'Options.Difficulty',
+	'Options.Life',
+	'Options.Time',
+	'Options.GameSpeed',
+	'Options.Match.Wins',
+	'Options.Match.MaxDrawGames',
+	'Options.Credits',
+	'Options.QuickContinue',
+	'Options.AutoGuard',
+	'Options.GuardBreak',
+	'Options.Dizzy',
+	'Options.RedLife',
+	'Options.Team.Duplicates',
+	'Options.Team.LifeShare',
+	'Options.Team.PowerShare',
+	'Options.Team.SingleVsTeamLife',
+	'Options.Simul.Min',
+	'Options.Simul.Max',
+	'Options.Simul.Match.Wins',
+	'Options.Simul.LoseOnKO',
+	'Options.Tag.Min',
+	'Options.Tag.Max',
+	'Options.Tag.Match.Wins',
+	'Options.Tag.LoseOnKO',
+	'Options.Tag.TimeScaling',
+	'Options.Turns.Min',
+	'Options.Turns.Max',
+	'Options.Turns.Recovery.Base',
+	'Options.Turns.Recovery.Bonus',
+	'Config.Players',
+	'Config.VsScreenLoading',
+	'Config.TurnsLoading',
+	'Config.Language',
+	'Debug.AllowDebugMode',
+	'Debug.AllowDebugKeys',
+	'Arcade.AI.RandomColor',
+	'Arcade.AI.SurvivalColor',
+	'Arcade.AI.Ramping',
+	'Netplay.RollbackNetcode',
+	'Netplay.ListenPort',
+	'Netplay.Rollback.Port',
+	'Netplay.Rollback.FrameDelay',
+	'Video.RenderMode',
+	'Video.GameWidth',
+	'Video.GameHeight',
+	'Video.WindowWidth',
+	'Video.WindowHeight',
+	'Video.Fullscreen',
+	'Video.Borderless',
+	'Video.VSync',
+	'Video.MSAA',
+	'Video.ExternalShaders',
+	'Video.WindowScaleMode',
+	'Video.FightAspectWidth',
+	'Video.FightAspectHeight',
+	'Video.KeepAspect',
+	'Video.EnableModel',
+	'Video.EnableModelShadow',
+	'Sound.MasterVolume',
+	'Sound.BGMVolume',
+	'Sound.WavVolume',
+	'Sound.AudioDucking',
+	'Sound.StereoEffects',
+	'Sound.PanningRange',
+}
+
+-- Copies the current or default values of every setting shown in Options.
+function options.f_settingsSnapshot(defaults)
+	local values = {}
+	for _, key in ipairs(options.t_editableOptions) do
+		local value = defaults and gameOptionDefault(key) or gameOption(key)
+		if value ~= nil then
+			values[key] = type(value) == 'table' and main.f_tableCopy(value) or value
+		end
+	end
+	if defaults then
+		-- The shipped shader list is empty. Use an array, not an INI string.
+		values['Video.ExternalShaders'] = {}
+	end
+	return values
+end
+
+function options.f_restoreSettings(values)
+	local previous = options.f_settingsSnapshot(false)
+	for key, value in pairs(values) do
+		modifyGameOption(key, value)
+	end
+	local ok, err = applyVideoSettings()
+	if not ok then
+		for key, value in pairs(previous) do modifyGameOption(key, value) end
+		applyVideoSettings()
+		f_videoWarning(motif.warning_info.text.text.videoapply, err)
+		return false
+	end
+	setPlayers()
+	updateVolume()
+	options.f_refreshVardisplay()
+	options.modified = true
+	return true
+end
+
+function options.f_refreshVardisplay()
+	for _, row in ipairs(options.t_vardisplayPointers) do
+		row.vardisplay = options.f_vardisplay(row.itemname)
+	end
+end
+
+-- Language and renderer only change after a restart. A restore can change them
+-- silently, so the restart is offered when saving or leaving Options.
+local t_restartOptions = {'Config.Language', 'Video.RenderMode'}
+local t_restartBaseline = {}
+for _, key in ipairs(t_restartOptions) do
+	t_restartBaseline[key] = gameOption(key)
+end
+
+-- True if language or renderer changed since the game started.
+function options.f_restartPending()
+	for _, key in ipairs(t_restartOptions) do
+		if gameOption(key) ~= t_restartBaseline[key] then
+			return true
+		end
+	end
+	return false
+end
+
+-- Confirm saves everything and restarts (on mobile it applies at next launch).
+-- Cancel restores the running values. Returns true if it saved.
+function options.f_finishRestartOptions()
+	if not options.f_restartPending() then
+		return false
+	end
+	local mobile = getRuntimeOS() == 'android' or getRuntimeOS() == 'ios'
+	local text = motif.warning_info.text.text.restartoption
+	if mobile then
+		text = motif.warning_info.text.text.restartlater
+	end
+	local accepted = main.f_warning(text, motif.option_info, motif.optionbgdef, nil, nil, nil, nil, nil, nil, nil, 'confirm')
+	if accepted and options.f_saveCfg(not mobile) then
+		-- Mobile keeps running the old values, but they are already saved.
+		for _, key in ipairs(t_restartOptions) do
+			t_restartBaseline[key] = gameOption(key)
+		end
+		return true
+	end
+	for _, key in ipairs(t_restartOptions) do
+		modifyGameOption(key, t_restartBaseline[key])
+	end
+	options.f_refreshVardisplay()
+	if accepted then
+		-- The restart failed after saving: keep the running values saved instead.
+		options.f_saveCfg(false)
+		return true
+	end
+	return false
+end
+
+-- Back/ESC keeps unsaved changes in the running session.
+function options.f_close()
+	options.f_finishRestartOptions()
+	fadeOutInit(motif.option_info.fadeout.FadeData)
+	main.close = true
 end
 
 --;===========================================================
 --; LOOPS
 --;===========================================================
-local function f_switchLanguage(dir)
-	sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-	-- collect available language keys
-	local codes = {}
-	for code in pairs(motif.languages) do
-		table.insert(codes, code)
-	end
-	-- current language
-	local cur = gameOption('Config.Language')
-	-- find current index (fallback to 1 if not found)
-	local curIndex = 1
-	for i, code in ipairs(codes) do
-		if code == cur then
-			curIndex = i
-			break
-		end
-	end
-	-- move index with wrap
-	local newIndex = curIndex + dir
-	if newIndex < 1 then
-		newIndex = #codes
-	elseif newIndex > #codes then
-		newIndex = 1
-	end
-	-- apply
-	local newCode = codes[newIndex]
-	modifyGameOption('Config.Language', newCode)
-	options.modified = true
-	options.needReload = true
-end
-
 -- Associative elements table storing functions controlling behaviour of each
 -- option screen item. Can be appended via external module.
 --Render mode values as stored in the configuration.
@@ -91,169 +312,54 @@ options.t_renderModes = {
 	vk13 = 'Vulkan 1.3',
 }
 
+-- Sets an option that only takes effect after a restart. Once the player
+-- confirms, all options are saved and the game restarts (desktop only).
+function options.f_restartOption(name, value)
+	-- Android and iOS cannot restart the app, so restart-only options take effect
+	-- the next time the game starts there.
+	local mobile = getRuntimeOS() == 'android' or getRuntimeOS() == 'ios'
+	local old = gameOption(name)
+	if old == value then
+		return
+	end
+	-- Going back to the running value after a restore needs no restart.
+	if t_restartBaseline[name] == value then
+		modifyGameOption(name, value)
+		options.modified = true
+		options.f_refreshVardisplay()
+		return
+	end
+	local text = motif.warning_info.text.text.restartoption
+	if mobile then
+		text = motif.warning_info.text.text.restartlater
+	end
+	if not main.f_warning(text, motif.option_info, motif.optionbgdef, nil, nil, nil, nil, nil, nil, nil, 'confirm') then
+		return
+	end
+	modifyGameOption(name, value)
+	options.modified = true
+	if not options.f_saveCfg(not mobile) then
+		-- Keep the old value saved if the game could not restart.
+		modifyGameOption(name, old)
+		options.f_saveCfg(false)
+	elseif mobile then
+		-- Every restart-only value is now saved for the next start.
+		for _, key in ipairs(t_restartOptions) do
+			t_restartBaseline[key] = gameOption(key)
+		end
+	end
+end
+
 options.t_itemname = {
 	--Back
 	['back'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
+			if t == options.menu then
+				options.f_close()
+				return true
+			end
 			return false
-		end
-		return true
-	end,
-	--Default Values
-	['default'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.done.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-			--modifyGameOption('Common.Air', {"data/common.air"})
-			--modifyGameOption('Common.Cmd', {"data/common.cmd"})
-			--modifyGameOption('Common.Const', {"data/common.const"})
-			--modifyGameOption('Common.States', {"data/action.zss", "data/dizzy.zss", "data/guardbreak.zss", "data/score.zss", "data/system.zss", "data/tag.zss", "data/training.zss"})
-			--modifyGameOption('Common.Fx', {})
-			--modifyGameOption('Common.Modules', {})
-			--modifyGameOption('Common.Lua', {"loop()"})
-			modifyGameOption('Options.Difficulty', 5)
-			modifyGameOption('Options.Life', 100)
-			modifyGameOption('Options.Time', 99)
-			modifyGameOption('Options.GameSpeed', 0)
-			--modifyGameOption('Options.GameSpeedStep', 5)
-			modifyGameOption('Options.Match.Wins', 2)
-			modifyGameOption('Options.Match.MaxDrawGames', 1)
-			modifyGameOption('Options.Credits', 10)
-			modifyGameOption('Options.QuickContinue', false)
-			modifyGameOption('Options.AutoGuard', false)
-			modifyGameOption('Options.GuardBreak', false)
-			modifyGameOption('Options.Dizzy', false)
-			modifyGameOption('Options.RedLife', true)
-			modifyGameOption('Options.Team.Duplicates', true)
-			modifyGameOption('Options.Team.LifeShare', false)
-			modifyGameOption('Options.Team.PowerShare', true)
-			modifyGameOption('Options.Team.SingleVsTeamLife', 100)
-			modifyGameOption('Options.Simul.Min', 2)
-			modifyGameOption('Options.Simul.Max', 4)
-			modifyGameOption('Options.Simul.Match.Wins', 2)
-			modifyGameOption('Options.Simul.LoseOnKO', true)
-			modifyGameOption('Options.Tag.Min', 2)
-			modifyGameOption('Options.Tag.Max', 4)
-			modifyGameOption('Options.Tag.Match.Wins', 2)
-			modifyGameOption('Options.Tag.LoseOnKO', false)	
-			modifyGameOption('Options.Tag.TimeScaling', 1)
-			modifyGameOption('Options.Turns.Min', 2)
-			modifyGameOption('Options.Turns.Max', 4)
-			modifyGameOption('Options.Turns.Recovery.Base', 12.5)
-			modifyGameOption('Options.Turns.Recovery.Bonus', 27.5)
-			--modifyGameOption('Config.Motif', "data/system.def")
-			modifyGameOption('Config.Players', 4)
-			modifyGameOption('Config.Language', "en")
-			--modifyGameOption('Config.AfterImageMax', 128)
-			--modifyGameOption('Config.ExplodMax', 512)
-			--modifyGameOption('Config.HelperMax', 56)
-			--modifyGameOption('Config.ProjectileMax', 256)
-			--modifyGameOption('Config.PaletteMax', 100)
-			--modifyGameOption('Config.TextMax', 128)
-			--modifyGameOption('Config.TickInterpolation', true)
-			--modifyGameOption('Config.ZoomActive', true)
-			--modifyGameOption('Config.EscOpensMenu', true)
-			modifyGameOption('Config.VsScreenLoading', false)
-			modifyGameOption('Config.TurnsLoading', false)
-			--modifyGameOption('Config.BootLoadingMode', 0)
-			--modifyGameOption('Config.FirstRun', false)
-			--modifyGameOption('Config.WindowTitle', "Ikemen GO")
-			--modifyGameOption('Config.WindowIcon', {"external/icons/IkemenCylia_256.png", "external/icons/IkemenCylia_96.png", "external/icons/IkemenCylia_48.png"})
-			--modifyGameOption('Config.System', "external/script/main.lua")
-			--modifyGameOption('Config.ScreenshotFolder', "")
-			--modifyGameOption('Config.TrainingChar', "")
-			--modifyGameOption('Config.TrainingStage', "")
-			modifyGameOption('Config.GamepadMappings', "external/gamecontrollerdb.txt")
-			--modifyGameOption('Config.LegacyTime', 0)
-			modifyGameOption('Debug.AllowDebugMode', true)
-			modifyGameOption('Debug.AllowDebugKeys', true)
-			--modifyGameOption('Debug.ClipboardRows', 2)
-			--modifyGameOption('Debug.ConsoleRows', 15)
-			--modifyGameOption('Debug.ClsnDarken', true)
-			--modifyGameOption('Debug.DumpLuaTables', false)
-			--modifyGameOption('Debug.Font', "font/debug.def")
-			--modifyGameOption('Debug.FontScale', 1.0)
-			--modifyGameOption('Debug.StartStage', "stages/stage0-720.def")
-			--modifyGameOption('Debug.ForceStageZoomout', 0)
-			--modifyGameOption('Debug.ForceStageZoomin', 0)
-			--modifyGameOption('Debug.KeepSpritesOnReload', 0)
-			--modifyGameOption('Debug.MacOSUseCommandKey', 0)
-			--modifyGameOption('Debug.SpeedTest', 100)
-			-- This is platform dependent now
-			local runtimeOS = getRuntimeOS()
-			if runtimeOS == 'android' then
-				modifyGameOption('Video.RenderMode', 'OpenGL ES 3.2')
-			elseif runtimeOS == 'ios' then
-				modifyGameOption('Video.RenderMode', 'Vulkan 1.3')
-			else
-				modifyGameOption('Video.RenderMode', "OpenGL 3.3")
-			end
-			modifyGameOption('Video.GameWidth', 1280)
-			modifyGameOption('Video.GameHeight', 720)
-			--modifyGameOption('Video.WindowWidth', 0)
-			--modifyGameOption('Video.WindowHeight', 0)
-			modifyGameOption('Video.Fullscreen', false)
-			--modifyGameOption('Video.Borderless', false)
-			--modifyGameOption('Video.RGBSpriteBilinearFilter', true)
-			--modifyGameOption('Video.Framerate', 60)
-			modifyGameOption('Video.VSync', 1)
-			modifyGameOption('Video.MSAA', 0)
-			--modifyGameOption('Video.WindowCentered', true)
-			modifyGameOption('Video.ExternalShaders', {})
-			modifyGameOption('Video.WindowScaleMode', true)
-			modifyGameOption('Video.FightAspectWidth', -1)
-			modifyGameOption('Video.FightAspectHeight', -1)
-			modifyGameOption('Video.KeepAspect', true)
-			modifyGameOption('Video.EnableModel', true)
-			modifyGameOption('Video.EnableModelShadow', true)
-			--modifyGameOption('Sound.SampleRate', 44100)
-			--modifyGameOption('Sound.SoundFont', "sound/soundfont.sf2")
-			modifyGameOption('Sound.StereoEffects', true)
-			modifyGameOption('Sound.PanningRange', 30)
-			--modifyGameOption('Sound.WavChannels', 32)
-			modifyGameOption('Sound.MasterVolume', 80)
-			--modifyGameOption('Sound.PauseMasterVolume', 100)
-			modifyGameOption('Sound.WavVolume', 80)
-			modifyGameOption('Sound.BGMVolume', 80)
-			--modifyGameOption('Sound.MaxBGMVolume', 100)
-			modifyGameOption('Sound.AudioDucking', false)	
-			--modifyGameOption('Sound.BGMRAMBuffer', true)	
-			--modifyGameOption('Sound.AudioResampleQuality', 4)	
-			modifyGameOption('Arcade.AI.RandomColor', false)
-			modifyGameOption('Arcade.AI.SurvivalColor', true)
-			modifyGameOption('Arcade.AI.Ramping', true)
-			modifyGameOption('Netplay.RollbackNetcode', true)
-			modifyGameOption('Netplay.ListenPort', 7500)
-			modifyGameOption('Netplay.Rollback.Port', 7500)
-			modifyGameOption('Netplay.Rollback.FrameDelay', 2)
-			--modifyGameOption('Netplay.Rollback.DisconnectNotifyStart', 1000)
-			--modifyGameOption('Netplay.Rollback.DisconnectTimeout', 3000)
-			--modifyGameOption('Netplay.Rollback.StateLogsEnabled', false)
-			--modifyGameOption('Netplay.Rollback.GgpoLogsEnabled', false)
-			--modifyGameOption('Netplay.Rollback.SaveStageData', false)
-			--modifyGameOption('Netplay.Rollback.DesyncTest', false)
-			--modifyGameOption('Netplay.Rollback.DesyncTestFrames', false)
-			--modifyGameOption('Netplay.Rollback.DesyncTestAI', false)
-			--modifyGameOption('Netplay.IP.<>', "")
-			--modifyGameOption('Input.ButtonAssist', true)
-			--modifyGameOption('Input.SOCDResolution', 4)
-			--modifyGameOption('Input.ControllerStickSensitivity', 0.4)
-			--modifyGameOption('Input.XinputTriggerSensitivity', 0.5)
-			--modifyGameOption('Input.UiRepeatDelay', 30)
-			--modifyGameOption('Input.UiRepeatRate', 4)
-			--modifyGameOption('Input.PauseExitDelay', 10)
-
-			loadFightScreen(motif.files.fight)
-			setPlayers()
-			for _, v in ipairs(options.t_vardisplayPointers) do
-				v.vardisplay = options.f_vardisplay(v.itemname)
-			end
-			toggleFullscreen(gameOption('Video.Fullscreen'))
-			toggleVSync(gameOption('Video.VSync'))
-			updateVolume()
-			options.modified = true
-			options.needReload = true
-			hook.run("options.default")
 		end
 		return true
 	end,
@@ -289,11 +395,12 @@ options.t_itemname = {
 	end,
 	--Language Setting
 	['language'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) and (main.f_tableLength(motif.languages) > 1 or motif.languages[gameOption('Config.Language')] == nil) then
-			f_switchLanguage(1)
-			t.items[item].vardisplay = options.t_vardisplay['language']()
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and (main.f_tableLength(motif.languages) > 1 or motif.languages[gameOption('Config.Language')] == nil) then
-			f_switchLanguage(-1)
+		if getInput(-1, motif.option_info.menu.done.key) then
+			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+			for _, v in ipairs(t.submenu[t.items[item].itemname].items) do
+				v.selected = v.language ~= nil and v.language == gameOption('Config.Language')
+			end
+			t.submenu[t.items[item].itemname].loop()
 			t.items[item].vardisplay = options.t_vardisplay['language']()
 		end
 		return true
@@ -725,16 +832,10 @@ options.t_itemname = {
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			for k, v in ipairs(t.submenu[t.items[item].itemname].items) do
-				if gameOption('Video.RenderMode') == options.t_renderModes[v.itemname] then
-					v.selected = true
-				else
-					v.selected = false
-				end
+				v.selected = gameOption('Video.RenderMode') == options.t_renderModes[v.itemname]
 			end
 			t.submenu[t.items[item].itemname].loop()
 			t.items[item].vardisplay = options.t_vardisplay['renderer']()
-			options.modified = true
-			options.needReload = true
 		end
 		return true
 	end,
@@ -742,9 +843,7 @@ options.t_itemname = {
 	['gles32'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', options.t_renderModes.gles32)
-			options.modified = true
-			options.needReload = true
+			options.f_restartOption('Video.RenderMode', options.t_renderModes.gles32)
 			return false
 		end
 		return true
@@ -753,9 +852,7 @@ options.t_itemname = {
 	['gl33'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', options.t_renderModes.gl33)
-			options.modified = true
-			options.needReload = true
+			options.f_restartOption('Video.RenderMode', options.t_renderModes.gl33)
 			return false
 		end
 		return true
@@ -764,9 +861,7 @@ options.t_itemname = {
 	['vk13'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			modifyGameOption('Video.RenderMode', options.t_renderModes.vk13)
-			options.modified = true
-			options.needReload = true
+			options.f_restartOption('Video.RenderMode', options.t_renderModes.vk13)
 			return false
 		end
 		return true
@@ -809,10 +904,7 @@ options.t_itemname = {
 				local validHeight = resheight ~= nil and resheight > 0 and resheight == math.floor(resheight)
 				main.f_inputSound(validHeight)
 				if validHeight then
-					modifyGameOption('Video.GameWidth', reswidth)
-					modifyGameOption('Video.GameHeight', resheight)
-					options.modified = true
-					options.needReload = true
+					options.f_applyResolution(reswidth, resheight)
 				end
 			end
 			return false
@@ -851,26 +943,16 @@ options.t_itemname = {
 	end,
 	--MSAA
 	['msaa'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Video.MSAA') < 32 then
+		local old = gameOption('Video.MSAA')
+		local nextValue
+		if getInput(-1, motif.option_info.menu.add.key) and old < 32 then
+			nextValue = old == 0 and 2 or old * 2
+		elseif getInput(-1, motif.option_info.menu.subtract.key) and old > 1 then
+			nextValue = old == 2 and 0 or old / 2
+		end
+		if nextValue and options.f_applyVideo({['Video.MSAA'] = nextValue}) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			if gameOption('Video.MSAA') == 0 then
-				modifyGameOption('Video.MSAA', 2)
-			else
-				modifyGameOption('Video.MSAA', gameOption('Video.MSAA') * 2)
-			end
 			t.items[item].vardisplay = options.t_vardisplay['msaa']()
-			options.modified = true
-			options.needReload = true
-		elseif getInput(-1, motif.option_info.menu.subtract.key) and gameOption('Video.MSAA') > 1 then
-			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			if gameOption('Video.MSAA') == 2 then
-				modifyGameOption('Video.MSAA', 0)
-			else
-				modifyGameOption('Video.MSAA', gameOption('Video.MSAA') / 2)
-			end
-			t.items[item].vardisplay = options.t_vardisplay['msaa']()
-			options.modified = true
-			options.needReload = true
 		end
 		return true
 	end,
@@ -936,10 +1018,7 @@ options.t_itemname = {
 				local validHeight = aspectheight ~= nil and aspectheight > 0
 				main.f_inputSound(validHeight)
 				if validHeight then
-					modifyGameOption('Video.FightAspectWidth', aspectwidth)
-					modifyGameOption('Video.FightAspectHeight', aspectheight)
-					options.modified = true
-					options.needReload = true
+					options.f_applyVideo({['Video.FightAspectWidth'] = aspectwidth, ['Video.FightAspectHeight'] = aspectheight})
 				end
 			end
 			return false
@@ -970,8 +1049,6 @@ options.t_itemname = {
 			end
 			t.submenu[t.items[item].itemname].loop()
 			t.items[item].vardisplay = options.t_vardisplay['shaders']()
-			options.modified = true
-			options.needReload = true
 		end
 		return true
 	end,
@@ -979,9 +1056,7 @@ options.t_itemname = {
 	['noshader'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-			modifyGameOption('Video.ExternalShaders', {})
-			options.modified = true
-			options.needReload = true
+			options.f_applyVideo({['Video.ExternalShaders'] = {}})
 			return false
 		end
 		return true
@@ -990,14 +1065,9 @@ options.t_itemname = {
 	['enablemodel'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			if gameOption('Video.EnableModel') then
-				modifyGameOption('Video.EnableModel', false)
-			else
-				modifyGameOption('Video.EnableModel', true)
+			if options.f_applyVideo({['Video.EnableModel'] = not gameOption('Video.EnableModel')}) then
+				t.items[item].vardisplay = options.t_vardisplay['enablemodel']()
 			end
-			t.items[item].vardisplay = options.t_vardisplay['enablemodel']()
-			options.modified = true
-			options.needReload = true
 		end
 		return true
 	end,
@@ -1005,14 +1075,9 @@ options.t_itemname = {
 	['enablemodelshadow'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
-			if gameOption('Video.EnableModelShadow') then
-				modifyGameOption('Video.EnableModelShadow', false)
-			else
-				modifyGameOption('Video.EnableModelShadow', true)
+			if options.f_applyVideo({['Video.EnableModelShadow'] = not gameOption('Video.EnableModelShadow')}) then
+				t.items[item].vardisplay = options.t_vardisplay['enablemodelshadow']()
 			end
-			t.items[item].vardisplay = options.t_vardisplay['enablemodelshadow']()
-			options.modified = true
-			options.needReload = true
 		end
 		return true
 	end,
@@ -1269,38 +1334,13 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Save and Return
-	['savereturn'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.done.key) then
-			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-			if options.modified then
-				options.f_saveCfg(options.needReload)
-			end
-			fadeOutInit(motif.option_info.fadeout.FadeData)
-			main.close = true
-			--return false
-		end
-		return true
-	end,
-	--Return Without Saving
-	['return'] = function(t, item, cursorPosY, moveTxt)
-		if getInput(-1, motif.option_info.menu.done.key) then
-			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-			if options.needReload then
-				main.f_warning(motif.warning_info.text.text.noreload, motif.option_info, motif.optionbgdef)
-			end
-			fadeOutInit(motif.option_info.fadeout.FadeData)
-			main.close = true
-			--return false
-		end
-		return true
-	end,
 	--Save Settings
 	['savesettings'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-			if options.modified then
-				options.f_saveCfg(options.needReload)
+			-- A pending language/renderer change saves everything itself when confirmed.
+			if not options.f_finishRestartOptions() and options.modified then
+				options.f_saveCfg(false)
 			end
 		end
 		return true
@@ -1309,6 +1349,7 @@ options.t_itemname = {
 
 -- Rows that show a value but open a list or text prompt instead of changing it.
 options.t_hintDefault = {
+	language = true,
 	aspectratio = true,
 	renderer = true,
 	resolution = true,
@@ -1349,6 +1390,8 @@ function options.f_createMenu(tbl, bool_main)
 			return false
 		end
 		if bool_main then
+			options.entryValues = options.f_settingsSnapshot(false)
+			options.savedVideo = options.f_videoSnapshot()
 			bgReset(motif.optionbgdef.BGDef)
 			fadeInInit(motif.option_info.fadein.FadeData)
 			playBgm({source = "motif.option"})
@@ -1406,23 +1449,10 @@ function options.f_createMenu(tbl, bool_main)
 				elseif esc() or getInput(-1, motif.option_info.menu.cancel.key) then
 					sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 					if bool_main then
-						if options.modified then
-							--options.f_saveCfg(options.needReload)
-						end
-						if options.needReload then
-							main.f_warning(motif.warning_info.text.text.noreload, motif.option_info, motif.optionbgdef)
-						end
-						fadeOutInit(motif.option_info.fadeout.FadeData)
-						main.close = true
+						options.f_close()
 					else
 						break
 					end
-				elseif tbl.inputSource ~= nil and getKey('F1') then
-					options.f_inputConfigAll(tbl)
-				elseif tbl == tbl.inputMenu and getInput(-1, motif.option_info.menu.save.key) then
-					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-					tbl.finished = true
-					break
 				elseif options.t_itemname[t[item].itemname] ~= nil then
 					if not options.t_itemname[t[item].itemname](tbl, item, cursorPosY, moveTxt) then
 						break
@@ -1533,8 +1563,7 @@ options.t_vardisplay = {
 		return options.f_boolDisplay(gameOption('Video.KeepAspect'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)
 	end,
 	['language'] = function()
-		sfs = motif.languages[gameOption('Config.Language')]
-		return sfs or gameOption('Config.Language')
+		return motif.languages[gameOption('Config.Language')] or gameOption('Config.Language')
 	end,
 	['lifemul'] = function()
 		return gameOption('Options.Life') .. '%'
@@ -1669,6 +1698,15 @@ function options.f_start()
 		v:gsub('^(.-)([^\\/]+)%.([^%.\\/]-)$', function(path, filename, ext)
 			path = path:gsub('\\', '/')
 			ext = ext:lower()
+			-- Vulkan lists compiled name.vert.spv / name.frag.spv files.
+			if gameOption('Video.RenderMode'):match('^Vulkan') ~= nil then
+				local kind = filename:match('%.([^.]+)$')
+				if ext ~= 'spv' or (kind ~= 'frag' and kind ~= 'vert') then
+					return
+				end
+				filename = filename:sub(1, -(#kind + 2))
+				ext = kind
+			end
 			if ext == 'frag' then
 				table.insert(options.t_shaders, {path = path, filename = filename})
 			end
@@ -1676,7 +1714,7 @@ function options.f_start()
 				options.t_itemname[path .. filename] = function(t, item, cursorPosY, moveTxt)
 					if getInput(-1, motif.option_info.menu.done.key) then
 						sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-						local t_externalShaders = gameOption('Video.ExternalShaders')
+						local t_externalShaders = main.f_tableCopy(gameOption('Video.ExternalShaders'))
 						for k, v in ipairs(t.items) do
 							if v.itemname == path .. filename then
 								v.selected = not v.selected
@@ -1701,7 +1739,17 @@ function options.f_start()
 								end
 							end
 						end
-						modifyGameOption('Video.ExternalShaders', t_externalShaders)
+						-- On failure, show the shaders that are still active.
+						if not options.f_applyVideo({['Video.ExternalShaders'] = t_externalShaders}) then
+							for _, shader in ipairs(t.items) do
+								shader.selected, shader.vardisplay = false, ''
+								for index, name in ipairs(gameOption('Video.ExternalShaders')) do
+									if shader.itemname == name then
+										shader.selected, shader.vardisplay = true, tostring(index)
+									end
+								end
+							end
+						end
 						return true
 					end
 					return true
@@ -1716,10 +1764,7 @@ function options.f_start()
 			options.t_itemname[width .. 'x' .. height] = function(t, item, cursorPosY, moveTxt)
 				if getInput(-1, motif.option_info.menu.done.key) then
 					sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-					modifyGameOption('Video.GameWidth', tonumber(width))
-					modifyGameOption('Video.GameHeight', tonumber(height))
-					options.modified = true
-					options.needReload = true
+					options.f_applyResolution(tonumber(width), tonumber(height))
 					return false
 				end
 				return true
@@ -1731,9 +1776,7 @@ function options.f_start()
 				options.t_itemname['defaultaspect'] = function(t, item, cursorPosY, moveTxt)
 					if getInput(-1, motif.option_info.menu.done.key) then
 						sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-						modifyGameOption('Video.FightAspectWidth', 0)
-						modifyGameOption('Video.FightAspectHeight', 0)
-						options.modified = true
+						options.f_applyVideo({['Video.FightAspectWidth'] = 0, ['Video.FightAspectHeight'] = 0})
 						return false
 					end
 					return true
@@ -1743,9 +1786,7 @@ function options.f_start()
 				options.t_itemname['stageaspect'] = function(t, item, cursorPosY, moveTxt)
 					if getInput(-1, motif.option_info.menu.done.key) then
 						sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-						modifyGameOption('Video.FightAspectWidth', -1)
-						modifyGameOption('Video.FightAspectHeight', -1)
-						options.modified = true
+						options.f_applyVideo({['Video.FightAspectWidth'] = -1, ['Video.FightAspectHeight'] = -1})
 						return false
 					end
 					return true
@@ -1775,6 +1816,36 @@ function options.f_start()
 	local lastNum = 0
 	for i, suffix in ipairs(motif.option_info.menu.itemname_order) do
 		for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
+			-- populate language submenu
+			if suffix:match('_language_back$') and c == 'back' then
+				local codes = {}
+				for code in pairs(motif.languages) do
+					table.insert(codes, code)
+				end
+				-- Rows are inserted at the top, so sort by name in reverse.
+				table.sort(codes, function(a, b)
+					return motif.languages[a] > motif.languages[b]
+				end)
+				for _, code in ipairs(codes) do
+					local itemname = 'language_' .. code
+					options.t_itemname[itemname] = function(t, item, cursorPosY, moveTxt)
+						if getInput(-1, motif.option_info.menu.done.key) then
+							sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+							options.f_restartOption('Config.Language', code)
+							return false
+						end
+						return true
+					end
+					table.insert(t_pos.items, 1, {
+						itemname = itemname,
+						displayname = motif.languages[code],
+						paramname = suffix:gsub('back$', itemname),
+						vardisplay = '',
+						selected = false,
+						language = code,
+					})
+				end
+			end
 			--populate shaders submenu
 			if suffix:match('_shaders_back$') and c == 'back' then
 				for k = #options.t_shaders, 1, -1 do
@@ -1844,7 +1915,11 @@ function options.f_start()
 	if runtimeOS == 'android' then
 		excluded = {keyboard = true, gl33 = true}
 	elseif runtimeOS == 'ios' then
-		excluded = {keyboard = true, gl33 = true, gles32 = true}
+		excluded = {renderer = true, keyboard = true, gl33 = true, gles32 = true}
+	end
+	-- Vulkan cannot change MSAA without a restart yet.
+	if gameOption('Video.RenderMode'):match('^Vulkan') then
+		excluded.msaa = true
 	end
 	main.f_pruneMenu(options.menu, excluded)
 	main.f_prunePointers(options.t_vardisplayPointers, excluded)
@@ -1956,7 +2031,7 @@ local function updateProfileMenu(tbl, root, source, values)
 		if t_profileButtons[field] then
 			row.hintContext = 'binding'
 		elseif field == 'rumble' then
-			row.hintContext = 'profilechange'
+			row.hintContext = 'adjust'
 		end
 		if t_profileButtons[field] and motif.option_info.useglyphs and values[field] ~= '-' then
 			row.vardisplay = '<binding:' .. values[field] .. '>'
@@ -1964,7 +2039,7 @@ local function updateProfileMenu(tbl, root, source, values)
 		if field == 'rumble' then
 			row.vardisplay = options.f_boolDisplay(values.rumble)
 		elseif field == 'glyphs' then
-			row.hintContext = 'profilechange'
+			row.hintContext = 'adjust'
 			for _, set in ipairs(inputGetGlyphPacks(source.id)) do
 				if set.selected then
 					row.vardisplay = set.glyph .. ' ' .. set.name
@@ -1990,17 +2065,6 @@ local function applyProfile(tbl, values, copy)
 	root.title = main.f_itemnameUpper(values.name, sec.menu.title.uppercase)
 	updateProfileMenu(root, root, tbl.inputSource, values)
 	return true
-end
-
-local function cancelProfile(root)
-	if root.previousProfile == nil then
-		applyProfile(root, root.savedBindings)
-		return
-	end
-	inputDeleteProfile(root.inputSource.id)
-	if root.previousProfile ~= '' then
-		inputSetProfile(root.inputSource.id, root.previousProfile)
-	end
 end
 
 function options.f_inputConfigFrame(context)
@@ -2053,9 +2117,7 @@ function options.f_inputConfigFrame(context)
 		local tbl = context.current
 		tbl.inputContext = context
 		if not tbl.loop(context) then
-			if tbl == tbl.inputMenu and not tbl.finished and (tbl.inputSource.kind ~= 'gamepad' or getJoystickPresent(tbl.inputSource.joy)) then
-				cancelProfile(tbl)
-			end
+			-- Leaving the profile editor keeps its edits, like Confirm and Exit.
 			if tbl.inputMenu ~= nil and (tbl == tbl.inputMenu or tbl.inputMenu.finished) then
 				context.current, context.parents = nil, {}
 				if context.openPicker ~= nil then
@@ -2132,6 +2194,9 @@ function options.f_editProfile(source, template, context, newProfile)
 	local values = inputGetProfile(source.id)
 	tbl.title = main.f_itemnameUpper(values.name, motif.option_info.menu.title.uppercase)
 	tbl.savedBindings = main.f_tableCopy(values)
+	for _, set in ipairs(inputGetGlyphPacks(source.id)) do
+		if set.selected then tbl.savedGlyph = set.id; break end
+	end
 	tbl.inputContext = context
 	updateProfileMenu(tbl, tbl, source, values)
 	context.current, context.parents = tbl, {}
@@ -2192,19 +2257,6 @@ local function startInputCapture(tbl, item, all)
 	}
 	resetKey()
 	resetTokenGuard()
-end
-
-function options.f_inputConfigAll(tbl)
-	local row, sub, menu, item = findInputItem(tbl.inputMenu, 'configall')
-	if row ~= nil then
-		menu.inputContext = tbl.inputContext
-		if menu == tbl.inputMenu then
-			tbl.inputContext.parents = {}
-		end
-		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-		startInputCapture(menu, item, true)
-	end
-	resetKey()
 end
 
 function options.f_inputCapture(context)
@@ -2428,7 +2480,9 @@ end
 -- from the menu it is given.
 options.t_itemname.configall = function(t, item)
 	if getInput(-1, motif.option_info.menu.done.key) then
-		options.f_inputConfigAll(t)
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		startInputCapture(t, item, true)
+		resetKey()
 	end
 	return true
 end
@@ -2540,19 +2594,39 @@ options.t_itemname.deleteprofile = function(t, item)
 	return true
 end
 
-options.t_itemname.save = function(t, item)
+-- Restore, defaults and saving are separate operations. Back retains runtime edits.
+-- In the profile editor they act on the edited profile, elsewhere on Options settings.
+options.t_itemname.restoreprevious = function(t, item)
 	if getInput(-1, motif.option_info.menu.done.key) then
 		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-		t.inputMenu.finished = true
-		return false
+		local root = t.inputMenu
+		if root ~= nil then
+			applyProfile(root, root.savedBindings)
+			if root.savedGlyph ~= nil then inputSetGlyphPack(root.inputSource.id, root.savedGlyph) end
+			updateProfileMenu(root, root, root.inputSource, inputGetProfile(root.inputSource.id))
+		else
+			options.f_restoreSettings(options.entryValues)
+		end
 	end
 	return true
 end
-
-options.t_itemname.cancel = function(t, item)
+options.t_itemname.restoredefault = function(t, item)
 	if getInput(-1, motif.option_info.menu.done.key) then
-		sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-		cancelProfile(t.inputMenu)
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		local root = t.inputMenu
+		if root ~= nil then
+			local values = inputGetProfileDefaults(root.inputSource.id)
+			if values then applyProfile(root, values) end
+		else
+			options.f_restoreSettings(options.f_settingsSnapshot(true))
+			hook.run("options.default")
+		end
+	end
+	return true
+end
+options.t_itemname.confirmexit = function(t, item)
+	if getInput(-1, motif.option_info.menu.done.key) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
 		t.inputMenu.finished = true
 		return false
 	end
@@ -2611,15 +2685,6 @@ options.t_itemname.newprofile = function(t, item)
 		if source.kind == 'gamepad' then
 			name = sec.menu.valuename.gamepadprofile
 		end
-		-- A gamepad keeps its current profile until the new one is confirmed.
-		local profile = ''
-		if source.kind == 'gamepad' then
-			for _, entry in ipairs(inputGetSources()) do
-				if entry.id == source.id then
-					profile = entry.profile
-				end
-			end
-		end
 		-- Name the profile before opening its editor.
 		context.popup = main.f_drawInput(sec.textinput.text.profilename,
 			inputGetProfileName(name), true)
@@ -2640,7 +2705,6 @@ options.t_itemname.newprofile = function(t, item)
 			for _, entry in ipairs(inputGetSources()) do
 				if entry.id == id then
 					options.f_editProfile(entry, nil, context, true)
-					context.current.previousProfile = profile
 					break
 				end
 			end

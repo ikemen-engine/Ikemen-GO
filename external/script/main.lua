@@ -1231,7 +1231,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		local value = nil
 		if getValue ~= nil then
 			value = getValue()
-		elseif getKey() ~= '' or getInput(-1, {'U', 'D', 'L', 'R', 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}) then
+		elseif getInput(-1, sec.menu.done.key) then
 			value = true
 		end
 		if value ~= nil then
