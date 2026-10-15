@@ -263,12 +263,13 @@ type Rect struct {
 	pulsePhaseStep float32 // radians per frame = 2π / periodFrames
 	autoAlpha      bool
 	//palfx          *PalFX
+	windowDefault bool // The clip follows sys.scrrect if no window was authored.
 	// initial, unscaled values
 	windowInit [4]float32
 }
 
 func NewRect() *Rect {
-	return &Rect{window: sys.scrrect, alpha: [2]int32{255, 0}, localScale: 1}
+	return &Rect{window: sys.scrrect, windowDefault: true, alpha: [2]int32{255, 0}, localScale: 1}
 }
 
 func packAlpha(src, dst int32) [2]int32 {
@@ -335,10 +336,14 @@ func (r *Rect) SetWindow(window [4]float32) {
 		return
 	}
 	r.windowInit = window
+	r.windowDefault = false
 	r.window = r.drawWindow()
 }
 
 func (r *Rect) drawWindow() [4]int32 {
+	if r.windowDefault {
+		return sys.scrrect
+	}
 	if r.windowInit == [4]float32{0, 0, 0, 0} {
 		return r.window
 	}

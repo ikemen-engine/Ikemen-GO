@@ -6251,6 +6251,92 @@ func (r *Renderer_VK) Close() {
 	r.Destroy()
 }
 
+// Reallocates the screen-sized render targets through the swapchain rebuild,
+// keeping the device and game textures.
+func (r *Renderer_VK) ResizeRenderTargets(width, height, samples int32) error {
+	if width <= 0 || height <= 0 {
+		return fmt.Errorf("invalid rendering resolution %dx%d", width, height)
+	}
+	if samples != sys.msaa {
+		return fmt.Errorf("changing MSAA requires a restart with Vulkan")
+	}
+	r.Await()
+	oldW, oldH := sys.scrrect[2], sys.scrrect[3]
+	sys.scrrect[2], sys.scrrect[3] = width, height
+	r.RecreateSwapchain()
+	sys.scrrect[2], sys.scrrect[3] = oldW, oldH
+
+	// The grab texture is screen-sized but not part of the swapchain.
+	tex, err := r.newTexture(width, height, 32, true)
+	if err != nil {
+		return err
+	}
+	r.grabTexture = tex.(*Texture_VK)
+	r.grabTexture.MarkNonSwappable()
+	return nil
+}
+
+// Replaces the post-processing shaders. Nothing changes if one fails.
+func (r *Renderer_VK) ReloadPostShaders(src [][][]byte) error {
+	if len(src) != 2 || len(src[0]) != len(src[1]) {
+		return fmt.Errorf("invalid post shader chain")
+	}
+	r.Await()
+	next, err := r.CreateFullScreenShaderProgram(src)
+	if err != nil {
+		return err
+	}
+	old := r.postProcessingProgram
+	r.postProcessingProgram = next
+	r.DestroyPipelines(old)
+	for _, layout := range old.descriptorSetLayouts {
+		vk.DestroyDescriptorSetLayout(r.device, layout, nil)
+	}
+	return nil
+}
+
+// Turns 3D model and shadow rendering on or off. Loaded models are kept.
+func (r *Renderer_VK) SetModelOptions(model, shadow bool) error {
+	if !model {
+		r.enableModel = false
+		r.enableShadow = shadow
+		return nil
+	}
+	if r.enableModel && r.modelProgram != nil && r.enableShadow == shadow {
+		return nil
+	}
+	oldModel, oldShadow := r.enableModel, r.enableShadow
+	r.enableModel, r.enableShadow = true, shadow
+	r.VKState.VulkanModelPipelineState.VulkanModelSpecializationConstants1.useShadowMap = shadow
+	nextModel, err := r.CreateModelProgram()
+	if err != nil {
+		r.enableModel, r.enableShadow = oldModel, oldShadow
+		return err
+	}
+	var nextShadow *VulkanProgramInfo
+	if shadow && r.shadowMapProgram == nil {
+		nextShadow, err = r.CreateShadowMapProgram()
+		if err != nil {
+			r.DestroyPipelines(nextModel)
+			r.enableModel, r.enableShadow = oldModel, oldShadow
+			return err
+		}
+	}
+	r.Await()
+	if r.modelProgram != nil {
+		old := r.modelProgram
+		r.DestroyPipelines(old)
+		for _, layout := range old.descriptorSetLayouts {
+			vk.DestroyDescriptorSetLayout(r.device, layout, nil)
+		}
+	}
+	r.modelProgram = nextModel
+	if nextShadow != nil {
+		r.shadowMapProgram = nextShadow
+	}
+	return nil
+}
+
 func (r *Renderer_VK) EnableDebug() {
 	// Do nothing
 }
