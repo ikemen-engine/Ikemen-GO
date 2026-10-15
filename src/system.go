@@ -320,6 +320,7 @@ type System struct {
 	gameRunning         bool
 	escPending          bool
 	hitDetectionSort    []*Char
+	hitTradeWinners     [][2]int32 // Winner/opponent ID pairs of hit trades decided this frame
 	projectileTradeSort []*Projectile
 	palTexture          PalTexture
 	SpriteTextureAtlas
