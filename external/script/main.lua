@@ -1483,17 +1483,14 @@ function main.f_addChar(line, playable, loading, slot)
 			main.t_selChars[idx].hasSlot = true
 		end
 	end
-	for _, v in ipairs({'next', 'previous', 'select'}) do
-		if main.t_selChars[row][v] ~= nil then
-			commandAdd(main.t_selChars[row][v], main.t_selChars[row][v])
-			if main.t_selGrid[#main.t_selGrid][v] == nil then
-				main.t_selGrid[#main.t_selGrid][v] = {}
-			end
-			if main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] == nil then
-				main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] = {}
-			end
-			table.insert(main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]], #main.t_selGrid[#main.t_selGrid].chars)
-		end
+	-- slot 'select' commands
+	local selectCmd = main.t_selChars[row].select
+	if selectCmd ~= nil then
+		local grid = main.t_selGrid[#main.t_selGrid]
+		commandAdd(selectCmd, selectCmd)
+		grid.select = grid.select or {}
+		grid.select[selectCmd] = grid.select[selectCmd] or {}
+		table.insert(grid.select[selectCmd], #grid.chars)
 	end
 	if loading then
 		main.f_loadingRefresh()
