@@ -16257,7 +16257,7 @@ func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 	// Fetch the BGs we are going to modify
 	backgrounds := c.getMultipleStageBg(bgid, bgidx, true)
 	if len(backgrounds) == 0 {
-		return true
+		return false
 	}
 
 	// Every BG write is collected here and only committed once all of them have been read
@@ -16266,6 +16266,10 @@ func (sc modifyStageBG) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		// Start modifying
 		switch paramID {
+		case modifyStageBG_id:
+			return true
+		case modifyStageBG_index:
+			return true
 		case modifyStageBG_actionno:
 			animNo := exp[0].evalI(c)
 			// Getting an animation first and then applying it to multiple objects can cause shared pointer issues
