@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode"
 
+	mgl "github.com/go-gl/mathgl/mgl32"
 	"github.com/veandco/go-sdl2/sdl"
 )
 
@@ -170,6 +171,247 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 	}
 }
 
+// Mouse input belongs to the UI, never to a character's command buffer.
+// Button edges and the queued menu action are consumed once, including when a
+// click opens another menu without advancing a frame.
+type MouseInput struct {
+	x, y    int32
+	down    [5]bool
+	pressed [5]bool
+	wheel   [2]int32
+	key     string
+	player  int
+	active  bool
+	// Online menu actions travel through the existing input packets. A release
+	// frame between presses also makes consecutive identical actions distinct.
+	netKeys    []string
+	netSession *NetConnection
+	netTime    int32
+}
+
+func (m *MouseInput) reset() {
+	m.pressed = [5]bool{}
+	m.wheel = [2]int32{}
+	m.key = ""
+}
+
+// Convert SDL window coordinates to the renderer's canvas, excluding black bars.
+func (m *MouseInput) position() (float32, float32, bool) {
+	if !sys.motif.Mouse.Enabled || sys.window == nil || !sys.window.Focused() {
+		return 0, 0, false
+	}
+	w, h := sys.window.GetSize()
+	dw, dh := sys.window.GetDrawablePixelSize()
+	vx, vy, vw, vh := sys.window.GetScaledViewportSize()
+	if w <= 0 || h <= 0 || vw <= 0 || vh <= 0 {
+		return 0, 0, false
+	}
+	x := float32(m.x)*float32(dw)/float32(w) - float32(vx)
+	y := float32(m.y)*float32(dh)/float32(h) - float32(vy)
+	return x * float32(sys.scrrect[2]) / float32(vw), y * float32(sys.scrrect[3]) / float32(vh),
+		x >= 0 && y >= 0 && x < float32(vw) && y < float32(vh)
+}
+
+func (m *MouseInput) over(bounds [4]int32) bool {
+	x, y, inside := m.position()
+	return inside && x >= float32(bounds[0]) && y >= float32(bounds[1]) &&
+		x < float32(bounds[0]+bounds[2]) && y < float32(bounds[1]+bounds[3])
+}
+
+func (m *MouseInput) overText(ts *TextSprite) bool {
+	if ts == nil || ts.fnt == nil || ts.xscl == 0 || ts.yscl == 0 || !m.over(ts.drawWindow()) {
+		return false
+	}
+	for i, line := range strings.Split(ts.decodeEscapes(ts.text), "\n") {
+		width := float32(ts.TextWidth(line)) * ts.xscl
+		height := float32(ts.fnt.Size[1]) * ts.yscl
+		x := ts.x + ts.vel[0] + ts.xshear*float32(ts.fnt.offset[1])*ts.yscl
+		y := ts.y + ts.vel[1] + float32(i)*(float32(ts.fnt.Size[1])+float32(ts.fnt.Spacing[1])+ts.textSpacing[1])*ts.yscl
+		if ts.align == -1 {
+			x += ts.localScale
+		}
+		var rcx, rcy float32
+		if ts.fnt.Type == "truetype" {
+			x += float32(ts.fnt.offset[0])*ts.xscl + float32(sys.gameWidth-320)/2
+			rcx, rcy = x, y
+			y -= height
+		} else {
+			x, y, rcx, rcy = ts.fnt.textPosition(x, y, ts.xscl, ts.yscl, ts.rot)
+		}
+		if ts.align == 0 {
+			x -= width / 2
+		} else if ts.align == -1 {
+			x -= width
+		}
+		if ts.fnt.Type == "truetype" {
+			x1, y1, x2, y2, x3, y3, x4, y4 := transformTextQuad(x+width, y, x, y, x, y+height, x+width, y+height,
+				-ts.xshear, ts.rot, ts.projection, ts.fLength, rcx, rcy)
+			if m.overQuad([4][2]float32{{x1 * sys.widthScale, y1 * sys.heightScale}, {x2 * sys.widthScale, y2 * sys.heightScale},
+				{x3 * sys.widthScale, y3 * sys.heightScale}, {x4 * sys.widthScale, y4 * sys.heightScale}}) {
+				return true
+			}
+		} else if m.overSprite(RenderParams{
+			size: [2]uint16{1, 1}, x: -x * sys.widthScale, y: -y * sys.heightScale,
+			xts: width * sys.widthScale, xbs: width * sys.widthScale, ys: height * sys.heightScale,
+			vs: 1, xas: 1, yas: 1, rxadd: -ts.xshear, rot: ts.rot, rcx: rcx, rcy: rcy,
+			projectionMode: ts.projection, fLength: ts.fLength * sys.heightScale,
+		}) {
+			return true
+		}
+	}
+	return false
+}
+
+// A convex quad preserves rotated and perspective hit areas instead of using
+// their axis-aligned bounding box. Coordinates are in renderer pixels.
+func (m *MouseInput) overQuad(quad [4][2]float32) bool {
+	x, y, inside := m.position()
+	if !inside {
+		return false
+	}
+	var positive, negative bool
+	var area float32
+	for i, a := range quad {
+		b := quad[(i+1)%len(quad)]
+		cross := (b[0]-a[0])*(y-a[1]) - (b[1]-a[1])*(x-a[0])
+		positive = positive || cross > 0.01
+		negative = negative || cross < -0.01
+		area += a[0]*b[1] - b[0]*a[1]
+	}
+	return Abs(area) > 0.01 && !(positive && negative)
+}
+
+func (m *MouseInput) overAnim(a *Anim) bool {
+	if a == nil || a.anim == nil || a.anim.isBlank() || a.anim.spr == nil || !m.over(a.drawWindow()) {
+		return false
+	}
+	rp := a.drawParams()
+	return rp.IsValid() && m.overSprite(rp)
+}
+
+func (m *MouseInput) overSprite(rp RenderParams) bool {
+	initRenderSpriteQuad(&rp)
+	matrix, quad := spriteQuad(mgl.Translate3D(0, float32(sys.scrrect[3]), 0), rp)
+	for i, point := range quad {
+		v := matrix.Mul4x1(mgl.Vec4{point[0], point[1], 0, 1})
+		if v.W() <= 0 || !IsFinite(v.X()+v.Y()+v.W()) {
+			return false
+		}
+		quad[i] = [2]float32{v.X() / v.W(), float32(sys.scrrect[3]) - v.Y()/v.W()}
+	}
+	return m.overQuad(quad)
+}
+
+func (m *MouseInput) button(keys []string) bool {
+	if _, _, inside := m.position(); !inside {
+		return false
+	}
+	for _, key := range keys {
+		key = strings.ToUpper(key)
+		pressed := false
+		switch key {
+		case "LEFT", "RIGHT", "MIDDLE", "X1", "X2":
+			index := map[string]int{"LEFT": 0, "RIGHT": 1, "MIDDLE": 2, "X1": 3, "X2": 4}[key]
+			pressed, m.pressed[index] = m.pressed[index], false
+		case "WHEELUP", "WHEELDOWN", "WHEELLEFT", "WHEELRIGHT":
+			axis, direction := 1, int32(1)
+			if key == "WHEELLEFT" || key == "WHEELRIGHT" {
+				axis = 0
+			}
+			if key == "WHEELDOWN" || key == "WHEELLEFT" {
+				direction = -1
+			}
+			if m.wheel[axis]*direction > 0 {
+				pressed, m.wheel[axis] = true, 0
+			}
+		}
+		if pressed {
+			m.active = true
+			return true
+		}
+	}
+	return false
+}
+
+func (m *MouseInput) queue(keys []string, player int) {
+	if len(keys) == 0 {
+		return
+	}
+	if nc := sys.netConnection; nc != nil && nc.st == NS_Playing && !sys.gameRunning {
+		if player >= 0 && sys.hintPlayerSource(player) == nil {
+			return
+		}
+		// Finish the previous choice before calculating another route from the
+		// displayed cursor. Its last press may still be in transit to our peer.
+		if m.netSession == nc && (len(m.netKeys) > 0 || nc.time <= m.netTime) {
+			return
+		}
+		if m.netSession != nc {
+			m.netSession, m.netTime = nc, -1
+		}
+		m.netKeys = append([]string(nil), keys...)
+		return
+	}
+	m.key, m.player = keys[0], player
+	src := sys.glyphSource(0)
+	if player >= 0 {
+		src = sys.hintPlayerSource(player)
+	}
+	if src != nil {
+		if !sys.inputs.ClaimLocked && !sys.netplay() && sys.inputs.owner(src.ID) < 0 {
+			_, _ = sys.inputs.claim(src.ID, TS_None)
+		}
+		if !sys.netplay() {
+			sys.inputs.MenuSource = src.ID
+		}
+		sys.lastInputController = sys.inputs.owner(src.ID)
+	}
+}
+
+func (m *MouseInput) netInput(nb *NetBuffer) InputBits {
+	nc := sys.netConnection
+	if sys.gameRunning || nc == nil || nc != m.netSession || nb != &nc.buf[nc.locIn] || nc.time <= m.netTime {
+		return 0
+	}
+	if len(m.netKeys) == 0 {
+		return 0
+	}
+	key := motifKeyField(m.netKeys[0])
+	m.netKeys = m.netKeys[1:]
+	m.netTime = nb.inpT + 1
+	for i, field := range inputFields {
+		if key == field {
+			return InputBits(1 << i)
+		}
+	}
+	return 0
+}
+
+func (m *MouseInput) input(keys []string, player int) bool {
+	if m.key == "" || (m.player >= 0 && player >= 0 && m.player != player) {
+		return false
+	}
+	for _, key := range keys {
+		if key == m.key {
+			sys.uiLastInputToken = key
+			m.key = ""
+			return true
+		}
+	}
+	return false
+}
+
+// Forward a configured mouse action through the existing UI input path.
+// Modal text input handles its own actions and consumes the closing press.
+func (m *MouseInput) action(buttons, keys []string, player int) {
+	if sys.textInput.active || sys.textInput.release || m.key != "" || len(keys) == 0 {
+		return
+	}
+	if m.button(buttons) {
+		m.queue(keys[:1], player)
+	}
+}
+
 // TextInput is local modal UI, shared by Lua menus and native motif screens.
 // Its buffer and cursor count Unicode code points, never UTF-8 bytes.
 type TextInput struct {
@@ -203,7 +445,7 @@ func (t *TextInput) open(title, value string, maximum, source int) error {
 		return fmt.Errorf("text input is already open")
 	}
 	src := sys.glyphSource(source)
-	*t = TextInput{active: true, keyboard: true, title: title, initial: value,
+	*t = TextInput{active: true, keyboard: !(sys.motif.Mouse.Enabled && sys.mouse.active), title: title, initial: value,
 		maximum: maximum, frame: -1, time: -1, pressed: -1, waitRelease: true}
 	if maximum <= 0 {
 		t.maximum = Max(1, sys.motif.KeyboardInfo.MaxLength)
@@ -260,6 +502,11 @@ func (t *TextInput) finish(accepted bool) {
 func (t *TextInput) releaseInputs() {
 	if !t.release {
 		return
+	}
+	for _, down := range sys.mouse.down {
+		if down {
+			return
+		}
 	}
 	for _, down := range sys.keyState {
 		if down {
@@ -358,6 +605,7 @@ func (t *TextInput) action(action string) {
 func (t *TextInput) key(key Key, repeat bool) {
 	k := &sys.motif.KeyboardInfo
 	t.keyboard = true
+	sys.mouse.active = false
 	// Let the IME handle its own editing keys until its text is committed.
 	if t.composition != "" {
 		return
@@ -404,6 +652,7 @@ func (t *TextInput) button(keys []string, repeat bool) bool {
 		}
 		for i, name := range names {
 			if key == name && (t.held[i] == 1 || repeat && sys.uiRepeatShouldFire(t.held[i])) {
+				sys.mouse.active = false
 				return true
 			}
 		}
@@ -416,6 +665,54 @@ func (t *TextInput) step() {
 		return
 	}
 	t.frame, t.pressed = sys.frameCounter, -1
+	if sys.motif.Mouse.Enabled && sys.mouse.active {
+		t.keyboard = false
+	}
+	k := &sys.motif.KeyboardInfo
+	for _, entry := range []struct {
+		keys   []string
+		action string
+	}{
+		{k.Cancel.KeyMouse, "cancel"}, {k.Done.KeyMouse, "done"},
+		{k.Backspace.KeyMouse, "backspace"}, {k.Delete.KeyMouse, "delete"},
+		{k.Shift.KeyMouse, "shift"}, {k.Page.KeyMouse, "page"}, {k.Paste.KeyMouse, "paste"},
+		{k.Cursor.Previous.KeyMouse, "previous"}, {k.Cursor.Next.KeyMouse, "next"},
+		{k.Cursor.Start.KeyMouse, "start"}, {k.Cursor.End.KeyMouse, "end"},
+	} {
+		if sys.mouse.button(entry.keys) {
+			t.action(entry.action)
+			return
+		}
+	}
+	previous := sys.captureAspectState()
+	sys.restoreAspectState(aspectStateForSize(sys.scrrect[2], sys.scrrect[3]))
+	clicked := false
+	for i, key := range t.keys {
+		bounds := *sys.motif.KeyboardInfo.Key.Bg.RectData
+		bounds.SetWindow(key.rect)
+		if sys.mouse.over(bounds.drawWindow()) && sys.mouse.button(sys.motif.KeyboardInfo.Select.KeyMouse) {
+			t.selected = i
+			t.selectKey()
+			clicked = true
+			break
+		}
+	}
+	sys.restoreAspectState(previous)
+	if clicked {
+		return
+	}
+	if !t.active {
+		return
+	}
+	for _, move := range []struct {
+		keys []string
+		x, y int
+	}{{k.Up.KeyMouse, 0, -1}, {k.Down.KeyMouse, 0, 1}, {k.Left.KeyMouse, -1, 0}, {k.Right.KeyMouse, 1, 0}} {
+		if sys.mouse.button(move.keys) {
+			t.move(move.x, move.y)
+			return
+		}
+	}
 	src := sys.inputs.inputSource(t.source)
 	if t.source != 0 && (src == nil || !src.Connected) {
 		t.finish(false)
@@ -460,7 +757,6 @@ func (t *TextInput) step() {
 			t.held[i] = 0
 		}
 	}
-	k := &sys.motif.KeyboardInfo
 	for _, entry := range []struct {
 		keys   []string
 		action string
@@ -487,14 +783,18 @@ func (t *TextInput) step() {
 	} else if t.button(k.Right.Key, true) {
 		t.move(1, 0)
 	} else if len(t.keys) > 0 && t.button(k.Select.Key, false) {
-		t.keyboard, t.pressed = false, t.selected
-		key := t.keys[t.selected].text
-		if strings.HasPrefix(key, "{") && strings.HasSuffix(key, "}") {
-			t.action(key[1 : len(key)-1])
-		} else {
-			t.insert(key)
-			sys.motif.Snd.play(k.Done.Snd, 100, 0, 0, 0, 0)
-		}
+		t.selectKey()
+	}
+}
+
+func (t *TextInput) selectKey() {
+	t.keyboard, t.pressed = false, t.selected
+	key := t.keys[t.selected].text
+	if strings.HasPrefix(key, "{") && strings.HasSuffix(key, "}") {
+		t.action(key[1 : len(key)-1])
+	} else {
+		t.insert(key)
+		sys.motif.Snd.play(sys.motif.KeyboardInfo.Done.Snd, 100, 0, 0, 0, 0)
 	}
 }
 

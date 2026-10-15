@@ -107,6 +107,10 @@ type Storyboard struct {
 			Skip   []string `ini:"skip"`
 			Cancel []string `ini:"cancel"`
 		} `ini:"key"`
+		KeyMouse struct {
+			Skip   []string `ini:"skip"`
+			Cancel []string `ini:"cancel"`
+		} `ini:"keymouse"`
 		StopMusic      bool `ini:"stopmusic"`
 		DisableCancel  bool `ini:"disablecancel"`
 		WaitForLoading bool `ini:"waitforloading"`
@@ -853,6 +857,12 @@ func (s *Storyboard) step() {
 	}
 
 	// Cancel handling
+	if !s.SceneDef.DisableCancel && !sys.motif.AttractMode.Enabled {
+		sys.mouse.action(s.SceneDef.KeyMouse.Cancel, s.SceneDef.Key.Cancel, -1)
+	}
+	if !s.SceneDef.WaitForLoading {
+		sys.mouse.action(s.SceneDef.KeyMouse.Skip, s.SceneDef.Key.Skip, -1)
+	}
 	if !s.SceneDef.DisableCancel && (sys.esc ||
 		(!sys.motif.AttractMode.Enabled && sys.uiRawInput(s.SceneDef.Key.Cancel, -1)) ||
 		(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)) {

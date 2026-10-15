@@ -847,6 +847,15 @@ function menu.f_commandlistRender(sec, t)
 	else
 		table.insert(cmdList, {{glyph = false, text = sec.movelist.text.text, align = 1, col = {}}})
 	end
+	if not fadeActive() and #cmdList > sec.movelist.window.visibleitems then
+		if t.tbl.movelistLine > 1 and mouseOver(sec.movelist.arrow.up.AnimData) then
+			mouseInput(sec.menu.done.keymouse, sec.menu.previous.key)
+		elseif t.tbl.movelistLine <= #cmdList - sec.movelist.window.visibleitems and mouseOver(sec.movelist.arrow.down.AnimData) then
+			mouseInput(sec.menu.done.keymouse, sec.menu.next.key)
+		end
+	end
+	main.f_mouseActions(nil, sec.menu.cancel, sec.menu.done, sec.menu.previous, sec.menu.next)
+	main.f_mouseActions(nil, sec.menu.subtract, sec.menu.add)
 	if esc() or getInput(-1, sec.menu.cancel.key, sec.menu.done.key) then
 		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 		menu.itemname = ''

@@ -2220,14 +2220,17 @@ function options.f_inputCapture(context)
 	local root, source = capture.root, capture.root.inputSource
 	local entry = capture.entries[capture.index]
 	local finished = false
-	if esc() then
-		-- Esc drops this capture only.
+	if esc() or mouseInput(motif.option_info.menu.cancel.keymouse) then
+		-- Cancel drops this capture only.
 		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 		esc(false)
 		finished = true
 	else
 		local token = ''
-		if getKey(sec.unbind.keycode) then
+		-- Keyboards and gamepads clear only with the unbind key, since any of their
+		-- other buttons is a valid binding. The mouse is never bound here, so its
+		-- subtract button can clear too.
+		if getKey(sec.unbind.keycode) or mouseInput(sec.menu.subtract.keymouse) then
 			token = '-'
 		elseif source.kind == 'keyboard' then
 			token = getKey()
@@ -2388,7 +2391,7 @@ function options.f_gamepadMappingFrame(context)
 		return
 	end
 	-- Test mode never captures or saves a mapping.
-	if esc() then
+	if esc() or mouseInput(cfg.cancel.keymouse) then
 		gamepadMappingCancel()
 		sndPlay(motif.Snd, cfg.cancel.snd[1], cfg.cancel.snd[2])
 		esc(false)
@@ -2401,10 +2404,10 @@ function options.f_gamepadMappingFrame(context)
 		end)
 	elseif mapping.testOnly then
 		-- Read-only test mode: inputs only highlight the controller diagram.
-	elseif getKey(cfg.previous.keycode) and mapping.index > 1 then
+	elseif (getKey(cfg.previous.keycode) or mouseInput(cfg.previous.keymouse)) and mapping.index > 1 then
 		mapping.index = mapping.index - 1
 		sndPlay(motif.Snd, cfg.move.snd[1], cfg.move.snd[2])
-	elseif state == 'save' and getKey(cfg.confirm.keycode) then
+	elseif state == 'save' and (getKey(cfg.confirm.keycode) or mouseInput(cfg.confirm.keymouse)) then
 		local message = gamepadMappingSave(mapping.name)
 		if message == '' then
 			sndPlay(motif.Snd, cfg.done.snd[1], cfg.done.snd[2])
@@ -2418,7 +2421,7 @@ function options.f_gamepadMappingFrame(context)
 			inputPopup(context, main.f_formatBySpec(sec.textinput.text.gamepadmappingfailed, {s = message}))
 		end
 	elseif name ~= nil then
-		local skip = getKey(cfg.skip.keycode)
+		local skip = getKey(cfg.skip.keycode) or mouseInput(cfg.skip.keymouse)
 		if skip or gamepadMappingCapture(name) ~= '' then
 			if skip then
 				gamepadMappingSkip(name)

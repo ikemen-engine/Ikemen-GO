@@ -777,7 +777,25 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		// Update scratch buffer with new capacity
 		quadVertexScratch = batch
 
-	case rotated:
+	default:
+		modelview, quad := spriteQuad(modelview, rp)
+		// Match the tiled path's vertical visibility culling for unrotated sprites.
+		if rotated || (0 > quad[0][1] || 0 > quad[3][1]) &&
+			(quad[0][1] > float32(-sys.scrrect[3]) || quad[3][1] > float32(-sys.scrrect[3])) {
+			drawQuads(modelview, quad[0][0], quad[0][1], quad[1][0], quad[1][1],
+				quad[2][0], quad[2][1], quad[3][0], quad[3][1])
+		}
+	}
+}
+
+// Geometry for a single sprite, shared by rendering and mouse hit detection.
+// Call initRenderSpriteQuad first, just as RenderSprite does.
+func spriteQuad(modelview mgl.Mat4, rp RenderParams) (mgl.Mat4, [4][2]float32) {
+	x1, y1 := rp.x, rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
+	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
+	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
+	x4, y4 := rp.x, y3
+	if !rp.rot.IsZero() {
 		// Non-tiled, rotated: single quad with full transform
 		// TODO: This block makes shadows ignore their own yscale when in perspective
 		// However, when we disable it, regular shadows are scaled incorrectly even with the smallest roation
@@ -793,9 +811,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
 		modelview = applyRotation(modelview, rp)
 		modelview = modelview.Mul4(mgl.Translate3D(-(rp.rcx + rp.rcOffset[0]), -(rp.rcy + rp.rcOffset[1]), 0))
-		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
-
-	default:
+	} else {
 		// Non-tiled, not rotated: shear must be baked into coordinates directly since no
 		// rotation matrix runs - matches the tiled path's handling
 		if rp.rxadd != 0 {
@@ -813,12 +829,8 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 			x2 += db
 		}
 
-		// Skip the draw call entirely if this quad is fully above or fully below the visible
-		// screen range - matches the tiled path's vertical visibility culling
-		if (0 > y1 || 0 > y4) && (y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-			drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
-		}
 	}
+	return modelview, [4][2]float32{{x1, y1}, {x2, y2}, {x3, y3}, {x4, y4}}
 }
 
 func initRenderSpriteQuad(rp *RenderParams) {

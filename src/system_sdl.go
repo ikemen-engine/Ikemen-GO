@@ -445,6 +445,45 @@ func (w *Window) pollEvents() {
 			}
 		case sdl.QuitEvent:
 			w.closeflag = true
+		case sdl.MouseMotionEvent:
+			sys.mouse.x, sys.mouse.y = t.X, t.Y
+			if t.XRel != 0 || t.YRel != 0 {
+				sys.mouse.active = true
+			}
+		case sdl.MouseButtonEvent:
+			sys.mouse.x, sys.mouse.y = t.X, t.Y
+			button := -1
+			if t.Button == sdl.ButtonLeft {
+				button = 0
+			} else if t.Button == sdl.ButtonRight {
+				button = 1
+			} else if t.Button == sdl.ButtonMiddle {
+				button = 2
+			} else if t.Button == sdl.ButtonX1 {
+				button = 3
+			} else if t.Button == sdl.ButtonX2 {
+				button = 4
+			}
+			if button >= 0 {
+				down := t.State == sdl.PRESSED
+				if down && !sys.mouse.down[button] {
+					sys.mouse.pressed[button] = true
+					sys.mouse.active = true
+				}
+				sys.mouse.down[button] = down
+			}
+		case sdl.MouseWheelEvent:
+			sys.mouse.x, sys.mouse.y, _ = sdl.GetMouseState()
+			if t.X != 0 || t.Y != 0 {
+				sys.mouse.active = true
+			}
+			if t.Direction == sdl.MOUSEWHEEL_FLIPPED {
+				sys.mouse.wheel[0] -= t.X
+				sys.mouse.wheel[1] -= t.Y
+			} else {
+				sys.mouse.wheel[0] += t.X
+				sys.mouse.wheel[1] += t.Y
+			}
 		case sdl.KeyboardEvent:
 			if t.State == sdl.PRESSED {
 				OnKeyPressed(t.Keysym.Sym, t.Keysym.Mod)
@@ -465,6 +504,8 @@ func (w *Window) pollEvents() {
 				w.focused = true
 			case sdl.WINDOWEVENT_FOCUS_LOST:
 				w.focused = false
+				sys.mouse.reset()
+				sys.mouse.down = [5]bool{}
 			}
 		case sdl.TextInputEvent:
 			if sys.textInput.active {
@@ -497,6 +538,14 @@ func (w *Window) pollEvents() {
 	}
 	sys.pollInputSources()
 	sys.textInput.releaseInputs()
+	// Fullscreen menus need a pointer too. Gameplay keeps its hidden cursor.
+	showMouse := !w.fullscreen || sys.motif.Mouse.Enabled &&
+		(!sys.gameRunning || sys.motifOverlayActive() || sys.postMatchFlg || sys.textInput.active)
+	if showMouse {
+		sdl.ShowCursor(sdl.ENABLE)
+	} else {
+		sdl.ShowCursor(sdl.DISABLE)
+	}
 }
 
 func (w *Window) shouldClose() bool {
