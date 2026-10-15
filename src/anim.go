@@ -2213,6 +2213,7 @@ type Anim struct {
 	maxDist          [2]float32
 	facing           float32
 	lastUpdateFrame  int32
+	windowDefault    bool // The clip follows sys.scrrect if no window was authored.
 	// initial, unscaled values
 	offsetInit   [2]float32
 	scaleInit    [2]float32
@@ -2231,6 +2232,7 @@ func NewAnim(sff *Sff, action string) *Anim {
 		facing:          1,
 		lastUpdateFrame: -1,
 	}
+	a.windowDefault = true
 	if action != "" {
 		ac := newAnimCompiler(sff, &sff.palList, true)
 		ac.lines, ac.animNo = SplitAndTrim(action, "\n"), -1
@@ -2277,6 +2279,7 @@ func (a *Anim) Copy() *Anim {
 	newAnim.offsetInit = a.offsetInit
 	newAnim.scaleInit = a.scaleInit
 	newAnim.windowInit = a.windowInit
+	newAnim.windowDefault = a.windowDefault
 	newAnim.velocityInit = a.velocityInit
 	newAnim.xvel = a.xvel
 	newAnim.yvel = a.yvel
@@ -2410,10 +2413,14 @@ func (a *Anim) SetWindow(window [4]float32) {
 	}
 
 	a.windowInit = window
+	a.windowDefault = false
 	a.window = a.drawWindow()
 }
 
 func (a *Anim) drawWindow() [4]int32 {
+	if a.windowDefault {
+		return sys.scrrect
+	}
 	if a.windowInit == [4]float32{0, 0, 0, 0} {
 		return a.window
 	}

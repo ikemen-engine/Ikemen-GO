@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -1980,6 +1981,20 @@ func systemScriptInit(l *lua.LState) {
 		a.Update(force)
 		return 0
 	})
+	luaRegister(l, "applyVideoSettings", func(l *lua.LState) int {
+		/*Apply the current Video options without restarting.
+		@function applyVideoSettings
+		@treturn boolean success `true` if every change was applied.
+		@treturn string|nil error Reason the settings could not be applied.*/
+		if err := sys.applyVideoSettings(); err != nil {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+		l.Push(lua.LTrue)
+		l.Push(lua.LNil)
+		return 2
+	})
 	luaRegister(l, "batchDraw", func(*lua.LState) int {
 		/*Queue drawing of many animations in one call.
 		@function batchDraw
@@ -3277,6 +3292,26 @@ func systemScriptInit(l *lua.LState) {
 				return 2
 			}
 		}
+	})
+	luaRegister(l, "gameOptionDefault", func(l *lua.LState) int {
+		/*Get the shipped default value of a setting, without reading config.ini.
+		@function gameOptionDefault
+		@tparam string path Setting path, for example `"Video.VSync"`.
+		@treturn string|nil value Default value as a string, or `nil` if the setting has no shipped default.*/
+		path := strings.SplitN(strArg(l, 1), ".", 2)
+		if len(path) != 2 {
+			return 0
+		}
+		section, err := sys.cfg.DefaultOnlyIni.GetSection(path[0])
+		if err != nil {
+			return 0
+		}
+		key, err := section.GetKey(path[1])
+		if err != nil {
+			return 0
+		}
+		l.Push(lua.LString(key.Value()))
+		return 1
 	})
 	luaRegister(l, "gameRunning", func(l *lua.LState) int {
 		/*Check whether a match is currently running.
@@ -5463,6 +5498,35 @@ func systemScriptInit(l *lua.LState) {
 		key := strings.ToLower(l.CheckString(1))
 		l.Push(lua.LBool(sys.motif.inheritedKeys[key]))
 		return 1
+	})
+	luaRegister(l, "restartGame", func(l *lua.LState) int {
+		/*Start a new engine process with the same arguments, then exit this one.
+		  Used when the renderer changes. Not available on Android or iOS.
+		@function restartGame
+		@treturn boolean success `false` if the new process could not start.
+		@treturn string|nil error Reason the restart failed.*/
+		if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString("restarting is not supported on this platform"))
+			return 2
+		}
+		exe, err := os.Executable()
+		if err == nil {
+			cmd := exec.Command(exe, os.Args[1:]...)
+			cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+			// Config, motif and shader paths are relative to the working directory.
+			cmd.Dir, err = os.Getwd()
+			if err == nil {
+				err = cmd.Start()
+			}
+		}
+		if err != nil {
+			l.Push(lua.LFalse)
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+		handleExit()
+		return 0
 	})
 	luaRegister(l, "setRunSide", func(l *lua.LState) int {
 		/*Set the side running the mode.
