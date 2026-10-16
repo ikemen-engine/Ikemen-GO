@@ -251,7 +251,6 @@ jobs:
             mingw-w64-x86_64-nasm
             mingw-w64-x86_64-tools-git
             mingw-w64-x86_64-SDL2
-            mingw-w64-x86_64-yasm
             mingw-w64-x86_64-libxmp
       - name: Prepare Vulkan SDK
         # iOS uses the headers bundled with the Vulkan bindings and MoltenVK from its release.

@@ -40,7 +40,7 @@ pacman -Syu --noconfirm
 pacman -S --noconfirm \
   git make diffutils mingw-w64-x86_64-pkg-config \
   mingw-w64-x86_64-go mingw-w64-x86_64-toolchain \
-  mingw-w64-x86_64-nasm mingw-w64-x86_64-yasm \
+  mingw-w64-x86_64-nasm \
   mingw-w64-x86_64-tools-git mingw-w64-x86_64-libxmp \
   mingw-w64-x86_64-SDL2
 ```
@@ -61,7 +61,7 @@ make Ikemen_GO.exe
 ### Build 32-bit (Ikemen_GO_x86.exe)
 
 > Requires 32-bit MinGW cross tools in addition to the above:
-> `pacman -S --noconfirm mingw-w64-i686-toolchain mingw-w64-i686-pkg-config mingw-w64-i686-nasm mingw-w64-i686-yasm mingw-w64-i686-libxmp mingw-w64-i686-SDL2`
+> `pacman -S --noconfirm mingw-w64-i686-toolchain mingw-w64-i686-pkg-config mingw-w64-i686-nasm mingw-w64-i686-libxmp mingw-w64-i686-SDL2`
 
 ```bash
 # build.sh

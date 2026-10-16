@@ -200,7 +200,7 @@ check_deps() {
 				echo "  pacman -S --noconfirm \\" >&2
 				echo "    git make diffutils mingw-w64-x86_64-pkg-config \\" >&2
 				echo "    mingw-w64-x86_64-go mingw-w64-x86_64-toolchain \\" >&2
-				echo "    mingw-w64-x86_64-nasm mingw-w64-x86_64-yasm \\" >&2
+				echo "    mingw-w64-x86_64-nasm \\" >&2
 				echo "    mingw-w64-x86_64-tools-git mingw-w64-x86_64-libxmp \\" >&2
 				echo "    mingw-w64-x86_64-SDL2" >&2
 				exit 1
