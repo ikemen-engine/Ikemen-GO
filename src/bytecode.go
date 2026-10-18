@@ -1041,6 +1041,7 @@ const (
 	OC_ex2_explodvar_animelemtime
 	OC_ex2_explodvar_animloopcount
 	OC_ex2_explodvar_animplayerno
+	OC_ex2_explodvar_animprefix
 	OC_ex2_explodvar_animtime
 	OC_ex2_explodvar_spriteplayerno
 	OC_ex2_explodvar_bindid
@@ -1071,7 +1072,12 @@ const (
 	OC_ex2_projvar_accel_x
 	OC_ex2_projvar_accel_y
 	OC_ex2_projvar_accel_z
+	OC_ex2_projvar_angle
+	OC_ex2_projvar_angle_x
+	OC_ex2_projvar_angle_y
+	OC_ex2_projvar_anim
 	OC_ex2_projvar_animelem
+	OC_ex2_projvar_animprefix
 	OC_ex2_projvar_attr
 	OC_ex2_projvar_drawpal_group
 	OC_ex2_projvar_drawpal_index
@@ -1084,10 +1090,6 @@ const (
 	OC_ex2_projvar_pos_x
 	OC_ex2_projvar_pos_y
 	OC_ex2_projvar_pos_z
-	OC_ex2_projvar_projangle
-	OC_ex2_projvar_projyangle
-	OC_ex2_projvar_projxangle
-	OC_ex2_projvar_projanim
 	OC_ex2_projvar_projcancelanim
 	OC_ex2_projvar_projedgebound
 	OC_ex2_projvar_projhitanim
@@ -1100,17 +1102,16 @@ const (
 	OC_ex2_projvar_projremanim
 	OC_ex2_projvar_projremove
 	OC_ex2_projvar_projremovetime
-	OC_ex2_projvar_projscale_x
-	OC_ex2_projvar_projscale_y
-	OC_ex2_projvar_projshadow_b
-	OC_ex2_projvar_projshadow_g
-	OC_ex2_projvar_projshadow_r
 	OC_ex2_projvar_projsprpriority
 	OC_ex2_projvar_projstagebound
-	OC_ex2_projvar_projxshear
 	OC_ex2_projvar_remvelocity_x
 	OC_ex2_projvar_remvelocity_y
 	OC_ex2_projvar_remvelocity_z
+	OC_ex2_projvar_scale_x
+	OC_ex2_projvar_scale_y
+	OC_ex2_projvar_shadow_b
+	OC_ex2_projvar_shadow_g
+	OC_ex2_projvar_shadow_r
 	OC_ex2_projvar_supermovetime
 	OC_ex2_projvar_teamside
 	OC_ex2_projvar_time
@@ -1120,6 +1121,7 @@ const (
 	OC_ex2_projvar_velmul_x
 	OC_ex2_projvar_velmul_y
 	OC_ex2_projvar_velmul_z
+	OC_ex2_projvar_xshear
 	OC_ex2_projvar_projshader
 	OC_ex2_hitbyattr
 	OC_ex2_soundvar_group
@@ -1270,6 +1272,7 @@ const (
 	OC_ex3_hitdefvar_fall_yvelocity
 	OC_ex3_hitdefvar_fall_zvelocity
 	OC_ex3_animloopcount
+	OC_ex3_animprefix
 	OC_ex3_inrunstate
 )
 
@@ -1466,7 +1469,7 @@ func (mv TypedValue) ToBV() BytecodeValue {
 	case VT_String:
 		return BytecodeString(mv.Str) // Re-interns into the reading char's pool
 	case VT_None:
-		return BytecodeFloat(0) // Unset keys still read as 0, as they did before
+		return BytecodeInt(0) // Unset keys read as int 0, like var()
 	}
 	return BytecodeValue{mv.Type, mv.Num}
 }
@@ -1640,6 +1643,16 @@ func (be BytecodeExp) ReadPoolStringAt(i *int) string {
 	//	return ""
 	//}
 	return pool[idx]
+}
+
+// Reads a map key operand. -1 means a string expression already pushed the key
+func (be BytecodeExp) readMapKey(i *int) string {
+	idx := be.ReadIntAt(i)
+	if idx == -1 {
+		// Map names are case-insensitive. toLowS uses the pool's lowercase list instead of lowercasing every frame
+		return sys.bcStack.Pop().toLowS()
+	}
+	return sys.stringPool[sys.workingState.playerNo].List[idx]
 }
 
 // Reads the expression length header at the current pointer
@@ -2791,7 +2804,7 @@ func (be BytecodeExp) run_st(c *Char, i *int) {
 		*sys.bcStack.Top() = c.sysFvarAdd(vno, val)
 	case OC_st_map:
 		val := sys.bcStack.Pop()
-		mapName := be.ReadPoolStringAt(i)
+		mapName := be.readMapKey(i)
 		sys.bcStack.Push(c.mapSet(mapName, val, 0))
 	}
 }
@@ -3802,7 +3815,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_localcoord_y:
 		sys.bcStack.PushI(sys.cgi[c.playerNo].localcoord[1])
 	case OC_ex_maparray:
-		mapName := be.ReadPoolStringAt(i)
+		mapName := be.readMapKey(i)
 		sys.bcStack.Push(c.mapArray[mapName].ToBV())
 	case OC_ex_max:
 		v2 := sys.bcStack.Pop()
@@ -4208,7 +4221,7 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 	case OC_ex2_explodvar_accel_x, OC_ex2_explodvar_accel_y, OC_ex2_explodvar_accel_z,
 		OC_ex2_explodvar_anim, OC_ex2_explodvar_animelem,
 		OC_ex2_explodvar_animelemtime, OC_ex2_explodvar_animloopcount,
-		OC_ex2_explodvar_animplayerno, OC_ex2_explodvar_animtime,
+		OC_ex2_explodvar_animplayerno, OC_ex2_explodvar_animprefix, OC_ex2_explodvar_animtime,
 		OC_ex2_explodvar_angle, OC_ex2_explodvar_angle_x, OC_ex2_explodvar_angle_y,
 		OC_ex2_explodvar_bindid, OC_ex2_explodvar_bindtime,
 		OC_ex2_explodvar_drawpal_group, OC_ex2_explodvar_drawpal_index, OC_ex2_explodvar_facing,
@@ -4248,6 +4261,12 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushI(e.anim.loopcount)
 			case OC_ex2_explodvar_animplayerno:
 				sys.bcStack.PushI(int32(e.animPN) + 1)
+			case OC_ex2_explodvar_animprefix:
+				if e.anim_ffx == "" {
+					sys.bcStack.PushS("s")
+				} else {
+					sys.bcStack.PushS(e.anim_ffx)
+				}
 			case OC_ex2_explodvar_animtime:
 				sys.bcStack.PushI(e.anim.AnimTime())
 			case OC_ex2_explodvar_angle:
@@ -4316,23 +4335,23 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 		}
 	// ProjVar
 	case OC_ex2_projvar_accel_x, OC_ex2_projvar_accel_y, OC_ex2_projvar_accel_z,
-		OC_ex2_projvar_animelem, OC_ex2_projvar_attr, OC_ex2_projvar_drawpal_group,
-		OC_ex2_projvar_drawpal_index, OC_ex2_projvar_facing, OC_ex2_projvar_guardflag,
-		OC_ex2_projvar_highbound, OC_ex2_projvar_hitflag, OC_ex2_projvar_lowbound,
-		OC_ex2_projvar_pausemovetime, OC_ex2_projvar_pos_x, OC_ex2_projvar_pos_y,
-		OC_ex2_projvar_pos_z, OC_ex2_projvar_projanim, OC_ex2_projvar_projangle,
+		OC_ex2_projvar_angle, OC_ex2_projvar_angle_x, OC_ex2_projvar_angle_y,
+		OC_ex2_projvar_anim, OC_ex2_projvar_animelem, OC_ex2_projvar_animprefix,
+		OC_ex2_projvar_attr, OC_ex2_projvar_drawpal_group, OC_ex2_projvar_drawpal_index,
+		OC_ex2_projvar_facing, OC_ex2_projvar_guardflag, OC_ex2_projvar_highbound,
+		OC_ex2_projvar_hitflag, OC_ex2_projvar_lowbound, OC_ex2_projvar_pausemovetime,
+		OC_ex2_projvar_pos_x, OC_ex2_projvar_pos_y, OC_ex2_projvar_pos_z,
 		OC_ex2_projvar_projcancelanim, OC_ex2_projvar_projedgebound, OC_ex2_projvar_projhitanim,
 		OC_ex2_projvar_projhits, OC_ex2_projvar_projhitsmax, OC_ex2_projvar_projid,
 		OC_ex2_projvar_projlayerno, OC_ex2_projvar_projmisstime, OC_ex2_projvar_projpriority,
 		OC_ex2_projvar_projremanim, OC_ex2_projvar_projremove, OC_ex2_projvar_projremovetime,
-		OC_ex2_projvar_projscale_x, OC_ex2_projvar_projscale_y, OC_ex2_projvar_projshadow_b,
-		OC_ex2_projvar_projshadow_g, OC_ex2_projvar_projshadow_r, OC_ex2_projvar_projsprpriority,
-		OC_ex2_projvar_projstagebound, OC_ex2_projvar_projxangle, OC_ex2_projvar_projxshear,
-		OC_ex2_projvar_projyangle, OC_ex2_projvar_remvelocity_x, OC_ex2_projvar_remvelocity_y,
-		OC_ex2_projvar_remvelocity_z, OC_ex2_projvar_supermovetime, OC_ex2_projvar_teamside,
+		OC_ex2_projvar_projsprpriority, OC_ex2_projvar_projstagebound, OC_ex2_projvar_remvelocity_x,
+		OC_ex2_projvar_remvelocity_y, OC_ex2_projvar_remvelocity_z, OC_ex2_projvar_scale_x,
+		OC_ex2_projvar_scale_y, OC_ex2_projvar_shadow_b, OC_ex2_projvar_shadow_g,
+		OC_ex2_projvar_shadow_r, OC_ex2_projvar_supermovetime, OC_ex2_projvar_teamside,
 		OC_ex2_projvar_time, OC_ex2_projvar_vel_x, OC_ex2_projvar_vel_y,
-		OC_ex2_projvar_vel_z, OC_ex2_projvar_velmul_x, OC_ex2_projvar_velmul_y, OC_ex2_projvar_velmul_z,
-		OC_ex2_projvar_projshader:
+		OC_ex2_projvar_vel_z, OC_ex2_projvar_velmul_x, OC_ex2_projvar_velmul_y,
+		OC_ex2_projvar_velmul_z, OC_ex2_projvar_xshear, OC_ex2_projvar_projshader:
 
 		// Common Inputs
 		flg := sys.bcStack.Pop()
@@ -4356,8 +4375,22 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushF(p.accel[1] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_accel_z:
 				sys.bcStack.PushF(p.accel[2] * p.localscl / oc.localscl)
+			case OC_ex2_projvar_angle:
+				sys.bcStack.PushF(p.rot.angle)
+			case OC_ex2_projvar_angle_x:
+				sys.bcStack.PushF(p.rot.xangle)
+			case OC_ex2_projvar_angle_y:
+				sys.bcStack.PushF(p.rot.yangle)
+			case OC_ex2_projvar_anim:
+				sys.bcStack.PushI(p.animNo)
 			case OC_ex2_projvar_animelem:
 				sys.bcStack.PushI(p.anim.curelem + 1)
+			case OC_ex2_projvar_animprefix:
+				if p.anim_ffx == "" {
+					sys.bcStack.PushS("s")
+				} else {
+					sys.bcStack.PushS(p.anim_ffx)
+				}
 			case OC_ex2_projvar_drawpal_group:
 				sys.bcStack.PushI(c.projDrawPal(p)[0])
 			case OC_ex2_projvar_drawpal_index:
@@ -4406,14 +4439,6 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushF(p.pos[1] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_pos_z:
 				sys.bcStack.PushF(p.pos[2] * p.localscl / oc.localscl)
-			case OC_ex2_projvar_projanim:
-				sys.bcStack.PushI(p.animNo)
-			case OC_ex2_projvar_projangle:
-				sys.bcStack.PushF(p.rot.angle)
-			case OC_ex2_projvar_projyangle:
-				sys.bcStack.PushF(p.rot.xangle)
-			case OC_ex2_projvar_projxangle:
-				sys.bcStack.PushF(p.rot.yangle)
 			case OC_ex2_projvar_projcancelanim:
 				sys.bcStack.PushI(p.cancelanim)
 			case OC_ex2_projvar_projedgebound:
@@ -4438,28 +4463,26 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushI(p.remanim)
 			case OC_ex2_projvar_projremovetime:
 				sys.bcStack.PushI(p.removetime)
-			case OC_ex2_projvar_projscale_x:
-				sys.bcStack.PushF(p.scale[0])
-			case OC_ex2_projvar_projscale_y:
-				sys.bcStack.PushF(p.scale[1])
-			case OC_ex2_projvar_projshadow_b:
-				sys.bcStack.PushI(p.shadow[2])
-			case OC_ex2_projvar_projshadow_g:
-				sys.bcStack.PushI(p.shadow[1])
-			case OC_ex2_projvar_projshadow_r:
-				sys.bcStack.PushI(p.shadow[0])
 			case OC_ex2_projvar_projsprpriority:
 				sys.bcStack.PushI(p.sprpriority)
 			case OC_ex2_projvar_projstagebound:
 				sys.bcStack.PushI(int32(float32(p.stagebound) * p.localscl / oc.localscl))
-			case OC_ex2_projvar_projxshear:
-				sys.bcStack.PushF(p.xshear)
 			case OC_ex2_projvar_remvelocity_x:
 				sys.bcStack.PushF(p.remvelocity[0] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_remvelocity_y:
 				sys.bcStack.PushF(p.remvelocity[1] * p.localscl / oc.localscl)
 			case OC_ex2_projvar_remvelocity_z:
 				sys.bcStack.PushF(p.remvelocity[2] * p.localscl / oc.localscl)
+			case OC_ex2_projvar_scale_x:
+				sys.bcStack.PushF(p.scale[0])
+			case OC_ex2_projvar_scale_y:
+				sys.bcStack.PushF(p.scale[1])
+			case OC_ex2_projvar_shadow_b:
+				sys.bcStack.PushI(p.shadow[2])
+			case OC_ex2_projvar_shadow_g:
+				sys.bcStack.PushI(p.shadow[1])
+			case OC_ex2_projvar_shadow_r:
+				sys.bcStack.PushI(p.shadow[0])
 			case OC_ex2_projvar_supermovetime:
 				sys.bcStack.PushI(p.supermovetime)
 			case OC_ex2_projvar_teamside:
@@ -4478,6 +4501,8 @@ func (be BytecodeExp) run_ex2(c *Char, i *int, oc *Char) {
 				sys.bcStack.PushF(p.velmul[1])
 			case OC_ex2_projvar_velmul_z:
 				sys.bcStack.PushF(p.velmul[2])
+			case OC_ex2_projvar_xshear:
+				sys.bcStack.PushF(p.xshear)
 			case OC_ex2_projvar_projshader:
 				sys.bcStack.PushS(p.customShader.name)
 			}
@@ -4879,6 +4904,13 @@ func (be BytecodeExp) run_ex3(c *Char, i *int, oc *Char) {
 			}
 		} else {
 			sys.bcStack.Push(BytecodeUndefined())
+		}
+	case OC_ex3_animprefix:
+		if c.animFfx == "" {
+			// Replace empty with "s" here. It's more robust than ensuring empty prefixes are always "s"
+			sys.bcStack.PushS("s")
+		} else {
+			sys.bcStack.PushS(c.animFfx)
 		}
 	case OC_ex3_animloopcount:
 		if c.anim == nil {
@@ -11323,6 +11355,84 @@ const (
 	stateTypeSet_redirectid
 )
 
+// Type strings only use their first letter, like in Mugen
+func stateTypeValue(s string) (int32, bool) {
+	if s = strings.TrimSpace(s); s == "" {
+		return 0, false
+	}
+	switch strings.ToLower(s)[0] {
+	case 's':
+		return int32(ST_S), true
+	case 'c':
+		return int32(ST_C), true
+	case 'a':
+		return int32(ST_A), true
+	case 'l':
+		return int32(ST_L), true
+	case 'u':
+		return int32(ST_U), true
+	}
+	return 0, false
+}
+
+func moveTypeValue(s string) (int32, bool) {
+	if s = strings.TrimSpace(s); s == "" {
+		return 0, false
+	}
+	switch strings.ToLower(s)[0] {
+	case 'i':
+		return int32(MT_I), true
+	case 'a':
+		return int32(MT_A), true
+	case 'h':
+		return int32(MT_H), true
+	case 'u':
+		return int32(MT_U), true
+	}
+	return 0, false
+}
+
+func physicsTypeValue(s string) (int32, bool) {
+	if s = strings.TrimSpace(s); s == "" {
+		return 0, false
+	}
+	switch strings.ToLower(s)[0] {
+	case 's':
+		return int32(ST_S), true
+	case 'c':
+		return int32(ST_C), true
+	case 'a':
+		return int32(ST_A), true
+	case 'n':
+		return int32(ST_N), true
+	case 'u':
+		return int32(ST_U), true
+	}
+	return 0, false
+}
+
+// Evaluates either a constant type or a dynamic type string
+// A second expression marks the dynamic string form
+func evalTypeExp(exp []BytecodeExp, c *Char, name string, conv func(string) (int32, bool)) (int32, bool) {
+	if len(exp) < 2 {
+		return exp[0].evalI(c), true
+	}
+	return evalTypeString(exp[0], c, name, conv)
+}
+
+func evalTypeString(be BytecodeExp, c *Char, name string, conv func(string) (int32, bool)) (int32, bool) {
+	v := be.run(c)
+	if v.vtype != VT_String {
+		sys.appendToConsole(c.warn() + "Expression did not evaluate to a string")
+		return 0, false
+	}
+	t, ok := conv(v.ToS())
+	if !ok {
+		sys.appendToConsole(c.warn() + "Invalid " + name + ": " + v.ToS())
+	}
+	return t, ok
+}
+
 func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 	crun := getRedirectedChar(c, StateControllerBase(sc), stateTypeSet_redirectid, "StateTypeSet")
 	if crun == nil {
@@ -11332,11 +11442,25 @@ func (sc stateTypeSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case stateTypeSet_statetype:
-			crun.ss.changeStateType(StateType(exp[0].evalI(c)))
+			if v, ok := evalTypeExp(exp, c, "statetype", stateTypeValue); ok {
+				// Mugen didn't allow using U (unchanged)
+				// But we have no reason to forbid it and it makes code a little cleaner
+				if StateType(v) != ST_U {
+					crun.ss.changeStateType(StateType(v))
+				}
+			}
 		case stateTypeSet_movetype:
-			crun.ss.changeMoveType(MoveType(exp[0].evalI(c)))
+			if v, ok := evalTypeExp(exp, c, "movetype", moveTypeValue); ok {
+				if MoveType(v) != MT_U {
+					crun.ss.changeMoveType(MoveType(v))
+				}
+			}
 		case stateTypeSet_physics:
-			crun.ss.physics = StateType(exp[0].evalI(c))
+			if v, ok := evalTypeExp(exp, c, "physics type", physicsTypeValue); ok {
+				if StateType(v) != ST_U {
+					crun.ss.physics = StateType(v)
+				}
+			}
 		}
 		return true
 	})
@@ -16912,8 +17036,11 @@ func (sc mapReset) Run(c *Char, _ []int32) bool {
 // StateDef data struct
 type StateBytecode struct {
 	stateType StateType
+	stateTypeExp BytecodeExp // Dynamic string form of stateType. Nil when constant
 	moveType  MoveType
+	moveTypeExp  BytecodeExp
 	physics   StateType
+	physicsExp   BytecodeExp
 	playerNo  int
 	stateDef  stateDef
 	block     StateBlock
@@ -16934,23 +17061,49 @@ func newStateBytecode(pn int) *StateBytecode {
 }
 
 func (sb *StateBytecode) init(c *Char) {
+	// Set before evaluating type expressions, since they may read the string pool
+	sys.workingState = sb
+
+	// Invalid dynamic types leave the current one unchanged
+	stateType, moveType, physics := sb.stateType, sb.moveType, sb.physics
+
+	// Check if these were provided as expressions
+	if sb.stateTypeExp != nil {
+		stateType = ST_U
+		if v, ok := evalTypeString(sb.stateTypeExp, c, "statetype", stateTypeValue); ok {
+			stateType = StateType(v)
+		}
+	}
+	if sb.moveTypeExp != nil {
+		moveType = MT_U
+		if v, ok := evalTypeString(sb.moveTypeExp, c, "movetype", moveTypeValue); ok {
+			moveType = MoveType(v)
+		}
+	}
+	if sb.physicsExp != nil {
+		physics = ST_U
+		if v, ok := evalTypeString(sb.physicsExp, c, "physics type", physicsTypeValue); ok {
+			physics = StateType(v)
+		}
+	}
+
 	// StateType
-	if sb.stateType != ST_U {
-		c.ss.changeStateType(sb.stateType)
+	if stateType != ST_U {
+		c.ss.changeStateType(stateType)
 	}
 
 	// MoveType
-	if sb.moveType != MT_U {
+	if moveType != MT_U {
 		if !c.ss.storeMoveType {
 			c.ss.prevMoveType = c.ss.moveType
 		}
-		c.ss.moveType = sb.moveType
+		c.ss.moveType = moveType
 	}
 	c.ss.storeMoveType = false
 
 	// Physics
-	if sb.physics != ST_U {
-		c.ss.physics = sb.physics
+	if physics != ST_U {
+		c.ss.physics = physics
 	}
 
 	// Reset juggle points
@@ -16960,7 +17113,6 @@ func (sb *StateBytecode) init(c *Char) {
 	}
 
 	// Rest of StateDef
-	sys.workingState = sb
 	sb.stateDef.Run(c)
 }
 

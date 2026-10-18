@@ -3601,6 +3601,54 @@ func (c *CharCompiler) playerPush(is IniSection, sc *StateControllerBase) (State
 	return *ret, err
 }
 
+// Bare letters are the legacy syntax. Anything else is a string expression
+// Returns either a constant or, if dynamic, a non-nil expression
+func (c *CharCompiler) typeExpression(data, name, validLetters string,
+	conv func(string) (int32, bool)) (int32, BytecodeExp, error) {
+	data = strings.TrimSpace(data)
+	if len(data) == 0 {
+		return 0, nil, Error(name + " not specified")
+	}
+	legacy := func() (int32, BytecodeExp, error) {
+		v, ok := conv(data)
+		if !ok {
+			return 0, nil, Error("Invalid " + name + ": " + data)
+		}
+		return v, nil, nil
+	}
+	// Try the conventional syntax first, so expressions can't shadow it
+	if strings.Trim(data, validLetters) == "" {
+		return legacy()
+	}
+	// Look for a string expression
+	rest := data
+	cc := *c
+	be, err := cc.fullExpression(&rest, VT_String)
+	if err == nil {
+		return 0, be, nil
+	}
+	// Mugen only reads the first letter, so tolerate trailing garbage in CNS
+	if !c.zssMode && sys.ignoreMostErrors {
+		return legacy()
+	}
+	return 0, nil, err
+}
+
+func (c *CharCompiler) parseTypeExpression(sc *StateControllerBase, id byte, data, name, validLetters string,
+	conv func(string) (int32, bool)) error {
+	v, be, err := c.typeExpression(data, name, validLetters, conv)
+	if err != nil {
+		return err
+	}
+	if be != nil {
+		// A second expression marks the dynamic string form
+		sc.add(id, []BytecodeExp{be, sc.iToExp(1)[0]})
+	} else {
+		sc.add(id, sc.iToExp(v))
+	}
+	return nil
+}
+
 func (c *CharCompiler) stateTypeSet(is IniSection, sc *StateControllerBase) (StateController, error) {
 	ret, err := (*stateTypeSet)(sc), c.stateSec(is, func() error {
 		if err := c.paramValue(is, sc, "redirectid",
@@ -3608,24 +3656,7 @@ func (c *CharCompiler) stateTypeSet(is IniSection, sc *StateControllerBase) (Sta
 			return err
 		}
 		statetype := func(data string) error {
-			if len(data) == 0 {
-				return Error("statetype not specified")
-			}
-			var st StateType
-			switch strings.ToLower(data)[0] {
-			case 's':
-				st = ST_S
-			case 'c':
-				st = ST_C
-			case 'a':
-				st = ST_A
-			case 'l':
-				st = ST_L
-			default:
-				return Error("Invalid statetype: " + data)
-			}
-			sc.add(stateTypeSet_statetype, sc.iToExp(int32(st)))
-			return nil
+			return c.parseTypeExpression(sc, stateTypeSet_statetype, data, "statetype", "SCALUscalu", stateTypeValue)
 		}
 		b := false
 		if err := c.stateParam(is, "statetype", false, func(data string) error {
@@ -3642,44 +3673,12 @@ func (c *CharCompiler) stateTypeSet(is IniSection, sc *StateControllerBase) (Sta
 			}
 		}
 		if err := c.stateParam(is, "movetype", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("movetype not specified")
-			}
-			var mt MoveType
-			switch strings.ToLower(data)[0] {
-			case 'i':
-				mt = MT_I
-			case 'a':
-				mt = MT_A
-			case 'h':
-				mt = MT_H
-			default:
-				return Error("Invalid movetype: " + data)
-			}
-			sc.add(stateTypeSet_movetype, sc.iToExp(int32(mt)))
-			return nil
+			return c.parseTypeExpression(sc, stateTypeSet_movetype, data, "movetype", "IAHUiahu", moveTypeValue)
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "physics", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("physics not specified")
-			}
-			var st StateType
-			switch strings.ToLower(data)[0] {
-			case 's':
-				st = ST_S
-			case 'c':
-				st = ST_C
-			case 'a':
-				st = ST_A
-			case 'n':
-				st = ST_N
-			default:
-				return Error("Invalid physics type: " + data)
-			}
-			sc.add(stateTypeSet_physics, sc.iToExp(int32(st)))
-			return nil
+			return c.parseTypeExpression(sc, stateTypeSet_physics, data, "physics type", "SCANUscanu", physicsTypeValue)
 		}); err != nil {
 			return err
 		}

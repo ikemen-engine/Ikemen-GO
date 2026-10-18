@@ -374,6 +374,7 @@ var triggerMap = map[string]int{
 	"animlength":         1,
 	"animloopcount":      1,
 	"animplayerno":       1,
+	"animprefix":         1,
 	"atan2":              1,
 	"attack":             1,
 	"attackmul":          1,
@@ -1995,6 +1996,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		out.append(OC_animexist)
 	case "animloopcount":
 		out.append(OC_ex3_, OC_ex3_animloopcount)
+	case "animprefix":
+		out.append(OC_ex3_, OC_ex3_animprefix)
 	case "animtime":
 		out.append(OC_animtime)
 	case "authorname":
@@ -2619,6 +2622,8 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			opc = OC_ex2_explodvar_animloopcount
 		case "animplayerno":
 			opc = OC_ex2_explodvar_animplayerno
+		case "animprefix":
+			opc = OC_ex2_explodvar_animprefix
 		case "animtime":
 			opc = OC_ex2_explodvar_animtime
 		case "spriteplayerno":
@@ -3572,18 +3577,20 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projvar_projxangle
+				opc = OC_ex2_projvar_angle_x
 			case "y":
-				opc = OC_ex2_projvar_projyangle
+				opc = OC_ex2_projvar_angle_y
 			case ")":
-				opc = OC_ex2_projvar_projangle
+				opc = OC_ex2_projvar_angle
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid ProjVar angle argument: %s", c.token))
 			}
 		case "anim":
-			opc = OC_ex2_projvar_projanim
+			opc = OC_ex2_projvar_anim
 		case "animelem":
 			opc = OC_ex2_projvar_animelem
+		case "animprefix":
+			opc = OC_ex2_projvar_animprefix
 		case "attr":
 			opc = OC_ex2_projvar_attr
 			isFlag = true
@@ -3664,9 +3671,9 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "x":
-				opc = OC_ex2_projvar_projscale_x
+				opc = OC_ex2_projvar_scale_x
 			case "y":
-				opc = OC_ex2_projvar_projscale_y
+				opc = OC_ex2_projvar_scale_y
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid ProjVar scale argument: %s", c.token))
 			}
@@ -3675,11 +3682,11 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 
 			switch c.token {
 			case "r":
-				opc = OC_ex2_projvar_projshadow_r
+				opc = OC_ex2_projvar_shadow_r
 			case "g":
-				opc = OC_ex2_projvar_projshadow_g
+				opc = OC_ex2_projvar_shadow_g
 			case "b":
-				opc = OC_ex2_projvar_projshadow_b
+				opc = OC_ex2_projvar_shadow_b
 			default:
 				return bvNone(), Error(fmt.Sprint("Invalid ProjVar shadow argument: %s", c.token))
 			}
@@ -3716,13 +3723,13 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				return bvNone(), Error(fmt.Sprint("Invalid ProjVar velmul argument: %s", c.token))
 			}
 		case "xshear":
-			opc = OC_ex2_projvar_projxshear
+			opc = OC_ex2_projvar_xshear
 		case "shader":
 			opc = OC_ex2_projvar_projshader
 		default:
 			return bvNone(), Error(fmt.Sprint("Invalid ProjVar argument: %s", vname))
 		}
-		if opc != OC_ex2_projvar_projangle {
+		if opc != OC_ex2_projvar_angle {
 			c.token = c.tokenizer(in)
 
 			if err := c.checkClosingParenthesis(); err != nil {
@@ -5185,10 +5192,50 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
 		}
-		var m string = c.token
+		// map(name) with a single name is a literal key, as before
+		// Anything else is a string expression, e.g. map("name"), map($name) or map(ifelse(...))
+		// So map(ifelse) is the same as map("ifelse") but not map(ifelse(...))
+		key := c.token
+		var keyExp BytecodeExp
+		// Read the token after the key, and go back if the key turns out to be an expression
+		savedIn := *in
 		c.token = c.tokenizer(in)
+		// A quote starts a string and "$" starts a local variable, so neither is a name
+		// Anything other than ")" after the key means the expression continues
+		if key == "\"" || strings.HasPrefix(key, "$") || c.token != ")" {
+			c.token, *in = key, savedIn
+			kv, err := c.expBoolOr(&keyExp, in)
+			if err != nil {
+				return bvNone(), err
+			}
+			// Constant numbers can't be keys. Runtime values are still unchecked
+			if !kv.IsNone() && kv.vtype != VT_String {
+				return bvNone(), Error("Expected a string expression")
+			}
+			keyExp.appendValue(kv)
+			// Constant keys are resolved now, the same as a single name
+			// A lone OC_string with its 4 byte index means the key is a plain quoted string
+			if len(keyExp) == 5 && keyExp[0] == OC_string {
+				i := 1
+				key = sys.stringPool[c.playerNo].List[keyExp.ReadIntAt(&i)]
+				keyExp = nil
+			}
+		}
 		if err := c.checkClosingParenthesis(); err != nil {
 			return bvNone(), err
+		}
+		// Literal keys are stored lowercase in the string pool, as before
+		// For expressions, -1 tells the opcode to take the key from the stack instead
+		keyIdx := int32(-1)
+		if keyExp == nil {
+			keyIdx = int32(sys.stringPool[c.playerNo].Add(strings.ToLower(key)))
+		} else {
+			// The key belongs to the caller, not the redirect target
+			// It's pushed before any := value, so the opcode pops the value first
+			if rd {
+				out.appendI32Op(OC_nordrun, int32(len(keyExp)))
+			}
+			out.append(keyExp...)
 		}
 		c.token = c.tokenizer(in)
 		// Map assignment with := operator
@@ -5207,10 +5254,10 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 			}
 			out.append(be2...)
 			out.append(OC_st_)
-			out.appendI32Op(OC_st_map, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+			out.appendI32Op(OC_st_map, keyIdx)
 		} else {
 			out.append(OC_ex_)
-			out.appendI32Op(OC_ex_maparray, int32(sys.stringPool[c.playerNo].Add(strings.ToLower(m))))
+			out.appendI32Op(OC_ex_maparray, keyIdx)
 		}
 		return bvNone(), nil
 	case "memberno":
@@ -6956,65 +7003,31 @@ func (c *CharCompiler) stateDef(is IniSection, sbc *StateBytecode) error {
 	return c.stateSec(is, func() error {
 		sc := newStateControllerBase()
 		if err := c.stateParam(is, "type", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("statetype not specified")
+			v, be, err := c.typeExpression(data, "statetype", "SCALUscalu", stateTypeValue)
+			if err != nil {
+				return err
 			}
-			switch strings.ToLower(data)[0] {
-			case 's':
-				sbc.stateType = ST_S
-			case 'c':
-				sbc.stateType = ST_C
-			case 'a':
-				sbc.stateType = ST_A
-			case 'l':
-				sbc.stateType = ST_L
-			case 'u':
-				sbc.stateType = ST_U
-			default:
-				return Error("Invalid statetype: " + data)
-			}
+			sbc.stateType, sbc.stateTypeExp = StateType(v), be
 			return nil
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "movetype", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("movetype not specified")
+			v, be, err := c.typeExpression(data, "movetype", "IAHUiahu", moveTypeValue)
+			if err != nil {
+				return err
 			}
-			switch strings.ToLower(data)[0] {
-			case 'i':
-				sbc.moveType = MT_I
-			case 'a':
-				sbc.moveType = MT_A
-			case 'h':
-				sbc.moveType = MT_H
-			case 'u':
-				sbc.moveType = MT_U
-			default:
-				return Error("Invalid movetype: " + data)
-			}
+			sbc.moveType, sbc.moveTypeExp = MoveType(v), be
 			return nil
 		}); err != nil {
 			return err
 		}
 		if err := c.stateParam(is, "physics", false, func(data string) error {
-			if len(data) == 0 {
-				return Error("physics not specified")
+			v, be, err := c.typeExpression(data, "physics type", "SCANUscanu", physicsTypeValue)
+			if err != nil {
+				return err
 			}
-			switch strings.ToLower(data)[0] {
-			case 's':
-				sbc.physics = ST_S
-			case 'c':
-				sbc.physics = ST_C
-			case 'a':
-				sbc.physics = ST_A
-			case 'n':
-				sbc.physics = ST_N
-			case 'u':
-				sbc.physics = ST_U
-			default:
-				return Error("Invalid physics type: " + data)
-			}
+			sbc.physics, sbc.physicsExp = StateType(v), be
 			return nil
 		}); err != nil {
 			return err

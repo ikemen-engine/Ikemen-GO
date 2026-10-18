@@ -7735,6 +7735,14 @@ func triggerFunctions(l *lua.LState) {
 		l.Push(lua.LNumber(sys.debugWC.animPN + 1))
 		return 1
 	})
+	luaRegister(l, "animPrefix", func(*lua.LState) int {
+		if sys.debugWC.animFfx == "" {
+			l.Push(lua.LString("s"))
+		} else {
+			l.Push(lua.LString(sys.debugWC.animFfx))
+		}
+		return 1
+	})
 	luaRegister(l, "animTime", func(*lua.LState) int {
 		l.Push(lua.LNumber(sys.debugWC.animTime()))
 		return 1
@@ -8332,6 +8340,12 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(e.anim.curelemtime)
 			case "animplayerno":
 				lv = lua.LNumber(e.animPN + 1)
+			case "animprefix":
+				if e.anim_ffx == "" {
+					lv = lua.LString("s")
+				} else {
+					lv = lua.LString(e.anim_ffx)
+				}
 			case "animtime":
 				lv = lua.LNumber(e.anim.AnimTime())
 			case "spriteplayerno":
@@ -9842,6 +9856,12 @@ func triggerFunctions(l *lua.LState) {
 				lv = lua.LNumber(p.animNo)
 			case "animelem":
 				lv = lua.LNumber(p.anim.curelem + 1)
+			case "animprefix":
+				if p.anim_ffx == "" {
+					lv = lua.LString("s")
+				} else {
+					lv = lua.LString(p.anim_ffx)
+				}
 			case "angle":
 				lv = lua.LNumber(p.rot.angle)
 			case "angle x":
