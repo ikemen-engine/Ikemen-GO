@@ -2131,12 +2131,12 @@ func systemScriptInit(l *lua.LState) {
 		c := sys.chars[sys.debugWC.playerNo]
 		if st == -1 {
 			for _, ch := range c {
-				ch.setSCF(SCF_disabled)
+				ch.setSCF(SCF_disabled, true)
 			}
 		} else if c[0].selfStatenoExist(BytecodeInt(st)) == BytecodeBool(true) {
 			for _, ch := range c {
 				if ch.scf(SCF_disabled) {
-					ch.unsetSCF(SCF_disabled)
+					ch.setSCF(SCF_disabled, false)
 				}
 			}
 			c[0].changeState(st, -1, -1, "")
@@ -5257,14 +5257,14 @@ func systemScriptInit(l *lua.LState) {
 			}
 			for j := range sys.chars[pn-1][0].cmd {
 				sys.chars[pn-1][0].cmd[j].BufReset()
-				sys.chars[pn-1][0].setASF(ASF_nohardcodedkeys)
+				sys.chars[pn-1][0].setASF(ASF_nohardcodedkeys, true)
 			}
 		} else {
 			for _, p := range sys.chars {
 				if len(p) > 0 {
 					for j := range p[0].cmd {
 						p[0].cmd[j].BufReset()
-						p[0].setASF(ASF_nohardcodedkeys)
+						p[0].setASF(ASF_nohardcodedkeys, true)
 					}
 				}
 			}
@@ -5647,7 +5647,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "removeDizzy", func(*lua.LState) int {
 		/*[redirectable] Clear the character's dizzy state.
 		@function removeDizzy*/
-		sys.debugWC.unsetSCF(SCF_dizzy)
+		sys.debugWC.setSCF(SCF_dizzy, false)
 		return 0
 	})
 	luaRegister(l, "replayRecord", func(*lua.LState) int {
@@ -7374,11 +7374,7 @@ func systemScriptInit(l *lua.LState) {
 			return 0
 		}
 		for _, ch := range sys.chars[pn-1] {
-			if ch.scf(SCF_disabled) {
-				ch.unsetSCF(SCF_disabled)
-			} else {
-				ch.setSCF(SCF_disabled)
-			}
+			ch.setSCF(SCF_disabled, !ch.scf(SCF_disabled))
 		}
 		return 0
 	})

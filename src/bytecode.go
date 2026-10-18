@@ -5491,7 +5491,8 @@ func (sc stateDef) Run(c *Char) {
 				c.changeAnim(animNo, c.playerNo, -1, ffx)
 			}
 		case stateDef_ctrl:
-			c.setCtrl(exp[0].evalB(c))
+			b := exp[0].evalB(c)
+			c.setSCF(SCF_ctrl, b)
 		case stateDef_poweradd:
 			c.powerAdd(exp[0].evalI(c))
 		}
@@ -5613,32 +5614,16 @@ func (sc assertSpecial) Run(c *Char, _ []int32) bool {
 			enable = exp[0].evalB(c)
 		case assertSpecial_flag:
 			flag := AssertSpecialFlag(exp[0].evalI64(c))
-			if enable {
-				crun.setASF(flag)
-			} else {
-				crun.unsetASF(flag)
-			}
+			crun.setASF(flag, enable)
 		case assertSpecial_flag_g:
 			flag := GlobalSpecialFlag(exp[0].evalI64(c))
-			if enable {
-				sys.setGSF(flag)
-			} else {
-				sys.unsetGSF(flag)
-			}
+			sys.setGSF(flag, enable)
 		case assertSpecial_noko:
 			// NoKO affects all characters in Mugen, so legacy chars do so as well
 			if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-				if enable {
-					sys.setGSF(GlobalSpecialFlag(GSF_globalnoko))
-				} else {
-					sys.unsetGSF(GlobalSpecialFlag(GSF_globalnoko))
-				}
+				sys.setGSF(GlobalSpecialFlag(GSF_globalnoko), enable)
 			} else {
-				if enable {
-					crun.setASF(AssertSpecialFlag(ASF_noko))
-				} else {
-					crun.unsetASF(AssertSpecialFlag(ASF_noko))
-				}
+				crun.setASF(AssertSpecialFlag(ASF_noko), enable)
 			}
 		}
 		return true
@@ -5882,7 +5867,7 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 			}
 		case tagIn_ctrl:
 			ctrls := exp[0].evalB(c)
-			crun.setCtrl(ctrls)
+			crun.setSCF(SCF_ctrl, ctrls)
 			if tagSCF == -1 {
 				tagSCF = 1
 			}
@@ -5900,22 +5885,18 @@ func (sc tagIn) Run(c *Char, _ []int32) bool {
 		tagSCF = 1
 	}
 	if tagSCF == 1 {
-		crun.unsetSCF(SCF_standby)
+		crun.setSCF(SCF_standby, false)
 	}
 
 	// Partner
 	if partnerNo != -1 && crun.partnerTag(partnerNo) != nil {
 		partner := crun.partnerTag(partnerNo)
-		partner.unsetSCF(SCF_standby)
+		partner.setSCF(SCF_standby, false)
 		if partnerStateNo >= 0 {
 			partner.changeState(partnerStateNo, -1, -1, "")
 		}
 		if partnerCtrlSetting != -1 {
-			if partnerCtrlSetting == 1 {
-				partner.setCtrl(true)
-			} else {
-				partner.setCtrl(false)
-			}
+			partner.setSCF(SCF_ctrl, partnerCtrlSetting == 1)
 		}
 	}
 
@@ -5982,14 +5963,14 @@ func (sc tagOut) Run(c *Char, _ []int32) bool {
 		tagSCF = 1
 	}
 	if tagSCF == 1 {
-		crun.setSCF(SCF_standby)
+		crun.setSCF(SCF_standby, true)
 		// sys.charList.p2enemyDelete(crun)
 	}
 
 	// Partner
 	if partnerNo != -1 && crun.partnerTag(partnerNo) != nil {
 		partner := crun.partnerTag(partnerNo)
-		partner.setSCF(SCF_standby)
+		partner.setSCF(SCF_standby, true)
 		if partnerStateNo >= 0 {
 			partner.changeState(partnerStateNo, -1, -1, "")
 		}
@@ -6294,11 +6275,8 @@ func (sc helper) Run(c *Char, _ []int32) bool {
 		case helper_ownclsnscale:
 			h.ownclsnscale = exp[0].evalB(c)
 		case helper_standby:
-			if exp[0].evalB(c) {
-				h.setSCF(SCF_standby)
-			} else {
-				h.unsetSCF(SCF_standby)
-			}
+			b := exp[0].evalB(c)
+			h.setSCF(SCF_standby, b)
 		case helper_ownprojectile:
 			h.ownProjectile = exp[0].evalB(c)
 		case helper_map:
@@ -6335,7 +6313,8 @@ func (sc ctrlSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case ctrlSet_value:
-			crun.setCtrl(exp[0].evalB(c))
+			b := exp[0].evalB(c)
+			crun.setSCF(SCF_ctrl, b)
 		}
 		return true
 	})
@@ -10971,9 +10950,9 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
-	crun.toggleCSF(CSF_screenbound, value)
-	crun.toggleCSF(CSF_movecamera_x, movex)
-	crun.toggleCSF(CSF_movecamera_y, movey)
+	crun.setCSF(CSF_screenbound, value)
+	crun.setCSF(CSF_movecamera_x, movex)
+	crun.setCSF(CSF_movecamera_y, movey)
 
 	return false
 }
@@ -10995,7 +10974,7 @@ func (sc posFreeze) Run(c *Char, _ []int32) bool {
 		switch paramID {
 		case posFreeze_value:
 			if exp[0].evalB(c) {
-				crun.setCSF(CSF_posfreeze)
+				crun.setCSF(CSF_posfreeze, true)
 			}
 		}
 		return true
@@ -11336,7 +11315,7 @@ func (sc playerPush) Run(c *Char, _ []int32) bool {
 		switch paramID {
 		case playerPush_value:
 			b := exp[0].evalB(c)
-			crun.toggleCSF(CSF_playerpush, b)
+			crun.setCSF(CSF_playerpush, b)
 		case playerPush_priority:
 			crun.pushPriority = exp[0].evalI(c)
 		case playerPush_affectteam:
@@ -11507,7 +11486,7 @@ func (sc angleDraw) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
-	crun.setCSF(CSF_angledraw)
+	crun.setCSF(CSF_angledraw, true)
 	return false
 }
 
@@ -12912,7 +12891,8 @@ func (sc dizzySet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case dizzySet_value:
-			crun.setDizzy(exp[0].evalB(c))
+			b := exp[0].evalB(c)
+			crun.setSCF(SCF_dizzy, b)
 		}
 		return true
 	})
@@ -12935,7 +12915,8 @@ func (sc guardBreakSet) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case guardBreakSet_value:
-			crun.setGuardBreak(exp[0].evalB(c))
+			b := exp[0].evalB(c)
+			crun.setSCF(SCF_guardbreak, b)
 		}
 		return true
 	})
@@ -15873,8 +15854,8 @@ func (sc depthBound) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
-	crun.toggleCSF(CSF_depthbound, value)
-	crun.toggleCSF(CSF_movecamera_z, movez)
+	crun.setCSF(CSF_depthbound, value)
+	crun.setCSF(CSF_movecamera_z, movez)
 
 	return false
 }
@@ -16000,11 +15981,11 @@ func (sc modifyPlayer) Run(c *Char, _ []int32) bool {
 		case modifyPlayer_alive:
 			alive := exp[0].evalB(c)
 			if !alive {
-				crun.setSCF(SCF_ko)
-				crun.unsetSCF(SCF_ctrl)
+				crun.setSCF(SCF_ko, true)
+				crun.setSCF(SCF_ctrl, false)
 			} else {
-				crun.unsetSCF(SCF_ko)
-				crun.unsetSCF(SCF_over_ko)
+				crun.setSCF(SCF_ko, false)
+				crun.setSCF(SCF_over_ko, false)
 			}
 		case modifyPlayer_ailevel:
 			crun.setAILevel(exp[0].evalF(c))

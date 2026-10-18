@@ -2016,12 +2016,12 @@ func (s *System) gsf(gsf GlobalSpecialFlag) bool {
 	return s.specialFlag&gsf != 0
 }
 
-func (s *System) setGSF(gsf GlobalSpecialFlag) {
-	s.specialFlag |= gsf
-}
-
-func (s *System) unsetGSF(gsf GlobalSpecialFlag) {
-	s.specialFlag &^= gsf
+func (s *System) setGSF(gsf GlobalSpecialFlag, on bool) {
+	if on {
+		s.specialFlag |= gsf
+	} else {
+		s.specialFlag &^= gsf
+	}
 }
 
 func (s *System) appendToConsole(str string) {
@@ -2537,7 +2537,7 @@ func (s *System) resetRound() {
 		}
 		s.clearPlayerAssets(i, false)
 		p[0].posReset()
-		p[0].setCtrl(false)
+		p[0].setSCF(SCF_ctrl, false)
 		p[0].clearState()
 		p[0].prepareNextRound()
 		p[0].varRangeSet(0, s.cgi[i].data.intpersistindex-1, 0)
@@ -3341,11 +3341,11 @@ func (s *System) stepRoundState() {
 			for _, p := range s.chars {
 				if len(p) > 0 {
 					if p[0].alive() {
-						p[0].unsetSCF(SCF_over_alive)
+						p[0].setSCF(SCF_over_alive, false)
 						//if !p[0].scf(SCF_standby) || p[0].teamside == -1 {
 						if p[0].activelyFighting() {
 							// In Mugen this ctrlSet happens in beginning of frame. More evidence all this code should run before character states
-							p[0].setCtrl(true)
+							p[0].setSCF(SCF_ctrl, true)
 							if p[0].ss.no != 0 && !p[0].asf(ASF_nointroreset) {
 								p[0].selfState(0, -1, -1, 1, "") // Nor this one
 							}
@@ -3455,7 +3455,7 @@ func (s *System) stepRoundState() {
 			if s.intro == rs4t-1 {
 				for _, p := range s.chars {
 					if len(p) > 0 {
-						p[0].setCtrl(false)
+						p[0].setSCF(SCF_ctrl, false)
 					}
 				}
 			}
@@ -3510,7 +3510,7 @@ func (s *System) stepRoundState() {
 				// HitPause is checked here but not in the other loop. Perhaps because changing states during hitpause in Mugen isn't quite safe
 				// These selfStates should happen in beginning of frame. Previously, Ikemen had them at end of frame
 				if !p[0].scf(SCF_over_alive) && p[0].alive() && p[0].activelyFighting() && !p[0].hitPause() {
-					p[0].setSCF(SCF_over_alive)
+					p[0].setSCF(SCF_over_alive, true)
 					if p[0].win() {
 						p[0].selfState(180, -1, -1, -1, "")
 					} else if p[0].lose() {
@@ -5979,8 +5979,8 @@ func (s *System) activateTurnsSlot(chars []*Char, slot int) {
 			continue
 		}
 		ch.teamside = team
-		ch.unsetSCF(SCF_disabled)
-		ch.unsetSCF(SCF_standby)
+		ch.setSCF(SCF_disabled, false)
+		ch.setSCF(SCF_standby, false)
 		if ch.helperIndex == 0 {
 			ch.controller = slot
 			if s.aiLevel[slot] != 0 {
