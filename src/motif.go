@@ -311,6 +311,7 @@ type HintProperties struct {
 
 type MenuProperties struct {
 	Pos   [2]float32      `ini:"pos" default:"1000,900"`
+	Wrap  bool            `ini:"wrap" default:"true"`
 	Tween TweenProperties `ini:"tween"`
 	Item  struct {
 		TextProperties
@@ -341,7 +342,9 @@ type MenuProperties struct {
 		Margins struct {
 			Y [2]float32 `ini:"y"`
 		} `ini:"margins"`
-		VisibleItems int32 `ini:"visibleitems"`
+		VisibleItems int32  `ini:"visibleitems"`
+		Width        int32  `ini:"width"`
+		ScrollMode   string `ini:"scrollmode" default:"cursor"`
 	} `ini:"window"`
 	BoxCursor BoxCursorProperties `ini:"boxcursor"`
 	BoxBg     BoxBgProperties     `ini:"boxbg"`
@@ -1287,29 +1290,10 @@ type MenuInfoProperties struct {
 	} `ini:"exit"`
 	Overlay  OverlayProperties `ini:"overlay"`
 	Movelist struct {
-		Pos   [2]float32 `ini:"pos"`
-		Title struct {
-			TextProperties
-			Uppercase bool `ini:"uppercase"`
-		} `ini:"title"`
-		Text struct {
-			TextProperties
-			Spacing [2]float32 `ini:"spacing"`
-		} `ini:"text"`
-		Window struct {
-			Margins struct {
-				Y [2]float32 `ini:"y"`
-			} `ini:"margins"`
-			VisibleItems int32 `ini:"visibleitems"`
-			Width        int32 `ini:"width"`
-		} `ini:"window"`
+		Title   TextProperties    `ini:"title"`
+		Menu    MenuProperties    `ini:"menu"`
 		Overlay OverlayProperties `ini:"overlay"`
-		Arrow   struct {
-			Up   AnimationProperties `ini:"up"`
-			Down AnimationProperties `ini:"down"`
-		} `ini:"arrow"`
-		Itemname map[string]string `ini:"itemname"`
-		Hint     HintProperties    `ini:"hint"`
+		Hint    HintProperties    `ini:"hint"`
 	} `ini:"movelist"`
 	Hint HintProperties `ini:"hint"`
 }
@@ -3095,14 +3079,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 			animSetPos(ap.AnimData, dx, dy)
 		}
 	}
-	shiftMovelist := func(mv *MenuInfoProperties) {
-		if mv == nil {
-			return
-		}
-		ml := &mv.Movelist
-		offsetAnims(ml.Pos[0], ml.Pos[1], ml.Arrow.Up.AnimData, ml.Arrow.Down.AnimData)
-		offsetTexts(ml.Pos[0], ml.Pos[1], ml.Title.TextSpriteData, ml.Text.TextSpriteData)
-	}
 	adjustSelect := func(ps *PlayerSelectProperties) {
 		tm := &ps.TeamMenu
 		// TeamMenu backgrounds
@@ -3167,15 +3143,7 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		for _, pm := range m.PauseMenu {
 			if pm != nil {
 				shiftMenu(&pm.Menu)
-			}
-		}
-	}
-
-	// Movelists (all pause menus)
-	{
-		if m.PauseMenu != nil {
-			for _, pm := range m.PauseMenu {
-				shiftMovelist(pm)
+				shiftMenu(&pm.Movelist.Menu)
 			}
 		}
 	}
