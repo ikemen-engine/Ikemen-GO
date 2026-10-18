@@ -10945,7 +10945,6 @@ type screenBound StateControllerBase
 const (
 	screenBound_value byte = iota
 	screenBound_movecamera
-	screenBound_stagebound
 	screenBound_redirectid
 )
 
@@ -10955,38 +10954,27 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
+	// In Mugen everything defaults to false if not specified
+	value := false
+	movex, movey := false, false
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case screenBound_value:
-			if exp[0].evalB(c) {
-				crun.setCSF(CSF_screenbound)
-			} else {
-				crun.unsetCSF(CSF_screenbound)
-			}
+			value = exp[0].evalB(c)
 		case screenBound_movecamera:
-			if exp[0].evalB(c) {
-				crun.setCSF(CSF_movecamera_x)
-			} else {
-				crun.unsetCSF(CSF_movecamera_x)
-			}
+			movex = exp[0].evalB(c)
 			if len(exp) > 1 {
-				if exp[1].evalB(c) {
-					crun.setCSF(CSF_movecamera_y)
-				} else {
-					crun.unsetCSF(CSF_movecamera_y)
-				}
-			} else {
-				crun.unsetCSF(CSF_movecamera_y)
-			}
-		case screenBound_stagebound:
-			if exp[0].evalB(c) {
-				crun.setCSF(CSF_stagebound)
-			} else {
-				crun.unsetCSF(CSF_stagebound)
+				movey = exp[1].evalB(c)
 			}
 		}
 		return true
 	})
+
+	crun.toggleCSF(CSF_screenbound, value)
+	crun.toggleCSF(CSF_movecamera_x, movex)
+	crun.toggleCSF(CSF_movecamera_y, movey)
+
 	return false
 }
 
@@ -11347,11 +11335,8 @@ func (sc playerPush) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case playerPush_value:
-			if exp[0].evalB(c) {
-				crun.setCSF(CSF_playerpush)
-			} else {
-				crun.unsetCSF(CSF_playerpush)
-			}
+			b := exp[0].evalB(c)
+			crun.toggleCSF(CSF_playerpush, b)
 		case playerPush_priority:
 			crun.pushPriority = exp[0].evalI(c)
 		case playerPush_affectteam:
@@ -15873,23 +15858,24 @@ func (sc depthBound) Run(c *Char, _ []int32) bool {
 	if crun == nil {
 		return false
 	}
+
+	// Everything defaults to false, like in ScreenBound
+	value := false
+	movez := false
+
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case depthBound_value:
-			if exp[0].evalB(c) {
-				crun.setCSF(CSF_depthbound)
-			} else {
-				crun.unsetCSF(CSF_depthbound)
-			}
+			value = exp[0].evalB(c)
 		case depthBound_movecamera:
-			if exp[0].evalB(c) {
-				crun.setCSF(CSF_movecamera_z)
-			} else {
-				crun.unsetCSF(CSF_movecamera_z)
-			}
+			movez = exp[0].evalB(c)
 		}
 		return true
 	})
+
+	crun.toggleCSF(CSF_depthbound, value)
+	crun.toggleCSF(CSF_movecamera_z, movez)
+
 	return false
 }
 

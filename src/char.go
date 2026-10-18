@@ -40,7 +40,6 @@ const (
 	CSF_playerpush
 	CSF_posfreeze
 	CSF_screenbound
-	CSF_stagebound
 	CSF_depthbound
 )
 
@@ -5182,6 +5181,14 @@ func (c *Char) setCSF(csf CharSpecialFlag) {
 
 func (c *Char) unsetCSF(csf CharSpecialFlag) {
 	c.specialFlag &^= csf
+}
+
+func (c *Char) toggleCSF(csf CharSpecialFlag, on bool) {
+	if on {
+		c.setCSF(csf)
+	} else {
+		c.unsetCSF(csf)
+	}
 }
 
 func (c *Char) asf(asf AssertSpecialFlag) bool {
@@ -10348,7 +10355,11 @@ func (c *Char) xScreenBound() {
 	x := c.pos[0]
 	before := x
 
-	if c.trackableByCamera() && c.csf(CSF_screenbound) {
+	if !c.csf(CSF_screenbound) {
+		return
+	}
+
+	if c.trackableByCamera() {
 		min, max := c.widthEdge[0], -c.widthEdge[1]
 		if c.facing > 0 {
 			min, max = -max, -min
@@ -10356,9 +10367,11 @@ func (c *Char) xScreenBound() {
 		x = Clamp(x, min+sys.xmin/c.localscl, max+sys.xmax/c.localscl)
 	}
 
-	if c.csf(CSF_stagebound) {
-		x = Clamp(x, sys.stage.leftbound*sys.stage.localscl/c.localscl, sys.stage.rightbound*sys.stage.localscl/c.localscl)
-	}
+	// Clamp to the stage's left/rightbound limits
+	// In Mugen 1.1, disabling screenbound allows going past these limits for "mugenversion = 1.1" chars
+	// Ikemen continues from there and makes it work that way for all characters
+	// https://github.com/ikemen-engine/Ikemen-GO/discussions/4051
+	x = Clamp(x, sys.stage.leftbound*sys.stage.localscl/c.localscl, sys.stage.rightbound*sys.stage.localscl/c.localscl)
 
 	// Only update interpolation etc if necessary
 	if x != before {
@@ -10373,11 +10386,9 @@ func (c *Char) zDepthBound() {
 	posz := c.pos[2]
 	before := posz
 
-	if c.csf(CSF_stagebound) {
-		min := c.depthEdge[0]
-		max := -c.depthEdge[1]
-		posz = Clamp(posz, min+sys.zmin/c.localscl, max+sys.zmax/c.localscl)
-	}
+	min := c.depthEdge[0]
+	max := -c.depthEdge[1]
+	posz = Clamp(posz, min+sys.zmin/c.localscl, max+sys.zmax/c.localscl)
 
 	if posz != before {
 		c.setPosZ(posz, true)
@@ -12303,7 +12314,6 @@ func (c *Char) actionPrepare() {
 		}
 		if !c.hitPause() {
 			c.specialFlag = 0
-			c.setCSF(CSF_stagebound)
 			// Set default screenbound and playerpush
 			if c.isPlayerType() {
 				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {

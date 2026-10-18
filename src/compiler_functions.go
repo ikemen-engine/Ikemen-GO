@@ -3315,28 +3315,18 @@ func (c *CharCompiler) screenBound(is IniSection, sc *StateControllerBase) (Stat
 			screenBound_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		b := false
-		if err := c.stateParam(is, "value", false, func(data string) error {
-			b = true
-			return c.scAdd(sc, screenBound_value, data, VT_Bool, 1)
-		}); err != nil {
+		if err := c.paramValue(is, sc, "value",
+			screenBound_value, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if !b {
-			sc.add(screenBound_value, sc.iToExp(0)) // In Mugen everything defaults to 0/false if you don't specify any parameters
-		}
-		b = false
-		if err := c.stateParam(is, "movecamera", false, func(data string) error {
-			b = true
-			return c.scAdd(sc, screenBound_movecamera, data, VT_Bool, 2)
-		}); err != nil {
+		if err := c.paramValue(is, sc, "movecamera",
+			screenBound_movecamera, VT_Bool, 2, false); err != nil {
 			return err
 		}
-		if !b {
-			sc.add(screenBound_movecamera, append(sc.iToExp(0), sc.iToExp(0)...))
-		}
+		// Deprecated. This parameter is now attached to "value"
+		// No-op for now so that ZSS files won't crash from an unrecognized parameter
 		if err := c.stateParam(is, "stagebound", false, func(data string) error {
-			return c.scAdd(sc, screenBound_stagebound, data, VT_Bool, 1)
+			return nil
 		}); err != nil {
 			return err
 		}
@@ -6441,25 +6431,13 @@ func (c *CharCompiler) depthBound(is IniSection, sc *StateControllerBase) (State
 			depthBound_redirectid, VT_Int, 1, false); err != nil {
 			return err
 		}
-		b := false
-		if err := c.stateParam(is, "value", false, func(data string) error {
-			b = true
-			return c.scAdd(sc, depthBound_value, data, VT_Bool, 1)
-		}); err != nil {
+		if err := c.paramValue(is, sc, "value",
+			depthBound_value, VT_Bool, 1, false); err != nil {
 			return err
 		}
-		if !b {
-			sc.add(depthBound_value, sc.iToExp(0))
-		}
-		b = false
-		if err := c.stateParam(is, "movecamera", false, func(data string) error {
-			b = true
-			return c.scAdd(sc, depthBound_movecamera, data, VT_Bool, 1)
-		}); err != nil {
+		if err := c.paramValue(is, sc, "movecamera",
+			depthBound_movecamera, VT_Bool, 1, false); err != nil {
 			return err
-		}
-		if !b {
-			sc.add(depthBound_movecamera, sc.iToExp(0))
 		}
 		return nil
 	})
