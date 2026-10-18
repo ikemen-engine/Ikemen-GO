@@ -5138,7 +5138,7 @@ func (c *Char) setSCF(scf SystemCharFlag, on bool) {
 		c.systemFlag &^= scf
 	}
 	// Clear enemy lists if changing flags that affect them
-	if c.isPlayerType() && (scf == SCF_disabled || scf == SCF_over_ko || scf == SCF_standby) {
+	if c.isPlayerType() && scf&(SCF_disabled|SCF_over_ko|SCF_standby) != 0 {
 		sys.charList.enemyNearChanged = true
 	}
 }
