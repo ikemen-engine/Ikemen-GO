@@ -1861,11 +1861,15 @@ end
 --returns table storing menu window coordinates
 function main.f_menuWindow(t, offset)
 	local offset = offset or {0, 0}
+	local right = motif.info.localcoord[1]
+	if t.window.width ~= nil and t.window.width > 0 then
+		right = t.pos[1] + offset[1] + t.window.width
+	end
 	if t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0 then
 		return {
 			0,
 			math.max(0, t.pos[2] + offset[2] - t.window.margins.y[1]),
-			motif.info.localcoord[1],
+			right,
 			t.pos[2] + offset[2] + (t.window.visibleitems - 1) * t.item.spacing[2] + t.window.margins.y[2]
 		}
 	end
