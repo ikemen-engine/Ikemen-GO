@@ -17035,17 +17035,17 @@ func (sc mapReset) Run(c *Char, _ []int32) bool {
 
 // StateDef data struct
 type StateBytecode struct {
-	stateType StateType
+	stateType    StateType
 	stateTypeExp BytecodeExp // Dynamic string form of stateType. Nil when constant
-	moveType  MoveType
+	moveType     MoveType
 	moveTypeExp  BytecodeExp
-	physics   StateType
+	physics      StateType
 	physicsExp   BytecodeExp
-	playerNo  int
-	stateDef  stateDef
-	block     StateBlock
-	ctrlsps   []int32
-	numVars   int32
+	playerNo     int
+	stateDef     stateDef
+	block        StateBlock
+	ctrlsps      []int32
+	numVars      int32
 }
 
 // StateDef bytecode creation function
