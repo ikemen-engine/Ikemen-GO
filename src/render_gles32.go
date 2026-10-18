@@ -309,7 +309,7 @@ func (r *Renderer_GLES32) newTexture(width, height, depth int32, filter bool) (T
 
 func (r *Renderer_GLES32) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) Texture {
 	t := &Texture_GLES32{256, 1, 32, offset, uvst, false, 0}
-	t.handle = (*(sys.palTexture.textures[slot[0]])).(*Texture_GL33).handle
+	t.handle = (*(sys.palTexture.textures[slot[0]])).(*Texture_GLES32).handle
 	runtime.SetFinalizer(t, func(t *Texture_GLES32) {
 		sys.mainThreadTask <- func() {
 			sys.palTexture.emptySlot.PushFront(slot)
