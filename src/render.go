@@ -10,14 +10,22 @@ import (
 
 type Texture interface {
 	SetData(data []byte)
-	SetSubData(data []byte, x, y, width, height, stride int32)
+	SetSubData(data []byte)
+	SetSubData2(data []byte, x, y, width, height, stride int32)
 	SetDataG(data []byte, mag, min, ws, wt TextureSamplingParam)
 	SetPixelData(data []float32)
 	IsValid() bool
 	GetWidth() int32
 	GetHeight() int32
+	GetUV() [4]float32
 	CopyData(src *Texture)
 	MarkNonSwappable()
+}
+
+type PalTexture struct {
+	textures  []*Texture
+	size      uint32
+	emptySlot *list.List
 }
 
 type Renderer interface {
@@ -51,7 +59,8 @@ type Renderer interface {
 	SetMeshOutlinePipeline(invertFrontFace bool, meshOutline float32)
 	ReleaseModelPipeline()
 	newTexture(width, height, depth int32, filter bool) (t Texture, err error)
-	newPaletteTexture() (t Texture)
+	newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) (t Texture)
+	newSubTexture(tex Texture, width, height int32, uvst [4]float32) (t Texture)
 	newModelTexture(width, height, depth int32, filter bool) (t Texture, err error)
 	newDataTexture(width, height int32) (t Texture, err error)
 	newHDRTexture(width, height int32) (t Texture, err error)
@@ -348,9 +357,13 @@ func (rp *RenderParams) IsValid() bool {
 		IsFinite(rp.x+rp.y+rp.xts+rp.xbs+rp.ys+rp.vs+rp.rxadd+rp.rot.angle+rp.rcx+rp.rcy)
 }
 
-func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
+func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst [4]float32, isTrapez bool) {
 	gfx.SetUniformMatrix("modelview", modelview[:])
-	gfx.SetUniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
+	if isTrapez {
+		gfx.SetUniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
+	} else {
+		gfx.SetUniformF("x1x2x4x3", 0, 0, 0, 0)
+	}
 
 	// This effectively side-steps a low-level rectangle rasterization edge case,
 	// that caused visible and frequent artifacts on the diagonal.
@@ -358,10 +371,10 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) {
 	uvBias := float32(0.000002)
 
 	quadDrawScratch = [16]float32{
-		x2, y2, 1, 1 - uvBias,
-		x3, y3, 1, 0,
-		x1, y1, uvBias, 1 - uvBias,
-		x4, y4, uvBias, 0,
+		x2, y2, uvst[2], uvst[3] - uvBias,
+		x3, y3, uvst[2], uvst[1],
+		x1, y1, uvBias + uvst[0], uvst[3] - uvBias,
+		x4, y4, uvBias + uvst[0], uvst[1],
 	}
 
 	gfx.SetVertexData(quadDrawScratch[:]...)
@@ -545,7 +558,7 @@ func transformPoint(mat mgl.Mat4, x, y float32) (float32, float32) {
 }
 
 // Helper to append a quad as two triangles to the batch
-func appendTransformedQuadTriangles(batch []float32, mat mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32) []float32 {
+func appendTransformedQuadTriangles(batch []float32, mat mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst [4]float32) []float32 {
 	uvBias := float32(0.000002)
 	p2x, p2y := transformPoint(mat, x2, y2)
 	p3x, p3y := transformPoint(mat, x3, y3)
@@ -560,10 +573,10 @@ func appendTransformedQuadTriangles(batch []float32, mat mgl.Mat4, x1, y1, x2, y
 	}
 
 	batch = append(batch,
-		p2x, p2y, 1, 1-uvBias,
-		p3x, p3y, 1, 0,
-		p1x, p1y, uvBias, 1-uvBias,
-		p4x, p4y, uvBias, 0,
+		p2x, p2y, uvst[2], uvst[3]-uvBias,
+		p3x, p3y, uvst[2], uvst[1],
+		p1x, p1y, uvBias+uvst[0], uvst[3]-uvBias,
+		p4x, p4y, uvBias+uvst[0], uvst[1],
 	)
 
 	return batch
@@ -625,6 +638,7 @@ func emitHTiles(batch *[]float32, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4
 	if batch != nil {
 		b = *batch
 	}
+	trapez := Abs(Abs(rp.xts)-Abs(rp.xbs)) > 0.001
 
 	// Collect or draw all quads in one loop
 	for n := left; n < right; n++ {
@@ -646,10 +660,10 @@ func emitHTiles(batch *[]float32, modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4
 
 		if batch != nil {
 			// Append verts to batch draw later
-			b = appendTransformedQuadTriangles(b, mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+			b = appendTransformedQuadTriangles(b, mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4, rp.tex.GetUV())
 		} else {
 			// Draw each tile immediately
-			drawQuads(mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4)
+			drawQuads(mat, x1d, y1, x2d, y2, x3d, y3, x4d, y4, rp.tex.GetUV(), trapez)
 		}
 	}
 
@@ -793,7 +807,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
 		modelview = applyRotation(modelview, rp)
 		modelview = modelview.Mul4(mgl.Translate3D(-(rp.rcx + rp.rcOffset[0]), -(rp.rcy + rp.rcOffset[1]), 0))
-		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
+		drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4, rp.tex.GetUV(), trapez)
 
 	default:
 		// Non-tiled, not rotated: shear must be baked into coordinates directly since no
@@ -816,7 +830,7 @@ func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
 		// Skip the draw call entirely if this quad is fully above or fully below the visible
 		// screen range - matches the tiled path's vertical visibility culling
 		if (0 > y1 || 0 > y4) && (y1 > float32(-sys.scrrect[3]) || y4 > float32(-sys.scrrect[3])) {
-			drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4)
+			drawQuads(modelview, x1, y1, x2, y2, x3, y3, x4, y4, rp.tex.GetUV(), trapez)
 		}
 	}
 }
@@ -1188,7 +1202,7 @@ func (ta *TextureAtlas) bytesPerPixel() int32 {
 func (ta *TextureAtlas) clearTexture(tex Texture, width, height int32) {
 	bpp := ta.bytesPerPixel()
 	clearData := make([]byte, int(width*height*bpp))
-	tex.SetSubData(clearData, 0, 0, width, height, width*bpp)
+	tex.SetSubData2(clearData, 0, 0, width, height, width*bpp)
 }
 
 func extrudeAtlasImage(data []byte, width, height, stride, bpp int32) ([]byte, int32, bool) {
@@ -1296,7 +1310,7 @@ func (ta *TextureAtlas) AddImage(width, height, stride int32, data []byte) ([4]f
 	if !ok {
 		return [4]float32{}, false
 	}
-	ta.texture.SetSubData(paddedData, x-1, y-1, width+2, height+2, paddedStride)
+	ta.texture.SetSubData2(paddedData, x-1, y-1, width+2, height+2, paddedStride)
 
 	return [4]float32{
 		float32(x) / float32(ta.width),
@@ -1404,4 +1418,43 @@ func NewShaderPalFX() ShaderPalFX {
 		hue:      0,
 		invblend: 0,
 	}
+}
+
+func CreatePalTexture(size uint32) {
+	sys.palTexture.size = size
+	sys.palTexture.textures = make([]*Texture, 0, 1)
+	sys.palTexture.emptySlot = list.New()
+	AddPalTexture()
+}
+
+func AddPalTexture() {
+	index := uint32(len(sys.palTexture.textures))
+	for i := uint32(0); i < sys.palTexture.size; i++ {
+		sys.palTexture.emptySlot.PushBack([2]uint32{index, uint32(i)})
+	}
+	t, _ := gfx.newTexture(int32(sys.palTexture.size), int32(sys.palTexture.size), 32, false)
+	t.SetData(nil)
+	sys.palTexture.textures = append(sys.palTexture.textures, &t)
+}
+
+func NewPaletteTexture() Texture {
+	if sys.palTexture.emptySlot.Len() == 0 {
+		AddPalTexture()
+	}
+	slot := sys.palTexture.emptySlot.Remove(sys.palTexture.emptySlot.Front()).([2]uint32)
+	offset := [2]int32{int32((slot[1] / sys.palTexture.size) * 256), int32(slot[1] % sys.palTexture.size)}
+	uvst := [4]float32{
+		(float32(offset[0]) + 0.5) / float32(sys.palTexture.size),
+		(float32(offset[1]) + 0.5) / float32(sys.palTexture.size),
+		float32(256) / float32(sys.palTexture.size),
+		float32(1) / float32(sys.palTexture.size),
+	}
+	t := gfx.newPaletteTexture(slot, offset, uvst)
+	return t
+}
+
+type SpriteTextureAtlas struct {
+	textureSize int32
+	textures8   []*TextureAtlas
+	textures32  []*TextureAtlas
 }

@@ -239,7 +239,7 @@ func (r *FontRenderer_VK) Init(rendererVk interface{}) {
 		PColorBlendState:    &colorBlendStates[0],
 		PDynamicState:       &dynamicState,
 		Layout:              program.pipelineLayout,
-		RenderPass:          renderer.mainRenderPass.renderPass,
+		RenderPass:          renderer.mainRenderPass[0].renderPass,
 		PDepthStencilState:  &depthStencilState,
 	})
 	attachmentStates = append(attachmentStates, vk.PipelineColorBlendAttachmentState{
@@ -274,7 +274,7 @@ func (r *FontRenderer_VK) Init(rendererVk interface{}) {
 		PColorBlendState:    &colorBlendStates[1],
 		PDynamicState:       &dynamicState,
 		Layout:              program.pipelineLayout,
-		RenderPass:          renderer.mainRenderPass.renderPass,
+		RenderPass:          renderer.mainRenderPass[0].renderPass,
 		PDepthStencilState:  &depthStencilState,
 	})
 	pipelines := make([]vk.Pipeline, len(pipelineCreateInfos))
@@ -466,7 +466,7 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 		for uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix); !ok; uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix) {
 			textureIndex += 1
 			if textureIndex >= len(f.textures) {
-				newAtlas := CreateTextureAtlas(256, 256, 8, true)
+				newAtlas := CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 8, true)
 				newAtlas.texture.MarkNonSwappable()
 				f.textures = append(f.textures, newAtlas)
 				descriptorSet := gfxFont.(*FontRenderer_VK).freeDescriptors.Front()
@@ -539,7 +539,7 @@ func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, h
 	f.scale = scale
 	f.SetColor(1.0, 1.0, 1.0, 1.0) //set default white
 	f.SetPalFX(NewShaderPalFX())
-	f.textures = append(f.textures, CreateTextureAtlas(256, 256, 8, true))
+	f.textures = append(f.textures, CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 8, true))
 	f.textures[len(f.textures)-1].texture.MarkNonSwappable()
 	descriptorSet := r.freeDescriptors.Front()
 	r.freeDescriptors.Remove(descriptorSet)

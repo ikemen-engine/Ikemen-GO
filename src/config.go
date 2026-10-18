@@ -146,31 +146,36 @@ type Config struct {
 		SpeedTest           int     `ini:"SpeedTest"`
 	} `ini:"Debug"`
 	Video struct {
-		RenderMode               string   `ini:"RenderMode"`
-		GameWidth                int32    `ini:"GameWidth" sync:"strict"`
-		GameHeight               int32    `ini:"GameHeight" sync:"strict"`
-		WindowWidth              int      `ini:"WindowWidth"`
-		WindowHeight             int      `ini:"WindowHeight"`
-		Framerate                int      `ini:"Framerate"` // TODO: test if we need strict/host here
-		VSync                    int      `ini:"VSync"`
-		Fullscreen               bool     `ini:"Fullscreen"`
-		Borderless               bool     `ini:"Borderless"`
-		RGBSpriteBilinearFilter  bool     `ini:"RGBSpriteBilinearFilter"`
-		MSAA                     int32    `ini:"MSAA"`
-		WindowCentered           bool     `ini:"WindowCentered"`
-		ExternalShaders          []string `ini:"ExternalShaders"`
-		WindowScaleMode          bool     `ini:"WindowScaleMode"`
-		FightAspectWidth         int32    `ini:"FightAspectWidth" sync:"strict"`
-		FightAspectHeight        int32    `ini:"FightAspectHeight" sync:"strict"`
-		KeepAspect               bool     `ini:"KeepAspect"`
-		RendererDebugMode        bool     `ini:"RendererDebugMode"`
-		EnableModel              bool     `ini:"EnableModel"`
-		EnableModelShadow        bool     `ini:"EnableModelShadow"`
-		ImageSuballocThresholdKB int      `ini:"ImageSuballocThresholdKB"` // ≤ this (KB) suballocated; 0 to disable
-		ImageSuballocBlockSizeMB int      `ini:"ImageSuballocBlockSizeMB"` // block size (MB) for suballocation pool
-		VRAMFallbackEnabled      bool     `ini:"VRAMFallbackEnabled"`      // Vulkan only: master switch for VRAM→HOST_VISIBLE fallback
-		VRAMSwapThresholdPercent int      `ini:"VRAMSwapThresholdPercent"` // Vulkan only: heap % that triggers swappable texture eviction
-		VRAMSwapCooldownFrames   int      `ini:"VRAMSwapCooldownFrames"`   // Vulkan only: frames between swap attempts
+		RenderMode                string   `ini:"RenderMode"`
+		GameWidth                 int32    `ini:"GameWidth" sync:"strict"`
+		GameHeight                int32    `ini:"GameHeight" sync:"strict"`
+		WindowWidth               int      `ini:"WindowWidth"`
+		WindowHeight              int      `ini:"WindowHeight"`
+		Framerate                 int      `ini:"Framerate"` // TODO: test if we need strict/host here
+		VSync                     int      `ini:"VSync"`
+		Fullscreen                bool     `ini:"Fullscreen"`
+		Borderless                bool     `ini:"Borderless"`
+		RGBSpriteBilinearFilter   bool     `ini:"RGBSpriteBilinearFilter"`
+		MSAA                      int32    `ini:"MSAA"`
+		WindowCentered            bool     `ini:"WindowCentered"`
+		ExternalShaders           []string `ini:"ExternalShaders"`
+		WindowScaleMode           bool     `ini:"WindowScaleMode"`
+		FightAspectWidth          int32    `ini:"FightAspectWidth" sync:"strict"`
+		FightAspectHeight         int32    `ini:"FightAspectHeight" sync:"strict"`
+		KeepAspect                bool     `ini:"KeepAspect"`
+		RendererDebugMode         bool     `ini:"RendererDebugMode"`
+		EnableModel               bool     `ini:"EnableModel"`
+		EnableModelShadow         bool     `ini:"EnableModelShadow"`
+		LifeBarTextureAtlasSize   int32    `ini:"LifeBarTextureAtlasSize"`
+		StageTextureAtlasSize     int32    `ini:"StageTextureAtlasSize"`
+		CharacterTextureAtlasSize int32    `ini:"CharacterTextureAtlasSize"`
+		FontTextureAtlasSize      int32    `ini:"FontTextureAtlasSize"`
+		TextureAtlasSize          int32    `ini:"TextureAtlasSize"`
+		ImageSuballocThresholdKB  int      `ini:"ImageSuballocThresholdKB"` // ≤ this (KB) suballocated; 0 to disable
+		ImageSuballocBlockSizeMB  int      `ini:"ImageSuballocBlockSizeMB"` // block size (MB) for suballocation pool
+		VRAMFallbackEnabled       bool     `ini:"VRAMFallbackEnabled"`      // Vulkan only: master switch for VRAM→HOST_VISIBLE fallback
+		VRAMSwapThresholdPercent  int      `ini:"VRAMSwapThresholdPercent"` // Vulkan only: heap % that triggers swappable texture eviction
+		VRAMSwapCooldownFrames    int      `ini:"VRAMSwapCooldownFrames"`   // Vulkan only: frames between swap attempts
 	} `ini:"Video"`
 	Sound struct {
 		SampleRate           int32   `ini:"SampleRate"`

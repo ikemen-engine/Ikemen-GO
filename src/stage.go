@@ -1456,7 +1456,7 @@ func loadStage(def string, maindef bool) (*Stage, error) {
 	// BGDef group
 	if sec, _ := getSection("bgdef"); sec != nil {
 		if sec.LoadFile("spr", []string{def, "", "data/"}, "", func(filename string) error {
-			sff, err := loadSff(filename, false, false, false)
+			sff, err := loadSff(filename, SffTypeStage, false, false)
 			if err != nil {
 				return err
 			}
