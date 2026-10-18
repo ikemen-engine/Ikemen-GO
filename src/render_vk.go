@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"container/list"
 	"embed" // Support for go:embed resources
 	"fmt"
 	"io"
@@ -50,6 +49,7 @@ type Texture_VK struct {
 	imageView           vk.ImageView
 	sampler             vk.Sampler
 	allocation          *VulkanAllocation
+	parent              *Texture_VK
 	residency           TextureResidency // memory residency state for VRAM eviction
 	lastUsedFrame       uint64           // frame counter for LRU eviction decisions
 	hostBackingBuffer   []byte           // holds pixel data when texture is swapped out to host RAM
@@ -79,7 +79,7 @@ func (t *Texture_VK) SampledLayout() vk.ImageLayout {
 }
 
 func (r *Renderer_VK) newTexture(width, height, depth int32, filter bool) (Texture, error) {
-	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, false)
 
@@ -121,7 +121,7 @@ func (r *Renderer_VK) newTexture(width, height, depth int32, filter bool) (Textu
 }
 
 func (r *Renderer_VK) newModelTexture(width, height, depth int32, filter bool) (Texture, error) {
-	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.mipLevels = uint32(math.Floor(math.Log2(float64(Max(int(width), int(height))))) + 1)
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, false)
@@ -161,7 +161,7 @@ func (r *Renderer_VK) newModelTexture(width, height, depth int32, filter bool) (
 }
 
 func (r *Renderer_VK) newDataTexture(width, height int32) (Texture, error) {
-	t := &Texture_VK{width, height, 32 * 4, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{width, height, 32 * 4, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageColorAttachmentBit|vk.ImageUsageSampledBit|vk.ImageUsageTransferDstBit), 1, vk.ImageTilingOptimal, false)
 
@@ -210,7 +210,7 @@ func (r *Renderer_VK) newHDRTexture(width, height int32) (Texture, error) {
 	return t, nil
 }
 func (r *Renderer_VK) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMipLevel int32) (Texture, error) {
-	t := &Texture_VK{widthHeight, widthHeight, 128, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{widthHeight, widthHeight, 128, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	if mipmap {
 		t.mipLevels = uint32(math.Floor(math.Log2(float64(widthHeight)))+1) - uint32(lowestMipLevel)
 		t.sampler = r.GetSampler(VulkanSamplerInfo{TextureSamplingFilterLinear, TextureSamplingFilterLinearMipMapLinear, TextureSamplingWrapClampToEdge, TextureSamplingWrapClampToEdge})
@@ -254,21 +254,11 @@ func (r *Renderer_VK) newCubeMapTexture(widthHeight int32, mipmap bool, lowestMi
 	return t, nil
 }
 
-func (r *Renderer_VK) newPaletteTexture() Texture {
-	t := &Texture_VK{256, 1, 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
-	if r.palTexture.emptySlot.Len() == 0 {
-		r.addPalTexture()
-	}
-	slot := r.palTexture.emptySlot.Remove(r.palTexture.emptySlot.Front()).([2]uint32)
-	t.offset = [2]int32{int32((slot[1] / r.palTexture.size) * 256), int32(slot[1] % r.palTexture.size)}
-	t.img = r.palTexture.textures[slot[0]].img
-	t.imageView = r.palTexture.textures[slot[0]].imageView
-	t.uvst = [4]float32{
-		(float32(t.offset[0]) + 0.5) / float32(r.palTexture.size),
-		(float32(t.offset[1]) + 0.5) / float32(r.palTexture.size),
-		float32(256) / float32(r.palTexture.size),
-		float32(1) / float32(r.palTexture.size),
-	}
+func (r *Renderer_VK) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) Texture {
+	t := &Texture_VK{256, 1, 32, false, 1, offset, uvst, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+
+	t.img = (*(sys.palTexture.textures[slot[0]])).(*Texture_VK).img
+	t.imageView = (*(sys.palTexture.textures[slot[0]])).(*Texture_VK).imageView
 
 	runtime.SetFinalizer(t, func(t *Texture_VK) {
 		r.destroyResourceQueues[r.destroyResourceQueueIndex] <- VulkanResource{
@@ -281,8 +271,14 @@ func (r *Renderer_VK) newPaletteTexture() Texture {
 	return t
 }
 
+func (r *Renderer_VK) newSubTexture(tex Texture, width, height int32, uvst [4]float32) Texture {
+	mainTex := tex.(*Texture_VK)
+	t := &Texture_VK{width, height, mainTex.depth, mainTex.filter, 1, [2]int32{0, 0}, uvst, nil, nil, nil, nil, mainTex, mainTex.residency, 0, nil, false, false, false}
+	return t
+}
+
 func (r *Renderer_VK) newDummyCubeMapTexture() (*Texture_VK, error) {
-	t := &Texture_VK{1, 1, 8, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{1, 1, 8, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 6, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, true)
 
@@ -317,6 +313,48 @@ func (r *Renderer_VK) newDummyCubeMapTexture() (*Texture_VK, error) {
 		}
 	})
 	// Dummy cubemap textures are never swapped out of DEVICE_LOCAL — they must stay resident.
+	return t, nil
+}
+
+func (r *Renderer_VK) newGrabTexture(width, height, depth int32, filter bool) (Texture, error) {
+	t := &Texture_VK{width, height, depth, filter, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	format := r.swapchains[0].format
+	t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, false)
+
+	alloc, err := r.allocator.AllocateImageMemoryWithFallback(t.img, vk.MemoryPropertyDeviceLocalBit, vk.MemoryPropertyHostVisibleBit|vk.MemoryPropertyHostCoherentBit)
+	if err != nil {
+		vk.DestroyImage(r.device, t.img, nil)
+		return nil, fmt.Errorf("newTexture: %w", err)
+	}
+	t.allocation = alloc
+
+	if alloc.isHostVisible {
+		// Fallback: recreate image with LINEAR tiling for HOST_VISIBLE memory.
+		r.allocator.FreeImageAllocation(t.img, alloc)
+		vk.DestroyImage(r.device, t.img, nil)
+
+		t.img = r.CreateImage(uint32(t.width), uint32(t.height), format, t.mipLevels, 1, vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit|vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingLinear, false)
+
+		alloc2, err2 := r.allocator.AllocateImageMemory(t.img, vk.MemoryPropertyHostVisibleBit|vk.MemoryPropertyHostCoherentBit)
+		if err2 != nil {
+			vk.DestroyImage(r.device, t.img, nil)
+			return nil, fmt.Errorf("newTexture: HOST_VISIBLE fallback allocation failed: %w", err2)
+		}
+		t.allocation = alloc2
+		t.residency = ResidentHostVisible
+	}
+
+	t.imageView = r.CreateImageView(t.img, format, 0, 1, 1, false)
+
+	runtime.SetFinalizer(t, func(t *Texture_VK) {
+		r.destroyResourceQueues[r.destroyResourceQueueIndex] <- VulkanResource{
+			VulkanResourceTypeTexture,
+			[]interface{}{t.img, t.imageView, t.sampler, t.allocation},
+		}
+	})
+	if !t.nonSwappable {
+		r.swappableTextures[t] = true
+	}
 	return t, nil
 }
 
@@ -403,10 +441,14 @@ func (t *Texture_VK) SetData(textureData []byte) {
 	if textureData == nil {
 		return
 	}
-	t.SetSubData(textureData, t.offset[0], t.offset[1], t.width, t.height, 0)
+	t.SetSubData2(textureData, t.offset[0], t.offset[1], t.width, t.height, 0)
 }
 
-func (t *Texture_VK) SetSubData(textureData []byte, x, y, width, height, stride int32) {
+func (t *Texture_VK) SetSubData(data []byte) {
+	t.SetSubData2(data, t.offset[0], t.offset[1], t.width, t.height, 0)
+}
+
+func (t *Texture_VK) SetSubData2(textureData []byte, x, y, width, height, stride int32) {
 	format := t.MapInternalFormat(Max(t.depth, 8))
 	bytesPerPixel := vkFormatBytesPerPixel(format)
 
@@ -1171,6 +1213,46 @@ func (t *Texture_VK) GetHeight() int32 {
 	return t.height
 }
 
+func (t *Texture_VK) GetUV() [4]float32 {
+	return t.uvst
+}
+
+func (t *Texture_VK) ShouldPushUV(current *Texture_VK, switchedProgram, shouldDoPerDrawPushDrawConstants bool) bool {
+	if current == nil && t == nil {
+		return false
+	}
+	if (current == nil || t == nil) && (current != t) {
+		return true
+	}
+	currentImg := current.img
+	if current.parent != nil {
+		currentImg = current.parent.img
+	}
+	img := t.img
+	if t.parent != nil {
+		img = t.parent.img
+	}
+	return switchedProgram || shouldDoPerDrawPushDrawConstants || currentImg != img || current.uvst[0] != t.uvst[0] || current.uvst[1] != t.uvst[1]
+}
+
+func (t *Texture_VK) ShouldPushDescriptor(current *Texture_VK, switchedProgram bool) bool {
+	if current == nil && t == nil {
+		return false
+	}
+	if (current == nil || t == nil) && (current != t) {
+		return true
+	}
+	currentImg := current.img
+	if current.parent != nil {
+		currentImg = current.parent.img
+	}
+	img := t.img
+	if t.parent != nil {
+		img = t.parent.img
+	}
+	return switchedProgram || currentImg != img
+}
+
 func (t *Texture_VK) MapInternalFormat(i int32) vk.Format {
 	var InternalFormatLUT = map[int32]vk.Format{
 		8:  vk.FormatR8Unorm,
@@ -1501,7 +1583,7 @@ type Renderer_VK struct {
 	fences                   []vk.Fence
 	semaphores               []vk.Semaphore
 	swapchains               []*VulkanSwapchainInfo
-	mainRenderPass           *VulkanRenderInfo
+	mainRenderPass           [2]*VulkanRenderInfo
 	swapchainRenderPass      *VulkanRenderInfo
 	postProcessingRenderPass *VulkanRenderInfo
 	spriteSamplers           []vk.Sampler
@@ -1529,7 +1611,6 @@ type Renderer_VK struct {
 	lutProgram               *VulkanProgramInfo
 	mainRenderTarget         *VulkanRenderTargetInfo
 	renderTargets            [2]*VulkanRenderTargetInfo
-	palTexture               VulkanPalTexture
 	shadowMapTextures        *Texture_VK
 	dummyTexture             *Texture_VK
 	dummyNormalTexture       *Texture_VK
@@ -1641,12 +1722,6 @@ const (
 type VulkanResource struct {
 	resourceType VulkanResourceType
 	resources    []interface{}
-}
-
-type VulkanPalTexture struct {
-	textures  []*Texture_VK
-	size      uint32
-	emptySlot *list.List
 }
 
 type VulkanSpriteTexture struct {
@@ -2418,7 +2493,7 @@ func (r *Renderer_VK) CreateRenderTarget(renderpass vk.RenderPass, width, height
 }
 
 func (r *Renderer_VK) CreateRenderTargetTexture(width, height uint32, numSamples int32, main bool) *Texture_VK {
-	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	usage := vk.ImageUsageFlags(vk.ImageUsageColorAttachmentBit | vk.ImageUsageTransferSrcBit)
 	if !main {
 		usage = usage | vk.ImageUsageFlags(vk.ImageUsageSampledBit) | vk.ImageUsageFlags(vk.ImageUsageTransferDstBit)
@@ -2468,7 +2543,7 @@ func (r *Renderer_VK) FindSupportedDepthFormat() vk.Format {
 }
 
 func (r *Renderer_VK) CreateRenderTargetDepthTexture(width, height uint32, numSamples int32) *Texture_VK {
-	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{int32(width), int32(height), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	usage := vk.ImageUsageFlags(vk.ImageUsageDepthStencilAttachmentBit)
 	if numSamples > 1 {
 		usage = usage | vk.ImageUsageFlags(vk.ImageUsageTransferSrcBit)
@@ -2534,63 +2609,8 @@ func (r *Renderer_VK) CreateRenderTargetFramebuffer(width, height uint32, attach
 	return framebuffer
 }
 
-func (r *Renderer_VK) createPalTexture(size uint32) {
-	r.palTexture.size = size
-	r.palTexture.textures = make([]*Texture_VK, 0, 1)
-	r.palTexture.emptySlot = list.New()
-	r.addPalTexture()
-}
-
-func (r *Renderer_VK) addPalTexture() {
-	index := uint32(len(r.palTexture.textures))
-	for i := uint32(0); i < r.palTexture.size; i++ {
-		r.palTexture.emptySlot.PushBack([2]uint32{index, uint32(i)})
-	}
-	t := &Texture_VK{int32(r.palTexture.size), int32(r.palTexture.size), 32, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
-	t.img = r.CreateImage(uint32(t.width), uint32(t.height), vk.FormatR8g8b8a8Unorm, 1, 1, vk.ImageUsageFlags(vk.ImageUsageTransferDstBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingLinear, false)
-
-	alloc, err := r.allocator.AllocateImageMemory(t.img, vk.MemoryPropertyDeviceLocalBit)
-	if err != nil {
-		panic(fmt.Errorf("addPalTexture: AllocateImageMemory failed: %w", err))
-	}
-	t.allocation = alloc
-	t.imageView = r.CreateImageView(t.img, vk.FormatR8g8b8a8Unorm, 0, 1, 1, false)
-	r.palTexture.textures = append(r.palTexture.textures, t)
-
-	runtime.SetFinalizer(t, func(t *Texture_VK) {
-		r.destroyResourceQueues[r.destroyResourceQueueIndex] <- VulkanResource{
-			VulkanResourceTypeTexture,
-			[]interface{}{t.img, t.imageView, t.sampler, t.allocation},
-		}
-	})
-
-	r.poolMutex.Lock()
-	commandBuffer := r.BeginSingleTimeCommands()
-	r.poolMutex.Unlock()
-	barrier := vk.ImageMemoryBarrier{
-		SType:               vk.StructureTypeImageMemoryBarrier,
-		OldLayout:           vk.ImageLayoutUndefined,
-		NewLayout:           vk.ImageLayoutShaderReadOnlyOptimal,
-		SrcAccessMask:       vk.AccessFlags(vk.AccessNone),
-		DstAccessMask:       vk.AccessFlags(vk.AccessShaderReadBit),
-		SrcQueueFamilyIndex: vk.QueueFamilyIgnored,
-		DstQueueFamilyIndex: vk.QueueFamilyIgnored,
-		Image:               t.img,
-		SubresourceRange: vk.ImageSubresourceRange{
-			AspectMask:     vk.ImageAspectFlags(vk.ImageAspectColorBit),
-			BaseMipLevel:   0,
-			LevelCount:     1,
-			BaseArrayLayer: 0,
-			LayerCount:     1,
-		},
-	}
-	vk.CmdPipelineBarrier(commandBuffer, vk.PipelineStageFlags(vk.PipelineStageTopOfPipeBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), 0, 0, nil, 0, nil, 1, []vk.ImageMemoryBarrier{barrier})
-	r.poolMutex.Lock()
-	r.EndSingleTimeCommands(commandBuffer)
-	r.poolMutex.Unlock()
-}
 func (r *Renderer_VK) createShadowMapTexture(widthHeight int32) *Texture_VK {
-	t := &Texture_VK{widthHeight, widthHeight, 96, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
+	t := &Texture_VK{widthHeight, widthHeight, 96, false, 1, [2]int32{0, 0}, [4]float32{0, 0, 1, 1}, nil, nil, nil, nil, nil, ResidentDeviceLocal, 0, nil, false, false, false}
 	t.sampler = r.GetSampler(VulkanSamplerInfo{TextureSamplingFilterNearest, TextureSamplingFilterNearest, TextureSamplingWrapClampToEdge, TextureSamplingWrapClampToEdge})
 	format := r.FindSupportedDepthFormat()
 	t.img = r.CreateImage(uint32(widthHeight), uint32(widthHeight), format, 1, 6*4, vk.ImageUsageFlags(vk.ImageUsageDepthStencilAttachmentBit|vk.ImageUsageSampledBit), 1, vk.ImageTilingOptimal, true)
@@ -2837,7 +2857,7 @@ func (r *Renderer_VK) RecreateSurfaceAndSwapchain() {
 	// Recreate the targets
 	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
 	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
+	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
 
 	// Reassign persistent sets & update their texture bindings
 	for i := 0; i < 2; i++ {
@@ -2898,7 +2918,7 @@ func (r *Renderer_VK) RecreateSwapchain() {
 	// Recreate the targets
 	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
 	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
+	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
 
 	// Reassign persistent sets & update their texture bindings
 	for i := 0; i < 2; i++ {
@@ -2929,7 +2949,7 @@ func (r *Renderer_VK) RecreateSwapchain() {
 		vk.DestroySwapchain(r.device, oldChain, nil)
 	}
 }
-func (r *Renderer_VK) CreateMainRenderPass(sweapchain *VulkanSwapchainInfo, numSamples int32, containsDepthTexture bool) (*VulkanRenderInfo, error) {
+func (r *Renderer_VK) CreateMainRenderPass(sweapchain *VulkanSwapchainInfo, numSamples int32, containsDepthTexture bool) ([2]*VulkanRenderInfo, error) {
 	attachmentDescriptions := []vk.AttachmentDescription{
 		{
 			Format:         sweapchain.format,
@@ -2984,9 +3004,18 @@ func (r *Renderer_VK) CreateMainRenderPass(sweapchain *VulkanSwapchainInfo, numS
 	err := vk.Error(vk.CreateRenderPass(r.device, &renderPassCreateInfo, nil, &renderInfo.renderPass))
 	if err != nil {
 		err = fmt.Errorf("vk.CreateRenderPass failed with %s", err)
-		return nil, err
+		return [2]*VulkanRenderInfo{nil, nil}, err
 	}
-	return renderInfo, nil
+	renderInfo2 := &VulkanRenderInfo{}
+	renderPassCreateInfo.Free()
+	attachmentDescriptions[0].LoadOp = vk.AttachmentLoadOpLoad
+	attachmentDescriptions[0].InitialLayout = vk.ImageLayoutColorAttachmentOptimal
+	err = vk.Error(vk.CreateRenderPass(r.device, &renderPassCreateInfo, nil, &renderInfo2.renderPass))
+	if err != nil {
+		err = fmt.Errorf("vk.CreateRenderPass failed with %s", err)
+		return [2]*VulkanRenderInfo{nil, nil}, err
+	}
+	return [2]*VulkanRenderInfo{renderInfo, renderInfo2}, nil
 }
 func (r *Renderer_VK) CreatePostProcessingRenderPass(sweapchain *VulkanSwapchainInfo) (*VulkanRenderInfo, error) {
 	attachmentDescriptions := []vk.AttachmentDescription{{
@@ -3196,11 +3225,11 @@ func (r *Renderer_VK) CreateSpriteProgram() (*VulkanProgramInfo, error) {
 		return nil, err
 	}
 	pushConstantRanges := []vk.PushConstantRange{
-		// palUV
+		// spriteUV, palUV
 		{
 			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
 			Offset:     0,
-			Size:       16,
+			Size:       32,
 		},
 	}
 	pipelineLayoutCreateInfo := vk.PipelineLayoutCreateInfo{
@@ -3444,7 +3473,7 @@ func (r *Renderer_VK) CreateSpriteProgram() (*VulkanProgramInfo, error) {
 			PColorBlendState:    &colorBlendStates[i],
 			PDynamicState:       &dynamicState,
 			Layout:              program.pipelineLayout,
-			RenderPass:          r.mainRenderPass.renderPass,
+			RenderPass:          r.mainRenderPass[0].renderPass,
 			PDepthStencilState:  &depthStencilState,
 		})
 		pipelineIndexMap[VulkanBlendState{
@@ -4424,7 +4453,7 @@ func (r *Renderer_VK) GetModelPipeline(state *VulkanPipelineState) vk.Pipeline {
 			PColorBlendState:    &colorBlendStates[i],
 			PDynamicState:       &dynamicState,
 			Layout:              r.modelProgram.pipelineLayout,
-			RenderPass:          r.mainRenderPass.renderPass,
+			RenderPass:          r.mainRenderPass[0].renderPass,
 			PDepthStencilState:  &depthStencilState,
 		})
 	}
@@ -5781,8 +5810,8 @@ func (r *Renderer_VK) Destroy() {
 	r.shadowMapTextures = nil
 	r.dummyTexture = nil
 	r.dummyCubeTexture = nil
-	for i := range r.palTexture.textures {
-		r.palTexture.textures[i] = nil
+	for i := range sys.palTexture.textures {
+		sys.palTexture.textures[i] = nil
 	}
 
 	//Save Vulkan pipeline cache to disk
@@ -5852,7 +5881,8 @@ func (r *Renderer_VK) Destroy() {
 	r.DestroyPipelines(r.cubemapFilteringProgram)
 	r.DestroyPipelines(r.panoramaToCubeMapProgram)
 	vk.DestroyRenderPass(r.device, r.swapchainRenderPass.renderPass, nil)
-	vk.DestroyRenderPass(r.device, r.mainRenderPass.renderPass, nil)
+	vk.DestroyRenderPass(r.device, r.mainRenderPass[0].renderPass, nil)
+	vk.DestroyRenderPass(r.device, r.mainRenderPass[1].renderPass, nil)
 	r.DestroyRenderTarget(r.mainRenderTarget)
 	r.DestroyRenderTarget(r.renderTargets[0])
 	r.DestroyRenderTarget(r.renderTargets[1])
@@ -6106,7 +6136,7 @@ func (r *Renderer_VK) Init() {
 	r.customShaderMap = make(map[string]uint32)
 	r.nextShaderID = 1
 
-	tex, err := r.newTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
+	tex, err := r.newGrabTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
 	if err != nil {
 		panic(fmt.Errorf("grabTexture: %w", err))
 	}
@@ -6146,7 +6176,7 @@ func (r *Renderer_VK) Init() {
 	}
 	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
 	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
+	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
 
 	err = r.CreateSyncObjects()
 	if err != nil {
@@ -6199,7 +6229,6 @@ func (r *Renderer_VK) Init() {
 	r.dummyCubeTexture.sampler = r.spriteSamplers[0]
 
 	r.spriteProgram.uniformOffsetMap = map[interface{}]uint32{}
-	r.createPalTexture(2048)
 	r.shadowMapTextures = r.createShadowMapTexture(1024)
 	if r.enableModel {
 		r.modelProgram, err = r.CreateModelProgram()
@@ -6254,7 +6283,7 @@ func (r *Renderer_VK) DestroyResources(queueLength int) {
 				}
 				break
 			case VulkanResourceTypePaletteTexture:
-				r.palTexture.emptySlot.PushFront(res.resources[0])
+				sys.palTexture.emptySlot.PushFront(res.resources[0])
 				break
 			case VulkanResourceTypeBuffer:
 				vk.DestroyBuffer(r.device, res.resources[0].(vk.Buffer), nil)
@@ -6305,26 +6334,30 @@ func (r *Renderer_VK) destroyOrDeferImageResources(lastUsedFrame uint64, img vk.
 // For evicted textures (needsReload=true), it recreates the texture from
 // hostBackingBuffer data, restoring GPU resources in-place.
 func (r *Renderer_VK) TouchTexture(t *Texture_VK) {
-	t.lastUsedFrame = r.currentFrameNumber
+	mainTex := t
+	if t.parent != nil {
+		mainTex = t.parent
+	}
+	mainTex.lastUsedFrame = r.currentFrameNumber
 
 	// Hard-evicted texture: recreate from hostBackingBuffer.
-	if t.needsReload && t.residency == ResidentEvicted && len(t.hostBackingBuffer) > 0 {
-		newTex, err := r.newTexture(t.width, t.height, t.depth, t.filter)
+	if mainTex.needsReload && mainTex.residency == ResidentEvicted && len(mainTex.hostBackingBuffer) > 0 {
+		newTex, err := r.newTexture(mainTex.width, mainTex.height, mainTex.depth, mainTex.filter)
 		if err != nil {
 			LogMessage("[VRAM] TouchTexture reload failed for %dx%d texture: %v", t.width, t.height, err)
 			return
 		}
 		vkTex := newTex.(*Texture_VK)
-		vkTex.SetData(t.hostBackingBuffer)
+		vkTex.SetData(mainTex.hostBackingBuffer)
 		// Transfer identity fields from the evicted texture.
-		vkTex.sampler = t.sampler
-		vkTex.offset = t.offset
-		vkTex.uvst = t.uvst
+		vkTex.sampler = mainTex.sampler
+		vkTex.offset = mainTex.offset
+		vkTex.uvst = mainTex.uvst
 		// Remove the new (temporary) texture from swappableTextures —
 		// it will be replaced by the evicted pointer after struct copy.
 		delete(r.swappableTextures, vkTex)
 		// Remove the evicted texture from swappableTextures (if still present).
-		delete(r.swappableTextures, t)
+		delete(r.swappableTextures, mainTex)
 		// Copy all fields of the new texture into the evicted struct.
 		// This preserves the pointer identity — all external references
 		// (e.g. Sprite.Tex holding *Texture_VK) see the updated state.
@@ -6336,15 +6369,15 @@ func (r *Renderer_VK) TouchTexture(t *Texture_VK) {
 		vkTex.sampler = vk.NullSampler
 		vkTex.allocation = nil
 		runtime.SetFinalizer(vkTex, nil)
-		*t = *vkTex
+		*mainTex = *vkTex
 		// Register the (now-restored) texture in swappableTextures.
-		if !t.nonSwappable {
-			r.swappableTextures[t] = true
+		if !mainTex.nonSwappable {
+			r.swappableTextures[mainTex] = true
 		}
 		return
 	}
 
-	if t.residency != ResidentDeviceLocal {
+	if mainTex.residency != ResidentDeviceLocal {
 		_ = r.SwapInTexture(t)
 	}
 }
@@ -6758,7 +6791,7 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 	}
 	renderPassBeginInfo := vk.RenderPassBeginInfo{
 		SType:       vk.StructureTypeRenderPassBeginInfo,
-		RenderPass:  r.mainRenderPass.renderPass,
+		RenderPass:  r.mainRenderPass[0].renderPass,
 		Framebuffer: r.mainRenderTarget.framebuffer,
 		RenderArea: vk.Rect2D{
 			Offset: vk.Offset2D{
@@ -8279,44 +8312,59 @@ func (r *Renderer_VK) RenderQuadSetup() uint32 {
 		})
 	}
 
-	if switchedProgram || r.VKState.spriteTexture != r.currentSpriteTexture.spriteTexture {
+	if switchedProgram || r.VKState.spriteTexture != r.currentSpriteTexture.spriteTexture || r.shouldDoPerDrawPushDrawConstants {
+		if r.VKState.spriteTexture.ShouldPushUV(r.currentSpriteTexture.spriteTexture, switchedProgram, r.shouldDoPerDrawPushDrawConstants) {
+			uvst := r.VKState.spriteTexture.uvst
+			vk.CmdPushConstants(r.commandBuffers[0], r.spriteProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 16, unsafe.Pointer(&uvst))
+		}
+		if r.VKState.spriteTexture.ShouldPushDescriptor(r.currentSpriteTexture.spriteTexture, switchedProgram) {
+
+			imageInfo := []vk.DescriptorImageInfo{
+				{
+					ImageLayout: r.VKState.spriteTexture.SampledLayout(),
+					ImageView:   r.VKState.spriteTexture.imageView,
+					Sampler:     r.spriteSamplers[0],
+				},
+			}
+			if r.VKState.spriteTexture.parent != nil {
+				imageInfo[0].ImageView = r.VKState.spriteTexture.parent.imageView
+				imageInfo[0].ImageLayout = r.VKState.spriteTexture.parent.SampledLayout()
+			}
+			if r.spriteTexture.filter {
+				imageInfo[0].Sampler = r.spriteSamplers[1]
+			}
+			if imageInfo[0].ImageView == nil {
+				LogMessage("[WARN] imageView is nil!")
+			}
+			descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
+				SType:           vk.StructureTypeWriteDescriptorSet,
+				DstBinding:      2,
+				DstArrayElement: 0,
+				DescriptorCount: 1,
+				DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+				PImageInfo:      imageInfo,
+			})
+		}
 		r.currentSpriteTexture.spriteTexture = r.VKState.spriteTexture
-		if r.VKState.spriteTexture.imageView == nil {
-			LogMessage("[WARN] imageView is nil!")
-		}
-		imageInfo := []vk.DescriptorImageInfo{
-			{
-				ImageLayout: r.VKState.spriteTexture.SampledLayout(),
-				ImageView:   r.VKState.spriteTexture.imageView,
-				Sampler:     r.spriteSamplers[0],
-			},
-		}
-		if r.spriteTexture.filter {
-			imageInfo[0].Sampler = r.spriteSamplers[1]
-		}
-		descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
-			SType:           vk.StructureTypeWriteDescriptorSet,
-			DstBinding:      2,
-			DstArrayElement: 0,
-			DescriptorCount: 1,
-			DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
-			PImageInfo:      imageInfo,
-		})
 	}
 
 	// MacOS and iOS MoltenVK workaround: push constants need to be set every draw call
 	if switchedProgram || r.VKState.palTexture != r.currentSpriteTexture.palTexture || r.shouldDoPerDrawPushDrawConstants {
-		if switchedProgram || r.VKState.palTexture.img != r.currentSpriteTexture.palTexture.img || r.VKState.palTexture.offset[0] != r.currentSpriteTexture.palTexture.offset[0] || r.VKState.palTexture.offset[1] != r.currentSpriteTexture.palTexture.offset[1] || r.shouldDoPerDrawPushDrawConstants {
+		if r.VKState.palTexture.ShouldPushUV(r.currentSpriteTexture.palTexture, switchedProgram, r.shouldDoPerDrawPushDrawConstants) {
 			uvst := r.VKState.palTexture.uvst
-			vk.CmdPushConstants(r.commandBuffers[0], targetProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 16, unsafe.Pointer(&uvst))
+			vk.CmdPushConstants(r.commandBuffers[0], targetProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 16, 16, unsafe.Pointer(&uvst))
 		}
-		if switchedProgram || r.VKState.palTexture.img != r.currentSpriteTexture.palTexture.img {
+		if r.VKState.palTexture.ShouldPushDescriptor(r.currentSpriteTexture.palTexture, switchedProgram) {
 			palImageInfo := []vk.DescriptorImageInfo{
 				{
 					ImageLayout: r.VKState.palTexture.SampledLayout(),
 					ImageView:   r.VKState.palTexture.imageView,
 					Sampler:     r.spriteSamplers[0],
 				},
+			}
+			if r.VKState.palTexture.parent != nil {
+				palImageInfo[0].ImageView = r.VKState.palTexture.parent.imageView
+				palImageInfo[0].ImageLayout = r.VKState.palTexture.parent.SampledLayout()
 			}
 			descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
 				SType:           vk.StructureTypeWriteDescriptorSet,
@@ -8354,59 +8402,79 @@ func (r *Renderer_VK) RenderQuadSetup() uint32 {
 		})
 
 		// --- Binding 5: tex1 ---
-		if switchedProgram || r.VKState.customTex1 != r.currentSpriteTexture.customTex1 {
-			r.currentSpriteTexture.customTex1 = r.VKState.customTex1
-
+		if switchedProgram || r.VKState.customTex1 != r.currentSpriteTexture.customTex1 || r.shouldDoPerDrawPushDrawConstants {
 			tex1 := r.VKState.customTex1
 			if tex1 == nil {
 				tex1 = r.dummyTexture // 未指定時はクラッシュ防止のためダミーを送る
+			} else {
+				if r.VKState.customTex1.ShouldPushUV(r.currentSpriteTexture.customTex1, switchedProgram, r.shouldDoPerDrawPushDrawConstants) {
+					uvst := r.VKState.customTex1.uvst
+					vk.CmdPushConstants(r.commandBuffers[0], targetProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 32, 16, unsafe.Pointer(&uvst))
+				}
 			}
-			imageInfo1 := []vk.DescriptorImageInfo{
-				{
-					ImageLayout: tex1.SampledLayout(),
-					ImageView:   tex1.imageView,
-					Sampler:     r.spriteSamplers[0],
-				},
+			if r.VKState.customTex1.ShouldPushDescriptor(r.currentSpriteTexture.customTex1, switchedProgram) {
+				imageInfo1 := []vk.DescriptorImageInfo{
+					{
+						ImageLayout: tex1.SampledLayout(),
+						ImageView:   tex1.imageView,
+						Sampler:     r.spriteSamplers[0],
+					},
+				}
+				if tex1.parent != nil {
+					imageInfo1[0].ImageView = tex1.parent.imageView
+					imageInfo1[0].ImageLayout = tex1.parent.SampledLayout()
+				}
+				if tex1.filter {
+					imageInfo1[0].Sampler = r.spriteSamplers[1]
+				}
+				descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
+					SType:           vk.StructureTypeWriteDescriptorSet,
+					DstBinding:      5,
+					DstArrayElement: 0,
+					DescriptorCount: 1,
+					DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+					PImageInfo:      imageInfo1,
+				})
 			}
-			if tex1.filter {
-				imageInfo1[0].Sampler = r.spriteSamplers[1]
-			}
-			descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
-				SType:           vk.StructureTypeWriteDescriptorSet,
-				DstBinding:      5,
-				DstArrayElement: 0,
-				DescriptorCount: 1,
-				DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
-				PImageInfo:      imageInfo1,
-			})
+			r.currentSpriteTexture.customTex1 = r.VKState.customTex1
 		}
 
 		// --- Binding 6: tex2 ---
 		if switchedProgram || r.VKState.customTex2 != r.currentSpriteTexture.customTex2 {
-			r.currentSpriteTexture.customTex2 = r.VKState.customTex2
-
 			tex2 := r.VKState.customTex2
 			if tex2 == nil {
 				tex2 = r.dummyTexture
+			} else {
+				if r.VKState.customTex2.ShouldPushUV(r.currentSpriteTexture.customTex2, switchedProgram, r.shouldDoPerDrawPushDrawConstants) {
+					uvst := r.VKState.customTex2.uvst
+					vk.CmdPushConstants(r.commandBuffers[0], targetProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 48, 16, unsafe.Pointer(&uvst))
+				}
 			}
-			imageInfo2 := []vk.DescriptorImageInfo{
-				{
-					ImageLayout: tex2.SampledLayout(),
-					ImageView:   tex2.imageView,
-					Sampler:     r.spriteSamplers[0],
-				},
+			if r.VKState.customTex2.ShouldPushDescriptor(r.currentSpriteTexture.customTex2, switchedProgram) {
+				imageInfo2 := []vk.DescriptorImageInfo{
+					{
+						ImageLayout: tex2.SampledLayout(),
+						ImageView:   tex2.imageView,
+						Sampler:     r.spriteSamplers[0],
+					},
+				}
+				if tex2.parent != nil {
+					imageInfo2[0].ImageView = tex2.parent.imageView
+					imageInfo2[0].ImageLayout = tex2.parent.SampledLayout()
+				}
+				if tex2.filter {
+					imageInfo2[0].Sampler = r.spriteSamplers[1]
+				}
+				descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
+					SType:           vk.StructureTypeWriteDescriptorSet,
+					DstBinding:      6,
+					DstArrayElement: 0,
+					DescriptorCount: 1,
+					DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+					PImageInfo:      imageInfo2,
+				})
 			}
-			if tex2.filter {
-				imageInfo2[0].Sampler = r.spriteSamplers[1]
-			}
-			descriptorWrites = append(descriptorWrites, vk.WriteDescriptorSet{
-				SType:           vk.StructureTypeWriteDescriptorSet,
-				DstBinding:      6,
-				DstArrayElement: 0,
-				DescriptorCount: 1,
-				DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
-				PImageInfo:      imageInfo2,
-			})
+			r.currentSpriteTexture.customTex2 = r.VKState.customTex2
 		}
 	}
 
@@ -9879,9 +9947,11 @@ func (r *Renderer_VK) createCustomSpriteProgram(fragSpv []byte) (*VulkanProgramI
 	}
 	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
 		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		Flags:        vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit),
 		BindingCount: uint32(len(samplerLayoutBinding)),
 		PBindings:    samplerLayoutBinding,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
 	}
 	var descriptorSetLayout vk.DescriptorSetLayout
 	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
@@ -9891,7 +9961,7 @@ func (r *Renderer_VK) createCustomSpriteProgram(fragSpv []byte) (*VulkanProgramI
 		{
 			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
 			Offset:     0,
-			Size:       16 + 64, // 80 bytes
+			Size:       128, // Vulkan spec guarentees hardware support at least 128 bytes push constant size
 		},
 	}
 	pipelineLayoutCreateInfo := vk.PipelineLayoutCreateInfo{
@@ -10136,7 +10206,7 @@ func (r *Renderer_VK) createCustomSpriteProgram(fragSpv []byte) (*VulkanProgramI
 			PColorBlendState:    &colorBlendStates[i],
 			PDynamicState:       &dynamicState,
 			Layout:              program.pipelineLayout,
-			RenderPass:          r.mainRenderPass.renderPass,
+			RenderPass:          r.mainRenderPass[0].renderPass,
 			PDepthStencilState:  &depthStencilState,
 		})
 		pipelineIndexMap[VulkanBlendState{
@@ -10179,7 +10249,7 @@ func (r *Renderer_VK) SetCustomUniforms(params [16]float32) {
 	if r.VKState.currentProgram == nil {
 		return
 	}
-	vk.CmdPushConstants(r.commandBuffers[0], r.VKState.currentProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 16, 64, unsafe.Pointer(&params[0]))
+	vk.CmdPushConstants(r.commandBuffers[0], r.VKState.currentProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 64, 64, unsafe.Pointer(&params[0]))
 }
 
 func (r *Renderer_VK) NeedsGrabPass() bool {
@@ -10219,14 +10289,47 @@ func (r *Renderer_VK) ResolveBackBuffer() Texture {
 		},
 	}
 	vk.CmdPipelineBarrier(cmd, vk.PipelineStageFlags(vk.PipelineStageColorAttachmentOutputBit), vk.PipelineStageFlags(vk.PipelineStageTransferBit), 0, 0, nil, 0, nil, 2, barriers)
+	if sys.msaa > 1 {
+		regions := []vk.ImageResolve{{
+			SrcSubresource: vk.ImageSubresourceLayers{
+				AspectMask:     vk.ImageAspectFlags(vk.ImageAspectColorBit),
+				MipLevel:       0,
+				BaseArrayLayer: 0,
+				LayerCount:     1,
+			},
+			Extent: vk.Extent3D{
+				Width:  uint32(r.mainRenderTarget.texture.width),
+				Height: uint32(r.mainRenderTarget.texture.height),
+				Depth:  1,
+			},
+			SrcOffset: vk.Offset3D{
+				X: 0,
+				Y: 0,
+				Z: 0,
+			},
+			DstSubresource: vk.ImageSubresourceLayers{
+				AspectMask:     vk.ImageAspectFlags(vk.ImageAspectColorBit),
+				MipLevel:       0,
+				BaseArrayLayer: 0,
+				LayerCount:     1,
+			},
+			DstOffset: vk.Offset3D{
+				X: 0,
+				Y: 0,
+				Z: 0,
+			},
+		}}
+		vk.CmdResolveImage(cmd, r.mainRenderTarget.texture.img, vk.ImageLayoutTransferSrcOptimal, r.grabTexture.img, vk.ImageLayoutTransferDstOptimal, 1, regions)
+	} else {
+		blit := []vk.ImageBlit{{
+			SrcSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
+			SrcOffsets:     [2]vk.Offset3D{{X: 0, Y: 0, Z: 0}, {X: int32(sys.scrrect[2]), Y: int32(sys.scrrect[3]), Z: 1}},
+			DstSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
+			DstOffsets:     [2]vk.Offset3D{{X: 0, Y: 0, Z: 0}, {X: int32(sys.scrrect[2]), Y: int32(sys.scrrect[3]), Z: 1}},
+		}}
+		vk.CmdBlitImage(cmd, r.mainRenderTarget.texture.img, vk.ImageLayoutTransferSrcOptimal, r.grabTexture.img, vk.ImageLayoutTransferDstOptimal, 1, blit, vk.FilterNearest)
 
-	blit := []vk.ImageBlit{{
-		SrcSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
-		SrcOffsets:     [2]vk.Offset3D{{0, 0, 0}, {int32(sys.scrrect[2]), int32(sys.scrrect[3]), 1}},
-		DstSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
-		DstOffsets:     [2]vk.Offset3D{{0, 0, 0}, {int32(sys.scrrect[2]), int32(sys.scrrect[3]), 1}},
-	}}
-	vk.CmdBlitImage(cmd, r.mainRenderTarget.texture.img, vk.ImageLayoutTransferSrcOptimal, r.grabTexture.img, vk.ImageLayoutTransferDstOptimal, 1, blit, vk.FilterNearest)
+	}
 
 	barriers2 := []vk.ImageMemoryBarrier{
 		{
@@ -10255,10 +10358,15 @@ func (r *Renderer_VK) ResolveBackBuffer() Texture {
 	vk.CmdPipelineBarrier(cmd, vk.PipelineStageFlags(vk.PipelineStageTransferBit), vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit|vk.PipelineStageColorAttachmentOutputBit), 0, 0, nil, 0, nil, 2, barriers2)
 
 	renderPassBeginInfo := vk.RenderPassBeginInfo{
-		SType:       vk.StructureTypeRenderPassBeginInfo,
-		RenderPass:  r.mainRenderPass.renderPass,
-		Framebuffer: r.mainRenderTarget.framebuffer,
-		RenderArea:  vk.Rect2D{Offset: vk.Offset2D{X: 0, Y: 0}, Extent: vk.Extent2D{Width: uint32(sys.scrrect[2]), Height: uint32(sys.scrrect[3])}},
+		SType:           vk.StructureTypeRenderPassBeginInfo,
+		RenderPass:      r.mainRenderPass[1].renderPass,
+		Framebuffer:     r.mainRenderTarget.framebuffer,
+		ClearValueCount: 2,
+		PClearValues: []vk.ClearValue{
+			vk.NewClearValue([]float32{0.0, 0.0, 0.0, 1.0}), // Attachment 0: Color (RGBA)
+			vk.NewClearDepthStencil(1.0, 0),                 // Attachment 1: Depth (1.0) & Stencil (0)
+		},
+		RenderArea: vk.Rect2D{Offset: vk.Offset2D{X: 0, Y: 0}, Extent: vk.Extent2D{Width: uint32(sys.scrrect[2]), Height: uint32(sys.scrrect[3])}},
 	}
 	vk.CmdBeginRenderPass(cmd, &renderPassBeginInfo, vk.SubpassContentsInline)
 

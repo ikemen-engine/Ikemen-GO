@@ -497,7 +497,7 @@ func (f *Font_GL33) GenerateGlyphs(low, high rune) error {
 
 		for {
 			if textureIndex >= len(f.textures) {
-				f.textures = append(f.textures, CreateTextureAtlas(256, 256, 32, true))
+				f.textures = append(f.textures, CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 32, true))
 			}
 
 			var inserted bool
@@ -556,7 +556,7 @@ func (r *FontRenderer_GL33) LoadTrueTypeFont(reader io.Reader, scale int32, low,
 	f.scale = scale
 	f.SetColor(1.0, 1.0, 1.0, 1.0) //set default white
 	f.SetPalFX(NewShaderPalFX())
-	f.textures = append(f.textures, CreateTextureAtlas(256, 256, 32, true))
+	f.textures = append(f.textures, CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 32, true))
 
 	err = f.GenerateGlyphs(low, high)
 	if err != nil {

@@ -161,7 +161,7 @@ func loadFightFx(def string, isCharFX bool, isMainThread bool) error {
 				files = false
 				if is.LoadFile("sff", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
-						s, err := loadSff(filename, false, isMainThread, false)
+						s, err := loadSff(filename, SffTypeOther, isMainThread, false)
 						if err != nil {
 							return err
 						}
@@ -4915,7 +4915,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 				filesflg = false
 				if is.LoadFile("sff", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
-						s, err := loadSff(filename, false, true, false)
+						s, err := loadSff(filename, SffTypeLifeBar, true, false)
 						if err != nil {
 							return err
 						}
@@ -4937,7 +4937,7 @@ func loadFightScreen(def string) (*FightScreen, error) {
 				}
 				if is.LoadFile("fightfx.sff", []string{def, sys.motif.Def, "", "data/"}, "",
 					func(filename string) error {
-						s, err := loadSff(filename, false, true, false)
+						s, err := loadSff(filename, SffTypeOther, true, false)
 						if err != nil {
 							return err
 						}

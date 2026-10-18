@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"unsafe"
 
 	//"log"
 	"math"
@@ -319,6 +320,8 @@ type System struct {
 	escPending          bool
 	hitDetectionSort    []*Char
 	projectileTradeSort []*Projectile
+	palTexture          PalTexture
+	SpriteTextureAtlas
 
 	msaa                int32
 	externalShaders     [][][]byte
@@ -517,8 +520,10 @@ func (s *System) init(w, h int32) *lua.LState {
 	for i := 1; i < 256; i++ {
 		whitepal[i] = 0xffffffff // White (and full alpha)
 	}
-	s.whitePalTex = gfx.newPaletteTexture()
-	s.whitePalTex.SetData(Pal32ToBytes(whitepal))
+	CreatePalTexture(2048)
+	s.whitePalTex = NewPaletteTexture()
+	s.whitePalTex.SetSubData(pal32ToBytes(whitepal))
+	s.SpriteTextureAtlas.textureSize = 2048
 
 	systemScriptInit(l)
 	s.shortcutScripts = make(map[ShortcutKey]*ShortcutScript)
@@ -5048,7 +5053,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 	for k := range s.charSpritePreload {
 		listSpr[k] = true
 	}
-	tempSff := newSff()
+	tempSff := newSff(SffTypeOther)
 
 	if sc.preloadAnim != "" {
 		animPath := sc.preloadAnim
@@ -5081,7 +5086,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 		var selPal []int32
 		if err := LoadFile(&spritePath, []string{sc.def, "", "data/"}, "", func(file string) error {
 			var err error
-			localSff, selPal, err = preloadSff(file, true, listSpr)
+			localSff, selPal, err = preloadSff(file, SffTypeChar, listSpr)
 			if err != nil {
 				return err
 			}
@@ -5130,7 +5135,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 		}
 	} else {
 		// Make a dummy SFF
-		localSff = newSff()
+		localSff = newSff(SffTypeOther)
 		localAnims.updateSff(localSff)
 		for k := range s.charSpritePreload {
 			localAnims.addSprite(localSff, k[0], k[1])
@@ -5171,7 +5176,7 @@ func (s *Select) preloadStageAssets(ref int) error {
 		listSpr[k] = true
 	}
 
-	tempSff := newSff()
+	tempSff := newSff(SffTypeOther)
 	at := ReadAnimationTable(ss.def, tempSff, &tempSff.palList, defText, false)
 	for v := range s.stageAnimPreload {
 		if anim := at.get(v); anim != nil {
@@ -5189,7 +5194,7 @@ func (s *Select) preloadStageAssets(ref int) error {
 		spritePath := ss.preloadSprite
 		if err := LoadFile(&spritePath, []string{ss.def, "", "data/"}, "", func(file string) error {
 			var err error
-			localSff, _, err = preloadSff(file, false, listSpr)
+			localSff, _, err = preloadSff(file, SffTypeStage, listSpr)
 			if err != nil {
 				return err
 			}
@@ -5202,7 +5207,7 @@ func (s *Select) preloadStageAssets(ref int) error {
 			localAnims.addSprite(localSff, k[0], k[1])
 		}
 	} else {
-		localSff = newSff()
+		localSff = newSff(SffTypeStage)
 		localAnims.updateSff(localSff)
 	}
 
@@ -5522,7 +5527,7 @@ func (s *Select) AddChar(def string) *SelectChar {
 		sc.preloadSprite = sprite_orig
 	}
 	if sys.cfg.Config.BootLoadingMode > 0 {
-		sc.sff = newSff()
+		sc.sff = newSff(SffTypeChar)
 		sc.anims.updateSff(sc.sff)
 		for k := range s.charSpritePreload {
 			sc.anims.addSprite(sc.sff, k[0], k[1])
@@ -5703,7 +5708,7 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 		ss.preloadSprite = spr
 	}
 	if sys.cfg.Config.BootLoadingMode > 0 {
-		ss.sff = newSff()
+		ss.sff = newSff(SffTypeStage)
 		ss.anims.updateSff(ss.sff)
 		for k := range s.stageSpritePreload {
 			ss.anims.addSprite(ss.sff, k[0], k[1])
@@ -7181,4 +7186,8 @@ func (s *System) cleanCustomShaders() {
 
 func (s *System) shouldHideWithBars() bool {
 	return !s.fightScreen.visible() || s.gsf(GSF_nobardisplay) || !s.fightScreen.bars
+}
+
+func pal32ToBytes(pal []uint32) []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer(&pal[0])), len(pal)*4)
 }

@@ -561,13 +561,13 @@ func (s *Storyboard) loadFiles() {
 	LoadFile(&s.SceneDef.Spr, []string{s.Def, "", "data/"}, "", func(filename string) error {
 		if filename != "" {
 			var err error
-			s.Sff, err = loadSff(filename, false, true, false)
+			s.Sff, err = loadSff(filename, SffTypeOther, true, false)
 			if err != nil {
 				LogMessage("Failed to load %v: %v", filename, err)
 			}
 		}
 		if s.Sff == nil {
-			s.Sff = newSff()
+			s.Sff = newSff(SffTypeOther)
 		}
 		return nil
 	})

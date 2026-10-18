@@ -2447,7 +2447,7 @@ func (m *Motif) loadBgDefProperties(bgDef *BgDefProperties, bgname, spr string) 
 		LoadFile(&bgDef.Spr, []string{bgDef.Spr, m.Def, "", "data/"}, "", func(filename string) error {
 			if filename != "" {
 				var err error
-				bgDef.Sff, err = loadSff(filename, false, true, false)
+				bgDef.Sff, err = loadSff(filename, SffTypeOther, true, false)
 				if err != nil {
 					LogMessage("Failed to load %v: %v", filename, err)
 				}
@@ -2475,13 +2475,13 @@ func (m *Motif) loadFiles() {
 	LoadFile(&m.Files.Spr, []string{m.Files.Spr}, "", func(filename string) error {
 		if filename != "" {
 			var err error
-			m.Sff, err = loadSff(filename, false, true, false)
+			m.Sff, err = loadSff(filename, SffTypeOther, true, false)
 			if err != nil {
 				LogMessage("Failed to load %v: %v", filename, err)
 			}
 		}
 		if m.Sff == nil {
-			m.Sff = newSff()
+			m.Sff = newSff(SffTypeOther)
 		}
 		return nil
 	})
@@ -2490,13 +2490,13 @@ func (m *Motif) loadFiles() {
 	LoadFile(&m.Files.Glyphs, []string{m.Files.Glyphs}, "", func(filename string) error {
 		if filename != "" {
 			var err error
-			m.GlyphsSff, err = loadSff(filename, false, true, false)
+			m.GlyphsSff, err = loadSff(filename, SffTypeFont, true, false)
 			if err != nil {
 				LogMessage("Failed to load %v: %v", filename, err)
 			}
 		}
 		if m.GlyphsSff == nil {
-			m.GlyphsSff = newSff()
+			m.GlyphsSff = newSff(SffTypeFont)
 		}
 		return nil
 	})

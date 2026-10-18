@@ -4628,13 +4628,13 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	if len(sprite) > 0 {
 		if err := LoadFile(&sprite, []string{gi.def, "", "data/"}, "", func(filename string) error {
 			var err_sff error
-			gi.sff, err_sff = loadSff(filename, true, false, false) // loadSff uses OpenFile
+			gi.sff, err_sff = loadSff(filename, SffTypeChar, false, false) // loadSff uses OpenFile
 			return err_sff
 		}); err != nil {
 			return err
 		}
 	} else {
-		gi.sff = newSff()
+		gi.sff = newSff(SffTypeChar)
 	}
 
 	// Load palettes

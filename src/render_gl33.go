@@ -220,6 +220,8 @@ type Texture_GL33 struct {
 	width  int32
 	height int32
 	depth  int32
+	offset [2]int32
+	uvst   [4]float32
 	filter bool
 	handle uint32 // GL side handle
 }
@@ -233,9 +235,20 @@ func (r *Renderer_GL33) generateTexture(width, height, depth int32, filter bool)
 		width:  width,
 		height: height,
 		depth:  depth,
+		offset: [2]int32{0, 0},
+		uvst:   [4]float32{0, 0, 1, 1},
 		filter: filter,
 		handle: h,
 	}
+	var interp int32 = gl.NEAREST
+	if filter {
+		interp = gl.LINEAR
+	}
+	r.bindTextureToUnitForced(0, gl.TEXTURE_2D, tex, 0)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interp)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interp)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
 	runtime.SetFinalizer(tex, func(t *Texture_GL33) {
 		sys.mainThreadTask <- func() {
@@ -258,8 +271,19 @@ func (r *Renderer_GL33) newTexture(width, height, depth int32, filter bool) (Tex
 	return t, nil
 }
 
-func (r *Renderer_GL33) newPaletteTexture() Texture {
-	t, _ := r.newTexture(256, 1, 32, false)
+func (r *Renderer_GL33) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) Texture {
+	t := &Texture_GL33{256, 1, 32, offset, uvst, false, 0}
+	t.handle = (*(sys.palTexture.textures[slot[0]])).(*Texture_GL33).handle
+	runtime.SetFinalizer(t, func(t *Texture_GL33) {
+		sys.mainThreadTask <- func() {
+			sys.palTexture.emptySlot.PushFront(slot)
+		}
+	})
+	return t
+}
+
+func (r *Renderer_GL33) newSubTexture(tex Texture, width, height int32, uvst [4]float32) Texture {
+	t := &Texture_GL33{width, height, tex.(*Texture_GL33).depth, [2]int32{0, 0}, uvst, tex.(*Texture_GL33).filter, tex.(*Texture_GL33).handle}
 	return t
 }
 
@@ -312,6 +336,8 @@ func (r *Renderer_GL33) newCubeMapTexture(widthHeight int32, mipmap bool, lowest
 
 // Bind a texture and upload texel data to it
 func (t *Texture_GL33) SetData(data []byte) {
+	// t.SetSubData(data, t.offset[0], t.offset[1], t.width, t.height, t.depth/8)
+
 	var interp int32 = gl.NEAREST
 	if t.filter {
 		interp = gl.LINEAR
@@ -336,7 +362,11 @@ func (t *Texture_GL33) SetData(data []byte) {
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 }
 
-func (t *Texture_GL33) SetSubData(data []byte, x, y, width, height, stride int32) {
+func (t *Texture_GL33) SetSubData(data []byte) {
+	t.SetSubData2(data, t.offset[0], t.offset[1], t.width, t.height, t.depth/8)
+}
+
+func (t *Texture_GL33) SetSubData2(data []byte, x, y, width, height, stride int32) {
 	var interp int32 = gl.NEAREST
 	if t.filter {
 		interp = gl.LINEAR
@@ -434,6 +464,10 @@ func (t *Texture_GL33) GetWidth() int32 {
 
 func (t *Texture_GL33) GetHeight() int32 {
 	return t.height
+}
+
+func (t *Texture_GL33) GetUV() [4]float32 {
+	return t.uvst
 }
 
 func (t *Texture_GL33) MapInternalFormat(i int32) uint32 {
@@ -691,7 +725,8 @@ func (r *Renderer_GL33) Init() {
 	r.spriteShader, _ = r.newShaderProgram(vertShader, fragShader, "", "Main Shader", true)
 	r.spriteShader.RegisterAttributes("position", "uv")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
-		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue")
+		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
+		"spriteUV", "palUV")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Configure spriteVAO
@@ -2123,6 +2158,20 @@ func (r *Renderer_GL33) SetActiveTexture0() {
 func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int, name string, tex Texture) {
 	t := tex.(*Texture_GL33)
 	loc := uMap[name]
+	switch name {
+	case "tex":
+		loc := uMap["spriteUV"]
+		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+	case "pal":
+		loc := uMap["palUV"]
+		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+	case "tex1":
+		loc := uMap["tex1UV"]
+		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+	case "tex2":
+		loc := uMap["tex2UV"]
+		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+	}
 
 	// Cached path for the sprite shader
 	// Note: The cache doesn't care if a texture is "tex" or "pal"
@@ -2407,6 +2456,7 @@ func (r *Renderer_GL33) LoadCustomSpriteShader(shaderName string, shaderData []b
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
+		"spriteUV", "palUV", "tex1UV", "tex2UV",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
 

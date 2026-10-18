@@ -1200,7 +1200,7 @@ func systemScriptInit(l *lua.LState) {
 		@treturn Anim anim Newly created animation userdata.*/
 		s, ok := toUserData(l, 1).(*Sff)
 		if !ok {
-			s = newSff()
+			s = newSff(SffTypeOther)
 			//userDataError(l, 1, s)
 		}
 		var anim *Anim
@@ -4085,7 +4085,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		if sff == nil {
-			sff = newSff()
+			sff = newSff(SffTypeOther)
 		}
 		raw, err := LoadText(def)
 		if err != nil {
@@ -6575,14 +6575,14 @@ func systemScriptInit(l *lua.LState) {
 			if l.GetTop() >= 2 {
 				isActPal = boolArg(l, 2)
 			}
-			sff, err := loadSff(strArg(l, 1), false, true, isActPal)
+			sff, err := loadSff(strArg(l, 1), SffTypeOther, true, isActPal)
 			if err != nil {
 				l.RaiseError("\nCan't load %v: %v\n", strArg(l, 1), err.Error())
 			}
 			sys.runMainThreadTask()
 			l.Push(newUserData(l, sff))
 		} else {
-			l.Push(newUserData(l, newSff()))
+			l.Push(newUserData(l, newSff(SffTypeOther)))
 		}
 		return 1
 	})
