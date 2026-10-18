@@ -1455,7 +1455,7 @@ func (s *Sprite) CachePalTex(pal []uint32) Texture {
 		if s.PalTex == nil {
 			s.PalTex = NewTextureFromPalette(pal)
 		} else {
-			s.PalTex.SetData(Pal32ToBytes(pal))
+			s.PalTex.SetSubData(Pal32ToBytes(pal))
 		}
 		// Update cache reference for the next comparison
 		s.paltemp = append([]uint32{}, pal...)
