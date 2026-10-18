@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"golang.org/x/image/font"
 )
 
 const MaxFontBatchSize = 250
@@ -22,6 +24,7 @@ type FontRenderer interface {
 }
 
 type Font interface {
+	Metrics() font.Metrics
 	SetColor(red float32, green float32, blue float32, alpha float32)
 	SetPalFX(spfx ShaderPalFX)
 	UpdateResolution(windowWidth int, windowHeight int)
@@ -67,6 +70,7 @@ type FntCharImage struct {
 
 // TtfFont implements TTF font rendering on supported platforms
 type TtfFont interface {
+	Metrics() font.Metrics
 	SetColor(red float32, green float32, blue float32, alpha float32)
 	SetPalFX(spfx ShaderPalFX)
 	Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
@@ -1815,6 +1819,21 @@ func (ts *TextSprite) drawGlyphText(text string, window [4]int32) {
 	if ts.xscl == 0 || ts.yscl == 0 {
 		return
 	}
+	// Preserve the bitmap cell's inclusive bottom pixel and screen offset.
+	bottom := float32(ts.fnt.offset[1]+1) * ts.yscl
+	yOffset := float32(int(sys.gameHeight - 240))
+	if ts.fnt.Type == "truetype" {
+		// TrueType y is a baseline, and DrawTtf has no bitmap screen offset.
+		bottom, yOffset = 0, 0
+		if ts.fnt.ttf != nil {
+			metrics := ts.fnt.ttf.Metrics()
+			if height := metrics.Ascent + metrics.Descent; height > 0 {
+				// Keep the configured glyph height, distributing it above and below
+				// the baseline in the font's ascent/descent proportions.
+				bottom = float32(ts.fnt.Size[1]) * float32(metrics.Descent) / float32(height) * ts.yscl
+			}
+		}
+	}
 	// Number of characters still to draw, for the typewriter effect.
 	remaining := math.MaxInt
 	if ts.textDelay > 0 {
@@ -1845,16 +1864,11 @@ func (ts *TextSprite) drawGlyphText(text string, window [4]int32) {
 				a.transType = TT_add
 				a.srcAlpha = int16(255 * Clamp(ts.frgba[3], float32(0), float32(1)))
 				a.dstAlpha = 255 - a.srcAlpha
-				// Bitmap text occupies y - Size.Y + 1 through y + 1 (DrawText).
-				// Align the glyph's bottom to that baseline, independent of its SFF axes.
-				baseline := float32(0)
-				if ts.fnt.Type != "truetype" {
-					baseline = float32(ts.fnt.offset[1]+1) * ts.yscl
-				}
+				// Align the glyph's bottom independently of its SFF axes.
 				xpos := x + float32(ts.fnt.offset[0])*ts.xscl + float32(a.spr.Offset[0])*xs + ts.glyphOffset[0]*ts.localScale
-				ypos := y + baseline + float32(int32(a.spr.Offset[1])-int32(a.spr.Size[1]))*ys + ts.glyphOffset[1]*ts.localScale
+				ypos := y + bottom + float32(int32(a.spr.Offset[1])-int32(a.spr.Size[1]))*ys + ts.glyphOffset[1]*ts.localScale
 				xpos += ts.xshear * float32(a.spr.Offset[1]) * ys
-				a.Draw(&window, xpos+float32(int(sys.gameWidth-320)/2), ypos+float32(int(sys.gameHeight-240)),
+				a.Draw(&window, xpos+float32(int(sys.gameWidth-320)/2), ypos+yOffset,
 					1, 1, xs, xs, ys, -ts.xshear, ts.rot, 0, [2]float32{}, ts.palfx, 1, [2]float32{1, 1}, ts.projection, ts.fLength, false, CustomShaderRenderData{})
 				x += ts.glyphWidth(run.anim) * ts.xscl
 				remaining--

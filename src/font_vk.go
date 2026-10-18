@@ -22,6 +22,7 @@ import (
 type Font_VK struct {
 	fontChar     map[rune]*character
 	ttf          *truetype.Font
+	metrics      font.Metrics
 	scale        int32
 	vao          uint32
 	vbo          uint32
@@ -362,6 +363,7 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 		DPI:     72,
 		Hinting: font.HintingFull,
 	})
+	f.metrics = ttfFace.Metrics()
 
 	// Add padding to prevent cropping
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/3085
@@ -401,9 +403,8 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 			}
 		}
 
-		//The glyph's ascent and descent equal -bounds.Min.Y and +bounds.Max.Y.
+		// Distance from the glyph's top to its baseline.
 		gAscent := int(-gBnd.Min.Y) >> 6
-		gdescent := int(gBnd.Max.Y) >> 6
 
 		//set w,h and adv, bearing V and bearing H in char
 		//char.width = int(gw)
@@ -413,7 +414,8 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 		char.width = (paddedWidth + 3) &^ 3 // Force 4-byte alignment
 		char.height = int(gh) + (padding * 2)
 		char.advance = int(gAdv)
-		char.bearingV = gdescent
+		// Account for the raster baseline at padding + gAscent inside the texture.
+		char.bearingV = char.height - (padding + gAscent)
 		//char.bearingH = (int(gBnd.Min.X) >> 6)
 		char.bearingH = (int(gBnd.Min.X) >> 6) - padding
 
@@ -570,6 +572,11 @@ func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, h
 	}
 	return f, nil
 }
+
+func (f *Font_VK) Metrics() font.Metrics {
+	return f.metrics
+}
+
 func (f *Font_VK) SetColor(red float32, green float32, blue float32, alpha float32) {
 	f.color.r = red
 	f.color.g = green
