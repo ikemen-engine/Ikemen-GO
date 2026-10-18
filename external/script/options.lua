@@ -1817,7 +1817,6 @@ function options.f_start()
 	-- create menu
 	options.menu = {title = main.f_itemnameUpper(motif.option_info.title.text, motif.option_info.menu.title.uppercase), submenu = {}, items = {}}
 	options.menu.loop = options.f_createMenu(options.menu, true)
-	local w = main.f_menuWindow(motif.option_info.menu)
 	local t_pos = {} --for storing current options.menu table position
 	local lastNum = 0
 	for i, suffix in ipairs(motif.option_info.menu.itemname_order) do
@@ -1930,18 +1929,7 @@ function options.f_start()
 	main.f_pruneMenu(options.menu, excluded)
 	main.f_prunePointers(options.t_vardisplayPointers, excluded)
 	-- Menu windows
-	textImgSetWindow(motif.option_info.menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.option_info.menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.option_info.menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.option_info.menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.option_info.menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.option_info.menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-	for _, v in pairs(motif.option_info.menu.item.bg) do
-		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	end
-	for _, v in pairs(motif.option_info.menu.item.active.bg) do
-		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	end
+	main.f_menuWindowSet(motif.option_info.menu, true)
 	-- log
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt') end
 end

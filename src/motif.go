@@ -311,6 +311,7 @@ type HintProperties struct {
 
 type MenuProperties struct {
 	Pos   [2]float32      `ini:"pos" default:"1000,900"`
+	Wrap  bool            `ini:"wrap" default:"true"`
 	Tween TweenProperties `ini:"tween"`
 	Item  struct {
 		TextProperties
@@ -341,7 +342,9 @@ type MenuProperties struct {
 		Margins struct {
 			Y [2]float32 `ini:"y"`
 		} `ini:"margins"`
-		VisibleItems int32 `ini:"visibleitems"`
+		VisibleItems int32  `ini:"visibleitems"`
+		Width        int32  `ini:"width"`
+		ScrollMode   string `ini:"scrollmode" default:"cursor"`
 	} `ini:"window"`
 	BoxCursor BoxCursorProperties `ini:"boxcursor"`
 	BoxBg     BoxBgProperties     `ini:"boxbg"`
@@ -1293,29 +1296,9 @@ type MenuInfoProperties struct {
 	} `ini:"exit"`
 	Overlay  OverlayProperties `ini:"overlay"`
 	Movelist struct {
-		Pos   [2]float32 `ini:"pos"`
-		Title struct {
-			TextProperties
-			Uppercase bool `ini:"uppercase"`
-		} `ini:"title"`
-		Text struct {
-			TextProperties
-			Spacing [2]float32 `ini:"spacing"`
-		} `ini:"text"`
-		Window struct {
-			Margins struct {
-				Y [2]float32 `ini:"y"`
-			} `ini:"margins"`
-			VisibleItems int32 `ini:"visibleitems"`
-			Width        int32 `ini:"width"`
-		} `ini:"window"`
-		Overlay OverlayProperties `ini:"overlay"`
-		Arrow   struct {
-			Up   AnimationProperties `ini:"up"`
-			Down AnimationProperties `ini:"down"`
-		} `ini:"arrow"`
-		Itemname map[string]string `ini:"itemname"`
-		Hint     HintProperties    `ini:"hint"`
+		Title TextProperties `ini:"title"`
+		Menu  MenuProperties `ini:"menu"`
+		Hint  HintProperties `ini:"hint"`
 	} `ini:"movelist"`
 	Hint HintProperties `ini:"hint"`
 }
@@ -2351,6 +2334,7 @@ type InheritSpec struct {
 	SrcPrefix string
 	DstSec    string
 	DstPrefix string
+	SkipText  bool
 }
 
 // mergeWithInheritance applies "user overrides default" with intra-file inheritance.
@@ -2462,6 +2446,9 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 
 		// Resolve and set final values following the precedence.
 		for suf := range suffixes {
+			if sp.SkipText && strings.Contains("."+strings.ToLower(suf)+".", ".text.") {
+				continue
+			}
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
 			// Skip palmenu.preview anim/spr inheritance
@@ -2678,8 +2665,17 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Side Select Info", SrcPrefix: "item.p1.", DstSec: "Side Select Info", DstPrefix: "item.p1.active."},
 		{SrcSec: "Side Select Info", SrcPrefix: "item.p2.", DstSec: "Side Select Info", DstPrefix: "item.p2.active."},
 	}
+	pauseSections := append([]string{"Pause Menu"}, m.customPauseMenuSections()...)
+	// Inherit each pause menu's settings before copying them to other pause menus.
+	for _, sec := range pauseSections {
+		for _, prefix := range []string{"title.", "menu.", "hint."} {
+			specs = append(specs, InheritSpec{
+				SrcSec: sec, SrcPrefix: prefix, DstSec: sec, DstPrefix: "movelist." + prefix, SkipText: true,
+			})
+		}
+	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
-	for _, sec := range m.customPauseMenuSections() {
+	for _, sec := range pauseSections[1:] {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
 	}
 	// Apply p1/p2 -> p3..p8 inheritance to every [* Results Screen]
@@ -3101,14 +3097,6 @@ func (m *Motif) applyPostParsePosAdjustments() {
 			animSetPos(ap.AnimData, dx, dy)
 		}
 	}
-	shiftMovelist := func(mv *MenuInfoProperties) {
-		if mv == nil {
-			return
-		}
-		ml := &mv.Movelist
-		offsetAnims(ml.Pos[0], ml.Pos[1], ml.Arrow.Up.AnimData, ml.Arrow.Down.AnimData)
-		offsetTexts(ml.Pos[0], ml.Pos[1], ml.Title.TextSpriteData, ml.Text.TextSpriteData)
-	}
 	adjustSelect := func(ps *PlayerSelectProperties) {
 		tm := &ps.TeamMenu
 		// TeamMenu backgrounds
@@ -3173,15 +3161,7 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		for _, pm := range m.PauseMenu {
 			if pm != nil {
 				shiftMenu(&pm.Menu)
-			}
-		}
-	}
-
-	// Movelists (all pause menus)
-	{
-		if m.PauseMenu != nil {
-			for _, pm := range m.PauseMenu {
-				shiftMovelist(pm)
+				shiftMenu(&pm.Movelist.Menu)
 			}
 		}
 	}

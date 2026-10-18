@@ -212,7 +212,7 @@ menu.t_itemname = {
 	['commandlist'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getAction(-1, sec.menu.done.action) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			menu.f_commandlistParse()
+			menu.f_commandlistParse(sec)
 			menu.itemname = t.items[item].itemname
 		end
 		return true
@@ -434,7 +434,6 @@ function menu.f_start()
 			items = {}
 		}
 		menu[v.id].loop = menu.f_createMenu(menu[v.id], v.sec, v.bg, true)
-		local w = main.f_menuWindow(v.sec.menu)
 		local t_pos = {} --for storing current table position
 		local lastNum = 0
 		for i, suffix in ipairs(v.sec.menu.itemname_order) do
@@ -501,34 +500,10 @@ function menu.f_start()
 			main.f_prunePointers(menu.t_vardisplayPointers, excluded)
 		end
 		-- Menu windows
-		textImgSetWindow(v.sec.menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
-		textImgSetWindow(v.sec.menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
-		textImgSetWindow(v.sec.menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
-		textImgSetWindow(v.sec.menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
-		textImgSetWindow(v.sec.menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
-		textImgSetWindow(v.sec.menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-		--for _, v2 in pairs(v.sec.menu.item.bg) do
-		--	animSetWindow(v2.AnimData, w[1], w[2], w[3], w[4])
-		--end
-		--for _, v2 in pairs(v.sec.menu.item.active.bg) do
-		--	animSetWindow(v2.AnimData, w[1], w[2], w[3], w[4])
-		--end
+		main.f_menuWindowSet(v.sec.menu)
 		if gameOption('Debug.DumpLuaTables') then main.f_printTable(menu[v.id], 'debug/t_' .. v.id .. 'Menu.txt') end
-		-- Move list
 		if v.movelist then
-			local t = v.sec.movelist
-			if t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0 then
-				local fontProps = motif.files.font['font' .. v.sec.movelist.text.font[1]]
-				if fontProps ~= nil then
-					menu.movelistW = {
-						0,
-						math.max(0, t.pos[2] + t.text.offset[2] - t.window.margins.y[1]),
-						t.pos[1] + t.text.offset[1] + t.window.width,
-						t.pos[2] + t.text.offset[2] + (t.window.visibleitems - 1) * main.f_round((fontProps.size[2] + fontProps.spacing[2]) * t.text.scale[2] + t.text.spacing[2]) + t.window.margins.y[2] + math.max(0, t.text.glyphs.offset[2])
-					}
-					textImgSetWindow(t.text.TextSpriteData, menu.movelistW[1], menu.movelistW[2], menu.movelistW[3], menu.movelistW[4])
-				end
-			end
+			main.f_menuWindowSet(v.sec.movelist.menu, true)
 		end
 	end
 end
@@ -632,7 +607,7 @@ function menu.f_run()
 		end
 	--Command List
 	elseif menu.itemname == 'commandlist' then
-		menu.f_commandlistRender(sec, menu.t_movelists[menu.movelistChar])
+		menu.f_commandlistRender(sec, bg)
 	--Menu
 	else
 		menu.currentMenu[1]()
@@ -677,6 +652,7 @@ function menu.f_reset()
 	menu.itemname = ''
 	-- Reset movelist selector (command list screen)
 	menu.movelistChar = 1
+	menu._lastMovelist = nil
 	-- Reset tween caches
 	if menu.t_menus ~= nil then
 		for i = 1, #menu.t_menus do
@@ -684,6 +660,10 @@ function menu.f_reset()
 			if sec ~= nil then
 				sec.menuTweenData = nil
 				sec.boxCursorData = nil
+				if sec.movelist ~= nil then
+					sec.movelist.menuTweenData = nil
+					sec.movelist.boxCursorData = nil
+				end
 			end
 		end
 	end
@@ -720,13 +700,10 @@ end
 --;===========================================================
 --; COMMAND LIST
 --;===========================================================
-function menu.f_commandlistParse()
+function menu.f_commandlistParse(sec)
 	menu.t_movelists = {}
 	for side, tbl in ipairs({start.p[1].t_selected, start.p[2].t_selected}) do
 		for member, sel in ipairs(tbl) do
-			if sel.movelistLine == nil then
-				sel.movelistLine = 1
-			end
 			local pn = side
 			if member > 1 then
 				pn = pn + (member - 1) * 2
@@ -736,8 +713,8 @@ function menu.f_commandlistParse()
 				if sel.movelistText ~= movelist then
 					sel.movelistText = movelist
 					sel.commandlist = nil
-					sel.movelistLine = 1
-					if movelist ~= '' then
+					sel.movelistState = {item = 1, cursorPosY = 1, moveTxt = 0}
+					if movelist:find('%S') then
 						-- wrap the plain glyph names in <>, but leave existing tags alone
 						for k, v in main.f_sortKeys(motif.glyphs, function(t, a, b) return string.len(a) > string.len(b) end) do
 							if k:sub(1, 1) ~= '<' then
@@ -748,8 +725,11 @@ function menu.f_commandlistParse()
 							end
 						end
 						local t = {}
-						for line in movelist:gmatch('([^\n]*)\n?') do
+						movelist = movelist:gsub('\r\n', '\n'):gsub('\n$', '')
+						for line in (movelist .. '\n'):gmatch('(.-)\n') do
 							line = line:gsub('%s+$', '')
+							local spacer
+							line, spacer = line:gsub('^<spacer>', '')
 							local subt = {}
 							for m in line:gmatch('(	*[^	]+)') do
 								local tabs = 0
@@ -765,17 +745,21 @@ function menu.f_commandlistParse()
 								end
 								table.insert(subt, {text = m, align = align})
 							end
-							table.insert(t, subt)
+							table.insert(t, {
+								itemname = ((line == '' or spacer > 0) and 'spacer' or '') .. tostring(#t + 1),
+								paramname = tostring(#t + 1),
+								displayname = line,
+								columns = subt,
+							})
 						end
-						t[#t] = nil --blank line produced by regexp matching
 						sel.commandlist = t
 					end
 				end
 				table.insert(menu.t_movelists, {
 					pn = pn,
 					name = displayName(),
-					tbl = sel,
-					commandlist = sel.commandlist,
+					state = sel.movelistState,
+					items = sel.commandlist,
 				})
 			end
 		end
@@ -784,110 +768,63 @@ function menu.f_commandlistParse()
 		table.insert(menu.t_movelists, {
 			pn = 1,
 			name = "",
-			tbl = {movelistLine = 1},
-			commandlist = nil,
+			state = {item = 1, cursorPosY = 1, moveTxt = 0},
 		})
 	end
+	for _, t in ipairs(menu.t_movelists) do
+		if t.items == nil or #t.items == 0 then
+			t.items = {{itemname = 'empty', paramname = 'empty', displayname = sec.movelist.menu.item.text}}
+		end
+	end
+	menu._lastMovelist = nil
 	if menu.movelistChar > #menu.t_movelists then
 		menu.movelistChar = 1
 	end
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(menu.t_movelists, "debug/t_movelists.txt") end
 end
 
-function menu.f_commandlistRender(sec, t)
-	local cmdList = {}
-	if t.commandlist ~= nil then
-		cmdList = t.commandlist
-	else
-		table.insert(cmdList, {{text = sec.movelist.text.text, align = 1}})
-	end
-	if esc() or getAction(-1, sec.menu.cancel.action, sec.menu.done.action) then
-		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
-		menu.itemname = ''
-		return
-	elseif getAction(-1, sec.menu.subtract.action) and #menu.t_movelists > 1 then
-		sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
-		menu.movelistChar = menu.movelistChar - 1
-		if menu.movelistChar < 1 then
-			menu.movelistChar = #menu.t_movelists
-		end
-	elseif getAction(-1, sec.menu.add.action) and #menu.t_movelists > 1 then
-		sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
-		menu.movelistChar = menu.movelistChar + 1
-		if menu.movelistChar > #menu.t_movelists then
-			menu.movelistChar = 1
-		end
-	elseif getAction(-1, sec.menu.previous.action) and t.tbl.movelistLine > 1 then
-		sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
-		t.tbl.movelistLine = t.tbl.movelistLine - 1
-	elseif getAction(-1, sec.menu.next.action) and t.tbl.movelistLine <= #cmdList - sec.movelist.window.visibleitems then
-		sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
-		t.tbl.movelistLine = t.tbl.movelistLine + 1
-	end
-	--draw overlay
-	rectDraw(sec.movelist.overlay.RectData)
-	--draw title
-	textImgReset(sec.movelist.title.TextSpriteData)
-	textImgSetText(sec.movelist.title.TextSpriteData, main.f_itemnameUpper(string.format(sec.movelist.title.text, t.name), sec.movelist.title.uppercase))
-	textImgDraw(sec.movelist.title.TextSpriteData)
-	--draw commands
-	local i = 0
-	for n = t.tbl.movelistLine, math.min(t.tbl.movelistLine + sec.movelist.window.visibleitems + 1, #cmdList) do
-		i = i + 1
-		local alignOffset = 0
-		local lengthOffset = 0
-		local align = 1
-		local width = 0
-		for k, v in ipairs(cmdList[n]) do
-			if v.text ~= '' then
-				alignOffset = 0
-				if v.align == 0 then --center align
-					alignOffset = sec.movelist.window.width * 0.5
-				elseif v.align == -1 then --right align
-					alignOffset = sec.movelist.window.width - 1 -- "phantom pixel" adjustment to match mugen flipping behavior (extra pixel)
-				end
-				if v.align ~= align then
-					lengthOffset = 0
-					align = v.align
-				end
-				local fontProps = motif.files.font['font' .. sec.movelist.text.font[1]]
-				local sprite = sec.movelist.text.TextSpriteData
-				textImgReset(sprite)
-				local align = v.align
-				if align == 0 and lengthOffset ~= 0 then
-					align = 1
-				end
-				local textWidth = textImgGetTextWidth(sprite, v.text) * sec.movelist.text.scale[1]
-				textImgSetAlign(sprite, align)
-				textImgAddPos(sprite, alignOffset + lengthOffset,
-					main.f_round((fontProps.size[2] + fontProps.spacing[2]) * sec.movelist.text.scale[2] + sec.movelist.text.spacing[2]) * (i - 1))
-				textImgSetText(sprite, v.text)
-				textImgDraw(sprite)
-				if k < #cmdList[n] then
-					width = textWidth + sec.movelist.text.spacing[1]
-				end
-				if v.align == 0 and lengthOffset == 0 then
-					lengthOffset = lengthOffset + width / 2
-				elseif v.align == -1 then
-					lengthOffset = lengthOffset - width
-				else
-					lengthOffset = lengthOffset + width
-				end
+function menu.f_commandlistRender(sec, bg)
+	local mv = sec.movelist
+	local m = mv.menu
+	local acceptInput = main.pauseMenuActive and not fadeActive() and menu.pauseExitDelay < 0
+	local switched = false
+	if acceptInput then
+		if esc() or getAction(-1, m.cancel.action, m.done.action) then
+			sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+			menu.itemname = ''
+			main.f_menuSnap(sec)
+			return
+		elseif #menu.t_movelists > 1 then
+			local direction = 0
+			if getAction(-1, m.subtract.action) then
+				direction = -1
+			elseif getAction(-1, m.add.action) then
+				direction = 1
+			end
+			if direction ~= 0 then
+				sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
+				menu.movelistChar = (menu.movelistChar - 1 + direction) % #menu.t_movelists + 1
+				switched = true
 			end
 		end
 	end
-	--draw scroll arrows
-	if #cmdList > sec.movelist.window.visibleitems then
-		if t.tbl.movelistLine > 1 then
-			animUpdate(sec.movelist.arrow.up.AnimData)
-			animDraw(sec.movelist.arrow.up.AnimData)
-		end
-		if t.tbl.movelistLine <= #cmdList - sec.movelist.window.visibleitems then
-			animUpdate(sec.movelist.arrow.down.AnimData)
-			animDraw(sec.movelist.arrow.down.AnimData)
-		end
+	local t = menu.t_movelists[menu.movelistChar]
+	local state = t.state
+	if menu._lastMovelist ~= t then
+		menu._lastMovelist = t
+		mv.boxCursorData = nil
+		main.f_menuSnap(mv)
+		main.f_menuItemBgAnimReset(mv)
 	end
-	main.f_hintDraw(sec.movelist.hint)
+	local forcedDir = nil
+	if not acceptInput or switched then
+		forcedDir = 0
+	end
+	state.cursorPosY, state.moveTxt, state.item = main.f_menuCommonCalc(
+		t.items, state.item, state.cursorPosY, state.moveTxt, mv, sec.cursor, forcedDir)
+	textImgReset(mv.title.TextSpriteData)
+	textImgSetText(mv.title.TextSpriteData, main.f_itemnameUpper(string.format(mv.title.text, t.name), m.title.uppercase))
+	main.f_menuCommonDraw(t.items, state.item, state.cursorPosY, state.moveTxt, mv, bg, true)
 end
 
 return menu

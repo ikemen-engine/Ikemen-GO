@@ -1929,15 +1929,34 @@ end
 --returns table storing menu window coordinates
 function main.f_menuWindow(t, offset)
 	local offset = offset or {0, 0}
-	if t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0 then
+	local right = motif.info.localcoord[1]
+	if t.window.width ~= nil and t.window.width > 0 then
+		right = t.pos[1] + offset[1] + t.window.width
+	end
+	if t.window.visibleitems > 0 and (t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0) then
 		return {
 			0,
 			math.max(0, t.pos[2] + offset[2] - t.window.margins.y[1]),
-			motif.info.localcoord[1],
+			right,
 			t.pos[2] + offset[2] + (t.window.visibleitems - 1) * t.item.spacing[2] + t.window.margins.y[2]
 		}
 	end
-	return {0, 0, motif.info.localcoord[1], motif.info.localcoord[2]}
+	return {0, 0, right, motif.info.localcoord[2]}
+end
+
+-- Apply the same clipping window to every menu text state.
+function main.f_menuWindowSet(m, clipBackgrounds)
+	local w = main.f_menuWindow(m)
+	for _, props in ipairs({m.item, m.item.active, m.item.selected, m.item.selected.active, m.item.value, m.item.value.active}) do
+		textImgSetWindow(props.TextSpriteData, w[1], w[2], w[3], w[4])
+	end
+	if clipBackgrounds then
+		for _, bg in ipairs({m.item.bg, m.item.active.bg}) do
+			for _, props in pairs(bg) do
+				animSetWindow(props.AnimData, w[1], w[2], w[3], w[4])
+			end
+		end
+	end
 end
 
 function main.f_storyboard(path)
@@ -3028,7 +3047,6 @@ end
 function main.f_start()
 	main.menu = {title = main.f_itemnameUpper(motif[main.group].title.text, motif[main.group].menu.title.uppercase), submenu = {}, items = {}}
 	main.menu.loop = main.f_createMenu(main.menu, true, main.group == 'title_info', main.group == 'title_info', false)
-	local w = main.f_menuWindow(motif[main.group].menu)
 	local t_pos = {} --for storing current main.menu table position
 	local t_skipGroup = {}
 	local lastNum = 0
@@ -3120,18 +3138,7 @@ function main.f_start()
 			end
 		end
 	end
-	textImgSetWindow(motif[main.group].menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif[main.group].menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-	--for _, v in pairs(motif[main.group].menu.item.bg) do
-	--	animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	--end
-	--for _, v in pairs(motif[main.group].menu.item.active.bg) do
-	--	animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	--end
+	main.f_menuWindowSet(motif[main.group].menu)
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(main.menu, 'debug/t_mainMenu.txt') end
 end
 
@@ -3201,19 +3208,7 @@ end
 
 --replay menu
 function main.f_replay()
-	local w = main.f_menuWindow(motif.replay_info.menu)
-	textImgSetWindow(motif.replay_info.menu.item.selected.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.value.active.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
-	textImgSetWindow(motif.replay_info.menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
-	for _, v in pairs(motif.replay_info.menu.item.bg) do
-		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	end
-	for _, v in pairs(motif.replay_info.menu.item.active.bg) do
-		animSetWindow(v.AnimData, w[1], w[2], w[3], w[4])
-	end
+	main.f_menuWindowSet(motif.replay_info.menu, true)
 	textImgReset(motif.replay_info.title.TextSpriteData)
 	textImgSetText(motif.replay_info.title.TextSpriteData, main.f_itemnameUpper(motif.replay_info.title.text, motif.replay_info.menu.title.uppercase))
 	local cursorPosY = 1
@@ -3763,85 +3758,62 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 			slideOffset = 0
 		}
 	end
+	main.menuWrapped = false
+	if #t == 0 then
+		sec.menuTweenData = {currentPos = 0, targetPos = 0, slideOffset = 0}
+		return 1, 0, 1
+	end
+	-- Show all rows when visibleitems is zero or negative.
+	local visible = (m.window and m.window.visibleitems) or #t
+	if visible <= 0 then
+		visible = #t
+	end
+	local maxFirst = math.max(1, #t - visible + 1)
+	item = math.max(1, math.min(item, #t))
 	local item_before = item
-	local startItem = 1
-	for _, v in ipairs(t) do
-		if not v.itemname:match("^spacer%d*$") then
+	local first = math.max(1, math.min(item - cursorPosY + 1, maxFirst))
+	-- A forced direction overrides input: 1 moves down, -1 moves up, and 0 stops.
+	local moveDir = forcedDir or 0
+	if forcedDir == nil then
+		if getAction(-1, m.next.action) then
+			moveDir = 1
+		elseif getAction(-1, m.previous.action) then
+			moveDir = -1
+		end
+	end
+	-- Skip spacers without looping forever if every row is a spacer.
+	local candidate = item
+	local wrapped = false
+	if moveDir ~= 0 then
+		candidate = candidate + moveDir
+	end
+	for _ = 1, #t do
+		if candidate < 1 or candidate > #t then
+			if m.wrap == false then break end
+			candidate = candidate < 1 and #t or 1
+			wrapped = true
+		end
+		if not t[candidate].itemname:match("^spacer%d*$") then
+			item = candidate
+			main.menuWrapped = wrapped
 			break
 		end
-		startItem = startItem + 1
+		candidate = candidate + (moveDir == -1 and -1 or 1)
 	end
-	-- effective visible-items: treat 0 / nil as "all items"
-	local visible = #t
-	if m.window and m.window.visibleitems ~= nil then
-		if m.window.visibleitems > 0 then
-			visible = m.window.visibleitems
-		end
+	if item ~= item_before and forcedDir == nil and moveDir ~= 0 then
+		sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
 	end
-	-- movement: forcedDir: 1 = next (down), -1 = previous (up), 0/nil = no forced move
-	local moveDir = 0
-	if forcedDir ~= nil then
-		moveDir = forcedDir
-	elseif getAction(-1, m.next.action) then
-		moveDir = 1
-	elseif getAction(-1, m.previous.action) then
-		moveDir = -1
-	end
-	if moveDir == 1 then
-		if forcedDir == nil then
-			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
-		end
-		while true do
-			item = item + 1
-			if cursorPosY < visible then
-				cursorPosY = cursorPosY + 1
-			end
-			if t[item] == nil or not t[item].itemname:match("^spacer%d*$") then
-				break
-			end
-		end
-	elseif moveDir == -1 then
-		if forcedDir == nil then
-			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
-		end
-		while true do
-			item = item - 1
-			if cursorPosY > startItem then
-				cursorPosY = cursorPosY - 1
-			end
-			if t[item] == nil or not t[item].itemname:match("^spacer%d*$") then
-				break
-			end
-		end
-	end
-	main.menuWrapped = false
-	if item > #t or (item == 1 and t[item].itemname:match("^spacer%d*$")) then
-		item = 1
-		while true do
-			if not t[item].itemname:match("^spacer%d*$") or item >= #t then break end
-			item = item + 1
-		end
-		cursorPosY = item
+	if main.menuWrapped then
+		first = moveDir == -1 and math.max(1, item - visible + 1) or 1
 		if m.tween.wrap.snap then
 			main.menuSnap = true
 		end
-		main.menuWrapped = true
-	elseif item < 1 then
-		item = #t
-		while true do
-			if not t[item].itemname:match("^spacer%d*$") or item <= 1 then break end
-			item = item - 1
-		end
-		if item > visible then
-			cursorPosY = visible
-		else
-			cursorPosY = item
-		end
-		if m.tween.wrap.snap then
-			main.menuSnap = true
-		end
-		main.menuWrapped = true
+	elseif moveDir ~= 0 and m.window.scrollmode == 'immediate' then
+		-- Scroll first. Move the cursor when the window reaches either end.
+		first = math.max(1, math.min(first + item - item_before, maxFirst))
 	end
+	first = math.max(1, math.min(math.max(first, item - visible + 1), item, maxFirst))
+	cursorPosY = item - first + 1
 	-- Reset active background animation when cursor selection changes
 	if item_before ~= item and t ~= nil and t[item] ~= nil then
 		local bgTable = m.item and m.item.active and m.item.active.bg
@@ -3853,23 +3825,8 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 			end
 		end
 	end
-	-- compute target: determine first visible item to keep cursor at row `cursorPosY`, clamp to valid range, and convert to pixel offset
-	local spacing = m.item.spacing[2]
-	-- max index that can appear at the top of the window
-	local maxFirst = math.max(1, #t - visible + 1)
 	local t_factor = m.tween.factor
-
-	-- which list index should be drawn on the very first row
-	local desiredFirst = item - cursorPosY + 1
-	-- clamp so we never scroll before the first row or past the end
-	if desiredFirst < 1 then
-		desiredFirst = 1
-	elseif desiredFirst > maxFirst then
-		desiredFirst = maxFirst
-	end
-
-	-- Measure scroll offset from the first drawn row.
-	local targetMove = (desiredFirst - 1) * spacing
+	local targetMove = (first - 1) * m.item.spacing[2]
 	-- update target and offset if changed, snap immediately if requested, otherwise apply tween or direct move
 	if sec.menuTweenData.targetPos ~= targetMove then
 		sec.menuTweenData.targetPos = targetMove
@@ -3934,6 +3891,53 @@ function main.f_hintDraw(hint, context, values, device, side, actions)
 	textImgDraw(hint.TextSpriteData)
 end
 
+-- Draw plain labels or columns aligned within the menu width.
+-- Column alignment is 1 for left, 0 for center, and -1 for right.
+function main.f_menuItemTextDraw(row, props, m, x, y)
+	local sprite = props.TextSpriteData
+	local columns = row.columns
+	if columns == nil then
+		local text = row.itemname:match("^spacer%d*$") and '' or row.displayname
+		columns = {{text = text}}
+	end
+	local width = m.window.width or 0
+	if width <= 0 then
+		width = motif.info.localcoord[1] - m.pos[1]
+	end
+	local lengthOffset, previousAlign = 0, nil
+	for _, col in ipairs(columns) do
+		textImgReset(sprite)
+		textImgSetGlyphDevice(sprite, row.glyphDevice or 0)
+		local text = main.f_itemnameUpper(col.text, m.item.uppercase)
+		local alignOffset = 0
+		if col.align ~= nil then
+			if col.align ~= previousAlign then
+				lengthOffset = 0
+				previousAlign = col.align
+			end
+			if col.align == 0 then
+				alignOffset = width * 0.5
+			elseif col.align == -1 then
+				alignOffset = width - 1 -- Match Mugen's extra pixel when flipping.
+			end
+			textImgSetAlign(sprite, col.align == 0 and lengthOffset ~= 0 and 1 or col.align)
+		end
+		textImgAddPos(sprite, x + alignOffset + lengthOffset, y)
+		textImgSetText(sprite, text)
+		textImgDraw(sprite)
+		if col.align ~= nil then
+			local textWidth = textImgGetTextWidth(sprite, text) * props.scale[1]
+			if col.align == 0 and lengthOffset == 0 then
+				lengthOffset = lengthOffset + textWidth / 2
+			elseif col.align == -1 then
+				lengthOffset = lengthOffset - textWidth
+			else
+				lengthOffset = lengthOffset + textWidth
+			end
+		end
+	end
+end
+
 --common menu draw
 function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear, opts)
 	main.f_preloadTick(2)
@@ -3946,7 +3950,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	opts = opts or {}
 	local offx = opts.offx or 0
 	local offy = opts.offy or 0
-	local forceInactive = (opts.forceInactive == true)
+	local forceInactive = opts.forceInactive == true or t[item] == nil
+		or t[item].itemname:match("^spacer%d*$") ~= nil
 
 	-- effective visible-items: treat 0 or 'unlimitedItems' as "all"
 	local visible = (m.window and m.window.visibleitems) or #t
@@ -3994,11 +3999,6 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	-- helper that draws a single item either as active or inactive
 	local function drawItem(i, isActive)
 		local itemData = t[i]
-		-- display name
-		local displayname = main.f_itemnameUpper(itemData.displayname, m.item.uppercase)
-		if itemData.itemname:match("^spacer%d*$") then
-			displayname = ""
-		end
 		-- shared position
 		local posX = offx + (i - 1) * m.item.spacing[1]
 		local posY = offy + (i - 1) * m.item.spacing[2] - moveTxt
@@ -4014,17 +4014,13 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		end
 		main.f_animPosDraw(params.AnimData, bgPosX, bgPosY)
 		-- text sprite for label
-		local labelSprite
+		local labelProps
 		if itemData.selected then
-			labelSprite = isActive and m.item.selected.active.TextSpriteData or m.item.selected.TextSpriteData
+			labelProps = isActive and m.item.selected.active or m.item.selected
 		else
-			labelSprite = isActive and m.item.active.TextSpriteData or m.item.TextSpriteData
+			labelProps = isActive and m.item.active or m.item
 		end
-		textImgReset(labelSprite)
-		textImgAddPos(labelSprite, posX, posY)
-		textImgSetGlyphDevice(labelSprite, itemData.glyphDevice or 0)
-		textImgSetText(labelSprite, displayname)
-		textImgDraw(labelSprite)
+		main.f_menuItemTextDraw(itemData, labelProps, m, posX, posY)
 		-- value sprite
 		if itemData.vardisplay ~= nil then
 			local spr = isActive and m.item.value.active.TextSpriteData or m.item.value.TextSpriteData
@@ -4081,7 +4077,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	end
 	--draw menu cursor
 	if m.boxcursor.visible and not fadeActive() and not forceInactive then
-		local x1 = offx + m.pos[1] + m.boxcursor.coords[1] + (cursorPosY - 1) * m.item.spacing[1]
+		local x1 = offx + m.pos[1] + m.boxcursor.coords[1] + (item - 1) * m.item.spacing[1]
 		local y1 = sec.boxCursorData.offsetY
 		local w  = m.boxcursor.coords[3] - m.boxcursor.coords[1] + 1
 		local h  = m.boxcursor.coords[4] - m.boxcursor.coords[2] + 1
@@ -4164,6 +4160,7 @@ function main.f_menuItemHintDraw(hint, item)
 			end
 		end
 	end
+	text = text or hint.text.default
 	-- A row that refused an input shows the warning instead, see menu.hint.warn.
 	local sprite = hint.TextSpriteData
 	if item.warn ~= nil and hint.warn ~= nil and hint.warn.text[item.warn] ~= nil then
