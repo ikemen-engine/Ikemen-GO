@@ -14482,8 +14482,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			}
 
 			// Cancel a projectile with hitflag P
-			if getter.hitActive && (getter.hitdef.affectteam == 0 ||
-				(p.hitdef.teamside != getter.teamside) == (getter.hitdef.affectteam > 0)) &&
+			if getter.hitActive && getter.hitdef.affectsTeamside(p.hitdef.teamside) &&
 				getter.hitdef.hitflag&int32(HF_P) != 0 &&
 				getter.projClsnCheck(p, 1, 2, false) &&
 				sys.zAxisOverlap(getter.pos[2], getter.hitdef.attack_depth[0], getter.hitdef.attack_depth[1], getter.localscl,
