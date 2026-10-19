@@ -198,10 +198,6 @@ func realMain() {
 		// For Android, let's see exactly what failed
 		panic(err)
 	}
-	// Force to Vulkan 1.3 for iOS
-	if runtime.GOOS == "ios" {
-		cfg.Video.RenderMode = "Vulkan 1.3"
-	}
 	sys.cfg = *cfg
 	// Logcat("LOG: Config Loaded. System Script: " + sys.cfg.Config.System)
 
