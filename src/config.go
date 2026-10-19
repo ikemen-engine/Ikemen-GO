@@ -383,6 +383,15 @@ func (c *Config) normalize() {
 	c.SetValueUpdate("Sound.FocusLossVolume", int(Clamp(int32(c.Sound.FocusLossVolume), 0, 100)))
 	c.SetValueUpdate("Sound.WavChannels", Clamp(c.Sound.WavChannels, 1, 256))
 
+	renderer, _ := selectRenderer(c.Video.RenderMode)
+	renderMode := renderer.GetName()
+	if strings.HasPrefix(renderMode, "Vulkan 1.3") {
+		renderMode = "Vulkan 1.3"
+	}
+	if c.Video.RenderMode != renderMode {
+		c.SetValueUpdate("Video.RenderMode", renderMode)
+	}
+
 	switch c.Video.MSAA {
 	case 0, 2, 4, 6, 8, 16, 32:
 	default:
