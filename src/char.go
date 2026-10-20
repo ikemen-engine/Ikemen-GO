@@ -229,9 +229,6 @@ func (dc *DebugClsn) draw(color uint32, blendAlpha [2]int32) {
 	}
 
 	drawwindow := &sys.scrrect
-	if viewport, ok := sys.fightDrawClip(); ok {
-		drawwindow = &viewport
-	}
 
 	// Initialize the palette texture for this specific rect type if it doesn't exist yet
 	if dc.palTex == nil {

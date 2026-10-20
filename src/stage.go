@@ -741,19 +741,9 @@ func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl flo
 	// Extra considerations for stage windows
 	if isStage {
 		// Apply overdraw
-		// Before shifting the windows for the viewport
 		rect = intersectRect(rect, overdrawClip)
-
-		// Stage BG windows are relative to the fight viewport.
-		// Offset and clip them when composing at full resolution.
-		viewport, _ := sys.fightDrawClip()
-		if viewport != sys.scrrect {
-			rect[0] += viewport[0] - sys.scrrect[0]
-			rect[1] += viewport[1] - sys.scrrect[1]
-		}
-
-		// Intersect viewport
-		rect = intersectRect(rect, viewport)
+		// Stage windows stay in game pixels; the renderer moves them into place.
+		rect = intersectRect(rect, sys.scrrect)
 	}
 	if applyTransform {
 		window := bg.startrect

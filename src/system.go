@@ -237,6 +237,10 @@ type System struct {
 	SystemStateVars
 	window              *Window
 	appliedVideo        VideoState
+	renderTargetRect    [4]int32   // Actual framebuffer size; scrrect stays the game resolution.
+	renderTargetView    [2]float64 // Window-shaped area inside the framebuffer, not rounded.
+	drawViewport        [4]int32   // Where the current pass is drawn; zero means the default.
+	drawMotif           bool       // Menu overlays cover the whole screen.
 	redrawWait          struct{ nextTime, lastDraw time.Time }
 	debugFont           *TextSprite
 	debugDisplay        bool
@@ -400,6 +404,8 @@ type System struct {
 type drawAspectState struct {
 	gameWidth, gameHeight   float32
 	widthScale, heightScale float32
+	viewport               [4]int32
+	motif                  bool
 }
 
 // Check if the application is running inside a macOS app bundle
@@ -462,6 +468,7 @@ func (s *System) init(w, h int32) *lua.LState {
 
 	// Init renderer
 	Logcat("Check B: Initializing GFX")
+	s.renderTargetRect, s.renderTargetView = s.renderTargetSize(w, h)
 	gfx.Init()
 	s.window.SetSwapInterval(s.cfg.Video.VSync) // VSync must be set after Init(), or our config.ini will be ignored
 	s.appliedVideo = s.currentVideoState()
@@ -469,7 +476,7 @@ func (s *System) init(w, h int32) *lua.LState {
 	Logcat("Check C: Initializing GFX Font")
 	gfxFont.Init(gfx)
 	Logcat("Check D: We are GOOD")
-	gfx.BeginFrame(false)
+	s.beginFrame(true)
 
 	// And the audio.
 	speaker = &SDLSpeaker{}
@@ -611,11 +618,48 @@ func (s *System) getMotifAspect() float32 {
 }
 
 func (s *System) getCurrentAspect() float32 {
-	if (s.postMatchFlg && s.skipMotifScaling()) ||
+	// Use the aspect ratio of whatever is being drawn right now (fight or menus).
+	if s.drawViewport != [4]int32{} {
+		return s.gameWidth / s.gameHeight
+	}
+	if (s.postMatchFlg && !s.shouldComposeFullResolution() && s.skipMotifScaling()) ||
 		(s.middleOfMatch() && !s.shouldComposeFullResolution()) {
 		return s.getFightAspect()
 	}
 	return s.getMotifAspect()
+}
+
+// Grow the render target to the window's shape, never below the game resolution.
+// Menus keep their exact pixels and the fight can use the extra space.
+func (s *System) renderTargetSize(w, h int32) ([4]int32, [2]float64) {
+	rect := [4]int32{0, 0, w, h}
+	view := [2]float64{float64(w), float64(h)}
+	if s.window == nil || !s.cfg.Video.KeepAspect {
+		return rect, view
+	}
+	dw, dh := s.window.GetDrawablePixelSize()
+	if dw > 0 && dh > 0 {
+		view[0] = math.Max(view[0], float64(h)*float64(dw)/float64(dh))
+		view[1] = math.Max(view[1], float64(w)*float64(dh)/float64(dw))
+		// Pad by whole pixels on both sides so centered menus stay pixel-aligned.
+		rect[2] += 2 * int32(math.Ceil((view[0]-float64(w))/2))
+		rect[3] += 2 * int32(math.Ceil((view[1]-float64(h))/2))
+	}
+	return rect, view
+}
+
+// Start a frame, first resizing the render target if the window shape changed.
+func (s *System) beginFrame(clearColor bool) {
+	if !s.window.renderingPaused {
+		rect, view := s.renderTargetSize(s.scrrect[2], s.scrrect[3])
+		if rect != s.renderTargetRect {
+			chk(gfx.ResizeRenderTargets(rect[2], rect[3], s.msaa))
+			s.renderTargetRect = rect
+			clearColor = true
+		}
+		s.renderTargetView = view
+	}
+	gfx.BeginFrame(clearColor)
 }
 
 func aspectStateForSize(w, h int32) drawAspectState {
@@ -732,9 +776,12 @@ func (s *System) applyVideoSettings() error {
 		s.appliedVideo.shadowEnabled = v.EnableModelShadow
 	}
 	if v.GameWidth != a.gameWidth || v.GameHeight != a.gameHeight || v.MSAA != a.msaa {
-		if err := gfx.ResizeRenderTargets(v.GameWidth, v.GameHeight, v.MSAA); err != nil {
+		rect, view := s.renderTargetSize(v.GameWidth, v.GameHeight)
+		if err := gfx.ResizeRenderTargets(rect[2], rect[3], v.MSAA); err != nil {
 			return fmt.Errorf("resize render targets: %w", err)
 		}
+		s.renderTargetRect = rect
+		s.renderTargetView = view
 		s.setGameSize(v.GameWidth, v.GameHeight)
 		s.msaa = v.MSAA
 		s.appliedVideo.gameWidth, s.appliedVideo.gameHeight = v.GameWidth, v.GameHeight
@@ -818,6 +865,8 @@ func (s *System) captureAspectState() drawAspectState {
 		gameHeight:  s.gameHeight,
 		widthScale:  s.widthScale,
 		heightScale: s.heightScale,
+		viewport:    s.drawViewport,
+		motif:       s.drawMotif,
 	}
 }
 
@@ -826,6 +875,45 @@ func (s *System) restoreAspectState(st drawAspectState) {
 	s.gameHeight = st.gameHeight
 	s.widthScale = st.widthScale
 	s.heightScale = st.heightScale
+	s.drawMotif = st.motif
+	if s.drawViewport != st.viewport {
+		s.drawViewport = st.viewport
+		if gfx != nil {
+			viewport := s.currentDrawViewport()
+			gfx.SetViewport(viewport[0], viewport[1], viewport[2], viewport[3])
+		}
+	}
+}
+
+// Area of the framebuffer the current pass draws to.
+func (s *System) currentDrawViewport() [4]int32 {
+	if s.drawViewport != [4]int32{} {
+		return s.drawViewport
+	}
+	if s.middleOfMatch() || (s.postMatchFlg && !s.shouldComposeFullResolution() && s.skipMotifScaling()) {
+		return s.fightViewport()
+	}
+	return s.aspectViewport(s.getMotifAspect())
+}
+
+// Convert a clipping rectangle from game pixels to framebuffer pixels.
+func (s *System) viewportScissor(rect [4]int32) [4]int32 {
+	vp := s.currentDrawViewport()
+	if vp == s.scrrect {
+		return intersectRect(rect, s.scrrect)
+	}
+	rect = intersectRect(rect, s.scrrect)
+	if rect[2] <= 0 || rect[3] <= 0 {
+		return [4]int32{vp[0], vp[1], 0, 0}
+	}
+	sx := float64(vp[2]) / float64(s.scrrect[2])
+	sy := float64(vp[3]) / float64(s.scrrect[3])
+	x := float64(vp[0]) + float64(rect[0]-s.scrrect[0])*sx
+	y := float64(vp[1]) + float64(rect[1]-s.scrrect[1])*sy
+	x1, y1 := int32(math.Floor(x)), int32(math.Floor(y))
+	return intersectRect([4]int32{x1, y1,
+		int32(math.Ceil(x+float64(rect[2])*sx)) - x1,
+		int32(math.Ceil(y+float64(rect[3])*sy)) - y1}, vp)
 }
 
 func (s *System) withAspectState(st drawAspectState, fn func()) {
@@ -833,6 +921,23 @@ func (s *System) withAspectState(st drawAspectState, fn func()) {
 	s.restoreAspectState(st)
 	defer s.restoreAspectState(prev)
 	fn()
+}
+
+// Run fn drawing over the whole visible area instead of only the fight or menus.
+func (s *System) withFullViewport(fn func()) {
+	st := s.captureAspectState()
+	st.viewport = s.compositionViewport()
+	s.withAspectState(st, fn)
+}
+
+// Draw state for menus and other motif screens.
+func (s *System) motifAspectState() drawAspectState {
+	st := aspectStateForSize(s.scrrect[2], s.scrrect[3])
+	st.motif = true
+	if s.shouldComposeFullResolution() {
+		st.viewport = s.aspectViewport(s.getMotifAspect())
+	}
+	return st
 }
 
 func (s *System) wrapDrawWithAspectState(fn func()) func() {
@@ -844,18 +949,21 @@ func (s *System) wrapDrawWithAspectState(fn func()) func() {
 		drawState := st
 		// Resolve late activation before executing a queued draw.
 		if s.shouldComposeFullResolution() {
-			drawState = aspectStateForSize(s.scrrect[2], s.scrrect[3])
+			drawState = s.motifAspectState()
 		}
 		s.withAspectState(drawState, fn)
 	}
 }
 
 func (s *System) canUseFullResolutionAspect() bool {
-	return s.cfg.Video.KeepAspect && !s.skipMotifScaling()
+	// Both pillarboxed and letterboxed fights can have full-canvas UI.
+	return s.cfg.Video.KeepAspect
 }
 
 func (s *System) motifOverlayActive() bool {
-	return s.motif.di.active ||
+	return s.motif.ch.active || s.motif.di.active ||
+		s.motif.vi.active || s.motif.wi.active || s.motif.hi.active || s.motif.co.active ||
+		s.storyboard.active || s.textInput.active ||
 		s.motif.me.active && s.motif.me.state != ME_OpeningOut && s.motif.me.state != ME_ClosingIn
 }
 
@@ -864,26 +972,43 @@ func (s *System) shouldComposeFullResolution() bool {
 		(!s.middleOfMatch() || s.motifOverlayActive() || s.debugDisplay)
 }
 
-func (s *System) fightViewport() [4]int32 {
-	viewport := s.scrrect
-	fightAspect := s.getFightAspect()
-	motifAspect := s.getMotifAspect()
-	if fightAspect <= 0 || motifAspect <= 0 || fightAspect == motifAspect {
+// Fit content with the given aspect ratio into the middle of the render target.
+func (s *System) aspectViewport(aspect float32) [4]int32 {
+	viewport := s.renderTargetRect
+	if !s.cfg.Video.KeepAspect || aspect <= 0 {
 		return viewport
 	}
-
-	if fightAspect < motifAspect {
-		contentWidth := int32(float32(s.scrrect[3]) * fightAspect)
-		contentWidth = Clamp(contentWidth, int32(0), s.scrrect[2])
-		viewport[0] += (s.scrrect[2] - contentWidth) / 2
-		viewport[2] = contentWidth
+	width, height := s.renderTargetView[0], s.renderTargetView[1]
+	if width > height*float64(aspect) {
+		width = height * float64(aspect)
 	} else {
-		contentHeight := int32(float32(s.scrrect[2]) / fightAspect)
-		contentHeight = Clamp(contentHeight, int32(0), s.scrrect[3])
-		viewport[1] += (s.scrrect[3] - contentHeight) / 2
-		viewport[3] = contentHeight
+		height = width / float64(aspect)
 	}
+	viewport[2] = Clamp(int32(math.Round(width)), int32(1), viewport[2])
+	viewport[3] = Clamp(int32(math.Round(height)), int32(1), viewport[3])
+	viewport[0] = (s.renderTargetRect[2] - viewport[2]) / 2
+	viewport[1] = (s.renderTargetRect[3] - viewport[3]) / 2
 	return viewport
+}
+
+func (s *System) fightViewport() [4]int32 {
+	return s.aspectViewport(s.getFightAspect())
+}
+
+// The area covered by the fight and menus together. Fades fill it, and the final
+// image is clipped to it so the black bars stay black.
+func (s *System) compositionViewport() [4]int32 {
+	motif := s.aspectViewport(s.getMotifAspect())
+	if !s.middleOfMatch() && !s.postMatchFlg {
+		return motif
+	}
+	fight := s.fightViewport()
+	if !s.shouldComposeFullResolution() {
+		return fight
+	}
+	x, y := Min(fight[0], motif[0]), Min(fight[1], motif[1])
+	return [4]int32{x, y, Max(fight[0]+fight[2], motif[0]+motif[2]) - x,
+		Max(fight[1]+fight[3], motif[1]+motif[3]) - y}
 }
 
 func intersectRect(a, b [4]int32) [4]int32 {
@@ -895,14 +1020,6 @@ func intersectRect(a, b [4]int32) [4]int32 {
 		return [4]int32{x1, y1, 0, 0}
 	}
 	return [4]int32{x1, y1, x2 - x1, y2 - y1}
-}
-
-func (s *System) fightDrawClip() ([4]int32, bool) {
-	if !s.shouldComposeFullResolution() {
-		return s.scrrect, false
-	}
-	viewport := s.fightViewport()
-	return viewport, viewport != s.scrrect
 }
 
 func (s *System) setGameAspect() {
@@ -1002,7 +1119,7 @@ func (s *System) await(fps int) bool {
 
 		// Begin the next frame after events have been processed. Do not clear
 		// the screen if network input is present.
-		defer gfx.BeginFrame(sys.netConnection == nil)
+		defer s.beginFrame(sys.netConnection == nil)
 	}
 
 	s.runMainThreadTask()
@@ -1066,8 +1183,12 @@ func (s *System) soundPanView() (view soundPanView) {
 func (s *System) renderFrame() {
 	// Full-resolution scaling is render-only; gameplay remains in fight space.
 	logicState := s.captureAspectState()
-	if s.shouldComposeFullResolution() {
-		s.restoreAspectState(aspectStateForSize(s.scrrect[2], s.scrrect[3]))
+	// Draw the fight in the same place whether or not a menu is open.
+	if s.cfg.Video.KeepAspect {
+		fightState := logicState
+		fightState.viewport = s.fightViewport()
+		fightState.motif = false
+		s.restoreAspectState(fightState)
 	}
 	defer s.restoreAspectState(logicState)
 
@@ -1075,7 +1196,11 @@ func (s *System) renderFrame() {
 		// Keep pause-menu logic responsive even when this render frame is skipped.
 		// Any queued draw ops are discarded below because this frame is not being rendered.
 		if s.motif.me.active {
-			s.motif.me.runLua(&s.motif)
+			menuState := s.captureAspectState()
+			if s.motif.shouldScopeMotifAspect() {
+				menuState = s.motifAspectState()
+			}
+			s.withAspectState(menuState, func() { s.motif.me.runLua(&s.motif) })
 		}
 		// On skipped frames, discard queued draws to avoid buildup.
 		s.luaDiscardDrawQueue()
@@ -1084,12 +1209,22 @@ func (s *System) renderFrame() {
 
 	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 	dx, dy, dscl := s.zoom.computeCamera(x, y, scl)
+	if s.shouldComposeFullResolution() {
+		// Clear unused areas to black first (netplay can keep the previous frame).
+		s.withFullViewport(func() {
+			FillRect(s.scrrect, 0, [2]int32{255, 0}, nil)
+		})
+	}
 	s.draw(dx, dy, dscl)
 
 	// Lua
 	s.luaFlushDrawQueue()
 	// Fullscreen fades are the final scene pass, after all deferred Lua UI.
-	s.fightScreen.drawFade()
+	if s.shouldComposeFullResolution() {
+		s.withAspectState(s.motifAspectState(), s.fightScreen.drawFade)
+	} else {
+		s.fightScreen.drawFade()
+	}
 	s.motif.drawFade()
 
 	// Render top elements
@@ -1097,10 +1232,6 @@ func (s *System) renderFrame() {
 
 	// Render debug elements
 	if s.debugDisplay {
-		// Re-mask fight-only frames before drawing full-resolution debug panels.
-		if s.middleOfMatch() && !s.motifOverlayActive() {
-			s.motif.drawAspectBars()
-		}
 		s.drawDebugText(logicState)
 	}
 	s.textInput.draw()
@@ -4442,13 +4573,9 @@ func (s *System) draw(x, y, scl float32) {
 }
 
 func (s *System) drawCharTexts(layerno int16) {
-	var clip *[4]int32
-	if viewport, ok := s.fightDrawClip(); ok {
-		clip = &viewport
-	}
 	for _, playerTexts := range s.chartexts {
 		for _, ts := range playerTexts {
-			ts.draw(layerno, clip)
+			ts.draw(layerno, nil)
 		}
 	}
 }
@@ -4511,7 +4638,7 @@ func (s *System) drawDebugText(logicState drawAspectState) {
 
 	panelState := sceneState
 	if !s.cfg.Video.KeepAspect || s.canUseFullResolutionAspect() {
-		panelState = aspectStateForSize(s.scrrect[2], s.scrrect[3])
+		panelState = s.motifAspectState()
 	}
 
 	debugScaleX, debugScaleY := s.debugTextScale(panelState)

@@ -3239,7 +3239,7 @@ func (m *Motif) drawLoading() {
 			gfx.EndFrame()
 
 			// Start a one-off frame
-			gfx.BeginFrame(true)
+			sys.beginFrame(true)
 
 			FillRect(sys.scrrect, 0x000000, [2]int32{255, 0}, nil)
 
@@ -3254,7 +3254,7 @@ func (m *Motif) drawLoading() {
 			}
 
 			// Prepare a fresh frame for whatever comes next (no clear)
-			gfx.BeginFrame(false)
+			sys.beginFrame(false)
 		}
 	}
 	sys.runMainThreadTask()
@@ -3448,29 +3448,10 @@ func (m *Motif) step() {
 	}
 }
 
-// drawAspectBars renders black bars when the fight aspect and motif aspect differ.
-func (m *Motif) drawAspectBars() {
-	viewport, ok := sys.fightDrawClip()
-	if !ok {
-		return
-	}
-	screen := sys.scrrect
-	rects := [4][4]int32{
-		{screen[0], screen[1], viewport[0] - screen[0], screen[3]},
-		{viewport[0] + viewport[2], screen[1], screen[0] + screen[2] - viewport[0] - viewport[2], screen[3]},
-		{viewport[0], screen[1], viewport[2], viewport[1] - screen[1]},
-		{viewport[0], viewport[1] + viewport[3], viewport[2], screen[1] + screen[3] - viewport[1] - viewport[3]},
-	}
-
-	for _, r := range rects {
-		if r[2] > 0 && r[3] > 0 {
-			// 0x000000 = black, fully opaque.
-			FillRect(r, 0x000000, [2]int32{255, 0}, nil)
-		}
-	}
-}
-
 func (m *Motif) shouldScopeMotifAspect() bool {
+	if sys.shouldComposeFullResolution() {
+		return true
+	}
 	if sys.cfg.Video.KeepAspect || sys.skipMotifScaling() {
 		return false
 	}
@@ -3488,13 +3469,8 @@ func (m *Motif) draw(layerno int16) {
 	sys.matchStoryboards.draw(layerno)
 	if m.shouldScopeMotifAspect() {
 		prev := sys.captureAspectState()
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+		sys.restoreAspectState(sys.motifAspectState())
 		defer sys.restoreAspectState(prev)
-	}
-	// Draw black bars if fight aspect and motif aspect differ.
-	if layerno == 1 && sys.shouldComposeFullResolution() &&
-		(!sys.middleOfMatch() || sys.motifOverlayActive()) {
-		m.drawAspectBars()
 	}
 	if m.ch.active {
 		m.ch.draw(m, layerno)
@@ -3529,13 +3505,13 @@ func (m *Motif) drawFade() {
 	sys.matchStoryboards.drawFade()
 	if m.shouldScopeMotifAspect() {
 		prev := sys.captureAspectState()
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
+		sys.restoreAspectState(sys.motifAspectState())
 		defer sys.restoreAspectState(prev)
 	}
 	if m.fadeOut.isActive() {
-		m.fadeOut.draw()
+		m.fadeOut.drawFullScreen()
 	} else if m.fadeIn.isActive() {
-		m.fadeIn.draw()
+		m.fadeIn.drawFullScreen()
 	}
 }
 
@@ -5520,11 +5496,7 @@ func (t *TextInput) draw() {
 	}
 	k := &sys.motif.KeyboardInfo
 	previous := sys.captureAspectState()
-	if sys.canUseFullResolutionAspect() {
-		sys.restoreAspectState(aspectStateForSize(sys.scrrect[2], sys.scrrect[3]))
-	} else {
-		sys.setGameSize(sys.scrrect[2], sys.scrrect[3])
-	}
+	sys.restoreAspectState(sys.motifAspectState())
 	defer sys.restoreAspectState(previous)
 	if k.Text.Bg.RectData != nil {
 		sys.window.SetTextInputRect(k.Text.Bg.RectData.drawWindow())

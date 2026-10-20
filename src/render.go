@@ -75,6 +75,7 @@ type Renderer interface {
 
 	EnableScissor(x, y, width, height int32)
 	DisableScissor()
+	SetViewport(x, y, width, height int32)
 
 	SetUniformI(name string, val int)
 	SetUniformF(name string, values ...float32)
@@ -350,7 +351,7 @@ func (cs CustomShaderRenderData) setUniforms() {
 	}
 	gfx.SetUniformF("iTime", timeSec/60.0)
 	gfx.SetUniformF("sTime", cs.sTime)
-	gfx.SetUniformF("iResolution", float32(sys.scrrect[2]), float32(sys.scrrect[3]))
+	gfx.SetUniformF("iResolution", float32(sys.renderTargetRect[2]), float32(sys.renderTargetRect[3]))
 	gfx.SetUniformF("aspectRatio", sys.getCurrentAspect()/sys.getFightAspect())
 	gfx.SetCustomUniforms(cs.params)
 }
@@ -363,7 +364,11 @@ func (rp *RenderParams) IsValid() bool {
 func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst [4]float32, isTrapez bool) {
 	gfx.SetUniformMatrix("modelview", modelview[:])
 	if isTrapez {
-		gfx.SetUniformF("x1x2x4x3", x1, x2, x4, x3) // this uniform is optional
+		// The shader compares parallax edges with screen pixels, so convert them to
+		// framebuffer pixels. The vertices themselves stay in game coordinates.
+		viewport := sys.currentDrawViewport()
+		x, scale := float32(viewport[0]), float32(viewport[2])/float32(sys.scrrect[2])
+		gfx.SetUniformF("x1x2x4x3", x+x1*scale, x+x2*scale, x+x4*scale, x+x3*scale)
 	} else {
 		gfx.SetUniformF("x1x2x4x3", 0, 0, 0, 0)
 	}
