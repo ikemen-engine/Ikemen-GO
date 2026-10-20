@@ -1534,7 +1534,6 @@ func (dl DrawList) draw(layerno int32, under bool, cameraX, cameraY, cameraScl f
 
 	// Common variables
 	shake := sys.envShake.getOffset()
-	fightClip, clipFight := sys.fightDrawClip()
 
 	// Draw only the filtered items
 	for _, idx := range sortList {
@@ -1601,10 +1600,6 @@ func (dl DrawList) draw(layerno int32, under bool, cameraX, cameraY, cameraScl f
 			window[2] = int32(cs * (w[2] - w[0]) * sys.widthScale)
 			window[3] = int32(cs * (w[3] - w[1]) * sys.heightScale)
 
-			drawwindow = &window
-		}
-		if clipFight {
-			window := intersectRect(*drawwindow, fightClip)
 			drawwindow = &window
 		}
 

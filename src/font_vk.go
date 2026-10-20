@@ -644,14 +644,8 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 		vk.CmdBindVertexBuffers(r.commandBuffers[0], 0, 1, []vk.Buffer{r.vertexBuffers[bufferIndex].buffer}, []vk.DeviceSize{0})
 	}
 	//restrict drawing to a certain part of the window
-	viewports := []vk.Viewport{{
-		MinDepth: 0.0,
-		MaxDepth: 1.0,
-		X:        0,
-		Y:        0,
-		Width:    float32(sys.scrrect[2]),
-		Height:   float32(sys.scrrect[3]),
-	}}
+	viewport := sys.currentDrawViewport()
+	window = sys.viewportScissor(window)
 	scissors := []vk.Rect2D{{
 		Offset: vk.Offset2D{
 			X: int32(Max(int(window[0]), 0)),
@@ -663,7 +657,7 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 			Height: uint32(window[3]),
 		},
 	}}
-	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
+	r.SetViewport(viewport[0], viewport[1], viewport[2], viewport[3])
 	vk.CmdSetScissor(r.commandBuffers[0], 0, 1, scissors)
 	color := f.color
 	palAddGray := [4]float32{f.shaderPalFX.add[0], f.shaderPalFX.add[1], f.shaderPalFX.add[2], f.shaderPalFX.gray}
