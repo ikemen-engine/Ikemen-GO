@@ -4273,11 +4273,11 @@ func (ro *FightScreenRound) draw(layerno int16, f map[int]*Fnt) {
 
 func (ro *FightScreenRound) drawFade() {
 	if ro.fadeOut.isActive() {
-		ro.fadeOut.draw()
+		ro.fadeOut.drawFullScreen()
 	} else if ro.fadeIn.isActive() {
-		ro.fadeIn.draw()
+		ro.fadeIn.drawFullScreen()
 	} else if sys.clsnDisplay && sys.cfg.Debug.ClsnDarken {
-		ro.fadeIn.drawRect(sys.scrrect, 0, 0)
+		sys.withFullViewport(func() { ro.fadeIn.drawRect(sys.scrrect, 0, 0) })
 	}
 
 	if ro.shutterTimer > 0 {
@@ -4309,10 +4309,12 @@ func (ro *FightScreenRound) drawFade() {
 				cover = t * half / ro.shutter_time
 			}
 		}
-		rect[3] = cover
-		ro.fadeIn.drawRect(rect, ro.shutter_col, 255)
-		rect[1] = sys.scrrect[3] - rect[3]
-		ro.fadeIn.drawRect(rect, ro.shutter_col, 255)
+		sys.withFullViewport(func() {
+			rect[3] = cover
+			ro.fadeIn.drawRect(rect, ro.shutter_col, 255)
+			rect[1] = sys.scrrect[3] - rect[3]
+			ro.fadeIn.drawRect(rect, ro.shutter_col, 255)
+		})
 	}
 }
 

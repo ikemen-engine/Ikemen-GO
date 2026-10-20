@@ -174,9 +174,6 @@ func (p *storyboardPlacement) transform() *bgDrawTransform {
 		shake := sys.envShake.getOffset()
 		pos[0] = sys.gameWidth/2 + sys.cam.Offset[0] - shake[0] + (pos[0]-x)*scl
 		pos[1] = sys.cam.GroundLevel() + sys.cam.Offset[1] - shake[1] - y + pos[1]*scl
-	} else if viewport, ok := sys.fightDrawClip(); ok {
-		pos[0] += float32(viewport[0]-sys.scrrect[0]) / sys.widthScale
-		pos[1] += float32(viewport[1]-sys.scrrect[1]) / sys.heightScale
 	}
 	return &bgDrawTransform{
 		space:  p.space,
