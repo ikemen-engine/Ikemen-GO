@@ -130,6 +130,18 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 			return nil, fmt.Errorf("failed to create window: %w", err)
 		}
 
+		if runtime.GOOS == "darwin" {
+			// issue #4049: sdl2-compat auto-starts text input on window creation, which
+			// attaches an NSTextInputClient and makes AppKit route keyDowns through
+			// NSTextInputContext -> TSMProcessRawKeyEvent, where the press-and-hold accent
+			// popup is decided. HIToolbox reads the GLOBAL ApplePressAndHoldEnabled plist
+			// (app-domain defaults are ignored for our bundle id), so the only reliable fix
+			// is to stop text input: keys then go straight to SDL_SendKeyboardKey and the
+			// popup is impossible. getKeyText() prompts keep working via the keyString
+			// fallback in OnKeyPressed (src/input.go).
+			sdl.StopTextInput()
+		}
+
 		// 6. POST-CREATION ATTRIBUTES
 		window.SetResizable(true)
 		if fullscreen {

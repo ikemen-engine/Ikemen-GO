@@ -122,6 +122,15 @@ func OnKeyReleased(key Key, mk ModifierKey) {
 	}
 }
 
+// US-layout shifted variants for digits/punctuation (unshifted -> shifted).
+var keyShiftMap = map[rune]rune{
+	'1': '!', '2': '@', '3': '#', '4': '$', '5': '%',
+	'6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+	'-': '_', '=': '+',
+	'[': '{', ']': '}', '\\': '|', ';': ':', '\'': '"',
+	',': '<', '.': '>', '/': '?', '`': '~',
+}
+
 func OnKeyPressed(key Key, mk ModifierKey) {
 	if key != KeyUnknown {
 		// Treat sys.keyInput as edge-triggered. Ignore repeats.
@@ -130,6 +139,34 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		}
 		sys.keyState[key] = true
 		sys.keyInput = key
+		// Fallback for when text input is disabled (macOS, issue #4049):
+		// SDL_TEXTINPUT never fires, so synthesize keyString from the keysym.
+		// SDL3 key-event keycodes are unshifted by design (SDL_GetKeyFromScancode
+		// resets modstate to KMOD_NONE), so apply shift/caps from the modifier
+		// state here. On platforms where text input is active, the TEXTINPUT
+		// event arrives after KEYDOWN and overwrites this value.
+		if key >= 0x20 && key <= 0x7e {
+			c := rune(key)
+			shifted := ((mk & sdl.KMOD_SHIFT) != 0) != ((mk & sdl.KMOD_CAPS) != 0) // shift XOR caps
+			switch {
+			case key >= sdl.K_a && key <= sdl.K_z: // letter (unshifted lowercase)
+				if shifted {
+					c -= 32 // uppercase when shift XOR caps lock
+				}
+			case key >= 0x41 && key <= 0x5a: // defensive normalize to lowercase first
+				c += 32
+				if shifted {
+					c -= 32
+				}
+			default: // digit/punctuation: shifted variant via US layout map (shift only)
+				if (mk & sdl.KMOD_SHIFT) != 0 {
+					if s, ok := keyShiftMap[c]; ok {
+						c = s
+					}
+				}
+			}
+			sys.keyString = string(c)
+		}
 		escPressed := key == KeyEscape && (mk&ModCtrlAlt) == 0
 		sys.esc = sys.esc || escPressed
 		sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
