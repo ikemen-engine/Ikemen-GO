@@ -1397,12 +1397,14 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 	// For moveType, stateType and such triggers
 	// Each can either be compared against specific flags or keywords, or used bare to return a string
 	// This helper looks ahead to determine how to handle them
+	// Always leaves c.token at the next token, so callers must return right after
 	flagTrigger := func(pushSelf func(), tryKeyword func(not bool) (matched bool, err error)) error {
 		savedIn := *in
 		peekTok := c.tokenizer(in)
 		*in = savedIn
 		if peekTok != "=" && peekTok != "!=" {
 			pushSelf()
+			c.token = c.tokenizer(in)
 			return nil
 		}
 		return eqne(func(not bool) error {
@@ -1411,6 +1413,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 				return err
 			}
 			if matched {
+				c.token = c.tokenizer(in)
 				return nil
 			}
 			pushSelf()
@@ -3312,6 +3315,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
+		return bvNone(), nil
 	case "palfxvar":
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
@@ -3960,6 +3964,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
+		return bvNone(), nil
 	case "stagebgvar":
 		if err := c.checkOpeningParenthesis(in); err != nil {
 			return bvNone(), err
@@ -4248,6 +4253,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
+		return bvNone(), nil
 	case "teamside":
 		out.append(OC_teamside)
 	case "tickspersecond":
@@ -5409,6 +5415,7 @@ func (c *CharCompiler) expValue(out *BytecodeExp, in *string,
 		}); err != nil {
 			return bvNone(), err
 		}
+		return bvNone(), nil
 	case "playerindexexist":
 		if _, err := c.oneArg(out, in, rd, true); err != nil {
 			return bvNone(), err
