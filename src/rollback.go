@@ -64,7 +64,7 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 		// GGPO's disconnect timeout only runs after initial synchronization.
 		if rs.netConnection != nil && !rs.session.synchronized && time.Now().After(syncDeadline) {
 			rs.netConnection.fail(fmt.Errorf("Timed out establishing rollback connection to %s (local UDP port %d).\nCheck UDP forwarding and firewall settings on both peers.",
-				net.JoinHostPort(rs.session.remoteIp, fmt.Sprint(rs.netConnection.rollbackRemotePort)), rs.session.config.Port))
+				net.JoinHostPort(rs.session.remoteIp, fmt.Sprint(rs.netConnection.rollbackRemotePort)), rs.netConnection.rollbackLocalPort))
 			break
 		}
 
@@ -116,7 +116,7 @@ func (rs *RollbackSystem) preMatchSetup() error {
 			return Error("Rollback currently requires an IPv4 peer address")
 		}
 
-		localPort := rs.session.config.Port
+		localPort := sys.netConnection.rollbackLocalPort
 		remotePort := sys.netConnection.rollbackRemotePort
 
 		if localPort < 1 || localPort > 65535 || remotePort < 1 || remotePort > 65535 {
@@ -125,7 +125,7 @@ func (rs *RollbackSystem) preMatchSetup() error {
 
 		// A local/proxy peer needs different UDP ports or packets loop back into our own rollback socket.
 		if (remoteIP.IsLoopback() || remoteIP.Equal(localIP)) && localPort == remotePort {
-			return fmt.Errorf("Cannot use UDP port %d for both rollback players on the same machine.\nConfigure a different Rollback.Port for each instance.", localPort)
+			return fmt.Errorf("Cannot use UDP port %d for both rollback players on the same machine.\nUse 127.0.0.1 for automatic guest port selection, or configure different Rollback.Port values.", localPort)
 		}
 
 		rs.session.remoteIp = remoteIP.String()
