@@ -1623,6 +1623,7 @@ type Motif struct {
 	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
 	KeyboardInfo    KeyboardInfoProperties              `ini:"keyboard_info"`
 	KeyboardBgDef   BgDefProperties                     `ini:"keyboardbgdef"`
+	Bezel           AnimationProperties                 `ini:"bezel"`
 	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
@@ -3015,6 +3016,11 @@ func (m *Motif) loadFiles() {
 
 func (m *Motif) populateDataPointers() {
 	PopulateDataPointers(m, m.Info.Localcoord)
+	if a := m.Bezel.AnimData; a != nil {
+		// Menus can use the same action without resetting the bezel animation.
+		a.anim = a.anim.ShallowCopy()
+		a.palfx.ignoreAllPalFX = true
+	}
 }
 
 func (m *Motif) resolvePath() {
@@ -3410,6 +3416,7 @@ func (m *Motif) reset() {
 	}
 	m.fadeIn.reset()
 	m.fadeOut.reset()
+	m.Bezel.AnimData.Reset()
 	m.ch.reset(m)
 	m.de.reset(m)
 	m.di.reset(m)
@@ -3424,6 +3431,9 @@ func (m *Motif) reset() {
 }
 
 func (m *Motif) step() {
+	if m.bezelActive() {
+		m.Bezel.AnimData.Update(false)
+	}
 	if !m.me.active && (!sys.paused || sys.frameStepFlag) &&
 		!(sys.fightScreen.round.fadeOut.isActive() || sys.fightScreen.round.fadeIn.isActive()) {
 		if m.fadeOut.isActive() {
@@ -3469,6 +3479,38 @@ func (m *Motif) step() {
 	if sys.storyboard.active {
 		sys.storyboard.step()
 	}
+}
+
+func (m *Motif) bezelActive() bool {
+	a := m.Bezel.AnimData
+	return sys.cfg.Video.KeepAspect && (sys.middleOfMatch() || sys.postMatchFlg) &&
+		(m.Bezel.Anim >= 0 || m.Bezel.Spr[0] >= 0) &&
+		m.Bezel.Localcoord[0] > 0 && m.Bezel.Localcoord[1] > 0 &&
+		a != nil && a.anim != nil
+}
+
+func (m *Motif) drawBezel() {
+	if !m.bezelActive() {
+		return
+	}
+	a := m.Bezel.AnimData
+	// Map the bezel's localcoord to the whole window.
+	st := drawAspectState{
+		gameWidth:  float32(m.Bezel.Localcoord[0]) / a.localScale,
+		gameHeight: float32(m.Bezel.Localcoord[1]) / a.localScale,
+		viewport:   sys.renderTargetRect,
+	}
+	st.widthScale = float32(sys.scrrect[2]) / st.gameWidth
+	st.heightScale = float32(sys.scrrect[3]) / st.gameHeight
+	sys.withAspectState(st, func() {
+		oldBright := sys.brightness
+		sys.brightness = 1
+		defer func() { sys.brightness = oldBright }()
+
+		// The bezel starts at the window's top left, without motif offsets.
+		xoffset := -float32(a.offsetX)
+		a.drawWithOffset(xoffset, 0, a.drawWindowWithOffset(xoffset, 0))
+	})
 }
 
 func (m *Motif) shouldScopeMotifAspect() bool {
