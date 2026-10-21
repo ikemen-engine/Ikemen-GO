@@ -2411,6 +2411,12 @@ func (a *Anim) SetWindow(window [4]float32) {
 }
 
 func (a *Anim) drawWindow() [4]int32 {
+	// Keep the original offsets and rounding for motif clips.
+	return a.drawWindowWithOffset(float32(int32(sys.gameWidth)-320)/2,
+		float32(int32(sys.gameHeight)-240))
+}
+
+func (a *Anim) drawWindowWithOffset(xoffset, yoffset float32) [4]int32 {
 	if a.windowDefault {
 		return sys.scrrect
 	}
@@ -2423,10 +2429,9 @@ func (a *Anim) drawWindow() [4]int32 {
 	y := window[1] / a.localScale
 	w := (window[2] - window[0]) / a.localScale
 	h := (window[3] - window[1]) / a.localScale
-	// Truncate to int32 first, like before PR #3575, to avoid an off-by-one error
 	return [4]int32{
-		int32((x + float32(int32(sys.gameWidth)-320)/2) * sys.widthScale),
-		int32((y + float32(int32(sys.gameHeight)-240)) * sys.heightScale),
+		int32((x + xoffset) * sys.widthScale),
+		int32((y + yoffset) * sys.heightScale),
 		int32(w*sys.widthScale + 0.5),
 		int32(h*sys.heightScale + 0.5),
 	}
@@ -2521,6 +2526,12 @@ func (a *Anim) Draw(ln int16) {
 	if sys.frameSkip || a == nil || a.anim == nil || a.layerno != ln {
 		return
 	}
+	// Keep the original integer offsets for motif elements.
+	a.drawWithOffset(float32(int(sys.gameWidth-320)/2),
+		float32(int(sys.gameHeight-240)), a.drawWindow())
+}
+
+func (a *Anim) drawWithOffset(xoffset, yoffset float32, window [4]int32) {
 	// Xshear offset correction
 	xshear := -a.xshear
 	var xsoffset float32
@@ -2534,15 +2545,8 @@ func (a *Anim) Draw(ln int16) {
 		xscl *= -1
 	}
 
-	// Truncate to int32 first, like before PR #3575, to avoid an off-by-one error
-	// sys.gameWidth used to be an int32 before PR #3575.
-	// unfortunately that PR introduces an off-by-one error here,
-	// so we force integer divsion by casting
-	// the result of sys.gameWidth subtraction to int.
-	// we do the same thing to sys.gameHeight just in case
-	window := a.drawWindow()
-	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+float32(int(sys.gameWidth-320)/2),
-		a.y+a.vel[1]+float32(int(sys.gameHeight-240)), 1, 1, xscl, xscl, a.yscl,
+	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+xoffset,
+		a.y+a.vel[1]+yoffset, 1, 1, xscl, xscl, a.yscl,
 		xshear, a.rot, 0, [2]float32{0, 0}, a.palfx, a.facing, [2]float32{1, 1},
 		a.projection, a.fLength, false, CustomShaderRenderData{})
 }
