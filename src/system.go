@@ -1000,9 +1000,11 @@ func (s *System) fightViewport() [4]int32 {
 	return s.aspectViewport(s.getFightAspect())
 }
 
-// The area covered by the fight and menus together. Fades fill it, and the final
-// image is clipped to it so the black bars stay black.
+// Fades and the final output cover the fight, menus and any bezel art.
 func (s *System) compositionViewport() [4]int32 {
+	if s.motif.bezelActive() {
+		return s.renderTargetRect
+	}
 	motif := s.aspectViewport(s.getMotifAspect())
 	if !s.middleOfMatch() && !s.postMatchFlg {
 		return motif
@@ -1216,12 +1218,13 @@ func (s *System) renderFrame() {
 
 	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 	dx, dy, dscl := s.zoom.computeCamera(x, y, scl)
-	if s.shouldComposeFullResolution() {
+	if s.shouldComposeFullResolution() || s.motif.bezelActive() {
 		// Clear unused areas to black first (netplay can keep the previous frame).
 		s.withFullViewport(func() {
 			FillRect(s.scrrect, 0, [2]int32{255, 0}, nil)
 		})
 	}
+	s.motif.drawBezel()
 	s.draw(dx, dy, dscl)
 
 	// Lua
