@@ -222,6 +222,7 @@ type NetConnection struct {
 	headerWritten      bool
 	loadingPhase       LoadingPhase
 	loadingStarted     time.Time
+	rollbackLocalPort  int
 	rollbackRemotePort int
 }
 
@@ -294,6 +295,7 @@ func (nc *NetConnection) Close() {
 	}
 	nc.conn = nil
 	nc.uiInputDebounced = false
+	nc.rollbackLocalPort = 0
 	nc.rollbackRemotePort = 0
 }
 
@@ -1735,6 +1737,25 @@ func (s *System) popSessionWarning() string {
 	return text
 }
 
+// Finds a free UDP port for a localhost guest. Best effort: GGPO opens the socket later.
+func pickLoopbackRollbackPort(hostPort int) (int, error) {
+	for i := 0; i < 10; i++ {
+		conn, err := net.ListenUDP("udp4",
+			&net.UDPAddr{IP: net.IPv4zero, Port: 0})
+		if err != nil {
+			return 0, err
+		}
+
+		port := conn.LocalAddr().(*net.UDPAddr).Port
+		conn.Close()
+
+		if port != hostPort {
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("could not allocate a distinct UDP port")
+}
+
 func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, error) {
 	if s.netplayOverride.Active {
 		return s.currentReplayHeader(), nil
@@ -1795,6 +1816,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 			return nil, err
 		}
 		if s.cfg.Netplay.RollbackNetcode {
+			nc.rollbackLocalPort = localRollbackPort
 			nc.rollbackRemotePort = guestPayload.RollbackPort
 		}
 		return s.currentReplayHeader(), nil
@@ -1857,6 +1879,17 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 			}
 			return nil, fmt.Errorf("host advertised invalid rollback UDP port %d", hostPayload.RollbackPort)
 		}
+		// Only the localhost guest uses an automatic port: the host retains
+		// its configured port, and remote peers retain their forwarding setup.
+		remoteIP := nc.conn.RemoteAddr().(*net.TCPAddr).IP
+		if remoteIP.To4() != nil && remoteIP.IsLoopback() && localRollbackPort == hostPayload.RollbackPort {
+			localRollbackPort, err = pickLoopbackRollbackPort(hostPayload.RollbackPort)
+			if err != nil {
+				return nil, err
+			}
+			guestPayload.RollbackPort = localRollbackPort
+			log.Printf("Localhost rollback: using UDP port %d instead of %d", localRollbackPort, hostPayload.RollbackPort)
+		}
 	}
 	if err := s.beginSessionOverride("netplay", hostPayload.Strict, hostPayload.Host, hostPayload.ContentFingerprint); err != nil {
 		return nil, err
@@ -1866,6 +1899,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 		return nil, err
 	}
 	if s.cfg.Netplay.RollbackNetcode {
+		nc.rollbackLocalPort = localRollbackPort
 		nc.rollbackRemotePort = hostPayload.RollbackPort
 	}
 
