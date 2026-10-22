@@ -84,12 +84,14 @@ void main(void) {
 		uv[0] = clamp(uv[0],spriteUV[0],spriteUV[2]-0.0001);
 		uv[1] = clamp(uv[1],spriteUV[1],spriteUV[3]-0.0001);
 		if (isTrapez) {
-			vec2 bounds = mix(x1x2x4x3.zw, x1x2x4x3.xy, uv.y);
+			float y = (uv.y - spriteUV[1]) / (spriteUV[3] - spriteUV[1]);
+			vec2 bounds = mix(x1x2x4x3.zw, x1x2x4x3.xy, y);
 			float gap = bounds[1] - bounds[0];
 			#ifdef GL_ES
 				if (abs(gap) < 0.0001) gap = 0.0001;
 			#endif
-			uv.x = (gl_FragCoord.x - bounds[0]) / gap;
+			float x = (gl_FragCoord.x - bounds[0]) / gap;
+			uv.x = clamp(x,0,1) * (spriteUV[2] - spriteUV[0]) + spriteUV[0];
 		}
 
 		c = COMPAT_TEXTURE(tex, uv);
