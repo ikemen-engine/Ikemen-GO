@@ -4592,11 +4592,23 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "inputMenu", func(l *lua.LState) int {
 		/*Go back to menu mode: releases all players, so any input source can control the menus again.
 		  Does nothing during netplay.
-		@function inputMenu*/
+		@function inputMenu
+		@tparam[opt] int sourceId Input source that operates the menus afterwards.
+		@treturn boolean success `false` if `sourceId` is given but not connected.*/
 		if !sys.netplay() {
+			if !nilArg(l, 1) {
+				src := sys.inputs.inputSource(int(numArg(l, 1)))
+				if src == nil || !src.Connected {
+					l.Push(lua.LBool(false))
+					return 1
+				}
+				sys.inputs.MenuSource = src.ID
+				sys.noteGlyphInput(src.ID)
+			}
 			sys.inputMenu()
 		}
-		return 0
+		l.Push(lua.LBool(true))
+		return 1
 	})
 	luaRegister(l, "inputNewProfile", func(l *lua.LState) int {
 		/*Create an empty profile of the source's kind. Keyboards get a new source,

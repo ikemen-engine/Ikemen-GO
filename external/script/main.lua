@@ -3221,7 +3221,31 @@ function main.f_replay()
 	end
 end
 
+function main.f_chooseNetplayInput()
+	local sec = motif[main.group]
+	local controls = {menu = {
+		cancel = {key = {}},
+		done = {key = {}},
+	}}
+	local buttons = {'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}
+	local firstFrame = true
+	local source = main.f_warning(motif.warning_info.text.text.netplayinput, controls, motif[main.background],
+		nil, nil, nil, nil, nil, function()
+			-- Wait for a fresh press after drawing the prompt.
+			if firstFrame then firstFrame = false; return nil end
+			for _, candidate in ipairs(inputGetSources()) do
+				if candidate.connected and inputSourcePressed(candidate.id, buttons) then
+					return candidate.id
+				end
+			end
+		end, false, 'netplayinput')
+	return type(source) == 'number' and inputMenu(source)
+end
+
 function main.f_connect(server, str)
+	if not main.f_chooseNetplayInput() then
+		return false
+	end
 	enterNetPlay(server)
 	while not connected() do
 		if esc() or getInput(-1, motif.title_info.menu.cancel.key) then
