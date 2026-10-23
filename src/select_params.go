@@ -287,6 +287,9 @@ type SelectStageParams struct {
 	musicEntries []string `ini:"musicentries"`
 	Order        []int32  `ini:"order"`
 	Unlock       string   `ini:"unlock"`
+	SlotSelect   string   `ini:"slotselect"`
+	SlotNext     string   `ini:"slotnext"`
+	SlotPrevious string   `ini:"slotprevious"`
 	Raw          []string `ini:"raw"`
 }
 
@@ -319,6 +322,12 @@ func (p *SelectStageParams) AppendParams(entries []string) {
 			p.Order = append(p.Order, Atoi(val))
 		case "unlock":
 			p.Unlock = val
+		case "select":
+			p.SlotSelect = val
+		case "next":
+			p.SlotNext = val
+		case "previous":
+			p.SlotPrevious = val
 		}
 	}
 }
