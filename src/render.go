@@ -224,6 +224,7 @@ type RenderParams struct {
 	rxadd          float32
 	xas, yas       float32
 	rot            Rotation
+	parallaxRot    bool   // Apply the BG scale after rotation
 	tint           uint32 // Sprite tint for shadows
 	blendMode      TransType
 	blendAlpha     [2]int32
@@ -759,6 +760,27 @@ func emitTiles(batch *[]float32, modelview mgl.Mat4, rp RenderParams, x1, y1, x2
 
 // TODO: There's some redundancy between all the quad drawing functions right now
 func renderSpriteQuad(modelview mgl.Mat4, rp RenderParams) {
+	if rp.parallaxRot {
+		if rp.xts == 0 || rp.ys == 0 || rp.xas == 0 || rp.yas == 0 {
+			return
+		}
+		// Keep AIR scaling inside the rotation and apply the BG scaling outside it
+		sx, sy := rp.xts/rp.xas, rp.ys/rp.yas
+		width := float32(rp.size[0]) * rp.xas
+		xLeft := rp.rcx - width/2
+		xRight := xLeft + width
+		yTop := rp.rcy + (rp.y-rp.rcy)/sy
+		yBottom := yTop - float32(rp.size[1])*rp.yas
+		modelview = applyProjection(modelview, rp, 0, 1, 0)
+		// Keep shear outside the BG scale and rotation, as in the regular rotated path
+		modelview = applyShear(modelview, rp.rxadd, rp.ys*float32(rp.size[1]))
+		modelview = modelview.Mul4(mgl.Scale3D(sx, sy, 1))
+		modelview = applyRotation(modelview, rp)
+		modelview = modelview.Mul4(mgl.Translate3D(-rp.rcx, -rp.rcy, 0))
+		drawQuads(modelview, xLeft, yBottom, xRight, yBottom, xRight, yTop, xLeft, yTop, rp.tex.GetUV(), false)
+		return
+	}
+
 	x1, y1 := rp.x, rp.rcy+((rp.y-rp.ys*float32(rp.size[1]))-rp.rcy)*rp.vs
 	x2, y2 := x1+rp.xbs*float32(rp.size[0]), y1
 	x3, y3 := rp.x+rp.xts*float32(rp.size[0]), rp.rcy+(rp.y-rp.rcy)*rp.vs
