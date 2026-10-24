@@ -12281,7 +12281,7 @@ func (c *Char) actionPrepare() {
 			// Set default screenbound and playerpush
 			if c.isPlayerType() {
 				if c.alive() || c.ss.no != 5150 || c.numPartner() == 0 {
-					c.setCSF(CSF_screenbound | CSF_depthbound | CSF_movecamera_x | CSF_movecamera_y | CSF_movecamera_z, true)
+					c.setCSF(CSF_screenbound|CSF_depthbound|CSF_movecamera_x|CSF_movecamera_y|CSF_movecamera_z, true)
 				}
 				if sys.roundState() > 0 && sys.roundState() < 4 && (c.alive() || c.numPartner() == 0) {
 					c.setCSF(CSF_playerpush, true)
@@ -12732,7 +12732,7 @@ func (c *Char) actionFinish() {
 
 	// Over flags (char is finished for the round)
 	if c.alive() && c.life > 0 && !sys.roundEnded() {
-		c.setSCF(SCF_over_alive | SCF_over_ko, false)
+		c.setSCF(SCF_over_alive|SCF_over_ko, false)
 	}
 	if c.ss.no == 5150 && !c.scf(SCF_over_ko) { // Actual KO is not required in Mugen
 		c.setSCF(SCF_over_ko, true)
@@ -13989,7 +13989,7 @@ func (cl *CharList) updateRunOrder() {
 
 	// Reset priority flags as they are only needed during this function
 	for _, c := range cl.runOrder {
-		c.setASF(ASF_runfirst | ASF_runlast, false)
+		c.setASF(ASF_runfirst|ASF_runlast, false)
 	}
 }
 
