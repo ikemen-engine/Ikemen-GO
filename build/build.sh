@@ -76,6 +76,10 @@ FFMPEG_SRCDIR="$BUILDDIR/ffmpeg-src"
 LIBVPX_SRCDIR="$BUILDDIR/libvpx-src"
 SDL2_SRCDIR="$BUILDDIR/sdl2-src"
 
+# MSYS2 install prefix, set by the shell (e.g. /ucrt64)
+MSYS_PREFIX="${MINGW_PREFIX:-/ucrt64}"
+MSYS_ENV_STAMP="$BUILDDIR/.msys-env"
+
 # Screenpack assets
 SCREENPACK_REPO="${SCREENPACK_REPO:-https://github.com/ikemen-engine/Ikemen-GO-Screenpack.git}"
 SCREENPACK_REF="${SCREENPACK_REF:-master}"
@@ -154,23 +158,23 @@ ensure_go_env() {
 	# Prefer MinGW bin early on PATH in MSYS shells
 	case "$OSTYPE" in
 		msys|cygwin)
-			if [[ ":${PATH}:" != *":/mingw64/bin:"* ]]; then
-				export PATH="/mingw64/bin:${PATH}"
+			if [[ ":${PATH}:" != *":${MSYS_PREFIX}/bin:"* ]]; then
+				export PATH="${MSYS_PREFIX}/bin:${PATH}"
 			fi
 			# Set a sensible default GOROOT for MSYS2 trimmed Go if not set
-			if [[ -z "${GOROOT:-}" ]] && [[ -d "/mingw64/lib/go" ]]; then
-				export GOROOT="/mingw64/lib/go"
+			if [[ -z "${GOROOT:-}" ]] && [[ -d "${MSYS_PREFIX}/lib/go" ]]; then
+				export GOROOT="${MSYS_PREFIX}/lib/go"
 			fi
 		;;
 	esac
 
 	# Verify we can run go and it knows its GOROOT
 	if ! command -v go >/dev/null 2>&1; then
-		echo "ERROR: 'go' not found on PATH. On MSYS2 install 'mingw-w64-x86_64-go' and use the MINGW64 shell." >&2
+		echo "ERROR: 'go' not found on PATH. On MSYS2 install 'mingw-w64-ucrt-x86_64-go' and use the UCRT64 shell." >&2
 		exit 1
 	fi
 	if ! go version >/dev/null 2>&1; then
-		echo "ERROR: 'go version' failed. On MSYS2 you may need:  export GOROOT=/mingw64/lib/go" >&2
+		echo "ERROR: 'go version' failed. On MSYS2 you may need:  export GOROOT=${MSYS_PREFIX}/lib/go" >&2
 		echo "Current GOROOT='${GOROOT:-<unset>}' PATH='${PATH}'" >&2
 		exit 1
 	fi
@@ -183,7 +187,10 @@ check_deps() {
 
 	case "$OSTYPE" in
 		msys|cygwin)
-			# MSYS2/MINGW64
+			# MSYS2/UCRT64
+			if [[ "${MSYSTEM:-}" == "MINGW64" ]]; then
+				echo "WARNING: MINGW64 is deprecated. Use the UCRT64 shell (see BUILDING.md)." >&2
+			fi
 			need git
 			need make
 			need pkg-config
@@ -195,14 +202,14 @@ check_deps() {
 			need dlltool
 			if ((${#missing[@]})); then
 				echo "Missing package: ${missing[@]}" >&2
-				echo "Install from the MINGW64 shell:" >&2
+				echo "Install from the MSYS2 UCRT64 shell:" >&2
 				echo "  pacman -Syu --noconfirm" >&2
 				echo "  pacman -S --noconfirm \\" >&2
-				echo "    git make diffutils mingw-w64-x86_64-pkg-config \\" >&2
-				echo "    mingw-w64-x86_64-go mingw-w64-x86_64-toolchain \\" >&2
-				echo "    mingw-w64-x86_64-nasm \\" >&2
-				echo "    mingw-w64-x86_64-tools-git mingw-w64-x86_64-libxmp \\" >&2
-				echo "    mingw-w64-x86_64-SDL2" >&2
+				echo "    git make diffutils mingw-w64-ucrt-x86_64-pkg-config \\" >&2
+				echo "    mingw-w64-ucrt-x86_64-go mingw-w64-ucrt-x86_64-toolchain \\" >&2
+				echo "    mingw-w64-ucrt-x86_64-nasm \\" >&2
+				echo "    mingw-w64-ucrt-x86_64-tools mingw-w64-ucrt-x86_64-libxmp \\" >&2
+				echo "    mingw-w64-ucrt-x86_64-SDL2" >&2
 				exit 1
 			fi
 		;;
@@ -296,7 +303,7 @@ require_sdl2() {
 	if ! $pc --exists sdl2 2>/dev/null; then
 	case "$OSTYPE" in
 		msys|cygwin)
-			echo "ERROR: SDL2 dev package not found. Install: pacman -S mingw-w64-x86_64-SDL2" >&2
+			echo "ERROR: SDL2 dev package not found. Install: pacman -S mingw-w64-ucrt-x86_64-SDL2" >&2
 			;;
 		darwin*)
 			echo "ERROR: SDL2 not found. Install with Homebrew: brew install sdl2" >&2
@@ -318,7 +325,7 @@ require_libxmp() {
 	if ! $pc --exists libxmp 2>/dev/null; then
 	case "$OSTYPE" in
 		msys|cygwin)
-			echo "ERROR: libxmp dev package not found. Install: pacman -S mingw-w64-x86_64-libxmp" >&2
+			echo "ERROR: libxmp dev package not found. Install: pacman -S mingw-w64-ucrt-x86_64-libxmp" >&2
 			;;
 		darwin*)
 			echo "ERROR: libxmp not found. Install with Homebrew: brew install libxmp" >&2
@@ -431,12 +438,6 @@ function main() {
 			varWin64
 			buildWin
 		;;
-		[wW][iI][nN]32)
-			: "${CC:=i686-w64-mingw32-gcc}"
-			: "${CXX:=i686-w64-mingw32-g++}"
-			varWin32
-			buildWin
-		;;
 		[mM][aA][cC][oO][sS][aA][rR][mM])
 			varMacOSARM
 			build
@@ -463,23 +464,13 @@ function main() {
 		;;
 		*)
 			echo "Unknown target: ${targetOS}"
-			echo "Valid targets: Win64 Win32 MacOS MacOSARM Linux LinuxARM Android iOS"
+			echo "Valid targets: Win64 MacOS MacOSARM Linux LinuxARM Android iOS"
 			exit 1
 		;;
 	esac
 }
 
 # Export Variables
-function varWin32() {
-	export GOOS=windows
-	export GOARCH=386
-	if [[ "$(tolower "${currentOS}")" != "win32" ]]; then
-		export CC=i686-w64-mingw32-gcc
-		export CXX=i686-w64-mingw32-g++
-	fi
-	binName="Ikemen_GO_x86.exe"
-}
- 
 function varWin64() {
 	export GOOS=windows
 	export GOARCH=amd64
@@ -606,7 +597,7 @@ function have_libvpx_pc() {
 function ensure_pkg_config_path() {
 	if [[ -d "$FFMPEG_PREFIX/lib/pkgconfig" ]]; then
 		if [[ "${RUNNER_OS:-}" == "Windows" || "$OSTYPE" == msys || "$OSTYPE" == cygwin ]]; then
-			export PKG_CONFIG_PATH="$FFMPEG_PREFIX/lib/pkgconfig:/mingw64/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+			export PKG_CONFIG_PATH="$FFMPEG_PREFIX/lib/pkgconfig:${MSYS_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 		else
 			export PKG_CONFIG_PATH="$FFMPEG_PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
 		fi
@@ -639,7 +630,6 @@ function build_libvpx() {
 	local target
 	case "$GOOS/$arch" in
 		windows/amd64) target="x86_64-win64-gcc" ;;
-		windows/386) target="x86-win32-gcc" ;;
 		darwin/amd64) target="x86_64-darwin20-gcc" ;;
 		darwin/arm64) target="arm64-darwin20-gcc" ;;
 		linux/amd64) target="x86_64-linux-gcc" ;;
@@ -1534,6 +1524,29 @@ function maybe_build_ffmpeg() {
 	esac
 }
 
+# Rebuild cached Windows libs if the MSYS2 shell changed
+function invalidate_msys_env_cache() {
+	local current="${MSYSTEM:-UCRT64}" previous=""
+	if [[ -f "$MSYS_ENV_STAMP" ]]; then
+		previous="$(<"$MSYS_ENV_STAMP")"
+	elif [[ -d "$FFMPEG_PREFIX/bin" || -d "$DELAYLIB_DIR" ]]; then
+		# Old caches without a stamp came from MINGW64
+		previous="MINGW64"
+	fi
+	if [[ -n "$previous" && "$previous" != "$current" ]]; then
+		echo "==> MSYS2 shell changed ($previous -> $current), rebuilding cached libs"
+		if [[ "$FFMPEG_PREFIX" == "$REPO_ROOT/$BUILDDIR/ffmpeg" ]]; then
+			rm -rf "$FFMPEG_PREFIX" "$FFMPEG_SRCDIR" "$LIBVPX_SRCDIR"
+		else
+			echo "WARNING: rebuild FFMPEG_PREFIX=$FFMPEG_PREFIX for $current." >&2
+		fi
+		rm -rf "$DELAYLIB_DIR"
+		rm -f "$LIBDIR"/*.dll
+	fi
+	mkdir -p "$BUILDDIR"
+	echo "$current" > "$MSYS_ENV_STAMP"
+}
+
 # Generate delay-load import libraries for MinGW (Windows)
 function create_delay_import_libs_windows() {
 	[[ "$GOOS" != "windows" ]] && return 0
@@ -1545,7 +1558,7 @@ function create_delay_import_libs_windows() {
 	mkdir -p "$DELAYLIB_DIR"
 	shopt -s nullglob
 	local d base name libname
-	for d in "$FFMPEG_PREFIX"/bin/*.dll /mingw64/bin/libxmp*.dll /mingw64/bin/libwinpthread-1.dll /mingw64/bin/SDL2*.dll; do
+	for d in "$FFMPEG_PREFIX"/bin/*.dll "$MSYS_PREFIX"/bin/libxmp*.dll "$MSYS_PREFIX"/bin/libwinpthread-1.dll "$MSYS_PREFIX"/bin/SDL2*.dll; do
 		[[ -f "$d" ]] || continue
 		base="$(basename "$d")"          # e.g. libxmp-4.dll
 		name="${base%.dll}"              # libxmp-4
@@ -1647,6 +1660,7 @@ function build() {
 }
 
 function buildWin() {
+	invalidate_msys_env_cache
 	stage_windows_resources
 	maybe_build_ffmpeg
 	export PKG_CONFIG="${PKG_CONFIG:-pkg-config}"
@@ -1783,14 +1797,8 @@ EOF
 
 	# Compile RC -> COFF object that Go will auto-link (.syso in package dir)
 
-	local wr targetflag
-	if [[ "$GOARCH" == "amd64" ]]; then
-		wr="${WINDRES:-x86_64-w64-mingw32-windres}"
-		targetflag="--target=pe-x86-64"
-	else
-		wr="${WINDRES:-i686-w64-mingw32-windres}"
-		targetflag="--target=pe-i386"
-	fi
+	local wr="${WINDRES:-x86_64-w64-mingw32-windres}"
+	local targetflag="--target=pe-x86-64"
 	command -v "$wr" >/dev/null 2>&1 || wr="windres"
 	echo "==> Embedding Windows resources (icon + manifest) with $wr..."
 	"$wr" $targetflag \
@@ -1811,13 +1819,12 @@ function bundle_shared_libs() {
 		# Windows
 		cp -afv "$FFMPEG_PREFIX"/bin/*.dll "$dest_lib/" 2>/dev/null || true
 		# MSYS2 runtime dep
-		#cp -av /mingw64/bin/libwinpthread-1.dll "$dest_lib/" 2>/dev/null || true
 		for d in \
-			/mingw64/bin/libwinpthread-1.dll \
-			/mingw64/bin/libgcc_s_seh-1.dll \
-			/mingw64/bin/libstdc++-6.dll \
-			/mingw64/bin/libxmp*.dll \
-			/mingw64/bin/SDL2*.dll ; do
+			"$MSYS_PREFIX"/bin/libwinpthread-1.dll \
+			"$MSYS_PREFIX"/bin/libgcc_s_seh-1.dll \
+			"$MSYS_PREFIX"/bin/libstdc++-6.dll \
+			"$MSYS_PREFIX"/bin/libxmp*.dll \
+			"$MSYS_PREFIX"/bin/SDL2*.dll ; do
 			cp -av "$d" "$dest_lib/" 2>/dev/null || true
 		done
 	elif [[ -d "$FFMPEG_PREFIX/lib" && "$GOOS" != "android" ]]; then
@@ -1889,7 +1896,6 @@ function fix_macos_dylib_paths() {
 
 # Determine the target OS.
 function checkOS() {
-	osArch=`uname -m`
 	case "$OSTYPE" in
 		darwin*)
 			currentOS="MacOS"
@@ -1898,11 +1904,8 @@ function checkOS() {
 			currentOS="Linux"
 		;;
 		msys|cygwin)
-			if [[ "$osArch" == "x86_64" ]]; then
-				currentOS="Win64"
-			else
-				currentOS="Win32"
-			fi
+			# 32-bit Windows is not supported
+			currentOS="Win64"
 		;;
 		*)
 			if [[ -z "${1:-}" ]]; then

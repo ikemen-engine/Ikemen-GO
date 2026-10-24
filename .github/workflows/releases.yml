@@ -238,20 +238,20 @@ jobs:
         if: ${{ matrix.cfg.runner_os == 'windows' }}
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           path-type: inherit
           install: >-
             git
             make
             diffutils
-            mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-bzip2
-            mingw-w64-x86_64-nasm
-            mingw-w64-x86_64-tools-git
-            mingw-w64-x86_64-SDL2
-            mingw-w64-x86_64-libxmp
+            mingw-w64-ucrt-x86_64-pkg-config
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-bzip2
+            mingw-w64-ucrt-x86_64-nasm
+            mingw-w64-ucrt-x86_64-tools
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-libxmp
       - name: Prepare Vulkan SDK
         # iOS uses the headers bundled with the Vulkan bindings and MoltenVK from its release.
         if: ${{ matrix.cfg.runner_os != 'ios' }}

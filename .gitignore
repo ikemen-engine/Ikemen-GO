@@ -89,6 +89,7 @@ build/sdl2/
 build/ffmpeg-src/
 build/ffmpeg/
 build/delaylib/
+build/.msys-env
 build/winres/
 
 # macOS bundle by local make

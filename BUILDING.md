@@ -31,23 +31,27 @@ distro. The floors above apply to the published archives.
 
 ---
 
-## Windows (MSYS2 / MINGW64)
+## Windows (MSYS2 / UCRT64)
 
 ### Dependencies
-Install MSYS2 from https://www.msys2.org and open **MSYS2 MINGW64**, then:
+Install MSYS2 from https://www.msys2.org and open **MSYS2 UCRT64**, then:
 ```bash
 pacman -Syu --noconfirm
 pacman -S --noconfirm \
-  git make diffutils mingw-w64-x86_64-pkg-config \
-  mingw-w64-x86_64-go mingw-w64-x86_64-toolchain \
-  mingw-w64-x86_64-nasm \
-  mingw-w64-x86_64-tools-git mingw-w64-x86_64-libxmp \
-  mingw-w64-x86_64-SDL2
+  git make diffutils mingw-w64-ucrt-x86_64-pkg-config \
+  mingw-w64-ucrt-x86_64-go mingw-w64-ucrt-x86_64-toolchain \
+  mingw-w64-ucrt-x86_64-nasm \
+  mingw-w64-ucrt-x86_64-tools mingw-w64-ucrt-x86_64-libxmp \
+  mingw-w64-ucrt-x86_64-SDL2
 ```
 
-> On MSYS2 we auto-fix "trimmed" Go by setting `GOROOT=/mingw64/lib/go` if needed.
+> On MSYS2 we auto-fix "trimmed" Go by setting `GOROOT=/ucrt64/lib/go` if needed.
 
-### Build 64-bit (Ikemen_GO.exe)
+> **Coming from MINGW64?** MSYS2 deprecated it and is removing its packages.
+> Install the packages above and build from the UCRT64 shell. `build.sh` rebuilds
+> its cached libs on the first run.
+
+### Build (Ikemen_GO.exe)
 
 ```bash
 git clone https://github.com/ikemen-engine/Ikemen-GO.git
@@ -58,31 +62,20 @@ cd Ikemen-GO
 make Ikemen_GO.exe
 ```
 
-### Build 32-bit (Ikemen_GO_x86.exe)
-
-> Requires 32-bit MinGW cross tools in addition to the above:
-> `pacman -S --noconfirm mingw-w64-i686-toolchain mingw-w64-i686-pkg-config mingw-w64-i686-nasm mingw-w64-i686-libxmp mingw-w64-i686-SDL2`
-
-```bash
-# build.sh
-./build/build.sh Win32
-# or make
-make Ikemen_GO_x86.exe
-```
+32-bit Windows is not supported.
 
 ### Run (Windows)
 
 ```bash
-./Ikemen_GO.exe          # 64-bit
-./Ikemen_GO_x86.exe      # 32-bit
+./Ikemen_GO.exe
 ```
 
 ### Use system FFmpeg instead (optional)
 
-Install `mingw-w64-x86_64-ffmpeg` (and/or i686 variant for 32-bit), then:
+Install `mingw-w64-ucrt-x86_64-ffmpeg`, then:
 
 ```bash
-BUILD_FFMPEG=no ./build/build.sh Win64   # or Win32
+BUILD_FFMPEG=no ./build/build.sh Win64
 ```
 
 ---
@@ -317,7 +310,7 @@ The release CI bundles these automatically.
 
 * **Missing tools**: re-run the dependency commands for your OS/arch.
 * **FFmpeg link errors**: use the default `build.sh` (auto-builds FFmpeg), or install system FFmpeg dev packages and run with `BUILD_FFMPEG=no`.
-* **libxmp not found**: install libxmp-dev (Linux), libxmp (macOS/Homebrew), or the MSYS2 package mingw-w64-*-libxmp on Windows.
+* **libxmp not found**: install libxmp-dev (Linux), libxmp (macOS/Homebrew), or the MSYS2 package mingw-w64-ucrt-x86_64-libxmp on Windows.
 * **SDL2 not found / pkg-config errors**: if you see an error mentioning that the sdl2 package is missing from the pkg-config search path, install SDL2 development files.
 * **Windows DLLs**: verify `.\lib\*.dll` exists (local build places FFmpeg DLLs there).
 * **Linux GL compatibility**: try `MESA_GL_VERSION_OVERRIDE=2.1` for a fallback.

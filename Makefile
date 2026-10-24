@@ -63,10 +63,6 @@ srcFiles=src/resources/defaultConfig.ini \
 Ikemen_GO.exe: ${srcFiles}
 	bash ./build/build.sh Win64
 
-# Windows 32-bit target
-Ikemen_GO_x86.exe: ${srcFiles}
-	bash ./build/build.sh Win32
-
 # Linux target
 Ikemen_GO_Linux: ${srcFiles}
 	./build/build.sh Linux
