@@ -12463,14 +12463,14 @@ func (c *Char) actionRun() {
 	}
 
 	// Guarding instructions
-	c.unsetSCF(SCF_guard)
+	c.setSCF(SCF_guard, false)
 	if ((c.scf(SCF_ctrl) || c.ss.no == 52) &&
 		c.ss.moveType == MT_I || c.inGuardState()) && c.cmd != nil &&
 		(c.cmd[0].Buffer.Bb > 0 || c.asf(ASF_autoguard)) &&
 		(c.ss.stateType == ST_S && !c.asf(ASF_nostandguard) ||
 			c.ss.stateType == ST_C && !c.asf(ASF_nocrouchguard) ||
 			c.ss.stateType == ST_A && !c.asf(ASF_noairguard)) {
-		c.setSCF(SCF_guard)
+		c.setSCF(SCF_guard, true)
 	}
 
 	if !c.pauseBool {
@@ -12824,7 +12824,7 @@ func (c *Char) update() {
 		}
 		if c.acttmp > 0 {
 			if c.inGuardState() {
-				c.setSCF(SCF_guard)
+				c.setSCF(SCF_guard, true)
 			}
 			if c.anim != nil {
 				c.anim.UpdateSprite()
