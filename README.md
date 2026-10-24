@@ -14,6 +14,12 @@ This does not mean bug-for-bug emulation. Behavior may intentionally differ when
 
 Refer to [our wiki](https://github.com/ikemen-engine/Ikemen-GO/wiki) to see a comprehensive list of new features that have been added in Ikemen GO.
 
+##Community code of conduct
+1) Don't be an asshole
+2) Be transparent about how you use AI 
+3) Don't steal stuff from other people. It's okay to make things similar to other people, but try not making your stuff too similar 
+
+
 ## Installing
 Ready-to-use builds are available in the [releases section](https://github.com/ikemen-engine/Ikemen-GO/releases). Stable releases use tags such as `v1.0.0`, while release candidates use tags such as `v1.0.0-rc.1` and are marked as pre-releases. [Nightly builds](https://github.com/ikemen-engine/Ikemen-GO/releases/tag/nightly) are updated after each commit to `develop` and may be less stable.
 
