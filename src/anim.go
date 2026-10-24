@@ -245,6 +245,7 @@ type Animation struct {
 	remap                      RemapPreset
 	start_scale                [2]float32
 	isParallax                 bool
+	parallaxRot                bool
 	isVideo                    bool // Because videos are rendered through Animation.Draw()
 	phantomPixel               bool
 	copyAction                 int32
@@ -1162,6 +1163,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		x:              x * sys.widthScale,
 		y:              y * sys.heightScale,
 		tile:           a.tile,
+		parallaxRot:    a.parallaxRot,
 		xts:            xs * sys.widthScale,
 		xbs:            xcs * xbs * h * sys.widthScale,
 		ys:             ys * sys.heightScale,

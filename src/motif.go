@@ -737,11 +737,15 @@ type SelectInfoProperties struct {
 		Move struct {
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"move"`
+		Swap struct {
+			Snd [2]int32 `ini:"snd" default:"-1,0"`
+		} `ini:"swap"`
 		Portrait struct {
 			AnimationStagePreloadProperties `skipinit:"true"`
 			Bg                              AnimationProperties `ini:"bg"`
 			Random                          AnimationProperties `ini:"random"`
 			Loading                         AnimationProperties `ini:"loading"`
+			Slot                            AnimationProperties `ini:"slot"`
 		} `ini:"portrait"`
 	} `ini:"stage"`
 	Done struct {
@@ -2755,7 +2759,7 @@ func (m *Motif) applyPostParsePosAdjustments() {
 	// Select Screen: Stage
 	{
 		st := &m.SelectInfo.Stage
-		offsetAnims(st.Pos[0], st.Pos[1], st.Portrait.Bg.AnimData, st.Portrait.Random.AnimData)
+		offsetAnims(st.Pos[0], st.Pos[1], st.Portrait.Bg.AnimData, st.Portrait.Random.AnimData, st.Portrait.Slot.AnimData)
 		offsetTexts(st.Pos[0], st.Pos[1], st.TextSpriteData, st.Active.TextSpriteData, st.Active2.TextSpriteData, st.Done.TextSpriteData)
 	}
 

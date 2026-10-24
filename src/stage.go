@@ -833,10 +833,25 @@ func (bg backGround) drawTransformed(pos [2]float32, drawscl, bgscl, stglscl flo
 	xShear := xras*x/(Abs(ys*ys3)*lscl[1]*float32(bg.anim.spr.Size[1])*bg.scalestart[1])*
 		xRecip*bg.scalestart[1] - bg.xshear
 
-	bg.anim.Draw(&rect, drawX, drawY, sclx, scly,
-		bg.xscale[0]*bgscl*(scalestartX+xs)*xs3,
-		xbs*bgscl*(scalestartX+xs)*xs3,
-		ys*ys3, xShear,
+	xScale := bg.xscale[0] * bgscl * (scalestartX + xs) * xs3
+	xBottomScale := xbs * bgscl * (scalestartX + xs) * xs3
+	yScale := ys * ys3
+	// MUGEN applies the BG scale after rotation around the sprite's horizontal center
+	// Keep other parallax transformations on their existing paths
+	bg.anim.parallaxRot = false
+	if !applyTransform && bg._type == BG_Parallax {
+		_, _, angle := bg.anim.drawSub1(bg.rot.angle, facing)
+		rectangular := bg.width[0] > 0 && bg.width[0] == bg.width[1] && xScale == xBottomScale
+		tiled := bg.anim.tile.xflag != 0 || bg.anim.tile.yflag != 0
+		rotated := bg.projection == Projection_Orthographic && bg.rot.xangle == 0 && bg.rot.yangle == 0 && angle != 0
+
+		bg.anim.parallaxRot = rectangular && !tiled && rotated
+	}
+	if bg.anim.parallaxRot {
+		drawX -= bg.xofs * bgscl
+	}
+
+	bg.anim.Draw(&rect, drawX, drawY, sclx, scly, xScale, xBottomScale, yScale, xShear,
 		bg.rot, rcx, [2]float32{0, 0}, stackedPfx, facing, [2]float32{1, 1},
 		int32(bg.projection), bg.fLength, false, bg.customShader.renderData(bg.enabled && !sys.stage.paused()))
 }

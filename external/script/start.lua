@@ -469,16 +469,32 @@ function start.stageShuffleBag(id, pool)
 	return pool[idx]
 end
 
+-- Resolve a menu position to the active member of its stage slot
+function start.f_stageMenuRef()
+	local group = main.t_selectableStageSlots[stageListNo]
+	return group and group.available[group.slot]
+end
+
 --sets stage
 function start.f_setStage(num, assigned)
 	if main.stageMenu then
 		local pool = main.t_selectableStages
 		if stageListNo == 0 then
 			num = start.stageShuffleBag('stageMenu', pool)
-			stageListNo = num -- comment out to randomize stage after each fight in survival mode, when random stage is chosen
+			-- Keep the chosen variant for subsequent fights until selection resets
+			-- A stage reference is not necessarily its position in the menu
+			for i, group in ipairs(main.t_selectableStageSlots) do
+				for j, ref in ipairs(group.available) do
+					if ref == num then
+						stageListNo = i
+						group.slot = j
+						break
+					end
+				end
+			end
 			stageRandom = true
 		else
-			num = pool[stageListNo]
+			num = start.f_stageMenuRef()
 		end
 		assigned = true
 	end
@@ -1900,6 +1916,9 @@ function start.f_selectReset(hardReset, preserveProgress)
 		col = col + 1
 	end
 	if hardReset then
+		for _, group in ipairs(main.t_stageSlots) do
+			group.slot = 1
+		end
 		if motif.select_info.stage.randomselect == 0 or motif.select_info.stage.randomselect == 2 then
 			stageListNo = 1
 		else
@@ -2723,10 +2742,17 @@ function start.f_selectScreen()
 	local counter = 0 - motif.select_info.fadein.time
 	local timerReset = false
 	local stageTextData = motif.select_info.stage.active.TextSpriteData
-	local stageRef = main.t_selectableStages[stageListNo]
+	if stageListNo > #main.t_selectableStageSlots then
+		stageListNo = #main.t_selectableStageSlots
+	end
+	local stageRef = start.f_stageMenuRef()
 
 	-- Reset stage portrait animation if it was already seen when entering the select screen
 	resetStagePortraitAnim(stageRef, 'anim_data')
+	if hasPortraitAnim(motif.select_info.stage.portrait.slot) then
+		animReset(motif.select_info.stage.portrait.slot.AnimData)
+		animUpdate(motif.select_info.stage.portrait.slot.AnimData)
+	end
 
 	-- generate team mode items table
 	for side = 1, 2 do
@@ -3010,9 +3036,10 @@ function start.f_selectScreen()
 		--team and character selection complete
 		if start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
 			restoreCursor = true
+			local slotSelected, slotHandled = false, false
 			if main.stageMenu and not stageEnd then --Stage select
 				start.p[1].screenDelay, start.p[2].screenDelay = 0, 0
-				start.f_stageMenu()
+				slotSelected, slotHandled = start.f_stageMenu()
 				if not timerReset then
 					timerSelect = motif.select_info.timer.displaytime
 					timerReset = true
@@ -3030,7 +3057,7 @@ function start.f_selectScreen()
 					main.f_animPosDraw(motif.select_info.stage.portrait.random.AnimData)
 				--draw stage portrait loaded from stage SFF
 				else
-					stageRef = main.t_selectableStages[stageListNo]
+					stageRef = start.f_stageMenuRef()
 					local portrait = motif.select_info.stage.portrait
 					local anim = main.t_selStages[stageRef].anim_data
 					local loadingPortrait = false
@@ -3048,11 +3075,12 @@ function start.f_selectScreen()
 					main.f_animPosDraw(anim, x, y)
 				end
 				if not stageEnd then
-					local canConfirmStage = (getInput(-1, motif.select_info.done.key) and not screenDelayInterrupted) or timerSelect == -1
+					local confirmPressed = slotSelected or (not slotHandled and getInput(-1, motif.select_info.done.key))
+					local canConfirmStage = ((confirmPressed and not screenDelayInterrupted) or timerSelect == -1) and #main.t_selectableStages > 0
 					if canConfirmStage then
 						local preloadReady = true
 						if stageListNo > 0 then
-							local stageRef = main.t_selectableStages[stageListNo]
+							local stageRef = start.f_stageMenuRef()
 							local state = getStagePreloadStatus(stageRef)
 							preloadReady = state == 'ready'
 							if not preloadReady then
@@ -3063,7 +3091,7 @@ function start.f_selectScreen()
 								end
 							end
 						end
-						if not preloadReady and getInput(-1, motif.select_info.done.key) and not screenDelayInterrupted then
+						if not preloadReady and confirmPressed and not screenDelayInterrupted then
 							sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 						end
 						if preloadReady then
@@ -3084,10 +3112,15 @@ function start.f_selectScreen()
 						stageActiveCount = 0
 					end
 				end
+				-- stage slot indicator
+				local group = main.t_selectableStageSlots[stageListNo]
+				if not stageEnd and group ~= nil and #group.available > 1 and hasPortraitAnim(motif.select_info.stage.portrait.slot) then
+					main.f_animPosDraw(motif.select_info.stage.portrait.slot.AnimData)
+				end
 				--draw stage name
 				local stage_text = motif.select_info.stage.random.text
 				if stageListNo ~= 0 then
-					stage_text = main.f_formatBySpec(motif.select_info.stage.text, {i = stageListNo, s = main.t_selStages[main.t_selectableStages[stageListNo]].name})
+					stage_text = main.f_formatBySpec(motif.select_info.stage.text, {i = stageListNo, s = main.t_selStages[start.f_stageMenuRef()].name})
 				end
 				textImgReset(stageTextData)
 				textImgSetText(stageTextData, stage_text)
@@ -3949,18 +3982,64 @@ end
 --;===========================================================
 --; STAGE MENU
 --;===========================================================
+-- Same command mapping as character slots. Candidates are stage references,
+-- so hidden members and command subsets do not change the mapping indices
+function start.f_stageSlotSelected(group)
+	if group == nil or #group.available == 0 then return false, false end
+	for _, cmdType in ipairs({'select', 'next', 'previous'}) do
+		for command, refs in pairs(group[cmdType] or {}) do
+			for player = 1, gameOption('Config.Players') do
+				if commandGetState(player, command) then
+					local candidates = {}
+					local allowed = {}
+					for _, ref in ipairs(refs) do allowed[ref] = true end
+					for i, ref in ipairs(group.available) do
+						if allowed[ref] then table.insert(candidates, i) end
+					end
+					if #candidates == 0 then return false, true end
+					if cmdType == 'select' then
+						group.slot = candidates[math.random(#candidates)]
+						return true, true
+					end
+					local original = group.slot
+					local direction = cmdType == 'next' and 1 or -1
+					for step = 1, #group.available do
+						local i = (original - 1 + direction * step) % #group.available + 1
+						if allowed[group.available[i]] then
+							group.slot = i
+							break
+						end
+					end
+					if group.slot ~= original then
+						sndPlay(motif.Snd, motif.select_info.stage.swap.snd[1], motif.select_info.stage.swap.snd[2])
+					end
+					return false, true
+				end
+			end
+		end
+	end
+	return false, false
+end
+
 function start.f_stageMenu()
 	local n = stageListNo
+	local previousRef = start.f_stageMenuRef()
 	local randomMode = {
 		[0] = { init = 1, min = 1 }, -- disabled
 		[1] = { init = 0, min = 0 }, -- default
 		[2] = { init = 1, min = 0 }, -- random at the 'end'
 	}
 
-	local r = randomMode[motif.select_info.stage_randomselect] or randomMode[1]
-	local stageListIdx = r.init
+	local r = randomMode[motif.select_info.stage.randomselect] or randomMode[1]
 	local stageListMinIdx = r.min
-	local stageListMaxIdx = #main.t_selectableStages
+	local stageListMaxIdx = #main.t_selectableStageSlots
+	if stageListMaxIdx == 0 then
+		stageListNo = 0
+		return false, false
+	end
+	if stageListNo < stageListMinIdx or stageListNo > stageListMaxIdx then
+		stageListNo = r.init
+	end
 
 	if getInput(-1, motif.select_info.cell.left.key) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
@@ -3983,13 +4062,15 @@ function start.f_stageMenu()
 			if stageListNo > stageListMaxIdx then stageListNo = stageListMinIdx end
 		end
 	end
-	if n ~= stageListNo and stageListNo > 0 then
-		animReset(main.t_selStages[main.t_selectableStages[stageListNo]].anim_data)
-		animUpdate(main.t_selStages[main.t_selectableStages[stageListNo]].anim_data)
+	local selected, handled = start.f_stageSlotSelected(main.t_selectableStageSlots[stageListNo])
+	local ref = start.f_stageMenuRef()
+	if ref ~= nil then
+		main.f_preloadBoostStage(ref)
+		if n ~= stageListNo or previousRef ~= ref then
+			resetStagePortraitAnim(ref, 'anim_data')
+		end
 	end
-	if stageListNo > 0 then
-		main.f_preloadBoostStage(main.t_selectableStages[stageListNo])
-	end
+	return selected, handled
 end
 
 --;===========================================================

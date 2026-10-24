@@ -1505,7 +1505,69 @@ function main.f_addStage(file, hidden, line)
 	return stageNo
 end
 
+-- Add one [ExtraStages] entry, slot membership only affects the stage menu
+-- random and arcade pools keep every stage reference individually
+function main.f_addStageEntry(line, stageSlot)
+	local unlock = ''
+	local hidden = 0
+	line = line:gsub(',%s*unlock%s*=%s*(.-)%s*$', function(m1)
+		unlock = (m1 or ''):match('^%s*(.-)%s*$')
+		hidden = 1
+		return ''
+	end)
+	local row
+	for i, c in ipairs(main.f_strsplit(',', line)) do
+		c = c:match('^%s*(.-)%s*$')
+		if i == 1 then
+			if c == '' then return end
+			row = main.f_addStage(c, hidden, line)
+			if row == nil then return end
+			table.insert(main.t_includeStage[1], row)
+			table.insert(main.t_includeStage[2], row)
+		else
+			local param, value = c:match('^(.-)%s*=%s*(.-)$')
+			if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
+				main.t_selStages[row][param] = tonumber(value) or value
+				if param == 'order' then
+					local order = main.t_selStages[row].order
+					main.t_orderStages[order] = main.t_orderStages[order] or {}
+					table.insert(main.t_orderStages[order], row)
+				end
+			end
+		end
+	end
+	if row == nil then return end
+	local st = main.t_selStages[row]
+	if st.order == nil then
+		st.order = 1
+		main.t_orderStages[1] = main.t_orderStages[1] or {}
+		table.insert(main.t_orderStages[1], row)
+	end
+	if unlock ~= '' then
+		main.t_unlockLua.stages[row] = unlock
+	end
+	if stageSlot == nil then
+		table.insert(main.t_stageSlots, {stages = {}, slot = 1})
+		stageSlot = #main.t_stageSlots
+	end
+	st.stageSlot = stageSlot
+	local group = main.t_stageSlots[stageSlot]
+	table.insert(group.stages, row)
+	for _, cmdType in ipairs({'next', 'previous', 'select'}) do
+		local command = st[cmdType]
+		if command ~= nil then
+			command = tostring(command)
+			commandAdd(command, command)
+			group[cmdType] = group[cmdType] or {}
+			group[cmdType][command] = group[cmdType][command] or {}
+			table.insert(group[cmdType][command], row)
+		end
+	end
+	return row
+end
+
 main.t_includeStage = {{}, {}} --includestage = 1, includestage = -1
+main.t_stageSlots = {}
 main.t_orderChars = {default = {}}
 main.t_orderStages = {}
 main.t_bonusChars = {}
@@ -1518,6 +1580,7 @@ local tmp = ''
 local section = 0
 local row = 0
 local slot = false
+local stageSlot
 local csCell = 0
 local content = main.f_fileRead(motif.files.select)
 content = content:gsub('([^\r\n;]*)%s*;[^\r\n]*', '%1')
@@ -1543,6 +1606,9 @@ end
 for line in content:gmatch('[^\r\n]+') do
 --for line in io.lines("data/select.def") do
 	local lineCase = line:lower()
+	if lineCase:match('^%s*%[') then
+		stageSlot = nil
+	end
 	if lineCase:match('^%s*%[%s*characters%s*%]') then
 		row = 0
 		section = 1
@@ -1632,53 +1698,26 @@ for line in content:gmatch('[^\r\n]+') do
 			csCell = csCell + 1
 		end
 	elseif section == 2 then --[ExtraStages]
-		--store 'unlock' param and get rid of everything that follows it
-		local unlock = ''
-		local hidden = 0 --TODO: temporary flag, won't be used once stage selection screen is ready
-		line = line:gsub(',%s*unlock%s*=%s*(.-)%s*$', function(m1)
-			unlock = (m1 or ''):match('^%s*(.-)%s*$')
-			hidden = 1
-			return ''
-		end)
-		--parse rest of the line
-		for i, c in ipairs(main.f_strsplit(',', line)) do --split using "," delimiter
-			c = c:gsub('^%s*(.-)%s*$', '%1')
-			if i == 1 then
-				row = main.f_addStage(c, hidden, line)
-				if row == nil then
-					break
-				end
-				table.insert(main.t_includeStage[1], row)
-				table.insert(main.t_includeStage[2], row)
-			else
-				local param, value = c:match('^(.-)%s*=%s*(.-)$')
-				if param ~= nil and value ~= nil and param ~= '' and value ~= '' then
-					main.t_selStages[row][param] = tonumber(value)
-					--order (more than 1 order param can be set at the same time)
-					if param:match('order') then
-						if main.t_orderStages[main.t_selStages[row].order] == nil then
-							main.t_orderStages[main.t_selStages[row].order] = {}
-						end
-						table.insert(main.t_orderStages[main.t_selStages[row].order], row)
-					end
-				end
-			end
+		local slotStart = lineCase:match('^%s*slot%s*=%s*{%s*()')
+		if slotStart ~= nil then
+			table.insert(main.t_stageSlots, {stages = {}, slot = 1})
+			stageSlot = #main.t_stageSlots
+			line = line:sub(slotStart)
 		end
-		if row ~= nil then
-			--default order (only if no explicit order was set)
-			if main.t_selStages[row].order == nil then
-				main.t_selStages[row].order = 1
-				if main.t_orderStages[main.t_selStages[row].order] == nil then
-					main.t_orderStages[main.t_selStages[row].order] = {}
-				end
-				table.insert(main.t_orderStages[main.t_selStages[row].order], row)
+		local slotEnd = false
+		if stageSlot ~= nil then
+			local slotLine = line:match('^(.-)%s*}%s*$')
+			if slotLine ~= nil then
+				line = slotLine
+				slotEnd = true
 			end
-			--unlock param
-			if unlock ~= '' then
-				--main.t_selStages[row].unlock = unlock
-				main.t_unlockLua.stages[row] = unlock
+			for _, entry in ipairs(main.f_strsplit('|', line)) do
+				if entry:match('%S') then main.f_addStageEntry(entry, stageSlot) end
 			end
+		elseif line:match('%S') then
+			main.f_addStageEntry(line)
 		end
+		if slotEnd then stageSlot = nil end
 	elseif section == 3 then --[Options]
 		if lineCase:match('%.maxmatches%s*=') then
 			local rowName, line = lineCase:match('^%s*(.-)%.maxmatches%s*=%s*(.+)')
@@ -1773,13 +1812,49 @@ if #main.t_includeStage[1] == 0 or #main.t_includeStage[2] == 0 then
 	table.insert(main.t_includeStage[2], row)
 end
 
---update selectableStages table
+-- Rebuild the flat random pool and the grouped menu independently
 function main.f_updateSelectableStages()
+	local previousPool = main.t_selectableStages or {}
+	local selected = {}
+	for i, group in ipairs(main.t_stageSlots) do
+		selected[i] = group.available and group.available[group.slot]
+		group.available = {}
+	end
 	main.t_selectableStages = {}
+	main.t_selectableStageSlots = {}
+	local seen = {}
 	for _, v in ipairs(main.t_includeStage[2]) do
-		if main.t_selStages[v].hidden == nil or main.t_selStages[v].hidden == 0 then
+		local st = main.t_selStages[v]
+		if st.hidden == nil or st.hidden == 0 then
 			table.insert(main.t_selectableStages, v)
+			-- Stages supplied by character parameters or the default fallback
+			-- have no explicit menu group
+			if st.stageSlot == nil then
+				table.insert(main.t_stageSlots, {stages = {v}, available = {}, slot = 1})
+				st.stageSlot = #main.t_stageSlots
+			end
+			local group = main.t_stageSlots[st.stageSlot]
+			table.insert(group.available, v)
+			if not seen[st.stageSlot] then
+				seen[st.stageSlot] = true
+				table.insert(main.t_selectableStageSlots, group)
+			end
 		end
+	end
+	for i, group in ipairs(main.t_stageSlots) do
+		group.slot = 1
+		for j, ref in ipairs(group.available) do
+			if ref == selected[i] then group.slot = j; break end
+		end
+	end
+	-- Shuffle bags contain indices into the flat pool, so invalidate the menu
+	-- bag when unlocking or hiding stages changes that pool
+	local changed = #previousPool ~= #main.t_selectableStages
+	for i, ref in ipairs(main.t_selectableStages) do
+		if previousPool[i] ~= ref then changed = true; break end
+	end
+	if changed and start ~= nil and start.shuffleStages ~= nil then
+		start.shuffleStages.stageMenu = nil
 	end
 end
 main.f_updateSelectableStages()
@@ -4076,6 +4151,8 @@ if gameOption('Debug.DumpLuaTables') then
 	main.f_printTable(main.t_charDef, "debug/t_charDef.txt")
 	main.f_printTable(main.t_includeStage, "debug/t_includeStage.txt")
 	main.f_printTable(main.t_selectableStages, "debug/t_selectableStages.txt")
+	main.f_printTable(main.t_stageSlots, "debug/t_stageSlots.txt")
+	main.f_printTable(main.t_selectableStageSlots, "debug/t_selectableStageSlots.txt")
 	main.f_printTable(main.t_selGrid, "debug/t_selGrid.txt")
 	main.f_printTable(main.t_unlockLua, "debug/t_unlockLua.txt")
 	main.f_printTable(loadGameOption(), "debug/config.txt")
