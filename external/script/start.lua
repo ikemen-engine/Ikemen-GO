@@ -3082,21 +3082,19 @@ function start.f_selectScreen()
 					end
 				end
 			end
-		elseif not start.escFlag and not fadeOutStarted
-			and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
+		elseif not start.escFlag and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
+			local cancelHandled = false
 			if main.stageMenu and stageEnd and getAction(-1, motif.select_info.cancel.action) then
 				stageEnd = false
 				stageTextData = motif.select_info.stage.active.TextSpriteData
 				timerSelect = motif.select_info.timer.displaytime
 				sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
+				cancelHandled = true
 			else
-				local cancelPressed = false
-				local cancelHandled = false
 				for side = 2, 1, -1 do
 					for k, v in ipairs(start.p[side].t_selCmd) do
 						if not main.lockedSelection[side] and getAction(v.cmd, motif.select_info.cancel.action) then
-							cancelPressed = true
-							if cancelSelectMember(side, k) then
+							if cancelSelectMember(side, k) or cancelPreviousSide(side) then
 								timerSelect = motif.select_info.timer.displaytime
 								if main.stageMenu then
 									timerReset = false
@@ -3112,9 +3110,10 @@ function start.f_selectScreen()
 						break
 					end
 				end
-				if not cancelHandled and (cancelPressed or (main.stageMenu and getAction(-1, motif.select_info.cancel.action))) then
-					exitSelectScreen()
-				end
+			end
+			if cancelHandled and fadeOutStarted then
+				fadeSkip()
+				fadeOutStarted = false
 			end
 		end
 		--draw names
