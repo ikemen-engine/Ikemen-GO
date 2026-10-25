@@ -4,6 +4,7 @@ import (
 	"container/list"
 	_ "embed"
 	"math"
+	"strings"
 
 	mgl "github.com/go-gl/mathgl/mgl32"
 )
@@ -117,6 +118,23 @@ var vertShader string
 
 //go:embed shaders/sprite.frag.glsl
 var fragShader string
+
+//go:embed shaders/sprite_lib.frag.glsl
+var spriteLibShader string
+
+// Replaces the sprite library include with the embedded library, as glslc does for Vulkan
+func expandShaderIncludes(src string) string {
+	if !strings.Contains(src, "sprite_lib.frag.glsl") {
+		return src
+	}
+	lines := strings.Split(src, "\n")
+	for i, l := range lines {
+		if strings.TrimSpace(l) == `#include "sprite_lib.frag.glsl"` {
+			lines[i] = spriteLibShader
+		}
+	}
+	return strings.Join(lines, "\n")
+}
 
 //go:embed shaders/model.vert.glsl
 var modelVertShader string

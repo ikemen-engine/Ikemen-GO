@@ -3116,6 +3116,51 @@ type sliceHeader struct {
 	Cap  int
 }
 
+// Sprite and custom sprite shaders share one layout, so both compile from sprite.frag.glsl as is
+func (r *Renderer_VK) createSpritePipelineLayout(program *VulkanProgramInfo) {
+	// 0: Vert UBO, 1: Frag UBO, 2: tex, 3: pal, 4: GrabPass, 5: tex1, 6: tex2
+	bindings := []vk.DescriptorSetLayoutBinding{
+		{Binding: 0, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeUniformBuffer, StageFlags: vk.ShaderStageFlags(vk.ShaderStageVertexBit)},
+		{Binding: 1, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeUniformBuffer, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 2, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 3, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 4, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 5, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+		{Binding: 6, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
+	}
+	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
+		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
+		BindingCount: uint32(len(bindings)),
+		PBindings:    bindings,
+	}
+	if r.hasPushDescriptors {
+		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
+	}
+	var descriptorSetLayout vk.DescriptorSetLayout
+	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
+	program.descriptorSetLayouts = append(program.descriptorSetLayouts, descriptorSetLayout)
+
+	// spriteUV, palUV, tex1UV, tex2UV, param[16]
+	// Vulkan guarantees at least 128 bytes of push constants
+	pushConstantRanges := []vk.PushConstantRange{
+		{
+			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
+			Offset:     0,
+			Size:       128,
+		},
+	}
+	pipelineLayoutCreateInfo := vk.PipelineLayoutCreateInfo{
+		SType:                  vk.StructureTypePipelineLayoutCreateInfo,
+		SetLayoutCount:         1,
+		PSetLayouts:            []vk.DescriptorSetLayout{descriptorSetLayout},
+		PushConstantRangeCount: uint32(len(pushConstantRanges)),
+		PPushConstantRanges:    pushConstantRanges,
+	}
+	var pipelineLayout vk.PipelineLayout
+	vk.CreatePipelineLayout(r.device, &pipelineLayoutCreateInfo, nil, &pipelineLayout)
+	program.pipelineLayout = pipelineLayout
+}
+
 func (r *Renderer_VK) CreateSpriteProgram() (*VulkanProgramInfo, error) {
 	program := &VulkanProgramInfo{}
 	var uniformBufferMemory vk.DeviceMemory
@@ -3177,71 +3222,7 @@ func (r *Renderer_VK) CreateSpriteProgram() (*VulkanProgramInfo, error) {
 		},
 	}
 
-	samplerLayoutBinding := []vk.DescriptorSetLayoutBinding{
-		{
-			Binding:            0,
-			DescriptorCount:    1,
-			DescriptorType:     vk.DescriptorTypeUniformBuffer,
-			PImmutableSamplers: nil,
-			StageFlags:         vk.ShaderStageFlags(vk.ShaderStageVertexBit),
-		},
-		{
-			Binding:            1,
-			DescriptorCount:    1,
-			DescriptorType:     vk.DescriptorTypeUniformBuffer,
-			PImmutableSamplers: nil,
-			StageFlags:         vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
-		},
-		{
-			Binding:            2,
-			DescriptorCount:    1,
-			DescriptorType:     vk.DescriptorTypeCombinedImageSampler,
-			PImmutableSamplers: nil,
-			StageFlags:         vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
-		},
-		{
-			Binding:            3,
-			DescriptorCount:    1,
-			DescriptorType:     vk.DescriptorTypeCombinedImageSampler,
-			PImmutableSamplers: nil,
-			StageFlags:         vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
-		},
-	}
-
-	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
-		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		BindingCount: 4,
-		PBindings:    samplerLayoutBinding,
-	}
-	if r.hasPushDescriptors {
-		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
-	}
-	var descriptorSetLayout vk.DescriptorSetLayout
-	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
-	program.descriptorSetLayouts = append(program.descriptorSetLayouts, descriptorSetLayout)
-	//program.descriptorSetCache, err = v.NewDescriptorSetCache(5000, descriptorSetLayout)
-	if err != nil {
-		err = fmt.Errorf("vk.CreateDescriptorSetLayout failed with %s", err)
-		return nil, err
-	}
-	pushConstantRanges := []vk.PushConstantRange{
-		// spriteUV, palUV
-		{
-			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
-			Offset:     0,
-			Size:       32,
-		},
-	}
-	pipelineLayoutCreateInfo := vk.PipelineLayoutCreateInfo{
-		SType:                  vk.StructureTypePipelineLayoutCreateInfo,
-		SetLayoutCount:         1,
-		PSetLayouts:            []vk.DescriptorSetLayout{descriptorSetLayout},
-		PushConstantRangeCount: uint32(len(pushConstantRanges)),
-		PPushConstantRanges:    pushConstantRanges,
-	}
-	var pipelineLayout vk.PipelineLayout
-	vk.CreatePipelineLayout(r.device, &pipelineLayoutCreateInfo, nil, &pipelineLayout)
-	program.pipelineLayout = pipelineLayout
+	r.createSpritePipelineLayout(program)
 	dynamicStates := []vk.DynamicState{
 		vk.DynamicStateViewport,
 		vk.DynamicStateScissor,
@@ -8315,7 +8296,7 @@ func (r *Renderer_VK) RenderQuadSetup() uint32 {
 	if switchedProgram || r.VKState.spriteTexture != r.currentSpriteTexture.spriteTexture || r.shouldDoPerDrawPushDrawConstants {
 		if r.VKState.spriteTexture.ShouldPushUV(r.currentSpriteTexture.spriteTexture, switchedProgram, r.shouldDoPerDrawPushDrawConstants) {
 			uvst := r.VKState.spriteTexture.uvst
-			vk.CmdPushConstants(r.commandBuffers[0], r.spriteProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 16, unsafe.Pointer(&uvst))
+			vk.CmdPushConstants(r.commandBuffers[0], targetProgram.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 0, 16, unsafe.Pointer(&uvst))
 		}
 		if r.VKState.spriteTexture.ShouldPushDescriptor(r.currentSpriteTexture.spriteTexture, switchedProgram) {
 
@@ -9941,45 +9922,7 @@ func (r *Renderer_VK) createCustomSpriteProgram(fragSpv []byte) (*VulkanProgramI
 		},
 	}
 
-	// 0: Vert UBO, 1: Frag UBO, 2: Tex, 3: Pal, 4: bgl_RenderedTexture (GrabPass用)
-	samplerLayoutBinding := []vk.DescriptorSetLayoutBinding{
-		{Binding: 0, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeUniformBuffer, StageFlags: vk.ShaderStageFlags(vk.ShaderStageVertexBit)},
-		{Binding: 1, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeUniformBuffer, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
-		{Binding: 2, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
-		{Binding: 3, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)},
-		{Binding: 4, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // GrabPass
-		{Binding: 5, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // tex1
-		{Binding: 6, DescriptorCount: 1, DescriptorType: vk.DescriptorTypeCombinedImageSampler, StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit)}, // tex2
-	}
-	layoutInfo := vk.DescriptorSetLayoutCreateInfo{
-		SType:        vk.StructureTypeDescriptorSetLayoutCreateInfo,
-		BindingCount: uint32(len(samplerLayoutBinding)),
-		PBindings:    samplerLayoutBinding,
-	}
-	if r.hasPushDescriptors {
-		layoutInfo.Flags = vk.DescriptorSetLayoutCreateFlags(vk.DescriptorSetLayoutCreatePushDescriptorBit)
-	}
-	var descriptorSetLayout vk.DescriptorSetLayout
-	vk.CreateDescriptorSetLayout(r.device, &layoutInfo, nil, &descriptorSetLayout)
-	program.descriptorSetLayouts = append(program.descriptorSetLayouts, descriptorSetLayout)
-
-	pushConstantRanges := []vk.PushConstantRange{
-		{
-			StageFlags: vk.ShaderStageFlags(vk.ShaderStageFragmentBit),
-			Offset:     0,
-			Size:       128, // Vulkan spec guarentees hardware support at least 128 bytes push constant size
-		},
-	}
-	pipelineLayoutCreateInfo := vk.PipelineLayoutCreateInfo{
-		SType:                  vk.StructureTypePipelineLayoutCreateInfo,
-		SetLayoutCount:         1,
-		PSetLayouts:            []vk.DescriptorSetLayout{descriptorSetLayout},
-		PushConstantRangeCount: uint32(len(pushConstantRanges)),
-		PPushConstantRanges:    pushConstantRanges,
-	}
-	var pipelineLayout vk.PipelineLayout
-	vk.CreatePipelineLayout(r.device, &pipelineLayoutCreateInfo, nil, &pipelineLayout)
-	program.pipelineLayout = pipelineLayout
+	r.createSpritePipelineLayout(program)
 
 	dynamicStates := []vk.DynamicState{
 		vk.DynamicStateViewport,

@@ -120,6 +120,7 @@ func (s *ShaderProgram_GLES32) RegisterTextures(names ...string) {
 
 func (r *Renderer_GLES32) compileShader(shaderType uint32, src string) (uint32, error) {
 	shader := gl.CreateShader(shaderType)
+	src = expandShaderIncludes(src)
 
 	// 1. SMART HEADER INJECTION
 	// GLES 3.0+ drivers REQUIRE the version to be the very first line.
