@@ -183,19 +183,22 @@ type boundTexture struct {
 
 // Binds only if it isn't already bound there, per the shared table
 func (r *Renderer_GL33) bindTextureToUnit(unit int32, target uint32, tex *Texture_GL33, handle uint32) bool {
+	var root *Texture_GL33
 	if tex != nil {
 		handle = tex.handle
+		root = tex.root
 	}
 
 	cur := &r.boundTex[unit]
-	if cur.tex == tex && cur.handle == handle && cur.target == target {
+	// Compare the owning texture so atlas sub-textures don't rebind the same atlas
+	if cur.tex == root && cur.handle == handle && cur.target == target {
 		return false
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0 + uint32(unit))
 	gl.BindTexture(target, handle)
 
-	cur.tex = tex
+	cur.tex = root
 	cur.handle = handle
 	cur.target = target
 	return true
@@ -203,15 +206,17 @@ func (r *Renderer_GL33) bindTextureToUnit(unit int32, target uint32, tex *Textur
 
 // Always rebinds. Used before any call that edits texture data since those act on whatever's active
 func (r *Renderer_GL33) bindTextureToUnitForced(unit int32, target uint32, tex *Texture_GL33, handle uint32) {
+	var root *Texture_GL33
 	if tex != nil {
 		handle = tex.handle
+		root = tex.root
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0 + uint32(unit))
 	gl.BindTexture(target, handle)
 
 	cur := &r.boundTex[unit]
-	cur.tex = tex
+	cur.tex = root
 	cur.handle = handle
 	cur.target = target
 }
@@ -224,6 +229,8 @@ type Texture_GL33 struct {
 	uvst   [4]float32
 	filter bool
 	handle uint32 // GL side handle
+	// Texture that owns the handle. Atlas sub-textures share it
+	root   *Texture_GL33
 }
 
 // Helper that wraps the actual GL call to generate a texture
@@ -240,6 +247,7 @@ func (r *Renderer_GL33) generateTexture(width, height, depth int32, filter bool)
 		filter: filter,
 		handle: h,
 	}
+	tex.root = tex
 
 	runtime.SetFinalizer(tex, func(t *Texture_GL33) {
 		sys.mainThreadTask <- func() {
@@ -263,8 +271,8 @@ func (r *Renderer_GL33) newTexture(width, height, depth int32, filter bool) (Tex
 }
 
 func (r *Renderer_GL33) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) Texture {
-	t := &Texture_GL33{256, 1, 32, offset, uvst, false, 0}
-	t.handle = (*(sys.palTexture.textures[slot[0]])).(*Texture_GL33).handle
+	parent := (*(sys.palTexture.textures[slot[0]])).(*Texture_GL33)
+	t := &Texture_GL33{width: 256, height: 1, depth: 32, offset: offset, uvst: uvst, handle: parent.handle, root: parent.root}
 	runtime.SetFinalizer(t, func(t *Texture_GL33) {
 		sys.mainThreadTask <- func() {
 			sys.palTexture.emptySlot.PushFront(slot)
@@ -274,7 +282,8 @@ func (r *Renderer_GL33) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst 
 }
 
 func (r *Renderer_GL33) newSubTexture(tex Texture, width, height int32, uvst [4]float32) Texture {
-	t := &Texture_GL33{width, height, tex.(*Texture_GL33).depth, [2]int32{0, 0}, uvst, tex.(*Texture_GL33).filter, tex.(*Texture_GL33).handle}
+	p := tex.(*Texture_GL33)
+	t := &Texture_GL33{width: width, height: height, depth: p.depth, uvst: uvst, filter: p.filter, handle: p.handle, root: p.root}
 	return t
 }
 
@@ -2179,7 +2188,7 @@ func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int
 
 		// Look for a hit or the oldest slot
 		for i, bound := range r.boundTex {
-			if bound.tex == t {
+			if bound.tex == t.root {
 				r.texCacheLastUsed[i] = r.texCacheTimer
 				r.SetUniformISub(loc, int32(i))
 				return
