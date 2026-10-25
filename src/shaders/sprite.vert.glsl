@@ -18,6 +18,8 @@
 	#endif
 
 	uniform mat4 modelview, projection;
+	uniform vec4 quad[4]; // x, y, u, v per vertex
+	uniform bool useQuad;
 
 	COMPAT_ATTRIBUTE vec2 position;
 	COMPAT_ATTRIBUTE vec2 uv;
@@ -25,8 +27,16 @@
 #endif
 
 void main(void) {
+	vec2 pos = position;
 	texcoord = uv;
-	gl_Position = projection * (modelview * vec4(position, 0.0, 1.0));
+	#if __VERSION__ < 450
+		// Single quads come from uniforms to skip a vertex buffer upload per sprite
+		if (useQuad) {
+			pos = quad[gl_VertexID].xy;
+			texcoord = quad[gl_VertexID].zw;
+		}
+	#endif
+	gl_Position = projection * (modelview * vec4(pos, 0.0, 1.0));
 	
 	#if __VERSION__ >= 450
 		// Vulkan's Y-axis is inverted compared to OpenGL

@@ -8498,6 +8498,12 @@ func (r *Renderer_VK) RenderQuadSetup() uint32 {
 	return uint32(r.vertexBufferOffset%r.vertexBuffers[0].size) / 16
 }
 
+// Vulkan already appends vertices to a mapped buffer with a plain copy
+// The per-quad upload that GL avoids with uniforms doesn't exist here
+func (r *Renderer_VK) SetQuadVertices(v *[16]float32) {
+	r.SetVertexData(v[:]...)
+}
+
 func (r *Renderer_VK) RenderQuad() {
 	startVertex := r.RenderQuadSetup()
 	vk.CmdDraw(r.commandBuffers[0], 4, 1, startVertex-4, 0)

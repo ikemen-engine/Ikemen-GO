@@ -188,6 +188,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		r.SetUniformI("isRgba", 1)
 		r.SetUniformI("mask", 0)
 		r.SetUniformI("isTrapez", 0)
+		r.SetUniformI("useQuad", 0)
 		r.SetUniformI("neg", int(Btoi(f.shaderPalFX.neg)))
 		r.SetUniformF("alpha", f.color.a)
 		r.SetUniformFv("add", f.shaderPalFX.add[:])

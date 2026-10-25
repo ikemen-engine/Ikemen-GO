@@ -835,7 +835,7 @@ func (r *Renderer_GLES32) Init() {
 	r.spriteShader.RegisterAttributes("position", "uv")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"spriteUV", "palUV")
+		"spriteUV", "palUV", "quad", "useQuad")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Configure spriteVAO
@@ -2197,6 +2197,13 @@ func (r *Renderer_GLES32) SetShadowFrameCubeTexture(i uint32) {
 }
 
 func (r *Renderer_GLES32) SetVertexData(values ...float32) {
+	// Vertices come from the buffer, not the quad uniform
+	if r.currentProgram != nil {
+		if loc, ok := r.currentProgram.uniforms["useQuad"]; ok {
+			r.SetUniformISub(loc, 0)
+		}
+	}
+
 	need := len(values) * 4
 
 	// Adjust scratch buffer size if necessary
@@ -2219,6 +2226,16 @@ func (r *Renderer_GLES32) SetVertexData(values ...float32) {
 		gl.BufferData(gl.ARRAY_BUFFER, need, unsafe.Pointer(&r.vertexScratch[0]), gl.DYNAMIC_DRAW)
 	} else {
 		gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.DYNAMIC_DRAW)
+	}
+}
+
+// Sends a single quad through uniforms to skip a vertex buffer upload per sprite
+func (r *Renderer_GLES32) SetQuadVertices(v *[16]float32) {
+	if loc, ok := r.currentProgram.uniforms["quad"]; ok && loc >= 0 {
+		gl.Uniform4fv(loc, 4, &v[0])
+	}
+	if loc, ok := r.currentProgram.uniforms["useQuad"]; ok {
+		r.SetUniformISub(loc, 1)
 	}
 }
 
@@ -2415,7 +2432,7 @@ func (r *Renderer_GLES32) LoadCustomSpriteShader(shaderName string, shaderData [
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"spriteUV", "palUV", "tex1UV", "tex2UV",
+		"spriteUV", "palUV", "tex1UV", "tex2UV", "quad", "useQuad",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
 
