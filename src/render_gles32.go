@@ -1086,6 +1086,7 @@ func (r *Renderer_GLES32) InitStateCache() {
 	gl.FrontFace(gl.CCW)
 	gl.Disable(gl.BLEND)
 	gl.Disable(gl.SCISSOR_TEST)
+	r.scissorRect = [4]int32{-1, -1, -1, -1} // Unknown, so the first EnableScissor sets it
 
 	// Check hardware texture limit
 	// TODO: Maybe clamp the result
@@ -1831,19 +1832,17 @@ func (r *Renderer_GLES32) EnableScissor(x, y, width, height int32) {
 	// Flip Y to OpenGL convention
 	realY := sys.scrrect[3] - (y + height)
 
-	if r.scissorEnabled &&
-		r.scissorRect[0] == x && r.scissorRect[1] == realY &&
-		r.scissorRect[2] == width && r.scissorRect[3] == height {
-		return
-	}
-
 	if !r.scissorEnabled {
 		gl.Enable(gl.SCISSOR_TEST)
 		r.scissorEnabled = true
 	}
 
-	gl.Scissor(x, realY, width, height)
-	r.scissorRect = [4]int32{x, realY, width, height}
+	// The rect survives DisableScissor, so only set it when it changes
+	rect := [4]int32{x, realY, width, height}
+	if rect != r.scissorRect {
+		gl.Scissor(x, realY, width, height)
+		r.scissorRect = rect
+	}
 }
 
 func (r *Renderer_GLES32) DisableScissor() {
