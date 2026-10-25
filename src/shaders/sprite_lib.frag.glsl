@@ -158,3 +158,15 @@ vec4 ikemenSpriteColor(vec2 uv) {
 
 	return c;
 }
+
+// Texel of tex1/tex2, the sprites set by the tex1/tex2.anim or .spr custom shader parameters, at a 0-1 coordinate
+// Clamped in case they're packed in an atlas. Paletted sprites give palette indices, as no palette is passed
+vec4 ikemenSampleTex1(vec2 uv) {
+	vec2 atlasUV = clamp(mix(tex1UV.xy, tex1UV.zw, uv), tex1UV.xy, tex1UV.zw - 0.0001);
+	return COMPAT_TEXTURE(tex1, atlasUV);
+}
+
+vec4 ikemenSampleTex2(vec2 uv) {
+	vec2 atlasUV = clamp(mix(tex2UV.xy, tex2UV.zw, uv), tex2UV.xy, tex2UV.zw - 0.0001);
+	return COMPAT_TEXTURE(tex2, atlasUV);
+}
