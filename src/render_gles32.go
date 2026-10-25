@@ -2089,17 +2089,21 @@ func (r *Renderer_GLES32) SetTextureSub(uMap map[string]int32, tMap map[string]i
 	loc := uMap[name]
 	switch name {
 	case "tex":
-		loc := uMap["spriteUV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["spriteUV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "pal":
-		loc := uMap["palUV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["palUV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "tex1":
-		loc := uMap["tex1UV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["tex1UV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "tex2":
-		loc := uMap["tex2UV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["tex2UV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	}
 
 	// Cached path for the sprite shader
