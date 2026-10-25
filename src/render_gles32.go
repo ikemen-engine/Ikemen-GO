@@ -718,6 +718,11 @@ func (r *Renderer_GLES32) InitModelShader() error {
 			"lights[0].type", "lights[1].type", "lights[2].type", "lights[3].type", "lights[0].position", "lights[1].position", "lights[2].position", "lights[3].position",
 			"lights[0].shadowMapFar", "lights[1].shadowMapFar", "lights[2].shadowMapFar", "lights[3].shadowMapFar", "numJoints", "morphTargetWeight", "morphTargetOffset", "morphTargetTextureDimension",
 			"numTargets", "numVertices", "enableAlpha", "alphaThreshold", "baseColorFactor", "useTexture", "texTransform", "layerOffset", "lightIndex")
+		// model.go sends these on every backend, but GLES uses lightMatrix instead
+		// Registering them lets the setters skip them instead of crashing on an unknown name
+		for i := 0; i < 24; i++ {
+			r.shadowMapShader.RegisterUniforms(fmt.Sprintf("lightMatrices[%d]", i))
+		}
 		r.shadowMapShader.RegisterTextures("morphTargetValues", "jointMatrices", "tex")
 	}
 
@@ -1934,134 +1939,113 @@ func (r *Renderer_GLES32) SetUniformFvSub(loc int32, values []float32) {
 	}
 }
 
+func (r *Renderer_GLES32) uniformLoc(s *ShaderProgram_GLES32, name string) int32 {
+	loc, ok := s.uniforms[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Uniform '%s' not registered in %s", name, s.name))
+	}
+	return loc
+}
+
 func (r *Renderer_GLES32) SetUniformI(name string, val int) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GLES32) SetUniformF(name string, values ...float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GLES32) SetUniformFv(name string, values []float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFvSub(loc, values)
 }
 
 // Caching matrices is as expensive as direct function calls
 func (r *Renderer_GLES32) SetUniformMatrix(name string, value []float32) {
-	loc, ok := r.currentProgram.uniforms[name]
-	if ok && loc >= 0 {
+	loc := r.uniformLoc(r.currentProgram, name)
+	if loc >= 0 {
 		gl.UniformMatrix4fv(loc, 1, false, &value[0])
 	}
 }
 
 func (r *Renderer_GLES32) SetModelUniformI(name string, val int) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GLES32) SetModelUniformF(name string, values ...float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GLES32) SetModelUniformFv(name string, values []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GLES32) SetModelUniformMatrix(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GLES32) SetModelUniformMatrix3(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformI(name string, val int) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformF(name string, values ...float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformFv(name string, values []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformMatrix(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformMatrix3(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
@@ -2085,7 +2069,11 @@ func (r *Renderer_GLES32) SetActiveTexture0() {
 // Every program skips redundant binds. Sprite shader also uses a LRU system that allows it to use all texture slots for caching
 func (r *Renderer_GLES32) SetTextureSub(uMap map[string]int32, tMap map[string]int, name string, tex Texture) {
 	t := tex.(*Texture_GLES32)
-	loc := uMap[name]
+	loc, ok := uMap[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Texture uniform '%s' not registered", name))
+	}
 	switch name {
 	case "tex":
 		if loc, ok := uMap["spriteUV"]; ok {

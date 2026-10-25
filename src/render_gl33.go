@@ -2005,134 +2005,113 @@ func (r *Renderer_GL33) SetUniformFvSub(loc int32, values []float32) {
 	}
 }
 
+func (r *Renderer_GL33) uniformLoc(s *ShaderProgram_GL33, name string) int32 {
+	loc, ok := s.uniforms[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Uniform '%s' not registered in %s", name, s.name))
+	}
+	return loc
+}
+
 func (r *Renderer_GL33) SetUniformI(name string, val int) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetUniformF(name string, values ...float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetUniformFv(name string, values []float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFvSub(loc, values)
 }
 
 // Caching matrices is as expensive as direct function calls
 func (r *Renderer_GL33) SetUniformMatrix(name string, value []float32) {
-	loc, ok := r.currentProgram.uniforms[name]
-	if ok && loc >= 0 {
+	loc := r.uniformLoc(r.currentProgram, name)
+	if loc >= 0 {
 		gl.UniformMatrix4fv(loc, 1, false, &value[0])
 	}
 }
 
 func (r *Renderer_GL33) SetModelUniformI(name string, val int) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetModelUniformF(name string, values ...float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetModelUniformFv(name string, values []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GL33) SetModelUniformMatrix(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL33) SetModelUniformMatrix3(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformI(name string, val int) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformF(name string, values ...float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformFv(name string, values []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformMatrix(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformMatrix3(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
@@ -2156,7 +2135,11 @@ func (r *Renderer_GL33) SetActiveTexture0() {
 // Every program skips redundant binds. Sprite shader also uses a LRU system that allows it to use all texture slots for caching
 func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int, name string, tex Texture) {
 	t := tex.(*Texture_GL33)
-	loc := uMap[name]
+	loc, ok := uMap[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Texture uniform '%s' not registered", name))
+	}
 	switch name {
 	case "tex":
 		if loc, ok := uMap["spriteUV"]; ok {
