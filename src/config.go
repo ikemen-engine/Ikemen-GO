@@ -18,26 +18,78 @@ type AIrampProperties struct {
 	End   [2]int32 `ini:"end" sync:"host"`
 }
 
-type KeysProperties struct {
-	Joystick int    `ini:"Joystick"`
-	Up       string `ini:"up"`
-	Down     string `ini:"down"`
-	Left     string `ini:"left"`
-	Right    string `ini:"right"`
-	A        string `ini:"a"`
-	B        string `ini:"b"`
-	C        string `ini:"c"`
-	X        string `ini:"x"`
-	Y        string `ini:"y"`
-	Z        string `ini:"z"`
-	Start    string `ini:"start"`
-	D        string `ini:"d"`
-	W        string `ini:"w"`
-	Menu     string `ini:"menu"`
-	L        string `ini:"l"`
-	R        string `ini:"r"`
-	GUID     string `ini:"GUID"`
-	RumbleOn bool   `ini:"RumbleOn"`
+// A Controller Setup in config.ini: the virtual control behind each engine button.
+type ControllerSetupProperties struct {
+	Name  string `ini:"Name"`
+	Up    string `ini:"up"`
+	Down  string `ini:"down"`
+	Left  string `ini:"left"`
+	Right string `ini:"right"`
+	A     string `ini:"a"`
+	B     string `ini:"b"`
+	C     string `ini:"c"`
+	X     string `ini:"x"`
+	Y     string `ini:"y"`
+	Z     string `ini:"z"`
+	Start string `ini:"start"`
+	D     string `ini:"d"`
+	W     string `ini:"w"`
+	Menu  string `ini:"menu"`
+	L     string `ini:"l"`
+	R     string `ini:"r"`
+}
+
+// Values in ButtonIndex order.
+func (p *ControllerSetupProperties) values() [16]string {
+	return [16]string{p.Up, p.Down, p.Left, p.Right, p.A, p.B, p.C, p.X, p.Y, p.Z, p.Start, p.D, p.W, p.Menu, p.L, p.R}
+}
+
+func (p *ControllerSetupProperties) setup() ControllerSetup {
+	var cs ControllerSetup
+	for i, v := range p.values() {
+		cs[i] = parseVirtualControl(v)
+	}
+	return cs
+}
+
+// A Button Mapping in config.ini: the physical input behind each virtual control.
+// [ButtonMapping_KeyboardN] sections are the keyboard controllers.
+type ButtonMappingProperties struct {
+	Name  string `ini:"Name"`
+	DpU   string `ini:"DP_U"`
+	DpD   string `ini:"DP_D"`
+	DpL   string `ini:"DP_L"`
+	DpR   string `ini:"DP_R"`
+	A     string `ini:"A"`
+	B     string `ini:"B"`
+	X     string `ini:"X"`
+	Y     string `ini:"Y"`
+	Start string `ini:"START"`
+	Back  string `ini:"BACK"`
+	LB    string `ini:"LB"`
+	RB    string `ini:"RB"`
+	LT    string `ini:"LT"`
+	RT    string `ini:"RT"`
+	LsYn  string `ini:"LS_Y-"`
+	LsYp  string `ini:"LS_Y+"`
+	LsXn  string `ini:"LS_X-"`
+	LsXp  string `ini:"LS_X+"`
+	RsYn  string `ini:"RS_Y-"`
+	RsYp  string `ini:"RS_Y+"`
+	RsXn  string `ini:"RS_X-"`
+	RsXp  string `ini:"RS_X+"`
+	LS    string `ini:"LS"`
+	RS    string `ini:"RS"`
+}
+
+func (p *ButtonMappingProperties) mapping() ButtonMapping {
+	return ButtonMapping{p.DpU, p.DpD, p.DpL, p.DpR, p.A, p.B, p.X, p.Y, p.Start, p.Back,
+		p.LB, p.RB, p.LT, p.RT, p.LsYn, p.LsYp, p.LsXn, p.LsXp, p.RsYn, p.RsYp, p.RsXn, p.RsXp, p.LS, p.RS}
+}
+
+func (p *ButtonMappingProperties) setMapping(m ButtonMapping) {
+	*p = ButtonMappingProperties{p.Name, m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9],
+		m[10], m[11], m[12], m[13], m[14], m[15], m[16], m[17], m[18], m[19], m[20], m[21], m[22], m[23]}
 }
 
 // Motif represents the top-level config structure.
@@ -221,16 +273,20 @@ type Config struct {
 		Rollback        RollbackProperties `ini:"Rollback"`
 	} `ini:"Netplay"`
 	Input struct {
+		// Device preferences, by keyboard controller ID or controller GUID.
+		ControllerSetup map[string]string `ini:"ControllerSetup"`
+
+		ControllerRumble           bool    `ini:"ControllerRumble"`
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
 		SOCDResolution             int     `ini:"SOCDResolution" sync:"host"`
-		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity"`
-		XinputTriggerSensitivity   float32 `ini:"XinputTriggerSensitivity"`
+		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity" sync:"host"`
+		XinputTriggerSensitivity   float32 `ini:"XinputTriggerSensitivity" sync:"host"`
 		UiRepeatDelay              int32   `ini:"UiRepeatDelay" sync:"host"`
 		UiRepeatRate               int32   `ini:"UiRepeatRate" sync:"host"`
 		PauseExitDelay             int32   `ini:"PauseExitDelay" sync:"host"`
 	} `ini:"Input"`
-	Keys     map[string]*KeysProperties `ini:"map:^(?i)Keys_P[0-9]+$" lua:"Keys"`
-	Joystick map[string]*KeysProperties `ini:"map:^(?i)Joystick_P[0-9]+$" lua:"Joystick"`
+	ButtonMapping   map[string]*ButtonMappingProperties   `ini:"map:^(?i)ButtonMapping_[a-z0-9_]+$" lua:"ButtonMapping"`
+	ControllerSetup map[string]*ControllerSetupProperties `ini:"map:^(?i)ControllerSetup_[a-z0-9_]+$" lua:"ControllerSetup"`
 }
 
 // Loads and parses the INI file into a Config struct.
@@ -325,6 +381,7 @@ func loadConfig(def string) (*Config, error) {
 
 	c.IniFile = iniFile
 	c.DefaultOnlyIni = defaultOnlyIni
+	c.dropDeletedSetups(userIniFile)
 	c.normalize()
 	c.sysSet()
 	c.Save(def)
@@ -421,65 +478,173 @@ func (c *Config) sysSet() {
 		sys.gameHeight = float32(c.Video.GameHeight)
 	}
 	sys.msaa = c.Video.MSAA
-	stoki := func(key string) int {
-		return int(StringToKey(key))
-	}
-	for i := 1; i <= c.Config.Players; i++ {
-		if kc, ok := c.Keys[fmt.Sprintf("keys_p%d", i)]; ok {
-			newKeyConfig := KeyConfig{
-				Joy:      kc.Joystick,
-				GUID:     kc.GUID,
-				dU:       stoki(kc.Up),
-				dD:       stoki(kc.Down),
-				dL:       stoki(kc.Left),
-				dR:       stoki(kc.Right),
-				bA:       stoki(kc.A),
-				bB:       stoki(kc.B),
-				bC:       stoki(kc.C),
-				bX:       stoki(kc.X),
-				bY:       stoki(kc.Y),
-				bZ:       stoki(kc.Z),
-				bS:       stoki(kc.Start),
-				bD:       stoki(kc.D),
-				bW:       stoki(kc.W),
-				bM:       stoki(kc.Menu),
-				bL:       stoki(kc.L),
-				bR:       stoki(kc.R),
-				rumbleOn: kc.RumbleOn,
-			}
-			sys.keyConfig = append(sys.keyConfig, newKeyConfig)
-		} else {
-			sys.keyConfig = append(sys.keyConfig, KeyConfig{Joy: -1})
+	sys.loadInputConfig(c)
+}
+
+// Stores a Controller Setup and updates its INI section. Disk writes still use Config.Save.
+func (c *Config) saveControllerSetup(id string, p *ControllerSetupProperties) error {
+	id = strings.ToLower(id)
+	key := "controllersetup_" + id
+	section := iniSection(c.IniFile, key)
+	if section == nil {
+		var err error
+		if section, err = c.IniFile.NewSection("ControllerSetup_" + id); err != nil {
+			return err
 		}
-		if _, ok := sys.cmdFlags["-nojoy"]; !ok {
-			if kc, ok := c.Joystick[fmt.Sprintf("joystick_p%d", i)]; ok {
-				newKeyConfig := KeyConfig{
-					Joy:      kc.Joystick,
-					GUID:     kc.GUID,
-					dU:       StringToButtonLUT[kc.Up],
-					dD:       StringToButtonLUT[kc.Down],
-					dL:       StringToButtonLUT[kc.Left],
-					dR:       StringToButtonLUT[kc.Right],
-					bA:       StringToButtonLUT[kc.A],
-					bB:       StringToButtonLUT[kc.B],
-					bC:       StringToButtonLUT[kc.C],
-					bX:       StringToButtonLUT[kc.X],
-					bY:       StringToButtonLUT[kc.Y],
-					bZ:       StringToButtonLUT[kc.Z],
-					bS:       StringToButtonLUT[kc.Start],
-					bD:       StringToButtonLUT[kc.D],
-					bW:       StringToButtonLUT[kc.W],
-					bM:       StringToButtonLUT[kc.Menu],
-					bL:       StringToButtonLUT[kc.L],
-					bR:       StringToButtonLUT[kc.R],
-					rumbleOn: kc.RumbleOn,
-				}
-				sys.joystickConfig = append(sys.joystickConfig, newKeyConfig)
-			} else {
-				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{Joy: i - 1})
+	}
+	writeIniFields(section, p)
+	setup := *p
+	c.ControllerSetup[key] = &setup
+	return nil
+}
+
+// Adds a setup with a unique ID and display name. A name already in use is
+// renamed with copyName, where %s is the original name, then numbered if needed.
+func (c *Config) addControllerSetup(p *ControllerSetupProperties, copyName string) (string, error) {
+	id := ""
+	for n := 1; ; n++ {
+		id = fmt.Sprintf("custom%d", n)
+		if _, exists := c.ControllerSetup["controllersetup_"+id]; !exists {
+			break
+		}
+	}
+	// %s in the name becomes the first free number.
+	if strings.Contains(p.Name, "%s") {
+		pattern := p.Name
+		for n := 1; ; n++ {
+			if p.Name = strings.ReplaceAll(pattern, "%s", strconv.Itoa(n)); !c.controllerSetupNameUsed(p.Name) {
+				break
 			}
 		}
 	}
+	if c.controllerSetupNameUsed(p.Name) {
+		base := strings.TrimSpace(strings.ReplaceAll(copyName, "%s", p.Name))
+		if base == "" {
+			base = p.Name
+		}
+		p.Name = base
+		for n := 2; c.controllerSetupNameUsed(p.Name); n++ {
+			p.Name = fmt.Sprintf("%s %d", base, n)
+		}
+	}
+	return id, c.saveControllerSetup(id, p)
+}
+
+func (c *Config) controllerSetupNameUsed(name string) bool {
+	for _, setup := range c.ControllerSetup {
+		if strings.EqualFold(setup.Name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Config) removeControllerSetup(id string) {
+	key := "controllersetup_" + strings.ToLower(id)
+	delete(c.ControllerSetup, key)
+	for device, setup := range c.Input.ControllerSetup {
+		if setup == id {
+			c.SetValueUpdate("Input.ControllerSetup."+device, nil)
+		}
+	}
+	if sec := iniSection(c.IniFile, key); sec != nil {
+		c.IniFile.DeleteSection(sec.Name())
+	}
+}
+
+// Once setups have been saved, their section list is authoritative. Otherwise
+// deleted default setups would come back on every launch.
+func (c *Config) dropDeletedSetups(user *ini.File) {
+	if user == nil {
+		return
+	}
+	kept := make(map[string]bool)
+	for _, sec := range user.Sections() {
+		key := iniSectionID(sec)
+		if _, ok := c.ControllerSetup[key]; ok {
+			kept[key] = true
+		}
+	}
+	if len(kept) == 0 {
+		return
+	}
+	for key := range c.ControllerSetup {
+		if !kept[key] {
+			c.removeControllerSetup(strings.TrimPrefix(key, "controllersetup_"))
+		}
+	}
+}
+
+// Shipped values of a config.ini section, if defaultConfig.ini has it.
+func (c *Config) shippedSection(key string, v interface{}) bool {
+	if sec := iniSection(c.DefaultOnlyIni, key); sec != nil {
+		return sec.MapTo(v) == nil
+	}
+	return false
+}
+
+// Stores a Button Mapping (a keyboard controller or a gamepad override).
+func (c *Config) saveButtonMapping(id string, name string, m ButtonMapping) error {
+	id = strings.ToLower(id)
+	key := "buttonmapping_" + id
+	section := iniSection(c.IniFile, key)
+	if section == nil {
+		var err error
+		if section, err = c.IniFile.NewSection("ButtonMapping_" + id); err != nil {
+			return err
+		}
+	}
+	p := &ButtonMappingProperties{Name: name}
+	p.setMapping(m)
+	writeIniFields(section, p)
+	c.ButtonMapping[key] = p
+	return nil
+}
+
+// Drops a gamepad override, so the controller maps its controls to themselves again.
+func (c *Config) removeButtonMapping(id string) {
+	key := "buttonmapping_" + strings.ToLower(id)
+	delete(c.ButtonMapping, key)
+	if sec := iniSection(c.IniFile, key); sec != nil {
+		c.IniFile.DeleteSection(sec.Name())
+	}
+}
+
+// Saves one device preference straight to disk, so other unsaved Options changes stay pending.
+// A value naming a section that is not on disk yet is kept until Options is saved.
+func (c *Config) rememberPreference(group, device, value, section string) error {
+	device = strings.ToLower(device)
+	query := "Input." + group + "." + device
+	if device == "" {
+		return nil
+	}
+	var v interface{} = value
+	if value == "" {
+		v = nil
+	}
+	if err := c.SetValueUpdate(query, v); err != nil {
+		return err
+	}
+	disk, _, err := LoadINIFile(c.Def, ini.LoadOptions{SkipUnrecognizableLines: true})
+	if err != nil {
+		return err
+	}
+	if value == "" {
+		disk.Section("Input").DeleteKey(group + "." + device)
+	} else if section != "" && iniSection(disk, section) == nil {
+		return nil
+	} else {
+		disk.Section("Input").Key(group + "." + device).SetValue(value)
+	}
+	return SaveINI(disk, c.Def)
+}
+
+// Remembers the Controller Setup a device uses.
+func (c *Config) rememberDeviceSetup(device, setup string) error {
+	if c.Input.ControllerSetup[strings.ToLower(device)] == setup {
+		return nil
+	}
+	return c.rememberPreference("ControllerSetup", device, setup, "controllersetup_"+setup)
 }
 
 // GetValue retrieves the value based on the query string.

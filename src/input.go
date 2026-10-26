@@ -167,111 +167,6 @@ func OnTextEntered(s string) {
 	sys.keyString = s
 }
 
-// Return the state of all keyboard keys for a player
-func GetKeyboardState(kc KeyConfig) [16]bool {
-	var out [16]bool
-
-	// If this config is for a joystick, return no input
-	if kc.Joy >= 0 {
-		return out
-	}
-
-	return [16]bool{
-		sys.keyState[Key(kc.dU)],
-		sys.keyState[Key(kc.dD)],
-		sys.keyState[Key(kc.dL)],
-		sys.keyState[Key(kc.dR)],
-		sys.keyState[Key(kc.bA)],
-		sys.keyState[Key(kc.bB)],
-		sys.keyState[Key(kc.bC)],
-		sys.keyState[Key(kc.bX)],
-		sys.keyState[Key(kc.bY)],
-		sys.keyState[Key(kc.bZ)],
-		sys.keyState[Key(kc.bS)],
-		sys.keyState[Key(kc.bD)],
-		sys.keyState[Key(kc.bW)],
-		sys.keyState[Key(kc.bM)],
-		sys.keyState[Key(kc.bL)],
-		sys.keyState[Key(kc.bR)],
-	}
-}
-
-// Return the state of all joystick keys for a player
-// This is now called only once instead of per button and retrieves
-// values from a shared state for both buttons and axes.
-// All XInput axes and digital buttons are supported.
-func GetJoystickState(kc KeyConfig) [16]bool {
-	var out [16]bool
-	joy := kc.Joy
-
-	// If this config is for keyboard or out of range, return no input
-	if joy < 0 || joy >= input.GetMaxJoystickCount() {
-		return out
-	}
-
-	if !input.IsJoystickPresent(joy) {
-		return out
-	}
-
-	axes := input.GetJoystickAxes(joy)
-	btns := input.GetJoystickButtons(joy)
-
-	// Convert button polling results to bools
-	getBtn := func(idx int) bool {
-		return idx >= 0 && idx < len(btns) && btns[idx] != 0
-	}
-
-	// axes as buttons
-	handleAxisBtn := func(axisBtn int) bool {
-		var axis int = 0
-		if axisBtn == 16 || axisBtn == 17 { // LS_X
-			axis = 0
-		} else if axisBtn == 15 || axisBtn == 18 { // LS_Y
-			axis = 1
-		} else if axisBtn == 22 || axisBtn == 23 { // RS_X
-			axis = 2
-		} else if axisBtn == 21 || axisBtn == 24 { // RS_Y
-			axis = 3
-		} else if axisBtn == 19 { // LT
-			axis = 4
-		} else if axisBtn == 20 { // RT
-			axis = 5
-		} else { // Invalid
-			return false
-		}
-		val := axes[axis]
-
-		// Evaluate LR triggers on the Xbox 360 controller
-		if axis == 4 || axis == 5 {
-			return val > sys.cfg.Input.XinputTriggerSensitivity
-		}
-
-		if val < 0 && (axisBtn == 15 || axisBtn == 16 || axisBtn == 21 || axisBtn == 22) {
-			return -val > sys.cfg.Input.ControllerStickSensitivity
-		} else if axisBtn == 17 || axisBtn == 18 || axisBtn == 23 || axisBtn == 24 {
-			return val > sys.cfg.Input.ControllerStickSensitivity
-		} else {
-			return false
-		}
-	}
-
-	// Apply axis button logic
-	axisIndices := []int{
-		kc.dU, kc.dD, kc.dL, kc.dR,
-		kc.bA, kc.bB, kc.bC, kc.bX, kc.bY, kc.bZ,
-		kc.bS, kc.bD, kc.bW, kc.bM, kc.bL, kc.bR,
-	}
-	for i, idx := range axisIndices {
-		if idx >= 15 && idx <= 24 {
-			out[i] = handleAxisBtn(idx)
-		} else {
-			out[i] = getBtn(idx)
-		}
-	}
-
-	return out
-}
-
 type CommandSpec struct {
 	Cmd            string
 	Time           int32
@@ -279,86 +174,6 @@ type CommandSpec struct {
 	BufferHitpause bool
 	BufferPauseend bool
 	StepTime       int32
-}
-
-type KeyConfig struct {
-	Joy                                                    int
-	dU, dD, dL, dR, bA, bB, bC, bX, bY, bZ, bS, bD, bW, bM, bL, bR int
-	isInitialized                                          bool
-	rumbleOn                                               bool
-	GUID                                                   string
-}
-
-func (kc *KeyConfig) set(v [16]int) {
-	kc.dU = v[0]
-	kc.dD = v[1]
-	kc.dL = v[2]
-	kc.dR = v[3]
-	kc.bA = v[4]
-	kc.bB = v[5]
-	kc.bC = v[6]
-	kc.bX = v[7]
-	kc.bY = v[8]
-	kc.bZ = v[9]
-	kc.bS = v[10]
-	kc.bD = v[11]
-	kc.bW = v[12]
-	kc.bM = v[13]
-	kc.bL = v[14]
-	kc.bR = v[15]
-}
-
-func (kc *KeyConfig) swap(kc2 *KeyConfig) {
-	joy := kc.Joy
-	// dD := kc.dD
-	// dL := kc.dL
-	// dR := kc.dR
-	// dU := kc.dU
-	// bA := kc.bA
-	// bB := kc.bB
-	// bC := kc.bC
-	// bD := kc.bD
-	// bW := kc.bW
-	// bX := kc.bX
-	// bY := kc.bY
-	// bZ := kc.bZ
-	// bM := kc.bM
-	// bS := kc.bS
-
-	kc.Joy = kc2.Joy
-	// kc.dD = kc2.dD
-	// kc.dL = kc2.dL
-	// kc.dR = kc2.dR
-	// kc.dU = kc2.dU
-	// kc.bA = kc2.bA
-	// kc.bB = kc2.bB
-	// kc.bC = kc2.bC
-	// kc.bD = kc2.bD
-	// kc.bW = kc2.bW
-	// kc.bX = kc2.bX
-	// kc.bY = kc2.bY
-	// kc.bZ = kc2.bZ
-	// kc.bM = kc2.bM
-	// kc.bS = kc2.bS
-
-	kc2.Joy = joy
-	// kc2.dD = dD
-	// kc2.dL = dL
-	// kc2.dR = dR
-	// kc2.dU = dU
-	// kc2.bA = bA
-	// kc2.bB = bB
-	// kc2.bC = bC
-	// kc2.bD = bD
-	// kc2.bW = bW
-	// kc2.bX = bX
-	// kc2.bY = bY
-	// kc2.bZ = bZ
-	// kc2.bM = bM
-	// kc2.bS = bS
-
-	kc.isInitialized = true
-	kc2.isInitialized = true
 }
 
 type InputBits uint16
@@ -383,6 +198,28 @@ const (
 	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M | IB_L | IB_R
 )
 
+// Positions in the [16]bool button arrays, in the same order as InputBits.
+type ButtonIndex int
+
+const (
+	BI_PU ButtonIndex = iota
+	BI_PD
+	BI_PL
+	BI_PR
+	BI_A
+	BI_B
+	BI_C
+	BI_X
+	BI_Y
+	BI_Z
+	BI_S
+	BI_D
+	BI_W
+	BI_M
+	BI_L
+	BI_R
+)
+
 // Save local inputs as input bits to send or record
 func (ibit *InputBits) KeysToBits(buttons [16]bool) {
 	*ibit = 0
@@ -400,6 +237,442 @@ func (ibit InputBits) BitsToKeys() [16]bool {
 		buttons[i] = ibit&(InputBits(1)<<uint(i)) != 0
 	}
 	return buttons
+}
+
+// Input goes physical keys or SDL controls -> Button Mapping -> virtual controller -> Controller Setup -> engine buttons.
+
+// One control of the standard XInput-style virtual controller.
+type VirtualControl int
+
+const (
+	VC_DP_U VirtualControl = iota
+	VC_DP_D
+	VC_DP_L
+	VC_DP_R
+	VC_A
+	VC_B
+	VC_X
+	VC_Y
+	VC_START
+	VC_BACK
+	VC_LB
+	VC_RB
+	VC_LT
+	VC_RT
+	VC_LS_YN
+	VC_LS_YP
+	VC_LS_XN
+	VC_LS_XP
+	VC_RS_YN
+	VC_RS_YP
+	VC_RS_XN
+	VC_RS_XP
+	VC_LS
+	VC_RS
+	VC_Count
+	VC_None VirtualControl = -1
+)
+
+var virtualControlNames = [VC_Count]string{
+	"DP_U", "DP_D", "DP_L", "DP_R", "A", "B", "X", "Y", "START", "BACK",
+	"LB", "RB", "LT", "RT", "LS_Y-", "LS_Y+", "LS_X-", "LS_X+",
+	"RS_Y-", "RS_Y+", "RS_X-", "RS_X+", "LS", "RS",
+}
+
+// Bit of each digital control in VirtualFrame.Buttons, or -1 for analog controls.
+var virtualButtonBit = [VC_Count]int8{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 12, 13}
+
+// Axis and direction of each analog control. Digital controls use axis -1.
+var virtualControlAxis = [VC_Count][2]int8{
+	{-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0},
+	{-1, 0}, {-1, 0}, {4, 1}, {5, 1}, {1, -1}, {1, 1}, {0, -1}, {0, 1},
+	{3, -1}, {3, 1}, {2, -1}, {2, 1}, {-1, 0}, {-1, 0},
+}
+
+// SDL buttons behind the digital virtual controls of a recognized gamepad.
+var virtualControlButton = map[VirtualControl]sdl.GameControllerButton{
+	VC_DP_U: sdl.CONTROLLER_BUTTON_DPAD_UP, VC_DP_D: sdl.CONTROLLER_BUTTON_DPAD_DOWN,
+	VC_DP_L: sdl.CONTROLLER_BUTTON_DPAD_LEFT, VC_DP_R: sdl.CONTROLLER_BUTTON_DPAD_RIGHT,
+	VC_A: sdl.CONTROLLER_BUTTON_A, VC_B: sdl.CONTROLLER_BUTTON_B,
+	VC_X: sdl.CONTROLLER_BUTTON_X, VC_Y: sdl.CONTROLLER_BUTTON_Y,
+	VC_START: sdl.CONTROLLER_BUTTON_START, VC_BACK: sdl.CONTROLLER_BUTTON_BACK,
+	VC_LB: sdl.CONTROLLER_BUTTON_LEFTSHOULDER, VC_RB: sdl.CONTROLLER_BUTTON_RIGHTSHOULDER,
+	VC_LS: sdl.CONTROLLER_BUTTON_LEFTSTICK, VC_RS: sdl.CONTROLLER_BUTTON_RIGHTSTICK,
+}
+
+// Returns the control with this name (case insensitive), or VC_None.
+func parseVirtualControl(name string) VirtualControl {
+	name = strings.TrimSpace(name)
+	for i, n := range virtualControlNames {
+		if strings.EqualFold(n, name) {
+			return VirtualControl(i)
+		}
+	}
+	return VC_None
+}
+
+func (vc VirtualControl) String() string {
+	if vc < 0 || vc >= VC_Count {
+		return "-"
+	}
+	return virtualControlNames[vc]
+}
+
+// True for stick directions and triggers.
+func (vc VirtualControl) analog() bool {
+	return vc >= 0 && vc < VC_Count && virtualButtonBit[vc] < 0
+}
+
+// One frame of virtual controller state. It is exactly what netplay and
+// replays store per player: 14 button bits and 6 axes in 8 bytes.
+type VirtualFrame struct {
+	Buttons uint16
+	Axes    [6]int8 // LS_X, LS_Y, RS_X, RS_Y, LT, RT. Triggers stay in 0..127.
+}
+
+const virtualFrameBytes = 8
+
+// Bits 14 and 15 are never set, so delay netplay can keep -1 as its end marker.
+const virtualFrameButtonMask = 0x3fff
+
+func (f VirtualFrame) encode() []byte {
+	b := make([]byte, virtualFrameBytes)
+	b[0], b[1] = byte(f.Buttons), byte(f.Buttons>>8)
+	for i, axis := range f.Axes {
+		b[2+i] = byte(axis)
+	}
+	return b
+}
+
+func decodeVirtualFrame(b []byte) VirtualFrame {
+	var f VirtualFrame
+	if len(b) < virtualFrameBytes {
+		return f
+	}
+	f.Buttons = (uint16(b[0]) | uint16(b[1])<<8) & virtualFrameButtonMask
+	for i := range f.Axes {
+		f.Axes[i] = int8(b[2+i])
+	}
+	// A trigger never rests below zero.
+	f.Axes[4], f.Axes[5] = int8(Max(int32(f.Axes[4]), 0)), int8(Max(int32(f.Axes[5]), 0))
+	return f
+}
+
+// How far a control is pushed, from 0 to 127.
+func (f VirtualFrame) level(vc VirtualControl) int32 {
+	if vc < 0 || vc >= VC_Count {
+		return 0
+	}
+	if bit := virtualButtonBit[vc]; bit >= 0 {
+		if f.Buttons&(1<<uint(bit)) != 0 {
+			return 127
+		}
+		return 0
+	}
+	a := virtualControlAxis[vc]
+	return Clamp(int32(f.Axes[a[0]])*int32(a[1]), 0, 127)
+}
+
+// Sensitivity of a stick direction or trigger, from 0 to 127.
+func virtualThreshold(vc VirtualControl) float32 {
+	if vc == VC_LT || vc == VC_RT {
+		return sys.cfg.Input.XinputTriggerSensitivity * 127
+	}
+	return sys.cfg.Input.ControllerStickSensitivity * 127
+}
+
+// True if a control counts as held. Sticks and triggers use the configured sensitivities.
+func (f VirtualFrame) held(vc VirtualControl) bool {
+	if !vc.analog() {
+		return f.level(vc) > 0
+	}
+	return float32(f.level(vc)) > virtualThreshold(vc)
+}
+
+// Combines two devices driving one player. Buttons add up and the stronger axis wins.
+func (f VirtualFrame) merge(o VirtualFrame) VirtualFrame {
+	f.Buttons |= o.Buttons
+	for i, axis := range o.Axes {
+		if Abs(int32(axis)) > Abs(int32(f.Axes[i])) {
+			f.Axes[i] = axis
+		}
+	}
+	return f
+}
+
+// Physical binding of every virtual control, in VirtualControl order. "-" or "" is unbound.
+type ButtonMapping [VC_Count]string
+
+// A recognized gamepad maps every control to itself.
+func identityButtonMapping() ButtonMapping {
+	var m ButtonMapping
+	for i := range m {
+		m[i] = virtualControlNames[i]
+	}
+	return m
+}
+
+// Builds a virtual frame. read reports how far a physical input is pushed
+// (0-127) and whether it counts as held. Opposite directions held together cancel out.
+func (m *ButtonMapping) sample(read func(token string) (int32, bool)) VirtualFrame {
+	var f VirtualFrame
+	var positive, negative [6]int32
+	for i, token := range m {
+		if token == "" || token == "-" {
+			continue
+		}
+		level, held := read(token)
+		vc := VirtualControl(i)
+		if bit := virtualButtonBit[vc]; bit >= 0 {
+			if held {
+				f.Buttons |= 1 << uint(bit)
+			}
+			continue
+		}
+		a := virtualControlAxis[vc]
+		if a[1] < 0 {
+			negative[a[0]] = Max(negative[a[0]], level)
+		} else {
+			positive[a[0]] = Max(positive[a[0]], level)
+		}
+	}
+	for i := range f.Axes {
+		f.Axes[i] = int8(Clamp(positive[i]-negative[i], -128, 127))
+	}
+	return f
+}
+
+// Every key bound by a keyboard mapping, for conflict checks.
+func (m *ButtonMapping) keys() []Key {
+	var keys []Key
+	for _, token := range m {
+		if key := StringToKey(token); key != KeyUnknown {
+			keys = append(keys, key)
+		}
+	}
+	return keys
+}
+
+// How far a recognized gamepad pushes one of its standard controls.
+func gamepadControlLevel(joy int, token string) (int32, bool) {
+	vc := parseVirtualControl(token)
+	if vc == VC_None || !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
+		return 0, false
+	}
+	state := input.controllerstate[joy]
+	if !vc.analog() {
+		if state.Buttons[virtualControlButton[vc]] != 0 {
+			return 127, true
+		}
+		return 0, false
+	}
+	a := virtualControlAxis[vc]
+	level := Clamp(int32(state.Axes[a[0]])*int32(a[1]), 0, 127)
+	return level, float32(level) > virtualThreshold(vc)
+}
+
+func keyboardKeyLevel(token string) (int32, bool) {
+	if key := StringToKey(token); key != KeyUnknown && sys.keyState[key] {
+		return 127, true
+	}
+	return 0, false
+}
+
+// Engine buttons, in ButtonIndex order.
+var engineButtonNames = [16]string{"up", "down", "left", "right", "a", "b", "c", "x", "y", "z", "start", "d", "w", "menu", "l", "r"}
+
+// Virtual control behind each engine button, in ButtonIndex order. One virtual
+// control can drive several engine buttons.
+type ControllerSetup [16]VirtualControl
+
+// Engine buttons held for a virtual frame.
+func (cs *ControllerSetup) project(f VirtualFrame) [16]bool {
+	var buttons [16]bool
+	for i, vc := range cs {
+		buttons[i] = vc != VC_None && f.held(vc)
+	}
+	return buttons
+}
+
+// Runtime copy of the input sections of config.ini.
+type InputConfig struct {
+	keyboards  []string                   // keyboard controller IDs in config.ini order
+	mappings   map[string]ButtonMapping   // keyboard IDs and "controller_<guid>" overrides
+	setups     map[string]ControllerSetup // Controller Setups by ID
+	setupOrder []string
+}
+
+// The Controller Setup of an ID. Unknown IDs fall back to the first setup.
+func (ic *InputConfig) setup(id string) (string, *ControllerSetup) {
+	id = strings.ToLower(id)
+	if s, ok := ic.setups[id]; ok {
+		return id, &s
+	}
+	if len(ic.setupOrder) > 0 {
+		s := ic.setups[ic.setupOrder[0]]
+		return ic.setupOrder[0], &s
+	}
+	var s ControllerSetup
+	for i := range s {
+		s[i] = VC_None
+	}
+	return "", &s
+}
+
+// Button Mapping of a device. Gamepads without an override map controls to themselves.
+func (ic *InputConfig) mapping(device *InputDevice) ButtonMapping {
+	if device == nil {
+		return ButtonMapping{}
+	}
+	if device.Joy < 0 {
+		return ic.mappings[device.Keyboard]
+	}
+	if m, ok := ic.mappings["controller_"+strings.ToLower(device.GUID)]; ok {
+		return m
+	}
+	return identityButtonMapping()
+}
+
+// A keyboard controller or a connected gamepad. IDs are never reused while the game runs.
+type InputDevice struct {
+	ID        int
+	Joy       int    // gamepad slot, -1 for a keyboard controller
+	Keyboard  string // keyboard controller ID, empty for gamepads
+	Name      string
+	GUID      string
+	Setup     string // Controller Setup in use
+	Connected bool
+	blocked   bool
+	held      [VC_Count]int32
+	pressed   [VC_Count]bool
+}
+
+// Key for per-device preferences: the keyboard ID or the controller model (GUID).
+func (device *InputDevice) preferenceKey() string {
+	if device == nil {
+		return ""
+	}
+	if device.Joy < 0 {
+		return strings.ToLower(device.Keyboard)
+	}
+	return strings.ToLower(device.GUID)
+}
+
+// Virtual controller state of a device, using the given mapping.
+func (device *InputDevice) sample(m *ButtonMapping) VirtualFrame {
+	if device == nil || !device.Connected {
+		return VirtualFrame{}
+	}
+	if device.Joy < 0 {
+		return m.sample(keyboardKeyLevel)
+	}
+	joy := device.Joy
+	return m.sample(func(token string) (int32, bool) { return gamepadControlLevel(joy, token) })
+}
+
+type TeamSide int
+
+const (
+	TS_None TeamSide = iota
+	TS_Left
+	TS_Right
+)
+
+// A human player. Several devices can drive the same participant.
+type InputParticipant struct {
+	Device    int
+	Side      TeamSide
+	Ready     bool
+	joined    int
+	confirmed int
+}
+
+type InputAssignment struct {
+	Devices       []*InputDevice
+	Participants  []InputParticipant
+	ClaimLocked   bool // no automatic claiming
+	MenuDevice    int
+	sharedDevices map[int][]int // optional sharing; the primary device stays in Participants
+	nextID        int
+	nextOrder     int
+	frame         int32
+}
+
+// Returns the device with this ID, or nil.
+func (a *InputAssignment) device(id int) *InputDevice {
+	for _, device := range a.Devices {
+		if device.ID == id {
+			return device
+		}
+	}
+	return nil
+}
+
+func (a *InputAssignment) addDevice(device *InputDevice) *InputDevice {
+	a.nextID++
+	device.ID, device.Connected = a.nextID, true
+	a.Devices = append(a.Devices, device)
+	return device
+}
+
+// Devices driving a participant. The primary device comes first.
+func (a *InputAssignment) participantDevices(participant int) []int {
+	if participant < 0 || participant >= len(a.Participants) || a.Participants[participant].Device == 0 {
+		return nil
+	}
+	if ids := a.sharedDevices[participant]; len(ids) > 0 {
+		return ids
+	}
+	return []int{a.Participants[participant].Device}
+}
+
+func (a *InputAssignment) participantConnected(participant int) bool {
+	for _, id := range a.participantDevices(participant) {
+		if device := a.device(id); device != nil && device.Connected {
+			return true
+		}
+	}
+	return false
+}
+
+// Participant using a device, or -1. Shared devices belong to the same human.
+func (a *InputAssignment) owner(device int) int {
+	if device != 0 {
+		for i := range a.Participants {
+			for _, id := range a.participantDevices(i) {
+				if id == device {
+					return i
+				}
+			}
+		}
+	}
+	return -1
+}
+
+// Puts a device on a side. Reuses its participant if it has one,
+// otherwise takes the first free participant. Returns the participant index.
+func (a *InputAssignment) claim(deviceID int, side TeamSide) (int, error) {
+	device := a.device(deviceID)
+	if device == nil || !device.Connected || side < TS_None || side > TS_Right {
+		return -1, fmt.Errorf("input device is unavailable")
+	}
+	i := a.owner(deviceID)
+	if i < 0 {
+		for n, p := range a.Participants {
+			if p.Device == 0 {
+				i = n
+				break
+			}
+		}
+	}
+	if i < 0 {
+		return -1, fmt.Errorf("all participant positions are occupied")
+	}
+	delete(a.sharedDevices, i)
+	a.nextOrder++
+	a.Participants[i] = InputParticipant{Device: deviceID, Side: side, joined: a.nextOrder}
+	return i, nil
 }
 
 type CommandKeyRemap struct {
@@ -424,61 +697,27 @@ func (ir *InputReader) Reset() {
 	*ir = InputReader{}
 }
 
+// Engine buttons of a local participant: its devices' virtual state run through its Controller Setup.
 func (ir *InputReader) LocalInput(in int) [16]bool {
-	// Keyboard
-	var keyIn [16]bool
-	if in < len(sys.keyConfig) {
-		keyIn = GetKeyboardState(sys.keyConfig[in])
-	}
-
-	// Joystick
-	var joyIn [16]bool
-	if in < len(sys.joystickConfig) {
-		joyIn = GetJoystickState(sys.joystickConfig[in])
-	}
-
-	// Merge both
-	U := keyIn[0] || joyIn[0]
-	D := keyIn[1] || joyIn[1]
-	L := keyIn[2] || joyIn[2]
-	R := keyIn[3] || joyIn[3]
-	a := keyIn[4] || joyIn[4]
-	b := keyIn[5] || joyIn[5]
-	c := keyIn[6] || joyIn[6]
-	x := keyIn[7] || joyIn[7]
-	y := keyIn[8] || joyIn[8]
-	z := keyIn[9] || joyIn[9]
-	s := keyIn[10] || joyIn[10]
-	d := keyIn[11] || joyIn[11]
-	w := keyIn[12] || joyIn[12]
-	m := keyIn[13] || joyIn[13]
-	l := keyIn[14] || joyIn[14]
-	r := keyIn[15] || joyIn[15]
+	buttons := sys.participantSetup(in).project(sys.participantFrame(in))
 
 	// Apply button assist
 	// Checked locally so that network inputs are processed before being sent
 	if sys.cfg.Input.ButtonAssist {
+		a, b, c := buttons[BI_A], buttons[BI_B], buttons[BI_C]
+		x, y, z := buttons[BI_X], buttons[BI_Y], buttons[BI_Z]
+		s, d, w := buttons[BI_S], buttons[BI_D], buttons[BI_W]
 		result := ir.ButtonAssistCheck([9]bool{a, b, c, x, y, z, s, d, w})
-		a, b, c, x, y, z, s, d, w = result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8]
+		for i, button := range []ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W} {
+			buttons[button] = result[i]
+		}
 	}
-
-	return [16]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m, l, r}
+	return buttons
 }
 
+// Analog axes of a local participant. Keyboards produce full stick and trigger values.
 func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
-	if in < 0 || in >= len(sys.joystickConfig) {
-		return [6]int8{}
-	}
-
-	joy := sys.joystickConfig[in].Joy
-	if joy < 0 || joy >= len(input.controllerstate) {
-		return [6]int8{}
-	}
-	if input.controllerstate[joy] == nil {
-		return [6]int8{}
-	}
-
-	return input.controllerstate[joy].Axes
+	return sys.participantFrame(in).Axes
 }
 
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
@@ -2834,14 +3073,8 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 				in := sys.inputRemap[controller] // remapped input index/config
 				buttons = cl.Buffer.InputReader.LocalInput(in)
 				// Keep analog axes in sync with the same remap used for digital inputs
-				if in >= 0 && in < len(sys.joystickConfig) &&
-					sys.joystickConfig[in].Joy >= 0 &&
-					sys.joystickConfig[in].Joy < input.GetMaxJoystickCount() &&
-					input.IsJoystickPresent(sys.joystickConfig[in].Joy) {
-					axes = input.GetJoystickAxes(sys.joystickConfig[in].Joy)
-				} else {
-					axes = [6]float32{0, 0, 0, 0, 0, 0}
-				}
+				rawAxes := cl.Buffer.InputReader.LocalAnalogInput(in)
+				axes = NormalizeAxes(&rawAxes)
 			}
 		}
 	}
@@ -3118,62 +3351,14 @@ func (cl *CommandList) CopyList(src CommandList) {
 	}
 }
 
-// Checks raw controller tokens (A/B/X/Y, DP_*, LS_*, RS_*, LT/RT).
+// Checks a virtual control (A/B/X/Y, DP_*, LS_*, RS_*, LT/RT) of a player slot.
 // controllerIdx is the index in sys.commandLists (0-based).
 func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int) bool {
-	token = strings.TrimSpace(token)
-	if token == "" {
+	vc := parseVirtualControl(token)
+	if vc == VC_None || controllerIdx < 0 || controllerIdx >= len(sys.inputRemap) {
 		return false
 	}
-	idx, ok := StringToButtonLUT[token]
-	if !ok || idx == 25 { // "Not used"
-		return false
-	}
-	// Resolve controllerIdx -> physical joystick index
-	joyIdx := controllerIdx
-	if controllerIdx >= 0 {
-		in := controllerIdx
-		if controllerIdx < len(sys.inputRemap) {
-			m := sys.inputRemap[controllerIdx]
-			if m >= 0 {
-				in = m
-			}
-		}
-		if in >= 0 && in < len(sys.joystickConfig) && sys.joystickConfig[in].Joy >= 0 {
-			joyIdx = sys.joystickConfig[in].Joy
-		} else {
-			joyIdx = in
-		}
-	}
-
-	if joyIdx < 0 || joyIdx >= input.GetMaxJoystickCount() || !input.IsJoystickPresent(joyIdx) {
-		return false
-	}
-
-	// Axis tokens
-	if idx >= 15 && idx <= 24 {
-		axes := input.GetJoystickAxes(joyIdx)
-		btns := input.GetJoystickButtons(joyIdx)
-		// Determine active axis token (sticks first, then triggers)
-		active := CheckAxisForDpad(&axes, len(btns))
-		if active == "" {
-			active = CheckAxisForTrigger(&axes)
-		}
-		// Axis tokens are treated as "held" state checks here.
-		return active != "" && active == token
-	}
-
-	// Digital buttons / DPAD: direct state check.
-	buttons := input.GetJoystickButtons(joyIdx)
-	if len(buttons) == 0 {
-		return false
-	}
-	for i, b := range buttonOrder {
-		if int(b) == idx {
-			return i < len(buttons) && buttons[i] != 0
-		}
-	}
-	return false
+	return sys.participantFrame(sys.inputRemap[controllerIdx]).held(vc)
 }
 
 /*
