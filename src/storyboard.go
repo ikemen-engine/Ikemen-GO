@@ -103,10 +103,12 @@ type Storyboard struct {
 		Font       map[string]*FontProperties `ini:"map:^(?i)font[0-9]+$" lua:"font"`
 		Model      string                     `ini:"model" lookup:"def,,data/"`
 		StartScene int                        `ini:"startscene"`
-		Key        struct {
-			Skip   []string `ini:"skip"`
-			Cancel []string `ini:"cancel"`
-		} `ini:"key"`
+		Done       struct {
+			Action []string `ini:"action"`
+		} `ini:"done"`
+		Cancel struct {
+			Action []string `ini:"action"`
+		} `ini:"cancel"`
 		StopMusic      bool `ini:"stopmusic"`
 		DisableCancel  bool `ini:"disablecancel"`
 		WaitForLoading bool `ini:"waitforloading"`
@@ -854,14 +856,14 @@ func (s *Storyboard) step() {
 
 	// Cancel handling
 	if !s.SceneDef.DisableCancel && (sys.esc ||
-		(!sys.motif.AttractMode.Enabled && sys.uiRawInput(s.SceneDef.Key.Cancel, -1)) ||
+		(!sys.motif.AttractMode.Enabled && sys.menuAction(s.SceneDef.Cancel.Action, -1)) ||
 		(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)) {
 		sys.esc = false
 		s.canceled = true
 	}
 
 	// Skip handling
-	skipPressed := sys.uiRawInput(s.SceneDef.Key.Skip, -1)
+	skipPressed := sys.menuAction(s.SceneDef.Done.Action, -1)
 	if s.SceneDef.WaitForLoading {
 		skipPressed = false
 	}

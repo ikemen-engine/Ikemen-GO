@@ -145,7 +145,7 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		if key == KeyF12 {
 			sys.isTakingScreenshot = true
 		}
-		if !sys.netplay() && key == StringToKeyLUT[sys.motif.AttractMode.Credits.KeyCode] && sys.credits != -1 {
+		if !sys.netplay() && actionHasKey(sys.motif.AttractMode.Credits.Action, key) && sys.credits != -1 {
 			sys.credits += 1
 			sys.motif.Snd.play(sys.motif.AttractMode.Credits.Snd, 100, 0, 0, 0, 0)
 		}
@@ -291,6 +291,40 @@ func parseVirtualControl(name string) VirtualControl {
 		}
 	}
 	return VC_None
+}
+
+// Motif actions name virtual controls, or local keyboard keys as "KEY:<name>".
+func actionKey(token string) (Key, bool) {
+	token = strings.TrimSpace(token)
+	if len(token) > 4 && strings.EqualFold(token[:4], "KEY:") {
+		if key := StringToKey(token[4:]); key != KeyUnknown {
+			return key, true
+		}
+	}
+	return KeyUnknown, false
+}
+
+// Engine buttons in motif actions, as "BTN:<name>" with the Controller Setup button
+// names (BTN:a, BTN:start). They are read after the Controller Setup.
+func actionButton(token string) (int, bool) {
+	token = strings.TrimSpace(token)
+	if len(token) > 4 && strings.EqualFold(token[:4], "BTN:") {
+		for i, name := range engineButtonNames {
+			if strings.EqualFold(name, token[4:]) {
+				return i, true
+			}
+		}
+	}
+	return -1, false
+}
+
+func actionHasKey(action []string, key Key) bool {
+	for _, token := range action {
+		if k, ok := actionKey(token); ok && k == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (vc VirtualControl) String() string {
@@ -941,7 +975,14 @@ type InputBuffer struct {
 	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Current state of buffer
 	ab, bb, cb, xb, yb, zb, sb, db, wb, mb, lb, rb int32
 	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
+	vb                                     [VC_Count]int32 // frames each virtual control is held, for motif actions
 	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp, lp, rp int32
+}
+
+// Frames an engine button (in engineButtonNames order) has been held, or 0.
+func (ib *InputBuffer) buttonTime(button int) int32 {
+	times := [16]int32{ib.Ub, ib.Db, ib.Lb, ib.Rb, ib.ab, ib.bb, ib.cb, ib.xb, ib.yb, ib.zb, ib.sb, ib.db, ib.wb, ib.mb, ib.lb, ib.rb}
+	return Max(times[button], 0)
 }
 
 func NewInputBuffer() *InputBuffer {
@@ -956,6 +997,17 @@ func (ib *InputBuffer) Reset() {
 		InputReader: ir,
 	}
 	ib.InputReader.Reset()
+}
+
+// Counts how long each virtual control is held. Motif actions read these.
+func (ib *InputBuffer) updateVirtualTime(f VirtualFrame) {
+	for vc := range ib.vb {
+		if f.held(VirtualControl(vc)) {
+			ib.vb[vc]++
+		} else {
+			ib.vb[vc] = 0
+		}
+	}
 }
 
 // Updates how long ago a char pressed or released a button
@@ -3116,6 +3168,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			buttons = cl.Buffer.InputReader.ButtonAssist(buttons)
 		}
 		axes = NormalizeAxes(&frame.Axes)
+		cl.Buffer.updateVirtualTime(frame)
 	}
 
 	// Convert bool slice back to named inputs
@@ -3388,16 +3441,6 @@ func (cl *CommandList) CopyList(src CommandList) {
 			cl.Commands[i][j].stepTimers = make([]int32, len(c.stepTimers))
 		}
 	}
-}
-
-// Checks a virtual control (A/B/X/Y, DP_*, LS_*, RS_*, LT/RT) of a player slot.
-// controllerIdx is the index in sys.commandLists (0-based).
-func (cl *CommandList) IsControllerButtonPressed(token string, controllerIdx int) bool {
-	vc := parseVirtualControl(token)
-	if vc == VC_None || controllerIdx < 0 || controllerIdx >= len(sys.inputRemap) {
-		return false
-	}
-	return sys.participantFrame(sys.inputRemap[controllerIdx]).held(vc)
 }
 
 /*

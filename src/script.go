@@ -940,6 +940,44 @@ func mappingFromTable(t *lua.LTable, keyboard bool) ButtonMapping {
 	return m
 }
 
+// Reads the player argument of getAction/getActionTime: a 1-based slot, a table of slots, or -1 for all.
+func actionPlayers(l *lua.LState) []int {
+	var players []int
+	switch v := l.Get(1).(type) {
+	case *lua.LTable:
+		v.ForEach(func(_ lua.LValue, val lua.LValue) {
+			if n, ok := val.(lua.LNumber); ok && int(n) >= 1 {
+				players = append(players, int(n)-1)
+			}
+		})
+	case lua.LNumber:
+		if int(v) == -1 {
+			players = []int{-1}
+		} else if int(v) >= 1 {
+			players = []int{int(v) - 1}
+		}
+	}
+	return players
+}
+
+// Collects action tokens from string or table arguments.
+func actionTokens(l *lua.LState) []string {
+	var tokens []string
+	for i := 2; i <= l.GetTop(); i++ {
+		switch t := l.Get(i).(type) {
+		case *lua.LTable:
+			t.ForEach(func(_ lua.LValue, v lua.LValue) {
+				if s, ok := v.(lua.LString); ok {
+					tokens = append(tokens, string(s))
+				}
+			})
+		case lua.LString:
+			tokens = append(tokens, string(t))
+		}
+	}
+	return tokens
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
@@ -3220,6 +3258,50 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(sys.gameRunning))
 		return 1
 	})
+	luaRegister(l, "getAction", func(l *lua.LState) int {
+		/*Check whether a motif action was pressed this frame. Directions repeat while held.
+		@function getAction
+		@tparam number|table players 1-based player slot, a table of slots, or `-1` for any slot.
+		@tparam string|table ... Action tokens: virtual controls (`A`, `DP_U`, `LS_Y-`...), local
+		  keyboard keys (`KEY:DELETE`) or engine buttons (`BTN:a`). Usually a motif `.action` value.
+		@treturn boolean pressed `true` if any token was pressed for any selected slot.*/
+		tokens := actionTokens(l)
+		for _, pn := range actionPlayers(l) {
+			if sys.menuAction(tokens, pn) {
+				l.Push(lua.LTrue)
+				return 1
+			}
+		}
+		l.Push(lua.LFalse)
+		return 1
+	})
+	luaRegister(l, "getActionTime", func(l *lua.LState) int {
+		/*Get how long a motif action has been held.
+		@function getActionTime
+		@tparam number|table players 1-based player slot, a table of slots, or `-1` for the slot used last.
+		@tparam string|table ... Action tokens, as for `getAction`.
+		@treturn int32 time Frames held, or `0` if not held.*/
+		tokens := actionTokens(l)
+		for _, pn := range actionPlayers(l) {
+			slots := []int{pn}
+			if pn == -1 {
+				slots = nil
+				for i := range sys.commandLists {
+					if sys.lastInputController < 0 || sys.uiControllerKey(i) == sys.lastInputController {
+						slots = append(slots, i)
+					}
+				}
+			}
+			for _, slot := range slots {
+				if t := sys.actionTime(tokens, slot); t > 0 {
+					l.Push(lua.LNumber(t))
+					return 1
+				}
+			}
+		}
+		l.Push(lua.LNumber(0))
+		return 1
+	})
 	luaRegister(l, "getAnimElemCount", func(*lua.LState) int {
 		/*[redirectable] Get the character's number of elements in the animation.
 		@function getAnimElemCount
@@ -3548,233 +3630,6 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(data))
 		return 1
 	})
-	luaRegister(l, "getInput", func(l *lua.LState) int {
-		/*Check raw UI input for one or more players.
-		@function getInput
-		@tparam number|table players 1-based player/controller index, or an array-like table of indexes.
-		  Passing `-1` checks all players.
-		@tparam string|table ... One or more key/button tokens, or array-like tables of tokens.
-		@treturn boolean pressed `true` if any provided token set is active for any selected player.*/
-		var players []int
-		// Collect player numbers (1-based) from arg #1
-		switch v := l.Get(1).(type) {
-		case *lua.LTable:
-			v.ForEach(func(_ lua.LValue, val lua.LValue) {
-				n, ok := val.(lua.LNumber)
-				if !ok {
-					return
-				}
-				pn := int(n)
-				if pn < 1 || pn > len(sys.commandLists) {
-					return
-				}
-				players = append(players, pn)
-			})
-		case lua.LNumber:
-			pn := int(v)
-			if pn == -1 {
-				players = make([]int, 0, len(sys.commandLists))
-				for i := 1; i <= len(sys.commandLists); i++ {
-					players = append(players, i)
-				}
-			} else {
-				players = append(players, pn)
-			}
-		default:
-			l.Push(lua.LBool(false))
-			return 1
-		}
-		top := l.GetTop()
-		for _, pn := range players {
-			if pn <= 0 {
-				continue
-			}
-			controllerIdx := pn - 1 // 0-based for sys.commandLists
-			// Loop over all key tables passed
-			for ai := 2; ai <= top; ai++ {
-				arg := l.Get(ai)
-				var btns []string
-				switch t := arg.(type) {
-				case *lua.LTable:
-					t.ForEach(func(_ lua.LValue, v lua.LValue) {
-						if s, ok := v.(lua.LString); ok {
-							btns = append(btns, string(s))
-						}
-					})
-				case lua.LString:
-					btns = []string{string(t)}
-				default:
-					continue
-				}
-				if len(btns) > 0 && sys.uiRawInput(btns, controllerIdx) {
-					l.Push(lua.LBool(true))
-					return 1
-				}
-			}
-		}
-		l.Push(lua.LBool(false))
-		return 1
-	})
-	luaRegister(l, "getInputTime", func(l *lua.LState) int {
-		/*Get the hold time of a raw input token for one or more players.
-		@function getInputTime
-		@tparam number|table players 1-based player/controller index, or an array-like table of indexes.
-		  Passing `-1` checks all players.
-		@tparam string|table ... One or more key/button tokens, or array-like tables of tokens.
-		@treturn int32 time Hold time in ticks for the first active token found, or `0` if none are active.*/
-		var players []int
-		switch v := l.Get(1).(type) {
-		case *lua.LTable:
-			v.ForEach(func(_ lua.LValue, val lua.LValue) {
-				n, ok := val.(lua.LNumber)
-				if !ok {
-					return
-				}
-				pn := int(n)
-				if pn < 1 || pn > len(sys.commandLists) {
-					return
-				}
-				players = append(players, pn)
-			})
-		case lua.LNumber:
-			pn := int(v)
-			if pn == -1 {
-				players = make([]int, 0, len(sys.commandLists))
-				for i := 1; i <= len(sys.commandLists); i++ {
-					players = append(players, i)
-				}
-			} else {
-				players = append(players, pn)
-			}
-		default:
-			l.Push(lua.LNumber(0))
-			return 1
-		}
-		// Helper to compute the hold time for a key token on a given controller index.
-		keyTime := func(controllerIdx int, key string) int32 {
-			if controllerIdx == -2 && sys.lastInputController >= 0 {
-				want := sys.lastInputController
-				controllerIdx = -1
-				for i := 0; i < len(sys.commandLists); i++ {
-					if sys.uiControllerKey(i) == want {
-						controllerIdx = i
-						break
-					}
-				}
-				if controllerIdx < 0 {
-					return 0
-				}
-			}
-			if controllerIdx < 0 || controllerIdx >= len(sys.commandLists) ||
-				sys.commandLists[controllerIdx] == nil || sys.commandLists[controllerIdx].Buffer == nil {
-				return 0
-			}
-			cl := sys.commandLists[controllerIdx]
-			ib := sys.commandLists[controllerIdx].Buffer
-			var v int32
-			// Treat LS direction tokens as aliases for D/U/B/F.
-			switch key {
-			case "LS_Y+":
-				key = "D"
-			case "LS_Y-":
-				key = "U"
-			case "LS_X-":
-				key = "B"
-			case "LS_X+":
-				key = "F"
-			}
-			switch key {
-			case "B":
-				v = ib.Bb
-			case "D":
-				v = ib.Db
-			case "F":
-				v = ib.Fb
-			case "U":
-				v = ib.Ub
-			case "L":
-				v = ib.Lb
-			case "R":
-				v = ib.Rb
-			case "a":
-				v = ib.ab
-			case "b":
-				v = ib.bb
-			case "c":
-				v = ib.cb
-			case "x":
-				v = ib.xb
-			case "y":
-				v = ib.yb
-			case "z":
-				v = ib.zb
-			case "s":
-				v = ib.sb
-			case "d":
-				v = ib.db
-			case "w":
-				v = ib.wb
-			case "m":
-				v = ib.mb
-			case "l":
-				v = ib.lb
-			case "r":
-				v = ib.rb
-			default:
-				// Virtual controls (RS_*, LT/RT, etc): just report held (1) or not (0).
-				if parseVirtualControl(key) != VC_None {
-					if cl.IsControllerButtonPressed(key, controllerIdx) {
-						return 1
-					}
-					return 0
-				}
-				l.RaiseError("\nInvalid argument: %v\n", key)
-				return 0
-			}
-			// 0 if < 0, otherwise 1+
-			if v < 0 {
-				return 0
-			} else if v == 0 {
-				return 1
-			}
-			return v
-		}
-		top := l.GetTop()
-		for _, pn := range players {
-			if pn == 0 {
-				continue
-			}
-			controllerIdx := pn - 1
-			if pn == -1 {
-				controllerIdx = -2
-			}
-			// Loop over all key tables/strings passed
-			for ai := 2; ai <= top; ai++ {
-				arg := l.Get(ai)
-				var keys []string
-				switch t := arg.(type) {
-				case *lua.LTable:
-					t.ForEach(func(_ lua.LValue, v lua.LValue) {
-						if s, ok := v.(lua.LString); ok {
-							keys = append(keys, string(s))
-						}
-					})
-				case lua.LString:
-					keys = []string{string(t)}
-				default:
-					continue
-				}
-				for _, key := range keys {
-					if out := keyTime(controllerIdx, key); out > 0 {
-						l.Push(lua.LNumber(out))
-						return 1
-					}
-				}
-			}
-		}
-		l.Push(lua.LNumber(0))
-		return 1
-	})
 	luaRegister(l, "getJoystickGUID", func(*lua.LState) int {
 		/*Get a joystick's GUID string.
 		@function getJoystickGUID
@@ -4069,6 +3924,27 @@ func systemScriptInit(l *lua.LState) {
 		sys.loadInputConfig(&sys.cfg)
 		sys.clearCommandBuffers()
 		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputDeviceActionTime", func(l *lua.LState) int {
+		/*Get how long a motif action has been held on one device, through its saved
+		  Button Mapping, whether or not the device has a player.
+		@function inputDeviceActionTime
+		@tparam int deviceId Device ID, or `0` for the longest hold on any device.
+		@tparam table action Action tokens, usually a motif `.action` value.
+		@treturn int32 time Frames held, or `0` if not held.*/
+		id := int(numArg(l, 1))
+		var action []string
+		tableArg(l, 2).ForEach(func(_ lua.LValue, t lua.LValue) {
+			action = append(action, lua.LVAsString(t))
+		})
+		var time int32
+		for _, device := range sys.inputs.Devices {
+			if id == 0 || device.ID == id {
+				time = Max(time, sys.deviceActionTime(device, action))
+			}
+		}
+		l.Push(lua.LNumber(time))
 		return 1
 	})
 	luaRegister(l, "inputGetDevices", func(l *lua.LState) int {
