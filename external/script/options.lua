@@ -2126,6 +2126,13 @@ function options.f_inputConfigFrame(context)
 	if device and device.kind == 'gamepad' and not getJoystickPresent(device.joy) then
 		context.closed = not options.f_editMapping(nil, context)
 	end
+	if not context.closed and context.mapping ~= nil then
+		options.f_gamepadMappingFrame(context)
+		if not context.closed then
+			context.skipInput = false
+			return true
+		end
+	end
 	if not context.closed and context.current ~= nil then
 		drew = true
 		if context.capture ~= nil then
@@ -2157,12 +2164,14 @@ function options.f_inputConfigFrame(context)
 		resetKey()
 		resetTokenGuard()
 		esc(false)
+		options.editingInput = false
 		return false, drew
 	end
 	return true
 end
 
 local function runInputConfig(context)
+	options.editingInput = true
 	resetKey()
 	resetTokenGuard()
 	if context.pause then
@@ -2178,6 +2187,7 @@ local function runInputConfig(context)
 			refresh()
 		end
 	end
+	if not context.pause then options.editingInput = false end
 end
 
 -- Devices Button Mapping can edit: keyboard controllers (except on phones) and connected gamepads.
@@ -2285,6 +2295,44 @@ local function startInputCapture(tbl, item, all)
 	resetTokenGuard()
 end
 
+-- Reads one input for a capture, counted when let go, so holding cancel never binds it.
+-- 'virtual' reads virtual controls (id 0: every device), 'keyboard'/'gamepad' physical ones.
+local function releasedInput(state, id, kind)
+	local pressed, held = '', ''
+	if kind == 'virtual' then
+		pressed = inputGetVirtualPressed(id)
+		if state.pending ~= nil and inputDeviceActionTime(id, {state.pending}) > 0 then
+			held = state.pending
+		end
+	elseif kind == 'keyboard' then
+		pressed = getKey()
+		if pressed == 'nil' or pressed == 'ESCAPE' then
+			pressed = ''
+		end
+		if state.pending ~= nil and inputDeviceActionTime(id, {'KEY:' .. state.pending}) > 0 then
+			held = state.pending
+		end
+	else
+		-- Only a press after everything was let go, so one press can't fill two rows.
+		held = inputGetPhysicalHeld(id)
+		if held == '' then
+			state.released = true
+		elseif state.released and state.pending == nil then
+			pressed = held
+		end
+	end
+	if state.pending == nil then
+		if pressed ~= '' then
+			state.pending, state.released = pressed, false
+		end
+	elseif held ~= state.pending then
+		local token = state.pending
+		state.pending = nil
+		return token
+	end
+	return ''
+end
+
 -- One frame of capture. The cursor moves to each captured row in turn.
 function options.f_inputCapture(context)
 	local sec = motif.option_info
@@ -2301,37 +2349,12 @@ function options.f_inputCapture(context)
 		root.draft = capture.saved
 		finished = true
 	else
-		-- A press is bound when it is released, before it counts as holding cancel.
-		local token, pressed, held = '', '', ''
+		-- Setups bind virtual controls, read through the device's Button Mapping.
+		local token
 		if root.kind == 'setup' then
-			-- Setups bind virtual controls, read through the device's Button Mapping.
-			pressed = inputGetVirtualPressed(root.readDevice)
-			if capture.pending ~= nil and inputDeviceActionTime(root.readDevice, {capture.pending}) > 0 then
-				held = capture.pending
-			end
-		elseif device.kind == 'keyboard' then
-			pressed = getKey()
-			if pressed == 'ESCAPE' then
-				pressed = ''
-			end
-			if capture.pending ~= nil and inputDeviceActionTime(device.id, {'KEY:' .. capture.pending}) > 0 then
-				held = capture.pending
-			end
+			token = releasedInput(capture, root.readDevice, 'virtual')
 		else
-			-- Only a press after everything was let go, so one press can't fill two rows.
-			held = inputGetPhysicalHeld(device.id)
-			if held == '' then
-				capture.released = true
-			elseif capture.released and capture.pending == nil then
-				pressed = held
-			end
-		end
-		if capture.pending == nil then
-			if pressed ~= '' and pressed ~= 'nil' then
-				capture.pending, capture.released = pressed, false
-			end
-		elseif held ~= capture.pending then
-			token, capture.pending = capture.pending, nil
+			token = releasedInput(capture, device.id, device.kind)
 		end
 		if token ~= '' then
 			-- A key of the other keyboard controller stays there and leaves this control unused.
@@ -2371,13 +2394,223 @@ function options.f_inputCapture(context)
 	end
 end
 
+--;===========================================================
+--; MAPPING SCREEN ([Mapping Info])
+--;===========================================================
+-- The controller diagram, used by Config All (assigns each control) and Test Input (shows them).
+local t_mappingArt = {
+	DP_U = 'dpup', DP_D = 'dpdown', DP_L = 'dpleft', DP_R = 'dpright',
+	A = 'a', B = 'b', X = 'x', Y = 'y', START = 'start', BACK = 'back',
+	LB = 'leftshoulder', RB = 'rightshoulder', LT = 'lefttrigger', RT = 'righttrigger',
+	['LS_Y-'] = 'leftynegative', ['LS_Y+'] = 'leftypositive', ['LS_X-'] = 'leftxnegative', ['LS_X+'] = 'leftxpositive',
+	['RS_Y-'] = 'rightynegative', ['RS_Y+'] = 'rightypositive', ['RS_X-'] = 'rightxnegative', ['RS_X+'] = 'rightxpositive',
+	LS = 'leftstick', RS = 'rightstick',
+}
+
+-- Leave the mapping screen.
+local function mappingClose(context, finish)
+	if context.pause then
+		finish()
+		return
+	end
+	fadeOutInit(motif.mapping_info.fadeout.FadeData)
+	context.mapping.finish = function()
+		finish()
+		fadeInInit(motif.option_info.fadein.FadeData)
+	end
+end
+
+-- Mapping editor rows name the virtual controls, so the guided screen reuses those names.
+local function mappingLabels(root)
+	local labels = {}
+	local function collect(menu)
+		for _, row in ipairs(menu.items) do
+			if t_mappingRows[row.itemname] then
+				labels[t_mappingRows[row.itemname]] = row.displayname
+			elseif menu.submenu[row.itemname] ~= nil then
+				collect(menu.submenu[row.itemname])
+			end
+		end
+	end
+	collect(root)
+	return labels
+end
+
+-- Opens the mapping screen for a Button Mapping editor root.
+-- The screen uses [Mapping Info] and [MappingBgDef], or the pause background in a match.
+function options.f_mappingScreen(context, mode, root)
+	local mapping = {mode = mode, index = 1, root = root, name = root.device.name, device = root.device.id}
+	mapping.labels = mappingLabels(root)
+	mapping.saved = main.f_tableCopy(root.draft)
+	if mode == 'test' then
+		mapping.index = 0
+	end
+	context.mapping = mapping
+	if not context.pause then
+		bgReset(motif.mappingbgdef.BGDef)
+		fadeInInit(motif.mapping_info.fadein.FadeData)
+	end
+	resetKey()
+	resetTokenGuard()
+end
+
+function options.f_gamepadMappingFrame(context)
+	local sec = motif.option_info
+	local cfg, mapping = motif.mapping_info, context.mapping
+	local background = context.background
+	if not context.pause then
+		background = motif.mappingbgdef
+		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+	end
+	local name = t_virtualControls[mapping.index]
+	local control = name and cfg.control[t_mappingArt[name]]
+	local state = mapping.mode == 'test' and 'test' or 'default'
+	local pressed = {}
+	if mapping.mode == 'test' then
+		local held = inputGetVirtualState(mapping.device, mapping.root.draft)
+		for _, vc in ipairs(t_virtualControls) do
+			pressed[t_mappingArt[vc]] = held[vc]
+		end
+	end
+	local rear = control ~= nil and control.rear
+	for key, held in pairs(pressed) do
+		if held and cfg.control[key] ~= nil and cfg.control[key].rear then
+			rear = true
+		end
+	end
+	bgDraw(background.BGDef, 0)
+	rectDraw(cfg.overlay.RectData)
+	textImgReset(cfg.title.TextSpriteData)
+	textImgSetText(cfg.title.TextSpriteData, main.f_itemnameUpper(mapping.name, cfg.title.uppercase))
+	textImgDraw(cfg.title.TextSpriteData)
+	if rear then
+		main.f_animPosDraw(cfg.back.AnimData)
+		main.f_animPosDraw(cfg.rotate.AnimData)
+	else
+		main.f_animPosDraw(cfg.front.AnimData)
+	end
+	for _, vc in ipairs(t_virtualControls) do
+		local key = t_mappingArt[vc]
+		local art = cfg.control[key]
+		if art ~= nil and (vc == name or (pressed[key] and art.rear == rear)) then
+			main.f_animPosDraw(art.AnimData)
+		end
+	end
+	local label = mapping.labels[name or ''] or name or ''
+	-- Config all has nothing left to ask while it fades out.
+	if name ~= nil or state ~= 'default' then
+		textImgReset(cfg.prompt.TextSpriteData)
+		textImgSetText(cfg.prompt.TextSpriteData, main.f_formatBySpec(cfg.prompt.text[state], {
+			s = label, i = mapping.index,
+		}))
+		textImgDraw(cfg.prompt.TextSpriteData)
+	end
+	bgDraw(background.BGDef, 1)
+	-- A refused key shows hint.warn until another key is accepted or the control is left.
+	if mapping.warn ~= nil then
+		textImgReset(cfg.hint.warn.TextSpriteData)
+		textImgSetText(cfg.hint.warn.TextSpriteData, cfg.hint.warn.text[mapping.warn] or '')
+		textImgDraw(cfg.hint.warn.TextSpriteData)
+	else
+		main.f_hintDraw(cfg.hint, state, nil, mapping.device)
+	end
+	if mapping.finish ~= nil then
+		if not fadeActive() then
+			mapping.finish()
+		end
+		return
+	end
+	if context.skipInput or fadeActive() then
+		return
+	end
+	local function close(finish)
+		mappingClose(context, function()
+			context.mapping = nil
+			if finish ~= nil then
+				finish()
+			end
+			context.closed = context.current == nil
+		end)
+	end
+	-- Held actions read the device being set up through its saved mapping, and the device
+	-- running the menu.
+	local menuDevice = inputGetMenuDevice()
+	local function holdTime(action)
+		local time = inputDeviceActionTime(mapping.device, action)
+		if menuDevice ~= mapping.device then
+			time = math.max(time, inputDeviceActionTime(menuDevice, action))
+		end
+		return time
+	end
+	local function held(action)
+		return holdTime(action) == cfg.holdtime
+	end
+	if esc() or holdTime(cfg.cancel.action) >= cfg.holdtime then
+		-- Cancel keeps the mapping as it was before the screen opened.
+		sndPlay(motif.Snd, cfg.cancel.snd[1], cfg.cancel.snd[2])
+		esc(false)
+		if mapping.mode == 'guided' then
+			mapping.root.draft = mapping.saved
+			updateEditor(mapping.root, mapping.root)
+		end
+		close()
+	elseif mapping.mode == 'test' then
+		-- Read-only: inputs only highlight the diagram.
+	elseif held(cfg.previous.action) and mapping.index > 1 then
+		mapping.index, mapping.pending, mapping.released, mapping.warn = mapping.index - 1, nil, false, nil
+		sndPlay(motif.Snd, cfg.move.snd[1], cfg.move.snd[2])
+	elseif name ~= nil and held(cfg.skip.action) then
+		mapping.index, mapping.pending, mapping.released, mapping.warn = mapping.index + 1, nil, false, nil
+		sndPlay(motif.Snd, cfg.move.snd[1], cfg.move.snd[2])
+	elseif name ~= nil then
+		-- Guided Button Mapping: one physical input for each virtual control.
+		local root = mapping.root
+		local token = releasedInput(mapping, mapping.device, root.device.kind)
+		if token ~= '' then
+			-- A key of the other keyboard controller is refused: wait for another one.
+			if keyTaken(root.device, token) then
+				mapping.warn = 'keytaken'
+				sndPlay(motif.Snd, cfg.cancel.snd[1], cfg.cancel.snd[2])
+			else
+				for _, vc in ipairs(t_virtualControls) do
+					if root.draft[vc] == token then
+						root.draft[vc] = '-'
+					end
+				end
+				root.draft[name] = token
+				mapping.index, mapping.warn = mapping.index + 1, nil
+				sndPlay(motif.Snd, cfg.done.snd[1], cfg.done.snd[2])
+			end
+		end
+	end
+	if mapping.mode == 'guided' and mapping.index > #t_virtualControls and mapping.finish == nil then
+		updateEditor(mapping.root, mapping.root)
+		close()
+	end
+	resetKey()
+	resetTokenGuard()
+end
+
 -- Editor rows. One handler serves both editors: it reads the kind from the menu root.
+-- Button Mapping uses the guided controller screen; Controller Setup moves the cursor row by row.
 options.t_itemname.configall = function(t, item)
 	if getAction(-1, motif.option_info.menu.done.action) then
 		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-		startInputCapture(t, item, true)
+		if t.inputMenu.kind == 'mapping' then
+			options.f_mappingScreen(t.inputContext, 'guided', t.inputMenu)
+		else
+			startInputCapture(t, item, true)
+		end
 	end
 	resetKey()
+	return true
+end
+
+options.t_itemname.testinput = function(t, item)
+	if getAction(-1, motif.option_info.menu.done.action) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		options.f_mappingScreen(t.inputContext, 'test', t.inputMenu)
+	end
 	return true
 end
 
