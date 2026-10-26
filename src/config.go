@@ -286,7 +286,8 @@ type Config struct {
 	} `ini:"Netplay"`
 	Input struct {
 		// Device preferences, by keyboard controller ID or controller GUID.
-		ControllerSetup map[string]string `ini:"ControllerSetup"`
+		ControllerSetup  map[string]string `ini:"ControllerSetup"`
+		ControllerGlyphs map[string]string `ini:"ControllerGlyphs"`
 
 		ControllerRumble           bool    `ini:"ControllerRumble"`
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
@@ -663,6 +664,20 @@ func (c *Config) rememberPreference(group, device, value, section string) error 
 		disk.Section("Input").Key(group + "." + device).SetValue(value)
 	}
 	return SaveINI(disk, c.Def)
+}
+
+// Key for per-device preferences: the keyboard controller ID or the controller model.
+func glyphPreferenceKey(device *InputDevice) string {
+	return device.preferenceKey()
+}
+
+// Remembers the glyph pack chosen for a device. An empty pack detects it from the device again.
+func (c *Config) rememberControllerGlyphs(device *InputDevice, set string) error {
+	key := glyphPreferenceKey(device)
+	if key == "" || c.Input.ControllerGlyphs[key] == set {
+		return nil
+	}
+	return c.rememberPreference("ControllerGlyphs", key, set, "")
 }
 
 // Remembers the Controller Setup a device uses.

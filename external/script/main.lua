@@ -3951,7 +3951,11 @@ function main.f_hintDraw(hint, context, values, device, side, actions)
 	if device ~= nil then
 		textImgSetGlyphDevice(hint.TextSpriteData, device)
 	end
-	local text = hint.text[context or 'default'] or hint.text.default or ''
+	context = context or 'default'
+	-- Hint text: glyph.<pack>.<context> while the device shown uses that pack, else <context>.
+	local set = 'glyph.' .. inputGetGlyphPack(device or 0)
+	local text = hint.text[context == 'default' and set or set .. '.' .. context]
+		or hint.text[context] or hint.text.default or ''
 	if actions ~= nil then
 		-- Shared popups use the caller's menu keys, not the Warning Info section.
 		text = text:gsub('<action:([^>]+)>', function(name)

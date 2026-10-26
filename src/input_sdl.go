@@ -43,7 +43,20 @@ var input Input
 // Controller type used to pick glyph artwork, e.g. "ps5". SDL knows common pads,
 // the motif can match others by GUID or name.
 func (in *Input) GlyphPack(device *InputDevice, glyphs *ControllerGlyphsProperties) string {
-	if device == nil || device.Joy < 0 || !in.IsJoystickPresent(device.Joy) {
+	if device == nil {
+		return "generic"
+	}
+	// A pack chosen for this device wins. An unknown name falls through to
+	// detection, which also covers a pack the current motif does not define.
+	if chosen := strings.ToLower(sys.cfg.Input.ControllerGlyphs[glyphPreferenceKey(device)]); chosen != "" {
+		if set := glyphs.Controller[chosen]; set != nil && strings.EqualFold(set.Type, glyphDeviceType(device)) {
+			return chosen
+		}
+	}
+	if device.Joy < 0 {
+		return "keyboard"
+	}
+	if !in.IsJoystickPresent(device.Joy) {
 		return "generic"
 	}
 	if controller := glyphs.GUID[strings.ToLower(device.GUID)]; controller != "" {

@@ -1517,39 +1517,52 @@ type glyphColor struct {
 	active bool
 }
 
-// Input names refer directly to [Glyphs]. Controller overrides change only
-// the group and any image numbers that differ from the base gamepad artwork.
+// Input names refer directly to [Glyphs]. A glyph pack overrides only the group
+// and the image numbers that differ from the base keyboard or gamepad artwork.
 func (ts *TextSprite) bindingGlyph(token string, keyboard bool) []glyphRun {
 	m := &sys.motif
-	name := "keyboard." + token
-	if !keyboard {
-		name = "gamepad." + token
-		if base := m.glyph(name); base != nil {
-			// Controller art for a keyboard (virtual controls) uses the generic pad.
-			controller := "generic"
-			if device := sys.glyphDevice(ts.glyphDevice); device != nil && device.Joy >= 0 {
-				controller = input.GlyphPack(device, &m.ControllerGlyphs)
+	name := "gamepad." + token
+	kind := "gamepad"
+	if keyboard {
+		name = "keyboard." + token
+		kind = "keyboard"
+	}
+	if base := m.glyph(name); base != nil {
+		device := sys.glyphDevice(ts.glyphDevice)
+		set := input.GlyphPack(device, &m.ControllerGlyphs)
+		if device != nil && glyphDeviceType(device) != kind {
+			// Text naming the other kind's tokens never borrows this device's pack.
+			set = ""
+		}
+		fallback := "generic"
+		if keyboard {
+			fallback = "keyboard"
+		}
+		for _, id := range []string{set, fallback} {
+			variant := m.ControllerGlyphs.Controller[id]
+			if variant == nil || !strings.EqualFold(variant.Type, kind) {
+				continue
 			}
-			for _, kind := range []string{controller, "generic"} {
-				if variant := m.ControllerGlyphs.Controller[kind]; variant != nil {
-					group, index := base.Spr[0], base.Spr[1]
-					if variant.Group >= 0 {
-						group = variant.Group
-					}
-					// Respect SDL's label/position preference when Nintendo artwork is used.
-					if (kind == "switch" || kind == "switch2") && input.GlyphSwapNintendo() {
-						swapped := map[string]string{"A": "B", "B": "A", "X": "Y", "Y": "X"}[token]
-						if g := m.glyph("gamepad." + swapped); g != nil {
-							index = g.Spr[1]
-						}
-					}
-					if value, ok := variant.Gamepad[token]; ok {
-						index = value
-					}
-					if a := m.glyphAnimation(group, index); a != nil {
-						return []glyphRun{{anim: a}}
-					}
+			group, index := base.Spr[0], base.Spr[1]
+			if variant.Group >= 0 {
+				group = variant.Group
+			}
+			// Respect SDL's label/position preference when Nintendo artwork is used.
+			if !keyboard && (id == "switch" || id == "switch2") && input.GlyphSwapNintendo() {
+				swapped := map[string]string{"A": "B", "B": "A", "X": "Y", "Y": "X"}[token]
+				if g := m.glyph("gamepad." + swapped); g != nil {
+					index = g.Spr[1]
 				}
+			}
+			tokens := variant.Gamepad
+			if keyboard {
+				tokens = variant.Key
+			}
+			if value, ok := tokens[token]; ok {
+				index = value
+			}
+			if a := m.glyphAnimation(group, index); a != nil {
+				return []glyphRun{{anim: a}}
 			}
 		}
 	}
