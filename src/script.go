@@ -3280,7 +3280,9 @@ func systemScriptInit(l *lua.LState) {
 		tokens := actionTokens(l)
 		for _, pn := range actionPlayers(l) {
 			slots := []int{pn}
-			if pn == -1 {
+			if pn == -1 && sys.menuPlayer > 0 {
+				slots = []int{sys.menuPlayer - 1}
+			} else if pn == -1 {
 				slots = nil
 				for i := range sys.commandLists {
 					if sys.lastInputController < 0 || sys.uiControllerKey(i) == sys.lastInputController {
@@ -4020,6 +4022,11 @@ func systemScriptInit(l *lua.LState) {
 		id := sys.inputs.MenuDevice
 		if sys.netplay() && len(sys.inputs.Participants) > 0 {
 			id = sys.inputs.Participants[0].Device
+		} else if p := sys.menuPlayer - 1; p >= 0 && p < len(sys.inputRemap) {
+			// The pause menu belongs to the player who opened it.
+			if ids := sys.inputs.participantDevices(sys.inputRemap[p]); len(ids) > 0 {
+				id = ids[0]
+			}
 		}
 		l.Push(lua.LNumber(id))
 		return 1
