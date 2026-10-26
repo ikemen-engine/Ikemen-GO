@@ -544,7 +544,8 @@ hook.add('loop#training', 'trainingSettings', function()
 end)
 
 menu.movelistChar = 1
-function menu.f_init()
+-- player: 1-based player who opened the menu. The title can show it with %s.
+function menu.f_init(player)
 	esc(false)
 	main.pauseMenuActive = true
 	local id = f_pauseMenuIdFromKey(f_pauseMenuKey(gameMode()))
@@ -553,6 +554,9 @@ function menu.f_init()
 	end
 	if menu.t_menuIndex ~= nil and menu.t_menuIndex[id] ~= nil then
 		local entry = menu.t_menuIndex[id]
+		if menu[id] ~= nil then
+			menu[id].title = main.f_itemnameUpper(entry.sec.title.text:gsub('%%s', tostring(player or 1)), entry.sec.menu.title.uppercase)
+		end
 		sndPlay(motif.Snd, entry.sec.enter.snd[1], entry.sec.enter.snd[2])
 		bgReset(entry.bg.BGDef)
 		if menu[id] ~= nil and menu[id].loop ~= nil then
@@ -685,8 +689,8 @@ function menu.f_reset()
 	end
 end
 
-function menuInit()
-	return menu.f_init()
+function menuInit(player)
+	return menu.f_init(player)
 end
 
 function menuRun()

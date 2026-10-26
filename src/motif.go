@@ -1106,6 +1106,10 @@ type MenuInfoProperties struct {
 	Title    TextProperties `ini:"title"`
 	Menu     MenuProperties `ini:"menu"`
 	HideBars bool           `ini:"hidebars"`
+	Open     struct {
+		Action   []string `ini:"action"`
+		HoldTime int32    `ini:"holdtime"`
+	} `ini:"open"`
 	Cursor   struct {
 		Move struct {
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
@@ -3367,10 +3371,13 @@ type MotifMenu struct {
 	initialized bool
 	state       MenuState
 	reopenLock  bool
+	player      int // 1-based player who opened the menu
 }
 
 func (me *MotifMenu) reset(m *Motif) {
 	me.active = false
+	me.player = 0
+	sys.menuPlayer = 0
 	me.initialized = false
 	me.state = ME_OpeningOut
 	if err := sys.luaLState.DoString("menuReset()"); err != nil {
@@ -3384,11 +3391,34 @@ func (me *MotifMenu) menuOpenInputHeld(m *Motif) bool {
 	if sys.keyState != nil && sys.keyState[KeyEscape] {
 		return true
 	}
-	// Also respect configured menu cancel/open bindings
+	// Also respect the configured open action
 	if pm := me.pauseMenu(m); pm != nil && pm.Enabled {
-		return sys.menuAction(pm.Menu.Cancel.Action, -1)
+		for i := range sys.commandLists {
+			if sys.actionTime(pm.Open.Action, i) > 0 {
+				return true
+			}
+		}
 	}
 	return false
+}
+
+func (me *MotifMenu) openingPlayer(pm *MenuInfoProperties) int {
+	if sys.esc {
+		for i := range sys.commandLists {
+			if sys.localSlot(i) {
+				return i + 1
+			}
+		}
+		return 1
+	}
+	hold := Max(1, pm.Open.HoldTime)
+	for i := range sys.commandLists {
+		// Remote netplay players can't open the local menu.
+		if sys.localSlot(i) && sys.actionTime(pm.Open.Action, i) == hold {
+			return i + 1
+		}
+	}
+	return 0
 }
 
 func (me *MotifMenu) pauseMenu(m *Motif) *MenuInfoProperties {
@@ -3439,7 +3469,8 @@ func (me *MotifMenu) init(m *Motif) {
 		}
 		me.reopenLock = false
 	}
-	openPressed := sys.esc || sys.menuAction(pm.Menu.Cancel.Action, -1)
+	player := me.openingPlayer(pm)
+	openPressed := player > 0
 
 	if !sys.sel.gameParams.PauseMenu {
 		if openPressed {
@@ -3457,6 +3488,9 @@ func (me *MotifMenu) init(m *Motif) {
 		return
 	}
 
+	// Only the player who opened the menu controls it.
+	me.player = player
+	sys.menuPlayer = player
 	// Freeze the match first, then fade it to black before initializing the menu.
 	sys.paused = true
 	pm.FadeOut.FadeData.init(m.fadeOut, false)
@@ -3485,7 +3519,7 @@ func (me *MotifMenu) step(m *Motif) {
 		if m.fadeOut.isActive() {
 			return
 		}
-		if err := sys.luaLState.DoString("menuInit()"); err != nil {
+		if err := sys.luaLState.DoString(fmt.Sprintf("menuInit(%d)", me.player)); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 		}
 		if pm != nil {
