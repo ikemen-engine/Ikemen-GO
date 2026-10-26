@@ -2527,35 +2527,43 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
 		/*Exit netplay mode and close any active netplay connection.
 		@function exitNetPlay*/
-		if err := sys.endSyncSessionOverride(); err != nil {
-			l.RaiseError(err.Error())
+		err := sys.endSyncSessionOverride()
+		if sys.rollback.session != nil {
+			sys.rollback.session.Close()
+			sys.rollback.session = nil
 		}
-		if sys.cfg.Netplay.RollbackNetcode {
-			if sys.rollback.session != nil {
-				sys.rollback.session.Close()
-				sys.rollback.session = nil
-			}
+		if sys.rollback.netConnection != nil {
+			sys.rollback.netConnection.end()
+			sys.rollback.netConnection = nil
 		}
 		if sys.netConnection != nil {
 			sys.netConnection.end()
 			sys.netConnection = nil
 		}
-		// Menus may take new players again.
-		sys.resetInputForMenus()
+		// Return to local menu input after closing the session.
+		if !sys.netplay() {
+			sys.resetInputForMenus()
+		}
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
 		return 0
 	})
 	luaRegister(l, "exitReplay", func(*lua.LState) int {
 		/*Exit replay mode and restore normal video settings.
 		@function exitReplay*/
-		if err := sys.endSyncSessionOverride(); err != nil {
-			l.RaiseError(err.Error())
-		}
+		err := sys.endSyncSessionOverride()
 		sys.sessionSetups = nil
 		if sys.replayFile != nil {
 			sys.replayFile.Close()
 			sys.replayFile = nil
 		}
-		sys.uiResetTokenGuard()
+		if !sys.netplay() {
+			sys.resetInputForMenus()
+		}
+		if err != nil {
+			l.RaiseError(err.Error())
+		}
 		return 0
 	})
 	luaRegister(l, "fadeNew", func(*lua.LState) int {
@@ -3282,7 +3290,12 @@ func systemScriptInit(l *lua.LState) {
 		@tparam string|table ... Action tokens, as for `getAction`.
 		@treturn int32 time Frames held, or `0` if not held.*/
 		tokens := actionTokens(l)
-		for _, pn := range actionPlayers(l) {
+		players := actionPlayers(l)
+		if device := sys.inputs.device(sys.menuFocus); device != nil && len(players) == 1 && players[0] == -1 {
+			l.Push(lua.LNumber(sys.deviceActionTime(device, tokens)))
+			return 1
+		}
+		for _, pn := range players {
 			slots := []int{pn}
 			if pn == -1 && sys.menuPlayer > 0 {
 				slots = []int{sys.menuPlayer - 1}
@@ -3887,6 +3900,60 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.winnerTeam()))
 		return 1
 	})
+	luaRegister(l, "inputAutoAssign", func(l *lua.LState) int {
+		/*Assign local inputs without displaying side selection.
+		@function inputAutoAssign
+		@tparam int deviceId Device that opened the mode.
+		@tparam int minimum Minimum total number of human participants.
+		@tparam int maximum Maximum human participants per side.
+		@tparam boolean versus Assign both sides instead of keeping players together.
+		@treturn boolean success Enough independent inputs were assigned.*/
+		ok := !sys.netplay() && sys.assignAutomaticInputs(int(numArg(l, 1)),
+			Max(1, int(numArg(l, 2))), Clamp(int(numArg(l, 3)), 1, MaxSimul), boolArg(l, 4))
+		l.Push(lua.LBool(ok))
+		return 1
+	})
+	luaRegister(l, "inputBegin", func(l *lua.LState) int {
+		/*Start side select for a mode: releases all players and stops menus from claiming devices.
+		@function inputBegin
+		@treturn int deviceId Device that opened the mode (`0` if unknown).*/
+		sys.inputs.ClaimLocked = true
+		sys.inputs.sharedDevices = nil
+		sys.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+		sys.applyParticipantsToSlots()
+		l.Push(lua.LNumber(sys.inputs.MenuDevice))
+		return 1
+	})
+	luaRegister(l, "inputClaim", func(l *lua.LState) int {
+		/*Assign a device to a participant on a team side.
+		@function inputClaim
+		@tparam int deviceId Device ID (see `inputGetDevices`).
+		@tparam int side `1` for left, `2` for right, `0` to release the device.
+		@treturn boolean success `false` if the device is unavailable, all positions are taken,
+		  or its keyboard keys overlap another player's keyboard controller.*/
+		device, side := int(numArg(l, 1)), TeamSide(numArg(l, 2))
+		if side == TS_None {
+			if i := sys.inputs.owner(device); i >= 0 {
+				delete(sys.inputs.sharedDevices, i)
+				sys.inputs.Participants[i] = InputParticipant{}
+			}
+			l.Push(lua.LTrue)
+			return 1
+		}
+		if sys.keyboardConflict(device) {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		_, err := sys.inputs.claim(device, side)
+		l.Push(lua.LBool(err == nil))
+		return 1
+	})
+	luaRegister(l, "inputCommit", func(l *lua.LState) int {
+		/*Apply current participant sides to gameplay player slots and clear input buffers.
+		@function inputCommit*/
+		sys.applyParticipantsToSlots()
+		return 0
+	})
 	luaRegister(l, "inputCycleSetup", func(l *lua.LState) int {
 		/*Switch a device to the previous or next Controller Setup.
 		@function inputCycleSetup
@@ -3928,6 +3995,33 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(true))
 		return 1
 	})
+	luaRegister(l, "inputDeviceAction", func(l *lua.LState) int {
+		/*Check whether a motif action was pressed on one device this frame, whether
+		  or not the device has a player yet. KEY: tokens only count for keyboard controllers.
+		@function inputDeviceAction
+		@tparam int deviceId Device ID.
+		@tparam table action Action tokens, usually a motif `.action` value.
+		@treturn boolean pressed `true` only on the frame the action was pressed.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		var action []string
+		switch v := l.Get(2).(type) {
+		case lua.LString:
+			action = []string{string(v)}
+		case *lua.LTable:
+			v.ForEach(func(_ lua.LValue, t lua.LValue) {
+				action = append(action, lua.LVAsString(t))
+			})
+		}
+		pressed := false
+		for _, token := range action {
+			if sys.deviceActionTime(device, []string{token}) == 1 {
+				pressed = true
+				break
+			}
+		}
+		l.Push(lua.LBool(pressed))
+		return 1
+	})
 	luaRegister(l, "inputDeviceActionTime", func(l *lua.LState) int {
 		/*Get how long a motif action has been held on one device, through its saved
 		  Button Mapping, whether or not the device has a player.
@@ -3954,8 +4048,10 @@ func systemScriptInit(l *lua.LState) {
 		@function inputGetDevices
 		@treturn table devices Array of tables with fields: `id` (only valid while the game runs), `name`,
 		  `kind` (`"keyboard"` or `"gamepad"`), `joy`, `keyboard` (keyboard controller ID), `setup`,
-		  `setupName`, `connected`, `participant` (1-based, `0` if none), `conflict`
-		  (keyboard keys overlap another player's keyboard controller).*/
+		  `setupName`, `connected`, `participant` (1-based, `0` if none), `side` (`0`/`1`/`2`),
+		  `ready`, `order` (join order), `readyOrder` (confirmation order), `primary` (main device
+		  of its participant), `available` (any device of its participant is connected),
+		  `conflict` (keyboard keys overlap another player's keyboard controller).*/
 		sys.pollDevices()
 		out := l.NewTable()
 		for _, device := range sys.inputs.Devices {
@@ -3971,6 +4067,10 @@ func systemScriptInit(l *lua.LState) {
 			if p := sys.cfg.ControllerSetup["controllersetup_"+device.Setup]; p != nil {
 				setupName = p.Name
 			}
+			p := InputParticipant{}
+			if owner >= 0 {
+				p = sys.inputs.Participants[owner]
+			}
 			out.Append(toLValue(l, map[string]interface{}{
 				"id":          device.ID,
 				"name":        device.Name,
@@ -3981,6 +4081,12 @@ func systemScriptInit(l *lua.LState) {
 				"setupName":   setupName,
 				"connected":   device.Connected,
 				"participant": owner + 1,
+				"side":        p.Side,
+				"ready":       p.Ready,
+				"order":       p.joined,
+				"readyOrder":  p.confirmed,
+				"primary":     owner < 0 || p.Device == device.ID,
+				"available":   owner < 0 || sys.inputs.participantConnected(owner),
 				"conflict":    sys.keyboardConflict(device.ID),
 			}))
 		}
@@ -4137,10 +4243,30 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(level)
 		return 2
 	})
+	luaRegister(l, "inputIsLocal", func(l *lua.LState) int {
+		/*Check whether side select and reconnecting are handled locally (not in netplay).
+		@function inputIsLocal
+		@treturn boolean local `true` if not in a netplay session.*/
+		l.Push(lua.LBool(!sys.netplay()))
+		return 1
+	})
 	luaRegister(l, "inputIsSetupButton", func(l *lua.LState) int {
 		// True for an engine button or concatenated button names, such as xa or startmenu.
 		l.Push(lua.LBool(setupButtonMask(strArg(l, 1)) != 0))
 		return 1
+	})
+	luaRegister(l, "inputKeepSide", func(l *lua.LState) int {
+		/*Release every participant that is not on the given side.
+		@function inputKeepSide
+		@tparam int side Team side to keep (`1` or `2`).*/
+		side := TeamSide(numArg(l, 1))
+		for i, p := range sys.inputs.Participants {
+			if p.Side != side {
+				delete(sys.inputs.sharedDevices, i)
+				sys.inputs.Participants[i] = InputParticipant{}
+			}
+		}
+		return 0
 	})
 	luaRegister(l, "inputNewSetup", func(l *lua.LState) int {
 		/*Create a Controller Setup and select it for a device. Disk writes use the normal Options save.
@@ -4164,6 +4290,15 @@ func systemScriptInit(l *lua.LState) {
 		}
 		l.Push(lua.LString(id))
 		return 1
+	})
+	luaRegister(l, "inputResetForMenus", func(l *lua.LState) int {
+		/*Go back to menu mode: releases all players, so any device can control the menus again.
+		  Does nothing during netplay.
+		@function inputResetForMenus*/
+		if !sys.netplay() {
+			sys.resetInputForMenus()
+		}
+		return 0
 	})
 	luaRegister(l, "inputRestoreDefaults", func(l *lua.LState) int {
 		/*Restore all keyboard controllers and Controller Setups to their shipped definitions
@@ -4249,6 +4384,27 @@ func systemScriptInit(l *lua.LState) {
 		@treturn boolean success `false` if the device or setup is unknown.*/
 		l.Push(lua.LBool(sys.setDeviceSetup(int(numArg(l, 1)), strArg(l, 2))))
 		return 1
+	})
+	luaRegister(l, "inputSetMenuFocus", func(l *lua.LState) int {
+		/*Let one device alone drive menus, whether or not it has a player slot.
+		@function inputSetMenuFocus
+		@tparam int deviceId Device ID, or `0` to read player slots again.
+		@treturn int previous Previous focus; restore it when the screen closes.*/
+		previous := sys.menuFocus
+		sys.menuFocus = int(numArg(l, 1))
+		if device := sys.inputs.device(sys.menuFocus); device != nil && !sys.netplay() {
+			sys.inputs.MenuDevice = device.ID
+		}
+		l.Push(lua.LNumber(previous))
+		return 1
+	})
+	luaRegister(l, "inputSetReady", func(l *lua.LState) int {
+		/*Set the ready state of the participant owning a device.
+		@function inputSetReady
+		@tparam int deviceId Device ID.
+		@tparam boolean ready Ready state.*/
+		sys.inputs.setReady(int(numArg(l, 1)), boolArg(l, 2))
+		return 0
 	})
 	luaRegister(l, "inputSetupEditable", func(l *lua.LState) int {
 		/*Check whether a device may change a Controller Setup in place: a custom setup no other
