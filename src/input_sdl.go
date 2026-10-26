@@ -40,6 +40,52 @@ var buttonOrder []sdl.GameControllerButton
 
 var input Input
 
+// Controller type used to pick glyph artwork, e.g. "ps5". SDL knows common pads,
+// the motif can match others by GUID or name.
+func (in *Input) GlyphPack(device *InputDevice, glyphs *ControllerGlyphsProperties) string {
+	if device == nil || device.Joy < 0 || !in.IsJoystickPresent(device.Joy) {
+		return "generic"
+	}
+	if controller := glyphs.GUID[strings.ToLower(device.GUID)]; controller != "" {
+		return strings.ToLower(controller)
+	}
+	// Longest matching name wins, so "switch 2" beats "switch". Map order is
+	// random, so equal-length patterns are decided alphabetically.
+	name := strings.ToLower(in.GetJoystickName(device.Joy))
+	match, controller := "", ""
+	for pattern, candidate := range glyphs.Name {
+		if pattern == "" || !strings.Contains(name, strings.ToLower(pattern)) {
+			continue
+		}
+		if len(pattern) > len(match) || (len(pattern) == len(match) && pattern < match) {
+			match, controller = pattern, candidate
+		}
+	}
+	if controller != "" {
+		return strings.ToLower(controller)
+	}
+	switch in.controllers[device.Joy].Type() {
+	case sdl.CONTROLLER_TYPE_XBOX360:
+		return "xbox360"
+	case sdl.CONTROLLER_TYPE_XBOXONE:
+		return "xbox"
+	case sdl.CONTROLLER_TYPE_PS3:
+		return "ps3"
+	case sdl.CONTROLLER_TYPE_PS4:
+		return "ps4"
+	case sdl.CONTROLLER_TYPE_PS5:
+		return "ps5"
+	case sdl.CONTROLLER_TYPE_NINTENDO_SWITCH_PRO:
+		return "switch"
+	}
+	return "generic"
+}
+
+// Reports whether SDL is set to report button positions instead of the labels printed on Nintendo pads.
+func (in *Input) GlyphSwapNintendo() bool {
+	return sdl.GetHint("SDL_GAMECONTROLLER_USE_BUTTON_LABELS") == "0"
+}
+
 func initLUTs() {
 	KeyToStringLUT = map[sdl.Keycode]string{
 		sdl.K_RETURN:       "RETURN",

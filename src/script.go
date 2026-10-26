@@ -2517,6 +2517,9 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 1) {
 			sys.esc = boolArg(l, 1)
 		}
+		if sys.esc && nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput("ESCAPE")
+		}
 		l.Push(lua.LBool(sys.esc))
 		return 1
 	})
@@ -3677,6 +3680,7 @@ func systemScriptInit(l *lua.LState) {
 			s = KeyToString(sys.keyInput)
 		}
 		if nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 			l.Push(lua.LString(s))
 			//sys.keyInput = KeyUnknown
 			return 1
@@ -3684,6 +3688,9 @@ func systemScriptInit(l *lua.LState) {
 			//sys.keyInput = KeyUnknown
 			l.Push(lua.LBool(false))
 			return 1
+		}
+		if s == strArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 		}
 		l.Push(lua.LBool(s == strArg(l, 1)))
 		return 1
@@ -3696,6 +3703,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != KeyUnknown {
 			s = sys.keyString
+			sys.noteKeyboardGlyphInput(KeyToString(sys.keyInput))
 		}
 		l.Push(lua.LString(s))
 		return 1
@@ -4015,6 +4023,10 @@ func systemScriptInit(l *lua.LState) {
 				break
 			}
 		}
+		// The device pressed last shows as active and gets the hints.
+		if pressed {
+			sys.noteGlyphInput(device.ID)
+		}
 		l.Push(lua.LBool(pressed))
 		return 1
 	})
@@ -4089,6 +4101,25 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(out)
 		return 1
 	})
+	luaRegister(l, "inputGetGlyphDevice", func(l *lua.LState) int {
+		/*Get the device whose buttons hints show, with its current side.
+		@function inputGetGlyphDevice
+		@treturn int deviceId Runtime device ID, or zero if no device is available.
+		@treturn int side Team side (0 unassigned, 1 left, 2 right).*/
+		id, side := 0, TS_None
+		if device := sys.glyphDevice(0); device != nil {
+			id = device.ID
+			if owner := sys.inputs.owner(id); owner >= 0 {
+				side = sys.inputs.Participants[owner].Side
+			}
+		}
+		if nc := sys.inputConnection(); nc != nil {
+			side = TeamSide(nc.locIn%2 + 1)
+		}
+		l.Push(lua.LNumber(id))
+		l.Push(lua.LNumber(side))
+		return 2
+	})
 	luaRegister(l, "inputGetMapping", func(l *lua.LState) int {
 		/*Get the Button Mapping of a device.
 		@function inputGetMapping
@@ -4158,6 +4189,18 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		l.Push(lua.LString(token))
+		return 1
+	})
+	luaRegister(l, "inputGetPlayerDevice", func(l *lua.LState) int {
+		/*Return the local device for a gameplay/menu player slot.
+		@function inputGetPlayerDevice
+		@tparam int player 1-based slot.
+		@treturn int deviceId Zero for remote players or unavailable devices.*/
+		id := 0
+		if device := sys.hintPlayerDevice(int(numArg(l, 1)) - 1); device != nil {
+			id = device.ID
+		}
+		l.Push(lua.LNumber(id))
 		return 1
 	})
 	luaRegister(l, "inputGetSetup", func(l *lua.LState) int {
@@ -4280,6 +4323,14 @@ func systemScriptInit(l *lua.LState) {
 			sys.setDeviceSetup(int(numArg(l, 3)), id)
 		}
 		l.Push(lua.LString(id))
+		return 1
+	})
+	luaRegister(l, "inputPlayerDisconnected", func(l *lua.LState) int {
+		/*Report whether a player slot's device is assigned but disconnected.
+		@function inputPlayerDisconnected
+		@tparam int player 1-based slot.
+		@treturn boolean disconnected `true` only when the slot owns devices and none are connected.*/
+		l.Push(lua.LBool(sys.hintPlayerDisconnected(int(numArg(l, 1)) - 1)))
 		return 1
 	})
 	luaRegister(l, "inputResetForMenus", func(l *lua.LState) int {
@@ -7104,7 +7155,9 @@ func systemScriptInit(l *lua.LState) {
 		/*Create a new empty text sprite.
 		@function textImgNew
 		@treturn TextSprite ts Newly created text sprite userdata.*/
-		l.Push(newUserData(l, NewTextSprite()))
+		ts := NewTextSprite()
+		ts.glyphs = true
+		l.Push(newUserData(l, ts))
 		return 1
 	})
 	luaRegister(l, "textImgReset", func(*lua.LState) int {
@@ -7118,6 +7171,7 @@ func systemScriptInit(l *lua.LState) {
 		  - `"window"` – reset window to initial
 		  - `"velocity"` – reset velocity to initial
 		  - `"text"` – reset text to initial
+		  - `"glyphs"` – reset glyph scale, offset and spacing
 		  - `"palfx"` – clear PalFX
 		  - `"delay"` – reset text delay timer*/
 		ts, ok := toUserData(l, 1).(*TextSprite)
@@ -7145,6 +7199,10 @@ func systemScriptInit(l *lua.LState) {
 					ts.SetVelocity(ts.velocityInit[0], ts.velocityInit[1])
 				case "text":
 					ts.text = ts.textInit
+				case "glyphs":
+					ts.glyphScale = ts.glyphScaleInit
+					ts.glyphOffset = ts.glyphOffsetInit
+					ts.glyphSpacing = ts.glyphSpacingInit
 				case "palfx":
 					if ts.palfx != nil {
 						ts.palfx.clear()
@@ -7269,6 +7327,60 @@ func systemScriptInit(l *lua.LState) {
 		}
 		ts.friction[0] = float32(numArg(l, 2))
 		ts.friction[1] = float32(numArg(l, 3))
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphDevice", func(*lua.LState) int {
+		/*Select the device whose buttons <action:...>, <control:...> and <input:...> show in this text sprite.
+		@function textImgSetGlyphDevice
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam int deviceId Runtime device ID; zero follows the last menu input.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphDevice = int(numArg(l, 2))
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphOffset", func(*lua.LState) int {
+		/*Set the inline glyph offset.
+		@function textImgSetGlyphOffset
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam number x Horizontal offset.
+		@tparam number y Vertical offset.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphOffset = [2]float32{float32(numArg(l, 2)), float32(numArg(l, 3))}
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphScale", func(*lua.LState) int {
+		/*Set the inline glyph scale.
+		@function textImgSetGlyphScale
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam number x Horizontal scale.
+		@tparam number y Vertical scale.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphScale = [2]float32{float32(numArg(l, 2)), float32(numArg(l, 3))}
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphSpacing", func(*lua.LState) int {
+		/*Set horizontal spacing at boundaries involving inline glyphs (applied once per boundary).
+		@function textImgSetGlyphSpacing
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam[opt] number spacing Horizontal spacing, or nil to use font/text spacing.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphSpacing = nil
+		if !nilArg(l, 2) {
+			spacing := float32(numArg(l, 2))
+			ts.glyphSpacing = &spacing
+		}
 		return 0
 	})
 	luaRegister(l, "textImgSetLayerno", func(*lua.LState) int {

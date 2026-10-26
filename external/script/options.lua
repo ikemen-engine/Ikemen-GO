@@ -1354,6 +1354,31 @@ options.t_itemname = {
 	end,
 }
 
+-- Rows that show a value but open a list or text prompt instead of changing it.
+options.t_hintDefault = {
+	aspectratio = true,
+	renderer = true,
+	resolution = true,
+	shaders = true,
+	portchange = true,
+	rollbackport = true,
+}
+
+-- Picks the hint for an Options row.
+function options.f_hintContext(row)
+	if row.hintContext ~= nil then
+		return row.hintContext
+	end
+	local name = row.itemname
+	if options.t_hintDefault[name] then
+		return 'default'
+	end
+	if options.t_vardisplay[name] ~= nil then
+		return 'adjust'
+	end
+	return 'default'
+end
+
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	local cursorPosY, moveTxt, item = 1, 0, 1
@@ -1396,8 +1421,16 @@ function options.f_createMenu(tbl, bool_main)
 			if tbl.reset and context == nil then
 				tbl.reset = false
 			else
+				local hintContext = options.f_hintContext(t[item])
+				if context ~= nil and context.capture ~= nil then
+					hintContext = 'capture'
+				end
+				local menuBackground = motif.optionbgdef
+				if context ~= nil and context.background ~= nil then
+					menuBackground = context.background
+				end
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info,
-					context and context.background or motif.optionbgdef, context ~= nil)
+					menuBackground, context ~= nil, {hintContext = hintContext})
 			end
 			-- While fading, ignore normal option-menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if context ~= nil and (context.capture ~= nil or context.popup ~= nil or context.skipInput) then
@@ -1908,10 +1941,10 @@ local function findInputItem(tbl, name)
 	end
 end
 
-local function inputPopup(context, text, getValue, onClose)
+local function inputPopup(context, text, getValue, onClose, hintContext)
 	local sec = motif.option_info
 	context.popup = main.f_warning(text, sec, context.background, nil, sec.title.TextSpriteData, nil,
-		sec.cancel.snd, sec.cursor.done.snd, getValue, true)
+		sec.cancel.snd, sec.cursor.done.snd, getValue, true, hintContext)
 	context.onClose = onClose
 end
 
@@ -1924,11 +1957,17 @@ local function deviceById(id)
 end
 
 -- Value shown for a binding: a key name, a virtual control name, or the "no key" text.
-local function bindingDisplay(token)
+-- With glyphs on, keys show as keyboard art and controls as controller art.
+local function bindingDisplay(token, kind)
 	if token == nil or token == '' or token == '-' then
 		return motif.option_info.menu.valuename.nokey
 	end
-	return token
+	if not motif.option_info.useglyphs then
+		return token
+	elseif kind == 'keyboard' then
+		return '<key:' .. token .. '>'
+	end
+	return '<virtual:' .. token .. '>'
 end
 
 -- Refreshes the values shown in an editor and links its submenus to the root.
@@ -1941,13 +1980,19 @@ local function updateEditor(tbl, root)
 	tbl.inputMenu = root
 	for _, row in ipairs(tbl.items) do
 		local field = row.itemname
+		row.glyphDevice = root.device and root.device.id or nil
+		row.hintContext = 'editor'
 		if root.kind == 'mapping' and t_mappingRows[field] then
-			row.vardisplay = bindingDisplay(root.draft[t_mappingRows[field]])
+			row.hintContext = 'binding'
+			row.vardisplay = bindingDisplay(root.draft[t_mappingRows[field]], root.device.kind)
 		elseif root.kind == 'setup' and t_setupRows[field] then
-			row.vardisplay = bindingDisplay(root.draft[field])
+			row.hintContext = 'binding'
+			row.vardisplay = bindingDisplay(root.draft[field], 'virtual')
 		elseif field == 'activesetup' then
+			row.hintContext = 'setup'
 			row.vardisplay = root.draft.name
 		elseif field == 'device' then
+			row.hintContext = 'adjust'
 			row.vardisplay = root.device.name
 		end
 	end
