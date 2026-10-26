@@ -135,6 +135,7 @@ type SystemStateVars struct {
 	keyString           string
 	lastInputController int
 	menuPlayer          int // 1-based player whose pause menu is open; 0 reads every player
+	menuFocus           int // device that alone drives menus, e.g. while side select edits its setup
 	uiConsumeInputFrame int32
 	uiRepeatToken       string
 	uiRepeatController  int
@@ -1278,7 +1279,9 @@ func (s *System) loadInputConfig(c *Config) {
 	for _, device := range s.inputs.Devices {
 		device.Setup, _ = s.inputCfg.setup(device.Setup)
 	}
-	s.pairDevices()
+	if s.inputs.Participants == nil {
+		s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+	}
 }
 
 // Virtual controller state of a device. A blocked device reads as idle until released.
@@ -1395,7 +1398,6 @@ func (s *System) attachGamepad(joy int) {
 	}
 	device := s.inputs.addDevice(&InputDevice{Joy: joy, Name: input.GetJoystickName(joy), GUID: guid})
 	device.Setup, _ = s.inputCfg.setup(s.cfg.Input.ControllerSetup[device.preferenceKey()])
-	s.pairDevices()
 }
 
 // Marks a gamepad as disconnected. Its participant waits for a reconnect.
@@ -1435,8 +1437,9 @@ func (s *System) pollDevices() {
 			}
 			active = active || device.pressed[vc]
 		}
-		if active && s.inputs.owner(device.ID) >= 0 {
-			s.inputs.MenuDevice = device.ID
+		// In menus the first press of an unused device joins it as the next player.
+		if active && !s.inputs.ClaimLocked && !s.netplay() && s.inputs.owner(device.ID) < 0 && !s.keyboardConflict(device.ID) {
+			_, _ = s.inputs.claim(device.ID, TS_None)
 		}
 	}
 }
@@ -1460,41 +1463,6 @@ func (s *System) deviceActionTime(device *InputDevice, action []string) int32 {
 	return 0
 }
 
-// Player N uses keyboard controller N together with gamepad N. The gamepad leads
-// when connected, so its Controller Setup is the one that counts. Netplay keeps
-// its own assignment.
-func (s *System) pairDevices() {
-	if s.inputs.ClaimLocked {
-		return
-	}
-	var keyboards, gamepads []int
-	for _, device := range s.inputs.Devices {
-		if device.Joy < 0 {
-			keyboards = append(keyboards, device.ID)
-		} else if device.Connected {
-			gamepads = append(gamepads, device.ID)
-		}
-	}
-	s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
-	s.inputs.sharedDevices = make(map[int][]int)
-	for i := range s.inputs.Participants {
-		var ids []int
-		if i < len(gamepads) {
-			ids = append(ids, gamepads[i])
-		}
-		if i < len(keyboards) {
-			ids = append(ids, keyboards[i])
-		}
-		if len(ids) == 0 {
-			continue
-		}
-		s.inputs.nextOrder++
-		s.inputs.Participants[i] = InputParticipant{Device: ids[0], joined: s.inputs.nextOrder}
-		s.inputs.sharedDevices[i] = ids
-	}
-	s.applyParticipantsToSlots()
-}
-
 // Clears command buffers so inputs from before an assignment change don't carry over.
 func (s *System) clearCommandBuffers() {
 	for _, cl := range s.commandLists {
@@ -1515,16 +1483,22 @@ func (s *System) clearCommandBuffers() {
 	s.uiResetTokenGuard()
 }
 
-// Player slot N reads participant N. Claims take the first free participant,
-// so players keep the order they joined in.
+// Routes player slots (P1-P8) to the participants on each side.
 func (s *System) applyParticipantsToSlots() {
-	s.resetRemapInput()
+	for i, p := range s.inputs.participantsBySlot(len(s.inputRemap)) {
+		s.inputRemap[i] = p
+	}
 	s.clearCommandBuffers()
 }
 
-// Back to menu mode: drops disconnected gamepads and pairs the devices again.
+// Back to menu mode: releases all sides, keeps only the menu device and drops disconnected ones.
 func (s *System) resetInputForMenus() {
+	s.inputs.sharedDevices = nil
 	s.inputs.ClaimLocked = false
+	s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+	if device := s.inputs.device(s.inputs.MenuDevice); device != nil && device.Connected {
+		_, _ = s.inputs.claim(device.ID, TS_None)
+	}
 	live := s.inputs.Devices[:0]
 	for _, device := range s.inputs.Devices {
 		if device.Connected {
@@ -1532,7 +1506,119 @@ func (s *System) resetInputForMenus() {
 		}
 	}
 	s.inputs.Devices = live
-	s.pairDevices()
+	s.resetRemapInput()
+	s.clearCommandBuffers()
+}
+
+// Pairs keyboard controller N with gamepad N, so each player gets both. Not saved.
+func (s *System) assignAutomaticInputs(initiator, minimum, maximum int, versus bool) bool {
+	var keyboards, gamepads []int
+	for _, device := range s.inputs.Devices {
+		if !device.Connected {
+			continue
+		}
+		if device.Joy < 0 {
+			keyboards = append(keyboards, device.ID)
+		} else {
+			gamepads = append(gamepads, device.ID)
+		}
+	}
+	var groups [][]int
+	for i := 0; i < Max(len(keyboards), len(gamepads)); i++ {
+		var ids []int
+		if i < len(keyboards) {
+			ids = append(ids, keyboards[i])
+		}
+		if i < len(gamepads) {
+			ids = append(ids, gamepads[i])
+		}
+		groups = append(groups, ids)
+	}
+	// If pairing leaves too few co-op players, use the devices independently.
+	if len(groups) < minimum {
+		groups = nil
+		for _, device := range s.inputs.Devices {
+			if device.Connected {
+				groups = append(groups, []int{device.ID})
+			}
+		}
+	}
+	// The device that opened the mode leads the first human team, and its setup counts.
+	for i, ids := range groups {
+		for j, id := range ids {
+			if id == initiator {
+				ids[0], ids[j] = ids[j], ids[0]
+				copy(groups[1:i+1], groups[:i])
+				groups[0] = ids
+				break
+			}
+		}
+		if groups[0][0] == initiator {
+			break
+		}
+	}
+	s.inputs.sharedDevices = make(map[int][]int)
+	counts := [2]int{}
+	for _, ids := range groups {
+		if counts[0]+counts[1] >= s.cfg.Config.Players {
+			break
+		}
+		side := TS_Left
+		if versus && counts[1] < counts[0] {
+			side = TS_Right
+		}
+		if counts[side-TS_Left] >= maximum {
+			break
+		}
+		// Overlapping keyboard controllers cannot drive different humans.
+		usable := make([]int, 0, len(ids))
+		for _, id := range ids {
+			if !s.keyboardConflict(id) {
+				usable = append(usable, id)
+			}
+		}
+		if len(usable) == 0 {
+			continue
+		}
+		participant, err := s.inputs.claim(usable[0], side)
+		if err != nil {
+			continue
+		}
+		s.inputs.sharedDevices[participant] = usable
+		s.inputs.setReady(usable[0], true)
+		counts[side-TS_Left]++
+	}
+	return counts[0]+counts[1] >= minimum
+}
+
+// The device a shared participant last used in a menu, so the pause menu edits
+// the setup of the keyboard or gamepad actually being used.
+func (s *System) participantMenuDevice(participant int) int {
+	participant = s.localInputParticipant(participant)
+	ids := s.inputs.participantDevices(participant)
+	if len(ids) == 0 {
+		return 0
+	}
+	id := ids[0]
+	if s.inputs.owner(s.inputs.MenuDevice) == participant {
+		id = s.inputs.MenuDevice
+	}
+	s.pollDevices()
+	for _, candidate := range ids {
+		device := s.inputs.device(candidate)
+		if device == nil || !device.Connected {
+			continue
+		}
+		if current := s.inputs.device(id); current == nil || !current.Connected {
+			id = candidate
+		}
+		for _, pressed := range device.pressed {
+			if pressed {
+				return candidate
+			}
+		}
+	}
+	return id
 }
 
 // True if this keyboard controller shares a physical key with a keyboard controller
@@ -1596,16 +1682,6 @@ func (s *System) anyButton() bool {
 	return s.anyHardButton()
 }
 
-// Player slot that just triggered a motif action, or -1.
-func (s *System) actionController(action []string) int {
-	for i := range s.commandLists {
-		if s.actionTime(action, i) == 1 {
-			return i
-		}
-	}
-	return -1
-}
-
 func (s *System) stepCommandLists() {
 	s.pollDevices()
 	for i, cl := range s.commandLists {
@@ -1659,10 +1735,7 @@ func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
 
 // True if a player slot can use the local keyboard. Remote netplay players can't.
 func (s *System) localSlot(controllerIdx int) bool {
-	nc := s.netConnection
-	if nc == nil {
-		nc = s.rollback.netConnection
-	}
+	nc := s.inputConnection()
 	if nc == nil || controllerIdx < 0 || controllerIdx >= len(s.inputRemap) {
 		return true
 	}
@@ -1698,11 +1771,11 @@ func (s *System) actionTime(action []string, controllerIdx int) int32 {
 // True on the frame a motif action is pressed on a player slot (-1: any slot).
 // Directions repeat while held. Each token fires at most once per frame.
 func (s *System) menuAction(action []string, controllerIdx int) bool {
-	check := func(i int) bool {
-		controllerKey := s.uiControllerKey(i)
+	// time reads how long a token is held. controllerKey identifies the reader for the token guard.
+	check := func(controllerKey int, time func(token string) int32) bool {
 		for _, token := range action {
 			token = strings.TrimSpace(token)
-			held := s.actionTime([]string{token}, i)
+			held := time(token)
 			vc := parseVirtualControl(token)
 			button, isButton := actionButton(token)
 			repeat := vc >= VC_DP_U && vc <= VC_DP_R || vc >= VC_LS_YN && vc <= VC_RS_XP || isButton && button < 4
@@ -1721,19 +1794,35 @@ func (s *System) menuAction(action []string, controllerIdx int) bool {
 				continue
 			}
 			s.lastInputController = controllerKey
+			if deviceID := s.participantMenuDevice(controllerKey); !s.netplay() && deviceID != 0 {
+				s.inputs.MenuDevice = deviceID
+			}
 			return true
 		}
 		return false
 	}
+	slot := func(i int) bool {
+		return check(s.uiControllerKey(i), func(token string) int32 {
+			return s.actionTime([]string{token}, i)
+		})
+	}
 	if controllerIdx >= 0 {
-		return check(controllerIdx)
+		return slot(controllerIdx)
+	}
+	// The menuFocus device is read directly, even without a player slot.
+	if device := s.inputs.device(s.menuFocus); device != nil {
+		if check(-2-device.ID, func(token string) int32 { return s.deviceActionTime(device, []string{token}) }) {
+			s.inputs.MenuDevice = device.ID
+			return true
+		}
+		return false
 	}
 	// An open pause menu only reads the player who opened it.
 	if s.menuPlayer > 0 && s.menuPlayer <= len(s.commandLists) {
-		return check(s.menuPlayer - 1)
+		return slot(s.menuPlayer - 1)
 	}
 	for i := range s.commandLists {
-		if check(i) {
+		if slot(i) {
 			return true
 		}
 	}
@@ -1767,6 +1856,28 @@ func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {
 		}
 	}
 	return nil
+}
+
+// Lua menus keep the connection in System; rollback moves it during a match.
+func (s *System) inputConnection() *NetConnection {
+	if s.netConnection != nil {
+		return s.netConnection
+	}
+	return s.rollback.netConnection
+}
+
+// Only our network channel owns a local device, always at participant zero.
+func (s *System) localInputParticipant(channel int) int {
+	if s.replayFile != nil {
+		return -1
+	}
+	if nc := s.inputConnection(); nc != nil {
+		if channel == nc.locIn {
+			return 0
+		}
+		return -1
+	}
+	return channel
 }
 
 func (s *System) netplay() bool {

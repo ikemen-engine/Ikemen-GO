@@ -1304,6 +1304,83 @@ type HiscoreInfoProperties struct {
 	Glyphs []string `ini:"glyphs"`
 }
 
+type SideSelectItemColumn struct {
+	TextMapProperties
+	Bg     AnimationProperties `ini:"bg"`
+	Active struct {
+		TextMapProperties
+		Bg AnimationProperties `ini:"bg"`
+	} `ini:"active"`
+	Done struct {
+		TextMapProperties
+		Bg     AnimationProperties `ini:"bg"`
+		Active struct {
+			TextMapProperties
+			Bg AnimationProperties `ini:"bg"`
+		} `ini:"active"`
+	} `ini:"done"`
+}
+
+type SideSelectInfoProperties struct {
+	Enabled bool              `ini:"enabled"`
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Pos     [2]float32        `ini:"pos"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		AnimationTextProperties
+		Unassigned AnimationTextProperties `ini:"unassigned"`
+		P1         AnimationTextProperties `ini:"p1"`
+		P2         AnimationTextProperties `ini:"p2"`
+	} `ini:"title"`
+	Item struct {
+		Offset     [2]float32           `ini:"offset"`
+		Spacing    [2]float32           `ini:"spacing"`
+		Unassigned SideSelectItemColumn `ini:"unassigned"`
+		P1         SideSelectItemColumn `ini:"p1"`
+		P2         SideSelectItemColumn `ini:"p2"`
+	} `ini:"item"`
+	Side struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+	} `ini:"side"`
+	Setup struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+		Edit struct {
+			Action []string `ini:"action"`
+		} `ini:"edit"`
+	} `ini:"setup"`
+	Move struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Exit struct {
+		Action []string `ini:"action"`
+	} `ini:"exit"`
+	Invalid struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"invalid"`
+	Window struct {
+		VisibleItems int32 `ini:"visibleitems"`
+	} `ini:"window"`
+}
+
 type WarningInfoProperties struct {
 	Title TextProperties `ini:"title"`
 	Text  struct {
@@ -1366,6 +1443,8 @@ type Motif struct {
 	DialogueInfo    DialogueInfoProperties              `ini:"dialogue_info"`
 	HiscoreInfo     HiscoreInfoProperties               `ini:"hiscore_info"`
 	HiscoreBgDef    BgDefProperties                     `ini:"hiscorebgdef"`
+	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
+	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
 	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
@@ -1750,7 +1829,7 @@ func loadMotif(def string) (*Motif, error) {
 				goto nextSection
 			}
 			for _, p := range []string{
-				"titlebg", "selectbg", "versusbg", "continuebg",
+				"titlebg", "selectbg", "sideselectbg", "versusbg", "continuebg",
 				"victorybg", "winbg",
 				"optionbg", "replaybg", "attractbg",
 				"challengerbg", "hiscorebg",
@@ -2332,6 +2411,10 @@ func (m *Motif) overrideParams() {
 		// [Pause Menu]
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.active.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected.active."},
+		// [Side Select Info]
+		{SrcSec: "Side Select Info", SrcPrefix: "item.unassigned.", DstSec: "Side Select Info", DstPrefix: "item.unassigned.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p1.", DstSec: "Side Select Info", DstPrefix: "item.p1.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p2.", DstSec: "Side Select Info", DstPrefix: "item.p2.active."},
 	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
 	for _, sec := range m.customPauseMenuSections() {
@@ -2599,6 +2682,11 @@ func (m *Motif) loadFiles() {
 		m.loadBgDefProperties(&m.HiscoreBgDef, "hiscorebg", m.Files.Spr)
 	} else {
 		m.HiscoreBgDef = m.TitleBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SideSelectBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SideSelectBgDef, "sideselectbg", m.Files.Spr)
+	} else {
+		m.SideSelectBgDef = m.OptionBgDef
 	}
 
 	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, "", func(filename string) error {
@@ -3603,11 +3691,25 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 
-	controllerNo := sys.actionController(m.ChallengerInfo.Action)
-	if controllerNo == -1 || sys.uiControllerKey(controllerNo) == sys.uiControllerKey(0) {
+	if sys.netplay() {
 		return
 	}
-	ch.controllerNo = controllerNo
+	deviceID := 0
+	for _, device := range sys.inputs.Devices {
+		if !device.Connected || sys.inputs.owner(device.ID) >= 0 || sys.keyboardConflict(device.ID) {
+			continue
+		}
+		// Read each unassigned device directly: a menu press lasts one frame and can be missed
+		// by the match UI, especially in slow motion.
+		if sys.deviceActionTime(device, m.ChallengerInfo.Action) > 0 {
+			deviceID = device.ID
+			break
+		}
+	}
+	if deviceID == 0 {
+		return
+	}
+	ch.controllerNo = deviceID - 1
 
 	if err := sys.luaLState.DoString("hook.run('game.challenger_init')"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger_init", err.Error())
@@ -3624,7 +3726,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 	m.ChallengerInfo.Bg.AnimData.Reset()
 
 	m.ChallengerInfo.FadeIn.FadeData.init(m.fadeIn, true)
-	ch.counter = 0
+	ch.counter, ch.endTimer = 0, -1
 	ch.active = true
 	ch.initialized = true
 }
@@ -3636,7 +3738,7 @@ func (ch *MotifChallenger) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger", err.Error())
 		}
 	}
-	if ch.endTimer == -1 && ch.counter == m.ChallengerInfo.Time {
+	if ch.endTimer == -1 && ch.counter >= m.ChallengerInfo.Time {
 		startFadeOut(m.ChallengerInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 		ch.endTimer = ch.counter + m.fadeOut.timeRemaining
 	}

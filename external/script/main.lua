@@ -1102,6 +1102,11 @@ function main.f_commandLine()
 	setTeamMode(2, t_teamMode[2], t_numChars[2])
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(t, 'debug/t_quickvs.txt') end
 	local t_params = {}
+	-- Quick versus has no side select, so assign inputs as if it were disabled:
+	-- one human per side, before remapInput below gives each character its side's controls.
+	if flags['-ip'] == nil then
+		inputAutoAssign(inputBegin(), 1, 1, true)
+	end
 	--iterate over the table in -p order ascending
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
 		local charKey = v.character:lower()
@@ -2009,6 +2014,9 @@ function main.f_default()
 	main.lockedSelection = {}
 	main.lockedTeamMode = false
 	setRunSide(1)
+	if start.challenger == 0 then
+		inputResetForMenus()
+	end
 	main.aiRamp = false --if AI ramping should be active
 	main.charparam = { --which select.def charparam should be used
 		ai = false,
@@ -2155,8 +2163,6 @@ main.t_itemname = {
 			main.teamarcade = true
 		end
 		main.f_setCredits()
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('arcade')
 		hook.run("main.t_itemname", t, item)
 		if start.challenger == 0 then
@@ -2177,8 +2183,6 @@ main.t_itemname = {
 		main.teamMenu[1].single = true
 		main.teamMenu[2].single = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.bonus)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('bonus')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2192,6 +2196,7 @@ main.t_itemname = {
 	['freebattle'] = function(t, item)
 		--main.fightscreen.p1score = true
 		--main.fightscreen.p2ailevel = true
+		main.coop = true -- Optional co-op: Single remains available when only one player joins.
 		main.motif.vsscreen = true
 		main.motif.victoryscreen = true
 		main.orderSelect[1] = true
@@ -2207,8 +2212,6 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.freebattle)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('freebattle')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2414,8 +2417,6 @@ main.t_itemname = {
 				break
 			end
 		end
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode(t[item].itemname)
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2459,8 +2460,6 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.survival)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('survival')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2582,8 +2581,6 @@ main.t_itemname = {
 		main.teamMenu[2].turns = true
 		main.f_setCredits()
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.timeattack)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('timeattack')
 		hook.run("main.t_itemname", t, item)
 		return start.f_selectMode
@@ -2610,8 +2607,6 @@ main.t_itemname = {
 		main.matchWins.single = {0, 0}
 		main.matchWins.tag = {0, 0}
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.training)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('training')
 		setHomeTeam(1)
 		hook.run("main.t_itemname", t, item)
@@ -2695,8 +2690,6 @@ main.t_itemname = {
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.watch)
-		remapInput(1, getLastInputController())
-		remapInput(getLastInputController(), 1)
 		setGameMode('watch')
 		setHomeTeam(1)
 		hook.run("main.t_itemname", t, item)

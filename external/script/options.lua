@@ -2482,6 +2482,20 @@ function options.f_inputCfg(itemname, template, background, pause)
 	runInputConfig(context)
 end
 
+-- Side select: edit the Controller Setup of the device that pressed the button.
+-- It has no player slot yet, so the editor reads that device directly.
+function options.f_setupEditor(device)
+	local context = {background = motif.optionbgdef, parents = {}}
+	-- The press that opened the editor must not act in it too.
+	context.skipInput = true
+	bgReset(motif.optionbgdef.BGDef)
+	local previous = inputSetMenuFocus(device.id)
+	if options.f_editSetup(device, context) then
+		runInputConfig(context)
+	end
+	inputSetMenuFocus(previous)
+end
+
 -- Pause menu: the same Controller Setup editor, in the pause background.
 function options.f_pauseSetup(background)
 	options.f_inputCfg('controllersetup', nil, background, true)

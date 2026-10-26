@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/veandco/go-sdl2/sdl"
@@ -718,6 +719,58 @@ func (a *InputAssignment) claim(deviceID int, side TeamSide) (int, error) {
 	a.nextOrder++
 	a.Participants[i] = InputParticipant{Device: deviceID, Side: side, joined: a.nextOrder}
 	return i, nil
+}
+
+// Keeps confirmed players in confirmation order, followed by players still choosing.
+func (a *InputAssignment) setReady(device int, ready bool) {
+	if i := a.owner(device); i >= 0 {
+		p := &a.Participants[i]
+		if ready && !p.Ready {
+			a.nextOrder++
+			p.confirmed = a.nextOrder
+		} else if !ready {
+			p.confirmed = 0
+		}
+		p.Ready = ready
+	}
+}
+
+// Returns ready participants in confirmation order, then other participants in join order.
+func (a *InputAssignment) participantsOnSide(side TeamSide) []int {
+	var out []int
+	for i, p := range a.Participants {
+		if p.Device != 0 && p.Side == side {
+			out = append(out, i)
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		left, right := a.Participants[out[i]], a.Participants[out[j]]
+		if left.Ready != right.Ready {
+			return left.Ready
+		}
+		if left.Ready {
+			return left.confirmed < right.confirmed
+		}
+		return left.joined < right.joined
+	})
+	return out
+}
+
+// Maps player slots to participants. Odd slots (P1, P3...) are team 1, even slots are team 2.
+func (a *InputAssignment) participantsBySlot(slots int) []int {
+	out := make([]int, slots)
+	for i := range out {
+		out[i] = -1
+	}
+	for side := TS_Left; side <= TS_Right; side++ {
+		for member, participant := range a.participantsOnSide(side) {
+			slot := int(side-TS_Left) + member*2
+			if slot < slots {
+				out[slot] = participant
+			}
+		}
+	}
+	return out
 }
 
 type CommandKeyRemap struct {
