@@ -220,25 +220,6 @@ const (
 	BI_R
 )
 
-// Save local inputs as input bits to send or record
-func (ibit *InputBits) KeysToBits(buttons [16]bool) {
-	*ibit = 0
-	for i, pressed := range buttons {
-		if pressed {
-			*ibit |= InputBits(1) << uint(i)
-		}
-	}
-}
-
-// Convert received input bits back into keys
-func (ibit InputBits) BitsToKeys() [16]bool {
-	var buttons [16]bool
-	for i := range buttons {
-		buttons[i] = ibit&(InputBits(1)<<uint(i)) != 0
-	}
-	return buttons
-}
-
 // Input goes physical keys or SDL controls -> Button Mapping -> virtual controller -> Controller Setup -> engine buttons.
 
 // One control of the standard XInput-style virtual controller.
@@ -390,6 +371,16 @@ func (f VirtualFrame) held(vc VirtualControl) bool {
 	return float32(f.level(vc)) > virtualThreshold(vc)
 }
 
+// True if any face, shoulder, trigger, Start, Back or stick button is held.
+func (f VirtualFrame) anyButton() bool {
+	for _, vc := range []VirtualControl{VC_A, VC_B, VC_X, VC_Y, VC_START, VC_BACK, VC_LB, VC_RB, VC_LT, VC_RT, VC_LS, VC_RS} {
+		if f.held(vc) {
+			return true
+		}
+	}
+	return false
+}
+
 // Combines two devices driving one player. Buttons add up and the stronger axis wins.
 func (f VirtualFrame) merge(o VirtualFrame) VirtualFrame {
 	f.Buttons |= o.Buttons
@@ -522,6 +513,36 @@ func (cs *ControllerSetup) project(f VirtualFrame) [16]bool {
 		}
 	}
 	return buttons
+}
+
+// Virtual control names in ButtonIndex order, as netplay and replays store a setup.
+func setupNames(cs *ControllerSetup) []string {
+	names := make([]string, len(cs))
+	for i, controls := range cs {
+		var tokens []string
+		for _, vc := range controls {
+			tokens = append(tokens, vc.String())
+		}
+		names[i] = strings.Join(tokens, ",")
+		if names[i] == "" {
+			names[i] = "-"
+		}
+	}
+	return names
+}
+
+func setupFromNames(names []string) ControllerSetup {
+	var cs ControllerSetup
+	for i := range cs {
+		if i < len(names) {
+			for _, token := range strings.Split(names[i], ",") {
+				if vc := parseVirtualControl(token); vc != VC_None {
+					cs[i] = append(cs[i], vc)
+				}
+			}
+		}
+	}
+	return cs
 }
 
 // Runtime copy of the input sections of config.ini.
@@ -723,29 +744,6 @@ func (ir *InputReader) Reset() {
 	*ir = InputReader{}
 }
 
-// Engine buttons of a local participant: its devices' virtual state run through its Controller Setup.
-func (ir *InputReader) LocalInput(in int) [16]bool {
-	buttons := sys.participantSetup(in).project(sys.participantFrame(in))
-
-	// Apply button assist
-	// Checked locally so that network inputs are processed before being sent
-	if sys.cfg.Input.ButtonAssist {
-		a, b, c := buttons[BI_A], buttons[BI_B], buttons[BI_C]
-		x, y, z := buttons[BI_X], buttons[BI_Y], buttons[BI_Z]
-		s, d, w := buttons[BI_S], buttons[BI_D], buttons[BI_W]
-		result := ir.ButtonAssistCheck([9]bool{a, b, c, x, y, z, s, d, w})
-		for i, button := range []ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W} {
-			buttons[button] = result[i]
-		}
-	}
-	return buttons
-}
-
-// Analog axes of a local participant. Keyboards produce full stick and trigger values.
-func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
-	return sys.participantFrame(in).Axes
-}
-
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
 // Left and Right are solved in CommandList Input based on B and F outcome
 func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) {
@@ -882,6 +880,20 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 	F = F && ir.SocdAllow[3]
 
 	return U, D, B, F
+}
+
+// Applies button assist to the buttons it covers.
+func (ir *InputReader) ButtonAssist(buttons [16]bool) [16]bool {
+	covered := [9]ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W}
+	var current [9]bool
+	for i, button := range covered {
+		current[i] = buttons[button]
+	}
+	result := ir.ButtonAssistCheck(current)
+	for i, button := range covered {
+		buttons[button] = result[i]
+	}
+	return buttons
 }
 
 // Add extra frame of leniency when checking button presses
@@ -3080,29 +3092,30 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 				char.analogAxes = [6]float32{0, 0, 0, 0, 0, 0}
 			}
 		}
-	} else if sys.replayFile != nil {
-		buttons = sys.replayFile.readReplayInput(controller)
-		rawAxes := sys.replayFile.readReplayInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
-	} else if sys.netConnection != nil {
-		buttons = sys.netConnection.readNetInput(controller)
-		rawAxes := sys.netConnection.readNetInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
-	} else if sys.rollback.session != nil {
-		buttons = sys.rollback.readRollbackInput(controller)
-		rawAxes := sys.rollback.readRollbackInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
 	} else {
-		// If not AI, replay, or network, then it's a local human player
-		if controller >= 0 {
-			if controller < len(sys.inputRemap) {
-				in := sys.inputRemap[controller] // remapped input index/config
-				buttons = cl.Buffer.InputReader.LocalInput(in)
-				// Keep analog axes in sync with the same remap used for digital inputs
-				rawAxes := cl.Buffer.InputReader.LocalAnalogInput(in)
-				axes = NormalizeAxes(&rawAxes)
-			}
+		// Human players send virtual controller frames. Every peer and replays turn
+		// them into game buttons the same way, with the player's Controller Setup.
+		var frame VirtualFrame
+		var setup *ControllerSetup
+		channel := -1
+		if controller < len(sys.inputRemap) {
+			channel = sys.inputRemap[controller]
 		}
+		if sys.replayFile != nil {
+			frame, setup = sys.replayFile.readReplayInput(controller), sys.channelSetup(channel)
+		} else if sys.netConnection != nil {
+			frame, setup = sys.netConnection.readNetInput(controller), sys.channelSetup(channel)
+		} else if sys.rollback.session != nil {
+			frame, setup = sys.rollback.readRollbackInput(controller), sys.channelSetup(channel)
+		} else {
+			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
+		}
+		buttons = setup.project(frame)
+		// Button assist keeps its state in the buffer, so rollback restores it.
+		if char != nil && sys.cfg.Input.ButtonAssist {
+			buttons = cl.Buffer.InputReader.ButtonAssist(buttons)
+		}
+		axes = NormalizeAxes(&frame.Axes)
 	}
 
 	// Convert bool slice back to named inputs

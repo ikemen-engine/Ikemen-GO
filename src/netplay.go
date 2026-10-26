@@ -74,6 +74,7 @@ type SyncHandshake struct {
 	Host               []SyncSetting `json:"host,omitempty"`
 	RollbackPort       int           `json:"rollback_port,omitempty"`
 	ContentFingerprint string        `json:"content_fingerprint,omitempty"`
+	Setup              []string      `json:"setup,omitempty"` // Controller Setup of the sender's player
 }
 
 type ReplayHeader struct {
@@ -82,6 +83,13 @@ type ReplayHeader struct {
 	Strict             []SyncSetting `json:"strict,omitempty"`
 	Host               []SyncSetting `json:"host,omitempty"`
 	ContentFingerprint string        `json:"content_fingerprint,omitempty"`
+	Setups             []ReplaySetup `json:"setups,omitempty"`
+}
+
+// Controller Setup that turns one replay channel into game buttons.
+type ReplaySetup struct {
+	Channel int      `json:"channel"`
+	Setup   []string `json:"setup"`
 }
 
 type SessionConfigOverride struct {
@@ -92,61 +100,26 @@ type SessionConfigOverride struct {
 	AppliedHost        []SyncSetting
 	SyncVersion        uint16
 	ContentFingerprint string
+	HostSetup          []string // the setups stay fixed for the whole session
+	GuestSetup         []string
 }
 
 // -----------------------------------------------------------------------------
 // Replay payload encoding
 // -----------------------------------------------------------------------------
 
-func writeReplayInput(w io.Writer, ibit InputBits, axes [6]int8) error {
-	var buf [REPLAY_INPUT_BYTES]byte
-	binary.LittleEndian.PutUint16(buf[:2], uint16(ibit))
-	for i := 0; i < len(axes); i++ {
-		buf[2+i] = byte(axes[i])
-	}
-	_, err := w.Write(buf[:])
+func writeReplayInput(w io.Writer, f VirtualFrame) error {
+	_, err := w.Write(f.encode())
 	return err
 }
 
-func readReplayInput(r io.Reader, ibit *InputBits, axes *[6]int8) error {
+func readReplayInput(r io.Reader, f *VirtualFrame) error {
 	var buf [REPLAY_INPUT_BYTES]byte
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return err
 	}
-	*ibit = InputBits(binary.LittleEndian.Uint16(buf[:2]))
-	for i := 0; i < len(axes); i++ {
-		axes[i] = int8(buf[2+i])
-	}
+	*f = decodeVirtualFrame(buf[:])
 	return nil
-}
-
-// Delay netplay keeps bit 15 free for its end marker, so the L and R
-// buttons travel in the spare top bits of the LT and RT bytes.
-func packDelayInput(keys InputBits, axes [6]int8) (int16, [6]int8, error) {
-	if axes[4] < 0 || axes[5] < 0 {
-		return 0, axes, fmt.Errorf("invalid negative trigger (LT=%d, RT=%d)", axes[4], axes[5])
-	}
-	digital := int16(uint16(keys) & 0x3fff)
-	if keys&IB_L != 0 {
-		axes[4] = int8(uint8(axes[4]) | 0x80)
-	}
-	if keys&IB_R != 0 {
-		axes[5] = int8(uint8(axes[5]) | 0x80)
-	}
-	return digital, axes, nil
-}
-
-func unpackDelayInput(digital int16, axes [6]int8) (InputBits, [6]int8) {
-	keys := InputBits(uint16(digital))
-	if uint8(axes[4])&0x80 != 0 {
-		keys |= IB_L
-	}
-	if uint8(axes[5])&0x80 != 0 {
-		keys |= IB_R
-	}
-	axes[4] = int8(uint8(axes[4]) & 0x7f)
-	axes[5] = int8(uint8(axes[5]) & 0x7f)
-	return keys, axes
 }
 
 // -----------------------------------------------------------------------------
@@ -155,45 +128,32 @@ func unpackDelayInput(digital int16, axes [6]int8) (InputBits, [6]int8) {
 
 // NetBuffer holds the inputs that are sent between players
 type NetBuffer struct {
-	buf              [NETBUF_NUM_FRAMES]InputBits
-	axisBuf          [NETBUF_NUM_FRAMES][6]int8
+	buf              [NETBUF_NUM_FRAMES]VirtualFrame
 	curT, inpT, senT int32
-	InputReader      *InputReader
 }
 
 func NewNetBuffer() NetBuffer {
-	return NetBuffer{
-		InputReader: NewInputReader(),
-	}
+	return NetBuffer{}
 }
 
 func (nb *NetBuffer) reset(time int32) {
 	nb.curT, nb.inpT, nb.senT = time, time, time
-	nb.InputReader.Reset()
 }
 
-// Convert local player's key inputs into input bits for sending
+// Store the local player's virtual controller state for sending
 func (nb *NetBuffer) writeNetBuffer(in int) {
 	if nb.inpT-nb.curT < NETBUF_NUM_FRAMES {
-		nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)].KeysToBits(nb.InputReader.LocalInput(in))
-		nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = nb.InputReader.LocalAnalogInput(in)
+		nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = sys.participantFrame(in)
 		nb.inpT++
 	}
 }
 
-// Read input bits from the net buffer
-func (nb *NetBuffer) readNetBuffer() [16]bool {
+// Read the virtual controller state of the current frame
+func (nb *NetBuffer) readNetBuffer() VirtualFrame {
 	if nb.curT < nb.inpT {
-		return nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)].BitsToKeys()
+		return nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)]
 	}
-	return [16]bool{}
-}
-
-func (nb *NetBuffer) readNetBufferAnalog() [6]int8 {
-	if nb.curT < nb.inpT {
-		return nb.axisBuf[nb.curT&(NETBUF_NUM_FRAMES-1)]
-	}
-	return [6]int8{}
+	return VirtualFrame{}
 }
 
 // -----------------------------------------------------------------------------
@@ -604,23 +564,16 @@ func (nc *NetConnection) readJSON(v interface{}) error {
 }
 
 // Gameplay-facing netplay API
-func (nc *NetConnection) readNetInput(i int) [16]bool {
+func (nc *NetConnection) readNetInput(i int) VirtualFrame {
 	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(nc.buf) {
 		return nc.buf[sys.inputRemap[i]].readNetBuffer()
 	}
-	return [16]bool{}
-}
-
-func (nc *NetConnection) readNetInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(nc.buf) {
-		return nc.buf[sys.inputRemap[i]].readNetBufferAnalog()
-	}
-	return [6]int8{}
+	return VirtualFrame{}
 }
 
 func (nc *NetConnection) AnyButton() bool {
 	for _, nb := range nc.buf {
-		if nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)]&IB_anybutton != 0 {
+		if nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)].anyButton() {
 			return true
 		}
 	}
@@ -656,6 +609,10 @@ func (nc *NetConnection) Synchronize() (err error) {
 	header, err := sys.synchronizeNetplayConfig(nc)
 	if err != nil {
 		return err
+	}
+	sys.useSessionSetups(nc)
+	if header != nil {
+		header.Setups = sys.replaySetups()
 	}
 	if nc.recording != nil && !nc.headerWritten && header != nil {
 		if err := writeReplayHeader(nc.recording, header); err != nil {
@@ -734,17 +691,13 @@ func (nc *NetConnection) Synchronize() (err error) {
 		for nc.st == NS_Playing {
 			// Check if there are unsent frames
 			if nb.senT < nb.inpT {
-				idx := nb.senT & (NETBUF_NUM_FRAMES - 1)
-				digital, axes, err := packDelayInput(nb.buf[idx], nb.axisBuf[idx])
-				if err != nil {
+				// Bits 14 and 15 are never set, so a frame can't look like the end marker.
+				f := nb.buf[nb.senT&(NETBUF_NUM_FRAMES-1)]
+				if err := nc.writeI16(int16(f.Buttons)); err != nil {
 					nc.st = NS_Error
 					return
 				}
-				if err := nc.writeI16(digital); err != nil {
-					nc.st = NS_Error
-					return
-				}
-				for _, axis := range axes {
+				for _, axis := range f.Axes {
 					if err := nc.writeI8(axis); err != nil {
 						nc.st = NS_Error
 						return
@@ -784,17 +737,16 @@ func (nc *NetConnection) Synchronize() (err error) {
 						nc.st = NS_Error
 						return
 					}
-					var axes [6]int8
-					for j := range axes {
+					b := []byte{byte(tmp), byte(uint16(tmp) >> 8), 0, 0, 0, 0, 0, 0}
+					for j := 2; j < len(b); j++ {
 						axis, err := nc.readI8()
 						if err != nil {
 							nc.st = NS_Error
 							return
 						}
-						axes[j] = axis
+						b[j] = byte(axis)
 					}
-					idx := nb.inpT & (NETBUF_NUM_FRAMES - 1)
-					nb.buf[idx], nb.axisBuf[idx] = unpackDelayInput(tmp, axes)
+					nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = decodeVirtualFrame(b)
 					nb.inpT++
 					nb.senT = nb.inpT
 				}
@@ -1047,7 +999,7 @@ func (nc *NetConnection) update(recordReplay bool) bool {
 				if recordReplay && nc.recording != nil {
 					for i := range nc.buf {
 						ringIdx := nc.time & (NETBUF_NUM_FRAMES - 1)
-						if err := writeReplayInput(nc.recording, nc.buf[i].buf[ringIdx], nc.buf[i].axisBuf[ringIdx]); err != nil {
+						if err := writeReplayInput(nc.recording, nc.buf[i].buf[ringIdx]); err != nil {
 							log.Printf("Error while writing replay input for controller %d: %v", i, err)
 							nc.recording = nil
 							break
@@ -1156,8 +1108,8 @@ func writeReplaySync(w io.Writer, seed, pmTime int32) error {
 
 type ReplayFile struct {
 	file               *os.File
-	ibit               [REPLAY_NUM_INPUTS]InputBits
-	iaxes              [REPLAY_NUM_INPUTS][6]int8
+	frames             [REPLAY_NUM_INPUTS]VirtualFrame
+	setups             map[int]ControllerSetup
 	preMatchTime       int32
 	strictSettings     []SyncSetting
 	hostSettings       []SyncSetting
@@ -1186,6 +1138,10 @@ func OpenReplayFile(filename string) *ReplayFile {
 	out.strictSettings = cloneSyncSettings(header.Strict)
 	out.hostSettings = cloneSyncSettings(header.Host)
 	out.contentFingerprint = header.ContentFingerprint
+	out.setups = make(map[int]ControllerSetup)
+	for _, rs := range header.Setups {
+		out.setups[rs.Channel] = setupFromNames(rs.Setup)
+	}
 
 	log.Printf("Replay file opened: %s", filename)
 	return out
@@ -1198,29 +1154,17 @@ func (rf *ReplayFile) Close() {
 	}
 }
 
-// Read input buttons from replay input
-func (rf *ReplayFile) readReplayInput(i int) [16]bool {
-	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.ibit) {
-		return rf.ibit[sys.inputRemap[i]].BitsToKeys()
+// Read the virtual controller state of a player slot
+func (rf *ReplayFile) readReplayInput(i int) VirtualFrame {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.frames) {
+		return rf.frames[sys.inputRemap[i]]
 	}
-	return [16]bool{}
-}
-
-func (rf *ReplayFile) readReplayInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.ibit) {
-		remap := sys.inputRemap[i] // we'll be using this a lot
-
-		// New replay file, read in the axes too
-		if remap >= 0 && remap < len(rf.iaxes) {
-			return rf.iaxes[remap]
-		}
-	}
-	return [6]int8{}
+	return VirtualFrame{}
 }
 
 func (rf *ReplayFile) AnyButton() bool {
-	for _, b := range rf.ibit {
-		if b&IB_anybutton != 0 {
+	for _, f := range rf.frames {
+		if f.anyButton() {
 			return true
 		}
 	}
@@ -1312,16 +1256,13 @@ func (rf *ReplayFile) Update() bool {
 		sys.esc = true
 	} else {
 		if sys.oldNextAddTime > 0 {
+			rf.frames = [REPLAY_NUM_INPUTS]VirtualFrame{}
 			if rf.atReplaySyncMarker() {
-				rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
-				rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
 				return !sys.gameEnd
 			}
-			rf.ibit = [REPLAY_NUM_INPUTS]InputBits{}
-			rf.iaxes = [REPLAY_NUM_INPUTS][6]int8{}
 
-			for i := 0; i < len(rf.ibit); i++ {
-				if err := readReplayInput(rf.file, &rf.ibit[i], &rf.iaxes[i]); err != nil {
+			for i := 0; i < len(rf.frames); i++ {
+				if err := readReplayInput(rf.file, &rf.frames[i]); err != nil {
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						log.Printf("Closing replay file")
 					} else {
@@ -1718,6 +1659,7 @@ func (s *System) endSyncSessionOverride() error {
 	}
 	logSyncVerification(strings.Title(source)+" host restore verification", expected, restoredHost)
 	s.netplayOverride = SessionConfigOverride{}
+	s.sessionSetups = nil
 	return nil
 }
 
@@ -1732,6 +1674,29 @@ func (s *System) currentReplayHeader() *ReplayHeader {
 		Host:               cloneSyncSettings(s.netplayOverride.AppliedHost),
 		ContentFingerprint: s.netplayOverride.ContentFingerprint,
 	}
+}
+
+// Maps the network channels to the setups both peers sent. Channels can change between matches.
+func (s *System) useSessionSetups(nc *NetConnection) {
+	host, guest := nc.locIn, nc.remIn
+	if !nc.host {
+		host, guest = guest, host
+	}
+	s.sessionSetups = map[int]ControllerSetup{
+		host:  setupFromNames(s.netplayOverride.HostSetup),
+		guest: setupFromNames(s.netplayOverride.GuestSetup),
+	}
+}
+
+// Setups stored in the replay header, so playback reads the inputs the same way.
+func (s *System) replaySetups() []ReplaySetup {
+	var out []ReplaySetup
+	for channel, setup := range s.sessionSetups {
+		setup := setup
+		out = append(out, ReplaySetup{Channel: channel, Setup: setupNames(&setup)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Channel < out[j].Channel })
+	return out
 }
 
 func (s *System) popSessionWarning() string {
@@ -1774,6 +1739,8 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 	}
 	localFingerprint := s.currentContentFingerprint()
 	localRollbackPort := s.cfg.Netplay.Rollback.Port
+	// Peers send the content of their setup, not its name: the same name may bind other buttons.
+	localSetup := setupNames(s.participantSetup(0))
 
 	if nc.host {
 		hostPayload := SyncHandshake{
@@ -1782,6 +1749,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 			Host:               localHost,
 			RollbackPort:       localRollbackPort,
 			ContentFingerprint: localFingerprint,
+			Setup:              localSetup,
 		}
 		log.Printf("Netplay sync config host->peer: sending strict=%d host=%d fingerprint=%q",
 			len(localStrict), len(localHost), localFingerprint)
@@ -1818,6 +1786,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 		if err := s.beginSessionOverride("netplay", localStrict, localHost, localFingerprint); err != nil {
 			return nil, err
 		}
+		s.netplayOverride.HostSetup, s.netplayOverride.GuestSetup = localSetup, guestPayload.Setup
 		if s.cfg.Netplay.RollbackNetcode {
 			nc.rollbackLocalPort = localRollbackPort
 			nc.rollbackRemotePort = guestPayload.RollbackPort
@@ -1838,6 +1807,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 		Host:               localHost,
 		RollbackPort:       localRollbackPort,
 		ContentFingerprint: localFingerprint,
+		Setup:              localSetup,
 	}
 	sendGuestPayload := func() error {
 		log.Printf("Netplay sync config peer->host ack: sending strict=%d host=%d fingerprint=%q",
@@ -1897,6 +1867,7 @@ func (s *System) synchronizeNetplayConfig(nc *NetConnection) (*ReplayHeader, err
 	if err := s.beginSessionOverride("netplay", hostPayload.Strict, hostPayload.Host, hostPayload.ContentFingerprint); err != nil {
 		return nil, err
 	}
+	s.netplayOverride.HostSetup, s.netplayOverride.GuestSetup = hostPayload.Setup, localSetup
 
 	if err := sendGuestPayload(); err != nil {
 		return nil, err
@@ -1913,6 +1884,7 @@ func (s *System) beginReplaySession(rf *ReplayFile) error {
 	if rf == nil {
 		return nil
 	}
+	s.sessionSetups = rf.setups
 	log.Printf("Replay sync header loaded: strict=%d host=%d fingerprint=%q",
 		len(rf.strictSettings), len(rf.hostSettings), rf.contentFingerprint)
 	if len(rf.hostSettings) == 0 && len(rf.strictSettings) == 0 {
