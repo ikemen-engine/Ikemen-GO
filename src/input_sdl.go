@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
-	"encoding/hex"
 	"math"
 	"os"
 	"runtime"
@@ -38,9 +36,7 @@ const (
 
 var KeyToStringLUT map[sdl.Keycode]string
 var StringToKeyLUT map[string]sdl.Keycode
-var ButtonToStringLUT map[int]string
 var buttonOrder []sdl.GameControllerButton
-var StringToButtonLUT map[string]int
 
 var input Input
 
@@ -183,44 +179,11 @@ func initLUTs() {
 		sdl.CONTROLLER_BUTTON_DPAD_RIGHT,
 	}
 
-	ButtonToStringLUT = map[int]string{
-		int(sdl.CONTROLLER_BUTTON_A):             "A",
-		int(sdl.CONTROLLER_BUTTON_B):             "B",
-		int(sdl.CONTROLLER_BUTTON_X):             "X",
-		int(sdl.CONTROLLER_BUTTON_Y):             "Y",
-		int(sdl.CONTROLLER_BUTTON_BACK):          "BACK",
-		int(sdl.CONTROLLER_BUTTON_GUIDE):         "HOME",
-		int(sdl.CONTROLLER_BUTTON_START):         "START",
-		int(sdl.CONTROLLER_BUTTON_LEFTSTICK):     "LS",
-		int(sdl.CONTROLLER_BUTTON_RIGHTSTICK):    "RS",
-		int(sdl.CONTROLLER_BUTTON_LEFTSHOULDER):  "LB",
-		int(sdl.CONTROLLER_BUTTON_RIGHTSHOULDER): "RB",
-		int(sdl.CONTROLLER_BUTTON_DPAD_UP):       "DP_U",
-		int(sdl.CONTROLLER_BUTTON_DPAD_DOWN):     "DP_D",
-		int(sdl.CONTROLLER_BUTTON_DPAD_LEFT):     "DP_L",
-		int(sdl.CONTROLLER_BUTTON_DPAD_RIGHT):    "DP_R",
-		15:                                       "LS_Y-",
-		16:                                       "LS_X-",
-		17:                                       "LS_X+",
-		18:                                       "LS_Y+",
-		19:                                       "LT",
-		20:                                       "RT",
-		21:                                       "RS_Y-",
-		22:                                       "RS_X-",
-		23:                                       "RS_X+",
-		24:                                       "RS_Y+",
-		25:                                       "Not used",
-	}
-
 	// Explicitly allocate the maps here
 	StringToKeyLUT = make(map[string]sdl.Keycode)
-	StringToButtonLUT = make(map[string]int)
 
 	for k, v := range KeyToStringLUT {
 		StringToKeyLUT[v] = k
-	}
-	for k, v := range ButtonToStringLUT {
-		StringToButtonLUT[v] = k
 	}
 
 	input = Input{}
@@ -275,7 +238,7 @@ func (input *Input) GetMaxJoystickCount() int {
 }
 
 func (input *Input) IsJoystickPresent(joy int) bool {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return false
 	}
 	if input.controllers[joy] == nil {
@@ -285,14 +248,14 @@ func (input *Input) IsJoystickPresent(joy int) bool {
 }
 
 func (input *Input) GetJoystickName(joy int) string {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return ""
 	}
 	return input.controllers[joy].Name()
 }
 
 func (input *Input) GetJoystickAxes(joy int) [6]float32 {
-	if joy < 0 || joy >= len(input.controllerstate) {
+	if joy < 0 || joy >= len(input.controllerstate) || input.controllerstate[joy] == nil {
 		return [6]float32{0, 0, 0, 0, 0, 0}
 	}
 	axes := NormalizeAxes(&input.controllerstate[joy].Axes)
@@ -300,7 +263,7 @@ func (input *Input) GetJoystickAxes(joy int) [6]float32 {
 }
 
 func (input *Input) GetJoystickButtons(joy int) []byte {
-	if joy < 0 || joy >= len(input.controllerstate) {
+	if joy < 0 || joy >= len(input.controllerstate) || input.controllerstate[joy] == nil {
 		return []byte{}
 	}
 	buttons := make([]byte, len(buttonOrder))
@@ -311,36 +274,47 @@ func (input *Input) GetJoystickButtons(joy int) []byte {
 }
 
 func (input *Input) GetJoystickPath(joy int) string {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return ""
 	}
 	return input.controllers[joy].Path()
 }
 
 func (input *Input) GetJoystickGUID(joy int) string {
-	if joy < 0 || joy >= len(input.controllers) {
+	if joy < 0 || joy >= len(input.controllers) || input.controllers[joy] == nil {
 		return ""
 	}
-	pid := uint16(input.controllers[joy].Product())
-	pv := uint16(input.controllers[joy].ProductVersion())
-	vid := uint16(input.controllers[joy].Vendor())
-	guid := make([]byte, 16)
-
-	guid[0] = 0x03
-	binary.LittleEndian.PutUint16(guid[4:6], vid)
-	binary.LittleEndian.PutUint16(guid[8:10], pid)
-	binary.LittleEndian.PutUint16(guid[12:14], pv)
-	s := hex.EncodeToString(guid[:])
-	return s
+	return sdl.JoystickGetGUIDString(input.controllers[joy].Joystick().GUID())
 }
 
-func (input *Input) RumbleController(joy int, lo, hi uint16, ticks uint32) {
-	if joy < 0 || joy >= len(input.controllers) || joy >= len(sys.joystickConfig) {
+func (input *Input) RumbleController(participant int, lo, hi uint16, ticks uint32) {
+	if sys.replayFile != nil {
+		return
+	}
+	nc := sys.netConnection
+	if sys.rollback.session != nil {
+		nc = sys.rollback.netConnection
+	}
+	if nc != nil {
+		if participant != nc.locIn {
+			return
+		}
+		participant = 0
+	}
+	for _, id := range sys.inputs.participantDevices(participant) {
+		if device := sys.inputs.device(id); device != nil && device.Connected && device.Joy >= 0 && sys.cfg.Input.ControllerRumble {
+			input.rumbleJoystick(device.Joy, lo, hi, ticks)
+		}
+	}
+}
+
+func (input *Input) rumbleJoystick(joy int, lo, hi uint16, ticks uint32) {
+	if !input.IsJoystickPresent(joy) || input.controllerstate[joy] == nil {
 		return
 	}
 
-	// Only if Rumble Enabled for this config
-	if input.controllerstate[joy].HasRumble && sys.joystickConfig[joy].rumbleOn {
+	// Only pads that can rumble
+	if input.controllerstate[joy].HasRumble {
 		gls := sys.gameLogicSpeed()
 
 		if gls > 0 && sys.turbo > 0 {
@@ -361,92 +335,4 @@ func (input *Input) RumbleController(joy int, lo, hi uint16, ticks uint32) {
 			}
 		}
 	}
-}
-
-func CheckAxisForDpad(axes *[6]float32, base int) string {
-	var s string = ""
-
-	// Left stick
-	if (*axes)[0] > sys.cfg.Input.ControllerStickSensitivity { // right (LS)
-		s = ButtonToStringLUT[2+base]
-	} else if -(*axes)[0] > sys.cfg.Input.ControllerStickSensitivity { // left (LS)
-		s = ButtonToStringLUT[1+base]
-	}
-	// there are no OOB errors in SDL2 GameController configuration as
-	// everything is in relation to XInput controls
-	if (*axes)[1] > sys.cfg.Input.ControllerStickSensitivity { // down (LS)
-		s = ButtonToStringLUT[3+base]
-	} else if -(*axes)[1] > sys.cfg.Input.ControllerStickSensitivity { // up (LS)
-		s = ButtonToStringLUT[base]
-	}
-
-	// Right stick
-	if (*axes)[2] > sys.cfg.Input.ControllerStickSensitivity { // right (RS)
-		s = ButtonToStringLUT[8+base]
-	} else if -(*axes)[2] > sys.cfg.Input.ControllerStickSensitivity { // left (RS)
-		s = ButtonToStringLUT[7+base]
-	}
-	if (*axes)[3] > sys.cfg.Input.ControllerStickSensitivity { // down (RS)
-		s = ButtonToStringLUT[9+base]
-	} else if -(*axes)[3] > sys.cfg.Input.ControllerStickSensitivity { // up (RS)
-		s = ButtonToStringLUT[6+base]
-	}
-
-	return s
-}
-
-func CheckAxisForTrigger(axes *[6]float32) string {
-	var s string = ""
-	axesList := [2]int{int(sdl.CONTROLLER_AXIS_TRIGGERLEFT), int(sdl.CONTROLLER_AXIS_TRIGGERRIGHT)}
-	for _, i := range axesList {
-		// No need for "stuck axis" behavior anymore
-		if (*axes)[i] > 0 {
-			s = ButtonToStringLUT[15+i]
-			break
-		}
-	}
-	return s
-}
-
-// returns the first active button/axis token string and the joystick index.
-func getJoystickKey(controllerIdx int) (string, int) {
-	var s string
-	min, max := 0, input.GetMaxJoystickCount()
-
-	if controllerIdx >= 0 && controllerIdx < max {
-		min, max = controllerIdx, controllerIdx+1
-	}
-
-	for joy := min; joy < max; joy++ {
-		if !input.IsJoystickPresent(joy) {
-			continue
-		}
-
-		axes := input.GetJoystickAxes(joy)
-		btns := input.GetJoystickButtons(joy)
-
-		// Prefer stick directions (LS_*/RS_* / DP_*).
-		s = CheckAxisForDpad(&axes, len(btns))
-		if s != "" {
-			return s, joy
-		}
-
-		// Then triggers (LT / RT).
-		s = CheckAxisForTrigger(&axes)
-		if s != "" {
-			return s, joy
-		}
-
-		// Finally, digital buttons (A/B/X/Y/etc.).
-		for i := range btns {
-			if btns[i] > 0 {
-				s = ButtonToStringLUT[i]
-			}
-		}
-		if s != "" && strings.ToLower(s) != "not used" {
-			return s, joy
-		}
-	}
-
-	return "", -1
 }
