@@ -45,11 +45,8 @@ func (p *ControllerSetupProperties) values() [16]string {
 }
 
 func (p *ControllerSetupProperties) setup() ControllerSetup {
-	var cs ControllerSetup
-	for i, v := range p.values() {
-		cs[i] = parseVirtualControl(v)
-	}
-	return cs
+	values := p.values()
+	return setupFromNames(values[:])
 }
 
 // A Button Mapping in config.ini: the physical input behind each virtual control.
