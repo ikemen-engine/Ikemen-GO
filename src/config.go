@@ -34,6 +34,8 @@ type KeysProperties struct {
 	D        string `ini:"d"`
 	W        string `ini:"w"`
 	Menu     string `ini:"menu"`
+	L        string `ini:"l"`
+	R        string `ini:"r"`
 	GUID     string `ini:"GUID"`
 	RumbleOn bool   `ini:"RumbleOn"`
 }
@@ -432,6 +434,8 @@ func (c *Config) sysSet() {
 				bD:       stoki(kc.D),
 				bW:       stoki(kc.W),
 				bM:       stoki(kc.Menu),
+				bL:       stoki(kc.L),
+				bR:       stoki(kc.R),
 				rumbleOn: kc.RumbleOn,
 			}
 			sys.keyConfig = append(sys.keyConfig, newKeyConfig)
@@ -457,6 +461,8 @@ func (c *Config) sysSet() {
 					bD:       StringToButtonLUT[kc.D],
 					bW:       StringToButtonLUT[kc.W],
 					bM:       StringToButtonLUT[kc.Menu],
+					bL:       StringToButtonLUT[kc.L],
+					bR:       StringToButtonLUT[kc.R],
 					rumbleOn: kc.RumbleOn,
 				}
 				sys.joystickConfig = append(sys.joystickConfig, newKeyConfig)

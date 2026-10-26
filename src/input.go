@@ -50,6 +50,8 @@ const (
 	CK_d
 	CK_w
 	CK_m
+	CK_l
+	CK_r
 )
 
 func (ck CommandStepKey) IsDirectionPress() bool {
@@ -61,11 +63,11 @@ func (ck CommandStepKey) IsDirectionRelease() bool {
 }
 
 func (ck CommandStepKey) IsButtonPress() bool {
-	return !ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+	return !ck.tilde && ck.key >= CK_a && ck.key <= CK_r
 }
 
 func (ck CommandStepKey) IsButtonRelease() bool {
-	return ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+	return ck.tilde && ck.key >= CK_a && ck.key <= CK_r
 }
 
 type ShortcutScript struct {
@@ -166,15 +168,15 @@ func OnTextEntered(s string) {
 }
 
 // Return the state of all keyboard keys for a player
-func GetKeyboardState(kc KeyConfig) [14]bool {
-	var out [14]bool
+func GetKeyboardState(kc KeyConfig) [16]bool {
+	var out [16]bool
 
 	// If this config is for a joystick, return no input
 	if kc.Joy >= 0 {
 		return out
 	}
 
-	return [14]bool{
+	return [16]bool{
 		sys.keyState[Key(kc.dU)],
 		sys.keyState[Key(kc.dD)],
 		sys.keyState[Key(kc.dL)],
@@ -189,6 +191,8 @@ func GetKeyboardState(kc KeyConfig) [14]bool {
 		sys.keyState[Key(kc.bD)],
 		sys.keyState[Key(kc.bW)],
 		sys.keyState[Key(kc.bM)],
+		sys.keyState[Key(kc.bL)],
+		sys.keyState[Key(kc.bR)],
 	}
 }
 
@@ -196,8 +200,8 @@ func GetKeyboardState(kc KeyConfig) [14]bool {
 // This is now called only once instead of per button and retrieves
 // values from a shared state for both buttons and axes.
 // All XInput axes and digital buttons are supported.
-func GetJoystickState(kc KeyConfig) [14]bool {
-	var out [14]bool
+func GetJoystickState(kc KeyConfig) [16]bool {
+	var out [16]bool
 	joy := kc.Joy
 
 	// If this config is for keyboard or out of range, return no input
@@ -255,7 +259,7 @@ func GetJoystickState(kc KeyConfig) [14]bool {
 	axisIndices := []int{
 		kc.dU, kc.dD, kc.dL, kc.dR,
 		kc.bA, kc.bB, kc.bC, kc.bX, kc.bY, kc.bZ,
-		kc.bS, kc.bD, kc.bW, kc.bM,
+		kc.bS, kc.bD, kc.bW, kc.bM, kc.bL, kc.bR,
 	}
 	for i, idx := range axisIndices {
 		if idx >= 15 && idx <= 24 {
@@ -279,13 +283,13 @@ type CommandSpec struct {
 
 type KeyConfig struct {
 	Joy                                                    int
-	dU, dD, dL, dR, bA, bB, bC, bX, bY, bZ, bS, bD, bW, bM int
+	dU, dD, dL, dR, bA, bB, bC, bX, bY, bZ, bS, bD, bW, bM, bL, bR int
 	isInitialized                                          bool
 	rumbleOn                                               bool
 	GUID                                                   string
 }
 
-func (kc *KeyConfig) set(v [14]int) {
+func (kc *KeyConfig) set(v [16]int) {
 	kc.dU = v[0]
 	kc.dD = v[1]
 	kc.dL = v[2]
@@ -300,6 +304,8 @@ func (kc *KeyConfig) set(v [14]int) {
 	kc.bD = v[11]
 	kc.bW = v[12]
 	kc.bM = v[13]
+	kc.bL = v[14]
+	kc.bR = v[15]
 }
 
 func (kc *KeyConfig) swap(kc2 *KeyConfig) {
@@ -355,7 +361,7 @@ func (kc *KeyConfig) swap(kc2 *KeyConfig) {
 	kc2.isInitialized = true
 }
 
-type InputBits int16
+type InputBits uint16
 
 const (
 	IB_PU InputBits = 1 << iota
@@ -372,56 +378,36 @@ const (
 	IB_D
 	IB_W
 	IB_M
-	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M
+	IB_L
+	IB_R
+	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M | IB_L | IB_R
 )
 
 // Save local inputs as input bits to send or record
-func (ibit *InputBits) KeysToBits(buttons [14]bool) {
-	*ibit = InputBits(Btoi(buttons[0]) |
-		Btoi(buttons[1])<<1 |
-		Btoi(buttons[2])<<2 |
-		Btoi(buttons[3])<<3 |
-		Btoi(buttons[4])<<4 |
-		Btoi(buttons[5])<<5 |
-		Btoi(buttons[6])<<6 |
-		Btoi(buttons[7])<<7 |
-		Btoi(buttons[8])<<8 |
-		Btoi(buttons[9])<<9 |
-		Btoi(buttons[10])<<10 |
-		Btoi(buttons[11])<<11 |
-		Btoi(buttons[12])<<12 |
-		Btoi(buttons[13])<<13)
+func (ibit *InputBits) KeysToBits(buttons [16]bool) {
+	*ibit = 0
+	for i, pressed := range buttons {
+		if pressed {
+			*ibit |= InputBits(1) << uint(i)
+		}
+	}
 }
 
 // Convert received input bits back into keys
-func (ibit InputBits) BitsToKeys() [14]bool {
-	var U, D, L, R, a, b, c, x, y, z, s, d, w, m bool
-
-	// Convert bits to logical symbols
-	U = ibit&IB_PU != 0
-	D = ibit&IB_PD != 0
-	L = ibit&IB_PL != 0
-	R = ibit&IB_PR != 0
-	a = ibit&IB_A != 0
-	b = ibit&IB_B != 0
-	c = ibit&IB_C != 0
-	x = ibit&IB_X != 0
-	y = ibit&IB_Y != 0
-	z = ibit&IB_Z != 0
-	s = ibit&IB_S != 0
-	d = ibit&IB_D != 0
-	w = ibit&IB_W != 0
-	m = ibit&IB_M != 0
-
-	return [14]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+func (ibit InputBits) BitsToKeys() [16]bool {
+	var buttons [16]bool
+	for i := range buttons {
+		buttons[i] = ibit&(InputBits(1)<<uint(i)) != 0
+	}
+	return buttons
 }
 
 type CommandKeyRemap struct {
-	a, b, c, x, y, z, s, d, w, m CommandKey
+	a, b, c, x, y, z, s, d, w, m, l, r CommandKey
 }
 
 func NewCommandKeyRemap() *CommandKeyRemap {
-	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m}
+	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m, CK_l, CK_r}
 }
 
 type InputReader struct {
@@ -438,15 +424,15 @@ func (ir *InputReader) Reset() {
 	*ir = InputReader{}
 }
 
-func (ir *InputReader) LocalInput(in int) [14]bool {
+func (ir *InputReader) LocalInput(in int) [16]bool {
 	// Keyboard
-	var keyIn [14]bool
+	var keyIn [16]bool
 	if in < len(sys.keyConfig) {
 		keyIn = GetKeyboardState(sys.keyConfig[in])
 	}
 
 	// Joystick
-	var joyIn [14]bool
+	var joyIn [16]bool
 	if in < len(sys.joystickConfig) {
 		joyIn = GetJoystickState(sys.joystickConfig[in])
 	}
@@ -466,6 +452,8 @@ func (ir *InputReader) LocalInput(in int) [14]bool {
 	d := keyIn[11] || joyIn[11]
 	w := keyIn[12] || joyIn[12]
 	m := keyIn[13] || joyIn[13]
+	l := keyIn[14] || joyIn[14]
+	r := keyIn[15] || joyIn[15]
 
 	// Apply button assist
 	// Checked locally so that network inputs are processed before being sent
@@ -474,7 +462,7 @@ func (ir *InputReader) LocalInput(in int) [14]bool {
 		a, b, c, x, y, z, s, d, w = result[0], result[1], result[2], result[3], result[4], result[5], result[6], result[7], result[8]
 	}
 
-	return [14]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+	return [16]bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m, l, r}
 }
 
 func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
@@ -674,9 +662,9 @@ func (ir *InputReader) ButtonAssistCheck(current [9]bool) [9]bool {
 type InputBuffer struct {
 	InputReader                            *InputReader
 	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Current state of buffer
-	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
+	ab, bb, cb, xb, yb, zb, sb, db, wb, mb, lb, rb int32
 	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
-	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp int32
+	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp, lp, rp int32
 }
 
 func NewInputBuffer() *InputBuffer {
@@ -694,7 +682,7 @@ func (ib *InputBuffer) Reset() {
 }
 
 // Updates how long ago a char pressed or released a button
-func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool) {
+func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m, l, r bool) {
 	// Save previous buffer state before updating
 	ib.Up = ib.Ub
 	ib.Dp = ib.Db
@@ -713,6 +701,8 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	ib.dp = ib.db
 	ib.wp = ib.wb
 	ib.mp = ib.mb
+	ib.lp = ib.lb
+	ib.rp = ib.rb
 
 	// Function to update current buffer state of each key
 	update := func(held bool, buffer *int32) {
@@ -757,6 +747,8 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	update(d, &ib.db)
 	update(w, &ib.wb)
 	update(m, &ib.mb)
+	update(l, &ib.lb)
+	update(r, &ib.rb)
 }
 
 // Get the state of any symbol/key combination
@@ -1317,6 +1309,12 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		case CK_m:
 			return __.mb
 
+		case CK_l:
+			return __.lb
+
+		case CK_r:
+			return __.rb
+
 		}
 	}
 
@@ -1372,13 +1370,23 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 			if __.mb < 0 || __.mp > 0 {
 				return -__.mb
 			}
+
+		case CK_l:
+			if __.lb < 0 || __.lp > 0 {
+				return -__.lb
+			}
+
+		case CK_r:
+			if __.rb < 0 || __.rp > 0 {
+				return -__.rb
+			}
 		}
 	}
 
 	// Special $N (and ~$N) case
 	// This one somehow returns "any change" in Mugen. Since "any neutral" is useless anyway we'll just add support for that
 	if dollar && ck.key == CK_N {
-		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb))
+		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb), Abs(__.lb), Abs(__.rb))
 	}
 
 	return 0
@@ -1812,6 +1820,12 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 		case CK_m:
 			return ib.mb
+
+		case CK_l:
+			return ib.lb
+
+		case CK_r:
+			return ib.rb
 		}
 	}
 
@@ -1847,6 +1861,12 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 
 		case CK_m:
 			return ib.mp
+
+		case CK_l:
+			return ib.lp
+
+		case CK_r:
+			return ib.rp
 		}
 	}
 
@@ -1929,7 +1949,7 @@ func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 	}
 
 	// Buttons
-	for _, k := range [10]CommandKey{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m} {
+	for _, k := range [12]CommandKey{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m, CK_l, CK_r} {
 		if checkKey(k) {
 			return true
 		}
@@ -1942,12 +1962,12 @@ type AiInput struct {
 	dir, dirt, at, bt, ct, xt, yt, zt, st, dt, wt, mt int32
 }
 
-func (ai *AiInput) Buttons() [14]bool {
-	return [14]bool{
+func (ai *AiInput) Buttons() [16]bool {
+	return [16]bool{
 		ai.U(), ai.D(), ai.L(), ai.R(),
 		ai.a(), ai.b(), ai.c(),
 		ai.x(), ai.y(), ai.z(),
-		ai.s(), ai.d(), ai.w(), ai.m(),
+		ai.s(), ai.d(), ai.w(), ai.m(), false, false,
 	}
 }
 
@@ -2327,7 +2347,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					chargetime: chargetime,
 				})
 				nextChar()
-			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm':
+			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm', 'l', 'r':
 				// Maybe too restrictive. Will make people blame poor module code on IkemenVersion characters
 				//if dollar {
 				//	err = Error("'$' symbol not supported for buttons")
@@ -2358,6 +2378,10 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					k = kr.w
 				case 'm':
 					k = kr.m
+				case 'l':
+					k = kr.l
+				case 'r':
+					k = kr.r
 				}
 				cs.keys = append(cs.keys, CommandStepKey{
 					key:        k,
@@ -2777,7 +2801,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	// Needed for motif
 	hadStepped := cl.Buffer.Ub != 0 || cl.Buffer.Db != 0 || cl.Buffer.Lb != 0 || cl.Buffer.Rb != 0
 
-	var buttons [14]bool
+	var buttons [16]bool
 	var axes [6]float32
 
 	if isAI {
@@ -2827,6 +2851,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	a, b, c := buttons[4], buttons[5], buttons[6]
 	x, y, z := buttons[7], buttons[8], buttons[9]
 	s, d, w, m := buttons[10], buttons[11], buttons[12], buttons[13]
+	l, r := buttons[14], buttons[15]
 	B, F := L, R
 
 	// UI-only: let Left Stick drive U/D/L/R even if the player's config uses DPAD.
@@ -2869,12 +2894,14 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			d = d || ibit&IB_D != 0
 			w = w || ibit&IB_W != 0
 			m = m || ibit&IB_M != 0
+			l = l || ibit&IB_L != 0
+			r = r || ibit&IB_R != 0
 		}
 
 		// Apply ShiftInput
 		if char.inputShift != nil {
 			// Collect current input states and prepare remap states
-			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m, l, r}
 			output := make([]bool, len(inputs))
 
 			// Use a map for fast lookup
@@ -2904,6 +2931,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			U, D, L, R = output[0], output[1], output[2], output[3]
 			a, b, c, x, y, z = output[4], output[5], output[6], output[7], output[8], output[9]
 			s, d, w, m = output[10], output[11], output[12], output[13]
+			l, r = output[14], output[15]
 		}
 
 		// Get B and F from L and R for SOCD resolution
@@ -2930,7 +2958,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	}
 
 	// Send final inputs to buffer
-	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m)
+	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m, l, r)
 
 	// This check is currently needed to prevent screenpack inputs from rapid firing
 	// It forces the command list update to wait one frame after a buffer reset

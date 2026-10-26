@@ -394,14 +394,14 @@ func (rs *RollbackSystem) getInputs(player int) []byte {
 	return bytes
 }
 
-func (rs *RollbackSystem) readRollbackInput(controller int) [14]bool {
+func (rs *RollbackSystem) readRollbackInput(controller int) [16]bool {
 	if controller < 0 || controller >= len(sys.inputRemap) {
-		return [14]bool{}
+		return [16]bool{}
 	}
 
 	remap := sys.inputRemap[controller]
 	if remap < 0 || remap >= len(rs.ggpoInputs) {
-		return [14]bool{}
+		return [16]bool{}
 	}
 
 	return rs.ggpoInputs[remap].BitsToKeys()

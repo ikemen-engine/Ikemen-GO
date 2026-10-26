@@ -8678,6 +8678,10 @@ func (c *CharCompiler) Compile(p *Char, def string, gi *CharGlobalInfo) (map[int
 						*k = CK_w
 					case "m":
 						*k = CK_m
+					case "l":
+						*k = CK_l
+					case "r":
+						*k = CK_r
 					}
 				}
 				rm("x", &ckr.x)
@@ -8690,6 +8694,8 @@ func (c *CharCompiler) Compile(p *Char, def string, gi *CharGlobalInfo) (map[int
 				rm("d", &ckr.d)
 				rm("w", &ckr.w)
 				rm("m", &ckr.m)
+				rm("l", &ckr.l)
+				rm("r", &ckr.r)
 			}
 		case "defaults":
 			// Read default command parameters

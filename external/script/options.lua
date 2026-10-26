@@ -1917,7 +1917,7 @@ local joyNum = 0
 local t_keyCfgFields = {
 	'Joystick', 'up', 'down', 'left', 'right',
 	'a', 'b', 'c', 'x', 'y', 'z',
-	'start', 'd', 'w', 'menu', 'GUID',
+	'start', 'd', 'w', 'menu', 'l', 'r', 'GUID',
 }
 
 local t_btnEnabled = {}
@@ -1978,7 +1978,7 @@ end
 function options.f_setKeyConfig(cfgType)
 	for i = 1, gameOption('Config.Players') do
 		local c = gameOption(cfgType .. '_P' .. i)
-		setKeyConfig(i, c.Joystick, {c.up, c.down, c.left, c.right, c.a, c.b, c.c, c.x, c.y, c.z, c.start, c.d, c.w, c.menu})
+		setKeyConfig(i, c.Joystick, {c.up, c.down, c.left, c.right, c.a, c.b, c.c, c.x, c.y, c.z, c.start, c.d, c.w, c.menu, c.l, c.r})
 	end
 end
 

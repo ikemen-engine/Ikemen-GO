@@ -4528,6 +4528,10 @@ func (c *CharCompiler) assertInput(is IniSection, sc *StateControllerBase) (Stat
 				sc.add(assertInput_flag, sc.iToExp(int32(IB_W)))
 			case "m":
 				sc.add(assertInput_flag, sc.iToExp(int32(IB_M)))
+			case "l":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_L)))
+			case "r":
+				sc.add(assertInput_flag, sc.iToExp(int32(IB_R)))
 			case "B":
 				sc.add(assertInput_flag_B, nil)
 			case "F":
@@ -7144,6 +7148,10 @@ func (c *CharCompiler) shiftInput(is IniSection, sc *StateControllerBase) (State
 			return 12, nil
 		case "m":
 			return 13, nil
+		case "l":
+			return 14, nil
+		case "r":
+			return 15, nil
 		case "B", "F":
 			return -1, Error("'B' and 'F' symbols not accepted. Must be 'L' or 'R'")
 		default:

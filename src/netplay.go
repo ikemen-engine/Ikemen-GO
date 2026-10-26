@@ -26,8 +26,8 @@ const (
 	REPLAY_NUM_INPUTS  = MaxSimul * 2
 	REPLAY_INPUT_BYTES = 2 + 6
 
-	syncConfigVersion     uint16 = 1
-	replayFormatVersion   uint16 = 2
+	syncConfigVersion     uint16 = 2
+	replayFormatVersion   uint16 = 3
 	replayMagic                  = "IKRPLCFG"
 	replaySyncMagic              = "IKRPLSYN"
 	replaySyncSearchLimit        = int64(64 << 20)
@@ -113,11 +113,40 @@ func readReplayInput(r io.Reader, ibit *InputBits, axes *[6]int8) error {
 	if _, err := io.ReadFull(r, buf[:]); err != nil {
 		return err
 	}
-	*ibit = InputBits(int16(binary.LittleEndian.Uint16(buf[:2])))
+	*ibit = InputBits(binary.LittleEndian.Uint16(buf[:2]))
 	for i := 0; i < len(axes); i++ {
 		axes[i] = int8(buf[2+i])
 	}
 	return nil
+}
+
+// Delay netplay keeps bit 15 free for its end marker, so the L and R
+// buttons travel in the spare top bits of the LT and RT bytes.
+func packDelayInput(keys InputBits, axes [6]int8) (int16, [6]int8, error) {
+	if axes[4] < 0 || axes[5] < 0 {
+		return 0, axes, fmt.Errorf("invalid negative trigger (LT=%d, RT=%d)", axes[4], axes[5])
+	}
+	digital := int16(uint16(keys) & 0x3fff)
+	if keys&IB_L != 0 {
+		axes[4] = int8(uint8(axes[4]) | 0x80)
+	}
+	if keys&IB_R != 0 {
+		axes[5] = int8(uint8(axes[5]) | 0x80)
+	}
+	return digital, axes, nil
+}
+
+func unpackDelayInput(digital int16, axes [6]int8) (InputBits, [6]int8) {
+	keys := InputBits(uint16(digital))
+	if uint8(axes[4])&0x80 != 0 {
+		keys |= IB_L
+	}
+	if uint8(axes[5])&0x80 != 0 {
+		keys |= IB_R
+	}
+	axes[4] = int8(uint8(axes[4]) & 0x7f)
+	axes[5] = int8(uint8(axes[5]) & 0x7f)
+	return keys, axes
 }
 
 // -----------------------------------------------------------------------------
@@ -153,11 +182,11 @@ func (nb *NetBuffer) writeNetBuffer(in int) {
 }
 
 // Read input bits from the net buffer
-func (nb *NetBuffer) readNetBuffer() [14]bool {
+func (nb *NetBuffer) readNetBuffer() [16]bool {
 	if nb.curT < nb.inpT {
 		return nb.buf[nb.curT&(NETBUF_NUM_FRAMES-1)].BitsToKeys()
 	}
-	return [14]bool{}
+	return [16]bool{}
 }
 
 func (nb *NetBuffer) readNetBufferAnalog() [6]int8 {
@@ -570,11 +599,11 @@ func (nc *NetConnection) readJSON(v interface{}) error {
 }
 
 // Gameplay-facing netplay API
-func (nc *NetConnection) readNetInput(i int) [14]bool {
+func (nc *NetConnection) readNetInput(i int) [16]bool {
 	if i >= 0 && i < len(nc.buf) {
 		return nc.buf[sys.inputRemap[i]].readNetBuffer()
 	}
-	return [14]bool{}
+	return [16]bool{}
 }
 
 func (nc *NetConnection) readNetInputAnalog(i int) [6]int8 {
@@ -700,17 +729,20 @@ func (nc *NetConnection) Synchronize() (err error) {
 		for nc.st == NS_Playing {
 			// Check if there are unsent frames
 			if nb.senT < nb.inpT {
-				// Write digital inputs
-				if err := nc.writeI16(int16(nb.buf[nb.senT&(NETBUF_NUM_FRAMES-1)])); err != nil {
+				idx := nb.senT & (NETBUF_NUM_FRAMES - 1)
+				digital, axes, err := packDelayInput(nb.buf[idx], nb.axisBuf[idx])
+				if err != nil {
 					nc.st = NS_Error
 					return
-				} else {
-					// Write analog inputs
-					for j := 0; j < len(nb.axisBuf[nb.senT&(NETBUF_NUM_FRAMES-1)]); j++ {
-						if err := nc.writeI8(nb.axisBuf[nb.senT&(NETBUF_NUM_FRAMES-1)][j]); err != nil {
-							nc.st = NS_Error
-							return
-						}
+				}
+				if err := nc.writeI16(digital); err != nil {
+					nc.st = NS_Error
+					return
+				}
+				for _, axis := range axes {
+					if err := nc.writeI8(axis); err != nil {
+						nc.st = NS_Error
+						return
 					}
 				}
 				nb.senT++
@@ -738,25 +770,28 @@ func (nc *NetConnection) Synchronize() (err error) {
 					nc.st = NS_Error
 					return
 				} else {
-					// Read digital inputs
-					nb.buf[nb.inpT&(NETBUF_NUM_FRAMES-1)] = InputBits(tmp)
-					if tmp < 0 {
-						// If remote sent termination signal
+					if tmp == -1 {
+						// The remote peer sent the end marker
 						nc.st = NS_Stopped
 						return
-					} else {
-						// Read analog inputs
-						for j := 0; j < len(nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)]); j++ {
-							if tmp2, err := nc.readI8(); err != nil {
-								nc.st = NS_Error
-								return
-							} else {
-								nb.axisBuf[nb.inpT&(NETBUF_NUM_FRAMES-1)][j] = tmp2
-							}
-						}
-						nb.inpT++
-						nb.senT = nb.inpT
 					}
+					if tmp < 0 {
+						nc.st = NS_Error
+						return
+					}
+					var axes [6]int8
+					for j := range axes {
+						axis, err := nc.readI8()
+						if err != nil {
+							nc.st = NS_Error
+							return
+						}
+						axes[j] = axis
+					}
+					idx := nb.inpT & (NETBUF_NUM_FRAMES - 1)
+					nb.buf[idx], nb.axisBuf[idx] = unpackDelayInput(tmp, axes)
+					nb.inpT++
+					nb.senT = nb.inpT
 				}
 			}
 			time.Sleep(time.Millisecond)
@@ -796,6 +831,9 @@ func (nc *NetConnection) drainInputs() error {
 		}
 		if input == -1 {
 			return nil
+		}
+		if input < 0 {
+			return fmt.Errorf("invalid delay netplay input word: %d", input)
 		}
 		if _, err := io.CopyN(io.Discard, nc.conn, REPLAY_INPUT_BYTES-2); err != nil {
 			return err
@@ -1156,11 +1194,11 @@ func (rf *ReplayFile) Close() {
 }
 
 // Read input buttons from replay input
-func (rf *ReplayFile) readReplayInput(i int) [14]bool {
+func (rf *ReplayFile) readReplayInput(i int) [16]bool {
 	if i >= 0 && i < len(rf.ibit) {
 		return rf.ibit[sys.inputRemap[i]].BitsToKeys()
 	}
-	return [14]bool{}
+	return [16]bool{}
 }
 
 func (rf *ReplayFile) readReplayInputAnalog(i int) [6]int8 {
