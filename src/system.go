@@ -134,7 +134,6 @@ type SystemStateVars struct {
 	keyInput            Key
 	keyString           string
 	lastInputController int
-	uiLastInputToken    string
 	uiConsumeInputFrame int32
 	uiRepeatToken       string
 	uiRepeatController  int
@@ -169,6 +168,7 @@ var sys = System{
 	//ffxRegexp:         "^(f)|^(s)|^(go)", // https://github.com/ikemen-engine/Ikemen-GO/issues/1620
 	sel:              *newSelect(),
 	keyState:         make(map[Key]bool),
+	keyHeld:          make(map[Key]int32),
 	loader:           *newLoader(),
 	ignoreMostErrors: true,
 	stageList:        make(map[int32]*Stage),
@@ -258,6 +258,7 @@ type System struct {
 	ffx                 map[string]*FightFx
 	sel                 Select
 	keyState            map[Key]bool
+	keyHeld             map[Key]int32 // frames each key is held, for KEY: motif actions
 	netConnection       *NetConnection
 	replayFile          *ReplayFile
 	inputCfg            InputConfig
@@ -1409,6 +1410,13 @@ func (s *System) pollDevices() {
 		return
 	}
 	s.inputs.frame = s.frameCounter
+	for key, down := range s.keyState {
+		if down {
+			s.keyHeld[key]++
+		} else {
+			delete(s.keyHeld, key)
+		}
+	}
 	for _, device := range s.inputs.Devices {
 		f := s.deviceFrame(device)
 		active := false
@@ -1426,6 +1434,25 @@ func (s *System) pollDevices() {
 			s.inputs.MenuDevice = device.ID
 		}
 	}
+}
+
+// Frames a motif action has been held on one device, read through its
+// saved Button Mapping. KEY: tokens only count for keyboard controllers.
+func (s *System) deviceActionTime(device *InputDevice, action []string) int32 {
+	s.pollDevices()
+	if device == nil || !device.Connected {
+		return 0
+	}
+	for _, token := range action {
+		if key, ok := actionKey(token); ok {
+			if device.Joy < 0 && s.keyHeld[key] > 0 {
+				return s.keyHeld[key]
+			}
+		} else if vc := parseVirtualControl(token); vc != VC_None && device.held[vc] > 0 {
+			return device.held[vc]
+		}
+	}
+	return 0
 }
 
 // Player N uses keyboard controller N together with gamepad N. The gamepad leads
@@ -1564,12 +1591,11 @@ func (s *System) anyButton() bool {
 	return s.anyHardButton()
 }
 
-func (s *System) buttonController(btns []string) int {
-	for _, btn := range btns {
-		for i, cl := range s.commandLists {
-			if cl != nil && cl.GetState(btn) {
-				return i
-			}
+// Player slot that just triggered a motif action, or -1.
+func (s *System) actionController(action []string) int {
+	for i := range s.commandLists {
+		if s.actionTime(action, i) == 1 {
+			return i
 		}
 	}
 	return -1
@@ -1591,7 +1617,6 @@ func (s *System) stepCommandLists() {
 // Avoid immediate UI token reuse right after defaults/config/player changes.
 func (s *System) uiResetTokenGuard() {
 	s.uiConsumeInputFrame = s.frameCounter + 1
-	s.uiLastInputToken = ""
 	s.lastInputController = -1
 }
 
@@ -1627,128 +1652,82 @@ func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
 	return false
 }
 
-// Checks the per-controller raw input buffer (InputBuffer) instead of command states.
-// Returns true if any of the provided keys were pressed this frame (buffer time == 1).
-// Supported keys: B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m, l, r
-// D/U/B/F also recognize LS axis tokens: D -> LS_Y+, U -> LS_Y-, B -> LS_X-, F -> LS_X+.
-func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
-	checkOne := func(i int, cl *CommandList) bool {
-		if cl == nil || cl.Buffer == nil {
-			return false
-		}
-		controllerKey := s.uiControllerKey(i)
+// True if a player slot can use the local keyboard. Remote netplay players can't.
+func (s *System) localSlot(controllerIdx int) bool {
+	nc := s.netConnection
+	if nc == nil {
+		nc = s.rollback.netConnection
+	}
+	if nc == nil || controllerIdx < 0 || controllerIdx >= len(s.inputRemap) {
+		return true
+	}
+	return s.inputRemap[controllerIdx] == nc.locIn
+}
 
-		// True for raw controller axis tokens (LS_*, RS_*, LT/RT).
-		// Used when a screenpack uses e.g. getInput(pn, "LS_Y+") directly.
-		isAxisToken := func(tok string) bool {
-			return parseVirtualControl(tok).analog()
-		}
-
-		// Repeat only for navigation-style inputs (directions).
-		repeatable := func(tok string) bool {
-			switch tok {
-			case "U", "D", "L", "R", "B", "F":
-				return true
-			default:
-				return false
+// Frames a motif action has been held on a player slot, or 0.
+func (s *System) actionTime(action []string, controllerIdx int) int32 {
+	s.pollDevices()
+	if controllerIdx < 0 || controllerIdx >= len(s.commandLists) {
+		return 0
+	}
+	cl := s.commandLists[controllerIdx]
+	if cl == nil || cl.Buffer == nil {
+		return 0
+	}
+	for _, token := range action {
+		if key, ok := actionKey(token); ok {
+			if s.localSlot(controllerIdx) && s.keyHeld[key] > 0 {
+				return s.keyHeld[key]
 			}
+		} else if button, ok := actionButton(token); ok {
+			if t := cl.Buffer.buttonTime(button); t > 0 {
+				return t
+			}
+		} else if vc := parseVirtualControl(token); vc != VC_None && cl.Buffer.vb[vc] > 0 {
+			return cl.Buffer.vb[vc]
 		}
+	}
+	return 0
+}
 
-		ib := cl.Buffer
-		for _, raw := range btns {
-			raw = strings.TrimSpace(raw)
-			if raw == "" {
+// True on the frame a motif action is pressed on a player slot (-1: any slot).
+// Directions repeat while held. Each token fires at most once per frame.
+func (s *System) menuAction(action []string, controllerIdx int) bool {
+	check := func(i int) bool {
+		controllerKey := s.uiControllerKey(i)
+		for _, token := range action {
+			token = strings.TrimSpace(token)
+			held := s.actionTime([]string{token}, i)
+			vc := parseVirtualControl(token)
+			button, isButton := actionButton(token)
+			repeat := vc >= VC_DP_U && vc <= VC_DP_R || vc >= VC_LS_YN && vc <= VC_RS_XP || isButton && button < 4
+			if held != 1 && !(repeat && s.uiRepeatShouldFire(held)) {
 				continue
 			}
-			// Canonicalize UI stick-direction tokens to the digital directions.
-			tok := raw
-			switch tok {
-			case "LS_Y+":
-				tok = "D"
-			case "LS_Y-":
-				tok = "U"
-			case "LS_X-":
-				tok = "B"
-			case "LS_X+":
-				tok = "F"
+			if s.uiConsumeInputFrame != 0 && s.frameCounter == s.uiConsumeInputFrame {
+				continue
 			}
-			// Digital/raw-buffer check (pressed this frame == 1) + UI repeat while held
-			trigger := false
-			switch tok {
-			case "B":
-				trigger = ib.Bb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Bb)))
-			case "D":
-				trigger = ib.Db == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Db)))
-			case "F":
-				trigger = ib.Fb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Fb)))
-			case "U":
-				trigger = ib.Ub == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Ub)))
-			case "L":
-				trigger = ib.Lb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Lb)))
-			case "R":
-				trigger = ib.Rb == 1 || (repeatable(tok) && s.uiRepeatShouldFire(int32(ib.Rb)))
-			case "a":
-				trigger = ib.ab == 1
-			case "b":
-				trigger = ib.bb == 1
-			case "c":
-				trigger = ib.cb == 1
-			case "x":
-				trigger = ib.xb == 1
-			case "y":
-				trigger = ib.yb == 1
-			case "z":
-				trigger = ib.zb == 1
-			case "s":
-				trigger = ib.sb == 1
-			case "d":
-				trigger = ib.db == 1
-			case "w":
-				trigger = ib.wb == 1
-			case "m":
-				trigger = ib.mb == 1
-			case "l":
-				trigger = ib.lb == 1
-			case "r":
-				trigger = ib.rb == 1
+			// A keyboard key is shared by every local slot, so it fires once for all of them.
+			guardKey := controllerKey
+			if _, ok := actionKey(token); ok {
+				guardKey = -1
 			}
-			// Raw axis tokens (LS_*/RS_*/LT/RT) when used directly in Lua.
-			// LS axis directions are handled above as D/U/B/F aliases.
-			// Other axis tokens are treated as "held" here.
-			if !trigger && i >= 0 && isAxisToken(tok) && cl.IsControllerButtonPressed(tok, i) {
-				trigger = true
+			if s.uiConsumeTokenThisFrame(guardKey, token) {
+				continue
 			}
-			if trigger {
-				if s.uiConsumeInputFrame != 0 && s.frameCounter == s.uiConsumeInputFrame {
-					continue
-				}
-				// Guard: don't fire same token more than once per frame (repeat-safe).
-				if s.uiConsumeTokenThisFrame(controllerKey, tok) {
-					continue
-				}
-				if i >= 0 {
-					s.lastInputController = controllerKey
-				}
-				s.uiLastInputToken = tok
-				return true
-			}
+			s.lastInputController = controllerKey
+			return true
 		}
 		return false
 	}
 	if controllerIdx >= 0 {
-		if controllerIdx < len(s.commandLists) {
-			return checkOne(controllerIdx, s.commandLists[controllerIdx])
-		}
-		return false
+		return check(controllerIdx)
 	}
-	//found := false
-	for i := 0; i < len(s.commandLists); i++ {
-		if checkOne(i, s.commandLists[i]) {
-			//found = true
+	for i := range s.commandLists {
+		if check(i) {
 			return true
 		}
 	}
-	//return found
 	return false
 }
 

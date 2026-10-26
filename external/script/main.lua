@@ -68,12 +68,14 @@ function main.f_fileWrite(path, str, mode)
 	file:close()
 end
 
---returns value depending on button pressed (a = 1; a + start = 7 etc.)
+-- Palette of the button pressed this frame: the Nth button of [Select Info]
+-- palette.action picks palette N, plus 6 while palette.shift is held. 0 if none.
 function main.f_btnPalNo(p)
-	local s = 0
-	if commandGetState(p, '/s') then s = 6 end
-	for i, k in ipairs({'a', 'b', 'c', 'x', 'y', 'z'}) do
-		if commandGetState(p, k) then return i + s end
+	local sec = motif.select_info.palette
+	for i, token in ipairs(sec.action) do
+		if getActionTime(p, token) == 1 then
+			return getActionTime(p, sec.shift.action) > 0 and i + 6 or i
+		end
 	end
 	return 0
 end
@@ -1209,7 +1211,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 	resetKey()
 	esc(false)
 	local function drawFrame()
-		if esc() or getInput(-1, sec.menu.cancel.key) then
+		if esc() or getAction(-1, sec.menu.cancel.action) then
 			esc(false)
 			sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
 			resetKey()
@@ -1219,7 +1221,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		local value = nil
 		if getValue ~= nil then
 			value = getValue()
-		elseif getKey() ~= '' or getInput(-1, {'U', 'D', 'L', 'R', 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm', 'l', 'r'}) then
+		elseif getAction(-1, sec.menu.done.action) then
 			value = true
 		end
 		if value ~= nil then
@@ -1267,18 +1269,18 @@ function main.f_drawInput(textData, text, sec, background, overlay, defaultInput
 	local input = defaultInput or ''
 	resetKey()
 	local function drawFrame()
-		if esc() or getKey(sec.textinput.confirm.keycode) then
+		if esc() or getAction(-1, sec.textinput.confirm.action) then
 			if esc() then
 				input = ''
 			end
 			resetKey()
 			resetTokenGuard()
 			return true, input
-		elseif getKey(sec.textinput.trim.keycode) then
+		elseif getAction(-1, sec.textinput.trim.action) then
 			input = input:sub(2)
-		elseif getKey(sec.textinput.truncate.keycode) then
+		elseif getAction(-1, sec.textinput.truncate.action) then
 			input = input:sub(1, -2)
-		elseif getKey(sec.textinput.paste.keycode) then
+		elseif getAction(-1, sec.textinput.paste.action) then
 			input = input .. getClipboardString()
 		else
 			input = input .. getKeyText()
@@ -2845,7 +2847,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 			end
 			-- While fading, ignore normal menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if fadeActive() then
-				if esc() or getInput(-1, motif[main.group].menu.cancel.key) then
+				if esc() or getAction(-1, motif[main.group].menu.cancel.action) then
 					fadeSkip()
 				end
 			elseif main.menu.f ~= nil then
@@ -2866,7 +2868,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					demoFrameCounter = 0
 					introWaitCycles = 0
 				end
-				local cancelInputTime = getInputTime(-1, motif[main.group].menu.cancel.key)
+				local cancelInputTime = getActionTime(-1, motif[main.group].menu.cancel.action)
 				if esc() or cancelInputTime > 0 then
 					-- Only a fresh press (or Esc) backs out or moves to Exit.
 					local fresh = esc() or cancelInputTime == 1
@@ -2902,7 +2904,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					if fresh and (not bool_main or esc()) then
 						break
 					end
-				elseif bool_f1 and (getKey(motif.infobox.keycode) or gameOption('Config.FirstRun')) then
+				elseif bool_f1 and (getAction(-1, motif.infobox.action) or gameOption('Config.FirstRun')) then
 					if gameOption('Config.FirstRun') then
 						modifyGameOption('Config.FirstRun', false)
 						options.f_saveCfg(false)
@@ -2915,19 +2917,19 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						motif.infobox.title.TextSpriteData,
 						motif.infobox.text.TextSpriteData
 					)
-				elseif motif.attract_mode.enabled and getKey(motif.attract_mode.options.keycode) then
+				elseif motif.attract_mode.enabled and getAction(-1, motif.attract_mode.options.action) then
 					main.f_default()
 					main.menu.f = main.t_itemname.options()
 					sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 					fadeOutInit(motif[main.group].fadeout.FadeData)
 					resetKey()
-				elseif bool_del and getKey(motif[main.group].menu.item.delete.keycode) then
+				elseif bool_del and getAction(-1, motif[main.group].menu.item.delete.action) then
 					tbl.items = main.f_deleteIP(item, t)
-				elseif bool_del and getKey(motif[main.group].menu.item.rename.keycode) then
+				elseif bool_del and getAction(-1, motif[main.group].menu.item.rename.action) then
 					tbl.items = main.f_editIP(item, t)
 				elseif main.f_hiscoreDisplay(t[item].itemname) then
 					demoFrameCounter = 0
-				elseif getInput(-1, motif[main.group].menu.done.key) then
+				elseif getAction(-1, motif[main.group].menu.done.action) then
 					demoFrameCounter = 0
 					local f = t[item].itemname
 					if f == 'back' then
@@ -3250,20 +3252,20 @@ function main.f_replay()
 			playBgm({source = "motif.title", interrupt = true})
 			main.close = false
 			break
-		elseif esc() or getInput(-1, motif[main.group].menu.cancel.key) or (t[item].itemname == 'back' and getInput(-1, motif[main.group].menu.done.key)) then
+		elseif esc() or getAction(-1, motif[main.group].menu.cancel.action) or (t[item].itemname == 'back' and getAction(-1, motif[main.group].menu.done.action)) then
 			sndPlay(motif.Snd, motif.replay_info.cancel.snd[1], motif.replay_info.cancel.snd[2])
 			fadeOutInit(motif.replay_info.fadeout.FadeData)
 			main.close = true
-		elseif getKey(motif.replay_info.menu.item.delete.keycode) then
+		elseif getAction(-1, motif.replay_info.menu.item.delete.action) then
 			t, item = main.f_deleteReplay(item, t)
 			local visibleItems = motif.replay_info.menu.window.visibleitems
 			if visibleItems == nil or visibleItems <= 0 then
 				visibleItems = #t
 			end
 			cursorPosY = math.max(1, math.min(cursorPosY, item, visibleItems))
-		elseif getKey(motif.replay_info.menu.item.rename.keycode) then
+		elseif getAction(-1, motif.replay_info.menu.item.rename.action) then
 			t, item = main.f_renameReplay(item, t)
-		elseif getInput(-1, motif[main.group].menu.done.key) then
+		elseif getAction(-1, motif[main.group].menu.done.action) then
 			main.f_waitForPreloads(true)
 			sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
 			if enterReplay(t[item].itemname) and synchronize() then
@@ -3282,7 +3284,7 @@ end
 function main.f_connect(server, str)
 	enterNetPlay(server)
 	while not connected() do
-		if esc() or getInput(-1, motif.title_info.menu.cancel.key) then
+		if esc() or getAction(-1, motif.title_info.menu.cancel.action) then
 			sndPlay(motif.Snd, motif.title_info.cancel.snd[1], motif.title_info.cancel.snd[2])
 			exitNetPlay()
 			return false
@@ -3411,7 +3413,7 @@ function main.f_hiscoreDisplay(itemname)
 	if not motif.hiscore_info.enabled or stats.modes == nil or stats.modes[mode] == nil or stats.modes[mode].ranking == nil then
 		return false
 	end
-	if not getInput(-1, motif[main.group].menu.hiscore.key) then
+	if not getAction(-1, motif[main.group].menu.hiscore.action) then
 		return false
 	end
 	sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
@@ -3492,7 +3494,7 @@ function main.f_attractStart()
 			creditsCnt = getCredits()
 		end
 		--options
-		if motif.attract_mode.enabled and getKey(motif.attract_mode.options.keycode) then
+		if motif.attract_mode.enabled and getAction(-1, motif.attract_mode.options.action) then
 			main.f_default()
 			main.menu.f = main.t_itemname.options()
 			local doneSnd = motif[main.group].cursor.done.snd.options or motif[main.group].cursor.done.snd.default
@@ -3506,7 +3508,7 @@ function main.f_attractStart()
 		--draw layerno = 1 backgrounds
 		bgDraw(motif.attractbgdef.BGDef, 1)
 		--draw fadein / fadeout
-		if not fadeOutStarted and not fadeActive() and ((getCredits() ~= 0 and getInput(-1, motif.attract_mode.start.press.key)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
+		if not fadeOutStarted and not fadeActive() and ((getCredits() ~= 0 and getAction(-1, motif.attract_mode.start.press.action)) or (not timerActive and counter >= motif.attract_mode.start.time)) then
 			if getCredits() ~= 0 then
 				sndPlay(motif.Snd, motif.attract_mode.start.done.snd[1], motif.attract_mode.start.done.snd[2])
 			end
@@ -3514,7 +3516,7 @@ function main.f_attractStart()
 			fadeOutStarted = true
 		end
 		--frame transition
-		if esc() --[[or getInput(-1, motif.attract_mode.menu.cancel.key)]] then
+		if esc() --[[or getAction(-1, motif.attract_mode.menu.cancel.action)]] then
 			esc(false)
 			return false
 		end
@@ -3766,9 +3768,9 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 	local moveDir = 0
 	if forcedDir ~= nil then
 		moveDir = forcedDir
-	elseif getInput(-1, m.next.key) then
+	elseif getAction(-1, m.next.action) then
 		moveDir = 1
-	elseif getInput(-1, m.previous.key) then
+	elseif getAction(-1, m.previous.action) then
 		moveDir = -1
 	end
 	if moveDir == 1 then

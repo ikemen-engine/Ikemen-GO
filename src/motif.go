@@ -296,10 +296,10 @@ type MenuProperties struct {
 			Active TextProperties `ini:"active"`
 		} `ini:"value"`
 		Delete struct { // only used by [Title Info], [Replay Info], [Option Info]
-			KeyCode string `ini:"keycode"`
+			Action []string `ini:"action"`
 		} `ini:"delete"`
 		Rename struct { // only used by [Title Info], [Replay Info]
-			KeyCode string `ini:"keycode"`
+			Action []string `ini:"action"`
 		} `ini:"rename"`
 	} `ini:"item"`
 	Window struct {
@@ -318,25 +318,25 @@ type MenuProperties struct {
 		Uppercase bool `ini:"uppercase"`
 	} `ini:"title"`
 	Next struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"next"`
 	Previous struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"previous"`
 	Add struct { // only used by [Option Info], [Pause Menu], [Training Pause Menu]
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"add"`
 	Subtract struct { // only used by [Option Info], [Pause Menu], [Training Pause Menu]
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"subtract"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	Done struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"done"`
 	Hiscore struct { // not used by [Option Info], [Replay Info], [Pause Menu]
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"hiscore"`
 	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
 	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
@@ -347,7 +347,7 @@ type InfoBoxProperties struct {
 	Title   TextProperties    `ini:"title"`
 	Text    TextProperties    `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
-	KeyCode string            `ini:"keycode"`
+	Action []string            `ini:"action"`
 }
 
 type CellOverrideProperties struct {
@@ -408,7 +408,7 @@ type FaceProperties struct {
 	AnimationCharPreloadProperties `skipinit:"true"`
 	Done                           struct { // not used by [Victory Screen]
 		AnimationCharPreloadProperties `skipinit:"true"`
-		Key                            []string `ini:"key"` // only used by [VS Screen]
+		Action                          []string `ini:"action"` // only used by [VS Screen]
 	} `ini:"done"`
 	Random   AnimationProperties `ini:"random"`  // only used by [Select Info]
 	Loading  AnimationProperties `ini:"loading"` // only used by [Select Info] and [VS Screen]
@@ -470,44 +470,44 @@ type PlayerSelectProperties struct {
 			Spacing [2]float32 `ini:"spacing"`
 		} `ini:"value"`
 		Done struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
 		Cancel struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"cancel"`
 		Next struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"next"`
 		Previous struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"previous"`
 		Add struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"add"`
 		Subtract struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"subtract"`
 		Item ItemProperties `ini:"item"`
 	} `ini:"teammenu"`
 	PalMenu struct {
 		Pos  [2]float32 `ini:"pos"`
 		Next struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"next"`
 		Previous struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"previous"`
 		Done struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"done"`
 		Cancel struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 			Snd [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"cancel"`
 		Random struct {
-			Key  []string `ini:"key"`
+			Action []string `ini:"action"`
 			Text string   `ini:"text"`
 		} `ini:"random"`
 		Value struct {
@@ -538,7 +538,7 @@ type ValueIconVsProperties struct {
 type PlayerVsProperties struct {
 	FaceProperties
 	Face2 FaceProperties `ini:"face2"`
-	Key   []string       `ini:"key"`
+	Action []string       `ini:"action"`
 	Name  struct {
 		TextProperties
 		Pos     [2]float32 `ini:"pos"`
@@ -611,16 +611,16 @@ type TextInputProperties struct {
 	TextMapProperties
 	Overlay OverlayProperties `ini:"overlay"`
 	Confirm struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"confirm"`
 	Trim struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"trim"`
 	Truncate struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"truncate"`
 	Paste struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"paste"`
 }
 
@@ -673,16 +673,16 @@ type SelectInfoProperties struct {
 		Size    [2]int32   `ini:"size"`
 		Spacing [2]float32 `ini:"spacing"`
 		Up      struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"up"`
 		Down struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"down"`
 		Left struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"left"`
 		Right struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"right"`
 		Bg     AnimationProperties `ini:"bg"`
 		Random struct {
@@ -693,10 +693,10 @@ type SelectInfoProperties struct {
 		Slot    struct {
 			AnimationProperties
 			Next struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"next"`
 			Previous struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"previous"`
 		} `ini:"slot"`
 	} `ini:"cell"`
@@ -751,27 +751,37 @@ type SelectInfoProperties struct {
 			Slot                            AnimationProperties `ini:"slot"`
 		} `ini:"portrait"`
 		Previous struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"previous"`
 		Next struct {
-			Key []string `ini:"key"`
+			Action []string `ini:"action"`
 		} `ini:"next"`
 		Skip struct {
 			Previous struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"previous"`
 			Next struct {
-				Key []string `ini:"key"`
+				Action []string `ini:"action"`
 			} `ini:"next"`
 		} `ini:"skip"`
 	} `ini:"stage"`
 	Done struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
+	Exit struct {
+		Action []string `ini:"action"`
+	} `ini:"exit"`
+	Palette struct {
+		Select int32 `ini:"select"`
+		Action []string `ini:"action"`
+		Shift  struct {
+			Action []string `ini:"action"`
+		} `ini:"shift"`
+	} `ini:"palette"`
 	Portrait struct {
 		AnimationCharPreloadProperties `skipinit:"true"`
 		Loading                        AnimationProperties `ini:"loading"`
@@ -785,7 +795,6 @@ type SelectInfoProperties struct {
 		Itemname map[string]*TeamModesProperties `ini:"itemname"`
 	} `ini:"teammenu"`
 	Timer         TimerProperties `ini:"timer"`
-	PaletteSelect int32           `ini:"paletteselect"`
 	CoopQueue     bool            `ini:"coopqueue" default:"false"`
 }
 
@@ -807,14 +816,14 @@ type VsScreenProperties struct {
 	P8    PlayerVsProperties `ini:"p8"`
 	Timer TimerProperties    `ini:"timer"`
 	Done  struct {
-		Key  []string `ini:"key"`
+		Action []string `ini:"action"`
 		Time int32    `ini:"time"`
 	} `ini:"done"`
 	Skip struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"skip"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	Stage struct {
 		Pos [2]float32 `ini:"pos"`
@@ -860,7 +869,7 @@ type DemoModeProperties struct {
 		Enabled bool `ini:"enabled"`
 	} `ini:"vsscreen"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 }
 
@@ -893,19 +902,17 @@ type ContinueScreenProperties struct {
 		Enabled bool `ini:"enabled"`
 	} `ini:"gameover"`
 	Move struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
 	Cancel struct {
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	Done struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
-	Skip struct {
-		Key []string `ini:"key"`
-	} `ini:"skip"`
 	Overlay OverlayProperties        `ini:"overlay"`
 	P1      PlayerContinueProperties `ini:"p1"`
 	P2      PlayerContinueProperties `ini:"p2"`
@@ -965,11 +972,11 @@ type VictoryScreenProperties struct {
 		DisplayTime int32      `ini:"displaytime"`
 	} `ini:"winquote"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Skip    struct {
-		Key []string `ini:"key"`
-	} `ini:"skip"`
+	Done    struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	P1 PlayerVictoryProperties `ini:"p1"`
 	P2 PlayerVictoryProperties `ini:"p2"`
@@ -1000,9 +1007,9 @@ type WinScreenProperties struct {
 		DisplayTime int32 `ini:"displaytime"`
 	} `ini:"wintext"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Cancel  struct {
-		Key []string `ini:"key"`
-	} `ini:"cancel"`
+	Done    struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
 	P3 PlayerResultsProperties `ini:"p3"`
@@ -1032,9 +1039,9 @@ type ResultsScreenProperties struct {
 		DisplayTime int32 `ini:"displaytime"`
 	} `ini:"winstext"`
 	Overlay OverlayProperties `ini:"overlay"`
-	Cancel  struct {
-		Key []string `ini:"key"`
-	} `ini:"cancel"`
+	Done    struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	P1 PlayerResultsProperties `ini:"p1"`
 	P2 PlayerResultsProperties `ini:"p2"`
 	P3 PlayerResultsProperties `ini:"p3"`
@@ -1062,9 +1069,7 @@ type OptionInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	TextInput TextInputProperties `ini:"textinput"`
-	Unbind    struct {
-		KeyCode string `ini:"keycode"`
-	} `ini:"unbind"`
+	HoldTime  int32               `ini:"holdtime" default:"60"` // frames cancel is held to leave a capture
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
 }
 
@@ -1167,10 +1172,10 @@ type AttractModeProperties struct {
 	Credits struct {
 		TextProperties
 		Snd     [2]int32 `ini:"snd" default:"-1,0"`
-		KeyCode string   `ini:"keycode"`
+		Action []string   `ini:"action"`
 	} `ini:"credits"`
 	Options struct {
-		KeyCode string `ini:"keycode"`
+		Action []string `ini:"action"`
 	} `ini:"options"`
 	Logo struct {
 		Storyboard string `ini:"storyboard" lookup:"def,,data/"`
@@ -1191,7 +1196,7 @@ type AttractModeProperties struct {
 		Press struct {
 			TextProperties
 			Blinktime int32    `ini:"blinktime"`
-			Key       []string `ini:"key"`
+			Action     []string `ini:"action"`
 		} `ini:"press"`
 		Timer TimerProperties `ini:"timer"`
 	} `ini:"start"`
@@ -1209,7 +1214,7 @@ type ChallengerInfoProperties struct {
 		Snd  [2]int32 `ini:"" default:"-1,0"`
 		Time int32    `ini:"time"`
 	} `ini:"snd"`
-	Key  []string `ini:"key"`
+	Action []string `ini:"action"`
 	Text struct {
 		TextProperties
 		Displaytime int32 `ini:"displaytime"`
@@ -1227,11 +1232,11 @@ type DialogueInfoProperties struct {
 	EndTime    int32 `ini:"endtime"`
 	SwitchTime int32 `ini:"switchtime"`
 	SkipTime   int32 `ini:"skiptime"`
-	Skip       struct {
-		Key []string `ini:"key"`
-	} `ini:"skip"`
+	Done       struct {
+		Action []string `ini:"action"`
+	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"cancel"`
 	P1 PlayerDialogueProperties `ini:"p1"`
 	P2 PlayerDialogueProperties `ini:"p2"`
@@ -1276,18 +1281,17 @@ type HiscoreInfoProperties struct {
 	} `ini:"window"`
 	Overlay OverlayProperties `ini:"overlay"`
 	Next    struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"next"`
 	Previous struct {
-		Key []string `ini:"key"`
+		Action []string `ini:"action"`
 	} `ini:"previous"`
 	Done struct {
-		Key  []string `ini:"key"`
+		Action []string `ini:"action"`
 		Snd  [2]int32 `ini:"snd" default:"-1,0"`
 		Time int32    `ini:"time"`
 	} `ini:"done"`
 	Cancel struct {
-		Key []string `ini:"key"`
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
 	Move struct {
@@ -3382,7 +3386,7 @@ func (me *MotifMenu) menuOpenInputHeld(m *Motif) bool {
 	}
 	// Also respect configured menu cancel/open bindings
 	if pm := me.pauseMenu(m); pm != nil && pm.Enabled {
-		return sys.uiRawInput(pm.Menu.Cancel.Key, -1)
+		return sys.menuAction(pm.Menu.Cancel.Action, -1)
 	}
 	return false
 }
@@ -3435,7 +3439,7 @@ func (me *MotifMenu) init(m *Motif) {
 		}
 		me.reopenLock = false
 	}
-	openPressed := sys.esc || sys.uiRawInput(pm.Menu.Cancel.Key, -1)
+	openPressed := sys.esc || sys.menuAction(pm.Menu.Cancel.Action, -1)
 
 	if !sys.sel.gameParams.PauseMenu {
 		if openPressed {
@@ -3565,7 +3569,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 
-	controllerNo := sys.buttonController(m.ChallengerInfo.Key)
+	controllerNo := sys.actionController(m.ChallengerInfo.Action)
 	if controllerNo == -1 || sys.uiControllerKey(controllerNo) == sys.uiControllerKey(0) {
 		return
 	}
@@ -3875,10 +3879,10 @@ func (co *MotifContinue) step(m *Motif) {
 
 	if !co.selected {
 		if m.ContinueScreen.LegacyMode.Enabled {
-			if sys.uiRawInput(m.ContinueScreen.Move.Key, co.pn-1) {
+			if sys.menuAction(m.ContinueScreen.Move.Action, co.pn-1) {
 				m.Snd.play(m.ContinueScreen.Move.Snd, 100, 0, 0, 0, 0)
 				co.yesSide = !co.yesSide
-			} else if sys.uiRawInput(m.ContinueScreen.Skip.Key, co.pn-1) || sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
+			} else if sys.menuAction(m.ContinueScreen.Done.Action, co.pn-1) {
 				if !co.yesSide || co.canContinue() {
 					m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
 					co.processSelection(m, co.yesSide)
@@ -3886,10 +3890,10 @@ func (co *MotifContinue) step(m *Motif) {
 			}
 		} else {
 			if co.counter < m.ContinueScreen.Counter.End.SkipTime {
-				if co.canContinue() && sys.uiRawInput(m.ContinueScreen.Done.Key, co.pn-1) {
+				if co.canContinue() && sys.menuAction(m.ContinueScreen.Done.Action, co.pn-1) {
 					m.Snd.play(m.ContinueScreen.Done.Snd, 100, 0, 0, 0, 0)
 					co.processSelection(m, true)
-				} else if sys.uiRawInput(m.ContinueScreen.Skip.Key, co.pn-1) &&
+				} else if sys.menuAction(m.ContinueScreen.Cancel.Action, co.pn-1) &&
 					co.counter >= m.ContinueScreen.Counter.StartTime+m.ContinueScreen.Counter.SkipStart {
 					co.skipCounter(m)
 				}
@@ -4002,7 +4006,7 @@ func (de *MotifDemo) init(m *Motif) {
 
 func (de *MotifDemo) step(m *Motif) {
 	if de.endTimer == -1 {
-		cancel := (m.AttractMode.Enabled && sys.credits > 0) || (!m.AttractMode.Enabled && sys.uiRawInput(m.DemoMode.Cancel.Key, -1))
+		cancel := (m.AttractMode.Enabled && sys.credits > 0) || (!m.AttractMode.Enabled && sys.menuAction(m.DemoMode.Cancel.Action, -1))
 		if de.counter == m.DemoMode.Fight.EndTime || cancel {
 			m.fadeIn.reset()
 			startFadeOut(m.DemoMode.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
@@ -4843,7 +4847,7 @@ func (di *MotifDialogue) step(m *Motif) {
 	}
 
 	// If user presses "cancel", end the dialogue
-	if sys.uiRawInput(m.DialogueInfo.Cancel.Key, -1) {
+	if sys.menuAction(m.DialogueInfo.Cancel.Action, -1) {
 		di.finish(m)
 		return
 	}
@@ -4887,9 +4891,9 @@ func (di *MotifDialogue) step(m *Motif) {
 	di.activeSide = currentLine.side
 	prevLineFullyRendered := di.lineFullyRendered
 
-	// Handle "skip" key (only after SkipTime)
+	// Handle "done" key (only after SkipTime)
 	if di.counter >= m.DialogueInfo.SkipTime {
-		if sys.uiRawInput(m.DialogueInfo.Skip.Key, -1) {
+		if sys.menuAction(m.DialogueInfo.Done.Action, -1) {
 			if !di.lineFullyRendered {
 				currentLine.typedCnt = utf8.RuneCountInString(currentLine.text)
 				di.lineFullyRendered = true
@@ -5505,8 +5509,8 @@ func (hi *MotifHiscore) step(m *Motif) {
 	}
 	// Begin fade-out on cancel or when time elapses.
 	if hi.endTimer == -1 {
-		cancel := sys.esc || sys.uiRawInput(m.HiscoreInfo.Cancel.Key, -1) ||
-			(!hi.input && sys.uiRawInput(m.HiscoreInfo.Done.Key, -1)) ||
+		cancel := sys.esc ||
+			(!hi.input && sys.menuAction(m.HiscoreInfo.Done.Action, -1)) ||
 			(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)
 		if cancel || (!hi.input && hi.counter == hi.endTime) {
 			if !hi.noFade {
@@ -5570,7 +5574,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 				maxLen := initialsWidth(m.HiscoreInfo.Item.Name.Text["default"])
 				glyphCount := len(m.HiscoreInfo.Glyphs)
 				// Previous glyph
-				if sys.uiRawInput(m.HiscoreInfo.Previous.Key, controller) {
+				if sys.menuAction(m.HiscoreInfo.Previous.Action, controller) {
 					m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
 					if len(hi.letters) == 0 {
 						hi.letters = []int{1}
@@ -5583,7 +5587,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 					}
 					updateRowNameFromLetters(m, row, hi.letters)
 					// Next glyph
-				} else if sys.uiRawInput(m.HiscoreInfo.Next.Key, controller) {
+				} else if sys.menuAction(m.HiscoreInfo.Next.Action, controller) {
 					m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
 					if len(hi.letters) == 0 {
 						hi.letters = []int{1}
@@ -5596,7 +5600,7 @@ func (hi *MotifHiscore) step(m *Motif) {
 					}
 					updateRowNameFromLetters(m, row, hi.letters)
 					// Confirm / Add / Backspace
-				} else if sys.uiRawInput(m.HiscoreInfo.Done.Key, controller) {
+				} else if sys.menuAction(m.HiscoreInfo.Done.Action, controller) {
 					// Current glyph meaning
 					curGlyph := currentGlyph(m, hi.letters)
 					if curGlyph == "<" {
@@ -6345,8 +6349,8 @@ func (vi *MotifVictory) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.victory", err.Error())
 		}
 	}
-	cancelPressed := sys.esc || sys.uiRawInput(m.VictoryScreen.Cancel.Key, -1)
-	skipPressed := sys.uiRawInput(m.VictoryScreen.Skip.Key, -1)
+	cancelPressed := sys.esc || sys.menuAction(m.VictoryScreen.Cancel.Action, -1)
+	skipPressed := sys.menuAction(m.VictoryScreen.Done.Action, -1)
 	prevLineFullyRendered := vi.lineFullyRendered
 	//fmt.Printf("[Victory] step: counter=%d time=%d endTimer=%d typedCnt=%d lineFullyRendered=%v cancel=%v skip=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, vi.typedCnt, vi.lineFullyRendered, cancelPressed, skipPressed)
 
@@ -6677,7 +6681,7 @@ type MotifWin struct {
 	soundsEnabled bool
 	fadeOutTime   int32
 	time          int32
-	keyCancel     []string
+	keyDone       []string
 	p1States      [4][]int32
 	p2States      [4][]int32
 	stateTime     int32
@@ -6865,7 +6869,7 @@ func (wi *MotifWin) initResultsVariant(m *Motif, sectionName string) bool {
 
 	wi.stateTime = rs.State.Time
 	wi.soundsEnabled = rs.Sounds.Enabled
-	wi.keyCancel = rs.Cancel.Key
+	wi.keyDone = rs.Done.Action
 	wi.time = rs.Show.Time
 	wi.fadeOutTime = rs.FadeOut.FadeData.duration()
 	wi.fadeIn = rs.FadeIn.FadeData
@@ -6892,7 +6896,7 @@ func (wi *MotifWin) initWinScreen(m *Motif) bool {
 	wi.stateTime = m.WinScreen.State.Time
 	wi.soundsEnabled = m.WinScreen.Sounds.Enabled
 
-	wi.keyCancel = m.WinScreen.Cancel.Key
+	wi.keyDone = m.WinScreen.Done.Action
 	wi.time = m.WinScreen.Pose.Time
 	wi.fadeOutTime = m.WinScreen.FadeOut.FadeData.duration()
 	wi.fadeIn = m.WinScreen.FadeIn.FadeData
@@ -6915,8 +6919,8 @@ func (wi *MotifWin) step(m *Motif) {
 		}
 	}
 	if wi.endTimer == -1 {
-		cancel := sys.esc || sys.uiRawInput(wi.keyCancel, -1)
-		if cancel || wi.counter == wi.time {
+		done := sys.esc || sys.menuAction(wi.keyDone, -1)
+		if done || wi.counter == wi.time {
 			startFadeOut(wi.fadeOut, m.fadeOut, false, m.fadePolicy)
 			wi.endTimer = wi.counter + m.fadeOut.timeRemaining
 		}
