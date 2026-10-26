@@ -21,6 +21,7 @@ import (
 type Font_GL33 struct {
 	fontChar     map[rune]*character
 	ttf          *truetype.Font
+	metrics      font.Metrics
 	scale        int32
 	windowWidth  int
 	windowHeight int
@@ -87,6 +88,10 @@ func (r *FontRenderer_GL33) LoadFont(file string, scale int32, windowWidth int, 
 	f.windowWidth = windowWidth
 	f.windowHeight = windowHeight
 	return f, nil
+}
+
+func (f *Font_GL33) Metrics() font.Metrics {
+	return f.metrics
 }
 
 // SetColor allows you to set the text color to be used when you draw the text
@@ -399,6 +404,7 @@ func (f *Font_GL33) GenerateGlyphs(low, high rune) error {
 		DPI:     72,
 		Hinting: font.HintingFull,
 	})
+	f.metrics = ttfFace.Metrics()
 
 	// Add padding to prevent cropping
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/3085
@@ -438,9 +444,8 @@ func (f *Font_GL33) GenerateGlyphs(low, high rune) error {
 			}
 		}
 
-		//The glyph's ascent and descent equal -bounds.Min.Y and +bounds.Max.Y.
+		// Distance from the glyph's top to its baseline.
 		gAscent := int(-gBnd.Min.Y) >> 6
-		gdescent := int(gBnd.Max.Y) >> 6
 
 		//set w,h and adv, bearing V and bearing H in char
 		//char.width = int(gw)
@@ -448,7 +453,8 @@ func (f *Font_GL33) GenerateGlyphs(low, high rune) error {
 		char.width = int(gw) + (padding * 2)
 		char.height = int(gh) + (padding * 2)
 		char.advance = int(gAdv)
-		char.bearingV = gdescent
+		// Account for the raster baseline at padding + gAscent inside the texture.
+		char.bearingV = char.height - (padding + gAscent)
 		//char.bearingH = (int(gBnd.Min.X) >> 6)
 		char.bearingH = (int(gBnd.Min.X) >> 6) - padding
 

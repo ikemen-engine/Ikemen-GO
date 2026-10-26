@@ -136,6 +136,7 @@ type SystemStateVars struct {
 	lastInputController int
 	menuPlayer          int // 1-based player whose pause menu is open; 0 reads every player
 	menuFocus           int // device that alone drives menus, e.g. while side select edits its setup
+	uiGlyphDevice       int // last accepted menu input
 	uiConsumeInputFrame int32
 	uiRepeatToken       string
 	uiRepeatController  int
@@ -1771,8 +1772,9 @@ func (s *System) actionTime(action []string, controllerIdx int) int32 {
 // True on the frame a motif action is pressed on a player slot (-1: any slot).
 // Directions repeat while held. Each token fires at most once per frame.
 func (s *System) menuAction(action []string, controllerIdx int) bool {
-	// time reads how long a token is held. controllerKey identifies the reader for the token guard.
-	check := func(controllerKey int, time func(token string) int32) bool {
+	// time reads how long a token is held; device returns the device that pressed it.
+	// controllerKey keeps a token from firing twice per frame (negative for menuFocus).
+	check := func(controllerKey int, deviceID func() int, time func(token string) int32) bool {
 		for _, token := range action {
 			token = strings.TrimSpace(token)
 			held := time(token)
@@ -1793,16 +1795,26 @@ func (s *System) menuAction(action []string, controllerIdx int) bool {
 			if s.uiConsumeTokenThisFrame(guardKey, token) {
 				continue
 			}
-			s.lastInputController = controllerKey
-			if deviceID := s.participantMenuDevice(controllerKey); !s.netplay() && deviceID != 0 {
+			if controllerKey >= 0 {
+				s.lastInputController = controllerKey
+			}
+			deviceID := deviceID()
+			if !s.netplay() && deviceID != 0 {
 				s.inputs.MenuDevice = deviceID
+			}
+			if key, ok := actionKey(token); ok {
+				s.noteKeyboardGlyphInput(KeyToString(key))
+			} else if deviceID != 0 {
+				s.noteGlyphInput(deviceID)
 			}
 			return true
 		}
 		return false
 	}
 	slot := func(i int) bool {
-		return check(s.uiControllerKey(i), func(token string) int32 {
+		controllerKey := s.uiControllerKey(i)
+		s.noteSlotInput(controllerKey)
+		return check(controllerKey, func() int { return s.participantMenuDevice(controllerKey) }, func(token string) int32 {
 			return s.actionTime([]string{token}, i)
 		})
 	}
@@ -1811,11 +1823,9 @@ func (s *System) menuAction(action []string, controllerIdx int) bool {
 	}
 	// The menuFocus device is read directly, even without a player slot.
 	if device := s.inputs.device(s.menuFocus); device != nil {
-		if check(-2-device.ID, func(token string) int32 { return s.deviceActionTime(device, []string{token}) }) {
-			s.inputs.MenuDevice = device.ID
-			return true
-		}
-		return false
+		return check(-2-device.ID, func() int { return device.ID }, func(token string) int32 {
+			return s.deviceActionTime(device, []string{token})
+		})
 	}
 	// An open pause menu only reads the player who opened it.
 	if s.menuPlayer > 0 && s.menuPlayer <= len(s.commandLists) {
@@ -1827,6 +1837,123 @@ func (s *System) menuAction(action []string, controllerIdx int) bool {
 		}
 	}
 	return false
+}
+
+// Remembers the device last used in a menu, so hints show its buttons. Only accepted
+// input counts, so a resting stick can't take hints away from the keyboard.
+func (s *System) noteGlyphInput(deviceID int) {
+	if device := s.inputs.device(deviceID); device != nil && device.Connected {
+		s.uiGlyphDevice = deviceID
+	}
+}
+
+// Notes a new press from the participant a menu check reads. A controller not
+// assigned to that slot must not steal pause menu hints.
+func (s *System) noteSlotInput(participant int) {
+	if deviceID := s.participantMenuDevice(participant); deviceID != 0 {
+		if device := s.inputs.device(deviceID); device != nil {
+			for _, pressed := range device.pressed {
+				if pressed {
+					s.noteGlyphInput(deviceID)
+					break
+				}
+			}
+		}
+	}
+}
+
+// Same for keyboard keys, which are read without going through a device.
+// Prefers the keyboard controller that maps the key.
+func (s *System) noteKeyboardGlyphInput(key string) {
+	// Esc is a global shortcut, even when the player is using a gamepad.
+	if key == "" || key == "ESCAPE" {
+		return
+	}
+	if device := s.inputs.device(s.uiGlyphDevice); device != nil && device.Connected && device.Joy < 0 {
+		return
+	}
+	var keyboard *InputDevice
+	for _, device := range s.inputs.Devices {
+		if !device.Connected || device.Joy >= 0 {
+			continue
+		}
+		if keyboard == nil {
+			keyboard = device
+		}
+		for _, token := range s.inputCfg.mapping(device) {
+			if token == key {
+				s.uiGlyphDevice = device.ID
+				return
+			}
+		}
+	}
+	if keyboard != nil {
+		s.uiGlyphDevice = keyboard.ID
+	}
+}
+
+// The local connection always reads participant zero, even when it plays on the
+// right. Remote commands must not choose a local controller's hint artwork.
+func (s *System) hintPlayerDevice(slot int) *InputDevice {
+	if slot < 0 || slot >= len(s.inputRemap) {
+		return nil
+	}
+	participant := s.localInputParticipant(s.inputRemap[slot])
+	if participant >= 0 && s.inputs.owner(s.uiGlyphDevice) == participant {
+		if device := s.inputs.device(s.uiGlyphDevice); device != nil && device.Connected {
+			return device
+		}
+	}
+	for _, id := range s.inputs.participantDevices(participant) {
+		if device := s.inputs.device(id); device != nil && device.Connected {
+			return device
+		}
+	}
+	return nil
+}
+
+// True if a player slot's controller is assigned but unplugged, so hints can say so.
+func (s *System) hintPlayerDisconnected(slot int) bool {
+	if slot < 0 || slot >= len(s.inputRemap) {
+		return false
+	}
+	participant := s.localInputParticipant(s.inputRemap[slot])
+	if participant < 0 || participant >= len(s.inputs.Participants) {
+		return false
+	}
+	id := s.inputs.Participants[participant].Device
+	if id == 0 {
+		return false
+	}
+	device := s.inputs.device(id)
+	return device != nil && !device.Connected
+}
+
+// Returns the device whose buttons hints should show.
+func (s *System) glyphDevice(deviceID int) *InputDevice {
+	// A caller can ask for one specific device, for example the device being
+	// mapped. Never fall back to another device in that case.
+	if deviceID != 0 {
+		return s.inputs.device(deviceID)
+	}
+	// A focused device drives the menu, so it gets the hints.
+	if device := s.inputs.device(s.menuFocus); device != nil && device.Connected {
+		return device
+	}
+	if s.inputConnection() != nil && len(s.inputs.Participants) > 0 {
+		return s.inputs.device(s.inputs.Participants[0].Device)
+	}
+	for _, id := range []int{s.uiGlyphDevice, s.inputs.MenuDevice} {
+		if device := s.inputs.device(id); device != nil && device.Connected {
+			return device
+		}
+	}
+	for _, device := range s.inputs.Devices {
+		if device.Connected {
+			return device
+		}
+	}
+	return nil
 }
 
 func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {
