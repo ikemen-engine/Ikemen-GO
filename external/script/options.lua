@@ -1994,6 +1994,14 @@ local function updateEditor(tbl, root)
 		elseif field == 'device' then
 			row.hintContext = 'adjust'
 			row.vardisplay = root.device.name
+		elseif field == 'glyphs' and root.device ~= nil then
+			row.hintContext = 'adjust'
+			for _, set in ipairs(inputGetGlyphPacks(root.device.id)) do
+				if set.selected then
+					row.vardisplay = set.glyph .. ' ' .. set.name
+					break
+				end
+			end
 		end
 	end
 	for _, sub in pairs(tbl.submenu) do
@@ -2387,6 +2395,32 @@ for name in pairs(t_mappingRows) do
 end
 for name in pairs(t_setupRows) do
 	options.t_itemname[name] = bindingRow
+end
+
+-- The glyph pack belongs to the device rather than the mapping, so it is saved straight away.
+options.t_itemname.glyphs = function(t, item)
+	local step = 0
+	if getAction(-1, motif.option_info.menu.add.action) then
+		step = 1
+	elseif getAction(-1, motif.option_info.menu.subtract.action) then
+		step = -1
+	end
+	if step ~= 0 then
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+		local root = t.inputMenu
+		local sets = inputGetGlyphPacks(root.device.id)
+		local current = 1
+		for i, set in ipairs(sets) do
+			if set.selected then
+				current = i
+				break
+			end
+		end
+		if inputSetGlyphPack(root.device.id, sets[(current - 1 + step) % #sets + 1].id) then
+			updateEditor(root, root)
+		end
+	end
+	return true
 end
 
 -- Renames the setup. One this device doesn't own is copied first.

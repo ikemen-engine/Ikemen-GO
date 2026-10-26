@@ -4860,7 +4860,7 @@ function start.f_sideSelectFormat(style, kind, values)
 	return table.concat(lines, '\n')
 end
 
-function start.f_sideSelectText(style, value, x, y)
+function start.f_sideSelectText(style, value, x, y, device)
 	-- Draw the row bg below the text. It is drawn per row but animated once per frame.
 	if style.bg ~= nil then
 		animReset(style.bg.AnimData, {'pos'})
@@ -4874,6 +4874,7 @@ function start.f_sideSelectText(style, value, x, y)
 		animReset(style.AnimData, {'pos'})
 	end
 	textImgReset(style.TextSpriteData)
+	textImgSetGlyphDevice(style.TextSpriteData, device or 0)
 	textImgSetText(style.TextSpriteData, tostring(value):gsub('\\n', '\n'))
 	if x ~= nil then
 		if style.AnimData ~= nil then
@@ -5240,7 +5241,7 @@ function start.f_sideSelect()
 				local name = start.f_sideSelectFormat(style, device.kind, {name = device.name, setup = device.setupName})
 				start.f_sideSelectText(style, name,
 					s.pos[1] + s.item.offset[1] + (i - top[col]) * s.item.spacing[1],
-					s.pos[2] + s.item.offset[2] + (i - top[col]) * s.item.spacing[2])
+					s.pos[2] + s.item.offset[2] + (i - top[col]) * s.item.spacing[2], device.id)
 			end
 		end
 		-- A side with no device shows its base style.

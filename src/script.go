@@ -4120,6 +4120,58 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(side))
 		return 2
 	})
+	luaRegister(l, "inputGetGlyphPack", func(l *lua.LState) int {
+		/*Return the glyph pack a device currently uses.
+		@function inputGetGlyphPack
+		@tparam[opt=0] int deviceId Device ID, or `0` for the device the UI shows glyphs for.
+		@treturn string pack Glyph pack name, for example `"ps5"`, or an empty string without a device.*/
+		id := 0
+		if !nilArg(l, 1) {
+			id = int(numArg(l, 1))
+		}
+		device := sys.glyphDevice(id)
+		if device == nil {
+			l.Push(lua.LString(""))
+			return 1
+		}
+		l.Push(lua.LString(input.GlyphPack(device, &sys.motif.ControllerGlyphs)))
+		return 1
+	})
+	luaRegister(l, "inputGetGlyphPacks", func(l *lua.LState) int {
+		/*List the glyph packs that can be chosen for a device.
+		@function inputGetGlyphPacks
+		@tparam int deviceId Device ID.
+		@treturn table packs Array of tables with `id`, `name`, `glyph` (a text tag
+		  drawing the pack's icon), `selected` and `automatic` (no pack chosen, so the
+		  device decides) fields. The first entry is always the automatic one.*/
+		out := l.NewTable()
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(out)
+			return 1
+		}
+		chosen := strings.ToLower(sys.cfg.Input.ControllerGlyphs[glyphPreferenceKey(device)])
+		add := func(id, name string, automatic bool) {
+			// The automatic entry shows whatever the device resolves to now.
+			glyph := "<glyph:" + id + ">"
+			if automatic {
+				glyph = "<glyph>"
+			}
+			out.Append(toLValue(l, map[string]interface{}{
+				"id":        id,
+				"name":      name,
+				"glyph":     glyph,
+				"selected":  id == chosen,
+				"automatic": automatic,
+			}))
+		}
+		add("", sys.motif.ControllerGlyphs.Automatic, true)
+		for _, id := range sys.motif.glyphPacks(glyphDeviceType(device)) {
+			add(id, sys.motif.ControllerGlyphs.Controller[id].Label, false)
+		}
+		l.Push(out)
+		return 1
+	})
 	luaRegister(l, "inputGetMapping", func(l *lua.LState) int {
 		/*Get the Button Mapping of a device.
 		@function inputGetMapping
@@ -4425,6 +4477,24 @@ func systemScriptInit(l *lua.LState) {
 		@tparam string setupId Setup ID.
 		@treturn boolean success `false` if the device or setup is unknown.*/
 		l.Push(lua.LBool(sys.setDeviceSetup(int(numArg(l, 1)), strArg(l, 2))))
+		return 1
+	})
+	luaRegister(l, "inputSetGlyphPack", func(l *lua.LState) int {
+		/*Choose the glyph pack of a device. Saved right away.
+		@function inputSetGlyphPack
+		@tparam int deviceId Device ID.
+		@tparam string pack Glyph pack name, or an empty string to detect it from the device.
+		@treturn boolean success `true` if the choice was saved.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		err := sys.cfg.rememberControllerGlyphs(device, strings.ToLower(strArg(l, 2)))
+		if err != nil {
+			LogMessage("Unable to remember controller glyphs: %v", err)
+		}
+		l.Push(lua.LBool(err == nil))
 		return 1
 	})
 	luaRegister(l, "inputSetMenuFocus", func(l *lua.LState) int {
