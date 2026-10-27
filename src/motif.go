@@ -2165,17 +2165,21 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			)
 
 			// Priority: user dst > user src > default dst > default src
-			if v, ok := get(user, sp.DstSec, dstKey); ok {
-				val, src = v, srcUserDst
-			} else if v, ok := get(user, sp.SrcSec, srcKey); ok {
-				val, src = v, srcUserSrc
-			} else if v, ok := get(defs, sp.DstSec, dstKey); ok {
-				val, src = v, srcDefDst
-			} else if v, ok := get(defs, sp.SrcSec, srcKey); ok {
-				val, src = v, srcDefSrc
+			fromSec, fromKey := sp.DstSec, dstKey
+			if _, ok := get(user, sp.DstSec, dstKey); ok {
+				src = srcUserDst
+			} else if _, ok := get(user, sp.SrcSec, srcKey); ok {
+				fromSec, fromKey, src = sp.SrcSec, srcKey, srcUserSrc
+			} else if _, ok := get(defs, sp.DstSec, dstKey); ok {
+				src = srcDefDst
+			} else if _, ok := get(defs, sp.SrcSec, srcKey); ok {
+				fromSec, fromKey, src = sp.SrcSec, srcKey, srcDefSrc
 			} else {
 				continue
 			}
+			// Read the value from the merged INI: font file names are already resolved
+			// to font indices there, while the user and default INIs hold the raw names.
+			val, _ = get(merged, fromSec, fromKey)
 
 			// Write into the merged ini & struct.
 			secPath := strings.ReplaceAll(sp.DstSec, " ", "_")
