@@ -475,9 +475,9 @@ func (gs *GameState) String() (str string) {
 	}
 
 	// Add bytecode data
-	// TODO: Every log seems to have these empty. May not be needed
-	str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
-	str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
+	// The stacks are always empty here, but local vars and sctrl params may keep scratch data from the last state
+	//str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
+	//str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
 	str += fmt.Sprintf("bcVar: %v\n", gs.bcVar)
 	str += fmt.Sprintf("workBe: %v\n", gs.workBe)
 

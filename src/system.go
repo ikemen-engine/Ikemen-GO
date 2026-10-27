@@ -6265,11 +6265,10 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		//sys.cgi[pn].sff = nil
 		//sys.cgi[pn].palettedata = nil
 
-		// TODO: Why do we do this here?
+		// Without TurnsLoading, the next Turns member replaces the old char here, so this is the last chance to inherit its power
+		// TurnsLoading does the same in activateNextTurnsFighters()
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
-			p.guardPoints = sys.chars[pn][0].guardPoints // And why do these two persist?
-			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
 		}
 
 		// Prepare success message

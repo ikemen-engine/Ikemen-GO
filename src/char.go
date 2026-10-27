@@ -4043,7 +4043,8 @@ func (c *Char) prepareNextRound() {
 	}
 	c.oldPos, c.interPos = c.pos, c.pos
 	if c.helperIndex == 0 {
-		if c.roundsExisted() > 0 && c.palfx != nil { // TODO: Why do we need this branch?
+		// Keep the same PalFX after round 1 so that remaps can persist
+		if c.roundsExisted() > 0 && c.palfx != nil {
 			c.palfx.clear()
 		} else {
 			c.palfx = newPalFX()
