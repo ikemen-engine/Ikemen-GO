@@ -14175,8 +14175,17 @@ func (sc modifyBgm) Run(c *Char, _ []int32) bool {
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
 		case modifyBgm_volume:
-			volume = int(exp[0].evalI(c))
-			volumeSet = true
+			v := int(exp[0].evalI(c))
+			if v < 0 {
+				sys.appendToConsole(c.warn() + "ModifyBGM volume cannot be negative")
+			} else {
+				if v > sys.cfg.Sound.MaxBGMVolume {
+					sys.appendToConsole(c.warn() + fmt.Sprintf("ModifyBGM volume %v out of range and was clamped", v))
+					v = sys.cfg.Sound.MaxBGMVolume
+				}
+				volume = v
+				volumeSet = true
+			}
 		case modifyBgm_loopstart:
 			loopstart = int(exp[0].evalI64(c))
 			loopStartSet = true
@@ -14203,8 +14212,7 @@ func (sc modifyBgm) Run(c *Char, _ []int32) bool {
 
 	// Set values that are different only
 	if volumeSet {
-		volumeScaled := int(float64(volume) / 100.0 * float64(sys.cfg.Sound.MaxBGMVolume))
-		sys.bgm.bgmVolume = int(Min(int32(volumeScaled), int32(sys.cfg.Sound.MaxBGMVolume)))
+		sys.bgm.bgmVolume = volume
 		sys.bgm.UpdateVolume()
 	}
 	if posSet {
@@ -14429,10 +14437,19 @@ func (sc playBgm) Run(c *Char, _ []int32) bool {
 				play = bgm != ""
 			}
 		case playBgm_volume:
-			volume = int(exp[0].evalI(c))
-			if !play {
-				sys.bgm.bgmVolume = int(Min(int32(volume), int32(sys.cfg.Sound.MaxBGMVolume)))
-				sys.bgm.UpdateVolume()
+			v := int(exp[0].evalI(c))
+			if v < 0 {
+				sys.appendToConsole(crun.warn() + "PlayBGM volume cannot be negative")
+			} else {
+				if v > sys.cfg.Sound.MaxBGMVolume {
+					sys.appendToConsole(crun.warn() + fmt.Sprintf("PlayBGM volume %v out of range and was clamped", v))
+					v = sys.cfg.Sound.MaxBGMVolume
+				}
+				volume = v
+				if !play {
+					sys.bgm.bgmVolume = volume
+					sys.bgm.UpdateVolume()
+				}
 			}
 		case playBgm_loop:
 			loop = int(exp[0].evalI(c))
