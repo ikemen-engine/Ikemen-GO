@@ -14573,8 +14573,8 @@ func (cl *CharList) pushDetection(c *Char) {
 
 		// X-axis check
 		cposx := c.pos[0] * c.localscl
-		cxleft := cbox[0] * c.localscl
-		cxright := cbox[2] * c.localscl
+		cxleft := cbox[0] // Already in world scale
+		cxright := cbox[2]
 		if c.facing < 0 {
 			cxleft, cxright = -cxright, -cxleft
 		}
@@ -14582,8 +14582,8 @@ func (cl *CharList) pushDetection(c *Char) {
 		cxright += cposx
 
 		gposx := getter.pos[0] * getter.localscl
-		gxleft := gbox[0] * getter.localscl
-		gxright := gbox[2] * getter.localscl
+		gxleft := gbox[0]
+		gxright := gbox[2]
 		if getter.facing < 0 {
 			gxleft, gxright = -gxright, -gxleft
 		}
