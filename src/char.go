@@ -8089,8 +8089,10 @@ func (c *Char) clsnScaleWorld() [2]float32 {
 }
 
 // Size boxes only need world scaling
+// Uses the root's aspect-adjusted localcoord, like localscl and animlocalscl do
 func (c *Char) sizeBoxScaleWorld() [2]float32 {
-	base := 320 / float32(c.gi().localcoord[0])
+	// TODO: We should probably just save this value somewhere
+	base := 320 / sys.chars[c.playerNo][0].localcoord
 	return [2]float32{base, base}
 }
 
