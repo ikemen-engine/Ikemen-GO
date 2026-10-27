@@ -1597,11 +1597,15 @@ func updateINIFile(obj interface{}, iniFile *ini.File, query string, value strin
 						return fmt.Errorf("field '%s' not found as struct or map field", part.name)
 					}
 					if !sectionSet {
+						// A top-level pattern map entry is a whole section, so all remaining parts form the key.
 						sectionName = part.name
 						sectionSet = true
-					} else {
-						keyNameParts = append(keyNameParts, part.name)
+						for i++; i < len(parts); i++ {
+							keyNameParts = append(keyNameParts, parts[i].name)
+						}
+						goto finalize
 					}
+					keyNameParts = append(keyNameParts, part.name)
 
 					i++
 					// If there's another part after e.g. Up, that is the actual final key
