@@ -820,8 +820,10 @@ func (s *System) setGameAspect() {
 	sys.stage.updateLocalScale(sys.gameWidth)
 	for _, p := range sys.chars {
 		if len(p) > 0 {
-			p[0].localcoord = float32(p[0].gi().localcoord[0]) / (float32(sys.gameWidth) / 320)
-			p[0].localscl = 320 / p[0].localcoord
+			// Raw scale adjusted to the new game width
+			p[0].baselocalscl = p[0].gi().rawlocalscl * (sys.gameWidth / 320)
+			// The scale that will vary in custom states
+			p[0].localscl = p[0].baselocalscl
 		}
 	}
 	sys.fightScreen.setScale()
@@ -6263,11 +6265,10 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		//sys.cgi[pn].sff = nil
 		//sys.cgi[pn].palettedata = nil
 
-		// TODO: Why do we do this here?
+		// Without TurnsLoading, the next Turns member replaces the old char here, so this is the last chance to inherit its power
+		// TurnsLoading does the same in activateNextTurnsFighters()
 		if len(sys.chars[pn]) > 0 {
 			p.power = sys.chars[pn][0].power
-			p.guardPoints = sys.chars[pn][0].guardPoints // And why do these two persist?
-			p.dizzyPoints = sys.chars[pn][0].dizzyPoints
 		}
 
 		// Prepare success message

@@ -55,7 +55,7 @@ type GameState struct {
 	statsState  statsRollbackState
 	scoreRounds [][2]float32
 	sel         Select
-	//stringPool      [MaxPlayerNo]StringPool // Only mutated while compiling
+	//stringPool      [MaxPlayerNo]StringPool // Grows while compiling and at runtime. Rollback can skip it since indexes never outlive an expression
 	dialogueFlg bool
 
 	// FightScreen
@@ -475,9 +475,9 @@ func (gs *GameState) String() (str string) {
 	}
 
 	// Add bytecode data
-	// TODO: Every log seems to have these empty. May not be needed
-	str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
-	str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
+	// The stacks are always empty here, but local vars and sctrl params may keep scratch data from the last state
+	//str += fmt.Sprintf("bcStack: %v\n", gs.bcStack)
+	//str += fmt.Sprintf("bcVarStack: %v\n", gs.bcVarStack)
 	str += fmt.Sprintf("bcVar: %v\n", gs.bcVar)
 	str += fmt.Sprintf("workBe: %v\n", gs.workBe)
 
@@ -515,7 +515,7 @@ func (cs Char) String() string {
 	DizzyPoints         :%d
 	GuardPoints         :%d
 	Power               :%d
-	Localcoord          :%f
+	BaseLocalscl        :%f
 	Localscl            :%f
 	Pos                 :%v
 	Vel                 :%v
@@ -535,7 +535,7 @@ func (cs Char) String() string {
 	InputBuffer         :%s`,
 		cs.name, cs.controller, cs.playerNo, cs.helperIndex,
 		cs.life, cs.redLife, cs.dizzyPoints, cs.guardPoints, cs.power,
-		cs.localcoord, cs.localscl,
+		cs.baselocalscl, cs.localscl,
 		cs.pos, cs.vel, cs.facing,
 		cs.id, cs.helperId, cs.parentId,
 		cs.ss.no, cs.ss.time, cs.animNo, // Move/Statetype would require interpreting the flags so they're not worth it

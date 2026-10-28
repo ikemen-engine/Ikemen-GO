@@ -6699,7 +6699,7 @@ func systemScriptInit(l *lua.LState) {
 	luaRegister(l, "stopSnd", func(l *lua.LState) int {
 		/*[redirectable] Stop all character's sounds.
 		@function stopSnd*/
-		sys.charSoundChannels[sys.debugWC.playerNo].SetSize(0) // TODO: Why does this use the hard reset?
+		sys.charSoundChannels[sys.debugWC.playerNo].StopAll()
 		return 0
 	})
 	luaRegister(l, "synchronize", func(*lua.LState) int {

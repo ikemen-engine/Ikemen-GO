@@ -6138,7 +6138,7 @@ func (fs *FightScreen) appendAction(c *Char, msg *FSMsg, refresh int32) {
 			// Use the character
 			sff = sys.cgi[c.playerNo].sff
 			at = sys.cgi[c.playerNo].animTable
-			alscale = float32(fs.localcoord[0]) / float32(sys.chars[c.playerNo][0].localcoord)
+			alscale = float32(fs.localcoord[0]) / 320 * sys.chars[c.playerNo][0].baselocalscl
 		} else if sys.ffx[msg.anim_ffx] != nil {
 			// Use common FX
 			fx := sys.ffx[msg.anim_ffx]

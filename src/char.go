@@ -1841,7 +1841,7 @@ type Explod struct {
 	syncId               int32
 	aimg                 *AfterImage
 	localscl             float32
-	localcoord           float32
+	baselocalscl         float32
 	start_animelem       int32
 	start_scale          [2]float32
 	start_alpha          [2]int32
@@ -1892,7 +1892,7 @@ func (e *Explod) initFromChar(c *Char) *Explod {
 		facing:            1,
 		vfacing:           1,
 		localscl:          c.localscl,
-		localcoord:        c.localcoord,
+		baselocalscl:      c.baselocalscl,
 		projection:        Projection_Orthographic,
 		window:            [4]float32{0, 0, 0, 0},
 		animelem:          1,
@@ -2424,10 +2424,10 @@ func (e *Explod) cueDraw() {
 	}
 
 	// Calculate base scale
-	// Mugen uses "e.localscl" instead of "320 / e.localcoord" but that makes the scale jump in custom states of different localcoord
+	// Mugen uses "e.localscl" instead of "e.baselocalscl" but that makes the scale jump in custom states of different localcoord
 	basescale := [2]float32{
-		(320 / e.localcoord) * zscale * facing,
-		(320 / e.localcoord) * zscale * e.vfacing, // Just for consistency with horizontal facing
+		e.baselocalscl * zscale * facing,
+		e.baselocalscl * zscale * e.vfacing, // Just for consistency with horizontal facing
 	}
 
 	// Calculate draw scale
@@ -2681,7 +2681,7 @@ type Projectile struct {
 	window          [4]float32
 	xshear          float32
 	localscl        float32
-	localcoord      float32
+	baselocalscl    float32
 	parentAttackMul [4]float32
 	platform        bool
 	platformWidth   [2]float32
@@ -2711,7 +2711,7 @@ func (p *Projectile) initFromChar(c *Char) *Projectile {
 	// Local scale exception
 	localscl := c.localscl
 	if c.minus == -2 || c.minus == -4 {
-		localscl = 320 / c.localcoord
+		localscl = c.baselocalscl
 	}
 
 	*p = Projectile{
@@ -2726,7 +2726,7 @@ func (p *Projectile) initFromChar(c *Char) *Projectile {
 		clsnAngle:       0,
 		remove:          true,
 		localscl:        localscl,
-		localcoord:      c.localcoord,
+		baselocalscl:    c.baselocalscl,
 		layerno:         c.layerNo,
 		palfx:           c.getPalfx(),
 		parentAttackMul: c.attackMul, // Projectile attackmul is decided upon its creation only
@@ -3269,10 +3269,10 @@ func (p *Projectile) cueDraw() {
 	pos := [2]float32{p.interPos[0] * p.localscl, p.interPos[1] * p.localscl}
 
 	// Calculate base scale
-	// Mugen uses "p.localscl" instead of "320 / p.localcoord" but that makes the scale jump in custom states of different localcoord
+	// Mugen uses "p.localscl" instead of "p.baselocalscl" but that makes the scale jump in custom states of different localcoord
 	basescale := [2]float32{
-		(320 / p.localcoord) * p.zScale * p.facing,
-		(320 / p.localcoord) * p.zScale,
+		p.baselocalscl * p.zScale * p.facing,
+		p.baselocalscl * p.zScale,
 	}
 
 	// Calculate draw scale
@@ -3482,6 +3482,7 @@ type CharGlobalInfo struct {
 	remapPreset        map[string]RemapPreset
 	remappedpal        [2]int32
 	localcoord         [2]int32
+	rawlocalscl        float32 // Ratio between 320 and the char's localcoord
 	fnt                map[int]*Fnt
 	fightfxPrefix      string
 	fxPath             []string
@@ -3496,6 +3497,7 @@ type CharGlobalInfo struct {
 func newCharGlobalInfo() CharGlobalInfo {
 	gi := CharGlobalInfo{
 		localcoord:    [2]int32{320, 240},
+		rawlocalscl:   1,
 		constants:     make(map[string]TypedValue),
 		states:        make(map[int32]*StateBytecode),
 		callFuncs:     make(map[string]BytecodeFunction),
@@ -3686,7 +3688,7 @@ type Char struct {
 	guardPointsMax      int32
 	redLife             int32
 	juggle              int32
-	localcoord          float32 // Char localcoord[0] scaled to game resolution
+	baselocalscl        float32 // Like localscl, but doesn't change in custom states
 	localscl            float32 // Ratio between 320 and the localcoord of the current state
 	animlocalscl        float32
 	size                CharSize
@@ -3878,9 +3880,9 @@ func (c *Char) init(n int, idx int) {
 		c.controller ^= -1
 	}
 
-	// Default localcoord
-	c.localcoord = 320 / (float32(sys.gameWidth) / 320)
-	c.localscl = 320 / c.localcoord
+	// Default localcoord. Scale relative to 320, adjusted to the game width
+	c.baselocalscl = sys.gameWidth / 320
+	c.localscl = c.baselocalscl
 
 	// This first pass only initializes state to safe defaults. Will run again later after the character is fully set up
 	c.clearState()
@@ -4041,7 +4043,8 @@ func (c *Char) prepareNextRound() {
 	}
 	c.oldPos, c.interPos = c.pos, c.pos
 	if c.helperIndex == 0 {
-		if c.roundsExisted() > 0 && c.palfx != nil { // TODO: Why do we need this branch?
+		// Keep the same PalFX after round 1 so that remaps can persist
+		if c.roundsExisted() > 0 && c.palfx != nil {
 			c.palfx.clear()
 		} else {
 			c.palfx = newPalFX()
@@ -4247,9 +4250,12 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 				gi.authorLow = strings.ToLower(gi.author)
 				// In Mugen localcoord is clamped to 1. But that's already unplayable anyway so such a safeguard is useless
 				if is.ReadI32("localcoord", &gi.localcoord[0], &gi.localcoord[1]) {
-					gi.portraitscale = 320 / float32(gi.localcoord[0])
-					c.localcoord = float32(gi.localcoord[0]) / (float32(sys.gameWidth) / 320)
-					c.localscl = 320 / c.localcoord
+					// Char scale relative to a 320 localcoord. Independent of aspect ratio
+					gi.rawlocalscl = 320 / float32(gi.localcoord[0])
+					gi.portraitscale = gi.rawlocalscl
+					// Raw scale adjusted to the game width
+					c.baselocalscl = gi.rawlocalscl * (sys.gameWidth / 320)
+					c.localscl = c.baselocalscl
 				}
 				is.ReadF32("portraitscale", &gi.portraitscale)
 			}
@@ -5026,7 +5032,7 @@ func (c *Char) changeAnimEx(animNo int32, animPlayerNo int, spritePlayerNo int, 
 	if animOwner < 0 || animOwner >= len(sys.chars) || len(sys.chars[animOwner]) == 0 {
 		animOwner = c.playerNo
 	}
-	c.animlocalscl = 320 / sys.chars[animOwner][0].localcoord
+	c.animlocalscl = sys.chars[animOwner][0].baselocalscl
 
 	// Update reference frame
 	c.updateCurFrame()
@@ -6801,7 +6807,7 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 
 	// Local scale updates
 	// If the new state uses a different localcoord, some values need to be updated in the same frame
-	if newLs := 320 / sys.chars[pn][0].localcoord; c.localscl != newLs {
+	if newLs := sys.chars[pn][0].baselocalscl; c.localscl != newLs {
 		lsRatio := c.localscl / newLs
 		c.pos[0] *= lsRatio
 		c.pos[1] *= lsRatio
@@ -7183,7 +7189,7 @@ func (c *Char) newHelper() (h *Char) {
 	h.parentId = c.id
 	h.controller = c.controller
 	h.teamside = c.teamside
-	h.localcoord = c.localcoord // These two are needed for clearState()
+	h.baselocalscl = c.baselocalscl // These two are needed for clearState()
 	h.localscl = c.localscl
 	h.size = c.size
 	h.life, h.lifeMax = c.lifeMax, c.lifeMax
@@ -7691,7 +7697,7 @@ func (c *Char) animSpriteSetup(a *Animation, spritePN int, ffx string, ownpal bo
 				}
 
 				// Apply char localcoord
-				coordRatio := float32(c.gi().localcoord[0]) / 320
+				coordRatio := 1 / c.gi().rawlocalscl
 				scale *= coordRatio
 
 				// Apply scale to animation
@@ -7723,10 +7729,10 @@ func (c *Char) animSpriteSetup(a *Animation, spritePN int, ffx string, ownpal bo
 			}
 
 			// Update sprite scale according to SFF owner
-			// We use localcoord instead of localscl to avoid fluctuations while characters are in custom states
-			if self.localcoord != 0 {
-				a.start_scale[0] *= self.localcoord / owner.localcoord
-				a.start_scale[1] *= self.localcoord / owner.localcoord
+			// We use baselocalscl instead of localscl to avoid fluctuations while characters are in custom states
+			if self.baselocalscl != 0 {
+				a.start_scale[0] *= owner.baselocalscl / self.baselocalscl
+				a.start_scale[1] *= owner.baselocalscl / self.baselocalscl
 			}
 		}
 	}
@@ -8019,7 +8025,7 @@ func (c *Char) baseDepthBottom() float32 {
 }
 
 func (c *Char) setWidth(fw, bw float32) {
-	coordRatio := (320 / c.localcoord) / c.localscl
+	coordRatio := c.baselocalscl / c.localscl
 
 	c.sizeWidth[0] = c.baseWidthFront()*coordRatio + fw
 	c.sizeWidth[1] = c.baseWidthBack()*coordRatio + bw
@@ -8029,7 +8035,7 @@ func (c *Char) setWidth(fw, bw float32) {
 }
 
 func (c *Char) setHeight(th, bh float32) {
-	coordRatio := (320 / c.localcoord) / c.localscl
+	coordRatio := c.baselocalscl / c.localscl
 
 	c.sizeHeight[0] = c.baseHeightTop()*coordRatio + th
 	c.sizeHeight[1] = c.baseHeightBottom()*coordRatio + bh
@@ -8039,7 +8045,7 @@ func (c *Char) setHeight(th, bh float32) {
 }
 
 func (c *Char) setDepth(td, bd float32) {
-	coordRatio := (320 / c.localcoord) / c.localscl
+	coordRatio := c.baselocalscl / c.localscl
 
 	c.depthPlayer[0] = c.baseDepthTop()*coordRatio + td
 	c.depthPlayer[1] = c.baseDepthBottom()*coordRatio + bd
@@ -8090,8 +8096,7 @@ func (c *Char) clsnScaleWorld() [2]float32 {
 
 // Size boxes only need world scaling
 func (c *Char) sizeBoxScaleWorld() [2]float32 {
-	base := 320 / float32(c.gi().localcoord[0])
-	return [2]float32{base, base}
+	return [2]float32{c.baselocalscl, c.baselocalscl}
 }
 
 func (c *Char) gethitAnimtype() Reaction {
@@ -8122,7 +8127,7 @@ func (c *Char) initConstants(gi *CharGlobalInfo) {
 	gi.movement.init()
 
 	// Scale defaults to the character's own localcoord
-	coordRatio := float32(gi.localcoord[0]) / 320
+	coordRatio := 1 / gi.rawlocalscl
 
 	if coordRatio != 1 {
 		// Size
@@ -8616,11 +8621,11 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 			// Add head/mid/foot offset
 			switch hmf {
 			case HMF_H:
-				x += t.size.head.pos[0] * ((320 / t.localcoord) / c.localscl)
-				y += t.size.head.pos[1] * ((320 / t.localcoord) / c.localscl)
+				x += t.size.head.pos[0] * (t.baselocalscl / c.localscl)
+				y += t.size.head.pos[1] * (t.baselocalscl / c.localscl)
 			case HMF_M:
-				x += t.size.mid.pos[0] * ((320 / t.localcoord) / c.localscl)
-				y += t.size.mid.pos[1] * ((320 / t.localcoord) / c.localscl)
+				x += t.size.mid.pos[0] * (t.baselocalscl / c.localscl)
+				y += t.size.mid.pos[1] * (t.baselocalscl / c.localscl)
 			case HMF_F:
 				// Do nothing. Feet are 0,0
 			}
@@ -9956,7 +9961,7 @@ func (c *Char) inGuardState() bool {
 }
 
 func (c *Char) gravity() {
-	c.vel[1] += c.gi().movement.yaccel * ((320 / c.localcoord) / c.localscl)
+	c.vel[1] += c.gi().movement.yaccel * (c.baselocalscl / c.localscl)
 }
 
 func (c *Char) getStandFriction() float32 {
@@ -10086,10 +10091,10 @@ func (c *Char) posUpdate() {
 	// This used to be in actionPrepare(), which would be ideal, but that caused https://github.com/ikemen-engine/Ikemen-GO/issues/2188
 	if c.downHitOffset {
 		if nobind[0] {
-			c.addX(c.gi().movement.down.gethit.offset[0] * (320 / c.localcoord) / c.localscl * c.facing)
+			c.addX(c.gi().movement.down.gethit.offset[0] * c.baselocalscl / c.localscl * c.facing)
 		}
 		if nobind[1] {
-			c.addY(c.gi().movement.down.gethit.offset[1] * (320 / c.localcoord) / c.localscl)
+			c.addY(c.gi().movement.down.gethit.offset[1] * c.baselocalscl / c.localscl)
 		}
 		c.downHitOffset = false
 	}
@@ -13435,8 +13440,8 @@ func (c *Char) cueDraw() {
 		// Calculate base scale
 		// The scale that exists even in a blank slate character
 		basescale := [2]float32{
-			(320 / c.localcoord) * c.zScale * c.facing,
-			(320 / c.localcoord) * c.zScale,
+			c.baselocalscl * c.zScale * c.facing,
+			c.baselocalscl * c.zScale,
 		}
 
 		// Calculate draw scale
@@ -13490,8 +13495,8 @@ func (c *Char) cueDraw() {
 			self := sys.chars[c.playerNo][0]
 			owner := sys.chars[c.animPN][0]
 			airOffsetFix = [2]float32{
-				(self.localcoord / owner.localcoord) / (self.size.xscale / owner.size.xscale),
-				(self.localcoord / owner.localcoord) / (self.size.yscale / owner.size.yscale),
+				(owner.baselocalscl / self.baselocalscl) / (self.size.xscale / owner.size.xscale),
+				(owner.baselocalscl / self.baselocalscl) / (self.size.yscale / owner.size.yscale),
 			}
 		}
 
@@ -14571,8 +14576,8 @@ func (cl *CharList) pushDetection(c *Char) {
 
 		// X-axis check
 		cposx := c.pos[0] * c.localscl
-		cxleft := cbox[0] * c.localscl
-		cxright := cbox[2] * c.localscl
+		cxleft := cbox[0] // Already in world scale
+		cxright := cbox[2]
 		if c.facing < 0 {
 			cxleft, cxright = -cxright, -cxleft
 		}
@@ -14580,8 +14585,8 @@ func (cl *CharList) pushDetection(c *Char) {
 		cxright += cposx
 
 		gposx := getter.pos[0] * getter.localscl
-		gxleft := gbox[0] * getter.localscl
-		gxright := gbox[2] * getter.localscl
+		gxleft := gbox[0]
+		gxright := gbox[2]
 		if getter.facing < 0 {
 			gxleft, gxright = -gxright, -gxleft
 		}
@@ -14597,13 +14602,13 @@ func (cl *CharList) pushDetection(c *Char) {
 		if sys.zEnabled() {
 			cDepth := c.depthToBox()
 			cposz = c.pos[2] * c.localscl
-			cztop = cposz + cDepth[0]*c.localscl // TODO: Probably "baseLocalscl" like other size constants
-			czbot = cposz + cDepth[1]*c.localscl
+			cztop = cposz + cDepth[0]*c.baselocalscl
+			czbot = cposz + cDepth[1]*c.baselocalscl
 
 			gDepth := getter.depthToBox()
 			gposz = getter.pos[2] * getter.localscl
-			gztop = gposz + gDepth[0]*getter.localscl
-			gzbot = gposz + gDepth[1]*getter.localscl
+			gztop = gposz + gDepth[0]*getter.baselocalscl
+			gzbot = gposz + gDepth[1]*getter.baselocalscl
 
 			overlapZ = Min(gzbot, czbot) - Max(gztop, cztop)
 
