@@ -1441,17 +1441,14 @@ function main.f_addChar(line, playable, loading, slot)
 			main.t_selChars[idx].hasSlot = true
 		end
 	end
-	for _, v in ipairs({'next', 'previous', 'select'}) do
-		if main.t_selChars[row][v] ~= nil then
-			commandAdd(main.t_selChars[row][v], main.t_selChars[row][v])
-			if main.t_selGrid[#main.t_selGrid][v] == nil then
-				main.t_selGrid[#main.t_selGrid][v] = {}
-			end
-			if main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] == nil then
-				main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] = {}
-			end
-			table.insert(main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]], #main.t_selGrid[#main.t_selGrid].chars)
-		end
+	-- slot 'select' commands
+	local selectCmd = main.t_selChars[row].select
+	if selectCmd ~= nil then
+		local grid = main.t_selGrid[#main.t_selGrid]
+		commandAdd(selectCmd, selectCmd)
+		grid.select = grid.select or {}
+		grid.select[selectCmd] = grid.select[selectCmd] or {}
+		table.insert(grid.select[selectCmd], #grid.chars)
 	end
 	if loading then
 		main.f_loadingRefresh()
@@ -1553,15 +1550,13 @@ function main.f_addStageEntry(line, stageSlot)
 	st.stageSlot = stageSlot
 	local group = main.t_stageSlots[stageSlot]
 	table.insert(group.stages, row)
-	for _, cmdType in ipairs({'next', 'previous', 'select'}) do
-		local command = st[cmdType]
-		if command ~= nil then
-			command = tostring(command)
-			commandAdd(command, command)
-			group[cmdType] = group[cmdType] or {}
-			group[cmdType][command] = group[cmdType][command] or {}
-			table.insert(group[cmdType][command], row)
-		end
+	-- slot 'select' commands
+	if st.select ~= nil then
+		local selectCmd = tostring(st.select)
+		commandAdd(selectCmd, selectCmd)
+		group.select = group.select or {}
+		group.select[selectCmd] = group.select[selectCmd] or {}
+		table.insert(group.select[selectCmd], row)
 	end
 	return row
 end
