@@ -826,6 +826,11 @@ func (s *Sprite) GetPal(pl *PaletteList) []uint32 {
 
 // Returns the sprite's original palette texture from the global list
 func (s *Sprite) GetPalTex(pl *PaletteList) Texture {
+	// Sprites with unique palettes must use textures cached from those palettes
+	// Selectable ACT slots may reuse the same numeric palette index
+	if len(s.Pal) > 0 {
+		return nil
+	}
 	// If true color or no palettes exist, return nothing
 	if s.coldepth > 8 || len(pl.paletteMap) == 0 {
 		return nil
