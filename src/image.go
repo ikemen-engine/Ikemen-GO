@@ -2329,10 +2329,6 @@ func (s *Sff) loadActPalettes(ref int) error {
 
 	c := sys.sel.charlist[ref]
 	maxPal := int(sys.cfg.Config.PaletteMax)
-
-	// TODO: External .ACTs on SFFv2 without palette slots may cause color bleeding,
-	// on sprites with unique palettes if a SFFv2 with Acts is loaded by sffNew, since is a simplified utility
-	// and lacks the engine's palInfo/cgi logic to properly isolate palette remapping during rendering.
 	searchDirs := []string{c.def, "", "data/"}
 
 	// Read each palette
@@ -2353,6 +2349,15 @@ func (s *Sff) loadActPalettes(ref int) error {
 		if err != nil {
 			LogMessage("Error reading " + palPath)
 			continue
+		}
+
+		// Use existing SFFv2 slots or append missing ones
+		if s.header.Version[0] == 2 {
+			if idx, exists := s.palList.PalTable[[2]uint16{1, palSlot}]; exists && idx >= 0 {
+				targetIdx = idx
+			} else {
+				targetIdx = len(s.palList.palettes)
+			}
 		}
 
 		// Update the PalTable mapping
