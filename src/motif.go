@@ -6638,6 +6638,15 @@ func victoryPortraitAnim(m *Motif, sc *SelectChar, slot string,
 			isCopied = true
 			if idx, ok := a.anim.sff.palList.PalTable[[2]uint16{1, uint16(pal)}]; ok {
 				a.anim.sff.palList.paletteMap[0] = idx
+				// SFFv1 can preload a duplicate of the base palette at index 1
+				if a.anim.sff.header.Version[0] == 1 && len(a.anim.sff.palList.paletteMap) > 1 {
+					for _, spr := range a.anim.sff.sprites {
+						if spr != nil && spr.sffv1BasePal {
+							a.anim.sff.palList.paletteMap[1] = idx
+							break
+						}
+					}
+				}
 			}
 		}
 		//fmt.Printf("[Victory] slot=%s -> applied palette %d\n", slot, pal)

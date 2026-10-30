@@ -7,9 +7,11 @@ import (
 	"image/draw"
 	"image/png"
 	"io"
+	"maps"
 	"math"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"unsafe"
 )
@@ -485,6 +487,54 @@ func (pl *PaletteList) init() {
 	pl.numcols = make(map[[2]uint16]int)
 	pl.PalTex = nil
 	pl.duplicatePals = make(map[int][]int)
+}
+
+// Shares palette data but gives the copy its own remapping
+func (pl *PaletteList) copyMap() PaletteList {
+	result := *pl
+	result.paletteMap = slices.Clone(pl.paletteMap)
+	return result
+}
+
+type paletteCopyKey struct {
+	first *uint32
+	count int
+}
+
+// Preserves linked palettes in the copy without retaining source buffers
+type paletteCopier map[paletteCopyKey][]uint32
+
+func (plc paletteCopier) copy(colors []uint32) []uint32 {
+	if len(colors) == 0 {
+		return slices.Clone(colors)
+	}
+	key := paletteCopyKey{&colors[0], len(colors)}
+	if colors, ok := plc[key]; ok {
+		return colors
+	}
+	result := slices.Clone(colors)
+	plc[key] = result
+	return result
+}
+
+// Keeps physical indices and links, with private colors and caches
+func (pl *PaletteList) copyPalettes(plc paletteCopier) PaletteList {
+	result := pl.copyMap()
+	if pl.palettes != nil {
+		result.palettes = make([][]uint32, len(pl.palettes))
+		for i, colors := range pl.palettes {
+			result.palettes[i] = plc.copy(colors)
+		}
+	}
+	result.PalTable = maps.Clone(pl.PalTable)
+	result.numcols = maps.Clone(pl.numcols)
+	result.duplicatePals = maps.Clone(pl.duplicatePals)
+	for i, duplicates := range result.duplicatePals {
+		result.duplicatePals[i] = slices.Clone(duplicates)
+	}
+	// The renderer creates private palette textures lazily. Image textures remain shared
+	result.PalTex = make([]Texture, max(len(pl.PalTex), len(pl.palettes)))
+	return result
 }
 
 func (pl *PaletteList) SetSource(i int, p []uint32) {
