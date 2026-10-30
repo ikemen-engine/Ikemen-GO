@@ -2316,7 +2316,8 @@ func (a *Anim) Copy() *Anim {
 			continue
 		}
 		dst := newSprite()
-
+		dst.Group = src.Group
+		dst.Number = src.Number
 		dst.Tex = src.Tex
 		dst.palidx = src.palidx
 		dst.coldepth = src.coldepth
