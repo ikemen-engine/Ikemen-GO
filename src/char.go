@@ -1630,7 +1630,10 @@ func (ai *AfterImage) recAfterImg(sd *SpriteData, hitpause bool) {
 				}
 
 				// Shallow copy of live sprite
+				// Keep the afterimage's palette cache separate from the live sprite
+				oldPalTex, oldPalTemp := img.anim.spr.PalTex, img.anim.spr.paltemp
 				*img.anim.spr = *sd.anim.spr
+				img.anim.spr.PalTex, img.anim.spr.paltemp = oldPalTex, oldPalTemp
 
 				// Apply palette baking logic
 				if sd.anim.palettedata != nil {
