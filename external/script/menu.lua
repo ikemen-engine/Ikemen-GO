@@ -714,7 +714,7 @@ function menu.f_commandlistParse(sec)
 					sel.movelistText = movelist
 					sel.commandlist = nil
 					sel.movelistState = {item = 1, cursorPosY = 1, moveTxt = 0}
-					if movelist ~= '' then
+					if movelist:find('%S') then
 						-- wrap the plain glyph names in <>, but leave existing tags alone
 						for k, v in main.f_sortKeys(motif.glyphs, function(t, a, b) return string.len(a) > string.len(b) end) do
 							if k:sub(1, 1) ~= '<' then
@@ -728,6 +728,8 @@ function menu.f_commandlistParse(sec)
 						movelist = movelist:gsub('\r\n', '\n'):gsub('\n$', '')
 						for line in (movelist .. '\n'):gmatch('(.-)\n') do
 							line = line:gsub('%s+$', '')
+							local spacer
+							line, spacer = line:gsub('^<spacer>', '')
 							local subt = {}
 							for m in line:gmatch('(	*[^	]+)') do
 								local tabs = 0
@@ -744,7 +746,7 @@ function menu.f_commandlistParse(sec)
 								table.insert(subt, {text = m, align = align})
 							end
 							table.insert(t, {
-								itemname = tostring(#t + 1),
+								itemname = ((line == '' or spacer > 0) and 'spacer' or '') .. tostring(#t + 1),
 								paramname = tostring(#t + 1),
 								displayname = line,
 								columns = subt,
@@ -820,7 +822,6 @@ function menu.f_commandlistRender(sec, bg)
 	end
 	state.cursorPosY, state.moveTxt, state.item = main.f_menuCommonCalc(
 		t.items, state.item, state.cursorPosY, state.moveTxt, mv, sec.cursor, forcedDir)
-	rectDraw(mv.overlay.RectData)
 	textImgReset(mv.title.TextSpriteData)
 	textImgSetText(mv.title.TextSpriteData, main.f_itemnameUpper(string.format(mv.title.text, t.name), m.title.uppercase))
 	main.f_menuCommonDraw(t.items, state.item, state.cursorPosY, state.moveTxt, mv, bg, true)

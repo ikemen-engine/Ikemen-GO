@@ -1290,10 +1290,9 @@ type MenuInfoProperties struct {
 	} `ini:"exit"`
 	Overlay  OverlayProperties `ini:"overlay"`
 	Movelist struct {
-		Title   TextProperties    `ini:"title"`
-		Menu    MenuProperties    `ini:"menu"`
-		Overlay OverlayProperties `ini:"overlay"`
-		Hint    HintProperties    `ini:"hint"`
+		Title TextProperties `ini:"title"`
+		Menu  MenuProperties `ini:"menu"`
+		Hint  HintProperties `ini:"hint"`
 	} `ini:"movelist"`
 	Hint HintProperties `ini:"hint"`
 }
@@ -2329,6 +2328,7 @@ type InheritSpec struct {
 	SrcPrefix string
 	DstSec    string
 	DstPrefix string
+	SkipText  bool
 }
 
 // mergeWithInheritance applies "user overrides default" with intra-file inheritance.
@@ -2440,6 +2440,9 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 
 		// Resolve and set final values following the precedence.
 		for suf := range suffixes {
+			if sp.SkipText && strings.Contains("."+strings.ToLower(suf)+".", ".text.") {
+				continue
+			}
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
 			// Skip palmenu.preview anim/spr inheritance
@@ -2656,8 +2659,17 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Side Select Info", SrcPrefix: "item.p1.", DstSec: "Side Select Info", DstPrefix: "item.p1.active."},
 		{SrcSec: "Side Select Info", SrcPrefix: "item.p2.", DstSec: "Side Select Info", DstPrefix: "item.p2.active."},
 	}
+	pauseSections := append([]string{"Pause Menu"}, m.customPauseMenuSections()...)
+	// Inherit each pause menu's settings before copying them to other pause menus.
+	for _, sec := range pauseSections {
+		for _, prefix := range []string{"title.", "menu.", "hint."} {
+			specs = append(specs, InheritSpec{
+				SrcSec: sec, SrcPrefix: prefix, DstSec: sec, DstPrefix: "movelist." + prefix, SkipText: true,
+			})
+		}
+	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
-	for _, sec := range m.customPauseMenuSections() {
+	for _, sec := range pauseSections[1:] {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
 	}
 	// Apply p1/p2 -> p3..p8 inheritance to every [* Results Screen]

@@ -3808,7 +3808,7 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 		if m.tween.wrap.snap then
 			main.menuSnap = true
 		end
-	elseif m.window.scrollmode == 'immediate' then
+	elseif moveDir ~= 0 and m.window.scrollmode == 'immediate' then
 		-- Scroll first. Move the cursor when the window reaches either end.
 		first = math.max(1, math.min(first + item - item_before, maxFirst))
 	end
@@ -3896,10 +3896,9 @@ end
 function main.f_menuItemTextDraw(row, props, m, x, y)
 	local sprite = props.TextSpriteData
 	local columns = row.columns
-	if row.itemname:match("^spacer%d*$") then
-		columns = {{text = ''}}
-	elseif columns == nil then
-		columns = {{text = row.displayname}}
+	if columns == nil then
+		local text = row.itemname:match("^spacer%d*$") and '' or row.displayname
+		columns = {{text = text}}
 	end
 	local width = m.window.width or 0
 	if width <= 0 then
@@ -3951,7 +3950,8 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	opts = opts or {}
 	local offx = opts.offx or 0
 	local offy = opts.offy or 0
-	local forceInactive = (opts.forceInactive == true)
+	local forceInactive = opts.forceInactive == true or t[item] == nil
+		or t[item].itemname:match("^spacer%d*$") ~= nil
 
 	-- effective visible-items: treat 0 or 'unlimitedItems' as "all"
 	local visible = (m.window and m.window.visibleitems) or #t
@@ -4160,6 +4160,7 @@ function main.f_menuItemHintDraw(hint, item)
 			end
 		end
 	end
+	text = text or hint.text.default
 	-- A row that refused an input shows the warning instead, see menu.hint.warn.
 	local sprite = hint.TextSpriteData
 	if item.warn ~= nil and hint.warn ~= nil and hint.warn.text[item.warn] ~= nil then
