@@ -24,6 +24,7 @@ type ShaderProgram_GL33 struct {
 	uniforms      map[string]int32 // Uniform name to location
 	textures      map[string]int   // Sampler name to texture unit
 	name          string           // For debugging
+	custom        bool
 	needsGrabPass bool
 }
 
@@ -82,7 +83,7 @@ func (s *ShaderProgram_GL33) RegisterUniforms(names ...string) {
 		loc := gl.GetUniformLocation(s.program, s.glStr(name))
 		s.uniforms[name] = loc
 
-		if r.debugMode && loc == -1 {
+		if r.debugMode && loc == -1 && !s.custom {
 			LogMessage("[GL Debug] Shader %v: Uniform '%s' not found!", s.name, name)
 		}
 	}
@@ -95,7 +96,7 @@ func (s *ShaderProgram_GL33) RegisterTextures(names ...string) {
 		s.uniforms[name] = loc
 		s.textures[name] = len(s.textures)
 
-		if r.debugMode && loc == -1 {
+		if r.debugMode && loc == -1 && !s.custom {
 			LogMessage("[GL Debug] Shader %v: Texture uniform '%s' not found or optimized out!", s.name, name)
 		}
 	}
@@ -2456,14 +2457,15 @@ func (r *Renderer_GL33) LoadCustomSpriteShader(shaderName string, shaderData []b
 		return 0
 	}
 
+	shader.custom = true
+	shader.needsGrabPass = strings.Contains(fragSource, "bgl_RenderedTexture")
+
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
 		"spriteUV", "palUV", "tex1UV", "tex2UV", "quad", "useQuad",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
-
-	shader.needsGrabPass = strings.Contains(fragSource, "bgl_RenderedTexture")
 
 	id := r.nextShaderID
 	r.nextShaderID++

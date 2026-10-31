@@ -31,6 +31,7 @@ type ShaderProgram_GLES32 struct {
 	uniforms      map[string]int32 // Uniform name to location
 	textures      map[string]int   // Sampler name to texture unit
 	name          string           // For debugging
+	custom        bool
 	needsGrabPass bool
 }
 
@@ -2412,14 +2413,15 @@ func (r *Renderer_GLES32) LoadCustomSpriteShader(shaderName string, shaderData [
 		return 0
 	}
 
+	shader.custom = true
+	shader.needsGrabPass = strings.Contains(fragSource, "bgl_RenderedTexture")
+
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
 		"spriteUV", "palUV", "tex1UV", "tex2UV", "quad", "useQuad",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
-
-	shader.needsGrabPass = strings.Contains(fragSource, "bgl_RenderedTexture")
 
 	id := r.nextShaderID
 	r.nextShaderID++
