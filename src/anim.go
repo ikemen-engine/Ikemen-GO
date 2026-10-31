@@ -2244,7 +2244,7 @@ func NewAnim(sff *Sff, action string) *Anim {
 	return a
 }
 
-// Creates a shallow copy with independent palette mapping
+// Creates a shallow copy with independent palette mapping and PalFX
 func (a *Anim) Copy() *Anim {
 	if a == nil || a.anim == nil || a.anim.sff == nil {
 		return nil
@@ -2253,14 +2253,7 @@ func (a *Anim) Copy() *Anim {
 	copySff := newSff(SffTypeOther)
 	// Copy header and palette info
 	copySff.header = srcSff.header
-	copySff.palList.palettes = srcSff.palList.palettes
-	// Independent paletteMap copy
-	copySff.palList.paletteMap = make([]int, len(srcSff.palList.paletteMap))
-	copy(copySff.palList.paletteMap, srcSff.palList.paletteMap)
-
-	copySff.palList.PalTable = srcSff.palList.PalTable
-	copySff.palList.numcols = srcSff.palList.numcols
-	copySff.palList.PalTex = srcSff.palList.PalTex
+	copySff.palList = srcSff.palList.copyMap()
 	// Serialize frames for NewAnim
 	var frameAnims strings.Builder
 	for _, f := range a.anim.frames {
@@ -2294,7 +2287,7 @@ func (a *Anim) Copy() *Anim {
 	newAnim.rot.yangle = a.rot.yangle
 	newAnim.projection = a.projection
 	newAnim.fLength = a.fLength
-	newAnim.palfx = a.palfx
+	newAnim.palfx = a.palfx.Clone()
 	newAnim.lastUpdateFrame = -1
 	// Copy current animation state (timing, loop, interpolation, etac.)
 	newAnim.anim.looptime = a.anim.looptime
@@ -2323,7 +2316,8 @@ func (a *Anim) Copy() *Anim {
 			continue
 		}
 		dst := newSprite()
-
+		dst.Group = src.Group
+		dst.Number = src.Number
 		dst.Tex = src.Tex
 		dst.palidx = src.palidx
 		dst.coldepth = src.coldepth
@@ -2340,6 +2334,45 @@ func (a *Anim) Copy() *Anim {
 		newAnim.anim.sff.sprites[key] = dst
 	}
 	return newAnim
+}
+
+// PaletteCopy makes this animation's palette data private without copying images
+// It preserves playback, remapping and PalFX, and leaves other instances unchanged
+func (a *Anim) PaletteCopy() bool {
+	if a == nil || a.anim == nil || a.anim.sff == nil {
+		return false
+	}
+	source := a.anim.palettedata
+	if source == nil {
+		source = &a.anim.sff.palList
+	}
+	plc := make(paletteCopier)
+	copySff := *a.anim.sff
+	copySff.palList = source.copyPalettes(plc)
+	copySff.sprites = make(map[[2]uint16]*Sprite, len(a.anim.sff.sprites))
+	cloned := make(map[*Sprite]*Sprite)
+	copySprite := func(source *Sprite) *Sprite {
+		if source == nil {
+			return nil
+		}
+		if sprite, ok := cloned[source]; ok {
+			return sprite
+		}
+		sprite := *source
+		sprite.Pal = plc.copy(source.Pal)
+		sprite.PalTex, sprite.paltemp = nil, nil
+		cloned[source] = &sprite
+		return &sprite
+	}
+	for key, sprite := range a.anim.sff.sprites {
+		copySff.sprites[key] = copySprite(sprite)
+	}
+	// Detach the context too: another Anim may wrap the same Animation or SFF
+	copyAnim := *a.anim
+	copyAnim.sff, copyAnim.palettedata = &copySff, &copySff.palList
+	copyAnim.spr = copySprite(a.anim.spr)
+	a.anim = &copyAnim
+	return true
 }
 
 // Returns a shallow copy of an Animation.
