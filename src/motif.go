@@ -1153,6 +1153,12 @@ type OptionInfoProperties struct {
 	TextInput TextInputProperties `ini:"textinput"`
 	HoldTime  int32               `ini:"holdtime" default:"60"` // frames cancel is held to leave a capture
 	UseGlyphs bool                `ini:"useglyphs"`
+	ControllerSetup struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"controllersetup"`
+	ButtonMapping struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"buttonmapping"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
 	Hint     HintProperties    `ini:"hint"`
 }

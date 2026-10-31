@@ -2266,14 +2266,25 @@ function options.f_editSetup(device, context)
 	return true
 end
 
--- Collects the capture targets. Config all skips rows the motif hides, so they stay unchanged.
+local function configAllButtons(kind)
+	local mapping = kind == 'mapping'
+	local names = mapping and motif.option_info.buttonmapping.configall or motif.option_info.controllersetup.configall
+	local buttons = {}
+	for _, name in ipairs(names) do
+		buttons[mapping and name:upper() or name:lower()] = true
+	end
+	return buttons
+end
+
+-- Config All follows menu order and skips hidden or unlisted buttons.
 local function startInputCapture(tbl, item, all)
 	local root = tbl.inputMenu
 	local rows = root.kind == 'mapping' and t_mappingRows or t_setupRows
+	local allowed = all and configAllButtons(root.kind)
 	local entries = {}
 	local function collect(menu)
 		for i, row in ipairs(menu.items) do
-			if rows[row.itemname] then
+			if rows[row.itemname] and allowed[rows[row.itemname]] then
 				table.insert(entries, {menu = menu, item = i, field = rows[row.itemname]})
 			elseif menu.submenu[row.itemname] ~= nil then
 				collect(menu.submenu[row.itemname])
@@ -2440,6 +2451,16 @@ end
 -- The screen uses [Mapping Info] and [MappingBgDef], or the pause background in a match.
 function options.f_mappingScreen(context, mode, root)
 	local mapping = {mode = mode, index = 1, root = root, name = root.device.name, device = root.device.id}
+	local allowed = configAllButtons('mapping')
+	mapping.controls = {}
+	for _, control in ipairs(t_virtualControls) do
+		if allowed[control] then
+			table.insert(mapping.controls, control)
+		end
+	end
+	if mode == 'guided' and #mapping.controls == 0 then
+		return
+	end
 	mapping.labels = mappingLabels(root)
 	mapping.saved = main.f_tableCopy(root.draft)
 	if mode == 'test' then
@@ -2462,7 +2483,7 @@ function options.f_gamepadMappingFrame(context)
 		background = motif.mappingbgdef
 		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
 	end
-	local name = t_virtualControls[mapping.index]
+	local name = mapping.controls[mapping.index]
 	local control = name and cfg.control[t_mappingArt[name]]
 	local state = mapping.mode == 'test' and 'test' or 'default'
 	local pressed = {}
@@ -2583,7 +2604,7 @@ function options.f_gamepadMappingFrame(context)
 			end
 		end
 	end
-	if mapping.mode == 'guided' and mapping.index > #t_virtualControls and mapping.finish == nil then
+	if mapping.mode == 'guided' and mapping.index > #mapping.controls and mapping.finish == nil then
 		updateEditor(mapping.root, mapping.root)
 		close()
 	end
