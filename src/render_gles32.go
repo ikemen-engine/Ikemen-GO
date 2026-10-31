@@ -120,6 +120,7 @@ func (s *ShaderProgram_GLES32) RegisterTextures(names ...string) {
 
 func (r *Renderer_GLES32) compileShader(shaderType uint32, src string) (uint32, error) {
 	shader := gl.CreateShader(shaderType)
+	src = expandShaderIncludes(src)
 
 	// 1. SMART HEADER INJECTION
 	// GLES 3.0+ drivers REQUIRE the version to be the very first line.
@@ -224,19 +225,22 @@ type boundTexture struct {
 
 // Binds only if it isn't already bound there, per the shared table
 func (r *Renderer_GLES32) bindTextureToUnit(unit int32, target uint32, tex *Texture_GLES32, handle uint32) bool {
+	var root *Texture_GLES32
 	if tex != nil {
 		handle = tex.handle
+		root = tex.root
 	}
 
 	cur := &r.boundTex[unit]
-	if cur.tex == tex && cur.handle == handle && cur.target == target {
+	// Compare the owning texture so atlas sub-textures don't rebind the same atlas
+	if cur.tex == root && cur.handle == handle && cur.target == target {
 		return false
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0 + uint32(unit))
 	gl.BindTexture(target, handle)
 
-	cur.tex = tex
+	cur.tex = root
 	cur.handle = handle
 	cur.target = target
 	return true
@@ -244,15 +248,17 @@ func (r *Renderer_GLES32) bindTextureToUnit(unit int32, target uint32, tex *Text
 
 // Always rebinds. Used before any call that edits texture data since those act on whatever's active
 func (r *Renderer_GLES32) bindTextureToUnitForced(unit int32, target uint32, tex *Texture_GLES32, handle uint32) {
+	var root *Texture_GLES32
 	if tex != nil {
 		handle = tex.handle
+		root = tex.root
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0 + uint32(unit))
 	gl.BindTexture(target, handle)
 
 	cur := &r.boundTex[unit]
-	cur.tex = tex
+	cur.tex = root
 	cur.handle = handle
 	cur.target = target
 }
@@ -265,6 +271,8 @@ type Texture_GLES32 struct {
 	uvst   [4]float32
 	filter bool
 	handle uint32 // GL side handle
+	// Texture that owns the handle. Atlas sub-textures share it
+	root   *Texture_GLES32
 }
 
 // Helper that wraps the actual GL call to generate a texture
@@ -281,6 +289,7 @@ func (r *Renderer_GLES32) generateTexture(width, height, depth int32, filter boo
 		filter: filter,
 		handle: h,
 	}
+	tex.root = tex
 	var interp int32 = gl.NEAREST
 	if filter {
 		interp = gl.LINEAR
@@ -308,8 +317,8 @@ func (r *Renderer_GLES32) newTexture(width, height, depth int32, filter bool) (T
 }
 
 func (r *Renderer_GLES32) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) Texture {
-	t := &Texture_GLES32{256, 1, 32, offset, uvst, false, 0}
-	t.handle = (*(sys.palTexture.textures[slot[0]])).(*Texture_GLES32).handle
+	parent := (*(sys.palTexture.textures[slot[0]])).(*Texture_GLES32)
+	t := &Texture_GLES32{width: 256, height: 1, depth: 32, offset: offset, uvst: uvst, handle: parent.handle, root: parent.root}
 	runtime.SetFinalizer(t, func(t *Texture_GLES32) {
 		sys.mainThreadTask <- func() {
 			sys.palTexture.emptySlot.PushFront(slot)
@@ -319,7 +328,8 @@ func (r *Renderer_GLES32) newPaletteTexture(slot [2]uint32, offset [2]int32, uvs
 }
 
 func (r *Renderer_GLES32) newSubTexture(tex Texture, width, height int32, uvst [4]float32) Texture {
-	t := &Texture_GLES32{width, height, tex.(*Texture_GLES32).depth, [2]int32{0, 0}, uvst, tex.(*Texture_GLES32).filter, tex.(*Texture_GLES32).handle}
+	p := tex.(*Texture_GLES32)
+	t := &Texture_GLES32{width: width, height: height, depth: p.depth, uvst: uvst, filter: p.filter, handle: p.handle, root: p.root}
 	return t
 }
 
@@ -709,6 +719,11 @@ func (r *Renderer_GLES32) InitModelShader() error {
 			"lights[0].type", "lights[1].type", "lights[2].type", "lights[3].type", "lights[0].position", "lights[1].position", "lights[2].position", "lights[3].position",
 			"lights[0].shadowMapFar", "lights[1].shadowMapFar", "lights[2].shadowMapFar", "lights[3].shadowMapFar", "numJoints", "morphTargetWeight", "morphTargetOffset", "morphTargetTextureDimension",
 			"numTargets", "numVertices", "enableAlpha", "alphaThreshold", "baseColorFactor", "useTexture", "texTransform", "layerOffset", "lightIndex")
+		// model.go sends these on every backend, but GLES uses lightMatrix instead
+		// Registering them lets the setters skip them instead of crashing on an unknown name
+		for i := 0; i < 24; i++ {
+			r.shadowMapShader.RegisterUniforms(fmt.Sprintf("lightMatrices[%d]", i))
+		}
 		r.shadowMapShader.RegisterTextures("morphTargetValues", "jointMatrices", "tex")
 	}
 
@@ -826,7 +841,7 @@ func (r *Renderer_GLES32) Init() {
 	r.spriteShader.RegisterAttributes("position", "uv")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"spriteUV", "palUV")
+		"spriteUV", "palUV", "quad", "useQuad")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Configure spriteVAO
@@ -1077,6 +1092,7 @@ func (r *Renderer_GLES32) InitStateCache() {
 	gl.FrontFace(gl.CCW)
 	gl.Disable(gl.BLEND)
 	gl.Disable(gl.SCISSOR_TEST)
+	r.scissorRect = [4]int32{-1, -1, -1, -1} // Unknown, so the first EnableScissor sets it
 
 	// Check hardware texture limit
 	// TODO: Maybe clamp the result
@@ -1822,19 +1838,17 @@ func (r *Renderer_GLES32) EnableScissor(x, y, width, height int32) {
 	// Flip Y to OpenGL convention
 	realY := sys.scrrect[3] - (y + height)
 
-	if r.scissorEnabled &&
-		r.scissorRect[0] == x && r.scissorRect[1] == realY &&
-		r.scissorRect[2] == width && r.scissorRect[3] == height {
-		return
-	}
-
 	if !r.scissorEnabled {
 		gl.Enable(gl.SCISSOR_TEST)
 		r.scissorEnabled = true
 	}
 
-	gl.Scissor(x, realY, width, height)
-	r.scissorRect = [4]int32{x, realY, width, height}
+	// The rect survives DisableScissor, so only set it when it changes
+	rect := [4]int32{x, realY, width, height}
+	if rect != r.scissorRect {
+		gl.Scissor(x, realY, width, height)
+		r.scissorRect = rect
+	}
 }
 
 func (r *Renderer_GLES32) DisableScissor() {
@@ -1926,134 +1940,113 @@ func (r *Renderer_GLES32) SetUniformFvSub(loc int32, values []float32) {
 	}
 }
 
+func (r *Renderer_GLES32) uniformLoc(s *ShaderProgram_GLES32, name string) int32 {
+	loc, ok := s.uniforms[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Uniform '%s' not registered in %s", name, s.name))
+	}
+	return loc
+}
+
 func (r *Renderer_GLES32) SetUniformI(name string, val int) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GLES32) SetUniformF(name string, values ...float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GLES32) SetUniformFv(name string, values []float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFvSub(loc, values)
 }
 
 // Caching matrices is as expensive as direct function calls
 func (r *Renderer_GLES32) SetUniformMatrix(name string, value []float32) {
-	loc, ok := r.currentProgram.uniforms[name]
-	if ok && loc >= 0 {
+	loc := r.uniformLoc(r.currentProgram, name)
+	if loc >= 0 {
 		gl.UniformMatrix4fv(loc, 1, false, &value[0])
 	}
 }
 
 func (r *Renderer_GLES32) SetModelUniformI(name string, val int) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GLES32) SetModelUniformF(name string, values ...float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GLES32) SetModelUniformFv(name string, values []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GLES32) SetModelUniformMatrix(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GLES32) SetModelUniformMatrix3(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Model uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformI(name string, val int) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformF(name string, values ...float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformFv(name string, values []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformMatrix(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GLES32) SetShadowMapUniformMatrix3(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		//if r.debugMode {
-		//	fmt.Printf("[GL Debug] Shadow uniform '%s' not registered\n", name)
-		//}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
@@ -2077,20 +2070,28 @@ func (r *Renderer_GLES32) SetActiveTexture0() {
 // Every program skips redundant binds. Sprite shader also uses a LRU system that allows it to use all texture slots for caching
 func (r *Renderer_GLES32) SetTextureSub(uMap map[string]int32, tMap map[string]int, name string, tex Texture) {
 	t := tex.(*Texture_GLES32)
-	loc := uMap[name]
+	loc, ok := uMap[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Texture uniform '%s' not registered", name))
+	}
 	switch name {
 	case "tex":
-		loc := uMap["spriteUV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["spriteUV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "pal":
-		loc := uMap["palUV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["palUV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "tex1":
-		loc := uMap["tex1UV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["tex1UV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "tex2":
-		loc := uMap["tex2UV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["tex2UV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	}
 
 	// Cached path for the sprite shader
@@ -2104,7 +2105,7 @@ func (r *Renderer_GLES32) SetTextureSub(uMap map[string]int32, tMap map[string]i
 
 		// Look for a hit or the oldest slot
 		for i, bound := range r.boundTex {
-			if bound.tex == t {
+			if bound.tex == t.root {
 				r.texCacheLastUsed[i] = r.texCacheTimer
 				r.SetUniformISub(loc, int32(i))
 				return
@@ -2188,6 +2189,13 @@ func (r *Renderer_GLES32) SetShadowFrameCubeTexture(i uint32) {
 }
 
 func (r *Renderer_GLES32) SetVertexData(values ...float32) {
+	// Vertices come from the buffer, not the quad uniform
+	if r.currentProgram != nil {
+		if loc, ok := r.currentProgram.uniforms["useQuad"]; ok {
+			r.SetUniformISub(loc, 0)
+		}
+	}
+
 	need := len(values) * 4
 
 	// Adjust scratch buffer size if necessary
@@ -2210,6 +2218,16 @@ func (r *Renderer_GLES32) SetVertexData(values ...float32) {
 		gl.BufferData(gl.ARRAY_BUFFER, need, unsafe.Pointer(&r.vertexScratch[0]), gl.DYNAMIC_DRAW)
 	} else {
 		gl.BufferData(gl.ARRAY_BUFFER, 0, nil, gl.DYNAMIC_DRAW)
+	}
+}
+
+// Sends a single quad through uniforms to skip a vertex buffer upload per sprite
+func (r *Renderer_GLES32) SetQuadVertices(v *[16]float32) {
+	if loc, ok := r.currentProgram.uniforms["quad"]; ok && loc >= 0 {
+		gl.Uniform4fv(loc, 4, &v[0])
+	}
+	if loc, ok := r.currentProgram.uniforms["useQuad"]; ok {
+		r.SetUniformISub(loc, 1)
 	}
 }
 
@@ -2406,7 +2424,7 @@ func (r *Renderer_GLES32) LoadCustomSpriteShader(shaderName string, shaderData [
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"spriteUV", "palUV", "tex1UV", "tex2UV",
+		"spriteUV", "palUV", "tex1UV", "tex2UV", "quad", "useQuad",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
 

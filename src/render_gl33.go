@@ -104,7 +104,7 @@ func (s *ShaderProgram_GL33) RegisterTextures(names ...string) {
 func (r *Renderer_GL33) compileShader(shaderType uint32, src string) (shader uint32, err error) {
 	shader = gl.CreateShader(shaderType)
 
-	src = "#version 330 core\n" + src + "\x00"
+	src = "#version 330 core\n" + expandShaderIncludes(src) + "\x00"
 	s, free := gl.Strs(src)
 	defer free()
 
@@ -183,19 +183,22 @@ type boundTexture struct {
 
 // Binds only if it isn't already bound there, per the shared table
 func (r *Renderer_GL33) bindTextureToUnit(unit int32, target uint32, tex *Texture_GL33, handle uint32) bool {
+	var root *Texture_GL33
 	if tex != nil {
 		handle = tex.handle
+		root = tex.root
 	}
 
 	cur := &r.boundTex[unit]
-	if cur.tex == tex && cur.handle == handle && cur.target == target {
+	// Compare the owning texture so atlas sub-textures don't rebind the same atlas
+	if cur.tex == root && cur.handle == handle && cur.target == target {
 		return false
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0 + uint32(unit))
 	gl.BindTexture(target, handle)
 
-	cur.tex = tex
+	cur.tex = root
 	cur.handle = handle
 	cur.target = target
 	return true
@@ -203,15 +206,17 @@ func (r *Renderer_GL33) bindTextureToUnit(unit int32, target uint32, tex *Textur
 
 // Always rebinds. Used before any call that edits texture data since those act on whatever's active
 func (r *Renderer_GL33) bindTextureToUnitForced(unit int32, target uint32, tex *Texture_GL33, handle uint32) {
+	var root *Texture_GL33
 	if tex != nil {
 		handle = tex.handle
+		root = tex.root
 	}
 
 	gl.ActiveTexture(gl.TEXTURE0 + uint32(unit))
 	gl.BindTexture(target, handle)
 
 	cur := &r.boundTex[unit]
-	cur.tex = tex
+	cur.tex = root
 	cur.handle = handle
 	cur.target = target
 }
@@ -224,6 +229,8 @@ type Texture_GL33 struct {
 	uvst   [4]float32
 	filter bool
 	handle uint32 // GL side handle
+	// Texture that owns the handle. Atlas sub-textures share it
+	root   *Texture_GL33
 }
 
 // Helper that wraps the actual GL call to generate a texture
@@ -240,6 +247,7 @@ func (r *Renderer_GL33) generateTexture(width, height, depth int32, filter bool)
 		filter: filter,
 		handle: h,
 	}
+	tex.root = tex
 
 	runtime.SetFinalizer(tex, func(t *Texture_GL33) {
 		sys.mainThreadTask <- func() {
@@ -263,8 +271,8 @@ func (r *Renderer_GL33) newTexture(width, height, depth int32, filter bool) (Tex
 }
 
 func (r *Renderer_GL33) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst [4]float32) Texture {
-	t := &Texture_GL33{256, 1, 32, offset, uvst, false, 0}
-	t.handle = (*(sys.palTexture.textures[slot[0]])).(*Texture_GL33).handle
+	parent := (*(sys.palTexture.textures[slot[0]])).(*Texture_GL33)
+	t := &Texture_GL33{width: 256, height: 1, depth: 32, offset: offset, uvst: uvst, handle: parent.handle, root: parent.root}
 	runtime.SetFinalizer(t, func(t *Texture_GL33) {
 		sys.mainThreadTask <- func() {
 			sys.palTexture.emptySlot.PushFront(slot)
@@ -274,7 +282,8 @@ func (r *Renderer_GL33) newPaletteTexture(slot [2]uint32, offset [2]int32, uvst 
 }
 
 func (r *Renderer_GL33) newSubTexture(tex Texture, width, height int32, uvst [4]float32) Texture {
-	t := &Texture_GL33{width, height, tex.(*Texture_GL33).depth, [2]int32{0, 0}, uvst, tex.(*Texture_GL33).filter, tex.(*Texture_GL33).handle}
+	p := tex.(*Texture_GL33)
+	t := &Texture_GL33{width: width, height: height, depth: p.depth, uvst: uvst, filter: p.filter, handle: p.handle, root: p.root}
 	return t
 }
 
@@ -717,7 +726,7 @@ func (r *Renderer_GL33) Init() {
 	r.spriteShader.RegisterAttributes("position", "uv")
 	r.spriteShader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"spriteUV", "palUV")
+		"spriteUV", "palUV", "quad", "useQuad")
 	r.spriteShader.RegisterTextures("pal", "tex")
 
 	// Configure spriteVAO
@@ -969,6 +978,7 @@ func (r *Renderer_GL33) InitStateCache() {
 	gl.FrontFace(gl.CCW)
 	gl.Disable(gl.BLEND)
 	gl.Disable(gl.SCISSOR_TEST)
+	r.scissorRect = [4]int32{-1, -1, -1, -1} // Unknown, so the first EnableScissor sets it
 
 	// Check hardware texture limit
 	// TODO: Maybe clamp the result
@@ -1893,19 +1903,17 @@ func (r *Renderer_GL33) EnableScissor(x, y, width, height int32) {
 	// Flip Y to OpenGL convention
 	realY := sys.scrrect[3] - (y + height)
 
-	if r.scissorEnabled &&
-		r.scissorRect[0] == x && r.scissorRect[1] == realY &&
-		r.scissorRect[2] == width && r.scissorRect[3] == height {
-		return
-	}
-
 	if !r.scissorEnabled {
 		gl.Enable(gl.SCISSOR_TEST)
 		r.scissorEnabled = true
 	}
 
-	gl.Scissor(x, realY, width, height)
-	r.scissorRect = [4]int32{x, realY, width, height}
+	// The rect survives DisableScissor, so only set it when it changes
+	rect := [4]int32{x, realY, width, height}
+	if rect != r.scissorRect {
+		gl.Scissor(x, realY, width, height)
+		r.scissorRect = rect
+	}
 }
 
 func (r *Renderer_GL33) DisableScissor() {
@@ -1997,134 +2005,113 @@ func (r *Renderer_GL33) SetUniformFvSub(loc int32, values []float32) {
 	}
 }
 
+func (r *Renderer_GL33) uniformLoc(s *ShaderProgram_GL33, name string) int32 {
+	loc, ok := s.uniforms[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Uniform '%s' not registered in %s", name, s.name))
+	}
+	return loc
+}
+
 func (r *Renderer_GL33) SetUniformI(name string, val int) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetUniformF(name string, values ...float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetUniformFv(name string, values []float32) {
-	loc := r.currentProgram.uniforms[name]
+	loc := r.uniformLoc(r.currentProgram, name)
 	r.SetUniformFvSub(loc, values)
 }
 
 // Caching matrices is as expensive as direct function calls
 func (r *Renderer_GL33) SetUniformMatrix(name string, value []float32) {
-	loc, ok := r.currentProgram.uniforms[name]
-	if ok && loc >= 0 {
+	loc := r.uniformLoc(r.currentProgram, name)
+	if loc >= 0 {
 		gl.UniformMatrix4fv(loc, 1, false, &value[0])
 	}
 }
 
 func (r *Renderer_GL33) SetModelUniformI(name string, val int) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetModelUniformF(name string, values ...float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetModelUniformFv(name string, values []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GL33) SetModelUniformMatrix(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL33) SetModelUniformMatrix3(name string, value []float32) {
-	loc, ok := r.modelShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Model uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.modelShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformI(name string, val int) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformISub(loc, int32(val))
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformF(name string, values ...float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFSub(loc, values...)
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformFv(name string, values []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	r.SetUniformFvSub(loc, values)
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformMatrix(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix4fv(loc, 1, false, &value[0])
 }
 
 func (r *Renderer_GL33) SetShadowMapUniformMatrix3(name string, value []float32) {
-	loc, ok := r.shadowMapShader.uniforms[name]
-	if !ok || loc < 0 {
-		if r.debugMode {
-			LogMessage("[GL Debug] Shadow uniform '%s' not registered", name)
-		}
+	loc := r.uniformLoc(r.shadowMapShader, name)
+	if loc < 0 {
 		return
 	}
 	gl.UniformMatrix3fv(loc, 1, false, &value[0])
@@ -2148,7 +2135,11 @@ func (r *Renderer_GL33) SetActiveTexture0() {
 // Every program skips redundant binds. Sprite shader also uses a LRU system that allows it to use all texture slots for caching
 func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int, name string, tex Texture) {
 	t := tex.(*Texture_GL33)
-	loc := uMap[name]
+	loc, ok := uMap[name]
+	if !ok {
+		// Would otherwise write to location 0. Only engine code picks these names
+		panic(fmt.Sprintf("Texture uniform '%s' not registered", name))
+	}
 	switch name {
 	case "tex":
 		if loc, ok := uMap["spriteUV"]; ok {
@@ -2179,7 +2170,7 @@ func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int
 
 		// Look for a hit or the oldest slot
 		for i, bound := range r.boundTex {
-			if bound.tex == t {
+			if bound.tex == t.root {
 				r.texCacheLastUsed[i] = r.texCacheTimer
 				r.SetUniformISub(loc, int32(i))
 				return
@@ -2229,6 +2220,13 @@ func (r *Renderer_GL33) SetShadowFrameCubeTexture(i uint32) {
 }
 
 func (r *Renderer_GL33) SetVertexData(values ...float32) {
+	// Vertices come from the buffer, not the quad uniform
+	if r.currentProgram != nil {
+		if loc, ok := r.currentProgram.uniforms["useQuad"]; ok {
+			r.SetUniformISub(loc, 0)
+		}
+	}
+
 	need := len(values) * 4
 
 	// Adjust scratch buffer size if necessary
@@ -2256,6 +2254,16 @@ func (r *Renderer_GL33) SetVertexData(values ...float32) {
 	// DYNAMIC_DRAW is used because the buffer contents are updated frequently.
 	// STREAM_DRAW was tried previously and caused issues for some users
 	// (https://github.com/ikemen-engine/Ikemen-GO/issues/3292)
+}
+
+// Sends a single quad through uniforms to skip a vertex buffer upload per sprite
+func (r *Renderer_GL33) SetQuadVertices(v *[16]float32) {
+	if loc, ok := r.currentProgram.uniforms["quad"]; ok && loc >= 0 {
+		gl.Uniform4fv(loc, 4, &v[0])
+	}
+	if loc, ok := r.currentProgram.uniforms["useQuad"]; ok {
+		r.SetUniformISub(loc, 1)
+	}
 }
 
 func (r *Renderer_GL33) SetModelVertexData(bufferIndex uint32, values []byte) {
@@ -2451,7 +2459,7 @@ func (r *Renderer_GL33) LoadCustomSpriteShader(shaderName string, shaderData []b
 	shader.RegisterAttributes("position", "uv")
 	shader.RegisterUniforms("modelview", "projection", "x1x2x4x3",
 		"alpha", "tint", "mask", "neg", "gray", "add", "mult", "isFlat", "isRgba", "isTrapez", "hue",
-		"spriteUV", "palUV", "tex1UV", "tex2UV",
+		"spriteUV", "palUV", "tex1UV", "tex2UV", "quad", "useQuad",
 		"iTime", "iResolution", "aspectRatio", "sTime", "param")
 	shader.RegisterTextures("pal", "tex", "tex1", "tex2", "bgl_RenderedTexture")
 

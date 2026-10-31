@@ -4,6 +4,7 @@ import (
 	"container/list"
 	_ "embed"
 	"math"
+	"strings"
 
 	mgl "github.com/go-gl/mathgl/mgl32"
 )
@@ -93,6 +94,7 @@ type Renderer interface {
 	SetShadowFrameTexture(i uint32)
 	SetShadowFrameCubeTexture(i uint32)
 	SetVertexData(values ...float32)
+	SetQuadVertices(v *[16]float32) // One quad as 4 vertices of x, y, u, v, drawn with RenderQuad
 	SetModelVertexData(bufferIndex uint32, values []byte)
 	SetModelIndexData(bufferIndex uint32, values ...uint32)
 
@@ -116,6 +118,23 @@ var vertShader string
 
 //go:embed shaders/sprite.frag.glsl
 var fragShader string
+
+//go:embed shaders/sprite_lib.frag.glsl
+var spriteLibShader string
+
+// Replaces the sprite library include with the embedded library, as glslc does for Vulkan
+func expandShaderIncludes(src string) string {
+	if !strings.Contains(src, "sprite_lib.frag.glsl") {
+		return src
+	}
+	lines := strings.Split(src, "\n")
+	for i, l := range lines {
+		if strings.TrimSpace(l) == `#include "sprite_lib.frag.glsl"` {
+			lines[i] = spriteLibShader
+		}
+	}
+	return strings.Join(lines, "\n")
+}
 
 //go:embed shaders/model.vert.glsl
 var modelVertShader string
@@ -378,7 +397,7 @@ func drawQuads(modelview mgl.Mat4, x1, y1, x2, y2, x3, y3, x4, y4 float32, uvst 
 		x4, y4, uvBias + uvst[0], uvst[1],
 	}
 
-	gfx.SetVertexData(quadDrawScratch[:]...)
+	gfx.SetQuadVertices(&quadDrawScratch)
 	gfx.RenderQuad()
 }
 
@@ -1172,7 +1191,7 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 		x1, y2, 0, 1,
 		x1, y1, 0, 0,
 	}
-	gfx.SetVertexData(rectDrawScratch[:]...)
+	gfx.SetQuadVertices(&rectDrawScratch)
 
 	// Static uniforms
 	gfx.SetUniformMatrix("modelview", modelview[:])
