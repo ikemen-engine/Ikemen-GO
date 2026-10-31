@@ -165,6 +165,9 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 
 	// Buffer to store vertex data for multiple glyphs
 	batchSize := Min(MaxFontBatchSize, int32(len(indices)))
+	if custom {
+		batchSize = 1
+	}
 	batchVertices := make([]float32, 0, batchSize*6*4)
 
 	//setup blending mode
@@ -263,7 +266,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 			continue
 		}
 
-		if int32(len(batchVertices)/24) >= batchSize || (textureID != -1 && textureID != int32(ch.textureID)) {
+		if (int32(len(batchVertices)/24) >= batchSize || (textureID != -1 && textureID != int32(ch.textureID))) && !custom {
 			// Render the current batch
 			f.renderGlyphBatch(batchVertices, uint32(textureID))
 			// Clear the batch buffers
@@ -304,6 +307,11 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
 		x += float32((ch.advance >> 6)) * xscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 		renderedAny = true
+		if custom {
+			f.renderGlyph(batchVertices, ch.texture)
+			// Clear the batch buffers
+			batchVertices = batchVertices[:0]
+		}
 	}
 
 	// Render any remaining glyphs in the batch
@@ -370,6 +378,16 @@ func (f *Font_GL33) renderGlyphBatch(vertices []float32, textureID uint32) {
 
 	// Sampling bind, safe to skip if this atlas is already bound
 	mr.bindTextureToUnit(0, gl.TEXTURE_2D, nil, textureID)
+	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
+}
+
+func (f *Font_GL33) renderGlyph(vertices []float32, texture Texture) {
+	fr := gfxFont.(*FontRenderer_GL33)
+
+	mr := gfx.(*Renderer_GL33)
+	mr.bindBuffer(gl.ARRAY_BUFFER, fr.vbo)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertices)*4, gl.Ptr(vertices))
+	gfx.SetTexture("tex", texture)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
 }
 
@@ -524,6 +542,7 @@ func (f *Font_GL33) GenerateGlyphs(low, high rune) error {
 
 		char.uv = uv
 		char.textureID = texAtlas.texture.(*Texture_GL33).handle
+		char.texture = gfx.newSubTexture(f.textures[textureIndex].texture, int32(char.width), int32(char.height), char.uv)
 
 		//add char to fontChar list
 		f.fontChar[ch] = char
