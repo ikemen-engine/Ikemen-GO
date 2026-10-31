@@ -1810,7 +1810,7 @@ func loadSff(filename string, sffType SffType, isMainThread bool, isActPal bool)
 		} else {
 			switch s.header.Version[0] {
 			case 1:
-				isCharFirstSprite := (sffType == SffTypeChar) && (prev == nil || spriteList[i].Group == 0 && spriteList[i].Number == 0)
+				isCharFirstSprite := (sffType == SffTypeChar || isActPal) && (prev == nil || spriteList[i].Group == 0 && spriteList[i].Number == 0)
 				if err := spriteList[i].read(f, &s.header, shofs+32, size,
 					xofs, prev, &s.palList, isCharFirstSprite); err != nil {
 					return nil, err
