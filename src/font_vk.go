@@ -509,6 +509,7 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 
 		char.uv = uv
 		char.textureID = uint32(textureIndex)
+		char.texture = gfx.newSubTexture(f.textures[textureIndex].texture, int32(char.width), int32(char.height), char.uv)
 
 		//add char to fontChar list
 		f.fontChar[ch] = char
@@ -851,7 +852,6 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 	needsTransform := rxadd != 0 || !rot.IsZero()
 	spacing := spacingXAdd * xscl
 	renderedAny := false
-	lastAtlas := -1
 
 	for _, runeIndex := range indices {
 		ch, ok := f.fontChar[runeIndex]
@@ -884,11 +884,7 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 			)
 		}
 
-		// Only rebind the atlas when it changes
-		if int(ch.textureID) != lastAtlas {
-			gfx.SetTexture("tex", f.textures[ch.textureID].texture)
-			lastAtlas = int(ch.textureID)
-		}
+		gfx.SetTexture("tex", ch.texture)
 
 		// Triangle strip: top-left, top-right, bottom-left, bottom-right
 		verts := [16]float32{

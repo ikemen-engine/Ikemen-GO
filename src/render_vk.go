@@ -7483,7 +7483,7 @@ func (r *Renderer_VK) ReadPixels(data []uint8, width, height int) {
 		},
 	}
 	vk.CmdPipelineBarrier(cmd, vk.PipelineStageFlags(vk.PipelineStageFragmentShaderBit), vk.PipelineStageFlags(vk.PipelineStageTransferBit), 0, 0, nil, 0, nil, 2, imgBarriers)
-
+	x, y, viewportWidth, viewportHeight := sys.window.GetScaledViewportSize()
 	// Blit from render target to intermediate image
 	imageBlits := []vk.ImageBlit{{
 		SrcSubresource: vk.ImageSubresourceLayers{
@@ -7503,8 +7503,8 @@ func (r *Renderer_VK) ReadPixels(data []uint8, width, height int) {
 			LayerCount:     1,
 		},
 		DstOffsets: [2]vk.Offset3D{
-			{X: 0, Y: 0, Z: 0},
-			{X: int32(width), Y: int32(height), Z: 1},
+			{X: x, Y: y, Z: 0},
+			{X: x + viewportWidth, Y: y + viewportHeight, Z: 1},
 		},
 	}}
 	vk.CmdBlitImage(cmd, r.renderTargets[(len(r.postProcessingProgram.pipelines)+1)%2].texture.img, vk.ImageLayoutTransferSrcOptimal, intermediateImg, vk.ImageLayoutTransferDstOptimal, uint32(len(imageBlits)), imageBlits, vk.FilterNearest)

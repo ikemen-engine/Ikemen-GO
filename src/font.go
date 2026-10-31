@@ -31,6 +31,7 @@ type Font interface {
 
 type character struct {
 	textureID uint32 // ID handle of the glyph texture
+	texture   Texture
 	uv        [4]float32
 	width     int //glyph width
 	height    int //glyph height

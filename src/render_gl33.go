@@ -240,15 +240,6 @@ func (r *Renderer_GL33) generateTexture(width, height, depth int32, filter bool)
 		filter: filter,
 		handle: h,
 	}
-	var interp int32 = gl.NEAREST
-	if filter {
-		interp = gl.LINEAR
-	}
-	r.bindTextureToUnitForced(0, gl.TEXTURE_2D, tex, 0)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interp)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interp)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
 	runtime.SetFinalizer(tex, func(t *Texture_GL33) {
 		sys.mainThreadTask <- func() {
@@ -2160,17 +2151,21 @@ func (r *Renderer_GL33) SetTextureSub(uMap map[string]int32, tMap map[string]int
 	loc := uMap[name]
 	switch name {
 	case "tex":
-		loc := uMap["spriteUV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["spriteUV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "pal":
-		loc := uMap["palUV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["palUV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "tex1":
-		loc := uMap["tex1UV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["tex1UV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	case "tex2":
-		loc := uMap["tex2UV"]
-		gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		if loc, ok := uMap["tex2UV"]; ok {
+			gl.Uniform4f(loc, t.uvst[0], t.uvst[1], t.uvst[2], t.uvst[3])
+		}
 	}
 
 	// Cached path for the sprite shader
