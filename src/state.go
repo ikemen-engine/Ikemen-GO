@@ -452,7 +452,7 @@ func (gs *GameState) String() (str string) {
 	// Add match data
 	str = fmt.Sprintf("MatchTime %d CurRoundTime: %d RandSeed: %d\n",
 		gs.matchTime, gs.curRoundTime, gs.randseed)
-	str = fmt.Sprintf("ScorePoints: %v ComboCount: %v\n",
+	str += fmt.Sprintf("ScorePoints: %v ComboCount: %v\n",
 		gs.scorePoints, gs.comboCount)
 	str += fmt.Sprintf("RoundState RoundNo:%d Intro:%d WinSkipped:%t WinPoseTime:%d WinWaitTime:%d FinishType:%v SpecialFlag:0x%08x Wins:%v EffectiveLoss:%v SlowTime:%d WinTeam:%d\n",
 		gs.roundNo, gs.intro, gs.winskipped, gs.winposetime, gs.winwaittime, gs.finishType,
