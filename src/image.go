@@ -448,7 +448,10 @@ func (pf *PalFX) withStackedColor(r, g, b float32) *PalFX {
 
 	// Check current state
 	out := pf.sample()
-
+	// Palette remapping applies even when the original color effect is disabled
+	if pf != nil {
+		out.remap = pf.remap
+	}
 	// Stack RGB on top of eMul
 	out.eMul[0] = int32(float32(out.eMul[0]) * r)
 	out.eMul[1] = int32(float32(out.eMul[1]) * g)
