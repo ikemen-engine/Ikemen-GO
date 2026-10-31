@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -4651,17 +4653,13 @@ func (c *Char) load(def string, gi *CharGlobalInfo) error {
 	gi.palettedata = newPaldata()
 	gi.palettedata.palList = PaletteList{
 		palettes:   append([][]uint32{}, gi.sff.palList.palettes...),
-		paletteMap: append([]int{}, gi.sff.palList.paletteMap...),
+		paletteMap: clonePalMap(gi.sff.palList.paletteMap),
 		PalTable:   make(map[[2]uint16]int),
 		numcols:    make(map[[2]uint16]int),
 		PalTex:     append([]Texture{}, gi.sff.palList.PalTex...),
 	}
-	for key, value := range gi.sff.palList.PalTable {
-		gi.palettedata.palList.PalTable[key] = value
-	}
-	for key, value := range gi.sff.palList.numcols {
-		gi.palettedata.palList.numcols[key] = value
-	}
+	maps.Copy(gi.palettedata.palList.PalTable, gi.sff.palList.PalTable)
+	maps.Copy(gi.palettedata.palList.numcols, gi.sff.palList.numcols)
 
 	// Read animations
 	// One compiler for every source, so common files only fill in gaps
@@ -4819,7 +4817,7 @@ func (c *Char) loadPalettes() {
 		plist.duplicatePals = make(map[int][]int)
 
 		for physical, duplicates := range gi.sff.palList.duplicatePals {
-			plist.duplicatePals[physical] = append([]int(nil), duplicates...)
+			plist.duplicatePals[physical] = slices.Clone(duplicates)
 		}
 
 		// Overwrite SFF palettes with ACT palettes
@@ -7221,9 +7219,7 @@ func (c *Char) helperInit(h *Char, st int32, pt PosType, pos [3]float32, facing 
 		if c.getPalfx().remap == nil {
 			c.palfx.remap = c.gi().palettedata.palList.GetPalMap()
 		}
-		tmp := c.getPalfx().remap
-		h.palfx.remap = make([]int, len(tmp))
-		copy(h.palfx.remap, tmp)
+		h.palfx.remap = clonePalMap(c.getPalfx().remap)
 		c.forceRemapPal(h.palfx, rp)
 	} else {
 		h.palfx = c.getPalfx()
@@ -7442,9 +7438,7 @@ func (c *Char) commitExplod(i int) {
 			e.palfx.remap = nil
 		} else {
 			// Keep parent's remapped palette while resetting PalFX
-			parentRemap := make([]int, len(c.getPalfx().remap))
-			copy(parentRemap, c.getPalfx().remap)
-			e.palfx.remap = parentRemap
+			e.palfx.remap = clonePalMap(c.getPalfx().remap)
 			c.forceRemapPal(e.palfx, e.remappal)
 		}
 
@@ -7942,8 +7936,7 @@ func (c *Char) commitProjectile(p *Projectile, pt PosType, offx, offy, offz floa
 
 	// Ownpal
 	if op {
-		remap := make([]int, len(p.palfx.remap))
-		copy(remap, p.palfx.remap)
+		remap := clonePalMap(p.palfx.remap)
 		p.palfx = newPalFX()
 		p.palfx.remap = remap
 		c.forceRemapPal(p.palfx, [...]int32{rpg, rpn})

@@ -587,10 +587,16 @@ func (pl *PaletteList) ResetRemap() {
 	}
 }
 
+// Copies a palette mapping, returning a non-nil empty slice for a nil source
+func clonePalMap(palMap []int) []int {
+	if palMap == nil {
+		return []int{}
+	}
+	return slices.Clone(palMap)
+}
+
 func (pl *PaletteList) GetPalMap() []int {
-	pm := make([]int, len(pl.paletteMap))
-	copy(pm, pl.paletteMap)
-	return pm
+	return clonePalMap(pl.paletteMap)
 }
 
 func (pl *PaletteList) SwapPalMap(palMap *[]int) bool {
@@ -1496,19 +1502,8 @@ func (s *Sprite) readV2(f io.ReadSeeker, offset int64, datasize uint32) error {
 // Next time the sprite is drawn, it will only need a new texture if the reference changed
 // This should always be called when updating a PalTex
 func (s *Sprite) CachePalTex(pal []uint32) Texture {
-	match := true
-	if s.PalTex == nil || len(pal) != len(s.paltemp) {
-		match = false
-	} else {
-		for i := range pal {
-			if pal[i] != s.paltemp[i] {
-				match = false
-				break
-			}
-		}
-	}
 	// If cached texture doesn't match, update or replace it
-	if !match {
+	if s.PalTex == nil || !slices.Equal(pal, s.paltemp) {
 		// Previously we were always generating a new texture in this branch
 		if s.PalTex == nil {
 			s.PalTex = NewTextureFromPalette(pal)
@@ -2087,19 +2082,9 @@ func preloadSff(filename string, sffType SffType, preloadSpr map[[2]uint16]bool)
 						}
 						// Detect SFFv1 sprites that have their own entry but
 						// physically use the same palette as the base palette.
-						if spriteList[i].Pal != nil {
-							basePal := pl.Get(0)
-							if basePal != nil && len(spriteList[i].Pal) == len(basePal) {
-								sameBase := true
-								for j := range spriteList[i].Pal {
-									if spriteList[i].Pal[j] != basePal[j] {
-										sameBase = false
-										break
-									}
-								}
-								if sameBase {
-									spriteList[i].sffv1BasePal = true
-								}
+						if pal := spriteList[i].Pal; pal != nil {
+							if basePal := pl.Get(0); basePal != nil && slices.Equal(pal, basePal) {
+								spriteList[i].sffv1BasePal = true
 							}
 						}
 					} else if spriteList[i].coldepth <= 8 {
@@ -2157,7 +2142,6 @@ func preloadSff(filename string, sffType SffType, preloadSpr map[[2]uint16]bool)
 	}
 
 	// Build selectable palette list
-	var preSelPal []int32
 	var selPal []int32
 	if sff.header.Version[0] != 1 && sffType == SffTypeChar {
 		for i := 0; i < int(sff.header.NumberOfPalettes); i++ {
@@ -2167,22 +2151,13 @@ func preloadSff(filename string, sffType SffType, preloadSpr map[[2]uint16]bool)
 				return nil, nil, err
 			}
 			if gn_[0] == 1 && gn_[1] >= 1 && gn_[1] <= int16(sys.cfg.Config.PaletteMax) {
-				preSelPal = append(preSelPal, int32(gn_[1]))
+				selPal = append(selPal, int32(gn_[1]))
 			}
-			if len(preSelPal) >= sys.cfg.Config.PaletteMax {
+			if len(selPal) >= sys.cfg.Config.PaletteMax {
 				break
 			}
 		}
-		for i := 0; i <= sys.cfg.Config.PaletteMax; i++ {
-			for k := 0; k < len(preSelPal); k++ {
-				if preSelPal[k] == int32(i) {
-					selPal = append(selPal, int32(i))
-				}
-			}
-			if len(preSelPal) == len(selPal) {
-				break
-			}
-		}
+		slices.Sort(selPal)
 	}
 	// Keep the SFFv1 palettes loaded during preload available to animations using this SFF
 	if sff.header.Version[0] == 1 {
