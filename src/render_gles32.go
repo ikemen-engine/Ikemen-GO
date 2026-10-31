@@ -272,7 +272,7 @@ type Texture_GLES32 struct {
 	filter bool
 	handle uint32 // GL side handle
 	// Texture that owns the handle. Atlas sub-textures share it
-	root   *Texture_GLES32
+	root *Texture_GLES32
 }
 
 // Helper that wraps the actual GL call to generate a texture

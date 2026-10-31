@@ -230,7 +230,7 @@ type Texture_GL33 struct {
 	filter bool
 	handle uint32 // GL side handle
 	// Texture that owns the handle. Atlas sub-textures share it
-	root   *Texture_GL33
+	root *Texture_GL33
 }
 
 // Helper that wraps the actual GL call to generate a texture
