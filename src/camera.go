@@ -296,34 +296,37 @@ func (c *Camera) ScaleBound(scl, sclmul float32) float32 {
 	return 1
 }
 
-func (c *Camera) XBound(scl, x float32) float32 {
-	return Clamp(x,
-		c.boundL-c.halfWidth+c.halfWidth/scl,
-		c.boundR+c.halfWidth-c.halfWidth/scl)
-}
-
-// Lowest scale whose view still fits inside the playable area
-// For Zoom stageBound parameter
-func (c *Camera) MinZoomScale() float32 {
-	w := float32(sys.gameWidth)
-	h := float32(sys.gameHeight)
-	above := c.GroundLevel()
-	below := h - above
-
-	// Total playable area, measured between the visible edges at the bound limits
-	playableWidth := (c.boundR + c.halfWidth) - (c.boundL - c.halfWidth)
-	playableHeight := (c.boundLo + below) - (c.boundH - above)
-
-	return Max(w/playableWidth, h/playableHeight)
-}
-
-// Doesn't account for boundhighzoomdelta
-func (c *Camera) YBound(scl, y float32) float32 {
+// Area the stage camera can ever show, at its widest zoom. For Zoom stageBound parameter
+// Top assumes boundhighzoomdelta = 1, which keeps the top edge fixed at the zoomout view
+func (c *Camera) StageViewArea() (left, right, top, bottom float32) {
+	minScl, outScl := float32(1), float32(1)
+	if c.zoomEnabled() {
+		minScl, outScl = c.MinScale, c.zoomout
+	}
 	above := c.GroundLevel()
 	below := float32(sys.gameHeight) - above
-	return Clamp(y,
-		c.boundH-above+above/scl,
-		c.boundLo+below-below/scl)
+	left, right = c.minLeft, c.maxRight
+	top = float32(c.boundhigh)*c.localscl - above/outScl
+	bottom = float32(c.boundlow)*c.localscl + below/minScl
+	return
+}
+
+func (c *Camera) XBound(scl, x float32) float32 {
+	left, right, _, _ := c.StageViewArea()
+	return Clamp(x, left+c.halfWidth/scl, right-c.halfWidth/scl)
+}
+
+// Lowest scale whose view still fits inside the stage view area
+func (c *Camera) MinZoomScale() float32 {
+	left, right, top, bottom := c.StageViewArea()
+	return Max(float32(sys.gameWidth)/(right-left), float32(sys.gameHeight)/(bottom-top))
+}
+
+func (c *Camera) YBound(scl, y float32) float32 {
+	_, _, top, bottom := c.StageViewArea()
+	above := c.GroundLevel()
+	below := float32(sys.gameHeight) - above
+	return Clamp(y, top+above/scl, bottom-below/scl)
 }
 
 func (c *Camera) BaseScale() float32 {

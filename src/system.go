@@ -6952,8 +6952,8 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 	}
 
 	// Position limits
-	// The camera shifts by pos directly, regardless of scale
-	dx = x + z.curPos[0]
+	// Pos is in screen units relative to the camera center, like screen space in explods
+	dx = x + z.curPos[0] / sys.cam.Scale
 
 	if z.cameraBound {
 		windowHalfWidth := Max(0, sys.cam.halfWidth/scl-sys.cam.halfWidth/dscl)
@@ -6965,12 +6965,12 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 	}
 
 	// Keep smoothing continuous with what was actually visible, not the unclamped target
-	z.curPos[0] = dx - x
+	z.curPos[0] = (dx - x) * sys.cam.Scale
 
 	// cam.Pos[1] is stored pre-multiplied by scale (see camera.go's boundY), unlike Pos[0].
 	// Work in world units, then re-apply the zoom's scale.
 	baseY := y / scl
-	camWorldY := baseY + z.curPos[1]
+	camWorldY := baseY + z.curPos[1] / sys.cam.Scale
 
 	// The camera's Y sits on the ground line, not the screen centre, so the
 	// room above and below it isn't the same
@@ -6988,7 +6988,7 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 	}
 
 	// Same as X: smooth from what was actually visible
-	z.curPos[1] = camWorldY - baseY
+	z.curPos[1] = (camWorldY - baseY) * sys.cam.Scale
 
 	dy = camWorldY * dscl
 
