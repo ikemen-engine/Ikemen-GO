@@ -439,7 +439,7 @@ end
 --;===========================================================
 
 --returns the next stage path from the given pool
-function start.stageShuffleBag(id, pool)
+function start.f_stageShuffleBag(id, pool)
 	-- safety check: prevent nil or invalid pools
 	if not pool or type(pool) ~= 'table' or #pool == 0 then
 		return nil
@@ -480,7 +480,7 @@ function start.f_setStage(num, assigned)
 	if main.stageMenu then
 		local pool = main.t_selectableStages
 		if stageListNo == 0 then
-			num = start.stageShuffleBag('stageMenu', pool)
+			num = start.f_stageShuffleBag('stageMenu', pool)
 			-- Keep the chosen variant for subsequent fights until selection resets
 			-- A stage reference is not necessarily its position in the menu
 			for i, group in ipairs(main.t_selectableStageSlots) do
@@ -502,13 +502,13 @@ function start.f_setStage(num, assigned)
 		local sel = start.p[2] and start.p[2].t_selected and start.p[2].t_selected[1]
 		local charData = sel and sel.ref and start.f_getCharData(sel.ref)
 		if charData and charData.stage and #charData.stage > 0 and not (gameMode('training') and gameOption('Config.TrainingStage')) then --stage assigned as character param
-			num = start.stageShuffleBag('char:' .. sel.ref, charData.stage)
+			num = start.f_stageShuffleBag('char:' .. sel.ref, charData.stage)
 		elseif charData and main.stageOrder and main.t_orderStages[charData.order] then --stage assigned as stage order param
-			num = start.stageShuffleBag(charData.order, main.t_orderStages[charData.order])
+			num = start.f_stageShuffleBag(charData.order, main.t_orderStages[charData.order])
 		elseif gameMode('training') and gameOption('Config.TrainingStage') ~= '' then --training stage
 			num = start.f_getStageRef(gameOption('Config.TrainingStage'))
 		else
-			num = start.stageShuffleBag('includeStage', main.t_includeStage[1])
+			num = start.f_stageShuffleBag('includeStage', main.t_includeStage[1])
 		end
 	end
 	selectStage(num)
@@ -767,7 +767,7 @@ function start.f_animGet(ref, side, member, params, velParams, loop, srcAnim)
 				if usePal then
 					local sel = start.p[side].t_selected[member]
 					if sel and sel.ref then
-						a = start.loadPalettes(a, ref, sel.pal)
+						a = start.f_loadPalettes(a, ref, sel.pal)
 					end
 				end
 				animUpdate(a)
@@ -2501,7 +2501,7 @@ local function refreshActiveFacePortraits()
 	end
 end
 
-function start.updateDrawList()
+function start.f_updateDrawList()
 	local drawList = {}
 
 	for row = 1, motif.select_info.rows do
@@ -2792,7 +2792,7 @@ function start.f_selectScreen()
 	textImgReset(motif.select_info.record.TextSpriteData)
 	textImgSetText(motif.select_info.record.TextSpriteData, start.f_getRecordText())
 
-	local staticDrawList = start.updateDrawList()
+	local staticDrawList = start.f_updateDrawList()
 	start.needUpdateDrawList = false
 
 	while not selScreenEnd do
@@ -2813,7 +2813,7 @@ function start.f_selectScreen()
 		end
 		--draw cell art
 		if start.needUpdateDrawList then
-			staticDrawList = start.updateDrawList()
+			staticDrawList = start.f_updateDrawList()
 			start.needUpdateDrawList = false 
 		end
 		for _, item in ipairs(staticDrawList) do
@@ -3430,7 +3430,7 @@ local function charPalettesLoaded(ref)
 	return false
 end
 -- Loads palettes for a character if needed, prepares the animation, and applies the palette
-function start.loadPalettes(a, ref, pal)
+function start.f_loadPalettes(a, ref, pal)
 	if not charPalettesLoaded(ref) then
 		animLoadPalettes(a, ref)
 	end
@@ -3568,7 +3568,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 			if (st.face_anim ~= done_anim or done_spr[1] ~= -1) and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 				local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, false, st.face_data)
 				if a then
-					st.face_data = start.loadPalettes(a, charRef, pal)
+					st.face_data = start.f_loadPalettes(a, charRef, pal)
 					animUpdate(st.face_data)
 					start.p[side].screenDelay = math.min(120, math.max(start.p[side].screenDelay, animGetLength(st.face_data)))
 				end
@@ -3580,7 +3580,7 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		if st.face2_anim ~= done_anim2 and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 			local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2.done, pCfg.face2, false, st.face2_data)
 			if a then
-				st.face2_data = start.loadPalettes(a, charRef, pal)
+				st.face2_data = start.f_loadPalettes(a, charRef, pal)
 				animUpdate(st.face2_data)
 				start.p[side].screenDelay = math.min(120, math.max(start.p[side].screenDelay, animGetLength(st.face2_data)))
 			end
@@ -3869,14 +3869,14 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					if start.p[side].t_selTemp[member].face_data ~= nil then
 						local applyFlag = pCfg.face.applypal
 						if applyFlag then
-							start.p[side].t_selTemp[member].face_data = start.loadPalettes(start.p[side].t_selTemp[member].face_data, charRef, finalPal)
+							start.p[side].t_selTemp[member].face_data = start.f_loadPalettes(start.p[side].t_selTemp[member].face_data, charRef, finalPal)
 							animUpdate(start.p[side].t_selTemp[member].face_data)
 						end
 					end
 					if start.p[side].t_selTemp[member].face2_data ~= nil then
 						local applyFlag = pCfg.face2.applypal
 						if applyFlag then
-							start.p[side].t_selTemp[member].face2_data = start.loadPalettes(start.p[side].t_selTemp[member].face2_data, charRef, finalPal)
+							start.p[side].t_selTemp[member].face2_data = start.f_loadPalettes(start.p[side].t_selTemp[member].face2_data, charRef, finalPal)
 							animUpdate(start.p[side].t_selTemp[member].face2_data)
 						end
 					end
