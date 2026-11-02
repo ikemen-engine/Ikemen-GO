@@ -1070,9 +1070,16 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 2) {
 			layer = int16(numArg(l, 2))
 		}
+		if a.anim == nil {
+			return 0
+		}
 		aSnap := *a
+		transType, srcAlpha, dstAlpha := a.anim.transType, a.anim.srcAlpha, a.anim.dstAlpha
 		layerLocal := layer
 		sys.luaQueueLayerDraw(int(layerLocal), func() {
+			// Keep frame updates, but preserve the alpha selected when the draw was queued.
+			aSnap.anim = aSnap.anim.ShallowCopy()
+			aSnap.anim.transType, aSnap.anim.srcAlpha, aSnap.anim.dstAlpha = transType, srcAlpha, dstAlpha
 			(&aSnap).Draw(layerLocal)
 		})
 		return 0
@@ -1430,11 +1437,12 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "animSetAlpha", func(*lua.LState) int {
-		/*Set alpha blending for an animation.
+		/*Set alpha blending for an animation. A source factor of 0 or more uses additive
+		blending; -1 restores the animation's own blending.
 		@function animSetAlpha
 		@tparam Anim anim Animation userdata.
-		@tparam int16 src Source alpha factor (0–256, engine-specific).
-		@tparam int16 dst Destination alpha factor (0–256, engine-specific).*/
+		@tparam int16 src Source alpha factor (0–256), or -1 to use the animation's blending.
+		@tparam int16 dst Destination alpha factor (0–256), ignored when src is -1.*/
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
 			userDataError(l, 1, a)
