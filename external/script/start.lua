@@ -519,9 +519,9 @@ end
 -- generate table with palette entries already used by this char ref
 function start.f_setAssignedPal(ref, t_assignedPals)
 	for side = 1, 2 do
-		for k, v in pairs(start.p[side].t_selected) do
-			if v.ref == ref then
-				t_assignedPals[start.p[side].t_selected[k].pal] = true
+		for _, v in pairs(start.p[side].t_selected) do
+			if v.ref == ref and v.pal then
+				t_assignedPals[v.pal] = true
 			end
 		end
 	end
@@ -3488,32 +3488,30 @@ local function resolvePalConflict(side, charRef, pal)
 	if not charData or not charData.pal then
 		return pal
 	end
+	-- Check the actual palette, since validation can advance past missing numbers
+	pal = validatePal(pal, charRef)
 	local usedPals = {}
-	for s = 1, 2 do
-		for _, sel in ipairs(start.p[s].t_selected) do
-			if sel.ref == charRef and sel.pal then
-				usedPals[sel.pal] = true
-			end
-		end
-	end
+	start.f_setAssignedPal(charRef, usedPals)
 	-- if the chosen palette is not used, keep it
 	if not usedPals[pal] then
-		return validatePal(pal, charRef)
+		return pal
 	end
 	-- if it's in use, try to find the next free one
 	local maxPal = gameOption('Config.PaletteMax')
 	for i = pal + 1, maxPal do
-	if not usedPals[i] then
-			return validatePal(i, charRef)
+		local candidate = validatePal(i, charRef)
+		if not usedPals[candidate] then
+			return candidate
 		end
 	end
 	for i = 1, pal - 1 do
-		if not usedPals[i] then
-			return validatePal(i, charRef)
+		local candidate = validatePal(i, charRef)
+		if not usedPals[candidate] then
+			return candidate
 		end
 	end
 
-	return validatePal(pal, charRef)
+	return pal
 end
 
 local function applyPalette(sel, palIndex)
