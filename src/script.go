@@ -1321,7 +1321,6 @@ func systemScriptInit(l *lua.LState) {
 		/*Prepare an animation so that each character can apply its own palette.
 		@function animPrepare
 		@tparam Anim anim Source animation userdata.
-		@tparam int32 charRef 0-based character index in the select list.
 		@treturn Anim preparedAnim Either a copy with adjusted palette data (when palette
 		  usage is enabled) or the original `anim` when palette handling is disabled.*/
 		a, ok := toUserData(l, 1).(*Anim)
@@ -1331,20 +1330,6 @@ func systemScriptInit(l *lua.LState) {
 		}
 		if sys.usePalette {
 			copyAnim := a.Copy()
-			char := sys.sel.GetChar(int(numArg(l, 2)))
-			for _, c := range copyAnim.anim.frames {
-				if c.Group < 0 || c.Number < 0 {
-					continue
-				}
-				spr, ok := copyAnim.anim.sff.sprites[[2]uint16{uint16(c.Group), uint16(c.Number)}]
-				if !ok || spr == nil {
-					continue
-				}
-				// Remove base palette
-				if len(char.pal) > 0 && spr.palidx == 0 {
-					spr.Pal = nil
-				}
-			}
 			l.Push(newUserData(l, copyAnim))
 		} else {
 			l.Push(newUserData(l, a))
@@ -3319,14 +3304,12 @@ func systemScriptInit(l *lua.LState) {
 		tbl.RawSetString("pal", subt)
 		// default palettes
 		subt = l.NewTable()
-		pals := make(map[int32]bool)
 		var n int
 		if len(c.pal_defaults) > 0 {
 			for _, v := range c.pal_defaults {
 				if v > 0 && int(v) <= len(c.pal) {
 					n++
 					subt.RawSetInt(n, lua.LNumber(v))
-					pals[v] = true
 				}
 			}
 		}

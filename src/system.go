@@ -5245,10 +5245,8 @@ func (s *Select) ValidatePalette(charRef, requested int) int {
 		return 1
 	}
 	// If the requested index exists, return it
-	for _, real := range sc.pal {
-		if int(real) == requested {
-			return requested
-		}
+	if slices.ContainsFunc(sc.pal, func(real int32) bool { return int(real) == requested }) {
+		return requested
 	}
 	// Otherwise, return the next valid one (circular)
 	for _, real := range sc.pal {
