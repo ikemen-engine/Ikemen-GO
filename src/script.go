@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -886,11 +887,38 @@ func luaKeyToString(k lua.LValue) string {
 	}
 }
 
+func luaRandom(l *lua.LState, next func() int32) int {
+	r := float64(next())
+	if nilArg(l, 1) {
+		l.Push(lua.LNumber(r / float64(IMax)))
+		return 1
+	}
+	min, max := 1.0, math.Floor(float64(l.CheckNumber(1)))
+	if !nilArg(l, 2) {
+		min, max = max, math.Floor(float64(l.CheckNumber(2)))
+	}
+	if max < min {
+		l.RaiseError("bad argument #2 to 'random' (interval is empty)")
+	}
+	n := max - min + 1
+	if math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 || n > float64(IMax) {
+		l.RaiseError("bad argument to 'random' (interval is too large)")
+	}
+	l.Push(lua.LNumber(min + math.Floor(r/(math.Floor(float64(IMax)/n)+1))))
+	return 1
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
 	triggerRedirection(l)
 	triggerFunctions(l)
+	mathLib := l.GetGlobal("math")
+	l.SetField(mathLib, "random", l.NewFunction(func(l *lua.LState) int { return luaRandom(l, Random) }))
+	// The engine owns the synchronized seed; scripts cannot reseed it.
+	l.SetField(mathLib, "randomseed", l.NewFunction(func(l *lua.LState) int { return 0 }))
+	// Never saved or synchronized, so only for looks that can't change shared state.
+	localRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		/*Add a character definition to the select screen.
 		@function addChar
@@ -4851,6 +4879,15 @@ func systemScriptInit(l *lua.LState) {
 		}
 		l.Push(lua.LString(content))
 		return 1
+	})
+	luaRegister(l, "localRandom", func(l *lua.LState) int {
+		/*Return a random number that only this game instance sees, like `math.random`.
+		  It isn't synchronized in netplay or replays, so use it only for looks.
+		@function localRandom
+		@tparam[opt] number min Lowest value, or the highest when it's the only argument.
+		@tparam[opt] number max Highest value.
+		@treturn number value A number in [0, 1) without arguments, else an integer in [1, min] or [min, max].*/
+		return luaRandom(l, func() int32 { return localRand.Int31n(IMax-1) + 1 })
 	})
 	luaRegister(l, "mapSet", func(*lua.LState) int {
 		/*[redirectable] Set the character's map value.
