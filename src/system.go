@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -5117,13 +5118,7 @@ func (s *Select) preloadCharAssets(ref int) error {
 			newPal := make([]int32, 0, maxPalSlots)
 			newPalFilesOut := make([]string, 0, maxPalSlots)
 			for i := 1; i <= maxPalSlots; i++ {
-				existsInSff := false
-				for _, sIdx := range selPal {
-					if sIdx == int32(i) {
-						existsInSff = true
-						break
-					}
-				}
+				existsInSff := slices.Contains(selPal, int32(i))
 				if defPals[int32(i)] || existsInSff {
 					newPal = append(newPal, int32(i))
 					newPalFilesOut = append(newPalFilesOut, newPalFiles[i-1])
@@ -5250,10 +5245,8 @@ func (s *Select) ValidatePalette(charRef, requested int) int {
 		return 1
 	}
 	// If the requested index exists, return it
-	for _, real := range sc.pal {
-		if int(real) == requested {
-			return requested
-		}
+	if slices.ContainsFunc(sc.pal, func(real int32) bool { return int(real) == requested }) {
+		return requested
 	}
 	// Otherwise, return the next valid one (circular)
 	for _, real := range sc.pal {
@@ -6467,11 +6460,8 @@ func (l *Loader) prepareTurnsFaces(pn int, fa *FightScreenFace, nm *FightScreenN
 
 			if len(srcPal) > 0 {
 				// Decouple clone from global SFF palettes
-				spr.Pal = make([]uint32, len(srcPal))
-				copy(spr.Pal, srcPal)
-
-				spr.paltemp = make([]uint32, len(srcPal))
-				copy(spr.paltemp, srcPal)
+				spr.Pal = slices.Clone(srcPal)
+				spr.paltemp = slices.Clone(srcPal)
 
 				// Force lazy loading for a unique recolored texture
 				spr.PalTex = nil
