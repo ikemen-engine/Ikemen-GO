@@ -2626,6 +2626,8 @@ func (m *Motif) loadFiles() {
 		if m.Snd == nil {
 			m.Snd = newSnd()
 		}
+		// Holding a direction in a menu replays its sound faster than it ends.
+		m.Snd.restart = true
 		return nil
 	})
 	sys.keepAlive()

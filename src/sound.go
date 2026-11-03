@@ -774,6 +774,7 @@ type Snd struct {
 	table     map[[2]int32]*Sound
 	ver, ver2 uint16
 	filename  string
+	restart   bool // a sound that is still playing restarts instead of layering
 }
 
 func newSnd() *Snd {
@@ -901,6 +902,9 @@ func (s *Snd) Get(gn [2]int32) *Sound {
 
 func (s *Snd) play(gn [2]int32, volumescale int32, pan float32, loopstart, loopend, startposition int, keepOnMatchEnd ...bool) bool {
 	sound := s.Get(gn)
+	if s.restart {
+		sys.soundChannels.Stop(sound)
+	}
 	return sys.soundChannels.Play(sound, gn[0], gn[1], volumescale, pan, loopstart, loopend, startposition, keepOnMatchEnd...)
 }
 
