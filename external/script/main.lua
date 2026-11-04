@@ -1623,32 +1623,28 @@ for line in content:gmatch('[^\r\n]+') do
 			csRow = math.floor(csCell / motif.select_info.columns) + 1
 			cellKey = (csCol - 1) .. '-' .. (csRow - 1)
 		end
-		local slotStart = lineCase:match('^%s*slot%s*=%s*{%s*()')
+		local slotStart = lineCase:match('^%s*slot%s*{%s*()')
 		if slotStart ~= nil then
 			table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
 			slot = true
 			line = line:sub(slotStart)
-			lineCase = line:lower()
 		end
 		local slotEnd = false
 		if slot then
 			local slotLine = line:match('^(.-)%s*}%s*$')
 			if slotLine ~= nil then
 				line = slotLine
-				lineCase = line:lower()
 				slotEnd = true
 			end
+			-- One character per line, the trailing comma is optional.
+			line = line:gsub(',%s*$', '')
+			lineCase = line:lower()
 		end
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
 		elseif line:match('%S') then
 			if slot then
-				for _, entry in ipairs(main.f_strsplit('|', line)) do
-					entry = entry:match('^%s*(.-)%s*$')
-					if entry ~= '' then
-						main.f_addChar(entry, true, true, true)
-					end
-				end
+				main.f_addChar(line, true, true, true)
 			else
 				main.f_addChar(line, true, true, false)
 				csCell = csCell + 1
@@ -1659,7 +1655,7 @@ for line in content:gmatch('[^\r\n]+') do
 			csCell = csCell + 1
 		end
 	elseif section == 2 then --[ExtraStages]
-		local slotStart = lineCase:match('^%s*slot%s*=%s*{%s*()')
+		local slotStart = lineCase:match('^%s*slot%s*{%s*()')
 		if slotStart ~= nil then
 			table.insert(main.t_stageSlots, {stages = {}, slot = 1})
 			stageSlot = #main.t_stageSlots
@@ -1672,8 +1668,10 @@ for line in content:gmatch('[^\r\n]+') do
 				line = slotLine
 				slotEnd = true
 			end
-			for _, entry in ipairs(main.f_strsplit('|', line)) do
-				if entry:match('%S') then main.f_addStageEntry(entry, stageSlot) end
+			-- One stage per line, the trailing comma is optional.
+			line = line:gsub(',%s*$', '')
+			if line:match('%S') then
+				main.f_addStageEntry(line, stageSlot)
 			end
 		elseif line:match('%S') then
 			main.f_addStageEntry(line)
