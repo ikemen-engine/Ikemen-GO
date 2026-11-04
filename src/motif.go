@@ -113,6 +113,8 @@ type AnimationProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
 	Xshear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
@@ -143,6 +145,8 @@ type AnimationCharPreloadProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
 	Xshear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
@@ -163,6 +167,8 @@ type AnimationStagePreloadProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
 	Xshear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
@@ -179,6 +185,8 @@ type TextProperties struct {
 	Font           [8]int32   `ini:"font" default:"-1,0,0,255,255,255,255,-1"`
 	Offset         [2]float32 `ini:"offset"`
 	Scale          [2]float32 `ini:"scale" default:"1,1"`
+	Trans          string     `ini:"trans" default:"default"`
+	Alpha          []int32    `ini:"alpha"`
 	Xshear         float32    `ini:"xshear"`
 	Angle          float32    `ini:"angle"`
 	XAngle         float32    `ini:"xangle"`
@@ -196,6 +204,8 @@ type TextMapProperties struct {
 	Font           [8]int32          `ini:"font" default:"-1,0,0,255,255,255,255,-1"`
 	Offset         [2]float32        `ini:"offset"`
 	Scale          [2]float32        `ini:"scale" default:"1,1"`
+	Trans          string            `ini:"trans" default:"default"`
+	Alpha          []int32           `ini:"alpha"`
 	Xshear         float32           `ini:"xshear"`
 	Angle          float32           `ini:"angle"`
 	XAngle         float32           `ini:"xangle"`

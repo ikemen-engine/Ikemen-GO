@@ -1955,6 +1955,8 @@ func SetAnim(obj interface{}, fVal, structVal, parent reflect.Value, sffOverride
 	spr := [2]int32{-1, 0}
 	offset := [2]float32{0, 0}
 	scale := [2]float32{1, 1}
+	trans := ""
+	var alpha []int32
 	facing := float32(1)
 	xshear := float32(0)
 	angle := float32(0)
@@ -1991,6 +1993,13 @@ func SetAnim(obj interface{}, fVal, structVal, parent reflect.Value, sffOverride
 		scale[0] = float32(fv.Index(0).Float())
 		scale[1] = float32(fv.Index(1).Float())
 	}
+	if fv, ok := get("Alpha"); ok && fv.Kind() == reflect.Slice {
+		alpha, _ = fv.Interface().([]int32)
+	}
+	if fv, ok := get("Trans"); ok && fv.Kind() == reflect.String {
+		trans = fv.String()
+	}
+	tt, blend := transBlend(trans, alpha)
 	if fv, ok := get("Facing"); ok && fv.Kind() >= reflect.Int && fv.Kind() <= reflect.Int64 {
 		facing = float32(fv.Int())
 	}
@@ -2098,6 +2107,9 @@ func SetAnim(obj interface{}, fVal, structVal, parent reflect.Value, sffOverride
 		if !warnMissing {
 			a.anim = animData.ShallowCopy()
 			a.anim.warnMissing = false
+		} else if tt != TT_default {
+			// Trans changes the animation, so it can't stay shared with the table.
+			a.anim = animData.ShallowCopy()
 		}
 	} else if hasSpr {
 		a = NewAnim(sffPtr, fmt.Sprintf("%d,%d, 0,0, -1", spr[0], spr[1]))
@@ -2141,7 +2153,10 @@ func SetAnim(obj interface{}, fVal, structVal, parent reflect.Value, sffOverride
 	// animSetFriction
 	a.friction = friction
 	// animSetTile
-	// animSetAlpha
+	// animSetTrans
+	if tt != TT_default && a.anim != nil {
+		a.SetTrans(tt, blend)
+	}
 	// animSetColorKey
 	// animSetPalFX
 
@@ -2166,6 +2181,8 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 	offset := [2]float32{0, 0}
 	font := [8]int32{-1, 0, 0, 255, 255, 255, 255, -1}
 	scale := [2]float32{1, 1}
+	trans := ""
+	var alpha []int32
 	xshear := float32(0)
 	angle := float32(0)
 	xangle := float32(0)
@@ -2200,6 +2217,12 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 	if fv, ok := get("Scale"); ok && fv.Kind() == reflect.Array && fv.Len() == 2 {
 		scale[0] = float32(fv.Index(0).Float())
 		scale[1] = float32(fv.Index(1).Float())
+	}
+	if fv, ok := get("Alpha"); ok && fv.Kind() == reflect.Slice {
+		alpha, _ = fv.Interface().([]int32)
+	}
+	if fv, ok := get("Trans"); ok && fv.Kind() == reflect.String {
+		trans = fv.String()
 	}
 	if fv, ok := get("Xshear"); ok && (fv.Kind() == reflect.Float32 || fv.Kind() == reflect.Float64) {
 		xshear = float32(fv.Float())
@@ -2317,6 +2340,9 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 	ts.SetPos(offset[0], offset[1])
 	// textImgSetScale
 	ts.SetScale(scale[0], scale[1])
+	// textImgSetTrans
+	ts.trans, ts.alpha = transBlend(trans, alpha)
+	ts.transInit, ts.alphaInit = ts.trans, ts.alpha
 	// textImgSetXShear
 	ts.xshear = xshear
 	// textImgSetAngle

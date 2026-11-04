@@ -1852,6 +1852,26 @@ func systemScriptInit(l *lua.LState) {
 		a.SetTile(tx, ty, sx, sy)
 		return 0
 	})
+	luaRegister(l, "animSetTrans", func(*lua.LState) int {
+		/*Set blending for an animation, as with trans and alpha in stage backgrounds.
+		@function animSetTrans
+		@tparam Anim anim Animation userdata.
+		@tparam string trans `default`, `none`, `add`, `add1`, `addalpha`, `sub` or `subadd`.
+		@tparam[opt] int32 src Source alpha factor (0–255). Omit to use the trans default.
+		@tparam[opt] int32 dst Destination alpha factor (0–255).*/
+		a, ok := toUserData(l, 1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
+		}
+		var alpha []int32
+		if !nilArg(l, 3) {
+			alpha = []int32{int32(numArg(l, 3)), int32(numArg(l, 4))}
+		}
+		if a.anim != nil {
+			a.SetTrans(transBlend(strArg(l, 2), alpha))
+		}
+		return 0
+	})
 	luaRegister(l, "animSetVelocity", func(*lua.LState) int {
 		/*Set the base velocity of an animation.
 		@function animSetVelocity
@@ -7184,6 +7204,25 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.textWrap = boolArg(l, 2)
+		return 0
+	})
+	luaRegister(l, "textImgSetTrans", func(*lua.LState) int {
+		/*Set blending for a text sprite, as with trans and alpha in stage backgrounds.
+		`default` keeps the alpha of the font color.
+		@function textImgSetTrans
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam string trans `default`, `none`, `add`, `add1`, `addalpha`, `sub` or `subadd`.
+		@tparam[opt] int32 src Source alpha factor (0–255). Omit to use the trans default.
+		@tparam[opt] int32 dst Destination alpha factor (0–255).*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		var alpha []int32
+		if !nilArg(l, 3) {
+			alpha = []int32{int32(numArg(l, 3)), int32(numArg(l, 4))}
+		}
+		ts.trans, ts.alpha = transBlend(strArg(l, 2), alpha)
 		return 0
 	})
 	luaRegister(l, "textImgSetVelocity", func(*lua.LState) int {

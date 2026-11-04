@@ -26,6 +26,9 @@ type Font_GL33 struct {
 	windowHeight int
 	textures     []*TextureAtlas
 	color        color
+	blendEq      BlendEquation
+	blendSrc     BlendFunc
+	blendDst     BlendFunc
 	shaderPalFX  ShaderPalFX
 	customShader CustomShaderRenderData
 }
@@ -95,6 +98,11 @@ func (f *Font_GL33) SetColor(red float32, green float32, blue float32, alpha flo
 	f.color.g = green
 	f.color.b = blue
 	f.color.a = alpha
+}
+
+// SetBlending sets how Printf blends the text when blending is on.
+func (f *Font_GL33) SetBlending(eq BlendEquation, src, dst BlendFunc) {
+	f.blendEq, f.blendSrc, f.blendDst = eq, src, dst
 }
 
 func (f *Font_GL33) SetPalFX(state ShaderPalFX) {
@@ -172,7 +180,7 @@ func (f *Font_GL33) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32
 
 	//setup blending mode
 	if blend {
-		r.EnableBlending(BlendAdd, BlendSrcAlpha, BlendOneMinusSrcAlpha)
+		r.EnableBlending(f.blendEq, f.blendSrc, f.blendDst)
 	} else {
 		r.DisableBlending()
 	}

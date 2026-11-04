@@ -731,6 +731,7 @@ function main.f_materializeCharCell(row)
 					params.scale[1] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord,
 					params.scale[2] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord
 				)
+				animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
 				animSetFacing(a, params.facing)
 				animSetXShear(a, params.xshear)
 				animSetAngle(a, params.angle)
@@ -767,6 +768,7 @@ function main.f_materializeStagePortrait(stageNo)
 						params.scale[1] * st.portraitscale * motif.info.localcoord[1] / st.localcoord,
 						params.scale[2] * st.portraitscale * motif.info.localcoord[1] / st.localcoord
 					)
+					animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
 					animSetFacing(a, params.facing)
 					animSetXShear(a, params.xshear)
 					animSetAngle(a, params.angle)
