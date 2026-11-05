@@ -2471,6 +2471,7 @@ type FightScreenCombo struct {
 	start_x      float32
 	counter      map[int32]*FSText
 	text         map[int32]*FSText
+	textAnim     map[int32]*AnimLayout
 	bg           AnimLayout
 	top          AnimLayout
 	displaytime  int32
@@ -2576,6 +2577,16 @@ func readFightScreenCombo(pre string, is IniSection,
 	for k, v := range readMultipleFSText(pre, "text", is, "", 2, f, align) {
 		co.text[k] = v
 	}
+	// Like MUGEN, text can also be an anim or spr.
+	co.textAnim = make(map[int32]*AnimLayout)
+	for k := range co.text {
+		name := "text."
+		if k > 0 {
+			name = fmt.Sprintf("text%v.", k)
+		}
+		al := ReadAnimLayout(pre+name, is, sff, at, 2)
+		co.textAnim[k] = &al
+	}
 
 	// Text shake
 	is.ReadI32(pre+"text.shake.time", &co.textShake.time)
@@ -2605,6 +2616,9 @@ func readFightScreenCombo(pre string, is IniSection,
 func (co *FightScreenCombo) step(side int, hits, damage int32, percentage float32) {
 	co.bg.Action()
 	co.top.Action()
+	for _, al := range co.textAnim {
+		al.Action()
+	}
 
 	// Allows a new identical combo to still retrigger later
 	if hits < 2 && co.shownHits >= 2 {
@@ -2692,6 +2706,9 @@ func (co *FightScreenCombo) step(side int, hits, damage int32, percentage float3
 func (co *FightScreenCombo) reset() {
 	co.bg.Reset()
 	co.top.Reset()
+	for _, al := range co.textAnim {
+		al.Reset()
+	}
 	co.shownHits = 0
 	co.shownDmg = 0
 	co.shownPct = 0
@@ -2791,18 +2808,19 @@ func (co *FightScreenCombo) draw(layerno int16, f map[int]*Fnt, side int) {
 	}
 
 	// Draw text
+	blockX := x + sys.fightScreen.offsetX
+	blockY := float32(co.pos[1])
+
+	// Apply shake effect
+	textShakeScale := co.textShake.getScale()
+	textShakeOffset := co.textShake.getOffset()
+
+	drawBlockX := (blockX + textShakeOffset[0]) / textShakeScale
+	drawBlockY := (blockY + textShakeOffset[1]) / textShakeScale
+	finalScale := textShakeScale * sys.fightScreen.scale
+
+	co.textAnim[tv].Draw(drawBlockX, drawBlockY, layerno, finalScale)
 	if len(lines) > 0 && ffText != nil {
-		blockX := x + sys.fightScreen.offsetX
-		blockY := float32(co.pos[1])
-
-		// Apply shake effect
-		textShakeScale := co.textShake.getScale()
-		textShakeOffset := co.textShake.getOffset()
-
-		drawBlockX := (blockX + textShakeOffset[0]) / textShakeScale
-		drawBlockY := (blockY + textShakeOffset[1]) / textShakeScale
-		finalScale := textShakeScale * sys.fightScreen.scale
-
 		// Draw each line
 		for i, line := range lines {
 			y := drawBlockY + float32(i)*lineHeight
