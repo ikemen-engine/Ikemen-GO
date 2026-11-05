@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"io"
 	"math"
 	"os"
 	"regexp"
@@ -232,8 +233,14 @@ func loadFntV1(filename string) (*Fnt, error) {
 	px = spr.RlePcxDecode(px)
 	fp.Seek(int64(txtDataOffset), 0)
 	buf = make([]byte, txtDataLength)
-	if err := read(buf); err != nil {
+	n, err = io.ReadFull(fp, buf)
+	if err != nil && err != io.ErrUnexpectedEOF {
 		return nil, err
+	}
+	// Like MUGEN, read what's there when the header claims more text than the file has.
+	if n < len(buf) {
+		LogMessage("WARNING: %v: text data is %v bytes, header says %v", filename, n, txtDataLength)
+		buf = buf[:n]
 	}
 	lines := SplitAndTrim(string(buf), "\n")
 	i := 0
