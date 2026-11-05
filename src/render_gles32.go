@@ -290,15 +290,6 @@ func (r *Renderer_GLES32) generateTexture(width, height, depth int32, filter boo
 		handle: h,
 	}
 	tex.root = tex
-	var interp int32 = gl.NEAREST
-	if filter {
-		interp = gl.LINEAR
-	}
-	r.bindTextureToUnitForced(0, gl.TEXTURE_2D, tex, 0)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, interp)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, interp)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
 
 	runtime.SetFinalizer(tex, func(t *Texture_GLES32) {
 		sys.mainThreadTask <- func() {

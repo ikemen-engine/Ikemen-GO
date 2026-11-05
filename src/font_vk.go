@@ -27,6 +27,9 @@ type Font_VK struct {
 	vbo          uint32
 	program      uint32
 	color        color
+	blendEq      BlendEquation
+	blendSrc     BlendFunc
+	blendDst     BlendFunc
 	shaderPalFX  ShaderPalFX
 	resolution   [2]float32
 	textures     []*TextureAtlas
@@ -203,80 +206,68 @@ func (r *FontRenderer_VK) Init(rendererVk interface{}) {
 		StencilTestEnable: vk.False,
 	}
 
-	attachmentStates := make([]vk.PipelineColorBlendAttachmentState, 0, 2)
-	colorBlendStates := make([]vk.PipelineColorBlendStateCreateInfo, 0, 2)
-	pipelineCreateInfos := make([]vk.GraphicsPipelineCreateInfo, 0, 2)
+	// Pipeline 0 has no blending. The others cover every blend state sprites use,
+	// so text with a set alpha blends the same way.
+	type blendState struct {
+		op       vk.BlendOp
+		src, dst vk.BlendFactor
+		key      VulkanBlendState
+	}
+	blends := []blendState{{op: vk.BlendOpAdd, src: vk.BlendFactorOne, dst: vk.BlendFactorZero}}
+	ops := map[BlendEquation]vk.BlendOp{BlendAdd: vk.BlendOpAdd, BlendReverseSubtract: vk.BlendOpReverseSubtract}
+	factors := map[BlendFunc]vk.BlendFactor{BlendOne: vk.BlendFactorOne, BlendSrcAlpha: vk.BlendFactorSrcAlpha, BlendZero: vk.BlendFactorZero,
+		BlendOneMinusSrcAlpha: vk.BlendFactorOneMinusSrcAlpha}
+	for _, op := range []BlendEquation{BlendAdd, BlendReverseSubtract} {
+		for _, src := range []BlendFunc{BlendOne, BlendSrcAlpha, BlendZero} {
+			for _, dst := range []BlendFunc{BlendOneMinusSrcAlpha, BlendOne, BlendZero} {
+				blends = append(blends, blendState{ops[op], factors[src], factors[dst], VulkanBlendState{op: op, src: src, dst: dst}})
+			}
+		}
+	}
+	attachmentStates := make([]vk.PipelineColorBlendAttachmentState, len(blends))
+	colorBlendStates := make([]vk.PipelineColorBlendStateCreateInfo, len(blends))
+	pipelineCreateInfos := make([]vk.GraphicsPipelineCreateInfo, len(blends))
 	pipelineIndexMap := map[interface{}]int{}
-	attachmentStates = append(attachmentStates, vk.PipelineColorBlendAttachmentState{
-		ColorWriteMask: vk.ColorComponentFlags(
-			vk.ColorComponentRBit | vk.ColorComponentGBit |
-				vk.ColorComponentBBit | vk.ColorComponentABit,
-		),
-		BlendEnable:         vk.True,
-		SrcColorBlendFactor: vk.BlendFactorOne,
-		DstColorBlendFactor: vk.BlendFactorZero,
-		ColorBlendOp:        vk.BlendOpAdd,
-		SrcAlphaBlendFactor: vk.BlendFactorOne,
-		DstAlphaBlendFactor: vk.BlendFactorZero,
-		AlphaBlendOp:        vk.BlendOpAdd,
-	})
-	colorBlendStates = append(colorBlendStates, vk.PipelineColorBlendStateCreateInfo{
-		SType:           vk.StructureTypePipelineColorBlendStateCreateInfo,
-		LogicOpEnable:   vk.False,
-		LogicOp:         vk.LogicOpCopy,
-		AttachmentCount: 1,
-		PAttachments:    []vk.PipelineColorBlendAttachmentState{attachmentStates[0]},
-	})
-	pipelineCreateInfos = append(pipelineCreateInfos, vk.GraphicsPipelineCreateInfo{
-		SType:               vk.StructureTypeGraphicsPipelineCreateInfo,
-		StageCount:          2, // vert + frag
-		PStages:             shaderStages,
-		PVertexInputState:   &vertexInputState,
-		PInputAssemblyState: &inputAssemblyState,
-		PViewportState:      &viewportState,
-		PRasterizationState: &rasterState,
-		PMultisampleState:   &multisampleState,
-		PColorBlendState:    &colorBlendStates[0],
-		PDynamicState:       &dynamicState,
-		Layout:              program.pipelineLayout,
-		RenderPass:          renderer.mainRenderPass[0].renderPass,
-		PDepthStencilState:  &depthStencilState,
-	})
-	attachmentStates = append(attachmentStates, vk.PipelineColorBlendAttachmentState{
-		ColorWriteMask: vk.ColorComponentFlags(
-			vk.ColorComponentRBit | vk.ColorComponentGBit |
-				vk.ColorComponentBBit | vk.ColorComponentABit,
-		),
-		BlendEnable:         vk.True,
-		SrcColorBlendFactor: vk.BlendFactorSrcAlpha,
-		DstColorBlendFactor: vk.BlendFactorOneMinusSrcAlpha,
-		ColorBlendOp:        vk.BlendOpAdd,
-		SrcAlphaBlendFactor: vk.BlendFactorOne,
-		DstAlphaBlendFactor: vk.BlendFactorZero,
-		AlphaBlendOp:        vk.BlendOpAdd,
-	})
-	colorBlendStates = append(colorBlendStates, vk.PipelineColorBlendStateCreateInfo{
-		SType:           vk.StructureTypePipelineColorBlendStateCreateInfo,
-		LogicOpEnable:   vk.False,
-		LogicOp:         vk.LogicOpCopy,
-		AttachmentCount: 1,
-		PAttachments:    []vk.PipelineColorBlendAttachmentState{attachmentStates[1]},
-	})
-	pipelineCreateInfos = append(pipelineCreateInfos, vk.GraphicsPipelineCreateInfo{
-		SType:               vk.StructureTypeGraphicsPipelineCreateInfo,
-		StageCount:          2, // vert + frag
-		PStages:             shaderStages,
-		PVertexInputState:   &vertexInputState,
-		PInputAssemblyState: &inputAssemblyState,
-		PViewportState:      &viewportState,
-		PRasterizationState: &rasterState,
-		PMultisampleState:   &multisampleState,
-		PColorBlendState:    &colorBlendStates[1],
-		PDynamicState:       &dynamicState,
-		Layout:              program.pipelineLayout,
-		RenderPass:          renderer.mainRenderPass[0].renderPass,
-		PDepthStencilState:  &depthStencilState,
-	})
+	for i, blend := range blends {
+		attachmentStates[i] = vk.PipelineColorBlendAttachmentState{
+			ColorWriteMask: vk.ColorComponentFlags(
+				vk.ColorComponentRBit | vk.ColorComponentGBit |
+					vk.ColorComponentBBit | vk.ColorComponentABit,
+			),
+			BlendEnable:         vk.True,
+			SrcColorBlendFactor: blend.src,
+			DstColorBlendFactor: blend.dst,
+			ColorBlendOp:        blend.op,
+			SrcAlphaBlendFactor: vk.BlendFactorOne,
+			DstAlphaBlendFactor: vk.BlendFactorZero,
+			AlphaBlendOp:        vk.BlendOpAdd,
+		}
+		colorBlendStates[i] = vk.PipelineColorBlendStateCreateInfo{
+			SType:           vk.StructureTypePipelineColorBlendStateCreateInfo,
+			LogicOpEnable:   vk.False,
+			LogicOp:         vk.LogicOpCopy,
+			AttachmentCount: 1,
+			PAttachments:    []vk.PipelineColorBlendAttachmentState{attachmentStates[i]},
+		}
+		pipelineCreateInfos[i] = vk.GraphicsPipelineCreateInfo{
+			SType:               vk.StructureTypeGraphicsPipelineCreateInfo,
+			StageCount:          2, // vert + frag
+			PStages:             shaderStages,
+			PVertexInputState:   &vertexInputState,
+			PInputAssemblyState: &inputAssemblyState,
+			PViewportState:      &viewportState,
+			PRasterizationState: &rasterState,
+			PMultisampleState:   &multisampleState,
+			PColorBlendState:    &colorBlendStates[i],
+			PDynamicState:       &dynamicState,
+			Layout:              program.pipelineLayout,
+			RenderPass:          renderer.mainRenderPass[0].renderPass,
+			PDepthStencilState:  &depthStencilState,
+		}
+		if i > 0 {
+			pipelineIndexMap[blend.key] = i
+		}
+	}
 	pipelines := make([]vk.Pipeline, len(pipelineCreateInfos))
 	err = vk.Error(vk.CreateGraphicsPipelines(renderer.device,
 		renderer.pipelineCache, uint32(len(pipelineCreateInfos)), pipelineCreateInfos, nil, pipelines))
@@ -579,6 +570,11 @@ func (f *Font_VK) SetColor(red float32, green float32, blue float32, alpha float
 	return
 }
 
+// SetBlending sets how Printf blends the text when blending is on.
+func (f *Font_VK) SetBlending(eq BlendEquation, src, dst BlendFunc) {
+	f.blendEq, f.blendSrc, f.blendDst = eq, src, dst
+}
+
 func (f *Font_VK) SetPalFX(state ShaderPalFX) {
 	f.shaderPalFX = state
 }
@@ -623,7 +619,7 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	//setup blending mode
 	pipelineIndex := 0
 	if blend {
-		pipelineIndex = 1
+		pipelineIndex = gfxFont.(*FontRenderer_VK).program.pipelineIndexMap[VulkanBlendState{op: f.blendEq, src: f.blendSrc, dst: f.blendDst}]
 	}
 	pipeline := gfxFont.(*FontRenderer_VK).program.pipelines[pipelineIndex]
 	if switchedProgram || pipeline != r.VKState.currentPipeline {
@@ -801,7 +797,7 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 	gfx.SetSpritePipeline(f.customShader.name)
 
 	if blend {
-		gfx.EnableBlending(BlendAdd, BlendSrcAlpha, BlendOneMinusSrcAlpha)
+		gfx.EnableBlending(f.blendEq, f.blendSrc, f.blendDst)
 	} else {
 		gfx.DisableBlending()
 	}

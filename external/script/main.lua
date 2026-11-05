@@ -1,41 +1,5 @@
 main = {}
 --;===========================================================
---; INITIALIZE DATA
---;===========================================================
-do
-	local RANDOM_IMAX = 2147483647 -- Go IMax / Park-Miller modulus
-	function math.random(min, max)
-		local r = getRandom()
-		-- math.random() -> float in [0, 1)
-		if min == nil then
-			return r / RANDOM_IMAX
-		end
-		-- math.random(max) -> integer in [1, max]
-		if max == nil then
-			max = min
-			min = 1
-		end
-		min = math.floor(min)
-		max = math.floor(max)
-		if max < min then
-			error("bad argument #2 to 'random' (interval is empty)", 2)
-		end
-		local range = max - min + 1
-		if range <= 0 or range > RANDOM_IMAX then
-			error("bad argument to 'random' (interval is too large)", 2)
-		end
-		-- Match Go Rand(min, max):
-		-- return min + Random() / (IMax / range + 1)
-		return min + math.floor(r / (math.floor(RANDOM_IMAX / range) + 1))
-	end
-	-- Keep deterministic engine RNG authoritative.
-	-- math.randomseed(...) is intentionally ignored because math.random uses getRandom().
-	function math.randomseed(_)
-		-- intentionally ignored
-	end
-end
-
---;===========================================================
 --; COMMON FUNCTIONS
 --;===========================================================
 
@@ -767,6 +731,7 @@ function main.f_materializeCharCell(row)
 					params.scale[1] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord,
 					params.scale[2] * ch.portraitscale * motif.info.localcoord[1] / ch.localcoord
 				)
+				animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
 				animSetFacing(a, params.facing)
 				animSetXShear(a, params.xshear)
 				animSetAngle(a, params.angle)
@@ -803,6 +768,7 @@ function main.f_materializeStagePortrait(stageNo)
 						params.scale[1] * st.portraitscale * motif.info.localcoord[1] / st.localcoord,
 						params.scale[2] * st.portraitscale * motif.info.localcoord[1] / st.localcoord
 					)
+					animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
 					animSetFacing(a, params.facing)
 					animSetXShear(a, params.xshear)
 					animSetAngle(a, params.angle)
@@ -1441,17 +1407,14 @@ function main.f_addChar(line, playable, loading, slot)
 			main.t_selChars[idx].hasSlot = true
 		end
 	end
-	for _, v in ipairs({'next', 'previous', 'select'}) do
-		if main.t_selChars[row][v] ~= nil then
-			commandAdd(main.t_selChars[row][v], main.t_selChars[row][v])
-			if main.t_selGrid[#main.t_selGrid][v] == nil then
-				main.t_selGrid[#main.t_selGrid][v] = {}
-			end
-			if main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] == nil then
-				main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]] = {}
-			end
-			table.insert(main.t_selGrid[#main.t_selGrid][v][main.t_selChars[row][v]], #main.t_selGrid[#main.t_selGrid].chars)
-		end
+	-- slot 'select' commands
+	local selectCmd = main.t_selChars[row].select
+	if selectCmd ~= nil then
+		local grid = main.t_selGrid[#main.t_selGrid]
+		commandAdd(selectCmd, selectCmd)
+		grid.select = grid.select or {}
+		grid.select[selectCmd] = grid.select[selectCmd] or {}
+		table.insert(grid.select[selectCmd], #grid.chars)
 	end
 	if loading then
 		main.f_loadingRefresh()
@@ -1553,15 +1516,13 @@ function main.f_addStageEntry(line, stageSlot)
 	st.stageSlot = stageSlot
 	local group = main.t_stageSlots[stageSlot]
 	table.insert(group.stages, row)
-	for _, cmdType in ipairs({'next', 'previous', 'select'}) do
-		local command = st[cmdType]
-		if command ~= nil then
-			command = tostring(command)
-			commandAdd(command, command)
-			group[cmdType] = group[cmdType] or {}
-			group[cmdType][command] = group[cmdType][command] or {}
-			table.insert(group[cmdType][command], row)
-		end
+	-- slot 'select' commands
+	if st.select ~= nil then
+		local selectCmd = tostring(st.select)
+		commandAdd(selectCmd, selectCmd)
+		group.select = group.select or {}
+		group.select[selectCmd] = group.select[selectCmd] or {}
+		table.insert(group.select[selectCmd], row)
 	end
 	return row
 end
@@ -1662,32 +1623,28 @@ for line in content:gmatch('[^\r\n]+') do
 			csRow = math.floor(csCell / motif.select_info.columns) + 1
 			cellKey = (csCol - 1) .. '-' .. (csRow - 1)
 		end
-		local slotStart = lineCase:match('^%s*slot%s*=%s*{%s*()')
+		local slotStart = lineCase:match('^%s*slot%s*{%s*()')
 		if slotStart ~= nil then
 			table.insert(main.t_selGrid, {['chars'] = {}, ['slot'] = 1})
 			slot = true
 			line = line:sub(slotStart)
-			lineCase = line:lower()
 		end
 		local slotEnd = false
 		if slot then
 			local slotLine = line:match('^(.-)%s*}%s*$')
 			if slotLine ~= nil then
 				line = slotLine
-				lineCase = line:lower()
 				slotEnd = true
 			end
+			-- One character per line, the trailing comma is optional.
+			line = line:gsub(',%s*$', '')
+			lineCase = line:lower()
 		end
 		if lineCase:match(',%s*exclude%s*=%s*1') then --character should be added after all slots are filled
 			table.insert(t_addExluded, line)
 		elseif line:match('%S') then
 			if slot then
-				for _, entry in ipairs(main.f_strsplit('|', line)) do
-					entry = entry:match('^%s*(.-)%s*$')
-					if entry ~= '' then
-						main.f_addChar(entry, true, true, true)
-					end
-				end
+				main.f_addChar(line, true, true, true)
 			else
 				main.f_addChar(line, true, true, false)
 				csCell = csCell + 1
@@ -1698,7 +1655,7 @@ for line in content:gmatch('[^\r\n]+') do
 			csCell = csCell + 1
 		end
 	elseif section == 2 then --[ExtraStages]
-		local slotStart = lineCase:match('^%s*slot%s*=%s*{%s*()')
+		local slotStart = lineCase:match('^%s*slot%s*{%s*()')
 		if slotStart ~= nil then
 			table.insert(main.t_stageSlots, {stages = {}, slot = 1})
 			stageSlot = #main.t_stageSlots
@@ -1711,8 +1668,10 @@ for line in content:gmatch('[^\r\n]+') do
 				line = slotLine
 				slotEnd = true
 			end
-			for _, entry in ipairs(main.f_strsplit('|', line)) do
-				if entry:match('%S') then main.f_addStageEntry(entry, stageSlot) end
+			-- One stage per line, the trailing comma is optional.
+			line = line:gsub(',%s*$', '')
+			if line:match('%S') then
+				main.f_addStageEntry(line, stageSlot)
 			end
 		elseif line:match('%S') then
 			main.f_addStageEntry(line)
@@ -2845,19 +2804,23 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 				end
 				local cancelInputTime = getInputTime(-1, motif[main.group].menu.cancel.key)
 				if esc() or cancelInputTime > 0 then
-					if not bool_main then
-						sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
-					elseif not esc() and t[item].itemname ~= 'exit' then
-						--menu key moves cursor to exit without exiting the game
-						for i = 1, #t do
-							if t[i].itemname == 'exit' then
-								sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
-								item = i
-								cursorPosY = math.min(item, motif[main.group].menu.window.visibleitems)
-								if cursorPosY >= motif[main.group].menu.window.visibleitems then
-									moveTxt = (item - motif[main.group].menu.window.visibleitems) * motif[main.group].menu.item.spacing[2]
+					-- Only a fresh press (or Esc) backs out or moves to Exit.
+					local fresh = esc() or cancelInputTime == 1
+					if fresh then
+						if not bool_main then
+							sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+						elseif not esc() and t[item].itemname ~= 'exit' then
+							-- menu key moves cursor to exit without exiting the game
+							for i = 1, #t do
+								if t[i].itemname == 'exit' then
+									sndPlay(motif.Snd, motif[main.group].cancel.snd[1], motif[main.group].cancel.snd[2])
+									item = i
+									cursorPosY = math.min(item, motif[main.group].menu.window.visibleitems)
+									if cursorPosY >= motif[main.group].menu.window.visibleitems then
+										moveTxt = (item - motif[main.group].menu.window.visibleitems) * motif[main.group].menu.item.spacing[2]
+									end
+									break
 								end
-								break
 							end
 						end
 					end
@@ -2872,7 +2835,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 							motif.infobox.text.TextSpriteData
 						)
 					end
-					if not bool_main or esc() then
+					if fresh and (not bool_main or esc()) then
 						break
 					end
 				elseif bool_f1 and (getKey(motif.infobox.keycode) or gameOption('Config.FirstRun')) then

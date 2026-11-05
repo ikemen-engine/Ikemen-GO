@@ -752,6 +752,7 @@ function start.f_animGet(ref, side, member, params, velParams, loop, srcAnim)
 				animSetFriction(a, velParams.friction[1], velParams.friction[2])
 				animSetPos(a, 0, 0)
 				animSetScale(a, params.scale[1] * xscale, params.scale[2] * yscale)
+				animSetTrans(a, params.trans, params.alpha[1], params.alpha[2])
 				animSetFacing(a, params.facing)
 				animSetXShear(a, params.xshear)
 				animSetAngle(a, params.angle)
@@ -1502,72 +1503,59 @@ function start.f_randomChar(pn)
 	return result
 end
 
+-- Moves the slot to the next or previous character that is not hidden, wrapping around.
+local function slotCycle(cell, dir)
+	local grid = main.t_selGrid[cell]
+	local count = #grid.chars
+	for step = 1, count - 1 do
+		local idx = (grid.slot - 1 + dir * step) % count + 1
+		if start.f_getCharData(start.f_selGrid(cell, idx).char_ref).hidden < 2 then
+			grid.slot = idx
+			return true
+		end
+	end
+	return false
+end
+
 --return true if slot is selected, update start.t_grid
 function start.f_slotSelected(cell, side, cmd, player, x, y)
 	if cmd == nil then
 		return false, false
 	end
-	local original_slot = main.t_selGrid[cell].slot
-	if #main.t_selGrid[cell].chars > 0 then
-		-- select.def 'slot' parameter special keys detection
-		for _, cmdType in ipairs({'select', 'next', 'previous'}) do
-			if main.t_selGrid[cell][cmdType] ~= nil then
-				for k, v in pairs(main.t_selGrid[cell][cmdType]) do
-					if commandGetState(cmd, k) then
-						if cmdType == 'next' then
-							local ok = false
-							for i = main.t_selGrid[cell].slot + 1, #v do
-								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
-									main.t_selGrid[cell].slot = v[i]
-									ok = true
-									break
-								end
-							end
-							if not ok then
-								for i = 1, main.t_selGrid[cell].slot - 1 do
-									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
-										main.t_selGrid[cell].slot = v[i]
-										ok = true
-										break
-									end
-								end
-							end
-							if ok then
-								sndPlay(motif.Snd, motif.select_info['p' .. side].swap.snd[1], motif.select_info['p' .. side].swap.snd[2])
-							end
-						elseif cmdType == 'previous' then
-							local ok = false
-							for i = main.t_selGrid[cell].slot -1, 1, -1 do
-								if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
-									main.t_selGrid[cell].slot = v[i]
-									ok = true
-									break
-								end
-							end
-							if not ok then
-								for i = #v, main.t_selGrid[cell].slot + 1, -1 do
-									if start.f_getCharData(start.f_selGrid(cell, v[i]).char_ref).hidden < 2 then
-										main.t_selGrid[cell].slot = v[i]
-										ok = true
-										break
-									end
-								end
-							end
-							if ok then
-								sndPlay(motif.Snd, motif.select_info['p' .. side].swap.snd[1], motif.select_info['p' .. side].swap.snd[2])
-							end
-						else --select
-							main.t_selGrid[cell].slot = v[math.random(#v)]
-							start.c[player].selRef = start.f_selGrid(cell).char_ref
-						end
-						start.t_grid[y + 1][x + 1].char = start.f_selGrid(cell).char
-						start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
-						start.t_grid[y + 1][x + 1].hidden = start.f_selGrid(cell).hidden
-						start.t_grid[y + 1][x + 1].skip = start.f_selGrid(cell).skip
-						return cmdType == 'select', (main.t_selGrid[cell].slot ~= original_slot)
-					end
+	local grid = main.t_selGrid[cell]
+	if #grid.chars > 0 then
+		local original_slot = grid.slot
+		local selected = false
+		local pressed = false
+		-- select.def 'select' param commands
+		if grid.select ~= nil then
+			for k, v in pairs(grid.select) do
+				if commandGetState(cmd, k) then
+					grid.slot = v[math.random(#v)]
+					start.c[player].selRef = start.f_selGrid(cell).char_ref
+					selected, pressed = true, true
+					break
 				end
 			end
+		end
+		-- [Select Info] cell.slot.next / cell.slot.previous
+		if not pressed and #grid.chars > 1 then
+			for _, entry in ipairs({{motif.select_info.cell.slot.next, 1}, {motif.select_info.cell.slot.previous, -1}}) do
+				if #entry[1].key > 0 and getInput(cmd, entry[1].key) then
+					if slotCycle(cell, entry[2]) then
+						sndPlay(motif.Snd, motif.select_info['p' .. side].swap.snd[1], motif.select_info['p' .. side].swap.snd[2])
+					end
+					pressed = true
+					break
+				end
+			end
+		end
+		if pressed then
+			start.t_grid[y + 1][x + 1].char = start.f_selGrid(cell).char
+			start.t_grid[y + 1][x + 1].char_ref = start.f_selGrid(cell).char_ref
+			start.t_grid[y + 1][x + 1].hidden = start.f_selGrid(cell).hidden
+			start.t_grid[y + 1][x + 1].skip = start.f_selGrid(cell).skip
+			return selected, (grid.slot ~= original_slot)
 		end
 	end
 	-- returns true on pressed key if current slot is not blocked by TeamDuplicates feature
@@ -2976,21 +2964,19 @@ function start.f_selectScreen()
 					end
 				end
 			end
-		elseif not start.escFlag and not fadeOutStarted
-			and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
+		elseif not start.escFlag and start.p[1].selEnd and start.p[2].selEnd and start.p[1].teamEnd and start.p[2].teamEnd then
+			local cancelHandled = false
 			if main.stageMenu and stageEnd and getInput(-1, motif.select_info.cancel.key) then
 				stageEnd = false
 				stageTextData = motif.select_info.stage.active.TextSpriteData
 				timerSelect = motif.select_info.timer.displaytime
 				sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
+				cancelHandled = true
 			else
-				local cancelPressed = false
-				local cancelHandled = false
 				for side = 2, 1, -1 do
 					for k, v in ipairs(start.p[side].t_selCmd) do
 						if getInput(v.cmd, motif.select_info.cancel.key) then
-							cancelPressed = true
-							if cancelSelectMember(side, k) then
+							if cancelSelectMember(side, k) or cancelPreviousSide(side) then
 								timerSelect = motif.select_info.timer.displaytime
 								if main.stageMenu then
 									timerReset = false
@@ -3006,9 +2992,10 @@ function start.f_selectScreen()
 						break
 					end
 				end
-				if not cancelHandled and (cancelPressed or (main.stageMenu and getInput(-1, motif.select_info.cancel.key))) then
-					exitSelectScreen()
-				end
+			end
+			if cancelHandled and fadeOutStarted then
+				fadeSkip()
+				fadeOutStarted = false
 			end
 		end
 		--draw names
@@ -3971,39 +3958,31 @@ end
 --;===========================================================
 --; STAGE MENU
 --;===========================================================
--- Same command mapping as character slots. Candidates are stage references,
--- so hidden members and command subsets do not change the mapping indices
+-- Stage slots work like character slots: a select.def 'select' command picks a random
+-- member, [Select Info] cell.slot.next/previous cycle through them.
 function start.f_stageSlotSelected(group)
 	if group == nil or #group.available == 0 then return false, false end
-	for _, cmdType in ipairs({'select', 'next', 'previous'}) do
-		for command, refs in pairs(group[cmdType] or {}) do
-			for player = 1, gameOption('Config.Players') do
-				if commandGetState(player, command) then
-					local candidates = {}
-					local allowed = {}
-					for _, ref in ipairs(refs) do allowed[ref] = true end
-					for i, ref in ipairs(group.available) do
-						if allowed[ref] then table.insert(candidates, i) end
-					end
-					if #candidates == 0 then return false, true end
-					if cmdType == 'select' then
-						group.slot = candidates[math.random(#candidates)]
-						return true, true
-					end
-					local original = group.slot
-					local direction = cmdType == 'next' and 1 or -1
-					for step = 1, #group.available do
-						local i = (original - 1 + direction * step) % #group.available + 1
-						if allowed[group.available[i]] then
-							group.slot = i
-							break
-						end
-					end
-					if group.slot ~= original then
-						sndPlay(motif.Snd, motif.select_info.stage.swap.snd[1], motif.select_info.stage.swap.snd[2])
-					end
-					return false, true
+	for command, refs in pairs(group.select or {}) do
+		for player = 1, gameOption('Config.Players') do
+			if commandGetState(player, command) then
+				local allowed = {}
+				for _, ref in ipairs(refs) do allowed[ref] = true end
+				local candidates = {}
+				for i, ref in ipairs(group.available) do
+					if allowed[ref] then table.insert(candidates, i) end
 				end
+				if #candidates == 0 then return false, true end
+				group.slot = candidates[math.random(#candidates)]
+				return true, true
+			end
+		end
+	end
+	if #group.available > 1 then
+		for _, entry in ipairs({{motif.select_info.cell.slot.next, 1}, {motif.select_info.cell.slot.previous, -1}}) do
+			if #entry[1].key > 0 and getInput(-1, entry[1].key) then
+				group.slot = (group.slot - 1 + entry[2]) % #group.available + 1
+				sndPlay(motif.Snd, motif.select_info.stage.swap.snd[1], motif.select_info.stage.swap.snd[2])
+				return false, true
 			end
 		end
 	end
@@ -4030,21 +4009,21 @@ function start.f_stageMenu()
 		stageListNo = r.init
 	end
 
-	if getInput(-1, motif.select_info.cell.left.key) then
+	if getInput(-1, motif.select_info.stage.previous.key) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		stageListNo = stageListNo - 1
 		if stageListNo < stageListMinIdx then stageListNo = stageListMaxIdx end
-	elseif getInput(-1, motif.select_info.cell.right.key) then
+	elseif getInput(-1, motif.select_info.stage.next.key) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		stageListNo = stageListNo + 1
 		if stageListNo > stageListMaxIdx then stageListNo = stageListMinIdx end
-	elseif getInput(-1, motif.select_info.cell.up.key) then
+	elseif getInput(-1, motif.select_info.stage.skip.previous.key) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		for i = 1, 10 do
 			stageListNo = stageListNo - 1
 			if stageListNo < stageListMinIdx then stageListNo = stageListMaxIdx end
 		end
-	elseif getInput(-1, motif.select_info.cell.down.key) then
+	elseif getInput(-1, motif.select_info.stage.skip.next.key) then
 		sndPlay(motif.Snd, motif.select_info.stage.move.snd[1], motif.select_info.stage.move.snd[2])
 		for i = 1, 10 do
 			stageListNo = stageListNo + 1

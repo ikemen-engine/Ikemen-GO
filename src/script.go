@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -886,11 +887,38 @@ func luaKeyToString(k lua.LValue) string {
 	}
 }
 
+func luaRandom(l *lua.LState, next func() int32) int {
+	r := float64(next())
+	if nilArg(l, 1) {
+		l.Push(lua.LNumber(r / float64(IMax)))
+		return 1
+	}
+	min, max := 1.0, math.Floor(float64(l.CheckNumber(1)))
+	if !nilArg(l, 2) {
+		min, max = max, math.Floor(float64(l.CheckNumber(2)))
+	}
+	if max < min {
+		l.RaiseError("bad argument #2 to 'random' (interval is empty)")
+	}
+	n := max - min + 1
+	if math.IsNaN(n) || math.IsInf(n, 0) || n <= 0 || n > float64(IMax) {
+		l.RaiseError("bad argument to 'random' (interval is too large)")
+	}
+	l.Push(lua.LNumber(min + math.Floor(r/(math.Floor(float64(IMax)/n)+1))))
+	return 1
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
 	triggerRedirection(l)
 	triggerFunctions(l)
+	mathLib := l.GetGlobal("math")
+	l.SetField(mathLib, "random", l.NewFunction(func(l *lua.LState) int { return luaRandom(l, Random) }))
+	// The engine owns the synchronized seed; scripts cannot reseed it.
+	l.SetField(mathLib, "randomseed", l.NewFunction(func(l *lua.LState) int { return 0 }))
+	// Never saved or synchronized, so only for looks that can't change shared state.
+	localRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	luaRegister(l, "addChar", func(l *lua.LState) int {
 		/*Add a character definition to the select screen.
 		@function addChar
@@ -1042,9 +1070,16 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 2) {
 			layer = int16(numArg(l, 2))
 		}
+		if a.anim == nil {
+			return 0
+		}
 		aSnap := *a
+		transType, srcAlpha, dstAlpha := a.anim.transType, a.anim.srcAlpha, a.anim.dstAlpha
 		layerLocal := layer
 		sys.luaQueueLayerDraw(int(layerLocal), func() {
+			// Keep frame updates, but preserve the alpha selected when the draw was queued.
+			aSnap.anim = aSnap.anim.ShallowCopy()
+			aSnap.anim.transType, aSnap.anim.srcAlpha, aSnap.anim.dstAlpha = transType, srcAlpha, dstAlpha
 			(&aSnap).Draw(layerLocal)
 		})
 		return 0
@@ -1402,11 +1437,12 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "animSetAlpha", func(*lua.LState) int {
-		/*Set alpha blending for an animation.
+		/*Set alpha blending for an animation. A source factor of 0 or more uses additive
+		blending; -1 restores the animation's own blending.
 		@function animSetAlpha
 		@tparam Anim anim Animation userdata.
-		@tparam int16 src Source alpha factor (0–256, engine-specific).
-		@tparam int16 dst Destination alpha factor (0–256, engine-specific).*/
+		@tparam int16 src Source alpha factor (0–256), or -1 to use the animation's blending.
+		@tparam int16 dst Destination alpha factor (0–256), ignored when src is -1.*/
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
 			userDataError(l, 1, a)
@@ -1814,6 +1850,26 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		a.SetTile(tx, ty, sx, sy)
+		return 0
+	})
+	luaRegister(l, "animSetTrans", func(*lua.LState) int {
+		/*Set blending for an animation, as with trans and alpha in stage backgrounds.
+		@function animSetTrans
+		@tparam Anim anim Animation userdata.
+		@tparam string trans `default`, `none`, `add`, `add1`, `addalpha`, `sub` or `subadd`.
+		@tparam[opt] int32 src Source alpha factor (0–255). Omit to use the trans default.
+		@tparam[opt] int32 dst Destination alpha factor (0–255).*/
+		a, ok := toUserData(l, 1).(*Anim)
+		if !ok {
+			userDataError(l, 1, a)
+		}
+		var alpha []int32
+		if !nilArg(l, 3) {
+			alpha = []int32{int32(numArg(l, 3)), int32(numArg(l, 4))}
+		}
+		if a.anim != nil {
+			a.SetTrans(transBlend(strArg(l, 2), alpha))
+		}
 		return 0
 	})
 	luaRegister(l, "animSetVelocity", func(*lua.LState) int {
@@ -4852,6 +4908,15 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(content))
 		return 1
 	})
+	luaRegister(l, "localRandom", func(l *lua.LState) int {
+		/*Return a random number that only this game instance sees, like `math.random`.
+		  It isn't synchronized in netplay or replays, so use it only for looks.
+		@function localRandom
+		@tparam[opt] number min Lowest value, or the highest when it's the only argument.
+		@tparam[opt] number max Highest value.
+		@treturn number value A number in [0, 1) without arguments, else an integer in [1, min] or [min, max].*/
+		return luaRandom(l, func() int32 { return localRand.Int31n(IMax-1) + 1 })
+	})
 	luaRegister(l, "mapSet", func(*lua.LState) int {
 		/*[redirectable] Set the character's map value.
 		@function mapSet
@@ -7139,6 +7204,25 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, ts)
 		}
 		ts.textWrap = boolArg(l, 2)
+		return 0
+	})
+	luaRegister(l, "textImgSetTrans", func(*lua.LState) int {
+		/*Set blending for a text sprite, as with trans and alpha in stage backgrounds.
+		`default` keeps the alpha of the font color.
+		@function textImgSetTrans
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam string trans `default`, `none`, `add`, `add1`, `addalpha`, `sub` or `subadd`.
+		@tparam[opt] int32 src Source alpha factor (0–255). Omit to use the trans default.
+		@tparam[opt] int32 dst Destination alpha factor (0–255).*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		var alpha []int32
+		if !nilArg(l, 3) {
+			alpha = []int32{int32(numArg(l, 3)), int32(numArg(l, 4))}
+		}
+		ts.trans, ts.alpha = transBlend(strArg(l, 2), alpha)
 		return 0
 	})
 	luaRegister(l, "textImgSetVelocity", func(*lua.LState) int {

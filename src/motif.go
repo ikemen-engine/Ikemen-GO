@@ -113,6 +113,8 @@ type AnimationProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
 	Xshear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
@@ -143,6 +145,8 @@ type AnimationCharPreloadProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
 	Xshear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
@@ -163,6 +167,8 @@ type AnimationStagePreloadProperties struct {
 	Offset      [2]float32 `ini:"offset"`
 	Facing      int32      `ini:"facing" default:"1"`
 	Scale       [2]float32 `ini:"scale" default:"1,1"`
+	Trans       string     `ini:"trans" default:"default"`
+	Alpha       []int32    `ini:"alpha"`
 	Xshear      float32    `ini:"xshear"`
 	Angle       float32    `ini:"angle"`
 	XAngle      float32    `ini:"xangle"`
@@ -179,6 +185,8 @@ type TextProperties struct {
 	Font           [8]int32   `ini:"font" default:"-1,0,0,255,255,255,255,-1"`
 	Offset         [2]float32 `ini:"offset"`
 	Scale          [2]float32 `ini:"scale" default:"1,1"`
+	Trans          string     `ini:"trans" default:"default"`
+	Alpha          []int32    `ini:"alpha"`
 	Xshear         float32    `ini:"xshear"`
 	Angle          float32    `ini:"angle"`
 	XAngle         float32    `ini:"xangle"`
@@ -196,6 +204,8 @@ type TextMapProperties struct {
 	Font           [8]int32          `ini:"font" default:"-1,0,0,255,255,255,255,-1"`
 	Offset         [2]float32        `ini:"offset"`
 	Scale          [2]float32        `ini:"scale" default:"1,1"`
+	Trans          string            `ini:"trans" default:"default"`
+	Alpha          []int32           `ini:"alpha"`
 	Xshear         float32           `ini:"xshear"`
 	Angle          float32           `ini:"angle"`
 	XAngle         float32           `ini:"xangle"`
@@ -695,7 +705,15 @@ type SelectInfoProperties struct {
 			SwitchTime int32 `ini:"switchtime"`
 		} `ini:"random"`
 		MapCell map[string]*CellOverrideProperties `ini:"map:^[0-9*]+-[0-9*]+$" lua:""`
-		Slot    AnimationProperties                `ini:"slot"`
+		Slot    struct {
+			AnimationProperties
+			Next struct {
+				Key []string `ini:"key"`
+			} `ini:"next"`
+			Previous struct {
+				Key []string `ini:"key"`
+			} `ini:"previous"`
+		} `ini:"slot"`
 	} `ini:"cell"`
 	P1      PlayerSelectProperties `ini:"p1"`
 	P2      PlayerSelectProperties `ini:"p2"`
@@ -747,6 +765,20 @@ type SelectInfoProperties struct {
 			Loading                         AnimationProperties `ini:"loading"`
 			Slot                            AnimationProperties `ini:"slot"`
 		} `ini:"portrait"`
+		Previous struct {
+			Key []string `ini:"key"`
+		} `ini:"previous"`
+		Next struct {
+			Key []string `ini:"key"`
+		} `ini:"next"`
+		Skip struct {
+			Previous struct {
+				Key []string `ini:"key"`
+			} `ini:"previous"`
+			Next struct {
+				Key []string `ini:"key"`
+			} `ini:"next"`
+		} `ini:"skip"`
 	} `ini:"stage"`
 	Done struct {
 		Key []string `ini:"key"`
@@ -2143,17 +2175,21 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			)
 
 			// Priority: user dst > user src > default dst > default src
-			if v, ok := get(user, sp.DstSec, dstKey); ok {
-				val, src = v, srcUserDst
-			} else if v, ok := get(user, sp.SrcSec, srcKey); ok {
-				val, src = v, srcUserSrc
-			} else if v, ok := get(defs, sp.DstSec, dstKey); ok {
-				val, src = v, srcDefDst
-			} else if v, ok := get(defs, sp.SrcSec, srcKey); ok {
-				val, src = v, srcDefSrc
+			fromSec, fromKey := sp.DstSec, dstKey
+			if _, ok := get(user, sp.DstSec, dstKey); ok {
+				src = srcUserDst
+			} else if _, ok := get(user, sp.SrcSec, srcKey); ok {
+				fromSec, fromKey, src = sp.SrcSec, srcKey, srcUserSrc
+			} else if _, ok := get(defs, sp.DstSec, dstKey); ok {
+				src = srcDefDst
+			} else if _, ok := get(defs, sp.SrcSec, srcKey); ok {
+				fromSec, fromKey, src = sp.SrcSec, srcKey, srcDefSrc
 			} else {
 				continue
 			}
+			// Read the value from the merged INI: font file names are already resolved
+			// to font indices there, while the user and default INIs hold the raw names.
+			val, _ = get(merged, fromSec, fromKey)
 
 			// Write into the merged ini & struct.
 			secPath := strings.ReplaceAll(sp.DstSec, " ", "_")
@@ -2590,6 +2626,8 @@ func (m *Motif) loadFiles() {
 		if m.Snd == nil {
 			m.Snd = newSnd()
 		}
+		// Holding a direction in a menu replays its sound faster than it ends.
+		m.Snd.restart = true
 		return nil
 	})
 	sys.keepAlive()

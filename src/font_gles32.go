@@ -27,6 +27,9 @@ type Font_GLES32 struct {
 	windowHeight int
 	textures     []*TextureAtlas
 	color        color
+	blendEq      BlendEquation
+	blendSrc     BlendFunc
+	blendDst     BlendFunc
 	shaderPalFX  ShaderPalFX
 	customShader CustomShaderRenderData
 }
@@ -95,6 +98,11 @@ func (f *Font_GLES32) SetColor(red float32, green float32, blue float32, alpha f
 	f.color.a = alpha
 }
 
+// SetBlending sets how Printf blends the text when blending is on.
+func (f *Font_GLES32) SetBlending(eq BlendEquation, src, dst BlendFunc) {
+	f.blendEq, f.blendSrc, f.blendDst = eq, src, dst
+}
+
 func (f *Font_GLES32) SetPalFX(state ShaderPalFX) {
 	f.shaderPalFX = state
 }
@@ -140,10 +148,6 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		return nil
 	}
 
-	// Buffer to store vertex data for multiple glyphs
-	batchSize := Min(MaxFontBatchSize, int32(len(indices)))
-	batchVertices := make([]float32, 0, batchSize*6*4)
-
 	// Activate corresponding render state
 	program := fr.shaderProgram
 	custom := false
@@ -165,9 +169,16 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		fr.SetFontPipeline()
 	}
 
+	// Buffer to store vertex data for multiple glyphs
+	batchSize := Min(MaxFontBatchSize, int32(len(indices)))
+	if custom {
+		batchSize = 1
+	}
+	batchVertices := make([]float32, 0, batchSize*6*4)
+
 	//setup blending mode
 	if blend {
-		r.EnableBlending(BlendAdd, BlendSrcAlpha, BlendOneMinusSrcAlpha)
+		r.EnableBlending(f.blendEq, f.blendSrc, f.blendDst)
 	} else {
 		r.DisableBlending()
 	}
@@ -262,7 +273,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 			continue
 		}
 
-		if int32(len(batchVertices)/24) >= batchSize || (textureID != -1 && textureID != int32(ch.textureID)) {
+		if (int32(len(batchVertices)/24) >= batchSize || (textureID != -1 && textureID != int32(ch.textureID))) && !custom {
 			// Render the current batch
 			f.renderGlyphBatch(batchVertices, uint32(textureID))
 			// Clear the batch buffers
@@ -305,6 +316,11 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
 		x += float32((ch.advance >> 6)) * xscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 		renderedAny = true
+		if custom {
+			f.renderGlyph(batchVertices, ch.texture)
+			// Clear the batch buffers
+			batchVertices = batchVertices[:0]
+		}
 	}
 
 	// Render any remaining glyphs in the batch
@@ -371,6 +387,16 @@ func (f *Font_GLES32) renderGlyphBatch(vertices []float32, textureID uint32) {
 
 	// Sampling bind, safe to skip if this atlas is already bound
 	mr.bindTextureToUnit(0, gl.TEXTURE_2D, nil, textureID)
+	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
+}
+
+func (f *Font_GLES32) renderGlyph(vertices []float32, texture Texture) {
+	fr := gfxFont.(*FontRenderer_GLES32)
+
+	mr := gfx.(*Renderer_GLES32)
+	mr.bindBuffer(gl.ARRAY_BUFFER, fr.vbo)
+	gl.BufferSubData(gl.ARRAY_BUFFER, 0, len(vertices)*4, gl.Ptr(vertices))
+	gfx.SetTexture("tex", texture)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(vertices))/4)
 }
 
@@ -531,6 +557,7 @@ func (f *Font_GLES32) GenerateGlyphs(low, high rune) error {
 
 		char.uv = uv
 		char.textureID = texAtlas.texture.(*Texture_GLES32).handle
+		char.texture = gfx.newSubTexture(f.textures[textureIndex].texture, int32(char.width), int32(char.height), char.uv)
 		// Logcat(fmt.Sprintf("GLES: Texture ID: %v", texAtlas.texture.(*Texture_GLES32).handle))
 
 		//add char to fontChar list

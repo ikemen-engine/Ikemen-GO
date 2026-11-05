@@ -2305,6 +2305,7 @@ func (a *Anim) Copy() *Anim {
 	newAnim.anim.mask = a.anim.mask
 	newAnim.anim.srcAlpha = a.anim.srcAlpha
 	newAnim.anim.dstAlpha = a.anim.dstAlpha
+	newAnim.anim.transType = a.anim.transType
 	// Copy all valid sprites safely
 	for _, c := range a.anim.frames {
 		if c.Group < 0 || c.Number < 0 {
@@ -2395,6 +2396,45 @@ func (a *Anim) SetColorKey(mask int16) {
 
 func (a *Anim) SetAlpha(src, dst int16) {
 	a.anim.srcAlpha, a.anim.dstAlpha = src, dst
+	if src < 0 {
+		a.anim.transType = TT_default
+	} else {
+		a.anim.transType = TT_add
+	}
+}
+
+// Blending for a trans name, as in stage backgrounds. A given alpha replaces
+// the default factors of the add and sub types.
+func transBlend(trans string, alpha []int32) (TransType, [2]int32) {
+	tt, factors := TT_default, [2]int32{255, 0}
+	switch strings.ToLower(strings.TrimSpace(trans)) {
+	case "", "default":
+	case "none":
+		tt = TT_none
+	case "add":
+		tt, factors = TT_add, [2]int32{255, 255}
+	case "add1":
+		tt, factors = TT_add, [2]int32{255, 128}
+	case "addalpha":
+		tt = TT_add
+	case "sub":
+		tt, factors = TT_sub, [2]int32{255, 255}
+	case "subadd":
+		tt, factors = TT_subadd, [2]int32{255, 255}
+	default:
+		LogMessage("Invalid trans type: %v", trans)
+	}
+	if tt != TT_default && tt != TT_none {
+		for i := 0; i < len(alpha) && i < 2; i++ {
+			factors[i] = Clamp(alpha[i], 0, 255)
+		}
+	}
+	return tt, factors
+}
+
+func (a *Anim) SetTrans(tt TransType, alpha [2]int32) {
+	a.anim.transType = tt
+	a.anim.srcAlpha, a.anim.dstAlpha = int16(alpha[0]), int16(alpha[1])
 }
 
 func (a *Anim) SetLocalcoord(lx, ly float32) {

@@ -20,6 +20,7 @@ type FontRenderer interface {
 
 type Font interface {
 	SetColor(red float32, green float32, blue float32, alpha float32)
+	SetBlending(eq BlendEquation, src, dst BlendFunc)
 	SetPalFX(spfx ShaderPalFX)
 	UpdateResolution(windowWidth int, windowHeight int)
 	Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
@@ -66,6 +67,7 @@ type FntCharImage struct {
 // TtfFont implements TTF font rendering on supported platforms
 type TtfFont interface {
 	SetColor(red float32, green float32, blue float32, alpha float32)
+	SetBlending(eq BlendEquation, src, dst BlendFunc)
 	SetPalFX(spfx ShaderPalFX)
 	Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
 	Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
@@ -604,9 +606,9 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 	window *[4]int32, palfx *PalFX, frgba [4]float32) {
 	if !sys.frameSkip {
 		if f.Type == "truetype" {
-			f.DrawTtf(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, align, true, window, frgba, palfx, 0, CustomShaderRenderData{})
+			f.DrawTtf(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, align, true, window, frgba, TT_default, [2]int32{255, 0}, palfx, 0, CustomShaderRenderData{})
 		} else {
-			f.DrawText(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, bank, align, window, frgba, palfx, 0, CustomShaderRenderData{})
+			f.DrawText(txt, x, y, xscl, yscl, rxadd, rot, projectionMode, fLength, bank, align, window, frgba, TT_default, [2]int32{255, 0}, palfx, 0, CustomShaderRenderData{})
 		}
 	}
 }
@@ -614,7 +616,7 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 // DrawText prints on screen a specified text with the current font sprites
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 	rot Rotation, projectionMode int32, fLength float32, bank, align int32, window *[4]int32,
-	frgba [4]float32, palfx *PalFX, spacingXAdd int32, shader CustomShaderRenderData) {
+	frgba [4]float32, trans TransType, alpha [2]int32, palfx *PalFX, spacingXAdd int32, shader CustomShaderRenderData) {
 
 	if len(txt) == 0 || xscl == 0 || yscl == 0 {
 		return
@@ -672,13 +674,18 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		f.lastPalBase = nil
 	}
 
-	alpha := frgba[3]
-	alphaVal := int32(255 * sys.brightness * alpha)
+	alphaVal := int32(255 * sys.brightness * frgba[3])
 
 	// Set the trans type
 	tt := TT_none
-	if alpha < 1.0 {
+	if frgba[3] < 1.0 {
 		tt = TT_add
+	}
+	blendAlpha := [2]int32{alphaVal, 255 - alphaVal}
+	// A set trans replaces the alpha of the font color.
+	if trans != TT_default {
+		tt = trans
+		blendAlpha = [2]int32{int32(float32(alpha[0]) * sys.brightness), alpha[1]}
 	}
 
 	// Sprite fonts can't use frgba like TTF can, so we will leverage PalFX.mul to apply color
@@ -702,7 +709,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		rot:            rot,
 		tint:           0,
 		blendMode:      tt,
-		blendAlpha:     [2]int32{alphaVal, 255 - alphaVal},
+		blendAlpha:     blendAlpha,
 		mask:           0,
 		pfx:            pfxCopy,
 		window:         window,
@@ -722,7 +729,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 
 func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 	projectionMode int32, fLength float32, align int32,
-	blend bool, window *[4]int32, frgba [4]float32, palfx *PalFX, spacingXAdd float32, shader CustomShaderRenderData) {
+	blend bool, window *[4]int32, frgba [4]float32, trans TransType, alpha [2]int32, palfx *PalFX, spacingXAdd float32, shader CustomShaderRenderData) {
 
 	if len(txt) == 0 {
 		return
@@ -744,16 +751,32 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 		blendMode = TT_add
 	}
 	alphaVal := int32(255 * Clamp(frgba[3], float32(0), float32(1)))
+	blendAlpha := [2]int32{alphaVal, 255 - alphaVal}
+	if trans != TT_default {
+		blendMode, blendAlpha = trans, alpha
+	}
 
 	var spfx ShaderPalFX
 
 	if palfx != nil {
-		spfx = palfx.getFinalPalFx(blendMode, [2]int32{alphaVal, 255 - alphaVal})
+		spfx = palfx.getFinalPalFx(blendMode, blendAlpha)
 	} else {
 		spfx = NewShaderPalFX()
 	}
-	f.ttf.SetPalFX(spfx)
 	f.ttf.SetCustomShader(shader)
+	// A set trans replaces the alpha of the font color and blends the text like a sprite.
+	if trans != TT_default {
+		renderWithBlending(func(eq BlendEquation, src, dst BlendFunc, a float32) {
+			f.ttf.SetPalFX(spfx)
+			f.ttf.SetBlending(eq, src, dst)
+			f.ttf.SetColor(frgba[0], frgba[1], frgba[2], a)
+			f.ttf.Printf(x, y, xscl, yscl, spacingXAdd, align, true, *window,
+				rxadd, rot, projectionMode, fLength, x, y, "%s", txt)
+		}, blendMode, blendAlpha, false, &spfx, true)
+		return
+	}
+	f.ttf.SetPalFX(spfx)
+	f.ttf.SetBlending(BlendAdd, BlendSrcAlpha, BlendOneMinusSrcAlpha)
 	f.ttf.SetColor(frgba[0], frgba[1], frgba[2], frgba[3])
 	f.ttf.Printf(x, y, xscl, yscl, spacingXAdd, align, blend, *window,
 		rxadd, rot, projectionMode, fLength, x, y,
@@ -781,6 +804,8 @@ type TextSprite struct {
 	offsetX        int32
 	layerno        int16
 	palfx          *PalFX
+	trans          TransType
+	alpha          [2]int32
 	frgba          [4]float32 // ttf fonts
 	removetime     int32      // text sctrl
 	elapsedTicks   float32
@@ -794,6 +819,8 @@ type TextSprite struct {
 	hidewithbars   bool
 	// initial, unscaled values
 	offsetInit   [2]float32
+	transInit    TransType
+	alphaInit    [2]int32
 	scaleInit    [2]float32
 	windowInit   [4]float32
 	velocityInit [2]float32
@@ -822,6 +849,10 @@ func (ts *TextSprite) loadDefaults() {
 		yscl:       1,
 		window:     sys.scrrect,
 		frgba:      [...]float32{1.0, 1.0, 1.0, 1.0},
+		trans:      TT_default,
+		alpha:      [2]int32{255, 0},
+		transInit:  TT_default,
+		alphaInit:  [2]int32{255, 0},
 		removetime: 1,
 		localScale: 1,
 		scaleRatio: 1,
@@ -1455,10 +1486,10 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 		// Draw the visible line
 		if ts.fnt.Type == "truetype" {
 			ts.fnt.DrawTtf(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
-				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &window, ts.frgba, ts.palfx, float32(spacingXAdd), ts.customShader.renderData(true))
+				xshear, ts.rot, ts.projection, ts.fLength, ts.align, true, &window, ts.frgba, ts.trans, ts.alpha, ts.palfx, float32(spacingXAdd), ts.customShader.renderData(true))
 		} else {
 			ts.fnt.DrawText(line[:charsToShow], ts.x+ts.vel[0]-xsoffset+phantomX, newY+ts.vel[1], ts.xscl, ts.yscl,
-				xshear, ts.rot, ts.projection, ts.fLength, ts.bank, ts.align, &window, ts.frgba, ts.palfx, spacingXAdd, ts.customShader.renderData(true))
+				xshear, ts.rot, ts.projection, ts.fLength, ts.bank, ts.align, &window, ts.frgba, ts.trans, ts.alpha, ts.palfx, spacingXAdd, ts.customShader.renderData(true))
 		}
 
 		totalCharsShown += charsToShow
@@ -1469,6 +1500,7 @@ func (ts *TextSprite) draw(ln int16, clip *[4]int32) {
 }
 
 func (ts *TextSprite) Reset() {
+	ts.trans, ts.alpha = ts.transInit, ts.alphaInit
 	ts.SetPos(ts.offsetInit[0], ts.offsetInit[1])
 	ts.SetScale(ts.scaleInit[0], ts.scaleInit[1])
 	ts.SetWindow(ts.windowInit)
