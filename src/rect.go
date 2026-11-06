@@ -349,8 +349,8 @@ func (r *Rect) drawWindow() [4]int32 {
 	w := (window[2] - window[0]) / r.localScale
 	h := (window[3] - window[1]) / r.localScale
 	return [4]int32{
-		int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale),
-		int32((y + float32(sys.gameHeight-240)) * sys.heightScale),
+		int32(math.Round(float64((x + float32(sys.gameWidth-320)/2) * sys.widthScale))),
+		int32(math.Round(float64((y + float32(sys.gameHeight-240)) * sys.heightScale))),
 		int32(w*sys.widthScale + 0.5),
 		int32(h*sys.heightScale + 0.5),
 	}

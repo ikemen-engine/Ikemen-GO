@@ -532,9 +532,10 @@ type PlayerSelectProperties struct {
 			AnimationCharPreloadProperties `skipinit:"true"`
 			Snd                            [2]int32 `ini:"snd" default:"-1,0"`
 		} `ini:"preview"`
-		Number TextProperties      `ini:"number"`
-		Text   TextProperties      `ini:"text"`
-		Bg     AnimationProperties `ini:"bg"`
+		Preview2 AnimationCharPreloadProperties `ini:"preview2" skipinit:"true"`
+		Number   TextProperties                 `ini:"number"`
+		Text     TextProperties                 `ini:"text"`
+		Bg       AnimationProperties            `ini:"bg"`
 	} `ini:"palmenu"`
 }
 
@@ -2076,7 +2077,7 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		}
 
 		lowerPrefix := strings.ToLower(dstPrefix)
-		for _, prefix := range []string{".face.random.", ".face2.random.", ".face.slot.", ".face2.slot.", ".palmenu.preview."} {
+		for _, prefix := range []string{".face.random.", ".face2.random.", ".face.slot.", ".face2.slot.", ".palmenu.preview.", ".palmenu.preview2."} {
 			if strings.Contains(lowerPrefix, prefix) {
 				return true
 			}
@@ -2144,12 +2145,6 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		for suf := range suffixes {
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
-			// Skip palmenu.preview anim/spr inheritance
-			lowerDst := strings.ToLower(sp.DstPrefix)
-			if strings.Contains(lowerDst, ".palmenu.preview.") &&
-				(strings.EqualFold(suf, "anim") || strings.EqualFold(suf, "spr")) {
-				continue
-			}
 			if shouldSkipAnimSpr(sp.DstPrefix, suf) {
 				continue
 			}
@@ -2283,6 +2278,8 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Select Info", SrcPrefix: "p2.face2.", DstSec: "Select Info", DstPrefix: "p2.face2.loading."},
 		{SrcSec: "Select Info", SrcPrefix: "p1.face.", DstSec: "Select Info", DstPrefix: "p1.palmenu.preview."},
 		{SrcSec: "Select Info", SrcPrefix: "p2.face.", DstSec: "Select Info", DstPrefix: "p2.palmenu.preview."},
+		{SrcSec: "Select Info", SrcPrefix: "p1.face2.", DstSec: "Select Info", DstPrefix: "p1.palmenu.preview2."},
+		{SrcSec: "Select Info", SrcPrefix: "p2.face2.", DstSec: "Select Info", DstPrefix: "p2.palmenu.preview2."},
 		{SrcSec: "Select Info", SrcPrefix: "p1.teammenu.item.", DstSec: "Select Info", DstPrefix: "p1.teammenu.item.active."},
 		{SrcSec: "Select Info", SrcPrefix: "p1.teammenu.item.", DstSec: "Select Info", DstPrefix: "p1.teammenu.item.active2."},
 		{SrcSec: "Select Info", SrcPrefix: "p2.teammenu.item.", DstSec: "Select Info", DstPrefix: "p2.teammenu.item.active."},

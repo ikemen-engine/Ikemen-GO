@@ -3563,9 +3563,13 @@ function start.f_palMenu(side, cmd, player, member, selectState)
 		end
 
 		-- face2 "done" anim after pal confirmation
-		local done_anim2 = pCfg.face2.done.anim
-		if st.face2_anim ~= done_anim2 and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
-			local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face2.done, pCfg.face2, false, st.face2_data)
+		local done2 = pCfg.face2.done
+		local preview2 = pCfg.palmenu.preview2
+		local hasPreview2 = preview2.anim ~= -1 or preview2.spr[1] ~= -1
+		local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+		if canShow2 and (done2.anim ~= -1 or done2.spr[1] ~= -1)
+			and (st.face2_anim ~= done2.anim or done2.spr[1] ~= -1 or hasPreview2) then
+			local a = start.f_animGet(start.c[player].selRef, side, member, done2, pCfg.face2, false, st.face2_data)
 			if a then
 				st.face2_data = start.f_loadPalettes(a, charRef, pal)
 				animUpdate(st.face2_data)
@@ -3809,7 +3813,6 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					end
 					-- if select anim differs from done anim and coop or pX.face.num allows to display more than 1 portrait or it's the last team member
 					local done_anim = pCfg.face.done.anim
-					local done_anim2 = pCfg.face2.done.anim
 					local done_spr = pCfg.face.done.spr
 					local palmenu_preview_anim = pCfg.palmenu.preview.anim
 					local palmenu_preview_spr = pCfg.palmenu.preview.spr
@@ -3817,6 +3820,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 					local face2_anim = start.p[side].t_selTemp[member].face2_anim
 					local canShow = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local playPreviewSound = false
 					-- primary face "done" / preview
 					if canShow then
 						if motif.select_info.paletteselect == 0 then
@@ -3824,13 +3828,26 @@ function start.f_selectMenu(side, cmd, player, member, selectState)
 								setDoneAnim(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, 'face_data')
 							end
 						elseif palmenu_preview_anim ~= -1 or palmenu_preview_spr[1] ~= -1 then
-							start.f_playWave(start.c[player].selRef, 'cursor', motif.select_info['p' .. side].palmenu.preview.snd[1], motif.select_info['p' .. side].palmenu.preview.snd[2])
 							setDoneAnim(start.c[player].selRef, side, member, pCfg.palmenu.preview, pCfg.face, 'face_data')
+							playPreviewSound = true
 						end
 					end
-					-- face2 "done" anim
-					if face2_anim ~= done_anim and canShow2 and done_anim2 ~= -1 then
-						setDoneAnim(start.c[player].selRef, side, member, pCfg.face2.done, pCfg.face2, 'face2_data')
+					-- secondary face "done" / preview
+					if canShow2 then
+						local done2 = pCfg.face2.done
+						local preview2 = pCfg.palmenu.preview2
+						if motif.select_info.paletteselect == 0 then
+							if (done2.anim ~= -1 and face2_anim ~= done2.anim) or done2.spr[1] ~= -1 then
+								setDoneAnim(start.c[player].selRef, side, member, done2, pCfg.face2, 'face2_data')
+							end
+						elseif preview2.anim ~= -1 or preview2.spr[1] ~= -1 then
+							setDoneAnim(start.c[player].selRef, side, member, preview2, pCfg.face2, 'face2_data')
+							playPreviewSound = true
+						end
+					end
+					if playPreviewSound then
+						local snd = motif.select_info['p' .. side].palmenu.preview.snd
+						start.f_playWave(start.c[player].selRef, 'cursor', snd[1], snd[2])
 					end
 
 					start.p[side].t_selTemp[member].ref = start.c[player].selRef
