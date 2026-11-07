@@ -7305,9 +7305,6 @@ func systemScriptInit(l *lua.LState) {
 		/*Toggle display of collision boxes.
 		@function toggleClsnDisplay
 		@tparam[opt] boolean state If provided, sets collision box display on/off; otherwise toggles it.*/
-		if !sys.debugModeAllowed() {
-			return 0
-		}
 		if !nilArg(l, 1) {
 			sys.clsnDisplay = boolArg(l, 1)
 		} else {
