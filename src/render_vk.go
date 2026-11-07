@@ -1919,6 +1919,7 @@ type VulkanProgramInfo struct {
 	uniformOffsetMap     map[interface{}]uint32
 	vertShader           vk.ShaderModule
 	fragShader           vk.ShaderModule
+	custom               bool
 	needsGrabPass        bool
 	droidDescriptorSet   vk.DescriptorSet // for Android behavior
 }
@@ -9828,14 +9829,16 @@ func (r *Renderer_VK) LoadCustomSpriteShader(shaderName string, shaderData []byt
 		return id
 	}
 
-	needsGrabPass := bytes.Contains(shaderData, []byte("bgl_RenderedTexture"))
-
 	program, err := r.createCustomSpriteProgram(shaderData)
 	if err != nil {
 		LogMessage("[VK Error] Failed to create pipeline for custom shader %s: %v", shaderName, err)
 		return 0
 	}
+
+	program.custom = true
+	needsGrabPass := bytes.Contains(shaderData, []byte("bgl_RenderedTexture"))
 	program.needsGrabPass = needsGrabPass
+
 	id := r.nextShaderID
 	r.nextShaderID++
 	r.customPrograms[id] = program

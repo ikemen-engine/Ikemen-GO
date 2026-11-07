@@ -12525,7 +12525,7 @@ func (sc zoom) Run(c *Char, _ []int32) bool {
 	// This old calculation is both less accurate to Mugen and less intuitive to work with
 	// sys.zoom.pos[0] = sys.zoom.scale * pos[0]
 
-	sys.zoom.pos = pos
+	sys.zoom.pos = pos // In screen space
 	sys.zoom.scale = scl
 	sys.zoom.lag = lag
 	sys.zoom.endLag = endlag
