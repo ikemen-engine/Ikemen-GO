@@ -6953,7 +6953,7 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 
 	// Position limits
 	// Pos is in screen units relative to the camera center, like screen space in explods
-	dx = x + z.curPos[0] / sys.cam.Scale
+	dx = x + z.curPos[0]/sys.cam.Scale
 
 	if z.cameraBound {
 		windowHalfWidth := Max(0, sys.cam.halfWidth/scl-sys.cam.halfWidth/dscl)
@@ -6970,7 +6970,7 @@ func (z *ZoomEffect) computeCamera(x, y, scl float32) (dx, dy, dscl float32) {
 	// cam.Pos[1] is stored pre-multiplied by scale (see camera.go's boundY), unlike Pos[0].
 	// Work in world units, then re-apply the zoom's scale.
 	baseY := y / scl
-	camWorldY := baseY + z.curPos[1] / sys.cam.Scale
+	camWorldY := baseY + z.curPos[1]/sys.cam.Scale
 
 	// The camera's Y sits on the ground line, not the screen centre, so the
 	// room above and below it isn't the same
