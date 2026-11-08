@@ -9011,7 +9011,7 @@ func triggerFunctions(l *lua.LState) {
 		case "guarded":
 			lv = lua.LBool(c.ghv.guarded)
 		case "isbound":
-			lv = lua.LBool(c.isTargetBound())
+			lv = lua.LBool(c.boundById >= 0)
 		case "fall":
 			lv = lua.LBool(c.ghv.fallflag)
 		case "fall.damage":

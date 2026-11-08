@@ -3509,7 +3509,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_guarded:
 		sys.bcStack.PushB(c.ghv.guarded)
 	case OC_ex_gethitvar_isbound:
-		sys.bcStack.PushB(c.isTargetBound())
+		sys.bcStack.PushB(c.boundById >= 0)
 	case OC_ex_gethitvar_fall:
 		sys.bcStack.PushB(c.ghv.fallflag)
 	case OC_ex_gethitvar_fall_damage:
@@ -10774,7 +10774,7 @@ func (sc targetDrop) Run(c *Char, _ []int32) bool {
 	})
 	tar := crun.getTarget(-1, -1)
 	if len(tar) > 0 {
-		crun.targetDrop(eid, -1, keep)
+		crun.targetDrop(eid, keep)
 	}
 	return false
 }

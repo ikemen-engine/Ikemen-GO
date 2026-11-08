@@ -3615,6 +3615,8 @@ type CharSystemVar struct {
 	bindPos               [3]float32
 	bindPosAdd            [3]float32
 	bindFacing            float32
+	bindIsTarget          bool  // TargetBind, BindToTarget or HitDef snap, as opposed to BindToParent/BindToRoot
+	boundById             int32 // Player that binds this one as its target, for getHitVar(isbound)
 	hitPauseTime          int32
 	rot                   Rotation
 	xshear                float32
@@ -4040,6 +4042,7 @@ func (c *Char) prepareNextRound() {
 	c.sysFvarRangeSet(0, math.MaxInt32, 0)
 	c.CharSystemVar = CharSystemVar{
 		bindToId:              -1,
+		boundById:             -1,
 		angleDrawScale:        [2]float32{1, 1},
 		trans:                 TT_default,
 		alpha:                 [2]int32{255, 0},
@@ -8113,7 +8116,11 @@ func (c *Char) gethitAnimtype() Reaction {
 }
 
 func (c *Char) isTargetBound() bool {
-	return c.ghv.idMatch(c.bindToId)
+	return c.bindIsTarget && c.bindToId >= 0
+}
+
+func (c *Char) isTargetBoundTo(id int32) bool {
+	return c.isTargetBound() && c.bindToId == id
 }
 
 func (c *Char) initConstants(gi *CharGlobalInfo) {
@@ -8804,23 +8811,9 @@ func (c *Char) targetVelAddZ(tar []int32, z float32) {
 	}
 }
 
-func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
+// TargetDrop sctrl. Drops targets by hit ID
+func (c *Char) targetDrop(excludeid int32, keepone bool) {
 	var tg []int32
-	// Keep the player with this "player ID". Used with "HitOnce" attacks such as throws
-	if keepone && excludechar > 0 {
-		for _, tid := range c.targets {
-			if t := sys.playerID(tid); t != nil {
-				if t.id == excludechar {
-					tg = append(tg, tid)
-				} else {
-					t.gethitBindClear()
-					t.ghv.dropPlayerId(c.id)
-				}
-			}
-		}
-		c.targets = tg
-		return
-	}
 	// Keep the players with this "hit ID". Used with "TargetDrop" state controller
 	if excludeid < 0 {
 		tg = c.targets
@@ -8830,7 +8823,10 @@ func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
 				if t.ghv.hitid == excludeid {
 					tg = append(tg, tid)
 				} else {
-					t.gethitBindClear()
+					// Only clear a bind from this char. Other players may still be binding this target
+					if t.isTargetBoundTo(c.id) {
+						t.resetBind()
+					}
 					t.ghv.dropPlayerId(c.id)
 				}
 			}
@@ -8847,7 +8843,7 @@ func (c *Char) targetDrop(excludeid int32, excludechar int32, keepone bool) {
 			if i == r {
 				c.targets = append(c.targets, tid)
 			} else if t := sys.playerID(tid); t != nil {
-				if t.isTargetBound() {
+				if t.isTargetBoundTo(c.id) {
 					if c.csf(CSF_gethit) {
 						t.selfState(5050, -1, -1, -1, "")
 					}
@@ -9200,14 +9196,15 @@ func (c *Char) distX(opp *Char, oc *Char) float32 {
 	cpos := c.pos[0] * c.localscl
 	opos := opp.pos[0] * opp.localscl
 	// Update distance while bound. Mugen chars only
+	// Mugen applies binds after the binder moves, so P2Dist while bound returns the value from 1 frame later
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
 				f := bt.facing
 				// We only need to correct for target binds (and snaps)
-				if Abs(c.bindFacing) == 2 {
-					f = c.bindFacing / 2
-				}
+				//if Abs(c.bindFacing) == 2 {
+				//	f = c.bindFacing / 2
+				//}
 				cpos = bt.pos[0]*bt.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])*c.localscl
 			}
 		}
@@ -9223,6 +9220,7 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	cpos := c.pos[1] * c.localscl
 	opos := opp.pos[1] * opp.localscl
 	// Update distance while bound. Mugen chars only
+	// Mugen applies binds after the binder moves, so P2Dist while bound returns the value from 1 frame later
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
 		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
@@ -10200,10 +10198,19 @@ func (c *Char) resetBind() {
 	c.bindTime = 0
 	c.bindToId = -1
 	c.bindFacing = 0
+	c.bindIsTarget = false
+	c.boundById = -1
 }
 
 func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 	c.bindToId = to.id
+	c.bindIsTarget = isTargetBind
+	// Mugen only sets getHitVar(isbound) when the target has movetype H
+	if isTargetBind {
+		c.boundById = to.id
+	} else {
+		c.boundById = -1
+	}
 
 	// Target binds are all we need to correct with this logic.
 	// By the time this gets to the updateBinding() method, it's going to
@@ -10211,9 +10218,10 @@ func (c *Char) setBindToId(to *Char, isTargetBind bool) {
 	// facing at that point. So as weird as it may be to default
 	// to 0 here, this behavior does seem to be what MUGEN
 	// actually does for helpers.
-	if c.bindFacing == 0 && isTargetBind {
-		c.bindFacing = to.facing * 2
-	}
+	// Disabled because targetBind() and HitDef snap reset bindFacing to 0 right after, so this no longer has an effect
+	//if c.bindFacing == 0 && isTargetBind {
+	//	c.bindFacing = to.facing * 2
+	//}
 
 	// Prevent mutual binding
 	if to.bindToId == c.id {
@@ -10265,9 +10273,9 @@ func (c *Char) bindToPlayer(bt *Char) {
 	if !math.IsNaN(float64(c.bindPos[0])) {
 		f := bt.facing
 		// We only need to correct for target binds (and snaps)
-		if Abs(c.bindFacing) == 2 {
-			f = c.bindFacing / 2
-		}
+		//if Abs(c.bindFacing) == 2 {
+		//	f = c.bindFacing / 2
+		//}
 		newX := bt.pos[0]*bt.localscl/c.localscl + f*(c.bindPos[0]+c.bindPosAdd[0])
 		c.setPosX(newX, true)
 		c.interPos[0] += bt.interPos[0] - bt.pos[0]
@@ -10380,6 +10388,28 @@ func (c *Char) gethitBindClear() {
 	if c.isTargetBound() {
 		c.resetBind()
 	}
+}
+
+// Drop all targets except keepId when a HitOnce attack hits or this char is KO'd
+// Unlike TargetDrop, targets bound to this char always go to state 5050
+func (c *Char) releaseTargets(keepId int32) {
+	var tg []int32
+	for _, tid := range c.targets {
+		t := sys.playerID(tid)
+		if t == nil {
+			continue
+		}
+		if tid == keepId {
+			tg = append(tg, tid)
+			continue
+		}
+		if t.isTargetBoundTo(c.id) {
+			t.selfState(5050, -1, -1, -1, "")
+			t.resetBind()
+		}
+		t.ghv.dropPlayerId(c.id)
+	}
+	c.targets = tg
 }
 
 // Drop targets that no longer fit the requirements
@@ -12130,7 +12160,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 	if getter.hoverIdx < 0 {
 		// HitOnce drops all targets except the current one
 		if !isProjectile && hd.hitonce > 0 {
-			c.targetDrop(-1, getter.id, true)
+			c.releaseTargets(getter.id)
 		}
 
 		// Juggle points inheriting
@@ -12793,6 +12823,7 @@ func (c *Char) actionFinish() {
 			// Set KO flag and force KO states if necessary
 			c.setSCF(SCF_ko, true)
 			c.setSCF(SCF_ctrl, false) // This can be seen in Mugen when you F1 a character with ctrl && movetype = H
+			c.releaseTargets(-1)
 			if !c.stchtmp && c.helperIndex == 0 && c.ss.moveType != MT_H {
 				c.ghv.fallflag = true
 				c.selfState(5030, -1, -1, 0, "")
