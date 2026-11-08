@@ -6738,7 +6738,6 @@ const (
 	explod_bindid
 	explod_space
 	explod_window
-	explod_interpolation
 	explod_interpolation_time
 	explod_interpolation_animelem
 	explod_interpolation_pos
@@ -7052,6 +7051,10 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 				palFX(sc).runSub(c, &e.palfxdef, paramID, exp)
 			}
 			explod(sc).parseInterpolation(c, e, paramID, exp, &e.palfxdef)
+			// Time also starts the interpolation
+			if paramID == explod_interpolation_time && e.interpolate_time[0] > 0 {
+				e.startInterpolation(&e.palfxdef)
+			}
 		}
 		return true
 	})
@@ -7078,7 +7081,7 @@ func (sc explod) Run(c *Char, _ []int32) bool {
 	return false
 }
 
-func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []BytecodeExp, pfd *PalFXDef) bool {
+func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []BytecodeExp, pfd *PalFXDef) {
 	switch paramID {
 	case explod_interpolation_time:
 		e.interpolate_time[0] = exp[0].evalI(c)
@@ -7086,18 +7089,9 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 			e.interpolate_time[0] = e.removetime
 		}
 		e.interpolate_time[1] = e.interpolate_time[0]
-		if e.interpolate_time[0] > 0 {
-			e.resetInterpolation(pfd)
-			e.interpolate = true
-			if e.ownpal {
-				pfd.interpolate = true
-				pfd.itime = e.interpolate_time[0]
-			}
-		}
 	case explod_interpolation_animelem:
 		e.interpolate_animelem[1] = exp[0].evalI(c)
 		e.interpolate_animelem[0] = e.animelem
-		e.interpolate_animelem[2] = e.interpolate_animelem[1]
 	case explod_interpolation_pos:
 		e.interpolate_pos[3] = exp[0].evalF(c)
 		if len(exp) > 1 {
@@ -7148,7 +7142,6 @@ func (sc explod) parseInterpolation(c *Char, e *Explod, paramID byte, exp []Byte
 		pfd.ihue[0] = exp[0].evalF(c) / 512
 	default:
 	}
-	return true
 }
 
 type modifyExplod explod
@@ -7690,24 +7683,6 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 			modifiers = append(modifiers, func(e *Explod) {
 				e.customShader.afterimage = v1
 			})
-		case explod_interpolation:
-			// You could not modify this one in Mugen
-			if hasIkemenVer {
-				interpolation := exp[0].evalB(c)
-				modifiers = append(modifiers, func(e *Explod) {
-					if e.interpolate != interpolation && e.interpolate_time[0] > 0 {
-						e.interpolate_animelem[0] = e.start_animelem
-						e.interpolate_animelem[1] = e.interpolate_animelem[2]
-						if e.ownpal {
-							pfd := e.palfx
-							pfd.interpolate = interpolation
-							pfd.itime = e.interpolate_time[0]
-						}
-						e.interpolate_time[1] = e.interpolate_time[0]
-						e.interpolate = interpolation
-					}
-				})
-			}
 		default:
 			switch {
 			case isPalFXParam(paramID):
@@ -7716,6 +7691,29 @@ func (sc modifyExplod) Run(c *Char, _ []int32) bool {
 				modifiers = append(modifiers, func(e *Explod) {
 					if e.ownpal {
 						palFX(sc).runSub(c, &e.palfx.PalFXDef, paramID, exp)
+					}
+				})
+			case paramID >= explod_interpolation_time && paramID <= explod_interpolation_pfx_hue:
+				modifiers = append(modifiers, func(e *Explod) {
+					pfd := &PalFXDef{} // Discarded when the explod has no PalFX of its own
+					if e.ownpal {
+						pfd = &e.palfx.PalFXDef
+					}
+					explod(sc).parseInterpolation(c, e, paramID, exp, pfd)
+					if paramID != explod_interpolation_time {
+						return
+					}
+					if e.interpolate {
+						e.bakeInterpolation()
+						e.interpolate = false
+						pfd.interpolate = false
+					}
+					// Time replaces the running interpolation with a new one that starts from the current look, or just stops it when 0
+					if e.interpolate_time[0] > 0 {
+						e.startInterpolation(pfd)
+						if e.ownpal {
+							e.palfx.eiTime = 0 // Only here, since new explods get a new PalFX
+						}
 					}
 				})
 			case isAfterImageParam(paramID):

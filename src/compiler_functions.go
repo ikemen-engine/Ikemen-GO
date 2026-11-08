@@ -1172,11 +1172,6 @@ func (c *CharCompiler) modifyExplod(is IniSection, sc *StateControllerBase) (Sta
 		if err := c.explodSub(is, sc); err != nil {
 			return err
 		}
-		// TODO: Undocumented. Possibly a leftover
-		if err := c.paramValue(is, sc, "interpolation",
-			explod_interpolation, VT_Bool, 1, false); err != nil {
-			return err
-		}
 		return nil
 	})
 	return *ret, err

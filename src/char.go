@@ -1851,15 +1851,15 @@ type Explod struct {
 	aimg                 *AfterImage
 	localscl             float32
 	baselocalscl         float32
-	start_animelem       int32
 	start_scale          [2]float32
 	start_alpha          [2]int32
 	start_rot            Rotation
 	start_fLength        float32
 	start_xshear         float32
+	start_pos            [3]float32
 	interpolate          bool
 	interpolate_time     [2]int32
-	interpolate_animelem [3]int32
+	interpolate_animelem [2]int32
 	interpolate_scale    [4]float32
 	interpolate_alpha    [4]int32
 	interpolate_pos      [6]float32
@@ -2566,7 +2566,7 @@ func (e *Explod) stepInterpolation() {
 
 	// Interpolate properties with 3 values
 	for i := 0; i < 3; i++ {
-		e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], 0, t)
+		e.interpolate_pos[i] = Lerp(e.interpolate_pos[i+3], e.start_pos[i], t)
 	}
 
 	// Step timer
@@ -2591,11 +2591,15 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 		}
 	}
 
+	// 3 values. Offset targets its current value
+	for i := 0; i < 3; i++ {
+		e.interpolate_pos[i+3] = e.interpolate_pos[i]
+	}
+
 	// 2 values
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 2; j++ {
 			idx := i + j*2
-			e.interpolate_pos[idx] = 0
 			e.interpolate_scale[idx] = e.scale[i]
 			e.interpolate_alpha[idx] = e.alpha[i]
 		}
@@ -2607,6 +2611,56 @@ func (e *Explod) resetInterpolation(pfd *PalFXDef) {
 		e.interpolate_rot[i] = e.rot
 		e.interpolate_fLength[i] = e.fLength
 		e.interpolate_xshear[i] = e.xshear
+	}
+}
+
+// Bakes the current interpolated look into the starting values
+func (e *Explod) bakeInterpolation() {
+	for i := 0; i < 2; i++ {
+		e.scale[i] *= e.interpolate_scale[i]
+		e.alpha[i] = int32(float32(e.interpolate_alpha[i]) * (float32(e.alpha[i]) / 255))
+	}
+	e.rot.angle += e.interpolate_rot[0].angle
+	e.rot.xangle += e.interpolate_rot[0].xangle
+	e.rot.yangle += e.interpolate_rot[0].yangle
+	e.fLength += e.interpolate_fLength[0]
+	e.xshear += e.interpolate_xshear[0]
+	// Offset needs no baking because it is always applied
+
+	if e.ownpal && e.palfx.interpolate {
+		pf := e.palfx
+		pf.mul, pf.add, pf.color, pf.hue = pf.interpolatedValues()
+	}
+}
+
+// Starts a new interpolation from the current look. Used by Explod and ModifyExplod
+// Targets default to the current look and can be set afterwards
+func (e *Explod) startInterpolation(pfd *PalFXDef) {
+	e.resetInterpolation(pfd)
+	e.interpolate = true
+
+	// Save the current look as the start
+	e.start_fLength = e.fLength
+	e.start_xshear = e.xshear
+	e.start_rot = e.rot
+	e.start_pos = [3]float32{e.interpolate_pos[0], e.interpolate_pos[1], e.interpolate_pos[2]}
+	e.start_scale = e.scale
+	e.start_alpha = e.alpha
+
+	// Reset the base values, since drawing applies the interpolated values on top of them
+	e.scale = [2]float32{1, 1}
+	e.alpha = [2]int32{255, 255}
+	e.rot = Rotation{}
+	e.fLength = 0
+	e.xshear = 0
+
+	if e.ownpal {
+		pfd.interpolate = true
+		pfd.itime = e.interpolate_time[0]
+		pfd.mul = [3]int32{256, 256, 256}
+		pfd.add = [3]int32{0, 0, 0}
+		pfd.color = 1
+		pfd.hue = 0
 	}
 }
 
@@ -7413,38 +7467,6 @@ func (c *Char) commitExplod(i int) {
 	if e.anim == nil {
 		e.id = IErr
 		return
-	}
-
-	// Set up interpolation
-	e.start_animelem = e.animelem
-	e.start_fLength = e.fLength
-	e.start_xshear = e.xshear
-	e.start_rot = e.rot
-
-	for j := 0; j < 3; j++ {
-		if j < 2 {
-			e.start_scale[j] = e.scale[j]
-			e.start_alpha[j] = e.alpha[j]
-		}
-	}
-
-	if e.interpolate {
-		e.fLength = 0
-		for j := 0; j < 3; j++ {
-			if e.ownpal {
-				e.palfxdef.mul[j] = 256
-				e.palfxdef.add[j] = 0
-			}
-			if j < 2 {
-				e.scale[j] = 1
-				e.alpha[j] = 255
-			}
-			e.rot = Rotation{}
-		}
-		if e.ownpal {
-			e.palfxdef.color = 1
-			e.palfxdef.hue = 0
-		}
 	}
 
 	// Init "ownpal" PalFX and RemapPal
