@@ -6424,8 +6424,8 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.addZ(z)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[0] = z
+			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[2])) && sys.playerID(crun.bindToId) != nil {
+				crun.bindPosAdd[2] = z
 			}
 		}
 		return true

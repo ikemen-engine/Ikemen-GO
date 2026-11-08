@@ -9224,7 +9224,7 @@ func (c *Char) distY(opp *Char, oc *Char) float32 {
 	opos := opp.pos[1] * opp.localscl
 	// Update distance while bound. Mugen chars only
 	if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
-		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[0])) {
+		if c.bindToId > 0 && !math.IsNaN(float64(c.bindPos[1])) {
 			if bt := sys.playerID(c.bindToId); bt != nil {
 				cpos = bt.pos[1]*bt.localscl + (c.bindPos[1]+c.bindPosAdd[1])*c.localscl
 			}
