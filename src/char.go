@@ -7085,7 +7085,7 @@ func (c *Char) destroy() {
 			if t.bindToId == c.id {
 				t.selfState(5050, -1, -1, -1, "")
 				t.gethitBindClear()
-				sys.appendToConsole(t.warn() + fmt.Sprintf("SelfState from being bound to destroyed helper: %v", c.name))
+				sys.appendToConsole(t.warn() + fmt.Sprintf("SelfState from being bound to destroyed helper: %v (%v)", c.name, c.id))
 			}
 			t.ghv.dropPlayerId(c.id)
 		}
@@ -12729,7 +12729,9 @@ func (c *Char) actionRun() {
 
 	// Update binding others and binding to others
 	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
-	if !c.pauseBool {
+	// A destroyed helper skips this so that destroy() can still finds its bound targets and send them to state 5050
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/4151
+	if !c.pauseBool && !c.csf(CSF_destroy) {
 		// This placement causes timing issues
 		// Maybe what needs to happen is actionRun() updates all binds related to this player
 		// That is, call updateBinding() for this player and the ones that are bound to it
