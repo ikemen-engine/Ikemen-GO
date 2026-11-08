@@ -405,6 +405,9 @@ func (c *Char) Clone(gsp *GameStatePool) (result Char) {
 	result.targets = make([]int32, len(c.targets), len(c.targets))
 	copy(result.targets, c.targets)
 
+	result.binds = make([]CharBind, len(c.binds), len(c.binds))
+	copy(result.binds, c.binds)
+
 	result.hitdefTargets = make([]int32, len(c.hitdefTargets), len(c.hitdefTargets))
 	copy(result.hitdefTargets, c.hitdefTargets)
 

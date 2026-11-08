@@ -2399,6 +2399,7 @@ func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
 		// These aren't "assets" but we'll do it here
 		for _, c := range s.chars[pn] {
 			c.targets = c.targets[:0]
+			c.binds = c.binds[:0]
 		}
 
 		// Destroy helpers
