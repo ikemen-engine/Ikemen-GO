@@ -133,6 +133,7 @@ func newCharCompiler() *CharCompiler {
 		"assertanalogvector":   c.assertAnalogVector,
 		"assertcommand":        c.assertCommand,
 		"assertinput":          c.assertInput,
+		"bindtoplayer":         c.bindToPlayer,
 		"camera":               c.cameraCtrl,
 		"changemovelist":       c.changeMovelist,
 		"depth":                c.depth,

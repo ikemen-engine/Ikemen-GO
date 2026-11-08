@@ -3509,7 +3509,7 @@ func (be BytecodeExp) run_ex(c *Char, i *int, oc *Char) {
 	case OC_ex_gethitvar_guarded:
 		sys.bcStack.PushB(c.ghv.guarded)
 	case OC_ex_gethitvar_isbound:
-		sys.bcStack.PushB(c.boundById >= 0)
+		sys.bcStack.PushB(c.bind.byId >= 0)
 	case OC_ex_gethitvar_fall:
 		sys.bcStack.PushB(c.ghv.fallflag)
 	case OC_ex_gethitvar_fall_damage:
@@ -6376,20 +6376,20 @@ func (sc posSet) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := sys.cam.Pos[0]/crun.localscl + exp[0].evalF(c)*redirscale
 			crun.setPosX(x, true)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[0] = x
+			if crun.bind.toId > 0 && !math.IsNaN(float64(crun.bind.pos[0])) && sys.playerID(crun.bind.toId) != nil {
+				crun.bind.posAdd[0] = x
 			}
 		case posSet_y:
 			y := exp[0].evalF(c)*redirscale + crun.groundLevel + crun.platformPosY
 			crun.setPosY(y, true)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[1])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[1] = y
+			if crun.bind.toId > 0 && !math.IsNaN(float64(crun.bind.pos[1])) && sys.playerID(crun.bind.toId) != nil {
+				crun.bind.posAdd[1] = y
 			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.setPosZ(z, true)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[2])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[2] = z
+			if crun.bind.toId > 0 && !math.IsNaN(float64(crun.bind.pos[2])) && sys.playerID(crun.bind.toId) != nil {
+				crun.bind.posAdd[2] = z
 			}
 		}
 		return true
@@ -6412,20 +6412,20 @@ func (sc posAdd) Run(c *Char, _ []int32) bool {
 		case posSet_x:
 			x := exp[0].evalF(c) * redirscale
 			crun.addX(x)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[0])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[0] = x
+			if crun.bind.toId > 0 && !math.IsNaN(float64(crun.bind.pos[0])) && sys.playerID(crun.bind.toId) != nil {
+				crun.bind.posAdd[0] = x
 			}
 		case posSet_y:
 			y := exp[0].evalF(c) * redirscale
 			crun.addY(y)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[1])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[1] = y
+			if crun.bind.toId > 0 && !math.IsNaN(float64(crun.bind.pos[1])) && sys.playerID(crun.bind.toId) != nil {
+				crun.bind.posAdd[1] = y
 			}
 		case posSet_z:
 			z := exp[0].evalF(c) * redirscale
 			crun.addZ(z)
-			if crun.bindToId > 0 && !math.IsNaN(float64(crun.bindPos[2])) && sys.playerID(crun.bindToId) != nil {
-				crun.bindPosAdd[2] = z
+			if crun.bind.toId > 0 && !math.IsNaN(float64(crun.bind.pos[2])) && sys.playerID(crun.bind.toId) != nil {
+				crun.bind.posAdd[2] = z
 			}
 		}
 		return true
@@ -12256,11 +12256,11 @@ func (sc bindToParent) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindPos[0] = x
-	crun.bindPos[1] = y
-	crun.bindPos[2] = z
-	crun.bindFacing = facing
-	crun.setBindToId(p, false)
+	crun.bind.pos[0] = x
+	crun.bind.pos[1] = y
+	crun.bind.pos[2] = z
+	crun.bind.facing = facing
+	crun.setBindToId(p, BD_BindToPlayer)
 	crun.setBindTime(time)
 	return false
 }
@@ -12305,11 +12305,76 @@ func (sc bindToRoot) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	crun.bindPos[0] = x
-	crun.bindPos[1] = y
-	crun.bindPos[2] = z
-	crun.bindFacing = facing
-	crun.setBindToId(r, false)
+	crun.bind.pos[0] = x
+	crun.bind.pos[1] = y
+	crun.bind.pos[2] = z
+	crun.bind.facing = facing
+	crun.setBindToId(r, BD_BindToPlayer)
+	crun.setBindTime(time)
+	return false
+}
+
+type bindToPlayer StateControllerBase
+
+const (
+	bindToPlayer_id byte = iota
+	bindToPlayer_time
+	bindToPlayer_facing
+	bindToPlayer_pos
+	bindToPlayer_redirectid
+)
+
+func (sc bindToPlayer) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), bindToPlayer_redirectid, "BindToPlayer")
+	if crun == nil {
+		return false
+	}
+
+	redirscale := c.localscl / crun.localscl
+	pid := int32(-1)
+	var x, y, z float32 = 0, 0, 0
+	var time int32 = 1
+	var facing float32 = 0
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case bindToPlayer_id:
+			pid = exp[0].evalI(c)
+		case bindToPlayer_time:
+			time = exp[0].evalI(c)
+		case bindToPlayer_facing:
+			if f := exp[0].evalI(c); f < 0 {
+				facing = -1
+			} else if f > 0 {
+				facing = 1
+			}
+		case bindToPlayer_pos:
+			x = exp[0].evalF(c) * redirscale
+			if len(exp) > 1 {
+				y = exp[1].evalF(c) * redirscale
+				if len(exp) > 2 {
+					z = exp[2].evalF(c) * redirscale
+				}
+			}
+		}
+		return true
+	})
+
+	p := sys.playerID(pid)
+	if p == nil {
+		sys.appendToConsole(c.warn() + fmt.Sprintf("Invalid player ID for BindToPlayer: %v", pid))
+		return false
+	}
+	if p == crun {
+		sys.appendToConsole(c.warn() + "BindToPlayer cannot bind a player to itself")
+		return false
+	}
+
+	crun.bind.pos[0] = x
+	crun.bind.pos[1] = y
+	crun.bind.pos[2] = z
+	crun.bind.facing = facing
+	crun.setBindToId(p, BD_BindToPlayer)
 	crun.setBindTime(time)
 	return false
 }
