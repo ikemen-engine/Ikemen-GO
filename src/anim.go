@@ -2206,7 +2206,7 @@ type Anim struct {
 	palfx            *PalFX
 	layerno          int16
 	localScale       float32
-	offsetX          int32
+	offsetX          float32
 	friction         [2]float32
 	accel            [2]float32
 	vel              [2]float32
@@ -2446,13 +2446,13 @@ func (a *Anim) SetLocalcoord(lx, ly float32) {
 		v = ly * 4 / 3
 	}
 	a.localScale = float32(v / 320)
-	a.offsetX = -int32(math.Floor(float64(lx)/(float64(v)/320)-320) / 2)
+	a.offsetX = localcoordOffsetX(float64(lx), float64(v))
 }
 
 func (a *Anim) SetPos(x, y float32) {
 	a.offsetInit[0] = x
 	a.offsetInit[1] = y
-	a.x = x/a.localScale + float32(a.offsetX)
+	a.x = x/a.localScale + a.offsetX
 	a.y = y / a.localScale
 }
 
@@ -2492,17 +2492,11 @@ func (a *Anim) drawWindow() [4]int32 {
 	}
 	// Pixel bounds depend on the aspect state selected for this draw pass.
 	window := a.windowInit
-	x := window[0]/a.localScale + float32(a.offsetX)
+	x := window[0]/a.localScale + a.offsetX
 	y := window[1] / a.localScale
 	w := (window[2] - window[0]) / a.localScale
 	h := (window[3] - window[1]) / a.localScale
-	// Truncate to int32 first, like before PR #3575, to avoid an off-by-one error
-	return [4]int32{
-		int32((x + float32(int32(sys.gameWidth)-320)/2) * sys.widthScale),
-		int32((y + float32(int32(sys.gameHeight)-240)) * sys.heightScale),
-		int32(w*sys.widthScale + 0.5),
-		int32(h*sys.heightScale + 0.5),
-	}
+	return screenRect(x+(sys.gameWidth-320)/2, y+sys.gameHeight-240, w, h)
 }
 
 func (a *Anim) SetVelocity(xvel, yvel float32) {
@@ -2607,15 +2601,10 @@ func (a *Anim) Draw(ln int16) {
 		xscl *= -1
 	}
 
-	// Truncate to int32 first, like before PR #3575, to avoid an off-by-one error
-	// sys.gameWidth used to be an int32 before PR #3575.
-	// unfortunately that PR introduces an off-by-one error here,
-	// so we force integer divsion by casting
-	// the result of sys.gameWidth subtraction to int.
-	// we do the same thing to sys.gameHeight just in case
+	// Fractional centering, matching the fractional offsetX (#1615, #3799)
 	window := a.drawWindow()
-	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+float32(int(sys.gameWidth-320)/2),
-		a.y+a.vel[1]+float32(int(sys.gameHeight-240)), 1, 1, xscl, xscl, a.yscl,
+	a.anim.Draw(&window, a.x+a.vel[0]-xsoffset+(sys.gameWidth-320)/2,
+		a.y+a.vel[1]+sys.gameHeight-240, 1, 1, xscl, xscl, a.yscl,
 		xshear, a.rot, 0, [2]float32{0, 0}, a.palfx, a.facing, [2]float32{1, 1},
 		a.projection, a.fLength, false, CustomShaderRenderData{})
 }

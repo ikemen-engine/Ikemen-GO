@@ -256,7 +256,7 @@ type Rect struct {
 	time       int32
 	layerno    int16
 	localScale float32
-	offsetX    int32
+	offsetX    float32
 	// pulse src = clamp(mid + amp * sin(phase))
 	pulseMid       float32
 	pulseAmp       float32
@@ -339,7 +339,7 @@ func (r *Rect) SetLocalcoord(lx, ly float32) {
 		v = ly * 4 / 3
 	}
 	r.localScale = float32(v / 320)
-	r.offsetX = -int32(math.Floor(float64(lx)/(float64(v)/320)-320) / 2)
+	r.offsetX = localcoordOffsetX(float64(lx), float64(v))
 }
 
 func (r *Rect) SetWindow(window [4]float32) {
@@ -356,16 +356,11 @@ func (r *Rect) drawWindow() [4]int32 {
 	}
 	// Pixel bounds depend on the aspect state selected for this draw pass.
 	window := r.windowInit
-	x := window[0]/r.localScale + float32(r.offsetX)
+	x := window[0]/r.localScale + r.offsetX
 	y := window[1] / r.localScale
 	w := (window[2] - window[0]) / r.localScale
 	h := (window[3] - window[1]) / r.localScale
-	return [4]int32{
-		int32(math.Round(float64((x + float32(sys.gameWidth-320)/2) * sys.widthScale))),
-		int32(math.Round(float64((y + float32(sys.gameHeight-240)) * sys.heightScale))),
-		int32(w*sys.widthScale + 0.5),
-		int32(h*sys.heightScale + 0.5),
-	}
+	return screenRect(x+(sys.gameWidth-320)/2, y+sys.gameHeight-240, w, h)
 }
 
 func (r *Rect) Update() {

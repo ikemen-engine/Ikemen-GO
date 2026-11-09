@@ -1123,8 +1123,8 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 		a.xshear, a.fLength = lp.Xshear, lp.Focallength
 		if applyTransform {
 			xs, ys := localScl*a.localScale*transform.scale[0], localScl*a.localScale*transform.scale[1]
-			a.x = (a.x-float32(a.offsetX))*xs + transform.offset[0] - float32(int(sys.gameWidth-320)/2)
-			a.y = a.y*ys + transform.offset[1] - float32(int(sys.gameHeight-240))
+			a.x = (a.x-a.offsetX)*xs + transform.offset[0] - (sys.gameWidth-320)/2
+			a.y = a.y*ys + transform.offset[1] - (sys.gameHeight - 240)
 			a.xscl *= Abs(xs)
 			a.yscl *= ys
 			a.facing *= Sign(xs)
@@ -1147,7 +1147,7 @@ func (lp *LayerProperties) draw(layerno int16, pos [2]float32, transform *bgDraw
 		ts.xshear, ts.fLength = lp.Xshear, lp.Focallength
 		if applyTransform {
 			xs, ys := localScl/ts.localScale*transform.scale[0], localScl/ts.localScale*transform.scale[1]
-			ts.x = (ts.x-float32(ts.offsetX))*xs + transform.offset[0] - (sys.gameWidth-320)/2
+			ts.x = (ts.x-ts.offsetX)*xs + transform.offset[0] - (sys.gameWidth-320)/2
 			ts.y = ts.y*ys + transform.offset[1]
 			if ts.fnt == nil || ts.fnt.Type != "truetype" {
 				ts.y -= sys.gameHeight - 240
