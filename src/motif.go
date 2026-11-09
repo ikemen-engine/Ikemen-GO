@@ -1436,28 +1436,23 @@ func preprocessINIContent(input string) string {
 // applyCustomDefaults injects custom defaults.
 func applyCustomDefaults(m *Motif, iniFile *ini.File) {
 	// Copy the first spacing value into the second one when only a single value is defined in system.def.
-	sec := "Select Info"
 	// Only act if the user actually set the key in their system.def
-	s, err := iniFile.GetSection(sec)
-	if err != nil || s == nil {
-		return
-	}
-	k, err := s.GetKey("cell.spacing")
-	if err != nil {
-		return
-	}
-	raw := strings.TrimSpace(k.Value())
-	// If user specified a single value (no comma/&), duplicate it into the second slot.
-	if raw != "" && !strings.Contains(raw, ",") && !strings.Contains(raw, "&") {
-		// At this point, the first component has already been parsed into the struct.
-		// Just mirror it to the second component.
-		m.SelectInfo.Cell.Spacing[1] = m.SelectInfo.Cell.Spacing[0]
+	if s, err := iniFile.GetSection("Select Info"); err == nil && s != nil {
+		if k, err := s.GetKey("cell.spacing"); err == nil {
+			raw := strings.TrimSpace(k.Value())
+			// If user specified a single value (no comma/&), duplicate it into the second slot.
+			if raw != "" && !strings.Contains(raw, ",") && !strings.Contains(raw, "&") {
+				// At this point, the first component has already been parsed into the struct.
+				// Just mirror it to the second component.
+				m.SelectInfo.Cell.Spacing[1] = m.SelectInfo.Cell.Spacing[0]
+			}
+		}
 	}
 
 	// Inject computed defaults based on system.def localcoord when specific keys in system.def are not defined.
 	w := int(m.Info.Localcoord[0])
 	h := int(m.Info.Localcoord[1])
-	sec = "Title Info"
+	sec := "Title Info"
 
 	// loading.offset
 	if !hasUserKey(iniFile, sec, "loading.offset") {
