@@ -13465,20 +13465,20 @@ func (c *Char) cueDebugDraw() {
 		// Add debug Clsn text
 		x = (x-sys.cam.Pos[0])*sys.cam.Scale + ((320-float32(sys.gameWidth))/2 + 1) + float32(sys.gameWidth)/2
 		y = (y*sys.cam.Scale - sys.cam.Pos[1]) + sys.cam.GroundLevel() + 1 // "1" is just for spacing
-		y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
+		y += sys.debugLineHeight() * sys.debugFont.yscl / sys.heightScale
 		// Name, PlayerNo and ID
 		sys.debugClsnText = append(sys.debugClsnText,
 			DebugClsnText{x: x, y: y, text: fmt.Sprintf("%s, %d, %d", c.name, c.playerNo+1, c.id), r: 255, g: 255, b: 255, a: 255})
 		// NotHitBy
 		if nhbtxt != "" {
-			y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
+			y += sys.debugLineHeight() * sys.debugFont.yscl / sys.heightScale
 			sys.debugClsnText = append(sys.debugClsnText,
 				DebugClsnText{x: x, y: y, text: fmt.Sprintf(nhbtxt), r: 191, g: 255, b: 255, a: 255})
 		}
 		// Targets
 		for _, tpid := range c.targets {
 			if t := sys.playerID(tpid); t != nil {
-				y += float32(sys.debugFont.fnt.Size[1]) * sys.debugFont.yscl / sys.heightScale
+				y += sys.debugLineHeight() * sys.debugFont.yscl / sys.heightScale
 				thid := t.ghv.hitid
 				tjg := t.ghv.getJuggle(c.id, c.gi().data.airjuggle)
 				sys.debugClsnText = append(sys.debugClsnText,
