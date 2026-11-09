@@ -2388,7 +2388,7 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 	// textImgSetTextSpacing
 	ts.SetTextSpacing(textSpacing[0], textSpacing[1])
 	// textImgSetTextWrap
-	ts.textWrap = textWrap == "w" || textWrap == "1"
+	ts.SetTextWrap(textWrap)
 	// textImgSetVelocity
 	ts.SetVelocity(velocity[0], velocity[1])
 	// textImgSetMaxDist

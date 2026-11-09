@@ -7195,15 +7195,20 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "textImgSetTextWrap", func(*lua.LState) int {
-		/*Enable or disable word wrapping for a text sprite.
+		/*Set text wrapping for a text sprite.
 		@function textImgSetTextWrap
 		@tparam TextSprite ts Text sprite userdata.
-		@tparam boolean wrap If `true`, enables text wrapping.*/
+		@tparam boolean|string|number wrap `true`/`false`, or a textwrap value such as `w`, `c` or `n`.*/
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.textWrap = boolArg(l, 2)
+		switch v := l.Get(2).(type) {
+		case lua.LString, lua.LNumber:
+			ts.SetTextWrap(v.String())
+		default:
+			ts.textWrap, ts.wrapChars = boolArg(l, 2), false
+		}
 		return 0
 	})
 	luaRegister(l, "textImgSetTrans", func(*lua.LState) int {
