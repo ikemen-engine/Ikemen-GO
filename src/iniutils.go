@@ -2523,6 +2523,7 @@ func SetRect(obj interface{}, fVal, structVal, parent reflect.Value) {
 	alpha := [2]int32{0, 0}
 	pulse := [3]int32{0, 0, 0}
 	var usePulse bool
+	trans := ""
 	//var attachPfx *PalFX
 
 	get := func(name string) (reflect.Value, bool) {
@@ -2563,6 +2564,11 @@ func SetRect(obj interface{}, fVal, structVal, parent reflect.Value) {
 		}
 		usePulse = true
 	}
+	for _, name := range []string{"Trans", "ClearTrans", "BgClearTrans"} {
+		if fv, ok := get(name); ok && fv.Kind() == reflect.String {
+			trans = fv.String()
+		}
+	}
 	if fv, ok := get("Localcoord"); ok && fv.Kind() == reflect.Array && fv.Len() == 2 {
 		localcoord[0] = float32(fv.Index(0).Int())
 		localcoord[1] = float32(fv.Index(1).Int())
@@ -2584,6 +2590,9 @@ func SetRect(obj interface{}, fVal, structVal, parent reflect.Value) {
 	} else {
 		rect.SetAlpha(alpha)
 	}
+	// rectSetTrans
+	tt, _ := transBlend(trans, nil)
+	rect.SetTrans(tt)
 	// rectSetLayerno
 	rect.layerno = layerno
 	// rectSetPalFx
