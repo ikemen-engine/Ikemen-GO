@@ -5638,6 +5638,25 @@ func systemScriptInit(l *lua.LState) {
 		r.SetLocalcoord(float32(numArg(l, 2)), float32(numArg(l, 3)))
 		return 0
 	})
+	luaRegister(l, "rectSetTrans", func(*lua.LState) int {
+		/*Set blending for a rectangle, as with trans and alpha in stage backgrounds.
+		`default` keeps the regular alpha blending.
+		@function rectSetTrans
+		@tparam Rect rect Rectangle userdata.
+		@tparam string trans `default`, `none`, `add`, `add1`, `addalpha`, `sub` or `subadd`.
+		@tparam[opt] int32 src Source alpha factor (0–255). Omit to keep the current alpha.
+		@tparam[opt] int32 dst Destination alpha factor (0–255).*/
+		r, ok := toUserData(l, 1).(*Rect)
+		if !ok {
+			userDataError(l, 1, r)
+		}
+		tt, _ := transBlend(strArg(l, 2), nil)
+		r.SetTrans(tt)
+		if !nilArg(l, 3) {
+			r.SetAlpha([2]int32{int32(numArg(l, 3)), int32(numArg(l, 4))})
+		}
+		return 0
+	})
 	luaRegister(l, "rectSetWindow", func(*lua.LState) int {
 		/*Set the rectangle's clipping window.
 		@function rectSetWindow
@@ -7195,15 +7214,20 @@ func systemScriptInit(l *lua.LState) {
 		return 0
 	})
 	luaRegister(l, "textImgSetTextWrap", func(*lua.LState) int {
-		/*Enable or disable word wrapping for a text sprite.
+		/*Set text wrapping for a text sprite.
 		@function textImgSetTextWrap
 		@tparam TextSprite ts Text sprite userdata.
-		@tparam boolean wrap If `true`, enables text wrapping.*/
+		@tparam boolean|string|number wrap `true`/`false`, or a textwrap value such as `w`, `c` or `n`.*/
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)
 		}
-		ts.textWrap = boolArg(l, 2)
+		switch v := l.Get(2).(type) {
+		case lua.LString, lua.LNumber:
+			ts.SetTextWrap(v.String())
+		default:
+			ts.textWrap, ts.wrapChars = boolArg(l, 2), false
+		}
 		return 0
 	})
 	luaRegister(l, "textImgSetTrans", func(*lua.LState) int {

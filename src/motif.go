@@ -222,6 +222,7 @@ type TextMapProperties struct {
 type BoxBgProperties struct {
 	Visible    bool     `ini:"visible"`
 	Col        [3]int32 `ini:"col"`
+	Trans      string   `ini:"trans" default:"default"`
 	Alpha      [2]int32 `ini:"alpha" default:"0,255"`
 	Layerno    int16    `ini:"layerno"`
 	Localcoord [2]int32 `ini:"localcoord"`
@@ -240,6 +241,7 @@ type BoxCursorProperties struct {
 	Visible    bool     `ini:"visible"`
 	Coords     [4]int32 `ini:"coords"`
 	Col        [3]int32 `ini:"col"`
+	Trans      string   `ini:"trans" default:"default"`
 	Layerno    int16    `ini:"layerno"`
 	Localcoord [2]int32 `ini:"localcoord"`
 	Pulse      [3]int32 `ini:"pulse"`
@@ -251,6 +253,7 @@ type BoxCursorProperties struct {
 
 type OverlayProperties struct {
 	Col        [3]int32 `ini:"col"`
+	Trans      string   `ini:"trans" default:"default"`
 	Alpha      [2]int32 `ini:"alpha" default:"0,255"`
 	Layerno    int16    `ini:"layerno"`
 	Window     [4]int32 `ini:"window"`
@@ -263,6 +266,7 @@ type BgDefProperties struct {
 	BGDef          *BGDef
 	Spr            string   `ini:"spr"`
 	BgClearColor   [3]int32 `ini:"bgclearcolor" default:"-1,0,0"`
+	BgClearTrans   string   `ini:"bgcleartrans" default:"default"`
 	BgClearAlpha   [2]int32 `ini:"bgclearalpha" default:"255,0"`
 	BgClearLayerno int16    `ini:"bgclearlayerno" default:"0"`
 	StartLayer     int32    `ini:"startlayer" default:"0"`
@@ -359,8 +363,11 @@ type MenuProperties struct {
 }
 
 type InfoBoxProperties struct {
-	Title   TextProperties    `ini:"title"`
-	Text    TextProperties    `ini:"text"`
+	Title TextProperties `ini:"title"`
+	Text  struct {
+		TextProperties
+		TextWrap string `ini:"textwrap" default:"w"`
+	} `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
 	KeyCode string            `ini:"keycode"`
 }
@@ -1436,28 +1443,23 @@ func preprocessINIContent(input string) string {
 // applyCustomDefaults injects custom defaults.
 func applyCustomDefaults(m *Motif, iniFile *ini.File) {
 	// Copy the first spacing value into the second one when only a single value is defined in system.def.
-	sec := "Select Info"
 	// Only act if the user actually set the key in their system.def
-	s, err := iniFile.GetSection(sec)
-	if err != nil || s == nil {
-		return
-	}
-	k, err := s.GetKey("cell.spacing")
-	if err != nil {
-		return
-	}
-	raw := strings.TrimSpace(k.Value())
-	// If user specified a single value (no comma/&), duplicate it into the second slot.
-	if raw != "" && !strings.Contains(raw, ",") && !strings.Contains(raw, "&") {
-		// At this point, the first component has already been parsed into the struct.
-		// Just mirror it to the second component.
-		m.SelectInfo.Cell.Spacing[1] = m.SelectInfo.Cell.Spacing[0]
+	if s, err := iniFile.GetSection("Select Info"); err == nil && s != nil {
+		if k, err := s.GetKey("cell.spacing"); err == nil {
+			raw := strings.TrimSpace(k.Value())
+			// If user specified a single value (no comma/&), duplicate it into the second slot.
+			if raw != "" && !strings.Contains(raw, ",") && !strings.Contains(raw, "&") {
+				// At this point, the first component has already been parsed into the struct.
+				// Just mirror it to the second component.
+				m.SelectInfo.Cell.Spacing[1] = m.SelectInfo.Cell.Spacing[0]
+			}
+		}
 	}
 
 	// Inject computed defaults based on system.def localcoord when specific keys in system.def are not defined.
 	w := int(m.Info.Localcoord[0])
 	h := int(m.Info.Localcoord[1])
-	sec = "Title Info"
+	sec := "Title Info"
 
 	// loading.offset
 	if !hasUserKey(iniFile, sec, "loading.offset") {

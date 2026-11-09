@@ -1167,13 +1167,21 @@ func renderWithBlending(
 }
 
 func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
+	FillRectTrans(rect, color, TT_add, alpha, fx)
+}
+
+// FillRectTrans fills a rectangle with the given blending, as in stage backgrounds.
+func FillRectTrans(rect [4]int32, color uint32, trans TransType, alpha [2]int32, fx *PalFX) {
+	if trans == TT_default {
+		trans = TT_add
+	}
 	r := float32(color>>16&0xff) / 255
 	g := float32(color>>8&0xff) / 255
 	b := float32(color&0xff) / 255
 
 	// PalFX setup
 	// This call is safe even if fx is nil. Defaults to just AllPalFX
-	spfx := fx.getFinalPalFx(TT_add, alpha)
+	spfx := fx.getFinalPalFx(trans, alpha)
 
 	modelview := mgl.Translate3D(0, float32(sys.scrrect[3]), 0)
 	proj := gfx.OrthographicProjectionMatrix(0, float32(sys.scrrect[2]), 0, float32(sys.scrrect[3]), -65535, 65535)
@@ -1219,7 +1227,7 @@ func FillRect(rect [4]int32, color uint32, alpha [2]int32, fx *PalFX) {
 		gfx.RenderQuad()
 	}
 
-	renderWithBlending(renderPass, TT_add, alpha, false, &spfx, true)
+	renderWithBlending(renderPass, trans, alpha, false, &spfx, true)
 }
 
 type TextureAtlas struct {

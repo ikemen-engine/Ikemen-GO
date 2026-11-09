@@ -67,6 +67,7 @@ type SceneProperties struct {
 	FadeIn       FadeProperties `ini:"fadein"`
 	FadeOut      FadeProperties `ini:"fadeout"`
 	ClearColor   [3]int32       `ini:"clearcolor" default:"-1,0,0"`
+	ClearTrans   string         `ini:"cleartrans" default:"default"`
 	ClearAlpha   [2]int32       `ini:"clearalpha" default:"255,0"`
 	ClearLayerno int16          `ini:"clearlayerno" default:"0"`
 	RectData     *Rect

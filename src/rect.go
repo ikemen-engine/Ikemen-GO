@@ -251,6 +251,7 @@ func startFadeOutFrom(tmpl, dest, fi *Fade, overrideBlack bool, policy FadeStart
 type Rect struct {
 	window     [4]int32
 	col        uint32
+	trans      TransType
 	alpha      [2]int32
 	time       int32
 	layerno    int16
@@ -268,7 +269,7 @@ type Rect struct {
 }
 
 func NewRect() *Rect {
-	return &Rect{window: sys.scrrect, alpha: [2]int32{255, 0}, localScale: 1}
+	return &Rect{window: sys.scrrect, trans: TT_default, alpha: [2]int32{255, 0}, localScale: 1}
 }
 
 func packAlpha(src, dst int32) [2]int32 {
@@ -287,7 +288,12 @@ func (r *Rect) updateAlpha() {
 
 func (r *Rect) Draw(ln int16) {
 	if r != nil && r.layerno == ln {
-		FillRect(r.drawWindow(), r.col, r.alpha, nil)
+		alpha := r.alpha
+		// None is opaque, as in transBlend. Pulse would otherwise override it.
+		if r.trans == TT_none {
+			alpha = [2]int32{255, 0}
+		}
+		FillRectTrans(r.drawWindow(), r.col, r.trans, alpha, nil)
 	}
 }
 
@@ -302,6 +308,12 @@ func (r *Rect) SetColor(col [3]int32) {
 func (r *Rect) SetAlpha(alpha [2]int32) {
 	r.alpha = packAlpha(alpha[0], alpha[1])
 	r.autoAlpha = false
+}
+
+// SetTrans sets the blending type. Alpha keeps supplying the factors, because
+// rectangles have no factors of their own.
+func (r *Rect) SetTrans(tt TransType) {
+	r.trans = tt
 }
 
 func (r *Rect) SetAlphaPulse(sMid, sAmp, sPeriod int32) {

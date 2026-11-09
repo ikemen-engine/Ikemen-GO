@@ -819,6 +819,7 @@ type TextSprite struct {
 	textSpacing    [2]float32
 	textDelay      float32
 	textWrap       bool
+	wrapChars      bool // textwrap = c: lines break at any character instead of between words
 	vel            [2]float32
 	accel          [2]float32
 	friction       [2]float32
@@ -1000,6 +1001,14 @@ func (ts *TextSprite) SetColor(r, g, b, a int32) {
 	ts.frgba = [4]float32{float32(r) / 255, float32(g) / 255, float32(b) / 255, float32(a) / 255}
 }
 
+// SetTextWrap: empty, n or 0 disable wrapping, c wraps at any character,
+// any other value wraps between words.
+func (ts *TextSprite) SetTextWrap(mode string) {
+	mode = strings.ToLower(strings.TrimSpace(mode))
+	ts.textWrap = mode != "" && mode != "0" && mode[0] != 'n'
+	ts.wrapChars = ts.textWrap && mode[0] == 'c'
+}
+
 func (ts *TextSprite) SetTextSpacing(xs, ys float32) {
 	ts.textSpacing = [2]float32{xs, ys} // TODO: / ts.localScale?
 }
@@ -1170,7 +1179,7 @@ func (ts *TextSprite) wrapText(fullLine string, typedLen int) {
 						break
 					}
 					rr, ss := utf8.DecodeRuneInString(s[i:])
-					if rr == '\n' || rr == ' ' || rr == '\t' {
+					if rr == '\n' || rr == ' ' || rr == '\t' || ts.wrapChars && rawRunes > 0 {
 						break
 					}
 					i += ss
