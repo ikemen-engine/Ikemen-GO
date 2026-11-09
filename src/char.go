@@ -711,7 +711,6 @@ type HitDef struct {
 	kill                       bool
 	guard_kill                 bool
 	forcenofall                bool
-	ltypehit                   bool
 	dizzypoints                int32
 	guardpoints                int32
 	hitredlife                 int32
@@ -1092,13 +1091,10 @@ func (hd *HitDef) finalizeParams(c *Char, proj *Projectile) {
 	//}
 }
 
-// When a Hitdef connects, its statetype attribute will be updated to the character's current type
-// Even if the Hitdef has multiple statetype attributes
-// TODO: This is an oddly specific Mugen thing that might not be needed in future Ikemen characters
-func (hd *HitDef) updateStateType(stateType StateType) {
-	hd.attr = hd.attr&^int32(ST_MASK) | int32(stateType) | -1<<31
+// The sign bit disables the HitDef but keeps its attributes readable by HitDefAttr
+func (hd *HitDef) disableAttr() {
+	hd.attr |= -1 << 31
 	hd.reversal_attr |= -1 << 31
-	hd.ltypehit = false
 }
 
 func (hd *HitDef) testAttr(attr int32) bool {
@@ -10911,7 +10907,7 @@ func (c *Char) projClsnCheckSingle(p *Projectile, cbox, pbox int32, fromHitdef b
 		if owner := p.owner(); owner != nil {
 			buf := c.clsnFilterBuf[:0]
 			for i, b := range boxes2 {
-				if c.attrCheckBox(owner, &p.hitdef, ST_N, cbox, int32(i)) {
+				if c.attrCheckBox(owner, &p.hitdef, cbox, int32(i)) {
 					buf = append(buf, b)
 				}
 			}
@@ -11051,7 +11047,7 @@ func (c *Char) clsnCheckSingle(getter *Char, charbox, getterbox int32, fromHitde
 	if fromHitdef && c.hitdef.reversal_attr <= 0 && getterbox > 0 && getter.hasBoxHitBy() {
 		buf := getter.clsnFilterBuf[:0]
 		for i, b := range boxes2 {
-			if getter.attrCheckBox(c, &c.hitdef, c.ss.stateType, getterbox, int32(i)) {
+			if getter.attrCheckBox(c, &c.hitdef, getterbox, int32(i)) {
 				buf = append(buf, b)
 			}
 		}
@@ -11119,6 +11115,11 @@ func (c *Char) checkHitBySlot(hb HitBy, getterno int, getterid, ghdattr, attrsca
 // checkHitByAllSlots evaluates all of the character's HitBy/NotHitBy slots
 // to determine if the character is vulnerable to the current attack.
 func (c *Char) checkHitByAllSlots(getterno int, getterid, ghdattr, attrsca, boxgroup, boxindex int32) bool {
+	// No HitBy works like "HitBy everything", which still needs an SCA flag
+	if attrsca == 0 {
+		return false
+	}
+
 	stackHit := false
 	hasStackSlot := false
 	nonStackHit := true
@@ -11158,7 +11159,7 @@ func (c *Char) checkHitByAllSlots(getterno int, getterid, ghdattr, attrsca, boxg
 }
 
 // Check if HitDef attributes can hit a player
-func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
+func (c *Char) attrCheck(getter *Char, ghd *HitDef) bool {
 	// Unhittable time invalidates anything
 	if c.unhittableTime > 0 {
 		return false
@@ -11199,9 +11200,19 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 			return false
 		}
 
-		// Check attributes
-		if (c.hitdef.attr&ghd.reversal_attr&int32(ST_MASK)) == 0 ||
-			(c.hitdef.attr&ghd.reversal_attr&^int32(ST_MASK)) == 0 {
+		// Attack type must match
+		if c.hitdef.attr&ghd.reversal_attr&^int32(ST_MASK) == 0 {
+			return false
+		}
+
+		// SCA must match
+		scaMatch := c.hitdef.attr&ghd.reversal_attr&int32(ST_MASK) != 0
+		// Mugen fallback
+		// Mugen swaps the attacker's statetype into a HitDef's SCA on Clsn contact, but not a ReversalDef's
+		if !scaMatch && c.hitdef.reversal_attr <= 0 && c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+			scaMatch = int32(c.ss.stateType)&ghd.reversal_attr&int32(ST_SCA) != 0
+		}
+		if !scaMatch {
 			return false
 		}
 
@@ -11243,21 +11254,8 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 		return false
 	}
 
-	// Get state type (SCA) from among the Hitdef attributes
-	attrsca := ghd.attr & int32(ST_MASK)
-
-	// Note: In Mugen, invincibility is checked against the enemy's actual statetype instead of the Hitdef's SCA attribute
-	// Exception for projectiles, where it respects the SCA attribute
-	// Ikemen characters work as documented. Invincibility only cares about the HitDef's SCA attribute
-	if getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 {
-		if gstyp == ST_N { // Projectiles mostly
-			attrsca = ghd.attr & int32(ST_MASK)
-		} else {
-			attrsca = int32(gstyp)
-		}
-	}
-
 	// HitBy and NotHitBy checks
+	attrsca := hitAttrSCA(getter, ghd)
 	if !c.checkHitByAllSlots(getter.playerNo, getter.id, ghd.attr, attrsca, -1, -1) {
 		return false
 	}
@@ -11266,15 +11264,24 @@ func (c *Char) attrCheck(getter *Char, ghd *HitDef, gstyp StateType) bool {
 }
 
 // Run HitBy checks with Clsn filters enabled
-func (c *Char) attrCheckBox(getter *Char, ghd *HitDef, gstyp StateType, boxgroup, boxindex int32) bool {
-	attrsca := ghd.attr & int32(ST_MASK)
-
-	// See attrCheck()
-	if getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 && gstyp != ST_N {
-		attrsca = int32(gstyp)
-	}
-
+func (c *Char) attrCheckBox(getter *Char, ghd *HitDef, boxgroup, boxindex int32) bool {
+	attrsca := hitAttrSCA(getter, ghd)
 	return c.checkHitByAllSlots(getter.playerNo, getter.id, ghd.attr, attrsca, boxgroup, boxindex)
+}
+
+// Mugen compatibility for the SCA checks of HitBy, NotHitBy and HitOverride
+func hitAttrSCA(getter *Char, ghd *HitDef) int32 {
+	// Mugen replaces the HitDef's SCA attribute with the attacker's statetype right before the HitBy check
+	// The new SCA is kept, so ReversalDef sees it too (handled in attrCheck)
+	// Ikemen emulates this for Mugen chars by using the statetype for the check instead
+	// This leaves the attribute itself unchanged, so HitDefAttr differs from Mugen once it swaps
+	// Ikemen chars just use the SCA attribute as documented
+	// Mugen only swaps a char's own HitDef, not projectiles or ReversalDefs
+	if !ghd.isprojectile && ghd.reversal_attr <= 0 && getter.stWgi().ikemenver[0] == 0 && getter.stWgi().ikemenver[1] == 0 {
+		// Statetype L leaves no SCA flags, so the HitDef can't hit while lying down
+		return int32(getter.ss.stateType) & int32(ST_SCA)
+	}
+	return ghd.attr & int32(ST_MASK)
 }
 
 // Whether any active slot is box specific, so the filtering can be skipped in the common case
@@ -11320,7 +11327,7 @@ func (c *Char) hitPrecheck(getter *Char) bool {
 	}
 
 	// Getter can't be hit by the HitDef attributes at all
-	if !getter.attrCheck(c, &c.hitdef, c.ss.stateType) {
+	if !getter.attrCheck(c, &c.hitdef) {
 		return false
 	}
 
@@ -11411,8 +11418,8 @@ func (c *Char) clsnTradeCheck(getter *Char) (hitLanded, hitTraded bool) {
 	}
 
 	// Check if the chars have valid attack definitions
-	cValid := c.hitdef.attr > 0 && c.ss.stateType != ST_L || c.hitdef.reversal_attr > 0
-	getterValid := getter.hitdef.attr > 0 && getter.ss.stateType != ST_L || getter.hitdef.reversal_attr > 0
+	cValid := c.hitdef.attr > 0 || c.hitdef.reversal_attr > 0
+	getterValid := getter.hitdef.attr > 0 || getter.hitdef.reversal_attr > 0
 
 	// No trade if either attack is invalid or getter can't hit back
 	// For instance, a lower priority exchanging with a higher priority whose Clsn1 misses is not a trade
@@ -11556,12 +11563,6 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 		}
 	}
 
-	// If attacking while statetype L
-	if isProjectile && c.ss.stateType == ST_L && hd.reversal_attr <= 0 {
-		c.hitdef.ltypehit = true
-		return 0
-	}
-
 	// If using p2stateno but the enemy is already changing states
 	if getter.stchtmp && getter.ss.sb.playerNo != hd.statePN {
 		if getter.csf(CSF_gethit) {
@@ -11657,14 +11658,8 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 				continue
 			}
 			// Check SCA attributes
-			if isProjectile {
-				if ho.attr&hd.attr&int32(ST_MASK) == 0 {
-					continue
-				}
-			} else {
-				if ho.attr&int32(c.ss.stateType) == 0 {
-					continue
-				}
+			if ho.attr&hitAttrSCA(c, hd) == 0 {
+				continue
 			}
 			// Check guardflag
 			if ho.guardflag != IErr && (ho.guardflag&hd.guardflag == 0 || c.asf(ASF_unguardable)) {
@@ -13246,12 +13241,9 @@ func (c *Char) tick() {
 	}
 	if c.hitdefContact {
 		if c.hitdef.hitonce != 0 || c.moveReversed() != 0 {
-			c.hitdef.updateStateType(c.ss.stateType)
+			c.hitdef.disableAttr()
 		}
 		c.hitdefContact = false
-	} else if c.hitdef.ltypehit {
-		c.hitdef.attr = c.hitdef.attr&^int32(ST_MASK) | int32(c.ss.stateType)
-		c.hitdef.ltypehit = false
 	}
 	// Get Hitdef targets from the buffer. Using a buffer mitigates processing order errors
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/1798
@@ -14646,7 +14638,7 @@ func (cl *CharList) hitDetectionProjectile(getter *Char) {
 			if canJuggle && !(getter.stchtmp && (getter.csf(CSF_gethit) || getter.acttmp > 0)) &&
 				(!ap_projhit || p.hitdef.attr&int32(AT_AP) == 0) &&
 				(p.hitpause <= 0 || p.contactflag) && p.curmisstime <= 0 && p.hitdef.hitonce >= 0 &&
-				getter.attrCheck(c, &p.hitdef, ST_N) {
+				getter.attrCheck(c, &p.hitdef) {
 
 				// Save enemy's hittmp var so we can temporarily modify it
 				// Maybe this is no longer necessary
