@@ -3886,6 +3886,11 @@ func (s *System) drawTop() {
 	}
 }
 
+// Line height of the debug font, from its Size and Spacing like other text.
+func (s *System) debugLineHeight() float32 {
+	return float32(s.debugFont.fnt.Size[1]) + float32(s.debugFont.fnt.Spacing[1])
+}
+
 func (s *System) debugTextScale(st drawAspectState) (sx, sy float32) {
 	sx, sy = st.widthScale, st.heightScale
 	if s.cfg.Video.KeepAspect {
@@ -3927,7 +3932,7 @@ func (s *System) drawDebugText(logicState drawAspectState) {
 			if drawTxt == "" {
 				drawTxt, txt = txt, ""
 			}
-			*y += float32(s.debugFont.fnt.Size[1]) * s.debugFont.yscl / debugScaleY
+			*y += s.debugLineHeight() * s.debugFont.yscl / debugScaleY
 			s.withAspectState(panelState, func() {
 				s.debugFont.fnt.Print(drawTxt, *x, *y, s.debugFont.xscl/debugScaleX,
 					s.debugFont.yscl/debugScaleY, 0, Rotation{0, 0, 0}, 0, 0, 0, 1, &s.scrrect,
@@ -3962,7 +3967,7 @@ func (s *System) drawDebugText(logicState drawAspectState) {
 			put(&x, &y, s)
 		}
 		// Data
-		y = panelState.gameHeight - float32(s.debugFont.fnt.Size[1])*sys.debugFont.yscl/debugScaleY*
+		y = panelState.gameHeight - s.debugLineHeight()*sys.debugFont.yscl/debugScaleY*
 			(float32(len(s.listLFunc))+float32(s.cfg.Debug.ClipboardRows)) - 1*panelState.heightScale
 		// Get debug char reference. Default to player 1 if out of bounds
 		pn := s.debugRef[0]

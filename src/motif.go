@@ -1501,13 +1501,12 @@ func applyCustomDefaults(m *Motif, iniFile *ini.File) {
 	}
 }
 
-// reserveUserFontSlots marks user-specified [Files] font indices as taken so
-// resolveInlineFonts won't auto-assign inline fonts to those slots.
-func reserveUserFontSlots(m *Motif) {
-	if m == nil || m.UserIniFile == nil {
+// Reserves the [Files] font slots. Inline fonts with the same file and height reuse them.
+func reserveFontSlots(m *Motif) {
+	if m == nil || m.IniFile == nil {
 		return
 	}
-	sec, err := m.UserIniFile.GetSection("Files")
+	sec, err := m.IniFile.GetSection("Files")
 	if err != nil || sec == nil {
 		return
 	}
@@ -1515,13 +1514,35 @@ func reserveUserFontSlots(m *Motif) {
 	for _, k := range sec.Keys() {
 		name := k.Name()
 		match := re.FindStringSubmatch(name)
-		if len(match) == 2 {
-			idx := int(Atoi(match[1]))
-			if _, exists := m.Fnt[idx]; !exists {
-				m.Fnt[idx] = nil // placeholder to block ensureFontIndex from using this slot
-			}
+		if len(match) != 2 {
+			continue
+		}
+		path := strings.Trim(strings.TrimSpace(k.Value()), `"`)
+		if path == "" {
+			continue
+		}
+		idx := int(Atoi(match[1]))
+		if _, exists := m.Fnt[idx]; !exists {
+			m.Fnt[idx] = nil // placeholder to block ensureFontIndex from using this slot
+		}
+		resolved := m.resolveFontFile(path)
+		height := int32(-1)
+		if hk, err := sec.GetKey(name + ".height"); err == nil && IsInt(strings.TrimSpace(hk.Value())) {
+			height = Atoi(strings.TrimSpace(hk.Value()))
+		}
+		if _, taken := m.fntIndexByKey[fontKey(resolved, height)]; !taken {
+			registerFontIndex(m.fntIndexByKey, resolved, height, idx)
 		}
 	}
+}
+
+// Finds a font file the same way ensureFontIndex does.
+func (m *Motif) resolveFontFile(path string) string {
+	path = strings.Trim(strings.TrimSpace(path), `"`)
+	if resolved := SearchFile(path, []string{m.Def, "", "data/"}, "font/"); resolved != "" {
+		return resolved
+	}
+	return path
 }
 
 // returns a stable-sorted list of files named "+system.def" located anywhere under the given root (e.g. external/mods), including nested subdirs.
@@ -1858,7 +1879,7 @@ func loadMotif(def string) (*Motif, error) {
 	}
 
 	// Resolve inline fonts early, so TitleInfo.Loading can get a real font index.
-	reserveUserFontSlots(&m)
+	reserveFontSlots(&m)
 	resolveInlineFonts(m.IniFile, m.Def, m.Fnt, m.fntIndexByKey, m.SetValueUpdate)
 	syncFontsMap(&m.Files.Font, m.Fnt, m.fntIndexByKey)
 	sys.keepAlive()
