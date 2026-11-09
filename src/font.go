@@ -645,8 +645,9 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		}
 	}
 
-	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
-	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
+	// Truncate gameWidth/gameHeight like Anim.Draw does (#3837), to match the integer offsetX
+	x += float32(f.offset[0])*xscl + float32(int(sys.gameWidth-320)/2)
+	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(int(sys.gameHeight-240))
 
 	var rcx, rcy float32
 
@@ -746,7 +747,8 @@ func (f *Fnt) DrawTtf(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation,
 		f.ttf.UpdateResolution(int(sys.gameWidth), int(sys.gameHeight))
 	}
 
-	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	// Truncate gameWidth/gameHeight like Anim.Draw does (#3837), to match the integer offsetX
+	x += float32(f.offset[0])*xscl + float32(int(sys.gameWidth-320)/2)
 	//y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
 
 	// Use same window as sprites and let the renderer handle it
@@ -981,7 +983,8 @@ func (ts *TextSprite) drawWindow() [4]int32 {
 	w := (window[2] - window[0]) * ts.localScale
 	h := (window[3] - window[1]) * ts.localScale
 	drawWindow := [4]int32{}
-	drawWindow[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
+	// Truncate gameWidth/gameHeight like Anim.SetWindow does (#3837), to match the integer offsetX
+	drawWindow[0] = int32((x + float32(int32(sys.gameWidth)-320)/2) * sys.widthScale)
 	// TODO: test if this truetype adjustment is needed
 	//drawWindow[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
 	// Keep scissor Y consistent with the respective draw paths:
@@ -990,7 +993,7 @@ func (ts *TextSprite) drawWindow() [4]int32 {
 	if ts.fnt != nil && ts.fnt.Type == "truetype" {
 		drawWindow[1] = int32(y * sys.heightScale)
 	} else {
-		drawWindow[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+		drawWindow[1] = int32((y + float32(int32(sys.gameHeight)-240)) * sys.heightScale)
 	}
 	drawWindow[2] = int32(w*sys.widthScale + 0.5)
 	drawWindow[3] = int32(h*sys.heightScale + 0.5)

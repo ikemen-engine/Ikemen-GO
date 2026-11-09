@@ -360,9 +360,10 @@ func (r *Rect) drawWindow() [4]int32 {
 	y := window[1] / r.localScale
 	w := (window[2] - window[0]) / r.localScale
 	h := (window[3] - window[1]) / r.localScale
+	// Truncate gameWidth/gameHeight like Anim.SetWindow does (#3837), to match the integer offsetX
 	return [4]int32{
-		int32(math.Round(float64((x + float32(sys.gameWidth-320)/2) * sys.widthScale))),
-		int32(math.Round(float64((y + float32(sys.gameHeight-240)) * sys.heightScale))),
+		int32(math.Round(float64((x + float32(int32(sys.gameWidth)-320)/2) * sys.widthScale))),
+		int32(math.Round(float64((y + float32(int32(sys.gameHeight)-240)) * sys.heightScale))),
 		int32(w*sys.widthScale + 0.5),
 		int32(h*sys.heightScale + 0.5),
 	}
