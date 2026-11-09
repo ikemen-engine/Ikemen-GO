@@ -10260,8 +10260,13 @@ func (sc width) Run(c *Char, _ []int32) bool {
 		return false
 	}
 
-	// TODO: Confirm if this should be baselocalscl or localscl
-	redirscale := c.baselocalscl / crun.baselocalscl
+	redirscale := c.localscl / crun.localscl
+
+	// Mugen has a bug here where these values are in the char's own localcoord, even in custom states
+	// However there's no reason for us to do the same
+	//if c.stWgi().ikemenver[0] == 0 && c.stWgi().ikemenver[1] == 0 {
+	//	redirscale = c.baselocalscl / crun.localscl
+	//}
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -10287,6 +10292,83 @@ func (sc width) Run(c *Char, _ []int32) bool {
 			}
 			crun.widthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
 			crun.widthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
+		}
+		return true
+	})
+	return false
+}
+
+type height StateControllerBase
+
+const (
+	height_value byte = iota
+	height_redirectid
+)
+
+func (sc height) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), height_redirectid, "Height")
+	if crun == nil {
+		return false
+	}
+
+	redirscale := c.localscl / crun.localscl
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case height_value:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.heightPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
+		}
+		return true
+	})
+	return false
+}
+
+type depth StateControllerBase
+
+const (
+	depth_edge byte = iota
+	depth_player
+	depth_value
+	depth_redirectid
+)
+
+func (sc depth) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), depth_redirectid, "Depth")
+	if crun == nil {
+		return false
+	}
+
+	redirscale := c.localscl / crun.localscl
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case depth_player:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
+		case depth_edge:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
+		case depth_value:
+			var v1, v2 float32
+			v1 = exp[0].evalF(c)
+			if len(exp) > 1 {
+				v2 = exp[1].evalF(c)
+			}
+			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
+			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
 		}
 		return true
 	})
@@ -10956,6 +11038,40 @@ func (sc screenBound) Run(c *Char, _ []int32) bool {
 	crun.setCSF(CSF_screenbound, value)
 	crun.setCSF(CSF_movecamera_x, movex)
 	crun.setCSF(CSF_movecamera_y, movey)
+
+	return false
+}
+
+type depthBound StateControllerBase
+
+const (
+	depthBound_value byte = iota
+	depthBound_movecamera
+	depthBound_redirectid
+)
+
+func (sc depthBound) Run(c *Char, _ []int32) bool {
+	crun := getRedirectedChar(c, StateControllerBase(sc), depthBound_redirectid, "DepthBound")
+	if crun == nil {
+		return false
+	}
+
+	// Everything defaults to false, like in ScreenBound
+	value := false
+	movez := false
+
+	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
+		switch paramID {
+		case depthBound_value:
+			value = exp[0].evalB(c)
+		case depthBound_movecamera:
+			movez = exp[0].evalB(c)
+		}
+		return true
+	})
+
+	crun.setCSF(CSF_depthbound, value)
+	crun.setCSF(CSF_movecamera_z, movez)
 
 	return false
 }
@@ -12148,7 +12264,8 @@ func (sc sndPan) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
-	// TODO: Check if Mugen allowed negative (all) channels here. Ikemen didn't
+	// Negative channel pans all channels, as usual
+	// This doesn't work in Mugen, where negative channels are just rejected
 	for _, s := range crun.getOwnChannels(ch) {
 		s.SetPan(pan, ls, sourceID)
 	}
@@ -15778,119 +15895,6 @@ func (sc cameraCtrl) Run(c *Char, _ []int32) bool {
 		}
 		return true
 	})
-	return false
-}
-
-type height StateControllerBase
-
-const (
-	height_value byte = iota
-	height_redirectid
-)
-
-func (sc height) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), height_redirectid, "Height")
-	if crun == nil {
-		return false
-	}
-
-	// TODO: Confirm if this should be baselocalscl or localscl
-	redirscale := c.baselocalscl / crun.baselocalscl
-
-	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
-		switch paramID {
-		case height_value:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.heightPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
-		}
-		return true
-	})
-	return false
-}
-
-type depth StateControllerBase
-
-const (
-	depth_edge byte = iota
-	depth_player
-	depth_value
-	depth_redirectid
-)
-
-func (sc depth) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), depth_redirectid, "Depth")
-	if crun == nil {
-		return false
-	}
-
-	// TODO: Confirm if this should be baselocalscl or localscl
-	redirscale := c.baselocalscl / crun.baselocalscl
-
-	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
-		switch paramID {
-		case depth_player:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
-		case depth_edge:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
-		case depth_value:
-			var v1, v2 float32
-			v1 = exp[0].evalF(c)
-			if len(exp) > 1 {
-				v2 = exp[1].evalF(c)
-			}
-			crun.depthPlayer = [2]float32{v1 * redirscale, v2 * redirscale}
-			crun.depthEdge = [2]float32{v1 * redirscale, v2 * redirscale}
-		}
-		return true
-	})
-	return false
-}
-
-type depthBound StateControllerBase
-
-const (
-	depthBound_value byte = iota
-	depthBound_movecamera
-	depthBound_redirectid
-)
-
-func (sc depthBound) Run(c *Char, _ []int32) bool {
-	crun := getRedirectedChar(c, StateControllerBase(sc), depthBound_redirectid, "DepthBound")
-	if crun == nil {
-		return false
-	}
-
-	// Everything defaults to false, like in ScreenBound
-	value := false
-	movez := false
-
-	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
-		switch paramID {
-		case depthBound_value:
-			value = exp[0].evalB(c)
-		case depthBound_movecamera:
-			movez = exp[0].evalB(c)
-		}
-		return true
-	})
-
-	crun.setCSF(CSF_depthbound, value)
-	crun.setCSF(CSF_movecamera_z, movez)
-
 	return false
 }
 

@@ -4976,7 +4976,8 @@ func (c *Char) loadPalettes() {
 	}
 
 	// Update RemapPal to selected palette
-	// TODO: Confirm if this is true for all characters in Mugen. Defaulting to color 1 would be useless, regardless
+	// Mugen only does this for SFF v1 root players, at the start of each round
+	// Ikemen does it for all chars since defaulting to color 1 would be useless
 	gi.remappedpal = [2]int32{1, gi.palno}
 }
 
