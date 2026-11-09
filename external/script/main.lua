@@ -1843,7 +1843,7 @@ end
 --returns table storing menu window coordinates
 function main.f_menuWindow(t, offset)
 	local offset = offset or {0, 0}
-	if t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0 then
+	if t.window.visibleitems > 0 and (t.window.margins.y[1] ~= 0 or t.window.margins.y[2] ~= 0) then
 		return {
 			0,
 			math.max(0, t.pos[2] + offset[2] - t.window.margins.y[1]),
