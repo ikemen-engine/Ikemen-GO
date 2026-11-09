@@ -359,8 +359,11 @@ type MenuProperties struct {
 }
 
 type InfoBoxProperties struct {
-	Title   TextProperties    `ini:"title"`
-	Text    TextProperties    `ini:"text"`
+	Title TextProperties `ini:"title"`
+	Text  struct {
+		TextProperties
+		TextWrap string `ini:"textwrap" default:"w"`
+	} `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
 	KeyCode string            `ini:"keycode"`
 }
