@@ -2005,3 +2005,17 @@ func NormalizeRect[T int | int32 | int64 | float32 | float64](rect [4]T) [4]T {
 	}
 	return rect
 }
+
+// Left edge of a localcoord in game units. Kept fractional, like gameWidth (#1615, #3799).
+func localcoordOffsetX(lx, v float64) float32 {
+	return float32(-(lx*320/v - 320) / 2)
+}
+
+// Window in game units to pixels. Edges are rounded separately to match sprite edges.
+func screenRect(x, y, w, h float32) [4]int32 {
+	x1 := int32(math.Round(float64(x * sys.widthScale)))
+	y1 := int32(math.Round(float64(y * sys.heightScale)))
+	x2 := int32(math.Round(float64((x + w) * sys.widthScale)))
+	y2 := int32(math.Round(float64((y + h) * sys.heightScale)))
+	return [4]int32{x1, y1, x2 - x1, y2 - y1}
+}

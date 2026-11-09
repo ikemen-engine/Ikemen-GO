@@ -808,7 +808,7 @@ type TextSprite struct {
 	xvel, yvel     float32
 	localScale     float32
 	scaleRatio     float32 // Scale correction when different localcoords interact
-	offsetX        int32
+	offsetX        float32
 	layerno        int16
 	palfx          *PalFX
 	trans          TransType
@@ -906,7 +906,7 @@ func (ts *TextSprite) SetLocalcoord(lx, ly int32) {
 		v = float64(ly) * 4 / 3
 	}
 	ts.localScale = float32(320 / v)
-	ts.offsetX = -int32(math.Floor(float64(lx)/(v/320)-320) / 2)
+	ts.offsetX = localcoordOffsetX(float64(lx), v)
 }
 
 // Like SetLocalcoord but for char texts, so scaling works more like characters
@@ -930,13 +930,13 @@ func (ts *TextSprite) SetLocalcoordChar(lc [2]int32) {
 	// Shift coordinate origin to where the screen edge is, regardless of aspect ratio
 	// Note: offsetX is not in local scale
 	extraW := gameW - v
-	ts.offsetX = -int32(math.Floor((extraW) / 2))
+	ts.offsetX = float32(-extraW / 2)
 }
 
 func (ts *TextSprite) SetPos(x, y float32) {
 	ts.offsetInit[0] = x
 	ts.offsetInit[1] = y
-	ts.x = x*ts.localScale + float32(ts.offsetX)
+	ts.x = x*ts.localScale + ts.offsetX
 	ts.y = y * ts.localScale
 }
 
@@ -976,25 +976,17 @@ func (ts *TextSprite) drawWindow() [4]int32 {
 	}
 	// Pixel bounds depend on the aspect state selected for this draw pass.
 	window := ts.windowInit
-	x := window[0]*ts.localScale + float32(ts.offsetX)
+	x := window[0]*ts.localScale + ts.offsetX
 	y := window[1] * ts.localScale
 	w := (window[2] - window[0]) * ts.localScale
 	h := (window[3] - window[1]) * ts.localScale
-	drawWindow := [4]int32{}
-	drawWindow[0] = int32((x + float32(sys.gameWidth-320)/2) * sys.widthScale)
-	// TODO: test if this truetype adjustment is needed
-	//drawWindow[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
 	// Keep scissor Y consistent with the respective draw paths:
 	//  - Sprite fonts (DrawText) add +(sys.gameHeight-240) to Y
 	//  - TTF fonts (DrawTtf) do NOT add that offset
-	if ts.fnt != nil && ts.fnt.Type == "truetype" {
-		drawWindow[1] = int32(y * sys.heightScale)
-	} else {
-		drawWindow[1] = int32((y + float32(sys.gameHeight-240)) * sys.heightScale)
+	if ts.fnt == nil || ts.fnt.Type != "truetype" {
+		y += sys.gameHeight - 240
 	}
-	drawWindow[2] = int32(w*sys.widthScale + 0.5)
-	drawWindow[3] = int32(h*sys.heightScale + 0.5)
-	return drawWindow
+	return screenRect(x+(sys.gameWidth-320)/2, y, w, h)
 }
 
 func (ts *TextSprite) SetColor(r, g, b, a int32) {
@@ -1064,11 +1056,11 @@ func (ts *TextSprite) getLineLength(windowWrap bool) int32 {
 	var left, right float32
 	if windowWrap && ts.windowInit != [4]float32{0, 0, 0, 0} && ts.localScale > 0 {
 		// windowInit is in motif localcoords; convert to text space.
-		left = ts.windowInit[0]*ts.localScale + float32(ts.offsetX)
-		right = ts.windowInit[2]*ts.localScale + float32(ts.offsetX)
+		left = ts.windowInit[0]*ts.localScale + ts.offsetX
+		right = ts.windowInit[2]*ts.localScale + ts.offsetX
 	} else {
 		// No explicit window: use the whole localcoord width.
-		left = float32(ts.offsetX)
+		left = ts.offsetX
 		right = left + lcWidth
 	}
 
