@@ -2184,6 +2184,8 @@ function launchFight(data)
 		t = main.f_tableCopy(start.launchFightSav)
 		start.p[2].t_selTemp = {} -- in case it's not cleaned already (preserved p2 side during select screen)
 	else -- otherwise take all arguments and settings into account
+		-- lets modules adjust launchFight arguments before they are used
+		hook.run("launchFight.data", data)
 		t.p1numchars = start.p[1].numChars
 		t.p1teammode = start.p[1].teamMode
 		t.p2numchars = start.p[2].numChars
@@ -4229,11 +4231,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 				t_order[side][#t_order[side] + 1] = member
 				local slot = #t_order[side]
 				if not v.selected then
-					if bgLoading then
-						selectChar(side, v.ref, v.pal, start.f_buildOverrideParams(side, slot, v))
-					else
-						selectChar(side, v.ref, v.pal)
-					end
+					selectChar(side, v.ref, v.pal, start.f_buildOverrideParams(side, slot, v))
 					v.selected = true
 				end
 				v.loading = true
@@ -4287,11 +4285,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 								t_order[side][#t_order[side] + 1] = kk
 								local slot = #t_order[side]
 								if not vv.selected then
-									if bgLoading then
-										selectChar(side, vv.ref, vv.pal, start.f_buildOverrideParams(side, slot, vv))
-									else
-										selectChar(side, vv.ref, vv.pal)
-									end
+									selectChar(side, vv.ref, vv.pal, start.f_buildOverrideParams(side, slot, vv))
 									vv.selected = true
 								end
 								vv.loading = true
@@ -4317,12 +4311,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg)
 					elseif getInput(side, pCfg.key) or (#start.p[side].t_selected == #t_order[side] + 1) then
 						t_order[side][#t_order[side] + 1] = k
 						local slot = #t_order[side]
-						if bgLoading and not v.selected then
+						if not v.selected then
 							selectChar(side, v.ref, v.pal, start.f_buildOverrideParams(side, slot, v))
-							v.selected = true
-						end
-						if not bgLoading and not v.selected then
-							selectChar(side, v.ref, v.pal)
 							v.selected = true
 						end
 						v.loading = true
