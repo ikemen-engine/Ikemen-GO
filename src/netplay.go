@@ -26,8 +26,8 @@ const (
 	REPLAY_NUM_INPUTS  = MaxSimul * 2
 	REPLAY_INPUT_BYTES = 2 + 6
 
-	syncConfigVersion     uint16 = 1
-	replayFormatVersion   uint16 = 2
+	syncConfigVersion     uint16 = 2
+	replayFormatVersion   uint16 = 3
 	replayMagic                  = "IKRPLCFG"
 	replaySyncMagic              = "IKRPLSYN"
 	replaySyncSearchLimit        = int64(64 << 20)
@@ -199,6 +199,9 @@ type NetConnection struct {
 }
 
 func NewNetConnection() *NetConnection {
+	// The device that opened netplay is the local player, as participant zero.
+	sys.resetInputForMenus()
+	sys.inputs.ClaimLocked = true
 	nc := &NetConnection{
 		st:          NS_Stop,
 		pendingConn: make(chan *net.TCPConn),
@@ -561,14 +564,14 @@ func (nc *NetConnection) readJSON(v interface{}) error {
 
 // Gameplay-facing netplay API
 func (nc *NetConnection) readNetInput(i int) [14]bool {
-	if i >= 0 && i < len(nc.buf) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(nc.buf) {
 		return nc.buf[sys.inputRemap[i]].readNetBuffer()
 	}
 	return [14]bool{}
 }
 
 func (nc *NetConnection) readNetInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(nc.buf) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(nc.buf) {
 		return nc.buf[sys.inputRemap[i]].readNetBufferAnalog()
 	}
 	return [6]int8{}
@@ -1147,14 +1150,14 @@ func (rf *ReplayFile) Close() {
 
 // Read input buttons from replay input
 func (rf *ReplayFile) readReplayInput(i int) [14]bool {
-	if i >= 0 && i < len(rf.ibit) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.ibit) {
 		return rf.ibit[sys.inputRemap[i]].BitsToKeys()
 	}
 	return [14]bool{}
 }
 
 func (rf *ReplayFile) readReplayInputAnalog(i int) [6]int8 {
-	if i >= 0 && i < len(rf.ibit) {
+	if i >= 0 && i < len(sys.inputRemap) && sys.inputRemap[i] >= 0 && sys.inputRemap[i] < len(rf.ibit) {
 		remap := sys.inputRemap[i] // we'll be using this a lot
 
 		// New replay file, read in the axes too
