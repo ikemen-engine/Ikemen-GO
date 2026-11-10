@@ -2480,8 +2480,8 @@ function options.f_inputCapture(context)
 	local entry = capture.entries[capture.index]
 	local finished = false
 	local time = root.sessionPlayer ~= nil and getActionTime or inputDeviceActionTime
-	-- Holding cancel leaves, so every control can still be bound.
-	if esc() or time(root.sessionPlayer or device.id, sec.menu.cancel.action) >= sec.holdtime then
+	-- Holding cancel leaves, so every control can still be bound. A mouse click leaves at once.
+	if esc() or mouseTake(sec.menu.cancel.action) or time(root.sessionPlayer or device.id, sec.menu.cancel.action) >= sec.holdtime then
 		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 		esc(false)
 		undoCopy(root, capture.setupId)
@@ -2721,11 +2721,12 @@ function options.f_inputDiagramFrame(context)
 		end
 		return time
 	end
+	-- Mouse buttons act on press. Other inputs act when held, so a short press can still bind that control.
 	local function held(action)
-		return holdTime(action) == cfg.holdtime
+		return mouseTake(action) or holdTime(action) == cfg.holdtime
 	end
 	local oldIndex = diagram.index
-	if esc() or holdTime(cfg.cancel.action) >= cfg.holdtime then
+	if esc() or held(cfg.cancel.action) then
 		-- Cancel restores the draft from before guided capture.
 		sndPlay(motif.Snd, cfg.cancel.snd[1], cfg.cancel.snd[2])
 		esc(false)

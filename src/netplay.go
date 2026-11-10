@@ -1614,6 +1614,7 @@ func (s *System) beginSessionOverride(source string, strict, host []SyncSetting,
 		ContentFingerprint: contentFingerprint,
 	}
 	s.menuChannels = [MaxPlayerNo]MenuChannel{}
+	s.mousePacket = 0
 	log.Printf("%s sync config override started: strict=%d host=%d fingerprint=%q",
 		strings.Title(source), len(strict), len(host), contentFingerprint)
 	logSyncVerification(strings.Title(source)+" host override verification", host, appliedHost)
