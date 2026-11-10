@@ -51,7 +51,7 @@ function main.f_restoreInput()
 	end
 	resetRemapInput()
 	-- Restore to the base mapping captured at the mode start.
-	for i = 1, gameOption('Config.Players') do
+	for i = 1, 8 do
 		local v = main.t_baseRemapInput[i] or i
 		if i ~= v then
 			remapInput(i, v)
@@ -62,7 +62,7 @@ end
 -- capture current remap state as the "base" mapping restored after each match
 function main.f_saveBaseRemapInput()
 	main.t_baseRemapInput = {}
-	for i = 1, gameOption('Config.Players') do
+	for i = 1, 8 do
 		main.t_baseRemapInput[i] = getRemapInput(i)
 	end
 end
@@ -2093,6 +2093,12 @@ local function isValidIp(address)
 end
 
 function main.f_default()
+	main.runSide, main.opponentSide = 1, 2
+	main.sideSelectDone = false
+	main.sideDevices = {{}, {}}
+	main.lockedSelection = {}
+	main.lockedTeamMode = false
+	setRunSide(1)
 	main.aiRamp = false -- if AI ramping should be active
 	main.charparam = { -- which select.def charparam should be used
 		ai = false,
@@ -2105,6 +2111,7 @@ function main.f_default()
 	}
 	main.coop = false -- if mode should be recognized as coop
 	main.cpuSide = {false, true} -- which side is controlled by CPU
+	main.dummySide = false -- if the CPU side is a dummy without AI that a second controller can drive
 	main.dropDefeated = false -- if defeated turns members should be skipped in the next match
 	main.elimination = false -- if single lose should stop further lua execution
 	main.exitSelect = false -- if "clearing" the mode (matchno == -1) should go back to main menu
@@ -2682,6 +2689,7 @@ main.t_itemname = {
 		end
 		-- main.fightscreen.p1score = true
 		-- main.fightscreen.p2ailevel = true
+		main.dummySide = true
 		main.roundTime = -1
 		main.selectMenu[2] = true
 		if gameOption('Config.TrainingStage') == '' then
