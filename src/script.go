@@ -4467,6 +4467,37 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(setupTable(l, id, &p))
 		return 1
 	})
+	luaRegister(l, "inputGetSetupState", func(l *lua.LState) int {
+		/*Engine button and analog stick state of a device, for the Controller Setup input test.
+		@function inputGetSetupState
+		@tparam int deviceId Device ID.
+		@tparam[opt] table setup Setup to test instead of the saved one (an unsaved draft).
+		@treturn table held `true` for every held engine button (`up`, ..., `r`).
+		@treturn table analog `true` for every held stick direction and trigger (`LT`, `RT`, `LS_Y-`, ..., `RS_X+`).*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		m := sys.inputCfg.mapping(device)
+		frame := device.sample(&m)
+		var setup ControllerSetup
+		if !nilArg(l, 2) {
+			setup = setupFromTable(tableArg(l, 2)).setup()
+		} else if device != nil {
+			_, saved := sys.inputCfg.setup(device.Setup)
+			setup = *saved
+		}
+		buttons := setup.project(frame)
+		held, analog := l.NewTable(), l.NewTable()
+		for i, name := range engineButtonNames {
+			held.RawSetString(name, lua.LBool(buttons[i]))
+		}
+		for i, name := range virtualControlNames {
+			if vc := VirtualControl(i); vc.analog() {
+				analog.RawSetString(name, lua.LBool(frame.held(vc)))
+			}
+		}
+		l.Push(held)
+		l.Push(analog)
+		return 2
+	})
 	luaRegister(l, "inputGetVirtualPressed", func(l *lua.LState) int {
 		/*Get the virtual control newly pressed on a device this frame, for Controller Setup capture.
 		@function inputGetVirtualPressed

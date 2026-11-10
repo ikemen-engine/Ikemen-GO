@@ -99,6 +99,7 @@ type FilesProperties struct {
 	Fight  string                     `ini:"fight" default:"fight.def" lookup:"def,,data/"`
 	Font   map[string]*FontProperties `ini:"map:^(?i)font[0-9]+$" lua:"font"`
 	Glyphs string                     `ini:"glyphs" lookup:"def,,data/"`
+	Input  string                     `ini:"input" lookup:"def,,data/"`
 	Module string                     `ini:"module" lookup:"def,,data/"`
 	Model  string                     `ini:"model" lookup:"def,,data/"`
 }
@@ -327,6 +328,7 @@ type ControllerGlyphProperties struct {
 
 type HintProperties struct {
 	TextMapProperties
+	Warn TextMapProperties `ini:"warn"`
 }
 
 type MenuProperties struct {
@@ -1120,6 +1122,43 @@ type ResultsScreenProperties struct {
 	Hint HintProperties          `ini:"hint"`
 }
 
+type MappingControlProperties struct {
+	AnimationProperties
+	Active AnimationProperties `ini:"active"`
+	Label  TextProperties      `ini:"label"`
+}
+
+type MappingInfoProperties struct {
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		TextProperties
+		Uppercase bool `ini:"uppercase"`
+	} `ini:"title"`
+	Hint    HintProperties                       `ini:"hint"`
+	Bg      AnimationProperties                  `ini:"bg"`
+	Control map[string]*MappingControlProperties `ini:"control"`
+	Prompt  TextMapProperties                    `ini:"prompt"`
+	Move    struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd    [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Skip struct {
+		Action []string `ini:"action"`
+	} `ini:"skip"`
+	Previous struct {
+		Action []string `ini:"action"`
+	} `ini:"previous"`
+	HoldTime int32            `ini:"holdtime" default:"60"`
+}
+
 type OptionInfoProperties struct {
 	FadeIn  FadeProperties `ini:"fadein"`
 	FadeOut FadeProperties `ini:"fadeout"`
@@ -1475,6 +1514,7 @@ type Motif struct {
 	Fnt             map[int]*Fnt
 	GlyphAnimations map[[2]int32]*Animation
 	GlyphsSff       *Sff
+	InputSff        *Sff
 	Model           *Model
 	Music           Music
 	Def             string                              `ini:"def"`
@@ -1502,6 +1542,10 @@ type Motif struct {
 	ResultsBgDef    map[string]*BgDefProperties         `ini:"map:^(?i).+resultsbgdef$" lua:"resultsbgdef"`
 	OptionInfo      OptionInfoProperties                `ini:"option_info"`
 	OptionBgDef     BgDefProperties                     `ini:"optionbgdef"`
+	MappingInfo     MappingInfoProperties               `ini:"mapping_info" sff:"InputSff"`
+	MappingBgDef    BgDefProperties                     `ini:"mappingbgdef"`
+	SetupInfo       MappingInfoProperties               `ini:"setup_info" sff:"InputSff"`
+	SetupBgDef      BgDefProperties                     `ini:"setupbgdef"`
 	ReplayInfo      ReplayInfoProperties                `ini:"replay_info"`
 	ReplayBgDef     BgDefProperties                     `ini:"replaybgdef"`
 	PauseMenu       map[string]*MenuInfoProperties      `ini:"map:^(?i).*pause.*menu$" lua:"pause_menu"`
@@ -2621,6 +2665,8 @@ func (m *Motif) overrideParams() {
 		// [Option Info]
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.", DstSec: "Option Info", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.active.", DstSec: "Option Info", DstPrefix: "menu.item.selected.active."},
+		// [Mapping Info]
+		{SrcSec: "Mapping Info", SrcPrefix: "hint.", DstSec: "Mapping Info", DstPrefix: "hint.warn."},
 		// [Pause Menu]
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.active.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected.active."},
@@ -2640,6 +2686,25 @@ func (m *Motif) overrideParams() {
 			for _, kind := range []string{"keyboard", "gamepad"} {
 				specs = append(specs, InheritSpec{SrcSec: "Side Select Info", SrcPrefix: prefix, DstSec: "Side Select Info", DstPrefix: prefix + kind + ".", Flat: true})
 			}
+		}
+	}
+	// Active control art in [Mapping Info] and [Setup Info] inherits the released art
+	for _, sec := range []string{"Mapping Info", "Setup Info"} {
+		names := map[string]bool{}
+		for _, f := range []*ini.File{m.DefaultOnlyIni, m.UserIniFile} {
+			if f == nil {
+				continue
+			}
+			if s, err := f.GetSection(sec); err == nil {
+				for _, k := range s.Keys() {
+					if parts := strings.SplitN(strings.ToLower(k.Name()), ".", 3); len(parts) == 3 && parts[0] == "control" {
+						names[parts[1]] = true
+					}
+				}
+			}
+		}
+		for name := range names {
+			specs = append(specs, InheritSpec{SrcSec: sec, SrcPrefix: "control." + name + ".", DstSec: sec, DstPrefix: "control." + name + ".active."})
 		}
 	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
@@ -2836,6 +2901,30 @@ func (m *Motif) loadFiles() {
 		return nil
 	})
 	sys.keepAlive()
+	// Button Mapping and Test Setup art. Falls back to the screenpack sprites.
+	if strings.TrimSpace(m.Files.Input) == "" {
+		m.Files.Input = m.Files.Spr
+		m.InputSff = m.Sff
+	} else {
+		LoadFile(&m.Files.Input, []string{m.Files.Input}, "", func(filename string) error {
+			if filename == "" {
+				return nil
+			}
+			if filepath.ToSlash(filepath.Clean(filename)) == filepath.ToSlash(filepath.Clean(m.Files.Spr)) {
+				m.InputSff = m.Sff
+				return nil
+			}
+			var err error
+			if m.InputSff, err = loadSff(filename, SffTypeOther, true, false); err != nil {
+				LogMessage("Failed to load %v: %v", filename, err)
+			}
+			return nil
+		})
+		if m.InputSff == nil {
+			m.InputSff = newSff(SffTypeOther)
+		}
+		sys.keepAlive()
+	}
 
 	LoadFile(&m.Files.Model, []string{m.Files.Model}, "", func(filename string) error {
 		if filename != "" {
@@ -2873,6 +2962,16 @@ func (m *Motif) loadFiles() {
 	}
 
 	m.loadBgDefProperties(&m.OptionBgDef, "optionbg", m.Files.Spr)
+	if _, err := m.UserIniFile.GetSection("MappingBgDef"); err == nil {
+		m.loadBgDefProperties(&m.MappingBgDef, "mappingbg", m.Files.Spr)
+	} else {
+		m.MappingBgDef = m.OptionBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SetupBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SetupBgDef, "setupbg", m.Files.Spr)
+	} else {
+		m.SetupBgDef = m.OptionBgDef
+	}
 	if _, err := m.UserIniFile.GetSection("ReplayBgDef"); err == nil {
 		m.loadBgDefProperties(&m.ReplayBgDef, "replaybg", m.Files.Spr)
 	} else {
