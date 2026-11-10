@@ -2184,6 +2184,8 @@ function launchFight(data)
 		t = main.f_tableCopy(start.launchFightSav)
 		start.p[2].t_selTemp = {} -- in case it's not cleaned already (preserved p2 side during select screen)
 	else -- otherwise take all arguments and settings into account
+		-- lets modules adjust launchFight arguments before they are used
+		hook.run("launchFight.data", data)
 		t.p1numchars = start.p[1].numChars
 		t.p1teammode = start.p[1].teamMode
 		t.p2numchars = start.p[2].numChars
