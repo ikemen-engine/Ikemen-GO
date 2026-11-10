@@ -356,7 +356,7 @@ type bgDrawTransform struct {
 }
 
 func (t *bgDrawTransform) window(window [4]int32, localScl [2]float32) [4]int32 {
-	clip, _ := sys.fightDrawClip()
+	clip := sys.scrrect
 	if window == [4]int32{} {
 		return clip
 	}

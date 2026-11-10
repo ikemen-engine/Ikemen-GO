@@ -2856,9 +2856,9 @@ func (r *Renderer_VK) RecreateSurfaceAndSwapchain() {
 	}
 
 	// Recreate the targets
-	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
+	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.renderTargetRect[2]), uint32(sys.renderTargetRect[3]), 1, false)
+	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.renderTargetRect[2]), uint32(sys.renderTargetRect[3]), 1, false)
+	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.renderTargetRect[2]), uint32(sys.renderTargetRect[3]), msaa, true)
 
 	// Reassign persistent sets & update their texture bindings
 	for i := 0; i < 2; i++ {
@@ -2888,6 +2888,10 @@ func (r *Renderer_VK) RecreateSurfaceAndSwapchain() {
 	sys.window.renderingPaused = false
 }
 func (r *Renderer_VK) RecreateSwapchain() {
+	r.recreateSwapchain(sys.renderTargetRect[2], sys.renderTargetRect[3])
+}
+
+func (r *Renderer_VK) recreateSwapchain(width, height int32) {
 	vk.DeviceWaitIdle(r.device)
 	// Store the old sets (we cannot recreate them on mobile)
 	var oldSets []vk.DescriptorSet = make([]vk.DescriptorSet, 2)
@@ -2917,9 +2921,9 @@ func (r *Renderer_VK) RecreateSwapchain() {
 	}
 
 	// Recreate the targets
-	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
+	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(width), uint32(height), 1, false)
+	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(width), uint32(height), 1, false)
+	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(width), uint32(height), msaa, true)
 
 	// Reassign persistent sets & update their texture bindings
 	for i := 0; i < 2; i++ {
@@ -6118,7 +6122,7 @@ func (r *Renderer_VK) Init() {
 	r.customShaderMap = make(map[string]uint32)
 	r.nextShaderID = 1
 
-	tex, err := r.newGrabTexture(sys.scrrect[2], sys.scrrect[3], 32, true)
+	tex, err := r.newGrabTexture(sys.renderTargetRect[2], sys.renderTargetRect[3], 32, true)
 	if err != nil {
 		panic(fmt.Errorf("grabTexture: %w", err))
 	}
@@ -6156,9 +6160,9 @@ func (r *Renderer_VK) Init() {
 	if err != nil {
 		panic(err)
 	}
-	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), 1, false)
-	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.scrrect[2]), uint32(sys.scrrect[3]), msaa, true)
+	r.renderTargets[0] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.renderTargetRect[2]), uint32(sys.renderTargetRect[3]), 1, false)
+	r.renderTargets[1] = r.CreateRenderTarget(r.swapchainRenderPass.renderPass, uint32(sys.renderTargetRect[2]), uint32(sys.renderTargetRect[3]), 1, false)
+	r.mainRenderTarget = r.CreateRenderTarget(r.mainRenderPass[0].renderPass, uint32(sys.renderTargetRect[2]), uint32(sys.renderTargetRect[3]), msaa, true)
 
 	err = r.CreateSyncObjects()
 	if err != nil {
@@ -6243,16 +6247,13 @@ func (r *Renderer_VK) ResizeRenderTargets(width, height, samples int32) error {
 		return fmt.Errorf("changing MSAA requires a restart with Vulkan")
 	}
 	r.Await()
-	oldW, oldH := sys.scrrect[2], sys.scrrect[3]
-	sys.scrrect[2], sys.scrrect[3] = width, height
-	r.RecreateSwapchain()
-	sys.scrrect[2], sys.scrrect[3] = oldW, oldH
 
 	// The grab texture is screen-sized but not part of the swapchain.
-	tex, err := r.newTexture(width, height, 32, true)
+	tex, err := r.newGrabTexture(width, height, 32, true)
 	if err != nil {
 		return err
 	}
+	r.recreateSwapchain(width, height)
 	r.grabTexture = tex.(*Texture_VK)
 	r.grabTexture.MarkNonSwappable()
 	return nil
@@ -6866,8 +6867,8 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 				X: 0, Y: 0,
 			},
 			Extent: vk.Extent2D{
-				Width:  uint32(sys.scrrect[2]),
-				Height: uint32(sys.scrrect[3]),
+				Width:  uint32(sys.renderTargetRect[2]),
+				Height: uint32(sys.renderTargetRect[3]),
 			},
 		},
 		ClearValueCount: uint32(len(clearValues)),
@@ -6914,8 +6915,8 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 					X: 0, Y: 0,
 				},
 				Extent: vk.Extent2D{
-					Width:  uint32(sys.scrrect[2]),
-					Height: uint32(sys.scrrect[3]),
+					Width:  uint32(sys.renderTargetRect[2]),
+					Height: uint32(sys.renderTargetRect[3]),
 				},
 			},
 			BaseArrayLayer: 0,
@@ -6934,6 +6935,7 @@ func (r *Renderer_VK) BeginFrame(clearColor bool) {
 	r.currentSpriteTexture.customTex2 = nil
 	r.VKState.spriteTexture = r.dummyTexture
 	r.VKState.palTexture = r.dummyTexture
+	r.DisableScissor()
 	r.VKState.customTex1 = nil
 	r.VKState.customTex2 = nil
 	if r.modelProgram != nil {
@@ -7122,7 +7124,10 @@ func (r *Renderer_VK) EndFrame() {
 				Offset: vk.Offset2D{
 					X: 0, Y: 0,
 				},
-				Extent: r.swapchains[0].extent,
+				Extent: vk.Extent2D{
+					Width:  uint32(r.renderTargets[0].texture.width),
+					Height: uint32(r.renderTargets[0].texture.height),
+				},
 			},
 			ClearValueCount: 1,
 			PClearValues:    clearValues,
@@ -7172,6 +7177,7 @@ func (r *Renderer_VK) EndFrame() {
 	vk.CmdBindDescriptorSets(r.commandBuffers[0], vk.PipelineBindPointGraphics, r.postProcessingProgram.pipelineLayout, 0, 1, []vk.DescriptorSet{r.renderTargets[(len(r.postProcessingProgram.pipelines)+1)%2].descriptorSet}, 0, nil)
 
 	x, y, width, height := sys.window.GetScaledViewportSize()
+	clip := sys.window.GetPresentationScissor()
 	viewports := []vk.Viewport{{
 		MinDepth: 0.0,
 		MaxDepth: 1.0,
@@ -7182,10 +7188,10 @@ func (r *Renderer_VK) EndFrame() {
 	}}
 	scissor := vk.Rect2D{
 		Offset: vk.Offset2D{
-			X: 0,
-			Y: 0,
+			X: clip[0],
+			Y: clip[1],
 		},
-		Extent: r.swapchains[0].extent,
+		Extent: vk.Extent2D{Width: uint32(clip[2]), Height: uint32(clip[3])},
 	}
 	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
 	scissors := []vk.Rect2D{scissor}
@@ -7425,8 +7431,8 @@ func (r *Renderer_VK) prepareModelPipeline(bufferIndex uint32, env *Environment)
 				X: 0, Y: 0,
 			},
 			Extent: vk.Extent2D{
-				Width:  uint32(sys.scrrect[2]),
-				Height: uint32(sys.scrrect[3]),
+				Width:  uint32(sys.renderTargetRect[2]),
+				Height: uint32(sys.renderTargetRect[3]),
 			},
 		},
 		BaseArrayLayer: 0,
@@ -7570,9 +7576,10 @@ func (r *Renderer_VK) ReadPixels(data []uint8, width, height int) {
 			BaseArrayLayer: 0,
 			LayerCount:     1,
 		},
+		// The viewport can start and end between pixels; the blit needs whole ones.
 		DstOffsets: [2]vk.Offset3D{
-			{X: x, Y: y, Z: 0},
-			{X: x + viewportWidth, Y: y + viewportHeight, Z: 1},
+			{X: int32(math.Round(float64(x))), Y: int32(math.Round(float64(y))), Z: 0},
+			{X: int32(math.Round(float64(x + viewportWidth))), Y: int32(math.Round(float64(y + viewportHeight))), Z: 1},
 		},
 	}}
 	vk.CmdBlitImage(cmd, r.renderTargets[(len(r.postProcessingProgram.pipelines)+1)%2].texture.img, vk.ImageLayoutTransferSrcOptimal, intermediateImg, vk.ImageLayoutTransferDstOptimal, uint32(len(imageBlits)), imageBlits, vk.FilterNearest)
@@ -7653,7 +7660,19 @@ func (r *Renderer_VK) FinishScreenshot(data []uint8, width, height int) bool {
 	return true
 }
 
+func (r *Renderer_VK) SetViewport(x, y, width, height int32) {
+	if !r.frameOpen {
+		return
+	}
+	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, []vk.Viewport{{
+		MinDepth: 0, MaxDepth: 1,
+		X: float32(x), Y: float32(y), Width: float32(width), Height: float32(height),
+	}})
+}
+
 func (r *Renderer_VK) EnableScissor(x, y, width, height int32) {
+	rect := sys.viewportScissor([4]int32{x, y, width, height})
+	x, y, width, height = rect[0], rect[1], rect[2], rect[3]
 	if x < 0 {
 		width += x
 		x = 0
@@ -7681,8 +7700,8 @@ func (r *Renderer_VK) DisableScissor() {
 			Y: 0,
 		},
 		Extent: vk.Extent2D{
-			Width:  uint32(sys.scrrect[2]),
-			Height: uint32(sys.scrrect[3]),
+			Width:  uint32(sys.renderTargetRect[2]),
+			Height: uint32(sys.renderTargetRect[3]),
 		},
 	}
 }
@@ -8550,16 +8569,9 @@ func (r *Renderer_VK) RenderQuadSetup() uint32 {
 		r.FlushDescriptors(targetProgram, r.commandBuffers[0], descriptorWrites, switchedProgram)
 	}
 
-	viewports := []vk.Viewport{{
-		MinDepth: 0.0,
-		MaxDepth: 1.0,
-		X:        0,
-		Y:        0,
-		Width:    float32(sys.scrrect[2]),
-		Height:   float32(sys.scrrect[3]),
-	}}
+	viewport := sys.currentDrawViewport()
 	scissors := []vk.Rect2D{r.VKState.scissor}
-	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
+	r.SetViewport(viewport[0], viewport[1], viewport[2], viewport[3])
 	vk.CmdSetScissor(r.commandBuffers[0], 0, 1, scissors)
 
 	//vk.CmdDraw(r.commandBuffers[0], 4, 1, uint32(r.vertexBufferOffset%r.vertexBuffers[0].size)/16-4, 0)
@@ -8879,25 +8891,18 @@ func (r *Renderer_VK) RenderElements(mode PrimitiveMode, count, offset int) {
 	if len(descriptorWrites) > 0 {
 		r.FlushDescriptors(r.modelProgram, r.commandBuffers[0], descriptorWrites, switchedProgram)
 	}
-	viewports := []vk.Viewport{{
-		MinDepth: 0.0,
-		MaxDepth: 1.0,
-		X:        0,
-		Y:        0,
-		Width:    float32(sys.scrrect[2]),
-		Height:   float32(sys.scrrect[3]),
-	}}
+	viewport := sys.currentDrawViewport()
 	scissors := []vk.Rect2D{{
 		Offset: vk.Offset2D{
-			X: 0,
-			Y: 0,
+			X: viewport[0],
+			Y: viewport[1],
 		},
 		Extent: vk.Extent2D{
-			Width:  uint32(sys.scrrect[2]),
-			Height: uint32(sys.scrrect[3]),
+			Width:  uint32(viewport[2]),
+			Height: uint32(viewport[3]),
 		},
 	}}
-	vk.CmdSetViewport(r.commandBuffers[0], 0, 1, viewports)
+	r.SetViewport(viewport[0], viewport[1], viewport[2], viewport[3])
 	vk.CmdSetScissor(r.commandBuffers[0], 0, 1, scissors)
 
 	vk.CmdDrawIndexed(r.commandBuffers[0], uint32(count), 1, uint32(offset/4), 0, 0)
@@ -10361,9 +10366,9 @@ func (r *Renderer_VK) ResolveBackBuffer() Texture {
 	} else {
 		blit := []vk.ImageBlit{{
 			SrcSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
-			SrcOffsets:     [2]vk.Offset3D{{X: 0, Y: 0, Z: 0}, {X: int32(sys.scrrect[2]), Y: int32(sys.scrrect[3]), Z: 1}},
+			SrcOffsets:     [2]vk.Offset3D{{X: 0, Y: 0, Z: 0}, {X: int32(sys.renderTargetRect[2]), Y: int32(sys.renderTargetRect[3]), Z: 1}},
 			DstSubresource: vk.ImageSubresourceLayers{AspectMask: vk.ImageAspectFlags(vk.ImageAspectColorBit), LayerCount: 1},
-			DstOffsets:     [2]vk.Offset3D{{X: 0, Y: 0, Z: 0}, {X: int32(sys.scrrect[2]), Y: int32(sys.scrrect[3]), Z: 1}},
+			DstOffsets:     [2]vk.Offset3D{{X: 0, Y: 0, Z: 0}, {X: int32(sys.renderTargetRect[2]), Y: int32(sys.renderTargetRect[3]), Z: 1}},
 		}}
 		vk.CmdBlitImage(cmd, r.mainRenderTarget.texture.img, vk.ImageLayoutTransferSrcOptimal, r.grabTexture.img, vk.ImageLayoutTransferDstOptimal, 1, blit, vk.FilterNearest)
 
@@ -10404,7 +10409,7 @@ func (r *Renderer_VK) ResolveBackBuffer() Texture {
 			vk.NewClearValue([]float32{0.0, 0.0, 0.0, 1.0}), // Attachment 0: Color (RGBA)
 			vk.NewClearDepthStencil(1.0, 0),                 // Attachment 1: Depth (1.0) & Stencil (0)
 		},
-		RenderArea: vk.Rect2D{Offset: vk.Offset2D{X: 0, Y: 0}, Extent: vk.Extent2D{Width: uint32(sys.scrrect[2]), Height: uint32(sys.scrrect[3])}},
+		RenderArea: vk.Rect2D{Offset: vk.Offset2D{X: 0, Y: 0}, Extent: vk.Extent2D{Width: uint32(sys.renderTargetRect[2]), Height: uint32(sys.renderTargetRect[3])}},
 	}
 	vk.CmdBeginRenderPass(cmd, &renderPassBeginInfo, vk.SubpassContentsInline)
 
