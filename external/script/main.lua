@@ -2217,6 +2217,7 @@ function main.f_default()
 	main.rankingCondition = false -- if winning (clearing) whole mode is needed for rankings to be saved
 	main.resetScore = false -- if loosing should set score for the next match to lose count
 	main.versusCpu = false -- if one human side is enough in versus, the CPU takes the other
+	main.versusRematch = false -- if versus stats and the rematch menu should follow the victory screen
 	main.rotationChars = false -- flags modes where gameOption('Arcade.AI.SurvivalColor') should be used instead of gameOption('Arcade.AI.RandomColor')
 	main.roundTime = gameOption('Options.Time') -- sets round time
 	main.selectMenu = {true, false} -- which team side should be allowed to select players
@@ -2347,6 +2348,7 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
+		main.versusRematch = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.freebattle)
 		setGameMode('freebattle')
 		hook.run("main.t_itemname", t, item)
@@ -2479,6 +2481,7 @@ main.t_itemname = {
 		main.teamMenu[2].single = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
+		main.versusRematch = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.netplayversus)
 		setGameMode('netplayversus')
 		setHomeTeam(1)
@@ -2783,6 +2786,7 @@ main.t_itemname = {
 			setGameMode('challenger')
 		else
 			main.versusCpu = true
+			main.versusRematch = true
 			setGameMode('versus')
 		end
 		setHomeTeam(1)
@@ -2812,6 +2816,7 @@ main.t_itemname = {
 		main.teamMenu[2].simul = true
 		main.teamMenu[2].tag = true
 		main.teamMenu[2].turns = true
+		main.versusRematch = true
 		textImgSetText(motif.select_info.title.TextSpriteData, motif.select_info.title.text.versuscoop)
 		setGameMode('versuscoop')
 		setHomeTeam(1)
@@ -4138,11 +4143,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		visible = #t
 	end
 
-	if not skipClear then
+	-- A menu without a background draws over the current screen.
+	if bg ~= nil and not skipClear then
 		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
 	end
 	-- draw layerno = 0 backgrounds
-	if not opts.skipBG0 then
+	if bg ~= nil and not opts.skipBG0 then
 		bgDraw(bg.BGDef, 0)
 	end
 
@@ -4286,7 +4292,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(motif.attract_mode.credits.TextSpriteData)
 	end
 	-- draw layerno = 1 backgrounds
-	if not opts.skipBG1 then
+	if bg ~= nil and not opts.skipBG1 then
 		bgDraw(bg.BGDef, 1)
 	end
 	-- draw footer
