@@ -239,46 +239,50 @@ func (w *Window) ResizeWindowed(width, height int) {
 	}
 }
 
-// Calculates a position and size for the viewport to fill the window while centered (see render_gl.go)
-// Returns x, y, width, height respectively
-func (w *Window) GetScaledViewportSize() (int32, int32, int32, int32) {
-	winWidth, winHeight := w.GetDrawablePixelSize() //w.GetSize()
-
-	// If aspect ratio should not be kept, just return full window
-	if !sys.cfg.Video.KeepAspect {
-		return 0, 0, int32(winWidth), int32(winHeight)
+// Where the render target appears in the window, scaled to fit.
+func (w *Window) GetScaledViewportSize() (float32, float32, float32, float32) {
+	winWidth, winHeight := w.GetDrawablePixelSize()
+	if !sys.cfg.Video.KeepAspect || winWidth <= 0 || winHeight <= 0 {
+		return 0, 0, float32(winWidth), float32(winHeight)
 	}
-
-	var x, y, resizedWidth, resizedHeight int32 = 0, 0, int32(winWidth), int32(winHeight)
-
-	// Select stage or default aspect ratio
-	aspectGame := sys.getCurrentAspect()
-	aspectWindow := float32(winWidth) / float32(winHeight)
-
-	// Keep aspect ratio
-	if aspectWindow > aspectGame {
-		// Window is wider: black bars on sides
-		resizedHeight = int32(winHeight)
-		resizedWidth = int32(float32(resizedHeight) * aspectGame)
-		x = (int32(winWidth) - resizedWidth) / 2
-		y = 0
-	} else {
-		// Window is taller: black bars on top and bottom
-		resizedWidth = int32(winWidth)
-		resizedHeight = int32(float32(resizedWidth) / aspectGame)
-		x = 0
-		y = (int32(winHeight) - resizedHeight) / 2
-	}
-
-	return x, y, resizedWidth, resizedHeight
+	target := sys.renderTargetRect
+	view := sys.renderTargetView
+	scale := math.Min(float64(winWidth)/view[0], float64(winHeight)/view[1])
+	width, height := float64(target[2])*scale, float64(target[3])*scale
+	// Keep fractions: rounding would break exact pixel scaling (e.g. 3x at 720p).
+	return float32((float64(winWidth) - width) / 2), float32((float64(winHeight) - height) / 2),
+		float32(width), float32(height)
 }
 
-// Convert drawable pixels to SDL window coordinates for the IME candidate window.
+// The final image is clipped to this area so shaders and fades leave the black bars alone.
+func (w *Window) GetPresentationScissor() [4]int32 {
+	x, y, width, height := w.GetScaledViewportSize()
+	rect := sys.compositionViewport()
+	target := sys.renderTargetRect
+	sx, sy := float64(width)/float64(target[2]), float64(height)/float64(target[3])
+	x1 := int32(math.Round(float64(x) + float64(rect[0])*sx))
+	y1 := int32(math.Round(float64(y) + float64(rect[1])*sy))
+	x2 := int32(math.Round(float64(x) + float64(rect[0]+rect[2])*sx))
+	y2 := int32(math.Round(float64(y) + float64(rect[1]+rect[3])*sy))
+	dw, dh := w.GetDrawablePixelSize()
+	return intersectRect([4]int32{x1, y1, x2 - x1, y2 - y1}, [4]int32{0, 0, dw, dh})
+}
+
+// Tell SDL where the text box is on screen, so the IME candidate window appears next to it.
 func (w *Window) SetTextInputRect(bounds [4]int32) {
 	width, height := w.Window.GetSize()
-	sx := float32(width) / float32(sys.scrrect[2])
-	sy := float32(height) / float32(sys.scrrect[3])
-	sdl.SetTextInputRect(&sdl.Rect{X: int32(float32(bounds[0]) * sx), Y: int32(float32(bounds[1]) * sy),
+	dw, dh := w.GetDrawablePixelSize()
+	vx, vy, vw, vh := w.GetScaledViewportSize()
+	if dw <= 0 || dh <= 0 || vw <= 0 || vh <= 0 {
+		return
+	}
+	bounds = sys.viewportScissor(bounds)
+	sx := float32(width) / float32(dw)
+	sy := float32(height) / float32(dh)
+	x, y := float32(vx)*sx, float32(vy)*sy
+	sx *= float32(vw) / float32(sys.renderTargetRect[2])
+	sy *= float32(vh) / float32(sys.renderTargetRect[3])
+	sdl.SetTextInputRect(&sdl.Rect{X: int32(x + float32(bounds[0])*sx), Y: int32(y + float32(bounds[1])*sy),
 		W: int32(float32(bounds[2]) * sx), H: int32(float32(bounds[3]) * sy)})
 }
 
