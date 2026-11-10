@@ -1151,6 +1151,45 @@ type ResultsScreenProperties struct {
 	Hint HintProperties          `ini:"hint"`
 }
 
+type MappingControlProperties struct {
+	AnimationProperties
+	Active AnimationProperties `ini:"active"`
+}
+
+type MappingInfoProperties struct {
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		TextProperties
+		Uppercase bool `ini:"uppercase"`
+	} `ini:"title"`
+	Hint    HintProperties                       `ini:"hint"`
+	Bg      AnimationProperties                  `ini:"bg"`
+	Control map[string]*MappingControlProperties `ini:"control"`
+	Prompt  TextMapProperties                    `ini:"prompt"`
+	Move    struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd    [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Clear struct {
+		Action []string `ini:"action"`
+	} `ini:"clear"`
+	Next struct {
+		Action []string `ini:"action"`
+	} `ini:"next"`
+	Previous struct {
+		Action []string `ini:"action"`
+	} `ini:"previous"`
+	HoldTime int32            `ini:"holdtime" default:"60"`
+}
+
 type OptionInfoProperties struct {
 	FadeIn  FadeProperties `ini:"fadein"`
 	FadeOut FadeProperties `ini:"fadeout"`
@@ -1528,6 +1567,10 @@ type Motif struct {
 	ResultsBgDef    map[string]*BgDefProperties         `ini:"map:^(?i).+resultsbgdef$" lua:"resultsbgdef"`
 	OptionInfo      OptionInfoProperties                `ini:"option_info"`
 	OptionBgDef     BgDefProperties                     `ini:"optionbgdef"`
+	MappingInfo     MappingInfoProperties               `ini:"mapping_info" sff:"GlyphsSff"`
+	MappingBgDef    BgDefProperties                     `ini:"mappingbgdef"`
+	SetupInfo       MappingInfoProperties               `ini:"setup_info" sff:"GlyphsSff"`
+	SetupBgDef      BgDefProperties                     `ini:"setupbgdef"`
 	ReplayInfo      ReplayInfoProperties                `ini:"replay_info"`
 	ReplayBgDef     BgDefProperties                     `ini:"replaybgdef"`
 	PauseMenu       map[string]*MenuInfoProperties      `ini:"map:^(?i).*pause.*menu$" lua:"pause_menu"`
@@ -2673,6 +2716,25 @@ func (m *Motif) overrideParams() {
 			}
 		}
 	}
+	// Active control art in [Mapping Info] and [Setup Info] inherits the released art
+	for _, sec := range []string{"Mapping Info", "Setup Info"} {
+		names := map[string]bool{}
+		for _, f := range []*ini.File{m.DefaultOnlyIni, m.UserIniFile} {
+			if f == nil {
+				continue
+			}
+			if s, err := f.GetSection(sec); err == nil {
+				for _, k := range s.Keys() {
+					if parts := strings.SplitN(strings.ToLower(k.Name()), ".", 3); len(parts) == 3 && parts[0] == "control" {
+						names[parts[1]] = true
+					}
+				}
+			}
+		}
+		for name := range names {
+			specs = append(specs, InheritSpec{SrcSec: sec, SrcPrefix: "control." + name + ".", DstSec: sec, DstPrefix: "control." + name + ".active."})
+		}
+	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
 	for _, sec := range m.customPauseMenuSections() {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
@@ -2904,6 +2966,16 @@ func (m *Motif) loadFiles() {
 	}
 
 	m.loadBgDefProperties(&m.OptionBgDef, "optionbg", m.Files.Spr)
+	if _, err := m.UserIniFile.GetSection("MappingBgDef"); err == nil {
+		m.loadBgDefProperties(&m.MappingBgDef, "mappingbg", m.Files.Spr)
+	} else {
+		m.MappingBgDef = m.OptionBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SetupBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SetupBgDef, "setupbg", m.Files.Spr)
+	} else {
+		m.SetupBgDef = m.OptionBgDef
+	}
 	if _, err := m.UserIniFile.GetSection("ReplayBgDef"); err == nil {
 		m.loadBgDefProperties(&m.ReplayBgDef, "replaybg", m.Files.Spr)
 	} else {
