@@ -980,6 +980,81 @@ func actionTokens(l *lua.LState) []string {
 	return tokens
 }
 
+// Reads a batchDraw item, for drawing and for mouse hits.
+func luaDrawAnim(item *lua.LTable) *Anim {
+	luaAnim := item.RawGetString("anim")
+	ud, ok := luaAnim.(*lua.LUserData)
+	if !ok {
+		return nil
+	}
+
+	anim, ok := ud.Value.(*Anim)
+	if !ok {
+		return nil
+	}
+
+	x := float32(lua.LVAsNumber(item.RawGetString("x")))
+	y := float32(lua.LVAsNumber(item.RawGetString("y")))
+	facing := float32(lua.LVAsNumber(item.RawGetString("facing")))
+
+	aSnap := *anim
+	aSnap.SetPos(anim.offsetInit[0], anim.offsetInit[1])
+	aSnap.AddPos(x, y)
+	aSnap.facing = facing
+
+	if v := item.RawGetString("scale"); v.Type() == lua.LTTable {
+		sTbl := v.(*lua.LTable)
+		sclX := float32(lua.LVAsNumber(sTbl.RawGetInt(1)))
+		sclY := float32(lua.LVAsNumber(sTbl.RawGetInt(2)))
+		if sclX != 0 || sclY != 0 {
+			(&aSnap).SetScale(sclX, sclY)
+		}
+	}
+
+	if v := item.RawGetString("xshear"); v != lua.LNil {
+		aSnap.xshear = float32(lua.LVAsNumber(v))
+	}
+
+	if v := item.RawGetString("angle"); v != lua.LNil {
+		aSnap.rot.angle = float32(lua.LVAsNumber(v))
+	}
+	if v := item.RawGetString("xangle"); v != lua.LNil {
+		aSnap.rot.xangle = float32(lua.LVAsNumber(v))
+	}
+	if v := item.RawGetString("yangle"); v != lua.LNil {
+		aSnap.rot.yangle = float32(lua.LVAsNumber(v))
+	}
+
+	if v := item.RawGetString("projection"); v != lua.LNil {
+		switch v.Type() {
+		case lua.LTNumber:
+			aSnap.projection = int32(lua.LVAsNumber(v))
+		case lua.LTString:
+			switch strings.ToLower(strings.TrimSpace(v.String())) {
+			case "orthographic":
+				aSnap.projection = int32(Projection_Orthographic)
+			case "perspective":
+				aSnap.projection = int32(Projection_Perspective)
+			case "perspective2":
+				aSnap.projection = int32(Projection_Perspective2)
+			}
+		}
+	}
+
+	if v := item.RawGetString("focallength"); v != lua.LNil {
+		aSnap.fLength = float32(lua.LVAsNumber(v))
+	}
+
+	layerVal := item.RawGetString("layerno")
+	layer := aSnap.layerno
+	if layerVal != lua.LNil {
+		layer = int16(lua.LVAsNumber(layerVal))
+	}
+
+	aSnap.layerno = layer
+	return &aSnap
+}
+
 func luaRandom(l *lua.LState, next func() int32) int {
 	r := float64(next())
 	if nilArg(l, 1) {
@@ -1252,7 +1327,9 @@ func systemScriptInit(l *lua.LState) {
 		/*Queue drawing of an animation on a render layer.
 		@function animDraw
 		@tparam Anim anim Animation userdata.
-		@tparam[opt] int16 layer Render layer index; if omitted, the animation's own `layerno` is used.*/
+		@tparam[opt] int16 layer Render layer index; if omitted, the animation's own `layerno` is used.
+		@tparam[opt=false] boolean capture Return the drawn state, for `mouseOver`.
+		@treturn Anim|nil drawn The animation as drawn, when capture is `true`.*/
 		a, ok := toUserData(l, 1).(*Anim)
 		if !ok {
 			userDataError(l, 1, a)
@@ -1273,6 +1350,10 @@ func systemScriptInit(l *lua.LState) {
 			aSnap.anim.transType, aSnap.anim.srcAlpha, aSnap.anim.dstAlpha = transType, srcAlpha, dstAlpha
 			(&aSnap).Draw(layerLocal)
 		})
+		if !nilArg(l, 3) && boolArg(l, 3) {
+			l.Push(newUserData(l, &aSnap))
+			return 1
+		}
 		return 0
 	})
 	luaRegister(l, "animGetLength", func(*lua.LState) int {
@@ -2189,79 +2270,14 @@ func systemScriptInit(l *lua.LState) {
 				return
 			}
 
-			luaAnim := item.RawGetString("anim")
-			ud, ok := luaAnim.(*lua.LUserData)
-			if !ok {
+			aSnap := luaDrawAnim(item)
+			if aSnap == nil {
 				return
 			}
-
-			anim, ok := ud.Value.(*Anim)
-			if !ok {
-				return
-			}
-
-			x := float32(lua.LVAsNumber(item.RawGetString("x")))
-			y := float32(lua.LVAsNumber(item.RawGetString("y")))
-			facing := float32(lua.LVAsNumber(item.RawGetString("facing")))
-
-			anim.SetPos(anim.offsetInit[0], anim.offsetInit[1])
-			anim.AddPos(x, y)
-			anim.facing = facing
-
-			aSnap := *anim
-
-			if v := item.RawGetString("scale"); v.Type() == lua.LTTable {
-				sTbl := v.(*lua.LTable)
-				sclX := float32(lua.LVAsNumber(sTbl.RawGetInt(1)))
-				sclY := float32(lua.LVAsNumber(sTbl.RawGetInt(2)))
-				if sclX != 0 || sclY != 0 {
-					(&aSnap).SetScale(sclX, sclY)
-				}
-			}
-
-			if v := item.RawGetString("xshear"); v != lua.LNil {
-				aSnap.xshear = float32(lua.LVAsNumber(v))
-			}
-
-			if v := item.RawGetString("angle"); v != lua.LNil {
-				aSnap.rot.angle = float32(lua.LVAsNumber(v))
-			}
-			if v := item.RawGetString("xangle"); v != lua.LNil {
-				aSnap.rot.xangle = float32(lua.LVAsNumber(v))
-			}
-			if v := item.RawGetString("yangle"); v != lua.LNil {
-				aSnap.rot.yangle = float32(lua.LVAsNumber(v))
-			}
-
-			if v := item.RawGetString("projection"); v != lua.LNil {
-				switch v.Type() {
-				case lua.LTNumber:
-					aSnap.projection = int32(lua.LVAsNumber(v))
-				case lua.LTString:
-					switch strings.ToLower(strings.TrimSpace(v.String())) {
-					case "orthographic":
-						aSnap.projection = int32(Projection_Orthographic)
-					case "perspective":
-						aSnap.projection = int32(Projection_Perspective)
-					case "perspective2":
-						aSnap.projection = int32(Projection_Perspective2)
-					}
-				}
-			}
-
-			if v := item.RawGetString("focallength"); v != lua.LNil {
-				aSnap.fLength = float32(lua.LVAsNumber(v))
-			}
-
-			layerVal := item.RawGetString("layerno")
 			layer := aSnap.layerno
-			if layerVal != lua.LNil {
-				layer = int16(lua.LVAsNumber(layerVal))
-			}
-
 			layerLocal := layer
 			sys.luaQueueLayerDraw(int(layerLocal), func() {
-				(&aSnap).Draw(layerLocal)
+				aSnap.Draw(layerLocal)
 			})
 		})
 		return 0
@@ -3472,6 +3488,11 @@ func systemScriptInit(l *lua.LState) {
 				sys.consoleText = []string{}
 				sys.stageLoopNo = 0
 				sys.paused = false
+				// A match can end before its pause menu finishes closing.
+				sys.menuPlayer = 0
+				if sys.motif.me.active {
+					sys.motif.me.reset(&sys.motif)
+				}
 				sys.uiFrameCounter++
 				sys.gameRunning = false
 				sys.clearSpriteData()
@@ -4249,7 +4270,8 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "inputDeviceAction", func(l *lua.LState) int {
 		/*Check whether a motif action was pressed on one device this frame, whether
-		  or not the device has a player yet. KEY: tokens only count for keyboard controllers.
+		  or not the device has a player yet. KEY: tokens only count for keyboard controllers,
+		  MOUSE: tokens for the device that shows the hints.
 		@function inputDeviceAction
 		@tparam int deviceId Device ID.
 		@tparam table action Action tokens, usually a motif `.action` value.
@@ -4266,6 +4288,10 @@ func systemScriptInit(l *lua.LState) {
 		}
 		pressed := false
 		for _, token := range action {
+			// Screens read every device in turn; the mouse acts for the one in use.
+			if _, ok := actionMouse(token); ok && !sys.mouseDevice(device) {
+				continue
+			}
 			if sys.deviceActionTime(device, []string{token}) == 1 {
 				pressed = true
 				break
@@ -4369,7 +4395,8 @@ func systemScriptInit(l *lua.LState) {
 		return 2
 	})
 	luaRegister(l, "inputGetGlyphPack", func(l *lua.LState) int {
-		/*Return the glyph pack a device currently uses.
+		/*Return the glyph pack hints use for a device: `"mouse"` while the mouse is in
+		  use, else the device's own pack.
 		@function inputGetGlyphPack
 		@tparam[opt=0] int deviceId Device ID, or `0` for the device the UI shows glyphs for.
 		@treturn string pack Glyph pack name, for example `"ps5"`, or an empty string without a device.*/
@@ -4377,12 +4404,7 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 1) {
 			id = int(numArg(l, 1))
 		}
-		device := sys.glyphDevice(id)
-		if device == nil {
-			l.Push(lua.LString(""))
-			return 1
-		}
-		l.Push(lua.LString(input.GlyphPack(device, &sys.motif.ControllerGlyphs)))
+		l.Push(lua.LString(sys.hintGlyphPack(sys.glyphDevice(id))))
 		return 1
 	})
 	luaRegister(l, "inputGetGlyphPacks", func(l *lua.LState) int {
@@ -4837,6 +4859,13 @@ func systemScriptInit(l *lua.LState) {
 		@treturn boolean success `false` if the device or setup is unknown.*/
 		l.Push(lua.LBool(sys.setDeviceSetup(int(numArg(l, 1)), strArg(l, 2))))
 		return 1
+	})
+	luaRegister(l, "inputSetGlyphDevice", func(l *lua.LState) int {
+		/*Make a device the one hints show and the mouse acts for, as if it was used last.
+		@function inputSetGlyphDevice
+		@tparam int deviceId Device ID.*/
+		sys.noteGlyphInput(int(numArg(l, 1)))
+		return 0
 	})
 	luaRegister(l, "inputSetGlyphPack", func(l *lua.LState) int {
 		/*Choose the glyph pack of a device. Saved right away.
@@ -5994,6 +6023,152 @@ func systemScriptInit(l *lua.LState) {
 		}
 		l.RaiseError("\nmodifyStoryboard: %v\n", err.Error())
 		return 0
+	})
+	luaRegister(l, "mouseActive", func(l *lua.LState) int {
+		/*Whether the mouse was the last UI input used.
+		@function mouseActive
+		@treturn boolean active*/
+		sys.pollDevices()
+		l.Push(lua.LBool(sys.mouse.enabled() && sys.mouse.active))
+		return 1
+	})
+	luaRegister(l, "mouseMoved", func(l *lua.LState) int {
+		/*Whether the pointer moved this frame, so menus can follow it.
+		@function mouseMoved
+		@treturn boolean moved*/
+		sys.pollDevices()
+		l.Push(lua.LBool(sys.mouse.enabled() && sys.mouse.moved))
+		return 1
+	})
+	luaRegister(l, "mouseOver", func(l *lua.LState) int {
+		/*Check whether the pointer is over a UI element or rectangle.
+		  For a rectangle, all six numbers are required: `left, top, right, bottom, width, height`.
+		@function mouseOver
+		@tparam Rect|Anim|TextSprite|table|number target Element or `batchDraw` item, or the rectangle's left X coordinate.
+		@tparam[opt] boolean|float32 arg2 Numbers: top Y coordinate. Anim/draw item: `true` ignores transparent pixels (default `false`).
+		  Rect: replacement left X; supply all four edges together, or omit them to use its current bounds.
+		@tparam[opt] float32 arg3 Numbers: right X coordinate, not width. Rect: replacement top Y.
+		@tparam[opt] float32 arg4 Numbers: bottom Y coordinate, not height. Rect: replacement right X.
+		@tparam[opt] float32 arg5 Numbers: drawing localcoord width, e.g. `1280`. Rect: replacement bottom Y.
+		@tparam[opt] TextSprite|float32 arg6 Numbers: drawing localcoord height, e.g. `720`; no conversion to 320x240 is needed.
+		  Rect: a TextSprite whose window limits the hit area.
+		@treturn boolean inside `true` if the pointer is over the target.*/
+		previous := sys.captureAspectState()
+		if sys.shouldComposeFullResolution() || sys.textInput.active {
+			sys.restoreAspectState(sys.motifAspectState())
+		}
+		defer sys.restoreAspectState(previous)
+		inside := false
+		if ud, ok := l.Get(1).(*lua.LUserData); ok {
+			switch v := ud.Value.(type) {
+			case *Rect:
+				r := *v
+				if !nilArg(l, 2) {
+					r.SetWindow([4]float32{float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4)), float32(numArg(l, 5))})
+				}
+				inside = sys.mouse.over(r.drawWindow())
+				if clip, ok := l.Get(6).(*lua.LUserData); ok {
+					if ts, ok := clip.Value.(*TextSprite); ok {
+						inside = inside && sys.mouse.over(ts.drawWindow())
+					}
+				}
+			case *Anim:
+				inside = sys.mouse.overAnim(v, !nilArg(l, 2) && boolArg(l, 2))
+			case *TextSprite:
+				inside = sys.mouse.overText(v)
+			}
+		} else if item, ok := l.Get(1).(*lua.LTable); ok {
+			inside = sys.mouse.overAnim(luaDrawAnim(item), !nilArg(l, 2) && boolArg(l, 2))
+		} else if !nilArg(l, 1) {
+			r := NewRect()
+			r.SetLocalcoord(float32(numArg(l, 5)), float32(numArg(l, 6)))
+			r.SetWindow([4]float32{float32(numArg(l, 1)), float32(numArg(l, 2)), float32(numArg(l, 3)), float32(numArg(l, 4))})
+			inside = sys.mouse.over(r.drawWindow())
+		}
+		l.Push(lua.LBool(inside))
+		return 1
+	})
+	luaRegister(l, "mousePress", func(l *lua.LState) int {
+		/*Trigger a menu action for this frame.
+		  The next `getAction` call with the same action tokens returns `true`.
+		@function mousePress
+		@tparam number players 1-based player slot, or `-1` for any slot.
+		@tparam table action Action tokens, usually a motif `.action` value.*/
+		players := actionPlayers(l)
+		player := -1
+		if len(players) == 1 {
+			player = players[0]
+		}
+		action := actionTokens(l)
+		if !sys.synchronizedInput() {
+			sys.mouse.pressAction(action, player)
+		} else {
+			if len(players) == 1 && players[0] == -1 {
+				players = sys.mouseSlots(-1)
+			}
+			for _, slot := range players {
+				if mouse := sys.mouseForSlot(slot); mouse != nil {
+					mouse.pressAction(action, slot)
+				}
+			}
+		}
+		return 0
+	})
+	luaRegister(l, "mouseSync", func(l *lua.LState) int {
+		/*Share what the mouse points at, so both netplay peers act on the same target.
+		  Outside netplay the local target is returned as is.
+		@function mouseSync
+		@tparam string context Name of the screen or list the target belongs to.
+		@tparam int target Control ID from 1 to 16777215, or `0` when the pointer is over no control.
+		@tparam[opt=-1] int player Player slot starting at 1, or `-1` for the current menu's players.
+		@treturn int target The shared target, or `0` for none.
+		@treturn boolean moved `true` if the pointer moved this frame.
+		@treturn int player 1-based player slot of the pointer, `-1` outside netplay, `0` for none.*/
+		player := -1
+		if !nilArg(l, 3) {
+			player = int(numArg(l, 3))
+		}
+		target := numArg(l, 2)
+		if math.IsNaN(target) || target < 0 || target > menuMouseMaxTarget || target != math.Trunc(target) {
+			l.RaiseError("mouseSync target must be an integer from 0 to %d", menuMouseMaxTarget)
+			return 0
+		}
+		value, moved, owner := sys.syncMouse(strArg(l, 1), uint32(target), sys.mouseSlots(player))
+		l.Push(lua.LNumber(value))
+		l.Push(lua.LBool(moved))
+		l.Push(lua.LNumber(owner))
+		return 3
+	})
+	luaRegister(l, "mouseTake", func(l *lua.LState) int {
+		/*Check for a new mouse press and consume it so another control cannot use it.
+		@function mouseTake
+		@tparam table action Mouse inputs, e.g. `{'MOUSE:LEFT'}`, or a motif `.action` table. Other inputs are ignored.
+		@tparam[opt=-1] int player Player returned by `mouseSync` or `main.f_mouseSync`; `-1` checks the current menu's players.
+		@treturn boolean pressed `true` if one of the listed mouse inputs was pressed this frame.*/
+		var action []string
+		tableArg(l, 1).ForEach(func(_ lua.LValue, v lua.LValue) {
+			action = append(action, lua.LVAsString(v))
+		})
+		player := -1
+		if !nilArg(l, 2) {
+			player = int(numArg(l, 2))
+		}
+		taken := false
+		if player == 0 {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		if !sys.synchronizedInput() {
+			taken = sys.mouse.take(action)
+		} else {
+			for _, slot := range sys.mouseSlots(player) {
+				if mouse := sys.mouseForSlot(slot); mouse != nil {
+					taken = mouse.take(action) || taken
+				}
+			}
+		}
+		l.Push(lua.LBool(taken))
+		return 1
 	})
 	luaRegister(l, "netPlay", func(*lua.LState) int {
 		/*Check whether the current session is running in netplay mode.

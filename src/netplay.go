@@ -754,9 +754,9 @@ func (nc *NetConnection) Synchronize() (err error) {
 		}
 	})
 
-	// Update delay-netplay state after sync. Skip rollback-entry samples;
-	// replay frames are appended later from the authoritative GGPO timeline.
-	nc.update(sys.rollback.session == nil)
+	// Only skip the sample before a rollback match. Lua menus consume this
+	// frame too, so their replays must include it.
+	nc.update(!sys.gameRunning || sys.rollback.session == nil)
 	if nc.st == NS_Error {
 		return Error("Netplay input synchronization failed or timed out")
 	}
@@ -1634,6 +1634,7 @@ func (s *System) beginSessionOverride(source string, strict, host []SyncSetting,
 		ContentFingerprint: contentFingerprint,
 	}
 	s.menuChannels = [MaxPlayerNo]MenuChannel{}
+	s.mousePacket = VirtualFrame{}
 	log.Printf("%s sync config override started: strict=%d host=%d fingerprint=%q",
 		strings.Title(source), len(strict), len(host), contentFingerprint)
 	logSyncVerification(strings.Title(source)+" host override verification", host, appliedHost)

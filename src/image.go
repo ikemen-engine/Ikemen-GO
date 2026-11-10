@@ -716,6 +716,7 @@ type Sprite struct {
 	PalTex       Texture
 	sffv1BasePal bool // SFFv1 sprite palette duplicates the base palette
 	textureAtlas *SpriteTextureAtlas
+	hitPixels    []byte // Palette indices, or one bit per visible pixel for true color
 }
 
 func (s *Sprite) isBlank() bool {
@@ -862,6 +863,7 @@ func (s *Sprite) shareCopy(src *Sprite) {
 		s.palidx = src.palidx
 	}
 	s.coldepth = src.coldepth
+	s.hitPixels = src.hitPixels
 
 	// We must defer copying the texture during the main thread
 	// Otherwise we can end up copying a nil texture over the good one or other race condition bugs
@@ -921,6 +923,8 @@ func (s *Sprite) SetPxl(px []byte) {
 	if int64(len(px)) != int64(s.Size[0])*int64(s.Size[1]) {
 		return
 	}
+	// Kept so mouse hits use the current palette.
+	s.hitPixels = px
 	sys.mainThreadTask <- func() {
 
 		if s.textureAtlas != nil && int32(s.Size[0]) < s.textureAtlas.textureSize/2 && int32(s.Size[1]) < s.textureAtlas.textureSize/2 {
@@ -948,12 +952,17 @@ func (s *Sprite) SetPxl(px []byte) {
 }
 
 func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth int32) {
+	s.hitPixels = nil
 	if sprDepth == 32 {
+		s.hitPixels = make([]byte, (len(data)/4+7)/8)
 		// Convert straight RGBA to premultiplied, which the renderer expects
 		// This also lets bilinear filtering blend sprite edges correctly
 		// Fully transparent pixels are zeroed so their RGB can't bleed into visible pixels
 		for i := 0; i+3 < len(data); i += 4 {
 			a := data[i+3]
+			if a != 0 {
+				s.hitPixels[i/32] |= 1 << uint(i/4%8)
+			}
 			if a == 255 {
 				continue
 			}
@@ -1003,6 +1012,36 @@ func (s *Sprite) SetRaw(data []byte, sprWidth int32, sprHeight int32, sprDepth i
 		}
 	}
 
+}
+
+// Whether the sprite has a visible pixel at this texture position.
+// Sprites without pixel data count as solid.
+func (s *Sprite) opaqueAt(u, v float32, pal []uint32) bool {
+	if len(s.hitPixels) == 0 {
+		return true
+	}
+	w, h := int(s.Tex.GetWidth()), int(s.Tex.GetHeight())
+	sample := func(x, y int) bool {
+		x, y = Max(0, Min(w-1, x)), Max(0, Min(h-1, y))
+		i := y*w + x
+		if s.coldepth <= 8 {
+			index := int(s.hitPixels[i])
+			return index < len(pal) && pal[index]>>24 != 0
+		}
+		return s.hitPixels[i/8]&(1<<uint(i%8)) != 0
+	}
+	x, y := float64(u)*float64(w), float64(v)*float64(h)
+	if !s.Tex.GetFilter() {
+		return sample(int(math.Floor(x)), int(math.Floor(y)))
+	}
+	// Smoothed sprites blend each pixel with its neighbors, so a visible neighbor counts.
+	x, y = x-0.5, y-0.5
+	x0, y0 := int(math.Floor(x)), int(math.Floor(y))
+	fx, fy := x-float64(x0), y-float64(y0)
+	return sample(x0, y0) ||
+		(fx > 0 && sample(x0+1, y0)) ||
+		(fy > 0 && sample(x0, y0+1)) ||
+		(fx > 0 && fy > 0 && sample(x0+1, y0+1))
 }
 
 func (s *Sprite) readHeader(r io.Reader, ofs, size *uint32, link *uint16) error {

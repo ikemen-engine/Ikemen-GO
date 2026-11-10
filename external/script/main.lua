@@ -38,6 +38,10 @@ function main.f_btnPalNo(p)
 	local sec = motif.select_info.palette
 	for i, token in ipairs(sec.action) do
 		if getActionTime(p, token) == 1 then
+			-- A mouse button picks the first palette.
+			if token:upper():find('^MOUSE:') then
+				i = 1
+			end
 			return getActionTime(p, sec.shift.action) > 0 and i + 6 or i
 		end
 	end
@@ -261,8 +265,8 @@ function hook.stop(list, name)
 	hook.lists[list][name] = nil
 end
 
---animDraw at specified coordinates
-function main.f_animPosDraw(a, x, y, f)
+-- animDraw at specified coordinates; capture returns the drawn state for mouseOver
+function main.f_animPosDraw(a, x, y, f, capture)
 	if a == nil then
 		return
 	end
@@ -273,8 +277,9 @@ function main.f_animPosDraw(a, x, y, f)
 	if f ~= nil then
 		animSetFacing(a, f)
 	end
-	animDraw(a)
+	local drawn = animDraw(a, nil, capture == true)
 	animUpdate(a)
+	return drawn
 end
 
 --copy table content into new table
@@ -3807,6 +3812,156 @@ local function f_tweenStep(val, target, factor)
 	return newVal
 end
 
+-- Mouse targets: a screen registers what can be clicked, records what the pointer is over and
+-- syncs once per frame. See main.f_menuMouse and start.f_selectMouse.
+local maxTargets = 2 ^ 24 - 1
+
+local function namePart(name)
+	return #name .. ':' .. name
+end
+
+function main.f_mouseContext(name, items)
+	local parts = {namePart(name)}
+	for _, item in ipairs(items) do
+		parts[#parts + 1] = namePart(item.paramname or item.itemname)
+	end
+	return table.concat(parts)
+end
+
+-- Clear this frame's targets while keeping the saved network IDs.
+function main.f_mouseReset(screen, context)
+	if screen == nil or screen.context ~= context then
+		screen = {context = context, wireContext = namePart(context), ids = {}, names = {}}
+	end
+	screen.targets, screen.hover, screen.priority = {}, nil, 0
+	screen.count, screen.changed = 0, false
+	return screen
+end
+
+-- Register targets on both peers, whether or not the local mouse is over them.
+function main.f_mouseAdd(screen, name, value)
+	assert(type(name) == 'string' and name ~= '' and value ~= nil, 'mouse target needs a name and value')
+	assert(screen.targets[name] == nil, 'duplicate mouse target: ' .. name)
+	screen.targets[name] = value
+	screen.count = screen.count + 1
+	screen.changed = screen.changed or screen.ids[name] == nil
+	return name
+end
+
+-- Higher priority wins. Later hits break ties.
+function main.f_mouseHit(screen, name, inside, priority)
+	priority = priority or 0
+	if inside and mouseActive() and (screen.hover == nil or priority >= screen.priority) then
+		screen.hover, screen.priority = name, priority
+	end
+end
+
+-- Sort names only when the target list changes, so both peers use the same IDs.
+function main.f_mouseSync(screen, player)
+	if screen.changed or screen.count ~= #screen.names then
+		assert(screen.count <= maxTargets, 'too many mouse targets')
+		screen.names, screen.ids = {}, {}
+		for name in pairs(screen.targets) do
+			screen.names[#screen.names + 1] = name
+		end
+		table.sort(screen.names)
+		local parts = {namePart(screen.context)}
+		for id, name in ipairs(screen.names) do
+			screen.ids[name] = id
+			parts[#parts + 1] = namePart(name)
+		end
+		screen.wireContext = table.concat(parts)
+	end
+	local id, moved, owner = mouseSync(screen.wireContext, screen.ids[screen.hover] or 0, player or -1)
+	return screen.targets[screen.names[id]], moved, owner
+end
+
+-- The row background under the pointer. The one drawn on top wins.
+function main.f_menuMouseBg(backgrounds)
+	local target = nil
+	for i = #backgrounds, 1, -1 do
+		local bg = backgrounds[i]
+		if (target == nil or bg.layerno > target.layerno) and mouseOver(bg.anim, bg.pixels ~= false) then
+			target = bg
+		end
+	end
+	return target and target.item
+end
+
+-- Modules add named targets to this screen before its single sync call.
+function main.f_menuMouse(t, item, sec)
+	local data, m = sec.mouseData, sec.menu or sec
+	local ready = data ~= nil and data.items == t
+	local context = ready and data.context or main.f_mouseContext('menu', t)
+	local screen = main.f_mouseReset(sec.mouseScreen, context)
+	sec.mouseScreen = screen
+	local function rowName(index) return 'row:' .. index end
+	for i, row in ipairs(t) do
+		if not row.itemname:match('^spacer%d*$') then
+			main.f_mouseAdd(screen, rowName(i), {kind = 'row', item = i})
+		end
+	end
+	main.f_mouseAdd(screen, 'scroll:up', {kind = 'scroll', direction = -1})
+	main.f_mouseAdd(screen, 'scroll:down', {kind = 'scroll', direction = 1})
+	if ready then
+		for _, extra in ipairs(data.targets) do
+			assert(type(extra.item) == 'string' or type(extra.item) == 'number', 'mouse target item needs a string or number')
+			local name = 'extra:' .. type(extra.item) .. ':' .. tostring(extra.item)
+			if screen.targets[name] == nil then
+				main.f_mouseAdd(screen, name, {
+					kind = 'extra', item = extra.item, action = extra.action,
+					onClick = extra.onClick, click = extra.click,
+				})
+			end
+		end
+	end
+	if ready and mouseActive() then
+		for _, direction in ipairs({'down', 'up'}) do
+			main.f_mouseHit(screen, 'scroll:' .. direction, data[direction] and mouseOver(m.arrow[direction].AnimData), 5)
+		end
+		if screen.hover == nil then
+			for i = #t, 1, -1 do
+				local bounds = data.rows[i]
+				if bounds ~= nil and screen.targets[rowName(i)] ~= nil then
+					local inside = mouseOver(m.boxcursor.RectData,
+						bounds[1], bounds[2], bounds[3], bounds[4], m.item.TextSpriteData)
+					main.f_mouseHit(screen, rowName(i), inside, i == item and 4 or 3)
+				end
+			end
+		end
+		if screen.hover == nil then
+			local extra = main.f_menuMouseBg(data.targets)
+			if extra ~= nil then
+				main.f_mouseHit(screen, 'extra:' .. type(extra) .. ':' .. tostring(extra), true, 2)
+			end
+		end
+		if screen.hover == nil then
+			local background = main.f_menuMouseBg(data.backgrounds)
+			if background ~= nil and screen.targets[rowName(background)] ~= nil then
+				main.f_mouseHit(screen, rowName(background), true, 1)
+			end
+		end
+	end
+	hook.run('main.menu.mouse', screen, t, sec, ready and data or nil)
+	local target, moved, player = main.f_mouseSync(screen)
+	if player == 0 or not ready then return nil, 0 end
+	for _, wheel in ipairs({{m.previous.action, -1}, {m.next.action, 1}}) do
+		if mouseTake(wheel[1], player) then return nil, wheel[2] end
+	end
+	if target ~= nil and target.kind == 'row' then
+		if target.item == item then return nil, 0 end
+		if moved then return target.item, 0 end
+	end
+	local clicked = mouseTake(target and target.click or data.done, player)
+	if target ~= nil and target.click ~= nil then mouseTake(data.done, player) end
+	if not clicked or target == nil then return nil, 0 end
+	if target.kind == 'row' then return target.item, 0 end
+	if target.kind == 'scroll' then return nil, target.direction end
+	if target.action ~= nil then mousePress(player, target.action) end
+	if target.onClick ~= nil then target.onClick(player) end
+	return nil, 0, target.item
+end
+
 --common menu calculations
 function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, forcedDir)
 	local m = sec.menu or sec
@@ -3834,8 +3989,22 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 	local first = math.max(1, math.min(item - cursorPosY + 1, maxFirst))
 	-- A forced direction overrides input: 1 moves down, -1 moves up, and 0 stops.
 	local moveDir = forcedDir or 0
+	local skip = nil -- direction to skip spacers when input didn't move the cursor
 	if forcedDir == nil then
-		if getAction(-1, m.next.action) then
+		local clicked, scroll, extra = main.f_menuMouse(t, item, sec)
+		sec.mouseClicked = extra
+		if clicked ~= nil then
+			item = clicked
+			sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
+		elseif scroll ~= 0 then
+			-- Mouse scrolling moves the list. The cursor only moves to stay on screen.
+			first = math.max(1, math.min(first + scroll, maxFirst))
+			if item > first + visible - 1 then
+				item, skip = first + visible - 1, -1
+			elseif item < first then
+				item = first
+			end
+		elseif getAction(-1, m.next.action) then
 			moveDir = 1
 		elseif getAction(-1, m.previous.action) then
 			moveDir = -1
@@ -3858,7 +4027,7 @@ function main.f_menuCommonCalc(t, item, cursorPosY, moveTxt, sec, cursorParams, 
 			main.menuWrapped = wrapped
 			break
 		end
-		candidate = candidate + (moveDir == -1 and -1 or 1)
+		candidate = candidate + (skip or (moveDir == -1 and -1 or 1))
 	end
 	if item ~= item_before and forcedDir == nil and moveDir ~= 0 then
 		sndPlay(motif.Snd, cursorParams.move.snd[1], cursorParams.move.snd[2])
@@ -3932,11 +4101,7 @@ function main.f_hintDraw(hint, context, values, device, side, actions)
 			if actions[name] == nil then
 				return '<action:' .. name .. '>'
 			end
-			local glyphs = {}
-			for _, key in ipairs(actions[name]) do
-				table.insert(glyphs, '<control:' .. key .. '>')
-			end
-			return table.concat(glyphs)
+			return '<control:' .. table.concat(actions[name], ',') .. '>'
 		end)
 	end
 	if side ~= nil then
@@ -4007,11 +4172,19 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 	--   skipBG0, skipBG1         : skip bg layer 0 / 1
 	--   skipTitle                : skip drawing the title
 	--   forceInactive            : treat "selected" row as inactive (no highlight, no cursor)
+	--   mouseTargets             : clickable anims with item, anim, layerno, action or onClick
+	--   mouseContext             : a shared name for this screen
 	opts = opts or {}
 	local offx = opts.offx or 0
 	local offy = opts.offy or 0
 	local forceInactive = opts.forceInactive == true or t[item] == nil
 		or t[item].itemname:match("^spacer%d*$") ~= nil
+	-- Where the rows were drawn, for main.f_menuMouse.
+	sec.mouseData = {
+		items = t, rows = {}, backgrounds = {}, targets = opts.mouseTargets or {},
+		context = opts.mouseContext or main.f_mouseContext('menu', t),
+		done = (opts.hintActions or {})['menu.done'] or m.done.action,
+	}
 
 	-- effective visible-items: treat 0 or 'unlimitedItems' as "all"
 	local visible = (m.window and m.window.visibleitems) or #t
@@ -4063,6 +4236,13 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		-- shared position
 		local posX = offx + (i - 1) * m.item.spacing[1]
 		local posY = offy + (i - 1) * m.item.spacing[2] - moveTxt
+		if not forceInactive and not itemData.itemname:match('^spacer%d*$') then
+			local c = m.boxcursor.coords
+			sec.mouseData.rows[i] = {
+				m.pos[1] + posX + c[1], m.pos[2] + posY + c[2],
+				m.pos[1] + posX + c[3] + 1, m.pos[2] + posY + c[4] + 1,
+			}
+		end
 		-- background params
 		local bgTable = isActive and m.item.active.bg or m.item.bg
 		local params = bgTable[itemData.paramname] or bgTable.default
@@ -4073,7 +4253,11 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 			bgPosX = bgPosX + (i - 1) * bgTable.default.spacing[1]
 			bgPosY = bgPosY + (i - 1) * bgTable.default.spacing[2] - moveTxt
 		end
-		main.f_animPosDraw(params.AnimData, bgPosX, bgPosY)
+		-- Keep the drawn position even when several rows share one animation.
+		local drawn = main.f_animPosDraw(params.AnimData, bgPosX, bgPosY, nil, sec.mouseData.rows[i] ~= nil)
+		if drawn ~= nil then
+			table.insert(sec.mouseData.backgrounds, {item = i, anim = drawn, layerno = params.layerno})
+		end
 		-- text sprite for label
 		local labelProps
 		if itemData.selected then
@@ -4145,6 +4329,7 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		rectSetWindow(m.boxcursor.RectData, x1, y1, x1 + w, y1 + h)
 		rectUpdate(m.boxcursor.RectData)
 		rectDraw(m.boxcursor.RectData)
+		sec.mouseData.rows[item] = {x1, y1, x1 + w, y1 + h}
 	end
 	--draw scroll arrows
 	if #t > visible then
@@ -4153,12 +4338,14 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 			animAddPos(m.arrow.up.AnimData, offx, offy)
 			animUpdate(m.arrow.up.AnimData)
 			animDraw(m.arrow.up.AnimData)
+			sec.mouseData.up = not forceInactive
 		end
 		if item >= cursorPosY and item + visible - cursorPosY < #t then
 			animReset(m.arrow.down.AnimData, {'pos'})
 			animAddPos(m.arrow.down.AnimData, offx, offy)
 			animUpdate(m.arrow.down.AnimData)
 			animDraw(m.arrow.down.AnimData)
+			sec.mouseData.down = not forceInactive
 		end
 	end
 	--draw credits text

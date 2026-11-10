@@ -907,23 +907,30 @@ function menu.f_commandlistParse(sec)
 end
 
 -- Draws every page's art, active for the current page. Shared entries are drawn once.
+-- Returns page specific art as click targets.
 local function f_movelistPagesDraw(mv, t, reset)
+	local targets = {}
 	if not t.found then
-		return
+		return targets
 	end
 	local drawn = {}
 	for page = 1, #t.pages do
 		local bg = page == t.pages.current and mv.page.active.bg or mv.page.bg
-		local el = bg[tostring(page)] or bg.default
+		local own = bg[tostring(page)]
+		local el = own or bg.default
 		if el ~= nil and not drawn[el] then
 			drawn[el] = true
 			if reset then
 				animReset(el.AnimData)
 			end
-			main.f_animPosDraw(el.AnimData)
+			local anim = main.f_animPosDraw(el.AnimData, nil, nil, nil, own ~= nil)
+			if anim ~= nil then
+				table.insert(targets, {item = page, anim = anim, layerno = el.layerno})
+			end
 			textImgDraw(el.TextSpriteData)
 		end
 	end
+	return targets
 end
 
 function menu.f_commandlistRender(sec, bg)
@@ -932,6 +939,8 @@ function menu.f_commandlistRender(sec, bg)
 	local acceptInput = main.pauseMenuActive and not fadeActive() and menu.pauseExitDelay < 0
 	local switched = false
 	local t = menu.t_movelists[menu.movelistChar]
+	local clicked = mv.mouseClicked
+	mv.mouseClicked = nil
 	if acceptInput then
 		-- Move list rows can't be selected, so only cancel closes the list.
 		if esc() or getAction(-1, m.cancel.action) then
@@ -965,6 +974,11 @@ function menu.f_commandlistRender(sec, bg)
 				sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
 				t.pages.current = (t.pages.current - 1 + direction) % #t.pages + 1
 				switched = true
+			-- A click on a page's art drawn last frame shows that page.
+			elseif not switched and type(clicked) == 'number' and t.pages[clicked] ~= nil and clicked ~= t.pages.current then
+				sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
+				t.pages.current = clicked
+				switched = true
 			end
 		end
 	end
@@ -985,14 +999,14 @@ function menu.f_commandlistRender(sec, bg)
 		page.items, state.item, state.cursorPosY, state.moveTxt, mv, sec.cursor, forcedDir)
 	textImgReset(mv.title.TextSpriteData)
 	textImgSetText(mv.title.TextSpriteData, main.f_itemnameUpper(string.format(mv.title.text, t.name), m.title.uppercase))
-	f_movelistPagesDraw(mv, t, reset)
+	local targets = f_movelistPagesDraw(mv, t, reset)
 	-- The hint lists only what can be switched: characters, pages, both, or neither.
 	local context = #menu.t_movelists > 1 and 'character' or ''
 	if #t.pages > 1 then
 		context = context .. 'page'
 	end
 	main.f_menuCommonDraw(page.items, state.item, state.cursorPosY, state.moveTxt, mv, bg, true,
-		{hintContext = context ~= '' and context or nil})
+		{hintContext = context ~= '' and context or nil, mouseTargets = targets})
 end
 
 return menu
