@@ -1108,6 +1108,41 @@ type StoryboardProperties struct {
 	Storyboard string `ini:"storyboard" lookup:"def,,data/"`
 }
 
+type VersusResultStatProperties struct {
+	TextProperties
+	Value TextProperties `ini:"value"`
+}
+
+type PlayerRematchProperties struct {
+	PlayerVictoryProperties
+	Bg        AnimationProperties        `ini:"bg"`
+	Title     TextMapProperties          `ini:"title"`
+	Wins      VersusResultStatProperties `ini:"wins"`
+	WinStreak VersusResultStatProperties `ini:"winstreak"`
+	WinRate   VersusResultStatProperties `ini:"winrate"`
+}
+
+type RematchInfoProperties struct {
+	MenuInfoProperties
+	Time     int32 `ini:"time"`
+	KeepSide struct {
+		Enabled bool `ini:"enabled"`
+	} `ini:"keepside"`
+	Winner struct {
+		TeamKo struct {
+			Enabled bool `ini:"enabled"`
+		} `ini:"teamko"`
+	} `ini:"winner"`
+	P1 PlayerRematchProperties `ini:"p1"`
+	P2 PlayerRematchProperties `ini:"p2"`
+	P3 PlayerRematchProperties `ini:"p3"`
+	P4 PlayerRematchProperties `ini:"p4"`
+	P5 PlayerRematchProperties `ini:"p5"`
+	P6 PlayerRematchProperties `ini:"p6"`
+	P7 PlayerRematchProperties `ini:"p7"`
+	P8 PlayerRematchProperties `ini:"p8"`
+}
+
 type VictoryScreenProperties struct {
 	Enabled  bool `ini:"enabled"`
 	KeepSide struct {
@@ -1154,6 +1189,9 @@ type VictoryScreenProperties struct {
 	P7 PlayerVictoryProperties `ini:"p7"`
 	P8 PlayerVictoryProperties `ini:"p8"`
 	Hint HintProperties          `ini:"hint"`
+	Rematch struct {
+		FadeOut bool `ini:"fadeout"`
+	} `ini:"rematch"`
 }
 
 type WinScreenProperties struct {
@@ -1637,6 +1675,8 @@ type Motif struct {
 	GameOverScreen  StoryboardProperties                `ini:"game_over_screen"`
 	VictoryScreen   VictoryScreenProperties             `ini:"victory_screen"`
 	VictoryBgDef    BgDefProperties                     `ini:"victorybgdef"`
+	RematchInfo     RematchInfoProperties               `ini:"rematch_info"`
+	RematchBgDef    BgDefProperties                     `ini:"rematchbgdef"`
 	WinScreen       WinScreenProperties                 `ini:"win_screen"`
 	WinBgDef        BgDefProperties                     `ini:"winbgdef"`
 	DefaultEnding   StoryboardProperties                `ini:"default_ending"`
@@ -1673,12 +1713,13 @@ type Motif struct {
 	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
-	inheritedKeys   map[string]bool                     // normalized .anim/.spr paths assigned by overrideParams inheritance
+	inheritedKeys   map[string]bool                     // normalized paths assigned by inheritance
 	ch              MotifChallenger
 	co              MotifContinue
 	de              MotifDemo
 	di              MotifDialogue
 	vi              MotifVictory
+	re              MotifRematch
 	wi              MotifWin
 	hi              MotifHiscore
 	me              MotifMenu
@@ -2392,8 +2433,9 @@ func (m *Motif) fixLocalcoordOverrides() {
 				}
 			}
 
-			// 2) Is this exact .localcoord key present in the embedded defaults?
-			inDefaults := false
+			// Inherited coordinates are defaults too, unless this element was customized.
+			query := strings.ToLower(strings.ReplaceAll(secName, " ", "_") + "." + keyName)
+			inDefaults := m.inheritedKeys[query]
 			if defSec != nil {
 				if dk, err := defSec.GetKey(keyName); err == nil && dk != nil {
 					inDefaults = true
@@ -2438,7 +2480,7 @@ func (m *Motif) fixLocalcoordOverrides() {
 			// set struct (and ini) value to 0,0 so it is treated as "unspecified".
 			secNorm := strings.ReplaceAll(secName, " ", "_")
 			keyNorm := strings.ReplaceAll(keyName, " ", "_")
-			query := strings.ToLower(secNorm + "." + keyNorm)
+			query = strings.ToLower(secNorm + "." + keyNorm)
 
 			if err := m.SetValueUpdate(query, "0, 0"); err != nil {
 				fmt.Printf("Warning: failed to reset localcoord for %s: %v\n", query, err)
@@ -2459,6 +2501,7 @@ type InheritSpec struct {
 	DstPrefix string
 	SkipText  bool
 	Flat      bool // copy only the source's own keys, not its nested elements
+	Merged    bool // also copy values the source section inherited itself
 }
 
 // mergeWithInheritance applies "user overrides default" with intra-file inheritance.
@@ -2571,6 +2614,9 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 		collect(user, sp.DstSec, sp.DstPrefix)
 		collect(defs, sp.SrcSec, sp.SrcPrefix)
 		collect(defs, sp.DstSec, sp.DstPrefix)
+		if sp.Merged {
+			collect(merged, sp.SrcSec, sp.SrcPrefix)
+		}
 
 		// Resolve and set final values following the precedence.
 		for suf := range suffixes {
@@ -2615,6 +2661,8 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			} else if _, ok := get(defs, sp.DstSec, dstKey); ok {
 				src = srcDefDst
 			} else if _, ok := get(defs, sp.SrcSec, srcKey); ok {
+				fromSec, fromKey, src = sp.SrcSec, srcKey, srcDefSrc
+			} else if _, ok := get(merged, sp.SrcSec, srcKey); ok && sp.Merged {
 				fromSec, fromKey, src = sp.SrcSec, srcKey, srcDefSrc
 			} else {
 				continue
@@ -2842,6 +2890,18 @@ func (m *Motif) overrideParams() {
 	for _, sec := range pauseSections[1:] {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
 	}
+	// The rematch menu shares pause styling but has its own text and items.
+	for _, prefix := range []string{"title.", "menu.", "movelist.", "hint.", "cursor.", "cancel.", "enter.", "exit.", "overlay."} {
+		specs = append(specs, InheritSpec{
+			SrcSec: "Pause Menu", SrcPrefix: prefix, DstSec: "Rematch Info", DstPrefix: prefix, SkipText: true,
+		})
+	}
+	// Rematch portraits continue the victory screen ones, including the p3..p8 values it inherited.
+	for _, prefix := range []string{"keepside.", "winner.", "p1.", "p2.", "p3.", "p4.", "p5.", "p6.", "p7.", "p8."} {
+		specs = append(specs, InheritSpec{
+			SrcSec: "Victory Screen", SrcPrefix: prefix, DstSec: "Rematch Info", DstPrefix: prefix, Merged: true,
+		})
+	}
 	// Apply p1/p2 -> p3..p8 inheritance to every [* Results Screen]
 	for _, sec := range m.customResultsScreenSections() {
 		specs = append(specs,
@@ -3054,6 +3114,11 @@ func (m *Motif) loadFiles() {
 	m.loadBgDefProperties(&m.VersusBgDef, "versusbg", m.Files.Spr)
 	m.loadBgDefProperties(&m.ContinueBgDef, "continuebg", m.Files.Spr)
 	m.loadBgDefProperties(&m.VictoryBgDef, "victorybg", m.Files.Spr)
+	if _, err := m.UserIniFile.GetSection("RematchBgDef"); err == nil {
+		m.loadBgDefProperties(&m.RematchBgDef, "rematchbg", m.Files.Spr)
+	} else {
+		m.RematchBgDef = m.VictoryBgDef
+	}
 	m.loadBgDefProperties(&m.WinBgDef, "winbg", m.Files.Spr)
 
 	// Load all ResultsBgDef entries (any mode that defines <mode>ResultsBgDef).
@@ -3311,6 +3376,8 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		&m.OptionInfo.Menu,
 		&m.ReplayInfo.Menu,
 		&m.AttractMode.Menu,
+		&m.RematchInfo.Menu,
+		&m.RematchInfo.Movelist.Menu,
 	} {
 		shiftMenu(me)
 	}
@@ -3567,6 +3634,7 @@ func (m *Motif) reset() {
 	m.di.clear(m)
 	m.vi.reset(m)
 	m.vi.clear(m)
+	m.re.reset(m)
 	m.wi.reset(m)
 	m.hi.reset(m)
 	m.co.reset(m)
@@ -3610,6 +3678,9 @@ func (m *Motif) step() {
 	}
 	if m.vi.active {
 		m.vi.step(m)
+	}
+	if m.re.active {
+		m.re.step(m)
 	}
 	if m.wi.active {
 		m.wi.step(m)
@@ -3666,6 +3737,7 @@ func (m *Motif) shouldScopeMotifAspect() bool {
 		m.ch.active ||
 		m.di.active ||
 		m.vi.active ||
+		m.re.active ||
 		m.wi.active ||
 		m.hi.active ||
 		m.co.active
@@ -3690,6 +3762,9 @@ func (m *Motif) draw(layerno int16) {
 	}
 	if m.vi.active {
 		m.vi.draw(m, layerno)
+	}
+	if m.re.active {
+		m.re.draw(m, layerno)
 	}
 	if m.wi.active {
 		m.wi.draw(m, layerno)
@@ -3759,6 +3834,13 @@ func (m *Motif) act() {
 			m.vi.init(m)
 		}
 		if m.vi.active {
+			return
+		}
+		// Rematch Info
+		if !m.re.initialized {
+			m.re.init(m)
+		}
+		if m.re.active {
 			return
 		}
 		// Win / Results Screen
@@ -3900,11 +3982,13 @@ type MotifMenu struct {
 	state       MenuState
 	reopenLock  bool
 	player      int // 1-based player who opened the menu
+	rematch     bool
 }
 
 func (me *MotifMenu) reset(m *Motif) {
 	me.active = false
 	me.player = 0
+	me.rematch = false
 	sys.menuPlayer = 0
 	me.initialized = false
 	me.state = ME_OpeningOut
@@ -3959,6 +4043,9 @@ func (me *MotifMenu) openingPlayer(pm *MenuInfoProperties) int {
 }
 
 func (me *MotifMenu) pauseMenu(m *Motif) *MenuInfoProperties {
+	if me.rematch {
+		return &m.RematchInfo.MenuInfoProperties
+	}
 	if m == nil || m.PauseMenu == nil {
 		return nil
 	}
@@ -3982,10 +4069,22 @@ func (me *MotifMenu) requestClose(m *Motif) {
 	if !me.active || me.state >= ME_ClosingOut {
 		return
 	}
-	if pm := me.pauseMenu(m); pm != nil {
+	if me.rematch {
+		m.re.startFadeOut(m)
+	} else if pm := me.pauseMenu(m); pm != nil {
 		pm.FadeOut.FadeData.init(m.fadeOut, false)
 	}
 	me.state = ME_ClosingOut
+}
+
+func (me *MotifMenu) startRematch(m *Motif, player int) {
+	me.rematch = true
+	me.active = true
+	me.initialized = true
+	me.state = ME_OpeningOut
+	me.player = player
+	sys.menuPlayer = player
+	sys.esc = false
 }
 
 func (me *MotifMenu) init(m *Motif) {
@@ -4056,10 +4155,14 @@ func (me *MotifMenu) step(m *Motif) {
 		if m.fadeOut.isActive() {
 			return
 		}
-		if err := sys.luaLState.DoString(fmt.Sprintf("menuInit(%d)", me.player)); err != nil {
+		id := ""
+		if me.rematch {
+			id = "rematch"
+		}
+		if err := sys.luaLState.DoString(fmt.Sprintf("menuInit(%d, %q)", me.player, id)); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 		}
-		if pm != nil {
+		if pm != nil && !me.rematch {
 			pm.FadeIn.FadeData.init(m.fadeIn, true)
 		}
 		me.state = ME_OpeningIn
@@ -4068,6 +4171,9 @@ func (me *MotifMenu) step(m *Motif) {
 			me.state = ME_Open
 		}
 	case ME_ClosingOut:
+		if me.rematch {
+			return
+		}
 		// If exiting match from the pause menu
 		if sys.endMatch {
 			if sys.fightScreen.round.fadeOut.isActive() {
@@ -6654,6 +6760,7 @@ type MotifVictory struct {
 	charDelayCounter  int32
 	typedCnt          int
 	back              bool // cancel goes back to the select screen
+	seamless          bool // ended without a fade out because [Rematch Info] follows
 }
 
 // victoryEntry represents one slot to render on the victory screen
@@ -6674,6 +6781,7 @@ func (vi *MotifVictory) reset(m *Motif) {
 	vi.charDelayCounter = 0
 	vi.typedCnt = 0
 	vi.back = false
+	vi.seamless = false
 	// Victory screen uses its own typewriter logic, so disable the internal TextSprite typing.
 	m.VictoryScreen.WinQuote.TextSpriteData.textDelay = 0
 	vi.endTimer = -1
@@ -7120,7 +7228,12 @@ func (vi *MotifVictory) step(m *Motif) {
 		timeUp := vi.lineFullyRendered && vi.counter >= m.VictoryScreen.Time
 
 		if userInterrupt || timeUp {
-			vi.startFadeOut(m)
+			if !m.VictoryScreen.Rematch.FadeOut && m.re.rematchPlayer(m) > 0 {
+				vi.seamless = true
+				vi.endTimer = vi.counter
+			} else {
+				vi.startFadeOut(m)
+			}
 		}
 	}
 
@@ -7137,6 +7250,10 @@ func (vi *MotifVictory) step(m *Motif) {
 		}
 		if !m.VictoryScreen.Sounds.Enabled {
 			sys.noCharSoundFlg = false
+		}
+		// Start [Rematch Info] now, so no frame passes without either screen.
+		if vi.seamless {
+			m.re.init(m)
 		}
 		return
 	}
@@ -7203,6 +7320,245 @@ func (vi *MotifVictory) draw(m *Motif, layerno int16) {
 		m.VictoryBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
 	m.VictoryScreen.Hint.draw(layerno, "default", 0)
+}
+
+type MotifRematch struct {
+	active      bool
+	initialized bool
+	counter     int32
+	endTimer    int32
+	player      int  // 1-based player who controls the menu
+	seamless    bool // continues the victory screen without fades or restarts
+}
+
+func (re *MotifRematch) slots(m *Motif) [8]*PlayerRematchProperties {
+	ri := &m.RematchInfo
+	return [8]*PlayerRematchProperties{&ri.P1, &ri.P2, &ri.P3, &ri.P4, &ri.P5, &ri.P6, &ri.P7, &ri.P8}
+}
+
+func (re *MotifRematch) reset(m *Motif) {
+	re.active = false
+	re.initialized = false
+	re.counter = 0
+	re.endTimer = -1
+	re.player = 0
+	re.seamless = false
+	for _, p := range re.slots(m) {
+		m.vi.clearProps(&p.PlayerVictoryProperties)
+	}
+}
+
+// The human player who controls the rematch menu, preferring the losing side, or 0 if the screen is skipped.
+func (re *MotifRematch) rematchPlayer(m *Motif) int {
+	if !m.RematchInfo.Enabled || sys.sel.gameParams == nil || !sys.sel.gameParams.VersusResults || sys.winnerTeam() < 0 {
+		return 0
+	}
+	human := func(pn, side int) int {
+		if pn >= 0 && pn < len(sys.chars) && len(sys.chars[pn]) > 0 {
+			c := sys.chars[pn][0]
+			if int(c.teamside) == side && c.controller >= 0 && c.getAILevel() == 0 {
+				return c.controller + 1
+			}
+		}
+		return 0
+	}
+	side := 0
+	if sys.winnerTeam() == 1 {
+		side = 1
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if player := human(sys.teamLeader[side], side); player > 0 {
+			return player
+		}
+		for pn := side; pn < MaxPlayerNo; pn += 2 {
+			if player := human(pn, side); player > 0 {
+				return player
+			}
+		}
+		side ^= 1
+	}
+	return 0
+}
+
+// True if the screenpack sets [Rematch Info] portrait parameters, rather than inheriting them from [Victory Screen].
+func (re *MotifRematch) slotsOverridden(m *Motif) bool {
+	sec, err := m.UserIniFile.GetSection("Rematch Info")
+	if err != nil || sec == nil {
+		return false
+	}
+	own := regexp.MustCompile(`^p[1-8]\.(bg|title|wins|winstreak|winrate)\.`)
+	for _, k := range sec.Keys() {
+		name := strings.ToLower(k.Name())
+		// Values inherited from a user [Victory Screen] are copied here too.
+		if m.inheritedKeys["rematch_info."+name] {
+			continue
+		}
+		if strings.HasPrefix(name, "keepside.") || strings.HasPrefix(name, "winner.") {
+			return true
+		}
+		if len(name) > 3 && name[0] == 'p' && name[1] >= '1' && name[1] <= '8' && name[2] == '.' && !own.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (re *MotifRematch) init(m *Motif) {
+	re.initialized = true
+	re.player = re.rematchPlayer(m)
+	if re.player == 0 || m.vi.back {
+		return
+	}
+	re.seamless = m.vi.seamless
+	slots := re.slots(m)
+	if re.seamless && !re.slotsOverridden(m) {
+		// Same portraits as the victory screen: keep their animations and character states running.
+		vs := []*PlayerVictoryProperties{&m.VictoryScreen.P1, &m.VictoryScreen.P2, &m.VictoryScreen.P3, &m.VictoryScreen.P4,
+			&m.VictoryScreen.P5, &m.VictoryScreen.P6, &m.VictoryScreen.P7, &m.VictoryScreen.P8}
+		for i, p := range slots {
+			p.AnimData = vs[i].AnimData
+			p.Face2.AnimData = vs[i].Face2.AnimData
+		}
+	} else {
+		re.initSlots(m, slots)
+	}
+	for side, p := range []*PlayerRematchProperties{&m.RematchInfo.P1, &m.RematchInfo.P2} {
+		p.Bg.AnimData.Reset()
+		outcome := "lose"
+		if sys.winnerTeam() == 0 {
+			outcome = "draw"
+		} else if int(sys.winnerTeam()) == side+1 {
+			outcome = "win"
+		}
+		p.Title.TextSpriteData.text = p.Title.Text[outcome]
+		p.Wins.Value.TextSpriteData.text = m.sprintf(p.Wins.Value.Text, sys.versusStats.Wins[side])
+		p.WinStreak.Value.TextSpriteData.text = m.sprintf(p.WinStreak.Value.Text, sys.versusStats.Streak[side])
+		rate := 100 * float64(sys.versusStats.Wins[side]) / float64(Max(1, sys.versusStats.Matches))
+		p.WinRate.Value.TextSpriteData.text = m.sprintf(p.WinRate.Value.Text, rate)
+	}
+	// A shared background keeps running from the victory screen.
+	if !re.seamless || m.RematchBgDef.BGDef != m.VictoryBgDef.BGDef {
+		m.RematchBgDef.BGDef.Reset()
+	}
+	if !re.seamless {
+		m.RematchInfo.FadeIn.FadeData.init(m.fadeIn, true)
+	}
+	sys.esc = false
+	sys.menuPlayer = re.player
+	re.counter = 0
+	re.endTimer = -1
+	re.active = true
+}
+
+// Builds the portraits the same way as the victory screen, from the [Rematch Info] parameters.
+func (re *MotifRematch) initSlots(m *Motif, slots [8]*PlayerRematchProperties) {
+	ri := &m.RematchInfo
+	winnerSide := int(Max(0, sys.winnerTeam()-1))
+	wEntries := m.vi.buildSideOrder(winnerSide, ri.Winner.TeamKo.Enabled, int(Clamp(ri.P1.Num, 0, 4)))
+	lEntries := m.vi.buildSideOrder(winnerSide^1, true, int(Clamp(ri.P2.Num, 0, 4)))
+	wSlots := []*PlayerVictoryProperties{&slots[0].PlayerVictoryProperties, &slots[2].PlayerVictoryProperties,
+		&slots[4].PlayerVictoryProperties, &slots[6].PlayerVictoryProperties}
+	lSlots := []*PlayerVictoryProperties{&slots[1].PlayerVictoryProperties, &slots[3].PlayerVictoryProperties,
+		&slots[5].PlayerVictoryProperties, &slots[7].PlayerVictoryProperties}
+	wNames := []string{"P1", "P3", "P5", "P7"}
+	lNames := []string{"P2", "P4", "P6", "P8"}
+	if ri.KeepSide.Enabled && sys.winnerTeam() == 2 {
+		wSlots, lSlots = lSlots, wSlots
+	}
+	for i := 0; i < len(wEntries) && i < len(wSlots); i++ {
+		m.vi.applyEntry(m, wSlots[i], wEntries[i], wNames[i], false)
+	}
+	for i := 0; i < len(lEntries) && i < len(lSlots); i++ {
+		m.vi.applyEntry(m, lSlots[i], lEntries[i], lNames[i], true)
+	}
+	odd := [4][]int32{ri.P1.State, ri.P3.State, ri.P5.State, ri.P7.State}
+	even := [4][]int32{ri.P2.State, ri.P4.State, ri.P6.State, ri.P8.State}
+	if sys.winnerTeam() == 1 {
+		m.processStateTransitions(odd, even)
+	} else if sys.winnerTeam() == 2 {
+		m.processStateTransitions(even, odd)
+	}
+}
+
+func (re *MotifRematch) startFadeOut(m *Motif) {
+	if re.endTimer < 0 {
+		startFadeOut(m.RematchInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
+		re.endTimer = re.counter + m.fadeOut.timeRemaining
+	}
+}
+
+func (re *MotifRematch) step(m *Motif) {
+	m.RematchBgDef.BGDef.step()
+	for _, p := range re.slots(m) {
+		p.AnimData.Update(false)
+		p.Face2.AnimData.Update(false)
+	}
+	m.RematchInfo.P1.Bg.AnimData.Update(false)
+	m.RematchInfo.P2.Bg.AnimData.Update(false)
+	// The menu opens after time frames.
+	if !m.me.rematch && re.endTimer == -1 && re.counter >= m.RematchInfo.Time {
+		m.me.startRematch(m, re.player)
+	}
+	if re.endTimer != -1 && re.counter >= re.endTimer {
+		if m.fadeOut != nil {
+			m.fadeOut.reset()
+		}
+		re.active = false
+		if m.me.rematch {
+			m.me.reset(m)
+		}
+		sys.menuPlayer = 0
+		return
+	}
+	re.counter++
+}
+
+func (re *MotifRematch) draw(m *Motif, layerno int16) {
+	type slotRef struct {
+		idx   int
+		p     *PlayerRematchProperties
+		order int32
+	}
+	var slots []slotRef
+	for i, p := range re.slots(m) {
+		slots = append(slots, slotRef{i, p, p.DrawOrder})
+	}
+	sort.SliceStable(slots, func(i, j int) bool {
+		if slots[i].order == slots[j].order {
+			return slots[i].idx < slots[j].idx
+		}
+		return slots[i].order < slots[j].order
+	})
+	// Background
+	if m.RematchBgDef.BgClearColor[0] >= 0 {
+		m.RematchBgDef.RectData.Draw(layerno)
+	}
+	if layerno <= 1 {
+		m.RematchBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
+	}
+	// Face2 portraits
+	for _, s := range slots {
+		s.p.Face2.AnimData.Draw(layerno)
+	}
+	// Face portraits
+	for _, s := range slots {
+		s.p.AnimData.Draw(layerno)
+	}
+	// Overlay
+	m.RematchInfo.Overlay.RectData.Draw(layerno)
+	// Versus stats
+	for _, p := range []*PlayerRematchProperties{&m.RematchInfo.P1, &m.RematchInfo.P2} {
+		p.Bg.AnimData.Draw(layerno)
+		p.Title.TextSpriteData.Draw(layerno)
+		for _, stat := range []*VersusResultStatProperties{&p.Wins, &p.WinStreak, &p.WinRate} {
+			stat.TextSpriteData.Draw(layerno)
+			stat.Value.TextSpriteData.Draw(layerno)
+		}
+	}
+	// Top background
+	if layerno == 2 {
+		m.RematchBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
+	}
 }
 
 // buildSingleFrameFromSFF creates a 1-frame Animation from a raw sprite (grp, idx).

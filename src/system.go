@@ -126,6 +126,7 @@ type SystemStateVars struct {
 	credits                 int32
 
 	consecutiveWins  [2]int32
+	versusStats      VersusStats
 	firstAttack      [3]int
 	home             int
 	stageLoop        bool
@@ -980,7 +981,7 @@ func (s *System) canUseFullResolutionAspect() bool {
 
 func (s *System) motifOverlayActive() bool {
 	return s.motif.ch.active || s.motif.di.active ||
-		s.motif.vi.active || s.motif.wi.active || s.motif.hi.active || s.motif.co.active ||
+		s.motif.vi.active || s.motif.re.active || s.motif.wi.active || s.motif.hi.active || s.motif.co.active ||
 		s.storyboard.active || s.textInput.active ||
 		s.motif.me.active && s.motif.me.state != ME_OpeningOut && s.motif.me.state != ME_ClosingIn
 }
@@ -5293,6 +5294,7 @@ func (s *System) runNextRound() bool {
 			}
 
 			// Otherwise match is over
+			s.recordVersusResult()
 			s.postMatchFlg = true
 			s.fightLoopEnd = true
 			s.resetMatchData(false)

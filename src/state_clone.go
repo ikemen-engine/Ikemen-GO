@@ -1176,6 +1176,7 @@ func (m *Motif) Clone(postMatch bool) (result Motif) {
 		// Keep current runtime values so rollback loads during a match won't affect them.
 		result.co = m.co
 		result.vi = m.vi
+		result.re = m.re
 		result.hi = m.hi
 		result.wi = m.wi
 	}

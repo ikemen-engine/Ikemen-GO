@@ -5661,6 +5661,7 @@ func systemScriptInit(l *lua.LState) {
 			{"Option Info", []string{"option_info", "menu"}},
 			{"Replay Info", []string{"replay_info", "menu"}},
 			{"Pause Menu", []string{"pause_menu", "pause_menu", "menu"}},
+			{"Rematch Info", []string{"rematch_info", "menu"}},
 		}
 		for _, s := range mi {
 			populateItemName(s.sec, s.path, "menu.itemname.", "flat", lTable)
@@ -6817,6 +6818,12 @@ func systemScriptInit(l *lua.LState) {
 		/*Reset the UI input token guard.
 		@function resetTokenGuard*/
 		sys.uiResetTokenGuard()
+		return 0
+	})
+	luaRegister(l, "resetVersusStats", func(*lua.LState) int {
+		/*Clear the wins, win streaks and match count shown on the versus results.
+		@function resetVersusStats*/
+		sys.versusStats = VersusStats{}
 		return 0
 	})
 	luaRegister(l, "resolveCharDef", func(l *lua.LState) int {

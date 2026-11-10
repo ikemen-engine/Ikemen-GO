@@ -727,13 +727,17 @@ func (r *RollbackSession) OnEvent(info *ggpo.Event) {
 		fmt.Println("EventCodeRunning")
 	case ggpo.EventCodeDisconnectedFromPeer:
 		if sys.postMatchFlg {
-			return
+			m := &sys.motif
+			// A peer can finish the match first once the rematch choice is settled.
+			if m.vi.back || m.re.endTimer >= 0 || m.re.rematchPlayer(m) == 0 {
+				return
+			}
 		}
 		if r.config.StateLogsEnabled {
 			r.log.saveStateLogs()
 		}
 		fmt.Println("EventCodeDisconnectedFromPeer")
-		sys.endMatch = true
+		sys.endMatch, sys.esc = true, true
 		r.SaveReplay()
 		if sys.sessionWarning == "" {
 			sys.sessionWarning = fmt.Sprintf(sys.motif.WarningInfo.Text.Text["disconnect"], int(info.Player))
