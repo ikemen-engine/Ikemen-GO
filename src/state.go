@@ -35,8 +35,6 @@ type GameState struct {
 	workBe              []BytecodeExp
 
 	workpal          []uint32
-	keyConfig        []KeyConfig
-	joystickConfig   []KeyConfig
 	fightScreen      FightScreen
 	motif            Motif
 	storyboard       Storyboard
