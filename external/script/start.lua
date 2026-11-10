@@ -249,6 +249,15 @@ function start.f_difficulty(player, offset)
 	end
 end
 
+-- Optional co-op is decided per side. A solo side keeps normal team controls
+-- even when the other side has several players; dedicated co-op still fixes
+-- its team size to the joined count (including one-player sides).
+function start.f_coopSide(side)
+	return main.coop and not main.cpuSide[side] and (
+		not main.sideSelectDone or not main.teamMenu[side].single or #main.sideDevices[side] > 1
+	)
+end
+
 -- assigns AI level, remaps input
 function start.f_remapAI(ai)
 	-- Offset
@@ -275,12 +284,12 @@ function start.f_remapAI(ai)
 				if not main.cpuSide[side] then
 					if member == 1 or start.p[side].teamMode == 3 then
 						human = true
-					elseif main.coop and member <= #devices then
+					elseif start.f_coopSide(side) and member <= #devices then
 						human = true
 					end
 				end
 				-- outside of co-op, all human controlled members use the leader's controls
-				if human and not main.coop and leader > 0 then
+				if human and not start.f_coopSide(side) and leader > 0 then
 					remapInput(slot, leader)
 				end
 				if human or main.dummySide then
@@ -294,22 +303,17 @@ function start.f_remapAI(ai)
 	end
 	local t_ex = {}
 	for side = 1, 2 do
-		if main.coop then
-			for k, v in ipairs(start.p[side].t_selCmd) do
-				if gameMode('versuscoop') then
-					remapInput(v.player, v.cmd)
-					setCom(v.player, 0)
-					t_ex[v.player] = true
-				else
-					local pn = v.player * 2 - 1
-					remapInput(pn, v.cmd)
-					setCom(pn, 0)
-					t_ex[pn] = true
-				end
+		if main.coop and not main.cpuSide[side] then
+			for member = 1, #start.p[side].t_selCmd do
+				-- Cursor artwork numbers do not identify fight slots.
+				local slot = side + (member - 1) * 2
+				remapInput(slot, start.f_coopInput(side, member))
+				setCom(slot, 0)
+				t_ex[slot] = true
 			end
 		end
 		if start.p[side].teamMode == 0 or start.p[side].teamMode == 2 then -- Single or Turns
-			if (not main.cpuSide[side] and not main.coop) or start.challenger > 0 or main.dummySide then
+			if t_ex[side] or (not main.cpuSide[side] and not main.coop) or start.challenger > 0 or main.dummySide then
 				setCom(side, 0)
 			else
 				setCom(side, ai or start.f_difficulty(side, offset))
@@ -343,15 +347,27 @@ function start.f_remapAI(ai)
 	end
 end
 
+-- Resolve a co-op member's input before fight slots are remapped.
+function start.f_coopInput(side, member)
+	if main.sideSelectDone then
+		return main.t_baseRemapInput[side + (member - 1) * 2] or 0
+	end
+	local selection = start.p[side].t_selCmd[member]
+	if selection == nil then
+		return 0
+	end
+	return main.t_baseRemapInput[selection.cmd] or selection.cmd
+end
+
 -- After order select, keep each co-op player on the character they picked.
 function start.f_remapCoopOrder()
-	if not main.sideSelectDone or not main.coop then
+	if not main.coop then
 		return
 	end
 	for side = 1, 2 do
-		if not main.cpuSide[side] then
+		if start.f_coopSide(side) then
 			for slot, member in ipairs(start.t_orderRemap[side]) do
-				remapInput(side + (slot - 1) * 2, main.t_baseRemapInput[side + (member - 1) * 2] or 0)
+				remapInput(side + (slot - 1) * 2, start.f_coopInput(side, member))
 			end
 		end
 	end
@@ -704,9 +720,14 @@ function start.f_selectPal(ref, palno)
 	panicError("\n" .. charData.name .. " palette was not selected\n")
 end
 
+-- True for co-op with human players on both sides, as in Versus Co-op or Team Versus with co-op.
+function start.f_versusCoop()
+	return main.coop and not main.cpuSide[1] and not main.cpuSide[2]
+end
+
 -- returns player number
 function start.f_getPlayerNo(side, member)
-	if main.coop and not gameMode('versuscoop') then
+	if main.coop and not start.f_versusCoop() then
 		return side + member - 1
 	end
 	if side == 1 then
@@ -1840,6 +1861,34 @@ end
 --; MODES LOOP
 --;===========================================================
 function start.f_selectMode()
+	-- Side select and co-op adjust these, so going back to side select restores them.
+	local setup = main.f_tableCopy({coop = main.coop, cpuSide = main.cpuSide, selectMenu = main.selectMenu,
+		forceChar = main.forceChar, teamMenu = main.teamMenu, orderSelect = main.orderSelect, motif = main.motif})
+	local ok, sideSelectShown = start.f_sideSelect()
+	if not ok then
+		bgReset(motif[main.background].BGDef)
+		fadeInInit(motif[main.group].fadein.FadeData)
+		return
+	end
+	-- Single-capable co-op is optional: a side with one player keeps the normal
+	-- team controls, while each player on a larger side controls a team member.
+	if main.sideSelectDone and start.f_optionalCoop() then
+		local shared = false
+		for side = 1, 2 do
+			if not main.cpuSide[side] and #main.sideDevices[side] > 1 then
+				shared = true
+				-- Single/Turns cannot give every joined player their own character.
+				main.teamMenu[side].single = false
+				main.teamMenu[side].turns = false
+			end
+		end
+		if shared then
+			-- A challenger can't interrupt a co-op run.
+			main.motif.challenger = false
+		else
+			main.coop = false
+		end
+	end
 	start.f_selectReset(true)
 	while true do
 		-- select screen
@@ -1847,9 +1896,17 @@ function start.f_selectMode()
 			main.f_waitForPreloads()
 		end
 		if not start.f_selectScreen() then
+			playBgm({source = "motif.title", interrupt = true})
+			-- Cancel goes back to side select when it was shown, Esc to the menu.
+			if start.selectBack and sideSelectShown then
+				start.f_setRunSide(1)
+				for k, v in pairs(setup) do
+					main[k] = v
+				end
+				return start.f_selectMode()
+			end
 			bgReset(motif[main.background].BGDef)
 			fadeInInit(motif[main.group].fadein.FadeData)
-			playBgm({source = "motif.title", interrupt = true})
 			return
 		end
 		-- lua file with custom arcade path detection
@@ -2064,8 +2121,12 @@ function start.f_menuCmd(side)
 	return side
 end
 
+-- Set by launchFight when Character Change ends a challenger fight.
+local challengerCharacterChange = false
+
 local function makeChallengerResumeSnapshot(pendingFightData, stageNo)
 	local resume = {
+		runSide = main.runSide,
 		p = main.f_tableCopy(start.p),
 		c = main.f_tableCopy(start.c),
 		roster = main.f_tableCopy(start.t_roster),
@@ -2084,137 +2145,98 @@ local function makeChallengerResumeSnapshot(pendingFightData, stageNo)
 	return resume
 end
 
-local function applyWinnerSelectMemory(resume, winnerSide, challengerState)
-	if resume == nil or challengerState == nil or winnerSide < 1 or winnerSide > 2 then
-		return
-	end
-	resume.p = resume.p or {{}, {}}
-	resume.c = resume.c or {}
-	local srcSide = challengerState.p and challengerState.p[winnerSide] or nil
-	if srcSide ~= nil then
-		resume.p[1] = resume.p[1] or {}
-		-- Preserve the winner's last confirmed selection cells / team menu state.
-		resume.p[1].t_cursor = main.f_tableCopy(srcSide.t_cursor or {})
-		if srcSide.teamMenu ~= nil then resume.p[1].teamMenu = srcSide.teamMenu end
-		if srcSide.teamMode ~= nil then resume.p[1].teamMode = srcSide.teamMode end
-		if srcSide.numSimul ~= nil then resume.p[1].numSimul = srcSide.numSimul end
-		if srcSide.numTag ~= nil then resume.p[1].numTag = srcSide.numTag end
-		if srcSide.numTurns ~= nil then resume.p[1].numTurns = srcSide.numTurns end
-	end
-	if challengerState.c ~= nil then
-		-- Promote the winner-side cursor slots onto the new arcade P1 slots:
-		-- side 1: 1/3/5/7 -> 1/3/5/7
-		-- side 2: 2/4/6/8 -> 1/3/5/7
-		for srcPn = winnerSide, gameOption('Config.Players'), 2 do
-			if challengerState.c[srcPn] ~= nil then
-				local dstPn = srcPn
-				if winnerSide == 2 then
-					dstPn = srcPn - 1
-				end
-				resume.c[dstPn] = main.f_tableCopy(challengerState.c[srcPn])
-			end
-		end
-	end
-	hook.run("start.f_selectChallenger.resume", resume, winnerSide, challengerState)
-end
-
+-- Challenger fight. Both players stay on their side, and the winner continues
+-- the arcade run with the team they picked.
 function start.f_selectChallenger(resume)
 	esc(false)
 	resume = resume or makeChallengerResumeSnapshot()
-	local challengerCmd = start.challenger
-	local arcadeP1Controller = getRemapInput(1)
-	local challengerController = getRemapInput(challengerCmd)
-
-	-- Start challenger match from a clean state.
+	local device = start.challenger
+	local arcadeSide = resume.runSide
+	local challenger = 3 - arcadeSide
 	main.f_default()
-
-	-- Build a clean, non-chained input mapping:
-	--   cmd list 1 -> arcade P1 physical controller
-	--   cmd list 2 -> challenger physical controller
-	-- Keep the rest as a swap-based permutation (no dual-feeding / chaining).
-	local function swapCmd(a, b)
-		if a == b then return end
-		local ra = getRemapInput(a)
-		local rb = getRemapInput(b)
-		remapInput(a, rb)
-		remapInput(b, ra)
-	end
-	-- Put arcade P1 controller on cmd 1.
-	swapCmd(1, arcadeP1Controller)
-	-- Find which cmd currently owns challengerController and swap it onto cmd 2.
-	local holder = 2
-	for i = 1, gameOption('Config.Players') do
-		if getRemapInput(i) == challengerController then
-			holder = i
-			break
-		end
-	end
-	swapCmd(2, holder)
-	-- Keep challenger flag (>0) so versus() enters challenger mode
-	start.challenger = challengerCmd
-
+	main.sideSelectDone = true
 	main.t_itemname.versus()
-
-	start.f_selectReset(false)
-	if not start.f_selectScreen() then
-		start.exit = true
-		start.challenger = 0
-		main.f_restoreInput()
-		return false
-	end
-	local ok = launchFight{challenger = true}
-	local challengerSelectState = {
-		p = main.f_tableCopy(start.p),
-		c = main.f_tableCopy(start.c),
-	}
-	local challengerWinner = getWinnerTeam()
-
-	start.challenger = 0
-	if not ok or challengerWinner < 1 or challengerWinner > 2 or start.exit or esc() then
-		main.f_restoreInput()
-		return false
-	end
-	-- Winner of the challenger match becomes the new arcade P1 owner.
-	local resumeController = arcadeP1Controller
-	if challengerWinner == 2 then
-		resumeController = challengerController
-	end
-
-	-- Rebuild arcade mode with the winner's controller mapped to P1.
-	main.teamarcade = resume.teamarcade
-	main.f_default()
-	setLastInputController(resumeController)
-	main.t_itemname.arcade()
+	local joined = inputClaim(device, challenger)
+	inputCommit()
 	main.f_saveBaseRemapInput()
-
-	-- Restore interrupted arcade progress before going back to select screen.
-	applyWinnerSelectMemory(resume, challengerWinner, challengerSelectState)
-	start.p = main.f_tableCopy(resume.p)
-	start.c = main.f_tableCopy(resume.c)
+	start.f_selectReset(false, true)
+	start.p[arcadeSide] = main.f_tableCopy(resume.p[arcadeSide])
+	start.p[arcadeSide].teamEnd, start.p[arcadeSide].selEnd = true, true
+	main.lockedSelection[arcadeSide] = true
+	main.lockedTeamMode = true
+	main.stageMenu = false
+	main.orderSelect = {false, false}
+	for _, field in ipairs({'teamMode', 'numChars', 'numSimul', 'numTag', 'numTurns'}) do
+		start.p[challenger][field] = resume.p[arcadeSide][field]
+	end
+	start.p[challenger].teamEnd, start.p[challenger].selEnd = true, false
+	start.p[challenger].t_selCmd = {{cmd = challenger, player = challenger, selectState = 0}}
+	local winner = arcadeSide
+	local selected, cursors = main.f_tableCopy(resume.p), main.f_tableCopy(resume.c)
+	-- Back to arcade mode, with the given side running it.
+	local function resumeArcade(side)
+		main.f_default()
+		main.teamarcade = resume.teamarcade
+		main.t_itemname.arcade()
+		main.sideSelectDone = true
+		start.f_setRunSide(side)
+		inputKeepSide(side)
+		inputCommit()
+		main.f_saveBaseRemapInput()
+	end
+	if joined and start.f_selectScreen() then
+		selected, cursors = main.f_tableCopy(start.p), main.f_tableCopy(start.c)
+		repeat
+			start.p = main.f_tableCopy(selected)
+			setMatchNo(resume.matchNo)
+			challengerCharacterChange = false
+			local ok = launchFight{challenger = true, stageNo = resume.pendingFight.stageNo, continue = false}
+			winner = getWinnerTeam()
+			if challengerCharacterChange then
+				-- Back to arcade select, like Character Change in a normal arcade fight.
+				challengerCharacterChange = false
+				start.challenger = 0
+				resumeArcade(arcadeSide)
+				start.p = main.f_tableCopy(resume.p)
+				start.c = main.f_tableCopy(resume.c)
+				start.f_selectReset(false)
+				return false
+			end
+			if not ok or winner < 0 or start.exit or esc() then
+				start.exit, start.challenger = true, 0
+				return false
+			end
+		until winner == 1 or winner == 2
+	else
+		-- Cancelling a challenge exits the mode, not the interrupted arcade fight.
+		start.exit, start.challenger = true, 0
+		return false
+	end
+	start.escFlag = false
+	start.challenger = device
+	resumeArcade(winner)
+	start.p = {{}, {}}
+	start.p[winner] = selected[winner]
+	start.p[3 - winner] = main.f_tableCopy(resume.p[3 - arcadeSide])
+	start.c = cursors
+	for side = 1, 2 do
+		for member, char in ipairs(start.p[side].t_selected) do char.pn = side + (member - 1) * 2 end
+	end
 	start.t_roster = main.f_tableCopy(resume.roster)
 	main.t_availableChars = main.f_tableCopy(resume.availableChars)
 	setGameStatsJson(resume.gameStatsJson)
 	setMatchNo(resume.matchNo)
 	start.matchPersistenceStatsIdx = resume.matchPersistenceStatsIdx or 0
-	setConsecutiveWins(1, resume.p1ConsecutiveWins)
-	setConsecutiveWins(2, resume.p2ConsecutiveWins)
-	start.reset = false
-	start.exit = false
-
-	-- Preserve the interrupted opponent. P1 is cleared for re-selection,
-	-- but P2 stays selected so resuming does not roll a new random opponent.
-	local p2 = main.f_tableCopy(start.p[2])
-	start.f_selectReset(false, true)
-	start.p[2] = p2
-	start.reset = false
-
-	if not start.f_selectScreen() then
-		start.exit = true
-		return false
+	local wins = resume.p2ConsecutiveWins
+	if arcadeSide == 1 then
+		wins = resume.p1ConsecutiveWins
 	end
-
-	-- Resume the exact interrupted arcade fight using the original caller args.
-	resume.pendingFight.p2char = {}
+	setConsecutiveWins(winner, wins)
+	setConsecutiveWins(3 - winner, 0)
+	start.reset, start.exit, start.challenger = false, false, 0
+	hook.run("start.f_selectChallenger.resume", resume, winner, {p = selected, c = cursors})
+	resume.pendingFight.p1char, resume.pendingFight.p2char = {}, {}
+	resume.pendingFight.p1numchars, resume.pendingFight.p1teammode = start.p[winner].numChars, start.p[winner].teamMode
 	return launchFight(resume.pendingFight)
 end
 
@@ -2460,6 +2482,7 @@ function launchFight(data)
 		if start.exit or start.characterchange then
 			if start.characterchange then
 				start.f_selectReset(false)
+				challengerCharacterChange = t.challenger
 			end
 			start.characterchange = false
 			break
@@ -2515,6 +2538,8 @@ function launchFight(data)
 	start.p[main.runSide].teamMode = t.p1teammode
 	start.p[main.opponentSide].numChars = t.p2numchars
 	start.p[main.opponentSide].teamMode = t.p2teammode
+	-- VS and loading can exit before game() restores the menu inputs.
+	main.f_restoreInput()
 	return ok
 end
 
@@ -2537,7 +2562,7 @@ local function refreshActiveFacePortraits()
 	for side = 1, 2 do
 		for k, v in ipairs(start.p[side].t_selCmd) do
 			local member = main.f_tableLength(start.p[side].t_selected) + k
-			if main.coop and (side == main.runSide or gameMode('versuscoop')) then
+			if start.f_coopSide(side) then
 				member = k
 			end
 			local st = start.p[side].t_selTemp[member]
@@ -2670,7 +2695,7 @@ local function tickScreenDelay(side, demo)
 	if canSkip then
 		local owners = {}
 		local seen = {}
-		if main.coop and (side == main.runSide or gameMode('versuscoop')) then
+		if start.f_coopSide(side) then
 			for _, v in ipairs(start.p[side].t_selCmd) do
 				if v.cmd ~= nil and not seen[v.cmd] then
 					table.insert(owners, v.cmd)
@@ -2735,7 +2760,7 @@ local function cancelSelectMember(side, cmdIndex)
 		return false
 	end
 	local p = start.p[side]
-	local separateControls = main.coop and (side == main.runSide or gameMode('versuscoop'))
+	local separateControls = start.f_coopSide(side)
 	local selected = main.f_tableLength(p.t_selected)
 	local v = p.t_selCmd[cmdIndex]
 	local member = separateControls and cmdIndex or selected + cmdIndex
@@ -2775,7 +2800,7 @@ local function cancelPreviousSide(side)
 	if side ~= main.opponentSide or not main.cpuSide[main.opponentSide] or not start.p[main.runSide].selEnd then
 		return false
 	end
-	local cmdIndex = main.coop and #start.p[main.runSide].t_selected or 1
+	local cmdIndex = start.f_coopSide(main.runSide) and #start.p[main.runSide].t_selected or 1
 	if cancelSelectMember(main.runSide, cmdIndex) then
 		local p = start.p[main.opponentSide]
 		p.teamEnd = true
@@ -2931,11 +2956,13 @@ function start.f_selectScreen(demo)
 	bgReset(motif.selectbgdef.BGDef)
 	fadeInInit(motif.select_info.fadein.FadeData)
 	local fadeOutStarted = false
-	local function exitSelectScreen()
+	-- back is true for cancel, false for Esc and exit.
+	local function exitSelectScreen(back)
 		sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 		fadeOutInit(motif.select_info.fadeout.FadeData)
 		fadeOutStarted = true
 		start.escFlag = true
+		start.selectBack = back
 	end
 	playBgm({source = "motif.select", interrupt = true})
 	start.f_resetTempData(motif.select_info, 'face')
@@ -2944,6 +2971,7 @@ function start.f_selectScreen(demo)
 	local stageActiveState = false
 	timerSelect = 0
 	start.escFlag = false
+	start.selectBack = false
 	local t_teamMenu = {{}, {}}
 	local blinkCount = 0
 	local counter = 0 - motif.select_info.fadein.time
@@ -2991,6 +3019,15 @@ function start.f_selectScreen(demo)
 					mode = mode,
 				})
 			end
+		end
+		-- A single participant on a co-op side picks one character in Single mode.
+		-- Larger sides keep their independent Simul/Tag choice and exact joined count.
+		if main.sideSelectDone and start.f_coopSide(side) and #main.sideDevices[side] == 1 then
+			t_teamMenu[side] = {{
+				itemname = 'single',
+				displayname = params.single or motif.select_info.teammenu.itemname.default.single,
+				mode = 0,
+			}}
 		end
 		hook.run("start.selectScreen.teamMenu", side, t_teamMenu[side], params, itemname_order)
 	end
@@ -3041,7 +3078,7 @@ function start.f_selectScreen(demo)
 				for k, v in ipairs(start.p[side].t_selCmd) do
 					local member = main.f_tableLength(start.p[side].t_selected) + k
 					local activeMember = true
-					if main.coop and (side == main.runSide or gameMode('versuscoop')) then
+					if start.f_coopSide(side) then
 						member = k
 						if motif.select_info.coopqueue then
 							activeMember = (k == main.f_tableLength(start.p[side].t_selected) + 1)
@@ -3069,7 +3106,7 @@ function start.f_selectScreen(demo)
 									timerSelect = motif.select_info.timer.displaytime
 									sndPlay(motif.Snd, motif.select_info.cancel.snd[1], motif.select_info.cancel.snd[2])
 								else
-									exitSelectScreen()
+									exitSelectScreen(true)
 								end
 								activeMember = false
 							end
@@ -3132,7 +3169,7 @@ function start.f_selectScreen(demo)
 					-- render only if cell is not hidden
 					if t.hidden ~= 1 and t.hidden ~= 2 then
 						local shouldDraw = false
-						if main.coop or persist then
+						if start.f_coopSide(side) or persist then
 							shouldDraw = true
 						end
 						if start.p[side].selEnd and k == totalSelected then
@@ -3364,7 +3401,7 @@ local t_teamActiveState = {false, false}
 
 function start.f_teamMenu(side, t)
 	local numSimul, numTag = main.numSimul, main.numTag
-	if main.sideSelectDone and main.coop and not main.cpuSide[side] then
+	if main.sideSelectDone and start.f_coopSide(side) then
 		local count = #main.sideDevices[side]
 		numSimul, numTag = {count, count}, {count, count}
 		start.p[side].numSimul, start.p[side].numTag = count, count
@@ -3397,7 +3434,7 @@ function start.f_teamMenu(side, t)
 		local t_cmd = {}
 		if main.coop and not main.sideSelectDone then
 			for i = 1, gameOption('Config.Players') do
-				if not gameMode('versuscoop') or (i - 1) % 2 + 1 == side then
+				if not start.f_versusCoop() or (i - 1) % 2 + 1 == side then
 					table.insert(t_cmd, i)
 				end
 			end
@@ -3475,6 +3512,7 @@ function start.f_teamMenu(side, t)
 			else
 				fadeOutInit(motif.select_info.fadeout.FadeData)
 				start.escFlag = true
+				start.selectBack = true
 			end
 		end
 		-- Draw team background
@@ -3610,21 +3648,22 @@ function start.f_teamMenu(side, t)
 	end
 	-- t_selCmd table appending once team mode selection is finished
 	if start.p[side].teamEnd then
-		if main.sideSelectDone and main.coop and not main.cpuSide[side] then
+		if main.sideSelectDone and start.f_coopSide(side) then
 			for i = 1, #main.sideDevices[side] do
 				local slot = side + (i - 1) * 2
 				table.insert(start.p[side].t_selCmd, {cmd = slot, player = start.f_getPlayerNo(side, i), selectState = 0})
 			end
-		elseif main.coop and (side == main.runSide or gameMode('versuscoop')) then
+		elseif start.f_coopSide(side) then
+			-- Online menus keep their original command slots until the fight starts.
 			for i = 1, start.p[side].numChars do
-				if gameMode('versuscoop') then
+				if start.f_versusCoop() then
 					if side == 1 then
-						table.insert(start.p[side].t_selCmd, {cmd = getRemapInput(i * 2 - 1), player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
+						table.insert(start.p[side].t_selCmd, {cmd = i * 2 - 1, player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
 					else
-						table.insert(start.p[side].t_selCmd, {cmd = getRemapInput(i * 2), player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
+						table.insert(start.p[side].t_selCmd, {cmd = i * 2, player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
 					end
 				else
-					table.insert(start.p[1].t_selCmd, {cmd = getRemapInput(i), player = start.f_getPlayerNo(side, #start.p[1].t_selCmd + 1), selectState = 0})
+					table.insert(start.p[side].t_selCmd, {cmd = i, player = start.f_getPlayerNo(side, #start.p[side].t_selCmd + 1), selectState = 0})
 				end
 			end
 		else
@@ -3815,7 +3854,7 @@ function start.f_palMenu(side, cmd, player, member, selectState, demo)
 		local hasDoneSpr = #main.f_sprList(pCfg.face.done) > 0
 		local preview_anim = pCfg.palmenu.preview.anim
 		if not main.f_animListEqual(done_anim, preview_anim) or hasDoneSpr then
-			if (not main.f_animListEqual(st.face_anim, done_anim) or hasDoneSpr) and ((main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
+			if (not main.f_animListEqual(st.face_anim, done_anim) or hasDoneSpr) and ((start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars) then
 				local a = start.f_animGet(start.c[player].selRef, side, member, pCfg.face.done, pCfg.face, false, st.face_data)
 				if a then
 					st.face_data = start.f_loadPalettes(a, charRef, pal)
@@ -3829,7 +3868,7 @@ function start.f_palMenu(side, cmd, player, member, selectState, demo)
 		local done2 = pCfg.face2.done
 		local preview2 = pCfg.palmenu.preview2
 		local hasPreview2 = #main.f_animSprLookups(preview2) > 0
-		local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+		local canShow2 = (start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 		if canShow2 and #main.f_animSprLookups(done2) > 0
 			and (not main.f_animListEqual(st.face2_anim, done2.anim) or #main.f_sprList(done2) > 0 or hasPreview2) then
 			local a = start.f_animGet(start.c[player].selRef, side, member, done2, pCfg.face2, false, st.face2_data)
@@ -4084,8 +4123,8 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 					local hasDoneSpr = #main.f_sprList(pCfg.face.done) > 0
 					local face_anim = start.p[side].t_selTemp[member].face_anim
 					local face2_anim = start.p[side].t_selTemp[member].face2_anim
-					local canShow = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
-					local canShow2 = (main.coop and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local canShow = (start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
+					local canShow2 = (start.f_coopSide(side) and not motif.select_info.coopqueue) or motif.select_info['p' .. side].face2.num > 1 or main.f_tableLength(start.p[side].t_selected) + 1 == start.p[side].numChars
 					local playPreviewSound = false
 					-- primary face "done" / preview
 					if canShow then
@@ -4238,7 +4277,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 			if not start.p[1].teamEnd or not start.p[2].teamEnd or not start.p[1].selEnd or not start.p[2].selEnd then
 				timerSelect = motif.select_info.timer.displaytime
 			end
-			if main.coop and (side == main.runSide or gameMode('versuscoop')) then -- remaining members are controlled by different players
+			if start.f_coopSide(side) then -- remaining members are controlled by different players
 				selectState = 4
 			elseif not start.p[side].selEnd then -- next member controlled by this player should become selectable
 				selectState = 0
@@ -4876,17 +4915,47 @@ end
 --;===========================================================
 --; SIDE SELECTION
 --;===========================================================
+-- Mode                    Players   Auto-assignment   Continue when
+-------------------------- --------- ----------------- -------------------
+-- Arcade                  1         Left              Ready
+-- Training                1 (+1)    Left + dummy      Ready
+-- Team Arcade             1+        Left              Ready
+-- Survival / Time Attack  1+        Left              Ready
+-- Team / Survival Co-op*  2+        Same side         Team ready
+-- Versus                  1-2       Opposite sides    All ready
+-- Team Versus             1+        Opposite sides    All ready
+-- Versus Co-op*           2+        Balance sides     Both teams ready
+-- Quick Match*            1+        Same side         Ready
+-- Watch                   0         Skipped           Side select skipped
+-- Netplay Modes           2 online  Session-assigned  Side select skipped
+-------------------------- --------- ----------------- -------------------
+-- Notes: + means more players can join. Side select ends when a player on a
+-- team confirms and enough players have joined.
+-- Optional co-op (main.coop with Single): extra players join a side as team members.
+-- One human side in Versus plays the CPU (main.versusCpu). The training dummy
+-- takes a joined controller, or a free pair (main.dummySide).
+-- * Deprecated: covered by optional co-op and Versus against the CPU.
+
+-- Ready players lead in confirmation order; other players keep their join order.
+function start.f_sideInputOrder(a, b)
+	if a.ready ~= b.ready then
+		return a.ready
+	end
+	if a.ready then
+		return a.readyOrder < b.readyOrder
+	end
+	return a.order < b.order
+end
+
 -- Returns the devices on a side, in the order they joined.
 function start.f_sideDevices(side)
 	local ret = {}
 	for _, device in ipairs(inputGetDevices()) do
-		if device.participant > 0 and device.side == side then
+		if device.primary and device.participant > 0 and device.side == side then
 			table.insert(ret, device)
 		end
 	end
-	table.sort(ret, function(a, b)
-		return a.participant < b.participant
-	end)
+	table.sort(ret, start.f_sideInputOrder)
 	return ret
 end
 
@@ -4908,6 +4977,468 @@ function start.f_setRunSide(side)
 		setHomeTeam(side)
 	elseif main.cpuSide[main.opponentSide] then
 		setHomeTeam(main.opponentSide)
+	end
+end
+
+local t_sideColumns = {'p1', 'unassigned', 'p2'}
+
+function start.f_sideSelectStyles(column)
+	local t = {column, column.active}
+	if column.conflict ~= nil then
+		table.insert(t, column.conflict)
+	end
+	return t
+end
+
+function start.f_sideSelectReset()
+	local sec = motif.side_select_info
+	bgReset(motif.sideselectbgdef.BGDef)
+	animReset(sec.title.AnimData)
+	for _, name in ipairs(t_sideColumns) do
+		animReset(sec.title[name].AnimData)
+		for _, style in ipairs(start.f_sideSelectStyles(sec.item[name])) do
+			for _, bg in pairs(style.bg) do
+				animReset(bg.AnimData)
+			end
+		end
+		animReset(sec.item[name].arrow.left.AnimData)
+		animReset(sec.item[name].arrow.right.AnimData)
+	end
+end
+
+-- Row text for a keyboard or gamepad row (keyboard.text / gamepad.text, else text) with
+-- %name and %setup replaced.
+function start.f_sideSelectFormat(style, kind, values)
+	local template = style.text[kind] or style.text.default or ''
+	local text = (template:gsub('\\n', '\n'):gsub('%%(%a+)', function(token)
+		return values[token]
+	end))
+	local lines = {}
+	for line in (text .. '\n'):gmatch('(.-)\n') do
+		if line:match('%S') ~= nil then
+			table.insert(lines, line)
+		end
+	end
+	return table.concat(lines, '\n')
+end
+
+-- Row bg for a controller type: bg.keyboard / bg.gamepad, else the plain bg.
+function start.f_sideSelectBg(style, kind)
+	if style.bg == nil then
+		return nil
+	end
+	return style.bg[kind] or style.bg.default
+end
+
+function start.f_sideSelectText(style, value, x, y, kind)
+	-- Draw the row bg below the text. It is drawn per row but animated once per frame.
+	local bg = start.f_sideSelectBg(style, kind)
+	if bg ~= nil then
+		animReset(bg.AnimData, {'pos'})
+		if x ~= nil then
+			animAddPos(bg.AnimData, x, y)
+		end
+		animDraw(bg.AnimData)
+	end
+	-- Titles carry a decorative anim; item rows are plain text.
+	if style.AnimData ~= nil then
+		animReset(style.AnimData, {'pos'})
+	end
+	textImgReset(style.TextSpriteData)
+	textImgSetText(style.TextSpriteData, tostring(value):gsub('\\n', '\n'))
+	if x ~= nil then
+		if style.AnimData ~= nil then
+			animAddPos(style.AnimData, x, y)
+		end
+		textImgAddPos(style.TextSpriteData, x, y)
+	end
+	if style.AnimData ~= nil then
+		animDraw(style.AnimData)
+	end
+	textImgDraw(style.TextSpriteData)
+end
+
+function start.f_sideSelectBegin(title)
+	local sec, bg = motif.side_select_info, motif.sideselectbgdef
+	clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
+	bgDraw(bg.BGDef, 0)
+	rectDraw(sec.overlay.RectData)
+	start.f_sideSelectText(sec.title, title or sec.title.text, sec.pos[1], sec.pos[2])
+	return sec
+end
+
+function start.f_sideSelectEnd()
+	-- Shared item animations advance once per frame, regardless of the number of rows.
+	local sec = motif.side_select_info
+	animUpdate(sec.title.AnimData)
+	for _, name in ipairs(t_sideColumns) do
+		animUpdate(sec.title[name].AnimData)
+		for _, style in ipairs(start.f_sideSelectStyles(sec.item[name])) do
+			for _, bg in pairs(style.bg) do
+				animUpdate(bg.AnimData)
+			end
+		end
+		animUpdate(sec.item[name].arrow.left.AnimData)
+		animUpdate(sec.item[name].arrow.right.AnimData)
+	end
+	bgDraw(motif.sideselectbgdef.BGDef, 1)
+	refresh()
+end
+
+-- True for co-op that keeps Single on every human side, so a side can still have one player.
+function start.f_optionalCoop()
+	if not main.coop then
+		return false
+	end
+	for side = 1, 2 do
+		if not main.cpuSide[side] and not main.teamMenu[side].single then
+			return false
+		end
+	end
+	return true
+end
+
+-- Runs the side select screen. Returns false if the player backs out.
+function start.f_sideSelect()
+	if not inputIsLocal() then
+		return true
+	end
+	local sec = motif.side_select_info
+	local initiator = inputBegin()
+	main.sideSelectDone = true
+	main.sideDevices = {{}, {}}
+	-- Watch immediately prepares two CPU sides with an observer for selection.
+	if main.cpuSide[1] and main.cpuSide[2] and inputClaim(initiator, 1) then
+		inputCommit()
+		main.f_saveBaseRemapInput()
+		return true
+	end
+	local versus = not main.cpuSide[1] and not main.cpuSide[2]
+	-- One human side is enough, the CPU takes the other.
+	local oneSide = versus and main.versusCpu
+	-- A dummy side can take a controller without requiring a second player
+	-- or giving them the dummy's character selection.
+	local dummySide = main.dummySide
+	-- Human positions come from the mode setup, independently of character team sizes.
+	local maxPlayers = gameOption('Config.Players')
+	local minPerSide, maxPerSide = 1, 1
+	if main.coop then
+		minPerSide = maxPlayers
+		for side = 1, 2 do
+			if not main.cpuSide[side] and main.selectMenu[side] then
+				for mode, size in pairs({simul = main.numSimul, tag = main.numTag}) do
+					if main.teamMenu[side][mode] then
+						minPerSide = math.min(minPerSide, size[1])
+						maxPerSide = math.max(maxPerSide, size[2])
+					end
+				end
+				-- A selectable Single team allows solo play even when co-op is enabled.
+				if main.teamMenu[side].single then
+					minPerSide = 1
+				end
+			end
+		end
+		maxPerSide = math.min(maxPerSide, maxPlayers)
+	end
+	if not sec.enabled then
+		-- Every human-controlled side requires its own participant.
+		local minimum = minPerSide * ((versus and not oneSide) and 2 or 1)
+		local maximum = maxPerSide
+		-- Optional co-op needs side selection to opt in extra players. With that
+		-- screen disabled, keep one human participant per side and normal team menus.
+		if start.f_optionalCoop() then
+			maximum = 1
+		end
+		-- The player who opened the mode keeps their side, as in side select.
+		local assigned, runSide = inputAutoAssign(initiator, minimum, maximum, versus or dummySide)
+		if not assigned then
+			inputResetForMenus()
+			main.f_warning(motif.warning_info.text.text.inputcount, motif[main.group], motif[main.background])
+			return false
+		end
+		start.f_setRunSide(runSide)
+		for side = 1, 2 do
+			main.sideDevices[side] = start.f_sideDevices(side)
+			if versus then
+				main.cpuSide[side] = #main.sideDevices[side] == 0
+			end
+		end
+		if versus and main.cpuSide[main.opponentSide] then
+			setHomeTeam(main.opponentSide)
+		end
+		inputCommit()
+		main.f_saveBaseRemapInput()
+		return true
+	end
+	local done = nil -- nil: choosing, true: continue, false: cancel
+	local function exitSideSelect()
+		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
+		done = false
+		fadeOutInit(sec.fadeout.FadeData)
+	end
+	local function cycleSetup(device, direction)
+		if inputCycleSetup(device.id, direction) then
+			sndPlay(motif.Snd, sec.move.snd[1], sec.move.snd[2])
+		end
+	end
+	local focus = nil -- device used last, kept visible when the list scrolls
+	local top = {1, 1, 1} -- first visible row in each column
+	-- True if newSide has room for the device.
+	local function hasRoom(device, newSide, counts)
+		if newSide == 0 then
+			return true
+		end
+		if not device.connected or counts[newSide] >= maxPerSide then
+			return false
+		end
+		-- players on both sides, not counting this device
+		local others = counts[1] + counts[2]
+		if device.side > 0 then
+			others = others - 1
+		end
+		if others >= maxPlayers then
+			return false
+		end
+		-- A mode with one human side keeps all participants together.
+		-- A dummy side can still take an optional controller.
+		if not versus and not dummySide and counts[3 - newSide] > 0 then
+			return false
+		end
+		return true
+	end
+	-- True if the device may move to newSide. A keyboard controller sharing keys with one
+	-- that already picked a side can't, until it switches to another setup.
+	local function canJoinSide(device, newSide, counts)
+		return hasRoom(device, newSide, counts) and (newSide == 0 or not device.conflict)
+	end
+	-- Side reached by a left (-1) or right (1) step: towards that team, or back to unassigned.
+	local function sideStep(side, step)
+		if step < 0 then
+			return side == 2 and 0 or 1
+		end
+		return side == 1 and 0 or 2
+	end
+	-- True if a left (-1) or right (1) step can move the device, so its arrow is shown.
+	local function canStep(device, step, counts)
+		local newSide = sideStep(device.side, step)
+		return newSide ~= device.side and canJoinSide(device, newSide, counts)
+	end
+	-- Devices with a side, or with room on a side, are listed and can change setups.
+	local function canSelect(device, counts)
+		return device.side > 0 or hasRoom(device, 1, counts) or hasRoom(device, 2, counts)
+	end
+	start.f_sideSelectReset()
+	fadeInInit(motif.side_select_info.fadein.FadeData)
+	esc(false)
+	while true do
+		if done ~= nil and not fadeActive() then
+			if done then
+				inputCommit()
+				main.f_saveBaseRemapInput()
+			else
+				inputResetForMenus()
+			end
+			esc(false)
+			return done, true
+		end
+		if done == nil and esc() then
+			esc(false)
+			exitSideSelect()
+		end
+		-- While choosing, unplugging a controller releases its side. Once confirmed,
+		-- keep the assignment through fade-out so reconnecting restores its controls.
+		if done == nil then
+			for _, device in ipairs(inputGetDevices()) do
+				if not device.connected and device.participant > 0 then
+					inputClaim(device.id, 0)
+				end
+			end
+		end
+		local finish = false
+		local ready = false
+		local confirmed = false
+		local counts = {#start.f_sideDevices(1), #start.f_sideDevices(2)}
+		if done == nil and not fadeActive() then
+			for _, device in ipairs(inputGetDevices()) do
+				if device.connected and canSelect(device, counts) then
+					if inputDeviceAction(device.id, main.virtualControls) then
+						focus = device.id
+					end
+					-- left/right moves one step towards that side, cancel leaves the screen
+					local newSide = nil
+					if inputDeviceAction(device.id, sec.side.previous.action) then
+						newSide = sideStep(device.side, -1)
+					elseif inputDeviceAction(device.id, sec.side.next.action) then
+						newSide = sideStep(device.side, 1)
+					elseif inputDeviceAction(device.id, sec.cancel.action) then
+						exitSideSelect()
+						break
+					end
+					-- A device on a team is ready. Its setup only changes while unassigned, so two
+					-- keyboard controllers on teams can't end up sharing keys.
+					if newSide ~= nil then
+						if newSide ~= device.side and canJoinSide(device, newSide, counts) and inputClaim(device.id, newSide) then
+							sndPlay(motif.Snd, sec.move.snd[1], sec.move.snd[2])
+							if newSide > 0 then
+								inputSetReady(device.id, true)
+							end
+						end
+					elseif device.side == 0 and inputDeviceAction(device.id, sec.setup.edit.action) then
+						sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
+						options.f_setupEditor(device)
+						start.f_sideSelectReset()
+						break
+					elseif device.side == 0 and inputDeviceAction(device.id, sec.setup.previous.action) then
+						cycleSetup(device, -1)
+					elseif device.side == 0 and inputDeviceAction(device.id, sec.setup.next.action) then
+						cycleSetup(device, 1)
+					elseif inputDeviceAction(device.id, sec.done.action) then
+						if device.side > 0 then
+							finish = true
+						else
+							-- In two-human-side modes, default to the less populated side.
+							-- Ties go left; manual choices go through canJoinSide.
+							-- No side may take this device; its missing arrows already show that.
+							local preferred = (versus and counts[2] < counts[1]) and 2 or 1
+							for _, side in ipairs({preferred, 3 - preferred}) do
+								if canJoinSide(device, side, counts) and inputClaim(device.id, side) then
+									inputSetReady(device.id, true)
+									confirmed = true
+									sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
+									break
+								end
+							end
+						end
+					end
+					counts = {#start.f_sideDevices(1), #start.f_sideDevices(2)}
+				end
+			end
+			-- Check capacity before readiness: an undersized co-op team can proceed
+			-- once every available participant has joined and confirmed.
+			local canJoin, allReady = false, true
+			local leader
+			for _, device in ipairs(inputGetDevices()) do
+				if device.side > 0 then
+					-- The opener leads if still on a team, otherwise the first player still joined does.
+					if leader == nil or device.id == initiator or (leader.id ~= initiator and device.order < leader.order) then
+						leader = device
+					end
+					if not device.connected or not device.ready then
+						allReady = false
+					end
+				elseif canJoinSide(device, 1, counts) or canJoinSide(device, 2, counts) then
+					canJoin = true
+				end
+			end
+			local minimum = minPerSide
+			if main.coop and not canJoin then
+				-- A depleted co-op lobby still needs two humans on one side, or
+				-- one on each side in human-vs-human co-op.
+				minimum = math.min(minimum, versus and 1 or 2)
+			end
+			if versus and not oneSide then
+				-- Neither human-controlled side may silently become a CPU opponent.
+				ready = counts[1] >= minimum and counts[2] >= minimum
+			else
+				ready = counts[1] >= minimum or counts[2] >= minimum
+			end
+			ready = ready and allReady
+			-- With enough players, confirming on a team starts.
+			if done == nil and ready and finish then
+				start.f_setRunSide(leader.side)
+				if versus then
+					main.cpuSide = {counts[1] == 0, counts[2] == 0}
+					if main.cpuSide[main.opponentSide] then
+						setHomeTeam(main.opponentSide)
+					end
+				end
+				-- Fallback for a dummy nobody joined: a free pair, as without side select.
+				if dummySide and counts[main.opponentSide] == 0 then
+					inputAutoAssign(initiator, 1, 1, true)
+				end
+				main.sideDevices[1] = start.f_sideDevices(1)
+				main.sideDevices[2] = start.f_sideDevices(2)
+				if not confirmed then
+					sndPlay(motif.Snd, sec.done.snd[1], sec.done.snd[2])
+				end
+				done = true
+				fadeOutInit(motif.side_select_info.fadeout.FadeData)
+			end
+		end
+		-- draw
+		local s = start.f_sideSelectBegin()
+		-- columns: 1 = team 1, 2 = unassigned, 3 = team 2
+		local columns = {{}, {}, {}}
+		for _, device in ipairs(inputGetDevices()) do
+			if canSelect(device, counts) then
+				local col = 2
+				if device.side == 1 then
+					col = 1
+				elseif device.side == 2 then
+					col = 3
+				end
+				table.insert(columns[col], device)
+			end
+		end
+		-- Use the same order for the column and the gameplay slots.
+		for _, col in ipairs({1, 3}) do
+			table.sort(columns[col], start.f_sideInputOrder)
+		end
+		for _, name in ipairs(t_sideColumns) do
+			start.f_sideSelectText(s.title[name], s.title[name].text, s.pos[1], s.pos[2])
+		end
+		local visible = math.max(1, s.window.visibleitems)
+		for col, list in ipairs(columns) do
+			-- don't scroll past the end of the list
+			local lastTop = math.max(1, #list - visible + 1)
+			if top[col] > lastTop then
+				top[col] = lastTop
+			end
+			-- scroll so the device used last stays visible
+			for i, device in ipairs(list) do
+				if device.id == focus then
+					if i < top[col] then
+						top[col] = i
+					elseif i > top[col] + visible - 1 then
+						top[col] = i - visible + 1
+					end
+				end
+			end
+			for i = top[col], math.min(#list, top[col] + visible - 1) do
+				local device = list[i]
+				local column = s.item[t_sideColumns[col]]
+				-- Pick the row style for this state, see [Side Select Info] in defaultMotif.ini.
+				local style = column.active
+				if col == 2 and device.conflict and not canStep(device, -1, counts) and not canStep(device, 1, counts) then
+					-- Its keys overlap a keyboard controller on a team, so it can only change setup.
+					style = column.conflict
+				elseif col == 2 and device.id ~= focus then
+					style = column
+				end
+				local name = start.f_sideSelectFormat(style, device.kind, {name = device.name, setup = device.setupName})
+				local x = s.pos[1] + s.item.offset[1] + (i - top[col]) * s.item.spacing[1]
+				local y = s.pos[2] + s.item.offset[2] + (i - top[col]) * s.item.spacing[2]
+				start.f_sideSelectText(style, name, x, y, device.kind)
+				-- Arrows show the steps this device can take.
+				for _, arrow in ipairs({{'left', -1}, {'right', 1}}) do
+					local anim = column.arrow[arrow[1]].AnimData
+					if done == nil and canStep(device, arrow[2], counts) then
+						animReset(anim, {'pos'})
+						animAddPos(anim, x, y)
+						animDraw(anim)
+					end
+				end
+			end
+		end
+		-- A side with no device shows its base style.
+		for side, name in ipairs({'p1', 'p2'}) do
+			if counts[side] == 0 then
+				local style = s.item[name]
+				start.f_sideSelectText(style, start.f_sideSelectFormat(style, nil, {}),
+					s.pos[1] + s.item.offset[1], s.pos[2] + s.item.offset[2])
+			end
+		end
+		start.f_sideSelectEnd()
 	end
 end
 

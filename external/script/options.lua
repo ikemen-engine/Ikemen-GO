@@ -2490,6 +2490,7 @@ function options.f_refreshInputSettings()
 		buttonsetup = device == nil,
 		keyboardmenu = kind ~= 'keyboard',
 		controllermapping = kind ~= 'gamepad',
+		preferredside = device == nil,
 		vibration = device == nil or not device.hasRumble,
 	}
 	-- Menu loops keep their item lists, so they are refilled in place. Editor templates are copied whole.
@@ -2512,10 +2513,27 @@ function options.f_refreshInputSettings()
 	for _, row in ipairs(tbl.items) do
 		if row.itemname == 'device' then
 			row.vardisplay = device.name
+		elseif row.itemname == 'preferredside' then
+			row.vardisplay = options.f_preferredSideDisplay(device.id)
 		elseif row.itemname == 'vibration' then
 			row.vardisplay = options.f_boolDisplay(device.rumble)
 		end
 	end
+end
+
+-- Preferred Side of a device, as shown in Input Settings.
+function options.f_preferredSideDisplay(deviceId)
+	local side = 0
+	for _, device in ipairs(inputGetDevices()) do
+		if device.id == deviceId then
+			side = device.preferredSide
+			break
+		end
+	end
+	if side == 0 then
+		return motif.option_info.menu.valuename.any
+	end
+	return main.f_formatBySpec(motif.option_info.menu.valuename.team, {i = side})
 end
 
 -- Opens Input Settings on the device that opened them.
@@ -2579,7 +2597,26 @@ options.t_itemname.device = function(t, item)
 	return true
 end
 
--- Vibration belongs to the device, so it is saved straight away. Pads SDL can't vibrate keep it unchanged.
+-- Preferred Side and Vibration belong to the device, so they are saved straight away.
+options.t_itemname.preferredside = function(t, item)
+	local step = 0
+	if getAction(-1, motif.option_info.menu.add.action) then
+		step = 1
+	elseif getAction(-1, motif.option_info.menu.subtract.action) then
+		step = -1
+	end
+	local device = options.inputDevice
+	if step ~= 0 and device ~= nil then
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+		-- Any, Team 1, Team 2
+		if inputSetPreferredSide(device.id, (device.preferredSide + step) % 3) then
+			options.f_refreshInputSettings()
+		end
+	end
+	return true
+end
+
+-- Pads SDL can't vibrate keep it unchanged.
 options.t_itemname.vibration = function(t, item)
 	local device = options.inputDevice
 	if getAction(-1, motif.option_info.menu.add.action, motif.option_info.menu.subtract.action) and device ~= nil and device.hasRumble then
@@ -2589,6 +2626,20 @@ options.t_itemname.vibration = function(t, item)
 		end
 	end
 	return true
+end
+
+-- Side select: edit the Button Setup of the device that pressed the button.
+-- It has no player slot yet, so the editor reads that device directly.
+function options.f_setupEditor(device)
+	local context = {background = motif.optionbgdef, parents = {}}
+	-- The press that opened the editor must not act in it too.
+	context.skipInput = true
+	bgReset(motif.optionbgdef.BGDef)
+	local previous = inputSetMenuFocus(device.id)
+	if options.f_editSetup(device, context) then
+		runInputConfig(context)
+	end
+	inputSetMenuFocus(previous)
 end
 
 -- Pause menu: the Battle Controls of the device in use, in the pause background.

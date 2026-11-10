@@ -1352,6 +1352,79 @@ type HiscoreInfoProperties struct {
 	Glyphs []string `ini:"glyphs"`
 }
 
+type SideSelectItemColumn struct {
+	TextMapProperties
+	Bg     map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+	Active struct {
+		TextMapProperties
+		Bg map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+	} `ini:"active"`
+	Arrow struct {
+		Left  AnimationProperties `ini:"left"`
+		Right AnimationProperties `ini:"right"`
+	} `ini:"arrow"`
+}
+
+type SideSelectInfoProperties struct {
+	Enabled bool              `ini:"enabled"`
+	FadeIn  FadeProperties    `ini:"fadein"`
+	FadeOut FadeProperties    `ini:"fadeout"`
+	Pos     [2]float32        `ini:"pos"`
+	Overlay OverlayProperties `ini:"overlay"`
+	Title   struct {
+		AnimationTextProperties
+		Unassigned AnimationTextProperties `ini:"unassigned"`
+		P1         AnimationTextProperties `ini:"p1"`
+		P2         AnimationTextProperties `ini:"p2"`
+	} `ini:"title"`
+	Item struct {
+		Offset     [2]float32           `ini:"offset"`
+		Spacing    [2]float32           `ini:"spacing"`
+		Unassigned struct {
+			SideSelectItemColumn
+			Conflict struct {
+				TextMapProperties
+				Bg map[string]*BgAnimationProperties `ini:"bg" flatten:"true"`
+			} `ini:"conflict"`
+		} `ini:"unassigned"`
+		P1         SideSelectItemColumn `ini:"p1"`
+		P2         SideSelectItemColumn `ini:"p2"`
+	} `ini:"item"`
+	Side struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+	} `ini:"side"`
+	Setup struct {
+		Previous struct {
+			Action []string `ini:"action"`
+		} `ini:"previous"`
+		Next struct {
+			Action []string `ini:"action"`
+		} `ini:"next"`
+		Edit struct {
+			Action []string `ini:"action"`
+		} `ini:"edit"`
+	} `ini:"setup"`
+	Move struct {
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"move"`
+	Done struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"done"`
+	Cancel struct {
+		Action []string `ini:"action"`
+		Snd [2]int32 `ini:"snd" default:"-1,0"`
+	} `ini:"cancel"`
+	Window struct {
+		VisibleItems int32 `ini:"visibleitems"`
+	} `ini:"window"`
+}
+
 type WarningInfoProperties struct {
 	Title TextProperties `ini:"title"`
 	Text  struct {
@@ -1414,6 +1487,8 @@ type Motif struct {
 	DialogueInfo    DialogueInfoProperties              `ini:"dialogue_info"`
 	HiscoreInfo     HiscoreInfoProperties               `ini:"hiscore_info"`
 	HiscoreBgDef    BgDefProperties                     `ini:"hiscorebgdef"`
+	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
+	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
 	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
@@ -1814,7 +1889,7 @@ func loadMotif(def string) (*Motif, error) {
 				goto nextSection
 			}
 			for _, p := range []string{
-				"titlebg", "selectbg", "versusbg", "continuebg",
+				"titlebg", "selectbg", "sideselectbg", "versusbg", "continuebg",
 				"victorybg", "winbg",
 				"optionbg", "replaybg", "attractbg",
 				"challengerbg", "hiscorebg",
@@ -2077,6 +2152,7 @@ type InheritSpec struct {
 	SrcPrefix string
 	DstSec    string
 	DstPrefix string
+	Flat      bool // copy only the source's own keys, not its nested elements
 }
 
 // mergeWithInheritance applies "user overrides default" with intra-file inheritance.
@@ -2192,6 +2268,9 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 
 		// Resolve and set final values following the precedence.
 		for suf := range suffixes {
+			if sp.Flat && strings.Contains(suf, ".") {
+				continue
+			}
 			dstKey := sp.DstPrefix + suf
 			srcKey := sp.SrcPrefix + suf
 			if shouldSkipAnimSpr(sp.DstPrefix, suf) {
@@ -2241,6 +2320,11 @@ func (m *Motif) mergeWithInheritance(specs []InheritSpec) {
 			if err := m.SetValueUpdate(query, val); err != nil {
 				//fmt.Printf("Warning: inheritance set failed for %s = %q: %v\n", query, val, err)
 				continue
+			}
+			// SetValueUpdate stores a map's default entry as <map>.default.<field>.
+			// Later specs read <map>.<field>, so keep that key up to date as well.
+			if s, err := merged.GetSection(sp.DstSec); err == nil {
+				s.Key(dstKey).SetValue(val)
 			}
 
 			// Remember only values that were actually inherited into the destination.
@@ -2396,6 +2480,23 @@ func (m *Motif) overrideParams() {
 		// [Pause Menu]
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.active.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected.active."},
+		// [Side Select Info]
+		{SrcSec: "Side Select Info", SrcPrefix: "item.unassigned.", DstSec: "Side Select Info", DstPrefix: "item.unassigned.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p1.", DstSec: "Side Select Info", DstPrefix: "item.p1.active."},
+		{SrcSec: "Side Select Info", SrcPrefix: "item.p2.", DstSec: "Side Select Info", DstPrefix: "item.p2.active."},
+	}
+	// Keyboard and gamepad row backgrounds in [Side Select Info] inherit the plain bg of the same row style
+	for _, col := range []string{"unassigned", "p1", "p2"} {
+		styles := []string{"", "active."}
+		if col == "unassigned" {
+			styles = append(styles, "conflict.")
+		}
+		for _, style := range styles {
+			prefix := "item." + col + "." + style + "bg."
+			for _, kind := range []string{"keyboard", "gamepad"} {
+				specs = append(specs, InheritSpec{SrcSec: "Side Select Info", SrcPrefix: prefix, DstSec: "Side Select Info", DstPrefix: prefix + kind + ".", Flat: true})
+			}
+		}
 	}
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
 	for _, sec := range m.customPauseMenuSections() {
@@ -2663,6 +2764,11 @@ func (m *Motif) loadFiles() {
 		m.loadBgDefProperties(&m.HiscoreBgDef, "hiscorebg", m.Files.Spr)
 	} else {
 		m.HiscoreBgDef = m.TitleBgDef
+	}
+	if _, err := m.UserIniFile.GetSection("SideSelectBgDef"); err == nil {
+		m.loadBgDefProperties(&m.SideSelectBgDef, "sideselectbg", m.Files.Spr)
+	} else {
+		m.SideSelectBgDef = m.OptionBgDef
 	}
 
 	LoadFile(&m.Files.Snd, []string{m.Files.Snd}, "", func(filename string) error {
@@ -3684,11 +3790,25 @@ func (ch *MotifChallenger) init(m *Motif) {
 		return
 	}
 
-	controllerNo := sys.actionController(m.ChallengerInfo.Action)
-	if controllerNo == -1 || sys.uiControllerKey(controllerNo) == sys.uiControllerKey(0) {
+	if sys.netplay() {
 		return
 	}
-	ch.controllerNo = controllerNo
+	deviceID := 0
+	for _, device := range sys.inputs.Devices {
+		if !device.Connected || sys.inputs.owner(device.ID) >= 0 || sys.keyboardConflict(device.ID) {
+			continue
+		}
+		// Read each unassigned device directly: a menu press lasts one frame and can be missed
+		// by the match UI, especially in slow motion.
+		if sys.deviceActionTime(device, m.ChallengerInfo.Action) > 0 {
+			deviceID = device.ID
+			break
+		}
+	}
+	if deviceID == 0 {
+		return
+	}
+	ch.controllerNo = deviceID - 1
 
 	if err := sys.luaLState.DoString("hook.run('game.challenger_init')"); err != nil {
 		sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger_init", err.Error())
@@ -3705,7 +3825,7 @@ func (ch *MotifChallenger) init(m *Motif) {
 	m.ChallengerInfo.Bg.AnimData.Reset()
 
 	m.ChallengerInfo.FadeIn.FadeData.init(m.fadeIn, true)
-	ch.counter = 0
+	ch.counter, ch.endTimer = 0, -1
 	ch.active = true
 	ch.initialized = true
 }
@@ -3717,7 +3837,7 @@ func (ch *MotifChallenger) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.challenger", err.Error())
 		}
 	}
-	if ch.endTimer == -1 && ch.counter == m.ChallengerInfo.Time {
+	if ch.endTimer == -1 && ch.counter >= m.ChallengerInfo.Time {
 		startFadeOut(m.ChallengerInfo.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
 		ch.endTimer = ch.counter + m.fadeOut.timeRemaining
 	}

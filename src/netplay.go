@@ -190,6 +190,13 @@ type NetConnection struct {
 func NewNetConnection() *NetConnection {
 	// The device that opened netplay is the local player, as participant zero.
 	sys.resetInputForMenus()
+	if !sys.inputs.participantConnected(0) {
+		// Command-line matches and automatic menu entries have no initiating
+		// device. Assign the first keyboard/gamepad pair before locking input.
+		sys.assignAutomaticInputs(0, 1, 1, false)
+	}
+	// One device plays online, so the channel keeps its device class all session.
+	sys.inputs.sharedDevices = nil
 	sys.inputs.ClaimLocked = true
 	nc := &NetConnection{
 		pendingConn: make(chan *net.TCPConn),

@@ -334,6 +334,7 @@ type Config struct {
 	} `ini:"Netplay"`
 	Input struct {
 		ButtonSetup map[string]string `ini:"ButtonSetup"`
+		PreferredSide map[string]string `ini:"PreferredSide"`
 		ControllerRumble map[string]string `ini:"ControllerRumble"`
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
 		SOCDResolution             int     `ini:"SOCDResolution" sync:"host"`
@@ -754,6 +755,22 @@ func (c *Config) devicePreference(device *InputDevice, group string, values map[
 		}
 	}
 	return value
+}
+
+// Team side (1 or 2) a device plays on when side select is skipped, 0 for automatic.
+func (c *Config) preferredSide(device *InputDevice) TeamSide {
+	switch strings.TrimSpace(c.devicePreference(device, "PreferredSide", c.Input.PreferredSide)) {
+	case "1":
+		return TS_Left
+	case "2":
+		return TS_Right
+	}
+	return TS_None
+}
+
+// Remembers the team side a device prefers. TS_None means any side.
+func (c *Config) rememberPreferredSide(device *InputDevice, side TeamSide) error {
+	return c.rememberPreference("PreferredSide", device.preferenceKey(), fmt.Sprint(int(side)), "")
 }
 
 // Whether a device rumbles.
