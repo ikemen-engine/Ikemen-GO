@@ -2079,10 +2079,13 @@ local function updateEditor(tbl, root)
 		row.hintContext = 'editor'
 		if rows[field] then
 			row.hintContext = 'binding'
-			row.vardisplay = bindingDisplay(root.draft[rows[field]], kind)
+			-- Online, only the peer with the device knows its keys and mapping.
+			row.vardisplay = (root.remote and kind ~= 'virtual') and '' or bindingDisplay(root.draft[rows[field]], kind)
 		elseif field == 'activesetup' then
 			row.hintContext = 'setup'
 			row.vardisplay = root.draft.name
+		elseif field == 'restoredefault' and root.sessionPlayer ~= nil and root.kind == 'setup' then
+			row.displayname = motif.option_info.menu.valuename.sessiondefault
 		end
 	end
 	for _, sub in pairs(tbl.submenu) do
@@ -2105,7 +2108,7 @@ end
 -- A device edits its own setup. Before the first change to a shipped setup, or to one
 -- another device uses, it is copied to "Custom N" and the device switches to the copy.
 local function ownSetup(root)
-	if root.kind ~= 'setup' or inputSetupEditable(root.setupId, root.device.id) then
+	if root.sessionPlayer ~= nil or root.kind ~= 'setup' or inputSetupEditable(root.setupId, root.device.id) then
 		return
 	end
 	local values = main.f_tableCopy(root.saved)
@@ -2121,7 +2124,7 @@ end
 
 -- Drops a copy made by this editor and goes back to setupId.
 local function undoCopy(root, setupId)
-	if setupId == nil or root.kind ~= 'setup' or root.setupId == setupId then
+	if setupId == nil or root.sessionPlayer ~= nil or root.kind ~= 'setup' or root.setupId == setupId then
 		return
 	end
 	inputDeleteSetup(root.setupId)
@@ -2139,7 +2142,15 @@ local function applyEditor(root)
 	end
 	local sec = motif.option_info
 	local ok = true
-	if root.kind == 'mapping' then
+	if root.kind == 'mapping' and root.sessionPlayer ~= nil then
+		-- Online the shared menu goes on either way. Only the peer with the device saves.
+		if not root.remote and inputSaveMapping(root.device.id, root.draft) then
+			options.modified = true
+		end
+		return true
+	elseif root.sessionPlayer ~= nil then
+		ok = inputSaveSessionSetup(root.sessionPlayer, root.draft)
+	elseif root.kind == 'mapping' then
 		ok = inputSaveMapping(root.device.id, root.draft)
 	else
 		ok = inputSaveSetup(root.setupId, root.draft)
@@ -2148,7 +2159,9 @@ local function applyEditor(root)
 		inputPopup(root.inputContext, root.kind == 'mapping' and sec.textinput.text.mappingsave or sec.textinput.text.setupsave)
 		return false
 	end
-	options.modified = true
+	if root.sessionPlayer == nil then
+		options.modified = true
+	end
 	return true
 end
 
@@ -2179,7 +2192,7 @@ function options.f_inputConfigFrame(context)
 	end
 	-- An unplugged gamepad closes its editor. Input Settings then select another device.
 	local root = context.current and context.current.inputMenu
-	local device = root and root.device
+	local device = root and root.sessionPlayer == nil and root.device
 	if not context.closed and device and device.kind == 'gamepad' and not getJoystickPresent(device.joy) then
 		context.capture, context.diagram, context.current, context.parents = nil, nil, nil, {}
 		context.closed = true
@@ -2262,6 +2275,23 @@ local function mappingDevices()
 	return t
 end
 
+-- Session edits keep the bindings and leave out local presets, devices and device preferences.
+local function sessionRows(tbl, rows)
+	local allowed = {configall = true, testsetup = true, testmapping = true, restoreprevious = true, restoredefault = true, confirmexit = true, back = true}
+	for i = #tbl.items, 1, -1 do
+		local name = tbl.items[i].itemname
+		local sub = tbl.submenu[name]
+		if sub ~= nil then
+			sessionRows(sub, rows)
+		end
+		local group = sub ~= nil and #sub.items > 0 and options.t_itemname[name] == nil
+		if not (rows[name] or allowed[name] or name:match('^spacer%d*$') or group) then
+			table.remove(tbl.items, i)
+			tbl.submenu[name] = nil
+		end
+	end
+end
+
 -- Opens Menu Controls (keyboards) or Controller Mapping (gamepads) for a device.
 function options.f_editMapping(device, context)
 	if device == nil then
@@ -2276,6 +2306,11 @@ function options.f_editMapping(device, context)
 	tbl.kind = 'mapping'
 	tbl.template = itemname
 	tbl.device = device
+	tbl.sessionPlayer = context.sessionPlayer
+	if tbl.sessionPlayer ~= nil then
+		sessionRows(tbl, t_mappingRows)
+		tbl.remote = device.id <= 0
+	end
 	tbl.draft = inputGetMapping(device.id) or {}
 	tbl.saved = main.f_tableCopy(tbl.draft)
 	tbl.inputContext = context
@@ -2288,7 +2323,12 @@ end
 
 -- Loads a setup into the Battle Controls editor.
 local function loadSetup(root, setupId)
-	local values = inputGetSetup(setupId)
+	local values
+	if root.sessionPlayer ~= nil then
+		values = inputGetSessionSetup(root.sessionPlayer)
+	else
+		values = inputGetSetup(setupId)
+	end
 	if values == nil then
 		return false
 	end
@@ -2312,6 +2352,11 @@ function options.f_editSetup(device, context)
 	-- Gamepads have real sticks and triggers.
 	if not tbl.keyboard then
 		main.f_pruneMenu(tbl, {analogemulation = true})
+	end
+	tbl.sessionPlayer = context.sessionPlayer
+	if tbl.sessionPlayer ~= nil then
+		sessionRows(tbl, editorRows(tbl))
+		tbl.remote = device.id <= 0
 	end
 	tbl.inputContext = context
 	if not loadSetup(tbl, device.setup) then
@@ -2365,12 +2410,13 @@ local function startInputCapture(tbl, item, all)
 end
 
 -- Reads one input for a capture, counted when let go, so holding cancel never binds it.
--- 'virtual' reads virtual controls (id 0: every device), 'keyboard'/'gamepad' physical ones.
-local function releasedInput(state, id, kind)
+-- 'virtual' reads virtual controls, 'keyboard'/'gamepad' physical ones.
+local function releasedInput(state, id, kind, player)
 	local pressed, held = '', ''
 	if kind == 'virtual' then
-		pressed = inputGetVirtualPressed(id)
-		if state.pending ~= nil and inputDeviceActionTime(id, {state.pending}) > 0 then
+		pressed = inputGetVirtualPressed(id, player)
+		local time = player ~= nil and getActionTime or inputDeviceActionTime
+		if state.pending ~= nil and time(player or id, {state.pending}) > 0 then
 			held = state.pending
 		end
 	elseif kind == 'keyboard' then
@@ -2402,6 +2448,29 @@ local function releasedInput(state, id, kind)
 	return ''
 end
 
+-- Online capture of keys and physical inputs. Only the peer with the device reads it, and sends
+-- an event so every peer finishes the capture on the same frame.
+-- Returns the input on that frame, '-' on the other peer, or ''.
+local function sessionInput(state, root)
+	if state.captureIndex ~= state.index then
+		state.captureIndex, state.sent = state.index, nil
+		inputSessionCapture(root.sessionPlayer, false, true)
+	end
+	local send = false
+	if not root.remote and state.sent == nil then
+		local token = releasedInput(state, root.device.id, root.device.kind)
+		if token ~= '' then
+			state.sent, send = token, true
+		end
+	end
+	if not inputSessionCapture(root.sessionPlayer, send) then
+		return ''
+	end
+	local token = state.sent or '-'
+	state.sent = nil
+	return token
+end
+
 -- One frame of capture. The cursor moves to each captured row in turn.
 function options.f_inputCapture(context)
 	local sec = motif.option_info
@@ -2410,8 +2479,9 @@ function options.f_inputCapture(context)
 	local device = root.device
 	local entry = capture.entries[capture.index]
 	local finished = false
+	local time = root.sessionPlayer ~= nil and getActionTime or inputDeviceActionTime
 	-- Holding cancel leaves, so every control can still be bound.
-	if esc() or inputDeviceActionTime(device.id, sec.menu.cancel.action) >= sec.holdtime then
+	if esc() or time(root.sessionPlayer or device.id, sec.menu.cancel.action) >= sec.holdtime then
 		sndPlay(motif.Snd, sec.cancel.snd[1], sec.cancel.snd[2])
 		esc(false)
 		undoCopy(root, capture.setupId)
@@ -2422,7 +2492,9 @@ function options.f_inputCapture(context)
 		-- Everything else binds keys or physical inputs.
 		local token
 		if root.kind == 'setup' and not root.keyboard then
-			token = releasedInput(capture, device.id, 'virtual')
+			token = releasedInput(capture, device.id, 'virtual', root.sessionPlayer)
+		elseif root.sessionPlayer ~= nil then
+			token = sessionInput(capture, root)
 		else
 			token = releasedInput(capture, device.id, device.kind)
 		end
@@ -2482,7 +2554,7 @@ local function diagramDirection(pressed, up, down, left, right)
 end
 
 local function setupDiagramState(root, deviceId)
-	local held, analog = inputGetSetupState(deviceId, root.draft)
+	local held, analog = inputGetSetupState(deviceId, root.draft, root.sessionPlayer)
 	local pressed = {}
 	for i = 5, #main.engineButtons do
 		local button = main.engineButtons[i]
@@ -2585,7 +2657,7 @@ function options.f_inputDiagramFrame(context)
 		if diagram.setup then
 			pressed = setupDiagramState(diagram.root, diagram.device)
 		else
-			local held = inputGetVirtualState(diagram.device, diagram.root.draft)
+			local held = inputGetVirtualState(diagram.device, diagram.root.draft, diagram.root.sessionPlayer)
 			for _, vc in ipairs(main.virtualControls) do
 				pressed[t_mappingArt[vc]] = held[vc]
 			end
@@ -2638,6 +2710,9 @@ function options.f_inputDiagramFrame(context)
 	-- and the keyboard controller of a raw joystick.
 	local menuDevice = inputGetMenuDevice()
 	local function holdTime(action)
+		if diagram.root.sessionPlayer ~= nil then
+			return getActionTime(diagram.root.sessionPlayer, action)
+		end
 		local time = inputDeviceActionTime(diagram.device, action)
 		for _, id in ipairs({menuDevice, diagram.keyboard}) do
 			if id ~= diagram.device then
@@ -2649,6 +2724,7 @@ function options.f_inputDiagramFrame(context)
 	local function held(action)
 		return holdTime(action) == cfg.holdtime
 	end
+	local oldIndex = diagram.index
 	if esc() or holdTime(cfg.cancel.action) >= cfg.holdtime then
 		-- Cancel restores the draft from before guided capture.
 		sndPlay(motif.Snd, cfg.cancel.snd[1], cfg.cancel.snd[2])
@@ -2673,7 +2749,12 @@ function options.f_inputDiagramFrame(context)
 	elseif name ~= nil then
 		-- Guided Controller Mapping: one physical input for each virtual control.
 		local root = diagram.root
-		local token = releasedInput(diagram, diagram.device, root.device.kind)
+		local token
+		if root.sessionPlayer ~= nil then
+			token = sessionInput(diagram, root)
+		else
+			token = releasedInput(diagram, diagram.device, root.device.kind)
+		end
 		if token ~= '' then
 			for _, vc in ipairs(main.virtualControls) do
 				if root.draft[vc] == token then
@@ -2684,6 +2765,9 @@ function options.f_inputDiagramFrame(context)
 			diagram.index = diagram.index + 1
 			sndPlay(motif.Snd, cfg.done.snd[1], cfg.done.snd[2])
 		end
+	end
+	if diagram.index ~= oldIndex then
+		diagram.captureIndex = nil
 	end
 	if diagram.mode == 'guided' and diagram.index > #diagram.controls and diagram.finish == nil then
 		updateEditor(diagram.root, diagram.root)
@@ -2786,6 +2870,8 @@ options.t_itemname.restoredefault = function(t, item)
 		local values
 		if root.kind == 'mapping' then
 			values = inputGetMappingDefaults(root.device.id)
+		elseif root.sessionPlayer ~= nil then
+			values = inputGetSessionSetup(root.sessionPlayer, true)
 		else
 			values = inputGetSetupDefaults(root.setupId)
 			if values ~= nil and not sameSetup(values, root.draft) then
@@ -2912,21 +2998,6 @@ function options.f_refreshInputSettings()
 	end
 end
 
--- Preferred Side of a device, as shown in Input Settings.
-function options.f_preferredSideDisplay(deviceId)
-	local side = 0
-	for _, device in ipairs(inputGetDevices()) do
-		if device.id == deviceId then
-			side = device.preferredSide
-			break
-		end
-	end
-	if side == 0 then
-		return motif.option_info.menu.valuename.any
-	end
-	return main.f_formatBySpec(motif.option_info.menu.valuename.team, {i = side})
-end
-
 -- Opens Input Settings on the device that opened them.
 function options.f_inputSettings(tbl)
 	options.inputSettings = tbl
@@ -2985,6 +3056,21 @@ options.t_itemname.device = function(t, item)
 		end
 	end
 	return true
+end
+
+-- Preferred Side of a device, as shown in Input Settings.
+function options.f_preferredSideDisplay(deviceId)
+	local side = 0
+	for _, device in ipairs(inputGetDevices()) do
+		if device.id == deviceId then
+			side = device.preferredSide
+			break
+		end
+	end
+	if side == 0 then
+		return motif.option_info.menu.valuename.any
+	end
+	return main.f_formatBySpec(motif.option_info.menu.valuename.team, {i = side})
 end
 
 -- Preferred Side, Glyphs and Vibration belong to the device, so they are saved straight away.
@@ -3063,7 +3149,7 @@ options.t_itemname.vibration = function(t, item)
 	return true
 end
 
--- Side select: edit the Button Setup of the device that pressed the button.
+-- Side select: edit the Battle Controls of the device that pressed the button.
 -- It has no player slot yet, so the editor reads that device directly.
 function options.f_setupEditor(device)
 	local context = {background = motif.optionbgdef, parents = {}}
@@ -3077,10 +3163,35 @@ function options.f_setupEditor(device)
 	inputSetMenuFocus(previous)
 end
 
--- Pause menu: the Battle Controls of the device in use, in the pause background.
-function options.f_pauseSetup(background)
+-- The pause owner's device, with no device selector. Online the other peer follows the same
+-- menu without the device or its bindings, so the session's device kind picks the rows.
+local function pauseDevice(player, context)
+	local online = netPlay()
+	local id = inputGetMenuDevice()
+	if online and not inputPlayerDisconnected(player) then
+		id = inputGetPlayerDevice(player)
+	end
+	local device = deviceById(id)
+	if online then
+		context.sessionPlayer = player
+		device = {id = device and device.id or -1, joy = device and device.joy or -1, setup = 'session', kind = inputGetPlayerKind(player),
+			name = main.f_formatBySpec(motif.option_info.menu.valuename.sessionplayer, {i = player})}
+	end
+	return device
+end
+
+-- Pause menu: Menu Controls or Controller Mapping of the player who paused.
+function options.f_pauseMapping(background, player)
 	local context = {background = background, pause = true, parents = {}}
-	if options.f_editSetup(deviceById(inputGetMenuDevice()), context) then
+	if options.f_editMapping(pauseDevice(player, context), context) then
+		runInputConfig(context)
+	end
+end
+
+-- Pause menu: Battle Controls of the player who paused, in the pause background.
+function options.f_pauseSetup(background, player)
+	local context = {background = background, pause = true, parents = {}}
+	if options.f_editSetup(pauseDevice(player, context), context) then
 		runInputConfig(context)
 	end
 end

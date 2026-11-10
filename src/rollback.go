@@ -18,6 +18,9 @@ type RollbackSystem struct {
 	session          *RollbackSession
 	netConnection    *NetConnection
 	ggpoInputs       []InputFrame
+	inputSubmitted bool
+	advanced       bool
+	menuUpdating   bool
 }
 
 type RollbackProperties struct {
@@ -33,12 +36,15 @@ type RollbackProperties struct {
 	DesyncTestAI          bool `ini:"DesyncTestAI" sync:"host"`
 }
 
+const netMenuDelay = ggpo.MaxPredictionFrames + 1
+
 // TODO: Merge with system.go
 func (rs *RollbackSystem) hijackRunMatch() bool {
 	// Shared part up until this point already handled by sys.runMatch()
 
 	// Reset variables
 	rs.ggpoInputs = make([]InputFrame, 2)
+	rs.inputSubmitted = false
 
 	// Initialize rollback network session and synchronize state
 	if err := rs.preMatchSetup(); err != nil {
@@ -53,6 +59,12 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 	// Loop until end of match
 	// Not "sys.keepMatchRunning()" because rollback loop ends earlier than local loop
 	for !sys.endMatch {
+		// Before GGPO accepts inputs, Esc can only cancel the connection locally.
+		if rs.netConnection != nil && !rs.session.synchronized && sys.netMenuEscape {
+			sys.endMatch, sys.esc = true, true
+			rs.netConnection.end()
+			break
+		}
 		rs.session.now = time.Now().UnixMilli()
 		err := rs.session.backend.Idle(
 			int(math.Max(0, float64(rs.session.next-rs.session.now-1))))
@@ -82,6 +94,16 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 
 		if sys.esc || !running {
 			break
+		}
+		if !rs.advanced {
+			// Keep the last rendered frame while pumping input and network events.
+			sys.frameSkip = true
+			running = sys.await(sys.gameRenderSpeed(), true)
+			sys.frameSkip = false
+			if !running {
+				break
+			}
+			continue
 		}
 
 		// These are outside runFrame(), so they won't be needlessly executed during a rollback
@@ -194,37 +216,47 @@ func (rs *RollbackSystem) postMatchSetup() {
 // Called once per frame by the main game loop
 // Responsible for collecting local inputs and driving the GGPO backend forward
 func (rs *RollbackSystem) runFrame() bool {
-	var buffer []byte
 	var ggpoerr error
+	rs.advanced = false
 
 	if sys.esc {
 		return false
 	}
 
-	if rs.session.syncTest && rs.session.netTime == 0 {
-		if rs.session.config.DesyncTestAI {
-			buffer = getAIInputs(0)
-			ggpoerr = rs.session.backend.AddLocalInput(ggpo.PlayerHandle(0), buffer, len(buffer))
-			buffer = getAIInputs(1)
-			ggpoerr = rs.session.backend.AddLocalInput(ggpo.PlayerHandle(1), buffer, len(buffer))
+	if !rs.inputSubmitted {
+		if rs.session.syncTest {
+			for player := 0; player < 2; player++ {
+				var frame InputFrame
+				if !rs.session.config.DesyncTestAI {
+					frame = sys.participantFrame(player)
+				}
+				ggpoerr = rs.session.backend.AddLocalInput(ggpo.PlayerHandle(player), frame.encode(), inputFrameBytes)
+				if ggpoerr != nil {
+					break
+				}
+			}
 		} else {
-			buffer = rs.getInputs(0)
-			ggpoerr = rs.session.backend.AddLocalInput(ggpo.PlayerHandle(0), buffer, len(buffer))
-			buffer = rs.getInputs(1)
-			ggpoerr = rs.session.backend.AddLocalInput(ggpo.PlayerHandle(1), buffer, len(buffer))
+			frame := sys.participantFrame(0)
+			ggpoerr = rs.session.backend.AddLocalInput(rs.session.currentPlayerHandle, frame.encode(), inputFrameBytes)
+			if ggpoerr == nil {
+				sys.consumeMenuEvents(frame)
+			}
 		}
-	} else {
-		buffer = rs.getInputs(0)
-		ggpoerr = rs.session.backend.AddLocalInput(rs.session.currentPlayerHandle, buffer, len(buffer))
 	}
 
 	if ggpoerr == nil {
-		// Get speculative inputs for the local player for this frame
+		rs.inputSubmitted = true
+		// Interactive motif screens wait for both players; gameplay may predict.
 		var values [][]byte
 		disconnectFlags := 0
-		values, ggpoerr = rs.session.backend.SyncInput(&disconnectFlags)
+		if sys.motif.me.active || sys.motifOverlayActive() || sys.postMatchFlg {
+			values, ggpoerr = rs.session.backend.SyncInputConfirmed(&disconnectFlags)
+		} else {
+			values, ggpoerr = rs.session.backend.SyncInput(&disconnectFlags)
+		}
 
 		if ggpoerr == nil {
+			rs.advanced = true
 			rs.ggpoInputs = decodeInputs(values)
 
 			// Record inputs against the rollback timeline. netTime is part of the saved state,
@@ -248,6 +280,7 @@ func (rs *RollbackSystem) runFrame() bool {
 			}()
 
 			err := rs.session.backend.AdvanceFrame(rs.session.LiveChecksum())
+			rs.inputSubmitted = false
 			if err != nil {
 				panic(err)
 			}
@@ -257,6 +290,11 @@ func (rs *RollbackSystem) runFrame() bool {
 		}
 	}
 
+	if ggpoerr != nil {
+		if err, ok := ggpoerr.(ggpo.Error); !ok || err.Code != ggpo.ErrorCodeNotSynchronized && err.Code != ggpo.ErrorCodePredictionThreshod {
+			panic(ggpoerr)
+		}
+	}
 	return true
 }
 
@@ -279,8 +317,16 @@ func (rs *RollbackSystem) simulateFrame() bool {
 
 		// Update motif state
 		sys.uiAction()
-
 		frameDone := sys.addFrameTime(sys.turbo)
+		if frameDone && sys.motif.me.active && !rs.session.inRollback {
+			rs.menuUpdating = true
+			state := sys.captureAspectState()
+			if sys.motif.shouldScopeMotifAspect() {
+				state = sys.motifAspectState()
+			}
+			sys.withAspectState(state, func() { sys.motif.me.runLua(&sys.motif) })
+			rs.menuUpdating = false
+		}
 
 		// Break if finished
 		if sys.fightLoopEnd && !sys.postMatchFlg {
@@ -302,11 +348,6 @@ func (rs *RollbackSystem) simulateFrame() bool {
 	}
 }
 
-// AI players read their own inputs locally, so they send an idle controller.
-func getAIInputs(player int) []byte {
-	return InputFrame(0).encode()
-}
-
 func decodeInputs(buffer [][]byte) []InputFrame {
 	frames := make([]InputFrame, len(buffer))
 	for i, b := range buffer {
@@ -318,14 +359,6 @@ func decodeInputs(buffer [][]byte) []InputFrame {
 func writeI32(i32 int32) []byte {
 	b := []byte{byte(i32), byte(i32 >> 8), byte(i32 >> 16), byte(i32 >> 24)}
 	return b
-}
-
-// Local virtual controller state. The sync test drives both sides locally.
-func (rs *RollbackSystem) getInputs(player int) []byte {
-	if !rs.session.syncTest {
-		player = 0
-	}
-	return sys.participantFrame(player).encode()
 }
 
 func (rs *RollbackSystem) readRollbackInput(controller int) InputFrame {

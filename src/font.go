@@ -1725,7 +1725,9 @@ func (ts *TextSprite) inputGlyph(key string) []glyphRun {
 		field = key
 	}
 	setup := sys.participantSetup(0)
-	if device := sys.glyphDevice(ts.glyphDevice); device != nil {
+	if sys.netplay() && sys.menuPlayer > 0 {
+		setup = sys.channelSetup(sys.uiControllerKey(sys.menuPlayer - 1))
+	} else if device := sys.glyphDevice(ts.glyphDevice); device != nil {
 		setup = sys.deviceSetup(device)
 	}
 	for i, name := range engineButtonNames {

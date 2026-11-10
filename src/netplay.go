@@ -92,6 +92,7 @@ type ReplayHeader struct {
 type ReplaySetup struct {
 	Channel int                    `json:"channel"`
 	Setup   *ButtonSetupProperties `json:"setup"`
+	Initial *ButtonSetupProperties `json:"initial,omitempty"`
 }
 
 type SessionConfigOverride struct {
@@ -143,8 +144,10 @@ func (nb *NetBuffer) reset(time int32) {
 // Store the local player's virtual controller state for sending
 func (nb *NetBuffer) writeNetBuffer(in int) {
 	if t := nb.inpT.Load(); t-nb.curT.Load() < NETBUF_NUM_FRAMES {
-		nb.buf[t&(NETBUF_NUM_FRAMES-1)] = sys.participantFrame(in)
+		frame := sys.participantFrame(in)
+		nb.buf[t&(NETBUF_NUM_FRAMES-1)] = frame
 		nb.inpT.Store(t + 1)
+		sys.consumeMenuEvents(frame)
 	}
 }
 
@@ -1097,7 +1100,11 @@ func OpenReplayFile(filename string) *ReplayFile {
 	out.contentFingerprint = header.ContentFingerprint
 	out.setups = make(map[int]SessionSetup)
 	for _, rs := range header.Setups {
-		out.setups[rs.Channel] = newSessionSetup(rs.Setup)
+		setup := newSessionSetup(rs.Setup)
+		if rs.Initial != nil {
+			setup.initial = rs.Initial
+		}
+		out.setups[rs.Channel] = setup
 	}
 
 	log.Printf("Replay file opened: %s", filename)
@@ -1220,7 +1227,8 @@ func (rf *ReplayFile) Update() bool {
 	if rf.file == nil {
 		sys.esc = true
 	} else {
-		if sys.oldNextAddTime > 0 {
+		// The pause menu also pauses the match, but its frames were recorded.
+		if sys.oldNextAddTime > 0 || sys.motif.me.active {
 			rf.frames = [REPLAY_NUM_INPUTS]InputFrame{}
 			if rf.atReplaySyncMarker() {
 				return !sys.gameEnd
@@ -1552,7 +1560,8 @@ func applySyncSettings(cfg *Config, settings []SyncSetting, strict bool) error {
 			log.Printf("Ignoring sync setting %s during best-effort apply: %v", s.Path, err)
 		}
 	}
-	cfg.normalize()
+	// Normalization must not copy temporary host values into the INI.
+	cfg.normalize(false)
 	sys.onSyncConfigChanged()
 	return nil
 }
@@ -1604,6 +1613,7 @@ func (s *System) beginSessionOverride(source string, strict, host []SyncSetting,
 		SyncVersion:        syncConfigVersion,
 		ContentFingerprint: contentFingerprint,
 	}
+	s.menuChannels = [MaxPlayerNo]MenuChannel{}
 	log.Printf("%s sync config override started: strict=%d host=%d fingerprint=%q",
 		strings.Title(source), len(strict), len(host), contentFingerprint)
 	logSyncVerification(strings.Title(source)+" host override verification", host, appliedHost)
@@ -1642,8 +1652,11 @@ func (s *System) currentReplayHeader() *ReplayHeader {
 	}
 }
 
-// Maps the network channels to the setups both peers sent. Channels can change between matches.
+// Start with the exchanged setups and keep pause-menu edits between matches.
 func (s *System) useSessionSetups(nc *NetConnection) {
+	if s.sessionSetups != nil {
+		return
+	}
 	host, guest := nc.locIn, nc.remIn
 	if !nc.host {
 		host, guest = guest, host
@@ -1658,7 +1671,11 @@ func (s *System) useSessionSetups(nc *NetConnection) {
 func (s *System) replaySetups() []ReplaySetup {
 	var out []ReplaySetup
 	for channel, setup := range s.sessionSetups {
-		out = append(out, ReplaySetup{Channel: channel, Setup: setup.definition})
+		rs := ReplaySetup{Channel: channel, Setup: setup.definition}
+		if setup.initial != setup.definition {
+			rs.Initial = setup.initial
+		}
+		out = append(out, rs)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Channel < out[j].Channel })
 	return out

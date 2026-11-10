@@ -2733,11 +2733,25 @@ func systemScriptInit(l *lua.LState) {
 		@treturn boolean esc Current value of the escape flag.*/
 		if !nilArg(l, 1) {
 			sys.esc = boolArg(l, 1)
+			if !sys.esc && sys.synchronizedInput() && sys.motif.me.active {
+				channel := sys.uiControllerKey(sys.menuPlayer - 1)
+				if channel >= 0 && channel < len(sys.menuChannels) {
+					sys.menuChannels[channel].escapeTaken = true
+				}
+			}
 		}
 		if sys.esc && nilArg(l, 1) {
 			sys.noteKeyboardGlyphInput("ESCAPE")
 		}
-		l.Push(lua.LBool(sys.esc))
+		pressed := sys.esc
+		if sys.synchronizedInput() && sys.motif.me.active {
+			channel := sys.uiControllerKey(sys.menuPlayer - 1)
+			if channel >= 0 && channel < len(sys.menuChannels) {
+				menu := &sys.menuChannels[channel]
+				pressed = pressed || menu.escape == 1 && !menu.escapeTaken
+			}
+		}
+		l.Push(lua.LBool(pressed))
 		return 1
 	})
 	luaRegister(l, "exitNetPlay", func(*lua.LState) int {
@@ -4538,6 +4552,36 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(sys.playerGlyphDevice(int(numArg(l, 1)) - 1)))
 		return 1
 	})
+	luaRegister(l, "inputGetPlayerKind", func(l *lua.LState) int {
+		/*Get the kind of device a player slot uses. Netplay and replays use the kind the
+		  channel had when the session started, the same on every peer.
+		@function inputGetPlayerKind
+		@tparam int player 1-based slot.
+		@treturn string kind `"keyboard"`, `"gamepad"`, or an empty string without a device.*/
+		l.Push(lua.LString(sys.playerKind(int(numArg(l, 1)) - 1)))
+		return 1
+	})
+	luaRegister(l, "inputGetSessionSetup", func(l *lua.LState) int {
+		/*Get the Button Setup a player uses in this netplay session or replay.
+		@function inputGetSessionSetup
+		@tparam int player 1-based player slot.
+		@tparam[opt=false] boolean initial `true` for the setup exchanged when the session started.
+		@treturn table|nil setup Setup table as returned by `inputGetSetup`, or `nil` without a session setup.*/
+		player := int(numArg(l, 1)) - 1
+		if player < 0 || player >= len(sys.inputRemap) {
+			return 0
+		}
+		setup, ok := sys.sessionSetups[sys.inputRemap[player]]
+		if !ok {
+			return 0
+		}
+		definition := setup.definition
+		if !nilArg(l, 2) && boolArg(l, 2) {
+			definition = setup.initial
+		}
+		l.Push(setupTable(l, "session", definition))
+		return 1
+	})
 	luaRegister(l, "inputGetSetup", func(l *lua.LState) int {
 		/*Get a Button Setup.
 		@function inputGetSetup
@@ -4582,14 +4626,36 @@ func systemScriptInit(l *lua.LState) {
 		@function inputGetSetupState
 		@tparam int deviceId Device ID.
 		@tparam[opt] table setup Setup to test instead of the saved one (an unsaved draft).
+		@tparam[opt] int player Read synchronized inputs of this player instead of the device.
 		@treturn table held `true` for every held engine button (`up`, ..., `r`).
 		@treturn table analog `true` for every held stick direction and trigger (`LT`, `RT`, `LS_Y-`, ..., `RS_X+`).*/
 		device := sys.inputs.device(int(numArg(l, 1)))
-		setup := *sys.deviceSetup(device)
+		var frame InputFrame
+		var setup ButtonSetup
+		var localDraft bool
+		if !nilArg(l, 3) {
+			player := int(numArg(l, 3)) - 1
+			if player >= 0 && player < len(sys.commandLists) {
+				if cl := sys.commandLists[player]; cl != nil && cl.Buffer != nil {
+					frame = cl.Buffer.frame
+					channel := sys.uiControllerKey(player)
+					setup = *sys.channelSetup(channel)
+					if device != nil && device.Joy < 0 && !nilArg(l, 2) {
+						localDraft = device.ID == sys.inputs.activeDevice(sys.localInputParticipant(channel))
+					}
+				}
+			}
+		} else {
+			setup = *sys.deviceSetup(device)
+		}
 		if !nilArg(l, 2) {
 			setup = setupFromTable(tableArg(l, 2)).setup()
 		}
-		buttons, axes := sys.sampleDevice(device, &setup).battle(&setup)
+		// Online, the keyboard's owner tests unsaved keys on the keyboard itself.
+		if nilArg(l, 3) || localDraft && setup.keyboard {
+			frame = sys.sampleDevice(device, &setup)
+		}
+		buttons, axes := frame.battle(&setup)
 		held, analog := l.NewTable(), l.NewTable()
 		for i, name := range engineButtonNames {
 			held.RawSetString(name, lua.LBool(buttons[i]))
@@ -4608,16 +4674,31 @@ func systemScriptInit(l *lua.LState) {
 		/*Get the virtual control newly pressed on a device this frame, for Button Setup capture.
 		@function inputGetVirtualPressed
 		@tparam int deviceId Device ID, or `0` for every device.
+		@tparam[opt] int player Read synchronized inputs of this player instead of the device.
 		@treturn string control Virtual control name, or an empty string.*/
-		sys.pollDevices()
 		token := ""
-		id := int(numArg(l, 1))
-		for _, device := range sys.inputs.Devices {
-			if (id == 0 || device.ID == id) && device.Connected && token == "" {
-				for i, pressed := range device.pressed {
-					if pressed {
-						token = virtualControlNames[i]
-						break
+		if !nilArg(l, 2) {
+			player := int(numArg(l, 2)) - 1
+			if player >= 0 && player < len(sys.commandLists) {
+				if cl := sys.commandLists[player]; cl != nil && cl.Buffer != nil {
+					for i, held := range cl.Buffer.vb {
+						if held == 1 {
+							token = virtualControlNames[i]
+							break
+						}
+					}
+				}
+			}
+		} else {
+			sys.pollDevices()
+			id := int(numArg(l, 1))
+			for _, device := range sys.inputs.Devices {
+				if (id == 0 || device.ID == id) && device.Connected && token == "" {
+					for i, pressed := range device.pressed {
+						if pressed {
+							token = virtualControlNames[i]
+							break
+						}
 					}
 				}
 			}
@@ -4630,14 +4711,25 @@ func systemScriptInit(l *lua.LState) {
 		@function inputGetVirtualState
 		@tparam int deviceId Device ID.
 		@tparam[opt] table mapping Mapping to test instead of the saved one (an unsaved draft).
+		@tparam[opt] int player Read this player's synchronized controls when the device is unavailable.
 		@treturn table held `true` for every held virtual control (`DP_U`, ..., `RS`).
 		@treturn table level How far each control is pushed, from 0 to 127.*/
 		device := sys.inputs.device(int(numArg(l, 1)))
-		m := sys.inputCfg.mapping(device)
-		if !nilArg(l, 2) && device != nil {
-			m = mappingFromTable(tableArg(l, 2), device)
+		var f VirtualFrame
+		if device != nil && device.Connected {
+			m := sys.inputCfg.mapping(device)
+			if !nilArg(l, 2) {
+				m = mappingFromTable(tableArg(l, 2), device)
+			}
+			f = device.sample(&m)
+		} else if !nilArg(l, 3) {
+			slot := int(numArg(l, 3)) - 1
+			if slot >= 0 && slot < len(sys.commandLists) {
+				if cl := sys.commandLists[slot]; cl != nil && cl.Buffer != nil {
+					f = cl.Buffer.frame.menu()
+				}
+			}
 		}
-		f := device.sample(&m)
 		held, level := l.NewTable(), l.NewTable()
 		for i, name := range virtualControlNames {
 			held.RawSetString(name, lua.LBool(f.held(VirtualControl(i))))
@@ -4761,7 +4853,10 @@ func systemScriptInit(l *lua.LState) {
 			return 1
 		}
 		sys.saveDeviceMapping(device, mappingFromTable(tableArg(l, 2), device))
-		sys.clearCommandBuffers()
+		// Synchronized buffers are match state, and only this peer saves its mapping.
+		if !sys.synchronizedInput() {
+			sys.clearCommandBuffers()
+		}
 		l.Push(lua.LBool(true))
 		return 1
 	})
@@ -4782,6 +4877,16 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LBool(true))
 		return 1
 	})
+	luaRegister(l, "inputSaveSessionSetup", func(l *lua.LState) int {
+		/*Apply a Button Setup to a player for the rest of this netplay session, without
+		  changing saved setups. Only the player whose pause menu is open can do this.
+		@function inputSaveSessionSetup
+		@tparam int player 1-based player slot.
+		@tparam table setup Setup table, as returned by `inputGetSessionSetup`.
+		@treturn boolean ok `true` if the setup was applied.*/
+		l.Push(lua.LBool(sys.saveSessionSetup(int(numArg(l, 1)), setupFromTable(tableArg(l, 2)))))
+		return 1
+	})
 	luaRegister(l, "inputSaveSetup", func(l *lua.LState) int {
 		/*Update a Button Setup. Options saving writes it to disk.
 		@function inputSaveSetup
@@ -4800,6 +4905,36 @@ func systemScriptInit(l *lua.LState) {
 		sys.loadInputConfig(&sys.cfg)
 		sys.clearCommandBuffers()
 		l.Push(lua.LBool(true))
+		return 1
+	})
+	luaRegister(l, "inputSessionCapture", func(l *lua.LState) int {
+		/*Controller Mapping capture in netplay. Only the peer with the device sees the press, so it
+		  sends an event and every peer finishes the capture when the event arrives.
+		@function inputSessionCapture
+		@tparam int player 1-based player slot.
+		@tparam[opt=false] boolean send `true` to send the event from this peer.
+		@tparam[opt=false] boolean begin Start a new capture and discard events from earlier rows.
+		@treturn boolean arrived `true` on the frame the player's event arrives.*/
+		channel := sys.uiControllerKey(int(numArg(l, 1)) - 1)
+		if channel < 0 || channel >= len(sys.menuChannels) {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		menu := &sys.menuChannels[channel]
+		local := sys.localInputParticipant(channel) >= 0 && sys.inputConnection() != nil
+		if !nilArg(l, 3) && boolArg(l, 3) {
+			menu.captureGeneration++
+			if menu.captureGeneration == 0 {
+				menu.captureGeneration = 1
+			}
+			if local {
+				sys.netMenuCapture = false
+			}
+		}
+		if local && !nilArg(l, 2) && boolArg(l, 2) {
+			sys.netMenuCapture = true
+		}
+		l.Push(lua.LBool(menu.capture && menu.captureReceived == menu.captureGeneration))
 		return 1
 	})
 	luaRegister(l, "inputSetDeviceSetup", func(l *lua.LState) int {

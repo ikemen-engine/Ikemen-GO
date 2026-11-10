@@ -116,6 +116,9 @@ func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 }
 
 func OnKeyReleased(key Key, mk ModifierKey) {
+	if key == KeyEscape {
+		sys.netMenuEscapeHeld = false
+	}
 	if key != KeyUnknown {
 		sys.keyState[key] = false
 		// A tap between polls must reach getKey once.
@@ -142,8 +145,12 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		sys.keyState[key] = true
 		sys.keyInput, sys.keyInputFrame = key, sys.frameCounter
 		escPressed := key == KeyEscape && (mk&ModCtrlAlt) == 0
-		sys.esc = sys.esc || escPressed
-		sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
+		if escPressed && sys.gameRunning && sys.inputConnection() != nil {
+			sys.netMenuEscape, sys.netMenuEscapeHeld = true, true
+		} else {
+			sys.esc = sys.esc || escPressed
+			sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
+		}
 		for k, v := range sys.shortcutScripts {
 			if !sys.motif.me.active && sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
 				//(!sys.paused || sys.frameStepFlag || v.Pause) &&
@@ -759,11 +766,13 @@ const virtualFrameButtonMask = 1<<14 - 1
 // Bit 15 stays clear, delay netplay uses it as an end marker.
 //
 //	gamepad     bits 0-13 virtual buttons, bytes 2-7 the VirtualFrame axes
+//	menu event  bit 14, see menuFrame
 //	keyboard    bits 13-14, then engine buttons, Menu Controls and battle axes
 type InputFrame uint64
 
 const (
 	inputFrameBytes    = 8
+	inputFrameMenu     = 1 << 14
 	inputFrameKeyboard = 1<<14 | 1<<13
 	// Bit offsets in a keyboard frame. Stick axes use a negative and a positive bit, triggers one bit.
 	keyboardFrameButtons = 16 // 14 engine buttons, in ButtonIndex order
@@ -775,6 +784,7 @@ const (
 // Analog emulation bindings of keyboard setups, in keyboard frame axis bit order.
 var keyboardAxisNames = [keyboardAxisCount]string{"LS_X-", "LS_X+", "LS_Y-", "LS_Y+", "RS_X-", "RS_X+", "RS_Y-", "RS_Y+", "LT", "RT"}
 
+func (f InputFrame) isMenu() bool { return f&inputFrameKeyboard == inputFrameMenu }
 func (f InputFrame) isKeyboard() bool { return f&inputFrameKeyboard == inputFrameKeyboard }
 
 func gamepadFrame(v VirtualFrame) InputFrame {
@@ -797,9 +807,9 @@ func keyboardFrame(buttons uint16, menu uint32, axes uint16) InputFrame {
 		InputFrame(menu&(1<<VC_Count-1))<<keyboardFrameMenu | InputFrame(axes&(1<<keyboardAxisCount-1))<<keyboardFrameAxes
 }
 
-// Virtual controller of a gamepad frame. Keyboard frames read as idle.
+// Virtual controller of a gamepad frame. Other kinds read as idle.
 func (f InputFrame) gamepad() VirtualFrame {
-	if f.isKeyboard() {
+	if f&inputFrameMenu != 0 {
 		return VirtualFrame{}
 	}
 	v := VirtualFrame{Buttons: uint16(f) & virtualFrameButtonMask}
@@ -902,6 +912,68 @@ func decodeInputFrame(b []byte) InputFrame {
 		f |= InputFrame(b[i]) << (8 * i)
 	}
 	return f &^ (1 << 15)
+}
+
+// A menu event carries menu input that no controller button can, such as Esc
+// in netplay. Only menuFrame knows its layout:
+//
+//	bit 14        marks a menu event, see inputFrameMenu
+//	bit 12        a capture finished, see inputSessionCapture
+//	bit 11        Esc
+//	bits 16-31    capture generation
+const (
+	menuFrameCapture = 1 << 12
+	menuFrameEscape  = 1 << 11
+)
+
+type menuFrame struct {
+	escape  bool
+	capture bool
+	generation uint16
+}
+
+func (m menuFrame) encode() InputFrame {
+	f := InputFrame(inputFrameMenu) | InputFrame(m.generation)<<16
+	if m.escape {
+		f |= menuFrameEscape
+	}
+	if m.capture {
+		f |= menuFrameCapture
+	}
+	return f
+}
+
+func decodeMenuFrame(f InputFrame) menuFrame {
+	if !f.isMenu() {
+		return menuFrame{}
+	}
+	return menuFrame{escape: f&menuFrameEscape != 0, capture: f&menuFrameCapture != 0, generation: uint16(f >> 16)}
+}
+
+// Menu input of a netplay or replay channel, read from its menu events. It
+// follows the synchronized UI clock and is copied with rollback state.
+type MenuChannel struct {
+	escape      int32 // frames Esc has been held
+	escapeTaken bool  // a menu already used this press, see the esc Lua function
+	capture     bool  // an input capture finished this frame
+	captureGeneration uint16
+	captureReceived   uint16
+	stepped     bool
+	frame       int32
+}
+
+func (c *MenuChannel) step(f InputFrame) {
+	if c.stepped && c.frame == sys.uiFrameCounter {
+		return
+	}
+	c.stepped, c.frame = true, sys.uiFrameCounter
+	in := decodeMenuFrame(f)
+	c.escapeTaken, c.capture, c.captureReceived = false, in.capture, in.generation
+	if in.escape {
+		c.escape++
+	} else {
+		c.escape = 0
+	}
 }
 
 // How far a control is pushed, from 0 to 127.
@@ -1127,9 +1199,10 @@ func (cs *ButtonSetup) boundKeys() []Key {
 }
 
 // The Button Setup of a netplay or replay channel, as rows and as bindings.
+// It is never changed in place, so rollback snapshots can share it.
 type SessionSetup struct {
-	definition *ButtonSetupProperties
-	controls   ButtonSetup
+	initial, definition *ButtonSetupProperties
+	controls            ButtonSetup
 }
 
 func newSessionSetup(p *ButtonSetupProperties) SessionSetup {
@@ -1139,7 +1212,7 @@ func newSessionSetup(p *ButtonSetupProperties) SessionSetup {
 		definition.Buttons = maps.Clone(p.Buttons)
 		definition.Axes = maps.Clone(p.Axes)
 	}
-	return SessionSetup{definition: &definition, controls: definition.setup()}
+	return SessionSetup{initial: &definition, definition: &definition, controls: definition.setup()}
 }
 
 // Input settings used by connected devices.
@@ -1686,6 +1759,7 @@ type InputBuffer struct {
 	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
 	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
 	vb                                     [VC_Count]int32 // frames each virtual control is held, for motif actions
+	frame                                  InputFrame
 	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp int32
 }
 
@@ -1711,6 +1785,7 @@ func (ib *InputBuffer) Reset() {
 
 // Counts how long each virtual control is held for menus. Motif actions read these.
 func (ib *InputBuffer) updateVirtualTime(f InputFrame) {
+	ib.frame = f
 	v := f.menu()
 	for vc := range ib.vb {
 		if v.held(VirtualControl(vc)) {
@@ -3841,6 +3916,9 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			frame, setup = sys.rollback.readRollbackInput(controller), sys.channelSetup(channel)
 		} else {
 			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
+		}
+		if char == nil && sys.synchronizedInput() && channel >= 0 && channel < len(sys.menuChannels) {
+			sys.menuChannels[channel].step(frame)
 		}
 		buttons, axes = frame.battle(setup)
 		// Button assist keeps its state in the buffer, so rollback restores it.
