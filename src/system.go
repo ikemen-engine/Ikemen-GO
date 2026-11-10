@@ -261,6 +261,7 @@ type System struct {
 	netConnection       *NetConnection
 	replayFile          *ReplayFile
 	inputCfg            InputConfig
+	sessionSetups       map[int]SessionSetup // Button Setup of each netplay or replay channel
 	inputs              InputAssignment
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
@@ -1358,6 +1359,17 @@ func (s *System) participantSetup(n int) *ButtonSetup {
 	return setup
 }
 
+// Setup that reads a network or replay channel.
+func (s *System) channelSetup(channel int) *ButtonSetup {
+	if rs := s.rollback.session; rs != nil && rs.syncTest {
+		return s.participantSetup(channel)
+	}
+	if setup, ok := s.sessionSetups[channel]; ok {
+		return &setup.controls
+	}
+	return &ButtonSetup{}
+}
+
 // Keep a closing press out of the next screen and gameplay.
 func (s *System) blockDevice(device *InputDevice) {
 	if device != nil {
@@ -1370,7 +1382,8 @@ func (s *System) blockDevice(device *InputDevice) {
 // Switches a device to another Button Setup and remembers the choice.
 func (s *System) setDeviceSetup(deviceID int, setup string) bool {
 	device := s.inputs.device(deviceID)
-	if device == nil {
+	// Both peers read a player's inputs with the session's setup, not a local one.
+	if device == nil || s.netConnection != nil || s.rollback.session != nil {
 		return false
 	}
 	if _, ok := s.inputCfg.setups[setup]; !ok {
