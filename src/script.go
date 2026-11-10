@@ -2676,6 +2676,7 @@ func systemScriptInit(l *lua.LState) {
 				sys.replayFile = nil
 				l.RaiseError(err.Error())
 			}
+			sys.sessionSetups = sys.replayFile.setups
 		}
 		l.Push(lua.LBool(sys.replayFile != nil))
 		return 1
@@ -2717,6 +2718,7 @@ func systemScriptInit(l *lua.LState) {
 		if err := sys.endSyncSessionOverride(); err != nil {
 			l.RaiseError(err.Error())
 		}
+		sys.sessionSetups = nil
 		if sys.replayFile != nil {
 			sys.replayFile.Close()
 			sys.replayFile = nil

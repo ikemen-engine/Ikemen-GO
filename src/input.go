@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"slices"
 	"strings"
@@ -215,25 +216,6 @@ const (
 	BI_M
 )
 
-// Save local inputs as input bits to send or record
-func (ibit *InputBits) KeysToBits(buttons [14]bool) {
-	*ibit = 0
-	for i, pressed := range buttons {
-		if pressed {
-			*ibit |= InputBits(1) << uint(i)
-		}
-	}
-}
-
-// Convert received input bits back into keys
-func (ibit InputBits) BitsToKeys() [14]bool {
-	var buttons [14]bool
-	for i := range buttons {
-		buttons[i] = ibit&(InputBits(1)<<uint(i)) != 0
-	}
-	return buttons
-}
-
 // Gamepads go SDL controls -> Controller Mapping -> virtual controller -> Button Setup -> engine buttons.
 // Keyboards bind keys straight to engine buttons, with separate Menu Controls for the virtual controller.
 
@@ -329,12 +311,14 @@ type VirtualFrame struct {
 const virtualFrameButtonMask = 1<<14 - 1
 
 // Input of one player for one frame, eight bytes. Bits 13 and 14 of the first word give the kind.
+// Bit 15 stays clear, delay netplay uses it as an end marker.
 //
 //	gamepad     bits 0-13 virtual buttons, bytes 2-7 the VirtualFrame axes
 //	keyboard    bits 13-14, then engine buttons, Menu Controls and battle axes
 type InputFrame uint64
 
 const (
+	inputFrameBytes    = 8
 	inputFrameKeyboard = 1<<14 | 1<<13
 	// Bit offsets in a keyboard frame. Stick axes use a negative and a positive bit, triggers one bit.
 	keyboardFrameButtons = 16 // 14 engine buttons, in ButtonIndex order
@@ -451,6 +435,30 @@ func (f InputFrame) idle() bool {
 	return true
 }
 
+// True for a mapped battle button or a virtual menu button.
+func (f InputFrame) anyButton(setup *ButtonSetup) bool {
+	return f.menu().anyButton() || f.hasBattleButton(setup, BI_M)
+}
+
+func (f InputFrame) encode() []byte {
+	b := make([]byte, inputFrameBytes)
+	for i := range b {
+		b[i] = byte(f >> (8 * i))
+	}
+	return b
+}
+
+func decodeInputFrame(b []byte) InputFrame {
+	var f InputFrame
+	if len(b) < inputFrameBytes {
+		return f
+	}
+	for i := 0; i < inputFrameBytes; i++ {
+		f |= InputFrame(b[i]) << (8 * i)
+	}
+	return f &^ (1 << 15)
+}
+
 // How far a control is pushed, from 0 to 127.
 func (f VirtualFrame) level(vc VirtualControl) int32 {
 	if vc < 0 || vc >= VC_Count {
@@ -480,6 +488,16 @@ func (f VirtualFrame) held(vc VirtualControl) bool {
 		return f.level(vc) > 0
 	}
 	return float32(f.level(vc)) > virtualThreshold(vc)
+}
+
+// True if any face, shoulder, trigger, Start, Back or stick button is held.
+func (f VirtualFrame) anyButton() bool {
+	for _, vc := range []VirtualControl{VC_A, VC_B, VC_X, VC_Y, VC_START, VC_BACK, VC_LB, VC_RB, VC_LT, VC_RT, VC_LS, VC_RS} {
+		if f.held(vc) {
+			return true
+		}
+	}
+	return false
 }
 
 // Physical binding of every virtual control, in VirtualControl order. "-" or "" is unbound.
@@ -661,6 +679,22 @@ func (cs *ButtonSetup) boundKeys() []Key {
 		}
 	}
 	return keys
+}
+
+// The Button Setup of a netplay or replay channel, as rows and as bindings.
+type SessionSetup struct {
+	definition *ButtonSetupProperties
+	controls   ButtonSetup
+}
+
+func newSessionSetup(p *ButtonSetupProperties) SessionSetup {
+	var definition ButtonSetupProperties
+	if p != nil {
+		definition = *p
+		definition.Buttons = maps.Clone(p.Buttons)
+		definition.Axes = maps.Clone(p.Axes)
+	}
+	return SessionSetup{definition: &definition, controls: definition.setup()}
 }
 
 // Input settings used by connected devices.
@@ -951,34 +985,6 @@ func (ir *InputReader) Reset() {
 	*ir = InputReader{}
 }
 
-// Engine buttons of a local participant, from the frame of the device in use.
-func (ir *InputReader) LocalInput(in int) [14]bool {
-	buttons, _ := sys.participantFrame(in).battle(sys.participantSetup(in))
-
-	// Apply button assist
-	// Checked locally so that network inputs are processed before being sent
-	if sys.cfg.Input.ButtonAssist {
-		a, b, c := buttons[BI_A], buttons[BI_B], buttons[BI_C]
-		x, y, z := buttons[BI_X], buttons[BI_Y], buttons[BI_Z]
-		s, d, w := buttons[BI_S], buttons[BI_D], buttons[BI_W]
-		result := ir.ButtonAssistCheck([9]bool{a, b, c, x, y, z, s, d, w})
-		for i, button := range []ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W} {
-			buttons[button] = result[i]
-		}
-	}
-	return buttons
-}
-
-// Analog axes of a local participant. Keyboard analog emulation gives full stick and trigger values.
-func (ir *InputReader) LocalAnalogInput(in int) [6]int8 {
-	_, axes := sys.participantFrame(in).battle(sys.participantSetup(in))
-	var out [6]int8
-	for i, axis := range axes {
-		out[i] = int8(axis * 127)
-	}
-	return out
-}
-
 // Resolve Simultaneous Opposing Cardinal Directions (SOCD)
 // Left and Right are solved in CommandList Input based on B and F outcome
 func (ir *InputReader) SocdResolution(U, D, B, F, flipped bool) (bool, bool, bool, bool) {
@@ -1120,6 +1126,20 @@ func (ir *InputReader) SocdResolution(U, D, B, F, flipped bool) (bool, bool, boo
 	F = F && ir.SocdAllow[3]
 
 	return U, D, B, F
+}
+
+// Applies button assist to the buttons it covers.
+func (ir *InputReader) ButtonAssist(buttons [14]bool) [14]bool {
+	covered := [9]ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W}
+	var current [9]bool
+	for i, button := range covered {
+		current[i] = buttons[button]
+	}
+	result := ir.ButtonAssistCheck(current)
+	for i, button := range covered {
+		buttons[button] = result[i]
+	}
+	return buttons
 }
 
 // Add extra frame of leniency when checking button presses
@@ -3284,28 +3304,28 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 				char.analogAxes = [6]float32{0, 0, 0, 0, 0, 0}
 			}
 		}
-	} else if sys.replayFile != nil {
-		buttons = sys.replayFile.readReplayInput(controller)
-		rawAxes := sys.replayFile.readReplayInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
-	} else if sys.netConnection != nil {
-		buttons = sys.netConnection.readNetInput(controller)
-		rawAxes := sys.netConnection.readNetInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
-	} else if sys.rollback.session != nil {
-		buttons = sys.rollback.readRollbackInput(controller)
-		rawAxes := sys.rollback.readRollbackInputAnalog(controller)
-		axes = NormalizeAxes(&rawAxes)
 	} else {
-		// If not AI, replay, or network, then it's a local human player
-		if controller >= 0 {
-			if controller < len(sys.inputRemap) {
-				in := sys.inputRemap[controller] // remapped input index/config
-				buttons = cl.Buffer.InputReader.LocalInput(in)
-				// Keep analog axes in sync with the same remap used for digital inputs
-				rawAxes := cl.Buffer.InputReader.LocalAnalogInput(in)
-				axes = NormalizeAxes(&rawAxes)
-			}
+		// Human players send input frames. Every peer and replays turn them into game
+		// buttons the same way: keyboards send engine buttons, gamepads go through the Button Setup.
+		var frame InputFrame
+		var setup *ButtonSetup
+		channel := -1
+		if controller < len(sys.inputRemap) {
+			channel = sys.inputRemap[controller]
+		}
+		if sys.replayFile != nil {
+			frame, setup = sys.replayFile.readReplayInput(controller), sys.channelSetup(channel)
+		} else if sys.netConnection != nil {
+			frame, setup = sys.netConnection.readNetInput(controller), sys.channelSetup(channel)
+		} else if sys.rollback.session != nil {
+			frame, setup = sys.rollback.readRollbackInput(controller), sys.channelSetup(channel)
+		} else {
+			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
+		}
+		buttons, axes = frame.battle(setup)
+		// Button assist keeps its state in the buffer, so rollback restores it.
+		if char != nil && sys.cfg.Input.ButtonAssist {
+			buttons = cl.Buffer.InputReader.ButtonAssist(buttons)
 		}
 	}
 
