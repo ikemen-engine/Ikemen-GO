@@ -8593,11 +8593,16 @@ func (c *CharCompiler) Compile(p *Char, def string, gi *CharGlobalInfo) (map[int
 				files = false
 				cmd, stcommon = decodeShiftJIS(is["cmd"]), decodeShiftJIS(is["stcommon"])
 				re := regexp.MustCompile(`^st[0-9]*$`)
-				// Sorted starting with "st" and followed by "st<num>" in natural order
-				for _, v := range SortedKeys(is) {
-					if re.MatchString(v) {
-						st = append(st, decodeShiftJIS(is[v]))
+				// "st" then "st<num>" in natural order. Only st keys are sorted, since others
+				// like movelist.2 don't fit that form.
+				stFiles := make(map[string]string)
+				for k, v := range is {
+					if re.MatchString(k) {
+						stFiles[k] = v
 					}
+				}
+				for _, v := range SortedKeys(stFiles) {
+					st = append(st, decodeShiftJIS(stFiles[v]))
 				}
 
 			}
