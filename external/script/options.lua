@@ -2379,6 +2379,10 @@ local function startInputCapture(tbl, item, all)
 	-- Cancel puts back the bindings from before the capture, also after Config all assigned some.
 	tbl.inputContext.capture = {root = root, entries = entries, index = 1, released = false, menu = tbl, item = item,
 		saved = main.f_tableCopy(root.draft), setupId = root.setupId}
+	if root.kind == 'setup' then
+		-- Options read every device, so the hint shows the one that started the capture.
+		tbl.inputContext.capture.glyphDevice = root.readDevice ~= 0 and root.readDevice or inputGetMenuDevice()
+	end
 	resetKey()
 	resetTokenGuard()
 end
@@ -2421,6 +2425,28 @@ local function releasedInput(state, id, kind)
 	return ''
 end
 
+-- Controller Setup capture hint: every control the device has mapped. A keyboard
+-- shows the mapped keys and a gamepad its virtual controls.
+local function captureHint(capture)
+	local device = deviceById(capture.glyphDevice)
+	local mapping = device and inputGetMapping(device.id)
+	local text = motif.option_info.menu.hint.text.presscontrol
+	if mapping == nil or text == nil then
+		return nil
+	end
+	local glyphs = {}
+	for _, control in ipairs(t_virtualControls) do
+		local token = mapping[control]
+		if token ~= nil and token ~= '-' then
+			table.insert(glyphs, device.kind == 'keyboard' and bindingDisplay(token, 'keyboard') or bindingDisplay(control, 'virtual'))
+		end
+	end
+	if #glyphs == 0 then
+		return nil
+	end
+	return text:format(table.concat(glyphs))
+end
+
 -- One frame of capture. The cursor moves to each captured row in turn.
 function options.f_inputCapture(context)
 	local sec = motif.option_info
@@ -2461,6 +2487,7 @@ function options.f_inputCapture(context)
 				ownSetup(root)
 			end
 			root.draft[entry.field] = token
+			entry.menu.items[entry.item].warn = taken and 'keytaken' or nil
 			local snd = taken and sec.cancel.snd or sec.cursor.done.snd
 			sndPlay(motif.Snd, snd[1], snd[2])
 			capture.index = capture.index + 1
@@ -2468,6 +2495,7 @@ function options.f_inputCapture(context)
 		end
 	end
 	resetKey()
+	entry.menu.items[entry.item].hint, entry.menu.items[entry.item].hintDevice = nil, nil
 	updateEditor(root, root)
 	if finished then
 		context.current, context.capture = capture.menu, nil
@@ -2479,6 +2507,10 @@ function options.f_inputCapture(context)
 		context.current = entry.menu
 		entry.menu.inputFocus = entry.item
 		entry.menu.items[entry.item].vardisplay = sec.menu.valuename.presskey
+		if root.kind == 'setup' then
+			entry.menu.items[entry.item].hint = captureHint(capture)
+			entry.menu.items[entry.item].hintDevice = capture.glyphDevice
+		end
 	end
 end
 
