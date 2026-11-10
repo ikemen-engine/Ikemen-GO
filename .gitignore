@@ -18,6 +18,7 @@ Ikemen_GO.command
 external/script/.idea/*
 *.manifest
 resources/*
+cache/*
 
 # Ikemen_GO-Elecbyte-Screenpack
 ScreenpackLicense.txt
