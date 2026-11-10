@@ -3243,6 +3243,11 @@ func systemScriptInit(l *lua.LState) {
 				}
 			}
 
+			// Let the next opponent finish loading instead of cancelling it
+			if winp == 1 && sys.nextMatchChar >= 0 && sys.loader.state == LS_Loading && load(false) != nil {
+				sys.loader.reset()
+			}
+
 			// If not restarting match
 			if winp != -2 {
 				sys.esc = false

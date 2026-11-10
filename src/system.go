@@ -271,6 +271,7 @@ type System struct {
 	selMutex            sync.RWMutex
 	loadMutex           sync.Mutex
 	turnsPreloadMember  [2]int // -1 = none; otherwise selected Turns member index to load into side+2
+	nextMatchChar       int    // -1 = none; otherwise charlist index of the next opponent to load into P4
 	preloadedChars      [2]*Char
 	preloadedCgi        [2]CharGlobalInfo
 	preloadedCharsMutex sync.Mutex
@@ -1151,11 +1152,21 @@ func (s *System) resetRemapInput() {
 func (s *System) loaderReset() {
 	s.roundNo, s.wins, s.roundsExisted, s.decisiveRound = 1, [2]int32{}, [2]int32{}, [2]bool{}
 	s.turnsPreloadMember = [2]int{-1, -1}
+	s.nextMatchChar = -1
 	s.loader.reset()
 }
 
 func (s *System) loadStart() {
+	// Keep the opponent loaded during the previous match
+	var next *Char
+	var nextGi CharGlobalInfo
+	if s.nextMatchChar >= 0 {
+		next, nextGi = s.getPreloadedCharAndCgi(1)
+	}
 	s.loaderReset()
+	if next != nil {
+		s.setPreloadedChar(1, next, nextGi)
+	}
 	s.loader.runTread()
 }
 
@@ -4133,6 +4144,9 @@ func (s *System) runMatch() (reload bool) {
 	// Loop until end of match
 	for s.keepMatchRunning() {
 
+		// Load the next opponent once no Turns member is waiting to load
+		s.startNextMatchPreload()
+
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
 				if err := s.luaLState.DoString(v.Script); err != nil {
@@ -5916,19 +5930,30 @@ func (s *System) startNextTurnsPreload() {
 		return
 	}
 	s.turnsPreloadMember = next
-	if s.loader.state == LS_Complete || s.loader.state == LS_Cancel {
-		select {
-		case <-s.loader.loadExit:
-		default:
-		}
-		s.loader.state = LS_NotYet
-		s.loader.err = nil
-		s.loader.cancelCh = nil
-		s.loader.cancelOnce = sync.Once{}
+	s.loader.rerun()
+}
+
+// Loads the next opponent sent from Lua (Survival) into P4, so the next match doesn't wait for it
+func (s *System) startNextMatchPreload() {
+	if !s.cfg.Config.TurnsLoading || s.netplay() || s.nextMatchChar >= 0 || len(s.chars[3]) > 0 ||
+		s.loader.state == LS_Loading || s.loader.state == LS_Error {
+		return
 	}
-	if s.loader.state == LS_NotYet {
-		s.loader.runTread()
+	// P4 is also the P2 Turns standby slot, so wait until P2 has no more members to load
+	if sb, _ := s.getPreloadedCharAndCgi(1); sb != nil || s.turnsPreloadMember[1] >= 0 {
+		return
 	}
+	n := -1
+	s.selMutex.RLock()
+	if s.sel.gameParams != nil {
+		n = int(s.sel.gameParams.NextChar)
+	}
+	s.selMutex.RUnlock()
+	if n < 0 || n >= len(s.sel.charlist) || s.sel.charlist[n].def == "" || s.sel.charlist[n].def == "randomselect" {
+		return
+	}
+	s.nextMatchChar = n
+	s.loader.rerun()
 }
 
 // Blocks until this peer's loader settles, so all rollback peers promote on the same frame
@@ -6142,7 +6167,9 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	// whole call: nothing else can touch turnsPreloadMember while this loader goroutine is running
 	// (see startNextTurnsPreload's own state==LS_Loading guard).
 	turnsLoading := !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading
-	preloading := turnsLoading && sys.turnsPreloadActive()
+	// Next match opponent loaded into P4 during the current match
+	nextMatch := !attached && pn == 3 && sys.nextMatchChar >= 0
+	preloading := (turnsLoading && sys.turnsPreloadActive()) || nextMatch
 
 	// Don't write directly to sys.cgi during a background Turns preload
 	loadingGi := newCharGlobalInfo()
@@ -6163,7 +6190,13 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	memberNo := pn >> 1
 	nsel := len(teamSel)
 
-	if !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading {
+	if nextMatch {
+		// Already loaded, the loader is running again for a Turns member
+		if sb, _ := sys.getPreloadedCharAndCgi(1); sb != nil {
+			return 1
+		}
+		memberNo = 0
+	} else if !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading {
 		if sys.turnsPreloadActive() {
 			// During the match only the fixed hidden standby slot is eligible.
 			// Active P1/P2 must not be touched by the background loader.
@@ -6198,7 +6231,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	}
 
 	// Check if player number is acceptable for selected team mode
-	if !attached {
+	if !attached && !nextMatch {
 		// BG Turns uses a staged standby slot instead of loading the whole team.
 		if tm == TM_Turns && sys.cfg.Config.TurnsLoading {
 			if memberNo >= int(nTurns) || pn >= 4 {
@@ -6277,6 +6310,8 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	if attached {
 		atcpn := pn - MaxSimul*2
 		cdef = sys.stageList[0].attachedchardef[atcpn]
+	} else if nextMatch {
+		cdef = sys.sel.charlist[sys.nextMatchChar].def
 	} else {
 		if tm == TM_Turns {
 			cdefOWnumber = memberNo*2 + pn&1
@@ -6301,7 +6336,8 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 				break
 			}
 		}
-		if prefixToDecrement && ffx.isCharFX {
+		// A next match preload is counted later, when the next match uses it
+		if prefixToDecrement && ffx.isCharFX && !nextMatch {
 			if ffx.refCount > 0 {
 				ffx.refCount--
 			}
@@ -6326,6 +6362,28 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 			tstr = fmt.Sprintf("Same attached char kept: %v", cdef)
 		} else {
 			tstr = fmt.Sprintf("Same char kept: %v", cdef)
+		}
+	}
+
+	// Use the opponent loaded into P4 during the previous match
+	if !sameChar && !attached && !preloading && pn == 1 {
+		if sb, sbGi := sys.getPreloadedCharAndCgi(1); sb != nil && sbGi.def == cdef {
+			sys.setPreloadedChar(1, nil, CharGlobalInfo{})
+			sys.cgi[pn] = sbGi
+			sys.stringPool[pn] = sys.stringPool[3]
+			sys.stringPool[3] = *NewStringPool()
+			sys.remapCharSlotRefs([]*Char{sb}, 3, pn)
+			sys.rebindCgiStateOwners(pn)
+			sb.controller = pn
+			if sys.aiLevel[pn] != 0 {
+				sb.controller ^= -1
+			}
+			if len(sys.chars[pn]) > 0 {
+				sb.power = sys.chars[pn][0].power
+			}
+			p = sb
+			sameChar = true
+			tstr = fmt.Sprintf("Preloaded char used: %v", cdef)
 		}
 	}
 
@@ -6361,7 +6419,11 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		p.controller = pn
 	} else {
 		p.memberNo = memberNo
-		p.selectNo = teamSel[memberNo][0]
+		if nextMatch {
+			p.selectNo = sys.nextMatchChar
+		} else {
+			p.selectNo = teamSel[memberNo][0]
+		}
 		p.teamside = p.playerNo & 1
 	}
 
@@ -6409,28 +6471,26 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	selectPalno := 1
 	if pal, ok := sys.sel.palOverwrite[pn]; ok && pal > 0 {
 		selectPalno = pal
-	} else if !attached {
+	} else if !attached && !nextMatch {
 		// Get palette number from select screen choice
 		selectPalno = teamSel[memberNo][1]
 	}
 	gi.palno = int32(selectPalno)
 
 	// Commit character now that loading and compiling both succeeded
-	if turnsLoading {
-		if preloading {
-			// Not live yet, so it goes into the standby holder instead of sys.chars
-			sys.setPreloadedChar(team, p, loadingGi)
-		} else {
-			// This is the active slot (0 or 1), not a background preload
-			sys.chars[pn] = []*Char{p}
-			sys.activateTurnsSlot(sys.chars[pn], pn)
-		}
+	if preloading {
+		// Not live yet, so it goes into the standby holder instead of sys.chars
+		sys.setPreloadedChar(team, p, loadingGi)
+	} else if turnsLoading {
+		// This is the active slot (0 or 1), not a background preload
+		sys.chars[pn] = []*Char{p}
+		sys.activateTurnsSlot(sys.chars[pn], pn)
 	} else {
 		sys.chars[pn] = []*Char{p}
 	}
 
 	// Apply per-launch map overrides prepared from Lua/loadStart.
-	if !attached {
+	if !attached && !nextMatch {
 		p.applyMapOverrides()
 	}
 
@@ -6625,7 +6685,7 @@ func (l *Loader) load() {
 		l.loadExit <- l.state
 	}()
 
-	stagedTurns := sys.turnsPreloadActive()
+	stagedTurns := sys.turnsPreloadActive() || sys.nextMatchChar >= 0
 
 	// Load any config-driven Common FX not already cached. External modules may
 	// append to Common.Fx before a match; once loaded, non-char FX are kept.
@@ -6664,6 +6724,9 @@ func (l *Loader) load() {
 					charDone[pn] = false
 				}
 			}
+		}
+		if sys.nextMatchChar >= 0 {
+			charDone[3] = false
 		}
 	}
 
@@ -6727,6 +6790,11 @@ func (l *Loader) load() {
 				} else {
 					result = l.loadCharacter(i, false)
 				}
+				if result < 0 && i == 3 && sys.nextMatchChar >= 0 {
+					// Skip a failed next opponent preload, the next match load reports the error
+					l.err = nil
+					result = 1
+				}
 				if result > 0 {
 					charDone[i] = true
 				} else if result < 0 {
@@ -6768,6 +6836,11 @@ func (l *Loader) load() {
 		}
 	}
 	sys.cleanCustomShaders()
+
+	// Drop a preloaded opponent that this match didn't use
+	if !stagedTurns {
+		sys.clearPreloadedChars()
+	}
 
 	// Flag loading state as complete
 	l.state = LS_Complete
@@ -6814,6 +6887,23 @@ func (l *Loader) reset() {
 func (l *Loader) retryAfterError() {
 	<-l.loadExit
 	l.reset()
+}
+
+// Starts a finished loader again for a background preload
+func (l *Loader) rerun() {
+	if l.state == LS_Complete || l.state == LS_Cancel {
+		select {
+		case <-l.loadExit:
+		default:
+		}
+		l.state = LS_NotYet
+		l.err = nil
+		l.cancelCh = nil
+		l.cancelOnce = sync.Once{}
+	}
+	if l.state == LS_NotYet {
+		l.runTread()
+	}
 }
 
 func (l *Loader) runTread() bool {

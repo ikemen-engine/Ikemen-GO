@@ -168,6 +168,8 @@ function start.f_makeRoster(t_ret)
 					table.insert(t_ret[#t_ret], t_static[t[i].order][math.random(1, #t_static[t[i].order])])
 					remaining = remaining - 1
 				end
+				-- shuffle here, so the next opponent is known before its match starts
+				main.f_tableShuffle(t_ret[#t_ret])
 			end
 		end
 	end
@@ -4100,6 +4102,11 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 	addParam("charparam.time", main.charparam.time)
 	addParam("p1.turnsoffset", start.p[1].turnsOffset or 0)
 	addParam("p2.turnsoffset", start.p[2].turnsOffset or 0)
+	-- Survival: first opponent of the next match, loaded during this one
+	local nextMatch = main.elimination and main.makeRoster and not start.customArcadePath and start.t_roster and start.t_roster[matchNo() + 1]
+	if nextMatch and nextMatch[1] ~= -1 then
+		addParam("p2.nextchar", nextMatch[1])
+	end
 	addParam("pausemenu", main.pauseMenu)
 	addParam("persistlife", main.persistLife)
 	addParam("persistmusic", main.persistMusic)
