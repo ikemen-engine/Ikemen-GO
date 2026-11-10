@@ -1,6 +1,8 @@
 package main
 
 import (
+	"slices"
+
 	"golang.org/x/exp/maps"
 )
 
@@ -1119,15 +1121,12 @@ func (rr *rankingRow) Clone() (result rankingRow) {
 
 func (hi *MotifHiscore) Clone() (result MotifHiscore) {
 	result = *hi
+	result.letters = slices.Clone(hi.letters)
 	if hi.rows != nil {
 		result.rows = make([]rankingRow, len(hi.rows), len(hi.rows))
 		for i := 0; i < len(hi.rows); i++ {
 			result.rows[i] = hi.rows[i].Clone()
 		}
-	}
-	if hi.letters != nil {
-		result.letters = make([]int, len(hi.letters), len(hi.letters))
-		copy(result.letters, hi.letters)
 	}
 	return
 }

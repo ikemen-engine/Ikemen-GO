@@ -135,7 +135,6 @@ type SystemStateVars struct {
 
 	keyInput            Key
 	keyInputFrame       int32
-	keyString           string
 	lastInputController int
 	menuPlayer          int // 1-based player whose pause menu is open; 0 reads every player
 	menuFocus           int // device that alone drives menus, e.g. while side select edits its setup
@@ -268,6 +267,7 @@ type System struct {
 	inputCfg            InputConfig
 	sessionSetups       map[int]SessionSetup // Button Setup of each netplay or replay channel
 	inputs              InputAssignment
+	textInput           TextInput
 	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
@@ -1035,6 +1035,7 @@ func (s *System) renderFrame() {
 		}
 		s.drawDebugText(logicState)
 	}
+	s.textInput.draw()
 }
 
 func (s *System) update() bool {
@@ -1576,7 +1577,8 @@ func (s *System) pollDevices() {
 			active = active || device.pressed[vc]
 		}
 		// In menus the first press of an unused device joins it as the next player.
-		if active && !s.inputs.ClaimLocked && !s.netplay() && s.inputs.owner(device.ID) < 0 && !s.keyboardConflict(device.ID) {
+		if active && !s.inputs.ClaimLocked && !s.netplay() && !s.textInput.active && !s.textInput.release &&
+			s.inputs.owner(device.ID) < 0 && !s.keyboardConflict(device.ID) {
 			_, _ = s.inputs.claim(device.ID, TS_None)
 		}
 	}
@@ -1919,6 +1921,9 @@ func (s *System) keyboardConflict(deviceID int) bool {
 
 // True for a mapped attack or a local face, shoulder or trigger control.
 func (s *System) anyHardButton() bool {
+	if s.textInput.active || s.textInput.release {
+		return false
+	}
 	for _, device := range s.inputs.Devices {
 		if s.inputs.ClaimLocked && s.replayFile == nil && s.inputs.owner(device.ID) < 0 {
 			continue
@@ -2052,6 +2057,10 @@ func (s *System) actionTime(action []string, controllerIdx int) int32 {
 // True on the frame a motif action is pressed on a player slot (-1: any slot).
 // Directions repeat while held. Each token fires at most once per frame.
 func (s *System) menuAction(action []string, controllerIdx int) bool {
+	// Text entry owns the keyboard and the gamepad driving it.
+	if s.textInput.active || s.textInput.release {
+		return false
+	}
 	// time reads how long a token is held; device returns the device that pressed it.
 	// controllerKey keeps a token from firing twice per frame (negative for menuFocus).
 	check := func(controllerKey int, deviceID func() int, time func(token string) int32) bool {
@@ -2217,6 +2226,18 @@ func (s *System) glyphDevice(deviceID int) *InputDevice {
 	// A caller can ask for one specific device, for example the device being mapped.
 	if deviceID != 0 {
 		return s.inputs.device(deviceID)
+	}
+	if s.textInput.active {
+		if !s.textInput.keyboard {
+			if device := s.inputs.device(s.textInput.device); device != nil && device.Connected {
+				return device
+			}
+		}
+		for _, device := range s.inputs.Devices {
+			if device.Connected && device.Joy < 0 {
+				return device
+			}
+		}
 	}
 	// A focused device drives the menu, so it gets the hints.
 	if device := s.inputs.device(s.menuFocus); device != nil && device.Connected {
@@ -3236,7 +3257,7 @@ func (s *System) motifPauseGame() bool {
 }
 
 func (s *System) matchPaused() bool {
-	return s.debugPaused() || s.motifPauseGame()
+	return s.debugPaused() || s.motifPauseGame() || s.textInput.active && !s.netplay()
 }
 
 func (s *System) motifPauseMusic() bool {
