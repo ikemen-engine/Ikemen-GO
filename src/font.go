@@ -1872,6 +1872,29 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 		}
 		return nil, true
 	}
+	// Mirror Commands flips the glyphs while the player who opened the pause menu faces left.
+	if sys.cfg.Input.CommandMirror {
+		p := sys.menuPlayer - 1
+		// The menu owner is an input slot. Turns fighters stay in P1/P2 even
+		// when the active co-op member is controlled through P3/P4 or later.
+		if p >= 0 && p < MaxSimul*2 && sys.tmode[p&1] == TM_Turns {
+			p &= 1
+		}
+		if p >= 0 && p < len(sys.chars) && len(sys.chars[p]) > 0 &&
+			sys.chars[p][0] != nil && sys.chars[p][0].facing < 0 {
+			if mirror, ok := sys.motif.ControllerGlyphs.Mirror[tag]; ok {
+				tag = mirror
+			}
+		}
+	}
+	// Command Display set to Mapping shows the key or button bound to the engine button.
+	if button, ok := sys.motif.ControllerGlyphs.Command[tag]; ok && sys.cfg.Input.CommandMapping {
+		if device := sys.glyphDevice(ts.glyphDevice); device != nil && device.Connected {
+			if runs := ts.inputGlyph(button); len(runs) == 1 && runs[0].anim != nil {
+				return runs, true
+			}
+		}
+	}
 	if a := sys.motif.namedGlyph(tag); a != nil {
 		return []glyphRun{{anim: a}}, true
 	}
