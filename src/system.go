@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -4131,7 +4132,6 @@ func (s *System) runMatch() (reload bool) {
 
 	// Loop until end of match
 	for s.keepMatchRunning() {
-		s.frameStepFlag = false
 
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
@@ -4176,7 +4176,38 @@ func (s *System) runMatch() (reload bool) {
 		// Step sounds after both the core game and motif have updated
 		s.tickSound()
 
+		s.frameStepFlag = false
 		debugInput()
+
+		// Output debug data provided by an external Lua script.
+		if _, enabled := s.cmdFlags["-debugdump"]; enabled {
+			if fn, ok := s.luaLState.GetGlobal("__ikemen_debug_dump").(*lua.LFunction); ok {
+				if err := s.luaLState.CallByParam(lua.P{
+					Fn:      fn,
+					NRet:    1,
+					Protect: true,
+				}); err != nil {
+					fmt.Fprintln(os.Stderr, "Debug dump Lua error:", err)
+				} else {
+					ret := s.luaLState.Get(-1)
+					s.luaLState.Pop(1)
+
+					if ret != lua.LNil {
+						value, err := luaToJsonValue(ret, nil)
+						if err == nil {
+							var data []byte
+							data, err = json.Marshal(value)
+							if err == nil {
+								fmt.Printf("IKEMEN_DUMP:%s\n", data)
+							}
+						}
+						if err != nil {
+							fmt.Fprintln(os.Stderr, "Debug dump JSON error:", err)
+						}
+					}
+				}
+			}
+		}
 
 		if !s.addFrameTime(s.turbo) {
 			if !s.eventUpdate() {
