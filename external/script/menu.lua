@@ -91,6 +91,16 @@ end
 -- Current pause menu itemname for internal use (key from menu.t_itemname table)
 menu.itemname = ''
 
+function menu.f_finishMatch(action, sec)
+	sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
+	if menu.currentMenuId ~= 'rematch' then
+		endMatch()
+	end
+	start[action] = true
+	main.pauseMenuActive = false
+	return false
+end
+
 -- Associative elements table storing functions controlling behaviour of each
 -- pause menu item. Can be appended via external module.
 menu.t_itemname = {
@@ -197,14 +207,35 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Reload (Rematch)
+	--Restart the current fight
 	['reload'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getAction(-1, sec.menu.done.action) then
+			if menu.currentMenuId == 'rematch' then
+				return menu.f_finishMatch('rematch', sec)
+			end
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
 			--togglePause(false)
 			reload()
 			main.pauseMenuActive = false
 			return false
+		end
+		return true
+	end,
+	['rematch'] = function(t, item, cursorPosY, moveTxt, sec)
+		if getAction(-1, sec.menu.done.action) then
+			return menu.f_finishMatch('rematch', sec)
+		end
+		return true
+	end,
+	['orderselect'] = function(t, item, cursorPosY, moveTxt, sec)
+		if getAction(-1, sec.menu.done.action) then
+			return menu.f_finishMatch('orderselect', sec)
+		end
+		return true
+	end,
+	['stageselect'] = function(t, item, cursorPosY, moveTxt, sec)
+		if getAction(-1, sec.menu.done.action) then
+			return menu.f_finishMatch('stageselect', sec)
 		end
 		return true
 	end,
@@ -220,24 +251,14 @@ menu.t_itemname = {
 	--Character Change
 	['characterchange'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getAction(-1, sec.menu.done.action) then
-			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
-			--togglePause(false)
-			endMatch()
-			start.characterchange = true
-			main.pauseMenuActive = false
-			return false
+			return menu.f_finishMatch('characterchange', sec)
 		end
 		return true
 	end,
 	--Exit
 	['exit'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getAction(-1, sec.menu.done.action) then
-			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
-			--togglePause(false)
-			endMatch()
-			start.exit = true
-			main.pauseMenuActive = false
-			return false
+			return menu.f_finishMatch('exit', sec)
 		end
 		return true
 	end,
@@ -259,6 +280,10 @@ function menu.f_createMenu(tbl, sec, bg, bool_main)
 			main.f_menuItemBgAnimReset(sec)
 		end
 		local t = tbl.items
+		if #t == 0 then
+			main.pauseMenuActive = false
+			return
+		end
 		if tbl.reset then
 			tbl.reset = false
 		else
@@ -360,6 +385,7 @@ end
 menu.t_menus = {
 	{id = 'menu', sec = motif.pause_menu.pause_menu, bg = motif.pausebgdef.pausebgdef, movelist = true},
 	{id = 'training', sec = motif.pause_menu.training_pause_menu, bg = motif.pausebgdef.trainingpausebgdef, movelist = true},
+	{id = 'rematch', sec = motif.victory_screen.rematch, movelist = true},
 }
 menu.t_menuIndex = {}
 
@@ -540,10 +566,12 @@ end)
 
 menu.movelistChar = 1
 -- player: 1-based player who opened the menu. The title can show it with %s.
-function menu.f_init(player)
+function menu.f_init(player, id)
 	esc(false)
 	main.pauseMenuActive = true
-	local id = f_pauseMenuIdFromKey(f_pauseMenuKey(gameMode()))
+	if id == nil or id == '' then
+		id = f_pauseMenuIdFromKey(f_pauseMenuKey(gameMode()))
+	end
 	if id == '' or menu.t_menuIndex == nil or menu.t_menuIndex[id] == nil then
 		id = 'menu'
 	end
@@ -553,7 +581,9 @@ function menu.f_init(player)
 			menu[id].title = main.f_itemnameUpper(entry.sec.title.text:gsub('%%s', tostring(player or 1)), entry.sec.menu.title.uppercase)
 		end
 		sndPlay(motif.Snd, entry.sec.enter.snd[1], entry.sec.enter.snd[2])
-		bgReset(entry.bg.BGDef)
+		if entry.bg ~= nil then
+			bgReset(entry.bg.BGDef)
+		end
 		if menu[id] ~= nil and menu[id].loop ~= nil then
 			menu.currentMenu = {menu[id].loop, menu[id].loop}
 			menu.currentMenuId = id
@@ -587,18 +617,24 @@ function menu.f_run()
 	end
 	local sec = motif.pause_menu.pause_menu
 	local bg = motif.pausebgdef.pausebgdef
-	if entry ~= nil and entry.sec ~= nil and entry.bg ~= nil then
+	if entry ~= nil and entry.sec ~= nil then
 		sec = entry.sec
 		bg = entry.bg
 	end
 	--draw overlay
-	rectDraw(sec.overlay.RectData)
+	if menu.currentMenuId ~= 'rematch' then
+		rectDraw(sec.overlay.RectData)
+	end
 	--pause exit delay
 	if menu.pauseExitDelay >= 0 then
 		if menu.pauseExitDelay > 0 then
 			menu.pauseExitDelay = menu.pauseExitDelay - 1
 		else
 			-- Keep the game paused. Go owns the fade-out/fade-in handoff and unpauses afterwards.
+			-- Leaving the rematch menu goes back to the select screen.
+			if menu.currentMenuId == 'rematch' then
+				start.characterchange = true
+			end
 			main.pauseMenuActive = false
 		end
 	end
@@ -689,8 +725,8 @@ function menu.f_reset()
 	end
 end
 
-function menuInit(player)
-	return menu.f_init(player)
+function menuInit(player, id)
+	return menu.f_init(player, id)
 end
 
 function menuRun()

@@ -1,5 +1,27 @@
 package main
 
+type VersusStats struct {
+	Matches int32
+	Wins    [2]int32
+	Streak  [2]int32
+}
+
+func (s *System) recordVersusResult() {
+	winner := s.winnerTeam()
+	if !s.sel.gameParams.VersusResults || winner < 0 {
+		return
+	}
+	s.versusStats.Matches++
+	for side := range s.versusStats.Wins {
+		if int(winner) == side+1 {
+			s.versusStats.Wins[side]++
+			s.versusStats.Streak[side]++
+		} else {
+			s.versusStats.Streak[side] = 0
+		}
+	}
+}
+
 type GameStatsSnapshot struct {
 	StatsLog          StatsLog `json:"statsLog"`
 	ContinueFlg       bool     `json:"continueFlg"`

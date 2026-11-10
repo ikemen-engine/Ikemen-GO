@@ -1986,7 +1986,12 @@ function start.f_selectMode()
 				start.exit = false
 				return
 			end
-			if not continued() or esc() then
+			if start.stageselect then
+				-- Keep the confirmed characters and reopen stage select on the last stage.
+				start.stageselect = false
+				start.f_unloadSelected()
+				selScreenEnd, stageEnd, stageRandom = false, false, false
+			elseif not continued() or esc() then
 				start.f_selectReset(false)
 			else
 				t_reservedChars = {{}, {}}
@@ -1995,9 +2000,26 @@ function start.f_selectMode()
 	end
 end
 
+-- Lets the next loading screen select the same characters again.
+function start.f_unloadSelected()
+	start.bgLoadStarted = false
+	for side = 1, 2 do
+		for _, v in ipairs(start.p[side].t_selected) do
+			v.selected = false
+			v.loading = false
+		end
+	end
+end
+
 --resets various data
 function start.f_selectReset(hardReset, preserveProgress)
 	esc(false)
+	if hardReset then
+		resetVersusStats()
+		start.rematch = false
+		start.orderselect = false
+		start.stageselect = false
+	end
 	if not preserveProgress then
 		resetGameStats()
 		start.matchPersistenceStatsIdx = 0
@@ -2433,6 +2455,8 @@ function launchFight(data)
 	clearSelected()
 	local ok = false
 	local loopCount = 0
+	local repeatFight = false
+	local selectOrder = false
 	while true do
 		-- fight initialization
 		setTeamMode(main.runSide, start.p[main.runSide].teamMode, start.p[main.runSide].numChars)
@@ -2462,7 +2486,12 @@ function launchFight(data)
 		local loadStartParams = main.f_tableCopy(t)
 		loadStartParams.winscreen = winscreen
 
-		if not start.f_selectVersus(t.vsscreen, t.orderselect, loadStartParams) then break end
+		if repeatFight then
+			start.f_unloadSelected()
+		else
+			local order = selectOrder and {true, true} or main.f_tableCopy(t.orderselect)
+			if not start.f_selectVersus(selectOrder or t.vsscreen, order, loadStartParams) then break end
+		end
 		start.f_remapCoopOrder()
 		-- If VS started background loading, do not restart the loader here.
 		if gameOption('Config.VsScreenLoading') and start.bgLoadStarted then
@@ -2472,12 +2501,21 @@ function launchFight(data)
 		end
 		start.f_game(common)
 		clearColor(motif.selectbgdef.bgclearcolor[1], motif.selectbgdef.bgclearcolor[2], motif.selectbgdef.bgclearcolor[3])
-		if start.exit or start.characterchange then
+		if start.exit or start.characterchange or start.stageselect then
 			if start.characterchange then
 				start.f_selectReset(false)
 			end
 			start.characterchange = false
 			break
+		elseif start.rematch or start.orderselect then
+			repeatFight = start.rematch
+			selectOrder = start.orderselect
+			start.rematch = false
+			start.orderselect = false
+			if getWinnerTeam() >= 0 then
+				setMatchNo(matchNo() + 1)
+			end
+			clearSelected()
 		-- here comes a new challenger
 		elseif start.challenger > 0 then
 			if t.challenger then -- end function called by f_arcadeChallenger() regardless of outcome
@@ -4257,6 +4295,7 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 	addParam("quickcontinue", main.f_arg(t.quickcontinue, defaultQuickContinue()))
 	addParam("vsscreen", main.f_arg(t.vsscreen, main.motif.vsscreen))
 	addParam("victoryscreen", main.f_arg(t.victoryscreen, main.motif.victoryscreen))
+	addParam("versusresults", main.versusResults)
 	addParam("winscreen", main.f_arg(t.winscreen, main.motif.winscreen))
 	addParam("order", t.order)
 	addParam("stage", t.stage)

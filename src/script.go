@@ -5257,7 +5257,7 @@ func systemScriptInit(l *lua.LState) {
 
 		// Flatten menu.hint.text.<path> keys (dots -> underscores) into the
 		// menu.hint.text subtable, so lookups match an item's paramname.
-		populateHint := func(sec string, path []string, root *lua.LTable) {
+		populateHint := func(sec string, path []string, pref string, root *lua.LTable) {
 			dst := getTbl(root, append(append([]string{}, path...), "hint"))
 			if dst == nil {
 				return
@@ -5275,8 +5275,8 @@ func systemScriptInit(l *lua.LState) {
 				}
 				text.RawSetString(k, lua.LString(val))
 			}
-			eachIniKeys(defIni, sec, "menu.hint.text.", func(r, v string) { apply(r, v) })
-			eachIniKeys(sys.motif.UserIniFile, sec, "menu.hint.text.", func(r, v string) { apply(r, v) })
+			eachIniKeys(defIni, sec, pref, func(r, v string) { apply(r, v) })
+			eachIniKeys(sys.motif.UserIniFile, sec, pref, func(r, v string) { apply(r, v) })
 		}
 
 		// order for flat itemname.*
@@ -5604,8 +5604,12 @@ func systemScriptInit(l *lua.LState) {
 		for _, s := range mi {
 			populateItemName(s.sec, s.path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(s.sec, s.path, "menu.itemname.", lTable)
-			populateHint(s.sec, s.path, lTable)
+			populateHint(s.sec, s.path, "menu.hint.text.", lTable)
 		}
+		rematchPath := []string{"victory_screen", "rematch", "menu"}
+		populateItemName("Victory Screen", rematchPath, "rematch.menu.itemname.", "flat", lTable)
+		buildFlatOrder("Victory Screen", rematchPath, "rematch.menu.itemname.", lTable)
+		populateHint("Victory Screen", rematchPath, "rematch.menu.hint.text.", lTable)
 		// Handle every derived [* Pause Menu]
 		for _, sec := range customPauseMenuSections(sys.motif.IniFile) {
 			key := normalizeSectionName(sec)
@@ -5618,7 +5622,7 @@ func systemScriptInit(l *lua.LState) {
 			}
 			populateItemName(src, path, "menu.itemname.", "flat", lTable)
 			buildFlatOrder(src, path, "menu.itemname.", lTable)
-			populateHint(src, path, lTable)
+			populateHint(src, path, "menu.hint.text.", lTable)
 		}
 		populateItemName("Select Info", []string{"select_info", "teammenu"}, "teammenu.itemname.", "team", lTable)
 		buildTeamOrder("Select Info", []string{"select_info", "teammenu"}, lTable)
@@ -6756,6 +6760,12 @@ func systemScriptInit(l *lua.LState) {
 		/*Reset the UI input token guard.
 		@function resetTokenGuard*/
 		sys.uiResetTokenGuard()
+		return 0
+	})
+	luaRegister(l, "resetVersusStats", func(*lua.LState) int {
+		/*Clear the wins, win streaks and match count shown on the versus results.
+		@function resetVersusStats*/
+		sys.versusStats = VersusStats{}
 		return 0
 	})
 	luaRegister(l, "resolveCharDef", func(l *lua.LState) int {

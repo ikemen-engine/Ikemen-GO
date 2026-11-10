@@ -126,6 +126,7 @@ type SystemStateVars struct {
 	credits                 int32
 
 	consecutiveWins  [2]int32
+	versusStats      VersusStats
 	firstAttack      [3]int
 	home             int
 	stageLoop        bool
@@ -5131,6 +5132,7 @@ func (s *System) runNextRound() bool {
 			}
 
 			// Otherwise match is over
+			s.recordVersusResult()
 			s.postMatchFlg = true
 			s.fightLoopEnd = true
 			s.resetMatchData(false)

@@ -348,6 +348,7 @@ type GameParams struct {
 	Time                int32    `ini:"time"`
 	VsScreen            bool     `ini:"vsscreen"`
 	VictoryScreen       bool     `ini:"victoryscreen"`
+	VersusResults       bool     `ini:"versusresults"`
 	WinScreen           bool     `ini:"winscreen"`
 	PauseMenu           bool     `ini:"pausemenu"`
 	RankingCondition    bool     `ini:"rankingcondition"`
@@ -537,6 +538,10 @@ func (p *GameParams) AppendParams(entries []string) {
 		case "victoryscreen":
 			if b, ok := parseBoolLoose(val); ok {
 				p.VictoryScreen = b
+			}
+		case "versusresults":
+			if b, ok := parseBoolLoose(val); ok {
+				p.VersusResults = b
 			}
 		case "winscreen":
 			if b, ok := parseBoolLoose(val); ok {

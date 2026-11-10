@@ -1090,6 +1090,19 @@ type StoryboardProperties struct {
 	Storyboard string `ini:"storyboard" lookup:"def,,data/"`
 }
 
+type VersusResultStatProperties struct {
+	TextProperties
+	Value TextProperties `ini:"value"`
+}
+
+type VersusResultProperties struct {
+	Bg        AnimationProperties        `ini:"bg"`
+	Title     TextMapProperties          `ini:"title"`
+	Wins      VersusResultStatProperties `ini:"wins"`
+	WinStreak VersusResultStatProperties `ini:"winstreak"`
+	WinRate   VersusResultStatProperties `ini:"winrate"`
+}
+
 type VictoryScreenProperties struct {
 	Enabled  bool `ini:"enabled"`
 	KeepSide struct {
@@ -1136,6 +1149,13 @@ type VictoryScreenProperties struct {
 	P7 PlayerVictoryProperties `ini:"p7"`
 	P8 PlayerVictoryProperties `ini:"p8"`
 	Hint HintProperties          `ini:"hint"`
+	Results struct {
+		Enabled bool                   `ini:"enabled"`
+		Time    int32                  `ini:"time"`
+		P1      VersusResultProperties `ini:"p1"`
+		P2      VersusResultProperties `ini:"p2"`
+	} `ini:"results"`
+	Rematch MenuInfoProperties `ini:"rematch"`
 }
 
 type WinScreenProperties struct {
@@ -1657,7 +1677,7 @@ type Motif struct {
 	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
-	inheritedKeys   map[string]bool                     // normalized .anim/.spr paths assigned by overrideParams inheritance
+	inheritedKeys   map[string]bool                     // normalized paths assigned by inheritance
 	ch              MotifChallenger
 	co              MotifContinue
 	de              MotifDemo
@@ -2373,8 +2393,9 @@ func (m *Motif) fixLocalcoordOverrides() {
 				}
 			}
 
-			// 2) Is this exact .localcoord key present in the embedded defaults?
-			inDefaults := false
+			// Inherited coordinates are defaults too, unless this element was customized.
+			query := strings.ToLower(strings.ReplaceAll(secName, " ", "_") + "." + keyName)
+			inDefaults := m.inheritedKeys[query]
 			if defSec != nil {
 				if dk, err := defSec.GetKey(keyName); err == nil && dk != nil {
 					inDefaults = true
@@ -2419,7 +2440,7 @@ func (m *Motif) fixLocalcoordOverrides() {
 			// set struct (and ini) value to 0,0 so it is treated as "unspecified".
 			secNorm := strings.ReplaceAll(secName, " ", "_")
 			keyNorm := strings.ReplaceAll(keyName, " ", "_")
-			query := strings.ToLower(secNorm + "." + keyNorm)
+			query = strings.ToLower(secNorm + "." + keyNorm)
 
 			if err := m.SetValueUpdate(query, "0, 0"); err != nil {
 				fmt.Printf("Warning: failed to reset localcoord for %s: %v\n", query, err)
@@ -2818,6 +2839,12 @@ func (m *Motif) overrideParams() {
 	// Apply [Pause Menu] inheritance to every other [* Pause Menu]
 	for _, sec := range pauseSections[1:] {
 		specs = append(specs, InheritSpec{SrcSec: "Pause Menu", SrcPrefix: "", DstSec: sec, DstPrefix: ""})
+	}
+	// The rematch menu shares pause styling but has its own text and items.
+	for _, prefix := range []string{"title.", "menu.", "movelist.", "hint.", "cursor.", "cancel.", "enter.", "exit.", "overlay."} {
+		specs = append(specs, InheritSpec{
+			SrcSec: "Pause Menu", SrcPrefix: prefix, DstSec: "Victory Screen", DstPrefix: "rematch." + prefix, SkipText: true,
+		})
 	}
 	// Apply p1/p2 -> p3..p8 inheritance to every [* Results Screen]
 	for _, sec := range m.customResultsScreenSections() {
@@ -3313,6 +3340,8 @@ func (m *Motif) applyPostParsePosAdjustments() {
 		&m.OptionInfo.Menu,
 		&m.ReplayInfo.Menu,
 		&m.AttractMode.Menu,
+		&m.VictoryScreen.Rematch.Menu,
+		&m.VictoryScreen.Rematch.Movelist.Menu,
 	} {
 		shiftMenu(me)
 	}
@@ -3902,11 +3931,13 @@ type MotifMenu struct {
 	state       MenuState
 	reopenLock  bool
 	player      int // 1-based player who opened the menu
+	rematch     bool
 }
 
 func (me *MotifMenu) reset(m *Motif) {
 	me.active = false
 	me.player = 0
+	me.rematch = false
 	sys.menuPlayer = 0
 	me.initialized = false
 	me.state = ME_OpeningOut
@@ -3958,6 +3989,9 @@ func (me *MotifMenu) openingPlayer(pm *MenuInfoProperties) int {
 }
 
 func (me *MotifMenu) pauseMenu(m *Motif) *MenuInfoProperties {
+	if me.rematch {
+		return &m.VictoryScreen.Rematch
+	}
 	if m == nil || m.PauseMenu == nil {
 		return nil
 	}
@@ -3981,10 +4015,22 @@ func (me *MotifMenu) requestClose(m *Motif) {
 	if !me.active || me.state >= ME_ClosingOut {
 		return
 	}
-	if pm := me.pauseMenu(m); pm != nil {
+	if me.rematch {
+		m.vi.startFadeOut(m)
+	} else if pm := me.pauseMenu(m); pm != nil {
 		pm.FadeOut.FadeData.init(m.fadeOut, false)
 	}
 	me.state = ME_ClosingOut
+}
+
+func (me *MotifMenu) startRematch(m *Motif, player int) {
+	me.rematch = true
+	me.active = true
+	me.initialized = true
+	me.state = ME_OpeningOut
+	me.player = player
+	sys.menuPlayer = player
+	sys.esc = false
 }
 
 func (me *MotifMenu) init(m *Motif) {
@@ -4055,10 +4101,14 @@ func (me *MotifMenu) step(m *Motif) {
 		if m.fadeOut.isActive() {
 			return
 		}
-		if err := sys.luaLState.DoString(fmt.Sprintf("menuInit(%d)", me.player)); err != nil {
+		id := ""
+		if me.rematch {
+			id = "rematch"
+		}
+		if err := sys.luaLState.DoString(fmt.Sprintf("menuInit(%d, %q)", me.player, id)); err != nil {
 			sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 		}
-		if pm != nil {
+		if pm != nil && !me.rematch {
 			pm.FadeIn.FadeData.init(m.fadeIn, true)
 		}
 		me.state = ME_OpeningIn
@@ -4067,6 +4117,9 @@ func (me *MotifMenu) step(m *Motif) {
 			me.state = ME_Open
 		}
 	case ME_ClosingOut:
+		if me.rematch {
+			return
+		}
 		// If exiting match from the pause menu
 		if sys.endMatch {
 			if sys.fightScreen.round.fadeOut.isActive() {
@@ -6683,6 +6736,8 @@ type MotifVictory struct {
 	lineFullyRendered bool
 	charDelayCounter  int32
 	typedCnt          int
+	results           bool
+	resultsPlayer     int
 	back              bool // cancel goes back to the select screen
 }
 
@@ -6703,6 +6758,8 @@ func (vi *MotifVictory) reset(m *Motif) {
 	vi.lineFullyRendered = false
 	vi.charDelayCounter = 0
 	vi.typedCnt = 0
+	vi.results = false
+	vi.resultsPlayer = 0
 	vi.back = false
 	// Victory screen uses its own typewriter logic, so disable the internal TextSprite typing.
 	m.VictoryScreen.WinQuote.TextSpriteData.textDelay = 0
@@ -6964,6 +7021,61 @@ func (vi *MotifVictory) isEnabled() bool {
 	return vi.enabled
 }
 
+func (vi *MotifVictory) resultPlayer(m *Motif) int {
+	if !sys.sel.gameParams.VersusResults || (!m.VictoryScreen.Results.Enabled && !m.VictoryScreen.Rematch.Enabled) {
+		return 0
+	}
+	human := func(pn, side int) int {
+		if pn >= 0 && pn < len(sys.chars) && len(sys.chars[pn]) > 0 {
+			c := sys.chars[pn][0]
+			if int(c.teamside) == side && c.controller >= 0 && c.getAILevel() == 0 {
+				return c.controller + 1
+			}
+		}
+		return 0
+	}
+	side := 0
+	if sys.winnerTeam() == 1 {
+		side = 1
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if player := human(sys.teamLeader[side], side); player > 0 {
+			return player
+		}
+		for pn := side; pn < MaxPlayerNo; pn += 2 {
+			if player := human(pn, side); player > 0 {
+				return player
+			}
+		}
+		side ^= 1
+	}
+	return 0
+}
+
+func (vi *MotifVictory) startResults(m *Motif) {
+	vi.results = true
+	vi.counter = 0
+	sys.esc = false
+	sys.menuPlayer = vi.resultsPlayer
+	for side, props := range []*VersusResultProperties{&m.VictoryScreen.Results.P1, &m.VictoryScreen.Results.P2} {
+		props.Bg.AnimData.Reset()
+		outcome := "lose"
+		if sys.winnerTeam() == 0 {
+			outcome = "draw"
+		} else if int(sys.winnerTeam()) == side+1 {
+			outcome = "win"
+		}
+		props.Title.TextSpriteData.text = props.Title.Text[outcome]
+		props.Wins.Value.TextSpriteData.text = m.sprintf(props.Wins.Value.Text, sys.versusStats.Wins[side])
+		props.WinStreak.Value.TextSpriteData.text = m.sprintf(props.WinStreak.Value.Text, sys.versusStats.Streak[side])
+		rate := 100 * float64(sys.versusStats.Wins[side]) / float64(Max(1, sys.versusStats.Matches))
+		props.WinRate.Value.TextSpriteData.text = m.sprintf(props.WinRate.Value.Text, rate)
+	}
+	if m.VictoryScreen.Rematch.Enabled {
+		m.me.startRematch(m, vi.resultsPlayer)
+	}
+}
+
 func (vi *MotifVictory) startFadeOut(m *Motif) {
 	if vi.endTimer < 0 {
 		startFadeOut(m.VictoryScreen.FadeOut.FadeData, m.fadeOut, false, m.fadePolicy)
@@ -6972,8 +7084,10 @@ func (vi *MotifVictory) startFadeOut(m *Motif) {
 }
 
 func (vi *MotifVictory) init(m *Motif) {
-	if !m.VictoryScreen.Enabled || !vi.isEnabled() || sys.winnerTeam() < 1 ||
-		(sys.aiLevel[sys.winnerTeam()-1] > 0 && !m.VictoryScreen.Cpu.Enabled) ||
+	vi.resultsPlayer = vi.resultPlayer(m)
+	if !m.VictoryScreen.Enabled || !vi.isEnabled() || sys.winnerTeam() < 0 ||
+		(sys.winnerTeam() == 0 && vi.resultsPlayer == 0) ||
+		(sys.winnerTeam() > 0 && sys.aiLevel[sys.winnerTeam()-1] > 0 && !m.VictoryScreen.Cpu.Enabled) ||
 		((sys.gameMode == "versus" || sys.gameMode == "netplayversus") && !m.VictoryScreen.Vs.Enabled) {
 		vi.initialized = true
 		return
@@ -6984,7 +7098,7 @@ func (vi *MotifVictory) init(m *Motif) {
 
 	// Determine which character is used for victory screen (same one used below as leader/quote),
 	// and honor select.def character param: victoryscreen (skip completely when false).
-	winnerSide := int(sys.winnerTeam() - 1)
+	winnerSide := int(Max(0, sys.winnerTeam()-1))
 	loserSide := winnerSide ^ 1
 	maxW := int(Clamp(m.VictoryScreen.P1.Num, 0, 4))
 	maxL := int(Clamp(m.VictoryScreen.P2.Num, 0, 4))
@@ -7084,6 +7198,9 @@ func (vi *MotifVictory) init(m *Motif) {
 	vi.counter = 0
 	vi.active = true
 	vi.initialized = true
+	if sys.winnerTeam() == 0 {
+		vi.startResults(m)
+	}
 }
 
 func (vi *MotifVictory) step(m *Motif) {
@@ -7093,8 +7210,11 @@ func (vi *MotifVictory) step(m *Motif) {
 			sys.luaLState.RaiseError("Error executing Lua hook: %s\n%v", "game.victory", err.Error())
 		}
 	}
-	cancelPressed := sys.esc || sys.menuAction(m.VictoryScreen.Cancel.Action, -1)
-	skipPressed := sys.menuAction(m.VictoryScreen.Done.Action, -1)
+	cancelPressed, skipPressed := false, false
+	if !vi.results || !m.VictoryScreen.Rematch.Enabled {
+		cancelPressed = sys.esc || sys.menuAction(m.VictoryScreen.Cancel.Action, -1)
+		skipPressed = sys.menuAction(m.VictoryScreen.Done.Action, -1)
+	}
 	prevLineFullyRendered := vi.lineFullyRendered
 	//fmt.Printf("[Victory] step: counter=%d time=%d endTimer=%d typedCnt=%d lineFullyRendered=%v cancel=%v skip=%v\n", vi.counter, m.VictoryScreen.Time, vi.endTimer, vi.typedCnt, vi.lineFullyRendered, cancelPressed, skipPressed)
 
@@ -7115,11 +7235,15 @@ func (vi *MotifVictory) step(m *Motif) {
 	m.VictoryScreen.P6.Face2.AnimData.Update(false)
 	m.VictoryScreen.P7.Face2.AnimData.Update(false)
 	m.VictoryScreen.P8.Face2.AnimData.Update(false)
+	if vi.results {
+		m.VictoryScreen.Results.P1.Bg.AnimData.Update(false)
+		m.VictoryScreen.Results.P2.Bg.AnimData.Update(false)
+	}
 
 	// don't start processing the winquote until the global timer exceeds winquote.displaytime if it is set
 	// otherwise continue as normal
-	if (m.VictoryScreen.WinQuote.DisplayTime > 0 && vi.counter > m.VictoryScreen.WinQuote.DisplayTime) ||
-		(m.VictoryScreen.WinQuote.DisplayTime <= 0) {
+	if !vi.results && ((m.VictoryScreen.WinQuote.DisplayTime > 0 && vi.counter > m.VictoryScreen.WinQuote.DisplayTime) ||
+		(m.VictoryScreen.WinQuote.DisplayTime <= 0)) {
 		// First press of Skip: fast-forward the text, but do NOT start fadeout yet.
 		if skipPressed && !prevLineFullyRendered {
 			totalRunes := utf8.RuneCountInString(vi.text)
@@ -7162,12 +7286,20 @@ func (vi *MotifVictory) step(m *Motif) {
 	if vi.endTimer == -1 && cancelPressed {
 		vi.back = true
 		vi.startFadeOut(m)
+	} else if vi.endTimer == -1 && vi.results {
+		if !m.VictoryScreen.Rematch.Enabled && (skipPressed || vi.counter >= m.VictoryScreen.Results.Time) {
+			vi.startFadeOut(m)
+		}
 	} else if vi.endTimer == -1 {
 		userInterrupt := skipPressed && prevLineFullyRendered
 		timeUp := vi.lineFullyRendered && vi.counter >= m.VictoryScreen.Time
 
 		if userInterrupt || timeUp {
-			vi.startFadeOut(m)
+			if vi.resultsPlayer > 0 {
+				vi.startResults(m)
+			} else {
+				vi.startFadeOut(m)
+			}
 		}
 	}
 
@@ -7177,11 +7309,15 @@ func (vi *MotifVictory) step(m *Motif) {
 			m.fadeOut.reset()
 		}
 		vi.active = false
+		if m.me.rematch {
+			m.me.reset(m)
+		}
 		if vi.back {
 			if err := sys.luaLState.DoString("start.characterchange = true"); err != nil {
 				sys.luaLState.RaiseError("Error executing Lua code: %v\n", err.Error())
 			}
 		}
+		sys.menuPlayer = 0
 		if !m.VictoryScreen.Sounds.Enabled {
 			sys.noCharSoundFlg = false
 		}
@@ -7232,24 +7368,40 @@ func (vi *MotifVictory) draw(m *Motif, layerno int16) {
 	for _, s := range slots {
 		s.p.AnimData.Draw(layerno)
 	}
-	// Name
-	m.VictoryScreen.P1.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P2.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P3.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P4.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P5.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P6.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P7.Name.TextSpriteData.Draw(layerno)
-	m.VictoryScreen.P8.Name.TextSpriteData.Draw(layerno)
-	// Winner Name
-	m.VictoryScreen.WinName.TextSpriteData.Draw(layerno)
-	// Winquote
-	m.VictoryScreen.WinQuote.TextSpriteData.Draw(layerno)
+	if vi.results && m.VictoryScreen.Rematch.Enabled {
+		m.VictoryScreen.Rematch.Overlay.RectData.Draw(layerno)
+	}
+	if !vi.results {
+		// Name
+		m.VictoryScreen.P1.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P2.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P3.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P4.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P5.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P6.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P7.Name.TextSpriteData.Draw(layerno)
+		m.VictoryScreen.P8.Name.TextSpriteData.Draw(layerno)
+		// Winner Name
+		m.VictoryScreen.WinName.TextSpriteData.Draw(layerno)
+		// Winquote
+		m.VictoryScreen.WinQuote.TextSpriteData.Draw(layerno)
+	} else if m.VictoryScreen.Results.Enabled {
+		for _, props := range []*VersusResultProperties{&m.VictoryScreen.Results.P1, &m.VictoryScreen.Results.P2} {
+			props.Bg.AnimData.Draw(layerno)
+			props.Title.TextSpriteData.Draw(layerno)
+			for _, stat := range []*VersusResultStatProperties{&props.Wins, &props.WinStreak, &props.WinRate} {
+				stat.TextSpriteData.Draw(layerno)
+				stat.Value.TextSpriteData.Draw(layerno)
+			}
+		}
+	}
 	// Top background
 	if layerno == 2 {
 		m.VictoryBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
-	m.VictoryScreen.Hint.draw(layerno, "default", 0)
+	if !vi.results || !m.VictoryScreen.Rematch.Enabled {
+		m.VictoryScreen.Hint.draw(layerno, "default", 0)
+	}
 }
 
 // buildSingleFrameFromSFF creates a 1-frame Animation from a raw sprite (grp, idx).
