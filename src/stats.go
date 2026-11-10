@@ -47,6 +47,7 @@ type StatsRound struct {
 // convenient totals/tallies alongside the per-round breakdown.
 // Indices: side 0 == P1, side 1 == P2.
 type StatsMatch struct {
+	RunSide int `json:"runSide"` // side running the mode in this match
 	// Timing / configuration
 	MatchTime int32 `json:"matchTime"` // total match time in ticks
 	RoundTime int32 `json:"roundTime"` // round time in ticks
@@ -107,6 +108,7 @@ func (s *StatsLog) reset() {
 // It captures the current round-time setting and team modes at match start.
 func (s *StatsLog) startMatch() {
 	m := StatsMatch{
+		RunSide:   sys.runSideIndex(),
 		RoundTime: int32(sys.maxRoundTime),
 		TeamModes: [2]int32{int32(sys.tmode[0]), int32(sys.tmode[1])},
 	}

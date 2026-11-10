@@ -267,6 +267,7 @@ type System struct {
 	inputCfg            InputConfig
 	sessionSetups       map[int]SessionSetup // Controller Setup of each netplay or replay channel
 	inputs              InputAssignment
+	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
 	charList            CharList
@@ -1120,6 +1121,20 @@ func (s *System) resetRemapInput() {
 	for i := range s.inputRemap {
 		s.inputRemap[i] = i
 	}
+}
+
+// 0-based index of the side running the mode.
+func (s *System) runSideIndex() int { return int(s.runSide) }
+
+// Player slot of the run side's team leader. Falls back to the run side if the leader isn't human.
+func (s *System) runLeaderSlot() int {
+	side := s.runSideIndex()
+	if pn := s.teamLeader[side]; pn >= 0 && pn < len(s.chars) && len(s.chars[pn]) > 0 && s.chars[pn][0] != nil {
+		if c := s.chars[pn][0]; c.controller >= 0 {
+			return c.controller
+		}
+	}
+	return side
 }
 
 func (s *System) loaderReset() {
