@@ -1135,9 +1135,9 @@ func (hi *MotifHiscore) Clone() (result MotifHiscore) {
 func (wi *MotifWin) Clone() (result MotifWin) {
 	result = *wi
 
-	if wi.keyCancel != nil {
-		result.keyCancel = make([]string, len(wi.keyCancel), len(wi.keyCancel))
-		copy(result.keyCancel, wi.keyCancel)
+	if wi.keyDone != nil {
+		result.keyDone = make([]string, len(wi.keyDone), len(wi.keyDone))
+		copy(result.keyDone, wi.keyDone)
 	}
 	for i := 0; i < 4; i++ {
 		if wi.p1States[i] != nil {
