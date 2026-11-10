@@ -180,6 +180,7 @@ type Config struct {
 		GuardBreak    bool `ini:"GuardBreak" sync:"host"`
 		Dizzy         bool `ini:"Dizzy" sync:"host"`
 		RedLife       bool `ini:"RedLife" sync:"host"`
+		PauseDelay    bool `ini:"PauseDelay" sync:"host"`
 		Team          struct {
 			Duplicates       bool    `ini:"Duplicates" sync:"host"`
 			LifeShare        bool    `ini:"LifeShare" sync:"host"`

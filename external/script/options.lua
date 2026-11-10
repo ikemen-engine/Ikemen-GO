@@ -124,6 +124,7 @@ options.t_itemname = {
 			modifyGameOption('Options.GuardBreak', false)
 			modifyGameOption('Options.Dizzy', false)
 			modifyGameOption('Options.RedLife', true)
+			modifyGameOption('Options.PauseDelay', false)
 			modifyGameOption('Options.Team.Duplicates', true)
 			modifyGameOption('Options.Team.LifeShare', false)
 			modifyGameOption('Options.Team.PowerShare', true)
@@ -537,6 +538,20 @@ options.t_itemname = {
 				modifyGameOption('Options.Team.PowerShare', true)
 			end
 			t.items[item].vardisplay = options.t_vardisplay['teampowershare']()
+			options.modified = true
+		end
+		return true
+	end,
+	-- Pause Delay
+	['pausedelay'] = function(t, item, cursorPosY, moveTxt)
+		if getAction(-1, motif.option_info.menu.add.action, motif.option_info.menu.subtract.action) then
+			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+			if gameOption('Options.PauseDelay') then
+				modifyGameOption('Options.PauseDelay', false)
+			else
+				modifyGameOption('Options.PauseDelay', true)
+			end
+			t.items[item].vardisplay = options.t_vardisplay['pausedelay']()
 			options.modified = true
 		end
 		return true
@@ -1649,6 +1664,9 @@ options.t_vardisplay = {
 	end,
 	['teampowershare'] = function()
 		return options.f_boolDisplay(gameOption('Options.Team.PowerShare'))
+	end,
+	['pausedelay'] = function()
+		return options.f_boolDisplay(gameOption('Options.PauseDelay'))
 	end,
 	['turnsrecoverybase'] = function()
 		return gameOption('Options.Turns.Recovery.Base') .. '%'

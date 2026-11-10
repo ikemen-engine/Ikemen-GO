@@ -137,6 +137,7 @@ type SystemStateVars struct {
 	keyInputFrame       int32
 	keyString           string
 	lastInputController int
+	menuPlayer          int // 1-based player whose pause menu is open; 0 reads every player
 	uiConsumeInputFrame int32
 	uiRepeatTokens      []menuPress
 	uiRepeatFrame       int32
@@ -1913,6 +1914,10 @@ func (s *System) menuAction(action []string, controllerIdx int) bool {
 	}
 	if controllerIdx >= 0 {
 		return check(controllerIdx)
+	}
+	// An open pause menu only reads the player who opened it.
+	if s.menuPlayer > 0 && s.menuPlayer <= len(s.commandLists) {
+		return check(s.menuPlayer - 1)
 	}
 	for i := range s.commandLists {
 		if check(i) {
