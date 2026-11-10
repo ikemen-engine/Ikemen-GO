@@ -67,6 +67,7 @@ func realMain() {
 		}
 	}()
 
+	sdl.SetHint(sdl.HINT_ACCELEROMETER_AS_JOYSTICK, "0")
 	if runtime.GOOS == "android" {
 		Logcat("Inside realMain...")
 		runtime.LockOSThread()

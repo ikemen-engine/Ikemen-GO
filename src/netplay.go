@@ -191,6 +191,9 @@ type NetConnection struct {
 }
 
 func NewNetConnection() *NetConnection {
+	// The device that opened netplay is the local player, as participant zero.
+	sys.resetInputForMenus()
+	sys.inputs.ClaimLocked = true
 	nc := &NetConnection{
 		pendingConn: make(chan *net.TCPConn),
 		sendEnd:     make(chan bool, 1),

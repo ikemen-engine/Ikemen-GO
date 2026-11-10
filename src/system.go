@@ -261,8 +261,8 @@ type System struct {
 	keyState            map[Key]bool
 	netConnection       *NetConnection
 	replayFile          *ReplayFile
-	keyConfig           []KeyConfig
-	joystickConfig      []KeyConfig
+	inputCfg            InputConfig
+	inputs              InputAssignment
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
 	charList            CharList
@@ -411,6 +411,11 @@ func (s *System) init(w, h int32) *lua.LState {
 	s.setGameSize(w, h)
 	for i := range sys.cgi {
 		sys.cgi[i].palInfo = make(map[int]PalInfo)
+	}
+	// One command list per player slot. Menus read their input buffers, and
+	// commands added with commandAdd are checked with commandGetState.
+	for i := 0; i < MaxSimul*2; i++ {
+		s.commandLists = append(s.commandLists, NewCommandList(NewInputBuffer()))
 	}
 
 	// Select the renderer first so we can fall back to default before doing anything
@@ -1040,41 +1045,6 @@ func (s *System) presentFrame() bool {
 		s.preMatchTime = s.frameCounter
 	}
 
-	// Correct the joystick mappings (macOS)
-	for i := 0; i < len(sys.joystickConfig); i++ {
-		if runtime.GOOS == "darwin" && !sys.joystickConfig[i].isInitialized {
-			joyS := i
-			if joyS < len(sys.joystickConfig) {
-				if input.IsJoystickPresent(joyS) {
-					guid := input.GetJoystickGUID(joyS)
-
-					// Correct the inner config
-					if sys.joystickConfig[joyS].GUID != guid && !sys.joystickConfig[joyS].isInitialized {
-						// Swap those that don't match
-						for i := 0; i < len(sys.joystickConfig); i++ {
-							if i != joyS && sys.joystickConfig[i].GUID == guid {
-								sys.joystickConfig[joyS].swap(&sys.joystickConfig[i])
-								logicalPlayerA := sys.joystickConfig[joyS].Joy
-								logicalPlayerB := sys.joystickConfig[i].Joy
-								sys.inputRemap[logicalPlayerA] = joyS
-								sys.inputRemap[logicalPlayerB] = i
-								// cs := *input.controllerstate[joyS]
-								// *input.controllerstate[joyS] = *input.controllerstate[i]
-								// *input.controllerstate[i] = cs
-								// c := input.controllers[joyS]
-								// input.controllers[joyS] = input.controllers[i]
-								// input.controllers[i] = c
-								// fmt.Printf("system.go: inputremap[%v] = %v, inputRemap[%v] = %v\n", joyS, sys.inputRemap[joyS], i, sys.inputRemap[i])
-								// fmt.Printf("system.go: %v, Joy = %v, RealJoy = %v, GUID = %v\n", input.GetJoystickGUID(joyS), joyS, sys.joystickConfig[joyS].Joy, guid)
-								break
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
 	if s.replayFile != nil {
 		if s.anyHardButton() {
 			s.await(s.gameRenderSpeed() * 4)
@@ -1292,47 +1262,441 @@ func (s *System) synchronize() error {
 	return nil
 }
 
-/*
-func (s *System) anyHardButton() bool {
-	for _, kc := range s.keyConfig {
-		if kc.a() || kc.b() || kc.c() || kc.x() || kc.y() || kc.z() {
-			return true
+// Save to this device's own key. Keep defaults too, so resetting a pad stops inheritance.
+func (s *System) saveDeviceMapping(device *InputDevice, m ControllerMapping) {
+	id := device.preferenceKey()
+	if device.Joy >= 0 {
+		id = "controller_" + id
+	}
+	_ = s.cfg.saveControllerMapping(id, device.Name, m)
+	s.loadInputConfig(&s.cfg)
+}
+
+// Name of a gamepad: the one saved with its Controller Mapping, or the one SDL reports.
+func (s *System) gamepadName(device *InputDevice) string {
+	if p := s.inputCfg.mappings[s.inputCfg.mappingID(device)]; p != nil && p.Name != "" {
+		return p.Name
+	}
+	if device.Connected {
+		return input.GetJoystickName(device.Joy)
+	}
+	return device.Name
+}
+
+// Rebuilds the runtime input configuration and keeps keyboard devices in sync
+// with the keyboard controllers in config.ini.
+func (s *System) loadInputConfig(c *Config) {
+	ic := InputConfig{
+		mappings: make(map[string]*ControllerMappingProperties),
+		setups:   make(map[string]ButtonSetup),
+	}
+	for _, sec := range c.IniFile.Sections() {
+		name := iniSectionID(sec)
+		if p := c.ControllerMapping[name]; p != nil {
+			id := strings.TrimPrefix(name, "controllermapping_")
+			ic.mappings[id] = p
+			if !strings.HasPrefix(id, "controller_") {
+				m := p.mapping()
+				for i, token := range m {
+					m[i] = keyboardBinding(token)
+				}
+				p.setMapping(m)
+				ic.keyboards = append(ic.keyboards, id)
+			} else {
+				ic.mappingOrder = append(ic.mappingOrder, id)
+			}
+		} else if p := c.ButtonSetup[name]; p != nil {
+			id := strings.TrimPrefix(name, "buttonsetup_")
+			ic.setups[id] = p.setup()
+			ic.setupOrder = append(ic.setupOrder, id)
 		}
 	}
-	for _, kc := range s.joystickConfig {
-		if kc.a() || kc.b() || kc.c() || kc.x() || kc.y() || kc.z() {
+	s.inputCfg = ic
+	for _, id := range ic.keyboards {
+		var device *InputDevice
+		for _, candidate := range s.inputs.Devices {
+			if candidate.Joy < 0 && candidate.Keyboard == id {
+				device = candidate
+				break
+			}
+		}
+		if device == nil {
+			device = s.inputs.addDevice(&InputDevice{Joy: -1, Keyboard: id})
+		}
+		device.Name = c.ControllerMapping["controllermapping_"+id].Name
+	}
+	// A setup that no longer exists falls back to the first one of the device's kind.
+	for _, device := range s.inputs.Devices {
+		if device.Joy >= 0 {
+			device.Name = s.gamepadName(device)
+		}
+		device.Setup, _ = s.inputCfg.setup(c.devicePreference(device, "ButtonSetup", c.Input.ButtonSetup), device.Joy < 0)
+	}
+	s.pairDevices()
+}
+
+// Button Setup a device samples with.
+func (s *System) deviceSetup(device *InputDevice) *ButtonSetup {
+	keyboard := device != nil && device.Joy < 0
+	id := ""
+	if device != nil {
+		id = device.Setup
+	}
+	_, setup := s.inputCfg.setup(id, keyboard)
+	return setup
+}
+
+// Input frame of a device. Keyboards use setup for their battle keys.
+func (s *System) sampleDevice(device *InputDevice, setup *ButtonSetup) InputFrame {
+	if device == nil || !device.Connected {
+		return 0
+	}
+	m := s.inputCfg.mapping(device)
+	if device.Joy < 0 {
+		return setup.sampleKeys(&m, func(key Key) bool { return s.keyState[key] })
+	}
+	return gamepadFrame(device.sample(&m))
+}
+
+// Input frame of a device. A blocked device reads as idle until released.
+func (s *System) deviceFrame(device *InputDevice) InputFrame {
+	f := s.sampleDevice(device, s.deviceSetup(device))
+	if device != nil && device.blocked {
+		if !f.idle() {
+			if device.Joy < 0 {
+				return keyboardFrame(0, 0, 0)
+			}
+			return 0
+		}
+		device.blocked = false
+	}
+	return f
+}
+
+// Input frame of participant n, from the paired device in use.
+func (s *System) participantFrame(n int) InputFrame {
+	s.pollDevices()
+	if device := s.inputs.device(s.inputs.activeDevice(n)); device != nil {
+		return device.frame
+	}
+	return 0
+}
+
+// Button Setup ID of participant n: the setup of the paired device in use.
+func (s *System) participantSetupID(n int) string {
+	if device := s.inputs.device(s.inputs.activeDevice(n)); device != nil {
+		id, _ := s.inputCfg.setup(device.Setup, device.Joy < 0)
+		return id
+	}
+	id, _ := s.inputCfg.setup("", false)
+	return id
+}
+
+// Button Setup of participant n.
+func (s *System) participantSetup(n int) *ButtonSetup {
+	return s.deviceSetup(s.inputs.device(s.inputs.activeDevice(n)))
+}
+
+// Keep a closing press out of the next screen and gameplay.
+func (s *System) blockDevice(device *InputDevice) {
+	if device != nil {
+		device.blocked = true
+		device.frame = 0
+		if device.Joy < 0 {
+			device.frame = keyboardFrame(0, 0, 0)
+		}
+		device.held = [VC_Count]int32{}
+		device.pressed = [VC_Count]bool{}
+	}
+}
+
+// Switches a device to another Button Setup and remembers the choice.
+func (s *System) setDeviceSetup(deviceID int, setup string) bool {
+	device := s.inputs.device(deviceID)
+	if device == nil {
+		return false
+	}
+	if known, ok := s.inputCfg.setups[setup]; !ok || known.keyboard != (device.Joy < 0) {
+		return false
+	}
+	if device.Setup != setup {
+		device.Setup = setup
+		s.clearCommandBuffers()
+	}
+	if err := s.cfg.rememberDeviceSetup(device.preferenceKey(), setup); err != nil {
+		LogMessage("Unable to remember button setup: %v", err)
+	}
+	s.loadInputConfig(&s.cfg)
+	return true
+}
+
+// Adds a newly connected gamepad as a device.
+func (s *System) attachGamepad(joy int) {
+	if _, disabled := s.cmdFlags["-nojoy"]; disabled {
+		return
+	}
+	if input.joystick(joy) == nil {
+		return
+	}
+	used := make(map[string]bool)
+	for _, device := range s.inputs.Devices {
+		if !device.Connected || device.Joy < 0 {
+			continue
+		}
+		if device.Joy == joy {
+			return
+		}
+		used[device.Key] = true
+	}
+	guid, key := input.GetJoystickGUID(joy), input.GetJoystickKey(joy)
+	// Number only duplicate keys; SDL indexes change when other controllers disconnect.
+	base := key
+	for n := 2; used[key]; n++ {
+		key = fmt.Sprintf("%s_n%d", base, n)
+	}
+	// Keep a reconnected pad's player. Use its old slot only to break ties or replace a pad.
+	var revive *InputDevice
+	best := 0
+	for _, device := range s.inputs.Devices {
+		if device.Connected || device.Joy < 0 {
+			continue
+		}
+		score := 2 * controllerKeyMatch(key, device.Key)
+		if device.Joy == joy {
+			score++
+		}
+		if score > best {
+			revive, best = device, score
+		}
+	}
+	device := revive
+	if device == nil {
+		device = s.inputs.addDevice(&InputDevice{Joy: joy})
+	}
+	device.Joy, device.GUID, device.Key, device.Connected = joy, guid, key, true
+	device.Raw = input.IsRawJoystick(joy)
+	device.Name = s.gamepadName(device)
+	device.Setup, _ = s.inputCfg.setup(s.cfg.devicePreference(device, "ButtonSetup", s.cfg.Input.ButtonSetup), false)
+	device.held, device.pressed = [VC_Count]int32{}, [VC_Count]bool{}
+	if revive != nil {
+		s.clearCommandBuffers()
+		return
+	}
+	s.pairDevices()
+}
+
+// Marks a gamepad as disconnected. Its participant waits for a reconnect.
+func (s *System) detachGamepad(joy int) {
+	for _, device := range s.inputs.Devices {
+		if device.Joy == joy && device.Connected {
+			device.Connected = false
+			device.frame = 0
+			device.held, device.pressed = [VC_Count]int32{}, [VC_Count]bool{}
+		}
+	}
+}
+
+// Updates press/hold state of every device for menus. This is local only,
+// it is not part of rollback state or netplay packets.
+func (s *System) pollDevices() {
+	if s.inputs.frame == s.frameCounter {
+		return
+	}
+	s.inputs.frame = s.frameCounter
+	for _, device := range s.inputs.Devices {
+		f := s.deviceFrame(device)
+		device.frame = f
+		menu := f.menu()
+		active := false
+		for vc := VirtualControl(0); vc < VC_Count; vc++ {
+			held := menu.held(vc)
+			device.pressed[vc] = held && device.held[vc] == 0
+			if held {
+				device.held[vc]++
+			} else {
+				device.held[vc] = 0
+			}
+			active = active || device.pressed[vc]
+		}
+		if active && s.inputs.owner(device.ID) >= 0 {
+			s.inputs.MenuDevice = device.ID
+		}
+	}
+	s.selectSources()
+}
+
+// Picks the paired device that drives each participant this tick. The device in use
+// keeps it while it has input, otherwise the first paired device with input takes over.
+func (s *System) selectSources() {
+	for n := range s.inputs.Participants {
+		ids := s.inputs.participantDevices(n)
+		if len(ids) < 2 {
+			delete(s.inputs.activeDevices, n)
+			continue
+		}
+		current := s.inputs.device(s.inputs.activeDevice(n))
+		if current != nil && current.Connected && !current.frame.idle() {
+			continue
+		}
+		var chosen *InputDevice
+		for _, id := range ids {
+			if device := s.inputs.device(id); device != nil && device.Connected && !device.frame.idle() {
+				chosen = device
+				break
+			}
+		}
+		// Nothing pressed: stay, unless the device in use was unplugged.
+		if chosen == nil && (current == nil || !current.Connected) {
+			for _, id := range ids {
+				if device := s.inputs.device(id); device != nil && device.Connected {
+					chosen = device
+					break
+				}
+			}
+		}
+		if chosen != nil {
+			if s.inputs.activeDevices == nil {
+				s.inputs.activeDevices = make(map[int]int)
+			}
+			s.inputs.activeDevices[n] = chosen.ID
+		}
+	}
+}
+
+// Player N uses keyboard controller N together with gamepad N, one at a time,
+// see selectSources. Netplay keeps its own assignment.
+func (s *System) pairDevices() {
+	if s.inputs.ClaimLocked {
+		return
+	}
+	var keyboards, gamepads []int
+	for _, device := range s.inputs.Devices {
+		if device.Joy < 0 {
+			keyboards = append(keyboards, device.ID)
+		} else if device.Connected {
+			gamepads = append(gamepads, device.ID)
+		}
+	}
+	s.inputs.Participants = make([]InputParticipant, MaxSimul*2)
+	s.inputs.sharedDevices = make(map[int][]int)
+	for i := range s.inputs.Participants {
+		var ids []int
+		if i < len(gamepads) {
+			ids = append(ids, gamepads[i])
+		}
+		if i < len(keyboards) {
+			ids = append(ids, keyboards[i])
+		}
+		if len(ids) == 0 {
+			continue
+		}
+		s.inputs.nextOrder++
+		s.inputs.Participants[i] = InputParticipant{Device: ids[0], joined: s.inputs.nextOrder}
+		s.inputs.sharedDevices[i] = ids
+	}
+	s.applyParticipantsToSlots()
+}
+
+// Clears command buffers so inputs from before an assignment change don't carry over.
+func (s *System) clearCommandBuffers() {
+	for _, cl := range s.commandLists {
+		if cl != nil {
+			cl.BufReset()
+		}
+	}
+	if !s.netplay() {
+		for _, chars := range s.chars {
+			if len(chars) == 0 || chars[0] == nil {
+				continue
+			}
+			for i := range chars[0].cmd {
+				chars[0].cmd[i].BufReset()
+			}
+		}
+	}
+	s.uiResetTokenGuard()
+}
+
+// Player slot N reads participant N. Claims take the first free participant,
+// so players keep the order they joined in.
+func (s *System) applyParticipantsToSlots() {
+	s.resetRemapInput()
+	s.clearCommandBuffers()
+}
+
+// Back to menu mode: drops disconnected gamepads and pairs the devices again.
+func (s *System) resetInputForMenus() {
+	s.inputs.ClaimLocked = false
+	live := s.inputs.Devices[:0]
+	for _, device := range s.inputs.Devices {
+		if device.Connected {
+			live = append(live, device)
+		}
+	}
+	s.inputs.Devices = live
+	s.pairDevices()
+}
+
+// Keys a keyboard controller uses, by role: battle keys with analog emulation, and Menu Controls.
+func (s *System) keyboardKeys(device *InputDevice) [2][]Key {
+	if device == nil || device.Joy >= 0 {
+		return [2][]Key{}
+	}
+	m := s.inputCfg.mapping(device)
+	return [2][]Key{s.deviceSetup(device).boundKeys(), m.keys()}
+}
+
+// True if two keyboard controllers share a key in the same role. Each role is read
+// on its own, so a battle key of one may be a Menu Control of the other.
+func keyboardKeysOverlap(a, b [2][]Key) bool {
+	for role := range a {
+		for _, k := range a[role] {
+			if slices.Contains(b[role], k) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// True if this keyboard controller shares a physical key with a keyboard controller
+// another participant uses.
+func (s *System) keyboardConflict(deviceID int) bool {
+	device := s.inputs.device(deviceID)
+	keys := s.keyboardKeys(device)
+	if len(keys[0])+len(keys[1]) == 0 {
+		return false
+	}
+	owner := s.inputs.owner(deviceID)
+	for _, other := range s.inputs.Devices {
+		otherOwner := s.inputs.owner(other.ID)
+		if other.ID == deviceID || other.Joy >= 0 || otherOwner < 0 || otherOwner == owner {
+			continue
+		}
+		if keyboardKeysOverlap(keys, s.keyboardKeys(other)) {
 			return true
 		}
 	}
 	return false
 }
-*/
 
-// Joysticks were already refactored to be polled less times, but having these functions still makes them be polled twice as often during intros/outros
-// We're already polling them about 10 times less so that should be enough anyway
-// In Mugen, intro/outro skipping only happens on button press, not button hold
+// True for a mapped attack or a local face, shoulder or trigger control.
 func (s *System) anyHardButton() bool {
-	// Button indices for a, b, c, x, y, z
-	hardButtonIdx := []int{4, 5, 6, 7, 8, 9}
-
-	for _, kc := range s.keyConfig {
-		buttons := GetKeyboardState(kc)
-		for _, idx := range hardButtonIdx {
-			if buttons[idx] {
+	for _, device := range s.inputs.Devices {
+		if s.inputs.ClaimLocked && s.replayFile == nil && s.inputs.owner(device.ID) < 0 {
+			continue
+		}
+		frame := s.deviceFrame(device)
+		if frame.hasBattleButton(s.deviceSetup(device), BI_Z) {
+			return true
+		}
+		f := frame.menu()
+		for _, vc := range []VirtualControl{VC_A, VC_B, VC_X, VC_Y, VC_LB, VC_RB, VC_LT, VC_RT} {
+			if f.held(vc) {
 				return true
 			}
 		}
 	}
-
-	for _, kc := range s.joystickConfig {
-		buttons := GetJoystickState(kc)
-		for _, idx := range hardButtonIdx {
-			if buttons[idx] {
-				return true
-			}
-		}
-	}
-
 	return false
 }
 
@@ -1361,6 +1725,7 @@ func (s *System) buttonController(btns []string) int {
 }
 
 func (s *System) stepCommandLists() {
+	s.pollDevices()
 	for i, cl := range s.commandLists {
 		if cl == nil || cl.Buffer == nil {
 			continue
@@ -1435,8 +1800,7 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 		// True for raw controller axis tokens (LS_*, RS_*, LT/RT).
 		// Used when a screenpack uses e.g. getInput(pn, "LS_Y+") directly.
 		isAxisToken := func(tok string) bool {
-			idx, ok := StringToButtonLUT[tok]
-			return ok && idx != 25 && idx >= 15 && idx <= 24
+			return parseVirtualControl(tok).analog()
 		}
 
 		// Repeat only for navigation-style inputs (directions).
@@ -1506,7 +1870,7 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 			// Raw axis tokens (LS_*/RS_*/LT/RT) when used directly in Lua.
 			// LS axis directions are handled above as D/U/B/F aliases.
 			// Other axis tokens are treated as "held" here.
-			if !trigger && isAxisToken(tok) && cl.IsControllerButtonPressed(tok, i) {
+			if !trigger && i >= 0 && isAxisToken(tok) && cl.IsControllerButtonPressed(tok, i) {
 				trigger = true
 			}
 			if trigger {
@@ -1517,7 +1881,9 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 				if s.uiConsumeTokenThisFrame(controllerKey, tok) {
 					continue
 				}
-				s.lastInputController = controllerKey
+				if i >= 0 {
+					s.lastInputController = controllerKey
+				}
 				s.uiLastInputToken = tok
 				return true
 			}
@@ -1539,97 +1905,6 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 	}
 	//return found
 	return false
-}
-
-func (s *System) uiIsKeyAction(name string) bool {
-	switch name {
-	case "up", "down", "left", "right",
-		"a", "b", "c", "x", "y", "z",
-		"start", "d", "w", "menu":
-		return true
-	default:
-		return false
-	}
-}
-
-func (s *System) uiDefaultTokens(pn int, joystick bool) []string {
-	defaultNoKey := s.cfg.DefaultOnlyIni.Section("Keys_P3").Key("menu").String()
-	sectionName := "Keys_P3"
-	if pn == 1 || pn == 2 {
-		sectionName = "Keys_P" + Itoa(pn)
-	}
-	if joystick {
-		sectionName = "Joystick_P1"
-	}
-	get := func(k string) string {
-		v := s.cfg.DefaultOnlyIni.Section(sectionName).Key(k).String()
-		if v == defaultNoKey {
-			return s.motif.OptionInfo.Menu.Valuename["nokey"]
-		}
-		return v
-	}
-	return []string{
-		get("up"), get("down"), get("left"), get("right"),
-		get("a"), get("b"), get("c"),
-		get("x"), get("y"), get("z"),
-		get("start"), get("d"), get("w"), get("menu"),
-	}
-}
-
-func (s *System) uiSetConfigDefaults(pn int, joystick bool, enabled map[string]bool) {
-	if pn < 1 {
-		return
-	}
-	var (
-		kc     *KeyConfig
-		base   string
-		joyVal int
-		toInt  func(string) int
-	)
-	if joystick {
-		if pn > len(s.joystickConfig) {
-			return
-		}
-		joyVal = pn - 1
-		kc = &s.joystickConfig[pn-1]
-		base = fmt.Sprintf("Joystick_P%d.", pn)
-		toInt = func(tok string) int { return int(StringToButtonLUT[tok]) }
-	} else {
-		if pn > len(s.keyConfig) {
-			return
-		}
-		joyVal = -1
-		kc = &s.keyConfig[pn-1]
-		base = fmt.Sprintf("Keys_P%d.", pn)
-		toInt = func(tok string) int { return int(StringToKey(tok)) }
-	}
-	kc.Joy = joyVal
-	kc.GUID = ""
-	kc.rumbleOn = false
-	// Build & apply tokens (respect enabled set).
-	def := s.uiDefaultTokens(pn, joystick)
-	var uiPlayerFields = [...]string{
-		"up", "down", "left", "right",
-		"a", "b", "c",
-		"x", "y", "z",
-		"start", "d", "w", "menu",
-	}
-	var v [len(uiPlayerFields)]int
-	for i, f := range uiPlayerFields {
-		tok := def[i]
-		if enabled != nil && !enabled[f] {
-			tok = s.motif.OptionInfo.Menu.Valuename["nokey"]
-		}
-		v[i] = toInt(tok)
-		_ = s.cfg.SetValueUpdate(base+f, tok)
-	}
-	kc.set(v)
-	_ = s.cfg.SetValueUpdate(base+"Joystick", joyVal)
-	_ = s.cfg.SetValueUpdate(base+"GUID", "")
-	if joystick {
-		_ = s.cfg.SetValueUpdate(base+"RumbleOn", false)
-	}
-	s.uiResetTokenGuard()
 }
 
 func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {
@@ -1656,64 +1931,6 @@ func (s *System) uiRegisterCommand(name string, spec CommandSpec) error {
 		}
 		if err := cl.AddCommand(name, spec); err != nil {
 			return err
-		}
-	}
-	return nil
-}
-
-func (s *System) uiApplyCommandRegistry(cl *CommandList) error {
-	if cl == nil || len(s.uiCommandRegistry) == 0 {
-		return nil
-	}
-	for name, spec := range s.uiCommandRegistry {
-		if _, exists := cl.Names[name]; exists {
-			continue
-		}
-		if err := cl.AddCommand(name, spec); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *System) uiEnsureCommandLists(total int) error {
-	// Ensure UI commands exist.
-	def := []string{"D", "U", "L", "R", "a", "b", "c", "x", "y", "z", "s", "d", "w", "m", "/s"}
-	dcl := NewCommandList(nil)
-	defSpec := CommandSpec{
-		Time:           dcl.DefaultTime,
-		BufTime:        dcl.DefaultBufferTime,
-		BufferHitpause: dcl.DefaultBufferHitpause,
-		BufferPauseend: dcl.DefaultBufferPauseEnd,
-		StepTime:       dcl.DefaultStepTime,
-	}
-	for _, k := range def {
-		spec := defSpec
-		spec.Cmd = k
-		if err := s.uiRegisterCommand(k, spec); err != nil {
-			LogMessage("uiSeedDefaultCommands: %q: %v", k, err)
-		}
-	}
-	// Trim if needed.
-	if total < len(s.commandLists) {
-		s.commandLists = s.commandLists[:total]
-	}
-	// Grow.
-	for len(s.commandLists) < total {
-		cl := NewCommandList(NewInputBuffer())
-		if err := s.uiApplyCommandRegistry(cl); err != nil {
-			return fmt.Errorf("command registry apply failed: %w", err)
-		}
-		s.commandLists = append(s.commandLists, cl)
-	}
-	// Repair nil/bufferless entries.
-	for i := 0; i < total; i++ {
-		if s.commandLists[i] == nil || s.commandLists[i].Buffer == nil {
-			cl := NewCommandList(NewInputBuffer())
-			if err := s.uiApplyCommandRegistry(cl); err != nil {
-				return fmt.Errorf("command registry apply failed: %w", err)
-			}
-			s.commandLists[i] = cl
 		}
 	}
 	return nil

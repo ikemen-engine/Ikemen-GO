@@ -319,14 +319,9 @@ func resetControllerState(idx int) {
 
 // Helper to find the array index based on the SDL Instance ID
 func findControllerIndex(instanceID sdl.JoystickID) int {
-	for i, ctrl := range input.controllers {
-		if ctrl != nil {
-			// We need to check the Joystick associated with the GameController
-			if joy := ctrl.Joystick(); joy != nil {
-				if joy.InstanceID() == instanceID {
-					return i
-				}
-			}
+	for i, joy := range input.joysticks {
+		if joy != nil && joy.InstanceID() == instanceID {
+			return i
 		}
 	}
 	return -1
@@ -334,35 +329,53 @@ func findControllerIndex(instanceID sdl.JoystickID) int {
 
 // Finds the first free slot in the controller array.
 func findFreeControllerSlot() int {
-	for i, ctrl := range input.controllers {
-		if ctrl == nil {
+	for i, joy := range input.joysticks {
+		if joy == nil {
 			return i
 		}
 	}
 	return -1
 }
 
-// Open the SDL device index and attach it to the first available slot.
+// Open the SDL device index and attach it to the first available slot. A pad missing from
+// the controller database is opened as a raw joystick, to be set up with Controller Mapping.
 func attachController(deviceIndex int) {
-	controller := sdl.GameControllerOpen(deviceIndex)
-	if controller == nil {
+	var controller *sdl.GameController
+	var joy *sdl.Joystick
+	if sdl.IsGameController(deviceIndex) {
+		if controller = sdl.GameControllerOpen(deviceIndex); controller != nil {
+			joy = controller.Joystick()
+		}
+	} else {
+		joy = sdl.JoystickOpen(deviceIndex)
+	}
+	if joy == nil {
+		if controller != nil {
+			controller.Close()
+		}
 		return
 	}
 
 	// If SDL reuses an existing instance ID, reuse its slot; otherwise, pick the first free one.
-	slot := findControllerIndex(controller.Joystick().InstanceID())
+	slot := findControllerIndex(joy.InstanceID())
 	if slot == -1 {
 		slot = findFreeControllerSlot()
 	}
 
 	if slot == -1 {
-		controller.Close()
+		if controller != nil {
+			controller.Close()
+		} else {
+			joy.Close()
+		}
 		return
 	}
 
 	input.controllers[slot] = controller
+	input.joysticks[slot] = joy
 	resetControllerState(slot)
-	input.controllerstate[slot].HasRumble = controller.HasRumble()
+	input.controllerstate[slot].HasRumble = joy.HasRumble()
+	sys.attachGamepad(slot)
 }
 
 func (w *Window) UpdateDebugFPS() {
@@ -426,7 +439,9 @@ func (w *Window) pollEvents() {
 		case sdl.ControllerAxisEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
-				input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+				if int(t.Axis) < len(input.controllerstate[idx].Axes) {
+					input.controllerstate[idx].Axes[t.Axis] = convertI16toI8(t.Value)
+				}
 			}
 		case sdl.ControllerButtonEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
@@ -465,14 +480,19 @@ func (w *Window) pollEvents() {
 		case sdl.JoyDeviceRemovedEvent:
 			// FIX: Map Instance ID (t.Which) to Array Index
 			if idx := findControllerIndex(t.Which); idx != -1 {
+				sys.detachGamepad(idx)
 				if controller := input.controllers[idx]; controller != nil {
 					controller.Close()
-					input.controllers[idx] = nil // Clear the reference
-					resetControllerState(idx)
+				} else {
+					input.joysticks[idx].Close()
 				}
+				input.controllers[idx] = nil // Clear the reference
+				input.joysticks[idx] = nil
+				resetControllerState(idx)
 			}
 		}
 	}
+	sys.pollDevices()
 }
 
 func (w *Window) shouldClose() bool {

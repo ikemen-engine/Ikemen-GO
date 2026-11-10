@@ -177,6 +177,31 @@ func iniFirstValue(k *ini.Key) (val string, dupCount int) {
 	return val, dupCount
 }
 
+// Lowercase ID of a section, with spaces read as underscores.
+func iniSectionID(sec *ini.Section) string {
+	return strings.ToLower(strings.ReplaceAll(sec.Name(), " ", "_"))
+}
+
+// Finds a section by its lowercase ID (spaces read as underscores).
+func iniSection(f *ini.File, id string) *ini.Section {
+	for _, sec := range f.Sections() {
+		if iniSectionID(sec) == id {
+			return sec
+		}
+	}
+	return nil
+}
+
+// Writes every ini-tagged string field of a struct into a section.
+func writeIniFields(section *ini.Section, v interface{}) {
+	rv := reflect.ValueOf(v).Elem()
+	for i := 0; i < rv.NumField(); i++ {
+		if tag := rv.Type().Field(i).Tag.Get("ini"); tag != "" {
+			section.Key(tag).SetValue(rv.Field(i).String())
+		}
+	}
+}
+
 // overlayUserFirstWins overlays values from user into dst.
 // If user contains duplicate keys (AllowShadows=true), the first occurrence wins.
 func overlayUserFirstWins(dst, user *ini.File) {

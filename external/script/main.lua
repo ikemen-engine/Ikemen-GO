@@ -607,6 +607,10 @@ function main.f_loadingRefresh()
 end
 
 main.pauseMenuActive = false
+main.virtualControls = {'DP_U', 'DP_D', 'DP_L', 'DP_R', 'A', 'B', 'X', 'Y', 'START', 'BACK',
+	'LB', 'RB', 'LT', 'RT', 'LS_Y-', 'LS_Y+', 'LS_X-', 'LS_X+', 'RS_Y-', 'RS_Y+', 'RS_X-', 'RS_X+', 'LS', 'RS'}
+main.engineButtons = {'up', 'down', 'left', 'right', 'a', 'b', 'c', 'x', 'y', 'z', 'start', 'd', 'w', 'menu'}
+
 require('external.script.debug')
 
 loadDebugFont(gameOption('Debug.Font'), gameOption('Debug.FontScale'))
@@ -1278,31 +1282,44 @@ local function showSessionWarning()
 end
 
 -- warning display
-function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd)
+function main.f_warning(text, sec, background, overlay, titleData, textData, cancel_snd, done_snd, getValue, frameOnly)
 	local overlay = overlay or motif.warning_info.overlay.RectData
 	local titleData = titleData or motif.warning_info.title.TextSpriteData
 	local textData = textData or motif.warning_info.text.TextSpriteData
 	local cancel_snd = cancel_snd or motif.warning_info.cancel.snd
 	local done_snd = done_snd or motif.warning_info.done.snd
-	local ret
 	textImgReset(textData)
 	textImgSetText(textData, text)
 	resetKey()
 	esc(false)
-	while true do
+	local function drawFrame()
 		if esc() or getInput(-1, sec.menu.cancel.key) then
 			esc(false)
 			sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
-			ret = false
-			break
-		elseif getKey() ~= '' or getInput(-1, {'U', 'D', 'L', 'R', 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}) then
-			sndPlay(motif.Snd, done_snd[1], done_snd[2])
 			resetKey()
-			ret = true
-			break
+			resetTokenGuard()
+			return true, false
+		end
+		local value = nil
+		if getValue ~= nil then
+			value = getValue()
+		elseif getKey() ~= '' or getInput(-1, {'U', 'D', 'L', 'R', 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm'}) then
+			value = true
+		end
+		if value ~= nil then
+			if value == false then
+				sndPlay(motif.Snd, cancel_snd[1], cancel_snd[2])
+			else
+				sndPlay(motif.Snd, done_snd[1], done_snd[2])
+			end
+			resetKey()
+			resetTokenGuard()
+			return true, value
 		end
 		-- draw clearcolor
-		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		if not frameOnly then
+			clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		end
 		-- draw layerno = 0 backgrounds
 		bgDraw(background.BGDef, 0)
 		-- draw overlay
@@ -1315,23 +1332,32 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		bgDraw(background.BGDef, 1)
 		-- tick preload
 		main.f_preloadTick(2)
-		-- end loop
+		return false
+	end
+	-- A pause screen supplies its own frame and background clear.
+	if frameOnly then
+		return drawFrame
+	end
+	while true do
+		local finished, value = drawFrame()
+		if finished then
+			return value
+		end
 		refresh()
 	end
-	resetTokenGuard()
-	return ret
 end
 
-function main.f_drawInput(textData, text, sec, background, overlay, defaultInput)
+function main.f_drawInput(textData, text, sec, background, overlay, defaultInput, frameOnly)
 	local input = defaultInput or ''
 	resetKey()
-	while true do
-		if esc() then
-			input = ''
-			break
-		end
-		if getKey(sec.textinput.confirm.keycode) then
-			break
+	local function drawFrame()
+		if esc() or getKey(sec.textinput.confirm.keycode) then
+			if esc() then
+				input = ''
+			end
+			resetKey()
+			resetTokenGuard()
+			return true, input
 		elseif getKey(sec.textinput.trim.keycode) then
 			input = input:sub(2)
 		elseif getKey(sec.textinput.truncate.keycode) then
@@ -1343,7 +1369,9 @@ function main.f_drawInput(textData, text, sec, background, overlay, defaultInput
 		end
 		resetKey()
 		-- draw clearcolor
-		clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		if not frameOnly then
+			clearColor(background.bgclearcolor[1], background.bgclearcolor[2], background.bgclearcolor[3])
+		end
 		-- draw layerno = 0 backgrounds
 		bgDraw(background.BGDef, 0)
 		-- draw overlay
@@ -1357,12 +1385,18 @@ function main.f_drawInput(textData, text, sec, background, overlay, defaultInput
 		bgDraw(background.BGDef, 1)
 		-- tick preload
 		main.f_preloadTick(2)
-		-- end loop
+		return false
+	end
+	if frameOnly then
+		return drawFrame
+	end
+	while true do
+		local finished, value = drawFrame()
+		if finished then
+			return value
+		end
 		refresh()
 	end
-	resetKey()
-	resetTokenGuard()
-	return input
 end
 
 -- add characters and stages using select.def
@@ -2004,7 +2038,8 @@ function main.f_hiscore(mode, place)
 	end
 end
 
-setPlayers()
+-- Engine button commands for main.f_btnPalNo (palette pick with a or start + a)
+for _, k in ipairs({'a', 'b', 'c', 'x', 'y', 'z', '/s'}) do commandAdd(k, k) end
 
 -- Load additional scripts
 start = require('external.script.start')
@@ -4076,26 +4111,12 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgAddPos(labelSprite, posX, posY)
 		textImgSetText(labelSprite, displayname)
 		textImgDraw(labelSprite)
-		-- value / info sprites
+		-- value sprite
 		if itemData.vardisplay ~= nil then
-			if itemData.conflict and m.item.value.conflict and m.item.value.conflict.TextSpriteData then
-				local spr = m.item.value.conflict.TextSpriteData
-				textImgReset(spr)
-				textImgAddPos(spr, posX, posY)
-				textImgSetText(spr, itemData.vardisplay)
-				textImgDraw(spr)
-			else
-				local spr = isActive and m.item.value.active.TextSpriteData or m.item.value.TextSpriteData
-				textImgReset(spr)
-				textImgAddPos(spr, posX, posY)
-				textImgSetText(spr, itemData.vardisplay)
-				textImgDraw(spr)
-			end
-		elseif itemData.infodisplay ~= nil then
-			local spr = isActive and m.item.info.active.TextSpriteData or m.item.info.TextSpriteData
+			local spr = isActive and m.item.value.active.TextSpriteData or m.item.value.TextSpriteData
 			textImgReset(spr)
 			textImgAddPos(spr, posX, posY)
-			textImgSetText(spr, itemData.infodisplay)
+			textImgSetText(spr, itemData.vardisplay)
 			textImgDraw(spr)
 		end
 	end

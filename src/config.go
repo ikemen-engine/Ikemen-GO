@@ -4,6 +4,7 @@ import (
 	_ "embed" // Support for go:embed resources
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,24 +19,142 @@ type AIrampProperties struct {
 	End   [2]int32 `ini:"end" sync:"host"`
 }
 
-type KeysProperties struct {
-	Joystick int    `ini:"Joystick"`
-	Up       string `ini:"up"`
-	Down     string `ini:"down"`
-	Left     string `ini:"left"`
-	Right    string `ini:"right"`
-	A        string `ini:"a"`
-	B        string `ini:"b"`
-	C        string `ini:"c"`
-	X        string `ini:"x"`
-	Y        string `ini:"y"`
-	Z        string `ini:"z"`
-	Start    string `ini:"start"`
-	D        string `ini:"d"`
-	W        string `ini:"w"`
-	Menu     string `ini:"menu"`
-	GUID     string `ini:"GUID"`
-	RumbleOn bool   `ini:"RumbleOn"`
+// A Button Setup binds engine buttons or combinations. A controller setup binds virtual
+// controls: a keyboard setup binds keys, and optionally keys for the analog axes.
+type ButtonSetupProperties struct {
+	Name    string            `ini:"Name"`
+	Type    string            `ini:"Type"`
+	Buttons map[string]string `ini:"map:^(?i)(up|down|left|right|a|b|c|x|y|z|start|d|w|menu)+$" lua:""`
+	Axes    map[string]string `ini:"map:^(?i)(LS_[XY][-+]|RS_[XY][-+]|LT|RT)$" lua:""`
+}
+
+const (
+	setupKeyboard   = "keyboard"
+	setupController = "controller"
+)
+
+func (p *ButtonSetupProperties) keyboard() bool {
+	return strings.EqualFold(strings.TrimSpace(p.Type), setupKeyboard)
+}
+
+// Individual bindings come first, so their glyphs take priority over combinations.
+func (p *ButtonSetupProperties) buttonNames() []string {
+	var combinations []string
+	for name := range p.Buttons {
+		if mask := setupButtonMask(name); mask != 0 && mask&(mask-1) != 0 {
+			combinations = append(combinations, name)
+		}
+	}
+	sort.Strings(combinations)
+	return append(append([]string(nil), engineButtonNames[:]...), combinations...)
+}
+
+// A key binding, or KeyUnknown when unbound.
+func setupKey(token string) Key {
+	name := strings.TrimSpace(token)
+	key := StringToKey(name)
+	if key == KeyUnknown {
+		if len(name) == 1 {
+			key = StringToKey(strings.ToLower(name))
+		} else {
+			key = StringToKey(strings.ToUpper(name))
+		}
+	}
+	return key
+}
+
+func keyboardBinding(token string) string {
+	if key := setupKey(token); key != KeyUnknown {
+		return KeyToString(key)
+	}
+	return "-"
+}
+
+// The saved form of a binding: a virtual control or key name, or "-" when unbound.
+func (p *ButtonSetupProperties) binding(token string) string {
+	if p.keyboard() {
+		return keyboardBinding(token)
+	}
+	return parseVirtualControl(token).String()
+}
+
+func (p *ButtonSetupProperties) setup() ButtonSetup {
+	setup := ButtonSetup{keyboard: p.keyboard()}
+	for _, name := range p.buttonNames() {
+		vc, key := parseVirtualControl(p.Buttons[name]), setupKey(p.Buttons[name])
+		mask := setupButtonMask(name)
+		for i := range setup.controls {
+			if mask&(1<<uint(i)) == 0 {
+				continue
+			}
+			if setup.keyboard && key != KeyUnknown {
+				setup.keys[i] = append(setup.keys[i], key)
+			} else if !setup.keyboard && vc != VC_None {
+				setup.controls[i] = append(setup.controls[i], vc)
+			}
+		}
+	}
+	if setup.keyboard {
+		for name, token := range p.Axes {
+			if bit := keyboardAxisBit(parseVirtualControl(name)); bit >= 0 {
+				setup.axes[bit] = setupKey(token)
+			}
+		}
+	}
+	return setup
+}
+
+func (p *ButtonSetupProperties) read(section *ini.Section) {
+	p.Name = section.Key("Name").String()
+	p.Type = section.Key("Type").String()
+	p.Buttons = make(map[string]string)
+	p.Axes = make(map[string]string)
+	for _, key := range section.Keys() {
+		if setupButtonMask(key.Name()) != 0 {
+			p.Buttons[strings.ToLower(key.Name())] = key.String()
+		} else if keyboardAxisBit(parseVirtualControl(key.Name())) >= 0 {
+			p.Axes[strings.ToLower(key.Name())] = key.String()
+		}
+	}
+}
+
+// A Controller Mapping in config.ini: the physical input behind each virtual control.
+type ControllerMappingProperties struct {
+	Name  string `ini:"Name"`
+	DpU   string `ini:"DP_U"`
+	DpD   string `ini:"DP_D"`
+	DpL   string `ini:"DP_L"`
+	DpR   string `ini:"DP_R"`
+	A     string `ini:"A"`
+	B     string `ini:"B"`
+	X     string `ini:"X"`
+	Y     string `ini:"Y"`
+	Start string `ini:"START"`
+	Back  string `ini:"BACK"`
+	LB    string `ini:"LB"`
+	RB    string `ini:"RB"`
+	LT    string `ini:"LT"`
+	RT    string `ini:"RT"`
+	LsYn  string `ini:"LS_Y-"`
+	LsYp  string `ini:"LS_Y+"`
+	LsXn  string `ini:"LS_X-"`
+	LsXp  string `ini:"LS_X+"`
+	RsYn  string `ini:"RS_Y-"`
+	RsYp  string `ini:"RS_Y+"`
+	RsXn  string `ini:"RS_X-"`
+	RsXp  string `ini:"RS_X+"`
+	LS    string `ini:"LS"`
+	RS    string `ini:"RS"`
+}
+
+func (p *ControllerMappingProperties) mapping() ControllerMapping {
+	return ControllerMapping{p.DpU, p.DpD, p.DpL, p.DpR, p.A, p.B, p.X, p.Y, p.Start, p.Back,
+		p.LB, p.RB, p.LT, p.RT, p.LsYn, p.LsYp, p.LsXn, p.LsXp, p.RsYn, p.RsYp, p.RsXn, p.RsXp, p.LS, p.RS}
+}
+
+func (p *ControllerMappingProperties) setMapping(m ControllerMapping) {
+	*p = ControllerMappingProperties{p.Name, m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], m[8], m[9],
+		m[10], m[11], m[12], m[13], m[14], m[15], m[16], m[17], m[18], m[19], m[20], m[21], m[22], m[23]}
 }
 
 // Motif represents the top-level config structure.
@@ -221,16 +340,18 @@ type Config struct {
 		Rollback        RollbackProperties `ini:"Rollback"`
 	} `ini:"Netplay"`
 	Input struct {
+		ButtonSetup map[string]string `ini:"ButtonSetup"`
+		ControllerRumble map[string]string `ini:"ControllerRumble"`
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
 		SOCDResolution             int     `ini:"SOCDResolution" sync:"host"`
-		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity"`
-		XinputTriggerSensitivity   float32 `ini:"XinputTriggerSensitivity"`
+		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity" sync:"host"`
+		XinputTriggerSensitivity   float32 `ini:"XinputTriggerSensitivity" sync:"host"`
 		UiRepeatDelay              int32   `ini:"UiRepeatDelay" sync:"host"`
 		UiRepeatRate               int32   `ini:"UiRepeatRate" sync:"host"`
 		PauseExitDelay             int32   `ini:"PauseExitDelay" sync:"host"`
 	} `ini:"Input"`
-	Keys     map[string]*KeysProperties `ini:"map:^(?i)Keys_P[0-9]+$" lua:"Keys"`
-	Joystick map[string]*KeysProperties `ini:"map:^(?i)Joystick_P[0-9]+$" lua:"Joystick"`
+	ControllerMapping map[string]*ControllerMappingProperties `ini:"map:^(?i)ControllerMapping_[a-z0-9_]+$" lua:"ControllerMapping"`
+	ButtonSetup       map[string]*ButtonSetupProperties       `ini:"map:^(?i)ButtonSetup_[a-z0-9_]+$" lua:"ButtonSetup"`
 }
 
 // Loads and parses the INI file into a Config struct.
@@ -325,6 +446,7 @@ func loadConfig(def string) (*Config, error) {
 
 	c.IniFile = iniFile
 	c.DefaultOnlyIni = defaultOnlyIni
+	c.dropDeletedSetups(userIniFile)
 	c.normalize()
 	c.sysSet()
 	c.Save(def)
@@ -421,59 +543,261 @@ func (c *Config) sysSet() {
 		sys.gameHeight = float32(c.Video.GameHeight)
 	}
 	sys.msaa = c.Video.MSAA
-	stoki := func(key string) int {
-		return int(StringToKey(key))
-	}
-	for i := 1; i <= c.Config.Players; i++ {
-		if kc, ok := c.Keys[fmt.Sprintf("keys_p%d", i)]; ok {
-			newKeyConfig := KeyConfig{
-				Joy:      kc.Joystick,
-				GUID:     kc.GUID,
-				dU:       stoki(kc.Up),
-				dD:       stoki(kc.Down),
-				dL:       stoki(kc.Left),
-				dR:       stoki(kc.Right),
-				bA:       stoki(kc.A),
-				bB:       stoki(kc.B),
-				bC:       stoki(kc.C),
-				bX:       stoki(kc.X),
-				bY:       stoki(kc.Y),
-				bZ:       stoki(kc.Z),
-				bS:       stoki(kc.Start),
-				bD:       stoki(kc.D),
-				bW:       stoki(kc.W),
-				bM:       stoki(kc.Menu),
-				rumbleOn: kc.RumbleOn,
-			}
-			sys.keyConfig = append(sys.keyConfig, newKeyConfig)
-		} else {
-			sys.keyConfig = append(sys.keyConfig, KeyConfig{Joy: -1})
+	sys.loadInputConfig(c)
+}
+
+// Stores a Button Setup and updates its INI section. Disk writes still use Config.Save.
+func (c *Config) saveButtonSetup(id string, p *ButtonSetupProperties) error {
+	id = strings.ToLower(id)
+	key := "buttonsetup_" + id
+	section := iniSection(c.IniFile, key)
+	if section == nil {
+		var err error
+		if section, err = c.IniFile.NewSection("ButtonSetup_" + id); err != nil {
+			return err
 		}
-		if _, ok := sys.cmdFlags["-nojoy"]; !ok {
-			if kc, ok := c.Joystick[fmt.Sprintf("joystick_p%d", i)]; ok {
-				newKeyConfig := KeyConfig{
-					Joy:      kc.Joystick,
-					GUID:     kc.GUID,
-					dU:       StringToButtonLUT[kc.Up],
-					dD:       StringToButtonLUT[kc.Down],
-					dL:       StringToButtonLUT[kc.Left],
-					dR:       StringToButtonLUT[kc.Right],
-					bA:       StringToButtonLUT[kc.A],
-					bB:       StringToButtonLUT[kc.B],
-					bC:       StringToButtonLUT[kc.C],
-					bX:       StringToButtonLUT[kc.X],
-					bY:       StringToButtonLUT[kc.Y],
-					bZ:       StringToButtonLUT[kc.Z],
-					bS:       StringToButtonLUT[kc.Start],
-					bD:       StringToButtonLUT[kc.D],
-					bW:       StringToButtonLUT[kc.W],
-					bM:       StringToButtonLUT[kc.Menu],
-					rumbleOn: kc.RumbleOn,
-				}
-				sys.joystickConfig = append(sys.joystickConfig, newKeyConfig)
-			} else {
-				sys.joystickConfig = append(sys.joystickConfig, KeyConfig{Joy: i - 1})
+	}
+	section.Key("Name").SetValue(p.Name)
+	if p.keyboard() {
+		section.Key("Type").SetValue(setupKeyboard)
+	} else {
+		section.Key("Type").SetValue(setupController)
+	}
+	for _, field := range section.Keys() {
+		name := strings.ToLower(field.Name())
+		if _, exists := p.Buttons[name]; setupButtonMask(name) != 0 && !exists {
+			section.DeleteKey(field.Name())
+		} else if _, exists := p.Axes[name]; keyboardAxisBit(parseVirtualControl(name)) >= 0 && (!exists || !p.keyboard()) {
+			section.DeleteKey(field.Name())
+		}
+	}
+	for _, name := range p.buttonNames() {
+		section.Key(name).SetValue(p.binding(p.Buttons[name]))
+	}
+	if p.keyboard() {
+		for _, name := range keyboardAxisNames {
+			if token, ok := p.Axes[strings.ToLower(name)]; ok {
+				section.Key(name).SetValue(p.binding(token))
 			}
+		}
+	}
+	setup := *p
+	c.ButtonSetup[key] = &setup
+	return nil
+}
+
+// Adds a setup with a unique ID and display name. A name already in use is
+// renamed with copyName, where %s is the original name, then numbered if needed.
+func (c *Config) addButtonSetup(p *ButtonSetupProperties, copyName string) (string, error) {
+	id := ""
+	for n := 1; ; n++ {
+		id = fmt.Sprintf("custom%d", n)
+		if _, exists := c.ButtonSetup["buttonsetup_"+id]; !exists {
+			break
+		}
+	}
+	// %s in the name becomes the first free number.
+	if strings.Contains(p.Name, "%s") {
+		pattern := p.Name
+		for n := 1; ; n++ {
+			if p.Name = strings.ReplaceAll(pattern, "%s", strconv.Itoa(n)); !c.buttonSetupNameUsed(p.Name) {
+				break
+			}
+		}
+	}
+	if c.buttonSetupNameUsed(p.Name) {
+		base := strings.TrimSpace(strings.ReplaceAll(copyName, "%s", p.Name))
+		if base == "" {
+			base = p.Name
+		}
+		p.Name = base
+		for n := 2; c.buttonSetupNameUsed(p.Name); n++ {
+			p.Name = fmt.Sprintf("%s %d", base, n)
+		}
+	}
+	return id, c.saveButtonSetup(id, p)
+}
+
+func (c *Config) buttonSetupNameUsed(name string) bool {
+	for _, setup := range c.ButtonSetup {
+		if strings.EqualFold(setup.Name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Config) removeButtonSetup(id string) {
+	key := "buttonsetup_" + strings.ToLower(id)
+	delete(c.ButtonSetup, key)
+	for device, setup := range c.Input.ButtonSetup {
+		if setup == id {
+			c.SetValueUpdate("Input.ButtonSetup."+device, nil)
+		}
+	}
+	if sec := iniSection(c.IniFile, key); sec != nil {
+		c.IniFile.DeleteSection(sec.Name())
+	}
+}
+
+// Once setups have been saved, their section list is authoritative. Otherwise
+// deleted default setups would come back on every launch.
+func (c *Config) dropDeletedSetups(user *ini.File) {
+	if user == nil {
+		return
+	}
+	kept := make(map[string]bool)
+	for _, sec := range user.Sections() {
+		key := iniSectionID(sec)
+		if _, ok := c.ButtonSetup[key]; ok {
+			kept[key] = true
+		}
+	}
+	if len(kept) == 0 {
+		return
+	}
+	for key := range c.ButtonSetup {
+		if !kept[key] {
+			c.removeButtonSetup(strings.TrimPrefix(key, "buttonsetup_"))
+		}
+	}
+}
+
+// Shipped values of a config.ini section, if defaultConfig.ini has it.
+func (c *Config) shippedSection(key string, v interface{}) bool {
+	if sec := iniSection(c.DefaultOnlyIni, key); sec != nil {
+		if setup, ok := v.(*ButtonSetupProperties); ok {
+			setup.read(sec)
+			return true
+		}
+		return sec.MapTo(v) == nil
+	}
+	return false
+}
+
+// Stores a Controller Mapping.
+func (c *Config) saveControllerMapping(id string, name string, m ControllerMapping) error {
+	id = strings.ToLower(id)
+	key := "controllermapping_" + id
+	section := iniSection(c.IniFile, key)
+	if section == nil {
+		var err error
+		if section, err = c.IniFile.NewSection("ControllerMapping_" + id); err != nil {
+			return err
+		}
+	}
+	p := &ControllerMappingProperties{Name: name}
+	p.setMapping(m)
+	writeIniFields(section, p)
+	c.ControllerMapping[key] = p
+	return nil
+}
+
+// Drops a gamepad override, allowing same-GUID fallback again.
+func (c *Config) removeControllerMapping(id string) {
+	key := "controllermapping_" + strings.ToLower(id)
+	delete(c.ControllerMapping, key)
+	if sec := iniSection(c.IniFile, key); sec != nil {
+		c.IniFile.DeleteSection(sec.Name())
+	}
+}
+
+// Saves one device preference straight to disk, so other unsaved Options changes stay pending.
+// A value naming a section that is not on disk yet is kept until Options is saved.
+func (c *Config) rememberPreference(group, device, value, section string) error {
+	device = strings.ToLower(device)
+	query := "Input." + group + "." + device
+	if device == "" {
+		return nil
+	}
+	var v interface{} = value
+	if value == "" {
+		v = nil
+	}
+	if err := c.SetValueUpdate(query, v); err != nil {
+		return err
+	}
+	disk, _, err := LoadINIFile(c.Def, ini.LoadOptions{SkipUnrecognizableLines: true})
+	if err != nil {
+		return err
+	}
+	if value == "" {
+		disk.Section("Input").DeleteKey(group + "." + device)
+	} else if section != "" && iniSection(disk, section) == nil {
+		return nil
+	} else {
+		disk.Section("Input").Key(group + "." + device).SetValue(value)
+	}
+	return SaveINI(disk, c.Def)
+}
+
+// Find this device's preference, falling back to the closest saved key in file order.
+func (c *Config) devicePreference(device *InputDevice, group string, values map[string]string) string {
+	if device == nil {
+		return ""
+	}
+	key := device.preferenceKey()
+	if value, ok := values[key]; ok {
+		return value
+	}
+	if device.Joy < 0 || c.IniFile == nil {
+		return ""
+	}
+	prefix := strings.ToLower(group) + "."
+	value, best := "", 0
+	for _, sec := range c.IniFile.Sections() {
+		if iniSectionID(sec) != "input" {
+			continue
+		}
+		for _, entry := range sec.Keys() {
+			candidate, ok := strings.CutPrefix(strings.ToLower(entry.Name()), prefix)
+			candidateValue, exists := values[candidate]
+			if !ok || !exists {
+				continue
+			}
+			if score := controllerKeyMatch(key, candidate); score > best {
+				value, best = candidateValue, score
+			}
+		}
+	}
+	return value
+}
+
+// Whether a device rumbles.
+func (c *Config) rumbleEnabled(device *InputDevice) bool {
+	return strings.TrimSpace(c.devicePreference(device, "ControllerRumble", c.Input.ControllerRumble)) != "0"
+}
+
+// Remembers whether a device rumbles.
+func (c *Config) rememberRumble(device *InputDevice, enabled bool) error {
+	value := "0"
+	if enabled {
+		value = "1"
+	}
+	return c.rememberPreference("ControllerRumble", device.preferenceKey(), value, "")
+}
+
+// Remembers the Button Setup a device uses.
+func (c *Config) rememberDeviceSetup(device, setup string) error {
+	if c.Input.ButtonSetup[strings.ToLower(device)] == setup {
+		return nil
+	}
+	return c.rememberPreference("ButtonSetup", device, setup, "buttonsetup_"+setup)
+}
+
+// Puts every [Input] value back to defaultConfig.ini, including the per-device choices.
+func (c *Config) restoreInputDefaults() {
+	shipped := iniSection(c.DefaultOnlyIni, "input")
+	if current := iniSection(c.IniFile, "input"); current != nil {
+		for _, key := range current.Keys() {
+			if shipped == nil || !shipped.HasKey(key.Name()) {
+				_ = c.SetValueUpdate("Input."+key.Name(), nil)
+			}
+		}
+	}
+	if shipped != nil {
+		for _, key := range shipped.Keys() {
+			_ = c.SetValueUpdate("Input."+key.Name(), key.String())
 		}
 	}
 }
