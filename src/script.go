@@ -3976,24 +3976,38 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LNumber(ti))
 		return 1
 	})
+	luaRegister(l, "getMenuPlayer", func(l *lua.LState) int {
+		/*Get the player who opened the pause or rematch menu.
+		@function getMenuPlayer
+		@treturn int playerNo 1-based player number, or 0 when no player owns the menu.*/
+		l.Push(lua.LNumber(sys.menuPlayer))
+		return 1
+	})
 	luaRegister(l, "getMovelist", func(*lua.LState) int {
-		/*[redirectable] Get the character's movelist text.
+		/*[redirectable] Get a page of the character's current movelist.
 		@function getMovelist
-		@treturn string movelist Movelist text.*/
+		@tparam[opt=1] int page Page number.
+		@treturn string movelist Movelist text, or an empty string if the page doesn't exist.
+		@treturn int pages Number of pages in the current movelist.*/
 		idx := int(sys.debugWC.movelist)
 		if idx < 0 {
 			idx = 0
 		}
-		if ml, ok := sys.debugWC.gi().movelists[idx]; ok {
-			l.Push(lua.LString(ml))
-			return 1
+		pages, ok := sys.debugWC.gi().movelists[idx]
+		if !ok {
+			pages = sys.debugWC.gi().movelists[0]
 		}
-		if ml, ok := sys.debugWC.gi().movelists[0]; ok {
-			l.Push(lua.LString(ml))
-			return 1
+		page := 1
+		if !nilArg(l, 1) {
+			page = int(numArg(l, 1))
 		}
-		l.Push(lua.LString(""))
-		return 1
+		text := ""
+		if page >= 1 && page <= len(pages) {
+			text = pages[page-1]
+		}
+		l.Push(lua.LString(text))
+		l.Push(lua.LNumber(len(pages)))
+		return 2
 	})
 	luaRegister(l, "getRandom", func(l *lua.LState) int {
 		/*Return a 32-bit random number, updating the global seed.

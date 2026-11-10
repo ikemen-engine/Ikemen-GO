@@ -1357,6 +1357,18 @@ type MenuInfoProperties struct {
 		Title TextProperties `ini:"title"`
 		Menu  MenuProperties `ini:"menu"`
 		Hint     HintProperties    `ini:"hint"`
+		Page  struct {
+			Next struct {
+				Action []string `ini:"action"`
+			} `ini:"next"`
+			Previous struct {
+				Action []string `ini:"action"`
+			} `ini:"previous"`
+			Bg     map[string]*AnimationTextProperties `ini:"bg" flatten:"true"`
+			Active struct {
+				Bg map[string]*AnimationTextProperties `ini:"bg" flatten:"true"`
+			} `ini:"active"`
+		} `ini:"page"`
 	} `ini:"movelist"`
 	Hint HintProperties `ini:"hint"`
 }
