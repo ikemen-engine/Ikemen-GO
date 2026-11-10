@@ -1390,13 +1390,18 @@ func (l *Layout) Read(pre string, is IniSection) {
 		l.window[2] -= l.window[0]
 		l.window[3] -= l.window[1]
 	} else {
-		l.window = sys.scrrect
+		// Zero means no authored clipping window. Do not snapshot the
+		// current screen size; layouts survive video resolution changes.
+		l.window = [4]int32{}
 	}
 }
 
 // Calculates the fight screen window local coordinates into real screen pixels,
 // taking the FightAspect ratio into account
 func (l *Layout) calcLBRect(window [4]int32) [4]int32 {
+	if window == [4]int32{} {
+		return sys.scrrect
+	}
 	if window[2] == sys.scrrect[2] && window[3] == sys.scrrect[3] {
 		return sys.scrrect
 	}

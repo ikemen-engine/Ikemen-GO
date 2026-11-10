@@ -81,11 +81,14 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 
 		// 3. CALCULATION
 		_, forceWindowed := sys.cmdFlags["-windowed"]
-		fullscreen := s.cfg.Video.Fullscreen && !forceWindowed
+		fullscreen = s.cfg.Video.Fullscreen && !forceWindowed
 
-		// Override default sizes if config specifies
-		if sys.cfg.Video.WindowWidth > 0 || sys.cfg.Video.WindowHeight > 0 {
-			w2, h2 = int32(sys.cfg.Video.WindowWidth), int32(sys.cfg.Video.WindowHeight)
+		// A zero window dimension follows the corresponding game dimension.
+		if s.cfg.Video.WindowWidth > 0 {
+			w2 = int32(s.cfg.Video.WindowWidth)
+		}
+		if s.cfg.Video.WindowHeight > 0 {
+			h2 = int32(s.cfg.Video.WindowHeight)
 		}
 
 		x, y = (desktopW-w2)/2, (desktopH-h2)/2
@@ -158,8 +161,8 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		title:           s.cfg.Config.WindowTitle,
 		x:               int(x),
 		y:               int(y),
-		w:               w,
-		h:               h,
+		w:               int(w2),
+		h:               int(h2),
 		fullscreen:      fullscreen,
 		closeflag:       false,
 		focused:         true,
@@ -216,6 +219,24 @@ func (w *Window) SetSwapInterval(interval int) {
 func (w *Window) GetSize() (int, int) {
 	w2, h2 := w.Window.GetSize()
 	return int(w2), int(h2)
+}
+
+// Applies the new windowed dimensions, or remembers them while
+// fullscreen so toggleFullscreen restores the correct size later.
+func (w *Window) ResizeWindowed(width, height int) {
+	w.w, w.h = width, height
+	if w.fullscreen {
+		return
+	}
+	w.Window.SetSize(int32(width), int32(height))
+	if sys.cfg.Video.WindowCentered {
+		displayIndex, err := w.Window.GetDisplayIndex()
+		if err != nil {
+			displayIndex = 0
+		}
+		position := sdl.WINDOWPOS_CENTERED_MASK | int32(displayIndex)
+		w.Window.SetPosition(position, position)
+	}
 }
 
 // Calculates a position and size for the viewport to fill the window while centered (see render_gl.go)
