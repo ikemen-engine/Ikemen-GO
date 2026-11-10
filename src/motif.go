@@ -1194,6 +1194,12 @@ type OptionInfoProperties struct {
 	} `ini:"cancel"`
 	TextInput TextInputProperties `ini:"textinput"`
 	HoldTime  int32               `ini:"holdtime" default:"60"`
+	ButtonSetup struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"buttonsetup"`
+	ControllerMapping struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"controllermapping"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
 	Hint     HintProperties    `ini:"hint"`
 }
