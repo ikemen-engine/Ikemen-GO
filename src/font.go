@@ -27,7 +27,8 @@ type Font interface {
 	Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
 		rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 		fs string, argv ...interface{}) error
-	Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
+	// rscl is the y scale the text is drawn at, 0 measures at the DEF size
+	Width(rscl, scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
 	SetCustomShader(shader CustomShaderRenderData)
 }
 
@@ -40,6 +41,34 @@ type character struct {
 	advance   int //glyph advance
 	bearingH  int //glyph bearing horizontal
 	bearingV  int //glyph bearing vertical
+}
+
+// Max extra TTF glyph sizes per font. After that the closest size is reused.
+const ttfMaxRasterSizes = 8
+
+// Pixel size at which TTF text drawn at yscl appears on screen.
+func ttfRasterSize(nominal int32, yscl float32) int32 {
+	px := float64(nominal) * math.Abs(float64(yscl)) * float64(sys.heightScale)
+	if px <= 0 || math.IsNaN(px) || math.IsInf(px, 0) {
+		return nominal
+	}
+	// Must fit an atlas page, but never go below the DEF size
+	limit := Max(sys.cfg.Video.FontTextureAtlasSize/2, nominal)
+	return Clamp(int32(math.Round(px)), 1, limit)
+}
+
+// Returns size, or the closest existing one when the limit is reached.
+func ttfPickRasterSize[T any](sets map[int32]T, size int32) int32 {
+	if _, ok := sets[size]; ok || len(sets) < ttfMaxRasterSizes {
+		return size
+	}
+	best := int32(-1)
+	for s := range sets {
+		if best < 0 || Abs(s-size) < Abs(best-size) || (Abs(s-size) == Abs(best-size) && s > best) {
+			best = s
+		}
+	}
+	return best
 }
 
 type color struct {
@@ -70,7 +99,8 @@ type TtfFont interface {
 	SetColor(red float32, green float32, blue float32, alpha float32)
 	SetBlending(eq BlendEquation, src, dst BlendFunc)
 	SetPalFX(spfx ShaderPalFX)
-	Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
+	// rscl is the y scale the text is drawn at, 0 measures at the DEF size
+	Width(rscl, scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32
 	Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, align int32, blend bool, window [4]int32,
 		rxadd float32, rot Rotation, projectionMode int32, fLength float32, rcx, rcy float32,
 		fs string, argv ...interface{}) error
@@ -505,7 +535,7 @@ func (f *Fnt) TextWidth(txt string, bank int32, spacingXAdd int32) (w int32) {
 		if f.ttf == nil {
 			return 0
 		}
-		return int32(math.Round(float64(f.ttf.Width(1, float32(spacingXAdd), "%s", txt))))
+		return int32(math.Round(float64(f.ttf.Width(0, 1, float32(spacingXAdd), "%s", txt))))
 	}
 	if f.BankType != "sprite" {
 		bank = 0
@@ -1033,12 +1063,16 @@ func (ts *TextSprite) IsFullyTyped() bool {
 	return false
 }
 
-func (ts *TextSprite) TextWidth(txt string) int32 {
+func (ts *TextSprite) TextWidth(txt string) float32 {
 	if ts.fnt == nil {
 		return 0
 	}
 	spacingXAdd := int32(math.Round(float64(ts.textSpacing[0])))
-	return ts.fnt.TextWidth(txt, ts.bank, spacingXAdd)
+	// TTF is measured with the glyphs it is drawn with, without rounding
+	if ts.fnt.Type == "truetype" && ts.fnt.ttf != nil && len(txt) > 0 {
+		return ts.fnt.ttf.Width(ts.yscl, 1, float32(spacingXAdd), "%s", txt)
+	}
+	return float32(ts.fnt.TextWidth(txt, ts.bank, spacingXAdd))
 }
 
 func (ts *TextSprite) getLineLength(windowWrap bool) int32 {
@@ -1202,13 +1236,12 @@ func (ts *TextSprite) wrapText(fullLine string, typedLen int) {
 		return
 	}
 
-	spacingXAdd := int32(math.Round(float64(ts.textSpacing[0])))
 	lineLen := ts.getLineLength(true)
 
 	measureWidth := func(text string) int32 {
 		// Draw() expands tabs to four spaces, so width calculation must do the same.
 		text = strings.ReplaceAll(text, "\t", "    ")
-		return int32(math.Round(float64(ts.fnt.TextWidth(text, ts.bank, spacingXAdd)) * float64(ts.xscl)))
+		return int32(math.Round(float64(ts.TextWidth(text)) * float64(ts.xscl)))
 	}
 
 	tokens := tokenize(fullLine)

@@ -7122,7 +7122,7 @@ func systemScriptInit(l *lua.LState) {
 		@function textImgGetTextWidth
 		@tparam TextSprite ts Text sprite userdata.
 		@tparam string text Text to measure.
-		@treturn int32 width Width of the rendered text in pixels.*/
+		@treturn number width Width of the rendered text in pixels.*/
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)

@@ -35,6 +35,9 @@ type Font_VK struct {
 	textures     []*TextureAtlas
 	descriptors  []*list.Element
 	customShader CustomShaderRenderData
+
+	// Glyphs for other on-screen sizes, by pixel size
+	rasterFonts map[int32]*Font_VK
 }
 
 type FontRenderer_VK struct {
@@ -457,32 +460,7 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 		for uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix); !ok; uv, ok = f.textures[textureIndex].AddImage(int32(rgba.Rect.Dx()), int32(rgba.Rect.Dy()), stride, pix) {
 			textureIndex += 1
 			if textureIndex >= len(f.textures) {
-				newAtlas := CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 8, true)
-				newAtlas.texture.MarkNonSwappable()
-				f.textures = append(f.textures, newAtlas)
-				descriptorSet := gfxFont.(*FontRenderer_VK).freeDescriptors.Front()
-				gfxFont.(*FontRenderer_VK).freeDescriptors.Remove(descriptorSet)
-				f.descriptors = append(f.descriptors, descriptorSet)
-				imageInfo := []vk.DescriptorImageInfo{
-					{
-						ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
-						ImageView:   f.textures[textureIndex].texture.(*Texture_VK).imageView,
-						Sampler:     gfx.(*Renderer_VK).spriteSamplers[1],
-					},
-				}
-
-				descriptorWrites := []vk.WriteDescriptorSet{
-					{
-						SType:           vk.StructureTypeWriteDescriptorSet,
-						DstSet:          descriptorSet.Value.(vk.DescriptorSet), //
-						DstBinding:      0,
-						DstArrayElement: 0,
-						DescriptorCount: 1,
-						DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
-						PImageInfo:      imageInfo,
-					},
-				}
-				vk.UpdateDescriptorSets(gfxFont.(*FontRenderer_VK).device, uint32(len(descriptorWrites)), descriptorWrites, 0, nil)
+				f.addAtlas()
 			}
 		}
 
@@ -509,6 +487,67 @@ func (f *Font_VK) GenerateGlyphs(low, high rune) error {
 	return nil
 }
 
+// Adds a glyph atlas page with its descriptor set
+func (f *Font_VK) addAtlas() {
+	r := gfxFont.(*FontRenderer_VK)
+	atlas := CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 8, true)
+	atlas.texture.MarkNonSwappable()
+	f.textures = append(f.textures, atlas)
+	descriptorSet := r.freeDescriptors.Front()
+	r.freeDescriptors.Remove(descriptorSet)
+	f.descriptors = append(f.descriptors, descriptorSet)
+	imageInfo := []vk.DescriptorImageInfo{
+		{
+			ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
+			ImageView:   atlas.texture.(*Texture_VK).imageView,
+			Sampler:     gfx.(*Renderer_VK).spriteSamplers[1],
+		},
+	}
+
+	descriptorWrites := []vk.WriteDescriptorSet{
+		{
+			SType:           vk.StructureTypeWriteDescriptorSet,
+			DstSet:          descriptorSet.Value.(vk.DescriptorSet), //
+			DstBinding:      0,
+			DstArrayElement: 0,
+			DescriptorCount: 1,
+			DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
+			PImageInfo:      imageInfo,
+		},
+	}
+	vk.UpdateDescriptorSets(r.device, uint32(len(descriptorWrites)), descriptorWrites, 0, nil)
+}
+
+// Returns the glyphs for text drawn at yscl. The DEF size uses f itself.
+func (f *Font_VK) rasterFont(yscl float32) *Font_VK {
+	size := ttfRasterSize(f.scale, yscl)
+	if size == f.scale {
+		return f
+	}
+	size = ttfPickRasterSize(f.rasterFonts, size)
+	if rf, ok := f.rasterFonts[size]; ok {
+		return rf
+	}
+	if f.rasterFonts == nil {
+		f.rasterFonts = make(map[int32]*Font_VK)
+	}
+	// Holds glyphs only, drawing settings stay on f
+	rf := &Font_VK{
+		fontChar: make(map[rune]*character),
+		ttf:      f.ttf,
+		scale:    size,
+	}
+	rf.addAtlas()
+	runtime.SetFinalizer(rf, func(rf *Font_VK) {
+		r := gfxFont.(*FontRenderer_VK)
+		for i := range rf.descriptors {
+			r.freeDescriptors.PushBack(rf.descriptors[i].Value)
+		}
+	})
+	f.rasterFonts[size] = rf
+	return rf
+}
+
 func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, high rune, dir Direction) (Font, error) {
 	data, err := ioutil.ReadAll(reader)
 	if err != nil {
@@ -531,31 +570,7 @@ func (r *FontRenderer_VK) LoadTrueTypeFont(reader io.Reader, scale int32, low, h
 	f.scale = scale
 	f.SetColor(1.0, 1.0, 1.0, 1.0) //set default white
 	f.SetPalFX(NewShaderPalFX())
-	f.textures = append(f.textures, CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 8, true))
-	f.textures[len(f.textures)-1].texture.MarkNonSwappable()
-	descriptorSet := r.freeDescriptors.Front()
-	r.freeDescriptors.Remove(descriptorSet)
-	f.descriptors = append(f.descriptors, descriptorSet)
-	imageInfo := []vk.DescriptorImageInfo{
-		{
-			ImageLayout: vk.ImageLayoutShaderReadOnlyOptimal,
-			ImageView:   f.textures[0].texture.(*Texture_VK).imageView,
-			Sampler:     gfx.(*Renderer_VK).spriteSamplers[1],
-		},
-	}
-
-	descriptorWrites := []vk.WriteDescriptorSet{
-		{
-			SType:           vk.StructureTypeWriteDescriptorSet,
-			DstSet:          descriptorSet.Value.(vk.DescriptorSet), //
-			DstBinding:      0,
-			DstArrayElement: 0,
-			DescriptorCount: 1,
-			DescriptorType:  vk.DescriptorTypeCombinedImageSampler,
-			PImageInfo:      imageInfo,
-		},
-	}
-	vk.UpdateDescriptorSets(r.device, uint32(len(descriptorWrites)), descriptorWrites, 0, nil)
+	f.addAtlas()
 	err = f.GenerateGlyphs(low, high)
 	if err != nil {
 		return nil, err
@@ -665,14 +680,23 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 8*4, 4*4, unsafe.Pointer(&palMulHue[0]))
 	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageFragmentBit), 12*4, 4*4, unsafe.Pointer(&palNegPad[0]))
 	vk.CmdPushConstants(r.commandBuffers[0], gfxFont.(*FontRenderer_VK).program.pipelineLayout, vk.ShaderStageFlags(vk.ShaderStageVertexBit), 16*4, 4*2, unsafe.Pointer(&resolution[0]))
+	// Use glyphs made at the on-screen size, k scales them back to font units
+	rscl := yscl
+	if rscl == 0 {
+		rscl = xscl
+	}
+	gs := f.rasterFont(rscl)
+	k := float32(f.scale) / float32(gs.scale)
+	gxscl, gyscl := xscl*k, yscl*k
+
 	alignScale := xscl
 	if alignScale == 0 {
 		alignScale = yscl
 	}
 	if align == 0 {
-		x -= f.widthRunes(indices, alignScale, spacingXAdd) * 0.5
+		x -= gs.widthRunes(indices, alignScale*k, spacingXAdd*alignScale) * 0.5
 	} else if align < 0 {
-		x -= f.widthRunes(indices, alignScale, spacingXAdd)
+		x -= gs.widthRunes(indices, alignScale*k, spacingXAdd*alignScale)
 	}
 	needsTransform := rxadd != 0 || !rot.IsZero()
 	spacing := spacingXAdd * xscl
@@ -690,13 +714,13 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 		runeIndex := indices[i]
 
 		//find rune in fontChar list
-		ch, ok := f.fontChar[runeIndex]
+		ch, ok := gs.fontChar[runeIndex]
 
 		//load missing runes in batches of 32
 		if !ok {
 			low := runeIndex - (runeIndex % 32)
-			f.GenerateGlyphs(low, low+31)
-			ch, ok = f.fontChar[runeIndex]
+			gs.GenerateGlyphs(low, low+31)
+			ch, ok = gs.fontChar[runeIndex]
 		}
 
 		//skip runes that are not in font character range
@@ -712,7 +736,7 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 				numVerticesToDraw = 0
 			}
 			descriptorSetIndex = int(ch.textureID)
-			descriptorSet := f.descriptors[descriptorSetIndex]
+			descriptorSet := gs.descriptors[descriptorSetIndex]
 			vk.CmdBindDescriptorSets(r.commandBuffers[0], vk.PipelineBindPointGraphics, gfxFont.(*FontRenderer_VK).program.pipelineLayout, 0, 1, []vk.DescriptorSet{descriptorSet.Value.(vk.DescriptorSet)}, 0, nil)
 		}
 
@@ -721,10 +745,10 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 		}
 
 		//calculate position and size for current rune
-		xpos := x + float32(ch.bearingH)*xscl
-		ypos := y - float32(ch.height-ch.bearingV)*yscl
-		w := float32(ch.width) * xscl
-		h := float32(ch.height) * yscl
+		xpos := x + float32(ch.bearingH)*gxscl
+		ypos := y - float32(ch.height-ch.bearingV)*gyscl
+		w := float32(ch.width) * gxscl
+		h := float32(ch.height) * gyscl
 
 		x1, y1 := xpos+w, ypos
 		x2, y2 := xpos, ypos
@@ -750,7 +774,7 @@ func (f *Font_VK) Printf(x, y float32, xscl, yscl float32, spacingXAdd float32, 
 		numVerticesToDraw += 6
 
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		x += float32((ch.advance >> 6)) * xscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+		x += float32((ch.advance >> 6)) * gxscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 		renderedAny = true
 
 		if len(vertexData) >= batchSize {
@@ -836,25 +860,34 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 	}
 	f.customShader.setUniforms()
 
+	// Use glyphs made at the on-screen size, k scales them back to font units
+	rscl := yscl
+	if rscl == 0 {
+		rscl = xscl
+	}
+	gs := f.rasterFont(rscl)
+	k := float32(f.scale) / float32(gs.scale)
+	gxscl, gyscl := xscl*k, yscl*k
+
 	alignScale := xscl
 	if alignScale == 0 {
 		alignScale = yscl
 	}
 	if align == 0 {
-		x -= f.widthRunes(indices, alignScale, spacingXAdd) * 0.5
+		x -= gs.widthRunes(indices, alignScale*k, spacingXAdd*alignScale) * 0.5
 	} else if align < 0 {
-		x -= f.widthRunes(indices, alignScale, spacingXAdd)
+		x -= gs.widthRunes(indices, alignScale*k, spacingXAdd*alignScale)
 	}
 	needsTransform := rxadd != 0 || !rot.IsZero()
 	spacing := spacingXAdd * xscl
 	renderedAny := false
 
 	for _, runeIndex := range indices {
-		ch, ok := f.fontChar[runeIndex]
+		ch, ok := gs.fontChar[runeIndex]
 		if !ok {
 			low := runeIndex - (runeIndex % 32)
-			f.GenerateGlyphs(low, low+31)
-			ch, ok = f.fontChar[runeIndex]
+			gs.GenerateGlyphs(low, low+31)
+			ch, ok = gs.fontChar[runeIndex]
 		}
 		if !ok {
 			continue
@@ -864,10 +897,10 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 			x += spacing
 		}
 
-		xpos := x + float32(ch.bearingH)*xscl
-		ypos := y - float32(ch.height-ch.bearingV)*yscl
-		gw := float32(ch.width) * xscl
-		gh := float32(ch.height) * yscl
+		xpos := x + float32(ch.bearingH)*gxscl
+		ypos := y - float32(ch.height-ch.bearingV)*gyscl
+		gw := float32(ch.width) * gxscl
+		gh := float32(ch.height) * gyscl
 
 		x1, y1 := xpos+gw, ypos
 		x2, y2 := xpos, ypos
@@ -892,7 +925,7 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 		gfx.SetVertexData(verts[:]...)
 		gfx.RenderQuad()
 
-		x += float32(ch.advance>>6) * xscl
+		x += float32(ch.advance>>6) * gxscl
 		renderedAny = true
 	}
 
@@ -900,12 +933,12 @@ func (f *Font_VK) printfCustom(x, y float32, xscl, yscl float32, spacingXAdd flo
 	return nil
 }
 
-func (f *Font_VK) widthRunes(indices []rune, scale float32, spacingXAdd float32) float32 {
+// Text width, with spacing added between glyphs
+func (f *Font_VK) widthRunes(indices []rune, scale float32, spacing float32) float32 {
 	if len(indices) == 0 {
 		return 0
 	}
 
-	spacing := spacingXAdd * scale
 	var width float32
 	renderedAny := false
 
@@ -942,6 +975,11 @@ func (f *Font_VK) widthRunes(indices []rune, scale float32, spacingXAdd float32)
 
 	return width
 }
-func (f *Font_VK) Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
-	return f.widthRunes([]rune(fmt.Sprintf(fs, argv...)), scale, spacingXAdd)
+func (f *Font_VK) Width(rscl, scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
+	gs := f
+	if rscl != 0 {
+		gs = f.rasterFont(rscl)
+	}
+	k := float32(f.scale) / float32(gs.scale)
+	return gs.widthRunes([]rune(fmt.Sprintf(fs, argv...)), scale*k, spacingXAdd*scale)
 }

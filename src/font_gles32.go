@@ -32,6 +32,9 @@ type Font_GLES32 struct {
 	blendDst     BlendFunc
 	shaderPalFX  ShaderPalFX
 	customShader CustomShaderRenderData
+
+	// Glyphs for other on-screen sizes, by pixel size
+	rasterFonts map[int32]*Font_GLES32
 }
 
 type FontRenderer_GLES32 struct {
@@ -238,15 +241,24 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 	// No explicit unit 0 activation needed anymore
 	//mr.bindVertexArray(gfxFont.(*FontRenderer_GLES32).vao)
 
+	// Use glyphs made at the on-screen size, k scales them back to font units
+	rscl := yscl
+	if rscl == 0 {
+		rscl = xscl
+	}
+	gs := f.rasterFont(rscl)
+	k := float32(f.scale) / float32(gs.scale)
+	gxscl, gyscl := xscl*k, yscl*k
+
 	//calculate alignment position
 	alignScale := xscl
 	if alignScale == 0 {
 		alignScale = yscl
 	}
 	if align == 0 {
-		x -= f.widthRunes(indices, alignScale, spacingXAdd) * 0.5
+		x -= gs.widthRunes(indices, alignScale*k, spacingXAdd*alignScale) * 0.5
 	} else if align < 0 {
-		x -= f.widthRunes(indices, alignScale, spacingXAdd)
+		x -= gs.widthRunes(indices, alignScale*k, spacingXAdd*alignScale)
 	}
 	needsTransform := rxadd != 0 || !rot.IsZero()
 	textureID := int32(-1)
@@ -258,13 +270,13 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 		runeIndex := indices[i]
 
 		//find rune in fontChar list
-		ch, ok := f.fontChar[runeIndex]
+		ch, ok := gs.fontChar[runeIndex]
 
 		//load missing runes in batches of 32
 		if !ok {
 			low := runeIndex - (runeIndex % 32)
-			f.GenerateGlyphs(low, low+31)
-			ch, ok = f.fontChar[runeIndex]
+			gs.GenerateGlyphs(low, low+31)
+			ch, ok = gs.fontChar[runeIndex]
 		}
 
 		//skip runes that are not in font character range
@@ -287,11 +299,11 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 
 		//calculate position and size for current rune
 		//padding := float32(2)
-		xpos := x + float32(ch.bearingH)*xscl
+		xpos := x + float32(ch.bearingH)*gxscl
 		//ypos := y - (float32(ch.height-ch.bearingV)-padding)*scale
-		ypos := y - float32(ch.height-ch.bearingV)*yscl
-		w := float32(ch.width) * xscl
-		h := float32(ch.height) * yscl
+		ypos := y - float32(ch.height-ch.bearingV)*gyscl
+		w := float32(ch.width) * gxscl
+		h := float32(ch.height) * gyscl
 
 		x1, y1 := xpos+w, ypos
 		x2, y2 := xpos, ypos
@@ -314,7 +326,7 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 			x1, y1, ch.uv[2], ch.uv[1],
 		)
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-		x += float32((ch.advance >> 6)) * xscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+		x += float32((ch.advance >> 6)) * gxscl // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 		renderedAny = true
 		if custom {
 			f.renderGlyph(batchVertices, ch.texture)
@@ -334,12 +346,12 @@ func (f *Font_GLES32) Printf(x, y float32, xscl, yscl float32, spacingXAdd float
 	return nil
 }
 
-func (f *Font_GLES32) widthRunes(indices []rune, scale float32, spacingXAdd float32) float32 {
+// Text width, with spacing added between glyphs
+func (f *Font_GLES32) widthRunes(indices []rune, scale float32, spacing float32) float32 {
 	if len(indices) == 0 {
 		return 0
 	}
 
-	spacing := spacingXAdd * scale
 	var width float32
 	renderedAny := false
 
@@ -407,8 +419,37 @@ func (r *FontRenderer_GLES32) ReleaseFontPipeline() {
 }
 
 // Width returns the width of a piece of text in pixels
-func (f *Font_GLES32) Width(scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
-	return f.widthRunes([]rune(fmt.Sprintf(fs, argv...)), scale, spacingXAdd)
+func (f *Font_GLES32) Width(rscl, scale float32, spacingXAdd float32, fs string, argv ...interface{}) float32 {
+	gs := f
+	if rscl != 0 {
+		gs = f.rasterFont(rscl)
+	}
+	k := float32(f.scale) / float32(gs.scale)
+	return gs.widthRunes([]rune(fmt.Sprintf(fs, argv...)), scale*k, spacingXAdd*scale)
+}
+
+// Returns the glyphs for text drawn at yscl. The DEF size uses f itself.
+func (f *Font_GLES32) rasterFont(yscl float32) *Font_GLES32 {
+	size := ttfRasterSize(f.scale, yscl)
+	if size == f.scale {
+		return f
+	}
+	size = ttfPickRasterSize(f.rasterFonts, size)
+	if rf, ok := f.rasterFonts[size]; ok {
+		return rf
+	}
+	if f.rasterFonts == nil {
+		f.rasterFonts = make(map[int32]*Font_GLES32)
+	}
+	// Holds glyphs only, drawing settings stay on f
+	rf := &Font_GLES32{
+		fontChar: make(map[rune]*character),
+		ttf:      f.ttf,
+		scale:    size,
+		textures: []*TextureAtlas{CreateTextureAtlas(sys.cfg.Video.FontTextureAtlasSize, sys.cfg.Video.FontTextureAtlasSize, 32, true)},
+	}
+	f.rasterFonts[size] = rf
+	return rf
 }
 
 // GenerateGlyphs builds a set of textures based on a ttf files glyphs
