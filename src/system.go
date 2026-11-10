@@ -1648,7 +1648,7 @@ func (s *System) uiConsumeTokenThisFrame(controller int, tok string) bool {
 
 // Checks the per-controller raw input buffer (InputBuffer) instead of command states.
 // Returns true if any of the provided keys were pressed this frame (buffer time == 1).
-// Supported keys: B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m
+// Supported keys: B, D, F, U, L, R, a, b, c, x, y, z, s, d, w, m, l, r
 // D/U/B/F also recognize LS axis tokens: D -> LS_Y+, U -> LS_Y-, B -> LS_X-, F -> LS_X+.
 func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 	checkOne := func(i int, cl *CommandList) bool {
@@ -1726,6 +1726,10 @@ func (s *System) uiRawInput(btns []string, controllerIdx int) bool {
 				trigger = ib.wb == 1
 			case "m":
 				trigger = ib.mb == 1
+			case "l":
+				trigger = ib.lb == 1
+			case "r":
+				trigger = ib.rb == 1
 			}
 			// Raw axis tokens (LS_*/RS_*/LT/RT) when used directly in Lua.
 			// LS axis directions are handled above as D/U/B/F aliases.

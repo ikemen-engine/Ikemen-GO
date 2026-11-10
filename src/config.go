@@ -22,7 +22,7 @@ type AIrampProperties struct {
 // A Controller Setup binds virtual controls to engine buttons or combinations.
 type ControllerSetupProperties struct {
 	Name    string            `ini:"Name"`
-	Buttons map[string]string `ini:"map:^(?i)(up|down|left|right|a|b|c|x|y|z|start|d|w|menu)+$" lua:""`
+	Buttons map[string]string `ini:"map:^(?i)(up|down|left|right|a|b|c|x|y|z|start|d|w|menu|l|r)+$" lua:""`
 }
 
 // Individual bindings come first, so their glyphs take priority over combinations.

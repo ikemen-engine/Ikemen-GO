@@ -1880,7 +1880,7 @@ end
 -- Both editors change a draft and apply it when the editor is left.
 local t_virtualControls = {'DP_U', 'DP_D', 'DP_L', 'DP_R', 'A', 'B', 'X', 'Y', 'START', 'BACK',
 	'LB', 'RB', 'LT', 'RT', 'LS_Y-', 'LS_Y+', 'LS_X-', 'LS_X+', 'RS_Y-', 'RS_Y+', 'RS_X-', 'RS_X+', 'LS', 'RS'}
-local t_engineButtons = {'up', 'down', 'left', 'right', 'a', 'b', 'c', 'x', 'y', 'z', 'start', 'd', 'w', 'menu'}
+local t_engineButtons = {'up', 'down', 'left', 'right', 'a', 'b', 'c', 'x', 'y', 'z', 'start', 'd', 'w', 'menu', 'l', 'r'}
 
 -- Menu rows of the mapping editor are named after the virtual controls: "LS_Y-" -> "vclsyn".
 -- Menu item names can't use "_", it separates submenus.

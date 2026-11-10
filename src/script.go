@@ -3892,6 +3892,10 @@ func systemScriptInit(l *lua.LState) {
 				v = ib.wb
 			case "m":
 				v = ib.mb
+			case "l":
+				v = ib.lb
+			case "r":
+				v = ib.rb
 			default:
 				// Virtual controls (RS_*, LT/RT, etc): just report held (1) or not (0).
 				if parseVirtualControl(key) != VC_None {

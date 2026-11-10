@@ -51,6 +51,8 @@ const (
 	CK_d
 	CK_w
 	CK_m
+	CK_l
+	CK_r
 )
 
 func (ck CommandStepKey) IsDirectionPress() bool {
@@ -62,11 +64,11 @@ func (ck CommandStepKey) IsDirectionRelease() bool {
 }
 
 func (ck CommandStepKey) IsButtonPress() bool {
-	return !ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+	return !ck.tilde && ck.key >= CK_a && ck.key <= CK_r
 }
 
 func (ck CommandStepKey) IsButtonRelease() bool {
-	return ck.tilde && ck.key >= CK_a && ck.key <= CK_m
+	return ck.tilde && ck.key >= CK_a && ck.key <= CK_r
 }
 
 type ShortcutScript struct {
@@ -175,7 +177,7 @@ type CommandSpec struct {
 	StepTime       int32
 }
 
-type InputBits int16
+type InputBits uint16
 
 const (
 	IB_PU InputBits = 1 << iota
@@ -192,10 +194,12 @@ const (
 	IB_D
 	IB_W
 	IB_M
-	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M
+	IB_L
+	IB_R
+	IB_anybutton = IB_A | IB_B | IB_C | IB_X | IB_Y | IB_Z | IB_S | IB_D | IB_W | IB_M | IB_L | IB_R
 )
 
-// Positions in the [14]bool button arrays, in the same order as InputBits.
+// Positions in the [16]bool button arrays, in the same order as InputBits.
 type ButtonIndex int
 
 const (
@@ -213,6 +217,8 @@ const (
 	BI_D
 	BI_W
 	BI_M
+	BI_L
+	BI_R
 )
 
 // Input goes physical keys or SDL controls -> Button Mapping -> virtual controller -> Controller Setup -> engine buttons.
@@ -466,7 +472,7 @@ func keyboardKeyLevel(token string) (int32, bool) {
 }
 
 // Engine buttons, in ButtonIndex order.
-var engineButtonNames = [14]string{"up", "down", "left", "right", "a", "b", "c", "x", "y", "z", "start", "d", "w", "menu"}
+var engineButtonNames = [16]string{"up", "down", "left", "right", "a", "b", "c", "x", "y", "z", "start", "d", "w", "menu", "l", "r"}
 
 // Engine buttons named by a setup row, including combinations such as xa or startmenu.
 func setupButtonMask(name string) uint16 {
@@ -494,11 +500,11 @@ func setupButtonMask(name string) uint16 {
 }
 
 // Virtual controls behind each engine button, with its individual binding first.
-type ControllerSetup [14][]VirtualControl
+type ControllerSetup [16][]VirtualControl
 
 // Engine buttons held for a virtual frame.
-func (cs *ControllerSetup) project(f VirtualFrame) [14]bool {
-	var buttons [14]bool
+func (cs *ControllerSetup) project(f VirtualFrame) [16]bool {
+	var buttons [16]bool
 	for i, controls := range cs {
 		for _, vc := range controls {
 			if f.held(vc) {
@@ -703,11 +709,11 @@ func (a *InputAssignment) claim(deviceID int, side TeamSide) (int, error) {
 }
 
 type CommandKeyRemap struct {
-	a, b, c, x, y, z, s, d, w, m CommandKey
+	a, b, c, x, y, z, s, d, w, m, l, r CommandKey
 }
 
 func NewCommandKeyRemap() *CommandKeyRemap {
-	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m}
+	return &CommandKeyRemap{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m, CK_l, CK_r}
 }
 
 type InputReader struct {
@@ -863,7 +869,7 @@ func (ir *InputReader) SocdResolution(U, D, B, F bool) (bool, bool, bool, bool) 
 }
 
 // Applies button assist to the buttons it covers.
-func (ir *InputReader) ButtonAssist(buttons [14]bool) [14]bool {
+func (ir *InputReader) ButtonAssist(buttons [16]bool) [16]bool {
 	covered := [9]ButtonIndex{BI_A, BI_B, BI_C, BI_X, BI_Y, BI_Z, BI_S, BI_D, BI_W}
 	var current [9]bool
 	for i, button := range covered {
@@ -919,9 +925,9 @@ func (ir *InputReader) ButtonAssistCheck(current [9]bool) [9]bool {
 type InputBuffer struct {
 	InputReader                            *InputReader
 	Bb, Db, Fb, Ub, Lb, Rb, Nb             int32 // Current state of buffer
-	ab, bb, cb, xb, yb, zb, sb, db, wb, mb int32
+	ab, bb, cb, xb, yb, zb, sb, db, wb, mb, lb, rb int32
 	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
-	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp int32
+	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp, lp, rp int32
 }
 
 func NewInputBuffer() *InputBuffer {
@@ -939,7 +945,7 @@ func (ib *InputBuffer) Reset() {
 }
 
 // Updates how long ago a char pressed or released a button
-func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m bool) {
+func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m, l, r bool) {
 	// Save previous buffer state before updating
 	ib.Up = ib.Ub
 	ib.Dp = ib.Db
@@ -958,6 +964,8 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	ib.dp = ib.db
 	ib.wp = ib.wb
 	ib.mp = ib.mb
+	ib.lp = ib.lb
+	ib.rp = ib.rb
 
 	// Function to update current buffer state of each key
 	update := func(held bool, buffer *int32) {
@@ -1002,6 +1010,8 @@ func (ib *InputBuffer) updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d,
 	update(d, &ib.db)
 	update(w, &ib.wb)
 	update(m, &ib.mb)
+	update(l, &ib.lb)
+	update(r, &ib.rb)
 }
 
 // Get the state of any symbol/key combination
@@ -1562,6 +1572,12 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 		case CK_m:
 			return __.mb
 
+		case CK_l:
+			return __.lb
+
+		case CK_r:
+			return __.rb
+
 		}
 	}
 
@@ -1618,13 +1634,22 @@ func (__ *InputBuffer) State(ck CommandStepKey) int32 {
 				return -__.mb
 			}
 
+		case CK_l:
+			if __.lb < 0 || __.lp > 0 {
+				return -__.lb
+			}
+
+		case CK_r:
+			if __.rb < 0 || __.rp > 0 {
+				return -__.rb
+			}
 		}
 	}
 
 	// Special $N (and ~$N) case
 	// This one somehow returns "any change" in Mugen. Since "any neutral" is useless anyway we'll just add support for that
 	if dollar && ck.key == CK_N {
-		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb))
+		return Min(Abs(__.Ub), Abs(__.Db), Abs(__.Bb), Abs(__.Fb), Abs(__.ab), Abs(__.bb), Abs(__.cb), Abs(__.xb), Abs(__.yb), Abs(__.zb), Abs(__.sb), Abs(__.db), Abs(__.wb), Abs(__.lb), Abs(__.rb))
 	}
 
 	return 0
@@ -2059,6 +2084,11 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		case CK_m:
 			return ib.mb
 
+		case CK_l:
+			return ib.lb
+
+		case CK_r:
+			return ib.rb
 		}
 	}
 
@@ -2095,6 +2125,11 @@ func (ib *InputBuffer) StateCharge(ck CommandStepKey) int32 {
 		case CK_m:
 			return ib.mp
 
+		case CK_l:
+			return ib.lp
+
+		case CK_r:
+			return ib.rp
 		}
 	}
 
@@ -2177,7 +2212,7 @@ func (c *Command) GreaterCheckFail(i int, ibuf *InputBuffer) bool {
 	}
 
 	// Buttons
-	for _, k := range [10]CommandKey{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m} {
+	for _, k := range [12]CommandKey{CK_a, CK_b, CK_c, CK_x, CK_y, CK_z, CK_s, CK_d, CK_w, CK_m, CK_l, CK_r} {
 		if checkKey(k) {
 			return true
 		}
@@ -2190,12 +2225,12 @@ type AiInput struct {
 	dir, dirt, at, bt, ct, xt, yt, zt, st, dt, wt, mt int32
 }
 
-func (ai *AiInput) Buttons() [14]bool {
-	return [14]bool{
+func (ai *AiInput) Buttons() [16]bool {
+	return [16]bool{
 		ai.U(), ai.D(), ai.L(), ai.R(),
 		ai.a(), ai.b(), ai.c(),
 		ai.x(), ai.y(), ai.z(),
-		ai.s(), ai.d(), ai.w(), ai.m(),
+		ai.s(), ai.d(), ai.w(), ai.m(), false, false,
 	}
 }
 
@@ -2575,7 +2610,7 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					chargetime: chargetime,
 				})
 				nextChar()
-			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm':
+			case 'a', 'b', 'c', 'x', 'y', 'z', 's', 'd', 'w', 'm', 'l', 'r':
 				// Maybe too restrictive. Will make people blame poor module code on IkemenVersion characters
 				//if dollar {
 				//	err = Error("'$' symbol not supported for buttons")
@@ -2606,6 +2641,10 @@ func (c *Command) ReadCommandSymbols(cmdstr string, kr *CommandKeyRemap) (err er
 					k = kr.w
 				case 'm':
 					k = kr.m
+				case 'l':
+					k = kr.l
+				case 'r':
+					k = kr.r
 				}
 				cs.keys = append(cs.keys, CommandStepKey{
 					key:        k,
@@ -3025,7 +3064,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	// Needed for motif
 	hadStepped := cl.Buffer.Ub != 0 || cl.Buffer.Db != 0 || cl.Buffer.Lb != 0 || cl.Buffer.Rb != 0
 
-	var buttons [14]bool
+	var buttons [16]bool
 	var axes [6]float32
 
 	if isAI {
@@ -3070,6 +3109,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	a, b, c := buttons[4], buttons[5], buttons[6]
 	x, y, z := buttons[7], buttons[8], buttons[9]
 	s, d, w, m := buttons[10], buttons[11], buttons[12], buttons[13]
+	l, r := buttons[14], buttons[15]
 	B, F := L, R
 
 	// UI-only: let Left Stick drive U/D/L/R even if the player's config uses DPAD.
@@ -3112,12 +3152,14 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			d = d || ibit&IB_D != 0
 			w = w || ibit&IB_W != 0
 			m = m || ibit&IB_M != 0
+			l = l || ibit&IB_L != 0
+			r = r || ibit&IB_R != 0
 		}
 
 		// Apply ShiftInput
 		if char.inputShift != nil {
 			// Collect current input states and prepare remap states
-			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m}
+			inputs := []bool{U, D, L, R, a, b, c, x, y, z, s, d, w, m, l, r}
 			output := make([]bool, len(inputs))
 
 			// Use a map for fast lookup
@@ -3147,6 +3189,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 			U, D, L, R = output[0], output[1], output[2], output[3]
 			a, b, c, x, y, z = output[4], output[5], output[6], output[7], output[8], output[9]
 			s, d, w, m = output[10], output[11], output[12], output[13]
+			l, r = output[14], output[15]
 		}
 
 		// Get B and F from L and R for SOCD resolution
@@ -3173,7 +3216,7 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 	}
 
 	// Send final inputs to buffer
-	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m)
+	cl.Buffer.updateInputTime(U, D, L, R, B, F, a, b, c, x, y, z, s, d, w, m, l, r)
 
 	// This check is currently needed to prevent screenpack inputs from rapid firing
 	// It forces the command list update to wait one frame after a buffer reset
