@@ -257,6 +257,7 @@ func processCommandLine() {
 			"-togglelifebars": true,
 			"-maxpowermode":   true,
 			"-debug":          true,
+			"-debugdump":      true,
 			"-nojoy":          true,
 			"-nomusic":        true,
 			"-nosound":        true,
@@ -314,6 +315,7 @@ Quick VS Options:
 -ip <hostip>            Connect to <hostip> for netplay; leave blank for host
 	
 Debug Options:
+-debugdump              Enables external Lua debug data output
 -nojoy                  Disables joysticks
 -nomusic                Disables music
 -nosound                Disables all sound effects and music
@@ -321,6 +323,7 @@ Debug Options:
 -maxpowermode           Enables auto-refill of Power bars
 -ailevel <level>        Changes game difficulty setting to <level> (1-8)
 -speed <speed>          Changes game speed setting to <speed> (-9 to 9)
+-framerate              Changes game framerate setting to <framerate>
 -stresstest <frameskip> Stability test (AI matches at speed increased by <frameskip>)
 -speedtest              Speed test (match speed x100)`
 					//ShowInfoDialog(text, "I.K.E.M.E.N Command line options")

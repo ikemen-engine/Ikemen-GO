@@ -908,6 +908,83 @@ func luaRandom(l *lua.LState, next func() int32) int {
 	return 1
 }
 
+// Compiles and executes a temporary ZSS state controller block
+// against the specified character.
+func runStateController(target *Char, src string) error {
+	if target == nil {
+		return fmt.Errorf("runStateController: target is nil")
+	}
+
+	pn := target.playerNo
+	if pn < 0 || pn >= len(sys.cgi) {
+		return fmt.Errorf("runStateController: invalid player number: %d", pn)
+	}
+
+	// Use the target player's existing command list
+	root := sys.getCharRoot(pn)
+	if root == nil {
+		return fmt.Errorf("runStateController: player %d does not exist", pn)
+	}
+	if root.cmd == nil || pn >= len(root.cmd) {
+		return fmt.Errorf("runStateController: command list is unavailable for player %d", pn)
+	}
+
+	// This function is intended to be called from the system Lua debug input
+	// outside normal bytecode execution
+	if len(sys.bcVarStack) != 0 || len(sys.bcStack) != 0 {
+		return fmt.Errorf("runStateController: bytecode is already executing")
+	}
+
+	cc := newCharCompiler()
+	cc.playerNo = pn
+	cc.targetGi = &sys.cgi[pn]
+	cc.cmdl = &root.cmd[pn]
+
+	states := make(map[int32]*StateBytecode, 1)
+
+	const stateNo int32 = 0
+	zss := fmt.Sprintf(
+		"[Statedef %d]\n"+
+			"ignorehitpause {\n"+
+			"%s\n"+
+			"}\n",
+		stateNo,
+		src,
+	)
+
+	if err := cc.stateCompileZSS(
+		states,
+		"<debug>",
+		zss,
+		sys.cgi[pn].constants,
+	); err != nil {
+		return fmt.Errorf("runStateController: compile error: %w", err)
+	}
+
+	sb, ok := states[stateNo]
+	if !ok {
+		return fmt.Errorf("runStateController: temporary state was not generated")
+	}
+
+	// StateBytecode.run changes these globals while evaluating the
+	// controller. Restore them after the debug command finishes.
+	oldWorkingState := sys.workingState
+	oldWorkingChar := sys.workingChar
+	oldBCVar := sys.bcVar
+	oldSctrlIndex := target.currentSctrlIndex
+
+	defer func() {
+		sys.workingState = oldWorkingState
+		sys.workingChar = oldWorkingChar
+		sys.bcVar = oldBCVar
+		target.currentSctrlIndex = oldSctrlIndex
+	}()
+
+	sb.run(target)
+
+	return nil
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
@@ -5343,6 +5420,113 @@ func systemScriptInit(l *lua.LState) {
 		}
 		return 0
 	})
+	luaRegister(l, "playerVariables", func(l *lua.LState) int {
+		/*Return the variables currently stored by a character.
+		@function playerVariables
+		@tparam int32 playerID ID of an existing player or helper (as returned by `id()`).
+		@treturn table|nil variables Table containing `cnsvar`, `cnsfvar`, `sysvar`,
+		`sysfvar`, and `map`. Each field is an array of `{key = ..., value = ...}`
+		records. Numeric variable keys are integers; map keys are strings.
+		Returns `nil` for an invalid or nonexistent player ID.*/
+		idValue := numArg(l, 1)
+		if math.IsNaN(idValue) || math.IsInf(idValue, 0) || idValue < 0 ||
+			idValue >= 2147483648 || math.Trunc(idValue) != idValue {
+			l.Push(lua.LNil)
+			return 1
+		}
+		c := sys.playerID(int32(idValue))
+		if c == nil {
+			l.Push(lua.LNil)
+			return 1
+		}
+
+		newRow := func(key, value lua.LValue) *lua.LTable {
+			row := l.NewTable()
+			row.RawSetString("key", key)
+			row.RawSetString("value", value)
+			return row
+		}
+		toNumber := func(n float64) lua.LValue {
+			if math.IsNaN(n) {
+				return lua.LString("(NaN)")
+			}
+			if math.IsInf(n, 1) {
+				return lua.LString("(Inf)")
+			}
+			if math.IsInf(n, -1) {
+				return lua.LString("(-Inf)")
+			}
+			return lua.LNumber(n)
+		}
+		toRows := func(keys []int32, valueAt func(int32) lua.LValue) *lua.LTable {
+			sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+			rows := l.NewTable()
+			for _, key := range keys {
+				rows.Append(newRow(lua.LNumber(key), valueAt(key)))
+			}
+			return rows
+		}
+		out := l.NewTable()
+
+		intKeys := make([]int32, 0, len(c.cnsvar))
+		for key := range c.cnsvar {
+			intKeys = append(intKeys, key)
+		}
+		out.RawSetString("cnsvar", toRows(intKeys, func(key int32) lua.LValue {
+			return lua.LNumber(c.cnsvar[key])
+		}))
+
+		floatKeys := make([]int32, 0, len(c.cnsfvar))
+		for key := range c.cnsfvar {
+			floatKeys = append(floatKeys, key)
+		}
+		out.RawSetString("cnsfvar", toRows(floatKeys, func(key int32) lua.LValue {
+			return toNumber(float64(c.cnsfvar[key]))
+		}))
+
+		sysIntKeys := make([]int32, 0, len(c.cnssysvar))
+		for key := range c.cnssysvar {
+			sysIntKeys = append(sysIntKeys, key)
+		}
+		out.RawSetString("sysvar", toRows(sysIntKeys, func(key int32) lua.LValue {
+			return lua.LNumber(c.cnssysvar[key])
+		}))
+
+		sysFloatKeys := make([]int32, 0, len(c.cnssysfvar))
+		for key := range c.cnssysfvar {
+			sysFloatKeys = append(sysFloatKeys, key)
+		}
+		out.RawSetString("sysfvar", toRows(sysFloatKeys, func(key int32) lua.LValue {
+			return toNumber(float64(c.cnssysfvar[key]))
+		}))
+
+		mapKeys := make([]string, 0, len(c.mapArray))
+		for key := range c.mapArray {
+			mapKeys = append(mapKeys, key)
+		}
+		sort.Strings(mapKeys)
+		mapRows := l.NewTable()
+		for _, key := range mapKeys {
+			entry := c.mapArray[key]
+			var value lua.LValue
+			switch entry.Type {
+			case VT_String:
+				value = lua.LString(entry.Str)
+			case VT_Bool:
+				value = lua.LBool(entry.Num != 0)
+			case VT_None:
+				value = lua.LNumber(0)
+			case VT_Undefined:
+				value = lua.LString("(Undefined)")
+			default:
+				value = toNumber(entry.Num)
+			}
+			mapRows.Append(newRow(lua.LString(key), value))
+		}
+		out.RawSetString("map", mapRows)
+		l.Push(out)
+		return 1
+	})
 	luaRegister(l, "playSnd", func(l *lua.LState) int {
 		/*[redirectable] Play the character's sound.
 		@function playSnd
@@ -5897,6 +6081,37 @@ func systemScriptInit(l *lua.LState) {
 		}
 		l.Push(lua.LBool(sys.motif.hi.active))
 		return 1
+	})
+	luaRegister(l, "runStateController", func(l *lua.LState) int {
+		/*Compile and immediately execute ZSS state controllers for a character.
+		@function runStateController
+		@tparam int32 playerID ID of an existing player or helper (as returned by `id()`).
+		@tparam string source ZSS state controller source (for example,
+		`PosSet{x: 100; y: 0}`).
+		@treturn boolean success `true` when compilation and execution completed,
+		`false` if the player ID is invalid or compilation fails.
+		@treturn string|nil err Error message on failure, or `nil` on success.*/
+		id := int32(numArg(l, 1))
+		src := strArg(l, 2)
+
+		target := sys.playerID(id)
+		if target == nil {
+			l.Push(lua.LBool(false))
+			l.Push(lua.LString(fmt.Sprintf(
+				"runStateController: player ID %d does not exist", id,
+			)))
+			return 2
+		}
+
+		if err := runStateController(target, src); err != nil {
+			l.Push(lua.LBool(false))
+			l.Push(lua.LString(err.Error()))
+			return 2
+		}
+
+		l.Push(lua.LBool(true))
+		l.Push(lua.LNil)
+		return 2
 	})
 	luaRegister(l, "runStoryboard", func(*lua.LState) int {
 		/*Run the currently loaded storyboard for one frame.
