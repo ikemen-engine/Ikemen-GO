@@ -202,6 +202,8 @@ options.t_editableOptions = {
 	'Sound.StereoEffects',
 	'Sound.PanningRange',
 	'Input.ControllerRumble',
+	'Input.CommandMirror',
+	'Input.CommandMapping',
 }
 
 -- Copies the current or default values of every setting shown in Options.
@@ -1204,6 +1206,26 @@ options.t_itemname = {
 		end
 		return true
 	end,
+	-- Mirror Commands
+	['commandmirror'] = function(t, item, cursorPosY, moveTxt)
+		if getAction(-1, motif.option_info.menu.add.action, motif.option_info.menu.subtract.action) then
+			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+			modifyGameOption('Input.CommandMirror', not gameOption('Input.CommandMirror'))
+			t.items[item].vardisplay = options.t_vardisplay['commandmirror']()
+			options.modified = true
+		end
+		return true
+	end,
+	-- Command Display
+	['commanddisplay'] = function(t, item, cursorPosY, moveTxt)
+		if getAction(-1, motif.option_info.menu.add.action, motif.option_info.menu.subtract.action) then
+			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+			modifyGameOption('Input.CommandMapping', not gameOption('Input.CommandMapping'))
+			t.items[item].vardisplay = options.t_vardisplay['commanddisplay']()
+			options.modified = true
+		end
+		return true
+	end,
 	--Default
 	['inputdefault'] = function(t, item, cursorPosY, moveTxt)
 		if getAction(-1, motif.option_info.menu.done.action) then
@@ -1531,6 +1553,12 @@ options.t_vardisplay = {
 	end,
 	['rumble'] = function()
 		return options.f_boolDisplay(gameOption('Input.ControllerRumble'))
+	end,
+	['commandmirror'] = function()
+		return options.f_boolDisplay(gameOption('Input.CommandMirror'))
+	end,
+	['commanddisplay'] = function()
+		return options.f_boolDisplay(gameOption('Input.CommandMapping'), motif.option_info.menu.valuename.commandmapping, motif.option_info.menu.valuename.commandsetup)
 	end,
 	['vsscreenloading'] = function()
 		return options.f_boolDisplay(gameOption('Config.VsScreenLoading'), motif.option_info.menu.valuename.enabled, motif.option_info.menu.valuename.disabled)

@@ -290,6 +290,8 @@ type Config struct {
 		ControllerGlyphs map[string]string `ini:"ControllerGlyphs"`
 
 		ControllerRumble           bool    `ini:"ControllerRumble"`
+		CommandMirror              bool    `ini:"CommandMirror"`
+		CommandMapping             bool    `ini:"CommandMapping"`
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
 		SOCDResolution             int     `ini:"SOCDResolution" sync:"host"`
 		ControllerStickSensitivity float32 `ini:"ControllerStickSensitivity" sync:"host"`
