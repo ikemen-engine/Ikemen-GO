@@ -2299,14 +2299,25 @@ function options.f_editSetup(device, context)
 	return true
 end
 
--- Collects the capture targets. Config all skips rows the motif hides, so they stay unchanged.
+local function configAllButtons(kind)
+	local mapping = kind == 'mapping'
+	local names = mapping and motif.option_info.buttonmapping.configall or motif.option_info.controllersetup.configall
+	local buttons = {}
+	for _, name in ipairs(names) do
+		buttons[mapping and name:upper() or name:lower()] = true
+	end
+	return buttons
+end
+
+-- Config All follows menu order and skips hidden or unlisted buttons.
 local function startInputCapture(tbl, item, all)
 	local root = tbl.inputMenu
 	local rows = root.kind == 'mapping' and t_mappingRows or t_setupRows
+	local allowed = all and configAllButtons(root.kind)
 	local entries = {}
 	local function collect(menu)
 		for i, row in ipairs(menu.items) do
-			if rows[row.itemname] then
+			if rows[row.itemname] and allowed[rows[row.itemname]] then
 				table.insert(entries, {menu = menu, item = i, field = rows[row.itemname]})
 			elseif menu.submenu[row.itemname] ~= nil then
 				collect(menu.submenu[row.itemname])
@@ -2506,7 +2517,18 @@ function options.f_inputDiagram(context, mode, root)
 	for key in main.f_sortKeys(diagram.cfg.control) do
 		table.insert(diagram.order, key)
 	end
-	diagram.controls = diagram.setup and {} or t_virtualControls
+	diagram.controls = {}
+	if not diagram.setup then
+		local allowed = configAllButtons('mapping')
+		for _, control in ipairs(t_virtualControls) do
+			if allowed[control] then
+				table.insert(diagram.controls, control)
+			end
+		end
+	end
+	if mode == 'guided' and #diagram.controls == 0 then
+		return
+	end
 	diagram.labels = mappingLabels(root)
 	diagram.saved = main.f_tableCopy(root.draft)
 	if mode == 'test' then
