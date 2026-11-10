@@ -159,7 +159,7 @@ func (fa *Fade) drawWithOverlay(fullScreen bool) {
 	}
 	draw := func() { fa.drawRect(sys.scrrect, fa.colEncoded, alpha) }
 	if fullScreen {
-		sys.withFullViewport(draw)
+		sys.withFullViewport(sys.motif.Bezel.Fade, draw)
 	} else {
 		draw()
 	}
@@ -309,7 +309,7 @@ func (r *Rect) Draw(ln int16) {
 		draw := func() { FillRectTrans(r.drawWindow(), r.col, r.trans, alpha, nil) }
 		if r.windowDefault && sys.drawMotif {
 			// Menu overlays without a window (e.g. pause-menu darkening) cover the whole screen.
-			sys.withFullViewport(draw)
+			sys.withFullViewport(true, draw)
 		} else {
 			draw()
 		}
