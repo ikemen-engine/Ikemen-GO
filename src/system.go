@@ -2022,10 +2022,7 @@ func (s *System) localSlot(controllerIdx int) bool {
 	if controllerIdx < 0 || controllerIdx >= len(s.inputRemap) {
 		return true
 	}
-	if nc := s.inputConnection(); nc != nil {
-		return s.inputRemap[controllerIdx] == nc.locIn
-	}
-	return s.inputRemap[controllerIdx] >= 0
+	return s.localInputParticipant(s.inputRemap[controllerIdx]) >= 0
 }
 
 // Frames a motif action has been held on a player slot, or 0.
@@ -2309,12 +2306,12 @@ func (s *System) inputConnection() *NetConnection {
 	return s.rollback.netConnection
 }
 
-// Only our network channel owns a local device, always at participant zero.
+// Local menus use their own slots. After connecting, our channel owns participant zero.
 func (s *System) localInputParticipant(channel int) int {
 	if s.replayFile != nil {
 		return -1
 	}
-	if nc := s.inputConnection(); nc != nil {
+	if nc := s.inputConnection(); nc != nil && nc.IsConnected() {
 		if channel == nc.locIn {
 			return 0
 		}
