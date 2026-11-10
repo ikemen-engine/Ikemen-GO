@@ -854,6 +854,7 @@ type TextSprite struct {
 	id             int32
 	text, textInit string
 	glyphSection   string
+	literal        bool // user-entered text has no motif escapes or glyph tags
 	glyphStoryboard *Storyboard // storyboard text reads [SceneDef] actions first
 	glyphDevice    int // zero follows the last active menu device
 	template       string
@@ -1117,7 +1118,7 @@ func (ts *TextSprite) IsFullyTyped() bool {
 		return true // There's no partial logic
 	}
 	length := len(ts.text)
-	if strings.Contains(ts.text, "<") {
+	if !ts.literal && strings.Contains(ts.text, "<") {
 		length = 0
 		text := ts.decodeEscapes(strings.ReplaceAll(ts.text, "\t", "    "))
 		for _, line := range strings.Split(text, "\n") {
@@ -1139,7 +1140,7 @@ func (ts *TextSprite) TextWidth(txt string) float32 {
 	if ts.fnt == nil {
 		return 0
 	}
-	if strings.Contains(txt, "<") {
+	if !ts.literal && strings.Contains(txt, "<") {
 		return ts.glyphTextWidth(ts.glyphRuns(txt))
 	}
 	spacingXAdd := int32(math.Round(float64(ts.textSpacing[0])))
@@ -1182,6 +1183,9 @@ func (ts *TextSprite) getLineLength(windowWrap bool) int32 {
 }
 
 func (ts *TextSprite) decodeEscapes(text string) string {
+	if ts.literal {
+		return text
+	}
 	return strings.ReplaceAll(text, "\\n", "\n")
 }
 
@@ -1200,7 +1204,7 @@ func (ts *TextSprite) wrapText(fullLine string, typedLen int) {
 	// Recognized inline tags are indivisible when wrapping or revealing text.
 	// Keep the source-rune cursor used by dialogue and storyboard timing.
 	tagLength := func(s string) int {
-		if len(s) == 0 || s[0] != '<' {
+		if ts.literal || len(s) == 0 || s[0] != '<' {
 			return 0
 		}
 		end := strings.IndexByte(s, '>')
@@ -1824,20 +1828,26 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 			listed[parseVirtualControl(token)] = true
 		}
 		dpad := map[VirtualControl]VirtualControl{VC_LS_YN: VC_DP_U, VC_LS_YP: VC_DP_D, VC_LS_XN: VC_DP_L, VC_LS_XP: VC_DP_R}
-		// An action of keyboard keys only shows them on every device, since nothing else triggers it.
-		keysOnly := true
+		// A keyboard shows the action's own KEY: tokens when it has them. An action of
+		// keyboard keys only shows them on every device, since nothing else triggers it.
+		device := sys.glyphDevice(ts.glyphDevice)
+		hasKey, hasVirtual := false, false
 		for _, token := range tokens {
-			if _, ok := actionButton(token); ok || parseVirtualControl(token) != VC_None {
-				keysOnly = false
+			if _, ok := actionKey(token); ok {
+				hasKey = true
+			} else if _, ok := actionButton(token); ok || parseVirtualControl(token) != VC_None {
+				hasVirtual = true
 			}
 		}
+		keysOnly := hasKey && (device == nil || device.Joy < 0 || !hasVirtual)
 		var runs []glyphRun
 		for _, token := range tokens {
 			if key, ok := actionKey(token); ok {
-				// Otherwise keyboard keys only mean something on the local keyboard.
-				if device := sys.glyphDevice(ts.glyphDevice); keysOnly || device == nil || device.Joy < 0 {
+				if keysOnly {
 					runs = append(runs, ts.bindingGlyph(KeyToString(key), true)...)
 				}
+			} else if keysOnly {
+				continue
 			} else if button, ok := actionButton(token); ok {
 				runs = append(runs, ts.inputGlyph(engineButtonNames[button])...)
 			} else if vc := parseVirtualControl(token); vc != VC_None {
@@ -2002,7 +2012,7 @@ func (ts *TextSprite) drawGlyphText(text string, window [4]int32) {
 	color := glyphColor{}
 	for i, line := range strings.Split(text, "\n") {
 		runs := []glyphRun{{text: line}}
-		if strings.Contains(line, "<") {
+		if !ts.literal && strings.Contains(line, "<") {
 			runs = ts.glyphRunsColored(line, &color)
 		}
 		x := ts.x + ts.vel[0] + phantomX
