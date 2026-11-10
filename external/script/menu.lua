@@ -714,85 +714,122 @@ local function hasGlyph(line)
 	return false
 end
 
+-- Turns the text of one movelist page into menu rows. Returns nil for an empty page.
+local function f_movelistRows(movelist)
+	if not movelist:find('%S') then
+		return nil
+	end
+	-- wrap the plain glyph names in <>, but leave existing tags alone
+	for k, v in main.f_sortKeys(motif.glyphs, function(t, a, b) return string.len(a) > string.len(b) end) do
+		if k:sub(1, 1) ~= '<' then
+			local escaped = k:gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
+			movelist = main.f_textTransform(movelist, function(text)
+				return (text:gsub(main.f_escapePattern(k), function() return '<' .. escaped .. '>' end))
+			end)
+		end
+	end
+	local t = {}
+	movelist = movelist:gsub('\r\n', '\n'):gsub('\n$', '')
+	for line in (movelist .. '\n'):gmatch('(.-)\n') do
+		line = line:gsub('%s+$', '')
+		local spacer
+		line, spacer = line:gsub('^<spacer>', '')
+		local subt = {}
+		for m in line:gmatch('(	*[^	]+)') do
+			local tabs = 0
+			m = m:gsub('^(	*)', function(m1)
+				tabs = string.len(m1)
+				return ''
+			end)
+			local align = 1 --left align
+			if tabs == 1 then
+				align = 0 --center align
+			elseif tabs > 1 then
+				align = -1 --right align
+			end
+			table.insert(subt, {text = m, align = align})
+		end
+		table.insert(t, {
+			itemname = ((spacer > 0 or not hasGlyph(line)) and 'spacer' or '') .. tostring(#t + 1),
+			paramname = tostring(#t + 1),
+			displayname = line,
+			columns = subt,
+		})
+	end
+	return t
+end
+
 function menu.f_commandlistParse(sec)
 	menu.t_movelists = {}
+	local function slot(side, member)
+		return side + (member - 1) * 2
+	end
+	-- With only CPU fighters, every fighter's list can be viewed.
+	local allCpu = true
+	for side, tbl in ipairs({start.p[1].t_selected, start.p[2].t_selected}) do
+		for member in ipairs(tbl) do
+			if player(slot(side, member)) and aiLevel() == 0 then
+				allCpu = false
+			end
+		end
+	end
+	-- Otherwise only characters played with the menu owner's controls, e.g. both members in single player Tag.
+	local owner = getMenuPlayer()
+	local ownerInput = owner > 0 and getRemapInput(owner) or 0
+	local function controlledByOwner(side, pn)
+		-- Turns keeps the active fighter in P1/P2, but a later co-op member
+		-- reads the input slot of the player who selected that member.
+		if start.f_coopSide(side) and teamMode() == 'turns' then
+			pn = slot(side, memberNo())
+		end
+		return ownerInput == 0 or getRemapInput(pn) == ownerInput
+	end
 	for side, tbl in ipairs({start.p[1].t_selected, start.p[2].t_selected}) do
 		for member, sel in ipairs(tbl) do
-			local pn = side
-			if member > 1 then
-				pn = pn + (member - 1) * 2
-			end
-			if player(pn) and aiLevel() == 0 then
+			local pn = slot(side, member)
+			if player(pn) and (allCpu or aiLevel() == 0 and controlledByOwner(side, pn)) then
 				if teamMode() == 'turns' then
 					sel = tbl[memberNo()] or sel
 				end
-				local movelist = getMovelist()
-				if sel.movelistText ~= movelist then
-					sel.movelistText = movelist
-					sel.commandlist = nil
-					sel.movelistState = {item = 1, cursorPosY = 1, moveTxt = 0}
-					if movelist:find('%S') then
-						-- wrap the plain glyph names in <>, but leave existing tags alone
-						for k, v in main.f_sortKeys(motif.glyphs, function(t, a, b) return string.len(a) > string.len(b) end) do
-							if k:sub(1, 1) ~= '<' then
-								local escaped = k:gsub('&', '&amp;'):gsub('<', '&lt;'):gsub('>', '&gt;')
-								movelist = main.f_textTransform(movelist, function(text)
-									return (text:gsub(main.f_escapePattern(k), function() return '<' .. escaped .. '>' end))
-								end)
-							end
+				local texts = {}
+				local first, count = getMovelist(1)
+				texts[1] = first
+				for page = 2, count do
+					texts[page] = (getMovelist(page))
+				end
+				-- Parse again only when the text changed, e.g. after ChangeMovelist.
+				local key = table.concat(texts, '\0')
+				if sel.movelistText ~= key then
+					sel.movelistText = key
+					sel.movelistPages = {current = 1}
+					for _, text in ipairs(texts) do
+						local rows = f_movelistRows(text)
+						if rows ~= nil then
+							table.insert(sel.movelistPages, {items = rows, state = {item = 1, cursorPosY = 1, moveTxt = 0}})
 						end
-						local t = {}
-						movelist = movelist:gsub('\r\n', '\n'):gsub('\n$', '')
-						for line in (movelist .. '\n'):gmatch('(.-)\n') do
-							line = line:gsub('%s+$', '')
-							local spacer
-							line, spacer = line:gsub('^<spacer>', '')
-							local subt = {}
-							for m in line:gmatch('(	*[^	]+)') do
-								local tabs = 0
-								m = m:gsub('^(	*)', function(m1)
-									tabs = string.len(m1)
-									return ''
-								end)
-								local align = 1 --left align
-								if tabs == 1 then
-									align = 0 --center align
-								elseif tabs > 1 then
-									align = -1 --right align
-								end
-								table.insert(subt, {text = m, align = align})
-							end
-							table.insert(t, {
-								itemname = ((spacer > 0 or not hasGlyph(line)) and 'spacer' or '') .. tostring(#t + 1),
-								paramname = tostring(#t + 1),
-								displayname = line,
-								columns = subt,
-							})
-						end
-						sel.commandlist = t
 					end
 				end
 				table.insert(menu.t_movelists, {
 					pn = pn,
 					name = displayName(),
-					state = sel.movelistState,
-					items = sel.commandlist,
+					pages = sel.movelistPages,
 				})
 			end
 		end
 	end
 	if #menu.t_movelists == 0 then
-		table.insert(menu.t_movelists, {
-			pn = 1,
-			name = "",
-			state = {item = 1, cursorPosY = 1, moveTxt = 0},
-		})
+		table.insert(menu.t_movelists, {pn = 1, name = "", pages = {current = 1}})
 	end
 	for _, t in ipairs(menu.t_movelists) do
-		if t.items == nil or #t.items == 0 then
+		-- Page art is only drawn for pages that exist.
+		t.found = #t.pages > 0
+		if not t.found then
 			-- Left aligned like a command list line. The text sprite keeps the last row's alignment.
 			local text = sec.movelist.menu.item.text
-			t.items = {{itemname = 'empty', paramname = 'empty', displayname = text, columns = {{text = text, align = 1}}}}
+			t.pages = {current = 1, {
+				items = {{itemname = 'empty', paramname = 'empty', displayname = text, columns = {{text = text, align = 1}}}},
+				state = {item = 1, cursorPosY = 1, moveTxt = 0},
+			}}
 		end
 	end
 	menu._lastMovelist = nil
@@ -802,11 +839,32 @@ function menu.f_commandlistParse(sec)
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(menu.t_movelists, "debug/t_movelists.txt") end
 end
 
+-- Draws every page's art, active for the current page. Shared entries are drawn once.
+local function f_movelistPagesDraw(mv, t, reset)
+	if not t.found then
+		return
+	end
+	local drawn = {}
+	for page = 1, #t.pages do
+		local bg = page == t.pages.current and mv.page.active.bg or mv.page.bg
+		local el = bg[tostring(page)] or bg.default
+		if el ~= nil and not drawn[el] then
+			drawn[el] = true
+			if reset then
+				animReset(el.AnimData)
+			end
+			main.f_animPosDraw(el.AnimData)
+			textImgDraw(el.TextSpriteData)
+		end
+	end
+end
+
 function menu.f_commandlistRender(sec, bg)
 	local mv = sec.movelist
 	local m = mv.menu
 	local acceptInput = main.pauseMenuActive and not fadeActive() and menu.pauseExitDelay < 0
 	local switched = false
+	local t = menu.t_movelists[menu.movelistChar]
 	if acceptInput then
 		-- Move list rows can't be selected, so only cancel closes the list.
 		if esc() or getAction(-1, m.cancel.action) then
@@ -824,14 +882,30 @@ function menu.f_commandlistRender(sec, bg)
 			if direction ~= 0 then
 				sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
 				menu.movelistChar = (menu.movelistChar - 1 + direction) % #menu.t_movelists + 1
+				t = menu.t_movelists[menu.movelistChar]
+				switched = true
+			end
+		end
+		-- Pages of the shown character.
+		if #t.pages > 1 then
+			local direction = 0
+			if getAction(-1, mv.page.previous.action) then
+				direction = -1
+			elseif getAction(-1, mv.page.next.action) then
+				direction = 1
+			end
+			if direction ~= 0 then
+				sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
+				t.pages.current = (t.pages.current - 1 + direction) % #t.pages + 1
 				switched = true
 			end
 		end
 	end
-	local t = menu.t_movelists[menu.movelistChar]
-	local state = t.state
-	if menu._lastMovelist ~= t then
-		menu._lastMovelist = t
+	local page = t.pages[t.pages.current]
+	local state = page.state
+	local reset = menu._lastMovelist ~= page
+	if reset then
+		menu._lastMovelist = page
 		mv.boxCursorData = nil
 		main.f_menuSnap(mv)
 		main.f_menuItemBgAnimReset(mv)
@@ -841,10 +915,17 @@ function menu.f_commandlistRender(sec, bg)
 		forcedDir = 0
 	end
 	state.cursorPosY, state.moveTxt, state.item = main.f_menuCommonCalc(
-		t.items, state.item, state.cursorPosY, state.moveTxt, mv, sec.cursor, forcedDir)
+		page.items, state.item, state.cursorPosY, state.moveTxt, mv, sec.cursor, forcedDir)
 	textImgReset(mv.title.TextSpriteData)
 	textImgSetText(mv.title.TextSpriteData, main.f_itemnameUpper(string.format(mv.title.text, t.name), m.title.uppercase))
-	main.f_menuCommonDraw(t.items, state.item, state.cursorPosY, state.moveTxt, mv, bg, true)
+	f_movelistPagesDraw(mv, t, reset)
+	-- The hint lists only what can be switched: characters, pages, both, or neither.
+	local context = #menu.t_movelists > 1 and 'character' or ''
+	if #t.pages > 1 then
+		context = context .. 'page'
+	end
+	main.f_menuCommonDraw(page.items, state.item, state.cursorPosY, state.moveTxt, mv, bg, true,
+		{hintContext = context ~= '' and context or nil})
 end
 
 return menu

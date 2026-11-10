@@ -3419,37 +3419,60 @@ type PalInfo struct {
 	selectable bool
 }
 
-func loadMovelists(def string, is IniSection) map[int]string {
-	ret := make(map[int]string)
-	load := func(idx int, file string, overwrite bool) {
-		if file == "" || idx < 0 {
-			return
+// Reads movelist<set>.<page> keys. Both numbers are optional (set 0, page 1).
+// ChangeMovelist switches the set, and the command list shows its pages.
+func loadMovelists(def string, is IniSection) map[int][]string {
+	type key struct{ set, page int }
+	files := make(map[key]string)
+	for k, v := range is {
+		kl := strings.ToLower(k)
+		if !strings.HasPrefix(kl, "movelist") {
+			continue
 		}
-		if !overwrite {
-			if _, ok := ret[idx]; ok {
-				return
+		setNum, pageNum, hasPage := strings.Cut(kl[len("movelist"):], ".")
+		id := key{0, 1}
+		if setNum != "" {
+			n, err := strconv.Atoi(setNum)
+			if err != nil || n < 0 {
+				continue
 			}
+			id.set = n
 		}
+		if hasPage {
+			n, err := strconv.Atoi(pageNum)
+			if err != nil || n < 1 {
+				continue
+			}
+			id.page = n
+		}
+		file := decodeShiftJIS(v)
+		if file == "" {
+			continue
+		}
+		// movelist wins over movelist0 for the same page.
+		if _, ok := files[id]; ok && setNum != "" {
+			continue
+		}
+		files[id] = file
+	}
+	ret := make(map[int][]string)
+	ids := slices.Collect(maps.Keys(files))
+	slices.SortFunc(ids, func(a, b key) int {
+		if a.set != b.set {
+			return a.set - b.set
+		}
+		return a.page - b.page
+	})
+	for _, id := range ids {
+		file := files[id]
 		LoadFile(&file, []string{def, "", "data/"}, "", func(filename string) error {
 			txt, err := LoadText(filename)
 			if err != nil {
 				return err
 			}
-			ret[idx] = txt
+			ret[id.set] = append(ret[id.set], txt)
 			return nil
 		})
-	}
-	load(0, decodeShiftJIS(is["movelist"]), true)
-	load(0, decodeShiftJIS(is["movelist0"]), false)
-	for k, v := range is {
-		kl := strings.ToLower(k)
-		if kl == "movelist" || kl == "movelist0" || !strings.HasPrefix(kl, "movelist") {
-			continue
-		}
-		idx := kl[len("movelist"):]
-		if idx != "" && IsInt(idx) {
-			load(int(Atoi(idx)), decodeShiftJIS(v), true)
-		}
 	}
 	if len(ret) == 0 {
 		return nil
@@ -3482,7 +3505,7 @@ type CharGlobalInfo struct {
 	states             map[int32]*StateBytecode
 	callFuncs          map[string]BytecodeFunction
 	quotes             [MaxQuotes]string
-	movelists          map[int]string
+	movelists          map[int][]string
 	portraitscale      float32
 	constants          map[string]TypedValue
 	remapPreset        map[string]RemapPreset
@@ -3511,7 +3534,7 @@ func newCharGlobalInfo() CharGlobalInfo {
 		palInfo:       make(map[int]PalInfo, sys.cfg.Config.PaletteMax),
 		fnt:           make(map[int]*Fnt),
 		quotes:        [MaxQuotes]string{},
-		movelists:     make(map[int]string),
+		movelists:     make(map[int][]string),
 		remapPreset:   make(map[string]RemapPreset),
 		customShaders: make(map[string]string),
 		portraitscale: 1,
