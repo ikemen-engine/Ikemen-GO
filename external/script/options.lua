@@ -1970,6 +1970,8 @@ local function updateEditor(tbl, root)
 			else
 				row.vardisplay = motif.option_info.menu.valuename.nokey
 			end
+		elseif field == 'preferredside' and root.device ~= nil then
+			row.vardisplay = options.f_preferredSideDisplay(root.device.id)
 		end
 	end
 	for _, sub in pairs(tbl.submenu) do
@@ -2366,6 +2368,47 @@ for name in pairs(t_setupRows) do
 	options.t_itemname[name] = bindingRow
 end
 
+-- Preferred Side of a device, as shown in its Controller Mapping.
+function options.f_preferredSideDisplay(deviceId)
+	local side = 0
+	for _, device in ipairs(inputGetDevices()) do
+		if device.id == deviceId then
+			side = device.preferredSide
+			break
+		end
+	end
+	if side == 0 then
+		return motif.option_info.menu.valuename.any
+	end
+	return main.f_formatBySpec(motif.option_info.menu.valuename.team, {i = side})
+end
+
+-- The Preferred Side belongs to the device rather than the mapping, so it is saved straight away.
+options.t_itemname.preferredside = function(t, item)
+	local step = 0
+	if getAction(-1, motif.option_info.menu.add.action) then
+		step = 1
+	elseif getAction(-1, motif.option_info.menu.subtract.action) then
+		step = -1
+	end
+	if step ~= 0 then
+		sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
+		local root = t.inputMenu
+		local current = 0
+		for _, device in ipairs(inputGetDevices()) do
+			if device.id == root.device.id then
+				current = device.preferredSide
+				break
+			end
+		end
+		-- Any, Team 1, Team 2
+		if inputSetPreferredSide(root.device.id, (current + step) % 3) then
+			updateEditor(root, root)
+		end
+	end
+	return true
+end
+
 -- Vibration belongs to the device rather than the mapping, so it is saved straight away.
 -- Keyboards and pads SDL can't vibrate keep it unchanged.
 options.t_itemname.vibration = function(t, item)
@@ -2530,6 +2573,20 @@ function options.f_inputCfg(itemname, template, background, pause)
 		return
 	end
 	runInputConfig(context)
+end
+
+-- Side select: edit the Button Setup of the device that pressed the button.
+-- It has no player slot yet, so the editor reads that device directly.
+function options.f_setupEditor(device)
+	local context = {background = motif.optionbgdef, parents = {}}
+	-- The press that opened the editor must not act in it too.
+	context.skipInput = true
+	bgReset(motif.optionbgdef.BGDef)
+	local previous = inputSetMenuFocus(device.id)
+	if options.f_editSetup(device, context) then
+		runInputConfig(context)
+	end
+	inputSetMenuFocus(previous)
 end
 
 -- Pause menu: the same Button Setup editor, in the pause background.
