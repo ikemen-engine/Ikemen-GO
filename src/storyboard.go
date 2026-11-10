@@ -104,10 +104,15 @@ type Storyboard struct {
 		Font       map[string]*FontProperties `ini:"map:^(?i)font[0-9]+$" lua:"font"`
 		Model      string                     `ini:"model" lookup:"def,,data/"`
 		StartScene int                        `ini:"startscene"`
-		Key        struct {
-			Skip   []string `ini:"skip"`
-			Cancel []string `ini:"cancel"`
-		} `ini:"key"`
+		Done       struct {
+			Action []string `ini:"action"`
+		} `ini:"done"`
+		Cancel struct {
+			Action []string `ini:"action"`
+		} `ini:"cancel"`
+		Skip struct {
+			Action []string `ini:"action"`
+		} `ini:"skip"`
 		StopMusic      bool `ini:"stopmusic"`
 		DisableCancel  bool `ini:"disablecancel"`
 		WaitForLoading bool `ini:"waitforloading"`
@@ -122,6 +127,7 @@ type Storyboard struct {
 	sceneKeys         []string
 	currentSceneIndex int
 	canceled          bool
+	ended             bool // done action ended the storyboard without canceling it
 	musicPlaying      bool
 	fadePolicy        FadeStartPolicy
 	dialogueLayers    []*LayerProperties // ordered text layers (StartTime asc, then layer index)
@@ -689,6 +695,7 @@ func (s *Storyboard) reset() {
 	s.endTimer = -1
 	s.currentSceneIndex = s.SceneDef.StartScene
 	s.canceled = false
+	s.ended = false
 	s.netReady = false
 	s.loadEnding = false
 	for _, sceneProps := range s.Scene {
@@ -863,14 +870,20 @@ func (s *Storyboard) step() {
 
 	// Cancel handling
 	if !s.SceneDef.DisableCancel && (sys.esc ||
-		(!sys.motif.AttractMode.Enabled && sys.uiRawInput(s.SceneDef.Key.Cancel, -1)) ||
+		(!sys.motif.AttractMode.Enabled && sys.menuAction(s.SceneDef.Cancel.Action, -1)) ||
 		(!sys.gameRunning && sys.motif.AttractMode.Enabled && sys.credits > 0)) {
 		sys.esc = false
 		s.canceled = true
 	}
 
+	// Done ends the storyboard and the caller continues
+	if !s.canceled && !s.SceneDef.DisableCancel && !s.SceneDef.WaitForLoading && !sys.motif.AttractMode.Enabled &&
+		sys.menuAction(s.SceneDef.Done.Action, -1) {
+		s.ended = true
+	}
+
 	// Skip handling
-	skipPressed := sys.uiRawInput(s.SceneDef.Key.Skip, -1)
+	skipPressed := !s.ended && sys.menuAction(s.SceneDef.Skip.Action, -1)
 	if s.SceneDef.WaitForLoading {
 		skipPressed = false
 	}
@@ -970,8 +983,8 @@ func (s *Storyboard) step() {
 		}
 	}
 
-	if s.endTimer == -1 && (reachedEndTime || s.canceled || skipAdvancesScene) {
-		userInterrupt := s.canceled || skipAdvancesScene
+	if s.endTimer == -1 && (reachedEndTime || s.canceled || s.ended || skipAdvancesScene) {
+		userInterrupt := s.canceled || s.ended || skipAdvancesScene
 		startFadeOutFrom(sceneProps.FadeOut.FadeData, fadeOut, fadeIn, userInterrupt, s.fadePolicy)
 		s.endTimer = s.counter + fadeOut.timeRemaining
 	}
@@ -999,7 +1012,7 @@ func (s *Storyboard) step() {
 			}
 		}
 	}
-	if s.canceled || skipAdvancesScene {
+	if s.canceled || s.ended || skipAdvancesScene {
 		s.stopSounds()
 	}
 
@@ -1061,7 +1074,7 @@ func (s *Storyboard) step() {
 		}
 		s.counter = 0
 		s.endTimer = -1
-		if s.canceled {
+		if s.canceled || s.ended {
 			s.currentSceneIndex = len(s.sceneKeys)
 		} else {
 			if sceneProps.Jump != nil && *sceneProps.Jump != s.currentSceneIndex {

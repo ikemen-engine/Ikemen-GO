@@ -51,15 +51,7 @@ func (p *ButtonSetupProperties) buttonNames() []string {
 
 // A key binding, or KeyUnknown when unbound.
 func setupKey(token string) Key {
-	name := strings.TrimSpace(token)
-	key := StringToKey(name)
-	if key == KeyUnknown {
-		if len(name) == 1 {
-			key = StringToKey(strings.ToLower(name))
-		} else {
-			key = StringToKey(strings.ToUpper(name))
-		}
-	}
+	key, _ := actionKey("KEY:" + strings.TrimSpace(token))
 	return key
 }
 

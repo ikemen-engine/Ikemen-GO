@@ -5,7 +5,11 @@ if not main.makeRoster then
 end
 
 if main.storyboard.intro and matchNo() == 1 and not continued() then
-	launchStoryboard(start.f_getCharData(start.p[1].t_selected[1].ref).intro)
+	local _, canceled = launchStoryboard(start.f_getCharData(start.p[1].t_selected[1].ref).intro)
+	-- Canceling the intro goes back to the select screen.
+	if canceled then
+		return
+	end
 end
 
 for i = matchNo(), #start.t_roster do
