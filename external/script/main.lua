@@ -1345,9 +1345,9 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 		-- draw text
 		textImgDraw(textData)
 		-- the infobox reuses this screen, and capture mode waits for a button
-		local hint = motif.warning_info.hint
+		local hint, hint2 = motif.warning_info.hint, motif.warning_info.hint2
 		if textData == motif.infobox.text.TextSpriteData then
-			hint = motif.infobox.hint
+			hint, hint2 = motif.infobox.hint, motif.infobox.hint2
 		end
 		local context = 'default'
 		if hintContext ~= nil then
@@ -1359,6 +1359,7 @@ function main.f_warning(text, sec, background, overlay, titleData, textData, can
 			['menu.done'] = sec.menu.done.action,
 			['menu.cancel'] = sec.menu.cancel.action,
 		})
+		main.f_hintDraw(hint2, context)
 		-- draw layerno = 1 backgrounds
 		bgDraw(background.BGDef, 1)
 		-- tick preload
@@ -4300,10 +4301,61 @@ function main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, sec, bg, skipClear,
 		textImgDraw(sec.footer.version.TextSpriteData)
 	end
 	main.f_hintDraw(opts.hint or sec.hint, opts.hintContext, nil, opts.hintDevice, nil, opts.hintActions)
+	-- Description of the highlighted item, keyed by its paramname.
+	main.f_menuItemHintDraw(m.hint, t[item])
 	-- frame transition
 	if not skipClear then
 		refresh()
 	end
+end
+
+-- Draws the item description, checking the full path, shorter paths, then the name.
+-- List rows fall back to "<parent>_item". %s becomes the item name.
+function main.f_menuItemHintDraw(hint, item)
+	if hint == nil or item == nil or hint.text == nil then
+		return
+	end
+	local text = nil
+	local tail = item.paramname
+	while text == nil and tail ~= nil and tail ~= '' do
+		text = hint.text[tail]
+		tail = tail:match('^[^_]+_(.+)$')
+	end
+	if text == nil and item.itemname ~= nil then
+		text = hint.text[item.itemname]
+	end
+	if text == nil and item.paramname ~= nil and item.paramname ~= '' then
+		-- Dynamic list rows (like shaders) share one "<parent>_item" entry.
+		-- Walk the path up by "_" so filenames containing "_" still resolve.
+		local parents = {}
+		local parent = item.paramname:match('^(.+)_[^_]+$')
+		while parent ~= nil do
+			table.insert(parents, parent)
+			parent = parent:match('^(.+)_[^_]+$')
+		end
+		-- Full parent paths win, then the same paths with leading parts dropped, down to the leaf.
+		for _, p in ipairs(parents) do
+			text = text or hint.text[p .. '_item']
+		end
+		for _, p in ipairs(parents) do
+			local tail = p:match('^[^_]+_(.+)$')
+			while text == nil and tail ~= nil do
+				text = hint.text[tail .. '_item']
+				tail = tail:match('^[^_]+_(.+)$')
+			end
+		end
+	end
+	local sprite = hint.TextSpriteData
+	if text == nil then
+		return
+	end
+	if item.displayname ~= nil and text:find('%%s') ~= nil then
+		text = string.format(text, item.displayname)
+	end
+	textImgReset(sprite)
+	textImgSetGlyphDevice(sprite, 0)
+	textImgSetText(sprite, tostring(text):gsub('\\n', '\n'))
+	textImgDraw(sprite)
 end
 
 -- force menu to snap, boxcursor snaps if enabled

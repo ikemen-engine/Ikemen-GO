@@ -417,6 +417,7 @@ type MenuProperties struct {
 	Unlock    map[string]string `ini:"unlock"`    // not used by [Replay Info], [Pause Menu]
 	Valuename map[string]string `ini:"valuename"` // not used by [Title Info], [Replay Info], [Pause Menu], [Attract Mode]
 	Itemname  map[string]string `ini:"itemname"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type InfoBoxProperties struct {
@@ -428,6 +429,7 @@ type InfoBoxProperties struct {
 	Overlay OverlayProperties `ini:"overlay"`
 	Action []string            `ini:"action"`
 	Hint    HintProperties    `ini:"hint"`
+	Hint2   HintProperties    `ini:"hint2"`
 }
 
 type CellOverrideProperties struct {
@@ -962,6 +964,7 @@ type SelectInfoProperties struct {
 	Timer         TimerProperties `ini:"timer"`
 	CoopQueue     bool            `ini:"coopqueue" default:"false"`
 	Hint          HintProperties  `ini:"hint"`
+	Hint2         HintProperties  `ini:"hint2"`
 }
 
 type VsScreenProperties struct {
@@ -1011,6 +1014,7 @@ type VsScreenProperties struct {
 		Storyboard string                  `ini:"storyboard" lookup:"def,,data/"`
 	} `ini:"loading"`
 	Hint HintProperties `ini:"hint"`
+	Hint2 HintProperties `ini:"hint2"`
 }
 
 type DemoModeProperties struct {
@@ -1604,6 +1608,7 @@ type SideSelectInfoProperties struct {
 		VisibleItems int32 `ini:"visibleitems"`
 	} `ini:"window"`
 	Hint HintProperties `ini:"hint"`
+	Hint2 HintProperties `ini:"hint2"`
 }
 
 type WarningInfoProperties struct {
@@ -1620,6 +1625,7 @@ type WarningInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
 	Hint HintProperties `ini:"hint"`
+	Hint2 HintProperties `ini:"hint2"`
 }
 
 type Motif struct {
@@ -2795,6 +2801,7 @@ func (m *Motif) overrideParams() {
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.", DstSec: "Option Info", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.active.", DstSec: "Option Info", DstPrefix: "menu.item.selected.active."},
 		{SrcSec: "Option Info", SrcPrefix: "controllermapping.", DstSec: "Option Info", DstPrefix: "keyboardmenu."},
+		//{SrcSec: "Option Info", SrcPrefix: "menu.hint.text.controllermapping.", DstSec: "Option Info", DstPrefix: "menu.hint.text.keyboardmenu."},
 		// [Pause Menu]
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.active.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected.active."},

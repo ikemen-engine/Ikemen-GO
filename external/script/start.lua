@@ -3438,6 +3438,7 @@ function start.f_selectScreen(demo)
 			if main.stageMenu and not stageEnd then
 				local group = main.t_selectableStageSlots[stageListNo]
 				hintContext = (group ~= nil and #group.available > 1) and 'stageslot' or 'stage'
+				main.f_hintDraw(motif.select_info.hint2, 'stage')
 			end
 			main.f_hintDraw(motif.select_info.hint, hintContext)
 		else
@@ -3447,6 +3448,8 @@ function start.f_selectScreen(demo)
 					main.f_hintDraw(motif.select_info.hint, 'disconnected')
 				else
 					main.f_hintDraw(motif.select_info.hint, choice.context, nil, choice.device, choice.side)
+					local hint2Context = choice.context == 'slot' and 'default' or choice.context
+					main.f_hintDraw(motif.select_info.hint2, hint2Context, nil, choice.device, choice.side)
 				end
 			end
 		end
@@ -4939,6 +4942,9 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		-- Demo Mode has no hints, any button ends it.
 		if not demoCancelled then
 			main.f_hintDraw(hint, hintContext, {s = table.concat(buttons)}, device, orderSide)
+			if not disconnected then
+				main.f_hintDraw(motif.vs_screen.hint2, hintContext, nil, device, orderSide)
+			end
 		end
 		-- hook
 		hook.run("start.f_selectVersus")
@@ -5252,6 +5258,7 @@ function start.f_sideSelectEnd(context)
 	end
 	bgDraw(motif.sideselectbgdef.BGDef, 1)
 	main.f_hintDraw(sec.hint, context)
+	main.f_hintDraw(sec.hint2, context)
 	refresh()
 end
 
