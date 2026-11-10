@@ -1061,7 +1061,7 @@ func (a *Animation) Draw(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 		rotPivot, pfx, facing, airOffsetFix, projectionMode, fLength, isReflection, shader))
 }
 
-// Where the sprite is drawn, without drawing it.
+// Where the sprite is drawn, shared with mouse hits.
 func (a *Animation) drawParams(window *[4]int32, x, y, xcs, ycs, xs, xbs, ys,
 	rxadd float32, rot Rotation, rcx float32, rotPivot [2]float32, pfx *PalFX, facing float32,
 	airOffsetFix [2]float32, projectionMode int32, fLength float32,
@@ -2337,6 +2337,7 @@ func (a *Anim) Copy() *Anim {
 		dst.Tex = src.Tex
 		dst.palidx = src.palidx
 		dst.coldepth = src.coldepth
+		dst.hitPixels = src.hitPixels
 		// Copy arrays (if not slices, this is fine as-is)
 		dst.Offset = src.Offset
 		dst.Size = src.Size

@@ -675,6 +675,29 @@ func (f *Fnt) Print(txt string, x, y, xscl, yscl, rxadd float32, rot Rotation, p
 	}
 }
 
+// Where a bitmap text line starts before alignment, and its rotation point.
+func (f *Fnt) textPosition(x, y, xscl, yscl float32, rot Rotation) (float32, float32, float32, float32) {
+	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
+	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
+
+	var rcx, rcy float32
+
+	if rot.IsZero() {
+		if xscl < 0 {
+			x *= -1
+		}
+		if yscl < 0 {
+			y *= -1
+		}
+		rcx, rcy = rcx*sys.widthScale, 0
+	} else {
+		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
+		x, y = Abs(xscl)*float32(f.offset[0]), Abs(yscl)*float32(f.offset[1])
+	}
+
+	return x, y, rcx, rcy
+}
+
 // DrawText prints on screen a specified text with the current font sprites.
 // advance moves the text along its line, in font pixels, keeping the line's rotation point.
 func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
@@ -701,23 +724,7 @@ func (f *Fnt) DrawText(txt string, x, y, xscl, yscl, rxadd float32,
 		}
 	}
 
-	x += float32(f.offset[0])*xscl + float32(sys.gameWidth-320)/2
-	y += float32(f.offset[1]-int32(f.Size[1])+1)*yscl + float32(sys.gameHeight-240)
-
-	var rcx, rcy float32
-
-	if rot.IsZero() {
-		if xscl < 0 {
-			x *= -1
-		}
-		if yscl < 0 {
-			y *= -1
-		}
-		rcx, rcy = rcx*sys.widthScale, 0
-	} else {
-		rcx, rcy = (x+rcx)*sys.widthScale, y*sys.heightScale
-		x, y = Abs(xscl)*float32(f.offset[0]), Abs(yscl)*float32(f.offset[1])
-	}
+	x, y, rcx, rcy := f.textPosition(x, y, xscl, yscl, rot)
 
 	if align == 0 {
 		x -= float32(f.TextWidth(txt, bank, spacingXAdd)) * xscl * 0.5
@@ -1779,19 +1786,13 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 	if strings.HasPrefix(tag, "key:") {
 		return ts.bindingGlyph(strings.TrimPrefix(tag, "key:"), true), true
 	}
-	// <control:A> is one action token: a virtual control on the active device, KEY:<name> or BTN:<name>.
+	// <control:A> names action tokens directly, as an action would list them.
 	if strings.HasPrefix(tag, "control:") {
-		token := strings.TrimPrefix(tag, "control:")
-		if key, ok := actionKey(token); ok {
-			return ts.bindingGlyph(KeyToString(key), true), true
+		tokens := strings.Split(strings.TrimPrefix(tag, "control:"), ",")
+		for i := range tokens {
+			tokens[i] = strings.TrimSpace(tokens[i])
 		}
-		if button, ok := actionButton(token); ok {
-			return ts.inputGlyph(engineButtonNames[button]), true
-		}
-		if vc := parseVirtualControl(token); vc != VC_None {
-			return ts.virtualGlyph(vc), true
-		}
-		return []glyphRun{{text: token}}, true
+		return ts.actionGlyphs(tokens), true
 	}
 	if strings.HasPrefix(tag, "virtual:") {
 		return ts.bindingGlyph(parseVirtualControl(strings.TrimPrefix(tag, "virtual:")).String(), false), true
@@ -1830,42 +1831,7 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 				return aok && (!bok || a < b)
 			})
 		}
-		// The left stick usually repeats the d-pad in an action; show the d-pad only.
-		listed := make(map[VirtualControl]bool)
-		for _, token := range tokens {
-			listed[parseVirtualControl(token)] = true
-		}
-		dpad := map[VirtualControl]VirtualControl{VC_LS_YN: VC_DP_U, VC_LS_YP: VC_DP_D, VC_LS_XN: VC_DP_L, VC_LS_XP: VC_DP_R}
-		// A keyboard shows the action's own KEY: tokens when it has them. An action of
-		// keyboard keys only shows them on every device, since nothing else triggers it.
-		device := sys.glyphDevice(ts.glyphDevice)
-		hasKey, hasVirtual := false, false
-		for _, token := range tokens {
-			if _, ok := actionKey(token); ok {
-				hasKey = true
-			} else if _, ok := actionButton(token); ok || parseVirtualControl(token) != VC_None {
-				hasVirtual = true
-			}
-		}
-		keysOnly := hasKey && (device == nil || device.Joy < 0 || !hasVirtual)
-		var runs []glyphRun
-		for _, token := range tokens {
-			if key, ok := actionKey(token); ok {
-				if keysOnly {
-					runs = append(runs, ts.bindingGlyph(KeyToString(key), true)...)
-				}
-			} else if keysOnly {
-				continue
-			} else if button, ok := actionButton(token); ok {
-				runs = append(runs, ts.inputGlyph(engineButtonNames[button])...)
-			} else if vc := parseVirtualControl(token); vc != VC_None {
-				if d, ok := dpad[vc]; ok && listed[d] {
-					continue
-				}
-				runs = append(runs, ts.virtualGlyph(vc)...)
-			}
-		}
-		return runs, true
+		return ts.actionGlyphs(tokens), true
 	}
 	// <glyph:NAME> draws a [Glyphs] entry as it is, without Mirror Commands or Command Display.
 	if strings.HasPrefix(tag, "glyph:") {
@@ -1901,6 +1867,64 @@ func (ts *TextSprite) resolveGlyph(tag string) ([]glyphRun, bool) {
 		return []glyphRun{{anim: a}}, true
 	}
 	return nil, false
+}
+
+// The glyphs of an action's tokens. A keyboard shows its KEY: tokens and the mouse its
+// MOUSE: tokens, and an action with only those shows them on every device.
+func (ts *TextSprite) actionGlyphs(tokens []string) []glyphRun {
+	// The left stick usually repeats the d-pad in an action; show the d-pad only.
+	listed := make(map[VirtualControl]bool)
+	for _, token := range tokens {
+		listed[parseVirtualControl(token)] = true
+	}
+	dpad := map[VirtualControl]VirtualControl{VC_LS_YN: VC_DP_U, VC_LS_YP: VC_DP_D, VC_LS_XN: VC_DP_L, VC_LS_XP: VC_DP_R}
+	device := sys.glyphDevice(ts.glyphDevice)
+	hasKey, hasMouse, hasVirtual := false, false, false
+	for _, token := range tokens {
+		if _, ok := actionKey(token); ok {
+			hasKey = true
+		} else if _, ok := actionMouse(token); ok {
+			hasMouse = true
+		} else if _, ok := actionButton(token); ok || parseVirtualControl(token) != VC_None {
+			hasVirtual = true
+		}
+	}
+	mouseOnly := hasMouse && (sys.hintGlyphPack(device) == "mouse" || !hasKey && !hasVirtual)
+	keysOnly := !mouseOnly && hasKey && (device == nil || device.Joy < 0 || !hasVirtual)
+	var runs []glyphRun
+	for _, token := range tokens {
+		if button, ok := actionMouse(token); ok {
+			if mouseOnly {
+				runs = append(runs, ts.mouseGlyph(button)...)
+			}
+		} else if mouseOnly {
+			continue
+		} else if key, ok := actionKey(token); ok {
+			if keysOnly {
+				runs = append(runs, ts.bindingGlyph(KeyToString(key), true)...)
+			}
+		} else if keysOnly {
+			continue
+		} else if button, ok := actionButton(token); ok {
+			runs = append(runs, ts.inputGlyph(engineButtonNames[button])...)
+		} else if vc := parseVirtualControl(token); vc != VC_None {
+			if d, ok := dpad[vc]; ok && listed[d] {
+				continue
+			}
+			runs = append(runs, ts.virtualGlyph(vc)...)
+		} else if len(tokens) == 1 {
+			runs = append(runs, glyphRun{text: token})
+		}
+	}
+	return runs
+}
+
+// A mouse button from [Glyphs] <mouse.LEFT> and so on, or its name.
+func (ts *TextSprite) mouseGlyph(button int) []glyphRun {
+	if a := sys.motif.namedGlyph("mouse." + mouseButtonNames[button]); a != nil {
+		return []glyphRun{{anim: a}}
+	}
+	return []glyphRun{{text: mouseButtonNames[button]}}
 }
 
 // Splits text into colored runs and inline glyphs.
@@ -2006,6 +2030,38 @@ func (ts *TextSprite) glyphTextWidth(runs []glyphRun) float32 {
 	return width
 }
 
+// How far glyphs reach below the bottom of the text line.
+func (ts *TextSprite) glyphDescent() float32 {
+	if ts.fnt.Type != "truetype" || ts.fnt.ttf == nil {
+		return 0
+	}
+	metrics := ts.fnt.ttf.Metrics()
+	if height := metrics.Ascent + metrics.Descent; height > 0 {
+		// TrueType glyphs sit partly below the baseline, like the font's letters.
+		return float32(ts.fnt.Size[1]) * float32(metrics.Descent) / float32(height) * ts.yscl
+	}
+	return 0
+}
+
+// Top and bottom of a text line, made taller to fit its glyphs.
+// Measured from the top of the line, so top is negative if a glyph sticks out above.
+func (ts *TextSprite) glyphLineExtent(line string, height float32) (top, bottom float32) {
+	bottom = height
+	if ts.literal || !strings.Contains(line, "<") {
+		return
+	}
+	for _, run := range ts.glyphRuns(line) {
+		if run.anim == nil || run.anim.spr == nil || run.anim.spr.Size[1] == 0 {
+			continue
+		}
+		// All glyphs have the same height, so checking one is enough.
+		glyphBottom := height + ts.glyphDescent() + ts.fnt.glyphOffset[1]*ts.localScale
+		glyphTop := glyphBottom - float32(ts.fnt.Size[1])*ts.yscl*ts.fnt.glyphScale[1]
+		return min(0, glyphTop), max(height, glyphBottom)
+	}
+	return
+}
+
 // Draws text with inline glyphs. Glyph anims are copied first, because the same glyph
 // can appear on several rows with different alpha.
 func (ts *TextSprite) drawGlyphText(text string, window [4]int32) {
@@ -2019,15 +2075,7 @@ func (ts *TextSprite) drawGlyphText(text string, window [4]int32) {
 	pivotY := float32(f.offset[1]-int32(f.Size[1])+1)*ts.yscl + yOffset
 	if f.Type == "truetype" {
 		// TrueType y is a baseline, and DrawTtf has no bitmap screen offset.
-		bottom, yOffset, pivotY = 0, 0, 0
-		if ts.fnt.ttf != nil {
-			metrics := ts.fnt.ttf.Metrics()
-			if height := metrics.Ascent + metrics.Descent; height > 0 {
-				// Keep the configured glyph height, distributing it above and below
-				// the baseline in the font's ascent/descent proportions.
-				bottom = float32(ts.fnt.Size[1]) * float32(metrics.Descent) / float32(height) * ts.yscl
-			}
-		}
+		bottom, yOffset, pivotY = ts.glyphDescent(), 0, 0
 	}
 	// "phantom pixel" adjustment to match mugen flipping behavior (extra pixel)
 	var phantomX float32

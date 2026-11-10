@@ -152,6 +152,15 @@ func (s *System) newWindow(w, h int) (*Window, error) {
 		}
 	}
 
+	if !mouseSupported {
+		sdl.SetHint(sdl.HINT_TOUCH_MOUSE_EVENTS, "0")
+		sdl.EventState(sdl.MOUSEMOTION, sdl.IGNORE)
+		sdl.EventState(sdl.MOUSEBUTTONDOWN, sdl.IGNORE)
+		sdl.EventState(sdl.MOUSEBUTTONUP, sdl.IGNORE)
+		sdl.EventState(sdl.MOUSEWHEEL, sdl.IGNORE)
+		sdl.ShowCursor(sdl.DISABLE)
+	}
+
 	for i := range input.controllers {
 		input.controllerstate[i] = &ControllerState{Buttons: make(map[sdl.GameControllerButton]byte)}
 	}
@@ -478,6 +487,46 @@ func (w *Window) pollEvents() {
 			}
 		case sdl.QuitEvent:
 			w.closeflag = true
+		case sdl.MouseMotionEvent:
+			sys.mouse.x, sys.mouse.y = t.X, t.Y
+			if t.XRel != 0 || t.YRel != 0 {
+				sys.mouse.active, sys.mouse.motion = true, true
+			}
+		case sdl.MouseButtonEvent:
+			sys.mouse.x, sys.mouse.y = t.X, t.Y
+			i := -1
+			switch t.Button {
+			case sdl.ButtonLeft:
+				i = 0
+			case sdl.ButtonRight:
+				i = 1
+			case sdl.ButtonMiddle:
+				i = 2
+			case sdl.ButtonX1:
+				i = 3
+			case sdl.ButtonX2:
+				i = 4
+			}
+			if i >= 0 {
+				down := t.State == sdl.PRESSED
+				if down && !sys.mouse.down[i] {
+					sys.mouse.clicked[i] = true
+					sys.mouse.active = true
+				}
+				sys.mouse.down[i] = down
+			}
+		case sdl.MouseWheelEvent:
+			sys.mouse.x, sys.mouse.y, _ = sdl.GetMouseState()
+			if t.X != 0 || t.Y != 0 {
+				sys.mouse.active = true
+			}
+			if t.Direction == sdl.MOUSEWHEEL_FLIPPED {
+				sys.mouse.wheel[0] -= t.X
+				sys.mouse.wheel[1] -= t.Y
+			} else {
+				sys.mouse.wheel[0] += t.X
+				sys.mouse.wheel[1] += t.Y
+			}
 		case sdl.KeyboardEvent:
 			if t.State == sdl.PRESSED {
 				OnKeyPressed(t.Keysym.Sym, t.Keysym.Mod)
@@ -499,6 +548,7 @@ func (w *Window) pollEvents() {
 			case sdl.WINDOWEVENT_FOCUS_LOST:
 				w.focused = false
 				sys.netMenuEscapeHeld = false
+				sys.mouse.release()
 			}
 		case sdl.TextInputEvent:
 			if sys.textInput.active {
@@ -530,6 +580,16 @@ func (w *Window) pollEvents() {
 	}
 	sys.pollDevices()
 	sys.textInput.releaseInputs()
+	if !mouseSupported {
+		return
+	}
+	// Fullscreen menus need a pointer too. Gameplay keeps its hidden cursor.
+	if !w.fullscreen || sys.mouse.enabled() &&
+		(!sys.gameRunning || sys.motifOverlayActive() || sys.postMatchFlg || sys.textInput.active) {
+		sdl.ShowCursor(sdl.ENABLE)
+	} else {
+		sdl.ShowCursor(sdl.DISABLE)
+	}
 }
 
 func (w *Window) shouldClose() bool {
