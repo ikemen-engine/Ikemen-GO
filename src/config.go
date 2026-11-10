@@ -397,7 +397,7 @@ func loadConfig(def string) (*Config, error) {
 	c.IniFile = iniFile
 	c.DefaultOnlyIni = defaultOnlyIni
 	c.dropDeletedSetups(userIniFile)
-	c.normalize()
+	c.normalize(true)
 	c.sysSet()
 	c.Save(def)
 	return &c, nil
@@ -409,23 +409,29 @@ func (c *Config) initStruct() {
 	//applyDefaultsToValue(reflect.ValueOf(c).Elem())
 }
 
-// Normalize values
-func (c *Config) normalize() {
-	c.SetValueUpdate("Config.Players", int(Clamp(int32(c.Config.Players), 1, int32(MaxSimul)*2)))
-	c.SetValueUpdate("Options.Difficulty", int(Clamp(int32(c.Options.Difficulty), 1, 8)))
-	c.SetValueUpdate("Options.GameSpeed", int(Clamp(int32(c.Options.GameSpeed), -9, 9)))
-	c.SetValueUpdate("Options.GameSpeedStep", int(Clamp(int32(c.Options.GameSpeedStep), 1, 60)))
-	c.SetValueUpdate("Options.Simul.Max", int(Clamp(int32(c.Options.Simul.Max), int32(c.Options.Simul.Min), int32(MaxSimul))))
-	c.SetValueUpdate("Options.Simul.Min", int(Clamp(int32(c.Options.Simul.Min), 2, int32(MaxSimul))))
-	c.SetValueUpdate("Options.Tag.Max", int(Clamp(int32(c.Options.Tag.Max), int32(c.Options.Tag.Min), int32(MaxSimul))))
-	c.SetValueUpdate("Options.Tag.Min", int(Clamp(int32(c.Options.Tag.Min), 2, int32(MaxSimul))))
-	c.SetValueUpdate("Video.Framerate", int(Clamp(int32(c.Video.Framerate), 1, 840)))
-	c.SetValueUpdate("Netplay.ListenPort", int(Clamp(int32(c.Netplay.ListenPort), 1, 65535)))
+// Normalize values. Session overrides affect runtime values without changing the saved INI.
+func (c *Config) normalize(updateINI bool) {
+	set := c.SetValueUpdate
+	if !updateINI {
+		set = func(query string, value interface{}) error {
+			return SetValue(c, query, value)
+		}
+	}
+	set("Config.Players", int(Clamp(int32(c.Config.Players), 1, int32(MaxSimul)*2)))
+	set("Options.Difficulty", int(Clamp(int32(c.Options.Difficulty), 1, 8)))
+	set("Options.GameSpeed", int(Clamp(int32(c.Options.GameSpeed), -9, 9)))
+	set("Options.GameSpeedStep", int(Clamp(int32(c.Options.GameSpeedStep), 1, 60)))
+	set("Options.Simul.Max", int(Clamp(int32(c.Options.Simul.Max), int32(c.Options.Simul.Min), int32(MaxSimul))))
+	set("Options.Simul.Min", int(Clamp(int32(c.Options.Simul.Min), 2, int32(MaxSimul))))
+	set("Options.Tag.Max", int(Clamp(int32(c.Options.Tag.Max), int32(c.Options.Tag.Min), int32(MaxSimul))))
+	set("Options.Tag.Min", int(Clamp(int32(c.Options.Tag.Min), 2, int32(MaxSimul))))
+	set("Video.Framerate", int(Clamp(int32(c.Video.Framerate), 1, 840)))
+	set("Netplay.ListenPort", int(Clamp(int32(c.Netplay.ListenPort), 1, 65535)))
 
 	// Options that determine allocation sizes should not be negative
 	// Update: AfterImageMax no longer does, but it's good to keep it in mind
 	//if c.Config.AfterImageMax < 0 {
-	///	c.SetValueUpdate("Config.AfterImageMax", 0)
+	///	set("Config.AfterImageMax", 0)
 	//}
 
 	path := strings.TrimSpace(c.Config.ScreenshotFolder)
@@ -435,25 +441,25 @@ func (c *Config) normalize() {
 			path += "/"
 		}
 		if path != c.Config.ScreenshotFolder {
-			c.SetValueUpdate("Config.ScreenshotFolder", path)
+			set("Config.ScreenshotFolder", path)
 		}
 	}
 
 	switch c.Sound.SampleRate {
 	case 22050, 44100, 48000:
 	default:
-		c.SetValueUpdate("Sound.SampleRate", 44100)
+		set("Sound.SampleRate", 44100)
 	}
 
-	c.SetValueUpdate("Input.SOCDResolution", int(Clamp(int32(c.Input.SOCDResolution), 0, 4)))
-	c.SetValueUpdate("Input.UiRepeatDelay", int(Max(int32(c.Input.UiRepeatDelay), 0)))
-	c.SetValueUpdate("Input.UiRepeatRate", int(Max(int32(c.Input.UiRepeatRate), 1)))
-	c.SetValueUpdate("Sound.AudioResampleQuality", Clamp(c.Sound.AudioResampleQuality, 1, 16))
-	c.SetValueUpdate("Sound.MaxBGMVolume", int(Clamp(int32(c.Sound.MaxBGMVolume), 100, 250)))
-	c.SetValueUpdate("Sound.PanningRange", Clamp(c.Sound.PanningRange, 0, 100))
-	c.SetValueUpdate("Sound.PauseMasterVolume", int(Clamp(int32(c.Sound.PauseMasterVolume), 0, 100)))
-	c.SetValueUpdate("Sound.FocusLossVolume", int(Clamp(int32(c.Sound.FocusLossVolume), 0, 100)))
-	c.SetValueUpdate("Sound.WavChannels", Clamp(c.Sound.WavChannels, 1, 256))
+	set("Input.SOCDResolution", int(Clamp(int32(c.Input.SOCDResolution), 0, 4)))
+	set("Input.UiRepeatDelay", int(Max(int32(c.Input.UiRepeatDelay), 0)))
+	set("Input.UiRepeatRate", int(Max(int32(c.Input.UiRepeatRate), 1)))
+	set("Sound.AudioResampleQuality", Clamp(c.Sound.AudioResampleQuality, 1, 16))
+	set("Sound.MaxBGMVolume", int(Clamp(int32(c.Sound.MaxBGMVolume), 100, 250)))
+	set("Sound.PanningRange", Clamp(c.Sound.PanningRange, 0, 100))
+	set("Sound.PauseMasterVolume", int(Clamp(int32(c.Sound.PauseMasterVolume), 0, 100)))
+	set("Sound.FocusLossVolume", int(Clamp(int32(c.Sound.FocusLossVolume), 0, 100)))
+	set("Sound.WavChannels", Clamp(c.Sound.WavChannels, 1, 256))
 
 	renderer, _ := selectRenderer(c.Video.RenderMode)
 	renderMode := renderer.GetName()
@@ -461,20 +467,20 @@ func (c *Config) normalize() {
 		renderMode = "Vulkan 1.3"
 	}
 	if c.Video.RenderMode != renderMode {
-		c.SetValueUpdate("Video.RenderMode", renderMode)
+		set("Video.RenderMode", renderMode)
 	}
 
 	switch c.Video.MSAA {
 	case 0, 2, 4, 6, 8, 16, 32:
 	default:
-		c.SetValueUpdate("Video.MSAA", 0)
+		set("Video.MSAA", 0)
 	}
 
 	if c.Video.ImageSuballocThresholdKB < 0 {
-		c.SetValueUpdate("Video.ImageSuballocThresholdKB", 256)
+		set("Video.ImageSuballocThresholdKB", 256)
 	}
 	if c.Video.ImageSuballocBlockSizeMB < 1 {
-		c.SetValueUpdate("Video.ImageSuballocBlockSizeMB", 64)
+		set("Video.ImageSuballocBlockSizeMB", 64)
 	}
 }
 

@@ -117,6 +117,9 @@ func (sk ShortcutKey) Test(k Key, m ModifierKey) bool {
 }
 
 func OnKeyReleased(key Key, mk ModifierKey) {
+	if key == KeyEscape {
+		sys.netMenuEscapeHeld = false
+	}
 	if key != KeyUnknown {
 		sys.keyState[key] = false
 		// sys.keyInput is used as an edge-triggered "new key press" signal for Lua (getKey()).
@@ -143,8 +146,12 @@ func OnKeyPressed(key Key, mk ModifierKey) {
 		sys.keyState[key] = true
 		sys.keyInput = key
 		escPressed := key == KeyEscape && (mk&ModCtrlAlt) == 0
-		sys.esc = sys.esc || escPressed
-		sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
+		if escPressed && sys.gameRunning && sys.inputConnection() != nil {
+			sys.netMenuEscape, sys.netMenuEscapeHeld = true, true
+		} else {
+			sys.esc = sys.esc || escPressed
+			sys.escPending = sys.escPending || (sys.gameRunning && escPressed)
+		}
 		for k, v := range sys.shortcutScripts {
 			if !sys.motif.me.active && sys.netConnection == nil && (sys.replayFile == nil || !v.DebugKey) &&
 				//(!sys.paused || sys.frameStepFlag || v.Pause) &&
@@ -739,8 +746,7 @@ func (vc VirtualControl) analog() bool {
 	return vc >= 0 && vc < VC_Count && virtualButtonBit[vc] < 0
 }
 
-// One frame of virtual controller state. It is exactly what netplay and
-// replays store per player: 14 button bits and 6 axes in 8 bytes.
+// Netplay and replays store eight bytes per player, for a controller or a menu frame.
 type VirtualFrame struct {
 	Buttons uint16
 	Axes    [6]int8 // LS_X, LS_Y, RS_X, RS_Y, LT, RT. Triggers stay in 0..127.
@@ -748,8 +754,76 @@ type VirtualFrame struct {
 
 const virtualFrameBytes = 8
 
-// Bits 14 and 15 are never set, so delay netplay can keep -1 as its end marker.
-const virtualFrameButtonMask = 0x3fff
+const virtualFrameButtonMask = 1<<14 - 1
+const virtualFrameMenu = 1 << 14 // Bit 15 stays clear for delay netplay's end marker.
+
+func (f VirtualFrame) isMenu() bool { return f.Buttons&virtualFrameMenu != 0 }
+
+// Menu payloads must not pass through axis normalization or Controller Setup.
+func (f VirtualFrame) controller() VirtualFrame {
+	if f.isMenu() {
+		return VirtualFrame{}
+	}
+	return f
+}
+
+// A menu frame carries menu input that no controller button can, such as Esc
+// in netplay. Only menuFrame knows its layout:
+//
+//	Buttons bit 14  marks a menu frame, see virtualFrameMenu
+//	Buttons bit 12  a Button Mapping capture finished
+//	Buttons bit 11  Esc
+const (
+	menuFrameCapture = 1 << 12
+	menuFrameEscape  = 1 << 11
+)
+
+type menuFrame struct {
+	escape  bool
+	capture bool
+}
+
+func (m menuFrame) encode() VirtualFrame {
+	f := VirtualFrame{Buttons: virtualFrameMenu}
+	if m.escape {
+		f.Buttons |= menuFrameEscape
+	}
+	if m.capture {
+		f.Buttons |= menuFrameCapture
+	}
+	return f
+}
+
+func decodeMenuFrame(f VirtualFrame) menuFrame {
+	if !f.isMenu() {
+		return menuFrame{}
+	}
+	return menuFrame{escape: f.Buttons&menuFrameEscape != 0, capture: f.Buttons&menuFrameCapture != 0}
+}
+
+// Menu input of a netplay or replay channel, read from its menu frames. It
+// follows the synchronized UI clock and is copied with rollback state.
+type MenuChannel struct {
+	escape      int32 // frames Esc has been held
+	escapeTaken bool  // a menu already used this press, see the esc Lua function
+	capture     bool  // a Button Mapping capture finished this frame
+	stepped     bool
+	frame       int32
+}
+
+func (c *MenuChannel) step(f VirtualFrame) {
+	if c.stepped && c.frame == sys.uiFrameCounter {
+		return
+	}
+	c.stepped, c.frame = true, sys.uiFrameCounter
+	in := decodeMenuFrame(f)
+	c.escapeTaken, c.capture = false, in.capture
+	if in.escape {
+		c.escape++
+	} else {
+		c.escape = 0
+	}
+}
 
 func (f VirtualFrame) encode() []byte {
 	b := make([]byte, virtualFrameBytes)
@@ -765,18 +839,20 @@ func decodeVirtualFrame(b []byte) VirtualFrame {
 	if len(b) < virtualFrameBytes {
 		return f
 	}
-	f.Buttons = (uint16(b[0]) | uint16(b[1])<<8) & virtualFrameButtonMask
+	f.Buttons = (uint16(b[0]) | uint16(b[1])<<8) & (1<<15 - 1)
 	for i := range f.Axes {
 		f.Axes[i] = int8(b[2+i])
 	}
 	// A trigger never rests below zero.
-	f.Axes[4], f.Axes[5] = int8(Max(int32(f.Axes[4]), 0)), int8(Max(int32(f.Axes[5]), 0))
+	if !f.isMenu() {
+		f.Axes[4], f.Axes[5] = int8(Max(int32(f.Axes[4]), 0)), int8(Max(int32(f.Axes[5]), 0))
+	}
 	return f
 }
 
 // How far a control is pushed, from 0 to 127.
 func (f VirtualFrame) level(vc VirtualControl) int32 {
-	if vc < 0 || vc >= VC_Count {
+	if f.isMenu() || vc < 0 || vc >= VC_Count {
 		return 0
 	}
 	if bit := virtualButtonBit[vc]; bit >= 0 {
@@ -950,8 +1026,9 @@ func (cs *ControllerSetup) project(f VirtualFrame) [16]bool {
 }
 
 // The Controller Setup of a netplay or replay channel, as rows and as bindings.
+// It is never changed in place, so rollback snapshots can share it.
 type SessionSetup struct {
-	definition *ControllerSetupProperties
+	initial, definition *ControllerSetupProperties
 	controls   ControllerSetup
 }
 
@@ -961,7 +1038,7 @@ func newSessionSetup(p *ControllerSetupProperties) SessionSetup {
 		definition = *p
 		definition.Buttons = maps.Clone(p.Buttons)
 	}
-	return SessionSetup{definition: &definition, controls: definition.setup()}
+	return SessionSetup{initial: &definition, definition: &definition, controls: definition.setup()}
 }
 
 // Runtime copy of the input sections of config.ini.
@@ -1413,6 +1490,7 @@ type InputBuffer struct {
 	ab, bb, cb, xb, yb, zb, sb, db, wb, mb, lb, rb int32
 	Bp, Dp, Fp, Up, Lp, Rp, Np             int32 // Previous state of buffer
 	vb                                     [VC_Count]int32 // frames each virtual control is held, for motif actions
+	vf                                             VirtualFrame
 	ap, bp, cp, xp, yp, zp, sp, dp, wp, mp, lp, rp int32
 }
 
@@ -1438,6 +1516,7 @@ func (ib *InputBuffer) Reset() {
 
 // Counts how long each virtual control is held. Motif actions read these.
 func (ib *InputBuffer) updateVirtualTime(f VirtualFrame) {
+	ib.vf = f
 	for vc := range ib.vb {
 		if f.held(VirtualControl(vc)) {
 			ib.vb[vc]++
@@ -3602,6 +3681,10 @@ func (cl *CommandList) InputUpdate(char *Char, controller int) bool {
 		} else {
 			frame, setup = sys.participantFrame(channel), sys.participantSetup(channel)
 		}
+		if char == nil && sys.synchronizedInput() && channel >= 0 && channel < len(sys.menuChannels) {
+			sys.menuChannels[channel].step(frame)
+		}
+		frame = frame.controller()
 		buttons = setup.project(frame)
 		// Button assist keeps its state in the buffer, so rollback restores it.
 		if char != nil && sys.cfg.Input.ButtonAssist {

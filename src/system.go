@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"maps"
 	"unsafe"
 
 	//"log"
@@ -143,6 +144,8 @@ type SystemStateVars struct {
 	uiRepeatToken       string
 	uiRepeatController  int
 	uiRepeatFrame       int32
+	menuChannels        [MaxPlayerNo]MenuChannel
+	sessionSetups       map[int]SessionSetup // Controller Setup of each netplay or replay channel
 
 	endMatch       bool
 	noCharSoundFlg bool
@@ -271,9 +274,11 @@ type System struct {
 	netConnection       *NetConnection
 	replayFile          *ReplayFile
 	inputCfg            InputConfig
-	sessionSetups       map[int]SessionSetup // Controller Setup of each netplay or replay channel
 	inputs              InputAssignment
 	textInput           TextInput
+	netMenuEscape       bool
+	netMenuEscapeHeld   bool
+	netMenuCapture      bool
 	runSide             int32
 	loader              Loader
 	chars               [MaxPlayerNo][]*Char
@@ -1578,7 +1583,30 @@ func (s *System) participantFrame(n int) VirtualFrame {
 	for _, id := range s.inputs.participantDevices(n) {
 		f = f.merge(s.deviceFrame(s.inputs.device(id)))
 	}
+	nc := s.inputConnection()
+	if n != 0 || nc == nil {
+		return f
+	}
+	if s.gameRunning && (s.netMenuEscape || s.netMenuEscapeHeld || s.netMenuCapture) {
+		m := menuFrame{escape: s.netMenuEscape || s.netMenuEscapeHeld, capture: s.netMenuCapture}
+		s.netMenuEscape, s.netMenuCapture = false, false
+		return m.encode()
+	}
 	return f
+}
+
+// Whether inputs come from a netplay connection or a replay, the same on every peer.
+func (s *System) synchronizedInput() bool {
+	nc := s.inputConnection()
+	return s.replayFile != nil || nc != nil && nc.IsConnected()
+}
+
+func (s *System) menuEscape(slot int) int32 {
+	channel := s.uiControllerKey(slot)
+	if channel >= 0 && channel < len(s.menuChannels) {
+		return s.menuChannels[channel].escape
+	}
+	return 0
 }
 
 // Controller Setup ID of participant n. Shared devices use the primary device's setup.
@@ -1605,6 +1633,39 @@ func (s *System) channelSetup(channel int) *ControllerSetup {
 		return &setup.controls
 	}
 	return s.participantSetup(0)
+}
+
+func (s *System) saveSessionSetup(player int, definition *ControllerSetupProperties) bool {
+	if !s.netplay() || !s.motif.me.active || s.motif.me.state != ME_Open ||
+		s.inRollback() || player != s.menuPlayer || player < 1 || player > len(s.inputRemap) {
+		return false
+	}
+	channel := s.inputRemap[player-1]
+	setup, ok := s.sessionSetups[channel]
+	if !ok {
+		return false
+	}
+	definition.Name = setup.definition.Name
+	setup.definition, setup.controls = definition, definition.setup()
+	s.sessionSetups = maps.Clone(s.sessionSetups)
+	s.sessionSetups[channel] = setup
+	for slot, cl := range s.commandLists {
+		if cl != nil && s.uiControllerKey(slot) == channel {
+			cl.BufReset()
+		}
+	}
+	for _, chars := range s.chars {
+		for _, c := range chars {
+			if c == nil || c.scf(SCF_disabled) || c.controller < 0 || s.uiControllerKey(c.controller) != channel {
+				continue
+			}
+			for i := range c.cmd {
+				c.cmd[i].BufReset()
+			}
+		}
+	}
+	s.uiResetTokenGuard()
+	return true
 }
 
 // Keep a closing press out of the next screen and gameplay.
@@ -1671,7 +1732,11 @@ func (s *System) attachGamepad(joy int) {
 		revive.Joy, revive.GUID, revive.Connected = joy, guid, true
 		revive.Name = input.GetJoystickName(joy)
 		revive.held, revive.pressed = [VC_Count]int32{}, [VC_Count]bool{}
-		s.clearCommandBuffers()
+		// Reconnection is local. Netplay and replay buffers must only change
+		// when their synchronized inputs are consumed.
+		if !s.synchronizedInput() {
+			s.clearCommandBuffers()
+		}
 		return
 	}
 	device := s.inputs.addDevice(&InputDevice{Joy: joy, Name: input.GetJoystickName(joy), GUID: guid})
@@ -2038,7 +2103,11 @@ func (s *System) actionTime(action []string, controllerIdx int) int32 {
 	}
 	for _, token := range action {
 		if key, ok := actionKey(token); ok {
-			if s.localSlot(controllerIdx) && s.keyHeld[key] > 0 {
+			if key == KeyEscape && s.synchronizedInput() && s.gameRunning {
+				if held := s.menuEscape(controllerIdx); held > 0 {
+					return held
+				}
+			} else if s.localSlot(controllerIdx) && s.keyHeld[key] > 0 {
 				return s.keyHeld[key]
 			}
 		} else if button, ok := actionButton(token); ok {
@@ -2076,7 +2145,7 @@ func (s *System) menuAction(action []string, controllerIdx int) bool {
 			}
 			// A keyboard key is shared by every local slot, so it fires once for all of them.
 			guardKey := controllerKey
-			if _, ok := actionKey(token); ok {
+			if _, ok := actionKey(token); ok && !(s.synchronizedInput() && s.gameRunning) {
 				guardKey = -1
 			}
 			if s.uiConsumeTokenThisFrame(guardKey, token) {
@@ -2339,7 +2408,22 @@ func (s *System) usesRollbackMatch() bool {
 }
 
 func (s *System) escExit() bool {
-	return s.esc && (!s.sel.gameParams.PauseMenu || !s.cfg.Config.EscOpensMenu ||
+	// Esc ends a replay. Pause menus recorded in it still open from the replay's own inputs
+	if s.esc && s.replayFile != nil {
+		return true
+	}
+	escape := s.esc
+	// Netplay Esc travels in the input stream instead of setting the local
+	// escape flag. Apply the same exit policy to either player's press.
+	if !escape && s.synchronizedInput() {
+		for i := range s.commandLists {
+			if s.menuEscape(i) == 1 {
+				escape = true
+				break
+			}
+		}
+	}
+	return escape && (!s.sel.gameParams.PauseMenu || !s.cfg.Config.EscOpensMenu ||
 		(s.motif.AttractMode.Enabled && s.credits == 0))
 }
 
@@ -4681,6 +4765,7 @@ func (s *System) keepMatchRunning() bool {
 // and at the start of any round where a new character tags in for turns mode
 func (s *System) runMatch() (reload bool) {
 	// Reset variables
+	s.netMenuEscape, s.netMenuEscapeHeld, s.netMenuCapture = false, false, false
 	s.matchTime = 0
 	s.fightLoopEnd = false
 	s.aiInput = [len(s.aiInput)]AiInput{}

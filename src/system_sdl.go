@@ -486,6 +486,7 @@ func (w *Window) pollEvents() {
 				w.focused = true
 			case sdl.WINDOWEVENT_FOCUS_LOST:
 				w.focused = false
+				sys.netMenuEscapeHeld = false
 			}
 		case sdl.TextInputEvent:
 			if sys.textInput.active {

@@ -1248,7 +1248,8 @@ func (rf *ReplayFile) Update() bool {
 	if rf.file == nil {
 		sys.esc = true
 	} else {
-		if sys.oldNextAddTime > 0 {
+		// The pause menu also pauses the match, but its frames were recorded.
+		if sys.oldNextAddTime > 0 || sys.motif.me.active {
 			rf.frames = [REPLAY_NUM_INPUTS]VirtualFrame{}
 			if rf.atReplaySyncMarker() {
 				return !sys.gameEnd
@@ -1579,7 +1580,8 @@ func applySyncSettings(cfg *Config, settings []SyncSetting, strict bool) error {
 			log.Printf("Ignoring sync setting %s during best-effort apply: %v", s.Path, err)
 		}
 	}
-	cfg.normalize()
+	// Normalization must not copy temporary host values into the INI.
+	cfg.normalize(false)
 	sys.onSyncConfigChanged()
 	return nil
 }
@@ -1631,6 +1633,7 @@ func (s *System) beginSessionOverride(source string, strict, host []SyncSetting,
 		SyncVersion:        syncConfigVersion,
 		ContentFingerprint: contentFingerprint,
 	}
+	s.menuChannels = [MaxPlayerNo]MenuChannel{}
 	log.Printf("%s sync config override started: strict=%d host=%d fingerprint=%q",
 		strings.Title(source), len(strict), len(host), contentFingerprint)
 	logSyncVerification(strings.Title(source)+" host override verification", host, appliedHost)
@@ -1669,8 +1672,11 @@ func (s *System) currentReplayHeader() *ReplayHeader {
 	}
 }
 
-// Maps the network channels to the setups both peers sent. Channels can change between matches.
+// Start with the exchanged setups and keep pause-menu edits between matches.
 func (s *System) useSessionSetups(nc *NetConnection) {
+	if s.sessionSetups != nil {
+		return
+	}
 	host, guest := nc.locIn, nc.remIn
 	if !nc.host {
 		host, guest = guest, host

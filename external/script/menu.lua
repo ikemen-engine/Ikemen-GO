@@ -191,7 +191,16 @@ menu.t_itemname = {
 	['menuinput'] = function(t, item, cursorPosY, moveTxt, sec, bg)
 		if getAction(-1, sec.menu.done.action) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			options.f_pauseSetup(bg)
+			options.f_pauseSetup(bg, menu.player)
+			menu.itemname = 'inputconfig'
+		end
+		return true
+	end,
+	-- Button Mapping of the player who paused
+	['buttonmapping'] = function(t, item, cursorPosY, moveTxt, sec, bg)
+		if getAction(-1, sec.menu.done.action) then
+			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
+			options.f_pauseMapping(bg, menu.player)
 			menu.itemname = 'inputconfig'
 		end
 		return true
@@ -568,6 +577,7 @@ menu.movelistChar = 1
 -- player: 1-based player who opened the menu. The title can show it with %s.
 function menu.f_init(player, id)
 	esc(false)
+	menu.player = player or 1
 	main.pauseMenuActive = true
 	if id == nil or id == '' then
 		id = f_pauseMenuIdFromKey(f_pauseMenuKey(gameMode()))
@@ -596,6 +606,24 @@ function menu.f_init(player, id)
 		bgReset(motif.pausebgdef.pausebgdef.BGDef)
 		menu.currentMenu = {menu.menu.loop, menu.menu.loop}
 		menu.currentMenuId = 'menu'
+	end
+	if netPlay() then
+		-- Only shared match actions, session setup edits and Button Mapping are available online.
+		local allowed = {back = true, commandlist = true, menuinput = true, buttonmapping = true, characterchange = true,
+			rematch = true, orderselect = true, stageselect = true, exit = true}
+		local root = menu[menu.currentMenuId]
+		local entry = menu.t_menuIndex[menu.currentMenuId]
+		local online = {title = root.title, item = 1, cursorPosY = 1, moveTxt = 0, items = {}, submenu = {}}
+		for _, row in ipairs(root.items) do
+			if allowed[row.itemname] then
+				table.insert(online.items, row)
+			end
+		end
+		if #online.items == 0 then
+			table.insert(online.items, {itemname = 'back', displayname = entry.sec.menu.itemname.back or 'Continue'})
+		end
+		local loop = menu.f_createMenu(online, entry.sec, entry.bg, true)
+		menu.currentMenu = {loop, loop}
 	end
 end
 
@@ -641,8 +669,11 @@ function menu.f_run()
 	-- Input configuration uses the active pause background and the overlay above.
 	if menu.itemname == 'inputconfig' then
 		if options.inputContext == nil or not options.f_inputConfigFrame(options.inputContext) then
+			-- Online, only a Button Mapping edit is saved, see applyEditor.
+			if options.inputContext ~= nil and (options.inputContext.sessionPlayer == nil or options.modified) then
+				options.f_saveCfg(false)
+			end
 			options.inputContext = nil
-			options.f_saveCfg(false)
 			menu.itemname = ''
 		end
 	--Command List
