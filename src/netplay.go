@@ -973,7 +973,7 @@ func (nc *NetConnection) update(recordReplay bool) bool {
 
 				// Break loop if we have reached the frame that both buffers have sent
 				if nc.time >= foo {
-					if sys.esc || !sys.await(sys.gameRenderSpeed()) || nc.st != NS_Playing {
+					if sys.esc || !sys.await(sys.gameRenderSpeed(), false) || nc.st != NS_Playing {
 						break
 					}
 					// TCP can remain established while packets stop arriving.
