@@ -1359,6 +1359,31 @@ options.t_itemname = {
 	end,
 }
 
+-- Rows that show a value but open a list or text prompt instead of changing it.
+options.t_hintDefault = {
+	aspectratio = true,
+	renderer = true,
+	resolution = true,
+	shaders = true,
+	portchange = true,
+	rollbackport = true,
+}
+
+-- Picks the hint for an Options row.
+function options.f_hintContext(row)
+	if row.hintContext ~= nil then
+		return row.hintContext
+	end
+	local name = row.itemname
+	if options.t_hintDefault[name] then
+		return 'default'
+	end
+	if options.t_vardisplay[name] ~= nil then
+		return 'adjust'
+	end
+	return 'default'
+end
+
 -- Shared menu loop logic
 function options.f_createMenu(tbl, bool_main)
 	local cursorPosY, moveTxt, item = 1, 0, 1
@@ -1401,8 +1426,16 @@ function options.f_createMenu(tbl, bool_main)
 			if tbl.reset and context == nil then
 				tbl.reset = false
 			else
+				local hintContext = options.f_hintContext(t[item])
+				if context ~= nil and context.capture ~= nil then
+					hintContext = 'capture'
+				end
+				local menuBackground = motif.optionbgdef
+				if context ~= nil and context.background ~= nil then
+					menuBackground = context.background
+				end
 				main.f_menuCommonDraw(t, item, cursorPosY, moveTxt, motif.option_info,
-					context and context.background or motif.optionbgdef, context ~= nil)
+					menuBackground, context ~= nil, {hintContext = hintContext})
 			end
 			-- While fading, ignore normal option-menu inputs, but still allow ESC / menu-cancel to skip the fade.
 			if context ~= nil and (context.capture ~= nil or context.popup ~= nil or context.skipInput) then
@@ -1922,10 +1955,10 @@ local function findInputItem(tbl, name)
 	end
 end
 
-local function inputPopup(context, text, getValue, onClose)
+local function inputPopup(context, text, getValue, onClose, hintContext)
 	local sec = motif.option_info
 	context.popup = main.f_warning(text, sec, context.background, nil, sec.title.TextSpriteData, nil,
-		sec.cancel.snd, sec.cursor.done.snd, getValue, true)
+		sec.cancel.snd, sec.cursor.done.snd, getValue, true, hintContext)
 	context.onClose = onClose
 end
 
@@ -1938,11 +1971,39 @@ local function deviceById(id)
 end
 
 -- Value shown for a binding.
-local function bindingDisplay(token)
+local function bindingDisplay(token, kind)
 	if token == nil or token == '' or token == '-' then
 		return motif.option_info.menu.valuename.nokey
 	end
-	return token
+	if kind == 'keyboard' then
+		return '<key:' .. token .. '>'
+	end
+	-- Raw joystick inputs have no artwork.
+	if kind == 'raw' then
+		return token
+	end
+	return '<virtual:' .. token .. '>'
+end
+
+-- Device whose glyphs an editor shows. Options read every device, so the Button
+-- Setup editor there follows the device that last operated the menu.
+local function shownDevice(root)
+	if root.kind == 'setup' and root.readDevice == 0 then
+		return deviceById(inputGetMenuDevice()) or root.device
+	end
+	return root.device
+end
+
+-- Value of a Button Setup row. A keyboard also shows the key its Controller Mapping
+-- gives the virtual control, if it has one.
+local function setupDisplay(device, control)
+	local value = bindingDisplay(control, 'virtual')
+	local mapping = device.kind == 'keyboard' and inputGetMapping(device.id) or {}
+	local key = mapping[control]
+	if key == nil or key == '-' then
+		return value
+	end
+	return motif.option_info.menu.valuename.setupkey:format(value, bindingDisplay(key, 'keyboard'))
 end
 
 -- Refreshes the values shown in an editor and links its submenus to the root.
@@ -1953,25 +2014,43 @@ local function updateEditor(tbl, root)
 	tbl.inputContext = root.inputContext
 	tbl.device = root.device
 	tbl.inputMenu = root
+	local shown = root.device and shownDevice(root)
+	root.shownId = shown and shown.id
 	for _, row in ipairs(tbl.items) do
 		local field = row.itemname
+		row.glyphDevice = root.shownId
+		row.hintContext = 'editor'
 		if root.kind == 'mapping' and t_mappingRows[field] then
-			row.vardisplay = bindingDisplay(root.draft[t_mappingRows[field]])
+			row.hintContext = 'binding'
+			row.vardisplay = bindingDisplay(root.draft[t_mappingRows[field]], root.device.raw and 'raw' or root.device.kind)
 		elseif root.kind == 'setup' and t_setupRows[field] then
-			row.vardisplay = bindingDisplay(root.draft[field])
+			row.hintContext = 'binding'
+			row.vardisplay = setupDisplay(shown, root.draft[field])
 		elseif field == 'activesetup' then
+			row.hintContext = 'setup'
 			row.vardisplay = root.draft.name
 		elseif field == 'device' then
+			row.hintContext = 'device'
 			row.vardisplay = root.device.name
 		elseif field == 'vibration' and root.device ~= nil then
 			local device = deviceById(root.device.id)
 			if device ~= nil and device.hasRumble then
+				row.hintContext = 'adjust'
 				row.vardisplay = options.f_boolDisplay(device.rumble)
 			else
 				row.vardisplay = motif.option_info.menu.valuename.nokey
 			end
 		elseif field == 'preferredside' and root.device ~= nil then
+			row.hintContext = 'adjust'
 			row.vardisplay = options.f_preferredSideDisplay(root.device.id)
+		elseif field == 'glyphs' and root.device ~= nil then
+			for _, set in ipairs(inputGetGlyphPacks(root.device.id)) do
+				if set.selected then
+					local valuename = motif.option_info.menu.valuename
+					row.vardisplay = set.automatic and valuename.glyphauto or (valuename.glyphpack:gsub('%%(%a+)', {id = set.id, name = set.name}))
+					break
+				end
+			end
 		end
 	end
 	for _, sub in pairs(tbl.submenu) do
@@ -2083,9 +2162,14 @@ function options.f_inputConfigFrame(context)
 		end
 	end
 	-- An unplugged gamepad switches the mapping editor to another device.
-	local device = context.current and context.current.inputMenu and context.current.inputMenu.kind == 'mapping' and context.current.device
+	local root = context.current and context.current.inputMenu
+	local device = root and root.kind == 'mapping' and root.device
 	if device and device.kind == 'gamepad' and not getJoystickPresent(device.joy) then
 		context.closed = not options.f_editMapping(nil, context)
+	end
+	-- Setup values switch to the glyphs of another device as soon as it operates the menu.
+	if root and root.kind == 'setup' and root.shownId ~= shownDevice(root).id then
+		updateEditor(root, root)
 	end
 	if not context.closed and context.current ~= nil then
 		drew = true
@@ -2405,6 +2489,50 @@ options.t_itemname.preferredside = function(t, item)
 		if inputSetPreferredSide(root.device.id, (current + step) % 3) then
 			updateEditor(root, root)
 		end
+	end
+	return true
+end
+
+-- Opens the list of glyph packs this device can use, with the cursor on the current one.
+options.t_itemname.glyphs = function(t, item)
+	if getAction(-1, motif.option_info.menu.done.action) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		local root, list, valuename = t.inputMenu, t.submenu.glyphs, motif.option_info.menu.valuename
+		while list.items[1].pack ~= nil do
+			table.remove(list.items, 1)
+		end
+		for i, set in ipairs(inputGetGlyphPacks(root.device.id)) do
+			table.insert(list.items, i, {
+				itemname = 'glyphpack',
+				displayname = set.automatic and valuename.glyphauto or (valuename.glyphpack:gsub('%%(%a+)', {id = set.id, name = set.name})),
+				paramname = t.items[item].paramname .. '_' .. (set.automatic and 'auto' or set.id),
+				vardisplay = '',
+				selected = set.selected,
+				pack = set.id,
+			})
+			if set.selected then
+				list.inputFocus = i
+			end
+		end
+		updateEditor(list, root)
+		table.insert(t.inputContext.parents, t)
+		t.inputContext.current = list
+	end
+	return true
+end
+
+-- The pack under the cursor is used and saved straight away, so glyphs change while moving.
+options.t_itemname.glyphpack = function(t, item)
+	local row, root = t.items[item], t.inputMenu
+	if not row.selected and inputSetGlyphPack(root.device.id, row.pack) then
+		for _, v in ipairs(t.items) do
+			v.selected = v == row
+		end
+		updateEditor(root, root)
+	end
+	if getAction(-1, motif.option_info.menu.done.action) then
+		sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
+		return false
 	end
 	return true
 end

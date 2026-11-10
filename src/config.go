@@ -288,6 +288,7 @@ type Config struct {
 	} `ini:"Netplay"`
 	Input struct {
 		ButtonSetup map[string]string `ini:"ButtonSetup"`
+		ControllerGlyphs map[string]string `ini:"ControllerGlyphs"`
 		PreferredSide map[string]string `ini:"PreferredSide"`
 		ControllerRumble map[string]string `ini:"ControllerRumble"`
 		ButtonAssist               bool    `ini:"ButtonAssist" sync:"host"`
@@ -696,6 +697,22 @@ func (c *Config) devicePreference(device *InputDevice, group string, values map[
 		}
 	}
 	return value
+}
+
+func (c *Config) controllerGlyphs(device *InputDevice) string {
+	chosen := strings.ToLower(c.devicePreference(device, "ControllerGlyphs", c.Input.ControllerGlyphs))
+	if chosen == "auto" {
+		return ""
+	}
+	return chosen
+}
+
+// Remembers the glyph pack chosen for a device. An empty pack detects it from the device again.
+func (c *Config) rememberControllerGlyphs(device *InputDevice, set string) error {
+	if set == "" {
+		set = "auto"
+	}
+	return c.rememberPreference("ControllerGlyphs", device.preferenceKey(), set, "")
 }
 
 // Team side (1 or 2) a device plays on when side select is skipped, 0 for automatic.
