@@ -4295,7 +4295,7 @@ func (ro *FightScreenRound) drawFade() {
 	} else if ro.fadeIn.isActive() {
 		ro.fadeIn.drawFullScreen()
 	} else if sys.clsnDisplay && sys.cfg.Debug.ClsnDarken {
-		sys.withFullViewport(func() { ro.fadeIn.drawRect(sys.scrrect, 0, 0) })
+		sys.withFullViewport(sys.motif.Bezel.Fade, func() { ro.fadeIn.drawRect(sys.scrrect, 0, 0) })
 	}
 
 	if ro.shutterTimer > 0 {
@@ -4327,7 +4327,7 @@ func (ro *FightScreenRound) drawFade() {
 				cover = t * half / ro.shutter_time
 			}
 		}
-		sys.withFullViewport(func() {
+		sys.withFullViewport(sys.motif.Bezel.Fade, func() {
 			rect[3] = cover
 			ro.fadeIn.drawRect(rect, ro.shutter_col, 255)
 			rect[1] = sys.scrrect[3] - rect[3]

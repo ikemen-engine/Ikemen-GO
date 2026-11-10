@@ -938,9 +938,10 @@ func (s *System) withAspectState(st drawAspectState, fn func()) {
 }
 
 // Run fn drawing over the whole visible area instead of only the fight or menus.
-func (s *System) withFullViewport(fn func()) {
+// bezel also covers any bezel art.
+func (s *System) withFullViewport(bezel bool, fn func()) {
 	st := s.captureAspectState()
-	st.viewport = s.compositionViewport()
+	st.viewport = s.compositionViewport(bezel)
 	s.withAspectState(st, fn)
 }
 
@@ -1009,9 +1010,11 @@ func (s *System) fightViewport() [4]int32 {
 	return s.aspectViewport(s.getFightAspect())
 }
 
-// The area covered by the fight and menus together. Fades fill it, and the final
-// image is clipped to it so the black bars stay black.
-func (s *System) compositionViewport() [4]int32 {
+// Fades and the final output cover the fight, menus and any bezel art.
+func (s *System) compositionViewport(bezel bool) [4]int32 {
+	if bezel && s.motif.bezelActive() {
+		return s.renderTargetRect
+	}
 	motif := s.aspectViewport(s.getMotifAspect())
 	if !s.middleOfMatch() && !s.postMatchFlg {
 		return motif
@@ -1104,8 +1107,9 @@ func (s *System) keepAlive() {
 	s.window.pollEvents()
 }
 
-func (s *System) await(fps int) bool {
-	if !s.frameSkip && !s.window.renderingPaused {
+func (s *System) await(fps int, present bool) bool {
+	// Network waits still need pacing and events, but have no newly drawn frame to present.
+	if present && !s.frameSkip && !s.window.renderingPaused {
 		// Render the finished frame
 		gfx.EndFrame()
 		if gfx.GetName()[:6] == "OpenGL" {
@@ -1135,7 +1139,21 @@ func (s *System) await(fps int) bool {
 
 		// Begin the next frame after events have been processed. Do not clear
 		// the screen if network input is present.
-		defer s.beginFrame(sys.netConnection == nil)
+		defer func() {
+			s.beginFrame(sys.netConnection == nil)
+			// Menu bezels go under everything drawn in the frame, so they stay on screen when a match starts or ends.
+			if s.motif.Bezel.Menus && s.motif.bezelActive() {
+				s.withFullViewport(true, func() { FillRect(s.scrrect, 0, [2]int32{255, 0}, nil) })
+				s.motif.drawBezel()
+				// Keep the fight or menu area black, so transparent art there doesn't show the bezel.
+				st := s.captureAspectState()
+				st.viewport = s.aspectViewport(s.getMotifAspect())
+				if s.middleOfMatch() || s.postMatchFlg {
+					st.viewport = s.fightViewport()
+				}
+				s.withAspectState(st, func() { FillRect(s.scrrect, 0, [2]int32{255, 0}, nil) })
+			}
+		}()
 	}
 
 	s.runMainThreadTask()
@@ -1225,11 +1243,13 @@ func (s *System) renderFrame() {
 
 	x, y, scl := s.cam.Pos[0], s.cam.Pos[1], s.cam.Scale/s.cam.BaseScale()
 	dx, dy, dscl := s.zoom.computeCamera(x, y, scl)
-	if s.shouldComposeFullResolution() {
-		// Clear unused areas to black first (netplay can keep the previous frame).
-		s.withFullViewport(func() {
-			FillRect(s.scrrect, 0, [2]int32{255, 0}, nil)
-		})
+	// Menu bezels are already drawn when the frame begins.
+	if !s.motif.Bezel.Menus || !s.motif.bezelActive() {
+		if s.shouldComposeFullResolution() || s.motif.bezelActive() {
+			// Clear unused areas to black first (netplay can keep the previous frame).
+			s.withFullViewport(true, func() { FillRect(s.scrrect, 0, [2]int32{255, 0}, nil) })
+		}
+		s.motif.drawBezel()
 	}
 	s.draw(dx, dy, dscl)
 
@@ -1265,19 +1285,19 @@ func (s *System) update() bool {
 
 	if s.replayFile != nil {
 		if s.anyHardButton() {
-			s.await(s.gameRenderSpeed() * 4)
+			s.await(s.gameRenderSpeed() * 4, true)
 		} else {
-			s.await(s.gameRenderSpeed())
+			s.await(s.gameRenderSpeed(), true)
 		}
 		return s.replayFile.Update()
 	}
 
 	if s.netConnection != nil {
-		s.await(s.gameRenderSpeed())
+		s.await(s.gameRenderSpeed(), true)
 		return s.netConnection.Update()
 	}
 
-	return s.await(s.gameRenderSpeed())
+	return s.await(s.gameRenderSpeed(), true)
 }
 
 func (s *System) tickSound() {
@@ -6623,7 +6643,7 @@ func (s *System) finishTurnsPreloadForRollback() bool {
 				return false
 			}
 		}
-		if !s.await(s.gameRenderSpeed()) {
+		if !s.await(s.gameRenderSpeed(), true) {
 			return false
 		}
 	}

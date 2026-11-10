@@ -3175,7 +3175,7 @@ func systemScriptInit(l *lua.LState) {
 				} else if sys.loader.state == LS_Cancel {
 					return nil
 				}
-				sys.await(sys.gameRenderSpeed())
+				sys.await(sys.gameRenderSpeed(), true)
 			}
 			runtime.GC()
 			return nil
@@ -6582,6 +6582,9 @@ func systemScriptInit(l *lua.LState) {
 			sys.motif.fadeOut.step()
 		} else if sys.motif.fadeIn.isActive() {
 			sys.motif.fadeIn.step()
+		}
+		if sys.motif.bezelActive() {
+			sys.motif.Bezel.AnimData.Update(false)
 		}
 		sys.stepCommandLists()
 		sys.uiFrameCounter++

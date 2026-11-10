@@ -257,7 +257,7 @@ func (w *Window) GetScaledViewportSize() (float32, float32, float32, float32) {
 // The final image is clipped to this area so shaders and fades leave the black bars alone.
 func (w *Window) GetPresentationScissor() [4]int32 {
 	x, y, width, height := w.GetScaledViewportSize()
-	rect := sys.compositionViewport()
+	rect := sys.compositionViewport(true)
 	target := sys.renderTargetRect
 	sx, sy := float64(width)/float64(target[2]), float64(height)/float64(target[3])
 	x1 := int32(math.Round(float64(x) + float64(rect[0])*sx))
