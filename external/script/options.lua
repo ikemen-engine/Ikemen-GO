@@ -2284,16 +2284,27 @@ function options.f_editSetup(device, context)
 	return true
 end
 
--- Collects the capture targets. Config all skips rows the motif hides, so they stay unchanged.
--- Analog Emulation is optional, so Config all leaves it out.
+local function configAllButtons(root)
+	local mapping = root.kind == 'mapping'
+	local names = motif.option_info[mapping and root.template or 'buttonsetup'].configall
+	local buttons = {}
+	for _, name in ipairs(names) do
+		buttons[name:upper()] = true
+	end
+	return buttons
+end
+
+-- Config All follows menu order and skips hidden or unlisted buttons.
 local function startInputCapture(tbl, item, all)
 	local root = tbl.inputMenu
 	local rows = editorRows(root)
+	local allowed = all and configAllButtons(root)
 	local entries = {}
 	local function collect(menu)
 		for i, row in ipairs(menu.items) do
-			if rows[row.itemname] and (root.kind == 'mapping' or t_setupRows[row.itemname]) then
-				table.insert(entries, {menu = menu, item = i, field = rows[row.itemname]})
+			local field = rows[row.itemname]
+			if field and allowed[field:upper()] then
+				table.insert(entries, {menu = menu, item = i, field = field})
 			elseif menu.submenu[row.itemname] ~= nil then
 				collect(menu.submenu[row.itemname])
 			end
@@ -2493,7 +2504,18 @@ function options.f_inputDiagram(context, mode, root)
 	for key in main.f_sortKeys(diagram.cfg.control) do
 		table.insert(diagram.order, key)
 	end
-	diagram.controls = diagram.setup and {} or main.virtualControls
+	diagram.controls = {}
+	if not diagram.setup then
+		local allowed = configAllButtons(root)
+		for _, control in ipairs(main.virtualControls) do
+			if allowed[control] then
+				table.insert(diagram.controls, control)
+			end
+		end
+	end
+	if mode == 'guided' and #diagram.controls == 0 then
+		return
+	end
 	diagram.labels = mappingLabels(root)
 	diagram.saved = main.f_tableCopy(root.draft)
 	if mode == 'test' then

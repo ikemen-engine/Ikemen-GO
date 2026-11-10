@@ -1208,6 +1208,15 @@ type OptionInfoProperties struct {
 	} `ini:"cancel"`
 	TextInput TextInputProperties `ini:"textinput"`
 	HoldTime  int32               `ini:"holdtime" default:"60"`
+	ButtonSetup struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"buttonsetup"`
+	ControllerMapping struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"controllermapping"`
+	KeyboardMenu struct {
+		ConfigAll []string `ini:"configall"`
+	} `ini:"keyboardmenu"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
 	Hint     HintProperties    `ini:"hint"`
 }
@@ -2695,6 +2704,7 @@ func (m *Motif) overrideParams() {
 		// [Option Info]
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.", DstSec: "Option Info", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Option Info", SrcPrefix: "menu.item.active.", DstSec: "Option Info", DstPrefix: "menu.item.selected.active."},
+		{SrcSec: "Option Info", SrcPrefix: "controllermapping.", DstSec: "Option Info", DstPrefix: "keyboardmenu."},
 		// [Pause Menu]
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected."},
 		{SrcSec: "Pause Menu", SrcPrefix: "menu.item.active.", DstSec: "Pause Menu", DstPrefix: "menu.item.selected.active."},
