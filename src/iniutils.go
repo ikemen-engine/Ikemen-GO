@@ -2432,6 +2432,10 @@ func SetTextSprite(obj interface{}, fVal, structVal, parent reflect.Value) {
 	// textImgSetFriction
 	ts.friction = friction
 
+	// Storyboard text reads [SceneDef] actions first.
+	if owner, ok := obj.(*Storyboard); ok {
+		ts.glyphStoryboard = owner
+	}
 	fVal.Set(reflect.ValueOf(ts))
 }
 
@@ -2862,6 +2866,8 @@ func PopulateDataPointers(obj interface{}, rootLocalcoord [2]int32) {
 				if kind == reflect.Ptr && fVal.Type().AssignableTo(textSpritePtrType) {
 					if fVal.IsNil() && fVal.CanSet() {
 						SetTextSprite(obj, fVal, v, parent)
+						// Resolve action tags from the nearest menu or screen.
+						fVal.Interface().(*TextSprite).glyphSection = path
 					}
 					continue
 				}

@@ -641,6 +641,7 @@ func (s *Storyboard) loadFiles() {
 			fnt.Size = s.Fnt[i].Size
 			fnt.Spacing = s.Fnt[i].Spacing
 			fnt.Offset = s.Fnt[i].offset
+			fnt.applyGlyphs(s.Fnt[i])
 
 			return nil
 		})

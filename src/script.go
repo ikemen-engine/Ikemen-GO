@@ -2687,6 +2687,9 @@ func systemScriptInit(l *lua.LState) {
 		if !nilArg(l, 1) {
 			sys.esc = boolArg(l, 1)
 		}
+		if sys.esc && nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput("ESCAPE")
+		}
 		l.Push(lua.LBool(sys.esc))
 		return 1
 	})
@@ -3857,6 +3860,7 @@ func systemScriptInit(l *lua.LState) {
 			s = KeyToString(sys.keyInput)
 		}
 		if nilArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 			l.Push(lua.LString(s))
 			//sys.keyInput = KeyUnknown
 			return 1
@@ -3864,6 +3868,9 @@ func systemScriptInit(l *lua.LState) {
 			//sys.keyInput = KeyUnknown
 			l.Push(lua.LBool(false))
 			return 1
+		}
+		if s == strArg(l, 1) {
+			sys.noteKeyboardGlyphInput(s)
 		}
 		l.Push(lua.LBool(s == strArg(l, 1)))
 		return 1
@@ -3876,6 +3883,7 @@ func systemScriptInit(l *lua.LState) {
 		s := ""
 		if sys.keyInput != KeyUnknown {
 			s = sys.keyString
+			sys.noteKeyboardGlyphInput(KeyToString(sys.keyInput))
 		}
 		l.Push(lua.LString(s))
 		return 1
@@ -4195,6 +4203,10 @@ func systemScriptInit(l *lua.LState) {
 				break
 			}
 		}
+		// The device pressed last shows as active and gets the hints.
+		if pressed {
+			sys.noteGlyphInput(device.ID)
+		}
 		l.Push(lua.LBool(pressed))
 		return 1
 	})
@@ -4269,6 +4281,77 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(out)
 		return 1
 	})
+	luaRegister(l, "inputGetGlyphDevice", func(l *lua.LState) int {
+		/*Get the device whose buttons hints show, with its current side.
+		@function inputGetGlyphDevice
+		@treturn int deviceId Runtime device ID, or zero if no device is available.
+		@treturn int side Team side (0 unassigned, 1 left, 2 right).*/
+		id, side := 0, TS_None
+		if device := sys.glyphDevice(0); device != nil {
+			id = device.ID
+			if owner := sys.inputs.owner(id); owner >= 0 {
+				side = sys.inputs.Participants[owner].Side
+			}
+		}
+		if nc := sys.inputConnection(); nc != nil {
+			side = TeamSide(nc.locIn%2 + 1)
+		}
+		l.Push(lua.LNumber(id))
+		l.Push(lua.LNumber(side))
+		return 2
+	})
+	luaRegister(l, "inputGetGlyphPack", func(l *lua.LState) int {
+		/*Return the glyph pack a device currently uses.
+		@function inputGetGlyphPack
+		@tparam[opt=0] int deviceId Device ID, or `0` for the device the UI shows glyphs for.
+		@treturn string pack Glyph pack name, for example `"ps5"`, or an empty string without a device.*/
+		id := 0
+		if !nilArg(l, 1) {
+			id = int(numArg(l, 1))
+		}
+		device := sys.glyphDevice(id)
+		if device == nil {
+			l.Push(lua.LString(""))
+			return 1
+		}
+		l.Push(lua.LString(input.GlyphPack(device, &sys.motif.ControllerGlyphs)))
+		return 1
+	})
+	luaRegister(l, "inputGetGlyphPacks", func(l *lua.LState) int {
+		/*List the glyph packs that can be chosen for a device.
+		@function inputGetGlyphPacks
+		@tparam int deviceId Device ID.
+		@treturn table packs Array of tables with `id`, `name`, `glyph` (a text tag
+		  drawing the pack's icon), `selected` and `automatic` (no pack chosen, so the
+		  device decides) fields. The first entry is always the automatic one.*/
+		out := l.NewTable()
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(out)
+			return 1
+		}
+		chosen := strings.ToLower(sys.cfg.Input.ControllerGlyphs[glyphPreferenceKey(device)])
+		add := func(id, name string, automatic bool) {
+			// The automatic entry shows whatever the device resolves to now.
+			glyph := "<controllericon:" + id + ">"
+			if automatic {
+				glyph = "<controllericon>"
+			}
+			out.Append(toLValue(l, map[string]interface{}{
+				"id":        id,
+				"name":      name,
+				"glyph":     glyph,
+				"selected":  id == chosen,
+				"automatic": automatic,
+			}))
+		}
+		add("", sys.motif.ControllerGlyphs.Automatic, true)
+		for _, id := range sys.motif.glyphPacks(glyphDeviceType(device)) {
+			add(id, sys.motif.ControllerGlyphs.Controller[id].Label, false)
+		}
+		l.Push(out)
+		return 1
+	})
 	luaRegister(l, "inputGetMapping", func(l *lua.LState) int {
 		/*Get the Button Mapping of a device.
 		@function inputGetMapping
@@ -4338,6 +4421,14 @@ func systemScriptInit(l *lua.LState) {
 			}
 		}
 		l.Push(lua.LString(token))
+		return 1
+	})
+	luaRegister(l, "inputGetPlayerDevice", func(l *lua.LState) int {
+		/*Return the local device for a gameplay/menu player slot.
+		@function inputGetPlayerDevice
+		@tparam int player 1-based slot.
+		@treturn int deviceId Zero for remote players or unavailable devices.*/
+		l.Push(lua.LNumber(sys.playerGlyphDevice(int(numArg(l, 1)) - 1)))
 		return 1
 	})
 	luaRegister(l, "inputGetSetup", func(l *lua.LState) int {
@@ -4470,6 +4561,14 @@ func systemScriptInit(l *lua.LState) {
 		l.Push(lua.LString(id))
 		return 1
 	})
+	luaRegister(l, "inputPlayerDisconnected", func(l *lua.LState) int {
+		/*Report whether a player slot's device is assigned but disconnected.
+		@function inputPlayerDisconnected
+		@tparam int player 1-based slot.
+		@treturn boolean disconnected `true` only when the slot owns devices and none are connected.*/
+		l.Push(lua.LBool(sys.hintPlayerDisconnected(int(numArg(l, 1)) - 1)))
+		return 1
+	})
 	luaRegister(l, "inputResetForMenus", func(l *lua.LState) int {
 		/*Go back to menu mode: releases all players, so any device can control the menus again.
 		  Does nothing during netplay.
@@ -4562,6 +4661,24 @@ func systemScriptInit(l *lua.LState) {
 		@tparam string setupId Setup ID.
 		@treturn boolean success `false` if the device or setup is unknown.*/
 		l.Push(lua.LBool(sys.setDeviceSetup(int(numArg(l, 1)), strArg(l, 2))))
+		return 1
+	})
+	luaRegister(l, "inputSetGlyphPack", func(l *lua.LState) int {
+		/*Choose the glyph pack of a device. Saved right away.
+		@function inputSetGlyphPack
+		@tparam int deviceId Device ID.
+		@tparam string pack Glyph pack name, or an empty string to detect it from the device.
+		@treturn boolean success `true` if the choice was saved.*/
+		device := sys.inputs.device(int(numArg(l, 1)))
+		if device == nil {
+			l.Push(lua.LFalse)
+			return 1
+		}
+		err := sys.cfg.rememberControllerGlyphs(device, strings.ToLower(strArg(l, 2)))
+		if err != nil {
+			LogMessage("Unable to remember controller glyphs: %v", err)
+		}
+		l.Push(lua.LBool(err == nil))
 		return 1
 	})
 	luaRegister(l, "inputSetMenuFocus", func(l *lua.LState) int {
@@ -7478,7 +7595,8 @@ func systemScriptInit(l *lua.LState) {
 		/*Create a new empty text sprite.
 		@function textImgNew
 		@treturn TextSprite ts Newly created text sprite userdata.*/
-		l.Push(newUserData(l, NewTextSprite()))
+		ts := NewTextSprite()
+		l.Push(newUserData(l, ts))
 		return 1
 	})
 	luaRegister(l, "textImgReset", func(*lua.LState) int {
@@ -7643,6 +7761,18 @@ func systemScriptInit(l *lua.LState) {
 		}
 		ts.friction[0] = float32(numArg(l, 2))
 		ts.friction[1] = float32(numArg(l, 3))
+		return 0
+	})
+	luaRegister(l, "textImgSetGlyphDevice", func(*lua.LState) int {
+		/*Select the device whose buttons <action:...>, <control:...> and <input:...> show in this text sprite.
+		@function textImgSetGlyphDevice
+		@tparam TextSprite ts Text sprite userdata.
+		@tparam int deviceId Runtime device ID; zero follows the last menu input.*/
+		ts, ok := toUserData(l, 1).(*TextSprite)
+		if !ok {
+			userDataError(l, 1, ts)
+		}
+		ts.glyphDevice = int(numArg(l, 2))
 		return 0
 	})
 	luaRegister(l, "textImgSetLayerno", func(*lua.LState) int {

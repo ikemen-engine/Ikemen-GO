@@ -67,6 +67,23 @@ type FontProperties struct {
 	Size    [2]uint16 `ini:"size"`
 	Spacing [2]int32  `ini:"spacing"`
 	Offset  [2]int32  `ini:"offset"`
+	Glyphs  FontGlyphProperties `ini:"glyphs"`
+}
+
+// Empty values keep the glyph settings from the font DEF file.
+type FontGlyphProperties struct {
+	Offset  []float32 `ini:"offset"`
+	Scale   []float32 `ini:"scale"`
+	Spacing *float32  `ini:"spacing"`
+}
+
+// Applies the fontN.glyphs.* values from [Files] over those from the font DEF file.
+func (fp *FontProperties) applyGlyphs(f *Fnt) {
+	copy(f.glyphOffset[:], fp.Glyphs.Offset)
+	copy(f.glyphScale[:], fp.Glyphs.Scale)
+	if fp.Glyphs.Spacing != nil {
+		f.glyphSpacing = *fp.Glyphs.Spacing
+	}
 }
 
 type FilesProperties struct {
@@ -288,6 +305,30 @@ type GlyphProperties struct {
 	Size       [2]int32 `lua:"Size"`
 }
 
+type ControllerGlyphsProperties struct {
+	// Name of the entry that leaves the pack to the device.
+	Automatic  string                                `ini:"automatic" default:"Automatic"`
+	Controller map[string]*ControllerGlyphProperties `ini:"controller"`
+	GUID       map[string]string                     `ini:"guid" literal:"true"`
+	Name       map[string]string                     `ini:"name" literal:"true"`
+}
+
+type ControllerGlyphProperties struct {
+	// Device kind the pack belongs to: gamepad or keyboard.
+	Type string `ini:"type" default:"gamepad"`
+	// Overrides by binding token, for the buttons or keys the device reports.
+	Gamepad map[string]int32 `ini:"gamepad" insensitivekeys:"false"`
+	Key     map[string]int32 `ini:"key" insensitivekeys:"false"`
+	Group   int32            `ini:"group" default:"-1"`
+	// Artwork and name shown when choosing a pack by hand.
+	Icon  int32  `ini:"icon" default:"-1"`
+	Label string `ini:"label"`
+}
+
+type HintProperties struct {
+	TextMapProperties
+}
+
 type MenuProperties struct {
 	Pos   [2]float32      `ini:"pos" default:"1000,900"`
 	Tween TweenProperties `ini:"tween"`
@@ -365,6 +406,7 @@ type InfoBoxProperties struct {
 	} `ini:"text"`
 	Overlay OverlayProperties `ini:"overlay"`
 	Action []string            `ini:"action"`
+	Hint    HintProperties    `ini:"hint"`
 }
 
 type CellOverrideProperties struct {
@@ -640,6 +682,7 @@ type TextInputProperties struct {
 	Paste struct {
 		Action []string `ini:"action"`
 	} `ini:"paste"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type TitleInfoProperties struct {
@@ -674,6 +717,7 @@ type TitleInfoProperties struct {
 		Overlay OverlayProperties `ini:"overlay"`
 	} `ini:"connecting"`
 	TextInput TextInputProperties `ini:"textinput"`
+	Hint      HintProperties      `ini:"hint"`
 }
 
 type SelectInfoProperties struct {
@@ -814,6 +858,7 @@ type SelectInfoProperties struct {
 	} `ini:"teammenu"`
 	Timer         TimerProperties `ini:"timer"`
 	CoopQueue     bool            `ini:"coopqueue" default:"false"`
+	Hint          HintProperties  `ini:"hint"`
 }
 
 type VsScreenProperties struct {
@@ -859,6 +904,7 @@ type VsScreenProperties struct {
 		Wait       AnimationTextProperties `ini:"wait"`
 		Storyboard string                  `ini:"storyboard" lookup:"def,,data/"`
 	} `ini:"loading"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type DemoModeProperties struct {
@@ -952,6 +998,7 @@ type ContinueScreenProperties struct {
 		MapCounts map[string]*ContinueCounterProperties `ini:"map:^[0-9]+$" lua:""`
 		End       ContinueCounterProperties             `ini:"end"`
 	} `ini:"counter"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type StoryboardProperties struct {
@@ -1004,6 +1051,7 @@ type VictoryScreenProperties struct {
 	P6 PlayerVictoryProperties `ini:"p6"`
 	P7 PlayerVictoryProperties `ini:"p7"`
 	P8 PlayerVictoryProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type WinScreenProperties struct {
@@ -1036,6 +1084,7 @@ type WinScreenProperties struct {
 	P6 PlayerResultsProperties `ini:"p6"`
 	P7 PlayerResultsProperties `ini:"p7"`
 	P8 PlayerResultsProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type ResultsScreenProperties struct {
@@ -1068,6 +1117,7 @@ type ResultsScreenProperties struct {
 	P6 PlayerResultsProperties `ini:"p6"`
 	P7 PlayerResultsProperties `ini:"p7"`
 	P8 PlayerResultsProperties `ini:"p8"`
+	Hint HintProperties          `ini:"hint"`
 }
 
 type OptionInfoProperties struct {
@@ -1089,6 +1139,7 @@ type OptionInfoProperties struct {
 	TextInput TextInputProperties `ini:"textinput"`
 	HoldTime  int32               `ini:"holdtime" default:"60"`
 	Itemname map[string]string `ini:"itemname"` // not used by [Option Info]
+	Hint     HintProperties    `ini:"hint"`
 }
 
 type ReplayInfoProperties struct {
@@ -1107,14 +1158,7 @@ type ReplayInfoProperties struct {
 	Cancel struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"cancel"`
-}
-
-type MovelistGlyphsProperties struct {
-	Offset     [2]float32 `ini:"offset"`
-	Scale      [2]float32 `ini:"scale" default:"1,1"`
-	Layerno    int16      `ini:"layerno"`
-	Localcoord [2]int32   `ini:"localcoord"`
-	Spacing    [2]float32 `ini:"spacing"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type MenuInfoProperties struct {
@@ -1156,7 +1200,6 @@ type MenuInfoProperties struct {
 			TextProperties
 			Spacing [2]float32 `ini:"spacing"`
 		} `ini:"text"`
-		Glyphs MovelistGlyphsProperties `ini:"glyphs"`
 		Window struct {
 			Margins struct {
 				Y [2]float32 `ini:"y"`
@@ -1170,7 +1213,9 @@ type MenuInfoProperties struct {
 			Down AnimationProperties `ini:"down"`
 		} `ini:"arrow"`
 		Itemname map[string]string `ini:"itemname"`
+		Hint     HintProperties    `ini:"hint"`
 	} `ini:"movelist"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type AttractModeProperties struct {
@@ -1222,6 +1267,7 @@ type AttractModeProperties struct {
 		} `ini:"press"`
 		Timer TimerProperties `ini:"timer"`
 	} `ini:"start"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type ChallengerInfoProperties struct {
@@ -1262,6 +1308,7 @@ type DialogueInfoProperties struct {
 	} `ini:"cancel"`
 	P1 PlayerDialogueProperties `ini:"p1"`
 	P2 PlayerDialogueProperties `ini:"p2"`
+	Hint HintProperties           `ini:"hint"`
 }
 
 type HiscoreInfoProperties struct {
@@ -1320,6 +1367,7 @@ type HiscoreInfoProperties struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"move"`
 	Glyphs []string `ini:"glyphs"`
+	Hint   HintProperties `ini:"hint"`
 }
 
 type SideSelectItemColumn struct {
@@ -1398,6 +1446,7 @@ type SideSelectInfoProperties struct {
 	Window struct {
 		VisibleItems int32 `ini:"visibleitems"`
 	} `ini:"window"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type WarningInfoProperties struct {
@@ -1413,6 +1462,7 @@ type WarningInfoProperties struct {
 	Done struct {
 		Snd [2]int32 `ini:"snd" default:"-1,0"`
 	} `ini:"done"`
+	Hint HintProperties `ini:"hint"`
 }
 
 type Motif struct {
@@ -1423,6 +1473,7 @@ type Motif struct {
 	Sff             *Sff
 	Snd             *Snd
 	Fnt             map[int]*Fnt
+	GlyphAnimations map[[2]int32]*Animation
 	GlyphsSff       *Sff
 	Model           *Model
 	Music           Music
@@ -1465,6 +1516,7 @@ type Motif struct {
 	SideSelectInfo  SideSelectInfoProperties            `ini:"side_select_info"`
 	SideSelectBgDef BgDefProperties                     `ini:"sideselectbgdef"`
 	WarningInfo     WarningInfoProperties               `ini:"warning_info"`
+	ControllerGlyphs ControllerGlyphsProperties          `ini:"controller_glyphs"`
 	Glyphs          map[string]*GlyphProperties         `ini:"glyphs" literal:"true" insensitivekeys:"false" sff:"GlyphsSff"`
 	fntIndexByKey   map[string]int                      // filepath|height -> index
 	inheritedKeys   map[string]bool                     // normalized .anim/.spr paths assigned by overrideParams inheritance
@@ -1615,6 +1667,49 @@ func (m *Motif) resolveFontFile(path string) string {
 		return resolved
 	}
 	return path
+}
+
+// Glyph settings of the defaultMotif.ini fonts, keyed by file.
+func (m *Motif) defaultFontGlyphs() map[string]FontGlyphProperties {
+	out := map[string]FontGlyphProperties{}
+	for _, fp := range m.Files.Font {
+		if fp == nil || fp.Font == "" {
+			continue
+		}
+		g := fp.Glyphs
+		g.Offset = append([]float32(nil), g.Offset...)
+		g.Scale = append([]float32(nil), g.Scale...)
+		if g.Spacing != nil {
+			spacing := *g.Spacing
+			g.Spacing = &spacing
+		}
+		out[fontKey(m.resolveFontFile(fp.Font), fp.Height)] = g
+	}
+	return out
+}
+
+// Fonts take the default glyph settings of their file, not their slot, unless system.def sets them.
+func (m *Motif) applyDefaultFontGlyphs(defaults map[string]FontGlyphProperties) {
+	var user *ini.Section
+	if m.UserIniFile != nil {
+		user, _ = m.UserIniFile.GetSection("Files")
+	}
+	for k, fp := range m.Files.Font {
+		if fp == nil {
+			continue
+		}
+		d := defaults[fontKey(m.resolveFontFile(fp.Font), fp.Height)]
+		set := func(name string) bool { return user != nil && user.HasKey(k+".glyphs."+name) }
+		if !set("offset") {
+			fp.Glyphs.Offset = d.Offset
+		}
+		if !set("scale") {
+			fp.Glyphs.Scale = d.Scale
+		}
+		if !set("spacing") {
+			fp.Glyphs.Spacing = d.Spacing
+		}
+	}
 }
 
 // returns a stable-sorted list of files named "+system.def" located anywhere under the given root (e.g. external/mods), including nested subdirs.
@@ -1937,6 +2032,7 @@ func loadMotif(def string) (*Motif, error) {
 
 	// Apply precedence: struct defaults < defaultMotif.ini < user motif
 	assignFrom(defaultOnlyIni)
+	defaultGlyphs := m.defaultFontGlyphs()
 	assignFrom(userIniFile)
 	sys.keepAlive()
 
@@ -1954,6 +2050,7 @@ func loadMotif(def string) (*Motif, error) {
 	reserveFontSlots(&m)
 	resolveInlineFonts(m.IniFile, m.Def, m.Fnt, m.fntIndexByKey, m.SetValueUpdate)
 	syncFontsMap(&m.Files.Font, m.Fnt, m.fntIndexByKey)
+	m.applyDefaultFontGlyphs(defaultGlyphs)
 	sys.keepAlive()
 
 	// Build the loading TextSprite and draw it before we proceed to heavier asset loads (SFF, BG, etc).
@@ -1969,7 +2066,6 @@ func loadMotif(def string) (*Motif, error) {
 	m.overrideParams()
 	m.fixLocalcoordOverrides()
 	m.inheritCursorCellOverrides()
-	m.applyGlyphDefaultsFromMovelist()
 	m.populateDataPointers()
 	m.applyPostParsePosAdjustments()
 
@@ -1979,41 +2075,118 @@ func loadMotif(def string) (*Motif, error) {
 	return &m, nil
 }
 
-// Propagates movelist.glyphs defaults
-func (m *Motif) applyGlyphDefaultsFromMovelist() {
-	if m == nil {
+// Draws the hint for the given situation, falling back to the default text.
+// A device of 0 shows the buttons of the device used last.
+func (h *HintProperties) draw(layerno int16, context string, device int) {
+	if h == nil {
 		return
 	}
-	if len(m.Glyphs) == 0 {
-		return
+	if h.TextSpriteData != nil {
+		h.TextSpriteData.glyphDevice = device
+		h.TextSpriteData.text = h.text(context, h.TextSpriteData.glyphDevice)
+		h.TextSpriteData.Draw(layerno)
 	}
+}
 
-	// Use [Pause Menu] movelist glyph defaults as the global baseline.
-	var mg MovelistGlyphsProperties
-	if m.PauseMenu != nil {
-		if pm := m.PauseMenu["pause_menu"]; pm != nil {
-			mg = pm.Movelist.Glyphs
-		} else {
-			// Best-effort fallback: first available pause menu entry.
-			for _, pm := range m.PauseMenu {
-				if pm != nil {
-					mg = pm.Movelist.Glyphs
-					break
-				}
-			}
-		}
-	} else {
-		return
+// Hint text: glyph.<pack>.<context> while the device shown uses that pack, else <context>.
+func (h *HintProperties) text(context string, deviceID int) string {
+	if context == "" {
+		context = "default"
 	}
-	for _, g := range m.Glyphs {
-		if g == nil {
-			continue
+	if device := sys.glyphDevice(deviceID); device != nil {
+		set := "glyph." + input.GlyphPack(device, &sys.motif.ControllerGlyphs)
+		name := set + "." + context
+		if context == "default" {
+			name = set
 		}
-		g.Offset = mg.Offset
-		g.Scale = mg.Scale
-		g.Layerno = mg.Layerno
-		g.Localcoord = mg.Localcoord
+		if text, ok := h.Text[name]; ok {
+			return text
+		}
 	}
+	if text, ok := h.Text[context]; ok {
+		return text
+	}
+	return h.Text["default"]
+}
+
+// Returns a cached one-frame animation for a glyph sprite. Built the same way as
+// the motif's other single sprites, see SetAnim.
+func (m *Motif) glyphAnimation(group, index int32) *Animation {
+	if m.GlyphsSff == nil || group < 0 || group > math.MaxUint16 || index < 0 || index > math.MaxUint16 {
+		return nil
+	}
+	key := [2]int32{group, index}
+	if a := m.GlyphAnimations[key]; a != nil {
+		return a
+	}
+	sprite := m.GlyphsSff.GetSprite(uint16(group), uint16(index))
+	if sprite == nil || sprite.Size[0] == 0 || sprite.Size[1] == 0 {
+		return nil
+	}
+	if m.GlyphAnimations == nil {
+		m.GlyphAnimations = make(map[[2]int32]*Animation)
+	}
+	a := NewAnim(m.GlyphsSff, fmt.Sprintf("%d,%d, 0,0, -1", group, index)).anim
+	a.UpdateSprite()
+	m.GlyphAnimations[key] = a
+	return a
+}
+
+// Device kind a glyph pack belongs to.
+func glyphDeviceType(device *InputDevice) string {
+	if device != nil && device.Joy < 0 {
+		return "keyboard"
+	}
+	return "gamepad"
+}
+
+// Glyph packs of this kind a player can pick, sorted by name. Packs without a label
+// are only used for detection.
+func (m *Motif) glyphPacks(kind string) []string {
+	var sets []string
+	for id, set := range m.ControllerGlyphs.Controller {
+		if set != nil && set.Label != "" && strings.EqualFold(set.Type, kind) {
+			sets = append(sets, id)
+		}
+	}
+	sort.Strings(sets)
+	return sets
+}
+
+// Artwork representing a whole glyph pack, for lists and controller names.
+func (m *Motif) glyphPackIcon(set string) *Animation {
+	variant := m.ControllerGlyphs.Controller[set]
+	if variant == nil || variant.Icon < 0 {
+		return nil
+	}
+	group := variant.Group
+	if group < 0 {
+		// Packs without a group of their own use the base artwork of their kind.
+		base := m.glyph("gamepad.A")
+		if strings.EqualFold(variant.Type, "keyboard") {
+			base = m.glyph("keyboard.a")
+		}
+		if base != nil {
+			group = base.Spr[0]
+		}
+	}
+	return m.glyphAnimation(group, variant.Icon)
+}
+
+// Looks up a glyph by name, accepting both <name> and name.
+func (m *Motif) glyph(name string) *GlyphProperties {
+	name = strings.TrimSuffix(strings.TrimPrefix(name, "<"), ">")
+	if g := m.Glyphs["<"+name+">"]; g != nil {
+		return g
+	}
+	return m.Glyphs[name] // Existing command-list glyphs, e.g. <_U> and <^A>.
+}
+
+func (m *Motif) namedGlyph(name string) *Animation {
+	if g := m.glyph(name); g != nil {
+		return m.glyphAnimation(g.Spr[0], g.Spr[1])
+	}
+	return nil
 }
 
 // If an element is customized in userIniFile but its localcoord is missing/empty,
@@ -2782,6 +2955,7 @@ func (m *Motif) loadFiles() {
 			fnt.Size = m.Fnt[i].Size
 			fnt.Spacing = m.Fnt[i].Spacing
 			fnt.Offset = m.Fnt[i].offset
+			fnt.applyGlyphs(m.Fnt[i])
 
 			return nil
 		})
@@ -3009,6 +3183,7 @@ func (m *Motif) drawLoading() {
 				fp.Size = f.Size
 				fp.Spacing = f.Spacing
 				fp.Offset = f.offset
+				fp.applyGlyphs(f)
 			}
 		}
 	}
@@ -4173,6 +4348,13 @@ func (co *MotifContinue) draw(m *Motif, layerno int16) {
 	if layerno == 2 {
 		m.ContinueBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	if !co.selected {
+		context := "default"
+		if !m.ContinueScreen.LegacyMode.Enabled {
+			context = "arcade"
+		}
+		m.ContinueScreen.Hint.draw(layerno, context, sys.playerGlyphDevice(co.pn-1))
+	}
 }
 
 type MotifDemo struct {
@@ -5328,6 +5510,7 @@ func (di *MotifDialogue) draw(m *Motif, layerno int16) {
 	} else if di.activeSide == 2 {
 		m.DialogueInfo.P2.Active.AnimData.Draw(layerno)
 	}
+	m.DialogueInfo.Hint.draw(layerno, "default", 0)
 }
 
 type MotifHiscore struct {
@@ -5921,6 +6104,11 @@ func (hi *MotifHiscore) draw(m *Motif, layerno int16) {
 	if !hi.noBgs && layerno == 2 {
 		m.HiscoreBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	context, device := "default", 0
+	if hi.input {
+		context, device = "input", sys.playerGlyphDevice(sys.runLeaderSlot())
+	}
+	m.HiscoreInfo.Hint.draw(layerno, context, device)
 }
 
 func (hi *MotifHiscore) finalizeAndSave() {
@@ -6721,6 +6909,7 @@ func (vi *MotifVictory) draw(m *Motif, layerno int16) {
 	if layerno == 2 {
 		m.VictoryBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 	}
+	m.VictoryScreen.Hint.draw(layerno, "default", 0)
 }
 
 // buildSingleFrameFromSFF creates a 1-frame Animation from a raw sprite (grp, idx).
@@ -7209,6 +7398,7 @@ func (wi *MotifWin) draw(m *Motif, layerno int16) {
 		if bg != nil && bg.BGDef != nil && layerno == 2 {
 			bg.BGDef.Draw(int32(layerno), 0, 0, 1)
 		}
+		rs.Hint.draw(layerno, "default", 0)
 		return
 	}
 	// Fallback: normal win screen.
@@ -7230,4 +7420,5 @@ func (wi *MotifWin) draw(m *Motif, layerno int16) {
 			m.WinBgDef.BGDef.Draw(int32(layerno), 0, 0, 1)
 		}
 	}
+	m.WinScreen.Hint.draw(layerno, "default", 0)
 }
