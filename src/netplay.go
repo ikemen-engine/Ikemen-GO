@@ -190,6 +190,11 @@ type NetConnection struct {
 func NewNetConnection() *NetConnection {
 	// The device that opened netplay is the local player, as participant zero.
 	sys.resetInputForMenus()
+	if !sys.inputs.participantConnected(0) {
+		// Command-line matches and automatic menu entries have no initiating
+		// device. Assign the first keyboard/gamepad pair before locking input.
+		sys.assignAutomaticInputs(0, 1, 1, false)
+	}
 	sys.inputs.ClaimLocked = true
 	nc := &NetConnection{
 		st:          NS_Stop,
