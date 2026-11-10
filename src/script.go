@@ -5630,6 +5630,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "preloadListChar", func(*lua.LState) int {
 		/*Mark a character sprite or animation for preloading.
+		Call it at the top level of a module. Later calls don't affect already loaded characters.
 		@function preloadListChar
 		@tparam int32|uint16 id Action number, or sprite group number when `number` is provided.
 		@tparam[opt] uint16 number If provided, `id` and `number` are used as sprite group/number keys;
@@ -5643,6 +5644,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "preloadListStage", func(*lua.LState) int {
 		/*Mark a stage sprite or animation for preloading.
+		Call it at the top level of a module. Later calls don't affect already loaded stages.
 		@function preloadListStage
 		@tparam int32|uint16 id Action number, or sprite group number when `number` is provided.
 		@tparam[opt] uint16 number If provided, `id` and `number` are used as sprite group/number keys;
@@ -6988,6 +6990,12 @@ func systemScriptInit(l *lua.LState) {
 			userDataError(l, 1, s)
 		}
 		s.stop([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
+		return 0
+	})
+	luaRegister(l, "startPreloads", func(*lua.LState) int {
+		/*Start preloading. Called by main.lua once modules are loaded.
+		@function startPreloads*/
+		sys.sel.StartPreloads()
 		return 0
 	})
 	luaRegister(l, "stopAllCharSounds", func(l *lua.LState) int {

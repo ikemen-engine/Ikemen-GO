@@ -4738,6 +4738,7 @@ type SelectChar struct {
 	scp           *SelectCharParams
 	preloadAnim   string
 	preloadSprite string
+	deferPreload  bool
 }
 
 func newSelectChar() *SelectChar {
@@ -4762,6 +4763,7 @@ type SelectStage struct {
 	music           Music
 	ssp             *SelectStageParams
 	preloadSprite   string
+	deferPreload    bool
 }
 
 func newSelectStage() *SelectStage {
@@ -4794,6 +4796,7 @@ type Select struct {
 	preloadOrder       int64
 	charPreload        []PreloadEntry
 	stagePreload       []PreloadEntry
+	preloadStarted     bool
 }
 
 type PreloadState int32
@@ -5080,6 +5083,35 @@ func (s *Select) preloadWorkerLoop() {
 			s.preloadCond.Wait()
 		}
 		s.preloadMu.Unlock()
+	}
+}
+
+// Called once after modules load. In BootLoadingMode 0 it preloads the chars and stages added so far.
+func (s *Select) StartPreloads() {
+	if s.preloadStarted {
+		return
+	}
+	s.preloadStarted = true
+	if sys.cfg.Config.BootLoadingMode > 0 {
+		return
+	}
+	for i := range s.charlist {
+		if !s.charlist[i].deferPreload {
+			continue
+		}
+		s.charlist[i].deferPreload = false
+		if err := s.preloadCharAssets(i); err != nil {
+			panic(fmt.Errorf("failed to preload %v: %v", s.charlist[i].def, err))
+		}
+	}
+	for i := range s.stagelist {
+		if !s.stagelist[i].deferPreload {
+			continue
+		}
+		s.stagelist[i].deferPreload = false
+		if err := s.preloadStageAssets(i + 1); err != nil {
+			panic(fmt.Errorf("failed to preload %v: %v", s.stagelist[i].def, err))
+		}
 	}
 }
 
@@ -5558,12 +5590,14 @@ func (s *Select) AddChar(def string) *SelectChar {
 	if len(sprite_orig) > 0 {
 		sc.preloadSprite = sprite_orig
 	}
-	if sys.cfg.Config.BootLoadingMode > 0 {
+	if sys.cfg.Config.BootLoadingMode > 0 || !s.preloadStarted {
+		// Placeholder, real assets are loaded later
 		sc.sff = newSff(SffTypeChar)
 		sc.anims.updateSff(sc.sff)
 		for k := range s.charSpritePreload {
 			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
+		sc.deferPreload = sys.cfg.Config.BootLoadingMode == 0
 	} else {
 		if err := s.preloadCharAssets(len(s.charlist) - 1); err != nil {
 			panic(fmt.Errorf("failed to preload %v: %v", sc.def, err))
@@ -5746,6 +5780,14 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 			ss.anims.addSprite(ss.sff, k[0], k[1])
 		}
 		s.ensureStagePreloadSlot(len(s.stagelist))
+	} else if !s.preloadStarted {
+		// Placeholder, real assets are loaded by StartPreloads
+		ss.sff = newSff(SffTypeStage)
+		ss.anims.updateSff(ss.sff)
+		for k := range s.stageSpritePreload {
+			ss.anims.addSprite(ss.sff, k[0], k[1])
+		}
+		ss.deferPreload = true
 	} else {
 		if err := s.preloadStageAssets(len(s.stagelist)); err != nil {
 			panic(fmt.Errorf("failed to preload %v: %v", def, err))

@@ -616,6 +616,7 @@ main.t_charDef = {}
 main.t_selChars = {}
 main.t_selStages = {}
 main.preload = {
+	started = false,
 	lowQueued = false,
 	charState = {},
 	stageState = {},
@@ -862,6 +863,29 @@ function main.f_queueAllPreloadsLow()
 	end
 	for stageNo = 1, #main.t_selStages do
 		queueStagePreload(stageNo, 1)
+	end
+end
+
+-- Starts preloading once modules are loaded, so their preloadList* calls apply to everything
+function main.f_startPreloads()
+	if main.preload.started then
+		return
+	end
+	main.preload.started = true
+	startPreloads()
+	if gameOption('Config.BootLoadingMode') == 0 then
+		--assets are already loaded at this point
+		for row, ch in ipairs(main.t_selChars) do
+			if ch.playable and ch.char_ref ~= nil then
+				main.f_syncCharPaletteData(ch.char_ref)
+				main.f_materializeCharCell(row)
+			end
+		end
+		for stageNo = 1, #main.t_selStages do
+			main.f_materializeStagePortrait(stageNo)
+		end
+	else
+		main.f_queueAllPreloadsLow()
 	end
 end
 
@@ -1127,6 +1151,7 @@ function main.f_commandLine()
 	else
 		table.insert(t_params, 'pausemenu=false')
 	end
+	main.f_startPreloads()
 	loadStart(table.concat(t_params, ', '))
 	while loading() do
 		--do nothing
@@ -1392,7 +1417,7 @@ function main.f_addChar(line, playable, loading, slot)
 		--cell data
 		main.t_selChars[row].cell_data = animNew(nil, '-1,0, 0,0, -1')
 		main.t_selChars[row].cell_data_ready = false
-		if gameOption('Config.BootLoadingMode') == 0 then
+		if gameOption('Config.BootLoadingMode') == 0 and main.preload.started then
 			main.f_syncCharPaletteData(main.t_selChars[row].char_ref)
 			main.f_materializeCharCell(row)
 		end
@@ -1462,7 +1487,7 @@ function main.f_addStage(file, hidden, line)
 	main.t_selStages[stageNo].anim_data = animNew(nil, '-1,0, 0,0, -1')
 	main.t_selStages[stageNo].vs_anim_data = animNew(nil, '-1,0, 0,0, -1')
 	main.t_selStages[stageNo].anim_data_ready = false
-	if gameOption('Config.BootLoadingMode') == 0 then
+	if gameOption('Config.BootLoadingMode') == 0 and main.preload.started then
 		main.f_materializeStagePortrait(stageNo)
 	end
 	return stageNo
@@ -1817,9 +1842,6 @@ function main.f_updateSelectableStages()
 	end
 end
 main.f_updateSelectableStages()
-if gameOption('Config.BootLoadingMode') > 0 then
-	main.f_queueAllPreloadsLow()
-end
 
 --add default maxmatches values if config is missing in select.def
 if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
@@ -4095,6 +4117,9 @@ for _, v in ipairs(t_modules) do
 	v = v:gsub('%.[^%.]+$', '')
 	require(v:gsub('[/\\]+', '.'))
 end
+
+--start preloading after modules, so they can add to the preload lists
+main.f_startPreloads()
 
 main.f_unlock(false)
 
