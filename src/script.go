@@ -985,6 +985,27 @@ func runStateController(target *Char, src string) error {
 	return nil
 }
 
+// Two games on one PC can start recording in the same second.
+// Never share a file, or their writes mix and the replay breaks.
+func createReplayFile(path string) *os.File {
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+	for i := 1; i < 100; i++ {
+		name := path
+		if i > 1 {
+			name = fmt.Sprintf("%s_%d%s", base, i, ext)
+		}
+		f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+		if err == nil {
+			return f
+		}
+		if !os.IsExist(err) {
+			return nil
+		}
+	}
+	return nil
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
@@ -5947,7 +5968,7 @@ func systemScriptInit(l *lua.LState) {
 		@function replayRecord
 		@tparam string path Output file path.*/
 		if sys.netConnection != nil {
-			sys.netConnection.recording, _ = os.Create(strArg(l, 1))
+			sys.netConnection.recording = createReplayFile(strArg(l, 1))
 			sys.netConnection.headerWritten = false
 		}
 		return 0
