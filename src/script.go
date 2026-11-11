@@ -2476,12 +2476,15 @@ func systemScriptInit(l *lua.LState) {
 		@function computeRanking
 		@tparam string mode Ranking mode identifier.
 		@treturn boolean cleared `true` if the run cleared the mode's requirements.
-		@treturn int32 place Ranking position (1-based), or `0` if unranked / skipped / not visible.*/
+		@treturn int32 place Ranking position (1-based), or `0` if unranked / skipped / not visible.
+		@treturn boolean nameEntry `true` if the hiscore screen should ask for a name. In netplay this is
+		  also `true` when only the other player placed, so both players see the same screen.*/
 		mode := strArg(l, 1)
-		cleared, place := computeAndSaveRanking(mode)
+		cleared, place, nameEntry := computeAndSaveRanking(mode)
 		l.Push(lua.LBool(cleared))
 		l.Push(lua.LNumber(place))
-		return 2
+		l.Push(lua.LBool(nameEntry))
+		return 3
 	})
 	luaRegister(l, "connected", func(*lua.LState) int {
 		/*Check if the main menu network connection is established.
@@ -6053,7 +6056,8 @@ func systemScriptInit(l *lua.LState) {
 		/*Run the high-score screen for one frame.
 		@function runHiscore
 		@tparam[opt] string mode Optional hiscore mode identifier.
-		@tparam[opt] int32 place Optional ranking position to highlight.
+		@tparam[opt] int32 place Optional ranking position to highlight. In netplay, `0` runs name entry
+		  without a row, for a player who didn't place while the other one did.
 		@tparam[opt] int32 endtime Optional override for the hiscore screen duration.
 		@tparam[opt=false] boolean nofade If `true`, disable fade-in and fade-out effects.
 		@tparam[opt=false] boolean nobgs If `true`, disable background rendering.

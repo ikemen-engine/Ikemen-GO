@@ -5291,7 +5291,8 @@ func (hi *MotifHiscore) init(m *Motif, mode string, place, endTime int32, noFade
 	hi.noFade = noFade
 	hi.noBgs = noBgs
 	hi.noOverlay = noOverlay
-	hi.input = (place > 0)
+	// In netplay place 0 means only the other player placed, so enter a name in step too
+	hi.input = place > 0 || (place == 0 && sys.netplay())
 	if hi.input {
 		// Start with one letter selected
 		hi.letters = []int{1}
@@ -5590,92 +5591,97 @@ func (hi *MotifHiscore) step(m *Motif) {
 	}
 
 	// Name input & timer (only for highlighted row)
+	var row *rankingRow
 	if hi.place > 0 {
-		idx := int(hi.place - 1)
-		if idx >= 0 && idx < len(hi.rows) {
-			row := &hi.rows[idx]
-			// Timer tick — only if enabled and input active
-			if hi.input && m.HiscoreInfo.Timer.Count != -1 {
-				if hi.timerFrames > 0 {
-					hi.timerFrames--
+		if idx := int(hi.place - 1); idx >= 0 && idx < len(hi.rows) {
+			row = &hi.rows[idx]
+		}
+	} else if hi.input {
+		// Netplay peer that didn't place: same input and timer as the other one, nothing shown or saved
+		row = &rankingRow{}
+	}
+	if row != nil {
+		// Timer tick — only if enabled and input active
+		if hi.input && m.HiscoreInfo.Timer.Count != -1 {
+			if hi.timerFrames > 0 {
+				hi.timerFrames--
+			} else {
+				if hi.timerCount > 0 {
+					hi.timerCount--
+				}
+				hi.timerFrames = m.HiscoreInfo.Timer.Framespercount
+			}
+			// Update timer text each step
+			if m.HiscoreInfo.Timer.TextSpriteData != nil {
+				ts := m.HiscoreInfo.Timer.Text
+				ts = m.replaceFormatSpecifiers(ts)
+				m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, hi.timerCount)
+			}
+			// When time runs out, auto-finish input
+			if hi.timerCount <= 0 {
+				m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+				hi.input = false
+				// Give a short tail
+				hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
+				hi.finalizeAndSave()
+			}
+		}
+
+		// Handle name glyph entry while input is active
+		if hi.input {
+			controller := -1 // TODO: proper controller
+			maxLen := initialsWidth(m.HiscoreInfo.Item.Name.Text["default"])
+			glyphCount := len(m.HiscoreInfo.Glyphs)
+			// Previous glyph
+			if sys.uiRawInput(m.HiscoreInfo.Previous.Key, controller) {
+				m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
+				if len(hi.letters) == 0 {
+					hi.letters = []int{1}
 				} else {
-					if hi.timerCount > 0 {
-						hi.timerCount--
+					last := len(hi.letters) - 1
+					hi.letters[last]--
+					if hi.letters[last] <= 0 {
+						hi.letters[last] = glyphCount
 					}
-					hi.timerFrames = m.HiscoreInfo.Timer.Framespercount
 				}
-				// Update timer text each step
-				if m.HiscoreInfo.Timer.TextSpriteData != nil {
-					ts := m.HiscoreInfo.Timer.Text
-					ts = m.replaceFormatSpecifiers(ts)
-					m.HiscoreInfo.Timer.TextSpriteData.text = fmt.Sprintf(ts, hi.timerCount)
+				updateRowNameFromLetters(m, row, hi.letters)
+				// Next glyph
+			} else if sys.uiRawInput(m.HiscoreInfo.Next.Key, controller) {
+				m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
+				if len(hi.letters) == 0 {
+					hi.letters = []int{1}
+				} else {
+					last := len(hi.letters) - 1
+					hi.letters[last]++
+					if hi.letters[last] > glyphCount {
+						hi.letters[last] = 1
+					}
 				}
-				// When time runs out, auto-finish input
-				if hi.timerCount <= 0 {
+				updateRowNameFromLetters(m, row, hi.letters)
+				// Confirm / Add / Backspace
+			} else if sys.uiRawInput(m.HiscoreInfo.Done.Key, controller) {
+				// Current glyph meaning
+				curGlyph := currentGlyph(m, hi.letters)
+				if curGlyph == "<" {
+					// Backspace
+					m.Snd.play(m.HiscoreInfo.Cancel.Snd, 100, 0, 0, 0, 0)
+					if len(hi.letters) > 1 {
+						hi.letters = hi.letters[:len(hi.letters)-1]
+					} else {
+						hi.letters = []int{1}
+					}
+					updateRowNameFromLetters(m, row, hi.letters)
+				} else if len(hi.letters) < maxLen {
+					m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
+					lastIdx := hi.letters[len(hi.letters)-1]
+					hi.letters = append(hi.letters, lastIdx)
+					updateRowNameFromLetters(m, row, hi.letters)
+				} else {
+					// Finalize
 					m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
 					hi.input = false
-					// Give a short tail
 					hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
 					hi.finalizeAndSave()
-				}
-			}
-
-			// Handle name glyph entry while input is active
-			if hi.input {
-				controller := -1 // TODO: proper controller
-				maxLen := initialsWidth(m.HiscoreInfo.Item.Name.Text["default"])
-				glyphCount := len(m.HiscoreInfo.Glyphs)
-				// Previous glyph
-				if sys.uiRawInput(m.HiscoreInfo.Previous.Key, controller) {
-					m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
-					if len(hi.letters) == 0 {
-						hi.letters = []int{1}
-					} else {
-						last := len(hi.letters) - 1
-						hi.letters[last]--
-						if hi.letters[last] <= 0 {
-							hi.letters[last] = glyphCount
-						}
-					}
-					updateRowNameFromLetters(m, row, hi.letters)
-					// Next glyph
-				} else if sys.uiRawInput(m.HiscoreInfo.Next.Key, controller) {
-					m.Snd.play(m.HiscoreInfo.Move.Snd, 100, 0, 0, 0, 0)
-					if len(hi.letters) == 0 {
-						hi.letters = []int{1}
-					} else {
-						last := len(hi.letters) - 1
-						hi.letters[last]++
-						if hi.letters[last] > glyphCount {
-							hi.letters[last] = 1
-						}
-					}
-					updateRowNameFromLetters(m, row, hi.letters)
-					// Confirm / Add / Backspace
-				} else if sys.uiRawInput(m.HiscoreInfo.Done.Key, controller) {
-					// Current glyph meaning
-					curGlyph := currentGlyph(m, hi.letters)
-					if curGlyph == "<" {
-						// Backspace
-						m.Snd.play(m.HiscoreInfo.Cancel.Snd, 100, 0, 0, 0, 0)
-						if len(hi.letters) > 1 {
-							hi.letters = hi.letters[:len(hi.letters)-1]
-						} else {
-							hi.letters = []int{1}
-						}
-						updateRowNameFromLetters(m, row, hi.letters)
-					} else if len(hi.letters) < maxLen {
-						m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-						lastIdx := hi.letters[len(hi.letters)-1]
-						hi.letters = append(hi.letters, lastIdx)
-						updateRowNameFromLetters(m, row, hi.letters)
-					} else {
-						// Finalize
-						m.Snd.play(m.HiscoreInfo.Done.Snd, 100, 0, 0, 0, 0)
-						hi.input = false
-						hi.counter = hi.endTime - m.HiscoreInfo.Done.Time
-						hi.finalizeAndSave()
-					}
 				}
 			}
 		}

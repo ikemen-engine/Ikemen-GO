@@ -1836,9 +1836,9 @@ function start.f_selectMode()
 		--otherwise
 		else
 			if matchNo() == -1 then --no more matches left
-				-- hiscore & stats handled in Go; returns (cleared, place)
-				local cleared, place = computeRanking(gameMode())
-				if main.motif.hiscore and place > 0 then
+				-- hiscore & stats handled in Go; returns (cleared, place, nameEntry)
+				local cleared, place, nameEntry = computeRanking(gameMode())
+				if main.motif.hiscore and nameEntry then
 					main.f_hiscore(gameMode(), place)
 				end
 				--credits
