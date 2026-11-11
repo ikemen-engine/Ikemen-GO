@@ -8642,8 +8642,8 @@ func (c *Char) bindToTarget(tar []int32, time int32, x, y, z float32, hmf HMF) {
 			// Binding to a target in reality also binds that target
 			c.targetBind(tar[:1], time,
 				c.facing*c.distX(t, c),
-				(t.pos[1]*(t.localscl/c.localscl))-(c.pos[1]*(c.localscl/t.localscl)),
-				(t.pos[2]*(t.localscl/c.localscl))-(c.pos[2]*(c.localscl/t.localscl)))
+				t.pos[1]*(t.localscl/c.localscl)-c.pos[1],
+				t.pos[2]*(t.localscl/c.localscl)-c.pos[2])
 		}
 	}
 }
