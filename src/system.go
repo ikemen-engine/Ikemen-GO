@@ -2397,9 +2397,10 @@ func (s *System) clearPlayerAssets(pn int, forceDestroy bool) {
 	s.matchStoryboards.clear(pn, true)
 	if len(s.chars[pn]) > 0 {
 		// These aren't "assets" but we'll do it here
+		// Done before destroying helpers so they don't send their targets to 5050
 		for _, c := range s.chars[pn] {
-			c.targets = c.targets[:0]
-			c.binds = c.binds[:0]
+			c.clearTargets()
+			c.bindTo.clear()
 		}
 
 		// Destroy helpers

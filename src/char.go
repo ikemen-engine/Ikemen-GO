@@ -3600,13 +3600,15 @@ const (
 	HMF_F
 )
 
+// A char follows at most one player, through bindTo. The last bind written wins
+// If that player has this char as a target, the bind is a grab. See targetBinder()
+// Grabs have special properties like copying velocity, getHitVar(isbound), state 5050, etc
 type CharBind struct {
 	id           int32
 	time         int32
-	pos          [3]float32
+	pos          [3]float32 // In the bound char's coordinate space
 	posAdd       [3]float32 // PosSet/PosAdd this frame. Only distX/distY read it. See https://github.com/ikemen-engine/Ikemen-GO/pull/799
 	facing       float32    // TODO: TargetBind and BindToTarget might as well have this too
-	isTargetBind bool       // Ends with the target entry and can send the target to state 5050
 }
 
 func (bp *CharBind) clear() {
@@ -3623,8 +3625,7 @@ type CharSystemVar struct {
 	superMovetime         int32
 	ignoreDarkenTime      int32
 	unhittableTime        int32
-	bindTo                CharBind   // BindToPlayer, BindToParent, BindToRoot
-	binds                 []CharBind // Players bound by this char
+	bindTo                CharBind   // The player this char follows. Set by BindTo*, TargetBind and HitDef snaps
 	hitPauseTime          int32
 	rot                   Rotation
 	xshear                float32
@@ -3907,6 +3908,7 @@ func (c *Char) init(n int, idx int) {
 	c.clearState()
 }
 
+// TODO: Preserved helpers don't run this. Decide if they should be reset like a player
 func (c *Char) clearState() {
 	c.ss.clear()
 	c.hitdef.reset(c, nil)
@@ -4081,7 +4083,7 @@ func (c *Char) prepareNextRound() {
 	}
 
 	c.enemyNearP2Clear()
-	c.targets = c.targets[:0]
+	c.clearTargets()
 	c.cpucmd = -1
 	c.customShader.clear()
 }
@@ -5154,9 +5156,7 @@ func (c *Char) scf(scf SystemCharFlag) bool {
 func (c *Char) setSCF(scf SystemCharFlag, on bool) {
 	// In Mugen, disabling a player also drops their targets. Useful for debugging
 	if on && scf&SCF_disabled != 0 && c.systemFlag&SCF_disabled == 0 {
-		c.releaseTargets(-1)
-		// Its other binds end too, like when the binder is gone
-		c.binds = c.binds[:0]
+		c.releaseLinks()
 	}
 
 	if on {
@@ -6866,11 +6866,6 @@ func (c *Char) stateChange1(no int32, pn int) bool {
 		c.bindTo.pos[0] *= lsRatio
 		c.bindTo.pos[1] *= lsRatio
 		c.bindTo.pos[2] *= lsRatio
-		for i := range c.binds {
-			c.binds[i].pos[0] *= lsRatio
-			c.binds[i].pos[1] *= lsRatio
-			c.binds[i].pos[2] *= lsRatio
-		}
 
 		c.localscl = newLs
 	}
@@ -7110,6 +7105,9 @@ func (c *Char) destroy() {
 			t.ghv.dropPlayerId(c.id)
 		}
 	}
+
+	// Release all binds to this helper
+	c.unbindFollowers()
 
 	// Remove ID from parent's children list
 	if p := c.parent(false); p != nil {
@@ -8619,7 +8617,7 @@ func (c *Char) targetFacing(tar []int32, f int32) {
 func (c *Char) targetBind(tar []int32, time int32, x, y, z float32) {
 	for _, tid := range tar {
 		if t := sys.playerID(tid); t != nil {
-			c.bindOther(t, time, 0, x, y, z, true)
+			c.bindOther(t, time, 0, x, y, z)
 		}
 	}
 }
@@ -8827,7 +8825,7 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 					tg = append(tg, tid)
 				} else {
 					// Only clear a bind from this char. Other players may still be binding this target
-					c.removeTargetBind(t.id)
+					t.unbindFrom(c.id)
 					t.ghv.dropPlayerId(c.id)
 				}
 			}
@@ -8845,7 +8843,7 @@ func (c *Char) targetDrop(excludeid int32, keepone bool) {
 				c.targets = append(c.targets, tid)
 			} else if t := sys.playerID(tid); t != nil {
 				// Bound targets already went to 5050 if this char was hit
-				c.removeTargetBind(t.id)
+				t.unbindFrom(c.id)
 				t.ghv.dropPlayerId(c.id)
 			}
 		}
@@ -10180,156 +10178,102 @@ func (c *Char) targetAddSctrl(id int32) {
 
 // Me to other. Used by BindToParent, BindToRoot and BindToPlayer
 func (c *Char) setBindTo(to *Char, time int32) {
-	c.bindTo.id = to.id
-	to.unbindFrom(c)
+	// Prevent mutual binding
+	to.unbindFrom(c.id)
 	if time == 0 {
 		c.bindTo.clear()
 		return
 	}
+	// Keep posAdd only if the anchor is the same
+	if c.bindTo.id != to.id {
+		c.bindTo.posAdd = [3]float32{}
+	}
+	c.bindTo.id = to.id
 	c.bindTo.time = time
 }
 
-// Bind another player to this char. Used by TargetBind and HitDef snaps
-func (c *Char) bindOther(t *Char, time int32, facing, x, y, z float32, isTargetBind bool) {
-	c.unbindFrom(t)
+// Bind another char to this one
+func (c *Char) bindOther(t *Char, time int32, facing, x, y, z float32) {
+	// Prevent mutual binding
+	c.unbindFrom(t.id)
 	if time == 0 {
-		c.removeBind(t.id)
+		t.unbindFrom(c.id)
 		return
 	}
-	bp := c.getBind(t.id)
-	if bp == nil {
-		c.binds = append(c.binds, CharBind{id: t.id})
-		bp = &c.binds[len(c.binds)-1]
+	// Keep posAdd if this char already binds it
+	if t.bindTo.id != c.id {
+		t.bindTo = CharBind{id: c.id}
 	}
-	bp.isTargetBind = isTargetBind
-	bp.time = time
-	bp.facing = facing
-	bp.pos = [3]float32{x, y, z}
+	t.bindTo.time = time
+	t.bindTo.facing = facing
+	// Convert the offsets to the bound char's local scale
+	ls := c.localscl / t.localscl
+	t.bindTo.pos = [3]float32{x * ls, y * ls, z * ls}
 }
 
-// This char's bind on a player, if any
-func (c *Char) getBind(id int32) *CharBind {
-	for i := range c.binds {
-		if c.binds[i].id == id {
-			return &c.binds[i]
-		}
+// Release every bind to this char
+func (c *Char) unbindFollowers() {
+	for _, oc := range sys.charList.runOrder {
+		oc.unbindFrom(c.id)
+	}
+}
+
+// End this char's bind if it follows the given player
+func (c *Char) unbindFrom(id int32) {
+	if c.bindTo.id == id {
+		c.bindTo.clear()
+	}
+}
+
+// The player this char follows while the bind is active
+func (c *Char) activeBinder() *Char {
+	// Ignores the frame an ended target bind lingers. See targetBinder()
+	if bc := sys.playerID(c.bindTo.id); bc != nil && c.bindTo.time != 0 {
+		return bc
 	}
 	return nil
 }
 
-// End this char's bind on a player
-func (c *Char) removeBind(id int32) {
-	for i := range c.binds {
-		if c.binds[i].id == id {
-			c.binds = SliceDelete(c.binds, i)
-			return
-		}
+// The player this char follows, if that player also has this char as a target
+// This is what tells a TargetBind or HitDef snap apart from other binds
+func (c *Char) targetBinder() *Char {
+	// No bind time check on purpose, so it stays true at time 0 until the bind is cleared the next frame
+	// This makes getHitVar(isbound) linger, like in Mugen
+	if bc := sys.playerID(c.bindTo.id); bc != nil && bc.hasTarget(c.id) {
+		return bc
 	}
-}
-
-// End this char's target bind on a player
-func (c *Char) removeTargetBind(id int32) {
-	if bp := c.getBind(id); bp != nil && bp.isTargetBind {
-		c.removeBind(id)
-	}
-}
-
-// Return the last player that binds this char and that bind's properties
-func (c *Char) getBinder() (*Char, *CharBind) {
-	// Iterate backwards because the last applied bind is the one that wins anyway
-	for i := len(sys.charList.runOrder) - 1; i >= 0; i-- {
-		bc := sys.charList.runOrder[i]
-		if len(bc.binds) == 0 {
-			continue
-		}
-		if bp := bc.getBind(c.id); bp != nil {
-			return bc, bp
-		}
-	}
-	return nil, nil
-}
-
-func (c *Char) isTargetBound() bool {
-	// Iterate backwards since the last bind wins
-	for i := len(sys.charList.runOrder) - 1; i >= 0; i-- {
-		bc := sys.charList.runOrder[i]
-		if len(bc.binds) == 0 {
-			continue
-		}
-		// Makes getHitVar(isbound) only refer to "getting hit" binds
-		if bp := bc.getBind(c.id); bp != nil && bp.isTargetBind {
-			return true
-		}
-	}
-	return false
-}
-
-// Return the last player that binds this char on this axis and that bind's properties
-func (c *Char) getBinderForAxis(i int) (*Char, *CharBind) {
-	// Iterate backwards since the last bind wins
-	for j := len(sys.charList.runOrder) - 1; j >= 0; j-- {
-		bc := sys.charList.runOrder[j]
-		if len(bc.binds) == 0 {
-			continue
-		}
-		bp := bc.getBind(c.id)
-		if bp == nil || bp.time == 0 {
-			continue
-		}
-		if !math.IsNaN(float64(bp.pos[i])) {
-			return bc, bp
-		}
-	}
-	return nil, nil
+	return nil
 }
 
 // Where a bind places this char on an axis, in this char's units
 func (c *Char) boundPos(bc *Char, bp *CharBind, i int) float32 {
 	off := bp.pos[i]
-	// Binder entries are in the binder's units; this char's own bindTo already is
-	if bp != &c.bindTo {
-		off *= bc.localscl / c.localscl
-	}
 	if i == 0 {
 		off *= bc.facing
 	}
 	return bc.pos[i]*bc.localscl/c.localscl + off
 }
 
-// Prevent mutual binding
-func (c *Char) unbindFrom(other *Char) {
-	if c.bindTo.id == other.id {
-		c.bindTo.clear()
-	}
-	other.removeBind(c.id)
-}
-
-// The active bind that sets this axis and the player it follows.
-// A bind this char owns (BindToPlayer/BindToParent/BindToRoot) wins over binds from other players
+// The active bind that sets this axis and the player it follows
 func (c *Char) bindOnAxis(i int) (*Char, *CharBind) {
-	if c.bindTo.time != 0 && !math.IsNaN(float64(c.bindTo.pos[i])) {
-		// If the anchor is gone, fall back to a binder's bind
-		if bc := sys.playerID(c.bindTo.id); bc != nil {
-			return bc, &c.bindTo
-		}
+	if math.IsNaN(float64(c.bindTo.pos[i])) {
+		return nil, nil
 	}
-	if bc, bp := c.getBinderForAxis(i); bp != nil {
-		return bc, bp
+	if bc := c.activeBinder(); bc != nil {
+		return bc, &c.bindTo
 	}
 	return nil, nil
 }
 
 // Runs in the char's own update()
 func (c *Char) updateBindTo() {
-	if c.bindTo.time == 0 {
+	bc := c.activeBinder()
+	// Binds freeze while this char is paused, like Mugen's self binds
+	// A binder still drags its paused targets in its own actionRun()
+	if bc == nil || c.pauseBool {
 		return
 	}
-	bc := sys.playerID(c.bindTo.id)
-	if bc == nil {
-		c.bindTo.clear()
-		return
-	}
-	// No velocity copy, like Mugen
+	// No velocity copy here, like Mugen's self binds
 	c.applyBind(bc, &c.bindTo)
 }
 
@@ -10458,16 +10402,17 @@ func (c *Char) xPlatformBound(pxmin, pxmax float32) {
 	c.xScreenBound()
 }
 
-// Remove every target bind on this char, thus clearing getHitVar(isbound)
-func (c *Char) gethitBindClear() {
-	for _, bc := range sys.charList.runOrder {
-		bc.removeTargetBind(c.id)
+// End a target bind on this char, thus clearing getHitVar(isbound)
+func (c *Char) clearTargetBind() {
+	if c.targetBinder() != nil {
+		c.bindTo.clear()
 	}
 }
 
+// Callers only pass this char's targets, so a bind to this char is a target bind
+// Reads bindTo directly so a bind on its linger frame also sends the target to 5050, like Mugen
 func (c *Char) releaseBoundTarget(t *Char, log bool) {
-	bp := c.getBind(t.id)
-	if bp == nil || !bp.isTargetBind {
+	if t.bindTo.id != c.id {
 		return
 	}
 	// This is the only place a bound target is sent to state 5050
@@ -10478,7 +10423,7 @@ func (c *Char) releaseBoundTarget(t *Char, log bool) {
 			sys.appendToConsole(t.warn() + fmt.Sprintf("SelfState from being bound to destroyed helper: %v (%v)", c.name, c.id))
 		}
 	}
-	c.removeBind(t.id)
+	t.bindTo.clear()
 }
 
 func (c *Char) releaseAllBoundTargets() {
@@ -10487,6 +10432,24 @@ func (c *Char) releaseAllBoundTargets() {
 			c.releaseBoundTarget(t, false)
 		}
 	}
+}
+
+// Drop this char's targets and end binds to it, plus any grab on it. Its self binds survive
+func (c *Char) releaseLinks() {
+	c.releaseTargets(-1)
+	c.unbindFollowers()
+	// End a grab on this char, since its timer stops while disabled. Self binds survive
+	c.clearTargetBind()
+}
+
+// Drop all targets without releasing them, and end this char's binds on them
+func (c *Char) clearTargets() {
+	for _, tid := range c.targets {
+		if t := sys.playerID(tid); t != nil {
+			t.unbindFrom(c.id)
+		}
+	}
+	c.targets = c.targets[:0]
 }
 
 // Drop all targets except keepId when a HitOnce attack hits, this char is KO'd or disabled
@@ -10521,7 +10484,7 @@ func (c *Char) dropTargets() {
 					c.targets[i] = c.targets[len(c.targets)-1]
 					c.targets = c.targets[:len(c.targets)-1]
 					// End this char's bind on the target. exitTarget() usually did it already, but not on every path
-					c.removeTargetBind(t.id)
+					t.unbindFrom(c.id)
 					if t.ghv._type != 0 { // https://github.com/ikemen-engine/Ikemen-GO/issues/1268
 						t.ghv.hitid = -1
 					}
@@ -10540,7 +10503,9 @@ func (c *Char) removeTarget(pid int32) {
 	for i, t := range c.targets {
 		if t == pid {
 			c.targets = SliceDelete(c.targets, i)
-			c.removeTargetBind(pid)
+			if tc := sys.playerID(pid); tc != nil {
+				tc.unbindFrom(c.id)
+			}
 			return
 		}
 	}
@@ -10558,7 +10523,7 @@ func (c *Char) exitTarget() {
 				}
 			}
 		}
-		c.gethitBindClear()
+		c.clearTargetBind()
 		// This line used to be outside the "c.hittmp >= 0" condition, but this happened
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/2581
 		c.ghv.targetedBy = c.ghv.targetedBy[:0]
@@ -11803,8 +11768,10 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 				}
 			}
 		}
-		// Only the attacker's own bind on the getter. Mugen keeps self binds through hits
-		c.removeBind(getter.id)
+		// Only the attacker's target bind on the getter. Mugen keeps self binds through hits
+		if c.hasTarget(getter.id) {
+			getter.unbindFrom(c.id)
+		}
 		if hd.KeepState && ghvset {
 			getter.ghv.keepstate = hd.KeepState
 			if hitResult == 2 {
@@ -12052,9 +12019,7 @@ func (c *Char) hitResultCheck(getter *Char, proj *Projectile, hitTraded bool) (h
 				if !math.IsNaN(float64(snap[2])) {
 					z = hd.mindist[2]
 				}
-				c.bindOther(getter, hd.snaptime+Btoi(hd.snaptime > 0 && !c.pause()), 0, x, y, z, true)
-			} else {
-				c.removeBind(getter.id)
+				c.bindOther(getter, hd.snaptime+Btoi(hd.snaptime > 0 && !getter.pause()), 0, x, y, z)
 			}
 			// Save other gethitvars that don't directly affect gameplay
 			ghv.ground_velocity[0] = hd.ground_velocity[0] * scaleratio * -byf
@@ -12857,29 +12822,26 @@ func (c *Char) actionRun() {
 	c.xScreenBound()
 	c.zDepthBound()
 
-	// Update the players this char binds
+	// First bind pass: place the targets this char binds. The second pass is in the bound char's update()
 	// In Mugen, binding to a target allows one to exit screen boundaries, hence being placed after xScreenBound()
 	// A destroyed helper skips this so that destroy() can still find its bound targets and send them to state 5050
 	// https://github.com/ikemen-engine/Ikemen-GO/issues/4151
 	if !c.csf(CSF_destroy) {
-		for i := 0; i < len(c.binds); i++ {
-			bp := &c.binds[i]
-			if bp.time == 0 {
+		for _, tid := range c.targets {
+			t := sys.playerID(tid)
+			if t == nil || t.bindTo.id != c.id {
+				continue
+			}
+			if t.bindTo.time == 0 {
 				// The bind ended last frame. Clear getHitVar(isbound) now, like Mugen
 				// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
-				c.binds = SliceDelete(c.binds, i)
-				i--
+				t.bindTo.clear()
 				continue
 			}
 			// Binds freeze during Pause/SuperPause, like Mugen
-			if c.pauseBool {
-				continue
+			if !c.pauseBool {
+				t.followBinder(c, &t.bindTo)
 			}
-			t := sys.playerID(bp.id)
-			if t == nil {
-				continue
-			}
-			t.followBinder(c, bp)
 		}
 	}
 
@@ -12974,7 +12936,7 @@ func (c *Char) track() {
 		xbc, xbp := c.bindOnAxis(0)
 		canmove := c.acttmp > 0 && !c.csf(CSF_posfreeze) && xbp == nil
 		// Keep following the binder on the frame after a target bind ends
-		bindToCharacter, _ := c.getBinder()
+		bindToCharacter := c.targetBinder()
 		if xbp != nil {
 			bindToCharacter = xbc
 		}
@@ -13032,9 +12994,11 @@ func (c *Char) update() {
 			}
 		*/
 
-		// Self binds are applied here instead of actionRun, or timing issues arise
+		// Self binds are applied here
+		// Target binds are applied by the binder in their actionRun() instead
+		// Merging into one shared pass causes timing issues and as such is not possible
 		// https://github.com/ikemen-engine/Ikemen-GO/issues/3915
-		if !c.pauseBool {
+		if c.targetBinder() == nil {
 			c.updateBindTo()
 		}
 
@@ -13213,39 +13177,16 @@ func (c *Char) tick() {
 		c.animBackup = c.anim
 	}
 
-	// Update the bind list
-	for i := 0; i < len(c.binds); i++ {
-		bp := &c.binds[i]
-		// The bound player is gone for good
-		if _, ok := sys.charList.idMap[bp.id]; !ok {
-			c.binds = SliceDelete(c.binds, i)
-			i--
-			continue
-		}
-		// A target bind ends with its target entry, like in Mugen
-		if bp.isTargetBind && !c.hasTarget(bp.id) {
-			c.binds = SliceDelete(c.binds, i)
-			i--
-			continue
-		}
-		// Pause/SuperPause stops bind timers, like Mugen. Hitpause does not
-		// Ended binds are only cleared in the next frame, so getHitVar(isbound) lingers
-		// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
-		if bp.time > 0 && !c.pause() {
-			bp.time--
-		}
+	// Step the bind timer
+	// Pause/SuperPause stops it, like Mugen. Hitpause does not
+	if c.bindTo.time > 0 && !c.pause() {
+		c.bindTo.time--
 	}
-
-	// Step the self bind timer. Pause/SuperPause stops it too
-	if c.bindTo.time > 0 {
-		if !c.pause() {
-			c.bindTo.time--
-			// Unlike TargetBind, we clear this one immediately
-			// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
-			if c.bindTo.time == 0 {
-				c.bindTo.clear()
-			}
-		}
+	// A target keeps an ended bind one more frame so getHitVar(isbound) lingers. Other binds end immediately
+	// Fixes BindToRoot/BindToParent of 1 immediately after PosSets (MUGEN 1.0/1.1 behavior)
+	// https://github.com/ikemen-engine/Ikemen-GO/issues/3882
+	if c.activeBinder() == nil && c.targetBinder() == nil {
+		c.bindTo.clear()
 	}
 
 	if c.cmd == nil {
@@ -15062,29 +15003,8 @@ func (cl *CharList) rebindIfPushed() {
 		if c.pushed {
 			continue
 		}
-		// If any binder was pushed, re-apply every bind in run order so the last bind still wins
-		pushed := false
-		for _, bc := range cl.runOrder {
-			if bc.pushed {
-				bp := bc.getBind(c.id)
-				if bp != nil && bp.time != 0 {
-					pushed = true
-					break
-				}
-			}
-		}
-		if pushed {
-			for _, bc := range cl.runOrder {
-				bp := bc.getBind(c.id)
-				if bp != nil && bp.time != 0 {
-					c.applyBind(bc, bp)
-				}
-			}
-		}
-		if c.bindTo.time != 0 {
-			if bc := sys.playerID(c.bindTo.id); bc != nil && bc.pushed {
-				c.applyBind(bc, &c.bindTo)
-			}
+		if bc := c.activeBinder(); bc != nil && bc.pushed {
+			c.applyBind(bc, &c.bindTo)
 		}
 	}
 }
