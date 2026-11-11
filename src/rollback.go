@@ -87,6 +87,7 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 		}
 
 		// These are outside runFrame(), so they won't be needlessly executed during a rollback
+		sys.startNextMatchPreload()
 		sys.tickSound()
 		sys.cueDraw()
 		sys.renderFrame()

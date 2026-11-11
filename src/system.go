@@ -5935,7 +5935,7 @@ func (s *System) startNextTurnsPreload() {
 
 // Loads the next opponent sent from Lua (Survival) into P4, so the next match doesn't wait for it
 func (s *System) startNextMatchPreload() {
-	if !s.cfg.Config.TurnsLoading || s.netplay() || s.nextMatchChar >= 0 || len(s.chars[3]) > 0 ||
+	if !s.cfg.Config.TurnsLoading || s.nextMatchChar >= 0 || len(s.chars[3]) > 0 ||
 		s.loader.state == LS_Loading || s.loader.state == LS_Error {
 		return
 	}

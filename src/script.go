@@ -3243,6 +3243,13 @@ func systemScriptInit(l *lua.LState) {
 				}
 			}
 
+			// Netplay peers must all use the preloaded opponent or all load it later, so start it if needed
+			if winp == 1 && sys.netplay() && sys.nextMatchChar < 0 {
+				if sys.loader.state == LS_Loading && load(false) != nil {
+					sys.loader.reset()
+				}
+				sys.startNextMatchPreload()
+			}
 			// Let the next opponent finish loading instead of cancelling it
 			if winp == 1 && sys.nextMatchChar >= 0 && sys.loader.state == LS_Loading && load(false) != nil {
 				sys.loader.reset()
