@@ -5541,11 +5541,15 @@ func (c *Char) setAILevel(level float32) {
 		return
 	}
 	sys.aiLevel[c.playerNo] = level
+	slot := c.playerNo
+	if len(sys.chars[c.playerNo]) > 0 && sys.chars[c.playerNo][0] != nil {
+		slot = sys.memberController(c.playerNo, sys.chars[c.playerNo][0].memberNo)
+	}
 	for _, c := range sys.chars[c.playerNo] {
 		if level == 0 {
-			c.controller = c.playerNo
+			c.controller = slot
 		} else {
-			c.controller = ^c.playerNo
+			c.controller = ^slot
 		}
 	}
 }

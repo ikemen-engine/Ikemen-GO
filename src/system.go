@@ -6330,6 +6330,16 @@ func (s *System) clearPreloadedChars() {
 	s.preloadedCgi = [2]CharGlobalInfo{}
 }
 
+// Input slot of a team member. In co-op Turns it's the slot of the player who picked the member.
+func (s *System) memberController(pn, memberNo int) int {
+	if pn >= 0 && pn < 2 && memberNo > 0 && s.sel.gameParams != nil && s.sel.gameParams.CoopTurns[pn] {
+		if slot := pn + memberNo*2; slot < MaxSimul*2 {
+			return slot
+		}
+	}
+	return pn
+}
+
 func (s *System) activateTurnsSlot(chars []*Char, slot int) {
 	team := slot & 1
 	for _, ch := range chars {
@@ -6340,7 +6350,7 @@ func (s *System) activateTurnsSlot(chars []*Char, slot int) {
 		ch.setSCF(SCF_disabled, false)
 		ch.setSCF(SCF_standby, false)
 		if ch.helperIndex == 0 {
-			ch.controller = slot
+			ch.controller = s.memberController(slot, ch.memberNo)
 			if s.aiLevel[slot] != 0 {
 				ch.controller ^= -1
 			}
@@ -6688,6 +6698,11 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		p.controller = pn
 	} else {
 		p.memberNo = memberNo
+		// A kept char may have been another member before, so always reset its input slot
+		p.controller = sys.memberController(pn, memberNo)
+		if sys.aiLevel[pn] != 0 {
+			p.controller ^= -1
+		}
 		if nextMatch {
 			p.selectNo = sys.nextMatchChar
 		} else {

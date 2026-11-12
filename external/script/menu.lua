@@ -761,6 +761,9 @@ function menu.f_commandlistParse()
 				pn = pn + (member - 1) * 2
 			end
 			if player(pn) and aiLevel() == 0 then
+				if teamMode() == 'turns' then
+					sel = tbl[memberNo()] or sel
+				end
 				local movelist = getMovelist()
 				if sel.movelistText ~= movelist then
 					sel.movelistText = movelist
