@@ -3642,40 +3642,87 @@ function main.f_getUniquePalette(ch, state)
 	return pal
 end
 
+function main.f_demoCancelled()
+	if esc() then
+		return true
+	elseif motif.attract_mode.enabled then
+		return getCredits() > 0
+	end
+	return getInput(-1, motif.demo_mode.cancel.key)
+end
+
 function main.f_demoStart()
+	if #main.t_randomChars == 0 then
+		return
+	end
 	main.f_default()
 	main.pauseMenu = false
+	local demo = motif.demo_mode
 	local palState = {}
-	setFightScreenElements({bars = motif.demo_mode.fight.bars.display})
+	local picks = {}
+	clearSelected()
+	setFightScreenElements({bars = demo.fight.bars.display})
 	setGameMode('demo')
 	for side = 1, 2 do
 		setTeamMode(side, 0, 1)
 		setCom(side, 8)
 		local ch = main.t_randomChars[math.random(1, #main.t_randomChars)]
-		local pal = main.f_getUniquePalette(ch, palState)
-		selectChar(side, ch, pal)
+		picks[side] = {ref = ch}
 	end
 	start.f_setStage()
-	if motif.demo_mode.fight.stopbgm then
+	local proceed = true
+	local previousPlayers
+	if demo.select.enabled or demo.vsscreen.enabled then
+		previousPlayers = start.p
+		start.p = {{t_selTemp = {}}, {t_selTemp = {}}}
+		if demo.select.enabled then
+			main.selectMenu = {true, true}
+			start.f_selectReset(true, true)
+			proceed = start.f_demoSelect(picks, palState)
+		end
+	end
+	if proceed then
+		for _, pick in ipairs(picks) do
+			pick.pal = pick.pal or main.f_getUniquePalette(pick.ref, palState)
+		end
+	end
+	if proceed and demo.vsscreen.enabled then
+		for side = 1, 2 do
+			start.p[side].t_selected = {picks[side]}
+		end
+		proceed = start.f_selectVersus(true, {false, false}, nil, main.f_demoCancelled)
+	end
+	if proceed then
+		if demo.fight.stopbgm then
 		stopBgm()
 	end
 	hook.run("main.t_itemname", t, item)
-	-- clearColor(motif[main.background].bgclearcolor[1], motif[main.background].bgclearcolor[2], motif[main.background].bgclearcolor[3])
+		if not demo.vsscreen.enabled or not start.bgLoadStarted then
+			for side, pick in ipairs(picks) do
+				selectChar(side, pick.ref, pick.pal)
+			end
 	loadStart(start.f_buildLoadStartParams())
+		end
 	game()
+	else
+		esc(false)
+	end
+	if previousPlayers then
+		start.p = previousPlayers
+	end
 	if not motif.attract_mode.enabled then
-		if introWaitCycles >= motif.demo_mode.intro.waitcycles then
+		if proceed and introWaitCycles >= demo.intro.waitcycles then
 			main.f_hiscore("arcade", -1)
 			if motif.files.intro.storyboard ~= '' then
 				main.f_storyboard(motif.files.intro.storyboard)
 			end
 			introWaitCycles = 0
-		else
+		elseif proceed then
 			introWaitCycles = introWaitCycles + 1
 		end
 		bgReset(motif[main.background].BGDef)
 		-- start title BGM only if it has been interrupted
-		if motif.demo_mode.fight.stopbgm or motif.demo_mode.fight.playbgm or (introWaitCycles == 0 and motif.files.intro.storyboard ~= '') then
+		if demo.select.enabled or demo.vsscreen.enabled or demo.fight.stopbgm or demo.fight.playbgm or (introWaitCycles == 0 and motif.files.intro.storyboard ~= '') then
 			playBgm({source = "motif.title", interrupt = true})
 		end
 	end
