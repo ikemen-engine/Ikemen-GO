@@ -363,6 +363,7 @@ type GameParams struct {
 	CharParamStage      bool     `ini:"charparam.stage"`
 	CharParamTime       bool     `ini:"charparam.time"`
 	TurnsOffset         [2]int32
+	CoopTurns           [2]bool
 	NextChar            int32 `ini:"p2.nextchar"`
 	ocd                 [3][]OverrideCharData
 	Raw                 []string
@@ -477,6 +478,11 @@ func (p *GameParams) AppendParams(entries []string) {
 				v = 0
 			}
 			p.TurnsOffset[1] = v
+			continue
+		case "p1.coopturns", "p2.coopturns":
+			if b, ok := parseBoolLoose(val); ok {
+				p.CoopTurns[Btoi(kl == "p2.coopturns")] = b
+			}
 			continue
 		case "p2.nextchar":
 			p.NextChar = Atoi(val)
