@@ -253,6 +253,7 @@ type Animation struct {
 	loopcount                  int32
 	filename                   string
 	actionNumber               int32
+	param                      string // motif parameter name, shown in warnings
 }
 
 func newAnimation(sff *Sff, pal *PaletteList) *Animation {
@@ -823,7 +824,13 @@ func (a *Animation) UpdateSprite() {
 						a.sff.debugMissing = make(map[[2]uint16]bool)
 					}
 					if !a.sff.debugMissing[key] {
-						LogMessage("WARNING: %v, action %v: missing sprite %v,%v", a.filename, a.actionNumber, group, number)
+						if a.param != "" && a.sff.filename != "" {
+							LogMessage("WARNING: %v: missing sprite %v,%v in %v", a.param, group, number, a.sff.filename)
+						} else if a.param != "" {
+							LogMessage("WARNING: %v: missing sprite %v,%v", a.param, group, number)
+						} else {
+							LogMessage("WARNING: %v, action %v: missing sprite %v,%v", a.filename, a.actionNumber, group, number)
+						}
 						a.sff.debugMissing[key] = true
 					}
 				}
