@@ -347,11 +347,8 @@ function start.f_remapAI(ai)
 	end
 end
 
--- Resolve a co-op member's input before fight slots are remapped.
+-- Resolve the selection owner's input before fight slots are remapped.
 function start.f_coopInput(side, member)
-	if main.sideSelectDone then
-		return main.t_baseRemapInput[side + (member - 1) * 2] or 0
-	end
 	local selection = start.p[side].t_selCmd[member]
 	if selection == nil then
 		return 0
@@ -4208,7 +4205,7 @@ function start.f_selectMenu(side, cmd, player, member, selectState, demo)
 			start.p[side].t_selected[member] = {
 				ref = start.c[player].selRef,
 				pal = finalPal,
-				pn = start.f_getPlayerNo(side, member),
+				pn = start.f_coopSide(side) and player or start.f_getPlayerNo(side, member),
 				cursor = {start.c[player].selX, start.c[player].selY},
 			}
 			main.f_preloadSetCharHighlight(player, nil)
@@ -4443,6 +4440,18 @@ function start.f_buildOverrideParams(side, member, v)
 	return table.concat(parts, ", ")
 end
 
+-- VS screen slots of a side. Every co-op player on it can pick the order.
+local function versusCmds(side)
+	if not main.coop or main.cpuSide[side] then
+		return side
+	end
+	local t = {}
+	for i = 1, math.max(1, #start.p[side].t_selCmd) do
+		table.insert(t, side + (i - 1) * 2)
+	end
+	return t
+end
+
 function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled)
 	start.t_orderRemap = {{}, {}}
 	start.bgLoadStarted = false
@@ -4571,7 +4580,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		end
 		-- for each team side member
 		for side = 1, 2 do
-			if not done and t_orderSelect[side] and not main.cpuSide[side] and getAction(side, motif.vs_screen.skip.action) then
+			if not done and t_orderSelect[side] and not main.cpuSide[side] and getAction(versusCmds(side), motif.vs_screen.skip.action) then
 				finishOrderSelection(side)
 				if not snd then
 					sndPlay(motif.Snd, motif.vs_screen['p' .. side].value.snd[1], motif.vs_screen['p' .. side].value.snd[2])
@@ -4613,7 +4622,7 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 						if #start.p[side].t_selected == #t_order[side] then
 							t_icon[side] = nil
 						end
-					elseif getAction(side, pCfg.action) or (#start.p[side].t_selected == #t_order[side] + 1) then
+					elseif getAction(versusCmds(side), pCfg.action) or (#start.p[side].t_selected == #t_order[side] + 1) then
 						t_order[side][#t_order[side] + 1] = k
 						local slot = #t_order[side]
 						if not v.selected then
@@ -4761,10 +4770,10 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		if bgLoading and loadStarted then
 			-- Latch leave input before netLoadingReady(), because the loading handshake stops the pre-match net input stream.
 			for side = 1, 2 do
-				if not demoCancelled and not main.cpuSide[side] and getAction(side, motif.vs_screen.skip.action) then
+				if not demoCancelled and not main.cpuSide[side] and getAction(versusCmds(side), motif.vs_screen.skip.action) then
 					wantSkip = true
 				end
-				if not demoCancelled and done and doneKeyReady and getAction(side, motif.vs_screen.done.action) then
+				if not demoCancelled and done and doneKeyReady and getAction(versusCmds(side), motif.vs_screen.done.action) then
 					wantDone = true
 				end
 			end
@@ -4790,8 +4799,8 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		for side = 1, 2 do
 			if not fadeOutStarted and (
 					(counter >= motif.vs_screen.time and (not (t_orderSelect[1] or t_orderSelect[2]) or done) and readyToLeave)
-					or (not demoCancelled and readyToLeave and (not main.cpuSide[side] and (getAction(side, motif.vs_screen.skip.action) or wantSkip)))
-					or (not demoCancelled and readyToLeave and (done and doneKeyReady and (getAction(side, motif.vs_screen.done.action) or wantDone)))) then
+					or (not demoCancelled and readyToLeave and (not main.cpuSide[side] and (getAction(versusCmds(side), motif.vs_screen.skip.action) or wantSkip)))
+					or (not demoCancelled and readyToLeave and (done and doneKeyReady and (getAction(versusCmds(side), motif.vs_screen.done.action) or wantDone)))) then
 				fadeOutInit(motif.vs_screen.fadeout.FadeData)
 				fadeOutStarted = true
 				wantSkip = false
@@ -4825,6 +4834,31 @@ function start.f_selectVersus(active, t_orderSelect, loadStartArg, demoCancelled
 		refresh()
 	end
 	esc(escFlag) -- force Esc detection
+	if not escFlag then
+		-- MemberNo in match stats refers to fight order. Keep the persistent roster
+		-- in that same order for life/var carry-over and the defeated Turns prefix.
+		for side = 1, 2 do
+			local selected, portraits, cursors, commands = {}, {}, {}, {}
+			local coop = start.f_coopSide(side)
+			for slot, member in ipairs(start.t_orderRemap[side]) do
+				selected[slot] = start.p[side].t_selected[member]
+				portraits[slot] = start.p[side].t_selTemp[member]
+				cursors[slot] = start.p[side].t_cursor[member]
+				if coop then
+					-- Backtracking from Stage Select must keep each character's
+					-- selection controls attached to the same owner.
+					commands[slot] = start.p[side].t_selCmd[member]
+				end
+				start.t_orderRemap[side][slot] = slot
+			end
+			start.p[side].t_selected = selected
+			start.p[side].t_selTemp = portraits
+			start.p[side].t_cursor = cursors
+			if coop then
+				start.p[side].t_selCmd = commands
+			end
+		end
+	end
 	return not escFlag
 end
 
