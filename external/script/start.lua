@@ -1333,20 +1333,23 @@ function start.f_getStageRef(def)
 	if def == '' then
 		return getStageNo()
 	end
-	if main.t_stageDef[def:lower()] == nil then
-		 main.f_addStage(def)
+	local ref = main.f_findStageRef(def)
+	if ref == nil then
+		ref = main.f_addStage(def)
 	end
-	return main.t_stageDef[def:lower()]
+	return ref
 end
 
 --returns char ref out of def filename
 function start.f_getCharRef(def)
-	if main.t_charDef[def:lower()] == nil then
+	local ref = main.f_findCharRef(def)
+	if ref == nil then
 		if not main.f_addChar(def .. ', order = 0, ordersurvival = 0, exclude = 1', true, false) then
 			panicError("\nUnable to add character. No such file or directory: " .. def .. "\n")
 		end
+		ref = main.f_findCharRef(def)
 	end
-	return main.t_charDef[def:lower()]
+	return ref
 end
 
 --returns teammode int from string

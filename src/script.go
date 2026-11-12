@@ -6059,6 +6059,30 @@ func systemScriptInit(l *lua.LState) {
 		sys.uiResetTokenGuard()
 		return 0
 	})
+	luaRegister(l, "resolveCharDef", func(l *lua.LState) int {
+		/*Resolve a character declaration to its `.def` path without adding the character.
+		@function resolveCharDef
+		@tparam string defpath Declaration as used in select.def or on the command line
+		  (folder name, path with or without `.def`, or `.zip`).
+		@treturn string|nil path Resolved `.def` path, or `nil` if not found.*/
+		if p, _ := resolveCharDef(strArg(l, 1)); p != "" {
+			l.Push(lua.LString(p))
+			return 1
+		}
+		return 0
+	})
+	luaRegister(l, "resolveStageDef", func(l *lua.LState) int {
+		/*Resolve a stage declaration to its `.def` path without adding the stage.
+		@function resolveStageDef
+		@tparam string defpath Declaration as used in select.def or on the command line
+		  (folder name, path with or without `.def`, or `.zip`).
+		@treturn string|nil path Resolved `.def` path, or `nil` if not found.*/
+		if p, err := resolveStageDef(strArg(l, 1)); err == nil {
+			l.Push(lua.LString(p))
+			return 1
+		}
+		return 0
+	})
 	luaRegister(l, "roundOver", func(*lua.LState) int {
 		/*Check whether the current round is over.
 		@function roundOver
