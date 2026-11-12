@@ -174,6 +174,21 @@ func rankingTypeFor(mode string) (string, bool) {
 	return v, ok
 }
 
+// Whether the run can be ranked at all, before comparing it with the saved table.
+// Uses only run data, so netplay peers always agree on it.
+func rankingQualifies(rType string, tal runTally, cleared bool) bool {
+	if (rType == "time" || sys.sel.gameParams.RankingCondition) && !cleared {
+		return false
+	}
+	if rType == "score" && tal.scoreP1 == 0 {
+		return false
+	}
+	if rType == "win" && tal.winP1 == 0 {
+		return false
+	}
+	return true
+}
+
 // Returns true if the just-finished run would produce a ranking entry.
 func rankingWouldPlace(mode string) bool {
 	mode = strings.ToLower(strings.TrimSpace(mode))
@@ -187,15 +202,12 @@ func rankingWouldPlace(mode string) bool {
 	rType = strings.ToLower(strings.TrimSpace(rType))
 	tal := tallyRun()
 	cleared := modeCleared(mode, len(sys.statsLog.Matches))
-	// Ranking exceptions
-	if (rType == "time" || sys.sel.gameParams.RankingCondition) && !cleared {
+	if !rankingQualifies(rType, tal, cleared) {
 		return false
 	}
-	if rType == "score" && tal.scoreP1 == 0 {
-		return false
-	}
-	if rType == "win" && tal.winP1 == 0 {
-		return false
+	// Each netplay peer has its own stats file, so the table can't decide here
+	if sys.netplay() {
+		return true
 	}
 
 	// VisibleItems <= 0 means "no truncation" -> always place.
@@ -293,8 +305,9 @@ func writeStatsPretty(path string, data []byte) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
-// Main entry: computes cleared/placement, writes save/stats.json. Returns (cleared, place).
-func computeAndSaveRanking(mode string) (bool, int32) {
+// Main entry: computes cleared/placement, writes save/stats.json. Returns (cleared, place, nameEntry).
+// nameEntry is also true in netplay when only the other peer placed, so both run the same screen.
+func computeAndSaveRanking(mode string) (bool, int32, bool) {
 	mode = strings.ToLower(strings.TrimSpace(mode))
 	// Tally the just-finished run
 	tal := tallyRun()
@@ -340,22 +353,14 @@ func computeAndSaveRanking(mode string) (bool, int32) {
 	rType, ok := rankingTypeFor(mode)
 	if !ok {
 		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
-		return cleared, 0
+		return cleared, 0, false
 	}
 	rType = strings.ToLower(strings.TrimSpace(rType))
 
 	// Ranking exceptions
-	if (rType == "time" || sys.sel.gameParams.RankingCondition) && !cleared {
+	if !rankingQualifies(rType, tal, cleared) {
 		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
-		return cleared, 0
-	}
-	if rType == "score" && tal.scoreP1 == 0 {
-		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
-		return cleared, 0
-	}
-	if rType == "win" && tal.winP1 == 0 {
-		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
-		return cleared, 0
+		return cleared, 0, false
 	}
 
 	// Build existing entries
@@ -453,5 +458,5 @@ func computeAndSaveRanking(mode string) (bool, int32) {
 	data, _ = sjson.SetRawBytes(data, rankPath, buf)
 	_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
 
-	return cleared, place
+	return cleared, place, place > 0 || sys.netplay()
 }

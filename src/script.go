@@ -985,6 +985,27 @@ func runStateController(target *Char, src string) error {
 	return nil
 }
 
+// Two games on one PC can start recording in the same second.
+// Never share a file, or their writes mix and the replay breaks.
+func createReplayFile(path string) *os.File {
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+	for i := 1; i < 100; i++ {
+		name := path
+		if i > 1 {
+			name = fmt.Sprintf("%s_%d%s", base, i, ext)
+		}
+		f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
+		if err == nil {
+			return f
+		}
+		if !os.IsExist(err) {
+			return nil
+		}
+	}
+	return nil
+}
+
 // -------------------------------------------------------------------------------------------------
 // Register external functions to be called from Lua scripts
 func systemScriptInit(l *lua.LState) {
@@ -2476,12 +2497,15 @@ func systemScriptInit(l *lua.LState) {
 		@function computeRanking
 		@tparam string mode Ranking mode identifier.
 		@treturn boolean cleared `true` if the run cleared the mode's requirements.
-		@treturn int32 place Ranking position (1-based), or `0` if unranked / skipped / not visible.*/
+		@treturn int32 place Ranking position (1-based), or `0` if unranked / skipped / not visible.
+		@treturn boolean nameEntry `true` if the hiscore screen should ask for a name. In netplay this is
+		  also `true` when only the other player placed, so both players see the same screen.*/
 		mode := strArg(l, 1)
-		cleared, place := computeAndSaveRanking(mode)
+		cleared, place, nameEntry := computeAndSaveRanking(mode)
 		l.Push(lua.LBool(cleared))
 		l.Push(lua.LNumber(place))
-		return 2
+		l.Push(lua.LBool(nameEntry))
+		return 3
 	})
 	luaRegister(l, "connected", func(*lua.LState) int {
 		/*Check if the main menu network connection is established.
@@ -3241,6 +3265,18 @@ func systemScriptInit(l *lua.LState) {
 					// Legacy Turns behavior: reload the next fighter between rounds.
 					sys.loader.reset()
 				}
+			}
+
+			// Netplay peers must all use the preloaded opponent or all load it later, so start it if needed
+			if winp == 1 && sys.netplay() && sys.nextMatchChar < 0 {
+				if sys.loader.state == LS_Loading && load(false) != nil {
+					sys.loader.reset()
+				}
+				sys.startNextMatchPreload()
+			}
+			// Let the next opponent finish loading instead of cancelling it
+			if winp == 1 && sys.nextMatchChar >= 0 && sys.loader.state == LS_Loading && load(false) != nil {
+				sys.loader.reset()
 			}
 
 			// If not restarting match
@@ -5630,6 +5666,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "preloadListChar", func(*lua.LState) int {
 		/*Mark a character sprite or animation for preloading.
+		Call it at the top level of a module. Later calls don't affect already loaded characters.
 		@function preloadListChar
 		@tparam int32|uint16 id Action number, or sprite group number when `number` is provided.
 		@tparam[opt] uint16 number If provided, `id` and `number` are used as sprite group/number keys;
@@ -5643,6 +5680,7 @@ func systemScriptInit(l *lua.LState) {
 	})
 	luaRegister(l, "preloadListStage", func(*lua.LState) int {
 		/*Mark a stage sprite or animation for preloading.
+		Call it at the top level of a module. Later calls don't affect already loaded stages.
 		@function preloadListStage
 		@tparam int32|uint16 id Action number, or sprite group number when `number` is provided.
 		@tparam[opt] uint16 number If provided, `id` and `number` are used as sprite group/number keys;
@@ -5930,7 +5968,7 @@ func systemScriptInit(l *lua.LState) {
 		@function replayRecord
 		@tparam string path Output file path.*/
 		if sys.netConnection != nil {
-			sys.netConnection.recording, _ = os.Create(strArg(l, 1))
+			sys.netConnection.recording = createReplayFile(strArg(l, 1))
 			sys.netConnection.headerWritten = false
 		}
 		return 0
@@ -6021,6 +6059,30 @@ func systemScriptInit(l *lua.LState) {
 		sys.uiResetTokenGuard()
 		return 0
 	})
+	luaRegister(l, "resolveCharDef", func(l *lua.LState) int {
+		/*Resolve a character declaration to its `.def` path without adding the character.
+		@function resolveCharDef
+		@tparam string defpath Declaration as used in select.def or on the command line
+		  (folder name, path with or without `.def`, or `.zip`).
+		@treturn string|nil path Resolved `.def` path, or `nil` if not found.*/
+		if p, _ := resolveCharDef(strArg(l, 1)); p != "" {
+			l.Push(lua.LString(p))
+			return 1
+		}
+		return 0
+	})
+	luaRegister(l, "resolveStageDef", func(l *lua.LState) int {
+		/*Resolve a stage declaration to its `.def` path without adding the stage.
+		@function resolveStageDef
+		@tparam string defpath Declaration as used in select.def or on the command line
+		  (folder name, path with or without `.def`, or `.zip`).
+		@treturn string|nil path Resolved `.def` path, or `nil` if not found.*/
+		if p, err := resolveStageDef(strArg(l, 1)); err == nil {
+			l.Push(lua.LString(p))
+			return 1
+		}
+		return 0
+	})
 	luaRegister(l, "roundOver", func(*lua.LState) int {
 		/*Check whether the current round is over.
 		@function roundOver
@@ -6039,7 +6101,8 @@ func systemScriptInit(l *lua.LState) {
 		/*Run the high-score screen for one frame.
 		@function runHiscore
 		@tparam[opt] string mode Optional hiscore mode identifier.
-		@tparam[opt] int32 place Optional ranking position to highlight.
+		@tparam[opt] int32 place Optional ranking position to highlight. In netplay, `0` runs name entry
+		  without a row, for a player who didn't place while the other one did.
 		@tparam[opt] int32 endtime Optional override for the hiscore screen duration.
 		@tparam[opt=false] boolean nofade If `true`, disable fade-in and fade-out effects.
 		@tparam[opt=false] boolean nobgs If `true`, disable background rendering.
@@ -6990,6 +7053,12 @@ func systemScriptInit(l *lua.LState) {
 		s.stop([...]int32{int32(numArg(l, 2)), int32(numArg(l, 3))})
 		return 0
 	})
+	luaRegister(l, "startPreloads", func(*lua.LState) int {
+		/*Start preloading. Called by main.lua once modules are loaded.
+		@function startPreloads*/
+		sys.sel.StartPreloads()
+		return 0
+	})
 	luaRegister(l, "stopAllCharSounds", func(l *lua.LState) int {
 		/*Stop all character sounds.
 		@function stopAllCharSounds*/
@@ -7109,7 +7178,7 @@ func systemScriptInit(l *lua.LState) {
 		@function textImgGetTextWidth
 		@tparam TextSprite ts Text sprite userdata.
 		@tparam string text Text to measure.
-		@treturn int32 width Width of the rendered text in pixels.*/
+		@treturn number width Width of the rendered text in pixels.*/
 		ts, ok := toUserData(l, 1).(*TextSprite)
 		if !ok {
 			userDataError(l, 1, ts)

@@ -271,6 +271,7 @@ type System struct {
 	selMutex            sync.RWMutex
 	loadMutex           sync.Mutex
 	turnsPreloadMember  [2]int // -1 = none; otherwise selected Turns member index to load into side+2
+	nextMatchChar       int    // -1 = none; otherwise charlist index of the next opponent to load into P4
 	preloadedChars      [2]*Char
 	preloadedCgi        [2]CharGlobalInfo
 	preloadedCharsMutex sync.Mutex
@@ -1151,11 +1152,21 @@ func (s *System) resetRemapInput() {
 func (s *System) loaderReset() {
 	s.roundNo, s.wins, s.roundsExisted, s.decisiveRound = 1, [2]int32{}, [2]int32{}, [2]bool{}
 	s.turnsPreloadMember = [2]int{-1, -1}
+	s.nextMatchChar = -1
 	s.loader.reset()
 }
 
 func (s *System) loadStart() {
+	// Keep the opponent loaded during the previous match
+	var next *Char
+	var nextGi CharGlobalInfo
+	if s.nextMatchChar >= 0 {
+		next, nextGi = s.getPreloadedCharAndCgi(1)
+	}
 	s.loaderReset()
+	if next != nil {
+		s.setPreloadedChar(1, next, nextGi)
+	}
 	s.loader.runTread()
 }
 
@@ -4133,6 +4144,9 @@ func (s *System) runMatch() (reload bool) {
 	// Loop until end of match
 	for s.keepMatchRunning() {
 
+		// Load the next opponent once no Turns member is waiting to load
+		s.startNextMatchPreload()
+
 		for _, v := range s.shortcutScripts {
 			if v.Activate {
 				if err := s.luaLState.DoString(v.Script); err != nil {
@@ -4738,6 +4752,7 @@ type SelectChar struct {
 	scp           *SelectCharParams
 	preloadAnim   string
 	preloadSprite string
+	deferPreload  bool
 }
 
 func newSelectChar() *SelectChar {
@@ -4762,6 +4777,7 @@ type SelectStage struct {
 	music           Music
 	ssp             *SelectStageParams
 	preloadSprite   string
+	deferPreload    bool
 }
 
 func newSelectStage() *SelectStage {
@@ -4794,6 +4810,7 @@ type Select struct {
 	preloadOrder       int64
 	charPreload        []PreloadEntry
 	stagePreload       []PreloadEntry
+	preloadStarted     bool
 }
 
 type PreloadState int32
@@ -5083,6 +5100,35 @@ func (s *Select) preloadWorkerLoop() {
 	}
 }
 
+// Called once after modules load. In BootLoadingMode 0 it preloads the chars and stages added so far.
+func (s *Select) StartPreloads() {
+	if s.preloadStarted {
+		return
+	}
+	s.preloadStarted = true
+	if sys.cfg.Config.BootLoadingMode > 0 {
+		return
+	}
+	for i := range s.charlist {
+		if !s.charlist[i].deferPreload {
+			continue
+		}
+		s.charlist[i].deferPreload = false
+		if err := s.preloadCharAssets(i); err != nil {
+			panic(fmt.Errorf("failed to preload %v: %v", s.charlist[i].def, err))
+		}
+	}
+	for i := range s.stagelist {
+		if !s.stagelist[i].deferPreload {
+			continue
+		}
+		s.stagelist[i].deferPreload = false
+		if err := s.preloadStageAssets(i + 1); err != nil {
+			panic(fmt.Errorf("failed to preload %v: %v", s.stagelist[i].def, err))
+		}
+	}
+}
+
 func (s *Select) preloadCharAssets(ref int) error {
 	if ref < 0 || ref >= len(s.charlist) {
 		return nil
@@ -5319,6 +5365,138 @@ func getDefaultDefPathInZip(zipFilePathOnDisk string) (path1 string, path2 strin
 	return path1, path2
 }
 
+// Returns the char DEF path a select.def or command line declaration
+// points to, or an empty path and the reason it was not found.
+func resolveCharDef(decl string) (defPath, reason string) {
+	decl = filepath.ToSlash(strings.TrimSpace(decl))
+	isZipChar := strings.HasSuffix(strings.ToLower(decl), ".zip")
+
+	if isZipChar {
+		zipSearchDirs := []string{"chars/", "data/", ""}
+		var actualZipPathOnDisk string
+
+		if filepath.IsAbs(decl) {
+			if foundPath := FileExist(decl); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
+				actualZipPathOnDisk = foundPath
+			}
+		} else {
+			for _, dir := range zipSearchDirs {
+				candidateZipPath := filepath.ToSlash(filepath.Join(dir, decl))
+				if foundPath := FileExist(candidateZipPath); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
+					actualZipPathOnDisk = foundPath
+					break
+				}
+			}
+		}
+
+		if actualZipPathOnDisk == "" {
+			return "", "ZIP not found"
+		}
+
+		defInZip1, defInZip2 := getDefaultDefPathInZip(actualZipPathOnDisk)
+
+		// Construct logical paths for FileExist to check inside the zip
+		candidateLogicalPath1 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip1)
+		if FileExist(candidateLogicalPath1) != "" { // FileExist checks inside the zip now
+			return candidateLogicalPath1, ""
+		} else {
+			candidateLogicalPath2 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip2)
+			if FileExist(candidateLogicalPath2) != "" {
+				return candidateLogicalPath2, ""
+			} else {
+				return "", fmt.Sprintf("DEF in ZIP missing: %s or %s", defInZip1, defInZip2)
+			}
+		}
+	} else {
+		// Command line paths are not slash-normalized on non-Windows hosts
+		charPath := strings.TrimSuffix(strings.ReplaceAll(decl, "\\", "/"), "/")
+		candidates := []string{charPath}
+		if !strings.HasSuffix(strings.ToLower(charPath), ".def") {
+			// Without .def the path is either a folder or a def file without extension.
+			folderDef := charPath + "/" + path.Base(charPath) + ".def"
+			fileDef := charPath + ".def"
+			if strings.Contains(charPath, "/") {
+				candidates = []string{fileDef, folderDef}
+			} else {
+				candidates = []string{folderDef, fileDef}
+			}
+		}
+
+		for _, c := range candidates {
+			// SearchFile returns the input unchanged when nothing matches, so confirm it exists
+			if found := SearchFile(c, []string{"", "data/"}, "chars/"); FileExist(found) != "" {
+				return found, ""
+			}
+		}
+		return "", "DEF not found"
+	}
+}
+
+// Returns the stage DEF path a select.def or command line declaration points to.
+func resolveStageDef(decl string) (string, error) {
+	decl = filepath.ToSlash(strings.TrimSpace(decl))
+	isZipStage := strings.HasSuffix(strings.ToLower(decl), ".zip")
+
+	if isZipStage {
+		zipSearchDirs := []string{"stages/", "data/", ""}
+		var actualZipPathOnDisk string
+
+		if filepath.IsAbs(decl) {
+			if foundPath := FileExist(decl); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
+				actualZipPathOnDisk = foundPath
+			}
+		} else {
+			for _, dir := range zipSearchDirs {
+				candidateZipPath := filepath.ToSlash(filepath.Join(dir, decl))
+				if foundPath := FileExist(candidateZipPath); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
+					actualZipPathOnDisk = foundPath
+					break
+				}
+			}
+		}
+
+		if actualZipPathOnDisk == "" {
+			return "", fmt.Errorf("File not found: %v", decl)
+		}
+
+		defInZip1, defInZip2 := getDefaultDefPathInZip(actualZipPathOnDisk)
+
+		candidateLogicalPath1 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip1)
+		if FileExist(candidateLogicalPath1) != "" {
+			return candidateLogicalPath1, nil
+		} else {
+			candidateLogicalPath2 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip2)
+			if FileExist(candidateLogicalPath2) != "" {
+				return candidateLogicalPath2, nil
+			} else {
+				return "", fmt.Errorf("DEF file not found in %v: %v or %v", decl, defInZip1, defInZip2)
+			}
+		}
+	} else {
+		// Command line paths are not slash-normalized on non-Windows hosts
+		stagePath := strings.TrimSuffix(strings.ReplaceAll(decl, "\\", "/"), "/")
+		candidates := []string{stagePath}
+		if !strings.HasSuffix(strings.ToLower(stagePath), ".def") {
+			// Without .def the path is either a def file without extension or a folder.
+			candidates = []string{stagePath + ".def", stagePath + "/" + path.Base(stagePath) + ".def"}
+		}
+		for _, c := range candidates {
+			// SearchFile returns the input unchanged when nothing matches, so confirm it exists
+			var found string
+			if LoadFile(&c, []string{"", "data/"}, "stages/", func(file string) error {
+				if FileExist(file) == "" {
+					return os.ErrNotExist
+				}
+				found = file
+				return nil
+			}) == nil {
+				return found, nil
+			}
+		}
+		return "", fmt.Errorf("File not found: %v", decl)
+	}
+}
+
 func (s *Select) AddChar(def string) *SelectChar {
 	tnow := time.Now()
 	s.charlist = append(s.charlist, *newSelectChar())
@@ -5355,61 +5533,9 @@ func (s *Select) AddChar(def string) *SelectChar {
 		sys.loadTime(tnow, tstr, false, false)
 	}()
 
-	var finalDefPath string
-	isZipChar := strings.HasSuffix(strings.ToLower(defPathFromSelect), ".zip")
-
-	if isZipChar {
-		zipSearchDirs := []string{"chars/", "data/", ""}
-		var actualZipPathOnDisk string
-
-		if filepath.IsAbs(defPathFromSelect) {
-			if foundPath := FileExist(defPathFromSelect); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
-				actualZipPathOnDisk = foundPath
-			}
-		} else {
-			for _, dir := range zipSearchDirs {
-				candidateZipPath := filepath.ToSlash(filepath.Join(dir, defPathFromSelect))
-				if foundPath := FileExist(candidateZipPath); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
-					actualZipPathOnDisk = foundPath
-					break
-				}
-			}
-		}
-
-		if actualZipPathOnDisk == "" {
-			return useDummy("ZIP not found")
-		}
-
-		defInZip1, defInZip2 := getDefaultDefPathInZip(actualZipPathOnDisk)
-
-		// Construct logical paths for FileExist to check *inside* the zip
-		candidateLogicalPath1 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip1)
-		if FileExist(candidateLogicalPath1) != "" { // FileExist checks inside the zip now
-			finalDefPath = candidateLogicalPath1
-		} else {
-			candidateLogicalPath2 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip2)
-			if FileExist(candidateLogicalPath2) != "" {
-				finalDefPath = candidateLogicalPath2
-			} else {
-				return useDummy(fmt.Sprintf("DEF in ZIP missing: %s or %s", defInZip1, defInZip2))
-			}
-		}
-	} else {
-		charDefPathGuess := defPathFromSelect
-		if !strings.HasSuffix(strings.ToLower(charDefPathGuess), ".def") {
-			if !strings.Contains(charDefPathGuess, "/") {
-				baseName := filepath.Base(charDefPathGuess)
-				charDefPathGuess = filepath.ToSlash(filepath.Join(charDefPathGuess, baseName+".def"))
-			} else {
-				charDefPathGuess += ".def"
-			}
-		}
-
-		foundDiskPath := SearchFile(charDefPathGuess, []string{"", "data/"}, "chars/")
-		if foundDiskPath == "" || !strings.HasSuffix(strings.ToLower(foundDiskPath), ".def") {
-			return useDummy("DEF not found")
-		}
-		finalDefPath = foundDiskPath
+	finalDefPath, reason := resolveCharDef(defPathFromSelect)
+	if finalDefPath == "" {
+		return useDummy(reason)
 	}
 
 	sc.def = finalDefPath
@@ -5558,12 +5684,14 @@ func (s *Select) AddChar(def string) *SelectChar {
 	if len(sprite_orig) > 0 {
 		sc.preloadSprite = sprite_orig
 	}
-	if sys.cfg.Config.BootLoadingMode > 0 {
+	if sys.cfg.Config.BootLoadingMode > 0 || !s.preloadStarted {
+		// Placeholder, real assets are loaded later
 		sc.sff = newSff(SffTypeChar)
 		sc.anims.updateSff(sc.sff)
 		for k := range s.charSpritePreload {
 			sc.anims.addSprite(sc.sff, k[0], k[1])
 		}
+		sc.deferPreload = sys.cfg.Config.BootLoadingMode == 0
 	} else {
 		if err := s.preloadCharAssets(len(s.charlist) - 1); err != nil {
 			panic(fmt.Errorf("failed to preload %v: %v", sc.def, err))
@@ -5585,63 +5713,14 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 	defPathFromSelect := filepath.ToSlash(def)
 	tstr = fmt.Sprintf("Stage added: %v", defPathFromSelect)
 
-	var finalDefPath string
-	isZipStage := strings.HasSuffix(strings.ToLower(defPathFromSelect), ".zip")
-
-	if isZipStage {
-		zipSearchDirs := []string{"stages/", "data/", ""}
-		var actualZipPathOnDisk string
-
-		if filepath.IsAbs(defPathFromSelect) {
-			if foundPath := FileExist(defPathFromSelect); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
-				actualZipPathOnDisk = foundPath
-			}
-		} else {
-			for _, dir := range zipSearchDirs {
-				candidateZipPath := filepath.ToSlash(filepath.Join(dir, defPathFromSelect))
-				if foundPath := FileExist(candidateZipPath); foundPath != "" && strings.HasSuffix(strings.ToLower(foundPath), ".zip") {
-					actualZipPathOnDisk = foundPath
-					break
-				}
-			}
-		}
-
-		if actualZipPathOnDisk == "" {
-			err := fmt.Errorf("stage ZIP not found: %s", defPathFromSelect)
-			LogMessage("Failed to add stage. File not found: %v", defPathFromSelect)
-			return nil, err
-		}
-
-		defInZip1, defInZip2 := getDefaultDefPathInZip(actualZipPathOnDisk)
-
-		candidateLogicalPath1 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip1)
-		if FileExist(candidateLogicalPath1) != "" {
-			finalDefPath = candidateLogicalPath1
-		} else {
-			candidateLogicalPath2 := filepath.ToSlash(actualZipPathOnDisk + "/" + defInZip2)
-			if FileExist(candidateLogicalPath2) != "" {
-				finalDefPath = candidateLogicalPath2
-			} else {
-				err := fmt.Errorf("DEF file not found in ZIP: %s or %s", defInZip1, defInZip2)
-				LogMessage("Failed to add stage. DEF file not found in %v: %v or %v", defPathFromSelect, defInZip1, defInZip2)
-				return nil, err
-			}
-		}
-	} else {
-		if !strings.HasSuffix(strings.ToLower(def), ".def") {
-			def += ".def"
-		}
-		if err := LoadFile(&def, []string{"", "data/"}, "stages/", func(file string) error {
-			finalDefPath = file
-			return nil
-		}); err != nil {
-			LogMessage("Failed to add stage. File not found: %v", def)
-			return nil, err
-		}
+	finalDefPath, err := resolveStageDef(def)
+	if err != nil {
+		LogMessage("Failed to add stage. %v", err)
+		return nil, err
 	}
+	def = finalDefPath
 
 	var lines []string
-	var err error
 	if err = LoadFile(&finalDefPath, nil, "", func(file string) error {
 		var str string
 		str, err = LoadText(file)
@@ -5746,6 +5825,14 @@ func (s *Select) AddStage(def string) (*SelectStage, error) {
 			ss.anims.addSprite(ss.sff, k[0], k[1])
 		}
 		s.ensureStagePreloadSlot(len(s.stagelist))
+	} else if !s.preloadStarted {
+		// Placeholder, real assets are loaded by StartPreloads
+		ss.sff = newSff(SffTypeStage)
+		ss.anims.updateSff(ss.sff)
+		for k := range s.stageSpritePreload {
+			ss.anims.addSprite(ss.sff, k[0], k[1])
+		}
+		ss.deferPreload = true
 	} else {
 		if err := s.preloadStageAssets(len(s.stagelist)); err != nil {
 			panic(fmt.Errorf("failed to preload %v: %v", def, err))
@@ -5874,19 +5961,30 @@ func (s *System) startNextTurnsPreload() {
 		return
 	}
 	s.turnsPreloadMember = next
-	if s.loader.state == LS_Complete || s.loader.state == LS_Cancel {
-		select {
-		case <-s.loader.loadExit:
-		default:
-		}
-		s.loader.state = LS_NotYet
-		s.loader.err = nil
-		s.loader.cancelCh = nil
-		s.loader.cancelOnce = sync.Once{}
+	s.loader.rerun()
+}
+
+// Loads the next opponent sent from Lua (Survival) into P4, so the next match doesn't wait for it
+func (s *System) startNextMatchPreload() {
+	if !s.cfg.Config.TurnsLoading || s.nextMatchChar >= 0 || len(s.chars[3]) > 0 ||
+		s.loader.state == LS_Loading || s.loader.state == LS_Error {
+		return
 	}
-	if s.loader.state == LS_NotYet {
-		s.loader.runTread()
+	// P4 is also the P2 Turns standby slot, so wait until P2 has no more members to load
+	if sb, _ := s.getPreloadedCharAndCgi(1); sb != nil || s.turnsPreloadMember[1] >= 0 {
+		return
 	}
+	n := -1
+	s.selMutex.RLock()
+	if s.sel.gameParams != nil {
+		n = int(s.sel.gameParams.NextChar)
+	}
+	s.selMutex.RUnlock()
+	if n < 0 || n >= len(s.sel.charlist) || s.sel.charlist[n].def == "" || s.sel.charlist[n].def == "randomselect" {
+		return
+	}
+	s.nextMatchChar = n
+	s.loader.rerun()
 }
 
 // Blocks until this peer's loader settles, so all rollback peers promote on the same frame
@@ -6100,7 +6198,9 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	// whole call: nothing else can touch turnsPreloadMember while this loader goroutine is running
 	// (see startNextTurnsPreload's own state==LS_Loading guard).
 	turnsLoading := !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading
-	preloading := turnsLoading && sys.turnsPreloadActive()
+	// Next match opponent loaded into P4 during the current match
+	nextMatch := !attached && pn == 3 && sys.nextMatchChar >= 0
+	preloading := (turnsLoading && sys.turnsPreloadActive()) || nextMatch
 
 	// Don't write directly to sys.cgi during a background Turns preload
 	loadingGi := newCharGlobalInfo()
@@ -6121,7 +6221,13 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	memberNo := pn >> 1
 	nsel := len(teamSel)
 
-	if !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading {
+	if nextMatch {
+		// Already loaded, the loader is running again for a Turns member
+		if sb, _ := sys.getPreloadedCharAndCgi(1); sb != nil {
+			return 1
+		}
+		memberNo = 0
+	} else if !attached && tm == TM_Turns && sys.cfg.Config.TurnsLoading {
 		if sys.turnsPreloadActive() {
 			// During the match only the fixed hidden standby slot is eligible.
 			// Active P1/P2 must not be touched by the background loader.
@@ -6156,7 +6262,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	}
 
 	// Check if player number is acceptable for selected team mode
-	if !attached {
+	if !attached && !nextMatch {
 		// BG Turns uses a staged standby slot instead of loading the whole team.
 		if tm == TM_Turns && sys.cfg.Config.TurnsLoading {
 			if memberNo >= int(nTurns) || pn >= 4 {
@@ -6235,6 +6341,8 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	if attached {
 		atcpn := pn - MaxSimul*2
 		cdef = sys.stageList[0].attachedchardef[atcpn]
+	} else if nextMatch {
+		cdef = sys.sel.charlist[sys.nextMatchChar].def
 	} else {
 		if tm == TM_Turns {
 			cdefOWnumber = memberNo*2 + pn&1
@@ -6259,7 +6367,8 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 				break
 			}
 		}
-		if prefixToDecrement && ffx.isCharFX {
+		// A next match preload is counted later, when the next match uses it
+		if prefixToDecrement && ffx.isCharFX && !nextMatch {
 			if ffx.refCount > 0 {
 				ffx.refCount--
 			}
@@ -6284,6 +6393,28 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 			tstr = fmt.Sprintf("Same attached char kept: %v", cdef)
 		} else {
 			tstr = fmt.Sprintf("Same char kept: %v", cdef)
+		}
+	}
+
+	// Use the opponent loaded into P4 during the previous match
+	if !sameChar && !attached && !preloading && pn == 1 {
+		if sb, sbGi := sys.getPreloadedCharAndCgi(1); sb != nil && sbGi.def == cdef {
+			sys.setPreloadedChar(1, nil, CharGlobalInfo{})
+			sys.cgi[pn] = sbGi
+			sys.stringPool[pn] = sys.stringPool[3]
+			sys.stringPool[3] = *NewStringPool()
+			sys.remapCharSlotRefs([]*Char{sb}, 3, pn)
+			sys.rebindCgiStateOwners(pn)
+			sb.controller = pn
+			if sys.aiLevel[pn] != 0 {
+				sb.controller ^= -1
+			}
+			if len(sys.chars[pn]) > 0 {
+				sb.power = sys.chars[pn][0].power
+			}
+			p = sb
+			sameChar = true
+			tstr = fmt.Sprintf("Preloaded char used: %v", cdef)
 		}
 	}
 
@@ -6319,7 +6450,11 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 		p.controller = pn
 	} else {
 		p.memberNo = memberNo
-		p.selectNo = teamSel[memberNo][0]
+		if nextMatch {
+			p.selectNo = sys.nextMatchChar
+		} else {
+			p.selectNo = teamSel[memberNo][0]
+		}
 		p.teamside = p.playerNo & 1
 	}
 
@@ -6367,28 +6502,26 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	selectPalno := 1
 	if pal, ok := sys.sel.palOverwrite[pn]; ok && pal > 0 {
 		selectPalno = pal
-	} else if !attached {
+	} else if !attached && !nextMatch {
 		// Get palette number from select screen choice
 		selectPalno = teamSel[memberNo][1]
 	}
 	gi.palno = int32(selectPalno)
 
 	// Commit character now that loading and compiling both succeeded
-	if turnsLoading {
-		if preloading {
-			// Not live yet, so it goes into the standby holder instead of sys.chars
-			sys.setPreloadedChar(team, p, loadingGi)
-		} else {
-			// This is the active slot (0 or 1), not a background preload
-			sys.chars[pn] = []*Char{p}
-			sys.activateTurnsSlot(sys.chars[pn], pn)
-		}
+	if preloading {
+		// Not live yet, so it goes into the standby holder instead of sys.chars
+		sys.setPreloadedChar(team, p, loadingGi)
+	} else if turnsLoading {
+		// This is the active slot (0 or 1), not a background preload
+		sys.chars[pn] = []*Char{p}
+		sys.activateTurnsSlot(sys.chars[pn], pn)
 	} else {
 		sys.chars[pn] = []*Char{p}
 	}
 
 	// Apply per-launch map overrides prepared from Lua/loadStart.
-	if !attached {
+	if !attached && !nextMatch {
 		p.applyMapOverrides()
 	}
 
@@ -6583,7 +6716,7 @@ func (l *Loader) load() {
 		l.loadExit <- l.state
 	}()
 
-	stagedTurns := sys.turnsPreloadActive()
+	stagedTurns := sys.turnsPreloadActive() || sys.nextMatchChar >= 0
 
 	// Load any config-driven Common FX not already cached. External modules may
 	// append to Common.Fx before a match; once loaded, non-char FX are kept.
@@ -6622,6 +6755,9 @@ func (l *Loader) load() {
 					charDone[pn] = false
 				}
 			}
+		}
+		if sys.nextMatchChar >= 0 {
+			charDone[3] = false
 		}
 	}
 
@@ -6685,6 +6821,11 @@ func (l *Loader) load() {
 				} else {
 					result = l.loadCharacter(i, false)
 				}
+				if result < 0 && i == 3 && sys.nextMatchChar >= 0 {
+					// Skip a failed next opponent preload, the next match load reports the error
+					l.err = nil
+					result = 1
+				}
 				if result > 0 {
 					charDone[i] = true
 				} else if result < 0 {
@@ -6726,6 +6867,11 @@ func (l *Loader) load() {
 		}
 	}
 	sys.cleanCustomShaders()
+
+	// Drop a preloaded opponent that this match didn't use
+	if !stagedTurns {
+		sys.clearPreloadedChars()
+	}
 
 	// Flag loading state as complete
 	l.state = LS_Complete
@@ -6772,6 +6918,23 @@ func (l *Loader) reset() {
 func (l *Loader) retryAfterError() {
 	<-l.loadExit
 	l.reset()
+}
+
+// Starts a finished loader again for a background preload
+func (l *Loader) rerun() {
+	if l.state == LS_Complete || l.state == LS_Cancel {
+		select {
+		case <-l.loadExit:
+		default:
+		}
+		l.state = LS_NotYet
+		l.err = nil
+		l.cancelCh = nil
+		l.cancelOnce = sync.Once{}
+	}
+	if l.state == LS_NotYet {
+		l.runTread()
+	}
 }
 
 func (l *Loader) runTread() bool {

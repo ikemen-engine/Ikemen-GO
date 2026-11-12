@@ -168,6 +168,8 @@ function start.f_makeRoster(t_ret)
 					table.insert(t_ret[#t_ret], t_static[t[i].order][math.random(1, #t_static[t[i].order])])
 					remaining = remaining - 1
 				end
+				-- shuffle here, so the next opponent is known before its match starts
+				main.f_tableShuffle(t_ret[#t_ret])
 			end
 		end
 	end
@@ -1331,20 +1333,23 @@ function start.f_getStageRef(def)
 	if def == '' then
 		return getStageNo()
 	end
-	if main.t_stageDef[def:lower()] == nil then
-		 main.f_addStage(def)
+	local ref = main.f_findStageRef(def)
+	if ref == nil then
+		ref = main.f_addStage(def)
 	end
-	return main.t_stageDef[def:lower()]
+	return ref
 end
 
 --returns char ref out of def filename
 function start.f_getCharRef(def)
-	if main.t_charDef[def:lower()] == nil then
+	local ref = main.f_findCharRef(def)
+	if ref == nil then
 		if not main.f_addChar(def .. ', order = 0, ordersurvival = 0, exclude = 1', true, false) then
 			panicError("\nUnable to add character. No such file or directory: " .. def .. "\n")
 		end
+		ref = main.f_findCharRef(def)
 	end
-	return main.t_charDef[def:lower()]
+	return ref
 end
 
 --returns teammode int from string
@@ -1834,9 +1839,9 @@ function start.f_selectMode()
 		--otherwise
 		else
 			if matchNo() == -1 then --no more matches left
-				-- hiscore & stats handled in Go; returns (cleared, place)
-				local cleared, place = computeRanking(gameMode())
-				if main.motif.hiscore and place > 0 then
+				-- hiscore & stats handled in Go; returns (cleared, place, nameEntry)
+				local cleared, place, nameEntry = computeRanking(gameMode())
+				if main.motif.hiscore and nameEntry then
 					main.f_hiscore(gameMode(), place)
 				end
 				--credits
@@ -4100,6 +4105,11 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 	addParam("charparam.time", main.charparam.time)
 	addParam("p1.turnsoffset", start.p[1].turnsOffset or 0)
 	addParam("p2.turnsoffset", start.p[2].turnsOffset or 0)
+	-- Survival: first opponent of the next match, loaded during this one
+	local nextMatch = main.elimination and main.makeRoster and not start.customArcadePath and start.t_roster and start.t_roster[matchNo() + 1]
+	if nextMatch and nextMatch[1] ~= -1 then
+		addParam("p2.nextchar", nextMatch[1])
+	end
 	addParam("pausemenu", main.pauseMenu)
 	addParam("persistlife", main.persistLife)
 	addParam("persistmusic", main.persistMusic)

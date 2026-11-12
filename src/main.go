@@ -205,6 +205,11 @@ func realMain() {
 		os.MkdirAll(filepath.Join(sys.baseDir, "debug"), permission)
 	}
 
+	// Create screenshot folder if configured
+	if sys.cfg.Config.ScreenshotFolder != "" {
+		os.MkdirAll(sys.cfg.Config.ScreenshotFolder, permission)
+	}
+
 	// Check Lua file path
 	ftemp, err := os.Open(sys.cfg.Config.System)
 	if err != nil {

@@ -613,9 +613,47 @@ loadDebugFont(gameOption('Debug.Font'), gameOption('Debug.FontScale'))
 
 main.t_stageDef = {['random'] = 0}
 main.t_charDef = {}
+
+-- Refs are stored under the lowercased declaration and under the resolved .def path,
+-- so different declarations of the same file ('kfm', 'chars/kfm/kfm.def') share one ref.
+local function defKey(def)
+	return (def:gsub('\\', '/')):lower()
+end
+
+function main.f_addDefKey(t, def, ref, path)
+	t[defKey(def)] = ref
+	if path ~= nil and path ~= '' and t[path:lower()] == nil then
+		t[path:lower()] = ref
+	end
+end
+
+-- returns ref of an already added char or stage, nil if it hasn't been added yet
+function main.f_findCharRef(def)
+	local ref = main.t_charDef[defKey(def)]
+	if ref == nil then
+		local path = resolveCharDef(def)
+		if path ~= nil then
+			ref = main.t_charDef[path:lower()]
+		end
+	end
+	return ref
+end
+
+function main.f_findStageRef(def)
+	local ref = main.t_stageDef[defKey(def)]
+	if ref == nil then
+		local path = resolveStageDef(def)
+		if path ~= nil then
+			ref = main.t_stageDef[path:lower()]
+		end
+	end
+	return ref
+end
+
 main.t_selChars = {}
 main.t_selStages = {}
 main.preload = {
+	started = false,
 	lowQueued = false,
 	charState = {},
 	stageState = {},
@@ -865,6 +903,29 @@ function main.f_queueAllPreloadsLow()
 	end
 end
 
+-- Starts preloading once modules are loaded, so their preloadList* calls apply to everything
+function main.f_startPreloads()
+	if main.preload.started then
+		return
+	end
+	main.preload.started = true
+	startPreloads()
+	if gameOption('Config.BootLoadingMode') == 0 then
+		--assets are already loaded at this point
+		for row, ch in ipairs(main.t_selChars) do
+			if ch.playable and ch.char_ref ~= nil then
+				main.f_syncCharPaletteData(ch.char_ref)
+				main.f_materializeCharCell(row)
+			end
+		end
+		for stageNo = 1, #main.t_selStages do
+			main.f_materializeStagePortrait(stageNo)
+		end
+	else
+		main.f_queueAllPreloadsLow()
+	end
+end
+
 function main.f_materializeCharByRef(ref)
 	if ref == nil then return false end
 	local ok = false
@@ -1036,24 +1097,22 @@ function main.f_commandLine()
 	setRoundTime(math.max(-1, roundTime * frames))
 	local stage = gameOption('Debug.StartStage')
 	if flags['-s'] ~= nil then
-		for _, v in ipairs({flags['-s'], 'stages/' .. flags['-s'], 'stages/' .. flags['-s'] .. '.def'}) do
-			if main.f_fileExists(v) then
-				stage = v
-				break
-			end
+		if resolveStageDef(flags['-s']) ~= nil then
+			stage = flags['-s']
+		else
+			print("Stage doesn't exist: " .. flags['-s'] .. ", using " .. stage)
 		end
 	end
-	local stageKey = stage:lower()
-	local stageRef = main.t_stageDef[stageKey]
+	local stageRef = main.f_findStageRef(stage)
 	if stageRef == nil then
 		if loadMotif then
 			stageRef = start.f_getStageRef(stage)
 		else
-			if addStage(stage) == 0 then
+			if not addStage(stage) then
 				panicError("\nUnable to add stage: " .. stage .. "\n")
 			end
 			stageRef = #main.t_selStages + 1
-			main.t_stageDef[stageKey] = stageRef
+			main.f_addDefKey(main.t_stageDef, stage, stageRef, getStageInfo(stageRef).def)
 		end
 		if stageRef == nil then
 			panicError("\nUnable to add stage: " .. stage .. "\n")
@@ -1068,15 +1127,17 @@ function main.f_commandLine()
 	local t_params = {}
 	--iterate over the table in -p order ascending
 	for _, v in main.f_sortKeys(t, function(t, a, b) return t[b].num > t[a].num end) do
-		local charKey = v.character:lower()
-		local charRef = main.t_charDef[charKey]
+		local charRef = main.f_findCharRef(v.character)
 		if charRef == nil then
 			if loadMotif then
 				charRef = start.f_getCharRef(v.character)
 			else
-				addChar(v.character)
+				-- unlike select.def entries, command line chars must exist
+				if not addChar(v.character) then
+					panicError("\nUnable to add character. No such file or directory: " .. v.character .. "\n")
+				end
 				charRef = ref
-				main.t_charDef[charKey] = charRef
+				main.f_addDefKey(main.t_charDef, v.character, charRef, getCharInfo(charRef).def)
 				ref = ref + 1
 			end
 		end
@@ -1127,6 +1188,7 @@ function main.f_commandLine()
 	else
 		table.insert(t_params, 'pausemenu=false')
 	end
+	main.f_startPreloads()
 	loadStart(table.concat(t_params, ', '))
 	while loading() do
 		--do nothing
@@ -1343,6 +1405,7 @@ function main.f_addChar(line, playable, loading, slot)
 			valid = true
 			main.t_selChars[row].playable = playable
 			local t_info = getCharInfo(row - 1)
+			main.f_addDefKey(main.t_charDef, c, row - 1, t_info.def)
 			main.t_selChars[row] = main.f_tableMerge(main.t_selChars[row], t_info)
 			main.t_selChars[row].dir = main.t_selChars[row].def:gsub('[^/]+%.def$', '')
 			if playable then
@@ -1392,7 +1455,7 @@ function main.f_addChar(line, playable, loading, slot)
 		--cell data
 		main.t_selChars[row].cell_data = animNew(nil, '-1,0, 0,0, -1')
 		main.t_selChars[row].cell_data_ready = false
-		if gameOption('Config.BootLoadingMode') == 0 then
+		if gameOption('Config.BootLoadingMode') == 0 and main.preload.started then
 			main.f_syncCharPaletteData(main.t_selChars[row].char_ref)
 			main.f_materializeCharCell(row)
 		end
@@ -1439,7 +1502,7 @@ function main.f_addStage(file, hidden, line)
 		portraitscale = t_info.portraitscale,
 		localcoord = t_info.localcoord
 	})
-	main.t_stageDef[file:lower()] = stageNo
+	main.f_addDefKey(main.t_stageDef, file, stageNo, t_info.def)
 	--attachedchar
 	if t_info.attachedchardef ~= '' then
 		local attachedList = t_info.attachedchardef
@@ -1462,7 +1525,7 @@ function main.f_addStage(file, hidden, line)
 	main.t_selStages[stageNo].anim_data = animNew(nil, '-1,0, 0,0, -1')
 	main.t_selStages[stageNo].vs_anim_data = animNew(nil, '-1,0, 0,0, -1')
 	main.t_selStages[stageNo].anim_data_ready = false
-	if gameOption('Config.BootLoadingMode') == 0 then
+	if gameOption('Config.BootLoadingMode') == 0 and main.preload.started then
 		main.f_materializeStagePortrait(stageNo)
 	end
 	return stageNo
@@ -1715,7 +1778,7 @@ for i = 1, #t_addExluded do
 end
 
 --add Training char if defined and not included in select.def
-if gameOption('Config.TrainingChar') ~= '' and main.t_charDef[gameOption('Config.TrainingChar'):lower()] == nil then
+if gameOption('Config.TrainingChar') ~= '' and main.f_findCharRef(gameOption('Config.TrainingChar')) == nil then
 	main.f_addChar(gameOption('Config.TrainingChar') .. ', order = 0, ordersurvival = 0, exclude = 1', false, true)
 end
 
@@ -1726,7 +1789,8 @@ for i = 1, #main.t_selChars do
 	if main.t_selChars[i].stage ~= nil then
 		for j, v in ipairs(main.t_selChars[i].stage) do
 			--add 'stage' param stages if needed or reference existing ones
-			if main.t_stageDef[v:lower()] == nil then
+			local stageRef = main.f_findStageRef(v)
+			if stageRef == nil then
 				main.t_selChars[i].stage[j] = main.f_addStage(v)
 				if main.t_selChars[i].includestage == nil or main.t_selChars[i].includestage == 1 then --stage available all the time
 					table.insert(main.t_includeStage[1], main.t_selChars[i].stage[j])
@@ -1735,7 +1799,7 @@ for i = 1, #main.t_selChars do
 					table.insert(main.t_includeStage[2], main.t_selChars[i].stage[j])
 				end
 			else --already added
-				main.t_selChars[i].stage[j] = main.t_stageDef[v:lower()]
+				main.t_selChars[i].stage[j] = stageRef
 			end
 		end
 	end
@@ -1817,9 +1881,6 @@ function main.f_updateSelectableStages()
 	end
 end
 main.f_updateSelectableStages()
-if gameOption('Config.BootLoadingMode') > 0 then
-	main.f_queueAllPreloadsLow()
-end
 
 --add default maxmatches values if config is missing in select.def
 if main.t_selOptions.arcademaxmatches == nil then main.t_selOptions.arcademaxmatches = {6, 1, 1, 0, 0, 0, 0, 0, 0, 0} end
@@ -2188,6 +2249,7 @@ main.t_itemname = {
 		--main.fightscreen.match = true
 		--main.fightscreen.p2ailevel = true
 		main.makeRoster = true
+		main.motif.hiscore = true
 		main.motif.losescreen = true
 		main.motif.winscreen = true
 		main.matchWins.draw = {0, 0}
@@ -2230,6 +2292,7 @@ main.t_itemname = {
 		--main.fightscreen.p2ailevel = true
 		main.makeRoster = true
 		main.motif.continuescreen = true
+		main.motif.hiscore = true
 		main.motif.vsscreen = true
 		main.motif.vsmatchno = true
 		main.motif.victoryscreen = true
@@ -2518,8 +2581,9 @@ main.t_itemname = {
 	end,
 	--TRAINING
 	['training'] = function(t, item)
-		if main.t_charDef[gameOption('Config.TrainingChar'):lower()] ~= nil then
-			main.forceChar[2] = {main.t_charDef[gameOption('Config.TrainingChar'):lower()]}
+		local trainingRef = main.f_findCharRef(gameOption('Config.TrainingChar'))
+		if trainingRef ~= nil then
+			main.forceChar[2] = {trainingRef}
 		end
 		--main.fightscreen.p1score = true
 		--main.fightscreen.p2ailevel = true
@@ -4095,6 +4159,9 @@ for _, v in ipairs(t_modules) do
 	v = v:gsub('%.[^%.]+$', '')
 	require(v:gsub('[/\\]+', '.'))
 end
+
+--start preloading after modules, so they can add to the preload lists
+main.f_startPreloads()
 
 main.f_unlock(false)
 

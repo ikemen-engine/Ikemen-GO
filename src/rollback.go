@@ -87,6 +87,7 @@ func (rs *RollbackSystem) hijackRunMatch() bool {
 		}
 
 		// These are outside runFrame(), so they won't be needlessly executed during a rollback
+		sys.startNextMatchPreload()
 		sys.tickSound()
 		sys.cueDraw()
 		sys.renderFrame()
@@ -931,7 +932,14 @@ func (rs *RollbackSession) AnyButton() bool {
 	return false
 }
 
+// Both games on one PC can start in the same second, so name the logs after the player too.
+func (rs *RollbackSession) setLogPlayer(player int) {
+	rs.timestamp = fmt.Sprintf("%s_P%d", rs.timestamp, player)
+	rs.log = NewRollbackLogger(rs.timestamp)
+}
+
 func (rs *RollbackSession) InitP1(numPlayers int, localPort int, remotePort int, remoteIp string) error {
+	rs.setLogPlayer(1)
 	if rs.config.GgpoLogsEnabled {
 		logFileName := fmt.Sprintf("save/logs/Rollback-%s.log", rs.timestamp)
 		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0666)
@@ -984,6 +992,7 @@ func (rs *RollbackSession) InitP1(numPlayers int, localPort int, remotePort int,
 }
 
 func (rs *RollbackSession) InitP2(numPlayers int, localPort int, remotePort int, remoteIp string) error {
+	rs.setLogPlayer(2)
 	if rs.config.GgpoLogsEnabled {
 		logFileName := fmt.Sprintf("save/logs/Rollback-%s.log", rs.timestamp)
 		f, err := os.OpenFile(logFileName, os.O_CREATE|os.O_RDWR, 0666)
