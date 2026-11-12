@@ -850,9 +850,17 @@ type VsScreenProperties struct {
 	FadeOut     FadeProperties `ini:"fadeout"`
 	Time        int32          `ini:"time"`
 	Match       TextProperties `ini:"match"`
-	OrderSelect struct {
+	Order struct {
 		Enabled bool `ini:"enabled"`
-	} `ini:"orderselect"`
+		Cancel struct {
+			Action []string `ini:"action"`
+		} `ini:"cancel"`
+		Done struct {
+			Action []string `ini:"action"`
+			Time   int32    `ini:"time"`
+		} `ini:"done"`
+		Timer TimerProperties `ini:"timer"`
+	} `ini:"order"`
 	P1    PlayerVsProperties `ini:"p1"`
 	P2    PlayerVsProperties `ini:"p2"`
 	P3    PlayerVsProperties `ini:"p3"`
@@ -861,14 +869,9 @@ type VsScreenProperties struct {
 	P6    PlayerVsProperties `ini:"p6"`
 	P7    PlayerVsProperties `ini:"p7"`
 	P8    PlayerVsProperties `ini:"p8"`
-	Timer TimerProperties    `ini:"timer"`
 	Done  struct {
 		Action []string `ini:"action"`
-		Time int32    `ini:"time"`
 	} `ini:"done"`
-	Skip struct {
-		Action []string `ini:"action"`
-	} `ini:"skip"`
 	Cancel struct {
 		Action []string `ini:"action"`
 	} `ini:"cancel"`
