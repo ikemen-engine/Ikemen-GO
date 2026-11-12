@@ -3605,6 +3605,10 @@ type MotifChallenger struct {
 }
 
 func (ch *MotifChallenger) reset(m *Motif) {
+	// Shift+F4 can restart the match during the challenger screen, which hides the fight screen
+	if ch.active {
+		sys.fightScreen.active = ch.lifebarActive
+	}
 	ch.active = false
 	ch.initialized = false
 	ch.endTimer = -1
