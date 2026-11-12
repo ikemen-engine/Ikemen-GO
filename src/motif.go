@@ -3580,6 +3580,12 @@ func (me *MotifMenu) openingPlayer(pm *MenuInfoProperties) int {
 		for n := range sys.commandLists {
 			i := (n + sys.runSideIndex()) % len(sys.commandLists)
 			if sys.localSlot(i) {
+				// In co-op Turns, Esc belongs to the player of the member in the fight.
+				if i < 2 && len(sys.chars[i]) > 0 && sys.chars[i][0] != nil {
+					if slot := sys.memberController(i, sys.chars[i][0].memberNo); sys.localSlot(slot) {
+						return slot + 1
+					}
+				}
 				return i + 1
 			}
 		}

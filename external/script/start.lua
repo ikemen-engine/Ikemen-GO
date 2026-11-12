@@ -1877,9 +1877,8 @@ function start.f_selectMode()
 		for side = 1, 2 do
 			if not main.cpuSide[side] and #main.sideDevices[side] > 1 then
 				shared = true
-				-- Single/Turns cannot give every joined player their own character.
+				-- Single cannot give every joined player their own character.
 				main.teamMenu[side].single = false
-				main.teamMenu[side].turns = false
 			end
 		end
 		if shared then
@@ -3400,11 +3399,14 @@ local t_teamActiveCount = {0, 0}
 local t_teamActiveState = {false, false}
 
 function start.f_teamMenu(side, t)
-	local numSimul, numTag = main.numSimul, main.numTag
+	local numSimul, numTag, numTurns = main.numSimul, main.numTag, main.numTurns
 	if main.sideSelectDone and start.f_coopSide(side) then
 		local count = #main.sideDevices[side]
-		numSimul, numTag = {count, count}, {count, count}
-		start.p[side].numSimul, start.p[side].numTag = count, count
+		numSimul, numTag, numTurns = {count, count}, {count, count}, {count, count}
+		start.p[side].numSimul, start.p[side].numTag, start.p[side].numTurns = count, count, count
+	elseif start.f_coopSide(side) then
+		numTurns = numSimul
+		start.p[side].numTurns = math.max(numTurns[1], math.min(numTurns[2], start.p[side].numTurns))
 	end
 	if #t == 0 then
 		start.p[side].teamEnd = true
@@ -3479,12 +3481,12 @@ function start.f_teamMenu(side, t)
 				end
 			elseif t[start.p[side].teamMenu].itemname == 'turns' then
 				if getAction(t_cmd, motif.select_info['p' .. side].teammenu.subtract.action) then
-					if start.p[side].numTurns > main.numTurns[1] then
+					if start.p[side].numTurns > numTurns[1] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTurns = start.p[side].numTurns - 1
 					end
 				elseif getAction(t_cmd, motif.select_info['p' .. side].teammenu.add.action) then
-					if start.p[side].numTurns < main.numTurns[2] then
+					if start.p[side].numTurns < numTurns[2] then
 						sndPlay(motif.Snd, motif.select_info['p' .. side].teammenu.value.snd[1], motif.select_info['p' .. side].teammenu.value.snd[2])
 						start.p[side].numTurns = start.p[side].numTurns + 1
 					end
@@ -3592,7 +3594,7 @@ function start.f_teamMenu(side, t)
 					end
 				end
 			elseif itemname == 'turns' then
-				for j = 1, main.numTurns[2] do
+				for j = 1, numTurns[2] do
 					local vx = x + (j - 1) * valueCfg.spacing[1]
 					local vy = y + (j - 1) * valueCfg.spacing[2]
 					if j <= start.p[side].numTurns then
@@ -4413,6 +4415,11 @@ function start.f_buildLoadStartParams(arg, doSelectMissing, t_orderRemap)
 	addParam("charparam.time", main.charparam.time)
 	addParam("p1.turnsoffset", start.p[1].turnsOffset or 0)
 	addParam("p2.turnsoffset", start.p[2].turnsOffset or 0)
+	-- Co-op Turns members are played by the players who picked them.
+	for side = 1, 2 do
+		local coop = main.coop and not main.cpuSide[side] and start.p[side].teamMode == 2
+		addParam("p" .. side .. ".coopturns", coop and #start.p[side].t_selCmd > 1)
+	end
 	-- Survival: first opponent of the next match, loaded during this one. The engine preloads into the P2 side only
 	local nextMatch = main.opponentSide == 2 and main.elimination and main.makeRoster and not start.customArcadePath and start.t_roster and start.t_roster[matchNo() + 1]
 	if nextMatch and nextMatch[1] ~= -1 then
@@ -5126,7 +5133,8 @@ function start.f_sideSelect()
 		minPerSide = maxPlayers
 		for side = 1, 2 do
 			if not main.cpuSide[side] and main.selectMenu[side] then
-				for mode, size in pairs({simul = main.numSimul, tag = main.numTag}) do
+				-- Co-op Turns uses the same player limits as Simul.
+				for mode, size in pairs({simul = main.numSimul, tag = main.numTag, turns = main.numSimul}) do
 					if main.teamMenu[side][mode] then
 						minPerSide = math.min(minPerSide, size[1])
 						maxPerSide = math.max(maxPerSide, size[2])
