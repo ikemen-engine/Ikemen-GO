@@ -877,7 +877,8 @@ type DemoModeProperties struct {
 	} `ini:"intro"`
 	DebugInfo bool `ini:"debuginfo"`
 	Select    struct {
-		Enabled bool `ini:"enabled"`
+		Enabled bool   `ini:"enabled"`
+		Title   string `ini:"title"`
 	} `ini:"select"`
 	VsScreen struct {
 		Enabled bool `ini:"enabled"`
