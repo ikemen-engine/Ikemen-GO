@@ -175,6 +175,7 @@ func (nb *NetBuffer) readNetBufferAnalog() [6]int8 {
 type NetConnection struct {
 	ln                 *net.TCPListener
 	conn               *net.TCPConn
+	pendingConn        chan *net.TCPConn
 	st                 NetState
 	sendEnd            chan bool
 	recvEnd            chan bool
@@ -199,10 +200,11 @@ type NetConnection struct {
 
 func NewNetConnection() *NetConnection {
 	nc := &NetConnection{
-		st:      NS_Stop,
-		sendEnd: make(chan bool, 1),
-		recvEnd: make(chan bool, 1),
-		closing: make(chan struct{}),
+		st:          NS_Stop,
+		pendingConn: make(chan *net.TCPConn),
+		sendEnd:     make(chan bool, 1),
+		recvEnd:     make(chan bool, 1),
+		closing:     make(chan struct{}),
 	}
 	nc.sendEnd <- true
 	nc.recvEnd <- true
@@ -377,10 +379,6 @@ func (nc *NetConnection) Accept(port int) error {
 		// Don't allow the handshake to block forever (important when shutting down).
 		_ = tempConn.SetDeadline(time.Now().Add(2 * time.Second))
 
-		if sys.cfg.Netplay.RollbackNetcode {
-			sys.rollback.session.remoteIp = tempConn.RemoteAddr().(*net.TCPAddr).IP.String()
-		}
-
 		//Send handshake
 		if _, err := tempConn.Write([]byte("IKEMENGO")); err != nil {
 			tempConn.Close()
@@ -398,12 +396,8 @@ func (nc *NetConnection) Accept(port int) error {
 		// Handshake complete; clear deadlines for normal play.
 		_ = tempConn.SetDeadline(time.Time{})
 
-		// Handshake complete. Make temp connection permanent
-		if nc.isClosing() {
-			tempConn.Close()
-			return
-		}
-		nc.conn = tempConn
+		// Rollback reads the peer address from the adopted socket at match startup.
+		nc.publishConnection(tempConn)
 	})
 
 	return nil
@@ -454,20 +448,32 @@ func (nc *NetConnection) Connect(server string, port int) {
 			// Handshake complete; clear deadlines for normal play.
 			_ = tcpConn.SetDeadline(time.Time{})
 
-			// Handshake complete. Make temp connection permanent
-			if nc.isClosing() {
-				tcpConn.Close()
-				return
-			}
-			nc.conn = tcpConn
+			nc.publishConnection(tcpConn)
 			return
 		}
 	})
 }
 
+// Transfer ownership to the main thread, or close the socket if it cancels.
+// The unbuffered handoff cannot leave an unclaimed socket behind after Close.
+func (nc *NetConnection) publishConnection(conn *net.TCPConn) {
+	select {
+	case nc.pendingConn <- conn:
+	case <-nc.closing:
+		conn.Close()
+	}
+}
+
 func (nc *NetConnection) IsConnected() bool {
-	if nc == nil {
+	if nc == nil || nc.isClosing() {
 		return false
+	}
+	// Only the main thread adopts a completed handshake and writes nc.conn.
+	if nc.conn == nil {
+		select {
+		case nc.conn = <-nc.pendingConn:
+		default:
+		}
 	}
 	connected := nc.conn != nil
 	// Stop a held button from registering as a fresh press and auto-accepting the first menu.
