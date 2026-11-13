@@ -5908,7 +5908,7 @@ func (c *Char) isHost() bool {
 		return false
 	}
 
-	// Find first human player like in GetHostGuestRemap()
+	// The host is the first player not controlled by the AI
 	// This doesn't seem ideal somehow, but it's better than not having it
 	// When you think about it, it's almost the same as just returning true for player 1
 	var host int

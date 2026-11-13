@@ -5933,6 +5933,16 @@ func (s *System) turnsPreloadActive() bool {
 	return s.cfg.Config.TurnsLoading && (s.turnsPreloadMember[0] >= 0 || s.turnsPreloadMember[1] >= 0)
 }
 
+// Index of the first Turns member still in play. Survival skips members defeated in earlier
+// matches (p1.turnsoffset/p2.turnsoffset), while the full roster stays selected for the lifebar.
+func (s *System) turnsOffset(team, nsel int) int {
+	off := 0
+	if s.sel.gameParams != nil {
+		off = int(s.sel.gameParams.TurnsOffset[team])
+	}
+	return Clamp(off, 0, nsel)
+}
+
 func (s *System) startNextTurnsPreload() {
 	if !s.cfg.Config.TurnsLoading || s.loader.state == LS_Loading || s.loader.state == LS_Error {
 		return
@@ -5943,8 +5953,9 @@ func (s *System) startNextTurnsPreload() {
 		if s.tmode[team] != TM_Turns {
 			continue
 		}
-		member := int(s.wins[team^1]) + 1
-		if member <= 0 || member >= int(s.numTurns[team]) || member >= len(s.sel.selected[team]) {
+		off := s.turnsOffset(team, len(s.sel.selected[team]))
+		member := off + int(s.wins[team^1]) + 1
+		if member <= off || member-off >= int(s.numTurns[team]) || member >= len(s.sel.selected[team]) {
 			continue
 		}
 		// Desired member is already fully preloaded and waiting to be promoted
@@ -6133,8 +6144,11 @@ func (s *System) activateNextTurnsFighters() {
 			continue
 		}
 
-		nextMember := int(s.wins[team^1])
-		if nextMember < 0 || nextMember >= int(s.numTurns[team]) {
+		s.selMutex.RLock()
+		off := s.turnsOffset(team, len(s.sel.selected[team]))
+		s.selMutex.RUnlock()
+		nextMember := off + int(s.wins[team^1])
+		if nextMember < off || nextMember-off >= int(s.numTurns[team]) {
 			continue
 		}
 
@@ -6220,6 +6234,10 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	// Get number of selected characters in team
 	memberNo := pn >> 1
 	nsel := len(teamSel)
+	turnsOff := 0
+	if tm == TM_Turns {
+		turnsOff = sys.turnsOffset(team, nsel)
+	}
 
 	if nextMatch {
 		// Already loaded, the loader is running again for a Turns member
@@ -6246,6 +6264,9 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 			sys.cgi[pn].palettedata = nil
 			//sys.cgi[pn].hitPauseToggleFlagCount = 0
 			return 1
+		} else {
+			// Active slot starts at the first member not defeated in a previous match
+			memberNo = turnsOff
 		}
 		if memberNo >= nsel {
 			return 0
@@ -6265,7 +6286,7 @@ func (l *Loader) loadCharacter(pn int, attached bool) int {
 	if !attached && !nextMatch {
 		// BG Turns uses a staged standby slot instead of loading the whole team.
 		if tm == TM_Turns && sys.cfg.Config.TurnsLoading {
-			if memberNo >= int(nTurns) || pn >= 4 {
+			if memberNo-turnsOff >= int(nTurns) || pn >= 4 {
 				sys.cgi[pn].states = nil
 				sys.chars[pn] = nil
 				return 1

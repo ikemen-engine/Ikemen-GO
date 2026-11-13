@@ -4576,6 +4576,7 @@ function start.f_selectLoading(arg)
 		-- VS screen is normally responsible for showing loading progress.
 		-- If it was skipped/disabled, keep a small Lua render loop alive here.
 		local netReady = false
+		local waitFrames = 0
 		while loading() or not netReady do
 			if not loading() then
 				netReady = netLoadingReady()
@@ -4586,8 +4587,12 @@ function start.f_selectLoading(arg)
 				return false
 			end
 			clearColor(0, 0, 0)
-			main.f_animPosDraw(motif.vs_screen.loading.wait.AnimData)
-			textImgDraw(motif.vs_screen.loading.wait.TextSpriteData)
+			-- Preloaded chars and a cached stage still may take few frames, so only show the wait element for real loads
+			waitFrames = waitFrames + 1
+			if waitFrames > 30 then
+				main.f_animPosDraw(motif.vs_screen.loading.wait.AnimData)
+				textImgDraw(motif.vs_screen.loading.wait.TextSpriteData)
+			end
 			refresh()
 		end
 	end

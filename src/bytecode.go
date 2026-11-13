@@ -14672,6 +14672,24 @@ const (
 	text_redirectid
 )
 
+// Returns the font and the localcoord width it was made for.
+// Missing fonts use the debug font, which is treated as 320 wide.
+func textFont(crun *Char, fflg string, fnt int) (*Fnt, int32) {
+	fntList, lcx := crun.gi().fnt, crun.gi().localcoord[0]
+	switch fflg {
+	case "f":
+		fntList, lcx = sys.fightScreen.fnt, sys.fightScreen.localcoord[0]
+	case "m":
+		fntList, lcx = sys.motif.Fnt, sys.motif.Info.Localcoord[0]
+	}
+	if fnt >= 0 {
+		if f := fntList[fnt]; f != nil {
+			return f, lcx
+		}
+	}
+	return sys.debugFont.fnt, 320
+}
+
 func (sc text) Run(c *Char, _ []int32) bool {
 	crun := getRedirectedChar(c, StateControllerBase(sc), text_redirectid, "Text")
 	if crun == nil {
@@ -14690,13 +14708,11 @@ func (sc text) Run(c *Char, _ []int32) bool {
 
 	// Default to the same localcoord as the character that owns the code
 	ts.SetLocalcoordChar(c.gi().localcoord) // Not crun here
+	// Default to the debug font
+	ts.fnt, ts.fontLocalW = sys.debugFont.fnt, 320
 
 	var xpos, ypos, xvel, yvel, xmaxdist, ymaxdist, xacc, yacc float32 = 0, 0, 0, 0, 0, 0, 0, 0
 	var xscl, yscl float32 = 1, 1
-	var fnt int = -1
-
-	targetLcx := c.gi().localcoord[0]
-	sourceLcx := targetLcx
 
 	StateControllerBase(sc).run(c, func(paramID byte, exp []BytecodeExp) bool {
 		switch paramID {
@@ -14716,38 +14732,13 @@ func (sc text) Run(c *Char, _ []int32) bool {
 				ts.text = OldSprintf(ts.template, ts.params...)
 			}
 		case text_font:
-			fflg := exp[0].evalSLower(c)
-			fnt = int(exp[1].evalI(c))
-			fntList := crun.gi().fnt
-
-			switch fflg {
-			case "f":
-				fntList = sys.fightScreen.fnt
-			case "m":
-				fntList = sys.motif.Fnt
-			}
-			if fnt >= 0 {
-				if f := fntList[fnt]; f != nil {
-					ts.fnt = f
-					switch fflg {
-					case "f":
-						sourceLcx = sys.fightScreen.localcoord[0]
-					case "m":
-						sourceLcx = sys.motif.Info.Localcoord[0]
-					default:
-						sourceLcx = targetLcx
-					}
-				} else {
-					fnt = -1
-				}
-			}
+			ts.fnt, ts.fontLocalW = textFont(crun, exp[0].evalSLower(c), int(exp[1].evalI(c)))
 		case text_localcoord:
 			var lcx, lcy int32
 			lcx = exp[0].evalI(c)
 			if len(exp) > 1 {
 				lcy = exp[1].evalI(c)
 			}
-			targetLcx = lcx
 			ts.SetLocalcoordChar([2]int32{lcx, lcy})
 		case text_bank:
 			ts.bank = exp[0].evalI(c)
@@ -14871,18 +14862,8 @@ func (sc text) Run(c *Char, _ []int32) bool {
 		return true
 	})
 
-	// Apply localcoord scale correction
-	// Must be placed before SetScale()
-	if fnt < 0 {
-		ts.fnt = sys.debugFont.fnt
-		ts.scaleRatio = 1
-	} else if sourceLcx > 0 {
-		ts.scaleRatio = float32(targetLcx) / float32(sourceLcx)
-	}
-
 	ts.SetPos(xpos, ypos)
-	ts.SetScale(xscl, yscl)
-	ts.ApplyScaleRatio()
+	ts.SetCharScale(xscl, yscl)
 	ts.SetVelocity(xvel, yvel)
 	ts.SetMaxDist(xmaxdist, ymaxdist)
 	ts.SetAccel(xacc, yacc)
@@ -14976,42 +14957,19 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 				})
 			}
 		case text_font:
-			// TODO: Needs same scaling fixes as plain Text
-			fnt := int(exp[1].evalI(c))
-			fflg := exp[0].evalSLower(c)
-			fntList := crun.gi().fnt
-
-			switch fflg {
-			case "f":
-				fntList = sys.fightScreen.fnt
-			case "m":
-				fntList = sys.motif.Fnt
-			}
-
-			if fnt >= 0 {
-				if f := fntList[fnt]; f != nil {
-					modifiers = append(modifiers, func(ts *TextSprite) {
-						ts.fnt = f
-						switch fflg {
-						case "f":
-							ts.scaleRatio = float32(c.gi().localcoord[0]) / float32(sys.fightScreen.localcoord[0])
-						case "m":
-							ts.scaleRatio = float32(c.gi().localcoord[0]) / float32(sys.motif.Info.Localcoord[0])
-						default:
-							ts.scaleRatio = 1
-						}
-					})
-				}
-			}
+			f, lcx := textFont(crun, exp[0].evalSLower(c), int(exp[1].evalI(c)))
+			modifiers = append(modifiers, func(ts *TextSprite) {
+				ts.fnt, ts.fontLocalW = f, lcx
+				ts.SetCharScale(ts.scaleInit[0], ts.scaleInit[1])
+			})
 		case text_localcoord:
-			// TODO: Needs same scaling fixes as plain Text
 			var lcx, lcy int32
 			lcx = exp[0].evalI(c)
 			if len(exp) > 1 {
 				lcy = exp[1].evalI(c)
 			}
 			modifiers = append(modifiers, func(ts *TextSprite) {
-				ts.SetLocalcoordChar([2]int32{lcx, lcy})
+				ts.ChangeLocalcoordChar([2]int32{lcx, lcy})
 			})
 		case text_bank:
 			b := exp[0].evalI(c)
@@ -15119,12 +15077,12 @@ func (sc modifyText) Run(c *Char, _ []int32) bool {
 		case text_scale:
 			x := exp[0].evalF(c)
 			modifiers = append(modifiers, func(ts *TextSprite) {
-				ts.xscl = x * ts.localScale * ts.scaleRatio
+				ts.SetCharScale(x, ts.scaleInit[1])
 			})
 			if len(exp) > 1 {
 				y := exp[1].evalF(c)
 				modifiers = append(modifiers, func(ts *TextSprite) {
-					ts.yscl = y * ts.localScale * ts.scaleRatio
+					ts.SetCharScale(ts.scaleInit[0], y)
 				})
 			}
 		case text_color:

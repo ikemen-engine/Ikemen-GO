@@ -837,7 +837,8 @@ type TextSprite struct {
 	fLength        float32
 	xvel, yvel     float32
 	localScale     float32
-	scaleRatio     float32 // Scale correction when different localcoords interact
+	localcoordW    int32 // Localcoord width of the text's params
+	fontLocalW     int32 // Localcoord width the font was made for
 	offsetX        float32
 	layerno        int16
 	palfx          *PalFX
@@ -893,7 +894,6 @@ func (ts *TextSprite) loadDefaults() {
 		alphaInit:  [2]int32{255, 0},
 		removetime: 1,
 		localScale: 1,
-		scaleRatio: 1,
 		friction:   [2]float32{1.0, 1.0},
 		scaleInit:  [2]float32{1.0, 1.0},
 	}
@@ -956,6 +956,7 @@ func (ts *TextSprite) SetLocalcoordChar(lc [2]int32) {
 
 	// Scale coordinate space so that localcoord width matches full screen width
 	ts.localScale = float32(gameW / localW)
+	ts.localcoordW = lc[0]
 
 	// Shift coordinate origin to where the screen edge is, regardless of aspect ratio
 	// Note: offsetX is not in local scale
@@ -982,14 +983,40 @@ func (ts *TextSprite) SetScale(xscl, yscl float32) {
 	ts.yscl = yscl * ts.localScale
 }
 
-func (ts *TextSprite) ApplyScaleRatio() {
+// Sets the scale so the font looks the same in any localcoord.
+func (ts *TextSprite) SetCharScale(xscl, yscl float32) {
+	ts.SetScale(xscl, yscl)
+	if ts.localcoordW > 0 && ts.fontLocalW > 0 {
+		ratio := float32(ts.localcoordW) / float32(ts.fontLocalW)
+		ts.xscl *= ratio
+		ts.yscl *= ratio
+	}
 	if ts.fnt == sys.debugFont.fnt {
 		ts.xscl *= sys.debugFont.xscl
 		ts.yscl *= sys.debugFont.yscl
-	} else {
-		ts.xscl *= ts.scaleRatio
-		ts.yscl *= ts.scaleRatio
 	}
+}
+
+// Switches to another localcoord, keeping the current params in the new one.
+func (ts *TextSprite) ChangeLocalcoordChar(lc [2]int32) {
+	if lc[0] <= 0 {
+		return
+	}
+	oldScale := ts.localScale
+	ts.SetLocalcoordChar(lc)
+	// Rescale everything that was multiplied by the old localScale
+	k := ts.localScale / oldScale
+	ts.x = (ts.x-ts.offsetX)*k + ts.offsetX
+	ts.y *= k
+	ts.xvel *= k
+	ts.yvel *= k
+	ts.vel[0] *= k
+	ts.vel[1] *= k
+	ts.maxDist[0] *= k
+	ts.maxDist[1] *= k
+	ts.accel[0] *= k
+	ts.accel[1] *= k
+	ts.SetCharScale(ts.scaleInit[0], ts.scaleInit[1])
 }
 
 func (ts *TextSprite) SetWindow(window [4]float32) {

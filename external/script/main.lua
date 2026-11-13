@@ -2902,7 +2902,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 					if fresh and (not bool_main or esc()) then
 						break
 					end
-				elseif bool_f1 and (getKey(motif.infobox.keycode) or gameOption('Config.FirstRun')) then
+				elseif not netPlay() and bool_f1 and (getKey(motif.infobox.keycode) or gameOption('Config.FirstRun')) then
 					if gameOption('Config.FirstRun') then
 						modifyGameOption('Config.FirstRun', false)
 						options.f_saveCfg(false)
@@ -2915,7 +2915,7 @@ function main.f_createMenu(tbl, bool_bgreset, bool_main, bool_f1, bool_del)
 						motif.infobox.title.TextSpriteData,
 						motif.infobox.text.TextSpriteData
 					)
-				elseif motif.attract_mode.enabled and getKey(motif.attract_mode.options.keycode) then
+				elseif not netPlay() and motif.attract_mode.enabled and getKey(motif.attract_mode.options.keycode) then
 					main.f_default()
 					main.menu.f = main.t_itemname.options()
 					sndPlay(motif.Snd, motif[main.group].cursor.done.snd.default[1], motif[main.group].cursor.done.snd.default[2])
