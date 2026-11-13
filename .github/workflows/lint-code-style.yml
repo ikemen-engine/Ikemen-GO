@@ -33,3 +33,44 @@ jobs:
           auto_fix: true
           commit_message: "style: fix code style issues with ${linter}"
           neutral_check_on_warning: true
+
+  lint-lua-style:
+    name: lua whitespace
+    # Runs after gofmt so the two auto-fix commits never race on push.
+    needs: lint-code-style
+    if: ${{ github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    env:
+      CODEFORMAT_VERSION: 1.6.0
+      CODEFORMAT_SHA256: ce712ffecb697c2019c0602665cc58276c2559c0a0f3d319b2ade4c539faecce
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v7
+        with:
+          # Branch tip, so a gofmt fix commit pushed by the previous job is included.
+          ref: ${{ github.ref_name }}
+          token: "${{ secrets.IKEMEN_TOKEN }}"
+
+      - name: Install CodeFormat (EmmyLuaCodeStyle)
+        run: |
+          curl -fsSL -o /tmp/codeformat.tar.gz \
+            "https://github.com/CppCXY/EmmyLuaCodeStyle/releases/download/${CODEFORMAT_VERSION}/linux-x64.tar.gz"
+          echo "${CODEFORMAT_SHA256}  /tmp/codeformat.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/codeformat.tar.gz -C /tmp
+          echo "/tmp/linux-x64/bin" >> "$GITHUB_PATH"
+
+      - name: Fix Lua whitespace
+        # Rules live in .editorconfig ([*.lua]); same script as the PR check.
+        run: .github/scripts/format_lua.sh
+
+      - name: Commit fixes
+        run: |
+          if git diff --quiet; then
+            echo "Lua whitespace is clean."
+            exit 0
+          fi
+          git diff --stat
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "style: fix code style issues with CodeFormat"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
