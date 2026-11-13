@@ -295,6 +295,14 @@ func rankingWouldPlace(mode string) bool {
 	return false
 }
 
+// Writes save/stats.json. A replay plays back a run that was already saved when it was played, so it writes nothing.
+func writeStats(data []byte) error {
+	if sys.replayFile != nil {
+		return nil
+	}
+	return writeStatsPretty(sys.cmdFlags["-stats"], data)
+}
+
 func writeStatsPretty(path string, data []byte) error {
 	var buf bytes.Buffer
 	if err := json.Indent(&buf, data, "", "  "); err == nil {
@@ -352,14 +360,14 @@ func computeAndSaveRanking(mode string) (bool, int32, bool) {
 	// If hiscore ranking isn't defined for this mode, we're done.
 	rType, ok := rankingTypeFor(mode)
 	if !ok {
-		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
+		_ = writeStats(data)
 		return cleared, 0, false
 	}
 	rType = strings.ToLower(strings.TrimSpace(rType))
 
 	// Ranking exceptions
 	if !rankingQualifies(rType, tal, cleared) {
-		_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
+		_ = writeStats(data)
 		return cleared, 0, false
 	}
 
@@ -456,7 +464,12 @@ func computeAndSaveRanking(mode string) (bool, int32, bool) {
 	// Serialize back to JSON (preserving other keys)
 	buf, _ := json.Marshal(entries)
 	data, _ = sjson.SetRawBytes(data, rankPath, buf)
-	_ = writeStatsPretty(sys.cmdFlags["-stats"], data)
+	_ = writeStats(data)
 
+	// A replay shows the saved table as it is, since the replayed run is already in it.
+	// Name entry still runs, like for a netplay peer that didn't place, so the inputs end the screen on time.
+	if sys.replayFile != nil {
+		place = 0
+	}
 	return cleared, place, place > 0 || sys.netplay()
 }

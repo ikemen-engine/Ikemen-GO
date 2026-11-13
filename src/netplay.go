@@ -175,6 +175,7 @@ func (nb *NetBuffer) readNetBufferAnalog() [6]int8 {
 type NetConnection struct {
 	ln                 *net.TCPListener
 	conn               *net.TCPConn
+	pendingConn        chan *net.TCPConn
 	st                 NetState
 	sendEnd            chan bool
 	recvEnd            chan bool
@@ -199,10 +200,11 @@ type NetConnection struct {
 
 func NewNetConnection() *NetConnection {
 	nc := &NetConnection{
-		st:      NS_Stop,
-		sendEnd: make(chan bool, 1),
-		recvEnd: make(chan bool, 1),
-		closing: make(chan struct{}),
+		st:          NS_Stop,
+		pendingConn: make(chan *net.TCPConn),
+		sendEnd:     make(chan bool, 1),
+		recvEnd:     make(chan bool, 1),
+		closing:     make(chan struct{}),
 	}
 	nc.sendEnd <- true
 	nc.recvEnd <- true
@@ -323,26 +325,6 @@ func (nc *NetConnection) Stop() (err error) {
 	return nil
 }
 
-func (nc *NetConnection) GetHostGuestRemap() (host, guest int) {
-	host, guest = -1, -1
-	for i, c := range sys.aiLevel {
-		if c == 0 {
-			if host < 0 {
-				host = i
-			} else if guest < 0 {
-				guest = i
-			}
-		}
-	}
-	if host < 0 {
-		host = 0
-	}
-	if guest < 0 {
-		guest = (host + 1) % len(nc.buf)
-	}
-	return
-}
-
 func (nc *NetConnection) Accept(port int) error {
 	ln, err := net.Listen("tcp", net.JoinHostPort("", Itoa(port)))
 	if err != nil {
@@ -358,7 +340,9 @@ func (nc *NetConnection) Accept(port int) error {
 	nc.ln = tcpLn
 	nc.host = true
 	nc.conn = nil // Make sure this is a new connection
-	nc.locIn, nc.remIn = nc.GetHostGuestRemap()
+	// Channel 0 is the host and channel 1 the guest, as in rollback/replays.
+	// Character ownership is selected separately through inputRemap.
+	nc.locIn, nc.remIn = 0, 1
 
 	lnLocal := nc.ln
 	SafeGo(func() {
@@ -377,10 +361,6 @@ func (nc *NetConnection) Accept(port int) error {
 		// Don't allow the handshake to block forever (important when shutting down).
 		_ = tempConn.SetDeadline(time.Now().Add(2 * time.Second))
 
-		if sys.cfg.Netplay.RollbackNetcode {
-			sys.rollback.session.remoteIp = tempConn.RemoteAddr().(*net.TCPAddr).IP.String()
-		}
-
 		//Send handshake
 		if _, err := tempConn.Write([]byte("IKEMENGO")); err != nil {
 			tempConn.Close()
@@ -398,12 +378,8 @@ func (nc *NetConnection) Accept(port int) error {
 		// Handshake complete; clear deadlines for normal play.
 		_ = tempConn.SetDeadline(time.Time{})
 
-		// Handshake complete. Make temp connection permanent
-		if nc.isClosing() {
-			tempConn.Close()
-			return
-		}
-		nc.conn = tempConn
+		// Rollback reads the peer address from the adopted socket at match startup.
+		nc.publishConnection(tempConn)
 	})
 
 	return nil
@@ -412,7 +388,7 @@ func (nc *NetConnection) Accept(port int) error {
 func (nc *NetConnection) Connect(server string, port int) {
 	nc.host = false
 	nc.conn = nil // Make sure this is a new connection
-	nc.remIn, nc.locIn = nc.GetHostGuestRemap()
+	nc.remIn, nc.locIn = 0, 1
 
 	SafeGo(func() {
 		d := net.Dialer{Timeout: 1 * time.Second}
@@ -454,20 +430,32 @@ func (nc *NetConnection) Connect(server string, port int) {
 			// Handshake complete; clear deadlines for normal play.
 			_ = tcpConn.SetDeadline(time.Time{})
 
-			// Handshake complete. Make temp connection permanent
-			if nc.isClosing() {
-				tcpConn.Close()
-				return
-			}
-			nc.conn = tcpConn
+			nc.publishConnection(tcpConn)
 			return
 		}
 	})
 }
 
+// Transfer ownership to the main thread, or close the socket if it cancels.
+// The unbuffered handoff cannot leave an unclaimed socket behind after Close.
+func (nc *NetConnection) publishConnection(conn *net.TCPConn) {
+	select {
+	case nc.pendingConn <- conn:
+	case <-nc.closing:
+		conn.Close()
+	}
+}
+
 func (nc *NetConnection) IsConnected() bool {
-	if nc == nil {
+	if nc == nil || nc.isClosing() {
 		return false
+	}
+	// Only the main thread adopts a completed handshake and writes nc.conn.
+	if nc.conn == nil {
+		select {
+		case nc.conn = <-nc.pendingConn:
+		default:
+		}
 	}
 	connected := nc.conn != nil
 	// Stop a held button from registering as a fresh press and auto-accepting the first menu.
