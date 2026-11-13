@@ -16,7 +16,7 @@ require (
 	github.com/mdouchement/hdr v0.2.4
 	github.com/qmuntal/gltf v0.24.2
 	github.com/sqweek/dialog v0.0.0-20220809060634-e981b270ebbf
-	github.com/tidwall/gjson v1.20.0
+	github.com/tidwall/gjson v1.20.2
 	github.com/tidwall/sjson v1.2.5
 	github.com/veandco/go-sdl2 v0.5.0-alpha.7.0.20250220045537-7f43f67a3a12
 	github.com/yuin/gopher-lua v1.1.0
@@ -40,5 +40,5 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/samhocevar/go-meltysynth v0.0.0-20230403180939-aca4a036cb16 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
+	github.com/tidwall/pretty v1.3.0 // indirect
 )
