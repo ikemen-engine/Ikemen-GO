@@ -1,11 +1,11 @@
 local options = {}
---;===========================================================
---; COMMON
---;===========================================================
+-- ;===========================================================
+-- ; COMMON
+-- ;===========================================================
 options.modified = false
 options.needReload = false
 
---return string depending on bool
+-- return string depending on bool
 function options.f_boolDisplay(bool, t, f)
 	if bool == true then
 		return t or motif.option_info.menu.valuename.yes
@@ -13,7 +13,7 @@ function options.f_boolDisplay(bool, t, f)
 	return f or motif.option_info.menu.valuename.no
 end
 
---return table entry (or ret if specified) if provided key exists in the table, otherwise return default argument
+-- return table entry (or ret if specified) if provided key exists in the table, otherwise return default argument
 function options.f_definedDisplay(key, t, default, ret)
 	if key ~= nil and t[key] ~= nil then
 		return ret or t[key]
@@ -21,7 +21,7 @@ function options.f_definedDisplay(key, t, default, ret)
 	return default
 end
 
---return correct precision
+-- return correct precision
 function options.f_precision(v, decimal)
 	return tonumber(string.format(decimal, v))
 end
@@ -48,9 +48,9 @@ function options.f_saveCfg(reload)
 	end
 end
 
---;===========================================================
---; LOOPS
---;===========================================================
+-- ;===========================================================
+-- ; LOOPS
+-- ;===========================================================
 local function f_switchLanguage(dir)
 	sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 	-- collect available language keys
@@ -84,7 +84,7 @@ end
 
 -- Associative elements table storing functions controlling behaviour of each
 -- option screen item. Can be appended via external module.
---Render mode values as stored in the configuration.
+-- Render mode values as stored in the configuration.
 options.t_renderModes = {
 	gles32 = 'OpenGL ES 3.2',
 	gl33 = 'OpenGL 3.3',
@@ -92,7 +92,7 @@ options.t_renderModes = {
 }
 
 options.t_itemname = {
-	--Back
+	-- Back
 	['back'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
@@ -100,22 +100,22 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Default Values
+	-- Default Values
 	['default'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-			--modifyGameOption('Common.Air', {"data/common.air"})
-			--modifyGameOption('Common.Cmd', {"data/common.cmd"})
-			--modifyGameOption('Common.Const', {"data/common.const"})
-			--modifyGameOption('Common.States', {"data/action.zss", "data/dizzy.zss", "data/guardbreak.zss", "data/score.zss", "data/system.zss", "data/tag.zss", "data/training.zss"})
-			--modifyGameOption('Common.Fx', {})
-			--modifyGameOption('Common.Modules', {})
-			--modifyGameOption('Common.Lua', {"loop()"})
+			-- modifyGameOption('Common.Air', {"data/common.air"})
+			-- modifyGameOption('Common.Cmd', {"data/common.cmd"})
+			-- modifyGameOption('Common.Const', {"data/common.const"})
+			-- modifyGameOption('Common.States', {"data/action.zss", "data/dizzy.zss", "data/guardbreak.zss", "data/score.zss", "data/system.zss", "data/tag.zss", "data/training.zss"})
+			-- modifyGameOption('Common.Fx', {})
+			-- modifyGameOption('Common.Modules', {})
+			-- modifyGameOption('Common.Lua', {"loop()"})
 			modifyGameOption('Options.Difficulty', 5)
 			modifyGameOption('Options.Life', 100)
 			modifyGameOption('Options.Time', 99)
 			modifyGameOption('Options.GameSpeed', 0)
-			--modifyGameOption('Options.GameSpeedStep', 5)
+			-- modifyGameOption('Options.GameSpeedStep', 5)
 			modifyGameOption('Options.Match.Wins', 2)
 			modifyGameOption('Options.Match.MaxDrawGames', 1)
 			modifyGameOption('Options.Credits', 10)
@@ -135,50 +135,50 @@ options.t_itemname = {
 			modifyGameOption('Options.Tag.Min', 2)
 			modifyGameOption('Options.Tag.Max', 4)
 			modifyGameOption('Options.Tag.Match.Wins', 2)
-			modifyGameOption('Options.Tag.LoseOnKO', false)	
+			modifyGameOption('Options.Tag.LoseOnKO', false)
 			modifyGameOption('Options.Tag.TimeScaling', 1)
 			modifyGameOption('Options.Turns.Min', 2)
 			modifyGameOption('Options.Turns.Max', 4)
 			modifyGameOption('Options.Turns.Recovery.Base', 12.5)
 			modifyGameOption('Options.Turns.Recovery.Bonus', 27.5)
-			--modifyGameOption('Config.Motif', "data/system.def")
+			-- modifyGameOption('Config.Motif', "data/system.def")
 			modifyGameOption('Config.Players', 4)
 			modifyGameOption('Config.Language', "en")
-			--modifyGameOption('Config.AfterImageMax', 128)
-			--modifyGameOption('Config.ExplodMax', 512)
-			--modifyGameOption('Config.HelperMax', 56)
-			--modifyGameOption('Config.ProjectileMax', 256)
-			--modifyGameOption('Config.PaletteMax', 100)
-			--modifyGameOption('Config.TextMax', 128)
-			--modifyGameOption('Config.TickInterpolation', true)
-			--modifyGameOption('Config.ZoomActive', true)
-			--modifyGameOption('Config.EscOpensMenu', true)
+			-- modifyGameOption('Config.AfterImageMax', 128)
+			-- modifyGameOption('Config.ExplodMax', 512)
+			-- modifyGameOption('Config.HelperMax', 56)
+			-- modifyGameOption('Config.ProjectileMax', 256)
+			-- modifyGameOption('Config.PaletteMax', 100)
+			-- modifyGameOption('Config.TextMax', 128)
+			-- modifyGameOption('Config.TickInterpolation', true)
+			-- modifyGameOption('Config.ZoomActive', true)
+			-- modifyGameOption('Config.EscOpensMenu', true)
 			modifyGameOption('Config.VsScreenLoading', false)
 			modifyGameOption('Config.TurnsLoading', false)
-			--modifyGameOption('Config.BootLoadingMode', 0)
-			--modifyGameOption('Config.FirstRun', false)
-			--modifyGameOption('Config.WindowTitle', "Ikemen GO")
-			--modifyGameOption('Config.WindowIcon', {"external/icons/IkemenCylia_256.png", "external/icons/IkemenCylia_96.png", "external/icons/IkemenCylia_48.png"})
-			--modifyGameOption('Config.System', "external/script/main.lua")
-			--modifyGameOption('Config.ScreenshotFolder', "")
-			--modifyGameOption('Config.TrainingChar', "")
-			--modifyGameOption('Config.TrainingStage', "")
+			-- modifyGameOption('Config.BootLoadingMode', 0)
+			-- modifyGameOption('Config.FirstRun', false)
+			-- modifyGameOption('Config.WindowTitle', "Ikemen GO")
+			-- modifyGameOption('Config.WindowIcon', {"external/icons/IkemenCylia_256.png", "external/icons/IkemenCylia_96.png", "external/icons/IkemenCylia_48.png"})
+			-- modifyGameOption('Config.System', "external/script/main.lua")
+			-- modifyGameOption('Config.ScreenshotFolder', "")
+			-- modifyGameOption('Config.TrainingChar', "")
+			-- modifyGameOption('Config.TrainingStage', "")
 			modifyGameOption('Config.GamepadMappings', "external/gamecontrollerdb.txt")
-			--modifyGameOption('Config.LegacyTime', 0)
+			-- modifyGameOption('Config.LegacyTime', 0)
 			modifyGameOption('Debug.AllowDebugMode', true)
 			modifyGameOption('Debug.AllowDebugKeys', true)
-			--modifyGameOption('Debug.ClipboardRows', 2)
-			--modifyGameOption('Debug.ConsoleRows', 15)
-			--modifyGameOption('Debug.ClsnDarken', true)
-			--modifyGameOption('Debug.DumpLuaTables', false)
-			--modifyGameOption('Debug.Font', "font/debug.def")
-			--modifyGameOption('Debug.FontScale', 1.0)
-			--modifyGameOption('Debug.StartStage', "stages/stage0-720.def")
-			--modifyGameOption('Debug.ForceStageZoomout', 0)
-			--modifyGameOption('Debug.ForceStageZoomin', 0)
-			--modifyGameOption('Debug.KeepSpritesOnReload', 0)
-			--modifyGameOption('Debug.MacOSUseCommandKey', 0)
-			--modifyGameOption('Debug.SpeedTest', 100)
+			-- modifyGameOption('Debug.ClipboardRows', 2)
+			-- modifyGameOption('Debug.ConsoleRows', 15)
+			-- modifyGameOption('Debug.ClsnDarken', true)
+			-- modifyGameOption('Debug.DumpLuaTables', false)
+			-- modifyGameOption('Debug.Font', "font/debug.def")
+			-- modifyGameOption('Debug.FontScale', 1.0)
+			-- modifyGameOption('Debug.StartStage', "stages/stage0-720.def")
+			-- modifyGameOption('Debug.ForceStageZoomout', 0)
+			-- modifyGameOption('Debug.ForceStageZoomin', 0)
+			-- modifyGameOption('Debug.KeepSpritesOnReload', 0)
+			-- modifyGameOption('Debug.MacOSUseCommandKey', 0)
+			-- modifyGameOption('Debug.SpeedTest', 100)
 			-- This is platform dependent now
 			local runtimeOS = getRuntimeOS()
 			if runtimeOS == 'android' then
@@ -190,15 +190,15 @@ options.t_itemname = {
 			end
 			modifyGameOption('Video.GameWidth', 1280)
 			modifyGameOption('Video.GameHeight', 720)
-			--modifyGameOption('Video.WindowWidth', 0)
-			--modifyGameOption('Video.WindowHeight', 0)
+			-- modifyGameOption('Video.WindowWidth', 0)
+			-- modifyGameOption('Video.WindowHeight', 0)
 			modifyGameOption('Video.Fullscreen', false)
-			--modifyGameOption('Video.Borderless', false)
-			--modifyGameOption('Video.RGBSpriteBilinearFilter', true)
-			--modifyGameOption('Video.Framerate', 60)
+			-- modifyGameOption('Video.Borderless', false)
+			-- modifyGameOption('Video.RGBSpriteBilinearFilter', true)
+			-- modifyGameOption('Video.Framerate', 60)
 			modifyGameOption('Video.VSync', 1)
 			modifyGameOption('Video.MSAA', 0)
-			--modifyGameOption('Video.WindowCentered', true)
+			-- modifyGameOption('Video.WindowCentered', true)
 			modifyGameOption('Video.ExternalShaders', {})
 			modifyGameOption('Video.WindowScaleMode', true)
 			modifyGameOption('Video.FightAspectWidth', -1)
@@ -206,19 +206,19 @@ options.t_itemname = {
 			modifyGameOption('Video.KeepAspect', true)
 			modifyGameOption('Video.EnableModel', true)
 			modifyGameOption('Video.EnableModelShadow', true)
-			--modifyGameOption('Sound.SampleRate', 44100)
-			--modifyGameOption('Sound.SoundFont', "sound/soundfont.sf2")
+			-- modifyGameOption('Sound.SampleRate', 44100)
+			-- modifyGameOption('Sound.SoundFont', "sound/soundfont.sf2")
 			modifyGameOption('Sound.StereoEffects', true)
 			modifyGameOption('Sound.PanningRange', 30)
-			--modifyGameOption('Sound.WavChannels', 32)
+			-- modifyGameOption('Sound.WavChannels', 32)
 			modifyGameOption('Sound.MasterVolume', 80)
-			--modifyGameOption('Sound.PauseMasterVolume', 100)
+			-- modifyGameOption('Sound.PauseMasterVolume', 100)
 			modifyGameOption('Sound.WavVolume', 80)
 			modifyGameOption('Sound.BGMVolume', 80)
-			--modifyGameOption('Sound.MaxBGMVolume', 100)
-			modifyGameOption('Sound.AudioDucking', false)	
-			--modifyGameOption('Sound.BGMRAMBuffer', true)	
-			--modifyGameOption('Sound.AudioResampleQuality', 4)	
+			-- modifyGameOption('Sound.MaxBGMVolume', 100)
+			modifyGameOption('Sound.AudioDucking', false)
+			-- modifyGameOption('Sound.BGMRAMBuffer', true)
+			-- modifyGameOption('Sound.AudioResampleQuality', 4)
 			modifyGameOption('Arcade.AI.RandomColor', false)
 			modifyGameOption('Arcade.AI.SurvivalColor', true)
 			modifyGameOption('Arcade.AI.Ramping', true)
@@ -226,22 +226,22 @@ options.t_itemname = {
 			modifyGameOption('Netplay.ListenPort', 7500)
 			modifyGameOption('Netplay.Rollback.Port', 7500)
 			modifyGameOption('Netplay.Rollback.FrameDelay', 2)
-			--modifyGameOption('Netplay.Rollback.DisconnectNotifyStart', 1000)
-			--modifyGameOption('Netplay.Rollback.DisconnectTimeout', 3000)
-			--modifyGameOption('Netplay.Rollback.StateLogsEnabled', false)
-			--modifyGameOption('Netplay.Rollback.GgpoLogsEnabled', false)
-			--modifyGameOption('Netplay.Rollback.SaveStageData', false)
-			--modifyGameOption('Netplay.Rollback.DesyncTest', false)
-			--modifyGameOption('Netplay.Rollback.DesyncTestFrames', false)
-			--modifyGameOption('Netplay.Rollback.DesyncTestAI', false)
-			--modifyGameOption('Netplay.IP.<>', "")
-			--modifyGameOption('Input.ButtonAssist', true)
-			--modifyGameOption('Input.SOCDResolution', 4)
-			--modifyGameOption('Input.ControllerStickSensitivity', 0.4)
-			--modifyGameOption('Input.XinputTriggerSensitivity', 0.5)
-			--modifyGameOption('Input.UiRepeatDelay', 30)
-			--modifyGameOption('Input.UiRepeatRate', 4)
-			--modifyGameOption('Input.PauseExitDelay', 10)
+			-- modifyGameOption('Netplay.Rollback.DisconnectNotifyStart', 1000)
+			-- modifyGameOption('Netplay.Rollback.DisconnectTimeout', 3000)
+			-- modifyGameOption('Netplay.Rollback.StateLogsEnabled', false)
+			-- modifyGameOption('Netplay.Rollback.GgpoLogsEnabled', false)
+			-- modifyGameOption('Netplay.Rollback.SaveStageData', false)
+			-- modifyGameOption('Netplay.Rollback.DesyncTest', false)
+			-- modifyGameOption('Netplay.Rollback.DesyncTestFrames', false)
+			-- modifyGameOption('Netplay.Rollback.DesyncTestAI', false)
+			-- modifyGameOption('Netplay.IP.<>', "")
+			-- modifyGameOption('Input.ButtonAssist', true)
+			-- modifyGameOption('Input.SOCDResolution', 4)
+			-- modifyGameOption('Input.ControllerStickSensitivity', 0.4)
+			-- modifyGameOption('Input.XinputTriggerSensitivity', 0.5)
+			-- modifyGameOption('Input.UiRepeatDelay', 30)
+			-- modifyGameOption('Input.UiRepeatRate', 4)
+			-- modifyGameOption('Input.PauseExitDelay', 10)
 
 			loadFightScreen(motif.files.fight)
 			setPlayers()
@@ -257,7 +257,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Difficulty Level
+	-- Difficulty Level
 	['difficulty'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Difficulty') < 8 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -272,7 +272,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Time Limit
+	-- Time Limit
 	['roundtime'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Time') < 1000 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -287,7 +287,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Language Setting
+	-- Language Setting
 	['language'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and (main.f_tableLength(motif.languages) > 1 or motif.languages[gameOption('Config.Language')] == nil) then
 			f_switchLanguage(1)
@@ -298,7 +298,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Life
+	-- Life
 	['lifemul'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Life') < 300 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -313,7 +313,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Single VS Team Life
+	-- Single VS Team Life
 	['singlevsteamlife'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Team.SingleVsTeamLife') < 300 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -343,7 +343,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Rounds to Win (Single)
+	-- Rounds to Win (Single)
 	['roundsnumsingle'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Match.Wins') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -358,7 +358,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Max Draw Games
+	-- Max Draw Games
 	['maxdrawgames'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Match.MaxDrawGames') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -373,7 +373,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Credits
+	-- Credits
 	['credits'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Credits') < 99 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -388,7 +388,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Arcade Palette
+	-- Arcade Palette
 	['aipalette'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -402,7 +402,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Survival Palette
+	-- Survival Palette
 	['aisurvivalpalette'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -416,7 +416,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--AI Ramping
+	-- AI Ramping
 	['airamping'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -430,7 +430,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Quick Continue
+	-- Quick Continue
 	['quickcontinue'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -438,13 +438,13 @@ options.t_itemname = {
 				modifyGameOption('Options.QuickContinue', false)
 			else
 				modifyGameOption('Options.QuickContinue', true)
-				end
+			end
 			t.items[item].vardisplay = options.t_vardisplay['quickcontinue']()
 			options.modified = true
 		end
 		return true
 	end,
-	--Auto-Guard
+	-- Auto-Guard
 	['autoguard'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -458,7 +458,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Dizzy
+	-- Dizzy
 	['dizzy'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -472,7 +472,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Guard Break
+	-- Guard Break
 	['guardbreak'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -486,7 +486,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Red Life
+	-- Red Life
 	['redlife'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -500,7 +500,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Team Duplicates
+	-- Team Duplicates
 	['teamduplicates'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -508,13 +508,13 @@ options.t_itemname = {
 				modifyGameOption('Options.Team.Duplicates', false)
 			else
 				modifyGameOption('Options.Team.Duplicates', true)
-				end
+			end
 			t.items[item].vardisplay = options.t_vardisplay['teamduplicates']()
 			options.modified = true
 		end
 		return true
 	end,
-	--Team Life Share
+	-- Team Life Share
 	['teamlifeshare'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -528,7 +528,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Team Power Share
+	-- Team Power Share
 	['teampowershare'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -542,7 +542,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Rounds to Win (Tag)
+	-- Rounds to Win (Tag)
 	['roundsnumtag'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Tag.Match.Wins') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -557,7 +557,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Partner KOed Lose
+	-- Partner KOed Lose
 	['losekotag'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -571,7 +571,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Min Tag Chars
+	-- Min Tag Chars
 	['mintag'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Tag.Min') < gameOption('Options.Tag.Max') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -586,7 +586,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Max Tag Chars
+	-- Max Tag Chars
 	['maxtag'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Tag.Max') < 4 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -601,7 +601,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Rounds to Win (Simul)
+	-- Rounds to Win (Simul)
 	['roundsnumsimul'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Simul.Match.Wins') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -616,7 +616,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Simul Player KOed Lose
+	-- Simul Player KOed Lose
 	['losekosimul'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -630,7 +630,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Min Simul Chars
+	-- Min Simul Chars
 	['minsimul'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Simul.Min') < gameOption('Options.Simul.Max') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -645,7 +645,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Max Simul Chars
+	-- Max Simul Chars
 	['maxsimul'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Simul.Max') < 4 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -660,7 +660,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Turns Recovery Base
+	-- Turns Recovery Base
 	['turnsrecoverybase'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Recovery.Base') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -675,7 +675,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Turns Recovery Bonus
+	-- Turns Recovery Bonus
 	['turnsrecoverybonus'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Recovery.Bonus') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -690,7 +690,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Min Turns Chars
+	-- Min Turns Chars
 	['minturns'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Min') < gameOption('Options.Turns.Max') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -705,7 +705,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Max Turns Chars
+	-- Max Turns Chars
 	['maxturns'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Options.Turns.Max') < 8 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -720,7 +720,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Renderer (submenu)
+	-- Renderer (submenu)
 	['renderer'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -738,7 +738,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--gles32
+	-- gles32
 	['gles32'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -749,7 +749,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--gl33
+	-- gl33
 	['gl33'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -760,7 +760,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--vk13
+	-- vk13
 	['vk13'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -771,7 +771,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Resolution (submenu)
+	-- Resolution (submenu)
 	['resolution'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -797,7 +797,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Custom resolution
+	-- Custom resolution
 	['customres'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -833,7 +833,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Fullscreen
+	-- Fullscreen
 	['fullscreen'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -848,7 +848,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--VSync
+	-- VSync
 	['vsync'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -863,7 +863,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--MSAA
+	-- MSAA
 	['msaa'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Video.MSAA') < 32 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -888,7 +888,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Window scaling mode
+	-- Window scaling mode
 	['windowscalemode'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -938,7 +938,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Custom aspect ratio
+	-- Custom aspect ratio
 	['customaspect'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -974,7 +974,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Keep Aspect Ratio
+	-- Keep Aspect Ratio
 	['keepaspect'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -988,7 +988,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Shaders (submenu)
+	-- Shaders (submenu)
 	['shaders'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1003,7 +1003,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Disable (shader)
+	-- Disable (shader)
 	['noshader'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
@@ -1014,7 +1014,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Enable Model
+	-- Enable Model
 	['enablemodel'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1029,7 +1029,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Enable Model Shadow
+	-- Enable Model Shadow
 	['enablemodelshadow'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1044,7 +1044,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Master Volume
+	-- Master Volume
 	['mastervolume'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.MasterVolume') < 200 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1061,7 +1061,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--BGM Volume
+	-- BGM Volume
 	['bgmvolume'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.BGMVolume') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1078,7 +1078,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--SFX Volume
+	-- SFX Volume
 	['sfxvolume'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.WavVolume') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1093,7 +1093,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Audio Ducking
+	-- Audio Ducking
 	['audioducking'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1107,7 +1107,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Stereo Effects
+	-- Stereo Effects
 	['stereoeffects'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1121,7 +1121,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Panning Range
+	-- Panning Range
 	['panningrange'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Sound.PanningRange') < 100 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1136,7 +1136,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Key Config
+	-- Key Config
 	['keyboard'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
@@ -1149,7 +1149,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Joystick Config
+	-- Joystick Config
 	['gamepad'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
@@ -1164,7 +1164,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Default
+	-- Default
 	['inputdefault'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
@@ -1177,7 +1177,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Players
+	-- Players
 	['players'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Config.Players') < 8 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1194,7 +1194,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Debug Keys
+	-- Debug Keys
 	['debugkeys'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1208,7 +1208,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Debug Mode
+	-- Debug Mode
 	['debugmode'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1222,7 +1222,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Background Loading
+	-- Background Loading
 	['vsscreenloading'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1236,7 +1236,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Turns Preloading
+	-- Turns Preloading
 	['turnsloading'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1250,7 +1250,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Rollback Netcode
+	-- Rollback Netcode
 	['netcode'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key, motif.option_info.menu.subtract.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1264,7 +1264,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Host Port (TCP)
+	-- Host Port (TCP)
 	['portchange'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1286,7 +1286,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Rollback Port (UDP)
+	-- Rollback Port (UDP)
 	['rollbackport'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1308,7 +1308,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Rollback Frame Delay
+	-- Rollback Frame Delay
 	['framedelay'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.add.key) and gameOption('Netplay.Rollback.FrameDelay') < 10 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
@@ -1323,7 +1323,7 @@ options.t_itemname = {
 		end
 		return true
 	end,
-	--Save and Return
+	-- Save and Return
 	['savereturn'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
@@ -1332,11 +1332,11 @@ options.t_itemname = {
 			end
 			fadeOutInit(motif.option_info.fadeout.FadeData)
 			main.close = true
-			--return false
+			-- return false
 		end
 		return true
 	end,
-	--Return Without Saving
+	-- Return Without Saving
 	['return'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
@@ -1345,11 +1345,11 @@ options.t_itemname = {
 			end
 			fadeOutInit(motif.option_info.fadeout.FadeData)
 			main.close = true
-			--return false
+			-- return false
 		end
 		return true
 	end,
-	--Save Settings
+	-- Save Settings
 	['savesettings'] = function(t, item, cursorPosY, moveTxt)
 		if getInput(-1, motif.option_info.menu.done.key) then
 			sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
@@ -1402,7 +1402,7 @@ function options.f_createMenu(tbl, bool_main)
 					sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
 					if bool_main then
 						if options.modified then
-							--options.f_saveCfg(options.needReload)
+							-- options.f_saveCfg(options.needReload)
 						end
 						if options.needReload then
 							main.f_warning(motif.warning_info.text.text.noreload, motif.option_info, motif.optionbgdef)
@@ -1756,11 +1756,11 @@ function options.f_start()
 	options.menu = {title = main.f_itemnameUpper(motif.option_info.title.text, motif.option_info.menu.title.uppercase), submenu = {}, items = {}}
 	options.menu.loop = options.f_createMenu(options.menu, true)
 	local w = main.f_menuWindow(motif.option_info.menu)
-	local t_pos = {} --for storing current options.menu table position
+	local t_pos = {} -- for storing current options.menu table position
 	local lastNum = 0
 	for i, suffix in ipairs(motif.option_info.menu.itemname_order) do
-		for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
-			--populate shaders submenu
+		for j, c in ipairs(main.f_strsplit('_', suffix)) do -- split using "_" delimiter
+			-- populate shaders submenu
 			if suffix:match('_shaders_back$') and c == 'back' then
 				for k = #options.t_shaders, 1, -1 do
 					local itemname = options.t_shaders[k].path .. options.t_shaders[k].filename
@@ -1784,8 +1784,8 @@ function options.f_start()
 					table.insert(options.t_vardisplayPointers, t_pos.items[#t_pos.items])
 				end
 			end
-			--appending the menu table
-			if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
+			-- appending the menu table
+			if j == 1 then -- first string after menu.itemname (either reserved one or custom submenu assignment)
 				if options.menu.submenu[c] == nil or c:match("^spacer%d*$") then
 					options.menu.submenu[c] = {title = main.f_itemnameUpper(motif.option_info.menu.itemname[suffix], motif.option_info.menu.title.uppercase), submenu = {}, items = {}}
 					options.menu.submenu[c].loop = options.f_createMenu(options.menu.submenu[c], false)
@@ -1802,7 +1802,7 @@ function options.f_start()
 				end
 				t_pos = options.menu.submenu[c]
 				t_pos.name = c
-			else --following strings
+			else -- following strings
 				if t_pos.submenu[c] == nil or c:match("^spacer%d*$") then
 					t_pos.submenu[c] = {title = main.f_itemnameUpper(motif.option_info.menu.itemname[suffix], motif.option_info.menu.title.uppercase), submenu = {}, items = {}}
 					t_pos.submenu[c].loop = options.f_createMenu(t_pos.submenu[c], false)
@@ -1877,9 +1877,9 @@ function options.f_start()
 	if gameOption('Debug.DumpLuaTables') then main.f_printTable(options.menu, 'debug/t_optionsMenu.txt') end
 end
 
---;===========================================================
---; KEY SETTINGS
---;===========================================================
+-- ;===========================================================
+-- ; KEY SETTINGS
+-- ;===========================================================
 local t_keyCfg = {}
 table.insert(t_keyCfg, {itemname = 'spacer', displayname = '-', paramname = 'spacer'})
 for _, v in ipairs(motif.option_info.keymenu.itemname_order or {}) do
@@ -1958,14 +1958,14 @@ function options.f_keyCfgReset(cfgType)
 	for i = 1, gameOption('Config.Players') do
 		local c = gameOption(cfgType .. '_P' .. i)
 		if t_keyList[c.Joystick] == nil then
-			t_keyList[c.Joystick] = {} --creates subtable for each controller (1 for all keyboard configs, new one for each gamepad)
-			t_conflict[c.Joystick] = false --set default conflict flag for each controller
+			t_keyList[c.Joystick] = {} -- creates subtable for each controller (1 for all keyboard configs, new one for each gamepad)
+			t_conflict[c.Joystick] = false -- set default conflict flag for each controller
 		end
 		for k, v in ipairs(t_keyCfg) do
 			if t_btnEnabled[v.itemname] then
 				local btn = c[v.itemname]
 				t_keyCfg[k]['vardisplay' .. i] = btn
-				if btn ~= tostring(motif.option_info.menu.valuename.nokey) then --if button is not disabled
+				if btn ~= tostring(motif.option_info.menu.valuename.nokey) then -- if button is not disabled
 					t_keyList[c.Joystick][btn] = (t_keyList[c.Joystick][btn] or 0) + 1
 				end
 			elseif v.itemname == 'rumble' then
@@ -2011,7 +2011,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 	-- Dynamically add/remove the "Rumble" option based on type
 	if motif.option_info.keymenu.itemname.rumble ~= nil then
 		if cfgType ~= 'Joystick' then
-			for k,v in ipairs(t) do
+			for k, v in ipairs(t) do
 				if t[k].itemname == 'rumble' then
 					table.remove(t, k)
 					break
@@ -2019,7 +2019,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 			end
 		else
 			local found = false
-			for k,v in ipairs(t) do
+			for k, v in ipairs(t) do
 				if t[k].itemname == 'rumble' then
 					found = true
 					break
@@ -2060,10 +2060,10 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		-- unbind key
 		elseif getKey(motif.option_info.keymenu.unbind.keycode) then
 			key = '__UNBIND__'
-		--keyboard key detection
+		-- keyboard key detection
 		elseif cfgType == 'Keys' then
 			key = getKey()
-		--gamepad key detection
+		-- gamepad key detection
 		else
 			local tmp = getJoystickKey(joyNum)
 			local guid = getJoystickGUID(joyNum)
@@ -2083,29 +2083,29 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		end
 		-- while Config all is active we lock menu movement by default
 		forcedDir = 0
-		--other keyboard or gamepad key
+		-- other keyboard or gamepad key
 		if key ~= '' and key ~= 'nil' then
 			if key == '__UNBIND__' then
 				sndPlay(motif.Snd, motif.option_info.cancel.snd[1], motif.option_info.cancel.snd[2])
-				--decrease old button count
+				-- decrease old button count
 				if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
 					t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 				else
 					t_keyList[joyNum][btn] = nil
 				end
-				--update vardisplay / config data
+				-- update vardisplay / config data
 				t[item]['vardisplay' .. player] = motif.option_info.menu.valuename.nokey
 				modifyGameOption(cfgType .. '_P' .. player .. '.' .. t[item].itemname, tostring(motif.option_info.menu.valuename.nokey))
 				options.modified = true
 			elseif cfgType == 'Keys' or (cfgType == 'Joystick' and key ~= 'nil') then
 				sndPlay(motif.Snd, motif.option_info.cursor.done.snd[1], motif.option_info.cursor.done.snd[2])
-				--decrease old button count
+				-- decrease old button count
 				if t_keyList[joyNum][btn] ~= nil and t_keyList[joyNum][btn] > 1 then
 					t_keyList[joyNum][btn] = t_keyList[joyNum][btn] - 1
 				else
 					t_keyList[joyNum][btn] = nil
 				end
-				--remove previous button assignment if already set
+				-- remove previous button assignment if already set
 				for k, v in ipairs(t) do
 					if v['vardisplay' .. player] == key then
 						v['vardisplay' .. player] = tostring(motif.option_info.menu.valuename.nokey)
@@ -2117,13 +2117,13 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 						end
 					end
 				end
-				--increase new button count
+				-- increase new button count
 				if t_keyList[joyNum][key] == nil then
 					t_keyList[joyNum][key] = 1
 				else
 					t_keyList[joyNum][key] = t_keyList[joyNum][key] + 1
 				end
-				--update vardisplay / config data
+				-- update vardisplay / config data
 				t[item]['vardisplay' .. player] = key
 				modifyGameOption(cfgType .. '_P' .. player .. '.' .. t[item].itemname, key)
 				options.modified = true
@@ -2159,7 +2159,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		resetKey()
 	else
 		key = getKey()
-		--back
+		-- back
 		if esc() or getInput(-1, motif.option_info.menu.cancel.key) or (t[item].itemname == 'page' and (side == 1 or gameOption('Config.Players') <= 2) and getInput(-1, motif.option_info.keymenu.done.key)) then
 			if t_conflict[joyNum] then
 				if not main.f_warning(motif.warning_info.text.text.keys, motif.option_info, motif.optionbgdef) then
@@ -2176,7 +2176,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 				menu.itemname = ''
 				return false
 			end
-		--switch page
+		-- switch page
 		elseif gameOption('Config.Players') > 2 and ((t[item].itemname == 'page' and side == 2 and getInput(-1, motif.option_info.keymenu.done.key)) or key == 'TAB') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			player = player + 2
@@ -2186,19 +2186,19 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 				side = main.f_playerSide(player)
 			end
 			joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-		--move right
+		-- move right
 		elseif getInput(-1, motif.option_info.menu.add.key) and player + 1 <= gameOption('Config.Players') then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			player = player + 1
 			side = main.f_playerSide(player)
 			joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-		--move left
+		-- move left
 		elseif getInput(-1, motif.option_info.menu.subtract.key) and player - 1 >= 1 then
 			sndPlay(motif.Snd, motif.option_info.cursor.move.snd[1], motif.option_info.cursor.move.snd[2])
 			player = player - 1
 			side = main.f_playerSide(player)
 			joyNum = gameOption(cfgType .. '_P' .. player .. '.Joystick')
-		--Config all
+		-- Config all
 		elseif t[item].itemname == 'configall' or key:match('^F[0-9]+$') then
 			local pn = key:match('^F([0-9]+)$')
 			if pn ~= nil then
@@ -2292,9 +2292,9 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 	if not skipClear then
 		clearColor(bg.bgclearcolor[1], bg.bgclearcolor[2], bg.bgclearcolor[3])
 	end
-	--draw layerno = 0 backgrounds
+	-- draw layerno = 0 backgrounds
 	bgDraw(bg.BGDef, 0)
-	--draw title
+	-- draw title
 	textImgDraw(motif.option_info.title.TextSpriteData)
 	-- Build per-pane item arrays with correct vardisplay/infodisplay and conflict flags
 	local function buildPaneItems(pane)
@@ -2304,11 +2304,11 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		for i = 1, #t do
 			local base = t[i]
 			local row = {
-				itemname    = base.itemname,
+				itemname = base.itemname,
 				displayname = base.displayname,
-				paramname   = base.paramname,
-				selected    = base.selected,
-				vardisplay  = base['vardisplay' .. pn],
+				paramname = base.paramname,
+				selected = base.selected,
+				vardisplay = base['vardisplay' .. pn],
 				infodisplay = base.infodisplay,
 			}
 			-- contextual labels
@@ -2341,7 +2341,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		end
 		return list
 	end
-	local leftItems  = buildPaneItems(1)
+	local leftItems = buildPaneItems(1)
 	local rightItems = buildPaneItems(2)
 	-- left pane (active highlight only if side == 1)
 	main.f_menuCommonDraw(
@@ -2372,7 +2372,7 @@ function options.f_keyCfg(cfgType, controller, bg, skipClear)
 		)
 		textImgDraw(motif.option_info.keymenu['p' .. i].playerno.TextSpriteData)
 	end
-	--draw layerno = 1 backgrounds
+	-- draw layerno = 1 backgrounds
 	bgDraw(bg.BGDef, 1)
 	if not skipClear then
 		refresh()

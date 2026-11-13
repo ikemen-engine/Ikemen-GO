@@ -1,7 +1,7 @@
---;===========================================================
---; DEBUG HOTKEYS
---;===========================================================
---key, ctrl, alt, shift, pause, debug key, function
+-- ;===========================================================
+-- ; DEBUG HOTKEYS
+-- ;===========================================================
+-- key, ctrl, alt, shift, pause, debug key, function
 addHotkey('c', true, false, false, true, false, 'toggleClsnDisplay()')
 addHotkey('d', true, false, false, true, false, 'toggleDebugDisplay(nil, false)')
 addHotkey('d', true, false, true, true, false, 'toggleDebugDisplay(nil, true)')
@@ -122,9 +122,9 @@ function trainingReset()
 	end
 end
 
---;===========================================================
---; MCONSOLE EQUIVALENTS
---;===========================================================
+-- ;===========================================================
+-- ; MCONSOLE EQUIVALENTS
+-- ;===========================================================
 function toggleDebugPause()
 	togglePause()
 	closeMenu()
@@ -173,9 +173,9 @@ function standAll()
 	stand(8)
 end
 
---;===========================================================
---; DEBUG STATUS INFO
---;===========================================================
+-- ;===========================================================
+-- ; DEBUG STATUS INFO
+-- ;===========================================================
 function statusInfo(p)
 	local oldid = id()
 	if not player(p) then return false end
@@ -189,9 +189,9 @@ end
 
 loadDebugStatus('statusInfo')
 
---;===========================================================
---; DEBUG PLAYER/HELPER INFO
---;===========================================================
+-- ;===========================================================
+-- ; DEBUG PLAYER/HELPER INFO
+-- ;===========================================================
 function customState()
 	if not inCustomState() then return "" end
 	return " (in " .. getStateOwnerName() .. ", Player " .. getStateOwnerPlayerNo() .. "'s state)"
@@ -220,7 +220,7 @@ end
 function stateInfo()
 	return string.format(
 		'State No: %d (P%d); CTRL: %s; Type: %s; MoveType: %s; Physics: %s; Time: %d',
-		stateNo(), getStateOwnerPlayerNo(), boolToInt(ctrl()), stateType(), moveType(), physics(), time()-1
+		stateNo(), getStateOwnerPlayerNo(), boolToInt(ctrl()), stateType(), moveType(), physics(), time() - 1
 	)
 end
 

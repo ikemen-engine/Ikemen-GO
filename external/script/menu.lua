@@ -1,8 +1,8 @@
 local menu = {}
 
---;===========================================================
---; PAUSE MENU
---;===========================================================
+-- ;===========================================================
+-- ; PAUSE MENU
+-- ;===========================================================
 
 -- Associative elements table storing arrays with training menu option names.
 -- Can be appended via external module.
@@ -94,7 +94,7 @@ menu.itemname = ''
 -- Associative elements table storing functions controlling behaviour of each
 -- pause menu item. Can be appended via external module.
 menu.t_itemname = {
-	--Back
+	-- Back
 	['back'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			if menu.currentMenu[1] == menu.currentMenu[2] then
@@ -111,7 +111,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Dummy Control
+	-- Dummy Control
 	['dummycontrol'] = function(t, item, cursorPosY, moveTxt, sec)
 		local ok, name = menu.f_valueChanged(t.items[item], sec)
 		if ok then
@@ -127,7 +127,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--AI Level
+	-- AI Level
 	['ailevel'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			if menu.t_valuename.dummycontrol[menu.dummycontrol or 1].itemname == 'ai' then
@@ -137,7 +137,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Dummy Mode
+	-- Dummy Mode
 	['dummymode'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			player(2)
@@ -145,7 +145,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Guard Mode
+	-- Guard Mode
 	['guardmode'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			player(2)
@@ -153,7 +153,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Fall Recovery
+	-- Fall Recovery
 	['fallrecovery'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			player(2)
@@ -161,7 +161,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Distance
+	-- Distance
 	['distance'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			player(2)
@@ -169,7 +169,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Button Jam
+	-- Button Jam
 	['buttonjam'] = function(t, item, cursorPosY, moveTxt, sec)
 		if menu.f_valueChanged(t.items[item], sec) then
 			player(2)
@@ -177,7 +177,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Key Config
+	-- Key Config
 	['keyboard'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
@@ -186,7 +186,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Joystick Config
+	-- Joystick Config
 	['gamepad'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
@@ -195,7 +195,7 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Default
+	-- Default
 	['inputdefault'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
@@ -208,29 +208,29 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Round Reset
+	-- Round Reset
 	['reset'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			--togglePause(false)
+			-- togglePause(false)
 			resetRound()
 			main.pauseMenuActive = false
 			return false
 		end
 		return true
 	end,
-	--Reload (Rematch)
+	-- Reload (Rematch)
 	['reload'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
-			--togglePause(false)
+			-- togglePause(false)
 			reload()
 			main.pauseMenuActive = false
 			return false
 		end
 		return true
 	end,
-	--Command List
+	-- Command List
 	['commandlist'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2])
@@ -239,11 +239,11 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Character Change
+	-- Character Change
 	['characterchange'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
-			--togglePause(false)
+			-- togglePause(false)
 			endMatch()
 			start.characterchange = true
 			main.pauseMenuActive = false
@@ -251,11 +251,11 @@ menu.t_itemname = {
 		end
 		return true
 	end,
-	--Exit
+	-- Exit
 	['exit'] = function(t, item, cursorPosY, moveTxt, sec)
 		if getInput(-1, sec.menu.done.key) then
 			sndPlay(motif.Snd, sec.cursor.done.snd[1], sec.cursor.done.snd[2], 100, 0, 0, 0, 0, true)
-			--togglePause(false)
+			-- togglePause(false)
 			endMatch()
 			start.exit = true
 			main.pauseMenuActive = false
@@ -442,12 +442,12 @@ function menu.f_start()
 		}
 		menu[v.id].loop = menu.f_createMenu(menu[v.id], v.sec, v.bg, true)
 		local w = main.f_menuWindow(v.sec.menu)
-		local t_pos = {} --for storing current table position
+		local t_pos = {} -- for storing current table position
 		local lastNum = 0
 		for i, suffix in ipairs(v.sec.menu.itemname_order) do
-			for j, c in ipairs(main.f_strsplit('_', suffix)) do --split using "_" delimiter
-				--appending the menu table
-				if j == 1 then --first string after menu.itemname (either reserved one or custom submenu assignment)
+			for j, c in ipairs(main.f_strsplit('_', suffix)) do -- split using "_" delimiter
+				-- appending the menu table
+				if j == 1 then -- first string after menu.itemname (either reserved one or custom submenu assignment)
 					if menu[v.id].submenu[c] == nil or c:match("^spacer%d*$") then
 						menu[v.id].submenu[c] = {}
 						menu[v.id].submenu[c].title = main.f_itemnameUpper(v.sec.menu.itemname[suffix], v.sec.menu.title.uppercase)
@@ -472,7 +472,7 @@ function menu.f_start()
 					end
 					t_pos = menu[v.id].submenu[c]
 					t_pos.name = c
-				else --following strings
+				else -- following strings
 					if t_pos.submenu[c] == nil or c:match("^spacer%d*$") then
 						t_pos.submenu[c] = {}
 						t_pos.submenu[c].title = main.f_itemnameUpper(v.sec.menu.itemname[suffix], v.sec.menu.title.uppercase)
@@ -514,12 +514,12 @@ function menu.f_start()
 		textImgSetWindow(v.sec.menu.item.selected.TextSpriteData, w[1], w[2], w[3], w[4])
 		textImgSetWindow(v.sec.menu.item.TextSpriteData, w[1], w[2], w[3], w[4])
 		textImgSetWindow(v.sec.menu.item.value.TextSpriteData, w[1], w[2], w[3], w[4])
-		--for _, v2 in pairs(v.sec.menu.item.bg) do
-		--	animSetWindow(v2.AnimData, w[1], w[2], w[3], w[4])
-		--end
-		--for _, v2 in pairs(v.sec.menu.item.active.bg) do
-		--	animSetWindow(v2.AnimData, w[1], w[2], w[3], w[4])
-		--end
+		-- for _, v2 in pairs(v.sec.menu.item.bg) do
+		-- 	animSetWindow(v2.AnimData, w[1], w[2], w[3], w[4])
+		-- end
+		-- for _, v2 in pairs(v.sec.menu.item.active.bg) do
+		-- 	animSetWindow(v2.AnimData, w[1], w[2], w[3], w[4])
+		-- end
 		if gameOption('Debug.DumpLuaTables') then main.f_printTable(menu[v.id], 'debug/t_' .. v.id .. 'Menu.txt') end
 		-- Move list
 		if v.movelist then
@@ -615,9 +615,9 @@ function menu.f_run()
 		sec = entry.sec
 		bg = entry.bg
 	end
-	--draw overlay
+	-- draw overlay
 	rectDraw(sec.overlay.RectData)
-	--pause exit delay
+	-- pause exit delay
 	if menu.pauseExitDelay >= 0 then
 		if menu.pauseExitDelay > 0 then
 			menu.pauseExitDelay = menu.pauseExitDelay - 1
@@ -626,17 +626,17 @@ function menu.f_run()
 			main.pauseMenuActive = false
 		end
 	end
-	--Button Config
+	-- Button Config
 	if menu.itemname == 'keyboard' or menu.itemname == 'gamepad' then
 		if menu.itemname == 'keyboard' then
 			options.f_keyCfg('Keys', menu.itemname, bg, true)
 		else
 			options.f_keyCfg('Joystick', menu.itemname, bg, true)
 		end
-	--Command List
+	-- Command List
 	elseif menu.itemname == 'commandlist' then
 		menu.f_commandlistRender(sec, menu.t_movelists[menu.movelistChar])
-	--Menu
+	-- Menu
 	else
 		menu.currentMenu[1]()
 	end
@@ -715,13 +715,13 @@ function menuReset()
 	return menu.f_reset()
 end
 
---;===========================================================
---; COMMAND LIST
---;===========================================================
+-- ;===========================================================
+-- ; COMMAND LIST
+-- ;===========================================================
 function colorFromHex(h)
 	h = tostring(h)
-	if h:sub(0, 1) =="#" then h = h:sub(2, -1) end
-	if h:sub(0, 2) =="0x" then h = h:sub(3, -1) end
+	if h:sub(0, 1) == "#" then h = h:sub(2, -1) end
+	if h:sub(0, 2) == "0x" then h = h:sub(3, -1) end
 	local r = tonumber(h:sub(1, 2), 16) or 255
 	local g = tonumber(h:sub(3, 4), 16) or 255
 	local b = tonumber(h:sub(5, 6), 16) or 255
@@ -800,17 +800,17 @@ function menu.f_commandlistParse()
 									tabs = string.len(m1)
 									return ''
 								end)
-								local align = 1 --left align
+								local align = 1 -- left align
 								if tabs == 1 then
-									align = 0 --center align
+									align = 0 -- center align
 								elseif tabs > 1 then
-									align = -1 --right align
+									align = -1 -- right align
 								end
 								subt, col = f_commandlistData(subt, m, align, col)
 							end
 							table.insert(t, subt)
 						end
-						t[#t] = nil --blank line produced by regexp matching
+						t[#t] = nil -- blank line produced by regexp matching
 						sel.commandlist = t
 					end
 				end
@@ -867,13 +867,13 @@ function menu.f_commandlistRender(sec, t)
 		sndPlay(motif.Snd, sec.cursor.move.snd[1], sec.cursor.move.snd[2])
 		t.tbl.movelistLine = t.tbl.movelistLine + 1
 	end
-	--draw overlay
+	-- draw overlay
 	rectDraw(sec.movelist.overlay.RectData)
-	--draw title
+	-- draw title
 	textImgReset(sec.movelist.title.TextSpriteData)
 	textImgSetText(sec.movelist.title.TextSpriteData, main.f_itemnameUpper(string.format(sec.movelist.title.text, t.name), sec.movelist.title.uppercase))
 	textImgDraw(sec.movelist.title.TextSpriteData)
-	--draw commands
+	-- draw commands
 	local i = 0
 	for n = t.tbl.movelistLine, math.min(t.tbl.movelistLine + sec.movelist.window.visibleitems + 1, #cmdList) do
 		i = i + 1
@@ -884,9 +884,9 @@ function menu.f_commandlistRender(sec, t)
 		for k, v in ipairs(cmdList[n]) do
 			if v.text ~= '' then
 				alignOffset = 0
-				if v.align == 0 then --center align
+				if v.align == 0 then -- center align
 					alignOffset = sec.movelist.window.width * 0.5
-				elseif v.align == -1 then --right align
+				elseif v.align == -1 then -- right align
 					alignOffset = sec.movelist.window.width
 				end
 				if v.align ~= align then
@@ -894,7 +894,7 @@ function menu.f_commandlistRender(sec, t)
 					align = v.align
 				end
 				local fontProps = motif.files.font['font' .. sec.movelist.text.font[1]]
-				--render glyph
+				-- render glyph
 				if v.glyph and motif.glyphs[v.text] ~= nil then
 					local g = motif.glyphs[v.text]
 					if g.Size ~= nil and g.AnimData ~= nil then
@@ -904,20 +904,20 @@ function menu.f_commandlistRender(sec, t)
 							alignOffset = alignOffset - g.Size[1] * scaleX
 						end
 						animSetScale(g.AnimData, scaleX, scaleY)
-						--animSetFacing(g.AnimData, facing)
+						-- animSetFacing(g.AnimData, facing)
 						animSetPos(
 							g.AnimData,
 							math.floor(sec.movelist.pos[1] + sec.movelist.text.offset[1] + sec.movelist.glyphs.offset[1] + alignOffset + lengthOffset),
 							sec.movelist.pos[2] + sec.movelist.text.offset[2] + sec.movelist.glyphs.offset[2] + main.f_round((fontProps.size[2] + fontProps.spacing[2]) * sec.movelist.text.scale[2] + sec.movelist.text.spacing[2]) * (i - 1)
 						)
 						animSetWindow(g.AnimData, menu.movelistW[1], menu.movelistW[2], menu.movelistW[3], menu.movelistW[4])
-						--animUpdate(g.AnimData)
+						-- animUpdate(g.AnimData)
 						animDraw(g.AnimData)
 						if k < #cmdList[n] then
 							width = g.Size[1] * scaleX + sec.movelist.glyphs.spacing[1]
 						end
 					end
-				--render text
+				-- render text
 				else
 					textImgReset(sec.movelist.text.TextSpriteData)
 					local align = v.align
@@ -953,7 +953,7 @@ function menu.f_commandlistRender(sec, t)
 			end
 		end
 	end
-	--draw scroll arrows
+	-- draw scroll arrows
 	if #cmdList > sec.movelist.window.visibleitems then
 		if t.tbl.movelistLine > 1 then
 			animUpdate(sec.movelist.arrow.up.AnimData)
