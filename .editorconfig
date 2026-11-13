@@ -1,0 +1,87 @@
+# Lua whitespace rules, enforced by EmmyLuaCodeStyle (CodeFormat) in
+# .github/workflows/lint-code-style.yml.
+# Scope is intentionally limited to whitespace: tab indentation, no trailing
+# whitespace, single spaces inside lines. Quotes, line length, line breaks,
+# blank lines, separators and parentheses are left as written.
+# Option reference: https://github.com/CppCXY/EmmyLuaCodeStyle/blob/master/lua.template.editorconfig
+root = true
+
+[*.lua]
+# [basic]
+indent_style = tab
+tab_width = 4
+continuation_indent = 4
+quote_style = none
+max_line_length = unset
+end_of_line = lf
+detect_end_of_line = false
+insert_final_newline = true
+table_separator_style = none
+trailing_table_separator = keep
+call_arg_parentheses = keep
+# one statement per line: `a; b` and `then a; break end` are split
+end_statement_with_semicolon = replace_with_newline
+
+# [space]
+space_around_table_field_list = false
+space_before_attribute = true
+space_before_function_open_parenthesis = false
+space_before_function_call_open_parenthesis = false
+space_before_closure_open_parenthesis = false
+space_before_function_call_single_arg.table = keep
+space_before_function_call_single_arg.string = keep
+space_before_open_square_bracket = false
+space_inside_function_call_parentheses = false
+space_inside_function_param_list_parentheses = false
+space_inside_square_brackets = false
+space_around_table_append_operator = false
+ignore_spaces_inside_function_call = false
+space_before_inline_comment = keep
+space_after_comment_dash = true
+
+# [operator space]
+space_around_math_operator = true
+space_after_comma = true
+space_after_comma_in_for_statement = true
+space_around_concat_operator = true
+space_around_logical_operator = true
+space_around_assign_operator = true
+
+# [align] all off: runs of spaces used for alignment get flattened
+align_call_args = false
+align_function_params = false
+align_continuous_assign_statement = false
+align_continuous_rect_table_field = false
+align_if_branch = false
+align_array_table = none
+align_continuous_similar_call_args = false
+align_continuous_inline_comment = false
+align_chain_expr = none
+
+# [indent]
+never_indent_before_if_condition = false
+never_indent_comment_on_if_branch = true
+keep_indents_on_empty_lines = false
+allow_non_indented_comments = true
+
+# [line space] keep everything as written
+line_space_after_if_statement = keep
+line_space_after_do_statement = keep
+line_space_after_while_statement = keep
+line_space_after_repeat_statement = keep
+line_space_after_for_statement = keep
+line_space_after_local_or_assign_statement = keep
+line_space_after_function_statement = keep
+line_space_after_expression_statement = keep
+line_space_after_comment = keep
+line_space_around_block = keep
+
+# [line break] never join or split lines
+break_table_list = never
+break_all_list_when_line_exceed = false
+auto_collapse_lines = false
+break_before_braces = false
+
+# [preference]
+ignore_space_after_colon = false
+remove_call_expression_list_finish_comma = false

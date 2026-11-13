@@ -1,0 +1,67 @@
+on:
+  pull_request:
+    branches: [ develop, 'release/**' ]
+    paths:
+      - '**.lua'
+      - .editorconfig
+      - .github/scripts/format_lua.sh
+      - .github/workflows/lint-lua-check.yml
+  # TEMP: run on the test branch for review. Remove before merging to develop.
+  push:
+    branches: [ lint-lua ]
+  workflow_dispatch:
+
+# Check only: never pushes, so it also works for pull requests from forks.
+# The post-push fixer lives in lint-code-style.yml.
+permissions:
+  contents: read
+
+name: lint-lua-check
+jobs:
+  lint-lua-check:
+    name: lua whitespace check
+    runs-on: ubuntu-latest
+    env:
+      CODEFORMAT_VERSION: 1.6.0
+      CODEFORMAT_SHA256: ce712ffecb697c2019c0602665cc58276c2559c0a0f3d319b2ade4c539faecce
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v7
+
+      - name: Install CodeFormat (EmmyLuaCodeStyle)
+        run: |
+          curl -fsSL -o /tmp/codeformat.tar.gz \
+            "https://github.com/CppCXY/EmmyLuaCodeStyle/releases/download/${CODEFORMAT_VERSION}/linux-x64.tar.gz"
+          echo "${CODEFORMAT_SHA256}  /tmp/codeformat.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/codeformat.tar.gz -C /tmp
+          echo "/tmp/linux-x64/bin" >> "$GITHUB_PATH"
+
+      - name: Apply Lua whitespace rules
+        # Formats the checkout in place; nothing is committed. Rules: .editorconfig.
+        run: |
+          .github/scripts/format_lua.sh
+          git diff --no-color -- '*.lua' > lua-whitespace.diff
+          git diff --stat -- '*.lua'
+
+      - name: Upload required fixes
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lua-whitespace-diff
+          path: lua-whitespace.diff
+          if-no-files-found: ignore
+
+      - name: Report
+        # One annotation per changed block, then the full diff of required fixes.
+        run: |
+          if [ ! -s lua-whitespace.diff ]; then
+            echo "Lua whitespace is clean."
+            exit 0
+          fi
+          git diff -U0 --no-color -- '*.lua' | awk '
+            /^\+\+\+ b\// { file = substr($0, 7) }
+            /^@@ / { split($3, a, ","); line = substr(a[1], 2); if (line == 0) line = 1
+              print "::error file=" file ",line=" line "::Lua whitespace does not follow .editorconfig (tabs, trailing whitespace, spacing). See the job log or the lua-whitespace-diff artifact for the fix." }'
+          echo "Required changes (apply them or let the post-merge style commit do it):"
+          cat lua-whitespace.diff
+          exit 1
